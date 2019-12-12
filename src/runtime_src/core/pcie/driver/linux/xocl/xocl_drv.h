@@ -907,6 +907,56 @@ struct xocl_mailbox_funcs {
 	(MAILBOX_READY(xdev, get) ? MAILBOX_OPS(xdev)->get(MAILBOX_DEV(xdev), \
 	kind, data) : -ENODEV)
 
+struct gate_handler {
+	int (*gate_freeze_cb)(void *drvdata);
+	int (*gate_free_cb)(void *drvdata);
+	void *gate_args;
+};
+
+struct xocl_clock_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	int (*freq_scaling)(struct platform_device *pdev, bool force);
+	int (*get_freq)(struct platform_device *pdev, unsigned int region,
+		unsigned short *freqs, int num_freqs);
+	int (*get_freq_by_id)(struct platform_device *pdev, unsigned int region,
+		unsigned short *freq, int id);
+	int (*get_freq_counter_khz)(struct platform_device *pdev,
+		unsigned int *value, int id);
+	int (*update_freq)(struct platform_device *pdev,
+		unsigned short *freqs, int num_freqs, int verify,
+		struct gate_handler *gate_handle);
+	int (*clock_status)(struct platform_device *pdev, bool *latched);
+};
+#define	CLOCK_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_CLOCK).pldev
+#define	CLOCK_OPS(xdev)							\
+	((struct xocl_clock_funcs *)SUBDEV(xdev, XOCL_SUBDEV_CLOCK).ops)
+#define CLOCK_CB(xdev, cb)						\
+	(CLOCK_DEV(xdev) && CLOCK_OPS(xdev) && CLOCK_OPS(xdev)->cb)
+#define	xocl_clock_freqscaling(xdev, force)				\
+	(CLOCK_CB(xdev, freq_scaling) ?					\
+	CLOCK_OPS(xdev)->freq_scaling(CLOCK_DEV(xdev), force) : 	\
+	-ENODEV)
+#define	xocl_clock_get_freq(xdev, region, freqs, num_freqs)		\
+	(CLOCK_CB(xdev, get_freq) ?					\
+	CLOCK_OPS(xdev)->get_freq(CLOCK_DEV(xdev), region, freqs, num_freqs) : \
+	-ENODEV)
+#define	xocl_clock_get_freq_by_id(xdev, region, freq, id)		\
+	(CLOCK_CB(xdev, get_freq_by_id) ?				\
+	CLOCK_OPS(xdev)->get_freq_by_id(CLOCK_DEV(xdev), region, freq, id) : \
+	-ENODEV)
+#define	xocl_clock_get_freq_counter_khz(xdev, value, id)		\
+	(CLOCK_CB(xdev, get_freq_counter_khz) ?				\
+	CLOCK_OPS(xdev)->get_freq_counter_khz(CLOCK_DEV(xdev), value, id) : \
+	-ENODEV)
+#define	xocl_clock_update_freq(xdev, freqs, num_freqs, verify, gate_handle) \
+	(CLOCK_CB(xdev, update_freq) ?					\
+	CLOCK_OPS(xdev)->update_freq(CLOCK_DEV(xdev), freqs, num_freqs, verify, gate_handle) : \
+	-ENODEV)
+#define	xocl_clock_status(xdev, latched)				\
+	(CLOCK_CB(xdev, clock_status) ?					\
+	CLOCK_OPS(xdev)->clock_status(CLOCK_DEV(xdev), latched) : 	\
+	-ENODEV)
+
 struct xocl_icap_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	void (*reset_axi_gate)(struct platform_device *pdev);
@@ -1298,6 +1348,9 @@ void xocl_fini_mailbox(void);
 
 int __init xocl_init_icap(void);
 void xocl_fini_icap(void);
+
+int __init xocl_init_clock(void);
+void xocl_fini_clock(void);
 
 int __init xocl_init_mig(void);
 void xocl_fini_mig(void);

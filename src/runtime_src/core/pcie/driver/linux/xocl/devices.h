@@ -185,6 +185,7 @@ enum {
 #define	XOCL_XIIC		"xiic"
 #define	XOCL_MAILBOX		"mailbox"
 #define	XOCL_ICAP		"icap"
+#define	XOCL_CLOCK		"clock"
 #define	XOCL_AXIGATE		"axigate"
 #define	XOCL_MIG		"mig"
 #define	XOCL_XMC		"xmc"
@@ -221,6 +222,7 @@ enum subdev_id {
 	XOCL_SUBDEV_MIG_HBM,
 	XOCL_SUBDEV_MAILBOX_VERSAL,
 	XOCL_SUBDEV_OSPI_VERSAL,
+	XOCL_SUBDEV_CLOCK,
 	XOCL_SUBDEV_NUM
 };
 
@@ -645,6 +647,27 @@ struct xocl_subdev_map {
 		ARRAY_SIZE(XOCL_RES_ICAP_MGMT_SMARTN),	\
 	}
 
+#define __RES_PRP_IORES_CLOCK				\
+		{					\
+			.name	= RESNAME_CLKWIZKERNEL1,\
+			.start	= 0x050000,		\
+			.end	= 0x050fff,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+		{					\
+			.name	= RESNAME_CLKWIZKERNEL2,\
+			.start	= 0x051000,		\
+			.end	= 0x051fff,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+		/* OCL_CLKFREQ_BASE */			\
+		{					\
+			.name	= RESNAME_CLKFREQ_K1_K2,\
+			.start	= 0x052000,		\
+			.end	= 0x052fff,		\
+			.flags  = IORESOURCE_MEM,	\
+		}	
+
 #define __RES_PRP_IORES_MGMT				\
 		{					\
 			.name	= RESNAME_MEMCALIB,	\
@@ -657,19 +680,7 @@ struct xocl_subdev_map {
 			.start	= 0x030000,		\
 			.end	= 0x03000b,		\
 			.flags  = IORESOURCE_MEM,	\
-		},					\
-		{					\
-			.name	= RESNAME_CLKWIZKERNEL1,\
-			.start	= 0x050000,		\
-			.end	= 0x050fff,		\
-			.flags  = IORESOURCE_MEM,	\
-		},					\
-		{					\
-			.name	= RESNAME_CLKWIZKERNEL2,\
-			.start	= 0x051000,		\
-			.end	= 0x051fff,		\
-			.flags  = IORESOURCE_MEM,	\
-		}
+		}					\
 
 #define __RES_PRP_IORES_MGMT_SMARTN			\
 		{					\
@@ -691,6 +702,11 @@ struct xocl_subdev_map {
 	 __RES_PRP_IORES_MGMT,				\
 	})
 
+#define XOCL_RES_PRP_IORES_CLOCK			\
+	((struct resource []) {				\
+	 __RES_PRP_IORES_CLOCK,				\
+	})
+
 #define	XOCL_DEVINFO_PRP_IORES_MGMT			\
 	{						\
 		XOCL_SUBDEV_IORES,			\
@@ -701,18 +717,38 @@ struct xocl_subdev_map {
 		.override_idx = XOCL_SUBDEV_LEVEL_PRP,	\
 	}
 
+#define	XOCL_DEVINFO_PRP_IORES_CLOCK			\
+	{						\
+		XOCL_SUBDEV_CLOCK,			\
+		XOCL_CLOCK,				\
+		XOCL_RES_PRP_IORES_CLOCK,		\
+		ARRAY_SIZE(XOCL_RES_PRP_IORES_CLOCK),	\
+		.level = XOCL_SUBDEV_LEVEL_PRP,		\
+		.override_idx = XOCL_SUBDEV_LEVEL_PRP,	\
+	}
+
 #define XOCL_RES_PRP_IORES_MGMT_QEP	    \
     ((struct resource []) {	     \
 	__RES_PRP_IORES_MGMT,	   \
-	/* OCL_CLKWIZ2_BASE */	  \
-	{		   \
-	    .name   = RESNAME_CLKWIZKERNEL3,\
-	    .start  = 0x053000,     \
-	    .end    = 0x053fff,     \
-	    .flags  = IORESOURCE_MEM,   \
-	 },		  \
      })
 
+#define XOCL_RES_PRP_IORES_MGMT_QEP_CLOCK	\
+    ((struct resource []) {	     		\
+	/* OCL_CLKWIZ2_BASE */	  		\
+	{		   \
+	    .name   = RESNAME_CLKWIZKERNEL3,	\
+	    .start  = 0x053000,     		\
+	    .end    = 0x053fff,     		\
+	    .flags  = IORESOURCE_MEM,   	\
+	 },		  \
+	/* OCL_CLKFREQ_BASE */			\
+	{					\
+		.name	= RESNAME_CLKFREQ_K1_K2,\
+		.start	= 0x052000,		\
+		.end	= 0x052fff,		\
+		.flags  = IORESOURCE_MEM,	\
+	}					\
+     })
 
 #define XOCL_DEVINFO_PRP_IORES_MGMT_QEP	 \
      {		       \
@@ -724,15 +760,42 @@ struct xocl_subdev_map {
 	 .override_idx = XOCL_SUBDEV_LEVEL_PRP,  \
      }
 
+#define XOCL_DEVINFO_PRP_IORES_MGMT_QEP_CLOCK	 \
+     {		       \
+	 XOCL_SUBDEV_CLOCK,	  \
+	 XOCL_CLOCK,		\
+	 XOCL_RES_PRP_IORES_MGMT_QEP_CLOCK,	\
+	 ARRAY_SIZE(XOCL_RES_PRP_IORES_MGMT_QEP_CLOCK),    \
+	 .level = XOCL_SUBDEV_LEVEL_PRP,     \
+	 .override_idx = XOCL_SUBDEV_LEVEL_PRP,  \
+     }
 
 #define	XOCL_RES_PRP_IORES_MGMT_U280			\
 	((struct resource []) {				\
 		__RES_PRP_IORES_MGMT,			\
+	})
+
+#define	XOCL_RES_PRP_IORES_MGMT_U280_CLOCK			\
+	((struct resource []) {				\
 		/* OCL_CLKWIZ2_BASE */			\
 		{					\
 			.name	= RESNAME_CLKWIZKERNEL3,\
 			.start	= 0x053000,		\
 			.end	= 0x053fff,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+		/* OCL_CLKFREQ_BASE */			\
+		{					\
+			.name	= RESNAME_CLKFREQ_K1_K2,\
+			.start	= 0x052000,		\
+			.end	= 0x052fff,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+		/* OCL_CLKFREQ_BASE */			\
+		{					\
+			.name	= RESNAME_CLKFREQ_HBM,	\
+			.start	= 0x055000,		\
+			.end	= 0x055fff,		\
 			.flags  = IORESOURCE_MEM,	\
 		},					\
 	})
@@ -743,6 +806,16 @@ struct xocl_subdev_map {
 		XOCL_IORES2,				\
 		XOCL_RES_PRP_IORES_MGMT_U280,		\
 		ARRAY_SIZE(XOCL_RES_PRP_IORES_MGMT_U280),	\
+		.level = XOCL_SUBDEV_LEVEL_PRP,		\
+		.override_idx = XOCL_SUBDEV_LEVEL_PRP,	\
+	}
+
+#define	XOCL_DEVINFO_PRP_IORES_MGMT_U280_CLOCK		\
+	{						\
+		XOCL_SUBDEV_CLOCK,			\
+		XOCL_CLOCK,				\
+		XOCL_RES_PRP_IORES_MGMT_U280_CLOCK,		\
+		ARRAY_SIZE(XOCL_RES_PRP_IORES_MGMT_U280_CLOCK),	\
 		.level = XOCL_SUBDEV_LEVEL_PRP,		\
 		.override_idx = XOCL_SUBDEV_LEVEL_PRP,	\
 	}
@@ -762,55 +835,21 @@ struct xocl_subdev_map {
 		.override_idx = XOCL_SUBDEV_LEVEL_PRP,	\
 	}
 
-#define XOCL_RES_IORES_MGMT				\
-	((struct resource []) {				\
-		/* OCL_CLKFREQ_BASE */			\
-		{					\
-			.name	= RESNAME_CLKFREQ_K1_K2,\
-			.start	= 0x052000,		\
-			.end	= 0x052fff,		\
-			.flags  = IORESOURCE_MEM,	\
-		}					\
-	 })
-
-#define XOCL_RES_IORES_MGMT_U280			\
-	((struct resource []) {				\
-		/* OCL_CLKFREQ_BASE */			\
-		{					\
-			.name	= RESNAME_CLKFREQ_K1_K2,\
-			.start	= 0x052000,		\
-			.end	= 0x052fff,		\
-			.flags  = IORESOURCE_MEM,	\
-		},					\
-		/* OCL_CLKFREQ_BASE */			\
-		{					\
-			.name	= RESNAME_CLKFREQ_HBM,	\
-			.start	= 0x055000,		\
-			.end	= 0x055fff,		\
-			.flags  = IORESOURCE_MEM,	\
-		},					\
-	 })
-
-#define	XOCL_DEVINFO_IORES_MGMT				\
-	{						\
-		XOCL_SUBDEV_IORES,			\
-		XOCL_IORES0,				\
-		XOCL_RES_IORES_MGMT,			\
-		ARRAY_SIZE(XOCL_RES_IORES_MGMT),	\
-	}
-
-#define	XOCL_DEVINFO_IORES_MGMT_U280		\
-	{						\
-		XOCL_SUBDEV_IORES,			\
-		XOCL_IORES0,				\
-		XOCL_RES_IORES_MGMT_U280,		\
-		ARRAY_SIZE(XOCL_RES_IORES_MGMT_U280),	\
-	}
-
 #define	XOCL_DEVINFO_ICAP_USER				\
 	{						\
 		XOCL_SUBDEV_ICAP,			\
 		XOCL_ICAP,				\
+		NULL,					\
+		0,					\
+	}
+/*
+ * clock subdev is splitted out from ICAP, both ICAP
+ * mgmt and user need this subdev.
+ */
+#define	XOCL_DEVINFO_CLOCK				\
+	{						\
+		XOCL_SUBDEV_CLOCK,			\
+		XOCL_CLOCK,				\
 		NULL,					\
 		0,					\
 	}
@@ -1105,6 +1144,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_SCHEDULER_QDMA,			\
 			XOCL_DEVINFO_XVC_PUB,				\
 			XOCL_DEVINFO_MAILBOX_USER_QDMA,			\
+			XOCL_DEVINFO_CLOCK,				\
 			XOCL_DEVINFO_ICAP_USER,				\
 			XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_AF_USER,				\
@@ -1122,6 +1162,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_FEATURE_ROM,			\
 			XOCL_DEVINFO_XDMA,				\
 			XOCL_DEVINFO_SCHEDULER_51,			\
+			XOCL_DEVINFO_CLOCK,				\
 			XOCL_DEVINFO_ICAP_USER,				\
 		})
 
@@ -1131,6 +1172,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_XDMA,				\
 			XOCL_DEVINFO_SCHEDULER_51,			\
 			XOCL_DEVINFO_MAILBOX_USER,			\
+			XOCL_DEVINFO_CLOCK,				\
 			XOCL_DEVINFO_ICAP_USER,				\
 			XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_AF_USER,				\
@@ -1142,6 +1184,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_XDMA,				\
 		 	XOCL_DEVINFO_SCHEDULER_VERSAL,			\
 		 	XOCL_DEVINFO_MAILBOX_USER_VERSAL,		\
+		 	XOCL_DEVINFO_CLOCK,				\
 		 	XOCL_DEVINFO_ICAP_USER,				\
 		})
 
@@ -1151,6 +1194,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_XDMA,				\
 			XOCL_DEVINFO_SCHEDULER_51,			\
 			XOCL_DEVINFO_MAILBOX_USER_SOFTWARE,		\
+			XOCL_DEVINFO_CLOCK,				\
 			XOCL_DEVINFO_ICAP_USER,				\
 		})
 
@@ -1161,6 +1205,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_SCHEDULER,				\
 			XOCL_DEVINFO_MAILBOX_USER,			\
 			XOCL_DEVINFO_XVC_PUB,				\
+			XOCL_DEVINFO_CLOCK,				\
 			XOCL_DEVINFO_ICAP_USER,				\
 			XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_AF_USER,				\
@@ -1170,6 +1215,7 @@ struct xocl_subdev_map {
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM_SMARTN,		\
 			XOCL_DEVINFO_SCHEDULER_DYN,			\
+			XOCL_DEVINFO_CLOCK,				\
 			XOCL_DEVINFO_ICAP_USER,				\
 			XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_MAILBOX_USER_QDMA,			\
@@ -1251,8 +1297,8 @@ struct xocl_subdev_map {
 #define	MGMT_RES_DEFAULT						\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
-			XOCL_DEVINFO_IORES_MGMT,			\
 			XOCL_DEVINFO_PRP_IORES_MGMT,			\
+			XOCL_DEVINFO_PRP_IORES_CLOCK,			\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF,				\
 			XOCL_DEVINFO_MB,				\
@@ -1273,8 +1319,8 @@ struct xocl_subdev_map {
 #define	MGMT_RES_DSA50							\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
-			XOCL_DEVINFO_IORES_MGMT,			\
 			XOCL_DEVINFO_PRP_IORES_MGMT,			\
+			XOCL_DEVINFO_PRP_IORES_CLOCK,			\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF,				\
 			XOCL_DEVINFO_MB,				\
@@ -1288,8 +1334,8 @@ struct xocl_subdev_map {
 #define	MGMT_RES_U2							\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
-			XOCL_DEVINFO_IORES_MGMT,			\
 			XOCL_DEVINFO_PRP_IORES_MGMT,			\
+			XOCL_DEVINFO_PRP_IORES_CLOCK,			\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF,				\
 			XOCL_DEVINFO_MB,				\
@@ -1336,8 +1382,8 @@ struct xocl_subdev_map {
 #define	MGMT_RES_6A8F							\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
-			XOCL_DEVINFO_IORES_MGMT,			\
 			XOCL_DEVINFO_PRP_IORES_MGMT,			\
+			XOCL_DEVINFO_PRP_IORES_CLOCK,			\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF,				\
 			XOCL_DEVINFO_MB,				\
@@ -1351,8 +1397,8 @@ struct xocl_subdev_map {
 #define	MGMT_RES_6A8F_DSA50						\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
-			XOCL_DEVINFO_IORES_MGMT,			\
 			XOCL_DEVINFO_PRP_IORES_MGMT,			\
+			XOCL_DEVINFO_PRP_IORES_CLOCK,			\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF,				\
 			XOCL_DEVINFO_MB,				\
@@ -1365,8 +1411,8 @@ struct xocl_subdev_map {
 #define	MGMT_RES_XBB_DSA51						\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
-			XOCL_DEVINFO_IORES_MGMT,			\
 			XOCL_DEVINFO_PRP_IORES_MGMT,			\
+			XOCL_DEVINFO_PRP_IORES_CLOCK,			\
 			XOCL_DEVINFO_AF,				\
 			XOCL_DEVINFO_XMC,				\
 			XOCL_DEVINFO_XVC_PUB,				\
@@ -1405,8 +1451,8 @@ struct xocl_subdev_map {
 #define	MGMT_RES_QDMA							\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
-			XOCL_DEVINFO_IORES_MGMT,			\
 			XOCL_DEVINFO_PRP_IORES_MGMT,			\
+			XOCL_DEVINFO_PRP_IORES_CLOCK,			\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF,				\
 			XOCL_DEVINFO_MB,				\
@@ -1429,8 +1475,8 @@ struct xocl_subdev_map {
 #define MGMT_RES_XBB_QDMA						\
 	((struct xocl_subdev_info []) {					\
 		XOCL_DEVINFO_FEATURE_ROM,				\
-		XOCL_DEVINFO_IORES_MGMT,				\
 		XOCL_DEVINFO_PRP_IORES_MGMT,				\
+		XOCL_DEVINFO_PRP_IORES_CLOCK,				\
 		XOCL_DEVINFO_AF_DSA52,					\
 		XOCL_DEVINFO_XMC,					\
 		XOCL_DEVINFO_XVC_PRI,					\
@@ -1444,8 +1490,8 @@ struct xocl_subdev_map {
 #define MGMT_RES_XBB_QEP						\
 	((struct xocl_subdev_info []) {					\
 		XOCL_DEVINFO_FEATURE_ROM,				\
-		XOCL_DEVINFO_IORES_MGMT,				\
 		XOCL_DEVINFO_PRP_IORES_MGMT_QEP,			\
+		XOCL_DEVINFO_PRP_IORES_MGMT_QEP_CLOCK,			\
 		XOCL_DEVINFO_AF_DSA52,			 		\
 		XOCL_DEVINFO_XMC,					\
 		XOCL_DEVINFO_XVC_PRI,					\
@@ -1479,8 +1525,8 @@ struct xocl_subdev_map {
 #define	MGMT_RES_6A8F_DSA52						\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
-			XOCL_DEVINFO_IORES_MGMT,			\
 			XOCL_DEVINFO_PRP_IORES_MGMT,			\
+			XOCL_DEVINFO_PRP_IORES_CLOCK,			\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF_DSA52,				\
 			XOCL_DEVINFO_MB,				\
@@ -1501,8 +1547,8 @@ struct xocl_subdev_map {
 #define	MGMT_RES_XBB_DSA52						\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
-			XOCL_DEVINFO_IORES_MGMT,			\
 			XOCL_DEVINFO_PRP_IORES_MGMT,			\
+			XOCL_DEVINFO_PRP_IORES_CLOCK,			\
 			XOCL_DEVINFO_AF_DSA52,				\
 			XOCL_DEVINFO_XMC,				\
 			XOCL_DEVINFO_XVC_PRI,				\
@@ -1525,8 +1571,8 @@ struct xocl_subdev_map {
 #define	MGMT_RES_XBB_DSA52_U280						\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
-			XOCL_DEVINFO_IORES_MGMT_U280,			\
 			XOCL_DEVINFO_PRP_IORES_MGMT_U280,		\
+			XOCL_DEVINFO_PRP_IORES_MGMT_U280_CLOCK,		\
 			XOCL_DEVINFO_AF_DSA52,				\
 			XOCL_DEVINFO_XMC,				\
 			XOCL_DEVINFO_XVC_PRI,				\
@@ -1547,8 +1593,8 @@ struct xocl_subdev_map {
 #define MGMT_RES_XBB_QDMA_U280						\
 	((struct xocl_subdev_info []) {					\
 		XOCL_DEVINFO_FEATURE_ROM,				\
-		XOCL_DEVINFO_IORES_MGMT_U280,				\
 		XOCL_DEVINFO_PRP_IORES_MGMT_U280,			\
+		XOCL_DEVINFO_PRP_IORES_MGMT_U280_CLOCK,			\
 		XOCL_DEVINFO_AF_DSA52,					\
 		XOCL_DEVINFO_XMC,					\
 		XOCL_DEVINFO_XVC_PRI,					\
@@ -1572,6 +1618,7 @@ struct xocl_subdev_map {
 		XOCL_DEVINFO_PRP_IORES_MGMT_SMARTN,			\
 		XOCL_DEVINFO_XMC,					\
 		XOCL_DEVINFO_MAILBOX_MGMT_QDMA,				\
+		XOCL_DEVINFO_CLOCK,				\
 		XOCL_DEVINFO_ICAP_MGMT_SMARTN,				\
 		XOCL_DEVINFO_FMGR,					\
 		XOCL_DEVINFO_FLASH,					\
@@ -1588,8 +1635,8 @@ struct xocl_subdev_map {
 #define	MGMT_RES_6E8F_DSA52						\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
-			XOCL_DEVINFO_IORES_MGMT,			\
 			XOCL_DEVINFO_PRP_IORES_MGMT,			\
+			XOCL_DEVINFO_PRP_IORES_CLOCK,			\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF,				\
 			XOCL_DEVINFO_MB,				\
@@ -1611,8 +1658,8 @@ struct xocl_subdev_map {
 #define MGMT_RES_MPSOC							\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
-			XOCL_DEVINFO_IORES_MGMT,			\
 			XOCL_DEVINFO_PRP_IORES_MGMT,			\
+			XOCL_DEVINFO_PRP_IORES_CLOCK,			\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_XVC_PUB,				\
 			XOCL_DEVINFO_MAILBOX_MGMT,			\
@@ -1623,8 +1670,8 @@ struct xocl_subdev_map {
 #define MGMT_RES_MPSOC_U30						\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
-			XOCL_DEVINFO_IORES_MGMT,			\
 			XOCL_DEVINFO_PRP_IORES_MGMT,			\
+			XOCL_DEVINFO_PRP_IORES_CLOCK,			\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_PS,				\
 			XOCL_DEVINFO_XVC_PUB,				\
@@ -1928,7 +1975,7 @@ struct xocl_subdev_map {
 #define MGMT_RES_DYNAMIC_IP					\
 	((struct xocl_subdev_info []) {				\
 	 	XOCL_DEVINFO_FEATURE_ROM_DYN,			\
-	 	XOCL_DEVINFO_IORES_MGMT,			\
+	 	XOCL_DEVINFO_PRP_IORES_CLOCK,			\
 	 	XOCL_DEVINFO_FLASH_BLP,				\
 		XOCL_DEVINFO_FMGR,				\
 	})
@@ -1957,6 +2004,7 @@ struct xocl_subdev_map {
 		 	XOCL_DEVINFO_FEATURE_ROM_USER_DYN,		\
 		 	XOCL_DEVINFO_MAILBOX_USER_DYN,			\
 		 	XOCL_DEVINFO_SCHEDULER_DYN,			\
+		 	XOCL_DEVINFO_CLOCK,				\
 		 	XOCL_DEVINFO_ICAP_USER,				\
 		 	XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_AF_USER,				\
@@ -1987,7 +2035,7 @@ struct xocl_subdev_map {
 		ARRAY_SIZE(XOCL_RES_FEATURE_ROM_U50),	\
 	}
 
-#define XOCL_RES_IORES_MGMT_U50				\
+#define XOCL_RES_IORES_MGMT_U50_CLOCK			\
 	((struct resource []) {				\
 		/* OCL_CLKFREQ_BASE */			\
 		{					\
@@ -2005,19 +2053,19 @@ struct xocl_subdev_map {
 		},					\
 	 })
 
-#define	XOCL_DEVINFO_IORES_MGMT_U50			\
+#define	XOCL_DEVINFO_IORES_MGMT_U50_CLOCK		\
 	{						\
-		XOCL_SUBDEV_IORES,			\
-		XOCL_IORES0,				\
-		XOCL_RES_IORES_MGMT_U50,		\
-		ARRAY_SIZE(XOCL_RES_IORES_MGMT_U50),	\
+		XOCL_SUBDEV_CLOCK,			\
+		XOCL_CLOCK,				\
+		XOCL_RES_IORES_MGMT_U50_CLOCK,		\
+		ARRAY_SIZE(XOCL_RES_IORES_MGMT_U50_CLOCK),	\
 	}
 
 
 #define MGMT_RES_U50							\
 	((struct xocl_subdev_info []) {					\
 	 	XOCL_DEVINFO_FEATURE_ROM_U50,				\
-	 	XOCL_DEVINFO_IORES_MGMT_U50,				\
+	 	XOCL_DEVINFO_IORES_MGMT_U50_CLOCK,			\
 	 	XOCL_DEVINFO_FLASH_BLP,					\
 	 	XOCL_DEVINFO_XMC_BLP,					\
 		XOCL_DEVINFO_FMGR,					\
@@ -2036,6 +2084,7 @@ struct xocl_subdev_map {
 		((struct xocl_subdev_info []) {				\
 		 	XOCL_DEVINFO_FEATURE_ROM_U50,			\
 		 	XOCL_DEVINFO_MAILBOX_USER_U50,			\
+		 	XOCL_DEVINFO_CLOCK,				\
 		 	XOCL_DEVINFO_ICAP_USER,				\
 		 	XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_AF_USER,				\
@@ -2116,6 +2165,7 @@ struct xocl_subdev_map {
 	 		XOCL_DEVINFO_FEATURE_ROM_USER_DYN,		\
 		 	XOCL_DEVINFO_MAILBOX_USER_U25,			\
 		 	XOCL_DEVINFO_SCHEDULER_DYN,			\
+		 	XOCL_DEVINFO_CLOCK,				\
 		 	XOCL_DEVINFO_ICAP_USER,				\
 		 	XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_AF_USER,				\
