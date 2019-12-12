@@ -988,6 +988,22 @@ configure_soft_kernel(struct sched_cmd *cmd)
 
 	cfg = (struct ert_configure_sk_cmd *)(cmd->packet);
 
+	if (cfg->sk_type == SOFTKERNEL_TYPE_XCLBIN) {
+		void *xclbin_buffer = NULL;
+
+		/* remap device physical addr to kernel virtual addr */
+		xclbin_buffer =
+		    memremap(cfg->sk_addr, cfg->sk_size, MEMREMAP_WC);
+		if (xclbin_buffer == NULL) {
+			ret = -ENOMEM;
+			goto fail;
+		}
+		ret = zocl_xclbin_load_pdi(zdev, xclbin_buffer);
+		memunmap(xclbin_buffer);
+		return ret;
+	}
+
+
 	mutex_lock(&sk->sk_lock);
 
 	/* Check if the CU configuration exceeds maximum CU number */
@@ -1021,22 +1037,6 @@ configure_soft_kernel(struct sched_cmd *cmd)
 	}
 
 	scmd->skc_packet = (struct ert_packet *)cfg;
-
-	if (cfg->sk_type == SOFTKERNEL_TYPE_XCLBIN) {
-		void *xclbin_buffer = NULL;
-
-		/* remap device physical addr to kernel virtual addr */
-		xclbin_buffer =
-		    memremap(cfg->sk_addr, cfg->sk_size, MEMREMAP_WC);
-		if (xclbin_buffer == NULL) {
-			ret = -ENOMEM;
-			goto fail;
-		}
-		ret = zocl_xclbin_load_pdi(zdev, xclbin_buffer);
-		memunmap(xclbin_buffer);
-		if (ret)
-			goto fail;
-	}
 
 	mutex_lock(&sk->sk_lock);
 	list_add_tail(&scmd->skc_list, &sk->sk_cmd_list);
@@ -1698,7 +1698,7 @@ reset_all(void)
 }
 
 static int
-ert_get_cu(struct sched_cmd *cmd)
+ert_get_cu(struct sched_cmd *cmd, enum zocl_cu_type cu_type)
 {
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
 	struct sched_exec_core *exec = zdev->exec;
@@ -1710,13 +1710,19 @@ ert_get_cu(struct sched_cmd *cmd)
 	cu_bit = cu_idx_in_mask(cu_idx);
 
 	/* Check if the specific CU is busy */
-	busy_mask = exec->cu_status[cu_mask_idx(cu_idx)];
+	busy_mask = cu_type == ZOCL_SOFT_CU ?
+	    exec->scu_status[cu_mask_idx(cu_idx)] :
+	    exec->cu_status[cu_mask_idx(cu_idx)];
+
 	if (busy_mask & (1 << cu_bit))
 		return -1;
 
-	/* The specific CU is ready */
-	if (!zocl_cu_get_credit(&exec->zcu[cu_idx]))
-		exec->cu_status[cu_mask_idx(cu_idx)] ^= 1 << cu_bit;
+	if (cu_type == ZOCL_HARD_CU) {
+		/* The specific CU is ready */
+		if (!zocl_cu_get_credit(&exec->zcu[cu_idx]))
+			exec->cu_status[cu_mask_idx(cu_idx)] ^= 1 << cu_bit;
+	} else
+		exec->scu_status[cu_mask_idx(cu_idx)] ^= 1 << cu_bit;
 
 	return cu_idx;
 }
@@ -2612,7 +2618,11 @@ ps_ert_submit(struct sched_cmd *cmd)
 		break;
 
 	case ERT_SK_START:
-		cmd->cu_idx = get_free_cu(cmd, ZOCL_SOFT_CU);
+		if (type(cmd) == ERT_CU)
+			cmd->cu_idx = ert_get_cu(cmd, ZOCL_SOFT_CU);
+		else
+			cmd->cu_idx = get_free_cu(cmd, ZOCL_SOFT_CU);
+
 		if (cmd->cu_idx < 0) {
 			release_slot_idx(cmd->ddev, cmd->slot_idx);
 			if (cmd->cu_idx == -EINVAL)
@@ -2632,10 +2642,9 @@ ps_ert_submit(struct sched_cmd *cmd)
 	case ERT_EXEC_WRITE:
 		/* When command type is ERT_CU, host would set cu_idx instead of
 		 * cu_mask. The cu index is set at right after packet header.
-		 * ERT_CU is only for hardware kernel.
 		 */
 		if (type(cmd) == ERT_CU)
-			cmd->cu_idx = ert_get_cu(cmd);
+			cmd->cu_idx = ert_get_cu(cmd, ZOCL_HARD_CU);
 		else
 			cmd->cu_idx = get_free_cu(cmd, ZOCL_HARD_CU);
 		if (cmd->cu_idx < 0)
