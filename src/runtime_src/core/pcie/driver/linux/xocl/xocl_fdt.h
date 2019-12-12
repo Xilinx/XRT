@@ -135,4 +135,11 @@ struct xocl_iores_map map[] = {                                         \
 	{ RESNAME_GAPPING, IORES_GAPPING},				\
 }
 
+struct ucs_control_ch1 {
+	unsigned int shutdown_clocks_latched:1;
+	unsigned int reserved1:15;
+	unsigned int clock_throttling_average:14;
+	unsigned int reserved2:2;
+};
+
 #endif
