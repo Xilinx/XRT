@@ -36,6 +36,11 @@ if [ $? -eq 1 ]; then
     fi
 fi
 
+#Move the /opt/xilinx/xrt/lib/libxrt_aws.so out of way so that sw/hw emulation can work
+#In the future, this .so file, as well as aws shim related src code will be removed. We keep/rename
+#it so far in case somebody still requires it
+mv /opt/xilinx/xrt/lib/libxrt_aws.so /opt/xilinx/xrt/lib/libxrt_aws.so.bak > /dev/null 2>&1
+
 #create sym link to /opt/xilinx/xrt/lib/libmpd_plugin and restart mpd service
 echo "Install aws mpd plugin"
 rm -rf /opt/xilinx/xrt/lib/libmpd_plugin.so > /dev/null 2>&1
