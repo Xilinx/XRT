@@ -1,5 +1,4 @@
-RDI_DEVKITS_HOME := /tools/batonroot/rodin/devkits
-MB_HOME := $(RDI_DEVKITS_HOME)/lnx64/cross/RHEL6/microblaze/lin
+MB_HOME := ${XILINX_VITIS}/gnu/microblaze/lin
 MB_PREFIX := mb-
 
 CFLAGS   := -c -Wall -mlittle-endian -mxl-soft-mul -mcpu=v10.0
