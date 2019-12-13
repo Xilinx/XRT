@@ -148,8 +148,7 @@ if [ -z $VERSION ] ; then
     fi
     pip install pyopencl
 # if older version of pyopencl and import fails prompt user to upgarde pyopencl
-POCL_INSTALL=$(python -c "import pyopencl")
-elif [ $VERSION -lt 2019 ] && [[ $POCL_INSTALL -ne 0 ]] ; then
+elif [ $VERSION -lt 2019 ] && [ $(python -c "import pyopencl") ]; then
     echo "***********************************************************************"
     echo "* Pyopencl ($VERSION) is installed on the system but pyopencl >= 2019.1"
     echo "* is required. Please uninstall the current pyopencl by running"
@@ -161,7 +160,7 @@ else
     echo "Skipping pyopencl installation..."
     exit 0
 fi
-if [[ $POCL_INSTALL -ne 0 ]]; then
+if [ $(python -c "import pyopencl") ]; then
     echo "***********************************************************************"
     echo "* FAILED TO INSTALL PYOPENCL"
     echo "*"
