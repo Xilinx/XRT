@@ -59,7 +59,7 @@ ReturnCodes main_(int argc, char** argv) {
     ("help", boost::program_options::bool_switch(&bHelp), "Help to use this program")
     ("verbose", boost::program_options::bool_switch(&bVerbose), "Turn on verbosity")
     ("trace", boost::program_options::bool_switch(&bTrace), "Enables code flow tracing")
-    ("command", po::value<std::string>(), "command to execute")
+    ("command", po::value<std::string>(), "Subcommand to execute")
     ("subArguments", po::value<std::vector<std::string> >(), "Arguments for command")
   ;
 
@@ -97,8 +97,9 @@ ReturnCodes main_(int argc, char** argv) {
     XBU::setTrace( true );
   }
 
-  // Check to see if help was requested and no command was found
-  if ((bHelp == true) && (vm.count("command") == 0)) {
+  // Produce a help output if no command is given
+  // Note: In this case, --help is assumed
+  if (vm.count("command") == 0) {
     ::printHelp(globalOptions);
     return RC_SUCCESS;
   }

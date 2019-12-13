@@ -25,10 +25,8 @@ if(WIN32)
   set(XBUTIL2_NAME "xbutil")     # Yes, on windows the file name will be xbutil
   file(GLOB XBUTIL_V2_SUBCMD_FILES
     "SubCmdProgram.cpp"
-    "SubCmdClock.cpp"
     "SubCmdDmaTest.cpp"
     "SubCmdQuery.cpp"
-    "SubCmdReset.cpp"
     "SubCmdScan.cpp"
     "SubCmdVersion.cpp"
   )
