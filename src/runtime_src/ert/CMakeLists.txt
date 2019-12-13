@@ -1,4 +1,4 @@
-if ((EXISTS /tools/batonroot/rodin/devkits) AND (${XRT_NATIVE_BUILD} STREQUAL "yes") AND (${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "x86_64"))
+if ((EXISTS $ENV{XILINX_VITIS}/gnu/microblaze/lin) AND (${XRT_NATIVE_BUILD} STREQUAL "yes") AND (${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "x86_64"))
 
 message("-- Rodin devkits found, preparing ERT build")
 
