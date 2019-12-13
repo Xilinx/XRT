@@ -44,6 +44,11 @@ usage()
     echo "[-driver]                  Include building driver code"
     echo "[-checkpatch]              Run checkpatch.pl on driver code"
     echo "[-verbose]                 Turn on verbosity when compiling"
+    echo "[-ertfw <dir>]             Path to directory with pre-built ert firmware (default: build the firmware)"
+    echo ""
+    echo "ERT firmware is built if and only if MicroBlaze gcc compiler can be located."
+    echo "When compiler is not accesible, use -ertfw to specify path to directory with"
+    echo "pre-built ert fw to include in XRT packages"
     echo ""
     echo "Compile caching is enabled with '-ccache' but requires access to internal network."
 
@@ -61,6 +66,7 @@ jcore=$CORE
 opt=1
 dbg=1
 nocmake=0
+ertfw=""
 while [ $# -gt 0 ]; do
     case "$1" in
         -help)
@@ -73,6 +79,11 @@ while [ $# -gt 0 ]; do
         -dbg)
             dbg=1
             opt=0
+            shift
+            ;;
+        -ertfw)
+            shift
+            ertfw=$1
             shift
             ;;
         -opt)
@@ -141,6 +152,11 @@ if [[ $ccache == 1 ]]; then
     if [[ -e /proj/rdi/env/HEAD/hierdesign/ccache/cleanup.pl ]]; then
         /proj/rdi/env/HEAD/hierdesign/ccache/cleanup.pl 1 30 $RDI_CCACHEROOT
     fi
+fi
+
+if [[ ! -z $ertfw ]]; then
+    echo "export XRT_FIRMWARE_DIR=$ertfw"
+    export XRT_FIRMWARE_DIR=$ertfw
 fi
 
 if [[ $dbg == 1 ]]; then
