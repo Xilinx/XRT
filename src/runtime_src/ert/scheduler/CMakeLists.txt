@@ -1,7 +1,5 @@
 # Build ERT under legacy and u50 directories
 
-set(ERT_INSTALL_FIRMWARE_PREFIX "/lib/firmware/xilinx")
-
 add_custom_command(
  OUTPUT legacy/bsp.extracted
  COMMAND ${CMAKE_COMMAND} -E make_directory legacy/bsp
