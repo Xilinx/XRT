@@ -16,7 +16,6 @@
 
 
 #include "xdp_xrt_device.h"
-#include "core/common/t_time.h"
 
 namespace xdp {
 
@@ -60,7 +59,7 @@ double XrtDevice::getDeviceClock()
 
 uint64_t XrtDevice::getTraceTime()
 {
-  return xrt_core::time_ns();
+  return xrt::time_ns();
 }
 
 int XrtDevice::getTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
