@@ -46,20 +46,20 @@ void reportVersions()
   xrt::version::print(std::cout);
 
   // Get and report XOCL build information
-  boost::property_tree::ptree xrt_pt;
-  xrt_core::get_xrt_info(xrt_pt);
-
-  std::cout.width(26);
-  std::cout << std::internal
-            << "XOCL: "
-            << xrt_pt.get<std::string>( "xocl", "---Not Defined--")
-            << std::endl;
-
-  std::cout.width(26);
-  std::cout << std::internal
-            << "XCLMGMT: "
-            << xrt_pt.get<std::string>( "xclmgmt", "---Not Defined--")
-            << std::endl;
+//  boost::property_tree::ptree xrt_pt;
+//  xrt_core::get_xrt_info(xrt_pt);
+//
+//  std::cout.width(26);
+//  std::cout << std::internal
+//            << "XOCL: "
+//            << xrt_pt.get<std::string>( "xocl", "---Not Defined--")
+//            << std::endl;
+//
+//  std::cout.width(26);
+//  std::cout << std::internal
+//            << "XCLMGMT: "
+//            << xrt_pt.get<std::string>( "xclmgmt", "---Not Defined--")
+//            << std::endl;
 }
 
 // ------ F U N C T I O N S ---------------------------------------------------
