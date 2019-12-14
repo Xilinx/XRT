@@ -14,26 +14,26 @@
  * under the License.
  */
 
-#define XRT_SOURCE
+#ifndef xrt_export_config_h_
+#define xrt_export_config_h_
 
-#include "time.h"
-#include <chrono>
+#ifdef _WIN32
+# ifdef XRT_SOURCE
+#  define XRT_EXPORT __declspec(dllexport)
+# else
+#  define XRT_EXPORT __declspec(dllimport)
+# endif
+#endif
+#ifdef __GNUC__
+# ifdef XRT_SOURCE
+#  define XRT_EXPORT __attribute__ ((visibility("default")))
+# else
+#  define XRT_EXPORT
+# endif
+#endif
 
-namespace xrt {
+#ifndef XRT_EXPORT
+# define XRT_EXPORT
+#endif
 
-/**
- * @return
- *   nanoseconds since first call
- */
-unsigned long
-time_ns()
-{
-  static auto zero = std::chrono::high_resolution_clock::now();
-  auto now = std::chrono::high_resolution_clock::now();
-  auto integral_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(now-zero).count();
-  return static_cast<unsigned long>(integral_duration);
-}
-
-} // xocl
-
-
+#endif
