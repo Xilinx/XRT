@@ -59,6 +59,7 @@ MODULE_PARM_DESC(minimum_initialization,
 
 #define	MAX_DYN_SUBDEV		1024
 
+#define	CLK_MAX_VALUE		6400
 #define	CLK_SHUTDOWN_BIT	0x1
 #define	DEBUG_CLK_SHUTDOWN_BIT	0x2
 #define	VALID_CLKSHUTDOWN_BITS	(CLK_SHUTDOWN_BIT|DEBUG_CLK_SHUTDOWN_BIT)
@@ -448,7 +449,9 @@ static int health_check_cb(void *data)
 	struct xcl_mailbox_req mbreq = { 0 };
 	bool tripped, latched = false;
 	void __iomem *shutdown_clk = xocl_iores_get_base(lro, IORES_CLKSHUTDOWN);
-	uint32_t clk_status;
+	uint32_t clk_status, ucs_status;
+	struct ucs_control_ch1 *ucs_control;
+	int err;
 
 	if (!health_check)
 		return 0;
@@ -460,6 +463,27 @@ static int health_check_cb(void *data)
 			latched = clk_status & CLK_SHUTDOWN_BIT;
 			if (latched)
 				mgmt_err(lro, "Compute-Unit clocks have been stopped! Power or Temp may exceed limits, notify peer");
+		}
+	} else {
+		/* this is R2.0 system */
+		err = xocl_iores_read32(lro, XOCL_SUBDEV_LEVEL_URP,
+		    IORES_UCS_CONTROL, 0x8, &ucs_status);
+		if (err) {
+			if (err != -ENODEV)
+				mgmt_err(lro, "Read %s error %d.",
+				    NODE_UCS_CONTROL, err);
+		} else {
+			ucs_control = (struct ucs_control_ch1 *)&ucs_status;
+			if (ucs_control->shutdown_clocks_latched) {
+				mgmt_err(lro, "Critical temperature or power event, ULP kernel clocks have been stopped, reload the ULP to continue.");
+				latched = true;
+			} else if (ucs_control->clock_throttling_average > CLK_MAX_VALUE) {
+				mgmt_err(lro, "ULP kernel clocks %d exceeds expected maximum value %d.",
+				    ucs_control->clock_throttling_average, CLK_MAX_VALUE);
+			} else if (ucs_control->clock_throttling_average) {
+				mgmt_err(lro, "ULP kernel clocks throttled at %d%%.",
+				    (ucs_control->clock_throttling_average / CLK_MAX_VALUE) * 100);
+			}
 		}
 	}
 
