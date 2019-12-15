@@ -372,12 +372,15 @@ get_pdi_load()
   return value;
 }
 
-/* Indicate whether Block automation based Emulation Models are used. By default, it is turned off.
- * This is used to turn on xclRead/Write based counter and trace data collection flow in ProfileIP objects in XDP.
- * Otherwise, fall back on old HwEmuShim layer based RPC call mechanism.
+/**
+ * Indicate whether Block automation based Emulation Models are
+ * used. By default, it is turned off.  This is used to turn on
+ * xclRead/Write based counter and trace data collection flow in
+ * ProfileIP objects in XDP.  Otherwise, fall back on old HwEmuShim
+ * layer based RPC call mechanism.
  */
-
-inline bool get_system_dpa_emulation()
+inline bool
+get_system_dpa_emulation()
 {
   static bool value = detail::get_bool_value("Emulation.system_dpa", true);
   return value;

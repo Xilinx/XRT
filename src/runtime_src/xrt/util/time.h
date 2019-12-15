@@ -17,7 +17,7 @@
 #ifndef xrt_util_time_h_
 #define xrt_util_time_h_
 
-#include "xrt/xrt_config.h"
+#include "xrt/config.h"
 
 namespace xrt {
 
