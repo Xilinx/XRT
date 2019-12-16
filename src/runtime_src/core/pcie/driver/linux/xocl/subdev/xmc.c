@@ -1672,8 +1672,9 @@ static size_t image_write(char **image, size_t sz,
 		memcpy(tmp_buf, *image, sz);
 		vfree(*image);
 		sz = total;
-	} else
+	} else {
 		tmp_buf = *image;
+	}
 
 	memcpy(tmp_buf + off, buffer, count);
 	*image = tmp_buf;
