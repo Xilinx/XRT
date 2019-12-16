@@ -20,7 +20,11 @@ execute_process(
     OUTPUT_VARIABLE CPACK_REL_VER
     OUTPUT_STRIP_TRAILING_WHITESPACE
 )
-
+execute_process(
+    COMMAND uname -m
+    OUTPUT_VARIABLE ARCH
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
 include (CMake/glibc.cmake)
 
 # Trick to get the Boost Version string and one version greater
@@ -69,9 +73,9 @@ else ()
   SET (CPACK_GENERATOR "TGZ")
 endif()
 
-SET(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}_${XRT_VERSION_RELEASE}.${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}_${CPACK_REL_VER}")
+SET(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}_${XRT_VERSION_RELEASE}.${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}_${CPACK_REL_VER}_${ARCH}")
 
-message("-- ${CMAKE_BUILD_TYPE} ${PACKAGE_KIND} package")
+message("-- nasser ${CMAKE_BUILD_TYPE} ${PACKAGE_KIND} package ${CPACK_PACKAGE_FILE_NAME_DEB} ")
 
 SET(CPACK_PACKAGE_VENDOR "Xilinx Inc")
 SET(CPACK_PACKAGE_CONTACT "sonal.santan@xilinx.com")
@@ -79,7 +83,7 @@ SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Xilinx RunTime stack for use with Xilinx 
 SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/../LICENSE")
 
 add_custom_target(xrtpkg
-  echo "COMMAND ${CMAKE_CPACK_COMMAND}"
+  echo "*************************************************************************************************************************************** COMMAND ${CMAKE_CPACK_COMMAND}"
   COMMAND ${CMAKE_CPACK_COMMAND}
   COMMAND -mv -f ${CPACK_PACKAGE_FILE_NAME}-xrt.deb ${CPACK_PACKAGE_FILE_NAME}.deb 2> /dev/null
   COMMAND -mv -f ${CPACK_PACKAGE_FILE_NAME}-xrt.rpm ${CPACK_PACKAGE_FILE_NAME}.rpm 2> /dev/null
