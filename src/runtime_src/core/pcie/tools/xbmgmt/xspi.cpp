@@ -1627,7 +1627,6 @@ static int writeToFlash(std::FILE *flashDev, int slave,
     const unsigned int address, const unsigned char *buf, size_t len)
 {
     int ret = 0;
-#if 0
     long addr = toAddr(slave, address);
 
     ret = std::fseek(flashDev, addr, SEEK_SET);
@@ -1637,7 +1636,7 @@ static int writeToFlash(std::FILE *flashDev, int slave,
     std::size_t s = std::fwrite(buf, 1, len, flashDev);
     if (s != len)
         ret = -ferror(flashDev);
-#endif
+
     return ret;
 }
 
