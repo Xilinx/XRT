@@ -102,21 +102,26 @@ void getVendorBoardFromDSAName(std::string& dsa, std::string& vendor, std::strin
     board = tokens[1];
 }
 
-void parseDSAFilename(std::string filename, uint64_t& vendor, uint64_t& device, uint64_t& subsystem, uint64_t &ts)
+
+
+void parseDSAFilename(const std::string& filename, uint64_t& vendor, uint64_t& device, uint64_t& subsystem, uint64_t &ts)
 {
 	vendor = 0; device = 0; subsystem = 0; ts = 0;
-    typedef boost::tokenizer<boost::char_separator<char>> tokenizer;
+	using tokenizer = boost::tokenizer< boost::char_separator<char> >;
     boost::char_separator<char> sep("-.");
     tokenizer tokens(filename, sep);
+	int radix = 16;
+
+	// check if we have 5 tokens: vendor, device, subsystem, ts, "dsabin"/"xsabin"
 	if (std::distance(tokens.begin(), tokens.end()) == 5) {
 	    tokenizer::iterator tok_iter = tokens.begin();
-		vendor = std::stoull(std::string(*tok_iter), 0, 16);
+		vendor = std::stoull(std::string(*tok_iter), nullptr, radix);
 		tok_iter++;
-		device = std::stoull(std::string(*tok_iter), 0, 16);
+		device = std::stoull(std::string(*tok_iter), nullptr, radix);
 		tok_iter++;
-		subsystem = std::stoull(std::string(*tok_iter), 0, 16);
+		subsystem = std::stoull(std::string(*tok_iter), nullptr, radix);
 		tok_iter++;
-		ts = std::stoull(std::string(*tok_iter), 0, 16);
+		ts = std::stoull(std::string(*tok_iter), nullptr, radix);
 		tok_iter++;
 	} else
 		ts = NULL_TIMESTAMP;
@@ -285,11 +290,11 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
         getVendorBoardFromDSAName(name, vendor, board);
 		
 		// get filename without the path
-		typedef boost::tokenizer<boost::char_separator<char>> tokenizer;
+		using tokenizer = boost::tokenizer< boost::char_separator<char> >;
 		boost::char_separator<char> sep("\\");
 		tokenizer tokens(filename, sep);
 		std::string dsafile = "";
-		for (tokenizer::iterator tok_iter = tokens.begin(); tok_iter != tokens.end(); ++tok_iter) {
+		for (auto tok_iter = tokens.begin(); tok_iter != tokens.end(); ++tok_iter) {
 			if ((std::string(*tok_iter).find(XSABIN_FILE_SUFFIX) != std::string::npos) 
 				|| (std::string(*tok_iter).find(DSABIN_FILE_SUFFIX) != std::string::npos))
 				dsafile = *tok_iter;
@@ -433,9 +438,8 @@ std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()
         return installedDSA;
 
     boost::filesystem::path formatted_fw_dir(FORMATTED_FW_DIR);
-    std::vector<std::string> suffix = { XSABIN_FILE_SUFFIX, DSABIN_FILE_SUFFIX};
 
-    for (std::string t : suffix) {
+    for (const std::string& t : { XSABIN_FILE_SUFFIX, DSABIN_FILE_SUFFIX }) {
 
         std::regex e("^" FORMATTED_FW_DIR "/([^/]+)/([^/]+)/([^/]+)/.+\\." + t);
         std::cmatch cm;
