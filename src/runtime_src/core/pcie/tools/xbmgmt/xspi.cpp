@@ -814,24 +814,24 @@ bool XSPI_Flasher::getFlashId()
         return false;
     else {
         switch(ReadBuffer[3]) {
-	case 0x38:
+        case 0x38:
         case 0x17:
         case 0x18:
             MAX_NUM_SECTORS = 1;
             break;
-	case 0x39:
+        case 0x39:
         case 0x19:
             MAX_NUM_SECTORS = 2;
             break;
-	case 0x3A:
+        case 0x3A:
         case 0x20:
             MAX_NUM_SECTORS = 4;
             break;
-	case 0x3B:
+        case 0x3B:
         case 0x21:
             MAX_NUM_SECTORS = 8;
             break;
-	case 0x3C:
+        case 0x3C:
         case 0x22:
             MAX_NUM_SECTORS = 16;
             break;
@@ -931,7 +931,7 @@ bool XSPI_Flasher::finalTransfer(uint8_t *SendBufPtr, uint8_t *RecvBufPtr, int B
             Data = *(uint32_t *)SendBufferPtr;
         }
 
-	if (writeReg(XSP_DTR_OFFSET, Data) != 0) {
+        if (writeReg(XSP_DTR_OFFSET, Data) != 0) {
             return false;
         }
         SendBufferPtr += (DataWidth >> 3);
@@ -1022,7 +1022,7 @@ bool XSPI_Flasher::finalTransfer(uint8_t *SendBufPtr, uint8_t *RecvBufPtr, int B
                 //read the data.
                 try {
                     Data = readReg(XSP_DRR_OFFSET);
-		} catch (const std::exception& ex) {
+                } catch (const std::exception& ex) {
                     return false;
                 }
 
@@ -1077,7 +1077,7 @@ bool XSPI_Flasher::finalTransfer(uint8_t *SendBufPtr, uint8_t *RecvBufPtr, int B
                         Data = *(uint32_t *)SendBufferPtr;
                     }
 
-		    if(writeReg(XSP_DTR_OFFSET, Data) != 0) {
+                    if(writeReg(XSP_DTR_OFFSET, Data) != 0) {
                         return false;
                     }
 
@@ -1627,6 +1627,7 @@ static int writeToFlash(std::FILE *flashDev, int slave,
     const unsigned int address, const unsigned char *buf, size_t len)
 {
     int ret = 0;
+#if 0
     long addr = toAddr(slave, address);
 
     ret = std::fseek(flashDev, addr, SEEK_SET);
@@ -1636,6 +1637,7 @@ static int writeToFlash(std::FILE *flashDev, int slave,
     std::size_t s = std::fwrite(buf, 1, len, flashDev);
     if (s != len)
         ret = -ferror(flashDev);
+#endif
     return ret;
 }
 
@@ -1861,18 +1863,18 @@ int XSPI_Flasher::upgradeFirmwareXSpiDrv(std::istream& mcsStream, int index)
         if (ret)
             return ret;
         assert(nextAddr == UINT_MAX || pageOffset(nextAddr) == 0);
-	if (curAddr == 0) {
-		// This is a golden image, don't shift for bitstream guard
-		noShift = true;
-	}
-	if (!noShift) {
-		// Address from MCS does not take bitstream guard into
-		// consideration. We have to push out the Entire MCS by
-		// bitstreamGuardSize bytes on the flash memory to make
-		// room for bitstream guard
-		assert(curAddr >= bitstreamGuardAddress); 
-		curAddr += bitstreamGuardSize;
-	}
+        if (curAddr == 0) {
+            // This is a golden image, don't shift for bitstream guard
+            noShift = true;
+        }
+        if (!noShift) {
+            // Address from MCS does not take bitstream guard into
+            // consideration. We have to push out the Entire MCS by
+            // bitstreamGuardSize bytes on the flash memory to make
+            // room for bitstream guard
+            assert(curAddr >= bitstreamGuardAddress); 
+            curAddr += bitstreamGuardSize;
+        }
         std::cout << "Extracted " << buf.size() << "B bitstream @0x"
             << std::hex << curAddr << std::dec << std::endl;
 
@@ -1880,7 +1882,7 @@ int XSPI_Flasher::upgradeFirmwareXSpiDrv(std::istream& mcsStream, int index)
         ret = writeBitstream(mFlashDev, index, curAddr, buf);
         if (ret)
             return ret;
-	curAddr = nextAddr;
+        curAddr = nextAddr;
     }
 
     // Disable bitstream guard.
