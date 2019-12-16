@@ -42,7 +42,7 @@ namespace xdp {
   }
 
   RTSingleton::RTSingleton()
-  : Status( CL_SUCCESS ),
+  : Status( 0 ),
     Platform( nullptr ),
     DebugMgr( nullptr )
   {
