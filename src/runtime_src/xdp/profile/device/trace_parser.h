@@ -24,7 +24,6 @@
 #include <queue>
 #include <string>
 #include <fstream>
-#include <CL/opencl.h>
 #include "xclperf.h"
 #include "../collection/results.h"
 #include "../config.h"

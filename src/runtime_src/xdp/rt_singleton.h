@@ -18,7 +18,6 @@
 #ifndef __XDP_RT_SINGLETON_H
 #define __XDP_RT_SINGLETON_H
 
-#include <CL/opencl.h>
 #include "xdp/debug/rt_debug.h"
 #include "xdp/profile/plugin/ocl/xocl_profile.h"
 
@@ -56,7 +55,7 @@ namespace xdp {
   public:
     // Singleton instance
     static RTSingleton* Instance();
-    cl_int getStatus() {
+    int getStatus() {
       return Status;
     }
 
@@ -67,7 +66,7 @@ namespace xdp {
 
   private:
     // Status of singleton
-    cl_int Status;
+    int Status;
 
     // Share ownership of the global platform
     std::shared_ptr<xocl::platform> Platform;
