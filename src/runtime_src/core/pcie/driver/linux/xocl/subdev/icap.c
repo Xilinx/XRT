@@ -52,6 +52,7 @@ static struct key *icap_keys = NULL;
 #define OCL_CLKWIZ_STATUS_OFFSET	0x4
 #define OCL_CLKWIZ_CONFIG_OFFSET(n)	(0x200 + 4 * (n))
 #define OCL_CLK_FREQ_COUNTER_OFFSET	0x8
+#define OCL_CLK_FREQ_V5_COUNTER_OFFSET	0x10
 #define ICAP_DEFAULT_EXPIRE_SECS	1
 
 #define INVALID_MEM_IDX			0xFFFF
@@ -631,13 +632,16 @@ static unsigned int icap_get_clock_frequency_counter_khz(const struct icap *icap
 			while (times != 0) {
 				status =
 				    reg_rd(icap->icap_clock_freq_counters[idx]);
-				if (status == 0x2)
+				if ((status & 0xffff) == 0x2)
 					break;
 				mdelay(1);
 				times--;
 			};
-			freq = reg_rd(icap->icap_clock_freq_counters[idx] +
-				OCL_CLK_FREQ_COUNTER_OFFSET);
+			if ((status & 0xffff) == 0x2) {
+				freq = (status & 0x10000) ?
+					reg_rd(icap->icap_clock_freq_counters[idx] + OCL_CLK_FREQ_V5_COUNTER_OFFSET) :
+					reg_rd(icap->icap_clock_freq_counters[idx] + OCL_CLK_FREQ_COUNTER_OFFSET);
+			}
 		}
 	} else {
 		switch (idx) {
