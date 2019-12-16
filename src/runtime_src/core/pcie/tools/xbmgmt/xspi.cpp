@@ -1844,6 +1844,7 @@ static int writeBitstream(std::FILE *flashDev, int index, unsigned int addr,
 int XSPI_Flasher::upgradeFirmwareXSpiDrv(std::istream& mcsStream, int index)
 {
     int ret = 0;
+    bool noShift = false;
 
     // Enable bitstream guard.
     ret = installBitstreamGuard(mFlashDev);
@@ -1860,11 +1861,18 @@ int XSPI_Flasher::upgradeFirmwareXSpiDrv(std::istream& mcsStream, int index)
         if (ret)
             return ret;
         assert(nextAddr == UINT_MAX || pageOffset(nextAddr) == 0);
-        // Address from MCS does not take bitstream guard into consideration.
-        // We have to push out the Entire MCS by bitstreamGuardSize bytes on
-        // the flash memory to make room for bitstream guard
-        assert(curAddr >= bitstreamGuardAddress); 
-        curAddr += bitstreamGuardSize;
+	if (curAddr == 0) {
+		// This is a golden image, don't shift for bitstream guard
+		noShift = true;
+	}
+	if (!noShift) {
+		// Address from MCS does not take bitstream guard into
+		// consideration. We have to push out the Entire MCS by
+		// bitstreamGuardSize bytes on the flash memory to make
+		// room for bitstream guard
+		assert(curAddr >= bitstreamGuardAddress); 
+		curAddr += bitstreamGuardSize;
+	}
         std::cout << "Extracted " << buf.size() << "B bitstream @0x"
             << std::hex << curAddr << std::dec << std::endl;
 
@@ -1872,6 +1880,7 @@ int XSPI_Flasher::upgradeFirmwareXSpiDrv(std::istream& mcsStream, int index)
         ret = writeBitstream(mFlashDev, index, curAddr, buf);
         if (ret)
             return ret;
+	curAddr = nextAddr;
     }
 
     // Disable bitstream guard.

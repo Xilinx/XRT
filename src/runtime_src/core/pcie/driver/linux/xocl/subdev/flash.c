@@ -642,7 +642,7 @@ flash_setup_io_cmd_header(struct xocl_flash *flash,
 	return ret;
 }
 
-static bool flash_wait_till_ready(struct xocl_flash *flash)
+static bool flash_wait_until_ready(struct xocl_flash *flash)
 {
 	if (FLASH_BUSY_WAIT(flash_is_ready(flash))) {
 		FLASH_ERR(flash, "QSPI flash device is not ready");
@@ -663,7 +663,7 @@ static int qspi_probe(struct xocl_flash *flash)
 		return -EINVAL;
 	FLASH_INFO(flash, "QSPI FIFO depth is: %ld", flash->qspi_fifo_depth);
 
-	if (!flash_wait_till_ready(flash))
+	if (!flash_wait_until_ready(flash))
 		return -EINVAL;
 
 	/* Update flash vendor. */
@@ -779,7 +779,7 @@ static int flash_fifo_wr(struct xocl_flash *flash,
 	ret = flash_exec_io_cmd(flash, total_len, faddr.slave, false);
 	if (ret)
 		return ret;
-	if (!flash_wait_till_ready(flash))
+	if (!flash_wait_until_ready(flash))
 		return -EINVAL;
 
 	*cnt = payload_len;
@@ -850,7 +850,7 @@ static int flash_page_erase(struct xocl_flash *flash, loff_t off, size_t pagesz)
 	BUG_ON(!IS_ALIGNED(off, pagesz));
 	flash_offset2faddr(off, &faddr);
 
-	if (!flash_wait_till_ready(flash))
+	if (!flash_wait_until_ready(flash))
 		return -EINVAL;
 
 	ret = flash_setup_io_cmd_header(flash, cmd, &faddr, &cmdlen);
@@ -868,7 +868,7 @@ static int flash_page_erase(struct xocl_flash *flash, loff_t off, size_t pagesz)
 		return ret;
 	}
 
-	if (!flash_wait_till_ready(flash))
+	if (!flash_wait_until_ready(flash))
 		return -EINVAL;
 
 	return 0;
@@ -894,7 +894,7 @@ flash_read(struct file *file, char __user *buf, size_t n, loff_t *off)
 
 	mutex_lock(&flash->io_lock);
 
-	if (!flash_wait_till_ready(flash))
+	if (!flash_wait_until_ready(flash))
 		ret = -EINVAL;
 
 	while (cnt < n) {
@@ -1025,7 +1025,7 @@ flash_write(struct file *file, const char __user *buf, size_t n, loff_t *off)
 
 	mutex_lock(&flash->io_lock);
 
-	if (!flash_wait_till_ready(flash))
+	if (!flash_wait_until_ready(flash))
 		ret = -EINVAL;
 
 	while (ret == 0 && cnt < n) {
