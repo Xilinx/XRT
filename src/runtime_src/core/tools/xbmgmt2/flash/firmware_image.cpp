@@ -442,12 +442,12 @@ std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()
     for (const std::string& t : { XSABIN_FILE_SUFFIX, DSABIN_FILE_SUFFIX }) {
 
         std::regex e("^" FORMATTED_FW_DIR "/([^/]+)/([^/]+)/([^/]+)/.+\\." + t);
-        std::cmatch cm;
+        std::smatch cm;
 
         for (boost::filesystem::recursive_directory_iterator iter(formatted_fw_dir, 
             boost::filesystem::symlink_option::recurse), recursive_end; iter != recursive_end;) {
             std::string name = iter->path().string();
-            std::regex_match(name.c_str(), cm, e);
+            std::regex_match(name, cm, e);
             if (cm.size() > 0) {
                 std::string pr_board = cm.str(1);
                 std::string pr_family = cm.str(2);
