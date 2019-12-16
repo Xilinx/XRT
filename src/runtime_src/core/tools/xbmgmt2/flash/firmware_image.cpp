@@ -106,11 +106,11 @@ void getVendorBoardFromDSAName(std::string& dsa, std::string& vendor, std::strin
 
 void parseDSAFilename(const std::string& filename, uint64_t& vendor, uint64_t& device, uint64_t& subsystem, uint64_t &ts)
 {
-	vendor = 0; device = 0; subsystem = 0; ts = 0;
-	using tokenizer = boost::tokenizer< boost::char_separator<char> >;
+    vendor = 0; device = 0; subsystem = 0; ts = 0;
+    using tokenizer = boost::tokenizer< boost::char_separator<char> >;
     boost::char_separator<char> sep("-.");
     tokenizer tokens(filename, sep);
-	int radix = 16;
+    int radix = 16;
 
 	// check if we have 5 tokens: vendor, device, subsystem, ts, "dsabin"/"xsabin"
 	if (std::distance(tokens.begin(), tokens.end()) == 5) {
@@ -289,16 +289,16 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
             [](const char &a){ return a == ':' || a == '.'; }, '_');
         getVendorBoardFromDSAName(name, vendor, board);
 		
-		// get filename without the path
-		using tokenizer = boost::tokenizer< boost::char_separator<char> >;
-		boost::char_separator<char> sep("\\");
-		tokenizer tokens(filename, sep);
-		std::string dsafile = "";
-		for (auto tok_iter = tokens.begin(); tok_iter != tokens.end(); ++tok_iter) {
-			if ((std::string(*tok_iter).find(XSABIN_FILE_SUFFIX) != std::string::npos) 
-				|| (std::string(*tok_iter).find(DSABIN_FILE_SUFFIX) != std::string::npos))
-				dsafile = *tok_iter;
-		}
+        // get filename without the path
+        using tokenizer = boost::tokenizer< boost::char_separator<char> >;
+        boost::char_separator<char> sep("\\");
+        tokenizer tokens(filename, sep);
+        std::string dsafile = "";
+        for (auto tok_iter = tokens.begin(); tok_iter != tokens.end(); ++tok_iter) {
+        	if ((std::string(*tok_iter).find(XSABIN_FILE_SUFFIX) != std::string::npos) 
+                || (std::string(*tok_iter).find(DSABIN_FILE_SUFFIX) != std::string::npos))
+                dsafile = *tok_iter;
+        }
         parseDSAFilename(dsafile, vendor_id, device_id, subsystem_id, timestamp);
         // Assume there is only 1 interface UUID is provided for BLP,
         // Show it as ID for flashing
