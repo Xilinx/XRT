@@ -14,6 +14,8 @@
  * under the License.
  */
 
+#define XRT_SOURCE
+
 #include "time.h"
 #include <chrono>
 

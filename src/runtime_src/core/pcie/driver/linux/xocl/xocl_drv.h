@@ -863,6 +863,7 @@ enum data_kind {
 	VOL_VCCINT_BRAM,
 	XMC_VER,
 	EXP_BMC_VER,
+	XMC_OEM_ID,
 };
 
 enum mb_kind {
@@ -1330,4 +1331,7 @@ void xocl_fini_iores(void);
 
 int __init xocl_init_mailbox_versal(void);
 void xocl_fini_mailbox_versal(void);
+
+int __init xocl_init_ospi_versal(void);
+void xocl_fini_ospi_versal(void);
 #endif

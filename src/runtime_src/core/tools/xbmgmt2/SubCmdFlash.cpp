@@ -168,6 +168,7 @@ int subCmdFlash(const std::vector<std::string> &_options)
     ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
     ("scan", boost::program_options::bool_switch(&scan), "Information about the card")
     ("shell", boost::program_options::bool_switch(&shell), "Flash platform from source")
+    ("sc_firmware", boost::program_options::bool_switch(&sc_firmware), "Flash sc firmware from source")
     //("factory_reset", boost::program_options::bool_switch(&reset), "Reset to golden image")
     //("update", boost::program_options::bool_switch(&update), "Update the card with the installed shell")
   ;
@@ -376,7 +377,7 @@ int subCmdFlash(const std::vector<std::string> &_options)
     po::options_description scDesc("sc_firmware options");
     scDesc.add_options()
       ("path", boost::program_options::value<std::string>(&file), "path of sc firmware file")
-      ("card", boost::program_options::value<std::string>(&bdf), "bdf of the card")
+      //("card", boost::program_options::value<std::string>(&bdf), "bdf of the card")
     ;
 
     po::variables_map option_vm;
@@ -393,9 +394,10 @@ int subCmdFlash(const std::vector<std::string> &_options)
     // -- Now process the subcommand option-------------------------------
     XBU::verbose(XBU::format("  Card: %s", bdf.c_str()));
     XBU::verbose(XBU::format("  Sc_file: %s", file.c_str()));
-    if (file.empty() || bdf2index() == UINT_MAX) {
-      XBU::error("Please specify the sc file path and the device bdf");
-      std::cerr << scDesc << std::endl;
+    if (file.empty()) {// || bdf2index() == UINT_MAX) {
+      XBU::error("Please specify the sc file path");// and the device bdf");
+      std::cerr << scDesc <<  "\n";
+      std::cerr << "Example: xbmgmt.exe flash --sc_firmware --path='path\\to\\dsabin\\file'" << std::endl;
       return 1;
     }
 

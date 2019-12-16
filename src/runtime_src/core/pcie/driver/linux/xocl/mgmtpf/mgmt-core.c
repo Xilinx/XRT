@@ -1,7 +1,7 @@
 /*
  * Simple Driver for Management PF
  *
- * Copyright (C) 2017 Xilinx, Inc.
+ * Copyright (C) 2017-2019 Xilinx, Inc.
  *
  * Code borrowed from Xilinx SDAccel XDMA driver
  *
@@ -59,6 +59,7 @@ MODULE_PARM_DESC(minimum_initialization,
 
 #define	MAX_DYN_SUBDEV		1024
 
+#define	CLK_MAX_VALUE		6400
 #define	CLK_SHUTDOWN_BIT	0x1
 #define	DEBUG_CLK_SHUTDOWN_BIT	0x2
 #define	VALID_CLKSHUTDOWN_BITS	(CLK_SHUTDOWN_BIT|DEBUG_CLK_SHUTDOWN_BIT)
@@ -448,7 +449,9 @@ static int health_check_cb(void *data)
 	struct xcl_mailbox_req mbreq = { 0 };
 	bool tripped, latched = false;
 	void __iomem *shutdown_clk = xocl_iores_get_base(lro, IORES_CLKSHUTDOWN);
-	uint32_t clk_status;
+	uint32_t clk_status, ucs_status;
+	struct ucs_control_ch1 *ucs_control;
+	int err;
 
 	if (!health_check)
 		return 0;
@@ -460,6 +463,27 @@ static int health_check_cb(void *data)
 			latched = clk_status & CLK_SHUTDOWN_BIT;
 			if (latched)
 				mgmt_err(lro, "Compute-Unit clocks have been stopped! Power or Temp may exceed limits, notify peer");
+		}
+	} else {
+		/* this is R2.0 system */
+		err = xocl_iores_read32(lro, XOCL_SUBDEV_LEVEL_URP,
+		    IORES_UCS_CONTROL, 0x8, &ucs_status);
+		if (err) {
+			if (err != -ENODEV)
+				mgmt_err(lro, "Read %s error %d.",
+				    NODE_UCS_CONTROL, err);
+		} else {
+			ucs_control = (struct ucs_control_ch1 *)&ucs_status;
+			if (ucs_control->shutdown_clocks_latched) {
+				mgmt_err(lro, "Critical temperature or power event, ULP kernel clocks have been stopped, reload the ULP to continue.");
+				latched = true;
+			} else if (ucs_control->clock_throttling_average > CLK_MAX_VALUE) {
+				mgmt_err(lro, "ULP kernel clocks %d exceeds expected maximum value %d.",
+				    ucs_control->clock_throttling_average, CLK_MAX_VALUE);
+			} else if (ucs_control->clock_throttling_average) {
+				mgmt_err(lro, "ULP kernel clocks throttled at %d%%.",
+				    (ucs_control->clock_throttling_average / CLK_MAX_VALUE) * 100);
+			}
 		}
 	}
 
@@ -933,6 +957,7 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 
 	if (!(dev_info->flags & XOCL_DSAFLAG_DYNAMIC_IP) &&
 	    !(dev_info->flags & XOCL_DSAFLAG_SMARTN) &&
+	    !(dev_info->flags & XOCL_DSAFLAG_VERSAL) &&
 			i == dev_info->subdev_num &&
 			lro->core.intr_bar_addr != NULL) {
 		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_DMA_MSIX;
@@ -970,7 +995,7 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	}
 	xocl_info(&pdev->dev, "created all sub devices");
 
-	if (!(dev_info->flags & XOCL_DSAFLAG_SMARTN))
+	if (!(dev_info->flags & (XOCL_DSAFLAG_SMARTN | XOCL_DSAFLAG_VERSAL)))
 		ret = xocl_icap_download_boot_firmware(lro);
 
 	/* return -ENODEV for 2RP platform */
@@ -1249,6 +1274,7 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_xmc,
 	xocl_init_dna,
 	xocl_init_fmgr,
+	xocl_init_ospi_versal,
 };
 
 static void (*drv_unreg_funcs[])(void) = {
@@ -1270,6 +1296,7 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_xmc,
 	xocl_fini_dna,
 	xocl_fini_fmgr,
+	xocl_fini_ospi_versal,
 };
 
 static int __init xclmgmt_init(void)
