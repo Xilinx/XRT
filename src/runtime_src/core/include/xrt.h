@@ -637,8 +637,8 @@ XCL_DRIVER_DLLESPEC int xclGetBOProperties(xclDeviceHandle handle, xclBufferHand
  * New clients should use xclGetBOProperties() instead
  */
 XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC size_t xclGetBOSize(xclDeviceHandle handle, xclBufferHandle boHandle);
-inline XCL_DRIVER_DLLESPEC size_t xclGetBOSize(xclDeviceHandle handle, xclBufferHandle boHandle)
+static inline size_t
+xclGetBOSize(xclDeviceHandle handle, xclBufferHandle boHandle)
 {
     struct xclBOProperties p;
     return !xclGetBOProperties(handle, boHandle, &p) ? (size_t)p.size : -1;
@@ -655,8 +655,8 @@ inline XCL_DRIVER_DLLESPEC size_t xclGetBOSize(xclDeviceHandle handle, xclBuffer
  * @return         uint64_t address of the BO on success
  */
 XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC uint64_t xclGetDeviceAddr(xclDeviceHandle handle, xclBufferHandle boHandle);
-inline XCL_DRIVER_DLLESPEC uint64_t xclGetDeviceAddr(xclDeviceHandle handle, xclBufferHandle boHandle)
+static inline uint64_t
+xclGetDeviceAddr(xclDeviceHandle handle, xclBufferHandle boHandle)
 {
     struct xclBOProperties p;
     return !xclGetBOProperties(handle, boHandle, &p) ? p.paddr : -1;
