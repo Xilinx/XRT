@@ -220,32 +220,4 @@ write(uint64_t offset, const void* buf, uint64_t len) const
     throw error(err, "write failed");
 }
 
-void
-device_linux::
-auto_flash(const std::string& shell, const std::string& id, bool force) const
-{
-  std::cout << "TO-DO: auto_flash\n";
-}
-
-void
-device_linux::
-reset_shell() const
-{
-  std::cout << "TO-DO: reset_shell\n";
-}
-
-void
-device_linux::
-update_shell(const std::string& flashType, const std::string& primary, const std::string& secondary) const
-{
-  std::cout << "TO-DO: update_shell\n";
-}
-
-void
-device_linux::
-update_SC(const std::string& file) const
-{
-  std::cout << "TO-DO: update_SC\n";
-}
-
 } // xrt_core
