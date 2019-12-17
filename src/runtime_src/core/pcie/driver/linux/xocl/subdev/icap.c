@@ -167,7 +167,7 @@ struct icap {
 	struct bmc		bmc_header;
 
 	char			*icap_clock_freq_counters[ICAP_MAX_NUM_CLOCKS];
-	char			*icap_ucs_control;
+	char			*icap_ucs_control_status;
 
 	uint64_t		cache_expire_secs;
 	struct xcl_pr_region	cache;
@@ -2367,10 +2367,10 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 		 * With new 2RP flow, clocks are all moved to ULP.
 		 * We assume there is not any clock left in PLP in this case.
 		 */
-		if (icap->icap_ucs_control) {
+		if (icap->icap_ucs_control_status) {
 			err = icap_ocl_freqscaling(icap, true);
 			msleep(10);
-			reg_wr(icap->icap_ucs_control + 8, 1);
+			reg_wr(icap->icap_ucs_control_status + 8, 1);
 		}
 	}
 
@@ -2828,10 +2828,10 @@ static void icap_refresh_addrs(struct platform_device *pdev)
 		xocl_iores_get_base(xdev, IORES_CLKFREQ_HBM);
 	ICAP_INFO(icap, "freq_hbm @ %lx",
 			(unsigned long)icap->icap_clock_freq_counters[2]);
-	icap->icap_ucs_control =
-		xocl_iores_get_base(xdev, IORES_UCS_CONTROL);
-	ICAP_INFO(icap, "ucs_control @ %lx",
-			(unsigned long)icap->icap_ucs_control);
+	icap->icap_ucs_control_status =
+		xocl_iores_get_base(xdev, IORES_UCS_CONTROL_STATUS);
+	ICAP_INFO(icap, "ucs_control_status @ %lx",
+			(unsigned long)icap->icap_ucs_control_status);
 }
 
 static int icap_offline(struct platform_device *pdev)

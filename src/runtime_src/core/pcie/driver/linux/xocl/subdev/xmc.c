@@ -2416,7 +2416,7 @@ static int cmc_access_ops(struct platform_device *pdev, int flags)
 
 	grant = (u32)flags & 0x1;
 	err = xocl_iores_write32(xdev, XOCL_SUBDEV_LEVEL_BLD, IORES_CMC_MUTEX,
-	    0x0, grant);
+	    XOCL_RES_OFFSET_CHANNEL1, grant);
 	if (err == -ENODEV) {
 		xocl_xdev_info(xdev, "No %s resource, skip.",
 		    NODE_CMC_MUTEX);
@@ -2429,7 +2429,7 @@ static int cmc_access_ops(struct platform_device *pdev, int flags)
 
 	for (retry = 0; retry < 100; retry++) {
 		err = xocl_iores_read32(xdev, XOCL_SUBDEV_LEVEL_BLD,
-		    IORES_CMC_MUTEX, 0x8, &ack);
+		    IORES_CMC_MUTEX, XOCL_RES_OFFSET_CHANNEL2, &ack);
 		if (err) {
 			if (err == -ENODEV)
 				xocl_xdev_info(xdev, "No %s resource, skip.",
