@@ -18,6 +18,8 @@
  * This file contains the profiling callback actions registered to XRT
  */
 
+#define XDP_SOURCE
+
 #include "xocl_profile_cb.h"
 #include "ocl_profiler.h"
 #include "xdp/rt_singleton.h"

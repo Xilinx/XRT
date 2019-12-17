@@ -7,62 +7,62 @@
 
 namespace xdp {
 
-void alloc_bo_start(void* payload) {
+void alloc_bo_start(void* /*payload*/) {
 //    std::cout << "alloc_bo_start" << std::endl;
     return;
 }
 
-void alloc_bo_end(void* payload) {
+void alloc_bo_end(void* /*payload*/) {
 //    std::cout << "alloc_bo_end" << std::endl;
     return;
 }
 
-void free_bo_start(void* payload) {
+void free_bo_start(void* /*payload*/) {
 //    std::cout << "free_bo_start" << std::endl;
     return;
 }
 
-void free_bo_end(void* payload) {
+void free_bo_end(void* /*payload*/) {
 //    std::cout << "free_bo_end" << std::endl;
     return;
 }
 
-void write_bo_start(void* payload) {
+void write_bo_start(void* /*payload*/) {
 //    std::cout << "write_bo_start" << std::endl;
     return;
 }
 
-void write_bo_end(void* payload) {
+void write_bo_end(void* /*payload*/) {
 //    std::cout << "write_bo_end" << std::endl;
     return;
 }
 
-void read_bo_start(void* payload) {
+void read_bo_start(void* /*payload*/) {
 //    std::cout << "read_bo_start" << std::endl;
     return;
 }
 
-void read_bo_end(void* payload) {
+void read_bo_end(void* /*payload*/) {
 //    std::cout << "read_bo_end" << std::endl;
     return;
 }
 
-void map_bo_start(void* payload) {
+void map_bo_start(void* /*payload*/) {
 //    std::cout << "map_bo_start" << std::endl;
     return;
 }
 
-void map_bo_end(void* payload) {
+void map_bo_end(void* /*payload*/) {
 //    std::cout << "map_bo_end" << std::endl;
     return;
 }
 
-void sync_bo_start(void* payload) {
+void sync_bo_start(void* /*payload*/) {
 //    std::cout << "sync_bo_start" << std::endl;
     return;
 }
 
-void sync_bo_end(void* payload) {
+void sync_bo_end(void* /*payload*/) {
 //    std::cout << "sync_bo_end" << std::endl;
     return;
 }
@@ -75,7 +75,7 @@ void unmgd_read_start(void* payload) {
   return;
 }
 
-void unmgd_read_end(void* payload) {
+void unmgd_read_end(void* /*payload*/) {
 //  std::cout << "unmgd_read_end" << std::endl;
   return;
 }
@@ -87,7 +87,7 @@ void unmgd_write_start(void* payload) {
   return;
 }
 
-void unmgd_write_end(void* payload) {
+void unmgd_write_end(void* /*payload*/) {
 //  std::cout << "unmgd_write_end" << std::endl;
   return;
 }
@@ -99,7 +99,7 @@ void read_start(void* payload) {
   return;
 }
 
-void read_end(void* payload) {
+void read_end(void* /*payload*/) {
 //  std::cout << "read_end" << std::endl;
   return;
 }
@@ -114,7 +114,7 @@ void write_start(void* payload) {
 }
 
 
-void write_end(void* payload) {
+void write_end(void* /*payload*/) {
 //    std::cout << "write_end" << std::endl;
     return;
 }
@@ -159,7 +159,7 @@ void destroy_profile_results(void* payload)
   HALProfiler::Instance()->destroyProfileResults(handle, payld->results);
 }
 
-void unknown_cb_type(void* payload) {
+void unknown_cb_type(void* /*payload*/) {
 //    std::cout << "unknown_cb_type" << std::endl;
     return;
 }

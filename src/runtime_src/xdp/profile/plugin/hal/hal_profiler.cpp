@@ -18,6 +18,13 @@
 #include <chrono>
 #include "hal_profiler.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
+
+#ifdef _WIN32
+#pragma warning (disable : 4996 4244)
+/* 4996 : Disable warning for use of strcpy */
+/* 4244 : Disable warning for conversion from "uint64_t" to "unsigned int" */
+#endif
+
 // xclShim methods header file
 
 //#include "core/include/profile_results.h"
@@ -310,7 +317,7 @@ void HALProfiler::calculateAMRolloverResult(std::string key, unsigned int numAM,
   }
 }
 
-void HALProfiler::recordAMResult(ProfileResults* results, DeviceIntf* currDevice, std::string key)
+void HALProfiler::recordAMResult(ProfileResults* results, DeviceIntf* /*currDevice*/, std::string key)
 {
 //    bool deviceDataExists = (mDeviceBinaryCuSlotsMap.find(key) == mDeviceBinaryCuSlotsMap.end()) ? false : true;
 
@@ -362,7 +369,7 @@ void HALProfiler::recordAIMResult(ProfileResults* results, DeviceIntf* currDevic
   }
 }
 
-void HALProfiler::recordASMResult(ProfileResults* results, DeviceIntf* currDevice, std::string key)
+void HALProfiler::recordASMResult(ProfileResults* results, DeviceIntf* /*currDevice*/, std::string key)
 {
   xclCounterResults& counterResults = mFinalCounterResultsMap[key];
 

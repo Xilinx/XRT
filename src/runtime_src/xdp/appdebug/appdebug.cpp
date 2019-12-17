@@ -20,6 +20,9 @@
  * It defines data structures that provide the view of runtime data structures such as cl_event and cl_meme
  * It defines lambda functions that are attached as debug action with the cl_event
  */
+
+#define XDP_SOURCE
+
 #include "appdebug.h"
 #include "appdebug_track.h"
 #include "xdp/rt_singleton.h"

@@ -24,6 +24,8 @@
 
 #include "xclhal2.h"
 
+#include "xdp/config.h"
+
 #include "profile_ip_access.h"
 #include "aim.h"
 #include "am.h"
@@ -43,7 +45,10 @@ namespace xdp {
 
   class DeviceIntf {
   public:
+
     DeviceIntf() {}
+
+    XDP_EXPORT
     ~DeviceIntf();
 
   public:
@@ -59,13 +64,20 @@ namespace xdp {
 
     // Set device handle
     // NOTE: this is used by write, read, & traceRead
+    XDP_EXPORT
     void setDevice(xdp::Device* );
 
     // Debug IP layout
+    XDP_EXPORT
     void     readDebugIPlayout();
+
+    XDP_EXPORT
     uint32_t getNumMonitors(xclPerfMonType type);
+    XDP_EXPORT
     uint32_t getMonitorProperties(xclPerfMonType type, uint32_t index);
+    XDP_EXPORT
     void     getMonitorName(xclPerfMonType type, uint32_t index, char* name, uint32_t length);
+    XDP_EXPORT
     std::string  getMonitorName(xclPerfMonType type, uint32_t index);
 
     bool     isHostAIM(uint32_t index) {
@@ -73,29 +85,43 @@ namespace xdp {
     }
     
     // Counters
+    XDP_EXPORT
     size_t startCounters(xclPerfMonType type);
+    XDP_EXPORT
     size_t stopCounters(xclPerfMonType type);
+    XDP_EXPORT
     size_t readCounters(xclPerfMonType type, xclCounterResults& counterResults);
 
     // Accelerator Monitor
+    XDP_EXPORT
     void configureDataflow(bool* ipConfig);
+    XDP_EXPORT
     void configAmContext(const std::string& ctx_info);
 
     // Trace FIFO Management
     bool hasFIFO() {return (fifoCtrl != nullptr);};
+    XDP_EXPORT
     uint32_t getTraceCount(xclPerfMonType type);
+    XDP_EXPORT
     size_t startTrace(xclPerfMonType type, uint32_t startTrigger);
+    XDP_EXPORT
     size_t stopTrace(xclPerfMonType type);
+    XDP_EXPORT
     size_t readTrace(xclPerfMonType type, xclTraceResultsVector& traceVector);
 
     /** Trace S2MM Management
      */
     bool hasTs2mm() {return (traceDMA != nullptr);};
+    XDP_EXPORT
     void initTS2MM(uint64_t bufferSz, uint64_t bufferAddr);
+    XDP_EXPORT
     void resetTS2MM();
+    XDP_EXPORT
     uint8_t  getTS2MmMemIndex();
+    XDP_EXPORT
     uint64_t getWordCountTs2mm();
 
+    XDP_EXPORT
     void parseTraceData(void* traceData, uint64_t bytes, xclTraceResultsVector& traceVector);
 
   private:

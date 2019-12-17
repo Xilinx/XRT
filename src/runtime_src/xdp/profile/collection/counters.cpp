@@ -16,7 +16,7 @@
 
 #include "counters.h"
 #include "results.h"
-#include "xdp/profile/config.h"
+#include "xdp/profile/profile_config.h"
 #include "xdp/profile/device/trace_parser.h"
 #include "xdp/profile/writer/base_profile.h"
 #include "xdp/profile/writer/base_trace.h"

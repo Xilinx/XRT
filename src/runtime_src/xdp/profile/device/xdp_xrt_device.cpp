@@ -14,6 +14,7 @@
  * under the License.
  */
 
+#define XDP_SOURCE
 
 #include "xdp_xrt_device.h"
 

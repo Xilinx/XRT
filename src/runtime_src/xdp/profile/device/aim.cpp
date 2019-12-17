@@ -80,6 +80,7 @@
 #define XAIM_HOST_PROPERTY_MASK                  0x4
 #define XAIM_64BIT_PROPERTY_MASK                 0x8
 
+#define XDP_SOURCE
 
 #include "aim.h"
 #include <bitset>
