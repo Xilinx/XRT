@@ -58,9 +58,8 @@ public:
    void writeMetadata(std::ostream& _oStream) const;
 
  private:
-  // Purposefully private and undefined ctors...
-  SectionFlash(const SectionFlash& obj);
-  SectionFlash& operator=(const SectionFlash& obj);
+  SectionFlash(const SectionFlash& obj) = delete;
+  SectionFlash& operator=(const SectionFlash& obj) = delete;
 
  private:
   // Static initializer helper class

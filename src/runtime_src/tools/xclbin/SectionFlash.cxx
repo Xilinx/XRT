@@ -118,13 +118,18 @@ SectionFlash::getSubSectionEnum(const std::string _sSubSectionName) const {
   boost::to_upper(sSubSection);
 
   // Convert string to the enumeration value
-  if (sSubSection == "DATA") {return SS_DATA;}
-  if (sSubSection == "METADATA") {return SS_METADATA;}
+  if (sSubSection == "DATA") {
+    return SS_DATA;
+  }
+
+  if (sSubSection == "METADATA") {
+    return SS_METADATA;
+  }
 
   return SS_UNKNOWN;
 }
 
-static const std::string
+static std::string
 getFlashTypeAsString(enum FLASH_TYPE _eFT) {
   switch (_eFT) {
     case FLT_BIN_PRIMARY: return "BIN";
@@ -134,7 +139,7 @@ getFlashTypeAsString(enum FLASH_TYPE _eFT) {
 }
 
 
-static const enum FLASH_TYPE
+static enum FLASH_TYPE
 getFlashType(const std::string &_sFlashType) {
   if (_sFlashType == "BIN") {
     return FLT_BIN_PRIMARY;
@@ -181,17 +186,19 @@ SectionFlash::copyBufferUpdateMetadata(const char* _pOrigDataSection,
   _istream.seekg(0, _istream.end);             // Go to the beginning
   std::streampos fileSize = _istream.tellg();  // Go to the end
 
-  // Copy the buffer into memory
-  std::unique_ptr<unsigned char> memBuffer(new unsigned char[fileSize]);
+  // Reserve buffer memory
+  std::vector<uint8_t> memBuffer;
+  memBuffer.resize(fileSize, 0);
+
   _istream.clear();                                // Clear any previous errors
   _istream.seekg(0);                               // Go to the beginning
-  _istream.read((char*)memBuffer.get(), fileSize); // Read in the buffer into memory
+  _istream.read((char*) memBuffer.data(), memBuffer.size()); // Read in the buffer into memory
 
-  XUtil::TRACE_BUF("Buffer", (char*)memBuffer.get(), fileSize);
+  XUtil::TRACE_BUF("Buffer", (char*)memBuffer.data(), memBuffer.size());
 
   // Convert JSON memory image into a boost property tree
   std::stringstream ss;
-  ss.write((char*)memBuffer.get(), fileSize);
+  ss.write((char*)memBuffer.data(), memBuffer.size());
 
   boost::property_tree::ptree pt;
   boost::property_tree::read_json(ss, pt);
@@ -318,12 +325,14 @@ SectionFlash::createDefaultImage(std::fstream& _istream, std::ostringstream& _bu
 
   // Write Data
   {
-    std::unique_ptr<unsigned char> memBuffer(new unsigned char[flashHdr.m_image_size]);
+    std::vector<uint8_t> memBuffer;
+    memBuffer.resize(flashHdr.m_image_size, 0);
+
     _istream.seekg(0);
     _istream.clear();
-    _istream.read(reinterpret_cast<char *>(memBuffer.get()), flashHdr.m_image_size);
+    _istream.read(reinterpret_cast<char *>(memBuffer.data()), memBuffer.size());
 
-    _buffer.write(reinterpret_cast<const char*>(memBuffer.get()), flashHdr.m_image_size);
+    _buffer.write(reinterpret_cast<const char*>(memBuffer.data()), memBuffer.size());
   }
 }
 
