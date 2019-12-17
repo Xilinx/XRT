@@ -50,8 +50,13 @@ static struct key *icap_keys = NULL;
 
 #define	ICAP_MAX_NUM_CLOCKS		4
 #define OCL_CLKWIZ_STATUS_OFFSET	0x4
+#define OCL_CLKWIZ_STATUS_MASK		0xffff
+#define OCL_CLKWIZ_STATUS_MEASURE_START	0x1
+#define OCL_CLKWIZ_STATUS_MEASURE_DONE	0x2
 #define OCL_CLKWIZ_CONFIG_OFFSET(n)	(0x200 + 4 * (n))
 #define OCL_CLK_FREQ_COUNTER_OFFSET	0x8
+#define OCL_CLK_FREQ_V5_COUNTER_OFFSET	0x10
+#define OCL_CLK_FREQ_V5_CLK0_ENABLED	0x10000
 #define ICAP_DEFAULT_EXPIRE_SECS	1
 
 #define INVALID_MEM_IDX			0xFFFF
@@ -614,30 +619,40 @@ static unsigned int icap_get_clock_frequency_counter_khz(const struct icap *icap
 			return freq;
 
 		if (icap->icap_clock_freq_counter && idx < 2) {
-			reg_wr(icap->icap_clock_freq_counter, 0x1);
+			reg_wr(icap->icap_clock_freq_counter,
+				OCL_CLKWIZ_STATUS_MEASURE_START);
 			while (times != 0) {
 				status = reg_rd(icap->icap_clock_freq_counter);
-				if (status == 0x2)
+				if ((status & OCL_CLKWIZ_STATUS_MASK) ==
+					OCL_CLKWIZ_STATUS_MEASURE_DONE)
 					break;
 				mdelay(1);
 				times--;
 			};
-			freq = reg_rd(icap->icap_clock_freq_counter + OCL_CLK_FREQ_COUNTER_OFFSET + idx*sizeof(u32));
+			if ((status & OCL_CLKWIZ_STATUS_MASK) ==
+				OCL_CLKWIZ_STATUS_MEASURE_DONE)
+				freq = reg_rd(icap->icap_clock_freq_counter + OCL_CLK_FREQ_COUNTER_OFFSET + idx*sizeof(u32));
 			return freq;
 		} 
 
 		if (icap->icap_clock_freq_counters[idx]) {
-			reg_wr(icap->icap_clock_freq_counters[idx], 0x1);
+			reg_wr(icap->icap_clock_freq_counters[idx],
+				OCL_CLKWIZ_STATUS_MEASURE_START);
 			while (times != 0) {
 				status =
 				    reg_rd(icap->icap_clock_freq_counters[idx]);
-				if (status == 0x2)
+				if ((status & OCL_CLKWIZ_STATUS_MASK) ==
+					OCL_CLKWIZ_STATUS_MEASURE_DONE)
 					break;
 				mdelay(1);
 				times--;
 			};
-			freq = reg_rd(icap->icap_clock_freq_counters[idx] +
-				OCL_CLK_FREQ_COUNTER_OFFSET);
+			if ((status & OCL_CLKWIZ_STATUS_MASK) ==
+				OCL_CLKWIZ_STATUS_MEASURE_DONE) {
+				freq = (status & OCL_CLK_FREQ_V5_CLK0_ENABLED) ?
+					reg_rd(icap->icap_clock_freq_counters[idx] + OCL_CLK_FREQ_V5_COUNTER_OFFSET) :
+					reg_rd(icap->icap_clock_freq_counters[idx] + OCL_CLK_FREQ_COUNTER_OFFSET);
+			}
 		}
 	} else {
 		switch (idx) {

@@ -1621,8 +1621,97 @@ static struct attribute_group xmc_attr_group = {
 	.bin_attrs = xmc_bin_attrs,
 };
 
+static ssize_t cmc_image_read(struct file *filp, struct kobject *kobj,
+	struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+{
+	struct xocl_xmc *xmc =
+		dev_get_drvdata(container_of(kobj, struct device, kobj));
+	ssize_t ret = 0;
+
+	if (xmc->mgmt_binary)
+		goto bail;
+
+	if (off >= xmc->mgmt_binary_length)
+		goto bail;
+
+	if (off + count > xmc->mgmt_binary_length)
+		count = xmc->mgmt_binary_length - off;
+
+	memcpy(buf, xmc->mgmt_binary + off, count);
+
+	ret = count;
+bail:
+	return ret;
+}
+
+static size_t image_write(char **image, size_t sz,
+		char *buffer, loff_t off, size_t count)
+{
+	char *tmp_buf;
+	size_t total;
+
+	if (off == 0) {
+		if (*image)
+			vfree(*image);
+		*image = vmalloc(count);
+		if (!*image)
+			return 0;
+
+		memcpy(*image, buffer, count);
+		return count;
+	}
+
+	total = off + count;
+	if (total > sz) {
+		tmp_buf = vmalloc(total);
+		if (!tmp_buf) {
+			vfree(*image);
+			*image = NULL;
+			return 0;
+		}
+		memcpy(tmp_buf, *image, sz);
+		vfree(*image);
+		sz = total;
+	} else {
+		tmp_buf = *image;
+	}
+
+	memcpy(tmp_buf + off, buffer, count);
+	*image = tmp_buf;
+
+	return sz;
+}
+
+static ssize_t cmc_image_write(struct file *filp, struct kobject *kobj,
+	struct bin_attribute *attr, char *buffer, loff_t off, size_t count)
+{
+	struct xocl_xmc *xmc =
+		dev_get_drvdata(container_of(kobj, struct device, kobj));
+
+	xmc->mgmt_binary_length = (u32)image_write(&xmc->mgmt_binary,
+			xmc->mgmt_binary_length, buffer, off, count);
+
+	return xmc->mgmt_binary_length ? count : -ENOMEM;
+}
+
+static struct bin_attribute cmc_image_attr = {
+	.attr = {
+		.name = "cmc_image",
+		.mode = 0600
+	},
+	.read = cmc_image_read,
+	.write = cmc_image_write,
+	.size = 0
+};
+
+static struct bin_attribute *xmc_mini_bin_attrs[] = {
+	&cmc_image_attr,
+	NULL,
+};
+
 static struct attribute_group xmc_mini_attr_group = {
 	.attrs = xmc_mini_attrs,
+	.bin_attrs = xmc_mini_bin_attrs,
 };
 
 /*
@@ -2221,12 +2310,12 @@ static int load_mgmt_image(struct platform_device *pdev, const char *image,
 		return 0;
 
 	binary = xmc->mgmt_binary;
-	xmc->mgmt_binary = devm_kzalloc(&pdev->dev, len, GFP_KERNEL);
+	xmc->mgmt_binary = vmalloc(len);
 	if (!xmc->mgmt_binary)
 		return -ENOMEM;
 
 	if (binary)
-		devm_kfree(&pdev->dev, binary);
+		vfree(binary);
 	memcpy(xmc->mgmt_binary, image, len);
 	xmc->mgmt_binary_length = len;
 
@@ -2250,12 +2339,12 @@ static int load_sche_image(struct platform_device *pdev, const char *image,
 		return 0;
 
 	binary = xmc->sche_binary;
-	xmc->sche_binary = devm_kzalloc(&pdev->dev, len, GFP_KERNEL);
+	xmc->sche_binary = vmalloc(len);
 	if (!xmc->sche_binary)
 		return -ENOMEM;
 
 	if (binary)
-		devm_kfree(&pdev->dev, binary);
+		vfree(binary);
 	memcpy(xmc->sche_binary, image, len);
 	xmc->sche_binary_length = len;
 
