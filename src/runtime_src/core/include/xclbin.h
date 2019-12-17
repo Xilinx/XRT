@@ -422,7 +422,7 @@ extern "C" {
         uint32_t mpo_name;         // Name of the flash image 
         uint32_t mpo_version;      // Version
         uint32_t mpo_md5_value;    // MD5 checksum
-        uint8_t reserved[33];      // Reserved for future use
+        uint8_t reserved[32];      // Reserved for future use
         uint8_t reservedExt[16];   // Reserved for future extended data
     };
 
