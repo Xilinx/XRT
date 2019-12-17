@@ -73,8 +73,8 @@
 #define NODE_CLKFREQ_K1 "ep_freq_cnt_aclk_kernel_00"
 #define NODE_CLKFREQ_K2 "ep_freq_cnt_aclk_kernel_01"
 #define NODE_CLKFREQ_HBM "ep_freq_cnt_aclk_hbm_00"
-#define NODE_UCS_CONTROL "ep_ucs_control_status_00"
 #define NODE_GAPPING "ep_gapping_demand_00"
+#define NODE_UCS_CONTROL_STATUS "ep_ucs_control_status_00"
 
 enum {
 	IORES_GATEPRBLD,
@@ -89,7 +89,7 @@ enum {
 	IORES_CLKFREQ_K2,
 	IORES_KDMA,
 	IORES_CLKSHUTDOWN,
-	IORES_UCS_CONTROL,
+	IORES_UCS_CONTROL_STATUS,
 	IORES_CMC_MUTEX,
 	IORES_GAPPING,
 	IORES_MAX,
@@ -107,9 +107,9 @@ enum {
 #define RESNAME_CLKFREQ_K2	NODE_CLKFREQ_K2
 #define RESNAME_KDMA            NODE_KDMA_CTRL
 #define RESNAME_CLKSHUTDOWN	NODE_CLK_SHUTDOWN
-#define RESNAME_UCS_CONTROL     NODE_UCS_CONTROL
 #define RESNAME_CMC_MUTEX       NODE_CMC_MUTEX
 #define RESNAME_GAPPING         NODE_GAPPING
+#define RESNAME_UCS_CONTROL_STATUS     NODE_UCS_CONTROL_STATUS
 
 struct xocl_iores_map {
 	char		*res_name;
@@ -130,12 +130,18 @@ struct xocl_iores_map map[] = {                                         \
 	{ RESNAME_CLKFREQ_K2, IORES_CLKFREQ_K2},			\
 	{ RESNAME_KDMA, IORES_KDMA },                                   \
 	{ RESNAME_CLKSHUTDOWN, IORES_CLKSHUTDOWN },			\
-	{ RESNAME_UCS_CONTROL, IORES_UCS_CONTROL},			\
+	{ RESNAME_UCS_CONTROL_STATUS, IORES_UCS_CONTROL_STATUS},	\
 	{ RESNAME_CMC_MUTEX, IORES_CMC_MUTEX},				\
 	{ RESNAME_GAPPING, IORES_GAPPING},				\
 }
 
-struct ucs_control_ch1 {
+#define	XOCL_RES_OFFSET_CHANNEL1	0x0
+#define	XOCL_RES_OFFSET_CHANNEL2	0x8
+
+/*
+ * Note: please move UCS specific into UCS subdev
+*/
+struct ucs_control_status_ch1 {
 	unsigned int shutdown_clocks_latched:1;
 	unsigned int reserved1:15;
 	unsigned int clock_throttling_average:14;
