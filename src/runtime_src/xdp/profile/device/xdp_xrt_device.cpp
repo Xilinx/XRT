@@ -73,5 +73,56 @@ int XrtDevice::readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSa
   return mXrtDevice->readTraceData(traceBuf, traceBufSz, numSamples, ipBaseAddress, wordsPerSample).get();
 }
 
+/*
+ * Allocate Device buffer on DDR/HBM Bank
+ * Return Val: 0 if unsuccessful, > 0 if successful
+ * XDP BO Handle is just an index in BO vector
+ * Actual XRT BO Handle is stored within this vector
+ */
+uint32_t XrtDevice::alloc(size_t sz, uint64_t memoryIndex)
+{
+  try {
+    auto handle = mXrtDevice->alloc(sz, xrt::hal::device::Domain::XRT_DEVICE_RAM, memoryIndex, nullptr);
+    m_bos.push_back(std::move(handle));
+    return m_bos.size();
+  } catch (const std::exception& ex) {
+    std::cerr << ex.what() << std::endl;
+    return 0;
+  }
+}
+
+void XrtDevice::free(uint32_t xdpBoHandle)
+{
+  if (!xdpBoHandle) return;
+  mXrtDevice->free(m_bos[--xdpBoHandle]);
+}
+
+void* XrtDevice::map (uint32_t xdpBoHandle)
+{
+  if (!xdpBoHandle) return nullptr;
+  return mXrtDevice->map(m_bos[--xdpBoHandle]);
+}
+
+void XrtDevice::unmap(uint32_t xdpBoHandle)
+{
+  if (!xdpBoHandle) return;
+  return mXrtDevice->unmap(m_bos[--xdpBoHandle]);
+}
+
+void XrtDevice::sync(uint32_t xdpBoHandle, size_t sz, size_t offset, direction dir, bool async)
+{
+  if (!xdpBoHandle) return;
+  auto dir1 = xrt::hal::device::direction::HOST2DEVICE;
+  if (dir == direction::DEVICE2HOST)
+    dir1 = xrt::hal::device::direction::DEVICE2HOST;
+  mXrtDevice->sync(m_bos[--xdpBoHandle], sz, offset, dir1, async);
+}
+
+uint64_t XrtDevice::getDeviceAddr(uint32_t xdpBoHandle)
+{
+  if (!xdpBoHandle) return 0;
+  return mXrtDevice->getDeviceAddr(m_bos[--xdpBoHandle]);
+}
+
 }
 

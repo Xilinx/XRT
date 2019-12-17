@@ -27,7 +27,11 @@ namespace xdp {
 class XrtDevice : public xdp::Device
 {
   xrt::device* mXrtDevice;
-   
+
+private:
+  using BufferObjectHandle  = xrt::hal::BufferObjectHandle;
+  std::vector<BufferObjectHandle> m_bos;
+
 public:
   XrtDevice(xrt::device* xrtDevice);
   virtual ~XrtDevice();
@@ -42,6 +46,15 @@ public:
   virtual uint64_t getTraceTime();
   virtual int getTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
   virtual int readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
+
+  // Only device RAM
+  virtual uint32_t alloc(size_t sz, uint64_t memoryIndex);
+  virtual void free(uint32_t xdpBoHandle);
+
+  virtual void* map (uint32_t xdpBoHandle);
+  virtual void unmap(uint32_t xdpBoHandle);
+  virtual void sync(uint32_t xdpBoHandle, size_t sz, size_t offset, direction dir, bool async=false);
+  virtual uint64_t getDeviceAddr(uint32_t xdpBoHandle);
 };
 }
 
