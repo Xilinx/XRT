@@ -23,6 +23,8 @@
 #include <cassert>
 #include <vector>
 #include <cstring>
+#include <cstdarg>
+#include "boost/format.hpp"
 
 #define INVALID_ID      0xffff
 #define MFG_REV_OFFSET  0x131008 // For obtaining Golden image version number
@@ -364,10 +366,8 @@ DSAInfo Flasher::getOnBoardDSA()
 
 std::string Flasher::sGetDBDF()
 {
-    //TO-DO
-    char cDBDF[128];
-
-    // sprintf(cDBDF, "%.4x:%.2x:%.2x.%.1x",
-    //     m_device->domain, m_device->bus, m_device->dev, m_device->func);
-    return std::string(cDBDF);
+    auto bus = xrt_core::query_device<uint16_t>(m_device, xrt_core::device::QR_PCIE_BDF_BUS);
+    auto dev = xrt_core::query_device<uint16_t>(m_device, xrt_core::device::QR_PCIE_BDF_DEVICE);
+    auto func = xrt_core::query_device<uint16_t>(m_device, xrt_core::device::QR_PCIE_BDF_FUNCTION);
+    return boost::str(boost::format("%04x:%02x:%02x.%01x") % 0 % bus % dev % func);
 }
