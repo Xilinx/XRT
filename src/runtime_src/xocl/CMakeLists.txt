@@ -65,12 +65,16 @@ target_link_libraries(xilinxopencl
   ${Boost_SYSTEM_LIBRARY}
   )
 
-install(TARGETS xilinxopencl
-  ARCHIVE DESTINATION ${XRT_INSTALL_DIR}/lib
-  LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib
-  RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
-
 else ()
+
+add_library(xilinxopencl SHARED
+  $<TARGET_OBJECTS:xocl>
+  $<TARGET_OBJECTS:xclbin>
+  )
+
+set_target_properties(xilinxopencl
+  PROPERTIES LINKER_LANGUAGE CXX
+  )
 
 target_link_libraries(xilinxopencl
   xrt++
@@ -85,3 +89,9 @@ target_link_libraries(xilinxopencl
   )
 
 endif ()
+
+install(TARGETS xilinxopencl
+  ARCHIVE DESTINATION ${XRT_INSTALL_DIR}/lib
+  LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib
+  RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
+
