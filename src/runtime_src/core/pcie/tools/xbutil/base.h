@@ -19,6 +19,8 @@
 #ifndef XBUTIL_BASE_H
 #define XBUTIL_BASE_H
 
+#include "core/common/time.h"
+
 #include <sys/utsname.h>
 #include <gnu/libc-version.h>
 #include <unistd.h>
@@ -27,7 +29,6 @@
 #include <string>
 #include <fstream>
 #include <chrono>
-#include <ctime>
 #include <thread>
 
 
@@ -107,15 +108,7 @@ void osInfo(boost::property_tree::ptree &pt)
     pt.put("cores", std::thread::hardware_concurrency());
     pt.put("memory", sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGE_SIZE) / 0x100000);
     pt.put("model", getMachineModel());
-
-    // Cannot use xrt_core::timestamp() defined in common/t_time because
-    // it adds [] around the string
-    auto n = std::chrono::system_clock::now();
-    const std::time_t t = std::chrono::system_clock::to_time_t(n);
-    std::string tnow(std::ctime(&t));
-    // Strip out the newline at the end
-    tnow.pop_back();
-    pt.put("now", tnow);
+    pt.put("now", xrt_core::timestamp());
 }
 
 void baseInit()

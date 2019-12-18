@@ -15,7 +15,7 @@
  */
 
 #define XRT_CORE_COMMON_SOURCE
-#include "t_time.h"
+#include "time.h"
 
 #include <chrono>
 #include <string>
@@ -25,6 +25,22 @@
 #ifdef _WIN32
 # pragma warning ( disable : 4996 )
 #endif
+namespace {
+
+// thread safe time conversion to localtime  
+static std::tm
+localtime(const std::time_t& time)
+{
+  std::tm tm;
+#ifdef _WIN32
+  localtime_s(&tm, &time);
+#else
+  localtime_r(&time, &tm); // POSIX
+#endif
+  return tm;
+}
+
+}
 
 namespace xrt_core {
 
@@ -48,8 +64,11 @@ std::string
 timestamp()
 {
   auto time = std::chrono::system_clock::now();
-  std::time_t t = std::chrono::system_clock::to_time_t(time);
-  return std::string("[") + strtok(std::ctime(&t), "\n") + "]" ;
+  auto tm = localtime(std::chrono::system_clock::to_time_t(time));
+  char buf[64] = {0};
+  return std::strftime(buf, sizeof(buf), "%c", &tm)
+    ? buf
+    : "Time conversion failed";
 }
 
 } // xrt
