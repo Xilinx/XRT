@@ -47,20 +47,19 @@ add_compile_options("-DXRT_XOCL_SOURCE")
 
 add_library(xocl OBJECT ${XRT_XOCL_ALL_SRC})
 
-
 if (WIN32)
 include_directories(
   ${KHRONOS}/include
   )
 
-add_library(xilinxopencl SHARED ""
+add_library(xilinxopencl SHARED
   $<TARGET_OBJECTS:xocl>
-  $<TARGET_OBJECTS:xrt>
   $<TARGET_OBJECTS:xclbin>
   ${XRT_XOCL_API_DIR}/icd/windows/xilinxopencl.def
   )
 
 target_link_libraries(xilinxopencl
+  xrt++
   xrt_coreutil
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
@@ -71,4 +70,18 @@ install(TARGETS xilinxopencl
   LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib
   RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
 
-endif (WIN32)
+else ()
+
+target_link_libraries(xilinxopencl
+  xrt++
+  xrt_coreutil
+  ${Boost_FILESYSTEM_LIBRARY}
+  ${Boost_SYSTEM_LIBRARY}
+  dl
+  pthread
+  crypt
+  uuid
+  rt
+  )
+
+endif ()

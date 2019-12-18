@@ -18,7 +18,6 @@ set(OPENCL_SRC "")
 
 add_library(xilinxopencl SHARED ${OPENCL_SRC}
   $<TARGET_OBJECTS:xocl>
-  $<TARGET_OBJECTS:xrt>
   $<TARGET_OBJECTS:xclbin>
   )
 
@@ -95,18 +94,7 @@ set_target_properties(oclxdp PROPERTIES VERSION ${XRT_VERSION_STRING}
 set_target_properties(xdp PROPERTIES VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})
 
-target_link_libraries(xilinxopencl
-  xrt_coreutil
-  ${Boost_FILESYSTEM_LIBRARY}
-  ${Boost_SYSTEM_LIBRARY}
-  dl
-  pthread
-  crypt
-  uuid
-  rt
-  )
-
-install (TARGETS xilinxopencl oclxdp xdp_hal_plugin LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
+install (TARGETS oclxdp xdp_hal_plugin LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
 
 add_subdirectory(core)
 

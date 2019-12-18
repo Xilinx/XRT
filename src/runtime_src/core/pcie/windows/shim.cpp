@@ -30,9 +30,6 @@
 // To be simplified
 #include "core/pcie/driver/windows/include/XoclUser_INTF.h"
 
-#include "core/include/experimental/xrt-next.h"
-
-
 #include <cstring>
 #include <cstdio>
 #include <ctime>
@@ -1383,30 +1380,4 @@ xclRead(xclDeviceHandle handle, enum xclAddressSpace space,
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclRead()");
   auto shim = get_shim_object(handle);
   return shim->read(space,offset,hostbuf,size) ? 0 : size;
-}
-
-
-uint32_t xclGetNumLiveProcesses(xclDeviceHandle handle)
-{
-  return 0;
-}
-
-int xclGetDebugIPlayoutPath(xclDeviceHandle handle, char* layoutPath, size_t size)
-{
-    return 0;
-}
-
-int xclGetTraceBufferInfo(xclDeviceHandle handle, uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
-{
-    return 0;
-}
-
-int xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample)
-{
-    return 0;
-}
-
-double xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
-{
-  return 0.0;
 }

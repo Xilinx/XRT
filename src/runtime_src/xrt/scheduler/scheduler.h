@@ -17,6 +17,7 @@
 #ifndef xrt_scheduler_h_
 #define xrt_scheduler_h_
 
+#include "xrt/config.h"
 #include "xrt/scheduler/command.h"
 #include <vector>
 
@@ -38,9 +39,11 @@ start();
 void
 stop();
 
+XRT_EXPORT
 void
 init(xrt::device* device, const axlf* top);
 
+XRT_EXPORT
 void
 init(xrt::device* device, const std::vector<uint64_t>& cu_addr_map);
 
@@ -69,15 +72,19 @@ namespace scheduler {
 /**
  * Schedule a command for execution on either sws or mbs
  */
+XRT_EXPORT
 void
 schedule(const command_type& cmd);
 
+XRT_EXPORT
 void
 start();
 
+XRT_EXPORT
 void
 stop();
 
+XRT_EXPORT
 void
 init(xrt::device* device, const axlf* top);
 

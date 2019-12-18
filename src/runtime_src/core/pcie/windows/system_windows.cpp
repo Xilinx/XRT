@@ -23,6 +23,7 @@
 #include "system_windows.h"
 #include "device_windows.h"
 #include "gen/version.h"
+#include "core/common/time.h"
 #include <memory>
 #include <ctime>
 #include <windows.h>

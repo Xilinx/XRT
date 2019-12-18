@@ -24,6 +24,7 @@ file(GLOB XRT_PCIE_WINDOWS_STATIC_FILES
 file(GLOB XRT_PCIE_WINDOWS_SHARED_FILES
   "shim.cpp"
   "mgmt.cpp"
+  "perf.cpp"
   "system_windows.cpp"
   "../common/system_pcie.cpp"
   "../../common/system.cpp"
