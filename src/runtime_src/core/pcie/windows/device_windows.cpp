@@ -199,6 +199,35 @@ info_mgmt(const device_type* device, qr_type qr, const std::type_info&, boost::a
 }
 
 static void
+sensor_info(const device_type* device, qr_type qr, const std::type_info&, boost::any& value)
+{
+  auto init_sensor_info = [](const device_type* dev) {
+    xcl_sensor info = { 0 };
+    userpf::get_sensor_info(dev->get_user_handle(), &info);
+    return info;
+  };
+
+  static std::map<const device_type*, xcl_sensor> info_map;
+  static std::mutex mutex;
+  std::lock_guard<std::mutex> lk(mutex);
+  auto it = info_map.find(device);
+  if (it == info_map.end()) {
+    auto ret = info_map.emplace(device,init_sensor_info(device));
+    it = ret.first;
+  }
+
+  auto& info = (*it).second;
+
+  switch (qr) {
+  case qr_type::QR_12V_PEX_MILLIVOLTS:
+    value = info.vol_12v_pex;
+    return;
+  default:
+    throw std::runtime_error("device_windows::sensor_info() unexpected qr " + std::to_string(qr));
+  }
+}
+
+static void
 info(const device_type* device, qr_type qr, const std::type_info& tinfo, boost::any& value)
 {
   if (auto mhdl = device->get_mgmt_handle())
@@ -335,7 +364,7 @@ get_IOCTL_entry(QueryRequest qr) const
     { QR_CAGE_TEMP_1,               { nullptr }},
     { QR_CAGE_TEMP_2,               { nullptr }},
     { QR_CAGE_TEMP_3,               { nullptr }},
-    { QR_12V_PEX_MILLIVOLTS,        { nullptr }},
+    { QR_12V_PEX_MILLIVOLTS,        { sensor_info }},
     { QR_12V_PEX_MILLIAMPS,         { nullptr }},
     { QR_12V_AUX_MILLIVOLTS,        { nullptr }},
     { QR_12V_AUX_MILLIAMPS,         { nullptr }},
