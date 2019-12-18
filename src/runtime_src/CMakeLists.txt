@@ -13,16 +13,7 @@ include_directories(
   ${BOOST_SYSTEM_INCLUDE_DIRS}
   )
 
-set(OPENCL_SRC "")
-
-
-add_library(xilinxopencl SHARED ${OPENCL_SRC}
-  $<TARGET_OBJECTS:xocl>
-  $<TARGET_OBJECTS:xrt>
-  $<TARGET_OBJECTS:xclbin>
-  )
-
-add_library(oclxdp SHARED ${OPENCL_SRC}
+add_library(oclxdp SHARED
   $<TARGET_OBJECTS:xdpobj>
   )
 add_dependencies(oclxdp xdp xilinxopencl)
@@ -44,7 +35,6 @@ if(XRT_VERBOSE)
   add_compile_options("-DXRT_VERBOSE")
 endif()
 
-set_target_properties(xilinxopencl PROPERTIES LINKER_LANGUAGE CXX)
 add_compile_options("-fPIC")
 
 # TODO CL_TARGET_OPENCL_VERSION is not defined..
@@ -95,18 +85,7 @@ set_target_properties(oclxdp PROPERTIES VERSION ${XRT_VERSION_STRING}
 set_target_properties(xdp PROPERTIES VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})
 
-target_link_libraries(xilinxopencl
-  xrt_coreutil
-  ${Boost_FILESYSTEM_LIBRARY}
-  ${Boost_SYSTEM_LIBRARY}
-  dl
-  pthread
-  crypt
-  uuid
-  rt
-  )
-
-install (TARGETS xilinxopencl oclxdp xdp_hal_plugin LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
+install (TARGETS oclxdp xdp_hal_plugin LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
 
 add_subdirectory(core)
 

@@ -16,7 +16,7 @@
 
 
 #include "xdp_hal_device.h"
-#include "core/common/t_time.h"
+#include "core/common/time.h"
 #include "core/common/xrt_profiling.h"
 #include "core/include/experimental/xrt-next.h"
 
