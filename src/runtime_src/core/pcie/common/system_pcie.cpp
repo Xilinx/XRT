@@ -45,13 +45,12 @@ get_devices(boost::property_tree::ptree& pt) const
   pt.add_child("devices", pt_devices);
 }
 
-void
+uint16_t
 system_pcie::
-bdf2index(uint16_t& index, const std::string& bdfStr) const
+bdf2index(const std::string& bdfStr) const
 {
   // Extract bdf from bdfStr.
   int dom = 0, b= 0, d = 0, f = 0;
-  index = std::numeric_limits<uint16_t>::max();
   char dummy;
   std::stringstream s(bdfStr);
   size_t n = std::count(bdfStr.begin(), bdfStr.end(), ':');
@@ -68,24 +67,23 @@ bdf2index(uint16_t& index, const std::string& bdfStr) const
   for (uint16_t i = 0; i < get_total_devices().first; i++) {
     auto device = get_mgmtpf_device(i);
     boost::any bus, dev, func;
-    device->query(xrt_core::device::QR_PCIE_BDF_BUS, typeid(b), bus);
-    device->query(xrt_core::device::QR_PCIE_BDF_DEVICE, typeid(d), dev);
-    device->query(xrt_core::device::QR_PCIE_BDF_FUNCTION, typeid(f), func);
 
+    device->query(xrt_core::device::QR_PCIE_BDF_BUS, typeid(b), bus);
     if (b != boost::any_cast<uint16_t>(bus))
       continue;
+
+    device->query(xrt_core::device::QR_PCIE_BDF_DEVICE, typeid(d), dev);
     if (d != boost::any_cast<uint16_t>(dev))
       continue;
+
+    device->query(xrt_core::device::QR_PCIE_BDF_FUNCTION, typeid(f), func);
     if (f != boost::any_cast<uint16_t>(func))
       continue;
 
-    index = i;
+    return i;
   }
-
-  if (index == std::numeric_limits<uint16_t>::max()) {
-    std::string errMsg = boost::str( boost::format("No mgmt PF found for '%s'") % bdfStr);
-    throw error(errMsg);
-  }
+  std::string errMsg = boost::str( boost::format("No mgmt PF found for '%s'") % bdfStr);
+  throw error(errMsg);
 }
 
 } // xrt_core

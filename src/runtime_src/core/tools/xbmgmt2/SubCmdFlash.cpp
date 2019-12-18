@@ -280,7 +280,6 @@ int subCmdFlash(const std::vector<std::string> &_options)
     std::string bdf;
     std::string name;
     std::string id;
-    uint16_t idx = std::numeric_limits<uint16_t>::max();
 
     XBU::verbose("Sub command: --update");
 
@@ -315,7 +314,7 @@ int subCmdFlash(const std::vector<std::string> &_options)
       return 1;
     }
 
-    xrt_core::bdf2index(idx, bdf);
+    uint16_t idx = xrt_core::bdf2index(bdf);
     auto_flash(idx, name, id, force);
     return registerResult;
   }
@@ -323,7 +322,6 @@ int subCmdFlash(const std::vector<std::string> &_options)
   if (reset) {
     // --factory_reset [--card bdf]
     std::string bdf;
-    uint16_t idx = std::numeric_limits<uint16_t>::max();
 
     XBU::verbose("Sub command: --factory_reset");
 
@@ -345,7 +343,7 @@ int subCmdFlash(const std::vector<std::string> &_options)
     // -- Now process the subcommand option-------------------------------
     XBU::verbose(XBU::format("  Card: %s", bdf.c_str()));
 
-    xrt_core::bdf2index(idx, bdf);
+    uint16_t idx = xrt_core::bdf2index(bdf);
     reset_shell(idx);
     return registerResult;
   }
@@ -356,7 +354,6 @@ int subCmdFlash(const std::vector<std::string> &_options)
     std::string file;
     std::string flash_type;
     std::string secondary;
-    uint16_t idx = std::numeric_limits<uint16_t>::max();
 
     XBU::verbose("Sub command: --shell");
 
@@ -390,7 +387,7 @@ int subCmdFlash(const std::vector<std::string> &_options)
       std::cerr << "Example: xbmgmt.exe flash --shell --path='path\\to\\dsabin\\file' --card=0000:04:00.0" << std::endl;
       return 1;
     }
-	xrt_core::bdf2index(idx, bdf);
+	  uint16_t idx = xrt_core::bdf2index(bdf);
     update_shell(idx, flash_type, file, secondary);
     return registerResult;
   }
@@ -399,7 +396,6 @@ int subCmdFlash(const std::vector<std::string> &_options)
     //--sc_firmware --path file --card bdf
     std::string bdf;
     std::string file;
-    uint16_t idx = std::numeric_limits<uint16_t>::max();
 
     XBU::verbose("Sub command: --sc_firmware");
 
@@ -430,7 +426,7 @@ int subCmdFlash(const std::vector<std::string> &_options)
       return 1;
     }
 
-    xrt_core::bdf2index(idx, bdf);
+    uint16_t idx = xrt_core::bdf2index(bdf);
     update_SC(idx, file);
     return registerResult;
   }

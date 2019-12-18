@@ -29,8 +29,8 @@ public:
   void
   get_devices(boost::property_tree::ptree& pt) const;
 
-  void
-  bdf2index(uint16_t& index, const std::string& bdfStr) const;
+  uint16_t
+  bdf2index(const std::string& bdfStr) const;
 };
 
 } // xrt_core

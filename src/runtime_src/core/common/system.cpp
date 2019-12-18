@@ -69,10 +69,10 @@ get_total_devices()
   return instance().get_total_devices();
 }
 
-void
-bdf2index(uint16_t& index, const std::string& bdfStr)
+uint16_t
+bdf2index(const std::string& bdfStr)
 {
-  instance().bdf2index(index, bdfStr);
+  return instance().bdf2index(bdfStr);
 }
 
 } // xrt_core
