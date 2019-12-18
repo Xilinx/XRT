@@ -417,12 +417,15 @@ enum softkernel_type {
  */
 #define ERT_WORD_SIZE                      4          /* 4 bytes */
 #define ERT_CQ_SIZE                        0x10000    /* 64K */
-#ifndef ERT_BUILD_U50
-# define ERT_CQ_BASE_ADDR                  0x190000
-# define ERT_CSR_ADDR                      0x180000
-#else
+#if defined(ERT_BUILD_U50)
 # define ERT_CQ_BASE_ADDR                  0x340000
 # define ERT_CSR_ADDR                      0x360000
+#elif defined(ERT_BUILD_V20)
+# define ERT_CQ_BASE_ADDR                  0xdeadbeef
+# define ERT_CSR_ADDR                      0xdeadbeef
+#else
+# define ERT_CQ_BASE_ADDR                  0x190000
+# define ERT_CSR_ADDR                      0x180000
 #endif
 
 /**
@@ -524,10 +527,12 @@ enum softkernel_type {
  * Interrupt controller base address
  * This value is per hardware BSP (XPAR_INTC_SINGLE_BASEADDR)
  */
-#ifndef ERT_BUILD_U50
-# define ERT_INTC_ADDR                     0x41200000
-#else
+#if defined(ERT_BUILD_U50)
 # define ERT_INTC_ADDR                     0x00310000
+#elif defined(ERT_BUILD_V20)
+# define ERT_INTC_ADDR                     0x01F20000
+#else
+# define ERT_INTC_ADDR                     0x41200000
 #endif
 
 /**
