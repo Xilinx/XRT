@@ -56,7 +56,7 @@ scan_devices(bool verbose, bool json)
     throw xrt_core::error(errMsg);
   }
   
-  for(unsigned i = 0; i < total; i++) {
+  for(uint16_t i = 0; i < total; i++) {
     Flasher f(i);
     if (!f.isValid())
         return;
@@ -93,7 +93,7 @@ scan_devices(bool verbose, bool json)
 
 // Update shell on the board.
 static void 
-update_shell(unsigned index, std::string flashType,
+update_shell(uint16_t index, const std::string& flashType,
     const std::string& primary, const std::string& secondary)
 {
     std::shared_ptr<firmwareImage> pri;
@@ -127,7 +127,7 @@ update_shell(unsigned index, std::string flashType,
 }
 
 static void 
-update_SC(unsigned index, const std::string& file)
+update_SC(uint16_t index, const std::string& file)
 {
     Flasher flasher(index);
     if(!flasher.isValid())
@@ -142,7 +142,7 @@ update_SC(unsigned index, const std::string& file)
 }
 
 static void 
-auto_flash(unsigned index, std::string& name,
+auto_flash(uint16_t index, std::string& name,
     std::string& id, bool force) 
 {
   //to-do
@@ -153,7 +153,7 @@ auto_flash(unsigned index, std::string& name,
 }
 
 static void 
-reset_shell(unsigned index)
+reset_shell(uint16_t index)
 {
   index = index;
 }

@@ -72,12 +72,19 @@ bdf2index(uint16_t& index, const std::string& bdfStr) const
     device->query(xrt_core::device::QR_PCIE_BDF_DEVICE, typeid(d), dev);
     device->query(xrt_core::device::QR_PCIE_BDF_FUNCTION, typeid(f), func);
 
-    if (b == boost::any_cast<uint16_t>(bus) && d == boost::any_cast<uint16_t>(dev) && f == boost::any_cast<uint16_t>(func)) {
-      index = i;
-    } else {
-      std::string errMsg = boost::str( boost::format("No mgmt PF found for '%s'") % bdfStr);
-      throw error(errMsg);
-    }
+    if (b != boost::any_cast<uint16_t>(bus))
+      continue;
+    if (d != boost::any_cast<uint16_t>(dev))
+      continue;
+    if (f != boost::any_cast<uint16_t>(func))
+      continue;
+
+    index = i;
+  }
+
+  if (index == std::numeric_limits<uint16_t>::max()) {
+    std::string errMsg = boost::str( boost::format("No mgmt PF found for '%s'") % bdfStr);
+    throw error(errMsg);
   }
 }
 
