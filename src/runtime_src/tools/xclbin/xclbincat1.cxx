@@ -458,6 +458,7 @@ namespace xclbincat1 {
       case EMULATION_DATA: return "EMULATION_DATA";
       case SYSTEM_METADATA: return "SYSTEM_METADATA";
       case SOFT_KERNEL: return "SOFT_KERNEL";
+      case ASK_FLASH: return "FLASH";
 
         break;
     }
