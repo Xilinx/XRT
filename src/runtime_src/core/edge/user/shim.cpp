@@ -1235,8 +1235,9 @@ int ZYNQShim::xclLogMsg(xrtLogMsgLevel level, const char* tag,
   {
     xclDeviceInfo2  deviceInfo ;
     xclGetDeviceInfo2(&deviceInfo) ;
-    unsigned clockFreq = deviceInfo.mOCLFrequency[0] ;
-    if (clockFreq == 0) clockFreq = 100 ;
+    unsigned short clockFreq = deviceInfo.mOCLFrequency[0] ;
+    if (clockFreq == 0)
+      clockFreq = 100 ;
     
     return (double)clockFreq ; 
   }

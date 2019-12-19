@@ -1526,7 +1526,7 @@ int shim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamp
 double shim::xclGetDeviceClockFreqMHz()
 {
   xclGetDeviceInfo2(&mDeviceInfo);
-  unsigned clockFreq = mDeviceInfo.mOCLFrequency[0];
+  unsigned short clockFreq = mDeviceInfo.mOCLFrequency[0];
   if (clockFreq == 0)
     clockFreq = 300;
 

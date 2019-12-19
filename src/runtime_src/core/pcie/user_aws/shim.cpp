@@ -952,7 +952,7 @@ namespace awsbwhal {
     // Get the device clock frequency (in MHz)
     double AwsXcl::xclGetDeviceClockFreqMHz() {
       xclGetDeviceInfo2(&mDeviceInfo);
-      unsigned clockFreq = mDeviceInfo.mOCLFrequency[0];
+      unsigned short clockFreq = mDeviceInfo.mOCLFrequency[0];
       if (clockFreq == 0)
         clockFreq = 300;
   

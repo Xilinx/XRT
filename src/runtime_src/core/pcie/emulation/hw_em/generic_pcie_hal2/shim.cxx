@@ -1271,7 +1271,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       }
       return 0;
     }
-#if 0
+
 #ifndef _WINDOWS
     // TODO: Windows build support
     // *_RPC_CALL uses unix_socket
@@ -1317,7 +1317,6 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
         } while (samplessize != 0);
       }
     }
-#endif
 
     xclGetDebugMessages(true);
     mPrintMessagesLock.lock();
