@@ -1207,7 +1207,6 @@ static int32_t xma_client_mp_alloc(XmaResources shm_cfg,
         kernel_inst->channels[j].chan_load = new_chan.chan_load;
         kernel_inst->curr_kern_load += new_chan.chan_load;
         kernel_inst->chan_cnt++;
-        kernel_inst->client_cnt++;
         session->chan_id = new_chan.chan_id;
         xma_add_client_to_kernel(kernel_inst, proc_id);
         xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD,
@@ -1252,7 +1251,6 @@ static int32_t xma_client_mp_alloc(XmaResources shm_cfg,
         kernel_inst->channels[j].chan_load = new_chan.chan_load;
         kernel_inst->curr_kern_load += new_chan.chan_load;
         kernel_inst->chan_cnt++;
-        kernel_inst->client_cnt++;
         session->chan_id = new_chan.chan_id;
         xma_add_client_to_kernel(kernel_inst, proc_id);
         xma_shm_unlock(xma_shm);
@@ -1750,6 +1748,7 @@ static void xma_add_client_to_kernel(XmaKernelInstance *k, pid_t client_id)
     for (i = 0; k->clients[i]; i++);
 
     k->clients[i] = client_id;
+    k->client_cnt++;
 
     return;
 }
