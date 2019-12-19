@@ -21,6 +21,16 @@ add_custom_command(
 )
 
 add_custom_command(
+ OUTPUT v20/bsp.extracted
+ COMMAND ${CMAKE_COMMAND} -E make_directory v20/bsp
+ COMMAND tar -C v20/bsp -jxf ${CMAKE_CURRENT_SOURCE_DIR}/sched_bsp_v20.tar.bz2
+ COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/lscript_v20.ld v20/lscript.ld
+ COMMAND touch v20/bsp.extracted
+ DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/sched_bsp_v20.tar.bz2
+ COMMENT "Extracting v2.0 board support packet for ERT scheduler"
+)
+
+ add_custom_command(
  OUTPUT legacy/sched.bin
  COMMAND ${CMAKE_COMMAND} -E make_directory legacy
  COMMAND $(MAKE) DEFINES="-DERT_BUILD_LEGACY" BLDDIR=${CMAKE_CURRENT_BINARY_DIR}/legacy SRCDIR=${CMAKE_CURRENT_SOURCE_DIR} -f ${CMAKE_CURRENT_SOURCE_DIR}/scheduler.mk ert
@@ -36,8 +46,16 @@ add_custom_command(
  COMMENT "Generating binary for ERT scheduler"
 )
 
+add_custom_command(
+ OUTPUT v20/sched.bin
+ COMMAND ${CMAKE_COMMAND} -E make_directory v20
+ COMMAND $(MAKE) DEFINES="-DERT_BUILD_V20" BLDDIR=${CMAKE_CURRENT_BINARY_DIR}/v20 SRCDIR=${CMAKE_CURRENT_SOURCE_DIR} -f ${CMAKE_CURRENT_SOURCE_DIR}/scheduler.mk ert
+ DEPENDS v20/bsp.extracted ${CMAKE_CURRENT_SOURCE_DIR}/scheduler.cpp
+ COMMENT "Generating binary for ERT scheduler"
+)
+
 add_custom_target(scheduler
- DEPENDS legacy/sched.bin u50/sched.bin
+ DEPENDS legacy/sched.bin u50/sched.bin #v20/sched.bin
 )
 
 install (FILES
@@ -61,6 +79,20 @@ install (FILES
  DESTINATION ${ERT_INSTALL_FIRMWARE_PREFIX}
  RENAME sched_u50.bin
   )
+
+if (0)
+install (FILES
+ ${CMAKE_CURRENT_BINARY_DIR}/v20/sched.bin
+ DESTINATION ${ERT_INSTALL_PREFIX}
+ RENAME sched_v20.bin
+ )
+
+install (FILES
+ ${CMAKE_CURRENT_BINARY_DIR}/v20/sched.bin
+ DESTINATION ${ERT_INSTALL_FIRMWARE_PREFIX}
+ RENAME sched_v20.bin
+ )
+endif()
 
 file(GLOB SCH_SRC_FILES
   "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
