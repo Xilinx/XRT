@@ -22,6 +22,7 @@ namespace XBU = XBUtilities;
 
 #include "core/common/device.h"
 #include "core/common/system.h"
+#include "core/pcie/common/device_pcie.h"
 #include "core/common/error.h"
 #include "flash/flasher.h"
 
@@ -44,52 +45,55 @@ static const unsigned int registerResult =
 
 namespace {
 
-static unsigned int
-bdf2index()
+static void 
+scan_devices(bool verbose, bool json)
 {
-  return 0;//hardcoded for now
-}
-static void scan_devices(bool verbose, bool json)
-{
-  verbose = verbose;
   json = json;
-
-  Flasher f(bdf2index());
-  if (!f.isValid())
-      return;
-
-  DSAInfo board = f.getOnBoardDSA();
-  std::vector<DSAInfo> installedDSA = f.getInstalledDSA();
+  auto total = xrt_core::get_total_devices().first;
   
-  BoardInfo info;
-  f.getBoardInfo(info);
-  std::cout << "Card [" << f.sGetDBDF() << "]:\n";
-  std::cout << "\tCard type:\t\t" << board.board << "\n";
-  std::cout << "\tFlash type:\t\t" << f.sGetFlashType() << "\n";
-  std::cout << "\tFlashable partition running on FPGA:" << "\n";
-  std::cout << "\t\t" << board << "\n";
-  std::cout << "\tFlashable partitions installed in system:\n";
-  if (!installedDSA.empty())
-	  std::cout << "\t\t" << installedDSA.front() << "\n";
-  else
-	  std::cout << "\t\tNone\n";
-
-  if (verbose) {
-	std::cout << "\tCard name\t\t\t" << info.mName << "\n";
-	std::cout << "\tCard S/N: \t\t\t" << info.mSerialNum << "\n";
-	std::cout << "\tConfig mode: \t\t" << info.mConfigMode << "\n";
-	std::cout << "\tFan presence:\t\t" << info.mFanPresence << "\n";
-	std::cout << "\tMax power level:\t\t" << info.mMaxPower << "\n";
-	std::cout << "\tMAC address0:\t\t" << info.mMacAddr0 << "\n";
-	std::cout << "\tMAC address1:\t\t" << info.mMacAddr1 << "\n";
-	std::cout << "\tMAC address2:\t\t" << info.mMacAddr2 << "\n";
-	std::cout << "\tMAC address3:\t\t" << info.mMacAddr3 << "\n";
+  if (total == 0) {
+    std::string errMsg = "No card found!";
+    throw xrt_core::error(errMsg);
   }
+  
+  for(uint16_t i = 0; i < total; i++) {
+    Flasher f(i);
+    if (!f.isValid())
+        return;
 
+    DSAInfo board = f.getOnBoardDSA();
+    std::vector<DSAInfo> installedDSA = f.getInstalledDSA();
+
+    BoardInfo info;
+    f.getBoardInfo(info);
+    std::cout << "Card [" << f.sGetDBDF() << "]:\n";
+    std::cout << "\tCard type:\t\t" << board.board << "\n";
+    std::cout << "\tFlash type:\t\t" << f.sGetFlashType() << "\n";
+    std::cout << "\tFlashable partition running on FPGA:" << "\n";
+    std::cout << "\t\t" << board << "\n";
+    std::cout << "\tFlashable partitions installed in system:\n";
+    if (!installedDSA.empty())
+	    std::cout << "\t\t" << installedDSA.front() << "\n";
+    else
+	    std::cout << "\t\tNone\n";
+
+    if (verbose) {
+	  std::cout << "\tCard name\t\t\t" << info.mName << "\n";
+	  std::cout << "\tCard S/N: \t\t\t" << info.mSerialNum << "\n";
+	  std::cout << "\tConfig mode: \t\t" << info.mConfigMode << "\n";
+	  std::cout << "\tFan presence:\t\t" << info.mFanPresence << "\n";
+	  std::cout << "\tMax power level:\t\t" << info.mMaxPower << "\n";
+	  std::cout << "\tMAC address0:\t\t" << info.mMacAddr0 << "\n";
+	  std::cout << "\tMAC address1:\t\t" << info.mMacAddr1 << "\n";
+	  std::cout << "\tMAC address2:\t\t" << info.mMacAddr2 << "\n";
+	  std::cout << "\tMAC address3:\t\t" << info.mMacAddr3 << "\n";
+    }
+  }
 }
 
 // Update shell on the board.
-static void update_shell(unsigned index, std::string flashType,
+static void 
+update_shell(uint16_t index, const std::string& flashType,
     const std::string& primary, const std::string& secondary)
 {
     std::shared_ptr<firmwareImage> pri;
@@ -122,7 +126,8 @@ static void update_shell(unsigned index, std::string flashType,
     std::cout << "Cold reboot machine to load new shell on card" << std::endl;
 }
 
-static void update_SC(unsigned index, const std::string& file)
+static void 
+update_SC(uint16_t index, const std::string& file)
 {
     Flasher flasher(index);
     if(!flasher.isValid())
@@ -135,6 +140,24 @@ static void update_SC(unsigned index, const std::string& file)
 
     flasher.upgradeBMCFirmware(bmc.get());
 }
+
+static void 
+auto_flash(uint16_t index, std::string& name,
+    std::string& id, bool force) 
+{
+  //to-do
+  index = index;
+  name = name;
+  id = id;
+  force = force;
+}
+
+static void 
+reset_shell(uint16_t index)
+{
+  index = index;
+}
+
 
 } // unnamed namespace
 
@@ -291,8 +314,8 @@ int subCmdFlash(const std::vector<std::string> &_options)
       return 1;
     }
 
-    // auto device = xrt_core::get_mgmtpf_device(bdf2index());
-    // device->auto_flash(name, id, force);
+    uint16_t idx = xrt_core::bdf2index(bdf);
+    auto_flash(idx, name, id, force);
     return registerResult;
   }
 
@@ -320,8 +343,8 @@ int subCmdFlash(const std::vector<std::string> &_options)
     // -- Now process the subcommand option-------------------------------
     XBU::verbose(XBU::format("  Card: %s", bdf.c_str()));
 
-    // auto device = xrt_core::get_mgmtpf_device(bdf2index());
-    // device->reset_shell();
+    uint16_t idx = xrt_core::bdf2index(bdf);
+    reset_shell(idx);
     return registerResult;
   }
 
@@ -337,7 +360,7 @@ int subCmdFlash(const std::vector<std::string> &_options)
     po::options_description shellDesc("shell options");
     shellDesc.add_options()
       ("path", boost::program_options::value<std::string>(&file), "path of shell file")
-      // ("card", boost::program_options::value<std::string>(&bdf), "index of the card") //change this to bdf later
+      ("card", boost::program_options::value<std::string>(&bdf), "index of the card") //change this to bdf later
       // ("type", boost::program_options::value<std::string>(&flash_type), "flash_type")
     ;
 
@@ -354,16 +377,18 @@ int subCmdFlash(const std::vector<std::string> &_options)
     }
 
     // -- Now process the subcommand option-------------------------------
-    // XBU::verbose(XBU::format("  Card: %s", bdf.c_str()));
+    XBU::verbose(XBU::format("  Card: %s", bdf.c_str()));
     XBU::verbose(XBU::format("  File: %s", file.c_str()));
     // XBU::verbose(XBU::format("  Flash_type: %s", flash_type.c_str()));
-    if (file.empty()) {// || bdf2index() == UINT_MAX) {
-      XBU::error("Please specify the shell file path");// and the device bdf");
+
+    if (file.empty() || bdf.empty()) {
+      XBU::error("Please specify the shell file path and the device bdf");
       std::cerr << shellDesc << "\n";
-      std::cerr << "Example: xbmgmt.exe flash --shell --path='path\\to\\dsabin\\file'" << std::endl;
+      std::cerr << "Example: xbmgmt.exe flash --shell --path='path\\to\\dsabin\\file' --card=0000:04:00.0" << std::endl;
       return 1;
     }
-    update_shell(bdf2index(), flash_type, file, secondary);
+	  uint16_t idx = xrt_core::bdf2index(bdf);
+    update_shell(idx, flash_type, file, secondary);
     return registerResult;
   }
 
@@ -377,7 +402,7 @@ int subCmdFlash(const std::vector<std::string> &_options)
     po::options_description scDesc("sc_firmware options");
     scDesc.add_options()
       ("path", boost::program_options::value<std::string>(&file), "path of sc firmware file")
-      //("card", boost::program_options::value<std::string>(&bdf), "bdf of the card")
+      ("card", boost::program_options::value<std::string>(&bdf), "bdf of the card")
     ;
 
     po::variables_map option_vm;
@@ -394,14 +419,15 @@ int subCmdFlash(const std::vector<std::string> &_options)
     // -- Now process the subcommand option-------------------------------
     XBU::verbose(XBU::format("  Card: %s", bdf.c_str()));
     XBU::verbose(XBU::format("  Sc_file: %s", file.c_str()));
-    if (file.empty()) {// || bdf2index() == UINT_MAX) {
-      XBU::error("Please specify the sc file path");// and the device bdf");
+    if (file.empty() || bdf.empty()) {
+      XBU::error("Please specify the sc file path and the device bdf");
       std::cerr << scDesc <<  "\n";
-      std::cerr << "Example: xbmgmt.exe flash --sc_firmware --path='path\\to\\dsabin\\file'" << std::endl;
+      std::cerr << "Example: xbmgmt.exe flash --sc_firmware --path='path\\to\\dsabin\\file' --card=0000:04:00.0" << std::endl;
       return 1;
     }
 
-    update_SC(bdf2index(), file);
+    uint16_t idx = xrt_core::bdf2index(bdf);
+    update_SC(idx, file);
     return registerResult;
   }
 
