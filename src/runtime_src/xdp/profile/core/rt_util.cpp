@@ -14,6 +14,8 @@
  * under the License.
  */
 
+#define XDP_SOURCE
+
 #include "rt_util.h"
 #include "xdp/profile/collection/results.h"
 

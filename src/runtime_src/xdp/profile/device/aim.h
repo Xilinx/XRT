@@ -19,6 +19,7 @@
 #define XDP_PROFILE_DEVICE_AIM_H
 
 #include <stdexcept>
+#include "xdp/config.h"
 #include "profile_ip_access.h"
 
 namespace xdp {
@@ -62,6 +63,7 @@ public:
     size_t stopCounter();
     size_t readCounter(xclCounterResults& counterResult, uint32_t index);
 
+    XDP_EXPORT
     bool isHostMonitor() const ;
     bool isShellMonitor();
 

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2018 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  * Author(s) : Sonal Santan
  *           : Hem Neema
  *           : Ryan Radjabi
@@ -26,7 +26,7 @@
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <errno.h>
-#include <stdio.h>
+#include <cstdio>
 #include <stddef.h>
 #include "xspi.h"
 #include "core/pcie/driver/linux/include/mgmt-reg.h"
@@ -266,6 +266,12 @@ static void clearBuffers() {
     clearWriteBuffer(PAGE_SIZE + READ_WRITE_EXTRA_BYTES);
 }
 
+XSPI_Flasher::~XSPI_Flasher()
+{
+    if (mFlashDev)
+        std::fclose(mFlashDev);
+}
+
 XSPI_Flasher::XSPI_Flasher(std::shared_ptr<pcidev::pci_device> dev)
 {
     mDev = dev;
@@ -275,6 +281,11 @@ XSPI_Flasher::XSPI_Flasher(std::shared_ptr<pcidev::pci_device> dev)
     if (!err.empty())
         flash_base = FLASH_BASE;
 
+    if (std::getenv("FLASH_VIA_DRIVER")) {
+        mFlashDev = fdopen(mDev->open("flash", O_RDWR), "r+");
+        if (mFlashDev == NULL)
+            std::cout << "Failed to open flash device on card" << std::endl;
+    }
 }
 
 unsigned XSPI_Flasher::getSector(unsigned address) {
@@ -493,6 +504,9 @@ int XSPI_Flasher::xclUpgradeFirmware2(std::istream& mcsStream1, std::istream& mc
 }
 
 int XSPI_Flasher::xclUpgradeFirmwareXSpi(std::istream& mcsStream, int index) {
+    if (mFlashDev)
+        return upgradeFirmwareXSpiDrv(mcsStream, index);
+
     clearBuffers();
     recordList.clear();
 
@@ -593,7 +607,7 @@ unsigned XSPI_Flasher::readReg(unsigned RegOffset) {
     unsigned value;
     if( mDev->pcieBarRead( flash_base + RegOffset, &value, 4 ) != 0 ) {
         assert(0);
-	throw std::runtime_error("read reg ERROR");
+        throw std::runtime_error("read reg ERROR");
     }
     return value;
 }
@@ -602,7 +616,7 @@ int XSPI_Flasher::writeReg(unsigned RegOffset, unsigned value) {
     int status = mDev->pcieBarWrite(flash_base + RegOffset, &value, 4);
     if(status != 0) {
         assert(0);
-        std::cout << "write reg ERROR " << std::endl;
+        throw std::runtime_error("write reg ERROR");
     }
     return 0;
 }
@@ -800,24 +814,24 @@ bool XSPI_Flasher::getFlashId()
         return false;
     else {
         switch(ReadBuffer[3]) {
-	case 0x38:
+        case 0x38:
         case 0x17:
         case 0x18:
             MAX_NUM_SECTORS = 1;
             break;
-	case 0x39:
+        case 0x39:
         case 0x19:
             MAX_NUM_SECTORS = 2;
             break;
-	case 0x3A:
+        case 0x3A:
         case 0x20:
             MAX_NUM_SECTORS = 4;
             break;
-	case 0x3B:
+        case 0x3B:
         case 0x21:
             MAX_NUM_SECTORS = 8;
             break;
-	case 0x3C:
+        case 0x3C:
         case 0x22:
             MAX_NUM_SECTORS = 16;
             break;
@@ -917,7 +931,7 @@ bool XSPI_Flasher::finalTransfer(uint8_t *SendBufPtr, uint8_t *RecvBufPtr, int B
             Data = *(uint32_t *)SendBufferPtr;
         }
 
-	if (writeReg(XSP_DTR_OFFSET, Data) != 0) {
+        if (writeReg(XSP_DTR_OFFSET, Data) != 0) {
             return false;
         }
         SendBufferPtr += (DataWidth >> 3);
@@ -1008,7 +1022,7 @@ bool XSPI_Flasher::finalTransfer(uint8_t *SendBufPtr, uint8_t *RecvBufPtr, int B
                 //read the data.
                 try {
                     Data = readReg(XSP_DRR_OFFSET);
-		} catch (const std::exception& ex) {
+                } catch (const std::exception& ex) {
                     return false;
                 }
 
@@ -1063,7 +1077,7 @@ bool XSPI_Flasher::finalTransfer(uint8_t *SendBufPtr, uint8_t *RecvBufPtr, int B
                         Data = *(uint32_t *)SendBufferPtr;
                     }
 
-		    if(writeReg(XSP_DTR_OFFSET, Data) != 0) {
+                    if(writeReg(XSP_DTR_OFFSET, Data) != 0) {
                         return false;
                     }
 
@@ -1593,8 +1607,80 @@ bool XSPI_Flasher::writeRegister(unsigned commandCode, unsigned value, unsigned 
     return Status;
 }
 
+// The bitstream guard location is fixed for now for all platforms.
+const unsigned int bitstreamGuardAddress = 0x01002000;
+const unsigned int bitstreamGuardSize = 4096;
+// Print out "." for each pagesz bytes of data processed.
+const size_t pagesz = 1024 * 1024ul;
+
+static inline long toAddr(const int slave, const unsigned int offset)
+{
+    long addr = slave;
+
+    // Slave index is the MSB of the address.
+    addr <<= 56;
+    addr |= offset;
+    return addr;
+}
+
+static int writeToFlash(std::FILE *flashDev, int slave,
+    const unsigned int address, const unsigned char *buf, size_t len)
+{
+    int ret = 0;
+    long addr = toAddr(slave, address);
+
+    ret = std::fseek(flashDev, addr, SEEK_SET);
+    if (ret)
+        return ret;
+
+    std::size_t s = std::fwrite(buf, 1, len, flashDev);
+    if (s != len)
+        ret = -ferror(flashDev);
+
+    return ret;
+}
+
+static int installBitstreamGuard(std::FILE *flashDev)
+{
+    const size_t bitstream_guard_offset = 128;
+    unsigned char buf[4096];
+
+    memset(buf, 0xff, sizeof(buf));
+    memcpy(buf + bitstream_guard_offset,
+        BITSTREAM_GUARD, sizeof(BITSTREAM_GUARD));
+
+    int ret = writeToFlash(flashDev, 0,
+        bitstreamGuardAddress, buf, sizeof(buf));
+    if (ret) {
+        std::cout << "Failed to activate bitstream guard: " << ret << std::endl;
+    } else {
+        std::cout << "Bitstream guard activated on flash @0x"
+            << std::hex << bitstreamGuardAddress << std::dec << std::endl;
+    }
+
+    return ret;
+}
+
+static int removeBitstreamGuard(std::FILE *flashDev)
+{
+    unsigned char buf[4096];
+
+    memset(buf, 0xff, sizeof(buf));
+    int ret = writeToFlash(flashDev, 0,
+        bitstreamGuardAddress, buf, sizeof(buf));
+    if (ret)
+        std::cout << "Failed to remove bitstream guard: " << ret << std::endl;
+    else
+        std::cout << "Bitstream guard deactivated on flash" << std::endl;
+
+    return ret;
+}
+
 int XSPI_Flasher::revertToMFG(void)
 {
+    if (mFlashDev)
+        return installBitstreamGuard(mFlashDev);
+
     if (!prepareXSpi()) {
         std::cout << "ERROR: Unable to prepare the XSpi\n";
         return -EINVAL;
@@ -1604,6 +1690,202 @@ int XSPI_Flasher::revertToMFG(void)
         std::cout << "ERROR: Unable to set bitstream guard!" << std::endl;
         return -EINVAL;
     }
+    return 0;
+}
+
+static int splitMcsLine(std::string& line,
+    unsigned int& type, unsigned int& address, std::vector<unsigned char>& data)
+{
+    int ret = 0;
+
+    // Every line should start with ":"
+    if (line[0] != ':')
+        return -EINVAL;
+
+    unsigned int len = std::stoi(line.substr(1, 2), NULL , 16);
+    type = std::stoi(line.substr(7, 2), NULL , 16);
+    address = std::stoi(line.substr(3, 4), NULL, 16);
+    data.clear();
+
+    switch (type) {
+    case 0:
+        if (len > 16) {
+            // For xilinx mcs files data length should be 16 for all records
+            // except for the last one which can be smaller
+            ret = -EINVAL;
+        } else {
+            unsigned int l = len * 2;
+            std::string d = line.substr(9, len * 2);
+            for (unsigned int i = 0; i < l; i += 2)
+                data.push_back(std::stoi(d.substr(i, 2), NULL, 16));
+        }
+        break;
+    case 1:
+        break;
+    case 4:
+        if (len != 2) {
+            // For xilinx mcs files extended address can only be 2 bytes
+            ret = -EINVAL;
+        }
+        address = std::stoi(line.substr(9, len * 2), NULL, 16);
+        break;
+    default:
+        // Xilinx mcs files should not contain other types
+        ret = -EINVAL;
+        break;
+    }
+
+    return ret;
+}
+
+static inline unsigned int pageOffset(unsigned int addr)
+{
+    return (addr & 0xffff);
+}
+
+static int mcsStreamToBin(std::istream& mcsStream, unsigned int& currentAddr,
+    std::vector<unsigned char>& buf, unsigned int& nextAddr)
+{
+    bool done = false;
+    size_t cnt = 0;
+
+    buf.clear();
+
+    while (!mcsStream.eof() && !done) {
+        std::string line;
+        unsigned int type;
+        unsigned int addr;
+        std::vector<unsigned char> data;
+
+        std::getline(mcsStream, line);
+        if (line.size() == 0)
+            continue;
+
+        if (splitMcsLine(line, type, addr, data) != 0) {
+            std::cout << "Found invalid MCS line: " << line << std::endl;
+            return -EINVAL;
+        }
+
+        switch (type) {
+        case 0:
+            if (currentAddr == UINT_MAX) {
+                std::cout << "MCS missing page starting address" << std::endl;
+                return -EINVAL;
+            } else if (buf.size() == 0) {
+                // we're the 1st data in this page, updating the current addr
+                assert(pageOffset(currentAddr) == 0);
+                currentAddr |= addr;
+            } else if (pageOffset(currentAddr + buf.size()) != addr) {
+                std::cout << "MCS page offset is not contiguous, expecting 0x"
+                    << std::hex << pageOffset(currentAddr) + buf.size()
+                    << ", but, got 0x" << addr << std::dec << std::endl;
+                return -EINVAL;
+            }
+            // keep adding data to existing buffer
+            buf.insert(buf.end(), data.begin(), data.end());
+            cnt += data.size();
+            break;
+        case 1:
+            // end current buffer and no more
+            nextAddr = UINT_MAX;
+            done = true;
+            break;
+        case 4:
+            addr <<= 16;
+            if (currentAddr == UINT_MAX) {
+                currentAddr = addr; // addr of the very first page
+            } else if (currentAddr + buf.size() != addr) {
+                nextAddr = addr; // start new page
+                done = true;
+            }
+            // otherwise, continue to next page since page is still contiguous
+            break;
+        default:
+            assert(1); // shouldn't be here
+            break;
+        }
+
+        if (cnt >= pagesz) {
+            std::cout << "." << std::flush;
+            cnt = 0;
+        }
+    }
+    if (cnt) // print the last "."
+            std::cout << "." << std::flush;
+    std::cout << std::endl;
+
+    if (buf.size() > UINT_MAX) {
+        std::cout << "MCS bitstream is too large: 0x" << std::hex << buf.size()
+            << std::dec << " bytes" << std::endl;
+        return -EINVAL;
+    }
 
     return 0;
+}
+
+static int writeBitstream(std::FILE *flashDev, int index, unsigned int addr,
+    std::vector<unsigned char>& buf)
+{
+    int ret = 0;
+    size_t len = 0;
+
+    // Write to flash page by page and print '.' for each write
+    // as progress indicator
+    for (size_t i = 0; ret == 0 && i < buf.size(); i += len) {
+        len = pagesz - ((addr + i) % pagesz);
+        len = std::min(len, buf.size() - i);
+
+        std::cout << "." << std::flush;
+        ret = writeToFlash(flashDev, index, addr + i, buf.data() + i, len);
+    }
+    std::cout << std::endl;
+    return ret;
+}
+
+int XSPI_Flasher::upgradeFirmwareXSpiDrv(std::istream& mcsStream, int index)
+{
+    int ret = 0;
+    bool noShift = false;
+
+    // Enable bitstream guard.
+    ret = installBitstreamGuard(mFlashDev);
+    if (ret)
+        return ret;
+
+    // Parse MCS data and write each contiguous chunk to flash.
+    std::vector<unsigned char> buf;
+    unsigned int curAddr = UINT_MAX;
+    unsigned int nextAddr = 0;
+    while (nextAddr != UINT_MAX) {
+        std::cout << "Extracting bitstream from MCS data:" << std::endl;
+        ret = mcsStreamToBin(mcsStream, curAddr, buf, nextAddr);
+        if (ret)
+            return ret;
+        assert(nextAddr == UINT_MAX || pageOffset(nextAddr) == 0);
+        if (curAddr == 0) {
+            // This is a golden image, don't shift for bitstream guard
+            noShift = true;
+        }
+        if (!noShift) {
+            // Address from MCS does not take bitstream guard into
+            // consideration. We have to push out the Entire MCS by
+            // bitstreamGuardSize bytes on the flash memory to make
+            // room for bitstream guard
+            assert(curAddr >= bitstreamGuardAddress); 
+            curAddr += bitstreamGuardSize;
+        }
+        std::cout << "Extracted " << buf.size() << "B bitstream @0x"
+            << std::hex << curAddr << std::dec << std::endl;
+
+        std::cout << "Writing bitstream to flash:" << std::endl;
+        ret = writeBitstream(mFlashDev, index, curAddr, buf);
+        if (ret)
+            return ret;
+        curAddr = nextAddr;
+    }
+
+    // Disable bitstream guard.
+    ret = removeBitstreamGuard(mFlashDev);
+
+    return ret;
 }

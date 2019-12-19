@@ -23,6 +23,7 @@
 #include "system_windows.h"
 #include "device_windows.h"
 #include "gen/version.h"
+#include "core/common/time.h"
 #include <memory>
 #include <ctime>
 #include <windows.h>
@@ -107,8 +108,7 @@ get_os_info(boost::property_tree::ptree &pt)
   pt.put("version", value);
 
   pt.put("machine", getmachinename());
-  auto tnow = std::time(nullptr);
-  pt.put("now", std::ctime(&tnow));
+  pt.put("now", xrt_core::timestamp());
 }
 
 std::pair<device::id_type, device::id_type>

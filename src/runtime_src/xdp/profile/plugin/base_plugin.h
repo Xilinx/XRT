@@ -37,7 +37,10 @@ namespace xdp {
     class XDPPluginI {
 
     public:
+      XDP_EXPORT
       XDPPluginI();
+      
+      XDP_EXPORT
     virtual ~XDPPluginI();
 
     // **********

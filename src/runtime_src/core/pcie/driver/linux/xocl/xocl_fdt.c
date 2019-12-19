@@ -91,17 +91,17 @@ failed:
 static void *flash_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 {
 	struct xocl_dev_core *core = XDEV(xdev_hdl);
-	struct xocl_flash_privdata *priv = NULL;
+	char *priv = NULL;
 	const char *flash_type;
 	void *blob;
 	int node, proplen;
+	struct xocl_flash_privdata *flash_priv;
 
 	blob = core->fdt_blob;
 	if (!blob)
 		return NULL;
 
-	node = fdt_path_offset(blob, LEVEL0_DEV_PATH
-			"/" NODE_FLASH);
+	node = fdt_path_offset(blob, LEVEL0_DEV_PATH "/" NODE_FLASH);
 	if (node < 0) {
 		xocl_xdev_err(xdev_hdl, "did not find flash node");
 		return NULL;
@@ -114,19 +114,17 @@ static void *flash_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 		return NULL;
 	}
 
-	proplen = sizeof(*priv) + strlen(flash_type);
+	proplen = strlen(flash_type) + 1;
 
-	priv = vzalloc(proplen);
+	flash_priv = vzalloc(sizeof(*flash_priv));
 	if (!priv)
 		return NULL;
 
-	priv->flash_type = offsetof(struct xocl_flash_privdata, data);
-	priv->properties = priv->flash_type + strlen(flash_type) + 1;
-	strcpy((char *)priv + priv->flash_type, flash_type);
+	strcpy(flash_priv->flash_type, flash_type);
 
 	*len = proplen;
 
-	return priv;
+	return flash_priv;
 
 }
 
@@ -321,7 +319,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 			RESNAME_CLKFREQ_K1,
 			RESNAME_CLKFREQ_K2,
 			RESNAME_CLKFREQ_HBM,
-			RESNAME_UCS_CONTROL,
+			RESNAME_UCS_CONTROL_STATUS,
 			RESNAME_GAPPING,
 			NULL
 		},

@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
 #include "hal2.h"
 #include "xrt/util/thread.h"
 #include "ert.h"

@@ -343,7 +343,8 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		err = -EINVAL;
 		goto done;
 	}
-	if (!XOCL_DSA_IS_VERSAL(xdev) && !xocl_verify_timestamp(xdev,
+
+	if (!xocl_verify_timestamp(xdev,
 		bin_obj.m_header.m_featureRomTimeStamp)) {
 		userpf_err(xdev, "TimeStamp of ROM did not match Xclbin\n");
 		err = -EOPNOTSUPP;
@@ -417,40 +418,26 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		err = xocl_cleanup_mem(drm_p);
 		if (err)
 			goto done;
-
-		if (XOCL_DSA_IS_VERSAL(xdev)) {
-			vfree(xdev->mem_topo);
-			xdev->mem_topo = NULL;
-		}
 	}
 
-	if (!XOCL_DSA_IS_VERSAL(xdev)) {
-		err = xocl_icap_download_axlf(xdev, axlf);
-		if (err) {
-			/*
-			 * We have to clear uuid cached in scheduler here if
-			 * download xclbin failed
-			 */
-			(void) xocl_exec_reset(xdev, &uuid_null);
-			/*
-			 * Don't just bail out here, always recreate drm mem
-			 * since we have cleaned it up before download.
-			 */
-		}
-		/* work around vivado issue. Resize p2p bar after xclbin download */
-		if (xdev->core.priv.p2p_bar_sz > 0 && xdev->p2p_bar_idx >= 0 &&
-		    xdev->p2p_bar_len > (1 << XOCL_P2P_CHUNK_SHIFT) &&
-		    xocl_get_p2p_bar(xdev, NULL) >= 0) {
-			(void) xocl_pci_rbar_refresh(xdev->core.pdev,
-					xdev->p2p_bar_idx);
-		}
-	} else if (!preserve_mem) {
-		xdev->mem_topo = vmalloc(size);
-		if (!xdev->mem_topo) {
-			err = -ENOMEM;
-			goto done;
-		}
-		memcpy(xdev->mem_topo, new_topology, size);
+	err = xocl_icap_download_axlf(xdev, axlf);
+	if (err) {
+		/*
+		 * We have to clear uuid cached in scheduler here if
+		 * download xclbin failed
+		 */
+		(void) xocl_exec_reset(xdev, &uuid_null);
+		/*
+		 * Don't just bail out here, always recreate drm mem
+		 * since we have cleaned it up before download.
+		 */
+	}
+	/* work around vivado issue. Resize p2p bar after xclbin download */
+	if (xdev->core.priv.p2p_bar_sz > 0 && xdev->p2p_bar_idx >= 0 &&
+	    xdev->p2p_bar_len > (1 << XOCL_P2P_CHUNK_SHIFT) &&
+	    xocl_get_p2p_bar(xdev, NULL) >= 0) {
+		(void) xocl_pci_rbar_refresh(xdev->core.pdev,
+				xdev->p2p_bar_idx);
 	}
 
 	if (!preserve_mem) {

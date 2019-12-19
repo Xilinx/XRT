@@ -13,21 +13,19 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#include "device.h"
 
-#include "xrt/util/task.h"
-#include "xrt/util/event.h"
+#ifndef xdp_profile_config_h_
+#define xdp_profile_config_h_
 
-#include <future>
-#include <cstring> // for std::memset
+#include "xocl/core/debug.h"
+#include "xrt/util/debug.h"
 
-namespace xrt {
+#ifdef XDP_VERBOSE
+# define XDP_DEBUG(...) xrt::debug(__VA_ARGS__)
+# define XDP_LOG(format,...) ::xocl::logf(format, ##__VA_ARGS__)
+#else
+# define XDP_DEBUG(...)
+# define XDP_LOG(...)
+#endif
 
-std::ostream&
-device::
-printDeviceInfo(std::ostream& ostr) const
-{
-  return m_hal->printDeviceInfo(ostr);
-}
-
-} // xrt
+#endif

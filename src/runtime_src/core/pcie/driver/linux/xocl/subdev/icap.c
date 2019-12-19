@@ -1,5 +1,5 @@
 /**
- *  Copyright (C) 2017 Xilinx, Inc. All rights reserved.
+ *  Copyright (C) 2017-2019 Xilinx, Inc. All rights reserved.
  *  Author: Sonal Santan
  *  Code copied verbatim from SDAccel xcldma kernel mode driver
  *
@@ -50,8 +50,13 @@ static struct key *icap_keys = NULL;
 
 #define	ICAP_MAX_NUM_CLOCKS		4
 #define OCL_CLKWIZ_STATUS_OFFSET	0x4
+#define OCL_CLKWIZ_STATUS_MASK		0xffff
+#define OCL_CLKWIZ_STATUS_MEASURE_START	0x1
+#define OCL_CLKWIZ_STATUS_MEASURE_DONE	0x2
 #define OCL_CLKWIZ_CONFIG_OFFSET(n)	(0x200 + 4 * (n))
 #define OCL_CLK_FREQ_COUNTER_OFFSET	0x8
+#define OCL_CLK_FREQ_V5_COUNTER_OFFSET	0x10
+#define OCL_CLK_FREQ_V5_CLK0_ENABLED	0x10000
 #define ICAP_DEFAULT_EXPIRE_SECS	1
 
 #define INVALID_MEM_IDX			0xFFFF
@@ -162,7 +167,7 @@ struct icap {
 	struct bmc		bmc_header;
 
 	char			*icap_clock_freq_counters[ICAP_MAX_NUM_CLOCKS];
-	char			*icap_ucs_control;
+	char			*icap_ucs_control_status;
 
 	uint64_t		cache_expire_secs;
 	struct xcl_pr_region	cache;
@@ -614,30 +619,40 @@ static unsigned int icap_get_clock_frequency_counter_khz(const struct icap *icap
 			return freq;
 
 		if (icap->icap_clock_freq_counter && idx < 2) {
-			reg_wr(icap->icap_clock_freq_counter, 0x1);
+			reg_wr(icap->icap_clock_freq_counter,
+				OCL_CLKWIZ_STATUS_MEASURE_START);
 			while (times != 0) {
 				status = reg_rd(icap->icap_clock_freq_counter);
-				if (status == 0x2)
+				if ((status & OCL_CLKWIZ_STATUS_MASK) ==
+					OCL_CLKWIZ_STATUS_MEASURE_DONE)
 					break;
 				mdelay(1);
 				times--;
 			};
-			freq = reg_rd(icap->icap_clock_freq_counter + OCL_CLK_FREQ_COUNTER_OFFSET + idx*sizeof(u32));
+			if ((status & OCL_CLKWIZ_STATUS_MASK) ==
+				OCL_CLKWIZ_STATUS_MEASURE_DONE)
+				freq = reg_rd(icap->icap_clock_freq_counter + OCL_CLK_FREQ_COUNTER_OFFSET + idx*sizeof(u32));
 			return freq;
 		} 
 
 		if (icap->icap_clock_freq_counters[idx]) {
-			reg_wr(icap->icap_clock_freq_counters[idx], 0x1);
+			reg_wr(icap->icap_clock_freq_counters[idx],
+				OCL_CLKWIZ_STATUS_MEASURE_START);
 			while (times != 0) {
 				status =
 				    reg_rd(icap->icap_clock_freq_counters[idx]);
-				if (status == 0x2)
+				if ((status & OCL_CLKWIZ_STATUS_MASK) ==
+					OCL_CLKWIZ_STATUS_MEASURE_DONE)
 					break;
 				mdelay(1);
 				times--;
 			};
-			freq = reg_rd(icap->icap_clock_freq_counters[idx] +
-				OCL_CLK_FREQ_COUNTER_OFFSET);
+			if ((status & OCL_CLKWIZ_STATUS_MASK) ==
+				OCL_CLKWIZ_STATUS_MEASURE_DONE) {
+				freq = (status & OCL_CLK_FREQ_V5_CLK0_ENABLED) ?
+					reg_rd(icap->icap_clock_freq_counters[idx] + OCL_CLK_FREQ_V5_COUNTER_OFFSET) :
+					reg_rd(icap->icap_clock_freq_counters[idx] + OCL_CLK_FREQ_COUNTER_OFFSET);
+			}
 		}
 	} else {
 		switch (idx) {
@@ -2314,7 +2329,9 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 		if (err)
 			goto done;
 	} else {
-		err = __icap_peer_xclbin_download(icap, xclbin);
+		if (!XOCL_DSA_IS_VERSAL(xdev))
+			err = __icap_peer_xclbin_download(icap, xclbin);
+
 		/*
 		 * xclbin download changes PR region, make sure next
 		 * ERT configure cmd will go through
@@ -2327,8 +2344,14 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 		icap_parse_bitstream_axlf_section(pdev, xclbin,
 			DEBUG_IP_LAYOUT);
 		icap_setup_clock_freq_topology(icap, xclbin);
-		/* not really doing verification, but just create subdevs */
-		(void) icap_verify_bitstream_axlf(pdev, xclbin);
+
+		if (!XOCL_DSA_IS_VERSAL(xdev)) {
+			/*
+			 * not really doing verification, but
+			 * just create subdevs
+			 */
+			(void) icap_verify_bitstream_axlf(pdev, xclbin);
+		}
 	}
 
 	icap_parse_bitstream_axlf_section(pdev, xclbin, PARTITION_METADATA);
@@ -2352,10 +2375,10 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 		 * With new 2RP flow, clocks are all moved to ULP.
 		 * We assume there is not any clock left in PLP in this case.
 		 */
-		if (icap->icap_ucs_control) {
+		if (icap->icap_ucs_control_status) {
 			err = icap_ocl_freqscaling(icap, true);
 			msleep(10);
-			reg_wr(icap->icap_ucs_control + 8, 1);
+			reg_wr(icap->icap_ucs_control_status + 8, 1);
 		}
 	}
 
@@ -2813,10 +2836,10 @@ static void icap_refresh_addrs(struct platform_device *pdev)
 		xocl_iores_get_base(xdev, IORES_CLKFREQ_HBM);
 	ICAP_INFO(icap, "freq_hbm @ %lx",
 			(unsigned long)icap->icap_clock_freq_counters[2]);
-	icap->icap_ucs_control =
-		xocl_iores_get_base(xdev, IORES_UCS_CONTROL);
-	ICAP_INFO(icap, "ucs_control @ %lx",
-			(unsigned long)icap->icap_ucs_control);
+	icap->icap_ucs_control_status =
+		xocl_iores_get_base(xdev, IORES_UCS_CONTROL_STATUS);
+	ICAP_INFO(icap, "ucs_control_status @ %lx",
+			(unsigned long)icap->icap_ucs_control_status);
 }
 
 static int icap_offline(struct platform_device *pdev)
