@@ -2340,7 +2340,7 @@ int __init xocl_init_mailbox(void)
 
 	return 0;
 err_driver_reg:
-	unregister_chrdev_region(mailbox_priv.dev, 1);
+	unregister_chrdev_region(mailbox_priv.dev, XOCL_MAX_DEVICES);
 err_chrdev_reg:
 	return err;
 }

@@ -63,4 +63,16 @@ get_mgmtpf_device(device::id_type id)
   return instance().get_mgmtpf_device(id);
 }
 
+std::pair<uint64_t, uint64_t>
+get_total_devices()
+{
+  return instance().get_total_devices();
+}
+
+uint16_t
+bdf2index(const std::string& bdfStr)
+{
+  return instance().bdf2index(bdfStr);
+}
+
 } // xrt_core

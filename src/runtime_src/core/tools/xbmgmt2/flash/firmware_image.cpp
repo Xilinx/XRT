@@ -29,6 +29,7 @@
 #include <locale>
 
 #include "boost/filesystem.hpp"
+#include <boost/tokenizer.hpp>
 #include "xclbin.h"
 #include "core/common/utils.h"
 #include "firmware_image.h"
@@ -69,7 +70,6 @@ struct fdt_header {
     uint32_t size_dt_struct;
 };
 
-using namespace boost::filesystem;
 /*
  * Helper to parse DSA name string and retrieve all tokens
  * The DSA name string is passed in by value since it'll be modified inside.
@@ -102,24 +102,29 @@ void getVendorBoardFromDSAName(std::string& dsa, std::string& vendor, std::strin
     board = tokens[1];
 }
 
-void parseDSAFilename(std::string filename, uint64_t& vendor, uint64_t& device, uint64_t& subsystem, uint64_t &ts)
+
+
+void parseDSAFilename(const std::string& filename, uint64_t& vendor, uint64_t& device, uint64_t& subsystem, uint64_t &ts)
 {
-    std::vector<std::string> suffix = { XSABIN_FILE_SUFFIX, DSABIN_FILE_SUFFIX};
+    vendor = 0; device = 0; subsystem = 0; ts = 0;
+    using tokenizer = boost::tokenizer< boost::char_separator<char> >;
+    boost::char_separator<char> sep("-.");
+    tokenizer tokens(filename, sep);
+    int radix = 16;
 
-    for (std::string t : suffix) {
-        std::regex e(".*/([0-9a-fA-F]+)-([0-9a-fA-F]+)-([0-9a-fA-F]+)-([0-9a-fA-F]+)." + t);
-        std::cmatch cm;
-
-        std::regex_match(filename.c_str(), cm, e);
-        if (cm.size() == 5) {
-            vendor = std::stoull(cm.str(1), 0, 16);
-            device = std::stoull(cm.str(2), 0, 16);
-            subsystem = std::stoull(cm.str(3), 0, 16);
-            ts = std::stoull(cm.str(4), 0, 16);
-            break;
-        } else
-            ts = NULL_TIMESTAMP;
-    }
+	// check if we have 5 tokens: vendor, device, subsystem, ts, "dsabin"/"xsabin"
+	if (std::distance(tokens.begin(), tokens.end()) == 5) {
+	    tokenizer::iterator tok_iter = tokens.begin();
+		vendor = std::stoull(std::string(*tok_iter), nullptr, radix);
+		tok_iter++;
+		device = std::stoull(std::string(*tok_iter), nullptr, radix);
+		tok_iter++;
+		subsystem = std::stoull(std::string(*tok_iter), nullptr, radix);
+		tok_iter++;
+		ts = std::stoull(std::string(*tok_iter), nullptr, radix);
+		tok_iter++;
+	} else
+		ts = NULL_TIMESTAMP;
 }
 
 static void uuid2ts(const std::string& uuid, uint64_t& ts)
@@ -283,7 +288,18 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
         std::replace_if(name.begin(), name.end(),
             [](const char &a){ return a == ':' || a == '.'; }, '_');
         getVendorBoardFromDSAName(name, vendor, board);
-        parseDSAFilename(filename, vendor_id, device_id, subsystem_id, timestamp);
+		
+        // get filename without the path
+        using tokenizer = boost::tokenizer< boost::char_separator<char> >;
+        boost::char_separator<char> sep("\\");
+        tokenizer tokens(filename, sep);
+        std::string dsafile = "";
+        for (auto tok_iter = tokens.begin(); tok_iter != tokens.end(); ++tok_iter) {
+        	if ((std::string(*tok_iter).find(XSABIN_FILE_SUFFIX) != std::string::npos) 
+                || (std::string(*tok_iter).find(DSABIN_FILE_SUFFIX) != std::string::npos))
+                dsafile = *tok_iter;
+        }
+        parseDSAFilename(dsafile, vendor_id, device_id, subsystem_id, timestamp);
         // Assume there is only 1 interface UUID is provided for BLP,
         // Show it as ID for flashing
         const axlf_section_header* dtbSection = xclbin::get_axlf_section(ap, PARTITION_METADATA);
@@ -398,82 +414,57 @@ std::vector<DSAInfo> firmwareImage::installedDSA;
 
 std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()
 {
-    // if (!installedDSA.empty())
-    //     return installedDSA;
+    // Obtain installed DSA info.
+    boost::filesystem::path p(FIRMWARE_DIR);
+	if (!boost::filesystem::is_directory(p)) {
+		p = FIRMWARE_WIN_DIR;
+	}
 
-    // struct dirent *entry;
-    // DIR *dp;
-    // std::string nm;
+    boost::filesystem::directory_iterator dir_end;
+    for ( boost::filesystem::directory_iterator start(p); start != dir_end; ++start) {
+      std::string filename = start->path().leaf().string();
+      if(filename.find("xsabin")  == std::string::npos && 
+          filename.find("dsabin")  == std::string::npos)
+        continue;
+	  DSAInfo dsa(start->path().string());
+	  installedDSA.push_back(dsa);
+    }
+    if (!installedDSA.empty())
+        return installedDSA;
 
-    // // Obtain installed DSA info.
-    // dp = opendir(FIRMWARE_DIR);
-    // if (dp)
-    // {
-    //     while ((entry = readdir(dp)))
-    //     {
-    //         std::string d(FIRMWARE_DIR);
-    //         std::string e(entry->d_name);
+    // for 2RP
+    p = FORMATTED_FW_DIR;
+	if (!boost::filesystem::is_directory(p))
+        return installedDSA;
 
-    //         /*
-    //          * First look for from .xsabin, if failed,
-    //          * look for .dsabin file.
-    //          * legacy .mcs file is not supported.
-    //          */
-    //         if ((e.find(XSABIN_FILE_SUFFIX) == std::string::npos) &&
-    //             (e.find(DSABIN_FILE_SUFFIX) == std::string::npos))
-    //             continue;
+    boost::filesystem::path formatted_fw_dir(FORMATTED_FW_DIR);
 
-    //         DSAInfo dsa(d + e);
-    //         installedDSA.push_back(dsa);
-    //     }
-    //     closedir(dp);
-    // }
+    for (const std::string& t : { XSABIN_FILE_SUFFIX, DSABIN_FILE_SUFFIX }) {
 
-    // dp = opendir(FORMATTED_FW_DIR);
-    // if (!dp)
-    //     return installedDSA;
-    // closedir(dp);
+        std::regex e("^" FORMATTED_FW_DIR "/([^/]+)/([^/]+)/([^/]+)/.+\\." + t);
+        std::smatch cm;
 
-    // path formatted_fw_dir(FORMATTED_FW_DIR);
-    // std::vector<std::string> suffix = { XSABIN_FILE_SUFFIX, DSABIN_FILE_SUFFIX};
-
-    // for (std::string t : suffix) {
-
-    //     std::regex e("^" FORMATTED_FW_DIR "/([^/]+)/([^/]+)/([^/]+)/.+\\." + t);
-    //     std::cmatch cm;
-
-    //     for (recursive_directory_iterator iter(formatted_fw_dir, symlink_option::recurse), end;
-    //         iter != end;
-    //         )
-    //     {
-    //         std::string name = iter->path().string();
-    //         std::regex_match(name.c_str(), cm, e);
-    //         if (cm.size() > 0)
-    //         {
-    //             std::string pr_board = cm.str(1);
-    //             std::string pr_family = cm.str(2);
-    //             std::string pr_name = cm.str(3);
-    //             DSAInfo dsa(name, pr_board, pr_family, pr_name);
-    //             installedDSA.push_back(dsa);
-    //             while (iter != end && iter.level() > 2)
-    //                 iter.pop();
-    //         } else if (iter.level() > 4)
-    //             iter.pop();
-    //         else
-    //         {
-    //             dp = opendir(name.c_str());
-	// 	if (!dp)
-    //             {
-    //                 iter.no_push();
-    //             }
-	// 	else
-    //             {
-    //                 closedir(dp);
-    //             }
-    //             ++iter;
-    //         }
-    //     }
-    // }
+        for (boost::filesystem::recursive_directory_iterator iter(formatted_fw_dir, 
+            boost::filesystem::symlink_option::recurse), recursive_end; iter != recursive_end;) {
+            std::string name = iter->path().string();
+            std::regex_match(name, cm, e);
+            if (cm.size() > 0) {
+                std::string pr_board = cm.str(1);
+                std::string pr_family = cm.str(2);
+                std::string pr_name = cm.str(3);
+                DSAInfo dsa(name, pr_board, pr_family, pr_name);
+                installedDSA.push_back(dsa);
+                while (iter != recursive_end && iter.level() > 2)
+                    iter.pop();
+            } else if (iter.level() > 4)
+                iter.pop();
+            else {
+                if (!boost::filesystem::is_directory(boost::filesystem::path(name.c_str())))
+                    iter.no_push();
+                ++iter;
+            }
+        }
+    }
 
     return installedDSA;
 }

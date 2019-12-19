@@ -582,15 +582,8 @@ struct xocl_mb_scheduler_funcs {
 	MB_SCHEDULER_DEV(xdev), cu, filep, addrp) :		\
 	-ENODEV)
 
-
-#define XOCL_GET_MEM_TOPOLOGY(xdev, topo)						\
-({ \
-	int ret = 0; \
-	if (XOCL_DSA_IS_VERSAL(xdev)) 							\
-		topo = (struct mem_topology *)(((struct xocl_dev *)(xdev))->mem_topo); 	\
-	ret = xocl_icap_get_xclbin_metadata(xdev, MEMTOPO_AXLF, (void **)&topo); \
-	(ret);\
-})
+#define XOCL_GET_MEM_TOPOLOGY(xdev, mem_topo)						\
+	(xocl_icap_get_xclbin_metadata(xdev, MEMTOPO_AXLF, (void **)&mem_topo))
 
 #define XOCL_GET_IP_LAYOUT(xdev, ip_layout)						\
 	(xocl_icap_get_xclbin_metadata(xdev, IPLAYOUT_AXLF, (void **)&ip_layout))
@@ -599,9 +592,7 @@ struct xocl_mb_scheduler_funcs {
 
 
 #define XOCL_PUT_MEM_TOPOLOGY(xdev)						\
-	(XOCL_DSA_IS_VERSAL(xdev) ?						\
-	-ENODEV : \
-	xocl_icap_put_xclbin_metadata(xdev))
+	xocl_icap_put_xclbin_metadata(xdev)
 #define XOCL_PUT_IP_LAYOUT(xdev)						\
 	xocl_icap_put_xclbin_metadata(xdev)
 #define XOCL_PUT_XCLBIN_ID(xdev)						\

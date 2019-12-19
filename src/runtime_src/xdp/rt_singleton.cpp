@@ -14,6 +14,8 @@
  * under the License.
  */
 
+#define XDP_SOURCE
+
 #include "rt_singleton.h"
 #include "xdp/appdebug/appdebug.h"
 
@@ -42,7 +44,7 @@ namespace xdp {
   }
 
   RTSingleton::RTSingleton()
-  : Status( CL_SUCCESS ),
+  : Status( 0 ),
     Platform( nullptr ),
     DebugMgr( nullptr )
   {

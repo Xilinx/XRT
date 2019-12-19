@@ -16,10 +16,14 @@
 
 
 #include "xdp_hal_device.h"
-#include "core/common/t_time.h"
+#include "core/common/time.h"
 #include "core/common/xrt_profiling.h"
 #include "core/include/experimental/xrt-next.h"
 
+#ifdef _WIN32
+#pragma warning (disable : 4267)
+/* 4267 : Disable warning for conversion of size_t to int in return statements in read/write methods */
+#endif
 
 namespace xdp {
 
@@ -44,17 +48,25 @@ uint32_t HalDevice::getNumLiveProcesses()
 }
 int HalDevice::write(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
 {
+#ifndef _WIN32
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
   return xclWrite(mHalDevice, space, offset, hostBuf, size);
+#ifndef _WIN32
 #pragma GCC diagnostic pop
+#endif
 }
 int HalDevice::read(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
 {
+#ifndef _WIN32
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
   return xclRead(mHalDevice, space, offset, hostBuf, size);
+#ifndef _WIN32
 #pragma GCC diagnostic pop
+#endif
 }
 
 int HalDevice::unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offset)

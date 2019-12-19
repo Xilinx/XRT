@@ -1,5 +1,6 @@
-/**
- * Copyright (C) 2016-2017 Xilinx, Inc
+/*
+ * Copyright (C) 2015-2019, Xilinx Inc - All rights reserved
+ * Xilinx Runtime (XRT) APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,15 +18,25 @@
 #ifndef xdp_config_h_
 #define xdp_config_h_
 
-#include "xocl/core/debug.h"
-#include "xrt/util/debug.h"
+//------------------Enable dynamic linking on windows-------------------------// 
 
-#ifdef XDP_VERBOSE
-# define XDP_DEBUG(...) xrt::debug(__VA_ARGS__)
-# define XDP_LOG(format,...) ::xocl::logf(format, ##__VA_ARGS__)
-#else
-# define XDP_DEBUG(...)
-# define XDP_LOG(...)
+#ifdef _WIN32
+  #ifdef XDP_SOURCE
+    #define XDP_EXPORT __declspec(dllexport)
+  #else
+    #define XDP_EXPORT __declspec(dllimport)
+  #endif  
+#endif
+#ifdef __GNUC__
+  #ifdef XDP_SOURCE
+    #define XDP_EXPORT __attribute__ ((visibility("default")))
+  #else
+    #define XDP_EXPORT
+  #endif
+#endif
+
+#ifndef XDP_EXPORT
+  #define XDP_EXPORT
 #endif
 
 #endif

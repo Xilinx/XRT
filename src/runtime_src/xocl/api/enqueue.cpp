@@ -30,7 +30,6 @@
 #include "xocl/core/device.h"
 #include "xocl/core/kernel.h"
 
-
 namespace {
 
 // Exception pointer for device exceptions during enqueue tasks.  The

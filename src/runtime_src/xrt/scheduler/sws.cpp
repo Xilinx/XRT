@@ -20,8 +20,7 @@
  * This is a software model of the kds scheduler.  Primarily
  * for debug and bring up.
  */
-
-#include "xrt/config.h"
+#include "scheduler.h"
 #include "xrt/util/debug.h"
 #include "xrt/util/thread.h"
 #include "xrt/util/task.h"

@@ -27,7 +27,6 @@
 #include <cassert>
 #include <thread>
 #include <mutex>
-#include <CL/opencl.h>
 
 // Use these classes to store results from run time user
 // services functions such as debugging and profiling

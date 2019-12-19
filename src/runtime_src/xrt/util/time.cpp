@@ -13,9 +13,6 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
-#define XRT_SOURCE
-
 #include "time.h"
 #include <chrono>
 
@@ -35,5 +32,3 @@ time_ns()
 }
 
 } // xocl
-
-

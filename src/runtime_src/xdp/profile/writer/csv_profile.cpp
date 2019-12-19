@@ -14,6 +14,8 @@
  * under the License.
  */
 
+#define XDP_SOURCE
+
 #include "csv_profile.h"
 
 #include "xdp/profile/core/rt_profile.h"

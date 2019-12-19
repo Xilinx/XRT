@@ -13,9 +13,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
 //#define KDS_VERBOSE
-
 #if defined(KDS_VERBOSE) && !defined(XRT_VERBOSE)
 # define XRT_VERBOSE
 #endif
@@ -23,7 +21,7 @@
 /**
  * XRT Kernel Driver command scheduler (when using kernel driver scheduling)
  */
-#include "xrt/config.h"
+#include "scheduler.h"
 #include "xrt/util/error.h"
 #include "xrt/util/thread.h"
 #include "xrt/util/debug.h"
