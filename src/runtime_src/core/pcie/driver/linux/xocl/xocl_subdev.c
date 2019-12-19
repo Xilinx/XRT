@@ -130,7 +130,8 @@ static void xocl_subdev_update_info(xdev_handle_t xdev_hdl,
 	for (i = 0; i < *num; i++) {
 		if (info_array[i].id == sdev_info->id &&
 			info_array[i].override_idx == sdev_info->override_idx &&
-			!info_array[i].multi_inst) {
+			!info_array[i].multi_inst &&
+			sdev_info->level > info_array[i].level) {
 			memcpy(&info_array[i], sdev_info,
 				sizeof(*info_array));
 			return;

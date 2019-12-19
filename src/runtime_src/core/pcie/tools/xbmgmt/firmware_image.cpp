@@ -532,46 +532,74 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
         }
         else
         {
-            // Obtain MCS section header.
-            const axlf_section_header* mcsSection = xclbin::get_axlf_section(ap, MCS);
-            if (mcsSection == nullptr)
-            {
-                this->setstate(failbit);
-                std::cout << "Can't find MCS section in "<< file << std::endl;
-                return;
-            }
-            // Load entire MCS section.
-            std::shared_ptr<char> mcsbuf(new char[mcsSection->m_sectionSize]);
-            in.seekg(mcsSection->m_sectionOffset);
-            in.read(mcsbuf.get(), mcsSection->m_sectionSize);
-            if (!in.good())
-            {
-                this->setstate(failbit);
-                std::cout << "Can't read MCS section from "<< file << std::endl;
-                return;
-            }
-            const struct mcs *mcs = reinterpret_cast<const struct mcs *>(mcsbuf.get());
-            // Only two types of MCS supported today
-            unsigned mcsType = (type == MCS_FIRMWARE_PRIMARY) ? MCS_PRIMARY : MCS_SECONDARY;
-            const struct mcs_chunk *c = nullptr;
-            for (int8_t i = 0; i < mcs->m_count; i++)
-            {
-                if (mcs->m_chunk[i].m_type == mcsType)
+            //The new introduced FLASH section may contain either MCS or BIN, but not both,
+            //if we see neither of them, it may be a legacy xsabin where MCS section is still
+            //used to save the flash image.
+
+            // Obtain FLASH section header.
+            const axlf_section_header* flashSection = xclbin::get_axlf_section(ap, ASK_FLASH);
+            if (flashSection) {
+                //So far, there is only one type in FLASH section.
+                //Just blindly load that section. Add more checks later.
+
+                //load 'struct flash'
+                struct flash flashMeta;
+                in.seekg(flashSection->m_sectionOffset);
+                in.read(reinterpret_cast<char *>(&flashMeta), sizeof(flashMeta));
+                if (!in.good() || flashMeta.m_flash_type != FLT_BIN_PRIMARY)
                 {
-                    c = &mcs->m_chunk[i];
-                    break;
+                    this->setstate(failbit);
+                    std::cout << "Can't read FLASH section from "<< file << std::endl;
+                    return;
                 }
+                // Load data into stream.
+                bufsize = flashMeta.m_image_size;
+                mBuf = new char[bufsize];
+                in.seekg(flashSection->m_sectionOffset + flashMeta.m_image_offset);
+                in.read(mBuf, bufsize);
+            } else {
+                std::cout << "Doesn't find FLASH section in "<< file << ", try MCS section" << std::endl;
+                // Obtain MCS section header.
+                const axlf_section_header* mcsSection = xclbin::get_axlf_section(ap, MCS);
+                if (mcsSection == nullptr)
+                {
+                    this->setstate(failbit);
+                    std::cout << "Can't find MCS section in "<< file << std::endl;
+                    return;
+                }
+                // Load entire MCS section.
+                std::shared_ptr<char> mcsbuf(new char[mcsSection->m_sectionSize]);
+                in.seekg(mcsSection->m_sectionOffset);
+                in.read(mcsbuf.get(), mcsSection->m_sectionSize);
+                if (!in.good())
+                {
+                    this->setstate(failbit);
+                    std::cout << "Can't read MCS section from "<< file << std::endl;
+                    return;
+                }
+                const struct mcs *mcs = reinterpret_cast<const struct mcs *>(mcsbuf.get());
+                // Only two types of MCS supported today
+                unsigned mcsType = (type == MCS_FIRMWARE_PRIMARY) ? MCS_PRIMARY : MCS_SECONDARY;
+                const struct mcs_chunk *c = nullptr;
+                for (int8_t i = 0; i < mcs->m_count; i++)
+                {
+                    if (mcs->m_chunk[i].m_type == mcsType)
+                    {
+                        c = &mcs->m_chunk[i];
+                        break;
+                    }
+                }
+                if (c == nullptr)
+                {
+                    this->setstate(failbit);
+                    return;
+                }
+                // Load data into stream.
+                bufsize = c->m_size;
+                mBuf = new char[bufsize];
+                in.seekg(mcsSection->m_sectionOffset + c->m_offset);
+                in.read(mBuf, bufsize);
             }
-            if (c == nullptr)
-            {
-                this->setstate(failbit);
-                return;
-            }
-            // Load data into stream.
-            bufsize = c->m_size;
-            mBuf = new char[bufsize];
-            in.seekg(mcsSection->m_sectionOffset + c->m_offset);
-            in.read(mBuf, bufsize);
         }
     }
     else
