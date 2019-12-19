@@ -1,5 +1,5 @@
 /**
- *  Copyright (C) 2017 Xilinx, Inc. All rights reserved.
+ *  Copyright (C) 2017-2019 Xilinx, Inc. All rights reserved.
  *  Author: Sonal Santan
  *  Code copied verbatim from SDAccel xcldma kernel mode driver
  *
@@ -2329,7 +2329,9 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 		if (err)
 			goto done;
 	} else {
-		err = __icap_peer_xclbin_download(icap, xclbin);
+		if (!XOCL_DSA_IS_VERSAL(xdev))
+			err = __icap_peer_xclbin_download(icap, xclbin);
+
 		/*
 		 * xclbin download changes PR region, make sure next
 		 * ERT configure cmd will go through
@@ -2342,8 +2344,14 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 		icap_parse_bitstream_axlf_section(pdev, xclbin,
 			DEBUG_IP_LAYOUT);
 		icap_setup_clock_freq_topology(icap, xclbin);
-		/* not really doing verification, but just create subdevs */
-		(void) icap_verify_bitstream_axlf(pdev, xclbin);
+
+		if (!XOCL_DSA_IS_VERSAL(xdev)) {
+			/*
+			 * not really doing verification, but
+			 * just create subdevs
+			 */
+			(void) icap_verify_bitstream_axlf(pdev, xclbin);
+		}
 	}
 
 	icap_parse_bitstream_axlf_section(pdev, xclbin, PARTITION_METADATA);

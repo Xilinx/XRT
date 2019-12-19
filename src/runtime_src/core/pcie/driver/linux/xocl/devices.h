@@ -1138,6 +1138,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_XDMA,				\
 		 	XOCL_DEVINFO_SCHEDULER_VERSAL,			\
 		 	XOCL_DEVINFO_MAILBOX_USER_VERSAL,		\
+		 	XOCL_DEVINFO_ICAP_USER,				\
 		})
 
 #define USER_RES_AWS							\
