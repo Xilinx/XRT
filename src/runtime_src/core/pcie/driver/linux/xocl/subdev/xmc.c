@@ -2383,7 +2383,6 @@ static int cmc_access_ops(struct platform_device *pdev, int flags)
 	int err = 0;
 
 	if (flags == 1) {
-#if 1
 		/*
 		 * for grant access (flags = 1), we are looking for new
 		 * features, if no new features, skip the grant operation
@@ -2399,19 +2398,20 @@ static int cmc_access_ops(struct platform_device *pdev, int flags)
 			    NODE_GAPPING, err);
 			return err;
 		}
-#else
-		/* test only before xclbin has correct metadata */
-		val = 0x1001000; //hard code ep_gapping_demand_00
-#endif
 		/*
 		 * Dancing with CMC here:
 		 * 0-24 bit is address read from xclbin
 		 * 28 is flag for enable
 		 * 29 is flag for present
+		 * Note: seems that we should write all data at one time.
 		 */
-		WRITE_REG32(xmc, val & 0x01FFFFFF, XMC_HOST_NEW_FEATURE_REG1);
-		WRITE_REG32(xmc,
-		    (1<<28) | (1<<29), XMC_HOST_NEW_FEATURE_REG1);
+		val = (val & 0x01FFFFFF) | (1 << 28) | (1 << 29);
+		WRITE_REG32(xmc, val, XMC_HOST_NEW_FEATURE_REG1);
+		if (val != READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1)) {
+			xocl_xdev_info(xdev, "%s of New Feature Table expects: "
+			    "0x%x, but read back as: 0x%x", NODE_GAPPING, val,
+			    READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1));
+		}
 	}
 
 	grant = (u32)flags & 0x1;
