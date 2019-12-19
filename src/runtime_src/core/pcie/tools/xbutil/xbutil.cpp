@@ -568,8 +568,11 @@ int main(int argc, char *argv[])
     if ((cmd == xcldev::QUERY) || (cmd == xcldev::SCAN) || (cmd == xcldev::LIST))
         xcldev::baseDump(std::cout);
 
-    if (total == 0)
+    if (total == 0) {
+        if (cmd == xcldev::DUMP)
+            sensor_tree::json_dump( std::cout );
         return -ENODEV;
+    }
 
     if (cmd == xcldev::SCAN || cmd == xcldev::LIST) {
         print_pci_info(std::cout);
