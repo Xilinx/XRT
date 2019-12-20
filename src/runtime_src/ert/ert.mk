@@ -3,10 +3,10 @@ MB_HOME := $(RDI_DEVKITS_HOME)/lnx64/cross/RHEL6/microblaze/lin
 MB_PREFIX := mb-
 
 ifdef AWS_FPGA_REPO_DIR
-  ifndef XILINX_VITIS
-   $(error  Environment variable XILINX_VITIS should point to Vitis install area)
-  endif
-  MB_HOME := $(XILINX_VITIS)/gnu/microblaze/lin
+ifndef XILINX_VITIS
+$(error  Environment variable XILINX_VITIS should point to Vitis install area)
+endif
+MB_HOME := $(XILINX_VITIS)/gnu/microblaze/lin
 endif
 
 CFLAGS   := -c -Wall -mlittle-endian -mxl-soft-mul -mcpu=v10.0
