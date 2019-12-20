@@ -55,6 +55,7 @@ enum {
 
 #define	FLASH_TYPE_SPI	"spi"
 #define	FLASH_TYPE_QSPIPS	"qspi_ps"
+#define	FLASH_TYPE_QSPIPS_X4_SINGLE	"qspi_ps_x4_single"
 
 #define XOCL_SUBDEV_MAX_RES		32
 #define XOCL_SUBDEV_RES_NAME_LEN	64
@@ -1659,7 +1660,7 @@ struct xocl_subdev_map {
 		},					\
 	 })
 
-#define XOCL_DEVINFO_FLASH_MFG_U50				\
+#define XOCL_DEVINFO_FLASH_MFG_U50			\
 	{						\
 		XOCL_SUBDEV_FLASH,			\
 		XOCL_FLASH,				\
@@ -1667,7 +1668,7 @@ struct xocl_subdev_map {
 		ARRAY_SIZE(XOCL_RES_FLASH_MFG_U50),	\
 	}
 
-#define	XOCL_RES_XMC_MFG_U50					\
+#define	XOCL_RES_XMC_MFG_U50				\
 		((struct resource []) {			\
 			{				\
 			.start	= 0x140000,		\
@@ -1826,7 +1827,8 @@ struct xocl_subdev_map {
 		ARRAY_SIZE(XOCL_RES_FLASH_BLP),		\
 		.level = XOCL_SUBDEV_LEVEL_BLD,		\
 		.bar_idx = (char []){ 0 },		\
-		.priv_data = &XOCL_PRIV_FLASH_BLP	\
+		.priv_data = &XOCL_PRIV_FLASH_BLP,	\
+		.data_len = sizeof(struct xocl_flash_privdata) \
 	}
 
 #define XOCL_DEVINFO_FLASH_VSEC XOCL_DEVINFO_FLASH_BLP
@@ -2021,6 +2023,118 @@ struct xocl_subdev_map {
 		.p2p_bar_sz = 8, /* GB */				\
 	}
 
+#define XOCL_RES_FLASH_BLP_U25				\
+	((struct resource []) {				\
+		{					\
+			.start	= 0x40000,		\
+			.end	= 0x4ffff,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+	})
+
+//access flash through qspi_ps in u25
+#define XOCL_PRIV_FLASH_BLP_U25				\
+	((struct xocl_flash_privdata) {			\
+		0,					\
+		FLASH_TYPE_QSPIPS_X4_SINGLE,		\
+	 })
+
+#define XOCL_DEVINFO_FLASH_BLP_U25			\
+	{						\
+		XOCL_SUBDEV_FLASH,			\
+		XOCL_FLASH,				\
+		XOCL_RES_FLASH_BLP_U25,			\
+		ARRAY_SIZE(XOCL_RES_FLASH_BLP_U25),	\
+		.level = XOCL_SUBDEV_LEVEL_BLD,		\
+		.bar_idx = (char []){ 0 },		\
+		.priv_data = &XOCL_PRIV_FLASH_BLP_U25,	\
+		.data_len = sizeof(struct xocl_flash_privdata) \
+	}
+
+#define XOCL_RES_FEATURE_ROM_U25			\
+	((struct resource []) {				\
+	 	{					\
+	 		.name = "uuid",			\
+	 		.start = 0x300000,		\
+	 		.end = 0x300fff,		\
+	 		.flags = IORESOURCE_MEM,	\
+	 	},					\
+	 })
+
+#define	XOCL_DEVINFO_FEATURE_ROM_U25			\
+	{						\
+		XOCL_SUBDEV_FEATURE_ROM,		\
+		XOCL_FEATURE_ROM,			\
+		XOCL_RES_FEATURE_ROM_U25,		\
+		ARRAY_SIZE(XOCL_RES_FEATURE_ROM_U25),	\
+	}
+
+#define MGMT_RES_U25							\
+	((struct xocl_subdev_info []) {					\
+	 	XOCL_DEVINFO_FEATURE_ROM_U25,				\
+	 	XOCL_DEVINFO_FLASH_BLP_U25,				\
+		XOCL_DEVINFO_FMGR,      				\
+	})
+
+#define	XOCL_BOARD_MGMT_U25						\
+	(struct xocl_board_private) {					\
+		.flags		= XOCL_DSAFLAG_DYNAMIC_IP,		\
+		.subdev_info	= MGMT_RES_U25,				\
+		.subdev_num = ARRAY_SIZE(MGMT_RES_U25),			\
+		.flash_type = FLASH_TYPE_QSPIPS_X4_SINGLE,		\
+	}
+
+#define XOCL_DEVINFO_MAILBOX_USER_U25 	XOCL_DEVINFO_MAILBOX_USER_U50
+#define USER_RES_U25							\
+		((struct xocl_subdev_info []) {				\
+	 		XOCL_DEVINFO_FEATURE_ROM_USER_DYN,		\
+		 	XOCL_DEVINFO_MAILBOX_USER_U25,			\
+		 	XOCL_DEVINFO_SCHEDULER_DYN,			\
+		 	XOCL_DEVINFO_ICAP_USER,				\
+		 	XOCL_DEVINFO_XMC_USER,				\
+			XOCL_DEVINFO_AF_USER,				\
+		})
+
+#define	XOCL_BOARD_USER_U25						\
+	(struct xocl_board_private) {					\
+		.flags		= XOCL_DSAFLAG_DYNAMIC_IP |		\
+				XOCL_DSAFLAG_MB_SCHE_OFF,		\
+		.subdev_info	= USER_RES_U25,				\
+		.subdev_num = ARRAY_SIZE(USER_RES_U25),			\
+		.flash_type = FLASH_TYPE_QSPIPS_X4_SINGLE		\
+	}
+
+#define XOCL_RES_FLASH_MFG_U25				\
+	((struct resource []) {				\
+		{					\
+			.start	= 0x40000,		\
+			.end	= 0x4ffff,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+	})
+
+#define XOCL_DEVINFO_FLASH_MFG_U25			\
+	{						\
+		XOCL_SUBDEV_FLASH,			\
+		XOCL_FLASH,				\
+		XOCL_RES_FLASH_MFG_U25,			\
+		ARRAY_SIZE(XOCL_RES_FLASH_MFG_U25),	\
+	}
+
+#define MFG_RES_U25							\
+	((struct xocl_subdev_info []) {					\
+	 	XOCL_DEVINFO_FLASH_MFG_U25,				\
+	 	/*XOCL_DEVINFO_XMC_MFG_U25,*/				\
+	 })
+
+#define	XOCL_BOARD_XBB_MFG_U25						\
+	(struct xocl_board_private) {					\
+		.flags = XOCL_DSAFLAG_MFG,				\
+		.board_name = "u25",					\
+		.subdev_info	= MFG_RES_U25,				\
+		.subdev_num = ARRAY_SIZE(MFG_RES_U25),			\
+		.flash_type = FLASH_TYPE_QSPIPS_X4_SINGLE,		\
+	}
 
 #define	XOCL_MGMT_PCI_IDS						\
 	{ XOCL_PCI_DEVID(0x10EE, 0x4A47, PCI_ANY_ID, MGMT_DEFAULT) },	\
@@ -2063,6 +2177,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0x500C, PCI_ANY_ID, MGMT_XBB_DSA52_U280) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5020, PCI_ANY_ID, MGMT_U50) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5028, PCI_ANY_ID, MGMT_VERSAL) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x5050, PCI_ANY_ID, MGMT_U25) },	\
 	{ XOCL_PCI_DEVID(0x13FE, 0x006C, PCI_ANY_ID, MGMT_6A8F) },	\
 	{ XOCL_PCI_DEVID(0x13FE, 0x0078, PCI_ANY_ID, MGMT_XBB_DSA52) },  \
 	{ XOCL_PCI_DEVID(0x10EE, 0xE987, PCI_ANY_ID, XBB_MFG("samsung")) },\
@@ -2071,6 +2186,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0xD008, PCI_ANY_ID, XBB_MFG("u280-es1")) }, \
 	{ XOCL_PCI_DEVID(0x10EE, 0xD00C, PCI_ANY_ID, XBB_MFG("u280")) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0xD020, PCI_ANY_ID, XBB_MFG_U50) }, \
+	{ XOCL_PCI_DEVID(0x10EE, 0xD050, PCI_ANY_ID, XBB_MFG_U25) }, \
 	{ XOCL_PCI_DEVID(0x10EE, 0xEB10, PCI_ANY_ID, XBB_MFG("twitch")) }, \
 	{ XOCL_PCI_DEVID(0x13FE, 0x806C, PCI_ANY_ID, XBB_MFG("advantech")) }
 
@@ -2107,6 +2223,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0x5009, PCI_ANY_ID, USER_DSA52_U280) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x500D, PCI_ANY_ID, USER_DSA52_U280) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5021, PCI_ANY_ID, USER_U50) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x5051, PCI_ANY_ID, USER_U25) },	\
 	{ XOCL_PCI_DEVID(0x13FE, 0x0065, PCI_ANY_ID, USER_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x13FE, 0x0077, PCI_ANY_ID, USER_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x1D0F, 0x1042, PCI_ANY_ID, USER_AWS) },	\
@@ -2119,6 +2236,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0x501D, PCI_ANY_ID, USER_QDMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5031, PCI_ANY_ID, USER_SMARTN) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5029, PCI_ANY_ID, USER_XDMA_VERSAL) }
+
 #define XOCL_DSA_VBNV_MAP						\
 	{ 0x10EE, 0x5001, PCI_ANY_ID, "xilinx_u200_xdma_201820_1",	\
 		&XOCL_BOARD_USER_XDMA },				\
@@ -2134,9 +2252,9 @@ struct xocl_subdev_map {
 		&XOCL_BOARD_USER_DYNAMIC_IP, XOCL_DSAMAP_DYNAMIC },	\
 	{ 0x10EE, 0x5000, PCI_ANY_ID, "xilinx_u200_xdma_201920_1",	\
 		&XOCL_BOARD_MGMT_DYNAMIC_IP, XOCL_DSAMAP_DYNAMIC },	\
-	{ 0x10EE, 0x5020, PCI_ANY_ID, "xilinx_u50",		\
+	{ 0x10EE, 0x5020, PCI_ANY_ID, "xilinx_u50",			\
 		&XOCL_BOARD_MGMT_U50_DYNAMIC_IP, XOCL_DSAMAP_DYNAMIC },	\
-	{ 0x10EE, 0x5021, PCI_ANY_ID, "xilinx_u50",		\
+	{ 0x10EE, 0x5021, PCI_ANY_ID, "xilinx_u50",			\
 		&XOCL_BOARD_USER_U50_DYNAMIC_IP, XOCL_DSAMAP_DYNAMIC }	\
 
 #endif

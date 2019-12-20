@@ -109,6 +109,8 @@ static void *flash_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 
 	if (!fdt_node_check_compatible(blob, node, "axi_quad_spi"))
 		flash_type = FLASH_TYPE_SPI;
+	else if (!fdt_node_check_compatible(blob, node, "axi_quad_qspi_x4_single"))
+		flash_type = FLASH_TYPE_QSPIPS_X4_SINGLE;
 	else {
 		xocl_xdev_err(xdev_hdl, "UNKNOWN flash type");
 		return NULL;
@@ -323,7 +325,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 			RESNAME_GAPPING,
 			NULL
 		},
-		1,
+		6,
 		0,
 		NULL,
 		devinfo_cb_setlevel,

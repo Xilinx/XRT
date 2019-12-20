@@ -58,6 +58,7 @@ private:
     uint8_t mReadBuffer[PAGE_8K];
     uint32_t mTxBytes;
     uint32_t mRxBytes;
+    uint64_t flash_base;
 
     /* QSPI configure */
     uint32_t mConnectMode; //Single, Stacked and Parallel mode
