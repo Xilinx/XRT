@@ -1,5 +1,4 @@
-if ((EXISTS /tools/batonroot/rodin/devkits) AND (${XRT_NATIVE_BUILD} STREQUAL "yes") AND (${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "x86_64"))
-
+if (((EXISTS /tools/batonroot/rodin/devkits) AND (${XRT_NATIVE_BUILD} STREQUAL "yes") AND (${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "x86_64")) OR ((DEFINED ENV{AWS_FPGA_REPO_DIR}) AND (EXISTS $ENV{XILINX_VITIS}/gnu/microblaze/lin)))
 message("-- Rodin devkits found, preparing ERT build")
 
 set(ERT_INSTALL_PREFIX "/opt/xilinx/xrt/share/fw")
