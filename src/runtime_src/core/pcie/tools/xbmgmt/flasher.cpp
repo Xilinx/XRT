@@ -122,12 +122,10 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
         {
             std::cout << "ERROR: QSPIPS mode does not support reverting to MFG." << std::endl;
         }
-        else if(secondary != nullptr)
-        {
-            std::cout << "ERROR: QSPIPS mode does not support two mcs files." << std::endl;
-        }
         else
         {
+	    if(secondary != nullptr)
+            	std::cout << "Warning: QSPIPS mode does not support secondary file." << std::endl;
             retVal = xqspi_ps.xclUpgradeFirmware(*primary);
         }
         break;

@@ -1216,7 +1216,8 @@ static int flash_remove(struct platform_device *pdev)
 	platform_set_drvdata(pdev, NULL);
 
 	sysfs_destroy_flash(flash);
-	vfree(flash->io_buf);
+	if (flash->io_buf)
+		vfree(flash->io_buf);
 
 	if (flash->qspi_regs)
 		iounmap(flash->qspi_regs);
@@ -1247,6 +1248,14 @@ static int flash_probe(struct platform_device *pdev)
 		FLASH_ERR(flash, "empty resource");
 		goto error;
 	}
+
+	/*
+	 * This driver only supports spi. For all flash other than spi,
+	 * just create sysfs. 
+	 */
+	if (flash->priv_data && strcmp(flash->priv_data->flash_type, FLASH_TYPE_SPI))
+		goto done;
+
 	flash->qspi_regs = ioremap_nocache(flash->res->start,
 		flash->res->end - flash->res->start + 1);
 	if (!flash->qspi_regs) {
@@ -1265,6 +1274,7 @@ static int flash_probe(struct platform_device *pdev)
 		goto error;
 	}
 
+done:	
 	ret = sysfs_create_flash(flash);
 	if (ret)
 		goto error;

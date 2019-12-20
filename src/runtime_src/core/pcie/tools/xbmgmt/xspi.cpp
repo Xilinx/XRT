@@ -285,6 +285,8 @@ XSPI_Flasher::XSPI_Flasher(std::shared_ptr<pcidev::pci_device> dev)
         mFlashDev = fdopen(mDev->open("flash", O_RDWR), "r+");
         if (mFlashDev == NULL)
             std::cout << "Failed to open flash device on card" << std::endl;
+    } else {
+        mFlashDev = nullptr;
     }
 }
 
