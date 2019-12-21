@@ -276,7 +276,7 @@ invalid_query_value()
  */
 template <typename QueryType>
 static QueryType
-query_device(const std::shared_ptr<device>& device, device::QueryRequest qr)
+query_device(const device* device, device::QueryRequest qr)
 {
   boost::any ret = invalid_query_value<QueryType>();
   try {
@@ -285,6 +285,13 @@ query_device(const std::shared_ptr<device>& device, device::QueryRequest qr)
   catch (const no_such_query&) {
   }
   return boost::any_cast<QueryType>(ret);
+}
+
+template <typename QueryType>
+static QueryType
+query_device(const std::shared_ptr<device>& device, device::QueryRequest qr)
+{
+  return query_device<QueryType>(device.get(),qr);
 }
 
 } // xrt_core
