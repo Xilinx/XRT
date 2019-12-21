@@ -2418,35 +2418,28 @@ static int cmc_access_ops(struct platform_device *pdev, int flags)
 	int err = 0;
 
 	if (flags == 1) {
+		uint64_t addr;
 		/*
 		 * for grant access (flags = 1), we are looking for new
 		 * features, if no new features, skip the grant operation
 		 */
-		err = xocl_iores_read32(xdev, XOCL_SUBDEV_LEVEL_URP,
-		    IORES_GAPPING, 0x0, &val);
-		if (err == -ENODEV) {
+		addr = xocl_iores_get_offset(xdev, IORES_GAPPING);
+		if (addr == (uint64_t)-1) {
 			xocl_xdev_info(xdev, "No %s resource, skip.",
 			    NODE_GAPPING);
 			return 0;
-		} else if (err) {
-			xocl_xdev_err(xdev, "Read %s error %d.",
-			    NODE_GAPPING, err);
-			return err;
 		}
 		/*
 		 * Dancing with CMC here:
 		 * 0-24 bit is address read from xclbin
-		 * 28 is flag for enable
-		 * 29 is flag for present
+		 * 28 is flag for enable, set to 0x0
+		 * 29 is flag for present, set to 0x1
 		 * Note: seems that we should write all data at one time.
 		 */
-		val = (val & 0x01FFFFFF) | (1 << 28) | (1 << 29);
+		val = (addr & 0x01FFFFFF) | (1 << 29);
 		WRITE_REG32(xmc, val, XMC_HOST_NEW_FEATURE_REG1);
-		if (val != READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1)) {
-			xocl_xdev_info(xdev, "%s of New Feature Table expects: "
-			    "0x%x, but read back as: 0x%x", NODE_GAPPING, val,
-			    READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1));
-		}
+		xocl_xdev_info(xdev, "%s is 0x%llx, set New Feature Table to 0x%x\n",
+		    NODE_GAPPING, addr, val);
 	}
 
 	grant = (u32)flags & 0x1;
