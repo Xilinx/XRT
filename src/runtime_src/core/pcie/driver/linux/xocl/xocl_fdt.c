@@ -325,7 +325,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 			RESNAME_GAPPING,
 			NULL
 		},
-		6,
+		1,
 		0,
 		NULL,
 		devinfo_cb_setlevel,
