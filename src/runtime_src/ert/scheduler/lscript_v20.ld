@@ -4,14 +4,14 @@
 /*                                                                 */
 /* Version: 2019.2                                                 */
 /*                                                                 */
-/* Copyright (c) 2010-2016 Xilinx, Inc.  All rights reserved.      */
+/* Copyright (c) 2010-2019 Xilinx, Inc.  All rights reserved.      */
 /*                                                                 */
 /* Description : MicroBlaze Linker Script                           */
 /*                                                                 */
 /*******************************************************************/
 
 _STACK_SIZE = DEFINED(_STACK_SIZE) ? _STACK_SIZE : 0x400;
-_HEAP_SIZE = DEFINED(_HEAP_SIZE) ? _HEAP_SIZE : 0x800;
+_HEAP_SIZE = DEFINED(_HEAP_SIZE) ? _HEAP_SIZE : 0x400;
 
 /* Define Memories in the system */
 
