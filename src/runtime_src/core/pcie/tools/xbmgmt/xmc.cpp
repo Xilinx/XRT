@@ -72,18 +72,32 @@ XMC_Flasher::XMC_Flasher(std::shared_ptr<pcidev::pci_device> dev)
     }
 
     mPktBufOffset = readReg(XMC_REG_OFF_PKT_OFFSET);
+
+    if (std::getenv("FLASH_VIA_DRIVER")) {
+        mXmcDev = fdopen(mDev->open("xmc", O_RDWR), "r+");
+        if (mXmcDev == nullptr)
+            std::cout << "Failed to open XMC device on card" << std::endl;
+    } else {
+        mXmcDev = nullptr;
+    }
+
 nosup:
     return;
 }
 
 XMC_Flasher::~XMC_Flasher()
 {
+    if (mXmcDev)
+        std::fclose(mXmcDev);
 }
 
 /*
  * xclUpgradeFirmware
  */
 int XMC_Flasher::xclUpgradeFirmware(std::istream& tiTxtStream) {
+    if (mXmcDev)
+        return xclUpgradeFirmwareDrv(tiTxtStream);
+
     std::string startAddress;
     ELARecord record;
     bool endRecordFound = false;
@@ -496,4 +510,111 @@ bool XMC_Flasher::isBMCReady()
             << BMC_MODE() << std::endl;
     }
     return bmcReady;
+}
+
+static void tiTxtStreamToBin(std::istream& tiTxtStream,
+    unsigned int& currentAddr, std::vector<unsigned char>& buf)
+{
+    // offset to write to XMC device to set SC jump address.
+    const unsigned int jumpOffset = 0xffffffff;
+    // SC jump address is hard-coded.
+    const unsigned int jumpAddr = 0x201;
+    bool sectionEnd = false;
+
+    buf.clear();
+
+    while (!sectionEnd) {
+        std::string line;
+        std::string sectionEndChar("@qQ"); // any char will mark end of section
+
+        // Check if we're done with current section.
+        int nextChar = tiTxtStream.peek();
+        sectionEnd = (
+            (sectionEndChar.find(nextChar) != std::string::npos && !buf.empty())
+            || (nextChar == EOF));
+        if (sectionEnd)
+            break;
+
+        // Skip empty lines.
+        std::getline(tiTxtStream, line);
+        if (line.size() == 0)
+            continue;
+
+        switch (line[0]) {
+        case '@':
+            // Address line
+            currentAddr = std::stoi(line.substr(1), NULL , 16);
+            break;
+        case 'q':
+        case 'Q':
+        {
+            // End of image, return jump section.
+            currentAddr = jumpOffset;
+            auto *tmp = reinterpret_cast<const unsigned char *>(&jumpAddr);
+            for (unsigned int i = 0; i < sizeof(jumpAddr); i++)
+                buf.push_back(tmp[i]);
+            sectionEnd = true;
+            break;
+        }
+        default:
+            // Data line
+            std::stringstream ss(line);
+            std::string token;
+            while (std::getline(ss, token, ' '))
+                buf.push_back(std::stoi(token, NULL, 16));
+            break;
+        }
+    }
+}
+
+static int writeImage(std::FILE *xmcDev,
+    unsigned int addr, std::vector<unsigned char>& buf)
+{
+    int ret = 0;
+    size_t len = 0;
+    const size_t max_write = 4000; // Max size per write
+
+    ret = std::fseek(xmcDev, addr, SEEK_SET);
+    if (ret)
+        return ret;
+
+    // Write SC image to xmc and print '.' for each write as progress indicator
+    for (size_t i = 0; ret == 0 && i < buf.size(); i += len) {
+        len = std::min(max_write, buf.size() - i);
+
+        std::cout << "." << std::flush;
+
+        std::size_t s = std::fwrite(buf.data() + i, 1, len, xmcDev);
+        if (s != len)
+            ret = -ferror(xmcDev);
+    }
+    return ret;
+}
+
+int XMC_Flasher::xclUpgradeFirmwareDrv(std::istream& tiTxtStream)
+{
+    int ret = 0;
+
+    // Parse Ti-TXT data and write each contiguous chunk to XMC.
+    std::vector<unsigned char> buf;
+    unsigned int curAddr = UINT_MAX;
+    while (ret == 0) {
+        tiTxtStreamToBin(tiTxtStream, curAddr, buf);
+        if (buf.empty())
+            break;
+#ifdef  XMC_DEBUG
+        std::cout << "Extracted " << buf.size() << "B firmware image @0x"
+            << std::hex << curAddr << std::dec << std::endl;
+#endif
+        ret = writeImage(mXmcDev, curAddr, buf);
+    }
+    std::cout << std::endl;
+    if (ret) {
+        std::cout << "ERROR: Failed to update SC firmware, err=" << ret
+            << std::endl;
+        std::cout << "ERROR: Please refer to dmesg for more details"
+            << std::endl;
+    }
+
+    return ret;
 }
