@@ -47,7 +47,7 @@ public:
 
 private:
     std::shared_ptr<pcidev::pci_device> mDev;
-    std::FILE *mFlashDev;
+    std::FILE *mFlashDev = nullptr;
 
     unsigned long long flash_base;
     int xclTestXSpi(int device_index);

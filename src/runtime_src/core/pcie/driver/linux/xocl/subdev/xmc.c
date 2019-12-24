@@ -25,14 +25,16 @@
 #include "mailbox_proto.h"
 #include "xclfeatures.h"
 
-/* Retry is set to 15s for XMC */
+/* Retry is set to 15s for XMC and also for SC */
 #define	MAX_XMC_RETRY			150
 /* Retry is set to 1s for ERT */
 #define	MAX_ERT_RETRY			10
-/* Retry is set to 5s for XMC mailbox */
-#define	MAX_XMC_MBX_RETRY		50
 /* 100ms */
 #define	RETRY_INTERVAL			100
+
+#define	MBX_RETRY_INTERVAL		10 /* us */
+/* Retry is set to 2s for XMC mailbox */
+#define	MAX_XMC_MBX_RETRY		(200 * 1000)
 
 #define	MAX_IMAGE_LEN			0x20000
 
@@ -255,9 +257,23 @@ struct xmc_pkt_hdr {
 #define XMC_BDINFO_ENTRY_LEN_MAX 	256
 #define XMC_BDINFO_ENTRY_LEN		32
 
+struct xmc_pkt_image_end_op {
+	u32 BSL_jump_addr;
+};
+
+struct xmc_pkt_sector_start_op {
+	u32 addr;
+	u32 size;
+	u8 data[1];
+};
+
 struct xmc_pkt {
 	struct xmc_pkt_hdr hdr;
-	u32 data[XMC_PKT_MAX_PAYLOAD_SZ];
+	union {
+		u32 data[XMC_PKT_MAX_PAYLOAD_SZ];
+		struct xmc_pkt_image_end_op image_end;
+		struct xmc_pkt_sector_start_op sector_start;
+	};
 };
 
 enum board_info_key {
@@ -320,6 +336,9 @@ struct xocl_xmc {
 
 	bool			sysfs_created;
 	bool			mini_sysfs_created;
+
+	bool			opened;
+	bool			sc_fw_erased;
 };
 
 
@@ -775,7 +794,8 @@ static void xmc_bdinfo(struct platform_device *pdev, enum data_kind kind,
 
 		switch (kind) {
 		case SER_NUM:
-			memcpy(buf, bdinfo->serial_num, XMC_BDINFO_ENTRY_LEN_MAX);
+			memcpy(buf, bdinfo->serial_num,
+				XMC_BDINFO_ENTRY_LEN_MAX);
 			break;
 		case MAC_ADDR0:
 			memcpy(buf, bdinfo->mac_addr0, XMC_BDINFO_ENTRY_LEN);
@@ -823,7 +843,8 @@ static bool autonomous_xmc(struct platform_device *pdev)
 	return core->priv.flags & XOCL_DSAFLAG_SMARTN;
 }
 
-static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind, void *buf)
+static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind,
+	void *buf)
 {
 	struct xcl_sensor *sensors = NULL;
 	struct xcl_board_info *bdinfo = NULL;
@@ -1483,14 +1504,15 @@ static ssize_t reg_base_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(reg_base);
 
-#define	XMC_BDINFO_STRING_SYSFS_NODE(name)		\
-	static ssize_t name##_show(struct device *dev,		\
+#define	XMC_BDINFO_STRING_SYSFS_NODE(name)				\
+	static ssize_t name##_show(struct device *dev,			\
 		struct device_attribute *attr, char *buf) {		\
-		struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev)); \
+		struct xocl_xmc *xmc =					\
+			platform_get_drvdata(to_platform_device(dev));	\
 		mutex_lock(&xmc->mbx_lock);				\
-		xmc_load_board_info(xmc);			\
+		xmc_load_board_info(xmc);				\
 		mutex_unlock(&xmc->mbx_lock);				\
-		return sprintf(buf, "%s\n", xmc->name);		\
+		return sprintf(buf, "%s\n", xmc->name);			\
 	}								\
 	static DEVICE_ATTR_RO(name);					\
 
@@ -1504,14 +1526,15 @@ XMC_BDINFO_STRING_SYSFS_NODE(bd_name)
 XMC_BDINFO_STRING_SYSFS_NODE(bmc_ver)
 XMC_BDINFO_STRING_SYSFS_NODE(exp_bmc_ver)
 
-#define	XMC_BDINFO_STAT_SYSFS_NODE(name)		\
-	static ssize_t name##_show(struct device *dev,		\
+#define	XMC_BDINFO_STAT_SYSFS_NODE(name)				\
+	static ssize_t name##_show(struct device *dev,			\
 		struct device_attribute *attr, char *buf) {		\
-		struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev)); \
+		struct xocl_xmc *xmc =					\
+			platform_get_drvdata(to_platform_device(dev));	\
 		mutex_lock(&xmc->mbx_lock);				\
 		xmc_load_board_info(xmc);				\
 		mutex_unlock(&xmc->mbx_lock);				\
-		return sprintf(buf, "%d\n", xmc->name);		\
+		return sprintf(buf, "%d\n", xmc->name);			\
 	}								\
 	static DEVICE_ATTR_RO(name);					\
 
@@ -1519,14 +1542,15 @@ XMC_BDINFO_STAT_SYSFS_NODE(max_power);
 XMC_BDINFO_STAT_SYSFS_NODE(config_mode);
 
 
-#define	XMC_BDINFO_CHAR_SYSFS_NODE(name)		\
-	static ssize_t name##_show(struct device *dev,		\
+#define	XMC_BDINFO_CHAR_SYSFS_NODE(name)				\
+	static ssize_t name##_show(struct device *dev,			\
 		struct device_attribute *attr, char *buf) {		\
-		struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev)); \
+		struct xocl_xmc *xmc =					\
+			platform_get_drvdata(to_platform_device(dev));	\
 		mutex_lock(&xmc->mbx_lock);				\
 		xmc_load_board_info(xmc);				\
 		mutex_unlock(&xmc->mbx_lock);				\
-		return sprintf(buf, "%c\n", xmc->name);		\
+		return sprintf(buf, "%c\n", xmc->name);			\
 	}								\
 	static DEVICE_ATTR_RO(name);					\
 
@@ -1557,7 +1581,7 @@ static struct attribute *xmc_attrs[] = {
 
 static struct attribute *xmc_mini_attrs[] = {
 	&dev_attr_reg_base.attr,
-	&dev_attr_status.attr,						\
+	&dev_attr_status.attr,
 	NULL,
 };
 
@@ -1575,7 +1599,8 @@ static ssize_t read_temp_by_mem_topology(struct file *filp,
 	uint32_t temp[MAX_M_COUNT] = {0};
 	xdev_handle_t xdev = xocl_get_xdev(xmc->pdev);
 
-	err = xocl_icap_get_xclbin_metadata(xdev, MEMTOPO_AXLF, (void **)&memtopo);
+	err = xocl_icap_get_xclbin_metadata(xdev, MEMTOPO_AXLF,
+		(void **)&memtopo);
 	if (err)
 		return nread;
 
@@ -2093,7 +2118,8 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 		if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0))) {
 			reg_val = READ_CQ(xmc, 0);
 			if (!(reg_val & ERT_EXIT_ACK)) {
-				xocl_info(&xmc->pdev->dev, "Stopping scheduler...");
+				xocl_info(&xmc->pdev->dev,
+					"Stopping scheduler...");
 				WRITE_CQ(xmc, ERT_EXIT_CMD, 0);
 			}
 		}
@@ -2228,7 +2254,8 @@ static int load_xmc(struct xocl_xmc *xmc)
 		xocl_info(&xmc->pdev->dev, "Waiting for XMC to finish init...");
 		retry = 0;
 		while (retry++ < MAX_XMC_RETRY &&
-			!(READ_REG32(xmc, XMC_STATUS_REG) & STATUS_MASK_INIT_DONE))
+			!(READ_REG32(xmc, XMC_STATUS_REG) &
+			STATUS_MASK_INIT_DONE))
 			msleep(RETRY_INTERVAL);
 		if (retry >= MAX_XMC_RETRY) {
 			xocl_err(&xmc->pdev->dev,
@@ -2487,10 +2514,8 @@ static int xmc_remove(struct platform_device *pdev)
 	if (!xmc)
 		return 0;
 
-	if (xmc->mgmt_binary)
-		devm_kfree(&pdev->dev, xmc->mgmt_binary);
-	if (xmc->sche_binary)
-		devm_kfree(&pdev->dev, xmc->sche_binary);
+	vfree(xmc->mgmt_binary);
+	vfree(xmc->sche_binary);
 
 	if (xmc->mini_sysfs_created)
 		mgmt_sysfs_destroy_xmc_mini(pdev);
@@ -2517,12 +2542,12 @@ end:
 	mutex_destroy(&xmc->mbx_lock);
 
 	platform_set_drvdata(pdev, NULL);
-	devm_kfree(&pdev->dev, xmc);
+	xocl_drvinst_free(xmc);
 	return 0;
 }
 
-static const char *xmc_get_board_info(uint32_t *bdinfo_raw, uint32_t bdinfo_raw_sz,
-	enum board_info_key key, size_t *len)
+static const char *xmc_get_board_info(uint32_t *bdinfo_raw,
+	uint32_t bdinfo_raw_sz, enum board_info_key key, size_t *len)
 {
 	char *buf, *p;
 	u32 sz;
@@ -2554,7 +2579,7 @@ static int xmc_probe(struct platform_device *pdev)
 	void *xdev_hdl;
 	int i, err;
 
-	xmc = devm_kzalloc(&pdev->dev, sizeof(*xmc), GFP_KERNEL);
+	xmc = xocl_drvinst_alloc(&pdev->dev, sizeof(*xmc));
 	if (!xmc) {
 		xocl_err(&pdev->dev, "out of memory");
 		return -ENOMEM;
@@ -2601,7 +2626,8 @@ static int xmc_probe(struct platform_device *pdev)
 	}
 
 	xdev_hdl = xocl_get_xdev(pdev);
-	if (xocl_mb_mgmt_on(xdev_hdl) || xocl_mb_sched_on(xdev_hdl) || autonomous_xmc(pdev)) {
+	if (xocl_mb_mgmt_on(xdev_hdl) || xocl_mb_sched_on(xdev_hdl) ||
+		autonomous_xmc(pdev)) {
 		xocl_info(&pdev->dev, "Microblaze is supported.");
 		xmc->enabled = true;
 	} else {
@@ -2646,8 +2672,13 @@ failed:
 	return err;
 }
 
+static const struct file_operations xmc_fops;
 struct xocl_drv_private	xmc_priv = {
 	.ops = &xmc_ops,
+#if PF == MGMTPF
+	.fops = &xmc_fops,
+#endif
+	.dev = -1,
 };
 
 struct platform_device_id xmc_id_table[] = {
@@ -2666,11 +2697,23 @@ static struct platform_driver	xmc_driver = {
 
 int __init xocl_init_xmc(void)
 {
-	return platform_driver_register(&xmc_driver);
+	int err = alloc_chrdev_region(&xmc_priv.dev, 0, XOCL_MAX_DEVICES,
+			XOCL_XMC);
+	if (err)
+		return err;
+
+	err = platform_driver_register(&xmc_driver);
+	if (err) {
+		unregister_chrdev_region(xmc_priv.dev, XOCL_MAX_DEVICES);
+		return err;
+	}
+
+	return 0;
 }
 
 void xocl_fini_xmc(void)
 {
+	unregister_chrdev_region(xmc_priv.dev, XOCL_MAX_DEVICES);
 	platform_driver_unregister(&xmc_driver);
 }
 
@@ -2683,7 +2726,7 @@ static int xmc_mailbox_wait(struct xocl_xmc *xmc)
 
 	safe_read32(xmc, XMC_CONTROL_REG, &val);
 	while ((retry-- > 0) && (val & XMC_PKT_OWNER_MASK)) {
-		msleep(RETRY_INTERVAL);
+		udelay(MBX_RETRY_INTERVAL);
 		safe_read32(xmc, XMC_CONTROL_REG, &val);
 	}
 
@@ -2700,7 +2743,7 @@ static int xmc_mailbox_wait(struct xocl_xmc *xmc)
 		xocl_err(&xmc->pdev->dev, "XMC packet error: %d\n", val);
 		safe_read32(xmc, XMC_CONTROL_REG, &ctrl_val);
 		safe_write32(xmc, XMC_CONTROL_REG, ctrl_val | XMC_CTRL_ERR_CLR);
-		return -EINVAL;
+		return -EIO;
 	}
 
 	return 0;
@@ -2715,7 +2758,13 @@ static int xmc_send_pkt(struct xocl_xmc *xmc)
 	u32 val;
 
 	BUG_ON(!mutex_is_locked(&xmc->mbx_lock));
-
+#ifdef	MBX_PKT_DEBUG
+	xocl_info(&xmc->pdev->dev, "Sending XMC packet: %d DWORDS...", len);
+	xocl_info(&xmc->pdev->dev, "opcode=%d payload_sz=0x%x (0x%x)",
+		xmc->mbx_pkt.hdr.op, xmc->mbx_pkt.hdr.payload_sz, pkt[0]);
+	for (i = 0; i < 16; i++)
+		printk(KERN_CONT "%02x ", *((u8 *)(xmc->mbx_pkt.data) + i));
+#endif
 	/* Push pkt data to mailbox on HW. */
 	for (i = 0; i < len; i++)
 		safe_write32(xmc, xmc->mbx_offset + i * sizeof(u32), pkt[i]);
@@ -2726,6 +2775,7 @@ static int xmc_send_pkt(struct xocl_xmc *xmc)
 
 	/* Make sure HW is done with the mailbox buffer. */
 	ret = xmc_mailbox_wait(xmc);
+
 	return ret;
 }
 
@@ -2768,7 +2818,7 @@ static bool is_xmc_ready(struct xocl_xmc *xmc)
 	return false;
 }
 
-static bool is_sc_ready(struct xocl_xmc *xmc)
+static bool is_sc_ready(struct xocl_xmc *xmc, bool quiet)
 {
 	u32 val;
 
@@ -2780,7 +2830,8 @@ static bool is_sc_ready(struct xocl_xmc *xmc)
 	if (val == 0x1)
 		return true;
 
-	xocl_err(&xmc->pdev->dev, "SC is not ready, state=%d\n", val);
+	if (!quiet)
+		xocl_err(&xmc->pdev->dev, "SC is not ready, state=%d\n", val);
 	return false;
 }
 
@@ -2866,7 +2917,7 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 
 	if (XMC_PRIVILEGED(xmc)) {
 
-		if ((!is_xmc_ready(xmc) || !is_sc_ready(xmc)))
+		if ((!is_xmc_ready(xmc) || !is_sc_ready(xmc, false)))
 			return -EINVAL;
 
 		if (!xmc->mbx_offset)
@@ -2888,17 +2939,28 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 			return -ENOMEM;
 		memcpy(bdinfo_raw, xmc->mbx_pkt.data, bd_info_sz);
 
-		xmc_set_board_info(bdinfo_raw, bd_info_sz, BDINFO_SN, xmc->serial_num);
-		xmc_set_board_info(bdinfo_raw, bd_info_sz, BDINFO_MAC0, xmc->mac_addr0);
-		xmc_set_board_info(bdinfo_raw, bd_info_sz, BDINFO_MAC1, xmc->mac_addr1);
-		xmc_set_board_info(bdinfo_raw, bd_info_sz, BDINFO_MAC2, xmc->mac_addr2);
-		xmc_set_board_info(bdinfo_raw, bd_info_sz, BDINFO_MAC3, xmc->mac_addr3);
-		xmc_set_board_info(bdinfo_raw, bd_info_sz, BDINFO_REV, xmc->revision);
-		xmc_set_board_info(bdinfo_raw, bd_info_sz, BDINFO_NAME, xmc->bd_name);
-		xmc_set_board_info(bdinfo_raw, bd_info_sz, BDINFO_BMC_VER, xmc->bmc_ver);
-		xmc_set_board_info(bdinfo_raw, bd_info_sz, BDINFO_MAX_PWR, (char *)&xmc->max_power);
-		xmc_set_board_info(bdinfo_raw, bd_info_sz, BDINFO_FAN_PRESENCE, (char *)&xmc->fan_presence);
-		xmc_set_board_info(bdinfo_raw, bd_info_sz, BDINFO_CONFIG_MODE, (char *)&xmc->config_mode);
+		xmc_set_board_info(bdinfo_raw, bd_info_sz,
+			BDINFO_SN, xmc->serial_num);
+		xmc_set_board_info(bdinfo_raw, bd_info_sz,
+			BDINFO_MAC0, xmc->mac_addr0);
+		xmc_set_board_info(bdinfo_raw, bd_info_sz,
+			BDINFO_MAC1, xmc->mac_addr1);
+		xmc_set_board_info(bdinfo_raw, bd_info_sz,
+			BDINFO_MAC2, xmc->mac_addr2);
+		xmc_set_board_info(bdinfo_raw, bd_info_sz,
+			BDINFO_MAC3, xmc->mac_addr3);
+		xmc_set_board_info(bdinfo_raw, bd_info_sz,
+			BDINFO_REV, xmc->revision);
+		xmc_set_board_info(bdinfo_raw, bd_info_sz,
+			BDINFO_NAME, xmc->bd_name);
+		xmc_set_board_info(bdinfo_raw, bd_info_sz,
+			BDINFO_BMC_VER, xmc->bmc_ver);
+		xmc_set_board_info(bdinfo_raw, bd_info_sz,
+			BDINFO_MAX_PWR, (char *)&xmc->max_power);
+		xmc_set_board_info(bdinfo_raw, bd_info_sz,
+			BDINFO_FAN_PRESENCE, (char *)&xmc->fan_presence);
+		xmc_set_board_info(bdinfo_raw, bd_info_sz,
+			BDINFO_CONFIG_MODE, (char *)&xmc->config_mode);
 
 		tmp_str = (char *)xocl_icap_get_data(xdev, EXP_BMC_VER);
 		if (tmp_str) {
@@ -2943,3 +3005,180 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 	}
 	return 0;
 }
+
+static int
+xmc_erase_sc_firmware(struct xocl_xmc *xmc)
+{
+	BUG_ON(!mutex_is_locked(&xmc->mbx_lock));
+	memset(&xmc->mbx_pkt, 0, sizeof(xmc->mbx_pkt));
+	xmc->mbx_pkt.hdr.op = XPO_MSP432_ERASE_FW;
+	return xmc_send_pkt(xmc);
+}
+
+/*
+ * Write SC firmware image data at specified location.
+ */
+static ssize_t
+xmc_update_sc_firmware(struct file *file, const char __user *ubuf,
+	size_t n, loff_t *off)
+{
+	u32 jump_addr = 0;
+	struct xocl_xmc *xmc = file->private_data;
+	/* Special offset for writing SC's BSL jump address. */
+	const loff_t jump_offset = 0xffffffff;
+	ssize_t ret = 0;
+	u8 *kbuf;
+
+	xocl_info(&xmc->pdev->dev, "writing %ld bytes @0x%llx", n, *off);
+
+	if (n == 0 || n > jump_offset)
+		return -EINVAL;
+
+	kbuf = vmalloc(n);
+	if (kbuf == NULL)
+		return -ENOMEM;
+
+	if (copy_from_user(kbuf, ubuf, n)) {
+		ret = -EFAULT;
+		goto done;
+	}
+
+	mutex_lock(&xmc->mbx_lock);
+
+	if (!xmc->sc_fw_erased) {
+		ret = xmc_erase_sc_firmware(xmc);
+		if (ret) {
+			xocl_err(&xmc->pdev->dev, "can't erase SC firmware");
+			goto done;
+		}
+		xmc->sc_fw_erased = true;
+	}
+
+	memset(&xmc->mbx_pkt, 0, sizeof(xmc->mbx_pkt));
+	/*
+	 * Write to jump_offset will cause a reboot of SC and jump to address
+	 * that is passed in.
+	 */
+	if (*off == jump_offset) {
+		int retry = 0;
+
+		if (n < sizeof(jump_addr)) {
+			xocl_err(&xmc->pdev->dev, "invalid jump addr size");
+			ret = -EINVAL;
+			goto done;
+		}
+		jump_addr = *(u32 *)kbuf;
+		xocl_info(&xmc->pdev->dev, "SC jump addr is 0x%x", jump_addr);
+		xmc->mbx_pkt.hdr.op = XPO_MSP432_IMAGE_END;
+		xmc->mbx_pkt.hdr.payload_sz =
+			sizeof(struct xmc_pkt_image_end_op);
+		xmc->mbx_pkt.image_end.BSL_jump_addr = jump_addr;
+		ret = xmc_send_pkt(xmc);
+
+		/* Wait for SC to reboot */
+		while (retry++ < MAX_XMC_RETRY && !is_sc_ready(xmc, true))
+			msleep(RETRY_INTERVAL);
+		if (!is_sc_ready(xmc, false))
+			ret = -ETIMEDOUT;
+		/* Mark new SC firmware is installed */
+		xmc->sc_fw_erased = false;
+	} else {
+		size_t sz, thissz;
+
+		for (sz = 0; ret == 0 && sz < n; sz += thissz) {
+			thissz = XMC_PKT_MAX_PAYLOAD_SZ * sizeof(u32) -
+				offsetof(struct xmc_pkt_sector_start_op, data);
+			thissz = min(thissz, n - sz);
+			xmc->mbx_pkt.hdr.op = XPO_MSP432_SEC_START;
+			xmc->mbx_pkt.hdr.payload_sz = thissz +
+				offsetof(struct xmc_pkt_sector_start_op, data);
+			xmc->mbx_pkt.sector_start.addr = *off + sz;
+			xmc->mbx_pkt.sector_start.size = thissz;
+			memcpy(xmc->mbx_pkt.sector_start.data,
+				kbuf + sz, thissz);
+			ret = xmc_send_pkt(xmc);
+		}
+	}
+
+	mutex_unlock(&xmc->mbx_lock);
+done:
+	vfree(kbuf);
+	if (ret)
+		return ret;
+
+	*off += n;
+	return n;
+}
+
+/*
+ * Only allow one client at a time.
+ */
+static int xmc_open(struct inode *inode, struct file *file)
+{
+	int ret = 0;
+	struct xocl_xmc *xmc = xocl_drvinst_open(inode->i_cdev);
+
+	if (!xmc)
+		return -ENXIO;
+
+	mutex_lock(&xmc->mbx_lock);
+	if (xmc->opened) {
+		ret = -EBUSY;
+	} else {
+		file->private_data = xmc;
+		xmc->opened = true;
+	}
+	mutex_unlock(&xmc->mbx_lock);
+
+	if (ret)
+		xocl_drvinst_close(xmc);
+	return ret;
+}
+
+static int xmc_close(struct inode *inode, struct file *file)
+{
+	struct xocl_xmc *xmc = file->private_data;
+
+	if (!xmc)
+		return -EINVAL;
+
+	mutex_lock(&xmc->mbx_lock);
+	xmc->opened = false;
+	file->private_data = NULL;
+	mutex_unlock(&xmc->mbx_lock);
+
+	xocl_drvinst_close(xmc);
+	return 0;
+}
+
+static loff_t
+xmc_llseek(struct file *filp, loff_t off, int whence)
+{
+	loff_t npos;
+
+	switch(whence) {
+	case 0: /* SEEK_SET */
+		npos = off;
+		break;
+	case 1: /* SEEK_CUR */
+		npos = filp->f_pos + off;
+		break;
+	case 2: /* SEEK_END: no need to support */
+		return -EINVAL;
+	default: /* should not happen */
+		return -EINVAL;
+	}
+	if (npos < 0)
+		return -EINVAL;
+
+	filp->f_pos = npos;
+	return npos;
+}
+
+static const struct file_operations xmc_fops = {
+	.owner = THIS_MODULE,
+	.open = xmc_open,
+	.release = xmc_close,
+	.llseek = xmc_llseek,
+	.write = xmc_update_sc_firmware,
+};
