@@ -127,7 +127,7 @@ private:
     bool isBMCReady();
 
     // Upgrade SC firmware via driver.
-    std::FILE *mXmcDev;
+    std::FILE *mXmcDev = nullptr;
     int xclUpgradeFirmwareDrv(std::istream& tiTxtStream);
 };
 
