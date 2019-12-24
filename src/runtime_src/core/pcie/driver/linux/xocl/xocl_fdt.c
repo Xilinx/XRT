@@ -325,10 +325,11 @@ static struct xocl_subdev_map		subdev_map[] = {
 			RESNAME_GAPPING,
 			NULL
 		},
-		6,
+		1,
 		0,
 		NULL,
 		devinfo_cb_setlevel,
+		.min_level = XOCL_SUBDEV_LEVEL_URP,
 	},
 	{
 		XOCL_SUBDEV_IORES,
@@ -638,14 +639,15 @@ found:
 }
 
 static int xocl_fdt_res_lookup(xdev_handle_t xdev_hdl, char *blob,
-		const char *ipname, struct xocl_subdev *subdev,
+		const char *ipname, u32 min_level, struct xocl_subdev *subdev,
 		struct ip_node *ip, int ip_num)
 {
 	int i, ret;
 
 	for (i = 0; i < ip_num; i++) {
 		if (ip->name && strlen(ipname) > 0 && !ip->used &&
-			       !strncmp(ip->name, ipname, strlen(ipname)))
+				ip->level >= min_level &&
+				!strncmp(ip->name, ipname, strlen(ipname)))
 			break;
 		ip++;
 	}
@@ -697,8 +699,8 @@ static int xocl_fdt_get_devinfo(xdev_handle_t xdev_hdl, char *blob,
 
 	for (res_name = map_p->res_names[0]; res_name;
 			res_name = map_p->res_names[++i]) {
-		ret = xocl_fdt_res_lookup(xdev_hdl, blob, res_name, subdev,
-				ip, ip_num);
+		ret = xocl_fdt_res_lookup(xdev_hdl, blob, res_name,
+				map_p->min_level, subdev, ip, ip_num);
 		if (ret) {
 			xocl_xdev_err(xdev_hdl, "lookup dev %s, ip %s failed",
 					map_p->dev_name, res_name);

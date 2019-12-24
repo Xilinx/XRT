@@ -231,6 +231,7 @@ struct xocl_subdev_map {
 	u32	flags;
 	void	*(*build_priv_data)(void *dev_hdl, void *subdev, size_t *len);
 	void	(*devinfo_cb)(void *dev_hdl, void *subdevs, int num);
+	u32	min_level;
 };
 
 #define	XOCL_RES_FEATURE_ROM				\
