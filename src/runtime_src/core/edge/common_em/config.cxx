@@ -192,7 +192,7 @@ namespace xclemulation{
         }
         else
         {
-          setLaunchWaveform(LAUNCHWAVEFORM::OFF);
+          setLaunchWaveform(LAUNCHWAVEFORM::BATCH);
         }
       }
       else if(name == "Debug.sdx_server_port")
@@ -227,6 +227,10 @@ namespace xclemulation{
       {
         setLaunchWaveform(LAUNCHWAVEFORM::BATCH);
       }
+    }
+    else 
+    {
+       setLaunchWaveform(LAUNCHWAVEFORM::BATCH);
     }
 
   }
