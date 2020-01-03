@@ -213,7 +213,7 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 	(XDEV(xdev)->priv.dsa_ver)
 
 #define XOCL_DSA_IS_MPSOC(xdev)                \
-	(XDEV(xdev)->priv.mpsoc)
+	(XDEV(xdev)->priv.flags & XOCL_DSAFLAG_MPSOC)
 
 #define XOCL_DSA_IS_SMARTN(xdev)                \
 	(XDEV(xdev)->priv.flags & XOCL_DSAFLAG_SMARTN)

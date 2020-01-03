@@ -51,6 +51,7 @@ enum {
 	XOCL_DSAFLAG_DYNAMIC_IP			= (1 << 9),
 	XOCL_DSAFLAG_SMARTN			= (1 << 10),
 	XOCL_DSAFLAG_VERSAL			= (1 << 11),
+	XOCL_DSAFLAG_MPSOC			= (1 << 12),
 };
 
 #define	FLASH_TYPE_SPI	"spi"
@@ -91,7 +92,6 @@ struct xocl_board_private {
 	bool			xpr;
 	char			*flash_type; /* used by xbflash */
 	char			*board_name; /* used by xbflash */
-	bool			mpsoc;
 	uint64_t		p2p_bar_sz;
 	const char		*vbnv;
 	const char		*sched_bin;
@@ -1626,30 +1626,27 @@ struct xocl_subdev_map {
 
 #define	XOCL_BOARD_MGMT_MPSOC						\
 	(struct xocl_board_private){					\
-		.flags		= 0,					\
+		.flags		= XOCL_DSAFLAG_MPSOC,			\
 		.subdev_info	= MGMT_RES_MPSOC,			\
 		.subdev_num = ARRAY_SIZE(MGMT_RES_MPSOC),		\
-		.mpsoc = true,						\
 		.board_name = "samsung",				\
 		.flash_type = FLASH_TYPE_QSPIPS,			\
 	}
 
 #define	XOCL_BOARD_MGMT_U30						\
 	(struct xocl_board_private){					\
-		.flags		= 0,					\
+		.flags		= XOCL_DSAFLAG_MPSOC,			\
 		.subdev_info	= MGMT_RES_MPSOC_U30,			\
 		.subdev_num = ARRAY_SIZE(MGMT_RES_MPSOC_U30),		\
-		.mpsoc = true,						\
 		.board_name = "u30",					\
 		.flash_type = "qspi_ps_x2_single",				\
 	}
 
 #define	XOCL_BOARD_USER_XDMA_MPSOC					\
 	(struct xocl_board_private){					\
-		.flags		= 0,					\
+		.flags		= XOCL_DSAFLAG_MPSOC,			\
 		.subdev_info	= USER_RES_XDMA,			\
 		.subdev_num = ARRAY_SIZE(USER_RES_XDMA),		\
-		.mpsoc = true,						\
 	}
 
 #define XOCL_RES_FLASH_MFG_U50				\
