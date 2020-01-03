@@ -568,8 +568,11 @@ int main(int argc, char *argv[])
     if ((cmd == xcldev::QUERY) || (cmd == xcldev::SCAN) || (cmd == xcldev::LIST))
         xcldev::baseDump(std::cout);
 
-    if (total == 0)
+    if (total == 0) {
+        if (cmd == xcldev::DUMP)
+            sensor_tree::json_dump( std::cout );
         return -ENODEV;
+    }
 
     if (cmd == xcldev::SCAN || cmd == xcldev::LIST) {
         print_pci_info(std::cout);
@@ -1148,43 +1151,6 @@ int xcldev::device::runTestCase(const std::string& py,
     return runShellCmd(cmd, output);
 }
 
-int xcldev::device::runXbTestCase(const std::string& test, std::string& output)
-{
-    struct stat st;
-    int retVal;
-
-    std::string name, errmsg;
-    pcidev::get_dev(m_idx)->sysfs_get( "rom", "VBNV", errmsg, name );
-    if (!errmsg.empty()) {
-        std::cout << errmsg << std::endl;
-        return -EINVAL;
-    }
-
-    std::string devInfoPath = name + "/test/";
-    std::string xsaTestPath = xsaPath + devInfoPath;
-    std::string dsaTestPath = dsaPath + devInfoPath;
-
-    output.clear();
-
-    std::string testPath;
-    searchXsaAndDsa(m_idx, xsaTestPath, dsaTestPath, testPath, output);
-    std::string exePath = testPath + "xbtest";
-    testPath += test;
-
-    if (stat(testPath.c_str(), &st) != 0) {
-        std::cout << output << std::endl;
-        std::cout << "ERROR: Failed to find ";
-        std::cout << test;
-        std::cout << ", Shell package not installed properly.";
-        return -ENOENT;
-    }
-
-    std::string cmd = exePath + " -j " + testPath + " -d " + std::to_string(m_idx);
-    retVal = runShellCmd(cmd, output);
-
-    return retVal;
-}
-
 int xcldev::device::verifyKernelTest(void)
 {
     std::string output;
@@ -1231,6 +1197,29 @@ int xcldev::device::bandwidthKernelTest(void)
     if (st != std::string::npos) {
         size_t end = output.find("\n", st);
         std::cout << std::endl << output.substr(st, end - st) << std::endl;
+    }
+
+    return 0;
+}
+
+int xcldev::device::scVersionTest(void)
+{
+    std::string sc_ver, exp_sc_ver;
+    std::string errmsg;
+
+    if (!errmsg.empty()) {
+        std::cout << errmsg << std::endl;
+        return -EINVAL;
+    }
+
+    pcidev::get_dev(m_idx)->sysfs_get("xmc", "bmc_ver", errmsg, sc_ver);
+    pcidev::get_dev(m_idx)->sysfs_get("xmc", "exp_bmc_ver", errmsg, exp_sc_ver);
+    if (!exp_sc_ver.empty() && sc_ver.compare(exp_sc_ver) != 0)
+    {
+        std::cout << "SC FIRMWARE MISMATCH, ATTENTION" << std::endl;
+        std::cout << "SC firmware running on board: " << sc_ver << ". Expected SC firmware from installed Shell: " << exp_sc_ver << std::endl;
+	std::cout << "Please use \"xbmgmt flash --scan\" to check installed Shell." << std::endl;
+	return 1;
     }
 
     return 0;
@@ -1301,93 +1290,6 @@ int xcldev::device::auxConnectionTest(void)
     return 0;
 }
 
-int xcldev::device::bandwidthKernelXbtest(void)
-{
-    std::string output;
-
-    int ret = runXbTestCase(std::string("memory.json"), output);
-
-    if (ret != 0) {
-        std::cout << output << std::endl;
-        return ret;
-    }
-
-    if (output.find("RESULT: ALL TESTS PASSED") == std::string::npos) {
-        std::cout << output << std::endl;
-        return -EINVAL;
-    }
-
-    // Print out average thruput
-    size_t st = output.find("FPGA <- HBM ");
-    if (st != std::string::npos) {
-        size_t end = output.find("\n", st);
-        std::cout << std::endl << output.substr(st, end - st) << std::endl;
-    }
-    st = output.find("FPGA -> HBM ");
-    if (st != std::string::npos) {
-        size_t end = output.find("\n", st);
-        std::cout << output.substr(st, end - st) << std::endl;
-    }
-
-    return 0;
-}
-
-int xcldev::device::verifyKernelXbtest(void)
-{
-    std::string output;
-
-    int ret = runXbTestCase(std::string("verify.json"), output);
-
-    if (ret != 0) {
-        std::cout << output << std::endl;
-        return ret;
-    }
-
-    if (output.find("RESULT: ALL TESTS PASSED") == std::string::npos) {
-        std::cout << output << std::endl;
-        return -EINVAL;
-    }
-
-    return 0;
-}
-
-int xcldev::device::dmaXbtest(void)
-{
-    std::string output;
-
-    int ret = runXbTestCase(std::string("dma.json"), output);
-
-    if (ret != 0) {
-        std::cout << output << std::endl;
-        return ret;
-    }
-
-    if (output.find("RESULT: ALL TESTS PASSED") == std::string::npos) {
-        std::cout << output << std::endl;
-        return -EINVAL;
-    }
-
-    // Print out average thruput
-    size_t st = output.find("Host -> PCIe -> FPGA");
-    if (st != std::string::npos) {
-        size_t end = output.find("\n", st);
-        std::cout << std::endl << output.substr(st, end - st);
-        st = output.find("Average", end);
-        end = output.find("\n", st);
-        std::cout << output.substr(st, end - st) << std::endl;
-    }
-    st = output.find("Host <- PCIe <- FPGA");
-    if (st != std::string::npos) {
-        size_t end = output.find("\n", st);
-        std::cout << output.substr(st, end - st);
-        st = output.find("Average", end);
-        end = output.find("\n", st);
-        std::cout << output.substr(st, end - st) << std::endl;
-    }
-
-    return 0;
-}
-
 int xcldev::device::runOneTest(std::string testName,
     std::function<int(void)> testFunc)
 {
@@ -1450,30 +1352,12 @@ int xcldev::device::validate(bool quick)
     if (retVal < 0)
         return retVal;
 
-    if (isXbTestPlatform()) {
-        retVal = runOneTest("verify kernel test",
-                std::bind(&xcldev::device::verifyKernelXbtest, this));
-        withWarning = withWarning || (retVal == 1);
-        if (retVal < 0)
-            return retVal;
-
-        // Skip the rest of test cases for quicker turn around.
-        if (quick)
-            return withWarning ? 1 : 0;
-
-        retVal = runOneTest("DMA test",
-                std::bind(&xcldev::device::dmaXbtest, this));
-        withWarning = withWarning || (retVal == 1);
-        if (retVal < 0)
-            return retVal;
-
-        retVal = runOneTest("device memory bandwidth test",
-                std::bind(&xcldev::device::bandwidthKernelXbtest, this));
-        withWarning = withWarning || (retVal == 1);
-        if (retVal < 0)
-            return retVal;
-        return withWarning ? 1 : 0;
-    }
+    // Check SC firmware version
+    retVal = runOneTest("SC firmware version check",
+            std::bind(&xcldev::device::scVersionTest, this));
+    withWarning = withWarning || (retVal == 1);
+    if (retVal < 0)
+        return retVal;
 
     // Test verify kernel
     retVal = runOneTest("verify kernel test",

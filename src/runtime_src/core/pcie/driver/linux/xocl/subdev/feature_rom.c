@@ -243,6 +243,16 @@ static u64 get_timestamp(struct platform_device *pdev)
 	return rom->header.TimeSinceEpoch;
 }
 
+static char *get_uuid(struct platform_device *pdev)
+{
+	struct feature_rom *rom;
+
+	rom = platform_get_drvdata(pdev);
+	BUG_ON(!rom);
+
+	return rom->uuid;
+}
+
 static bool is_are(struct platform_device *pdev)
 {
 	struct feature_rom *rom;
@@ -373,6 +383,7 @@ static struct xocl_rom_funcs rom_ops = {
 	.runtime_clk_scale_on = runtime_clk_scale_on,
 	.find_firmware = find_firmware,
 	.passthrough_virtualization_on = passthrough_virtualization_on,
+	.get_uuid = get_uuid,
 };
 
 static int get_header_from_peer(struct feature_rom *rom)
@@ -410,14 +421,14 @@ static void platform_type_append(char *prefix, u32 platform_type)
 		return;
 
 	switch (platform_type) {
-	case 0x0:
-		type = "_Recovery BLP";
+	case XOCL_VSEC_PLAT_RECOVERY:
+		type = "_Recovery";
 		break;
-	case 0x1:
-		type = "_1RP";
+	case XOCL_VSEC_PLAT_1RP:
+		type = "_xdma_gen3x4_201920_3";
 		break;
-	case 0x2:
-		type = "_2RP";
+	case XOCL_VSEC_PLAT_2RP:
+		type = "_xdma_gen3x4_201920_3";
 		break;
 	default:
 		type = "_Unknown";

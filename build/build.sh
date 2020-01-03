@@ -44,6 +44,11 @@ usage()
     echo "[-driver]                  Include building driver code"
     echo "[-checkpatch]              Run checkpatch.pl on driver code"
     echo "[-verbose]                 Turn on verbosity when compiling"
+    echo "[-ertfw <dir>]             Path to directory with pre-built ert firmware (default: build the firmware)"
+    echo ""
+    echo "ERT firmware is built if and only if MicroBlaze gcc compiler can be located."
+    echo "When compiler is not accesible, use -ertfw to specify path to directory with"
+    echo "pre-built ert fw to include in XRT packages"
     echo ""
     echo "Compile caching is enabled with '-ccache' but requires access to internal network."
 
@@ -61,6 +66,7 @@ jcore=$CORE
 opt=1
 dbg=1
 nocmake=0
+ertfw=""
 while [ $# -gt 0 ]; do
     case "$1" in
         -help)
@@ -73,6 +79,11 @@ while [ $# -gt 0 ]; do
         -dbg)
             dbg=1
             opt=0
+            shift
+            ;;
+        -ertfw)
+            shift
+            ertfw=$1
             shift
             ;;
         -opt)
@@ -143,6 +154,11 @@ if [[ $ccache == 1 ]]; then
     fi
 fi
 
+if [[ ! -z $ertfw ]]; then
+    echo "export XRT_FIRMWARE_DIR=$ertfw"
+    export XRT_FIRMWARE_DIR=$ertfw
+fi
+
 if [[ $dbg == 1 ]]; then
   mkdir -p Debug
   cd Debug
@@ -172,8 +188,8 @@ fi
 if [[ $driver == 1 ]]; then
     unset CC
     unset CXX
-    echo "make -C usr/src/xrt-2.4.0/driver/xocl"
-    make -C usr/src/xrt-2.4.0/driver/xocl
+    echo "make -C usr/src/xrt-2.5.0/driver/xocl"
+    make -C usr/src/xrt-2.5.0/driver/xocl
     if [[ $CPU == "aarch64" ]]; then
 	# I know this is dirty as it messes up the source directory with build artifacts but this is the
 	# quickest way to enable native zocl build in Travis CI environment for aarch64
@@ -194,7 +210,7 @@ fi
 
 if [[ $checkpatch == 1 ]]; then
     # check only driver released files
-    DRIVERROOT=`readlink -f $BUILDDIR/Release/usr/src/xrt-2.4.0/driver`
+    DRIVERROOT=`readlink -f $BUILDDIR/Release/usr/src/xrt-2.5.0/driver`
 
     # find corresponding source under src tree so errors can be fixed in place
     XOCLROOT=`readlink -f $BUILDDIR/../src/runtime_src/core/pcie/driver`

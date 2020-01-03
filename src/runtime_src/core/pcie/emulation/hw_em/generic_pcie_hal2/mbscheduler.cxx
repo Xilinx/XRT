@@ -75,6 +75,7 @@ namespace xclhwemhal2 {
     {
       cu_addr_map[i] = 0;
       cu_usage[i] = 0;
+      cus[i] = nullptr;
     }
 
     for (unsigned int i=0; i<MAX_U32_CU_MASKS; ++i)

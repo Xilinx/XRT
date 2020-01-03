@@ -123,6 +123,7 @@ struct xcl_board_info {
 	uint32_t max_power;
 	uint32_t fan_presence;
 	uint32_t config_mode;
+	char exp_bmc_ver[256];
 };
 
 /**
@@ -169,6 +170,7 @@ struct xcl_sensor {
 	uint32_t vol_2v5_vpp;
 	uint32_t vccint_bram;
 	uint32_t version;
+	uint32_t oem_id;
 };
 
 /**

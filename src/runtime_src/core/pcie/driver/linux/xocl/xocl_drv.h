@@ -213,7 +213,7 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 	(XDEV(xdev)->priv.dsa_ver)
 
 #define XOCL_DSA_IS_MPSOC(xdev)                \
-	(XDEV(xdev)->priv.mpsoc)
+	(XDEV(xdev)->priv.flags & XOCL_DSAFLAG_MPSOC)
 
 #define XOCL_DSA_IS_SMARTN(xdev)                \
 	(XDEV(xdev)->priv.flags & XOCL_DSAFLAG_SMARTN)
@@ -240,6 +240,9 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define XOCL_VSEC_FLASH_CONTROLER   0x51
 #define XOCL_VSEC_PLATFORM_INFO     0x52
 #define XOCL_VSEC_MAILBOX           0x53
+#define XOCL_VSEC_PLAT_RECOVERY     0x0
+#define XOCL_VSEC_PLAT_1RP          0x1
+#define XOCL_VSEC_PLAT_2RP          0x2
 
 #define XOCL_MAXNAMELEN	64
 
@@ -430,6 +433,7 @@ struct xocl_rom_funcs {
 	int (*find_firmware)(struct platform_device *pdev, char *fw_name,
 		size_t len, u16 deviceid, const struct firmware **fw);
 	bool (*passthrough_virtualization_on)(struct platform_device *pdev);
+	char *(*get_uuid)(struct platform_device *pdev);
 };
 
 #define ROM_DEV(xdev)	\
@@ -471,6 +475,8 @@ struct xocl_rom_funcs {
 #define xocl_passthrough_virtualization_on(xdev)		\
 	(ROM_CB(xdev, passthrough_virtualization_on) ?		\
 	ROM_OPS(xdev)->passthrough_virtualization_on(ROM_DEV(xdev)) : false)
+#define xocl_rom_get_uuid(xdev)				\
+	(ROM_CB(xdev, get_timestamp) ? ROM_OPS(xdev)->get_uuid(ROM_DEV(xdev)) : NULL)
 
 /* dma callbacks */
 struct xocl_dma_funcs {
@@ -576,15 +582,8 @@ struct xocl_mb_scheduler_funcs {
 	MB_SCHEDULER_DEV(xdev), cu, filep, addrp) :		\
 	-ENODEV)
 
-
-#define XOCL_GET_MEM_TOPOLOGY(xdev, topo)						\
-({ \
-	int ret = 0; \
-	if (XOCL_DSA_IS_VERSAL(xdev)) 							\
-		topo = (struct mem_topology *)(((struct xocl_dev *)(xdev))->mem_topo); 	\
-	ret = xocl_icap_get_xclbin_metadata(xdev, MEMTOPO_AXLF, (void **)&topo); \
-	(ret);\
-})
+#define XOCL_GET_MEM_TOPOLOGY(xdev, mem_topo)						\
+	(xocl_icap_get_xclbin_metadata(xdev, MEMTOPO_AXLF, (void **)&mem_topo))
 
 #define XOCL_GET_IP_LAYOUT(xdev, ip_layout)						\
 	(xocl_icap_get_xclbin_metadata(xdev, IPLAYOUT_AXLF, (void **)&ip_layout))
@@ -593,9 +592,7 @@ struct xocl_mb_scheduler_funcs {
 
 
 #define XOCL_PUT_MEM_TOPOLOGY(xdev)						\
-	(XOCL_DSA_IS_VERSAL(xdev) ?						\
-	-ENODEV : \
-	xocl_icap_put_xclbin_metadata(xdev))
+	xocl_icap_put_xclbin_metadata(xdev)
 #define XOCL_PUT_IP_LAYOUT(xdev)						\
 	xocl_icap_put_xclbin_metadata(xdev)
 #define XOCL_PUT_XCLBIN_ID(xdev)						\
@@ -698,6 +695,7 @@ struct xocl_mb_funcs {
 	int (*get_data)(struct platform_device *pdev, enum xcl_group_kind kind, void *buf);
 	int (*dr_freeze)(struct platform_device *pdev);
 	int (*dr_free)(struct platform_device *pdev);
+	int (*cmc_access)(struct platform_device *pdev, int flags);
 };
 
 #define	MB_DEV(xdev)		\
@@ -727,6 +725,12 @@ struct xocl_mb_funcs {
 	(MB_CB(xdev, dr_freeze) ? MB_OPS(xdev)->dr_freeze(MB_DEV(xdev)) : -ENODEV)
 #define xocl_xmc_dr_free(xdev)		\
 	(MB_CB(xdev, dr_free) ? MB_OPS(xdev)->dr_free(MB_DEV(xdev)) : -ENODEV)
+
+#define xocl_cmc_free(xdev) 		\
+	(MB_CB(xdev, cmc_access) ? MB_OPS(xdev)->cmc_access(MB_DEV(xdev), 1) : -ENODEV)
+#define xocl_cmc_freeze(xdev)		\
+	(MB_CB(xdev, cmc_access) ? MB_OPS(xdev)->cmc_access(MB_DEV(xdev), 0) : -ENODEV)
+
 
 /* processor system callbacks */
 struct xocl_ps_funcs {
@@ -849,6 +853,8 @@ enum data_kind {
 	VOL_VPP_2V5,
 	VOL_VCCINT_BRAM,
 	XMC_VER,
+	EXP_BMC_VER,
+	XMC_OEM_ID,
 };
 
 enum mb_kind {
@@ -1240,6 +1246,8 @@ int xocl_fdt_get_next_prop_by_name(xdev_handle_t xdev_hdl, void *blob,
     int offset, char *name, const void **prop, int *prop_len);
 int xocl_fdt_check_uuids(xdev_handle_t xdev_hdl, const void *blob,
 		        const void *subset_blob);
+int xocl_fdt_parse_blob(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
+		struct xocl_subdev **subdevs);
 const struct axlf_section_header *xocl_axlf_section_header(
 	xdev_handle_t xdev_hdl, const struct axlf *top,
 	enum axlf_section_kind kind);
@@ -1314,4 +1322,7 @@ void xocl_fini_iores(void);
 
 int __init xocl_init_mailbox_versal(void);
 void xocl_fini_mailbox_versal(void);
+
+int __init xocl_init_ospi_versal(void);
+void xocl_fini_ospi_versal(void);
 #endif

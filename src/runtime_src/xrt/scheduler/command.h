@@ -17,6 +17,7 @@
 #ifndef xrt_command_h_
 #define xrt_command_h_
 
+#include "xrt/config.h"
 #include "ert.h"
 #include "xrt/util/regmap.h"
 #include "xrt/device/device.h"
@@ -46,6 +47,7 @@ public:
    *
    * @device:  device on which the exec buffer is allocated
    */
+  XRT_EXPORT
   command(xrt::device* device, ert_cmd_opcode opcode);
 
   /**
@@ -56,6 +58,7 @@ public:
   /**
    * Dtor.  Recycles the underlying exec buffer
    */
+  XRT_EXPORT
   ~command();
 
   std::shared_ptr<command>
@@ -179,6 +182,7 @@ public:
   /**
    * Execute this command
    */
+  XRT_EXPORT
   void
   execute();
 

@@ -184,7 +184,8 @@ init(xclDeviceHandle handle, const axlf* top)
       scmd->count = sizeof (ert_configure_sk_cmd) / 4 - 1;
       scmd->start_cuidx = start_cuidx;
       scmd->num_cus = sk.ninst;
-      strncpy(reinterpret_cast<char*>(scmd->sk_name), sk.symbol_name, 32);
+      std::strncpy(reinterpret_cast<char*>(scmd->sk_name), sk.symbol_name, 31);
+      reinterpret_cast<char*>(scmd->sk_name)[31] = 0;
       scmd->sk_addr = skbo->prop.paddr;
       scmd->sk_size = skbo->prop.size;
       std::memcpy(skbo->data, sk.sk_buf, sk.size);

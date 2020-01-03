@@ -48,14 +48,6 @@ static uint64_t chanSwitch = (1UL<<XCL_MAILBOX_REQ_TEST_READY) |
 static struct msd_plugin_callbacks plugin_cbs;
 static const std::string plugin_path("/opt/xilinx/xrt/lib/libmsd_plugin.so");
 
-static std::string getHost();
-static void createSocket(const pcieFunc& dev, int& sockfd, uint16_t& port);
-static int verifyMpd(const pcieFunc& dev, int mpdfd, int id);
-static int connectMpd(const pcieFunc& dev, int sockfd, int id, int& mpdfd);
-void msd_thread(size_t index, std::string host);
-int remoteMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
-    std::unique_ptr<sw_msg>& processed);
-
 class Msd : public Common
 {
 public:
@@ -71,6 +63,15 @@ public:
     void start();
     void run();
     void stop();
+    static std::string getHost();
+    static void createSocket(const pcieFunc& dev, int& sockfd, uint16_t& port);
+    static int verifyMpd(const pcieFunc& dev, int mpdfd, int id);
+    static int connectMpd(const pcieFunc& dev, int sockfd, int id, int& mpdfd);
+    static void msd_thread(size_t index, std::string host);
+    static int remoteMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
+        std::unique_ptr<sw_msg>& processed);
+    static int download_xclbin(const pcieFunc& dev, char *xclbin);
+
     init_fn plugin_init;
     fini_fn plugin_fini;
     std::vector<std::thread> threads;
@@ -107,7 +108,7 @@ void Msd::run()
     if (total == 0)
         syslog(LOG_INFO, "no device found");
     for (size_t i = 0; i < total; i++)
-        threads.emplace_back(msd_thread, i, host);
+        threads.emplace_back(Msd::msd_thread, i, host);
 }
 
 void Msd::stop()
@@ -121,7 +122,7 @@ void Msd::stop()
 }
 
 // Get host configured in config file
-static std::string getHost()
+std::string Msd::getHost()
 {
     std::ifstream cfile(configFile);
     if (!cfile.good()) {
@@ -142,7 +143,7 @@ static std::string getHost()
     return "";
 }
 
-static void createSocket(const pcieFunc& dev, int& sockfd, uint16_t& port)
+void Msd::createSocket(const pcieFunc& dev, int& sockfd, uint16_t& port)
 {
     struct sockaddr_in saddr = { 0 };
 
@@ -178,7 +179,7 @@ static void createSocket(const pcieFunc& dev, int& sockfd, uint16_t& port)
     port = ntohs(saddr.sin_port); // Retrieve allocated port by kernel
 }
 
-static int verifyMpd(const pcieFunc& dev, int mpdfd, int id)
+int Msd::verifyMpd(const pcieFunc& dev, int mpdfd, int id)
 {
     int mpdid;
 
@@ -202,7 +203,7 @@ static int verifyMpd(const pcieFunc& dev, int mpdfd, int id)
     return 0;
 }
 
-static int connectMpd(const pcieFunc& dev, int sockfd, int id, int& mpdfd)
+int Msd::connectMpd(const pcieFunc& dev, int sockfd, int id, int& mpdfd)
 {
     struct sockaddr_in mpdaddr = { 0 };
 
@@ -227,7 +228,7 @@ static int connectMpd(const pcieFunc& dev, int sockfd, int id, int& mpdfd)
     return 0;
 }
 
-int download_xclbin(const pcieFunc& dev, char *xclbin)
+int Msd::download_xclbin(const pcieFunc& dev, char *xclbin)
 {
     retrieve_xclbin_fini_fn done = nullptr;
     void *done_arg = nullptr;
@@ -261,7 +262,7 @@ int download_xclbin(const pcieFunc& dev, char *xclbin)
     return ret;
 }
 
-int remoteMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
+int Msd::remoteMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
     std::unique_ptr<sw_msg>& processed)
 {
     int pass = FOR_LOCAL;
@@ -303,13 +304,12 @@ int remoteMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
 
 // Server serving MPD. Any error from socket fd, re-accept, don't quit.
 // Will quit on any error from local mailbox fd.
-void msd_thread(size_t index, std::string host)
+void Msd::msd_thread(size_t index, std::string host)
 {
     uint16_t port;
     int sockfd = -1, mpdfd = -1, mbxfd = -1;
     int retfd[2];
     int ret;
-    struct queue_msg msg = {0};
     const int interval = 2;
 
     pcieFunc dev(index, false);
@@ -355,25 +355,28 @@ void msd_thread(size_t index, std::string host)
             continue;
         }
 
-        msg.localFd = mbxfd;
-        msg.remoteFd = mpdfd;
-
         // Process msg.
         for (int i = 0; i < 2; i++) {
+            struct queue_msg msg = {0};
             if (retfd[i] == mbxfd) {
+                msg.localFd = mbxfd;
+                msg.remoteFd = -1;
                 msg.type = LOCAL_MSG;
                 msg.data = std::move(getLocalMsg(dev, mbxfd));
             } else if (retfd[i] == mpdfd) {
+                msg.localFd = -1;
+                msg.remoteFd = mpdfd;
                 msg.type = REMOTE_MSG;
                 msg.data = std::move(getRemoteMsg(dev, mpdfd));
-                msg.cb = remoteMsgHandler;
+                msg.cb = Msd::remoteMsgHandler;
             } else {
                 continue;
             }
 
             ret = handleMsg(dev, msg);
             if (ret) { // Socket connection was lost, retry
-                close(mpdfd);
+                if (mpdfd >= 0)
+                    close(mpdfd);
                 mpdfd = -1;
                 continue;
             }

@@ -105,7 +105,15 @@ typedef struct XmaHwSessionPrivate
     XmaHwDevice     *device;
     std::unordered_map<uint32_t, XmaCUCmdObjPrivate> CU_cmds;//Use execbo lock when accessing this map
     std::atomic<uint32_t> num_cu_cmds;
-    std::atomic<uint32_t> cmd_load;
+    std::atomic<uint32_t> num_cu_cmds_avg;
+    std::atomic<uint32_t> num_cu_cmds_avg_tmp;
+    std::atomic<uint32_t> num_samples;
+    std::atomic<uint32_t> cmd_busy;
+    std::atomic<uint32_t> cmd_idle;
+    std::atomic<uint32_t> cmd_busy_ticks;
+    std::atomic<uint32_t> cmd_idle_ticks;
+    std::atomic<uint32_t> cmd_busy_ticks_tmp;
+    std::atomic<uint32_t> cmd_idle_ticks_tmp;
     bool     using_work_item_done;
     bool     using_cu_cmd_status;
     std::atomic<bool> execbo_locked;
@@ -120,8 +128,16 @@ typedef struct XmaHwSessionPrivate
     kernel_info = NULL;
     kernel_complete_count = 0;
     device = NULL;
-    cmd_load = 0;
     num_cu_cmds = 0;
+    num_cu_cmds_avg = 0;
+    num_cu_cmds_avg_tmp = 0;
+    num_samples = 0;
+    cmd_busy = 0;
+    cmd_idle = 0;
+    cmd_busy_ticks = 0;
+    cmd_idle_ticks = 0;
+    cmd_busy_ticks_tmp = 0;
+    cmd_idle_ticks_tmp = 0;
     execbo_locked = false;
     execwait_locked = false;
     num_execbo_allocated = -1;
@@ -178,6 +194,17 @@ typedef struct XmaHwKernel
     uint32_t     max_channel_id;
     int32_t      arg_start;
     int32_t      regmap_size;
+    bool         is_shared;
+
+    //No need of atomic as only one thread is using below variables
+    uint32_t num_sessions;
+    uint32_t num_cu_cmds_avg;
+    uint32_t num_cu_cmds_avg_tmp;
+    uint32_t num_samples;
+    uint32_t cu_busy;
+    uint32_t cu_idle;
+    uint32_t cu_busy_tmp;
+    uint32_t num_samples_tmp;
 
     //bool             have_lock;
     uint32_t    reserved[16];
@@ -199,6 +226,15 @@ typedef struct XmaHwKernel
     max_channel_id = 0;
     arg_start = -1;
     regmap_size = -1;
+    is_shared = false;
+    num_sessions = 0;
+    num_cu_cmds_avg = 0;
+    num_cu_cmds_avg_tmp = 0;
+    num_samples = 0;
+    cu_busy = 0;
+    cu_idle = 0;
+    cu_busy_tmp = 0;
+    num_samples_tmp = 0;
   }
 } XmaHwKernel;
 

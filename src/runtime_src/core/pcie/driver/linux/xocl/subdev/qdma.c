@@ -63,6 +63,12 @@
 
 #define QDMA_QSETS_MAX		256
 
+/* Module Parameters */
+unsigned int qdma_max_channel = 16;
+module_param(qdma_max_channel, uint, 0644);
+MODULE_PARM_DESC(qdma_max_channel, "Set number of channels for qdma, default is 16");
+
+
 static dev_t	str_dev;
 
 struct qdma_stream_async_req;
@@ -596,6 +602,13 @@ static int set_max_chan(struct xocl_qdma *qdma, u32 count)
 	int	i, ret;
 	bool	reset = false;
 
+	if (count > QDMA_QSETS_MAX) {
+		xocl_info(&pdev->dev, "Invalide number of channels set %d", count);
+		ret = -EINVAL;
+		goto failed_create_queue;
+	}
+
+
 	if (qdma->channel == count)
 		reset = true;
 	qdma->channel = count;
@@ -877,7 +890,13 @@ static void inline cmpl_aio(struct kiocb *kiocb, unsigned int done_bytes,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,16,0)
 	kiocb->ki_complete(kiocb, done_bytes, error);
 #else
-	if (is_sync_kiocb(kiocb))
+	struct qdma_stream_async_req *io_req;
+	struct qdma_stream_async_arg *cb;
+
+	io_req = (struct qdma_stream_async_req *)kiocb->private;
+	cb = &io_req->cb;
+
+	if (cb->cancel)
 		atomic_set(&kiocb->ki_users, 1);
 	aio_complete(kiocb, done_bytes, error);
 #endif
@@ -1759,7 +1778,7 @@ static int qdma_probe(struct platform_device *pdev)
 	}
 
 	if (!XOCL_DSA_IS_SMARTN(xdev)) {
-		ret = set_max_chan(qdma, 2);
+		ret = set_max_chan(qdma, qdma_max_channel);
 		if (ret) {
 			xocl_err(&pdev->dev, "Set max channel failed");
 			goto failed;

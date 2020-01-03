@@ -14,10 +14,12 @@
  * under the License.
  */
 
+#define XDP_SOURCE
+
 #include "xocl_profile.h"
 #include "ocl_profiler.h"
 #include "xdp/profile/core/rt_profile.h"
-#include "xdp/profile/config.h"
+#include "xdp/profile/profile_config.h"
 #include "xdp/profile/device/tracedefs.h"
 #include "xrt/device/hal.h"
 #include "xclbin.h"

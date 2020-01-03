@@ -37,6 +37,7 @@ from distutils import dir_util
 import glob
 import shutil
 from shutil import copyfile
+import urllib.request 
 
 
 # -- Global Variables --------------------------------------------------------
@@ -334,6 +335,14 @@ class OpenCLHeaders:
           print ("    Missing header: " + headerFilePath2)
       return False
 
+    headerFilePath3 = os.path.join(openCLInclude, "cl2.hpp")
+    if not os.path.exists(headerFilePath1) or not os.path.isfile(headerFilePath1):
+      if echo == True:
+        print ("[not installed]")
+        if verbose == True:
+          print ("    Missing header: " + headerFilePath3)
+      return False
+
     if echo == True:
       print ("[installed]")
       if verbose == True:
@@ -391,6 +400,10 @@ class OpenCLHeaders:
       print ("ERROR: Unable to successfully retrieve the Khronos OpenCl-Headers repository")
       print ("       Khronos OpenCL-Headers clone directory missing: " + gitDir)
       return True
+
+    # -- Get the cl2.hpp file
+    destcl2hpp = os.path.join(self.root_build_dir, self.buildDir, "CL", "cl2.hpp")
+    urllib.request.urlretrieve("https://github.com/KhronosGroup/OpenCL-CLHPP/releases/download/v2.0.10/cl2.hpp", destcl2hpp)
 
     # -- Copy the header files
     srcDir = os.path.join(gitDir, "CL")

@@ -39,6 +39,7 @@ xclmgmt-y := \
 	../subdev/flash.o \
 	../subdev/iores.o \
 	../subdev/axigate.o \
+	../subdev/ospi_versal.o \
 	mgmt-core.o \
 	mgmt-cw.o \
 	mgmt-utils.o \
@@ -52,7 +53,7 @@ KERNELDIR ?= /lib/modules/$(shell uname -r)/build
 
 PWD	:= $(shell pwd)
 ROOT	:= $(dir $(M))
-XILINXINCLUDE := -I$(ROOT)/../include -I$(ROOT)/../../../../include
+XILINXINCLUDE := -I$(ROOT)/../include -I$(ROOT)/../../../../include -I$(ROOT)/../../../../common/drv/
 
 ccflags-y += $(XILINXINCLUDE) -DPF=MGMTPF
 ifeq ($(DEBUG),1)

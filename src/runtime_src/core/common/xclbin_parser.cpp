@@ -19,6 +19,7 @@
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
+#include <boost/range/iterator_range.hpp>
 #include <boost/optional.hpp>
 #include <cstring>
 #include <cstdlib>
@@ -63,7 +64,7 @@ is_valid_cu(const ip_data& ip)
 // ensure that they are sorted to come after regular AXI-lite CUs
 // The sort order is important as it determines the CU indices used
 // throughout XRT.
-static size_t 
+static size_t
 get_base_addr(const ip_data& ip)
 {
   auto addr = ip.m_base_address;
@@ -135,7 +136,7 @@ std::vector<uint64_t>
 get_cus(const ip_layout* ip_layout, bool encode)
 {
   std::vector<uint64_t> cus;
-  
+
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
     const auto& ip_data = ip_layout->m_ip_data[count];
     if (is_valid_cu(ip_data)) {
@@ -160,6 +161,21 @@ get_cus(const axlf* top, bool encode)
 {
   auto ip_layout = axlf_section_type<const ::ip_layout*>::get(top,axlf_section_kind::IP_LAYOUT);
   return ip_layout ? get_cus(ip_layout,encode) : std::vector<uint64_t>(0);
+}
+
+std::string
+get_ip_name(const ip_layout* ip_layout, uint64_t addr)
+{
+  auto end = ip_layout->m_ip_data + ip_layout->m_count;
+  auto it = std::find_if(ip_layout->m_ip_data, end,
+                         [addr] (const auto& ip_data) {
+                           return ip_data.m_base_address == addr;
+                         });
+
+  if (it != end)
+    return reinterpret_cast<const char*>((*it).m_name);
+
+  throw std::runtime_error("No IP with base address " + std::to_string(addr));
 }
 
 std::vector<std::pair<uint64_t, size_t>>
@@ -200,7 +216,7 @@ get_cu_control(const axlf* top, uint64_t cuaddr)
     throw std::runtime_error("No such CU at address: " + std::to_string(cuaddr));
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
     const auto& ip_data = ip_layout->m_ip_data[count];
-    size_t ip_base_addr  = (ip_data.m_base_address == static_cast<size_t>(-1)) ? 
+    size_t ip_base_addr  = (ip_data.m_base_address == static_cast<size_t>(-1)) ?
       std::numeric_limits<size_t>::max() : ip_data.m_base_address;
     if (ip_base_addr == cuaddr)
       return ((ip_data.properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT);
@@ -315,7 +331,7 @@ get_kernel_freq(const axlf* top)
     xml_stream.write(xml_data,xml_size);
     pt::read_xml(xml_stream,xml_project);
 
-    auto clock_child = xml_project.get_child_optional("project.platform.device.core.kernelClocks"); 
+    auto clock_child = xml_project.get_child_optional("project.platform.device.core.kernelClocks");
 
     if (clock_child) { // check whether kernelClocks field exists or not
       for (auto& xml_clock : xml_project.get_child("project.platform.device.core.kernelClocks")) {

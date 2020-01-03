@@ -17,25 +17,17 @@
 
 #include "device_linux.h"
 #include "common/utils.h"
-#include "include/xrt.h"
+#include "xrt.h"
 #include "scan.h"
 #include <string>
 #include <iostream>
-#include "boost/format.hpp"
 #include <map>
+#include "boost/format.hpp"
 
+namespace xrt_core {
 
-
-void xrt_core::initialize_child_ctor()
-{
-  xrt_core::device_core::register_child_ctor(boost::factory<xrt_core::device_linux *>());
-}
-
-
-unsigned int foo = xrt_core::device_core::register_child_ctor(boost::factory<xrt_core::device_linux *>());
-
-const xrt_core::device_linux::SysDevEntry & 
-xrt_core::device_linux::get_sysdev_entry( QueryRequest _eQueryRequest) const
+const device_linux::SysDevEntry&
+device_linux::get_sysdev_entry(QueryRequest qr) const
 {
   // Initialize our lookup table
   static const std::map<QueryRequest, SysDevEntry> QueryRequestToSysDevTable =
@@ -48,13 +40,17 @@ xrt_core::device_linux::get_sysdev_entry( QueryRequest _eQueryRequest) const
     { QR_PCIE_EXPRESS_LANE_WIDTH,   {"",     "link_width"}},
     { QR_DMA_THREADS_RAW,           {"dma",  "channel_stat_raw"}},
     { QR_ROM_VBNV,                  {"rom",  "VBNV"}},
-    { OR_ROM_DDR_BANK_SIZE,         {"rom",  "ddr_bank_size"}},
+    { QR_ROM_DDR_BANK_SIZE,         {"rom",  "ddr_bank_size"}},
     { QR_ROM_DDR_BANK_COUNT_MAX,    {"rom",  "ddr_bank_count_max"}},
     { QR_ROM_FPGA_NAME,             {"rom",  "FPGA"}},
+    { QR_ROM_RAW,                   {"rom", "raw"}},
+    { QR_ROM_UUID,                  {"rom", "uuid"}},
     { QR_XMC_VERSION,               {"xmc",  "version"}},
     { QR_XMC_SERIAL_NUM,            {"xmc",  "serial_num"}},
     { QR_XMC_MAX_POWER,             {"xmc",  "max_power"}},
     { QR_XMC_BMC_VERSION,           {"xmc",  "bmc_ver"}},
+    { QR_XMC_STATUS,                {"xmc", "status"}},
+    { QR_XMC_REG_BASE,              {"xmc", "reg_base"}},
     { QR_DNA_SERIAL_NUM,            {"dna",  "dna"}},
     { QR_CLOCK_FREQS,               {"icap", "clock_freqs"}},
     { QR_IDCODE,                    {"icap", "idcode"}},
@@ -102,117 +98,126 @@ xrt_core::device_linux::get_sysdev_entry( QueryRequest _eQueryRequest) const
     { QR_FIREWALL_STATUS,           {"firewall", "detected_status"}},
     { QR_FIREWALL_TIME_SEC,         {"firewall", "detected_time"}},
 
-    { QR_POWER_MICROWATTS,          {"xmc", "xmc_power"}}
-};
+    { QR_POWER_MICROWATTS,          {"xmc", "xmc_power"}},
+
+    { QR_FLASH_BAR_OFFSET,          {"flash", "bar_off"}},
+    { QR_IS_MFG,                    {"", "mfg"}},
+    { QR_F_FLASH_TYPE,              {"flash", "flash_type" }},
+    { QR_FLASH_TYPE,                {"", "flash_type" }}
+  };
   // Find the translation entry
-  std::map<QueryRequest, SysDevEntry>::const_iterator it = QueryRequestToSysDevTable.find(_eQueryRequest);
+  auto it = QueryRequestToSysDevTable.find(qr);
 
   if (it == QueryRequestToSysDevTable.end()) {
-    std::string errMsg = boost::str( boost::format("The given query request ID (%d) is not supported.") % _eQueryRequest);
-    throw std::runtime_error( errMsg);
+    std::string errMsg = boost::str( boost::format("The given query request ID (%d) is not supported.") % qr);
+    throw no_such_query(qr, errMsg);
   }
 
   return it->second;
 }
 
-
-
-void 
-xrt_core::device_linux::query_device(uint64_t _deviceID, QueryRequest _eQueryRequest, const std::type_info & _typeInfo, boost::any &_returnValue) const
+void
+device_linux::
+query(QueryRequest qr, const std::type_info& tinfo, boost::any& value) const
 {
   // Initialize return data to being empty container.
   // Note: CentOS Boost 1.53 doesn't support the clear() method.
   boost::any anyEmpty;
-  _returnValue.swap(anyEmpty);
+  value.swap(anyEmpty);
+
+  auto device_id = get_device_id();
 
   // Get the sysdev and entry values to call
-  const SysDevEntry & entry = get_sysdev_entry(_eQueryRequest);
+  auto& entry = get_sysdev_entry(qr);
 
-  std::string sErrorMsg;
+  std::string errmsg;
 
-  if (_typeInfo == typeid(std::string)) {
+  if (tinfo == typeid(std::string)) {
     // -- Typeid: std::string --
-    _returnValue = std::string("");
-    std::string *stringValue = boost::any_cast<std::string>(&_returnValue);
-    pcidev::get_dev(_deviceID)->sysfs_get( entry.sSubDevice, entry.sEntry, sErrorMsg, *stringValue);
+    value = std::string("");
+    auto p_str = boost::any_cast<std::string>(&value);
+    pcidev::get_dev(device_id)->sysfs_get(entry.sSubDevice, entry.sEntry, errmsg, *p_str);
 
-  } else if (_typeInfo == typeid(uint64_t)) {
+  }
+  else if (tinfo == typeid(uint64_t)) {
     // -- Typeid: uint64_t --
-    _returnValue = (uint64_t) -1;
+    value = (uint64_t) -1;
     std::vector<uint64_t> uint64Vector;
-    pcidev::get_dev(_deviceID)->sysfs_get( entry.sSubDevice, entry.sEntry, sErrorMsg, uint64Vector);
+    pcidev::get_dev(device_id)->sysfs_get(entry.sSubDevice, entry.sEntry, errmsg, uint64Vector);
     if (!uint64Vector.empty()) {
-      _returnValue = uint64Vector[0];
+      value = uint64Vector[0];
     }
 
-  } else if (_typeInfo == typeid(bool)) {
+  }
+  else if (tinfo == typeid(bool)) {
     // -- Typeid: bool --
-    _returnValue = (bool) 0;
+    value = (bool) 0;
     std::vector<uint64_t> uint64Vector;
-    pcidev::get_dev(_deviceID)->sysfs_get( entry.sSubDevice, entry.sEntry, sErrorMsg, uint64Vector);
+    pcidev::get_dev(device_id)->sysfs_get(entry.sSubDevice, entry.sEntry, errmsg, uint64Vector);
     if (!uint64Vector.empty()) {
-      _returnValue = (bool) uint64Vector[0];
+      value = (bool) uint64Vector[0];
     }
 
-  } else if (_typeInfo == typeid(std::vector<std::string>)) {
+  }
+  else if (tinfo == typeid(std::vector<std::string>)) {
     // -- Typeid: std::vector<std::string>
-    _returnValue = std::vector<std::string>();
-    std::vector<std::string> *stringVector = boost::any_cast<std::vector<std::string>>(&_returnValue);
-    pcidev::get_dev(_deviceID)->sysfs_get( entry.sSubDevice, entry.sEntry, sErrorMsg, *stringVector);
+    value = std::vector<std::string>();
+    auto p_strvec = boost::any_cast<std::vector<std::string>>(&value);
+    pcidev::get_dev(device_id)->sysfs_get(entry.sSubDevice, entry.sEntry, errmsg, *p_strvec);
 
-  } else {
-    sErrorMsg = boost::str( boost::format("Error: Unsupported query_device return type: '%s'") % _typeInfo.name());
+  }
+  else {
+    errmsg = boost::str( boost::format("Error: Unsupported query_device return type: '%s'") % tinfo.name());
   }
 
-  if (!sErrorMsg.empty()) {
-    throw std::runtime_error(sErrorMsg);
+  if (!errmsg.empty()) {
+    throw std::runtime_error(errmsg);
   }
 }
 
-
-xrt_core::device_linux::device_linux()
+device_linux::
+device_linux(id_type device_id, bool user)
+  : device_pcie(device_id, user)
 {
-  // Do nothing
 }
 
-xrt_core::device_linux::~device_linux() {
-  // Do nothing
-}
-
-uint64_t 
-xrt_core::device_linux::get_total_devices() const
+void
+device_linux::
+read_dma_stats(boost::property_tree::ptree& pt) const
 {
-  return pcidev::get_dev_total();
-}
-
-void 
-xrt_core::device_linux::read_device_dma_stats(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
-{
-  _deviceID = _deviceID;
-  _pt = _pt;
-  xclDeviceHandle handle = xclOpen(_deviceID, nullptr, XCL_QUIET);
-
-  if (!handle) {
-    // Unable to get a handle
-    return;
-  }
+  auto handle = get_device_handle();
 
   xclDeviceUsage devstat = { 0 };
   xclGetUsageInfo(handle, &devstat);
 
-  // Clean up after ourselves
-  xclClose(handle);
+  boost::property_tree::ptree pt_channels;
+  for (unsigned int idx = 0; idx < XCL_DEVICE_USAGE_COUNT; ++idx) {
+    boost::property_tree::ptree pt_dma;
+    pt_dma.put( "id", std::to_string(get_device_id()));
+    pt_dma.put( "h2c", unitConvert(devstat.h2c[idx]) );
+    pt_dma.put( "c2h", unitConvert(devstat.c2h[idx]) );
 
-  boost::property_tree::ptree ptChannels;
-  for (unsigned index = 0; index < XCL_DEVICE_USAGE_COUNT; ++index) {
-      boost::property_tree::ptree ptDMA;
-      ptDMA.put( "id", std::to_string(index).c_str());
-      ptDMA.put( "h2c", unitConvert(devstat.h2c[index]) );
-      ptDMA.put( "c2h", unitConvert(devstat.c2h[index]) );
-
-      // Create our array of data
-      ptChannels.push_back(std::make_pair("", ptDMA)); 
+    // Create our array of data
+    pt_channels.push_back(std::make_pair("", pt_dma));
   }
 
-  _pt.add_child( "transfer_metrics.channels", ptChannels);
+  pt.add_child( "transfer_metrics.channels", pt_channels);
 }
+
+void
+device_linux::
+read(uint64_t offset, void* buf, uint64_t len) const
+{
+  if (auto err = pcidev::get_dev(get_device_id())->pcieBarRead(offset, buf, len))
+    throw error(err, "read failed");
+}
+
+void
+device_linux::
+write(uint64_t offset, const void* buf, uint64_t len) const
+{
+  if (auto err = pcidev::get_dev(get_device_id())->pcieBarWrite(offset, buf, len))
+    throw error(err, "write failed");
+}
+
+} // xrt_core

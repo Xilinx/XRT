@@ -54,6 +54,7 @@ RH_LIST=(\
      gnuplot \
      gnutls-devel \
      gtest-devel \
+     json-glib-devel \
      kernel-devel-$(uname -r) \
      kernel-headers-$(uname -r) \
      libdrm-devel \
@@ -105,6 +106,7 @@ UB_LIST=(\
      libboost-program-options-dev \
      libdrm-dev \
      libjpeg-dev \
+     libjson-glib-dev \
      libgtest-dev \
      libncurses5-dev \
      libopencv-core-dev \

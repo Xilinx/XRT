@@ -27,6 +27,7 @@
 #include "app/xmalogger.h"
 #include "app/xmaparam.h"
 #include "lib/xmaapi.h"
+#include "lib/xmalimits_lib.h"
 //#include "lib/xmahw_hal.h"
 #include "lib/xmasignal.h"
 #include "lib/xmalogger.h"
@@ -34,6 +35,7 @@
 #include "lib/xma_utils.hpp"
 #include <iostream>
 #include <thread>
+#include <algorithm>
 
 #define XMAAPI_MOD "xmaapi"
 
@@ -115,7 +117,7 @@ void xma_thread1() {
 
         if (!g_xma_singleton->xma_exit) {
             //Check Session loading
-            uint32_t max_load = 0;
+            uint32_t num_cmds = 0;
             //bool expected = false;
             //bool desired = true;
             for (auto& itr1: g_xma_singleton->all_sessions) {
@@ -154,33 +156,113 @@ void xma_thread1() {
                 //Release execbo lock
                 *(dev_tmp1->execbo_locked) = false;
                 */
+                if (priv1->num_samples > STATS_WINDOW_1) {
+                    //xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "stats div: %d, %d, %d\n", (uint32_t)priv1->cmd_busy, (uint32_t)priv1->cmd_idle, (uint32_t)priv1->num_cu_cmds_avg);
+                    priv1->cmd_busy = priv1->cmd_busy >> 1;
+                    priv1->cmd_idle = priv1->cmd_idle >> 1;
+                    //As we need avg cmds in floating point so not taking avg here
+                    priv1->num_cu_cmds_avg += priv1->num_cu_cmds_avg_tmp;
+                    priv1->num_cu_cmds_avg = priv1->num_cu_cmds_avg >> 1;
+                    priv1->num_cu_cmds_avg_tmp = 0;
+                    priv1->num_samples = 0;
+                } else if (priv1->num_cu_cmds_avg == 0 && priv1->num_samples == 128) {
+                    xma_logmsg(XMA_INFO_LOG, "XMA-Session-Stats-Startup", "Session id: %d, type: %s, avg cmds: %.2f, busy vs idle: %d vs %d", itr1.first, xma_core::get_session_name(itr1.second.session_type).c_str(), priv1->num_cu_cmds_avg_tmp / 128.0, (uint32_t)priv1->cmd_busy, (uint32_t)priv1->cmd_idle);
+                }
+                num_cmds = priv1->num_cu_cmds;
+                priv1->num_cu_cmds_avg_tmp += num_cmds;
+                if (num_cmds != 0) {
+                    if (priv1->cmd_idle_ticks_tmp > priv1->cmd_idle_ticks) {
+                        priv1->cmd_idle_ticks = (uint32_t)priv1->cmd_idle_ticks_tmp;
+                    }
+                    priv1->cmd_idle_ticks_tmp = 0;
 
-                priv1->cmd_load += priv1->num_cu_cmds;
+                    priv1->cmd_busy_ticks_tmp++;
+                    priv1->cmd_busy++;
+                    priv1->num_samples++;
+                } else if (priv1->cmd_busy != 0) {
+                    if (priv1->cmd_busy_ticks_tmp > priv1->cmd_busy_ticks) {
+                        priv1->cmd_busy_ticks = (uint32_t)priv1->cmd_busy_ticks_tmp;
+                    }
+                    priv1->cmd_busy_ticks_tmp = 0;
 
-                max_load = std::max({max_load, (uint32_t)priv1->cmd_load});
-            }
-
-            if (max_load > 1024) {
-                for (auto& itr1: g_xma_singleton->all_sessions) {
-                    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) itr1.second.hw_session.private_do_not_use;
-                    priv1->cmd_load = priv1->cmd_load >> 1;
+                    priv1->cmd_idle_ticks_tmp++;
+                    priv1->cmd_idle++;
+                    priv1->num_samples++;
+                }
+                XmaHwKernel* kernel_info = priv1->kernel_info;
+                if (kernel_info == NULL) {//ADMIN session has no kernel_info
+                    continue;
+                }
+                if (!kernel_info->is_shared) {
+                    continue;
+                }
+                if (kernel_info->num_samples_tmp == kernel_info->num_sessions) {
+                    if (kernel_info->cu_busy_tmp != 0) {
+                        kernel_info->cu_busy++;
+                        kernel_info->num_samples++;
+                    }  else if (kernel_info->cu_busy != 0) {
+                        kernel_info->cu_idle++;
+                        kernel_info->num_samples++;
+                    }
+                    kernel_info->cu_busy_tmp = 0;
+                    kernel_info->num_samples_tmp = 0;
+                }
+                kernel_info->num_samples_tmp++;
+                kernel_info->num_cu_cmds_avg_tmp += num_cmds;
+                if (num_cmds != 0) {
+                    kernel_info->cu_busy_tmp++;
+                }
+                if (kernel_info->num_samples > STATS_WINDOW_1) {
+                    kernel_info->cu_busy = kernel_info->cu_busy >> 1;
+                    kernel_info->cu_idle = kernel_info->cu_idle >> 1;
+                    //As we need avg cmds in floating point so not taking avg here
+                    kernel_info->num_cu_cmds_avg += kernel_info->num_cu_cmds_avg_tmp;
+                    kernel_info->num_cu_cmds_avg = kernel_info->num_cu_cmds_avg >> 1;
+                    kernel_info->num_cu_cmds_avg_tmp = 0;
+                    kernel_info->num_samples = 0;
+                } else if (kernel_info->num_cu_cmds_avg == 0 && kernel_info->num_samples == 128) {
+                    xma_logmsg(XMA_INFO_LOG, "XMA-Session-Stats-Startup", "Session id: %d, type: %s, cu: %s, avg cmds: %.2f, busy vs idle: %d vs %d", itr1.first, xma_core::get_session_name(itr1.second.session_type).c_str(), kernel_info->name, kernel_info->num_cu_cmds_avg_tmp / 128.0, (uint32_t)kernel_info->cu_busy, (uint32_t)kernel_info->cu_idle);
                 }
             }
         }
     }
     //Print all stats here
-    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Session CU Command Relative Loads: ");
+    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "=== Session CU Command Relative Stats: ===");
     for (auto& itr1: g_xma_singleton->all_sessions) {
+        xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "--------");
         XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) itr1.second.hw_session.private_do_not_use;
-        xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Session id: %d, type: %s, load: %d", itr1.first, 
-            xma_core::get_session_name(itr1.second.session_type).c_str(), (uint32_t)priv1->cmd_load);
+        float avg_cmds = 0;
+        if (priv1->num_cu_cmds_avg != 0) {
+            avg_cmds = priv1->num_cu_cmds_avg / STATS_WINDOW;
+        } else if (priv1->num_samples > 0) {
+            avg_cmds = priv1->num_cu_cmds_avg_tmp / ((float)priv1->num_samples);
+        }
+        xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Session id: %d, type: %s, avg cmds: %.2f, busy vs idle: %d vs %d", itr1.first, 
+            xma_core::get_session_name(itr1.second.session_type).c_str(), avg_cmds, (uint32_t)priv1->cmd_busy, (uint32_t)priv1->cmd_idle);
+
+        xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Session id: %d, max busy vs idle ticks: %d vs %d", itr1.first, (uint32_t)priv1->cmd_busy_ticks, (uint32_t)priv1->cmd_idle_ticks);
+        XmaHwKernel* kernel_info = priv1->kernel_info;
+        if (kernel_info == NULL) {
+            continue;
+        }
+        if (!kernel_info->is_shared) {
+            continue;
+        }
+        if (kernel_info->num_cu_cmds_avg != 0) {
+            avg_cmds = kernel_info->num_cu_cmds_avg / STATS_WINDOW;
+        } else if (kernel_info->num_samples > 0) {
+            avg_cmds = kernel_info->num_cu_cmds_avg_tmp / ((float)kernel_info->num_samples);
+        }
+        xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Session id: %d, cu: %s, avg cmds: %.2f, busy vs idle: %d vs %d", itr1.first, kernel_info->name, avg_cmds, (uint32_t)kernel_info->cu_busy, (uint32_t)kernel_info->cu_idle);
     }
-    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Num of Decoders: %d", (uint32_t)g_xma_singleton->num_decoders);
-    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Num of Scalers: %d", (uint32_t)g_xma_singleton->num_scalers);
-    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Num of Encoders: %d", (uint32_t)g_xma_singleton->num_encoders);
-    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Num of Filters: %d", (uint32_t)g_xma_singleton->num_filters);
-    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Num of Kernels: %d", (uint32_t)g_xma_singleton->num_kernels);
-    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Num of Admins: %d\n", (uint32_t)g_xma_singleton->num_admins);
+    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "--------");
+    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Num of Decoders: %d", (uint32_t)g_xma_singleton->num_decoders);
+    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Num of Scalers: %d", (uint32_t)g_xma_singleton->num_scalers);
+    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Num of Encoders: %d", (uint32_t)g_xma_singleton->num_encoders);
+    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Num of Filters: %d", (uint32_t)g_xma_singleton->num_filters);
+    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Num of Kernels: %d", (uint32_t)g_xma_singleton->num_kernels);
+    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Num of Admins: %d", (uint32_t)g_xma_singleton->num_admins);
+    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "--------\n");
 }
 
 void xma_thread2() {

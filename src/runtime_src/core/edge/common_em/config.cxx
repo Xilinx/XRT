@@ -50,7 +50,7 @@ namespace xclemulation{
     mUMRChecks = false;
     mOOBChecks = false;
     mMemLogs = false;
-    mLaunchWaveform = LAUNCHWAVEFORM::OFF;
+    mLaunchWaveform = LAUNCHWAVEFORM::BATCH;
     mDontRun = false;
     mSimDir = "";
     mPacketSize = 0x800000;
@@ -190,9 +190,13 @@ namespace xclemulation{
         {
           setLaunchWaveform(LAUNCHWAVEFORM::BATCH);
         }
-        else
+        else if (boost::iequals(value,"off" ))
         {
           setLaunchWaveform(LAUNCHWAVEFORM::OFF);
+        }
+        else
+        {
+          setLaunchWaveform(LAUNCHWAVEFORM::BATCH);
         }
       }
       else if(name == "Debug.sdx_server_port")
@@ -227,6 +231,15 @@ namespace xclemulation{
       {
         setLaunchWaveform(LAUNCHWAVEFORM::BATCH);
       }
+      else if (boost::iequals(simulationMode,"off" ))
+      {
+        setLaunchWaveform(LAUNCHWAVEFORM::OFF);
+      }
+
+    }
+    else 
+    {
+       setLaunchWaveform(LAUNCHWAVEFORM::BATCH);
     }
 
   }

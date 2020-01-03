@@ -29,6 +29,7 @@ struct sk_operations {
   unsigned int (* getHostBO)(unsigned long paddr, size_t size);
   void *(* mapBO)(unsigned int boHandle, bool write);
   void (* freeBO)(unsigned int boHandle);
+  int (* getBufferFd)(unsigned int boHandle);
 };
 
 /*

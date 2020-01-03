@@ -17,20 +17,23 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SubCmdScan.h"
-#include "XBUtilities.h"
+#include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
 #include <boost/program_options.hpp>
+#include <boost/property_tree/json_parser.hpp>
 namespace po = boost::program_options;
 
 // System - Include Files
 #include <iostream>
+#include "common/system.h"
+#include "common/device.h"
 
 // ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
-#include "SubCmd.h"
-static const unsigned int registerResult = 
-                    register_subcommand("scan", 
+#include "tools/common/SubCmd.h"
+static const unsigned int registerResult =
+                    register_subcommand("scan",
                                         "<add description>",
                                         subCmdScan);
 // =============================================================================
@@ -49,11 +52,13 @@ int subCmdScan(const std::vector<std::string> &_options)
   XBU::verbose("SubCommand: scan");
   // -- Retrieve and parse the subcommand options -----------------------------
   bool help = false;
+  uint64_t card = 0;
 
   po::options_description scanDesc("scan options");
 
   scanDesc.add_options()
     ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
+    (",d", boost::program_options::value<uint64_t>(&card), "Card to be examined")
   ;
 
   // Parse sub-command ...
@@ -63,7 +68,7 @@ int subCmdScan(const std::vector<std::string> &_options)
     po::store(po::command_line_parser(_options).options(scanDesc).run(), vm);
     po::notify(vm); // Can throw
   } catch (po::error& e) {
-    std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
+    xrt_core::send_exception_message(e.what(), "XBUTIL");
     std::cerr << scanDesc << std::endl;
 
     // Re-throw exception
@@ -76,11 +81,32 @@ int subCmdScan(const std::vector<std::string> &_options)
     return 0;
   }
 
-  // -- Now process the subcommand --------------------------------------------
+  // Collect
+  namespace bpt = boost::property_tree;
+  bpt::ptree pt;
+  xrt_core::get_devices(pt);
 
-  XBU::error("COMMAND BODY NOT IMPLEMENTED.");
-  // TODO: Put working code here
+  // Walk the property tree and print info
+  auto devices = pt.get_child_optional("devices");
+  if (!devices || (*devices).size()==0)
+    throw xrt_core::error("No devices found");
+
+  using query_request = xrt_core::device::QueryRequest;
+  std::cout << "INFO: Found total " << (*devices).size() << " card(s), " << "TBD" << " are usable.\n";
+  for (auto& device : *devices) {
+    auto device_id = device.second.get<unsigned int>("device_id", std::numeric_limits<unsigned int>::max());
+    auto udev = xrt_core::get_userpf_device(device_id);
+    auto vbnv = xrt_core::query_device<std::string>(udev, query_request::QR_ROM_VBNV);
+    std::cout << "[" << device_id << "]: " << vbnv << "\n";
+#if 0
+    dev->read_ready_status(_pt);
+    bool ready = _pt.get<bool>("ready", "false");
+    if (ready)
+      ready_count++;
+
+    std::cout << "[" << device_id << "]: " << _pt.get<std::string>("vbnv", "N/A") << "(ts=" << _pt.get<std::string>("time_since_epoch", "N/A") << ")" << std::endl;
+#endif
+  }
 
   return registerResult;
 }
-

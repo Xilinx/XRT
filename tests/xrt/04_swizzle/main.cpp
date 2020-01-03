@@ -191,42 +191,8 @@ int main(int argc, char** argv)
         unsigned execHandle = xclAllocBO(handle, DATA_SIZE*4, 0, (1<<31));
         void* execData = xclMapBO(handle, execHandle, true);
 
-        //construct the exec buffer cmd to configure.
-        {
-            auto ecmd = reinterpret_cast<ert_configure_cmd*>(execData);
-
-            std::memset(ecmd, 0, DATA_SIZE);
-            ecmd->state = ERT_CMD_STATE_NEW;
-            ecmd->opcode = ERT_CONFIGURE;
-
-            ecmd->slot_size = 1024;
-            ecmd->num_cus = 1;
-            ecmd->cu_shift = 16;
-            ecmd->cu_base_addr = cu_base_addr;
-
-            ecmd->ert = ert;
-            if (ert) {
-                ecmd->cu_dma = 1;
-                ecmd->cu_isr = 1;
-            }
-
-            // CU -> base address mapping
-            ecmd->data[0] = cu_base_addr;
-            ecmd->count = 5 + ecmd->num_cus;
-        }
-
-        //Send the command.
-        if(xclExecBuf(handle, execHandle)) {
-            std::cout << "Unable to issue xclExecBuf" << std::endl;
-            return 1;
-        }
-
-        //Wait on the command finish
-        while (xclExecWait(handle,1000) == 0);
-
         std::cout << "Construct the exec command to run the kernel on FPGA" << std::endl;
 
-        //--
         //construct the exec buffer cmd to start the kernel.
         {
             auto ecmd = reinterpret_cast<ert_start_kernel_cmd*>(execData);

@@ -16,7 +16,7 @@
 
 #define XRT_CORE_COMMON_SOURCE
 #include "message.h"
-#include "t_time.h"
+#include "time.h"
 #include "gen/version.h"
 #include "config_reader.h"
 
@@ -24,6 +24,7 @@
 #include <fstream>
 #include <iostream>
 #include <thread>
+#include <mutex>
 #include <climits>
 #ifdef __GNUC__
 # include <unistd.h>
@@ -209,14 +210,14 @@ file_dispatch::
 file_dispatch(const std::string &file)
 {
   handle.open(file.c_str());
-  handle << "XRT build version: " << xrt_build_version << std::endl;
-  handle << "Build hash: " << xrt_build_version_hash << std::endl;
-  handle << "Build date: " << xrt_build_version_date << std::endl;
-  handle << "Git branch: " << xrt_build_version_branch<< std::endl;
-  handle << xrt_core::timestamp() << std::endl;
-  handle << "PID: " << get_processid() << std::endl;
-  handle << "UID: " << get_userid() << std::endl;
-  handle << "HOST: " <<  get_hostname() << std::endl;
+  handle << "XRT build version: " << xrt_build_version << "\n";
+  handle << "Build hash: " << xrt_build_version_hash << "\n";
+  handle << "Build date: " << xrt_build_version_date << "\n";
+  handle << "Git branch: " << xrt_build_version_branch<< "\n";
+  handle << "[" << xrt_core::timestamp() << "]" << "\n";
+  handle << "PID: " << get_processid() << "\n";
+  handle << "UID: " << get_userid() << "\n";
+  handle << "HOST: " <<  get_hostname() << "\n";
   handle << "EXE: " << get_exe_path() << std::endl;
 }
 
@@ -228,7 +229,9 @@ void
 file_dispatch::
 send(severity_level l, const char* tag, const char* msg)
 {
-  handle << xrt_core::timestamp() <<" [" << tag << "] Tid: "
+  static std::mutex mutex;
+  std::lock_guard<std::mutex> lk(mutex);
+  handle << "[" << xrt_core::timestamp() <<"] [" << tag << "] Tid: "
          << std::this_thread::get_id() << ", " << " " << severityMap[l]
          << msg << std::endl;
 }
@@ -237,14 +240,14 @@ send(severity_level l, const char* tag, const char* msg)
 console_dispatch::
 console_dispatch()
 {
-  std::cout << "XRT build version: " << xrt_build_version << std::endl;
-  std::cout << "Build hash: " << xrt_build_version_hash << std::endl;
-  std::cout << "Build date: " << xrt_build_version_date << std::endl;
-  std::cout << "Git branch: " << xrt_build_version_branch<< std::endl;
-  std::cout << "PID: " << get_processid() << std::endl;
-  std::cout << "UID: " << get_userid() << std::endl;
-  std::cout << xrt_core::timestamp() << std::endl;
-  std::cout << "HOST: " << get_hostname() << std::endl;
+  std::cout << "XRT build version: " << xrt_build_version << "\n";
+  std::cout << "Build hash: " << xrt_build_version_hash << "\n";
+  std::cout << "Build date: " << xrt_build_version_date << "\n";
+  std::cout << "Git branch: " << xrt_build_version_branch<< "\n";
+  std::cout << "PID: " << get_processid() << "\n";
+  std::cout << "UID: " << get_userid() << "\n";
+  std::cout << "[" << xrt_core::timestamp() << "]\n";
+  std::cout << "HOST: " << get_hostname() << "\n";
   std::cout << "EXE: " << get_exe_path() << std::endl;
 }
 
@@ -252,6 +255,8 @@ void
 console_dispatch::
 send(severity_level l, const char* tag, const char* msg)
 {
+  static std::mutex mutex;
+  std::lock_guard<std::mutex> lk(mutex);
   std::cout << "[" << tag << "] " << severityMap[l]
             << msg << std::endl;
 }

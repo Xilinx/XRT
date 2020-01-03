@@ -77,6 +77,8 @@ int init(mpd_plugin_callbacks *cbs)
         cbs->mpc_cookie = NULL;
         cbs->get_remote_msd_fd = get_remote_msd_fd;
         cbs->mb_req.load_xclbin = azureLoadXclBin;
+        cbs->mb_req.hot_reset = azureHotReset;
+        cbs->plugin_cap = (1 << CAP_RESET_NEED_HELP);
         ret = 0;
     }
     syslog(LOG_INFO, "azure mpd plugin init called: %d\n", ret);
@@ -125,6 +127,24 @@ int azureLoadXclBin(size_t index, const axlf *xclbin, int *resp)
 {
     AzureDev d(index);
     *resp = d.azureLoadXclBin(xclbin);
+    return 0;
+}
+
+/*
+ * callback function that is used to handle MAILBOX_REQ_HOT_RESET msg
+ *
+ * Input:
+ *        index: index of the FPGA device
+ * Output:
+ *        resp: int as response msg    
+ * Return value:
+ *        0: success
+ *        others: error code
+ */
+int azureHotReset(size_t index, int *resp)
+{
+    AzureDev d(index);
+    *resp = d.azureHotReset();
     return 0;
 }
 
@@ -226,6 +246,55 @@ int AzureDev::azureLoadXclBin(const xclBin *buffer)
     } while (wait < REIMAGE_TIMEOUT);
 
     return -ETIMEDOUT;
+}
+
+int AzureDev::azureHotReset()
+{
+    std::string fpgaSerialNumber;
+    get_fpga_serialNo(fpgaSerialNumber);
+    std::cout << "HotReset FPGA serial No: " << fpgaSerialNumber << std::endl;
+    //start the reset process
+    std::string delim = ":";
+    std::string ret, key, value;
+    ret = REST_Get(
+        RESTIP_ENDPOINT,
+        "machine/plugins/?comp=FpgaController&type=Reset",
+        fpgaSerialNumber
+    );
+    syslog(LOG_INFO, "obtained ret = %s from reset call", ret.c_str());
+    if (splitLine(ret, key, value, delim) != 0 ||
+        key.compare("Reset") != 0 ||
+        value.compare("0") != 0) {
+        syslog(LOG_INFO, "wasn't expected response...%s", ret.c_str());
+        return -EFAULT;
+    }
+ 
+    // poll wireserver for response TBD
+    //check the response
+    syslog(LOG_INFO, "poll for reset status...");
+    int wait = 0;
+    do {
+        ret = REST_Get(
+            RESTIP_ENDPOINT,
+            "machine/plugins/?comp=FpgaController&type=GetResetStatus",
+            fpgaSerialNumber
+        );
+        syslog(LOG_INFO, "obtained ret = %s from get reset status call", ret.c_str());
+        if (splitLine(ret, key, value, delim) != 0 ||
+            key.compare("GetResetStatus") != 0)
+            return -EFAULT;
+
+        if (value.compare("2") != 0) {
+            sleep(1);
+            wait++;
+            continue;
+        } else {
+            std::cout << "getreset status return status: " << value << " within " << wait << "s" << std::endl;
+            return 0;
+        }
+    } while (wait < REIMAGE_TIMEOUT);
+    syslog(LOG_INFO, "complete get reset status");
+    return 0;
 }
 
 AzureDev::~AzureDev()

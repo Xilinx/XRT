@@ -33,6 +33,7 @@
 #define NODE_ENDPOINTS "addressable_endpoints"
 #define LEVEL0_DEV_PATH "/addressable_endpoints_0"
 #define LEVEL1_DEV_PATH "/addressable_endpoints_1"
+#define ULP_DEV_PATH "/addressable_endpoints"
 #define INTERFACES_PATH "/interfaces"
 
 #define NODE_PROPERTIES "partition_info"
@@ -48,6 +49,7 @@
 #define NODE_AF_DATA_H2C "ep_firewall_data_h2c_00"
 #define NODE_CMC_REG "ep_cmc_regmap_00"
 #define NODE_CMC_RESET "ep_cmc_reset_00"
+#define NODE_CMC_MUTEX "ep_cmc_mutex_00"
 #define NODE_CMC_FW_MEM "ep_cmc_firmware_mem_00"
 #define NODE_ERT_FW_MEM "ep_ert_firmware_mem_00"
 #define NODE_ERT_CQ_MGMT "ep_ert_command_queue_mgmt_00"
@@ -68,6 +70,11 @@
 #define NODE_CLK_SHUTDOWN "ep_aclk_shutdown_00"
 #define NODE_ERT_BASE "ep_ert_base_address_00"
 #define NODE_ERT_RESET "ep_ert_reset_00"
+#define NODE_CLKFREQ_K1 "ep_freq_cnt_aclk_kernel_00"
+#define NODE_CLKFREQ_K2 "ep_freq_cnt_aclk_kernel_01"
+#define NODE_CLKFREQ_HBM "ep_freq_cnt_aclk_hbm_00"
+#define NODE_GAPPING "ep_gapping_demand_00"
+#define NODE_UCS_CONTROL_STATUS "ep_ucs_control_status_00"
 
 enum {
 	IORES_GATEPRBLD,
@@ -76,10 +83,15 @@ enum {
 	IORES_CLKWIZKERNEL1,
 	IORES_CLKWIZKERNEL2,
 	IORES_CLKWIZKERNEL3,
-	IORES_CLKFREQ1,
-	IORES_CLKFREQ2,
+	IORES_CLKFREQ_K1_K2,
+	IORES_CLKFREQ_HBM,
+	IORES_CLKFREQ_K1,
+	IORES_CLKFREQ_K2,
 	IORES_KDMA,
 	IORES_CLKSHUTDOWN,
+	IORES_UCS_CONTROL_STATUS,
+	IORES_CMC_MUTEX,
+	IORES_GAPPING,
 	IORES_MAX,
 };
 
@@ -89,10 +101,15 @@ enum {
 #define RESNAME_CLKWIZKERNEL1   NODE_CLK_KERNEL1
 #define RESNAME_CLKWIZKERNEL2   NODE_CLK_KERNEL2
 #define RESNAME_CLKWIZKERNEL3   NODE_CLK_KERNEL3
-#define RESNAME_CLKFREQ1        "clkreq1"
-#define RESNAME_CLKFREQ2        "clkreq2"
+#define RESNAME_CLKFREQ_K1_K2	"clkfreq_kernel1_kernel2"
+#define RESNAME_CLKFREQ_HBM	NODE_CLKFREQ_HBM
+#define RESNAME_CLKFREQ_K1	NODE_CLKFREQ_K1
+#define RESNAME_CLKFREQ_K2	NODE_CLKFREQ_K2
 #define RESNAME_KDMA            NODE_KDMA_CTRL
-#define RESNAME_CLKSHUTDOWN     NODE_CLK_SHUTDOWN
+#define RESNAME_CLKSHUTDOWN	NODE_CLK_SHUTDOWN
+#define RESNAME_CMC_MUTEX       NODE_CMC_MUTEX
+#define RESNAME_GAPPING         NODE_GAPPING
+#define RESNAME_UCS_CONTROL_STATUS     NODE_UCS_CONTROL_STATUS
 
 struct xocl_iores_map {
 	char		*res_name;
@@ -107,10 +124,28 @@ struct xocl_iores_map map[] = {                                         \
 	{ RESNAME_CLKWIZKERNEL1, IORES_CLKWIZKERNEL1 },                 \
 	{ RESNAME_CLKWIZKERNEL2, IORES_CLKWIZKERNEL2 },                 \
 	{ RESNAME_CLKWIZKERNEL3, IORES_CLKWIZKERNEL3 },                 \
-	{ RESNAME_CLKFREQ1, IORES_CLKFREQ1 },                           \
-	{ RESNAME_CLKFREQ2, IORES_CLKFREQ2 },                           \
+	{ RESNAME_CLKFREQ_K1_K2, IORES_CLKFREQ_K1_K2},			\
+	{ RESNAME_CLKFREQ_HBM, IORES_CLKFREQ_HBM },			\
+	{ RESNAME_CLKFREQ_K1, IORES_CLKFREQ_K1},			\
+	{ RESNAME_CLKFREQ_K2, IORES_CLKFREQ_K2},			\
 	{ RESNAME_KDMA, IORES_KDMA },                                   \
-	{ RESNAME_CLKSHUTDOWN, IORES_CLKSHUTDOWN },                     \
+	{ RESNAME_CLKSHUTDOWN, IORES_CLKSHUTDOWN },			\
+	{ RESNAME_UCS_CONTROL_STATUS, IORES_UCS_CONTROL_STATUS},	\
+	{ RESNAME_CMC_MUTEX, IORES_CMC_MUTEX},				\
+	{ RESNAME_GAPPING, IORES_GAPPING},				\
 }
+
+#define	XOCL_RES_OFFSET_CHANNEL1	0x0
+#define	XOCL_RES_OFFSET_CHANNEL2	0x8
+
+/*
+ * Note: please move UCS specific into UCS subdev
+*/
+struct ucs_control_status_ch1 {
+	unsigned int shutdown_clocks_latched:1;
+	unsigned int reserved1:15;
+	unsigned int clock_throttling_average:14;
+	unsigned int reserved2:2;
+};
 
 #endif

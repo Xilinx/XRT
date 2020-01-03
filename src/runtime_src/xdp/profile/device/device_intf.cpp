@@ -14,6 +14,8 @@
  * under the License.
  */
 
+#define XDP_SOURCE
+
 #include "device_intf.h"
 #include "xclperf.h"
 #include "xcl_perfmon_parameters.h"

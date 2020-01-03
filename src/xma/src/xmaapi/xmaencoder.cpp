@@ -298,7 +298,12 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
     // Create encoder file if it does not exist and initialize all fields 
     xma_enc_session_statsfile_init(enc_session);
 
-    kernel_info->in_use = true;
+    if (kernel_info->in_use) {
+        kernel_info->is_shared = true;
+    } else {
+        kernel_info->in_use = true;
+    }
+    kernel_info->num_sessions++;
     g_xma_singleton->num_encoders++;
     g_xma_singleton->num_of_sessions = enc_session->base.session_id;
 

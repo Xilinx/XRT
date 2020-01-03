@@ -24,9 +24,11 @@ namespace xdp {
     class CSVProfileWriter: public ProfileWriterI {
 
     public:
+      XDP_EXPORT
       CSVProfileWriter(XDPPluginI* Plugin,
                        const std::string& platformName,
                        const std::string& summaryFileName);
+      XDP_EXPORT
       ~CSVProfileWriter();
 
       virtual void writeSummary(RTProfile* profile);

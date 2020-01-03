@@ -17,6 +17,7 @@
 #ifndef xrt_device_hal_h
 #define xrt_device_hal_h
 
+#include "xrt/config.h"
 #include "xrt/device/PMDOperations.h"
 #include "xrt/util/task.h"
 #include "xrt/util/event.h"
@@ -692,14 +693,17 @@ public:
 ////////////////////////////////////////////////////////////////
 // HAL level application functions and types
 ////////////////////////////////////////////////////////////////
-typedef std::vector<std::unique_ptr<device>> device_list;
+using device_list = std::vector<std::unique_ptr<device>>;
 
+XRT_EXPORT
 device_list
 loadDevices(const std::string& dirName);
 
+XRT_EXPORT
 device_list
 loadDevices();
 
+XRT_EXPORT
 void
 load_xdp();
 } // namespace hal
