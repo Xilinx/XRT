@@ -134,6 +134,10 @@ pu1_query_report()
 
   std::cout << "----------------------------------------------------------------" << std::endl;
 
+  std::cout << "----TESTING SENSOR INFO------\n";
+  auto vol = xrt_core::query_device<std::string>(pDevice, xrt_core::device::QR_12V_PEX_MILLIVOLTS);
+  std::cout << vol << std::endl;
+
   }
 }
 
