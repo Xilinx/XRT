@@ -1104,7 +1104,7 @@ get_bdf_info(xclDeviceHandle hdl, uint16_t bdf[3])
 }
 
 void
-sensor_info(xclDeviceHandle hdl, XOCL_DEVICE_INFORMATION* value)
+get_sensor_info(xclDeviceHandle hdl, xcl_sensor* value)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "sensor_info()");
