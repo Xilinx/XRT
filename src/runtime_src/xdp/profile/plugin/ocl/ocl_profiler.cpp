@@ -254,11 +254,6 @@ namespace xdp {
       }
       xdp::xoclp::platform::device::data* info = &(itr->second);
 
-      //Begin offload before configuring IP and clock training
-      std::string  binary_name = device->get_xclbin().project_name();
-      auto offloadThread = std::make_unique<OclDeviceOffload>(dInt, ProfileMgr, device, device->get_unique_name(), binary_name, 10);
-      DeviceOffloadList.push_back(std::move(offloadThread));
-
       // Since clock training is performed in mStartTrace, let's record this time
       // XCL_PERF_MON_MEMORY // any type
       info->mLastTraceTrainingTime[XCL_PERF_MON_MEMORY] = std::chrono::steady_clock::now();
@@ -280,11 +275,28 @@ namespace xdp {
       if(dInt) {
         // Configure monitor IP and FIFO if present
         dInt->startTrace(XCL_PERF_MON_MEMORY, traceOption);
-        // Configure DMA if present
-        if (dInt->hasTs2mm()) {
-          //info->ts2mm_en = allocateDeviceDDRBufferForTrace(dInt, device);
-          /* Todo: Write user specified memory bank here */
-          trace_memory = "TS2MM";
+        std::cout << "Offload Started..." << std::endl;
+        dInt->initiateClockTraining();
+
+        if (mTraceThreadEn) {
+          //Begin offload before configuring IP and clock training
+          std::string  binaryName = device->get_xclbin().project_name();
+          uint64_t traceBufSz = 0;
+          if (dInt->hasTs2mm()) {
+            traceBufSz = getDeviceDDRBufferSize(dInt, device);
+          }
+          auto thread = std::make_unique<OclDeviceOffload>(dInt, ProfileMgr,
+                                                           device->get_unique_name(), binaryName,
+                                                           mTraceReadIntMs, traceBufSz
+                                                           );
+          DeviceOffloadList.push_back(std::move(thread));
+        } else {
+          // Configure DMA if present
+          if (dInt->hasTs2mm()) {
+            //info->ts2mm_en = allocateDeviceDDRBufferForTrace(dInt, device);
+            /* Todo: Write user specified memory bank here */
+            trace_memory = "TS2MM";
+          }
         }
       } else {
         xdevice->startTrace(XCL_PERF_MON_MEMORY, traceOption);
@@ -428,6 +440,8 @@ namespace xdp {
     if (xrt::config::get_timeline_trace()) {
       timelineFile = "timeline_trace";
       ProfileMgr->turnOnFile(xdp::RTUtil::FILE_TIMELINE_TRACE);
+      mTraceThreadEn = xrt::config::get_continuous_read_trace();
+      mTraceReadIntMs = xrt::config::get_continuous_read_trace_interval_ms();
     }
     xdp::CSVTraceWriter* csvTraceWriter = new xdp::CSVTraceWriter(timelineFile, "Xilinx", Plugin.get());
     TraceWriters.push_back(csvTraceWriter);
@@ -725,6 +739,19 @@ namespace xdp {
     return 0;
   }
 
+  uint64_t OCLProfiler::getDeviceDDRBufferSize(DeviceIntf* dInt, xocl::device* device)
+  {
+    uint64_t sz = 0;
+    sz = xdp::xoclp::platform::get_ts2mm_buf_size();
+    auto memorySz = xdp::xoclp::platform::device::getMemSizeBytes(device, dInt->getTS2MmMemIndex());
+    if (memorySz > 0 && sz > memorySz) {
+      std::string msg = "Trace Buffer size is too big for Memory Resource. Using " + std::to_string(memorySz)
+                        + " Bytes instead.";
+      xrt::message::send(xrt::message::severity_level::XRT_WARNING, msg);
+    }
+    return sz;
+  }
+
 
   bool OCLProfiler::allocateDeviceDDRBufferForTrace(DeviceIntf* dInt, xocl::device* device)
   {
@@ -737,14 +764,7 @@ namespace xdp {
     }
 
     try {
-      mDDRBufferSz = xdp::xoclp::platform::get_ts2mm_buf_size();
-      auto memorySz = xdp::xoclp::platform::device::getMemSizeBytes(device, dInt->getTS2MmMemIndex());
-      if (memorySz > 0 && mDDRBufferSz > memorySz) {
-        std::string msg = "Trace Buffer size is too big for Memory Resource. Using " + std::to_string(memorySz)
-                          + " Bytes instead.";
-        xrt::message::send(xrt::message::severity_level::XRT_WARNING, msg);
-        mDDRBufferSz = memorySz;
-      }
+      mDDRBufferSz = getDeviceDDRBufferSize(dInt, device);
       mDDRBufferForTrace = xrtDevice->alloc(mDDRBufferSz, xrt::hal::device::Domain::XRT_DEVICE_RAM, dInt->getTS2MmMemIndex(), nullptr);
       xrtDevice->sync(mDDRBufferForTrace, mDDRBufferSz, 0, xrt::hal::device::direction::HOST2DEVICE, false);
     } catch (const std::exception& ex) {

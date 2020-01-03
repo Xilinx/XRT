@@ -27,20 +27,27 @@ if(!m_debug); else std::cout
 class OclDeviceOffload {
 public:
     OclDeviceOffload(xdp::DeviceIntf* dInt, std::shared_ptr<RTProfile> ProfileMgr,
-                     xocl::device* xoclDevice, std::string device_name,
-                     std::string binary_name, uint64_t offload_sleep_ms,
+                     std::string device_name, std::string binary_name,
+                     uint64_t offload_sleep_ms, uint64_t trbuf_sz,
                      bool start_thread = true);
     ~OclDeviceOffload();
     void offload_device_continuous();
     bool should_continue();
     void start_offload();
     void stop_offload();
+
+public:
+    void set_trbuf_alloc_sz(uint64_t sz) {
+        m_trbuf_alloc_sz = sz;
+    };
+
 private:
     std::mutex status_lock;
     DeviceOffloadStatus status;
     std::thread offload_thread;
 
     uint64_t sleep_interval_ms;
+    uint64_t m_trbuf_alloc_sz;
     xdp::DeviceIntf* dev_intf;
     std::shared_ptr<RTProfile> prof_mgr;
     xrt::device* xrt_dev;
@@ -50,13 +57,12 @@ private:
     xclPerfMonType m_type = XCL_PERF_MON_MEMORY;
 
     xclTraceResultsVector m_trace_vector;
-    xrt::hal::BufferObjectHandle m_trbuf = nullptr;
+    uint32_t m_trbuf = 0;
     uint64_t m_trbuf_sz = 0;
     uint64_t m_trbuf_offset = 0;
     uint64_t m_trbuf_chunk_sz = 0;
 
     void offload_trace();
-    void offload_counters();
     void read_trace_fifo();
     void read_trace_end();
     bool read_trace_init();

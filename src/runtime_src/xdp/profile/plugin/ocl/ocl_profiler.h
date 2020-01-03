@@ -94,6 +94,7 @@ namespace xdp {
     uint64_t getTimeDiffUsec(std::chrono::steady_clock::time_point start,
                              std::chrono::steady_clock::time_point end);
 
+    uint64_t getDeviceDDRBufferSize(DeviceIntf* dInt, xocl::device* device);
     bool allocateDeviceDDRBufferForTrace(DeviceIntf* , xocl::device*);
     void clearDeviceDDRBufferForTrace(DeviceIntf* , xrt::device* );
 
@@ -107,6 +108,8 @@ namespace xdp {
     int ProfileFlags;
     bool mProfileRunning = false;
     bool mEndDeviceProfilingCalled = false;
+    bool mTraceThreadEn = false;
+    unsigned int mTraceReadIntMs = 10;
     // Report writers
     std::vector<xdp::ProfileWriterI*> ProfileWriters;
     std::vector<xdp::TraceWriterI*> TraceWriters;

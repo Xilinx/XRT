@@ -91,37 +91,46 @@ uint32_t XrtDevice::alloc(size_t sz, uint64_t memoryIndex)
   }
 }
 
+/*
+ * BO vector is emptied only at the destruction
+ * User is responsible for freeing the allocated buffer
+ */
 void XrtDevice::free(uint32_t xdpBoHandle)
 {
   if (!xdpBoHandle) return;
-  mXrtDevice->free(m_bos[--xdpBoHandle]);
+  auto idx = xdpBoHandle - 1;
+  mXrtDevice->free(m_bos[idx]);
 }
 
 void* XrtDevice::map (uint32_t xdpBoHandle)
 {
   if (!xdpBoHandle) return nullptr;
-  return mXrtDevice->map(m_bos[--xdpBoHandle]);
+  auto idx = xdpBoHandle - 1;
+  return mXrtDevice->map(m_bos[idx]);
 }
 
 void XrtDevice::unmap(uint32_t xdpBoHandle)
 {
   if (!xdpBoHandle) return;
-  return mXrtDevice->unmap(m_bos[--xdpBoHandle]);
+  auto idx = xdpBoHandle - 1;
+  return mXrtDevice->unmap(m_bos[idx]);
 }
 
 void XrtDevice::sync(uint32_t xdpBoHandle, size_t sz, size_t offset, direction dir, bool async)
 {
   if (!xdpBoHandle) return;
+  auto idx = xdpBoHandle - 1;
   auto dir1 = xrt::hal::device::direction::HOST2DEVICE;
   if (dir == direction::DEVICE2HOST)
     dir1 = xrt::hal::device::direction::DEVICE2HOST;
-  mXrtDevice->sync(m_bos[--xdpBoHandle], sz, offset, dir1, async);
+  mXrtDevice->sync(m_bos[idx], sz, offset, dir1, async);
 }
 
 uint64_t XrtDevice::getDeviceAddr(uint32_t xdpBoHandle)
 {
   if (!xdpBoHandle) return 0;
-  return mXrtDevice->getDeviceAddr(m_bos[--xdpBoHandle]);
+  auto idx = xdpBoHandle - 1;
+  return mXrtDevice->getDeviceAddr(m_bos[idx]);
 }
 
 }

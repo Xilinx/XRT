@@ -6,21 +6,20 @@ namespace xdp {
 
 OclDeviceOffload::OclDeviceOffload(xdp::DeviceIntf* dInt,
                                    std::shared_ptr<RTProfile> ProfileMgr,
-                                   xocl::device* xoclDevice,
                                    std::string device_name,
                                    std::string binary_name,
                                    uint64_t sleep_interval_ms,
+                                   uint64_t trbuf_sz,
                                    bool start_thread)
                                    : status(DeviceOffloadStatus::IDLE),
                                      sleep_interval_ms(sleep_interval_ms),
+                                     m_trbuf_alloc_sz(trbuf_sz),
                                      dev_intf(dInt),
                                      prof_mgr(std::move(ProfileMgr)),
-                                     xocl_dev(xoclDevice),
                                      device_name(std::move(device_name)),
                                      binary_name(std::move(binary_name))
                                      
 {
-  xrt_dev = xoclDevice->get_xrt_device();
   if (start_thread) {
     start_offload();
   }
@@ -43,7 +42,6 @@ void OclDeviceOffload::offload_device_continuous()
   while (should_continue()) {
     // Offload and log trace and counters
     offload_trace();
-    offload_counters();
     // Sleep for a specified time
     std::this_thread::sleep_for (std::chrono::milliseconds(sleep_interval_ms));
   }
@@ -78,10 +76,6 @@ void OclDeviceOffload::offload_trace()
   } else {
     read_trace_s2mm();
   }
-}
-
-void OclDeviceOffload::offload_counters()
-{
 }
 
 void OclDeviceOffload::read_trace_fifo()
@@ -124,15 +118,6 @@ void OclDeviceOffload::read_trace_s2mm()
   }
 }
 
-void* OclDeviceOffload::sync_trace_buf(uint64_t offset, uint64_t bytes)
-{
-  if (!m_trbuf)
-    return nullptr;
-  auto addr = xrt_dev->map(m_trbuf);
-  xrt_dev->sync(m_trbuf, bytes, offset, xrt::hal::device::direction::DEVICE2HOST, false);
-  return static_cast<char*>(addr) + offset;
-}
-
 uint64_t OclDeviceOffload::read_trace_s2mm_partial()
 {
   if (m_trbuf_offset >= m_trbuf_sz)
@@ -145,7 +130,7 @@ uint64_t OclDeviceOffload::read_trace_s2mm_partial()
     << "OclDeviceOffload::read_trace_s2mm_partial "
     <<"Reading " << nBytes << " bytes " << std::endl;
 
-  void* host_buf = sync_trace_buf(m_trbuf_offset, nBytes);
+  void* host_buf = dev_intf->syncTraceBuf( m_trbuf, m_trbuf_offset, nBytes);
   if (host_buf) {
     dev_intf->parseTraceData(host_buf, nBytes, m_trace_vector);
     m_trbuf_offset += nBytes;
@@ -171,36 +156,28 @@ void OclDeviceOffload::config_s2mm_reader(uint64_t wordCount)
 
 bool OclDeviceOffload::init_s2mm()
 {
-  debug_stream << "OclDeviceOffload::init_s2mm" << std::endl;
+  debug_stream
+    << "OclDeviceOffload::init_s2mm with size : " << m_trbuf_alloc_sz
+    << std::endl;
   /* If buffer is already allocated and still attempting to initialize again,
    * then reset the TS2MM IP and free the old buffer
    */
-  if(m_trbuf) {
+  if (m_trbuf) {
     reset_s2mm();
   }
 
-  uint64_t trbuf_sz = 0;
-  try {
-    trbuf_sz = xdp::xoclp::platform::get_ts2mm_buf_size();
-    auto memory_sz = xdp::xoclp::platform::device::getMemSizeBytes(xocl_dev, dev_intf->getTS2MmMemIndex());
-    if (memory_sz > 0 && trbuf_sz > memory_sz) {
-      std::string msg = "Trace Buffer size is too big for Memory Resource. Using " + std::to_string(memory_sz)
-                        + " Bytes instead.";
-      xrt::message::send(xrt::message::severity_level::XRT_WARNING, msg);
-      trbuf_sz = memory_sz;
-    }
-    m_trbuf = xrt_dev->alloc(trbuf_sz, xrt::hal::device::Domain::XRT_DEVICE_RAM, dev_intf->getTS2MmMemIndex(), nullptr);
-    // XRT bug. We can't read from memory space we haven't written to
-    xrt_dev->sync(m_trbuf, trbuf_sz, 0, xrt::hal::device::direction::HOST2DEVICE, false);
-  } catch (const std::exception& ex) {
-    std::cerr << ex.what() << std::endl;
+  if (!m_trbuf_alloc_sz)
+    return false;
+
+  m_trbuf = dev_intf->allocTraceBuf(m_trbuf_alloc_sz, dev_intf->getTS2MmMemIndex());
+  if (!m_trbuf) {
     xrt::message::send(xrt::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_ALLOC_FAIL);
     return false;
   }
-  // Data Mover will write input stream to this address
-  uint64_t bufAddr = xrt_dev->getDeviceAddr(m_trbuf);
 
-  dev_intf->initTS2MM(trbuf_sz, bufAddr);
+  // Data Mover will write input stream to this address
+  uint64_t bufAddr = dev_intf->getDeviceAddr(m_trbuf);
+  dev_intf->initTS2MM(m_trbuf_alloc_sz, bufAddr);
   return true;
 }
 
@@ -210,8 +187,8 @@ void OclDeviceOffload::reset_s2mm()
   if (!m_trbuf)
     return;
   dev_intf->resetTS2MM();
-  xrt_dev->free(m_trbuf);
-  m_trbuf = nullptr;
+  dev_intf->freeTraceBuf(m_trbuf);
+  m_trbuf = 0;
 }
 
 }

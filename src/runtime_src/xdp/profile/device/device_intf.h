@@ -81,10 +81,17 @@ namespace xdp {
     void configureDataflow(bool* ipConfig);
     void configAmContext(const std::string& ctx_info);
 
+    // Underlying Device APIs
+    uint32_t allocTraceBuf(uint64_t sz ,uint8_t memIdx);
+    void freeTraceBuf(uint32_t bufHandle);
+    void* syncTraceBuf(uint32_t bufHandle ,uint64_t offset, uint64_t bytes);
+    uint64_t getDeviceAddr(uint32_t bufHandle);
+
     // Trace FIFO Management
     bool hasFIFO() {return (fifoCtrl != nullptr);};
     uint32_t getTraceCount(xclPerfMonType type);
     size_t startTrace(xclPerfMonType type, uint32_t startTrigger);
+    void initiateClockTraining();
     size_t stopTrace(xclPerfMonType type);
     size_t readTrace(xclPerfMonType type, xclTraceResultsVector& traceVector);
 
