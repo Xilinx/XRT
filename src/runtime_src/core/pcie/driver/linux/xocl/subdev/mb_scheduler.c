@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018-2019 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2018-2020 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Soren Soe <soren.soe@xilinx.com>
@@ -1673,6 +1673,7 @@ static struct exec_ops penguin_ops;   // kds mode (no ert)
  * @cu_load_count: num_cus array of number of pending + running (submitted) commands for a CU
  * @pending_ctrl_queue: Pending control commands
  * @pending_kds_queue: Pending kds (local) commands
+ * @pending_scu_queue: Pending soft CU commands
  * @pending_cmd_queue: Staging queue for commands that are queued but not yet submitted
  * @cu_usage: CU usage count since last reset
  * @cu_status: AP_CTRL status of CU, updated by ERT_CU_STAT
@@ -1726,6 +1727,7 @@ struct exec_core {
 	struct list_head           pending_cu_queue[MAX_CUS];
 	struct list_head           pending_ctrl_queue;
 	struct list_head           pending_kds_queue;
+	struct list_head           pending_scu_queue;
 
 	struct list_head           running_cmd_queue;
 	struct list_head           pending_cmd_queue;
@@ -2063,6 +2065,7 @@ exec_reset(struct exec_core *exec, const xuid_t *xclbin_id)
 
 	INIT_LIST_HEAD(&exec->pending_ctrl_queue);
 	INIT_LIST_HEAD(&exec->pending_kds_queue);
+	INIT_LIST_HEAD(&exec->pending_scu_queue);
 	INIT_LIST_HEAD(&exec->pending_cmd_queue);
 	INIT_LIST_HEAD(&exec->running_cmd_queue);
 
@@ -2959,6 +2962,15 @@ exec_start_kds(struct exec_core *exec)
 	return (xcmd && exec_start_kds_cmd(exec, xcmd)) ? 1 : 0;
 }
 
+static int
+exec_start_scu(struct exec_core *exec)
+{
+	struct list_head *scu_queue = &exec->pending_scu_queue;
+	struct xocl_cmd *xcmd = list_first_entry_or_null(scu_queue, struct xocl_cmd, cq_list);
+
+	return (xcmd && exec_start_cu_cmd(exec, xcmd)) ? 1 : 0;
+}
+
 static bool
 exec_submit_cu_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 {
@@ -3026,6 +3038,18 @@ exec_submit_kds_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 }
 
 static bool
+exec_submit_scu_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
+{
+	SCHED_DEBUGF("-> %s exec(%d) cmd(%lu)\n", __func__, exec->uid, xcmd->uid);
+
+	// move to pending scu list
+	list_move_tail(&xcmd->cq_list, &exec->pending_scu_queue);
+
+	SCHED_DEBUGF("<- %s returns true\n", __func__);
+	return true;
+}
+
+static bool
 exec_submit_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 {
 	bool ret = false;
@@ -3039,6 +3063,8 @@ exec_submit_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 		ret = exec_submit_kds_cmd(exec, xcmd);
 	else if (cmd_type(xcmd) == ERT_CTRL)
 		ret = exec_submit_ctrl_cmd(exec, xcmd);
+	else if (cmd_type(xcmd) == ERT_SCU)
+		ret = exec_submit_scu_cmd(exec, xcmd);
 	else
 		userpf_err(xcmd->xdev,"Unknown command type %d\n",cmd_type(xcmd));
 
@@ -3096,6 +3122,7 @@ exec_submitted_to_running(struct exec_core *exec)
 	started += exec_start_ctrl(exec);
 	started += exec_start_cus(exec);
 	started += exec_start_kds(exec);
+	started += exec_start_scu(exec);
 	exec->num_pending_cmds -= started;
 	SCHED_DEBUGF("<- %s started(%d)\n", __func__, started);
 }
@@ -3162,12 +3189,21 @@ exec_reset_pending_kds_cmds(struct exec_core *exec)
 }
 
 static void
+exec_reset_pending_scu_cmds(struct exec_core *exec)
+{
+	SCHED_DEBUGF("-> %s exec(%d)\n", __func__, exec->uid);
+	exec_reset_cmd_queue(exec, &exec->pending_scu_queue);
+	SCHED_DEBUGF("<- %s\n", __func__);
+}
+
+static void
 exec_reset_cmds(struct exec_core *exec)
 {
 	SCHED_DEBUGF("-> %s exec(%d)\n", __func__, exec->uid);
 	exec_reset_pending_cu_cmds(exec);
 	exec_reset_pending_ctrl_cmds(exec);
 	exec_reset_pending_kds_cmds(exec);
+	exec_reset_pending_scu_cmds(exec);
 	SCHED_DEBUGF("<- %s\n", __func__);
 }
 
@@ -3920,10 +3956,6 @@ static int client_ioctl_ctx(struct platform_device *pdev,
 	u32 cu_idx = args->cu_index;
 	bool shared;
 
-	/* bypass ctx check for versal for now */
-	if (XOCL_DSA_IS_VERSAL(xdev))
-		return 0;
-
 	mutex_lock(&xdev->dev_lock);
 
 	/* Sanity check arguments for add/rem CTX */
@@ -4091,13 +4123,14 @@ static int convert_execbuf(struct xocl_dev *xdev, struct drm_file *filp,
 	switch (scmd->opcode) {
 	case ERT_START_CU:
 	case ERT_EXEC_WRITE:
-	case ERT_SK_START:
 		scmd->type = ERT_CU;
 		break;
 	case ERT_SK_CONFIG:
 	case ERT_SK_UNCONFIG:
 		scmd->type = ERT_CTRL;
 		break;
+	case ERT_SK_START:
+		scmd->type = ERT_SCU;
 	default:
 		break;
 	}
@@ -4191,14 +4224,11 @@ client_ioctl_execbuf(struct platform_device *pdev,
 		goto out;
 	}
 
-	/* bypass exec buffer valication for versal for now */
-	if (!XOCL_DSA_IS_VERSAL(xdev)) {
-		ret = validate(pdev, client, xobj);
-		if (ret) {
-			userpf_err(xdev, "Exec buffer validation failed\n");
-			ret = -EINVAL;
-			goto out;
-		}
+	ret = validate(pdev, client, xobj);
+	if (ret) {
+		userpf_err(xdev, "Exec buffer validation failed\n");
+		ret = -EINVAL;
+		goto out;
 	}
 
 	/* Copy dependencies from user.	 It is an error if a BO handle specified
@@ -4407,8 +4437,8 @@ validate(struct platform_device *pdev, struct client_ctx *client, const struct d
 		
 	SCHED_DEBUGF("-> %s opcode(%d)\n", __func__, ecmd->opcode);
 
-	// cus for start kernel commands only
-	if (ecmd->type != ERT_CU)
+	// cus for start hard kernel commands only
+	if (ecmd->type != ERT_CU || ecmd->opcode == ERT_SK_START)
 		return 0; /* ok */
 
 	// payload count must be at least 1 for mandatory cumask
