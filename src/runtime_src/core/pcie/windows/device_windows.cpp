@@ -220,124 +220,124 @@ sensor_info(const device_type* device, qr_type qr, const std::type_info&, boost:
 
   switch (qr) {
   case qr_type::QR_12V_PEX_MILLIVOLTS:
-    value = info.vol_12v_pex;
+    value = static_cast<uint64_t>(info.vol_12v_pex);
     return;
   case qr_type::QR_12V_AUX_MILLIVOLTS:
-    value = info.vol_12v_aux;
+    value = static_cast<uint64_t>(info.vol_12v_aux);
     return;
   case qr_type::QR_12V_PEX_MILLIAMPS:
-    value = info.cur_12v_pex;
+    value = static_cast<uint64_t>(info.cur_12v_pex);
     return;
   case qr_type::QR_12V_AUX_MILLIAMPS:
-    value = info.cur_12v_aux;
+    value = static_cast<uint64_t>(info.cur_12v_aux);
     return;
   case qr_type::QR_3V3_PEX_MILLIVOLTS:
-    value = info.vol_3v3_pex;
+    value = static_cast<uint64_t>(info.vol_3v3_pex);
     return;
     case qr_type::QR_3V3_AUX_MILLIVOLTS:
-    value = info.vol_3v3_aux;
+    value = static_cast<uint64_t>(info.vol_3v3_aux);
     return;
   case qr_type::QR_DDR_VPP_BOTTOM_MILLIVOLTS:
-    value = info.ddr_vpp_btm;
+    value = static_cast<uint64_t>(info.ddr_vpp_btm);
     return;
   case qr_type::QR_DDR_VPP_TOP_MILLIVOLTS:
-    value = info.ddr_vpp_top;
+    value = static_cast<uint64_t>(info.ddr_vpp_top);
     return;
   case qr_type::QR_5V5_SYSTEM_MILLIVOLTS:
-    value = info.sys_5v5;
+    value = static_cast<uint64_t>(info.sys_5v5);
     return;
   case qr_type::QR_1V2_VCC_TOP_MILLIVOLTS:
-    value = info.top_1v2;
+    value = static_cast<uint64_t>(info.top_1v2);
     return;
     case qr_type::QR_1V2_VCC_BOTTOM_MILLIVOLTS:
-    value = info.vcc1v2_btm;
+    value = static_cast<uint64_t>(info.vcc1v2_btm);
     return;
   case qr_type::QR_1V8_MILLIVOLTS:
-    value = info.vol_1v8;
+    value = static_cast<uint64_t>(info.vol_1v8);
     return;
   case qr_type::QR_0V85_MILLIVOLTS:
-    value = info.vol_0v85;
+    value = static_cast<uint64_t>(info.vol_0v85);
     return;
   case qr_type::QR_0V9_VCC_MILLIVOLTS:
-    value = info.mgt0v9avcc;
+    value = static_cast<uint64_t>(info.mgt0v9avcc);
     return;
   case qr_type::QR_12V_SW_MILLIVOLTS:
-    value = info.vol_12v_sw;
+    value = static_cast<uint64_t>(info.vol_12v_sw);
     return;
     case qr_type::QR_MGT_VTT_MILLIVOLTS:
-    value = info.mgtavtt;
+    value = static_cast<uint64_t>(info.mgtavtt);
     return;
   case qr_type::QR_INT_VCC_MILLIVOLTS:
-    value = info.vccint_vol;
+    value = static_cast<uint64_t>(info.vccint_vol);
     return;
   case qr_type::QR_INT_VCC_MILLIAMPS:
-    value = info.vccint_curr;
+    value = static_cast<uint64_t>(info.vccint_curr);
     return;
   case qr_type::QR_3V3_PEX_MILLIAMPS:
-    value = info.cur_3v3_pex;
+    value = static_cast<uint64_t>(info.cur_3v3_pex);
     return;
   case qr_type::QR_0V85_MILLIAMPS:
-    value = info.cur_0v85;
+    value = static_cast<uint64_t>(info.cur_0v85);
     return;
     case qr_type::QR_3V3_VCC_MILLIVOLTS:
-    value = info.vol_3v3_vcc;
+    value = static_cast<uint64_t>(info.vol_3v3_vcc);
     return;
   case qr_type::QR_HBM_1V2_MILLIVOLTS:
-    value = info.vol_1v2_hbm;
+    value = static_cast<uint64_t>(info.vol_1v2_hbm);
     return;
   case qr_type::QR_2V5_VPP_MILLIVOLTS:
-    value = info.vol_2v5_vpp;
+    value = static_cast<uint64_t>(info.vol_2v5_vpp);
     return;
   case qr_type::QR_INT_BRAM_VCC_MILLIVOLTS:
-    value = info.vccint_bram;
+    value = static_cast<uint64_t>(info.vccint_bram);
     return;
   case qr_type::QR_TEMP_CARD_TOP_FRONT:
-    value = info.se98_temp0;
+    value = static_cast<uint64_t>(info.se98_temp0);
     return;
   case qr_type::QR_TEMP_CARD_TOP_REAR:
-    value = info.se98_temp1;
+    value = static_cast<uint64_t>(info.se98_temp1);
     return;
   case qr_type::QR_TEMP_CARD_BOTTOM_FRONT:
-    value = info.se98_temp2;
+    value = static_cast<uint64_t>(info.se98_temp2);
     return;
   case qr_type::QR_TEMP_FPGA:
-    value = info.fpga_temp;
+    value = static_cast<uint64_t>(info.fpga_temp);
     return;
   case qr_type::QR_FAN_TRIGGER_CRITICAL_TEMP:
-    value = info.fan_temp;
+    value = static_cast<uint64_t>(info.fan_temp);
     return;
   case qr_type::QR_FAN_SPEED_RPM:
-    value = info.fan_rpm;
+    value = static_cast<uint64_t>(info.fan_rpm);
     return;
   case qr_type::QR_DDR_TEMP_0:
-    value = info.dimm_temp0;
+    value = static_cast<uint64_t>(info.dimm_temp0);
     return;
   case qr_type::QR_DDR_TEMP_1:
-    value = info.dimm_temp1;
+    value = static_cast<uint64_t>(info.dimm_temp1);
     return;
   case qr_type::QR_DDR_TEMP_2:
-    value = info.dimm_temp2;
+    value = static_cast<uint64_t>(info.dimm_temp2);
     return;
   case qr_type::QR_DDR_TEMP_3:
-    value = info.dimm_temp3;
+    value = static_cast<uint64_t>(info.dimm_temp3);
     return;
   case qr_type::QR_HBM_TEMP:
-    value = info.hbm_temp0;
+    value = static_cast<uint64_t>(info.hbm_temp0);
     return;
   case qr_type::QR_CAGE_TEMP_0:
-    value = info.cage_temp0;
+    value = static_cast<uint64_t>(info.cage_temp0);
     return;
   case qr_type::QR_CAGE_TEMP_1:
-    value = info.cage_temp1;
+    value = static_cast<uint64_t>(info.cage_temp1);
     return;
   case qr_type::QR_CAGE_TEMP_2:
-    value = info.cage_temp2;
+    value = static_cast<uint64_t>(info.cage_temp2);
     return;
   case qr_type::QR_CAGE_TEMP_3:
-    value = info.cage_temp3;
+    value = static_cast<uint64_t>(info.cage_temp3);
     return;
   case qr_type::QR_XMC_VERSION:
-    value = info.version;
+    value = static_cast<uint64_t>(info.version);
     return;
   default:
     throw std::runtime_error("device_windows::sensor_info() unexpected qr " + std::to_string(qr));
