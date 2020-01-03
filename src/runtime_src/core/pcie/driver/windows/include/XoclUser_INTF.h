@@ -441,3 +441,88 @@ typedef struct _XOCL_PREAD_BO_UNMGD_ARGS {
 typedef struct _XOCL_PWRITE_BO_UNMGD_ARGS {
     ULONGLONG   Offset;     // IN: BI offset to write to 
 } XOCL_PWRITE_BO_UNMGD_ARGS, *PXOCL_PWRITE_BO_UNMGD_ARGS;
+
+//
+// IOCTL_XOCL_SENSOR_INFO
+// Get sensor info
+// Inbuffer = (not used)
+// OutBuffer = struct xcl_sensor
+//
+#define IOCTL_XOCL_SENSOR_INFO          CTL_CODE(FILE_DEVICE_XOCL_USER, 2107, METHOD_BUFFERED, FILE_READ_DATA)
+
+
+/**
+ * struct xcl_sensor - Data structure used to fetch SENSOR group
+ */
+struct xcl_sensor {
+    uint32_t vol_12v_pex;
+    uint32_t vol_12v_aux;
+    uint32_t cur_12v_pex;
+    uint32_t cur_12v_aux;
+    uint32_t vol_3v3_pex;
+    uint32_t vol_3v3_aux;
+    uint32_t ddr_vpp_btm;
+    uint32_t sys_5v5;
+    uint32_t top_1v2;
+    uint32_t vol_1v8;
+    uint32_t vol_0v85;
+    uint32_t ddr_vpp_top;
+    uint32_t mgt0v9avcc;
+    uint32_t vol_12v_sw;
+    uint32_t mgtavtt;
+    uint32_t vcc1v2_btm;
+    uint32_t fpga_temp;
+    uint32_t fan_temp;
+    uint32_t fan_rpm;
+    uint32_t dimm_temp0;
+    uint32_t dimm_temp1;
+    uint32_t dimm_temp2;
+    uint32_t dimm_temp3;
+    uint32_t vccint_vol;
+    uint32_t vccint_curr;
+    uint32_t se98_temp0;
+    uint32_t se98_temp1;
+    uint32_t se98_temp2;
+    uint32_t cage_temp0;
+    uint32_t cage_temp1;
+    uint32_t cage_temp2;
+    uint32_t cage_temp3;
+    uint32_t hbm_temp0;
+    uint32_t cur_3v3_pex;
+    uint32_t cur_0v85;
+    uint32_t vol_3v3_vcc;
+    uint32_t vol_1v2_hbm;
+    uint32_t vol_2v5_vpp;
+    uint32_t vccint_bram;
+    uint32_t version;
+};
+
+//
+// IOCTL_XOCL_ICAP_INFO
+// Get sensor info
+// Inbuffer = (not used)
+// OutBuffer = struct xcl_sensor
+//
+#define IOCTL_XOCL_ICAP_INFO          CTL_CODE(FILE_DEVICE_XOCL_USER, 2108, METHOD_BUFFERED, FILE_READ_DATA)
+
+/*
+  * UUID_SZ should ALWAYS have the same number
+  * as the MACRO UUID_SIZE defined in linux/uuid.h
+  */
+#define UUID_SZ 16
+/**
+ * Data structure used to fetch ICAP group
+ */
+struct xcl_hwicap {
+    uint64_t freq_0;
+    uint64_t freq_1;
+    uint64_t freq_2;
+    uint64_t freq_3;
+    uint64_t freq_cntr_0;
+    uint64_t freq_cntr_1;
+    uint64_t freq_cntr_2;
+    uint64_t freq_cntr_3;
+    uint64_t idcode;
+    uint8_t uuid[UUID_SZ];
+    uint64_t mig_calib;
+};
