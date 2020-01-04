@@ -1368,7 +1368,7 @@ int xclUnmapBO(xclDeviceHandle handle, unsigned int boHandle, void* addr)
   //std::cout << "xclMapBO called" << std::endl;
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
   if (!drv)
-    return NULL;
+    return -EINVAL;
   return drv->xclUnmapBO(boHandle, addr);
 }
 

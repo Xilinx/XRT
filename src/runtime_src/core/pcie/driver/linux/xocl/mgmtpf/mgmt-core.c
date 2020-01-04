@@ -995,7 +995,7 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	}
 	xocl_info(&pdev->dev, "created all sub devices");
 
-	if (!(dev_info->flags & (XOCL_DSAFLAG_SMARTN | XOCL_DSAFLAG_VERSAL)))
+	if (!(dev_info->flags & (XOCL_DSAFLAG_SMARTN | XOCL_DSAFLAG_VERSAL | XOCL_DSAFLAG_MPSOC)))
 		ret = xocl_icap_download_boot_firmware(lro);
 
 	/* return -ENODEV for 2RP platform */

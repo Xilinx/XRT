@@ -467,9 +467,7 @@ setup()
     write_reg(ERT_CU_BASE_ADDRESS_ADDR,cu_base_address/4);
 
   // Command queue base address
-#ifndef ERT_BUILD_U50
-  write_reg(ERT_CQ_BASE_ADDRESS_ADDR,ERT_CQ_BASE_ADDR/4);
-#else
+#if defined(ERT_BUILD_U50) || defined(ERT_BUILD_V20)
   // The HW has changed so that the CQ is accessed at a different
   // address by the cudma_controller (which is internal to the ERT
   // subsystem) than the address it is accessed to my masters which
@@ -480,6 +478,8 @@ setup()
   // (i.e. 0x0034_0000) for XRT. And the code above was updated to
   // reflect this.
   write_reg(ERT_CQ_BASE_ADDRESS_ADDR,0x0);
+#else
+  write_reg(ERT_CQ_BASE_ADDRESS_ADDR,ERT_CQ_BASE_ADDR/4);
 #endif
 
   // Number of CUs

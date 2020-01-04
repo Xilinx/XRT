@@ -72,6 +72,10 @@ add_library(xilinxopencl SHARED
   $<TARGET_OBJECTS:xclbin>
   )
 
+# Attach to the user's linker flags
+set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-Bsymbolic")
+set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,defs")
+
 set_target_properties(xilinxopencl
   PROPERTIES LINKER_LANGUAGE CXX
   )

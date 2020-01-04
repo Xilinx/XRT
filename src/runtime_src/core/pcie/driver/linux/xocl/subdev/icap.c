@@ -2365,10 +2365,6 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 	}
 
 	if (num_dev > 0) {
-		for (i = 0; i < ICAP_MAX_NUM_CLOCKS; i++) {
-			if (icap->icap_clock_bases[i])
-				break;
-		}
 		xocl_subdev_create_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 		icap_refresh_addrs(pdev);
 		/*

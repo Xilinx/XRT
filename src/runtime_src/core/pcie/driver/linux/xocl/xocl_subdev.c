@@ -130,7 +130,8 @@ static void xocl_subdev_update_info(xdev_handle_t xdev_hdl,
 	for (i = 0; i < *num; i++) {
 		if (info_array[i].id == sdev_info->id &&
 			info_array[i].override_idx == sdev_info->override_idx &&
-			!info_array[i].multi_inst) {
+			!info_array[i].multi_inst &&
+			sdev_info->level > info_array[i].level) {
 			memcpy(&info_array[i], sdev_info,
 				sizeof(*info_array));
 			return;
@@ -1203,7 +1204,6 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 	core->priv.flags = in->flags;
 	core->priv.flash_type = in->flash_type;
 	core->priv.board_name = in->board_name;
-	core->priv.mpsoc = in->mpsoc;
 	core->priv.p2p_bar_sz = in->p2p_bar_sz;
 	if (in->flags & XOCL_DSAFLAG_SET_DSA_VER)
 		core->priv.dsa_ver = in->dsa_ver;
