@@ -159,6 +159,11 @@ if [[ ! -z $ertfw ]]; then
     export XRT_FIRMWARE_DIR=$ertfw
 fi
 
+# we pick microblaze toolchain from Vitis install
+if [[ -z ${XILINX_VITIS:+x} ]]; then
+    export XILINX_VITIS=/proj/xbuilds/2019.2_released/installs/lin64/Vitis/2019.2
+fi
+
 if [[ $dbg == 1 ]]; then
   mkdir -p Debug
   cd Debug
