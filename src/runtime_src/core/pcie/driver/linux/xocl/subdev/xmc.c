@@ -1653,7 +1653,7 @@ static ssize_t cmc_image_read(struct file *filp, struct kobject *kobj,
 		dev_get_drvdata(container_of(kobj, struct device, kobj));
 	ssize_t ret = 0;
 
-	if (xmc->mgmt_binary)
+	if (xmc->mgmt_binary == NULL)
 		goto bail;
 
 	if (off >= xmc->mgmt_binary_length)

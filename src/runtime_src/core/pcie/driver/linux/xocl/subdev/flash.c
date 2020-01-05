@@ -431,8 +431,8 @@ static int flash_reset_fifo(struct xocl_flash *flash)
 	flash_set_ctrl(flash, flash_get_ctrl(flash) | QSPI_CR_TXFIFO_RESET |
 		QSPI_CR_RXFIFO_RESET);
 
-	if (FLASH_BUSY_WAIT((flash_get_status(flash) & status_fifo_mask)) ==
-		(QSPI_SR_TX_EMPTY | QSPI_SR_RX_EMPTY)) {
+	if (FLASH_BUSY_WAIT((flash_get_status(flash) & status_fifo_mask) ==
+		(QSPI_SR_TX_EMPTY | QSPI_SR_RX_EMPTY))) {
 		FLASH_ERR(flash, "failed to reset FIFO, status: 0x%x",
 			flash_get_status(flash));
 		return -ETIMEDOUT;
