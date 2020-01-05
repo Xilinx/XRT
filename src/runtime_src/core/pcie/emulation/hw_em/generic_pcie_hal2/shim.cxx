@@ -2407,7 +2407,12 @@ void HwEmShim::getPerfMonSlotName(xclPerfMonType type, uint32_t slotnum,
   if (type == XCL_PERF_MON_STR) {
     str = (slotnum < XASM_MAX_NUMBER_SLOTS) ? mStreamMonSlotName[slotnum] : "";
   }
-  strncpy(slotName, str.c_str(), length);
+  if(str.length() < length) {
+   strncpy(slotName, str.c_str(), length);
+  } else {
+   strncpy(slotName, str.c_str(), length-1);
+   slotName[length-1] = '\0';
+  }
 }
 
 
