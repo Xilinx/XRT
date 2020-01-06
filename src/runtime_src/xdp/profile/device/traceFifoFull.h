@@ -66,6 +66,7 @@ public:
     uint32_t readTrace(xclTraceResultsVector& traceVector, uint32_t nSamples);
 
     size_t reset();
+    void setTraceFormat(uint32_t tf) { mTraceFormat = tf; }
 
     virtual void showProperties();
     virtual uint32_t getProperties() { return properties; }
@@ -82,6 +83,7 @@ private:
 
     bool mclockTrainingdone = false;
     uint64_t mfirstTimestamp = 0;
+    uint32_t mTraceFormat = 0;
 };
 
 } //  xdp
