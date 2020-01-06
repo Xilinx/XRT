@@ -464,6 +464,7 @@ zocl_update_apertures(struct drm_zocl_dev *zdev)
 			ip = &zdev->ip->m_ip_data[i];
 			apt[zdev->num_apts].addr = ip->m_base_address;
 			apt[zdev->num_apts].size = CU_SIZE;
+			apt[zdev->num_apts].prop = ip->properties;
 			zdev->num_apts++;
 		}
 	}
@@ -936,6 +937,27 @@ bool
 zocl_xclbin_accel_adapter(int kds_mask)
 {
 	return kds_mask == ACCEL_ADAPTER;
+}
+
+bool
+zocl_xclbin_legacy_intr(struct drm_zocl_dev *zdev)
+{
+	u32 prop = zdev->apertures[0].prop;
+
+	/* The first aperture is special.
+	 * If the interrupt ID is zero, this is the legacy
+	 * interrupt xclbin.
+	 */
+	return (prop & IP_INTERRUPT_ID_MASK) == 0;
+}
+
+u32
+zocl_xclbin_intr_id(struct drm_zocl_dev *zdev, u32 idx)
+{
+	u32 prop = zdev->apertures[idx].prop;
+	u32 intr_id = prop & IP_INTERRUPT_ID_MASK;
+
+	return intr_id >> IP_INTERRUPT_ID_SHIFT;
 }
 
 /*
