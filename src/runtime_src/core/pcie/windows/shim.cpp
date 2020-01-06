@@ -1007,7 +1007,7 @@ done:
   get_sensor_info(xcl_sensor* value)
   {
     DWORD bytes = 0;
-    auto status = DeviceIoControl(m_dev,
+    bool status = DeviceIoControl(m_dev,
         IOCTL_XOCL_SENSOR_INFO,
         nullptr,
         0,
@@ -1108,7 +1108,7 @@ get_sensor_info(xclDeviceHandle hdl, xcl_sensor* value)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "sensor_info()");
-  auto shim = get_shim_object(hdl);
+  shim* shim = get_shim_object(hdl);
   shim->get_sensor_info(value);
 }
 

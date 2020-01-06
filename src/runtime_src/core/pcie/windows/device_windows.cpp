@@ -201,7 +201,7 @@ info_mgmt(const device_type* device, qr_type qr, const std::type_info&, boost::a
 static void
 sensor_info(const device_type* device, qr_type qr, const std::type_info&, boost::any& value)
 {
-  auto init_sensor_info = [](const device_type* dev) {
+  xcl_sensor init_sensor_info = [](const device_type* dev) {
     xcl_sensor info = { 0 };
     userpf::get_sensor_info(dev->get_user_handle(), &info);
     return info;
@@ -216,7 +216,7 @@ sensor_info(const device_type* device, qr_type qr, const std::type_info&, boost:
     it = ret.first;
   }
 
-  auto& info = (*it).second;
+  const xcl_sensor& info = (*it).second;
 
   switch (qr) {
   case qr_type::QR_12V_PEX_MILLIVOLTS:
