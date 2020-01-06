@@ -201,7 +201,7 @@ info_mgmt(const device_type* device, qr_type qr, const std::type_info&, boost::a
 static void
 sensor_info(const device_type* device, qr_type qr, const std::type_info&, boost::any& value)
 {
-  xcl_sensor init_sensor_info = [](const device_type* dev) {
+  auto init_sensor_info = [](const device_type* dev) {
     xcl_sensor info = { 0 };
     userpf::get_sensor_info(dev->get_user_handle(), &info);
     return info;
