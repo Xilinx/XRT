@@ -602,7 +602,7 @@ static int set_max_chan(struct xocl_qdma *qdma, u32 count)
 	int	i, ret;
 	bool	reset = false;
 
-	if (count > QDMA_QSETS_MAX) {
+	if (count > sizeof(qdma->channel_bitmap[0]) * 8) {
 		xocl_info(&pdev->dev, "Invalide number of channels set %d", count);
 		ret = -EINVAL;
 		goto failed_create_queue;
@@ -617,8 +617,7 @@ static int set_max_chan(struct xocl_qdma *qdma, u32 count)
 	sema_init(&qdma->channel_sem[1], qdma->channel);
 
 	/* Initialize bit mask to represent individual channels */
-	qdma->channel_bitmap[0] = BIT(qdma->channel);
-	qdma->channel_bitmap[0]--;
+	qdma->channel_bitmap[0] = GENMASK_ULL(qdma->channel - 1, 0);
 	qdma->channel_bitmap[1] = qdma->channel_bitmap[0];
 
 	xocl_info(&pdev->dev, "Creating MM Queues, Channel %d", qdma->channel);
