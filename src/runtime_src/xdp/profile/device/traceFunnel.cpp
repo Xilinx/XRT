@@ -70,5 +70,23 @@ void TraceFunnel::showProperties()
     ProfileIP::showProperties();
 }
 
+/*
+ * Returns  1 if Version2 > Current Version1
+ * Returns  0 if Version2 = Current Version1
+ * Returns -1 if Version2 < Current Version1
+ */
+signed int TraceFunnel::compareVersion(unsigned major2, unsigned minor2) const
+{
+    if (major2 > major_version)
+      return 1;
+    else if (major2 < major_version)
+      return -1;
+    else if (minor2 > minor_version)
+      return 1;
+    else if (minor2 < minor_version)
+      return -1;
+    else return 0;
+}
+
 }   // namespace xdp
 

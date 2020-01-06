@@ -316,10 +316,20 @@ DeviceIntf::~DeviceIntf()
     if (fifoCtrl)
       fifoCtrl->reset();
 
+    uint32_t traceVersion = 0;
     if (traceFunnel) {
       traceFunnel->reset();
       traceFunnel->initiateClockTraining();
+      if (traceFunnel->compareVersion(1,0) == -1) {
+        traceVersion = 1;
+      }
     }
+
+    if (fifoRead)
+      fifoRead->setTraceFormat(traceVersion);
+
+    if (traceDMA)
+      traceDMA->setTraceFormat(traceVersion);
 
     return size;
   }
