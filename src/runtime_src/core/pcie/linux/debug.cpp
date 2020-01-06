@@ -64,88 +64,23 @@ namespace xocl {
   // Helper functions
   // ****************
 
-  void shim::readDebugIpLayout()
-  {
-    if (mIsDebugIpLayoutRead)
-      return;
-
-    uint liveProcessesOnDevice = xclGetNumLiveProcesses();
-    if(liveProcessesOnDevice > 1) {
-      /* More than 1 process on device. Device Profiling for multi-process not supported yet.
-       */
-      std::string warnMsg = "Multiple live processes running on device. Hardware Debug and Profiling data will be unavailable for this process.";
-      std::cout << warnMsg << std::endl;
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", warnMsg) ;
-      mIsDeviceProfiling = false;
-      mIsDebugIpLayoutRead = true;
-      return;
-    }
-
-    //
-    // Profiling - addresses and names
-    // Parsed from debug_ip_layout.rtd contained in xclbin
-    if (mLogStream.is_open()) {
-      mLogStream << "debug_ip_layout: reading profile addresses and names..." << std::endl;
-    }
-
-    mMemoryProfilingNumberSlots = getIPCountAddrNames(AXI_MM_MONITOR, mPerfMonBaseAddress,
-      mPerfMonSlotName, mPerfmonProperties, mPerfmonMajorVersions, mPerfmonMinorVersions, XAIM_MAX_NUMBER_SLOTS);
-
-    mAccelProfilingNumberSlots = getIPCountAddrNames(ACCEL_MONITOR, mAccelMonBaseAddress,
-      mAccelMonSlotName, mAccelmonProperties, mAccelmonMajorVersions, mAccelmonMinorVersions, XAM_MAX_NUMBER_SLOTS);
-
-    mStreamProfilingNumberSlots = getIPCountAddrNames(AXI_STREAM_MONITOR, mStreamMonBaseAddress,
-      mStreamMonSlotName, mStreammonProperties, mStreammonMajorVersions, mStreammonMinorVersions, XASM_MAX_NUMBER_SLOTS);
-
-    mIsDeviceProfiling = (mMemoryProfilingNumberSlots > 0 || mAccelProfilingNumberSlots > 0 || mStreamProfilingNumberSlots > 0);
-
-    std::string fifoName;
-    uint64_t fifoCtrlBaseAddr = 0x0;
-    getIPCountAddrNames(AXI_MONITOR_FIFO_LITE, &fifoCtrlBaseAddr, &fifoName, nullptr, nullptr, nullptr, 1);
-    mPerfMonFifoCtrlBaseAddress = fifoCtrlBaseAddr;
-
-    uint64_t fifoReadBaseAddr = XPAR_AXI_PERF_MON_0_TRACE_OFFSET_AXI_FULL2;
-    getIPCountAddrNames(AXI_MONITOR_FIFO_FULL, &fifoReadBaseAddr, &fifoName, &mTraceFifoProperties, nullptr, nullptr, 1);
-    mPerfMonFifoReadBaseAddress = fifoReadBaseAddr;
-
-    uint64_t traceFunnelAddr = 0x0;
-    getIPCountAddrNames(AXI_TRACE_FUNNEL, &traceFunnelAddr, nullptr, nullptr, nullptr, nullptr, 1);
-    mTraceFunnelAddress = traceFunnelAddr;
-
-    // Count accel monitors with stall monitoring turned on
-    mStallProfilingNumberSlots = 0;
-    for (unsigned int i = 0; i < mAccelProfilingNumberSlots; ++i) {
-      if ((mAccelmonProperties[i] >> 2) & 0x1)
-        mStallProfilingNumberSlots++;
-    }
-
-    if (mLogStream.is_open()) {
-      for (unsigned int i = 0; i < mMemoryProfilingNumberSlots; ++i) {
-        mLogStream << "debug_ip_layout: AXI_MM_MONITOR slot " << i << ": "
-                   << "base address = 0x" << std::hex << mPerfMonBaseAddress[i]
-                   << ", name = " << mPerfMonSlotName[i] << std::endl;
-      }
-      for (unsigned int i = 0; i < mAccelProfilingNumberSlots; ++i) {
-        mLogStream << "debug_ip_layout: ACCEL_MONITOR slot " << i << ": "
-                   << "base address = 0x" << std::hex << mAccelMonBaseAddress[i]
-                   << ", name = " << mAccelMonSlotName[i] << std::endl;
-      }
-      for (unsigned int i = 0; i < mStreamProfilingNumberSlots; ++i) {
-        mLogStream << "debug_ip_layout: STREAM_MONITOR slot " << i << ": "
-                   << "base address = 0x" << std::hex << mStreamMonBaseAddress[i]
-                   << ", name = " << mStreamMonSlotName[i] << std::endl;
-     }
-      mLogStream << "debug_ip_layout: AXI_MONITOR_FIFO_LITE: "
-                 << "base address = 0x" << std::hex << fifoCtrlBaseAddr << std::endl;
-      mLogStream << "debug_ip_layout: AXI_MONITOR_FIFO_FULL: "
-                 << "base address = 0x" << std::hex << fifoReadBaseAddr << std::endl;
-      mLogStream << "debug_ip_layout: AXI_TRACE_FUNNEL: "
-                 << "base address = 0x" << std::hex << traceFunnelAddr << std::endl;
-    }
-
-    // Only need to read it once
-    mIsDebugIpLayoutRead = true;
+  /*
+   * Returns  1 if Version2 > Version1
+   * Returns  0 if Version2 = Version1
+   * Returns -1 if Version2 < Version1
+   */
+  signed shim::cmpMonVersions(unsigned major1, unsigned minor1, unsigned major2, unsigned minor2) {
+    if (major2 > major1)
+      return 1;
+    else if (major2 < major1)
+      return -1;
+    else if (minor2 > minor1)
+      return 1;
+    else if (minor2 < minor1)
+      return -1;
+    else return 0;
   }
+
 
   // Gets the information about the specified IP from the sysfs debug_ip_table.
   // The IP types are defined in xclbin.h
@@ -262,7 +197,8 @@ namespace xocl {
 
     // Read all metric counters
     uint64_t baseAddress[XAIM_MAX_NUMBER_SLOTS];
-    uint32_t numSlots = getIPCountAddrNames(AXI_MM_MONITOR, baseAddress, nullptr, mPerfmonProperties, nullptr, nullptr, XAIM_MAX_NUMBER_SLOTS);
+    uint8_t  perfMonProperties[XAIM_MAX_NUMBER_SLOTS] = {};
+    uint32_t numSlots = getIPCountAddrNames(AXI_MM_MONITOR, baseAddress, nullptr, perfMonProperties, nullptr, nullptr, XAIM_MAX_NUMBER_SLOTS);
 
     uint32_t temp[XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT];
 
@@ -276,7 +212,7 @@ namespace xocl {
                     &sampleInterval, 4);
 
       // If applicable, read the upper 32-bits of the 64-bit debug counters
-      if (mPerfmonProperties[s] & XAIM_64BIT_PROPERTY_MASK) {
+      if (perfMonProperties[s] & XAIM_64BIT_PROPERTY_MASK) {
 	for (int c = 0 ; c < XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT ; ++c) {
 	  xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
 		  baseAddress[s] + spm_upper_offsets[c],

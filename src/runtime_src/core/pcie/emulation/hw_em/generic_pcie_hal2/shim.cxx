@@ -2369,6 +2369,51 @@ int HwEmShim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t num
     return size;
 }
 
+double HwEmShim::xclGetDeviceClockFreqMHz()
+{
+  //return 1.0;
+  double clockSpeed;
+  //300.0 MHz
+  clockSpeed = 300.0;
+  return clockSpeed;
+}
+
+uint32_t HwEmShim::getPerfMonNumberSlots(xclPerfMonType type)
+{
+  if (type == XCL_PERF_MON_MEMORY)
+    return mMemoryProfilingNumberSlots;
+  if (type == XCL_PERF_MON_ACCEL)
+    return mAccelProfilingNumberSlots;
+  if (type == XCL_PERF_MON_STALL)
+    return mStallProfilingNumberSlots;
+  if (type == XCL_PERF_MON_HOST)
+    return 1;
+  if (type == XCL_PERF_MON_STR)
+    return mStreamProfilingNumberSlots;
+
+  return 0;
+}
+
+// Get slot name
+void HwEmShim::getPerfMonSlotName(xclPerfMonType type, uint32_t slotnum,
+                                  char* slotName, uint32_t length) {
+  std::string str = "";
+  if (type == XCL_PERF_MON_MEMORY) {
+    str = (slotnum < XAIM_MAX_NUMBER_SLOTS) ? mPerfMonSlotName[slotnum] : "";
+  }
+  if (type == XCL_PERF_MON_ACCEL) {
+    str = (slotnum < XAM_MAX_NUMBER_SLOTS) ? mAccelMonSlotName[slotnum] : "";
+  }
+  if (type == XCL_PERF_MON_STR) {
+    str = (slotnum < XASM_MAX_NUMBER_SLOTS) ? mStreamMonSlotName[slotnum] : "";
+  }
+  if(str.length() < length) {
+   strncpy(slotName, str.c_str(), length);
+  } else {
+   strncpy(slotName, str.c_str(), length-1);
+   slotName[length-1] = '\0';
+  }
+}
 
 
 /********************************************** QDMA APIs IMPLEMENTATION START **********************************************/

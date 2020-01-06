@@ -1231,6 +1231,18 @@ int ZYNQShim::xclLogMsg(xrtLogMsgLevel level, const char* tag,
     else return 0;
   }
 
+  double ZYNQShim::xclGetDeviceClockFreqMHz()
+  {
+    xclDeviceInfo2  deviceInfo ;
+    xclGetDeviceInfo2(&deviceInfo) ;
+    unsigned short clockFreq = deviceInfo.mOCLFrequency[0] ;
+    if (clockFreq == 0)
+      clockFreq = 100 ;
+    
+    return (double)clockFreq ; 
+  }
+
+
 }
 ;
 //end namespace ZYNQ
@@ -1570,138 +1582,6 @@ int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
   return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -EINVAL;
 }
 
-size_t xclGetDeviceTimestamp(xclDeviceHandle handle)
-{
-  return 0;
-}
-
-double xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
-{
-  return 9600.0 ; // Needs to be adjusted to SoC value
-}
-
-double xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle)
-{
-  return 9600.0 ; // Needs to be adjusted to SoC value
-}
-
-void xclSetProfilingNumberSlots(xclDeviceHandle handle, xclPerfMonType type, uint32_t numSlots)
-{
-  // No longer supported at this level
-  return;
-}
-
-uint32_t xclGetProfilingNumberSlots(xclDeviceHandle handle, xclPerfMonType type)
-{
-  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
-  if (!drv)
-    return -EINVAL;
-  if (!(drv->profiling))
-    return -EINVAL;
-  return drv->profiling->getProfilingNumberSlots(type);
-}
-
-void xclGetProfilingSlotName(xclDeviceHandle handle, xclPerfMonType type,
-                             uint32_t slotnum, char* slotName, uint32_t length)
-{
-  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
-  if (!drv)
-    return;
-  if (!(drv->profiling))
-    return;
-  drv->profiling->getProfilingSlotName(type, slotnum, slotName, length);
-}
-
-size_t xclPerfMonClockTraining(xclDeviceHandle handle, xclPerfMonType type)
-{
-  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
-  if (!drv)
-    return -ENODEV;
-  if (!(drv->profiling))
-    return -EINVAL;
-  return 1; // Not yet enabled
-}
-
-void xclPerfMonConfigureDataflow(xclDeviceHandle handle, xclPerfMonType type, unsigned *ip_config)
-{
-  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
-  if (!drv)
-    return;
-  if (!(drv->profiling))
-    return;
-  return drv->profiling->xclPerfMonConfigureDataflow(type, ip_config);
-}
-
-size_t xclPerfMonStartCounters(xclDeviceHandle handle, xclPerfMonType type)
-{
-  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
-  if (!drv)
-    return -ENODEV;
-  if (!(drv->profiling))
-    return -EINVAL;
-  return drv->profiling->xclPerfMonStartCounters(type);
-}
-
-size_t xclPerfMonStopCounters(xclDeviceHandle handle, xclPerfMonType type)
-{
-  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
-  if (!drv)
-    return -ENODEV;
-  if (!(drv->profiling))
-    return -EINVAL;
-  return drv->profiling->xclPerfMonStopCounters(type);
-}
-
-size_t xclPerfMonReadCounters(xclDeviceHandle handle, xclPerfMonType type, xclCounterResults& counterResults)
-{
-  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
-  if (!drv)
-    return -ENODEV;
-  if (!(drv->profiling))
-    return -EINVAL;
-  return drv->profiling->xclPerfMonReadCounters(type, counterResults);
-}
-
-size_t xclPerfMonStartTrace(xclDeviceHandle handle, xclPerfMonType type, uint32_t startTrigger)
-{
-  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
-  if (!drv)
-    return -ENODEV;
-  if (!(drv->profiling))
-    return -EINVAL;
-  return drv->profiling->xclPerfMonStartTrace(type, startTrigger);
-}
-
-size_t xclPerfMonStopTrace(xclDeviceHandle handle, xclPerfMonType type)
-{
-  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
-  if (!drv)
-    return -ENODEV;
-  if (!(drv->profiling))
-    return -EINVAL;
-  return drv->profiling->xclPerfMonStopTrace(type);
-}
-
-uint32_t xclPerfMonGetTraceCount(xclDeviceHandle handle, xclPerfMonType type)
-{
-  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
-  if (!drv)
-    return -ENODEV;
-  if (!(drv->profiling))
-    return -EINVAL;
-  return drv->profiling->xclPerfMonGetTraceCount(type);
-}
-
-size_t xclPerfMonReadTrace(xclDeviceHandle handle, xclPerfMonType type, xclTraceResultsVector& traceVector)
-{
-  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
-  if (!drv)
-    return -ENODEV;
-  if (!(drv->profiling))
-    return -EINVAL;
-  return drv->profiling->xclPerfMonReadTrace(type, traceVector);
-}
-
 size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type,
                             void* debugResults)
 {
@@ -1724,6 +1604,12 @@ size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type,
   }
   return -1 ;
 }
+
+int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* info)
+{
+  return 0;
+}
+
 int xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
 {
   return 0;

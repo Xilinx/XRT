@@ -33,61 +33,7 @@ extern "C" {
  * Note that the offset is wrt the address space
  */
 
-/* Write host event to device tracing (Zynq only) */
-
-XCL_DRIVER_DLLESPEC void xclWriteHostEvent(xclDeviceHandle handle, enum xclPerfMonEventType type,
-                                           enum xclPerfMonEventID id);
-
-XCL_DRIVER_DLLESPEC size_t xclGetDeviceTimestamp(xclDeviceHandle handle);
-
 XCL_DRIVER_DLLESPEC double xclGetDeviceClockFreqMHz(xclDeviceHandle handle);
-
-XCL_DRIVER_DLLESPEC double xclGetReadMaxBandwidthMBps(xclDeviceHandle handle);
-
-XCL_DRIVER_DLLESPEC double xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle);
-
-XCL_DRIVER_DLLESPEC void xclSetProfilingNumberSlots(xclDeviceHandle handle, enum xclPerfMonType type,
-                                                            uint32_t numSlots);
-
-XCL_DRIVER_DLLESPEC uint32_t xclGetProfilingNumberSlots(xclDeviceHandle handle, enum xclPerfMonType type);
-
-XCL_DRIVER_DLLESPEC void xclGetProfilingSlotName(xclDeviceHandle handle, enum xclPerfMonType type,
-                                                 uint32_t slotnum, char* slotName, uint32_t length);
-
-XCL_DRIVER_DLLESPEC uint32_t xclGetProfilingSlotProperties(xclDeviceHandle handle, enum xclPerfMonType type,
-                                                 uint32_t slotnum);
-
-XCL_DRIVER_DLLESPEC size_t xclPerfMonClockTraining(xclDeviceHandle handle, enum xclPerfMonType type);
-
-XCL_DRIVER_DLLESPEC void xclPerfMonConfigureDataflow(xclDeviceHandle handle, enum xclPerfMonType type, unsigned *ip_data);
-
-XCL_DRIVER_DLLESPEC size_t xclPerfMonStartCounters(xclDeviceHandle handle, enum xclPerfMonType type);
-
-XCL_DRIVER_DLLESPEC size_t xclPerfMonStopCounters(xclDeviceHandle handle, enum xclPerfMonType type);
-
-#ifdef __cplusplus
-XCL_DRIVER_DLLESPEC size_t xclPerfMonReadCounters(xclDeviceHandle handle, enum xclPerfMonType type,
-                                                          xclCounterResults& counterResults);
-#endif
-
-#if 0
-XCL_DRIVER_DLLESPEC size_t xclDebugReadIPStatus(xclDeviceHandle handle, enum xclDebugReadType type,
-                                                                           void* debugResults);
-#endif
-
-XCL_DRIVER_DLLESPEC size_t xclPerfMonStartTrace(xclDeviceHandle handle, enum xclPerfMonType type,
-                                                        uint32_t startTrigger);
-
-XCL_DRIVER_DLLESPEC size_t xclPerfMonStopTrace(xclDeviceHandle handle, enum xclPerfMonType type);
-
-XCL_DRIVER_DLLESPEC uint32_t xclPerfMonGetTraceCount(xclDeviceHandle handle, enum xclPerfMonType type);
-
-
-#ifdef __cplusplus
-XCL_DRIVER_DLLESPEC size_t xclPerfMonReadTrace(xclDeviceHandle handle, enum xclPerfMonType type,
-                                                       xclTraceResultsVector& traceVector);
-#endif
-
 
 XCL_DRIVER_DLLESPEC int xclGetDebugIPlayoutPath(xclDeviceHandle handle, char* layoutPath, size_t size);
 
