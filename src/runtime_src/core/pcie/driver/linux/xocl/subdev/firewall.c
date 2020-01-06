@@ -289,10 +289,12 @@ static u32 check_firewall(struct platform_device *pdev, int *level)
 		if (val) {
 			res = platform_get_resource(pdev, IORESOURCE_MEM, i);
 			if (res) {
-				xocl_ioaddr_to_baroff(xdev, res->start,
+				(void) xocl_ioaddr_to_baroff(xdev, res->start,
 					&bar_idx, &bar_off);
 			}
-			xocl_info(&pdev->dev, "AXI Firewall %d tripped, status: 0x%x, bar offset 0x%llx", i, val, bar_off);
+			xocl_info(&pdev->dev,
+				"AXI Firewall %d tripped, status: 0x%x, bar offset 0x%llx",
+				i, val, bar_off);
 			if (!fw->curr_status) {
 				fw->err_detected_status = val;
 				fw->err_detected_level = i;

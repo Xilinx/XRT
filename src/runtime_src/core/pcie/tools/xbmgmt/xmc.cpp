@@ -73,12 +73,13 @@ XMC_Flasher::XMC_Flasher(std::shared_ptr<pcidev::pci_device> dev)
 
     mPktBufOffset = readReg(XMC_REG_OFF_PKT_OFFSET);
 
+    mXmcDev = nullptr;
     if (std::getenv("FLASH_VIA_DRIVER")) {
-        mXmcDev = fdopen(mDev->open("xmc", O_RDWR), "r+");
+        int fd = mDev->open("xmc", O_RDWR);
+        if (fd >= 0)
+            mXmcDev = fdopen(fd, "r+");
         if (mXmcDev == nullptr)
             std::cout << "Failed to open XMC device on card" << std::endl;
-    } else {
-        mXmcDev = nullptr;
     }
 
 nosup:

@@ -91,7 +91,6 @@ failed:
 static void *flash_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 {
 	struct xocl_dev_core *core = XDEV(xdev_hdl);
-	char *priv = NULL;
 	const char *flash_type;
 	void *blob;
 	int node, proplen;
@@ -119,7 +118,7 @@ static void *flash_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 	proplen = strlen(flash_type) + 1;
 
 	flash_priv = vzalloc(sizeof(*flash_priv));
-	if (!priv)
+	if (!flash_priv)
 		return NULL;
 
 	strcpy(flash_priv->flash_type, flash_type);
