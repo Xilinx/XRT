@@ -2158,8 +2158,31 @@ exec_isr(int irq, void *arg)
 	return IRQ_HANDLED;
 }
 
-/*
- */
+static void scheduler_intr_register(struct exec_core *exec)
+{
+	struct xocl_dev *xdev = exec_get_xdev(exec);
+	int i;
+
+	for (i = 0; i < exec->intr_num; i++) {
+		userpf_info(xdev, "intr # %d", i);
+		xocl_user_interrupt_reg(xdev, i+exec->intr_base, exec_isr, exec);
+		xocl_user_interrupt_config(xdev, i + exec->intr_base, true);
+	}
+}
+
+static void scheduler_intr_unregister(struct exec_core *exec)
+{
+	struct xocl_dev *xdev = exec_get_xdev(exec);
+	int i;
+
+	for (i = 0; i < exec->intr_num; i++) {
+		userpf_info(xdev, "intr # %d", i);
+		xocl_user_interrupt_config(xdev, i + exec->intr_base, false);
+		xocl_user_interrupt_reg(xdev, i + exec->intr_base,
+			NULL, NULL);
+	}
+}
+
 struct exec_core *
 exec_create(struct platform_device *pdev, struct xocl_scheduler *xs)
 {
@@ -2167,7 +2190,6 @@ exec_create(struct platform_device *pdev, struct xocl_scheduler *xs)
 	struct xocl_dev *xdev = xocl_get_xdev(pdev);
 	struct resource *res;
 	static unsigned int count;
-	unsigned int i;
 
 	if (!exec)
 		return NULL;
@@ -2222,11 +2244,7 @@ exec_create(struct platform_device *pdev, struct xocl_scheduler *xs)
 	exec->scheduler = xs;
 	exec->uid = count++;
 
-	for (i = 0; i < exec->intr_num; i++) {
-		xocl_user_interrupt_reg(xdev, i+exec->intr_base, exec_isr, exec);
-		xocl_user_interrupt_config(xdev, i + exec->intr_base, true);
-	}
-
+	scheduler_intr_register(exec);
 	exec_reset(exec, &uuid_null);
 	platform_set_drvdata(pdev, exec);
 
@@ -3114,7 +3132,8 @@ exec_running_to_complete(struct exec_core *exec)
 		if (xcmd->state == ERT_CMD_STATE_RUNNING)
 			exec_query_cmd(exec, xcmd);
 
-		if (xcmd->state >= ERT_CMD_STATE_COMPLETED) {
+		/* Any error command running on CU will not be freed */
+		if (xcmd->state == ERT_CMD_STATE_COMPLETED) {
 			--exec->num_running_cmds;
 			cmd_free(xcmd);
 		}
@@ -3131,6 +3150,14 @@ exec_reset_cmd_queue(struct exec_core *exec, struct list_head *cmd_queue)
 		cmd_set_state(xcmd, ERT_CMD_STATE_ABORT);
 		exec_error_to_free(exec, xcmd);
 	}
+}
+
+static void
+exec_reset_running_cmds(struct exec_core *exec)
+{
+	SCHED_DEBUGF("-> %s exec(%d)\n", __func__, exec->uid);
+	exec_reset_cmd_queue(exec, &exec->running_cmd_queue);
+	SCHED_DEBUGF("<- %s\n", __func__);
 }
 
 static void
@@ -3168,6 +3195,7 @@ exec_reset_cmds(struct exec_core *exec)
 	exec_reset_pending_cu_cmds(exec);
 	exec_reset_pending_ctrl_cmds(exec);
 	exec_reset_pending_kds_cmds(exec);
+	exec_reset_running_cmds(exec);
 	SCHED_DEBUGF("<- %s\n", __func__);
 }
 
@@ -4495,7 +4523,56 @@ int cu_map_addr(struct platform_device *pdev, u32 cu_idx, void *drm_filp,
 	return 0;
 }
 
+static int reclaim_cmds(struct platform_device *pdev)
+{
+	struct exec_core *exec = platform_get_drvdata(pdev);
+	struct xocl_dev	*xdev = xocl_get_xdev(pdev);
+
+	/*
+	 * reclaim outstanding cmds, the exec_rest_cmds is responsible for
+	 * recycling all cmds without leak (outstanding_execs should be 0).
+	 */
+	exec_reset_cmds(exec);
+
+	/* clear stale command objects (num_pending should be 0) */
+	pending_cmds_reset();
+
+	userpf_info(xdev, "exclusively drain cached data, "
+	    "pending_cmds %d, outstanding cmds %d now.\n",
+	    atomic_read(&num_pending),
+	    atomic_read(&xdev->outstanding_execs));
+
+	return atomic_read(&xdev->outstanding_execs);
+}
+
+static int mb_sched_online(struct platform_device *pdev)
+{
+	struct exec_core *exec = platform_get_drvdata(pdev);
+	struct xocl_dev	*xdev = xocl_get_xdev(pdev);
+	int ret = 0;
+
+	ret = reclaim_cmds(pdev);
+
+	//after pci reset, re-register */
+	scheduler_intr_unregister(exec);
+	scheduler_intr_register(exec);
+
+	userpf_info(xdev, "%s, ret = %d.",
+	    ret == 0 ? "Succeeded" : "Failed", ret);
+	return ret;
+}
+
+static int mb_sched_offline(struct platform_device *pdev)
+{
+	struct xocl_dev	*xdev = xocl_get_xdev(pdev);
+
+	userpf_info(xdev, "Succeeded.");
+	return 0;
+}
+
 struct xocl_mb_scheduler_funcs sche_ops = {
+	.offline_cb = mb_sched_offline,
+	.online_cb = mb_sched_online,
 	.create_client = create_client,
 	.destroy_client = destroy_client,
 	.poll_client = poll_client,
@@ -4673,19 +4750,13 @@ err:
  */
 static int mb_scheduler_remove(struct platform_device *pdev)
 {
-	struct xocl_dev *xdev = xocl_get_xdev(pdev);
 	struct exec_core *exec = platform_get_drvdata(pdev);
-	unsigned int i;
 
 	SCHED_DEBUGF("-> %s\n", __func__);
 	exec_reset_cmds(exec);
 	fini_scheduler_thread(exec_scheduler(exec));
+	scheduler_intr_unregister(exec);
 
-	for (i = 0; i < exec->intr_num; i++) {
-		xocl_user_interrupt_config(xdev, i + exec->intr_base, false);
-		xocl_user_interrupt_reg(xdev, i + exec->intr_base,
-			NULL, NULL);
-	}
 	mutex_destroy(&exec->exec_lock);
 
 	user_sysfs_destroy_kds(pdev);

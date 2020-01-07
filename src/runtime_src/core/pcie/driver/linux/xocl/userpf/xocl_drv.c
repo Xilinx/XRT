@@ -354,6 +354,7 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 
 	xocl_drvinst_set_offline(xdev->core.drm, false);
 
+
 	return ret;
 }
 
