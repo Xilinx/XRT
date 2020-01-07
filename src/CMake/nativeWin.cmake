@@ -21,6 +21,7 @@ endif(GIT_FOUND)
 #set(Boost_DEBUG 1)
 
 INCLUDE (FindBoost)
+INCLUDE (FindGTest)
 
 # --- XRT Variables ---
 set (XRT_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/xrt")
