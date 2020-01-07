@@ -4495,6 +4495,30 @@ int cu_map_addr(struct platform_device *pdev, u32 cu_idx, void *drm_filp,
 	return 0;
 }
 
+static int
+hot_reset(struct platform_device *pdev)
+{
+	struct exec_core *exec = platform_get_drvdata(pdev);
+	struct xocl_dev	*xdev = xocl_get_xdev(pdev);
+
+	/*
+	 * reclaim outstanding cmds, exec_rest_cmds is responsible for
+	 * recycling all cmds without leak.
+	 */
+	exec_reset_cmds(exec);
+	atomic_set(&xdev->outstanding_execs, 0);
+
+	/* clear stale command objects if any */
+	pending_cmds_reset();
+
+	userpf_info(xdev, "exclusively drain cached data, "
+	    "pending_cmds %d, outstanding cmds %d now.\n",
+	    atomic_read(&num_pending),
+	    atomic_read(&xdev->outstanding_execs));
+
+	return 0;
+}
+
 struct xocl_mb_scheduler_funcs sche_ops = {
 	.create_client = create_client,
 	.destroy_client = destroy_client,
@@ -4504,6 +4528,7 @@ struct xocl_mb_scheduler_funcs sche_ops = {
 	.reset = reset,
 	.reconfig = reconfig,
 	.cu_map_addr = cu_map_addr,
+	.hot_reset = hot_reset,
 };
 
 /* sysfs */

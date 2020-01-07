@@ -197,7 +197,7 @@ struct xocl_pci_funcs userpf_pci_ops = {
 	.intr_register = userpf_intr_register,
 };
 
-void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
+void xocl_reset_notify(struct pci_dev *pdev, bool prepare, bool hot_reset)
 {
 	struct xocl_dev *xdev = pci_get_drvdata(pdev);
 	int ret;
@@ -229,7 +229,17 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 			xocl_warn(&pdev->dev, "Unable to get on device uuid %d", ret);
 			return;
 		}
+
+		/* Note:
+		 * We only lift the restriction for PCI reset to allow xclbin download.
+		 * A successful xclbin download will re-init scheduler correctly.
+		 * In the future, the new KDS will combine this into scheduler reset.
+		 */
+		if (hot_reset)
+			xocl_exec_hot_reset(xdev);
+
 		xocl_exec_reset(xdev, xclbin_id);
+
 		XOCL_PUT_XCLBIN_ID(xdev);
 	}
 }
@@ -327,7 +337,7 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 	if (force)
 		xocl_drvinst_kill_proc(xdev->core.drm);
 
-	xocl_reset_notify(xdev->core.pdev, true);
+	xocl_reset_notify(xdev->core.pdev, true, false);
 
 	/*
 	 * Reset mgmt. The reset will take 50 seconds on some platform.
@@ -350,9 +360,10 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 	(void) xocl_pci_resize_resource(xdev->core.pdev, xdev->p2p_bar_idx,
 			xdev->p2p_bar_sz_cached);
 
-	xocl_reset_notify(xdev->core.pdev, false);
+	xocl_reset_notify(xdev->core.pdev, false, true);
 
 	xocl_drvinst_set_offline(xdev->core.drm, false);
+
 
 	return ret;
 }
@@ -674,12 +685,12 @@ failed:
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
 void user_pci_reset_prepare(struct pci_dev *pdev)
 {
-	xocl_reset_notify(pdev, true);
+	xocl_reset_notify(pdev, true, false);
 }
 
 void user_pci_reset_done(struct pci_dev *pdev)
 {
-	xocl_reset_notify(pdev, false);
+	xocl_reset_notify(pdev, false, true);
 }
 #endif
 

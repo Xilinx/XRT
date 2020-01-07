@@ -227,7 +227,7 @@ int xocl_p2p_reserve_release_range(struct xocl_dev *xdev,
 int xocl_get_p2p_bar(struct xocl_dev *xdev, u64 *bar_size);
 int xocl_pci_resize_resource(struct pci_dev *dev, int resno, int size);
 int xocl_pci_rbar_refresh(struct pci_dev *dev, int resno);
-void xocl_reset_notify(struct pci_dev *pdev, bool prepare);
+void xocl_reset_notify(struct pci_dev *pdev, bool prepare, bool hot_reset);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
 void user_pci_reset_prepare(struct pci_dev *pdev);
 void user_pci_reset_done(struct pci_dev *pdev);
