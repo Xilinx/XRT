@@ -21,6 +21,8 @@
 #include "xrt/device/halops2.h"
 #include "xrt/device/PMDOperations.h"
 
+#include "ert.h"
+
 #include <cassert>
 
 #include <functional>
@@ -28,6 +30,7 @@
 #include <cstring>
 #include <memory>
 #include <map>
+#include <array>
 
 namespace xrt { namespace hal2 {
 
@@ -69,20 +72,20 @@ class device : public xrt::hal::device
 
   struct BufferObject : hal::buffer_object
   {
-    unsigned int handle = 0xffffffff;
+    xclBufferHandle handle;
     uint64_t deviceAddr = 0xffffffffffffffff;
     void *hostAddr = nullptr;
     size_t size = 0;
     size_t offset = 0;
-    xclBOKind kind;
     unsigned int flags = 0;
     hal2::device_handle owner = nullptr;
     BufferObjectHandle parent = nullptr;
+    bool imported = false;
   };
 
   struct ExecBufferObject : hal::exec_buffer_object
   {
-    unsigned int handle = 0xffffffff;
+    xclBufferHandle handle;
     void* data = nullptr;
     size_t size = 0;
     hal2::device_handle owner = nullptr;
@@ -156,9 +159,11 @@ public:
     return task::createM(get_queue(qt),f,*this,std::forward<Args>(args)...);
   }
 
-#pragma GCC diagnostic push
-#if __GNUC__  >= 7
-#pragma GCC diagnostic ignored "-Wnoexcept-type"
+#ifdef __GNUC__
+# pragma GCC diagnostic push
+# if __GNUC__ >= 7
+#  pragma GCC diagnostic ignored "-Wnoexcept-type"
+# endif
 #endif
   template <typename F,typename ...Args>
   auto
@@ -166,7 +171,9 @@ public:
   {
     return task::createF(get_queue(qt),f,std::forward<Args>(args)...);
   }
-#pragma GCC diagnostic pop
+#ifdef __GNUC__
+# pragma GCC diagnostic pop
+#endif
 public:
   device(std::shared_ptr<hal2::operations> ops, unsigned int idx);
   ~device();
@@ -205,6 +212,18 @@ public:
       m_handle=nullptr;
     }
   }
+
+  virtual hal::device_handle
+  get_handle() const
+  {
+    return m_handle;
+  }
+
+  virtual void
+  acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared);
+
+  virtual void
+  release_cu_context(const uuid& uuid,size_t cuidx);
 
   virtual task::queue*
   getQueue(hal::queue_type qt)
@@ -297,6 +316,10 @@ public:
   virtual event
   copy(const BufferObjectHandle& dst_bo, const BufferObjectHandle& src_bo, size_t sz, size_t dst_offset, size_t src_offset);
 
+  virtual void
+  fill_copy_pkt(const BufferObjectHandle& dst_boh, const BufferObjectHandle& src_boh
+                ,size_t sz, size_t dst_offset, size_t src_offset,ert_start_copybo_cmd* pkt);
+
   virtual size_t
   read_register(size_t offset, void* buffer, size_t size);
 
@@ -339,15 +362,18 @@ public:
   freeStreamBuf(hal::StreamBufHandle buf);
 
   virtual ssize_t
-  writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t size, hal::StreamXferReq* req);
+  writeStream(hal::StreamHandle stream, const void* ptr, size_t size, hal::StreamXferReq* req);
 
   virtual ssize_t
-  readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal::StreamXferReq* req);
+  readStream(hal::StreamHandle stream, void* ptr, size_t size, hal::StreamXferReq* req);
 
-  virtual int 
+  virtual int
   pollStreams(hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout);
 
 public:
+  virtual bool
+  is_imported(const BufferObjectHandle& boh) const;
+
   virtual uint64_t
   getDeviceAddr(const BufferObjectHandle& boh);
 
@@ -494,6 +520,32 @@ public:
   }
 
   virtual hal::operations_result<void>
+  xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
+  {
+    if (!m_ops->mRead)
+      return hal::operations_result<void>();
+    m_ops->mRead(m_handle, space, offset, hostBuf, size);
+    return hal::operations_result<void>(0);
+  }
+
+  virtual hal::operations_result<void>
+  xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
+  {
+    if (!m_ops->mWrite)
+      return hal::operations_result<void>();
+    m_ops->mWrite(m_handle, space, offset, hostBuf, size);
+    return hal::operations_result<void>(0);
+  }
+
+  virtual hal::operations_result<ssize_t>
+  xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_t offset)
+  {
+    if (!m_ops->mUnmgdPread)
+      return hal::operations_result<ssize_t>();
+    return m_ops->mUnmgdPread(m_handle, flags, buf, count, offset);
+  }
+
+  virtual hal::operations_result<void>
   setProfilingSlots(xclPerfMonType type, uint32_t slots)
   {
     if (!m_ops->mSetProfilingSlots)
@@ -520,12 +572,29 @@ public:
     return hal::operations_result<void>(0);
   }
 
+  virtual hal::operations_result<uint32_t>
+  getProfilingSlotProperties(xclPerfMonType type, uint32_t slotnum)
+  {
+    if (!m_ops->mGetProfilingSlotProperties)
+      return hal::operations_result<uint32_t>();
+    return m_ops->mGetProfilingSlotProperties(m_handle,type,slotnum);
+  }
+
   virtual hal::operations_result<void>
   writeHostEvent(xclPerfMonEventType type, xclPerfMonEventID id)
   {
     if (!m_ops->mWriteHostEvent)
       return hal::operations_result<void>();
     m_ops->mWriteHostEvent(m_handle,type,id);
+    return hal::operations_result<void>(0);
+  }
+
+  virtual hal::operations_result<void>
+  configureDataflow(xclPerfMonType type, unsigned *ip_config)
+  {
+    if (!m_ops->mConfigureDataflow)
+      return hal::operations_result<void>();
+    m_ops->mConfigureDataflow(m_handle,type, ip_config);
     return hal::operations_result<void>(0);
   }
 
@@ -560,6 +629,70 @@ public:
       return hal::operations_result<size_t>();
     return m_ops->mStopTrace(m_handle,type);
   }
+
+  virtual void*
+  getHalDeviceHandle() {
+    return m_handle;
+  }
+
+  virtual hal::operations_result<uint32_t>
+  getNumLiveProcesses()
+  {
+    if(!m_ops->mGetNumLiveProcesses)
+      return hal::operations_result<uint32_t>();
+    return m_ops->mGetNumLiveProcesses(m_handle);
+  }
+
+  virtual hal::operations_result<std::string>
+  getSysfsPath(const std::string& subdev, const std::string& entry)
+  {
+    if (!m_ops->mGetSysfsPath)
+      return hal::operations_result<std::string>();
+    constexpr size_t max_path = 256;
+    char path_buf[max_path];
+    if (m_ops->mGetSysfsPath(m_handle, subdev.c_str(), entry.c_str(), path_buf, max_path)) {
+      return hal::operations_result<std::string>();
+    }
+    path_buf[max_path - 1] = '\0';
+    std::string sysfs_path = std::string(path_buf);
+    return sysfs_path;
+  }
+
+  virtual hal::operations_result<std::string>
+  getDebugIPlayoutPath()
+  {
+    if(!m_ops->mGetDebugIPlayoutPath)
+      return hal::operations_result<std::string>();
+
+    const size_t maxLen = 512;
+    char path[maxLen];
+    if(m_ops->mGetDebugIPlayoutPath(m_handle, path, maxLen)) {
+      return hal::operations_result<std::string>();
+    }
+    path[maxLen - 1] = '\0';
+    std::string pathStr(path);
+    return pathStr;
+  }
+
+  virtual hal::operations_result<int>
+  getTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
+  {
+    if(!m_ops->mGetTraceBufferInfo)
+      return hal::operations_result<int>();
+    return m_ops->mGetTraceBufferInfo(m_handle, nSamples, traceSamples, traceBufSz);
+  }
+
+  hal::operations_result<int>
+  readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample)
+  {
+    if(!m_ops->mReadTraceData)
+      return hal::operations_result<int>();
+    return m_ops->mReadTraceData(m_handle, traceBuf, traceBufSz, numSamples, ipBaseAddress, wordsPerSample);
+  }
+
+
+
+
 };
 
 }} // hal2,xrt

@@ -15,15 +15,14 @@
  */
 
 // Copyright 2018 Xilinx, Inc. All rights reserved.
-//
-#include <CL/opencl.h>
+#include "xocl/config.h"
 #include "xocl/core/stream.h"
 #include "xocl/core/error.h"
 #include "xocl/core/device.h"
 #include "plugin/xdp/profile.h"
+#include <CL/opencl.h>
 
 //To access make_unique<>. TODO
-#include "xrt/util/memory.h"
 
 namespace xocl {
 static void
@@ -37,10 +36,10 @@ validOrError(cl_device_id device,
 static cl_stream_mem
 clCreateStreamBuffer(cl_device_id device,
 	             size_t       size,
-	             cl_int*      errcode_ret) 
+	             cl_int*      errcode_ret)
 {
   validOrError(device,size,errcode_ret);
-  auto buf = xrt::make_unique<xocl::stream_mem>(size);
+  auto buf = std::make_unique<xocl::stream_mem>(size);
   buf->get(xocl::xocl(device));
   xocl::assign(errcode_ret,CL_SUCCESS);
   return buf.release();

@@ -17,35 +17,17 @@
 #ifndef _XMAPLG_KERNEL_H_
 #define _XMAPLG_KERNEL_H_
 
-/**
- * @ingroup xma_plg_intf
- * @file plg/xmakernel.h
- * XMA plugin interface for general purpose kernels
- */
-
 #include "xma.h"
 #include "plg/xmasess.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-/**
- * @ingroup xmaplugin
- * @addtogroup xmaplgkernel xmakernel.h
- * @{
-*/
 
-/**
- * @typedef XmaKernelPlugin
- * XmaKernel plugin interface
-*/
-
-/* Forward declaration */
 typedef struct XmaKernelSession XmaKernelSession;
 
 /**
- * @struct XmaKernelPlugin
- * XmaKernel plugin interface
+ * struct XmaKernelPlugin - XmaKernel plugin interface
 */
 typedef struct XmaKernelPlugin
 {
@@ -64,38 +46,45 @@ typedef struct XmaKernelPlugin
                             int32_t            *param_cnt);
     /** close callback used to preform cleanup when application terminates session*/
     int32_t         (*close)(XmaKernelSession *session);
+
+    /** Callback invoked at start to check compatibility with XMA version */
+    int32_t         (*xma_version)(int32_t *main_version, int32_t *sub_version);
+
+    /** Reserved */
+    uint32_t        reserved[4];
+
 } XmaKernelPlugin;
 
 /**
- * @struct XmaKernelSession
- * An instance of an XmaKernel
+ * struct XmaKernelSession - An instance of an XmaKernel
 */
 typedef struct XmaKernelSession
 {
     XmaSession            base; /**< base class of XmaKernelSession */
     XmaKernelProperties   kernel_props; /**< application supplied properites */
     XmaKernelPlugin      *kernel_plugin; /**< pointer to plugin driver */
+    void                 *private_session_data; //Managed by host video application
+    int32_t              private_session_data_size; //Managed by host video application
+    /** Reserved */
+    uint32_t        reserved[4];
 } XmaKernelSession;
 
 /**
- * Unpack XmaSession to XmaKernelSession subclass pointer
+ * to_xma_kernel() - Unpack XmaSession to XmaKernelSession subclass pointer
  *
- * @param s XmaSession parent instance
+ * @s: XmaSession parent instance
  *
- * @returns pointer to XmaKernelSession container
+ * RETURN:  pointer to XmaKernelSession container
  *
- * @note caller must have checked if XmaSession represents a member
- *  of XmaKernelSession by calling is_xma_kernel() prior to ensure
- *  this unpacking is safe
+ * Note: caller must have checked if XmaSession represents a member
+ * of XmaKernelSession by calling is_xma_kernel() prior to ensure
+ * this unpacking is safe
 */
 static inline XmaKernelSession *to_xma_kernel(XmaSession *s)
 {
     return (XmaKernelSession *)s;
 }
 
-/**
- * @}
- */
 #ifdef __cplusplus
 }
 #endif

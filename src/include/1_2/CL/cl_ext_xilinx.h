@@ -41,9 +41,15 @@
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS
 
 // Do *not* include cl_ext.h from this directory
-#include_next <CL/cl_ext.h>
+#ifndef _WIN32
+# include_next <CL/cl_ext.h>
+#else
+# pragma warning( push )
+# pragma warning( disable : 4201 )
+# include <../include/CL/cl_ext.h>
+#endif
 
-#include "stream.h"
+#include "xstream.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -80,17 +86,17 @@ extern "C" {
 typedef struct cl_mem_ext_ptr_t {
   union {
     struct { // legacy layout
-      unsigned int flags;   // Top 8 bits reserved.
+      unsigned int flags;   // Top 8 bits reserved for XCL_MEM_EXT flags
       void *obj;
       void *param;
     };
     struct { // interpreted legcy bank assignment
-      unsigned int banks;   // Top 8 bits reserved.
+      unsigned int banks;   // Top 8 bits reserved for XCL_MEM_EXT flags
       void *host_ptr;
       void *unused1;        // nullptr required
     };
     struct { // interpreted kernel arg assignment
-      unsigned int argidx;
+      unsigned int argidx;  // Top 8 bits reserved for XCL_MEM_EXT flags
       void *host_ptr_;      // use as host_ptr
       cl_kernel kernel;
     };
@@ -138,7 +144,7 @@ clSetCommandQueueProperty(cl_command_queue command_queue,
  * CL_INVALID_VALUE     : if address is nullptr
  * CL_INVALID_VALUE     : if sz is different from sizeof(uintptr_tr)
  */
-extern cl_int
+extern CL_API_ENTRY cl_int CL_API_CALL
 xclGetMemObjDeviceAddress(cl_mem mem,
                           cl_device_id device,
                           size_t sz,
@@ -152,7 +158,7 @@ xclGetMemObjDeviceAddress(cl_mem mem,
  *                        or if unable to obtain FD from exporting device
  * CL_INVALID_VALUE     : if fd is nullptr
  */
-extern cl_int
+extern CL_API_ENTRY cl_int CL_API_CALL
 xclGetMemObjectFd(cl_mem mem,
                   int* fd); /* returned fd */
 
@@ -168,25 +174,13 @@ xclGetMemObjectFd(cl_mem mem,
  *                        if context is nullptr,
  *                        if mem address of variable for cl_mem pointer is nullptr.
  */
-extern cl_int
+extern CL_API_ENTRY cl_int CL_API_CALL
 xclGetMemObjectFromFd(cl_context context,
                       cl_device_id deviceid,
                       cl_mem_flags flags,
                       int fd,
                       cl_mem* mem);
 
-
-
-extern cl_int
-xclEnqueuePeerToPeerCopyBuffer(cl_command_queue    command_queue,
-                     cl_mem              src_buffer,
-                     cl_mem              dst_buffer,
-                     size_t              src_offset,
-                     size_t              dst_offset,
-                     size_t              size,
-                     cl_uint             num_events_in_wait_list,
-                     const cl_event *    event_wait_list,
-                     cl_event *          event_parameter);
 
 /*----
  *
@@ -202,6 +196,7 @@ xclEnqueuePeerToPeerCopyBuffer(cl_command_queue    command_queue,
 typedef uint64_t cl_stream_flags;
 #define CL_STREAM_READ_ONLY			    (1 << 0)
 #define CL_STREAM_WRITE_ONLY                        (1 << 1)
+#define CL_STREAM_POLLING                           (1 << 2)
 
 /**
  * cl_stream_attributes. eg set it to CL_STREAM for stream mode. Used
@@ -254,40 +249,32 @@ clReleaseStream(cl_stream /*stream*/) CL_API_SUFFIX__VERSION_1_0;
 
 /**
  * clWriteStream - write data to stream
- * @device_id : The device
  * @stream    : The stream
  * @ptr       : The ptr to write from.
- * @offset    : The offset in the ptr to write from
  * @size      : The number of bytes to write.
  * @req_type  : The write request type.
  * errcode_ret: The return value eg CL_SUCCESS
  * Return a cl_int
  */
 extern CL_API_ENTRY cl_int CL_API_CALL
-clWriteStream(cl_device_id    /* device_id*/,
-	cl_stream             /* stream*/,
+clWriteStream(cl_stream             /* stream*/,
 	const void *          /* ptr */,
-	size_t                /* offset */,
 	size_t                /* size */,
 	cl_stream_xfer_req*   /* attributes */,
 	cl_int*               /* errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
 
 /**
  * clReadStream - write data to stream
- * @device_id : The device
  * @stream    : The stream
  * @ptr       : The ptr to write from.
- * @offset    : The offset in the ptr to write from
  * @size      : The number of bytes to write.
  * @req_type  : The read request type.
  * errcode_ret: The return value eg CL_SUCCESS
  * Return a cl_int.
  */
 extern CL_API_ENTRY cl_int CL_API_CALL
-clReadStream(cl_device_id     /* device_id*/,
-	     cl_stream             /* stream*/,
+clReadStream(cl_stream             /* stream*/,
 	     void *                /* ptr */,
-	     size_t                /* offset */,
 	     size_t                /* size */,
 	     cl_stream_xfer_req*   /* attributes */,
 	     cl_int*               /* errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
@@ -394,6 +381,66 @@ extern CL_API_ENTRY cl_int CL_API_CALL
 	    cl_pipe pipe,
 	    rte_mbuf* buf) CL_API_SUFFIX__VERSION_1_0;
 
+/*
+ * Low level access to XRT device for use with xrt++
+ */
+struct xrt_device;
+extern CL_API_ENTRY struct xrt_device*
+xclGetXrtDevice(cl_device_id device,
+                cl_int* errcode);
+
+/**
+ * Return information about the compute units of a kernel
+ *
+ * @kernel
+ *   Kernel object being queried for compute unit.
+ * @cuid
+ *   Compute unit id within @kernel object [0..numcus[
+ *   The CU id must be less that number of CUs as retrieved per
+ *   CL_KERNEL_COMPUTE_UNIT_COUNT with clGetKernelInfo.
+ * @param_name
+ *   Information to query (see list below)
+ * @param_value_size
+ *   Number of bytes of memory in @param_value.
+ *   Size must >= size of return type.
+ * @param_value
+ *   Pointer to memory where result is returned.
+ *   Ignored if NULL.
+ * @param_value_size_ret
+ *   Actual size in bytes of data copied to @param_value.
+ *   Ignored if NULL.
+ *
+ * @XCL_COMPUTE_UNIT_NAME
+ * @type: char[]
+ * @return: name of compute unit
+ *
+ * @XCL_COMPUTE_UNIT_INDEX:
+ * @type: cl_uint
+ * @return: XRT scheduler index of compute unit
+ *
+ * @XCL_COMPUTE_UNIT_BASE_ADDRESS:
+ * @type: size_t
+ * @return: Base address of compute unit
+ *
+ * @XCL_COMPUTE_UNIT_CONNECTIONS:
+ * @type: cl_ulong
+ * @return: Memory connection for each compute unit argument.
+ *  Number of arguments are retrieved per CL_KERNEL_NUM_ARGS
+ *  with clGetKernelInfo
+ */
+typedef cl_uint xcl_compute_unit_info;
+extern CL_API_ENTRY cl_int CL_API_CALL
+xclGetComputeUnitInfo(cl_kernel             kernel,
+                      cl_uint               cu_id,
+                      xcl_compute_unit_info param_name,
+                      size_t                param_value_size,
+                      void *                param_value,
+                      size_t *              param_value_size_ret );
+
+#define XCL_COMPUTE_UNIT_NAME         0x1320 // name of CU
+#define XCL_COMPUTE_UNIT_INDEX        0x1321 // scheduler index of CU
+#define XCL_COMPUTE_UNIT_CONNECTIONS  0x1322 // connectivity
+#define XCL_COMPUTE_UNIT_BASE_ADDRESS 0x1323 // base address
 
 /*
   Host Accessible Program Scope Globals
@@ -413,7 +460,7 @@ extern CL_API_ENTRY cl_int CL_API_CALL
 #define XCL_MEM_LEGACY                  0x0
 #define XCL_MEM_TOPOLOGY                (1<<31)
 #define XCL_MEM_EXT_P2P_BUFFER          (1<<30)
-
+#define XCL_MEM_EXT_HOST_ONLY           (1<<29)
 //cl_program_info
 //accepted by the <flags> paramete of clGetProrgamInfo
 #define CL_PROGRAM_BUFFERS_XILINX       0x1180
@@ -435,9 +482,18 @@ typedef cl_uint cl_program_target_type;
 #define CL_PROGRAM_TARGET_TYPE_SW_EMU   0x2
 #define CL_PROGRAM_TARGET_TYPE_HW_EMU   0x4
 
+// K2K kernel argument sentinel
+// XCL_HW_STREAM is a global sentinel value that XRT knows to
+// represent an argument transferred via a hardware stream connection.
+// Such arguments require no direct software intervention.
+#define XCL_HW_STREAM NULL
 
 #ifdef __cplusplus
 }
+#endif
+
+#ifdef _WIN32
+# pragma warning( pop )
 #endif
 
 #endif
