@@ -4131,6 +4131,7 @@ static int convert_execbuf(struct xocl_dev *xdev, struct drm_file *filp,
 		break;
 	case ERT_SK_START:
 		scmd->type = ERT_SCU;
+		break;
 	default:
 		break;
 	}
