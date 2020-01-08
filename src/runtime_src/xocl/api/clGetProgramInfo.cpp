@@ -15,8 +15,6 @@
  */
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/param.h"
 #include "xocl/core/error.h"
@@ -24,10 +22,13 @@
 #include "xocl/core/program.h"
 #include "xocl/core/context.h"
 #include "xocl/core/device.h"
-
 #include "detail/program.h"
-
 #include "plugin/xdp/profile.h"
+#include <CL/opencl.h>
+
+#ifdef _WIN32
+# pragma warning ( disable : 4267 )
+#endif
 
 namespace xocl {
 
@@ -163,7 +164,5 @@ clGetProgramInfo(cl_program         program,
     xocl::send_exception_message(ex.what());
     return CL_OUT_OF_HOST_MEMORY;
   }
-  
+
 }
-
-

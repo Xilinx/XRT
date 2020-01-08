@@ -15,8 +15,7 @@
  */
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#include <CL/opencl.h>
+#include "xocl/config.h"
 #include "xocl/core/program.h"
 #include "xocl/core/device.h"
 #include "xocl/core/param.h"
@@ -25,6 +24,7 @@
 #include "detail/program.h"
 #include "detail/device.h"
 #include "plugin/xdp/profile.h"
+#include <CL/opencl.h>
 
 namespace xocl {
 
@@ -43,7 +43,7 @@ validOrError(cl_program            program,
   detail::device::validOrError(program,device);
 }
 
-static cl_int 
+static cl_int
 clGetProgramBuildInfo(cl_program            program,
                       cl_device_id          device,
                       cl_program_build_info param_name,
@@ -115,5 +115,3 @@ clGetProgramBuildInfo(cl_program            program,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-
