@@ -199,6 +199,152 @@ info_mgmt(const device_type* device, qr_type qr, const std::type_info&, boost::a
 }
 
 static void
+sensor_info(const device_type* device, qr_type qr, const std::type_info&, boost::any& value)
+{
+  auto init_sensor_info = [](const device_type* dev) {
+    xcl_sensor info = { 0 };
+    userpf::get_sensor_info(dev->get_user_handle(), &info);
+    return info;
+  };
+
+  static std::map<const device_type*, xcl_sensor> info_map;
+  static std::mutex mutex;
+  std::lock_guard<std::mutex> lk(mutex);
+  auto it = info_map.find(device);
+  if (it == info_map.end()) {
+    auto ret = info_map.emplace(device,init_sensor_info(device));
+    it = ret.first;
+  }
+
+  const xcl_sensor& info = (*it).second;
+
+  switch (qr) {
+  case qr_type::QR_12V_PEX_MILLIVOLTS:
+    value = static_cast<uint64_t>(info.vol_12v_pex);
+    return;
+  case qr_type::QR_12V_AUX_MILLIVOLTS:
+    value = static_cast<uint64_t>(info.vol_12v_aux);
+    return;
+  case qr_type::QR_12V_PEX_MILLIAMPS:
+    value = static_cast<uint64_t>(info.cur_12v_pex);
+    return;
+  case qr_type::QR_12V_AUX_MILLIAMPS:
+    value = static_cast<uint64_t>(info.cur_12v_aux);
+    return;
+  case qr_type::QR_3V3_PEX_MILLIVOLTS:
+    value = static_cast<uint64_t>(info.vol_3v3_pex);
+    return;
+    case qr_type::QR_3V3_AUX_MILLIVOLTS:
+    value = static_cast<uint64_t>(info.vol_3v3_aux);
+    return;
+  case qr_type::QR_DDR_VPP_BOTTOM_MILLIVOLTS:
+    value = static_cast<uint64_t>(info.ddr_vpp_btm);
+    return;
+  case qr_type::QR_DDR_VPP_TOP_MILLIVOLTS:
+    value = static_cast<uint64_t>(info.ddr_vpp_top);
+    return;
+  case qr_type::QR_5V5_SYSTEM_MILLIVOLTS:
+    value = static_cast<uint64_t>(info.sys_5v5);
+    return;
+  case qr_type::QR_1V2_VCC_TOP_MILLIVOLTS:
+    value = static_cast<uint64_t>(info.top_1v2);
+    return;
+    case qr_type::QR_1V2_VCC_BOTTOM_MILLIVOLTS:
+    value = static_cast<uint64_t>(info.vcc1v2_btm);
+    return;
+  case qr_type::QR_1V8_MILLIVOLTS:
+    value = static_cast<uint64_t>(info.vol_1v8);
+    return;
+  case qr_type::QR_0V85_MILLIVOLTS:
+    value = static_cast<uint64_t>(info.vol_0v85);
+    return;
+  case qr_type::QR_0V9_VCC_MILLIVOLTS:
+    value = static_cast<uint64_t>(info.mgt0v9avcc);
+    return;
+  case qr_type::QR_12V_SW_MILLIVOLTS:
+    value = static_cast<uint64_t>(info.vol_12v_sw);
+    return;
+    case qr_type::QR_MGT_VTT_MILLIVOLTS:
+    value = static_cast<uint64_t>(info.mgtavtt);
+    return;
+  case qr_type::QR_INT_VCC_MILLIVOLTS:
+    value = static_cast<uint64_t>(info.vccint_vol);
+    return;
+  case qr_type::QR_INT_VCC_MILLIAMPS:
+    value = static_cast<uint64_t>(info.vccint_curr);
+    return;
+  case qr_type::QR_3V3_PEX_MILLIAMPS:
+    value = static_cast<uint64_t>(info.cur_3v3_pex);
+    return;
+  case qr_type::QR_0V85_MILLIAMPS:
+    value = static_cast<uint64_t>(info.cur_0v85);
+    return;
+    case qr_type::QR_3V3_VCC_MILLIVOLTS:
+    value = static_cast<uint64_t>(info.vol_3v3_vcc);
+    return;
+  case qr_type::QR_HBM_1V2_MILLIVOLTS:
+    value = static_cast<uint64_t>(info.vol_1v2_hbm);
+    return;
+  case qr_type::QR_2V5_VPP_MILLIVOLTS:
+    value = static_cast<uint64_t>(info.vol_2v5_vpp);
+    return;
+  case qr_type::QR_INT_BRAM_VCC_MILLIVOLTS:
+    value = static_cast<uint64_t>(info.vccint_bram);
+    return;
+  case qr_type::QR_TEMP_CARD_TOP_FRONT:
+    value = static_cast<uint64_t>(info.se98_temp0);
+    return;
+  case qr_type::QR_TEMP_CARD_TOP_REAR:
+    value = static_cast<uint64_t>(info.se98_temp1);
+    return;
+  case qr_type::QR_TEMP_CARD_BOTTOM_FRONT:
+    value = static_cast<uint64_t>(info.se98_temp2);
+    return;
+  case qr_type::QR_TEMP_FPGA:
+    value = static_cast<uint64_t>(info.fpga_temp);
+    return;
+  case qr_type::QR_FAN_TRIGGER_CRITICAL_TEMP:
+    value = static_cast<uint64_t>(info.fan_temp);
+    return;
+  case qr_type::QR_FAN_SPEED_RPM:
+    value = static_cast<uint64_t>(info.fan_rpm);
+    return;
+  case qr_type::QR_DDR_TEMP_0:
+    value = static_cast<uint64_t>(info.dimm_temp0);
+    return;
+  case qr_type::QR_DDR_TEMP_1:
+    value = static_cast<uint64_t>(info.dimm_temp1);
+    return;
+  case qr_type::QR_DDR_TEMP_2:
+    value = static_cast<uint64_t>(info.dimm_temp2);
+    return;
+  case qr_type::QR_DDR_TEMP_3:
+    value = static_cast<uint64_t>(info.dimm_temp3);
+    return;
+  case qr_type::QR_HBM_TEMP:
+    value = static_cast<uint64_t>(info.hbm_temp0);
+    return;
+  case qr_type::QR_CAGE_TEMP_0:
+    value = static_cast<uint64_t>(info.cage_temp0);
+    return;
+  case qr_type::QR_CAGE_TEMP_1:
+    value = static_cast<uint64_t>(info.cage_temp1);
+    return;
+  case qr_type::QR_CAGE_TEMP_2:
+    value = static_cast<uint64_t>(info.cage_temp2);
+    return;
+  case qr_type::QR_CAGE_TEMP_3:
+    value = static_cast<uint64_t>(info.cage_temp3);
+    return;
+  case qr_type::QR_XMC_VERSION:
+    value = static_cast<uint64_t>(info.version);
+    return;
+  default:
+    throw std::runtime_error("device_windows::sensor_info() unexpected qr " + std::to_string(qr));
+  }
+}
+
+static void
 info(const device_type* device, qr_type qr, const std::type_info& tinfo, boost::any& value)
 {
   if (auto mhdl = device->get_mgmt_handle())
@@ -313,7 +459,7 @@ get_IOCTL_entry(QueryRequest qr) const
     { QR_ROM_TIME_SINCE_EPOCH,      { rom }},
     { QR_MEM_TOPOLOGY_RAW,          { xclbin_fcn }},
     { QR_IP_LAYOUT_RAW,             { xclbin_fcn }},
-    { QR_XMC_VERSION,               { nullptr }},
+    { QR_XMC_VERSION,               { sensor_info }},
     { QR_XMC_SERIAL_NUM,            { nullptr }},
     { QR_XMC_MAX_POWER,             { nullptr }},
     { QR_XMC_BMC_VERSION,           { nullptr }},
@@ -324,43 +470,47 @@ get_IOCTL_entry(QueryRequest qr) const
     { QR_IDCODE,                    { nullptr }},
     { QR_STATUS_MIG_CALIBRATED,     { nullptr }},
     { QR_STATUS_P2P_ENABLED,        { nullptr }},
-    { QR_TEMP_CARD_TOP_FRONT,       { nullptr }},
-    { QR_TEMP_CARD_TOP_REAR,        { nullptr }},
-    { QR_TEMP_CARD_BOTTOM_FRONT,    { nullptr }},
-    { QR_TEMP_FPGA,                 { nullptr }},
-    { QR_FAN_TRIGGER_CRITICAL_TEMP, { nullptr }},
+
+    { QR_TEMP_CARD_TOP_FRONT,       { sensor_info }},
+    { QR_TEMP_CARD_TOP_REAR,        { sensor_info }},
+    { QR_TEMP_CARD_BOTTOM_FRONT,    { sensor_info }},
+    { QR_TEMP_FPGA,                 { sensor_info }},
+    { QR_FAN_TRIGGER_CRITICAL_TEMP, { sensor_info }},
     { QR_FAN_FAN_PRESENCE,          { nullptr }},
-    { QR_FAN_SPEED_RPM,             { nullptr }},
-    { QR_CAGE_TEMP_0,               { nullptr }},
-    { QR_CAGE_TEMP_1,               { nullptr }},
-    { QR_CAGE_TEMP_2,               { nullptr }},
-    { QR_CAGE_TEMP_3,               { nullptr }},
-    { QR_12V_PEX_MILLIVOLTS,        { nullptr }},
-    { QR_12V_PEX_MILLIAMPS,         { nullptr }},
-    { QR_12V_AUX_MILLIVOLTS,        { nullptr }},
-    { QR_12V_AUX_MILLIAMPS,         { nullptr }},
-    { QR_3V3_PEX_MILLIVOLTS,        { nullptr }},
-    { QR_3V3_AUX_MILLIVOLTS,        { nullptr }},
-    { QR_DDR_VPP_BOTTOM_MILLIVOLTS, { nullptr }},
-    { QR_DDR_VPP_TOP_MILLIVOLTS,    { nullptr }},
-
-    { QR_5V5_SYSTEM_MILLIVOLTS,     { nullptr }},
-    { QR_1V2_VCC_TOP_MILLIVOLTS,    { nullptr }},
-    { QR_1V2_VCC_BOTTOM_MILLIVOLTS, { nullptr }},
-    { QR_1V8_MILLIVOLTS,            { nullptr }},
-    { QR_0V85_MILLIVOLTS,           { nullptr }},
-    { QR_0V9_VCC_MILLIVOLTS,        { nullptr }},
-    { QR_12V_SW_MILLIVOLTS,         { nullptr }},
-    { QR_MGT_VTT_MILLIVOLTS,        { nullptr }},
-    { QR_INT_VCC_MILLIVOLTS,        { nullptr }},
-    { QR_INT_VCC_MILLIAMPS,         { nullptr }},
-
-    { QR_3V3_PEX_MILLIAMPS,         { nullptr }},
-    { QR_0V85_MILLIAMPS,            { nullptr }},
-    { QR_3V3_VCC_MILLIVOLTS,        { nullptr }},
-    { QR_HBM_1V2_MILLIVOLTS,        { nullptr }},
-    { QR_2V5_VPP_MILLIVOLTS,        { nullptr }},
-    { QR_INT_BRAM_VCC_MILLIVOLTS,   { nullptr }},
+    { QR_FAN_SPEED_RPM,             { sensor_info }},
+    { QR_DDR_TEMP_0,                { sensor_info }},
+    { QR_DDR_TEMP_1,                { sensor_info }},
+    { QR_DDR_TEMP_2,                { sensor_info }},
+    { QR_DDR_TEMP_3,                { sensor_info }},
+    { QR_HBM_TEMP,                  { sensor_info }},
+    { QR_CAGE_TEMP_0,               { sensor_info }},
+    { QR_CAGE_TEMP_1,               { sensor_info }},
+    { QR_CAGE_TEMP_2,               { sensor_info }},
+    { QR_CAGE_TEMP_3,               { sensor_info }},
+    { QR_12V_PEX_MILLIVOLTS,        { sensor_info }},
+    { QR_12V_PEX_MILLIAMPS,         { sensor_info }},
+    { QR_12V_AUX_MILLIVOLTS,        { sensor_info }},
+    { QR_12V_AUX_MILLIAMPS,         { sensor_info }},
+    { QR_3V3_PEX_MILLIVOLTS,        { sensor_info }},
+    { QR_3V3_AUX_MILLIVOLTS,        { sensor_info }},
+    { QR_DDR_VPP_BOTTOM_MILLIVOLTS, { sensor_info }},
+    { QR_DDR_VPP_TOP_MILLIVOLTS,    { sensor_info }},
+    { QR_5V5_SYSTEM_MILLIVOLTS,     { sensor_info }},
+    { QR_1V2_VCC_TOP_MILLIVOLTS,    { sensor_info }},
+    { QR_1V2_VCC_BOTTOM_MILLIVOLTS, { sensor_info }},
+    { QR_1V8_MILLIVOLTS,            { sensor_info }},
+    { QR_0V85_MILLIVOLTS,           { sensor_info }},
+    { QR_0V9_VCC_MILLIVOLTS,        { sensor_info }},
+    { QR_12V_SW_MILLIVOLTS,         { sensor_info }},
+    { QR_MGT_VTT_MILLIVOLTS,        { sensor_info }},
+    { QR_INT_VCC_MILLIVOLTS,        { sensor_info }},
+    { QR_INT_VCC_MILLIAMPS,         { sensor_info }},
+    { QR_3V3_PEX_MILLIAMPS,         { sensor_info }},
+    { QR_0V85_MILLIAMPS,            { sensor_info }},
+    { QR_3V3_VCC_MILLIVOLTS,        { sensor_info }},
+    { QR_HBM_1V2_MILLIVOLTS,        { sensor_info }},
+    { QR_2V5_VPP_MILLIVOLTS,        { sensor_info }},
+    { QR_INT_BRAM_VCC_MILLIVOLTS,   { sensor_info }},
 
     { QR_FIREWALL_DETECT_LEVEL,     { nullptr }},
     { QR_FIREWALL_STATUS,           { nullptr }},

@@ -516,8 +516,6 @@ namespace awsbwhal {
         // Class-level defaults: mIsDebugIpLayoutRead = mIsDeviceProfiling = false
         mDevUserName = xcldev::pci_device_scanner::device_list[mBoardNumber].user_name;
         mMemoryProfilingNumberSlots = 0;
-        mPerfMonFifoCtrlBaseAddress = 0x00;
-        mPerfMonFifoReadBaseAddress = 0x00;
     }
 
     bool AwsXcl::isGood() const {
@@ -950,6 +948,19 @@ namespace awsbwhal {
 
         return size;
     }
+
+    // Get the device clock frequency (in MHz)
+    double AwsXcl::xclGetDeviceClockFreqMHz() {
+      xclGetDeviceInfo2(&mDeviceInfo);
+      unsigned short clockFreq = mDeviceInfo.mOCLFrequency[0];
+      if (clockFreq == 0)
+        clockFreq = 300;
+  
+      //if (mLogStream.is_open())
+      //  mLogStream << __func__ << ": clock freq = " << clockFreq << std::endl;
+      return ((double)clockFreq);
+    }
+
     
     /*
      * xclExecBuf()
@@ -1635,5 +1646,14 @@ int xclDestroyProfileResults(xclDeviceHandle handle, ProfileResults* results)
   return 0;
 }
 
+double xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
+{
+  awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
+  return drv ? drv->xclGetDeviceClockFreqMHz() : 0.0;
+}
 
+int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* info)
+{
+  return 0;
+}
 

@@ -21,6 +21,7 @@ namespace XUtil = XclBinUtilities;
 
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/format.hpp>
 
 // Disable windows compiler warnings
 #ifdef _WIN32
@@ -86,9 +87,9 @@ SectionFlash::subSectionExists(const std::string& _sSubSectionName) const {
     boost::property_tree::ptree& ptFlash = pt.get_child("flash_metadata");
 
     XUtil::TRACE_PrintTree("Current FLASH contents", ptFlash);
-    if ((ptFlash.get<std::string>("mpo_version") == "") &&
-        (ptFlash.get<std::string>("mpo_md5_value") == "") &&
-        (ptFlash.get<std::string>("mpo_name") == "")) {
+    if ((ptFlash.get<std::string>("version") == "") &&
+        (ptFlash.get<std::string>("md5") == "") &&
+        (ptFlash.get<std::string>("name") == "")) {
       // All default values, metadata sub-section has yet to be added
       return false;
     }
@@ -212,26 +213,27 @@ SectionFlash::copyBufferUpdateMetadata(const char* _pOrigDataSection,
 
   // m_flash_type
   {
-    uint16_t flash_type = ptFlash.get<uint16_t>("m_flash_type", pHdr->m_flash_type);
-    std::string sValue = getFlashTypeAsString((FLASH_TYPE) flash_type);
+    std::string sFlashType = ptFlash.get<std::string>("flash_type", getFlashTypeAsString((FLASH_TYPE) pHdr->m_flash_type).c_str());
 
-    if (sValue.compare(getSectionIndexName()) != 0) {
-      std::string errMsg = XUtil::format("ERROR: Metadata data mpo_flash_type '%s' does not match expected section type '%s'", sValue.c_str(), getSectionIndexName().c_str());
+    if (sFlashType.compare(getSectionIndexName()) != 0) {
+      std::string errMsg = XUtil::format("ERROR: Metadata data mpo_flash_type '%s' does not match expected section type '%s'", sFlashType.c_str(), getSectionIndexName().c_str());
       throw std::runtime_error(errMsg);
     }
   }
 
   // m_flash_type
   {
-    uint16_t value = ptFlash.get<uint16_t>("m_flash_type", 0);
-    flashHdr.m_flash_type = value;
+    std::string sFlashType = ptFlash.get<std::string>("flash_type", getFlashTypeAsString((FLASH_TYPE) pHdr->m_flash_type).c_str());
+    FLASH_TYPE eFlashType = getFlashType(sFlashType);
+
+    flashHdr.m_flash_type = eFlashType;
     XUtil::TRACE(XUtil::format("  m_flash_type: %d", flashHdr.m_flash_type).c_str());
   }
 
   // mpo_name
   {
     std::string sDefault = reinterpret_cast<const char*>(pHdr) + sizeof(flash) + pHdr->mpo_name;
-    std::string sValue = ptFlash.get<std::string>("mpo_name", sDefault);
+    std::string sValue = ptFlash.get<std::string>("name", sDefault);
     flashHdr.mpo_name = sizeof(flash) + stringBlock.tellp();
     stringBlock << sValue << '\0';
     XUtil::TRACE(XUtil::format("  mpo_name (0x%lx): '%s'", flashHdr.mpo_name, sValue.c_str()).c_str());
@@ -241,7 +243,7 @@ SectionFlash::copyBufferUpdateMetadata(const char* _pOrigDataSection,
   // mpo_version
   {
     std::string sDefault = reinterpret_cast<const char*>(pHdr) + sizeof(flash) + pHdr->mpo_version;
-    std::string sValue = ptFlash.get<std::string>("mpo_version", sDefault);
+    std::string sValue = ptFlash.get<std::string>("version", sDefault);
     flashHdr.mpo_version = sizeof(flash) + stringBlock.tellp();
     stringBlock << sValue << '\0';
     XUtil::TRACE(XUtil::format("  mpo_version (0x%lx): '%s'", flashHdr.mpo_version, sValue.c_str()).c_str());
@@ -250,7 +252,7 @@ SectionFlash::copyBufferUpdateMetadata(const char* _pOrigDataSection,
   // mpo_md5_value
   {
     std::string sDefault = reinterpret_cast<const char*>(pHdr) + sizeof(flash) + pHdr->mpo_md5_value;
-    std::string sValue = ptFlash.get<std::string>("mpo_md5_value", sDefault);
+    std::string sValue = ptFlash.get<std::string>("md5", sDefault);
     flashHdr.mpo_md5_value = sizeof(flash) + stringBlock.tellp();
     stringBlock << sValue << '\0';
     XUtil::TRACE(XUtil::format("  mpo_md5_value (0x%lx): '%s'", flashHdr.mpo_md5_value, sValue.c_str()).c_str());
@@ -439,10 +441,11 @@ SectionFlash::writeMetadata(std::ostream& _oStream) const {
   // Convert the data from the binary format to JSON
   boost::property_tree::ptree ptFlash;
 
-  ptFlash.put("m_flash_type", XUtil::format("%d", pHdr->m_flash_type).c_str());
-  ptFlash.put("mpo_name", reinterpret_cast<char *>(pHdr) + pHdr->mpo_name);
-  ptFlash.put("mpo_version", reinterpret_cast<char *>(pHdr) + pHdr->mpo_version);
-  ptFlash.put("mpo_md5_value", reinterpret_cast<char *>(pHdr) + pHdr->mpo_md5_value);
+  std::string sFlashType = getFlashTypeAsString((FLASH_TYPE) pHdr->m_flash_type);
+  ptFlash.put("flash_type", sFlashType.c_str());
+  ptFlash.put("name", reinterpret_cast<char *>(pHdr) + pHdr->mpo_name);
+  ptFlash.put("version", reinterpret_cast<char *>(pHdr) + pHdr->mpo_version);
+  ptFlash.put("md5", reinterpret_cast<char *>(pHdr) + pHdr->mpo_md5_value);
 
   boost::property_tree::ptree root;
   root.put_child("flash_metadata", ptFlash);
@@ -515,8 +518,13 @@ SectionFlash::readXclBinBinary(std::fstream& _istream, const axlf_section_header
   boost::property_tree::ptree& ptFlash = pt.get_child("flash_metadata");
 
   XUtil::TRACE_PrintTree("Current FLASH contents", ptFlash);
-  uint16_t flash_type = ptFlash.get<uint16_t>("m_flash_type", 0);
-  std::string sName = getFlashTypeAsString((FLASH_TYPE) flash_type);
 
-  Section::m_sIndexName = sName;
+  std::string sFlashType = ptFlash.get<std::string>("flash_type", "");
+
+  if (getFlashType(sFlashType) == FLT_UNKNOWN) {
+    std::string errMsg = str(boost::format("Error: Unknown flash type: %s") % sFlashType);
+    throw std::runtime_error(errMsg);
+  }
+
+  Section::m_sIndexName = sFlashType;
 }

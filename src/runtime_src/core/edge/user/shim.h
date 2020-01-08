@@ -35,9 +35,6 @@
 
 namespace ZYNQ {
 
-// Forward declaration
-class ZYNQShimProfiling ;
-
 class ZYNQShim {
 
   static const int BUFFER_ALIGNMENT = 0x80; // TODO: UKP
@@ -83,6 +80,8 @@ public:
   int xclSKGetCmd(xclSKCmd *cmd);
   int xclSKCreate(unsigned int boHandle, uint32_t cu_idx);
   int xclSKReport(uint32_t cu_idx, xrt_scu_state state);
+
+  double xclGetDeviceClockFreqMHz();
 
   uint xclGetNumLiveProcesses();
 

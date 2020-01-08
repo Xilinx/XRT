@@ -556,7 +556,6 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
                 in.seekg(flashSection->m_sectionOffset + flashMeta.m_image_offset);
                 in.read(mBuf, bufsize);
             } else {
-                std::cout << "Doesn't find FLASH section in "<< file << ", try MCS section" << std::endl;
                 // Obtain MCS section header.
                 const axlf_section_header* mcsSection = xclbin::get_axlf_section(ap, MCS);
                 if (mcsSection == nullptr)

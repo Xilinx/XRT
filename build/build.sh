@@ -131,13 +131,16 @@ while [ $# -gt 0 ]; do
     esac
 done
 
+debug_dir=${DEBUG_DIR:-Debug}
+release_dir=${REL_DIR:-Release}
+
 here=$PWD
 cd $BUILDDIR
 
 if [[ $clean == 1 ]]; then
     echo $PWD
-    echo "/bin/rm -rf Release Debug"
-    /bin/rm -rf Release Debug
+    echo "/bin/rm -rf $debug_dir $release_dir"
+    /bin/rm -rf $debug_dir $release_dir
     exit 0
 fi
 
@@ -159,9 +162,14 @@ if [[ ! -z $ertfw ]]; then
     export XRT_FIRMWARE_DIR=$ertfw
 fi
 
+# we pick microblaze toolchain from Vitis install
+if [[ -z ${XILINX_VITIS:+x} ]]; then
+    export XILINX_VITIS=/proj/xbuilds/2019.2_released/installs/lin64/Vitis/2019.2
+fi
+
 if [[ $dbg == 1 ]]; then
-  mkdir -p Debug
-  cd Debug
+  mkdir -p $debug_dir
+  cd $debug_dir
   if [[ $nocmake == 0 ]]; then
     echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src"
     time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
@@ -173,8 +181,8 @@ if [[ $dbg == 1 ]]; then
 fi
 
 if [[ $opt == 1 ]]; then
-  mkdir -p Release
-  cd Release
+  mkdir -p $release_dir
+  cd $release_dir
   if [[ $nocmake == 0 ]]; then
     echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src"
     time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
@@ -210,7 +218,7 @@ fi
 
 if [[ $checkpatch == 1 ]]; then
     # check only driver released files
-    DRIVERROOT=`readlink -f $BUILDDIR/Release/usr/src/xrt-2.5.0/driver`
+    DRIVERROOT=`readlink -f $BUILDDIR/$release_dir/usr/src/xrt-2.5.0/driver`
 
     # find corresponding source under src tree so errors can be fixed in place
     XOCLROOT=`readlink -f $BUILDDIR/../src/runtime_src/core/pcie/driver`

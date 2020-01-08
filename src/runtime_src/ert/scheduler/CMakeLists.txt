@@ -55,7 +55,7 @@ add_custom_command(
 )
 
 add_custom_target(scheduler
- DEPENDS legacy/sched.bin u50/sched.bin #v20/sched.bin
+ DEPENDS legacy/sched.bin u50/sched.bin v20/sched.bin
 )
 
 install (FILES
@@ -80,7 +80,6 @@ install (FILES
  RENAME sched_u50.bin
   )
 
-if (0)
 install (FILES
  ${CMAKE_CURRENT_BINARY_DIR}/v20/sched.bin
  DESTINATION ${ERT_INSTALL_PREFIX}
@@ -92,7 +91,6 @@ install (FILES
  DESTINATION ${ERT_INSTALL_FIRMWARE_PREFIX}
  RENAME sched_v20.bin
  )
-endif()
 
 file(GLOB SCH_SRC_FILES
   "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"

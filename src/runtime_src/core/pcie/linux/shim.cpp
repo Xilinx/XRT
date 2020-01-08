@@ -232,8 +232,6 @@ void shim::init(unsigned index, const char *logfileName,
     // Class-level defaults: mIsDebugIpLayoutRead = mIsDeviceProfiling = false
     mDevUserName = mDev->sysfs_name;
     mMemoryProfilingNumberSlots = 0;
-    mPerfMonFifoCtrlBaseAddress = 0x00;
-    mPerfMonFifoReadBaseAddress = 0x00;
 }
 
 /*
@@ -834,9 +832,6 @@ int shim::xclLoadXclBin(const xclBin *buffer)
         }
         xrt_logmsg(XRT_ERROR, "See dmesg log for details. err=%d", ret);
     }
-
-    mIsDebugIpLayoutRead = false;
-
     return ret;
 }
 
@@ -1527,6 +1522,52 @@ int shim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamp
     return size;
 }
 
+// Get the device clock frequency (in MHz)
+double shim::xclGetDeviceClockFreqMHz()
+{
+  xclGetDeviceInfo2(&mDeviceInfo);
+  unsigned short clockFreq = mDeviceInfo.mOCLFrequency[0];
+  if (clockFreq == 0)
+    clockFreq = 300;
+
+  //if (mLogStream.is_open())
+  //  mLogStream << __func__ << ": clock freq = " << clockFreq << std::endl;
+  return ((double)clockFreq);
+}
+
+int shim::xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size)
+{
+  auto dev = pcidev::get_dev(mBoardNumber);
+  std::string subdev_str = std::string(subdev);
+  std::string entry_str = std::string(entry);
+  if (mLogStream.is_open()) {
+    mLogStream << "Retrieving [sysfs root]";
+    mLogStream << subdev_str << "/" << entry_str;
+    mLogStream << std::endl;
+  }
+  std::string sysfsFullPath = dev->get_sysfs_path(subdev_str, entry_str);
+  strncpy(sysfsPath, sysfsFullPath.c_str(), size);
+  sysfsPath[size - 1] = '\0';
+  return 0;
+}
+
+int shim::xclGetDebugProfileDeviceInfo(xclDebugProfileDeviceInfo* info)
+{
+  auto dev = pcidev::get_dev(mBoardNumber);
+  uint16_t user_instance = dev->instance;
+  uint16_t nifd_instance = 0;
+  std::string device_name = std::string(DRIVER_NAME_ROOT) + std::string(DEVICE_PREFIX) + std::to_string(user_instance);
+  std::string nifd_name = std::string(DRIVER_NAME_ROOT) + std::string(NIFD_PREFIX) + std::to_string(nifd_instance);
+  info->device_type = DeviceType::XBB;
+  info->device_index = mBoardNumber;
+  info->user_instance = user_instance;
+  info->nifd_instance = nifd_instance;
+  strncpy(info->device_name, device_name.c_str(), MAX_NAME_LEN - 1);
+  strncpy(info->nifd_name, nifd_name.c_str(), MAX_NAME_LEN - 1);
+  info->device_name[MAX_NAME_LEN-1] = '\0';
+  info->nifd_name[MAX_NAME_LEN-1] = '\0';
+  return 0;
+}
 
 int shim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap)
 {
@@ -2027,6 +2068,27 @@ int xclDestroyProfileResults(xclDeviceHandle handle, ProfileResults* results)
   int status = -1;
   DESTROY_PROFILE_RESULTS_CB(handle, results, status);
   return status;
+}
+
+double xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
+{
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
+  return drv ? drv->xclGetDeviceClockFreqMHz() : 0.0;
+}
+
+int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev,
+                      const char* entry, char* sysfsPath, size_t size)
+{
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
+  if (!drv)
+    return -1;
+  return drv->xclGetSysfsPath(subdev, entry, sysfsPath, size);
+}
+
+int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* info)
+{
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
+  return drv ? drv->xclGetDebugProfileDeviceInfo(info) : -ENODEV;
 }
 
 int xclCuName2Index(xclDeviceHandle handle, const char *name, uint32_t *indexp)

@@ -156,8 +156,6 @@ int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
   return 0;
 }
 
-
-
 int xclRegisterEventNotify(xclDeviceHandle handle, unsigned int userInterrupt, int fd)
 {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
@@ -180,36 +178,6 @@ int xclUpgradeFirmware(xclDeviceHandle handle, const char *fileName)
 }
 
 int xclBootFPGA(xclDeviceHandle handle)
-{
-  return 0;
-}
-
-uint32_t xclGetProfilingNumberSlots(xclDeviceHandle handle, xclPerfMonType type)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  if (!drv)
-    return -1;
-  return drv->getPerfMonNumberSlots(type);
-}
-
-uint32_t xclGetProfilingSlotProperties(xclDeviceHandle handle, xclPerfMonType type, uint32_t slotnum)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  if (!drv)
-    return 0;
-  return drv->getPerfMonProperties(type, slotnum);
-}
-
-void xclGetProfilingSlotName(xclDeviceHandle handle, xclPerfMonType type, uint32_t slotnum,
-		                     char* slotName, uint32_t length)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  if (!drv)
-    return;
-  return drv->getPerfMonSlotName(type, slotnum, slotName, length);
-}
-
-size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type, void* debugResults)
 {
   return 0;
 }
@@ -359,121 +327,6 @@ unsigned int xclVersion ()
   return 2;
 }
 
-void xclWriteHostEvent(xclDeviceHandle handle, xclPerfMonEventType type, xclPerfMonEventID id)
-{
-  return ;
-}
-
-size_t xclGetDeviceTimestamp(xclDeviceHandle handle)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  if (!drv)
-    return -1;
-  return drv->xclGetDeviceTimestamp();
-}
-
-double xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  if (!drv)
-    return -1;
-  return drv->xclGetDeviceClockFreqMHz();
-}
-
-double xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  if (!drv)
-    return -1;
-  return drv->xclGetReadMaxBandwidthMBps();
-}
-
-double xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  if (!drv)
-    return -1;
-  return drv->xclGetWriteMaxBandwidthMBps();
-}
-
-void xclSetProfilingNumberSlots(xclDeviceHandle handle, xclPerfMonType type, uint32_t numSlots)
-{
-  // TODO: set number of slots on monitor
-  return;
-}
-
-size_t xclPerfMonClockTraining(xclDeviceHandle handle, xclPerfMonType type)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  if (!drv)
-    return -1;
-  return drv->xclPerfMonClockTraining();
-}
-
-void xclPerfMonConfigureDataflow(xclDeviceHandle handle, xclPerfMonType type, unsigned *ip_config)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  if (!drv)
-    return;
-  return drv->xclPerfMonConfigureDataflow(type, ip_config);
-}
-
-size_t xclPerfMonStartCounters(xclDeviceHandle handle, xclPerfMonType type)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  if (!drv)
-    return -1;
-  return drv->xclPerfMonStartCounters();
-}
-
-size_t xclPerfMonStopCounters(xclDeviceHandle handle, xclPerfMonType type)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  if (!drv)
-    return -1;
-  return drv->xclPerfMonStopCounters();
-}
-
-size_t xclPerfMonReadCounters(xclDeviceHandle handle, xclPerfMonType type, xclCounterResults& counterResults)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  if (!drv)
-    return -1;
-  return drv->xclPerfMonReadCounters(type,counterResults);
-}
-
-size_t xclPerfMonStartTrace(xclDeviceHandle handle, xclPerfMonType type, uint32_t startTrigger)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  if (!drv)
-    return -1;
-  return drv->xclPerfMonStartTrace(startTrigger);
-}
-
-size_t xclPerfMonStopTrace(xclDeviceHandle handle, xclPerfMonType type)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  if (!drv)
-    return -1;
-  return drv->xclPerfMonStopTrace();
-}
-
-uint32_t xclPerfMonGetTraceCount(xclDeviceHandle handle, xclPerfMonType type)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  if (!drv)
-    return -1;
-  return drv->xclPerfMonGetTraceCount(type);
-}
-
-size_t xclPerfMonReadTrace(xclDeviceHandle handle, xclPerfMonType type, xclTraceResultsVector& traceVector)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  if (!drv)
-    return -1;
-  return drv->xclPerfMonReadTrace(type,traceVector);
-}
-
 ssize_t xclUnmgdPwrite(xclDeviceHandle handle, unsigned flags, const void *buf, size_t count, uint64_t offset)
 {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
@@ -535,6 +388,19 @@ int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclR
 {
    xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   return drv ? drv->xclPollCompletion(min_compl, max_compl, comps, actual, timeout) : -ENODEV;
+}
+
+size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type, void* debugResults)
+{
+  return 0;
+}
+
+double xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
+{
+  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
+  if (!drv)
+    return -1;
+  return drv->xclGetDeviceClockFreqMHz();
 }
 
 /*
