@@ -516,7 +516,7 @@ static irqreturn_t sched_exec_isr(int irq, void *arg)
 
 	SCHED_DEBUG("-> %s irq %d", __func__, irq);
 	for (cu_idx = 0; cu_idx < zdev->cu_num; cu_idx++) {
-		if (zdev->irq[cu_idx] == irq)
+		if (zdev->exec->zcu[cu_idx].irq == irq)
 			break;
 	}
 
@@ -699,6 +699,8 @@ configure(struct sched_cmd *cmd)
 	int cq_irq;
 	int acc_cu = 0;
 	int has_acc_cu = 0;
+	int apt_idx, irq_id;
+	bool is_legacy_intr = true;
 	int ret;
 
 	if (sched_error_on(exec, opcode(cmd) != ERT_CONFIGURE))
@@ -788,6 +790,9 @@ configure(struct sched_cmd *cmd)
 		return -ENOMEM;
 	}
 
+	if (!zdev->ert)
+		is_legacy_intr = zocl_xclbin_legacy_intr(zdev);
+
 	for (i = 0; i < exec->num_cus; i++) {
 		if (zocl_xclbin_accel_adapter(cfg->data[i] & ~ZOCL_KDS_MASK)) {
 			/* If the ACCEL adapter is used */
@@ -815,10 +820,19 @@ configure(struct sched_cmd *cmd)
 		 * Now the zdev->ert is heavily used in configure()
 		 * Need cleanup.
 		 */
-		if (!zdev->ert && get_apt_index(zdev, cu_addr) < 0) {
-			DRM_ERROR("CU address %x is not found in XCLBIN\n",
-				  cfg->data[i]);
-			return 1;
+		if (!zdev->ert) {
+			apt_idx = get_apt_index(zdev, cu_addr);
+			if (apt_idx < 0) {
+				DRM_ERROR("CU address %x is not found in XCLBIN\n",
+					  cfg->data[i]);
+				return 1;
+			}
+			if (is_legacy_intr)
+				irq_id = i;
+			else
+				irq_id = zocl_xclbin_intr_id(zdev, apt_idx);
+			exec->zcu[i].irq = zdev->irq[irq_id];
+			DRM_INFO("minm zcu[%d] irq %d\n", i, exec->zcu[i].irq);
 		}
 
 		/* For MPSoC as PCIe device, the CU address for PS = base
@@ -873,8 +887,8 @@ configure(struct sched_cmd *cmd)
 		if (!zocl_cu_is_valid(exec, i))
 			continue;
 
-		ret = request_irq(zdev->irq[i], sched_exec_isr, 0,
-		    "zocl", zdev);
+		ret = request_irq(exec->zcu[i].irq, sched_exec_isr, 0,
+				  "zocl", zdev);
 		if (ret) {
 			/* Fail to install at least one interrupt
 			 * handler. We need to free the handler(s)
@@ -882,8 +896,8 @@ configure(struct sched_cmd *cmd)
 			 * polling mode.
 			 */
 			for (j = 0; j < i; j++) {
-				if (zocl_cu_is_valid(exec, i))
-					free_irq(zdev->irq[j], zdev);
+				if (zocl_cu_is_valid(exec, j))
+					free_irq(exec->zcu[j].irq, zdev);
 			}
 			DRM_WARN("request_irq failed on CU %d error: %d."
 			    "Fall back to polling mode.\n", i, ret);
