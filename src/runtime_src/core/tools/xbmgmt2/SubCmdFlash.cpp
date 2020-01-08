@@ -66,7 +66,7 @@ scan_devices(bool verbose, bool json)
 
     BoardInfo info;
     f.getBoardInfo(info);
-    std::cout << "Card [" << f.sGetDBDF() << "]:\n";
+    //std::cout << "Card [" << f.sGetDBDF() << "]:\n";
     std::cout << "\tCard type:\t\t" << board.board << "\n";
     std::cout << "\tFlash type:\t\t" << f.sGetFlashType() << "\n";
     std::cout << "\tFlashable partition running on FPGA:" << "\n";

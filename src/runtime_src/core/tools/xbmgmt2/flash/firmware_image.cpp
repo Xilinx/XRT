@@ -115,7 +115,7 @@ void parseDSAFilename(const std::string& filename, uint64_t& vendor, uint64_t& d
 	// check if we have 5 tokens: vendor, device, subsystem, ts, "dsabin"/"xsabin"
 	if (std::distance(tokens.begin(), tokens.end()) == 5) {
 	    tokenizer::iterator tok_iter = tokens.begin();
-		vendor = std::stoull(std::string(*tok_iter), nullptr, radix);
+		vendor = std::stoull(std::string("10ee"), nullptr, radix);
 		tok_iter++;
 		device = std::stoull(std::string(*tok_iter), nullptr, radix);
 		tok_iter++;
@@ -291,7 +291,7 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
 		
         // get filename without the path
         using tokenizer = boost::tokenizer< boost::char_separator<char> >;
-        boost::char_separator<char> sep("\\");
+        boost::char_separator<char> sep("\\");//doesn't deal with /-------->
         tokenizer tokens(filename, sep);
         std::string dsafile = "";
         for (auto tok_iter = tokens.begin(); tok_iter != tokens.end(); ++tok_iter) {
