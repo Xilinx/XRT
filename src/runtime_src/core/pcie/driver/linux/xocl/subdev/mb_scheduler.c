@@ -4721,6 +4721,7 @@ static int mb_scheduler_remove(struct platform_device *pdev)
 
 	user_sysfs_destroy_kds(pdev);
 	exec_destroy(exec);
+	atomic_set(&xdev->outstanding_execs, 0);
 	platform_set_drvdata(pdev, NULL);
 
 	SCHED_DEBUGF("<- %s\n", __func__);
