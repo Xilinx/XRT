@@ -422,8 +422,8 @@ enum softkernel_type {
 # define ERT_CQ_BASE_ADDR                  0x340000
 # define ERT_CSR_ADDR                      0x360000
 #elif defined(ERT_BUILD_V20)
-# define ERT_CQ_BASE_ADDR                  0xdeadbeef
-# define ERT_CSR_ADDR                      0xdeadbeef
+# define ERT_CQ_BASE_ADDR                  0x000000
+# define ERT_CSR_ADDR                      0x010000
 #else
 # define ERT_CQ_BASE_ADDR                  0x190000
 # define ERT_CSR_ADDR                      0x180000
