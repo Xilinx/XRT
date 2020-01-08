@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2019, Xilinx Inc
+ *  Copyright (C) 2019-2020, Xilinx Inc
  *
  *  This file is dual licensed.  It may be redistributed and/or modified
  *  under the terms of the Apache 2.0 License OR version 2 of the GNU
@@ -399,6 +399,7 @@ enum ert_cmd_type {
   ERT_KDS_LOCAL = 1,
   ERT_CTRL = 2,
   ERT_CU = 3,
+  ERT_SCU = 4,
 };
 
 /**
