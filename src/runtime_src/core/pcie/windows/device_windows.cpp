@@ -182,16 +182,16 @@ info_mgmt(const device_type* device, qr_type qr, const std::type_info&, boost::a
 
   switch (qr) {
   case qr_type::QR_PCIE_VENDOR:
-    value = info.pcie_info.vendor;
+    value = static_cast<uint64_t>(info.pcie_info.vendor);
     return;
   case qr_type::QR_PCIE_DEVICE:
-    value = info.pcie_info.device;
+    value = static_cast<uint64_t>(info.pcie_info.device);
     return;
   case qr_type::QR_PCIE_SUBSYSTEM_VENDOR:
-    value = info.pcie_info.subsystem_vendor;
+    value = static_cast<uint64_t>(info.pcie_info.subsystem_vendor);
     return;
   case qr_type::QR_PCIE_SUBSYSTEM_ID:
-    value = info.pcie_info.subsystem_device;
+    value = static_cast<uint64_t>(info.pcie_info.subsystem_device);
     return;
   default:
     throw std::runtime_error("device_windows::info_mgmt() unexpected qr " + std::to_string(qr));

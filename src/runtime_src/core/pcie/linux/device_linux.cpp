@@ -128,6 +128,20 @@ query(QueryRequest qr, const std::type_info& tinfo, boost::any& value) const
 
   auto device_id = get_device_id();
 
+  // Get static information about the device from pci_device class
+  if(qr == QR_PCIE_BDF_BUS) {
+    value = pcidev::get_dev(device_id)->bus;
+    return;
+  }
+  if(qr == QR_PCIE_BDF_DEVICE) {
+    value = pcidev::get_dev(device_id)->dev;
+    return;
+  }
+  if(qr == QR_PCIE_BDF_FUNCTION) {
+    value = pcidev::get_dev(device_id)->func;
+    return;
+  }
+
   // Get the sysdev and entry values to call
   auto& entry = get_sysdev_entry(qr);
 
@@ -138,7 +152,6 @@ query(QueryRequest qr, const std::type_info& tinfo, boost::any& value) const
     value = std::string("");
     auto p_str = boost::any_cast<std::string>(&value);
     pcidev::get_dev(device_id, entry.isUser)->sysfs_get(entry.sSubDevice, entry.sEntry, errmsg, *p_str);
-
   }
   else if (tinfo == typeid(uint64_t)) {
     // -- Typeid: uint64_t --
@@ -167,6 +180,13 @@ query(QueryRequest qr, const std::type_info& tinfo, boost::any& value) const
     pcidev::get_dev(device_id, entry.isUser)->sysfs_get(entry.sSubDevice, entry.sEntry, errmsg, *p_strvec);
 
   }
+  else if (tinfo == typeid(std::vector<char>)) {
+    // -- Typeid: std::vector<std::string>
+    value = std::vector<char>();
+    auto p_strvec = boost::any_cast<std::vector<char>>(&value);
+    pcidev::get_dev(device_id, entry.isUser)->sysfs_get(entry.sSubDevice, entry.sEntry, errmsg, *p_strvec);
+
+  }
   else {
     errmsg = boost::str( boost::format("Error: Unsupported query_device return type: '%s'") % tinfo.name());
   }
@@ -183,7 +203,7 @@ device_linux(id_type device_id, bool user)
   if(user)
     return;
   
-  m_mgmthdl = get_device_handle();//pcidev::get_dev(device_id, false);
+  m_mgmthdl = get_device_handle();
 }
 
 void
