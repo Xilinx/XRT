@@ -18,7 +18,6 @@
  */
 
 #include "shim.h"
-#include "shim-profile.h"
 #include <errno.h>
 
 #include <iostream>
