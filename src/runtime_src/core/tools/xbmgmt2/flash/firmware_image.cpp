@@ -115,7 +115,7 @@ void parseDSAFilename(const std::string& filename, uint64_t& vendor, uint64_t& d
 	// check if we have 5 tokens: vendor, device, subsystem, ts, "dsabin"/"xsabin"
 	if (std::distance(tokens.begin(), tokens.end()) == 5) {
 	    tokenizer::iterator tok_iter = tokens.begin();
-		vendor = std::stoull(std::string("10ee"), nullptr, radix);
+		vendor = std::stoull(std::string(*tok_iter), nullptr, radix);
 		tok_iter++;
 		device = std::stoull(std::string(*tok_iter), nullptr, radix);
 		tok_iter++;

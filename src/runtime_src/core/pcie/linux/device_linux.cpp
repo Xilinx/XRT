@@ -178,14 +178,6 @@ query(QueryRequest qr, const std::type_info& tinfo, boost::any& value) const
     value = std::vector<std::string>();
     auto p_strvec = boost::any_cast<std::vector<std::string>>(&value);
     pcidev::get_dev(device_id, entry.isUser)->sysfs_get(entry.sSubDevice, entry.sEntry, errmsg, *p_strvec);
-
-  }
-  else if (tinfo == typeid(std::vector<char>)) {
-    // -- Typeid: std::vector<std::string>
-    value = std::vector<char>();
-    auto p_strvec = boost::any_cast<std::vector<char>>(&value);
-    pcidev::get_dev(device_id, entry.isUser)->sysfs_get(entry.sSubDevice, entry.sEntry, errmsg, *p_strvec);
-
   }
   else {
     errmsg = boost::str( boost::format("Error: Unsupported query_device return type: '%s'") % tinfo.name());

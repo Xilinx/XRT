@@ -214,7 +214,6 @@ Flasher::Flasher(unsigned int index) : mFRHeader{}
 
     bool is_mfg = false;
     is_mfg = xrt_core::query_device<bool>(dev, xrt_core::device::QR_IS_MFG);
-
     // std::vector<char> feature_rom;
     // feature_rom = xrt_core::query_device<std::vector<char>>(dev, xrt_core::device::QR_ROM_RAW);
     // if (feature_rom != xrt_core::invalid_query_value<std::vector<char>>())
