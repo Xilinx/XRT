@@ -110,7 +110,6 @@ inline void* wordcopy(void *dst, const void* src, size_t bytes)
 
 namespace ZYNQ {
 ZYNQShim::ZYNQShim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity) :
-    profiling(nullptr),
     mBoardNumber(index),
     mVerbosity(verbosity),
     mKernelClockFreq(100),
@@ -121,7 +120,6 @@ ZYNQShim::ZYNQShim(unsigned index, const char *logfileName, xclVerbosityLevel ve
 
   xclLog(XRT_INFO, "XRT", "%s", __func__);
 
-  profiling = std::make_unique<ZYNQShimProfiling>(this);
   mKernelFD = open("/dev/dri/renderD128", O_RDWR);
   if (!mKernelFD) {
     xclLog(XRT_ERROR, "XRT", "%s: Cannot open /dev/dri/renderD128", __func__);
@@ -1535,9 +1533,7 @@ double xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
   if (!drv)
     return 0;
-  if (!(drv->profiling))
-    return 0;
-  return drv->profiling->xclGetDeviceClockFreqMHz();
+  return drv->xclGetDeviceClockFreqMHz();
 }
 
 int xclSKGetCmd(xclDeviceHandle handle, xclSKCmd *cmd)
