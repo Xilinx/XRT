@@ -242,10 +242,6 @@ namespace xclemulation{
       }
 
     }
-    else 
-    {
-      setLaunchWaveform(LAUNCHWAVEFORM::BATCH);
-    }
 
   }
 
