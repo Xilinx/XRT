@@ -43,9 +43,6 @@ public:
   ZYNQShim(unsigned index, const char *logfileName,
            xclVerbosityLevel verbosity);
 
-  // The entry of profiling functions
-  std::unique_ptr<ZYNQShimProfiling> profiling;
-
   int mapKernelControl(const std::vector<std::pair<uint64_t, size_t>>& offsets);
   void *getVirtAddressOfApture(xclAddressSpace space, const uint64_t phy_addr, uint64_t& offset);
 
