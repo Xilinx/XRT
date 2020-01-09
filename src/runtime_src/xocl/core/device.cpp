@@ -818,7 +818,7 @@ map_buffer(memory* buffer, cl_map_flags map_flags, size_t offset, size_t size, v
 
   // If buffer is resident it must be refreshed unless CL_MAP_INVALIDATE_REGION
   // is specified in which case host will discard current content
-  if (!nosync && !(map_flags & CL_MAP_WRITE_INVALIDATE_REGION) && buffer->is_resident(this)) {
+  if (!nosync && !(map_flags & CL_MAP_WRITE_INVALIDATE_REGION) && buffer->is_resident(this) && !buffer->no_host_memory()) {
     boh = buffer->get_buffer_object_or_error(this);
     xdevice->sync(boh,size,offset,xrt::hal::device::direction::DEVICE2HOST,false);
   }
@@ -934,7 +934,7 @@ write_buffer(memory* buffer, size_t offset, size_t size, const void* ptr)
   // Update ubuf if necessary
   sync_to_ubuf(buffer,offset,size,xdevice,boh);
 
-  if (buffer->is_resident(this))
+  if (buffer->is_resident(this) && !buffer->no_host_memory())
     // Sync new written data to device at offset
     // HAL performs read/modify write if necesary
     xdevice->sync(boh,size,offset,xrt::hal::device::direction::HOST2DEVICE,false);
@@ -947,7 +947,7 @@ read_buffer(memory* buffer, size_t offset, size_t size, void* ptr)
   auto xdevice = get_xrt_device();
   auto boh = buffer->get_buffer_object(this);
 
-  if (buffer->is_resident(this))
+  if (buffer->is_resident(this) && !buffer->no_host_memory())
     // Sync back from device at offset to buffer object
     // HAL performs skip/copy read if necesary
     xdevice->sync(boh,size,offset,xrt::hal::device::direction::DEVICE2HOST,false);
@@ -1128,7 +1128,7 @@ write_image(memory* image,const size_t* origin,const size_t* region,size_t row_p
   rw_image(this,image,origin,region,row_pitch,slice_pitch,nullptr,static_cast<const char*>(ptr));
 
   // Sync newly writte data to device if image is resident
-  if (image->is_resident(this)) {
+  if (image->is_resident(this) && !image->no_host_memory()) {
     auto boh = image->get_buffer_object_or_error(this);
     get_xrt_device()->sync(boh, image->get_size(), 0,xrt::hal::device::direction::HOST2DEVICE,false);
   }
@@ -1139,7 +1139,7 @@ device::
 read_image(memory* image,const size_t* origin,const size_t* region,size_t row_pitch,size_t slice_pitch,void *ptr)
 {
   // Sync back from device if image is resident
-  if (image->is_resident(this)) {
+  if (image->is_resident(this) && !image->no_host_memory()) {
     auto boh = image->get_buffer_object_or_error(this);
     get_xrt_device()->sync(boh,image->get_size(),0,xrt::hal::device::direction::DEVICE2HOST,false);
   }
