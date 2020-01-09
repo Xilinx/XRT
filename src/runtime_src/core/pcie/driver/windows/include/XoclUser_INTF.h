@@ -526,3 +526,73 @@ struct xcl_hwicap {
     uint8_t uuid[UUID_SZ];
     uint64_t mig_calib;
 };
+
+//
+// IOCTL_XOCL_BOARD_INFO
+// Get board info
+// Inbuffer = (not used)
+// OutBuffer = struct xcl_board_info
+//
+#define IOCTL_XOCL_BOARD_INFO          CTL_CODE(FILE_DEVICE_XOCL_USER, 2109, METHOD_BUFFERED, FILE_READ_DATA)
+
+/**
+ * struct xcl_board_info - Data structure used to fetch BDINFO group
+ */
+struct xcl_board_info {
+    char     serial_num[256];
+    char     mac_addr0[32];
+    char     mac_addr1[32];
+    char     mac_addr2[32];
+    char     mac_addr3[32];
+    char     revision[256];
+    char     bd_name[256];
+    char     bmc_ver[256];
+    uint32_t max_power;
+    uint32_t fan_presence;
+    uint32_t config_mode;
+};
+
+//
+// IOCTL_XOCL_MIG_ECC_INFO
+// Get MIG ECC info
+// Inbuffer = (not used)
+// OutBuffer = sizeof(struct xcl_sensor) * MAX_M_COUNT
+//
+#define IOCTL_XOCL_MIG_ECC_INFO          CTL_CODE(FILE_DEVICE_XOCL_USER, 2110, METHOD_BUFFERED, FILE_READ_DATA)
+
+#define MAX_M_COUNT      64
+
+/**
+ * struct xcl_mig_ecc -  Data structure used to fetch MIG_ECC group
+ */
+struct xcl_mig_ecc {
+    uint64_t mem_type;
+    uint64_t mem_idx;
+    uint64_t ecc_enabled;
+    uint64_t ecc_status;
+    uint64_t ecc_ce_cnt;
+    uint64_t ecc_ue_cnt;
+    uint64_t ecc_ce_ffa;
+    uint64_t ecc_ue_ffa;
+};
+
+//
+// IOCTL_XOCL_FIREWALL_INFO
+// Get firewall info
+// Inbuffer = (not used)
+// OutBuffer = sizeof(struct xcl_firewall)
+//
+#define IOCTL_XOCL_FIREWALL_INFO          CTL_CODE(FILE_DEVICE_XOCL_USER, 2111, METHOD_BUFFERED, FILE_READ_DATA)
+
+
+/**
+ * struct xcl_firewall -  Data structure used to fetch FIREWALL group
+ */
+struct xcl_firewall {
+    uint64_t max_level;
+    uint64_t curr_status;
+    uint64_t curr_level;
+    uint64_t err_detected_status;
+    uint64_t err_detected_level;
+    uint64_t err_detected_time;
+};
