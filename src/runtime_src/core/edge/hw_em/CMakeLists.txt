@@ -1,11 +1,14 @@
 set(EM_SRC_DIR  "${CMAKE_CURRENT_SOURCE_DIR}")
 set(COMMON_EM_SRC_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/../user")
+set(COMMON_SRC_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/..")
 
 include_directories(
   ${EM_SRC_DIR}
+  ${COMMON_SRC_DIR}
   ${COMMON_EM_SRC_DIR}
   ${BOOST_FILESYSTEM_INCLUDE_DIRS}
   ${BOOST_SYSTEM_INCLUDE_DIRS}
+  ${CMAKE_BINARY_DIR} # includes version.h
   )
 
 
@@ -14,6 +17,12 @@ file(GLOB EM_SRC_FILES
   "${COMMON_EM_SRC_DIR}/*.cpp"
   "${EM_SRC_DIR}/*.h"
   "${EM_SRC_DIR}/*.cpp"
+  "${COMMON_SRC_DIR}/common/*.h"
+  "${COMMON_SRC_DIR}/common/*.cpp"
+  "${COMMON_SRC_DIR}/../common/system.h"
+  "${COMMON_SRC_DIR}/../common/system.cpp"
+  "${COMMON_SRC_DIR}/../common/device.cpp"
+  "${COMMON_SRC_DIR}/../common/device.h"
   )
 
 add_definitions(-DXCLHAL_MAJOR_VER=1 -DXCLHAL_MINOR_VER=0 -D__HWEM__)
