@@ -63,6 +63,10 @@ XRT_CORE_PCIE_WINDOWS_EXPORT
 void
 get_bdf_info(xclDeviceHandle hdl, uint16_t bdf[3]);
 
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+get_sensor_info(xclDeviceHandle hdl, xcl_sensor* value);
+
 } // userpf
 
 
