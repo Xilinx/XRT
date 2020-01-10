@@ -40,9 +40,6 @@ public:
   virtual void read(uint64_t addr, void* buf, uint64_t len) const;
   virtual void write(uint64_t addr, const void* buf, uint64_t len) const;
 
-  private:
-    xclDeviceHandle m_mgmthdl = XRT_NULL_HANDLE;
-
 };
 }
 

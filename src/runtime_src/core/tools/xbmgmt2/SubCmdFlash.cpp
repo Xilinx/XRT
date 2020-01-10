@@ -49,7 +49,7 @@ static void
 scan_devices(bool verbose, bool json)
 {
   json = json;
-  auto total = xrt_core::get_total_devices().first;
+  auto total = xrt_core::get_total_devices(false).first;
   
   if (total == 0) {
     std::string errMsg = "No card found!";

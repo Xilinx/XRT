@@ -237,7 +237,7 @@ Flasher::Flasher(unsigned int index) : mFRHeader{}
     // {
     //    std::cout << "ERROR: card not supported." << std::endl;
     // }
-    m_device = dev; // Successfully initialized
+    m_device = std::dynamic_pointer_cast<xrt_core::device>(dev); // Successfully initialized
 }
 
 /*
@@ -317,24 +317,26 @@ std::vector<DSAInfo> Flasher::getInstalledDSA()
 
 DSAInfo Flasher::getOnBoardDSA()
 {
+    std::string vbnv;
+    uint64_t ts = NULL_TIMESTAMP;
     std::string bmc;
     std::string board_name;
     std::string uuid;
     bool is_mfg = false;
 
-    std::string vbnv = xrt_core::query_device<std::string>(m_device, xrt_core::device::QR_ROM_VBNV);
-    uint64_t ts = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_ROM_TIME_SINCE_EPOCH);
     is_mfg = xrt_core::query_device<bool>(m_device, xrt_core::device::QR_IS_MFG);
-    board_name = xrt_core::query_device<std::string>(m_device, xrt_core::device::QR_ROM_FPGA_NAME);
-    uuid = xrt_core::query_device<std::string>(m_device, xrt_core::device::QR_ROM_UUID);
-
+    board_name = xrt_core::query_device<std::string>(m_device, xrt_core::device::QR_BOARD_NAME);
     
     if (is_mfg) {
         std::stringstream ss;
         ss << "xilinx_" << board_name << "_GOLDEN_" << mGoldenVer;
         vbnv = ss.str();
-    } else if (vbnv.empty() || ts == std::numeric_limits<uint64_t>::max()) {
-        std::cout << "ERROR: Platform name not found" << std::endl;
+    } else {
+        vbnv = xrt_core::query_device<std::string>(m_device, xrt_core::device::QR_ROM_VBNV);
+        ts = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_ROM_TIME_SINCE_EPOCH);
+        uuid = xrt_core::query_device<std::string>(m_device, xrt_core::device::QR_ROM_UUID);
+        if (vbnv.empty() || ts == std::numeric_limits<uint64_t>::max())
+            std::cout << "ERROR: Platform name not found" << std::endl;
     }
 
     BoardInfo info;

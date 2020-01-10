@@ -62,7 +62,13 @@ xmc(const device_type*, qr_type qr, const std::type_info&, boost::any& value)
 void
 mfg(const device_type*, qr_type, const std::type_info&, boost::any& value)
 {
-  value = false;
+  value = true;
+}
+
+void
+board_name(const device_type*, qr_type, const std::type_info&, boost::any& value)
+{
+  value = "TO-DO";
 }
 
 static void
@@ -522,6 +528,7 @@ get_IOCTL_entry(QueryRequest qr) const
     { QR_IS_MFG,                    { mfg }},
     { QR_F_FLASH_TYPE,              { flash_type }},
     { QR_FLASH_TYPE,                { flash_type }},
+    { QR_BOARD_NAME,                { board_name }}
   };
   // Find the translation entry
   std::map<QueryRequest, IOCTLEntry>::const_iterator it = QueryRequestToIOCTLTable.find(qr);

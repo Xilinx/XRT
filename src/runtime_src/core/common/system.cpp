@@ -64,9 +64,9 @@ get_mgmtpf_device(device::id_type id)
 }
 
 std::pair<uint64_t, uint64_t>
-get_total_devices()
+get_total_devices(bool user)
 {
-  return instance().get_total_devices();
+  return instance().get_total_devices(user);
 }
 
 uint16_t

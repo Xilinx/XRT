@@ -32,8 +32,8 @@ device_linux::get_sysdev_entry(QueryRequest qr) const
   // Initialize our lookup table
   static const std::map<QueryRequest, SysDevEntry> QueryRequestToSysDevTable =
   {
-    { QR_PCIE_VENDOR,               {true, "",     "vendor"}},
-    { QR_PCIE_DEVICE,               {true, "",     "device"}},
+    { QR_PCIE_VENDOR,               {false, "",     "vendor"}},
+    { QR_PCIE_DEVICE,               {false, "",     "device"}},
     { QR_PCIE_SUBSYSTEM_VENDOR,     {true, "",     "subsystem_vendor"}},
     { QR_PCIE_SUBSYSTEM_ID,         {true, "",     "subsystem_device"}},
     { QR_PCIE_LINK_SPEED,           {true, "",     "link_speed"}},
@@ -109,7 +109,8 @@ device_linux::get_sysdev_entry(QueryRequest qr) const
     { QR_FLASH_BAR_OFFSET,          {false, "flash", "bar_off"}},
     { QR_IS_MFG,                    {false, "", "mfg"}},
     { QR_F_FLASH_TYPE,              {false, "flash", "flash_type" }},
-    { QR_FLASH_TYPE,                {false, "", "flash_type" }}
+    { QR_FLASH_TYPE,                {false, "", "flash_type" }},
+    { QR_BOARD_NAME,                {false, "",  "board_name"}}
   };
   // Find the translation entry
   auto it = QueryRequestToSysDevTable.find(qr);
@@ -135,15 +136,15 @@ query(QueryRequest qr, const std::type_info& tinfo, boost::any& value) const
 
   // Get static information about the device from pci_device class
   if(qr == QR_PCIE_BDF_BUS) {
-    value = pcidev::get_dev(device_id)->bus;
+    value = pcidev::get_dev(device_id, false)->bus;
     return;
   }
   if(qr == QR_PCIE_BDF_DEVICE) {
-    value = pcidev::get_dev(device_id)->dev;
+    value = pcidev::get_dev(device_id, false)->dev;
     return;
   }
   if(qr == QR_PCIE_BDF_FUNCTION) {
-    value = pcidev::get_dev(device_id)->func;
+    value = pcidev::get_dev(device_id, false)->func;
     return;
   }
 
@@ -197,10 +198,6 @@ device_linux::
 device_linux(id_type device_id, bool user)
   : device_pcie(device_id, user)
 {
-  if(user)
-    return;
-  
-  m_mgmthdl = get_device_handle();
 }
 
 void
@@ -230,7 +227,7 @@ void
 device_linux::
 read(uint64_t offset, void* buf, uint64_t len) const
 {
-  if (auto err = pcidev::get_dev(get_device_id())->pcieBarRead(offset, buf, len))
+  if (auto err = pcidev::get_dev(get_device_id(), false)->pcieBarRead(offset, buf, len))
     throw error(err, "read failed");
 }
 
