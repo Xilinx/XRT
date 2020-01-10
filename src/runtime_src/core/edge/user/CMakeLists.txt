@@ -14,8 +14,8 @@ file(GLOB XRT_USER_FILES
   "*.h"
   "*.cpp"
   "*.c"
-  "../common/system_edge.cpp"
-  "../common/device_edge.cpp"
+  "../common/*.cpp"
+  "../common/*.h"
   "../../common/system.cpp"
   "../../common/device.cpp"
   )
