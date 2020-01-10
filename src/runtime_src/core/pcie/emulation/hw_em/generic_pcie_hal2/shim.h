@@ -327,7 +327,9 @@ using addr_type = uint64_t;
 
       //For Emulation specific messages on host from Device
       std::thread mMessengerThread;
+      std::thread mHostMemAccessThread;
       bool mMessengerThreadStarted;
+      bool mHostMemAccessThreadStarted;
       void closemMessengerThread();
       bool mIsTraceHubAvailable;
   };
