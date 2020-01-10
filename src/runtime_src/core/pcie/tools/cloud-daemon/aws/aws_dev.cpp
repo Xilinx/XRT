@@ -439,6 +439,16 @@ int awsReadP2pBarAddr(size_t index, const xcl_mailbox_p2p_bar_addr *addr, int *r
     return ret;
 }
 
+/*
+ * On AWS F1, fpga user PF without xclbin being loaded (cleared) has different
+ * device id (0x1042) than that of the user PF with xclbin being loaded (0xf010)
+ * Changint the device id needs pci node remove and rescan.
+ * fpga_pci_rescan_slot_app_pfs( mBoardNumber ) is the function used to do that.
+ * removal of the pf requires unload the xocl driver, within mpd it is impossible.
+ * So we assume the user already made the change by loading a default afi from cmdline
+ * with fpga-load-local-image.
+ * From mpd & xocl perspective, whichever device id doesn't matter.
+ */
 int AwsDev::awsLoadXclBin(const xclBin *buffer)
 {
 #ifdef INTERNAL_TESTING_FOR_AWS
@@ -648,31 +658,12 @@ AwsDev::AwsDev(size_t index, const char *logfileName) : mBoardNumber(index)
 
 #else
     fpga_mgmt_init(); // aws-fpga version newer than 09/2019 need this
-    loadDefaultAfiIfCleared();
     //bar0 is mapped already. seems other 2 bars are not required.
 #endif
 }
 
 //private functions
 #ifndef INTERNAL_TESTING_FOR_AWS
-int AwsDev::loadDefaultAfiIfCleared( void )
-{
-    int array_len = 16;
-    fpga_slot_spec spec_array[ array_len ];
-    std::memset( spec_array, mBoardNumber, sizeof(fpga_slot_spec) * array_len );
-    fpga_pci_get_all_slot_specs( spec_array, array_len );
-    if( spec_array[mBoardNumber].map[FPGA_APP_PF].device_id == AWS_UserPF_DEVICE_ID ) {
-        std::string agfi = DEFAULT_GLOBAL_AFI;
-        fpga_mgmt_load_local_image( mBoardNumber, const_cast<char*>(agfi.c_str()) );
-        if( sleepUntilLoaded( agfi ) ) {
-            std::cout << "ERROR: Sleep until load failed." << std::endl;
-            return -1;
-        }
-        fpga_pci_rescan_slot_app_pfs( mBoardNumber );
-    }
-    return 0;
-}
-
 int AwsDev::sleepUntilLoaded( const std::string &afi )
 {
     for( int i = 0; i < 20; i++ ) {
