@@ -113,8 +113,9 @@ get_os_info(boost::property_tree::ptree &pt)
 
 std::pair<device::id_type, device::id_type>
 system_windows::
-get_total_devices() const
+get_total_devices(bool user) const
 {
+  user = user;
   auto user_count = xclProbe();
   return std::make_pair(user_count, user_count);
 }

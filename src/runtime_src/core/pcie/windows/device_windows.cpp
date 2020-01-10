@@ -62,13 +62,13 @@ xmc(const device_type*, qr_type qr, const std::type_info&, boost::any& value)
 void
 mfg(const device_type*, qr_type, const std::type_info&, boost::any& value)
 {
-  value = true;
+  value = false;
 }
 
 void
 board_name(const device_type*, qr_type, const std::type_info&, boost::any& value)
 {
-  value = "TO-DO";
+  value = std::string("TO-DO");
 }
 
 static void
