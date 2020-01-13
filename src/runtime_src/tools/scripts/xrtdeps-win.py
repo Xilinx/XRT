@@ -63,6 +63,7 @@ def main():
   parser.add_argument('--boost', nargs='?', const='complete', default='skip', choices=['complete', 'minimal', 'skip'], help='install boost libraries')
   parser.add_argument('--icd', action="store_true", help='install Khronos OpenCL icd loader library')
   parser.add_argument('--opencl', action="store_true", help='install Khronos OpenCL header files')
+  parser.add_argument('--gtest', action="store_true", help='install gtest libraries')
   parser.add_argument('--validate_all_requirements', action="store_true", help='validate all XRT dependent libraries and tools are installed')
   parser.add_argument('--verbose', action="store_true", help='enables script verbosity')
   args = parser.parse_args()
@@ -83,6 +84,9 @@ def main():
   icdLibraryObj = ICDLibrary(args.icd)
   libraries.append( icdLibraryObj )       
 
+# -- gtest Library
+  gtestLibraryObj = GTestLibrary(args.gtest)
+  libraries.append( gtestLibraryObj )
 
   # -- Evaluate the options --------------------------------------------------
   verbose = args.verbose
@@ -584,6 +588,174 @@ class ICDLibrary:
   def skipBuild(self):
     return self.skipBuildInstall == False
 
+#==============================================================================
+# -- Class: GTestLibrary --------------------------------------------------------
+#==============================================================================
+class GTestLibrary:
+  # --
+  def __init__(self, skip):
+    self.install_dir = XRT_LIBRARY_INSTALL_DIR
+    self.root_build_dir = XRT_LIBRARY_BUILD_DIR
+    self.skipBuildInstall = skip
+    self.headerDir = "gtest"
+    self.buildDir = "googletest"
+
+  # --
+  def getName(self):
+    return "GTestLibrary"
+
+  # --
+  def isInstalled(self, echo, verbose):
+    # Override echo if verbosity is enabled
+    if verbose == True:
+      echo = True;
+
+    gtestInclude = os.path.join(self.install_dir, "include", "gtest")
+
+    if echo == True:
+      print ("  " + self.getName() + " .................................... ", end='')
+
+    if not os.path.exists(gtestInclude) or not os.path.isdir(gtestInclude):
+      if echo == True:
+        print ("[not installed]")
+        if verbose == True:
+          print ("    Expected directory: " + gtestInclude)
+      return False
+
+    if echo == True:
+      print ("[installed]")
+      if verbose == True:
+        print ("    Found directory: " + gtestInclude)
+
+    return True
+
+  # --
+  def isBuildPresent(self, echo, verbose):
+    # Override echo if verbosity is enabled
+    if verbose == True:
+      echo = True;
+
+    if echo == True:
+      print ("  " + self.getName() + " build directory .................... ", end='')
+
+    gtestBuild = os.path.join(self.root_build_dir, "googletest")
+    if not os.path.exists(gtestBuild) or not os.path.isdir(gtestBuild):
+      if echo == True:
+        print ("[not found]")
+        if verbose == True:
+          print ("    Expected directory: " + gtestBuild)
+      return False
+
+    if echo == True:
+      print ("[found]")
+      if verbose == True:
+        print ("    Found directory: " + gtestBuild)
+
+    return True
+
+
+  # --
+  def getBuildAndInstallLibrary(self, verbose):
+    # -- 
+    print ("\n============================================================== ")
+    print ("Starting GTest Library build")
+    print ("============================================================== ")
+
+    if verbose == True:
+      print ("Creating Build Directory: " + self.root_build_dir)
+
+    pathlib.Path(self.root_build_dir).mkdir(parents=True, exist_ok=True) 
+    os.chdir(self.root_build_dir)
+
+    if verbose == True:
+      print ("Retrieving git repository...")
+
+    gitDir = os.path.join(self.root_build_dir, self.buildDir)
+    cloneCmd = "git clone https://github.com/google/googletest.git "+ gitDir
+    print (cloneCmd)
+    os.system(cloneCmd)
+
+    if os.path.exists(gitDir) == False:
+      print ("ERROR: Unable to successfully retrieve the Google-Test repository")
+      print ("       Google-Test clone directory missing: " + gitDir)
+      return True
+
+    # -- Copy the header files
+    srcDir = os.path.join(gitDir, "googletest", "include", "gtest")
+    dstDir = os.path.join(XRT_LIBRARY_INSTALL_DIR, "include", "gtest")
+
+    if verbose == True:
+      print ("Creating destination directory: " + dstDir)
+
+    pathlib.Path(dstDir).mkdir(parents=True, exist_ok=True) 
+
+    if verbose == True:
+      print ("Copying header directory.")
+      print ("   Source      : " + srcDir)
+      print ("   Destination : " + dstDir)
+
+    distutils.dir_util.copy_tree(srcDir, dstDir)
+
+    # -- Build the library
+    buildingDir = pathlib.Path(gitDir, "build")
+
+    if verbose == True:
+      print ("Creating build directory: " + str(buildingDir))
+
+    os.mkdir(buildingDir)
+    os.chdir(buildingDir)
+
+    # -- Create the build scripts
+    if verbose == True:
+      print ("Invoking cmake to create the build scripts...")
+
+    cmd = "cmake -G \"Visual Studio 15 2017 Win64\" .."
+    print (cmd)
+    os.system(cmd)
+
+	# -- Copying cmake files (GTestConfig, GTestConfigVersion)
+    srcDir = os.path.join(buildingDir, "googletest", "generated")
+    dstDir = os.path.join(XRT_LIBRARY_INSTALL_DIR, "lib", "cmake", "gtest")
+    pathlib.Path(dstDir).mkdir(parents=True, exist_ok=True)
+    distutils.dir_util.copy_tree(srcDir, dstDir)
+
+    # -- Create the release library
+    if verbose == True:
+      print ("Invoking cmake build the release library...")
+
+    cmd = "cmake --build . --verbose --config Release"
+    print (cmd)
+    os.system(cmd)
+
+	# -- Create the Debug library
+    if verbose == True:
+      print ("Invoking cmake build the Debug library...")
+
+    cmd = "cmake --build . --verbose --config Debug"
+    print (cmd)
+    os.system(cmd)
+
+    # -- Copying Release .lib files
+    if verbose == True:
+      print ("Copying Release libraries...")
+
+    srcDir = os.path.join(buildingDir, "lib", "Release")
+    dstDir = os.path.join(XRT_LIBRARY_INSTALL_DIR, "lib")
+    distutils.dir_util.copy_tree(srcDir, dstDir)
+
+	# -- Copying Debug .lib files
+    if verbose == True:
+      print ("Copying Debug libraries...")
+
+    srcDir = os.path.join(buildingDir, "lib", "Debug")
+    dstDir = os.path.join(XRT_LIBRARY_INSTALL_DIR, "lib")
+    distutils.dir_util.copy_tree(srcDir, dstDir)
+
+    return False;
+
+  # --
+  def skipBuild(self):
+    return self.skipBuildInstall == False
 
 # ============================================================================
 # Helper methods
