@@ -338,9 +338,9 @@ DSAInfo Flasher::getOnBoardDSA()
         ts = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_ROM_TIME_SINCE_EPOCH);
         uuid = xrt_core::query_device<std::string>(m_device, xrt_core::device::QR_ROM_UUID);
         if (vbnv.empty())
-            throw error("Platform not found. Invalid device name.");
+            throw xrt_core::error("Platform not found. Invalid device name.");
         if(ts == std::numeric_limits<uint64_t>::max())
-            throw error("Platform not found. Invalid timestamp");
+            throw xrt_core::error("Platform not found. Invalid timestamp");
     }
 
     BoardInfo info;
