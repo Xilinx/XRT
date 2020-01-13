@@ -27,6 +27,8 @@
 #include <cstdarg>
 #include "boost/format.hpp"
 
+#include "core/common/error.h"
+
 #define INVALID_ID      0xffff
 #define MFG_REV_OFFSET  0x131008 // For obtaining Golden image version number
 
@@ -335,8 +337,10 @@ DSAInfo Flasher::getOnBoardDSA()
         vbnv = xrt_core::query_device<std::string>(m_device, xrt_core::device::QR_ROM_VBNV);
         ts = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_ROM_TIME_SINCE_EPOCH);
         uuid = xrt_core::query_device<std::string>(m_device, xrt_core::device::QR_ROM_UUID);
-        if (vbnv.empty() || ts == std::numeric_limits<uint64_t>::max())
-            std::cout << "ERROR: Platform name not found" << std::endl;
+        if (vbnv.empty())
+            throw error("Platform not found. Invalid device name.");
+        if(ts == std::numeric_limits<uint64_t>::max())
+            throw error("Platform not found. Invalid timestamp");
     }
 
     BoardInfo info;
