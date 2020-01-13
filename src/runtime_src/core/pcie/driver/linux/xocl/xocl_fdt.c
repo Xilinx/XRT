@@ -115,7 +115,8 @@ static void *flash_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 		return NULL;
 	}
 
-	proplen = strlen(flash_type) + 1;
+	BUG_ON(strlen(flash_type) + 1 > sizeof(flash_priv->flash_type));
+	proplen = sizeof(struct xocl_flash_privdata);
 
 	flash_priv = vzalloc(sizeof(*flash_priv));
 	if (!flash_priv)
@@ -126,7 +127,6 @@ static void *flash_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 	*len = proplen;
 
 	return flash_priv;
-
 }
 
 static void devinfo_cb_setlevel(void *dev_hdl, void *subdevs, int num)
