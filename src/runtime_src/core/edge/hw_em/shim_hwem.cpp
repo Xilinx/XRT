@@ -21,7 +21,6 @@
 #include <iostream>
 #include <boost/property_tree/xml_parser.hpp>
 #include "shim.h"
-#include "shim-profile.h"
 #include <cstring>
 #include <errno.h>
 #include <sys/ioctl.h>
