@@ -21,6 +21,7 @@
 #include <mutex>
 #include <vector>
 #include <fstream>
+#include <functional>
 
 #include "xdp/profile/database/events/vtf_event.h"
 
