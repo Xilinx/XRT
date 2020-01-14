@@ -26,11 +26,8 @@ class SubCmdExamine : public SubCmd {
  public:
   SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPreliminary);
 
- // Methods not supported
  private:
   SubCmdExamine() = delete;
-  SubCmdExamine(const SubCmdExamine& obj) = delete;
-  SubCmdExamine& operator=(const SubCmdExamine& obj) = delete;
 };
 
 #endif

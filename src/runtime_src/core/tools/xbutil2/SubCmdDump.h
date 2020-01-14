@@ -26,11 +26,8 @@ class SubCmdDump : public SubCmd {
  public:
   SubCmdDump(bool _isHidden, bool _isDepricated, bool _isPreliminary);
 
- // Methods not supported
  private:
   SubCmdDump() = delete;
-  SubCmdDump(const SubCmdDump& obj) = delete;
-  SubCmdDump& operator=(const SubCmdDump& obj) = delete;
 };
 
 #endif

@@ -26,11 +26,8 @@ class SubCmdQuery : public SubCmd {
  public:
   SubCmdQuery(bool _isHidden, bool _isDepricated, bool _isPreliminary);
 
- // Methods not supported
  private:
   SubCmdQuery() = delete;
-  SubCmdQuery(const SubCmdQuery& obj) = delete;
-  SubCmdQuery& operator=(const SubCmdQuery& obj) = delete;
 };
 
 #endif

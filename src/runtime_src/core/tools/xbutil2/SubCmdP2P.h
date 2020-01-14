@@ -26,11 +26,8 @@ class SubCmdP2P : public SubCmd {
  public:
   SubCmdP2P(bool _isHidden, bool _isDepricated, bool _isPreliminary);
 
- // Methods not supported
  private:
   SubCmdP2P() = delete;
-  SubCmdP2P(const SubCmdP2P& obj) = delete;
-  SubCmdP2P& operator=(const SubCmdP2P& obj) = delete;
 };
 
 #endif

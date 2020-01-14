@@ -26,11 +26,8 @@ class SubCmdValidate : public SubCmd {
  public:
   SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary);
 
- // Methods not supported
  private:
   SubCmdValidate() = delete;
-  SubCmdValidate(const SubCmdValidate& obj) = delete;
-  SubCmdValidate& operator=(const SubCmdValidate& obj) = delete;
 };
 
 #endif

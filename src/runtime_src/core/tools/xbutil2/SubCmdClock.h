@@ -26,11 +26,8 @@ class SubCmdClock : public SubCmd {
  public:
   SubCmdClock(bool _isHidden, bool _isDepricated, bool _isPreliminary);
 
- // Methods not supported
  private:
   SubCmdClock() = delete;
-  SubCmdClock(const SubCmdClock& obj) = delete;
-  SubCmdClock& operator=(const SubCmdClock& obj) = delete;
 };
 
 #endif

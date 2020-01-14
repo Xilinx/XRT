@@ -26,11 +26,8 @@ class SubCmdReset : public SubCmd {
  public:
   SubCmdReset(bool _isHidden, bool _isDepricated, bool _isPreliminary);
 
- // Methods not supported
  private:
   SubCmdReset() = delete;
-  SubCmdReset(const SubCmdReset& obj) = delete;
-  SubCmdReset& operator=(const SubCmdReset& obj) = delete;
 };
 
 #endif

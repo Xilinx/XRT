@@ -26,11 +26,8 @@ class SubCmdFlash : public SubCmd {
  public:
   SubCmdFlash(bool _isHidden, bool _isDepricated, bool _isPreliminary);
 
- // Methods not supported
  private:
   SubCmdFlash() = delete;
-  SubCmdFlash(const SubCmdFlash& obj) = delete;
-  SubCmdFlash& operator=(const SubCmdFlash& obj) = delete;
 };
 
 #endif

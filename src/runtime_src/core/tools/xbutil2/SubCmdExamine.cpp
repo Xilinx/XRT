@@ -59,7 +59,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   XBU::verbose("SubCommand: examine");
 
   XBU::verbose("Option(s):");
-  for (auto aString : _options) {
+  for (auto & aString : _options) {
     std::string msg = "   ";
     msg += aString;
     XBU::verbose(msg);

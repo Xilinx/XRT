@@ -114,7 +114,7 @@ pu1_query_report()
       std::cout << "    No compute units found." << std::endl;
     } else {
       int index = 0;
-      for (auto cu : cus) {
+      for (auto & cu : cus) {
         std::string nm = xrt_core::xclbin::get_ip_name(iplayout, cu);
         std::cout << boost::format("    CU[%d]: %s - Base Address : 0x%x") % index++ % nm.c_str() % cu << std::endl;
       }
@@ -160,7 +160,7 @@ void
 SubCmdQuery::execute(const SubCmdOptions& _options) const
 // Reference Command:  query [-d card [-r region]
 {
-  for (auto aString : _options) {
+  for (auto & aString : _options) {
     std::cout << "Option: '" << aString << "'" << std::endl;
   }
   XBU::verbose("SubCommand: query");

@@ -182,7 +182,7 @@ void  main_(int argc, char** argv,
 
   // Search for the subcommand (case sensitive)
   std::shared_ptr<SubCmd> subCommand;
-  for (auto subCmdEntry :  _subCmds) {
+  for (auto & subCmdEntry :  _subCmds) {
     if (sCommand.compare(subCmdEntry->getName()) == 0) {
       subCommand = subCmdEntry;
       break;

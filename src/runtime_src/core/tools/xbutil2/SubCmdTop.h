@@ -26,11 +26,8 @@ class SubCmdTop : public SubCmd {
  public:
   SubCmdTop(bool _isHidden, bool _isDepricated, bool _isPreliminary);
 
- // Methods not supported
  private:
   SubCmdTop() = delete;
-  SubCmdTop(const SubCmdTop& obj) = delete;
-  SubCmdTop& operator=(const SubCmdTop& obj) = delete;
 };
 
 #endif

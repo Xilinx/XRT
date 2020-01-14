@@ -26,11 +26,8 @@ class SubCmdMem : public SubCmd {
  public:
   SubCmdMem(bool _isHidden, bool _isDepricated, bool _isPreliminary);
 
- // Methods not supported
  private:
   SubCmdMem() = delete;
-  SubCmdMem(const SubCmdMem& obj) = delete;
-  SubCmdMem& operator=(const SubCmdMem& obj) = delete;
 };
 
 #endif

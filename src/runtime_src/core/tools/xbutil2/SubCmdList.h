@@ -26,11 +26,8 @@ class SubCmdList : public SubCmd {
  public:
   SubCmdList(bool _isHidden, bool _isDepricated, bool _isPreliminary);
 
- // Methods not supported
  private:
   SubCmdList() = delete;
-  SubCmdList(const SubCmdList& obj) = delete;
-  SubCmdList& operator=(const SubCmdList& obj) = delete;
 };
 
 #endif

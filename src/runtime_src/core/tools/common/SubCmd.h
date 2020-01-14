@@ -53,11 +53,8 @@ class SubCmd {
   void setExampleSyntax(const std::string &_exampleSyntax) {m_exampleSyntax = _exampleSyntax; };
   void printHelp(const boost::program_options::options_description & _optionDescription) const;
 
- // Methods not supported
  private:
   SubCmd() = delete;
-  SubCmd(const SubCmd& obj) = delete;
-  SubCmd& operator=(const SubCmd& obj) = delete;
 
  // Variables
  private:

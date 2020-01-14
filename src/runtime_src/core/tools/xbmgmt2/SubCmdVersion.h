@@ -26,11 +26,8 @@ class SubCmdVersion : public SubCmd {
  public:
   SubCmdVersion(bool _isHidden, bool _isDepricated, bool _isPreliminary);
 
- // Methods not supported
  private:
   SubCmdVersion() = delete;
-  SubCmdVersion(const SubCmdVersion& obj) = delete;
-  SubCmdVersion& operator=(const SubCmdVersion& obj) = delete;
 };
 
 #endif

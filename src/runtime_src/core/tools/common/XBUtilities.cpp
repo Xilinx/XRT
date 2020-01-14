@@ -178,7 +178,7 @@ XBUtilities::create_usage_string(const std::string &_executableName,
     // Gather up the short simple flags
     {
       bool firstShortFlagFound = false;
-      for (auto option : options) {
+      for (auto & option : options) {
         // Get the option name
         std::string optionDisplayName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
 
@@ -209,7 +209,7 @@ XBUtilities::create_usage_string(const std::string &_executableName,
      
     // Gather up the long simple flags (flags with no short versions)
     {
-      for (auto option : options) {
+      for (auto & option : options) {
         // Get the option name
         std::string optionDisplayName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
 
@@ -231,7 +231,7 @@ XBUtilities::create_usage_string(const std::string &_executableName,
     }
 
     // Gather up the options with arguments
-    for (auto option : options) {
+    for (auto & option : options) {
       // Skip if there are no arguments
       if (option->semantic()->max_tokens() == 0)
         continue;
@@ -246,7 +246,7 @@ XBUtilities::create_usage_string(const std::string &_executableName,
     }
 
     // Gather up the required options with arguments
-    for (auto option : options) {
+    for (auto & option : options) {
       // Skip if there are no arguments
       if (option->semantic()->max_tokens() == 0)
         continue;

@@ -26,11 +26,8 @@ class SubCmdM2MTest : public SubCmd {
  public:
   SubCmdM2MTest(bool _isHidden, bool _isDepricated, bool _isPreliminary);
 
- // Methods not supported
  private:
   SubCmdM2MTest() = delete;
-  SubCmdM2MTest(const SubCmdM2MTest& obj) = delete;
-  SubCmdM2MTest& operator=(const SubCmdM2MTest& obj) = delete;
 };
 
 #endif

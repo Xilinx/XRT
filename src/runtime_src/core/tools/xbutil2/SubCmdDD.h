@@ -26,11 +26,8 @@ class SubCmdDD : public SubCmd {
  public:
   SubCmdDD(bool _isHidden, bool _isDepricated, bool _isPreliminary);
 
- // Methods not supported
  private:
   SubCmdDD() = delete;
-  SubCmdDD(const SubCmdDD& obj) = delete;
-  SubCmdDD& operator=(const SubCmdDD& obj) = delete;
 };
 
 #endif

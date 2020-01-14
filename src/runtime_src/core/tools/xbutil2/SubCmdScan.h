@@ -26,11 +26,8 @@ class SubCmdScan : public SubCmd {
  public:
   SubCmdScan(bool _isHidden, bool _isDepricated, bool _isPreliminary);
 
- // Methods not supported
  private:
   SubCmdScan() = delete;
-  SubCmdScan(const SubCmdScan& obj) = delete;
-  SubCmdScan& operator=(const SubCmdScan& obj) = delete;
 };
 
 #endif
