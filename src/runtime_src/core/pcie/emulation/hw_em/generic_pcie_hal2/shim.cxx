@@ -1577,6 +1577,14 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     return 52;
   }
 
+  size_t HwEmShim::xclGetDeviceTimestamp()
+  {
+    bool ack = true;
+    size_t deviceTimeStamp = 0;
+    xclGetDeviceTimestamp_RPC_CALL(xclGetDeviceTimestamp,ack,deviceTimeStamp);
+    return deviceTimeStamp;
+  }
+
   void HwEmShim::xclReadBusStatus(xclPerfMonType type) {
 
     bool is_bus_idle = true;

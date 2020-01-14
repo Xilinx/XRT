@@ -1591,6 +1591,11 @@ unsigned int xclVersion () {
   return 2;
 }
 
+size_t xclGetDeviceTimestamp(xclDeviceHandle handle)
+{
+  return 0;
+}
+
 int xclGetErrorStatus(xclDeviceHandle handle, xclErrorStatus *info)
 {
   awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
