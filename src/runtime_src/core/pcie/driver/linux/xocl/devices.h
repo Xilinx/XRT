@@ -1723,8 +1723,7 @@ struct xocl_subdev_map {
 
 #define	XOCL_BOARD_USER_U50_DYNAMIC_IP					\
 	(struct xocl_board_private){					\
-		.flags = XOCL_DSAFLAG_DYNAMIC_IP |			\
-			XOCL_DSAFLAG_MB_SCHE_OFF,			\
+		.flags = XOCL_DSAFLAG_DYNAMIC_IP,			\
 		.board_name = "u50",					\
 		.subdev_info	= RES_USER_VSEC,			\
 		.subdev_num = ARRAY_SIZE(RES_USER_VSEC),		\
@@ -1732,8 +1731,7 @@ struct xocl_subdev_map {
 
 #define	XOCL_BOARD_MGMT_U50_DYNAMIC_IP					\
 	(struct xocl_board_private){					\
-		.flags = XOCL_DSAFLAG_DYNAMIC_IP |			\
-			XOCL_DSAFLAG_MB_SCHE_OFF,			\
+		.flags = XOCL_DSAFLAG_DYNAMIC_IP,			\
 		.board_name = "u50",					\
 		.subdev_info	= RES_MGMT_VSEC,			\
 		.subdev_num = ARRAY_SIZE(RES_MGMT_VSEC),		\

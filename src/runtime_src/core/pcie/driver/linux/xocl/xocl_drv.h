@@ -710,13 +710,13 @@ enum {
 	XOCL_SUBDEV_MB).ops)
 #define MB_CB(xdev, cb)	\
 	(MB_DEV(xdev) && MB_OPS(xdev) && MB_OPS(xdev)->cb)
-#define	xocl_mb_reset(xdev)			\
+#define	xocl_xmc_reset(xdev)			\
 	(MB_CB(xdev, reset) ? MB_OPS(xdev)->reset(MB_DEV(xdev)) : NULL) \
 
-#define	xocl_mb_stop(xdev)			\
+#define	xocl_xmc_stop(xdev)			\
 	(MB_CB(xdev, stop) ? MB_OPS(xdev)->stop(MB_DEV(xdev)) : -ENODEV)
 
-#define xocl_mb_load_mgmt_image(xdev, buf, len)		\
+#define xocl_xmc_load_mgmt_image(xdev, buf, len)		\
 	(MB_CB(xdev, load_mgmt_image) ? MB_OPS(xdev)->load_mgmt_image(MB_DEV(xdev), buf, len) :\
 	-ENODEV)
 #define xocl_xmc_load_sche_image(xdev, buf, len)		\
@@ -752,6 +752,26 @@ enum {
 	(ERT_CB(xdev, load_sche_image) ?				\
 	ERT_OPS(xdev)->load_sche_image(ERT_DEV(xdev), buf, len) : -ENODEV)
 
+static inline int xocl_mb_stop(xdev_handle_t xdev)
+{
+	int ret;
+
+	if (ERT_DEV(xdev)) {
+		ret = xocl_ert_stop(xdev);
+		if (ret)
+			return ret;
+	}
+
+	return xocl_xmc_stop(xdev);
+}
+static inline void xocl_mb_reset(xdev_handle_t xdev)
+{
+	xocl_ert_reset(xdev);
+	xocl_xmc_reset(xdev);
+}
+
+#define xocl_mb_load_mgmt_image(xdev, buf, len)				\
+	xocl_xmc_load_mgmt_image(xdev, buf, len)
 #define xocl_mb_load_sche_image(xdev, buf, len)				\
 	(ERT_DEV(xdev) ? xocl_ert_load_sche_image(xdev, buf, len) :	\
 	xocl_xmc_load_sche_image(xdev, buf, len))
@@ -1325,6 +1345,9 @@ void xocl_fini_icap(void);
 
 int __init xocl_init_mig(void);
 void xocl_fini_mig(void);
+
+int __init xocl_init_ert(void);
+void xocl_fini_ert(void);
 
 int __init xocl_init_xmc(void);
 void xocl_fini_xmc(void);
