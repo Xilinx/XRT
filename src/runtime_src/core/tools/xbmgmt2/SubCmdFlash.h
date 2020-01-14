@@ -25,9 +25,6 @@ class SubCmdFlash : public SubCmd {
 
  public:
   SubCmdFlash(bool _isHidden, bool _isDepricated, bool _isPreliminary);
-
- private:
-  SubCmdFlash() = delete;
 };
 
 #endif

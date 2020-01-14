@@ -25,9 +25,6 @@ class SubCmdTop : public SubCmd {
 
  public:
   SubCmdTop(bool _isHidden, bool _isDepricated, bool _isPreliminary);
-
- private:
-  SubCmdTop() = delete;
 };
 
 #endif

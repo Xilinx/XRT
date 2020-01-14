@@ -25,9 +25,6 @@ class SubCmdScan : public SubCmd {
 
  public:
   SubCmdScan(bool _isHidden, bool _isDepricated, bool _isPreliminary);
-
- private:
-  SubCmdScan() = delete;
 };
 
 #endif

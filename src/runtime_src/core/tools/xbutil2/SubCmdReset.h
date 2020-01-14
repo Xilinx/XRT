@@ -25,9 +25,6 @@ class SubCmdReset : public SubCmd {
 
  public:
   SubCmdReset(bool _isHidden, bool _isDepricated, bool _isPreliminary);
-
- private:
-  SubCmdReset() = delete;
 };
 
 #endif

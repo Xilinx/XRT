@@ -25,9 +25,6 @@ class SubCmdDump : public SubCmd {
 
  public:
   SubCmdDump(bool _isHidden, bool _isDepricated, bool _isPreliminary);
-
- private:
-  SubCmdDump() = delete;
 };
 
 #endif

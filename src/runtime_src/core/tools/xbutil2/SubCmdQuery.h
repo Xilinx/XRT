@@ -25,9 +25,6 @@ class SubCmdQuery : public SubCmd {
 
  public:
   SubCmdQuery(bool _isHidden, bool _isDepricated, bool _isPreliminary);
-
- private:
-  SubCmdQuery() = delete;
 };
 
 #endif

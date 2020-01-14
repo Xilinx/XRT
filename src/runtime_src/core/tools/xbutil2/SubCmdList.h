@@ -25,9 +25,6 @@ class SubCmdList : public SubCmd {
 
  public:
   SubCmdList(bool _isHidden, bool _isDepricated, bool _isPreliminary);
-
- private:
-  SubCmdList() = delete;
 };
 
 #endif

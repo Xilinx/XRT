@@ -25,9 +25,6 @@ class SubCmdDmaTest : public SubCmd {
 
  public:
   SubCmdDmaTest(bool _isHidden, bool _isDepricated, bool _isPreliminary);
-
- private:
-  SubCmdDmaTest() = delete;
 };
 
 #endif

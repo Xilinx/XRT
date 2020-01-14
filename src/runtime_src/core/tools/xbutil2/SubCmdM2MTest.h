@@ -25,9 +25,6 @@ class SubCmdM2MTest : public SubCmd {
 
  public:
   SubCmdM2MTest(bool _isHidden, bool _isDepricated, bool _isPreliminary);
-
- private:
-  SubCmdM2MTest() = delete;
 };
 
 #endif

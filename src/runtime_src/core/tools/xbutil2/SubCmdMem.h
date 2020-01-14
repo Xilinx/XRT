@@ -25,9 +25,6 @@ class SubCmdMem : public SubCmd {
 
  public:
   SubCmdMem(bool _isHidden, bool _isDepricated, bool _isPreliminary);
-
- private:
-  SubCmdMem() = delete;
 };
 
 #endif

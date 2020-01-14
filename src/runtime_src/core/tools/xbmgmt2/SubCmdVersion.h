@@ -25,9 +25,6 @@ class SubCmdVersion : public SubCmd {
 
  public:
   SubCmdVersion(bool _isHidden, bool _isDepricated, bool _isPreliminary);
-
- private:
-  SubCmdVersion() = delete;
 };
 
 #endif

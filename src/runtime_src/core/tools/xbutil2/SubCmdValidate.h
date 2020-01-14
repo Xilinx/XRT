@@ -25,9 +25,6 @@ class SubCmdValidate : public SubCmd {
 
  public:
   SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary);
-
- private:
-  SubCmdValidate() = delete;
 };
 
 #endif

@@ -25,9 +25,6 @@ class SubCmdClock : public SubCmd {
 
  public:
   SubCmdClock(bool _isHidden, bool _isDepricated, bool _isPreliminary);
-
- private:
-  SubCmdClock() = delete;
 };
 
 #endif

@@ -25,9 +25,6 @@ class SubCmdP2P : public SubCmd {
 
  public:
   SubCmdP2P(bool _isHidden, bool _isDepricated, bool _isPreliminary);
-
- private:
-  SubCmdP2P() = delete;
 };
 
 #endif
