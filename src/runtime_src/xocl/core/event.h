@@ -381,14 +381,18 @@ public:
    *
    * Callbacks are called in arbitrary order
    */
-  static void register_constructor_callbacks(event_callback_type&& aCallback);
+  XRT_XOCL_EXPORT
+  static void
+  register_constructor_callbacks(event_callback_type&& aCallback);
 
   /**
    * Register callback function for event destruction
    *
    * Callbacks are called in arbitrary order
    */
-  static void register_destructor_callbacks(event_callback_type&& aCallback);
+  XRT_XOCL_EXPORT
+  static void
+  register_destructor_callbacks(event_callback_type&& aCallback);
 
 protected:
   /**
@@ -415,7 +419,7 @@ private:
    * Check if this event chains argument event
    */
   bool
-  chains(const event* ev) const;
+  chains_nolock(const event* ev) const;
 
   /**
    * Check if this event depends on argument event

@@ -1,0 +1,102 @@
+digraph G {
+	node [fontname = "Courier", fontsize = 10];
+
+	subgraph cluster_0 {
+		style=filled;
+		color=aquamarine3;
+		node [style=filled,color=white];
+		a0 [label = "xclOpen()"]
+		a1 [label = "xclLoadXclBin(UUID_X)"]
+		a2 [label = "xclOpenContext(UUID_X, CU_0)"]
+		a3 [label = "xclExecBuf(CU_0)"]
+		a4 [label = "xclExecWait()"]
+		a5 [label = "xclCloseContext(UUID_X, CU_0)"]
+		a6 [label = "xclclose()"]
+		a0 -> a1 -> a2 -> a3 -> a4 -> a5 -> a6;
+		label = "process #0";
+	}
+
+	subgraph cluster_1 {
+		style=filled;
+		color=aquamarine3;
+		node [style=filled,color=white];
+		b0 [label = "xclOpen()"]
+		b2 [label = "xclOpenContext(UUID_X, CU_0)"]
+		b3 [label = "xclExecBuf(CU_0)"]
+		b4 [label = "xclExecWait()"]
+		b5 [label = "xclCloseContext(UUID_X, CU_0)"]
+		b6 [label = "xclclose()"]
+		b7 [label = "NOP"]
+		b0 -> b7 -> b2 -> b3 -> b4 -> b5 -> b6;
+		label = "process #1";
+	}
+
+	subgraph cluster_2 {
+		style=filled;
+		color=aquamarine3;
+		node [style=filled,color=white];
+		c0 [label = "xclOpen()"]
+		c2 [label = "xclOpenContext(UUID_X, CU_1)"]
+		c3 [label = "xclExecBuf(CU_1)"]
+		c4 [label = "xclExecWait()"]
+		c5 [label = "xclCloseContext(UUID_X, CU_1)"]
+		c6 [label = "xclclose()"]
+		c7 [label = "NOP"]
+		c0 -> c7 -> c2 -> c3 -> c4 -> c5 -> c6;
+		label = "process #2";
+
+	}
+
+	subgraph cluster_3 {
+		style=filled;
+		color=aquamarine3;
+		node [style=filled,color=white];
+		d0 [label = "xclOpen()"]
+		d1 [label = "xclLoadXclBin(UUID_X)"]
+		d2 [label = "xclOpenContext(UUID_X, CU_0)"]
+		d3 [label = "xclExecBuf(CU_0)"]
+		d4 [label = "xclExecWait()"]
+		d5 [label = "xclCloseContext(UUID_X, CU_0)"]
+		d6 [label = "xclclose()"]
+		d0 -> d1 -> d2 -> d3 -> d4 -> d5 -> d6;
+		label = "process #3";
+	}
+	subgraph cluster_4 {
+		style=filled;
+		color=aquamarine3;
+		node [style=filled,color=white];
+		e0 [label = "xclOpen()"]
+		e1 [label = "xclLoadXclBin(UUID_X)"]
+		e2 [label = "xclOpenContext(UUID_X, CU_1)"]
+		e3 [label = "xclExecBuf(CU_1)"]
+		e4 [label = "xclExecWait()"]
+		e5 [label = "xclCloseContext(UUID_X, CU_1)"]
+		e6 [label = "xclclose()"]
+		e7 [label = "NOP"]
+		e0 -> e7 -> e1-> e2 -> e3 -> e4 -> e5 -> e6;
+		label = "process #4";
+	}
+	subgraph cluster_5 {
+		style=filled;
+		color=indianred;
+		node [style=filled,color=white];
+		f0 [label = "xclOpen()"]
+		f1 [label = "xclLoadXclBin(UUID_Y)"]
+		f7 [label = "NOP"]
+		f3 [label = "xclclose()"]
+		f0 -> f7 -> f1 -> f3;
+		label = "process #5";
+	}
+	subgraph cluster_6 {
+		style=filled;
+		color=indianred;
+		node [style=filled,color=white];
+		g0 [label = "xclOpen()"]
+		g1 [label = "xclLoadXclBin(UUID_X)"]
+		g2 [label = "xclOpenContext(UUID_Y, CU_0)"]
+		g7 [label = "NOP"]
+		g3 [label = "xclclose()"]
+		g0 -> g7 ->g1 -> g2 -> g3;
+		label = "process #6";
+	}
+}
