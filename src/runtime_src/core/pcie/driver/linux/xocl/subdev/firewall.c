@@ -38,9 +38,6 @@
 #define RECS_WRITE_TO_BVALID_MAX_WAIT             BIT(19)
 #define ERRS_BRESP                                BIT(20)
 
-// Get the timezone info from the linux kernel
-extern struct timezone sys_tz;
-
 #define	FIREWALL_STATUS_BUSY	(READ_RESPONSE_BUSY | WRITE_RESPONSE_BUSY)
 #define	CLEAR_RESET_GPIO		0
 
@@ -299,8 +296,7 @@ static u32 check_firewall(struct platform_device *pdev, int *level)
 				fw->err_detected_status = val;
 				fw->err_detected_level = i;
 				XOCL_GETTIME(&time);
-				fw->err_detected_time = (u64)(time.tv_sec -
-					(sys_tz.tz_minuteswest * 60));
+				fw->err_detected_time = (u64)time.tv_sec;
 			}
 			fw->curr_level = i;
 
