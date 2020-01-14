@@ -43,8 +43,8 @@ int main( int argc, char** argv )
   #ifdef ENABLE_DEPRECATED_2020_1_SUBCMDS
   {
     // Syntax: SubCmdClass( IsHidden, IsDepricated, IsPreliminary)
-    subCommands.emplace_back(new   SubCmdFlash(false, true, false));
-    subCommands.emplace_back(new SubCmdVersion(false, true, false));
+    subCommands.emplace_back(std::make_shared<   SubCmdFlash >(false, true, false));
+    subCommands.emplace_back(std::make_shared< SubCmdVersion >(false, true, false));
   }
   #endif
 
@@ -52,7 +52,7 @@ int main( int argc, char** argv )
   boost::filesystem::path pathAndFile(argv[0]);
   const std::string executable = pathAndFile.filename().string();
 
-  for (auto subCommand : subCommands) {
+  for (auto & subCommand : subCommands) {
     subCommand->setExecutableName(executable);
   }
 
@@ -63,7 +63,8 @@ int main( int argc, char** argv )
 
   // -- Ready to execute the code
   try {
-    return main_( argc, argv, description, subCommands);
+    main_( argc, argv, description, subCommands);
+    return 0;
   } catch (const std::exception &e) {
     xrt_core::send_exception_message(e.what(), executable.c_str());
   } catch (...) {

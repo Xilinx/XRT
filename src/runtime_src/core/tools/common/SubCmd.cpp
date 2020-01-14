@@ -23,8 +23,8 @@
 #include "XBUtilities.h"
 namespace XBU = XBUtilities;
 
-SubCmd::SubCmd(const std::string _name, 
-               const std::string _shortDescription)
+SubCmd::SubCmd(const std::string & _name, 
+               const std::string & _shortDescription)
   : m_executableName("")
   , m_subCmdName(_name)
   , m_shortDescription(_shortDescription)

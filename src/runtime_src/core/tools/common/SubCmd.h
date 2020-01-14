@@ -45,7 +45,7 @@ class SubCmd {
 
  // Child class Helper methods
  protected:
-  SubCmd(const std::string _name, const std::string _shortDescription);
+  SubCmd(const std::string & _name, const std::string & _shortDescription);
   void setIsHidden(bool _isHidden) { m_isHidden = _isHidden; };
   void setIsDeprecated(bool _isDeprecated) { m_isDeprecated = _isDeprecated; };
   void setIsPreliminary(bool _isPreliminary) { m_isPreliminary = _isPreliminary; };

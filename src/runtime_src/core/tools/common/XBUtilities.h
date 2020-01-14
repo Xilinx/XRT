@@ -76,12 +76,12 @@ std::string format(const std::string& format, Args ... args) {
   std::string create_usage_string( const std::string &_executableName,
                                    const std::string &_subCommand,
                                    const boost::program_options::options_description &_od);
-  void wrap_paragraph( const std::string _unformattedString, 
+  void wrap_paragraph( const std::string & _unformattedString, 
                        unsigned int _indentWidth, 
                        unsigned int _columnWidth, 
                        bool _indentFirstLine,
                        std::string &_formattedString);
-  void wrap_paragraphs( const std::string _unformattedString, 
+  void wrap_paragraphs( const std::string & _unformattedString, 
                         unsigned int _indentWidth, 
                         unsigned int _columnWidth, 
                         bool _indentFirstLine,

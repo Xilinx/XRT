@@ -21,11 +21,10 @@
 
 class SubCmdFlash : public SubCmd {
  public:
-   virtual void execute(const SubCmdOptions &_options) const;
+  virtual void execute(const SubCmdOptions &_options) const;
 
  public:
-   SubCmdFlash(bool _isHidden, bool _isDepricated, bool _isPreliminary);
-   virtual ~SubCmdFlash() {};
+  SubCmdFlash(bool _isHidden, bool _isDepricated, bool _isPreliminary);
 
  // Methods not supported
  private:

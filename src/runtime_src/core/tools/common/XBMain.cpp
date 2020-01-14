@@ -98,9 +98,9 @@ static void print_help( const std::string &_executable,
 }
 
 // ------ Program entry point -------------------------------------------------
-ReturnCodes main_(int argc, char** argv, 
-                  const std::string & _description,
-                  const SubCmdsCollection &_subCmds) 
+void  main_(int argc, char** argv, 
+            const std::string & _description,
+            const SubCmdsCollection &_subCmds) 
 {
   if (_subCmds.size() == 0) {
     // do nothing
@@ -152,7 +152,7 @@ ReturnCodes main_(int argc, char** argv,
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
     ::print_help(executable, _description, globalOptions, _subCmds);
-    return RC_ERROR_IN_COMMAND_LINE;
+    return;
   }
 
   // Set the verbosity if enabled
@@ -168,7 +168,7 @@ ReturnCodes main_(int argc, char** argv,
   // Check to see if help was requested and no command was found
   if ((bHelp == true) && (vm.count("subCmd") == 0)) {
     ::print_help(executable, _description, globalOptions, _subCmds);
-    return RC_SUCCESS;
+    return;
   }
 
   // Now see if there is a command to work with
@@ -177,7 +177,7 @@ ReturnCodes main_(int argc, char** argv,
 
   if (sCommand == "help") {
     ::print_help(executable, _description, globalOptions, _subCmds);
-    return RC_SUCCESS;
+    return;
   }
 
   // Search for the subcommand (case sensitive)
@@ -192,7 +192,7 @@ ReturnCodes main_(int argc, char** argv,
   if ( !subCommand) {
     std::cerr << "ERROR: " << "Unknown sub-command: '" << sCommand << "'" << std::endl;
     ::print_help(executable, _description, globalOptions, _subCmds);
-    return RC_ERROR_IN_COMMAND_LINE;
+    return;
   }
 
   // Prepare the data
@@ -206,7 +206,7 @@ ReturnCodes main_(int argc, char** argv,
   // Execute the sub-command
   subCommand->execute(opts);
 
-  return RC_SUCCESS;
+  return;
 }
 
 

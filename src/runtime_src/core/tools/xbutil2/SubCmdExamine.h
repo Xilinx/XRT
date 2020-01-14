@@ -21,11 +21,10 @@
 
 class SubCmdExamine : public SubCmd {
  public:
-   virtual void execute(const SubCmdOptions &_options) const;
+  virtual void execute(const SubCmdOptions &_options) const;
 
  public:
-   SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPreliminary);
-   virtual ~SubCmdExamine() {};
+  SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPreliminary);
 
  // Methods not supported
  private:

@@ -24,21 +24,12 @@
 // ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
 // Forward declarations - use these instead whenever possible...
 class SubCmd;
-  
-// --------- E N U M E R A T I O N S   /   T Y P E D E F S--------------------
-typedef enum {
-  RC_SUCCESS = 0,
-  RC_ERROR_IN_COMMAND_LINE = 1,
-  RC_ERROR_UNHANDLED_EXCEPTION = 2
-} ReturnCodes;
-    
+
+// ----------------------- T Y P E D E F S -----------------------------------
 typedef std::vector<std::shared_ptr<SubCmd>> SubCmdsCollection;
     
-// ---------------------- F U N C T I O N S ---------------------------------
-
-ReturnCodes main_(int argc, char** argv, 
-                  const std::string & _description,
-                  const SubCmdsCollection & _SubCmds);
-
-
+// ---------------------- F U N C T I O N S ----------------------------------
+void main_(int argc, char** argv, 
+           const std::string & _description,
+           const SubCmdsCollection & _SubCmds);
 #endif

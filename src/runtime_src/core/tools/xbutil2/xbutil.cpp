@@ -51,28 +51,28 @@ int main( int argc, char** argv )
 
   {
     // Syntax: SubCmdClass( IsHidden, IsDepricated, IsPreliminary)
-    subCommands.emplace_back(new  SubCmdExamine(false, false, false));
-    subCommands.emplace_back(new  SubCmdProgram(false, false, false));
-    subCommands.emplace_back(new SubCmdValidate(false, false, false));
+    subCommands.emplace_back(std::make_shared<  SubCmdExamine >(false, false, false));
+    subCommands.emplace_back(std::make_shared<  SubCmdProgram >(false, false, false));
+    subCommands.emplace_back(std::make_shared< SubCmdValidate >(false, false, false));
   }
 
   // Add depricated commands
   #ifdef ENABLE_DEPRECATED_2020_1_SUBCMDS
   {
     // Syntax: SubCmdClass( IsHidden, IsDepricated, IsPreliminary)
-    subCommands.emplace_back(new   SubCmdClock(false, true, false));
-    subCommands.emplace_back(new      SubCmdDD(false, true, false));
-    subCommands.emplace_back(new    SubCmdDump(false, true, false));
-    subCommands.emplace_back(new SubCmdDmaTest(false, true, false));
-    subCommands.emplace_back(new    SubCmdList(false, true, false));
-    subCommands.emplace_back(new SubCmdM2MTest(false, true, false));
-    subCommands.emplace_back(new     SubCmdMem(false, true, false));
-    subCommands.emplace_back(new     SubCmdP2P(false, true, false));
-    subCommands.emplace_back(new   SubCmdQuery(false, true, false));
-    subCommands.emplace_back(new   SubCmdReset(false, true, false));
-    subCommands.emplace_back(new    SubCmdScan(false, true, false));
-    subCommands.emplace_back(new     SubCmdTop(false, true, false));
-    subCommands.emplace_back(new SubCmdVersion(false, true, false));
+    subCommands.emplace_back(std::make_shared<   SubCmdClock >(false, true, false));
+    subCommands.emplace_back(std::make_shared<      SubCmdDD >(false, true, false));
+    subCommands.emplace_back(std::make_shared<    SubCmdDump >(false, true, false));
+    subCommands.emplace_back(std::make_shared< SubCmdDmaTest >(false, true, false));
+    subCommands.emplace_back(std::make_shared<    SubCmdList >(false, true, false));
+    subCommands.emplace_back(std::make_shared< SubCmdM2MTest >(false, true, false));
+    subCommands.emplace_back(std::make_shared<     SubCmdMem >(false, true, false));
+    subCommands.emplace_back(std::make_shared<     SubCmdP2P >(false, true, false));
+    subCommands.emplace_back(std::make_shared<   SubCmdQuery >(false, true, false));
+    subCommands.emplace_back(std::make_shared<   SubCmdReset >(false, true, false));
+    subCommands.emplace_back(std::make_shared<    SubCmdScan >(false, true, false));
+    subCommands.emplace_back(std::make_shared<     SubCmdTop >(false, true, false));
+    subCommands.emplace_back(std::make_shared< SubCmdVersion >(false, true, false));
   }
   #endif
 
@@ -80,7 +80,7 @@ int main( int argc, char** argv )
   boost::filesystem::path pathAndFile(argv[0]);
   const std::string executable = pathAndFile.filename().string();
 
-  for (auto subCommand : subCommands) {
+  for (auto & subCommand : subCommands) {
     subCommand->setExecutableName(executable);
   }
 
@@ -95,7 +95,8 @@ int main( int argc, char** argv )
 
   // -- Ready to execute the code
   try {
-    return main_( argc, argv, description, subCommands);
+    main_( argc, argv, description, subCommands);
+    return 0;
   } catch (const std::exception &e) {
     xrt_core::send_exception_message(e.what(), executable.c_str());
   } catch (...) {

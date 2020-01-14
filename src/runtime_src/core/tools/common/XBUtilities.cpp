@@ -263,7 +263,7 @@ XBUtilities::create_usage_string(const std::string &_executableName,
 }
 
 void 
-XBUtilities::wrap_paragraph( const std::string _unformattedString, 
+XBUtilities::wrap_paragraph( const std::string & _unformattedString, 
                              unsigned int _indentWidth, 
                              unsigned int _columnWidth, 
                              bool _indentFirstLine,
@@ -295,7 +295,7 @@ XBUtilities::wrap_paragraph( const std::string _unformattedString,
 
     // Determine the end-of-the line to be examined
     std::string::const_iterator lineEndIter = lineBeginIter;
-    int64_t remainingChars = std::distance(lineBeginIter, paragraphEndIter);
+    auto remainingChars = std::distance(lineBeginIter, paragraphEndIter);
     if (remainingChars < paragraphWidth)
       lineEndIter += remainingChars;
     else
@@ -333,11 +333,11 @@ XBUtilities::wrap_paragraph( const std::string _unformattedString,
 }   
 
 void 
-XBUtilities::wrap_paragraphs( const std::string _unformattedString, 
-                            unsigned int _indentWidth, 
-                            unsigned int _columnWidth, 
-                            bool _indentFirstLine,
-                            std::string &_formattedString) 
+XBUtilities::wrap_paragraphs( const std::string & _unformattedString, 
+                              unsigned int _indentWidth, 
+                              unsigned int _columnWidth, 
+                              bool _indentFirstLine,
+                              std::string &_formattedString) 
 {
   // Set return variables to a now state
   _formattedString.clear();
