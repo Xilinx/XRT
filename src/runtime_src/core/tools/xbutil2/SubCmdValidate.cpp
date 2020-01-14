@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -27,22 +27,23 @@ namespace po = boost::program_options;
 // System - Include Files
 #include <iostream>
 
-// ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
-#include "tools/common/SubCmd.h"
-static const unsigned int registerResult = 
-                    register_subcommand("validate", 
-                                        "<add description>",
-                                        subCmdValidate);
-// =============================================================================
+// ----- C L A S S   M E T H O D S -------------------------------------------
 
-// ------ L O C A L   F U N C T I O N S ---------------------------------------
+SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary)
+    : SubCmd("validate", 
+             "<add short description")
+{
+  const std::string longDescription = "<add long description>";
+  setLongDescription(longDescription);
+  setExampleSyntax("");
+  setIsHidden(_isHidden);
+  setIsDeprecated(_isDepricated);
+  setIsPreliminary(_isPreliminary);
+}
 
 
-
-
-// ------ F U N C T I O N S ---------------------------------------------------
-
-int subCmdValidate(const std::vector<std::string> &_options)
+void
+SubCmdValidate::execute(const SubCmdOptions& _options) const
 
 {
   XBU::verbose("SubCommand: validate");
@@ -64,7 +65,7 @@ int subCmdValidate(const std::vector<std::string> &_options)
     po::notify(vm); // Can throw
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
-    std::cerr << validateDesc << std::endl;
+    printHelp(validateDesc);
 
     // Re-throw exception
     throw;
@@ -72,8 +73,8 @@ int subCmdValidate(const std::vector<std::string> &_options)
 
   // Check to see if help was requested or no command was found
   if (help == true)  {
-    std::cout << validateDesc << std::endl;
-    return 0;
+    printHelp(validateDesc);
+    return;
   }
 
   // -- Now process the subcommand --------------------------------------------
@@ -81,7 +82,5 @@ int subCmdValidate(const std::vector<std::string> &_options)
 
   XBU::error("COMMAND BODY NOT IMPLEMENTED.");
   // TODO: Put working code here
-
-  return registerResult;
 }
 

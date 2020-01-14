@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2020 Xilinx, Inc
+ * Copyright (C) 2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,24 +14,24 @@
  * under the License.
  */
 
-#ifndef __SubCmdM2MTest_h_
-#define __SubCmdM2MTest_h_
+#ifndef __SubCmdExamine_h_
+#define __SubCmdExamine_h_
 
 #include "tools/common/SubCmd.h"
 
-class SubCmdM2MTest : public SubCmd {
+class SubCmdExamine : public SubCmd {
  public:
    virtual void execute(const SubCmdOptions &_options) const;
 
  public:
-   SubCmdM2MTest(bool _isHidden, bool _isDepricated, bool _isPreliminary);
-   virtual ~SubCmdM2MTest() {};
+   SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPreliminary);
+   virtual ~SubCmdExamine() {};
 
  // Methods not supported
  private:
-  SubCmdM2MTest() = delete;
-  SubCmdM2MTest(const SubCmdM2MTest& obj) = delete;
-  SubCmdM2MTest& operator=(const SubCmdM2MTest& obj) = delete;
+  SubCmdExamine() = delete;
+  SubCmdExamine(const SubCmdExamine& obj) = delete;
+  SubCmdExamine& operator=(const SubCmdExamine& obj) = delete;
 };
 
 #endif
