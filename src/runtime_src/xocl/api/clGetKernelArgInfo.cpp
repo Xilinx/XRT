@@ -85,6 +85,9 @@ clGetKernelArgInfo(cl_kernel          kernel ,
     case CL_KERNEL_ARG_NAME:
       buffer.as<char>() = arg->get_name();
       break;
+    case CL_KERNEL_ARG_OFFSET:
+      buffer.as<size_t>() = arg->get_offset();
+      break;
     default:
       throw error(CL_INVALID_VALUE,"clGetKernelArgInfo: invalid param_name");
       break;

@@ -469,6 +469,9 @@ xclGetComputeUnitInfo(cl_kernel             kernel,
 #define CL_KERNEL_COMPUTE_UNIT_COUNT    0x1300
 #define CL_KERNEL_INSTANCE_BASE_ADDRESS 0x1301
 
+// cl_kernel_arg_info
+#define CL_KERNEL_ARG_OFFSET            0x1320
+
 // cl_mem_info
 #define CL_MEM_BANK                     0x1109
 
