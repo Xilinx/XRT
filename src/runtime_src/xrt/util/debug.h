@@ -17,12 +17,13 @@
 #ifndef xrt_util_debug_h_
 #define xrt_util_debug_h_
 
+#include "xrt/config.h"
 #include "time.h"
 #include <ostream>
 #include <iomanip>
 #include <mutex>
 
-namespace xrt { 
+namespace xrt {
 
 struct debug_lock
 {
@@ -60,6 +61,7 @@ void debug(std::ostream& ostr, T&& t, Args&&... args)
 /**
  * Format debug print to stdout
  */
+XRT_EXPORT
 void
 debugf(const char* format,...);
 
@@ -76,21 +78,21 @@ xassert(const std::string& file, const std::string& line, const std::string& fun
     .append(":").append(expr);
   throw std::runtime_error(msg);
 }
-  
+
 } // xrt
 
 #ifdef XRT_VERBOSE
 # define XRT_DEBUG(...) xrt::debug(__VA_ARGS__)
 # define XRT_PRINT(...) xrt::debug(__VA_ARGS__)
 # define XRT_DEBUGF(format,...) xrt::debugf(format, ##__VA_ARGS__)
+# define XRT_PRINTF(format,...) xrt::debugf(format, ##__VA_ARGS__)
 #else
 # define XRT_DEBUG(...)
 # define XRT_PRINT(...) xrt::debug(__VA_ARGS__)
 # define XRT_DEBUGF(...)
+# define XRT_PRINTF(format,...) xrt::debugf(format, ##__VA_ARGS__)
 #endif
 
 #define XRT_ASSERT(expr,msg) ((expr) ? ((void)0) : xrt::xassert(__FILE__,std::to_string(__LINE__),__FUNCTION__,#expr))
 
 #endif
-
-

@@ -14,20 +14,17 @@
  * under the License.
  */
 
-// Debug of xocl 
-// 
+// Debug of xocl
+//
 // Enabled via sdaccel.ini
 //
 // [Debug] xocl_debug       --- enable debugging  (false)
 // [Debug] xocl_log         --- log file for debugging (xocl.log)
 // [Debug] xocl_event_begin --- first event to log (0)
 // [Debug] xocl_event_end   --- last event to log (999999)
-
 #include "debug.h"
 #include "time.h"
 #include "event.h"
-
-#include "xrt/config.h"
 
 #include <mutex>
 #include <vector>
@@ -37,13 +34,17 @@
 #include <cstdarg>
 #include <cstdio>
 
+#ifdef _WIN32
+#pragma warning ( disable : 4244 4706 )
+#endif
+
 namespace {
 
 static bool s_debug_on = false;
 static std::string s_debug_log;
 static unsigned long s_zero = xocl::time_ns();
 
-// Event information 
+// Event information
 namespace event {
 
 static unsigned int s_start_id = 0;
@@ -62,7 +63,7 @@ struct info
 
   // print this record
   // event# commandtype queued submitted running complete [dependencies]*
-  std::ostream& print(std::ostream& ostr, unsigned int id)
+  std::ostream& print(std::ostream& ostr, size_t id)
   {
     if (!m_times[CL_RUNNING])
         m_times[CL_RUNNING] = m_times[CL_COMPLETE];
@@ -108,8 +109,8 @@ id2idx(unsigned int id)
   return idx;
 }
 
-inline unsigned int
-idx2id(unsigned int idx)
+inline size_t
+idx2id(size_t idx)
 {
   return idx + s_start_id;
 }
@@ -167,7 +168,7 @@ print()
 //
 // [Debug] xocl_debug --- enable debugging  (false)
 // [Debug] xocl_log --- log file for debugging (xocl.log)
-// 
+//
 // This function must be after main(), since it uses xrt::config
 // which relies on static global initialization
 static bool
@@ -183,7 +184,7 @@ init()
     return false;
 
   s_debug_log = xrt::config::detail::get_string_value("Debug.xocl_log","xocl.log");
-  
+
   ::event::init();
 
   // reset time zero
@@ -211,11 +212,11 @@ static shutdown sd;
 }
 
 // External API
-namespace xocl { 
+namespace xocl {
 
 namespace debug {
 
-void 
+void
 time_log(xocl::event* event, cl_int status, cl_ulong ns)
 {
   static bool debug = init();
@@ -272,5 +273,3 @@ logf(const char* format, ...)
 #endif
 
 } // xocl
-
-

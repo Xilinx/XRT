@@ -21,10 +21,15 @@
 #include "xrt/scheduler/command.h"
 #include "xrt/scheduler/scheduler.h"
 
-#include "impl/spir.h"
+#include "core/common/xclbin_parser.h"
 
 #include <iostream>
 #include <fstream>
+#include <bitset>
+
+#ifdef _WIN32
+#pragma warning ( disable : 4996 4267 )
+#endif
 
 namespace {
 
@@ -152,8 +157,8 @@ run_done_callbacks(const xrt::command* cmd, const execution_context* ctx)
 struct execution_context::start_kernel : xrt::command
 {
 public:
-  start_kernel(xrt::device* xdevice, xocl::execution_context* ec)
-    : xrt::command(xdevice,ERT_START_KERNEL), m_ec(ec)
+  start_kernel(xrt::device* xdevice, xocl::execution_context* ec, ert_cmd_opcode opcode)
+    : xrt::command(xdevice,opcode), m_ec(ec)
   {}
   virtual void start() const
   {
@@ -169,8 +174,8 @@ public:
 
 struct execution_context::start_kernel_conformance : start_kernel
 {
-  start_kernel_conformance(xrt::device* xdevice, xocl::execution_context* ec)
-    : start_kernel(xdevice,ec)
+  start_kernel_conformance(xrt::device* xdevice, xocl::execution_context* ec, ert_cmd_opcode opcode)
+    : start_kernel(xdevice,ec,opcode)
   {}
   virtual void done() const
   {
@@ -181,34 +186,49 @@ struct execution_context::start_kernel_conformance : start_kernel
 
 static int
 fill_regmap(execution_context::regmap_type& regmap, size_t offset,
+            ert_cmd_opcode opcode, uint32_t ctrl,
             const void* data, const size_t size,
             const xocl::kernel::argument::arginfo_range_type& arginforange)
 {
-  // scale raw data input to specified size so that the
-  // value when cast to uint32_t* doesn't carry junk in case
-  // size is less than sizeof(uint32_t). Fill host_data
-  // conservative with an additional sizeof(uint32_t) bytes.
-  const char* cdata = reinterpret_cast<const char*>(data);
-  std::vector<char> host_data(cdata,cdata+size);
-  host_data.resize(size+sizeof(uint32_t));
+  using value_type = uint32_t;
+  using pointer_type = const uint32_t*;
+
+  const size_t wsize = sizeof(value_type);
+  const char* host_data = reinterpret_cast<const char*>(data);
+  auto bytes = size;
 
   // For each component of the argument
   for (auto arginfo : arginforange) {
-    const char* component = host_data.data() + arginfo->hostoffset;
-    const uint32_t* word = reinterpret_cast<const uint32_t*>(component);
+    auto component = host_data + arginfo->hostoffset;
+    auto word = reinterpret_cast<pointer_type>(component);
+
     // For each 32-bit word of the component
-    for (size_t wi=0, we=arginfo->size/sizeof(uint32_t); wi!=we; ++wi) {
-      size_t device_offset = arginfo->offset + wi*sizeof(uint32_t);
-      uint32_t device_value = *word;
-      size_t register_offset = device_offset / sizeof(uint32_t);
-      regmap[offset+register_offset] = device_value;
-      //      std::cout << "regmap[" << register_offset << "]=" << device_value << "\n";
-      ++word;
+    for (size_t wi = 0, we = arginfo->size / wsize; wi < we; ++wi, ++word, bytes -= wsize) {
+      value_type device_value = 0;
+      if (bytes >= wsize)
+        device_value = *word;
+      else {
+        auto cword = reinterpret_cast<const char*>(word);
+        std::copy(cword,cword+bytes,reinterpret_cast<char*>(&device_value));
+      }
+
+      if (opcode == ERT_EXEC_WRITE) {
+        // write addr value pair at current end of regmap
+        auto idx = regmap.size();
+        regmap[idx++] = (ctrl == ACCEL_ADAPTER) ? arginfo->offset : arginfo->offset + wi*wsize;
+        regmap[idx++] = device_value;
+        assert(idx == regmap.size());
+      }
+      else {
+        // write relative to start of register map
+        auto idx = offset + arginfo->offset / wsize + wi;
+        regmap[idx] = device_value;
+      }
+      //std::cout << "regmap[" << offset + regmap_idx + wi << "]=" << device_value << "\n";
     }
   }
   return 0;
 }
-
 
 execution_context::
 execution_context(device* device
@@ -238,24 +258,47 @@ execution_context(device* device
 
   // Compute units to use
   add_compute_units(device);
+
+  m_dataflow = xrt_core::xclbin::get_dataflow(device->get_axlf());
+  XOCL_DEBUGF("execution_context(%d) has dataflow(%d)\n",m_uid,m_dataflow);
 }
 
 void
 execution_context::
 add_compute_units(device* device)
 {
+  // Collect kernel's filtered CUs
+  std::bitset<128> kernel_cus;
+  for (auto cu : m_kernel->get_cus())
+    kernel_cus.set(cu->get_index());
+
+  // Targeted device CUs matching kernel CUs
   for (auto& scu : device->get_cus()) {
     auto cu = scu.get();
-    // Check that the kernel symbol is the same between the CU kernel and
-    // this context kernel.  There are test cases where two kernels share
-    // the same name but have different symbol from xclbin.  This will go
-    // away once we ensure that only one kernel per symbol is created in
-    // which case the kernel object address can be used from comparison.
-    if(cu->get_symbol()->uid==m_kernel.get()->get_symbol_uid()) {
-      XOCL_DEBUGF("execution_context(%d) adding cu(%d)\n",m_uid,cu->get_uid());
+    if (kernel_cus.test(cu->get_index())) {
+
+      // Check context creation
+      if (!device->acquire_context(cu))
+        continue;
+
+      XOCL_DEBUGF("execution_context(%d) added cu(%d)\n",m_uid,cu->get_uid());
       m_cus.push_back(cu);
     }
   }
+
+  if (m_cus.empty())
+    throw xrt::error(CL_INVALID_KERNEL,
+                     "kernel '"
+                     + m_kernel->get_name()
+                     + "' has no compute units to execute job '"
+                     + std::to_string(m_uid) + "'\n");
+}
+
+uint32_t
+execution_context::
+cu_control_type() const
+{
+  return m_cus.front()->get_control_type();
 }
 
 bool
@@ -268,6 +311,7 @@ write(const command_type& cmd)
   // Construct command header
   auto epacket = xrt::command_cast<ert_packet*>(cmd.get());
   epacket->count = data_size;
+  epacket->type  = ERT_CU;
 
   // Max number size is 4KB
   auto size = packet.bytes();
@@ -365,9 +409,11 @@ start()
   auto xdevice = m_device->get_xrt_device();
 
   // Construct command packet and send to hardware
+  auto ctrl = cu_control_type();
+  auto opcode = (ctrl == ACCEL_ADAPTER) ? ERT_EXEC_WRITE : ERT_START_KERNEL;
   auto cmd = conformance::on()
-    ? std::make_shared<start_kernel_conformance>(xdevice,this)
-    : std::make_shared<start_kernel>(xdevice,this);
+    ? std::make_shared<start_kernel_conformance>(xdevice,this,opcode)
+    : std::make_shared<start_kernel>(xdevice,this,opcode);
   ++m_active;
   auto& packet = cmd->get_packet();
 
@@ -378,6 +424,21 @@ start()
   // Create the cu register map
   auto offset = packet.size();  // start of regmap
   auto& regmap = packet;
+
+  // Ensure that S_AXI_CONTROL is created even when kernel
+  // has no arguments.
+  packet[offset]   = 0;  // control signals
+  packet[offset+1] = 0;  // gier
+  packet[offset+2] = 0;  // ier
+  packet[offset+3] = 0;  // isr
+
+  if (opcode == ERT_EXEC_WRITE) {
+    // scheduler relies on exec_write addr,value pair
+    // starting at offset+6 (4 ctrl + 2 ctx)
+    // this is a mess, need separate exec_write packet.
+    packet[offset+4] = 0; // ctx-in
+    packet[offset+5] = 0; // ctx-out
+  }
 
   size3 num_workgroups {0,0,0};
   for (auto d : {0,1,2}) {
@@ -395,14 +456,14 @@ start()
     }
 
     auto address_space = arg->get_address_space();
-    if (address_space == SPIR_ADDRSPACE_PRIVATE)
+    if (address_space == kernel::argument::addr_space_type::SPIR_ADDRSPACE_PRIVATE)
     {
       auto arginforange = arg->get_arginfo_range();
-      fill_regmap(regmap,offset,arg->get_value(),arg->get_size(),arginforange);
-    } else if(address_space==SPIR_ADDRSPACE_PIPES) {
+      fill_regmap(regmap,offset,opcode,ctrl,arg->get_value(),arg->get_size(),arginforange);
+    } else if(address_space == kernel::argument::addr_space_type::SPIR_ADDRSPACE_PIPES) {
 	//do nothing
-    } else if (address_space==SPIR_ADDRSPACE_GLOBAL
-             || address_space==SPIR_ADDRSPACE_CONSTANT)
+    } else if (address_space == kernel::argument::addr_space_type::SPIR_ADDRSPACE_GLOBAL
+            || address_space == kernel::argument::addr_space_type::SPIR_ADDRSPACE_CONSTANT)
     {
       uint64_t physaddr = 0;
       if (auto mem = arg->get_memory_object()) {
@@ -414,7 +475,7 @@ start()
       }
       auto arginforange = arg->get_arginfo_range();
       assert(arginforange.size()==1);
-      fill_regmap(regmap,offset,&physaddr, arg->get_size(), arginforange);
+      fill_regmap(regmap,offset,opcode,ctrl,&physaddr, arg->get_size(), arginforange);
     }
   }
 
@@ -425,7 +486,7 @@ start()
       physaddr = xdevice->getDeviceAddr(boh);
     }
     assert(arg->get_arginfo_range().size()==1);
-    fill_regmap(regmap,offset,&physaddr,arg->get_size(),arg->get_arginfo_range());
+    fill_regmap(regmap,offset,opcode,ctrl,&physaddr,arg->get_size(),arg->get_arginfo_range());
   }
 
   // Set runtime arguments as required
@@ -457,23 +518,23 @@ start()
     auto nm = arg->get_name();
     XOCL_DEBUGF("execution_context(%d) sets rtinfo(%s)\n",get_uid(),nm.c_str());
     if (nm=="work_dim")
-      fill_regmap(regmap,offset,&m_dim,sizeof(cl_uint),arg->get_arginfo_range());
+      fill_regmap(regmap,offset,opcode,ctrl,&m_dim,sizeof(cl_uint),arg->get_arginfo_range());
     else if (nm=="global_offset")
-      fill_regmap(regmap,offset,m_goffset.data(),3*sizeof(size_t),arg->get_arginfo_range());
+      fill_regmap(regmap,offset,opcode,ctrl,m_goffset.data(),3*sizeof(size_t),arg->get_arginfo_range());
     else if (nm=="global_size")
-      fill_regmap(regmap,offset,m_gsize.data(),3*sizeof(size_t),arg->get_arginfo_range());
+      fill_regmap(regmap,offset,opcode,ctrl,m_gsize.data(),3*sizeof(size_t),arg->get_arginfo_range());
     else if (nm=="local_size")
-      fill_regmap(regmap,offset,m_lsize.data(),3*sizeof(size_t),arg->get_arginfo_range());
+      fill_regmap(regmap,offset,opcode,ctrl,m_lsize.data(),3*sizeof(size_t),arg->get_arginfo_range());
     else if (nm=="num_groups")
-      fill_regmap(regmap,offset,num_workgroups.data(),3*sizeof(size_t),arg->get_arginfo_range());
+      fill_regmap(regmap,offset,opcode,ctrl,num_workgroups.data(),3*sizeof(size_t),arg->get_arginfo_range());
     else if (nm=="global_id")
-      fill_regmap(regmap,offset,m_cu_global_id.data(),3*sizeof(size_t),arg->get_arginfo_range());
+      fill_regmap(regmap,offset,opcode,ctrl,m_cu_global_id.data(),3*sizeof(size_t),arg->get_arginfo_range());
     else if (nm=="local_id")
-      fill_regmap(regmap,offset,local_id.data(),3*sizeof(size_t),arg->get_arginfo_range());
+      fill_regmap(regmap,offset,opcode,ctrl,local_id.data(),3*sizeof(size_t),arg->get_arginfo_range());
     else if (nm=="group_id")
-      fill_regmap(regmap,offset,m_cu_group_id.data(),3*sizeof(size_t),arg->get_arginfo_range());
+      fill_regmap(regmap,offset,opcode,ctrl,m_cu_group_id.data(),3*sizeof(size_t),arg->get_arginfo_range());
     else if (nm=="printf_buffer")
-      fill_regmap(regmap,offset,&printf_buffer_addr,sizeof(printf_buffer_addr),arg->get_arginfo_range());
+      fill_regmap(regmap,offset,opcode,ctrl,&printf_buffer_addr,sizeof(printf_buffer_addr),arg->get_arginfo_range());
   }
 
   // send command to mbs
@@ -529,10 +590,11 @@ execute()
   // In order to keep scheduler busy, we need more than just one
   // workgroup at a time, so here we try to ensure that the scheduled
   // commands at any given time is twice the number of available CUs.
-  auto limit = 2*m_cus.size();
+  auto limit = m_dataflow ? 20*m_cus.size() : 2*m_cus.size();
   for (size_t i=m_active; !m_done && i<limit; ++i) {
     start();
     update_work();
+    XOCL_DEBUG(std::cout,"active=",m_active,"\n");
   }
 
   return m_done;
@@ -552,7 +614,7 @@ conformance_done(const xrt::command*)
   // any data members of context which is owned (and deleted) with event
   bool ctx_done = false;
   {
-    std::lock_guard<std::mutex> lk(m_mutex);
+    std::lock_guard<std::mutex> ilk(m_mutex);
     if (--m_active==0) {
       assert(m_done);
       conformance::remove(this);
