@@ -161,6 +161,7 @@ using addr_type = uint64_t;
 
       //Performance Monitor APIs
       double xclGetDeviceClockFreqMHz();
+      size_t xclGetDeviceTimestamp();
       void xclReadBusStatus(xclPerfMonType type);
       void xclGetDebugMessages(bool force = false);
       void logMessage(std::string& msg,int verbosity = 0);

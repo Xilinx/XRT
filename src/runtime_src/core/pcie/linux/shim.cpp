@@ -2013,6 +2013,11 @@ int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclR
         return drv ? drv->xclPollCompletion(min_compl, max_compl, comps, actual, timeout) : -ENODEV;
 }
 
+size_t xclGetDeviceTimestamp(xclDeviceHandle handle)
+{
+  return 0;
+}
+
 uint xclGetNumLiveProcesses(xclDeviceHandle handle)
 {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
