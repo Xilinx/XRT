@@ -1687,7 +1687,7 @@ public:
             return false;
         }
 
-        if( strstr( name.c_str(), "_u50_" ) ) { //This is U50 device
+        if( strstr( name.c_str(), "_u50_xdma_201920_1" ) ) { //This is U50 device
             return true;
         }
         return false;
