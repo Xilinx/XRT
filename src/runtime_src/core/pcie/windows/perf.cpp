@@ -54,6 +54,12 @@ xclGetNumLiveProcesses(xclDeviceHandle handle)
   return 0;
 }
 
+size_t
+xclGetDeviceTimestamp(xclDeviceHandle handle)
+{
+  return 0;
+}
+
 #if 0
 void
 xclWriteHostEvent(xclDeviceHandle handle, enum xclPerfMonEventType type,
@@ -62,10 +68,7 @@ xclWriteHostEvent(xclDeviceHandle handle, enum xclPerfMonEventType type,
   throw std::runtime_error("Not implemented");
 }
 
-size_t
-xclGetDeviceTimestamp(xclDeviceHandle handle)
-{
-}
+
 
 double xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
 {
