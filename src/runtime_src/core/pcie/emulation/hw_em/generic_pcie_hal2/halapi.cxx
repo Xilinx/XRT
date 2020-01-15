@@ -409,6 +409,22 @@ double xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
   return drv->xclGetDeviceClockFreqMHz();
 }
 
+double xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
+  if (!drv)
+    return -1;
+  return drv->xclGetReadMaxBandwidthMBps();
+}
+
+double xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
+  if (!drv)
+    return -1;
+  return drv->xclGetWriteMaxBandwidthMBps();
+}
+
 /*
  * API to get number of live processes.
  * Applicable only for System Flow as it supports Multiple processes on same device.

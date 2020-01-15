@@ -60,10 +60,13 @@ xclGetDeviceTimestamp(xclDeviceHandle handle)
   return 0;
 }
 
-#if 0
 double xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
 {
+   return 0.0;
 }
+
+#if 0
+
 
 double xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle)
 {

@@ -2386,6 +2386,20 @@ double HwEmShim::xclGetDeviceClockFreqMHz()
   return clockSpeed;
 }
 
+// Get the maximum bandwidth for host reads from the device (in MB/sec)
+// NOTE: for now, just return 8.0 GBps (the max achievable for PCIe Gen3)
+double HwEmShim::xclGetReadMaxBandwidthMBps()
+{
+  return 8000.0;
+}
+
+// Get the maximum bandwidth for host writes to the device (in MB/sec)
+// NOTE: for now, just return 8.0 GBps (the max achievable for PCIe Gen3)
+double HwEmShim::xclGetWriteMaxBandwidthMBps()
+{
+  return 8000.0;
+}
+
 uint32_t HwEmShim::getPerfMonNumberSlots(xclPerfMonType type)
 {
   if (type == XCL_PERF_MON_MEMORY)
