@@ -225,6 +225,10 @@ public:
     get_baseaddr() const
     { throw std::runtime_error("not implemented"); }
 
+    virtual size_t
+    get_offset() const
+    { throw std::runtime_error("not implemented"); }
+
     virtual std::string
     get_linkage() const
     { throw std::runtime_error("not implemented"); }
@@ -261,6 +265,7 @@ public:
     virtual void set(size_t sz, const void* arg);
     virtual size_t get_size() const { return m_sz; }
     virtual const void* get_value() const { return m_value.data(); }
+    virtual size_t get_offset() const { return (*m_components.begin())->offset; }
     virtual const std::string get_string_value() const;
     virtual arginfo_range_type get_arginfo_range() const
     { return arginfo_range_type(m_components.data(),m_components.data()+m_components.size()); }
@@ -287,6 +292,7 @@ public:
     virtual void* get_svm_object() const { return m_svm_buf; }
     virtual size_t get_size() const { return sizeof(memory*); }
     virtual const void* get_value() const { return m_buf.get(); }
+    virtual size_t get_offset() const { return m_arg_info->offset; }
     virtual size_t get_baseaddr() const { return m_arg_info->baseaddr; }
     virtual std::string get_linkage() const { return m_arg_info->linkage; }
     virtual arginfo_range_type get_arginfo_range() const
@@ -315,6 +321,7 @@ public:
     virtual argtype get_argtype() const { return m_arg_info->atype; }
     virtual std::string get_name() const { return m_arg_info->name; }
     virtual addr_space_type get_address_space() const { return addr_space_type::SPIR_ADDRSPACE_LOCAL; }
+    virtual size_t get_offset() const { return m_arg_info->offset; }
     virtual std::unique_ptr<argument> clone();
     virtual void set(size_t sz, const void* arg);
     virtual arginfo_range_type get_arginfo_range() const
@@ -335,6 +342,7 @@ public:
     virtual void set(size_t sz, const void* arg);
     virtual memory* get_memory_object() const { return m_buf.get(); }
     virtual size_t get_size() const { return sizeof(memory*); }
+    virtual size_t get_offset() const { return m_arg_info->offset; }
     virtual const void* get_value() const { return m_buf.get(); }
     virtual arginfo_range_type get_arginfo_range() const
     { return arginfo_range_type(&m_arg_info,&m_arg_info+1); }
