@@ -61,15 +61,6 @@ xclGetDeviceTimestamp(xclDeviceHandle handle)
 }
 
 #if 0
-void
-xclWriteHostEvent(xclDeviceHandle handle, enum xclPerfMonEventType type,
-                  enum xclPerfMonEventID id)
-{
-  throw std::runtime_error("Not implemented");
-}
-
-
-
 double xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
 {
 }

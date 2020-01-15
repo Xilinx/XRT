@@ -113,8 +113,6 @@ private:
   typedef uint32_t (* countTraceFuncType)(xclDeviceHandle handle, xclPerfMonType type);
   typedef size_t (* readTraceFuncType)(xclDeviceHandle handle, xclPerfMonType type,
                                        xclTraceResultsVector& traceVector);
-  typedef void (* writeHostEventFuncType)(xclDeviceHandle handle, xclPerfMonEventType type,
-                                          xclPerfMonEventID id);
   typedef size_t (* debugReadIPStatusFuncType)(xclDeviceHandle handle, xclDebugReadType type,
                                                void* debugResults);
 
@@ -199,7 +197,6 @@ public:
   stopTraceFuncType mStopTrace;
   countTraceFuncType mCountTrace;
   readTraceFuncType mReadTrace;
-  writeHostEventFuncType mWriteHostEvent;
   debugReadIPStatusFuncType mDebugReadIPStatus;
 //Streaming
   createWriteQueueFuncType mCreateWriteQueue;
