@@ -1608,8 +1608,8 @@ public:
      * --count : specify the number of blocks to copy
      *           OPTIONAL for fileToDevice; will copy the remainder of input file by default
      *           REQUIRED for deviceToFile
-     * --skip : specify the source offset (in block counts) OPTIONAL defaults to 0
-     * --seek : specify the destination offset (in block counts) OPTIONAL defaults to 0
+     * --skip : specify the source offset (in block counts)
+     * --seek : specify the destination offset (in block counts)
      */
     int do_dd(dd::ddArgs_t args )
     {
