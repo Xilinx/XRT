@@ -14,26 +14,20 @@
  * under the License.
  */
 
-#define XDP_SOURCE
+#ifndef XDP_API_INTERFACE_PLUGIN_DOT_H
+#define XDP_API_INTERFACE_PLUGIN_DOT_H
 
-#include "xdp/profile/database/events/opencl_api_calls.h"
+#include "xclperf.h"
 
-namespace xdp {
+#include "xdp/config.h"
 
-  OpenCLAPICall::OpenCLAPICall(uint64_t s_id, double ts, unsigned int f_id,
-			       uint64_t name, uint64_t q) :
-    APICall(s_id, ts, f_id, name, OPENCL_API_CALL), queueAddress(q)
-  {
-  }
+// Currently, the HAL API Interface does not require a proper
+//  plugin object, as it does not interface with the event database.
+//  Instead, it just directly communicates with the counters in hardware.
 
-  OpenCLAPICall::~OpenCLAPICall()
-  {
-  }
+extern "C" {
+  XDP_EXPORT void hal_api_interface_cb_func(HalInterfaceCallbackType cb_type, 
+					    void* payload) ;
+}
 
-  void OpenCLAPICall::dump(std::ofstream& fout, int bucket)
-  {
-    VTFEvent::dump(fout, bucket) ;
-    fout << "," << functionName << std::endl ;
-  }
-
-} // end namespace xdp
+#endif

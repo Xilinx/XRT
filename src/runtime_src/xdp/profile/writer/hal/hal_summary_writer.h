@@ -14,26 +14,23 @@
  * under the License.
  */
 
-#define XDP_SOURCE
+#ifndef HAL_SUMMARY_WRITER_DOT_H
+#define HAL_SUMMARY_WRITER_DOT_H
 
-#include "xdp/profile/database/events/opencl_api_calls.h"
+#include "xdp/profile/writer/vp_summary_writer.h"
 
 namespace xdp {
 
-  OpenCLAPICall::OpenCLAPICall(uint64_t s_id, double ts, unsigned int f_id,
-			       uint64_t name, uint64_t q) :
-    APICall(s_id, ts, f_id, name, OPENCL_API_CALL), queueAddress(q)
+  class HALSummaryWriter : public VPSummaryWriter
   {
-  }
+  private:
+    HALSummaryWriter() = delete ;
+  public:
+    HALSummaryWriter(const char* filename) ;
+    ~HALSummaryWriter() ;
 
-  OpenCLAPICall::~OpenCLAPICall()
-  {
-  }
+    virtual void write(bool openNewFile) ;
+  } ;
+}
 
-  void OpenCLAPICall::dump(std::ofstream& fout, int bucket)
-  {
-    VTFEvent::dump(fout, bucket) ;
-    fout << "," << functionName << std::endl ;
-  }
-
-} // end namespace xdp
+#endif

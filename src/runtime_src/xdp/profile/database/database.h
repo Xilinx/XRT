@@ -24,6 +24,8 @@
 #include "xdp/profile/database/static_info_database.h"
 #include "xdp/profile/database/dynamic_event_database.h"
 
+#include "xdp/config.h"
+
 namespace xdp {
 
   // Forward declarations
@@ -56,9 +58,9 @@ namespace xdp {
     static bool live ;
 
   public:
-    ~VPDatabase() ;
-    static VPDatabase* Instance() ;
-    static bool alive() ;
+    XDP_EXPORT ~VPDatabase() ;
+    XDP_EXPORT static VPDatabase* Instance() ;
+    XDP_EXPORT static bool alive() ;
 
     // Access to the three different types of information
     inline VPStatisticsDatabase& getStats()       { return stats ; }

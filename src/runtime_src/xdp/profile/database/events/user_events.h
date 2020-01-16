@@ -19,6 +19,8 @@
 
 #include "xdp/profile/database/events/vtf_event.h"
 
+#include "xdp/config.h"
+
 namespace xdp {
 
   // **********************
@@ -32,8 +34,8 @@ namespace xdp {
   public:
     virtual bool isUserEvent() { return true ; } 
 
-    UserMarker(uint64_t s_id, double ts) ;
-    ~UserMarker() ;
+    XDP_EXPORT UserMarker(uint64_t s_id, double ts) ;
+    XDP_EXPORT ~UserMarker() ;
   } ;
 
   class UserRange : public VTFEvent
@@ -43,8 +45,8 @@ namespace xdp {
   public:
     virtual bool isUserEvent() { return true ; } 
 
-    UserRange(uint64_t s_id, double ts) ;
-    ~UserRange() ;
+    XDP_EXPORT UserRange(uint64_t s_id, double ts) ;
+    XDP_EXPORT ~UserRange() ;
   } ;
 
 } // end namespace xdp

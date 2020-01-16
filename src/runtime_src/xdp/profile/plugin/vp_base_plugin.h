@@ -22,6 +22,8 @@
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/writer/vp_writer.h"
 
+#include "xdp/config.h"
+
 namespace xdp {
 
   class XDPPlugin
@@ -36,19 +38,19 @@ namespace xdp {
     std::vector<VPWriter*> writers ;
 
   public:
-    XDPPlugin() ;
-    virtual ~XDPPlugin() ;
+    XDP_EXPORT XDPPlugin() ;
+    XDP_EXPORT virtual ~XDPPlugin() ;
     
     inline VPDatabase* getDatabase() { return db ; }
 
     // When the database gets reset or at the end of execution,
     //  the plugins must make sure all of their writers dump a complete file
-    virtual void writeAll(bool openNewFiles = true) ;
+    XDP_EXPORT virtual void writeAll(bool openNewFiles = true) ;
 
     // If any devices are related to this plugin, this will force
     //  the device events to be flushed to the database for a particular 
     //  device.
-    virtual void readDeviceInfo(void* device) ;
+    XDP_EXPORT virtual void readDeviceInfo(void* device) ;
   } ;
 
 }

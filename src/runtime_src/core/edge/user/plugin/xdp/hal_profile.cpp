@@ -198,57 +198,6 @@ WriteCallLogger::~WriteCallLogger() {
     cb(HalCallbackType::WRITE_END, &payload);
 }
 
-
-StartDeviceProfilingCls::StartDeviceProfilingCls(xclDeviceHandle handle)
-{
-  load_xdp_plugin_library(nullptr);
-  if(!cb_valid()) return;
-  CBPayload payload = {0, handle};
-  cb(HalCallbackType::START_DEVICE_PROFILING, &payload);
-}
-
-StartDeviceProfilingCls::~StartDeviceProfilingCls()
-{}
-
-CreateProfileResultsCls::CreateProfileResultsCls(xclDeviceHandle handle, ProfileResults** results, int& status)
-{
-  load_xdp_plugin_library(nullptr);
-  if(!cb_valid()) { status = (-1); return; }
-
-  ProfileResultsCBPayload payload = {{0, handle}, static_cast<void*>(results)};   // pass ProfileResults** as void*
-  cb(HalCallbackType::CREATE_PROFILE_RESULTS, &payload);
-  status = 0;
-}
-
-CreateProfileResultsCls::~CreateProfileResultsCls()
-{}
-
-GetProfileResultsCls::GetProfileResultsCls(xclDeviceHandle handle, ProfileResults* results, int& status)
-{
-  load_xdp_plugin_library(nullptr);
-  if(!cb_valid()) { status = (-1); return; }
-
-  ProfileResultsCBPayload payload = {{0, handle}, static_cast<void*>(results)};
-  cb(HalCallbackType::GET_PROFILE_RESULTS, &payload);
-  status = 0;
-}
-
-GetProfileResultsCls::~GetProfileResultsCls()
-{}
-
-DestroyProfileResultsCls::DestroyProfileResultsCls(xclDeviceHandle handle, ProfileResults* results, int& status)
-{
-  load_xdp_plugin_library(nullptr);
-  if(!cb_valid()) { status = (-1); return; }
-
-  ProfileResultsCBPayload payload = {{0, handle}, static_cast<void*>(results)};
-  cb(HalCallbackType::DESTROY_PROFILE_RESULTS, &payload);
-  status = 0;
-}
-
-DestroyProfileResultsCls::~DestroyProfileResultsCls()
-{}
-
 void load_xdp_plugin_library(HalPluginConfig* )
 {
 #ifdef XRT_LOAD_XDP_HAL_PLUGIN
@@ -258,7 +207,7 @@ void load_xdp_plugin_library(HalPluginConfig* )
         return;
     }
 
-    if(!xrt_core::config::get_profile_api()) {
+    if(!xrt_core::config::get_hal_profile()) {
       // profile_api is not set to correct configuration. Skip loading xdp_hal_plugin.
       // There will be no profile support in this run.
 //      std::cout << "\"profile_api\" is not set to true in xrt.ini Debug configuration. So, no HAL profiling is available." << std::endl;
@@ -295,7 +244,7 @@ void load_xdp_plugin_library(HalPluginConfig* )
       xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR, "XRT", std::string("Failed to open XDP hal plugin library '" + p.string() + "'\n" + dlerror()));
       exit(EXIT_FAILURE);
     }
-    const std::string cb_func_name = "hal_level_xdp_cb_func";
+    const std::string cb_func_name = "hal_level_xdp_cb_func";    
     dlerror();
     cb = cb_func_type(reinterpret_cast<cb_load_func_type>(dlsym(handle, cb_func_name.c_str())));
     if(dlerror() != NULL) { // check if dlsym was successful

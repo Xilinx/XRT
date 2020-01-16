@@ -22,6 +22,8 @@
 
 #include "xdp/profile/database/events/vtf_event.h"
 
+#include "xdp/config.h"
+
 namespace xdp {
 
   // **********************
@@ -42,12 +44,12 @@ namespace xdp {
 
     KernelEnqueue() = delete ;
   public:
-    KernelEnqueue(uint64_t s_id, double ts);
-    ~KernelEnqueue() ;
+    XDP_EXPORT KernelEnqueue(uint64_t s_id, double ts);
+    XDP_EXPORT ~KernelEnqueue() ;
 
     virtual bool isHostEvent() { return true ; }
     
-    virtual void dump(std::ofstream& fout, int bucket) ;
+    XDP_EXPORT virtual void dump(std::ofstream& fout, int bucket) ;
   } ;
 
   class CUEnqueue : public VTFEvent
@@ -66,8 +68,8 @@ namespace xdp {
 
     CUEnqueue() = delete ;
   public:
-    CUEnqueue(uint64_t s_id, double ts) ;
-    ~CUEnqueue() ;
+    XDP_EXPORT CUEnqueue(uint64_t s_id, double ts) ;
+    XDP_EXPORT ~CUEnqueue() ;
 
     virtual bool isHostEvent() { return true ; } 
   } ;
@@ -87,12 +89,12 @@ namespace xdp {
 
     BufferTransfer() = delete ;
   public:
-    BufferTransfer(uint64_t s_id, double ts, VTFEventType ty) ;
-    ~BufferTransfer() ;
+    XDP_EXPORT BufferTransfer(uint64_t s_id, double ts, VTFEventType ty) ;
+    XDP_EXPORT ~BufferTransfer() ;
 
     virtual bool isHostEvent() { return true ; } 
 
-    virtual void dump(std::ofstream& fout, int bucket) ;
+    XDP_EXPORT virtual void dump(std::ofstream& fout, int bucket) ;
   } ;
 
   class StreamRead : public VTFEvent
@@ -100,8 +102,8 @@ namespace xdp {
   private:
     StreamRead() = delete ;
   public:
-    StreamRead(uint64_t s_id, double ts) ;
-    ~StreamRead() ;
+    XDP_EXPORT StreamRead(uint64_t s_id, double ts) ;
+    XDP_EXPORT ~StreamRead() ;
 
     virtual bool isHostEvent() { return true ; } 
   } ;
@@ -111,8 +113,8 @@ namespace xdp {
   private:
     StreamWrite() = delete ;
   public:
-    StreamWrite(uint64_t s_id, double ts) ;
-    ~StreamWrite() ;
+    XDP_EXPORT StreamWrite(uint64_t s_id, double ts) ;
+    XDP_EXPORT ~StreamWrite() ;
 
     virtual bool isHostEvent() { return true ; } 
   } ;

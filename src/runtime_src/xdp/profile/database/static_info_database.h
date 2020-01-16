@@ -23,6 +23,8 @@
 #include <vector>
 #include <string>
 
+#include "xdp/config.h"
+
 namespace xdp {
 
   class ComputeUnitInstance
@@ -43,11 +45,11 @@ namespace xdp {
   public:
     
     // Getters and setters
-    const std::string& getName() { return name ; }
-    std::string getDim() ;
+    inline const std::string& getName() { return name ; }
+    XDP_EXPORT std::string getDim() ;
 
-    ComputeUnitInstance(const char* n, int i) ;
-    ~ComputeUnitInstance() ;
+    XDP_EXPORT ComputeUnitInstance(const char* n, int i) ;
+    XDP_EXPORT ~ComputeUnitInstance() ;
   } ;
 
   class VPStaticDatabase
@@ -106,11 +108,11 @@ namespace xdp {
       { return cus[dev] ; } 
 
     // Reseting device information whenever a new xclbin is added
-    void updateDevice(void* dev, const void* binary) ;
+    XDP_EXPORT void updateDevice(void* dev, const void* binary) ;
 
     // Functions that add information to the database
-    void addCommandQueueAddress(uint64_t a) ;
-    void addKDMACount(void* dev, uint16_t numKDMAs) ;
+    XDP_EXPORT void addCommandQueueAddress(uint64_t a) ;
+    XDP_EXPORT void addKDMACount(void* dev, uint16_t numKDMAs) ;
   } ;
 
 }

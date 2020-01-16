@@ -28,6 +28,7 @@
 #include "core/common/AlignedAllocator.h"
 
 #include "plugin/xdp/hal_profile.h"
+#include "plugin/xdp/hal_api_interface.h"
 
 
 #include "xclbin.h"
@@ -1692,6 +1693,10 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
+#ifdef ENABLE_HAL_PROFILING
+    if (ret != 0) return ret ;
+    LOAD_XCLBIN_CB ;
+#endif
     if (!ret) {
       ret = xrt_core::scheduler::init(handle, buffer);
       START_DEVICE_PROFILING_CB(handle);
@@ -1728,14 +1733,18 @@ int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, con
 
 size_t xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
 {
-//    WRITE_CB;
+#ifdef ENABLE_HAL_PROFILING
+  WRITE_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclWrite(space, offset, hostBuf, size) : -ENODEV;
 }
 
 size_t xclRead(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
 {
-//    READ_CB;
+#ifdef ENABLE_HAL_PROFILING
+  READ_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclRead(space, offset, hostBuf, size) : -ENODEV;
 }
@@ -1774,7 +1783,9 @@ unsigned int xclVersion ()
 
 unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned flags)
 {
-//    ALLOC_BO_CB;
+#ifdef ENABLE_HAL_PROFILING
+  ALLOC_BO_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclAllocBO(size, unused, flags) : -ENODEV;
 }
@@ -1786,7 +1797,9 @@ unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t siz
 }
 
 void xclFreeBO(xclDeviceHandle handle, unsigned int boHandle) {
-//    FREE_BO_CB;
+#ifdef ENABLE_HAL_PROFILING
+  FREE_BO_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     if (!drv) {
         return;
@@ -1796,21 +1809,27 @@ void xclFreeBO(xclDeviceHandle handle, unsigned int boHandle) {
 
 size_t xclWriteBO(xclDeviceHandle handle, unsigned int boHandle, const void *src, size_t size, size_t seek)
 {
-//    WRITE_BO_CB;
+#ifdef ENABLE_HAL_PROFILING
+  WRITE_BO_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclWriteBO(boHandle, src, size, seek) : -ENODEV;
 }
 
 size_t xclReadBO(xclDeviceHandle handle, unsigned int boHandle, void *dst, size_t size, size_t skip)
 {
-//    READ_BO_CB;
+#ifdef ENABLE_HAL_PROFILING
+  READ_BO_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclReadBO(boHandle, dst, size, skip) : -ENODEV;
 }
 
 void *xclMapBO(xclDeviceHandle handle, unsigned int boHandle, bool write)
 {
-//    MAP_BO_CB;
+#ifdef ENABLE_HAL_PROFILING
+  MAP_BO_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclMapBO(boHandle, write) : nullptr;
 }
@@ -1823,6 +1842,9 @@ int xclUnmapBO(xclDeviceHandle handle, unsigned int boHandle, void* addr)
 
 int xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset)
 {
+#ifdef ENABLE_HAL_PROFILING
+  SYNC_BO_CB ;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclSyncBO(boHandle, dir, size, offset) : -ENODEV;
 }
@@ -1892,14 +1914,18 @@ unsigned int xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
 
 ssize_t xclUnmgdPwrite(xclDeviceHandle handle, unsigned flags, const void *buf, size_t count, uint64_t offset)
 {
-//    UNMGD_PWRITE_CB;
+#ifdef ENABLE_HAL_PROFILING
+  UNMGD_PWRITE_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclUnmgdPwrite(flags, buf, count, offset) : -ENODEV;
 }
 
 ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf, size_t count, uint64_t offset)
 {
-//    UNMGD_PREAD_CB;
+#ifdef ENABLE_HAL_PROFILING
+  UNMGD_PREAD_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclUnmgdPread(flags, buf, count, offset) : -ENODEV;
 }

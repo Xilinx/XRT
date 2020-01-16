@@ -43,6 +43,8 @@ public:
   virtual int getTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz) = 0;
   virtual int readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample) = 0;
 
+  virtual void* getRawDevice() = 0 ;
+
 };
 
 }

@@ -27,6 +27,8 @@
 // For the device results structures
 #include "xclperf.h"
 
+#include "xdp/config.h"
+
 namespace xdp {
 
   // All of the statistics in this database will be used in 
@@ -101,8 +103,8 @@ namespace xdp {
     std::mutex dbLock ;
 
   public:
-    VPStatisticsDatabase() ;
-    ~VPStatisticsDatabase() ;
+    XDP_EXPORT VPStatisticsDatabase() ;
+    XDP_EXPORT ~VPStatisticsDatabase() ;
 
     // Getters and setters
     inline const std::map<std::pair<std::string, std::thread::id>,
@@ -116,27 +118,30 @@ namespace xdp {
       { return computeUnitExecutionStats ; }
 
     // Logging Functions
-    void logFunctionCallStart(const std::string& name, double timestamp) ;
-    void logFunctionCallEnd(const std::string& name, double timestamp) ;
+    XDP_EXPORT void logFunctionCallStart(const std::string& name, 
+					 double timestamp) ;
+    XDP_EXPORT void logFunctionCallEnd(const std::string& name, 
+				       double timestamp) ;
 
-    void logMemoryTransfer(void* deviceHandle, 
-			   DeviceMemoryStatistics::ChannelType channelType,
-			   size_t byteCount) ;
+    XDP_EXPORT void logMemoryTransfer(void* deviceHandle, 
+				      DeviceMemoryStatistics::ChannelType channelType,
+				      size_t byteCount) ;
 
-    void logKernelExecution(const std::string& kernelName, 
-			    double executionTime) ;
-    void logComputeUnitExecution(const std::string& computeUnitName,
-				 double executionTime) ;
+    XDP_EXPORT void logKernelExecution(const std::string& kernelName, 
+				       double executionTime) ;
+    XDP_EXPORT void logComputeUnitExecution(const std::string& computeUnitName,
+					    double executionTime) ;
 
-    void updateCounters(void* deviceHandle, xclCounterResults& counters) ;
-    void updateCounters(xclCounterResults& counters) ;
+    XDP_EXPORT void updateCounters(void* deviceHandle, 
+				   xclCounterResults& counters) ;
+    XDP_EXPORT void updateCounters(xclCounterResults& counters) ;
 
     // Getters and setters on statistical information
-    void setFirstKernelStartTime(double startTime) ;
+    XDP_EXPORT void setFirstKernelStartTime(double startTime) ;
 
     // Helper functions for printing out summary information temporarily
-    void dumpCallCount(std::ofstream& fout) ;
-    void dumpHALMemory(std::ofstream& fout) ;    
+    XDP_EXPORT void dumpCallCount(std::ofstream& fout) ;
+    XDP_EXPORT void dumpHALMemory(std::ofstream& fout) ;    
   } ;
 }
 
