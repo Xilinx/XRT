@@ -19,9 +19,11 @@
 
 #include "xclperf.h"
 
+#include "xdp/config.h"
+
 extern "C" {
 
-void hal_level_xdp_cb_func(HalCallbackType cb_type, void* payload);
+XDP_EXPORT void hal_level_xdp_cb_func(HalCallbackType cb_type, void* payload);
 
 }
 

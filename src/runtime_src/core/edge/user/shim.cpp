@@ -42,7 +42,7 @@
 #include <cstdarg>
 
 #ifndef __HWEM__
-#include "plugin/xdp/hal_profile.h"
+#include "plugin/xdp/hal_api_interface.h"
 #endif
 
 

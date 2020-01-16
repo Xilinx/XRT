@@ -89,7 +89,7 @@ namespace xdphalinterface {
   DestroyProfileResultsCls::~DestroyProfileResultsCls()
   {}
 
-  void load_xdp_plugin_library(HalPluginConfig* )
+  void load_xdp_hal_interface_plugin_library(HalPluginConfig* )
   {
 #ifdef XRT_LOAD_XDP_HAL_PLUGIN
 
@@ -104,11 +104,11 @@ namespace xdphalinterface {
       return;
     }
 
-    // profile_api is set to "true". Try to load xdp_hal_plugin library
+    // profile_api is set to "true". Try to load xdp_hal_api_interface plugin library
     if(xrt_core::config::get_profile()) {
       // "profile=true" is also set. This enables OpenCL based flow for profiling. 
       // Currently, mix of OpenCL and HAL based profiling is not supported.
-      // So, give error and skip loading of xdp_hal_plugin library
+      // So, give error and skip loading of xdp_hal_api_interface_plugin library
       xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", std::string("Both profile=true and profile_api=true set in xrt.ini config. Currently, these flows are not supported to work together. Hence, retrieving profile results using APIs will not be available in this run. To enable profiling with APIs, please set profile_api=true only and re-run."));
       return;
     }
@@ -130,7 +130,7 @@ namespace xdphalinterface {
     }
     auto handle = dlopen(p.string().c_str(), RTLD_NOW | RTLD_GLOBAL);
     if (!handle) {
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR, "XRT", std::string("Failed to open XDP hal plugin library '" + p.string() + "'\n" + dlerror()));
+      xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR, "XRT", std::string("Failed to open XDP hal api interface plugin library '" + p.string() + "'\n" + dlerror()));
       exit(EXIT_FAILURE);
     }
     const std::string cb_func_name = "hal_api_interface_cb_func";    

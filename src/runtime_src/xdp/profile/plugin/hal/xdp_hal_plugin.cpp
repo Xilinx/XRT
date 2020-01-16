@@ -15,6 +15,9 @@
  */
 
 #include <iostream>
+
+#define XDP_SOURCE
+
 #include "xdp_hal_plugin_interface.h"
 #include "xdp_hal_plugin.h"
 
