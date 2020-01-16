@@ -1417,6 +1417,11 @@ public:
                 std::cout << "Total HBM size:" << hbm_mem_size << "\n";
             else
                 std::cout << "Total DDR size: " << ddr_mem_size << " MB\n";
+            
+            if (blockSize < (1024*1024))
+                std::cout << "Buffer Size: " << blockSize/(1024) << " KB\n";
+            else
+                std::cout << "Buffer Size: " << blockSize/(1024*1024) << " MB\n";
         }
 
         if(buf.empty() || map->m_count == 0) {
