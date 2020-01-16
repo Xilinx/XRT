@@ -17,9 +17,11 @@
 #include "xrt/util/thread.h"
 #include "ert.h"
 
+#include <boost/format.hpp>
 #include <cstring> // for std::memcpy
 #include <iostream>
 #include <cerrno>
+#include <regex>
 
 #ifdef _WIN32
 # pragma warning( disable : 4267 4996 4244 4245 )
@@ -119,6 +121,29 @@ getExecBufferObject(const ExecBufferObjectHandle& boh) const
   if (bo->owner != m_handle)
     throw std::runtime_error("bad exec buffer object");
   return bo;
+}
+
+std::string
+device::
+get_bdf() const
+{
+  if (!m_ops->mGetSysfsPath)
+    return "????:??:??.?";
+  char path[256] = {0};
+  if (m_ops->mGetSysfsPath(m_handle,"","",path,sizeof(path)))
+    return "????:??:??.?";
+  const std::regex r("([0-9]+):([0-9]+):([0-9]+)\\.([0-9])");
+  std::cmatch m;
+  if (std::regex_search(path,m,r))
+    return boost::str(boost::format("%04x:%02x:%02x.%01x") % m[1] % m[2] % m[3] % m[4]);
+  return "????:??:??.?";
+#if 0
+  auto device = xrt_core::get_userpf_device(m_idx);
+  auto b = xrt_core::query_device(device, xrt_core::device::QR_PCIE_BDF_BUS);
+  auto d = xrt_core::query_device(device, xrt_core::device::QR_PCIE_BDF_DEVICE);
+  auto f = xrt_core::query_device(device, xrt_core::device::QR_PCIE_BDF_FUNCTION);
+  return boost::str(boost::format("%04x:%02x:%02x.%01x") % 0 % bus % dev % func);
+#endif
 }
 
 void

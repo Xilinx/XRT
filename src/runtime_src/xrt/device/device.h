@@ -101,6 +101,12 @@ public:
     return m_hal->getName();
   }
 
+  std::string
+  get_bdf() const
+  {
+    return m_hal->get_bdf();
+  }
+
   unsigned int
   getBankCount() const
   {
@@ -631,22 +637,6 @@ public:
     m_uuid = xclbin->m_header.uuid;
     return m_hal->loadXclBin(xclbin);
   }
-
-  /**
-   * Load a bistream from a file
-   *
-   * @param fnm
-   *   Full path to bitsream file
-   * @returns
-   *   A pair <int,bool> where bool is set to true if
-   *   and only if the return int value is valid. The
-   *   return value is implementation dependent.
-   */
-//  hal::operations_result<int>
-//  loadBitstream(const char* fnm)
-//  {
-//    return m_hal->loadBitstream(fnm);
-//  }
 
   bool
   hasBankAlloc() const

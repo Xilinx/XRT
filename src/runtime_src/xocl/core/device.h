@@ -167,6 +167,14 @@ public:
   }
 
   /**
+   * Get the BDF of the device
+   *
+   * Throws on error
+   */
+  std::string
+  get_bdf() const;
+
+  /**
    * Get the number of DDR memory banks on the current device
    *
    * @return
@@ -707,7 +715,8 @@ public:
   size_t
   get_num_cdmas() const;
 
-  void clear_connection(connidx_type conn);
+  void
+  clear_connection(connidx_type conn);
 
 private:
 
