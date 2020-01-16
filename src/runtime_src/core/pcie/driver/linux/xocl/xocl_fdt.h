@@ -28,8 +28,6 @@
 #define PROP_PARTITION_INFO_BLP "blp_info"
 #define PROP_PARTITION_INFO_PLP "plp_info"
 
-#define UUID_PROP_LEN 65 
-
 #define NODE_ENDPOINTS "addressable_endpoints"
 #define LEVEL0_DEV_PATH "/addressable_endpoints_0"
 #define LEVEL1_DEV_PATH "/addressable_endpoints_1"
