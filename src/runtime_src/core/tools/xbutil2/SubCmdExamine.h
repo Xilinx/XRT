@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2020 Xilinx, Inc
+ * Copyright (C) 2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,17 +14,17 @@
  * under the License.
  */
 
-#ifndef __SubCmdDmaTest_h_
-#define __SubCmdDmaTest_h_
+#ifndef __SubCmdExamine_h_
+#define __SubCmdExamine_h_
 
 #include "tools/common/SubCmd.h"
 
-class SubCmdDmaTest : public SubCmd {
+class SubCmdExamine : public SubCmd {
  public:
   virtual void execute(const SubCmdOptions &_options) const;
 
  public:
-  SubCmdDmaTest(bool _isHidden, bool _isDepricated, bool _isPreliminary);
+  SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPreliminary);
 };
 
 #endif

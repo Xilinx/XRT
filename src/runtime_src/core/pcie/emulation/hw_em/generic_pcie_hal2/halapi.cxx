@@ -327,6 +327,12 @@ unsigned int xclVersion ()
   return 2;
 }
 
+size_t xclGetDeviceTimestamp(xclDeviceHandle handle)
+{
+  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
+  return drv ? drv->xclGetDeviceTimestamp() : -1;
+}
+
 ssize_t xclUnmgdPwrite(xclDeviceHandle handle, unsigned flags, const void *buf, size_t count, uint64_t offset)
 {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);

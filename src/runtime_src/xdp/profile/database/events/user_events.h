@@ -33,7 +33,6 @@ namespace xdp {
     UserMarker() = delete ;
   public:
     virtual bool isUserEvent() { return true ; } 
-
     XDP_EXPORT UserMarker(uint64_t s_id, double ts) ;
     XDP_EXPORT ~UserMarker() ;
   } ;

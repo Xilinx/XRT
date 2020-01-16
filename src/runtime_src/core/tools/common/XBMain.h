@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -19,13 +19,17 @@
 
 #include <string>
 #include <vector>
-  
-  typedef enum {
-    RC_SUCCESS = 0,
-    RC_ERROR_IN_COMMAND_LINE = 1,
-    RC_ERROR_UNHANDLED_EXCEPTION = 2
-  } ReturnCodes;
-    
-ReturnCodes main_(int argc, char** argv);
+#include <memory>
 
+// ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
+// Forward declarations - use these instead whenever possible...
+class SubCmd;
+
+// ----------------------- T Y P E D E F S -----------------------------------
+typedef std::vector<std::shared_ptr<SubCmd>> SubCmdsCollection;
+    
+// ---------------------- F U N C T I O N S ----------------------------------
+void main_(int argc, char** argv, 
+           const std::string & _description,
+           const SubCmdsCollection & _SubCmds);
 #endif

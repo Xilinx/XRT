@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -30,22 +30,22 @@ namespace po = boost::program_options;
 #include "common/system.h"
 #include "common/device.h"
 
-// ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
-#include "tools/common/SubCmd.h"
-static const unsigned int registerResult =
-                    register_subcommand("scan",
-                                        "<add description>",
-                                        subCmdScan);
-// =============================================================================
+// ----- C L A S S   M E T H O D S -------------------------------------------
 
-// ------ L O C A L   F U N C T I O N S ---------------------------------------
+SubCmdScan::SubCmdScan(bool _isHidden, bool _isDepricated, bool _isPreliminary)
+    : SubCmd("scan", 
+             "<add short description>")
+{
+  const std::string longDescription = "<add long description>";
+  setLongDescription(longDescription);
+  setExampleSyntax("");
+  setIsHidden(_isHidden);
+  setIsDeprecated(_isDepricated);
+  setIsPreliminary(_isPreliminary);
+}
 
-
-
-
-// ------ F U N C T I O N S ---------------------------------------------------
-
-int subCmdScan(const std::vector<std::string> &_options)
+void
+SubCmdScan::execute(const SubCmdOptions& _options) const
 // Reference Command:  scan
 
 {
@@ -69,7 +69,7 @@ int subCmdScan(const std::vector<std::string> &_options)
     po::notify(vm); // Can throw
   } catch (po::error& e) {
     xrt_core::send_exception_message(e.what(), "XBUTIL");
-    std::cerr << scanDesc << std::endl;
+    printHelp(scanDesc);
 
     // Re-throw exception
     throw;
@@ -77,8 +77,8 @@ int subCmdScan(const std::vector<std::string> &_options)
 
   // Check to see if help was requested or no command was found
   if (help == true)  {
-    std::cout << scanDesc << std::endl;
-    return 0;
+    printHelp(scanDesc);
+    return;
   }
 
   // Collect
@@ -107,6 +107,4 @@ int subCmdScan(const std::vector<std::string> &_options)
     std::cout << "[" << device_id << "]: " << _pt.get<std::string>("vbnv", "N/A") << "(ts=" << _pt.get<std::string>("time_since_epoch", "N/A") << ")" << std::endl;
 #endif
   }
-
-  return registerResult;
 }

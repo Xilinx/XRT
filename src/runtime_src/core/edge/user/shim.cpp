@@ -1577,6 +1577,11 @@ int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
   return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -EINVAL;
 }
 
+size_t xclGetDeviceTimestamp(xclDeviceHandle handle)
+{
+  return 0;
+}
+
 size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type,
                             void* debugResults)
 {

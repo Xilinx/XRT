@@ -14,21 +14,61 @@
  * under the License.
  */
 
+// Sub Commands
+#include "SubCmdFlash.h"
+#include "SubCmdVersion.h"
+
+// Supporint tools
 #include "tools/common/XBMain.h"
+#include "tools/common/SubCmd.h"
 #include "common/error.h"
 
+// System include files
+#include <boost/filesystem.hpp>
 #include <string>
 #include <iostream>
 #include <exception>
 
+// Program entry
 int main( int argc, char** argv )
 {
+  // -- Build the supported subcommands
+  SubCmdsCollection subCommands;
+
+  {
+    // Syntax: SubCmdClass( IsHidden, IsDepricated, IsPreliminary)
+  }
+
+  // Add depricated commands
+  #ifdef ENABLE_DEPRECATED_2020_1_SUBCMDS
+  {
+    // Syntax: SubCmdClass( IsHidden, IsDepricated, IsPreliminary)
+    subCommands.emplace_back(std::make_shared<   SubCmdFlash >(false, true, false));
+    subCommands.emplace_back(std::make_shared< SubCmdVersion >(false, true, false));
+  }
+  #endif
+
+  // -- Determine and set the executable name for each subcommand
+  boost::filesystem::path pathAndFile(argv[0]);
+  const std::string executable = pathAndFile.filename().string();
+
+  for (auto & subCommand : subCommands) {
+    subCommand->setExecutableName(executable);
+  }
+
+  // -- Program Description
+  const std::string description = 
+  "The Xilinx (R) Board Management (xbmgmt) is a standalone command line utility that"
+  " is included with the Xilinx Run Time (XRT) installation package.";
+
+  // -- Ready to execute the code
   try {
-    return main_( argc, argv );
+    main_( argc, argv, description, subCommands);
+    return 0;
   } catch (const std::exception &e) {
-    xrt_core::send_exception_message(e.what(), "XBMGMT");
+    xrt_core::send_exception_message(e.what(), executable.c_str());
   } catch (...) {
-    xrt_core::send_exception_message("Unknown error", "XBMGMT");
+    xrt_core::send_exception_message("Unknown error", executable.c_str());
   }
   return 1;
 }

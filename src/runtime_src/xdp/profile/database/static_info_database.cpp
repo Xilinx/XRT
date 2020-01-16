@@ -28,7 +28,6 @@
 #include "xdp/profile/database/static_info_database.h"
 #include "core/include/xclbin.h"
 
-
 namespace xdp {
 
   ComputeUnitInstance::ComputeUnitInstance(const char* n, int i) : 
