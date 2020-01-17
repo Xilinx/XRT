@@ -124,6 +124,8 @@ namespace xdp {
     XDP_EXPORT
     void parseTraceData(void* traceData, uint64_t bytes, xclTraceResultsVector& traceVector);
 
+    inline xdp::Device* getAbstractDevice() { return mDevice ; }
+
   private:
     // Turn on/off debug messages to stdout
     bool mVerbose = false;

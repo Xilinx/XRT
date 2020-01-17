@@ -16,6 +16,8 @@
 
 #include <iomanip>
 
+#define XDP_SOURCE
+
 #include "xdp/profile/database/events/device_events.h"
 
 namespace xdp {

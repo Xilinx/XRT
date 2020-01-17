@@ -301,8 +301,11 @@ clGetDeviceInfo(cl_device_id   device,
   case CL_DEVICE_SVM_CAPABILITIES:
     buffer.as<cl_device_svm_capabilities>() = CL_DEVICE_SVM_COARSE_GRAIN_BUFFER;
     break;
+  case CL_DEVICE_PCIE_BDF:
+    buffer.as<char>() = xdevice->get_bdf();
+    break;
   default:
-    return CL_INVALID_VALUE;
+    throw error(CL_INVALID_VALUE,"clGetDeviceInfo: invalid param_name");
     break;
   }
   return CL_SUCCESS;

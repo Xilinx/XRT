@@ -111,35 +111,18 @@ public:
   WriteCallLogger(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size);
   ~WriteCallLogger();
 };
+
+ class LoadXclbinCallLogger : public CallLogger
+ {
+ private:
+   xclDeviceHandle h ;
+   const void* mBuffer ;
+ public:
+   LoadXclbinCallLogger(xclDeviceHandle handle, const void* buffer) ;
+   ~LoadXclbinCallLogger() ;
+ } ;
+
 /** End of the loggers */
-
-class StartDeviceProfilingCls
-{
-public:
-  StartDeviceProfilingCls(xclDeviceHandle handle);
-  ~StartDeviceProfilingCls();
-};
-
-class CreateProfileResultsCls
-{
-public:
-  CreateProfileResultsCls(xclDeviceHandle handle, ProfileResults**, int& status);
-  ~CreateProfileResultsCls();
-};
-
-class GetProfileResultsCls
-{
-public:
-  GetProfileResultsCls(xclDeviceHandle handle, ProfileResults*, int& status);
-  ~GetProfileResultsCls();
-};
-
-class DestroyProfileResultsCls
-{
-public:
-  DestroyProfileResultsCls(xclDeviceHandle handle, ProfileResults*, int& status);
-  ~DestroyProfileResultsCls();
-};
 
 void load_xdp_plugin_library(HalPluginConfig* config);
 
@@ -154,14 +137,11 @@ void load_xdp_plugin_library(HalPluginConfig* config);
 #define WRITE_BO_CB xdphal::WriteBOCallLogger write_bo_call_logger(handle, boHandle, src, size, seek);
 #define READ_BO_CB xdphal::ReadBOCallLogger read_bo_call_logger(handle, boHandle, dst, size, skip);
 #define MAP_BO_CB xdphal::MapBOCallLogger map_bo_call_logger(handle, boHandle, write);
+#define SYNC_BO_CB xdphal::SyncBOCallLogger sync_bo_call_logger(handle, boHandle, dir, size, offset); 
 #define UNMGD_PWRITE_CB xdphal::UnmgdPwriteCallLogger unmgd_pwrite_call_logger(handle, flags, buf, count, offset);
 #define UNMGD_PREAD_CB xdphal::UnmgdPreadCallLogger unnmgd_pread_call_logger(handle, flags, buf, count, offset);
 #define WRITE_CB xdphal::WriteCallLogger write_call_logger(handle, space, offset, hostBuf, size);
 #define READ_CB xdphal::ReadCallLogger read_call_logger(handle, space, offset, hostBuf, size);
-
-#define START_DEVICE_PROFILING_CB(handle) xdphal::StartDeviceProfilingCls start_device_profiling_inst(handle);
-#define CREATE_PROFILE_RESULTS_CB(handle, results, status) xdphal::CreateProfileResultsCls create_profile_results_inst(handle, results, status);
-#define GET_PROFILE_RESULTS_CB(handle, results, status) xdphal::GetProfileResultsCls get_profile_results_inst(handle, results, status);
-#define DESTROY_PROFILE_RESULTS_CB(handle, results, status) xdphal::DestroyProfileResultsCls destroy_profile_results_inst(handle, results, status);
+#define LOAD_XCLBIN_CB xdphal::LoadXclbinCallLogger xclbin_call_logger(handle, buffer) ;
 
 #endif

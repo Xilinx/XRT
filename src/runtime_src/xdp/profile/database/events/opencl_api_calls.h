@@ -19,6 +19,8 @@
 
 #include "xdp/profile/database/events/vtf_event.h"
 
+#include "xdp/config.h"
+
 namespace xdp {
 
   class OpenCLAPICall : public APICall
@@ -28,14 +30,14 @@ namespace xdp {
 
     OpenCLAPICall() = delete ;
   public:
-    OpenCLAPICall(uint64_t s_id, double ts, unsigned int f_id, uint64_t name,
-		  uint64_t q) ;
-    ~OpenCLAPICall() ;
+    XDP_EXPORT OpenCLAPICall(uint64_t s_id, double ts, unsigned int f_id, 
+			     uint64_t name, uint64_t q) ;
+    XDP_EXPORT ~OpenCLAPICall() ;
 
     inline uint64_t getQueueAddress() { return queueAddress ; } 
 
     virtual bool isOpenCLAPI() { return true ; } 
-    virtual void dump(std::ofstream& fout, int bucket) ;
+    XDP_EXPORT virtual void dump(std::ofstream& fout, int bucket) ;
   } ;
 
 } // end namespace xdp

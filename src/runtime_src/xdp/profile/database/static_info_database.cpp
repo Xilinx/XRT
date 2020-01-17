@@ -16,15 +16,17 @@
 
 #include <iostream>
 
-#include "xdp/profile/database/static_info_database.h"
-#include "core/include/xclbin.h"
-
 #ifdef _WIN32
 #include <process.h>
 #else
 #include <sys/types.h>
 #include <unistd.h>
 #endif
+
+#define XDP_SOURCE
+
+#include "xdp/profile/database/static_info_database.h"
+#include "core/include/xclbin.h"
 
 namespace xdp {
 

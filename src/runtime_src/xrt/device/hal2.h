@@ -219,6 +219,9 @@ public:
     return m_handle;
   }
 
+  virtual std::string
+  get_bdf() const;
+
   virtual void
   acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared);
 

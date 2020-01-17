@@ -33,6 +33,7 @@ struct feature_rom {
 	bool			aws_dev;
 	bool			runtime_clk_scale_en;
 	char			uuid[65];
+	u32			uuid_len;
 	bool			passthrough_virt_en;
 };
 
@@ -488,10 +489,9 @@ static int get_header_from_dtb(struct feature_rom *rom)
 {
 	int i, j = 0;
 
-	/* uuid string should be 64 + '\0' */
-	BUG_ON(sizeof(rom->uuid) <= 64);
-
-	for (i = 28; i >= 0 && j < 64; i -= 4, j += 8) {
+	for (i = rom->uuid_len / 2 - 4;
+	    i >= 0 && j < rom->uuid_len;
+	    i -= 4, j += 8) {
 		sprintf(&rom->uuid[j], "%08x", ioread32(rom->base + i));
 	}
 	xocl_info(&rom->pdev->dev, "UUID %s", rom->uuid);
@@ -513,6 +513,7 @@ static int get_header_from_vsec(struct feature_rom *rom)
 	offset += pci_resource_start(XDEV(xdev)->pdev, bar);
 	xocl_xdev_info(xdev, "Mapping uuid at offset 0x%llx", offset);
 	rom->base = ioremap_nocache(offset, PAGE_SIZE);
+	rom->uuid_len = 32;
 
 	return get_header_from_dtb(rom);
 }
@@ -598,9 +599,10 @@ static int feature_rom_probe(struct platform_device *pdev)
 			goto failed;
 		}
 
-		if (!strcmp(res->name, "uuid"))
+		if (!strcmp(res->name, "uuid")) {
+			rom->uuid_len = 64;
 			(void)get_header_from_dtb(rom);
-		else
+		} else
 			(void)get_header_from_iomem(rom);
 	}
 

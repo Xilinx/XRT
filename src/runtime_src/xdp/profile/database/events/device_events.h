@@ -19,6 +19,8 @@
 
 #include "xdp/profile/database/events/vtf_event.h"
 
+#include "xdp/config.h"
+
 namespace xdp {
 
   enum KernelStallType
@@ -36,7 +38,6 @@ namespace xdp {
   {
   private:
     void* dev ; // Either a device handle or an xrt::device
-    //xrt::device* dev ;
 
     VTFDeviceEvent() = delete ;
 
@@ -44,12 +45,12 @@ namespace xdp {
     virtual void dumpTimestamp(std::ofstream& fout) ;
 
   public:
-    VTFDeviceEvent(uint64_t s_id, double ts, VTFEventType ty, void* d) ;
-    ~VTFDeviceEvent() ;
+    XDP_EXPORT VTFDeviceEvent(uint64_t s_id, double ts, VTFEventType ty, 
+			      void* d) ;
+    XDP_EXPORT ~VTFDeviceEvent() ;
 
     virtual bool isDeviceEvent() { return false ; }
     virtual void* getDevice()    { return dev ; } 
-    //virtual xrt::device* getDevice() { return dev ; }
   } ;
 
   class KernelDeviceEvent : public VTFDeviceEvent
@@ -63,8 +64,8 @@ namespace xdp {
 
     KernelDeviceEvent() = delete ;
   public:
-    KernelDeviceEvent(uint64_t s_id, double ts, void* d) ;
-    ~KernelDeviceEvent() ;
+    XDP_EXPORT KernelDeviceEvent(uint64_t s_id, double ts, void* d) ;
+    XDP_EXPORT ~KernelDeviceEvent() ;
   } ;
 
   class KernelStall : public VTFDeviceEvent
@@ -79,8 +80,8 @@ namespace xdp {
 
     KernelStall() = delete ;
   public:
-    KernelStall(uint64_t s_id, double ts, void* d) ;
-    ~KernelStall() ;
+    XDP_EXPORT KernelStall(uint64_t s_id, double ts, void* d) ;
+    XDP_EXPORT ~KernelStall() ;
   } ;
 
   class KernelMemoryAccess : public VTFDeviceEvent
@@ -98,8 +99,9 @@ namespace xdp {
 
     KernelMemoryAccess() = delete ;
   public:
-    KernelMemoryAccess(uint64_t s_id, double ts, VTFEventType ty, void* d) ;
-    ~KernelMemoryAccess() ;
+    XDP_EXPORT KernelMemoryAccess(uint64_t s_id, double ts, VTFEventType ty, 
+				  void* d) ;
+    XDP_EXPORT ~KernelMemoryAccess() ;
   } ;
 
   class KernelStreamAccess : public VTFDeviceEvent
@@ -115,8 +117,9 @@ namespace xdp {
 
     KernelStreamAccess() = delete ;
   public:
-    KernelStreamAccess(uint64_t s_id, double ts, VTFEventType ty, void* d) ;
-    ~KernelStreamAccess() ;
+    XDP_EXPORT KernelStreamAccess(uint64_t s_id, double ts, VTFEventType ty, 
+				  void* d) ;
+    XDP_EXPORT ~KernelStreamAccess() ;
   } ;
 
   class KernelStreamStall : public VTFDeviceEvent
@@ -131,8 +134,8 @@ namespace xdp {
 
     KernelStreamStall() = delete ;
   public:
-    KernelStreamStall(uint64_t s_id, double ts, void* d) ;
-    ~KernelStreamStall() ;
+    XDP_EXPORT KernelStreamStall(uint64_t s_id, double ts, void* d) ;
+    XDP_EXPORT ~KernelStreamStall() ;
   } ;
 
   class KernelStreamStarve : public VTFDeviceEvent
@@ -147,8 +150,8 @@ namespace xdp {
 
     KernelStreamStarve() = delete ;
   public:
-    KernelStreamStarve(uint64_t s_id, double ts, void* d) ;
-    ~KernelStreamStarve() ;
+    XDP_EXPORT KernelStreamStarve(uint64_t s_id, double ts, void* d) ;
+    XDP_EXPORT ~KernelStreamStarve() ;
   } ;
 
   class HostRead : public VTFDeviceEvent
@@ -156,8 +159,8 @@ namespace xdp {
   private:
     HostRead() = delete ;
   public:
-    HostRead(uint64_t s_id, double ts, void* d) ;
-    ~HostRead() ;
+    XDP_EXPORT HostRead(uint64_t s_id, double ts, void* d) ;
+    XDP_EXPORT ~HostRead() ;
   } ;
 
   class HostWrite : public VTFDeviceEvent
@@ -165,8 +168,8 @@ namespace xdp {
   private:
     HostWrite() = delete ;
   public:
-    HostWrite(uint64_t s_id, double ts, void* d) ;
-    ~HostWrite() ;
+    XDP_EXPORT HostWrite(uint64_t s_id, double ts, void* d) ;
+    XDP_EXPORT ~HostWrite() ;
   } ;
 
 } // end namespace xdp

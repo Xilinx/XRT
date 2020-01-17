@@ -52,6 +52,7 @@ enum {
 	XOCL_DSAFLAG_SMARTN			= (1 << 10),
 	XOCL_DSAFLAG_VERSAL			= (1 << 11),
 	XOCL_DSAFLAG_MPSOC			= (1 << 12),
+	XOCL_DSAFLAG_NOSC			= (1 << 13),
 };
 
 #define	FLASH_TYPE_SPI	"spi"
@@ -1209,6 +1210,13 @@ struct xocl_subdev_map {
 		.subdev_num = ARRAY_SIZE(USER_RES_AWS),			\
 	}
 
+#define	XOCL_BOARD_USER_DSA52_U2				\
+	(struct xocl_board_private){					\
+		.flags		= XOCL_DSAFLAG_NOSC,			\
+		.subdev_info	= USER_RES_DSA52,			\
+		.subdev_num = ARRAY_SIZE(USER_RES_DSA52),		\
+	}
+
 #define	XOCL_BOARD_USER_DSA52						\
 	(struct xocl_board_private){					\
 		.flags		= 0,					\
@@ -1311,7 +1319,7 @@ struct xocl_subdev_map {
 
 #define	XOCL_BOARD_MGMT_U2						\
 	(struct xocl_board_private){					\
-		.flags		= 0,					\
+		.flags		= XOCL_DSAFLAG_NOSC,			\
 		.subdev_info	= MGMT_RES_U2,				\
 		.subdev_num = ARRAY_SIZE(MGMT_RES_U2),			\
 		.flash_type = FLASH_TYPE_SPI,				\
@@ -2198,8 +2206,8 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0x6850, PCI_ANY_ID, USER_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6890, PCI_ANY_ID, USER_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6950, PCI_ANY_ID, USER_XDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6988, PCI_ANY_ID, USER_DSA52) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x5035, PCI_ANY_ID, USER_DSA52) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x6988, PCI_ANY_ID, USER_DSA52_U2) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x5035, PCI_ANY_ID, USER_DSA52_U2) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0xA884, 0x1351, USER_XDMA_MPSOC) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0xA984, 0x1351, USER_XDMA_MPSOC) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x503D, PCI_ANY_ID, USER_XDMA_MPSOC) },\
