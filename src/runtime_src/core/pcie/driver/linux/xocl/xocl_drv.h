@@ -380,6 +380,7 @@ struct xocl_dev_core {
 	rwlock_t		rwlock;
 
 	char			ebuf[XOCL_EBUF_LEN + 1];
+	bool			shutdown;
 };
 
 #define XOCL_DRM(xdev_hdl)					\
