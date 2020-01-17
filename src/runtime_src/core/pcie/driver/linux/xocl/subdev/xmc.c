@@ -836,6 +836,14 @@ static void xmc_bdinfo(struct platform_device *pdev, enum data_kind kind,
 		}
 	}
 }
+
+static bool nosc_xmc(struct platform_device *pdev)
+{
+	struct xocl_dev_core *core = xocl_get_xdev(pdev);
+
+	return core->priv.flags & XOCL_DSAFLAG_NOSC;
+}
+
 static bool autonomous_xmc(struct platform_device *pdev)
 {
 	struct xocl_dev_core *core = xocl_get_xdev(pdev);
@@ -2823,6 +2831,9 @@ static bool is_sc_ready(struct xocl_xmc *xmc, bool quiet)
 	u32 val;
 
 	if (autonomous_xmc(xmc->pdev))
+		return true;
+
+	if (nosc_xmc(xmc->pdev))
 		return true;
 
 	safe_read32(xmc, XMC_STATUS_REG, &val);
