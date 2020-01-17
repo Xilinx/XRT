@@ -291,7 +291,7 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
 		
         // get filename without the path
         using tokenizer = boost::tokenizer< boost::char_separator<char> >;
-        boost::char_separator<char> sep("\\");
+        boost::char_separator<char> sep("\\/");
         tokenizer tokens(filename, sep);
         std::string dsafile = "";
         for (auto tok_iter = tokens.begin(); tok_iter != tokens.end(); ++tok_iter) {
