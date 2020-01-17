@@ -204,13 +204,16 @@ int Flasher::getBoardInfo(BoardInfo& board)
         return ret;
 
     board.mBMCVer = std::move(charVec2String(info[BDINFO_BMC_VER]));
-    board.mConfigMode = info[BDINFO_CONFIG_MODE][0];
-    board.mFanPresence = info[BDINFO_FAN_PRESENCE][0];
+    board.mConfigMode = info.find(BDINFO_CONFIG_MODE) != info.end() ?
+        info[BDINFO_CONFIG_MODE][0] : '\0';
+    board.mFanPresence = info.find(BDINFO_FAN_PRESENCE) != info.end() ?
+        info[BDINFO_FAN_PRESENCE][0] : '\0';
     board.mMacAddr0 = std::move(charVec2String(info[BDINFO_MAC0]));
     board.mMacAddr1 = std::move(charVec2String(info[BDINFO_MAC1]));
     board.mMacAddr2 = std::move(charVec2String(info[BDINFO_MAC2]));
     board.mMacAddr3 = std::move(charVec2String(info[BDINFO_MAC3]));
-    board.mMaxPower = int2PowerString(info[BDINFO_MAX_PWR][0]);
+    board.mMaxPower = info.find(BDINFO_MAX_PWR) != info.end() ?
+        int2PowerString(info[BDINFO_MAX_PWR][0]) : "N/A";
     board.mName = std::move(charVec2String(info[BDINFO_NAME]));
     board.mRev = std::move(charVec2String(info[BDINFO_REV]));
     board.mSerialNum = std::move(charVec2String(info[BDINFO_SN]));
