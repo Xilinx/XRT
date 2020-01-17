@@ -304,6 +304,9 @@ clGetDeviceInfo(cl_device_id   device,
   case CL_DEVICE_PCIE_BDF:
     buffer.as<char>() = xdevice->get_bdf();
     break;
+  case CL_DEVICE_HANDLE:
+    buffer.as<void*>() = xdevice->get_handle();
+    break;
   default:
     throw error(CL_INVALID_VALUE,"clGetDeviceInfo: invalid param_name");
     break;

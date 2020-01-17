@@ -175,6 +175,12 @@ public:
   get_bdf() const;
 
   /**
+   * Get underlying driver device handle
+   */
+  void*
+  get_handle() const;
+
+  /**
    * Get the number of DDR memory banks on the current device
    *
    * @return
@@ -687,15 +693,16 @@ public:
   }
 
   /**
-   * Acquire a context for a given compute unit on this device
+   * Acquire a context for a given compute unit on this device.
    *
-   * Throws exception if context cannot be acquired on device
+   * By default the context is acquired as shared.
+   * Throws exception if context cannot be acquired on device.
    *
    * @return
    *   @true on success, @false if no program loaded.
    */
   bool
-  acquire_context(const compute_unit* cu, bool shared=true) const;
+  acquire_context(const compute_unit* cu) const;
 
   /**
    * Release a context for a given compute unit on this device
