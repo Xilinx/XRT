@@ -10,7 +10,7 @@ OclPowerProfile::OclPowerProfile(xrt::device* xrt_device,
     target_device = xrt_device;
     target_xocl_plugin = xocl_plugin;
     target_unique_name = unique_name;
-    output_file_name = "ocl_power_profile_" + target_unique_name + ".csv";
+    output_file_name = "power_profile_" + target_unique_name + ".csv";
     if (power_profile_config != "off") {
         start_polling();
     }
