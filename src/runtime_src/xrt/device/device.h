@@ -828,12 +828,6 @@ public:
   }
 
   hal::operations_result<void>
-  writeHostEvent(xclPerfMonEventType type, xclPerfMonEventID id)
-  {
-    return m_hal->writeHostEvent(type, id);
-  }
-
-  hal::operations_result<void>
   configureDataflow(xclPerfMonType type, unsigned *ip_config)
   {
     return m_hal->configureDataflow(type, ip_config);

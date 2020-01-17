@@ -961,6 +961,18 @@ namespace awsbwhal {
       return ((double)clockFreq);
     }
 
+    // Get the maximum bandwidth for host reads from the device (in MB/sec)
+    // NOTE: for now, set to: (256/8 bytes) * 300 MHz = 9600 MBps
+    double AwsXcl::xclGetReadMaxBandwidthMBps() {
+      return 9600.0;
+    }
+
+    // Get the maximum bandwidth for host writes to the device (in MB/sec)
+    // NOTE: for now, set to: (256/8 bytes) * 300 MHz = 9600 MBps
+    double AwsXcl::xclGetWriteMaxBandwidthMBps() {
+      return 9600.0;
+    }
+
     
     /*
      * xclExecBuf()
@@ -1655,6 +1667,19 @@ double xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
 {
   awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
   return drv ? drv->xclGetDeviceClockFreqMHz() : 0.0;
+}
+
+double xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
+  return drv ? drv->xclGetReadMaxBandwidthMBps() : 0.0;
+}
+
+
+double xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
+  return drv ? drv->xclGetWriteMaxBandwidthMBps() : 0.0;
 }
 
 int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* info)

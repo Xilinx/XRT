@@ -584,15 +584,6 @@ public:
   }
 
   virtual hal::operations_result<void>
-  writeHostEvent(xclPerfMonEventType type, xclPerfMonEventID id)
-  {
-    if (!m_ops->mWriteHostEvent)
-      return hal::operations_result<void>();
-    m_ops->mWriteHostEvent(m_handle,type,id);
-    return hal::operations_result<void>(0);
-  }
-
-  virtual hal::operations_result<void>
   configureDataflow(xclPerfMonType type, unsigned *ip_config)
   {
     if (!m_ops->mConfigureDataflow)

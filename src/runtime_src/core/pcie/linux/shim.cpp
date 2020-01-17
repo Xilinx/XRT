@@ -1536,6 +1536,19 @@ double shim::xclGetDeviceClockFreqMHz()
   return ((double)clockFreq);
 }
 
+// Get the maximum bandwidth for host reads from the device (in MB/sec)
+// NOTE: for now, set to: (256/8 bytes) * 300 MHz = 9600 MBps
+double shim::xclGetReadMaxBandwidthMBps()
+{
+  return 9600.0;
+}
+
+// Get the maximum bandwidth for host writes to the device (in MB/sec)
+// NOTE: for now, set to: (256/8 bytes) * 300 MHz = 9600 MBps
+double shim::xclGetWriteMaxBandwidthMBps() {
+  return 9600.0;
+}
+
 int shim::xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size)
 {
   auto dev = pcidev::get_dev(mBoardNumber);
@@ -2105,6 +2118,19 @@ double xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
 {
   xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclGetDeviceClockFreqMHz() : 0.0;
+}
+
+double xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
+  return drv ? drv->xclGetReadMaxBandwidthMBps() : 0.0;
+}
+
+
+double xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
+  return drv ? drv->xclGetWriteMaxBandwidthMBps() : 0.0;
 }
 
 int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev,

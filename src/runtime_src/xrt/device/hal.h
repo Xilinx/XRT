@@ -620,12 +620,6 @@ public:
   }
 
   virtual operations_result<void>
-  writeHostEvent(xclPerfMonEventType type, xclPerfMonEventID id)
-  {
-    return operations_result<void>();
-  }
-
-  virtual operations_result<void>
   configureDataflow(xclPerfMonType, unsigned *ip_config)
   {
     return operations_result<void>();
