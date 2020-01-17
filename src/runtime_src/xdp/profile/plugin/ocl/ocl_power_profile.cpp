@@ -10,6 +10,7 @@ OclPowerProfile::OclPowerProfile(xrt::device* xrt_device,
     target_device = xrt_device;
     target_xocl_plugin = xocl_plugin;
     target_unique_name = unique_name;
+    output_file_name = "ocl_power_profile_" + target_unique_name + ".csv";
     if (power_profile_config != "off") {
         start_polling();
     }
@@ -19,7 +20,7 @@ OclPowerProfile::~OclPowerProfile() {
     if (power_profile_config != "off") {
         stop_polling();
         polling_thread.join();
-        power_profiling_output.open("ocl_power_profile_" + target_unique_name + ".csv", std::ios::out);
+        power_profiling_output.open(output_file_name, std::ios::out);
         write_header();
         write_trace();
         power_profiling_output.close();
@@ -113,6 +114,8 @@ void OclPowerProfile::stop_polling() {
 }
 
 void OclPowerProfile::write_header() {
+    power_profiling_output << "Target device: "
+                        << target_unique_name << std::endl;
     power_profiling_output << "timestamp,"
                         << "aux_curr,"
                         << "aux_vol,"

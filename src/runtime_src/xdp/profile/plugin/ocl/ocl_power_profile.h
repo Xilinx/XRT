@@ -39,6 +39,9 @@ public:
     void stop_polling();
     void write_header();
     void write_trace();
+
+    const std::string& get_output_file_name () { return output_file_name; };
+
 private:
     std::ofstream power_profiling_output;
     std::mutex status_lock;
@@ -49,6 +52,7 @@ private:
     std::shared_ptr<XoclPlugin> target_xocl_plugin;
     std::vector<PowerStat> power_trace;
     std::string target_unique_name;
+    std::string output_file_name;
 };
 
 }
