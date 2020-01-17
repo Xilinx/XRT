@@ -960,7 +960,7 @@ done:
   void
   get_ip_layout(char* buffer, size_t size, size_t* size_ret)
   {
-    XU_IP_LAYOUT iplayout_hdr;
+    struct ip_layout iplayout_hdr;
     XOCL_STAT_CLASS_ARGS statargs;
 
     statargs.StatClass =  XoclStatIpLayout;
@@ -969,14 +969,14 @@ done:
     auto status = DeviceIoControl(m_dev,
         IOCTL_XOCL_STAT,
         &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
-        &iplayout_hdr, sizeof(XU_IP_LAYOUT),
+        &iplayout_hdr, sizeof(struct ip_layout),
         &bytes,
         nullptr);
 
-    if (!status || bytes != sizeof(XU_IP_LAYOUT))
+    if (!status || bytes != sizeof(struct ip_layout))
       throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_ip_layout hdr) failed");
 
-    DWORD ip_layout_size = sizeof(XU_IP_LAYOUT) + iplayout_hdr.m_count * sizeof(XU_IP_DATA);
+    DWORD ip_layout_size = sizeof(struct ip_layout) + iplayout_hdr.m_count * sizeof(struct ip_data);
 
     if (size_ret)
       *size_ret = ip_layout_size;
@@ -990,7 +990,7 @@ done:
          "size (" + std::to_string(size) + ") of buffer too small, "
          "required size (" + std::to_string(ip_layout_size) + ")");
 
-    auto iplayout = reinterpret_cast<PXU_IP_LAYOUT>(buffer);
+    auto iplayout = reinterpret_cast<struct ip_layout*>(buffer);
 
     status = DeviceIoControl(m_dev,
        IOCTL_XOCL_STAT,
