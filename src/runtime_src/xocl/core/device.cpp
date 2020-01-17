@@ -234,6 +234,15 @@ init_scheduler(xocl::device* device)
 
 namespace xocl {
 
+std::string
+device::
+get_bdf() const 
+{
+  if (m_xdevice)
+    return m_xdevice->get_bdf();
+  throw xocl::error(CL_INVALID_DEVICE, "No BDF");
+}
+
 void
 device::
 track(const memory* mem)
