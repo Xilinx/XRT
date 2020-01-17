@@ -23,8 +23,10 @@ set(XRT_XDP_PROFILE_PLUGIN_DIR        "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugi
 set(XRT_XDP_PROFILE_XMA_PLUGIN_DIR    "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/xma")
 set(XRT_XDP_PROFILE_OCL_PLUGIN_DIR    "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/ocl")
 set(XRT_XDP_PROFILE_HAL_PLUGIN_DIR    "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/hal")
+set(XRT_XDP_PROFILE_HAL_API_PLUGIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/hal_api_interface")
 set(XRT_XDP_PROFILE_COLLECTION_DIR    "${CMAKE_CURRENT_SOURCE_DIR}/profile/collection")
 set(XRT_XDP_PROFILE_WRITER_DIR        "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer")
+set(XRT_XDP_PROFILE_HAL_WRITER_DIR    "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer/hal")
 set(XRT_XDP_PROFILE_CORE_DIR          "${CMAKE_CURRENT_SOURCE_DIR}/profile/core")
 set(XRT_XDP_PROFILE_DATABASE_DIR      "${CMAKE_CURRENT_SOURCE_DIR}/profile/database")
 set(XRT_XDP_PROFILE_EVENTS_DIR        "${CMAKE_CURRENT_SOURCE_DIR}/profile/database/events")
@@ -86,6 +88,15 @@ file(GLOB XRT_XDP_PROFILE_HAL_PLUGIN_FILES
   "${XRT_XDP_PROFILE_HAL_DEVICE_DIR}/*.cpp"
   "${XRT_XDP_PROFILE_HAL_PLUGIN_DIR}/*.h"
   "${XRT_XDP_PROFILE_HAL_PLUGIN_DIR}/*.cpp"
+  "${XRT_XDP_PROFILE_HAL_WRITER_DIR}/*.h"
+  "${XRT_XDP_PROFILE_HAL_WRITER_DIR}/*.cpp"
+  )
+
+file(GLOB XRT_XDP_PROFILE_HAL_INTERFACE_PLUGIN_FILES
+  "${XRT_XDP_PROFILE_HAL_DEVICE_DIR}/*.h"
+  "${XRT_XDP_PROFILE_HAL_DEVICE_DIR}/*.cpp"
+  "${XRT_XDP_PROFILE_HAL_API_PLUGIN_DIR}/*.h"
+  "${XRT_XDP_PROFILE_HAL_API_PLUGIN_DIR}/*.cpp"
   )
 
 #source_group(XRT_XDP_APPDEBUG_FILES FILES ${XRT_XDP_APPDEBUG_FILES})
@@ -104,6 +115,7 @@ if (NOT WIN32)
 add_library(xdpobj OBJECT ${XRT_XDP_PROFILE_OCL_PLUGIN_FILES})
 
 add_library(xdp_hal_plugin_obj OBJECT ${XRT_XDP_PROFILE_HAL_PLUGIN_FILES})
+add_library(xdp_hal_api_interface_plugin_obj OBJECT ${XRT_XDP_PROFILE_HAL_INTERFACE_PLUGIN_FILES})
 
 add_library(xdp SHARED ${XRT_XDP_ALL_SRC})
 add_dependencies(xdp xrt_core xilinxopencl)
@@ -169,6 +181,26 @@ target_link_libraries(xdp_hal_plugin xdp xrt_core)
 #  SOVERSION ${XRT_SOVERSION})
 
 install(TARGETS xdp_hal_plugin
+  ARCHIVE DESTINATION ${XRT_INSTALL_DIR}/lib
+  LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib
+  RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
+
+# xdp_hal_api_interface_plugin
+
+add_library(xdp_hal_api_interface_plugin_obj OBJECT ${XRT_XDP_PROFILE_HAL_INTERFACE_PLUGIN_FILES})
+
+add_library(xdp_hal_api_interface_plugin SHARED
+  $<TARGET_OBJECTS:xdp_hal_api_interface_plugin_obj>
+  )
+
+add_dependencies(xdp_hal_api_interface_plugin xdp)
+
+target_link_libraries(xdp_hal_api_interface_plugin xdp)
+
+#set_target_properties(xdp_hal_api_interface_plugin PROPERTIES VERSION ${XRT_VERSION_STRING}
+#  SOVERSION ${XRT_SOVERSION})
+
+install(TARGETS xdp_hal_api_interface_plugin
   ARCHIVE DESTINATION ${XRT_INSTALL_DIR}/lib
   LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib
   RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)

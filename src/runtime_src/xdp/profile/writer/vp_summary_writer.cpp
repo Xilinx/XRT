@@ -14,26 +14,34 @@
  * under the License.
  */
 
+#include <cstdio>
+
 #define XDP_SOURCE
 
-#include "xdp/profile/database/events/opencl_api_calls.h"
+#include "xdp/profile/writer/vp_summary_writer.h"
 
 namespace xdp {
 
-  OpenCLAPICall::OpenCLAPICall(uint64_t s_id, double ts, unsigned int f_id,
-			       uint64_t name, uint64_t q) :
-    APICall(s_id, ts, f_id, name, OPENCL_API_CALL), queueAddress(q)
+  VPSummaryWriter::VPSummaryWriter(const char* filename) : 
+    VPWriter(filename)
   {
   }
 
-  OpenCLAPICall::~OpenCLAPICall()
+  VPSummaryWriter::~VPSummaryWriter()
   {
   }
 
-  void OpenCLAPICall::dump(std::ofstream& fout, int bucket)
+  void VPSummaryWriter::switchFiles()
   {
-    VTFEvent::dump(fout, bucket) ;
-    fout << "," << functionName << std::endl ;
+    fout.close() ;
+    fout.clear() ;
+
+    // Move the current file to a backup, and then reopen the same file
+    std::string backupFile = getRawBasename() ;
+    backupFile += ".chkpt" ;
+    std::rename(getRawBasename(), backupFile.c_str()) ;
+
+    fout.open(getRawBasename()) ;
   }
 
 } // end namespace xdp

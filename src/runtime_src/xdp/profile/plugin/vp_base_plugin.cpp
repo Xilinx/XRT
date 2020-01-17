@@ -14,6 +14,8 @@
  * under the License.
  */
 
+#define XDP_SOURCE
+
 #include "xdp/profile/plugin/vp_base_plugin.h"
 #include "xdp/profile/device/device_intf.h"
 

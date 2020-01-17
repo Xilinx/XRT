@@ -14,6 +14,8 @@
  * under the License.
  */
 
+#define XDP_SOURCE
+
 #include "xdp/profile/database/dynamic_event_database.h"
 
 namespace xdp {

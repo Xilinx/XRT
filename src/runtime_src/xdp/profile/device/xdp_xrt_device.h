@@ -44,6 +44,8 @@ public:
   virtual uint64_t getTraceTime();
   virtual int getTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
   virtual int readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
+
+  virtual void* getRawDevice() { return mXrtDevice ; } 
 };
 }
 

@@ -14,26 +14,36 @@
  * under the License.
  */
 
-#define XDP_SOURCE
+#ifndef HAL_PLUGIN_DOT_H
+#define HAL_PLUGIN_DOT_H
 
-#include "xdp/profile/database/events/opencl_api_calls.h"
+#include <vector>
+#include <set>
+#include "xdp/profile/plugin/vp_base_plugin.h"
 
 namespace xdp {
 
-  OpenCLAPICall::OpenCLAPICall(uint64_t s_id, double ts, unsigned int f_id,
-			       uint64_t name, uint64_t q) :
-    APICall(s_id, ts, f_id, name, OPENCL_API_CALL), queueAddress(q)
-  {
-  }
+  // Forward declarations
+  class DeviceIntf ; 
 
-  OpenCLAPICall::~OpenCLAPICall()
+  class HALPlugin : public XDPPlugin
   {
-  }
+  private:
+    std::vector<DeviceIntf*> devices ;
+    std::set<void*> encounteredHandles ;
 
-  void OpenCLAPICall::dump(std::ofstream& fout, int bucket)
-  {
-    VTFEvent::dump(fout, bucket) ;
-    fout << "," << functionName << std::endl ;
-  }
+    void flushDevices() ;
+    void continuousOffload() ;
+  public:
+    HALPlugin() ;
+    ~HALPlugin() ;
 
-} // end namespace xdp
+    virtual void writeAll(bool openNewFiles) ;
+    virtual void readDeviceInfo(void* device) ;
+    void flushDeviceInfo(void* device) ;
+    void setEncounteredDeviceHandle(void* handle) ;
+  } ;
+
+}
+
+#endif

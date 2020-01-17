@@ -21,6 +21,8 @@
 
 #include "xdp/profile/database/events/vtf_event.h"
 
+#include "xdp/config.h"
+
 namespace xdp {
 
   class HALAPICall : public APICall
@@ -28,12 +30,13 @@ namespace xdp {
   private:
     HALAPICall() = delete ;
   public:
-    HALAPICall(uint64_t s_id, double ts, unsigned int f_id, uint64_t name) ;
-    ~HALAPICall() ;
+    XDP_EXPORT HALAPICall(uint64_t s_id, double ts, unsigned int f_id, 
+			  uint64_t name) ;
+    XDP_EXPORT ~HALAPICall() ;
 
     virtual bool isHALAPI() { return true ; }
 
-    virtual void dump(std::ofstream& fout, int bucket) ;
+    XDP_EXPORT virtual void dump(std::ofstream& fout, int bucket) ;
   } ;
 
   class AllocBoCall : public HALAPICall
@@ -41,10 +44,11 @@ namespace xdp {
   private:
     AllocBoCall() = delete ;
   public:
-    AllocBoCall(uint64_t s_id, double ts, unsigned int f_id, uint64_t name) ;
-    ~AllocBoCall() ;
+    XDP_EXPORT AllocBoCall(uint64_t s_id, double ts, unsigned int f_id, 
+			   uint64_t name) ;
+    XDP_EXPORT ~AllocBoCall() ;
 
-    virtual void dump(std::ofstream& fout, int bucket) ;
+    XDP_EXPORT virtual void dump(std::ofstream& fout, int bucket) ;
   } ;
 
 } // end namespace xdp

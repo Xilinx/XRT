@@ -14,26 +14,27 @@
  * under the License.
  */
 
-#define XDP_SOURCE
+#ifndef VP_SUMMARY_WRITER_DOT_H
+#define VP_SUMMARY_WRITER_DOT_H
 
-#include "xdp/profile/database/events/opencl_api_calls.h"
+#include "xdp/profile/writer/vp_writer.h"
+
+#include "xdp/config.h"
 
 namespace xdp {
 
-  OpenCLAPICall::OpenCLAPICall(uint64_t s_id, double ts, unsigned int f_id,
-			       uint64_t name, uint64_t q) :
-    APICall(s_id, ts, f_id, name, OPENCL_API_CALL), queueAddress(q)
+  class VPSummaryWriter : public VPWriter
   {
-  }
+  private:
+    VPSummaryWriter() = delete ;
 
-  OpenCLAPICall::~OpenCLAPICall()
-  {
-  }
+  protected:
+    XDP_EXPORT virtual void switchFiles() ;
+  public:
+    XDP_EXPORT VPSummaryWriter(const char* filename) ;
+    XDP_EXPORT ~VPSummaryWriter() ;
+  } ;
+  
+}
 
-  void OpenCLAPICall::dump(std::ofstream& fout, int bucket)
-  {
-    VTFEvent::dump(fout, bucket) ;
-    fout << "," << functionName << std::endl ;
-  }
-
-} // end namespace xdp
+#endif
