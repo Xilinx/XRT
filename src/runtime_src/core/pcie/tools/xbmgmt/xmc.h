@@ -124,7 +124,7 @@ private:
     unsigned readReg(unsigned RegOffset);
     int writeReg(unsigned RegOffset, unsigned value);
     bool isXMCReady();
-    bool isBMCReady();
+    bool isBMCReady(std::shared_ptr<pcidev::pci_device> dev);
 
     // Upgrade SC firmware via driver.
     std::FILE *mXmcDev = nullptr;
