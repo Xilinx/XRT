@@ -400,6 +400,16 @@ get_kernel_channel_info()
   return value;
 }
 
+/**
+ * Direct OpenCL kernel execution to acquire exclusive context on CU
+ */
+inline bool
+get_exclusive_cu_context()
+{
+  static bool value = detail::get_bool_value("Runtime.exclusive_cu_context", false);
+  return value;
+}
+
 }} // config,xrt_core
 
 #endif

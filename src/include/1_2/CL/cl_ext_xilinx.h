@@ -479,7 +479,8 @@ xclGetComputeUnitInfo(cl_kernel             kernel,
 #define CL_PROGRAM_TARGET_TYPE          0x1110
 
 // cl_device_info
-#define CL_DEVICE_PCIE_BDF              0x1120
+#define CL_DEVICE_PCIE_BDF              0x1120  // BUS/DEVICE/FUNCTION
+#define CL_DEVICE_HANDLE                0x1121  // XRT device handle
 
 // valid target types (CR962714)
 typedef cl_uint cl_program_target_type;

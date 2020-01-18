@@ -243,6 +243,15 @@ get_bdf() const
   throw xocl::error(CL_INVALID_DEVICE, "No BDF");
 }
 
+void*
+device::
+get_handle() const
+{
+  if (m_xdevice)
+    return m_xdevice->get_handle();
+  throw xocl::error(CL_INVALID_DEVICE, "No device handle");
+}
+
 void
 device::
 track(const memory* mem)
@@ -1308,8 +1317,10 @@ unload_program(const program* program)
 
 bool
 device::
-acquire_context(const compute_unit* cu, bool shared) const
+acquire_context(const compute_unit* cu) const
 {
+  static bool shared = xrt::config::get_exclusive_cu_context() ? false : true;
+
   std::lock_guard<std::mutex> lk(m_mutex);
   if (cu->m_context_type != compute_unit::context_type::none)
     return true;
