@@ -132,6 +132,7 @@ struct xclmgmt_dev {
 #endif
 	int msix_user_start_vector;
 	bool ready;
+	bool reset_requested;
 
 	void *userpf_blob;
 	bool userpf_blob_updated;

@@ -782,7 +782,7 @@ static int icap_freeze_axi_gate(struct icap *icap)
 
 	if (XOCL_DSA_IS_SMARTN(xdev)) {
 		xocl_xmc_dr_freeze(xdev);
-	} else {
+	} else if (icap->icap_axi_gate) {
 
 		write_lock(&XDEV(xdev)->rwlock);
 		(void) reg_rd(&icap->icap_axi_gate->iag_rd);
@@ -826,7 +826,7 @@ static int icap_free_axi_gate(struct icap *icap)
 
 	if (XOCL_DSA_IS_SMARTN(xdev)) {
 		xocl_xmc_dr_free(xdev);
-	} else {
+	} else if (icap->icap_axi_gate) {
 		for (i = 0; i < ARRAY_SIZE(gate_free_user); i++) {
 			(void) reg_rd(&icap->icap_axi_gate->iag_rd);
 			reg_wr(&icap->icap_axi_gate->iag_wr, gate_free_user[i]);

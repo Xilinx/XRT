@@ -639,7 +639,7 @@ int xocl_subdev_create_all(xdev_handle_t xdev_hdl)
 		if (!ret) {
 			xocl_get_raw_header(core, &rom);
 			for (i = 0; i < ARRAY_SIZE(dsa_map); i++) {
-				if (!dsa_map[i].vbnv)
+				if (!dsa_map[i].type != XOCL_DSAMAP_VBNV)
 					continue;
 				if ((core->pdev->vendor == dsa_map[i].vendor ||
 					dsa_map[i].vendor == (u16)PCI_ANY_ID) &&
@@ -972,13 +972,21 @@ xdev_handle_t xocl_get_xdev(struct platform_device *pdev)
 
 static void
 xocl_fetch_dynamic_platform(struct xocl_dev_core *core,
-	struct xocl_board_private **in)
+	struct xocl_board_private **in, u32 ptype)
 {
 	struct pci_dev *pdev = core->pdev;
-	int i;
+	char *s;
+	int ret, i;
+	u32 type;
+
+	ret = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_VNDR);
+	if (ret)
+		type = XOCL_DSAMAP_RAPTOR2;
+	else
+		type = XOCL_DSAMAP_DYNAMIC;
 
 	for (i = 0; i < ARRAY_SIZE(dsa_map); i++) {
-		if (dsa_map[i].type != XOCL_DSAMAP_DYNAMIC)
+		if (dsa_map[i].type != type)
 			continue;
 		if ((pdev->vendor == dsa_map[i].vendor ||
 			dsa_map[i].vendor == (u16)PCI_ANY_ID) &&
@@ -988,8 +996,14 @@ xocl_fetch_dynamic_platform(struct xocl_dev_core *core,
 			dsa_map[i].subdevice ||
 			dsa_map[i].subdevice == (u16)PCI_ANY_ID)) {
 			*in = dsa_map[i].priv_data;
-			core->priv.vbnv = dsa_map[i].vbnv;
-			break;
+			if (ptype == XOCL_VSEC_PLAT_RECOVERY) {
+				strcpy(core->vbnv_cache, dsa_map[i].vbnv);
+				s = strstr(core->vbnv_cache, "_");
+				s = strstr(s + 1, "_");
+				strcpy(s, "_recovery");
+				core->priv.vbnv = core->vbnv_cache;
+			} else
+				core->priv.vbnv = dsa_map[i].vbnv;
 		}
 	}
 }
@@ -1156,8 +1170,9 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
 	struct pci_dev *pdev = core->pdev;
-	u32 dyn_shell_magic;
-	int ret, cap;
+	u32 dyn_shell_magic, ptype;
+	int ret, cap, bar;
+	u64 offset;
 	unsigned err_cap;
 
 	memset(&core->priv, 0, sizeof(core->priv));
@@ -1167,14 +1182,17 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 	ret = pci_read_config_dword(core->pdev, 0xB0, &dyn_shell_magic);
 	if (!ret && ((dyn_shell_magic & 0xff00ffff) == 0x01000009)) {
 		xocl_xdev_info(xdev_hdl, "found multi RP cap");
-		xocl_fetch_dynamic_platform(core, &in);
+		xocl_fetch_dynamic_platform(core, &in, -1);
 	}
 
 	/* vendor specific has platform_info */
-	ret = xocl_subdev_vsec(xdev_hdl, XOCL_VSEC_PLATFORM_INFO, NULL, NULL);
+	ret = xocl_subdev_vsec(xdev_hdl, XOCL_VSEC_PLATFORM_INFO,
+			&bar, &offset);
 	if (!ret) {
-		xocl_xdev_info(xdev_hdl, "found vsec cap");
-		xocl_fetch_dynamic_platform(core, &in);
+		ptype = xocl_subdev_vsec_read32(xdev_hdl, bar, offset);
+		xocl_xdev_info(xdev_hdl, "found vsec cap, platform type %d",
+				ptype);
+		xocl_fetch_dynamic_platform(core, &in, ptype);
 	}
 		
 	/* workaround firewall completer abort issue */

@@ -456,6 +456,10 @@ static int health_check_cb(void *data)
 	if (!health_check)
 		return 0;
 
+	tripped = xocl_af_check(lro, NULL);
+	if (tripped)
+		goto skip_checks;
+	
 	if (shutdown_clk) {
 		clk_status = XOCL_READ_REG32(shutdown_clk);
 		/* BIT0:latch bit, BIT1:Debug bit */
@@ -487,18 +491,21 @@ static int health_check_cb(void *data)
 		}
 	}
 
+	check_sensor(lro);
+
+skip_checks:
 	mbreq.req = XCL_MAILBOX_REQ_FIREWALL;
 
-	tripped = xocl_af_check(lro, NULL);
-
-	if (!tripped)
-		check_sensor(lro);
-
-	/* Press doomsday button */
 	if (latched || tripped) {
-		mgmt_err(lro, "Card is in a Bad state, please issue xbutil reset");
-		(void) xocl_peer_notify(lro, &mbreq, sizeof(struct xcl_mailbox_req));
+		if (!lro->reset_requested) {
+			mgmt_err(lro, "Card is in a Bad state, notify userpf");
+			err = xocl_peer_notify(lro, &mbreq, sizeof(mbreq));
+			if (!err)
+				lro->reset_requested = true;
+		} else
+			mgmt_err(lro, "Card requires pci hot reset");
 	}
+
 	return 0;
 }
 
