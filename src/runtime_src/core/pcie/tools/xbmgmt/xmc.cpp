@@ -504,10 +504,10 @@ bool XMC_Flasher::isXMCReady()
 bool XMC_Flasher::isBMCReady(std::shared_ptr<pcidev::pci_device> dev)
 {
     bool bmcReady = true;
-    int val;
+    unsigned int val;
     std::string errmsg;
 
-    dev->sysfs_get("xmc", "sc_presence", errmsg, val);
+    dev->sysfs_get<unsigned>("xmc", "sc_presence", errmsg, val, 0);
     if (!errmsg.empty()) {
         std::cout << "can't read sc_presence node from " << dev->sysfs_name <<
             " : " << errmsg << std::endl;
