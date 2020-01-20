@@ -37,6 +37,11 @@ static struct config {
 
 static const std::string configFile("/etc/msd.conf");
 
+enum configType {
+    CONFIG_SECURITY = 0,
+    CONFIG_CLK_SCALING,
+};
+
 static int splitLine(std::string& line, std::string& key, std::string& value)
 {
     auto pos = line.find('=', 0);
@@ -155,23 +160,22 @@ static void showDevConf(std::shared_ptr<pcidev::pci_device>& dev)
     if (!errmsg.empty()) {
         std::cout << "can't read security level from " << dev->sysfs_name <<
             " : " << errmsg << std::endl;
-        goto clk_scale;
+    } else {
+        std::cout << dev->sysfs_name << ":" << std::endl;
+        std::cout << "\t" << "security level: " << lvl << std::endl;
     }
-    std::cout << dev->sysfs_name << ":" << std::endl;
-    std::cout << "\t" << "security level: " << lvl << std::endl;
 
-clk_scale:
     lvl = 0;
     errmsg = "";
     dev->sysfs_get("xmc", "scaling_enabled", errmsg, lvl, 0);
     if (!errmsg.empty()) {
         std::cout << "can't read scaling_enabled status from " <<
             dev->sysfs_name << " : " << errmsg << std::endl;
-        return;
+    } else {
+        std::cout << dev->sysfs_name << ":" << std::endl;
+        std::cout << "\t" << "Runtime clock scaling enabled status: " <<
+            lvl << std::endl;
     }
-    std::cout << dev->sysfs_name << ":" << std::endl;
-    std::cout << "\t" << "Runtime clock scaling enabled status: " <<
-        lvl << std::endl;
 }
 
 static int show(int argc, char *argv[])
@@ -243,7 +247,7 @@ static void updateDevConf(std::shared_ptr<pcidev::pci_device>& dev,
     std::string errmsg;
 
     switch(config_type) {
-    case 0:
+    case CONFIG_SECURITY:
         dev->sysfs_put("icap", "sec_level", errmsg, lvl);
         if (!errmsg.empty()) {
             std::cout << "Failed to set security level for " << dev->sysfs_name
@@ -251,11 +255,11 @@ static void updateDevConf(std::shared_ptr<pcidev::pci_device>& dev,
             std::cout << "See dmesg log for details" << std::endl;
         }
         break;
-    case 1:
+    case CONFIG_CLK_SCALING:
         dev->sysfs_put("xmc", "scaling_enabled", errmsg, lvl);
         if (!errmsg.empty()) {
             std::cout << "Failed to update clk scaling status for " <<
-                dev->sysfs_name	<< std::endl;
+                dev->sysfs_name << std::endl;
             std::cout << "See dmesg log for details" << std::endl;
         }
         break;
@@ -287,11 +291,11 @@ static int device(int argc, char *argv[])
             break;
         case '1':
             lvl = optarg;
-            config_type = 0;
+            config_type = CONFIG_SECURITY;
             break;
         case '2':
             lvl = optarg;
-            config_type = 1;
+            config_type = CONFIG_CLK_SCALING;
             break;
         default:
             return -EINVAL;

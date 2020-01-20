@@ -226,7 +226,7 @@ int XMC_Flasher::xclUpgradeFirmware(std::istream& tiTxtStream) {
     }
     std::cout << std::endl;
 
-    if (!isBMCReady(mDev)) {
+    if (!isBMCReady()) {
         std::cout << "ERROR: Time'd out waiting for SC to come back online"
             << std::endl;
         return -ETIMEDOUT;
@@ -253,7 +253,7 @@ int XMC_Flasher::xclGetBoardInfo(std::map<char, std::vector<char>>& info)
 {
     int ret = 0;
 
-    if (!isXMCReady() || !isBMCReady(mDev))
+    if (!isXMCReady() || !isBMCReady())
         return -EINVAL;
 
     mPkt = {0};
@@ -501,20 +501,19 @@ bool XMC_Flasher::isXMCReady()
     return xmcReady;
 }
 
-bool XMC_Flasher::isBMCReady(std::shared_ptr<pcidev::pci_device> dev)
+bool XMC_Flasher::isBMCReady()
 {
     bool bmcReady = true;
     unsigned int val;
     std::string errmsg;
 
-    dev->sysfs_get<unsigned>("xmc", "sc_presence", errmsg, val, 0);
+    mDev->sysfs_get<unsigned>("xmc", "sc_presence", errmsg, val, 0);
     if (!errmsg.empty()) {
-        std::cout << "can't read sc_presence node from " << dev->sysfs_name <<
+        std::cout << "can't read sc_presence node from " << mDev->sysfs_name <<
             " : " << errmsg << std::endl;
         return false;
     }
 
-    std::cout << "sc_presence: " << val << std::endl;
     if (val) {
         bmcReady = (BMC_MODE() == 0x1);
         if (!bmcReady) {

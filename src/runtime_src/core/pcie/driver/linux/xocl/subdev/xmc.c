@@ -1312,7 +1312,7 @@ static ssize_t scaling_governor_store(struct device *dev,
 	else if (strncmp(buf, "power_temp", strlen("power_temp")) == 0)
 		val = XMC_CLOCK_SCALING_MODE_POWER_TEMP;
 	else {
-		xocl_err(dev, "valid modes [power, temp]\n");
+		xocl_err(dev, "valid modes [power, temp, power_temp]\n");
 		return -EINVAL;
 	}
 
