@@ -29,9 +29,11 @@
 #define SYSFS_PATH      "/sys/bus/pci/devices"
 #define XILINX_VENDOR   "0x10ee"
 #define XILINX_US       "0x9134"
+#define POLL_TIMEOUT    60      /* Set a pool timeout as 60sec */
 
 static int hotplugRescan(void);
 static int removeDevice(const std::shared_ptr<pcidev::pci_device> dev);
+static int shutdownDevice(const std::shared_ptr<pcidev::pci_device> dev);
 
 const char *subCmdHotplugDesc = "Perform managed hotplug on the xilinx device";
 const char *subCmdHotplugUsage = "--offline bdf | --online";
@@ -90,8 +92,26 @@ int hotplugHandler(int argc, char *argv[])
 
     if (isRemove)
     {
-        /* Remove user_pf */
         auto uDev = pcidev::get_dev(index, true);
+    
+        ret = shutdownDevice(uDev); 
+        /* Shutdown user_pf before trigger hot removal*/
+        if (ret)
+        {
+            if (ret == -EEXIST)
+            {
+                std::cout << "INFO: Device entry doesn't exists. If you are running on VM Environment, \n" <<
+                   "Please shutdown the VM before performing this operation.\n" << std::endl;
+                return 0;
+            }
+            else
+            {
+                std::cout << "Device Shutdown failed." << std::endl;
+                return -EINVAL;
+            }
+        }
+
+        /* Remove user_pf */
         ret = removeDevice(uDev);
         if (ret)
             return ret;
@@ -112,6 +132,46 @@ int hotplugHandler(int argc, char *argv[])
     }
 
     return ret;
+}
+
+static int shutdownDevice(const std::shared_ptr<pcidev::pci_device> dev)
+{
+    std::string errmsg;
+    int shutdownStatus = -EINVAL;
+    int wait  = 0;
+
+    /* "echo 1 > /sys/bus/pci/<EndPoint>/shutdown" to trigger shutdown of the device */
+    std::string path = dev->get_sysfs_path("", "shutdown");
+    if (!boost::filesystem::exists(path)) 
+    {
+        return -EEXIST;
+    }
+
+    dev->sysfs_put("", "shutdown", errmsg, "1");
+    if (!errmsg.empty())
+    {
+        std::cout << errmsg << std::endl;
+        return -EINVAL;
+    }
+
+    /* Poll till shutdown is done */
+    do {
+        sleep(1);
+        dev->sysfs_get<int>("", "shutdown", errmsg, shutdownStatus, EINVAL);
+        if (!errmsg.empty())
+        {
+            std::cout << errmsg << std::endl;
+            return -EINVAL;
+        }
+
+        if (shutdownStatus == 1){
+            /* Shutdown is done successfully. Returning from here */
+            return 0;
+        }
+
+    } while (++wait < POLL_TIMEOUT );
+
+    return -ETIMEDOUT;
 }
 
 static int removeDevice(const std::shared_ptr<pcidev::pci_device> dev)
