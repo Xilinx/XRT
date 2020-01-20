@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -23,35 +23,22 @@
 #include "XBUtilities.h"
 namespace XBU = XBUtilities;
 
-static SubCmdTable cmdTable;
-
-unsigned int 
-register_subcommand(const std::string &_subCmdName, 
-                    const std::string & _description, 
-                    t_subcommand _pSubCommand,
-                    bool _isHidden)
+SubCmd::SubCmd(const std::string & _name, 
+               const std::string & _shortDescription)
+  : m_executableName("")
+  , m_subCmdName(_name)
+  , m_shortDescription(_shortDescription)
+  , m_longDescription("")
+  , m_isHidden(false)
+  , m_isDeprecated(false)
+  , m_isPreliminary(false)
 {
-  if (cmdTable.find(_subCmdName) != cmdTable.end()) {
-    XBU::fatal(boost::str(boost::format("Sub-command '%s' already registered.") % _subCmdName));
-    exit(1);
-  }
-
-  cmdTable[_subCmdName] = SubCmdEntry{_subCmdName, _description, _pSubCommand, _isHidden};
-  return 0;
+  // Empty
 }
 
-const SubCmdEntry *
-getSubCmdEntry(const std::string &_sSubCmdName)
+void
+SubCmd::printHelp(const boost::program_options::options_description & _optionDescription) const
 {
-  if (cmdTable.find(_sSubCmdName) == cmdTable.end()) {
-    return nullptr;
-  }
-
-  return &cmdTable[_sSubCmdName];
+  XBU::subcommand_help(m_executableName, m_subCmdName, m_longDescription, _optionDescription, m_exampleSyntax);
 }
 
-const std::map<const std::string, SubCmdEntry> &
-getSubCmdsTable()
-{
-  return cmdTable;
-}

@@ -17,6 +17,7 @@
 #ifndef xrt_device_hal_h
 #define xrt_device_hal_h
 
+#include "xrt/config.h"
 #include "xrt/device/PMDOperations.h"
 #include "xrt/util/task.h"
 #include "xrt/util/event.h"
@@ -172,6 +173,9 @@ public:
 
   virtual device_handle
   get_handle() const = 0;
+
+  virtual std::string
+  get_bdf() const = 0;
 
   virtual void
   acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared) {}
@@ -616,12 +620,6 @@ public:
   }
 
   virtual operations_result<void>
-  writeHostEvent(xclPerfMonEventType type, xclPerfMonEventID id)
-  {
-    return operations_result<void>();
-  }
-
-  virtual operations_result<void>
   configureDataflow(xclPerfMonType, unsigned *ip_config)
   {
     return operations_result<void>();
@@ -692,14 +690,17 @@ public:
 ////////////////////////////////////////////////////////////////
 // HAL level application functions and types
 ////////////////////////////////////////////////////////////////
-typedef std::vector<std::unique_ptr<device>> device_list;
+using device_list = std::vector<std::unique_ptr<device>>;
 
+XRT_EXPORT
 device_list
 loadDevices(const std::string& dirName);
 
+XRT_EXPORT
 device_list
 loadDevices();
 
+XRT_EXPORT
 void
 load_xdp();
 } // namespace hal

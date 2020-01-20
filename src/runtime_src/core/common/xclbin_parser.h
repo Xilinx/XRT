@@ -68,7 +68,7 @@ struct axlf_section_type<SectionType*>
 XRT_CORE_COMMON_EXPORT
 std::string
 memidx_to_name(const axlf* top, int32_t midx);
- 
+
 /**
  * get_first_used_mem() - Get the first used memory bank index
  */
@@ -87,6 +87,17 @@ get_cus(const ip_layout* ip_layout, bool encode=false);
 XRT_CORE_COMMON_EXPORT
 std::vector<uint64_t>
 get_cus(const axlf* top, bool encode=false);
+
+/**
+ * get_ip_name() - Get name of IP with specified base addr
+ *
+ * @ip_layout: Xclbin IP_LAYOUT
+ * @addr: Base address of IP to look up
+ * Return: Nname of IP
+ */
+XRT_CORE_COMMON_EXPORT
+std::string
+get_ip_name(const ip_layout* ip_layout, uint64_t addr);
 
 XRT_CORE_COMMON_EXPORT
 std::vector<std::pair<uint64_t, size_t>>

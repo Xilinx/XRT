@@ -33,6 +33,10 @@
 #define SCHED_UNUSED __attribute__((unused))
 #endif
 
+#ifndef ERT_VERSION
+#define ERT_VERSION 0
+#endif
+
 #define sched_error_on(exec, expr) \
 ({ \
 	unsigned int ret = 0; \
@@ -512,7 +516,7 @@ static irqreturn_t sched_exec_isr(int irq, void *arg)
 
 	SCHED_DEBUG("-> %s irq %d", __func__, irq);
 	for (cu_idx = 0; cu_idx < zdev->cu_num; cu_idx++) {
-		if (zdev->irq[cu_idx] == irq)
+		if (zdev->exec->zcu[cu_idx].irq == irq)
 			break;
 	}
 
@@ -695,6 +699,8 @@ configure(struct sched_cmd *cmd)
 	int cq_irq;
 	int acc_cu = 0;
 	int has_acc_cu = 0;
+	int apt_idx, irq_id;
+	bool is_legacy_intr = true;
 	int ret;
 
 	if (sched_error_on(exec, opcode(cmd) != ERT_CONFIGURE))
@@ -784,6 +790,9 @@ configure(struct sched_cmd *cmd)
 		return -ENOMEM;
 	}
 
+	if (!zdev->ert)
+		is_legacy_intr = zocl_xclbin_legacy_intr(zdev);
+
 	for (i = 0; i < exec->num_cus; i++) {
 		if (zocl_xclbin_accel_adapter(cfg->data[i] & ~ZOCL_KDS_MASK)) {
 			/* If the ACCEL adapter is used */
@@ -811,10 +820,19 @@ configure(struct sched_cmd *cmd)
 		 * Now the zdev->ert is heavily used in configure()
 		 * Need cleanup.
 		 */
-		if (!zdev->ert && get_apt_index(zdev, cu_addr) < 0) {
-			DRM_ERROR("CU address %x is not found in XCLBIN\n",
-				  cfg->data[i]);
-			return 1;
+		if (!zdev->ert) {
+			apt_idx = get_apt_index(zdev, cu_addr);
+			if (apt_idx < 0) {
+				DRM_ERROR("CU address %x is not found in XCLBIN\n",
+					  cfg->data[i]);
+				return 1;
+			}
+			if (is_legacy_intr)
+				irq_id = i;
+			else
+				irq_id = zocl_xclbin_intr_id(zdev, apt_idx);
+			exec->zcu[i].irq = zdev->irq[irq_id];
+			DRM_INFO("zcu[%d] -> irq %d\n", i, exec->zcu[i].irq);
 		}
 
 		/* For MPSoC as PCIe device, the CU address for PS = base
@@ -869,8 +887,8 @@ configure(struct sched_cmd *cmd)
 		if (!zocl_cu_is_valid(exec, i))
 			continue;
 
-		ret = request_irq(zdev->irq[i], sched_exec_isr, 0,
-		    "zocl", zdev);
+		ret = request_irq(exec->zcu[i].irq, sched_exec_isr, 0,
+				  "zocl", zdev);
 		if (ret) {
 			/* Fail to install at least one interrupt
 			 * handler. We need to free the handler(s)
@@ -878,8 +896,8 @@ configure(struct sched_cmd *cmd)
 			 * polling mode.
 			 */
 			for (j = 0; j < i; j++) {
-				if (zocl_cu_is_valid(exec, i))
-					free_irq(zdev->irq[j], zdev);
+				if (zocl_cu_is_valid(exec, j))
+					free_irq(exec->zcu[j].irq, zdev);
 			}
 			DRM_WARN("request_irq failed on CU %d error: %d."
 			    "Fall back to polling mode.\n", i, ret);
@@ -911,6 +929,65 @@ print_and_out:
 	return 0;
 }
 
+/**
+ * Gather ERT stats in ctrl command packet
+ * [1  ]      : header
+ * [1  ]      : custat version
+ * [1  ]      : ert version
+ * [1  ]      : number of cq slots
+ * [1  ]      : number of cus
+ * [#numcus]  : cu execution stats (number of executions)
+ * [#numcus]  : cu status (1: running, 0: idle)
+ * [#slots]   : command queue slot status
+ */
+static void
+cu_stat(struct sched_cmd *cmd)
+{
+	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+	struct zocl_ert_dev *ert = zdev->ert;
+	struct sched_exec_core *exec = zdev->exec;
+	struct ert_packet *pkg;
+	int slot_idx;
+	int pkt_idx = 0;
+	int max_idx = (slot_size(cmd->ddev) >> 2) - 1;
+	int i;
+
+	SCHED_DEBUG("-> %s cq_slot_idx %d\n", __func__, cmd->cq_slot_idx);
+	slot_idx = cmd->cq_slot_idx;
+	pkg = cmd->packet;
+
+	/* custat version, update when changing layout of packet */
+	pkg->data[pkt_idx++] = 0x51a10000;
+
+	/* should be git version */
+	pkg->data[pkt_idx++] = ERT_VERSION;
+
+	/* number of CQ slots */
+	pkg->data[pkt_idx++] = exec->num_slots;
+
+	/* number of CUs */
+	pkg->data[pkt_idx++] = exec->num_cus;
+
+	/* individual CU execution stat */
+	for (i = 0; i < exec->num_cus && pkt_idx < max_idx; ++i)
+		pkg->data[pkt_idx++] = exec->zcu[i].usage;
+
+	/* individual CU status */
+	for (i = 0; i < exec->num_cus && pkt_idx < max_idx; ++i)
+		pkg->data[pkt_idx++] = exec->cu_status[i];
+
+	/* Command slot status
+	 * Hard code QUEUED state. When a NEW command is found,
+	 * ERT/PS will set it to QUEUED. Then no CQ write.
+	 */
+	for (i = 0; i < exec->num_slots && pkt_idx < max_idx; ++i)
+		pkg->data[pkt_idx++] = ERT_CMD_STATE_QUEUED;
+
+	/* update command slot in CQ */
+	ert->ops->update_cmd(ert, slot_idx, pkg->data, pkt_idx * 4);
+	SCHED_DEBUG("<- %s\n", __func__);
+}
+
 static int
 configure_soft_kernel(struct sched_cmd *cmd)
 {
@@ -924,6 +1001,22 @@ configure_soft_kernel(struct sched_cmd *cmd)
 	SCHED_DEBUG("-> %s", __func__);
 
 	cfg = (struct ert_configure_sk_cmd *)(cmd->packet);
+
+	if (cfg->sk_type == SOFTKERNEL_TYPE_XCLBIN) {
+		void *xclbin_buffer = NULL;
+
+		/* remap device physical addr to kernel virtual addr */
+		xclbin_buffer =
+		    memremap(cfg->sk_addr, cfg->sk_size, MEMREMAP_WC);
+		if (xclbin_buffer == NULL) {
+			ret = -ENOMEM;
+			goto fail;
+		}
+		ret = zocl_xclbin_load_pdi(zdev, xclbin_buffer);
+		memunmap(xclbin_buffer);
+		return ret;
+	}
+
 
 	mutex_lock(&sk->sk_lock);
 
@@ -958,22 +1051,6 @@ configure_soft_kernel(struct sched_cmd *cmd)
 	}
 
 	scmd->skc_packet = (struct ert_packet *)cfg;
-
-	if (cfg->sk_type == SOFTKERNEL_TYPE_XCLBIN) {
-		void *xclbin_buffer = NULL;
-
-		/* remap device physical addr to kernel virtual addr */
-		xclbin_buffer =
-		    memremap(cfg->sk_addr, cfg->sk_size, MEMREMAP_WC);
-		if (xclbin_buffer == NULL) {
-			ret = -ENOMEM;
-			goto fail;
-		}
-		ret = zocl_xclbin_load_pdi(zdev, xclbin_buffer);
-		memunmap(xclbin_buffer);
-		if (ret)
-			goto fail;
-	}
 
 	mutex_lock(&sk->sk_lock);
 	list_add_tail(&scmd->skc_list, &sk->sk_cmd_list);
@@ -1635,7 +1712,7 @@ reset_all(void)
 }
 
 static int
-ert_get_cu(struct sched_cmd *cmd)
+ert_get_cu(struct sched_cmd *cmd, enum zocl_cu_type cu_type)
 {
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
 	struct sched_exec_core *exec = zdev->exec;
@@ -1647,13 +1724,19 @@ ert_get_cu(struct sched_cmd *cmd)
 	cu_bit = cu_idx_in_mask(cu_idx);
 
 	/* Check if the specific CU is busy */
-	busy_mask = exec->cu_status[cu_mask_idx(cu_idx)];
+	busy_mask = cu_type == ZOCL_SOFT_CU ?
+	    exec->scu_status[cu_mask_idx(cu_idx)] :
+	    exec->cu_status[cu_mask_idx(cu_idx)];
+
 	if (busy_mask & (1 << cu_bit))
 		return -1;
 
-	/* The specific CU is ready */
-	if (!zocl_cu_get_credit(&exec->zcu[cu_idx]))
-		exec->cu_status[cu_mask_idx(cu_idx)] ^= 1 << cu_bit;
+	if (cu_type == ZOCL_HARD_CU) {
+		/* The specific CU is ready */
+		if (!zocl_cu_get_credit(&exec->zcu[cu_idx]))
+			exec->cu_status[cu_mask_idx(cu_idx)] ^= 1 << cu_bit;
+	} else
+		exec->scu_status[cu_mask_idx(cu_idx)] ^= 1 << cu_bit;
 
 	return cu_idx;
 }
@@ -1934,6 +2017,9 @@ queued_to_running(struct sched_cmd *cmd)
 	SCHED_DEBUG("-> %s\n", __func__);
 	if (opcode(cmd) == ERT_CONFIGURE)
 		configure(cmd);
+
+	if (opcode(cmd) == ERT_CU_STAT)
+		cu_stat(cmd);
 
 	if (opcode(cmd) == ERT_INIT_CU)
 		init_cus(cmd);
@@ -2279,11 +2365,13 @@ penguin_query(struct sched_cmd *cmd)
 		if (cu_done(cmd))
 			mark_cmd_complete(cmd, ERT_CMD_STATE_COMPLETED);
 		break;
+	case ERT_CU_STAT:
 	case ERT_INIT_CU:
 	case ERT_CONFIGURE:
 		mark_cmd_complete(cmd, ERT_CMD_STATE_COMPLETED);
 		break;
 	default:
+		mark_cmd_complete(cmd, ERT_CMD_STATE_ERROR);
 		DRM_ERROR("unknown opcode %d", opc);
 	}
 	SCHED_DEBUG("<- %s\n", __func__);
@@ -2395,6 +2483,12 @@ penguin_submit(struct sched_cmd *cmd)
 		return true;
 	}
 
+	if (opcode(cmd) == ERT_CU_STAT) {
+		cmd->slot_idx = acquire_slot_idx(cmd->ddev);
+		SCHED_DEBUG("<- %s (cu_stat)\n", __func__);
+		return true;
+	}
+
 	if (opcode(cmd) == ERT_INIT_CU) {
 		cmd->slot_idx = acquire_slot_idx(cmd->ddev);
 		SCHED_DEBUG("<- %s (init CU)\n", __func__);
@@ -2473,11 +2567,13 @@ ps_ert_query(struct sched_cmd *cmd)
 		__attribute__ ((fallthrough));
 		/* pass through */
 
+	case ERT_CU_STAT:
 	case ERT_CONFIGURE:
 		mark_cmd_complete(cmd, ERT_CMD_STATE_COMPLETED);
 		break;
 
 	default:
+		mark_cmd_complete(cmd, ERT_CMD_STATE_ERROR);
 		DRM_ERROR("unknown opcode %d", opc);
 	}
 	SCHED_DEBUG("<- %s()", __func__);
@@ -2511,6 +2607,10 @@ ps_ert_submit(struct sched_cmd *cmd)
 		SCHED_DEBUG("<- %s (configure)\n", __func__);
 		break;
 
+	case ERT_CU_STAT:
+		SCHED_DEBUG("<- %s (cu stat)\n", __func__);
+		break;
+
 	case ERT_SK_CONFIG:
 		SCHED_DEBUG("<- %s (configure soft kernel)\n", __func__);
 		ret = configure_soft_kernel(cmd);
@@ -2532,7 +2632,11 @@ ps_ert_submit(struct sched_cmd *cmd)
 		break;
 
 	case ERT_SK_START:
-		cmd->cu_idx = get_free_cu(cmd, ZOCL_SOFT_CU);
+		if (type(cmd) == ERT_CU)
+			cmd->cu_idx = ert_get_cu(cmd, ZOCL_SOFT_CU);
+		else
+			cmd->cu_idx = get_free_cu(cmd, ZOCL_SOFT_CU);
+
 		if (cmd->cu_idx < 0) {
 			release_slot_idx(cmd->ddev, cmd->slot_idx);
 			if (cmd->cu_idx == -EINVAL)
@@ -2552,10 +2656,9 @@ ps_ert_submit(struct sched_cmd *cmd)
 	case ERT_EXEC_WRITE:
 		/* When command type is ERT_CU, host would set cu_idx instead of
 		 * cu_mask. The cu index is set at right after packet header.
-		 * ERT_CU is only for hardware kernel.
 		 */
 		if (type(cmd) == ERT_CU)
-			cmd->cu_idx = ert_get_cu(cmd);
+			cmd->cu_idx = ert_get_cu(cmd, ZOCL_HARD_CU);
 		else
 			cmd->cu_idx = get_free_cu(cmd, ZOCL_HARD_CU);
 		if (cmd->cu_idx < 0)

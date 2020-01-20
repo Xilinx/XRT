@@ -82,7 +82,6 @@ static int scanDevices(bool verbose, bool json)
                 sensor_tree::put(card + ".mac2", info.mMacAddr2);
                 sensor_tree::put(card + ".mac3", info.mMacAddr3);
             }
-            sensor_tree::json_dump( std::cout );
         } else {
             std::cout << "Card [" << f.sGetDBDF() << "]" << std::endl;
             std::cout << fmt_str << "Card type:\t\t" << board.board << std::endl;
@@ -128,6 +127,9 @@ static int scanDevices(bool verbose, bool json)
             std::cout << std::endl;
         }
     }
+
+    if (json)
+        sensor_tree::json_dump( std::cout );
 
     return 0;
 }
@@ -493,7 +495,7 @@ int flashXbutilFlashHandler(int argc, char *argv[])
         int ret = resetShell(devIdx == UINT_MAX ? 0 : devIdx);
         if (ret)
             return ret;
-        std::cout << "Shell is reset succesfully" << std::endl;
+        std::cout << "Shell is reset successfully" << std::endl;
         std::cout << "Cold reboot machine to load new shell on card" <<
             std::endl;
         return 0;
@@ -507,7 +509,7 @@ int flashXbutilFlashHandler(int argc, char *argv[])
             primary, secondary);
         if (ret)
             return ret;
-        std::cout << "Shell is updated succesfully" << std::endl;
+        std::cout << "Shell is updated successfully" << std::endl;
         std::cout << "Cold reboot machine to load new shell on card" <<
             std::endl;
         return 0;
@@ -639,7 +641,7 @@ static int shell(int argc, char *argv[])
     if (ret)
         return ret;
 
-    std::cout << "Shell is updated succesfully" << std::endl;
+    std::cout << "Shell is updated successfully" << std::endl;
     std::cout << "Cold reboot machine to load new shell on card" << std::endl;
     return 0;
 }
@@ -680,7 +682,7 @@ static int sc(int argc, char *argv[])
     if (ret)
         return ret;
 
-    std::cout << "SC firmware is updated succesfully" << std::endl;
+    std::cout << "SC firmware is updated successfully" << std::endl;
     return 0;
 }
 
@@ -712,7 +714,7 @@ static int reset(int argc, char *argv[])
     if (ret)
         return ret;
 
-    std::cout << "Shell is reset succesfully" << std::endl;
+    std::cout << "Shell is reset successfully" << std::endl;
     std::cout << "Cold reboot machine to load new shell on card" << std::endl;
     return 0;
 }

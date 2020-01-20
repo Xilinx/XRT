@@ -399,6 +399,12 @@ namespace xclcpuemhal2 {
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "lib"   + DS + "csim";
           setenv("LD_LIBRARY_PATH",sLdLibs.c_str(),true);
         }
+
+        if (xilinxInstall.empty()) {
+           std::cerr << "ERROR : [SW-EM 10] Please make sure that the XILINX_VITIS environment variable is set correctly" << std::endl;
+           exit(1);
+        }
+
         std::string modelDirectory("");
 #if defined(RDIPF_aarch64)
         modelDirectory= xilinxInstall + "/data/emulation/unified/cpu_em/zynqu/model/genericpciemodel";
@@ -407,6 +413,19 @@ namespace xclcpuemhal2 {
 #else
         modelDirectory= xilinxInstall + "/data/emulation/unified/cpu_em/generic_pcie/model/genericpciemodel";
 #endif
+
+        FILE *filep;
+        if ((filep = fopen(modelDirectory.c_str(), "r")) != NULL)
+        {
+          // file exists
+          fclose(filep);
+        }
+        else
+        {
+          //File not found, no memory leak since 'file' == NULL
+          std::cerr << "ERROR : [SW-EM 11] Unable to launch Device process, Please make sure that the XILINX_VITIS environment variable is set correctly" << std::endl;
+          exit(1);
+        }
 
         const char* childArgv[6] = { NULL, NULL, NULL, NULL, NULL, NULL } ;
         childArgv[0] = modelDirectory.c_str() ;
@@ -697,6 +716,15 @@ namespace xclcpuemhal2 {
     }
 
     uint64_t result = mDDRMemoryManager[flags]->alloc(size);
+
+    if (result == xclemulation::MemoryManager::mNull) {  
+      auto ddrSize = mDDRMemoryManager[flags]->size();
+      std::string ddrSizeStr = std::to_string(ddrSize);
+      std::string initMsg = "ERROR: [SW-EM 12] OutOfMemoryError : Requested Global memory size exceeds DDR limit " + ddrSizeStr + " Bytes";
+      std::cout << initMsg << std::endl;      
+      return result;
+    }
+
     bool ack = false;
     //   Memory Manager Has allocated aligned address, 
 	//   size contains alignement + original size requested.
@@ -1073,7 +1101,7 @@ int CpuemShim::xclGetBOProperties(unsigned int boHandle, xclBOProperties *proper
 /*****************************************************************************************/
 
 /******************************** xclAllocBO *********************************************/
-int CpuemShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
+uint64_t CpuemShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
 {
   size_t size = info->size;
   unsigned ddr = xclemulation::xocl_bo_ddr_idx(info->flags);
@@ -1100,6 +1128,11 @@ int CpuemShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   xobj->buf = NULL;
   xobj->fd = -1;
 
+  if (xobj->base == xclemulation::MemoryManager::mNull)
+  { 
+    return xclemulation::MemoryManager::mNull;
+  }
+
   info->handle = mBufferCount;
   mXoclObjMap[mBufferCount++] = xobj;
   return 0;
@@ -1113,7 +1146,7 @@ unsigned int CpuemShim::xclAllocBO(size_t size, int unused, unsigned flags)
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << size << std::dec << " , "<< unused <<" , "<< flags << std::endl;
   }
   xclemulation::xocl_create_bo info = {size, mNullBO, flags};
-  int result = xoclCreateBo(&info);
+  uint64_t result = xoclCreateBo(&info);
   PRINTENDFUNC;
   return result ? mNullBO : info.handle;
 }
@@ -1128,7 +1161,7 @@ unsigned int CpuemShim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned f
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << userptr <<", " << std::hex << size << std::dec <<" , "<< flags << std::endl;
   }
   xclemulation::xocl_create_bo info = {size, mNullBO, flags};
-  int result = xoclCreateBo(&info);
+  uint64_t result = xoclCreateBo(&info);
   xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(info.handle);
   if (bo) {
     bo->userptr = userptr;

@@ -31,6 +31,7 @@
 #include "zocl_ert.h"
 #include "zocl_bo.h"
 #include "zocl_dma.h"
+#include "zocl_ospi_versal.h"
 
 #if defined(CONFIG_ARM64)
 #define ZOCL_PLATFORM_ARM64   1

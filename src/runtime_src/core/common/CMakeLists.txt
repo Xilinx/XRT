@@ -15,7 +15,7 @@ endif (NOT WIN32)
 file(GLOB XRT_CORECOMMON_LIB_FILES
   "config_reader.*"
   "message.*"
-  "t_time.*"
+  "time.*"
   "xclbin_parser.*"
   "sensor.*"
   "utils.*"

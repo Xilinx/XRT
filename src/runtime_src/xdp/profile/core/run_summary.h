@@ -21,6 +21,7 @@
 
 // #includes here - please keep these to a bare minimum!
 #include "xclbin.h"
+#include "xdp/config.h"
 
 #include <string>
 #include <fstream>
@@ -44,13 +45,17 @@ class RunSummary {
     };
 
   public:
+    XDP_EXPORT
     RunSummary();
+    XDP_EXPORT
     ~RunSummary();
 
   public:
     void addFile(const std::string & fileName, FileType eFileType);
+    XDP_EXPORT
     void setProfileTree(std::shared_ptr<boost::property_tree::ptree> tree);
 
+    XDP_EXPORT
     void extractSystemProfileMetadata(const axlf * pXclbinImage, const std::string & xclbinContainerName = "");
     void writeContent();
 

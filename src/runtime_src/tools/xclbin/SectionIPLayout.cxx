@@ -252,17 +252,17 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
       }
   
       { // m_interrupt_id
-        boost::optional<uint8_t> bInterruptID;
-        bInterruptID = ptIPData.get_optional<uint8_t>("m_interrupt_id");
-        if (bInterruptID.is_initialized()) {
+        std::string sInterruptID = ptIPData.get<std::string>("m_interrupt_id","");
+        if (!sInterruptID.empty()) {
+          unsigned int interruptID = std::stoul(sInterruptID);
           unsigned int maxValue = ((unsigned int) IP_INTERRUPT_ID_MASK) >> IP_INTERRUPT_ID_SHIFT;
-          if (bInterruptID.get() > maxValue) {
+          if (interruptID > maxValue) {
             std::string errMsg = XUtil::format("ERROR: The m_interrupt_id (%d), exceeds maximum value (%d).",
-                                               (unsigned int)bInterruptID.get(), maxValue);
+                                               interruptID, maxValue);
             throw std::runtime_error(errMsg);
           }
   
-          unsigned int shiftValue = ((unsigned int) bInterruptID.get()) << IP_INTERRUPT_ID_SHIFT;
+          unsigned int shiftValue = (interruptID << IP_INTERRUPT_ID_SHIFT);
           shiftValue = shiftValue & ((uint32_t) IP_INTERRUPT_ID_MASK);
           ipDataHdr.properties = ipDataHdr.properties & (~(uint32_t) IP_INTERRUPT_ID_MASK);  // Clear existing bits
           ipDataHdr.properties = ipDataHdr.properties | shiftValue;                          // Set bits

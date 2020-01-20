@@ -1577,6 +1577,14 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     return 52;
   }
 
+  size_t HwEmShim::xclGetDeviceTimestamp()
+  {
+    bool ack = true;
+    size_t deviceTimeStamp = 0;
+    xclGetDeviceTimestamp_RPC_CALL(xclGetDeviceTimestamp,ack,deviceTimeStamp);
+    return deviceTimeStamp;
+  }
+
   void HwEmShim::xclReadBusStatus(xclPerfMonType type) {
 
     bool is_bus_idle = true;
@@ -2369,6 +2377,65 @@ int HwEmShim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t num
     return size;
 }
 
+double HwEmShim::xclGetDeviceClockFreqMHz()
+{
+  //return 1.0;
+  double clockSpeed;
+  //300.0 MHz
+  clockSpeed = 300.0;
+  return clockSpeed;
+}
+
+// Get the maximum bandwidth for host reads from the device (in MB/sec)
+// NOTE: for now, just return 8.0 GBps (the max achievable for PCIe Gen3)
+double HwEmShim::xclGetReadMaxBandwidthMBps()
+{
+  return 8000.0;
+}
+
+// Get the maximum bandwidth for host writes to the device (in MB/sec)
+// NOTE: for now, just return 8.0 GBps (the max achievable for PCIe Gen3)
+double HwEmShim::xclGetWriteMaxBandwidthMBps()
+{
+  return 8000.0;
+}
+
+uint32_t HwEmShim::getPerfMonNumberSlots(xclPerfMonType type)
+{
+  if (type == XCL_PERF_MON_MEMORY)
+    return mMemoryProfilingNumberSlots;
+  if (type == XCL_PERF_MON_ACCEL)
+    return mAccelProfilingNumberSlots;
+  if (type == XCL_PERF_MON_STALL)
+    return mStallProfilingNumberSlots;
+  if (type == XCL_PERF_MON_HOST)
+    return 1;
+  if (type == XCL_PERF_MON_STR)
+    return mStreamProfilingNumberSlots;
+
+  return 0;
+}
+
+// Get slot name
+void HwEmShim::getPerfMonSlotName(xclPerfMonType type, uint32_t slotnum,
+                                  char* slotName, uint32_t length) {
+  std::string str = "";
+  if (type == XCL_PERF_MON_MEMORY) {
+    str = (slotnum < XAIM_MAX_NUMBER_SLOTS) ? mPerfMonSlotName[slotnum] : "";
+  }
+  if (type == XCL_PERF_MON_ACCEL) {
+    str = (slotnum < XAM_MAX_NUMBER_SLOTS) ? mAccelMonSlotName[slotnum] : "";
+  }
+  if (type == XCL_PERF_MON_STR) {
+    str = (slotnum < XASM_MAX_NUMBER_SLOTS) ? mStreamMonSlotName[slotnum] : "";
+  }
+  if(str.length() < length) {
+   strncpy(slotName, str.c_str(), length);
+  } else {
+   strncpy(slotName, str.c_str(), length-1);
+   slotName[length-1] = '\0';
+  }
+}
 
 
 /********************************************** QDMA APIs IMPLEMENTATION START **********************************************/

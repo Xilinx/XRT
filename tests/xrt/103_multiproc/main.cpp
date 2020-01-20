@@ -141,56 +141,6 @@ static int runKernel(xclDeviceHandle handle, uint64_t cu_base_addr, bool verbose
     return 0;
 }
 
-static int runKernelLoop(xclDeviceHandle handle, uint64_t cu_base_addr, bool verbose, size_t n_elements)
-{
-
-    uuid_t xclbinId;
-    uuid_parse("58c06b8c-c882-41ff-9ec5-116571d1d179", xclbinId);
-    xclOpenContext(handle, xclbinId, 0, true);
-
-    //Allocate the exec_bo
-    unsigned execHandle = xclAllocBO(handle, 1024, 0, (1<<31));
-    void* execData = xclMapBO(handle, execHandle, true);
-
-    std::cout << "Construct the exe buf cmd to confire FPGA" << std::endl;
-    //construct the exec buffer cmd to configure.
-    {
-        auto ecmd = reinterpret_cast<ert_configure_cmd*>(execData);
-
-        std::memset(ecmd, 0, 1024);
-        ecmd->state = ERT_CMD_STATE_NEW;
-        ecmd->opcode = ERT_CONFIGURE;
-
-        ecmd->slot_size = 1024;
-        ecmd->num_cus = 1;
-        ecmd->cu_shift = 16;
-        ecmd->cu_base_addr = cu_base_addr;
-
-        ecmd->ert = 1;
-        if (ecmd->ert) {
-            ecmd->cu_dma = 1;
-            ecmd->cu_isr = 1;
-        }
-
-        // CU -> base address mapping
-        ecmd->data[0] = cu_base_addr;
-        ecmd->count = 5 + ecmd->num_cus;
-    }
-
-    std::cout << "Send the exec command and configure FPGA (ERT)" << std::endl;
-    //Send the command.
-    if(xclExecBuf(handle, execHandle)) {
-        std::cout << "Unable to issue xclExecBuf" << std::endl;
-        return 1;
-    }
-
-    std::cout << "Wait until the command finish" << std::endl;
-    //Wait on the command finish
-    while (xclExecWait(handle,1000) == 0);
-    xclCloseContext(handle, xclbinId, 0);
-    return 0;
-}
-
 static int loadXclbin(xclDeviceHandle& handle, const std::string &bit)
 {
     std::ifstream stream(bit.c_str());
@@ -323,10 +273,6 @@ int main(int argc, char** argv)
             throw std::runtime_error("Cannot lock device");
             return -1;
         }
-
-//        if (runKernelLoop(handle, cu_base_addr, verbose, n_elements)) {
-//            return 1;
-//        }
 
     }
     catch (std::exception const& e)

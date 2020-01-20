@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -21,7 +21,8 @@
 namespace XBU = XBUtilities;
 
 #include "xrt.h"
-#include "core/common/device_core.h"
+#include "core/common/system.h"
+#include "core/common/device.h"
 #include "core/common/error.h"
 
 // 3rd Party Library - Include Files
@@ -32,30 +33,29 @@ namespace po = boost::program_options;
 #include <iostream>
 #include <fstream>
 
-// ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
-#include "tools/common/SubCmd.h"
-static const unsigned int registerResult = 
-                    register_subcommand("program", 
-                                        "Download the acceleration program to a given device",
-                                        subCmdProgram);
-// =============================================================================
+// ----- C L A S S   M E T H O D S -------------------------------------------
 
-// ------ L O C A L   F U N C T I O N S ---------------------------------------
+SubCmdProgram::SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPreliminary)
+    : SubCmd("program", 
+             "Download the acceleration program to a given device")
+{
+  const std::string longDescription = "<add long discription>";
+  setLongDescription(longDescription);
+  setExampleSyntax("");
+  setIsHidden(_isHidden);
+  setIsDeprecated(_isDepricated);
+  setIsPreliminary(_isPreliminary);
+}
 
-
-
-// ------ F U N C T I O N S ---------------------------------------------------
-
-int subCmdProgram(const std::vector<std::string> &_options)
+void
+SubCmdProgram::execute(const SubCmdOptions& _options) const
 // Reference Command:  [-d card] [-r region] -p xclbin
 //                     Download the accelerator program for card 2
 //                       xbutil program -d 2 -p a.xclbin
-
-
 {
   XBU::verbose("SubCommand: program");
   // -- Retrieve and parse the subcommand options -----------------------------
-  uint64_t card = 0;
+  unsigned int card = 0;
   uint64_t region = 0;
   std::string xclbin;
   bool help = false;
@@ -63,7 +63,7 @@ int subCmdProgram(const std::vector<std::string> &_options)
   po::options_description programDesc("program options");
   programDesc.add_options()
     ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
-    (",d", boost::program_options::value<uint64_t>(&card), "Card to be examined")
+    (",d", boost::program_options::value<unsigned int>(&card), "Card to be examined")
     (",r", boost::program_options::value<uint64_t>(&region), "Card region")
     (",p", boost::program_options::value<std::string>(&xclbin), "The xclbin image to load")
   ;
@@ -76,7 +76,7 @@ int subCmdProgram(const std::vector<std::string> &_options)
     po::notify(vm); // Can throw
   } catch (po::error& e) {
     xrt_core::send_exception_message(e.what(), "XBUTIL");
-    std::cerr << programDesc << std::endl;
+    printHelp(programDesc);
 
     // Re-throw exception
     throw;
@@ -84,8 +84,8 @@ int subCmdProgram(const std::vector<std::string> &_options)
 
   // Check to see if help was requested or no command was found
   if (help == true)  {
-    std::cout << programDesc << std::endl;
-    return 0;
+    printHelp(programDesc);
+    return;
   }
 
   if (xclbin.empty())
@@ -114,16 +114,14 @@ int subCmdProgram(const std::vector<std::string> &_options)
   if (v != "xclbin2")
     throw xrt_core::error("bad binary version '" + v + "'");
 
-  auto device = xrt_core::device_core::instance().get_device(card);
-  if (auto err = device.execute(xclLockDevice))
+  auto device = xrt_core::get_userpf_device(card);
+  auto hdl = device->get_device_handle();
+  if (auto err = xclLockDevice(hdl))
     throw xrt_core::error(err, "Could not lock device " + std::to_string(card));
-  if (auto err = device.execute(xclLoadXclBin, (reinterpret_cast<const axlf*>(raw.data()))))
+  if (auto err = xclLoadXclBin(hdl,reinterpret_cast<const axlf*>(raw.data())))
     throw xrt_core::error(err,"Could not program device" + std::to_string(card));
-  if (auto err = device.execute(xclUnlockDevice))
+  if (auto err = xclUnlockDevice(hdl))
     throw xrt_core::error(err, "Could not unlock device " + std::to_string(card));
 
   std::cout << "INFO: xbutil2 program succeeded.\n";
-
-  return registerResult;
 }
-

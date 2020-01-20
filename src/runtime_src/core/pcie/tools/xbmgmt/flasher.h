@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018-2019 Xilinx, Inc
  * Author: Ryan Radjabi
  *
  * This is a wrapper class that does the prep work required to program a flash
@@ -24,6 +24,7 @@
 
 #include "xspi.h"
 #include "xqspips.h"
+#include "xospiversal.h"
 #include "prom.h"
 #include "xmc.h"
 #include "firmware_image.h"
@@ -84,6 +85,7 @@ private:
         SPI,
         BPI,
         QSPIPS,
+        OSPIVERSAL,
     };
     const char *E_FlasherTypeStrings[4] = { "UNKNOWN", "SPI", "BPI", "QSPI_PS" };
     const char *getFlasherTypeText( E_FlasherType val ) { return E_FlasherTypeStrings[ val ]; }

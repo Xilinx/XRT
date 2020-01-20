@@ -472,29 +472,15 @@ typedef struct {
  * 
  * custom plugin requirements:
  *  1. has a method called hal_level_xdp_cb_func
- *      that takes a enume type and a void pointer
- *      payload which can be casted to one of the
+ *      that takes a enum type and a void pointer
+ *      payload which can be cast to one of the
  *      structs listed below.
  *  2. config through initialization by setting the
  *      plugin path attribute to the dynamic library.
  */ 
 
-struct HalPluginConfig {
-  int state; /** < [unused] indicates if on or off */
-  char plugin_path[256]; /** < [unused] indicates which dynamic library to load */
-  /**
-   * The switches for what to profile and what
-   * not to should go here. The attibutes will
-   * be added once settle down on what kind of
-   * swtiches make sense for the plugins.
-   */
-};
-
+// Used in the HAL plugin to trace API calls
 enum HalCallbackType {
-  START_DEVICE_PROFILING,
-  CREATE_PROFILE_RESULTS,
-  GET_PROFILE_RESULTS,
-  DESTROY_PROFILE_RESULTS,
   ALLOC_BO_START,
   ALLOC_BO_END,
   FREE_BO_START,
@@ -514,8 +500,44 @@ enum HalCallbackType {
   READ_START,
   READ_END,
   WRITE_START,
-  WRITE_END
+  WRITE_END,
+  LOAD_XCLBIN_START,
+  LOAD_XCLBIN_END
 };
+
+/**
+   HAL API Profiling Interface plugin types
+   
+   The data structure for enabling the HAL API Profiling 
+   plugins that will be interpreted by both the shim and
+   xdp.
+
+   custom plugin requirements:
+    1. Has an exported method called hal_api_interface_cb_func
+       that takes an enum type and a void pointer payload
+       which can be cast to one of the structs below.
+    2. config through initialization by setting the 
+        plugin path attribute to the dynamic library
+ */
+
+struct HalPluginConfig {
+  int state; /** < [unused] indicates if on or off */
+  char plugin_path[256]; /** < [unused] indicates which dynamic library to load */
+  /**
+   * The switches for what to profile and what
+   * not to should go here. The attibutes will
+   * be added once settle down on what kind of
+   * swtiches make sense for the plugins.
+   */
+};
+
+// Used in the HAL API Interface to access hardware counters in host code
+enum HalInterfaceCallbackType {
+  START_DEVICE_PROFILING,
+  CREATE_PROFILE_RESULTS,
+  GET_PROFILE_RESULTS,
+  DESTROY_PROFILE_RESULTS
+} ;
 
 #ifdef __cplusplus
 #include <cstdint>
@@ -540,6 +562,15 @@ typedef struct CBPayload {
  * here for the users to include.
  */
 
+struct BOTransferCBPayload
+{
+  struct CBPayload basePayload ;
+  uint32_t boHandle ;
+  uint64_t dest ;
+  size_t size ;
+  size_t skip ;
+};
+
 struct ReadWriteCBPayload
 {
   struct CBPayload basePayload;  
@@ -554,6 +585,12 @@ struct UnmgdPreadPwriteCBPayload
   unsigned int flags;
   size_t   count;
   uint64_t offset;
+};
+
+struct XclbinCBPayload
+{
+  struct CBPayload basePayload ;
+  const void* binary ;
 };
 
 struct ProfileResultsCBPayload

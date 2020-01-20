@@ -45,12 +45,10 @@ set(XRT_XRT_ALL_SRC
   ${XRT_XRT_CPP_FILES}
   )
 
-add_library(xrt OBJECT ${XRT_XRT_ALL_SRC})
+add_compile_options("-DXRT_SOURCE")
 
-set(XRT_SRC "")
-
-add_library(xrt++ SHARED ${XRT_SRC}
-  $<TARGET_OBJECTS:xrt>
+add_library(xrt++ SHARED
+  ${XRT_XRT_ALL_SRC}
   )
 
 target_link_libraries(xrt++

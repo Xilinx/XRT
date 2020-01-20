@@ -17,7 +17,6 @@
 #ifndef __XDP_CORE_PROFILER_H
 #define __XDP_CORE_PROFILER_H
 
-#include <CL/opencl.h>
 #include <string>
 #include <chrono>
 #include <vector>

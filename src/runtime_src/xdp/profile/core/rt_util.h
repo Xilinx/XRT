@@ -17,6 +17,7 @@
 #ifndef __XDP_CORE_RT_UTIL_H
 #define __XDP_CORE_RT_UTIL_H
 
+#include "xdp/config.h"
 #include "xclperf.h"
 
 #include <map>
@@ -111,7 +112,9 @@ namespace xdp {
         std::string& monitorString);
     static void setTimeStamp(e_profile_command_state objStage, TimeTrace* traceObject,
     	double timeStamp);
+    XDP_EXPORT
     static void getFlowModeName(e_flow_mode flowMode, std::string& str);
+    XDP_EXPORT
     static uint32_t getDevTraceBufferSize(uint32_t property);
 
   };

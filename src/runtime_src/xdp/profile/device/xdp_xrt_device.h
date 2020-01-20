@@ -18,6 +18,7 @@
 #ifndef _XDP_PROIFLE_XDP_XRT_DEVICE_H
 #define _XDP_PROIFLE_XDP_XRT_DEVICE_H
 
+#include "xdp/config.h"
 #include "xdp_base_device.h"
 #include "xrt/device/device.h"
 
@@ -29,6 +30,7 @@ class XrtDevice : public xdp::Device
   xrt::device* mXrtDevice;
    
 public:
+  XDP_EXPORT
   XrtDevice(xrt::device* xrtDevice);
   virtual ~XrtDevice();
 
@@ -42,6 +44,8 @@ public:
   virtual uint64_t getTraceTime();
   virtual int getTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
   virtual int readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
+
+  virtual void* getRawDevice() { return mXrtDevice ; } 
 };
 }
 

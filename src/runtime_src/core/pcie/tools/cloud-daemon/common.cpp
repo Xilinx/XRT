@@ -242,9 +242,9 @@ int handleMsg(const pcieFunc& dev, queue_msg &msg)
         pass = (*msg.cb)(dev, swmsg, swmsgProcessed);
     }
 
-    if (pass == FOR_LOCAL && sendMsg(dev, msg.localFd, swmsgProcessed.get()))
+    if (pass == FOR_LOCAL && msg.localFd > 0 && sendMsg(dev, msg.localFd, swmsgProcessed.get()))
         return 0;
-    if (pass == FOR_REMOTE && sendMsg(dev, msg.remoteFd, swmsgProcessed.get()))
+    if (pass == FOR_REMOTE && msg.remoteFd > 0 && sendMsg(dev, msg.remoteFd, swmsgProcessed.get()))
         return 0;
     // Error occured
     return -EINVAL;

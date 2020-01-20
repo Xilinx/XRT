@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,7 +17,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SubCmdVersion.h"
-#include "common/core_system.h"
+#include "common/system.h"
 #include "gen/version.h"
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
@@ -29,15 +29,6 @@ namespace po = boost::program_options;
 // System - Include Files
 #include <iostream>
 
-// ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
-#include "tools/common/SubCmd.h"
-static const unsigned int registerResult = 
-                    register_subcommand("version", 
-                                        "Reports the version of the build, OS, and drivers (if present)",
-                                        subCmdVersion);
-// =============================================================================
-
-
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
 
 void reportVersions()
@@ -47,26 +38,37 @@ void reportVersions()
 
   // Get and report XOCL build information
   boost::property_tree::ptree xrt_pt;
-  xrt_core::system::get_xrt_info(xrt_pt);
+  xrt_core::get_xrt_info(xrt_pt);
 
-  std::cout.width(26); 
-  std::cout << std::internal 
+  std::cout.width(26);
+  std::cout << std::internal
             << "XOCL: "
             << xrt_pt.get<std::string>( "xocl", "---Not Defined--")
             << std::endl;
 
-  std::cout.width(26); 
-  std::cout << std::internal 
-            << "XCLMGMT: " 
+  std::cout.width(26);
+  std::cout << std::internal
+            << "XCLMGMT: "
             << xrt_pt.get<std::string>( "xclmgmt", "---Not Defined--")
             << std::endl;
 }
 
-// ------ F U N C T I O N S ---------------------------------------------------
+// ----- C L A S S   M E T H O D S -------------------------------------------
+SubCmdVersion::SubCmdVersion(bool _isHidden, bool _isDepricated, bool _isPreliminary)
+    : SubCmd("version", 
+             "Reports the version of the build, OS, and drivers (if present)")
+{
+  const std::string longDescription = "<add long description>";
+  setLongDescription(longDescription);
+  setExampleSyntax("");
+  setIsHidden(_isHidden);
+  setIsDeprecated(_isDepricated);
+  setIsPreliminary(_isPreliminary);
+}
 
-int subCmdVersion(const std::vector<std::string> &_options)
+void
+SubCmdVersion::execute(const SubCmdOptions& _options) const
 // Reference Command:  version
-
 {
   XBU::verbose("SubCommand: version");
   // -- Retrieve and parse the subcommand options -----------------------------
@@ -86,7 +88,7 @@ int subCmdVersion(const std::vector<std::string> &_options)
     po::notify(vm); // Can throw
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
-    std::cerr << versionDesc << std::endl;
+    printHelp(versionDesc);
 
     // Re-throw exception
     throw;
@@ -94,13 +96,12 @@ int subCmdVersion(const std::vector<std::string> &_options)
 
   // Check to see if help was requested or no command was found
   if (bHelp == true)  {
-    std::cout << versionDesc << std::endl;
-    return 0;
+    printHelp(versionDesc);
+    return;
   }
 
   // -- Now process the subcommand --------------------------------------------
   reportVersions();
 
-  return registerResult;
+  return;
 }
-

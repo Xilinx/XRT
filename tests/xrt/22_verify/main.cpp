@@ -98,46 +98,8 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
     unsigned execHandle = xclAllocBO(handle, 1024, 0, (1<<31));
     void* execData = xclMapBO(handle, execHandle, true);
 
-    std::cout << "Construct the exe buf cmd to configure FPGA" << std::endl;
-    //construct the exec buffer cmd to configure.
-    {
-        auto ecmd = reinterpret_cast<ert_configure_cmd*>(execData);
-
-        std::memset(ecmd, 0, 1024);
-        ecmd->state = ERT_CMD_STATE_NEW;
-        ecmd->opcode = ERT_CONFIGURE;
-
-        ecmd->slot_size = 1024;
-        ecmd->num_cus = 1;
-        ecmd->cu_shift = 16;
-        ecmd->cu_base_addr = cu_base_addr;
-
-        ecmd->ert = ert;
-        if (ert) {
-            ecmd->cu_dma = 1;
-            ecmd->cu_isr = 1;
-        }
-
-        // CU -> base address mapping
-        ecmd->data[0] = cu_base_addr;
-        ecmd->count = 5 + ecmd->num_cus;
-    }
-
-    std::cout << "Send the exec command and configure FPGA (ERT)" << std::endl;
-    //Send the command.
-    if(xclExecBuf(handle, execHandle)) {
-        std::cout << "Unable to issue xclExecBuf" << std::endl;
-        return 1;
-    }
-
-    std::cout << "Wait until the command finish" << std::endl;
-    //Wait on the command finish
-    while (xclExecWait(handle,1000) == 0);
-
-
     std::cout << "Construct the exec command to run the kernel on FPGA" << std::endl;
 
-    //--
     //construct the exec buffer cmd to start the kernel.
     {
         auto ecmd = reinterpret_cast<ert_start_kernel_cmd*>(execData);

@@ -14,42 +14,25 @@
  * under the License.
  */
 
-#ifndef DEVICE_LINUX_H
-#define DEVICE_LINUX_H
+#ifndef PCIE_DEVICE_LINUX_H
+#define PCIE_DEVICE_LINUX_H
 
-// Please keep eternal include file dependencies to a minimum
 #include "common/device_pcie.h"
 
 namespace xrt_core {
-class device_linux : public xrt_core::device_pcie {
-  public:
-    virtual void read_device_dma_stats(uint64_t _deviceID, boost::property_tree::ptree &_pt) const;
 
-    struct SysDevEntry {
-      const std::string sSubDevice;
-      const std::string sEntry;
-    };
+class device_linux : public device_pcie
+{
+public:
+  device_linux(id_type device_id, bool user);
 
-    const SysDevEntry & get_sysdev_entry( QueryRequest _eQueryRequest) const;
+  // query functions
+  virtual void read_dma_stats(boost::property_tree::ptree& pt) const;
+  virtual void query(QueryRequest qr, const std::type_info& tinfo, boost::any& value) const;
 
-  protected:
-    virtual std::pair<uint64_t, uint64_t> get_total_devices() const;
-    virtual void query_device(uint64_t _deviceID, QueryRequest _eQueryRequest, const std::type_info & _typeInfo, boost::any &_returnValue) const;
+  virtual void read(uint64_t addr, void* buf, uint64_t len) const;
+  virtual void write(uint64_t addr, const void* buf, uint64_t len) const;
 
-    //flash functions
-    virtual void scan_devices(bool verbose, bool json) const;
-    virtual void auto_flash(uint64_t _deviceID, std::string& shell, std::string& id, bool force) const;
-    virtual void reset_shell(uint64_t _deviceID) const;
-    virtual void update_shell(uint64_t _deviceID, std::string flashType, std::string& primary, std::string& secondary) const;
-    virtual void update_SC(uint64_t _deviceID, std::string& file) const;
-    //end flash functions
-  public:
-    device_linux();
-    virtual ~device_linux();
-
-  private:
-    device_linux(const device_linux&) = delete;
-    device_linux& operator=(const device_linux&) = delete;
 };
 }
 

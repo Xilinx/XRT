@@ -7,7 +7,7 @@
 
                 versal_buffer: buffer@0 {
                         no-map;
-                        reg = <0xc0 0x0 0x0 0x80000000>;
+                        reg = <0xc0 0x0 0x2 0x0>;
                 };
         };
 };
@@ -26,4 +26,10 @@
                 status = "okay";
                 reg = <0x203 0x30000 0x0 0x10000 0x202 0x4000000 0x0 0x10000>;
         };
+
+	ospi_versal {
+		compatible = "xlnx,ospi_versal";
+		status = "okay";
+		reg = <0x201 0x3000000 0x0 0x10000>;
+	};
 };

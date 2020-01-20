@@ -434,7 +434,7 @@ inline void* wordcopy(void *dst, const void* src, size_t bytes)
     assert((reinterpret_cast<intptr_t>(dst) % 4) == 0);
 
     using word = uint32_t;
-    auto d = reinterpret_cast<word*>(dst);
+    volatile auto d = reinterpret_cast<word*>(dst);
     auto s = reinterpret_cast<const word*>(src);
     auto w = bytes/sizeof(word);
 
@@ -743,7 +743,7 @@ std::ostream& operator<<(std::ostream& stream,
     }
     stream << " " << shell_name;
     if (ts != 0)
-        stream << "(ts=0x" << std::hex << ts << ")";
+        stream << "(ID=0x" << std::hex << ts << ")";
 
     // instance number
     if (dev->is_mgmt)
