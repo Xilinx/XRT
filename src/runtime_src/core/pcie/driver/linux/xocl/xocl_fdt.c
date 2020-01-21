@@ -235,7 +235,8 @@ static struct xocl_subdev_map		subdev_map[] = {
 		XOCL_SUBDEV_AF,
 		XOCL_FIREWALL,
 		{
-			NODE_AF_BLP,
+			NODE_AF_BLP_CTRL_MGMT,
+			NODE_AF_BLP_CTRL_USER,
 			NODE_AF_CTRL_MGMT,
 			NODE_AF_CTRL_USER,
 			NODE_AF_CTRL_DEBUG,
