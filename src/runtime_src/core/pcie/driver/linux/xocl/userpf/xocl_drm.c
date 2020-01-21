@@ -52,6 +52,20 @@
 
 static char driver_date[9];
 
+static void xocl_cma_chunks_free_all(struct xocl_drm *drm_p);
+
+#if defined(XOCL_DRM_FREE_MALLOC)
+static inline void drm_free_large(void *ptr)
+{
+	kvfree(ptr);
+}
+
+static inline void *drm_malloc_ab(size_t nmemb, size_t size)
+{
+	return kvmalloc_array(nmemb, size, GFP_KERNEL);
+}
+#endif
+
 static void xocl_free_object(struct drm_gem_object *obj)
 {
 	DRM_ENTER("");
@@ -221,9 +235,18 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 #else
 		ret = vm_insert_page(vma, vmf_address, xobj->pages[page_offset]);
 #endif
+	} else if (xocl_bo_cma(xobj)) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
+		pfn_t pfn;
+		pfn = phys_to_pfn_t(page_to_phys(xobj->pages[page_offset]), PFN_MAP);
+#else
+		unsigned long pfn = page_to_pfn(xobj->pages[page_offset]);
+#endif
+		ret = vm_insert_mixed(vma, vmf_address, pfn);
 	} else {
 		ret = vm_insert_page(vma, vmf_address, xobj->pages[page_offset]);
 	}
+
 	switch (ret) {
 	case -EAGAIN:
 	case 0:
@@ -320,6 +343,8 @@ static const struct drm_ioctl_desc xocl_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(XOCL_HOT_RESET, xocl_hot_reset_ioctl,
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(XOCL_RECLOCK, xocl_reclock_ioctl,
+			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(XOCL_ALLOC_CMA, xocl_alloc_cma_ioctl,
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 };
 
@@ -450,6 +475,7 @@ failed:
 void xocl_drm_fini(struct xocl_drm *drm_p)
 {
 	xocl_cleanup_mem(drm_p);
+	xocl_cma_chunks_free_all(drm_p);
 	drm_put_dev(drm_p->ddev);
 	mutex_destroy(&drm_p->mm_lock);
 
@@ -542,6 +568,41 @@ uint32_t xocl_get_shared_ddr(struct xocl_drm *drm_p, struct mem_data *m_data)
 	}
 #endif
 	return 0xffffffff;
+}
+
+static void xocl_cma_chunk_free(struct xocl_drm *drm_p, uint32_t idx)
+{
+	if (drm_p->cma_chunk[idx]) {
+
+		if (drm_p->cma_chunk[idx]->mm) {
+			drm_mm_takedown(drm_p->cma_chunk[idx]->mm);
+			vfree(drm_p->cma_chunk[idx]->mm);
+		}
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0)
+		release_pages(drm_p->cma_chunk[idx]->pages, drm_p->cma_chunk[idx]->page_count);
+#else
+		release_pages(drm_p->cma_chunk[idx]->pages, drm_p->cma_chunk[idx]->page_count, 0);
+#endif
+
+		if (drm_p->cma_chunk[idx]->pages)
+			drm_free_large(drm_p->cma_chunk[idx]->pages);
+
+		vfree(drm_p->cma_chunk[idx]);
+		drm_p->cma_chunk[idx] = NULL;
+
+	}	
+}
+
+static void xocl_cma_chunks_free_all(struct xocl_drm *drm_p)
+{
+
+	int i = 0;
+	BUG_ON(!mutex_is_locked(&drm_p->mm_lock));
+
+	for (i = 0; i < DRM_XOCL_CMA_CHUNK_MAX; ++i) {
+		xocl_cma_chunk_free(drm_p, i);
+	}
+	xocl_info(drm_p->ddev->dev, "%s done", __func__);
 }
 
 int xocl_cleanup_mem(struct xocl_drm *drm_p)
@@ -749,6 +810,124 @@ failed:
 	vfree(drm_p->mm_p2p_off);
 	drm_p->mm_p2p_off = NULL;
 	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
+	mutex_unlock(&drm_p->mm_lock);
+	return err;
+}
+
+static int is_chunk_cma(struct page **pages, uint64_t page_count, size_t sz)
+{
+	int err = 0;
+	struct sg_table *sgt = NULL;
+
+	sgt = kmalloc(sizeof(struct sg_table), GFP_KERNEL);
+	if (!sgt) {
+		err = -ENOMEM;
+		goto out;
+	}
+
+	err = sg_alloc_table_from_pages(sgt, pages, page_count, 0, sz, GFP_KERNEL);
+	if (err) {
+		err = -ENOMEM;
+		goto out;
+	}
+
+	if (sgt->orig_nents != 1) {
+		err = -EINVAL;
+		goto out;
+	}
+
+out:
+	kfree(sgt);
+	return err;
+}
+
+static int xocl_cma_chunk_reserve(struct xocl_drm *drm_p, uint64_t user_addr, uint32_t idx, size_t page_sz)
+{
+	int ret = 0;
+	uint64_t nr, page_count;
+	struct page **pages = NULL;
+	struct device *dev = drm_p->ddev->dev;
+
+
+	BUG_ON(!mutex_is_locked(&drm_p->mm_lock));
+
+	if (!(XOCL_ACCESS_OK(VERIFY_WRITE, user_addr, page_sz))) {
+		xocl_err(dev, "Invalid huge page user pointer\n");
+		ret = -ENOMEM;
+		goto out;		
+	}
+
+	drm_p->cma_chunk[idx] =  vzalloc(sizeof(struct xocl_cma_chunk));
+
+	page_count = (page_sz) >> PAGE_SHIFT;
+
+	pages = drm_malloc_ab(page_count, sizeof(struct page *));
+	if (!pages) {
+		ret = -ENOMEM;
+		goto out;
+	}
+	drm_p->cma_chunk[idx]->pages = pages;
+
+	nr = get_user_pages_fast(user_addr, page_count, 1, drm_p->cma_chunk[idx]->pages);
+	if (nr != page_count) {
+		xocl_err(dev, "nr %llx\n", nr);
+		ret = -EINVAL;
+		goto out;
+	}
+	drm_p->cma_chunk[idx]->page_count = page_count;
+
+
+	ret = is_chunk_cma(drm_p->cma_chunk[idx]->pages, page_count, page_sz);
+	if (ret) {
+		xocl_info(dev, "not cma chunk\n");
+		goto out;
+	}
+
+	drm_p->cma_chunk[idx]->start_addr = page_to_phys(drm_p->cma_chunk[idx]->pages[0]);
+
+	xocl_info(dev, "Alloc CMA chunk, phys_addr %llx, size %lx", drm_p->cma_chunk[idx]->start_addr, page_sz);
+
+	drm_p->cma_chunk[idx]->mm = vzalloc(sizeof(struct drm_mm));
+
+	drm_mm_init(drm_p->cma_chunk[idx]->mm, drm_p->cma_chunk[idx]->start_addr, page_sz);
+
+
+out:
+	xocl_info(dev, "%s ret %d", __func__, ret);
+	if (ret)
+		xocl_cma_chunks_free_all(drm_p);
+
+	return ret;
+}
+
+
+
+int xocl_cma_chunk_helper(struct xocl_drm *drm_p, struct drm_xocl_alloc_cma_info *cma_info)
+{
+	int err = 0, i = 0;
+	size_t page_sz = cma_info->page_sz;
+
+	mutex_lock(&drm_p->mm_lock);
+
+	if (cma_info->reserve) {
+		if (DRM_XOCL_CMA_CHUNK_MAX < cma_info->nr_page) {
+			err = -EINVAL;
+			goto done;
+		}
+		for (i = 0; i < cma_info->nr_page; ++i) {
+			err = xocl_cma_chunk_reserve(drm_p, cma_info->user_addr[i], i, page_sz);
+			if (err)
+				goto done;
+
+		}
+	} else {
+		xocl_cma_chunks_free_all(drm_p);
+	}
+
+done:
+	if (err)
+		xocl_cma_chunks_free_all(drm_p);
+
 	mutex_unlock(&drm_p->mm_lock);
 	return err;
 }

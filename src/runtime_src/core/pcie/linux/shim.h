@@ -90,6 +90,7 @@ public:
     static shim *handleCheck(void * handle);
     int resetDevice(xclResetKind kind);
     int p2pEnable(bool enable, bool force);
+    int cmaEnable(bool enable, uint64_t size, uint64_t num, bool force);
     bool xclLockDevice();
     bool xclUnlockDevice();
     int xclReClock2(unsigned short region, const unsigned short *targetFreqMHz);

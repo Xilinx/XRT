@@ -109,6 +109,14 @@ enum p2pcommand {
     P2P_DISABLE,
     P2P_VALIDATE,
 };
+enum cmacommand {
+    CMA_ENABLE = 0x0,
+    CMA_DISABLE,
+    CMA_VALIDATE,
+    CMA_SIZE_1G,
+    CMA_SIZE_2M,
+    CMA_NUM,
+};
 
 static const std::pair<std::string, command> map_pairs[] = {
     std::make_pair("program", PROGRAM),
@@ -1681,6 +1689,7 @@ public:
 
     int reset(xclResetKind kind);
     int setP2p(bool enable, bool force);
+    int setCma(bool enable, uint64_t sz, uint64_t num, bool force);
     int testP2p(void);
     int testM2m(void);
 
@@ -1707,6 +1716,7 @@ int xclReset(int argc, char *argv[]);
 int xclValidate(int argc, char *argv[]);
 std::unique_ptr<xcldev::device> xclGetDevice(unsigned index);
 int xclP2p(int argc, char *argv[]);
+int xclCma(int argc, char *argv[]);
 } // end namespace xcldev
 
 #endif /* XBUTIL_H */

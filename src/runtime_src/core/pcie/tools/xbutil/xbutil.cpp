@@ -220,6 +220,8 @@ int main(int argc, char *argv[])
         return xcldev::xclReset(argc, argv);
     } else if( std::strcmp( argv[1], "p2p" ) == 0 ) {
         return xcldev::xclP2p(argc, argv);
+    } else if( std::strcmp( argv[1], "cma" ) == 0 ) {
+        return xcldev::xclCma(argc, argv);
     }
     optind--;
 
@@ -1788,6 +1790,99 @@ int xcldev::xclP2p(int argc, char *argv[])
         std::cout << "P2P is disabled" << std::endl;
     } else if (ret)
         std::cout << "ERROR: " << strerror(std::abs(ret)) << std::endl;
+
+    return ret;
+}
+
+
+
+int xcldev::device::setCma(bool enable, uint64_t sz, uint64_t num, bool force)
+{
+    return xclCmaEnable(m_handle, enable, sz, num, force);
+}
+
+int xcldev::xclCma(int argc, char *argv[])
+{
+    int c;
+    unsigned index = 0;
+    int cma_enable = -1;
+    uint64_t huge_page_sz = 0x40000000;
+    uint64_t nr_page = 1;
+    bool root = ((getuid() == 0) || (geteuid() == 0));
+    const std::string usage("Options: [-d index] --[enable|disable|validate] --[1G|2M]");
+    static struct option long_options[] = {
+        {"enable", no_argument, 0, xcldev::CMA_ENABLE},
+        {"disable", no_argument, 0, xcldev::CMA_DISABLE},
+        {"1G", no_argument, 0, xcldev::CMA_SIZE_1G},
+        {"2M", no_argument, 0, xcldev::CMA_SIZE_2M},
+        {"num", required_argument, 0, xcldev::CMA_NUM},
+        {0, 0, 0, 0}
+    };
+    int long_index, ret;
+    const char* short_options = "d:f"; //don't add numbers
+    const char* exe = argv[ 0 ];
+    bool force = false;
+
+    while ((c = getopt_long(argc, argv, short_options, long_options,
+        &long_index)) != -1) {
+        switch (c) {
+        case 'd':
+            ret = str2index(optarg, index);
+            if (ret != 0)
+                return ret;
+            break;
+        case 'f':
+            force = true;
+            break;
+        case xcldev::CMA_ENABLE:
+            cma_enable = 1;
+            break;
+        case xcldev::CMA_DISABLE:
+            cma_enable = 0;
+            break;
+        case xcldev::CMA_SIZE_1G:
+            huge_page_sz = 0x40000000;
+            break;
+        case xcldev::CMA_SIZE_2M:
+            huge_page_sz = 0x200000;
+            break;
+        case xcldev::CMA_NUM:
+            nr_page = atoi(optarg);
+            break;
+        default:
+            xcldev::printHelp(exe);
+            return 1;
+        }
+    }
+
+    std::unique_ptr<device> d = xclGetDevice(index);
+    if (!d)
+        return -EINVAL;
+
+    if (cma_enable == -1) {
+        std::cerr << usage << std::endl;
+        return -EINVAL;
+    }
+
+    if (!root) {
+        std::cout << "ERROR: root privileges required." << std::endl;
+        return -EPERM;
+    }
+
+    ret = d->setCma(cma_enable, huge_page_sz, nr_page, force);
+    if (ret == ENOMEM) {
+        std::cout << "ERROR: No enough huge page." << std::endl;
+        std::cout << "Please check grub settings" << std::endl;
+    } else if (ret == EINVAL) {
+        std::cout << "ERROR: Invalid huge page." << std::endl;
+    } else if (ret == ENXIO) {
+        std::cout << "ERROR: Huge page is not supported on this platform"
+            << std::endl;
+    } else if (!ret) {
+        std::cout << "xbutil cma done successfully" << std::endl;
+    } else if (ret) {
+        std::cout << "ERROR: " << strerror(std::abs(ret)) << std::endl;
+    }
 
     return ret;
 }

@@ -743,6 +743,62 @@ int shim::p2pEnable(bool enable, bool force)
     return p2p_enable;
 }
 
+int shim::cmaEnable(bool enable, uint64_t size, uint64_t num, bool force)
+{
+    const std::string input = "1\n";
+    std::string err;
+    int ret = 0;
+    uint64_t i = 0;
+    void *addr_local = NULL;
+    uint32_t hugepage_flag = 0;
+
+    if (enable) {
+
+        drm_xocl_alloc_cma_info cma_info;
+        cma_info.page_sz = size;
+        cma_info.nr_page = num;
+        cma_info.reserve = true;
+
+        if (num > 4 || num == 0)
+            return -EINVAL;
+
+        if (size == (1 << 30)) 
+            hugepage_flag = 0x1e;
+        else if (size == (2 << 20))
+            hugepage_flag = 0x15;
+
+        if (!hugepage_flag)
+            return -EINVAL;
+
+        for ( i = 0; i < num; ++i ) {
+            addr_local = mmap(0x0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | hugepage_flag << MAP_HUGE_SHIFT, 0, 0);
+            if (addr_local == MAP_FAILED) {
+                std::cout<<"Failed to mmap"<<std::endl;
+                ret = -ENOMEM;
+                break;
+            }
+            cma_info.user_addr[i] = (uint64_t)addr_local;
+        }
+        if (!ret) {
+            ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_ALLOC_CMA, &cma_info);
+            if (ret)
+                ret = -errno;
+        }
+        if (ret) {
+            for (i = 0; i < num; ++i) {
+                if (cma_info.user_addr[i])
+                    munmap((void*)cma_info.user_addr[i], size);
+            }
+        }
+
+    }
+    else {
+        drm_xocl_alloc_cma_info cma_info = {{0}, 0, 0, false};
+        ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_ALLOC_CMA, &cma_info);
+    }
+
+    return ret;
+}
 /*
  * xclLockDevice()
  */
@@ -1867,6 +1923,12 @@ int xclP2pEnable(xclDeviceHandle handle, bool enable, bool force)
 {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->p2pEnable(enable, force) : -ENODEV;
+}
+
+int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t sz, uint64_t num, bool force)
+{
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
+    return drv ? drv->cmaEnable(enable, sz, num, force) : -ENODEV;
 }
 
 int xclBootFPGA(xclDeviceHandle handle)

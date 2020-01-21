@@ -153,6 +153,8 @@ enum drm_xocl_ops {
 	DRM_XOCL_HOT_RESET,
 	/* Reclock through userpf*/
 	DRM_XOCL_RECLOCK,
+	/* Pre-Alloc CMA through userpf*/
+	DRM_XOCL_ALLOC_CMA,
 	DRM_XOCL_NUM_IOCTLS
 };
 
@@ -173,7 +175,9 @@ enum drm_xocl_sync_bo_dir {
 #define DRM_XOCL_CTX_FLAG_EXCLUSIVE (0x1)
 
 
-#define DRM_XOCL_NUM_SUPPORTED_CLOCKS 4
+#define DRM_XOCL_NUM_SUPPORTED_CLOCKS	4
+
+#define DRM_XOCL_CMA_CHUNK_MAX		4
 /**
  * struct drm_xocl_create_bo - Create buffer object
  * used with DRM_IOCTL_XOCL_CREATE_BO ioctl
@@ -462,6 +466,14 @@ struct drm_xocl_reclock_info {
 	unsigned short ocl_target_freq[DRM_XOCL_NUM_SUPPORTED_CLOCKS];
 };
 
+
+struct drm_xocl_alloc_cma_info {
+	uint64_t user_addr[DRM_XOCL_CMA_CHUNK_MAX];
+	uint64_t page_sz;
+	uint64_t nr_page;
+	bool	 reserve;
+};
+
 /*
  * Core ioctls numbers
  */
@@ -469,6 +481,7 @@ struct drm_xocl_reclock_info {
 	DRM_IO(DRM_COMMAND_BASE + DRM_XOCL_##cmd)
 #define	XOCL_IOC_ARG(cmd, type)	\
 	DRM_IOWR(DRM_COMMAND_BASE + DRM_XOCL_##cmd, struct drm_xocl_##type)
+
 #define	DRM_IOCTL_XOCL_CREATE_BO	XOCL_IOC_ARG(CREATE_BO, create_bo)
 #define	DRM_IOCTL_XOCL_USERPTR_BO	XOCL_IOC_ARG(USERPTR_BO, userptr_bo)
 #define	DRM_IOCTL_XOCL_MAP_BO		XOCL_IOC_ARG(MAP_BO, map_bo)
@@ -487,5 +500,5 @@ struct drm_xocl_reclock_info {
 #define	DRM_IOCTL_XOCL_USER_INTR	XOCL_IOC_ARG(USER_INTR, user_intr)
 #define	DRM_IOCTL_XOCL_HOT_RESET	XOCL_IOC(HOT_RESET)
 #define	DRM_IOCTL_XOCL_RECLOCK		XOCL_IOC_ARG(RECLOCK, reclock_info)
-
+#define	DRM_IOCTL_XOCL_ALLOC_CMA	XOCL_IOC_ARG(ALLOC_CMA, alloc_cma_info)
 #endif
