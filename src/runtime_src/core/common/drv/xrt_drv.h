@@ -27,4 +27,23 @@
 #define XRT_DRV_BO_USER_ALLOC	(1 << 25)
 #define XRT_DRV_BO_CMA		(1 << 24)
 #define XRT_DRV_BO_CACHEABLE	(1 << 23)
+
+#define	XRT_PDI_PKT_STATUS_IDLE		0
+#define	XRT_PDI_PKT_STATUS_NEW		1
+#define	XRT_PDI_PKT_STATUS_DONE		2
+#define	XRT_PDI_PKT_STATUS_FAIL		3
+
+#define	XRT_PDI_PKT_FLAGS_LAST		(1 << 0)
+
+struct pdi_packet {
+	union {
+		struct {
+			u8	pkt_status;
+			u8	pkt_flags;
+			u16	pkt_size;
+		};
+		u32 header;
+	};
+} __packed;
+
 #endif

@@ -17,6 +17,7 @@
 #ifndef xrt_util_debug_h_
 #define xrt_util_debug_h_
 
+#include "xrt/config.h"
 #include "time.h"
 #include <ostream>
 #include <iomanip>
@@ -60,6 +61,7 @@ void debug(std::ostream& ostr, T&& t, Args&&... args)
 /**
  * Format debug print to stdout
  */
+XRT_EXPORT
 void
 debugf(const char* format,...);
 

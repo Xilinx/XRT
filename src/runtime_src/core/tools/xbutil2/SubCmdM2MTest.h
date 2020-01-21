@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,10 +17,14 @@
 #ifndef __SubCmdM2MTest_h_
 #define __SubCmdM2MTest_h_
 
-// Please keep eternal include file dependencies to a minimum
-#include <vector>
-#include <string>
-  
-int subCmdM2MTest(const std::vector<std::string> &_options);
+#include "tools/common/SubCmd.h"
+
+class SubCmdM2MTest : public SubCmd {
+ public:
+  virtual void execute(const SubCmdOptions &_options) const;
+
+ public:
+  SubCmdM2MTest(bool _isHidden, bool _isDepricated, bool _isPreliminary);
+};
 
 #endif

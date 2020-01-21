@@ -103,7 +103,7 @@ enum FeatureBitMask {
 	/**  ------ Bit 8 unused **/
 	, DEBUG_MASK	       =   0x000000000000FF00	    /* bits 9 through 16  : 8 bits for DebugType */
 	, PEER_TO_PEER	       =   0x0000000000010000	    /* bits 17	: Bar 2 is a peer to peer bar*/
-	, UUID		       =   0x0000000000020000	    /* bits 18	: UUID enabled. uuid[16] field is valid*/
+	, FBM_UUID		       =   0x0000000000020000	    /* bits 18	: UUID enabled. uuid[16] field is valid*/
 	, HBM		       =   0x0000000000040000	    /* bits 19	: Device has HBM's. HBMCount/Size are valid*/
 	, CDMA		       =   0x0000000000080000	    /* bits 21	: Device has CDMA*/
 	, QDMA		       =   0x0000000000100000	    /* bits 20	: Device has QDMA*/

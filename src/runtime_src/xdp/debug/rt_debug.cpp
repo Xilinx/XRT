@@ -14,6 +14,8 @@
  * under the License.
  */
 
+#define XDP_SOURCE
+
 #include "rt_debug.h"
 #include "xdp/rt_singleton.h"
 #include "xrt/util/message.h"

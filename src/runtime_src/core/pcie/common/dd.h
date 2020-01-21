@@ -20,6 +20,7 @@
 #define XRT_DD_H_
 
 #include <string>
+#include <climits>
 
 namespace dd {
 
@@ -38,8 +39,8 @@ struct ddArgs_t {
     int blockSize = defaultBS;
     e_direction dir;
     int count = -1;
-    int skip = -1;
-    int seek = -1;
+    uint64_t skip = ULLONG_MAX;
+    uint64_t seek = ULLONG_MAX;
 };
 /*
  * parse_dd_options

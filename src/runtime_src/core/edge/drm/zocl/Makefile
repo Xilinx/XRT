@@ -13,6 +13,8 @@ zocl-y := \
 	zocl_dma.o \
 	zocl_cu.o \
 	zocl_mailbox.o \
+	zocl_ov_sysfs.o \
+	zocl_ospi_versal.o \
 	zocl_xclbin.o \
 	zocl_sk.o
 

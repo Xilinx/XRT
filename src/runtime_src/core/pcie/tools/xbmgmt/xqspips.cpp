@@ -218,10 +218,16 @@ XQSPIPS_Flasher::XQSPIPS_Flasher(std::shared_ptr<pcidev::pci_device> dev)
 {
     std::string err;
     std::string typeStr;
+    std::string baroffStr = "";
 
     mDev = dev;
     mTxBytes = 0;
     mRxBytes = 0;
+    flash_base = FLASH_BASE;
+
+    mDev->sysfs_get("flash", "bar_off", err, baroffStr);
+    if (!baroffStr.empty())
+	flash_base = std::strtoull(baroffStr.c_str(), nullptr, 10);
 
     // maybe initialized QSPI here
     if (typeStr.empty())
@@ -283,7 +289,7 @@ void XQSPIPS_Flasher::clearBuffers(unsigned size)
 uint32_t XQSPIPS_Flasher::readReg(unsigned RegOffset)
 {
     unsigned value;
-    int status = mDev->pcieBarRead(FLASH_BASE + RegOffset, &value, 4);
+    int status = mDev->pcieBarRead(flash_base + RegOffset, &value, 4);
     if(status != 0) {
         assert(0);
         std::cout << "read reg ERROR" << std::endl;
@@ -295,7 +301,7 @@ uint32_t XQSPIPS_Flasher::readReg(unsigned RegOffset)
 
 int XQSPIPS_Flasher::writeReg(unsigned RegOffset, unsigned value)
 {
-    int status = mDev->pcieBarWrite(FLASH_BASE + RegOffset, &value, 4);
+    int status = mDev->pcieBarWrite(flash_base + RegOffset, &value, 4);
     if(status != 0) {
         assert(0);
         std::cout << "write reg ERROR " << std::endl;

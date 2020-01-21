@@ -694,7 +694,7 @@ public:
     int readSensors( void ) const
     {
         // board info
-        std::string vendor, device, subsystem, subvendor, xmc_ver,
+        std::string vendor, device, subsystem, subvendor, xmc_ver, xmc_oem_id,
             ser_num, bmc_ver, idcode, fpga, dna, errmsg, max_power;
         int ddr_size = 0, ddr_count = 0, pcie_speed = 0, pcie_width = 0, p2p_enabled = 0;
         std::vector<std::string> clock_freqs;
@@ -707,6 +707,7 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get( "", "subsystem_device",           errmsg, subsystem );
         pcidev::get_dev(m_idx)->sysfs_get( "", "subsystem_vendor",           errmsg, subvendor );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "version",                 errmsg, xmc_ver );
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_oem_id",              errmsg, xmc_oem_id );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "serial_num",              errmsg, ser_num );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "max_power",               errmsg, max_power );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "bmc_ver",                 errmsg, bmc_ver );
@@ -727,6 +728,7 @@ public:
         sensor_tree::put( "board.info.subdevice",      subsystem );
         sensor_tree::put( "board.info.subvendor",      subvendor );
         sensor_tree::put( "board.info.xmcversion",     xmc_ver );
+        sensor_tree::put( "board.info.xmc_oem_id",     xmc_oem_id );
         sensor_tree::put( "board.info.serial_number",  ser_num );
         sensor_tree::put( "board.info.max_power",      lvl2PowerStr(max_power.empty() ? UINT_MAX : stoi(max_power)) );
         sensor_tree::put( "board.info.sc_version",     bmc_ver );
@@ -968,24 +970,26 @@ public:
         ostr << std::setw(16) << "PCIe"
              << std::setw(16) << "DMA chan(bidir)"
              << std::setw(16) << "MIG Calibrated"
-             << std::setw(16) << "P2P Enabled" << std::endl;
+             << std::setw(16) << "P2P Enabled"
+	     << std::setw(16) << "OEM ID" << std::endl;
         ostr << "GEN " << sensor_tree::get( "board.info.pcie_speed", -1 ) << "x" << std::setw(10) 
              << sensor_tree::get( "board.info.pcie_width", -1 ) << std::setw(16) << sensor_tree::get( "board.info.dma_threads", -1 )
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.mig_calibrated", "N/A" );
              switch(sensor_tree::get( "board.info.p2p_enabled", -1)) {
              case ENXIO:
-                      ostr << std::setw(16) << "N/A" << std::endl;
+                      ostr << std::setw(16) << "N/A";
                   break;
              case 0:
-                      ostr << std::setw(16) << "false" << std::endl;
+                      ostr << std::setw(16) << "false";
                   break;
              case 1:
-                      ostr << std::setw(16) << "true" << std::endl;
+                      ostr << std::setw(16) << "true";
                   break;
              case EBUSY:
-                      ostr << std::setw(16) << "no iomem" << std::endl;
+                      ostr << std::setw(16) << "no iomem";
                   break;
              }
+        ostr << std::setw(16) << sensor_tree::get<std::string>( "board.info.xmc_oem_id" , "N/A") << std::endl;
 
 	std::vector<std::string> interface_uuids;
 	std::vector<std::string> logic_uuids;
@@ -1381,9 +1385,6 @@ public:
         if (ddr_mem_size == -EINVAL)
             return -EINVAL;
 
-        if (verbose)
-            std::cout << "Total DDR size: " << ddr_mem_size << " MB\n";
-
         bool isAREDevice = false;
 
 
@@ -1408,6 +1409,20 @@ public:
             return -EINVAL;
         }
         const mem_topology *map = (mem_topology *)buf.data();
+
+        std::string hbm_mem_size = unitConvert(map->m_count*(map->m_mem_data[0].m_size << 10));
+        if (verbose) {
+            std::cout << "INFO: DMA test on [" << m_idx << "]: "<< name() << "\n";
+            if (ddr_mem_size == 0)
+                std::cout << "Total HBM size:" << hbm_mem_size << "\n";
+            else
+                std::cout << "Total DDR size: " << ddr_mem_size << " MB\n";
+            
+            if (blockSize < (1024*1024))
+                std::cout << "Buffer Size: " << blockSize/(1024) << " KB\n";
+            else
+                std::cout << "Buffer Size: " << blockSize/(1024*1024) << " MB\n";
+        }
 
         if(buf.empty() || map->m_count == 0) {
             std::cout << "WARNING: 'mem_topology' invalid, "
@@ -1604,8 +1619,8 @@ public:
      * --count : specify the number of blocks to copy
      *           OPTIONAL for fileToDevice; will copy the remainder of input file by default
      *           REQUIRED for deviceToFile
-     * --skip : specify the source offset (in block counts) OPTIONAL defaults to 0
-     * --seek : specify the destination offset (in block counts) OPTIONAL defaults to 0
+     * --skip : specify the source offset (in block counts)
+     * --seek : specify the destination offset (in block counts)
      */
     int do_dd(dd::ddArgs_t args )
     {
@@ -1673,22 +1688,6 @@ public:
         return xclGetDeviceInfo2(m_handle, &devinfo);
     }
 
-    // Currently only u50 uses xbtest
-    bool isXbTestPlatform(void) {
-        std::string name, errmsg;
-        pcidev::get_dev(m_idx)->sysfs_get( "rom", "VBNV", errmsg, name );
-
-        if (!errmsg.empty()) {
-            std::cout << errmsg << std::endl;
-            return false;
-        }
-
-        if( strstr( name.c_str(), "_u50_" ) ) { //This is U50 device
-            return true;
-        }
-        return false;
-    }
-
     int validate(bool quick);
 
     int reset(xclResetKind kind);
@@ -1701,15 +1700,6 @@ private:
     // all output from the run into "output"
     // Note: exe should assume index to be 0 without -d
     int runTestCase(const std::string& exe, const std::string& xclbin, std::string& output);
-
-    // Run a test case using the xbtest external program and collect
-    // all output from the run into "output"
-    // Note: test is the name of a json file containing the test description
-    int runXbTestCase(const std::string& test, std::string& output);
-
-    int bandwidthKernelXbtest(void);
-    int verifyKernelXbtest(void);
-    int dmaXbtest(void);
 
     int scVersionTest(void);
     int pcieLinkTest(void);

@@ -35,9 +35,6 @@
 
 namespace ZYNQ {
 
-// Forward declaration
-class ZYNQShimProfiling ;
-
 class ZYNQShim {
 
   static const int BUFFER_ALIGNMENT = 0x80; // TODO: UKP
@@ -45,9 +42,6 @@ public:
   ~ZYNQShim();
   ZYNQShim(unsigned index, const char *logfileName,
            xclVerbosityLevel verbosity);
-
-  // The entry of profiling functions
-  std::unique_ptr<ZYNQShimProfiling> profiling;
 
   int mapKernelControl(const std::vector<std::pair<uint64_t, size_t>>& offsets);
   void *getVirtAddressOfApture(xclAddressSpace space, const uint64_t phy_addr, uint64_t& offset);
@@ -83,6 +77,8 @@ public:
   int xclSKGetCmd(xclSKCmd *cmd);
   int xclSKCreate(unsigned int boHandle, uint32_t cu_idx);
   int xclSKReport(uint32_t cu_idx, xrt_scu_state state);
+
+  double xclGetDeviceClockFreqMHz();
 
   uint xclGetNumLiveProcesses();
 

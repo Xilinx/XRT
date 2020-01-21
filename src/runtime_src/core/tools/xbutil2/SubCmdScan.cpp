@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -30,22 +30,22 @@ namespace po = boost::program_options;
 #include "common/system.h"
 #include "common/device.h"
 
-// ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
-#include "tools/common/SubCmd.h"
-static const unsigned int registerResult =
-                    register_subcommand("scan",
-                                        "<add description>",
-                                        subCmdScan);
-// =============================================================================
+// ----- C L A S S   M E T H O D S -------------------------------------------
 
-// ------ L O C A L   F U N C T I O N S ---------------------------------------
+SubCmdScan::SubCmdScan(bool _isHidden, bool _isDepricated, bool _isPreliminary)
+    : SubCmd("scan", 
+             "<add short description>")
+{
+  const std::string longDescription = "<add long description>";
+  setLongDescription(longDescription);
+  setExampleSyntax("");
+  setIsHidden(_isHidden);
+  setIsDeprecated(_isDepricated);
+  setIsPreliminary(_isPreliminary);
+}
 
-
-
-
-// ------ F U N C T I O N S ---------------------------------------------------
-
-int subCmdScan(const std::vector<std::string> &_options)
+void
+SubCmdScan::execute(const SubCmdOptions& _options) const
 // Reference Command:  scan
 
 {
@@ -69,7 +69,7 @@ int subCmdScan(const std::vector<std::string> &_options)
     po::notify(vm); // Can throw
   } catch (po::error& e) {
     xrt_core::send_exception_message(e.what(), "XBUTIL");
-    std::cerr << scanDesc << std::endl;
+    printHelp(scanDesc);
 
     // Re-throw exception
     throw;
@@ -77,8 +77,8 @@ int subCmdScan(const std::vector<std::string> &_options)
 
   // Check to see if help was requested or no command was found
   if (help == true)  {
-    std::cout << scanDesc << std::endl;
-    return 0;
+    printHelp(scanDesc);
+    return;
   }
 
   // Collect
@@ -91,10 +91,20 @@ int subCmdScan(const std::vector<std::string> &_options)
   if (!devices || (*devices).size()==0)
     throw xrt_core::error("No devices found");
 
+  using query_request = xrt_core::device::QueryRequest;
+  std::cout << "INFO: Found total " << (*devices).size() << " card(s), " << "TBD" << " are usable.\n";
   for (auto& device : *devices) {
-    std::cout << "[" << device.second.get<std::string>("device_id") << "] <board TBD> ...\n";
-    // populate with  same output as old xbutil
-  }
+    auto device_id = device.second.get<unsigned int>("device_id", std::numeric_limits<unsigned int>::max());
+    auto udev = xrt_core::get_userpf_device(device_id);
+    auto vbnv = xrt_core::query_device<std::string>(udev, query_request::QR_ROM_VBNV);
+    std::cout << "[" << device_id << "]: " << vbnv << "\n";
+#if 0
+    dev->read_ready_status(_pt);
+    bool ready = _pt.get<bool>("ready", "false");
+    if (ready)
+      ready_count++;
 
-  return registerResult;
+    std::cout << "[" << device_id << "]: " << _pt.get<std::string>("vbnv", "N/A") << "(ts=" << _pt.get<std::string>("time_since_epoch", "N/A") << ")" << std::endl;
+#endif
+  }
 }

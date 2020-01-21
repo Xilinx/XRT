@@ -335,11 +335,6 @@ void xclGetProfilingSlotName(xclDeviceHandle handle, xclPerfMonType type, uint32
   return;
 }
 
-void xclWriteHostEvent(xclDeviceHandle handle, xclPerfMonEventType type, xclPerfMonEventID id)
-{
-  return;
-}
-
 unsigned xclProbe()
 {
   if(!xclemulation::isXclEmulationModeHwEmuOrSwEmu())

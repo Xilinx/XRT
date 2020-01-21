@@ -14,6 +14,8 @@
  * under the License.
  */
 
+#define XDP_SOURCE
+
 #include "run_summary.h"
 
 #include "xdp/profile/writer/base_profile.h"

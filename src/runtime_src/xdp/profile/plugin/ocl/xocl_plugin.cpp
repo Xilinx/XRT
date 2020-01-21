@@ -14,11 +14,11 @@
  * under the License.
  */
 
+#define XDP_SOURCE
+
 #include "xocl_plugin.h"
 #include "xdp/profile/writer/base_profile.h"
 #include "xdp/profile/core/rt_profile.h"
-
-#include "core/common/t_time.h"
 
 #ifdef _WIN32
 #pragma warning (disable : 4244)
@@ -41,8 +41,8 @@ namespace xdp {
   // **********
   double XoclPlugin::getTraceTime()
   {
-    // Get trace time from XRT
-    auto nsec = xrt_core::time_ns();
+    // Everything in xocl layer should use this API
+    auto nsec = xocl::time_ns();
     return getTimestampMsec(nsec);
   }
 

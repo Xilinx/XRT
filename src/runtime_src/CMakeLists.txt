@@ -13,16 +13,7 @@ include_directories(
   ${BOOST_SYSTEM_INCLUDE_DIRS}
   )
 
-set(OPENCL_SRC "")
-
-
-add_library(xilinxopencl SHARED ${OPENCL_SRC}
-  $<TARGET_OBJECTS:xocl>
-  $<TARGET_OBJECTS:xrt>
-  $<TARGET_OBJECTS:xclbin>
-  )
-
-add_library(oclxdp SHARED ${OPENCL_SRC}
+add_library(oclxdp SHARED
   $<TARGET_OBJECTS:xdpobj>
   )
 add_dependencies(oclxdp xdp xilinxopencl)
@@ -32,6 +23,12 @@ add_library(xdp_hal_plugin SHARED
   )
 
 add_dependencies(xdp_hal_plugin xdp)
+
+add_library(xdp_hal_api_interface_plugin SHARED
+  $<TARGET_OBJECTS:xdp_hal_api_interface_plugin_obj>
+  )
+
+add_dependencies(xdp_hal_api_interface_plugin xdp)
 
 option(XOCL_VERBOSE "Enable xocl verbosity" OFF)
 option(XRT_VERBOSE "Enable xrt verbosity" OFF)
@@ -44,7 +41,6 @@ if(XRT_VERBOSE)
   add_compile_options("-DXRT_VERBOSE")
 endif()
 
-set_target_properties(xilinxopencl PROPERTIES LINKER_LANGUAGE CXX)
 add_compile_options("-fPIC")
 
 # TODO CL_TARGET_OPENCL_VERSION is not defined..
@@ -85,8 +81,12 @@ target_link_libraries(oclxdp
  )
 
 target_link_libraries(xdp_hal_plugin xdp)
+target_link_libraries(xdp_hal_api_interface_plugin xdp)
 
 set_target_properties(xdp_hal_plugin PROPERTIES VERSION ${XRT_VERSION_STRING}
+  SOVERSION ${XRT_SOVERSION})
+
+set_target_properties(xdp_hal_api_interface_plugin PROPERTIES VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})
 
 set_target_properties(oclxdp PROPERTIES VERSION ${XRT_VERSION_STRING}
@@ -95,18 +95,7 @@ set_target_properties(oclxdp PROPERTIES VERSION ${XRT_VERSION_STRING}
 set_target_properties(xdp PROPERTIES VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})
 
-target_link_libraries(xilinxopencl
-  xrt_coreutil
-  ${Boost_FILESYSTEM_LIBRARY}
-  ${Boost_SYSTEM_LIBRARY}
-  dl
-  pthread
-  crypt
-  uuid
-  rt
-  )
-
-install (TARGETS xilinxopencl oclxdp xdp_hal_plugin LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
+install (TARGETS oclxdp xdp_hal_plugin xdp_hal_api_interface_plugin LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
 
 add_subdirectory(core)
 

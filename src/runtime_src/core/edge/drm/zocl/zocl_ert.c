@@ -106,7 +106,7 @@ ert_mpsoc_next(struct zocl_ert_dev *ert, struct ert_packet *pkg, int *idx_ret)
 		cq_status[3] = ioread32(ert_hw + ERT_CQ_STATUS_REG3);
 	} else {
 		/* ERT mode is only for 64 bits system */
-	  	slot_info = ((u64)pkg - (u64)ert->cq_ioremap) ;
+		slot_info = ((u64)pkg - (u64)ert->cq_ioremap);
 		do_div(slot_info,slot_sz);
 		slot_idx = slot_info;
 	}
@@ -197,12 +197,26 @@ ert_versal_notify_host(struct zocl_ert_dev *ert, int slot_idx)
 	}
 }
 
+static void
+update_cmd(struct zocl_ert_dev *ert, int idx, void *data, int sz)
+{
+	struct ert_packet *pkg;
+	char *ert_hw = ert->hw_ioremap;
+	int slot_sz;
+
+	slot_sz = ioread32(ert_hw + ERT_CQ_SLOT_SIZE_REG) * 4;
+
+	pkg = ert->cq_ioremap + idx * slot_sz;
+	memcpy_toio(pkg->data, data, sz);
+}
+
 static struct zocl_ert_ops mpsoc_ops = {
 	.init         = ert_mpsoc_init,
 	.fini         = ert_mpsoc_fini,
 	.config       = ert_mpsoc_config,
 	.get_next_cmd = ert_mpsoc_next,
 	.notify_host  = ert_mpsoc_notify_host,
+	.update_cmd   = update_cmd,
 };
 
 static struct zocl_ert_ops versal_ops = {
@@ -211,6 +225,7 @@ static struct zocl_ert_ops versal_ops = {
 	.config       = ert_versal_config,
 	.get_next_cmd = ert_versal_next,
 	.notify_host  = ert_versal_notify_host,
+	.update_cmd   = update_cmd,
 };
 
 static const struct zocl_ert_info mpsoc_ert_info = {

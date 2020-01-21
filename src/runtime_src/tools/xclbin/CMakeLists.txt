@@ -109,6 +109,7 @@ file(GLOB XCLBINUTIL_FILES
   "SectionEmulationData.cxx"
   "SectionSystemMetadata.cxx"
   "SectionSoftKernel.cxx"
+  "SectionFlash.cxx"
   "DTC.cxx"
   "DTCStringsBlock.cxx"
   "FDTNode.cxx"
@@ -183,7 +184,7 @@ install (TARGETS xclbinutil RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
 # -----------------------------------------------------------------------------
 
 if (WIN32)
-  set(GTEST_ROOT "C:/XRT/libs/gtest")
+  set(GTEST_ROOT "C:/Xilinx/XRT/ext")
 endif()
 
 find_package(GTest)

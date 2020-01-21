@@ -24,12 +24,6 @@ namespace xrt_core {
 class device_linux : public device_pcie
 {
 public:
-  struct SysDevEntry {
-    const std::string sSubDevice;
-    const std::string sEntry;
-  };
-  const SysDevEntry & get_sysdev_entry(QueryRequest qr) const;
-
   device_linux(id_type device_id, bool user);
 
   // query functions
@@ -39,11 +33,6 @@ public:
   virtual void read(uint64_t addr, void* buf, uint64_t len) const;
   virtual void write(uint64_t addr, const void* buf, uint64_t len) const;
 
-  //flash functions
-  virtual void auto_flash(const std::string& shell, const std::string& id, bool force) const;
-  virtual void reset_shell() const;
-  virtual void update_shell(const std::string& flashType, const std::string& primary, const std::string& secondary) const;
-  virtual void update_SC(const std::string& file) const;
 };
 }
 

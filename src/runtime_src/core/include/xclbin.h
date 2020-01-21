@@ -139,7 +139,8 @@ extern "C" {
         PARTITION_METADATA,
         EMULATION_DATA,
         SYSTEM_METADATA,
-        SOFT_KERNEL
+        SOFT_KERNEL,
+        ASK_FLASH
     };
 
     enum MEM_TYPE {
@@ -397,6 +398,31 @@ extern "C" {
         uint32_t mpo_symbol_name;  // Symbol name
         uint32_t m_num_instances;  // Number of instances
         uint8_t padding[36];       // Reserved for future use
+        uint8_t reservedExt[16];   // Reserved for future extended data
+    };
+
+    enum FLASH_TYPE
+    {
+        FLT_UNKNOWN = 0,
+        FLT_BIN_PRIMARY
+    };
+
+    struct flash {                 /* flash data section  */
+        // Prefix Syntax:
+        //   mpo - member, pointer, offset  
+        //     This variable represents a zero terminated string 
+        //     that is offseted from the beginning of the section. 
+        //   
+        //     The pointer to access the string is initialized as follows:
+        //     char * pCharString = (address_of_section) + (mpo value)
+        uint16_t m_flash_type;     // ENUM FLASH_TYPE
+        uint8_t padding[2];        // Alignment buffer
+        uint32_t m_image_offset;   // Image offset
+        uint32_t m_image_size;     // Image size
+        uint32_t mpo_name;         // Name of the flash image 
+        uint32_t mpo_version;      // Version
+        uint32_t mpo_md5_value;    // MD5 checksum
+        uint8_t reserved[32];      // Reserved for future use
         uint8_t reservedExt[16];   // Reserved for future extended data
     };
 

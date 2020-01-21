@@ -28,6 +28,7 @@
 #include "core/common/AlignedAllocator.h"
 
 #include "plugin/xdp/hal_profile.h"
+#include "plugin/xdp/hal_api_interface.h"
 
 
 #include "xclbin.h"
@@ -232,8 +233,6 @@ void shim::init(unsigned index, const char *logfileName,
     // Class-level defaults: mIsDebugIpLayoutRead = mIsDeviceProfiling = false
     mDevUserName = mDev->sysfs_name;
     mMemoryProfilingNumberSlots = 0;
-    mPerfMonFifoCtrlBaseAddress = 0x00;
-    mPerfMonFifoReadBaseAddress = 0x00;
 }
 
 /*
@@ -834,9 +833,6 @@ int shim::xclLoadXclBin(const xclBin *buffer)
         }
         xrt_logmsg(XRT_ERROR, "See dmesg log for details. err=%d", ret);
     }
-
-    mIsDebugIpLayoutRead = false;
-
     return ret;
 }
 
@@ -1527,6 +1523,65 @@ int shim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamp
     return size;
 }
 
+// Get the device clock frequency (in MHz)
+double shim::xclGetDeviceClockFreqMHz()
+{
+  xclGetDeviceInfo2(&mDeviceInfo);
+  unsigned short clockFreq = mDeviceInfo.mOCLFrequency[0];
+  if (clockFreq == 0)
+    clockFreq = 300;
+
+  //if (mLogStream.is_open())
+  //  mLogStream << __func__ << ": clock freq = " << clockFreq << std::endl;
+  return ((double)clockFreq);
+}
+
+// Get the maximum bandwidth for host reads from the device (in MB/sec)
+// NOTE: for now, set to: (256/8 bytes) * 300 MHz = 9600 MBps
+double shim::xclGetReadMaxBandwidthMBps()
+{
+  return 9600.0;
+}
+
+// Get the maximum bandwidth for host writes to the device (in MB/sec)
+// NOTE: for now, set to: (256/8 bytes) * 300 MHz = 9600 MBps
+double shim::xclGetWriteMaxBandwidthMBps() {
+  return 9600.0;
+}
+
+int shim::xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size)
+{
+  auto dev = pcidev::get_dev(mBoardNumber);
+  std::string subdev_str = std::string(subdev);
+  std::string entry_str = std::string(entry);
+  if (mLogStream.is_open()) {
+    mLogStream << "Retrieving [sysfs root]";
+    mLogStream << subdev_str << "/" << entry_str;
+    mLogStream << std::endl;
+  }
+  std::string sysfsFullPath = dev->get_sysfs_path(subdev_str, entry_str);
+  strncpy(sysfsPath, sysfsFullPath.c_str(), size);
+  sysfsPath[size - 1] = '\0';
+  return 0;
+}
+
+int shim::xclGetDebugProfileDeviceInfo(xclDebugProfileDeviceInfo* info)
+{
+  auto dev = pcidev::get_dev(mBoardNumber);
+  uint16_t user_instance = dev->instance;
+  uint16_t nifd_instance = 0;
+  std::string device_name = std::string(DRIVER_NAME_ROOT) + std::string(DEVICE_PREFIX) + std::to_string(user_instance);
+  std::string nifd_name = std::string(DRIVER_NAME_ROOT) + std::string(NIFD_PREFIX) + std::to_string(nifd_instance);
+  info->device_type = DeviceType::XBB;
+  info->device_index = mBoardNumber;
+  info->user_instance = user_instance;
+  info->nifd_instance = nifd_instance;
+  strncpy(info->device_name, device_name.c_str(), MAX_NAME_LEN - 1);
+  strncpy(info->nifd_name, nifd_name.c_str(), MAX_NAME_LEN - 1);
+  info->device_name[MAX_NAME_LEN-1] = '\0';
+  info->nifd_name[MAX_NAME_LEN-1] = '\0';
+  return 0;
+}
 
 int shim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap)
 {
@@ -1651,6 +1706,10 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
+#ifdef ENABLE_HAL_PROFILING
+    if (ret != 0) return ret ;
+    LOAD_XCLBIN_CB ;
+#endif
     if (!ret) {
       ret = xrt_core::scheduler::init(handle, buffer);
       START_DEVICE_PROFILING_CB(handle);
@@ -1687,14 +1746,18 @@ int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, con
 
 size_t xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
 {
-//    WRITE_CB;
+#ifdef ENABLE_HAL_PROFILING
+  WRITE_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclWrite(space, offset, hostBuf, size) : -ENODEV;
 }
 
 size_t xclRead(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
 {
-//    READ_CB;
+#ifdef ENABLE_HAL_PROFILING
+  READ_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclRead(space, offset, hostBuf, size) : -ENODEV;
 }
@@ -1733,7 +1796,9 @@ unsigned int xclVersion ()
 
 unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned flags)
 {
-//    ALLOC_BO_CB;
+#ifdef ENABLE_HAL_PROFILING
+  ALLOC_BO_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclAllocBO(size, unused, flags) : -ENODEV;
 }
@@ -1745,7 +1810,9 @@ unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t siz
 }
 
 void xclFreeBO(xclDeviceHandle handle, unsigned int boHandle) {
-//    FREE_BO_CB;
+#ifdef ENABLE_HAL_PROFILING
+  FREE_BO_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     if (!drv) {
         return;
@@ -1755,21 +1822,27 @@ void xclFreeBO(xclDeviceHandle handle, unsigned int boHandle) {
 
 size_t xclWriteBO(xclDeviceHandle handle, unsigned int boHandle, const void *src, size_t size, size_t seek)
 {
-//    WRITE_BO_CB;
+#ifdef ENABLE_HAL_PROFILING
+  WRITE_BO_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclWriteBO(boHandle, src, size, seek) : -ENODEV;
 }
 
 size_t xclReadBO(xclDeviceHandle handle, unsigned int boHandle, void *dst, size_t size, size_t skip)
 {
-//    READ_BO_CB;
+#ifdef ENABLE_HAL_PROFILING
+  READ_BO_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclReadBO(boHandle, dst, size, skip) : -ENODEV;
 }
 
 void *xclMapBO(xclDeviceHandle handle, unsigned int boHandle, bool write)
 {
-//    MAP_BO_CB;
+#ifdef ENABLE_HAL_PROFILING
+  MAP_BO_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclMapBO(boHandle, write) : nullptr;
 }
@@ -1782,6 +1855,9 @@ int xclUnmapBO(xclDeviceHandle handle, unsigned int boHandle, void* addr)
 
 int xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset)
 {
+#ifdef ENABLE_HAL_PROFILING
+  SYNC_BO_CB ;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclSyncBO(boHandle, dir, size, offset) : -ENODEV;
 }
@@ -1851,14 +1927,18 @@ unsigned int xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
 
 ssize_t xclUnmgdPwrite(xclDeviceHandle handle, unsigned flags, const void *buf, size_t count, uint64_t offset)
 {
-//    UNMGD_PWRITE_CB;
+#ifdef ENABLE_HAL_PROFILING
+  UNMGD_PWRITE_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclUnmgdPwrite(flags, buf, count, offset) : -ENODEV;
 }
 
 ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf, size_t count, uint64_t offset)
 {
-//    UNMGD_PREAD_CB;
+#ifdef ENABLE_HAL_PROFILING
+  UNMGD_PREAD_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclUnmgdPread(flags, buf, count, offset) : -ENODEV;
 }
@@ -1972,6 +2052,11 @@ int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclR
         return drv ? drv->xclPollCompletion(min_compl, max_compl, comps, actual, timeout) : -ENODEV;
 }
 
+size_t xclGetDeviceTimestamp(xclDeviceHandle handle)
+{
+  return 0;
+}
+
 uint xclGetNumLiveProcesses(xclDeviceHandle handle)
 {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
@@ -2027,6 +2112,40 @@ int xclDestroyProfileResults(xclDeviceHandle handle, ProfileResults* results)
   int status = -1;
   DESTROY_PROFILE_RESULTS_CB(handle, results, status);
   return status;
+}
+
+double xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
+{
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
+  return drv ? drv->xclGetDeviceClockFreqMHz() : 0.0;
+}
+
+double xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
+  return drv ? drv->xclGetReadMaxBandwidthMBps() : 0.0;
+}
+
+
+double xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
+  return drv ? drv->xclGetWriteMaxBandwidthMBps() : 0.0;
+}
+
+int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev,
+                      const char* entry, char* sysfsPath, size_t size)
+{
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
+  if (!drv)
+    return -1;
+  return drv->xclGetSysfsPath(subdev, entry, sysfsPath, size);
+}
+
+int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* info)
+{
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
+  return drv ? drv->xclGetDebugProfileDeviceInfo(info) : -ENODEV;
 }
 
 int xclCuName2Index(xclDeviceHandle handle, const char *name, uint32_t *indexp)

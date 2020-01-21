@@ -240,6 +240,7 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro)
 	/* restart XMC/ERT */
 	xocl_mb_reset(lro);
 
+	lro->reset_requested = false;
 	xocl_thread_start(lro);
 
 	/* If the PCIe board has PS. This could take 50 seconds */
@@ -626,13 +627,6 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 		mgmt_err(lro, "Invalid PARTITION_METADATA");
 		goto failed;
 	}
-
-#if 0
-	/* temp support for lack of VBNV */
-	xocl_fdt_add_pair(lro, lro->core.fdt_blob, "vbnv",
-			bin_axlf->m_header.m_platformVBNV,
-			strlen(bin_axlf->m_header.m_platformVBNV) + 1);
-#endif
 
 	release_firmware(fw);
 	fw = NULL;

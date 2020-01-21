@@ -14,9 +14,16 @@
  * under the License.
  */
 
+// This file is delivered with core library (libxrt_core), see
+// core/pcie/windows/CMakeLists.txt.  To prevent compilation of this
+// file from importing symbols from libxrt_core we define this source
+// file to instead export with same macro as used in libxrt_core.
+#define XCL_DRIVER_DLL_EXPORT
+
 #include "system_windows.h"
 #include "device_windows.h"
 #include "gen/version.h"
+#include "core/common/time.h"
 #include <memory>
 #include <ctime>
 #include <windows.h>
@@ -101,8 +108,7 @@ get_os_info(boost::property_tree::ptree &pt)
   pt.put("version", value);
 
   pt.put("machine", getmachinename());
-  auto tnow = std::time(nullptr);
-  pt.put("now", std::ctime(&tnow));
+  pt.put("now", xrt_core::timestamp());
 }
 
 std::pair<device::id_type, device::id_type>

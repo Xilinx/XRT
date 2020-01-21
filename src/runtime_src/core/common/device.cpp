@@ -27,15 +27,15 @@ namespace xrt_core {
 
 static std::map<device::QueryRequest, device::QueryRequestEntry> sQueryTable =
 {
-  { device::QR_PCIE_VENDOR,               { "QR_PCIE_VENDOR",               "vendor",           &typeid(std::string), device::format_primative }},
-  { device::QR_PCIE_DEVICE,               { "QR_PCIE_DEVICE",               "device",           &typeid(std::string), device::format_primative }},
-  { device::QR_PCIE_SUBSYSTEM_VENDOR,     { "QR_PCIE_SUBSYSTEM_VENDOR",     "subsystem_vendor", &typeid(std::string), device::format_primative }},
-  { device::QR_PCIE_SUBSYSTEM_ID,         { "QR_PCIE_SUBSYSTEM_ID",         "subsystem_id",     &typeid(std::string), device::format_primative }},
+  { device::QR_PCIE_VENDOR,               { "QR_PCIE_VENDOR",               "vendor",           &typeid(std::string), device::format_hex }},
+  { device::QR_PCIE_DEVICE,               { "QR_PCIE_DEVICE",               "device",           &typeid(std::string), device::format_hex }},
+  { device::QR_PCIE_SUBSYSTEM_VENDOR,     { "QR_PCIE_SUBSYSTEM_VENDOR",     "subsystem_vendor", &typeid(std::string), device::format_hex }},
+  { device::QR_PCIE_SUBSYSTEM_ID,         { "QR_PCIE_SUBSYSTEM_ID",         "subsystem_id",     &typeid(std::string), device::format_hex }},
   { device::QR_PCIE_LINK_SPEED,           { "QR_PCIE_LINK_SPEED",           "link_speed",       &typeid(uint64_t),    device::format_primative }},
   { device::QR_PCIE_EXPRESS_LANE_WIDTH,   { "QR_PCIE_EXPRESS_LANE_WIDTH",   "width",            &typeid(uint64_t),    device::format_primative }},
 
   { device::QR_ROM_VBNV,                  { "QR_ROM_VBNV",                  "vbnv",             &typeid(std::string), device::format_primative }},
-  { device::OR_ROM_DDR_BANK_SIZE,         { "OR_ROM_DDR_BANK_SIZE",         "ddr_size_bytes",   &typeid(uint64_t),    device::format_hex_base2_shiftup30 }},
+  { device::QR_ROM_DDR_BANK_SIZE,         { "QR_ROM_DDR_BANK_SIZE",         "ddr_size_bytes",   &typeid(uint64_t),    device::format_hex_base2_shiftup30 }},
   { device::QR_ROM_DDR_BANK_COUNT_MAX,    { "QR_ROM_DDR_BANK_COUNT_MAX",    "widdr_countdth",   &typeid(uint64_t),    device::format_primative }},
   { device::QR_ROM_FPGA_NAME,             { "QR_ROM_FPGA_NAME",             "fpga_name",        &typeid(std::string), device::format_primative }},
   { device::QR_DMA_THREADS_RAW,           { "QR_DMA_THREADS_RAW",           "dma_threads",      &typeid(std::vector<std::string>),  device::format_primative }},
@@ -139,8 +139,11 @@ device::format_primative(const boost::any &_data)
 
   if (_data.type() == typeid(std::string)) {
     sPropertyValue = boost::any_cast<std::string>(_data);
-  } else if (_data.type() == typeid(uint64_t)) {
-    sPropertyValue = std::to_string(boost::any_cast<uint64_t>(_data));
+  }
+  else if (_data.type() == typeid(uint64_t)) {
+	  sPropertyValue = std::to_string(boost::any_cast<uint64_t>(_data));
+  } else if (_data.type() == typeid(uint16_t)) {
+	  sPropertyValue = std::to_string(boost::any_cast<uint16_t>(_data));
   } else if (_data.type() == typeid(bool)) {
     sPropertyValue = boost::any_cast<bool>(_data) ? "true" : "false";
   }
@@ -156,11 +159,13 @@ std::string
 device::format_hex(const boost::any & _data)
 {
   // Can we work with this data type?
-  if (_data.type() != typeid(uint64_t)) {
-    return format_primative(_data);
-  }
-
-  return boost::str( boost::format("0x%x") % boost::any_cast<uint64_t>(_data));
+  if (_data.type() == typeid(uint64_t))
+    return boost::str(boost::format("0x%x") % boost::any_cast<uint64_t>(_data));
+  if (_data.type() == typeid(uint16_t))
+    return boost::str(boost::format("0x%x") % boost::any_cast<uint16_t>(_data));
+  if (_data.type() == typeid(uint8_t))
+    return boost::str(boost::format("0x%x") % boost::any_cast<uint8_t>(_data));
+  return format_primative(_data);
 }
 
 template <typename T>
@@ -200,12 +205,19 @@ device::format_base10_shiftdown6(const boost::any &_data)
 std::string
 device::format_hex_base2_shiftup30(const boost::any &_data)
 {
-  if (_data.type() != typeid(uint64_t)) {
-    return format_primative(_data);
+  if (_data.type() == typeid(uint64_t)) {
+    boost::any modifiedValue = boost::any_cast<uint64_t>(_data) << 30;
+    return format_hex(modifiedValue);
   }
-
-  boost::any modifiedValue = boost::any_cast<uint64_t>(_data) << 30;
-  return format_hex(modifiedValue);
+  if (_data.type() == typeid(uint16_t)) {
+    boost::any modifiedValue = boost::any_cast<uint16_t>(_data) << 30;
+    return format_hex(modifiedValue);
+  }
+  if (_data.type() == typeid(uint8_t)) {
+    boost::any modifiedValue = boost::any_cast<uint8_t>(_data) << 30;
+    return format_hex(modifiedValue);
+  }
+  return format_primative(_data);
 }
 
 void
@@ -254,7 +266,7 @@ device::
 get_rom_info(boost::property_tree::ptree& pt) const
 {
   query_and_put(QR_ROM_VBNV, pt);
-  query_and_put(OR_ROM_DDR_BANK_SIZE, pt);
+  query_and_put(QR_ROM_DDR_BANK_SIZE, pt);
   query_and_put(QR_ROM_DDR_BANK_COUNT_MAX, pt);
   query_and_put(QR_ROM_FPGA_NAME, pt);
 }

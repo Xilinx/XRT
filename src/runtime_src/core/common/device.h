@@ -55,18 +55,29 @@ public:
       QR_PCIE_SUBSYSTEM_ID,
       QR_PCIE_LINK_SPEED,
       QR_PCIE_EXPRESS_LANE_WIDTH,
+      QR_PCIE_BDF_BUS,
+      QR_PCIE_BDF_DEVICE,
+      QR_PCIE_BDF_FUNCTION,
 
       QR_DMA_THREADS_RAW,
 
       QR_ROM_VBNV,
-      OR_ROM_DDR_BANK_SIZE,
+      QR_ROM_DDR_BANK_SIZE,
       QR_ROM_DDR_BANK_COUNT_MAX,
       QR_ROM_FPGA_NAME,
+      QR_ROM_RAW,
+      QR_ROM_UUID,
+      QR_ROM_TIME_SINCE_EPOCH,
+
+      QR_MEM_TOPOLOGY_RAW,
+      QR_IP_LAYOUT_RAW,
 
       QR_XMC_VERSION,
       QR_XMC_SERIAL_NUM,
       QR_XMC_MAX_POWER,
       QR_XMC_BMC_VERSION,
+      QR_XMC_STATUS,
+      QR_XMC_REG_BASE,
 
       QR_DNA_SERIAL_NUM,
       QR_CLOCK_FREQS,
@@ -84,6 +95,12 @@ public:
       QR_FAN_TRIGGER_CRITICAL_TEMP,
       QR_FAN_FAN_PRESENCE,
       QR_FAN_SPEED_RPM,
+
+      QR_DDR_TEMP_0,
+      QR_DDR_TEMP_1,
+      QR_DDR_TEMP_2,
+      QR_DDR_TEMP_3,
+      QR_HBM_TEMP,
 
       QR_CAGE_TEMP_0,
       QR_CAGE_TEMP_1,
@@ -122,7 +139,10 @@ public:
       QR_FIREWALL_TIME_SEC,
       QR_POWER_MICROWATTS,
 
-      QR_FLASH_BAR_OFFSET
+      QR_FLASH_BAR_OFFSET,
+      QR_IS_MFG,
+      QR_F_FLASH_TYPE,
+      QR_FLASH_TYPE
   };
 public:
 
@@ -182,12 +202,6 @@ public:
 
   virtual void read(uint64_t offset, void* buf, uint64_t len) const = 0;
   virtual void write(uint64_t offset, const void* buf, uint64_t len) const = 0;
-
-  //flash functions
-  virtual void auto_flash(const std::string& shell, const std::string& id, bool force) const = 0;
-  virtual void reset_shell() const = 0;
-  virtual void update_shell(const std::string& flashType, const std::string& primary, const std::string& secondary) const = 0;
-  virtual void update_SC(const std::string& file) const = 0;
 
   // Helper methods
   typedef std::string (*FORMAT_STRING_PTR)(const boost::any &);
@@ -268,7 +282,7 @@ invalid_query_value()
  */
 template <typename QueryType>
 static QueryType
-query_device(const std::shared_ptr<device>& device, device::QueryRequest qr)
+query_device(const device* device, device::QueryRequest qr)
 {
   boost::any ret = invalid_query_value<QueryType>();
   try {
@@ -277,6 +291,13 @@ query_device(const std::shared_ptr<device>& device, device::QueryRequest qr)
   catch (const no_such_query&) {
   }
   return boost::any_cast<QueryType>(ret);
+}
+
+template <typename QueryType>
+static QueryType
+query_device(const std::shared_ptr<device>& device, device::QueryRequest qr)
+{
+  return query_device<QueryType>(device.get(),qr);
 }
 
 } // xrt_core

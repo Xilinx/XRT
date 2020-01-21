@@ -27,9 +27,11 @@ namespace xdp {
   class JSONProfileWriter: public ProfileWriterI {
 
   public:
+    XDP_EXPORT
     JSONProfileWriter(XDPPluginI* Plugin,
                       const std::string& platformName,
                       const std::string& summaryFileName);
+    XDP_EXPORT
     ~JSONProfileWriter();
 
     virtual void writeSummary(RTProfile* profile);

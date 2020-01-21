@@ -22,7 +22,7 @@
 
 // Helper functions that can be used by all command handlers
 //
-void printHelp(void);
+void printHelp(bool printExpHelp);
 void printSubCmdHelp(const std::string& subCmd);
 bool canProceed(void);
 void sudoOrDie(void);
@@ -71,5 +71,9 @@ extern const char *subCmdConfigUsage;
 int nifdHandler(int argc, char *argv[]);
 extern const char *subCmdNifdDesc;
 extern const char *subCmdNifdUsage;
+
+int hotplugHandler(int argc, char *argv[]);
+extern const char *subCmdHotplugDesc;
+extern const char *subCmdHotplugUsage;
 
 #endif /* XBMGMT_H */

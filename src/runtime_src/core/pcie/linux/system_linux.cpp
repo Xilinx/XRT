@@ -18,12 +18,12 @@
 #include "device_linux.h"
 #include "gen/version.h"
 #include "scan.h"
+#include "core/common/time.h"
 
 #include <boost/property_tree/ini_parser.hpp>
 
 #include <fstream>
 #include <memory>
-#include <ctime>
 
 #include <sys/utsname.h>
 #include <gnu/libc-version.h>
@@ -103,8 +103,7 @@ get_os_info(boost::property_tree::ptree &pt)
       ifs.close();
   }
 
-  auto tnow = std::time(nullptr);
-  pt.put("now", std::ctime(&tnow));
+  pt.put("now", xrt_core::timestamp());
 }
 
 std::pair<device::id_type, device::id_type>
