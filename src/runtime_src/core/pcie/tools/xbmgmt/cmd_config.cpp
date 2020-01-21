@@ -37,10 +37,11 @@ static struct config {
 
 static const std::string configFile("/etc/msd.conf");
 
-enum configType {
+enum configs {
     CONFIG_SECURITY = 0,
     CONFIG_CLK_SCALING,
 };
+typedef configs configType;
 
 static int splitLine(std::string& line, std::string& key, std::string& value)
 {
@@ -241,8 +242,8 @@ static int show(int argc, char *argv[])
     return 0;
 }
 
-static void updateDevConf(std::shared_ptr<pcidev::pci_device>& dev,
-    const std::string lvl, int config_type)
+static void updateDevConf(pcidev::pci_device *dev,
+    const std::string lvl, configType config_type)
 {
     std::string errmsg;
 
@@ -270,7 +271,7 @@ static int device(int argc, char *argv[])
 {
     unsigned int index = UINT_MAX;
     std::string lvl;
-    int config_type = -1;
+    configType config_type = (configType)-1;
     const option opts[] = {
         { "card", required_argument, nullptr, '0' },
         { "security", required_argument, nullptr, '1' },
@@ -307,13 +308,13 @@ static int device(int argc, char *argv[])
 
     if (index != UINT_MAX) {
         auto dev = pcidev::get_dev(index, false);
-        updateDevConf(dev, lvl, config_type);
+        updateDevConf(dev.get(), lvl, config_type);
         return 0;
     }
 
     for (unsigned i = 0; i < pcidev::get_dev_total(false); i++) {
         auto dev = pcidev::get_dev(i, false);
-        updateDevConf(dev, lvl, config_type);
+        updateDevConf(dev.get(), lvl, config_type);
     }
 
     return 0;
