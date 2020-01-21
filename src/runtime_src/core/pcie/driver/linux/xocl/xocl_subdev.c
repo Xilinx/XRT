@@ -1371,3 +1371,29 @@ int xocl_subdev_create_prp(xdev_handle_t xdev)
 failed:
 	return ret;
 }
+
+void xocl_subdev_register(struct platform_device *pldev, void *ops)
+{
+	struct xocl_subdev *subdev;
+
+	subdev = xocl_subdev_lookup(pldev);
+	if (!subdev) {
+		xocl_err(&pldev->dev, "did not find subdev");
+		return;
+	}
+
+	subdev->ops = ops;
+}
+
+void xocl_subdev_unregister(struct platform_device *pldev)
+{
+	struct xocl_subdev *subdev;
+
+	subdev = xocl_subdev_lookup(pldev);
+	if (!subdev) {
+		xocl_err(&pldev->dev, "did not find subdev");
+		return;
+	}
+
+	subdev->ops = NULL;
+}
