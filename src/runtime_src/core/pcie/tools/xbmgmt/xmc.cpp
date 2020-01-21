@@ -503,7 +503,6 @@ bool XMC_Flasher::isXMCReady()
 
 bool XMC_Flasher::isBMCReady()
 {
-    bool bmcReady = true;
     unsigned int val;
     std::string errmsg;
 
@@ -515,7 +514,7 @@ bool XMC_Flasher::isBMCReady()
     }
 
     if (val) {
-        bmcReady = (BMC_MODE() == 0x1);
+        bool bmcReady = (BMC_MODE() == 0x1);
         if (!bmcReady) {
             xrt_core::ios_flags_restore format(std::cout);
             std::cout << "ERROR: SC is not ready: 0x" << std::hex
@@ -524,7 +523,7 @@ bool XMC_Flasher::isBMCReady()
         return bmcReady;
     }
 
-    return bmcReady;
+    return true;
 }
 
 static void tiTxtStreamToBin(std::istream& tiTxtStream,

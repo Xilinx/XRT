@@ -954,6 +954,32 @@ uint64_t xmc_get_power(struct platform_device *pdev, enum sensor_val_kind kind)
 	return val;
 }
 
+static void runtime_clk_scale_disable(struct xocl_xmc *xmc)
+{
+	u32 cntrl;
+
+	cntrl = READ_RUNTIME_CS(xmc, XMC_CLOCK_CONTROL_REG);
+	cntrl &= ~XMC_CLOCK_SCALING_EN_MASK;
+	WRITE_RUNTIME_CS(xmc, cntrl, XMC_CLOCK_CONTROL_REG);
+
+	cntrl = READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1);
+	cntrl &= ~(1 << 28);
+	WRITE_REG32(xmc, cntrl, XMC_HOST_NEW_FEATURE_REG1);
+}
+
+static void runtime_clk_scale_enable(struct xocl_xmc *xmc)
+{
+	u32 cntrl;
+
+	cntrl = READ_RUNTIME_CS(xmc, XMC_CLOCK_CONTROL_REG);
+	cntrl |= XMC_CLOCK_SCALING_EN;
+	WRITE_RUNTIME_CS(xmc, cntrl, XMC_CLOCK_CONTROL_REG);
+
+	cntrl = READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1);
+	cntrl |= (1 << 28);
+	WRITE_REG32(xmc, cntrl, XMC_HOST_NEW_FEATURE_REG1);
+}
+
 /*
  * Defining sysfs nodes for all sensor readings.
  */
@@ -1337,7 +1363,6 @@ static ssize_t scaling_enabled_store(struct device *dev,
 	struct device_attribute *da, const char *buf, size_t count)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
-	u32 val = 0, cntrl;
 
 	/* Check if clock scaling feature enabled */
 	if (!xmc->runtime_cs_enabled) {
@@ -1351,12 +1376,9 @@ static ssize_t scaling_enabled_store(struct device *dev,
 	}
 
 	if (strncmp(buf, "enable", strlen("enable")) == 0)
-		val = XMC_CLOCK_SCALING_EN;
-
-	cntrl = READ_RUNTIME_CS(xmc, XMC_CLOCK_CONTROL_REG);
-	cntrl &= ~XMC_CLOCK_SCALING_EN_MASK;
-	cntrl |= val;
-	WRITE_RUNTIME_CS(xmc, cntrl, XMC_CLOCK_CONTROL_REG);
+		runtime_clk_scale_enable(xmc);
+	else
+		runtime_clk_scale_disable(xmc);
 
 	return count;
 }
@@ -2666,7 +2688,7 @@ static int xmc_probe(struct platform_device *pdev)
 		if (xmc->base_addrs[IO_REG]) {
 			err = mgmt_sysfs_create_xmc_mini(pdev);
 			if (err)
-				goto failed;	
+				goto failed;
 			xmc->mini_sysfs_created = true;
 		} else {
 			xocl_err(&pdev->dev, "Empty resources");

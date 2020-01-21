@@ -159,10 +159,10 @@ static void showDevConf(std::shared_ptr<pcidev::pci_device>& dev)
     dev->sysfs_get("icap", "sec_level", errmsg, lvl, 0);
     if (!errmsg.empty()) {
         std::cout << "can't read security level from " << dev->sysfs_name <<
-            " : " << errmsg << std::endl;
+            " : " << errmsg << "\n";
     } else {
-        std::cout << dev->sysfs_name << ":" << std::endl;
-        std::cout << "\t" << "security level: " << lvl << std::endl;
+        std::cout << dev->sysfs_name << ":\n";
+        std::cout << "\t" << "security level: " << lvl << "\n";
     }
 
     lvl = 0;
@@ -172,7 +172,7 @@ static void showDevConf(std::shared_ptr<pcidev::pci_device>& dev)
         std::cout << "can't read scaling_enabled status from " <<
             dev->sysfs_name << " : " << errmsg << std::endl;
     } else {
-        std::cout << dev->sysfs_name << ":" << std::endl;
+        std::cout << dev->sysfs_name << ":\n";
         std::cout << "\t" << "Runtime clock scaling enabled status: " <<
             lvl << std::endl;
     }
@@ -242,7 +242,7 @@ static int show(int argc, char *argv[])
 }
 
 static void updateDevConf(std::shared_ptr<pcidev::pci_device>& dev,
-    std::string lvl, int config_type)
+    const std::string lvl, int config_type)
 {
     std::string errmsg;
 
@@ -250,8 +250,8 @@ static void updateDevConf(std::shared_ptr<pcidev::pci_device>& dev,
     case CONFIG_SECURITY:
         dev->sysfs_put("icap", "sec_level", errmsg, lvl);
         if (!errmsg.empty()) {
-            std::cout << "Failed to set security level for " << dev->sysfs_name
-                << std::endl;
+            std::cout << "Failed to set security level for " <<
+                dev->sysfs_name << "\n";
             std::cout << "See dmesg log for details" << std::endl;
         }
         break;
@@ -259,7 +259,7 @@ static void updateDevConf(std::shared_ptr<pcidev::pci_device>& dev,
         dev->sysfs_put("xmc", "scaling_enabled", errmsg, lvl);
         if (!errmsg.empty()) {
             std::cout << "Failed to update clk scaling status for " <<
-                dev->sysfs_name << std::endl;
+                dev->sysfs_name << "\n";
             std::cout << "See dmesg log for details" << std::endl;
         }
         break;
