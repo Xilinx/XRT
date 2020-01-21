@@ -443,6 +443,7 @@ static int health_check_cb(void *data)
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)data;
 	struct xcl_mailbox_req mbreq = { 0 };
 	bool tripped, latched = false;
+	int err;
 
 	if (!health_check)
 		return 0;
