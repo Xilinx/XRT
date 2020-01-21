@@ -98,7 +98,7 @@ int hotplugHandler(int argc, char *argv[])
         /* Shutdown user_pf before trigger hot removal*/
         if (ret)
         {
-            if (ret == -EEXIST)
+            if (ret == -ENOENT)
             {
                 std::cout << "INFO: Device entry doesn't exists. If you are running on VM Environment, \n" <<
                    "Please shutdown the VM before performing this operation.\n" << std::endl;
@@ -143,9 +143,7 @@ static int shutdownDevice(const std::shared_ptr<pcidev::pci_device> dev)
     /* "echo 1 > /sys/bus/pci/<EndPoint>/shutdown" to trigger shutdown of the device */
     std::string path = dev->get_sysfs_path("", "shutdown");
     if (!boost::filesystem::exists(path)) 
-    {
-        return -EEXIST;
-    }
+        return -ENOENT;
 
     dev->sysfs_put("", "shutdown", errmsg, "1");
     if (!errmsg.empty())
