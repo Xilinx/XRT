@@ -1949,7 +1949,6 @@ struct xocl_subdev_map {
 		0,					\
 		&(char []){1},				\
 		1,					\
-		.level = XOCL_SUBDEV_LEVEL_PRP,	 \
 	}
 
 #define USER_RES_DYNAMIC_IP						\

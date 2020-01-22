@@ -95,6 +95,7 @@ static int stop_ert_nolock(struct xocl_ert *ert)
 		xocl_info(&ert->pdev->dev, "Failed to stop ERT");
 		ret = EIO;
 	}
+	xocl_info(&ert->pdev->dev, "ERT is stopped, %d", retry);
 
 	return ret;
 }

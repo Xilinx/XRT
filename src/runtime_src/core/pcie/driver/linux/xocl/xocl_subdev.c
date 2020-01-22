@@ -1021,7 +1021,9 @@ xocl_fetch_dynamic_platform(struct xocl_dev_core *core,
 				strcpy(core->vbnv_cache, dsa_map[i].vbnv);
 				s = strstr(core->vbnv_cache, "_");
 				s = strstr(s + 1, "_");
-				strcpy(s, "_recovery");
+				strncpy(s, "_recovery",
+				    sizeof(core->vbnv_cache) -
+				    (s - core->vbnv_cache) - 1);
 				core->priv.vbnv = core->vbnv_cache;
 			} else
 				core->priv.vbnv = dsa_map[i].vbnv;
