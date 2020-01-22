@@ -116,11 +116,7 @@ std::pair<device::id_type, device::id_type>
 system_windows::
 get_total_devices(bool is_user) const
 {
-  unsigned int count = 0;
-  if (is_user)
-    count = xclProbe();
-  else
-    count = mgmtpf::probe();
+  unsigned int count = is_user ? xclProbe() : mgmtpf::probe();
   return std::make_pair(count, count);
 }
 
