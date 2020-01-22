@@ -31,7 +31,7 @@ public:
   get_os_info(boost::property_tree::ptree &pt);
 
   std::pair<device::id_type, device::id_type>
-  get_total_devices() const;
+  get_total_devices(bool is_user) const;
 
   void
   scan_devices(bool verbose, bool json) const;
