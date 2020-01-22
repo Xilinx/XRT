@@ -95,34 +95,34 @@ static void
 update_shell(uint16_t index, const std::string& flashType,
     const std::string& primary, const std::string& secondary)
 {
-    std::shared_ptr<firmwareImage> pri;
-    std::shared_ptr<firmwareImage> sec;
+  std::shared_ptr<firmwareImage> pri;
+  std::shared_ptr<firmwareImage> sec;
 
-    if (!flashType.empty()) {
-        std::cout << "CAUTION: Overriding flash mode is not recommended. " <<
-            "You may damage your card with this option." << std::endl;
-    }
+  if (!flashType.empty()) {
+    std::cout << "CAUTION: Overriding flash mode is not recommended. " <<
+      "You may damage your card with this option." << std::endl;
+  }
 
-    Flasher flasher(index);
-    if(!flasher.isValid())
-        throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % index));
+  Flasher flasher(index);
+  if(!flasher.isValid())
+    throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % index));
 
-    if (primary.empty())
-        throw xrt_core::error("Shell not specified");
+  if (primary.empty())
+    throw xrt_core::error("Shell not specified");
 
-    pri = std::make_shared<firmwareImage>(primary.c_str(), MCS_FIRMWARE_PRIMARY);
-    if (pri->fail())
-        throw xrt_core::error(boost::str(boost::format("Failed to read %s") % primary.c_str()));
-    if (!secondary.empty()) {
-        sec = std::make_shared<firmwareImage>(secondary.c_str(),
-            MCS_FIRMWARE_SECONDARY);
-        if (sec->fail())
-            sec = nullptr;
-    }
+  pri = std::make_shared<firmwareImage>(primary.c_str(), MCS_FIRMWARE_PRIMARY);
+  if (pri->fail())
+    throw xrt_core::error(boost::str(boost::format("Failed to read %s") % primary.c_str()));
+  if (!secondary.empty()) {
+    sec = std::make_shared<firmwareImage>(secondary.c_str(),
+      MCS_FIRMWARE_SECONDARY);
+    if (sec->fail())
+      sec = nullptr;
+  }
 
-    flasher.upgradeFirmware(flashType, pri.get(), sec.get());
-    std::cout << "Shell is updated succesfully\n";
-    std::cout << "Cold reboot machine to load new shell on card" << std::endl;
+  flasher.upgradeFirmware(flashType, pri.get(), sec.get());
+  std::cout << "Shell is updated succesfully\n";
+  std::cout << "Cold reboot machine to load new shell on card" << std::endl;
 }
 
 /*
@@ -131,16 +131,16 @@ update_shell(uint16_t index, const std::string& flashType,
 static void 
 update_SC(uint16_t index, const std::string& file)
 {
-    Flasher flasher(index);
-    if(!flasher.isValid())
-        throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % index));
+  Flasher flasher(index);
+  if(!flasher.isValid())
+    throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % index));
 
-    std::shared_ptr<firmwareImage> bmc =
-        std::make_shared<firmwareImage>(file.c_str(), BMC_FIRMWARE);
-    if (bmc->fail())
-        throw xrt_core::error(boost::str(boost::format("Failed to read %s") % file.c_str()));
+  std::shared_ptr<firmwareImage> bmc =
+    std::make_shared<firmwareImage>(file.c_str(), BMC_FIRMWARE);
+  if (bmc->fail())
+    throw xrt_core::error(boost::str(boost::format("Failed to read %s") % file.c_str()));
 
-    flasher.upgradeBMCFirmware(bmc.get());
+  flasher.upgradeBMCFirmware(bmc.get());
 }
 
 /* 

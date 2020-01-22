@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * This is a wrapper class that does the prep work required to program a flash
  * device. Flasher will create a specific flash object determined by the program
@@ -61,6 +61,10 @@ Flasher::E_FlasherType Flasher::getFlashType(std::string typeStr)
         // Use find() for this type of flash.
         // Since it have variations
         type = E_FlasherType::QSPIPS;
+    }
+    else if (typeStr.compare("ospi_versal") == 0)
+    {
+        type = E_FlasherType::OSPIVERSAL;
     }
     else
     {
@@ -132,6 +136,23 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
     //     }
     //     break;
     // }
+    case OSPIVERSAL:
+    {
+        XOSPIVER_Flasher xospi_versal(m_device->get_device_id());
+        if (primary == nullptr)
+        {
+            std::cout << "ERROR: OSPIVERSAL mode does not support reverting to MFG." << std::endl;
+        }
+        else if(secondary != nullptr)
+        {
+            std::cout << "ERROR: OSPIVERSAL mode does not support two mcs files." << std::endl;
+        }
+        else
+        {
+            retVal = xospi_versal.xclUpgradeFirmware(*primary);
+        }
+        break;
+    }
     default:
         break;
     }
