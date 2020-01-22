@@ -2159,3 +2159,13 @@ int xclUpdateSchedulerStat(xclDeviceHandle handle)
   xocl::shim *drv = xocl::shim::handleCheck(handle);
   return (drv) ? drv->xclUpdateSchedulerStat() : -ENODEV;
 }
+
+int xclOpenCuInterruptNotify(xclDeviceHandle handle, uint32_t *cu_index, int flags)
+{
+    return -ENOSYS;
+}
+
+int xclCloseCuInterruptNotify(xclDeviceHandle handle, int fd)
+{
+    return -ENOSYS;
+}

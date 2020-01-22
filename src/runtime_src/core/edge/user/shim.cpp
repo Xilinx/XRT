@@ -1782,3 +1782,13 @@ int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag,
 
     return 0;
 }
+
+int xclOpenCuInterruptNotify(xclDeviceHandle handle, uint32_t *cu_index, int flags)
+{
+    return -ENOSYS;
+}
+
+int xclCloseCuInterruptNotify(xclDeviceHandle handle, int fd)
+{
+    return -ENOSYS;
+}

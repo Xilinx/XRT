@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019, Xilinx Inc - All rights reserved
+ * Copyright (C) 2019-2020, Xilinx Inc - All rights reserved
  * Xilinx Runtime (XRT) Experimental APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -259,6 +259,39 @@ xclRegWrite(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset, uint32_t
 XCL_DRIVER_DLLESPEC
 int
 xclCuName2Index(xclDeviceHandle handle, const char *cu_name, uint32_t *cu_index);
+
+/**
+ * xclOpenCuInterruptNotify() - Open a fd for CU interrupt notify
+ *
+ * @handle:     Device handle
+ * @cu_index:   CU index
+ * @flags:      flags for the fd
+ * Return:      fd or appropriate error number
+ *
+ * Caller should own an exclusive context on the CU obtained via xclOpenContext()
+ * Support for non managed CU. This is the proper way to support custom IPs which doesn't compliant with supported control protocol.
+ * This API would open a file descriptor used for CU interrupt notification. The usage is similar to open a UIO device.
+ * Caller could use standard read/poll/select system call to wait for CU interrupts.
+ * Once this API was called, xclExecBuf() could not be used to schedule this specific CU.
+ * The expectation is the caller performing any necessary actions to make it work.
+ *
+ * Note: the CU irq would be disable after this is called. Caller could manually enable the interrupt
+ * or read on the fd would enable the interrupt then start waiting.
+ */
+XCL_DRIVER_DLLESPEC int xclOpenCuInterruptNotify(xclDeviceHandle handle, uint32_t *cu_index, int flags);
+
+/**
+ * xclCloseCuInterruptNotify() - Clost the interrupt notify fd
+ *
+ * @handle:     Device handle
+ * @fd:         fd handle
+ * Return:      0 or appropriate error number
+ *
+ * Caller should own an exclusive context on the CU obtained via xclOpenContext()
+ * This API would close the file descriptor used for CU interrupt notification.
+ * Once this API was called, xclExecBuf() could schedule this specific CU.
+ */
+XCL_DRIVER_DLLESPEC int xclCloseCuInterruptNotify(xclDeviceHandle handle, int fd);
 
 #ifdef __cplusplus
 }
