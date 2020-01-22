@@ -1,7 +1,7 @@
 /*
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
- * Copyright (C) 2019 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2019-2020 Xilinx, Inc. All rights reserved.
  *
  * Authors: Larry Liu <yliu@xilinx.com>
  *
@@ -66,6 +66,9 @@
 
 #define	OSPI_VERSAL_DEV_NAME "ospi_versal" SUBDEV_SUFFIX
 
+/* Timer interval of checking OSPI done */
+#define OSPI_VERSAL_TIMER_INTERVAL	(1000)
+
 struct ospi_versal {
 	struct platform_device	*ov_pdev;
 	void __iomem		*ov_base;
@@ -106,6 +109,25 @@ static inline void set_status(struct ospi_versal *ov, u8 status)
 
 	pkt.pkt_status = status;
 	iowrite32(pkt.header, ov->ov_base);
+}
+
+/*
+ * If return 0, we get the expected status.
+ * If return 1, current status is not FAIL and 'status'
+ * If return -1, the status is set to FAIL.
+ */
+static inline int check_for_status(struct ospi_versal *ov, u8 status)
+{
+	struct pdi_packet *pkt;
+	u32 header;
+
+	pkt = (struct pdi_packet *)&header;
+	header = ioread32(ov->ov_base);
+	if (pkt->pkt_status == status)
+		return 0;
+	if (pkt->pkt_status == XRT_PDI_PKT_STATUS_FAIL)
+		return -1;
+	return 1;
 }
 
 static inline void write_data(u32 *addr, u32 *data, size_t sz)
@@ -173,6 +195,9 @@ static ssize_t ospi_versal_write(struct file *filp, const char __user *data,
 		len += tran_size;
 		remain -= tran_size;
 
+		/* Give up CPU to avoid taking too much CPU cycles */
+		schedule();
+
 		/* wait until the data is fetched by device side */
 		if (wait_for_status(ov, XRT_PDI_PKT_STATUS_IDLE)) {
 			ret = -EIO;
@@ -182,10 +207,19 @@ static ssize_t ospi_versal_write(struct file *filp, const char __user *data,
 	}
 
 	/* wait until the ospi flash is done */
-	if (wait_for_status(ov, XRT_PDI_PKT_STATUS_DONE)) {
-		ret = -EIO;
-		OV_ERR(ov, "OSPI program error");
-		goto done;
+	while (true) {
+		int status;
+		status = check_for_status(ov, XRT_PDI_PKT_STATUS_DONE);
+		if (status == -1) {
+			OV_ERR(ov, "OSPI program error");
+			ret = -EIO;
+			goto done;
+		}
+
+		if (status == 0)
+			break;
+
+		msleep(OSPI_VERSAL_TIMER_INTERVAL);
 	}
 
 	OV_INFO(ov, "OSPI program is completed");
