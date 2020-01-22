@@ -66,14 +66,14 @@ struct clock {
 	void __iomem 		*clock_base_address[CLOCK_IORES_MAX]; 
 	struct mutex 		clock_lock;
 
-	char			*clock_ucs_control_status;
+	void __iomem		*clock_ucs_control_status;
 	/* Below are legacy iores fields, keep unchanged until necessary */
-	char			*clock_bases[CLOCK_MAX_NUM_CLOCKS];
+	void __iomem		*clock_bases[CLOCK_MAX_NUM_CLOCKS];
 	unsigned short		clock_ocl_frequency[CLOCK_MAX_NUM_CLOCKS];
 	struct clock_freq_topology *clock_freq_topology_p;
 	unsigned long		clock_freq_topology_length;
-	char			*clock_freq_counter;
-	char			*clock_freq_counters[CLOCK_MAX_NUM_CLOCKS];
+	void __iomem		*clock_freq_counter;
+	void __iomem		*clock_freq_counters[CLOCK_MAX_NUM_CLOCKS];
 };
 
 static inline void __iomem *
@@ -382,7 +382,6 @@ static unsigned short clock_get_freq_impl(struct clock *clock, int idx)
 		return 0;
 	}
 	freq = (input * mul0) / div0;
-
 	return freq;
 }
 
@@ -609,7 +608,7 @@ static int clock_get_freq_counter_khz(struct platform_device *pdev,
 	*value = clock_get_freq_counter_khz_impl(clock, id);
 	mutex_unlock(&clock->clock_lock);
 
-	CLOCK_INFO(clock, "done.");
+	CLOCK_INFO(clock, "khz: %d", *value);
 	return 0;
 }
 
@@ -634,7 +633,7 @@ static int clock_get_freq_by_id(struct platform_device *pdev,
 	*freq = clock_get_freq_impl(clock, id);
 	mutex_unlock(&clock->clock_lock);
 
-	CLOCK_INFO(clock, "done.");
+	CLOCK_INFO(clock, "freq = %hu", *freq);
 	return 0;
 }
 
@@ -707,41 +706,75 @@ static int clock_status_check(struct platform_device *pdev, bool *latched)
 	return err;
 }
 
-static int clock_refresh_addrs(struct clock *clock)
+/* there are some iores have not been defined in neither xsabin nor xclbin */
+static void clock_prev_refresh_addrs(struct clock *clock)
+{
+	xdev_handle_t xdev = xocl_get_xdev(clock->clock_pdev);
+
+	mutex_lock(&clock->clock_lock);
+
+	clock->clock_freq_counter =
+		xocl_iores_get_base(xdev, IORES_CLKFREQ_K1_K2);
+	CLOCK_INFO(clock, "freq_k1_k2 @ %lx",
+			(unsigned long)clock->clock_freq_counter);
+
+	clock->clock_freq_counters[2] =
+		xocl_iores_get_base(xdev, IORES_CLKFREQ_HBM);
+	CLOCK_INFO(clock, "freq_hbm @ %lx",
+			(unsigned long)clock->clock_freq_counters[2]);
+
+	mutex_unlock(&clock->clock_lock);
+
+	CLOCK_INFO(clock, "done.");
+}
+
+static void clock_iores_update_base(struct clock *clock,
+	void __iomem **resource, int id, bool force_update)
+{
+	char *res_name = xocl_res_id2name(clock_res_map,
+	    ARRAY_SIZE(clock_res_map), id);
+
+	if (*resource && !force_update) {
+		CLOCK_INFO(clock, "%s has been set to %lx already.",
+		    res_name ? res_name : "", (unsigned long)(*resource));
+		return;
+	}
+
+	*resource = clock_iores_get_base(clock, id);
+	CLOCK_INFO(clock, "%s @ %lx", res_name ? res_name : "",
+	    (unsigned long)(*resource));
+}
+
+/* when iores has been loaded from xsabin or xclbin */
+static int clock_post_refresh_addrs(struct clock *clock)
 {
 	int err = 0;
 
 	mutex_lock(&clock->clock_lock);
 
-	clock->clock_bases[0] =
-		clock_iores_get_base(clock, CLOCK_IORES_CLKWIZKERNEL1);
-	CLOCK_INFO(clock, "clk0 @ %lx", (unsigned long)clock->clock_bases[0]);
-	clock->clock_bases[1] =
-		clock_iores_get_base(clock, CLOCK_IORES_CLKWIZKERNEL2);
-	CLOCK_INFO(clock, "clk1 @ %lx", (unsigned long)clock->clock_bases[1]);
-	clock->clock_bases[2] =
-		clock_iores_get_base(clock, CLOCK_IORES_CLKWIZKERNEL3);
-	CLOCK_INFO(clock, "clk2 @ %lx", (unsigned long)clock->clock_bases[2]);
-	clock->clock_freq_counter =
-		clock_iores_get_base(clock, CLOCK_IORES_CLKFREQ_K1_K2);
-	CLOCK_INFO(clock, "freq_k1_k2 @ %lx",
-			(unsigned long)clock->clock_freq_counter);
-	clock->clock_freq_counters[0] =
-		clock_iores_get_base(clock, CLOCK_IORES_CLKFREQ_K1);
-	CLOCK_INFO(clock, "freq_k1 @ %lx",
-			(unsigned long)clock->clock_freq_counters[0]);
-	clock->clock_freq_counters[1] =
-		clock_iores_get_base(clock, CLOCK_IORES_CLKFREQ_K2);
-	CLOCK_INFO(clock, "freq_k2 @ %lx",
-			(unsigned long)clock->clock_freq_counters[1]);
-	clock->clock_freq_counters[2] =
-		clock_iores_get_base(clock, CLOCK_IORES_CLKFREQ_HBM);
-	CLOCK_INFO(clock, "freq_hbm @ %lx",
-			(unsigned long)clock->clock_freq_counters[2]);
-	clock->clock_ucs_control_status =
-		clock_iores_get_base(clock, CLOCK_IORES_UCS_CONTROL_STATUS);
-	CLOCK_INFO(clock, "ucs_control_status @ %lx",
-			(unsigned long)clock->clock_ucs_control_status);
+	clock_iores_update_base(clock,
+	    &clock->clock_bases[0], CLOCK_IORES_CLKWIZKERNEL1, true);
+
+	clock_iores_update_base(clock,
+	    &clock->clock_bases[1], CLOCK_IORES_CLKWIZKERNEL2, true);
+
+	clock_iores_update_base(clock,
+	    &clock->clock_bases[2], CLOCK_IORES_CLKWIZKERNEL3, true);
+
+	clock_iores_update_base(clock,
+	    &clock->clock_freq_counter, CLOCK_IORES_CLKFREQ_K1_K2, false);
+
+	clock_iores_update_base(clock,
+	    &clock->clock_freq_counters[0], CLOCK_IORES_CLKFREQ_K1, true);
+
+	clock_iores_update_base(clock,
+	    &clock->clock_freq_counters[1], CLOCK_IORES_CLKFREQ_K2, true);
+
+	clock_iores_update_base(clock,
+	    &clock->clock_freq_counters[2], CLOCK_IORES_CLKFREQ_HBM, false);
+
+	clock_iores_update_base(clock,
+	    &clock->clock_ucs_control_status, CLOCK_IORES_UCS_CONTROL_STATUS, true);
 
 	/*
 	 * Note: we are data driven, as long as ucs_control_status is present,
@@ -772,7 +805,7 @@ static ssize_t clock_freqs_show(struct device *dev,
 	mutex_lock(&clock->clock_lock);
 	for (i = 0; i < CLOCK_MAX_NUM_CLOCKS; i++) {
 		freq = clock_get_freq_impl(clock, i);
-		if (clock->clock_freq_counter) {
+		if (clock->clock_freq_counter || clock->clock_freq_counters[i]) {
 			freq_counter = clock_get_freq_counter_khz_impl(clock, i);
 			request_in_khz = freq*1000;
 			tolerance = freq*50;
@@ -841,13 +874,14 @@ static int clock_probe(struct platform_device *pdev)
 	clock->clock_pdev = pdev;
 	mutex_init(&clock->clock_lock);
 
+	clock_prev_refresh_addrs(clock);
 
 	for (i = 0, res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 		res;
 		res = platform_get_resource(pdev, IORESOURCE_MEM, ++i)) {
 		id = xocl_res_name2id(clock_res_map, ARRAY_SIZE(clock_res_map),
 			res->name);
-		if (id > 0) {
+		if (id >= 0) {
 			clock->clock_base_address[id] =
 				ioremap_nocache(res->start,
 				res->end - res->start + 1);
@@ -858,7 +892,7 @@ static int clock_probe(struct platform_device *pdev)
 			}
 		}
 	}
-	clock_refresh_addrs(clock);
+	clock_post_refresh_addrs(clock);
 
 	ret = sysfs_create_group(&pdev->dev.kobj, &clock_attr_group);
 	if (ret) {

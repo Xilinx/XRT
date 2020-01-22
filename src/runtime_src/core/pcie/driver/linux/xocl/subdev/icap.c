@@ -614,6 +614,57 @@ static void platform_reset_axi_gate(struct platform_device *pdev)
 	mutex_unlock(&icap->icap_lock);
 }
 
+static unsigned short icap_get_ocl_frequency(const struct icap *icap, int idx)
+{
+	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
+	u64 freq = 0;
+	int err;
+
+	if (ICAP_PRIVILEGED(icap)) {
+		unsigned short value;
+
+		err = xocl_clock_get_freq_by_id(xdev, 0, &value, idx);
+		if (err)
+			ICAP_WARN(icap, "clock subdev returns %d.", err);
+		else
+			freq = value;
+	} else
+		freq = icap_cached_ocl_frequency(icap, idx);
+
+	return freq;
+}
+
+static unsigned int icap_get_clock_frequency_counter_khz(const struct icap *icap, int idx)
+{
+	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
+	u32 freq = 0;
+	int err;
+
+	if (ICAP_PRIVILEGED(icap)) {
+		if (uuid_is_null(&icap->icap_bitstream_uuid))
+			return freq;
+
+		err = xocl_clock_get_freq_counter_khz(xdev, &freq, idx);
+		if (err)
+			ICAP_WARN(icap, "clock subdev returns %d.", err);
+	} else {
+		switch (idx) {
+		case 0:
+			freq = icap_get_data_nolock(icap->icap_pdev, FREQ_COUNTER_0);
+			break;
+		case 1:
+			freq = icap_get_data_nolock(icap->icap_pdev, FREQ_COUNTER_1);
+			break;
+		case 2:
+			freq = icap_get_data_nolock(icap->icap_pdev, FREQ_COUNTER_2);
+			break;
+		default:
+			break;
+		}
+	}
+	return freq;
+}
+
 static void xclbin_get_ocl_frequency_max_min(struct icap *icap,
 	int idx, unsigned short *freq_max, unsigned short *freq_min)
 {
@@ -2440,7 +2491,6 @@ static uint64_t icap_get_data_nolock(struct platform_device *pdev,
 		}
 	} else {
 		unsigned short freq = 0;
-		unsigned int value = 0;
 
 		switch (kind) {
 		case IDCODE:
@@ -2459,16 +2509,13 @@ static uint64_t icap_get_data_nolock(struct platform_device *pdev,
 				target = freq;
 			break;
 		case FREQ_COUNTER_0:
-			if (!xocl_clock_get_freq_counter_khz(xdev, &value, 0))
-				target = value;
+			target = icap_get_clock_frequency_counter_khz(icap, 0);
 			break;
 		case FREQ_COUNTER_1:
-			if (!xocl_clock_get_freq_counter_khz(xdev, &value, 1))
-				target = value;
+			target = icap_get_clock_frequency_counter_khz(icap, 1);
 			break;
 		case FREQ_COUNTER_2:
-			if (!xocl_clock_get_freq_counter_khz(xdev, &value, 2))
-				target = value;
+			target = icap_get_clock_frequency_counter_khz(icap, 2);
 			break;
 		case MIG_CALIB:
 			target = mig_calibration_done(icap);
@@ -2597,11 +2644,9 @@ static ssize_t clock_freqs_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct icap *icap = platform_get_drvdata(to_platform_device(dev));
-	xdev_handle_t xdev = xocl_get_xdev(to_platform_device(dev));
 	ssize_t cnt = 0;
 	int i, err;
 	u32 freq_counter, freq, request_in_khz, tolerance;
-	unsigned short value;
 
 	err = icap_xclbin_rd_lock(icap);
 	if (err)
@@ -2609,14 +2654,10 @@ static ssize_t clock_freqs_show(struct device *dev,
 
 	mutex_lock(&icap->icap_lock);
 	for (i = 0; i < ICAP_MAX_NUM_CLOCKS; i++) {
-		if (xocl_clock_get_freq_by_id(xdev, 0, &value, i))
-			continue;
+		freq = icap_get_ocl_frequency(icap, i);
 
-		freq = value;
 		if (!uuid_is_null(&icap->icap_bitstream_uuid)) {
-			if (xocl_clock_get_freq_counter_khz(xdev,
-			    &freq_counter, i))
-				continue;
+			freq_counter = icap_get_clock_frequency_counter_khz(icap, i);
 
 			request_in_khz = freq*1000;
 			tolerance = freq*50;

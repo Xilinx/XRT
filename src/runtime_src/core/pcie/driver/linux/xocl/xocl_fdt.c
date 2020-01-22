@@ -1082,7 +1082,8 @@ const struct axlf_section_header *xocl_axlf_section_header(
 	return hdr;
 }
 
-int xocl_res_name2id(const struct xocl_iores_map *res_map,
+int
+xocl_res_name2id(const struct xocl_iores_map *res_map,
 	int res_map_size, const char *res_name)
 {
 	int i;
@@ -1097,4 +1098,23 @@ int xocl_res_name2id(const struct xocl_iores_map *res_map,
 	}
 
 	return -1;
+}
+
+
+char *
+xocl_res_id2name(const struct xocl_iores_map *res_map,
+	int res_map_size, int id)
+{
+	int i;
+
+	if (id > res_map_size)
+		return NULL;
+
+	for (i = 0; i < res_map_size; i++) {
+		if (res_map->res_id == id)
+			return res_map->res_name;
+		res_map++;
+	}
+
+	return NULL;
 }

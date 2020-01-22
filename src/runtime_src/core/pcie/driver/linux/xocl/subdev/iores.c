@@ -32,6 +32,8 @@ struct xocl_iores_map res_map[] = {
 	{ RESNAME_KDMA, IORES_KDMA },
 	{ RESNAME_CMC_MUTEX, IORES_CMC_MUTEX},
 	{ RESNAME_GAPPING, IORES_GAPPING},
+	{ RESNAME_CLKFREQ_K1_K2, IORES_CLKFREQ_K1_K2},
+	{ RESNAME_CLKFREQ_HBM, IORES_CLKFREQ_HBM },
 };
 
 static int read32(struct platform_device *pdev, u32 id, u32 off, u32 *val)
@@ -121,7 +123,7 @@ static int iores_probe(struct platform_device *pdev)
 		res;
 		res = platform_get_resource(pdev, IORESOURCE_MEM, ++i)) {
 		id = xocl_res_name2id(res_map, ARRAY_SIZE(res_map), res->name);
-		if (id > 0) {
+		if (id >= 0) {
 			iores->base_addrs[id] = ioremap_nocache(res->start,
 					res->end - res->start + 1);
 			if (!iores->base_addrs[id]) {

@@ -91,6 +91,10 @@
 #define RESNAME_GAPPING         NODE_GAPPING
 #define RESNAME_UCS_CONTROL_STATUS     NODE_UCS_CONTROL_STATUS
 
+/*
+ * The iores subdev maintains global resources which can be shared to any
+ * subdev. We keep a minimized scope of this shared public interface.
+ */
 enum {
 	IORES_GATEPRBLD = 0,
 	IORES_MEMCALIB,
@@ -98,6 +102,8 @@ enum {
 	IORES_KDMA,
 	IORES_CMC_MUTEX,
 	IORES_GAPPING,
+	IORES_CLKFREQ_K1_K2, /* static res config exposed to iores subdev */
+	IORES_CLKFREQ_HBM, /* static res config exposed to iores subdev */
 	IORES_MAX,
 };
 
@@ -121,6 +127,9 @@ struct xocl_iores_map {
 
 int xocl_res_name2id(const struct xocl_iores_map *res_map,
 	int res_map_size, const char *res_name);
+
+char *xocl_res_id2name(const struct xocl_iores_map *res_map,
+	int res_map_size, int id);
 
 #define	XOCL_RES_OFFSET_CHANNEL1	0x0
 #define	XOCL_RES_OFFSET_CHANNEL2	0x8
