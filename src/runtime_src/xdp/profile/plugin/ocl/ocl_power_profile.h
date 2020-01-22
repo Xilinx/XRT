@@ -47,7 +47,7 @@ private:
     std::mutex status_lock;
     PowerProfileStatus status;
     std::thread polling_thread;
-    std::string power_profile_config;
+    bool power_profile_en;
     xrt::device* target_device;
     std::shared_ptr<XoclPlugin> target_xocl_plugin;
     std::vector<PowerStat> power_trace;
