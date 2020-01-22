@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -22,6 +22,9 @@
 #include <string>
 #include <memory>
 #include <boost/property_tree/ptree.hpp>
+#include <boost/program_options.hpp>
+
+
 
 namespace XBUtilities {
 
@@ -66,7 +69,28 @@ std::string format(const std::string& format, Args ... args) {
   void fatal(const std::string& _msg, bool _endl = true);
   void trace(const std::string& _msg, bool _endl = true);
 
-  void trace_print_tree(const std::string & _name, const boost::property_tree::ptree & _pt);
+  void trace_print_tree(const std::string & _name, 
+                        const boost::property_tree::ptree & _pt);
+
+  // ---------
+  std::string create_usage_string( const std::string &_executableName,
+                                   const std::string &_subCommand,
+                                   const boost::program_options::options_description &_od);
+  void wrap_paragraph( const std::string & _unformattedString, 
+                       unsigned int _indentWidth, 
+                       unsigned int _columnWidth, 
+                       bool _indentFirstLine,
+                       std::string &_formattedString);
+  void wrap_paragraphs( const std::string & _unformattedString, 
+                        unsigned int _indentWidth, 
+                        unsigned int _columnWidth, 
+                        bool _indentFirstLine,
+                        std::string &_formattedString);
+  void subcommand_help( const std::string &_executableName,
+                        const std::string &_subCommand,
+                        const std::string &_description, 
+                        const boost::program_options::options_description &_od, 
+                        const std::string &_examples);
 };
 
 #endif

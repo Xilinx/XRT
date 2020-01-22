@@ -832,7 +832,7 @@ configure(struct sched_cmd *cmd)
 			else
 				irq_id = zocl_xclbin_intr_id(zdev, apt_idx);
 			exec->zcu[i].irq = zdev->irq[irq_id];
-			DRM_INFO("minm zcu[%d] irq %d\n", i, exec->zcu[i].irq);
+			DRM_INFO("zcu[%d] -> irq %d\n", i, exec->zcu[i].irq);
 		}
 
 		/* For MPSoC as PCIe device, the CU address for PS = base

@@ -12,6 +12,7 @@ include_directories(${CMAKE_BINARY_DIR})
 
 # -----------------------------------------------------------------------------
 
+# Collect files outside of this directory
 file(GLOB XBMGMT_V2_BASE_FILES
   "xbmgmt.cpp"
   "../common/XBMain.cpp"
@@ -19,36 +20,40 @@ file(GLOB XBMGMT_V2_BASE_FILES
   "../common/SubCmd.cpp"
 )
 
-if(WIN32)
-  set(XBMGMT2_NAME "xbmgmt")     # Yes, on windows the file name will be xbmgmt
-  file(GLOB XBMGMT_V2_SUBCMD_FILES
-    "SubCmdFlash.cpp"
-    "SubCmdVersion.cpp"
-    "flash/firmware_image.cpp"
-    "flash/xmc.cpp"
-    "flash/xspi.cpp"
-    "flash/flasher.cpp"
-  )
-else()
-  set(XBMGMT2_NAME "xbmgmt2")
-  file(GLOB XBMGMT_V2_SUBCMD_FILES
-    "SubCmdFlash.cpp"
-    "SubCmdVersion.cpp"
-    "flash/firmware_image.cpp"
-    "flash/xmc.cpp"
-    "flash/xspi.cpp"
-    "flash/flasher.cpp"
-  )
-endif()
+# Collect local directory files
+file(GLOB XBMGMT_V2_SUBCMD_FILES
+  "flash/firmware_image.cpp"
+  "flash/flasher.cpp"
+  "flash/xmc.cpp"
+  "flash/xspi.cpp"
+  "SubCmdFlash.cpp"
+  "SubCmdVersion.cpp"
+)
 
+# Merge the files into one collection
 set(XBMGMT_V2_FILES_SRCS ${XBMGMT_V2_BASE_FILES} ${XBMGMT_V2_SUBCMD_FILES})
 set(XBMGMT_V2_SRCS ${XBMGMT_V2_FILES_SRCS})
 
+
+# Determine the name of the executable
+if(WIN32)
+set(XBMGMT2_NAME "xbmgmt")     # Yes, on windows the file name will be xbmgmt
+else()
+  set(XBMGMT2_NAME "xbmgmt2")
+endif()
+
 add_executable(${XBMGMT2_NAME} ${XBMGMT_V2_SRCS})
 
-
+# Determine what functionality should be added
 if(WIN32)
-  target_link_libraries(
+  target_compile_definitions(${XBMGMT2_NAME} PUBLIC ENABLE_DEPRECATED_2020_1_SUBCMDS)
+else()
+  target_compile_definitions(${XBMGMT2_NAME} PUBLIC ENABLE_DEPRECATED_2020_1_SUBCMDS)
+endif()
+
+# Add the supporting libraries
+if(WIN32)
+target_link_libraries(
     ${XBMGMT2_NAME} PRIVATE
     Boost::filesystem
     Boost::program_options

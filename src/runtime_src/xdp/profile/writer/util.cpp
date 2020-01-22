@@ -14,9 +14,12 @@
  * under the License.
  */
 
-#include "util.h"
 #include <chrono>
 #include <ctime>
+
+#define XDP_SOURCE
+
+#include "util.h"
 #include "core/common/system.h"
 
 #if defined(__linux__) && defined(__x86_64__)

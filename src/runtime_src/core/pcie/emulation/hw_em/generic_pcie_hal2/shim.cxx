@@ -1577,6 +1577,14 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     return 52;
   }
 
+  size_t HwEmShim::xclGetDeviceTimestamp()
+  {
+    bool ack = true;
+    size_t deviceTimeStamp = 0;
+    xclGetDeviceTimestamp_RPC_CALL(xclGetDeviceTimestamp,ack,deviceTimeStamp);
+    return deviceTimeStamp;
+  }
+
   void HwEmShim::xclReadBusStatus(xclPerfMonType type) {
 
     bool is_bus_idle = true;
@@ -2376,6 +2384,20 @@ double HwEmShim::xclGetDeviceClockFreqMHz()
   //300.0 MHz
   clockSpeed = 300.0;
   return clockSpeed;
+}
+
+// Get the maximum bandwidth for host reads from the device (in MB/sec)
+// NOTE: for now, just return 8.0 GBps (the max achievable for PCIe Gen3)
+double HwEmShim::xclGetReadMaxBandwidthMBps()
+{
+  return 8000.0;
+}
+
+// Get the maximum bandwidth for host writes to the device (in MB/sec)
+// NOTE: for now, just return 8.0 GBps (the max achievable for PCIe Gen3)
+double HwEmShim::xclGetWriteMaxBandwidthMBps()
+{
+  return 8000.0;
 }
 
 uint32_t HwEmShim::getPerfMonNumberSlots(xclPerfMonType type)

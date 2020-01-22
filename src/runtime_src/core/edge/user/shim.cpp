@@ -42,7 +42,7 @@
 #include <cstdarg>
 
 #ifndef __HWEM__
-#include "plugin/xdp/hal_profile.h"
+#include "plugin/xdp/hal_api_interface.h"
 #endif
 
 
@@ -1575,6 +1575,11 @@ int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
 {
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
   return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -EINVAL;
+}
+
+size_t xclGetDeviceTimestamp(xclDeviceHandle handle)
+{
+  return 0;
 }
 
 size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type,

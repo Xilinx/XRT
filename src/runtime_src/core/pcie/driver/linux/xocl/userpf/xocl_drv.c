@@ -304,7 +304,7 @@ failed:
 	return ret;
 }
 
-int xocl_hot_reset(struct xocl_dev *xdev, bool force)
+int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 {
 	int ret = 0, mbret = 0;
 	struct xcl_mailbox_req mbreq = { 0 };
@@ -312,7 +312,7 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 
 	mbreq.req = XCL_MAILBOX_REQ_HOT_RESET;
 	mutex_lock(&xdev->dev_lock);
-	if (!force && !list_is_singular(&xdev->ctx_list)) {
+	if (!(flag & XOCL_RESET_FORCE) && !list_is_singular(&xdev->ctx_list)) {
 		/* We should have one context for ourselves. */
 		BUG_ON(list_empty(&xdev->ctx_list));
 		userpf_err(xdev, "device is in use, can't reset");
@@ -324,7 +324,7 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 
 	userpf_info(xdev, "resetting device...");
 
-	if (force)
+	if (flag & XOCL_RESET_FORCE)
 		xocl_drvinst_kill_proc(xdev->core.drm);
 
 	xocl_reset_notify(xdev->core.pdev, true);
@@ -346,13 +346,15 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 	msleep(20 * 1000);
 #endif
 
-	(void) xocl_config_pci(xdev);
-	(void) xocl_pci_resize_resource(xdev->core.pdev, xdev->p2p_bar_idx,
-			xdev->p2p_bar_sz_cached);
+	if (!(flag & XOCL_RESET_SHUTDOWN)) {
+		(void) xocl_config_pci(xdev);
+		(void) xocl_pci_resize_resource(xdev->core.pdev,
+			xdev->p2p_bar_idx, xdev->p2p_bar_sz_cached);
 
-	xocl_reset_notify(xdev->core.pdev, false);
+		xocl_reset_notify(xdev->core.pdev, false);
 
-	xocl_drvinst_set_offline(xdev->core.drm, false);
+		xocl_drvinst_set_offline(xdev->core.drm, false);
+	}
 
 	return ret;
 }
@@ -364,9 +366,20 @@ static void xocl_work_cb(struct work_struct *work)
 	struct xocl_dev *xdev = container_of(_work,
 			struct xocl_dev, works[_work->op]);
 
+	if (XDEV(xdev)->shutdown) {
+		xocl_xdev_info(xdev, "device is shutdown please hotplug");
+		return;
+	}
+
 	switch (_work->op) {
 	case XOCL_WORK_RESET:
-		(void) xocl_hot_reset(xdev, true);
+		(void) xocl_hot_reset(xdev, XOCL_RESET_FORCE);
+		break;
+	case XOCL_WORK_SHUTDOWN:
+		(void) xocl_hot_reset(xdev, XOCL_RESET_FORCE |
+				XOCL_RESET_SHUTDOWN);
+		/* mark device offline. Only hotplug is allowed. */
+		XDEV(xdev)->shutdown = true;
 		break;
 	case XOCL_WORK_PROGRAM_SHELL:
 		/* program shell */

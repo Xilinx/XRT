@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -33,12 +33,6 @@ namespace po = boost::program_options;
 // System - Include Files
 #include <iostream>
 
-// ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
-#include "tools/common/SubCmd.h"
-static const unsigned int registerResult =
-                    register_subcommand("flash",
-                                        "Update SC firmware or shell on the device",
-                                        subCmdFlash);
 // =============================================================================
 
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
@@ -162,9 +156,22 @@ reset_shell(uint16_t index)
 } // unnamed namespace
 
 
-// ------ F U N C T I O N S ---------------------------------------------------
+// ----- C L A S S   M E T H O D S -------------------------------------------
 
-int subCmdFlash(const std::vector<std::string> &_options)
+SubCmdFlash::SubCmdFlash(bool _isHidden, bool _isDepricated, bool _isPreliminary)
+    : SubCmd("flash", 
+             "Update SC firmware or shell on the device")
+{
+  const std::string longDescription = "<add long description>";
+  setLongDescription(longDescription);
+  setExampleSyntax("");
+  setIsHidden(_isHidden);
+  setIsDeprecated(_isDepricated);
+  setIsPreliminary(_isPreliminary);
+}
+
+void
+SubCmdFlash::execute(const SubCmdOptions& _options) const
 // Reference Command:   'flash' sub-command usage:
 //                      --scan [--verbose|--json]
 //                      --update [--shell name [--id id]] [--card bdf] [--force]
@@ -218,15 +225,15 @@ int subCmdFlash(const std::vector<std::string> &_options)
     po::notify(vm); // Can throw
   } catch (po::error& e) {
     xrt_core::send_exception_message(e.what(), "XBMGMT");
-    std::cerr << allOptions << std::endl;
+    printHelp(allOptions);
 
     // Re-throw exception
     throw;
   }
   // Check to see if help was requested or no command was found
   if (help == true)  {
-    std::cout << allOptions << std::endl;
-    return 0;
+    printHelp(allOptions);
+    return;
   }
 
   //prep data
@@ -267,11 +274,11 @@ int subCmdFlash(const std::vector<std::string> &_options)
 
     if (verbose && json) {
       XBU::error("Please specify only one option");
-      return 1;
+      return;
     }
 
     scan_devices(verbose, json);
-    return registerResult;
+    return;
   }
 
   if (update) {
@@ -311,12 +318,12 @@ int subCmdFlash(const std::vector<std::string> &_options)
 
     if (name.empty() && !id.empty()){
       XBU::error("Please specify the shell");
-      return 1;
+      return;
     }
 
     uint16_t idx = xrt_core::bdf2index(bdf);
     auto_flash(idx, name, id, force);
-    return registerResult;
+    return;
   }
 
   if (reset) {
@@ -345,7 +352,7 @@ int subCmdFlash(const std::vector<std::string> &_options)
 
     uint16_t idx = xrt_core::bdf2index(bdf);
     reset_shell(idx);
-    return registerResult;
+    return;
   }
 
   if (shell) {
@@ -385,11 +392,11 @@ int subCmdFlash(const std::vector<std::string> &_options)
       XBU::error("Please specify the shell file path and the device bdf");
       std::cerr << shellDesc << "\n";
       std::cerr << "Example: xbmgmt.exe flash --shell --path='path\\to\\dsabin\\file' --card=0000:04:00.0" << std::endl;
-      return 1;
+      return;
     }
 	  uint16_t idx = xrt_core::bdf2index(bdf);
     update_shell(idx, flash_type, file, secondary);
-    return registerResult;
+    return;
   }
 
   if (sc_firmware) {
@@ -423,13 +430,10 @@ int subCmdFlash(const std::vector<std::string> &_options)
       XBU::error("Please specify the sc file path and the device bdf");
       std::cerr << scDesc <<  "\n";
       std::cerr << "Example: xbmgmt.exe flash --sc_firmware --path='path\\to\\dsabin\\file' --card=0000:04:00.0" << std::endl;
-      return 1;
+      return;
     }
 
     uint16_t idx = xrt_core::bdf2index(bdf);
     update_SC(idx, file);
-    return registerResult;
   }
-
-  return registerResult;
 }

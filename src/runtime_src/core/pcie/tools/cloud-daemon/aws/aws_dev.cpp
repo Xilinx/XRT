@@ -38,6 +38,7 @@
 #include "xclbin.h"
 #include "aws_dev.h"
 
+static std::map<std::string, size_t>index_map;
 
 /*
  * Functions each plugin needs to provide
@@ -59,6 +60,9 @@ int init(mpd_plugin_callbacks *cbs)
         syslog(LOG_INFO, "aws: no device found");
         return ret;
     }
+    ret = AwsDev::init(index_map);
+    if (ret)
+        return ret;    
     if (cbs) 
     {
         // hook functions
@@ -638,7 +642,7 @@ AwsDev::~AwsDev()
     }
 }
 
-AwsDev::AwsDev(size_t index, const char *logfileName) : mBoardNumber(index)
+AwsDev::AwsDev(size_t index, const char *logfileName)
 {
     if (logfileName != nullptr) {
         mLogStream.open(logfileName);
@@ -646,7 +650,10 @@ AwsDev::AwsDev(size_t index, const char *logfileName) : mBoardNumber(index)
         mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
 
+    std::string sysfs_name = pcidev::get_dev(index, true)->sysfs_name;
+    std::cout << "AwsDev: " << sysfs_name << "(index: " << index << ")" << std::endl;
 #ifdef INTERNAL_TESTING_FOR_AWS
+    mBoardNumber = index;
     char file_name_buf[128];
     std::fill(&file_name_buf[0], &file_name_buf[0] + 128, 0);
     std::sprintf((char *)&file_name_buf, "/dev/awsmgmt%d", mBoardNumber);
@@ -658,6 +665,7 @@ AwsDev::AwsDev(size_t index, const char *logfileName) : mBoardNumber(index)
 
 #else
     fpga_mgmt_init(); // aws-fpga version newer than 09/2019 need this
+    mBoardNumber = index_map[sysfs_name];
     //bar0 is mapped already. seems other 2 bars are not required.
 #endif
 }

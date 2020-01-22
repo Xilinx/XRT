@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -33,12 +33,6 @@ namespace po = boost::program_options;
 #include <iostream>
 #include <iterator>
 
-// ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
-#include "tools/common/SubCmd.h"
-static const unsigned int registerResult =
-                    register_subcommand("dmatest",
-                                        "Runs a DMA test on a given device",
-                                        subCmdDmaTest);
 // =============================================================================
 namespace {
 
@@ -99,9 +93,22 @@ dmatest(const std::shared_ptr<xrt_core::device>& device, size_t block_size, bool
 } // namespace
 
 
-// ------ F U N C T I O N S ---------------------------------------------------
+// ----- C L A S S   M E T H O D S -------------------------------------------
 
-int subCmdDmaTest(const std::vector<std::string> &_options)
+SubCmdDmaTest::SubCmdDmaTest(bool _isHidden, bool _isDepricated, bool _isPreliminary)
+    : SubCmd("dmatest", 
+             "Runs a DMA test on a given device")
+{
+  const std::string longDescription = "<add long description>";
+  setLongDescription(longDescription);
+  setExampleSyntax("");
+  setIsHidden(_isHidden);
+  setIsDeprecated(_isDepricated);
+  setIsPreliminary(_isPreliminary);
+}
+
+void
+SubCmdDmaTest::execute(const SubCmdOptions& _options) const
 // References: dmatest [-d card] [-b [0x]block_size_KB]
 //             Run DMA test on card 1 with 32 KB blocks of buffer
 //               xbutil dmatest -d 1 -b 0x2000
@@ -127,7 +134,7 @@ int subCmdDmaTest(const std::vector<std::string> &_options)
     po::notify(vm); // Can throw
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
-    std::cerr << dmaTestDesc << std::endl;
+    printHelp(dmaTestDesc);
 
     // Re-throw exception
     throw;
@@ -135,8 +142,8 @@ int subCmdDmaTest(const std::vector<std::string> &_options)
 
   // Check to see if help was requested or no command was found
   if (help == true)  {
-    std::cout << dmaTestDesc << std::endl;
-    return 0;
+    printHelp(dmaTestDesc);
+    return;
   }
 
   // -- Now process the subcommand --------------------------------------------
@@ -144,6 +151,4 @@ int subCmdDmaTest(const std::vector<std::string> &_options)
   auto block_size = std::strtoll(sBlockSizeKB.c_str(), nullptr, 0);
   bool verbose = true;
   dmatest(device, block_size, verbose);
-
-  return registerResult;
 }

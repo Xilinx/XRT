@@ -98,7 +98,9 @@ ReadBOCallLogger::ReadBOCallLogger(xclDeviceHandle handle, unsigned int boHandle
 {
     if (!cb_valid()) return;
     global_idcode++;    // increment only if valid calllback
-    CBPayload payload = {m_local_idcode, handle};
+    
+    BOTransferCBPayload payload = {{m_local_idcode, handle}, boHandle, reinterpret_cast<uint64_t>(dst), size, skip} ;
+    //CBPayload payload = {m_local_idcode, handle};
     cb(HalCallbackType::READ_BO_START, &payload);
 }
 
@@ -198,56 +200,20 @@ WriteCallLogger::~WriteCallLogger() {
     cb(HalCallbackType::WRITE_END, &payload);
 }
 
+  LoadXclbinCallLogger::LoadXclbinCallLogger(xclDeviceHandle handle, const void* buffer) : CallLogger(global_idcode), h(handle), mBuffer(buffer)
+  {
+    if (!cb_valid()) return ;
+    ++global_idcode ; // increment only if valid callback
+    XclbinCBPayload payload = { {m_local_idcode, handle}, buffer } ;
+    cb(HalCallbackType::LOAD_XCLBIN_START, &payload) ;
+  }
 
-StartDeviceProfilingCls::StartDeviceProfilingCls(xclDeviceHandle handle)
-{
-  load_xdp_plugin_library(nullptr);
-  if(!cb_valid()) return;
-  CBPayload payload = {0, handle};
-  cb(HalCallbackType::START_DEVICE_PROFILING, &payload);
-}
-
-StartDeviceProfilingCls::~StartDeviceProfilingCls()
-{}
-
-CreateProfileResultsCls::CreateProfileResultsCls(xclDeviceHandle handle, ProfileResults** results, int& status)
-{
-  load_xdp_plugin_library(nullptr);
-  if(!cb_valid()) { status = (-1); return; }
-
-  ProfileResultsCBPayload payload = {{0, handle}, static_cast<void*>(results)};   // pass ProfileResults** as void*
-  cb(HalCallbackType::CREATE_PROFILE_RESULTS, &payload);
-  status = 0;
-}
-
-CreateProfileResultsCls::~CreateProfileResultsCls()
-{}
-
-GetProfileResultsCls::GetProfileResultsCls(xclDeviceHandle handle, ProfileResults* results, int& status)
-{
-  load_xdp_plugin_library(nullptr);
-  if(!cb_valid()) { status = (-1); return; }
-
-  ProfileResultsCBPayload payload = {{0, handle}, static_cast<void*>(results)};
-  cb(HalCallbackType::GET_PROFILE_RESULTS, &payload);
-  status = 0;
-}
-
-GetProfileResultsCls::~GetProfileResultsCls()
-{}
-
-DestroyProfileResultsCls::DestroyProfileResultsCls(xclDeviceHandle handle, ProfileResults* results, int& status)
-{
-  load_xdp_plugin_library(nullptr);
-  if(!cb_valid()) { status = (-1); return; }
-
-  ProfileResultsCBPayload payload = {{0, handle}, static_cast<void*>(results)};
-  cb(HalCallbackType::DESTROY_PROFILE_RESULTS, &payload);
-  status = 0;
-}
-
-DestroyProfileResultsCls::~DestroyProfileResultsCls()
-{}
+  LoadXclbinCallLogger::~LoadXclbinCallLogger()
+  {
+    if (!cb_valid()) return ;
+    XclbinCBPayload payload = { {m_local_idcode, h}, mBuffer } ;
+    cb(HalCallbackType::LOAD_XCLBIN_END, &payload) ;
+  }
 
 void load_xdp_plugin_library(HalPluginConfig* )
 {
@@ -256,23 +222,18 @@ void load_xdp_plugin_library(HalPluginConfig* )
         return;
     }
 
-    if(!xrt_core::config::get_profile_api()) {
-      // profile_api is not set to correct configuration. Skip loading xdp_hal_plugin.
-      // There will be no profile support in this run.
-//      std::cout << "\"profile_api\" is not set to true in xrt.ini Debug configuration. So, no HAL profiling is available." << std::endl;
+    if(!xrt_core::config::get_hal_profile()) {
+      loaded = true ;
       return;
     }
 
     if(xrt_core::config::get_profile()) {
       // "profile=true" is also set. This enables OpenCL based flow for profiling. 
       // Currently, mix of OpenCL and HAL based profiling is not supported.
-      // So, give error and skip loading of xdp_hal_plugin library
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", std::string("Both profile=true and profile_api=true set in xrt.ini config. Currently, these flows are not supported to work together. Hence, retrieving profile results using APIs will not be available in this run. To enable profiling with APIs, please set profile_api=true only and re-run."));
+      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", std::string("Both profile=true and hal_profile=true set in xrt.ini config. Currently, these flows are not supported to work together."));
       return;
     }
 
-    // profile_api is set to "true" and other configurations are good. Try to load xdp_hal_plugin library
-//    std::cout << "Loading xdp plugins ..." << std::endl;
     bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
     bfs::path libname("libxdp_hal_plugin.so");
     if (xrt.empty()) {

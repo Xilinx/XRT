@@ -1385,9 +1385,6 @@ public:
         if (ddr_mem_size == -EINVAL)
             return -EINVAL;
 
-        if (verbose)
-            std::cout << "Total DDR size: " << ddr_mem_size << " MB\n";
-
         bool isAREDevice = false;
 
 
@@ -1412,6 +1409,20 @@ public:
             return -EINVAL;
         }
         const mem_topology *map = (mem_topology *)buf.data();
+
+        std::string hbm_mem_size = unitConvert(map->m_count*(map->m_mem_data[0].m_size << 10));
+        if (verbose) {
+            std::cout << "INFO: DMA test on [" << m_idx << "]: "<< name() << "\n";
+            if (ddr_mem_size == 0)
+                std::cout << "Total HBM size:" << hbm_mem_size << "\n";
+            else
+                std::cout << "Total DDR size: " << ddr_mem_size << " MB\n";
+            
+            if (blockSize < (1024*1024))
+                std::cout << "Buffer Size: " << blockSize/(1024) << " KB\n";
+            else
+                std::cout << "Buffer Size: " << blockSize/(1024*1024) << " MB\n";
+        }
 
         if(buf.empty() || map->m_count == 0) {
             std::cout << "WARNING: 'mem_topology' invalid, "
@@ -1608,8 +1619,8 @@ public:
      * --count : specify the number of blocks to copy
      *           OPTIONAL for fileToDevice; will copy the remainder of input file by default
      *           REQUIRED for deviceToFile
-     * --skip : specify the source offset (in block counts) OPTIONAL defaults to 0
-     * --seek : specify the destination offset (in block counts) OPTIONAL defaults to 0
+     * --skip : specify the source offset (in block counts)
+     * --seek : specify the destination offset (in block counts)
      */
     int do_dd(dd::ddArgs_t args )
     {

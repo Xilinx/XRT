@@ -112,6 +112,8 @@ public:
   size_t xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size);
 
   double xclGetDeviceClockFreqMHz();
+  double xclGetReadMaxBandwidthMBps();
+  double xclGetWriteMaxBandwidthMBps();
 
   //debug related
   uint32_t getCheckerNumberSlots(int type);

@@ -219,6 +219,9 @@ public:
     return m_handle;
   }
 
+  virtual std::string
+  get_bdf() const;
+
   virtual void
   acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared);
 
@@ -578,15 +581,6 @@ public:
     if (!m_ops->mGetProfilingSlotProperties)
       return hal::operations_result<uint32_t>();
     return m_ops->mGetProfilingSlotProperties(m_handle,type,slotnum);
-  }
-
-  virtual hal::operations_result<void>
-  writeHostEvent(xclPerfMonEventType type, xclPerfMonEventID id)
-  {
-    if (!m_ops->mWriteHostEvent)
-      return hal::operations_result<void>();
-    m_ops->mWriteHostEvent(m_handle,type,id);
-    return hal::operations_result<void>(0);
   }
 
   virtual hal::operations_result<void>
