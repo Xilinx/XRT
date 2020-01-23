@@ -1214,7 +1214,7 @@ static ssize_t cache_expire_secs_store(struct device *dev,
 }
 static DEVICE_ATTR_RW(cache_expire_secs);
 
-static ssize_t timestamp_show(struct device *dev,
+static ssize_t sensor_update_timestamp_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
@@ -1227,7 +1227,7 @@ static ssize_t timestamp_show(struct device *dev,
 	mutex_unlock(&xmc->xmc_lock);
 	return sprintf(buf, "%llu\n", val);
 }
-static DEVICE_ATTR_RO(timestamp);
+static DEVICE_ATTR_RO(sensor_update_timestamp);
 
 static int get_temp_by_m_tag(struct xocl_xmc *xmc, char *m_tag)
 {
@@ -1666,7 +1666,7 @@ static struct attribute *xmc_attrs[] = {
 	&dev_attr_fan_presence.attr,
 	&dev_attr_config_mode.attr,
 	&dev_attr_sc_presence.attr,
-	&dev_attr_timestamp.attr,
+	&dev_attr_sensor_update_timestamp.attr,
 	SENSOR_SYSFS_NODE_ATTRS,
 	REG_SYSFS_NODE_ATTRS,
 	NULL,
