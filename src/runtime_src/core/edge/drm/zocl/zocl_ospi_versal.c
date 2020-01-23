@@ -2,7 +2,7 @@
  * A GEM style (optionally CMA backed) device manager for ZynQ based
  * OpenCL accelerators.
  *
- * Copyright (C) 2019 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2019-2020 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Larry Liu <yliu@xilinx.com>
@@ -104,10 +104,10 @@ static int zocl_ov_get_pdi(struct zocl_ov_dev *ov)
 	u32 *base = ov->base;
 	int ret;
 
-	write_lock(&ov->att_rwlock);
-
 	/* Clear the done flag */
+	write_lock(&ov->att_rwlock);
 	ov->pdi_done = 0;
+	write_unlock(&ov->att_rwlock);
 
 	for (;;) {
 		u32 pkt_header;
@@ -151,6 +151,7 @@ static int zocl_ov_get_pdi(struct zocl_ov_dev *ov)
 	}
 
 	/* Set ready flag */
+	write_lock(&ov->att_rwlock);
 	ov->pdi_ready = 1;
 	write_unlock(&ov->att_rwlock);
 
@@ -183,6 +184,8 @@ static int zocl_ov_get_pdi(struct zocl_ov_dev *ov)
 	zocl_ov_clean(ov);
 	write_unlock(&ov->att_rwlock);
 
+	wait_for_status(ov, XRT_PDI_PKT_STATUS_IDLE);
+
 	return 0;
 
 fail:
@@ -202,6 +205,8 @@ fail:
 static int zocl_ov_thread(void *data)
 {
 	struct zocl_ov_dev *ov = (struct zocl_ov_dev *)data;
+
+	set_status(ov, XRT_PDI_PKT_STATUS_IDLE);
 
 	while (1) {
 		if (kthread_should_stop())

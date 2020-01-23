@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2018-2019, Xilinx Inc
+ *  Copyright (C) 2018-2020, Xilinx Inc
  *
  *  This file is dual licensed.  It may be redistributed and/or modified
  *  under the terms of the Apache 2.0 License OR version 2 of the GNU
@@ -1066,7 +1066,7 @@ struct xocl_subdev_map {
 #define	XOCL_RES_OSPI_VERSAL				\
 		((struct resource []) {			\
 			{				\
-			.start	= 0x3000000,		\
+			.start	= 0x3008000,		\
 			.end	= 0x300FFFF,		\
 			.flags	= IORESOURCE_MEM,	\
 			}				\
