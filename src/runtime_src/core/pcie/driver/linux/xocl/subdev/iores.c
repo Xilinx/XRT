@@ -123,7 +123,7 @@ static int iores_probe(struct platform_device *pdev)
 		res;
 		res = platform_get_resource(pdev, IORESOURCE_MEM, ++i)) {
 		id = xocl_res_name2id(res_map, ARRAY_SIZE(res_map), res->name);
-		if (id >= 0) {
+		if (id > 0) {
 			iores->base_addrs[id] = ioremap_nocache(res->start,
 					res->end - res->start + 1);
 			if (!iores->base_addrs[id]) {
