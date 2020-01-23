@@ -226,7 +226,7 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 		ret = vm_insert_page(vma, vmf_address, xobj->pages[page_offset]);
 #endif
 	} else if (xocl_bo_cma(xobj)) {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_RELEASE_VERSION
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || defined(RHEL_RELEASE_VERSION)
 		pfn_t pfn;
 		pfn = phys_to_pfn_t(page_to_phys(xobj->pages[page_offset]), PFN_MAP);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0)
