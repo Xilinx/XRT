@@ -1379,7 +1379,6 @@ failed:
 	return ret;
 }
 
-<<<<<<< HEAD
 struct resource *xocl_get_iores_byname(struct platform_device *pdev,
 		char *name)
 {
@@ -1394,7 +1393,8 @@ struct resource *xocl_get_iores_byname(struct platform_device *pdev,
 	}
 
 	return NULL;
-=======
+}
+
 void xocl_subdev_register(struct platform_device *pldev, void *ops)
 {
 	struct xocl_subdev *subdev;
@@ -1419,5 +1419,4 @@ void xocl_subdev_unregister(struct platform_device *pldev)
 	}
 
 	subdev->ops = NULL;
->>>>>>> upstream/master
 }
