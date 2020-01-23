@@ -29,6 +29,7 @@ xocl-y := \
 	../subdev/mailbox.o \
 	../subdev/xvc.o \
 	../subdev/icap.o \
+	../subdev/clock.o \
 	../subdev/xmc.o \
 	../subdev/firewall.o \
 	../subdev/mig.o \

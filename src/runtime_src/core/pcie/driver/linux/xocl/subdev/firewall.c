@@ -291,7 +291,7 @@ static u32 check_firewall(struct platform_device *pdev, int *level)
 			}
 			xocl_info(&pdev->dev,
 				"AXI Firewall %d tripped, status: 0x%x, bar offset 0x%llx, resource %s",
-				i, val, bar_off, res->name ? res->name : "N/A");
+				i, val, bar_off, (res && res->name) ? res->name : "N/A");
 			if (!fw->curr_status) {
 				fw->err_detected_status = val;
 				fw->err_detected_level = i;

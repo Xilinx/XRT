@@ -75,25 +75,6 @@
 #define NODE_GAPPING "ep_gapping_demand_00"
 #define NODE_UCS_CONTROL_STATUS "ep_ucs_control_status_00"
 
-enum {
-	IORES_GATEPRBLD,
-	IORES_MEMCALIB,
-	IORES_GATEPRPRP,
-	IORES_CLKWIZKERNEL1,
-	IORES_CLKWIZKERNEL2,
-	IORES_CLKWIZKERNEL3,
-	IORES_CLKFREQ_K1_K2,
-	IORES_CLKFREQ_HBM,
-	IORES_CLKFREQ_K1,
-	IORES_CLKFREQ_K2,
-	IORES_KDMA,
-	IORES_CLKSHUTDOWN,
-	IORES_UCS_CONTROL_STATUS,
-	IORES_CMC_MUTEX,
-	IORES_GAPPING,
-	IORES_MAX,
-};
-
 #define RESNAME_GATEPRBLD       NODE_GATE_BLP
 #define RESNAME_MEMCALIB        NODE_DDR_CALIB
 #define RESNAME_GATEPRPRP       NODE_GATE_PRP
@@ -110,41 +91,47 @@ enum {
 #define RESNAME_GAPPING         NODE_GAPPING
 #define RESNAME_UCS_CONTROL_STATUS     NODE_UCS_CONTROL_STATUS
 
+/*
+ * The iores subdev maintains global resources which can be shared to any
+ * subdev. We keep a minimized scope of this shared public interface.
+ */
+enum {
+	IORES_GATEPRBLD = 0,
+	IORES_MEMCALIB,
+	IORES_GATEPRPRP,
+	IORES_KDMA,
+	IORES_CMC_MUTEX,
+	IORES_GAPPING,
+	IORES_CLKFREQ_K1_K2, /* static res config exposed to iores subdev */
+	IORES_CLKFREQ_HBM, /* static res config exposed to iores subdev */
+	IORES_MAX,
+};
+
+enum {
+	CLOCK_IORES_CLKWIZKERNEL1 = 0,
+	CLOCK_IORES_CLKWIZKERNEL2,
+	CLOCK_IORES_CLKWIZKERNEL3,
+	CLOCK_IORES_CLKFREQ_K1_K2,
+	CLOCK_IORES_CLKFREQ_HBM,
+	CLOCK_IORES_CLKFREQ_K1,
+	CLOCK_IORES_CLKFREQ_K2,
+	CLOCK_IORES_CLKSHUTDOWN,
+	CLOCK_IORES_UCS_CONTROL_STATUS,
+	CLOCK_IORES_MAX,
+};
+
 struct xocl_iores_map {
 	char		*res_name;
 	int		res_id;
 };
 
-#define XOCL_DEFINE_IORES_MAP(map)                                      \
-struct xocl_iores_map map[] = {                                         \
-	{ RESNAME_GATEPRBLD, IORES_GATEPRBLD },                         \
-	{ RESNAME_MEMCALIB, IORES_MEMCALIB },                           \
-	{ RESNAME_GATEPRPRP, IORES_GATEPRPRP },                         \
-	{ RESNAME_CLKWIZKERNEL1, IORES_CLKWIZKERNEL1 },                 \
-	{ RESNAME_CLKWIZKERNEL2, IORES_CLKWIZKERNEL2 },                 \
-	{ RESNAME_CLKWIZKERNEL3, IORES_CLKWIZKERNEL3 },                 \
-	{ RESNAME_CLKFREQ_K1_K2, IORES_CLKFREQ_K1_K2},			\
-	{ RESNAME_CLKFREQ_HBM, IORES_CLKFREQ_HBM },			\
-	{ RESNAME_CLKFREQ_K1, IORES_CLKFREQ_K1},			\
-	{ RESNAME_CLKFREQ_K2, IORES_CLKFREQ_K2},			\
-	{ RESNAME_KDMA, IORES_KDMA },                                   \
-	{ RESNAME_CLKSHUTDOWN, IORES_CLKSHUTDOWN },			\
-	{ RESNAME_UCS_CONTROL_STATUS, IORES_UCS_CONTROL_STATUS},	\
-	{ RESNAME_CMC_MUTEX, IORES_CMC_MUTEX},				\
-	{ RESNAME_GAPPING, IORES_GAPPING},				\
-}
+int xocl_res_name2id(const struct xocl_iores_map *res_map,
+	int res_map_size, const char *res_name);
+
+char *xocl_res_id2name(const struct xocl_iores_map *res_map,
+	int res_map_size, int id);
 
 #define	XOCL_RES_OFFSET_CHANNEL1	0x0
 #define	XOCL_RES_OFFSET_CHANNEL2	0x8
-
-/*
- * Note: please move UCS specific into UCS subdev
-*/
-struct ucs_control_status_ch1 {
-	unsigned int shutdown_clocks_latched:1;
-	unsigned int reserved1:15;
-	unsigned int clock_throttling_average:14;
-	unsigned int reserved2:2;
-};
 
 #endif

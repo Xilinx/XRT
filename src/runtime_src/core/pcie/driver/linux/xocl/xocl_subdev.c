@@ -86,8 +86,11 @@ static struct xocl_subdev *xocl_subdev_reserve(xdev_handle_t xdev_hdl,
 			break;
 		}
 	}
-	if (i == max)
+	if (i == max) {
+		xocl_xdev_err(xdev_hdl, "Cannot reserve dev: %s max level %d",
+			sdev_info->name, max-1);
 		return NULL;
+	}
 
 	subdev->inst = ida_simple_get(&subdev_inst_ida,
 			sdev_info->id << MINORBITS,
@@ -320,8 +323,7 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 	else
 		snprintf(devname, sizeof(devname) - 1, "%s%s",
 				sdev_info->name, SUBDEV_SUFFIX);
-	xocl_xdev_info(xdev_hdl, "creating subdev %s",
-			devname);
+	xocl_xdev_info(xdev_hdl, "creating subdev %s", devname);
 
 	subdev = xocl_subdev_reserve(xdev_hdl, sdev_info);
 	if (!subdev) {

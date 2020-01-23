@@ -31,6 +31,7 @@ xclmgmt-y := \
 	../subdev/xiic.o \
 	../subdev/mailbox.o \
 	../subdev/icap.o \
+	../subdev/clock.o \
 	../subdev/mig.o \
 	../subdev/xmc.o \
 	../subdev/dna.o \
