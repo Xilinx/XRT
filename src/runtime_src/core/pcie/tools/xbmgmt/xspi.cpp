@@ -895,12 +895,12 @@ bool XSPI_Flasher::writeBitstreamGuard(unsigned Addr) {
         memcpy(write_buffer, buf, sizeof(buf));
         return writePage(Addr+WRITE_DATA_SIZE);
     } else {
-    	//Strip data to separate nibbles for each flash chip
+        //Stripe data to separate nibbles for each flash chip
         memset(buf, 0xFF, sizeof(buf));
         memcpy(buf, BITSTREAM_GUARD, sizeof(BITSTREAM_GUARD));
-    	stripe_data(buf, buf1, buf2, sizeof(buf));
+        stripe_data(buf, buf1, buf2, sizeof(buf));
 
-    	//Select flash chip 0
+        //Select flash chip 0
         if (!prepareXSpi(0)) {
             std::cout << "ERROR: Unable to prepare the flash chip 0\n";
             return false;
@@ -914,9 +914,9 @@ bool XSPI_Flasher::writeBitstreamGuard(unsigned Addr) {
         if(!writePage(Addr+WRITE_DATA_SIZE)) {
             std::cout << "ERROR: Unable to write bitstream guard to flash chip 1!\n";
             return false;
-    	}
+        }
 
-    	//Select flash chip 1
+        //Select flash chip 1
         if (!prepareXSpi(1)) {
             std::cout << "ERROR: Unable to prepare the flash chip 0\n";
             return false;
