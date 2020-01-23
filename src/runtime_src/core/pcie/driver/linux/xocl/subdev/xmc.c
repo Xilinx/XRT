@@ -181,7 +181,7 @@ enum sensor_val_kind {
 	(xmc->base_addrs[IO_GPIO] ?		\
 	XOCL_WRITE_REG32(val, xmc->base_addrs[IO_GPIO] + off) : ((void)0))
 
-#define SCHE_EXIST(xmc)			\
+#define SCHED_EXIST(xmc)			\
 	(xmc->base_addrs[IO_CQ] ? true : false)
 #define	READ_CQ(xmc, off)			\
 	(xmc->base_addrs[IO_CQ] ?		\
@@ -2195,7 +2195,7 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 		}
 		/* Need to check if ERT is loaded before we attempt to stop it */
 		if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0)) &&
-			SCHE_EXIST(xmc)) {
+			SCHED_EXIST(xmc)) {
 			reg_val = READ_CQ(xmc, 0);
 			if (!(reg_val & ERT_EXIT_ACK)) {
 				xocl_info(&xmc->pdev->dev,
@@ -2217,7 +2217,7 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 			xmc->state = XMC_STATE_ERROR;
 			return -ETIMEDOUT;
 		} else if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0)) &&
-			 SCHE_EXIST(xmc) &&
+			 SCHED_EXIST(xmc) &&
 			 !(READ_CQ(xmc, 0) & ERT_EXIT_ACK)) {
 			while (retry++ < MAX_ERT_RETRY &&
 				!(READ_CQ(xmc, 0) & ERT_EXIT_ACK))
