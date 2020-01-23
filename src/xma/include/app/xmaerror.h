@@ -56,12 +56,14 @@
  *  @def @XMA_ERROR_NO_CHAN_CAP - The session would exceed the remaining channel capability on the kernel
 */
 
+//See recommended API flow diagram for more info
 #define XMA_SUCCESS             (0)
-#define XMA_SEND_MORE_DATA      (1)
+#define XMA_SEND_MORE_DATA      (1) //Do NOT use xma_recv_xxx API as no output is available. So use xma_send_xxx API
 #define XMA_END_OF_FILE         (2)
 #define XMA_EOS      	        (3)
 #define XMA_FLUSH_AGAIN         (4)
-#define XMA_TRY_AGAIN           (5)
+#define XMA_TRY_AGAIN           (5) //Valid only for xma_send_xx; Resend the same data again
+#define XMA_RESEND_AND_RECV     (6) //Can use xma_recv_xxx as well as xma_send_xxx API. But resend the same data again
 
 #define XMA_ERROR               (-1)
 #define XMA_ERROR_INVALID       (-2)

@@ -297,29 +297,29 @@ xma_plg_buffer_alloc_ddr(XmaSession s_handle, size_t size, bool device_only_buff
 int32_t xma_check_device_buffer(XmaBufferObj *b_obj) {
     if (b_obj == nullptr) {
         //std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj failed allocation" << std::endl;
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_device_buffer_free failed. XMABufferObj failed allocation\n");
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_check_device_buffer failed. XMABufferObj failed allocation\n");
         return XMA_ERROR;
     }
 
     XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj->private_do_not_touch;
     if (b_obj_priv == nullptr) {
         //std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj failed allocation" << std::endl;
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_device_buffer_free failed. XMABufferObj failed allocation\n");
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_check_device_buffer failed. XMABufferObj failed allocation\n");
         return XMA_ERROR;
     }
     if (b_obj_priv->dev_index < 0 || b_obj_priv->bank_index < 0 || b_obj_priv->size <= 0) {
         //std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj failed allocation" << std::endl;
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_device_buffer_free failed. XMABufferObj failed allocation\n");
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_check_device_buffer failed. XMABufferObj failed allocation\n");
         return XMA_ERROR;
     }
     if (b_obj_priv->dummy != (void*)(((uint64_t)b_obj_priv) | signature)) {
         //std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj is corrupted" << std::endl;
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_device_buffer_free failed. XMABufferObj is corrupted.\n");
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_check_device_buffer failed. XMABufferObj is corrupted.\n");
         return XMA_ERROR;
     }
     if (b_obj_priv->dev_handle == NULL) {
         //std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj is corrupted" << std::endl;
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_device_buffer_free failed. XMABufferObj is corrupted.\n");
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_check_device_buffer failed. XMABufferObj is corrupted.\n");
         return XMA_ERROR;
     }
     return XMA_SUCCESS;
@@ -521,24 +521,24 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
         return cmd_obj_error;
     }
     if (regmap_size <= 0) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "regmap_size of %d is invalid\n", regmap_size);
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. regmap_size of %d is invalid\n", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str(), regmap_size);
         if (return_code) *return_code = XMA_ERROR;
         return cmd_obj_error;
     }
     //Kernel regmap 4KB in xmahw.h; execBO size is 4096 = 4KB in xmahw_hal.cpp; But ERT uses some space for ert pkt so allow max of 4032 Bytes for regmap
     if (regmap_size > MAX_KERNEL_REGMAP_SIZE) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Max kernel regmap size is %d Bytes\n", MAX_KERNEL_REGMAP_SIZE);
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. Max kernel regmap size is %d Bytes\n", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str(), MAX_KERNEL_REGMAP_SIZE);
         if (return_code) *return_code = XMA_ERROR;
         return cmd_obj_error;
     }
     if ((uint32_t)regmap_size != ((uint32_t)regmap_size & 0xFFFFFFFC)) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "regmap_size of %d is not a multiple of four bytes\n", regmap_size);
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. regmap_size of %d is not a multiple of four bytes\n", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str(), regmap_size);
         if (return_code) *return_code = XMA_ERROR;
         return cmd_obj_error;
     }
     if (kernel_tmp1->regmap_size > 0) {
         if (regmap_size > kernel_tmp1->regmap_size) {
-            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Can not exceed kernel register_map size. Kernel regamp_size: %d, trying to use size: %d\n", kernel_tmp1->regmap_size, regmap_size);
+            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. Can not exceed kernel register_map size. Kernel regamp_size: %d, trying to use size: %d\n", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str(), kernel_tmp1->regmap_size, regmap_size);
             /*Sarab TODO
             if (return_code) *return_code = XMA_ERROR;
             return cmd_obj_error;
@@ -707,7 +707,7 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
     } else {
         //Get the kernel_info
         if (cu_index < 0 || (uint32_t)cu_index > priv1->device->kernels.size()) {
-            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_cu_cmd failed. Invalud cu_index.\n");
+            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. xma_plg_schedule_cu_cmd failed. Invalud cu_index.\n");
             if (return_code) *return_code = XMA_ERROR;
             return cmd_obj_error;
         }
@@ -729,24 +729,24 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
         return cmd_obj_error;
     }
     if (regmap_size <= 0) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "regmap_size of %d is invalid\n", regmap_size);
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. regmap_size of %d is invalid\n", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str(), regmap_size);
         if (return_code) *return_code = XMA_ERROR;
         return cmd_obj_error;
     }
     //Kernel regmap 4KB in xmahw.h; execBO size is 4096 = 4KB in xmahw_hal.cpp; But ERT uses some space for ert pkt so allow max of 4032 Bytes for regmap
     if (regmap_size > MAX_KERNEL_REGMAP_SIZE) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Max kernel regmap size is %d Bytes\n", MAX_KERNEL_REGMAP_SIZE);
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. Max kernel regmap size is %d Bytes\n", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str(), MAX_KERNEL_REGMAP_SIZE);
         if (return_code) *return_code = XMA_ERROR;
         return cmd_obj_error;
     }
     if ((uint32_t)regmap_size != ((uint32_t)regmap_size & 0xFFFFFFFC)) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "regmap_size of %d is not a multiple of four bytes\n", regmap_size);
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. regmap_size of %d is not a multiple of four bytes\n", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str(), regmap_size);
         if (return_code) *return_code = XMA_ERROR;
         return cmd_obj_error;
     }
     if (kernel_tmp1->regmap_size > 0) {
         if (regmap_size > kernel_tmp1->regmap_size) {
-            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Can not exceed kernel register_map size. Kernel regamp_size: %d, trying to use size: %d\n", kernel_tmp1->regmap_size, regmap_size);
+            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. Can not exceed kernel register_map size. Kernel regamp_size: %d, trying to use size: %d\n", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str(), kernel_tmp1->regmap_size, regmap_size);
             /*Sarab TODO
             if (return_code) *return_code = XMA_ERROR;
             return cmd_obj_error;
@@ -905,7 +905,7 @@ int32_t xma_plg_cu_cmd_status(XmaSession s_handle, XmaCUCmdObj* cmd_obj_array, i
         return XMA_ERROR;
     }
     if (priv1->using_work_item_done) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_cu_cmd_status & xma_plg_is_work_item_done both can not be used in same session\n");
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. xma_plg_cu_cmd_status & xma_plg_is_work_item_done both can not be used in same session\n", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
         return XMA_ERROR;
     }
     priv1->using_cu_cmd_status = true;
@@ -1021,7 +1021,7 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
         return XMA_ERROR;
     }
     if (priv1->using_cu_cmd_status) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_is_work_item_done & xma_plg_cu_cmd_status both can not be used in same session\n");
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. xma_plg_is_work_item_done & xma_plg_cu_cmd_status both can not be used in same session\n", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
         return XMA_ERROR;
     }
     priv1->using_work_item_done = true;
@@ -1099,6 +1099,9 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
             if (priv1->execwait_locked.compare_exchange_weak(expected, desired)) {
                 xclExecWait(priv1->dev_handle, timeout1);
                 priv1->execwait_locked = false;
+                if (priv1->num_cu_cmds == 0) {
+                    xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. There may not be any outstandng CU command to wait for\n", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
+                }
             } else {
                 std::this_thread::sleep_for(std::chrono::milliseconds(3));
             }
