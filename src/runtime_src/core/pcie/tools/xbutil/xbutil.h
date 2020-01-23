@@ -1472,7 +1472,7 @@ public:
             //addr = 0xC00000000;//48GB = 3 hops
             addr = 0x400000000;//16GB = one hop
             sz = 0x20000;//128KB
-            long numHops = addr / ddr_mem_size;
+            long numHops = addr / get_ddr_mem_size();
             auto t1 = Clock::now();
             for (unsigned i = 0; i < numIteration; i++) {
                 memwriteQuiet(addr, sz, pattern);

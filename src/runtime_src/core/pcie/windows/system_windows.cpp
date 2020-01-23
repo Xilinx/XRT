@@ -24,6 +24,7 @@
 #include "device_windows.h"
 #include "gen/version.h"
 #include "core/common/time.h"
+#include "mgmt.h"
 #include <memory>
 #include <ctime>
 #include <windows.h>
@@ -113,10 +114,14 @@ get_os_info(boost::property_tree::ptree &pt)
 
 std::pair<device::id_type, device::id_type>
 system_windows::
-get_total_devices() const
+get_total_devices(bool is_user) const
 {
-  auto user_count = xclProbe();
-  return std::make_pair(user_count, user_count);
+  unsigned int count = 0;
+  if (is_user)
+    count = xclProbe();
+  else
+    count = mgmtpf::probe();
+  return std::make_pair(count, count);
 }
 
 void

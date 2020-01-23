@@ -132,6 +132,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/subdev/xiic.c
   xocl/subdev/mailbox.c
   xocl/subdev/icap.c
+  xocl/subdev/clock.c
   xocl/subdev/iores.c
   xocl/subdev/axigate.c
   xocl/subdev/mig.c

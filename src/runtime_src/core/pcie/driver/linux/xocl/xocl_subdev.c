@@ -326,8 +326,7 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 	else
 		snprintf(devname, sizeof(devname) - 1, "%s%s",
 				sdev_info->name, SUBDEV_SUFFIX);
-	xocl_xdev_info(xdev_hdl, "creating subdev %s",
-			devname);
+	xocl_xdev_info(xdev_hdl, "creating subdev %s", devname);
 
 	subdev = xocl_subdev_reserve(xdev_hdl, sdev_info);
 	if (!subdev) {
@@ -1380,6 +1379,7 @@ failed:
 	return ret;
 }
 
+<<<<<<< HEAD
 struct resource *xocl_get_iores_byname(struct platform_device *pdev,
 		char *name)
 {
@@ -1394,4 +1394,30 @@ struct resource *xocl_get_iores_byname(struct platform_device *pdev,
 	}
 
 	return NULL;
+=======
+void xocl_subdev_register(struct platform_device *pldev, void *ops)
+{
+	struct xocl_subdev *subdev;
+
+	subdev = xocl_subdev_lookup(pldev);
+	if (!subdev) {
+		xocl_err(&pldev->dev, "did not find subdev");
+		return;
+	}
+
+	subdev->ops = ops;
+}
+
+void xocl_subdev_unregister(struct platform_device *pldev)
+{
+	struct xocl_subdev *subdev;
+
+	subdev = xocl_subdev_lookup(pldev);
+	if (!subdev) {
+		xocl_err(&pldev->dev, "did not find subdev");
+		return;
+	}
+
+	subdev->ops = NULL;
+>>>>>>> upstream/master
 }

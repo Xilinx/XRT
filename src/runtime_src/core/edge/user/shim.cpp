@@ -671,6 +671,7 @@ int ZYNQShim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex,
     .uuid_size = sizeof (uuid_t) * sizeof (char),
     .cu_index = ipIndex,
     .flags = flags,
+    .handle = 0,
     .op = ZOCL_CTX_OP_ALLOC_CTX,
   };
 
@@ -696,6 +697,8 @@ int ZYNQShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex)
     .uuid_ptr = reinterpret_cast<uint64_t>(xclbinId),
     .uuid_size = sizeof (uuid_t) * sizeof (char),
     .cu_index = ipIndex,
+    .flags = 0,
+    .handle = 0,
     .op = ZOCL_CTX_OP_FREE_CTX,
   };
 

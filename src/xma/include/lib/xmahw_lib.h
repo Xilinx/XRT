@@ -102,6 +102,7 @@ typedef struct XmaHwSessionPrivate
     XmaHwKernel     *kernel_info;
     //For execbo:
     std::atomic<uint32_t>  kernel_complete_count;
+    std::atomic<uint32_t>  kernel_complete_total;
     XmaHwDevice     *device;
     std::unordered_map<uint32_t, XmaCUCmdObjPrivate> CU_cmds;//Use execbo lock when accessing this map
     std::atomic<uint32_t> num_cu_cmds;
@@ -127,6 +128,7 @@ typedef struct XmaHwSessionPrivate
     dev_handle = NULL;
     kernel_info = NULL;
     kernel_complete_count = 0;
+    kernel_complete_total = 0;
     device = NULL;
     num_cu_cmds = 0;
     num_cu_cmds_avg = 0;

@@ -7,8 +7,14 @@ message("-- MicroBlaze toolchain found, preparing ERT build")
 
 add_subdirectory(scheduler)
 add_subdirectory(management)
+
+# CMC and BMC require gitenterprise access, disable if no access
+# Improve this test to check for url access to gitenterprise.xilinx.com
+if (EXISTS /tools/batonroot/rodin/devkits)
+message("-- Preparing cmc and bmc legacy")
 add_subdirectory(cmc)
 add_subdirectory(bmc)
+endif()
 
 add_custom_target(ert ALL
  DEPENDS scheduler management cmc bmc

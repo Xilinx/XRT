@@ -56,6 +56,11 @@ void fini(void *mpc_cookie);
  */
 static std::string RESTIP_ENDPOINT = "168.63.129.16";
 /*
+ * Maintain the serialNumber of cards.
+ * This is required since during reset, the sysfs entry is not available 
+ */
+static std::vector<std::string> FPGA_SERIAL_NUMBER;
+/*
  * Init function of the plugin that is used to hook the required functions.
  * The cookie is used by fini (see below). Can be NULL if not required.
  */
@@ -73,6 +78,7 @@ int init(mpd_plugin_callbacks *cbs)
         if (!private_ip.empty())
             RESTIP_ENDPOINT = private_ip;
         syslog(LOG_INFO, "azure restserver ip: %s\n", RESTIP_ENDPOINT.c_str());
+        FPGA_SERIAL_NUMBER = AzureDev::get_serial_number();
         // hook functions
         cbs->mpc_cookie = NULL;
         cbs->get_remote_msd_fd = get_remote_msd_fd;
@@ -178,7 +184,7 @@ int AzureDev::azureLoadXclBin(const xclBin *buffer)
     if (memcmp(xclbininmemory, "xclbin2", 8) != 0)
            return -1;
     std::string fpgaSerialNumber;
-       get_fpga_serialNo(fpgaSerialNumber);
+    get_fpga_serialNo(fpgaSerialNumber);
     std::cout << "FPGA serial No: " << fpgaSerialNumber << std::endl;
     int index = 0;
     std::string imageSHA;
@@ -301,7 +307,7 @@ AzureDev::~AzureDev()
 {
 }
 
-AzureDev::AzureDev(size_t index)
+AzureDev::AzureDev(size_t index) : index(index)
 {
     dev = pcidev::get_dev(index, true);
 }
@@ -462,4 +468,6 @@ void AzureDev::get_fpga_serialNo(std::string &fpgaSerialNo)
     std::string errmsg;
     dev->sysfs_get("xmc", "serial_num", errmsg, fpgaSerialNo);
     //fpgaSerialNo = "1281002AT024";
+    if (fpgaSerialNo.empty())
+        fpgaSerialNo = FPGA_SERIAL_NUMBER.at(index);
 }

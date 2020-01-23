@@ -64,7 +64,7 @@ bdf2index(const std::string& bdfStr) const
     throw error(errMsg);
 	}
 
-  for (uint16_t i = 0; i < get_total_devices().first; i++) {
+  for (uint16_t i = 0; i < get_total_devices(false).first; i++) {
     auto device = get_mgmtpf_device(i);
     boost::any bus, dev, func;
 
