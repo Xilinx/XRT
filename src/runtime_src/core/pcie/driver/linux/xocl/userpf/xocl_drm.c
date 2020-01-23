@@ -23,6 +23,8 @@
 	defined(RHEL_RELEASE_VERSION)
 #include <linux/pfn_t.h>
 #endif
+#include <linux/pagemap.h>
+
 #include <drm/drmP.h>
 #include <drm/drm_gem.h>
 #include <drm/drm_mm.h>
