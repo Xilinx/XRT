@@ -1804,7 +1804,7 @@ int xcldev::device::setCma(bool enable, uint64_t sz, uint64_t num, bool force)
 int xcldev::xclCma(int argc, char *argv[])
 {
     int c;
-    unsigned index = 0;
+    unsigned int index = 0;
     int cma_enable = -1;
     uint64_t huge_page_sz = 0x40000000;
     uint64_t nr_page = 1;

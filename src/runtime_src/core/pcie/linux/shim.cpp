@@ -56,6 +56,7 @@
 #include <sys/syscall.h>
 #include <sys/file.h>
 #include <linux/aio_abi.h>
+#include <asm/mman.h>
 
 #ifdef NDEBUG
 # undef NDEBUG
@@ -745,14 +746,10 @@ int shim::p2pEnable(bool enable, bool force)
 
 int shim::cmaEnable(bool enable, uint64_t size, uint64_t num, bool force)
 {
-    const std::string input = "1\n";
-    std::string err;
     int ret = 0;
-    uint64_t i = 0;
-    void *addr_local = NULL;
-    uint32_t hugepage_flag = 0;
 
     if (enable) {
+        uint32_t hugepage_flag = 0;
 
         drm_xocl_alloc_cma_info cma_info;
         cma_info.page_sz = size;
@@ -770,10 +767,10 @@ int shim::cmaEnable(bool enable, uint64_t size, uint64_t num, bool force)
         if (!hugepage_flag)
             return -EINVAL;
 
-        for ( i = 0; i < num; ++i ) {
-            addr_local = mmap(0x0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | hugepage_flag << MAP_HUGE_SHIFT, 0, 0);
+        for (uint32_t i = 0; i < num; ++i ) {
+            void *addr_local = mmap(0x0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | hugepage_flag << MAP_HUGE_SHIFT, 0, 0);
             if (addr_local == MAP_FAILED) {
-                std::cout<<"Failed to mmap"<<std::endl;
+                xrt_logmsg(XRT_ERROR, "Unable to get huge page.");
                 ret = -ENOMEM;
                 break;
             }
@@ -785,7 +782,7 @@ int shim::cmaEnable(bool enable, uint64_t size, uint64_t num, bool force)
                 ret = -errno;
         }
         if (ret) {
-            for (i = 0; i < num; ++i) {
+            for (uint32_t i = 0; i < num; ++i) {
                 if (cma_info.user_addr[i])
                     munmap((void*)cma_info.user_addr[i], size);
             }
