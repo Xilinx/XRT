@@ -95,21 +95,6 @@ static struct xocl_subdev *xocl_subdev_reserve(xdev_handle_t xdev_hdl,
 
 	subdev->state = XOCL_SUBDEV_STATE_INIT;
 
-#if 0
-	for (i = 0; i < max; i++) {
-		if (sdev_info->override_idx)
-			subdev = &core->subdevs[devid][sdev_info->override_idx];
-		else
-			subdev = &core->subdevs[devid][i];
-		if (subdev->state == XOCL_SUBDEV_STATE_UNINIT) {
-			subdev->state = XOCL_SUBDEV_STATE_INIT;
-			break;
-		}
-	}
-	if (i == max)
-		return NULL;
-#endif
-
 	subdev->inst = ida_simple_get(&subdev_inst_ida,
 			sdev_info->id << MINORBITS,
 			((sdev_info->id + 1) << MINORBITS) - 1,
