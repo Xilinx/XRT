@@ -1809,7 +1809,7 @@ int xcldev::xclCma(int argc, char *argv[])
     uint64_t huge_page_sz = 0x40000000;
     uint64_t nr_page = 1;
     bool root = ((getuid() == 0) || (geteuid() == 0));
-    const std::string usage("Options: [-d index] --[enable|disable|validate] --[1G|2M]");
+    const std::string usage("Options: [-d index] --[enable|disable|validate] --[1G]");
     static struct option long_options[] = {
         {"enable", no_argument, 0, xcldev::CMA_ENABLE},
         {"disable", no_argument, 0, xcldev::CMA_DISABLE},

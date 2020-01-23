@@ -30,10 +30,6 @@
 #include "version.h"
 #include "common.h"
 
-#if defined(P2P_API_V1) || defined(P2P_API_V2)
-#include <linux/memremap.h>
-#endif
-
 #if defined(XOCL_UUID)
 xuid_t uuid_null = NULL_UUID_LE;
 #endif
@@ -504,17 +500,6 @@ int xocl_reclock_ioctl(struct drm_device *dev, void *data,
 	userpf_info(xdev, "%s err: %d\n", __func__, err);
 	return err;
 }
-#if defined(XOCL_DRM_FREE_MALLOC)
-static inline void drm_free_large(void *ptr)
-{
-	kvfree(ptr);
-}
-
-static inline void *drm_malloc_ab(size_t nmemb, size_t size)
-{
-	return kvmalloc_array(nmemb, size, GFP_KERNEL);
-}
-#endif
 
 int xocl_alloc_cma_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp)

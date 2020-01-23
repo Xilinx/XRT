@@ -129,7 +129,6 @@ static void xocl_free_bo(struct drm_gem_object *obj)
 	}
 
 	if (xocl_bo_cma(xobj) && xobj->cma_mm_node) {
-		DRM_INFO("release cma mm mode");
 		drm_mm_remove_node(xobj->cma_mm_node);
 		kfree(xobj->cma_mm_node);
 		xobj->cma_mm_node = NULL;
@@ -253,7 +252,7 @@ done:
 	return 0;
 }
 
-static int xocl_cma_bo_allocator(struct xocl_drm *drm_p, struct drm_xocl_bo *xobj, uint64_t size, unsigned idx)
+static int xocl_cma_bo_alloc(struct xocl_drm *drm_p, struct drm_xocl_bo *xobj, uint64_t size, unsigned idx)
 {
 	int err = 0;
 
@@ -270,10 +269,13 @@ static int xocl_cma_bo_allocator(struct xocl_drm *drm_p, struct drm_xocl_bo *xob
 #else
 			0, 0, 0);
 #endif
-		if (err)
+		if (err) {
+			kfree(xobj->cma_mm_node);
+			xobj->cma_mm_node = NULL;
 			return err;
+		}
 
-		DRM_INFO("xobj->cma_mm_node.start 0x%llx, xobj->cma_mm_node.size %llx", xobj->cma_mm_node->start,
+		DRM_DEBUG("xobj->cma_mm_node.start 0x%llx, xobj->cma_mm_node.size %llx", xobj->cma_mm_node->start,
 			xobj->cma_mm_node->size);
 	} else {
 		xobj->cma_addr = alloc_pages_exact(size, GFP_KERNEL | __GFP_ZERO);
@@ -329,7 +331,7 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	}
 
 	if (xobj->flags & XOCL_CMA_MEM) {
-		err = xocl_cma_bo_allocator(drm_p, xobj, size, ddr);
+		err = xocl_cma_bo_alloc(drm_p, xobj, size, ddr);
 		if (err)
 			goto failed;
 	}

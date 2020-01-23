@@ -54,18 +54,6 @@ static char driver_date[9];
 
 static void xocl_cma_chunks_free_all(struct xocl_drm *drm_p);
 
-#if defined(XOCL_DRM_FREE_MALLOC)
-static inline void drm_free_large(void *ptr)
-{
-	kvfree(ptr);
-}
-
-static inline void *drm_malloc_ab(size_t nmemb, size_t size)
-{
-	return kvmalloc_array(nmemb, size, GFP_KERNEL);
-}
-#endif
-
 static void xocl_free_object(struct drm_gem_object *obj)
 {
 	DRM_ENTER("");
@@ -239,10 +227,14 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
 		pfn_t pfn;
 		pfn = phys_to_pfn_t(page_to_phys(xobj->pages[page_offset]), PFN_MAP);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0)
+		ret = vmf_insert_mixed(vma, vmf_address, pfn);
 #else
-		unsigned long pfn = page_to_pfn(xobj->pages[page_offset]);
-#endif
 		ret = vm_insert_mixed(vma, vmf_address, pfn);
+#endif
+#else
+		ret = vm_insert_mixed(vma, vmf_address, page_to_pfn(xobj->pages[page_offset]));
+#endif
 	} else {
 		ret = vm_insert_page(vma, vmf_address, xobj->pages[page_offset]);
 	}
@@ -585,7 +577,7 @@ static void xocl_cma_chunk_free(struct xocl_drm *drm_p, uint32_t idx)
 #endif
 
 		if (drm_p->cma_chunk[idx]->pages)
-			drm_free_large(drm_p->cma_chunk[idx]->pages);
+			vfree(drm_p->cma_chunk[idx]->pages);
 
 		vfree(drm_p->cma_chunk[idx]);
 		drm_p->cma_chunk[idx] = NULL;
@@ -597,12 +589,13 @@ static void xocl_cma_chunks_free_all(struct xocl_drm *drm_p)
 {
 
 	int i = 0;
-	BUG_ON(!mutex_is_locked(&drm_p->mm_lock));
+	mutex_lock(&drm_p->mm_lock);
 
 	for (i = 0; i < DRM_XOCL_CMA_CHUNK_MAX; ++i) {
 		xocl_cma_chunk_free(drm_p, i);
 	}
 	xocl_info(drm_p->ddev->dev, "%s done", __func__);
+	mutex_unlock(&drm_p->mm_lock);
 }
 
 int xocl_cleanup_mem(struct xocl_drm *drm_p)
@@ -861,7 +854,7 @@ static int xocl_cma_chunk_reserve(struct xocl_drm *drm_p, uint64_t user_addr, ui
 
 	page_count = (page_sz) >> PAGE_SHIFT;
 
-	pages = drm_malloc_ab(page_count, sizeof(struct page *));
+	pages = vzalloc(page_count*sizeof(struct page *));
 	if (!pages) {
 		ret = -ENOMEM;
 		goto out;
@@ -870,7 +863,7 @@ static int xocl_cma_chunk_reserve(struct xocl_drm *drm_p, uint64_t user_addr, ui
 
 	nr = get_user_pages_fast(user_addr, page_count, 1, drm_p->cma_chunk[idx]->pages);
 	if (nr != page_count) {
-		xocl_err(dev, "nr %llx\n", nr);
+		xocl_err(dev, "Can't pin down enough page_nr %llx\n", nr);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -879,7 +872,7 @@ static int xocl_cma_chunk_reserve(struct xocl_drm *drm_p, uint64_t user_addr, ui
 
 	ret = is_chunk_cma(drm_p->cma_chunk[idx]->pages, page_count, page_sz);
 	if (ret) {
-		xocl_info(dev, "not cma chunk\n");
+		xocl_err(dev, "not a cma chunk\n");
 		goto out;
 	}
 

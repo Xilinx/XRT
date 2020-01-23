@@ -468,10 +468,10 @@ struct drm_xocl_reclock_info {
 
 
 struct drm_xocl_alloc_cma_info {
-	uint64_t user_addr[DRM_XOCL_CMA_CHUNK_MAX];
 	uint64_t page_sz;
 	uint64_t nr_page;
 	bool	 reserve;
+	uint64_t user_addr[DRM_XOCL_CMA_CHUNK_MAX];
 };
 
 /*
