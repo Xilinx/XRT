@@ -32,8 +32,8 @@
 #define POLL_TIMEOUT    60      /* Set a pool timeout as 60sec */
 
 static int hotplugRescan(void);
-static int removeDevice(const std::shared_ptr<pcidev::pci_device> dev);
-static int shutdownDevice(const std::shared_ptr<pcidev::pci_device> dev);
+static int removeDevice(unsigned index, bool is_userpf);
+static int shutdownDevice(unsigned index, bool is_userpf);
 
 const char *subCmdHotplugDesc = "Perform managed hotplug on the xilinx device";
 const char *subCmdHotplugUsage = "--offline bdf | --online";
@@ -49,6 +49,7 @@ int hotplugHandler(int argc, char *argv[])
     unsigned index = UINT_MAX;
     int isRemove = 0;
     int isRescan = 0;
+    bool is_userpf = false;
 
     const static option opts[] = {
         { "offline", required_argument, nullptr, '0' },
@@ -92,10 +93,9 @@ int hotplugHandler(int argc, char *argv[])
 
     if (isRemove)
     {
-        auto uDev = pcidev::get_dev(index, true);
-    
-        ret = shutdownDevice(uDev); 
         /* Shutdown user_pf before trigger hot removal*/
+        is_userpf = true;
+        ret = shutdownDevice(index, is_userpf); 
         if (ret)
         {
             if (ret == -ENOENT)
@@ -112,13 +112,14 @@ int hotplugHandler(int argc, char *argv[])
         }
 
         /* Remove user_pf */
-        ret = removeDevice(uDev);
+        is_userpf = true;
+        ret = removeDevice(index, is_userpf);
         if (ret)
             return ret;
 
         /* Remove mgmt_pf */
-        auto mDev = pcidev::get_dev(index, false);
-        ret = removeDevice(mDev);
+        is_userpf = false;
+        ret = removeDevice(index, is_userpf);
         if (ret)
             return ret;
     }
@@ -134,11 +135,12 @@ int hotplugHandler(int argc, char *argv[])
     return ret;
 }
 
-static int shutdownDevice(const std::shared_ptr<pcidev::pci_device> dev)
+static int shutdownDevice(unsigned index, bool is_userpf)
 {
     std::string errmsg;
     int shutdownStatus = -EINVAL;
     int wait  = 0;
+    auto dev = pcidev::get_dev(index, is_userpf);
 
     /* "echo 1 > /sys/bus/pci/<EndPoint>/shutdown" to trigger shutdown of the device */
     std::string path = dev->get_sysfs_path("", "shutdown");
@@ -172,9 +174,10 @@ static int shutdownDevice(const std::shared_ptr<pcidev::pci_device> dev)
     return -ETIMEDOUT;
 }
 
-static int removeDevice(const std::shared_ptr<pcidev::pci_device> dev)
+static int removeDevice(unsigned index, bool is_userpf)
 {
     std::string errmsg;
+    auto dev = pcidev::get_dev(index, is_userpf);
 
     /* "echo 1 > /sys/bus/pci/<EndPoint>/remove" to trigger hot remove of the device */
     dev->sysfs_put("", "remove", errmsg, "1");
