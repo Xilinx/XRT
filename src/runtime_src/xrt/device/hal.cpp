@@ -89,7 +89,15 @@ dllpath(const boost::filesystem::path& root, const std::string& libnm)
 static bool
 isEmulationMode()
 {
-  static bool val = (std::getenv("XCL_EMULATION_MODE") != nullptr);
+  static int count = 0;
+  static bool val = (std::getenv("XCL_EMULATION_MODE") != nullptr);  
+  if (!val) {
+    if (!count) {
+      std::string initMsg = "INFO: XCL_EMULATION_MODE is not set, make sure that this environment variable is set to valid value for emulation";
+      std::cout << initMsg << std::endl;
+    }
+    count++;
+  }  
   return val;
 }
 
