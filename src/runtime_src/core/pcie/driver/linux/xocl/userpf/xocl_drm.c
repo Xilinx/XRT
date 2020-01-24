@@ -226,6 +226,9 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 		ret = vm_insert_page(vma, vmf_address, xobj->pages[page_offset]);
 #endif
 	} else if (xocl_bo_cma(xobj)) {
+/*  vm_insert_page does not allow driver to insert anonymous pages.
+ *  Instead, we call vm_insert_mixed.
+ */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || defined(RHEL_RELEASE_VERSION)
 		pfn_t pfn;
 		pfn = phys_to_pfn_t(page_to_phys(xobj->pages[page_offset]), PFN_MAP);
@@ -587,16 +590,21 @@ static void xocl_cma_chunk_free(struct xocl_drm *drm_p, uint32_t idx)
 	}	
 }
 
-static void xocl_cma_chunks_free_all(struct xocl_drm *drm_p)
+static void xocl_cma_chunks_free_all_nolock(struct xocl_drm *drm_p)
 {
 
 	int i = 0;
-	mutex_lock(&drm_p->mm_lock);
 
 	for (i = 0; i < DRM_XOCL_CMA_CHUNK_MAX; ++i) {
 		xocl_cma_chunk_free(drm_p, i);
 	}
 	xocl_info(drm_p->ddev->dev, "%s done", __func__);
+}
+
+static void xocl_cma_chunks_free_all(struct xocl_drm *drm_p)
+{
+	mutex_lock(&drm_p->mm_lock);
+	xocl_cma_chunks_free_all_nolock(drm_p);
 	mutex_unlock(&drm_p->mm_lock);
 }
 
@@ -836,9 +844,9 @@ out:
 	return err;
 }
 
-static int xocl_cma_chunk_reserve(struct xocl_drm *drm_p, uint64_t user_addr, uint32_t idx, size_t page_sz)
+static int xocl_cma_chunk_reserve(struct xocl_drm *drm_p, uint64_t user_addr, size_t page_sz)
 {
-	int ret = 0;
+	int ret = 0, idx = 0;
 	uint64_t nr, page_count;
 	struct page **pages = NULL;
 	struct device *dev = drm_p->ddev->dev;
@@ -849,7 +857,17 @@ static int xocl_cma_chunk_reserve(struct xocl_drm *drm_p, uint64_t user_addr, ui
 	if (!(XOCL_ACCESS_OK(VERIFY_WRITE, user_addr, page_sz))) {
 		xocl_err(dev, "Invalid huge page user pointer\n");
 		ret = -ENOMEM;
-		goto out;		
+		goto out;
+	}
+
+	for (idx = 0; idx < DRM_XOCL_CMA_CHUNK_MAX; ++idx) {
+		if (!drm_p->cma_chunk[idx])
+			break;
+	}
+
+	if (idx >= DRM_XOCL_CMA_CHUNK_MAX) {
+		ret = -EBUSY;
+		return ret;
 	}
 
 	drm_p->cma_chunk[idx] =  vzalloc(sizeof(struct xocl_cma_chunk));
@@ -890,7 +908,7 @@ static int xocl_cma_chunk_reserve(struct xocl_drm *drm_p, uint64_t user_addr, ui
 out:
 	xocl_info(dev, "%s ret %d", __func__, ret);
 	if (ret)
-		xocl_cma_chunks_free_all(drm_p);
+		xocl_cma_chunks_free_all_nolock(drm_p);
 
 	return ret;
 }
@@ -899,29 +917,24 @@ out:
 
 int xocl_cma_chunk_helper(struct xocl_drm *drm_p, struct drm_xocl_alloc_cma_info *cma_info)
 {
-	int err = 0, i = 0;
+	int err = 0;
 	size_t page_sz = cma_info->page_sz;
 
 	mutex_lock(&drm_p->mm_lock);
 
 	if (cma_info->reserve) {
-		if (DRM_XOCL_CMA_CHUNK_MAX < cma_info->nr_page) {
-			err = -EINVAL;
-			goto done;
-		}
-		for (i = 0; i < cma_info->nr_page; ++i) {
-			err = xocl_cma_chunk_reserve(drm_p, cma_info->user_addr[i], i, page_sz);
-			if (err)
-				goto done;
 
-		}
+		err = xocl_cma_chunk_reserve(drm_p, cma_info->user_addr, page_sz);
+		if (err)
+			goto done;
+
 	} else {
-		xocl_cma_chunks_free_all(drm_p);
+		xocl_cma_chunks_free_all_nolock(drm_p);
 	}
 
 done:
 	if (err)
-		xocl_cma_chunks_free_all(drm_p);
+		xocl_cma_chunks_free_all_nolock(drm_p);
 
 	mutex_unlock(&drm_p->mm_lock);
 	return err;

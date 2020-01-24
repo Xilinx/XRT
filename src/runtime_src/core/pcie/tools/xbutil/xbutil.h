@@ -37,6 +37,7 @@
 #include "core/common/utils.h"
 #include "core/common/sensor.h"
 #include "core/pcie/linux/scan.h"
+#include "core/pcie/linux/shim.h"
 #include "xclbin.h"
 #include "core/common/xrt_profiling.h"
 #include <version.h>
@@ -44,7 +45,10 @@
 #include <chrono>
 using Clock = std::chrono::high_resolution_clock;
 
-int xclUpdateSchedulerStat(xclDeviceHandle); // exposed by shim
+
+/* exposed by shim */
+int xclUpdateSchedulerStat(xclDeviceHandle);
+int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t sz);
 
 #define TO_STRING(x) #x
 #define AXI_FIREWALL
@@ -115,7 +119,6 @@ enum cmacommand {
     CMA_VALIDATE,
     CMA_SIZE_1G,
     CMA_SIZE_2M,
-    CMA_NUM,
 };
 
 static const std::pair<std::string, command> map_pairs[] = {
@@ -1689,7 +1692,7 @@ public:
 
     int reset(xclResetKind kind);
     int setP2p(bool enable, bool force);
-    int setCma(bool enable, uint64_t sz, uint64_t num, bool force);
+    int setCma(bool enable, uint64_t sz);
     int testP2p(void);
     int testM2m(void);
 

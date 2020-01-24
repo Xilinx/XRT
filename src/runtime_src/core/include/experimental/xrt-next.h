@@ -38,8 +38,6 @@ extern "C" {
  */
 XCL_DRIVER_DLLESPEC int xclP2pEnable(xclDeviceHandle handle, bool enable, bool force);
 
-
-XCL_DRIVER_DLLESPEC int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t sz, uint64_t num, bool force);
 /*
  * API to get number of live processes on the given device.
  * This uses kdsstat information in sysfs.

@@ -90,7 +90,7 @@ public:
     static shim *handleCheck(void * handle);
     int resetDevice(xclResetKind kind);
     int p2pEnable(bool enable, bool force);
-    int cmaEnable(bool enable, uint64_t size, uint64_t num, bool force);
+    int cmaEnable(bool enable, uint64_t size);
     bool xclLockDevice();
     bool xclUnlockDevice();
     int xclReClock2(unsigned short region, const unsigned short *targetFreqMHz);
@@ -121,6 +121,7 @@ public:
     // APIs using sysfs information
     uint32_t xclGetNumLiveProcesses();
     int xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size);
+    int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t sz);
 
     int xclGetDebugIPlayoutPath(char* layoutPath, size_t size);
     int xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);

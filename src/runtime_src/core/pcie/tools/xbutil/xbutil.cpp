@@ -1796,9 +1796,9 @@ int xcldev::xclP2p(int argc, char *argv[])
 
 
 
-int xcldev::device::setCma(bool enable, uint64_t sz, uint64_t num, bool force)
+int xcldev::device::setCma(bool enable, uint64_t sz)
 {
-    return xclCmaEnable(m_handle, enable, sz, num, force);
+    return xclCmaEnable(m_handle, enable, sz);
 }
 
 int xcldev::xclCma(int argc, char *argv[])
@@ -1807,7 +1807,6 @@ int xcldev::xclCma(int argc, char *argv[])
     unsigned int index = 0;
     int cma_enable = -1;
     uint64_t huge_page_sz = 0x40000000;
-    uint64_t nr_page = 1;
     bool root = ((getuid() == 0) || (geteuid() == 0));
     const std::string usage("Options: [-d index] --[enable|disable|validate] --[1G]");
     static struct option long_options[] = {
@@ -1815,13 +1814,11 @@ int xcldev::xclCma(int argc, char *argv[])
         {"disable", no_argument, 0, xcldev::CMA_DISABLE},
         {"1G", no_argument, 0, xcldev::CMA_SIZE_1G},
         {"2M", no_argument, 0, xcldev::CMA_SIZE_2M},
-        {"num", required_argument, 0, xcldev::CMA_NUM},
         {0, 0, 0, 0}
     };
     int long_index, ret;
-    const char* short_options = "d:f"; //don't add numbers
+    const char* short_options = "d"; //don't add numbers
     const char* exe = argv[ 0 ];
-    bool force = false;
 
     while ((c = getopt_long(argc, argv, short_options, long_options,
         &long_index)) != -1) {
@@ -1830,9 +1827,6 @@ int xcldev::xclCma(int argc, char *argv[])
             ret = str2index(optarg, index);
             if (ret != 0)
                 return ret;
-            break;
-        case 'f':
-            force = true;
             break;
         case xcldev::CMA_ENABLE:
             cma_enable = 1;
@@ -1845,9 +1839,6 @@ int xcldev::xclCma(int argc, char *argv[])
             break;
         case xcldev::CMA_SIZE_2M:
             huge_page_sz = 0x200000;
-            break;
-        case xcldev::CMA_NUM:
-            nr_page = atoi(optarg);
             break;
         default:
             xcldev::printHelp(exe);
@@ -1869,7 +1860,7 @@ int xcldev::xclCma(int argc, char *argv[])
         return -EPERM;
     }
 
-    ret = d->setCma(cma_enable, huge_page_sz, nr_page, force);
+    ret = d->setCma(cma_enable, huge_page_sz);
     if (ret == ENOMEM) {
         std::cout << "ERROR: No enough huge page." << std::endl;
         std::cout << "Please check grub settings" << std::endl;

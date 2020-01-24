@@ -744,7 +744,7 @@ int shim::p2pEnable(bool enable, bool force)
     return p2p_enable;
 }
 
-int shim::cmaEnable(bool enable, uint64_t size, uint64_t num, bool force)
+int shim::cmaEnable(bool enable, uint64_t size)
 {
     int ret = 0;
 
@@ -753,12 +753,12 @@ int shim::cmaEnable(bool enable, uint64_t size, uint64_t num, bool force)
 
         drm_xocl_alloc_cma_info cma_info;
         cma_info.page_sz = size;
-        cma_info.nr_page = num;
         cma_info.reserve = true;
 
-        if (num > 4 || num == 0)
-            return -EINVAL;
-
+        /* Once set MAP_HUGETLB, we have to specify bit[26~31] as size in log
+         * e.g. We like to get 2M huge page, 2M = 2^21, 
+         * 21 = 0x15
+         */
         if (size == (1 << 30)) 
             hugepage_flag = 0x1e;
         else if (size == (2 << 20))
@@ -767,29 +767,24 @@ int shim::cmaEnable(bool enable, uint64_t size, uint64_t num, bool force)
         if (!hugepage_flag)
             return -EINVAL;
 
-        for (uint32_t i = 0; i < num; ++i ) {
-            void *addr_local = mmap(0x0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | hugepage_flag << MAP_HUGE_SHIFT, 0, 0);
-            if (addr_local == MAP_FAILED) {
-                xrt_logmsg(XRT_ERROR, "Unable to get huge page.");
-                ret = -ENOMEM;
-                break;
-            }
-            cma_info.user_addr[i] = (uint64_t)addr_local;
+
+        void *addr_local = mmap(0x0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | hugepage_flag << MAP_HUGE_SHIFT, 0, 0);
+        if (addr_local == MAP_FAILED) {
+            xrt_logmsg(XRT_ERROR, "Unable to get huge page.");
+            ret = -ENOMEM;
+        } else {
+            cma_info.user_addr = (uint64_t)addr_local;
         }
+
         if (!ret) {
             ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_ALLOC_CMA, &cma_info);
             if (ret)
                 ret = -errno;
-        }
-        if (ret) {
-            for (uint32_t i = 0; i < num; ++i) {
-                if (cma_info.user_addr[i])
-                    munmap((void*)cma_info.user_addr[i], size);
-            }
+            munmap((void*)cma_info.user_addr, size);
         }
 
     } else {
-        drm_xocl_alloc_cma_info cma_info = {0, 0, false, {0}};
+        drm_xocl_alloc_cma_info cma_info = {0, 0, false};
         ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_ALLOC_CMA, &cma_info);
     }
 
@@ -1921,10 +1916,10 @@ int xclP2pEnable(xclDeviceHandle handle, bool enable, bool force)
     return drv ? drv->p2pEnable(enable, force) : -ENODEV;
 }
 
-int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t sz, uint64_t num, bool force)
+int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t sz)
 {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
-    return drv ? drv->cmaEnable(enable, sz, num, force) : -ENODEV;
+    return drv ? drv->cmaEnable(enable, sz) : -ENODEV;
 }
 
 int xclBootFPGA(xclDeviceHandle handle)
