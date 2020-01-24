@@ -707,7 +707,7 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
     } else {
         //Get the kernel_info
         if (cu_index < 0 || (uint32_t)cu_index > priv1->device->kernels.size()) {
-            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. xma_plg_schedule_cu_cmd failed. Invalud cu_index.\n");
+            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. xma_plg_schedule_cu_cmd failed. Invalud cu_index.\n", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
             if (return_code) *return_code = XMA_ERROR;
             return cmd_obj_error;
         }
