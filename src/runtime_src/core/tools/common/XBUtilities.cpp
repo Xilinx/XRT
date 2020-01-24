@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -23,7 +23,6 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/tokenizer.hpp>
 #include <boost/format.hpp>
-namespace po = boost::program_options;
 
 // System - Include Files
 #include <iostream>
@@ -162,106 +161,6 @@ XBUtilities::trace_print_tree(const std::string & _name,
   XBUtilities::message(buf.str());
 }
 
-std::string 
-XBUtilities::create_usage_string(const std::string &_executableName,
-                                 const std::string &_subCommand,
-                                 const po::options_description &_od)
-{
-  const static int SHORT_OPTION_STRING_SIZE = 2;
-    std::stringstream buffer;
-
-    // Define the basic first
-    buffer << _executableName << " " << _subCommand;
-
-    const std::vector<boost::shared_ptr<po::option_description>> options = _od.options();
-
-    // Gather up the short simple flags
-    {
-      bool firstShortFlagFound = false;
-      for (auto & option : options) {
-        // Get the option name
-        std::string optionDisplayName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
-
-        // See if we have a long flag
-        if (optionDisplayName.size() != SHORT_OPTION_STRING_SIZE)
-          continue;
-
-        // We are not interested in any arguments
-        if (option->semantic()->max_tokens() > 0)
-          continue;
-
-        // This option shouldn't be required
-        if (option->semantic()->is_required() == true) 
-          continue;
-
-        if (!firstShortFlagFound) {
-          buffer << " [-";
-          firstShortFlagFound = true;
-        }
-
-        buffer << optionDisplayName[1];
-      }
-
-      if (firstShortFlagFound == true) 
-        buffer << "]";
-    }
-
-     
-    // Gather up the long simple flags (flags with no short versions)
-    {
-      for (auto & option : options) {
-        // Get the option name
-        std::string optionDisplayName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
-
-        // See if we have a short flag
-        if (optionDisplayName.size() == SHORT_OPTION_STRING_SIZE)
-          continue;
-
-        // We are not interested in any arguments
-        if (option->semantic()->max_tokens() > 0)
-          continue;
-
-        // This option shouldn't be required
-        if (option->semantic()->is_required() == true) 
-          continue;
-
-        std::string completeOptionName = option->canonical_display_name(po::command_line_style::allow_long);
-        buffer << " [" << completeOptionName << "]";
-      }
-    }
-
-    // Gather up the options with arguments
-    for (auto & option : options) {
-      // Skip if there are no arguments
-      if (option->semantic()->max_tokens() == 0)
-        continue;
-
-      // This option shouldn't be required
-      if (option->semantic()->is_required() == true) 
-        continue;
-
-      
-      std::string completeOptionName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
-      buffer << " [" << completeOptionName << " arg]";
-    }
-
-    // Gather up the required options with arguments
-    for (auto & option : options) {
-      // Skip if there are no arguments
-      if (option->semantic()->max_tokens() == 0)
-        continue;
-
-      // This option is required
-      if (option->semantic()->is_required() == false) 
-        continue;
-
-      std::string completeOptionName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
-      buffer << " " << completeOptionName << " arg";
-    }
-
-  return buffer.str();
-}
-
 void 
 XBUtilities::wrap_paragraph( const std::string & _unformattedString, 
                              unsigned int _indentWidth, 
@@ -366,25 +265,4 @@ XBUtilities::wrap_paragraphs( const std::string & _unformattedString,
   }
 }
 
-void 
-XBUtilities::subcommand_help( const std::string &_executableName,
-                              const std::string &_subCommand,
-                              const std::string &_description, 
-                              const po::options_description &_od, 
-                              const std::string &_examples)
-{
-  std::cout << boost::format("SubCommand:  %s\n\n") % _subCommand;
- 
-  std::string formattedDescription;
-  wrap_paragraphs(_description, 13, 80, false, formattedDescription);
-  std::cout << boost::format("Description: %s\n\n") % formattedDescription;
-
-  std::string usage = create_usage_string(_executableName, _subCommand, _od);
-  std::cout << boost::format("Usage: %s \n\n") % usage;
-
-  std::cout << _od << std::endl;
-  if (!_examples.empty() ) {
-    std::cout << "Example Syntax: " << _examples << std::endl;
-  }
-}
 

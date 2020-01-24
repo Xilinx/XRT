@@ -31,7 +31,7 @@ namespace po = boost::program_options;
 
 SubCmdM2MTest::SubCmdM2MTest(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("m2mtest", 
-             "<add short description>")
+             "???")
 {
   const std::string longDescription = "<add long description>";
   setLongDescription(longDescription);

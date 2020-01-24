@@ -16,9 +16,7 @@
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
-#include "SubCmdExamine.h"
-#include "XBReport.h"
-#include "XBDatabase.h"
+#include "SubCmdStatus.h"
 
 #include "common/system.h"
 #include "common/device.h"
@@ -40,9 +38,9 @@ namespace po = boost::program_options;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
-SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPreliminary)
-    : SubCmd("examine", 
-             "Status of the system and device(s)")
+SubCmdStatus::SubCmdStatus(bool _isHidden, bool _isDepricated, bool _isPreliminary)
+    : SubCmd("status", 
+             "Returns detail information for the specified device.")
 {
   const std::string longDescription = "This command will 'examine' the state of the system/device and will"
                                       " generate a report of interest in a text or JSON format.";
@@ -54,9 +52,9 @@ SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPrelimi
 }
 
 void
-SubCmdExamine::execute(const SubCmdOptions& _options) const
+SubCmdStatus::execute(const SubCmdOptions& _options) const
 {
-  XBU::verbose("SubCommand: examine");
+  XBU::verbose("SubCommand: status");
 
   XBU::verbose("Option(s):");
   for (auto & aString : _options) {

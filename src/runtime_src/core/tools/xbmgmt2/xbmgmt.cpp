@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,8 +17,12 @@
 // Sub Commands
 #include "SubCmdFlash.h"
 #include "SubCmdVersion.h"
+#include "SubCmdProgram.h"
+#include "SubCmdReset.h"
+#include "SubCmdStatus.h"
+#include "SubCmdAdvanced.h"
 
-// Supporint tools
+// Supporting tools
 #include "tools/common/XBMain.h"
 #include "tools/common/SubCmd.h"
 #include "common/error.h"
@@ -37,6 +41,10 @@ int main( int argc, char** argv )
 
   {
     // Syntax: SubCmdClass( IsHidden, IsDepricated, IsPreliminary)
+    subCommands.emplace_back(std::make_shared<   SubCmdProgram  >(false, false, false));
+    subCommands.emplace_back(std::make_shared<     SubCmdReset  >(false, false, false));
+    subCommands.emplace_back(std::make_shared<  SubCmdAdvanced  >(false, false,  true));
+    subCommands.emplace_back(std::make_shared<     SubCmdStatus >(false, false, false));
   }
 
   // Add depricated commands
@@ -50,7 +58,7 @@ int main( int argc, char** argv )
 
   // -- Determine and set the executable name for each subcommand
   boost::filesystem::path pathAndFile(argv[0]);
-  const std::string executable = pathAndFile.filename().string();
+  const std::string executable = pathAndFile.stem().string();
 
   for (auto & subCommand : subCommands) {
     subCommand->setExecutableName(executable);
