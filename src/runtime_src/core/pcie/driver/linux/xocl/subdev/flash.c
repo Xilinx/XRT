@@ -860,7 +860,7 @@ static int flash_page_erase(struct xocl_flash *flash, loff_t off, size_t pagesz)
 	size_t cmdlen;
 	u8 cmd = flash_erase_cmd(pagesz);
 
-	FLASH_INFO(flash, "Erasing 0x%lx bytes @0x%llx with cmd=0x%x",
+	FLASH_DBG(flash, "Erasing 0x%lx bytes @0x%llx with cmd=0x%x",
 		pagesz, off, (u32)cmd);
 
 	BUG_ON(!IS_ALIGNED(off, pagesz));
