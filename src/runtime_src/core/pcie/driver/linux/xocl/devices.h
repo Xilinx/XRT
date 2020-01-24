@@ -1730,9 +1730,9 @@ struct xocl_subdev_map {
 	(struct xocl_board_private){					\
 		.flags = XOCL_DSAFLAG_DYNAMIC_IP |			\
 			XOCL_DSAFLAG_MB_SCHE_OFF,			\
+		.board_name = "u50",					\
 		.subdev_info	= RES_USER_VSEC,			\
 		.subdev_num = ARRAY_SIZE(RES_USER_VSEC),		\
-		.board_name = "u50"					\
 	}
 
 #define	XOCL_BOARD_U50_MGMT_RAPTOR2					\
@@ -1742,6 +1742,7 @@ struct xocl_subdev_map {
 		.subdev_info	= RES_MGMT_VSEC,			\
 		.subdev_num = ARRAY_SIZE(RES_MGMT_VSEC),		\
 		.flash_type = FLASH_TYPE_SPI,				\
+		.sched_bin = "xilinx/sched_v20.bin",			\
 		.board_name = "u50"					\
 	}
 
@@ -1761,7 +1762,28 @@ struct xocl_subdev_map {
 		.subdev_info	= RES_MGMT_VSEC,			\
 		.subdev_num = ARRAY_SIZE(RES_MGMT_VSEC),		\
 		.flash_type = FLASH_TYPE_SPI,				\
+		.sched_bin = "xilinx/sched_v20.bin",			\
 		.board_name = "u200"					\
+	}
+
+#define	XOCL_BOARD_U250_USER_RAPTOR2					\
+	(struct xocl_board_private){					\
+		.flags = XOCL_DSAFLAG_DYNAMIC_IP |			\
+			XOCL_DSAFLAG_MB_SCHE_OFF,			\
+		.subdev_info	= RES_USER_VSEC,			\
+		.subdev_num = ARRAY_SIZE(RES_USER_VSEC),		\
+		.board_name = "u250"					\
+	}
+
+#define	XOCL_BOARD_U250_MGMT_RAPTOR2					\
+	(struct xocl_board_private){					\
+		.flags = XOCL_DSAFLAG_DYNAMIC_IP |			\
+			XOCL_DSAFLAG_MB_SCHE_OFF,			\
+		.subdev_info	= RES_MGMT_VSEC,			\
+		.subdev_num = ARRAY_SIZE(RES_MGMT_VSEC),		\
+		.flash_type = FLASH_TYPE_SPI,				\
+		.sched_bin = "xilinx/sched_v20.bin",			\
+		.board_name = "u250"					\
 	}
 
 #define MFG_RES								\
@@ -1958,7 +1980,6 @@ struct xocl_subdev_map {
 		0,					\
 		&(char []){1},				\
 		1,					\
-		.level = XOCL_SUBDEV_LEVEL_PRP,	 \
 	}
 
 #define USER_RES_DYNAMIC_IP						\
@@ -2291,6 +2312,14 @@ struct xocl_subdev_map {
 	{ 0x10EE, 0x5000, PCI_ANY_ID,					\
 		.vbnv = "xilinx_u200_xdma_201920_1",			\
 		.priv_data = &XOCL_BOARD_U200_MGMT_RAPTOR2,		\
+		.type = XOCL_DSAMAP_RAPTOR2 },				\
+	{ 0x10EE, 0x5005, PCI_ANY_ID,					\
+		.vbnv = "xilinx_u250_xdma_201920_1",			\
+		.priv_data = &XOCL_BOARD_U250_USER_RAPTOR2,		\
+		.type = XOCL_DSAMAP_RAPTOR2 },				\
+	{ 0x10EE, 0x5004, PCI_ANY_ID,					\
+		.vbnv = "xilinx_u250_xdma_201920_1",			\
+		.priv_data = &XOCL_BOARD_U250_MGMT_RAPTOR2,		\
 		.type = XOCL_DSAMAP_RAPTOR2 },				\
 	{ 0x10EE, 0x5020, PCI_ANY_ID,					\
 		.vbnv = "xilinx_u50_xdma_gen3x4_201920_3",		\

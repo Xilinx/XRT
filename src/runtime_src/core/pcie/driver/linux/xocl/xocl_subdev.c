@@ -76,21 +76,24 @@ static struct xocl_subdev *xocl_subdev_reserve(xdev_handle_t xdev_hdl,
 	int max = sdev_info->multi_inst ? XOCL_SUBDEV_MAX_INST : 1;
 	int i;
 
-	for (i = 0; i < max; i++) {
-		if (sdev_info->override_idx)
-			subdev = &core->subdevs[devid][sdev_info->override_idx];
-		else
-			subdev = &core->subdevs[devid][i];
-		if (subdev->state == XOCL_SUBDEV_STATE_UNINIT) {
-			subdev->state = XOCL_SUBDEV_STATE_INIT;
-			break;
+	if (sdev_info->override_idx) {
+		subdev = &core->subdevs[devid][sdev_info->override_idx];
+		if (subdev->state != XOCL_SUBDEV_STATE_UNINIT) {
+			xocl_xdev_info(xdev_hdl, "subdev %d index %d is in-use",
+				devid, sdev_info->override_idx);
+			return NULL;
 		}
+	} else {
+		for (i = 0; i < max; i++) {
+			subdev = &core->subdevs[devid][i];
+			if (subdev->state == XOCL_SUBDEV_STATE_UNINIT)
+				break;
+		}
+		if (i == max)
+			return NULL;
 	}
-	if (i == max) {
-		xocl_xdev_err(xdev_hdl, "Cannot reserve dev: %s max level %d",
-			sdev_info->name, max-1);
-		return NULL;
-	}
+
+	subdev->state = XOCL_SUBDEV_STATE_INIT;
 
 	subdev->inst = ida_simple_get(&subdev_inst_ida,
 			sdev_info->id << MINORBITS,
@@ -1002,7 +1005,9 @@ xocl_fetch_dynamic_platform(struct xocl_dev_core *core,
 				strcpy(core->vbnv_cache, dsa_map[i].vbnv);
 				s = strstr(core->vbnv_cache, "_");
 				s = strstr(s + 1, "_");
-				strcpy(s, "_recovery");
+				strncpy(s, "_recovery",
+				    sizeof(core->vbnv_cache) -
+				    (s - core->vbnv_cache) - 1);
 				core->priv.vbnv = core->vbnv_cache;
 			} else
 				core->priv.vbnv = dsa_map[i].vbnv;
@@ -1372,6 +1377,22 @@ int xocl_subdev_create_prp(xdev_handle_t xdev)
 
 failed:
 	return ret;
+}
+
+struct resource *xocl_get_iores_byname(struct platform_device *pdev,
+		char *name)
+{
+	int i = 0;
+	struct resource *res;
+
+	for (res = platform_get_resource(pdev, IORESOURCE_MEM, i);
+		res;
+		res = platform_get_resource(pdev, IORESOURCE_MEM, ++i)) {
+		if (!strncmp(res->name, name, strlen(name)))
+			return res;
+	}
+
+	return NULL;
 }
 
 void xocl_subdev_register(struct platform_device *pldev, void *ops)

@@ -143,6 +143,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/subdev/flash.c
   xocl/subdev/mailbox_versal.c
   xocl/subdev/ospi_versal.c
+  xocl/subdev/ert.c
   xocl/Makefile
   )
 

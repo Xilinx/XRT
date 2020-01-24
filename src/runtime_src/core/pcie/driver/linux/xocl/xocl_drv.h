@@ -701,6 +701,11 @@ struct xocl_mb_funcs {
 	int (*cmc_access)(struct platform_device *pdev, int flags);
 };
 
+enum {
+	MB_XMC,
+	MB_ERT,
+};
+
 #define	MB_DEV(xdev)		\
 	SUBDEV(xdev, XOCL_SUBDEV_MB).pldev
 #define	MB_OPS(xdev)		\
@@ -708,16 +713,16 @@ struct xocl_mb_funcs {
 	XOCL_SUBDEV_MB).ops)
 #define MB_CB(xdev, cb)	\
 	(MB_DEV(xdev) && MB_OPS(xdev) && MB_OPS(xdev)->cb)
-#define	xocl_mb_reset(xdev)			\
+#define	xocl_xmc_reset(xdev)			\
 	(MB_CB(xdev, reset) ? MB_OPS(xdev)->reset(MB_DEV(xdev)) : NULL) \
 
-#define	xocl_mb_stop(xdev)			\
+#define	xocl_xmc_stop(xdev)			\
 	(MB_CB(xdev, stop) ? MB_OPS(xdev)->stop(MB_DEV(xdev)) : -ENODEV)
 
-#define xocl_mb_load_mgmt_image(xdev, buf, len)		\
+#define xocl_xmc_load_mgmt_image(xdev, buf, len)		\
 	(MB_CB(xdev, load_mgmt_image) ? MB_OPS(xdev)->load_mgmt_image(MB_DEV(xdev), buf, len) :\
 	-ENODEV)
-#define xocl_mb_load_sche_image(xdev, buf, len)		\
+#define xocl_xmc_load_sche_image(xdev, buf, len)		\
 	(MB_CB(xdev, load_sche_image) ? MB_OPS(xdev)->load_sche_image(MB_DEV(xdev), buf, len) :\
 	-ENODEV)
 
@@ -734,6 +739,45 @@ struct xocl_mb_funcs {
 #define xocl_cmc_freeze(xdev)		\
 	(MB_CB(xdev, cmc_access) ? MB_OPS(xdev)->cmc_access(MB_DEV(xdev), 0) : -ENODEV)
 
+/* ERT FW callbacks */
+#define ERT_DEV(xdev)							\
+	SUBDEV_MULTI(xdev, XOCL_SUBDEV_MB, MB_ERT).pldev
+#define ERT_OPS(xdev)							\
+	((struct xocl_mb_funcs *)SUBDEV_MULTI(xdev,			\
+	XOCL_SUBDEV_MB, MB_ERT).ops)
+#define ERT_CB(xdev, cb)						\
+	(ERT_DEV(xdev) && ERT_OPS(xdev) && ERT_OPS(xdev)->cb)
+#define xocl_ert_reset(xdev)						\
+	(ERT_CB(xdev, reset) ? ERT_OPS(xdev)->reset(ERT_DEV(xdev)) : NULL)
+#define xocl_ert_stop(xdev)						\
+	(ERT_CB(xdev, stop) ? ERT_OPS(xdev)->stop(ERT_DEV(xdev)) : -ENODEV)
+#define xocl_ert_load_sche_image(xdev, buf, len)			\
+	(ERT_CB(xdev, load_sche_image) ?				\
+	ERT_OPS(xdev)->load_sche_image(ERT_DEV(xdev), buf, len) : -ENODEV)
+
+static inline int xocl_mb_stop(xdev_handle_t xdev)
+{
+	int ret;
+
+	if (ERT_DEV(xdev)) {
+		ret = xocl_ert_stop(xdev);
+		if (ret)
+			return ret;
+	}
+
+	return xocl_xmc_stop(xdev);
+}
+static inline void xocl_mb_reset(xdev_handle_t xdev)
+{
+	xocl_ert_reset(xdev);
+	xocl_xmc_reset(xdev);
+}
+
+#define xocl_mb_load_mgmt_image(xdev, buf, len)				\
+	xocl_xmc_load_mgmt_image(xdev, buf, len)
+#define xocl_mb_load_sche_image(xdev, buf, len)				\
+	(ERT_DEV(xdev) ? xocl_ert_load_sche_image(xdev, buf, len) :	\
+	xocl_xmc_load_sche_image(xdev, buf, len))
 
 /* processor system callbacks */
 struct xocl_ps_funcs {
@@ -1233,6 +1277,9 @@ int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
 int xocl_alloc_dev_minor(xdev_handle_t xdev_hdl);
 void xocl_free_dev_minor(xdev_handle_t xdev_hdl);
 
+struct resource *xocl_get_iores_byname(struct platform_device *pdev,
+	char *name);
+
 int xocl_ioaddr_to_baroff(xdev_handle_t xdev_hdl, resource_size_t io_addr,
 	int *bar_idx, resource_size_t *bar_off);
 
@@ -1354,6 +1401,9 @@ void xocl_fini_clock(void);
 
 int __init xocl_init_mig(void);
 void xocl_fini_mig(void);
+
+int __init xocl_init_ert(void);
+void xocl_fini_ert(void);
 
 int __init xocl_init_xmc(void);
 void xocl_fini_xmc(void);

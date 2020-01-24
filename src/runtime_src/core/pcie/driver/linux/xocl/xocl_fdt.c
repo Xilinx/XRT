@@ -136,12 +136,12 @@ static void devinfo_cb_setlevel(void *dev_hdl, void *subdevs, int num)
 	subdev->info.override_idx = subdev->info.level;
 }
 
-static void ert_cb_setlevel(void *dev_hdl, void *subdevs, int num)
+static void ert_cb_set_inst(void *dev_hdl, void *subdevs, int num)
 {
 	struct xocl_subdev *subdev = subdevs;
 
 	/* 0 is used by CMC */
-	subdev->info.override_idx = 1;
+	subdev->info.override_idx = MB_ERT;
 }
 
 static void devinfo_cb_xdma(void *dev_hdl, void *subdevs, int num)
@@ -262,7 +262,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 		3,
 		0,
 		NULL,
-		ert_cb_setlevel,
+		ert_cb_set_inst,
 	},
 	{
 		XOCL_SUBDEV_MB,

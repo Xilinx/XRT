@@ -90,6 +90,9 @@
 #define RESNAME_CMC_MUTEX       NODE_CMC_MUTEX
 #define RESNAME_GAPPING         NODE_GAPPING
 #define RESNAME_UCS_CONTROL_STATUS     NODE_UCS_CONTROL_STATUS
+#define RESNAME_ERT_FW_MEM	NODE_ERT_FW_MEM
+#define RESNAME_ERT_CQ_MGMT	NODE_ERT_CQ_MGMT
+#define RESNAME_ERT_RESET	NODE_ERT_RESET
 
 /*
  * The iores subdev maintains global resources which can be shared to any

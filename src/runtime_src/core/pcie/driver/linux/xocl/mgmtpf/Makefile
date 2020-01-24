@@ -41,6 +41,7 @@ xclmgmt-y := \
 	../subdev/iores.o \
 	../subdev/axigate.o \
 	../subdev/ospi_versal.o \
+	../subdev/ert.o \
 	mgmt-core.o \
 	mgmt-cw.o \
 	mgmt-utils.o \

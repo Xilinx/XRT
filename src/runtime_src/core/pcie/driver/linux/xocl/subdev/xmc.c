@@ -181,6 +181,8 @@ enum sensor_val_kind {
 	(xmc->base_addrs[IO_GPIO] ?		\
 	XOCL_WRITE_REG32(val, xmc->base_addrs[IO_GPIO] + off) : ((void)0))
 
+#define SCHED_EXIST(xmc)			\
+	(xmc->base_addrs[IO_CQ] ? true : false)
 #define	READ_CQ(xmc, off)			\
 	(xmc->base_addrs[IO_CQ] ?		\
 	XOCL_READ_REG32(xmc->base_addrs[IO_CQ] + off) : 0)
@@ -2208,7 +2210,8 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 			WRITE_REG32(xmc, 1, XMC_STOP_CONFIRM_REG);
 		}
 		/* Need to check if ERT is loaded before we attempt to stop it */
-		if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0))) {
+		if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0)) &&
+			SCHED_EXIST(xmc)) {
 			reg_val = READ_CQ(xmc, 0);
 			if (!(reg_val & ERT_EXIT_ACK)) {
 				xocl_info(&xmc->pdev->dev,
@@ -2230,6 +2233,7 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 			xmc->state = XMC_STATE_ERROR;
 			return -ETIMEDOUT;
 		} else if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0)) &&
+			 SCHED_EXIST(xmc) &&
 			 !(READ_CQ(xmc, 0) & ERT_EXIT_ACK)) {
 			while (retry++ < MAX_ERT_RETRY &&
 				!(READ_CQ(xmc, 0) & ERT_EXIT_ACK))
@@ -2317,13 +2321,13 @@ static int load_xmc(struct xocl_xmc *xmc)
 	xdev_hdl = xocl_get_xdev(xmc->pdev);
 
 	/* Load XMC and ERT Image */
-	if (xocl_mb_mgmt_on(xdev_hdl)) {
+	if (xocl_mb_mgmt_on(xdev_hdl) && xmc->mgmt_binary_length) {
 		xocl_info(&xmc->pdev->dev, "Copying XMC image len %d",
 			xmc->mgmt_binary_length);
 		COPY_MGMT(xmc, xmc->mgmt_binary, xmc->mgmt_binary_length);
 	}
 
-	if (xocl_mb_sched_on(xdev_hdl)) {
+	if (xocl_mb_sched_on(xdev_hdl) && xmc->sche_binary_length) {
 		xocl_info(&xmc->pdev->dev, "Copying scheduler image len %d",
 			xmc->sche_binary_length);
 		COPY_SCHE(xmc, xmc->sche_binary, xmc->sche_binary_length);
