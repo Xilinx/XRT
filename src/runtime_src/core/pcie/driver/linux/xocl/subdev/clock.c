@@ -698,7 +698,7 @@ static int clock_status_check(struct platform_device *pdev, bool *latched)
 		} else if (ucs_status_ch1->clock_throttling_average) {
 			CLOCK_ERR(clock, "ULP kernel clocks throttled at %d%%.",
 			    (ucs_status_ch1->clock_throttling_average /
-			    CLK_MAX_VALUE) * 100);
+			    (CLK_MAX_VALUE / 100)));
 		}
 	}
 

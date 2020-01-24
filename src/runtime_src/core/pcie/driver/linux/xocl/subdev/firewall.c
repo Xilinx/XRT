@@ -26,6 +26,11 @@
 #define	FAULT_STATUS				0x0
 #define	SOFT_CTRL				0x4
 #define	UNBLOCK_CTRL				0x8
+#define MAX_CONTINUOUS_RTRANSFERS_WAITS 	0x30
+#define MAX_WRITE_TO_BVALID_WAITS		0x34
+#define MAX_ARREADY_WAITS 			0x38
+#define MAX_AWREADY_WAITS 			0x3C
+#define MAX_WREADY_WAITS 			0x40
 // Firewall error bits
 #define READ_RESPONSE_BUSY                        BIT(0)
 #define RECS_ARREADY_MAX_WAIT                     BIT(1)
@@ -55,6 +60,9 @@
 #define	CLEAR_RETRY_INTERVAL		2		/* ms */
 #define	FW_DEFAULT_EXPIRE_SECS		1
 #define	MAX_LEVEL			16
+
+#define	FW_MAX_WAIT_DEFAULT 		0xffff
+#define FW_MAX_WAIT_FIC			0x2000
 
 struct firewall {
 	void __iomem		*base_addrs[MAX_LEVEL];
@@ -419,6 +427,28 @@ static int firewall_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static void inline update_max_wait(void __iomem *addr)
+{
+	XOCL_WRITE_REG32(FW_MAX_WAIT_FIC, addr + MAX_CONTINUOUS_RTRANSFERS_WAITS);
+	XOCL_WRITE_REG32(FW_MAX_WAIT_FIC, addr + MAX_WRITE_TO_BVALID_WAITS);
+	XOCL_WRITE_REG32(FW_MAX_WAIT_FIC, addr + MAX_ARREADY_WAITS);
+	XOCL_WRITE_REG32(FW_MAX_WAIT_FIC, addr + MAX_AWREADY_WAITS);
+	XOCL_WRITE_REG32(FW_MAX_WAIT_FIC, addr + MAX_WREADY_WAITS);
+}
+
+static void resource_additional_check(struct resource *res, void __iomem *addr)
+{
+	const char *res_name = res->name;
+
+	if (!res_name)
+		return;
+
+	if (!strncmp(res_name, NODE_AF_CTRL_MGMT, strlen(NODE_AF_CTRL_MGMT)) ||
+	    !strncmp(res_name, NODE_AF_CTRL_USER, strlen(NODE_AF_CTRL_USER)) ||
+	    !strncmp(res_name, NODE_AF_CTRL_DEBUG, strlen(NODE_AF_CTRL_DEBUG)))
+		update_max_wait(addr);
+}
+
 static int firewall_probe(struct platform_device *pdev)
 {
 	struct firewall	*fw;
@@ -446,6 +476,8 @@ static int firewall_probe(struct platform_device *pdev)
 			xocl_err(&pdev->dev, "Map iomem failed");
 			goto failed;
 		}
+		/* additional check after res mapped */
+		resource_additional_check(res, fw->base_addrs[i]);
 	}
 
 
