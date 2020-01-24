@@ -2886,10 +2886,21 @@ static int xmc_probe(struct platform_device *pdev)
 	 * clk scaling can only be enabled on mgmt side, why do we set
 	 * the enabled bit in feature ROM on user side at all?
 	 */
-	if (XMC_PRIVILEGED(xmc) && xocl_clk_scale_on(xdev_hdl)) {
-		xmc->runtime_cs_enabled = true;
-		xmc->cs_on_ptfm = true;
-		xocl_info(&pdev->dev, "Runtime clock scaling is supported.\n");
+	if (XMC_PRIVILEGED(xmc)) {
+		if (!xmc->sc_presence) {
+			if (xocl_clk_scale_on(xdev_hdl)) {
+				xmc->runtime_cs_enabled = true;
+				xmc->cs_on_ptfm = true;
+			}
+		} else {
+			u32 reg = READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1);
+			if (reg & (1 << 29)) {
+				xmc->runtime_cs_enabled = true;
+				xmc->cs_on_ptfm = true;
+			}
+		}
+		if (xmc->runtime_cs_enabled)
+			xocl_info(&pdev->dev, "Runtime clock scaling is supported.\n");
 	}
 
 	return 0;
