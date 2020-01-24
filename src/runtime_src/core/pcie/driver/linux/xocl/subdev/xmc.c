@@ -93,6 +93,8 @@
 #define	XMC_HOST_MSG_ERROR_REG		0x304
 #define	XMC_HOST_MSG_HEADER_REG		0x308
 #define	XMC_HOST_NEW_FEATURE_REG1	0xB20
+#define	XMC_CLK_THROTTLING_PWR_MGMT_REG		 0xB24
+#define	XMC_CLK_THROTTLING_PWR_MGMT_REG_PWR_MASK 0xFF
 
 #define	VALID_ID			0x74736574
 
@@ -1300,6 +1302,95 @@ static int get_temp_by_m_tag(struct xocl_xmc *xmc, char *m_tag)
 }
 
 /* Runtime clock scaling sysfs node */
+static ssize_t scaling_threshold_power_override_en_show(struct device *dev,
+	struct device_attribute *da, char *buf)
+{
+	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
+	u32 val = 0;
+
+	if (!xmc->runtime_cs_enabled) {
+		if (!XMC_PRIVILEGED(xmc))
+			xocl_dbg(dev, "runtime clock scaling is not supported in non privileged mode\n");
+		else if (xmc->cs_on_ptfm)
+			xocl_warn(dev, "runtime clock scaling is not enabled\n");
+		else
+			xocl_warn(dev, "runtime clock scaling is not supported\n");
+		return sprintf(buf, "%d\n", val);
+	}
+	mutex_lock(&xmc->xmc_lock);
+	val = READ_REG32(xmc, XMC_CLK_THROTTLING_PWR_MGMT_REG);
+	val = (val >> 31) & 0x1;
+	mutex_unlock(&xmc->xmc_lock);
+
+	return sprintf(buf, "%u\n", val);
+}
+static DEVICE_ATTR_RO(scaling_threshold_power_override_en);
+
+static ssize_t scaling_threshold_power_override_show(struct device *dev,
+	struct device_attribute *da, char *buf)
+{
+	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
+	u32 val = 0;
+
+	if (!xmc->runtime_cs_enabled) {
+		if (!XMC_PRIVILEGED(xmc))
+			xocl_dbg(dev, "runtime clock scaling is not supported in non privileged mode\n");
+		else if (xmc->cs_on_ptfm)
+			xocl_warn(dev, "runtime clock scaling is not enabled\n");
+		else
+			xocl_warn(dev, "runtime clock scaling is not supported\n");
+		return sprintf(buf, "%d\n", val);
+	}
+	mutex_lock(&xmc->xmc_lock);
+	val = READ_REG32(xmc, XMC_CLK_THROTTLING_PWR_MGMT_REG);
+	val &= XMC_CLK_THROTTLING_PWR_MGMT_REG_PWR_MASK;
+	mutex_unlock(&xmc->xmc_lock);
+
+	return sprintf(buf, "%uW\n", val);
+}
+
+static ssize_t scaling_threshold_power_override_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
+	u32 val, val2, val3;
+
+	if (!xmc->runtime_cs_enabled) {
+		if (!XMC_PRIVILEGED(xmc))
+			xocl_dbg(dev, "runtime clock scaling is not supported in non privileged mode\n");
+		else if (xmc->cs_on_ptfm)
+			xocl_warn(dev, "runtime clock scaling is not enabled\n");
+		else
+			xocl_warn(dev, "runtime clock scaling is not supported\n");
+		return count;
+	}
+
+	if (kstrtou32(buf, 10, &val) == -EINVAL)
+		return -EINVAL;
+
+	mutex_lock(&xmc->xmc_lock);
+	val2 = READ_REG32(xmc, XMC_CLK_THROTTLING_PWR_MGMT_REG);
+	val2 &= ~XMC_CLK_THROTTLING_PWR_MGMT_REG_PWR_MASK;
+	val3 = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_POWER_REG);
+	val3 &= ~XMC_CLOCK_SCALING_POWER_TARGET_MASK;
+	if (val > 0) { //enable max power override mode
+		val2 |= (0x1 << 31);
+		val2 |= (val & XMC_CLK_THROTTLING_PWR_MGMT_REG_PWR_MASK);
+	} else { //disable max power override mode
+		val2 &= ~(0x1 << 31);
+		val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_THRESHOLD_REG);
+		val = (val >> XMC_CLOCK_SCALING_POWER_THRESHOLD_POS) &
+			XMC_CLOCK_SCALING_POWER_THRESHOLD_MASK;
+	}
+	val3 |= (val & XMC_CLOCK_SCALING_POWER_TARGET_MASK);
+	WRITE_RUNTIME_CS(xmc, val3, XMC_CLOCK_SCALING_POWER_REG);
+	WRITE_REG32(xmc, val2, XMC_CLK_THROTTLING_PWR_MGMT_REG);
+	mutex_unlock(&xmc->xmc_lock);
+
+	return count;
+}
+static DEVICE_ATTR_RW(scaling_threshold_power_override);
+
 static ssize_t scaling_governor_show(struct device *dev,
 	struct device_attribute *da, char *buf)
 {
@@ -1308,8 +1399,12 @@ static ssize_t scaling_governor_show(struct device *dev,
 	char val[20];
 
 	if (!xmc->runtime_cs_enabled) {
-		xocl_warn(dev, "%s: runtime clock scaling is not supported\n",
-			 __func__);
+		if (!XMC_PRIVILEGED(xmc))
+			xocl_dbg(dev, "runtime clock scaling is not supported in non privileged mode\n");
+		else if (xmc->cs_on_ptfm)
+			xocl_warn(dev, "runtime clock scaling is not enabled\n");
+		else
+			xocl_warn(dev, "runtime clock scaling is not supported\n");
 		strcpy(val, "NULL");
 		return sprintf(buf, "%s\n", val);
 	}
@@ -1341,8 +1436,12 @@ static ssize_t scaling_governor_store(struct device *dev,
 
 	/* Check if clock scaling feature enabled */
 	if (!xmc->runtime_cs_enabled) {
-		xocl_warn(dev, "%s: runtime clock scaling is not supported\n",
-			 __func__);
+		if (!XMC_PRIVILEGED(xmc))
+			xocl_dbg(dev, "runtime clock scaling is not supported in non privileged mode\n");
+		else if (xmc->cs_on_ptfm)
+			xocl_warn(dev, "runtime clock scaling is not enabled\n");
+		else
+			xocl_warn(dev, "runtime clock scaling is not supported\n");
 		return count;
 	}
 
@@ -1382,11 +1481,11 @@ static ssize_t scaling_enabled_store(struct device *dev,
 	/* Check if clock scaling feature enabled */
 	if (!xmc->runtime_cs_enabled) {
 		if (!XMC_PRIVILEGED(xmc))
-			xocl_warn(dev, "%s: runtime clock scaling support enabled only in privileged mode\n", __func__);
+			xocl_dbg(dev, "runtime clock scaling is not supported in non privileged mode\n");
 		else if (xmc->cs_on_ptfm)
-			xocl_warn(dev, "%s: runtime clock scaling is not enabled on this platform\n", __func__);
+			xocl_warn(dev, "runtime clock scaling is not enabled\n");
 		else
-			xocl_warn(dev, "%s: runtime clock scaling is not supported on this platform\n", __func__);
+			xocl_warn(dev, "runtime clock scaling is not supported\n");
 		return count;
 	}
 
@@ -1404,8 +1503,15 @@ static ssize_t scaling_enabled_show(struct device *dev,
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val = 0;
 
-	if (!xmc->runtime_cs_enabled)
+	if (!xmc->runtime_cs_enabled) {
+		if (!XMC_PRIVILEGED(xmc))
+			xocl_dbg(dev, "runtime clock scaling is not supported in non privileged mode\n");
+		else if (xmc->cs_on_ptfm)
+			xocl_warn(dev, "runtime clock scaling is not enabled\n");
+		else
+			xocl_warn(dev, "runtime clock scaling is not supported\n");
 		return sprintf(buf, "%d\n", val);
+        }
 
 	mutex_lock(&xmc->xmc_lock);
 	val = READ_RUNTIME_CS(xmc, XMC_CLOCK_CONTROL_REG);
@@ -1426,8 +1532,12 @@ static ssize_t hwmon_scaling_target_power_show(struct device *dev,
 	u32 val = 0;
 
 	if (!xmc->runtime_cs_enabled) {
-		xocl_warn(dev, "%s: runtime clock scaling is not supported\n",
-			 __func__);
+		if (!XMC_PRIVILEGED(xmc))
+			xocl_dbg(dev, "runtime clock scaling is not supported in non privileged mode\n");
+		else if (xmc->cs_on_ptfm)
+			xocl_warn(dev, "runtime clock scaling is not enabled\n");
+		else
+			xocl_warn(dev, "runtime clock scaling is not supported\n");
 		return sprintf(buf, "%d\n", val);
 	}
 	mutex_lock(&xmc->xmc_lock);
@@ -1446,8 +1556,12 @@ static ssize_t hwmon_scaling_target_power_store(struct device *dev,
 	u32 val, val2, threshold;
 
 	if (!xmc->runtime_cs_enabled) {
-		xocl_warn(dev, "%s: runtime clock scaling is not supported\n",
-			 __func__);
+		if (!XMC_PRIVILEGED(xmc))
+			xocl_dbg(dev, "runtime clock scaling is not supported in non privileged mode\n");
+		else if (xmc->cs_on_ptfm)
+			xocl_warn(dev, "runtime clock scaling is not enabled\n");
+		else
+			xocl_warn(dev, "runtime clock scaling is not supported\n");
 		return count;
 	}
 
@@ -1483,8 +1597,12 @@ static ssize_t hwmon_scaling_target_temp_show(struct device *dev,
 	u32 val = 0;
 
 	if (!xmc->runtime_cs_enabled) {
-		xocl_warn(dev, "%s: runtime clock scaling is not supported\n",
-			 __func__);
+		if (!XMC_PRIVILEGED(xmc))
+			xocl_dbg(dev, "runtime clock scaling is not supported in non privileged mode\n");
+		else if (xmc->cs_on_ptfm)
+			xocl_warn(dev, "runtime clock scaling is not enabled\n");
+		else
+			xocl_warn(dev, "runtime clock scaling is not supported\n");
 		return sprintf(buf, "%d\n", val);
 	}
 	mutex_lock(&xmc->xmc_lock);
@@ -1504,8 +1622,12 @@ static ssize_t hwmon_scaling_target_temp_store(struct device *dev,
 
 	/* Check if clock scaling feature enabled */
 	if (!xmc->runtime_cs_enabled) {
-		xocl_warn(dev, "%s: runtime clock scaling is not supported\n",
-			 __func__);
+		if (!XMC_PRIVILEGED(xmc))
+			xocl_dbg(dev, "runtime clock scaling is not supported in non privileged mode\n");
+		else if (xmc->cs_on_ptfm)
+			xocl_warn(dev, "runtime clock scaling is not enabled\n");
+		else
+			xocl_warn(dev, "runtime clock scaling is not supported\n");
 		return count;
 	}
 
@@ -1539,8 +1661,12 @@ static ssize_t hwmon_scaling_threshold_temp_show(struct device *dev,
 	u32 val = 0;
 
 	if (!xmc->runtime_cs_enabled) {
-		xocl_warn(dev, "%s: runtime clock scaling is not supported\n",
-			 __func__);
+		if (!XMC_PRIVILEGED(xmc))
+			xocl_dbg(dev, "runtime clock scaling is not supported in non privileged mode\n");
+		else if (xmc->cs_on_ptfm)
+			xocl_warn(dev, "runtime clock scaling is not enabled\n");
+		else
+			xocl_warn(dev, "runtime clock scaling is not supported\n");
 		return sprintf(buf, "%d\n", val);
 	}
 	mutex_lock(&xmc->xmc_lock);
@@ -1557,17 +1683,26 @@ static ssize_t hwmon_scaling_threshold_power_show(struct device *dev,
 	struct device_attribute *da, char *buf)
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
-	u32 val = 0;
+	u32 val = 0, val2;
 
 	if (!xmc->runtime_cs_enabled) {
-		xocl_warn(dev, "%s: runtime clock scaling is not supported\n",
-			 __func__);
+		if (!XMC_PRIVILEGED(xmc))
+			xocl_dbg(dev, "runtime clock scaling is not supported in non privileged mode\n");
+		else if (xmc->cs_on_ptfm)
+			xocl_warn(dev, "runtime clock scaling is not enabled\n");
+		else
+			xocl_warn(dev, "runtime clock scaling is not supported\n");
 		return sprintf(buf, "%d\n", val);
 	}
 	mutex_lock(&xmc->xmc_lock);
-	val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_THRESHOLD_REG);
-	val = (val >> XMC_CLOCK_SCALING_POWER_THRESHOLD_POS) &
-		XMC_CLOCK_SCALING_POWER_THRESHOLD_MASK;
+	val2 = READ_REG32(xmc, XMC_CLK_THROTTLING_PWR_MGMT_REG);
+	if (val2 & (0x1 << 31)) {
+		val = val2 & XMC_CLK_THROTTLING_PWR_MGMT_REG_PWR_MASK;
+	} else {
+		val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_THRESHOLD_REG);
+		val = (val >> XMC_CLOCK_SCALING_POWER_THRESHOLD_POS) &
+			XMC_CLOCK_SCALING_POWER_THRESHOLD_MASK;
+	}
 	val = val * 1000000;
 	mutex_unlock(&xmc->xmc_lock);
 
@@ -1667,6 +1802,8 @@ static struct attribute *xmc_attrs[] = {
 	&dev_attr_config_mode.attr,
 	&dev_attr_sc_presence.attr,
 	&dev_attr_sensor_update_timestamp.attr,
+	&dev_attr_scaling_threshold_power_override.attr,
+	&dev_attr_scaling_threshold_power_override_en.attr,
 	SENSOR_SYSFS_NODE_ATTRS,
 	REG_SYSFS_NODE_ATTRS,
 	NULL,
