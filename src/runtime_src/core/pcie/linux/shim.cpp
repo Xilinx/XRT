@@ -759,6 +759,10 @@ int shim::cmaEnable(bool enable, uint64_t size, uint64_t num, bool force)
         if (num > 4 || num == 0)
             return -EINVAL;
 
+        /* Once set MAP_HUGETLB, we have to specify bit[26~31] as size in log
+         * e.g. We like to get 2M huge page, 2M = 2^21, 
+         * 21 = 0x15
+         */
         if (size == (1 << 30)) 
             hugepage_flag = 0x1e;
         else if (size == (2 << 20))
