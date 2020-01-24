@@ -82,7 +82,7 @@ SubCmdAdvanced::execute(const SubCmdOptions& _options) const
   subOptionOptions.emplace_back(std::make_shared<OO_MemWrite>("write-mem"));
   subOptionOptions.emplace_back(std::make_shared<OO_P2P>("p2p"));
 
-  for (auto subOO : subOptionOptions) {
+  for (auto & subOO : subOptionOptions) {
     allDesc.add_options()(subOO->longName().c_str(), subOO->description().c_str());
     subOO->setExecutable(getExecutableName());
     subOO->setCommand(getName());
@@ -104,8 +104,8 @@ SubCmdAdvanced::execute(const SubCmdOptions& _options) const
     po::notify(vm);                  // Can throw (but really isn't used)
 
     // Multual DRC
-    for (unsigned index1 = 0; index1 < subOptionOptions.size(); ++index1) {
-      for (unsigned index2 = index1 + 1; index2 < subOptionOptions.size(); ++index2) {
+    for (unsigned int index1 = 0; index1 < subOptionOptions.size(); ++index1) {
+      for (unsigned int index2 = index1 + 1; index2 < subOptionOptions.size(); ++index2) {
         conflictingOptions(vm, subOptionOptions[index1]->longName(), subOptionOptions[index2]->longName());
       }
     }

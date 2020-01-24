@@ -28,3 +28,4 @@ class SubCmdVersion : public SubCmd {
 };
 
 #endif
+

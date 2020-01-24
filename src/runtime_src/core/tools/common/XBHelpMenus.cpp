@@ -28,6 +28,7 @@ namespace po = boost::program_options;
 // System - Include Files
 #include <iostream>
 #include <algorithm>
+#include <numeric>
 
 // ------ N A M E S P A C E ---------------------------------------------------
 using namespace XBUtilities;
@@ -38,7 +39,7 @@ namespace ec {
     {
     public:
       fgcolor(uint8_t _color) : m_color(_color) {};
-      const std::string string() const { return "\033[38;5;" + std::to_string(m_color) + "m"; }
+      std::string string() const { return "\033[38;5;" + std::to_string(m_color) + "m"; }
       static const std::string reset() { return "\033[39m"; };
       friend std::ostream& operator <<(std::ostream& os, const fgcolor & _obj) { return os << _obj.string(); }
   
@@ -50,7 +51,7 @@ namespace ec {
     {
     public:
       bgcolor(uint8_t _color) : m_color(_color) {};
-      const std::string string() const { return "\033[48;5;" + std::to_string(m_color) + "m"; }
+      std::string string() const { return "\033[48;5;" + std::to_string(m_color) + "m"; }
       static const std::string reset() { return "\033[49m"; };
       friend std::ostream& operator <<(std::ostream& os, const bgcolor & _obj) { return  os << _obj.string(); }
 
@@ -111,7 +112,7 @@ XBUtilities::create_usage_string( const boost::program_options::options_descript
   const static int SHORT_OPTION_STRING_SIZE = 2;
   std::stringstream buffer;
 
-  const std::vector<boost::shared_ptr<po::option_description>> options = _od.options();
+  auto &options = _od.options();
 
   // Gather up the short simple flags
   {
@@ -275,9 +276,10 @@ XBUtilities::report_commands_help( const std::string &_executable,
   }
 
   // Sort the collections by name
-  std::sort(subCmdsReleased.begin(), subCmdsReleased.end(), SubCmd::sortByName);
-  std::sort(subCmdsPreliminary.begin(), subCmdsPreliminary.end(), SubCmd::sortByName);
-  std::sort(subCmdsDepricated.begin(), subCmdsDepricated.end(), SubCmd::sortByName);
+  auto sortByName = [](const auto& d1, const auto& d2) { return d1->getName() < d2->getName(); };
+  std::sort(subCmdsReleased.begin(), subCmdsReleased.end(), sortByName);
+  std::sort(subCmdsPreliminary.begin(), subCmdsPreliminary.end(), sortByName);
+  std::sort(subCmdsDepricated.begin(), subCmdsDepricated.end(), sortByName);
 
 
   // -- Report the SubCommands
@@ -312,9 +314,12 @@ XBUtilities::report_commands_help( const std::string &_executable,
 }
 
 static std::string 
-create_option_format_name(boost::shared_ptr<boost::program_options::option_description> & _option,
+create_option_format_name(const boost::program_options::option_description * _option,
                           bool _reportParameter = true)
 {
+  if (_option == nullptr) 
+    return "";
+
   std::string optionDisplayName = _option->canonical_display_name(po::command_line_style::allow_dash_for_short);
 
   // Determine if we really got the "short" name (might not exist and a long was returned instead)
@@ -362,13 +367,13 @@ XBUtilities::report_option_help( const std::string & _groupName,
 
   // Report the options
   boost::format fmtOption(fgc_optionName + "  %-18s " + fgc_optionBody + "- %s\n" + fgc_reset);
-  for (auto option : _optionDescription.options()) {
+  for (auto & option : _optionDescription.options()) {
     if ( ::isPositional( option->canonical_display_name(po::command_line_style::allow_dash_for_short),
                          _positionalDescription) )  {
       continue;
     }
 
-    std::string optionDisplayFormat = create_option_format_name(option, _bReportParameter);
+    std::string optionDisplayFormat = create_option_format_name(option.get(), _bReportParameter);
     unsigned int optionDescTab = 23;
     XBU::wrap_paragraphs(option->description(), optionDescTab, m_maxColumnWidth, false, formattedString);
     std::cout << fmtOption % optionDisplayFormat % formattedString;
@@ -415,7 +420,7 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
       continue;
     }
 
-    std::string optionDisplayFormat = create_option_format_name(option, false);
+    std::string optionDisplayFormat = create_option_format_name(option.get(), false);
     unsigned int optionDescTab = 33;
     XBU::wrap_paragraphs(option->description(), optionDescTab, m_maxColumnWidth, false, formattedString);
 
@@ -471,12 +476,9 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
     std::cout << fmtHeader % formattedString;
 
   // -- Usage
-  std::string usageSubCmds;
-  for (unsigned index = 0; index < _subOptionOptions.size(); ++index) {
-    if (index != 0)
-      usageSubCmds += " | ";
-    usageSubCmds += _subOptionOptions[index]->longName();
-  }
+  auto pipeFold = [](std::string a, auto &b) { return std::move(a)+ " | " + b->longName(); };
+  std::string usageSubCmds = std::accumulate( std::next(_subOptionOptions.begin()), _subOptionOptions.end(),
+                                              _subOptionOptions[0]->longName(), pipeFold);
 
   std::cout << boost::format(fgc_header + "\nUSAGE: " + fgc_usageBody + "%s %s [-h] --[ %s ] [commandArgs]\n" + fgc_reset) % _executableName % _subCommand % usageSubCmds;
 

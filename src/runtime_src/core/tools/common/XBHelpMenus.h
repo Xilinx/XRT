@@ -24,7 +24,7 @@
 #include <boost/program_options.hpp>
 
 // ----------------------- T Y P E D E F S -----------------------------------
-typedef std::vector<std::shared_ptr<SubCmd>> SubCmdsCollection;
+using SubCmdsCollection = std::vector<std::shared_ptr<SubCmd>>;
 
 namespace XBUtilities {
   void 

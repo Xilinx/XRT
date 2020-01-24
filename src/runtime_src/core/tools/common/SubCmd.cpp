@@ -55,7 +55,7 @@ SubCmd::printHelp( const boost::program_options::options_description & _optionDe
 
 void 
 SubCmd::conflictingOptions( const boost::program_options::variables_map& _vm, 
-                            const std::string _opt1, const std::string _opt2) const
+                            const std::string &_opt1, const std::string &_opt2) const
 {
   if ( _vm.count(_opt1.c_str())  
        && !_vm[_opt1.c_str()].defaulted() 
