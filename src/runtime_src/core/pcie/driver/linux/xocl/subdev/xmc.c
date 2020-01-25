@@ -353,7 +353,7 @@ static int stop_xmc(struct platform_device *pdev);
 static void xmc_clk_scale_config(struct platform_device *pdev);
 static int xmc_load_board_info(struct xocl_xmc *xmc);
 static int cmc_access_ops(struct platform_device *pdev, int flags);
-static bool scaling_condition_check(struct xocl_xmc *xmc);
+static bool scaling_condition_check(struct xocl_xmc *xmc, struct device *dev);
 
 static void set_sensors_data(struct xocl_xmc *xmc, struct xcl_sensor *sensors)
 {
@@ -1303,7 +1303,7 @@ static int get_temp_by_m_tag(struct xocl_xmc *xmc, char *m_tag)
 }
 
 /* Runtime clock scaling sysfs node */
-static bool scaling_condition_check(struct xocl_xmc *xmc)
+static bool scaling_condition_check(struct xocl_xmc *xmc, struct device *dev)
 {
 	if (!xmc->runtime_cs_enabled) {
 		if (!XMC_PRIVILEGED(xmc))
@@ -1324,7 +1324,7 @@ static ssize_t scaling_threshold_power_override_en_show(struct device *dev,
 	u32 val = 0;
 	bool cs_en;
 
-	cs_en = scaling_condition_check(xmc);
+	cs_en = scaling_condition_check(xmc, dev);
 	if (!cs_en)
 		return sprintf(buf, "%d\n", val);
 
@@ -1344,7 +1344,7 @@ static ssize_t scaling_threshold_power_override_show(struct device *dev,
 	u32 val = 0;
 	bool cs_en;
 
-	cs_en = scaling_condition_check(xmc);
+	cs_en = scaling_condition_check(xmc, dev);
 	if (!cs_en)
 		return sprintf(buf, "%d\n", val);
 
@@ -1363,7 +1363,7 @@ static ssize_t scaling_threshold_power_override_store(struct device *dev,
 	u32 val, val2, val3;
 	bool cs_en;
 
-	cs_en = scaling_condition_check(xmc);
+	cs_en = scaling_condition_check(xmc, dev);
 	if (!cs_en)
 		return count;
 
@@ -1401,7 +1401,7 @@ static ssize_t scaling_governor_show(struct device *dev,
 	char val[20];
 	bool cs_en;
 
-	cs_en = scaling_condition_check(xmc);
+	cs_en = scaling_condition_check(xmc, dev);
 	if (!cs_en) {
 		strcpy(val, "NULL");
 		return sprintf(buf, "%s\n", val);
@@ -1434,7 +1434,7 @@ static ssize_t scaling_governor_store(struct device *dev,
 	bool cs_en;
 
 	/* Check if clock scaling feature enabled */
-	cs_en = scaling_condition_check(xmc);
+	cs_en = scaling_condition_check(xmc, dev);
 	if (!cs_en)
 		return count;
 
@@ -1473,7 +1473,7 @@ static ssize_t scaling_enabled_store(struct device *dev,
 	bool cs_en;
 
 	/* Check if clock scaling feature enabled */
-	cs_en = scaling_condition_check(xmc);
+	cs_en = scaling_condition_check(xmc, dev);
 	if (!cs_en)
 		return count;
 
@@ -1492,7 +1492,7 @@ static ssize_t scaling_enabled_show(struct device *dev,
 	u32 val = 0;
 	bool cs_en;
 
-	cs_en = scaling_condition_check(xmc);
+	cs_en = scaling_condition_check(xmc, dev);
 	if (!cs_en)
 		return sprintf(buf, "%d\n", val);
 
@@ -1515,7 +1515,7 @@ static ssize_t hwmon_scaling_target_power_show(struct device *dev,
 	u32 val = 0;
 	bool cs_en;
 
-	cs_en = scaling_condition_check(xmc);
+	cs_en = scaling_condition_check(xmc, dev);
 	if (!cs_en)
 		return sprintf(buf, "%d\n", val);
 
@@ -1535,7 +1535,7 @@ static ssize_t hwmon_scaling_target_power_store(struct device *dev,
 	u32 val, val2, threshold;
 	bool cs_en;
 
-	cs_en = scaling_condition_check(xmc);
+	cs_en = scaling_condition_check(xmc, dev);
 	if (!cs_en)
 		return count;
 
@@ -1571,7 +1571,7 @@ static ssize_t hwmon_scaling_target_temp_show(struct device *dev,
 	u32 val = 0;
 	bool cs_en;
 
-	cs_en = scaling_condition_check(xmc);
+	cs_en = scaling_condition_check(xmc, dev);
 	if (!cs_en)
 		return sprintf(buf, "%d\n", val);
 
@@ -1592,7 +1592,7 @@ static ssize_t hwmon_scaling_target_temp_store(struct device *dev,
 	bool cs_en;
 
 	/* Check if clock scaling feature enabled */
-	cs_en = scaling_condition_check(xmc);
+	cs_en = scaling_condition_check(xmc, dev);
 	if (!cs_en)
 		return count;
 
@@ -1626,7 +1626,7 @@ static ssize_t hwmon_scaling_threshold_temp_show(struct device *dev,
 	u32 val = 0;
 	bool cs_en;
 
-	cs_en = scaling_condition_check(xmc);
+	cs_en = scaling_condition_check(xmc, dev);
 	if (!cs_en)
 		return sprintf(buf, "%d\n", val);
 
@@ -1647,7 +1647,7 @@ static ssize_t hwmon_scaling_threshold_power_show(struct device *dev,
 	u32 val = 0, val2;
 	bool cs_en;
 
-	cs_en = scaling_condition_check(xmc);
+	cs_en = scaling_condition_check(xmc, dev);
 	if (!cs_en)
 		return sprintf(buf, "%d\n", val);
 
