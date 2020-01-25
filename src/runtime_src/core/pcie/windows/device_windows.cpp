@@ -351,6 +351,57 @@ sensor_info(const device_type* device, qr_type qr, const std::type_info&, boost:
 }
 
 static void
+icap_info(const device_type* device, qr_type qr, const std::type_info&, boost::any& value)
+{
+  auto init_icap_info = [](const device_type* dev) {
+    xcl_hwicap info = { 0 };
+    userpf::get_icap_info(dev->get_user_handle(), &info);
+    return info;
+  };
+
+  static std::map<const device_type*, xcl_hwicap> info_map;
+  static std::mutex mutex;
+  std::lock_guard<std::mutex> lk(mutex);
+  auto it = info_map.find(device);
+  if (it == info_map.end()) {
+    auto ret = info_map.emplace(device,init_icap_info(device));
+    it = ret.first;
+  }
+
+  const xcl_hwicap& info = (*it).second;
+
+  switch (qr) {
+  case qr_type::QR_CLOCK_FREQS:
+    std::vector<std::string> clock_freqs = { std::to_string(info.freq_0), std::to_string(info.freq_1), 
+                                             std::to_string(info.freq_2), std::to_string(info.freq_3) };
+    value = clock_freqs;
+    return;
+  case qr_type::QR_IDCODE:
+    value = info.idcode;
+    return;
+  case qr_type::QR_STATUS_MIG_CALIBRATED:
+    value = info.mig_calib;
+    return;
+  }
+
+  if (device->get_user_handle())
+    throw std::runtime_error("device_windows::rom() unexpected qr("
+                             + std::to_string(qr)
+                             + ") for userpf");
+
+  switch (qr) {
+  case qr_type::QR_ROM_UUID:
+    value = std::string(reinterpret_cast<const char*>(hdr.uuid),16);
+    return;
+  case qr_type::QR_ROM_TIME_SINCE_EPOCH:
+    value = hdr.TimeSinceEpoch;
+    return;
+  default:
+    throw std::runtime_error("device_windows::rom() unexpected qr " + std::to_string(qr));
+  }
+}
+
+static void
 info(const device_type* device, qr_type qr, const std::type_info& tinfo, boost::any& value)
 {
   if (auto mhdl = device->get_mgmt_handle())
@@ -472,9 +523,9 @@ get_IOCTL_entry(QueryRequest qr) const
     { QR_XMC_STATUS,                { xmc }},
     { QR_XMC_REG_BASE,              { nullptr }},
     { QR_DNA_SERIAL_NUM,            { nullptr }},
-    { QR_CLOCK_FREQS,               { nullptr }},
-    { QR_IDCODE,                    { nullptr }},
-    { QR_STATUS_MIG_CALIBRATED,     { nullptr }},
+    { QR_CLOCK_FREQS,               { icap_info }},
+    { QR_IDCODE,                    { icap_info }},
+    { QR_STATUS_MIG_CALIBRATED,     { icap_info }},
     { QR_STATUS_P2P_ENABLED,        { nullptr }},
 
     { QR_TEMP_CARD_TOP_FRONT,       { sensor_info }},

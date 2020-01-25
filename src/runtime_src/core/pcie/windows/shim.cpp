@@ -1017,7 +1017,24 @@ done:
         nullptr);
 
     if (!status || bytes != sizeof(xcl_sensor))
-      throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_device_info) failed");
+      throw std::runtime_error("DeviceIoControl DeviceIoControl (get_sensor_info) failed");
+  }
+
+  void
+  get_icap_info(xcl_hwicap* value)
+  {
+    DWORD bytes = 0;
+    bool status = DeviceIoControl(m_dev,
+        IOCTL_XOCL_ICAP_INFO,
+        nullptr,
+        0,
+        value,
+        sizeof(xcl_hwicap),
+        &bytes,
+        nullptr);
+
+    if (!status || bytes != sizeof(xcl_hwicap))
+      throw std::runtime_error("DeviceIoControl IOCTL_XOCL_ICAP_INFO (get_icap_info) failed");
   }
 
   void
@@ -1110,6 +1127,15 @@ get_sensor_info(xclDeviceHandle hdl, xcl_sensor* value)
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "sensor_info()");
   shim* shim = get_shim_object(hdl);
   shim->get_sensor_info(value);
+}
+
+void
+get_icap_info(xclDeviceHandle hdl, xcl_hwicap* value)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "icap_info()");
+  shim* shim = get_shim_object(hdl);
+  shim->get_icap_info(value);
 }
 
 } // namespace userpf
