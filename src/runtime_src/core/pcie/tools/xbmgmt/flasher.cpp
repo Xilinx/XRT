@@ -190,6 +190,7 @@ std::string int2PowerString(unsigned lvl)
 
 int Flasher::getBoardInfo(BoardInfo& board)
 {
+    std::string unassigned_mac = "FF:FF:FF:FF:FF:FF";
     std::map<char, std::vector<char>> info;
     XMC_Flasher flasher(mDev);
 
@@ -208,10 +209,14 @@ int Flasher::getBoardInfo(BoardInfo& board)
         info[BDINFO_CONFIG_MODE][0] : '\0';
     board.mFanPresence = info.find(BDINFO_FAN_PRESENCE) != info.end() ?
         info[BDINFO_FAN_PRESENCE][0] : '\0';
-    board.mMacAddr0 = std::move(charVec2String(info[BDINFO_MAC0]));
-    board.mMacAddr1 = std::move(charVec2String(info[BDINFO_MAC1]));
-    board.mMacAddr2 = std::move(charVec2String(info[BDINFO_MAC2]));
-    board.mMacAddr3 = std::move(charVec2String(info[BDINFO_MAC3]));
+    board.mMacAddr0 = charVec2String(info[BDINFO_MAC0]).compare(unassigned_mac) ? 
+        std::move(charVec2String(info[BDINFO_MAC0])) : std::move(std::string("Unassigned"));
+    board.mMacAddr1 = charVec2String(info[BDINFO_MAC1]).compare(unassigned_mac) ? 
+        std::move(charVec2String(info[BDINFO_MAC1])) : std::move(std::string("Unassigned"));
+    board.mMacAddr2 = charVec2String(info[BDINFO_MAC2]).compare(unassigned_mac) ? 
+        std::move(charVec2String(info[BDINFO_MAC2])) : std::move(std::string("Unassigned"));
+    board.mMacAddr3 = charVec2String(info[BDINFO_MAC3]).compare(unassigned_mac) ? 
+        std::move(charVec2String(info[BDINFO_MAC3])) : std::move(std::string("Unassigned"));
     board.mMaxPower = info.find(BDINFO_MAX_PWR) != info.end() ?
         int2PowerString(info[BDINFO_MAX_PWR][0]) : "N/A";
     board.mName = std::move(charVec2String(info[BDINFO_NAME]));

@@ -565,6 +565,11 @@ int main(int argc, char *argv[])
         std::cout << "INFO: Found total " << total << " card(s), "
                   << count << " are usable" << std::endl;
 
+    if (cmd == xcldev::LIST) {
+        std::cout << "WARNING: The xbutil sub-command list has been deprecated. "
+                  << "Please use xbutil scan for equivalent functionality.\n"
+                  << std::endl;
+    }
     if ((cmd == xcldev::QUERY) || (cmd == xcldev::SCAN) || (cmd == xcldev::LIST))
         xcldev::baseDump(std::cout);
 
@@ -693,7 +698,7 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  dmatest [-d card] [-b [0x]block_size_KB]\n";
     std::cout << "  dump\n";
     std::cout << "  help\n";
-    std::cout << "  m2mtest\n";
+    std::cout << "  m2mtest [-d card]\n";
     std::cout << "  version\n";
     std::cout << "  mem --read [-d card] [-a [0x]start_addr] [-i size_bytes] [-o output filename]\n";
     std::cout << "  mem --write [-d card] [-a [0x]start_addr] [-i size_bytes] [-e pattern_byte]\n";
