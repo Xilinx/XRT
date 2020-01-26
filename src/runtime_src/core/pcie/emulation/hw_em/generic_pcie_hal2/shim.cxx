@@ -1540,6 +1540,17 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     bool QDMAPlatform = (getDsaVersion() == 60)? true: false;
     return mbSchEnabled && !QDMAPlatform;
   }
+  
+
+  bool HwEmShim::isDynamicallyLoadingErt()
+  {
+    //Currently returning true for samsung platform. This should return true by default in 2020.1
+    //Emulation team needs to add more platform names here which are dynamically loading ERT
+    std::string vbnv  = mDeviceInfo.mName;
+    if(!vbnv.empty() && vbnv.find("u2x4") != std::string::npos)
+      return true;
+    return false;
+  }
 
   bool HwEmShim::isCdmaEnabled()
   {
