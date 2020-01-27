@@ -343,6 +343,8 @@ static const struct drm_ioctl_desc xocl_ioctls[] = {
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(XOCL_ALLOC_CMA, xocl_alloc_cma_ioctl,
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(XOCL_FREE_CMA, xocl_free_cma_ioctl,
+			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 };
 
 static long xocl_drm_ioctl(struct file *filp,
@@ -590,22 +592,16 @@ static void xocl_cma_chunk_free(struct xocl_drm *drm_p, uint32_t idx)
 	}	
 }
 
-static void xocl_cma_chunks_free_all_nolock(struct xocl_drm *drm_p)
+static void xocl_cma_chunks_free_all(struct xocl_drm *drm_p)
 {
-
 	int i = 0;
 
+	mutex_lock(&drm_p->mm_lock);
 	for (i = 0; i < DRM_XOCL_CMA_CHUNK_MAX; ++i) {
 		xocl_cma_chunk_free(drm_p, i);
 	}
-	xocl_info(drm_p->ddev->dev, "%s done", __func__);
-}
-
-static void xocl_cma_chunks_free_all(struct xocl_drm *drm_p)
-{
-	mutex_lock(&drm_p->mm_lock);
-	xocl_cma_chunks_free_all_nolock(drm_p);
 	mutex_unlock(&drm_p->mm_lock);
+	xocl_info(drm_p->ddev->dev, "%s done", __func__);
 }
 
 int xocl_cleanup_mem(struct xocl_drm *drm_p)
@@ -844,13 +840,14 @@ out:
 	return err;
 }
 
-static int xocl_cma_chunk_reserve(struct xocl_drm *drm_p, uint64_t user_addr, size_t page_sz)
+static int xocl_cma_chunk_reserve(struct xocl_drm *drm_p, struct drm_xocl_alloc_cma_info *cma_info)
 {
 	int ret = 0, idx = 0;
 	uint64_t nr, page_count;
 	struct page **pages = NULL;
 	struct device *dev = drm_p->ddev->dev;
-
+	uint64_t user_addr = cma_info->user_addr;
+	size_t page_sz = cma_info->page_sz;
 
 	BUG_ON(!mutex_is_locked(&drm_p->mm_lock));
 
@@ -904,38 +901,28 @@ static int xocl_cma_chunk_reserve(struct xocl_drm *drm_p, uint64_t user_addr, si
 
 	drm_mm_init(drm_p->cma_chunk[idx]->mm, drm_p->cma_chunk[idx]->start_addr, page_sz);
 
+	cma_info->chunk_id = idx;
 
 out:
 	xocl_info(dev, "%s ret %d", __func__, ret);
-	if (ret)
-		xocl_cma_chunks_free_all_nolock(drm_p);
-
 	return ret;
 }
 
-
-
-int xocl_cma_chunk_helper(struct xocl_drm *drm_p, struct drm_xocl_alloc_cma_info *cma_info)
+int xocl_cma_chunk_alloc_helper(struct xocl_drm *drm_p, struct drm_xocl_alloc_cma_info *cma_info)
 {
 	int err = 0;
-	size_t page_sz = cma_info->page_sz;
 
 	mutex_lock(&drm_p->mm_lock);
-
-	if (cma_info->reserve) {
-
-		err = xocl_cma_chunk_reserve(drm_p, cma_info->user_addr, page_sz);
-		if (err)
-			goto done;
-
-	} else {
-		xocl_cma_chunks_free_all_nolock(drm_p);
-	}
-
-done:
-	if (err)
-		xocl_cma_chunks_free_all_nolock(drm_p);
-
+	err = xocl_cma_chunk_reserve(drm_p, cma_info);
 	mutex_unlock(&drm_p->mm_lock);
 	return err;
+}
+
+void xocl_cma_chunk_free_helper(struct xocl_drm *drm_p, struct drm_xocl_free_cma_info *cma_info)
+{
+	uint64_t chunk_id = cma_info->chunk_id;
+
+	mutex_lock(&drm_p->mm_lock);
+	xocl_cma_chunk_free(drm_p, chunk_id);
+	mutex_unlock(&drm_p->mm_lock);
 }

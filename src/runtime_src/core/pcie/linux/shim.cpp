@@ -753,7 +753,6 @@ int shim::cmaEnable(bool enable, uint64_t size)
 
         drm_xocl_alloc_cma_info cma_info;
         cma_info.page_sz = size;
-        cma_info.reserve = true;
 
         /* Once set MAP_HUGETLB, we have to specify bit[26~31] as size in log
          * e.g. We like to get 2M huge page, 2M = 2^21, 
@@ -784,8 +783,8 @@ int shim::cmaEnable(bool enable, uint64_t size)
         }
 
     } else {
-        drm_xocl_alloc_cma_info cma_info = {0, 0, false};
-        ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_ALLOC_CMA, &cma_info);
+        drm_xocl_free_cma_info cma_info = {0};
+        mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_FREE_CMA, &cma_info);
     }
 
     return ret;
