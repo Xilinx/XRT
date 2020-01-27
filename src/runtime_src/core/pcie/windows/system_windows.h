@@ -41,6 +41,15 @@ public:
 
   std::shared_ptr<device>
   get_mgmtpf_device(device::id_type id) const;
+
+  void
+  setup_terminal();
+
+  void 
+  restore_terminal();
+
+  void
+  get_console_info(int *rows, int *cols);
 };
 
 } // host,xrt_core

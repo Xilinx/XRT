@@ -38,6 +38,9 @@ public:
   virtual void get_devices(boost::property_tree::ptree &pt) const = 0;
   virtual std::pair<device::id_type, device::id_type> get_total_devices(bool is_user = true) const = 0;
   virtual uint16_t bdf2index(const std::string& bdfStr) const = 0;
+  virtual void setup_terminal() = 0;
+  virtual void restore_terminal() = 0;
+  virtual void get_console_info(int *rows, int *cols) = 0;
 
 
   virtual std::shared_ptr<device> get_userpf_device(device::id_type id) const = 0;
@@ -82,6 +85,18 @@ get_mgmtpf_device(device::id_type id);
 XRT_CORE_COMMON_EXPORT
 uint16_t
 bdf2index(const std::string& bdfStr);
+
+XRT_CORE_COMMON_EXPORT
+void
+setup_terminal();
+
+XRT_CORE_COMMON_EXPORT
+void
+restore_terminal();
+
+XRT_CORE_COMMON_EXPORT
+void
+get_console_info(int *rows, int *cols);
 
 } //xrt_core
 

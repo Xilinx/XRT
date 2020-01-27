@@ -66,6 +66,9 @@ getmachinename()
 
 static std::vector<std::weak_ptr<xrt_core::device_windows>> mgmtpf_devices(16); // fix size
 static std::vector<std::weak_ptr<xrt_core::device_windows>> userpf_devices(16); // fix size
+static HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
+static DWORD initMode;
+static CONSOLE_SCREEN_BUFFER_INFO csbiInfo;
 
 }
 
@@ -159,4 +162,46 @@ get_mgmtpf_device(device::id_type id) const
   return device;
 }
 
+void
+system_windows::
+setup_terminal()
+{
+  if (hStdout == INVALID_HANDLE_VALUE) {
+    exit(GetLastError());
+  }
+
+  DWORD dwMode = 0;
+  if (!GetConsoleMode(hStdout, &dwMode)) {
+    exit(GetLastError());
+  }
+  
+  initMode = dwMode;
+  dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+  if (!SetConsoleMode(hStdout, dwMode)) {
+    exit(GetLastError());
+  }
+}
+
+void
+system_windows::
+restore_terminal()
+{
+  std::cout << "\x1b[0m";
+
+  if (!SetConsoleMode(hStdout, initMode)) {
+    exit(GetLastError());
+  }
+}
+
+void
+system_windows::
+get_console_info(int *rows, int *cols)
+{
+  if (!GetConsoleScreenBufferInfo(hStdout, &csbiInfo)) {
+    exit(GetLastError());
+}
+
+  *cols = csbiInfo.srWindow.Right - csbiInfo.srWindow.Left + 1;
+  *rows = csbiInfo.srWindow.Bottom - csbiInfo.srWindow.Top + 1;
+}
 } // xrt_core

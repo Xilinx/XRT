@@ -27,6 +27,9 @@
 #include <sys/utsname.h>
 #include <gnu/libc-version.h>
 
+#include <sys/utsname.h>
+#include <gnu/libc-version.h>
+
 namespace {
 
 static std::string
@@ -115,5 +118,25 @@ system_linux::
 get_mgmtpf_device(device::id_type id) const
 {
   return nullptr;
+}
+
+void
+system_linux::
+setup_terminal()
+{
+}
+
+void
+system_linux::
+restore_terminal()
+{
+}
+
+void
+system_linux::
+get_console_info(int *rows, int *cols)
+{
+  *rows = 0;
+  *cols = 0;
 }
 } // xrt_core

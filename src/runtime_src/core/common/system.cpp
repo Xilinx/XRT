@@ -69,4 +69,22 @@ bdf2index(const std::string& bdfStr)
   return instance().bdf2index(bdfStr);
 }
 
+void
+setup_terminal()
+{
+  instance().setup_terminal();
+}
+
+void
+restore_terminal()
+{
+  instance().restore_terminal();
+}
+
+void
+get_console_info(int *rows, int *cols)
+{
+  instance().get_console_info(rows,cols);
+}
+
 } // xrt_core
