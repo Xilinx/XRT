@@ -316,6 +316,23 @@ static ssize_t interface_uuids_show(struct device *dev,
 
 static DEVICE_ATTR_RO(interface_uuids);
 
+static ssize_t vsec_platform_type_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+	int bar, off = 0;
+	u64 offset;
+	u32 ptype;
+
+	if (!xocl_subdev_vsec(lro, XOCL_VSEC_PLATFORM_INFO, &bar, &offset)) {
+		ptype = xocl_subdev_vsec_read32(lro, bar, offset);
+		off = sprintf(buf, "%u\n", ptype);
+	}
+
+	return off;
+}
+static DEVICE_ATTR_RO(vsec_platform_type);
+
 static ssize_t logic_uuids_show(struct device *dev,
         struct device_attribute *attr, char *buf)
 {
@@ -408,6 +425,7 @@ static struct attribute *mgmt_attrs[] = {
 	&dev_attr_interface_uuids.attr,
 	&dev_attr_logic_uuids.attr,
 	&dev_attr_mgmt_reset.attr,
+	&dev_attr_vsec_platform_type.attr,
 	NULL,
 };
 

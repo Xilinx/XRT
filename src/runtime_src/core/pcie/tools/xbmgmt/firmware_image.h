@@ -48,6 +48,7 @@ public:
     uint64_t timestamp;
     std::vector<std::string> uuids;
     std::string bmcVer;
+    bool is_golden;
 
     uint16_t vendor_id;
     uint16_t device_id;

@@ -503,27 +503,24 @@ bool XMC_Flasher::isXMCReady()
 
 bool XMC_Flasher::isBMCReady()
 {
-    unsigned int val;
-    std::string errmsg;
+    bool bmcReady = (BMC_MODE() == 0x1);
 
-    mDev->sysfs_get<unsigned>("xmc", "sc_presence", errmsg, val, 0);
-    if (!errmsg.empty()) {
-        std::cout << "can't read sc_presence node from " << mDev->sysfs_name <<
-            " : " << errmsg << std::endl;
-        return false;
-    }
+    if (!bmcReady) {
+        unsigned int val;
+        std::string errmsg;
 
-    if (val) {
-        bool bmcReady = (BMC_MODE() == 0x1);
-        if (!bmcReady) {
+        mDev->sysfs_get<unsigned>("xmc", "sc_presence", errmsg, val, 0);
+        if (!errmsg.empty()) {
+            std::cout << "can't read sc_presence node from " <<
+               mDev->sysfs_name << " : " << errmsg << std::endl;
+        } else if (val) {
             xrt_core::ios_flags_restore format(std::cout);
-            std::cout << "ERROR: SC is not ready: 0x" << std::hex
-                << BMC_MODE() << std::endl;
+            std::cout << "ERROR: SC is not ready: 0x" <<
+                std::hex << BMC_MODE() << std::endl;
         }
-        return bmcReady;
     }
 
-    return true;
+    return bmcReady;
 }
 
 static void tiTxtStreamToBin(std::istream& tiTxtStream,

@@ -211,17 +211,22 @@ static int updateShellAndSC(unsigned boardIdx, DSAInfo& candidate, bool& reboot)
 
     bool same_dsa = false;
     bool same_bmc = false;
+    bool no_bmc = false;
     DSAInfo current = flasher.getOnBoardDSA();
     if (!current.name.empty()) {
         same_dsa = (candidate.name == current.name &&
             candidate.matchId(current));
-        same_bmc = (current.bmcVer.empty() ||
+        same_bmc = (!current.bmcVer.empty() &&
             candidate.bmcVer == current.bmcVer);
+	no_bmc = current.bmcVer.empty();
     }
     if (same_dsa && same_bmc)
         std::cout << "update not needed" << std::endl;
 
-    if (!same_bmc) {
+    if (no_bmc) {
+        std::cout << "Please rerun the \"flash --update\" command again"
+            " after a cold reboot to update the SC firmware.\n\n";
+    } else if (!same_bmc) {
         std::cout << "Updating SC firmware on card[" << flasher.sGetDBDF() <<
             "]" << std::endl;
         int ret = updateSC(boardIdx, candidate.file.c_str());

@@ -357,10 +357,15 @@ DSAInfo Flasher::getOnBoardDSA()
     std::string err;
     std::string board_name;
     std::string uuid;
+    std::string vsec_platform_type;
     bool is_mfg = false;
     mDev->sysfs_get<bool>("", "mfg", err, is_mfg, false);
+    mDev->sysfs_get("", "vsec_platform_type", err, vsec_platform_type);
     mDev->sysfs_get("", "board_name", err, board_name);
     mDev->sysfs_get("rom", "uuid", err, uuid);
+    bool is_recovery = (vsec_platform_type.size() != 0) &&
+	    (vsec_platform_type.compare("0") == 0);
+
     if (is_mfg)
     {
         std::stringstream ss;
@@ -380,10 +385,10 @@ DSAInfo Flasher::getOnBoardDSA()
 
     BoardInfo info;
     int rc = getBoardInfo(info);
-    if (rc == 0)
-        bmc = info.mBMCVer; // Successfully read BMC version
-    else if (rc == -EOPNOTSUPP)
-        bmc.clear(); // BMC is not supported on DSA
+    if (rc == 0 && !is_mfg)
+        bmc = info.mBMCVer; // Only set bmc version for non-golden image
+    else if (is_mfg || is_recovery)
+        bmc.clear(); // Golden or BMC is not supported on DSA
     else
         bmc = "UNKNOWN"; // BMC not ready, set it to an invalid version string
 
