@@ -44,6 +44,7 @@
 	 xocl_memcpy_toio(ert->fw_addr, buf, len) : 0)
 enum {
 	MB_UNINITIALIZED,
+	MB_INITIALIZED,
 	MB_HOLD_RESET,
 	MB_ENABLED,
 	MB_RUNNING,
@@ -71,6 +72,8 @@ static int stop_ert_nolock(struct xocl_ert *ert)
 	u32 retry = 0;
 	int ret = 0;
 
+	if (ert->state == MB_UNINITIALIZED)
+		return -ENODEV;
 	if (ert->state  < MB_RUNNING)
 		return 0;
 
@@ -148,7 +151,7 @@ static int load_image(struct xocl_ert *ert)
 out:
 	mutex_unlock(&ert->ert_lock);
 
-	return ret;
+	return (ret == -ENODEV) ? 0 : ret; 
 }
 
 static ssize_t reset_store(struct device *dev,
@@ -417,14 +420,14 @@ static int ert_probe(struct platform_device *pdev)
 	}
 	ert->reset_addr = ioremap_nocache(res->start, res->end - res->start + 1);
 
-	/* GPIO is set to 0 by default, needs to take the ERT out of reset */
-	WRITE_GPIO(ert, GPIO_ENABLED, 0);
-
 	xdev_hdl = xocl_get_xdev(pdev);
 	if (!xocl_mb_sched_on(xdev_hdl)) {
 		xocl_info(&pdev->dev, "Microblaze is not supported.");
 		return 0;
 	}
+
+	/* GPIO is set to 0 by default, needs to take the ERT out of reset */
+	WRITE_GPIO(ert, GPIO_ENABLED, 0);
 
 	err = ert_sysfs_create(pdev);
 	if (err) {
@@ -433,6 +436,7 @@ static int ert_probe(struct platform_device *pdev)
 	}
 
 	ert->sysfs_created = true;
+	ert->state = MB_INITIALIZED;
 
 	return 0;
 
