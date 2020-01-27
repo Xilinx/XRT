@@ -121,6 +121,11 @@ public:
     // APIs using sysfs information
     uint32_t xclGetNumLiveProcesses();
     int xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size);
+
+    /* Enable/disable CMA chunk with specific size
+     * e.g. enable = true, sz = 0x100000 (2M): add 2M CMA chunk
+     *      enable = false: remove CMA chunk
+     */
     int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t sz);
 
     int xclGetDebugIPlayoutPath(char* layoutPath, size_t size);

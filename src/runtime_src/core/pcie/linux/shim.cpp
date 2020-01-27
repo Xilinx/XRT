@@ -758,7 +758,7 @@ int shim::cmaEnable(bool enable, uint64_t size)
          * e.g. We like to get 2M huge page, 2M = 2^21, 
          * 21 = 0x15
          */
-        if (size == (1 << 30)) 
+        if (size == (1 << 30))
             hugepage_flag = 0x1e;
         else if (size == (2 << 20))
             hugepage_flag = 0x15;
