@@ -328,7 +328,7 @@ struct xocl_xmc {
 	u32			mbx_offset;
 	struct xmc_pkt		mbx_pkt;
 	char			*bdinfo_raw;
-	char 			serial_num[XMC_BDINFO_ENTRY_LEN_MAX];
+	char			serial_num[XMC_BDINFO_ENTRY_LEN_MAX];
 	char			mac_addr0[XMC_BDINFO_ENTRY_LEN];
 	char			mac_addr1[XMC_BDINFO_ENTRY_LEN];
 	char			mac_addr2[XMC_BDINFO_ENTRY_LEN];
@@ -970,6 +970,8 @@ static void runtime_clk_scale_disable(struct xocl_xmc *xmc)
 	cntrl = READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1);
 	cntrl &= ~(1 << 28);
 	WRITE_REG32(xmc, cntrl, XMC_HOST_NEW_FEATURE_REG1);
+
+	xmc->runtime_cs_enabled = false;
 }
 
 static void runtime_clk_scale_enable(struct xocl_xmc *xmc)
@@ -983,6 +985,8 @@ static void runtime_clk_scale_enable(struct xocl_xmc *xmc)
 	cntrl = READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1);
 	cntrl |= (1 << 28);
 	WRITE_REG32(xmc, cntrl, XMC_HOST_NEW_FEATURE_REG1);
+
+	xmc->runtime_cs_enabled = true;
 }
 
 /*
@@ -1307,6 +1311,22 @@ static int get_temp_by_m_tag(struct xocl_xmc *xmc, char *m_tag)
 /* Runtime clock scaling sysfs node */
 static bool scaling_condition_check(struct xocl_xmc *xmc, struct device *dev)
 {
+	if (xmc->sc_presence) {
+		//Feature present bit may configured each time an xclbin is downloaded,
+		//or following a reset of the CMC Subsystem. So, check for latest
+		//status every time.
+		u32 reg = READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1);
+		if (reg & (1 << 28))
+			xmc->runtime_cs_enabled = true;
+		else
+			xmc->runtime_cs_enabled = false;
+		if (reg & (1 << 29)) {
+			xmc->cs_on_ptfm = true;
+			return true;
+		}
+		xmc->cs_on_ptfm = false;
+	}
+
 	if (!xmc->runtime_cs_enabled) {
 		if (!XMC_PRIVILEGED(xmc))
 			xocl_dbg(dev, "runtime clock scaling is not supported in non privileged mode\n");
@@ -1377,7 +1397,9 @@ static ssize_t scaling_threshold_power_override_store(struct device *dev,
 	val2 &= ~XMC_CLK_THROTTLING_PWR_MGMT_REG_PWR_MASK;
 	val3 = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_POWER_REG);
 	val3 &= ~XMC_CLOCK_SCALING_POWER_TARGET_MASK;
-	if (val > 0) { //enable max power override mode
+	val4 = READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1);
+	if ((val4 & (1 << 29)) && (val > 0)) {
+		//enable max power override mode
 		val2 |= (0x1 << 31);
 		val2 |= (val & XMC_CLK_THROTTLING_PWR_MGMT_REG_PWR_MASK);
 	} else { //disable max power override mode
@@ -2715,7 +2737,7 @@ static int xmc_remove(struct platform_device *pdev)
 	mutex_unlock(&xmc->mbx_lock);
 end:
 	for (i = 0; i < NUM_IOADDR; i++) {
-		if ((i == IO_CLK_SCALING) && !xmc->runtime_cs_enabled)
+		if ((i == IO_CLK_SCALING) && !xmc->cs_on_ptfm)
 			continue;
 		if (xmc->base_addrs[i])
 			iounmap(xmc->base_addrs[i]);
@@ -2850,17 +2872,19 @@ static int xmc_probe(struct platform_device *pdev)
 	if (XMC_PRIVILEGED(xmc)) {
 		if (!xmc->sc_presence) {
 			if (xocl_clk_scale_on(xdev_hdl)) {
-				xmc->runtime_cs_enabled = true;
+				u32 reg = READ_RUNTIME_CS(xmc, XMC_CLOCK_CONTROL_REG);
+				if (reg & XMC_CLOCK_SCALING_EN)
+					xmc->runtime_cs_enabled = true;
 				xmc->cs_on_ptfm = true;
 			}
 		} else {
 			u32 reg = READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1);
-			if (reg & (1 << 29)) {
+			if (reg & (1 << 28))
 				xmc->runtime_cs_enabled = true;
+			if (reg & (1 << 29))
 				xmc->cs_on_ptfm = true;
-			}
 		}
-		if (xmc->runtime_cs_enabled)
+		if (xmc->cs_on_ptfm)
 			xocl_info(&pdev->dev, "Runtime clock scaling is supported.\n");
 	}
 
