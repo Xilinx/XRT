@@ -48,9 +48,6 @@ class SubCmd {
    virtual ~SubCmd() {};
 
 public:
-//  static bool sortByName(const std::shared_ptr<SubCmd>& d1, const std::shared_ptr<SubCmd>& d2) {
-//    return d1->getName().compare(d2->getName()) < 0;
-//  }
 
  // Child class Helper methods
  protected:
@@ -83,3 +80,5 @@ public:
 };
 
 #endif
+
+
