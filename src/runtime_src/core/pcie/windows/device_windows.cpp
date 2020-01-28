@@ -382,23 +382,130 @@ icap_info(const device_type* device, qr_type qr, const std::type_info&, boost::a
   case qr_type::QR_STATUS_MIG_CALIBRATED:
     value = info.mig_calib;
     return;
+  default:
+    throw std::runtime_error("device_windows::icap() unexpected qr " + std::to_string(qr));
+  }
+  // No query for freq_cntr_0, freq_cntr_1, freq_cntr_2, freq_cntr_3 and uuid
+}
+
+static void
+board_info(const device_type* device, qr_type qr, const std::type_info&, boost::any& value)
+{
+  auto init_board_info = [](const device_type* dev) {
+    xcl_board_info info = { 0 };
+    userpf::get_board_info(dev->get_user_handle(), &info);
+    return info;
+  };
+
+  static std::map<const device_type*, xcl_board_info> info_map;
+  static std::mutex mutex;
+  std::lock_guard<std::mutex> lk(mutex);
+  auto it = info_map.find(device);
+  if (it == info_map.end()) {
+    auto ret = info_map.emplace(device,init_board_info(device));
+    it = ret.first;
   }
 
-  if (device->get_user_handle())
-    throw std::runtime_error("device_windows::rom() unexpected qr("
-                             + std::to_string(qr)
-                             + ") for userpf");
+  const xcl_board_info& info = (*it).second;
 
   switch (qr) {
-  case qr_type::QR_ROM_UUID:
-    value = std::string(reinterpret_cast<const char*>(hdr.uuid),16);
+  case qr_type::QR_XMC_SERIAL_NUM:
+    value = std::string(reinterpret_cast<const char*>(info.serial_num));
     return;
-  case qr_type::QR_ROM_TIME_SINCE_EPOCH:
-    value = hdr.TimeSinceEpoch;
+  case qr_type::QR_XMC_BMC_VERSION:
+    value = std::string(reinterpret_cast<const char*>(info.bmc_ver));
+    return;
+  case qr_type::QR_XMC_MAX_POWER:
+    value = static_cast<uint64_t>(info.max_power);
+    return;
+  case qr_type::QR_FAN_FAN_PRESENCE:
+    value = static_cast<uint64_t>(info.fan_presence);
     return;
   default:
-    throw std::runtime_error("device_windows::rom() unexpected qr " + std::to_string(qr));
+    throw std::runtime_error("device_windows::board_info() unexpected qr " + std::to_string(qr));
   }
+  // No query for mac_addr0, mac_addr1, mac_addr2, mac_addr3, revision, bd_name and config_mode
+}
+
+static void
+mig_ecc_info(const device_type* device, qr_type qr, const std::type_info&, boost::any& value)
+{
+  auto init_mig_ecc_info = [](const device_type* dev) {
+    xcl_mig_ecc info = { 0 };
+    userpf::get_mig_ecc_info(dev->get_user_handle(), &info);
+    return info;
+  };
+
+  static std::map<const device_type*, xcl_mig_ecc> info_map;
+  static std::mutex mutex;
+  std::lock_guard<std::mutex> lk(mutex);
+  auto it = info_map.find(device);
+  if (it == info_map.end()) {
+    auto ret = info_map.emplace(device,init_mig_ecc_info(device));
+    it = ret.first;
+  }
+
+  const xcl_mig_ecc& info = (*it).second;
+
+  switch (qr) {
+  case qr_type::QR_MIG_ECC_ENABLED:
+    value = info.ecc_enabled;
+    return;
+  case qr_type::QR_MIG_ECC_STATUS:
+    value = info.ecc_status;
+    return;
+  case qr_type::QR_MIG_ECC_CE_CNT:
+    value = info.ecc_ce_cnt;
+    return;
+  case qr_type::QR_MIG_ECC_UE_CNT:
+    value = info. ecc_ue_cnt;
+    return;
+  case qr_type::QR_MIG_ECC_CE_FFA:
+    value = info.ecc_ce_ffa;
+    return;
+  case qr_type::QR_MIG_ECC_UE_FFA:
+    value = info.ecc_ue_ffa;
+    return;
+  default:
+    throw std::runtime_error("device_windows::mig_ecc_info() unexpected qr " + std::to_string(qr));
+  }
+  // No query for mem_type and mem_idx
+}
+
+static void
+firewall_info(const device_type* device, qr_type qr, const std::type_info&, boost::any& value)
+{
+  auto init_firewall_info = [](const device_type* dev) {
+    xcl_firewall info = { 0 };
+    userpf::get_firewall_info(dev->get_user_handle(), &info);
+    return info;
+  };
+
+  static std::map<const device_type*, xcl_firewall> info_map;
+  static std::mutex mutex;
+  std::lock_guard<std::mutex> lk(mutex);
+  auto it = info_map.find(device);
+  if (it == info_map.end()) {
+    auto ret = info_map.emplace(device,init_firewall_info(device));
+    it = ret.first;
+  }
+
+  const xcl_firewall& info = (*it).second;
+
+  switch (qr) {
+  case qr_type::QR_FIREWALL_DETECT_LEVEL:
+    value = info.err_detected_level;
+    return;
+  case qr_type::QR_FIREWALL_STATUS:
+    value = info.err_detected_status;
+    return;
+  case qr_type::QR_FIREWALL_TIME_SEC:
+    value = info.err_detected_time;
+    return;
+  default:
+    throw std::runtime_error("device_windows::firewall_info() unexpected qr " + std::to_string(qr));
+  }
+  // No query for max_level, curr_status and curr_level
 }
 
 static void
@@ -517,9 +624,9 @@ get_IOCTL_entry(QueryRequest qr) const
     { QR_MEM_TOPOLOGY_RAW,          { xclbin_fcn }},
     { QR_IP_LAYOUT_RAW,             { xclbin_fcn }},
     { QR_XMC_VERSION,               { sensor_info }},
-    { QR_XMC_SERIAL_NUM,            { nullptr }},
-    { QR_XMC_MAX_POWER,             { nullptr }},
-    { QR_XMC_BMC_VERSION,           { nullptr }},
+    { QR_XMC_SERIAL_NUM,            { board_info }},
+    { QR_XMC_MAX_POWER,             { board_info }},
+    { QR_XMC_BMC_VERSION,           { board_info }},
     { QR_XMC_STATUS,                { xmc }},
     { QR_XMC_REG_BASE,              { nullptr }},
     { QR_DNA_SERIAL_NUM,            { nullptr }},
@@ -533,7 +640,7 @@ get_IOCTL_entry(QueryRequest qr) const
     { QR_TEMP_CARD_BOTTOM_FRONT,    { sensor_info }},
     { QR_TEMP_FPGA,                 { sensor_info }},
     { QR_FAN_TRIGGER_CRITICAL_TEMP, { sensor_info }},
-    { QR_FAN_FAN_PRESENCE,          { nullptr }},
+    { QR_FAN_FAN_PRESENCE,          { board_info }},
     { QR_FAN_SPEED_RPM,             { sensor_info }},
     { QR_DDR_TEMP_0,                { sensor_info }},
     { QR_DDR_TEMP_1,                { sensor_info }},
@@ -569,11 +676,18 @@ get_IOCTL_entry(QueryRequest qr) const
     { QR_2V5_VPP_MILLIVOLTS,        { sensor_info }},
     { QR_INT_BRAM_VCC_MILLIVOLTS,   { sensor_info }},
 
-    { QR_FIREWALL_DETECT_LEVEL,     { nullptr }},
-    { QR_FIREWALL_STATUS,           { nullptr }},
-    { QR_FIREWALL_TIME_SEC,         { nullptr }},
+    { QR_FIREWALL_DETECT_LEVEL,     { firewall_info }},
+    { QR_FIREWALL_STATUS,           { firewall_info }},
+    { QR_FIREWALL_TIME_SEC,         { firewall_info }},
 
     { QR_POWER_MICROWATTS,          { nullptr }},
+
+    { QR_MIG_ECC_ENABLED,           { mig_ecc_info }},
+    { QR_MIG_ECC_STATUS,            { mig_ecc_info }},
+    { QR_MIG_ECC_CE_CNT,            { mig_ecc_info }},
+    { QR_MIG_ECC_UE_CNT,            { mig_ecc_info }},
+    { QR_MIG_ECC_CE_FFA,            { mig_ecc_info }},
+    { QR_MIG_ECC_UE_FFA,            { mig_ecc_info }},
 
     { QR_FLASH_BAR_OFFSET,          { nullptr }},
     { QR_IS_MFG,                    { mfg }},

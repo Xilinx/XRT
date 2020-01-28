@@ -71,6 +71,18 @@ XRT_CORE_PCIE_WINDOWS_EXPORT
 void
 get_icap_info(xclDeviceHandle hdl, xcl_hwicap* value);
 
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+get_board_info(xclDeviceHandle hdl, xcl_board_info* value);
+
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+get_mig_ecc_info(xclDeviceHandle hdl, xcl_mig_ecc* value);
+
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+get_firewall_info(xclDeviceHandle hdl, xcl_firewall* value);
+
 } // userpf
 
 

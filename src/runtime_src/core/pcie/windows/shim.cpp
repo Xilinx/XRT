@@ -1038,6 +1038,56 @@ done:
   }
 
   void
+  get_board_info(xcl_board_info* value)
+  {
+    DWORD bytes = 0;
+    bool status = DeviceIoControl(m_dev,
+        IOCTL_XOCL_BOARD_INFO,
+        nullptr,
+        0,
+        value,
+        sizeof(xcl_board_info),
+        &bytes,
+        nullptr);
+
+    if (!status || bytes != sizeof(xcl_board_info))
+      throw std::runtime_error("DeviceIoControl IOCTL_XOCL_BOARD_INFO (get_board_info) failed");
+  }
+
+  void
+  get_mig_ecc_info(xcl_mig_ecc* value)
+  {
+    DWORD bytes = 0;
+    bool status = DeviceIoControl(m_dev,
+        IOCTL_XOCL_MIG_ECC_INFO,
+        nullptr,
+        0,
+        value,
+        sizeof(xcl_mig_ecc),
+        &bytes,
+        nullptr);
+
+    if (!status || bytes != sizeof(xcl_mig_ecc))
+      throw std::runtime_error("DeviceIoControl IOCTL_XOCL_MIG_ECC_INFO (get_mig_ecc_info) failed");
+  }
+
+  void
+  get_firewall_info(xcl_firewall* value)
+  {
+    DWORD bytes = 0;
+    bool status = DeviceIoControl(m_dev,
+        IOCTL_XOCL_FIREWALL_INFO,
+        nullptr,
+        0,
+        value,
+        sizeof(xcl_firewall),
+        &bytes,
+        nullptr);
+
+    if (!status || bytes != sizeof(xcl_firewall))
+      throw std::runtime_error("DeviceIoControl IOCTL_XOCL_FIREWALL_INFO (get_firewall_info) failed");
+  }
+  void
   get_bdf_info(uint16_t bdf[3])
   {
     // TODO: code share with mgmt
@@ -1136,6 +1186,33 @@ get_icap_info(xclDeviceHandle hdl, xcl_hwicap* value)
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "icap_info()");
   shim* shim = get_shim_object(hdl);
   shim->get_icap_info(value);
+}
+
+void
+get_board_info(xclDeviceHandle hdl, xcl_board_info* value)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "board_info()");
+  shim* shim = get_shim_object(hdl);
+  shim->get_board_info(value);
+}
+
+void
+get_mig_ecc_info(xclDeviceHandle hdl, xcl_mig_ecc* value)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "mig_ecc_info()");
+  shim* shim = get_shim_object(hdl);
+  shim->get_mig_ecc_info(value);
+}
+
+void
+get_firewall_info(xclDeviceHandle hdl, xcl_firewall* value)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "firewall_info()");
+  shim* shim = get_shim_object(hdl);
+  shim->get_firewall_info(value);
 }
 
 } // namespace userpf
