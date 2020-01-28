@@ -28,3 +28,4 @@ class SubCmdDmaTest : public SubCmd {
 };
 
 #endif
+

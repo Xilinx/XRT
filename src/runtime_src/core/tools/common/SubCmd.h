@@ -20,11 +20,15 @@
 // Please keep eternal include file dependencies to a minimum
 #include <vector>
 #include <string>
+#include <map>
 #include <boost/program_options.hpp>
+
+#include "OptionOptions.h"
   
 class SubCmd {
  public:
-   typedef std::vector<std::string> SubCmdOptions;
+   using SubCmdOptions = std::vector<std::string>;
+   using SubOptionOptions = std::vector<std::shared_ptr<OptionOptions>>;
 
  public:
    virtual void execute(const SubCmdOptions &_options) const = 0;
@@ -38,10 +42,15 @@ class SubCmd {
 
  public:
    void setExecutableName(const std::string & _name) { m_executableName = _name; };
-   const std::string & getExectuableName() const {return m_executableName; };
+   const std::string & getExecutableName() const {return m_executableName; };
 
  public:
    virtual ~SubCmd() {};
+
+public:
+//  static bool sortByName(const std::shared_ptr<SubCmd>& d1, const std::shared_ptr<SubCmd>& d2) {
+//    return d1->getName().compare(d2->getName()) < 0;
+//  }
 
  // Child class Helper methods
  protected:
@@ -52,6 +61,10 @@ class SubCmd {
   void setLongDescription(const std::string &_longDescription) {m_longDescription = _longDescription; };
   void setExampleSyntax(const std::string &_exampleSyntax) {m_exampleSyntax = _exampleSyntax; };
   void printHelp(const boost::program_options::options_description & _optionDescription) const;
+  void printHelp(const boost::program_options::options_description & _optionDescription,
+                  const SubOptionOptions & _subOptionOptions) const;
+  void conflictingOptions( const boost::program_options::variables_map& _vm, 
+                           const std::string &_opt1, const std::string &_opt2) const;
 
  private:
   SubCmd() = delete;
@@ -68,5 +81,5 @@ class SubCmd {
   bool m_isDeprecated;
   bool m_isPreliminary;
 };
-  
+
 #endif

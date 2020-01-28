@@ -31,9 +31,9 @@ namespace po = boost::program_options;
 
 SubCmdDump::SubCmdDump(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("dump", 
-             "<add short description>")
+             "See replacement functionality in command: 'examine'")
 {
-  const std::string longDescription = "<add long description>";
+  const std::string longDescription = "Dumps the internal JSON database representation of the various internal 'queries'";
   setLongDescription(longDescription);
   setExampleSyntax("");
   setIsHidden(_isHidden);

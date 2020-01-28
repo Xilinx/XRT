@@ -34,7 +34,7 @@ namespace po = boost::program_options;
 
 SubCmdScan::SubCmdScan(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("scan", 
-             "<add short description>")
+             "See replacement functionality in command: 'advanced'")
 {
   const std::string longDescription = "<add long description>";
   setLongDescription(longDescription);
