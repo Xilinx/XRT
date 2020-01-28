@@ -299,7 +299,7 @@ XSPI_Flasher::XSPI_Flasher(std::shared_ptr<xrt_core::device> dev)
         flash_base = FLASH_BASE;
 
     mFlashDev = nullptr;
-    if (std::getenv("FLASH_VIA_DRIVER")) {
+    //if (std::getenv("FLASH_VIA_DRIVER")) {
         /* TODO: Replace with updated call
 		 * int fd = mDev->open("flash", O_RDWR);
         if (fd >= 0)
@@ -307,12 +307,13 @@ XSPI_Flasher::XSPI_Flasher(std::shared_ptr<xrt_core::device> dev)
         if (mFlashDev == NULL)
             std::cout << "Failed to open flash device on card" << std::endl;
 			*/
-    }
+    //}
 }
 
 static bool isDualQSPI(xrt_core::device *dev) {
     std::string err;
     uint16_t deviceID;
+	dev = dev;
 	//TODO: Replace with updated call
     //dev->sysfs_get<uint16_t>("", "device", err, deviceID, 0xffff);
 	//TODO: Remove when updated
@@ -659,7 +660,6 @@ int XSPI_Flasher::parseMCS(std::istream& mcsStream) {
     clearBuffers();
     recordList.clear();
 
-    std::string line;
     std::string startAddress;
     ELARecord record;
     bool endRecordFound = false;
@@ -1236,7 +1236,7 @@ bool XSPI_Flasher::finalTransfer(uint8_t *SendBufPtr, uint8_t *RecvBufPtr, int B
                 //read the data.
                 try {
                     Data = readReg(XSP_DRR_OFFSET);
-                } catch (const std::exception& ex) {
+                } catch (const std::exception&) {
                     return false;
                 }
 
@@ -1469,7 +1469,7 @@ bool XSPI_Flasher::prepareXSpi(uint8_t slave_sel)
 #endif
 
     //Resetting selected_sector
-    selected_sector = -1;
+	selected_sector = std::numeric_limits<uint32_t>::max();
 
     XSPI_UNUSED uint32_t tControlReg = XSpi_GetControlReg();
     XSPI_UNUSED uint32_t tStatusReg = XSpi_GetStatusReg();
@@ -1950,7 +1950,7 @@ static int splitMcsLine(std::string& line,
             unsigned int l = len * 2;
             std::string d = line.substr(9, len * 2);
             for (unsigned int i = 0; i < l; i += 2)
-                data.push_back(std::stoi(d.substr(i, 2), NULL, 16));
+                data.push_back(static_cast<unsigned char>(std::stoi(d.substr(i, 2), NULL, 16)));
         }
         break;
     case 1:
@@ -2028,7 +2028,7 @@ static int mcsStreamToBin(std::istream& mcsStream, unsigned int& currentAddr,
                 // we're the 1st data in this page, updating the current addr
                 assert(pageOffset(currentAddr) == 0);
                 currentAddr |= addr;
-            } else if (pageOffset(currentAddr + buf.size()) != addr) {
+            } else if (pageOffset(currentAddr + static_cast<unsigned int>(buf.size())) != addr) {
                 std::cout << "MCS page offset is not contiguous, expecting 0x"
                     << std::hex << pageOffset(currentAddr) + buf.size()
                     << ", but, got 0x" << addr << std::dec << std::endl;
@@ -2089,7 +2089,7 @@ static int writeBitstream(std::FILE *flashDev, int index, unsigned int addr,
         len = std::min(len, buf.size() - i);
 
         std::cout << "." << std::flush;
-        ret = writeToFlash(flashDev, index, addr + i, buf.data() + i, len);
+        ret = writeToFlash(flashDev, index, addr + static_cast<unsigned int>(i), buf.data() + static_cast<unsigned int>(i), len);
     }
     std::cout << std::endl;
     return ret;
