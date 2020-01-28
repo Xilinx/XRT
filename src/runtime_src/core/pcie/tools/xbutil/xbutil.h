@@ -37,6 +37,7 @@
 #include "core/common/utils.h"
 #include "core/common/sensor.h"
 #include "core/pcie/linux/scan.h"
+#include "core/pcie/linux/shim.h"
 #include "xclbin.h"
 #include "core/common/xrt_profiling.h"
 #include <version.h>
@@ -44,7 +45,10 @@
 #include <chrono>
 using Clock = std::chrono::high_resolution_clock;
 
-int xclUpdateSchedulerStat(xclDeviceHandle); // exposed by shim
+
+/* exposed by shim */
+int xclUpdateSchedulerStat(xclDeviceHandle);
+int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t sz);
 
 #define TO_STRING(x) #x
 #define AXI_FIREWALL
@@ -108,6 +112,13 @@ enum p2pcommand {
     P2P_ENABLE = 0x0,
     P2P_DISABLE,
     P2P_VALIDATE,
+};
+enum cmacommand {
+    CMA_ENABLE = 0x0,
+    CMA_DISABLE,
+    CMA_VALIDATE,
+    CMA_SIZE_1G,
+    CMA_SIZE_2M,
 };
 
 static const std::pair<std::string, command> map_pairs[] = {
@@ -1692,6 +1703,7 @@ public:
 
     int reset(xclResetKind kind);
     int setP2p(bool enable, bool force);
+    int setCma(bool enable, uint64_t sz);
     int testP2p(void);
     int testM2m(void);
 
@@ -1718,6 +1730,7 @@ int xclReset(int argc, char *argv[]);
 int xclValidate(int argc, char *argv[]);
 std::unique_ptr<xcldev::device> xclGetDevice(unsigned index);
 int xclP2p(int argc, char *argv[]);
+int xclCma(int argc, char *argv[]);
 } // end namespace xcldev
 
 #endif /* XBUTIL_H */
