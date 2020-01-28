@@ -210,6 +210,7 @@ using addr_type = uint64_t;
       void setUnified(bool _unified) { bUnified = _unified; }
 
       bool isMBSchedulerEnabled();
+      bool isLegacyErt();
       unsigned int getDsaVersion();
       bool isCdmaEnabled();
       uint64_t getCdmaBaseAddress(unsigned int index);
