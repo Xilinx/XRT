@@ -372,9 +372,8 @@ icap_info(const device_type* device, qr_type qr, const std::type_info&, boost::a
 
   switch (qr) {
   case qr_type::QR_CLOCK_FREQS:
-    std::vector<std::string> clock_freqs = { std::to_string(info.freq_0), std::to_string(info.freq_1), 
-                                             std::to_string(info.freq_2), std::to_string(info.freq_3) };
-    value = clock_freqs;
+    value = std::vector<std::string>{ std::to_string(info.freq_0), std::to_string(info.freq_1), 
+                                       std::to_string(info.freq_2), std::to_string(info.freq_3) };
     return;
   case qr_type::QR_IDCODE:
     value = info.idcode;
