@@ -1892,7 +1892,6 @@ struct xocl_subdev_map {
 		XOCL_XMC,				\
 		XOCL_RES_XMC_BLP,			\
 		ARRAY_SIZE(XOCL_RES_XMC_BLP),		\
-		.level = XOCL_SUBDEV_LEVEL_BLD,		\
 	}
 
 
