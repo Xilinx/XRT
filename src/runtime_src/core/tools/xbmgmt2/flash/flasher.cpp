@@ -83,14 +83,14 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
     {
     case SPI:
     {
-        XSPI_Flasher xspi(m_device->get_device_id());
+        XSPI_Flasher xspi(m_device);
         if (primary == nullptr)
         {
             retVal = xspi.revertToMFG();
         }
         else if(secondary == nullptr)
         {
-            retVal = xspi.xclUpgradeFirmwareXSpi(*primary);
+            retVal = xspi.xclUpgradeFirmware1(*primary);
         }
         else
         {

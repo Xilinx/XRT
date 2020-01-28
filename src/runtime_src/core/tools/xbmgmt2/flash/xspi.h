@@ -40,13 +40,17 @@ class XSPI_Flasher
   ELARecordList recordList;
 
  public:
-  XSPI_Flasher(unsigned int device_index);
+  XSPI_Flasher(std::shared_ptr<xrt_core::device> dev);
+  ~XSPI_Flasher();
+  int xclUpgradeFirmware1(std::istream& mcsStream1);
   int xclUpgradeFirmware2(std::istream& mcsStream1, std::istream& mcsStream2);
-  int xclUpgradeFirmwareXSpi(std::istream& mcsStream, int device_index=0);
   int revertToMFG(void);
 
  private:
-  std::shared_ptr<xrt_core::device> m_device;
+  std::shared_ptr<xrt_core::device> mDev;
+  std::FILE *mFlashDev = nullptr;
+
+  int parseMCS(std::istream& mcsStream);
 
   unsigned long long flash_base;
   int xclTestXSpi(int device_index);
@@ -63,13 +67,17 @@ class XSPI_Flasher
   bool finalTransfer(uint8_t *sendBufPtr, uint8_t *recvBufPtr, int byteCount);
   bool writePage(unsigned int addr, uint8_t writeCmd = 0xff);
   bool readPage(unsigned int addr, uint8_t readCmd = 0xff);
-  bool prepareXSpi();
-  int programXSpi(std::istream& mcsStream, const ELARecord& record);
-  int programXSpi(std::istream& mcsStream);
+  bool prepareXSpi(uint8_t slave_sel);
+  int programRecord(std::istream& mcsStream, const ELARecord& record);
+  int programXSpi(std::istream& mcsStream, uint32_t bitstream_shift_addr);
   bool readRegister(uint8_t commandCode, unsigned int bytes);
   bool writeRegister(uint8_t commandCode, unsigned int value, unsigned int bytes);
   bool setSector(unsigned int address);
   unsigned int getSector(unsigned int address);
+
+  // Upgrade firmware via driver.
+  int upgradeFirmware1Drv(std::istream& mcsStream1);
+  int upgradeFirmware2Drv(std::istream& mcsStream1, std::istream& mcsStream2);
 };
 
 #endif

@@ -25,6 +25,7 @@
 #include <cassert>
 #include <thread>
 #include <cstring>
+#include <climits>
 #include <vector>
 #include <limits>
 #include <array>
@@ -207,9 +208,10 @@ static const unsigned int  SECTOR_ERASE_BYTES = FOUR_BYTE_ADDRESSING ? 5 :4;
 #define SYNC        0x665599AA//0xAA995566
 #define TIMER       0x01200230//0x30022001
 #define WDT_ENABLE  0x02000040//0x40000002
+#define CFG_CMD     0x01800030//0x30008001
+#define LTIMER      0x11000000//0x00000011
 #define FLASH_BASE  0x040000
 #define BITSTREAM_GUARD_SIZE 0x1000
-uint32_t BITSTREAM_START_LOC = std::numeric_limits<uint32_t>::max(); //Set to 0xFFFFFFFF
 uint32_t BITSTREAM_GUARD[] = {
             DUMMY,
             BUSWIDTH1,
@@ -217,7 +219,6 @@ uint32_t BITSTREAM_GUARD[] = {
             DUMMY,
             DUMMY,
             SYNC,
-            NOOP,
             NOOP,
             TIMER,
             WDT_ENABLE,
@@ -273,13 +274,56 @@ static void clearBuffers() {
     clearWriteBuffer(PAGE_SIZE + READ_WRITE_EXTRA_BYTES);
 }
 
-XSPI_Flasher::XSPI_Flasher(unsigned int device_index)
-  : m_device(xrt_core::get_mgmtpf_device(device_index))
+//Helper functions to interleave/deinterleave nibbles
+static void stripe_data(uint8_t *intrlv_buf, uint8_t *buf0, uint8_t *buf1, uint32_t num_bytes) {
+    for(uint32_t i=0; i<num_bytes; i=i+2) {
+        buf0[i/2] = (intrlv_buf[i] << 4) | (intrlv_buf[i+1] & 0x0F);
+        buf1[i/2] = (intrlv_buf[i] & 0xF0) | (intrlv_buf[i+1] >> 4);
+    }
+}
+
+XSPI_Flasher::~XSPI_Flasher()
 {
-  // always takes the false branch even on linux, commenting out for now
-  // flash_base = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_FLASH_BAR_OFFSET);
-  // if (flash_base == xrt_core::invalid_query_value<uint64_t>())
-    flash_base = FLASH_BASE;
+    if (mFlashDev)
+        std::fclose(mFlashDev);
+}
+
+XSPI_Flasher::XSPI_Flasher(std::shared_ptr<xrt_core::device> dev)
+{
+    mDev = dev;
+
+    std::string err;
+	//TODO: Replace with updated call
+    //mDev->sysfs_get<unsigned long long>("flash", "bar_off", err, flash_base, -1);
+    if (!err.empty())
+        flash_base = FLASH_BASE;
+
+    mFlashDev = nullptr;
+    if (std::getenv("FLASH_VIA_DRIVER")) {
+        /* TODO: Replace with updated call
+		 * int fd = mDev->open("flash", O_RDWR);
+        if (fd >= 0)
+            mFlashDev = fdopen(fd, "r+");
+        if (mFlashDev == NULL)
+            std::cout << "Failed to open flash device on card" << std::endl;
+			*/
+    }
+}
+
+static bool isDualQSPI(xrt_core::device *dev) {
+    std::string err;
+    uint16_t deviceID;
+	//TODO: Replace with updated call
+    //dev->sysfs_get<uint16_t>("", "device", err, deviceID, 0xffff);
+	//TODO: Remove when updated
+	deviceID = 0x0000;
+
+    if (!err.empty()) {
+        std::cout << "Exiting now, as could not find device ID" << std::endl;
+        exit(-EINVAL);
+    }
+
+    return (deviceID == 0xE987 || deviceID == 0x6987 || deviceID == 0xD030);
 }
 
 unsigned int XSPI_Flasher::getSector(unsigned int address) {
@@ -487,27 +531,140 @@ int XSPI_Flasher::xclTestXSpi(int index)
     return 0;
 }
 
-int XSPI_Flasher::xclUpgradeFirmware2(std::istream& mcsStream1, std::istream& mcsStream2) {
+//Method for updating QSPI (expects 1 MCS files)
+int XSPI_Flasher::xclUpgradeFirmware1(std::istream& mcsStream1) {
     int status = 0;
-    status = xclUpgradeFirmwareXSpi(mcsStream1, 0);
+    uint32_t bitstream_start_loc = 0, bitstream_shift_addr = 0;
+
+    if (mFlashDev)
+        return upgradeFirmware1Drv(mcsStream1);
+    
+    //Parse MCS file for first flash device 
+    status = parseMCS(mcsStream1);
     if(status)
         return status;
-    clearBuffers();
-    recordList.clear();
-    return xclUpgradeFirmwareXSpi(mcsStream2, 1);
+
+    //Get bitstream start location
+    bitstream_start_loc = recordList.front().mStartAddress;
+
+    //Write bitstream guard if MCS file is not at address 0
+    if(bitstream_start_loc != 0) {
+        if(!writeBitstreamGuard(bitstream_start_loc)) {
+            std::cout << "ERROR: Unable to set bitstream guard!" << std::endl;
+            return -EINVAL;
+        }
+        bitstream_shift_addr += BITSTREAM_GUARD_SIZE;
+        std::cout << "Enabled bitstream guard. Bitstream will not be loaded until flashing is finished." << std::endl;
+    }
+
+    //Set slave index to 0
+    std::cout << "Preparing flash chip 0" << std::endl;
+    if (!prepareXSpi(0)) {
+        std::cout << "ERROR: Unable to prepare the flash chip 0\n";
+        return -EINVAL;
+    }
+    //Program MCS file
+    status = programXSpi(mcsStream1, bitstream_shift_addr);
+    if(status)
+        return status;
+
+    //Finally we clear bitstream guard if not writing to address 0
+    //This will allow the bitstream to be loaded
+    if(bitstream_start_loc != 0) {
+        if(!clearBitstreamGuard(bitstream_start_loc)) {
+            std::cout << "ERROR: Unable to clear bitstream guard!" << std::endl;
+            return -EINVAL;
+        }
+        std::cout << "Cleared bitstream guard. Bitstream now active." << std::endl;
+    }
+
+    return 0;
+
+    //}
 }
 
-int XSPI_Flasher::xclUpgradeFirmwareXSpi(std::istream& mcsStream, int index) {
+
+//Method for updating dual QSPI (expects 2 MCS files)
+int XSPI_Flasher::xclUpgradeFirmware2(std::istream& mcsStream1, std::istream& mcsStream2) {
+    int status = 0;
+    uint32_t bitstream_start_loc = 0, bitstream_shift_addr = 0;
+
+    if (!isDualQSPI(mDev.get())) {
+        std::cout << "ERROR: Device does not support dual QSPI!" << std::endl;
+        exit(-EINVAL);
+    }
+
+    if (mFlashDev)
+        return upgradeFirmware2Drv(mcsStream1, mcsStream2);
+
+    //Parse MCS file for first flash device 
+    status = parseMCS(mcsStream1);
+    if(status)
+        return status;
+
+    //Get bitstream start location
+    bitstream_start_loc = recordList.front().mStartAddress;
+
+    //Write bitstream guard if MCS file is not at address 0
+    if(bitstream_start_loc != 0) {
+        if(!writeBitstreamGuard(bitstream_start_loc)) {
+            std::cout << "ERROR: Unable to set bitstream guard!" << std::endl;
+            return -EINVAL;
+        }
+        bitstream_shift_addr += BITSTREAM_GUARD_SIZE;
+        std::cout << "Enabled bitstream guard. Bitstream will not be loaded until flashing is finished." << std::endl;
+    }
+
+    //Set slave index to 0
+    std::cout << "Preparing flash chip 0" << std::endl;
+    if (!prepareXSpi(0)) {
+        std::cout << "ERROR: Unable to prepare the flash chip 0\n";
+        return -EINVAL;
+    }
+    //Program first MCS file
+    status = programXSpi(mcsStream1, bitstream_shift_addr);
+    if(status)
+        return status;
+
+    //Parse MCS file for second flash device 
+    status = parseMCS(mcsStream2);
+    if(status)
+        return status;
+
+    //Set slave index to 1
+    std::cout << "Preparing flash chip 1" << std::endl;
+    if (!prepareXSpi(1)) {
+        std::cout << "ERROR: Unable to prepare the flash chip 1\n";
+        return -EINVAL;
+    }
+    //Program second MCS file
+    status = programXSpi(mcsStream2, bitstream_shift_addr);
+    if(status)
+        return status;
+
+    //Finally we clear bitstream guard if not writing to address 0
+    //This will allow the bitstream to be loaded
+    if(bitstream_start_loc != 0) {
+        if(!clearBitstreamGuard(bitstream_start_loc)) {
+            std::cout << "ERROR: Unable to clear bitstream guard!" << std::endl;
+            return -EINVAL;
+        }
+        std::cout << "Cleared bitstream guard. Bitstream now active." << std::endl;
+    }
+
+    return 0;
+}
+
+int XSPI_Flasher::parseMCS(std::istream& mcsStream) {
     clearBuffers();
     recordList.clear();
 
-    slave_index = index;
+    std::string line;
     std::string startAddress;
     ELARecord record;
     bool endRecordFound = false;
 
     int lineno = 0;
-	std::cout << "Looking for ELA records...\n";
     while (!mcsStream.eof() && !endRecordFound) {
         lineno++;
         std::string line;
@@ -589,21 +746,19 @@ int XSPI_Flasher::xclUpgradeFirmwareXSpi(std::istream& mcsStream, int index) {
     mcsStream.seekg(0);
     std::cout << "INFO: ***Found " << recordList.size() << " ELA Records" << std::endl;
 
-    //Ensure we set bitstream guard to the first location
-    BITSTREAM_START_LOC = recordList.front().mStartAddress;
-    return programXSpi(mcsStream);
+    return 0;
 }
 
 unsigned int XSPI_Flasher::readReg(unsigned int RegOffset)
 {
     unsigned int value = 0;
-    m_device->read(flash_base + RegOffset, &value, 4);
+    mDev->read(flash_base + RegOffset, &value, 4);
     return value;
 }
 
 int XSPI_Flasher::writeReg(unsigned int RegOffset, unsigned int value)
 {
-    m_device->write(flash_base + RegOffset, &value, 4);
+    mDev->write(flash_base + RegOffset, &value, 4);
     return 0;
 }
 
@@ -727,26 +882,93 @@ bool XSPI_Flasher::bulkErase()
 
 //Bitstream guard protects from partially programmed bitstreams
 bool XSPI_Flasher::writeBitstreamGuard(unsigned int Addr) {
-    uint32_t bufferIndex = 0;
-    uint32_t page_addr = Addr+WRITE_DATA_SIZE; //We insert a few dummy words before fallback instruction sequence
+    unsigned char buf[WRITE_DATA_SIZE], buf1[WRITE_DATA_SIZE/2], buf2[WRITE_DATA_SIZE/2];
     unsigned char* write_buffer = &WriteBuffer[READ_WRITE_EXTRA_BYTES];
 
-    //Clear whatever was at bitstream guard location
-    if(!sectorErase(Addr, COMMAND_4KB_SUBSECTOR_ERASE))
-        return false;
+    if(!isDualQSPI(mDev.get())) {
+        memset(buf, 0xFF, sizeof(buf));
+        memcpy(buf, BITSTREAM_GUARD, sizeof(BITSTREAM_GUARD));
 
-    //Write fallback instruction sequence
-    memcpy(write_buffer, BITSTREAM_GUARD, sizeof(BITSTREAM_GUARD));
-    bufferIndex+=sizeof(BITSTREAM_GUARD);
-    for(; bufferIndex<WRITE_DATA_SIZE; bufferIndex++)
-        write_buffer[bufferIndex] = 0xFF;
+        if (!prepareXSpi(0)) {
+            std::cout << "ERROR: Unable to prepare the flash chip 0\n";
+            return false;
+        }
+        //Clear whatever was at bitstream guard location
+        if(!sectorErase(Addr, COMMAND_4KB_SUBSECTOR_ERASE))
+            return false;
 
-    return writePage(page_addr);
+        //We skip the first page of 4KB subsector so that there's a page of dummy words before bitstream guard
+        memcpy(write_buffer, buf, sizeof(buf));
+        return writePage(Addr+WRITE_DATA_SIZE);
+    } else {
+        //Stripe data to separate nibbles for each flash chip
+        memset(buf, 0xFF, sizeof(buf));
+        memcpy(buf, BITSTREAM_GUARD, sizeof(BITSTREAM_GUARD));
+        stripe_data(buf, buf1, buf2, sizeof(buf));
+
+        //Select flash chip 0
+        if (!prepareXSpi(0)) {
+            std::cout << "ERROR: Unable to prepare the flash chip 0\n";
+            return false;
+        }
+        //Clear whatever was at bitstream guard location
+        if(!sectorErase(Addr, COMMAND_4KB_SUBSECTOR_ERASE))
+            return false;
+
+        //We skip the first page of 4KB subsector so that there's a page of dummy words before bitstream guard
+        memcpy(write_buffer, buf1, sizeof(buf)/2);
+        if(!writePage(Addr+WRITE_DATA_SIZE)) {
+            std::cout << "ERROR: Unable to write bitstream guard to flash chip 1!\n";
+            return false;
+        }
+
+        //Select flash chip 1
+        if (!prepareXSpi(1)) {
+            std::cout << "ERROR: Unable to prepare the flash chip 0\n";
+            return false;
+        }
+
+        //Clear whatever was at bitstream guard location
+        if(!sectorErase(Addr, COMMAND_4KB_SUBSECTOR_ERASE))
+            return false;
+
+        //We skip the first page of 4KB subsector so that there's a page of dummy words before bitstream guard
+        memcpy(write_buffer, buf2, sizeof(buf)/2);
+        if(!writePage(Addr+WRITE_DATA_SIZE)) {
+            std::cout << "ERROR: Unable to write bitstream guard to flash chip 0!\n";
+            return false;
+    }
+
+    return true;
+    }
 }
 
 bool XSPI_Flasher::clearBitstreamGuard(unsigned int Addr) {
     //Clear whatever was at bitstream guard location
-    return sectorErase(Addr, COMMAND_4KB_SUBSECTOR_ERASE);
+    if(!isDualQSPI(mDev.get())) {
+        if (!prepareXSpi(0)) {
+            std::cout << "ERROR: Unable to prepare the flash chip 0\n";
+            return false;
+        }
+        //Clear whatever was at bitstream guard location
+        return sectorErase(Addr, COMMAND_4KB_SUBSECTOR_ERASE);
+    } else {
+        //Select flash chip 0
+        if (!prepareXSpi(0)) {
+            std::cout << "ERROR: Unable to prepare the flash chip 0\n";
+            return false;
+        }
+        //Clear whatever was at bitstream guard location
+        if(!sectorErase(Addr, COMMAND_4KB_SUBSECTOR_ERASE))
+            return false;
+        //Select flash chip 1
+        if (!prepareXSpi(1)) {
+            std::cout << "ERROR: Unable to prepare the flash chip 0\n";
+            return false;
+        }
+        //Clear whatever was at bitstream guard location
+        return sectorErase(Addr, COMMAND_4KB_SUBSECTOR_ERASE);
+    }
 }
 
 bool XSPI_Flasher::writeEnable() {
@@ -781,10 +1003,21 @@ bool XSPI_Flasher::getFlashId()
     /* * Prepare the Write Buffer. */
     WriteBuffer[BYTE1] = COMMAND_IDCODE_READ;
 
+    //First read is throwaway
     Status = finalTransfer(WriteBuffer, ReadBuffer, IDCODE_READ_BYTES);
     if( !Status ) {
         return false;
     }
+
+    Status = finalTransfer(WriteBuffer, ReadBuffer, IDCODE_READ_BYTES);
+    if( !Status ) {
+        return false;
+    }
+
+#if defined(_debug)
+    for (int i = 0; i < IDCODE_READ_BYTES; i++)
+        std::cout << "Idcode byte[" << i << "] " << std::hex << (int)ReadBuffer[i] << std::endl;
+#endif
 
     //Update flash vendor
     for (size_t i = 0; i < flashVendors.size(); i++)
@@ -797,24 +1030,24 @@ bool XSPI_Flasher::getFlashId()
         return false;
     else {
         switch(ReadBuffer[3]) {
-	case 0x38:
+        case 0x38:
         case 0x17:
         case 0x18:
             MAX_NUM_SECTORS = 1;
             break;
-	case 0x39:
+        case 0x39:
         case 0x19:
             MAX_NUM_SECTORS = 2;
             break;
-	case 0x3A:
+        case 0x3A:
         case 0x20:
             MAX_NUM_SECTORS = 4;
             break;
-	case 0x3B:
+        case 0x3B:
         case 0x21:
             MAX_NUM_SECTORS = 8;
             break;
-	case 0x3C:
+        case 0x3C:
         case 0x22:
             MAX_NUM_SECTORS = 16;
             break;
@@ -824,10 +1057,8 @@ bool XSPI_Flasher::getFlashId()
         }
     }
 
-    for (int i = 0; i < IDCODE_READ_BYTES; i++) {
-        std::cout << "Idcode byte[" << i << "] " << std::hex << (int)ReadBuffer[i] << std::endl;
+    for (int i = 0; i < IDCODE_READ_BYTES; i++)
         ReadBuffer[i] = 0;
-    }
 
     unsigned int ffCount = 0;
     for (int i = 1; i < IDCODE_READ_BYTES; i++) {
@@ -914,7 +1145,7 @@ bool XSPI_Flasher::finalTransfer(uint8_t *SendBufPtr, uint8_t *RecvBufPtr, int B
             Data = *(uint32_t *)SendBufferPtr;
         }
 
-	if (writeReg(XSP_DTR_OFFSET, Data) != 0) {
+        if (writeReg(XSP_DTR_OFFSET, Data) != 0) {
             return false;
         }
         SendBufferPtr += (DataWidth >> 3);
@@ -1005,7 +1236,7 @@ bool XSPI_Flasher::finalTransfer(uint8_t *SendBufPtr, uint8_t *RecvBufPtr, int B
                 //read the data.
                 try {
                     Data = readReg(XSP_DRR_OFFSET);
-		} catch (const std::exception&) {
+                } catch (const std::exception& ex) {
                     return false;
                 }
 
@@ -1060,7 +1291,7 @@ bool XSPI_Flasher::finalTransfer(uint8_t *SendBufPtr, uint8_t *RecvBufPtr, int B
                         Data = *(uint32_t *)SendBufferPtr;
                     }
 
-		    if(writeReg(XSP_DTR_OFFSET, Data) != 0) {
+                    if(writeReg(XSP_DTR_OFFSET, Data) != 0) {
                         return false;
                     }
 
@@ -1226,21 +1457,31 @@ bool XSPI_Flasher::readPage(unsigned int Addr, uint8_t readCmd)
 
 }
 
-bool XSPI_Flasher::prepareXSpi()
+bool XSPI_Flasher::prepareXSpi(uint8_t slave_sel)
 {
     if(TEST_MODE)
         return true;
 
+    //Set slave index
+    slave_index = slave_sel;
+#if defined(_debug)
+    std::cout << "Slave select " << slave_sel  << std::endl;
+#endif
+
     //Resetting selected_sector
-    selected_sector = std::numeric_limits<uint32_t>::max();
+    selected_sector = -1;
 
     XSPI_UNUSED uint32_t tControlReg = XSpi_GetControlReg();
     XSPI_UNUSED uint32_t tStatusReg = XSpi_GetStatusReg();
 
 #if defined(_debug)
-    std::cout << "Boot Control/Status " << std::hex << tControlReg << "/" << tStatusReg << std::dec << std::endl;
+  std::cout << "Boot Control/Status " << std::hex << tControlReg << "/" << tStatusReg << std::dec << std::endl;
 #endif
 
+    //Reset IP
+    XSpi_WriteReg(XSP_SRR_OFFSET, XSP_SRR_RESET_MASK);
+
+    //Init IP settings
     uint32_t ControlReg = CONTROL_REG_START_STATE;
     XSpi_SetControlReg(ControlReg);
 
@@ -1248,7 +1489,7 @@ bool XSPI_Flasher::prepareXSpi()
     tStatusReg = XSpi_GetStatusReg();
 
 #if defined(_debug)
-    std::cout << "After setting start state, Control/Status " << std::hex << tControlReg << "/" << tStatusReg << std::dec << std::endl;
+  std::cout << "After setting start state, Control/Status " << std::hex << tControlReg << "/" << tStatusReg << std::dec << std::endl;
 #endif
     //--
 
@@ -1257,18 +1498,18 @@ bool XSPI_Flasher::prepareXSpi()
         exit(-EOPNOTSUPP);
     }
 
-    //WriteEnable writes CONTROL_REG_START_STATE - that should be enough for initial configuration ?
-    //if(!writeEnable())
-    //return false;
+#if defined(_debug)
+    std::cout << "Slave " << slave_sel << " ready" << std::endl;
+#endif
 
-    //Bulk erase the flash.
-    //if(!bulkErase())
-    //return false;
+    //TODO: Do we need this short delay still?
+    std::this_thread::sleep_for(std::chrono::nanoseconds(20000));
 
     return true;
 }
 
-int XSPI_Flasher::programXSpi(std::istream& mcsStream, const ELARecord& record) {
+int XSPI_Flasher::programRecord(std::istream& mcsStream, const ELARecord& record) {
+
 #if defined(_debug)
     std::cout << "Programming block (" << std::hex << record.mStartAddress << ", " << record.mEndAddress << std::dec << ")" << std::endl;
 #endif
@@ -1407,35 +1648,8 @@ int XSPI_Flasher::programXSpi(std::istream& mcsStream, const ELARecord& record) 
     return 0;
 }
 
-int XSPI_Flasher::programXSpi(std::istream& mcsStream)
+int XSPI_Flasher::programXSpi(std::istream& mcsStream, uint32_t bitstream_shift_addr)
 {
-    //  for (ELARecordList::iterator i = mRecordList.begin(), e = mRecordList.end(); i != e; ++i) {
-    //    i->mStartAddress <<= 16;
-    //    i->mEndAddress += i->mStartAddress;
-    //    // Convert from 2 bytes address to 4 bytes address
-    //    i->mStartAddress /= 2;
-    //    i->mEndAddress /= 2;
-    //  }
-
-    if (!prepareXSpi()) {
-        std::cout << "ERROR: Unable to prepare the XSpi\n";
-        return -EINVAL;
-    }
-
-    std::this_thread::sleep_for(std::chrono::nanoseconds(20000));
-
-    uint32_t bitstream_shift_addr = 0;
-
-    //First we enable bitstream guard if not writing to address 0
-    //This will protect partially erased/programmed bitstreams
-    if(BITSTREAM_START_LOC != 0) {
-        if(!writeBitstreamGuard(BITSTREAM_START_LOC)) {
-            std::cout << "ERROR: Unable to set bitstream guard!" << std::endl;
-            return -EINVAL;
-        }
-        bitstream_shift_addr += BITSTREAM_GUARD_SIZE;
-        std::cout << "Enabled bitstream guard. Bitstream will not be loaded until flashing is finished." << std::endl;
-    }
 
     //Now we can safely erase all subsectors
     int beatCount = 0;
@@ -1486,24 +1700,13 @@ int XSPI_Flasher::programXSpi(std::istream& mcsStream)
 
         clearBuffers();
 
-        if (programXSpi(mcsStream, *i)) {
-            std::cout << "\nERROR: Could not programXSpi the block" << std::endl;
+        if (programRecord(mcsStream, *i)) {
+            std::cout << "\nERROR: Could not program the block" << std::endl;
             return -EINVAL;
         }
         std::this_thread::sleep_for(std::chrono::nanoseconds(20000));
     }
     std::cout << std::endl;
-
-    //Finally we clear bitstream guard if not writing to address 0
-    //This will allow the bitstream to be loaded
-    if(BITSTREAM_START_LOC != 0) {
-        if(!clearBitstreamGuard(BITSTREAM_START_LOC)) {
-            std::cout << "ERROR: Unable to clear bitstream guard!" << std::endl;
-            return -EINVAL;
-        }
-        std::cout << "Cleared bitstream guard. Bitstream now active." << std::endl;
-    }
-
     return 0;
 }
 
@@ -1583,17 +1786,399 @@ bool XSPI_Flasher::writeRegister(uint8_t commandCode, unsigned int value, unsign
     return Status;
 }
 
+// The bitstream guard location is fixed for now for all platforms.
+const unsigned int dftBitstreamGuardAddress = 0x01002000;
+const unsigned int bitstreamGuardSize = 4096;
+// Print out "." for each pagesz bytes of data processed.
+const size_t pagesz = 1024 * 1024ul;
+
+static inline long toAddr(const int slave, const unsigned int offset)
+{
+    long addr = slave;
+
+    // Slave index is the MSB of the address.
+    addr <<= 56;
+    addr |= offset;
+    return addr;
+}
+
+static int writeToFlash(std::FILE *flashDev, int slave,
+    const unsigned int address, const unsigned char *buf, size_t len)
+{
+    int ret = 0;
+    long addr = toAddr(slave, address);
+
+    ret = std::fseek(flashDev, addr, SEEK_SET);
+    if (ret)
+        return ret;
+
+    std::fwrite(buf, 1, len, flashDev);
+    std::fflush(flashDev);
+    if (ferror(flashDev))
+        ret = -errno;
+
+    return ret;
+}
+
+static int installBitstreamGuard(xrt_core::device *dev, std::FILE *flashDev,
+    uint32_t address)
+{
+    const size_t bitstream_guard_offset = 128;
+    unsigned char buf[4096], buf1[4096], buf2[4096];
+    int ret;
+
+    memset(buf, 0xff, sizeof(buf));
+    memset(buf, 0xff, sizeof(buf1));
+    memset(buf, 0xff, sizeof(buf2));
+    memcpy(buf + bitstream_guard_offset, BITSTREAM_GUARD,
+        sizeof(BITSTREAM_GUARD));
+    stripe_data(buf, buf1, buf2, sizeof(buf));
+
+    if(!isDualQSPI(dev)) {
+        ret = writeToFlash(flashDev, 0, address, buf, sizeof(buf));
+        if (ret) {
+            std::cout << "Failed to install bitstream guard: "
+                << ret << std::endl;
+        } else {
+            std::cout << "Bitstream guard installed on flash @0x"
+                << std::hex << address << std::dec << std::endl;
+        }
+    } else {
+        ret = writeToFlash(flashDev, 0, address, buf1, sizeof(buf1));
+        if (ret) {
+            std::cout << "Failed to install bitstream guard on flash 0: "
+                << ret << std::endl;
+            return ret;
+        }
+        ret = writeToFlash(flashDev, 1, address, buf2, sizeof(buf2));
+        if (ret) {
+            std::cout << "Failed to install bitstream guard on flash 1: "
+                << ret << std::endl;
+        } else {
+            std::cout << "Bitstream guard installed on both flashes @0x"
+                << std::hex << address << std::dec << std::endl;
+        }
+    }
+
+    return ret;
+}
+
+static int removeBitstreamGuard(xrt_core::device *dev, std::FILE *flashDev,
+    uint32_t address)
+{
+    unsigned char buf[4096];
+    int ret;
+
+    memset(buf, 0xff, sizeof(buf));
+
+    if(!isDualQSPI(dev)) {
+        ret = writeToFlash(flashDev, 0, address, buf, sizeof(buf));
+        if (ret) {
+            std::cout << "Failed to remove bitstream guard from flash: "
+                << ret << std::endl;
+        } else {
+            std::cout << "Bitstream guard removed from flash" << std::endl;
+        }
+    } else {
+        ret = writeToFlash(flashDev, 0, address, buf, sizeof(buf)/2);
+        if (ret) {
+            std::cout << "Failed to remove bitstream guard from flash 0: "
+                << ret << std::endl;
+        } else {
+            ret = writeToFlash(flashDev, 1, address, buf, sizeof(buf)/2);
+            if (ret) {
+                std::cout << "Failed to remove bitstream guard from flash 1: "
+                    << ret << std::endl;
+            } else {
+                std::cout << "Bitstream guard removed from both flashes"
+                << std::endl;
+            }
+        }
+    }
+    return ret;
+}
+
+static int bitstreamGuardAddress(xrt_core::device *dev, uint32_t& addr)
+{
+    // Shift bitstream guard address if dual QSPI
+    if (isDualQSPI(dev))
+        addr = dftBitstreamGuardAddress >> 1;
+    else
+        addr = dftBitstreamGuardAddress;
+    return 0;
+}
+
 int XSPI_Flasher::revertToMFG(void)
 {
-    if (!prepareXSpi()) {
-        std::cout << "ERROR: Unable to prepare the XSpi\n";
+    uint32_t bitstream_start_loc;
+
+    int ret = bitstreamGuardAddress(mDev.get(), bitstream_start_loc);
+    if (ret)
+        return ret;
+
+    if (mFlashDev)
+        return installBitstreamGuard(mDev.get(), mFlashDev, bitstream_start_loc);
+
+    if(!writeBitstreamGuard(bitstream_start_loc)) {
+        std::cout << "ERROR: Unable to set bitstream guard!" << std::endl;
         return -EINVAL;
     }
-    BITSTREAM_START_LOC = 0x01002000;
-    if(!writeBitstreamGuard(BITSTREAM_START_LOC)) {
-        std::cout << "ERROR: Unable to set bitstream guard!" << std::endl;
+    return 0;
+}
+
+static int splitMcsLine(std::string& line,
+    unsigned int& type, unsigned int& address, std::vector<unsigned char>& data)
+{
+    int ret = 0;
+
+    // Every line should start with ":"
+    if (line[0] != ':')
+        return -EINVAL;
+
+    unsigned int len = std::stoi(line.substr(1, 2), NULL , 16);
+    type = std::stoi(line.substr(7, 2), NULL , 16);
+    address = std::stoi(line.substr(3, 4), NULL, 16);
+    data.clear();
+
+    switch (type) {
+    case 0:
+        if (len > 16) {
+            // For xilinx mcs files data length should be 16 for all records
+            // except for the last one which can be smaller
+            ret = -EINVAL;
+        } else {
+            unsigned int l = len * 2;
+            std::string d = line.substr(9, len * 2);
+            for (unsigned int i = 0; i < l; i += 2)
+                data.push_back(std::stoi(d.substr(i, 2), NULL, 16));
+        }
+        break;
+    case 1:
+        break;
+    case 4:
+        if (len != 2) {
+            // For xilinx mcs files extended address can only be 2 bytes
+            ret = -EINVAL;
+        }
+        address = std::stoi(line.substr(9, len * 2), NULL, 16);
+        break;
+    default:
+        // Xilinx mcs files should not contain other types
+        ret = -EINVAL;
+        break;
+    }
+
+    return ret;
+}
+
+static inline unsigned int pageOffset(unsigned int addr)
+{
+    return (addr & 0xffff);
+}
+
+static bool mcsStreamIsGolden(std::istream& mcsStream)
+{
+    std::string line;
+    unsigned int type = 0;
+    unsigned int addr = 0;
+    std::vector<unsigned char> data;
+
+    mcsStream.seekg(0, std::ios_base::beg);
+
+    // Try to find the first address in mcs stream
+    while (!mcsStream.eof() && type != 4) {
+        std::getline(mcsStream, line);
+        if (!line.empty())
+            splitMcsLine(line, type, addr, data);
+    }
+
+    mcsStream.seekg(0, std::ios_base::beg);
+    return addr == 0;
+}
+
+static int mcsStreamToBin(std::istream& mcsStream, unsigned int& currentAddr,
+    std::vector<unsigned char>& buf, unsigned int& nextAddr)
+{
+    bool done = false;
+    size_t cnt = 0;
+
+    buf.clear();
+
+    while (!mcsStream.eof() && !done) {
+        std::string line;
+        unsigned int type;
+        unsigned int addr;
+        std::vector<unsigned char> data;
+
+        std::getline(mcsStream, line);
+        if (line.size() == 0)
+            continue;
+
+        if (splitMcsLine(line, type, addr, data) != 0) {
+            std::cout << "Found invalid MCS line: " << line << std::endl;
+            return -EINVAL;
+        }
+
+        switch (type) {
+        case 0:
+            if (currentAddr == UINT_MAX) {
+                std::cout << "MCS missing page starting address" << std::endl;
+                return -EINVAL;
+            } else if (buf.size() == 0) {
+                // we're the 1st data in this page, updating the current addr
+                assert(pageOffset(currentAddr) == 0);
+                currentAddr |= addr;
+            } else if (pageOffset(currentAddr + buf.size()) != addr) {
+                std::cout << "MCS page offset is not contiguous, expecting 0x"
+                    << std::hex << pageOffset(currentAddr) + buf.size()
+                    << ", but, got 0x" << addr << std::dec << std::endl;
+                return -EINVAL;
+            }
+            // keep adding data to existing buffer
+            buf.insert(buf.end(), data.begin(), data.end());
+            cnt += data.size();
+            break;
+        case 1:
+            // end current buffer and no more
+            nextAddr = UINT_MAX;
+            done = true;
+            break;
+        case 4:
+            addr <<= 16;
+            if (currentAddr == UINT_MAX) {
+                currentAddr = addr; // addr of the very first page
+            } else if (currentAddr + buf.size() != addr) {
+                nextAddr = addr; // start new page
+                done = true;
+            }
+            // otherwise, continue to next page since page is still contiguous
+            break;
+        default:
+            assert(1); // shouldn't be here
+            break;
+        }
+
+        if (cnt >= pagesz) {
+            std::cout << "." << std::flush;
+            cnt = 0;
+        }
+    }
+    if (cnt) // print the last "."
+            std::cout << "." << std::flush;
+    std::cout << std::endl;
+
+    if (buf.size() > UINT_MAX) {
+        std::cout << "MCS bitstream is too large: 0x" << std::hex << buf.size()
+            << std::dec << " bytes" << std::endl;
         return -EINVAL;
     }
 
     return 0;
+}
+
+static int writeBitstream(std::FILE *flashDev, int index, unsigned int addr,
+    std::vector<unsigned char>& buf)
+{
+    int ret = 0;
+    size_t len = 0;
+
+    // Write to flash page by page and print '.' for each write
+    // as progress indicator
+    for (size_t i = 0; ret == 0 && i < buf.size(); i += len) {
+        len = pagesz - ((addr + i) % pagesz);
+        len = std::min(len, buf.size() - i);
+
+        std::cout << "." << std::flush;
+        ret = writeToFlash(flashDev, index, addr + i, buf.data() + i, len);
+    }
+    std::cout << std::endl;
+    return ret;
+}
+
+static int programXSpiDrv(std::FILE *mFlashDev, std::istream& mcsStream,
+    int index, uint32_t addressShift)
+{
+    // Parse MCS data and write each contiguous chunk to flash.
+    std::vector<unsigned char> buf;
+    unsigned int curAddr = UINT_MAX;
+    unsigned int nextAddr = 0;
+    int ret;
+
+    while (nextAddr != UINT_MAX) {
+        std::cout << "Extracting bitstream from MCS data:" << std::endl;
+        ret = mcsStreamToBin(mcsStream, curAddr, buf, nextAddr);
+        if (ret)
+            return ret;
+        assert(nextAddr == UINT_MAX || pageOffset(nextAddr) == 0);
+        std::cout << "Extracted " << buf.size() << " bytes from bitstream @0x"
+            << std::hex << curAddr << std::dec << std::endl;
+
+        std::cout << "Writing bitstream to flash " << index << ":" << std::endl;
+        ret = writeBitstream(mFlashDev, index, curAddr + addressShift, buf);
+        if (ret)
+            return ret;
+        curAddr = nextAddr;
+    }
+
+    return 0;
+}
+
+int XSPI_Flasher::upgradeFirmware1Drv(std::istream& mcsStream)
+{
+    int ret = 0;
+    uint32_t bsGuardAddr;
+
+    if (mcsStreamIsGolden(mcsStream))
+        return programXSpiDrv(mFlashDev, mcsStream, 0, 0);
+
+    ret = bitstreamGuardAddress(mDev.get(), bsGuardAddr);
+    if (ret)
+        return ret;
+
+    // Enable bitstream guard.
+    ret = installBitstreamGuard(mDev.get(), mFlashDev, bsGuardAddr);
+    if (ret)
+        return ret;
+
+    // Write MCS
+    ret = programXSpiDrv(mFlashDev, mcsStream, 0, bitstreamGuardSize);
+    if (ret)
+        return ret;
+
+    // Disable bitstream guard.
+    return removeBitstreamGuard(mDev.get(), mFlashDev, bsGuardAddr);
+}
+
+int XSPI_Flasher::upgradeFirmware2Drv(std::istream& mcsStream0,
+    std::istream& mcsStream1)
+{
+    int ret = 0;
+    uint32_t bsGuardAddr;
+
+    if (mcsStreamIsGolden(mcsStream0)) {
+        ret = programXSpiDrv(mFlashDev, mcsStream0, 0, 0);
+        if (ret)
+            return ret;
+        return programXSpiDrv(mFlashDev, mcsStream1, 1, 0);
+    }
+
+    ret = bitstreamGuardAddress(mDev.get(), bsGuardAddr);
+    if (ret)
+        return ret;
+
+    // Enable bitstream guard.
+    ret = installBitstreamGuard(mDev.get(), mFlashDev, bsGuardAddr);
+    if (ret)
+        return ret;
+
+    // Write MCS
+    ret = programXSpiDrv(mFlashDev, mcsStream0, 0, bitstreamGuardSize);
+    if (ret)
+        return ret;
+    ret = programXSpiDrv(mFlashDev, mcsStream1, 1, bitstreamGuardSize);
+    if (ret)
+        return ret;
+
+    // Disable bitstream guard.
+    return removeBitstreamGuard(mDev.get(), mFlashDev, bsGuardAddr);
 }
