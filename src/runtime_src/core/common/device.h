@@ -96,6 +96,12 @@ public:
       QR_FAN_FAN_PRESENCE,
       QR_FAN_SPEED_RPM,
 
+      QR_DDR_TEMP_0,
+      QR_DDR_TEMP_1,
+      QR_DDR_TEMP_2,
+      QR_DDR_TEMP_3,
+      QR_HBM_TEMP,
+
       QR_CAGE_TEMP_0,
       QR_CAGE_TEMP_1,
       QR_CAGE_TEMP_2,
@@ -136,7 +142,8 @@ public:
       QR_FLASH_BAR_OFFSET,
       QR_IS_MFG,
       QR_F_FLASH_TYPE,
-      QR_FLASH_TYPE
+      QR_FLASH_TYPE,
+      QR_BOARD_NAME
   };
 public:
 

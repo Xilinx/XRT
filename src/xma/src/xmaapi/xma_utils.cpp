@@ -390,10 +390,10 @@ void get_session_cmd_load() {
         } else if (priv1->num_samples > 0) {
             avg_cmds = priv1->num_cu_cmds_avg_tmp / ((float)priv1->num_samples);
         }
-        xma_logmsg(level, "XMA-Session-Stats", "Session id: %d, type: %s, avg cmds: %.2f, busy vs idle: %d vs %d", itr1.first, 
+        xma_logmsg(level, "XMA-Session-Stats", "Session id: %d, type: %s, avg cu cmds: %.2f, busy vs idle: %d vs %d", itr1.first, 
             xma_core::get_session_name(itr1.second.session_type).c_str(), avg_cmds, (uint32_t)priv1->cmd_busy, (uint32_t)priv1->cmd_idle);
 
-        xma_logmsg(level, "XMA-Session-Stats", "Session id: %d, max busy vs idle ticks: %d vs %d", itr1.first, (uint32_t)priv1->cmd_busy_ticks, (uint32_t)priv1->cmd_idle_ticks);
+        xma_logmsg(level, "XMA-Session-Stats", "Session id: %d, max busy vs idle ticks: %d vs %d, relative cu load: %d", itr1.first, (uint32_t)priv1->cmd_busy_ticks, (uint32_t)priv1->cmd_idle_ticks, (uint32_t)priv1->kernel_complete_total);
         XmaHwKernel* kernel_info = priv1->kernel_info;
         if (kernel_info == NULL) {
             continue;
@@ -539,6 +539,7 @@ int32_t check_all_execbo(XmaSession s_handle) {
                 {
                     if (s_handle.session_type < XMA_ADMIN) {
                         priv1->kernel_complete_count++;
+                        priv1->kernel_complete_total++;
                     }
                     execbo_tmp1->in_use = false;
 

@@ -82,7 +82,6 @@ static int scanDevices(bool verbose, bool json)
                 sensor_tree::put(card + ".mac2", info.mMacAddr2);
                 sensor_tree::put(card + ".mac3", info.mMacAddr3);
             }
-            sensor_tree::json_dump( std::cout );
         } else {
             std::cout << "Card [" << f.sGetDBDF() << "]" << std::endl;
             std::cout << fmt_str << "Card type:\t\t" << board.board << std::endl;
@@ -128,6 +127,9 @@ static int scanDevices(bool verbose, bool json)
             std::cout << std::endl;
         }
     }
+
+    if (json)
+        sensor_tree::json_dump( std::cout );
 
     return 0;
 }

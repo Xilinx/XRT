@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -34,21 +34,12 @@ namespace po = boost::program_options;
 // System - Include Files
 #include <iostream>
 
-// ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
-#include "tools/common/SubCmd.h"
-static const unsigned int registerResult =
-                    register_subcommand("query",
-                                        "Status of the system and device(s)",
-                                        subCmdQuery);
-// =============================================================================
 #include "common/system.h"
 #include "common/device.h"
 #include <boost/format.hpp>
 
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
 
-
-// ------ F U N C T I O N S ---------------------------------------------------
 template <typename T>
 std::vector<T>
 as_vector(boost::property_tree::ptree const& pt,
@@ -123,7 +114,7 @@ pu1_query_report()
       std::cout << "    No compute units found." << std::endl;
     } else {
       int index = 0;
-      for (auto cu : cus) {
+      for (auto & cu : cus) {
         std::string nm = xrt_core::xclbin::get_ip_name(iplayout, cu);
         std::cout << boost::format("    CU[%d]: %s - Base Address : 0x%x") % index++ % nm.c_str() % cu << std::endl;
       }
@@ -132,16 +123,44 @@ pu1_query_report()
     std::cout << "   Accelerator metadata (e.g., xclbin) unavailable." <<  std::endl;
   }
 
+  std::cout << "\nTemperature" << std::endl;
+
+  std::cout << boost::format("  %-16s : %s C") % "PCB top front" 
+    % xrt_core::query_device<uint64_t>(pDevice, xrt_core::device::QR_TEMP_CARD_TOP_FRONT) << "\n";
+  std::cout << boost::format("  %-16s : %s C") % "PCB top rear" 
+    % xrt_core::query_device<uint64_t>(pDevice, xrt_core::device::QR_TEMP_CARD_TOP_REAR) << "\n";
+  std::cout << boost::format("  %-16s : %s C") % "PCB bottom front" 
+    % xrt_core::query_device<uint64_t>(pDevice, xrt_core::device::QR_TEMP_CARD_BOTTOM_FRONT) << "\n";
+  std::cout << boost::format("  %-16s : %s C") % "FPGA" 
+    % xrt_core::query_device<uint64_t>(pDevice, xrt_core::device::QR_TEMP_FPGA) << "\n";
+  std::cout << boost::format("  %-16s : %s C") % "FAN trig crit" 
+    % xrt_core::query_device<uint64_t>(pDevice, xrt_core::device::QR_FAN_TRIGGER_CRITICAL_TEMP) << "\n";
+
   std::cout << "----------------------------------------------------------------" << std::endl;
 
   }
 }
 
+// ----- C L A S S   M E T H O D S -------------------------------------------
 
-int subCmdQuery(const std::vector<std::string> &_options)
+SubCmdQuery::SubCmdQuery(bool _isHidden, bool _isDepricated, bool _isPreliminary)
+    : SubCmd("query", 
+             "See replacement functionality in command: 'examine'")
+{
+  const std::string longDescription = "Status of the system and device(s)";
+  setLongDescription(longDescription);
+  setExampleSyntax("");
+  setIsHidden(_isHidden);
+  setIsDeprecated(_isDepricated);
+  setIsPreliminary(_isPreliminary);
+}
+
+
+void
+SubCmdQuery::execute(const SubCmdOptions& _options) const
 // Reference Command:  query [-d card [-r region]
 {
-  for (auto aString : _options) {
+  for (auto & aString : _options) {
     std::cout << "Option: '" << aString << "'" << std::endl;
   }
   XBU::verbose("SubCommand: query");
@@ -163,7 +182,7 @@ int subCmdQuery(const std::vector<std::string> &_options)
     po::notify(vm); // Can throw
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
-    std::cerr << queryDesc << std::endl;
+    printHelp(queryDesc);
 
     // Re-throw exception
     throw;
@@ -171,8 +190,8 @@ int subCmdQuery(const std::vector<std::string> &_options)
 
   // Check to see if help was requested or no command was found
   if (help == true)  {
-    std::cout << queryDesc << std::endl;
-    return 0;
+    printHelp(queryDesc);
+    return;
   }
 
   // -- Now process the subcommand --------------------------------------------
@@ -187,6 +206,4 @@ int subCmdQuery(const std::vector<std::string> &_options)
   boost::property_tree::ptree pt;
   XBDatabase::create_complete_device_tree(pt);
   XBU::trace_print_tree("Complete Device Tree", pt);
-
-  return registerResult;
 }

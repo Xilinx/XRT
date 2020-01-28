@@ -18,7 +18,6 @@
  */
 
 #include "shim.h"
-#include "shim-profile.h"
 #include <errno.h>
 
 #include <iostream>
@@ -43,7 +42,7 @@
 #include <cstdarg>
 
 #ifndef __HWEM__
-#include "plugin/xdp/hal_profile.h"
+#include "plugin/xdp/hal_api_interface.h"
 #endif
 
 
@@ -111,7 +110,6 @@ inline void* wordcopy(void *dst, const void* src, size_t bytes)
 
 namespace ZYNQ {
 ZYNQShim::ZYNQShim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity) :
-    profiling(nullptr),
     mBoardNumber(index),
     mVerbosity(verbosity),
     mKernelClockFreq(100),
@@ -122,7 +120,6 @@ ZYNQShim::ZYNQShim(unsigned index, const char *logfileName, xclVerbosityLevel ve
 
   xclLog(XRT_INFO, "XRT", "%s", __func__);
 
-  profiling = std::make_unique<ZYNQShimProfiling>(this);
   mKernelFD = open("/dev/dri/renderD128", O_RDWR);
   if (!mKernelFD) {
     xclLog(XRT_ERROR, "XRT", "%s: Cannot open /dev/dri/renderD128", __func__);
@@ -674,6 +671,7 @@ int ZYNQShim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex,
     .uuid_size = sizeof (uuid_t) * sizeof (char),
     .cu_index = ipIndex,
     .flags = flags,
+    .handle = 0,
     .op = ZOCL_CTX_OP_ALLOC_CTX,
   };
 
@@ -699,6 +697,8 @@ int ZYNQShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex)
     .uuid_ptr = reinterpret_cast<uint64_t>(xclbinId),
     .uuid_size = sizeof (uuid_t) * sizeof (char),
     .cu_index = ipIndex,
+    .flags = 0,
+    .handle = 0,
     .op = ZOCL_CTX_OP_FREE_CTX,
   };
 
@@ -1536,9 +1536,7 @@ double xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
   if (!drv)
     return 0;
-  if (!(drv->profiling))
-    return 0;
-  return drv->profiling->xclGetDeviceClockFreqMHz();
+  return drv->xclGetDeviceClockFreqMHz();
 }
 
 int xclSKGetCmd(xclDeviceHandle handle, xclSKCmd *cmd)
@@ -1580,6 +1578,11 @@ int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
 {
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
   return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -EINVAL;
+}
+
+size_t xclGetDeviceTimestamp(xclDeviceHandle handle)
+{
+  return 0;
 }
 
 size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type,

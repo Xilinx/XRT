@@ -240,6 +240,7 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro)
 	/* restart XMC/ERT */
 	xocl_mb_reset(lro);
 
+	lro->reset_requested = false;
 	xocl_thread_start(lro);
 
 	/* If the PCIe board has PS. This could take 50 seconds */

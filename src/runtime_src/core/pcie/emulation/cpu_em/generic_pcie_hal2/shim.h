@@ -65,7 +65,7 @@ namespace xclcpuemhal2 {
   public:
       // HAL2 RELATED member functions start
       unsigned int xclAllocBO(size_t size, int unused, unsigned flags);
-      int xoclCreateBo(xclemulation::xocl_create_bo *info);
+      uint64_t xoclCreateBo(xclemulation::xocl_create_bo *info);
       void* xclMapBO(unsigned int boHandle, bool write);
       int xclUnmapBO(unsigned int boHandle, void* addr);
       int xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset);

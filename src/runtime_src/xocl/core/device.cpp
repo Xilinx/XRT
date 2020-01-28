@@ -234,6 +234,24 @@ init_scheduler(xocl::device* device)
 
 namespace xocl {
 
+std::string
+device::
+get_bdf() const 
+{
+  if (m_xdevice)
+    return m_xdevice->get_bdf();
+  throw xocl::error(CL_INVALID_DEVICE, "No BDF");
+}
+
+void*
+device::
+get_handle() const
+{
+  if (m_xdevice)
+    return m_xdevice->get_handle();
+  throw xocl::error(CL_INVALID_DEVICE, "No device handle");
+}
+
 void
 device::
 track(const memory* mem)
@@ -818,7 +836,7 @@ map_buffer(memory* buffer, cl_map_flags map_flags, size_t offset, size_t size, v
 
   // If buffer is resident it must be refreshed unless CL_MAP_INVALIDATE_REGION
   // is specified in which case host will discard current content
-  if (!nosync && !(map_flags & CL_MAP_WRITE_INVALIDATE_REGION) && buffer->is_resident(this)) {
+  if (!nosync && !(map_flags & CL_MAP_WRITE_INVALIDATE_REGION) && buffer->is_resident(this) && !buffer->no_host_memory()) {
     boh = buffer->get_buffer_object_or_error(this);
     xdevice->sync(boh,size,offset,xrt::hal::device::direction::DEVICE2HOST,false);
   }
@@ -934,7 +952,7 @@ write_buffer(memory* buffer, size_t offset, size_t size, const void* ptr)
   // Update ubuf if necessary
   sync_to_ubuf(buffer,offset,size,xdevice,boh);
 
-  if (buffer->is_resident(this))
+  if (buffer->is_resident(this) && !buffer->no_host_memory())
     // Sync new written data to device at offset
     // HAL performs read/modify write if necesary
     xdevice->sync(boh,size,offset,xrt::hal::device::direction::HOST2DEVICE,false);
@@ -947,7 +965,7 @@ read_buffer(memory* buffer, size_t offset, size_t size, void* ptr)
   auto xdevice = get_xrt_device();
   auto boh = buffer->get_buffer_object(this);
 
-  if (buffer->is_resident(this))
+  if (buffer->is_resident(this) && !buffer->no_host_memory())
     // Sync back from device at offset to buffer object
     // HAL performs skip/copy read if necesary
     xdevice->sync(boh,size,offset,xrt::hal::device::direction::DEVICE2HOST,false);
@@ -1128,7 +1146,7 @@ write_image(memory* image,const size_t* origin,const size_t* region,size_t row_p
   rw_image(this,image,origin,region,row_pitch,slice_pitch,nullptr,static_cast<const char*>(ptr));
 
   // Sync newly writte data to device if image is resident
-  if (image->is_resident(this)) {
+  if (image->is_resident(this) && !image->no_host_memory()) {
     auto boh = image->get_buffer_object_or_error(this);
     get_xrt_device()->sync(boh, image->get_size(), 0,xrt::hal::device::direction::HOST2DEVICE,false);
   }
@@ -1139,7 +1157,7 @@ device::
 read_image(memory* image,const size_t* origin,const size_t* region,size_t row_pitch,size_t slice_pitch,void *ptr)
 {
   // Sync back from device if image is resident
-  if (image->is_resident(this)) {
+  if (image->is_resident(this) && !image->no_host_memory()) {
     auto boh = image->get_buffer_object_or_error(this);
     get_xrt_device()->sync(boh,image->get_size(),0,xrt::hal::device::direction::DEVICE2HOST,false);
   }
@@ -1299,8 +1317,10 @@ unload_program(const program* program)
 
 bool
 device::
-acquire_context(const compute_unit* cu, bool shared) const
+acquire_context(const compute_unit* cu) const
 {
+  static bool shared = xrt::config::get_exclusive_cu_context() ? false : true;
+
   std::lock_guard<std::mutex> lk(m_mutex);
   if (cu->m_context_type != compute_unit::context_type::none)
     return true;

@@ -743,7 +743,7 @@ std::ostream& operator<<(std::ostream& stream,
     }
     stream << " " << shell_name;
     if (ts != 0)
-        stream << "(ts=0x" << std::hex << ts << ")";
+        stream << "(ID=0x" << std::hex << ts << ")";
 
     // instance number
     if (dev->is_mgmt)

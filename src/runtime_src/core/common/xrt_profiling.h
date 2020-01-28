@@ -33,7 +33,13 @@ extern "C" {
  * Note that the offset is wrt the address space
  */
 
+XCL_DRIVER_DLLESPEC size_t xclGetDeviceTimestamp(xclDeviceHandle handle);
+
 XCL_DRIVER_DLLESPEC double xclGetDeviceClockFreqMHz(xclDeviceHandle handle);
+
+XCL_DRIVER_DLLESPEC double xclGetReadMaxBandwidthMBps(xclDeviceHandle handle);
+
+XCL_DRIVER_DLLESPEC double xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle);
 
 XCL_DRIVER_DLLESPEC int xclGetDebugIPlayoutPath(xclDeviceHandle handle, char* layoutPath, size_t size);
 

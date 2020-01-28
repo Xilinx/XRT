@@ -1,6 +1,8 @@
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}/../
   ${DRM_INCLUDE_DIRS}
+  ${CMAKE_BINARY_DIR} # includes version.h
   )
 
 file(GLOB XRT_EDGE_USER_PLUGIN_XDP_FILES
@@ -12,6 +14,10 @@ file(GLOB XRT_USER_FILES
   "*.h"
   "*.cpp"
   "*.c"
+  "../common/*.cpp"
+  "../common/*.h"
+  "../../common/system.cpp"
+  "../../common/device.cpp"
   )
 
 set(CMAKE_CXX_FLAGS "-DXCLHAL_MAJOR_VER=2 ${CMAKE_CXX_FLAGS}")

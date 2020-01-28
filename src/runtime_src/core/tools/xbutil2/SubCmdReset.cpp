@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -27,34 +27,42 @@ namespace po = boost::program_options;
 // System - Include Files
 #include <iostream>
 
-// ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
-#include "tools/common/SubCmd.h"
-static const unsigned int registerResult = 
-                    register_subcommand("reset", 
-                                        "<add description>",
-                                        subCmdReset);
-// =============================================================================
+// ----- C L A S S   M E T H O D S -------------------------------------------
 
-// ------ L O C A L   F U N C T I O N S ---------------------------------------
+SubCmdReset::SubCmdReset(bool _isHidden, bool _isDepricated, bool _isPreliminary)
+    : SubCmd("reset", 
+             "Resets the given device")
+{
+  const std::string longDescription = "Resets the given device.";
+  setLongDescription(longDescription);
+  setExampleSyntax("");
+  setIsHidden(_isHidden);
+  setIsDeprecated(_isDepricated);
+  setIsPreliminary(_isPreliminary);
+}
 
-
-
-
-// ------ F U N C T I O N S ---------------------------------------------------
-
-int subCmdReset(const std::vector<std::string> &_options)
+void
+SubCmdReset::execute(const SubCmdOptions& _options) const
 // Reference Command:  reset [-d card]
 
 {
   XBU::verbose("SubCommand: reset");
   // -- Retrieve and parse the subcommand options -----------------------------
-  uint64_t card = 0;
+  std::string device = "all";
+  std::string reset = "all";
   bool help = false;
 
-  po::options_description resetDesc("reset options");
+  po::options_description resetDesc("Options");
   resetDesc.add_options()
+    ("device,d", boost::program_options::value<decltype(device)>(&device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' (default) indicates that every found device should be examined.")
+    ("type,r", boost::program_options::value<decltype(reset)>(&reset), "The type of reset to perform. Types resets available:\n"
+                                                                       "  all          - Perform al lknown resets (default)\n"
+                                                                       "  kernel       - Kernel communication links\n"
+                                                                       "  scheduler    - Scheduler\n"
+                                                                       "  clear-fabric - Clears the accleration fabric with the\n"
+                                                                       "                 shells verify.xclbin image.\n"
+                                                                       "  memory       - Clears the memory block.")
     ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
-    (",d", boost::program_options::value<uint64_t>(&card), "Card to be examined")
   ;
 
   // Parse sub-command ...
@@ -65,7 +73,7 @@ int subCmdReset(const std::vector<std::string> &_options)
     po::notify(vm); // Can throw
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
-    std::cerr << resetDesc << std::endl;
+    printHelp(resetDesc);
 
     // Re-throw exception
     throw;
@@ -73,16 +81,15 @@ int subCmdReset(const std::vector<std::string> &_options)
 
   // Check to see if help was requested or no command was found
   if (help == true)  {
-    std::cout << resetDesc << std::endl;
-    return 0;
+    printHelp(resetDesc);
+    return;
   }
 
   // -- Now process the subcommand --------------------------------------------
-  XBU::verbose(XBU::format("  Card: %ld", card));
 
   XBU::error("COMMAND BODY NOT IMPLEMENTED.");
   // TODO: Put working code here
 
-  return registerResult;
+  return;
 }
 

@@ -60,6 +60,7 @@ struct drm_zocl_mm_stat {
 struct addr_aperture {
 	phys_addr_t	addr;
 	size_t		size;
+	u32		prop;
 };
 
 enum zocl_mem_type {

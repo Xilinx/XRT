@@ -47,8 +47,6 @@ ddArgs_t parse_dd_options( int argc, char *argv[] )
     args.dir = unset;
     args.blockSize = -1;
     args.count = -1;
-    args.skip = -1;
-    args.seek = -1;
     std::string tmpInFile, tmpOutFile = "";
 
     opt = getopt_long( argc, argv, ddOptString, longOpts, &longIndex );
@@ -76,13 +74,15 @@ ddArgs_t parse_dd_options( int argc, char *argv[] )
             break;
 
         case 'p':
-            args.skip = atoi( optarg ) * args.blockSize; // must be sure blockSize has been parsed first
-            std::cout << "skip found: " << args.skip << std::endl;
+            args.skip = atoll( optarg ) * args.blockSize; // must be sure blockSize has been parsed first
+            std::cout << "skip found: 0x" <<
+                std::hex << args.skip << std::dec << std::endl;
             break;
 
         case 'e':
-            args.seek = atoi( optarg ) * args.blockSize; // must be sure blockSize has been parsed first
-            std::cout << "seek found: " << args.seek << std::endl;
+            args.seek = atoll( optarg ) * args.blockSize; // must be sure blockSize has been parsed first
+            std::cout << "seek found: 0x" <<
+                std::hex << args.seek << std::dec << std::endl;
             break;
 
         default:
@@ -111,10 +111,10 @@ ddArgs_t parse_dd_options( int argc, char *argv[] )
     }
 
     // Test for legal combinations of skip/seek.
-    if( args.dir == deviceToFile && args.skip > 0 ) {
+    if( args.dir == deviceToFile && args.seek != ULLONG_MAX ) {
         args.isValid = false;
     }
-    if( args.dir == fileToDevice && args.seek > 0 ) {
+    if( args.dir == fileToDevice && args.skip != ULLONG_MAX ) {
         args.isValid = false;
     }
 

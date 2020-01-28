@@ -36,8 +36,7 @@ public:
   virtual void get_xrt_info(boost::property_tree::ptree &pt) = 0;
   virtual void get_os_info(boost::property_tree::ptree &pt) = 0;
   virtual void get_devices(boost::property_tree::ptree &pt) const = 0;
-  virtual std::pair<device::id_type, device::id_type> get_total_devices() const = 0;
-  virtual void scan_devices(bool verbose, bool json) const = 0;
+  virtual std::pair<device::id_type, device::id_type> get_total_devices(bool is_user = true) const = 0;
   virtual uint16_t bdf2index(const std::string& bdfStr) const = 0;
 
 
@@ -70,11 +69,7 @@ get_devices(boost::property_tree::ptree& pt);
  */
 XRT_CORE_COMMON_EXPORT
 std::pair<uint64_t, uint64_t>
-get_total_devices();
-
-XRT_CORE_COMMON_EXPORT
-void
-scan_devices(bool verbose, bool json);
+get_total_devices(bool is_user);
 
 XRT_CORE_COMMON_EXPORT
 std::shared_ptr<device>

@@ -72,11 +72,27 @@ public:
         cfile.close();    
         return "";
     };
+    static std::vector<std::string> get_serial_number()
+    {
+        std::vector<std::string> ret = {};
+	    size_t total = pcidev::get_dev_total();
+	    if (!total) {
+            std::cerr << "azure: No device found!" << std::endl;
+            return ret;
+        }
+        for (size_t i = 0; i < total; i++) {
+            std::string serialNumber, errmsg;
+            pcidev::get_dev(i, true)->sysfs_get("xmc", "serial_num", errmsg, serialNumber); 
+            ret.push_back(serialNumber);
+        }
+        return ret;
+    }
 private:
     // 4 MB buffer to truncate and send
     static const int TRANSFER_SEGMENT_SIZE { 1024 * 4096 };
     static const int REIMAGE_TIMEOUT { 20 }; //in second
     std::shared_ptr<pcidev::pci_device> dev;
+    size_t index;
     int UploadToWireServer(
         const std::string &ip,
         const std::string &endpoint,

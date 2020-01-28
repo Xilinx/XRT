@@ -72,6 +72,7 @@
 #define __ZYNQ_IOCTL_H__
 
 #ifndef __KERNEL__
+#include <libdrm/drm.h>
 #include <drm/drm_mode.h>
 #else
 #include <uapi/drm/drm_mode.h>

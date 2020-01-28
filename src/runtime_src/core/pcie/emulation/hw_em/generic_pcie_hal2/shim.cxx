@@ -1540,6 +1540,34 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     bool QDMAPlatform = (getDsaVersion() == 60)? true: false;
     return mbSchEnabled && !QDMAPlatform;
   }
+  
+
+  bool HwEmShim::isLegacyErt()
+  {
+    if(xclemulation::config::getInstance()->getLegacyErt() == xclemulation::ERTMODE::LEGACY)
+      return true;
+    else if(xclemulation::config::getInstance()->getLegacyErt() == xclemulation::ERTMODE::UPDATED)
+      return false;
+
+    //Following platforms uses legacyErt As per Emulation team. 
+    //There is no other way to get whether platform uses legacy ERT or not
+    std::string vbnv  = mDeviceInfo.mName;
+    if(!vbnv.empty() && 
+        (  vbnv.find("u200_xdma-gen3x4_201830_2") != std::string::npos 
+        || vbnv.find("u200_xdma_201830_1")        != std::string::npos 
+        || vbnv.find("u200_xdma_201830_2")        != std::string::npos 
+        || vbnv.find("u250_qep_201910_1")         != std::string::npos
+        || vbnv.find("u250_xdma_201830_1")        != std::string::npos 
+        || vbnv.find("u250_xdma_201830_2")        != std::string::npos 
+        || vbnv.find("u280_xdma_201920_1")        != std::string::npos
+        || vbnv.find("u280_xdma_201920_2")        != std::string::npos
+        || vbnv.find("u280_xdma_201920_3")        != std::string::npos
+        || vbnv.find("u50_xdma_201910_1")         != std::string::npos
+        || vbnv.find("u50_xdma_201920_2")         != std::string::npos))
+      return true;
+
+    return false;
+  }
 
   bool HwEmShim::isCdmaEnabled()
   {
@@ -1575,6 +1603,14 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       return 60;
   
     return 52;
+  }
+
+  size_t HwEmShim::xclGetDeviceTimestamp()
+  {
+    bool ack = true;
+    size_t deviceTimeStamp = 0;
+    xclGetDeviceTimestamp_RPC_CALL(xclGetDeviceTimestamp,ack,deviceTimeStamp);
+    return deviceTimeStamp;
   }
 
   void HwEmShim::xclReadBusStatus(xclPerfMonType type) {
@@ -2376,6 +2412,20 @@ double HwEmShim::xclGetDeviceClockFreqMHz()
   //300.0 MHz
   clockSpeed = 300.0;
   return clockSpeed;
+}
+
+// Get the maximum bandwidth for host reads from the device (in MB/sec)
+// NOTE: for now, just return 8.0 GBps (the max achievable for PCIe Gen3)
+double HwEmShim::xclGetReadMaxBandwidthMBps()
+{
+  return 8000.0;
+}
+
+// Get the maximum bandwidth for host writes to the device (in MB/sec)
+// NOTE: for now, just return 8.0 GBps (the max achievable for PCIe Gen3)
+double HwEmShim::xclGetWriteMaxBandwidthMBps()
+{
+  return 8000.0;
 }
 
 uint32_t HwEmShim::getPerfMonNumberSlots(xclPerfMonType type)

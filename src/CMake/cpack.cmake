@@ -31,6 +31,11 @@ SET(Boost_VER_STR_ONEGREATER "${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION_ONEGR
 
 SET(PACKAGE_KIND "TGZ")
 if (${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian|pynqlinux)")
+  execute_process(
+    COMMAND dpkg --print-architecture
+    OUTPUT_VARIABLE CPACK_ARCH
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
   SET(CPACK_GENERATOR "DEB;TGZ")
   SET(PACKAGE_KIND "DEB")
   # Modify the package name for the xrt component
@@ -47,6 +52,11 @@ if (${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian|pynqlinux)")
   SET(CPACK_DEBIAN_XRT_PACKAGE_DEPENDS "ocl-icd-opencl-dev (>= 2.2.0), libboost-dev (>= ${Boost_VER_STR}), libboost-dev (<< ${Boost_VER_STR_ONEGREATER}), libboost-filesystem-dev (>=${Boost_VER_STR}), libboost-filesystem-dev (<<${Boost_VER_STR_ONEGREATER}), uuid-dev (>= 2.27.1), dkms (>= 2.2.0), libprotoc-dev (>=2.6.1), libssl-dev (>=1.0.2), protobuf-compiler (>=2.6.1), libncurses5-dev (>=6.0), lsb-release, libxml2-dev (>=2.9.1), libyaml-dev (>= 0.1.6), libc6 (>= ${GLIBC_VERSION}), libc6 (<< ${GLIBC_VERSION_ONEGREATER}), python (>= 2.7), python-pip ")
 
 elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS|Amazon)")
+  execute_process(
+    COMMAND uname -m
+    OUTPUT_VARIABLE CPACK_ARCH
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
   SET(CPACK_GENERATOR "RPM;TGZ")
   SET(PACKAGE_KIND "RPM")
   # Modify the package name for the xrt component
@@ -69,7 +79,7 @@ else ()
   SET (CPACK_GENERATOR "TGZ")
 endif()
 
-SET(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}_${XRT_VERSION_RELEASE}.${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}_${CPACK_REL_VER}")
+SET(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}_${XRT_VERSION_RELEASE}.${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}_${CPACK_REL_VER}-${CPACK_ARCH}")
 
 message("-- ${CMAKE_BUILD_TYPE} ${PACKAGE_KIND} package")
 

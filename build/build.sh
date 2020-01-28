@@ -36,8 +36,9 @@ usage()
     echo
     echo "[-help]                    List this help"
     echo "[clean|-clean]             Remove build directories"
-    echo "[-dbg]                     Build debug library only"
-    echo "[-opt]                     Build optimized library only"
+    echo "[-dbg]                     Build debug library only (default)"
+    echo "[-opt]                     Build optimized library only (default)"
+    echo "[-edge]                    Build edge of x64.  Turns off opt and dbg"
     echo "[-nocmake]                 Skip CMake call"
     echo "[-j <n>]                   Compile parallel (default: system cores)"
     echo "[-ccache]                  Build using RDI's compile cache"
@@ -65,6 +66,7 @@ checkpatch=0
 jcore=$CORE
 opt=1
 dbg=1
+edge=0
 nocmake=0
 ertfw=""
 while [ $# -gt 0 ]; do
@@ -85,6 +87,12 @@ while [ $# -gt 0 ]; do
             shift
             ertfw=$1
             shift
+            ;;
+        -edge)
+            shift
+            edge=1
+            opt=0
+            dbg=0
             ;;
         -opt)
             dbg=0
@@ -131,13 +139,17 @@ while [ $# -gt 0 ]; do
     esac
 done
 
+debug_dir=${DEBUG_DIR:-Debug}
+release_dir=${REL_DIR:-Release}
+edge_dir=${EDGE_DIR:-Edge}
+
 here=$PWD
 cd $BUILDDIR
 
 if [[ $clean == 1 ]]; then
     echo $PWD
-    echo "/bin/rm -rf Release Debug"
-    /bin/rm -rf Release Debug
+    echo "/bin/rm -rf $debug_dir $release_dir"
+    /bin/rm -rf $debug_dir $release_dir $edge_dir
     exit 0
 fi
 
@@ -159,9 +171,14 @@ if [[ ! -z $ertfw ]]; then
     export XRT_FIRMWARE_DIR=$ertfw
 fi
 
+# we pick microblaze toolchain from Vitis install
+if [[ -z ${XILINX_VITIS:+x} ]]; then
+    export XILINX_VITIS=/proj/xbuilds/2019.2_released/installs/lin64/Vitis/2019.2
+fi
+
 if [[ $dbg == 1 ]]; then
-  mkdir -p Debug
-  cd Debug
+  mkdir -p $debug_dir
+  cd $debug_dir
   if [[ $nocmake == 0 ]]; then
     echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src"
     time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
@@ -173,8 +190,8 @@ if [[ $dbg == 1 ]]; then
 fi
 
 if [[ $opt == 1 ]]; then
-  mkdir -p Release
-  cd Release
+  mkdir -p $release_dir
+  cd $release_dir
   if [[ $nocmake == 0 ]]; then
     echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src"
     time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
@@ -183,9 +200,8 @@ if [[ $opt == 1 ]]; then
   time make -j $jcore $verbose DESTDIR=$PWD install
   time ctest --output-on-failure
   time make package
-fi
 
-if [[ $driver == 1 ]]; then
+  if [[ $driver == 1 ]]; then
     unset CC
     unset CXX
     echo "make -C usr/src/xrt-2.5.0/driver/xocl"
@@ -196,7 +212,24 @@ if [[ $driver == 1 ]]; then
 	ZOCL_SRC=`readlink -f ../../src/runtime_src/core/edge/drm/zocl`
 	make -C $ZOCL_SRC
     fi
+  fi
+  cd $BUILDDIR
 fi
+
+# Verify compilation on edge
+if [[ $CPU != "aarch64" ]] && [[ $edge == 1 ]]; then
+  mkdir -p $edge_dir
+  cd $edge_dir
+  if [[ $nocmake == 0 ]]; then
+    echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src"
+    time env XRT_NATIVE_BUILD=no $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
+  fi
+  echo "make -j $jcore $verbose DESTDIR=$PWD"
+  time make -j $jcore $verbose DESTDIR=$PWD
+  cd $BUILDDIR
+fi
+    
+    
 
 if [[ $docs == 1 ]]; then
     echo "make xrt_docs"
@@ -210,7 +243,7 @@ fi
 
 if [[ $checkpatch == 1 ]]; then
     # check only driver released files
-    DRIVERROOT=`readlink -f $BUILDDIR/Release/usr/src/xrt-2.5.0/driver`
+    DRIVERROOT=`readlink -f $BUILDDIR/$release_dir/usr/src/xrt-2.5.0/driver`
 
     # find corresponding source under src tree so errors can be fixed in place
     XOCLROOT=`readlink -f $BUILDDIR/../src/runtime_src/core/pcie/driver`

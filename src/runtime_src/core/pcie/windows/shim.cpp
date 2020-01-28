@@ -1004,6 +1004,23 @@ done:
   }
 
   void
+  get_sensor_info(xcl_sensor* value)
+  {
+    DWORD bytes = 0;
+    bool status = DeviceIoControl(m_dev,
+        IOCTL_XOCL_SENSOR_INFO,
+        nullptr,
+        0,
+        value,
+        sizeof(xcl_sensor),
+        &bytes,
+        nullptr);
+
+    if (!status || bytes != sizeof(xcl_sensor))
+      throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_device_info) failed");
+  }
+
+  void
   get_bdf_info(uint16_t bdf[3])
   {
     // TODO: code share with mgmt
@@ -1084,6 +1101,15 @@ get_bdf_info(xclDeviceHandle hdl, uint16_t bdf[3])
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_bdf_info()");
   auto shim = get_shim_object(hdl);
   shim->get_bdf_info(bdf);
+}
+
+void
+get_sensor_info(xclDeviceHandle hdl, xcl_sensor* value)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "sensor_info()");
+  shim* shim = get_shim_object(hdl);
+  shim->get_sensor_info(value);
 }
 
 } // namespace userpf

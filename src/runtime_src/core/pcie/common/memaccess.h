@@ -330,8 +330,6 @@ namespace xcldev {
                                     << std::dec << std::endl;
       }
       std::ofstream outFile(aFilename, std::ofstream::out | std::ofstream::binary);
-      char temp[32] = "====START of DDR Data=========\n";
-      outFile.write(temp, sizeof(temp));
 
       size_t count = size;
       for(auto it = startbank; it!=vec_banks.end(); ++it) {
@@ -355,8 +353,7 @@ namespace xcldev {
           break;
         }
       }
-      strncpy(temp, "\n=====END of DDR Data=========\n", sizeof(temp));
-      outFile.write(temp, sizeof(temp));
+
       outFile.close();
       std::cout << "INFO: Read data saved in file: " << aFilename << "; Num of bytes: " << std::dec << count-size << " bytes " << std::endl;
       return size;

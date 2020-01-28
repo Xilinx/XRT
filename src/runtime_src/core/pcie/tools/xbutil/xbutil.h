@@ -37,6 +37,7 @@
 #include "core/common/utils.h"
 #include "core/common/sensor.h"
 #include "core/pcie/linux/scan.h"
+#include "core/pcie/linux/shim.h"
 #include "xclbin.h"
 #include "core/common/xrt_profiling.h"
 #include <version.h>
@@ -44,7 +45,10 @@
 #include <chrono>
 using Clock = std::chrono::high_resolution_clock;
 
-int xclUpdateSchedulerStat(xclDeviceHandle); // exposed by shim
+
+/* exposed by shim */
+int xclUpdateSchedulerStat(xclDeviceHandle);
+int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t sz);
 
 #define TO_STRING(x) #x
 #define AXI_FIREWALL
@@ -108,6 +112,13 @@ enum p2pcommand {
     P2P_ENABLE = 0x0,
     P2P_DISABLE,
     P2P_VALIDATE,
+};
+enum cmacommand {
+    CMA_ENABLE = 0x0,
+    CMA_DISABLE,
+    CMA_VALIDATE,
+    CMA_SIZE_1G,
+    CMA_SIZE_2M,
 };
 
 static const std::pair<std::string, command> map_pairs[] = {
@@ -1385,9 +1396,6 @@ public:
         if (ddr_mem_size == -EINVAL)
             return -EINVAL;
 
-        if (verbose)
-            std::cout << "Total DDR size: " << ddr_mem_size << " MB\n";
-
         bool isAREDevice = false;
 
 
@@ -1412,6 +1420,20 @@ public:
             return -EINVAL;
         }
         const mem_topology *map = (mem_topology *)buf.data();
+
+        std::string hbm_mem_size = unitConvert(map->m_count*(map->m_mem_data[0].m_size << 10));
+        if (verbose) {
+            std::cout << "INFO: DMA test on [" << m_idx << "]: "<< name() << "\n";
+            if (ddr_mem_size == 0)
+                std::cout << "Total HBM size:" << hbm_mem_size << "\n";
+            else
+                std::cout << "Total DDR size: " << ddr_mem_size << " MB\n";
+            
+            if (blockSize < (1024*1024))
+                std::cout << "Buffer Size: " << blockSize/(1024) << " KB\n";
+            else
+                std::cout << "Buffer Size: " << blockSize/(1024*1024) << " MB\n";
+        }
 
         if(buf.empty() || map->m_count == 0) {
             std::cout << "WARNING: 'mem_topology' invalid, "
@@ -1461,7 +1483,7 @@ public:
             //addr = 0xC00000000;//48GB = 3 hops
             addr = 0x400000000;//16GB = one hop
             sz = 0x20000;//128KB
-            long numHops = addr / ddr_mem_size;
+            long numHops = addr / get_ddr_mem_size();
             auto t1 = Clock::now();
             for (unsigned i = 0; i < numIteration; i++) {
                 memwriteQuiet(addr, sz, pattern);
@@ -1608,8 +1630,8 @@ public:
      * --count : specify the number of blocks to copy
      *           OPTIONAL for fileToDevice; will copy the remainder of input file by default
      *           REQUIRED for deviceToFile
-     * --skip : specify the source offset (in block counts) OPTIONAL defaults to 0
-     * --seek : specify the destination offset (in block counts) OPTIONAL defaults to 0
+     * --skip : specify the source offset (in block counts)
+     * --seek : specify the destination offset (in block counts)
      */
     int do_dd(dd::ddArgs_t args )
     {
@@ -1681,6 +1703,7 @@ public:
 
     int reset(xclResetKind kind);
     int setP2p(bool enable, bool force);
+    int setCma(bool enable, uint64_t sz);
     int testP2p(void);
     int testM2m(void);
 
@@ -1707,6 +1730,7 @@ int xclReset(int argc, char *argv[]);
 int xclValidate(int argc, char *argv[]);
 std::unique_ptr<xcldev::device> xclGetDevice(unsigned index);
 int xclP2p(int argc, char *argv[]);
+int xclCma(int argc, char *argv[]);
 } // end namespace xcldev
 
 #endif /* XBUTIL_H */

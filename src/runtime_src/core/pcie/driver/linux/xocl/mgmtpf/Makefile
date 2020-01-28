@@ -31,6 +31,7 @@ xclmgmt-y := \
 	../subdev/xiic.o \
 	../subdev/mailbox.o \
 	../subdev/icap.o \
+	../subdev/clock.o \
 	../subdev/mig.o \
 	../subdev/xmc.o \
 	../subdev/dna.o \
@@ -40,6 +41,7 @@ xclmgmt-y := \
 	../subdev/iores.o \
 	../subdev/axigate.o \
 	../subdev/ospi_versal.o \
+	../subdev/ert.o \
 	mgmt-core.o \
 	mgmt-cw.o \
 	mgmt-utils.o \
