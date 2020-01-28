@@ -32,8 +32,8 @@
 #define POLL_TIMEOUT    60      /* Set a pool timeout as 60sec */
 
 static int hotplugRescan(void);
-static int removeDevice(unsigned index, bool is_userpf);
-static int shutdownDevice(unsigned index, bool is_userpf);
+static int removeDevice(unsigned int index, bool is_userpf);
+static int shutdownDevice(unsigned int index, bool is_userpf);
 
 const char *subCmdHotplugDesc = "Perform managed hotplug on the xilinx device";
 const char *subCmdHotplugUsage = "--offline bdf | --online";
@@ -46,7 +46,7 @@ int hotplugHandler(int argc, char *argv[])
         return -EINVAL;
     
     int ret = 0;
-    unsigned index = UINT_MAX;
+    unsigned int index = UINT_MAX;
     int isRemove = 0;
     int isRescan = 0;
     bool is_userpf = false;
@@ -135,7 +135,7 @@ int hotplugHandler(int argc, char *argv[])
     return ret;
 }
 
-static int shutdownDevice(unsigned index, bool is_userpf)
+static int shutdownDevice(unsigned int index, bool is_userpf)
 {
     std::string errmsg;
     int shutdownStatus = -EINVAL;
@@ -174,7 +174,7 @@ static int shutdownDevice(unsigned index, bool is_userpf)
     return -ETIMEDOUT;
 }
 
-static int removeDevice(unsigned index, bool is_userpf)
+static int removeDevice(unsigned int index, bool is_userpf)
 {
     std::string errmsg;
     auto dev = pcidev::get_dev(index, is_userpf);
