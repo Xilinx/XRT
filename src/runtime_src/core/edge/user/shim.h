@@ -71,8 +71,8 @@ public:
   int xclExecBuf(unsigned int cmdBO);
   int xclExecWait(int timeoutMilliSec);
 
-  int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared);
-  int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex);
+  int xclOpenContext(const uuid_t xclbinId, unsigned int cu_index, bool shared);
+  int xclCloseContext(const uuid_t xclbinId, unsigned int cu_index);
 
   int xclSKGetCmd(xclSKCmd *cmd);
   int xclSKCreate(unsigned int boHandle, uint32_t cu_idx);

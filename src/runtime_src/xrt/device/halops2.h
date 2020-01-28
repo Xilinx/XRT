@@ -116,9 +116,9 @@ private:
   typedef size_t (* debugReadIPStatusFuncType)(xclDeviceHandle handle, xclDebugReadType type,
                                                void* debugResults);
 
-  typedef int (* openContextFuncType)(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex,
+  typedef int (* openContextFuncType)(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int cu_index,
                                       bool shared);
-  typedef int (* closeContextFuncType)(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex);
+  typedef int (* closeContextFuncType)(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int cu_index);
 
 
   //Streaming

@@ -205,7 +205,7 @@ void *ZYNQShim::getVirtAddressOfApture(xclAddressSpace space, const uint64_t phy
 	mask = (mask << 1) + 1;
       }
     }
-    
+
     if (!vaddr) {
       // Try 64KB aperture
       mask = 0xFFFF;
@@ -660,7 +660,7 @@ int ZYNQShim::xclSKReport(uint32_t cu_idx, xrt_scu_state state)
   return ret;
 }
 
-int ZYNQShim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex,
+int ZYNQShim::xclOpenContext(const uuid_t xclbinId, unsigned int cu_index,
   bool shared)
 {
   unsigned int flags = shared ? ZOCL_CTX_SHARED : ZOCL_CTX_EXCLUSIVE;
@@ -669,7 +669,7 @@ int ZYNQShim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex,
   drm_zocl_ctx ctx = {
     .uuid_ptr = reinterpret_cast<uint64_t>(xclbinId),
     .uuid_size = sizeof (uuid_t) * sizeof (char),
-    .cu_index = ipIndex,
+    .cu_index = cu_index,
     .flags = flags,
     .op = ZOCL_CTX_OP_ALLOC_CTX,
   };
@@ -678,24 +678,24 @@ int ZYNQShim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex,
   return ret ? -errno : ret;
 }
 
-int ZYNQShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex)
+int ZYNQShim::xclCloseContext(const uuid_t xclbinId, unsigned int cu_index)
 {
   std::lock_guard<std::mutex> l(mCuMapLock);
   int ret;
 
-  if (ipIndex < mCuMaps.size()) {
+  if (cu_index < mCuMaps.size()) {
     // Make sure no MMIO register space access when CU is released.
-    uint32_t *p = mCuMaps[ipIndex];
+    uint32_t *p = mCuMaps[cu_index];
     if (p) {
       (void) munmap(p, mCuMapSize);
-      mCuMaps[ipIndex] = nullptr;
+      mCuMaps[cu_index] = nullptr;
     }
   }
 
   drm_zocl_ctx ctx = {
     .uuid_ptr = reinterpret_cast<uint64_t>(xclbinId),
     .uuid_size = sizeof (uuid_t) * sizeof (char),
-    .cu_index = ipIndex,
+    .cu_index = cu_index,
     .op = ZOCL_CTX_OP_FREE_CTX,
   };
 
@@ -761,7 +761,7 @@ int ZYNQShim::xclCuName2Index(const char *name, uint32_t& index)
   }
   if (buf.empty())
     return -ENOENT;
-   
+
   const ip_layout *map = (ip_layout *)buf.data();
   if(map->m_count < 0) {
     xclLog(XRT_ERROR, "XRT", "invalid ip_layout sysfs node content");
@@ -1235,8 +1235,8 @@ int ZYNQShim::xclLogMsg(xrtLogMsgLevel level, const char* tag,
     unsigned short clockFreq = deviceInfo.mOCLFrequency[0] ;
     if (clockFreq == 0)
       clockFreq = 100 ;
-    
-    return (double)clockFreq ; 
+
+    return (double)clockFreq;
   }
 
 
@@ -1564,17 +1564,17 @@ int xclSKReport(xclDeviceHandle handle, uint32_t cu_idx, xrt_scu_state state)
 /*
  * Context switch phase 1: support xclbin swap, no cu and shared checking
  */
-int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bool shared)
+int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int cu_index, bool shared)
 {
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
 
-  return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -EINVAL;
+  return drv ? drv->xclOpenContext(xclbinId, cu_index, shared) : -EINVAL;
 }
 
-int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
+int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned cu_index)
 {
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
-  return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -EINVAL;
+  return drv ? drv->xclCloseContext(xclbinId, cu_index) : -EINVAL;
 }
 
 size_t xclGetDeviceTimestamp(xclDeviceHandle handle)

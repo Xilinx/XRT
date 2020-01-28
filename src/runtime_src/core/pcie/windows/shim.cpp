@@ -1255,28 +1255,28 @@ xclSyncBO(xclDeviceHandle handle, xclBufferHandle boHandle, xclBOSyncDirection d
 
 // Compute Unit Execution Management APIs
 int
-xclOpenContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int ipIndex,bool shared)
+xclOpenContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int cu_index,bool shared)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclOpenContext()");
   auto shim = get_shim_object(handle);
 
   //Virtual resources are not currently supported by driver
-  return (ipIndex == (unsigned int)-1)
+  return (cu_index == (unsigned int)-1)
 	  ? 0
-	  : shim->open_context(xclbinId, ipIndex, shared);
+	  : shim->open_context(xclbinId, cu_index, shared);
 }
 
-int xclCloseContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int ipIndex)
+int xclCloseContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int cu_index)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclCloseContext()");
   auto shim = get_shim_object(handle);
 
   //Virtual resources are not currently supported by driver
-  return (ipIndex == (unsigned int) -1)
+  return (cu_index == (unsigned int) -1)
 	  ? 0
-	  : shim->close_context(xclbinId, ipIndex);
+	  : shim->close_context(xclbinId, cu_index);
 }
 
 int

@@ -1700,7 +1700,7 @@ int CpuemShim::xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const cha
 /*
 * xclOpenContext
 */
-int CpuemShim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const
+int CpuemShim::xclOpenContext(const uuid_t xclbinId, unsigned int cu_index, bool shared) const
 {
   return 0;
 }
@@ -1734,7 +1734,7 @@ int CpuemShim::xclExecBuf(unsigned int cmdBO)
 /*
 * xclCloseContext
 */
-int CpuemShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const
+int CpuemShim::xclCloseContext(const uuid_t xclbinId, unsigned int cu_index) const
 {
   return 0;
 }

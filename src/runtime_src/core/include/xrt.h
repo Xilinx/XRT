@@ -410,7 +410,7 @@ xclUnlockDevice(xclDeviceHandle handle);
  *
  * @handle:        Device handle
  * @xclbinId:      UUID of the xclbin image running on the device
- * @ipIndex:       IP/CU index in the IP LAYOUT array
+ * @cu_index:      CU index
  * @shared:        Shared access or exclusive access
  * Return:         0 on success or appropriate error number
  *
@@ -423,7 +423,7 @@ xclUnlockDevice(xclDeviceHandle handle);
  */
 XCL_DRIVER_DLLESPEC
 int
-xclOpenContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int ipIndex,
+xclOpenContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int cu_index,
                bool shared);
 
 /**
@@ -431,14 +431,14 @@ xclOpenContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int ipIndex,
  *
  * @handle:        Device handle
  * @xclbinId:      UUID of the xclbin image running on the device
- * @ipIndex:       IP/CU index in the IP LAYOUT array
+ * @cu_index:      CU index
  * Return:         0 on success or appropriate error number
  *
  * Close a previously allocated shared/exclusive context for a compute unit.
  */
 XCL_DRIVER_DLLESPEC
 int
-xclCloseContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int ipIndex);
+xclCloseContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int cu_index);
 
 /*
  * Update the device BPI PROM with new image

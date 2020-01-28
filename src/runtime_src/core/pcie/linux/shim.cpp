@@ -1106,13 +1106,13 @@ int shim::xclExecWait(int timeoutMilliSec)
 /*
  * xclOpenContext
  */
-int shim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const
+int shim::xclOpenContext(const uuid_t xclbinId, unsigned int cu_index, bool shared) const
 {
     unsigned int flags = shared ? XOCL_CTX_SHARED : XOCL_CTX_EXCLUSIVE;
     int ret;
     drm_xocl_ctx ctx = {XOCL_CTX_OP_ALLOC_CTX};
     std::memcpy(ctx.xclbin_id, xclbinId, sizeof(uuid_t));
-    ctx.cu_index = ipIndex;
+    ctx.cu_index = cu_index;
     ctx.flags = flags;
     ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx);
     return ret ? -errno : ret;
@@ -1121,22 +1121,22 @@ int shim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool share
 /*
  * xclCloseContext
  */
-int shim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex)
+int shim::xclCloseContext(const uuid_t xclbinId, unsigned int cu_index)
 {
     std::lock_guard<std::mutex> l(mCuMapLock);
 
-    if (ipIndex < mCuMaps.size()) {
+    if (cu_index < mCuMaps.size()) {
 	    // Make sure no MMIO register space access when CU is released.
-	    uint32_t *p = mCuMaps[ipIndex];
+	    uint32_t *p = mCuMaps[cu_index];
 	    if (p) {
 		(void) munmap(p, mCuMapSize);
-		mCuMaps[ipIndex] = nullptr;
+		mCuMaps[cu_index] = nullptr;
 	    }
     }
 
     drm_xocl_ctx ctx = {XOCL_CTX_OP_FREE_CTX};
     std::memcpy(ctx.xclbin_id, xclbinId, sizeof(uuid_t));
-    ctx.cu_index = ipIndex;
+    ctx.cu_index = cu_index;
     int ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx);
     return ret ? -errno : ret;
 }
@@ -1986,16 +1986,16 @@ int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
   return drv ? drv->xclExecWait(timeoutMilliSec) : -ENODEV;
 }
 
-int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bool shared)
+int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int cu_index, bool shared)
 {
   xocl::shim *drv = xocl::shim::handleCheck(handle);
-  return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
+  return drv ? drv->xclOpenContext(xclbinId, cu_index, shared) : -ENODEV;
 }
 
-int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
+int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned cu_index)
 {
   xocl::shim *drv = xocl::shim::handleCheck(handle);
-  return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -ENODEV;
+  return drv ? drv->xclCloseContext(xclbinId, cu_index) : -ENODEV;
 }
 
 const axlf_section_header* wrap_get_axlf_section(const axlf* top, axlf_section_kind kind)
