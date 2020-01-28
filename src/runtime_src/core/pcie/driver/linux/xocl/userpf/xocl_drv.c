@@ -309,6 +309,8 @@ int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 	int ret = 0, mbret = 0;
 	struct xcl_mailbox_req mbreq = { 0 };
 	size_t resplen = sizeof(ret);
+	u16 pci_cmd;
+	struct pci_dev *pdev = XDEV(xdev)->pdev;
 
 	mbreq.req = XCL_MAILBOX_REQ_HOT_RESET;
 	mutex_lock(&xdev->dev_lock);
@@ -337,6 +339,17 @@ int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 		&ret, &resplen, NULL, NULL, 60);
 	if (mbret)
 		ret = mbret;
+
+        pci_read_config_word(pdev, PCI_COMMAND, &pci_cmd);
+        pci_cmd &= ~PCI_COMMAND_MASTER;
+	pci_write_config_word(pdev, PCI_COMMAND, pci_cmd);
+
+	xocl_wait_pci_status(XDEV(xdev)->pdev, PCI_COMMAND_MASTER,
+			PCI_COMMAND_MASTER);
+
+        pci_read_config_word(pdev, PCI_COMMAND, &pci_cmd);
+        pci_cmd |= PCI_COMMAND_MASTER;
+	pci_write_config_word(pdev, PCI_COMMAND, pci_cmd);
 
 #if defined(__PPC64__)
 	/* During reset we can't poll mailbox registers to get notified when

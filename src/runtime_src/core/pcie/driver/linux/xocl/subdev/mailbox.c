@@ -1951,7 +1951,15 @@ static int mailbox_offline(struct platform_device *pdev)
 	 */
 	mailbox_disable_intr_mode(mbx, false);
 #else
-	mailbox_disable_intr_mode(mbx, true);
+	/* stop polling */
+	clear_bit(MBXCS_BIT_POLL_MODE, &mbx->mbx_tx.mbc_state);
+	chan_config_timer(&mbx->mbx_tx);
+
+	clear_bit(MBXCS_BIT_POLL_MODE, &mbx->mbx_rx.mbc_state);
+	chan_config_timer(&mbx->mbx_rx);
+
+	/* stop interrupt */
+	mailbox_disable_intr_mode(mbx, false);
 #endif
 	return 0;
 }
@@ -1959,10 +1967,27 @@ static int mailbox_offline(struct platform_device *pdev)
 static int mailbox_online(struct platform_device *pdev)
 {
 	struct mailbox *mbx;
+	int ret;
 
 	mbx = platform_get_drvdata(pdev);
-	mailbox_enable_intr_mode(mbx);
-	return 0;
+
+#if defined(__PPC64__)
+	ret = mailbox_enable_intr_mode(mbx);
+#else
+	ret = mailbox_enable_intr_mode(mbx);
+	if (ret) {
+		/* enable polling */
+		set_bit(MBXCS_BIT_POLL_MODE, &mbx->mbx_tx.mbc_state);
+		chan_config_timer(&mbx->mbx_tx);
+
+		set_bit(MBXCS_BIT_POLL_MODE, &mbx->mbx_rx.mbc_state);
+		chan_config_timer(&mbx->mbx_rx);
+
+		ret = 0;
+	}
+#endif
+
+	return ret;
 }
 
 /* Kernel APIs exported from this sub-device driver. */

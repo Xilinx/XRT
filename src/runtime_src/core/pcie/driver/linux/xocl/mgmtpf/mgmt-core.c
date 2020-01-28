@@ -497,7 +497,7 @@ static int xclmgmt_reset(xdev_handle_t xdev_hdl)
 {
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)xdev_hdl;
 
-	return xclmgmt_hot_reset(lro);
+	return xclmgmt_hot_reset(lro, true);
 }
 
 struct xocl_pci_funcs xclmgmt_pci_ops = {
@@ -698,7 +698,9 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	}
 
 	switch (req->req) {
-	case XCL_MAILBOX_REQ_HOT_RESET:
+	case XCL_MAILBOX_REQ_HOT_RESET: {
+		bool force = false;
+
 #if defined(__PPC64__)
 		/* Reply before doing reset to release peer from waiting
 		 * for response and move to timer based wait stage.
@@ -712,11 +714,17 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		 */
 		ret = (int) xclmgmt_hot_reset(lro);
 #else
-		ret = (int) xclmgmt_hot_reset(lro);
-		(void) xocl_peer_response(lro, req->req, msgid, &ret,
+		ret = xocl_peer_response(lro, req->req, msgid, &ret,
 			sizeof(ret));
+		if (ret) {
+			/* the other side does not recv resp, force reset */
+			force = true;
+		}
+
+		ret = (int) xclmgmt_hot_reset(lro, force);
 #endif
 		break;
+	}
 	case XCL_MAILBOX_REQ_LOAD_XCLBIN_KADDR: {
 		void *buf = NULL;
 		struct axlf *xclbin = NULL;

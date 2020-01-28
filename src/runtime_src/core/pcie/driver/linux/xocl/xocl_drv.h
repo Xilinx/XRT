@@ -1282,6 +1282,7 @@ struct resource *xocl_get_iores_byname(struct platform_device *pdev,
 
 int xocl_ioaddr_to_baroff(xdev_handle_t xdev_hdl, resource_size_t io_addr,
 	int *bar_idx, resource_size_t *bar_off);
+int xocl_wait_pci_status(struct pci_dev *pdev, u16 mask, u16 val);
 
 static inline void xocl_lock_xdev(xdev_handle_t xdev)
 {

@@ -1420,3 +1420,22 @@ void xocl_subdev_unregister(struct platform_device *pldev)
 
 	subdev->ops = NULL;
 }
+
+int xocl_wait_pci_status(struct pci_dev *pdev, u16 mask, u16 val)
+{
+	u16     pci_cmd;
+	int     i;
+
+	for (i = 0; i < 5000; i++) {
+		pci_read_config_word(pdev, PCI_COMMAND, &pci_cmd);
+		if (pci_cmd != 0xffff && (pci_cmd & mask) == val)
+			break;
+		msleep(1);
+	}
+
+	xocl_info(&pdev->dev, "waiting for %d ms", i);
+	if (i == 5000) 
+		return -ETIME;
+
+	return 0;
+}
