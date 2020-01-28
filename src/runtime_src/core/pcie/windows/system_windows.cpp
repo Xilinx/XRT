@@ -67,7 +67,6 @@ getmachinename()
 static std::vector<std::weak_ptr<xrt_core::device_windows>> mgmtpf_devices(16); // fix size
 static std::vector<std::weak_ptr<xrt_core::device_windows>> userpf_devices(16); // fix size
 static HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
-static DWORD initMode;
 static CONSOLE_SCREEN_BUFFER_INFO csbiInfo;
 
 }
@@ -175,7 +174,6 @@ setup_terminal()
     exit(GetLastError());
   }
   
-  initMode = dwMode;
   dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
   if (!SetConsoleMode(hStdout, dwMode)) {
     exit(GetLastError());
@@ -187,7 +185,7 @@ system_windows::
 restore_terminal()
 {
   std::cout << "\x1b[0m";
-
+  DWORD initMode = ENABLE_PROCESSED_OUTPUT | ENABLE_WRAP_AT_EOL_OUTPUT;
   if (!SetConsoleMode(hStdout, initMode)) {
     exit(GetLastError());
   }
