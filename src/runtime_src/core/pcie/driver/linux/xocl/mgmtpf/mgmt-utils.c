@@ -22,7 +22,7 @@
 
 #define XCLMGMT_RESET_MAX_RETRY		10
 
-static void xclmgmt_reset_pci(struct xclmgmt_dev *lro, bool force);
+static void xclmgmt_reset_pci(struct xclmgmt_dev *lro);
 /**
  * @returns: NULL if AER apability is not found walking up to the root port
  *         : pci_dev ptr to the port which is AER capable.
@@ -158,6 +158,26 @@ void platform_axilite_flush(struct xclmgmt_dev *lro)
 	}
 }
 
+static int xocl_match_slot_and_wait(struct device *dev, void *data)
+{
+	struct xclmgmt_dev *lro = data;
+	struct pci_dev *pdev;
+	int ret = 0;
+
+	pdev = to_pci_dev(dev);
+
+	if (pdev != lro->core.pdev &&
+		(XOCL_DEV_ID(pdev) >> 3) == (XOCL_DEV_ID(lro->pci_dev) >> 3))
+		ret = xocl_wait_pci_status(pdev, PCI_COMMAND_MASTER, 0, 60);
+
+	return ret;
+}
+
+static int xocl_wait_master_off(struct xclmgmt_dev *lro)
+{
+	return bus_for_each_dev(&pci_bus_type, NULL, lro, xocl_match_slot_and_wait);
+}
+
 /**
  * Perform a PCIe secondary bus reset. Note: Use this method over pcie fundamental reset.
  * This method is known to work better.
@@ -183,6 +203,13 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 		lro->instance, ep_name,
 		PCI_SLOT(pdev->devfn), PCI_FUNC(pdev->devfn));
 
+	if (!force) {
+		mgmt_info(lro, "wait for master off for all functions");
+		err = xocl_wait_master_off(lro);
+		if (err)
+			goto done;
+	}
+
 	xocl_thread_stop(lro);
 
 	/* request XMC/ERT to stop */
@@ -198,13 +225,15 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 	 * save state and issue PCIe secondary bus reset
 	 */
 	if (!XOCL_DSA_PCI_RESET_OFF(lro)) {
-		(void) xocl_subdev_offline_all(lro);
+		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_ICAP);
+		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_MAILBOX);
 #if defined(__PPC64__)
 		pci_fundamental_reset(lro);
 #else
-		xclmgmt_reset_pci(lro, force);
+		xclmgmt_reset_pci(lro);
 #endif
-		(void) xocl_subdev_online_all(lro);
+		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_MAILBOX);
+		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_ICAP);
 	} else {
 		mgmt_warn(lro, "PCI Hot reset is not supported on this board.");
 	}
@@ -247,29 +276,6 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 
 done:
 	return err;
-}
-
-static int xocl_match_slot_and_wait(struct device *dev, void *data)
-{
-	struct xclmgmt_dev *lro = data;
-	struct pci_dev *pdev;
-
-	pdev = to_pci_dev(dev);
-
-	if ((XOCL_DEV_ID(pdev) >> 3) == (XOCL_DEV_ID(lro->pci_dev) >> 3))
-		xocl_wait_pci_status(pdev, PCI_COMMAND_MASTER, 0);
-
-	return 0;
-}
-
-static void xocl_wait_master_off(struct xclmgmt_dev *lro)
-{
-	u16 pci_cmd;
-
-	pci_read_config_word(lro->core.pdev, PCI_COMMAND, &pci_cmd);
-	pci_cmd &= ~PCI_COMMAND_MASTER;
-	pci_write_config_word(lro->core.pdev, PCI_COMMAND, pci_cmd);
-	bus_for_each_dev(&pci_bus_type, NULL, lro, xocl_match_slot_and_wait);
 }
 
 static void xocl_save_config_space(struct pci_dev *pdev, u32 *saved_config)
@@ -431,18 +437,13 @@ done:
 	return rc;
 }
 
-static void xclmgmt_reset_pci(struct xclmgmt_dev *lro, bool force)
+static void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 {
 	struct pci_dev *pdev = lro->pci_dev;
 	struct pci_bus *bus;
 	u8 pci_bctl;
 
 	mgmt_info(lro, "Reset PCI");
-
-	if (!force) {
-		mgmt_info(lro, "wait for master off for all functions");
-		xocl_wait_master_off(lro);
-	}
 
 	/* what if user PF in VM ? */
 	xocl_pci_save_config_all(lro);
@@ -458,7 +459,7 @@ static void xclmgmt_reset_pci(struct xclmgmt_dev *lro, bool force)
 	pci_write_config_byte(bus->self, PCI_BRIDGE_CONTROL, pci_bctl);
 	ssleep(1);
 
-	xocl_wait_pci_status(pdev, 0, 0);
+	xocl_wait_pci_status(pdev, 0, 0, 0);
 
 	xocl_pci_restore_config_all(lro);
 

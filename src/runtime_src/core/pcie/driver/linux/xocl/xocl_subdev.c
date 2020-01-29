@@ -1421,12 +1421,17 @@ void xocl_subdev_unregister(struct platform_device *pldev)
 	subdev->ops = NULL;
 }
 
-int xocl_wait_pci_status(struct pci_dev *pdev, u16 mask, u16 val)
+int xocl_wait_pci_status(struct pci_dev *pdev, u16 mask, u16 val, int timeout)
 {
 	u16     pci_cmd;
 	int     i;
 
-	for (i = 0; i < 5000; i++) {
+	if (!timeout)
+		timeout = 5000;
+	else
+		timeout *= 1000;
+
+	for (i = 0; i < timeout; i++) {
 		pci_read_config_word(pdev, PCI_COMMAND, &pci_cmd);
 		if (pci_cmd != 0xffff && (pci_cmd & mask) == val)
 			break;
