@@ -199,11 +199,13 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro)
 	if (!XOCL_DSA_PCI_RESET_OFF(lro)) {
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_ICAP);
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_MAILBOX);
+		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_AF);
 #if defined(__PPC64__)
 		pci_fundamental_reset(lro);
 #else
 		xclmgmt_reset_pci(lro);
 #endif
+		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_AF);
 		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_MAILBOX);
 		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_ICAP);
 	} else {
