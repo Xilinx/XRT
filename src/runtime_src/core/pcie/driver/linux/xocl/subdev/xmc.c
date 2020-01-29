@@ -2383,7 +2383,7 @@ static int stop_xmc(struct platform_device *pdev)
 static int load_xmc(struct xocl_xmc *xmc)
 {
 	int retry = 0;
-	u32 reg_val = 0;
+	u32 reg_val = 0, reg_map_ready;
 	int ret = 0;
 	void *xdev_hdl;
 
@@ -2439,27 +2439,51 @@ static int load_xmc(struct xocl_xmc *xmc)
 
 	/* Wait for XMC to start
 	 * Note that ERT will start long before XMC so we don't check anything
+	 *
+	 * If dev tree has CMC_MUTEX register defined, we rely on the
+	 * regmap_ready bit to check whether cmc is ready, otherwise,
+	 * we still use the legacy 'init done' bit in REGMAP
 	 */
-	reg_val = READ_REG32(xmc, XMC_STATUS_REG);
-	if (!(reg_val & STATUS_MASK_INIT_DONE)) {
-		xocl_info(&xmc->pdev->dev, "Waiting for XMC to finish init...");
+	ret = xocl_iores_read32(xdev_hdl, XOCL_SUBDEV_LEVEL_BLD,
+		IORES_CMC_MUTEX, XOCL_RES_OFFSET_CHANNEL2, &reg_map_ready);
+	if (!ret) {
 		retry = 0;
-		while (retry++ < MAX_XMC_RETRY &&
-			!(READ_REG32(xmc, XMC_STATUS_REG) &
-			STATUS_MASK_INIT_DONE))
+		while (!ret && retry++ < MAX_XMC_RETRY &&
+			!(reg_map_ready & 0x2)) {
 			msleep(RETRY_INTERVAL);
-		if (retry >= MAX_XMC_RETRY) {
-			xocl_err(&xmc->pdev->dev,
-				"XMC did not finish init sequence!");
-			xocl_err(&xmc->pdev->dev,
-				"Error Reg 0x%x",
-				READ_REG32(xmc, XMC_ERROR_REG));
-			xocl_err(&xmc->pdev->dev,
-				"Status Reg 0x%x",
-				READ_REG32(xmc, XMC_STATUS_REG));
+			ret = xocl_iores_read32(xdev_hdl, XOCL_SUBDEV_LEVEL_BLD,
+				IORES_CMC_MUTEX, XOCL_RES_OFFSET_CHANNEL2, &reg_map_ready);
+                }
+		if (!ret && (reg_map_ready & 0x2)) {
+			xocl_info(&xmc->pdev->dev, "REGMAP ready");
+		} else {
+			xocl_info(&xmc->pdev->dev, "REGMAP not ready : %d", ret);
 			ret = -ETIMEDOUT;
 			xmc->state = XMC_STATE_ERROR;
 			goto out;
+		}
+	} else {
+		reg_val = READ_REG32(xmc, XMC_STATUS_REG);
+		if (!(reg_val & STATUS_MASK_INIT_DONE)) {
+			xocl_info(&xmc->pdev->dev, "Waiting for XMC to finish init...");
+			retry = 0;
+			while (retry++ < MAX_XMC_RETRY &&
+				!(READ_REG32(xmc, XMC_STATUS_REG) &
+				STATUS_MASK_INIT_DONE))
+				msleep(RETRY_INTERVAL);
+			if (retry >= MAX_XMC_RETRY) {
+				xocl_err(&xmc->pdev->dev,
+					"XMC did not finish init sequence!");
+				xocl_err(&xmc->pdev->dev,
+					"Error Reg 0x%x",
+					READ_REG32(xmc, XMC_ERROR_REG));
+				xocl_err(&xmc->pdev->dev,
+					"Status Reg 0x%x",
+					READ_REG32(xmc, XMC_STATUS_REG));
+				ret = -ETIMEDOUT;
+				xmc->state = XMC_STATE_ERROR;
+				goto out;
+			}
 		}
 	}
 	xocl_info(&xmc->pdev->dev, "XMC and scheduler Enabled, retry %d",
