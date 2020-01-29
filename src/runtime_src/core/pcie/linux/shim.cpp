@@ -785,7 +785,7 @@ int shim::cmaEnable(bool enable, uint64_t size)
 
     } else {
         drm_xocl_free_cma_info cma_info = {0};
-        mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_FREE_CMA, &cma_info);
+        ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_FREE_CMA, &cma_info);
     }
 
     return ret;
