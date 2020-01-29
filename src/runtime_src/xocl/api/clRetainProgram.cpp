@@ -15,13 +15,11 @@
  */
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/program.h"
 #include "detail/program.h"
-
 #include "plugin/xdp/profile.h"
+#include <CL/opencl.h>
 
 namespace xocl {
 
@@ -60,5 +58,3 @@ clRetainProgram(cl_program program)
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

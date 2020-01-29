@@ -15,23 +15,21 @@
  */
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/error.h"
-
 #include "plugin/xdp/profile.h"
+#include <CL/opencl.h>
 
 namespace xocl {
 
 static void
 validOrError(cl_command_queue    command_queue ,
-             cl_mem              image , 
-             const void *        fill_color , 
-             const size_t *      origin , 
-             const size_t *      region , 
-             cl_uint             num_events_in_wait_list , 
-             const cl_event *    event_wait_list , 
+             cl_mem              image ,
+             const void *        fill_color ,
+             const size_t *      origin ,
+             const size_t *      region ,
+             cl_uint             num_events_in_wait_list ,
+             const cl_event *    event_wait_list ,
              cl_event *          event )
 {
   if (!config::api_checks())
@@ -67,7 +65,7 @@ validOrError(cl_command_queue    command_queue ,
   // CL_IMAGE_FORMAT_NOT_SUPPORTED if image format (image channel
   // order and data type) for image are not supported by device
   // associated with queue.
-  
+
   // CL_MEM_OBJECT_ALLOCATION_FAILURE if there is a failure to
   // allocate memory for data store associated with image.
 
@@ -80,12 +78,12 @@ validOrError(cl_command_queue    command_queue ,
 
 static cl_int
 clEnqueueFillImage(cl_command_queue    command_queue ,
-                   cl_mem              image , 
-                   const void *        fill_color , 
-                   const size_t *      origin , 
-                   const size_t *      region , 
-                   cl_uint             num_events_in_wait_list , 
-                   const cl_event *    event_wait_list , 
+                   cl_mem              image ,
+                   const void *        fill_color ,
+                   const size_t *      origin ,
+                   const size_t *      region ,
+                   cl_uint             num_events_in_wait_list ,
+                   const cl_event *    event_wait_list ,
                    cl_event *          event )
 {
   validOrError(command_queue,image,fill_color,origin,region,num_events_in_wait_list,event_wait_list,event);
@@ -96,12 +94,12 @@ clEnqueueFillImage(cl_command_queue    command_queue ,
 
 cl_int
 clEnqueueFillImage(cl_command_queue    command_queue ,
-                   cl_mem              image , 
-                   const void *        fill_color , 
-                   const size_t *      origin , 
-                   const size_t *      region , 
-                   cl_uint             num_events_in_wait_list , 
-                   const cl_event *    event_wait_list , 
+                   cl_mem              image ,
+                   const void *        fill_color ,
+                   const size_t *      origin ,
+                   const size_t *      region ,
+                   cl_uint             num_events_in_wait_list ,
+                   const cl_event *    event_wait_list ,
                    cl_event *          event )
 {
   try {
@@ -120,6 +118,3 @@ clEnqueueFillImage(cl_command_queue    command_queue ,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-
-

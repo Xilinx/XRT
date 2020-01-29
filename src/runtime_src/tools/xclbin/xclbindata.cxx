@@ -341,6 +341,22 @@ XclBinData::extractSectionData( int sectionNum, const char* name )
     type = "debug";
     ext = ".bin";
   }
+  else if ( header.m_sectionKind == DNA_CERTIFICATE ) {
+    type = "dna_certificate";
+    ext = ".bin";
+  }
+  else if ( header.m_sectionKind == BUILD_METADATA ) {
+    type = "build_metadata";
+    ext = ".bin";
+  }
+  else if ( header.m_sectionKind == KEYVALUE_METADATA ) {
+    type = "keyvalue_metadata";
+    ext = ".bin";
+  }
+  else if ( header.m_sectionKind == USER_METADATA ) {
+    type = "user_metadata";
+    ext = ".bin";
+  }
   else if ( header.m_sectionKind == MEM_TOPOLOGY ) {
     type = "mem_topology";
     ext = ".bin";
@@ -373,8 +389,14 @@ XclBinData::extractSectionData( int sectionNum, const char* name )
   else if ( header.m_sectionKind == BMC ) {
     extractAndWriteBMCImages((char*) data.get(), sectionSize);
     return true;
+  } else {
+    static unsigned int uniqueCount = 1;
+    type = "unknown(" + std::to_string(uniqueCount) + ")";
+    ext = ".bin";
+    ++uniqueCount;
   }
-  // Note: BUILD_METADATA, KEYVALUE_METADATA, USER_METADATA extraction currently not support
+
+  
 
 
   std::string id = "";
@@ -438,9 +460,9 @@ bool
 XclBinData::reportHead() 
 {
   std::cout << "Magic: " << m_xclBinHead.m_magic << "\n";
-  std::cout << "Cipher: ";
-  XclBinUtil::data2hex( std::cout, (const unsigned char*)&m_xclBinHead.m_cipher, sizeof(m_xclBinHead.m_cipher) );
-  std::cout << "\n";
+//  std::cout << "Cipher: ";
+//  XclBinUtil::data2hex( std::cout, (const unsigned char*)&m_xclBinHead.m_cipher, sizeof(m_xclBinHead.m_cipher) );
+//  std::cout << "\n";
   std::cout << "Key Block: ";
   XclBinUtil::data2hex( std::cout, (const unsigned char*)&m_xclBinHead.m_keyBlock, sizeof(m_xclBinHead.m_keyBlock) );
   std::cout << "\n";
@@ -466,7 +488,9 @@ bool
 XclBinData::reportHeader() 
 {
   std::cout << "xclbin1 Size:           " << m_xclBinHead.m_header.m_length << "\n";
-  std::cout << "Version:                " << m_xclBinHead.m_header.m_version << "\n";
+  std::cout << "Version:                " << m_xclBinHead.m_header.m_versionMajor 
+                                            << "." << m_xclBinHead.m_header.m_versionMinor 
+                                            << "." << m_xclBinHead.m_header.m_versionPatch << "\n";
   std::cout << "Timestamp:              " << m_xclBinHead.m_header.m_timeStamp << "\n";
   std::cout << "Feature ROM Timestamp:  " << m_xclBinHead.m_header.m_featureRomTimeStamp << "\n";
   std::cout << "Mode:                   " << (int)m_xclBinHead.m_header.m_mode << "\n";
@@ -476,7 +500,7 @@ XclBinData::reportHeader()
   std::cout << "  XCLBIN_SW_EMU:          " << XCLBIN_SW_EMU << "\n";
   std::cout << "  XCLBIN_MODE_MAX:        " << XCLBIN_MODE_MAX << "\n";
   std::cout << "Platform VBNV:          " << m_xclBinHead.m_header.m_platformVBNV << "\n";
-  std::cout << "DSA uuid:               " << getUUIDAsString(m_xclBinHead.m_header.rom_uuid) << "\n";
+  std::cout << "XSA uuid:               " << getUUIDAsString(m_xclBinHead.m_header.rom_uuid) << "\n";
   std::cout << "xclbin uuid:            " << getUUIDAsString(m_xclBinHead.m_header.uuid) << "\n";
   std::cout << "Debug Bin:              " << m_xclBinHead.m_header.m_debug_bin << "\n";
   std::cout << "Num of sections:        " << m_xclBinHead.m_header.m_numSections << "\n";
@@ -707,6 +731,9 @@ XclBinData::getMemType( std::string &_sMemType ) const
   if ( _sMemType == "MEM_ARE" )
       return MEM_ARE;
 
+  if ( _sMemType == "MEM_STREAMING_CONNECTION" )
+      return MEM_STREAMING_CONNECTION;
+
   std::string errMsg = "ERROR: Unknown memory type: '" + _sMemType + "'";
   throw std::runtime_error(errMsg);
 }
@@ -857,6 +884,7 @@ XclBinData::getIPType( std::string &_sIPType ) const
   if ( _sIPType == "IP_MB" ) return IP_MB;
   if ( _sIPType == "IP_KERNEL" ) return IP_KERNEL;
   if ( _sIPType == "IP_DNASC" ) return IP_DNASC;
+  if ( _sIPType == "IP_DDR4_CONTROLLER" ) return IP_DDR4_CONTROLLER;
 
   std::string errMsg = "ERROR: Unknown IP type: '" + _sIPType + "'";
   throw std::runtime_error(errMsg);
@@ -962,8 +990,20 @@ XclBinData::getDebugIPType( std::string &_sDebugIPType ) const
   if ( _sDebugIPType == "ACCEL_MONITOR" )
       return ACCEL_MONITOR;
 
+  if ( _sDebugIPType == "TRACE_S2MM" )
+      return TRACE_S2MM;
+
+  if ( _sDebugIPType == "TRACE_S2MM_FULL" )
+      return TRACE_S2MM_FULL;
+
+  if ( _sDebugIPType == "AXI_DMA" )
+      return AXI_DMA;
+
   if ( _sDebugIPType == "AXI_STREAM_MONITOR" )
       return AXI_STREAM_MONITOR;
+
+  if ( _sDebugIPType == "AXI_STREAM_PROTOCOL_CHECKER" )
+      return AXI_STREAM_PROTOCOL_CHECKER;
 
   if ( _sDebugIPType == "UNDEFINED" )
       return UNDEFINED;
@@ -1004,7 +1044,11 @@ XclBinData::createDebugIPLayoutBinaryImage( boost::property_tree::ptree &_pt,
 
     std::string sm_type = ptDebugIPData.get<std::string>("m_type");
     debugIpDataHdr.m_type = getDebugIPType( sm_type );
-    debugIpDataHdr.m_index = ptDebugIPData.get<uint8_t>("m_index");
+
+    uint16_t index = ptDebugIPData.get<uint16_t>("m_index");
+    debugIpDataHdr.m_index_lowbyte = index & 0x00FF;
+    debugIpDataHdr.m_index_highbyte = (index & 0xFF00) >> 8;
+
     debugIpDataHdr.m_properties = ptDebugIPData.get<uint8_t>("m_properties");
 
     // Optional value, will set to 0 if not set (as it was initialized)
@@ -1025,10 +1069,12 @@ XclBinData::createDebugIPLayoutBinaryImage( boost::property_tree::ptree &_pt,
     // We already know that there is enough room for this string
     memcpy( debugIpDataHdr.m_name, sm_name.c_str(), sm_name.length() + 1);
 
-    TRACE(XclBinUtil::format("[%d]: m_type: %d, m_index: %d, m_properties: %d, m_major: %d, m_minor: %d, m_base_address: 0x%lx, m_name: '%s'", 
+    TRACE(XclBinUtil::format("[%d]: m_type: %d, m_index: %d (m_index_highbyte: 0x%x, m_index_lowbyte: 0x%x), m_properties: %d, m_major: %d, m_minor: %d, m_base_address: 0x%lx, m_name: '%s'", 
                              count,
                              (unsigned int) debugIpDataHdr.m_type,
-                             (unsigned int) debugIpDataHdr.m_index,
+                             index,
+                             (unsigned int) debugIpDataHdr.m_index_highbyte,
+                             (unsigned int) debugIpDataHdr.m_index_lowbyte,
                              (unsigned int) debugIpDataHdr.m_properties,
                              (unsigned int) debugIpDataHdr.m_major,
                              (unsigned int) debugIpDataHdr.m_minor,
@@ -1300,6 +1346,7 @@ XclBinData::getMemTypeStr(enum MEM_TYPE _memType) const
     case MEM_STREAMING: return "MEM_STREAMING";
     case MEM_PREALLOCATED_GLOB: return "MEM_PREALLOCATED_GLOB";
     case MEM_ARE: return "MEM_ARE";
+    case MEM_STREAMING_CONNECTION: return "MEM_STREAMING_CONNECTION";
   }
 
   return XclBinUtil::format("UNKNOWN (%d)", (unsigned int) _memType);
@@ -1445,6 +1492,9 @@ XclBinData::getIPTypeStr(enum IP_TYPE _ipType) const
     case IP_MB: return "IP_MB";
     case IP_KERNEL: return "IP_KERNEL";
     case IP_DNASC: return "IP_DNASC";
+    case IP_DDR4_CONTROLLER: return "IP_DDR4_CONTROLLER";
+    case IP_MEM_DDR4: return "IP_MEM_DDR4";
+    case IP_MEM_HBM: return "IP_MEM_DDR4";
   }
 
   return XclBinUtil::format("UNKNOWN (%d)", (unsigned int) _ipType);
@@ -1526,7 +1576,11 @@ XclBinData::getDebugIPTypeStr(enum DEBUG_IP_TYPE _debugIpType) const
     case AXI_MONITOR_FIFO_LITE: return "AXI_MONITOR_FIFO_LITE";
     case AXI_MONITOR_FIFO_FULL: return "AXI_MONITOR_FIFO_FULL";
     case ACCEL_MONITOR: return "ACCEL_MONITOR";
+    case AXI_DMA: return "AXI_DMA";
+    case TRACE_S2MM: return "TRACE_S2MM";
+    case TRACE_S2MM_FULL: return "TRACE_S2MM_FULL";
     case AXI_STREAM_MONITOR: return "AXI_STREAM_MONITOR";
+    case AXI_STREAM_PROTOCOL_CHECKER: return "AXI_STREAM_PROTOCOL_CHECKER";
   }
 
   return XclBinUtil::format("UNKNOWN (%d)", (unsigned int) _debugIpType);
@@ -1575,10 +1629,14 @@ XclBinData::extractDebugIPLayoutData( char * _pDataSegment,
   for (int index = 0; index < pHdr->m_count; ++index) {
     boost::property_tree::ptree debug_ip_data;
 
-    TRACE(XclBinUtil::format("[%d]: m_type: %d, m_index: %d, m_properties: %d, m_major: %d, m_minor: %d, m_base_address: 0x%lx, m_name: '%s'", 
+    uint16_t m_virtual_index = (((uint16_t) pHdr->m_debug_ip_data[index].m_index_highbyte) << 8) + (uint16_t) pHdr->m_debug_ip_data[index].m_index_lowbyte;
+
+    TRACE(XclBinUtil::format("[%d]: m_type: %d, m_index: %d (m_index_highbyte: 0x%x, m_index_lowbyte: 0x%x), m_properties: %d, m_major: %d, m_minor: %d, m_base_address: 0x%lx, m_name: '%s'", 
                              index,
                              getDebugIPTypeStr((enum DEBUG_IP_TYPE) pHdr->m_debug_ip_data[index].m_type).c_str(),
-                             (unsigned int) pHdr->m_debug_ip_data[index].m_index,
+                             (unsigned int) m_virtual_index,
+                             (unsigned int) pHdr->m_debug_ip_data[index].m_index_highbyte,
+                             (unsigned int) pHdr->m_debug_ip_data[index].m_index_lowbyte,
                              (unsigned int) pHdr->m_debug_ip_data[index].m_properties,
                              (unsigned int) pHdr->m_debug_ip_data[index].m_major,
                              (unsigned int) pHdr->m_debug_ip_data[index].m_minor,
@@ -1589,7 +1647,7 @@ XclBinData::extractDebugIPLayoutData( char * _pDataSegment,
     TRACE_BUF("debug_ip_data", reinterpret_cast<const char*>(&pHdr->m_debug_ip_data[index]), sizeof(debug_ip_data));
 
     debug_ip_data.put("m_type", getDebugIPTypeStr((enum DEBUG_IP_TYPE) pHdr->m_debug_ip_data[index].m_type).c_str());
-    debug_ip_data.put("m_index", XclBinUtil::format("%d", (unsigned int) pHdr->m_debug_ip_data[index].m_index).c_str());
+    debug_ip_data.put("m_index", XclBinUtil::format("%d", (unsigned int) m_virtual_index).c_str());
     debug_ip_data.put("m_properties", XclBinUtil::format("%d", (unsigned int) pHdr->m_debug_ip_data[index].m_properties).c_str());
     debug_ip_data.put("m_major", XclBinUtil::format("%d", (unsigned int) pHdr->m_debug_ip_data[index].m_major).c_str());
     debug_ip_data.put("m_minor", XclBinUtil::format("%d", (unsigned int) pHdr->m_debug_ip_data[index].m_minor).c_str());

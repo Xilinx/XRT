@@ -31,11 +31,11 @@
 namespace xocl {
 
 static void
-validOrError(const cl_command_queue command_queue) 
+validOrError(const cl_command_queue command_queue)
 {
   if(!config::api_checks())
     return;
-  detail::command_queue::validOrError(command_queue); 
+  detail::command_queue::validOrError(command_queue);
 }
 
 cl_int
@@ -73,12 +73,12 @@ clGetCommandQueueInfo(cl_command_queue       command_queue ,
 } // xocl
 
 
-cl_int 
+cl_int
 clGetCommandQueueInfo(cl_command_queue       command_queue ,
                       cl_command_queue_info  param_name ,
                       size_t                 param_value_size ,
                       void *                 param_value ,
-                      size_t *               param_value_size_ret ) 
+                      size_t *               param_value_size_ret )
 {
   try {
     PROFILE_LOG_FUNCTION_CALL
@@ -94,8 +94,4 @@ clGetCommandQueueInfo(cl_command_queue       command_queue ,
     xocl::send_exception_message(ex.what());
     return CL_OUT_OF_HOST_MEMORY;
   }
-  return CL_SUCCESS;
 }
-
-
-
