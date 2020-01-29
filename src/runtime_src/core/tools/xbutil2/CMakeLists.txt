@@ -17,13 +17,15 @@ file(GLOB XBUTIL_V2_BASE_FILES
   "xbutil.cpp"
   "../common/XBMain.cpp"
   "../common/XBUtilities.cpp"
-  "XBReport.cpp"
-  "XBDatabase.cpp"
   "../common/SubCmd.cpp"
+  "../common/OptionOptions.cpp"
+  "../common/XBHelpMenus.cpp"
 )
 
 # Collect local directory files
 file(GLOB XBUTIL_V2_SUBCMD_FILES
+  "XBReport.cpp"
+  "XBDatabase.cpp"
   "SubCmdClock.cpp"
   "SubCmdDD.cpp"
   "SubCmdDmaTest.cpp"
@@ -40,6 +42,11 @@ file(GLOB XBUTIL_V2_SUBCMD_FILES
   "SubCmdTop.cpp"
   "SubCmdValidate.cpp"
   "SubCmdVersion.cpp"
+  "SubCmdAdvanced.cpp"
+  "OO_Clock.cpp"
+  "OO_MemRead.cpp"
+  "OO_MemWrite.cpp"
+  "OO_P2P.cpp"
 )
 
 # Merge the files into one collection

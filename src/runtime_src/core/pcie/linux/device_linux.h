@@ -24,12 +24,6 @@ namespace xrt_core {
 class device_linux : public device_pcie
 {
 public:
-  struct SysDevEntry {
-    const std::string sSubDevice;
-    const std::string sEntry;
-  };
-  const SysDevEntry & get_sysdev_entry(QueryRequest qr) const;
-
   device_linux(id_type device_id, bool user);
 
   // query functions

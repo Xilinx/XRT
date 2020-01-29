@@ -29,6 +29,7 @@ namespace XBU = XBUtilities;
 // 3rd Party Library - Include Files
 #include <boost/program_options.hpp>
 namespace po = boost::program_options;
+#include "boost/format.hpp"
 
 // System - Include Files
 #include <iostream>
@@ -39,21 +40,23 @@ namespace po = boost::program_options;
 
 namespace {
 
+/*
+ * scan all devices on the machine
+ * TO-DO: Implement Json
+ */
 static void 
 scan_devices(bool verbose, bool json)
 {
   json = json;
-  auto total = xrt_core::get_total_devices().first;
+  auto total = xrt_core::get_total_devices(false).first;
   
-  if (total == 0) {
-    std::string errMsg = "No card found!";
-    throw xrt_core::error(errMsg);
-  }
+  if (total == 0)
+    throw xrt_core::error("No card found!");
   
   for(uint16_t i = 0; i < total; i++) {
     Flasher f(i);
     if (!f.isValid())
-        return;
+        throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % i));
 
     DSAInfo board = f.getOnBoardDSA();
     std::vector<DSAInfo> installedDSA = f.getInstalledDSA();
@@ -85,7 +88,9 @@ scan_devices(bool verbose, bool json)
   }
 }
 
-// Update shell on the board.
+/*
+ * Update shell on the board
+ */
 static void 
 update_shell(uint16_t index, const std::string& flashType,
     const std::string& primary, const std::string& secondary)
@@ -135,6 +140,29 @@ update_SC(uint16_t index, const std::string& file)
     flasher.upgradeBMCFirmware(bmc.get());
 }
 
+/* 
+ * Confirm with the user
+ * Helper method for auto_flash
+ */
+bool canProceed()
+{
+  std::string input;
+  bool answered = false;
+  bool proceed = false;
+
+  while (!answered) {
+    std::cout << "Are you sure you wish to proceed? [y/n]: ";
+    std::cin >> input;
+    if(input.compare("y") == 0 || input.compare("n") == 0)
+      answered = true;
+  }
+
+  proceed = (input.compare("y") == 0);
+  if (!proceed)
+    std::cout << "Action canceled." << std::endl;
+  return proceed;
+}
+
 static void 
 auto_flash(uint16_t index, std::string& name,
     std::string& id, bool force) 
@@ -149,7 +177,18 @@ auto_flash(uint16_t index, std::string& name,
 static void 
 reset_shell(uint16_t index)
 {
-  index = index;
+  Flasher flasher(index);
+  if(!flasher.isValid())
+    return;
+
+  std::cout << "CAUTION: Resetting Card [" << flasher.sGetDBDF() <<
+    "] back to factory mode." << std::endl;
+  if(!canProceed())
+    return;
+
+  flasher.upgradeFirmware("", nullptr, nullptr);
+  std::cout << "Shell is reset successfully" << std::endl;
+  std::cout << "Cold reboot machine to load new shell on card" << std::endl;
 }
 
 
@@ -199,7 +238,7 @@ SubCmdFlash::execute(const SubCmdOptions& _options) const
     ("scan", boost::program_options::bool_switch(&scan), "Information about the card")
     ("shell", boost::program_options::bool_switch(&shell), "Flash platform from source")
     ("sc_firmware", boost::program_options::bool_switch(&sc_firmware), "Flash sc firmware from source")
-    //("factory_reset", boost::program_options::bool_switch(&reset), "Reset to golden image")
+    ("factory_reset", boost::program_options::bool_switch(&reset), "Reset to golden image")
     //("update", boost::program_options::bool_switch(&update), "Update the card with the installed shell")
   ;
 
@@ -242,8 +281,8 @@ SubCmdFlash::execute(const SubCmdOptions& _options) const
   // -- Now process the subcommand --------------------------------------------
   XBU::verbose(XBU::format("  Scan: %ld", scan));
   XBU::verbose(XBU::format("  Shell: %ld", shell));
-  // XBU::verbose(XBU::format("  sc_firmware: %ld", sc_firmware));
-  // XBU::verbose(XBU::format("  Reset: %ld", reset));
+  XBU::verbose(XBU::format("  sc_firmware: %ld", sc_firmware));
+  XBU::verbose(XBU::format("  Reset: %ld", reset));
   // XBU::verbose(XBU::format("  Update: %ld", update));
 
   if (scan) {
@@ -350,7 +389,9 @@ SubCmdFlash::execute(const SubCmdOptions& _options) const
     // -- Now process the subcommand option-------------------------------
     XBU::verbose(XBU::format("  Card: %s", bdf.c_str()));
 
-    uint16_t idx = xrt_core::bdf2index(bdf);
+    uint16_t idx = 0;
+    if (!bdf.empty())
+      idx = xrt_core::bdf2index(bdf);
     reset_shell(idx);
     return;
   }

@@ -1,47 +1,48 @@
 @ECHO OFF
 
-set BOOST=C:/Xilinx/XRT/ext
-set KHRONOS=C:/Xilinx/XRT/ext
+SET BOOST=C:/Xilinx/XRT/ext
+SET KHRONOS=C:/Xilinx/XRT/ext
 
-if DEFINED MSVC_PARALLEL_JOBS ( SET LOCAL_MSVC_PARALLEL_JOBS=%MSVC_PARALLEL_JOBS%) ELSE ( SET LOCAL_MSVC_PARALLEL_JOBS=3 )
+IF DEFINED MSVC_PARALLEL_JOBS ( SET LOCAL_MSVC_PARALLEL_JOBS=%MSVC_PARALLEL_JOBS%) ELSE ( SET LOCAL_MSVC_PARALLEL_JOBS=3 )
 
 IF "%1" == "clean" (
-  goto Clean
+  GOTO Clean
 )
 
 IF "%1" == "-clean" (
-  goto Clean
+  GOTO Clean
 )
 
-if "%1" == "-help" (
-  goto Help
+IF "%1" == "-help" (
+  GOTO Help
 )
 
-if "%1" == "-debug" (
-  goto DebugBuild
+IF "%1" == "-debug" (
+  GOTO DebugBuild
 )
 
-if "%1" == "-release" (
-  goto ReleaseBuild
+IF "%1" == "-release" (
+  GOTO ReleaseBuild
 )
 
-if "%1" == "-all" (
-  call:DebugBuild
-  if errorlevel 1 (exit /B %errorlevel%)
 
-  call:ReleaseBuild
-  if errorlevel 1 (exit /B %errorlevel%)
+IF "%1" == "-all" (
+  CALL:DebugBuild
+  IF errorlevel 1 (exit /B %errorlevel%)
+
+  CALL:ReleaseBuild
+  IF errorlevel 1 (exit /B %errorlevel%)
 
   goto:EOF
 )
 
 
-if "%1" == "" (
-  call:DebugBuild
-  if errorlevel 1 (exit /B %errorlevel%)
+IF "%1" == "" (
+  CALL:DebugBuild
+  IF errorlevel 1 (exit /B %errorlevel%)
 
-  call:ReleaseBuild
-  if errorlevel 1 (exit /B %errorlevel%)
+  CALL:ReleaseBuild
+  IF errorlevel 1 (exit /B %errorlevel%)
 
   GOTO:EOF
 )
@@ -52,21 +53,29 @@ GOTO Help
 
 REM --------------------------------------------------------------------------
 :Help
-echo.
-echo Usage: build.bat [options]
-echo.
-echo [-help]                    List this help
-echo [clean^|-clean]             Remove build directories
+ECHO.
+ECHO Usage: build.bat [options]
+ECHO.
+ECHO [-help]                    - List this help
+ECHO [-clean^|clean]             - Remove build directories
+ECHO [-debug]                   - Creates a debug build
+ECHO [-release]                 - Creates a release build
+ECHO.
+ECHO Additional options to be used afer with the '-release' option:
+ECHO   [-package]               - Packages the release build to a MSI archive.
+ECHO                              Note: Depends on the WIX application. 
+ECHO   [-xclmgmt arg]           - The directory to the xclmgmt drivers (used with packaging)
+ECHO   [-xocluser arg]          - The directory to the xocluser drivers (used with packaging)
 GOTO:EOF
 
 REM --------------------------------------------------------------------------
 :Clean
-if exist WDebug (
-  echo Removing 'WDebug' directory...
+IF EXIST WDebug (
+  ECHO Removing 'WDebug' directory...
   rmdir /S /Q WDebug
 )
-if exist WRelease (
-  echo Removing 'WRelease' directory...
+IF EXIST WRelease (
+  ECHO Removing 'WRelease' directory...
   rmdir /S /Q WRelease
 )
 GOTO:EOF
@@ -75,39 +84,93 @@ GOTO:EOF
 REM --------------------------------------------------------------------------
 :DebugBuild
 echo ====================== Windows Debug Build ============================
-mkdir WDebug
-pushd WDebug
+MKDIR WDebug
+PUSHD WDebug
 
-echo MSVC Compile Parallel Jobs: %LOCAL_MSVC_PARALLEL_JOBS%
+ECHO MSVC Compile Parallel Jobs: %LOCAL_MSVC_PARALLEL_JOBS%
 
 cmake -G "Visual Studio 15 2017 Win64" -DMSVC_PARALLEL_JOBS=%LOCAL_MSVC_PARALLEL_JOBS% -DKHRONOS=%KHRONOS% -DBOOST_ROOT=%BOOST% -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
-if errorlevel 1 (popd & exit /B %errorlevel%)
+IF errorlevel 1 (POPD & exit /B %errorlevel%)
 
 cmake --build . --verbose --config Debug
-if errorlevel 1 (popd & exit /B %errorlevel%)
+IF errorlevel 1 (POPD & exit /B %errorlevel%)
 
 cmake --build . --verbose --config Debug --target install
-if errorlevel 1 (popd & exit /B %errorlevel%)
+IF errorlevel 1 (POPD & exit /B %errorlevel%)
 
-popd
+POPD
 GOTO:EOF
 
 REM --------------------------------------------------------------------------
 :ReleaseBuild
-echo ====================== Windows Release Build ============================
-mkdir WRelease
-pushd WRelease
+ECHO ====================== Windows Release Build ============================
+MKDIR WRelease
+PUSHD WRelease
 
-echo MSVC Compile Parallel Jobs: %LOCAL_MSVC_PARALLEL_JOBS%
+ECHO MSVC Compile Parallel Jobs: %LOCAL_MSVC_PARALLEL_JOBS%
 
-cmake -G "Visual Studio 15 2017 Win64" -DMSVC_PARALLEL_JOBS=%LOCAL_MSVC_PARALLEL_JOBS% -DKHRONOS=%KHRONOS% -DBOOST_ROOT=%BOOST% -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
-if errorlevel 1 (popd & exit /B %errorlevel%)
+SET XCLMGMT_DRIVER=""
+SET XOCLUSER_DRIVER=""
+SET CREATE_PACKAGE=false
+
+REM Evaluate the additional options
+REM Warning: Do not put any echo statements in the "IF" blocks.  Doing so
+REM          will result in expansion issues. e.g. the variable will not be set
+SHIFT
+:shift_loop_release
+IF "%1" == "-package" (
+  SET CREATE_PACKAGE=true
+  SHIFT
+  GOTO:shift_loop_release
+)
+
+IF "%1" == "-xclmgmt" (
+  SET XCLMGMT_DRIVER="%2"
+  SHIFT
+  SHIFT
+  GOTO:shift_loop_release
+)
+
+IF "%1" == "-xocluser" (
+  SET XOCLUSER_DRIVER="%2"
+  SHIFT
+  SHIFT
+  GOTO:shift_loop_release
+)
+
+REM Unknown option 
+IF NOT "%1" == "" (
+  POPD
+  ECHO Unknown option: %1
+  GOTO Help
+)
+
+IF NOT "%XCLMGMT_DRIVER%" == "" (
+  ECHO XclMgmt  Driver Directory: %XCLMGMT_DRIVER%
+)
+
+IF NOT "%XOCLUSER_DRIVER%" == "" (
+  ECHO XoclUser Driver Directory: %XOCLUSER_DRIVER%
+)
+
+cmake -G "Visual Studio 15 2017 Win64"  -DXCL_MGMT=%XCLMGMT_DRIVER% -DXOCL_USER=%XOCLUSER_DRIVER% -DMSVC_PARALLEL_JOBS=%LOCAL_MSVC_PARALLEL_JOBS% -DKHRONOS=%KHRONOS% -DBOOST_ROOT=%BOOST% -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
+IF errorlevel 1 (POPD & exit /B %errorlevel%)
 
 cmake --build . --verbose --config Release
-if errorlevel 1 (popd & exit /B %errorlevel%)
+IF errorlevel 1 (POPD & exit /B %errorlevel%)
 
 cmake --build . --verbose --config Release --target install
-if errorlevel 1 (popd & exit /B %errorlevel%)
+IF errorlevel 1 (POPD & exit /B %errorlevel%)
+
+ECHO ====================== Zipping up Installation Build ============================
+cpack -G ZIP -C Release
+
+IF "%CREATE_PACKAGE%" == "true" (
+  ECHO ====================== Creating MSI Archive ============================
+  cpack -G WIX -C Release
+)
 
 popd
 GOTO:EOF
+
+

@@ -181,6 +181,13 @@ get_profile_api()
 }
 
 inline bool
+get_hal_profile()
+{
+  static bool value = detail::get_bool_value("Debug.hal_profile", false);
+  return value;
+}
+
+inline bool
 get_api_checks()
 {
   static bool value = detail::get_bool_value("Runtime.api_checks",true);
@@ -390,6 +397,16 @@ inline std::string
 get_kernel_channel_info()
 {
   static std::string value = detail::get_string_value("Runtime.kernel_channels","");
+  return value;
+}
+
+/**
+ * Direct OpenCL kernel execution to acquire exclusive context on CU
+ */
+inline bool
+get_exclusive_cu_context()
+{
+  static bool value = detail::get_bool_value("Runtime.exclusive_cu_context", false);
   return value;
 }
 

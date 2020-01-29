@@ -17,11 +17,13 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SubCmd.h"
+#include "XBHelpMenus.h"
 #include <iostream>
 #include <boost/format.hpp>
 
 #include "XBUtilities.h"
 namespace XBU = XBUtilities;
+namespace po = boost::program_options;
 
 SubCmd::SubCmd(const std::string & _name, 
                const std::string & _shortDescription)
@@ -37,8 +39,30 @@ SubCmd::SubCmd(const std::string & _name,
 }
 
 void
-SubCmd::printHelp(const boost::program_options::options_description & _optionDescription) const
+SubCmd::printHelp( const boost::program_options::options_description & _optionDescription) const
 {
-  XBU::subcommand_help(m_executableName, m_subCmdName, m_longDescription, _optionDescription, m_exampleSyntax);
+  boost::program_options::positional_options_description emptyPOD;
+  XBUtilities::report_subcommand_help(m_executableName, m_subCmdName, m_longDescription,  m_exampleSyntax, _optionDescription, emptyPOD);
+}
+
+void
+SubCmd::printHelp( const boost::program_options::options_description & _optionDescription,
+                   const SubOptionOptions & _subOptionOptions) const
+{
+ XBUtilities::report_subcommand_help(m_executableName, m_subCmdName, m_longDescription,  m_exampleSyntax, _optionDescription, _subOptionOptions);
+}
+
+
+void 
+SubCmd::conflictingOptions( const boost::program_options::variables_map& _vm, 
+                            const std::string &_opt1, const std::string &_opt2) const
+{
+  if ( _vm.count(_opt1.c_str())  
+       && !_vm[_opt1.c_str()].defaulted() 
+       && _vm.count(_opt2.c_str()) 
+       && !_vm[_opt2.c_str()].defaulted()) {
+    std::string errMsg = boost::str(boost::format("Mutually exclusive options: '%s' and '%s'") % _opt1 % _opt2);
+    throw std::logic_error(errMsg);
+  }
 }
 

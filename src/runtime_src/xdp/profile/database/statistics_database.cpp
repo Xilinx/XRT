@@ -17,6 +17,8 @@
 #include <vector>
 #include <thread>
 
+#define XDP_SOURCE
+
 #include "xdp/profile/database/statistics_database.h"
 
 namespace xdp {

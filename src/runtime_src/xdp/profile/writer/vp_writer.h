@@ -20,6 +20,8 @@
 #include <fstream>
 #include <string>
 
+#include "xdp/config.h"
+
 namespace xdp {
 
   // Forward declarations
@@ -47,10 +49,10 @@ namespace xdp {
     VPWriter() = delete ;
 
     inline const char* getRawBasename() { return basename.c_str() ; } 
-    virtual void switchFiles() ;
+    XDP_EXPORT virtual void switchFiles() ;
   public:
-    VPWriter(const char* filename) ;
-    virtual ~VPWriter() ;
+    XDP_EXPORT VPWriter(const char* filename) ;
+    XDP_EXPORT virtual ~VPWriter() ;
 
     virtual void write(bool openNewFile = true) = 0 ;
     virtual bool isDeviceWriter() { return false ; } 

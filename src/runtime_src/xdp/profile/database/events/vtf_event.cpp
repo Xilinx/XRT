@@ -17,6 +17,8 @@
 #include <fstream>
 #include <iomanip>
 
+#define XDP_SOURCE
+
 #include "xdp/profile/database/events/vtf_event.h"
 
 namespace xdp {

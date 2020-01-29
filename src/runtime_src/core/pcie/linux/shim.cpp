@@ -28,6 +28,7 @@
 #include "core/common/AlignedAllocator.h"
 
 #include "plugin/xdp/hal_profile.h"
+#include "plugin/xdp/hal_api_interface.h"
 
 
 #include "xclbin.h"
@@ -56,6 +57,7 @@
 #include <sys/syscall.h>
 #include <sys/file.h>
 #include <linux/aio_abi.h>
+#include <asm/mman.h>
 
 #ifdef NDEBUG
 # undef NDEBUG
@@ -743,6 +745,51 @@ int shim::p2pEnable(bool enable, bool force)
     return p2p_enable;
 }
 
+int shim::cmaEnable(bool enable, uint64_t size)
+{
+    int ret = 0;
+
+    if (enable) {
+        uint32_t hugepage_flag = 0;
+
+        drm_xocl_alloc_cma_info cma_info;
+        cma_info.page_sz = size;
+
+        /* Once set MAP_HUGETLB, we have to specify bit[26~31] as size in log
+         * e.g. We like to get 2M huge page, 2M = 2^21, 
+         * 21 = 0x15
+         */
+        if (size == (1 << 30))
+            hugepage_flag = 0x1e;
+        else if (size == (2 << 20))
+            hugepage_flag = 0x15;
+
+        if (!hugepage_flag)
+            return -EINVAL;
+
+
+        void *addr_local = mmap(0x0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | hugepage_flag << MAP_HUGE_SHIFT, 0, 0);
+        if (addr_local == MAP_FAILED) {
+            xrt_logmsg(XRT_ERROR, "Unable to get huge page.");
+            ret = -ENOMEM;
+        } else {
+            cma_info.user_addr = (uint64_t)addr_local;
+        }
+
+        if (!ret) {
+            ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_ALLOC_CMA, &cma_info);
+            if (ret)
+                ret = -errno;
+            munmap((void*)cma_info.user_addr, size);
+        }
+
+    } else {
+        drm_xocl_free_cma_info cma_info = {0};
+        mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_FREE_CMA, &cma_info);
+    }
+
+    return ret;
+}
 /*
  * xclLockDevice()
  */
@@ -1535,6 +1582,19 @@ double shim::xclGetDeviceClockFreqMHz()
   return ((double)clockFreq);
 }
 
+// Get the maximum bandwidth for host reads from the device (in MB/sec)
+// NOTE: for now, set to: (256/8 bytes) * 300 MHz = 9600 MBps
+double shim::xclGetReadMaxBandwidthMBps()
+{
+  return 9600.0;
+}
+
+// Get the maximum bandwidth for host writes to the device (in MB/sec)
+// NOTE: for now, set to: (256/8 bytes) * 300 MHz = 9600 MBps
+double shim::xclGetWriteMaxBandwidthMBps() {
+  return 9600.0;
+}
+
 int shim::xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size)
 {
   auto dev = pcidev::get_dev(mBoardNumber);
@@ -1692,6 +1752,10 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
+#ifdef ENABLE_HAL_PROFILING
+    if (ret != 0) return ret ;
+    LOAD_XCLBIN_CB ;
+#endif
     if (!ret) {
       ret = xrt_core::scheduler::init(handle, buffer);
       START_DEVICE_PROFILING_CB(handle);
@@ -1728,14 +1792,18 @@ int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, con
 
 size_t xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
 {
-//    WRITE_CB;
+#ifdef ENABLE_HAL_PROFILING
+  WRITE_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclWrite(space, offset, hostBuf, size) : -ENODEV;
 }
 
 size_t xclRead(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
 {
-//    READ_CB;
+#ifdef ENABLE_HAL_PROFILING
+  READ_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclRead(space, offset, hostBuf, size) : -ENODEV;
 }
@@ -1774,7 +1842,9 @@ unsigned int xclVersion ()
 
 unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned flags)
 {
-//    ALLOC_BO_CB;
+#ifdef ENABLE_HAL_PROFILING
+  ALLOC_BO_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclAllocBO(size, unused, flags) : -ENODEV;
 }
@@ -1786,7 +1856,9 @@ unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t siz
 }
 
 void xclFreeBO(xclDeviceHandle handle, unsigned int boHandle) {
-//    FREE_BO_CB;
+#ifdef ENABLE_HAL_PROFILING
+  FREE_BO_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     if (!drv) {
         return;
@@ -1796,21 +1868,27 @@ void xclFreeBO(xclDeviceHandle handle, unsigned int boHandle) {
 
 size_t xclWriteBO(xclDeviceHandle handle, unsigned int boHandle, const void *src, size_t size, size_t seek)
 {
-//    WRITE_BO_CB;
+#ifdef ENABLE_HAL_PROFILING
+  WRITE_BO_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclWriteBO(boHandle, src, size, seek) : -ENODEV;
 }
 
 size_t xclReadBO(xclDeviceHandle handle, unsigned int boHandle, void *dst, size_t size, size_t skip)
 {
-//    READ_BO_CB;
+#ifdef ENABLE_HAL_PROFILING
+  READ_BO_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclReadBO(boHandle, dst, size, skip) : -ENODEV;
 }
 
 void *xclMapBO(xclDeviceHandle handle, unsigned int boHandle, bool write)
 {
-//    MAP_BO_CB;
+#ifdef ENABLE_HAL_PROFILING
+  MAP_BO_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclMapBO(boHandle, write) : nullptr;
 }
@@ -1823,6 +1901,9 @@ int xclUnmapBO(xclDeviceHandle handle, unsigned int boHandle, void* addr)
 
 int xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset)
 {
+#ifdef ENABLE_HAL_PROFILING
+  SYNC_BO_CB ;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclSyncBO(boHandle, dir, size, offset) : -ENODEV;
 }
@@ -1869,6 +1950,12 @@ int xclP2pEnable(xclDeviceHandle handle, bool enable, bool force)
     return drv ? drv->p2pEnable(enable, force) : -ENODEV;
 }
 
+int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t sz)
+{
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
+    return drv ? drv->cmaEnable(enable, sz) : -ENODEV;
+}
+
 int xclBootFPGA(xclDeviceHandle handle)
 {
     // Not doable from user side. Can be added to xbmgmt later.
@@ -1892,14 +1979,18 @@ unsigned int xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
 
 ssize_t xclUnmgdPwrite(xclDeviceHandle handle, unsigned flags, const void *buf, size_t count, uint64_t offset)
 {
-//    UNMGD_PWRITE_CB;
+#ifdef ENABLE_HAL_PROFILING
+  UNMGD_PWRITE_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclUnmgdPwrite(flags, buf, count, offset) : -ENODEV;
 }
 
 ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf, size_t count, uint64_t offset)
 {
-//    UNMGD_PREAD_CB;
+#ifdef ENABLE_HAL_PROFILING
+  UNMGD_PREAD_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclUnmgdPread(flags, buf, count, offset) : -ENODEV;
 }
@@ -2079,6 +2170,19 @@ double xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
 {
   xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclGetDeviceClockFreqMHz() : 0.0;
+}
+
+double xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
+  return drv ? drv->xclGetReadMaxBandwidthMBps() : 0.0;
+}
+
+
+double xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
+  return drv ? drv->xclGetWriteMaxBandwidthMBps() : 0.0;
 }
 
 int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev,

@@ -73,9 +73,6 @@ std::string format(const std::string& format, Args ... args) {
                         const boost::property_tree::ptree & _pt);
 
   // ---------
-  std::string create_usage_string( const std::string &_executableName,
-                                   const std::string &_subCommand,
-                                   const boost::program_options::options_description &_od);
   void wrap_paragraph( const std::string & _unformattedString, 
                        unsigned int _indentWidth, 
                        unsigned int _columnWidth, 
@@ -86,11 +83,6 @@ std::string format(const std::string& format, Args ... args) {
                         unsigned int _columnWidth, 
                         bool _indentFirstLine,
                         std::string &_formattedString);
-  void subcommand_help( const std::string &_executableName,
-                        const std::string &_subCommand,
-                        const std::string &_description, 
-                        const boost::program_options::options_description &_od, 
-                        const std::string &_examples);
 };
 
 #endif

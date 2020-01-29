@@ -30,6 +30,6 @@
 	ospi_versal {
 		compatible = "xlnx,ospi_versal";
 		status = "okay";
-		reg = <0x201 0x3000000 0x0 0x10000>;
+		reg = <0x201 0x3008000 0x0 0x8000>;
 	};
 };

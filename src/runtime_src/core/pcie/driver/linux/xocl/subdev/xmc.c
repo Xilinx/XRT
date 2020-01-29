@@ -1,7 +1,7 @@
 /*
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
- * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
  *
  * Authors: chienwei@xilinx.com
  *
@@ -93,6 +93,8 @@
 #define	XMC_HOST_MSG_ERROR_REG		0x304
 #define	XMC_HOST_MSG_HEADER_REG		0x308
 #define	XMC_HOST_NEW_FEATURE_REG1	0xB20
+#define	XMC_CLK_THROTTLING_PWR_MGMT_REG		 0xB24
+#define	XMC_CLK_THROTTLING_PWR_MGMT_REG_PWR_MASK 0xFF
 
 #define	VALID_ID			0x74736574
 
@@ -112,6 +114,7 @@
 #define	XMC_CLOCK_SCALING_MODE_REG	0x10
 #define	XMC_CLOCK_SCALING_MODE_POWER	0x0
 #define	XMC_CLOCK_SCALING_MODE_TEMP	0x1
+#define	XMC_CLOCK_SCALING_MODE_POWER_TEMP	0x2
 
 #define	XMC_CLOCK_SCALING_POWER_REG	0x18
 #define	XMC_CLOCK_SCALING_POWER_TARGET_MASK 0xFF
@@ -180,6 +183,8 @@ enum sensor_val_kind {
 	(xmc->base_addrs[IO_GPIO] ?		\
 	XOCL_WRITE_REG32(val, xmc->base_addrs[IO_GPIO] + off) : ((void)0))
 
+#define SCHED_EXIST(xmc)			\
+	(xmc->base_addrs[IO_CQ] ? true : false)
 #define	READ_CQ(xmc, off)			\
 	(xmc->base_addrs[IO_CQ] ?		\
 	XOCL_READ_REG32(xmc->base_addrs[IO_CQ] + off) : 0)
@@ -313,6 +318,9 @@ struct xocl_xmc {
 	ktime_t			cache_expires;
 	/* Runtime clock scaling enabled status */
 	bool			runtime_cs_enabled;
+	u32			sc_presence;
+	/* Runtime clock scaling support on platform */
+	bool			cs_on_ptfm;
 
 	/* XMC mailbox support. */
 	struct mutex		mbx_lock;
@@ -347,6 +355,7 @@ static int stop_xmc(struct platform_device *pdev);
 static void xmc_clk_scale_config(struct platform_device *pdev);
 static int xmc_load_board_info(struct xocl_xmc *xmc);
 static int cmc_access_ops(struct platform_device *pdev, int flags);
+static bool scaling_condition_check(struct xocl_xmc *xmc, struct device *dev);
 
 static void set_sensors_data(struct xocl_xmc *xmc, struct xcl_sensor *sensors)
 {
@@ -836,6 +845,14 @@ static void xmc_bdinfo(struct platform_device *pdev, enum data_kind kind,
 		}
 	}
 }
+
+static bool nosc_xmc(struct platform_device *pdev)
+{
+	struct xocl_dev_core *core = xocl_get_xdev(pdev);
+
+	return core->priv.flags & XOCL_DSAFLAG_NOSC;
+}
+
 static bool autonomous_xmc(struct platform_device *pdev)
 {
 	struct xocl_dev_core *core = xocl_get_xdev(pdev);
@@ -940,6 +957,32 @@ uint64_t xmc_get_power(struct platform_device *pdev, enum sensor_val_kind kind)
 	val = (u64)v_pex * c_pex + (u64)v_aux * c_aux + (u64)v_3v3 * c_3v3;
 
 	return val;
+}
+
+static void runtime_clk_scale_disable(struct xocl_xmc *xmc)
+{
+	u32 cntrl;
+
+	cntrl = READ_RUNTIME_CS(xmc, XMC_CLOCK_CONTROL_REG);
+	cntrl &= ~XMC_CLOCK_SCALING_EN_MASK;
+	WRITE_RUNTIME_CS(xmc, cntrl, XMC_CLOCK_CONTROL_REG);
+
+	cntrl = READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1);
+	cntrl &= ~(1 << 28);
+	WRITE_REG32(xmc, cntrl, XMC_HOST_NEW_FEATURE_REG1);
+}
+
+static void runtime_clk_scale_enable(struct xocl_xmc *xmc)
+{
+	u32 cntrl;
+
+	cntrl = READ_RUNTIME_CS(xmc, XMC_CLOCK_CONTROL_REG);
+	cntrl |= XMC_CLOCK_SCALING_EN;
+	WRITE_RUNTIME_CS(xmc, cntrl, XMC_CLOCK_CONTROL_REG);
+
+	cntrl = READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1);
+	cntrl |= (1 << 28);
+	WRITE_REG32(xmc, cntrl, XMC_HOST_NEW_FEATURE_REG1);
 }
 
 /*
@@ -1176,6 +1219,21 @@ static ssize_t cache_expire_secs_store(struct device *dev,
 }
 static DEVICE_ATTR_RW(cache_expire_secs);
 
+static ssize_t sensor_update_timestamp_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
+	u64 val = 0;
+
+	mutex_lock(&xmc->xmc_lock);
+	if (!XMC_PRIVILEGED(xmc))
+		val = ktime_to_ms(xmc->cache_expires);
+
+	mutex_unlock(&xmc->xmc_lock);
+	return sprintf(buf, "%llu\n", val);
+}
+static DEVICE_ATTR_RO(sensor_update_timestamp);
+
 static int get_temp_by_m_tag(struct xocl_xmc *xmc, char *m_tag)
 {
 	/*
@@ -1247,16 +1305,106 @@ static int get_temp_by_m_tag(struct xocl_xmc *xmc, char *m_tag)
 }
 
 /* Runtime clock scaling sysfs node */
+static bool scaling_condition_check(struct xocl_xmc *xmc, struct device *dev)
+{
+	if (!xmc->runtime_cs_enabled) {
+		if (!XMC_PRIVILEGED(xmc))
+			xocl_dbg(dev, "runtime clock scaling is not supported in non privileged mode\n");
+		else if (xmc->cs_on_ptfm)
+			xocl_warn(dev, "runtime clock scaling is not enabled\n");
+		else
+			xocl_warn(dev, "runtime clock scaling is not supported\n");
+		return false;
+	}
+	return true;
+}
+
+static ssize_t scaling_threshold_power_override_en_show(struct device *dev,
+	struct device_attribute *da, char *buf)
+{
+	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
+	u32 val = 0;
+	bool cs_en;
+
+	cs_en = scaling_condition_check(xmc, dev);
+	if (!cs_en)
+		return sprintf(buf, "%d\n", val);
+
+	mutex_lock(&xmc->xmc_lock);
+	val = READ_REG32(xmc, XMC_CLK_THROTTLING_PWR_MGMT_REG);
+	val = (val >> 31) & 0x1;
+	mutex_unlock(&xmc->xmc_lock);
+
+	return sprintf(buf, "%u\n", val);
+}
+static DEVICE_ATTR_RO(scaling_threshold_power_override_en);
+
+static ssize_t scaling_threshold_power_override_show(struct device *dev,
+	struct device_attribute *da, char *buf)
+{
+	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
+	u32 val = 0;
+	bool cs_en;
+
+	cs_en = scaling_condition_check(xmc, dev);
+	if (!cs_en)
+		return sprintf(buf, "%d\n", val);
+
+	mutex_lock(&xmc->xmc_lock);
+	val = READ_REG32(xmc, XMC_CLK_THROTTLING_PWR_MGMT_REG);
+	val &= XMC_CLK_THROTTLING_PWR_MGMT_REG_PWR_MASK;
+	mutex_unlock(&xmc->xmc_lock);
+
+	return sprintf(buf, "%uW\n", val);
+}
+
+static ssize_t scaling_threshold_power_override_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
+	u32 val, val2, val3;
+	bool cs_en;
+
+	cs_en = scaling_condition_check(xmc, dev);
+	if (!cs_en)
+		return count;
+
+	if (kstrtou32(buf, 10, &val) == -EINVAL)
+		return -EINVAL;
+
+	mutex_lock(&xmc->xmc_lock);
+	val2 = READ_REG32(xmc, XMC_CLK_THROTTLING_PWR_MGMT_REG);
+	val2 &= ~XMC_CLK_THROTTLING_PWR_MGMT_REG_PWR_MASK;
+	val3 = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_POWER_REG);
+	val3 &= ~XMC_CLOCK_SCALING_POWER_TARGET_MASK;
+	if (val > 0) { //enable max power override mode
+		val2 |= (0x1 << 31);
+		val2 |= (val & XMC_CLK_THROTTLING_PWR_MGMT_REG_PWR_MASK);
+	} else { //disable max power override mode
+		val2 &= ~(0x1 << 31);
+		val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_THRESHOLD_REG);
+		val = (val >> XMC_CLOCK_SCALING_POWER_THRESHOLD_POS) &
+			XMC_CLOCK_SCALING_POWER_THRESHOLD_MASK;
+	}
+	val3 |= (val & XMC_CLOCK_SCALING_POWER_TARGET_MASK);
+	WRITE_RUNTIME_CS(xmc, val3, XMC_CLOCK_SCALING_POWER_REG);
+	WRITE_REG32(xmc, val2, XMC_CLK_THROTTLING_PWR_MGMT_REG);
+	mutex_unlock(&xmc->xmc_lock);
+
+	return count;
+}
+static DEVICE_ATTR_RW(scaling_threshold_power_override);
+
 static ssize_t scaling_governor_show(struct device *dev,
 	struct device_attribute *da, char *buf)
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 mode;
-	char val[10];
+	char val[20];
+	bool cs_en;
 
-	if (!xmc->runtime_cs_enabled) {
-		xocl_warn(dev, "%s: runtime clock scaling is not supported\n",
-			 __func__);
+	cs_en = scaling_condition_check(xmc, dev);
+	if (!cs_en) {
 		strcpy(val, "NULL");
 		return sprintf(buf, "%s\n", val);
 	}
@@ -1272,6 +1420,9 @@ static ssize_t scaling_governor_show(struct device *dev,
 	case 1:
 		strcpy(val, "temp");
 		break;
+	case 2:
+		strcpy(val, "power_temp");
+		break;
 	}
 
 	return sprintf(buf, "%s\n", val);
@@ -1282,20 +1433,21 @@ static ssize_t scaling_governor_store(struct device *dev,
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
 	u32 val;
+	bool cs_en;
 
 	/* Check if clock scaling feature enabled */
-	if (!xmc->runtime_cs_enabled) {
-		xocl_warn(dev, "%s: runtime clock scaling is not supported\n",
-			 __func__);
+	cs_en = scaling_condition_check(xmc, dev);
+	if (!cs_en)
 		return count;
-	}
 
 	if (strncmp(buf, "power", strlen("power")) == 0)
 		val = XMC_CLOCK_SCALING_MODE_POWER;
 	else if (strncmp(buf, "temp", strlen("temp")) == 0)
 		val = XMC_CLOCK_SCALING_MODE_TEMP;
+	else if (strncmp(buf, "power_temp", strlen("power_temp")) == 0)
+		val = XMC_CLOCK_SCALING_MODE_POWER_TEMP;
 	else {
-		xocl_err(dev, "valid modes [power, temp]\n");
+		xocl_err(dev, "valid modes [power, temp, power_temp]\n");
 		return -EINVAL;
 	}
 
@@ -1307,13 +1459,43 @@ static ssize_t scaling_governor_store(struct device *dev,
 }
 static DEVICE_ATTR_RW(scaling_governor);
 
+static ssize_t sc_presence_show(struct device *dev,
+	struct device_attribute *da, char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d\n", xmc->sc_presence);
+}
+static DEVICE_ATTR_RO(sc_presence);
+
+static ssize_t scaling_enabled_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
+	bool cs_en;
+
+	/* Check if clock scaling feature enabled */
+	cs_en = scaling_condition_check(xmc, dev);
+	if (!cs_en)
+		return count;
+
+	if (strncmp(buf, "enable", strlen("enable")) == 0)
+		runtime_clk_scale_enable(xmc);
+	else
+		runtime_clk_scale_disable(xmc);
+
+	return count;
+}
+
 static ssize_t scaling_enabled_show(struct device *dev,
 	struct device_attribute *da, char *buf)
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val = 0;
+	bool cs_en;
 
-	if (!xmc->runtime_cs_enabled)
+	cs_en = scaling_condition_check(xmc, dev);
+	if (!cs_en)
 		return sprintf(buf, "%d\n", val);
 
 	mutex_lock(&xmc->xmc_lock);
@@ -1326,19 +1508,19 @@ static ssize_t scaling_enabled_show(struct device *dev,
 	mutex_unlock(&xmc->xmc_lock);
 	return sprintf(buf, "%d\n", val);
 }
-static DEVICE_ATTR_RO(scaling_enabled);
+static DEVICE_ATTR_RW(scaling_enabled);
 
 static ssize_t hwmon_scaling_target_power_show(struct device *dev,
 	struct device_attribute *da, char *buf)
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val = 0;
+	bool cs_en;
 
-	if (!xmc->runtime_cs_enabled) {
-		xocl_warn(dev, "%s: runtime clock scaling is not supported\n",
-			 __func__);
+	cs_en = scaling_condition_check(xmc, dev);
+	if (!cs_en)
 		return sprintf(buf, "%d\n", val);
-	}
+
 	mutex_lock(&xmc->xmc_lock);
 	val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_POWER_REG);
 	val &= XMC_CLOCK_SCALING_POWER_TARGET_MASK;
@@ -1353,12 +1535,11 @@ static ssize_t hwmon_scaling_target_power_store(struct device *dev,
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
 	u32 val, val2, threshold;
+	bool cs_en;
 
-	if (!xmc->runtime_cs_enabled) {
-		xocl_warn(dev, "%s: runtime clock scaling is not supported\n",
-			 __func__);
+	cs_en = scaling_condition_check(xmc, dev);
+	if (!cs_en)
 		return count;
-	}
 
 	if (kstrtou32(buf, 10, &val) == -EINVAL)
 		return -EINVAL;
@@ -1390,12 +1571,12 @@ static ssize_t hwmon_scaling_target_temp_show(struct device *dev,
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val = 0;
+	bool cs_en;
 
-	if (!xmc->runtime_cs_enabled) {
-		xocl_warn(dev, "%s: runtime clock scaling is not supported\n",
-			 __func__);
+	cs_en = scaling_condition_check(xmc, dev);
+	if (!cs_en)
 		return sprintf(buf, "%d\n", val);
-	}
+
 	mutex_lock(&xmc->xmc_lock);
 	val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_TEMP_REG);
 	val &= XMC_CLOCK_SCALING_TEMP_TARGET_MASK;
@@ -1410,13 +1591,12 @@ static ssize_t hwmon_scaling_target_temp_store(struct device *dev,
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
 	u32 val, val2, threshold;
+	bool cs_en;
 
 	/* Check if clock scaling feature enabled */
-	if (!xmc->runtime_cs_enabled) {
-		xocl_warn(dev, "%s: runtime clock scaling is not supported\n",
-			 __func__);
+	cs_en = scaling_condition_check(xmc, dev);
+	if (!cs_en)
 		return count;
-	}
 
 	if (kstrtou32(buf, 10, &val) == -EINVAL)
 		return -EINVAL;
@@ -1446,12 +1626,12 @@ static ssize_t hwmon_scaling_threshold_temp_show(struct device *dev,
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val = 0;
+	bool cs_en;
 
-	if (!xmc->runtime_cs_enabled) {
-		xocl_warn(dev, "%s: runtime clock scaling is not supported\n",
-			 __func__);
+	cs_en = scaling_condition_check(xmc, dev);
+	if (!cs_en)
 		return sprintf(buf, "%d\n", val);
-	}
+
 	mutex_lock(&xmc->xmc_lock);
 	val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_THRESHOLD_REG);
 	val = (val >> XMC_CLOCK_SCALING_TEMP_THRESHOLD_POS) &
@@ -1466,17 +1646,22 @@ static ssize_t hwmon_scaling_threshold_power_show(struct device *dev,
 	struct device_attribute *da, char *buf)
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
-	u32 val = 0;
+	u32 val = 0, val2;
+	bool cs_en;
 
-	if (!xmc->runtime_cs_enabled) {
-		xocl_warn(dev, "%s: runtime clock scaling is not supported\n",
-			 __func__);
+	cs_en = scaling_condition_check(xmc, dev);
+	if (!cs_en)
 		return sprintf(buf, "%d\n", val);
-	}
+
 	mutex_lock(&xmc->xmc_lock);
-	val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_THRESHOLD_REG);
-	val = (val >> XMC_CLOCK_SCALING_POWER_THRESHOLD_POS) &
-		XMC_CLOCK_SCALING_POWER_THRESHOLD_MASK;
+	val2 = READ_REG32(xmc, XMC_CLK_THROTTLING_PWR_MGMT_REG);
+	if (val2 & (0x1 << 31)) {
+		val = val2 & XMC_CLK_THROTTLING_PWR_MGMT_REG_PWR_MASK;
+	} else {
+		val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_THRESHOLD_REG);
+		val = (val >> XMC_CLOCK_SCALING_POWER_THRESHOLD_POS) &
+			XMC_CLOCK_SCALING_POWER_THRESHOLD_MASK;
+	}
 	val = val * 1000000;
 	mutex_unlock(&xmc->xmc_lock);
 
@@ -1574,6 +1759,10 @@ static struct attribute *xmc_attrs[] = {
 	&dev_attr_max_power.attr,
 	&dev_attr_fan_presence.attr,
 	&dev_attr_config_mode.attr,
+	&dev_attr_sc_presence.attr,
+	&dev_attr_sensor_update_timestamp.attr,
+	&dev_attr_scaling_threshold_power_override.attr,
+	&dev_attr_scaling_threshold_power_override_en.attr,
 	SENSOR_SYSFS_NODE_ATTRS,
 	REG_SYSFS_NODE_ATTRS,
 	NULL,
@@ -2115,7 +2304,8 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 			WRITE_REG32(xmc, 1, XMC_STOP_CONFIRM_REG);
 		}
 		/* Need to check if ERT is loaded before we attempt to stop it */
-		if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0))) {
+		if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0)) &&
+			SCHED_EXIST(xmc)) {
 			reg_val = READ_CQ(xmc, 0);
 			if (!(reg_val & ERT_EXIT_ACK)) {
 				xocl_info(&xmc->pdev->dev,
@@ -2137,6 +2327,7 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 			xmc->state = XMC_STATE_ERROR;
 			return -ETIMEDOUT;
 		} else if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0)) &&
+			 SCHED_EXIST(xmc) &&
 			 !(READ_CQ(xmc, 0) & ERT_EXIT_ACK)) {
 			while (retry++ < MAX_ERT_RETRY &&
 				!(READ_CQ(xmc, 0) & ERT_EXIT_ACK))
@@ -2192,7 +2383,7 @@ static int stop_xmc(struct platform_device *pdev)
 static int load_xmc(struct xocl_xmc *xmc)
 {
 	int retry = 0;
-	u32 reg_val = 0;
+	u32 reg_val = 0, reg_map_ready;
 	int ret = 0;
 	void *xdev_hdl;
 
@@ -2224,13 +2415,13 @@ static int load_xmc(struct xocl_xmc *xmc)
 	xdev_hdl = xocl_get_xdev(xmc->pdev);
 
 	/* Load XMC and ERT Image */
-	if (xocl_mb_mgmt_on(xdev_hdl)) {
+	if (xocl_mb_mgmt_on(xdev_hdl) && xmc->mgmt_binary_length) {
 		xocl_info(&xmc->pdev->dev, "Copying XMC image len %d",
 			xmc->mgmt_binary_length);
 		COPY_MGMT(xmc, xmc->mgmt_binary, xmc->mgmt_binary_length);
 	}
 
-	if (xocl_mb_sched_on(xdev_hdl)) {
+	if (xocl_mb_sched_on(xdev_hdl) && xmc->sche_binary_length) {
 		xocl_info(&xmc->pdev->dev, "Copying scheduler image len %d",
 			xmc->sche_binary_length);
 		COPY_SCHE(xmc, xmc->sche_binary, xmc->sche_binary_length);
@@ -2248,27 +2439,51 @@ static int load_xmc(struct xocl_xmc *xmc)
 
 	/* Wait for XMC to start
 	 * Note that ERT will start long before XMC so we don't check anything
+	 *
+	 * If dev tree has CMC_MUTEX register defined, we rely on the
+	 * regmap_ready bit to check whether cmc is ready, otherwise,
+	 * we still use the legacy 'init done' bit in REGMAP
 	 */
-	reg_val = READ_REG32(xmc, XMC_STATUS_REG);
-	if (!(reg_val & STATUS_MASK_INIT_DONE)) {
-		xocl_info(&xmc->pdev->dev, "Waiting for XMC to finish init...");
+	ret = xocl_iores_read32(xdev_hdl, XOCL_SUBDEV_LEVEL_BLD,
+		IORES_CMC_MUTEX, XOCL_RES_OFFSET_CHANNEL2, &reg_map_ready);
+	if (!ret) {
 		retry = 0;
-		while (retry++ < MAX_XMC_RETRY &&
-			!(READ_REG32(xmc, XMC_STATUS_REG) &
-			STATUS_MASK_INIT_DONE))
+		while (!ret && retry++ < MAX_XMC_RETRY &&
+			!(reg_map_ready & 0x2)) {
 			msleep(RETRY_INTERVAL);
-		if (retry >= MAX_XMC_RETRY) {
-			xocl_err(&xmc->pdev->dev,
-				"XMC did not finish init sequence!");
-			xocl_err(&xmc->pdev->dev,
-				"Error Reg 0x%x",
-				READ_REG32(xmc, XMC_ERROR_REG));
-			xocl_err(&xmc->pdev->dev,
-				"Status Reg 0x%x",
-				READ_REG32(xmc, XMC_STATUS_REG));
+			ret = xocl_iores_read32(xdev_hdl, XOCL_SUBDEV_LEVEL_BLD,
+				IORES_CMC_MUTEX, XOCL_RES_OFFSET_CHANNEL2, &reg_map_ready);
+                }
+		if (!ret && (reg_map_ready & 0x2)) {
+			xocl_info(&xmc->pdev->dev, "REGMAP ready");
+		} else {
+			xocl_info(&xmc->pdev->dev, "REGMAP not ready : %d", ret);
 			ret = -ETIMEDOUT;
 			xmc->state = XMC_STATE_ERROR;
 			goto out;
+		}
+	} else {
+		reg_val = READ_REG32(xmc, XMC_STATUS_REG);
+		if (!(reg_val & STATUS_MASK_INIT_DONE)) {
+			xocl_info(&xmc->pdev->dev, "Waiting for XMC to finish init...");
+			retry = 0;
+			while (retry++ < MAX_XMC_RETRY &&
+				!(READ_REG32(xmc, XMC_STATUS_REG) &
+				STATUS_MASK_INIT_DONE))
+				msleep(RETRY_INTERVAL);
+			if (retry >= MAX_XMC_RETRY) {
+				xocl_err(&xmc->pdev->dev,
+					"XMC did not finish init sequence!");
+				xocl_err(&xmc->pdev->dev,
+					"Error Reg 0x%x",
+					READ_REG32(xmc, XMC_ERROR_REG));
+				xocl_err(&xmc->pdev->dev,
+					"Status Reg 0x%x",
+					READ_REG32(xmc, XMC_STATUS_REG));
+				ret = -ETIMEDOUT;
+				xmc->state = XMC_STATE_ERROR;
+				goto out;
+			}
 		}
 	}
 	xocl_info(&xmc->pdev->dev, "XMC and scheduler Enabled, retry %d",
@@ -2410,35 +2625,28 @@ static int cmc_access_ops(struct platform_device *pdev, int flags)
 	int err = 0;
 
 	if (flags == 1) {
+		uint64_t addr;
 		/*
 		 * for grant access (flags = 1), we are looking for new
 		 * features, if no new features, skip the grant operation
 		 */
-		err = xocl_iores_read32(xdev, XOCL_SUBDEV_LEVEL_URP,
-		    IORES_GAPPING, 0x0, &val);
-		if (err == -ENODEV) {
+		addr = xocl_iores_get_offset(xdev, IORES_GAPPING);
+		if (addr == (uint64_t)-1) {
 			xocl_xdev_info(xdev, "No %s resource, skip.",
 			    NODE_GAPPING);
 			return 0;
-		} else if (err) {
-			xocl_xdev_err(xdev, "Read %s error %d.",
-			    NODE_GAPPING, err);
-			return err;
 		}
 		/*
 		 * Dancing with CMC here:
 		 * 0-24 bit is address read from xclbin
-		 * 28 is flag for enable
-		 * 29 is flag for present
+		 * 28 is flag for enable, set to 0x0
+		 * 29 is flag for present, set to 0x1
 		 * Note: seems that we should write all data at one time.
 		 */
-		val = (val & 0x01FFFFFF) | (1 << 28) | (1 << 29);
+		val = (addr & 0x01FFFFFF) | (1 << 29);
 		WRITE_REG32(xmc, val, XMC_HOST_NEW_FEATURE_REG1);
-		if (val != READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1)) {
-			xocl_xdev_info(xdev, "%s of New Feature Table expects: "
-			    "0x%x, but read back as: 0x%x", NODE_GAPPING, val,
-			    READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1));
-		}
+		xocl_xdev_info(xdev, "%s is 0x%llx, set New Feature Table to 0x%x\n",
+		    NODE_GAPPING, addr, val);
 	}
 
 	grant = (u32)flags & 0x1;
@@ -2611,7 +2819,7 @@ static int xmc_probe(struct platform_device *pdev)
 		if (xmc->base_addrs[IO_REG]) {
 			err = mgmt_sysfs_create_xmc_mini(pdev);
 			if (err)
-				goto failed;	
+				goto failed;
 			xmc->mini_sysfs_created = true;
 		} else {
 			xocl_err(&pdev->dev, "Empty resources");
@@ -2654,15 +2862,30 @@ static int xmc_probe(struct platform_device *pdev)
 	}
 
 	xmc->cache_expire_secs = XMC_DEFAULT_EXPIRE_SECS;
+	xmc->sc_presence = 1;
+	if (nosc_xmc(xmc->pdev))
+		xmc->sc_presence = 0;
 
 	/*
 	 * Enabling XMC clock scaling support.
 	 * clk scaling can only be enabled on mgmt side, why do we set
 	 * the enabled bit in feature ROM on user side at all?
 	 */
-	if (XMC_PRIVILEGED(xmc) && xocl_clk_scale_on(xdev_hdl)) {
-		xmc->runtime_cs_enabled = true;
-		xocl_info(&pdev->dev, "Runtime clock scaling is supported.\n");
+	if (XMC_PRIVILEGED(xmc)) {
+		if (!xmc->sc_presence) {
+			if (xocl_clk_scale_on(xdev_hdl)) {
+				xmc->runtime_cs_enabled = true;
+				xmc->cs_on_ptfm = true;
+			}
+		} else {
+			u32 reg = READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1);
+			if (reg & (1 << 29)) {
+				xmc->runtime_cs_enabled = true;
+				xmc->cs_on_ptfm = true;
+			}
+		}
+		if (xmc->runtime_cs_enabled)
+			xocl_info(&pdev->dev, "Runtime clock scaling is supported.\n");
 	}
 
 	return 0;
@@ -2824,6 +3047,9 @@ static bool is_sc_ready(struct xocl_xmc *xmc, bool quiet)
 
 	if (autonomous_xmc(xmc->pdev))
 		return true;
+
+	if (nosc_xmc(xmc->pdev))
+		return false;
 
 	safe_read32(xmc, XMC_STATUS_REG, &val);
 	val >>= 28;

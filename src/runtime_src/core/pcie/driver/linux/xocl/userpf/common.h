@@ -102,6 +102,7 @@ enum {
 	XOCL_WORK_RESET,
 	XOCL_WORK_PROGRAM_SHELL,
 	XOCL_WORK_REFRESH_SUBDEV,
+	XOCL_WORK_SHUTDOWN,		/* shutdown will do pci hot reset */
 	XOCL_WORK_NUM,
 };
 
@@ -213,13 +214,21 @@ int xocl_hot_reset_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 int xocl_reclock_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
+int xocl_alloc_cma_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
+int xocl_free_cma_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
 
 /* sysfs functions */
 int xocl_init_sysfs(struct device *dev);
 void xocl_fini_sysfs(struct device *dev);
 
 /* helper functions */
-int xocl_hot_reset(struct xocl_dev *xdev, bool force);
+enum {
+	XOCL_RESET_FORCE = 1,
+	XOCL_RESET_SHUTDOWN = 2,
+};
+int xocl_hot_reset(struct xocl_dev *xdev, u32 flag);
 void xocl_p2p_fini(struct xocl_dev *xdev, bool recov_bar_sz);
 int xocl_p2p_init(struct xocl_dev *xdev);
 int xocl_p2p_reserve_release_range(struct xocl_dev *xdev,
@@ -238,9 +247,10 @@ static inline int xocl_queue_work(struct xocl_dev *xdev, int op, int delay)
 	int ret = 0;
 
 	mutex_lock(&xdev->wq_lock);
-	if (xdev->wq)
-		ret = queue_delayed_work(xdev->wq, &xdev->works[op].work,
-			msecs_to_jiffies(delay));
+	if (xdev->wq) {
+		ret = queue_delayed_work(xdev->wq,
+			&xdev->works[op].work, msecs_to_jiffies(delay));
+	}
 	mutex_unlock(&xdev->wq_lock);
 
 	return ret;

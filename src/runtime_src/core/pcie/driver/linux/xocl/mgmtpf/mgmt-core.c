@@ -59,11 +59,6 @@ MODULE_PARM_DESC(minimum_initialization,
 
 #define	MAX_DYN_SUBDEV		1024
 
-#define	CLK_MAX_VALUE		6400
-#define	CLK_SHUTDOWN_BIT	0x1
-#define	DEBUG_CLK_SHUTDOWN_BIT	0x2
-#define	VALID_CLKSHUTDOWN_BITS	(CLK_SHUTDOWN_BIT|DEBUG_CLK_SHUTDOWN_BIT)
-
 static dev_t xclmgmt_devnode;
 struct class *xrt_class;
 
@@ -448,57 +443,32 @@ static int health_check_cb(void *data)
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)data;
 	struct xcl_mailbox_req mbreq = { 0 };
 	bool tripped, latched = false;
-	void __iomem *shutdown_clk = xocl_iores_get_base(lro, IORES_CLKSHUTDOWN);
-	uint32_t clk_status, ucs_status;
-	struct ucs_control_status_ch1 *ucs_status_ch1;
 	int err;
 
 	if (!health_check)
 		return 0;
 
-	if (shutdown_clk) {
-		clk_status = XOCL_READ_REG32(shutdown_clk);
-		/* BIT0:latch bit, BIT1:Debug bit */
-		if (!(clk_status & (~VALID_CLKSHUTDOWN_BITS))) {
-			latched = clk_status & CLK_SHUTDOWN_BIT;
-			if (latched)
-				mgmt_err(lro, "Compute-Unit clocks have been stopped! Power or Temp may exceed limits, notify peer");
-		}
-	} else {
-		/* this is R2.0 system */
-		err = xocl_iores_read32(lro, XOCL_SUBDEV_LEVEL_URP,
-		    IORES_UCS_CONTROL_STATUS, XOCL_RES_OFFSET_CHANNEL1, &ucs_status);
-		if (err) {
-			if (err != -ENODEV)
-				mgmt_err(lro, "Read %s error %d.",
-				    NODE_UCS_CONTROL_STATUS, err);
-		} else {
-			ucs_status_ch1 = (struct ucs_control_status_ch1 *)&ucs_status;
-			if (ucs_status_ch1->shutdown_clocks_latched) {
-				mgmt_err(lro, "Critical temperature or power event, ULP kernel clocks have been stopped, reload the ULP to continue.");
-				latched = true;
-			} else if (ucs_status_ch1->clock_throttling_average > CLK_MAX_VALUE) {
-				mgmt_err(lro, "ULP kernel clocks %d exceeds expected maximum value %d.",
-				    ucs_status_ch1->clock_throttling_average, CLK_MAX_VALUE);
-			} else if (ucs_status_ch1->clock_throttling_average) {
-				mgmt_err(lro, "ULP kernel clocks throttled at %d%%.",
-				    (ucs_status_ch1->clock_throttling_average / CLK_MAX_VALUE) * 100);
-			}
-		}
-	}
+	tripped = xocl_af_check(lro, NULL);
+	if (tripped)
+		goto skip_checks;
+	
+	(void) xocl_clock_status(lro, &latched);
 
+	check_sensor(lro);
+
+skip_checks:
 	mbreq.req = XCL_MAILBOX_REQ_FIREWALL;
 
-	tripped = xocl_af_check(lro, NULL);
-
-	if (!tripped)
-		check_sensor(lro);
-
-	/* Press doomsday button */
 	if (latched || tripped) {
-		mgmt_err(lro, "Card is in a Bad state, please issue xbutil reset");
-		(void) xocl_peer_notify(lro, &mbreq, sizeof(struct xcl_mailbox_req));
+		if (!lro->reset_requested) {
+			mgmt_err(lro, "Card is in a Bad state, notify userpf");
+			err = xocl_peer_notify(lro, &mbreq, sizeof(mbreq));
+			if (!err)
+				lro->reset_requested = true;
+		} else
+			mgmt_err(lro, "Card requires pci hot reset");
 	}
+
 	return 0;
 }
 
@@ -1270,7 +1240,9 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_firewall,
 	xocl_init_axigate,
 	xocl_init_icap,
+	xocl_init_clock,
 	xocl_init_mig,
+	xocl_init_ert,
 	xocl_init_xmc,
 	xocl_init_dna,
 	xocl_init_fmgr,
@@ -1292,7 +1264,9 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_firewall,
 	xocl_fini_axigate,
 	xocl_fini_icap,
+	xocl_fini_clock,
 	xocl_fini_mig,
+	xocl_fini_ert,
 	xocl_fini_xmc,
 	xocl_fini_dna,
 	xocl_fini_fmgr,

@@ -165,7 +165,7 @@ void Mpd::run()
             hotreset_msg req_msg;
             int ret = hotreset_q_req->getMsg(1, req_msg);
             if (ret) //timeout
-                    continue;
+                continue;
 
             if (req_msg.type == REMOVE_REQ) {
                 syslog(LOG_INFO, "receive req to close mailbox: %s", req_msg.sysfs_name.c_str());
@@ -195,7 +195,6 @@ void Mpd::stop()
         syslog(LOG_INFO, "%s getMsg thread exit", t.first.c_str());
         t.second.join();
     }
-
 
     if (plugin_fini)
         (*plugin_fini)(plugin_cbs.mpc_cookie);
@@ -527,6 +526,8 @@ void Mpd::mpd_getMsg(size_t index)
             syslog(LOG_ERR, "failed to mark mgmt as online");
     }
 
+    add_done[sysfs_name] = true;
+
     struct queue_msg msg = {
         .localFd = mbxfd,
         .remoteFd = msdfd,
@@ -585,7 +586,8 @@ void Mpd::mpd_getMsg(size_t index)
 
     if (msdfd > 0)     
         close(msdfd);
-    dev.log(LOG_INFO, "mpd_getMsg thread %d exit!!", index);
+    dev.log(LOG_INFO, "mpd_getMsg thread for %s exit!!",
+	pcidev::get_dev(index)->sysfs_name.c_str());
 }
 
 // Client of MPD handling msg. Will quit on any error from either local mailbox or socket fd.
@@ -608,11 +610,11 @@ void Mpd::mpd_handleMsg(size_t index)
             break;
     }
     threads_handling[sysfs_name] = false;
-    dev.log(LOG_INFO, "mpd_handleMsg thread %d exit!!", index);
+    dev.log(LOG_INFO, "mpd_handleMsg thread for %s exit!!",
+	pcidev::get_dev(index)->sysfs_name.c_str());
 }
 
 /*
- * daemon will gracefully exit(eg notify mailbox driver) when
  * 'kill -15' is sent. or 'crtl c' on the terminal for debug.
  * so far 'kill -9' is not handled.
  */

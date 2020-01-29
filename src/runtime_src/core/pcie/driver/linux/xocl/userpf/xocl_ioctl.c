@@ -500,3 +500,31 @@ int xocl_reclock_ioctl(struct drm_device *dev, void *data,
 	userpf_info(xdev, "%s err: %d\n", __func__, err);
 	return err;
 }
+
+int xocl_alloc_cma_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp)
+{
+	struct drm_xocl_alloc_cma_info *cma_info = data;
+	struct xocl_drm *drm_p = dev->dev_private;
+	struct xocl_dev *xdev = drm_p->xdev;
+	int err = 0;
+
+	mutex_lock(&xdev->dev_lock);
+	err = xocl_cma_chunk_alloc_helper(drm_p, cma_info);
+	mutex_unlock(&xdev->dev_lock);
+	return err;
+}
+
+int xocl_free_cma_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp)
+{
+	struct drm_xocl_free_cma_info *cma_info = data;
+	struct xocl_drm *drm_p = dev->dev_private;
+	struct xocl_dev *xdev = drm_p->xdev;
+
+	mutex_lock(&xdev->dev_lock);
+	xocl_cma_chunk_free_helper(drm_p, cma_info);
+	mutex_unlock(&xdev->dev_lock);
+
+	return 0;
+}
