@@ -772,7 +772,7 @@ XclBin::updateHeaderFromSection(Section *_pSection)
     std::string sPlatformVBNV = featureRom.get<std::string>("vbnvName", "");
     XUtil::safeStringCopy((char*)&m_xclBinHeader.m_header.m_platformVBNV, sPlatformVBNV, sizeof(axlf_header::m_platformVBNV));
 
-    // Examine OLD names -- // This code can be removed AFTER xocc has been updated to use the new format
+    // Examine OLD names -- // This code can be removed AFTER v++ has been updated to use the new format
     {
       // Feature ROM Time Stamp
       if (m_xclBinHeader.m_header.m_featureRomTimeStamp == 0) {
