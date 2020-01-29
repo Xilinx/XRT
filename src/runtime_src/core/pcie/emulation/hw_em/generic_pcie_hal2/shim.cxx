@@ -24,9 +24,12 @@
 #define SEND_RESP2QDMA()\
     if (buf_size == 0) {\
     	buf = malloc(ri_msg->size());\
+        buf_size = ri_msg->size(); \
     } else if (buf_size < ri_msg->size()) {\
     	buf = (void*) realloc(buf, ri_msg->size());\
+        buf_size = ri_msg->size(); \
     }\
+    memset(buf,0,buf_size); \
     ri_msg->set_size(r_len);\
     ri_msg->SerializeToArray(ri_buf,ri_len);\
     r_msg.SerializeToArray(buf,r_len);\
@@ -67,7 +70,7 @@ namespace xclhwemhal2 {
         public:
         Q2H_helper();
         ~Q2H_helper(); 
-        void poolingon_Qdma(); 
+        int  poolingon_Qdma(); 
         void select_msg(); 
         void register_q2h_slavetransaction(bool (*q2h_slavetransaction)(bool intr, int rdwr, unsigned long int, void*,unsigned long int));
     };
@@ -2781,17 +2784,19 @@ void HwEmShim::closemMessengerThread() {
 		mMessengerThread.join();
 		mMessengerThreadStarted = false;
 	}
+    if(mHostMemAccessThreadStarted) {
+      mHostMemAccessThread.join(); 
+      mHostMemAccessThreadStarted = false;
+    }
 }
 /********************************************** QDMA APIs IMPLEMENTATION END**********************************************/
 /**********************************************HAL2 API's END HERE **********************************************/
 
 /********************************************** Q2H_helper class implementation starts **********************************************/
 bool device2xrt_trans_cb(bool, int, unsigned long int, void*,unsigned long int) {
-    std::cout << " device2xrt_trans_cb() is called...." <<std::endl;
     return true;
 }
 Q2H_helper :: Q2H_helper() : buf_size(0),buf(NULL), r(0) {
-    std::cout << " Start of Q2H_helper()..." << std::endl;
     ci_msg = new call_packet_info;
     ri_msg = new response_packet_info;
     Q2h_sock = new unix_socket("xcl_sock_K2H");
@@ -2803,29 +2808,40 @@ Q2H_helper :: Q2H_helper() : buf_size(0),buf(NULL), r(0) {
     i_buf = malloc(i_len);
     ri_len = ri_msg->ByteSize();
     ri_buf = malloc(i_len);
-    std::cout << " End of Q2H_helper()..." << std::endl;
 }
 Q2H_helper::~Q2H_helper() {
+    if(buf != NULL)
+        free(buf);
+    free(i_buf);
+    free(ri_buf);
     delete ci_msg;
     delete ri_msg;
+    delete Q2h_sock;
 }
-void Q2H_helper::poolingon_Qdma() {
+int Q2H_helper::poolingon_Qdma() {
     //Pooling on socket for any memory or interrupt requests from SIM_QDMA
+    memset(i_buf,0,i_len);
     r = Q2h_sock->sk_read(i_buf, i_len);
     if (r <= 0) {
-    	return;
+    	return r;
     }
     assert(i_len == (uint32_t)r);
     ci_msg->ParseFromArray(i_buf, i_len);
+    if (ci_msg->xcl_api() == xclClose_n) {
+        return -1;
+    }
     if (buf_size == 0) {
     	buf = malloc(ci_msg->size());
+        buf_size = ci_msg->size();
     } else if (buf_size < ci_msg->size()) {
     	buf = (void*) realloc(buf, ci_msg->size());
+        buf_size = ci_msg->size();
     }
+    memset(buf,0,buf_size);
     r = Q2h_sock->sk_read(buf, ci_msg->size());
-    buf_size = ci_msg->size();
     assert((uint32_t)r == ci_msg->size());
     select_msg();
+    return 1;
 }
 void Q2H_helper::select_msg() {
     if (ci_msg->xcl_api() == xclQdma2HostReadMem_n) {
@@ -2854,6 +2870,7 @@ void Q2H_helper::select_msg() {
         void *interrupt_line_ptr = malloc(4);
         *((uint32_t*)interrupt_line_ptr) = c_msg.interrupt_line();
         bool resp = (*m_q2h_slavetransaction)(true, 1,0,interrupt_line_ptr,4);
+        free(interrupt_line_ptr);
         xclInterruptOccured_response r_msg;
         r_msg.set_valid(resp);
         int r_len = r_msg.ByteSize();
@@ -2864,15 +2881,18 @@ void Q2H_helper::register_q2h_slavetransaction(bool (*q2h_slavetransaction)(bool
     m_q2h_slavetransaction = q2h_slavetransaction;
 }
 
-    void hostMemAccessThread(xclhwemhal2::HwEmShim* inst) {
-        Q2H_helper *mq2h_helper_ptr = new Q2H_helper;
-        mq2h_helper_ptr->register_q2h_slavetransaction(device2xrt_trans_cb);
-        while(1){
-            if (!inst->get_simulator_started())
-                return;
-            mq2h_helper_ptr->poolingon_Qdma();
-        }
+void hostMemAccessThread(xclhwemhal2::HwEmShim* inst) {
+    Q2H_helper* mq2h_helper_ptr = new Q2H_helper;
+    mq2h_helper_ptr->register_q2h_slavetransaction(device2xrt_trans_cb);
+    while(1){
+        if (!inst->get_simulator_started())
+            return;
+        int r = mq2h_helper_ptr->poolingon_Qdma();
+        if(r < 0)
+            break;
     }
+    delete mq2h_helper_ptr;
+}
 
 /********************************************** Q2H_helper class implementation Ends **********************************************/
 
