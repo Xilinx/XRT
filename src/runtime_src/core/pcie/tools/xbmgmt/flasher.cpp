@@ -90,7 +90,7 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
         }
         else if(secondary == nullptr)
         {
-            retVal = xspi.xclUpgradeFirmwareXSpi(*primary);
+            retVal = xspi.xclUpgradeFirmware1(*primary);
         }
         else
         {

@@ -31,9 +31,9 @@ namespace po = boost::program_options;
 
 SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("validate", 
-             "<add short description")
+             "Validates the basic shell accelleration functionality")
 {
-  const std::string longDescription = "<add long description>";
+  const std::string longDescription = "Validates the given card by executing the platform's validate executable.";
   setLongDescription(longDescription);
   setExampleSyntax("");
   setIsHidden(_isHidden);
@@ -48,13 +48,16 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
 {
   XBU::verbose("SubCommand: validate");
   // -- Retrieve and parse the subcommand options -----------------------------
-  uint64_t card = 0;
+  std::string device = "all";
   bool help = false;
 
-  po::options_description validateDesc("validate options");
+  po::options_description validateDesc("Options");
   validateDesc.add_options()
+    ("device,d", boost::program_options::value<decltype(device)>(&device), "The device of interest. This is specified as follows:\n"
+                                                                           "  <BDF> - Bus:Device.Function (e.g., 0000:d8:00.0)\n"
+                                                                           "  all   - Examines all known devices (default)")
+
     ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
-    (",d", boost::program_options::value<uint64_t>(&card), "Card to be examined")
   ;
 
   // Parse sub-command ...
@@ -78,8 +81,6 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   }
 
   // -- Now process the subcommand --------------------------------------------
-  XBU::verbose(XBU::format("  Card: %ld", card));
-
   XBU::error("COMMAND BODY NOT IMPLEMENTED.");
   // TODO: Put working code here
 }

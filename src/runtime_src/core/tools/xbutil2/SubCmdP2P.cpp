@@ -31,7 +31,7 @@ namespace po = boost::program_options;
 
 SubCmdP2P::SubCmdP2P(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("p2p", 
-             "<add short discription>")
+             "See replacement functionality in command: 'advanced'")
 {
   const std::string longDescription = "<add long description>";
   setLongDescription(longDescription);

@@ -1540,6 +1540,34 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     bool QDMAPlatform = (getDsaVersion() == 60)? true: false;
     return mbSchEnabled && !QDMAPlatform;
   }
+  
+
+  bool HwEmShim::isLegacyErt()
+  {
+    if(xclemulation::config::getInstance()->getLegacyErt() == xclemulation::ERTMODE::LEGACY)
+      return true;
+    else if(xclemulation::config::getInstance()->getLegacyErt() == xclemulation::ERTMODE::UPDATED)
+      return false;
+
+    //Following platforms uses legacyErt As per Emulation team. 
+    //There is no other way to get whether platform uses legacy ERT or not
+    std::string vbnv  = mDeviceInfo.mName;
+    if(!vbnv.empty() && 
+        (  vbnv.find("u200_xdma-gen3x4_201830_2") != std::string::npos 
+        || vbnv.find("u200_xdma_201830_1")        != std::string::npos 
+        || vbnv.find("u200_xdma_201830_2")        != std::string::npos 
+        || vbnv.find("u250_qep_201910_1")         != std::string::npos
+        || vbnv.find("u250_xdma_201830_1")        != std::string::npos 
+        || vbnv.find("u250_xdma_201830_2")        != std::string::npos 
+        || vbnv.find("u280_xdma_201920_1")        != std::string::npos
+        || vbnv.find("u280_xdma_201920_2")        != std::string::npos
+        || vbnv.find("u280_xdma_201920_3")        != std::string::npos
+        || vbnv.find("u50_xdma_201910_1")         != std::string::npos
+        || vbnv.find("u50_xdma_201920_2")         != std::string::npos))
+      return true;
+
+    return false;
+  }
 
   bool HwEmShim::isCdmaEnabled()
   {

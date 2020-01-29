@@ -94,6 +94,12 @@ namespace xclemulation{
     BATCH,
     GUI
   };
+  
+  enum ERTMODE {
+    NONE,
+    LEGACY,
+    UPDATED 
+  };
 
   class config 
   {
@@ -121,7 +127,8 @@ namespace xclemulation{
       inline void setServerPort(unsigned int serverPort)        { mServerPort       = serverPort;    }
       inline void setKeepRunDir(bool _mKeepRundir)              { mKeepRunDir = _mKeepRundir;        }    
       inline void setLauncherArgs(std::string & _mLauncherArgs) { mLauncherArgs = _mLauncherArgs;    }
-      inline void setSystemDPA(bool _isDPAEnabled)              { mSystemDPA    = _isDPAEnabled;      }
+      inline void setSystemDPA(bool _isDPAEnabled)              { mSystemDPA    = _isDPAEnabled;     }
+      inline void setLegacyErt(ERTMODE _legacyErt)              { mLegacyErt    = _legacyErt;        }
       
       inline bool isDiagnosticsEnabled()        const { return mDiagnostics;    }
       inline bool isUMRChecksEnabled()          const { return mUMRChecks;      }
@@ -143,7 +150,8 @@ namespace xclemulation{
       inline bool isErrorsToBePrintedOnConsole()   const { return mPrintErrorsInConsole;  }
       inline bool isWarningsToBePrintedOnConsole() const { return mPrintWarningsInConsole;}
       inline std::string getLauncherArgs() const { return mLauncherArgs;}
-      inline bool isSystemDPAEnabled() const     {return mSystemDPA;              }
+      inline bool isSystemDPAEnabled() const     { return mSystemDPA;              }
+      inline ERTMODE getLegacyErt() const         { return mLegacyErt;              }
       
       void populateEnvironmentSetup(std::map<std::string,std::string>& mEnvironmentNameValueMap);
 
@@ -170,6 +178,7 @@ namespace xclemulation{
       bool mKeepRunDir;
       std::string mLauncherArgs;
       bool mSystemDPA;
+      ERTMODE mLegacyErt;
       
      
       config();

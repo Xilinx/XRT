@@ -28,3 +28,4 @@ class SubCmdFlash : public SubCmd {
 };
 
 #endif
+

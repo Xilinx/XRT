@@ -28,3 +28,4 @@ class SubCmdMem : public SubCmd {
 };
 
 #endif
+
