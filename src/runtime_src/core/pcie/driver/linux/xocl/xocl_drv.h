@@ -991,6 +991,8 @@ struct xocl_clock_funcs {
 		struct gate_handler *gate_handle);
 	int (*clock_status)(struct platform_device *pdev, bool *latched);
 };
+#define CLOCK_DEV_INFO(xdev, idx)					\
+	SUBDEV_MULTI(xdev, XOCL_SUBDEV_CLOCK, idx).info
 #define	CLOCK_DEV(xdev, idx)						\
 	SUBDEV_MULTI(xdev, XOCL_SUBDEV_CLOCK, idx).pldev
 #define	CLOCK_OPS(xdev, idx)						\
@@ -1005,8 +1007,15 @@ static inline int xocl_clock_ops_level(xdev_handle_t xdev)
 
 	return -ENODEV;
 }
+
 #define CLOCK_CB(xdev, idx, cb)						\
 	(idx >= 0 && CLOCK_DEV(xdev, idx) && CLOCK_OPS(xdev, idx) && CLOCK_OPS(xdev, idx)->cb)
+
+#define CLOCK_DEV_LEVEL(xdev) 						\
+({ \
+	int __idx = xocl_clock_ops_level(xdev);				\
+	(__idx >= 0 ? (CLOCK_DEV_INFO(xdev, __idx).level) : -ENODEV); 	\
+})
 
 #define	xocl_clock_freqscaling(xdev, force)					\
 ({ \
@@ -1022,7 +1031,6 @@ static inline int xocl_clock_ops_level(xdev_handle_t xdev)
 	CLOCK_OPS(xdev, idx)->get_freq(CLOCK_DEV(xdev, idx), region, freqs, num_freqs) : \
 	-ENODEV); \
 })
-
 #define	xocl_clock_get_freq_by_id(xdev, region, freq, id)		\
 ({ \
 	int idx = xocl_clock_ops_level(xdev);				\
