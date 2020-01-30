@@ -1288,7 +1288,6 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_CLOCK_LEGACY,			\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF,				\
-			XOCL_DEVINFO_MB,				\
 			XOCL_DEVINFO_XVC_PUB,				\
 			XOCL_DEVINFO_XIIC,				\
 			XOCL_DEVINFO_MAILBOX_MGMT,			\
