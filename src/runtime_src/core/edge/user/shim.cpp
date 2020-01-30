@@ -162,7 +162,7 @@ int ZYNQShim::mapKernelControl(const std::vector<std::pair<uint64_t, size_t>>& o
     if ((offset_it->first & (~0xFF)) != (-1UL & ~0xFF)) {
       auto it = mKernelControl.find(offset_it->first);
       if (it == mKernelControl.end()) {
-        drm_zocl_info_cu info = {offset_it->first, -1};
+        drm_zocl_info_cu info = {offset_it->first, -1, -1};
         int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_INFO_CU, &info);
         if (result) {
             xclLog(XRT_ERROR, "XRT", "%s: Failed to find CU info 0x%lx", __func__, offset_it->first);
@@ -718,11 +718,13 @@ int ZYNQShim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset,
   }
 
   if (mCuMaps[cu_index] == nullptr) {
+      drm_zocl_info_cu info = {0, -1, (int)cu_index};
+      int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_INFO_CU, &info);
     void *p = mmap(0, mCuMapSize, PROT_READ | PROT_WRITE, MAP_SHARED,
-      mKernelFD, cu_index * getpagesize());
+      mKernelFD, info.apt_idx * getpagesize());
     if (p != MAP_FAILED)
       mCuMaps[cu_index] = (uint32_t *)p;
-  }
+ }
 
   uint32_t *cumap = mCuMaps[cu_index];
   if (cumap == nullptr) {
@@ -777,6 +779,7 @@ int ZYNQShim::xclCuName2Index(const char *name, uint32_t& index)
       break;
     }
   }
+
   if (i == map->m_count)
     return -ENOENT;
   if (addr == bad_addr)
@@ -805,6 +808,30 @@ int ZYNQShim::xclCuName2Index(const char *name, uint32_t& index)
   }
 
   return -ENOENT;
+}
+
+int ZYNQShim::xclOpenCuInterruptNotify(uint32_t cu_index, unsigned int flags)
+{
+  int ret;
+
+  drm_zocl_ctx ctx = {
+    .uuid_ptr = 0,
+    .uuid_size = 0,
+    .cu_index = cu_index,
+    .flags = flags,
+    .op = ZOCL_CTX_OP_OPEN_GCU_FD,
+  };
+
+  xclLog(XRT_DEBUG, "XRT", "%s: CU index %d, flags 0x%x", __func__, cu_index, flags);
+  ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CTX, &ctx);
+  return ret;
+}
+
+int ZYNQShim::xclCloseCuInterruptNotify(int fd)
+{
+  xclLog(XRT_DEBUG, "XRT", "%s: fd %d", __func__, fd);
+  close(fd);
+  return 0;
 }
 
 inline int ZYNQShim::xclLog(xrtLogMsgLevel level, const char* tag,
@@ -1783,12 +1810,16 @@ int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag,
     return 0;
 }
 
-int xclOpenCuInterruptNotify(xclDeviceHandle handle, uint32_t *cu_index, int flags)
+int xclOpenCuInterruptNotify(xclDeviceHandle handle, uint32_t cu_index, unsigned int flags)
 {
-    return -ENOSYS;
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+
+  return drv ? drv->xclOpenCuInterruptNotify(cu_index, flags) : -EINVAL;
 }
 
 int xclCloseCuInterruptNotify(xclDeviceHandle handle, int fd)
 {
-    return -ENOSYS;
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+
+  return drv ? drv->xclCloseCuInterruptNotify(fd) : -EINVAL;
 }

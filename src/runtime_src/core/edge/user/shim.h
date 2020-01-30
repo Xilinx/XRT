@@ -99,6 +99,9 @@ public:
 
   int xclGetDeviceInfo2(xclDeviceInfo2 *info);
 
+  int xclOpenCuInterruptNotify(uint32_t cu_index, unsigned int flags);
+  int xclCloseCuInterruptNotify(int fd);
+
   bool isGood() const;
   static ZYNQShim *handleCheck(void *handle);
   int xclCuName2Index(const char *name, uint32_t& index);

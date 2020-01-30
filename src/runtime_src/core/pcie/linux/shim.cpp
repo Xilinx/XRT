@@ -2160,7 +2160,7 @@ int xclUpdateSchedulerStat(xclDeviceHandle handle)
   return (drv) ? drv->xclUpdateSchedulerStat() : -ENODEV;
 }
 
-int xclOpenCuInterruptNotify(xclDeviceHandle handle, uint32_t *cu_index, int flags)
+int xclOpenCuInterruptNotify(xclDeviceHandle handle, uint32_t cu_index, int flags)
 {
     return -ENOSYS;
 }

@@ -278,7 +278,7 @@ xclCuName2Index(xclDeviceHandle handle, const char *cu_name, uint32_t *cu_index)
  * Note: the CU irq would be disable after this is called. Caller could manually enable the interrupt
  * or read on the fd would enable the interrupt then start waiting.
  */
-XCL_DRIVER_DLLESPEC int xclOpenCuInterruptNotify(xclDeviceHandle handle, uint32_t *cu_index, int flags);
+XCL_DRIVER_DLLESPEC int xclOpenCuInterruptNotify(xclDeviceHandle handle, uint32_t cu_index, unsigned int flags);
 
 /**
  * xclCloseCuInterruptNotify() - Clost the interrupt notify fd
