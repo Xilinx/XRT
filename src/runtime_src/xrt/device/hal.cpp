@@ -218,7 +218,8 @@ load_xdp()
       if (xrt.empty()) {
         throw std::runtime_error("Library oclxdp not found! XILINX_XRT not set");
       }
-      directoryOrError(xrt);
+      bfs::path xrtlib(xrt / "lib");
+      directoryOrError(xrtlib);
       auto libname = dllpath(xrt, "oclxdp");
       if (!isDLL(libname)) {
         throw std::runtime_error("Library " + libname.string() + " not found!");
