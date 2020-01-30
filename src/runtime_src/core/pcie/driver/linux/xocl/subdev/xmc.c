@@ -1382,7 +1382,7 @@ static ssize_t scaling_threshold_power_override_store(struct device *dev,
 	struct device_attribute *da, const char *buf, size_t count)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
-	u32 val, val2, val3;
+	u32 val, val2, val3, val4;
 	bool cs_en;
 
 	cs_en = scaling_condition_check(xmc, dev);
