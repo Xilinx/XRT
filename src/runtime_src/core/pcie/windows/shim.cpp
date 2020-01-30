@@ -753,16 +753,20 @@ done:
           return false;
       }
 
-      XOCL_PWRITE_BO_UNMGD_ARGS pwriteBO;
+      XOCL_PREAD_PWRITE_UNMGD_ARGS pwriteBO;
       DWORD  code;
       DWORD bytesWritten;
 
-      pwriteBO.Offset = offset;
+      pwriteBO.address_space = DDR_BANK0_ADDRESS;
+      pwriteBO.pad = DDR_PAD0;
+      pwriteBO.paddr = offset;
+      pwriteBO.size = count;
+      pwriteBO.data_ptr = offset;
 
       if (!DeviceIoControl(m_dev,
           IOCTL_XOCL_PWRITE_UNMGD,
           &pwriteBO,
-          sizeof(XOCL_PWRITE_BO_UNMGD_ARGS),
+          sizeof(XOCL_PREAD_PWRITE_UNMGD_ARGS),
           (void *)buf,
           (DWORD)count,
           &bytesWritten,
@@ -782,7 +786,7 @@ done:
   unmgd_pread(unsigned int flags, void *buf, size_t size, uint64_t offset)
   {
 
-      XOCL_PREAD_BO_UNMGD_ARGS preadBO;
+      XOCL_PREAD_PWRITE_UNMGD_ARGS preadBO;
       DWORD  code;
       DWORD bytesRead;
 
@@ -790,12 +794,17 @@ done:
           return false;
       }
 
-      preadBO.Offset = offset;
+      preadBO.address_space = DDR_BANK0_ADDRESS;
+      preadBO.pad = DDR_PAD0;
+      preadBO.paddr = offset;
+      preadBO.size = size;
+      preadBO.data_ptr = offset;
+
 
       if (!DeviceIoControl(m_dev,
           IOCTL_XOCL_PREAD_UNMGD,
           &preadBO,
-          sizeof(XOCL_PREAD_BO_UNMGD_ARGS),
+          sizeof(XOCL_PREAD_PWRITE_UNMGD_ARGS),
           buf,
           (DWORD)size,
           &bytesRead,
