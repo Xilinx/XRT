@@ -62,27 +62,22 @@ namespace xcldev {
             return result;
         }
 
-        int runSync(xclBOSyncDirection dir, bool mt) const {
+        int runSync(xclBOSyncDirection dir, unsigned count) const {
             auto b = mBOList.begin();
             const auto e = mBOList.end();
-            if (!mt) {
+            if (count == 1) {
                 auto future0 = std::async(std::launch::async, &DMARunner::runSyncWorker, this, b, e, dir);
                 return future0.get();
             }
 
-            xclDeviceInfo2 info;
-            int result = xclGetDeviceInfo2(mHandle, &info);
-            if (result)
-                return result;
-            int count = info.mDMAThreads ? info.mDMAThreads : 2;
             auto len = (e - b) / count;
             std::vector<std::future<int>> threads;
-            //std::cout << "Using " << info->mDMAThreads << " DMA channels\n";
             while (b < e) {
                 threads.push_back(std::async(std::launch::async, &DMARunner::runSyncWorker, this, b, b + len, dir));
                 b += len;
             }
 
+            int result = 0;
             for_each(threads.begin(), threads.end(), [&](std::future<int> &v) {result += v.get();});
             return result;
         }
@@ -136,8 +131,17 @@ namespace xcldev {
             if (result)
                 return static_cast<int>(result);
 
+            xclDeviceInfo2 info;
+            int rc = xclGetDeviceInfo2(mHandle, &info);
+            if (rc)
+                return rc;
+
+            if (info.mDMAThreads == 0)
+                return -EINVAL;
+
+            std::cout << "Using " << info.mDMAThreads << " bi-directional DMA channels for DMA test\n";
             Timer timer;
-            result = runSync(XCL_BO_SYNC_BO_TO_DEVICE, true);
+            result = runSync(XCL_BO_SYNC_BO_TO_DEVICE, info.mDMAThreads);
             auto timer_stop = timer.stop();
             double rate = static_cast<double>(mBOList.size() * mSize);
             rate /= 0x100000; // MB
@@ -146,7 +150,7 @@ namespace xcldev {
             std::cout << "Host -> PCIe -> FPGA write bandwidth = " << rate << " MB/s\n";
 
             timer.reset();
-            result += runSync(XCL_BO_SYNC_BO_FROM_DEVICE, true);
+            result += runSync(XCL_BO_SYNC_BO_FROM_DEVICE, info.mDMAThreads);
             timer_stop = timer.stop();
             rate = static_cast<double>(mBOList.size() * mSize);
             rate /= 0x100000; // MB
