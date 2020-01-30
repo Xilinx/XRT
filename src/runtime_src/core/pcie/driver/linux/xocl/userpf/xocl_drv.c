@@ -338,6 +338,7 @@ int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 	if (mbret == -ESHUTDOWN)
 		flag |= XOCL_RESET_SHUTDOWN;
 	if (mbret) {
+		userpf_err(xdev, "Requested peer failed %d", mbret);
 		ret = mbret;
 		goto failed_notify;
 	}
