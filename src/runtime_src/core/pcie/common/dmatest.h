@@ -64,18 +64,27 @@ namespace xcldev {
 
         int runSync(xclBOSyncDirection dir, bool mt) const {
             auto b = mBOList.begin();
-            auto e = mBOList.end();
-            if (mt) {
-                auto len = e - b;
-                auto mid = b + len/2;
-                auto future0 = std::async(std::launch::async, &DMARunner::runSyncWorker, this, b, mid, dir);
-                auto future1 = std::async(std::launch::async, &DMARunner::runSyncWorker, this, mid, e, dir);
-                return (future0.get() + future1.get());
-            }
-            else {
+            const auto e = mBOList.end();
+            if (!mt) {
                 auto future0 = std::async(std::launch::async, &DMARunner::runSyncWorker, this, b, e, dir);
                 return future0.get();
             }
+
+            xclDeviceInfo2 info;
+            int result = xclGetDeviceInfo2(mHandle, &info);
+            if (result)
+                return result;
+            int count = info.mDMAThreads ? info.mDMAThreads : 2;
+            auto len = (e - b) / count;
+            std::vector<std::future<int>> threads;
+            //std::cout << "Using " << info->mDMAThreads << " DMA channels\n";
+            while (b < e) {
+                threads.push_back(std::async(std::launch::async, &DMARunner::runSyncWorker, this, b, b + len, dir));
+                b += len;
+            }
+
+            for_each(threads.begin(), threads.end(), [&](std::future<int> &v) {result += v.get();});
+            return result;
         }
 
     public:

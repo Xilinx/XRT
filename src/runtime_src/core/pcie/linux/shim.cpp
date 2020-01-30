@@ -595,7 +595,7 @@ void shim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
     mDev->sysfs_get<unsigned short>("mb_scheduler", "kds_numcdmas", errmsg, info->mNumCDMA, static_cast<unsigned short>(-1));
 
     //get sensors
-    unsigned int m12VPex, m12VAux, mPexCurr, mAuxCurr, mDimmTemp_0, mDimmTemp_1, mDimmTemp_2, 
+    unsigned int m12VPex, m12VAux, mPexCurr, mAuxCurr, mDimmTemp_0, mDimmTemp_1, mDimmTemp_2,
         mDimmTemp_3, mSE98Temp_0, mSE98Temp_1, mSE98Temp_2, mFanTemp, mFanRpm, m3v3Pex, m3v3Aux,
         mDDRVppBottom, mDDRVppTop, mSys5v5, m1v2Top, m1v8Top, m0v85, mMgt0v9, m12vSW, mMgtVtt,
         m1v2Bottom, mVccIntVol,mOnChipTemp;
@@ -680,7 +680,10 @@ int shim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
     info->mHALMajorVersion = XCLHAL_MAJOR_VER;
     info->mHALMinorVersion = XCLHAL_MINOR_VER;
     info->mMinTransferSize = DDR_BUFFER_ALIGNMENT;
-    info->mDMAThreads = 2;
+    std::string errmsg;
+    std::vector<std::string> dmaStatStrs;
+    mDev->sysfs_get("dma", "channel_stat_raw", errmsg, dmaStatStrs);
+    info->mDMAThreads = dmaStatStrs.size();
     xclSysfsGetDeviceInfo(info);
     return 0;
 }
@@ -756,7 +759,7 @@ int shim::cmaEnable(bool enable, uint64_t size)
         cma_info.page_sz = size;
 
         /* Once set MAP_HUGETLB, we have to specify bit[26~31] as size in log
-         * e.g. We like to get 2M huge page, 2M = 2^21, 
+         * e.g. We like to get 2M huge page, 2M = 2^21,
          * 21 = 0x15
          */
         if (size == (1 << 30))
