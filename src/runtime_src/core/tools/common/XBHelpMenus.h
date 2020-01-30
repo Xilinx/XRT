@@ -60,6 +60,8 @@ namespace XBUtilities {
 
    void 
      disable_escape_codes( bool _disable );
+   bool
+     is_esc_enabled();    
 };
 
 #endif

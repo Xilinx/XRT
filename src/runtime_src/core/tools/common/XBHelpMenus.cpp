@@ -91,6 +91,11 @@ XBUtilities::disable_escape_codes(bool _disable) {
   m_disableEscapeCodes = _disable;
 }
 
+bool 
+XBUtilities::is_esc_enabled() {
+  return m_disableEscapeCodes;
+}
+
 static bool
 isPositional(const std::string &_name, 
              const boost::program_options::positional_options_description & _pod)
