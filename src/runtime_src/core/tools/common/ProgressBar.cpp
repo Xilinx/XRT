@@ -39,27 +39,17 @@ format_time(std::chrono::duration<double> duration) {
   return boost::str(boost::format("%02d:%02d:%02d") % hours.count() % minutes.count() % seconds.count());
 }
 
-static void
-update_batch(int percent, std::ostream& ostr) {
-  if (percent % 10 == 0) {
-    ostr << "....." << percent << "%";
-  } else { ostr << "."; }
-
-  if (percent == 100)
-      ostr << " [--Complete--]\n";
-  ostr.flush();
-}
-
-ProgressBar::ProgressBar(std::string _op_name, bool _is_batch, std::ostream& _ostr) 
-    : op_name(_op_name), is_batch(_is_batch), ostr(_ostr)
+ProgressBar::ProgressBar(std::string _op_name, unsigned int _max_iter, bool _is_batch, std::ostream& _ostr) 
+    : op_name(_op_name), max_iter(_max_iter), is_batch(_is_batch), ostr(_ostr)
 {
-  percent_done = 0; 
+  percent_done = 0;
   elapsed_time = std::chrono::seconds(0);
 
   if (!is_batch) {
-    ostr <<  ec::cursor().hide() << ec::fgcolor(ec::FGC_IN_PROGRESS).string() << "[" << std::string(20, ' ') 
-            << "] " << percent_done << "% ("<< format_time(elapsed_time) << "): " << op_name 
-            << "\n" << ec::fgcolor::reset() << ec::cursor().prev_line();
+    ostr << ec::cursor().hide() << ec::fgcolor::reset() << "[ " << ec::fgcolor(ec::FGC_IN_PROGRESS).string() << std::string(20, ' ') 
+            << ec::fgcolor::reset() << "]  " << ec::fgcolor(ec::FGC_IN_PROGRESS).string() << percent_done << "%" 
+            << ec::fgcolor::reset() << " ("<< format_time(elapsed_time) << "): " << op_name 
+            << "\n" << ec::fgcolor::reset();
   } else {
       ostr << op_name << ": ";
   }
@@ -67,25 +57,42 @@ ProgressBar::ProgressBar(std::string _op_name, bool _is_batch, std::ostream& _os
 }
 
 void 
-ProgressBar::update(int percent, std::chrono::duration<double> duration) {
-  elapsed_time += duration;
-  percent_done += percent;
+ProgressBar::finish() {
+  std::string status = percent_done == 100 ? ec::fgcolor(ec::FGC_PASS).string() + "[PASSED] " : ec::fgcolor(ec::FGC_FAIL).string() + "[FAILED] ";
+  if(is_batch) {
+    status = percent_done == 100 ? "[PASSED]\n" : "[FAILED]\n";
+    ostr << status;
+  } else {
+    ostr << ec::cursor().prev_line() << ec::cursor().clear_line() << status << ec::fgcolor::reset() << "(" 
+          << format_time(elapsed_time) << "): " << op_name << "\n" << ec::fgcolor::reset() << ec::cursor().show();
+  }
+  ostr.flush();
+}
+
+void 
+ProgressBar::update(int iteration) {
+  elapsed_time = timer.stop();
+
+  percent_done = 100*iteration/max_iter;
+
+  if (percent_done > 100) {
+    finish();
+    ostr <<  ec::fgcolor::reset() << ec::cursor().show();
+    throw std::runtime_error("Passed in iteration number is greater than the max iteration");
+  }
 
   if(is_batch) {
-      update_batch(percent_done, ostr);
-      return;
-  }
-    
-  if (percent_done == 100) {
-    ostr << ec::fgcolor(ec::FGC_PASS).string() << "[-------Complete------] 100% " << "(" 
-            << format_time(elapsed_time) << "): " << op_name << "\n" << ec::fgcolor::reset() 
-            << ec::cursor().show();
+    if (percent_done % 5 == 0) {
+      ostr << ".." << percent_done << "%";
+    } else { ostr << ".."; }
     ostr.flush();
     return;
   }
-  ostr <<  ec::cursor().hide() << ec::fgcolor(ec::FGC_IN_PROGRESS).string() << "[" 
+
+  ostr << ec::cursor().hide() << ec::cursor().prev_line() << ec::fgcolor::reset() << "[" << ec::fgcolor(ec::FGC_IN_PROGRESS).string() 
         << std::string(percent_done/5, '=') << ">" << std::string(20 - (percent_done / 5), ' ') 
-        << "] " << percent_done << "% ("<< format_time(elapsed_time) << "): " << op_name 
-        << "\n" << ec::fgcolor::reset() << ec::cursor().prev_line();
+        << ec::fgcolor::reset() << "] " << ec::fgcolor(ec::FGC_IN_PROGRESS).string() << percent_done << "%" 
+        << ec::fgcolor::reset() << " ("<< format_time(elapsed_time) << "): " << op_name 
+        << "\n" << ec::fgcolor::reset();
   ostr.flush();
 }

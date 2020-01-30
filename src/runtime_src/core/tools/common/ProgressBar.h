@@ -41,29 +41,49 @@ namespace ec {
       std::string hide() const { return std::string("\033[?25l"); };
       std::string show() const { return std::string("\033[?25h"); };
       std::string prev_line() const { return std::string("\033[F"); };
+      std::string clear_line() const { return std::string("\033[2K"); };
   };
   
   // ------ C O L O R S -------------------------------------------------------
-  static const uint8_t FGC_IN_PROGRESS   = 4;
+  static const uint8_t FGC_IN_PROGRESS   = 111;
   static const uint8_t FGC_PASS          = 2;
   static const uint8_t FGC_FAIL          = 1;
 }
 
 namespace XBUtilities {
+
+  class Timer 
+  {
+    std::chrono::high_resolution_clock::time_point mTimeStart;
+    public:
+      Timer() {
+        reset();
+      }
+      std::chrono::duration<double> stop() {
+        std::chrono::high_resolution_clock::time_point timeEnd = std::chrono::high_resolution_clock::now();
+        return std::chrono::duration<double>(timeEnd - mTimeStart);
+      }
+      void reset() {
+        mTimeStart = std::chrono::high_resolution_clock::now();
+      }
+  };
+
   class ProgressBar
   {
-  private:
-	std::string op_name;
-	int percent_done;
-	bool is_batch;
+    private:
+	  std::string op_name;
+	  int percent_done;
+    unsigned int max_iter;
+	  bool is_batch;
     std::ostream& ostr;
+    Timer timer;
+	  std::chrono::duration<double> elapsed_time;
 
-	std::chrono::duration<double> elapsed_time;
-
-  public:
-	ProgressBar(std::string _op_name, bool _is_batch, std::ostream& _ostr);
-
-	void 
-    update(int percent, std::chrono::duration<double> duration);
+    public:
+	    ProgressBar(std::string _op_name, unsigned int _max_iter, bool _is_batch, std::ostream& _ostr);
+	  void 
+      update(int iteration);
+    void
+      finish();
   };
 }

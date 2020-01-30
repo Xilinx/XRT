@@ -117,13 +117,28 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   // Is valid BDF value valid
 
   if (test_mode) {
-    XBU::ProgressBar flash("Flashing", XBU::is_esc_enabled(), std::cout);
-    for (int i = 1; i <= 10; i++) {
-		  auto start = std::chrono::high_resolution_clock::now();
-		  std::this_thread::sleep_for(std::chrono::milliseconds(500));
-		  auto end = std::chrono::high_resolution_clock::now();
-		  auto duration = end - start;
-		  flash.update(10, duration);
+    //standard use case
+    XBU::ProgressBar flash("Flashing", 8, XBU::is_esc_enabled(), std::cout);
+    for (int i = 1; i <= 8; i++) {
+		  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+		  flash.update(i);
 	  }
+    flash.finish();
+
+    //developer's err
+    // XBU::ProgressBar dev_flash("Flashing", 10, XBU::is_esc_enabled(), std::cout);
+    // for (int i = 1; i <= 11; i++) {
+		//   std::this_thread::sleep_for(std::chrono::milliseconds(500));
+		//   dev_flash.update(i);
+	  // }
+    // dev_flash.finish();
+
+    //failure case
+    // XBU::ProgressBar fail_flash("Flashing", 10, XBU::is_esc_enabled(), std::cout);
+    // for (int i = 1; i <= 8; i++) {
+		//   std::this_thread::sleep_for(std::chrono::milliseconds(500));
+		//   fail_flash.update(i);
+	  // }
+    // fail_flash.finish();
   }
 }
