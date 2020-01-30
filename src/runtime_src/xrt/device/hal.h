@@ -174,6 +174,9 @@ public:
   virtual device_handle
   get_handle() const = 0;
 
+  virtual std::string
+  get_bdf() const = 0;
+
   virtual void
   acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared) {}
 
@@ -614,12 +617,6 @@ public:
   getProfilingSlotProperties(xclPerfMonType type, uint32_t slotnum)
   {
     return operations_result<uint32_t>();
-  }
-
-  virtual operations_result<void>
-  writeHostEvent(xclPerfMonEventType type, xclPerfMonEventID id)
-  {
-    return operations_result<void>();
   }
 
   virtual operations_result<void>

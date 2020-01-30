@@ -67,6 +67,7 @@ namespace xclemulation{
     mKeepRunDir=false;
     mLauncherArgs = "";
     mSystemDPA = true;
+    mLegacyErt = ERTMODE::NONE;
   }
 
   static bool getBoolValue(std::string& value,bool defaultValue)
@@ -217,6 +218,13 @@ namespace xclemulation{
       else if(name == "system_dpa")
       {
         setSystemDPA(getBoolValue(value,true));
+      }
+      else if(name == "legacy_ert")
+      {
+        if (boost::iequals(value,"false" ))
+          setLegacyErt(ERTMODE::UPDATED);
+        else if(boost::iequals(value,"true"))
+          setLegacyErt(ERTMODE::LEGACY);
       }
       else if(name.find("Debug.") == std::string::npos)
       {

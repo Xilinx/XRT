@@ -31,9 +31,9 @@ namespace po = boost::program_options;
 
 SubCmdMem::SubCmdMem(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("mem", 
-             "Memory write tests.")
+             "See replacement functionality in command: 'advanced'")
 {
-  const std::string longDescription = "<add long discription>";
+  const std::string longDescription = "Memory read/write functionality";
   setLongDescription(longDescription);
   setExampleSyntax("");
   setIsHidden(_isHidden);

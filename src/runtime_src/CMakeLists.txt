@@ -24,6 +24,12 @@ add_library(xdp_hal_plugin SHARED
 
 add_dependencies(xdp_hal_plugin xdp)
 
+add_library(xdp_hal_api_interface_plugin SHARED
+  $<TARGET_OBJECTS:xdp_hal_api_interface_plugin_obj>
+  )
+
+add_dependencies(xdp_hal_api_interface_plugin xdp)
+
 option(XOCL_VERBOSE "Enable xocl verbosity" OFF)
 option(XRT_VERBOSE "Enable xrt verbosity" OFF)
 
@@ -75,8 +81,12 @@ target_link_libraries(oclxdp
  )
 
 target_link_libraries(xdp_hal_plugin xdp)
+target_link_libraries(xdp_hal_api_interface_plugin xdp)
 
 set_target_properties(xdp_hal_plugin PROPERTIES VERSION ${XRT_VERSION_STRING}
+  SOVERSION ${XRT_SOVERSION})
+
+set_target_properties(xdp_hal_api_interface_plugin PROPERTIES VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})
 
 set_target_properties(oclxdp PROPERTIES VERSION ${XRT_VERSION_STRING}
@@ -85,7 +95,7 @@ set_target_properties(oclxdp PROPERTIES VERSION ${XRT_VERSION_STRING}
 set_target_properties(xdp PROPERTIES VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})
 
-install (TARGETS oclxdp xdp_hal_plugin LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
+install (TARGETS oclxdp xdp_hal_plugin xdp_hal_api_interface_plugin LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
 
 add_subdirectory(core)
 

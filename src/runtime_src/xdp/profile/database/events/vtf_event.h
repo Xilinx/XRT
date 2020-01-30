@@ -19,6 +19,8 @@
 
 #include <fstream>
 
+#include "xdp/config.h"
+
 namespace xdp {
 
   enum VTFEventType {
@@ -73,8 +75,8 @@ namespace xdp {
     void dumpType(std::ofstream& fout, bool humanReadable) ;
 
   public:
-    VTFEvent(uint64_t s_id, double ts, VTFEventType ty) ;
-    virtual ~VTFEvent() ;
+    XDP_EXPORT VTFEvent(uint64_t s_id, double ts, VTFEventType ty) ;
+    XDP_EXPORT virtual ~VTFEvent() ;
 
     // Getters and Setters
     inline double   getTimestamp()   const { return timestamp ; }
@@ -89,7 +91,7 @@ namespace xdp {
     virtual bool isDeviceEvent() { return false ; }
 
     virtual void* getDevice() { return nullptr ; } 
-    virtual void dump(std::ofstream& fout, int bucket) ;
+    XDP_EXPORT virtual void dump(std::ofstream& fout, int bucket) ;
   } ;
 
   // Used so the database can sort based on timestamp order
@@ -110,9 +112,9 @@ namespace xdp {
 
     APICall() = delete ;
   public:
-    APICall(uint64_t s_id, double ts, unsigned int f_id, uint64_t name,
-	    VTFEventType ty) ;
-    ~APICall() ;
+    XDP_EXPORT APICall(uint64_t s_id, double ts, unsigned int f_id, 
+		       uint64_t name, VTFEventType ty) ;
+    XDP_EXPORT ~APICall() ;
 
     virtual bool isHostEvent() { return true ; } 
   } ;

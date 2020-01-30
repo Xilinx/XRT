@@ -161,6 +161,8 @@ using addr_type = uint64_t;
 
       //Performance Monitor APIs
       double xclGetDeviceClockFreqMHz();
+      double xclGetReadMaxBandwidthMBps();
+      double xclGetWriteMaxBandwidthMBps();
       size_t xclGetDeviceTimestamp();
       void xclReadBusStatus(xclPerfMonType type);
       void xclGetDebugMessages(bool force = false);
@@ -208,6 +210,7 @@ using addr_type = uint64_t;
       void setUnified(bool _unified) { bUnified = _unified; }
 
       bool isMBSchedulerEnabled();
+      bool isLegacyErt();
       unsigned int getDsaVersion();
       bool isCdmaEnabled();
       uint64_t getCdmaBaseAddress(unsigned int index);

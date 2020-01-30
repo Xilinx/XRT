@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -20,6 +20,7 @@
 
 #include "XBUtilities.h"
 #include "SubCmd.h"
+#include "XBHelpMenus.h"
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
@@ -30,72 +31,6 @@ namespace po = boost::program_options;
 
 // System - Include Files
 #include <iostream>
-
-
-static void print_help( const std::string &_executable, 
-                        const std::string &_description,
-                        const po::options_description& _optionDescription,
-                        const SubCmdsCollection &_subCmds)
-{ 
-  // -- Command description
-  std::string formatted;
-  XBU::wrap_paragraphs(_description, 13, 80, false, formatted);
-  if ( !formatted.empty() ) 
-    std::cout << boost::format("\nDescription: %s\n") % formatted;
-
-  // -- Command usage
-  std::string usage = XBU::create_usage_string(_executable,"", _optionDescription);
-  usage += " [subCmd [subCmdArgs]]";
-  std::cout << boost::format("\nUsage: %s\n") % usage;
-
-  // -- Sort the SubCommands
-  SubCmdsCollection subCmdsReleased;
-  SubCmdsCollection subCmdsDepricated;
-  SubCmdsCollection subCmdsPreliminary;
-
-  for (auto& subCmdEntry : _subCmds) {
-    // Filter out hidden subcommand
-    if (subCmdEntry->isHidden()) 
-      continue;
-
-    // Depricated sub-command
-    if (subCmdEntry->isDeprecated()) {
-      subCmdsDepricated.push_back(subCmdEntry);
-      continue;
-    }
-
-    // Preliminary sub-command
-    if (subCmdEntry->isPreliminary()) {
-      subCmdsPreliminary.push_back(subCmdEntry);
-      continue;
-    }
-
-    // Released sub-command
-    subCmdsReleased.push_back(subCmdEntry);
-  }
-
-  // -- Report the SubCommands
-  if (!subCmdsReleased.empty()) {
-    std::cout << boost::format("\nAvailable SubCommands:\n");
-    for (auto & subCmdEntry : subCmdsReleased)
-      std::cout << boost::format("  %-10s - %s\n") % subCmdEntry->getName() % subCmdEntry->getShortDescription();
-  }
-
-  if (!subCmdsPreliminary.empty()) {
-    std::cout << boost::format("\nPreliminary SubCommands:\n");
-    for (auto & subCmdEntry : subCmdsPreliminary)
-      std::cout << boost::format("  %-10s - %s\n") % subCmdEntry->getName() % subCmdEntry->getShortDescription();
-  }
-
-  if (!subCmdsDepricated.empty()) {
-    std::cout << boost::format("\nDeprecated SubCommands:\n");
-    for (auto & subCmdEntry : subCmdsDepricated)
-      std::cout << boost::format("  %-10s - %s\n") % subCmdEntry->getName() % subCmdEntry->getShortDescription();
-  }
-
-  // Global Options
-  std::cout << "\n" << _optionDescription << std::endl;
-}
 
 // ------ Program entry point -------------------------------------------------
 void  main_(int argc, char** argv, 
@@ -112,21 +47,23 @@ void  main_(int argc, char** argv,
   bool bVerbose = false;
   bool bTrace = false;
   bool bHelp = false;
+  bool bBatchMode = false;
 
   // Build our options
   po::options_description globalOptions("Global Options");
   globalOptions.add_options()
-    ("help", boost::program_options::bool_switch(&bHelp), "Help to use this program")
-    ("verbose", boost::program_options::bool_switch(&bVerbose), "Turn on verbosity")
-    ("trace", boost::program_options::bool_switch(&bTrace), "Enables code flow tracing")
+    ("help,h", boost::program_options::bool_switch(&bHelp), "Help to use this application")
+    ("verbose,v", boost::program_options::bool_switch(&bVerbose), "Turn on verbosity")
+    ("batch,b", boost::program_options::bool_switch(&bBatchMode), "Enable batch mode (disables escape characters)")
+
   ;
 
   po::options_description hiddenOptions("Hidden Options");
   hiddenOptions.add_options()
+    ("trace", boost::program_options::bool_switch(&bTrace), "Enables code flow tracing")
     ("subCmd", po::value<std::string>(), "command to execute")
     ("subCmdArgs", po::value<std::vector<std::string> >(), "Arguments for command")
   ;
-
   // Merge the options to one common collection
   po::options_description allOptions("Allowed Options");
   allOptions.add(globalOptions).add(hiddenOptions);
@@ -151,14 +88,16 @@ void  main_(int argc, char** argv,
     po::notify(vm);                 // Can throw
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
-    ::print_help(executable, _description, globalOptions, _subCmds);
+    XBU::report_commands_help(executable, _description, globalOptions, _subCmds);
     return;
   }
+ 
+  // Disable escape characters if in batch mode
+  XBU::disable_escape_codes( bBatchMode );
 
   // Set the verbosity if enabled
-  if (bVerbose == true) {
+  if (bVerbose == true) 
     XBU::setVerbose( true );
-  }
 
   // Set the tracing if enabled
   if (bTrace == true) {
@@ -166,8 +105,8 @@ void  main_(int argc, char** argv,
   }
 
   // Check to see if help was requested and no command was found
-  if ((bHelp == true) && (vm.count("subCmd") == 0)) {
-    ::print_help(executable, _description, globalOptions, _subCmds);
+  if (vm.count("subCmd") == 0) {
+    XBU::report_commands_help(executable, _description, globalOptions, _subCmds);
     return;
   }
 
@@ -176,7 +115,7 @@ void  main_(int argc, char** argv,
   std::string sCommand = vm["subCmd"].as<std::string>();
 
   if (sCommand == "help") {
-    ::print_help(executable, _description, globalOptions, _subCmds);
+    XBU::report_commands_help(executable, _description, globalOptions, _subCmds);
     return;
   }
 
@@ -190,8 +129,8 @@ void  main_(int argc, char** argv,
   }
 
   if ( !subCommand) {
-    std::cerr << "ERROR: " << "Unknown sub-command: '" << sCommand << "'" << std::endl;
-    ::print_help(executable, _description, globalOptions, _subCmds);
+    std::cerr << "ERROR: " << "Unknown command: '" << sCommand << "'" << std::endl;
+    XBU::report_commands_help(executable, _description, globalOptions, _subCmds);
     return;
   }
 

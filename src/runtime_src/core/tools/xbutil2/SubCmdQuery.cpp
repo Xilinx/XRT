@@ -145,9 +145,9 @@ pu1_query_report()
 
 SubCmdQuery::SubCmdQuery(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("query", 
-             "Status of the system and device(s)")
+             "See replacement functionality in command: 'examine'")
 {
-  const std::string longDescription = "<add long description>";
+  const std::string longDescription = "Status of the system and device(s)";
   setLongDescription(longDescription);
   setExampleSyntax("");
   setIsHidden(_isHidden);

@@ -28,3 +28,4 @@ class SubCmdScan : public SubCmd {
 };
 
 #endif
+

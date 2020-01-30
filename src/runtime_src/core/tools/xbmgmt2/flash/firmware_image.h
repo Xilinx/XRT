@@ -31,7 +31,7 @@
 
 // directory where all MCS files are saved
 #define FIRMWARE_WIN_DIR    "C:\\Xilinx"
-#define FIRMWARE_DIR        "/lib/xilinx/firmware"
+#define FIRMWARE_DIR        "/lib/firmware/xilinx"
 #define FORMATTED_FW_DIR    "/opt/xilinx/firmware"
 #define DSA_FILE_SUFFIX     "mcs"
 #define DSABIN_FILE_SUFFIX  "dsabin"

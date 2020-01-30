@@ -517,11 +517,40 @@ namespace xclhwemhal2 {
     }
 
     slot_addr = ERT_CQ_BASE_ADDR + xcmd->slot_idx*slot_size(xcmd->exec);
+    
+    if(!mParent->isLegacyErt())
+    {
+      if (type(xcmd) == ERT_CU)
+      {
+        //now KDS is sending the cu_idx to ERT
+        struct exec_core *exec = xcmd->exec;
+        for (unsigned int cuidx = 0; cuidx < exec->num_cus; ++cuidx)
+        {
+          xocl_cu *xcu = exec->cus[cuidx];
 
-    /* TODO write packet minus header */
-    mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcmd->exec->base + slot_addr + 4, xcmd->packet->data,(packet_size(xcmd)-1)*sizeof(uint32_t));
-    //memcpy_toio(xcmd->exec->base + slot_addr + 4,xcmd->packet->data,(packet_size(xcmd)-1)*sizeof(uint32_t));
+          if (cmd_has_cu(xcmd, cuidx) && cu_ready(xcu))
+          {
+            xcmd->cu_idx = cuidx;
+            break;
+          }
+        }
 
+        if (xcmd->cu_idx < 0) {
+          return false;
+        }
+
+        mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcmd->exec->base + slot_addr + 4,(void*) &(xcmd->cu_idx)  ,4);
+        mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcmd->exec->base + slot_addr + 8, xcmd->packet->data + 1 ,(packet_size(xcmd)-2)*sizeof(uint32_t));
+      }
+      else
+      {
+        mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcmd->exec->base + slot_addr + 4, xcmd->packet->data  ,(packet_size(xcmd)-1)*sizeof(uint32_t));
+      }
+    }
+    else
+    {
+      mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcmd->exec->base + slot_addr + 4, xcmd->packet->data  ,(packet_size(xcmd)-1)*sizeof(uint32_t));
+    }
     /* TODO write header */
     mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcmd->exec->base + slot_addr, (void*)(&xcmd->packet->header) ,4);
     //iowrite32(xcmd->packet->header,xcmd->exec->base + slot_addr);

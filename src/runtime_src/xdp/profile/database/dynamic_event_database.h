@@ -28,6 +28,8 @@
 // For the Trace results vector
 #include "xclperf.h"
 
+#include "xdp/config.h"
+
 namespace xdp {
 
   // The Dynamic Database will own all VTFEvents and is responsible
@@ -71,26 +73,26 @@ namespace xdp {
     void addDeviceEvent(void* dev, VTFEvent* event) ;
     
   public:
-    VPDynamicDatabase() ;
-    ~VPDynamicDatabase() ;
+    XDP_EXPORT VPDynamicDatabase() ;
+    XDP_EXPORT ~VPDynamicDatabase() ;
 
     // Add an event in sorted order in the database
-    void addEvent(VTFEvent* event) ;
-    void addDeviceEvents(void* dev, xclTraceResultsVector& trace) ;
+    XDP_EXPORT void addEvent(VTFEvent* event) ;
+    XDP_EXPORT void addDeviceEvents(void* dev, xclTraceResultsVector& trace) ;
 
     // For API events, find the event id of the start event for an end event
-    void markStart(uint64_t functionID, uint64_t eventID) ;
-    uint64_t matchingStart(uint64_t functionID) ;
+    XDP_EXPORT void markStart(uint64_t functionID, uint64_t eventID) ;
+    XDP_EXPORT uint64_t matchingStart(uint64_t functionID) ;
 
     // A lookup into the string table
-    uint64_t addString(const std::string& value) ;
+    XDP_EXPORT uint64_t addString(const std::string& value) ;
 
     // A function that iterates on the dynamic events and returns
     //  events based upon the filter passed in
-    std::vector<VTFEvent*> filterEvents(std::function<bool(VTFEvent*)> filter);
+    XDP_EXPORT std::vector<VTFEvent*> filterEvents(std::function<bool(VTFEvent*)> filter);
 
     // Functions that dump large portions of the database
-    void dumpStringTable(std::ofstream& fout) ;
+    XDP_EXPORT void dumpStringTable(std::ofstream& fout) ;
   } ;
   
 }

@@ -68,7 +68,6 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   ,mStopTrace(0)
   ,mCountTrace(0)
   ,mReadTrace(0)
-  ,mWriteHostEvent(0)
   ,mDebugReadIPStatus(0)
   ,mCreateWriteQueue(0)
   ,mCreateReadQueue(0)
@@ -134,7 +133,6 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   mGetProfilingSlots = (getSlotFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetProfilingNumberSlots");
   mGetProfilingSlotName = (getSlotNameFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetProfilingSlotName");
   mGetProfilingSlotProperties = (getSlotPropertiesFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetProfilingSlotProperties");
-  mWriteHostEvent = (writeHostEventFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclWriteHostEvent");
   mClockTraining = (clockTrainingFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonClockTraining");
   mConfigureDataflow = (configureDataflowFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonConfigureDataflow");
   mStartCounters = (startCountersFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonStartCounters");
@@ -144,7 +142,6 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   mStopTrace = (stopTraceFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonStopTrace");
   mCountTrace = (countTraceFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonGetTraceCount");
   mReadTrace = (readTraceFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonReadTrace");
-  mWriteHostEvent = (writeHostEventFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclWriteHostEvent");
   mDebugReadIPStatus = (debugReadIPStatusFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclDebugReadIPStatus");
   mGetNumLiveProcesses = (xclGetNumLiveProcessesFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetNumLiveProcesses");
   mGetSysfsPath = (xclGetSysfsPathFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetSysfsPath");

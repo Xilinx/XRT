@@ -269,8 +269,31 @@ static ssize_t dev_offline_show(struct device *dev,
 
 	return sprintf(buf, "%d\n", val);
 }
-
 static DEVICE_ATTR(dev_offline, 0444, dev_offline_show, NULL);
+
+static ssize_t shutdown_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d\n", XDEV(xdev)->shutdown);
+}
+
+static ssize_t shutdown_store(struct device *dev,
+		struct device_attribute *da, const char *buf, size_t count)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	u32 val;
+
+
+	if (kstrtou32(buf, 10, &val) == -EINVAL || val != 1)
+		return -EINVAL;
+
+	xocl_queue_work(xdev, XOCL_WORK_SHUTDOWN, 0);
+
+	return count;
+}
+static DEVICE_ATTR(shutdown, 0644, shutdown_show, shutdown_store);
 
 static ssize_t mig_calibration_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -500,6 +523,7 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_user_pf.attr,
 	&dev_attr_p2p_enable.attr,
 	&dev_attr_dev_offline.attr,
+	&dev_attr_shutdown.attr,
 	&dev_attr_mig_calibration.attr,
 	&dev_attr_link_width.attr,
 	&dev_attr_link_speed.attr,
