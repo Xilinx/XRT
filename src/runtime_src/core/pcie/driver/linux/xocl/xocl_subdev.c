@@ -76,18 +76,24 @@ static struct xocl_subdev *xocl_subdev_reserve(xdev_handle_t xdev_hdl,
 	int max = sdev_info->multi_inst ? XOCL_SUBDEV_MAX_INST : 1;
 	int i;
 
-	for (i = 0; i < max; i++) {
-		if (sdev_info->override_idx)
-			subdev = &core->subdevs[devid][sdev_info->override_idx];
-		else
-			subdev = &core->subdevs[devid][i];
-		if (subdev->state == XOCL_SUBDEV_STATE_UNINIT) {
-			subdev->state = XOCL_SUBDEV_STATE_INIT;
-			break;
+	if (sdev_info->override_idx) {
+		subdev = &core->subdevs[devid][sdev_info->override_idx];
+		if (subdev->state != XOCL_SUBDEV_STATE_UNINIT) {
+			xocl_xdev_info(xdev_hdl, "subdev %d index %d is in-use",
+				devid, sdev_info->override_idx);
+			return NULL;
 		}
+	} else {
+		for (i = 0; i < max; i++) {
+			subdev = &core->subdevs[devid][i];
+			if (subdev->state == XOCL_SUBDEV_STATE_UNINIT)
+				break;
+		}
+		if (i == max)
+			return NULL;
 	}
-	if (i == max)
-		return NULL;
+
+	subdev->state = XOCL_SUBDEV_STATE_INIT;
 
 	subdev->inst = ida_simple_get(&subdev_inst_ida,
 			sdev_info->id << MINORBITS,
@@ -320,8 +326,7 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 	else
 		snprintf(devname, sizeof(devname) - 1, "%s%s",
 				sdev_info->name, SUBDEV_SUFFIX);
-	xocl_xdev_info(xdev_hdl, "creating subdev %s",
-			devname);
+	xocl_xdev_info(xdev_hdl, "creating subdev %s", devname);
 
 	subdev = xocl_subdev_reserve(xdev_hdl, sdev_info);
 	if (!subdev) {
@@ -1000,7 +1005,9 @@ xocl_fetch_dynamic_platform(struct xocl_dev_core *core,
 				strcpy(core->vbnv_cache, dsa_map[i].vbnv);
 				s = strstr(core->vbnv_cache, "_");
 				s = strstr(s + 1, "_");
-				strcpy(s, "_recovery");
+				strncpy(s, "_recovery",
+				    sizeof(core->vbnv_cache) -
+				    (s - core->vbnv_cache) - 1);
 				core->priv.vbnv = core->vbnv_cache;
 			} else
 				core->priv.vbnv = dsa_map[i].vbnv;
@@ -1372,6 +1379,22 @@ failed:
 	return ret;
 }
 
+struct resource *xocl_get_iores_byname(struct platform_device *pdev,
+		char *name)
+{
+	int i = 0;
+	struct resource *res;
+
+	for (res = platform_get_resource(pdev, IORESOURCE_MEM, i);
+		res;
+		res = platform_get_resource(pdev, IORESOURCE_MEM, ++i)) {
+		if (!strncmp(res->name, name, strlen(name)))
+			return res;
+	}
+
+	return NULL;
+}
+
 void xocl_subdev_register(struct platform_device *pldev, void *ops)
 {
 	struct xocl_subdev *subdev;
@@ -1396,4 +1419,28 @@ void xocl_subdev_unregister(struct platform_device *pldev)
 	}
 
 	subdev->ops = NULL;
+}
+
+int xocl_wait_pci_status(struct pci_dev *pdev, u16 mask, u16 val, int timeout)
+{
+	u16     pci_cmd;
+	int     i;
+
+	if (!timeout)
+		timeout = 5000;
+	else
+		timeout *= 1000;
+
+	for (i = 0; i < timeout; i++) {
+		pci_read_config_word(pdev, PCI_COMMAND, &pci_cmd);
+		if (pci_cmd != 0xffff && (pci_cmd & mask) == val)
+			break;
+		msleep(1);
+	}
+
+	xocl_info(&pdev->dev, "waiting for %d ms", i);
+	if (i == 5000) 
+		return -ETIME;
+
+	return 0;
 }

@@ -57,6 +57,7 @@
 #include <sys/syscall.h>
 #include <sys/file.h>
 #include <linux/aio_abi.h>
+#include <asm/mman.h>
 
 #ifdef NDEBUG
 # undef NDEBUG
@@ -594,7 +595,7 @@ void shim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
     mDev->sysfs_get<unsigned short>("mb_scheduler", "kds_numcdmas", errmsg, info->mNumCDMA, static_cast<unsigned short>(-1));
 
     //get sensors
-    unsigned int m12VPex, m12VAux, mPexCurr, mAuxCurr, mDimmTemp_0, mDimmTemp_1, mDimmTemp_2, 
+    unsigned int m12VPex, m12VAux, mPexCurr, mAuxCurr, mDimmTemp_0, mDimmTemp_1, mDimmTemp_2,
         mDimmTemp_3, mSE98Temp_0, mSE98Temp_1, mSE98Temp_2, mFanTemp, mFanRpm, m3v3Pex, m3v3Aux,
         mDDRVppBottom, mDDRVppTop, mSys5v5, m1v2Top, m1v8Top, m0v85, mMgt0v9, m12vSW, mMgtVtt,
         m1v2Bottom, mVccIntVol,mOnChipTemp;
@@ -679,7 +680,10 @@ int shim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
     info->mHALMajorVersion = XCLHAL_MAJOR_VER;
     info->mHALMinorVersion = XCLHAL_MINOR_VER;
     info->mMinTransferSize = DDR_BUFFER_ALIGNMENT;
-    info->mDMAThreads = 2;
+    std::string errmsg;
+    std::vector<std::string> dmaStatStrs;
+    mDev->sysfs_get("dma", "channel_stat_raw", errmsg, dmaStatStrs);
+    info->mDMAThreads = dmaStatStrs.size();
     xclSysfsGetDeviceInfo(info);
     return 0;
 }
@@ -744,6 +748,51 @@ int shim::p2pEnable(bool enable, bool force)
     return p2p_enable;
 }
 
+int shim::cmaEnable(bool enable, uint64_t size)
+{
+    int ret = 0;
+
+    if (enable) {
+        uint32_t hugepage_flag = 0;
+
+        drm_xocl_alloc_cma_info cma_info;
+        cma_info.page_sz = size;
+
+        /* Once set MAP_HUGETLB, we have to specify bit[26~31] as size in log
+         * e.g. We like to get 2M huge page, 2M = 2^21,
+         * 21 = 0x15
+         */
+        if (size == (1 << 30))
+            hugepage_flag = 0x1e;
+        else if (size == (2 << 20))
+            hugepage_flag = 0x15;
+
+        if (!hugepage_flag)
+            return -EINVAL;
+
+
+        void *addr_local = mmap(0x0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | hugepage_flag << MAP_HUGE_SHIFT, 0, 0);
+        if (addr_local == MAP_FAILED) {
+            xrt_logmsg(XRT_ERROR, "Unable to get huge page.");
+            ret = -ENOMEM;
+        } else {
+            cma_info.user_addr = (uint64_t)addr_local;
+        }
+
+        if (!ret) {
+            ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_ALLOC_CMA, &cma_info);
+            if (ret)
+                ret = -errno;
+            munmap((void*)cma_info.user_addr, size);
+        }
+
+    } else {
+        drm_xocl_free_cma_info cma_info = {0};
+        ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_FREE_CMA, &cma_info);
+    }
+
+    return ret;
+}
 /*
  * xclLockDevice()
  */
@@ -1902,6 +1951,12 @@ int xclP2pEnable(xclDeviceHandle handle, bool enable, bool force)
 {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->p2pEnable(enable, force) : -ENODEV;
+}
+
+int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t sz)
+{
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
+    return drv ? drv->cmaEnable(enable, sz) : -ENODEV;
 }
 
 int xclBootFPGA(xclDeviceHandle handle)

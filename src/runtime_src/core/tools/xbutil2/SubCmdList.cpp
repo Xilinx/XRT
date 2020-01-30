@@ -31,7 +31,7 @@ namespace po = boost::program_options;
 
 SubCmdList::SubCmdList(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("list", 
-             "List all devices")
+             "See replacement functionality in command: 'examine'")
 {
   const std::string longDescription = "<add long description>";
   setLongDescription(longDescription);

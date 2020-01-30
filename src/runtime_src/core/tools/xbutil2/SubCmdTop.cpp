@@ -31,9 +31,9 @@ namespace po = boost::program_options;
 
 SubCmdTop::SubCmdTop(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("top", 
-             "<add short description>")
+             "Display's card activities")
 {
-  const std::string longDescription = "<add long description>";
+  const std::string longDescription = "Display's card's activity";
   setLongDescription(longDescription);
   setExampleSyntax("");
   setIsHidden(_isHidden);
@@ -48,13 +48,16 @@ SubCmdTop::execute(const SubCmdOptions& _options) const
 {
   XBU::verbose("SubCommand: top");
   // -- Retrieve and parse the subcommand options -----------------------------
+  std::string device = "";
   uint64_t seconds = 0;
   bool help = false;
 
-  po::options_description topDesc("top options");
+  po::options_description topDesc("Options");
   topDesc.add_options()
+    ("device,d", boost::program_options::value<decltype(device)>(&device)->required(), "The device of interest. This is specified as follows:\n"
+                                                                                       "  <BDF> - Bus:Device.Function (e.g., 0000:d8:00.0)\n")
+    ("interval,s", boost::program_options::value<uint64_t>(&seconds), "Seconds")
     ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
-    (",s", boost::program_options::value<uint64_t>(&seconds), "Seconds")
   ;
 
   // Parse sub-command ...

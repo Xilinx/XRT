@@ -73,6 +73,7 @@
 
 #ifndef __KERNEL__
 #include <stdint.h>
+#include <libdrm/drm.h>
 #include <drm/drm_mode.h>
 #else
 #include <uapi/drm/drm_mode.h>

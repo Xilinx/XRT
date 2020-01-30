@@ -142,7 +142,8 @@ public:
       QR_FLASH_BAR_OFFSET,
       QR_IS_MFG,
       QR_F_FLASH_TYPE,
-      QR_FLASH_TYPE
+      QR_FLASH_TYPE,
+      QR_BOARD_NAME
   };
 public:
 

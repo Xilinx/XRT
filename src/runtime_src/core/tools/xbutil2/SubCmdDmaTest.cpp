@@ -97,7 +97,7 @@ dmatest(const std::shared_ptr<xrt_core::device>& device, size_t block_size, bool
 
 SubCmdDmaTest::SubCmdDmaTest(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("dmatest", 
-             "Runs a DMA test on a given device")
+             "See replacement functionality in command: 'advanced'")
 {
   const std::string longDescription = "<add long description>";
   setLongDescription(longDescription);

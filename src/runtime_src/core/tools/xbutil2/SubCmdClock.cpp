@@ -30,7 +30,7 @@ namespace po = boost::program_options;
 
 SubCmdClock::SubCmdClock(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("clock", 
-             "Change a given clock frequency")
+             "See replacement functionality in command: 'advanced'")
 {
   const std::string longDescription = "Change a given clock frequecy.";
   setLongDescription(longDescription);
@@ -74,7 +74,7 @@ SubCmdClock::execute(const SubCmdOptions& _options) const
   try {
     po::store(po::command_line_parser(_options).options(clockDesc).run(), vm);
     po::notify(vm); // Can throw
-  } catch (po::error& e) {
+  } catch (std::exception& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
     printHelp(clockDesc);
     throw;

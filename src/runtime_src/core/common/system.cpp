@@ -45,12 +45,6 @@ get_devices(boost::property_tree::ptree& pt)
   instance().get_devices(pt);
 }
 
-void
-scan_devices(bool verbose, bool json)
-{
-  instance().scan_devices(verbose, json);
-}
-
 std::shared_ptr<device>
 get_userpf_device(device::id_type id)
 {
@@ -64,9 +58,9 @@ get_mgmtpf_device(device::id_type id)
 }
 
 std::pair<uint64_t, uint64_t>
-get_total_devices()
+get_total_devices(bool is_user)
 {
-  return instance().get_total_devices();
+  return instance().get_total_devices(is_user);
 }
 
 uint16_t

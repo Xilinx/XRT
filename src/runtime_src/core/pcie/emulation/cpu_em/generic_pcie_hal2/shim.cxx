@@ -1116,10 +1116,11 @@ uint64_t CpuemShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
     ddr = 0;
   }
   
-  struct xclemulation::drm_xocl_bo *xobj = new xclemulation::drm_xocl_bo;
+  //struct xclemulation::drm_xocl_bo *xobj = new xclemulation::drm_xocl_bo;
+  auto xobj = std::make_unique<xclemulation::drm_xocl_bo>();
   xobj->flags=info->flags;
   /* check whether buffer is p2p or not*/
-  bool noHostMemory = xclemulation::no_host_memory(xobj); 
+  bool noHostMemory = xclemulation::no_host_memory(xobj.get());
   std::string sFileName("");
   xobj->base = xclAllocDeviceBuffer2(size,XCL_MEM_DEVICE_RAM,ddr,noHostMemory,sFileName);
   xobj->filename = sFileName;
@@ -1134,7 +1135,7 @@ uint64_t CpuemShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   }
 
   info->handle = mBufferCount;
-  mXoclObjMap[mBufferCount++] = xobj;
+  mXoclObjMap[mBufferCount++] = xobj.release();
   return 0;
 }
 
