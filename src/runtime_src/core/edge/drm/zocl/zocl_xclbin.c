@@ -987,12 +987,17 @@ bool
 zocl_xclbin_legacy_intr(struct drm_zocl_dev *zdev)
 {
 	u32 prop = zdev->apertures[0].prop;
+	int i, count = 0;
 
-	/* The first aperture is special.
-	 * If the interrupt ID is zero, this is the legacy
-	 * interrupt xclbin.
-	 */
-	return (prop & IP_INTERRUPT_ID_MASK) == 0;
+	/* if all of the interrupt id is 0, this xclbin is legacy */
+	for (i = 0; i < zdev->num_apts; i++) {
+		if ((prop & IP_INTERRUPT_ID_MASK) == 0)
+			count++;
+	}
+
+	WARN_ON(count < zdev->num_apts && count > 1);
+
+	return (count == zdev->num_apts);
 }
 
 u32
