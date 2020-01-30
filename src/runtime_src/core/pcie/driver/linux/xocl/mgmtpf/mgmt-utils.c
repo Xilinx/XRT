@@ -22,6 +22,7 @@
 
 #define XCLMGMT_RESET_MAX_RETRY		10
 
+static void xclmgmt_reset_pci(struct xclmgmt_dev *lro);
 /**
  * @returns: NULL if AER apability is not found walking up to the root port
  *         : pci_dev ptr to the port which is AER capable.
@@ -157,12 +158,32 @@ void platform_axilite_flush(struct xclmgmt_dev *lro)
 	}
 }
 
+static int xocl_match_slot_and_wait(struct device *dev, void *data)
+{
+	struct xclmgmt_dev *lro = data;
+	struct pci_dev *pdev;
+	int ret = 0;
+
+	pdev = to_pci_dev(dev);
+
+	if (pdev != lro->core.pdev &&
+		(XOCL_DEV_ID(pdev) >> 3) == (XOCL_DEV_ID(lro->pci_dev) >> 3))
+		ret = xocl_wait_pci_status(pdev, PCI_COMMAND_MASTER, 0, 60);
+
+	return ret;
+}
+
+static int xocl_wait_master_off(struct xclmgmt_dev *lro)
+{
+	return bus_for_each_dev(&pci_bus_type, NULL, lro, xocl_match_slot_and_wait);
+}
+
 /**
  * Perform a PCIe secondary bus reset. Note: Use this method over pcie fundamental reset.
  * This method is known to work better.
  */
 
-long xclmgmt_hot_reset(struct xclmgmt_dev *lro)
+long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 {
 	long err = 0;
 	const char *ep_name;
@@ -181,6 +202,13 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro)
 	mgmt_info(lro, "Trying to reset card %d in slot %s:%02x:%1x",
 		lro->instance, ep_name,
 		PCI_SLOT(pdev->devfn), PCI_FUNC(pdev->devfn));
+
+	if (!force) {
+		mgmt_info(lro, "wait for master off for all functions");
+		err = xocl_wait_master_off(lro);
+		if (err)
+			goto done;
+	}
 
 	xocl_thread_stop(lro);
 
@@ -305,6 +333,7 @@ static int xocl_match_slot_and_restore(struct device *dev, void *data)
 {
 	struct xclmgmt_dev *lro = data;
 	struct pci_dev *pdev;
+	u16 pci_cmd;
 
 	pdev = to_pci_dev(dev);
 
@@ -324,6 +353,12 @@ static int xocl_match_slot_and_restore(struct device *dev, void *data)
 		xocl_axigate_free(lro, XOCL_SUBDEV_LEVEL_BLD);
 
 		pci_restore_state(pdev);
+
+		pci_read_config_word(pdev, PCI_COMMAND, &pci_cmd);
+		if (!(pci_cmd & PCI_COMMAND_MASTER)) {
+			pci_cmd |= PCI_COMMAND_MASTER;
+			pci_write_config_word(pdev, PCI_COMMAND, pci_cmd);
+		}
 		pci_cfg_access_unlock(pdev);
 	}
 
@@ -404,12 +439,10 @@ done:
 	return rc;
 }
 
-void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
+static void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 {
 	struct pci_dev *pdev = lro->pci_dev;
 	struct pci_bus *bus;
-	int i;
-	u16 pci_cmd;
 	u8 pci_bctl;
 
 	mgmt_info(lro, "Reset PCI");
@@ -428,14 +461,7 @@ void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 	pci_write_config_byte(bus->self, PCI_BRIDGE_CONTROL, pci_bctl);
 	ssleep(1);
 
-	for (i = 0; i < 5000; i++) {
-		pci_read_config_word(pdev, PCI_COMMAND, &pci_cmd);
-		if (pci_cmd != 0xffff)
-			break;
-		msleep(1);
-	}
-
-	mgmt_info(lro, "Resetting for %d ms", i);
+	xocl_wait_pci_status(pdev, 0, 0, 0);
 
 	xocl_pci_restore_config_all(lro);
 

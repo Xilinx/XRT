@@ -497,7 +497,7 @@ static int xclmgmt_reset(xdev_handle_t xdev_hdl)
 {
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)xdev_hdl;
 
-	return xclmgmt_hot_reset(lro);
+	return xclmgmt_hot_reset(lro, true);
 }
 
 struct xocl_pci_funcs xclmgmt_pci_ops = {
@@ -710,11 +710,16 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		 * before peer wakes up and start touching the PCIE BAR,
 		 * which is not allowed during reset.
 		 */
-		ret = (int) xclmgmt_hot_reset(lro);
+		ret = (int) xclmgmt_hot_reset(lro, true);
 #else
-		ret = (int) xclmgmt_hot_reset(lro);
-		(void) xocl_peer_response(lro, req->req, msgid, &ret,
+		xocl_drvinst_set_offline(lro, true);
+		ret = xocl_peer_response(lro, req->req, msgid, &ret,
 			sizeof(ret));
+		if (ret) {
+			/* the other side does not recv resp, force reset */
+			ret = xocl_queue_work(lro, XOCL_WORK_FORCE_RESET, 0);
+		} else
+			ret = xocl_queue_work(lro, XOCL_WORK_RESET, 0);
 #endif
 		break;
 	case XCL_MAILBOX_REQ_LOAD_XCLBIN_KADDR: {
@@ -1027,6 +1032,30 @@ failed:
 	return rc;
 }
 
+static void xclmgmt_work_cb(struct work_struct *work)
+{
+	struct xocl_work *_work = (struct xocl_work *)to_delayed_work(work);
+	struct xclmgmt_dev *lro = container_of(_work,
+			struct xclmgmt_dev, core.works[_work->op]);
+	int ret;
+
+	switch (_work->op) {
+	case XOCL_WORK_RESET:
+		ret = (int) xclmgmt_hot_reset(lro, false);
+		if (!ret)
+			xocl_drvinst_set_offline(lro, false);
+		break;
+	case XOCL_WORK_FORCE_RESET:
+		ret = (int) xclmgmt_hot_reset(lro, true);
+		if (!ret)
+			xocl_drvinst_set_offline(lro, false);
+		break;
+	default:
+		mgmt_err(lro, "Invalid op code %d", _work->op);
+		break;
+	}
+}
+
 /*
  * Device initialization is done in two phases:
  * 1. Minimum initialization - init to the point where open/close/mmap entry
@@ -1037,9 +1066,10 @@ failed:
  */
 static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 {
-	int rc = 0;
+	int rc = 0, i;
 	struct xclmgmt_dev *lro = NULL;
 	struct xocl_board_private *dev_info;
+	char wq_name[15];
 
 	xocl_info(&pdev->dev, "Driver: %s", XRT_DRIVER_VERSION);
 	xocl_info(&pdev->dev, "probe(pdev = 0x%p, pci_id = 0x%p)\n", pdev, id);
@@ -1050,6 +1080,11 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		xocl_err(&pdev->dev, "Could not kzalloc(xclmgmt_dev).\n");
 		rc = -ENOMEM;
 		goto err_alloc;
+	}
+
+	for (i = XOCL_WORK_RESET; i < XOCL_WORK_NUM; i++) {
+		INIT_DELAYED_WORK(&lro->core.works[i].work, xclmgmt_work_cb);
+		lro->core.works[i].op = i;
 	}
 
 	rc = xocl_subdev_init(lro);
@@ -1091,9 +1126,18 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		goto err_cdev;
 	}
 
+	snprintf(wq_name, sizeof(wq_name), "mgmt_wq%d", lro->core.dev_minor);
+	lro->core.wq = create_singlethread_workqueue(wq_name);
+	if (!lro->core.wq) {
+		xocl_err(&pdev->dev, "failed to create work queue");
+		rc = -EFAULT;
+		goto err_create_wq;
+	}
+
 	xocl_drvinst_set_filedev(lro, lro->user_char_dev.cdev);
 
 	mutex_init(&lro->busy_mutex);
+	mutex_init(&lro->core.wq_lock);
 
 	mgmt_init_sysfs(&pdev->dev);
 
@@ -1128,6 +1172,8 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	return 0;
 
+err_create_wq:
+	destroy_sg_char(&lro->user_char_dev);
 err_cdev:
 	unmap_bars(lro);
 err_map:
@@ -1162,6 +1208,8 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 		pci_write_config_byte(pdev, 0x188, 0x0);
 
 	xocl_thread_stop(lro);
+
+	xocl_queue_destroy(lro);
 
 	mgmt_fini_sysfs(&pdev->dev);
 
