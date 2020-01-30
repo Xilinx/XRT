@@ -1315,25 +1315,25 @@ static bool scaling_condition_check(struct xocl_xmc *xmc, struct device *dev)
 		//Feature present bit may configured each time an xclbin is downloaded,
 		//or following a reset of the CMC Subsystem. So, check for latest
 		//status every time.
+		xmc->cs_on_ptfm = false;
+		xmc->runtime_cs_enabled = false;
 		u32 reg = READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1);
-		if (reg & (1 << 28))
-			xmc->runtime_cs_enabled = true;
-		else
-			xmc->runtime_cs_enabled = false;
 		if (reg & (1 << 29)) {
 			xmc->cs_on_ptfm = true;
-			return true;
+			if (reg & (1 << 28))
+				xmc->runtime_cs_enabled = true;
 		}
-		xmc->cs_on_ptfm = false;
 	}
 
 	if (!xmc->runtime_cs_enabled) {
-		if (!XMC_PRIVILEGED(xmc))
+		if (!XMC_PRIVILEGED(xmc)) {
 			xocl_dbg(dev, "runtime clock scaling is not supported in non privileged mode\n");
-		else if (xmc->cs_on_ptfm)
+		} else if (xmc->cs_on_ptfm) {
 			xocl_warn(dev, "runtime clock scaling is not enabled\n");
-		else
+			return true;
+		} else {
 			xocl_warn(dev, "runtime clock scaling is not supported\n");
+		}
 		return false;
 	}
 	return true;
