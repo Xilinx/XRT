@@ -151,6 +151,7 @@ static DSAInfo
 selectShell(uint16_t idx, std::string& dsa, std::string& id)
 {
   uint16_t candidateDSAIndex = std::numeric_limits<uint16_t>::max();
+  boost::format fmtStatus("%|8t|Status: %s"); 
 
   Flasher flasher(idx);
   if(!flasher.isValid())
@@ -162,11 +163,11 @@ selectShell(uint16_t idx, std::string& dsa, std::string& id)
   if (dsa.empty()) {
     std::cout << "Card [" << flasher.sGetDBDF() << "]: " << std::endl;
     if (installedDSA.empty()) {
-      std::cout << "\t Status: no shell is installed" << std::endl;
+      std::cout << fmtStatus % "no shell is installed" << std::endl;
       return DSAInfo("");
     }
     if (installedDSA.size() > 1) {
-      std::cout << "\t Status: multiple shells are installed" << std::endl;
+      std::cout << fmtStatus % "multiple shells are installed" << std::endl;
       return DSAInfo("");
     }
     candidateDSAIndex = 0;
@@ -178,14 +179,14 @@ selectShell(uint16_t idx, std::string& dsa, std::string& id)
       if (!id.empty() && !idsa.matchId(id))
         continue;
       if (candidateDSAIndex != std::numeric_limits<uint16_t>::max()) {
-        std::cout << "\t Status: multiple shells are installed" << std::endl;
+        std::cout << fmtStatus % "multiple shells are installed" << std::endl;
         return DSAInfo("");
       }
       candidateDSAIndex = i;
     }
   }
   if (candidateDSAIndex == std::numeric_limits<uint16_t>::max()) {
-    std::cout << "WARNING: Failed to flash Card["
+    std::cout << "ERROR: Failed to flash Card["
       << flasher.sGetDBDF() << "]: Specified shell is not applicable" << std::endl;
     return DSAInfo("");
   }
@@ -195,18 +196,18 @@ selectShell(uint16_t idx, std::string& dsa, std::string& id)
   bool same_bmc = false;
   DSAInfo currentDSA = flasher.getOnBoardDSA();
   if (!currentDSA.name.empty()) {
-    same_dsa = (candidate.name == currentDSA.name &&
-      candidate.matchId(currentDSA));
-    same_bmc = (currentDSA.bmcVer.empty() ||
-      candidate.bmcVer == currentDSA.bmcVer);
+    same_dsa = ((candidate.name == currentDSA.name) &&
+      (candidate.matchId(currentDSA)));
+    same_bmc = ((currentDSA.bmcVer.empty()) ||
+      (candidate.bmcVer == currentDSA.bmcVer));
   }
   if (same_dsa && same_bmc) {
-    std::cout << "\t Status: shell is up-to-date" << std::endl;
+    std::cout << fmtStatus % "shell is up-to-date" << std::endl;
     return DSAInfo("");
   }
-  std::cout << "\t Status: shell needs updating" << std::endl;
-  std::cout << "\t Current shell: " << currentDSA.name << std::endl;
-  std::cout << "\t Shell to be flashed: " << candidate.name << std::endl;
+  std::cout << fmtStatus % "shell needs updating" << std::endl;
+  std::cout << boost::format("%|8t| %s") % "Current shell: " << currentDSA.name << std::endl;
+  std::cout << boost::format("%|8t| %s") % "Shell to be flashed: " << candidate.name << std::endl;
   return candidate;
 }
 
@@ -243,10 +244,8 @@ updateShellAndSC(uint16_t boardIdx, DSAInfo& candidate, bool& reboot)
   reboot = false;
 
   Flasher flasher(boardIdx);
-  if(!flasher.isValid()) {
-    std::cout << "card not available" << std::endl;
-    return -EINVAL;
-  }
+  if(!flasher.isValid())
+    throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % boardIdx));
 
   bool same_dsa = false;
   bool same_bmc = false;
@@ -263,7 +262,8 @@ updateShellAndSC(uint16_t boardIdx, DSAInfo& candidate, bool& reboot)
   if (!same_bmc) {
     std::cout << "Updating SC firmware on card[" << flasher.sGetDBDF() <<
       "]" << std::endl;
-    auto ret = 0;update_SC(boardIdx, candidate.file.c_str());
+    auto ret = 0;
+    update_SC(boardIdx, candidate.file.c_str());
     if (ret != 0) {
       std::cout << "WARNING: Failed to update SC firmware on card ["
         << flasher.sGetDBDF() << "]" << std::endl;
@@ -301,7 +301,7 @@ auto_flash(uint16_t index, std::string& name,
 
   // Sanity check input dsa and timestamp.
   if (!name.empty()) {
-        bool foundDSA = false;
+    bool foundDSA = false;
     bool multiDSA = false;
     auto installedDSAs = firmwareImage::getIntalledDSAs();
     for (DSAInfo& dsa : installedDSAs) {

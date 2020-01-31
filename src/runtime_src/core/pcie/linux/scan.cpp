@@ -270,7 +270,7 @@ static bool is_admin()
 
 int pcidev::pci_device::open(const std::string& subdev, int flag)
 {
-    if (is_mgmt && !is_admin())
+    if (is_mgmt && !::is_admin())
         throw std::runtime_error("Root privileges required");
     // Open xclmgmt/xocl node
     if (subdev.empty()) {
