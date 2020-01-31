@@ -852,6 +852,7 @@ static int chan_init(struct mailbox *mbx, enum mailbox_chan_type type,
 	ch->mbc_bytes_done = 0;
 
 	reset_pkt(&ch->mbc_packet);
+	clear_bit(MBXCS_BIT_STOP, &ch->mbc_state);
 	set_bit(MBXCS_BIT_READY, &ch->mbc_state);
 
 	mutex_init(&ch->sw_chan_mutex);
@@ -1964,8 +1965,21 @@ static int mailbox_start(struct mailbox *mbx)
 {
 	int ret;
 
-	if (mbx->mbx_state == MBX_STATE_STARTED)
+	mbx->mbx_req_cnt = 0;
+	mbx->mbx_req_sz = 0;
+	mbx->mbx_peer_dead = false;
+	mbx->mbx_opened = 0;
+	mbx->mbx_prot_ver = XCL_MB_PROTOCOL_VER;
+	mbx->mbx_req_stop = false;
+
+	if (mbx->mbx_state == MBX_STATE_STARTED) {
+		/* trying to enable interrupt */
+		if (!mailbox_no_intr)
+			mailbox_enable_intr_mode(mbx);
 		return 0;
+	}
+
+	MBX_INFO(mbx, "Starting Mailbox channels");
 
 	if (mbx->mbx_regs) {
 	    /* Reset both TX channel and RX channel */
@@ -2308,11 +2322,6 @@ static int mailbox_probe(struct platform_device *pdev)
 	init_completion(&mbx->mbx_comp);
 	mutex_init(&mbx->mbx_lock);
 	INIT_LIST_HEAD(&mbx->mbx_req_list);
-	mbx->mbx_req_cnt = 0;
-	mbx->mbx_req_sz = 0;
-	mbx->mbx_peer_dead = false;
-	mbx->mbx_opened = 0;
-	mbx->mbx_prot_ver = XCL_MB_PROTOCOL_VER;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (res != NULL) {

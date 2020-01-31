@@ -338,6 +338,7 @@ int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 	if (mbret == -ESHUTDOWN)
 		flag |= XOCL_RESET_SHUTDOWN;
 	if (mbret) {
+		userpf_err(xdev, "Requested peer failed %d", mbret);
 		ret = mbret;
 		goto failed_notify;
 	}
@@ -375,8 +376,11 @@ failed_notify:
 
 	if (!(flag & XOCL_RESET_SHUTDOWN)) {
 		(void) xocl_config_pci(xdev);
-		(void) xocl_pci_resize_resource(xdev->core.pdev,
-			xdev->p2p_bar_idx, xdev->p2p_bar_sz_cached);
+
+		if (xdev->p2p_bar_sz_cached) {
+			(void) xocl_pci_resize_resource(xdev->core.pdev,
+				xdev->p2p_bar_idx, xdev->p2p_bar_sz_cached);
+		}
 
 		xocl_reset_notify(xdev->core.pdev, false);
 
