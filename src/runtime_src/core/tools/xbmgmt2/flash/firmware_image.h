@@ -63,7 +63,7 @@ public:
     DSAInfo(const std::string& filename, std::string& pr_board, std::string& pr_family, std::string& pr_name);
     ~DSAInfo();
 
-    bool matchId(std::string& id);
+    bool matchId(const std::string& id);
     bool matchId(DSAInfo& dsa);
     bool matchIntId(std::string& id);
 };

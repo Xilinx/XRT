@@ -26,13 +26,6 @@ XOSPIVER_Flasher::XOSPIVER_Flasher(unsigned int device_index)
 {
 }
 
-/**
- * @brief XQSPIPS_Flasher::~XQSPIPS_Flasher
- */
-XOSPIVER_Flasher::~XOSPIVER_Flasher()
-{
-}
-
 int XOSPIVER_Flasher::xclUpgradeFirmware(std::istream& binStream)
 {
     int total_size = 0;
@@ -43,10 +36,10 @@ int XOSPIVER_Flasher::xclUpgradeFirmware(std::istream& binStream)
 
     std::cout << "INFO: ***PDI has " << total_size << " bytes" << std::endl;
 
-    std::unique_ptr<char> buffer(new char[total_size]);
-    binStream.read(buffer.get(), total_size);
+    std::vector<char> buffer;
+    binStream.read(buffer, total_size);
 
-    m_device->write(0, buffer.get(), total_size);
+    m_device->write(0, buffer, total_size);
 
     return 0;
 }

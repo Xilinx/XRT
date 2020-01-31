@@ -350,7 +350,7 @@ DSAInfo::~DSAInfo()
 {
 }
 
-bool DSAInfo::matchId(std::string &id)
+bool DSAInfo::matchId(const std::string &id)
 {
     uint64_t ts = strtoull(id.c_str(), nullptr, 0);
     if (ts != 0 && ts != ULLONG_MAX && ts == timestamp)

@@ -95,8 +95,8 @@ static void
 update_shell(uint16_t index, const std::string& flashType,
     const std::string& primary, const std::string& secondary)
 {
-  std::shared_ptr<firmwareImage> pri;
-  std::shared_ptr<firmwareImage> sec;
+  std::unique_ptr<firmwareImage> pri;
+  std::unique_ptr<firmwareImage> sec;
 
   if (!flashType.empty()) {
     std::cout << "CAUTION: Overriding flash mode is not recommended. " <<
@@ -110,11 +110,11 @@ update_shell(uint16_t index, const std::string& flashType,
   if (primary.empty())
     throw xrt_core::error("Shell not specified");
 
-  pri = std::make_shared<firmwareImage>(primary.c_str(), MCS_FIRMWARE_PRIMARY);
+  pri = std::make_unique<firmwareImage>(primary.c_str(), MCS_FIRMWARE_PRIMARY);
   if (pri->fail())
     throw xrt_core::error(boost::str(boost::format("Failed to read %s") % primary.c_str()));
   if (!secondary.empty()) {
-    sec = std::make_shared<firmwareImage>(secondary.c_str(),
+    sec = std::make_unique<firmwareImage>(secondary.c_str(),
       MCS_FIRMWARE_SECONDARY);
     if (sec->fail())
       sec = nullptr;
@@ -148,7 +148,7 @@ update_SC(uint16_t index, const std::string& file)
  * Helper method for auto_flash
  */
 static DSAInfo 
-selectShell(uint16_t idx, std::string& dsa, std::string& id)
+selectShell(uint16_t idx, const std::string& dsa, const std::string& id)
 {
   uint16_t candidateDSAIndex = std::numeric_limits<uint16_t>::max();
   boost::format fmtStatus("%|8t|Status: %s"); 
@@ -307,10 +307,8 @@ auto_flash(uint16_t index, std::string& name,
     for (DSAInfo& dsa : installedDSAs) {
       if (name == dsa.name &&
         (id.empty() || dsa.matchId(id))) {
-        if (!foundDSA)
+          multiDSA = multiDSA || foundDSA;
           foundDSA = true;
-        else
-          multiDSA = true;
       }
     }
     if (!foundDSA)
@@ -348,7 +346,7 @@ auto_flash(uint16_t index, std::string& name,
       return;
 
     // Perform DSA and BMC updating
-    for (auto p : boardsToUpdate) {
+    for (auto& p : boardsToUpdate) {
       bool reboot;
       std::cout << std::endl;
       if (updateShellAndSC(p.first, p.second, reboot) == 0) {
@@ -358,8 +356,6 @@ auto_flash(uint16_t index, std::string& name,
       needreboot |= reboot;
     }
   }
-
-  std::cout << std::endl;
 
   //report status of cards
   if (boardsToUpdate.size() == 0) {
