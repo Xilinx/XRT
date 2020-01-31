@@ -757,8 +757,8 @@ done:
       DWORD  code;
       DWORD bytesWritten;
 
-      pwriteBO.address_space = DDR_BANK0_ADDRESS;
-      pwriteBO.pad = DDR_PAD0;
+      pwriteBO.address_space = 0;
+      pwriteBO.pad = 0;
       pwriteBO.paddr = offset;
       pwriteBO.size = count;
       pwriteBO.data_ptr = offset;
@@ -794,8 +794,8 @@ done:
           return false;
       }
 
-      preadBO.address_space = DDR_BANK0_ADDRESS;
-      preadBO.pad = DDR_PAD0;
+      preadBO.address_space = 0;
+      preadBO.pad = 0;
       preadBO.paddr = offset;
       preadBO.size = size;
       preadBO.data_ptr = offset;

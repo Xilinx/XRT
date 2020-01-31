@@ -435,9 +435,6 @@ typedef struct _XOCL_PREAD_PWRITE_UNMGD_ARGS {
     uint64_t data_ptr;      //User's pointer(virtual address) to write the data to
 }XOCL_PREAD_PWRITE_UNMGD_ARGS, *PXOCL_PREAD_PWRITE_UNMGD_ARGS;
 
-#define DDR_BANK0_ADDRESS   0
-#define DDR_PAD0            0
-
 //
 // IOCTL_XOCL_PWRITE_UNMGD
 //Write IOCTL to unmanaged DDR memory
