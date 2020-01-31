@@ -550,6 +550,7 @@ namespace xclhwemhal2 {
       mMessengerThreadStarted = true;
     }
     //Thread to honor the Host Memory wr/rd requests from sim_QDMA and interrupts
+
     if(mHostMemAccessThreadStarted == false) {
       mHostMemAccessThread = std::thread(xclhwemhal2::hostMemAccessThread,this);
       mHostMemAccessThreadStarted = true;
@@ -1576,6 +1577,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     mDataSpace = new xclemulation::MemoryManager(0x10000000, 0, getpagesize());
     mCuBaseAddress = 0x0;
     mMessengerThreadStarted = false;
+    mHostMemAccessThreadStarted = false;
     mIsTraceHubAvailable = false;
   }
 
