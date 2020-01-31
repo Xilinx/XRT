@@ -98,19 +98,6 @@
 #define XOCL_P2P_CHUNK_SHIFT		28
 #define XOCL_P2P_CHUNK_SIZE		(1ULL << XOCL_P2P_CHUNK_SHIFT)
 
-enum {
-	XOCL_WORK_RESET,
-	XOCL_WORK_PROGRAM_SHELL,
-	XOCL_WORK_REFRESH_SUBDEV,
-	XOCL_WORK_SHUTDOWN,		/* shutdown will do pci hot reset */
-	XOCL_WORK_NUM,
-};
-
-struct xocl_work {
-	struct delayed_work	work;
-	int			op;
-};
-
 struct xocl_p2p_mem_chunk {
 	struct xocl_dev		*xpmc_xdev;
 	void			*xpmc_res_grp;
@@ -241,38 +228,6 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare);
 void user_pci_reset_prepare(struct pci_dev *pdev);
 void user_pci_reset_done(struct pci_dev *pdev);
 #endif
-
-static inline int xocl_queue_work(struct xocl_dev *xdev, int op, int delay)
-{
-	int ret = 0;
-
-	mutex_lock(&xdev->wq_lock);
-	if (xdev->wq) {
-		ret = queue_delayed_work(xdev->wq,
-			&xdev->works[op].work, msecs_to_jiffies(delay));
-	}
-	mutex_unlock(&xdev->wq_lock);
-
-	return ret;
-}
-
-static inline void xocl_queue_destroy(struct xocl_dev *xdev)
-{
-	int i;
-
-	mutex_lock(&xdev->wq_lock);
-	if (xdev->wq) {
-		for (i = 0; i < XOCL_WORK_NUM; i++) {
-			cancel_delayed_work_sync(&xdev->works[i].work);
-			flush_delayed_work(&xdev->works[i].work);
-		}
-		flush_workqueue(xdev->wq);
-		destroy_workqueue(xdev->wq);
-		xdev->wq = NULL;
-	}
-	mutex_unlock(&xdev->wq_lock);
-}
-
 
 int xocl_refresh_subdevs(struct xocl_dev *xdev);
 

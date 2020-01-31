@@ -358,6 +358,11 @@ struct mailbox_channel {
 	atomic_t		sw_num_pending_msg;
 };
 
+enum {
+	MBX_STATE_STOPPED,
+	MBX_STATE_STARTED
+};
+
 /*
  * The mailbox softstate.
  */
@@ -401,6 +406,7 @@ struct mailbox {
 
 	bool			mbx_peer_dead;
 	uint64_t		mbx_opened;
+	uint32_t		mbx_state;
 };
 
 static inline const char *reg2name(struct mailbox *mbx, u32 *reg)
@@ -885,6 +891,7 @@ static void listen_wq_fini(struct mailbox *mbx)
 		complete(&mbx->mbx_comp);
 		cancel_work_sync(&mbx->mbx_listen_worker);
 		destroy_workqueue(mbx->mbx_listen_wq);
+		mbx->mbx_listen_wq = NULL;
 	}
 }
 
@@ -1940,6 +1947,72 @@ int mailbox_set(struct platform_device *pdev, enum mb_kind kind, u64 data)
 	return ret;
 }
 
+static void mailbox_stop(struct mailbox *mbx)
+{
+	/* Stop interrupt. */
+	mailbox_disable_intr_mode(mbx, false);
+	/* Tear down all threads. */
+	chan_fini(&mbx->mbx_tx);
+	chan_fini(&mbx->mbx_rx);
+	listen_wq_fini(mbx);
+	BUG_ON(!(list_empty(&mbx->mbx_req_list)));
+
+	mbx->mbx_state = MBX_STATE_STOPPED;
+}
+
+static int mailbox_start(struct mailbox *mbx)
+{
+	int ret;
+
+	if (mbx->mbx_state == MBX_STATE_STARTED)
+		return 0;
+
+	if (mbx->mbx_regs) {
+	    /* Reset both TX channel and RX channel */
+	    mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_ctrl, 0x3);
+	}
+
+	/* Dedicated thread for listening to peer request. */
+	mbx->mbx_listen_wq =
+		create_singlethread_workqueue(dev_name(&mbx->mbx_pdev->dev));
+	if (!mbx->mbx_listen_wq) {
+		MBX_ERR(mbx, "failed to create request-listen work queue");
+		ret = -ENOMEM;
+		goto failed;
+	}
+	INIT_WORK(&mbx->mbx_listen_worker, mailbox_recv_request);
+	queue_work(mbx->mbx_listen_wq, &mbx->mbx_listen_worker);
+
+	/* Set up software communication channels, rx first, then tx. */
+	ret = chan_init(mbx, MBXCT_RX, &mbx->mbx_rx, chan_do_rx);
+	if (ret != 0) {
+		MBX_ERR(mbx, "failed to init rx channel");
+		goto failed;
+	}
+	ret = chan_init(mbx, MBXCT_TX, &mbx->mbx_tx, chan_do_tx);
+	if (ret != 0) {
+		MBX_ERR(mbx, "failed to init tx channel");
+		goto failed;
+	}
+
+	/* Enable interrupt. */
+	if (mailbox_no_intr) {
+		MBX_INFO(mbx, "Enabled timer-driven mode");
+		mailbox_disable_intr_mode(mbx, true);
+	} else {
+		if (mailbox_enable_intr_mode(mbx) != 0) {
+			MBX_INFO(mbx, "failed to enable intr mode");
+			/* Ignore error, fall back to timer driven mode */
+			mailbox_disable_intr_mode(mbx, true);
+		}
+	}
+
+	mbx->mbx_state = MBX_STATE_STARTED;
+
+failed:
+	return ret;
+}
+
 static int mailbox_offline(struct platform_device *pdev)
 {
 	struct mailbox *mbx;
@@ -1951,7 +2024,7 @@ static int mailbox_offline(struct platform_device *pdev)
 	 */
 	mailbox_disable_intr_mode(mbx, false);
 #else
-	mailbox_disable_intr_mode(mbx, true);
+	mailbox_stop(mbx);
 #endif
 	return 0;
 }
@@ -1959,10 +2032,17 @@ static int mailbox_offline(struct platform_device *pdev)
 static int mailbox_online(struct platform_device *pdev)
 {
 	struct mailbox *mbx;
+	int ret;
 
 	mbx = platform_get_drvdata(pdev);
-	mailbox_enable_intr_mode(mbx);
-	return 0;
+
+#if defined(__PPC64__)
+	ret = mailbox_enable_intr_mode(mbx);
+#else
+	ret = mailbox_start(mbx);
+#endif
+
+	return ret;
 }
 
 /* Kernel APIs exported from this sub-device driver. */
@@ -2200,13 +2280,7 @@ static int mailbox_remove(struct platform_device *pdev)
 	/* Stop accessing from sysfs node. */
 	sysfs_remove_group(&pdev->dev.kobj, &mailbox_attrgroup);
 
-	/* Stop interrupt. */
-	mailbox_disable_intr_mode(mbx, false);
-	/* Tear down all threads. */
-	chan_fini(&mbx->mbx_tx);
-	chan_fini(&mbx->mbx_rx);
-	listen_wq_fini(mbx);
-	BUG_ON(!(list_empty(&mbx->mbx_req_list)));
+	mailbox_stop(mbx);
 
 	if (mbx->mbx_regs)
 		iounmap(mbx->mbx_regs);
@@ -2248,46 +2322,11 @@ static int mailbox_probe(struct platform_device *pdev)
 		    ret = -EIO;
 		    goto failed;
 	    }
-	    /* Reset both TX channel and RX channel */
-	    mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_ctrl, 0x3);
 	}
 
-	/* Dedicated thread for listening to peer request. */
-	mbx->mbx_listen_wq =
-		create_singlethread_workqueue(dev_name(&mbx->mbx_pdev->dev));
-	if (!mbx->mbx_listen_wq) {
-		MBX_ERR(mbx, "failed to create request-listen work queue");
-		ret = -ENOMEM;
+	ret = mailbox_start(mbx);
+	if (ret)
 		goto failed;
-	}
-	INIT_WORK(&mbx->mbx_listen_worker, mailbox_recv_request);
-	queue_work(mbx->mbx_listen_wq, &mbx->mbx_listen_worker);
-
-	/* Set up software communication channels, rx first, then tx. */
-	ret = chan_init(mbx, MBXCT_RX, &mbx->mbx_rx, chan_do_rx);
-	if (ret != 0) {
-		MBX_ERR(mbx, "failed to init rx channel");
-		goto failed;
-	}
-	ret = chan_init(mbx, MBXCT_TX, &mbx->mbx_tx, chan_do_tx);
-	if (ret != 0) {
-		MBX_ERR(mbx, "failed to init tx channel");
-		goto failed;
-	}
-
-	/* Enable interrupt. */
-	if (mailbox_no_intr) {
-		MBX_INFO(mbx, "Enabled timer-driven mode");
-		mailbox_disable_intr_mode(mbx, true);
-	} else {
-		ret = mailbox_enable_intr_mode(mbx);
-		if (ret != 0) {
-			MBX_INFO(mbx, "failed to enable intr mode");
-			/* Ignore error, fall back to timer driven mode */
-			mailbox_disable_intr_mode(mbx, true);
-		}
-	}
-
 	/* Enable access thru sysfs node. */
 	ret = sysfs_create_group(&pdev->dev.kobj, &mailbox_attrgroup);
 	if (ret != 0) {

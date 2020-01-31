@@ -1288,7 +1288,6 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_CLOCK_LEGACY,			\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF,				\
-			XOCL_DEVINFO_MB,				\
 			XOCL_DEVINFO_XVC_PUB,				\
 			XOCL_DEVINFO_XIIC,				\
 			XOCL_DEVINFO_MAILBOX_MGMT,			\
@@ -2228,6 +2227,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0xD004, PCI_ANY_ID, XBB_MFG("u250")) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0xD008, PCI_ANY_ID, XBB_MFG("u280-es1")) }, \
 	{ XOCL_PCI_DEVID(0x10EE, 0xD00C, PCI_ANY_ID, XBB_MFG("u280")) },\
+	{ XOCL_PCI_DEVID(0x10EE, 0xD030, PCI_ANY_ID, XBB_MFG("poc1465")) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0xD020, PCI_ANY_ID, XBB_MFG_U50) }, \
 	{ XOCL_PCI_DEVID(0x10EE, 0xD050, PCI_ANY_ID, XBB_MFG_U25) }, \
 	{ XOCL_PCI_DEVID(0x10EE, 0xEB10, PCI_ANY_ID, XBB_MFG("twitch")) }, \
@@ -2305,27 +2305,27 @@ struct xocl_subdev_map {
 		.priv_data = &XOCL_BOARD_MGMT_DYNAMIC_IP,		\
 		.type = XOCL_DSAMAP_DYNAMIC },				\
 	{ 0x10EE, 0x5001, PCI_ANY_ID,					\
-		.vbnv = "xilinx_u200_xdma_201920_1",			\
+		.vbnv = "xilinx_u200",			\
 		.priv_data = &XOCL_BOARD_U200_USER_RAPTOR2,		\
 		.type = XOCL_DSAMAP_RAPTOR2 },				\
 	{ 0x10EE, 0x5000, PCI_ANY_ID,					\
-		.vbnv = "xilinx_u200_xdma_201920_1",			\
+		.vbnv = "xilinx_u200",			\
 		.priv_data = &XOCL_BOARD_U200_MGMT_RAPTOR2,		\
 		.type = XOCL_DSAMAP_RAPTOR2 },				\
 	{ 0x10EE, 0x5005, PCI_ANY_ID,					\
-		.vbnv = "xilinx_u250_xdma_201920_1",			\
+		.vbnv = "xilinx_u250",			\
 		.priv_data = &XOCL_BOARD_U250_USER_RAPTOR2,		\
 		.type = XOCL_DSAMAP_RAPTOR2 },				\
 	{ 0x10EE, 0x5004, PCI_ANY_ID,					\
-		.vbnv = "xilinx_u250_xdma_201920_1",			\
+		.vbnv = "xilinx_u250",			\
 		.priv_data = &XOCL_BOARD_U250_MGMT_RAPTOR2,		\
 		.type = XOCL_DSAMAP_RAPTOR2 },				\
 	{ 0x10EE, 0x5020, PCI_ANY_ID,					\
-		.vbnv = "xilinx_u50_xdma_gen3x4_201920_3",		\
+		.vbnv = "xilinx_u50",		\
 		.priv_data = &XOCL_BOARD_U50_MGMT_RAPTOR2,		\
 		.type = XOCL_DSAMAP_RAPTOR2 },				\
 	{ 0x10EE, 0x5021, PCI_ANY_ID,					\
-		.vbnv = "xilinx_u50_xdma_gen3x4_201920_3",		\
+		.vbnv = "xilinx_u50",		\
 		.priv_data = &XOCL_BOARD_U50_USER_RAPTOR2,		\
 		.type = XOCL_DSAMAP_RAPTOR2 }
 

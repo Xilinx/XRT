@@ -31,6 +31,7 @@
 #include "SubCmdTop.h"
 #include "SubCmdVersion.h"
 #include "SubCmdValidate.h"
+#include "SubCmdAdvanced.h"
 
 // Supporting tools
 #include "tools/common/XBMain.h"
@@ -51,9 +52,11 @@ int main( int argc, char** argv )
 
   {
     // Syntax: SubCmdClass( IsHidden, IsDepricated, IsPreliminary)
-    subCommands.emplace_back(std::make_shared<  SubCmdExamine >(false, false, false));
-    subCommands.emplace_back(std::make_shared<  SubCmdProgram >(false, false, false));
-    subCommands.emplace_back(std::make_shared< SubCmdValidate >(false, false, false));
+    subCommands.emplace_back(std::make_shared<  SubCmdExamine >(false, false,  false));
+    subCommands.emplace_back(std::make_shared<  SubCmdProgram >(false, false,  false));
+    subCommands.emplace_back(std::make_shared< SubCmdValidate >(false, false,  false));
+    subCommands.emplace_back(std::make_shared< SubCmdAdvanced >(false, false, true));
+    subCommands.emplace_back(std::make_shared<    SubCmdReset >(false, false,  false));
   }
 
   // Add depricated commands
@@ -69,16 +72,15 @@ int main( int argc, char** argv )
     subCommands.emplace_back(std::make_shared<     SubCmdMem >(false, true, false));
     subCommands.emplace_back(std::make_shared<     SubCmdP2P >(false, true, false));
     subCommands.emplace_back(std::make_shared<   SubCmdQuery >(false, true, false));
-    subCommands.emplace_back(std::make_shared<   SubCmdReset >(false, true, false));
     subCommands.emplace_back(std::make_shared<    SubCmdScan >(false, true, false));
+    subCommands.emplace_back(std::make_shared< SubCmdVersion >( true, true, false));
     subCommands.emplace_back(std::make_shared<     SubCmdTop >(false, true, false));
-    subCommands.emplace_back(std::make_shared< SubCmdVersion >(false, true, false));
   }
   #endif
 
   // -- Determine and set the executable name for each subcommand
   boost::filesystem::path pathAndFile(argv[0]);
-  const std::string executable = pathAndFile.filename().string();
+  const std::string executable = pathAndFile.stem().string();
 
   for (auto & subCommand : subCommands) {
     subCommand->setExecutableName(executable);

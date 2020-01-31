@@ -28,3 +28,4 @@ class SubCmdQuery : public SubCmd {
 };
 
 #endif
+

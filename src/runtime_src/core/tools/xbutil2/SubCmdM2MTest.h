@@ -28,3 +28,4 @@ class SubCmdM2MTest : public SubCmd {
 };
 
 #endif
+
