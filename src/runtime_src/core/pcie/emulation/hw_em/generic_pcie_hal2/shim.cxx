@@ -2856,6 +2856,7 @@ void Q2H_helper::select_msg() {
         r_msg.set_data(data,c_msg.size());
         int r_len = r_msg.ByteSize();
         SEND_RESP2QDMA();
+        free(data);
     }        
     if (ci_msg->xcl_api() == xclQdma2HostWriteMem_n) {
     	xclSlaveWriteReq_call c_msg;
