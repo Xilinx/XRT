@@ -921,6 +921,7 @@ enum data_kind {
 	XMC_VER,
 	EXP_BMC_VER,
 	XMC_OEM_ID,
+	XMC_VCCINT_TEMP,
 };
 
 enum mb_kind {
