@@ -93,8 +93,11 @@
 #define	XMC_HOST_MSG_ERROR_REG		0x304
 #define	XMC_HOST_MSG_HEADER_REG		0x308
 #define	XMC_HOST_NEW_FEATURE_REG1	0xB20
+#define	XMC_HOST_NEW_FEATURE_REG1_FEATURE_PRESENT (1 << 29)
+#define	XMC_HOST_NEW_FEATURE_REG1_FEATURE_ENABLE (1 << 28)
 #define	XMC_CLK_THROTTLING_PWR_MGMT_REG		 0xB24
 #define	XMC_CLK_THROTTLING_PWR_MGMT_REG_PWR_MASK 0xFF
+#define	XMC_CLK_THROTTLING_PWR_MGMT_REG_PWR_OVRD_EN (1 << 31)
 
 #define	VALID_ID			0x74736574
 
@@ -968,7 +971,7 @@ static void runtime_clk_scale_disable(struct xocl_xmc *xmc)
 	WRITE_RUNTIME_CS(xmc, cntrl, XMC_CLOCK_CONTROL_REG);
 
 	cntrl = READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1);
-	cntrl &= ~(1 << 28);
+	cntrl &= ~XMC_HOST_NEW_FEATURE_REG1_FEATURE_ENABLE;
 	WRITE_REG32(xmc, cntrl, XMC_HOST_NEW_FEATURE_REG1);
 
 	xmc->runtime_cs_enabled = false;
@@ -983,7 +986,7 @@ static void runtime_clk_scale_enable(struct xocl_xmc *xmc)
 	WRITE_RUNTIME_CS(xmc, cntrl, XMC_CLOCK_CONTROL_REG);
 
 	cntrl = READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1);
-	cntrl |= (1 << 28);
+	cntrl |= XMC_HOST_NEW_FEATURE_REG1_FEATURE_ENABLE;
 	WRITE_REG32(xmc, cntrl, XMC_HOST_NEW_FEATURE_REG1);
 
 	xmc->runtime_cs_enabled = true;
@@ -1318,9 +1321,9 @@ static bool scaling_condition_check(struct xocl_xmc *xmc, struct device *dev)
 		xmc->cs_on_ptfm = false;
 		xmc->runtime_cs_enabled = false;
 		u32 reg = READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1);
-		if (reg & (1 << 29)) {
+		if (reg & XMC_HOST_NEW_FEATURE_REG1_FEATURE_PRESENT) {
 			xmc->cs_on_ptfm = true;
-			if (reg & (1 << 28))
+			if (reg & XMC_HOST_NEW_FEATURE_REG1_FEATURE_ENABLE)
 				xmc->runtime_cs_enabled = true;
 		}
 	}
@@ -1398,12 +1401,12 @@ static ssize_t scaling_threshold_power_override_store(struct device *dev,
 	val3 = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_POWER_REG);
 	val3 &= ~XMC_CLOCK_SCALING_POWER_TARGET_MASK;
 	val4 = READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1);
-	if ((val4 & (1 << 29)) && (val > 0)) {
+	if ((val4 & XMC_HOST_NEW_FEATURE_REG1_FEATURE_PRESENT) && (val > 0)) {
 		//enable max power override mode
-		val2 |= (0x1 << 31);
+		val2 |= XMC_CLK_THROTTLING_PWR_MGMT_REG_PWR_OVRD_EN;
 		val2 |= (val & XMC_CLK_THROTTLING_PWR_MGMT_REG_PWR_MASK);
 	} else { //disable max power override mode
-		val2 &= ~(0x1 << 31);
+		val2 &= ~XMC_CLK_THROTTLING_PWR_MGMT_REG_PWR_OVRD_EN;
 		val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_THRESHOLD_REG);
 		val = (val >> XMC_CLOCK_SCALING_POWER_THRESHOLD_POS) &
 			XMC_CLOCK_SCALING_POWER_THRESHOLD_MASK;
@@ -1677,7 +1680,7 @@ static ssize_t hwmon_scaling_threshold_power_show(struct device *dev,
 
 	mutex_lock(&xmc->xmc_lock);
 	val2 = READ_REG32(xmc, XMC_CLK_THROTTLING_PWR_MGMT_REG);
-	if (val2 & (0x1 << 31)) {
+	if (val2 & XMC_CLK_THROTTLING_PWR_MGMT_REG_PWR_OVRD_EN) {
 		val = val2 & XMC_CLK_THROTTLING_PWR_MGMT_REG_PWR_MASK;
 	} else {
 		val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_THRESHOLD_REG);
@@ -2641,7 +2644,7 @@ static int cmc_access_ops(struct platform_device *pdev, int flags)
 		 * 29 is flag for present, set to 0x1
 		 * Note: seems that we should write all data at one time.
 		 */
-		val = (addr & 0x01FFFFFF) | (1 << 29);
+		val = (addr & 0x01FFFFFF) | XMC_HOST_NEW_FEATURE_REG1_FEATURE_PRESENT;
 		WRITE_REG32(xmc, val, XMC_HOST_NEW_FEATURE_REG1);
 		xocl_xdev_info(xdev, "%s is 0x%llx, set New Feature Table to 0x%x\n",
 		    NODE_GAPPING, addr, val);
@@ -2879,9 +2882,9 @@ static int xmc_probe(struct platform_device *pdev)
 			}
 		} else {
 			u32 reg = READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1);
-			if (reg & (1 << 28))
+			if (reg & XMC_HOST_NEW_FEATURE_REG1_FEATURE_ENABLE)
 				xmc->runtime_cs_enabled = true;
-			if (reg & (1 << 29))
+			if (reg & XMC_HOST_NEW_FEATURE_REG1_FEATURE_PRESENT)
 				xmc->cs_on_ptfm = true;
 		}
 		if (xmc->cs_on_ptfm)
