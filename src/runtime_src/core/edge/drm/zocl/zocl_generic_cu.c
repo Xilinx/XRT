@@ -22,6 +22,8 @@
 #include "sched_exec.h"
 #include "zocl_generic_cu.h"
 
+#define WAIT_CONDITION (atomic_read(&gcu->event) > 0)
+
 static int generic_cu_release(struct inode *inode, struct file *filp)
 {
 	struct generic_cu *gcu = filp->private_data;
@@ -46,8 +48,7 @@ static __poll_t generic_cu_poll(struct file *filp, poll_table *wait)
 
 	poll_wait(filp, &gcu->waitq, wait);
 
-	/* Safe to read only one object without lock */
-	if (gcu->event > 0)
+	if (atomic_read(&gcu->event) > 0)
 		ret = POLLIN;
 
 	return ret;
@@ -57,44 +58,24 @@ static ssize_t generic_cu_read(struct file *filp, char __user *buf,
 			       size_t count, loff_t *ppos)
 {
 	struct generic_cu *gcu = filp->private_data;
-	DECLARE_WAITQUEUE(wait, current);
-	unsigned long flags;
 	ssize_t ret = 0;
 	s32 events = 0;
 
 	if (count != sizeof(s32))
 		return -EINVAL;
 
-	add_wait_queue(&gcu->waitq, &wait);
+	ret = wait_event_interruptible(gcu->waitq, WAIT_CONDITION);
+	if (ret == -ERESTARTSYS)
+		return 0;
 
-	do {
-		set_current_state(TASK_INTERRUPTIBLE);
+	/* This could be different from when it just wake up.
+	 * But it is okay, since this is the only place reset event count.
+	 */
+	events = atomic_xchg(&gcu->event, 0);
+	if (copy_to_user(buf, &events, count))
+		return -EFAULT;
 
-		spin_lock_irqsave(&gcu->lock, flags);
-		if (gcu->event > 0) {
-			events = gcu->event;
-			gcu->event = 0;
-		}
-		spin_unlock_irqrestore(&gcu->lock, flags);
-
-		if (events > 0) {
-			if (copy_to_user(buf, &events, count))
-				ret = -EFAULT;
-			ret = sizeof(events);
-			break;
-		}
-
-		if (signal_pending(current)) {
-			ret = -ERESTARTSYS;
-			break;
-		}
-		schedule();
-	} while (1);
-
-	__set_current_state(TASK_RUNNING);
-	remove_wait_queue(&gcu->waitq, &wait);
-
-	return ret;
+	return sizeof(events);
 }
 
 static ssize_t generic_cu_write(struct file *filp, const char __user *buf,
@@ -139,13 +120,11 @@ static irqreturn_t generic_cu_isr(int irq, void *arg)
 	struct generic_cu *gcu = arg;
 	unsigned long flags;
 
-
 	spin_lock_irqsave(&gcu->lock, flags);
-	gcu->event++;
+	atomic_inc(&gcu->event);
 	if (!__test_and_set_bit(GCU_IRQ_DISABLED, &gcu->flag))
 		disable_irq_nosync(irq);
 	spin_unlock_irqrestore(&gcu->lock, flags);
-
 
 	wake_up_interruptible(&gcu->waitq);
 
@@ -175,6 +154,7 @@ int _open_generic_cu(struct drm_zocl_dev *zdev, struct generic_cu_info *info)
 	init_waitqueue_head(&gcu->waitq);
 	gcu->zdev = zdev;
 	gcu->info = info;
+	atomic_set(&gcu->event, 0);
 	spin_lock_init(&gcu->lock);
 
 	fd = anon_inode_getfd("[generic_cu]", &generic_cu_fops, gcu, O_RDWR);

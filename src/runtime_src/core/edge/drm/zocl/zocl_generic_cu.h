@@ -25,7 +25,7 @@ struct generic_cu {
 	struct drm_zocl_dev	*zdev;
 	struct generic_cu_info	*info;
 	wait_queue_head_t	waitq;
-	s32			event;
+	atomic_t		event;
 	unsigned long		flag;
 	spinlock_t		lock;
 };
