@@ -159,6 +159,7 @@ struct zocl_cu {
 	u32                       run_timeout;
 	u32                       reset_timeout;
 	u32			  irq;
+	char			 *irq_name;
 	/**
 	 * @funcs:
 	 *

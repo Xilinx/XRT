@@ -884,14 +884,13 @@ configure(struct sched_cmd *cmd)
 	 * interrupt according to the command
 	 */
 	for (i = 0; i < exec->num_cus; i++) {
-		char name[20];
-
 		if (!zocl_cu_is_valid(exec, i))
 			continue;
 
-		sprintf(name, "zocl_cu[%d]", i);
+		exec->zcu[j].irq_name = kzalloc(20, GFP_KERNEL);
+		sprintf(exec->zcu[j].irq_name, "zocl_cu[%d]", i);
 		ret = request_irq(exec->zcu[i].irq, sched_exec_isr, 0,
-				  name, zdev);
+				  exec->zcu[j].irq_name, zdev);
 		if (ret) {
 			/* Fail to install at least one interrupt
 			 * handler. We need to free the handler(s)
@@ -899,8 +898,10 @@ configure(struct sched_cmd *cmd)
 			 * polling mode.
 			 */
 			for (j = 0; j < i; j++) {
-				if (zocl_cu_is_valid(exec, j))
+				if (zocl_cu_is_valid(exec, j)) {
+					kfree(exec->zcu[j].irq_name);
 					free_irq(exec->zcu[j].irq, zdev);
+				}
 			}
 			DRM_WARN("request_irq failed on CU %d error: %d."
 			    "Fall back to polling mode.\n", i, ret);
@@ -3126,8 +3127,10 @@ fini_configure(struct drm_device *drm)
 
 	if (!(zdev->ert || zdev->exec->polling_mode)) {
 		for (i = 0; i < zdev->exec->num_cus; i++) {
-			if (zocl_cu_is_valid(zdev->exec, i))
+			if (zocl_cu_is_valid(zdev->exec, i)) {
+				kfree(zdev->exec->zcu[i].irq_name);
 				free_irq(zdev->exec->zcu[i].irq, zdev);
+			}
 		}
 	}
 
@@ -3261,7 +3264,6 @@ sched_is_busy(struct drm_zocl_dev *zdev)
 int sched_attach_cu(struct drm_zocl_dev *zdev, int cu_idx)
 {
 	struct sched_exec_core *exec = zdev->exec;
-	char name[20];
 	int ret;
 
 	if (cu_idx >= exec->num_cus)
@@ -3273,9 +3275,10 @@ int sched_attach_cu(struct drm_zocl_dev *zdev, int cu_idx)
 	if (exec->polling_mode)
 		return 0;
 
-	sprintf(name, "zocl_cu[%d]", cu_idx);
+	exec->zcu[cu_idx].irq_name = kzalloc(20, GFP_KERNEL);
+	sprintf(exec->zcu[cu_idx].irq_name, "zocl_cu[%d]", cu_idx);
 	ret = request_irq(exec->zcu[cu_idx].irq, sched_exec_isr, 0,
-			  name, zdev);
+			  exec->zcu[cu_idx].irq_name, zdev);
 
 	return ret;
 }
@@ -3298,8 +3301,10 @@ int sched_detach_cu(struct drm_zocl_dev *zdev, int cu_idx)
 	if (exec->polling_mode)
 		goto invalid_cu;
 
-	if (zocl_cu_is_valid(exec, cu_idx))
+	if (zocl_cu_is_valid(exec, cu_idx)) {
+		kfree(exec->zcu[cu_idx].irq_name);
 		free_irq(exec->zcu[cu_idx].irq, zdev);
+	}
 
 	DRM_DEBUG("%s: detached CU[%d] and irq %d\n", __func__,
 		  cu_idx, exec->zcu[cu_idx].irq);
