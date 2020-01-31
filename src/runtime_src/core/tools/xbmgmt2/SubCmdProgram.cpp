@@ -18,7 +18,6 @@
 // Local - Include Files
 #include "SubCmdProgram.h"
 #include "tools/common/XBUtilities.h"
-#include "tools/common/XBHelpMenus.h" //to be removed later. Currently imports: is_esc_enabled()
 #include "tools/common/ProgressBar.h"
 namespace XBU = XBUtilities;
 
@@ -118,27 +117,21 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   if (test_mode) {
     //standard use case
-    XBU::ProgressBar flash("Flashing", 8, XBU::is_esc_enabled(), std::cout);
+    XBU::ProgressBar flash("Erasing flashing", 8, XBU::is_esc_enabled(), std::cout);
     for (int i = 1; i <= 8; i++) {
 		  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 		  flash.update(i);
 	  }
     flash.finish();
 
-    //developer's err
-    // XBU::ProgressBar dev_flash("Flashing", 10, XBU::is_esc_enabled(), std::cout);
-    // for (int i = 1; i <= 11; i++) {
-		//   std::this_thread::sleep_for(std::chrono::milliseconds(500));
-		//   dev_flash.update(i);
-	  // }
-    // dev_flash.finish();
-
     //failure case
-    // XBU::ProgressBar fail_flash("Flashing", 10, XBU::is_esc_enabled(), std::cout);
-    // for (int i = 1; i <= 8; i++) {
-		//   std::this_thread::sleep_for(std::chrono::milliseconds(500));
-		//   fail_flash.update(i);
-	  // }
-    // fail_flash.finish();
+    XBU::ProgressBar fail_flash("Programming flash", 10, XBU::is_esc_enabled(), std::cout);
+    for (int i = 1; i <= 8; i++) {
+		  std::this_thread::sleep_for(std::chrono::milliseconds(500));
+		  fail_flash.update(i);
+	  }
+    fail_flash.finish();
+
+    //Add gtest to test error when iteration > max_iter
   }
 }

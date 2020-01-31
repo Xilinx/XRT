@@ -17,6 +17,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "ProgressBar.h"
+#include "EscapeCodes.h"
 
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
@@ -46,10 +47,10 @@ ProgressBar::ProgressBar(std::string _op_name, unsigned int _max_iter, bool _is_
   elapsed_time = std::chrono::seconds(0);
 
   if (!is_batch) {
-    ostr << ec::cursor().hide() << ec::fgcolor::reset() << "[ " << ec::fgcolor(ec::FGC_IN_PROGRESS).string() << std::string(20, ' ') 
-            << ec::fgcolor::reset() << "]  " << ec::fgcolor(ec::FGC_IN_PROGRESS).string() << percent_done << "%" 
-            << ec::fgcolor::reset() << " ("<< format_time(elapsed_time) << "): " << op_name 
-            << "\n" << ec::fgcolor::reset();
+    ostr << EscapeCodes::cursor().hide() << EscapeCodes::fgcolor::reset() << "[ " << EscapeCodes::fgcolor(EscapeCodes::FGC_IN_PROGRESS).string() << std::string(20, ' ') 
+            << EscapeCodes::fgcolor::reset() << "]  " << EscapeCodes::fgcolor(EscapeCodes::FGC_IN_PROGRESS).string() << percent_done << "%" 
+            << EscapeCodes::fgcolor::reset() << " ("<< format_time(elapsed_time) << "): " << op_name 
+            << "\n" << EscapeCodes::fgcolor::reset();
   } else {
       ostr << op_name << ": ";
   }
@@ -58,13 +59,13 @@ ProgressBar::ProgressBar(std::string _op_name, unsigned int _max_iter, bool _is_
 
 void 
 ProgressBar::finish() {
-  std::string status = percent_done == 100 ? ec::fgcolor(ec::FGC_PASS).string() + "[PASSED] " : ec::fgcolor(ec::FGC_FAIL).string() + "[FAILED] ";
+  std::string status = percent_done == 100 ? EscapeCodes::fgcolor(EscapeCodes::FGC_PASS).string() + "[PASSED] " : EscapeCodes::fgcolor(EscapeCodes::FGC_FAIL).string() + "[FAILED] ";
   if(is_batch) {
     status = percent_done == 100 ? "[PASSED]\n" : "[FAILED]\n";
     ostr << status;
   } else {
-    ostr << ec::cursor().prev_line() << ec::cursor().clear_line() << status << ec::fgcolor::reset() << "(" 
-          << format_time(elapsed_time) << "): " << op_name << "\n" << ec::fgcolor::reset() << ec::cursor().show();
+    ostr << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().clear_line() << status << EscapeCodes::fgcolor::reset() << "(" 
+          << format_time(elapsed_time) << "): " << op_name << "\n" << EscapeCodes::fgcolor::reset() << EscapeCodes::cursor().show();
   }
   ostr.flush();
 }
@@ -77,7 +78,7 @@ ProgressBar::update(int iteration) {
 
   if (percent_done > 100) {
     finish();
-    ostr <<  ec::fgcolor::reset() << ec::cursor().show();
+    ostr <<  EscapeCodes::fgcolor::reset() << EscapeCodes::cursor().show();
     throw std::runtime_error("Passed in iteration number is greater than the max iteration");
   }
 
@@ -89,10 +90,10 @@ ProgressBar::update(int iteration) {
     return;
   }
 
-  ostr << ec::cursor().hide() << ec::cursor().prev_line() << ec::fgcolor::reset() << "[" << ec::fgcolor(ec::FGC_IN_PROGRESS).string() 
+  ostr << EscapeCodes::cursor().hide() << EscapeCodes::cursor().prev_line() << EscapeCodes::fgcolor::reset() << "[" << EscapeCodes::fgcolor(EscapeCodes::FGC_IN_PROGRESS).string() 
         << std::string(percent_done/5, '=') << ">" << std::string(20 - (percent_done / 5), ' ') 
-        << ec::fgcolor::reset() << "] " << ec::fgcolor(ec::FGC_IN_PROGRESS).string() << percent_done << "%" 
-        << ec::fgcolor::reset() << " ("<< format_time(elapsed_time) << "): " << op_name 
-        << "\n" << ec::fgcolor::reset();
+        << EscapeCodes::fgcolor::reset() << "] " << EscapeCodes::fgcolor(EscapeCodes::FGC_IN_PROGRESS).string() << percent_done << "%" 
+        << EscapeCodes::fgcolor::reset() << " ("<< format_time(elapsed_time) << "): " << op_name 
+        << "\n" << EscapeCodes::fgcolor::reset();
   ostr.flush();
 }
