@@ -1850,6 +1850,7 @@ struct xocl_subdev_map {
 #define XOCL_RES_FLASH_BLP				\
 	((struct resource []) {				\
 		{					\
+			.name	= "flash",		\
 			.start	= 0x1f50000,		\
 			.end	= 0x1f5ffff,		\
 			.flags  = IORESOURCE_MEM,	\
