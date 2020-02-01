@@ -1029,13 +1029,13 @@ namespace awsbwhal {
     /*
      * xclOpenContext
      */
-    int AwsXcl::xclOpenContext(uuid_t xclbinId, unsigned int cu_index, bool shared) const
+    int AwsXcl::xclOpenContext(uuid_t xclbinId, unsigned int ipIndex, bool shared) const
     {
         unsigned int flags = shared ? XOCL_CTX_SHARED : XOCL_CTX_EXCLUSIVE;
         int ret;
         drm_xocl_ctx ctx = {XOCL_CTX_OP_ALLOC_CTX};
         std::memcpy(ctx.xclbin_id, xclbinId, sizeof(uuid_t));
-        ctx.cu_index = cu_index;
+        ctx.cu_index = ipIndex;
         ctx.flags = flags;
         ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx);
         return ret ? -errno : ret;
@@ -1044,12 +1044,12 @@ namespace awsbwhal {
     /*
      * xclCloseContext
      */
-    int AwsXcl::xclCloseContext(uuid_t xclbinId, unsigned int cu_index) const
+    int AwsXcl::xclCloseContext(uuid_t xclbinId, unsigned int ipIndex) const
     {
         int ret;
         drm_xocl_ctx ctx = {XOCL_CTX_OP_FREE_CTX};
         std::memcpy(ctx.xclbin_id, xclbinId, sizeof(uuid_t));
-        ctx.cu_index = cu_index;
+        ctx.cu_index = ipIndex;
         ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx);
         return ret ? -errno : ret;
     }
@@ -1515,16 +1515,16 @@ int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
   return drv ? drv->xclExecWait(timeoutMilliSec) : -ENODEV;
 }
 
-int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int cu_index, bool shared)
+int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
   awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
-  return drv ? drv->xclOpenContext(xclbinId, cu_index, shared) : -ENODEV;
+  return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
 }
 
-int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned cu_index)
+int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
 {
   awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
-  return drv ? drv->xclCloseContext(xclbinId, cu_index) : -ENODEV;
+  return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -ENODEV;
 }
 
 int xclUpgradeFirmwareXSpi(xclDeviceHandle handle, const char *fileName, int index)

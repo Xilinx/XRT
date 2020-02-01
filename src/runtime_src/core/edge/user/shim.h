@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2019 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  * Author(s): Hem C. Neema
  *          : Min Ma
  * ZNYQ HAL Driver layered on top of ZYNQ kernel driver
@@ -52,8 +52,8 @@ public:
   size_t xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf,
                  size_t size);
   // Restricted read/write on IP register space
-  int xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data);
-  int xclRegRead(uint32_t cu_index, uint32_t offset, uint32_t *datap);
+  int xclRegWrite(uint32_t ipIndex, uint32_t offset, uint32_t data);
+  int xclRegRead(uint32_t ipIndex, uint32_t offset, uint32_t *datap);
 
   unsigned int xclAllocBO(size_t size, int unused, unsigned flags);
   unsigned int xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags);
@@ -71,8 +71,8 @@ public:
   int xclExecBuf(unsigned int cmdBO);
   int xclExecWait(int timeoutMilliSec);
 
-  int xclOpenContext(const uuid_t xclbinId, unsigned int cu_index, bool shared);
-  int xclCloseContext(const uuid_t xclbinId, unsigned int cu_index);
+  int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared);
+  int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex);
 
   int xclSKGetCmd(xclSKCmd *cmd);
   int xclSKCreate(unsigned int boHandle, uint32_t cu_idx);
@@ -99,12 +99,12 @@ public:
 
   int xclGetDeviceInfo2(xclDeviceInfo2 *info);
 
-  int xclOpenCuInterruptNotify(uint32_t cu_index, unsigned int flags);
-  int xclCloseCuInterruptNotify(int fd);
+  int xclOpenIpInterruptNotify(uint32_t ipIndex, unsigned int flags);
+  int xclCloseIpInterruptNotify(int fd);
 
   bool isGood() const;
   static ZYNQShim *handleCheck(void *handle);
-  int xclCuName2Index(const char *name, uint32_t& index);
+  int xclIpName2Index(const char *name, uint32_t& index);
   static int xclLogMsg(xrtLogMsgLevel level, const char* tag,
 		       const char* format, va_list args);
   

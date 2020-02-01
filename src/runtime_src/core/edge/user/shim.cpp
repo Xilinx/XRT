@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2019 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  * Author(s): Hem C. Neema
  *          : Min Ma
  * ZNYQ XRT Library layered on top of ZYNQ zocl kernel driver
@@ -660,7 +660,7 @@ int ZYNQShim::xclSKReport(uint32_t cu_idx, xrt_scu_state state)
   return ret;
 }
 
-int ZYNQShim::xclOpenContext(const uuid_t xclbinId, unsigned int cu_index,
+int ZYNQShim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex,
   bool shared)
 {
   unsigned int flags = shared ? ZOCL_CTX_SHARED : ZOCL_CTX_EXCLUSIVE;
@@ -669,7 +669,7 @@ int ZYNQShim::xclOpenContext(const uuid_t xclbinId, unsigned int cu_index,
   drm_zocl_ctx ctx = {
     .uuid_ptr = reinterpret_cast<uint64_t>(xclbinId),
     .uuid_size = sizeof (uuid_t) * sizeof (char),
-    .cu_index = cu_index,
+    .cu_index = ipIndex,
     .flags = flags,
     .handle = 0,
     .op = ZOCL_CTX_OP_ALLOC_CTX,
@@ -679,24 +679,24 @@ int ZYNQShim::xclOpenContext(const uuid_t xclbinId, unsigned int cu_index,
   return ret ? -errno : ret;
 }
 
-int ZYNQShim::xclCloseContext(const uuid_t xclbinId, unsigned int cu_index)
+int ZYNQShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex)
 {
   std::lock_guard<std::mutex> l(mCuMapLock);
   int ret;
 
-  if (cu_index < mCuMaps.size()) {
+  if (ipIndex < mCuMaps.size()) {
     // Make sure no MMIO register space access when CU is released.
-    uint32_t *p = mCuMaps[cu_index];
+    uint32_t *p = mCuMaps[ipIndex];
     if (p) {
       (void) munmap(p, mCuMapSize);
-      mCuMaps[cu_index] = nullptr;
+      mCuMaps[ipIndex] = nullptr;
     }
   }
 
   drm_zocl_ctx ctx = {
     .uuid_ptr = reinterpret_cast<uint64_t>(xclbinId),
     .uuid_size = sizeof (uuid_t) * sizeof (char),
-    .cu_index = cu_index,
+    .cu_index = ipIndex,
     .flags = 0,
     .handle = 0,
     .op = ZOCL_CTX_OP_FREE_CTX,
@@ -706,13 +706,13 @@ int ZYNQShim::xclCloseContext(const uuid_t xclbinId, unsigned int cu_index)
   return ret ? -errno : ret;
 }
 
-int ZYNQShim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset,
+int ZYNQShim::xclRegRW(bool rd, uint32_t ipIndex, uint32_t offset,
   uint32_t *datap)
 {
   std::lock_guard<std::mutex> l(mCuMapLock);
 
-  if (cu_index >= mCuMaps.size()) {
-    xclLog(XRT_ERROR, "XRT", "%s: invalid CU index: %d", __func__, cu_index);
+  if (ipIndex >= mCuMaps.size()) {
+    xclLog(XRT_ERROR, "XRT", "%s: invalid CU index: %d", __func__, ipIndex);
     return -EINVAL;
   }
   if (offset >= mCuMapSize || (offset & (sizeof(uint32_t) - 1)) != 0) {
@@ -720,18 +720,18 @@ int ZYNQShim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset,
     return -EINVAL;
   }
 
-  if (mCuMaps[cu_index] == nullptr) {
-      drm_zocl_info_cu info = {0, -1, (int)cu_index};
+  if (mCuMaps[ipIndex] == nullptr) {
+      drm_zocl_info_cu info = {0, -1, (int)ipIndex};
       int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_INFO_CU, &info);
     void *p = mmap(0, mCuMapSize, PROT_READ | PROT_WRITE, MAP_SHARED,
       mKernelFD, info.apt_idx * getpagesize());
     if (p != MAP_FAILED)
-      mCuMaps[cu_index] = (uint32_t *)p;
+      mCuMaps[ipIndex] = (uint32_t *)p;
  }
 
-  uint32_t *cumap = mCuMaps[cu_index];
+  uint32_t *cumap = mCuMaps[ipIndex];
   if (cumap == nullptr) {
-    xclLog(XRT_ERROR, "XRT", "%s: can't map CU: %d", __func__, cu_index);
+    xclLog(XRT_ERROR, "XRT", "%s: can't map CU: %d", __func__, ipIndex);
     return -EINVAL;
   }
 
@@ -742,17 +742,17 @@ int ZYNQShim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset,
   return 0;
 }
 
-int ZYNQShim::xclRegRead(uint32_t cu_index, uint32_t offset, uint32_t *datap)
+int ZYNQShim::xclRegRead(uint32_t ipIndex, uint32_t offset, uint32_t *datap)
 {
-  return xclRegRW(true, cu_index, offset, datap);
+  return xclRegRW(true, ipIndex, offset, datap);
 }
 
-int ZYNQShim::xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data)
+int ZYNQShim::xclRegWrite(uint32_t ipIndex, uint32_t offset, uint32_t data)
 {
-  return xclRegRW(false, cu_index, offset, &data);
+  return xclRegRW(false, ipIndex, offset, &data);
 }
 
-int ZYNQShim::xclCuName2Index(const char *name, uint32_t& index)
+int ZYNQShim::xclIpName2Index(const char *name, uint32_t& index)
 {
   std::string errmsg;
   std::vector<char> buf;
@@ -813,24 +813,24 @@ int ZYNQShim::xclCuName2Index(const char *name, uint32_t& index)
   return -ENOENT;
 }
 
-int ZYNQShim::xclOpenCuInterruptNotify(uint32_t cu_index, unsigned int flags)
+int ZYNQShim::xclOpenIpInterruptNotify(uint32_t ipIndex, unsigned int flags)
 {
   int ret;
 
   drm_zocl_ctx ctx = {
     .uuid_ptr = 0,
     .uuid_size = 0,
-    .cu_index = cu_index,
+    .cu_index = ipIndex,
     .flags = flags,
     .op = ZOCL_CTX_OP_OPEN_GCU_FD,
   };
 
-  xclLog(XRT_DEBUG, "XRT", "%s: CU index %d, flags 0x%x", __func__, cu_index, flags);
+  xclLog(XRT_DEBUG, "XRT", "%s: IP index %d, flags 0x%x", __func__, ipIndex, flags);
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CTX, &ctx);
   return ret;
 }
 
-int ZYNQShim::xclCloseCuInterruptNotify(int fd)
+int ZYNQShim::xclCloseIpInterruptNotify(int fd)
 {
   xclLog(XRT_DEBUG, "XRT", "%s: fd %d", __func__, fd);
   close(fd);
@@ -1594,17 +1594,17 @@ int xclSKReport(xclDeviceHandle handle, uint32_t cu_idx, xrt_scu_state state)
 /*
  * Context switch phase 1: support xclbin swap, no cu and shared checking
  */
-int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int cu_index, bool shared)
+int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
 
-  return drv ? drv->xclOpenContext(xclbinId, cu_index, shared) : -EINVAL;
+  return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -EINVAL;
 }
 
-int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned cu_index)
+int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
 {
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
-  return drv ? drv->xclCloseContext(xclbinId, cu_index) : -EINVAL;
+  return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -EINVAL;
 }
 
 size_t xclGetDeviceTimestamp(xclDeviceHandle handle)
@@ -1771,24 +1771,24 @@ int xclDestroyProfileResults(xclDeviceHandle handle, ProfileResults* results)
 }
 
 
-int xclRegWrite(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset,
+int xclRegWrite(xclDeviceHandle handle, uint32_t ipIndex, uint32_t offset,
   uint32_t data)
 {
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
-  return drv ? drv->xclRegWrite(cu_index, offset, data) : -ENODEV;
+  return drv ? drv->xclRegWrite(ipIndex, offset, data) : -ENODEV;
 }
 
-int xclRegRead(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset,
+int xclRegRead(xclDeviceHandle handle, uint32_t ipIndex, uint32_t offset,
   uint32_t *datap)
 {
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
-  return drv ? drv->xclRegRead(cu_index, offset, datap) : -ENODEV;
+  return drv ? drv->xclRegRead(ipIndex, offset, datap) : -ENODEV;
 }
 
-int xclCuName2Index(xclDeviceHandle handle, const char *name, uint32_t *indexp)
+int xclIpName2Index(xclDeviceHandle handle, const char *name, uint32_t *indexp)
 {
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
-  return (drv) ? drv->xclCuName2Index(name, *indexp) : -ENODEV;
+  return (drv) ? drv->xclIpName2Index(name, *indexp) : -ENODEV;
 }
 
 int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag,
@@ -1813,16 +1813,16 @@ int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag,
     return 0;
 }
 
-int xclOpenCuInterruptNotify(xclDeviceHandle handle, uint32_t cu_index, unsigned int flags)
+int xclOpenIpInterruptNotify(xclDeviceHandle handle, uint32_t ipIndex, unsigned int flags)
 {
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
 
-  return drv ? drv->xclOpenCuInterruptNotify(cu_index, flags) : -EINVAL;
+  return drv ? drv->xclOpenIpInterruptNotify(ipIndex, flags) : -EINVAL;
 }
 
-int xclCloseCuInterruptNotify(xclDeviceHandle handle, int fd)
+int xclCloseIpInterruptNotify(xclDeviceHandle handle, int fd)
 {
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
 
-  return drv ? drv->xclCloseCuInterruptNotify(fd) : -EINVAL;
+  return drv ? drv->xclCloseIpInterruptNotify(fd) : -EINVAL;
 }

@@ -1272,7 +1272,7 @@ public:
                   cu_s = subv.second.get_value<std::string>();
                 }
               }
-              if (xclCuName2Index(m_handle, cu_n.c_str(), &cu_i) != 0) {
+              if (xclIpName2Index(m_handle, cu_n.c_str(), &cu_i) != 0) {
                 ostr << "CU: ";
               } else {
                 ostr << "CU[" << std::right << std::setw(2) << cu_i << "]: ";
