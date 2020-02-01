@@ -70,7 +70,7 @@ namespace xcldev {
                 return future0.get();
             }
 
-            auto len = (e - b) / count;
+            auto len = ((e - b) < count) ? 1 : (e - b)/count;
             std::vector<std::future<int>> threads;
             while (b < e) {
                 threads.push_back(std::async(std::launch::async, &DMARunner::runSyncWorker, this, b, b + len, dir));
@@ -124,13 +124,6 @@ namespace xcldev {
             std::unique_ptr<char[]> buf(new char[mSize]);
             std::memset(buf.get(), 'x', mSize);
 
-            size_t result = 0;
-            for (auto i : mBOList)
-                result += xclWriteBO(mHandle, i, buf.get(), mSize, 0);
-
-            if (result)
-                return static_cast<int>(result);
-
             xclDeviceInfo2 info;
             int rc = xclGetDeviceInfo2(mHandle, &info);
             if (rc)
@@ -139,7 +132,15 @@ namespace xcldev {
             if (info.mDMAThreads == 0)
                 return -EINVAL;
 
-            std::cout << "Using " << info.mDMAThreads << " bi-directional DMA channels for DMA test\n";
+            //std::cout << "Using " << info.mDMAThreads << " bi-directional PCIe DMA channels for DMA test\n";
+
+            size_t result = 0;
+            for (auto i : mBOList)
+                result += xclWriteBO(mHandle, i, buf.get(), mSize, 0);
+
+            if (result)
+                return static_cast<int>(result);
+
             Timer timer;
             result = runSync(XCL_BO_SYNC_BO_TO_DEVICE, info.mDMAThreads);
             auto timer_stop = timer.stop();
