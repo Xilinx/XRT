@@ -70,7 +70,7 @@ namespace xcldev {
                 return future0.get();
             }
 
-            auto len = (e - b) / count;
+            auto len = ((e - b) < count) ? 1 : (e - b)/count;
             std::vector<std::future<int>> threads;
             while (b < e) {
                 threads.push_back(std::async(std::launch::async, &DMARunner::runSyncWorker, this, b, b + len, dir));
@@ -132,7 +132,7 @@ namespace xcldev {
             if (info.mDMAThreads == 0)
                 return -EINVAL;
 
-            std::cout << "Using " << info.mDMAThreads << " bi-directional PCIe DMA channels for DMA test\n";
+            //std::cout << "Using " << info.mDMAThreads << " bi-directional PCIe DMA channels for DMA test\n";
 
             size_t result = 0;
             for (auto i : mBOList)
