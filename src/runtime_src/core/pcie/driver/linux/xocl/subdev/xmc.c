@@ -2457,7 +2457,7 @@ static int load_xmc(struct xocl_xmc *xmc)
 		if (!ret && (reg_map_ready & 0x2)) {
 			xocl_info(&xmc->pdev->dev, "REGMAP ready");
 		} else {
-			xocl_info(&xmc->pdev->dev, "REGMAP not ready : %d", ret);
+			xocl_err(&xmc->pdev->dev, "REGMAP not ready : %d", ret);
 			ret = -ETIMEDOUT;
 			xmc->state = XMC_STATE_ERROR;
 			goto out;

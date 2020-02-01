@@ -1207,9 +1207,10 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 		!iommu_present(&pci_bus_type))
 		pci_write_config_byte(pdev, 0x188, 0x0);
 
-	xocl_thread_stop(lro);
-
+	/* destroy queue before stopping health thread */
 	xocl_queue_destroy(lro);
+
+	xocl_thread_stop(lro);
 
 	mgmt_fini_sysfs(&pdev->dev);
 
