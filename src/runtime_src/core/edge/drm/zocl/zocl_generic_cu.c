@@ -122,6 +122,10 @@ static irqreturn_t generic_cu_isr(int irq, void *arg)
 
 	spin_lock_irqsave(&gcu->lock, flags);
 	atomic_inc(&gcu->event);
+	/* To handle level interrupt, have to disable this irq line.
+	 * We could esaily support edge interrupt if needed.
+	 * Like, provide one more gcu->flag to permanently enabl irq.
+	 */
 	if (!__test_and_set_bit(GCU_IRQ_DISABLED, &gcu->flag))
 		disable_irq_nosync(irq);
 	spin_unlock_irqrestore(&gcu->lock, flags);
