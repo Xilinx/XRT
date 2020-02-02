@@ -1315,12 +1315,14 @@ static int get_temp_by_m_tag(struct xocl_xmc *xmc, char *m_tag)
 static bool scaling_condition_check(struct xocl_xmc *xmc, struct device *dev)
 {
 	if (xmc->sc_presence) {
+		u32 reg;
+
 		//Feature present bit may configured each time an xclbin is downloaded,
 		//or following a reset of the CMC Subsystem. So, check for latest
 		//status every time.
 		xmc->cs_on_ptfm = false;
 		xmc->runtime_cs_enabled = false;
-		u32 reg = READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1);
+		reg = READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1);
 		if (reg & XMC_HOST_NEW_FEATURE_REG1_FEATURE_PRESENT) {
 			xmc->cs_on_ptfm = true;
 			if (reg & XMC_HOST_NEW_FEATURE_REG1_FEATURE_ENABLE)

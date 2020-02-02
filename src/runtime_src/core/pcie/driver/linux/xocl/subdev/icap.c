@@ -643,7 +643,6 @@ static unsigned int icap_get_clock_frequency_counter_khz(const struct icap *icap
 	if (ICAP_PRIVILEGED(icap)) {
 		if (uuid_is_null(&icap->icap_bitstream_uuid))
 			return freq;
-
 		err = xocl_clock_get_freq_counter_khz(xdev, &freq, idx);
 		if (err)
 			ICAP_WARN(icap, "clock subdev returns %d.", err);
