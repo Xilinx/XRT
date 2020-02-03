@@ -89,6 +89,7 @@
 #define	XMC_VCCINT_BRAM_REG		0x2A8
 #define	XMC_HBM_TEMP2_REG		0x2B4
 #define	XMC_OEM_ID_REG                  0x2C0
+#define	XMC_VCCINT_TEMP_REG             0x2CC
 #define	XMC_HOST_MSG_OFFSET_REG		0x300
 #define	XMC_HOST_MSG_ERROR_REG		0x304
 #define	XMC_HOST_MSG_HEADER_REG		0x308
@@ -570,6 +571,9 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 		case XMC_OEM_ID:
 			safe_read32(xmc, XMC_OEM_ID_REG, val);
 			break;
+		case XMC_VCCINT_TEMP:
+			safe_read32(xmc, XMC_VCCINT_TEMP_REG, val);
+			break;
 		default:
 			break;
 		}
@@ -699,6 +703,9 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 			break;
 		case XMC_OEM_ID:
 			*val = xmc->cache->oem_id;
+			break;
+		case XMC_VCCINT_TEMP:
+			*val = xmc->cache->vccint_temp;
 			break;
 		default:
 			break;
@@ -918,6 +925,7 @@ static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind,
 		xmc_sensor(pdev, VOL_VCCINT_BRAM, &sensors->vccint_bram, SENSOR_INS);
 		xmc_sensor(pdev, XMC_VER, &sensors->version, SENSOR_INS);
 		xmc_sensor(pdev, XMC_OEM_ID, &sensors->oem_id, SENSOR_INS);
+		xmc_sensor(pdev, XMC_VCCINT_TEMP, &sensors->vccint_temp, SENSOR_INS);
 		break;
 	case XCL_BDINFO:
 		mutex_lock(&xmc->mbx_lock);
@@ -1048,6 +1056,7 @@ SENSOR_SYSFS_NODE(xmc_vccint_bram_vol, VOL_VCCINT_BRAM);
 SENSOR_SYSFS_NODE(xmc_hbm_temp, HBM_TEMP);
 SENSOR_SYSFS_NODE(version, XMC_VER);
 SENSOR_SYSFS_NODE_FORMAT(xmc_oem_id, XMC_OEM_ID, "0x%x\n");
+SENSOR_SYSFS_NODE(xmc_vccint_temp, XMC_VCCINT_TEMP);
 
 static ssize_t xmc_power_show(struct device *dev,
 	struct device_attribute *da, char *buf)
@@ -1111,7 +1120,8 @@ static DEVICE_ATTR_RO(status);
 	&dev_attr_xmc_hbm_temp.attr,					\
 	&dev_attr_xmc_power.attr,					\
 	&dev_attr_version.attr,						\
-	&dev_attr_xmc_oem_id.attr
+	&dev_attr_xmc_oem_id.attr,					\
+	&dev_attr_xmc_vccint_temp.attr
 
 /*
  * Defining sysfs nodes for reading some of xmc regisers.

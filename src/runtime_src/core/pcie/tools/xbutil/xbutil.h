@@ -767,9 +767,12 @@ public:
         sensor_tree::put( "board.physical.thermal.pcb.btm_front", xmc_se98_temp2);
 
         // physical.thermal
-        unsigned int fan_rpm, xmc_fpga_temp, xmc_fan_temp;
+        unsigned int fan_rpm, xmc_fpga_temp, xmc_fan_temp, vccint_temp;
         std::string fan_presence;
         
+        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_vccint_temp",  vccint_temp);
+        sensor_tree::put( "board.physical.thermal.vccint_temp.current",     vccint_temp);
+
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_fpga_temp", xmc_fpga_temp );
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_fan_temp",  xmc_fan_temp );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "fan_presence",         errmsg, fan_presence );
@@ -1032,10 +1035,11 @@ public:
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Temperature(C)\n";
-        ostr << std::setw(16) << "PCB TOP FRONT" << std::setw(16) << "PCB TOP REAR" << std::setw(16) << "PCB BTM FRONT" << std::endl;
+        ostr << std::setw(16) << "PCB TOP FRONT" << std::setw(16) << "PCB TOP REAR" << std::setw(16) << "PCB BTM FRONT" << std::setw(16) << "VCCINT TEMP" << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.pcb.top_front" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.pcb.top_rear"  )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.pcb.btm_front" ) << std::endl;
+             << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.pcb.btm_front" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.vccint_temp.current" ) << std::endl;
         ostr << std::setw(16) << "FPGA TEMP" << std::setw(16) << "TCRIT Temp" << std::setw(16) << "FAN Presence" 
              << std::setw(16) << "FAN Speed(RPM)" << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.fpga_temp") 
