@@ -36,7 +36,7 @@ int XOSPIVER_Flasher::xclUpgradeFirmware(std::istream& binStream)
 
     std::cout << "INFO: ***PDI has " << total_size << " bytes" << std::endl;
 
-    std::vector<char> buffer;
+    std::vector<char> buffer(total_size);
     binStream.read(buffer.data(), total_size);
 
     m_device->write(0, buffer.data(), total_size);

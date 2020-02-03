@@ -173,7 +173,7 @@ selectShell(uint16_t idx, const std::string& dsa, const std::string& id)
     candidateDSAIndex = 0;
   } else {
     for (uint16_t i = 0; i < installedDSA.size(); i++) {
-      DSAInfo& idsa = installedDSA[i];
+      const DSAInfo& idsa = installedDSA[i];
       if (dsa != idsa.name)
         continue;
       if (!id.empty() && !idsa.matchId(id))
