@@ -6,20 +6,21 @@ OclPowerProfile::OclPowerProfile(xrt::device* xrt_device,
                                 std::shared_ptr<XoclPlugin> xocl_plugin,
                                 std::string unique_name) 
                                 : status(PowerProfileStatus::IDLE) {
-    power_profile_config = xrt::config::get_power_profile();
+    power_profile_en = xrt::config::get_power_profile();
     target_device = xrt_device;
     target_xocl_plugin = xocl_plugin;
     target_unique_name = unique_name;
-    if (power_profile_config != "off") {
+    output_file_name = "power_profile_" + target_unique_name + ".csv";
+    if (power_profile_en) {
         start_polling();
     }
 }
 
 OclPowerProfile::~OclPowerProfile() {
-    if (power_profile_config != "off") {
+    if (power_profile_en) {
         stop_polling();
         polling_thread.join();
-        power_profiling_output.open("ocl_power_profile_" + target_unique_name + ".csv", std::ios::out);
+        power_profiling_output.open(output_file_name, std::ios::out);
         write_header();
         write_trace();
         power_profiling_output.close();
@@ -113,6 +114,8 @@ void OclPowerProfile::stop_polling() {
 }
 
 void OclPowerProfile::write_header() {
+    power_profiling_output << "Target device: "
+                        << target_unique_name << std::endl;
     power_profiling_output << "timestamp,"
                         << "aux_curr,"
                         << "aux_vol,"

@@ -105,8 +105,17 @@ namespace xdp {
 
     if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE)) {
       for (auto device : platform->get_device_range()) {
-        auto power_profile = std::make_unique<OclPowerProfile>(device->get_xrt_device(), Plugin, device->get_unique_name());
-        PowerProfileList.push_back(std::move(power_profile));
+        /*
+         * Initialize Power Profiling Threads
+         */
+        auto power_profile_en = xrt::config::get_power_profile();
+        if (power_profile_en) {
+          auto power_profile = std::make_unique<OclPowerProfile>(device->get_xrt_device(), Plugin, device->get_unique_name());
+          auto& filename = power_profile->get_output_file_name();
+          ProfileMgr->getRunSummary()->addFile(filename, RunSummary::FT_POWER_PROFILE);
+          PowerProfileList.push_back(std::move(power_profile));
+        }
+
       }
     }
     mProfileRunning = true;
