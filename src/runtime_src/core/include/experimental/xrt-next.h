@@ -202,7 +202,7 @@ int
 xclDestroyProfileResults(xclDeviceHandle, struct ProfileResults*);
 
 /**
- * xclRegRead() - Read register in register space of a CU
+ * xclRegRead() - Read register in register space of an IP
  *
  * @handle:        Device handle
  * @ipIndex:       IP index
@@ -224,7 +224,7 @@ int
 xclRegRead(xclDeviceHandle handle, uint32_t ipIndex, uint32_t offset, uint32_t *datap);
 
 /**
- * xclRegWRite() - Write to register in register space of a CU
+ * xclRegWRite() - Write to register in register space of an IP
  *
  * @handle:        Device handle
  * @ipIndex:       IP index
@@ -246,7 +246,7 @@ int
 xclRegWrite(xclDeviceHandle handle, uint32_t ipIndex, uint32_t offset, uint32_t data);
 
 /**
- * xclCuName2Index() - Obtain CU index by CU name
+ * xclIPName2Index() - Obtain IP index by IP name
  *
  * @handle:        Device handle
  * @ipName:        IP name. usually "<kernel name>:<instance name>"
@@ -256,10 +256,10 @@ xclRegWrite(xclDeviceHandle handle, uint32_t ipIndex, uint32_t offset, uint32_t 
  */
 XCL_DRIVER_DLLESPEC
 int
-xclIpName2Index(xclDeviceHandle handle, const char *ipName, uint32_t *ipIndex);
+xclIPName2Index(xclDeviceHandle handle, const char *ipName, uint32_t *ipIndex);
 
 /**
- * xclOpenIpInterruptNotify() - Open a fd for IP interrupt notify
+ * xclOpenIPInterruptNotify() - Open a fd for IP interrupt notify
  *
  * @handle:     Device handle
  * @ipIndex:    IP index
@@ -275,10 +275,10 @@ xclIpName2Index(xclDeviceHandle handle, const char *ipName, uint32_t *ipIndex);
  *
  * Note: the IP irq would be disable after this is called. Caller could manually enable the interrupt by write().
  */
-XCL_DRIVER_DLLESPEC int xclOpenIpInterruptNotify(xclDeviceHandle handle, uint32_t ipIndex, unsigned int flags);
+XCL_DRIVER_DLLESPEC int xclOpenIPInterruptNotify(xclDeviceHandle handle, uint32_t ipIndex, unsigned int flags);
 
 /**
- * xclCloseCuInterruptNotify() - Clost the interrupt notify fd
+ * xclCloseIPInterruptNotify() - Clost the interrupt notify fd
  *
  * @handle:     Device handle
  * @fd:         fd handle
@@ -288,7 +288,7 @@ XCL_DRIVER_DLLESPEC int xclOpenIpInterruptNotify(xclDeviceHandle handle, uint32_
  * This API would close the file descriptor used for IP interrupt notification.
  * Once this API was called, xclExecBuf() could schedule this specific IP.
  */
-XCL_DRIVER_DLLESPEC int xclCloseIpInterruptNotify(xclDeviceHandle handle, int fd);
+XCL_DRIVER_DLLESPEC int xclCloseIPInterruptNotify(xclDeviceHandle handle, int fd);
 
 #ifdef __cplusplus
 }

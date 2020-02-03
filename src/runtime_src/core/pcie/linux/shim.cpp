@@ -1675,7 +1675,7 @@ int shim::xclRegWrite(uint32_t ipIndex, uint32_t offset, uint32_t data)
     return xclRegRW(false, ipIndex, offset, &data);
 }
 
-int shim::xclIpName2Index(const char *name, uint32_t& index)
+int shim::xclIPName2Index(const char *name, uint32_t& index)
 {
     std::string errmsg;
     std::vector<char> buf;
@@ -2203,10 +2203,10 @@ int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceIn
   return drv ? drv->xclGetDebugProfileDeviceInfo(info) : -ENODEV;
 }
 
-int xclIpName2Index(xclDeviceHandle handle, const char *name, uint32_t *indexp)
+int xclIPName2Index(xclDeviceHandle handle, const char *name, uint32_t *indexp)
 {
   xocl::shim *drv = xocl::shim::handleCheck(handle);
-  return (drv) ? drv->xclIpName2Index(name, *indexp) : -ENODEV;
+  return (drv) ? drv->xclIPName2Index(name, *indexp) : -ENODEV;
 }
 
 int xclUpdateSchedulerStat(xclDeviceHandle handle)
@@ -2215,12 +2215,12 @@ int xclUpdateSchedulerStat(xclDeviceHandle handle)
   return (drv) ? drv->xclUpdateSchedulerStat() : -ENODEV;
 }
 
-int xclOpenIpInterruptNotify(xclDeviceHandle handle, uint32_t ipIndex, int flags)
+int xclOpenIPInterruptNotify(xclDeviceHandle handle, uint32_t ipIndex, int flags)
 {
     return -ENOSYS;
 }
 
-int xclCloseIpInterruptNotify(xclDeviceHandle handle, int fd)
+int xclCloseIPInterruptNotify(xclDeviceHandle handle, int fd)
 {
     return -ENOSYS;
 }

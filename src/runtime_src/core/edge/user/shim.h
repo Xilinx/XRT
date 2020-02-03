@@ -99,12 +99,12 @@ public:
 
   int xclGetDeviceInfo2(xclDeviceInfo2 *info);
 
-  int xclOpenIpInterruptNotify(uint32_t ipIndex, unsigned int flags);
-  int xclCloseIpInterruptNotify(int fd);
+  int xclOpenIPInterruptNotify(uint32_t ipIndex, unsigned int flags);
+  int xclCloseIPInterruptNotify(int fd);
 
   bool isGood() const;
   static ZYNQShim *handleCheck(void *handle);
-  int xclIpName2Index(const char *name, uint32_t& index);
+  int xclIPName2Index(const char *name, uint32_t& index);
   static int xclLogMsg(xrtLogMsgLevel level, const char* tag,
 		       const char* format, va_list args);
   

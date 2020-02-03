@@ -752,7 +752,7 @@ int ZYNQShim::xclRegWrite(uint32_t ipIndex, uint32_t offset, uint32_t data)
   return xclRegRW(false, ipIndex, offset, &data);
 }
 
-int ZYNQShim::xclIpName2Index(const char *name, uint32_t& index)
+int ZYNQShim::xclIPName2Index(const char *name, uint32_t& index)
 {
   std::string errmsg;
   std::vector<char> buf;
@@ -813,7 +813,7 @@ int ZYNQShim::xclIpName2Index(const char *name, uint32_t& index)
   return -ENOENT;
 }
 
-int ZYNQShim::xclOpenIpInterruptNotify(uint32_t ipIndex, unsigned int flags)
+int ZYNQShim::xclOpenIPInterruptNotify(uint32_t ipIndex, unsigned int flags)
 {
   int ret;
 
@@ -830,7 +830,7 @@ int ZYNQShim::xclOpenIpInterruptNotify(uint32_t ipIndex, unsigned int flags)
   return ret;
 }
 
-int ZYNQShim::xclCloseIpInterruptNotify(int fd)
+int ZYNQShim::xclCloseIPInterruptNotify(int fd)
 {
   xclLog(XRT_DEBUG, "XRT", "%s: fd %d", __func__, fd);
   close(fd);
@@ -1785,10 +1785,10 @@ int xclRegRead(xclDeviceHandle handle, uint32_t ipIndex, uint32_t offset,
   return drv ? drv->xclRegRead(ipIndex, offset, datap) : -ENODEV;
 }
 
-int xclIpName2Index(xclDeviceHandle handle, const char *name, uint32_t *indexp)
+int xclIPName2Index(xclDeviceHandle handle, const char *name, uint32_t *indexp)
 {
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
-  return (drv) ? drv->xclIpName2Index(name, *indexp) : -ENODEV;
+  return (drv) ? drv->xclIPName2Index(name, *indexp) : -ENODEV;
 }
 
 int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag,
@@ -1813,16 +1813,16 @@ int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag,
     return 0;
 }
 
-int xclOpenIpInterruptNotify(xclDeviceHandle handle, uint32_t ipIndex, unsigned int flags)
+int xclOpenIPInterruptNotify(xclDeviceHandle handle, uint32_t ipIndex, unsigned int flags)
 {
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
 
-  return drv ? drv->xclOpenIpInterruptNotify(ipIndex, flags) : -EINVAL;
+  return drv ? drv->xclOpenIPInterruptNotify(ipIndex, flags) : -EINVAL;
 }
 
-int xclCloseIpInterruptNotify(xclDeviceHandle handle, int fd)
+int xclCloseIPInterruptNotify(xclDeviceHandle handle, int fd)
 {
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
 
-  return drv ? drv->xclCloseIpInterruptNotify(fd) : -EINVAL;
+  return drv ? drv->xclCloseIPInterruptNotify(fd) : -EINVAL;
 }
