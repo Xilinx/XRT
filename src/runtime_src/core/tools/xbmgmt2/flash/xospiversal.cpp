@@ -14,7 +14,7 @@
  * under the License.
  */
 
-#include <unistd.h>
+// #include <unistd.h>
 
 #include "xospiversal.h"
 
@@ -31,15 +31,15 @@ int XOSPIVER_Flasher::xclUpgradeFirmware(std::istream& binStream)
     int total_size = 0;
 
     binStream.seekg(0, binStream.end);
-    total_size = binStream.tellg();
+    total_size = static_cast<int>(binStream.tellg());
     binStream.seekg(0, binStream.beg);
 
     std::cout << "INFO: ***PDI has " << total_size << " bytes" << std::endl;
 
     std::vector<char> buffer;
-    binStream.read(buffer, total_size);
+    binStream.read(buffer.data(), total_size);
 
-    m_device->write(0, buffer, total_size);
+    m_device->write(0, buffer.data(), total_size);
 
     return 0;
 }
