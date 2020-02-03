@@ -116,13 +116,25 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   // Is valid BDF value valid
 
   if (test_mode) {
+    std::cout << "\n>>> TEST MODE <<<\n"
+              << "Simulating programming the flash device with a failure.\n\n"
+              << "Flash image: xilinx_u250_xdma_201830_1.mcs\n"
+              << "  Directory: /lib/firmware/xilinx\n"
+              << "  File Size: 134,401,924 bytes\n"
+              << " Time Stamp: Feb 1, 2020 08:07\n\n";
     //standard use case
-    XBU::ProgressBar flash("Erasing flashing", 8, XBU::is_esc_enabled(), std::cout);
+    XBU::ProgressBar flash("Erasing flash", 8, XBU::is_esc_enabled(), std::cout);
     for (int i = 1; i <= 8; i++) {
-		  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-		  flash.update(i);
+      if (i != 8) {
+        for (int fastLoop = 0; (fastLoop <= 10); ++fastLoop) {
+          std::this_thread::sleep_for(std::chrono::milliseconds(100));
+          flash.update(i);
+        }
+      } else {
+        flash.update(i);
+      }
 	  }
-    flash.finish();
+    flash.finish(true, "Flash erased");
 
     //failure case
     XBU::ProgressBar fail_flash("Programming flash", 10, XBU::is_esc_enabled(), std::cout);
@@ -130,7 +142,12 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 		  std::this_thread::sleep_for(std::chrono::milliseconds(500));
 		  fail_flash.update(i);
 	  }
-    fail_flash.finish();
+
+    for (int i = 0; i < 20; ++i) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
+      fail_flash.update(8);
+    }
+    fail_flash.finish(false, "An error has occurred while programming the flash image");
 
     //Add gtest to test error when iteration > max_iter
   }
