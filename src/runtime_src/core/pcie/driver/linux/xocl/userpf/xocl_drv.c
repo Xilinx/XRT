@@ -335,11 +335,15 @@ int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 	 * ESHUTDOWN: Polling COMMAND_MASTER is not supported,
 	 * device is shutdown.
 	 */
-	if (mbret == -ESHUTDOWN)
+	if (!mbret && ret == -ESHUTDOWN)
 		flag |= XOCL_RESET_SHUTDOWN;
 	if (mbret) {
 		userpf_err(xdev, "Requested peer failed %d", mbret);
 		ret = mbret;
+		goto failed_notify;
+	}
+	if (ret) {
+		userpf_err(xdev, "Hotreset peer response %d", ret);
 		goto failed_notify;
 	}
 

@@ -37,6 +37,7 @@
 #include <fstream>
 #include <exception>
 #include <regex>
+#include <future>
 #include "xclbin.h"
 #include "azure.h"
 
@@ -84,7 +85,6 @@ int init(mpd_plugin_callbacks *cbs)
         cbs->get_remote_msd_fd = get_remote_msd_fd;
         cbs->mb_req.load_xclbin = azureLoadXclBin;
         cbs->mb_req.hot_reset = azureHotReset;
-        cbs->plugin_cap = (1 << CAP_RESET_NEED_HELP);
         ret = 0;
     }
     syslog(LOG_INFO, "azure mpd plugin init called: %d\n", ret);
@@ -137,6 +137,17 @@ int azureLoadXclBin(size_t index, const axlf *xclbin, int *resp)
 }
 
 /*
+ * Reset requires the mailbox msg return before the real reset
+ * happens. So we run user special reset in async thread.
+ */
+std::future<void> nouse; //so far we don't care the return value of reset
+static void azureHotResetAsync(size_t index)
+{
+    AzureDev d(index);
+    d.azureHotReset();
+}
+
+/*
  * callback function that is used to handle MAILBOX_REQ_HOT_RESET msg
  *
  * Input:
@@ -149,8 +160,10 @@ int azureLoadXclBin(size_t index, const axlf *xclbin, int *resp)
  */
 int azureHotReset(size_t index, int *resp)
 {
-    AzureDev d(index);
-    *resp = d.azureHotReset();
+    //tell xocl don't try to restore anything since we are going
+    //to do hotplug in wireserver
+    *resp = -ESHUTDOWN;
+    nouse = std::async(std::launch::async, &azureHotResetAsync, index);
     return 0;
 }
 
