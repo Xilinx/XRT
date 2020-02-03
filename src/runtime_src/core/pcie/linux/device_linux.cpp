@@ -206,6 +206,13 @@ static std::map<qr_type, query_entry> query_table = {
 
   { qr_type::QR_POWER_MICROWATTS,          {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, "xmc", "xmc_power")}},
 
+  // { qr_type::QR_MIG_ECC_ENABLED,           {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, sp::_4, "ecc_enabled")}},
+  // { qr_type::QR_MIG_ECC_STATUS,            {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, sp::_4, "ecc_status")}},
+  // { qr_type::QR_MIG_ECC_CE_CNT,            {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, sp::_4, "ecc_ce_cnt")}},
+  // { qr_type::QR_MIG_ECC_UE_CNT,            {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, sp::_4, "ecc_ue_cnt")}},
+  // { qr_type::QR_MIG_ECC_CE_FFA,            {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, sp::_4, "ecc_ce_ffa")}},
+  // { qr_type::QR_MIG_ECC_UE_FFA,            {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, sp::_4, "ecc_ue_ffa")}},
+
   { qr_type::QR_FLASH_BAR_OFFSET,          {std::bind(sysfs_mgmt, sp::_1, sp::_2, sp::_3, "flash", "bar_off")}},
   { qr_type::QR_IS_MFG,                    {std::bind(sysfs_mgmt, sp::_1, sp::_2, sp::_3, "", "mfg")}},
   { qr_type::QR_F_FLASH_TYPE,              {std::bind(sysfs_mgmt, sp::_1, sp::_2, sp::_3, "flash", "flash_type" )}},

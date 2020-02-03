@@ -350,6 +350,20 @@ struct xocl_drvinst {
         u64			data[1];
 };
 
+enum {
+	XOCL_WORK_RESET,
+	XOCL_WORK_PROGRAM_SHELL,
+	XOCL_WORK_REFRESH_SUBDEV,
+	XOCL_WORK_SHUTDOWN,
+	XOCL_WORK_FORCE_RESET,
+	XOCL_WORK_NUM,
+};
+
+struct xocl_work {
+	struct delayed_work	work;
+	int			op;
+};
+
 struct xocl_dev_core {
 	struct pci_dev		*pdev;
 	int			dev_minor;
@@ -383,6 +397,11 @@ struct xocl_dev_core {
 
 	char			ebuf[XOCL_EBUF_LEN + 1];
 	bool			shutdown;
+
+	struct workqueue_struct	*wq;
+	struct xocl_work	works[XOCL_WORK_NUM];
+	struct mutex		wq_lock;
+
 };
 
 #define XOCL_DRM(xdev_hdl)					\
@@ -1230,6 +1249,39 @@ struct xocl_mailbox_versal_funcs {
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
 void xocl_init_dsa_priv(xdev_handle_t xdev_hdl);
 
+static inline int xocl_queue_work(xdev_handle_t xdev_hdl, int op, int delay)
+{
+	struct xocl_dev_core *xdev = XDEV(xdev_hdl);
+	int ret = 0;
+
+	mutex_lock(&xdev->wq_lock);
+	if (xdev->wq) {
+		ret = queue_delayed_work(xdev->wq,
+			&xdev->works[op].work, msecs_to_jiffies(delay));
+	}
+	mutex_unlock(&xdev->wq_lock);
+
+	return ret;
+}
+
+static inline void xocl_queue_destroy(xdev_handle_t xdev_hdl)
+{
+	struct xocl_dev_core *xdev = XDEV(xdev_hdl);
+	int i;
+
+	mutex_lock(&xdev->wq_lock);
+	if (xdev->wq) {
+		for (i = 0; i < XOCL_WORK_NUM; i++) {
+			cancel_delayed_work_sync(&xdev->works[i].work);
+			flush_delayed_work(&xdev->works[i].work);
+		}
+		flush_workqueue(xdev->wq);
+		destroy_workqueue(xdev->wq);
+		xdev->wq = NULL;
+	}
+	mutex_unlock(&xdev->wq_lock);
+}
+
 /* subdev mbx messages */
 #define XOCL_MSG_SUBDEV_VER	1
 #define XOCL_MSG_SUBDEV_DATA_LEN	(512 * 1024)
@@ -1282,6 +1334,7 @@ struct resource *xocl_get_iores_byname(struct platform_device *pdev,
 
 int xocl_ioaddr_to_baroff(xdev_handle_t xdev_hdl, resource_size_t io_addr,
 	int *bar_idx, resource_size_t *bar_off);
+int xocl_wait_pci_status(struct pci_dev *pdev, u16 mask, u16 val, int timeout);
 
 static inline void xocl_lock_xdev(xdev_handle_t xdev)
 {
