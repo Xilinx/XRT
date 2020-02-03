@@ -521,7 +521,7 @@ static int set_freqs(struct clock *clock, unsigned short *freqs, int num_freqs,
 		gate_handle->gate_free_cb(gate_handle->gate_args);
 
 done:
-	CLOCK_ERR(clock, "returns %d", err);
+	CLOCK_INFO(clock, "returns %d", err);
 	return err;
 }
 

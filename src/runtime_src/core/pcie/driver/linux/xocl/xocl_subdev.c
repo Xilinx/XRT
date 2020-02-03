@@ -326,7 +326,8 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 	else
 		snprintf(devname, sizeof(devname) - 1, "%s%s",
 				sdev_info->name, SUBDEV_SUFFIX);
-	xocl_xdev_info(xdev_hdl, "creating subdev %s", devname);
+	xocl_xdev_info(xdev_hdl, "creating subdev %s multi %d level %d",
+		devname, sdev_info->multi_inst, sdev_info->level);
 
 	subdev = xocl_subdev_reserve(xdev_hdl, sdev_info);
 	if (!subdev) {
@@ -443,8 +444,8 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 
 	subdev->state = XOCL_SUBDEV_STATE_ADDED;
 
-	xocl_xdev_info(xdev_hdl, "Created subdev %s inst %d",
-			sdev_info->name, subdev->inst);
+	xocl_xdev_info(xdev_hdl, "Created subdev %s inst %d level %d",
+			sdev_info->name, subdev->inst, sdev_info->level);
 
 	if (XOCL_GET_DRV_PRI(subdev->pldev) &&
 			XOCL_GET_DRV_PRI(subdev->pldev)->ops)
