@@ -58,6 +58,8 @@ std::string format(const std::string& format, Args ... args) {
    */
   void setVerbose(bool _bVerbose);
   void setTrace(bool _bVerbose);
+  void disable_escape_codes( bool _disable );
+  bool is_esc_enabled();  
 
   void message_(MessageType _eMT, const std::string& _msg, bool _endl = true);
 

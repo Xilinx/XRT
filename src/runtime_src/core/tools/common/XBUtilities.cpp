@@ -34,6 +34,7 @@ using namespace XBUtilities;
 // ------ S T A T I C   V A R I A B L E S -------------------------------------
 static bool m_bVerbose = false;
 static bool m_bTrace = false;
+static bool m_disableEscapeCodes = false;
 
 
 // ------ F U N C T I O N S ---------------------------------------------------
@@ -63,6 +64,17 @@ XBUtilities::setTrace(bool _bTrace)
   }
 
   m_bTrace = _bTrace;
+}
+
+void 
+XBUtilities::disable_escape_codes(bool _disable) 
+{
+  m_disableEscapeCodes = _disable;
+}
+
+bool 
+XBUtilities::is_esc_enabled() {
+  return m_disableEscapeCodes;
 }
 
 

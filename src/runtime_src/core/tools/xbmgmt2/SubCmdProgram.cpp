@@ -18,6 +18,7 @@
 // Local - Include Files
 #include "SubCmdProgram.h"
 #include "tools/common/XBUtilities.h"
+#include "tools/common/ProgressBar.h"
 namespace XBU = XBUtilities;
 
 #include "xrt.h"
@@ -26,12 +27,15 @@ namespace XBU = XBUtilities;
 #include "core/common/error.h"
 
 // 3rd Party Library - Include Files
+#include <boost/format.hpp>
 #include <boost/program_options.hpp>
 namespace po = boost::program_options;
 
 // System - Include Files
 #include <iostream>
 #include <fstream>
+#include <thread>
+#include <chrono>
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
@@ -68,6 +72,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   std::string update = "";
   std::string image = "";
   bool revertToGolden = false;
+  bool test_mode = false;
   bool help = false;
 
   po::options_description queryDesc("Options");  // Note: Boost will add the colon.
@@ -85,6 +90,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
                                                                       "  Name (and path) to the mcs image on disk\n"
                                                                       "  Name (and path) to the xsabin image on disk")
     ("revert-to-golden", boost::program_options::bool_switch(&revertToGolden), "Resets the FPGA PROM back to the factory image.  Note: This currently only applies to the flash image.")
+    ("test_mode", boost::program_options::bool_switch(&test_mode), "Animate flash progress bar")
     ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
 
@@ -108,4 +114,24 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   // -- Now process the subcommand --------------------------------------------
   // Is valid BDF value valid
+
+  if (test_mode) {
+    //standard use case
+    XBU::ProgressBar flash("Erasing flashing", 8, XBU::is_esc_enabled(), std::cout);
+    for (int i = 1; i <= 8; i++) {
+		  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+		  flash.update(i);
+	  }
+    flash.finish();
+
+    //failure case
+    XBU::ProgressBar fail_flash("Programming flash", 10, XBU::is_esc_enabled(), std::cout);
+    for (int i = 1; i <= 8; i++) {
+		  std::this_thread::sleep_for(std::chrono::milliseconds(500));
+		  fail_flash.update(i);
+	  }
+    fail_flash.finish();
+
+    //Add gtest to test error when iteration > max_iter
+  }
 }
