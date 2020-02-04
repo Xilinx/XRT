@@ -24,7 +24,11 @@ namespace xdp {
   // Host event definitions
   // **************************
   KernelEnqueue::KernelEnqueue(uint64_t s_id, double ts) :
-    VTFEvent(s_id, ts, KERNEL_ENQUEUE)
+    VTFEvent(s_id, ts, KERNEL_ENQUEUE),
+    // Until implemented, initialize all members with a default value
+    deviceName(0), binaryName(0), kernelName(0),
+    workgroupConfiguration(0), workgroupSize(0),
+    eventString(0), stageString(0), objId(0), size(0)
   {
   }
 
@@ -39,7 +43,11 @@ namespace xdp {
   }
 
   CUEnqueue::CUEnqueue(uint64_t s_id, double ts) :
-    VTFEvent(s_id, ts, CU_ENQUEUE) 
+    VTFEvent(s_id, ts, CU_ENQUEUE),
+    // Until implemented, initialize all members with a default value
+    deviceName(0), binaryName(0), kernelName(0),
+    workgroupConfiguration(0), cuName(0), eventString(0),
+    stageString(0), objId(0), size(0), cuId(0)
   {
   }
 
@@ -48,7 +56,10 @@ namespace xdp {
   }
 
   BufferTransfer::BufferTransfer(uint64_t s_id, double ts, VTFEventType ty) :
-    VTFEvent(s_id, ts, ty) 
+    VTFEvent(s_id, ts, ty),
+    // Until implemented, initialize all members with a default value
+    stageString(0), eventString(0), size(0), srcAddress(0), srcBank(0),
+    dstAddress(0), dstBank(0), bufferId(0)
   {
   }
 
