@@ -238,6 +238,13 @@ get_query_entry(qr_type qr)
 
 namespace xrt_core {
 
+const query::request&
+device_linux::
+lookup_query(query::key_type query_key) const
+{
+  throw std::runtime_error("not implemented");
+}
+
 void
 device_linux::
 query(QueryRequest qr, const std::type_info& tinfo, boost::any& value) const

@@ -17,6 +17,7 @@
 #ifndef XRT_CORE_DEVICE_H
 #define XRT_CORE_DEVICE_H
 
+#include "query.h"
 #include "error.h"
 #include "xrt.h"
 
@@ -177,23 +178,44 @@ public:
   virtual xclDeviceHandle
   get_device_handle() const = 0;
 
+private:
+  // Private look up function for concrete query::request
+  virtual const query::request&
+  lookup_query(query::key_type query_key) const = 0;
+
 public:
-  /*
-   * query_device() - Retrive query request data
+  /**
+   * query() - Query the device for specific property
    *
-   * @deviceID : device to retrieve data for
-   * @qr: query reqest type to retrieve
-   * @ti: C++ typeid identifying the data type stored in the returned value
-   * @ret: type erased boost::any object used to return the retrieved data
-   *
-   * This function isvirtual and must be defined by OS implmentation
-   * classes.  The public interface into calling this funciton is a
-   * templated function that pouplates the type_info argument.
-   *
-   * As strange as this function looks it is merely a poor mans
-   * templated virtual function
+   * @QueryRequestType: Template parameter identifying a specific query request
+   * Return: QueryRequestType::result_type value wrapped as boost::any.
    */
+  template <typename QueryRequestType>
+  boost::any
+  query() const
+  {
+    auto& qr = lookup_query(QueryRequestType::key);
+    return qr.get(this);
+  }
+
+  /**
+   * query() - Query the device for specific property
+   *
+   * @QueryRequestType: Template parameter identifying a specific query request
+   * @args:  Variadic arguments forwarded the QueryRequestType
+   * Return: QueryRequestType::result_type value wrapped as boost::any.
+   */
+  template <typename QueryRequestType, typename ...Args>
+  boost::any
+  query(Args&&... args) const
+  {
+    auto& qr = lookup_query(QueryRequestType::key);
+    return qr.get(this, std::forward<Args>(args)...);
+  }
+
+  // deprecated
   virtual void query(QueryRequest qr, const std::type_info & ti, boost::any &ret) const = 0;
+
   virtual void get_info(boost::property_tree::ptree &pt) const = 0;
   virtual void read_dma_stats(boost::property_tree::ptree &pt) const = 0;
 

@@ -596,6 +596,14 @@ bdf_fcn(const device_type* device, qr_type qr, const std::type_info&, boost::any
 
 namespace xrt_core {
 
+const query::request&
+device_windows::
+lookup_query(query::key_type query_key) const
+{
+  throw std::runtime_error("not implemented");
+}
+  
+
 const device_windows::IOCTLEntry &
 device_windows::
 get_IOCTL_entry(QueryRequest qr) const

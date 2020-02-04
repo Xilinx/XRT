@@ -53,6 +53,10 @@ public:
   virtual void write(uint64_t addr, const void* buf, uint64_t len) const;
 
 private:
+  // Private look up function for concrete query::request
+  virtual const query::request&
+  lookup_query(query::key_type query_key) const;
+
   xclDeviceHandle m_mgmthdl = XRT_NULL_HANDLE;
 };
 
