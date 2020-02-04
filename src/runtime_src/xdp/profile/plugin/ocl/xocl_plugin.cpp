@@ -298,10 +298,11 @@ namespace xdp {
     for (auto device : mPlatformHandle->get_device_range()) {
       if (!device->is_active())
         continue;
+      // TODO: figure out how to get this from platform
       auto name = device->get_unique_name();
-      mDeviceMemTypeBitWidthMap[name + ",HBM"] = 256;
-      mDeviceMemTypeBitWidthMap[name + ",DDR"] = 512;
-      mDeviceMemTypeBitWidthMap[name + ",PLRAM"] = 512;
+      mDeviceMemTypeBitWidthMap[name + "|HBM"] = 256;
+      mDeviceMemTypeBitWidthMap[name + "|DDR"] = 512;
+      mDeviceMemTypeBitWidthMap[name + "|PLRAM"] = 512;
     }
   }
 

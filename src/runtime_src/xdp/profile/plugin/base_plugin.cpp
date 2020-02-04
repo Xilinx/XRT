@@ -123,8 +123,8 @@ namespace xdp {
       case PLRAM_SIZE_BYTES:
         name = "PLRAM_SIZE_BYTES";
         break;
-      case BUFFER_INFO:
-        name = "BUFFER_INFO";
+      case KERNEL_BUFFER_INFO:
+        name = "KERNEL_BUFFER_INFO";
         break;
       case TRACE_BUFFER_FULL:
         name = "TRACE_BUFFER_FULL";

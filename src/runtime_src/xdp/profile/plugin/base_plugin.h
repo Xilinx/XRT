@@ -108,7 +108,7 @@ namespace xdp {
         MAX_PARALLEL_KERNEL_ENQUEUES,
         COMMAND_QUEUE_OOO,
         PLRAM_SIZE_BYTES,
-        BUFFER_INFO,
+        KERNEL_BUFFER_INFO,
         TRACE_BUFFER_FULL,
         MEMORY_TYPE_BIT_WIDTH
       };

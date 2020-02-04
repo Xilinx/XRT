@@ -658,7 +658,7 @@ namespace xdp {
     {
       std::string check;
       auto map = mPluginHandle->getKernelBufferInfoMap();
-      XDPPluginI::getGuidanceName(XDPPluginI::BUFFER_INFO, check);
+      XDPPluginI::getGuidanceName(XDPPluginI::KERNEL_BUFFER_INFO, check);
       for (auto const& it : map) {
         for (auto const& entry: it.second) {
           writeTableCells(getStream(), check, entry);
