@@ -281,6 +281,7 @@ static unsigned int clock_get_freq_counter_khz_impl(struct clock *clock, int idx
 	u32 freq = 0, status;
 	int times = 10;
 
+	BUG_ON(idx > CLOCK_MAX_NUM_CLOCKS);
 	BUG_ON(!mutex_is_locked(&clock->clock_lock));
 
 	if (clock->clock_freq_counter && idx < 2) {
