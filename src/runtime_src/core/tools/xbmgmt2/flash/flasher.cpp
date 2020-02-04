@@ -138,7 +138,7 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
     // }
     case OSPIVERSAL:
     {
-        XOSPIVER_Flasher xospi_versal(m_device->get_device_id());
+        XOSPIVER_Flasher xospi_versal(m_device);
         if (primary == nullptr)
         {
             std::cout << "ERROR: OSPIVERSAL mode does not support reverting to MFG." << std::endl;

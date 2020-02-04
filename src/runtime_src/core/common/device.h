@@ -210,6 +210,8 @@ public:
 
   virtual void read(uint64_t offset, void* buf, uint64_t len) const = 0;
   virtual void write(uint64_t offset, const void* buf, uint64_t len) const = 0;
+  virtual int  open(const std::string& subdev, int flag) const = 0;
+  virtual void close(int dev_handle) const = 0;
 
   // Helper methods
   typedef std::string (*FORMAT_STRING_PTR)(const boost::any &);

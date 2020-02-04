@@ -19,6 +19,7 @@
 
 #include "xospiversal.h"
 
+
 /**
  * @brief XOSPIVER_Flasher::XOSPIVER_Flasher
  */
@@ -43,7 +44,6 @@ int XOSPIVER_Flasher::xclUpgradeFirmware(std::istream& binStream)
     binStream.seekg(0, binStream.beg);
 
     std::cout << "INFO: ***PDI has " << total_size << " bytes" << std::endl;
-
     int fd = mDev->open("ospi_versal", O_RDWR);
     if (fd == -1) {
         std::cout << "ERROR Cannot open ospi_versal for writing " << std::endl;
@@ -52,7 +52,6 @@ int XOSPIVER_Flasher::xclUpgradeFirmware(std::istream& binStream)
 
     std::unique_ptr<char> buffer(new char[total_size]);
     binStream.read(buffer.get(), total_size);
-
     ssize_t ret = write(fd, buffer.get(), total_size);
 
     mDev->close(fd);

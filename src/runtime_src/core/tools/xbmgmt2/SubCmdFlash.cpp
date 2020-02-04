@@ -121,7 +121,7 @@ update_shell(uint16_t index, const std::string& flashType,
   }
 
   flasher.upgradeFirmware(flashType, pri.get(), sec.get());
-  std::cout << "Shell is updated succesfully\n";
+  std::cout << "Shell is updated successfully\n";
   std::cout << "Cold reboot machine to load new shell on card" << std::endl;
 }
 

@@ -29,6 +29,8 @@
 #include <vector>
 #include <limits>
 #include <array>
+#include <fcntl.h>
+
 
 template <typename ...Args>
 int
@@ -293,36 +295,23 @@ XSPI_Flasher::XSPI_Flasher(std::shared_ptr<xrt_core::device> dev)
     mDev = dev;
 
     std::string err;
-	//TODO: Replace with updated call
-    //mDev->sysfs_get<unsigned long long>("flash", "bar_off", err, flash_base, -1);
-    if (!err.empty())
+    flash_base = xrt_core::query_device<uint64_t>(mDev, xrt_core::device::QR_FLASH_BAR_OFFSET);
+    if (flash_base == std::numeric_limits<uint64_t>::max())
         flash_base = FLASH_BASE;
 
     mFlashDev = nullptr;
-    //if (std::getenv("FLASH_VIA_DRIVER")) {
-        /* TODO: Replace with updated call
-		 * int fd = mDev->open("flash", O_RDWR);
+    if (std::getenv("FLASH_VIA_DRIVER")) {
+        int fd = mDev->open("flash", O_RDWR);
         if (fd >= 0)
             mFlashDev = fdopen(fd, "r+");
         if (mFlashDev == NULL)
             std::cout << "Failed to open flash device on card" << std::endl;
-			*/
-    //}
+    }
 }
 
 static bool isDualQSPI(xrt_core::device *dev) {
-    std::string err;
-    uint16_t deviceID;
-	dev = dev;
-	//TODO: Replace with updated call
-    //dev->sysfs_get<uint16_t>("", "device", err, deviceID, 0xffff);
-	//TODO: Remove when updated
-	deviceID = 0x0000;
-
-    if (!err.empty()) {
-        std::cout << "Exiting now, as could not find device ID" << std::endl;
-        exit(-EINVAL);
-    }
+    uint64_t deviceID = xrt_core::query_device<uint64_t>(dev, xrt_core::device::QR_PCIE_DEVICE);
+    //auto deviceID = xrt_core::device_query<xrt_core::query::pcie_device>(m_device);
 
     return (deviceID == 0xE987 || deviceID == 0x6987 || deviceID == 0xD030);
 }

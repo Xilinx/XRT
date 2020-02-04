@@ -24,7 +24,7 @@
 class XOSPIVER_Flasher
 {
 public:
-    XOSPIVER_Flasher(unsigned int device_index);
+    XOSPIVER_Flasher(std::shared_ptr<xrt_core::device> dev);
     int xclUpgradeFirmware(std::istream& binStream);
 
 private:
