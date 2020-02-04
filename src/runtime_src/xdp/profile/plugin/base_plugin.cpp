@@ -114,6 +114,24 @@ namespace xdp {
       case TRACE_MEMORY:
         name = "TRACE_MEMORY";
         break;
+      case MAX_PARALLEL_KERNEL_ENQUEUES:
+        name = "MAX_PARALLEL_KERNEL_ENQUEUES";
+        break;
+      case COMMAND_QUEUE_OOO:
+        name = "COMMAND_QUEUE_OOO";
+        break;
+      case PLRAM_SIZE_BYTES:
+        name = "PLRAM_SIZE_BYTES";
+        break;
+      case BUFFER_INFO:
+        name = "BUFFER_INFO";
+        break;
+      case TRACE_BUFFER_FULL:
+        name = "TRACE_BUFFER_FULL";
+        break;
+      case MEMORY_TYPE_BIT_WIDTH:
+        name = "MEMORY_TYPE_BIT_WIDTH";
+        break;
       default:
         assert(0);
         break;

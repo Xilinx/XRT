@@ -200,6 +200,12 @@ namespace xdp {
 
     // 3. Kernel counts
     getKernelCounts(profile);
+
+    // 4. Devices with PLRAM Size > 0
+    getPlramSizeDevices();
+
+    // 5. Bit widths for memory types for each device
+    getMemBitWidthDevices();
   }
 
   void XoclPlugin::getDeviceExecutionTimes(RTProfile *profile)
@@ -272,6 +278,30 @@ namespace xdp {
         else
           mKernelCountsMap[kernelName] += 1;
       }
+    }
+  }
+
+  void XoclPlugin::getPlramSizeDevices()
+  {
+    for (auto device : mPlatformHandle->get_device_range()) {
+      if (!device->is_active())
+        continue;
+      auto name = device->get_unique_name();
+      auto sz = xdp::xoclp::platform::device::getPlramSizeBytes(device);
+      if (sz)
+        mDevicePlramSizeMap[name] = sz;
+    }
+  }
+
+  void XoclPlugin::getMemBitWidthDevices()
+  {
+    for (auto device : mPlatformHandle->get_device_range()) {
+      if (!device->is_active())
+        continue;
+      auto name = device->get_unique_name();
+      mDeviceMemTypeBitWidthMap[name + ",HBM"] = 256;
+      mDeviceMemTypeBitWidthMap[name + ",DDR"] = 512;
+      mDeviceMemTypeBitWidthMap[name + ",PLRAM"] = 512;
     }
   }
 

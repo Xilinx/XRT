@@ -85,6 +85,9 @@ namespace xdp {
     public:
       typedef std::map<std::string, std::string> GuidanceMap;
       typedef std::map<std::string, uint32_t> GuidanceMap2;
+      typedef std::map<uint64_t, std::string> GuidanceMap3;
+      typedef std::map<uint64_t, uint64_t> GuidanceMap4;
+      typedef std::map<uint64_t, std::vector<std::string>> GuidanceMap5;
 
       enum e_guidance {
         DEVICE_EXEC_TIME,
@@ -101,11 +104,18 @@ namespace xdp {
         KERNEL_COUNT,
         OBJECTS_RELEASED,
         CU_CONTEXT_EN,
-        TRACE_MEMORY
+        TRACE_MEMORY,
+        MAX_PARALLEL_KERNEL_ENQUEUES,
+        COMMAND_QUEUE_OOO,
+        PLRAM_SIZE_BYTES,
+        BUFFER_INFO,
+        TRACE_BUFFER_FULL,
+        MEMORY_TYPE_BIT_WIDTH
       };
 
     public:
       virtual void getGuidanceMetadata(RTProfile *profile);
+
       static void getGuidanceName(e_guidance check, std::string& name);
       // Objects released
       void setObjectsReleased(bool objectsReleased) {IsObjectsReleased = objectsReleased;}
@@ -126,6 +136,12 @@ namespace xdp {
       inline GuidanceMap& getDeviceExecTimesMap() {return mDeviceExecTimesMap;}
       inline GuidanceMap& getComputeUnitCallsMap() {return mComputeUnitCallsMap;}
       inline GuidanceMap2& getKernelCountsMap() {return mKernelCountsMap;}
+      inline GuidanceMap2& getKernelMaxParallelStartsMap() {return mKernelMaxParallelStartsMap;}
+      inline GuidanceMap2& getDeviceMemTypeBitWidthMap() {return mDeviceMemTypeBitWidthMap;}
+      inline GuidanceMap2& getDeviceTraceBufferFullMap() {return mDeviceTraceBufferFullMap;}
+      inline GuidanceMap2& getDevicePlramSizeMap() {return mDevicePlramSizeMap;}
+      inline GuidanceMap5& getKernelBufferInfoMap() {return mKernelBufferInfoMap;}
+      inline GuidanceMap4& getmCQInfoMap() {return mCQInfoMap;}
       //Profiling infrastructure metadata
       void setCtxEn(bool ctxEn) {IsCtxEn = ctxEn;}
       bool isCtxEn() {return IsCtxEn;}
@@ -134,8 +150,14 @@ namespace xdp {
 
     protected:
       GuidanceMap  mDeviceExecTimesMap;
+      GuidanceMap2 mDevicePlramSizeMap;
       GuidanceMap  mComputeUnitCallsMap;
       GuidanceMap2 mKernelCountsMap;
+      GuidanceMap2 mKernelMaxParallelStartsMap;
+      GuidanceMap2 mDeviceMemTypeBitWidthMap;
+      GuidanceMap2 mDeviceTraceBufferFullMap;
+      GuidanceMap5 mKernelBufferInfoMap;
+      GuidanceMap4 mCQInfoMap;
       bool IsObjectsReleased = false;
       bool IsPlramDevice = false;
       bool IsHbmDevice = false;

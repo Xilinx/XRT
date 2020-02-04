@@ -54,9 +54,10 @@ namespace xdp {
           const std::string& portName, std::string& argNames,
           std::string& memoryName) override;
 
-    // *****************
+    // ********************************************************
     // Guidance metadata
-    // *****************
+    // Call early version to get data before xclbin is unloaded
+    // ********************************************************
     public:
       void getGuidanceMetadata(RTProfile *profile) override;
 
@@ -64,6 +65,8 @@ namespace xdp {
       void getDeviceExecutionTimes(RTProfile *profile);
       void getUnusedComputeUnits(RTProfile *profile);
       void getKernelCounts(RTProfile *profile);
+      void getPlramSizeDevices();
+      void getMemBitWidthDevices();
 
     private:
       xocl::platform* mPlatformHandle;

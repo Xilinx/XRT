@@ -807,6 +807,35 @@ getMemSizeBytes(key k, int idx)
   return 0;
 }
 
+uint64_t
+getPlramSizeBytes(key k)
+{
+  auto device = k;
+  const mem_topology* mem_tp;
+  if (!device)
+    return 0;
+  try {
+    auto xclbin = device->get_xclbin();
+    auto binary = xclbin.binary();
+    auto binary_data = binary.binary_data();
+    auto header = reinterpret_cast<const xclBin *>(binary_data.first);
+    mem_tp = getAxlfSection<const ::mem_topology>(header, axlf_section_kind::MEM_TOPOLOGY);
+  } catch (...) {
+    return 0;
+  }
+  if(!mem_tp)
+    return 0;
+
+  auto m_count = mem_tp->m_count;
+  for (int i=0; i < m_count; i++) {
+    std::string mem_tag(reinterpret_cast<const char*>(mem_tp->m_mem_data[i].m_tag));
+    std::transform(mem_tag.begin(), mem_tag.end(), mem_tag.begin(), ::tolower);
+    if (mem_tag.find("plram") != std::string::npos)
+      return mem_tp->m_mem_data[i].m_size * 1024;
+  }
+  return 0;
+}
+
 data*
 get_data(key k) 
 { 

@@ -677,8 +677,11 @@ namespace xdp {
             // detect if FIFO is full
             auto fifoProperty = dInt->getMonitorProperties(XCL_PERF_MON_FIFO, 0);
             auto fifoSize = RTUtil::getDevTraceBufferSize(fifoProperty);
-            if (numTracePackets >= fifoSize && !isHwEmu)
+            if (numTracePackets >= fifoSize && !isHwEmu) {
               Plugin->sendMessage(FIFO_WARN_MSG);
+              auto& g_map = Plugin->getDeviceTraceBufferFullMap();
+              g_map[device_name] = 1;
+            }
           } else if (dInt->hasTs2mm()) {
             configureDDRTraceReader(dInt->getWordCountTs2mm());
             uint64_t numTraceBytes = 0;
