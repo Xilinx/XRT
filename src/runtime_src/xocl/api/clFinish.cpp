@@ -32,7 +32,7 @@ validOrError(const cl_command_queue command_queue)
 {
   if(!config::api_checks())
     return;
-  detail::command_queue::validOrError(command_queue); 
+  detail::command_queue::validOrError(command_queue);
 }
 
 static cl_int
@@ -60,9 +60,4 @@ clFinish(cl_command_queue command_queue)
     xocl::send_exception_message(ex.what());
     return CL_OUT_OF_HOST_MEMORY;
   }
-  return CL_SUCCESS;
 }
-
-
-
-

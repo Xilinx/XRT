@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
 #include "time.h"
 #include <chrono>
 
@@ -29,9 +28,7 @@ time_ns()
   static auto zero = std::chrono::high_resolution_clock::now();
   auto now = std::chrono::high_resolution_clock::now();
   auto integral_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(now-zero).count();
-  return integral_duration;
+  return static_cast<unsigned long>(integral_duration);
 }
 
 } // xocl
-
-

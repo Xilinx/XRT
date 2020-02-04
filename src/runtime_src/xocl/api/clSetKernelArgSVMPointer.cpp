@@ -15,14 +15,16 @@
  */
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/kernel.h"
 #include "detail/kernel.h"
-
-#include <cstdlib>
 #include "plugin/xdp/profile.h"
+#include <CL/opencl.h>
+#include <cstdlib>
+
+#ifdef _WIN32
+# pragma warning ( disable : 4996 )
+#endif
 
 namespace xocl {
 
@@ -94,5 +96,3 @@ clSetKernelArgSVMPointer(cl_kernel    kernel,
     return CL_OUT_OF_RESOURCES;
   }
 }
-
-

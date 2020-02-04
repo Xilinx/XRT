@@ -1,4 +1,9 @@
-if( ${CMAKE_BUILD_TYPE} STREQUAL "Release")
+
+# Note: Add Windows compilation directives at the END of this file
+
+if( NOT WIN32)
+
+if(${CMAKE_BUILD_TYPE} STREQUAL "Release" AND ${XRT_NATIVE_BUILD} STREQUAL "yes")
   add_subdirectory(doc)
 endif()
 
@@ -8,19 +13,22 @@ include_directories(
   ${BOOST_SYSTEM_INCLUDE_DIRS}
   )
 
-set(OPENCL_SRC "")
-
-add_library(xilinxopencl SHARED ${OPENCL_SRC}
-  $<TARGET_OBJECTS:xocl>
-  $<TARGET_OBJECTS:xrt>
-  $<TARGET_OBJECTS:xclbin>
-  $<TARGET_OBJECTS:impl>
-  )
-
-add_library(oclxdp SHARED ${OPENCL_SRC}
+add_library(oclxdp SHARED
   $<TARGET_OBJECTS:xdpobj>
   )
-add_dependencies(oclxdp xilinxopencl)
+add_dependencies(oclxdp xdp xilinxopencl)
+
+add_library(xdp_hal_plugin SHARED
+  $<TARGET_OBJECTS:xdp_hal_plugin_obj>
+  )
+
+add_dependencies(xdp_hal_plugin xdp)
+
+add_library(xdp_hal_api_interface_plugin SHARED
+  $<TARGET_OBJECTS:xdp_hal_api_interface_plugin_obj>
+  )
+
+add_dependencies(xdp_hal_api_interface_plugin xdp)
 
 option(XOCL_VERBOSE "Enable xocl verbosity" OFF)
 option(XRT_VERBOSE "Enable xrt verbosity" OFF)
@@ -33,37 +41,87 @@ if(XRT_VERBOSE)
   add_compile_options("-DXRT_VERBOSE")
 endif()
 
-set_target_properties(xilinxopencl PROPERTIES LINKER_LANGUAGE CXX)
 add_compile_options("-fPIC")
+
+# TODO CL_TARGET_OPENCL_VERSION is not defined..
+if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+  add_compile_options("-Wall" "-Werror")
+endif()
 add_subdirectory(xdp)
 
-add_compile_options("-Wall" "-Werror")
-add_subdirectory(tools/xclbin)
-add_subdirectory(impl)
+# TODO version.h was included.
+# Remove this limitation once we can generate version.h for mpsoc.
+if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+  add_subdirectory(tools/xclbin)
+endif()
 add_subdirectory(xclbin)
 add_subdirectory(xocl)
 add_subdirectory(xrt)
 add_subdirectory(ert)
-add_subdirectory(tools/scripts)
+if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+  # Only for host native build.
+  # For embedded, headers and libraries are installed in /usr
+  # Not requeired setup.sh/.csh
+  add_subdirectory(tools/scripts)
+endif()
 
-set (CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic")
+# Attach to the user's linker flags
+set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-Bsymbolic")
+set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,defs")
 
-set_target_properties(xilinxopencl PROPERTIES VERSION ${XRT_VERSION_STRING}
-  SOVERSION ${XRT_SOVERSION})
+set_target_properties(xilinxopencl PROPERTIES
+  VERSION ${XRT_VERSION_STRING}
+  SOVERSION ${XRT_SOVERSION}
+  INSTALL_RPATH $ORIGIN
+  )
 
 target_link_libraries(oclxdp
+  xdp
   xilinxopencl
  )
 
-target_link_libraries(xilinxopencl
-  ${Boost_FILESYSTEM_LIBRARY}
-  ${Boost_SYSTEM_LIBRARY}
-  dl
-  pthread
-  crypt
-  rt
-  )
+target_link_libraries(xdp_hal_plugin xdp)
+target_link_libraries(xdp_hal_api_interface_plugin xdp)
 
-install (TARGETS xilinxopencl oclxdp LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
+set_target_properties(xdp_hal_plugin PROPERTIES VERSION ${XRT_VERSION_STRING}
+  SOVERSION ${XRT_SOVERSION})
 
-add_subdirectory(driver)
+set_target_properties(xdp_hal_api_interface_plugin PROPERTIES VERSION ${XRT_VERSION_STRING}
+  SOVERSION ${XRT_SOVERSION})
+
+set_target_properties(oclxdp PROPERTIES VERSION ${XRT_VERSION_STRING}
+  SOVERSION ${XRT_SOVERSION})
+
+set_target_properties(xdp PROPERTIES VERSION ${XRT_VERSION_STRING}
+  SOVERSION ${XRT_SOVERSION})
+
+install (TARGETS oclxdp xdp_hal_plugin xdp_hal_api_interface_plugin LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
+
+add_subdirectory(core)
+
+else()
+# = WINDOWS ===================================================================
+
+  # Enable ALL warnings and make them errors if they occur
+  if (MSVC)
+    # warning level 4 and all warnings are errors
+    add_compile_options(/WX /W4)
+    if (DEFINED MSVC_PARALLEL_JOBS)
+      string(CONCAT MP_OPTION "/MP" ${MSVC_PARALLEL_JOBS})
+      add_compile_options(${MP_OPTION})
+    endif()
+  else()
+    # lots of warnings and all warnings as errors
+    # add_compile_options(-Wall -Wextra -pedantic -Werror)
+    add_compile_options("-Wall" "-Werror")
+  endif()
+
+  # Build Subdirectories
+  add_subdirectory(xocl)
+  add_subdirectory(xclbin)
+  add_subdirectory(xrt)
+  add_subdirectory(tools/xclbin)
+  add_subdirectory(tools/scripts)
+  add_subdirectory(core)
+  add_subdirectory(xdp)
+endif()

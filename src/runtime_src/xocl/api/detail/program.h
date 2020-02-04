@@ -17,6 +17,7 @@
 #ifndef xocl_api_detail_program_h_
 #define xocl_api_detail_program_h_
 
+#include "xocl/config.h"
 #include "CL/cl.h"
 
 namespace xocl { namespace detail {
@@ -34,5 +35,3 @@ validExecutableOrError(const cl_program program);
 }} // detail,xocl
 
 #endif
-
-
