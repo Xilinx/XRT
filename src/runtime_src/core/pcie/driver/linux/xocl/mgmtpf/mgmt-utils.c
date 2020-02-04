@@ -223,6 +223,7 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 	 * save state and issue PCIe secondary bus reset
 	 */
 	if (!XOCL_DSA_PCI_RESET_OFF(lro)) {
+		xocl_subdev_destroy_by_level(lro, XOCL_SUBDEV_LEVEL_URP);
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_ICAP);
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_MAILBOX);
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_AF);
