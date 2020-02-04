@@ -1003,7 +1003,8 @@ xocl_fetch_dynamic_platform(struct xocl_dev_core *core,
 			dsa_map[i].subdevice == (u16)PCI_ANY_ID)) {
 			*in = dsa_map[i].priv_data;
 			if (ptype == XOCL_VSEC_PLAT_RECOVERY) {
-				strcpy(core->vbnv_cache, dsa_map[i].vbnv);
+				strncpy(core->vbnv_cache, dsa_map[i].vbnv,
+					sizeof(core->vbnv_cache) - 1);
 				s = strstr(core->vbnv_cache, "_");
 				s = strstr(s + 1, "_");
 				strncpy(s, "_recovery",

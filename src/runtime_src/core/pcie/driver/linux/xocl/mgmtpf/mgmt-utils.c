@@ -218,8 +218,6 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 	/* If the PCIe board has PS */
 	xocl_ps_sys_reset(lro);
 
-	xocl_icap_reset_axi_gate(lro);
-
 	/*
 	 * lock pci config space access from userspace,
 	 * save state and issue PCIe secondary bus reset
@@ -259,9 +257,6 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 			"Please warm reboot");
 		return -EIO;
 	}
-
-	/* Also freeze and free AXI gate to reset the OCL region. */
-	xocl_icap_reset_axi_gate(lro);
 
 	/* Workaround for some DSAs. Flush axilite busses */
 	if (dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
