@@ -41,7 +41,8 @@ class RunSummary {
       FT_UNKNOWN,
       FT_PROFILE,
       FT_TRACE,
-      FT_WDB
+      FT_WDB,
+      FT_POWER_PROFILE
     };
 
   public:

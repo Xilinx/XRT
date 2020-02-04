@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * This is a wrapper class that does the prep work required to program a flash
  * device. Flasher will create a specific flash object determined by the program
@@ -22,6 +22,7 @@
 #define FLASHER_H
 
 #include "xspi.h"
+#include "xospiversal.h"
 #include "xmc.h"
 #include "firmware_image.h"
 #include "xclfeatures.h"
@@ -81,6 +82,7 @@ private:
         SPI,
         BPI,
         QSPIPS,
+        OSPIVERSAL,
     };
     const char *E_FlasherTypeStrings[4] = { "UNKNOWN", "SPI", "BPI", "QSPI_PS" };
     const char *getFlasherTypeText( E_FlasherType val ) { return E_FlasherTypeStrings[ val ]; }

@@ -144,7 +144,11 @@ namespace xdp {
     // readDebugIPlayout called from startProfiling : check other cases
 
     xclDeviceInfo2 devInfo;
-    xclGetDeviceInfo2(deviceHandle, &devInfo);
+    if (xclGetDeviceInfo2(deviceHandle, &devInfo) != 0)
+    {
+      // If we cannot get device information, return an empty profile result
+      return ;
+    }
     
     auto deviceNameSz = strlen(devInfo.mName);
     results->deviceName = (char*)malloc(deviceNameSz+1);

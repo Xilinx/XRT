@@ -29,6 +29,7 @@ file(GLOB XBMGMT_V2_SUBCMD_FILES
   "flash/flasher.cpp"
   "flash/xmc.cpp"
   "flash/xspi.cpp"
+  "flash/xospiversal.cpp"
   "SubCmdFlash.cpp"
   "SubCmdVersion.cpp"
   "SubCmdProgram.cpp"

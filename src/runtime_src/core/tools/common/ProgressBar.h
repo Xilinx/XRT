@@ -23,38 +23,47 @@
 
 namespace XBUtilities {
 
-  class Timer 
-  {
-    std::chrono::high_resolution_clock::time_point mTimeStart;
-    public:
-      Timer() {
-        reset();
-      }
-      std::chrono::duration<double> stop() {
-        std::chrono::high_resolution_clock::time_point timeEnd = std::chrono::high_resolution_clock::now();
-        return std::chrono::duration<double>(timeEnd - mTimeStart);
-      }
-      void reset() {
-        mTimeStart = std::chrono::high_resolution_clock::now();
-      }
-  };
+class Timer {
+  std::chrono::high_resolution_clock::time_point mTimeStart;
 
-  class ProgressBar
-  {
-    private:
-	  std::string op_name;
-	  int percent_done;
-    unsigned int max_iter;
-	  bool is_batch;
-    std::ostream& ostr;
-    Timer timer;
-	  std::chrono::duration<double> elapsed_time;
+ public:
+  Timer() {
+    reset();
+  }
 
-    public:
-	    ProgressBar(std::string _op_name, unsigned int _max_iter, bool _is_batch, std::ostream& _ostr);
-	  void 
-      update(int iteration);
-    void
-      finish();
-  };
+  std::chrono::duration<double> stop() {
+    std::chrono::high_resolution_clock::time_point timeEnd = std::chrono::high_resolution_clock::now();
+    return std::chrono::duration<double>(timeEnd - mTimeStart);
+  }
+
+  void reset() {
+    mTimeStart = std::chrono::high_resolution_clock::now();
+  }
+};
+
+class ProgressBar {
+ public:
+  ProgressBar(const std::string &_opName, unsigned int _maxNumIterations, bool _isBatch, std::ostream &_ostr);
+
+  void
+  update(unsigned int _iteration);
+
+  void
+  finish(bool _successful, const std::string &_msg);
+
+  ~ProgressBar();
+  ProgressBar() = delete;
+
+ private:
+  std::string m_opName;
+  unsigned int m_maxNumIterations;
+  bool m_isBatch;
+  std::ostream &m_ostr;
+  unsigned int m_runningIteration;
+  bool m_finished;
+  Timer m_timer;
+  std::chrono::duration<double> m_elapsedTime;
+  std::chrono::high_resolution_clock::time_point m_lastUpdated;
+};
 }
+

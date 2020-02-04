@@ -66,6 +66,7 @@ RunSummary::getFileTypeAsStr(enum RunSummary::FileType eFileType)
     case FT_PROFILE: return "PROFILE";
     case FT_TRACE: return "TRACE";
     case FT_WDB: return "WAVEFORM_DATABASE";
+    case FT_POWER_PROFILE: return "XRT_POWER_PROFILE";
   }
 
   // Yeah, the code will never get here, but it makes for a clean flow

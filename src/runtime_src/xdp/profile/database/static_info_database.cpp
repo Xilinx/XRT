@@ -89,7 +89,7 @@ namespace xdp {
     if (memTopologyHeader == nullptr) return false ;
     const mem_topology* memTopologySection = 
       reinterpret_cast<const mem_topology*>(static_cast<const char*>(binary) + memTopologyHeader->m_sectionOffset) ;
-    if (memTopologySection == nullptr) return false ;
+    //if (memTopologySection == nullptr) return false ;
 
     std::lock_guard<std::mutex> lock(dbLock) ;
 
@@ -130,7 +130,7 @@ namespace xdp {
 
     const ip_layout* ipLayoutSection = 
       reinterpret_cast<const ip_layout*>(static_cast<const char*>(binary) + ipLayoutHeader->m_sectionOffset) ;
-    if (ipLayoutSection == nullptr) return false ;
+    //if (ipLayoutSection == nullptr) return false ;
 
     for (int32_t i = 0 ; i < ipLayoutSection->m_count ; ++i)
     {
@@ -147,14 +147,17 @@ namespace xdp {
   bool VPStaticDatabase::initializeConnections(void* /*dev*/, 
 						const void* binary)
   {
+    // TODO
+    /*
     const axlf* xbin = static_cast<const struct axlf*>(binary) ;
     const axlf_section_header* connectivityHeader =
       xclbin::get_axlf_section(xbin, CONNECTIVITY) ;
     if (connectivityHeader == nullptr) return false ;
     const connectivity* connectivitySection =
       reinterpret_cast<const connectivity*>(static_cast<const char*>(binary) + connectivityHeader->m_sectionOffset) ;
-    if (connectivitySection == nullptr) return false ;
+    //if (connectivitySection == nullptr) return false ;
     // TBD
+    */
     return true ;
   }
 
