@@ -110,6 +110,8 @@ namespace xdp {
         KERNEL_BUFFER_INFO,
         TRACE_BUFFER_FULL,
         MEMORY_TYPE_BIT_WIDTH,
+        BUFFER_RD_ACTIVE_TIME_MS,
+        BUFFER_WR_ACTIVE_TIME_MS,
         BUFFER_TX_ACTIVE_TIME_MS,
         APPLICATION_RUN_TIME_MS
       };
@@ -144,8 +146,11 @@ namespace xdp {
       inline GuidanceMap3& getmCQInfoMap() {return mCQInfoMap;}
       inline GuidanceMap4& getKernelBufferInfoMap() {return mKernelBufferInfoMap;}
       // Host Buffer first start to last end
-      void logBufferEvent(double timestamp);
-      double getBufferTxActiveTimeMs() {return mLastHostBufEventTimeMs - mFirstHostBufEventTimeMs;}
+      // Read, Write and Aggregate times
+      void logBufferEvent(double timestamp, bool isRead);
+      double getRdBufferActiveTimeMs() {return mLastBufferReadMs - mFirstBufferReadMs;}
+      double getWrBufferActiveTimeMs() {return mLastBufferWriteMs - mFirstBufferWriteMs;}
+      double getBufferActiveTimeMs();
       // Application run time
       void setApplicationEnd() {mApplicationRunTimeMs = getTraceTime();}
       double getApplicationRunTimeMs() {return mApplicationRunTimeMs;}
@@ -173,8 +178,12 @@ namespace xdp {
       bool IsCtxEn = false;
       std::string TraceMemory = "NA";
       double mApplicationRunTimeMs = 0.0;
-      double mFirstHostBufEventTimeMs = 0.0;
-      double mLastHostBufEventTimeMs = 0.0;
+      // Buffer Reads
+      double mFirstBufferReadMs = 0.0;
+      double mLastBufferReadMs = 0.0;
+      // Buffer Writes
+      double mFirstBufferWriteMs = 0.0;
+      double mLastBufferWriteMs = 0.0;
 
     // ****************************************
     // Platform Metadata required by profiler

@@ -238,8 +238,9 @@ namespace xdp {
 
     // Log Guidance Data
     // Time period during which host buffer transfers were active
-    if (objKind == RTUtil::READ_BUFFER || objKind == RTUtil::WRITE_BUFFER) {
-      mPluginHandle->logBufferEvent(timeStamp);
+    if ((objKind == RTUtil::READ_BUFFER || objKind == RTUtil::WRITE_BUFFER) &&
+        (objStage == RTUtil::START || objStage == RTUtil::END)) {
+      mPluginHandle->logBufferEvent(timeStamp, objKind == RTUtil::READ_BUFFER);
     }
 
     // clEnqueueNDRangeKernel returns END with no START

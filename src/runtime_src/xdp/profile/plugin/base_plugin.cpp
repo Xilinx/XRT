@@ -65,12 +65,28 @@ namespace xdp {
     // do nothing
   }
 
-  void XDPPluginI::logBufferEvent(double timestamp)
+  void XDPPluginI::logBufferEvent(double timestamp, bool isRead)
   {
-    if (mFirstHostBufEventTimeMs == 0.0)
-      mFirstHostBufEventTimeMs = timestamp;
-    else
-      mLastHostBufEventTimeMs = timestamp;
+    if (isRead) {
+      if (mFirstBufferReadMs == 0.0)
+        mFirstBufferReadMs = timestamp;
+      else
+        mLastBufferReadMs = timestamp;
+    } else {
+      if (mFirstBufferWriteMs == 0.0)
+        mFirstBufferWriteMs = timestamp;
+      else
+        mLastBufferWriteMs = timestamp;
+    }
+  }
+
+  // First Start to Last End
+  double XDPPluginI::getBufferActiveTimeMs()
+  {
+    double start, end;
+    start = (mFirstBufferReadMs < mFirstBufferWriteMs) ? mFirstBufferReadMs : mFirstBufferWriteMs;
+    end = (mLastBufferReadMs > mLastBufferWriteMs) ? mLastBufferReadMs : mLastBufferWriteMs;
+    return end - start;
   }
 
   // Get name string of guidance
@@ -139,6 +155,12 @@ namespace xdp {
         break;
       case MEMORY_TYPE_BIT_WIDTH:
         name = "MEMORY_TYPE_BIT_WIDTH";
+        break;
+      case BUFFER_RD_ACTIVE_TIME_MS:
+        name = "BUFFER_RD_ACTIVE_TIME_MS";
+        break;
+      case BUFFER_WR_ACTIVE_TIME_MS:
+        name = "BUFFER_WR_ACTIVE_TIME_MS";
         break;
       case BUFFER_TX_ACTIVE_TIME_MS:
         name = "BUFFER_TX_ACTIVE_TIME_MS";
