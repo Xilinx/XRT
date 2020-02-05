@@ -95,49 +95,120 @@ static void
 update_shell(uint16_t index, const std::string& flashType,
     const std::string& primary, const std::string& secondary)
 {
-    std::shared_ptr<firmwareImage> pri;
-    std::shared_ptr<firmwareImage> sec;
+  std::unique_ptr<firmwareImage> pri;
+  std::unique_ptr<firmwareImage> sec;
 
-    if (!flashType.empty()) {
-        std::cout << "CAUTION: Overriding flash mode is not recommended. " <<
-            "You may damage your card with this option." << std::endl;
-    }
+  if (!flashType.empty()) {
+    std::cout << "CAUTION: Overriding flash mode is not recommended. " <<
+      "You may damage your card with this option." << std::endl;
+  }
 
-    Flasher flasher(index);
-    if(!flasher.isValid())
-        return;
+  Flasher flasher(index);
+  if(!flasher.isValid())
+    throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % index));
 
-    if (primary.empty())
-        return;
+  if (primary.empty())
+    throw xrt_core::error("Shell not specified");
 
-    pri = std::make_shared<firmwareImage>(primary.c_str(), MCS_FIRMWARE_PRIMARY);
-    if (pri->fail())
-        return;
-    if (!secondary.empty()) {
-        sec = std::make_shared<firmwareImage>(secondary.c_str(),
-            MCS_FIRMWARE_SECONDARY);
-        if (sec->fail())
-            sec = nullptr;
-    }
+  pri = std::make_unique<firmwareImage>(primary.c_str(), MCS_FIRMWARE_PRIMARY);
+  if (pri->fail())
+    throw xrt_core::error(boost::str(boost::format("Failed to read %s") % primary.c_str()));
+  if (!secondary.empty()) {
+    sec = std::make_unique<firmwareImage>(secondary.c_str(),
+      MCS_FIRMWARE_SECONDARY);
+    if (sec->fail())
+      sec = nullptr;
+  }
 
-    flasher.upgradeFirmware(flashType, pri.get(), sec.get());
-    std::cout << "Shell is updated succesfully\n";
-    std::cout << "Cold reboot machine to load new shell on card" << std::endl;
+  flasher.upgradeFirmware(flashType, pri.get(), sec.get());
+  std::cout << "Shell is updated succesfully\n";
+  std::cout << "Cold reboot machine to load new shell on card" << std::endl;
 }
 
+/*
+ * Update SC firmware on the board
+ */
 static void 
 update_SC(uint16_t index, const std::string& file)
 {
-    Flasher flasher(index);
-    if(!flasher.isValid())
-        return;
+  Flasher flasher(index);
+  if(!flasher.isValid())
+    throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % index));
 
-    std::shared_ptr<firmwareImage> bmc =
-        std::make_shared<firmwareImage>(file.c_str(), BMC_FIRMWARE);
-    if (bmc->fail())
-        return;
+  std::shared_ptr<firmwareImage> bmc =
+    std::make_shared<firmwareImage>(file.c_str(), BMC_FIRMWARE);
+  if (bmc->fail())
+    throw xrt_core::error(boost::str(boost::format("Failed to read %s") % file.c_str()));
 
-    flasher.upgradeBMCFirmware(bmc.get());
+  flasher.upgradeBMCFirmware(bmc.get());
+}
+
+/* 
+ * Find the correct shell to be flashed on the board
+ * Helper method for auto_flash
+ */
+static DSAInfo 
+selectShell(uint16_t idx, const std::string& dsa, const std::string& id)
+{
+  uint16_t candidateDSAIndex = std::numeric_limits<uint16_t>::max();
+  boost::format fmtStatus("%|8t|Status: %s"); 
+
+  Flasher flasher(idx);
+  if(!flasher.isValid())
+    return DSAInfo("");
+
+  std::vector<DSAInfo> installedDSA = flasher.getInstalledDSA();
+
+  // Find candidate DSA from installed DSA list.
+  if (dsa.empty()) {
+    std::cout << "Card [" << flasher.sGetDBDF() << "]: " << std::endl;
+    if (installedDSA.empty()) {
+      std::cout << fmtStatus % "no shell is installed" << std::endl;
+      return DSAInfo("");
+    }
+    if (installedDSA.size() > 1) {
+      std::cout << fmtStatus % "multiple shells are installed" << std::endl;
+      return DSAInfo("");
+    }
+    candidateDSAIndex = 0;
+  } else {
+    for (uint16_t i = 0; i < installedDSA.size(); i++) {
+      const DSAInfo& idsa = installedDSA[i];
+      if (dsa != idsa.name)
+        continue;
+      if (!id.empty() && !idsa.matchId(id))
+        continue;
+      if (candidateDSAIndex != std::numeric_limits<uint16_t>::max()) {
+        std::cout << fmtStatus % "multiple shells are installed" << std::endl;
+        return DSAInfo("");
+      }
+      candidateDSAIndex = i;
+    }
+  }
+  if (candidateDSAIndex == std::numeric_limits<uint16_t>::max()) {
+    std::cout << "ERROR: Failed to flash Card["
+      << flasher.sGetDBDF() << "]: Specified shell is not applicable" << std::endl;
+    return DSAInfo("");
+  }
+
+  DSAInfo& candidate = installedDSA[candidateDSAIndex];
+  bool same_dsa = false;
+  bool same_bmc = false;
+  DSAInfo currentDSA = flasher.getOnBoardDSA();
+  if (!currentDSA.name.empty()) {
+    same_dsa = ((candidate.name == currentDSA.name) &&
+      (candidate.matchId(currentDSA)));
+    same_bmc = ((currentDSA.bmcVer.empty()) ||
+      (candidate.bmcVer == currentDSA.bmcVer));
+  }
+  if (same_dsa && same_bmc) {
+    std::cout << fmtStatus % "shell is up-to-date" << std::endl;
+    return DSAInfo("");
+  }
+  std::cout << fmtStatus % "shell needs updating" << std::endl;
+  std::cout << boost::format("%|8t| %s") % "Current shell: " << currentDSA.name << std::endl;
+  std::cout << boost::format("%|8t| %s") % "Shell to be flashed: " << candidate.name << std::endl;
+  return candidate;
 }
 
 /* 
@@ -163,17 +234,154 @@ bool canProceed()
   return proceed;
 }
 
+/* 
+ * Flash shell and sc firmware
+ * Helper method for auto_flash
+ */
+static int 
+updateShellAndSC(uint16_t boardIdx, DSAInfo& candidate, bool& reboot)
+{
+  reboot = false;
+
+  Flasher flasher(boardIdx);
+  if(!flasher.isValid())
+    throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % boardIdx));
+
+  bool same_dsa = false;
+  bool same_bmc = false;
+  DSAInfo current = flasher.getOnBoardDSA();
+  if (!current.name.empty()) {
+    same_dsa = (candidate.name == current.name &&
+      candidate.matchId(current));
+    same_bmc = (current.bmcVer.empty() ||
+      candidate.bmcVer == current.bmcVer);
+  }
+  if (same_dsa && same_bmc)
+    std::cout << "update not needed" << std::endl;
+
+  if (!same_bmc) {
+    std::cout << "Updating SC firmware on card[" << flasher.sGetDBDF() <<
+      "]" << std::endl;
+    auto ret = 0;
+    update_SC(boardIdx, candidate.file.c_str());
+    if (ret != 0) {
+      std::cout << "WARNING: Failed to update SC firmware on card ["
+        << flasher.sGetDBDF() << "]" << std::endl;
+    }
+  }
+
+  if (!same_dsa) {
+    std::cout << "Updating shell on card[" << flasher.sGetDBDF() <<
+      "]" << std::endl;
+    auto ret = 0;update_shell(boardIdx, "", candidate.file.c_str(),
+      candidate.file.c_str());
+    if (ret != 0) {
+      std::cout << "ERROR: Failed to update shell on card["
+        << flasher.sGetDBDF() << "]" << std::endl;
+    } else {
+      reboot = true;
+    }
+  }
+
+  if (!same_dsa && !reboot)
+    return -EINVAL;
+
+  return 0;
+}
+
+/* 
+ * Update shell and sc firmware on the card automatically
+ */
 static void 
 auto_flash(uint16_t index, std::string& name,
     std::string& id, bool force) 
 {
-  //to-do
-  index = index;
-  name = name;
-  id = id;
-  force = force;
+  std::vector<uint16_t> boardsToCheck;
+  std::vector<std::pair<uint16_t, DSAInfo>> boardsToUpdate;
+
+  // Sanity check input dsa and timestamp.
+  if (!name.empty()) {
+    bool foundDSA = false;
+    bool multiDSA = false;
+    auto installedDSAs = firmwareImage::getIntalledDSAs();
+    for (DSAInfo& dsa : installedDSAs) {
+      if (name == dsa.name &&
+        (id.empty() || dsa.matchId(id))) {
+          multiDSA = multiDSA || foundDSA;
+          foundDSA = true;
+      }
+    }
+    if (!foundDSA)
+      throw xrt_core::error("Specified shell not found");
+    if (multiDSA)
+      throw xrt_core::error("Specified shell matched multiple installed shells");
+  }
+
+  // Collect all indexes of boards need checking
+  auto total = xrt_core::get_total_devices(false).first;
+  if (index == std::numeric_limits<uint16_t>::max()) {
+    for(uint16_t i = 0; i < total; i++)
+      boardsToCheck.push_back(i);
+  } else {
+    if (index < total)
+      boardsToCheck.push_back(index);
+  }
+  if (boardsToCheck.empty())
+    throw xrt_core::error("Card not found");
+
+  // Collect all indexes of boards need updating
+  for (uint16_t i : boardsToCheck) {
+    DSAInfo dsa = selectShell(i, name, id);
+    if (dsa.hasFlashImage)
+      boardsToUpdate.push_back(std::make_pair(i, dsa));
+  }
+
+  // Continue to flash whatever we have collected in boardsToUpdate.
+  uint16_t success = 0;
+  bool needreboot = false;
+  if (!boardsToUpdate.empty()) {
+
+    // Prompt user about what boards will be updated and ask for permission.
+    if(!force && !canProceed())
+      return;
+
+    // Perform DSA and BMC updating
+    for (auto& p : boardsToUpdate) {
+      bool reboot;
+      std::cout << std::endl;
+      if (updateShellAndSC(p.first, p.second, reboot) == 0) {
+        //std::cout << "Successfully flashed Card[" << getBDF(p.first) << "]"<< std::endl;
+        success++;
+      }
+      needreboot |= reboot;
+    }
+  }
+
+  //report status of cards
+  if (boardsToUpdate.size() == 0) {
+    std::cout << "Card(s) up-to-date and do not need to be flashed." << std::endl;
+    return;
+  }
+
+  if (success != 0) {
+    std::cout << success << " Card(s) flashed successfully." << std::endl; 
+  } else {
+    std::cout << "No cards were flashed." << std::endl; 
+  }
+
+  if (needreboot) {
+    std::cout << "Cold reboot machine to load the new image on card(s)."
+      << std::endl;
+  }
+
+  if (success != boardsToUpdate.size()) {
+    std::cout << "WARNING:" << boardsToUpdate.size()-success << " Card(s) not flashed. " << std::endl;
+  }
 }
 
+/* 
+ * Factory reset the board
+ */
 static void 
 reset_shell(uint16_t index)
 {
@@ -239,7 +447,7 @@ SubCmdFlash::execute(const SubCmdOptions& _options) const
     ("shell", boost::program_options::bool_switch(&shell), "Flash platform from source")
     ("sc_firmware", boost::program_options::bool_switch(&sc_firmware), "Flash sc firmware from source")
     ("factory_reset", boost::program_options::bool_switch(&reset), "Reset to golden image")
-    //("update", boost::program_options::bool_switch(&update), "Update the card with the installed shell")
+    ("update", boost::program_options::bool_switch(&update), "Update the card with the installed shell")
   ;
 
   // po::options_description expertsOnlyDesc("experts only");
@@ -283,7 +491,7 @@ SubCmdFlash::execute(const SubCmdOptions& _options) const
   XBU::verbose(XBU::format("  Shell: %ld", shell));
   XBU::verbose(XBU::format("  sc_firmware: %ld", sc_firmware));
   XBU::verbose(XBU::format("  Reset: %ld", reset));
-  // XBU::verbose(XBU::format("  Update: %ld", update));
+  XBU::verbose(XBU::format("  Update: %ld", update));
 
   if (scan) {
     bool verbose;
@@ -360,7 +568,9 @@ SubCmdFlash::execute(const SubCmdOptions& _options) const
       return;
     }
 
-    uint16_t idx = xrt_core::bdf2index(bdf);
+    uint16_t idx = 0;
+    if (!bdf.empty())
+      idx = xrt_core::bdf2index(bdf);
     auto_flash(idx, name, id, force);
     return;
   }
@@ -408,8 +618,8 @@ SubCmdFlash::execute(const SubCmdOptions& _options) const
     po::options_description shellDesc("shell options");
     shellDesc.add_options()
       ("path", boost::program_options::value<std::string>(&file), "path of shell file")
-      ("card", boost::program_options::value<std::string>(&bdf), "index of the card") //change this to bdf later
-      // ("type", boost::program_options::value<std::string>(&flash_type), "flash_type")
+      ("card", boost::program_options::value<std::string>(&bdf), "index of the card")
+      ("type", boost::program_options::value<std::string>(&flash_type), "flash_type")
     ;
 
     po::variables_map option_vm;

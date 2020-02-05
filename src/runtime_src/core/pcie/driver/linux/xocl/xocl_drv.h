@@ -1006,7 +1006,7 @@ static inline int xocl_clock_ops_level(xdev_handle_t xdev)
 	return -ENODEV;
 }
 #define CLOCK_CB(xdev, idx, cb)						\
-	(CLOCK_DEV(xdev, idx) && CLOCK_OPS(xdev, idx) && CLOCK_OPS(xdev, idx)->cb)
+	(idx >= 0 && CLOCK_DEV(xdev, idx) && CLOCK_OPS(xdev, idx) && CLOCK_OPS(xdev, idx)->cb)
 
 #define	xocl_clock_freqscaling(xdev, force)					\
 ({ \

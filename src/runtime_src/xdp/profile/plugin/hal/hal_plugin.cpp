@@ -141,10 +141,13 @@ namespace xdp {
     }
     else if (devInterface->hasTs2mm())
     {
+      // TODO: Sync the data and parse it.
+      /*
       void* hostBuffer = nullptr ; // Need to sync the data
       devInterface->parseTraceData(hostBuffer, 
 				   devInterface->getWordCountTs2mm(),
 				   trace) ;
+      */
     }
     (db->getDynamicInfo()).addDeviceEvents(devInterface, trace) ;
     delete devInterface ;

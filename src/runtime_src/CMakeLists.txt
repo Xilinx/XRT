@@ -41,7 +41,6 @@ add_library(xdp_appdebug_plugin SHARED
   )
 
 add_dependencies(xdp_appdebug_plugin xrt_core xilinxopencl)
-
 option(XOCL_VERBOSE "Enable xocl verbosity" OFF)
 option(XRT_VERBOSE "Enable xrt verbosity" OFF)
 

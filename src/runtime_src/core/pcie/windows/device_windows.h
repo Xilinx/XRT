@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -53,6 +53,10 @@ public:
   virtual void write(uint64_t addr, const void* buf, uint64_t len) const;
 
 private:
+  // Private look up function for concrete query::request
+  virtual const query::request&
+  lookup_query(query::key_type query_key) const;
+
   xclDeviceHandle m_mgmthdl = XRT_NULL_HANDLE;
 };
 

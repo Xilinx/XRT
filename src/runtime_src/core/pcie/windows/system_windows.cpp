@@ -81,10 +81,10 @@ void
 system_windows::
 get_xrt_info(boost::property_tree::ptree &pt)
 {
-  pt.put("build.version",   xrt_build_version);
-  pt.put("build.hash",      xrt_build_version_hash);
-  pt.put("build.date",      xrt_build_version_date);
-  pt.put("build.branch",    xrt_build_version_branch);
+  pt.put("version",   xrt_build_version);
+  pt.put("hash",      xrt_build_version_hash);
+  pt.put("date",      xrt_build_version_date);
+  pt.put("branch",    xrt_build_version_branch);
 
   //TODO
   // _pt.put("xocl",      driver_version("xocl"));
@@ -116,11 +116,7 @@ std::pair<device::id_type, device::id_type>
 system_windows::
 get_total_devices(bool is_user) const
 {
-  unsigned int count = 0;
-  if (is_user)
-    count = xclProbe();
-  else
-    count = mgmtpf::probe();
+  unsigned int count = is_user ? xclProbe() : mgmtpf::probe();
   return std::make_pair(count, count);
 }
 

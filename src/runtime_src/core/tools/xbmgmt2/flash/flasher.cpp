@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * This is a wrapper class that does the prep work required to program a flash
  * device. Flasher will create a specific flash object determined by the program
@@ -19,6 +19,8 @@
  * under the License.
  */
 #include "flasher.h"
+#include "core/common/error.h"
+#include "core/common/query_requests.h"
 #include <limits>
 #include <cstddef>
 #include <cassert>
@@ -27,7 +29,6 @@
 #include <cstdarg>
 #include "boost/format.hpp"
 
-#include "core/common/error.h"
 
 #define INVALID_ID      0xffff
 #define MFG_REV_OFFSET  0x131008 // For obtaining Golden image version number
@@ -61,6 +62,10 @@ Flasher::E_FlasherType Flasher::getFlashType(std::string typeStr)
         // Use find() for this type of flash.
         // Since it have variations
         type = E_FlasherType::QSPIPS;
+    }
+    else if (typeStr.compare("ospi_versal") == 0)
+    {
+        type = E_FlasherType::OSPIVERSAL;
     }
     else
     {
@@ -132,6 +137,23 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
     //     }
     //     break;
     // }
+    case OSPIVERSAL:
+    {
+        XOSPIVER_Flasher xospi_versal(m_device->get_device_id());
+        if (primary == nullptr)
+        {
+            std::cout << "ERROR: OSPIVERSAL mode does not support reverting to MFG." << std::endl;
+        }
+        else if(secondary != nullptr)
+        {
+            std::cout << "ERROR: OSPIVERSAL mode does not support two mcs files." << std::endl;
+        }
+        else
+        {
+            retVal = xospi_versal.xclUpgradeFirmware(*primary);
+        }
+        break;
+    }
     default:
         break;
     }
@@ -284,13 +306,8 @@ std::vector<DSAInfo> Flasher::getInstalledDSA()
         return DSAs;
     }
 
-    uint64_t vendor_id, device_id;
-    vendor_id = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_PCIE_VENDOR);
-    if (vendor_id == xrt_core::invalid_query_value<uint64_t>()) 
-        return DSAs;
-    device_id = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_PCIE_DEVICE);
-    if (device_id == xrt_core::invalid_query_value<uint64_t>()) 
-        return DSAs;
+    auto vendor_id = xrt_core::device_query<xrt_core::query::pcie_vendor>(m_device);
+    auto device_id = xrt_core::device_query<xrt_core::query::pcie_device>(m_device);
 
     // Obtain installed DSA info.
     // std::cout << "ON Board: " << onBoard.vendor << " " << onBoard.board << " " << vendor_id << " " << device_id << std::endl;
@@ -330,7 +347,7 @@ DSAInfo Flasher::getOnBoardDSA()
 
     is_mfg = xrt_core::query_device<bool>(m_device, xrt_core::device::QR_IS_MFG);
     board_name = xrt_core::query_device<std::string>(m_device, xrt_core::device::QR_BOARD_NAME);
-    
+
     if (is_mfg)
     {
         std::stringstream ss;

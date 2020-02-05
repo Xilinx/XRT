@@ -144,7 +144,7 @@ static int load_image(struct xocl_ert *ert)
 		goto out;
 	}
 
-	ert->state = MB_ENABLED;
+	/* ert->state = MB_ENABLED; */
 	/* write ERT_CU_STAT to check if ERT is up and running */
 	ert->state = MB_RUNNING;
 
@@ -355,7 +355,7 @@ static int ert_remove(struct platform_device *pdev)
 	if (!ert)
 		return 0;
 
-	if (ert->sche_binary);
+	if (ert->sche_binary)
 		vfree(ert->sche_binary);
 
 	if (ert->sysfs_created)

@@ -350,7 +350,7 @@ DSAInfo::~DSAInfo()
 {
 }
 
-bool DSAInfo::matchId(std::string &id)
+bool DSAInfo::matchId(const std::string &id) const 
 {
     uint64_t ts = strtoull(id.c_str(), nullptr, 0);
     if (ts != 0 && ts != ULLONG_MAX && ts == timestamp)
@@ -370,7 +370,7 @@ bool DSAInfo::matchId(std::string &id)
     return false;
 }
 
-bool DSAInfo::matchIntId(std::string &id)
+bool DSAInfo::matchIntId(std::string &id) const
 {
     uint64_t ts = strtoull(id.c_str(), nullptr, 0);
 
@@ -394,7 +394,7 @@ bool DSAInfo::matchIntId(std::string &id)
     return false;
 }
 
-bool DSAInfo::matchId(DSAInfo& dsa)
+bool DSAInfo::matchId(DSAInfo& dsa) const
 {
     if (uuids.size() != dsa.uuids.size())
         return false;

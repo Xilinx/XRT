@@ -218,13 +218,12 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 	/* If the PCIe board has PS */
 	xocl_ps_sys_reset(lro);
 
-	xocl_icap_reset_axi_gate(lro);
-
 	/*
 	 * lock pci config space access from userspace,
 	 * save state and issue PCIe secondary bus reset
 	 */
 	if (!XOCL_DSA_PCI_RESET_OFF(lro)) {
+		xocl_subdev_destroy_by_level(lro, XOCL_SUBDEV_LEVEL_URP);
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_ICAP);
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_MAILBOX);
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_AF);
@@ -259,9 +258,6 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 			"Please warm reboot");
 		return -EIO;
 	}
-
-	/* Also freeze and free AXI gate to reset the OCL region. */
-	xocl_icap_reset_axi_gate(lro);
 
 	/* Workaround for some DSAs. Flush axilite busses */
 	if (dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
@@ -627,6 +623,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	const struct firmware			*fw = NULL;
 	const struct axlf_section_header	*dtc_header;
 	struct axlf				*bin_axlf;
+	char					*vbnv;
 	char					fw_name[256];
 	int					ret;
 
@@ -655,6 +652,18 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 		mgmt_err(lro, "Invalid PARTITION_METADATA");
 		goto failed;
 	}
+
+	vbnv = bin_axlf->m_header.m_platformVBNV;
+	if (strlen(vbnv) > 0) {
+		mgmt_info(lro, "Board VBNV: %s", vbnv);
+		ret = xocl_fdt_add_pair(lro, lro->core.fdt_blob, "vbnv", vbnv,
+				strlen(vbnv) + 1);
+		if (ret) {
+			mgmt_err(lro, "Adding VBNV pair failed, %d", ret);
+			goto failed;
+		}
+	}
+
 
 	release_firmware(fw);
 	fw = NULL;

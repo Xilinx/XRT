@@ -41,12 +41,17 @@ namespace xdp {
     // Device events are accurate up to nanoseconds.
     //  Timestamps are in milliseconds, so we should print up to 
     //  6 past the decimal point
+    std::ios_base::fmtflags flags = fout.flags() ;
     fout << std::fixed << std::setprecision(6) << timestamp ;
+    fout.flags(flags) ;
   }
 
   KernelDeviceEvent::KernelDeviceEvent(uint64_t s_id, double ts, 
 				       void* d) :
-    VTFDeviceEvent(s_id, ts, KERNEL, d)
+    VTFDeviceEvent(s_id, ts, KERNEL, d),
+    // Until implemented, provide a default value for all members
+    deviceName(0), binaryName(0), kernelName(0),
+    workgroupConfiguration(0), cuName(0)
   {
   }
 
@@ -55,7 +60,10 @@ namespace xdp {
   }
 
   KernelStall::KernelStall(uint64_t s_id, double ts, void* d) :
-    VTFDeviceEvent(s_id, ts, KERNEL_STALL, d)
+    VTFDeviceEvent(s_id, ts, KERNEL_STALL, d),
+    // Until implemented, provide a default value for all members
+    deviceName(0), binaryName(0), kernelName(0),
+    cuName(0), stallType(UNKNOWN_STALL), burstLength(0)
   {
   }
 
@@ -65,7 +73,11 @@ namespace xdp {
 
   KernelMemoryAccess::KernelMemoryAccess(uint64_t s_id, double ts, 
 					 VTFEventType ty, void* d) :
-    VTFDeviceEvent(s_id, ts, ty, d)
+    VTFDeviceEvent(s_id, ts, ty, d),
+    // Until implemented, provide a default value for all members
+    deviceName(0), binaryName(0), kernelName(0), cuName(0),
+    portName(0), memoryName(0), argumentNames(0), burstLength(0),
+    numBytes(0)
   {
   }
 
@@ -75,7 +87,10 @@ namespace xdp {
 
   KernelStreamAccess::KernelStreamAccess(uint64_t s_id, double ts,
 					 VTFEventType ty, void* d) :
-    VTFDeviceEvent(s_id, ts, ty, d)
+    VTFDeviceEvent(s_id, ts, ty, d),
+    // Until implemented, provide a default value for all members
+    deviceName(0), binaryName(0), kernelName(0), cuName(0),
+    portName(0), streamName(0), burstLength(0)
   {
   }
 
@@ -85,7 +100,10 @@ namespace xdp {
 
   KernelStreamStall::KernelStreamStall(uint64_t s_id, double ts, 
 					 void* d) :
-    VTFDeviceEvent(s_id, ts, KERNEL_STREAM_STALL, d)
+    VTFDeviceEvent(s_id, ts, KERNEL_STREAM_STALL, d),
+    // Until implemented, provide a default value for all members
+    deviceName(0), binaryName(0), kernelName(0), cuName(0),
+    portName(0), streamName(0)
   {
   }
 
@@ -95,7 +113,10 @@ namespace xdp {
 
   KernelStreamStarve::KernelStreamStarve(uint64_t s_id, double ts, 
 					 void* d) :
-    VTFDeviceEvent(s_id, ts, KERNEL_STREAM_STARVE, d)
+    VTFDeviceEvent(s_id, ts, KERNEL_STREAM_STARVE, d),
+    // Until implemented, provide a default value for all members
+    deviceName(0), binaryName(0), kernelName(0), cuName(0),
+    portName(0), streamName(0)
   {
   }
 

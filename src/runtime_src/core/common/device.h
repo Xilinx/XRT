@@ -17,6 +17,7 @@
 #ifndef XRT_CORE_DEVICE_H
 #define XRT_CORE_DEVICE_H
 
+#include "query.h"
 #include "error.h"
 #include "xrt.h"
 
@@ -49,12 +50,6 @@ public:
    * query requests are implemented as ioctl calls.
    */
   enum QueryRequest {
-      QR_PCIE_VENDOR,
-      QR_PCIE_DEVICE,
-      QR_PCIE_SUBSYSTEM_VENDOR,
-      QR_PCIE_SUBSYSTEM_ID,
-      QR_PCIE_LINK_SPEED,
-      QR_PCIE_EXPRESS_LANE_WIDTH,
       QR_PCIE_BDF_BUS,
       QR_PCIE_BDF_DEVICE,
       QR_PCIE_BDF_FUNCTION,
@@ -177,23 +172,65 @@ public:
   virtual xclDeviceHandle
   get_device_handle() const = 0;
 
-public:
-  /*
-   * query_device() - Retrive query request data
-   *
-   * @deviceID : device to retrieve data for
-   * @qr: query reqest type to retrieve
-   * @ti: C++ typeid identifying the data type stored in the returned value
-   * @ret: type erased boost::any object used to return the retrieved data
-   *
-   * This function isvirtual and must be defined by OS implmentation
-   * classes.  The public interface into calling this funciton is a
-   * templated function that pouplates the type_info argument.
-   *
-   * As strange as this function looks it is merely a poor mans
-   * templated virtual function
+  virtual xclDeviceHandle
+  get_mgmt_handle() const
+  {
+    return XRT_NULL_HANDLE;
+  }
+
+  virtual xclDeviceHandle
+  get_user_handle() const
+  {
+    return XRT_NULL_HANDLE;
+  }
+
+  /**
+   * is_userpf_device() - Is this device a userpf
    */
+  virtual bool
+  is_userpf() const
+  {
+    return false;
+  }
+
+ private:
+  // Private look up function for concrete query::request
+  virtual const query::request&
+  lookup_query(query::key_type query_key) const = 0;
+
+public:
+  /**
+   * query() - Query the device for specific property
+   *
+   * @QueryRequestType: Template parameter identifying a specific query request
+   * Return: QueryRequestType::result_type value wrapped as boost::any.
+   */
+  template <typename QueryRequestType>
+  boost::any
+  query() const
+  {
+    auto& qr = lookup_query(QueryRequestType::key);
+    return qr.get(this);
+  }
+
+  /**
+   * query() - Query the device for specific property
+   *
+   * @QueryRequestType: Template parameter identifying a specific query request
+   * @args:  Variadic arguments forwarded the QueryRequestType
+   * Return: QueryRequestType::result_type value wrapped as boost::any.
+   */
+  template <typename QueryRequestType, typename ...Args>
+  boost::any
+  query(Args&&... args) const
+  {
+    auto& qr = lookup_query(QueryRequestType::key);
+    return qr.get(this, std::forward<Args>(args)...);
+  }
+
+  // deprecated
   virtual void query(QueryRequest qr, const std::type_info & ti, boost::any &ret) const = 0;
+
   virtual void get_info(boost::property_tree::ptree &pt) const = 0;
   virtual void read_dma_stats(boost::property_tree::ptree &pt) const = 0;
 
@@ -307,6 +344,39 @@ query_device(const std::shared_ptr<device>& device, device::QueryRequest qr)
 {
   return query_device<QueryType>(device.get(),qr);
 }
+
+template <typename QueryRequestType>
+static typename QueryRequestType::result_type
+device_query(const device* device)
+{
+  auto ret = device->query<QueryRequestType>();
+  return boost::any_cast<typename QueryRequestType::result_type>(ret);
+}
+
+template <typename QueryRequestType>
+static typename QueryRequestType::result_type
+device_query(const std::shared_ptr<device>& device)
+{
+  return device_query<QueryRequestType>(device.get());
+}
+
+template <typename QueryRequestType, typename ...Args>
+static typename QueryRequestType::result_type
+device_query(const std::shared_ptr<device>& device, Args&&... args)
+{
+  return device_query<QueryRequestType>(device.get(), std::forward<Args>(args)...);
+}
+
+template <typename QueryRequestType>
+struct ptree_updater
+{
+  static void
+  query_and_put(const device* device, boost::property_tree::ptree& pt)
+  {
+    auto value = xrt_core::device_query<QueryRequestType>(device);
+    pt.put(QueryRequestType::name(), QueryRequestType::to_string(value));
+  }
+};
 
 } // xrt_core
 
