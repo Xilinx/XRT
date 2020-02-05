@@ -131,6 +131,39 @@ bool sendMsg(const pcieFunc& dev, int fd, sw_msg *swmsg)
 }
 
 /*
+ * Wait for incoming msg from udev event from all FPGA nodes.
+ * The fd with incoming msg is returned.
+ */
+int waitForMsg(int fd, long interval)
+{
+    fd_set fds;
+    int ret = 0;
+    struct timeval timeout = { interval, 0 };
+
+    FD_ZERO(&fds);
+    if (fd >= 0)
+        FD_SET(fd, &fds);
+
+    if (interval == 0) {
+        ret = select(fd + 1, &fds, NULL, NULL, NULL);
+    } else {
+        ret = select(fd + 1, &fds, NULL, NULL, &timeout);
+    }
+
+    if (ret == -1) {
+        syslog(LOG_ERR, "failed to select: %m");
+        return -EINVAL; // failed
+    }
+    if (ret == 0)
+        return -EAGAIN; // time'd tout
+
+    if (fd > 0 && FD_ISSET(fd, &fds)) {
+        syslog(LOG_INFO, "udev msg arrived on fd %d", fd);
+    }
+    return 0;
+}
+
+/*
  * Wait for incoming msg from either socket or mailbox fd.
  * The fd with incoming msg is returned.
  */
@@ -242,9 +275,9 @@ int handleMsg(const pcieFunc& dev, queue_msg &msg)
         pass = (*msg.cb)(dev, swmsg, swmsgProcessed);
     }
 
-    if (pass == FOR_LOCAL && sendMsg(dev, msg.localFd, swmsgProcessed.get()))
+    if (pass == FOR_LOCAL && msg.localFd > 0 && sendMsg(dev, msg.localFd, swmsgProcessed.get()))
         return 0;
-    if (pass == FOR_REMOTE && sendMsg(dev, msg.remoteFd, swmsgProcessed.get()))
+    if (pass == FOR_REMOTE && msg.remoteFd > 0 && sendMsg(dev, msg.remoteFd, swmsgProcessed.get()))
         return 0;
     // Error occured
     return -EINVAL;
@@ -270,7 +303,7 @@ void Common::postStop()
     closelog();         
 }
 
-Common::Common(std::string &name, std::string &plugin_path, bool for_user) :
+Common::Common(const std::string &name, const std::string &plugin_path, bool for_user) :
     name(name), plugin_path(plugin_path)
 {
     total = pcidev::get_dev_total(for_user);
