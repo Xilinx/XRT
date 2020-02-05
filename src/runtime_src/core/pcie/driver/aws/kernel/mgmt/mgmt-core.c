@@ -291,11 +291,6 @@ static long char_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case XCLMGMT_IOCFREQSCALE:
 		result = ocl_freqscaling_ioctl(lro, (void __user *)arg);
 		break;
-	case XCLMGMT_IOCOCLRESET:
-		result = -EINVAL;
-		break;
-	case XCLMGMT_IOCHOTRESET:
-		result = -EINVAL;
 	case XCLMGMT_IOCREBOOT:
 		result = -EINVAL;
 		break;
