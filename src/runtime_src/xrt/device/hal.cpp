@@ -243,4 +243,41 @@ load_xdp()
   static xdp_once_loader xdp_loaded;
 }
 
+void load_xdp_kernel_debug()
+{
+  struct xdp_kernel_debug_once_loader
+  {
+    xdp_kernel_debug_once_loader()
+    {
+      bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
+      bfs::path libname ("libxdp_debug_plugin");
+      libname += dllExt();
+      if (xrt.empty()) {
+        throw std::runtime_error("Library " + libname.string() + " not found! XILINX_XRT not set");
+      }
+      bfs::path p(xrt / "lib");
+      directoryOrError(p);
+      p /= libname;
+      if (!isDLL(p)) {
+        throw std::runtime_error("Library " + p.string() + " not found!");
+      }
+      auto handle = xrt_core::dlopen(p.string().c_str(), RTLD_NOW | RTLD_GLOBAL);
+      if (!handle)
+        throw std::runtime_error("Failed to open XDP library '" + p.string() + "'\n" + xrt_core::dlerror());
+
+      typedef void (* xdpInitType)();
+
+      const std::string s = "initKernelDebug";
+      auto initFunc = (xdpInitType)xrt_core::dlsym(handle, s.c_str());
+      if (!initFunc)
+        throw std::runtime_error("Failed to initialize XDP Kernel Debug library, '" + s +"' symbol not found.\n" + xrt_core::dlerror());
+
+      initFunc();
+    }
+  };
+
+  // 'magic static' is thread safe per C++11
+  static xdp_kernel_debug_once_loader xdp_kernel_debug_loaded;
+}
+
 }} // hal,xcl

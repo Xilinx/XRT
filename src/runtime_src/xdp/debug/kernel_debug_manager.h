@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,20 +14,19 @@
  * under the License.
  */
 
-// Copyright 2015 Xilinx, Inc.  All rights reserved.
-#ifndef __XILINX_RT_DEBUG_H
-#define __XILINX_RT_DEBUG_H
+#ifndef KERNEL_DEBUG_MANAGER_DOT_H
+#define KERNEL_DEBUG_MANAGER_DOT_H
 
-#include "core/include/xclbin.h"
 #include <string>
+#include "core/include/xclbin.h"
 
-namespace xdp
-{
-  class RTDebug
+namespace xdp {
+
+  class KernelDebugManager
   {
     // Consolidated File information and headers
-    //  This information must be synchronized with the information
-    //  in the debugMetaDataConsolidator code.
+    //  This structure must be synchronized with the information 
+    //  used in xrflink
 
     // Sections
     const unsigned int PROJECT_NAME   = 0 ;
@@ -50,37 +49,30 @@ namespace xdp
       unsigned int numSections ;
       // Followed by N section headers
     } ;
-    
+
   private:
     int uid ;
     int pid ;
-    std::string sdxDirectory ;
+
+    // The directory used to communicate information to the xrt_server
+    std::string sdxDirectory ; 
     std::string jsonFile ;
     std::string dwarfFile ;
 
     bool exists(const char* filename) ;
     void createDirectory(const char* filename) ;
-
   public:
-    RTDebug() ;
-    ~RTDebug() ;
+    KernelDebugManager() ;
+    ~KernelDebugManager() ;
 
     inline const std::string& getDwarfFile() { return dwarfFile ; }
-    inline const std::string& getJsonFile()  { return jsonFile ; }
+    inline const std::string& getJsonFile()  { return jsonFile ; } 
 
-    /**
-     * Entry point used by runtime (clCreateProgramWitBinary)
-     * 
-     * @param xclbin
-     *   The complete xclbin binary wrapped in a binary API class
-     */
-    void reset(const axlf* xclbin);
+    void reset(const axlf* xclbin) ;
 
     void setEnvironment() ;
   } ;
-  
-} // end namespace
+
+} // end namespace xdp
 
 #endif
-
-
