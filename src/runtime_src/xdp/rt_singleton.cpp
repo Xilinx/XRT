@@ -45,11 +45,8 @@ namespace xdp {
 
   RTSingleton::RTSingleton()
   : Status( 0 ),
-    Platform( nullptr ),
-    DebugMgr( nullptr )
+    Platform( nullptr )
   {
-    DebugMgr = new RTDebug();
-
     // share ownership of the global platform
     Platform = xocl::get_shared_platform();
 
@@ -67,8 +64,6 @@ namespace xdp {
   RTSingleton::~RTSingleton() {
     gActive = false;
     gDead = true;
-    // Destruct in reverse order of construction
-    delete DebugMgr;
   }
 
 } // xdp

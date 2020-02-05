@@ -703,6 +703,10 @@ loadDevices();
 XRT_EXPORT
 void
 load_xdp();
+
+XRT_EXPORT
+void
+load_xdp_kernel_debug();
 } // namespace hal
 
 namespace hal2 {

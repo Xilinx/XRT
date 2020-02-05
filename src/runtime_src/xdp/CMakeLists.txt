@@ -105,7 +105,6 @@ file(GLOB XRT_XDP_PROFILE_HAL_INTERFACE_PLUGIN_FILES
 
 set(XRT_XDP_ALL_SRC
   ${XRT_XDP_APPDEBUG_FILES}
-  ${XRT_XDP_DEBUG_FILES}
   ${XRT_XDP_PROFILE_FILES}
   ${XRT_XDP_FILES}
   )
@@ -116,6 +115,7 @@ add_library(xdpobj OBJECT ${XRT_XDP_PROFILE_OCL_PLUGIN_FILES})
 
 add_library(xdp_hal_plugin_obj OBJECT ${XRT_XDP_PROFILE_HAL_PLUGIN_FILES})
 add_library(xdp_hal_api_interface_plugin_obj OBJECT ${XRT_XDP_PROFILE_HAL_INTERFACE_PLUGIN_FILES})
+add_library(xdp_debug_plugin_obj OBJECT ${XRT_XDP_DEBUG_FILES})
 
 add_library(xdp SHARED ${XRT_XDP_ALL_SRC})
 add_dependencies(xdp xrt_core xilinxopencl)
