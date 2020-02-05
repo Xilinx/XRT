@@ -245,17 +245,21 @@ get_pcidev(const xrt_core::device* device)
   return pcidev::get_dev(device->get_device_id(), device->is_userpf());
 }
 
+// Specialize for other value types.
 template <typename ValueType>
-static ValueType
-sysfs(const pdev& dev, const char* subdev, const char* entry)
+struct sysfs_fcn
 {
-  std::string err;
-  ValueType value;
-  dev->sysfs_get(subdev, entry, err, value, static_cast<ValueType>(-1));
-  if (!err.empty())
-    throw std::runtime_error(err);
-  return value;
-}
+  static ValueType
+  get(const pdev& dev, const char* subdev, const char* entry)
+  {
+    std::string err;
+    ValueType value;
+    dev->sysfs_get(subdev, entry, err, value, static_cast<ValueType>(-1));
+    if (!err.empty())
+      throw std::runtime_error(err);
+    return value;
+  }
+};
 
 template <typename QueryRequestType>
 struct sysfs_getter : QueryRequestType
@@ -270,7 +274,8 @@ struct sysfs_getter : QueryRequestType
   boost::any
   get(const xrt_core::device* device) const
   {
-    return sysfs<typename QueryRequestType::result_type>(get_pcidev(device), entry, subdev);
+    return sysfs_fcn<typename QueryRequestType::result_type>
+      ::get(get_pcidev(device), entry, subdev);
   }
 };
 
