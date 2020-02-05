@@ -623,6 +623,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	const struct firmware			*fw = NULL;
 	const struct axlf_section_header	*dtc_header;
 	struct axlf				*bin_axlf;
+	char					*vbnv;
 	char					fw_name[256];
 	int					ret;
 
@@ -651,6 +652,18 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 		mgmt_err(lro, "Invalid PARTITION_METADATA");
 		goto failed;
 	}
+
+	vbnv = bin_axlf->m_header.m_platformVBNV;
+	if (strlen(vbnv) > 0) {
+		mgmt_info(lro, "Board VBNV: %s", vbnv);
+		ret = xocl_fdt_add_pair(lro, lro->core.fdt_blob, "vbnv", vbnv,
+				strlen(vbnv) + 1);
+		if (ret) {
+			mgmt_err(lro, "Adding VBNV pair failed, %d", ret);
+			goto failed;
+		}
+	}
+
 
 	release_firmware(fw);
 	fw = NULL;
