@@ -78,6 +78,7 @@ namespace xdp {
       // Before deleting, do a final read of counters and force flush of trace buffers
       endDeviceProfiling();
     }
+    Plugin->setApplicationEnd();
     endProfiling();
     reset();
     pDead = true;
@@ -692,8 +693,11 @@ namespace xdp {
               numTraceBytes += readBytes;
               info->mTraceVector = {};
             }
-            if (numTraceBytes >= mDDRBufferSz)
+            if (numTraceBytes >= mDDRBufferSz) {
               Plugin->sendMessage(TS2MM_WARN_MSG_BUF_FULL);
+              auto& g_map = Plugin->getDeviceTraceBufferFullMap();
+              g_map[device_name] = 1;
+            }
           }
         } else {
           while(1) {

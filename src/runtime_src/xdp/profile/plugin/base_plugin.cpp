@@ -132,6 +132,9 @@ namespace xdp {
       case MEMORY_TYPE_BIT_WIDTH:
         name = "MEMORY_TYPE_BIT_WIDTH";
         break;
+      case APPLICATION_RUN_TIME_MS:
+        name = "APPLICATION_RUN_TIME_MS";
+        break;
       default:
         assert(0);
         break;

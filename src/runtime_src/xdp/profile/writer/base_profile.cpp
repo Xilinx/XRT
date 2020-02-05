@@ -688,6 +688,15 @@ namespace xdp {
         writeTableRowEnd(getStream());
       }
     }
+
+    // Application Run Time Ms
+    {
+      std::string check;
+      double time = mPluginHandle->getApplicationRunTimeMs();
+      XDPPluginI::getGuidanceName(XDPPluginI::APPLICATION_RUN_TIME_MS, check);
+      writeTableCells(getStream(), check, "all", time);
+      writeTableRowEnd(getStream());
+    }
   }
 
 } // xdp

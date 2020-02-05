@@ -110,7 +110,8 @@ namespace xdp {
         PLRAM_SIZE_BYTES,
         KERNEL_BUFFER_INFO,
         TRACE_BUFFER_FULL,
-        MEMORY_TYPE_BIT_WIDTH
+        MEMORY_TYPE_BIT_WIDTH,
+        APPLICATION_RUN_TIME_MS
       };
 
     public:
@@ -140,8 +141,11 @@ namespace xdp {
       inline GuidanceMap2& getDeviceMemTypeBitWidthMap() {return mDeviceMemTypeBitWidthMap;}
       inline GuidanceMap2& getDeviceTraceBufferFullMap() {return mDeviceTraceBufferFullMap;}
       inline GuidanceMap2& getDevicePlramSizeMap() {return mDevicePlramSizeMap;}
-      inline GuidanceMap5& getKernelBufferInfoMap() {return mKernelBufferInfoMap;}
       inline GuidanceMap4& getmCQInfoMap() {return mCQInfoMap;}
+      inline GuidanceMap5& getKernelBufferInfoMap() {return mKernelBufferInfoMap;}
+      // Application run time
+      void setApplicationEnd() {mApplicationRunTimeMs = getTraceTime();}
+      double getApplicationRunTimeMs() {return mApplicationRunTimeMs;}
       //Profiling infrastructure metadata
       void setCtxEn(bool ctxEn) {IsCtxEn = ctxEn;}
       bool isCtxEn() {return IsCtxEn;}
@@ -165,6 +169,7 @@ namespace xdp {
       bool IsP2PDevice = false;
       bool IsCtxEn = false;
       std::string TraceMemory = "NA";
+      double mApplicationRunTimeMs = 0.0;
 
     // ****************************************
     // Platform Metadata required by profiler
