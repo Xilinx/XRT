@@ -144,20 +144,20 @@ void log_buffer_guidance(xocl::event* event, cl_kernel kernel)
 {
   const std::lock_guard<std::mutex> lock(buf_guidance_mutex);
 
+  // Return if kernel already logged
+  auto& g_map = OCLProfiler::Instance()->getPlugin()->getKernelBufferInfoMap();
+  uint64_t key = reinterpret_cast<uint64_t>(kernel);
+  auto it = g_map.find(key);
+  if (it != g_map.end()) {
+    return;
+  }
+
   xocl::memory* mem;
   auto queue = event->get_command_queue();
   auto device = queue->get_device();
   size_t buf_size = 0;
   std::string mem_tag;
   std::string arg_name;
-
-  auto& g_map = OCLProfiler::Instance()->getPlugin()->getKernelBufferInfoMap();
-
-  uint64_t key = reinterpret_cast<uint64_t>(kernel);
-  auto it = g_map.find(key);
-  if (it != g_map.end()) {
-    return;
-  }
 
   auto kname = xocl::xocl(kernel)->get_name();
   for (auto& arg : xocl::xocl(kernel)->get_argument_range()) {
