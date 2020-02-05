@@ -85,9 +85,8 @@ namespace xdp {
     public:
       typedef std::map<std::string, std::string> GuidanceMap;
       typedef std::map<std::string, uint32_t> GuidanceMap2;
-      typedef std::map<uint64_t, std::string> GuidanceMap3;
-      typedef std::map<uint64_t, uint64_t> GuidanceMap4;
-      typedef std::map<uint64_t, std::vector<std::string>> GuidanceMap5;
+      typedef std::map<uint64_t, uint64_t> GuidanceMap3;
+      typedef std::map<uint64_t, std::vector<std::string>> GuidanceMap4;
 
       enum e_guidance {
         DEVICE_EXEC_TIME,
@@ -141,8 +140,8 @@ namespace xdp {
       inline GuidanceMap2& getDeviceMemTypeBitWidthMap() {return mDeviceMemTypeBitWidthMap;}
       inline GuidanceMap2& getDeviceTraceBufferFullMap() {return mDeviceTraceBufferFullMap;}
       inline GuidanceMap2& getDevicePlramSizeMap() {return mDevicePlramSizeMap;}
-      inline GuidanceMap4& getmCQInfoMap() {return mCQInfoMap;}
-      inline GuidanceMap5& getKernelBufferInfoMap() {return mKernelBufferInfoMap;}
+      inline GuidanceMap3& getmCQInfoMap() {return mCQInfoMap;}
+      inline GuidanceMap4& getKernelBufferInfoMap() {return mKernelBufferInfoMap;}
       // Application run time
       void setApplicationEnd() {mApplicationRunTimeMs = getTraceTime();}
       double getApplicationRunTimeMs() {return mApplicationRunTimeMs;}
@@ -160,8 +159,8 @@ namespace xdp {
       GuidanceMap2 mKernelMaxParallelStartsMap;
       GuidanceMap2 mDeviceMemTypeBitWidthMap;
       GuidanceMap2 mDeviceTraceBufferFullMap;
-      GuidanceMap5 mKernelBufferInfoMap;
-      GuidanceMap4 mCQInfoMap;
+      GuidanceMap4 mKernelBufferInfoMap;
+      GuidanceMap3 mCQInfoMap;
       bool IsObjectsReleased = false;
       bool IsPlramDevice = false;
       bool IsHbmDevice = false;
