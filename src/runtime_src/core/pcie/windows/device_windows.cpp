@@ -594,6 +594,146 @@ bdf_fcn(const device_type* device, qr_type qr, const std::type_info&, boost::any
 
 } // namespace
 
+namespace {
+
+using key_type = xrt_core::query::key_type;
+using device_type = xrt_core::device;
+
+    { QR_PCIE_VENDOR,               { info }},
+    { QR_PCIE_DEVICE,               { info }},
+    { QR_PCIE_SUBSYSTEM_VENDOR,     { info }},
+    { QR_PCIE_SUBSYSTEM_ID,         { info }},
+    { QR_PCIE_LINK_SPEED,           { nullptr }},
+    { QR_PCIE_EXPRESS_LANE_WIDTH,   { nullptr }},
+
+template<typename ResultType>
+static ResultType
+info_user(const device_type* device, key_type qr)
+{
+  auto init_device_info = [](const device_type* dev) {
+    XOCL_DEVICE_INFORMATION info = { 0 };
+    userpf::get_device_info(dev->get_user_handle(), &info);
+    return info;
+  };
+
+  static std::map<const device_type*, XOCL_DEVICE_INFORMATION> info_map;
+  static std::mutex mutex;
+  std::lock_guard<std::mutex> lk(mutex);
+  auto it = info_map.find(device);
+  if (it == info_map.end()) {
+    auto ret = info_map.emplace(device,init_device_info(device));
+    it = ret.first;
+  }
+
+  auto& info = (*it).second;
+
+  switch (qr) {
+  case key_type::pcie_vendor:
+    return info.Vendor;
+  case key_type::pcie_device:
+    return info.Device;
+  case key_type::pcie_subsystem_vendor:
+    return info.SubsystemVendor;
+  case key_type::pcie_subsystem_id:
+    return info.SubsystemDevice;
+  default:
+    throw std::runtime_error("device_windows::info_user() unexpected qr");
+  }
+}
+
+template <typename ResultType>
+static ResultType
+info_mgmt(const device_type* device, key_type qr)
+{
+  auto init_device_info = [](const device_type* dev) {
+    XCLMGMT_IOC_DEVICE_INFO info = { 0 };
+    mgmtpf::get_device_info(dev->get_mgmt_handle(), &info);
+    return info;
+  };
+
+  static std::map<const device_type*, XCLMGMT_IOC_DEVICE_INFO> info_map;
+  static std::mutex mutex;
+  std::lock_guard<std::mutex> lk(mutex);
+  auto it = info_map.find(device);
+  if (it == info_map.end()) {
+    auto ret = info_map.emplace(device,init_device_info(device));
+    it = ret.first;
+  }
+
+  auto& info = (*it).second;
+
+  switch (qr) {
+  case key_type::qr_pcie_vendor:
+    return info.pcie_info.vendor;
+  case key_type::qr_pcie_device:
+    return info.pcie_info.device;
+  case key_type::qr_pcie_subsystem_vendor:
+    return info.pcie_info.subsystem_vendor;
+  case key_type::qr_pcie_subsystem_id:
+    return info.pcie_info.subsystem_device;
+  default:
+    throw std::runtime_error("device_windows::info_mgmt() unexpected qr");
+  }
+}
+
+template <typename QueryRequestType, typename UserFcn, typename MgmtFcn>
+struct info_getter : QueryRequestType
+{
+  boost::any
+  get(const device_type* device) const
+  {
+    auto key = QueryRequestType::key;
+    if (auto mhdl = device->get_mgmt_handle())
+      return info_mgmt(device,key);
+    else if (auto uhdl = device->get_user_handle())
+      return info_user(device,key);
+    else
+      throw std::runtime_error("No device handle");
+  }
+};
+
+template <typename QueryRequestType, typename UserFcn, typename MgmtFcn>
+struct function_getter : QueryRequestType
+{
+  UserFcn ufcn;
+  MgmtFcn mfcn;
+  function_getter(UserFcn u, MgmtFcn m)
+    : ufcn(u), mfcn(m)
+  {
+  }
+
+  boost::any
+  get(const device_type* device) const
+  {
+    auto key = QueryRequestType::key;
+    if (auto mhdl = device->get_mgmt_handle())
+      return info_mgmt(device,key);
+    else if (auto uhdl = device->get_user_handle())
+      return info_user(device,key);
+    else
+      throw std::runtime_error("No device handle");
+  }
+};
+
+  
+static std::map<xrt_core::query::key_type, std::unique_ptr<xrt_core::query::request>> query_tbl;
+
+template <typename QueryRequestType, typename UserFcn, typename MgmtFcn>
+static void
+emplace_fcn_request(UserFcn ufcn, MfmtFcn mfcn)
+{
+  auto x = QueryRequestType::key;
+  query_tbl.emplace(x, std::make_unique<function_getter<QueryRequestType>>(ufcn,mfcn));
+}
+  
+static void
+initialize_query_table()
+{
+  emplace_fcn_request<query::pcie_vendor>(info_user, info_mgmt);
+}
+  
+}
+
 namespace xrt_core {
 
 const query::request&

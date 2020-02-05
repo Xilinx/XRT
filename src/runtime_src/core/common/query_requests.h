@@ -1,3 +1,19 @@
+/**
+ * Copyright (C) 2020 Xilinx, Inc
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may
+ * not use this file except in compliance with the License. A copy of the
+ * License is located at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ */
+
 #ifndef xrt_core_common_query_requests_h
 #define xrt_core_common_query_requests_h
 
@@ -128,7 +144,7 @@ enum class key_type
 
 struct pcie_vendor : request
 {
-  using result_type = std::string;
+  using result_type = uint16_t;
   static const key_type key = key_type::pcie_vendor;
 
   virtual boost::any
@@ -137,7 +153,7 @@ struct pcie_vendor : request
  
 struct pcie_device : request
 {
-  using result_type = std::string;
+  using result_type = uint16_t;
   static const key_type key = key_type::pcie_device;
 
   virtual boost::any
@@ -146,7 +162,7 @@ struct pcie_device : request
  
 struct pcie_subsystem_vendor : request
 {
-  using result_type = std::string;
+  using result_type = uint16_t;
   static const key_type key = key_type::pcie_subsystem_vendor;
 
   virtual boost::any
@@ -155,7 +171,7 @@ struct pcie_subsystem_vendor : request
  
 struct pcie_subsystem_id : request
 {
-  using result_type = std::string;
+  using result_type = uint16_t;
   static const key_type key = key_type::pcie_subsystem_id;
 
   virtual boost::any

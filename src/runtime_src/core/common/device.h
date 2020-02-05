@@ -178,7 +178,16 @@ public:
   virtual xclDeviceHandle
   get_device_handle() const = 0;
 
-private:
+  /**
+   * is_userpf_device() - Is this device a userpf
+   */
+  virtual bool
+  is_userpf() const
+  {
+    return false;
+  }
+
+ private:
   // Private look up function for concrete query::request
   virtual const query::request&
   lookup_query(query::key_type query_key) const = 0;
