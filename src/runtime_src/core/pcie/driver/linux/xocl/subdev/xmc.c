@@ -173,6 +173,15 @@ enum sensor_val_kind {
 	SENSOR_INS,
 };
 
+enum gpio_channel1_mask {
+	MUTEX_GRANT_MASK	= 0x1,
+};
+
+enum gpio_channel2_mask {
+	MUTEX_ACK_MASK		= 0x1,
+	REGMAP_READY_MASK	= 0x2,
+};
+
 #define	READ_REG32(xmc, off)			\
 	(xmc->base_addrs[IO_REG] ?		\
 	XOCL_READ_REG32(xmc->base_addrs[IO_REG] + off) : 0)
@@ -305,6 +314,7 @@ enum board_info_key {
 struct xocl_xmc {
 	struct platform_device	*pdev;
 	void __iomem		*base_addrs[NUM_IOADDR];
+	size_t			range[NUM_IOADDR];
 
 	struct device		*hwmon_dev;
 	bool			enabled;
@@ -2453,15 +2463,27 @@ static int load_xmc(struct xocl_xmc *xmc)
 
 	/* Load XMC and ERT Image */
 	if (xocl_mb_mgmt_on(xdev_hdl) && xmc->mgmt_binary_length) {
-		xocl_info(&xmc->pdev->dev, "Copying XMC image len %d",
-			xmc->mgmt_binary_length);
-		COPY_MGMT(xmc, xmc->mgmt_binary, xmc->mgmt_binary_length);
+		if (xmc->mgmt_binary_length > xmc->range[IO_IMAGE_MGMT]) {
+			xocl_err(&xmc->pdev->dev, "XMC image too long %d",
+				xmc->mgmt_binary_length);
+			goto out;
+		} else {
+			xocl_info(&xmc->pdev->dev, "Copying XMC image len %d",
+				xmc->mgmt_binary_length);
+			COPY_MGMT(xmc, xmc->mgmt_binary, xmc->mgmt_binary_length);
+		}
 	}
 
 	if (xocl_mb_sched_on(xdev_hdl) && xmc->sche_binary_length) {
-		xocl_info(&xmc->pdev->dev, "Copying scheduler image len %d",
-			xmc->sche_binary_length);
-		COPY_SCHE(xmc, xmc->sche_binary, xmc->sche_binary_length);
+		if (xmc->sche_binary_length > xmc->range[IO_IMAGE_SCHED]) {
+			xocl_info(&xmc->pdev->dev, "scheduler image too long %d",
+				xmc->sche_binary_length);
+			goto out;
+		} else {
+			xocl_info(&xmc->pdev->dev, "Copying scheduler image len %d",
+				xmc->sche_binary_length);
+			COPY_SCHE(xmc, xmc->sche_binary, xmc->sche_binary_length);
+		}
 	}
 
 	/* Take XMC and ERT out of reset */
@@ -2486,12 +2508,12 @@ static int load_xmc(struct xocl_xmc *xmc)
 	if (!ret) {
 		retry = 0;
 		while (!ret && retry++ < MAX_XMC_RETRY &&
-			!(reg_map_ready & 0x2)) {
+			!(reg_map_ready & REGMAP_READY_MASK)) {
 			msleep(RETRY_INTERVAL);
 			ret = xocl_iores_read32(xdev_hdl, XOCL_SUBDEV_LEVEL_BLD,
 				IORES_CMC_MUTEX, XOCL_RES_OFFSET_CHANNEL2, &reg_map_ready);
                 }
-		if (!ret && (reg_map_ready & 0x2)) {
+		if (!ret && (reg_map_ready & REGMAP_READY_MASK)) {
 			xocl_info(&xmc->pdev->dev, "REGMAP ready");
 		} else {
 			xocl_err(&xmc->pdev->dev, "REGMAP not ready : %d", ret);
@@ -2712,13 +2734,13 @@ static int cmc_access_ops(struct platform_device *pdev, int flags)
 			goto fail;
 		}
 
-		if ((grant & 0x1) == (ack & 0x1))
+		if ((grant & MUTEX_GRANT_MASK) == (ack & MUTEX_ACK_MASK))
 			break;
 
 		msleep(100);
 	}
 
-	if ((grant & 0x1) != (ack & 0x1)) {
+	if ((grant & MUTEX_GRANT_MASK) != (ack & MUTEX_ACK_MASK)) {
 		xocl_xdev_err(xdev,
 		    "Grant falied. The bit 0 in Ack (0x%x) is not the same "
 		    "in grant (0x%x)", ack, grant);
@@ -2778,8 +2800,10 @@ end:
 	for (i = 0; i < NUM_IOADDR; i++) {
 		if ((i == IO_CLK_SCALING) && !xmc->cs_on_ptfm)
 			continue;
-		if (xmc->base_addrs[i])
+		if (xmc->base_addrs[i]) {
 			iounmap(xmc->base_addrs[i]);
+			xmc->range[i] = 0;
+		}
 	}
 	if (xmc->cache)
 		vfree(xmc->cache);
@@ -2848,6 +2872,7 @@ static int xmc_probe(struct platform_device *pdev)
 				xocl_err(&pdev->dev, "Map iomem failed");
 				goto failed;
 			}
+			xmc->range[i] = res->end - res->start + 1;
 		} else
 			break;
 	}
