@@ -239,7 +239,7 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
 
         // Fill out DSA info.
         const axlf *ap = reinterpret_cast<const axlf *>(top.data());
-        if (name.empty())
+        if (std::strlen(reinterpret_cast<const char *>(ap->m_header.m_platformVBNV)) > 0)
         {
             name.assign(reinterpret_cast<const char *>(ap->m_header.m_platformVBNV));
         }
@@ -292,7 +292,8 @@ DSAInfo::DSAInfo(const std::string& filename, std::string &pr_board, std::string
     partition_family_name = pr_family;
     partition_name = pr_name;
 
-    name = "xilinx_" + board + "_" + pr_family + "_" + pr_name;
+    if (name.empty())
+        name = "xilinx_" + board + "_" + pr_family + "_" + pr_name;
 }
 
 DSAInfo::~DSAInfo()
