@@ -16,6 +16,7 @@
 #define XRT_CORE_PCIE_WINDOWS_SOURCE
 #define XCL_DRIVER_DLL_EXPORT
 #include "device_windows.h"
+#include "core/common/query_requests.h"
 #include "mgmt.h"
 #include "shim.h"
 #include "common/utils.h"
@@ -26,6 +27,7 @@
 //#include "core/pcie/driver/windows/include/XoclMgmt_INTF.h"
 
 #include "boost/format.hpp"
+#include <type_traits>
 #include <string>
 #include <iostream>
 #include <map>
@@ -128,81 +130,6 @@ rom(const device_type* device, qr_type qr, const std::type_info&, boost::any& va
   }
 }
 
-static void
-info_user(const device_type* device, qr_type qr, const std::type_info&, boost::any& value)
-{
-  auto init_device_info = [](const device_type* dev) {
-    XOCL_DEVICE_INFORMATION info = { 0 };
-    userpf::get_device_info(dev->get_user_handle(), &info);
-    return info;
-  };
-
-  static std::map<const device_type*, XOCL_DEVICE_INFORMATION> info_map;
-  static std::mutex mutex;
-  std::lock_guard<std::mutex> lk(mutex);
-  auto it = info_map.find(device);
-  if (it == info_map.end()) {
-    auto ret = info_map.emplace(device,init_device_info(device));
-    it = ret.first;
-  }
-
-  auto& info = (*it).second;
-
-  switch (qr) {
-  case qr_type::QR_PCIE_VENDOR:
-    value = info.Vendor;
-    return;
-  case qr_type::QR_PCIE_DEVICE:
-    value = info.Device;
-    return;
-  case qr_type::QR_PCIE_SUBSYSTEM_VENDOR:
-    value = info.SubsystemVendor;
-    return;
-  case qr_type::QR_PCIE_SUBSYSTEM_ID:
-    value = info.SubsystemDevice;
-    return;
-  default:
-    throw std::runtime_error("device_windows::info_user() unexpected qr " + std::to_string(qr));
-  }
-}
-
-static void
-info_mgmt(const device_type* device, qr_type qr, const std::type_info&, boost::any& value)
-{
-  auto init_device_info = [](const device_type* dev) {
-    XCLMGMT_IOC_DEVICE_INFO info = { 0 };
-    mgmtpf::get_device_info(dev->get_mgmt_handle(), &info);
-    return info;
-  };
-
-  static std::map<const device_type*, XCLMGMT_IOC_DEVICE_INFO> info_map;
-  static std::mutex mutex;
-  std::lock_guard<std::mutex> lk(mutex);
-  auto it = info_map.find(device);
-  if (it == info_map.end()) {
-    auto ret = info_map.emplace(device,init_device_info(device));
-    it = ret.first;
-  }
-
-  auto& info = (*it).second;
-
-  switch (qr) {
-  case qr_type::QR_PCIE_VENDOR:
-    value = static_cast<uint64_t>(info.pcie_info.vendor);
-    return;
-  case qr_type::QR_PCIE_DEVICE:
-    value = static_cast<uint64_t>(info.pcie_info.device);
-    return;
-  case qr_type::QR_PCIE_SUBSYSTEM_VENDOR:
-    value = static_cast<uint64_t>(info.pcie_info.subsystem_vendor);
-    return;
-  case qr_type::QR_PCIE_SUBSYSTEM_ID:
-    value = static_cast<uint64_t>(info.pcie_info.subsystem_device);
-    return;
-  default:
-    throw std::runtime_error("device_windows::info_mgmt() unexpected qr " + std::to_string(qr));
-  }
-}
 
 static void
 sensor_info(const device_type* device, qr_type qr, const std::type_info&, boost::any& value)
@@ -372,7 +299,7 @@ icap_info(const device_type* device, qr_type qr, const std::type_info&, boost::a
 
   switch (qr) {
   case qr_type::QR_CLOCK_FREQS:
-    value = std::vector<std::string>{ std::to_string(info.freq_0), std::to_string(info.freq_1), 
+    value = std::vector<std::string>{ std::to_string(info.freq_0), std::to_string(info.freq_1),
                                        std::to_string(info.freq_2), std::to_string(info.freq_3) };
     return;
   case qr_type::QR_IDCODE:
@@ -508,17 +435,6 @@ firewall_info(const device_type* device, qr_type qr, const std::type_info&, boos
 }
 
 static void
-info(const device_type* device, qr_type qr, const std::type_info& tinfo, boost::any& value)
-{
-  if (auto mhdl = device->get_mgmt_handle())
-    info_mgmt(device,qr,tinfo,value);
-  else if (auto uhdl = device->get_user_handle())
-    info_user(device,qr,tinfo,value);
-  else
-    throw std::runtime_error("No device handle");
-}
-
-static void
 xclbin_fcn(const device_type* device, qr_type qr, const std::type_info&, boost::any& value)
 {
   auto uhdl = device->get_user_handle();
@@ -594,7 +510,170 @@ bdf_fcn(const device_type* device, qr_type qr, const std::type_info&, boost::any
 
 } // namespace
 
+namespace {
+
+namespace query = xrt_core::query;
+using key_type = xrt_core::query::key_type;
+
+struct info
+{
+  using result_type = uint16_t;
+
+  static result_type
+  user(const xrt_core::device* device, key_type key)
+  {
+    auto init_device_info = [](const xrt_core::device* dev) {
+      XOCL_DEVICE_INFORMATION info = { 0 };
+      userpf::get_device_info(dev->get_user_handle(), &info);
+      return info;
+    };
+
+    static std::map<const xrt_core::device*, XOCL_DEVICE_INFORMATION> info_map;
+    static std::mutex mutex;
+    std::lock_guard<std::mutex> lk(mutex);
+    auto it = info_map.find(device);
+    if (it == info_map.end()) {
+      auto ret = info_map.emplace(device,init_device_info(device));
+      it = ret.first;
+    }
+
+    auto& info = (*it).second;
+
+    switch (key) {
+    case key_type::pcie_vendor:
+      return info.Vendor;
+    case key_type::pcie_device:
+      return info.Device;
+    case key_type::pcie_subsystem_vendor:
+      return info.SubsystemVendor;
+    case key_type::pcie_subsystem_id:
+      return info.SubsystemDevice;
+    default:
+      throw std::runtime_error("device_windows::info_user() unexpected qr");
+    }
+  }
+
+  static result_type
+  mgmt(const xrt_core::device* device, key_type key)
+  {
+    auto init_device_info = [](const xrt_core::device* dev) {
+      XCLMGMT_IOC_DEVICE_INFO info = { 0 };
+      mgmtpf::get_device_info(dev->get_mgmt_handle(), &info);
+      return info;
+    };
+
+    static std::map<const xrt_core::device*, XCLMGMT_IOC_DEVICE_INFO> info_map;
+    static std::mutex mutex;
+    std::lock_guard<std::mutex> lk(mutex);
+    auto it = info_map.find(device);
+    if (it == info_map.end()) {
+      auto ret = info_map.emplace(device,init_device_info(device));
+      it = ret.first;
+    }
+
+    auto& info = (*it).second;
+
+    switch (key) {
+    case key_type::pcie_vendor:
+      return info.pcie_info.vendor;
+    case key_type::pcie_device:
+      return info.pcie_info.device;
+    case key_type::pcie_subsystem_vendor:
+      return info.pcie_info.subsystem_vendor;
+    case key_type::pcie_subsystem_id:
+      return info.pcie_info.subsystem_device;
+    default:
+      throw std::runtime_error("device_windows::info_mgmt() unexpected qr");
+    }
+  }
+};
+
+template <typename QueryRequestType, typename Getter>
+struct function0_getter : QueryRequestType
+{
+  static_assert(std::is_same<Getter::result_type, QueryRequestType::result_type>::value, "type mismatch");
+
+  boost::any
+  get(const xrt_core::device* device) const
+  {
+    auto k = QueryRequestType::key;
+    if (auto mhdl = device->get_mgmt_handle())
+      return Getter::mgmt(device,k);
+    else if (auto uhdl = device->get_user_handle())
+      return Getter::user(device,k);
+    else
+      throw std::runtime_error("No device handle");
+  }
+
+};
+
+template <typename QueryRequestType, typename Getter>
+struct function1_getter : QueryRequestType
+{
+  static_assert(std::is_same<Getter::result_type, QueryRequestType::result_type>::value, "type mismatch");
+
+  boost::any
+  get(const xrt_core::device* device, const boost::any& any) const
+  {
+    auto k = QueryRequestType::key;
+    if (auto mhdl = device->get_mgmt_handle())
+      return Getter::mgmt(device,k,any);
+    else if (auto uhdl = device->get_user_handle())
+      return Getter::user(device,k,any);
+    else
+      throw std::runtime_error("No device handle");
+  }
+};
+
+static std::map<xrt_core::query::key_type, std::unique_ptr<xrt_core::query::request>> query_tbl;
+
+template <typename QueryRequestType, typename Getter>
+static void
+emplace_function0_getter()
+{
+  auto k = QueryRequestType::key;
+  query_tbl.emplace(k, std::make_unique<function0_getter<QueryRequestType, Getter>>());
+}
+
+template <typename QueryRequestType, typename Getter>
+static void
+emplace_function1_getter()
+{
+  auto k = QueryRequestType::key;
+  query_tbl.emplace(k, std::make_unique<function1_getter<QueryRequestType, Getter>>());
+}
+
+static void
+initialize_query_table()
+{
+  emplace_function0_getter<query::pcie_vendor,           info>();
+  emplace_function0_getter<query::pcie_device,           info>();
+  emplace_function0_getter<query::pcie_subsystem_vendor, info>();
+  emplace_function0_getter<query::pcie_subsystem_id,     info>();
+}
+
+struct X { X() { initialize_query_table(); }};
+static X x;
+
+}
+
 namespace xrt_core {
+
+const query::request&
+device_windows::
+lookup_query(query::key_type query_key) const
+{
+  auto it = query_tbl.find(query_key);
+
+  if (it == query_tbl.end()) {
+    using qtype = std::underlying_type<query::key_type>::type;
+    std::string err = boost::str( boost::format("The given query request ID (%d) is not supported on Linux.")
+                                  % static_cast<qtype>(query_key));
+    throw std::runtime_error(err);
+  }
+
+  return *(it->second);
+}
 
 const device_windows::IOCTLEntry &
 device_windows::
@@ -603,12 +682,6 @@ get_IOCTL_entry(QueryRequest qr) const
   // Initialize our lookup table
   static const std::map<QueryRequest, IOCTLEntry> QueryRequestToIOCTLTable =
   {
-    { QR_PCIE_VENDOR,               { info }},
-    { QR_PCIE_DEVICE,               { info }},
-    { QR_PCIE_SUBSYSTEM_VENDOR,     { info }},
-    { QR_PCIE_SUBSYSTEM_ID,         { info }},
-    { QR_PCIE_LINK_SPEED,           { nullptr }},
-    { QR_PCIE_EXPRESS_LANE_WIDTH,   { nullptr }},
     { QR_PCIE_BDF_BUS,              { bdf_fcn }},
     { QR_PCIE_BDF_DEVICE,           { bdf_fcn }},
     { QR_PCIE_BDF_FUNCTION,         { bdf_fcn }},

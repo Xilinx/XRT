@@ -33,7 +33,12 @@ public:
   virtual void read(uint64_t addr, void* buf, uint64_t len) const;
   virtual void write(uint64_t addr, const void* buf, uint64_t len) const;
 
+private:
+  // Private look up function for concrete query::request
+  virtual const query::request&
+  lookup_query(query::key_type query_key) const;
 };
-}
 
-#endif /* CORE_SYSTEM_H */
+} // xrt_core
+
+#endif
