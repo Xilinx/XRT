@@ -365,7 +365,7 @@ static ssize_t mgmt_reset_store(struct device *dev,
 	 */
 	switch(val) {
 	case 1:
-		ret = (int) xclmgmt_hot_reset(lro);
+		ret = (int) xclmgmt_hot_reset(lro, true);
 		if (ret < 0)
 			return ret;
 		break;

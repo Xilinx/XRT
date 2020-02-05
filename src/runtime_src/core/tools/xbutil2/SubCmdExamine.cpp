@@ -74,23 +74,21 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
 
   po::options_description queryDesc("Options");  // Note: Boost will add the colon.
   queryDesc.add_options()
-    ("device,d", boost::program_options::value<decltype(device)>(&device), "The device of interest. This is specified as follows:\n"
-                                                                           "  <BDF> - Bus:Device.Function (e.g., 0000:d8:00.0)\n"
-                                                                           "  all   - Examines all known devices (default)")
+    ("device,d", boost::program_options::value<decltype(device)>(&device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' (default) indicates that every found device should be examined.")
     ("report,r", boost::program_options::value<decltype(report)>(&report), "The type of report to be produced. Reports currently available are:\n"
-                                                                           "  all         - All know reports are produced\n"
+                                                                           "  all         - All known reports are produced\n"
                                                                            "  scan        - Terse report of found devices (default)\n"
                                                                            "  electrical  - Voltages, currents, and power\n"
                                                                            "                consumption on the device\n"
                                                                            "  temperature - Temperatures across the device\n"
                                                                            "  os-info     - Information relating to the operating\n"
                                                                            "                system and drivers\n"
-                                                                           "  debug-ip-status - Debug IP Status\n"
+                                                                           "  debug-ip    - Debug IP Status\n"
                                                                            "  fans        - Fan status")
     ("format,f", boost::program_options::value<decltype(format)>(&format), "Report output format. Valid values are:\n"
                                                                            "  text        - Human readable report (default)\n"
                                                                            "  json-2020.1 - JSON 2020.1 schema")
-    ("output,o", boost::program_options::value<decltype(output)>(&output), "Direct the output to the given file.")
+    ("output,o", boost::program_options::value<decltype(output)>(&output), "Direct the output to the given file")
     ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
 

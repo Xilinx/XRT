@@ -263,8 +263,15 @@ static std::string get_devfs_path(bool is_mgmt, uint32_t instance)
     return prefixStr + instStr;
 }
 
+static bool is_admin()
+{     
+    return (getuid() == 0) || (geteuid() == 0);
+}
+
 int pcidev::pci_device::open(const std::string& subdev, int flag)
 {
+    if (is_mgmt && !::is_admin())
+        throw std::runtime_error("Root privileges required");
     // Open xclmgmt/xocl node
     if (subdev.empty()) {
         std::string devfs = get_devfs_path(is_mgmt, instance);

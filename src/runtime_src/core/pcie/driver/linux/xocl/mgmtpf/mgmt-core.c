@@ -59,11 +59,6 @@ MODULE_PARM_DESC(minimum_initialization,
 
 #define	MAX_DYN_SUBDEV		1024
 
-#define	CLK_MAX_VALUE		6400
-#define	CLK_SHUTDOWN_BIT	0x1
-#define	DEBUG_CLK_SHUTDOWN_BIT	0x2
-#define	VALID_CLKSHUTDOWN_BITS	(CLK_SHUTDOWN_BIT|DEBUG_CLK_SHUTDOWN_BIT)
-
 static dev_t xclmgmt_devnode;
 struct class *xrt_class;
 
@@ -448,9 +443,6 @@ static int health_check_cb(void *data)
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)data;
 	struct xcl_mailbox_req mbreq = { 0 };
 	bool tripped, latched = false;
-	void __iomem *shutdown_clk = xocl_iores_get_base(lro, IORES_CLKSHUTDOWN);
-	uint32_t clk_status, ucs_status;
-	struct ucs_control_status_ch1 *ucs_status_ch1;
 	int err;
 
 	if (!health_check)
@@ -460,36 +452,7 @@ static int health_check_cb(void *data)
 	if (tripped)
 		goto skip_checks;
 	
-	if (shutdown_clk) {
-		clk_status = XOCL_READ_REG32(shutdown_clk);
-		/* BIT0:latch bit, BIT1:Debug bit */
-		if (!(clk_status & (~VALID_CLKSHUTDOWN_BITS))) {
-			latched = clk_status & CLK_SHUTDOWN_BIT;
-			if (latched)
-				mgmt_err(lro, "Compute-Unit clocks have been stopped! Power or Temp may exceed limits, notify peer");
-		}
-	} else {
-		/* this is R2.0 system */
-		err = xocl_iores_read32(lro, XOCL_SUBDEV_LEVEL_URP,
-		    IORES_UCS_CONTROL_STATUS, XOCL_RES_OFFSET_CHANNEL1, &ucs_status);
-		if (err) {
-			if (err != -ENODEV)
-				mgmt_err(lro, "Read %s error %d.",
-				    NODE_UCS_CONTROL_STATUS, err);
-		} else {
-			ucs_status_ch1 = (struct ucs_control_status_ch1 *)&ucs_status;
-			if (ucs_status_ch1->shutdown_clocks_latched) {
-				mgmt_err(lro, "Critical temperature or power event, ULP kernel clocks have been stopped, reload the ULP to continue.");
-				latched = true;
-			} else if (ucs_status_ch1->clock_throttling_average > CLK_MAX_VALUE) {
-				mgmt_err(lro, "ULP kernel clocks %d exceeds expected maximum value %d.",
-				    ucs_status_ch1->clock_throttling_average, CLK_MAX_VALUE);
-			} else if (ucs_status_ch1->clock_throttling_average) {
-				mgmt_err(lro, "ULP kernel clocks throttled at %d%%.",
-				    (ucs_status_ch1->clock_throttling_average / CLK_MAX_VALUE) * 100);
-			}
-		}
-	}
+	(void) xocl_clock_status(lro, &latched);
 
 	check_sensor(lro);
 
@@ -534,7 +497,7 @@ static int xclmgmt_reset(xdev_handle_t xdev_hdl)
 {
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)xdev_hdl;
 
-	return xclmgmt_hot_reset(lro);
+	return xclmgmt_hot_reset(lro, true);
 }
 
 struct xocl_pci_funcs xclmgmt_pci_ops = {
@@ -747,11 +710,16 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		 * before peer wakes up and start touching the PCIE BAR,
 		 * which is not allowed during reset.
 		 */
-		ret = (int) xclmgmt_hot_reset(lro);
+		ret = (int) xclmgmt_hot_reset(lro, true);
 #else
-		ret = (int) xclmgmt_hot_reset(lro);
-		(void) xocl_peer_response(lro, req->req, msgid, &ret,
+		xocl_drvinst_set_offline(lro, true);
+		ret = xocl_peer_response(lro, req->req, msgid, &ret,
 			sizeof(ret));
+		if (ret) {
+			/* the other side does not recv resp, force reset */
+			ret = xocl_queue_work(lro, XOCL_WORK_FORCE_RESET, 0);
+		} else
+			ret = xocl_queue_work(lro, XOCL_WORK_RESET, 0);
 #endif
 		break;
 	case XCL_MAILBOX_REQ_LOAD_XCLBIN_KADDR: {
@@ -1064,6 +1032,30 @@ failed:
 	return rc;
 }
 
+static void xclmgmt_work_cb(struct work_struct *work)
+{
+	struct xocl_work *_work = (struct xocl_work *)to_delayed_work(work);
+	struct xclmgmt_dev *lro = container_of(_work,
+			struct xclmgmt_dev, core.works[_work->op]);
+	int ret;
+
+	switch (_work->op) {
+	case XOCL_WORK_RESET:
+		ret = (int) xclmgmt_hot_reset(lro, false);
+		if (!ret)
+			xocl_drvinst_set_offline(lro, false);
+		break;
+	case XOCL_WORK_FORCE_RESET:
+		ret = (int) xclmgmt_hot_reset(lro, true);
+		if (!ret)
+			xocl_drvinst_set_offline(lro, false);
+		break;
+	default:
+		mgmt_err(lro, "Invalid op code %d", _work->op);
+		break;
+	}
+}
+
 /*
  * Device initialization is done in two phases:
  * 1. Minimum initialization - init to the point where open/close/mmap entry
@@ -1074,9 +1066,10 @@ failed:
  */
 static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 {
-	int rc = 0;
+	int rc = 0, i;
 	struct xclmgmt_dev *lro = NULL;
 	struct xocl_board_private *dev_info;
+	char wq_name[15];
 
 	xocl_info(&pdev->dev, "Driver: %s", XRT_DRIVER_VERSION);
 	xocl_info(&pdev->dev, "probe(pdev = 0x%p, pci_id = 0x%p)\n", pdev, id);
@@ -1087,6 +1080,11 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		xocl_err(&pdev->dev, "Could not kzalloc(xclmgmt_dev).\n");
 		rc = -ENOMEM;
 		goto err_alloc;
+	}
+
+	for (i = XOCL_WORK_RESET; i < XOCL_WORK_NUM; i++) {
+		INIT_DELAYED_WORK(&lro->core.works[i].work, xclmgmt_work_cb);
+		lro->core.works[i].op = i;
 	}
 
 	rc = xocl_subdev_init(lro);
@@ -1128,9 +1126,18 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		goto err_cdev;
 	}
 
+	snprintf(wq_name, sizeof(wq_name), "mgmt_wq%d", lro->core.dev_minor);
+	lro->core.wq = create_singlethread_workqueue(wq_name);
+	if (!lro->core.wq) {
+		xocl_err(&pdev->dev, "failed to create work queue");
+		rc = -EFAULT;
+		goto err_create_wq;
+	}
+
 	xocl_drvinst_set_filedev(lro, lro->user_char_dev.cdev);
 
 	mutex_init(&lro->busy_mutex);
+	mutex_init(&lro->core.wq_lock);
 
 	mgmt_init_sysfs(&pdev->dev);
 
@@ -1165,6 +1172,8 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	return 0;
 
+err_create_wq:
+	destroy_sg_char(&lro->user_char_dev);
 err_cdev:
 	unmap_bars(lro);
 err_map:
@@ -1197,6 +1206,9 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 	if (xocl_passthrough_virtualization_on(lro) &&
 		!iommu_present(&pci_bus_type))
 		pci_write_config_byte(pdev, 0x188, 0x0);
+
+	/* destroy queue before stopping health thread */
+	xocl_queue_destroy(lro);
 
 	xocl_thread_stop(lro);
 
@@ -1277,7 +1289,9 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_firewall,
 	xocl_init_axigate,
 	xocl_init_icap,
+	xocl_init_clock,
 	xocl_init_mig,
+	xocl_init_ert,
 	xocl_init_xmc,
 	xocl_init_dna,
 	xocl_init_fmgr,
@@ -1299,7 +1313,9 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_firewall,
 	xocl_fini_axigate,
 	xocl_fini_icap,
+	xocl_fini_clock,
 	xocl_fini_mig,
+	xocl_fini_ert,
 	xocl_fini_xmc,
 	xocl_fini_dna,
 	xocl_fini_fmgr,

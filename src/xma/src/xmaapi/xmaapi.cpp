@@ -165,6 +165,7 @@ void xma_thread1() {
                     priv1->num_cu_cmds_avg = priv1->num_cu_cmds_avg >> 1;
                     priv1->num_cu_cmds_avg_tmp = 0;
                     priv1->num_samples = 0;
+                    priv1->kernel_complete_total = priv1->kernel_complete_total >> 1;//Even though it is not atomic operation
                 } else if (priv1->num_cu_cmds_avg == 0 && priv1->num_samples == 128) {
                     xma_logmsg(XMA_INFO_LOG, "XMA-Session-Stats-Startup", "Session id: %d, type: %s, avg cmds: %.2f, busy vs idle: %d vs %d", itr1.first, xma_core::get_session_name(itr1.second.session_type).c_str(), priv1->num_cu_cmds_avg_tmp / 128.0, (uint32_t)priv1->cmd_busy, (uint32_t)priv1->cmd_idle);
                 }
@@ -237,10 +238,10 @@ void xma_thread1() {
         } else if (priv1->num_samples > 0) {
             avg_cmds = priv1->num_cu_cmds_avg_tmp / ((float)priv1->num_samples);
         }
-        xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Session id: %d, type: %s, avg cmds: %.2f, busy vs idle: %d vs %d", itr1.first, 
+        xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Session id: %d, type: %s, avg cu cmds: %.2f, busy vs idle: %d vs %d", itr1.first, 
             xma_core::get_session_name(itr1.second.session_type).c_str(), avg_cmds, (uint32_t)priv1->cmd_busy, (uint32_t)priv1->cmd_idle);
 
-        xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Session id: %d, max busy vs idle ticks: %d vs %d", itr1.first, (uint32_t)priv1->cmd_busy_ticks, (uint32_t)priv1->cmd_idle_ticks);
+        xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Session id: %d, max busy vs idle ticks: %d vs %d, relative cu load: %d", itr1.first, (uint32_t)priv1->cmd_busy_ticks, (uint32_t)priv1->cmd_idle_ticks, (uint32_t)priv1->kernel_complete_total);
         XmaHwKernel* kernel_info = priv1->kernel_info;
         if (kernel_info == NULL) {
             continue;

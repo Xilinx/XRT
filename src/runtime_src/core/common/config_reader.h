@@ -145,10 +145,10 @@ get_data_transfer_trace()
   return value;
 }
 
-inline std::string
+inline bool
 get_power_profile()
 {
-  static std::string value = (!get_profile()) ? "off" : detail::get_string_value("Debug.power_profile","off");
+  static bool value = get_profile() && detail::get_bool_value("Debug.power_profile",false);
   return value;
 }
 

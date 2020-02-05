@@ -37,6 +37,7 @@
 #include "core/common/utils.h"
 #include "core/common/sensor.h"
 #include "core/pcie/linux/scan.h"
+#include "core/pcie/linux/shim.h"
 #include "xclbin.h"
 #include "core/common/xrt_profiling.h"
 #include <version.h>
@@ -44,7 +45,10 @@
 #include <chrono>
 using Clock = std::chrono::high_resolution_clock;
 
-int xclUpdateSchedulerStat(xclDeviceHandle); // exposed by shim
+
+/* exposed by shim */
+int xclUpdateSchedulerStat(xclDeviceHandle);
+int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t sz);
 
 #define TO_STRING(x) #x
 #define AXI_FIREWALL
@@ -108,6 +112,13 @@ enum p2pcommand {
     P2P_ENABLE = 0x0,
     P2P_DISABLE,
     P2P_VALIDATE,
+};
+enum cmacommand {
+    CMA_ENABLE = 0x0,
+    CMA_DISABLE,
+    CMA_VALIDATE,
+    CMA_SIZE_1G,
+    CMA_SIZE_2M,
 };
 
 static const std::pair<std::string, command> map_pairs[] = {
@@ -756,9 +767,12 @@ public:
         sensor_tree::put( "board.physical.thermal.pcb.btm_front", xmc_se98_temp2);
 
         // physical.thermal
-        unsigned int fan_rpm, xmc_fpga_temp, xmc_fan_temp;
+        unsigned int fan_rpm, xmc_fpga_temp, xmc_fan_temp, vccint_temp;
         std::string fan_presence;
         
+        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_vccint_temp",  vccint_temp);
+        sensor_tree::put( "board.physical.thermal.vccint_temp.current",     vccint_temp);
+
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_fpga_temp", xmc_fpga_temp );
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_fan_temp",  xmc_fan_temp );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "fan_presence",         errmsg, fan_presence );
@@ -1021,10 +1035,11 @@ public:
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Temperature(C)\n";
-        ostr << std::setw(16) << "PCB TOP FRONT" << std::setw(16) << "PCB TOP REAR" << std::setw(16) << "PCB BTM FRONT" << std::endl;
+        ostr << std::setw(16) << "PCB TOP FRONT" << std::setw(16) << "PCB TOP REAR" << std::setw(16) << "PCB BTM FRONT" << std::setw(16) << "VCCINT TEMP" << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.pcb.top_front" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.pcb.top_rear"  )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.pcb.btm_front" ) << std::endl;
+             << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.pcb.btm_front" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.vccint_temp.current" ) << std::endl;
         ostr << std::setw(16) << "FPGA TEMP" << std::setw(16) << "TCRIT Temp" << std::setw(16) << "FAN Presence" 
              << std::setw(16) << "FAN Speed(RPM)" << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.fpga_temp") 
@@ -1472,7 +1487,7 @@ public:
             //addr = 0xC00000000;//48GB = 3 hops
             addr = 0x400000000;//16GB = one hop
             sz = 0x20000;//128KB
-            long numHops = addr / ddr_mem_size;
+            long numHops = addr / get_ddr_mem_size();
             auto t1 = Clock::now();
             for (unsigned i = 0; i < numIteration; i++) {
                 memwriteQuiet(addr, sz, pattern);
@@ -1692,6 +1707,7 @@ public:
 
     int reset(xclResetKind kind);
     int setP2p(bool enable, bool force);
+    int setCma(bool enable, uint64_t sz);
     int testP2p(void);
     int testM2m(void);
 
@@ -1718,6 +1734,7 @@ int xclReset(int argc, char *argv[]);
 int xclValidate(int argc, char *argv[]);
 std::unique_ptr<xcldev::device> xclGetDevice(unsigned index);
 int xclP2p(int argc, char *argv[]);
+int xclCma(int argc, char *argv[]);
 } // end namespace xcldev
 
 #endif /* XBUTIL_H */

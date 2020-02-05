@@ -27,6 +27,8 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <libudev.h>
+#include <boost/algorithm/string.hpp>
 
 #include <fstream>
 #include <vector>
@@ -47,14 +49,18 @@
 #include "common.h"
 #include "mpd_plugin.h"
 
+enum Hotplug_state {
+    MAILBOX_REMOVED,
+    MAILBOX_ADDED,
+};
 static bool quit = false;
 static const std::string plugin_path("/opt/xilinx/xrt/lib/libmpd_plugin.so");
 static struct mpd_plugin_callbacks plugin_cbs;
-static std::shared_ptr<Msgq<hotreset_msg>> hotreset_q_req;
 static std::map<std::string, std::atomic<bool>> threads_handling;
-static std::map<std::string, std::atomic<bool>> remove_done;
-static std::map<std::string, std::atomic<bool>> add_done;
+static std::map<std::string, enum Hotplug_state> state_machine;
 static std::map<std::string, std::shared_ptr<Msgq<queue_msg>>> threads_msgq;
+udev* mpd_hotplug;
+udev_monitor* mpd_hotplug_monitor;
 
 class Mpd : public Common
 {
@@ -62,7 +68,6 @@ public:
     Mpd(const std::string name, const std::string plugin_path, bool for_user) :
         Common(name, plugin_path, for_user), plugin_init(nullptr), plugin_fini(nullptr)
     {
-        hotreset_q_req = std::make_shared<Msgq<hotreset_msg>>();
     }
 
     ~Mpd()
@@ -90,6 +95,12 @@ private:
 
 void Mpd::start()
 {
+    mpd_hotplug = udev_new();
+    if (!mpd_hotplug)
+        throw std::runtime_error("mpd: can't create udev object");
+    mpd_hotplug_monitor = udev_monitor_new_from_netlink(mpd_hotplug, "udev");
+    udev_monitor_enable_receiving(mpd_hotplug_monitor);
+
     if (plugin_handle != nullptr) {
         plugin_init = (init_fn) dlsym(plugin_handle, INIT_FN_NAME);
         plugin_fini = (fini_fn) dlsym(plugin_handle, FINI_FN_NAME);
@@ -112,19 +123,34 @@ void Mpd::run()
      * implementation makes the next mailbox msg not read out promptly and ends
      * up a tx timeout
      *
-     * In some cases, the mailbox subdev for some cards need to be closed, while
-     * other card should be still running without being impacted. Eg, in azure,
-     * when doing hot reset on the card, we close the mailbox by exiting the getMsg
-     * thread, and after the reset, the mailbox is reopened. During the period, the
-     * handleMsg thread keeps running -- the hot reset response mailbox msg is sent
-     * within this thread.
+     * MPD, running as a daemon, will open mailbox subdevice. As a result, removing
+     * the xocl module before mailbox is closed is impossible, this will make
+     * the hotplug hang.(hotplug is required in some cases, eg, auzre hotreset,
+     * aws device id change, etc. In order to handle that, mpd is to monitor udev
+     * events, which hotplug will produce. For each hotplug, a bunch of events will
+     * be produced, here we need to monitor mailbox remove and add events.
+     * We maintain a state machine for each fpga. After mpd get started, the state is
+     * initialized as MAILBOX_ADDED, we create pair of threads for each fpga. Whenever
+     * a mailbox remove event is monitored, the state machine changes to MAILBOX_REMOVED,
+     * and the pair of threads will exit and the mailbox will be closed. After a
+     * mailbox add event is monitored, new pair of threads will be created.
+     *
      */
+    for (size_t i = 0; i < total; i++) {
+        std::string sysfs_name = pcidev::get_dev(i, true)->sysfs_name;
+        state_machine[sysfs_name] = MAILBOX_ADDED;
+    }
+
+    int udev_fd = udev_monitor_get_fd(mpd_hotplug_monitor);
     do
     {
         if (total == 0)
             syslog(LOG_INFO, "no device found");
         for (size_t i = 0; i < total; i++) {
             std::string sysfs_name = pcidev::get_dev(i, true)->sysfs_name;
+
+            if (state_machine[sysfs_name] != MAILBOX_ADDED)
+                continue;
             if (threads_getMsg.find(sysfs_name) != threads_getMsg.end() &&
                 threads_handleMsg.find(sysfs_name) != threads_handleMsg.end())
                 continue;
@@ -132,53 +158,65 @@ void Mpd::run()
             threads_handling[sysfs_name] = true;
             
             /*
-             * getMsg thread for the card has exitted. need to re-create it.
-             * there will never be a case where handleMsg thread exits while getMsg
-             * thread exists.
-             */
-            if (threads_getMsg.find(sysfs_name) == threads_getMsg.end() &&
-                threads_handleMsg.find(sysfs_name) != threads_handleMsg.end()) {
-                threads_getMsg.insert(std::pair<std::string, std::thread>(sysfs_name,
-                    std::move(std::thread(Mpd::mpd_getMsg, i))));
-                syslog(LOG_INFO, "re-create getMsg thread for %s", sysfs_name.c_str());
-                continue;
-            }
-
-            /*
-             * a card is firstly discovered. create the thread pair for it.
+             * create the thread pair for it.
              */
             syslog(LOG_INFO, "create thread pair for %s", sysfs_name.c_str());
             std::shared_ptr<Msgq<queue_msg>> msgq = std::make_shared<Msgq<queue_msg>>();
             threads_msgq[sysfs_name] = msgq;
-            add_done[sysfs_name] = false;
-            remove_done[sysfs_name] = false;
             threads_getMsg.insert(std::pair<std::string, std::thread>(sysfs_name,
                 std::move(std::thread(Mpd::mpd_getMsg, i))));
             threads_handleMsg.insert(std::pair<std::string, std::thread>(sysfs_name,
                 std::move(std::thread(Mpd::mpd_handleMsg, i))));
+            syslog(LOG_INFO, "%ld pairs of threads running...", threads_getMsg.size());
         }
 
-        syslog(LOG_INFO, "%ld pairs of threads running...", threads_getMsg.size());
 
-        while (!quit)
-        {
-            hotreset_msg req_msg;
-            int ret = hotreset_q_req->getMsg(1, req_msg);
-            if (ret) //timeout
+        std::string sysfs_name = "";
+        int ret = waitForMsg(udev_fd, 3);
+        if (ret) { //timeout
+            continue;
+        } else { //udev events
+            udev_device* udev_dev = udev_monitor_receive_device(mpd_hotplug_monitor);
+            if (!udev_dev)
                 continue;
+            const char *subsystem = udev_device_get_subsystem(udev_dev);
+            if (!subsystem || (strcmp(subsystem, "xrt_user"))) {
+                udev_device_unref(udev_dev);
+                continue;
+            }
+            const char *devpath = udev_device_get_devpath(udev_dev);
+            if (!devpath) {
+                udev_device_unref(udev_dev);
+                continue;
+            }
+            std::string pathStr = devpath;
+            size_t pos_e = pathStr.find("mailbox.u");
+            if (pos_e == std::string::npos) {
+                udev_device_unref(udev_dev);
+                continue;
+            }
+            size_t pos_s = pathStr.substr(0, pos_e - 1).rfind("/"); 
+            sysfs_name = pathStr.substr(pos_s + 1, pos_e - pos_s - 2);
 
-            if (req_msg.type == REMOVE_REQ) {
-                syslog(LOG_INFO, "receive req to close mailbox: %s", req_msg.sysfs_name.c_str());
-                threads_handling[req_msg.sysfs_name] = false;
-                threads_getMsg[req_msg.sysfs_name].join();
-                threads_getMsg.erase(req_msg.sysfs_name);
-                add_done.erase(req_msg.sysfs_name);
-                remove_done[req_msg.sysfs_name] = true;
-            } else if (req_msg.type == ADD_REQ) {
-                syslog(LOG_INFO, "receive req to open mailbox: %s", req_msg.sysfs_name.c_str());
-                break;
-            } else //never goes here
-                throw;
+            const char *action = udev_device_get_action(udev_dev);
+            if (action && strcmp(action, "remove") == 0) {
+                state_machine[sysfs_name] = MAILBOX_REMOVED;
+                threads_handling[sysfs_name] = false;
+                if (threads_getMsg.find(sysfs_name) != threads_getMsg.end()) {
+                    threads_getMsg[sysfs_name].join();
+                    threads_getMsg.erase(sysfs_name);
+                }
+                if (threads_handleMsg.find(sysfs_name) != threads_handleMsg.end()) {
+                    threads_handleMsg[sysfs_name].join();
+                    threads_handleMsg.erase(sysfs_name);
+                }
+                syslog(LOG_INFO, "udev: %s %s. Close mailbox", action, devpath);
+            } else if (action && strcmp(action, "add") == 0 &&
+                state_machine[sysfs_name] == MAILBOX_REMOVED) {
+                state_machine[sysfs_name] = MAILBOX_ADDED;
+                syslog(LOG_INFO, "udev: %s %s. Open mailbox", action, devpath);
+            }
+            udev_device_unref(udev_dev);
         }
 
     } while (!quit);
@@ -195,6 +233,11 @@ void Mpd::stop()
         syslog(LOG_INFO, "%s getMsg thread exit", t.first.c_str());
         t.second.join();
     }
+
+    if (mpd_hotplug_monitor)
+        udev_monitor_unref(mpd_hotplug_monitor);
+    if (mpd_hotplug)
+        udev_unref(mpd_hotplug);
 
     if (plugin_fini)
         (*plugin_fini)(plugin_cbs.mpc_cookie);
@@ -379,40 +422,15 @@ int Mpd::localMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
         break;
     }
     case XCL_MAILBOX_REQ_HOT_RESET: {//optional
-        if (plugin_cbs.plugin_cap & (1 << CAP_RESET_NEED_HELP)) {
-            //notify the mpd main thread to close mailbox fd
-            dev.log(LOG_INFO, "mpd daemon: pre-hotreset");
-            hotreset_msg msg;
-            std::string sysfs_name = pcidev::get_dev(dev.getIndex(), true)->sysfs_name;
-            msg.sysfs_name = sysfs_name;
-            msg.type = REMOVE_REQ;
-            hotreset_q_req->addMsg(msg);
-            while (remove_done.find(sysfs_name) == remove_done.end()
-                   || !remove_done[sysfs_name])
-                sleep(1);
-            remove_done.erase(sysfs_name);
-        }
         //do reset
-        dev.log(LOG_INFO, "mpd daemon: hotreset");
         Sw_mb_container c(sizeof(int), orig->id());
         if (plugin_cbs.mb_req.hot_reset) {
             int *resp = reinterpret_cast<int *>(c.get_payload_buf());
             c.set_hook(std::bind(plugin_cbs.mb_req.hot_reset, dev.getIndex(), resp));
         }
         processed = c.get_response();
-
-        if (plugin_cbs.plugin_cap & (1 << CAP_RESET_NEED_HELP)) {
-            //notify the mpd main thread that reset done
-            dev.log(LOG_INFO, "mpd daemon: post-reset");
-            hotreset_msg msg;
-            std::string sysfs_name = pcidev::get_dev(dev.getIndex(), true)->sysfs_name;
-            msg.sysfs_name = sysfs_name;
-            msg.type = ADD_REQ;
-            hotreset_q_req->addMsg(msg);
-            while (add_done.find(sysfs_name) == add_done.end()
-                   || !add_done[sysfs_name])
-                sleep(1);
-        }
+        dev.log(LOG_INFO, "mpd daemon: response %d sent ret = %d", req->req,
+             *((int *)(processed->payloadData())));
         break;
     }
     case XCL_MAILBOX_REQ_RECLOCK: {//optional
@@ -476,21 +494,21 @@ void Mpd::mpd_getMsg(size_t index)
     if (plugin_cbs.get_remote_msd_fd) {
         ret = (*plugin_cbs.get_remote_msd_fd)(dev.getIndex(), &msdfd);
         if (ret) {
-            syslog(LOG_ERR, "failed to get remote fd in plugin");
-            quit = true;
+            dev.log(LOG_ERR, "failed to get remote fd in plugin");
+            threads_handling[sysfs_name] = false;
             return;
         }
         cb = Mpd::localMsgHandler;
     } else {
         if (!dev.loadConf()) {
-            quit = true;
+            threads_handling[sysfs_name] = false;
             return;
         }
 
         ip = getIP(dev.getHost());
         if (ip.empty()) {
             dev.log(LOG_ERR, "Can't find out IP from host: %s", dev.getHost());
-            quit = true;
+            threads_handling[sysfs_name] = false;
             return;
         }
 
@@ -498,14 +516,14 @@ void Mpd::mpd_getMsg(size_t index)
             ip.c_str(), dev.getPort(), dev.getId());
 
         if ((msdfd = connectMsd(dev, ip, dev.getPort(), dev.getId())) < 0) {
-            quit = true;
+            threads_handling[sysfs_name] = false;
             return;
         }
     }
 
     mbxfd = dev.getMailbox();
     if (mbxfd == -1) {
-        quit = true;
+        threads_handling[sysfs_name] = false;
         return;
     }
 
@@ -523,10 +541,8 @@ void Mpd::mpd_getMsg(size_t index)
     if (plugin_cbs.mb_notify) {
         ret = (*plugin_cbs.mb_notify)(index, mbxfd, true);
         if (ret)
-            syslog(LOG_ERR, "failed to mark mgmt as online");
+            dev.log(LOG_ERR, "failed to mark mgmt as online");
     }
-
-    add_done[sysfs_name] = true;
 
     struct queue_msg msg = {
         .localFd = mbxfd,
@@ -581,11 +597,12 @@ void Mpd::mpd_getMsg(size_t index)
     if (plugin_cbs.mb_notify) {
         ret = (*plugin_cbs.mb_notify)(index, mbxfd, false);
         if (ret)
-            syslog(LOG_ERR, "failed to mark mgmt as offline");
+            dev.log(LOG_ERR, "failed to mark mgmt as offline");
     }
 
     if (msdfd > 0)     
         close(msdfd);
+
     dev.log(LOG_INFO, "mpd_getMsg thread for %s exit!!",
 	pcidev::get_dev(index)->sysfs_name.c_str());
 }
@@ -610,6 +627,7 @@ void Mpd::mpd_handleMsg(size_t index)
             break;
     }
     threads_handling[sysfs_name] = false;
+
     dev.log(LOG_INFO, "mpd_handleMsg thread for %s exit!!",
 	pcidev::get_dev(index)->sysfs_name.c_str());
 }

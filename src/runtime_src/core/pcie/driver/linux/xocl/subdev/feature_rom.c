@@ -354,6 +354,7 @@ static int __find_firmware(struct platform_device *pdev, char *fw_name,
 		err = request_firmware(fw, fw_name, &pcidev->dev);
 	}
 
+	xocl_info(&pdev->dev, "return %d", err);
 	return err;
 }
 

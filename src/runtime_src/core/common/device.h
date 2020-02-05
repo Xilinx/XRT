@@ -139,10 +139,18 @@ public:
       QR_FIREWALL_TIME_SEC,
       QR_POWER_MICROWATTS,
 
+      QR_MIG_ECC_ENABLED,
+      QR_MIG_ECC_STATUS,
+      QR_MIG_ECC_CE_CNT,
+      QR_MIG_ECC_UE_CNT,
+      QR_MIG_ECC_CE_FFA,
+      QR_MIG_ECC_UE_FFA,
+
       QR_FLASH_BAR_OFFSET,
       QR_IS_MFG,
       QR_F_FLASH_TYPE,
-      QR_FLASH_TYPE
+      QR_FLASH_TYPE,
+      QR_BOARD_NAME
   };
 public:
 

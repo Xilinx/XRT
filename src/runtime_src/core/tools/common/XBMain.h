@@ -17,16 +17,10 @@
 #ifndef __XBMgmtMain_h_
 #define __XBMgmtMain_h_
 
+// Include files
+// Please keep these to the bare minimum
+#include "XBHelpMenus.h"
 #include <string>
-#include <vector>
-#include <memory>
-
-// ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
-// Forward declarations - use these instead whenever possible...
-class SubCmd;
-
-// ----------------------- T Y P E D E F S -----------------------------------
-typedef std::vector<std::shared_ptr<SubCmd>> SubCmdsCollection;
     
 // ---------------------- F U N C T I O N S ----------------------------------
 void main_(int argc, char** argv, 
