@@ -61,8 +61,10 @@ class xclbin
 
 public:
   using addr_type = uint64_t;
-  //Max 64 mem banks for now.
-  using memidx_bitmask_type = std::bitset<64>;
+  // Max 128 memory indicies for now. This number must be >= to number
+  // of mem_topology.m_count.  Unfortunately it is a compile time constant.
+  // A better solution must be found (boost::dynamic_bitset<>???)
+  using memidx_bitmask_type = std::bitset<128>;
   using memidx_type = int32_t;
   using connidx_type = int32_t;
 

@@ -38,8 +38,9 @@
 
 
 #ifdef _WIN32
-#pragma warning (disable : 4996)
-/* Disable warning during Windows compilation for use of std::getenv */
+#pragma warning (disable : 4996 4702)
+/* 4996 : Disable warning during Windows compilation for use of std::getenv */
+/* 4702 : Disable warning for unreachable code. This is a temporary workaround for a crash on Windows */
 #endif
 
 
@@ -125,6 +126,9 @@ namespace xdp {
   // Perform final read of counters and force flush of trace buffers
   void OCLProfiler::endDeviceProfiling()
   {
+#ifdef _WIN32
+    return;
+#endif
     // Only needs to be called once
     if (mEndDeviceProfilingCalled)
    	  return;
@@ -399,6 +403,7 @@ namespace xdp {
     // Turn on application profiling
     turnOnProfile(xdp::RTUtil::PROFILE_APPLICATION);
 
+#ifndef _WIN32
     turnOnProfile(xdp::RTUtil::PROFILE_DEVICE_COUNTERS);
 
     char* emuMode = std::getenv("XCL_EMULATION_MODE");
@@ -410,6 +415,7 @@ namespace xdp {
 
     ProfileMgr->setTransferTrace(data_transfer_trace);
     ProfileMgr->setStallTrace(stall_trace);
+#endif
 
     // Enable profile summary if profile is on
     std::string profileFile("profile_summary");
@@ -529,6 +535,9 @@ namespace xdp {
 
   void OCLProfiler::logDeviceCounters(bool firstReadAfterProgram, bool forceReadCounters, bool logAllMonitors, xclPerfMonType type)
   {
+#ifdef _WIN32
+    return;
+#endif
     // check valid perfmon type
     if(!logAllMonitors && !( (deviceCountersProfilingOn() && (type == XCL_PERF_MON_MEMORY || type == XCL_PERF_MON_STR))
         || ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM) && type == XCL_PERF_MON_ACCEL) )) {
@@ -612,6 +621,9 @@ namespace xdp {
 
   int OCLProfiler::logTrace(xclPerfMonType type, bool forceRead, bool logAllMonitors)
   {
+#ifdef _WIN32
+    return -1;
+#endif
     auto profileMgr = getProfileManager();
     if(profileMgr->getLoggingTrace(type)) {
         return -1;

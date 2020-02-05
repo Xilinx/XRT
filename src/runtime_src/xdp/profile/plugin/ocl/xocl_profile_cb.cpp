@@ -660,7 +660,6 @@ void register_xocl_profile_callbacks() {
 }
 } // xdp
 
-extern "C"
 void
 initXDPLib()
 {
