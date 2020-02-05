@@ -50,10 +50,6 @@ namespace xdp {
     // share ownership of the global platform
     Platform = xocl::get_shared_platform();
 
-    if (xrt::config::get_app_debug()) {
-      appdebug::register_xocl_appdebug_callbacks();
-    }
-
   #ifdef PMD_OCL
       return;
   #endif

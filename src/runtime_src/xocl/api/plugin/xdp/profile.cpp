@@ -447,8 +447,11 @@ function_call_logger(const char* function, long long address)
   //This call here should occur just once per application run
   if (!s_load_xdp) {
     s_load_xdp = true;
-    if (xrt::config::get_app_debug() || xrt::config::get_profile()) {
+    if (xrt::config::get_profile()) {
       xrt::hal::load_xdp();
+    }
+    if (xrt::config::get_app_debug()) {
+      xrt::hal::load_xdp_app_debug();
     }
   }
 
