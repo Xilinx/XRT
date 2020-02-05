@@ -50,12 +50,6 @@ public:
    * query requests are implemented as ioctl calls.
    */
   enum QueryRequest {
-      QR_PCIE_VENDOR,
-      QR_PCIE_DEVICE,
-      QR_PCIE_SUBSYSTEM_VENDOR,
-      QR_PCIE_SUBSYSTEM_ID,
-      QR_PCIE_LINK_SPEED,
-      QR_PCIE_EXPRESS_LANE_WIDTH,
       QR_PCIE_BDF_BUS,
       QR_PCIE_BDF_DEVICE,
       QR_PCIE_BDF_FUNCTION,
@@ -177,6 +171,18 @@ public:
    */
   virtual xclDeviceHandle
   get_device_handle() const = 0;
+
+  virtual xclDeviceHandle
+  get_mgmt_handle() const
+  {
+    return XRT_NULL_HANDLE;
+  }
+
+  virtual xclDeviceHandle
+  get_user_handle() const
+  {
+    return XRT_NULL_HANDLE;
+  }
 
   /**
    * is_userpf_device() - Is this device a userpf
@@ -338,6 +344,39 @@ query_device(const std::shared_ptr<device>& device, device::QueryRequest qr)
 {
   return query_device<QueryType>(device.get(),qr);
 }
+
+template <typename QueryRequestType>
+static typename QueryRequestType::result_type
+device_query(const device* device)
+{
+  auto ret = device->query<QueryRequestType>();
+  return boost::any_cast<typename QueryRequestType::result_type>(ret);
+}
+
+template <typename QueryRequestType>
+static typename QueryRequestType::result_type
+device_query(const std::shared_ptr<device>& device)
+{
+  return device_query<QueryRequestType>(device.get());
+}
+
+template <typename QueryRequestType, typename ...Args>
+static typename QueryRequestType::result_type
+device_query(const std::shared_ptr<device>& device, Args&&... args)
+{
+  return device_query<QueryRequestType>(device.get(), std::forward<Args>(args)...);
+}
+
+template <typename QueryRequestType>
+struct ptree_updater
+{
+  static void
+  query_and_put(const device* device, boost::property_tree::ptree& pt)
+  {
+    auto value = xrt_core::device_query<QueryRequestType>(device);
+    pt.put(QueryRequestType::name(), QueryRequestType::to_string(value));
+  }
+};
 
 } // xrt_core
 

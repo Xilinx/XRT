@@ -10,7 +10,7 @@ class device;
 
 /**
  * query request infrastructure
- */ 
+ */
 namespace query {
 
 enum class key_type;
@@ -18,7 +18,7 @@ enum class key_type;
 /**
  * class request - virtual dispatch to concrete query requests
  *
- * The queue_type hierarchy is 
+ * The queue_type hierarchy is
  *
  *       [request]
  *           ^

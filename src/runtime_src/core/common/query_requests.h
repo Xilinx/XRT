@@ -28,8 +28,8 @@ namespace xrt_core {
 namespace query {
 
 /**
- * enum class key_type - keys for specific query requests 
- * 
+ * enum class key_type - keys for specific query requests
+ *
  * Use keys in this table to identify the desired query request.  Use
  * the key_type to identify the specific struct defining the query
  * request itself.  The request struct is named same as the key, so to
@@ -146,56 +146,99 @@ struct pcie_vendor : request
 {
   using result_type = uint16_t;
   static const key_type key = key_type::pcie_vendor;
+  static const char* name() { return "vendor"; }
 
   virtual boost::any
   get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type val)
+  {
+    return boost::str(boost::format("0x%x") % val);
+  }
 };
- 
+
 struct pcie_device : request
 {
   using result_type = uint16_t;
   static const key_type key = key_type::pcie_device;
+  static const char* name() { return "device"; }
 
   virtual boost::any
   get(const device*) const = 0;
+
+
+  static std::string
+  to_string(result_type val)
+  {
+    return boost::str(boost::format("0x%x") % val);
+  }
 };
- 
+
 struct pcie_subsystem_vendor : request
 {
   using result_type = uint16_t;
   static const key_type key = key_type::pcie_subsystem_vendor;
+  static const char* name() { return "subsystem_vendor"; }
 
   virtual boost::any
   get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type val)
+  {
+    return boost::str(boost::format("0x%x") % val);
+  }
 };
- 
+
 struct pcie_subsystem_id : request
 {
   using result_type = uint16_t;
   static const key_type key = key_type::pcie_subsystem_id;
+  static const char* name() { return "subsystem_id"; }
 
   virtual boost::any
   get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type val)
+  {
+    return boost::str(boost::format("0x%x") % val);
+  }
 };
- 
+
 struct pcie_link_speed : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::pcie_link_speed;
+  static const char* name() { return "link_speed"; }
 
   virtual boost::any
   get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type val)
+  {
+    return std::to_string(val);
+  }
 };
- 
+
 struct pcie_express_lane_width : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::pcie_express_lane_width;
+  static const char* name() { return "width"; }
 
   virtual boost::any
   get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type val)
+  {
+    return std::to_string(val);
+  }
 };
- 
+
 struct pcie_bdf : request
 {
   using result_type = std::tuple<uint16_t,uint16_t,uint16_t>;
@@ -212,7 +255,7 @@ struct pcie_bdf : request
        % std::get<1>(value) % std::get<2>(value));
   }
 };
- 
+
 struct dma_threads_raw : request
 {
   using result_type = std::vector<std::string>;
@@ -221,7 +264,7 @@ struct dma_threads_raw : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct rom_vbnv : request
 {
   using result_type = std::string;
@@ -230,7 +273,7 @@ struct rom_vbnv : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct rom_ddr_bank_size : request
 {
   using result_type = uint64_t;
@@ -239,7 +282,7 @@ struct rom_ddr_bank_size : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct rom_ddr_bank_count_max : request
 {
   using result_type = uint64_t;
@@ -248,7 +291,7 @@ struct rom_ddr_bank_count_max : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct rom_fpga_name : request
 {
   using result_type = std::string;
@@ -257,7 +300,7 @@ struct rom_fpga_name : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct rom_raw : request
 {
   using result_type = std::vector<char>;
@@ -266,7 +309,7 @@ struct rom_raw : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct rom_uuid : request
 {
   using result_type = std::string;
@@ -275,7 +318,7 @@ struct rom_uuid : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct rom_time_since_epoch : request
 {
   using result_type = uint64_t;
@@ -284,7 +327,7 @@ struct rom_time_since_epoch : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct mem_topology_raw : request
 {
   using result_type = std::vector<char>;
@@ -293,7 +336,7 @@ struct mem_topology_raw : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct ip_layout_raw : request
 {
   using result_type = std::vector<char>;
@@ -302,7 +345,7 @@ struct ip_layout_raw : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct xmc_version : request
 {
   using result_type = std::string;
@@ -311,7 +354,7 @@ struct xmc_version : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct xmc_serial_num : request
 {
   using result_type = std::string;
@@ -320,7 +363,7 @@ struct xmc_serial_num : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct xmc_max_power : request
 {
   using result_type = std::string;
@@ -329,7 +372,7 @@ struct xmc_max_power : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct xmc_bmc_version : request
 {
   using result_type = std::string;
@@ -338,7 +381,7 @@ struct xmc_bmc_version : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct xmc_status : request
 {
   using result_type = uint64_t;
@@ -347,7 +390,7 @@ struct xmc_status : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct xmc_reg_base : request
 {
   using result_type = uint64_t;
@@ -356,7 +399,7 @@ struct xmc_reg_base : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct dna_serial_num : request
 {
   using result_type = std::string;
@@ -365,7 +408,7 @@ struct dna_serial_num : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct clock_freqs : request
 {
   using result_type = std::vector<std::string> ;
@@ -374,7 +417,7 @@ struct clock_freqs : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct idcode : request
 {
   using result_type = std::string;
@@ -383,7 +426,7 @@ struct idcode : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct status_mig_calibrated : request
 {
   using result_type = bool;
@@ -392,7 +435,7 @@ struct status_mig_calibrated : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct status_p2p_enabled : request
 {
   using result_type = bool;
@@ -401,7 +444,7 @@ struct status_p2p_enabled : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct temp_card_top_front : request
 {
   using result_type = uint64_t;
@@ -410,7 +453,7 @@ struct temp_card_top_front : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct temp_card_top_rear : request
 {
   using result_type = uint64_t;
@@ -419,7 +462,7 @@ struct temp_card_top_rear : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct temp_card_bottom_front : request
 {
   using result_type = uint64_t;
@@ -428,7 +471,7 @@ struct temp_card_bottom_front : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct temp_fpga : request
 {
   using result_type = uint64_t;
@@ -437,7 +480,7 @@ struct temp_fpga : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct fan_trigger_critical_temp : request
 {
   using result_type = uint64_t;
@@ -446,7 +489,7 @@ struct fan_trigger_critical_temp : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct fan_fan_presence : request
 {
   using result_type = std::string;
@@ -455,7 +498,7 @@ struct fan_fan_presence : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct fan_speed_rpm : request
 {
   using result_type = uint64_t;
@@ -464,7 +507,7 @@ struct fan_speed_rpm : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct ddr_temp_0 : request
 {
   using result_type = uint64_t;
@@ -473,7 +516,7 @@ struct ddr_temp_0 : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct ddr_temp_1 : request
 {
   using result_type = uint64_t;
@@ -482,7 +525,7 @@ struct ddr_temp_1 : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct ddr_temp_2 : request
 {
   using result_type = uint64_t;
@@ -491,7 +534,7 @@ struct ddr_temp_2 : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct ddr_temp_3 : request
 {
   using result_type = uint64_t;
@@ -500,7 +543,7 @@ struct ddr_temp_3 : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct hbm_temp : request
 {
   using result_type = uint64_t;
@@ -509,7 +552,7 @@ struct hbm_temp : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct cage_temp_0 : request
 {
   using result_type = uint64_t;
@@ -518,7 +561,7 @@ struct cage_temp_0 : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct cage_temp_1 : request
 {
   using result_type = uint64_t;
@@ -527,7 +570,7 @@ struct cage_temp_1 : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct cage_temp_2 : request
 {
   using result_type = uint64_t;
@@ -536,7 +579,7 @@ struct cage_temp_2 : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct cage_temp_3 : request
 {
   using result_type = uint64_t;
@@ -545,7 +588,7 @@ struct cage_temp_3 : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct v12v_pex_millivolts : request
 {
   using result_type = uint64_t;
@@ -554,7 +597,7 @@ struct v12v_pex_millivolts : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct v12v_pex_milliamps : request
 {
   using result_type = uint64_t;
@@ -563,7 +606,7 @@ struct v12v_pex_milliamps : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct v12v_aux_millivolts : request
 {
   using result_type = uint64_t;
@@ -572,7 +615,7 @@ struct v12v_aux_millivolts : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct v12v_aux_milliamps : request
 {
   using result_type = uint64_t;
@@ -581,7 +624,7 @@ struct v12v_aux_milliamps : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct v3v3_pex_millivolts : request
 {
   using result_type = uint64_t;
@@ -590,7 +633,7 @@ struct v3v3_pex_millivolts : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct v3v3_aux_millivolts : request
 {
   using result_type = uint64_t;
@@ -599,7 +642,7 @@ struct v3v3_aux_millivolts : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct ddr_vpp_bottom_millivolts : request
 {
   using result_type = uint64_t;
@@ -608,7 +651,7 @@ struct ddr_vpp_bottom_millivolts : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct ddr_vpp_top_millivolts : request
 {
   using result_type = uint64_t;
@@ -617,7 +660,7 @@ struct ddr_vpp_top_millivolts : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct v5v5_system_millivolts : request
 {
   using result_type = uint64_t;
@@ -626,7 +669,7 @@ struct v5v5_system_millivolts : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct v1v2_vcc_top_millivolts : request
 {
   using result_type = uint64_t;
@@ -635,7 +678,7 @@ struct v1v2_vcc_top_millivolts : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct v1v2_vcc_bottom_millivolts : request
 {
   using result_type = uint64_t;
@@ -644,7 +687,7 @@ struct v1v2_vcc_bottom_millivolts : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct v1v8_millivolts : request
 {
   using result_type = uint64_t;
@@ -653,7 +696,7 @@ struct v1v8_millivolts : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct v0v85_millivolts : request
 {
   using result_type = uint64_t;
@@ -662,7 +705,7 @@ struct v0v85_millivolts : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct v0v9_vcc_millivolts : request
 {
   using result_type = uint64_t;
@@ -671,7 +714,7 @@ struct v0v9_vcc_millivolts : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct v12v_sw_millivolts : request
 {
   using result_type = uint64_t;
@@ -680,7 +723,7 @@ struct v12v_sw_millivolts : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct mgt_vtt_millivolts : request
 {
   using result_type = uint64_t;
@@ -689,7 +732,7 @@ struct mgt_vtt_millivolts : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct int_vcc_millivolts : request
 {
   using result_type = uint64_t;
@@ -698,7 +741,7 @@ struct int_vcc_millivolts : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct int_vcc_milliamps : request
 {
   using result_type = uint64_t;
@@ -707,7 +750,7 @@ struct int_vcc_milliamps : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct a3v3_pex_milliamps : request
 {
   using result_type = uint64_t;
@@ -716,7 +759,7 @@ struct a3v3_pex_milliamps : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct a0v85_milliamps : request
 {
   using result_type = uint64_t;
@@ -725,7 +768,7 @@ struct a0v85_milliamps : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct v3v3_vcc_millivolts : request
 {
   using result_type = uint64_t;
@@ -734,7 +777,7 @@ struct v3v3_vcc_millivolts : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct hbm_1v2_millivolts : request
 {
   using result_type = uint64_t;
@@ -743,7 +786,7 @@ struct hbm_1v2_millivolts : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct v2v5_vpp_millivolts : request
 {
   using result_type = uint64_t;
@@ -752,7 +795,7 @@ struct v2v5_vpp_millivolts : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct int_bram_vcc_millivolts : request
 {
   using result_type = uint64_t;
@@ -761,7 +804,7 @@ struct int_bram_vcc_millivolts : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct firewall_detect_level : request
 {
   using result_type = uint64_t;
@@ -770,7 +813,7 @@ struct firewall_detect_level : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct firewall_status : request
 {
   using result_type = uint64_t;
@@ -779,7 +822,7 @@ struct firewall_status : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct firewall_time_sec : request
 {
   using result_type = uint64_t;
@@ -788,7 +831,7 @@ struct firewall_time_sec : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct power_microwatts : request
 {
   using result_type = uint64_t;
@@ -797,7 +840,7 @@ struct power_microwatts : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct mig_ecc_enabled : request
 {
   using result_type = bool;
@@ -806,7 +849,7 @@ struct mig_ecc_enabled : request
   virtual boost::any
   get(const device*, const boost::any&) const = 0;
 };
- 
+
 struct mig_ecc_status : request
 {
   using result_type = uint64_t;
@@ -815,7 +858,7 @@ struct mig_ecc_status : request
   virtual boost::any
   get(const device*, const boost::any&) const = 0;
 };
- 
+
 struct mig_ecc_ce_cnt : request
 {
   using result_type = uint64_t;
@@ -824,7 +867,7 @@ struct mig_ecc_ce_cnt : request
   virtual boost::any
   get(const device*, const boost::any&) const = 0;
 };
- 
+
 struct mig_ecc_ue_cnt : request
 {
   using result_type = uint64_t;
@@ -833,7 +876,7 @@ struct mig_ecc_ue_cnt : request
   virtual boost::any
   get(const device*, const boost::any&) const = 0;
 };
- 
+
 struct mig_ecc_ce_ffa : request
 {
   using result_type = uint64_t;
@@ -842,7 +885,7 @@ struct mig_ecc_ce_ffa : request
   virtual boost::any
   get(const device*, const boost::any&) const = 0;
 };
- 
+
 struct mig_ecc_ue_ffa : request
 {
   using result_type = uint64_t;
@@ -851,7 +894,7 @@ struct mig_ecc_ue_ffa : request
   virtual boost::any
   get(const device*, const boost::any&) const = 0;
 };
- 
+
 struct flash_bar_offset : request
 {
   using result_type = uint64_t;
@@ -860,7 +903,7 @@ struct flash_bar_offset : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct is_mfg : request
 {
   using result_type = bool;
@@ -869,7 +912,7 @@ struct is_mfg : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct f_flash_type : request
 {
   using result_type = std::string;
@@ -878,7 +921,7 @@ struct f_flash_type : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct flash_type : request
 {
   using result_type = std::string;
@@ -887,7 +930,7 @@ struct flash_type : request
   virtual boost::any
   get(const device*) const = 0;
 };
- 
+
 struct board_name : request
 {
   using result_type = std::string;
