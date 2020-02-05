@@ -589,7 +589,7 @@ struct info
 };
 
 template <typename QueryRequestType, typename Getter>
-struct function_getter : QueryRequestType
+struct function0_getter : QueryRequestType
 {
   static_assert(std::is_same<Getter::result_type, QueryRequestType::result_type>::value, "type mismatch");
 
@@ -604,25 +604,52 @@ struct function_getter : QueryRequestType
     else
       throw std::runtime_error("No device handle");
   }
+
+};
+
+template <typename QueryRequestType, typename Getter>
+struct function1_getter : QueryRequestType
+{
+  static_assert(std::is_same<Getter::result_type, QueryRequestType::result_type>::value, "type mismatch");
+
+  boost::any
+  get(const xrt_core::device* device, const boost::any& any) const
+  {
+    auto k = QueryRequestType::key;
+    if (auto mhdl = device->get_mgmt_handle())
+      return Getter::mgmt(device,k,any);
+    else if (auto uhdl = device->get_user_handle())
+      return Getter::user(device,k,any);
+    else
+      throw std::runtime_error("No device handle");
+  }
 };
 
 static std::map<xrt_core::query::key_type, std::unique_ptr<xrt_core::query::request>> query_tbl;
 
 template <typename QueryRequestType, typename Getter>
 static void
-emplace_function_getter()
+emplace_function0_getter()
 {
   auto k = QueryRequestType::key;
-  query_tbl.emplace(k, std::make_unique<function_getter<QueryRequestType, Getter>>());
+  query_tbl.emplace(k, std::make_unique<function0_getter<QueryRequestType, Getter>>());
+}
+
+template <typename QueryRequestType, typename Getter>
+static void
+emplace_function1_getter()
+{
+  auto k = QueryRequestType::key;
+  query_tbl.emplace(k, std::make_unique<function1_getter<QueryRequestType, Getter>>());
 }
 
 static void
 initialize_query_table()
 {
-  emplace_function_getter<query::pcie_vendor,           info>();
-  emplace_function_getter<query::pcie_device,           info>();
-  emplace_function_getter<query::pcie_subsystem_vendor, info>();
-  emplace_function_getter<query::pcie_subsystem_id,     info>();
+  emplace_function0_getter<query::pcie_vendor,           info>();
+  emplace_function0_getter<query::pcie_device,           info>();
+  emplace_function0_getter<query::pcie_subsystem_vendor, info>();
+  emplace_function0_getter<query::pcie_subsystem_id,     info>();
 }
 
 struct X { X() { initialize_query_table(); }};
