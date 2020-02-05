@@ -1258,12 +1258,18 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	xdev->core.pdev = pdev;
 	xdev->core.dev_minor = XOCL_INVALID_MINOR;
 	rwlock_init(&xdev->core.rwlock);
-	xocl_fill_dsa_priv(xdev, (struct xocl_board_private *)ent->driver_data);
 	mutex_init(&xdev->dev_lock);
 	mutex_init(&xdev->core.wq_lock);
 	atomic64_set(&xdev->total_execs, 0);
 	atomic_set(&xdev->outstanding_execs, 0);
 	INIT_LIST_HEAD(&xdev->ctx_list);
+
+
+	ret = xocl_config_pci(xdev);
+	if (ret)
+		goto failed;
+
+	xocl_fill_dsa_priv(xdev, (struct xocl_board_private *)ent->driver_data);
 
 	for (i = XOCL_WORK_RESET; i < XOCL_WORK_NUM; i++) {
 		INIT_DELAYED_WORK(&xdev->core.works[i].work, xocl_work_cb);
@@ -1285,10 +1291,6 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 		xocl_err(&pdev->dev, "failed to identify bar");
 		goto failed;
 	}
-
-	ret = xocl_config_pci(xdev);
-	if (ret)
-		goto failed;
 
 	ret = xocl_subdev_create_all(xdev);
 	if (ret) {
