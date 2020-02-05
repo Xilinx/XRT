@@ -65,6 +65,14 @@ namespace xdp {
     // do nothing
   }
 
+  void XDPPluginI::logBufferEvent(double timestamp)
+  {
+    if (mFirstHostBufEventTimeMs == 0.0)
+      mFirstHostBufEventTimeMs = timestamp;
+    else
+      mLastHostBufEventTimeMs = timestamp;
+  }
+
   // Get name string of guidance
   void XDPPluginI::getGuidanceName(e_guidance check, std::string& name)
   {
@@ -131,6 +139,9 @@ namespace xdp {
         break;
       case MEMORY_TYPE_BIT_WIDTH:
         name = "MEMORY_TYPE_BIT_WIDTH";
+        break;
+      case BUFFER_TX_ACTIVE_TIME_MS:
+        name = "BUFFER_TX_ACTIVE_TIME_MS";
         break;
       case APPLICATION_RUN_TIME_MS:
         name = "APPLICATION_RUN_TIME_MS";

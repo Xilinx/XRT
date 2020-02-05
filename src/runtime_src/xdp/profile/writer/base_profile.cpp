@@ -689,6 +689,15 @@ namespace xdp {
       }
     }
 
+    // Time period during which host buffer transfers were active
+    {
+      std::string check;
+      double time = mPluginHandle->getBufferTxActiveTimeMs();
+      XDPPluginI::getGuidanceName(XDPPluginI::BUFFER_TX_ACTIVE_TIME_MS, check);
+      writeTableCells(getStream(), check, "all", time);
+      writeTableRowEnd(getStream());
+    }
+
     // Application Run Time Ms
     {
       std::string check;

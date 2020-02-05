@@ -236,6 +236,12 @@ namespace xdp {
     }
     RTUtil::setTimeStamp(objStage, traceObject, timeStamp);
 
+    // Log Guidance Data
+    // Time period during which host buffer transfers were active
+    if (objKind == RTUtil::READ_BUFFER || objKind == RTUtil::WRITE_BUFFER) {
+      mPluginHandle->logBufferEvent(timeStamp);
+    }
+
     // clEnqueueNDRangeKernel returns END with no START
     // if data transfer was already completed.
     // We can safely discard those events
