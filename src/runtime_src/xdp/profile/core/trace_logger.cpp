@@ -265,14 +265,6 @@ namespace xdp {
     writeTimelineTrace(timeStamp, objKind, commandString, stageString, eventString, dependString,
                        objSize, srcAddress, srcBank, dstAddress, dstBank, threadId);
 
-#if 0
-    // Write host event to trace buffer
-    if (objStage == RTUtil::START || objStage == RTUtil::END) {
-      xclPerfMonEventType eventType = (objStage == RTUtil::START) ? XCL_PERF_MON_START_EVENT : XCL_PERF_MON_END_EVENT;
-      xclPerfMonEventID eventID = (objKind == RTUtil::READ_BUFFER) ? XCL_PERF_MON_READ_ID : XCL_PERF_MON_WRITE_ID;
-      xdp::profile::platform::write_host_event(xdp::RTSingleton::Instance()->getcl_platform_id(), eventType, eventID);
-    }
-#endif
   }
 
   // ***************************************************************************
@@ -446,15 +438,6 @@ namespace xdp {
                            objId, workGroupSize, cuId);
       }
     }
-
-#if 0
-    // Write host event to trace buffer (only if used)
-    if (objStage == RTUtil::START || objStage == RTUtil::END) {
-      xclPerfMonEventType eventType = (objStage == RTUtil::START) ? XCL_PERF_MON_START_EVENT : XCL_PERF_MON_END_EVENT;
-      xclPerfMonEventID eventID = (cu_name.empty()) ? XCL_PERF_MON_KERNEL0_ID : XCL_PERF_MON_CU0_ID;
-      xdp::profile::platform::write_host_event(xdp::RTSingleton::Instance()->getcl_platform_id(), eventType, eventID);
-    }
-#endif
   }
 
   // ***************************************************************************
