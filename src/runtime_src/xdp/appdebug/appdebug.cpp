@@ -23,10 +23,9 @@
 
 #define XDP_SOURCE
 
-#include "appdebug.h"
-#include "appdebug_track.h"
-#include "xdp/rt_singleton.h"
-#include "xdp/profile/core/rt_profile.h"
+#include "xdp/appdebug/appdebug.h"
+#include "xdp/appdebug/appdebug_track.h"
+#include "xdp/appdebug/appdebug_plugin.h"
 
 #include "xocl/core/event.h"
 #include "xocl/core/command_queue.h"
@@ -38,10 +37,10 @@
 
 #include "xclbin/binary.h"
 
-#include "xclperf.h"
-#include "xcl_app_debug.h"
-#include "xclbin.h"
-#include "xcl_axi_checker_codes.h"
+#include "core/include/xclperf.h"
+#include "core/include/xcl_app_debug.h"
+#include "core/include/xclbin.h"
+#include "core/include/xcl_axi_checker_codes.h"
 
 #include <map>
 #include <sstream>
@@ -1220,17 +1219,12 @@ clGetDebugCounters() {
     return adv;
   }
 
-  if (!xdp::active()) {
+  if (!appdebug::active()) {
     auto adv = new app_debug_view<aim_debug_view>(nullptr, nullptr, true, "Runtime instance not yet created");
     return adv;
   }
-  auto rts = xdp::RTSingleton::Instance();
-  if (!rts) {
-    auto adv = new app_debug_view<aim_debug_view>(nullptr, nullptr, true, "Error: Runtime instance not available");
-    return adv;
-  }
 
-  auto platform = rts->getcl_platform_id();
+  auto platform = appdebug::getcl_platform_id();
   // Iterates over all devices, but assumes only one device
   memset(&debugResults,0, sizeof(xclDebugCountersResults));
   std::string subdev = "icap";
@@ -1378,13 +1372,8 @@ clGetDebugStreamCounters()
     auto adv = new app_debug_view<asm_debug_view>(nullptr, nullptr, true, "xstatus is not supported in emulation flow");
     return adv;
   }
-  if (!xdp::active()) {
+  if (!appdebug::active()) {
     auto adv = new app_debug_view<asm_debug_view>(nullptr, nullptr, true, "Runtime instance not yet created");
-    return adv;
-  }
-  auto rts = xdp::RTSingleton::Instance();
-  if (!rts) {
-    auto adv = new app_debug_view<asm_debug_view>(nullptr, nullptr, true, "Error: Runtime instance not available");
     return adv;
   }
 
@@ -1393,7 +1382,7 @@ clGetDebugStreamCounters()
   std::string subdev = "icap";
   std::string entry = "debug_ip_layout";
   std::string sysfs_open_path;
-  auto platform = rts->getcl_platform_id();
+  auto platform = appdebug::getcl_platform_id();
   for (auto device : platform->get_device_range())
   {
     if (device->is_active())
@@ -1583,13 +1572,8 @@ clGetDebugAccelMonitorCounters()
     auto adv = new app_debug_view<am_debug_view>(nullptr, nullptr, true, "xstatus is not supported in emulation flow");
     return adv;
   }
-  if (!xdp::active()) {
+  if (!appdebug::active()) {
     auto adv = new app_debug_view<am_debug_view>(nullptr, nullptr, true, "Runtime instance not yet created");
-    return adv;
-  }
-  auto rts = xdp::RTSingleton::Instance();
-  if (!rts) {
-    auto adv = new app_debug_view<am_debug_view>(nullptr, nullptr, true, "Error: Runtime instance not available");
     return adv;
   }
 
@@ -1599,7 +1583,7 @@ clGetDebugAccelMonitorCounters()
   std::string subdev = "icap";
   std::string entry = "debug_ip_layout";
   std::string sysfs_open_path;
-  auto platform = rts->getcl_platform_id();
+  auto platform = appdebug::getcl_platform_id();
   for (auto device : platform->get_device_range())
   {
     if (device->is_active())
@@ -1812,19 +1796,15 @@ clGetDebugCheckers() {
     auto adv = new app_debug_view<lapc_debug_view>(nullptr, nullptr, true, "xstatus is not supported in emulation flow");
     return adv;
   }
-  if (!xdp::active()) {
+  if (!appdebug::active()) {
     auto adv = new app_debug_view<lapc_debug_view>(nullptr, nullptr, true, "Runtime instance not yet created");
     return adv;
   }
-  auto rts = xdp::RTSingleton::Instance();
-  if (!rts) {
-    auto adv = new app_debug_view<lapc_debug_view>(nullptr, nullptr, true, "Error: Runtime instance not available");
-    return adv;
-  }
+
   std::string subdev = "icap";
   std::string entry = "debug_ip_layout";
   std::string sysfs_open_path;
-  auto platform = rts->getcl_platform_id();
+  auto platform = appdebug::getcl_platform_id();
   // Iterates over all devices, but assumes only one device
   memset(&debugCheckers,0, sizeof(xclDebugCheckersResults));
   for (auto device : platform->get_device_range()) {
