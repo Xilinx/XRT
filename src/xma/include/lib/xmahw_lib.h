@@ -101,7 +101,7 @@ typedef struct XmaHwExecBO
 typedef struct XmaBufferPool
 {
     std::list<XmaBufferObj>   buffers_busy;
-    std::queue<XmaBufferObj>  buffers_free;
+    std::vector<XmaBufferObj>  buffers_free;
     std::atomic<bool> pool_locked;
     uint64_t buffer_size;
     int32_t  bank_index;
