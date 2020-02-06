@@ -39,7 +39,7 @@ namespace xdp {
     public:
       XDP_EXPORT
       XDPPluginI();
-      
+
       XDP_EXPORT
     virtual ~XDPPluginI();
 
@@ -84,7 +84,7 @@ namespace xdp {
     // *****************
     public:
       typedef std::map<std::string, std::string> GuidanceMap;
-      typedef std::map<std::string, uint32_t> GuidanceMap2;
+      typedef std::map<std::string, uint64_t> GuidanceMap2;
       typedef std::map<uint64_t, uint64_t> GuidanceMap3;
       typedef std::map<uint64_t, std::vector<std::string>> GuidanceMap4;
 

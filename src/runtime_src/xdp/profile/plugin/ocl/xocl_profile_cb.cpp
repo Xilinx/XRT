@@ -164,7 +164,7 @@ void log_buffer_guidance(xocl::event* event, cl_kernel kernel)
 
     try {
       arg_name = arg->get_name();
-    } catch (const xocl::error& ex) {
+    } catch (const xocl::error&) {
       continue;
     }
     mem = arg->get_memory_object();
