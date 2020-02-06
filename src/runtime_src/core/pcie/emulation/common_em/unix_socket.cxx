@@ -19,27 +19,27 @@
 
 #include "unix_socket.h"
 
-unix_socket::unix_socket(std::string sock_id)
+unix_socket::unix_socket(const std::string& sock_id)
 {
+  std::string socket = sock_id;
   server_started = false;
   fd = -1;
   char* cUser = getenv("USER");
   if(cUser && !sock_id.compare("xcl_sock")) {
-    std::string user = cUser;
     char* c_sock_id = getenv("EMULATION_SOCKETID"); 
     if(c_sock_id ) {
-      sock_id = c_sock_id;
+      socket = c_sock_id;
     }
-    std::string pathname =  "/tmp/" + user;
-    name = pathname + "/" + sock_id;
+    std::string pathname = "/tmp/" + std::string(cUser);
+    name = pathname + "/" + socket;
     systemUtil::makeSystemCall(pathname, systemUtil::systemOperation::CREATE);
   } else {
-    name = "/tmp/" + sock_id;
+    name = "/tmp/" + socket;
   }
   start_server(name);
 }
 
-void unix_socket::start_server(const std::string sk_desc)
+void unix_socket::start_server(const std::string& sk_desc)
 {
   int sock= -1;
   struct sockaddr_un server;
