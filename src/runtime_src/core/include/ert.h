@@ -421,7 +421,7 @@ enum softkernel_type {
  * | 0x08    | ERT_USER_PF_base_addr. The base address of ERT peripherals
  */
 #if defined(ERT_BUILD_V20)
-uint32_t ert_base_addr;
+uint32_t ert_base_addr = 0;
 # define ERT_BASE_ADDR                     0x01F30008
 #endif
 
