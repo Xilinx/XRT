@@ -1377,6 +1377,13 @@ int xcldev::device::validate(bool quick)
     if (quick)
         return withWarning ? 1 : 0;
 
+    // Perform IOPS test
+    retVal = runOneTest("IOPS test",
+            std::bind(&xcldev::device::iopsTest, this));
+    withWarning = withWarning || (retVal == 1);
+    if (retVal < 0)
+        return retVal;
+    
     // Perform DMA test
     retVal = runOneTest("DMA test",
             std::bind(&xcldev::device::dmatest, this, 0, false));
@@ -2018,4 +2025,144 @@ int xcldev::device::testM2m()
         }
     }
     return ret;
+}
+
+/*
+ * iops test
+ */
+static void 
+iops_free_unmap_bo(xclDeviceHandle handle, unsigned boh,
+    void * boptr, size_t boSize)
+{
+    if(boptr != nullptr)
+        munmap(boptr, boSize);
+    if(boh != NULLBO)
+        xclFreeBO(handle, boh);
+}
+
+static void iops_alloc_init_bo(xclDeviceHandle handle, int bank, exec_struct* info)
+{
+    info->boh = xclAllocBO(handle, info->boSize, 0, bank);
+    if (info->boh == NULLBO)
+        throw std::runtime_error("Cannot obtain BO handle");
+
+    info->boptr = reinterpret_cast<char *>(xclMapBO(handle, info->boh, true));
+    if (info->boptr == nullptr) {
+        iops_free_unmap_bo(handle, info->boh, info->boptr, info->boSize);
+        throw std::runtime_error("Cannot obtain output BO");
+    }
+
+    memset(info->boptr, 'o', info->boSize);
+    if(xclSyncBO(handle, info->boh, XCL_BO_SYNC_BO_TO_DEVICE, info->boSize, 0)) {
+        iops_free_unmap_bo(handle, info->boh, info->boptr, info->boSize);
+        throw std::runtime_error("Cannot sync output BO to device");
+    }
+
+    xclBOProperties prop;
+    if(xclGetBOProperties(handle, info->boh, &prop)) {
+        iops_free_unmap_bo(handle, info->execboh, info->execboptr, info->execboSize);
+        throw std::runtime_error("Cannot obtain BO dev address");
+    }
+    uint64_t boh_address = prop.paddr;
+
+    info->execboh = xclAllocBO(handle, info->execboSize, 0, XCL_BO_FLAGS_EXECBUF);
+    info->execboptr = reinterpret_cast<ert_start_kernel_cmd *>(xclMapBO(handle, info->execboh, true));
+    if (info->execboptr == nullptr) {
+        iops_free_unmap_bo(handle, info->execboh, info->execboptr, info->execboSize);
+        throw std::runtime_error("Cannot obtain exec buf BO");
+    }
+    std::memset(info->execboptr, 0, info->execboSize);
+
+    //construct the exec buffer cmd to start the kernel.
+    int rsz = 19; // regmap array size
+    info->execboptr->state = 0;
+    //info->execboptr->stat_enabled = 1;
+    info->execboptr->opcode = ERT_START_CU;
+    info->execboptr->count = rsz;
+    info->execboptr->cu_mask = (0x1 << 0);
+    info->execboptr->data[rsz - 3] = boh_address;
+    info->execboptr->data[rsz - 2] = (boh_address >> 32);
+}
+
+int 
+xcldev::device::iopsTest()
+{
+    std::string errmsg;
+    std::vector<char> buf;
+    xclbin_lock xclbin_lock(m_handle, m_idx);
+    auto dev = pcidev::get_dev(m_idx);
+    int first_used_mem = -1;
+    
+
+    //variables
+    unsigned int cmd_per_batch = 1000; //b
+    unsigned int num_execs = 1; //t
+
+    if (dev == nullptr)
+        return -EINVAL;
+    
+    dev->sysfs_get("icap", "mem_topology", errmsg, buf);
+
+    const mem_topology *map = (mem_topology *)buf.data();
+    if (buf.empty() || map->m_count == 0) {
+        std::cout << "WARNING: 'mem_topology' invalid, "
+            << "unable to perform IOPS Test. Has the bitstream been loaded? "
+            << "See 'xbutil program'." << std::endl;
+        return -EINVAL;
+    }
+    for (int i = 0; i < map->m_count; i++) {
+        if (map->m_mem_data[i].m_used) {
+            first_used_mem = i;
+            break;
+        }
+    }
+
+    struct exec_struct {
+        unsigned out_bo_handle;
+        void* output_bo_ptr;
+        const unsigned int out_size;
+        unsigned exec_bo_handle;
+        void* exec_bo_ptr;
+        const unsigned int exec_size;
+    };
+
+    unsigned int num_issued = 0;
+    unsigned int num_completed = 0;
+    double duration = 0;
+    std::vector<std::shared_ptr<exec_struct>> cmds;
+    
+    //
+    for (unsigned int i = 0; i < arg->cmd_per_batch; i++) {
+        exec_struct info = {0};
+        iops_alloc_init_bo(m_handle, first_mem_used, &info);
+        auto p = std::make_shared<exec_struct>(info);
+        cmds.push_back(p);
+    }
+
+    // Execute the cmds
+    auto start = std::chrono::high_resolution_clock::now();
+    for (auto& c : cmds) {
+        if(xclExecBuf(handle,  execBoHandle))
+            throw std::runtime_error("Unable to issue exec buf");
+        num_issued++;
+    }
+    while (num_completed < arg->num_execs) {
+        for (auto& c : cmds) {
+            c->wait();
+            num_completed++;
+            if (num_completed >= arg->num_execs)
+                break;
+            if (num_issued < arg->num_execs) {
+                if(xclExecBuf(handle, execBoHandle))
+                    throw std::runtime_error("Unable to issue exec buf");
+                num_issued++;
+            }
+        }
+    }
+    auto end = std::chrono::high_resolution_clock::now();
+    duration = (std::chrono::duration_cast<std::chrono::microseconds>
+    (end - start)).count();
+
+
+    return 0;
 }
