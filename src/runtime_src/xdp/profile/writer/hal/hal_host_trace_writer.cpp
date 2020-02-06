@@ -58,8 +58,6 @@ namespace xdp {
     eventTypeBucketIdMap[READ_BUFFER] = rowCount;
     fout << "Dynamic_Row," << ++rowCount << ",Write,WRITE_BUFFER" << std::endl ;
     eventTypeBucketIdMap[WRITE_BUFFER] = rowCount;
-    fout << "Dynamic_Row_Summary," << ++rowCount << ",Kernel Enqueues,KERNEL_ENQUEUE" << std::endl ;
-    eventTypeBucketIdMap[KERNEL_ENQUEUE] = rowCount;
     fout << "Group_End,Data Transfer" << std::endl ;
     
     fout << "Group_End,Host" << std::endl ;
