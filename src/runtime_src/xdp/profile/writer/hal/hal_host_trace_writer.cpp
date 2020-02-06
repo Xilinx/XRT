@@ -15,7 +15,6 @@
  */
 
 #include "xdp/profile/writer/hal/hal_host_trace_writer.h"
-#include "xdp/profile/database/database.h"
 
 namespace xdp {
 
@@ -44,17 +43,25 @@ namespace xdp {
     //  and where each type of event we generate should end up.  It is
     //  based upon the static structure of the loaded xclbin in the
     //  device.
+    uint32_t rowCount = 0;
     fout << "STRUCTURE" << std::endl ;
+    
     fout << "Group_Start,Host" << std::endl ;
+
     fout << "Group_Start,HAL API Calls" << std::endl ;
-    fout << "Dynamic_General,General,0x0,HAL_API_CALL" << std::endl ;
+    fout << "Dynamic_Row," << ++rowCount << ",General,0x0,API_CALL" << std::endl;
+    eventTypeBucketIdMap[HAL_API_CALL] = rowCount;
     fout << "Group_End,HAL API Calls" << std::endl ;
+    
     fout << "Group_Start,Data Transfer" << std::endl ;
-    fout << "Dynamic_without_summary,Read, ,READ_BUFFER" << std::endl ;
-    fout << "Dynamic_without_summary,Write, ,WRITE_BUFFER" << std::endl ;
-    fout << "Dynamic_with_summary,Kernel Enqueues, ,KERNEL_ENQUEUE" 
-	 << std::endl ;
+    fout << "Dynamic_Row," << ++rowCount << ",Read,READ_BUFFER" << std::endl ;
+    eventTypeBucketIdMap[READ_BUFFER] = rowCount;
+    fout << "Dynamic_Row," << ++rowCount << ",Write,WRITE_BUFFER" << std::endl ;
+    eventTypeBucketIdMap[WRITE_BUFFER] = rowCount;
+    fout << "Dynamic_Row_Summary," << ++rowCount << ",Kernel Enqueues,KERNEL_ENQUEUE" << std::endl ;
+    eventTypeBucketIdMap[KERNEL_ENQUEUE] = rowCount;
     fout << "Group_End,Data Transfer" << std::endl ;
+    
     fout << "Group_End,Host" << std::endl ;
   }
 
@@ -70,12 +77,14 @@ namespace xdp {
     std::vector<VTFEvent*> HALAPIEvents = 
       (db->getDynamicInfo()).filterEvents( [](VTFEvent* e)
 					   {
-					     return e->isHALAPI() ;
+//               return e->isHALAPI() ;
+					     return e->isHostEvent() ;
 					   }
 					 ) ;
     for (auto e : HALAPIEvents)
     {
-      e->dump(fout, 0) ;
+      VTFEventType eventType = e->getEventType();
+      e->dump(fout, eventTypeBucketIdMap[eventType]) ;
     }
   }
 

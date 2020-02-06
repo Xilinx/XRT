@@ -142,6 +142,7 @@ namespace xdp {
     {
       fout << "Device " << i << " (handle: 0x" << std::hex << m.first
 	   << ")" << std::dec << std::endl ;
+
       fout << "\tUnmanaged Reads: " 
 	   << m.second.channels[0].transactionCount
 	   << " transactions, "
@@ -152,6 +153,7 @@ namespace xdp {
 	   << " transactions, "
 	   << m.second.channels[1].totalByteCount
 	   << " bytes transferred" << std::endl ;
+
       fout << "\txclRead: " 
 	   << m.second.channels[2].transactionCount
 	   << " transactions, "
@@ -162,6 +164,7 @@ namespace xdp {
 	   << " transactions, "
 	   << m.second.channels[3].totalByteCount
 	   << " bytes transferred" << std::endl ;
+     
       fout << "\treadBuffer: " 
 	   << m.second.channels[4].transactionCount
 	   << " transactions, "

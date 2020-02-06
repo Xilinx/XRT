@@ -56,7 +56,8 @@ namespace xdp {
     // AIE events
 
     // XRT host level events
-    HAL_API_CALL         = 50,
+    API_CALL             = 50,
+    HAL_API_CALL         = 51,
   } ;
 
   class VTFEvent
@@ -79,9 +80,10 @@ namespace xdp {
     XDP_EXPORT virtual ~VTFEvent() ;
 
     // Getters and Setters
-    inline double   getTimestamp()   const { return timestamp ; }
-    inline uint64_t getEventId()           { return id ; } 
-    inline void     setEventId(uint64_t i) { id = i ; }
+    inline double       getTimestamp()   const { return timestamp ; }
+    inline uint64_t     getEventId()           { return id ; } 
+    inline void         setEventId(uint64_t i) { id = i ; }
+    inline VTFEventType getEventType()         { return type; }
 
     // Functions that can be used as filters
     virtual bool isUserEvent()   { return false ; }
@@ -107,13 +109,11 @@ namespace xdp {
   class APICall : public VTFEvent 
   {
   protected:
-    unsigned int functionId ; // Used to match START with END
     uint64_t functionName ; // An index into the string table
 
     APICall() = delete ;
   public:
-    XDP_EXPORT APICall(uint64_t s_id, double ts, unsigned int f_id, 
-		       uint64_t name, VTFEventType ty) ;
+    XDP_EXPORT APICall(uint64_t s_id, double ts, uint64_t name, VTFEventType ty);
     XDP_EXPORT ~APICall() ;
 
     virtual bool isHostEvent() { return true ; } 

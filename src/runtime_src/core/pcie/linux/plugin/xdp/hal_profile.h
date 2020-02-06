@@ -98,8 +98,13 @@ public:
   ~UnmgdPreadCallLogger();
 };
 
+/**
+ * ReadCallLogger logs two events : 1 for the API call and 1 for the buffer transfer.
+ * So, in addition to CallLogger:m_local_idcode, it needs another unique identifier for buffer transfer.
+ */
 class ReadCallLogger : public CallLogger
 {
+  unsigned m_buffer_transfer_id;
 public:
   ReadCallLogger(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size);
   ~ReadCallLogger();

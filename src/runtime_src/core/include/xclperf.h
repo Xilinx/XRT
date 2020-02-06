@@ -573,10 +573,11 @@ struct BOTransferCBPayload
 
 struct ReadWriteCBPayload
 {
-  struct CBPayload basePayload;  
-  uint32_t  addressSpace;
-  uint64_t  offset;
-  size_t    size;
+  struct CBPayload basePayload;
+  unsigned int bufferTransferId;
+  uint32_t     addressSpace;
+  uint64_t     offset;
+  size_t       size;
 };
 
 struct UnmgdPreadPwriteCBPayload

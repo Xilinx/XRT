@@ -20,6 +20,7 @@
 #include <string>
 
 #include "xdp/profile/writer/vp_trace_writer.h"
+#include "xdp/profile/database/database.h"
 
 namespace xdp {
 
@@ -32,12 +33,16 @@ namespace xdp {
     // Header information 
     std::string XRTVersion ;
 
+    std::map<VTFEventType, int> eventTypeBucketIdMap;
+
   protected:
     virtual void writeHeader() ;
     virtual void writeStructure() ;
     virtual void writeStringTable() ;
     virtual void writeTraceEvents() ;
     virtual void writeDependencies() ;
+
+    virtual bool isHost() { return true; }
 
   public:
     HALHostTraceWriter(const char* filename, const std::string& version, 

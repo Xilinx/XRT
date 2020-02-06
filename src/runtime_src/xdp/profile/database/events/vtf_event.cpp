@@ -127,7 +127,7 @@ namespace xdp {
       humanReadable ? (fout << "HOST_WRITE") : (fout << HOST_WRITE) ;
       break ;
     case HAL_API_CALL:
-      humanReadable ? (fout << "HAL_API_CALL") : (fout << HAL_API_CALL) ;
+      humanReadable ? (fout << "API_CALL") : (fout << API_CALL) ;
       break ;
     default:
       humanReadable ? (fout << "UNKNOWN") : (fout << -1) ;
@@ -139,9 +139,9 @@ namespace xdp {
   // API Call definitions
   // **************************
 
-  APICall::APICall(uint64_t s_id, double ts, unsigned int f_id, uint64_t name,
-		   VTFEventType ty) :
-    VTFEvent(s_id, ts, ty), functionId(f_id), functionName(name)
+  APICall::APICall(uint64_t s_id, double ts, uint64_t name, VTFEventType ty)
+         : VTFEvent(s_id, ts, ty),
+           functionName(name)
   {
   }
 
