@@ -1019,44 +1019,44 @@ static inline int xocl_clock_ops_level(xdev_handle_t xdev)
 
 #define	xocl_clock_freqscaling(xdev, force)					\
 ({ \
-	int idx = xocl_clock_ops_level(xdev);					\
-	(CLOCK_CB(xdev, idx, freq_scaling) ?					\
-	CLOCK_OPS(xdev, idx)->freq_scaling(CLOCK_DEV(xdev, idx), force) :	\
+	int __idx = xocl_clock_ops_level(xdev);					\
+	(CLOCK_CB(xdev, __idx, freq_scaling) ?					\
+	CLOCK_OPS(xdev, __idx)->freq_scaling(CLOCK_DEV(xdev, __idx), force) :	\
 	-ENODEV); \
 })
 #define	xocl_clock_get_freq(xdev, region, freqs, num_freqs)		\
 ({ \
-	int idx = xocl_clock_ops_level(xdev);				\
-	(CLOCK_CB(xdev, idx, get_freq) ?				\
-	CLOCK_OPS(xdev, idx)->get_freq(CLOCK_DEV(xdev, idx), region, freqs, num_freqs) : \
+	int __idx = xocl_clock_ops_level(xdev);				\
+	(CLOCK_CB(xdev, __idx, get_freq) ?				\
+	CLOCK_OPS(xdev, __idx)->get_freq(CLOCK_DEV(xdev, __idx), region, freqs, num_freqs) : \
 	-ENODEV); \
 })
 #define	xocl_clock_get_freq_by_id(xdev, region, freq, id)		\
 ({ \
-	int idx = xocl_clock_ops_level(xdev);				\
-	(CLOCK_CB(xdev, idx, get_freq_by_id) ?				\
-	CLOCK_OPS(xdev, idx)->get_freq_by_id(CLOCK_DEV(xdev, idx), region, freq, id) : \
+	int __idx = xocl_clock_ops_level(xdev);				\
+	(CLOCK_CB(xdev, __idx, get_freq_by_id) ?				\
+	CLOCK_OPS(xdev, __idx)->get_freq_by_id(CLOCK_DEV(xdev, __idx), region, freq, id) : \
 	-ENODEV); \
 })
 #define	xocl_clock_get_freq_counter_khz(xdev, value, id)		\
 ({ \
-	int idx = xocl_clock_ops_level(xdev);				\
-	(CLOCK_CB(xdev, idx, get_freq_counter_khz) ?				\
-	CLOCK_OPS(xdev, idx)->get_freq_counter_khz(CLOCK_DEV(xdev, idx), value, id) : \
+	int __idx = xocl_clock_ops_level(xdev);				\
+	(CLOCK_CB(xdev, __idx, get_freq_counter_khz) ?				\
+	CLOCK_OPS(xdev, __idx)->get_freq_counter_khz(CLOCK_DEV(xdev, __idx), value, id) : \
 	-ENODEV); \
 })
 #define	xocl_clock_update_freq(xdev, freqs, num_freqs, verify, gate_handle) \
 ({ \
-	int idx = xocl_clock_ops_level(xdev);				\
-	(CLOCK_CB(xdev, idx, update_freq) ?					\
-	CLOCK_OPS(xdev, idx)->update_freq(CLOCK_DEV(xdev, idx), freqs, num_freqs, verify, gate_handle) : \
+	int __idx = xocl_clock_ops_level(xdev);				\
+	(CLOCK_CB(xdev, __idx, update_freq) ?					\
+	CLOCK_OPS(xdev, __idx)->update_freq(CLOCK_DEV(xdev, __idx), freqs, num_freqs, verify, gate_handle) : \
 	-ENODEV); \
 })
 #define	xocl_clock_status(xdev, latched)				\
 ({ \
-	int idx = xocl_clock_ops_level(xdev);				\
-	(CLOCK_CB(xdev, idx, clock_status) ?					\
-	CLOCK_OPS(xdev, idx)->clock_status(CLOCK_DEV(xdev, idx), latched) : 	\
+	int __idx = xocl_clock_ops_level(xdev);				\
+	(CLOCK_CB(xdev, __idx, clock_status) ?					\
+	CLOCK_OPS(xdev, __idx)->clock_status(CLOCK_DEV(xdev, __idx), latched) : 	\
 	-ENODEV); \
 })
 
