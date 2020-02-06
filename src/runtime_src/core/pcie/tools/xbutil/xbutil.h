@@ -757,6 +757,20 @@ public:
         sensor_tree::put( "board.info.dna",            dna );
         sensor_tree::put( "board.info.p2p_enabled",    p2p_enabled );
 
+        //interface uuid
+        std::vector<std::string> interface_uuid;
+        pcidev::get_dev(m_idx)->sysfs_get( "", "interface_uuid", errmsg, interface_uuid );
+        for (unsigned i =0; i < interface_uuid.size(); i++) {
+            sensor_tree::put( "board.interface_uuid.uuid" + std::to_string(i), interface_uuid[i] );
+        }
+
+        //logic uuid
+        std::vector<std::string> logic_uuid;
+        pcidev::get_dev(m_idx)->sysfs_get( "", "logic_uuid", errmsg, logic_uuid );
+        for (unsigned i =0; i < logic_uuid.size(); i++) {
+            sensor_tree::put( "board.logic_uuid.uuid" + std::to_string(i), logic_uuid[i] );
+        }
+
         // physical.thermal.pcb
         unsigned int xmc_se98_temp0, xmc_se98_temp1, xmc_se98_temp2;
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_se98_temp0", xmc_se98_temp0 );
