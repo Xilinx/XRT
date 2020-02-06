@@ -85,6 +85,8 @@ namespace xdp {
     public:
       typedef std::map<std::string, std::string> GuidanceMap;
       typedef std::map<std::string, uint32_t> GuidanceMap2;
+      typedef std::map<uint64_t, uint64_t> GuidanceMap3;
+      typedef std::map<uint64_t, std::vector<std::string>> GuidanceMap4;
 
       enum e_guidance {
         DEVICE_EXEC_TIME,
@@ -101,11 +103,22 @@ namespace xdp {
         KERNEL_COUNT,
         OBJECTS_RELEASED,
         CU_CONTEXT_EN,
-        TRACE_MEMORY
+        TRACE_MEMORY,
+        MAX_PARALLEL_KERNEL_ENQUEUES,
+        COMMAND_QUEUE_OOO,
+        PLRAM_SIZE_BYTES,
+        KERNEL_BUFFER_INFO,
+        TRACE_BUFFER_FULL,
+        MEMORY_TYPE_BIT_WIDTH,
+        BUFFER_RD_ACTIVE_TIME_MS,
+        BUFFER_WR_ACTIVE_TIME_MS,
+        BUFFER_TX_ACTIVE_TIME_MS,
+        APPLICATION_RUN_TIME_MS
       };
 
     public:
       virtual void getGuidanceMetadata(RTProfile *profile);
+
       static void getGuidanceName(e_guidance check, std::string& name);
       // Objects released
       void setObjectsReleased(bool objectsReleased) {IsObjectsReleased = objectsReleased;}
@@ -126,6 +139,21 @@ namespace xdp {
       inline GuidanceMap& getDeviceExecTimesMap() {return mDeviceExecTimesMap;}
       inline GuidanceMap& getComputeUnitCallsMap() {return mComputeUnitCallsMap;}
       inline GuidanceMap2& getKernelCountsMap() {return mKernelCountsMap;}
+      inline GuidanceMap2& getKernelMaxParallelStartsMap() {return mKernelMaxParallelStartsMap;}
+      inline GuidanceMap2& getDeviceMemTypeBitWidthMap() {return mDeviceMemTypeBitWidthMap;}
+      inline GuidanceMap2& getDeviceTraceBufferFullMap() {return mDeviceTraceBufferFullMap;}
+      inline GuidanceMap2& getDevicePlramSizeMap() {return mDevicePlramSizeMap;}
+      inline GuidanceMap3& getmCQInfoMap() {return mCQInfoMap;}
+      inline GuidanceMap4& getKernelBufferInfoMap() {return mKernelBufferInfoMap;}
+      // Host Buffer first start to last end
+      // Read, Write and Aggregate times
+      void logBufferEvent(double timestamp, bool isRead);
+      double getRdBufferActiveTimeMs() {return mLastBufferReadMs - mFirstBufferReadMs;}
+      double getWrBufferActiveTimeMs() {return mLastBufferWriteMs - mFirstBufferWriteMs;}
+      double getBufferActiveTimeMs();
+      // Application run time
+      void setApplicationEnd() {mApplicationRunTimeMs = getTraceTime();}
+      double getApplicationRunTimeMs() {return mApplicationRunTimeMs;}
       //Profiling infrastructure metadata
       void setCtxEn(bool ctxEn) {IsCtxEn = ctxEn;}
       bool isCtxEn() {return IsCtxEn;}
@@ -134,8 +162,14 @@ namespace xdp {
 
     protected:
       GuidanceMap  mDeviceExecTimesMap;
+      GuidanceMap2 mDevicePlramSizeMap;
       GuidanceMap  mComputeUnitCallsMap;
       GuidanceMap2 mKernelCountsMap;
+      GuidanceMap2 mKernelMaxParallelStartsMap;
+      GuidanceMap2 mDeviceMemTypeBitWidthMap;
+      GuidanceMap2 mDeviceTraceBufferFullMap;
+      GuidanceMap4 mKernelBufferInfoMap;
+      GuidanceMap3 mCQInfoMap;
       bool IsObjectsReleased = false;
       bool IsPlramDevice = false;
       bool IsHbmDevice = false;
@@ -143,6 +177,13 @@ namespace xdp {
       bool IsP2PDevice = false;
       bool IsCtxEn = false;
       std::string TraceMemory = "NA";
+      double mApplicationRunTimeMs = 0.0;
+      // Buffer Reads
+      double mFirstBufferReadMs = 0.0;
+      double mLastBufferReadMs = 0.0;
+      // Buffer Writes
+      double mFirstBufferWriteMs = 0.0;
+      double mLastBufferWriteMs = 0.0;
 
     // ****************************************
     // Platform Metadata required by profiler
