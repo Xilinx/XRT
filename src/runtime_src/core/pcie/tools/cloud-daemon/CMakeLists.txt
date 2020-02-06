@@ -22,6 +22,7 @@ target_link_libraries(mpd
   boost_system
   uuid
   dl
+  udev
   )
 install (TARGETS mpd RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
 

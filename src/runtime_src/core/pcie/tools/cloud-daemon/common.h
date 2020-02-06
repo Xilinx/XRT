@@ -51,15 +51,43 @@ struct queue_msg {
     enum MSG_TYPE type;
 };
 
-struct Msgq {
-    std::mutex mtx;
+template <typename Msg>
+class Msgq
+{
+    std::queue<Msg> q;
+    mutable std::mutex mtx;
     std::condition_variable cv;
-    std::queue<queue_msg> q;
+public:
+    Msgq()
+    {
+    }
+    void addMsg(Msg &msg)
+    {
+        std::lock_guard<std::mutex> lck(mtx);
+        q.push(std::move(msg));
+        cv.notify_all();
+    }
+    int getMsg(int timeout, Msg& msg)
+    {
+        std::unique_lock<std::mutex> lck(mtx, std::defer_lock);
+        lck.lock();
+        while (q.empty()) {
+            if (cv.wait_for(lck, std::chrono::seconds(timeout)) == std::cv_status::timeout) {
+                lck.unlock();
+                return 1;
+            }
+        }
+        msg = std::move(q.front());
+        q.pop();
+        lck.unlock();
+        return 0;
+    }
 };
 
 std::string str_trim(const std::string &str);
 int splitLine(const std::string &line, std::string& key,
     std::string& value, const std::string& delim = "=");
+int waitForMsg(int fd, long interval);
 int waitForMsg(const pcieFunc& dev, int localfd, int remotefd, long interval,
     int retfd[2]);
 std::unique_ptr<sw_msg> getLocalMsg(const pcieFunc& dev, int localfd);
@@ -75,7 +103,7 @@ class Common;
 class Common
 {
 public:
-    Common(std::string &name, std::string &plugin_path, bool for_user);
+    Common(const std::string &name, const std::string &plugin_path, bool for_user);
     ~Common();
     void *plugin_handle;
     size_t total;

@@ -1,5 +1,8 @@
 [Unit]
 Description=Xilinx Management Service Daemon (MSD)
+Wants=network-online.target
+After=network-online.target
+ConditionDirectoryNotEmpty=/dev/xfpga
 
 [Service]
 Type=simple
