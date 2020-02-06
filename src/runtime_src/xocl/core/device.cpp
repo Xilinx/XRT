@@ -1203,7 +1203,13 @@ load_program(program* program)
   // binary it does not have an xrt.ini attribute. If there is
   // debug_data then make sure xdp kernel debug is loaded
   if (binary.debug_data().first)
+  {
+#ifdef _WIN32
+    // Kernel debug not supported on Windows
+#else
     xrt::hal::load_xdp_kernel_debug();
+#endif
+  }
 
   xocl::debug::reset(get_axlf());
   xocl::profile::reset(get_axlf());

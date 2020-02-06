@@ -249,20 +249,18 @@ void load_xdp_kernel_debug()
     xdp_kernel_debug_once_loader()
     {
       bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
-      bfs::path libname ("libxdp_debug_plugin");
-      libname += dllExt();
       if (xrt.empty()) {
-        throw std::runtime_error("Library " + libname.string() + " not found! XILINX_XRT not set");
+        throw std::runtime_error("XILINX_XRT not set");
       }
-      bfs::path p(xrt / "lib");
-      directoryOrError(p);
-      p /= libname;
-      if (!isDLL(p)) {
-        throw std::runtime_error("Library " + p.string() + " not found!");
+      bfs::path xrtlib(xrt / "lib") ;
+      directoryOrError(xrtlib) ;
+      auto libpath = dllpath(xrt, "xdp_debug_plugin") ;
+      if (!isDLL(libpath)) {
+        throw std::runtime_error("Library " + libpath.string() + " not found!");
       }
-      auto handle = xrt_core::dlopen(p.string().c_str(), RTLD_NOW | RTLD_GLOBAL);
+      auto handle = xrt_core::dlopen(libpath.string().c_str(), RTLD_NOW | RTLD_GLOBAL);
       if (!handle)
-        throw std::runtime_error("Failed to open XDP library '" + p.string() + "'\n" + xrt_core::dlerror());
+        throw std::runtime_error("Failed to open XDP library '" + libpath.string() + "'\n" + xrt_core::dlerror());
 
       typedef void (* xdpInitType)();
 
@@ -286,20 +284,19 @@ void load_xdp_app_debug()
     xdp_app_debug_once_loader()
     {
       bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
-      bfs::path libname ("libxdp_appdebug_plugin");
-      libname += dllExt();
       if (xrt.empty()) {
-        throw std::runtime_error("Library " + libname.string() + " not found! XILINX_XRT not set");
+        throw std::runtime_error("XILINX_XRT not set");
       }
-      bfs::path p(xrt / "lib");
-      directoryOrError(p);
-      p /= libname;
-      if (!isDLL(p)) {
-        throw std::runtime_error("Library " + p.string() + " not found!");
+      bfs::path xrtlib(xrt / "lib");
+      directoryOrError(xrtlib);
+      auto libpath = dllpath(xrt, "xdp_appdebug_plugin");
+
+      if (!isDLL(libpath)) {
+        throw std::runtime_error("Library " + libpath.string() + " not found!");
       }
-      auto handle = xrt_core::dlopen(p.string().c_str(), RTLD_NOW | RTLD_GLOBAL);
+      auto handle = xrt_core::dlopen(libpath.string().c_str(), RTLD_NOW | RTLD_GLOBAL);
       if (!handle)
-        throw std::runtime_error("Failed to open XDP library '" + p.string() + "'\n" + xrt_core::dlerror());
+        throw std::runtime_error("Failed to open XDP library '" + libpath.string() + "'\n" + xrt_core::dlerror());
 
       typedef void (* xdpInitType)();
 
