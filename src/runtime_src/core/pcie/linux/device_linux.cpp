@@ -38,27 +38,6 @@ struct query_entry
   std::function<void(const device_type*, const std::type_info&, boost::any&)> m_fcn;
 };
 
-// BDF for a device
-static void
-bdf(const device_type* device, qr_type qr, const std::type_info&, boost::any& value)
-{
-  auto pdev = pcidev::get_dev(device->get_device_id(), false);
-
-  switch (qr) {
-  case qr_type::QR_PCIE_BDF_BUS:
-    value = static_cast<uint16_t>(pdev->bus);
-    return;
-  case qr_type::QR_PCIE_BDF_DEVICE:
-    value = static_cast<uint16_t>(pdev->dev);
-    return;
-  case qr_type::QR_PCIE_BDF_FUNCTION:
-    value = static_cast<uint16_t>(pdev->func);
-    return;
-  default:
-    throw std::runtime_error("device_linux::bdf() unexpected qr " + std::to_string(qr));
-  }
-}
-
 // Sysfs accessor
 static void
 sysfs(const device_type* device, const std::type_info& tinfo, boost::any& value,
@@ -132,9 +111,6 @@ sysfs_user(const device_type* device, const std::type_info& tinfo, boost::any& v
 
 namespace sp = std::placeholders;
 static std::map<qr_type, query_entry> query_table = {
-  { qr_type::QR_PCIE_BDF_BUS,              {std::bind(bdf, sp::_1, qr_type::QR_PCIE_BDF_BUS, sp::_2, sp::_3)}},
-  { qr_type::QR_PCIE_BDF_DEVICE,           {std::bind(bdf, sp::_1, qr_type::QR_PCIE_BDF_DEVICE, sp::_2, sp::_3)}},
-  { qr_type::QR_PCIE_BDF_FUNCTION,         {std::bind(bdf, sp::_1, qr_type::QR_PCIE_BDF_FUNCTION, sp::_2, sp::_3)}},
   { qr_type::QR_DMA_THREADS_RAW,           {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, "dma", "channel_stat_raw")}},
   { qr_type::QR_ROM_VBNV,                  {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, "rom", "VBNV")}},
   { qr_type::QR_ROM_DDR_BANK_SIZE,         {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, "rom", "ddr_bank_size")}},
@@ -245,6 +221,19 @@ get_pcidev(const xrt_core::device* device)
   return pcidev::get_dev(device->get_device_id(), device->is_userpf());
 }
 
+struct bdf
+{
+  using result_type = query::pcie_bdf::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    auto pdev = get_pcidev(device);
+    return std::make_tuple(pdev->bus,pdev->dev,pdev->func);
+  }
+};
+
+
 // Specialize for other value types.
 template <typename ValueType>
 struct sysfs_fcn
@@ -279,6 +268,17 @@ struct sysfs_getter : QueryRequestType
   }
 };
 
+template <typename QueryRequestType, typename Getter>
+struct function0_getter : QueryRequestType
+{
+  boost::any
+  get(const xrt_core::device* device) const
+  {
+    auto k = QueryRequestType::key;
+    return Getter::get(device, k);
+  }
+};
+
 static std::map<xrt_core::query::key_type, std::unique_ptr<query::request>> query_tbl;
 
 template <typename QueryRequestType>
@@ -287,6 +287,14 @@ emplace_sysfs_request(const char* entry, const char* subdev)
 {
   auto x = QueryRequestType::key;
   query_tbl.emplace(x, std::make_unique<sysfs_getter<QueryRequestType>>(entry, subdev));
+}
+
+template <typename QueryRequestType, typename Getter>
+static void
+emplace_func0_request()
+{
+  auto k = QueryRequestType::key;
+  query_tbl.emplace(k, std::make_unique<function0_getter<QueryRequestType, Getter>>());
 }
 
 static void
@@ -298,6 +306,7 @@ initialize_query_table()
   emplace_sysfs_request<query::pcie_subsystem_id>        ("", "subsystem_device");
   emplace_sysfs_request<query::pcie_link_speed>          ("", "link_speed");
   emplace_sysfs_request<query::pcie_express_lane_width>  ("", "link_width");
+  emplace_func0_request<query::pcie_bdf,                 bdf>();
 }
 
 struct X { X() { initialize_query_table(); }};

@@ -384,8 +384,6 @@ DSAInfo Flasher::getOnBoardDSA()
 
 std::string Flasher::sGetDBDF()
 {
-    auto bus = xrt_core::query_device<uint16_t>(m_device, xrt_core::device::QR_PCIE_BDF_BUS);
-    auto dev = xrt_core::query_device<uint16_t>(m_device, xrt_core::device::QR_PCIE_BDF_DEVICE);
-    auto func = xrt_core::query_device<uint16_t>(m_device, xrt_core::device::QR_PCIE_BDF_FUNCTION);
-    return boost::str(boost::format("%04x:%02x:%02x.%01x") % 0 % bus % dev % func);
+  auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(m_device);
+  return xrt_core::query::pcie_bdf::to_string(bdf);
 }

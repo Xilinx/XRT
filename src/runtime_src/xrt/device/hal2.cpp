@@ -139,10 +139,8 @@ get_bdf() const
   return "????:??:??.?";
 #if 0
   auto device = xrt_core::get_userpf_device(m_idx);
-  auto b = xrt_core::query_device(device, xrt_core::device::QR_PCIE_BDF_BUS);
-  auto d = xrt_core::query_device(device, xrt_core::device::QR_PCIE_BDF_DEVICE);
-  auto f = xrt_core::query_device(device, xrt_core::device::QR_PCIE_BDF_FUNCTION);
-  return boost::str(boost::format("%04x:%02x:%02x.%01x") % 0 % bus % dev % func);
+  auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
+  return xrt_core::query::pcie_bdf::to_string(bdf);
 #endif
 }
 

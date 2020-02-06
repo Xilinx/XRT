@@ -15,6 +15,9 @@
  */
 
 #include "system_pcie.h"
+#include "core/common/device.h"
+#include "core/common/query_requests.h"
+#include <boost/format.hpp>
 
 namespace xrt_core {
 
@@ -50,7 +53,7 @@ system_pcie::
 bdf2index(const std::string& bdfStr) const
 {
   // Extract bdf from bdfStr.
-  int dom = 0, b= 0, d = 0, f = 0;
+  uint16_t dom = 0, b= 0, d = 0, f = 0;
   char dummy;
   std::stringstream s(bdfStr);
   size_t n = std::count(bdfStr.begin(), bdfStr.end(), ':');
@@ -66,21 +69,9 @@ bdf2index(const std::string& bdfStr) const
 
   for (uint16_t i = 0; i < get_total_devices(false).first; i++) {
     auto device = get_mgmtpf_device(i);
-    boost::any bus, dev, func;
-
-    device->query(xrt_core::device::QR_PCIE_BDF_BUS, typeid(b), bus);
-    if (b != boost::any_cast<uint16_t>(bus))
-      continue;
-
-    device->query(xrt_core::device::QR_PCIE_BDF_DEVICE, typeid(d), dev);
-    if (d != boost::any_cast<uint16_t>(dev))
-      continue;
-
-    device->query(xrt_core::device::QR_PCIE_BDF_FUNCTION, typeid(f), func);
-    if (f != boost::any_cast<uint16_t>(func))
-      continue;
-
-    return i;
+    auto bdf = device_query<query::pcie_bdf>(device);
+    if (b == std::get<0>(bdf) && d == std::get<1>(bdf) && f == std::get<2>(bdf))
+      return i;
   }
   std::string errMsg = boost::str( boost::format("No mgmt PF found for '%s'") % bdfStr);
   throw error(errMsg);

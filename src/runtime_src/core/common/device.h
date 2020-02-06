@@ -50,10 +50,6 @@ public:
    * query requests are implemented as ioctl calls.
    */
   enum QueryRequest {
-      QR_PCIE_BDF_BUS,
-      QR_PCIE_BDF_DEVICE,
-      QR_PCIE_BDF_FUNCTION,
-
       QR_DMA_THREADS_RAW,
 
       QR_ROM_VBNV,

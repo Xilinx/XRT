@@ -462,58 +462,64 @@ xclbin_fcn(const device_type* device, qr_type qr, const std::type_info&, boost::
   throw std::runtime_error("device_windows::xclbin() unexpected qr " + std::to_string(qr));
 }
 
-static void
-bdf_fcn(const device_type* device, qr_type qr, const std::type_info&, boost::any& value)
-{
-  struct bdf_type {
-    uint16_t bus = 0;
-    uint16_t device = 0;
-    uint16_t function = 0;
-  };
-
-  auto init_bdf = [](const device_type* dev, bdf_type* bdf) {
-    if (auto mhdl = dev->get_mgmt_handle())
-      mgmtpf::get_bdf_info(mhdl, reinterpret_cast<uint16_t*>(bdf));
-    else if (auto uhdl = dev->get_user_handle())
-      userpf::get_bdf_info(uhdl, reinterpret_cast<uint16_t*>(bdf));
-    else
-      throw std::runtime_error("No device handle");
-  };
-
-  static std::map<const device_type*, bdf_type> bdfmap;
-  static std::mutex mutex;
-  std::lock_guard<std::mutex> lk(mutex);
-  auto it = bdfmap.find(device);
-  if (it == bdfmap.end()) {
-    bdf_type bdf;
-    init_bdf(device, &bdf);
-    auto ret = bdfmap.emplace(device,bdf);
-    it = ret.first;
-  }
-
-  auto& bdf = (*it).second;
-
-  switch (qr) {
-  case qr_type::QR_PCIE_BDF_BUS:
-    value = bdf.bus;
-    return;
-  case qr_type::QR_PCIE_BDF_DEVICE:
-    value = bdf.device;
-    return;
-  case qr_type::QR_PCIE_BDF_FUNCTION:
-    value = bdf.function;
-    return;
-  default:
-    throw std::runtime_error("device_windows::bdf() unexpected qr " + std::to_string(qr));
-  }
-}
-
 } // namespace
 
 namespace {
 
 namespace query = xrt_core::query;
 using key_type = xrt_core::query::key_type;
+
+struct bdf
+{
+  using result_type = query::pcie_bdf::result_type;
+
+  struct bdf_type {
+    uint16_t bus = 0;
+    uint16_t device = 0;
+    uint16_t function = 0;
+  };
+
+  static void
+  init_bdf(const xrt_core::device* dev, bdf_type* bdf)
+  {
+    if (auto mhdl = dev->get_mgmt_handle())
+      mgmtpf::get_bdf_info(mhdl, reinterpret_cast<uint16_t*>(bdf));
+    else if (auto uhdl = dev->get_user_handle())
+      userpf::get_bdf_info(uhdl, reinterpret_cast<uint16_t*>(bdf));
+    else
+      throw std::runtime_error("No device handle");
+  }
+
+  static result_type
+  get_bdf(const xrt_core::device* device)
+  {
+    static std::map<const xrt_core::device*, bdf_type> bdfmap;
+    static std::mutex mutex;
+    std::lock_guard<std::mutex> lk(mutex);
+    auto it = bdfmap.find(device);
+    if (it == bdfmap.end()) {
+      bdf_type bdf;
+      init_bdf(device, &bdf);
+      auto ret = bdfmap.emplace(device,bdf);
+      it = ret.first;
+    }
+
+    auto& bdf = (*it).second;
+    return std::make_tuple(bdf.bus,bdf.device,bdf.function);
+  }
+
+  static result_type
+  user(const xrt_core::device* device, key_type)
+  {
+    return get_bdf(device);
+  }
+
+  static result_type
+  mgmt(const xrt_core::device* device, key_type)
+  {
+    return get_bdf(device);
+  }
+};
 
 struct info
 {
@@ -650,6 +656,7 @@ initialize_query_table()
   emplace_function0_getter<query::pcie_device,           info>();
   emplace_function0_getter<query::pcie_subsystem_vendor, info>();
   emplace_function0_getter<query::pcie_subsystem_id,     info>();
+  emplace_function0_getter<query::pcie_bdf,              bdf>();
 }
 
 struct X { X() { initialize_query_table(); }};
@@ -682,9 +689,6 @@ get_IOCTL_entry(QueryRequest qr) const
   // Initialize our lookup table
   static const std::map<QueryRequest, IOCTLEntry> QueryRequestToIOCTLTable =
   {
-    { QR_PCIE_BDF_BUS,              { bdf_fcn }},
-    { QR_PCIE_BDF_DEVICE,           { bdf_fcn }},
-    { QR_PCIE_BDF_FUNCTION,         { bdf_fcn }},
     { QR_DMA_THREADS_RAW,           { nullptr }},
     { QR_ROM_VBNV,                  { rom }},
     { QR_ROM_DDR_BANK_SIZE,         { rom }},
