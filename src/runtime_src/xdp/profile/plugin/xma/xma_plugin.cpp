@@ -16,6 +16,7 @@
 
 #include "xma_plugin.h"
 #include "xdp/rt_singleton.h"
+#include "xocl/core/platform.h"
 #include "xdp/profile/writer/base_profile.h"
 #include "xdp/profile/core/rt_profile.h"
 
@@ -103,7 +104,7 @@ namespace xdp {
 
   void XmaPlugin::getDeviceExecutionTimes(RTProfile *profile)
   {
-    auto platform = xdp::RTSingleton::Instance()->getcl_platform_id();
+    auto platform = xocl::get_shared_platform().get();
 
     // Traverse all devices in this platform
     for (auto device_id : platform->get_device_range()) {
@@ -118,7 +119,7 @@ namespace xdp {
 
   void XmaPlugin::getUnusedComputeUnits(RTProfile *profile)
   {
-    auto platform = xdp::RTSingleton::Instance()->getcl_platform_id();
+    auto platform = xocl::get_shared_platform().get();
 
     // Traverse all devices in this platform
     for (auto device_id : platform->get_device_range()) {
@@ -138,7 +139,7 @@ namespace xdp {
 
   void XmaPlugin::getKernelCounts(RTProfile *profile)
   {
-    auto platform = xdp::RTSingleton::Instance()->getcl_platform_id();
+    auto platform = xocl::get_shared_platform().get();
 
     // Traverse all devices in this platform
     for (auto device_id : platform->get_device_range()) {

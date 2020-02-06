@@ -49,11 +49,9 @@ profile_initialize(xclDeviceHandle s_handle, int use_profile, int use_trace,
   printf("profile_initialize: s_handle=%p, use_profile=%d, use_trace=%d, data_transfer_trace=%s, stall_trace=%s\n",
          s_handle, use_profile, use_trace, data_transfer_trace, stall_trace);
 
-  // Initialize runtime singleton
-  auto rts = xdp::RTSingleton::Instance();
-
-  XmaPlugin* xmaPlugin = new XmaPlugin();
-  rts->attachPlugin(xmaPlugin);
+  // Initialize runtime singleton and plugin
+  // Needs to be rewritten
+  // XmaPlugin* xmaPlugin = new XmaPlugin();
 
   int ProfileFlags = xdp::RTProfile::PROFILE_APPLICATION;
 

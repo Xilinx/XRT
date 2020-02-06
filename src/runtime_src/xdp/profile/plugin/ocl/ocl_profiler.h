@@ -116,13 +116,13 @@ namespace xdp {
     std::vector<std::unique_ptr<OclPowerProfile>> PowerProfileList;
 
     // Buffer on Device DDR for Trace
-    uint64_t mDDRBufferSz = 0;
+    uint64_t mDDRBufferSize = 0;
     xrt::hal::BufferObjectHandle mDDRBufferForTrace = nullptr;
 
     // Buffer on Host for reading Trace Data
-    uint64_t mTraceReadBufSz = 0;
+    uint64_t mTraceReadBufSize = 0;
     uint64_t mTraceReadBufOffset = 0;
-    uint64_t mTraceReadBufChunkSz = 0;
+    uint64_t mTraceReadBufChunkSize = 0;
 
   };
 

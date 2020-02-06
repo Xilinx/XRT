@@ -65,6 +65,30 @@ namespace xdp {
     // do nothing
   }
 
+  void XDPPluginI::logBufferEvent(double timestamp, bool isRead)
+  {
+    if (isRead) {
+      if (mFirstBufferReadMs == 0.0)
+        mFirstBufferReadMs = timestamp;
+      else
+        mLastBufferReadMs = timestamp;
+    } else {
+      if (mFirstBufferWriteMs == 0.0)
+        mFirstBufferWriteMs = timestamp;
+      else
+        mLastBufferWriteMs = timestamp;
+    }
+  }
+
+  // First Start to Last End
+  double XDPPluginI::getBufferActiveTimeMs()
+  {
+    double start, end;
+    start = (mFirstBufferReadMs < mFirstBufferWriteMs) ? mFirstBufferReadMs : mFirstBufferWriteMs;
+    end = (mLastBufferReadMs > mLastBufferWriteMs) ? mLastBufferReadMs : mLastBufferWriteMs;
+    return end - start;
+  }
+
   // Get name string of guidance
   void XDPPluginI::getGuidanceName(e_guidance check, std::string& name)
   {
@@ -113,6 +137,36 @@ namespace xdp {
         break;
       case TRACE_MEMORY:
         name = "TRACE_MEMORY";
+        break;
+      case MAX_PARALLEL_KERNEL_ENQUEUES:
+        name = "MAX_PARALLEL_KERNEL_ENQUEUES";
+        break;
+      case COMMAND_QUEUE_OOO:
+        name = "COMMAND_QUEUE_OOO";
+        break;
+      case PLRAM_SIZE_BYTES:
+        name = "PLRAM_SIZE_BYTES";
+        break;
+      case KERNEL_BUFFER_INFO:
+        name = "KERNEL_BUFFER_INFO";
+        break;
+      case TRACE_BUFFER_FULL:
+        name = "TRACE_BUFFER_FULL";
+        break;
+      case MEMORY_TYPE_BIT_WIDTH:
+        name = "MEMORY_TYPE_BIT_WIDTH";
+        break;
+      case BUFFER_RD_ACTIVE_TIME_MS:
+        name = "BUFFER_RD_ACTIVE_TIME_MS";
+        break;
+      case BUFFER_WR_ACTIVE_TIME_MS:
+        name = "BUFFER_WR_ACTIVE_TIME_MS";
+        break;
+      case BUFFER_TX_ACTIVE_TIME_MS:
+        name = "BUFFER_TX_ACTIVE_TIME_MS";
+        break;
+      case APPLICATION_RUN_TIME_MS:
+        name = "APPLICATION_RUN_TIME_MS";
         break;
       default:
         assert(0);

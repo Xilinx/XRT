@@ -38,6 +38,15 @@ public:
   xclDeviceHandle
   get_device_handle() const;
 
+  /**
+   * is_userpf_device() - Is this device a userpf
+   */
+  bool
+  is_userpf() const
+  {
+    return m_userpf;
+  }
+
 private:
   bool m_userpf;
   xclDeviceHandle m_handle = XRT_NULL_HANDLE;

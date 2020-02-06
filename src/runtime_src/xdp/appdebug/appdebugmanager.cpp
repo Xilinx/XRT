@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,23 +14,29 @@
  * under the License.
  */
 
-#ifndef SYSTEM_PCIE_H
-#define SYSTEM_PCIE_H
+#include "appdebugmanager.h"
+#include "appdebug.h"
 
-#include "common/system.h"
+namespace appdebug {
 
-namespace xrt_core {
+  static bool active ;
 
-class system_pcie : public system
-{
-public:
-  void
-  get_devices(boost::property_tree::ptree& pt) const;
+  AppDebugManager::AppDebugManager()
+  {
+    Platform = xocl::get_shared_platform();
 
-  uint16_t
-  bdf2index(const std::string& bdfStr) const;
-};
+    register_xocl_appdebug_callbacks() ;
+    active = true ;
+  }
 
-} // xrt_core
+  AppDebugManager::~AppDebugManager()
+  {
+    active = false ;
+  }
 
-#endif
+  bool AppDebugManager::isActive()
+  {
+    return active ;
+  }
+
+} // end namespace appdebug

@@ -688,14 +688,40 @@ static void xclbin_get_ocl_frequency_max_min(struct icap *icap,
 	}
 }
 
+static int icap_toggle_axi_gate(struct icap *icap)
+{
+	ICAP_INFO(icap, "Toggle CL AXI gate");
+	BUG_ON(!mutex_is_locked(&icap->icap_lock));
+
+	if (!icap->icap_axi_gate) {
+		ICAP_ERR(icap, "no %s resource", NODE_GATE_PRP);
+		return -ENODEV;
+	}
+
+	reg_wr(&icap->icap_axi_gate->iag_wr, 0x0);
+	reg_wr(&icap->icap_axi_gate->iag_wr, 0x1);
+
+	return 0;
+}
+
 static int ulp_freeze_axi_gate(void *drvdata)
 {
-	return icap_freeze_axi_gate((struct icap *)drvdata);
+	struct icap *icap = drvdata;
+	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
+
+	return (CLOCK_DEV_LEVEL(xdev) > XOCL_SUBDEV_LEVEL_PRP) ?
+	    icap_toggle_axi_gate(icap) :
+	    icap_freeze_axi_gate(icap);
 }
 
 static int ulp_free_axi_gate(void *drvdata)
 {
-	return icap_free_axi_gate((struct icap *)drvdata);
+	struct icap *icap = drvdata;
+	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
+
+	return (CLOCK_DEV_LEVEL(xdev) > XOCL_SUBDEV_LEVEL_PRP) ?
+	    0 :
+	    icap_free_axi_gate(icap);
 }
 
 static int ulp_clock_update(struct icap *icap, unsigned short *freqs,
@@ -3253,7 +3279,8 @@ static int icap_probe(struct platform_device *pdev)
 			goto failed;
 		} else {
 			ICAP_INFO(icap,
-				"mapped in register @ 0x%p", *regs);
+				"%s mapped in register @ 0x%p",
+				res->name, *regs);
 		}
 
 		icap_refresh_addrs(pdev);
