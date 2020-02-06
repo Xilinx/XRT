@@ -24,6 +24,7 @@
 #include "xrt/device/hal.h"
 #include "xclbin.h"
 #include <regex>
+#include <cctype>
 
 
 namespace xdp { namespace xoclp {
@@ -208,7 +209,7 @@ get_profile_slot_properties(key k, const std::string& deviceName, xclPerfMonType
 cl_int
 get_profile_kernel_name(key k, const std::string& deviceName, const std::string& cuName, std::string& kernelName)
 {
-  auto platform = k;  
+  auto platform = k;
   for (auto device_id : platform->get_device_range()) {
     std::string currDeviceName = device_id->get_unique_name();
     if (currDeviceName.compare(deviceName) == 0) {
@@ -223,7 +224,7 @@ get_profile_kernel_name(key k, const std::string& deviceName, const std::string&
   return 0;
 }
 
-size_t 
+size_t
 get_device_timestamp(key k, const std::string& deviceName)
 {
   auto platform = k;
@@ -238,7 +239,7 @@ get_device_timestamp(key k, const std::string& deviceName)
   return device::getTimestamp(device.get());
 }
 
-double 
+double
 get_device_max_read(key k)
 {
   auto platform = k;
@@ -251,7 +252,7 @@ get_device_max_read(key k)
   return maxRead;
 }
 
-double 
+double
 get_device_max_write(key k)
 {
   auto platform = k;
@@ -264,7 +265,7 @@ get_device_max_write(key k)
   return maxWrite;
 }
 
-cl_int 
+cl_int
 start_device_trace(key k, xclPerfMonType type, size_t numComputeUnits)
 {
   auto platform = k;
@@ -280,7 +281,7 @@ start_device_trace(key k, xclPerfMonType type, size_t numComputeUnits)
   return ret;
 }
 
-cl_int 
+cl_int
 stop_device_trace(key k, xclPerfMonType type)
 {
   auto platform = k;
@@ -294,7 +295,7 @@ stop_device_trace(key k, xclPerfMonType type)
   return ret;
 }
 
-cl_int 
+cl_int
 log_device_trace(key k, xclPerfMonType type, bool forceRead)
 {
   auto platform = k;
@@ -322,7 +323,7 @@ log_device_trace(key k, xclPerfMonType type, bool forceRead)
   return ret;
 }
 
-cl_int 
+cl_int
 start_device_counters(key k, xclPerfMonType type)
 {
   auto platform = k;
@@ -339,7 +340,7 @@ start_device_counters(key k, xclPerfMonType type)
   return ret;
 }
 
-cl_int 
+cl_int
 stop_device_counters(key k, xclPerfMonType type)
 {
   auto platform = k;
@@ -353,7 +354,7 @@ stop_device_counters(key k, xclPerfMonType type)
   return ret;
 }
 
-cl_int 
+cl_int
 log_device_counters(key k, xclPerfMonType type, bool firstReadAfterProgram,
                     bool forceRead)
 {
@@ -381,7 +382,7 @@ get_ddr_bank_count(key k, const std::string& deviceName)
   return 1;
 }
 
-bool 
+bool
 isValidPerfMonTypeTrace(key , xclPerfMonType type)
 {
   auto profiler = OCLProfiler::Instance();
@@ -389,7 +390,7 @@ isValidPerfMonTypeTrace(key , xclPerfMonType type)
           || ((profiler->getPlugin()->getFlowMode() == xdp::RTUtil::HW_EM) && type == XCL_PERF_MON_ACCEL));
 }
 
-bool 
+bool
 isValidPerfMonTypeCounters(key , xclPerfMonType type)
 {
   auto profiler = OCLProfiler::Instance();
@@ -551,7 +552,7 @@ startTrace(key k, xclPerfMonType type, size_t /*numComputeUnits*/)
   return CL_SUCCESS;
 }
 
-cl_int 
+cl_int
 stopTrace(key k, xclPerfMonType type)
 {
   auto device = k;
@@ -560,7 +561,7 @@ stopTrace(key k, xclPerfMonType type)
   return CL_SUCCESS;
 }
 
-size_t 
+size_t
 getTimestamp(key k)
 {
   auto device = k;
@@ -570,14 +571,14 @@ getTimestamp(key k)
   return 0;
 }
 
-double 
+double
 getMaxRead(key k)
 {
   auto device = k;
   return device->get_xrt_device()->getDeviceMaxRead().get();
 }
 
-double 
+double
 getMaxWrite(key k)
 {
   auto device = k;
@@ -599,7 +600,7 @@ void configureDataflow(key k, xclPerfMonType type)
   xdevice->configureDataflow(type, ip_config.get());
 }
 
-cl_int 
+cl_int
 startCounters(key k, xclPerfMonType type)
 {
   auto data = get_data(k);
@@ -623,7 +624,7 @@ startCounters(key k, xclPerfMonType type)
   return CL_SUCCESS;
 }
 
-cl_int 
+cl_int
 stopCounters(key k, xclPerfMonType type)
 {
   auto device = k;
@@ -631,7 +632,7 @@ stopCounters(key k, xclPerfMonType type)
   return CL_SUCCESS;
 }
 
-cl_int 
+cl_int
 logTrace(key k, xclPerfMonType type, bool forceRead)
 {
   auto data = get_data(k);
@@ -692,7 +693,7 @@ logTrace(key k, xclPerfMonType type, bool forceRead)
   return CL_SUCCESS;
 }
 
-cl_int 
+cl_int
 logCounters(key k, xclPerfMonType type, bool firstReadAfterProgram, bool forceRead)
 {
   auto data = get_data(k);
@@ -703,7 +704,7 @@ logCounters(key k, xclPerfMonType type, bool firstReadAfterProgram, bool forceRe
   //  return CL_SUCCESS;
 
   std::chrono::steady_clock::time_point nowTime = std::chrono::steady_clock::now();
-  
+
   if (forceRead || ((nowTime - data->mLastCountersSampleTime) > std::chrono::milliseconds(data->mSampleIntervalMsec))) {
     //warning : reading from the accelerator device only
     //read the device profile
@@ -713,7 +714,7 @@ logCounters(key k, xclPerfMonType type, bool firstReadAfterProgram, bool forceRe
     auto timeSinceEpoch = (std::chrono::steady_clock::now()).time_since_epoch();
     auto value = std::chrono::duration_cast<std::chrono::nanoseconds>(timeSinceEpoch);
     uint64_t timeNsec = value.count();
-    
+
     // Create unique name for device since currently all devices are called fpga0
     std::string device_name = device->get_unique_name();
     std::string binary_name = device->get_xclbin().project_name();
@@ -829,7 +830,9 @@ getPlramSizeBytes(key k)
   auto m_count = mem_tp->m_count;
   for (int i=0; i < m_count; i++) {
     std::string mem_tag(reinterpret_cast<const char*>(mem_tp->m_mem_data[i].m_tag));
-    std::transform(mem_tag.begin(), mem_tag.end(), mem_tag.begin(), ::tolower);
+    // work-around boost indirect include confusion with boost::placeholders
+    //std::transform(mem_tag.begin(), mem_tag.end(), mem_tag.begin(), std::tolower);
+    std::transform(mem_tag.begin(), mem_tag.end(), mem_tag.begin(), [](char c){return (char) std::tolower(c);});
     if (mem_tag.find("plram") != std::string::npos)
       return mem_tp->m_mem_data[i].m_size * 1024;
   }
@@ -837,8 +840,8 @@ getPlramSizeBytes(key k)
 }
 
 data*
-get_data(key k) 
-{ 
+get_data(key k)
+{
   // TODO: this used to come from RTProfile, now it comes from the plugin. Is this correct?
   auto profiler = OCLProfiler::Instance();
   auto& device_data = profiler->DeviceData;
@@ -850,7 +853,5 @@ get_data(key k)
   return &(*itr).second;
 }
 
-  }} // device/platform 
+  }} // device/platform
 }} // xoclp/xdp
-
-
