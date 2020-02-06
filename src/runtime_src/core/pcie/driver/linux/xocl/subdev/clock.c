@@ -432,7 +432,6 @@ static int clock_ocl_freqscaling(struct clock *clock, bool force)
 			err = -EBUSY;
 			break;
 		}
-
 		config = frequency_table[idx].config0;
 		reg_wr(clock->clock_bases[i] + OCL_CLKWIZ_CONFIG_OFFSET(0),
 			config);
@@ -510,15 +509,26 @@ static int set_freqs(struct clock *clock, unsigned short *freqs, int num_freqs,
 		sizeof(*freqs) * min(CLOCK_MAX_NUM_CLOCKS, num_freqs));
 
 	/*
-	 * When gate_handler callback funcs are present, we must obey
-	 * the contract, freeze and free the gate. It is caller's fault
-	 * if freeze and free pair has not been set appropriately.
+	 * When gate_handler callback funcs are present, we freeze and free the
+	 * gate. It is caller's fault if freeze and free pair has not been set
+	 * appropriately.
+	 * When ep_ucs_control_status_00 is present, clock is in ULP. The gate
+	 * handler is smart enough to do right operations.
 	 */
 	if (gate_handle->gate_freeze_cb)
 		gate_handle->gate_freeze_cb(gate_handle->gate_args);
+
 	err = clock_ocl_freqscaling(clock, false);
+
 	if (gate_handle->gate_free_cb)
 		gate_handle->gate_free_cb(gate_handle->gate_args);
+
+	/* enable kernel clocks */
+	if (clock->clock_ucs_control_status) {
+		CLOCK_INFO(clock, "Enable kernel clocks ucs control");
+		reg_wr(clock->clock_ucs_control_status +
+			XOCL_RES_OFFSET_CHANNEL2, 0x1);
+	}
 
 done:
 	CLOCK_INFO(clock, "returns %d", err);
@@ -785,7 +795,8 @@ static int clock_post_refresh_addrs(struct clock *clock)
 	if (clock->clock_ucs_control_status) {
 		err = clock_ocl_freqscaling(clock, true);
 		msleep(10);
-		reg_wr(clock->clock_ucs_control_status + 8, 1);
+		reg_wr(clock->clock_ucs_control_status +
+			XOCL_RES_OFFSET_CHANNEL2, 0x1);
 	}
 
 	mutex_unlock(&clock->clock_lock);
@@ -889,6 +900,10 @@ static int clock_probe(struct platform_device *pdev)
 				CLOCK_ERR(clock, "map base %pR failed", res);
 				ret = -EINVAL;
 				goto failed;
+			} else {
+				CLOCK_INFO(clock, "res[%d] %s mapped @ %lx",
+				    i, res->name,
+				    (unsigned long)clock->clock_base_address[id]);
 			}
 		}
 	}
