@@ -77,19 +77,24 @@ namespace xdp {
   class BufferTransfer : public VTFEvent
   {
   private:
+    #if 0
     uint64_t stageString ;
     uint64_t eventString ;
+    #endif
     size_t size ;
+    #if 0
     uint64_t srcAddress ;
     uint64_t srcBank ;
     uint64_t dstAddress ;
     uint64_t dstBank ;
     std::thread::id threadId ;
     uint64_t bufferId ;
+    #endif
 
     BufferTransfer() = delete ;
   public:
-    XDP_EXPORT BufferTransfer(uint64_t s_id, double ts, VTFEventType ty) ;
+    XDP_EXPORT BufferTransfer(uint64_t s_id, double ts, VTFEventType ty,
+                              size_t bufSz = 0);
     XDP_EXPORT ~BufferTransfer() ;
 
     virtual bool isHostEvent() { return true ; } 

@@ -187,17 +187,18 @@ ReadCallLogger::~ReadCallLogger() {
 }
 
 WriteCallLogger::WriteCallLogger(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size) 
-    : CallLogger(global_idcode)
+    : CallLogger(global_idcode),
+      m_buffer_transfer_id(++global_idcode)
 {
     if (!cb_valid()) return;
     global_idcode++;    // increment only if valid calllback
-    ReadWriteCBPayload payload = { {m_local_idcode, handle}, 0 /*m_buffer_transfer_id*/, space, offset, size};
+    ReadWriteCBPayload payload = { {m_local_idcode, handle}, m_buffer_transfer_id, space, offset, size};
     cb(HalCallbackType::WRITE_START, (void*)(&payload));
 }
 
 WriteCallLogger::~WriteCallLogger() {
     if (!cb_valid()) return;
-    CBPayload payload = {m_local_idcode, 0};
+    ReadWriteCBPayload payload = {{m_local_idcode, 0}, m_buffer_transfer_id, 0, 0, 0};
     cb(HalCallbackType::WRITE_END, &payload);
 }
 

@@ -47,8 +47,10 @@ namespace xdp {
   {
   }
 
-  BufferTransfer::BufferTransfer(uint64_t s_id, double ts, VTFEventType ty) :
-    VTFEvent(s_id, ts, ty) 
+  BufferTransfer::BufferTransfer(uint64_t s_id, double ts, VTFEventType ty,
+                                 size_t bufSz)
+                : VTFEvent(s_id, ts, ty),
+                  size(bufSz)
   {
   }
 
@@ -58,8 +60,11 @@ namespace xdp {
 
   void BufferTransfer::dump(std::ofstream& fout, int bucket)
   {
-    VTFEvent::dump(fout, bucket) ;
-    fout << std::endl ;
+    VTFEvent::dump(fout, bucket);
+    if(0 == start_id) {  // Dump the detailed information only for start event
+      fout << "," << size;
+    }
+    fout << std::endl;
   }
 
   StreamRead::StreamRead(uint64_t s_id, double ts) :
