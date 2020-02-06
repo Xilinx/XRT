@@ -509,13 +509,13 @@ struct bdf
   }
 
   static result_type
-  user(const xrt_core::device* device, key_type key)
+  user(const xrt_core::device* device, key_type)
   {
     return get_bdf(device);
   }
 
   static result_type
-  mgmt(const xrt_core::device* device, key_type key)
+  mgmt(const xrt_core::device* device, key_type)
   {
     return get_bdf(device);
   }
