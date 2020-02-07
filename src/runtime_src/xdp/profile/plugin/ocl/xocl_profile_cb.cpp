@@ -22,7 +22,6 @@
 
 #include "xocl_profile_cb.h"
 #include "ocl_profiler.h"
-#include "xdp/rt_singleton.h"
 #include "xdp/profile/core/rt_profile.h"
 
 
@@ -681,8 +680,7 @@ void cb_reset(const axlf* xclbin)
 void
 cb_init()
 {
-  // Create RTSingleton object if not already created
-  xdp::RTSingleton::Instance();
+  
 }
 
 void register_xocl_profile_callbacks() {
@@ -717,7 +715,6 @@ void
 initXDPLib()
 {
   try {
-    (void)xdp::RTSingleton::Instance();
     (void)xdp::OCLProfiler::Instance();
   } catch (std::runtime_error& e) {
     xrt::message::send(xrt::message::severity_level::XRT_WARNING, e.what());
