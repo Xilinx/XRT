@@ -572,7 +572,7 @@ done:
     return error ? false : true;
 
   }
-
+/*
   bool SendIoctlStatMemTopo()
   {
     HANDLE deviceHandle = m_dev;
@@ -643,7 +643,7 @@ done:
 
     return error ? false : true;
   }
-
+  */
   int
   load_xclbin(const struct axlf* buffer)
   {
@@ -676,7 +676,7 @@ done:
     xrt_core::message::
       send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "Calling IOCTL_XOCL_STAT (XoclStatMemTopology)... ");
 
-    succeeded = SendIoctlStatMemTopo();
+ //   succeeded = SendIoctlStatMemTopo();
 
     if (succeeded) {
       xrt_core::message::
@@ -924,7 +924,7 @@ done:
   void
   get_mem_topology(char* buffer, size_t size, size_t* size_ret)
   {
-    XOCL_MEM_TOPOLOGY_INFORMATION mem_info;
+    struct mem_topology mem_info;
     XOCL_STAT_CLASS_ARGS statargs;
 
     statargs.StatClass = XoclStatMemTopology;
@@ -933,14 +933,14 @@ done:
     auto status = DeviceIoControl(m_dev,
         IOCTL_XOCL_STAT,
         &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
-        &mem_info, sizeof(XOCL_MEM_TOPOLOGY_INFORMATION),
+        &mem_info, sizeof(struct mem_topology),
         &bytes,
         nullptr);
 
-    if (!status || bytes != sizeof(XOCL_MEM_TOPOLOGY_INFORMATION))
+    if (!status || bytes != sizeof(struct mem_topology))
       throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_mem_topology) failed");
 
-    size_t mem_topology_size = sizeof(XOCL_MEM_TOPOLOGY_INFORMATION);
+    DWORD mem_topology_size = sizeof(struct mem_topology) + (mem_info.m_count - 1) * sizeof(struct mem_data);
 
     if (size_ret)
       *size_ret = mem_topology_size;
@@ -954,7 +954,17 @@ done:
          "size (" + std::to_string(size) + ") of buffer too small, "
          "required size (" + std::to_string(mem_topology_size) + ")");
 
-    std::memcpy(buffer, &mem_info, sizeof(XOCL_MEM_TOPOLOGY_INFORMATION));
+    auto memtopology = reinterpret_cast<struct mem_topology*>(buffer);
+
+    status = DeviceIoControl(m_dev,
+        IOCTL_XOCL_STAT,
+        &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
+        memtopology, mem_topology_size,
+        &bytes,
+        nullptr);
+
+    if (!status || bytes != mem_topology_size)
+        throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_mem_topology) failed");
   }
 
   void

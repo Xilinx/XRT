@@ -235,14 +235,6 @@ typedef GUID xuid_t;
 typedef unsigned char xuid_t[16];
 #endif
 
-typedef struct _XOCL_MEM_TOPOLOGY_INFORMATION {
-
-    ULONG        MemTopoCount;
-
-    struct mem_data MemTopo[XOCL_MAX_DDR_BANKS];
-
-} XOCL_MEM_TOPOLOGY_INFORMATION, *PXOCL_MEM_TOPOLOGY_INFORMATION;
-
 // 
 // XoclStatMemRaw
 // 
