@@ -27,13 +27,6 @@ namespace xrt_core {
 
 static std::map<device::QueryRequest, device::QueryRequestEntry> sQueryTable =
 {
-  { device::QR_PCIE_VENDOR,               { "QR_PCIE_VENDOR",               "vendor",           &typeid(std::string), device::format_hex }},
-  { device::QR_PCIE_DEVICE,               { "QR_PCIE_DEVICE",               "device",           &typeid(std::string), device::format_hex }},
-  { device::QR_PCIE_SUBSYSTEM_VENDOR,     { "QR_PCIE_SUBSYSTEM_VENDOR",     "subsystem_vendor", &typeid(std::string), device::format_hex }},
-  { device::QR_PCIE_SUBSYSTEM_ID,         { "QR_PCIE_SUBSYSTEM_ID",         "subsystem_id",     &typeid(std::string), device::format_hex }},
-  { device::QR_PCIE_LINK_SPEED,           { "QR_PCIE_LINK_SPEED",           "link_speed",       &typeid(uint64_t),    device::format_primative }},
-  { device::QR_PCIE_EXPRESS_LANE_WIDTH,   { "QR_PCIE_EXPRESS_LANE_WIDTH",   "width",            &typeid(uint64_t),    device::format_primative }},
-
   { device::QR_ROM_VBNV,                  { "QR_ROM_VBNV",                  "vbnv",             &typeid(std::string), device::format_primative }},
   { device::QR_ROM_DDR_BANK_SIZE,         { "QR_ROM_DDR_BANK_SIZE",         "ddr_size_bytes",   &typeid(uint64_t),    device::format_hex_base2_shiftup30 }},
   { device::QR_ROM_DDR_BANK_COUNT_MAX,    { "QR_ROM_DDR_BANK_COUNT_MAX",    "widdr_countdth",   &typeid(uint64_t),    device::format_primative }},

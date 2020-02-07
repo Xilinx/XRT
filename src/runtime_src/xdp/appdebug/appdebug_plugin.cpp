@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,23 +14,29 @@
  * under the License.
  */
 
-#ifndef SYSTEM_PCIE_H
-#define SYSTEM_PCIE_H
+#include "appdebug_plugin.h"
+#include "appdebugmanager.h"
 
-#include "common/system.h"
+namespace appdebug {
 
-namespace xrt_core {
+  // When the library gets loaded, this singleton will be instantiated
+  static AppDebugManager adm ;
 
-class system_pcie : public system
+  bool active()
+  {
+    return AppDebugManager::isActive() ;
+  }
+
+  xocl::platform* getcl_platform_id()
+  {
+    return adm.getcl_platform_id() ;
+  }
+
+} // end namespace appdebug
+
+extern "C"
+void initAppDebug()
 {
-public:
-  void
-  get_devices(boost::property_tree::ptree& pt) const;
-
-  uint16_t
-  bdf2index(const std::string& bdfStr) const;
-};
-
-} // xrt_core
-
-#endif
+  // Just called to make sure the library is loaded and the static object
+  //  is created.
+}

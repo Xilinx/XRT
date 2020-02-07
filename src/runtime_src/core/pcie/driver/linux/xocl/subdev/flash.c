@@ -358,12 +358,13 @@ static inline bool flash_has_err(struct xocl_flash *flash)
 static int flash_rx(struct xocl_flash *flash, u8 *buf, size_t len)
 {
 	size_t cnt;
+	u8 c;
 
 	for (cnt = 0; cnt < len; cnt++) {
-        if ((flash_get_status(flash) & QSPI_SR_RX_EMPTY) != 0)
-            return -EINVAL;
-            
-        u8 c = flash_read8(flash);
+		if ((flash_get_status(flash) & QSPI_SR_RX_EMPTY) != 0)
+			return -EINVAL;
+
+        	c = flash_read8(flash);
 
 		if (buf)
 			buf[cnt] = c;

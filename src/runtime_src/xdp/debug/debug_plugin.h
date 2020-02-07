@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,23 +14,14 @@
  * under the License.
  */
 
-#ifndef SYSTEM_PCIE_H
-#define SYSTEM_PCIE_H
+#ifndef DEBUG_PLUGIN_DOT_H
+#define DEBUG_PLUGIN_DOT_H
 
-#include "common/system.h"
+#include "xdp/config.h"
+#include "core/include/xclbin.h"
 
-namespace xrt_core {
-
-class system_pcie : public system
-{
-public:
-  void
-  get_devices(boost::property_tree::ptree& pt) const;
-
-  uint16_t
-  bdf2index(const std::string& bdfStr) const;
-};
-
-} // xrt_core
+extern "C" {
+  XDP_EXPORT void cb_debug_reset(const axlf* xclbin) ;
+}
 
 #endif

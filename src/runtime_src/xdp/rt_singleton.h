@@ -18,7 +18,6 @@
 #ifndef __XDP_RT_SINGLETON_H
 #define __XDP_RT_SINGLETON_H
 
-#include "xdp/debug/rt_debug.h"
 #include "xdp/profile/plugin/ocl/xocl_profile.h"
 
 #include <cstdlib>
@@ -63,7 +62,6 @@ namespace xdp {
   public:
     // Inline functions: platform ID, profile/debug managers, profile flags
     inline xocl::platform* getcl_platform_id() { return Platform.get(); }
-    inline RTDebug* getDebugManager() { return DebugMgr; }
 
   private:
     // Status of singleton
@@ -71,10 +69,6 @@ namespace xdp {
 
     // Share ownership of the global platform
     std::shared_ptr<xocl::platform> Platform;
-
-    // Debug manager
-    RTDebug* DebugMgr = nullptr;
-
   };
 
 } // xdp
