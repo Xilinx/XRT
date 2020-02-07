@@ -781,7 +781,7 @@ public:
         sensor_tree::put( "board.physical.thermal.pcb.btm_front", xmc_se98_temp2);
 
         // physical.thermal
-        unsigned int fan_rpm, xmc_fpga_temp, xmc_fan_temp, vccint_temp;
+        unsigned int fan_rpm, xmc_fpga_temp, xmc_fan_temp, vccint_temp, xmc_hbm_temp;
         std::string fan_presence;
         
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_fpga_temp", xmc_fpga_temp );
@@ -789,11 +789,13 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "fan_presence",         errmsg, fan_presence );
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_fan_rpm",   fan_rpm );
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_vccint_temp",  vccint_temp);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_hbm_temp",  xmc_hbm_temp);
         sensor_tree::put( "board.physical.thermal.fpga_temp",    xmc_fpga_temp );
         sensor_tree::put( "board.physical.thermal.tcrit_temp",   xmc_fan_temp );
         sensor_tree::put( "board.physical.thermal.fan_presence", fan_presence );
         sensor_tree::put( "board.physical.thermal.fan_speed",    fan_rpm );
-        sensor_tree::put( "board.physical.thermal.vccint_temp",     vccint_temp);
+        sensor_tree::put( "board.physical.thermal.vccint_temp",  vccint_temp);
+        sensor_tree::put( "board.physical.thermal.hbm_temp",     xmc_hbm_temp);
 
         // physical.thermal.cage
         unsigned int temp0, temp1, temp2, temp3;
@@ -1065,6 +1067,8 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.cage.temp1" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.cage.temp2" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.cage.temp3" ) << std::endl;
+        ostr << std::setw(16) << "HBM TEMP" << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.hbm_temp") << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Electrical(mV|mA)\n";
         ostr << std::setw(16) << "12V PEX" << std::setw(16) << "12V AUX" << std::setw(16) << "12V PEX Current" << std::setw(16) 
