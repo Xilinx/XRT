@@ -1358,7 +1358,7 @@ xclSyncBO(xclDeviceHandle handle, xclBufferHandle boHandle, xclBOSyncDirection d
 
 // Compute Unit Execution Management APIs
 int
-xclOpenContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int ipIndex,bool shared)
+xclOpenContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclOpenContext()");

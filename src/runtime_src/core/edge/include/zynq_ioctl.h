@@ -72,6 +72,7 @@
 #define __ZYNQ_IOCTL_H__
 
 #ifndef __KERNEL__
+#include <stdint.h>
 #include <libdrm/drm.h>
 #include <drm/drm_mode.h>
 #else
@@ -259,21 +260,25 @@ struct drm_zocl_pread_bo {
  *
  *  @paddr: Physical address
  *  @apt_idx: Aperture index
+ *  @cu_idx: CU index
  */
 struct drm_zocl_info_cu {
 	uint64_t paddr;
 	int apt_idx;
+	int cu_idx;
 };
 
 enum drm_zocl_ctx_code {
 	ZOCL_CTX_OP_ALLOC_CTX = 0,
 	ZOCL_CTX_OP_FREE_CTX,
+	ZOCL_CTX_OP_OPEN_GCU_FD
 };
 
-#define	ZOCL_CTX_NOOPS		0	
-#define	ZOCL_CTX_SHARED		(1 << 0)	
-#define	ZOCL_CTX_EXCLUSIVE	(1 << 1)	
+#define	ZOCL_CTX_NOOPS		0
+#define	ZOCL_CTX_SHARED		(1 << 0)
+#define	ZOCL_CTX_EXCLUSIVE	(1 << 1)
 #define	ZOCL_CTX_VERBOSE	(1 << 2)
+#define	ZOCL_CTX_VIRT_CU_INDEX	0xffffffff
 
 struct drm_zocl_ctx {
 	uint64_t uuid_ptr;

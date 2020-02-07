@@ -61,6 +61,7 @@ struct addr_aperture {
 	phys_addr_t	addr;
 	size_t		size;
 	u32		prop;
+	int		cu_idx;
 };
 
 enum zocl_mem_type {
@@ -131,6 +132,7 @@ struct drm_zocl_dev {
 	u64			pr_isolation_addr;
 	struct zocl_xclbin	*zdev_xclbin;
 	struct mutex		zdev_xclbin_lock;
+	struct generic_cu	*generic_cu;
 };
 
 #endif
