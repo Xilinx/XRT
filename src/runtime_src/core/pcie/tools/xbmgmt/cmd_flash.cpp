@@ -160,11 +160,16 @@ static int updateSC(unsigned index, const char *file)
     }
 
     const std::string rescan_path = "/sys/bus/pci/rescan";
-    auto fd = open(rescan_path.c_str(), O_WRONLY);
-    if (fd == -1) {
+    std::fstream fs;
+    std::ios::openmode mode = std::ios::out;
+
+    fs.open(rescan_path, mode);
+    if (!fs.is_open()) {
         perror(rescan_path.c_str());
         return -EINVAL;
     }
+
+
 
     std::shared_ptr<firmwareImage> bmc =
         std::make_shared<firmwareImage>(file, BMC_FIRMWARE);
@@ -174,8 +179,8 @@ static int updateSC(unsigned index, const char *file)
         ret = flasher.upgradeBMCFirmware(bmc.get());
     }
 
-    (void) write(fd, "1\n", 2);
-    close(fd);
+    fs << "1\n";
+    fs.flush();
 
     return ret;
 }
