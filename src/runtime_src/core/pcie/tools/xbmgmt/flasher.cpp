@@ -156,8 +156,11 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
 int Flasher::upgradeBMCFirmware(firmwareImage* bmc)
 {
     XMC_Flasher flasher(mDev);
-    const std::string e = flasher.probingErrMsg();
 
+    if (!flasher.hasXMC())
+        return -EOPNOTSUPP;
+
+    const std::string e = flasher.probingErrMsg();
     if (!e.empty())
     {
         std::cout << "ERROR: " << e << std::endl;
@@ -193,6 +196,9 @@ int Flasher::getBoardInfo(BoardInfo& board)
     std::string unassigned_mac = "FF:FF:FF:FF:FF:FF";
     std::map<char, std::vector<char>> info;
     XMC_Flasher flasher(mDev);
+
+    if (!flasher.hasXMC())
+        return -EOPNOTSUPP;
 
     if (!flasher.probingErrMsg().empty())
     {

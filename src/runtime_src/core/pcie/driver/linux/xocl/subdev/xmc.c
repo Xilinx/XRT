@@ -1796,7 +1796,6 @@ static struct attribute *xmc_attrs[] = {
 	&dev_attr_max_power.attr,
 	&dev_attr_fan_presence.attr,
 	&dev_attr_config_mode.attr,
-	&dev_attr_sc_presence.attr,
 	&dev_attr_sensor_update_timestamp.attr,
 	&dev_attr_scaling_threshold_power_override.attr,
 	&dev_attr_scaling_threshold_power_override_en.attr,
@@ -1808,6 +1807,7 @@ static struct attribute *xmc_attrs[] = {
 static struct attribute *xmc_mini_attrs[] = {
 	&dev_attr_reg_base.attr,
 	&dev_attr_status.attr,
+	&dev_attr_sc_presence.attr,
 	NULL,
 };
 
@@ -2852,6 +2852,8 @@ static int xmc_probe(struct platform_device *pdev)
 			break;
 	}
 
+	xmc->sc_presence = nosc_xmc(xmc->pdev) ? 0 : 1;
+
 	if (XMC_PRIVILEGED(xmc)) {
 		if (xmc->base_addrs[IO_REG]) {
 			err = mgmt_sysfs_create_xmc_mini(pdev);
@@ -2899,9 +2901,6 @@ static int xmc_probe(struct platform_device *pdev)
 	}
 
 	xmc->cache_expire_secs = XMC_DEFAULT_EXPIRE_SECS;
-	xmc->sc_presence = 1;
-	if (nosc_xmc(xmc->pdev))
-		xmc->sc_presence = 0;
 
 	/*
 	 * Enabling XMC clock scaling support.
