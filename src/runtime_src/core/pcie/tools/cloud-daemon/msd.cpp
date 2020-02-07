@@ -30,6 +30,7 @@
 #include <cstdlib>
 #include <csignal>
 #include <cstring>
+#include <exception>
 #include <dlfcn.h>
 
 #include "pciefunc.h"
@@ -409,11 +410,16 @@ int main(void)
     signal(SIGINT, signalHandler);
     signal(SIGTERM, signalHandler);
 
-    Msd msd("msd", plugin_path, false);
-    msd.preStart();
-    msd.start();
-    msd.run();
-    msd.stop();
-    msd.postStop();
+    try {
+        Msd msd("msd", plugin_path, false);
+        msd.preStart();
+        msd.start();
+        msd.run();
+        msd.stop();
+        msd.postStop();
+    } catch (std::exception& e) {
+        syslog(LOG_ERR, "msd: %s", e.what());
+    }
+
     return 0;
 }
