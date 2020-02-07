@@ -137,16 +137,50 @@ static int scanDevices(bool verbose, bool json)
 // Update SC firmware on the board.
 static int updateSC(unsigned index, const char *file)
 {
+    int ret = 0;
     Flasher flasher(index);
     if(!flasher.isValid())
         return -EINVAL;
 
+    auto dev = pcidev::get_dev(index, false);
+    auto userpf_path = dev->sysfs_get_userpf();
+
+    if (userpf_path.empty()) {
+        std::cout << "CAUTION: User function is not found. " <<
+            "This is probably due to user function is running in virtual machine. " << std::endl;
+        if(!canProceed())
+            return -ECANCELED;
+    }
+    userpf_path += "/remove";
+    auto fd = open(userpf_path.c_str(), O_WRONLY);
+    if (fd == -1) {
+        perror(userpf_path.c_str());
+	return -EINVAL;
+    } else {
+        std::cout << "Stopping user function..." << std::endl;
+	write(fd, "1\n", 2);
+	close(fd);
+    }
+
+    const std::string rescan_path = "/sys/bus/pci/rescan";
+    fd = open(rescan_path.c_str(), O_WRONLY);
+    if (fd == -1) {
+        perror(rescan_path.c_str());
+        return -EINVAL;
+    }
+
     std::shared_ptr<firmwareImage> bmc =
         std::make_shared<firmwareImage>(file, BMC_FIRMWARE);
-    if (bmc->fail())
-        return -EINVAL;
+    if (bmc->fail()) {
+        ret = -EINVAL;
+    } else {
+        ret = flasher.upgradeBMCFirmware(bmc.get());
+    }
 
-    return flasher.upgradeBMCFirmware(bmc.get());
+    write(fd, "1\n", 2);
+    close(fd);
+
+    return ret;
 }
 
 // Update shell on the board.
