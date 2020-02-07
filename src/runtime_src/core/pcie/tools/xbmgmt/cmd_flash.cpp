@@ -142,28 +142,25 @@ static int updateSC(unsigned index, const char *file)
     if(!flasher.isValid())
         return -EINVAL;
 
-    auto dev = pcidev::get_dev(index, false);
-    auto userpf_path = dev->sysfs_get_userpf();
+    auto dev = pcidev::get_dev(index, true);
 
-    if (userpf_path.empty()) {
+    if (dev->sysfs_name.empty()) {
         std::cout << "CAUTION: User function is not found. " <<
             "This is probably due to user function is running in virtual machine. " << std::endl;
         if(!canProceed())
             return -ECANCELED;
     }
-    userpf_path += "/remove";
-    auto fd = open(userpf_path.c_str(), O_WRONLY);
-    if (fd == -1) {
-        perror(userpf_path.c_str());
+
+    std::string errmsg;
+    std::cout << "Stopping user function..." << std::endl;
+    dev->sysfs_put("", "remove", errmsg, "1\n");
+    if (!errmsg.empty()) {
+        std::cout << "Stopping user function failed" << std::endl;
 	return -EINVAL;
-    } else {
-        std::cout << "Stopping user function..." << std::endl;
-	write(fd, "1\n", 2);
-	close(fd);
     }
 
     const std::string rescan_path = "/sys/bus/pci/rescan";
-    fd = open(rescan_path.c_str(), O_WRONLY);
+    auto fd = open(rescan_path.c_str(), O_WRONLY);
     if (fd == -1) {
         perror(rescan_path.c_str());
         return -EINVAL;

@@ -577,34 +577,6 @@ int pcidev::pci_device::get_partinfo(std::vector<std::string>& info, void *blob)
     return 0;
 }
 
-std::string pcidev::pci_device::sysfs_get_userpf()
-{
-    DIR *dp;
-    std::string userpf_path;
-    std::string dir = sysfs_root;
-    std::string dev = sysfs_name.substr(0, sysfs_name.find_last_of("."));
-
-    dp = opendir(dir.c_str());
-    if (dp) {
-        struct dirent *entry;
-        while ((entry = readdir(dp))) {
-            std::string nm = entry->d_name;
-            std::string p = dir + nm + "/user_pf";
-	    std::ifstream f(p.c_str());
-            if (!f.good())
-                continue;
-
-            nm = nm.substr(0, nm.find_last_of("."));
-            if(dev.compare(nm) == 0) {
-                userpf_path = dir + entry->d_name;
-		break;
-            }
-        }
-        closedir(dp);
-    }
-    return userpf_path;
-}
-
 int pcidev::pci_device::flock(int dev_handle, int op)
 {
     if (dev_handle == -1) {

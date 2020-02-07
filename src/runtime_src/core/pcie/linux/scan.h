@@ -120,8 +120,6 @@ public:
     int munmap(int devhdl, void* addr, size_t len);
     int flock(int devhdl, int op);
     int get_partinfo(std::vector<std::string>& info, void *blob = nullptr);
-    std::string sysfs_get_userpf(void);
-
 
 private:
     std::fstream sysfs_open(const std::string& subdev,
