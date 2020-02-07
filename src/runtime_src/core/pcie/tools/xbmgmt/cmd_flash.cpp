@@ -174,7 +174,7 @@ static int updateSC(unsigned index, const char *file)
         ret = flasher.upgradeBMCFirmware(bmc.get());
     }
 
-    write(fd, "1\n", 2);
+    (void) write(fd, "1\n", 2);
     close(fd);
 
     return ret;
