@@ -8,10 +8,6 @@ This page explains how to build Linux image by PetaLinux Tool.
 It is NOT targeting to be a PetaLinux document or user guide.
 Please read PetaLinux document before you read the rest of this page.
 
-*NOTE* The purpose of this page is only for easy to get started.
-If you are interested in details about creating software images for embedded platform.
-Please read the Software Platform section of Xilinx® Document UG1146.
-
 Prerequisite
 ~~~~~~~~~~~~
 
@@ -22,8 +18,60 @@ Before start to build Linux image, make sure your have:
 The PetaLinux tool chain can be downloaded from xilinx.com.
 If you don't have a .hdf file, please see :ref:`Build Boot Images`.
 
+*NOTE* The purpose of this page is only for providing general getting started guidance.
+If you are interested in details about creating software images for embedded platform.
+Please read the Software Platform section of Xilinx® Document UG1146.
+
 Create PetaLinux Project with XRT recipes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**NOTE**: Beginning in Xilinx release 2019.2, PetaLinux contains recipes for XRT
+and all required software prerequisites. This information is provided as reference
+for those who wish to build within a standard Yocto flow *or* for those who wish
+to customize or extend these recipes. For most use cases, *do not* add the recipes
+from the XRT repository into a 2019.2+ PetaLinux project and instead enable
+XRT through the root file system menuconfig utility.
+
+.. code-block:: bash
+
+        #Configure Linux kernel (default kernel config is good for zocl driver)
+        $ petalinux-config -c kernel
+
+        # Configure rootfs, enable below components:
+        #   menu -> "Filesystem Pacakges" -> "libs" -> xrt
+        #   menu -> "Filesystem Pacakges" -> "libs" -> xrt-dev
+        $ petalinux-config -c rootfs
+
+Add XRT kernel node in device tree
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+An example of device tree is in ``<XRT>/src/runtime_src/core/edge/fragments/xlnk_dts_fragment_mpsoc.dts``. You can attach it to ``project-spec/meta-user/recipes-bsp/device-tree/files/system-user.dtsi`` in your PetaLinux project.
+
+Building the PetaLinux kernel image
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+        # Build package
+        $ petalinux-build
+
+After building you will find all output files from images/linux directory in your PetaLinux project.
+These files can be used when creating an embedded platform.
+
+- ``image.ub``
+- ``bl31.elf``
+- ``fsbl.elf``
+- ``pmufw.elf``
+- ``u-boot.elf``
+
+
+Using custom recipes
+~~~~~~~~~~~~~~~~~~~~
+
+**NOTE: For most use cases these steps are NOT REQUIRED. Most users will not need the information
+below this point; it is provided for reference only for those who wish to customize/extend the build
+system or use these recipes with Yocto builds.**
+
 
 All of the XRT recipes are in ``<XRT>/src/platform/recipes-xrt`` directory. Where <XRT> is the root directory of your XRT git repository.
 
@@ -58,10 +106,7 @@ Still stay in ``meta-user`` directory. Open ``recipes-core/images/petalinux-imag
         | IMAGE_INSTALL_append = " opencl-headers-dev"
         | IMAGE_INSTALL_append = " opencl-clhpp-dev"
 
-Add XRT kernel node in device tree
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-An example of device tree is in ``<XRT>/src/runtime_src/core/edge/fragments/xlnk_dts_fragment_mpsoc.dts``. You can attach it to ``project-spec/meta-user/recipes-bsp/device-tree/files/system-user.dtsi`` in your PetaLinux project.
 
 Configure Linux kernel and enable XRT module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -85,11 +130,3 @@ Please see the comments in below code block. Enable "xrt" and "xrt-dev" options 
         # Build package
         $ petalinux-build
 
-You can find all output files from images/linux directory in your PetaLinux project.
-These files can be used when creating an embedded platform.
-
-- ``image.ub``
-- ``bl31.elf``
-- ``fsbl.elf``
-- ``pmufw.elf``
-- ``u-boot.elf``
