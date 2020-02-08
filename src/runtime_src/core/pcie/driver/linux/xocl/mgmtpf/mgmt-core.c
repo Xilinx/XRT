@@ -1139,7 +1139,9 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	mutex_init(&lro->busy_mutex);
 	mutex_init(&lro->core.wq_lock);
 
-	mgmt_init_sysfs(&pdev->dev);
+	rc = mgmt_init_sysfs(&pdev->dev);
+	if (rc)
+		goto err_init_sysfs;
 
 	/* Probe will not fail from now on. */
 	xocl_info(&pdev->dev, "minimum initialization done\n");
@@ -1172,6 +1174,8 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	return 0;
 
+err_init_sysfs:
+	xocl_queue_destroy(lro);
 err_create_wq:
 	destroy_sg_char(&lro->user_char_dev);
 err_cdev:

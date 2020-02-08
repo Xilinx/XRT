@@ -358,15 +358,20 @@ pcidev::pci_device::pci_device(const std::string& sysfs) : sysfs_name(sysfs)
     if((vendor != XILINX_ID) && (vendor != ADVANTECH_ID) && (vendor != AWS_ID))
         return;
 
+    domain = dom;
+    bus = b;
+    dev = d;
+    func = f;
+
     // Determine if the device is mgmt or user pf.
     std::string tmp;
     sysfs_get("", "mgmt_pf", err, tmp);
     if (err.empty()) {
         mgmt = true;
     } else {
+        mgmt = false;
         sysfs_get("", "user_pf", err, tmp);
         if (err.empty()) {
-            mgmt = false;
         } else {
             return; // device not recognized
         }
@@ -381,10 +386,6 @@ pcidev::pci_device::pci_device(const std::string& sysfs) : sysfs_name(sysfs)
         return; // device node is not available
 
     // Found a supported PCIE function.
-    domain = dom;
-    bus = b;
-    dev = d;
-    func = f;
     sysfs_get<int>("", "userbar", err, user_bar, 0);
     user_bar_size = bar_size(dir, user_bar);
     is_mgmt = mgmt;
