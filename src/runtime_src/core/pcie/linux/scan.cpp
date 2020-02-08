@@ -371,8 +371,7 @@ pcidev::pci_device::pci_device(const std::string& sysfs) : sysfs_name(sysfs)
     } else {
         mgmt = false;
         sysfs_get("", "user_pf", err, tmp);
-        if (err.empty()) {
-        } else {
+        if (!err.empty()) {
             return; // device not recognized
         }
     }

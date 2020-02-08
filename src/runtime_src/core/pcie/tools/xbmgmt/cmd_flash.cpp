@@ -44,7 +44,7 @@ const char *subCmdFlashUsage =
     "--sc_firmware --path file --card bdf";
 
 #define fmt_str		"    "
-#define SHUTDOWN_TIMEOUT	60
+#define DEV_TIMEOUT	60
 
 static int scanDevices(bool verbose, bool json)
 {
@@ -163,7 +163,7 @@ static int updateSC(unsigned index, const char *file)
     for (dev = pcidev::get_dev(i, true); dev; dev = pcidev::get_dev(i, true)) {
         if(dev->domain == mgmt_dev->domain &&
             dev->bus == mgmt_dev->bus &&
-	    dev->dev == mgmt_dev->dev) {
+            dev->dev == mgmt_dev->dev) {
                 break;
         }
 	i++;
@@ -189,12 +189,12 @@ static int updateSC(unsigned index, const char *file)
     dev->sysfs_put("", "shutdown", errmsg, "1\n");
     if (!errmsg.empty()) {
         std::cout << "Shutdown user function failed." << std::endl;
-	return -EINVAL;
+        return -EINVAL;
     }
 
     /* Poll till shutdown is done */
     int shutdownStatus = 0;
-    for (int wait = 0; wait < SHUTDOWN_TIMEOUT; wait++) {
+    for (int wait = 0; wait < DEV_TIMEOUT; wait++) {
         dev->sysfs_get<int>("", "shutdown", errmsg, shutdownStatus, EINVAL);
         if (!errmsg.empty()) {
             std::cout << errmsg << std::endl;
@@ -210,13 +210,13 @@ static int updateSC(unsigned index, const char *file)
 
     if (!shutdownStatus) {
         std::cout << "Shutdown user function timeout." << std::endl;
-	return -ETIMEDOUT;
+        return -ETIMEDOUT;
     }
 
     dev->sysfs_put("", "remove", errmsg, "1\n");
     if (!errmsg.empty()) {
         std::cout << "Stopping user function failed" << std::endl;
-	return -EINVAL;
+        return -EINVAL;
     }
 
     sleep(15);
@@ -225,6 +225,19 @@ static int updateSC(unsigned index, const char *file)
     mgmt_dev->sysfs_put("", "dparent/rescan", errmsg, "1\n");
     if (!errmsg.empty()) {
         std::cout << "ERROR: " << errmsg << std::endl;
+    }
+
+    int wait = 0;
+    do {
+        auto hdl =dev->open("", O_RDWR);
+        if (hdl != -1) {
+            dev->close(hdl);
+            break;
+        }
+        sleep(1);
+    } while (++wait < DEV_TIMEOUT);
+    if (wait == DEV_TIMEOUT) {
+        std::cout << "ERROR: user function does not back online" << std::endl;
     }
 
     return ret;
