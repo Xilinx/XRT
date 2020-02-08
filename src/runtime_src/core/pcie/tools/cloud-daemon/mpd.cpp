@@ -42,6 +42,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <functional>
+#include <exception>
 #include <dlfcn.h>
 
 #include "pciefunc.h"
@@ -648,12 +649,16 @@ int main(void)
 {
     signal(SIGINT, signalHandler);
     signal(SIGTERM, signalHandler);
+    try {
+        Mpd mpd("mpd", plugin_path, true);
+        mpd.preStart();
+        mpd.start();
+        mpd.run();
+        mpd.stop();
+        mpd.postStop();
+    } catch (std::exception& e) {
+        syslog(LOG_ERR, "mpd: %s", e.what());
+    }
 
-    Mpd mpd("mpd", plugin_path, true);
-    mpd.preStart();
-    mpd.start();
-    mpd.run();
-    mpd.stop();
-    mpd.postStop();
     return 0;
 }

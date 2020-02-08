@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2019 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  * Author(s): Hem C. Neema
  *          : Min Ma
  * ZNYQ XRT Library layered on top of ZYNQ zocl kernel driver
@@ -162,7 +162,7 @@ int ZYNQShim::mapKernelControl(const std::vector<std::pair<uint64_t, size_t>>& o
     if ((offset_it->first & (~0xFF)) != (-1UL & ~0xFF)) {
       auto it = mKernelControl.find(offset_it->first);
       if (it == mKernelControl.end()) {
-        drm_zocl_info_cu info = {offset_it->first, -1};
+        drm_zocl_info_cu info = {offset_it->first, -1, -1};
         int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_INFO_CU, &info);
         if (result) {
             xclLog(XRT_ERROR, "XRT", "%s: Failed to find CU info 0x%lx", __func__, offset_it->first);
@@ -205,7 +205,7 @@ void *ZYNQShim::getVirtAddressOfApture(xclAddressSpace space, const uint64_t phy
 	mask = (mask << 1) + 1;
       }
     }
-    
+
     if (!vaddr) {
       // Try 64KB aperture
       mask = 0xFFFF;
@@ -706,13 +706,13 @@ int ZYNQShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex)
   return ret ? -errno : ret;
 }
 
-int ZYNQShim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset,
+int ZYNQShim::xclRegRW(bool rd, uint32_t ipIndex, uint32_t offset,
   uint32_t *datap)
 {
   std::lock_guard<std::mutex> l(mCuMapLock);
 
-  if (cu_index >= mCuMaps.size()) {
-    xclLog(XRT_ERROR, "XRT", "%s: invalid CU index: %d", __func__, cu_index);
+  if (ipIndex >= mCuMaps.size()) {
+    xclLog(XRT_ERROR, "XRT", "%s: invalid CU index: %d", __func__, ipIndex);
     return -EINVAL;
   }
   if (offset >= mCuMapSize || (offset & (sizeof(uint32_t) - 1)) != 0) {
@@ -720,16 +720,18 @@ int ZYNQShim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset,
     return -EINVAL;
   }
 
-  if (mCuMaps[cu_index] == nullptr) {
+  if (mCuMaps[ipIndex] == nullptr) {
+      drm_zocl_info_cu info = {0, -1, (int)ipIndex};
+      int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_INFO_CU, &info);
     void *p = mmap(0, mCuMapSize, PROT_READ | PROT_WRITE, MAP_SHARED,
-      mKernelFD, cu_index * getpagesize());
+      mKernelFD, info.apt_idx * getpagesize());
     if (p != MAP_FAILED)
-      mCuMaps[cu_index] = (uint32_t *)p;
-  }
+      mCuMaps[ipIndex] = (uint32_t *)p;
+ }
 
-  uint32_t *cumap = mCuMaps[cu_index];
+  uint32_t *cumap = mCuMaps[ipIndex];
   if (cumap == nullptr) {
-    xclLog(XRT_ERROR, "XRT", "%s: can't map CU: %d", __func__, cu_index);
+    xclLog(XRT_ERROR, "XRT", "%s: can't map CU: %d", __func__, ipIndex);
     return -EINVAL;
   }
 
@@ -740,17 +742,17 @@ int ZYNQShim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset,
   return 0;
 }
 
-int ZYNQShim::xclRegRead(uint32_t cu_index, uint32_t offset, uint32_t *datap)
+int ZYNQShim::xclRegRead(uint32_t ipIndex, uint32_t offset, uint32_t *datap)
 {
-  return xclRegRW(true, cu_index, offset, datap);
+  return xclRegRW(true, ipIndex, offset, datap);
 }
 
-int ZYNQShim::xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data)
+int ZYNQShim::xclRegWrite(uint32_t ipIndex, uint32_t offset, uint32_t data)
 {
-  return xclRegRW(false, cu_index, offset, &data);
+  return xclRegRW(false, ipIndex, offset, &data);
 }
 
-int ZYNQShim::xclCuName2Index(const char *name, uint32_t& index)
+int ZYNQShim::xclIPName2Index(const char *name, uint32_t& index)
 {
   std::string errmsg;
   std::vector<char> buf;
@@ -764,7 +766,7 @@ int ZYNQShim::xclCuName2Index(const char *name, uint32_t& index)
   }
   if (buf.empty())
     return -ENOENT;
-   
+
   const ip_layout *map = (ip_layout *)buf.data();
   if(map->m_count < 0) {
     xclLog(XRT_ERROR, "XRT", "invalid ip_layout sysfs node content");
@@ -780,6 +782,7 @@ int ZYNQShim::xclCuName2Index(const char *name, uint32_t& index)
       break;
     }
   }
+
   if (i == map->m_count)
     return -ENOENT;
   if (addr == bad_addr)
@@ -808,6 +811,30 @@ int ZYNQShim::xclCuName2Index(const char *name, uint32_t& index)
   }
 
   return -ENOENT;
+}
+
+int ZYNQShim::xclOpenIPInterruptNotify(uint32_t ipIndex, unsigned int flags)
+{
+  int ret;
+
+  drm_zocl_ctx ctx = {
+    .uuid_ptr = 0,
+    .uuid_size = 0,
+    .cu_index = ipIndex,
+    .flags = flags,
+    .op = ZOCL_CTX_OP_OPEN_GCU_FD,
+  };
+
+  xclLog(XRT_DEBUG, "XRT", "%s: IP index %d, flags 0x%x", __func__, ipIndex, flags);
+  ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CTX, &ctx);
+  return ret;
+}
+
+int ZYNQShim::xclCloseIPInterruptNotify(int fd)
+{
+  xclLog(XRT_DEBUG, "XRT", "%s: fd %d", __func__, fd);
+  close(fd);
+  return 0;
 }
 
 inline int ZYNQShim::xclLog(xrtLogMsgLevel level, const char* tag,
@@ -1238,8 +1265,8 @@ int ZYNQShim::xclLogMsg(xrtLogMsgLevel level, const char* tag,
     unsigned short clockFreq = deviceInfo.mOCLFrequency[0] ;
     if (clockFreq == 0)
       clockFreq = 100 ;
-    
-    return (double)clockFreq ; 
+
+    return (double)clockFreq;
   }
 
 
@@ -1744,24 +1771,24 @@ int xclDestroyProfileResults(xclDeviceHandle handle, ProfileResults* results)
 }
 
 
-int xclRegWrite(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset,
+int xclRegWrite(xclDeviceHandle handle, uint32_t ipIndex, uint32_t offset,
   uint32_t data)
 {
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
-  return drv ? drv->xclRegWrite(cu_index, offset, data) : -ENODEV;
+  return drv ? drv->xclRegWrite(ipIndex, offset, data) : -ENODEV;
 }
 
-int xclRegRead(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset,
+int xclRegRead(xclDeviceHandle handle, uint32_t ipIndex, uint32_t offset,
   uint32_t *datap)
 {
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
-  return drv ? drv->xclRegRead(cu_index, offset, datap) : -ENODEV;
+  return drv ? drv->xclRegRead(ipIndex, offset, datap) : -ENODEV;
 }
 
-int xclCuName2Index(xclDeviceHandle handle, const char *name, uint32_t *indexp)
+int xclIPName2Index(xclDeviceHandle handle, const char *name, uint32_t *indexp)
 {
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
-  return (drv) ? drv->xclCuName2Index(name, *indexp) : -ENODEV;
+  return (drv) ? drv->xclIPName2Index(name, *indexp) : -ENODEV;
 }
 
 int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag,
@@ -1784,4 +1811,18 @@ int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag,
     }
 
     return 0;
+}
+
+int xclOpenIPInterruptNotify(xclDeviceHandle handle, uint32_t ipIndex, unsigned int flags)
+{
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+
+  return drv ? drv->xclOpenIPInterruptNotify(ipIndex, flags) : -EINVAL;
+}
+
+int xclCloseIPInterruptNotify(xclDeviceHandle handle, int fd)
+{
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+
+  return drv ? drv->xclCloseIPInterruptNotify(fd) : -EINVAL;
 }
