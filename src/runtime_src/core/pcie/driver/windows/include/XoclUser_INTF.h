@@ -420,27 +420,28 @@ typedef struct _XOCL_EXECPOLL_ARGS {
 } XOCL_EXECPOLL_ARGS, *PXOCL_EXECPOLL_ARGS;
 
 //
-// IOCTL_XOCL_PREAD_UNMGD
-// THE IOCTL IS NOT IMPLEMENTED
-// RETURN - STATUS_NOT_IMPLEMENTED
+// XOCL_PREAD_PWRITE_UNMGD_ARGS
+//Read IOCTL to unmanaged DDR memory
+// InputBuffer -  XOCL_PREAD_PWRITE_BO_UNMGD_ARGS  
+//OutputBuffer - (not used)
 
-#define IOCTL_XOCL_PREAD_UNMGD         CTL_CODE(FILE_DEVICE_XOCL_USER, 2105, METHOD_OUT_DIRECT, FILE_READ_DATA)
+#define IOCTL_XOCL_PREAD_UNMGD         CTL_CODE(FILE_DEVICE_XOCL_USER, 2105, METHOD_BUFFERED, FILE_READ_DATA)
 
-typedef struct _XOCL_PREAD_BO_UNMGD_ARGS {
-    ULONGLONG   Offset;     // IN: BO offset to read from 
-} XOCL_PREAD_BO_UNMGD_ARGS, *PXOCL_PREAD_BO_UNMGD_ARGS;
-
+typedef struct _XOCL_PREAD_PWRITE_UNMGD_ARGS {
+    uint32_t address_space; //must be 0. We must to keep it to make the structure compatible with Linux code
+    uint32_t pad;           //Currently is unused. We must to keep it to make the structure compatible with Linux code
+    uint64_t paddr;         //Physical address in the specified address space
+    uint64_t size;          //Length of data to write
+    uint64_t data_ptr;      //User's pointer(virtual address) to write the data to
+}XOCL_PREAD_PWRITE_UNMGD_ARGS, *PXOCL_PREAD_PWRITE_UNMGD_ARGS;
 
 //
 // IOCTL_XOCL_PWRITE_UNMGD
-// DRM_IOCTL_XOCL_PWRITE_UNMGD
-// THE IOCTL IS NOT IMPLEMENTED
+//Write IOCTL to unmanaged DDR memory
+// InputBuffer -  XOCL_PREAD_PWRITE_UNMGD_ARGS  
+//OutputBuffer - (not used)
 
-#define IOCTL_XOCL_PWRITE_UNMGD        CTL_CODE(FILE_DEVICE_XOCL_USER, 2106, METHOD_IN_DIRECT, FILE_WRITE_DATA)
-
-typedef struct _XOCL_PWRITE_BO_UNMGD_ARGS {
-    ULONGLONG   Offset;     // IN: BI offset to write to 
-} XOCL_PWRITE_BO_UNMGD_ARGS, *PXOCL_PWRITE_BO_UNMGD_ARGS;
+#define IOCTL_XOCL_PWRITE_UNMGD        CTL_CODE(FILE_DEVICE_XOCL_USER, 2106, METHOD_BUFFERED, FILE_WRITE_DATA)
 
 //
 // IOCTL_XOCL_SENSOR_INFO
