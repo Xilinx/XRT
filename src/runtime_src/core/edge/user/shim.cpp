@@ -822,6 +822,7 @@ int ZYNQShim::xclOpenIPInterruptNotify(uint32_t ipIndex, unsigned int flags)
     .uuid_size = 0,
     .cu_index = ipIndex,
     .flags = flags,
+    .handle = 0,
     .op = ZOCL_CTX_OP_OPEN_GCU_FD,
   };
 
