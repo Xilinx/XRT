@@ -24,6 +24,7 @@
 #include "lib/xmalimits_lib.h"
 #include "app/xmahw.h"
 #include "app/xmaparam.h"
+#include "app/xmabuffers.h"
 #include "plg/xmasess.h"
 #include "xrt.h"
 #include <atomic>
@@ -34,6 +35,8 @@
 #include <array>
 #include <random>
 #include <chrono>
+#include <list>
+#include <queue>
 
 #define MIN_EXECBO_POOL_SIZE      16
 #define MAX_EXECBO_BUFF_SIZE      4096// 4KB
@@ -95,6 +98,49 @@ typedef struct XmaHwExecBO
   }
 } XmaHwExecBO;
 
+typedef struct XmaBufferPool
+{
+    std::list<XmaBufferObj>   buffers_busy;
+    std::vector<XmaBufferObj>  buffers_free;
+    std::atomic<bool> pool_locked;
+    uint64_t buffer_size;
+    int32_t  bank_index;
+    int32_t  dev_index;
+    bool     device_only_buffer;
+    std::atomic<uint32_t> num_buffers;
+    std::atomic<uint32_t> num_free_buffers;
+    uint32_t reserved[4];
+
+  XmaBufferPool() {
+   pool_locked = false;
+   num_buffers = 0;
+   num_free_buffers = 0;
+   buffer_size = 0;
+   bank_index = -1;
+   dev_index = -1;
+   device_only_buffer = false;
+  }
+} XmaBufferPool;
+
+typedef struct XmaBufferPoolObjPrivate
+{
+    void*    dummy;
+    uint64_t buffer_size;
+    int32_t  bank_index;
+    int32_t  dev_index;
+    XmaBufferPool* pool_ptr;
+    bool     device_only_buffer;
+    uint32_t reserved[4];
+
+  XmaBufferPoolObjPrivate() {
+   dummy = NULL;
+   buffer_size = 0;
+   bank_index = -1;
+   dev_index = -1;
+   pool_ptr = nullptr;
+   device_only_buffer = false;
+  }
+} XmaBufferPoolObjPrivate;
 
 typedef struct XmaHwSessionPrivate
 {
@@ -121,6 +167,7 @@ typedef struct XmaHwSessionPrivate
     std::vector<XmaHwExecBO> kernel_execbos;
     int32_t    num_execbo_allocated;
     std::atomic<bool> execwait_locked;
+    std::list<XmaBufferPool>   buffer_pools;
 
     uint32_t reserved[4];
 
