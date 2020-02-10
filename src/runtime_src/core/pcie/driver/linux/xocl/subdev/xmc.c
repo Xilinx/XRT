@@ -993,6 +993,7 @@ static void runtime_clk_scale_disable(struct xocl_xmc *xmc)
 	WRITE_REG32(xmc, cntrl, XMC_HOST_NEW_FEATURE_REG1);
 
 	xmc->runtime_cs_enabled = false;
+	xocl_info(&xmc->pdev->dev, "runtime clock scaling is disabled\n");
 }
 
 static void runtime_clk_scale_enable(struct xocl_xmc *xmc)
@@ -1008,6 +1009,7 @@ static void runtime_clk_scale_enable(struct xocl_xmc *xmc)
 	WRITE_REG32(xmc, cntrl, XMC_HOST_NEW_FEATURE_REG1);
 
 	xmc->runtime_cs_enabled = true;
+	xocl_info(&xmc->pdev->dev, "runtime clock scaling is enabled\n");
 }
 
 /*
@@ -1427,11 +1429,13 @@ static ssize_t scaling_threshold_power_override_store(struct device *dev,
 		//enable max power override mode
 		val2 |= XMC_CLK_THROTTLING_PWR_MGMT_REG_PWR_OVRD_EN;
 		val2 |= (val & XMC_CLK_THROTTLING_PWR_MGMT_REG_PWR_MASK);
+		xocl_info(dev, "Clock scaling's max power override mode is enabled, power threshold set to %d W\n", val);
 	} else { //disable max power override mode
 		val2 &= ~XMC_CLK_THROTTLING_PWR_MGMT_REG_PWR_OVRD_EN;
 		val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_THRESHOLD_REG);
 		val = (val >> XMC_CLOCK_SCALING_POWER_THRESHOLD_POS) &
 			XMC_CLOCK_SCALING_POWER_THRESHOLD_MASK;
+		xocl_info(dev, "Clock scaling's max power override mode is disabled\n");
 	}
 	val3 |= (val & XMC_CLOCK_SCALING_POWER_TARGET_MASK);
 	WRITE_RUNTIME_CS(xmc, val3, XMC_CLOCK_SCALING_POWER_REG);
