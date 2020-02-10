@@ -205,7 +205,7 @@ namespace xdp {
 
       // Reset and Start counters
       if(dInt) {
-        dInt->startCounters(XCL_PERF_MON_MEMORY);
+        dInt->startCounters();
         /* Configure AMs if context monitoring is supported
          * else disable alll AM data
          */
@@ -286,7 +286,7 @@ namespace xdp {
 
       if(dInt) {
         // Configure monitor IP and FIFO if present
-        dInt->startTrace(XCL_PERF_MON_MEMORY, traceOption);
+        dInt->startTrace(traceOption);
         // Configure DMA if present
         if (dInt->hasTs2mm()) {
           info->ts2mm_en = allocateDeviceDDRBufferForTrace(dInt, device);
@@ -568,7 +568,7 @@ namespace xdp {
               ((nowTime - info->mLastCountersSampleTime) > std::chrono::milliseconds(info->mSampleIntervalMsec)))
       {
         if(dInt) {
-          dInt->readCounters(XCL_PERF_MON_MEMORY, info->mCounterResults);
+          dInt->readCounters(info->mCounterResults);
         } else {
           xdevice->readCounters(XCL_PERF_MON_MEMORY, info->mCounterResults);
         }
@@ -669,7 +669,7 @@ namespace xdp {
       // Read and log when trace FIFOs are filled beyond specified threshold
       uint32_t numSamples = 0;
       if (!forceRead) {
-        numSamples = (dInt) ? dInt->getTraceCount(type) : xdevice->countTrace(type).get();
+        numSamples = (dInt) ? dInt->getTraceCount() : xdevice->countTrace(type).get();
       }
 
       // Control how often we do clock training: if there are new samples, then don't train
@@ -690,7 +690,7 @@ namespace xdp {
           if (dInt->hasFIFO()) {
             uint32_t numTracePackets = 0;
             while (!endLog) {
-              dInt->readTrace(type, info->mTraceVector);
+              dInt->readTrace(info->mTraceVector);
               endLog = info->mTraceVector.mLength == 0;
               profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector, endLog);
               numTracePackets += info->mTraceVector.mLength;
