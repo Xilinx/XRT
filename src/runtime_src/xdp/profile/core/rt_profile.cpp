@@ -33,9 +33,10 @@
 #include <iomanip>
 
 #ifdef _WIN32
-#pragma warning(disable : 4996 4244)
+#pragma warning(disable : 4996 4244 4702)
 /* 4996 : Disable warning for use of "getenv" */
 /* 4244 : Disable warning for conversion of int to char in header file <algorithm> included in one of the header files */
+/* 4702 : Disable warning for unreachable code. This is a temporary workaround for a crash on Windows */
 #endif
 
 namespace xdp {
@@ -123,6 +124,9 @@ namespace xdp {
 
   bool RTProfile::isDeviceProfileOn() const
   {
+#ifdef _WIN32
+    return false;
+#endif
     // Device profiling is not valid in cpu flow or old emulation flow
     if (mPluginHandle->getFlowMode() == xdp::RTUtil::CPU
        || mPluginHandle->getFlowMode() == xdp::RTUtil::COSIM_EM)

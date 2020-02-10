@@ -741,6 +741,27 @@ static void xocl_p2p_percpu_ref_release(struct percpu_ref *ref)
 static void xocl_p2p_percpu_ref_kill(void *data)
 {
 	struct percpu_ref *ref = data;
+#if defined(RHEL_RELEASE_CODE)
+	#if (RHEL_RELEASE_CODE == RHEL_RELEASE_VERSION(7, 7))
+	unsigned long __percpu *percpu_count = (unsigned long __percpu *)
+		(ref->percpu_count_ptr & ~__PERCPU_REF_ATOMIC_DEAD);
+	unsigned long count = 0;
+	int cpu;
+
+/* Nasty hack for CentOS7.7 only
+ * percpu_ref->count have to substract the percpu counters
+ * to guarantee the percpu_ref->count will drop to 0
+ */
+	for_each_possible_cpu(cpu)
+		count += *per_cpu_ptr(percpu_count, cpu);
+
+	rcu_read_lock_sched();
+	atomic_long_sub(count, &ref->count);
+	rcu_read_unlock_sched();
+	#endif
+#endif
+
+
 	percpu_ref_kill(ref);
 }
 
@@ -1258,12 +1279,18 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	xdev->core.pdev = pdev;
 	xdev->core.dev_minor = XOCL_INVALID_MINOR;
 	rwlock_init(&xdev->core.rwlock);
-	xocl_fill_dsa_priv(xdev, (struct xocl_board_private *)ent->driver_data);
 	mutex_init(&xdev->dev_lock);
 	mutex_init(&xdev->core.wq_lock);
 	atomic64_set(&xdev->total_execs, 0);
 	atomic_set(&xdev->outstanding_execs, 0);
 	INIT_LIST_HEAD(&xdev->ctx_list);
+
+
+	ret = xocl_config_pci(xdev);
+	if (ret)
+		goto failed;
+
+	xocl_fill_dsa_priv(xdev, (struct xocl_board_private *)ent->driver_data);
 
 	for (i = XOCL_WORK_RESET; i < XOCL_WORK_NUM; i++) {
 		INIT_DELAYED_WORK(&xdev->core.works[i].work, xocl_work_cb);
@@ -1285,10 +1312,6 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 		xocl_err(&pdev->dev, "failed to identify bar");
 		goto failed;
 	}
-
-	ret = xocl_config_pci(xdev);
-	if (ret)
-		goto failed;
 
 	ret = xocl_subdev_create_all(xdev);
 	if (ret) {

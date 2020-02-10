@@ -178,6 +178,32 @@ static int xocl_wait_master_off(struct xclmgmt_dev *lro)
 	return bus_for_each_dev(&pci_bus_type, NULL, lro, xocl_match_slot_and_wait);
 }
 
+static int xocl_match_slot_set_master(struct device *dev, void *data)
+{
+	struct xclmgmt_dev *lro = data;
+	struct pci_dev *pdev;
+	u16 pci_cmd;
+	int ret = 0;
+
+	pdev = to_pci_dev(dev);
+
+	if (pdev != lro->core.pdev &&
+		(XOCL_DEV_ID(pdev) >> 3) == (XOCL_DEV_ID(lro->pci_dev) >> 3)) {
+		pci_read_config_word(pdev, PCI_COMMAND, &pci_cmd);
+		if (!(pci_cmd & PCI_COMMAND_MASTER)) {
+			pci_cmd |= PCI_COMMAND_MASTER;
+			pci_write_config_word(pdev, PCI_COMMAND, pci_cmd);
+		}
+	}
+
+	return ret;
+}
+
+static int xocl_set_master_on(struct xclmgmt_dev *lro)
+{
+	return bus_for_each_dev(&pci_bus_type, NULL, lro, xocl_match_slot_set_master);
+}
+
 /**
  * Perform a PCIe secondary bus reset. Note: Use this method over pcie fundamental reset.
  * This method is known to work better.
@@ -223,6 +249,7 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 	 * save state and issue PCIe secondary bus reset
 	 */
 	if (!XOCL_DSA_PCI_RESET_OFF(lro)) {
+		xocl_subdev_destroy_by_level(lro, XOCL_SUBDEV_LEVEL_URP);
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_ICAP);
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_MAILBOX);
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_AF);
@@ -270,6 +297,7 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 
 	/* If the PCIe board has PS. This could take 50 seconds */
 	xocl_ps_wait(lro);
+	xocl_set_master_on(lro);
 
 done:
 	return err;
@@ -328,7 +356,6 @@ static int xocl_match_slot_and_restore(struct device *dev, void *data)
 {
 	struct xclmgmt_dev *lro = data;
 	struct pci_dev *pdev;
-	u16 pci_cmd;
 
 	pdev = to_pci_dev(dev);
 
@@ -348,12 +375,6 @@ static int xocl_match_slot_and_restore(struct device *dev, void *data)
 		xocl_axigate_free(lro, XOCL_SUBDEV_LEVEL_BLD);
 
 		pci_restore_state(pdev);
-
-		pci_read_config_word(pdev, PCI_COMMAND, &pci_cmd);
-		if (!(pci_cmd & PCI_COMMAND_MASTER)) {
-			pci_cmd |= PCI_COMMAND_MASTER;
-			pci_write_config_word(pdev, PCI_COMMAND, pci_cmd);
-		}
 		pci_cfg_access_unlock(pdev);
 	}
 
@@ -622,6 +643,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	const struct firmware			*fw = NULL;
 	const struct axlf_section_header	*dtc_header;
 	struct axlf				*bin_axlf;
+	char					*vbnv;
 	char					fw_name[256];
 	int					ret;
 
@@ -650,6 +672,18 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 		mgmt_err(lro, "Invalid PARTITION_METADATA");
 		goto failed;
 	}
+
+	vbnv = bin_axlf->m_header.m_platformVBNV;
+	if (strlen(vbnv) > 0) {
+		mgmt_info(lro, "Board VBNV: %s", vbnv);
+		ret = xocl_fdt_add_pair(lro, lro->core.fdt_blob, "vbnv", vbnv,
+				strlen(vbnv) + 1);
+		if (ret) {
+			mgmt_err(lro, "Adding VBNV pair failed, %d", ret);
+			goto failed;
+		}
+	}
+
 
 	release_firmware(fw);
 	fw = NULL;

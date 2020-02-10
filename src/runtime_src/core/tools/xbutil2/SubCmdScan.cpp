@@ -20,15 +20,17 @@
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 
+#include "core/common/system.h"
+#include "core/common/device.h"
+#include "core/common/query_requests.h"
+
+// System - Include Files
+#include <iostream>
+
 // 3rd Party Library - Include Files
 #include <boost/program_options.hpp>
 #include <boost/property_tree/json_parser.hpp>
 namespace po = boost::program_options;
-
-// System - Include Files
-#include <iostream>
-#include "common/system.h"
-#include "common/device.h"
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
@@ -97,7 +99,10 @@ SubCmdScan::execute(const SubCmdOptions& _options) const
     auto device_id = device.second.get<unsigned int>("device_id", std::numeric_limits<unsigned int>::max());
     auto udev = xrt_core::get_userpf_device(device_id);
     auto vbnv = xrt_core::query_device<std::string>(udev, query_request::QR_ROM_VBNV);
-    std::cout << "[" << device_id << "]: " << vbnv << "\n";
+    auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(udev);
+    std::cout << "[" << device_id << "]: "
+              << xrt_core::query::pcie_bdf::to_string(bdf) << " "
+              << vbnv << "\n";
 #if 0
     dev->read_ready_status(_pt);
     bool ready = _pt.get<bool>("ready", "false");

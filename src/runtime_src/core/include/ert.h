@@ -413,6 +413,18 @@ enum softkernel_type {
   SOFTKERNEL_TYPE_XCLBIN = 1,
 };
 
+/*
+ * Base address GPIO per spec
+ * | Offset  | Description
+ * -----------------------
+ * | 0x00    | ERT_MGMT_PF_base_addr (Not sure where this should be use)
+ * | 0x08    | ERT_USER_PF_base_addr. The base address of ERT peripherals
+ */
+#if defined(ERT_BUILD_V20)
+uint32_t ert_base_addr = 0;
+# define ERT_BASE_ADDR                     0x01F30008
+#endif
+
 /**
  * Address constants per spec
  */
@@ -422,8 +434,8 @@ enum softkernel_type {
 # define ERT_CQ_BASE_ADDR                  0x340000
 # define ERT_CSR_ADDR                      0x360000
 #elif defined(ERT_BUILD_V20)
-# define ERT_CQ_BASE_ADDR                  0x000000
-# define ERT_CSR_ADDR                      0x010000
+# define ERT_CQ_BASE_ADDR                  (0x000000 + ert_base_addr)
+# define ERT_CSR_ADDR                      (0x010000 + ert_base_addr)
 #else
 # define ERT_CQ_BASE_ADDR                  0x190000
 # define ERT_CSR_ADDR                      0x180000

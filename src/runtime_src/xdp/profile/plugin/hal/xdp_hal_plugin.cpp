@@ -225,6 +225,9 @@ namespace xdp {
 
 void hal_level_xdp_cb_func(HalCallbackType cb_type, void* payload)
 {
+  if(!xdp::VPDatabase::alive())
+    return;
+
   switch (cb_type) {
     case HalCallbackType::ALLOC_BO_START:
       xdp::alloc_bo_start(payload);

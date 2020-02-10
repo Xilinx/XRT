@@ -423,20 +423,25 @@ static int init_rom_by_dtb(struct feature_rom *rom)
 	const char *vbnv;
 	int i;
 
-	if (XDEV(xdev)->fdt_blob) {
-		vbnv = fdt_getprop(XDEV(xdev)->fdt_blob, 0, "vbnv", NULL);
-		if (vbnv)
-			strcpy(header->VBNVName, vbnv);
-		for (i = 0; i < strlen(header->VBNVName); i++)
-			if (header->VBNVName[i] == ':' ||
-					header->VBNVName[i] == '.')
-				header->VBNVName[i] = '_';
-	}
 	header->FeatureBitMap = UNIFIED_PLATFORM;
 	*(u32 *)header->EntryPointString = MAGIC_NUM;
 	if (XDEV(xdev)->priv.vbnv)
 		strncpy(header->VBNVName, XDEV(xdev)->priv.vbnv,
 				sizeof (header->VBNVName) - 1);
+
+	/* overwrite if vbnv property exists */
+	if (XDEV(xdev)->fdt_blob) {
+		vbnv = fdt_getprop(XDEV(xdev)->fdt_blob, 0, "vbnv", NULL);
+		if (vbnv) {
+			xocl_xdev_info(xdev, "found vbnv prop, %s", vbnv);
+			strncpy(header->VBNVName, vbnv,
+				sizeof(header->VBNVName) - 1);
+			for (i = 0; i < strlen(header->VBNVName); i++)
+				if (header->VBNVName[i] == ':' ||
+					header->VBNVName[i] == '.')
+					header->VBNVName[i] = '_';
+		}
+	}
 
 	xocl_xdev_info(xdev, "Searching ERT and CMC in dtb.");
 	res = xocl_subdev_get_ioresource(xdev, NODE_CMC_FW_MEM);

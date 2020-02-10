@@ -195,6 +195,8 @@ isAPCtrlChain(key k, const std::string& cu);
 
 uint64_t getMemSizeBytes(key k, int idx);
 
+uint64_t getPlramSizeBytes(key k);
+
 } // device
 } // platform
 

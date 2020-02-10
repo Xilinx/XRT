@@ -35,7 +35,12 @@ public:
   virtual int  open(const std::string& subdev, int flag) const;
   virtual void close(int dev_handle) const;
 
+private:
+  // Private look up function for concrete query::request
+  virtual const query::request&
+  lookup_query(query::key_type query_key) const;
 };
-}
 
-#endif /* CORE_SYSTEM_H */
+} // xrt_core
+
+#endif

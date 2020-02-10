@@ -22,7 +22,6 @@
 
 #include "xocl_profile_cb.h"
 #include "ocl_profiler.h"
-#include "xdp/rt_singleton.h"
 #include "xdp/profile/core/rt_profile.h"
 
 
@@ -138,6 +137,56 @@ event_status_to_profile_state(cl_int status)
   return (*itr).second;
 }
 
+// Log buffer size and it's memory bank
+std::mutex buf_guidance_mutex;
+void log_buffer_guidance(xocl::event* event, cl_kernel kernel)
+{
+  const std::lock_guard<std::mutex> lock(buf_guidance_mutex);
+
+  // Return if kernel already logged
+  auto& g_map = OCLProfiler::Instance()->getPlugin()->getKernelBufferInfoMap();
+  uint64_t key = reinterpret_cast<uint64_t>(kernel);
+  auto it = g_map.find(key);
+  if (it != g_map.end()) {
+    return;
+  }
+
+  xocl::memory* mem;
+  auto queue = event->get_command_queue();
+  auto device = queue->get_device();
+  size_t buf_size = 0;
+  std::string mem_tag;
+  std::string arg_name;
+
+  auto kname = xocl::xocl(kernel)->get_name();
+  for (auto& arg : xocl::xocl(kernel)->get_argument_range()) {
+
+    try {
+      arg_name = arg->get_name();
+    } catch (const xocl::error&) {
+      continue;
+    }
+    mem = arg->get_memory_object();
+    if(!mem)
+      continue;
+
+    buf_size = mem->get_size();
+    auto mem_id = mem->get_memidx();
+    mem_tag = device->get_xclbin().memidx_to_banktag(mem_id);
+    if (mem_tag.rfind("bank", 0) == 0)
+      mem_tag = "DDR[" + mem_tag.substr(4,4) + "]";
+    g_map[key].push_back(kname + "|" + arg_name + "|" + mem_tag + "," + std::to_string(buf_size));
+  }
+}
+
+void cb_log_command_queue(xocl::command_queue* cq)
+{
+  auto key = reinterpret_cast<uint64_t>(cq);
+  bool val = cq->get_properties() & CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE;
+  auto& g_map = OCLProfiler::Instance()->getPlugin()->getmCQInfoMap();
+  g_map[key] = val;
+}
+
 /*
  * Lambda generators called from openCL APIs
  *
@@ -178,6 +227,8 @@ cb_action_ndrange(xocl::event* event,cl_int status,const std::string& cu_name, c
     std::string uniqueName = "KERNEL|" + uniqueDeviceName + "|" + xname + "|" + CuInfo + "|";
     std::string traceString = uniqueName + std::to_string(workGroupSize);
     OCLProfiler::Instance()->getPlugin()->setTraceStringForComputeUnit(kname, traceString);
+    // Log Buffers associated with this kernel
+    log_buffer_guidance(event, kernel);
     // Finally log the execution
     OCLProfiler::Instance()->getProfileManager()->logKernelExecution
       ( reinterpret_cast<uint64_t>(kernel)
@@ -455,7 +506,6 @@ cb_action_migrate (xocl::event* event,cl_int status, cl_mem mem0, size_t totalSi
 {
     if (!isProfilingOn() || (flags & CL_MIGRATE_MEM_OBJECT_CONTENT_UNDEFINED) || (totalSize == 0))
       return;
-
     auto commandState = event_status_to_profile_state(status);
 
     // Create string to specify event and its dependencies
@@ -630,8 +680,7 @@ void cb_reset(const axlf* xclbin)
 void
 cb_init()
 {
-  // Create RTSingleton object if not already created
-  xdp::RTSingleton::Instance();
+  
 }
 
 void register_xocl_profile_callbacks() {
@@ -657,15 +706,15 @@ void register_xocl_profile_callbacks() {
   xocl::profile::register_cb_start_device_profiling(cb_start_device_profiling);
   xocl::profile::register_cb_reset_device_profiling(cb_reset_device_profiling);
   xocl::profile::register_cb_end_device_profiling(cb_end_device_profiling);
+
+  xocl::command_queue::register_constructor_callbacks(xdp::cb_log_command_queue);
 }
 } // xdp
 
-extern "C"
 void
 initXDPLib()
 {
   try {
-    (void)xdp::RTSingleton::Instance();
     (void)xdp::OCLProfiler::Instance();
   } catch (std::runtime_error& e) {
     xrt::message::send(xrt::message::severity_level::XRT_WARNING, e.what());

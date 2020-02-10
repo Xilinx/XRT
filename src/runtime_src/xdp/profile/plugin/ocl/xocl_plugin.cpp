@@ -200,6 +200,12 @@ namespace xdp {
 
     // 3. Kernel counts
     getKernelCounts(profile);
+
+    // 4. Devices with PLRAM Size > 0
+    getPlramSizeDevices();
+
+    // 5. Bit widths for memory types for each device
+    getMemBitWidthDevices();
   }
 
   void XoclPlugin::getDeviceExecutionTimes(RTProfile *profile)
@@ -222,8 +228,10 @@ namespace xdp {
       // TODO: checks below are kludgy; are there better ways to check for device support?
 
       // Check if device supports HBM
-      if (deviceName.find("280") != std::string::npos)
+      if (deviceName.find("u280") != std::string::npos ||
+          deviceName.find("u50") != std::string::npos) {
         setHbmDevice(true);
+      }
 
       // Check if device supports KDMA
       if ((deviceName.find("xilinx_u200_xdma_201830_2") != std::string::npos)
@@ -271,6 +279,43 @@ namespace xdp {
           mKernelCountsMap[kernelName] = 1;
         else
           mKernelCountsMap[kernelName] += 1;
+      }
+    }
+  }
+
+  void XoclPlugin::getPlramSizeDevices()
+  {
+    for (auto device : mPlatformHandle->get_device_range()) {
+      if (!device->is_active())
+        continue;
+      auto name = device->get_unique_name();
+      auto sz = xdp::xoclp::platform::device::getPlramSizeBytes(device);
+      if (sz)
+        mDevicePlramSizeMap[name] = sz;
+    }
+  }
+
+  void XoclPlugin::getMemBitWidthDevices()
+  {
+    for (auto device : mPlatformHandle->get_device_range()) {
+      if (!device->is_active())
+        continue;
+
+      // TODO: Find a better way to distinguish embedded platforms
+      bool soc = false;
+      std::string deviceName = device->get_unique_name();
+      if (deviceName.rfind("zc", 0) == 0) {
+        soc = true;
+      }
+
+      // TODO: figure out how to get this from platform
+      auto name = device->get_unique_name();
+      if (soc) {
+        mDeviceMemTypeBitWidthMap[name + "|DDR"] = 64;
+      } else {
+        mDeviceMemTypeBitWidthMap[name + "|HBM"] = 256;
+        mDeviceMemTypeBitWidthMap[name + "|DDR"] = 512;
+        mDeviceMemTypeBitWidthMap[name + "|PLRAM"] = 512;
       }
     }
   }
