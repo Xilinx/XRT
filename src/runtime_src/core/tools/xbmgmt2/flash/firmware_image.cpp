@@ -608,7 +608,14 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
         in_file.seekg(0);
         in_file.read(mBuf, bufsize);
     }
+
+// rdbuf doesn't work on windows and str() doesn't work for ospi_versal on linux
+#ifdef __GNUC__
     this->rdbuf()->pubsetbuf(mBuf, bufsize);
+#endif
+#ifdef _WIN32
+	this->str(mBuf);
+#endif
 }
 
 firmwareImage::~firmwareImage()
