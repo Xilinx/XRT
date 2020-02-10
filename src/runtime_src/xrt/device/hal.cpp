@@ -313,4 +313,40 @@ void load_xdp_app_debug()
   static xdp_app_debug_once_loader xdp_app_debug_loaded;
 }
 
+void load_xdp_lop()
+{
+  struct xdp_lop_once_loader
+  {
+    xdp_lop_once_loader()
+    {
+      bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
+      if (xrt.empty()) {
+        throw std::runtime_error("XILINX_XRT not set");
+      }
+      bfs::path xrtlib(xrt / "lib");
+      directoryOrError(xrtlib);
+      auto libpath = dllpath(xrt, "xdp_lop_plugin");
+
+      if (!isDLL(libpath)) {
+        throw std::runtime_error("Library " + libpath.string() + " not found!");
+      }
+      auto handle = xrt_core::dlopen(libpath.string().c_str(), RTLD_NOW | RTLD_GLOBAL);
+      if (!handle)
+        throw std::runtime_error("Failed to open XDP library '" + libpath.string() + "'\n" + xrt_core::dlerror());
+
+      typedef void (* xdpInitType)();
+
+      const std::string s = "initLOP";
+      auto initFunc = (xdpInitType)xrt_core::dlsym(handle, s.c_str());
+      if (!initFunc)
+        throw std::runtime_error("Failed to initialize XDP Kernel Debug library, '" + s +"' symbol not found.\n" + xrt_core::dlerror());
+
+      initFunc();
+    }
+  };
+
+  // 'magic static' is thread safe per C++11
+  static xdp_lop_once_loader xdp_lop_loaded;
+}
+
 }} // hal,xcl

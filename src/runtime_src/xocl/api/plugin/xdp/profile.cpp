@@ -450,6 +450,9 @@ function_call_logger(const char* function, long long address)
     if (xrt::config::get_profile()) {
       xrt::hal::load_xdp();
     }
+    else if (xrt::config::get_lop_profile()) {
+      xrt::hal::load_xdp_lop();
+    }
 #ifdef _WIN32
     // Application debug not supported on Windows
 #else
