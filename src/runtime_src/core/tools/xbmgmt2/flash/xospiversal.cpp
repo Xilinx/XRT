@@ -43,7 +43,10 @@ int XOSPIVER_Flasher::xclUpgradeFirmware(std::istream& binStream)
 
     std::vector<char> buffer(total_size);
     binStream.read(buffer.data(), total_size);
-	ssize_t ret = write(fd, buffer.data(), total_size);
+	ssize_t ret = total_size;
+#ifdef __GNUC__
+	ret = write(fd, buffer.data(), total_size);
+#endif
 
     m_device->close(fd);
 

@@ -19,6 +19,7 @@
 #include "xspi.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
+// #include "core/common/query_requests.h"
 #include <iostream>
 #include <string>
 #include <fstream>
@@ -300,6 +301,7 @@ XSPI_Flasher::XSPI_Flasher(std::shared_ptr<xrt_core::device> dev)
         flash_base = FLASH_BASE;
 
     mFlashDev = nullptr;
+#ifdef __GNUC__
     if (std::getenv("FLASH_VIA_DRIVER")) {
         int fd = mDev->open("flash", O_RDWR);
         if (fd >= 0)
@@ -307,11 +309,12 @@ XSPI_Flasher::XSPI_Flasher(std::shared_ptr<xrt_core::device> dev)
         if (mFlashDev == NULL)
             std::cout << "Failed to open flash device on card" << std::endl;
     }
+#endif
 }
 
 static bool isDualQSPI(xrt_core::device *dev) {
     uint64_t deviceID = xrt_core::query_device<uint64_t>(dev, xrt_core::device::QR_PCIE_DEVICE);
-    //auto deviceID = xrt_core::device_query<xrt_core::query::pcie_device>(m_device);
+    //auto deviceID = xrt_core::device_query<xrt_core::query::pcie_device>(dev);
 
     return (deviceID == 0xE987 || deviceID == 0x6987 || deviceID == 0xD030);
 }
