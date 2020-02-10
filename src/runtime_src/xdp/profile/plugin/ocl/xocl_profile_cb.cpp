@@ -163,19 +163,19 @@ void log_buffer_guidance(xocl::event* event, cl_kernel kernel)
 
     try {
       arg_name = arg->get_name();
-    } catch (const xocl::error&) {
+      mem = arg->get_memory_object();
+      if(!mem)
+        continue;
+
+      buf_size = mem->get_size();
+      auto mem_id = mem->get_memidx();
+      mem_tag = device->get_xclbin().memidx_to_banktag(mem_id);
+      if (mem_tag.rfind("bank", 0) == 0)
+        mem_tag = "DDR[" + mem_tag.substr(4,4) + "]";
+      g_map[key].push_back(kname + "|" + arg_name + "|" + mem_tag + "," + std::to_string(buf_size));
+    } catch (...) {
       continue;
     }
-    mem = arg->get_memory_object();
-    if(!mem)
-      continue;
-
-    buf_size = mem->get_size();
-    auto mem_id = mem->get_memidx();
-    mem_tag = device->get_xclbin().memidx_to_banktag(mem_id);
-    if (mem_tag.rfind("bank", 0) == 0)
-      mem_tag = "DDR[" + mem_tag.substr(4,4) + "]";
-    g_map[key].push_back(kname + "|" + arg_name + "|" + mem_tag + "," + std::to_string(buf_size));
   }
 }
 
