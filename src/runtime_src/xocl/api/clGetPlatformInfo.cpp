@@ -24,6 +24,10 @@
 #include "xocl/config.h"
 #include "plugin/xdp/profile.h"
 
+#ifdef _WIN32
+# pragma warning ( disable : 4706 )
+#endif
+
 namespace xocl {
 
 static void
@@ -39,7 +43,7 @@ validOrError(cl_platform_id   platform,
   detail::platform::validOrError(platform);
 }
 
-static cl_int 
+static cl_int
 clGetPlatformInfo(cl_platform_id   platform,
                   cl_platform_info param_name,
                   size_t           param_value_size,
@@ -105,5 +109,3 @@ clGetPlatformInfo(cl_platform_id   platform,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

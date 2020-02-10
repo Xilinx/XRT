@@ -15,12 +15,10 @@
  */
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/error.h"
-
 #include "plugin/xdp/profile.h"
+#include <CL/opencl.h>
 
 namespace xocl {
 
@@ -94,7 +92,7 @@ validOrError(cl_command_queue command_queue,
   // required by the OpenCL implementation on the host.
 }
 
-static cl_int 
+static cl_int
 clEnqueueCopyImageToBuffer(cl_command_queue command_queue,
                            cl_mem           src_image,
                            cl_mem           dst_buffer,
@@ -112,7 +110,7 @@ clEnqueueCopyImageToBuffer(cl_command_queue command_queue,
 
 } // xocl
 
-cl_int 
+cl_int
 clEnqueueCopyImageToBuffer(cl_command_queue command_queue,
                            cl_mem           src_image,
                            cl_mem           dst_buffer,
@@ -138,5 +136,3 @@ clEnqueueCopyImageToBuffer(cl_command_queue command_queue,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

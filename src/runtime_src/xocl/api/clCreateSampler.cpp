@@ -15,32 +15,30 @@
  */
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/object.h"
-
 #include "plugin/xdp/profile.h"
+#include <CL/opencl.h>
 
 namespace xocl {
- 
+
 static void
 validOrError(cl_context           context ,
-             cl_bool              normalized_coords , 
-             cl_addressing_mode   addressing_mode , 
+             cl_bool              normalized_coords ,
+             cl_addressing_mode   addressing_mode ,
              cl_filter_mode       filter_mode ,
              cl_int *             errcode_ret )
 
 {
   if( !xocl::config::api_checks())
     return;
-  
+
 }
 
 static cl_sampler
 clCreateSampler(cl_context           context ,
-                cl_bool              normalized_coords , 
-                cl_addressing_mode   addressing_mode , 
+                cl_bool              normalized_coords ,
+                cl_addressing_mode   addressing_mode ,
                 cl_filter_mode       filter_mode ,
                 cl_int *             errcode_ret )
 
@@ -55,8 +53,8 @@ clCreateSampler(cl_context           context ,
 
 cl_sampler
 clCreateSampler(cl_context           context ,
-                cl_bool              normalized_coords , 
-                cl_addressing_mode   addressing_mode , 
+                cl_bool              normalized_coords ,
+                cl_addressing_mode   addressing_mode ,
                 cl_filter_mode       filter_mode ,
                 cl_int *             errcode_ret )
 {
@@ -75,6 +73,3 @@ clCreateSampler(cl_context           context ,
   }
   return nullptr;
 }
-
-
-

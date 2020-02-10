@@ -13,11 +13,11 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
-#include <CL/opencl.h>
+#include "xocl/config.h"
 #include "xocl/core/stream.h"
 #include "xocl/core/error.h"
 #include "plugin/xdp/profile.h"
+#include <CL/opencl.h>
 
 // Copyright 2018 Xilinx, Inc. All rights reserved.
 
@@ -27,10 +27,10 @@ validOrError(cl_stream stream)
 {
 }
 
-cl_int 
+cl_int
 clReleaseStream(cl_stream stream)
 {
-  validOrError(stream);   
+  validOrError(stream);
   return xocl::xocl(stream)->close();
 }
 
@@ -51,5 +51,3 @@ clReleaseStream(cl_stream stream) CL_API_SUFFIX__VERSION_1_0
   }
   return CL_INVALID_VALUE;
 }
-
-
