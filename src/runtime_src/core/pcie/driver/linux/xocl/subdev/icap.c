@@ -688,8 +688,10 @@ static void xclbin_get_ocl_frequency_max_min(struct icap *icap,
 	}
 }
 
-static int icap_toggle_axi_gate(struct icap *icap)
+static int ulp_toggle_axi_gate(void *drvdata)
 {
+	struct icap *icap = drvdata;
+
 	ICAP_INFO(icap, "Toggle CL AXI gate");
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
@@ -710,8 +712,7 @@ static int ulp_freeze_axi_gate(void *drvdata)
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 
 	return (CLOCK_DEV_LEVEL(xdev) > XOCL_SUBDEV_LEVEL_PRP) ?
-	    icap_toggle_axi_gate(icap) :
-	    icap_freeze_axi_gate(icap);
+	    0 : icap_freeze_axi_gate(icap);
 }
 
 static int ulp_free_axi_gate(void *drvdata)
@@ -720,8 +721,7 @@ static int ulp_free_axi_gate(void *drvdata)
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 
 	return (CLOCK_DEV_LEVEL(xdev) > XOCL_SUBDEV_LEVEL_PRP) ?
-	    0 :
-	    icap_free_axi_gate(icap);
+	    0 : icap_free_axi_gate(icap);
 }
 
 static int ulp_clock_update(struct icap *icap, unsigned short *freqs,
@@ -731,6 +731,7 @@ static int ulp_clock_update(struct icap *icap, unsigned short *freqs,
 	struct gate_handler gate_handle = {
 		.gate_freeze_cb = ulp_freeze_axi_gate,
 		.gate_free_cb = ulp_free_axi_gate,
+		.gate_toggle_cb = ulp_toggle_axi_gate,
 		.gate_args = icap,
 	};
 

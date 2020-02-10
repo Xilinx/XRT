@@ -1354,7 +1354,7 @@ static bool scaling_condition_check(struct xocl_xmc *xmc, struct device *dev)
 		if (!XMC_PRIVILEGED(xmc)) {
 			xocl_dbg(dev, "runtime clock scaling is not supported in non privileged mode\n");
 		} else if (xmc->cs_on_ptfm) {
-			xocl_warn(dev, "runtime clock scaling is not enabled\n");
+			xocl_dbg(dev, "runtime clock scaling is not enabled\n");
 			return true;
 		} else {
 			xocl_warn(dev, "runtime clock scaling is not supported\n");

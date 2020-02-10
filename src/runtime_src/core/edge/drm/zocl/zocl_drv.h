@@ -212,5 +212,7 @@ void zocl_update_mem_stat(struct drm_zocl_dev *zdev, u64 size,
 void zocl_init_mem(struct drm_zocl_dev *zdev, struct mem_topology *mtopo);
 void zocl_clear_mem(struct drm_zocl_dev *zdev);
 
-int get_apt_index(struct drm_zocl_dev *zdev, phys_addr_t addr);
+int get_apt_index_by_addr(struct drm_zocl_dev *zdev, phys_addr_t addr);
+int get_apt_index_by_cu_idx(struct drm_zocl_dev *zdev, int cu_idx);
+void update_cu_idx_in_apt(struct drm_zocl_dev *zdev, int apt_idx, int cu_idx);
 #endif
