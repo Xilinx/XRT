@@ -65,20 +65,28 @@ enum ecc_prop {
 #define INJ_FAULT_REG	0x300
 
 struct hbm_regs {
+	u8 unuse_pad0[72];
+	u32 cfg_mask;
+	u8 unuse_pad1[100];
+	u32 cfg_hbm_cb_en;
+	u8 unuse_pad2[5964];
+	u32 cfg_dm_en;
+	u32 cfg_rmw_en;
+	u8 unuse_pad3[1016];
 	u32 cfg_ecc_en;
 	u32 scrub_en;
 	u32 scrub_init_en;
 	u32 cfg_scrub_rmw;
-	u8 unuse_pad1[8];
+	u8 unuse_pad4[8];
 	u32 err_clr;
-	u8 unuse_pad2[12];
+	u8 unuse_pad5[12];
 	u32 cnt_1b_ps0;
 	u32 cnt_2b_ps0;
 	u32 scrub_done_ps0;
 	u32 cnt_1b_ps1;
 	u32 cnt_2b_ps1;
 	u32 scrub_done_ps1;
-	u8 unuse_pad3[12];
+	u8 unuse_pad6[12];
 	u32 err_gen_1b_ps0;
 	u32 err_gen_2b_ps0;
 	u32 err_gen_1b_ps1;
@@ -107,6 +115,7 @@ struct xocl_mig {
 	enum ecc_type		type;
 	struct xcl_mig_ecc	cache;
 	struct xocl_mig_label	mig_label;
+	u32			ecc_enabled;
 };
 
 #define MIG_DEV2XDEV(d)	xocl_get_xdev(to_platform_device(d))
@@ -121,11 +130,22 @@ static void ecc_reset(struct xocl_mig *mig)
 		return;
 	}
 
+	if (!mig->ecc_enabled)
+		return;
+
 	if (mig->type == DRAM_ECC) {
 		xocl_dr_reg_write32(xdev, 0x3, mig->base + ECC_STATUS);
 		xocl_dr_reg_write32(xdev, 0, mig->base + CE_CNT);
 	} else {
 		xocl_dr_reg_write32(xdev, 0x1, &h_regs->cfg_ecc_en);
+		/*                    cfg_mask  cfg_hbm_cb_en  cfg_dm_en  cfg_rmw_en
+		 *  HBM enable            0            1           0          1
+		 *  HBM disable           1            0           1          0
+		 */
+		xocl_dr_reg_write32(xdev, 0x0, &h_regs->cfg_mask);
+		xocl_dr_reg_write32(xdev, 0x1, &h_regs->cfg_hbm_cb_en);
+		xocl_dr_reg_write32(xdev, 0x0, &h_regs->cfg_dm_en);
+		xocl_dr_reg_write32(xdev, 0x1, &h_regs->cfg_rmw_en);
 		xocl_dr_reg_write32(xdev, 0x1, &h_regs->scrub_en);
 		xocl_dr_reg_write32(xdev, 0x1, &h_regs->scrub_init_en);
 		xocl_dr_reg_write32(xdev, 0x0, &h_regs->err_clr);
@@ -143,6 +163,7 @@ static void mig_ecc_get_prop(struct device *dev, enum ecc_prop kind, void *buf)
 	uint64_t addr = 0;
 
 	if (MIG_PRIVILEGED(mig)) {
+
 		switch (kind) {
 		case MIG_ECC_ENABLE:
 			if (mig->type == HBM_ECC_PS0 || mig->type == HBM_ECC_PS1)
@@ -291,7 +312,7 @@ static ssize_t ecc_enabled_show(struct device *dev, struct device_attribute *da,
 {
 	uint32_t enable;
 
-	mig_ecc_get_prop(dev, MIG_ECC_STATUS, &enable);
+	mig_ecc_get_prop(dev, MIG_ECC_ENABLE, &enable);
 	return sprintf(buf, "%u\n", enable);
 }
 static ssize_t ecc_enabled_store(struct device *dev,
@@ -305,16 +326,30 @@ static ssize_t ecc_enabled_store(struct device *dev,
 	if (!MIG_PRIVILEGED(mig))
 		return count;
 
+	if (!mig->ecc_enabled)
+		return count;
+
 	if (kstrtoint(buf, 10, &val) || val > 1) {
 		xocl_err(&to_platform_device(dev)->dev,
 			"usage: echo [0|1] > ecc_enabled");
 		return -EINVAL;
 	}
 
-	if (mig->type == HBM_ECC_PS0 || mig->type == HBM_ECC_PS1)
+	if (mig->type == HBM_ECC_PS0 || mig->type == HBM_ECC_PS1) {
+
+		val &= 0x1;
 		xocl_dr_reg_write32(xdev, val, &h_regs->cfg_ecc_en);
-	else
+		/*                    cfg_mask  cfg_hbm_cb_en  cfg_dm_en  cfg_rmw_en
+		 *  HBM enable            0            1           0          1
+		 *  HBM disable           1            0           1          0
+		 */
+		xocl_dr_reg_write32(xdev, val^1, &h_regs->cfg_mask);
+		xocl_dr_reg_write32(xdev, val, &h_regs->cfg_hbm_cb_en);
+		xocl_dr_reg_write32(xdev, val^1, &h_regs->cfg_dm_en);
+		xocl_dr_reg_write32(xdev, val, &h_regs->cfg_rmw_en);
+	} else {
 		xocl_dr_reg_write32(xdev, val, MIG_DEV2BASE(dev) + ECC_ON_OFF);
+	}
 
 	return count;
 }
@@ -330,6 +365,9 @@ static ssize_t ecc_clear_store(struct device *dev, struct device_attribute *da,
 	uint32_t val;
 
 	if (!MIG_PRIVILEGED(mig))
+		return count;
+
+	if (!mig->ecc_enabled)
 		return count;
 
 	if (kstrtoint(buf, 10, &val) || val > 1) {
@@ -354,6 +392,9 @@ static ssize_t ecc_inject_store(struct device *dev, struct device_attribute *da,
 	uint32_t val;
 
 	if (!MIG_PRIVILEGED(mig))
+		return count;
+
+	if (!mig->ecc_enabled)
 		return count;
 
 	if (kstrtoint(buf, 10, &val) || val > 1) {
@@ -382,6 +423,9 @@ static ssize_t ecc_inject_2bits_store(struct device *dev, struct device_attribut
 	uint32_t val;
 
 	if (!MIG_PRIVILEGED(mig))
+		return count;
+
+	if (!mig->ecc_enabled)
 		return count;
 
 	if (kstrtoint(buf, 10, &val) || val > 1) {
@@ -476,8 +520,8 @@ static uint32_t mig_get_id(struct platform_device *pdev)
 
 static struct xocl_mig_funcs mig_ops = {
 	.get_data	= mig_get_data,
-	.set_data      = mig_set_data,
-	.get_id 	= mig_get_id,
+	.set_data	= mig_set_data,
+	.get_id		= mig_get_id,
 };
 
 static const struct attribute_group mig_attrgroup = {
@@ -565,8 +609,6 @@ static int mig_probe(struct platform_device *pdev)
 			return -EIO;
 		}
 	}
-
-
 	platform_set_drvdata(pdev, mig);
 
 	err = sysfs_create_mig(pdev);
@@ -575,10 +617,13 @@ static int mig_probe(struct platform_device *pdev)
 		iounmap(mig->base);
 		return err;
 	}
+	/* check MIG_ECC_ENABLE before reset*/
+	mig_ecc_get_prop(&pdev->dev, MIG_ECC_ENABLE, &mig->ecc_enabled);
+
 	ecc_reset(mig);
+
 	return 0;
 }
-
 
 static int mig_remove(struct platform_device *pdev)
 {

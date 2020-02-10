@@ -332,7 +332,7 @@ struct xocl_subdev_map {
 #define	XOCL_RES_MIG_HBM				\
 		((struct resource []) {			\
 			{				\
-			.start	= 0x5800,		\
+			.start	= 0x3C00,		\
 			.end 	= 0x58FF,		\
 			.flags  = IORESOURCE_MEM,	\
 			}				\
