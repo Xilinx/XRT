@@ -178,6 +178,32 @@ static int xocl_wait_master_off(struct xclmgmt_dev *lro)
 	return bus_for_each_dev(&pci_bus_type, NULL, lro, xocl_match_slot_and_wait);
 }
 
+static int xocl_match_slot_set_master(struct device *dev, void *data)
+{
+	struct xclmgmt_dev *lro = data;
+	struct pci_dev *pdev;
+	u16 pci_cmd;
+	int ret = 0;
+
+	pdev = to_pci_dev(dev);
+
+	if (pdev != lro->core.pdev &&
+		(XOCL_DEV_ID(pdev) >> 3) == (XOCL_DEV_ID(lro->pci_dev) >> 3)) {
+		pci_read_config_word(pdev, PCI_COMMAND, &pci_cmd);
+		if (!(pci_cmd & PCI_COMMAND_MASTER)) {
+			pci_cmd |= PCI_COMMAND_MASTER;
+			pci_write_config_word(pdev, PCI_COMMAND, pci_cmd);
+		}
+	}
+
+	return ret;
+}
+
+static int xocl_set_master_on(struct xclmgmt_dev *lro)
+{
+	return bus_for_each_dev(&pci_bus_type, NULL, lro, xocl_match_slot_set_master);
+}
+
 /**
  * Perform a PCIe secondary bus reset. Note: Use this method over pcie fundamental reset.
  * This method is known to work better.
@@ -271,6 +297,7 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 
 	/* If the PCIe board has PS. This could take 50 seconds */
 	xocl_ps_wait(lro);
+	xocl_set_master_on(lro);
 
 done:
 	return err;
@@ -329,7 +356,6 @@ static int xocl_match_slot_and_restore(struct device *dev, void *data)
 {
 	struct xclmgmt_dev *lro = data;
 	struct pci_dev *pdev;
-	u16 pci_cmd;
 
 	pdev = to_pci_dev(dev);
 
@@ -349,12 +375,6 @@ static int xocl_match_slot_and_restore(struct device *dev, void *data)
 		xocl_axigate_free(lro, XOCL_SUBDEV_LEVEL_BLD);
 
 		pci_restore_state(pdev);
-
-		pci_read_config_word(pdev, PCI_COMMAND, &pci_cmd);
-		if (!(pci_cmd & PCI_COMMAND_MASTER)) {
-			pci_cmd |= PCI_COMMAND_MASTER;
-			pci_write_config_word(pdev, PCI_COMMAND, pci_cmd);
-		}
 		pci_cfg_access_unlock(pdev);
 	}
 

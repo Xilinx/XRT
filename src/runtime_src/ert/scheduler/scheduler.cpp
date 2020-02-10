@@ -125,38 +125,13 @@ static const u32 AP_CTRL_ME    = 3;
 ////////////////////////////////////////////////////////////////
 // Extensions to core/include/ert.h
 ////////////////////////////////////////////////////////////////
-const addr_type STATUS_REGISTER_ADDR[4] =
-{
-  ERT_STATUS_REGISTER_ADDR0
- ,ERT_STATUS_REGISTER_ADDR1
- ,ERT_STATUS_REGISTER_ADDR2
- ,ERT_STATUS_REGISTER_ADDR3
-};
+addr_type STATUS_REGISTER_ADDR[4] = {0, 0, 0, 0};
 
-const addr_type CU_DMA_REGISTER_ADDR[4] =
-{
-  ERT_CU_DMA_REGISTER_ADDR0
- ,ERT_CU_DMA_REGISTER_ADDR1
- ,ERT_CU_DMA_REGISTER_ADDR2
- ,ERT_CU_DMA_REGISTER_ADDR3
-};
+addr_type CU_DMA_REGISTER_ADDR[4] = {0, 0, 0, 0};
 
-const addr_type CU_STATUS_REGISTER_ADDR[4] =
-{
-  ERT_CU_STATUS_REGISTER_ADDR0
- ,ERT_CU_STATUS_REGISTER_ADDR1
- ,ERT_CU_STATUS_REGISTER_ADDR2
- ,ERT_CU_STATUS_REGISTER_ADDR3
-};
+addr_type CU_STATUS_REGISTER_ADDR[4] = {0, 0, 0, 0};
 
-const addr_type CQ_STATUS_REGISTER_ADDR[4] =
-{
-  ERT_CQ_STATUS_REGISTER_ADDR0
- ,ERT_CQ_STATUS_REGISTER_ADDR1
- ,ERT_CQ_STATUS_REGISTER_ADDR2
- ,ERT_CQ_STATUS_REGISTER_ADDR3
-};
-
+addr_type CQ_STATUS_REGISTER_ADDR[4] = {0, 0, 0, 0};
 
 /**
  * Simple bitset type supporting 128 bits
@@ -397,6 +372,36 @@ struct disable_interrupt_guard
       write_reg(ERT_INTC_MER_ADDR,0x3); // interrupt controller master enable
   }
 };
+
+inline static void
+setup_ert_base_addr()
+{
+  /* In Subsytem 2.0, ERT MB now has to go around to access 3 peripherals
+   * internal to ERT Subsystem i.e CQRAM Controller, Embedded scheduler HW
+   * and KDMA. ERT MB needs to read the value in ERT_BASE_ADDR, add that
+   * value to ERT Subsystem Base Address and Peripheral Address, new value
+   * would be used by the ERT MB to access CQ and CSR.
+   */
+  #if defined(ERT_BUILD_V20)
+  ert_base_addr = read_reg(ERT_BASE_ADDR);
+  #endif
+  STATUS_REGISTER_ADDR[0] = ERT_STATUS_REGISTER_ADDR0;
+  STATUS_REGISTER_ADDR[1] = ERT_STATUS_REGISTER_ADDR1;
+  STATUS_REGISTER_ADDR[2] = ERT_STATUS_REGISTER_ADDR2;
+  STATUS_REGISTER_ADDR[3] = ERT_STATUS_REGISTER_ADDR3;
+  CU_DMA_REGISTER_ADDR[0] = ERT_CU_DMA_REGISTER_ADDR0;
+  CU_DMA_REGISTER_ADDR[1] = ERT_CU_DMA_REGISTER_ADDR1;
+  CU_DMA_REGISTER_ADDR[2] = ERT_CU_DMA_REGISTER_ADDR2;
+  CU_DMA_REGISTER_ADDR[3] = ERT_CU_DMA_REGISTER_ADDR3;
+  CU_STATUS_REGISTER_ADDR[0] = ERT_CU_STATUS_REGISTER_ADDR0;
+  CU_STATUS_REGISTER_ADDR[1] = ERT_CU_STATUS_REGISTER_ADDR1;
+  CU_STATUS_REGISTER_ADDR[2] = ERT_CU_STATUS_REGISTER_ADDR2;
+  CU_STATUS_REGISTER_ADDR[3] = ERT_CU_STATUS_REGISTER_ADDR3;
+  CQ_STATUS_REGISTER_ADDR[0] = ERT_CQ_STATUS_REGISTER_ADDR0;
+  CQ_STATUS_REGISTER_ADDR[1] = ERT_CQ_STATUS_REGISTER_ADDR1;
+  CQ_STATUS_REGISTER_ADDR[2] = ERT_CQ_STATUS_REGISTER_ADDR2;
+  CQ_STATUS_REGISTER_ADDR[3] = ERT_CQ_STATUS_REGISTER_ADDR3;
+}
 
 /**
  * MB configuration
@@ -1096,6 +1101,9 @@ static void
 scheduler_loop()
 {
   ERT_DEBUG("ERT scheduler\n");
+
+  // Set up ERT base address, this should only call once
+  setup_ert_base_addr();
 
   // Basic setup will be changed by configure_mb, but is necessary
   // for even configure_mb() to work.

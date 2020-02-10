@@ -2,8 +2,7 @@
 #define _XOCL_GEM_SHIM_H_
 
 /**
- * Copyright (C) 2016-2019 Xilinx, Inc
-
+ * Copyright (C) 2016-2020 Xilinx, Inc
  * Author(s): Umang Parekh
  *          : Sonal Santan
  *          : Ryan Radjabi
@@ -62,8 +61,8 @@ public:
     size_t xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size);
     size_t xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size);
     // Restricted read/write on IP register space
-    int xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data);
-    int xclRegRead(uint32_t cu_index, uint32_t offset, uint32_t *datap);
+    int xclRegWrite(uint32_t ipIndex, uint32_t offset, uint32_t data);
+    int xclRegRead(uint32_t ipIndex, uint32_t offset, uint32_t *datap);
 
     unsigned int xclAllocBO(size_t size, int unused, unsigned flags);
     unsigned int xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags);
@@ -158,7 +157,7 @@ public:
     ssize_t xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr);
     ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
     int xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int * actual, int timeout /*ms*/);
-    int xclCuName2Index(const char *name, uint32_t& index);
+    int xclIPName2Index(const char *name, uint32_t& index);
 
 private:
     std::shared_ptr<pcidev::pci_device> mDev;
@@ -203,7 +202,7 @@ private:
     int freezeAXIGate();
     int freeAXIGate();
 
-    int xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap);
+    int xclRegRW(bool rd, uint32_t ipIndex, uint32_t offset, uint32_t *datap);
 
     bool readPage(unsigned addr, uint8_t readCmd = 0xff);
     bool writePage(unsigned addr, uint8_t writeCmd = 0xff);

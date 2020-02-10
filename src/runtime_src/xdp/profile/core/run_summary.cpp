@@ -66,6 +66,7 @@ RunSummary::getFileTypeAsStr(enum RunSummary::FileType eFileType)
     case FT_PROFILE: return "PROFILE";
     case FT_TRACE: return "TRACE";
     case FT_WDB: return "WAVEFORM_DATABASE";
+    case FT_WDB_CONFIG: return "WAVEFORM_CONFIGURATION";
     case FT_POWER_PROFILE: return "XRT_POWER_PROFILE";
   }
 
@@ -113,7 +114,7 @@ void RunSummary::extractSystemProfileMetadata(const axlf * pXclbinImage,
       boost::property_tree::ptree pt;
       boost::property_tree::read_json(ss, pt);
 
-      mXclbinContainerName = pt.get<std::string>("system_diagram_metadata.xsa.xclbin.generated_by.xclbin_name", "");
+      mXclbinContainerName = pt.get<std::string>("system_diagram_metadata.xclbin.generated_by.xclbin_name", "");
       if (!mXclbinContainerName.empty()) {
         mXclbinContainerName += ".xclbin";
       }
@@ -148,10 +149,19 @@ void RunSummary::writeContent()
 
     // If the waveform data is available add it to the report
     char* pWdbFile = getenv("VITIS_WAVEFORM_WDB_FILENAME"); 
-    if (pWdbFile  != nullptr) {
+    if (pWdbFile != nullptr) {
       boost::property_tree::ptree ptFile;
       ptFile.put("name", pWdbFile);
       ptFile.put("type", getFileTypeAsStr(FT_WDB).c_str());
+      ptFiles.push_back(std::make_pair("", ptFile));
+      // Also need to add the config file that will be written next to the
+      // waveform database. This is needed to open the WDB. The name is the
+      // the same, but the extension is changed from .wdb to .wcfg.
+      std::string configName(pWdbFile);
+      configName = configName.substr(0, configName.rfind('.'));
+      configName += ".wcfg";
+      ptFile.put("name", configName.c_str());
+      ptFile.put("type", getFileTypeAsStr(FT_WDB_CONFIG).c_str());
       ptFiles.push_back(std::make_pair("", ptFile));
     }
 

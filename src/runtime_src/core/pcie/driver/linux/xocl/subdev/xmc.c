@@ -173,6 +173,15 @@ enum sensor_val_kind {
 	SENSOR_INS,
 };
 
+enum gpio_channel1_mask {
+	MUTEX_GRANT_MASK	= 0x1,
+};
+
+enum gpio_channel2_mask {
+	MUTEX_ACK_MASK		= 0x1,
+	REGMAP_READY_MASK	= 0x2,
+};
+
 #define	READ_REG32(xmc, off)			\
 	(xmc->base_addrs[IO_REG] ?		\
 	XOCL_READ_REG32(xmc->base_addrs[IO_REG] + off) : 0)
@@ -305,6 +314,7 @@ enum board_info_key {
 struct xocl_xmc {
 	struct platform_device	*pdev;
 	void __iomem		*base_addrs[NUM_IOADDR];
+	size_t			range[NUM_IOADDR];
 
 	struct device		*hwmon_dev;
 	bool			enabled;
@@ -983,6 +993,7 @@ static void runtime_clk_scale_disable(struct xocl_xmc *xmc)
 	WRITE_REG32(xmc, cntrl, XMC_HOST_NEW_FEATURE_REG1);
 
 	xmc->runtime_cs_enabled = false;
+	xocl_info(&xmc->pdev->dev, "runtime clock scaling is disabled\n");
 }
 
 static void runtime_clk_scale_enable(struct xocl_xmc *xmc)
@@ -998,6 +1009,7 @@ static void runtime_clk_scale_enable(struct xocl_xmc *xmc)
 	WRITE_REG32(xmc, cntrl, XMC_HOST_NEW_FEATURE_REG1);
 
 	xmc->runtime_cs_enabled = true;
+	xocl_info(&xmc->pdev->dev, "runtime clock scaling is enabled\n");
 }
 
 /*
@@ -1344,7 +1356,7 @@ static bool scaling_condition_check(struct xocl_xmc *xmc, struct device *dev)
 		if (!XMC_PRIVILEGED(xmc)) {
 			xocl_dbg(dev, "runtime clock scaling is not supported in non privileged mode\n");
 		} else if (xmc->cs_on_ptfm) {
-			xocl_warn(dev, "runtime clock scaling is not enabled\n");
+			xocl_dbg(dev, "runtime clock scaling is not enabled\n");
 			return true;
 		} else {
 			xocl_warn(dev, "runtime clock scaling is not supported\n");
@@ -1417,11 +1429,13 @@ static ssize_t scaling_threshold_power_override_store(struct device *dev,
 		//enable max power override mode
 		val2 |= XMC_CLK_THROTTLING_PWR_MGMT_REG_PWR_OVRD_EN;
 		val2 |= (val & XMC_CLK_THROTTLING_PWR_MGMT_REG_PWR_MASK);
+		xocl_info(dev, "Clock scaling's max power override mode is enabled, power threshold set to %d W\n", val);
 	} else { //disable max power override mode
 		val2 &= ~XMC_CLK_THROTTLING_PWR_MGMT_REG_PWR_OVRD_EN;
 		val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_THRESHOLD_REG);
 		val = (val >> XMC_CLOCK_SCALING_POWER_THRESHOLD_POS) &
 			XMC_CLOCK_SCALING_POWER_THRESHOLD_MASK;
+		xocl_info(dev, "Clock scaling's max power override mode is disabled\n");
 	}
 	val3 |= (val & XMC_CLOCK_SCALING_POWER_TARGET_MASK);
 	WRITE_RUNTIME_CS(xmc, val3, XMC_CLOCK_SCALING_POWER_REG);
@@ -1796,7 +1810,6 @@ static struct attribute *xmc_attrs[] = {
 	&dev_attr_max_power.attr,
 	&dev_attr_fan_presence.attr,
 	&dev_attr_config_mode.attr,
-	&dev_attr_sc_presence.attr,
 	&dev_attr_sensor_update_timestamp.attr,
 	&dev_attr_scaling_threshold_power_override.attr,
 	&dev_attr_scaling_threshold_power_override_en.attr,
@@ -1808,6 +1821,7 @@ static struct attribute *xmc_attrs[] = {
 static struct attribute *xmc_mini_attrs[] = {
 	&dev_attr_reg_base.attr,
 	&dev_attr_status.attr,
+	&dev_attr_sc_presence.attr,
 	NULL,
 };
 
@@ -2453,15 +2467,27 @@ static int load_xmc(struct xocl_xmc *xmc)
 
 	/* Load XMC and ERT Image */
 	if (xocl_mb_mgmt_on(xdev_hdl) && xmc->mgmt_binary_length) {
-		xocl_info(&xmc->pdev->dev, "Copying XMC image len %d",
-			xmc->mgmt_binary_length);
-		COPY_MGMT(xmc, xmc->mgmt_binary, xmc->mgmt_binary_length);
+		if (xmc->mgmt_binary_length > xmc->range[IO_IMAGE_MGMT]) {
+			xocl_err(&xmc->pdev->dev, "XMC image too long %d",
+				xmc->mgmt_binary_length);
+			goto out;
+		} else {
+			xocl_info(&xmc->pdev->dev, "Copying XMC image len %d",
+				xmc->mgmt_binary_length);
+			COPY_MGMT(xmc, xmc->mgmt_binary, xmc->mgmt_binary_length);
+		}
 	}
 
 	if (xocl_mb_sched_on(xdev_hdl) && xmc->sche_binary_length) {
-		xocl_info(&xmc->pdev->dev, "Copying scheduler image len %d",
-			xmc->sche_binary_length);
-		COPY_SCHE(xmc, xmc->sche_binary, xmc->sche_binary_length);
+		if (xmc->sche_binary_length > xmc->range[IO_IMAGE_SCHED]) {
+			xocl_info(&xmc->pdev->dev, "scheduler image too long %d",
+				xmc->sche_binary_length);
+			goto out;
+		} else {
+			xocl_info(&xmc->pdev->dev, "Copying scheduler image len %d",
+				xmc->sche_binary_length);
+			COPY_SCHE(xmc, xmc->sche_binary, xmc->sche_binary_length);
+		}
 	}
 
 	/* Take XMC and ERT out of reset */
@@ -2486,12 +2512,12 @@ static int load_xmc(struct xocl_xmc *xmc)
 	if (!ret) {
 		retry = 0;
 		while (!ret && retry++ < MAX_XMC_RETRY &&
-			!(reg_map_ready & 0x2)) {
+			!(reg_map_ready & REGMAP_READY_MASK)) {
 			msleep(RETRY_INTERVAL);
 			ret = xocl_iores_read32(xdev_hdl, XOCL_SUBDEV_LEVEL_BLD,
 				IORES_CMC_MUTEX, XOCL_RES_OFFSET_CHANNEL2, &reg_map_ready);
                 }
-		if (!ret && (reg_map_ready & 0x2)) {
+		if (!ret && (reg_map_ready & REGMAP_READY_MASK)) {
 			xocl_info(&xmc->pdev->dev, "REGMAP ready");
 		} else {
 			xocl_err(&xmc->pdev->dev, "REGMAP not ready : %d", ret);
@@ -2712,13 +2738,13 @@ static int cmc_access_ops(struct platform_device *pdev, int flags)
 			goto fail;
 		}
 
-		if ((grant & 0x1) == (ack & 0x1))
+		if ((grant & MUTEX_GRANT_MASK) == (ack & MUTEX_ACK_MASK))
 			break;
 
 		msleep(100);
 	}
 
-	if ((grant & 0x1) != (ack & 0x1)) {
+	if ((grant & MUTEX_GRANT_MASK) != (ack & MUTEX_ACK_MASK)) {
 		xocl_xdev_err(xdev,
 		    "Grant falied. The bit 0 in Ack (0x%x) is not the same "
 		    "in grant (0x%x)", ack, grant);
@@ -2778,8 +2804,10 @@ end:
 	for (i = 0; i < NUM_IOADDR; i++) {
 		if ((i == IO_CLK_SCALING) && !xmc->cs_on_ptfm)
 			continue;
-		if (xmc->base_addrs[i])
+		if (xmc->base_addrs[i]) {
 			iounmap(xmc->base_addrs[i]);
+			xmc->range[i] = 0;
+		}
 	}
 	if (xmc->cache)
 		vfree(xmc->cache);
@@ -2848,9 +2876,12 @@ static int xmc_probe(struct platform_device *pdev)
 				xocl_err(&pdev->dev, "Map iomem failed");
 				goto failed;
 			}
+			xmc->range[i] = res->end - res->start + 1;
 		} else
 			break;
 	}
+
+	xmc->sc_presence = nosc_xmc(xmc->pdev) ? 0 : 1;
 
 	if (XMC_PRIVILEGED(xmc)) {
 		if (xmc->base_addrs[IO_REG]) {
@@ -2899,9 +2930,6 @@ static int xmc_probe(struct platform_device *pdev)
 	}
 
 	xmc->cache_expire_secs = XMC_DEFAULT_EXPIRE_SECS;
-	xmc->sc_presence = 1;
-	if (nosc_xmc(xmc->pdev))
-		xmc->sc_presence = 0;
 
 	/*
 	 * Enabling XMC clock scaling support.

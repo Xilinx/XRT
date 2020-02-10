@@ -99,6 +99,7 @@ static int stop_ert_nolock(struct xocl_ert *ert)
 		ret = EIO;
 	}
 	xocl_info(&ert->pdev->dev, "ERT is stopped, %d", retry);
+	ert->state = MB_ENABLED;
 
 	return ret;
 }

@@ -16,7 +16,8 @@ zocl-y := \
 	zocl_ov_sysfs.o \
 	zocl_ospi_versal.o \
 	zocl_xclbin.o \
-	zocl_sk.o
+	zocl_sk.o \
+	zocl_generic_cu.o
 
 obj-m	+= zocl.o
 

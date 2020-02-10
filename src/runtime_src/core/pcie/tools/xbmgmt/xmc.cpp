@@ -38,10 +38,8 @@ XMC_Flasher::XMC_Flasher(std::shared_ptr<pcidev::pci_device> dev)
     bool is_mfg = false;
     mDev->sysfs_get<bool>("", "mfg", err, is_mfg, false);
     if (!is_mfg) {
-        if (mDev->get_sysfs_path("xmc", "").empty()) {
-            mProbingErrMsg << "Failed to detect XMC"; 
+         if (!hasXMC())
             goto nosup;
-	}
 
         mDev->sysfs_get<unsigned>("xmc", "status", err, val, 0);
 	if (!err.empty() || !(val & 1)) {
@@ -508,6 +506,9 @@ bool XMC_Flasher::isBMCReady()
     unsigned int val;
     std::string errmsg;
 
+    if (!hasXMC())
+	    return false;
+
     mDev->sysfs_get<unsigned>("xmc", "sc_presence", errmsg, val, 0);
     if (!errmsg.empty()) {
         std::cout << "can't read sc_presence node from " << mDev->sysfs_name <<
@@ -526,6 +527,11 @@ bool XMC_Flasher::isBMCReady()
     }
 
     return true;
+}
+
+bool XMC_Flasher::hasXMC()
+{
+        return !mDev->get_sysfs_path("xmc", "").empty();
 }
 
 static void tiTxtStreamToBin(std::istream& tiTxtStream,

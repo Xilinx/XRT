@@ -44,6 +44,7 @@ const char *subCmdFlashUsage =
     "--sc_firmware --path file --card bdf";
 
 #define fmt_str		"    "
+#define DEV_TIMEOUT	60
 
 static int scanDevices(bool verbose, bool json)
 {
@@ -134,19 +135,112 @@ static int scanDevices(bool verbose, bool json)
     return 0;
 }
 
+static int writeSCImage(Flasher &flasher, const char *file)
+{
+    int ret = 0;
+
+    std::shared_ptr<firmwareImage> bmc =
+       std::make_shared<firmwareImage>(file, BMC_FIRMWARE);
+    if (bmc->fail()) {
+        ret = -EINVAL;
+    } else {
+        ret = flasher.upgradeBMCFirmware(bmc.get());
+    }
+    return ret;
+}
+
 // Update SC firmware on the board.
 static int updateSC(unsigned index, const char *file)
 {
+    int ret = 0;
     Flasher flasher(index);
     if(!flasher.isValid())
         return -EINVAL;
 
-    std::shared_ptr<firmwareImage> bmc =
-        std::make_shared<firmwareImage>(file, BMC_FIRMWARE);
-    if (bmc->fail())
-        return -EINVAL;
+    auto mgmt_dev = pcidev::get_dev(index, false);
+    std::shared_ptr<pcidev::pci_device> dev;
+    int i = 0;
+    for (dev = pcidev::get_dev(i, true); dev; dev = pcidev::get_dev(i, true)) {
+        if(dev->domain == mgmt_dev->domain &&
+            dev->bus == mgmt_dev->bus &&
+            dev->dev == mgmt_dev->dev) {
+                break;
+        }
+	i++;
+    }
 
-    return flasher.upgradeBMCFirmware(bmc.get());
+    if (!dev) {
+        return writeSCImage(flasher, file);
+    }
+
+    std::string errmsg;
+    std::string tmp;
+    dev->sysfs_get("", "user_pf", errmsg, tmp);
+    if (!errmsg.empty()) {
+        std::cout << "CAUTION: User function is not found. " <<
+            "This is probably due to user function is running in virtual machine or user driver is not loaded. " << std::endl;
+        if(!canProceed())
+            return -ECANCELED;
+	return writeSCImage(flasher, file);
+    }
+
+    std::cout << "Stopping user function..." << std::endl;
+
+    dev->sysfs_put("", "shutdown", errmsg, "1\n");
+    if (!errmsg.empty()) {
+        std::cout << "Shutdown user function failed." << std::endl;
+        return -EINVAL;
+    }
+
+    /* Poll till shutdown is done */
+    int shutdownStatus = 0;
+    for (int wait = 0; wait < DEV_TIMEOUT; wait++) {
+        dev->sysfs_get<int>("", "shutdown", errmsg, shutdownStatus, EINVAL);
+        if (!errmsg.empty()) {
+            std::cout << errmsg << std::endl;
+            return -EINVAL;
+        }
+
+        if (shutdownStatus == 1){
+            /* Shutdown is done successfully. Returning from here */
+            break;
+        }
+        sleep(1);
+    }
+
+    if (!shutdownStatus) {
+        std::cout << "Shutdown user function timeout." << std::endl;
+        return -ETIMEDOUT;
+    }
+
+    dev->sysfs_put("", "remove", errmsg, "1\n");
+    if (!errmsg.empty()) {
+        std::cout << "Stopping user function failed" << std::endl;
+        return -EINVAL;
+    }
+
+    sleep(15);
+    ret = writeSCImage(flasher, file);
+
+    mgmt_dev->sysfs_put("", "dparent/rescan", errmsg, "1\n");
+    if (!errmsg.empty()) {
+        std::cout << "ERROR: " << errmsg << std::endl;
+    }
+
+    int wait = 0;
+    do {
+        auto hdl =dev->open("", O_RDWR);
+        if (hdl != -1) {
+            dev->close(hdl);
+            break;
+        }
+        sleep(1);
+    } while (++wait < DEV_TIMEOUT);
+    if (wait == DEV_TIMEOUT) {
+        std::cout << "ERROR: user function does not back online" << std::endl;
+    }
+
+    return ret;
 }
 
 // Update shell on the board.
