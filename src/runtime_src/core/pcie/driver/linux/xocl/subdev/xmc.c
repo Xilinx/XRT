@@ -2556,6 +2556,9 @@ static int load_xmc(struct xocl_xmc *xmc)
 		READ_REG32(xmc, XMC_VERSION_REG),
 		READ_REG32(xmc, XMC_STATUS_REG),
 		READ_REG32(xmc, XMC_MAGIC_REG));
+	xocl_info(&xmc->pdev->dev,
+		"Wait for 5 seconds to stable the connection with SC");
+	ssleep(5);
 	xmc->state = XMC_STATE_ENABLED;
 
 	xmc->cap = READ_REG32(xmc, XMC_FEATURE_REG);

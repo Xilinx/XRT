@@ -159,6 +159,14 @@ static int updateSC(unsigned index, const char *file)
 
     auto mgmt_dev = pcidev::get_dev(index, false);
     std::shared_ptr<pcidev::pci_device> dev;
+    bool is_mfg = false;
+    std::string errmsg;
+
+    mgmt_dev->sysfs_get<bool>("", "mfg", errmsg, is_mfg, false);
+    if (is_mfg) {
+        return writeSCImage(flasher, file);
+    }
+
     int i = 0;
     for (dev = pcidev::get_dev(i, true); dev; dev = pcidev::get_dev(i, true)) {
         if(dev->domain == mgmt_dev->domain &&
@@ -166,22 +174,13 @@ static int updateSC(unsigned index, const char *file)
             dev->dev == mgmt_dev->dev) {
                 break;
         }
-	i++;
+        i++;
     }
 
     if (!dev) {
-        return writeSCImage(flasher, file);
-    }
-
-    std::string errmsg;
-    std::string tmp;
-    dev->sysfs_get("", "user_pf", errmsg, tmp);
-    if (!errmsg.empty()) {
-        std::cout << "CAUTION: User function is not found. " <<
+        std::cout << "ERROR: User function is not found. " <<
             "This is probably due to user function is running in virtual machine or user driver is not loaded. " << std::endl;
-        if(!canProceed())
-            return -ECANCELED;
-	return writeSCImage(flasher, file);
+        return -ECANCELED;
     }
 
     std::cout << "Stopping user function..." << std::endl;
@@ -219,7 +218,6 @@ static int updateSC(unsigned index, const char *file)
         return -EINVAL;
     }
 
-    sleep(15);
     ret = writeSCImage(flasher, file);
 
     mgmt_dev->sysfs_put("", "dparent/rescan", errmsg, "1\n");
