@@ -26,7 +26,7 @@
 #include "xbmgmt.h"
 #include "core/pcie/linux/scan.h"
 
-#define SYSFS_PATH      "/sys/bus/pci/devices"
+#define SYSFS_PATH      "/sys/bus/pci"
 #define XILINX_VENDOR   "0x10ee"
 #define XILINX_US       "0x9134"
 #define POLL_TIMEOUT    60      /* Set a pool timeout as 60sec */
@@ -177,6 +177,7 @@ static int shutdownDevice(unsigned int index, bool is_userpf)
 static int removeDevice(unsigned int index, bool is_userpf)
 {
     std::string errmsg;
+    int wait  = 0;
     auto dev = pcidev::get_dev(index, is_userpf);
 
     /* "echo 1 > /sys/bus/pci/<EndPoint>/remove" to trigger hot remove of the device */
@@ -187,65 +188,22 @@ static int removeDevice(unsigned int index, bool is_userpf)
         return -EINVAL;
     }
 
+    /* Poll till remove is done */
+    do {
+        sleep(1);
+        std::string path = dev->get_sysfs_path("", "remove");
+        if (!boost::filesystem::exists(path))
+            break;
+
+    } while (++wait < POLL_TIMEOUT );
+
     return 0;
-}
-
-static boost::filesystem::path findXilinxRootPort(void)
-{
-    boost::filesystem::path rootPortPath;
-    std::string vendor_id, device_id;
-
-    for (auto file = boost::filesystem::directory_iterator(SYSFS_PATH); 
-            file != boost::filesystem::directory_iterator(); file++)
-    {
-        rootPortPath = file->path();
-        for (auto jfile = boost::filesystem::directory_iterator(rootPortPath); 
-                jfile != boost::filesystem::directory_iterator(); jfile++)
-        {
-            boost::filesystem::path dirName = jfile->path();
-            if (!boost::filesystem::is_directory(dirName))
-                continue;
-
-            try 
-            {
-                boost::filesystem::path vendorPath = dirName;
-                vendorPath /= "vendor";
-                if (boost::filesystem::exists(vendorPath))
-                {
-                    boost::filesystem::ifstream file(vendorPath);
-                    file >> vendor_id;
-                    file.close();
-                }
-
-                boost::filesystem::path devicePath = dirName;
-                devicePath /= "device";
-                if (boost::filesystem::exists(devicePath))
-                {
-                    boost::filesystem::ifstream file(devicePath);
-                    file >> device_id;
-                    file.close();
-                }
-            }
-
-            catch (const boost::filesystem::ifstream::failure& e)
-            {
-                continue; 
-            }
-        
-            if (!vendor_id.compare(XILINX_VENDOR) && !device_id.compare(XILINX_US))
-                return rootPortPath;
-        }
-
-        rootPortPath = "";
-    }
-
-    return rootPortPath;
 }
 
 static int hotplugRescan(void)
 {
     boost::filesystem::ofstream ofile;     
-    boost::filesystem::path sysfs_path = findXilinxRootPort();
+    boost::filesystem::path sysfs_path = SYSFS_PATH;
 
     sysfs_path /= "rescan";
     if (sysfs_path.empty()) {
@@ -260,7 +218,7 @@ static int hotplugRescan(void)
             return -errno;
         }
 
-        /* "echo 1 > /sys/bus/pci/<Root Port>/rescan" to trigger the rescan for hot plug devices */ 
+        /* "echo 1 > /sys/bus/pci/rescan" to trigger the rescan for hot plug devices */ 
         ofile << 1;
         ofile.flush();
         if (!ofile.good()) {
