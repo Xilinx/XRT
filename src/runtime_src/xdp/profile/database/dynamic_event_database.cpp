@@ -95,6 +95,10 @@ namespace xdp {
       //  trainDeviceHostTimestamps(type, timestamp, trace.HostTimestamp);
       //}
 
+
+    }
+    (void)timestamp;
+    (void)startTime;
   }
 
   void VPDynamicDatabase::markStart(uint64_t functionID, uint64_t eventID)

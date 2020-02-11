@@ -64,20 +64,20 @@ namespace xdp {
     callCount[key].back().second = timestamp ;
   }
 
-  void VPStatisticsDatabase::logMemoryTransfer(void* deviceHandle,
+  void VPStatisticsDatabase::logMemoryTransfer(uint64_t deviceId,
 						DeviceMemoryStatistics::ChannelType channelNum,
 						size_t count)
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
     
-    if (memoryStats.find(deviceHandle) == memoryStats.end())
+    if (memoryStats.find(deviceId) == memoryStats.end())
     {
       DeviceMemoryStatistics blank ;
-      memoryStats[deviceHandle] = blank ;
+      memoryStats[deviceId] = blank ;
     }
 
-    (memoryStats[deviceHandle]).channels[channelNum].transactionCount++;
-    (memoryStats[deviceHandle]).channels[channelNum].totalByteCount += count;
+    (memoryStats[deviceId]).channels[channelNum].transactionCount++;
+    (memoryStats[deviceId]).channels[channelNum].totalByteCount += count;
   }
 
   void VPStatisticsDatabase::logKernelExecution(const std::string& kernelName,
@@ -96,7 +96,7 @@ namespace xdp {
   {
   }
 
-  void VPStatisticsDatabase::updateCounters(void* /*deviceHandle*/,
+  void VPStatisticsDatabase::updateCounters(uint64_t /*deviceId*/,
 					     xclCounterResults& /*counters*/)
   {
   }
@@ -140,8 +140,7 @@ namespace xdp {
     unsigned int i = 0 ; 
     for (auto m : memoryStats)
     {
-      fout << "Device " << i << " (handle: 0x" << std::hex << m.first
-	   << ")" << std::dec << std::endl ;
+      fout << "Device " << i << std::endl ;
 
       fout << "\tUnmanaged Reads: " 
 	   << m.second.channels[0].transactionCount

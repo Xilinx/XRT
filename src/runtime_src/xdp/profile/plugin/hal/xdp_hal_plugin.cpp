@@ -101,8 +101,9 @@ namespace xdp {
     log_function_start(&(pLoad->basePayload), "ReadBO") ;
 
     // Also log the amount of data transferred
+    uint64_t deviceId = halPluginInstance.getDeviceId(pLoad->basePayload.deviceHandle);
     VPDatabase* db = halPluginInstance.getDatabase() ;
-    (db->getStats()).logMemoryTransfer(pLoad->basePayload.deviceHandle,
+    (db->getStats()).logMemoryTransfer(deviceId,
 				       DeviceMemoryStatistics::BUFFER_READ,
 				       pLoad->size) ;
   }
@@ -133,8 +134,9 @@ namespace xdp {
     log_function_start(&(pLoad->basePayload), "UnmgdRead") ;
     
     // Also log the amount of data transferred
+    uint64_t deviceId = halPluginInstance.getDeviceId(pLoad->basePayload.deviceHandle);
     VPDatabase* db = halPluginInstance.getDatabase() ;
-    (db->getStats()).logMemoryTransfer(pLoad->basePayload.deviceHandle,
+    (db->getStats()).logMemoryTransfer(deviceId,
 				       DeviceMemoryStatistics::UNMANAGED_READ, 
 				       pLoad->count) ;
   }
@@ -151,8 +153,9 @@ namespace xdp {
     log_function_start(&(pLoad->basePayload), "UnmgdWrite") ;
 
     // Also log the amount of data transferred
+    uint64_t deviceId = halPluginInstance.getDeviceId(pLoad->basePayload.deviceHandle);
     VPDatabase* db = halPluginInstance.getDatabase() ;
-    (db->getStats()).logMemoryTransfer(pLoad->basePayload.deviceHandle,
+    (db->getStats()).logMemoryTransfer(deviceId,
 				       DeviceMemoryStatistics::UNMANAGED_WRITE,
 				       pLoad->count) ;
   }
@@ -168,8 +171,9 @@ namespace xdp {
     log_function_start(&(pLoad->basePayload), "xclRead") ;
 
     // Also log the amount of data transferred
+    uint64_t deviceId = halPluginInstance.getDeviceId(pLoad->basePayload.deviceHandle);
     VPDatabase* db = halPluginInstance.getDatabase() ;
-    (db->getStats()).logMemoryTransfer(pLoad->basePayload.deviceHandle,
+    (db->getStats()).logMemoryTransfer(deviceId,
 				                DeviceMemoryStatistics::XCLREAD, pLoad->size) ;
 
     // Add trace event for start of Buffer Transfer
@@ -197,8 +201,9 @@ namespace xdp {
     log_function_start(&(pLoad->basePayload), "xclWrite") ;
 
     // Also log the amount of data transferred
+    uint64_t deviceId = halPluginInstance.getDeviceId(pLoad->basePayload.deviceHandle);
     VPDatabase* db = halPluginInstance.getDatabase() ;
-    (db->getStats()).logMemoryTransfer(pLoad->basePayload.deviceHandle,
+    (db->getStats()).logMemoryTransfer(deviceId,
 				       DeviceMemoryStatistics::XCLWRITE, 
 				       pLoad->size) ;
 
