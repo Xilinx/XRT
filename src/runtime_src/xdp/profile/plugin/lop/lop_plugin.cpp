@@ -121,7 +121,7 @@ namespace xdp {
       //"clUnloadCompiler",
       //"clUnloadPlatformCompiler",
       "clWaitForEvents",
-      //"clWritePipeBuffers"
+      //"clWritePipeBuffers" 
     } ;
 
   LowOverheadProfilingPlugin::LowOverheadProfilingPlugin() : XDPPlugin()
