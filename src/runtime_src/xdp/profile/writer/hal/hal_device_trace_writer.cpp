@@ -19,14 +19,16 @@
 
 namespace xdp {
 
-  HALDeviceTraceWriter::HALDeviceTraceWriter(const char* filename, 
+  HALDeviceTraceWriter::HALDeviceTraceWriter(const char* filename,
+               uint64_t devId, 
 					     const std::string& version,
 					     const std::string& creationTime,
 					     const std::string& xrtV,
 					     DeviceIntf* d) :
     VPTraceWriter(filename, version, creationTime, 9 /* ns */),
     XRTVersion(xrtV),
-    dev(d)
+    dev(d),
+    deviceId(devId)
   {
   }
 
@@ -49,21 +51,21 @@ namespace xdp {
     //  kernels, compute units, etc. this device has.  Then, use that
     //  to build up the structure of the file we are generating
     
-    std::string deviceName = (db->getStaticInfo()).getDeviceName(dev) ;
-    std::string xclbinName = (db->getStaticInfo()).getXclbinName(dev) ;
-
+    std::string deviceName = (db->getStaticInfo()).getDeviceName(deviceId) ;
+    std::string xclbinName = (db->getStaticInfo()).getXclbinName(deviceId) ;
+    
     fout << "Group_start," << deviceName << std::endl ;
     fout << "Group_start," << xclbinName << std::endl ;
 
-    uint16_t numKDMA = (db->getStaticInfo()).getKDMACount(dev) ;
+    uint16_t numKDMA = (db->getStaticInfo()).getKDMACount(deviceId) ;
 
     if (numKDMA > 0)
     {
       fout << "Group_start,KDMA" << std::endl ;
       for (unsigned int i = 0 ; i < numKDMA ; ++i)
       {
-	fout << "Dynamic_without_summary,Read, ,KERNEL_READ" << std::endl ;
-	fout << "Dynamic_without_summary,Write, ,KERNEL_WRITE" << std::endl ;
+	      fout << "Dynamic_Row,Read, ,KERNEL_READ" << std::endl ;
+	      fout << "Dynamic_Row,Write, ,KERNEL_WRITE" << std::endl ;
       }
       fout << "Group_end,KDMA" << std::endl ;
     }
@@ -72,7 +74,7 @@ namespace xdp {
     for (unsigned int i = 0 ; i < cus.size() ; ++i)
     {
       fout << "Group_start," << cus[i].getName() << std::endl ;
-      fout << "Dynamic_with_summary,Executions, ,KERNEL" << std::endl ;
+      fout << "Dynamic_Row_Summary,Executions, ,KERNEL" << std::endl ;
       // For each memory bank/destination that could be accessed by this
       //  compute unit, create a row.
 

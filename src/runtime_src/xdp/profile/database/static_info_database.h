@@ -52,6 +52,20 @@ namespace xdp {
     XDP_EXPORT ~ComputeUnitInstance() ;
   } ;
 
+  struct PlatformInfo {
+    uint64_t    kdmaCount;
+    std::string deviceName;
+  };
+
+  struct DeviceInfo {
+    struct PlatformInfo platformInfo;
+    std::string loadedXclbin;
+    std::vector<ComputeUnitInstance> cus;
+    std::vector<std::pair<uint64_t, std::string>> ddrBanks;
+    std::vector<std::pair<uint64_t, std::string>> hbmBanks;
+    std::vector<std::pair<uint64_t, std::string>> plramBanks;    
+  };
+
   class VPStaticDatabase
   {
   private:
@@ -61,14 +75,21 @@ namespace xdp {
     // ***** OpenCL Information ******
     std::set<uint64_t> commandQueueAddresses ;
 
+
+
+    // Device Info
+    std::map<uint64_t, DeviceInfo*> deviceInfo;
+
+    std::map<void*, uint64_t> devInfo;
+
+    std::map<std::string /*sysfsPath*/, uint64_t /*devId*/> uniqueDevices;
+
+    std::vector<struct DeviceInfo*> dev;
+
     // ***** HAL Information ******
 
     // ********* Information specific to each platform **********
 
-    // Device handle to number of KDMA
-    std::map<void*, uint16_t> kdmaCount ;
-    // Device handle to device name
-    std::map<void*, std::string> deviceNames ;
 
     // ********* Information specific to each xclbin **********
     // Device handle to name of the xclbin loaded on that device
@@ -86,13 +107,13 @@ namespace xdp {
     // Static info can be accessed via any host thread
     std::mutex dbLock ;
 
-    void resetDeviceInfo(void* dev) ;
-
+    void resetDeviceInfo(uint64_t deviceId) ;
+#if 0
     // Helper functions that fill in device information
     bool initializeMemory(void* dev, const void* binary) ;
     bool initializeComputeUnits(void* dev, const void* binary) ;
     bool initializeConnections(void* dev, const void* binary) ;
-
+#endif
   public:
     VPStaticDatabase() ;
     ~VPStaticDatabase() ;
@@ -101,14 +122,23 @@ namespace xdp {
     inline int getPid() { return pid ; }
     inline std::set<uint64_t>& getCommandQueueAddresses() 
       { return commandQueueAddresses ; }
-    inline std::string getDeviceName(void* dev) { return deviceNames[dev] ; }
-    inline std::string getXclbinName(void* dev) { return loadedXclbins[dev] ; } 
-    inline uint16_t getKDMACount(void* dev)     { return kdmaCount[dev] ; }
+
+    inline void setDeviceName(uint64_t deviceId, std::string name) { if(deviceInfo.find(deviceId) == deviceInfo.end()) return; deviceInfo[deviceId]->platformInfo.deviceName = name; }
+    inline std::string getDeviceName(uint64_t deviceId) { if(deviceInfo.find(deviceId) == deviceInfo.end()) return std::string(""); return deviceInfo[deviceId]->platformInfo.deviceName; }
+
+    inline void setKDMACount(uint64_t deviceId, uint64_t num) { if(deviceInfo.find(deviceId) == deviceInfo.end()) return; deviceInfo[deviceId]->platformInfo.kdmaCount = num; }
+    inline uint16_t getKDMACount(uint64_t deviceId) { if(deviceInfo.find(deviceId) == deviceInfo.end()) return 0; return deviceInfo[deviceId]->platformInfo.kdmaCount; }
+
+    inline void setXclbinName(uint64_t deviceId, std::string name) { if(deviceInfo.find(deviceId) == deviceInfo.end()) return; deviceInfo[deviceId]->loadedXclbin = name; }
+    inline std::string getXclbinName(uint64_t deviceId) { if(deviceInfo.find(deviceId) == deviceInfo.end()) return std::string(""); return deviceInfo[deviceId]->loadedXclbin; }
+
+
     inline std::vector<ComputeUnitInstance>& getCUs(void* dev)
-      { return cus[dev] ; } 
+    { return cus[dev] ; } 
 
     // Reseting device information whenever a new xclbin is added
-    XDP_EXPORT void updateDevice(void* dev, const void* binary) ;
+    //XDP_EXPORT void updateDevice(void* dev, const void* binary) ;
+    XDP_EXPORT void updateDevice(uint64_t deviceId, const void* binary) ;
 
     // Functions that add information to the database
     XDP_EXPORT void addCommandQueueAddress(uint64_t a) ;

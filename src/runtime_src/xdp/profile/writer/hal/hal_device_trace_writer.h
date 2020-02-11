@@ -35,6 +35,8 @@ namespace xdp {
     // The interface to the specific device we are associated with
     DeviceIntf* dev ;
 
+    uint64_t deviceId;
+
   protected:
     virtual void writeHeader() ;
     virtual void writeStructure() ;
@@ -43,7 +45,7 @@ namespace xdp {
     virtual void writeDependencies() ;
 
   public:
-    HALDeviceTraceWriter(const char* filename, const std::string& version,
+    HALDeviceTraceWriter(const char* filename, uint64_t deviceId, const std::string& version,
 			 const std::string& creationTime,
 			 const std::string& xrtV, DeviceIntf* d) ;
     ~HALDeviceTraceWriter() ;

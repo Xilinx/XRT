@@ -202,20 +202,22 @@ WriteCallLogger::~WriteCallLogger() {
     cb(HalCallbackType::WRITE_END, &payload);
 }
 
-  LoadXclbinCallLogger::LoadXclbinCallLogger(xclDeviceHandle handle, const void* buffer) : CallLogger(global_idcode), h(handle), mBuffer(buffer)
-  {
-    if (!cb_valid()) return ;
-    ++global_idcode ; // increment only if valid callback
-    XclbinCBPayload payload = { {m_local_idcode, handle}, buffer } ;
-    cb(HalCallbackType::LOAD_XCLBIN_START, &payload) ;
-  }
+LoadXclbinCallLogger::LoadXclbinCallLogger(xclDeviceHandle handle, const void* buffer) 
+                    : CallLogger(global_idcode), 
+                      h(handle), mBuffer(buffer)
+{
+  if (!cb_valid()) return ;
+  ++global_idcode ; // increment only if valid callback
+  XclbinCBPayload payload = { {m_local_idcode, handle}, buffer } ;
+  cb(HalCallbackType::LOAD_XCLBIN_START, &payload) ;
+}
 
-  LoadXclbinCallLogger::~LoadXclbinCallLogger()
-  {
-    if (!cb_valid()) return ;
-    XclbinCBPayload payload = { {m_local_idcode, h}, mBuffer } ;
-    cb(HalCallbackType::LOAD_XCLBIN_END, &payload) ;
-  }
+LoadXclbinCallLogger::~LoadXclbinCallLogger()
+{
+  if (!cb_valid()) return ;
+  XclbinCBPayload payload = { {m_local_idcode, h}, mBuffer } ;
+  cb(HalCallbackType::LOAD_XCLBIN_END, &payload) ;
+}
 
 void load_xdp_plugin_library(HalPluginConfig* )
 {

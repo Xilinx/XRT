@@ -29,7 +29,7 @@ namespace xdp {
   class HALPlugin : public XDPPlugin
   {
   private:
-    std::vector<DeviceIntf*> devices ;
+    std::map<uint64_t, DeviceIntf*> devices ;
     std::set<void*> encounteredHandles ;
 
     void flushDevices() ;
@@ -38,10 +38,14 @@ namespace xdp {
     HALPlugin() ;
     ~HALPlugin() ;
 
+    virtual void updateDevice(void* /*device*/, const void* /*binary*/);
+
     virtual void writeAll(bool openNewFiles) ;
     virtual void readDeviceInfo(void* device) ;
     void flushDeviceInfo(void* device) ;
     void setEncounteredDeviceHandle(void* handle) ;
+
+    uint64_t getDeviceId(void* handle);
   } ;
 
 }

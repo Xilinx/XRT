@@ -35,6 +35,10 @@ namespace xdp {
     }
   }
 
+  void XDPPlugin::updateDevice(void* /*device*/, const void* /*binary*/)
+  {
+  }
+
   void XDPPlugin::writeAll(bool openNewFiles)
   {
     // Base functionality is just to have all writers write.  Derived

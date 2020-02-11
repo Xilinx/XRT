@@ -76,10 +76,25 @@ namespace xdp {
     }
   }
 
-  void VPDynamicDatabase::addDeviceEvents(void* /*dev*/, 
-					   xclTraceResultsVector& /*trace*/)
+  void VPDynamicDatabase::addDeviceEvents(uint64_t deviceId, 
+					   xclTraceResultsVector& traceVector)
   {
-    // TBD
+    // Create Device Events and log them : do what is done in TraceParser::logTrace
+    if(traceVector.mLength == 0)
+      return;
+
+    uint64_t timestamp = 0;
+    uint64_t startTime = 0;
+
+    for(unsigned int i=0; i < traceVector.mLength; i++) {
+      auto& trace = traceVector.mArray[i];
+      
+      timestamp = trace.Timestamp;
+
+      //if (trace.isClockTrain) {
+      //  trainDeviceHostTimestamps(type, timestamp, trace.HostTimestamp);
+      //}
+
   }
 
   void VPDynamicDatabase::markStart(uint64_t functionID, uint64_t eventID)

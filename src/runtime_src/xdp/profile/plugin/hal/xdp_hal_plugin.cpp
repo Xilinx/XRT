@@ -237,10 +237,7 @@ namespace xdp {
     // The xclbin has been loaded, so update all the static information
     //  in our database.
     XclbinCBPayload* pLoad = reinterpret_cast<XclbinCBPayload*>(payload) ;
-    VPDatabase* db = halPluginInstance.getDatabase() ;
-
-    (db->getStaticInfo()).updateDevice((pLoad->basePayload).deviceHandle,
-				       pLoad->binary) ;
+    halPluginInstance.updateDevice((pLoad->basePayload).deviceHandle, pLoad->binary);
   }
 
   static void unknown_cb_type(void* /*payload*/) {
@@ -251,6 +248,9 @@ namespace xdp {
 
 void hal_level_xdp_cb_func(HalCallbackType cb_type, void* payload)
 {
+  if(!xdp::VPDatabase::alive()) {
+    return;
+  }
   switch (cb_type) {
     case HalCallbackType::ALLOC_BO_START:
       xdp::alloc_bo_start(payload);

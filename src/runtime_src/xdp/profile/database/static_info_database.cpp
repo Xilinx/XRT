@@ -26,6 +26,7 @@
 #define XDP_SOURCE
 
 #include "xdp/profile/database/static_info_database.h"
+#include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #include "core/include/xclbin.h"
 
 namespace xdp {
@@ -67,20 +68,57 @@ namespace xdp {
   {
   }
 
-  void VPStaticDatabase::resetDeviceInfo(void* dev)
-  {
-    std::lock_guard<std::mutex> lock(dbLock) ;
+  // This function is called whenever a device is loaded with an 
+  //  xclbin.  It has to clear out any previous device information and
+  //  reload our information.
+  void VPStaticDatabase::updateDevice(uint64_t deviceId, const void* binary)
+  {  
+    resetDeviceInfo(deviceId);
 
+    if (binary == nullptr) return ;
+
+    DeviceInfo *devDetails = new DeviceInfo();
+    devDetails->platformInfo.kdmaCount = 0;
+
+    deviceInfo[deviceId] = devDetails;
+
+    #if 0
+   
+
+    // Currently, we are going through the xclbin using the low level
+    //  AXLF structure.  Would sysfs be a better solution?  Does
+    //  that work with emulation?
+    if (!initializeMemory(dev, binary)) return ;
+    if (!initializeComputeUnits(dev, binary)) return ;
+    if (!initializeConnections(dev, binary)) return ;
+    #endif
+  }
+
+  void VPStaticDatabase::resetDeviceInfo(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(dbLock);
+
+    auto itr = deviceInfo.find(deviceId);
+    if(itr != deviceInfo.end()) {
+      delete itr->second;
+      deviceInfo.erase(deviceId);
+    }
+  }
+
+
+
+#if 0
     // All the device specific information has to be reset    
     kdmaCount[dev] = 0 ;
     deviceNames[dev] = "" ;
     loadedXclbins[dev] = "" ;
     cus[dev].clear() ;
-    ddrBanks[dev].clear() ;
+    ddrBanks[dev].clear() ;d
     hbmBanks[dev].clear() ;
     plramBanks[dev].clear() ;
-  }
+#endif
 
+#if 0
   bool VPStaticDatabase::initializeMemory(void* dev, const void* binary)
   {
     const axlf* xbin = static_cast<const struct axlf*>(binary) ;
@@ -158,22 +196,7 @@ namespace xdp {
     return true ;
   }
 
-  // This function is called whenever a device is loaded with an 
-  //  xclbin.  It has to clear out any previous device information and
-  //  reload our information.
-  void VPStaticDatabase::updateDevice(void* dev, const void* binary)
-  {
-    resetDeviceInfo(dev) ;
 
-    if (binary == nullptr) return ;
-
-    // Currently, we are going through the xclbin using the low level
-    //  AXLF structure.  Would sysfs be a better solution?  Does
-    //  that work with emulation?
-    if (!initializeMemory(dev, binary)) return ;
-    if (!initializeComputeUnits(dev, binary)) return ;
-    if (!initializeConnections(dev, binary)) return ;
-  }
 
   void VPStaticDatabase::addCommandQueueAddress(uint64_t a)
   {
@@ -188,5 +211,5 @@ namespace xdp {
 
     kdmaCount[dev] = numKDMAs ;
   }
-
+#endif
 }
