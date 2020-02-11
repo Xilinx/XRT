@@ -77,7 +77,7 @@ struct shim : public DeviceType
   virtual xclBufferHandle
   alloc_bo(size_t size, unsigned int flags)
   {
-    if (auto bo = xclAllocBO(DeviceType::get_device_handle(), 0, size, flags))
+    if (auto bo = xclAllocBO(DeviceType::get_device_handle(), size, 0, flags))
       return bo;
     throw std::bad_alloc();
   }

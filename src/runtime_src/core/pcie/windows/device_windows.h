@@ -17,11 +17,12 @@
 #ifndef DEVICE_WINDOWS_H
 #define DEVICE_WINDOWS_H
 
-#include "common/device_pcie.h"
+#include "core/common/ishim.h"
+#include "core/pcie/common/device_pcie.h"
 
 namespace xrt_core {
 
-class device_windows : public device_pcie
+class device_windows : public shim<device_pcie>
 {
 public:
   struct IOCTLEntry {

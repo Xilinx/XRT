@@ -17,8 +17,8 @@
 #ifndef XRT_CORE_SYSTEM_H
 #define XRT_CORE_SYSTEM_H
 
-#include "core/common/config.h"
-#include "core/common/device.h"
+#include "config.h"
+#include "device.h"
 
 #include <boost/property_tree/ptree.hpp>
 
@@ -33,6 +33,7 @@ namespace xrt_core {
 class system
 {
 protected:
+  XRT_CORE_COMMON_EXPORT
   system();
 public:
   virtual void get_xrt_info(boost::property_tree::ptree &pt) = 0;

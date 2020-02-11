@@ -17,6 +17,7 @@
 #ifndef XRT_CORE_DEVICE_H
 #define XRT_CORE_DEVICE_H
 
+#include "config.h"
 #include "query.h"
 #include "error.h"
 #include "ishim.h"
@@ -146,7 +147,10 @@ public:
   };
 public:
 
+  XRT_CORE_COMMON_EXPORT
   device(id_type device_id);
+
+  XRT_CORE_COMMON_EXPORT
   virtual ~device();
 
   device(const device&) = delete;
@@ -253,6 +257,7 @@ public:
   static std::string format_base10_shiftdown3(const boost::any &_data);
   static std::string format_base10_shiftdown6(const boost::any &_data);
 
+  XRT_CORE_COMMON_EXPORT
   void
   query_and_put(QueryRequest qr,
                 const std::type_info & _typeInfo,
@@ -260,6 +265,7 @@ public:
                 const std::string &_sPropertyName,
                 FORMAT_STRING_PTR stringFormat = format_primative) const;
 
+  XRT_CORE_COMMON_EXPORT
   void
   query_and_put(QueryRequest qr, boost::property_tree::ptree & pt) const;
 
