@@ -32,6 +32,8 @@ namespace xrt_core {
  */
 class system
 {
+protected:
+  system();
 public:
   virtual void get_xrt_info(boost::property_tree::ptree &pt) = 0;
   virtual void get_os_info(boost::property_tree::ptree &pt) = 0;

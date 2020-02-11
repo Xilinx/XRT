@@ -30,6 +30,8 @@
 
 namespace {
 
+static xrt_core::system_linux singleton;
+
 static std::string
 driver_version(const std::string& driver)
 {

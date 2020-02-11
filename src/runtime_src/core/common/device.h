@@ -19,6 +19,7 @@
 
 #include "query.h"
 #include "error.h"
+#include "ishim.h"
 #include "xrt.h"
 
 // Please keep eternal include file dependencies to a minimum
@@ -35,7 +36,7 @@ namespace xrt_core {
 /**
  * class device - interface to support OS agnositic operations on a device
  */
-class device
+class device : ishim
 {
 public:
   // device index type

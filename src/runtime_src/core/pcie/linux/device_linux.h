@@ -17,11 +17,12 @@
 #ifndef PCIE_DEVICE_LINUX_H
 #define PCIE_DEVICE_LINUX_H
 
-#include "common/device_pcie.h"
+#include "core/common/ishim.h"
+#include "core/pcie/common/device_pcie.h"
 
 namespace xrt_core {
 
-class device_linux : public device_pcie
+class device_linux : public shim<device_pcie>
 {
 public:
   device_linux(id_type device_id, bool user);

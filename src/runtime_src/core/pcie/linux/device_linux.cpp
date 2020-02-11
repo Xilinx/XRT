@@ -351,7 +351,7 @@ query(QueryRequest qr, const std::type_info& tinfo, boost::any& value) const
 
 device_linux::
 device_linux(id_type device_id, bool user)
-  : device_pcie(device_id, user)
+  : shim<device_pcie>(device_id, user)
 {
 }
 

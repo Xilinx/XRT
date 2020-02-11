@@ -17,8 +17,8 @@
 #include "device.h"
 #include "error.h"
 #include "utils.h"
-#include "include/xrt.h"
-#include "boost/format.hpp"
+#include "core/include/xrt.h"
+#include <boost/format.hpp>
 #include <string>
 #include <iostream>
 #include <fstream>
