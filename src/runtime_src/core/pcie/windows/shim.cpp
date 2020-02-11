@@ -572,78 +572,7 @@ done:
     return error ? false : true;
 
   }
-/*
-  bool SendIoctlStatMemTopo()
-  {
-    HANDLE deviceHandle = m_dev;
-    DWORD error;
-    DWORD bytesWritten;
-    DWORD bytesToRead;
-    XOCL_STAT_CLASS statClass = XoclStatMemTopology;
-    XOCL_MEM_TOPOLOGY_INFORMATION topoInfo;
-    XOCL_MEM_RAW_INFORMATION memRaw;
 
-    bytesToRead = sizeof(topoInfo);
-
-    if (!DeviceIoControl(deviceHandle,
-                         IOCTL_XOCL_STAT,
-                         &statClass,
-                         sizeof(statClass),
-                         &topoInfo,
-                         sizeof(topoInfo),
-                         &bytesWritten,
-                         nullptr)) {
-
-      error = GetLastError();
-
-      xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl failed with error %d", error);
-
-      goto out;
-    }
-
-    printf("Got XoclStatMemTopology Data:\n");
-    printf("Memory regions: %d\n", topoInfo.MemTopoCount);
-    for (size_t i = 0; i < topoInfo.MemTopoCount; i++) {
-      printf("\ttag=%s, start=0x%llx, size=0x%llx\n",
-             topoInfo.MemTopo[i].m_tag,
-             topoInfo.MemTopo[i].m_base_address,
-             topoInfo.MemTopo[i].m_size);
-    }
-
-    statClass = XoclStatMemRaw;
-
-    if (!DeviceIoControl(deviceHandle,
-                         IOCTL_XOCL_STAT,
-                         &statClass,
-                         sizeof(statClass),
-                         &memRaw,
-                         sizeof(memRaw),
-                         &bytesWritten,
-                         nullptr)) {
-
-      error = GetLastError();
-
-      xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl failed with error %d", error);
-
-      goto out;
-    }
-
-    printf("Got XoclStatMemRaw Data:\n");
-    printf("Count: %d\n", memRaw.MemRawCount);
-    for (unsigned int i = 0; i < memRaw.MemRawCount; i++) {
-      printf("\t(%d) BOCount=%llu, MemoryUsage=0x%llx\n"
-             ,i, memRaw.MemRaw[i].BOCount, memRaw.MemRaw[i].MemoryUsage);
-    }
-
-    error = 0;
-
-  out:
-
-    return error ? false : true;
-  }
-  */
   int
   load_xclbin(const struct axlf* buffer)
   {
@@ -676,8 +605,7 @@ done:
     xrt_core::message::
       send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "Calling IOCTL_XOCL_STAT (XoclStatMemTopology)... ");
 
- //   succeeded = SendIoctlStatMemTopo();
-
+ 
     if (succeeded) {
       xrt_core::message::
         send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "OK");
