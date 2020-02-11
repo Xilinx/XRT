@@ -176,7 +176,7 @@ static int updateSC(unsigned index, const char *file)
         }
         i++;
     }
-    dev = pcidev::get_dev(i, true);
+
     if (!dev) {
         std::cout << "ERROR: User function is not found. " <<
             "This is probably due to user function is running in virtual machine or user driver is not loaded. " << std::endl;
