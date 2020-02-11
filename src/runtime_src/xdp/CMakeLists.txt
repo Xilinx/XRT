@@ -140,7 +140,7 @@ target_link_libraries(xdp_hal_plugin xdp)
 target_link_libraries(xdp_hal_api_interface_plugin xdp)
 target_link_libraries(xdp_debug_plugin xrt_core xilinxopencl)
 target_link_libraries(xdp_appdebug_plugin xrt_core xilinxopencl)
-target_link_libraries(xdp_lop_plugin xdp)
+target_link_libraries(xdp_lop_plugin xdp xilinxopencl)
 
 set_target_properties(xdp PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(oclxdp PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
