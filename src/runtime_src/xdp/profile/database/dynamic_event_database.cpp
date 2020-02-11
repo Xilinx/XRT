@@ -54,11 +54,11 @@ namespace xdp {
     hostEvents.push_back(event) ;
   }
 
-  void VPDynamicDatabase::addDeviceEvent(void* dev, VTFEvent* event)
+  void VPDynamicDatabase::addDeviceEvent(uint64_t deviceId, VTFEvent* event)
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
 
-    deviceEvents[dev].emplace(event->getTimestamp(), event) ;
+    deviceEvents[deviceId].emplace(event->getTimestamp(), event) ;
   }
 
   void VPDynamicDatabase::addEvent(VTFEvent* event)

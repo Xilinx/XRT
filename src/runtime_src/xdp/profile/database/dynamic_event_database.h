@@ -46,10 +46,7 @@ namespace xdp {
     // Every device will have its own set of events.  Since the actual
     //  hardware might shuffle the order of events we have to make sure
     //  that this set of events is ordered based on timestamp.
-    //  (The void* is actually pointing at a DeviceIntf, but we don't
-    //  actually read from the device here so we just use it as 
-    //  an index into the map)
-    std::map<void*, std::multimap<double, VTFEvent*> > deviceEvents ;
+    std::map<uint64_t, std::multimap<double, VTFEvent*> > deviceEvents ;
 
     // A unique event id for every event added to the database.
     //  It starts with 1 so we can use 0 as an indicator of NULL
@@ -70,7 +67,7 @@ namespace xdp {
     std::mutex dbLock ;
 
     void addHostEvent(VTFEvent* event) ;
-    void addDeviceEvent(void* dev, VTFEvent* event) ;
+    void addDeviceEvent(uint64_t deviceId, VTFEvent* event) ;
     
   public:
     XDP_EXPORT VPDynamicDatabase() ;

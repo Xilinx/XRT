@@ -37,7 +37,7 @@ namespace xdp {
   class VTFDeviceEvent : public VTFEvent
   {
   private:
-    void* dev ; // Either a device handle or an xrt::device
+    uint64_t deviceId ; // Either a device handle or an xrt::device
 
     VTFDeviceEvent() = delete ;
 
@@ -45,12 +45,11 @@ namespace xdp {
     virtual void dumpTimestamp(std::ofstream& fout) ;
 
   public:
-    XDP_EXPORT VTFDeviceEvent(uint64_t s_id, double ts, VTFEventType ty, 
-			      void* d) ;
+    XDP_EXPORT VTFDeviceEvent(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId);
     XDP_EXPORT ~VTFDeviceEvent() ;
 
-    virtual bool isDeviceEvent() { return false ; }
-    virtual void* getDevice()    { return dev ; } 
+    virtual bool isDeviceEvent() { return true ; }
+    virtual uint64_t getDevice() { return deviceId ; } 
   } ;
 
   class KernelDeviceEvent : public VTFDeviceEvent
@@ -64,7 +63,7 @@ namespace xdp {
 
     KernelDeviceEvent() = delete ;
   public:
-    XDP_EXPORT KernelDeviceEvent(uint64_t s_id, double ts, void* d) ;
+    XDP_EXPORT KernelDeviceEvent(uint64_t s_id, double ts, uint64_t devId) ;
     XDP_EXPORT ~KernelDeviceEvent() ;
   } ;
 
@@ -80,7 +79,7 @@ namespace xdp {
 
     KernelStall() = delete ;
   public:
-    XDP_EXPORT KernelStall(uint64_t s_id, double ts, void* d) ;
+    XDP_EXPORT KernelStall(uint64_t s_id, double ts, uint64_t devId) ;
     XDP_EXPORT ~KernelStall() ;
   } ;
 
@@ -99,8 +98,7 @@ namespace xdp {
 
     KernelMemoryAccess() = delete ;
   public:
-    XDP_EXPORT KernelMemoryAccess(uint64_t s_id, double ts, VTFEventType ty, 
-				  void* d) ;
+    XDP_EXPORT KernelMemoryAccess(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId);
     XDP_EXPORT ~KernelMemoryAccess() ;
   } ;
 
@@ -117,8 +115,7 @@ namespace xdp {
 
     KernelStreamAccess() = delete ;
   public:
-    XDP_EXPORT KernelStreamAccess(uint64_t s_id, double ts, VTFEventType ty, 
-				  void* d) ;
+    XDP_EXPORT KernelStreamAccess(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId);
     XDP_EXPORT ~KernelStreamAccess() ;
   } ;
 
@@ -134,7 +131,7 @@ namespace xdp {
 
     KernelStreamStall() = delete ;
   public:
-    XDP_EXPORT KernelStreamStall(uint64_t s_id, double ts, void* d) ;
+    XDP_EXPORT KernelStreamStall(uint64_t s_id, double ts, uint64_t devId) ;
     XDP_EXPORT ~KernelStreamStall() ;
   } ;
 
@@ -150,7 +147,7 @@ namespace xdp {
 
     KernelStreamStarve() = delete ;
   public:
-    XDP_EXPORT KernelStreamStarve(uint64_t s_id, double ts, void* d) ;
+    XDP_EXPORT KernelStreamStarve(uint64_t s_id, double ts, uint64_t devId) ;
     XDP_EXPORT ~KernelStreamStarve() ;
   } ;
 
@@ -159,7 +156,7 @@ namespace xdp {
   private:
     HostRead() = delete ;
   public:
-    XDP_EXPORT HostRead(uint64_t s_id, double ts, void* d) ;
+    XDP_EXPORT HostRead(uint64_t s_id, double ts, uint64_t devId) ;
     XDP_EXPORT ~HostRead() ;
   } ;
 
@@ -168,7 +165,7 @@ namespace xdp {
   private:
     HostWrite() = delete ;
   public:
-    XDP_EXPORT HostWrite(uint64_t s_id, double ts, void* d) ;
+    XDP_EXPORT HostWrite(uint64_t s_id, double ts, uint64_t devId) ;
     XDP_EXPORT ~HostWrite() ;
   } ;
 

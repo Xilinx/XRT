@@ -26,9 +26,9 @@ namespace xdp {
   // Device event definitions
   // **************************
 
-  VTFDeviceEvent::VTFDeviceEvent(uint64_t s_id, double ts, VTFEventType ty,
-				 void* d) :
-    VTFEvent(s_id, ts, ty), dev(d)
+  VTFDeviceEvent::VTFDeviceEvent(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId)
+                : VTFEvent(s_id, ts, ty),
+                  deviceId(devId)
   {
   }
 
@@ -44,9 +44,8 @@ namespace xdp {
     fout << std::fixed << std::setprecision(6) << timestamp ;
   }
 
-  KernelDeviceEvent::KernelDeviceEvent(uint64_t s_id, double ts, 
-				       void* d) :
-    VTFDeviceEvent(s_id, ts, KERNEL, d)
+  KernelDeviceEvent::KernelDeviceEvent(uint64_t s_id, double ts, uint64_t devId)
+                   : VTFDeviceEvent(s_id, ts, KERNEL, devId)
   {
   }
 
@@ -54,8 +53,8 @@ namespace xdp {
   {
   }
 
-  KernelStall::KernelStall(uint64_t s_id, double ts, void* d) :
-    VTFDeviceEvent(s_id, ts, KERNEL_STALL, d)
+  KernelStall::KernelStall(uint64_t s_id, double ts, uint64_t devId)
+             : VTFDeviceEvent(s_id, ts, KERNEL_STALL, devId)
   {
   }
 
@@ -63,9 +62,8 @@ namespace xdp {
   {
   }
 
-  KernelMemoryAccess::KernelMemoryAccess(uint64_t s_id, double ts, 
-					 VTFEventType ty, void* d) :
-    VTFDeviceEvent(s_id, ts, ty, d)
+  KernelMemoryAccess::KernelMemoryAccess(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId)
+                    : VTFDeviceEvent(s_id, ts, ty, devId)
   {
   }
 
@@ -73,9 +71,8 @@ namespace xdp {
   {
   }
 
-  KernelStreamAccess::KernelStreamAccess(uint64_t s_id, double ts,
-					 VTFEventType ty, void* d) :
-    VTFDeviceEvent(s_id, ts, ty, d)
+  KernelStreamAccess::KernelStreamAccess(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId)
+                    : VTFDeviceEvent(s_id, ts, ty, devId)
   {
   }
 
@@ -83,9 +80,8 @@ namespace xdp {
   {
   }
 
-  KernelStreamStall::KernelStreamStall(uint64_t s_id, double ts, 
-					 void* d) :
-    VTFDeviceEvent(s_id, ts, KERNEL_STREAM_STALL, d)
+  KernelStreamStall::KernelStreamStall(uint64_t s_id, double ts, uint64_t devId)
+                   : VTFDeviceEvent(s_id, ts, KERNEL_STREAM_STALL, devId)
   {
   }
 
@@ -93,9 +89,8 @@ namespace xdp {
   {
   }
 
-  KernelStreamStarve::KernelStreamStarve(uint64_t s_id, double ts, 
-					 void* d) :
-    VTFDeviceEvent(s_id, ts, KERNEL_STREAM_STARVE, d)
+  KernelStreamStarve::KernelStreamStarve(uint64_t s_id, double ts, uint64_t devId)
+  					        : VTFDeviceEvent(s_id, ts, KERNEL_STREAM_STARVE, devId)
   {
   }
 
@@ -103,8 +98,8 @@ namespace xdp {
   {
   }
 
-  HostRead::HostRead(uint64_t s_id, double ts, void* d) :
-    VTFDeviceEvent(s_id, ts, HOST_READ, d)
+  HostRead::HostRead(uint64_t s_id, double ts, uint64_t devId)
+          : VTFDeviceEvent(s_id, ts, HOST_READ, devId)
   {
   }
 
@@ -112,8 +107,8 @@ namespace xdp {
   {
   }
 
-  HostWrite::HostWrite(uint64_t s_id, double ts, void* d) :
-    VTFDeviceEvent(s_id, ts, HOST_WRITE, d)
+  HostWrite::HostWrite(uint64_t s_id, double ts, uint64_t devId)
+           : VTFDeviceEvent(s_id, ts, HOST_WRITE, devId)
   {
   }
 

@@ -92,7 +92,7 @@ namespace xdp {
     virtual bool isHostEvent()   { return false ; }
     virtual bool isDeviceEvent() { return false ; }
 
-    virtual void* getDevice() { return nullptr ; } 
+    virtual uint64_t getDevice() { return 0 ; } // CHECK
     XDP_EXPORT virtual void dump(std::ofstream& fout, int bucket) ;
   } ;
 
