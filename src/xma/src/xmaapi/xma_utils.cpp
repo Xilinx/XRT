@@ -109,6 +109,15 @@ namespace xma_core {
         return XMA_SUCCESS;
     }
 
+    int32_t check_plugin_version(int32_t plugin_main_ver, int32_t plugin_sub_ver) {
+        if ((plugin_main_ver == XMA_LIB_MAIN_VER && plugin_sub_ver < XMA_LIB_SUB_VER) || plugin_main_ver < XMA_LIB_MAIN_VER) {
+            return -1;
+        }
+        if ((plugin_main_ver == XMA_LIB_MAIN_VER && plugin_sub_ver > XMA_LIB_SUB_VER) || plugin_main_ver > XMA_LIB_MAIN_VER) {
+            return -2;
+        }
+        return XMA_SUCCESS;
+    }
 }
 
 namespace xma_core { namespace utils {
