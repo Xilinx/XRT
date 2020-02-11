@@ -64,7 +64,7 @@ namespace xdp {
   uint64_t VPDatabase::addDevice(std::string& sysfsPath)
   {
     if(devices.find(sysfsPath) == devices.end()) {
-      devices[sysfsPath] = ++numDevices;
+      devices[sysfsPath] = numDevices++;
     }
     return devices[sysfsPath];
   }
