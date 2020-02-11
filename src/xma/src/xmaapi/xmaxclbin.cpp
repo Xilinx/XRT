@@ -396,15 +396,19 @@ int xma_xclbin_info_get(char *buffer, XmaXclbinInfo *info)
         return rc;
 
     memset(info->ip_ddr_mapping, 0, sizeof(info->ip_ddr_mapping));
+    uint64_t tmp_ddr_map = 0;
     for(uint32_t c = 0; c < info->number_of_connections; c++)
     {
         XmaAXLFConnectivity *xma_conn = &info->connectivity[c];
-        info->ip_ddr_mapping[xma_conn->m_ip_layout_index] |= 1 << (xma_conn->mem_data_index);
+        tmp_ddr_map = 1;
+        tmp_ddr_map = tmp_ddr_map << (xma_conn->mem_data_index);
+        info->ip_ddr_mapping[xma_conn->m_ip_layout_index] = tmp_ddr_map;
+        //info->ip_ddr_mapping[xma_conn->m_ip_layout_index] |= 1 << (xma_conn->mem_data_index);
     }
     xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "CU DDR connections bitmap:");
     for(uint32_t i = 0; i < info->number_of_hardware_kernels; i++)
     {
-        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "\t%s - 0x%04llx\n",info->ip_layout[i].kernel_name, (unsigned long long)info->ip_ddr_mapping[i]);
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "\t%s - 0x%016llx\n",info->ip_layout[i].kernel_name, (unsigned long long)info->ip_ddr_mapping[i]);
     }
     //For execbo:
     //info->num_ips = info->number_of_kernels;
