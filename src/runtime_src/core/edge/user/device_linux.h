@@ -17,11 +17,14 @@
 #ifndef EDGE_DEVICE_LINUX_H
 #define EDGE_DEVICE_LINUX_H
 
-#include "common/device_edge.h"
+#include "core/common/ishim.h"
+#include "core/edge/common/device_edge.h"
 
 namespace xrt_core {
 
-class device_linux : public device_edge
+// concrete class derives from device_edge, but mixes in
+// shim layer functions for access through base class
+class device_linux : public shim<device_edge>
 {
 public:
   struct SysDevEntry {

@@ -802,7 +802,7 @@ query(QueryRequest qr, const std::type_info & tinfo, boost::any& value) const
 
 device_windows::
 device_windows(id_type device_id, bool user)
-  : device_pcie(device_id, user)
+  : shim<device_pcie>(device_id, user)
 {
   if (user)
     return;

@@ -20,7 +20,7 @@
 #include <string>
 #include <iostream>
 #include <map>
-#include "boost/format.hpp"
+#include <boost/format.hpp>
 
 namespace xrt_core {
 
@@ -56,7 +56,7 @@ query(QueryRequest qr, const std::type_info& tinfo, boost::any& value) const
 
 device_linux::
 device_linux(id_type device_id, bool user)
-  : device_edge(device_id, user)
+  : shim<device_edge>(device_id, user)
 {
 }
 
