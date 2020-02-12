@@ -213,8 +213,8 @@ int xocl_free_cma_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 
 /* sysfs functions */
-int xocl_init_sysfs(struct device *dev);
-void xocl_fini_sysfs(struct device *dev);
+int xocl_init_sysfs(struct xocl_dev *xdev);
+void xocl_fini_sysfs(struct xocl_dev *xdev);
 
 /* helper functions */
 enum {

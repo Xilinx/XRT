@@ -208,9 +208,7 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 	if (prepare) {
 		/* clean up mem topology */
 		xocl_cleanup_mem(XOCL_DRM(xdev));
-		if (xdev->flags & XOCL_FLAGS_SYSFS_INITIALIZED)
-			xocl_fini_sysfs(&pdev->dev);
-		xdev->flags &= ~XOCL_FLAGS_SYSFS_INITIALIZED;
+		xocl_fini_sysfs(xdev);
 		xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 		xocl_subdev_offline_all(xdev);
 	} else {
@@ -225,13 +223,10 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 			return;
 		}
 
-		if (!(xdev->flags & XOCL_FLAGS_SYSFS_INITIALIZED)) {
-			ret = xocl_init_sysfs(&pdev->dev);
-			if (ret) {
-				xocl_warn(&pdev->dev, "Unable to create sysfs %d", ret);
-				return;
-			}
-			xdev->flags |= XOCL_FLAGS_SYSFS_INITIALIZED;
+		ret = xocl_init_sysfs(xdev);
+		if (ret) {
+			xocl_warn(&pdev->dev, "Unable to create sysfs %d", ret);
+			return;
 		}
 
 		xocl_exec_reset(xdev, xclbin_id);
@@ -1233,8 +1228,7 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 	xocl_p2p_fini(xdev, false);
 	xocl_subdev_destroy_all(xdev);
 
-	if (xdev->flags & XOCL_FLAGS_SYSFS_INITIALIZED)
-		xocl_fini_sysfs(&pdev->dev);
+	xocl_fini_sysfs(xdev);
 	if (xdev->core.drm)
 		xocl_drm_fini(xdev->core.drm);
 	xocl_free_dev_minor(xdev);
@@ -1347,13 +1341,11 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 		xocl_err(&pdev->dev, "failed to init drm mm");
 		goto failed;
 	}
-	ret = xocl_init_sysfs(&pdev->dev);
+	ret = xocl_init_sysfs(xdev);
 	if (ret) {
 		xocl_err(&pdev->dev, "failed to init sysfs");
 		goto failed;
 	}
-
-	xdev->flags |= XOCL_FLAGS_SYSFS_INITIALIZED;
 
 	/* Don't check mailbox on versal for now. */
 	if (XOCL_DSA_IS_VERSAL(xdev))
