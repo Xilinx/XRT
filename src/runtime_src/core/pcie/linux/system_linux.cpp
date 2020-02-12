@@ -30,6 +30,8 @@
 
 namespace {
 
+// Singleton registers with base class xrt_core::system
+// during static global initialization
 static xrt_core::system_linux singleton;
 
 static std::string
