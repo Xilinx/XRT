@@ -26,7 +26,7 @@
 #include "xbmgmt.h"
 #include "core/pcie/linux/scan.h"
 
-#define SYSFS_PATH      "/sys/bus/pci"
+#define SYSFS_PATH      "/sys/bus/pci/devices"
 #define XILINX_VENDOR   "0x10ee"
 #define XILINX_US       "0x9134"
 #define POLL_TIMEOUT    60      /* Set a pool timeout as 60sec */
