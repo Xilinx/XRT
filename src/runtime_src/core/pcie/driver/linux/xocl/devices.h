@@ -1786,8 +1786,8 @@ struct xocl_subdev_map {
 #define XOCL_RES_XMC_MFG				\
 	((struct resource []) {				\
 		{					\
-			.start	= 0x140000,		\
-			.end	= 0x141fff,		\
+			.start	= 0x120000,		\
+			.end 	= 0x121FFF,		\
 			.flags  = IORESOURCE_MEM,	\
 		},					\
 	})
