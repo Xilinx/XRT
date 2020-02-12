@@ -448,20 +448,22 @@ static int health_check_cb(void *data)
 	if (!health_check)
 		return 0;
 
-	tripped = xocl_af_check(lro, NULL);
-	if (tripped)
-		goto skip_checks;
-	
 	(void) xocl_clock_status(lro, &latched);
 
 	check_sensor(lro);
 
-skip_checks:
-	mbreq.req = XCL_MAILBOX_REQ_FIREWALL;
+	/*
+	 * Checking firewall should be the last thing to do.
+	 * There are multiple level firewalls, one of them trips and
+	 * it possibly still has chance to read clock and
+	 * sensor information etc.
+	 */
+	tripped = xocl_af_check(lro, NULL);
 
 	if (latched || tripped) {
 		if (!lro->reset_requested) {
 			mgmt_err(lro, "Card is in a Bad state, notify userpf");
+			mbreq.req = XCL_MAILBOX_REQ_FIREWALL;
 			err = xocl_peer_notify(lro, &mbreq, sizeof(mbreq));
 			if (!err)
 				lro->reset_requested = true;
