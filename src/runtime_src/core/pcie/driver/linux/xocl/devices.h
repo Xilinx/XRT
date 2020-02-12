@@ -1687,6 +1687,7 @@ struct xocl_subdev_map {
 		ARRAY_SIZE(XOCL_RES_XMC_MFG_U50),	\
 	}
 
+/* Temporary disable XMC for U50 Golden, see CR-1052500 for more info */
 #define MFG_RES_U50							\
 	((struct xocl_subdev_info []) {					\
 	 	XOCL_DEVINFO_FLASH_MFG_U50,				\
