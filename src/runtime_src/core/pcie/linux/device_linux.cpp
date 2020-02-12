@@ -111,13 +111,7 @@ sysfs_user(const device_type* device, const std::type_info& tinfo, boost::any& v
 
 namespace sp = std::placeholders;
 static std::map<qr_type, query_entry> query_table = {
-  { qr_type::QR_ROM_VBNV,                  {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, "rom", "VBNV")}},
-  { qr_type::QR_ROM_DDR_BANK_SIZE,         {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, "rom", "ddr_bank_size")}},
-  { qr_type::QR_ROM_DDR_BANK_COUNT_MAX,    {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, "rom", "ddr_bank_count_max")}},
-  { qr_type::QR_ROM_FPGA_NAME,             {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, "rom", "FPGA")}},
   { qr_type::QR_ROM_RAW,                   {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, "rom", "raw")}},
-  { qr_type::QR_ROM_UUID,                  {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, "rom", "uuid")}},
-  { qr_type::QR_ROM_TIME_SINCE_EPOCH,      {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, "rom", "timestamp")}},
   { qr_type::QR_XMC_VERSION,               {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, "xmc", "version")}},
   { qr_type::QR_XMC_SERIAL_NUM,            {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, "xmc", "serial_num")}},
   { qr_type::QR_XMC_MAX_POWER,             {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, "xmc", "max_power")}},
