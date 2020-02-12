@@ -402,7 +402,7 @@ int xma_xclbin_info_get(char *buffer, XmaXclbinInfo *info)
         XmaAXLFConnectivity *xma_conn = &info->connectivity[c];
         tmp_ddr_map = 1;
         tmp_ddr_map = tmp_ddr_map << (xma_conn->mem_data_index);
-        info->ip_ddr_mapping[xma_conn->m_ip_layout_index] = tmp_ddr_map;
+        info->ip_ddr_mapping[xma_conn->m_ip_layout_index] |= tmp_ddr_map;
         //info->ip_ddr_mapping[xma_conn->m_ip_layout_index] |= 1 << (xma_conn->mem_data_index);
     }
     xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "CU DDR connections bitmap:");
