@@ -594,10 +594,79 @@ struct info
   }
 };
 
+struct rom
+{
+  using result_type = boost::any;
+
+  static FeatureRomHeader
+  init_feature_rom_heade(const device_type* dev)
+  {
+    FeatureRomHeader hdr = {0};
+    if (auto mhdl = dev->get_mgmt_handle())
+      mgmtpf::get_rom_info(mhdl, &hdr);
+    else if (auto uhdl = dev->get_user_handle())
+      userpf::get_rom_info(uhdl, &hdr);
+    else
+      throw std::runtime_error("No device handle");
+    return hdr;
+  }
+
+  static result_type
+  get_info(const xrt_core::device* device, key_type key)
+  {
+    static std::map<const device_type, FeatureRomHeader> hdrmap;
+    static std::mutex mutex;
+    std::lock_guard<std::mutex> lk(mutex);
+    auto it = hdrmap.find(device);
+    if (itr == hdrmap.end()) {
+      auto ret = hdrmap.emplace(device,init_feature_rom_header(device));
+      it = ret.first;
+    }
+
+    switch (key) {
+    case key_type::rom_vbnv:
+      return std::string(reinterpret_cast<const char*>(hdr.VBNVName));
+    case key_type::rom_ddr_bank_size:
+      return static_cast<query::rom_ddr_bank_size::result_type>(hdr.DDRChannelSize);
+    case key_type::rom_ddr_bank_count_max:
+      return static_cast<query::rom_ddr_bank_count_max::result_type>(hdr.DDRChannelCount);
+    case qr_type::rom_fpga_name:
+      return std::string(reinterpret_cast<const char*>(hdr.FPGAPartName));
+    }
+
+    if (device->get_user_handle())
+      throw std::runtime_error("device_windows::rom() unexpected qr("
+                               + std::to_string(qr)
+                               + ") for userpf");
+
+    switch (key) {
+    case key_type::rom_uuid:
+      return std::string(reinterpret_cast<const char*>(hdr.uuid),16);
+    case key_type::rom_time_since_epoch:
+      return static_cast<query::rom_time_since_epoch::result_type>(hdr.TimeSinceEpoch);
+    default:
+      throw std::runtime_error("device_windows::rom() unexpected qr " + std::to_string(qr));
+    }
+  }
+
+  static result_type
+  user(const xrt_core::device* device, key_type key)
+  {
+    return get_info(device,key);
+  }
+
+  static result_type
+  mgmt(const xrt_core::device* device, key_type key)
+  {
+    return get_info(device,key);
+  }
+};
+
 template <typename QueryRequestType, typename Getter>
 struct function0_getter : QueryRequestType
 {
-  static_assert(std::is_same<Getter::result_type, QueryRequestType::result_type>::value, "type mismatch");
+  static_assert(std::is_same<Getter::result_type, QueryRequestType::result_type>::value
+             || std::is_same<Getter::result_type, boost::any>::value, "type mismatch");
 
   boost::any
   get(const xrt_core::device* device) const
@@ -652,11 +721,18 @@ emplace_function1_getter()
 static void
 initialize_query_table()
 {
-  emplace_function0_getter<query::pcie_vendor,           info>();
-  emplace_function0_getter<query::pcie_device,           info>();
-  emplace_function0_getter<query::pcie_subsystem_vendor, info>();
-  emplace_function0_getter<query::pcie_subsystem_id,     info>();
-  emplace_function0_getter<query::pcie_bdf,              bdf>();
+  emplace_function0_getter<query::pcie_vendor,            info>();
+  emplace_function0_getter<query::pcie_device,            info>();
+  emplace_function0_getter<query::pcie_subsystem_vendor,  info>();
+  emplace_function0_getter<query::pcie_subsystem_id,      info>();
+  emplace_function0_getter<query::pcie_bdf,               bdf>();
+  emplace_function0_getter<query::rom_vbnv,               rom>();
+  emplace_function0_getter<query::rom_ddr_bank_size,      rom>();
+  emplace_function0_getter<query::rom_ddr_bank_count_max, rom>();
+  emplace_function0_getter<query::rom_fpga_name,          rom>();
+  //emplace_function0_getter<query::rom_raw,                rom>();
+  emplace_function0_getter<query::rom_uuid,               rom>();
+  emplace_function0_getter<query::rom_time_since_epoch,   rom>();
 }
 
 struct X { X() { initialize_query_table(); }};
