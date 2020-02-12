@@ -44,6 +44,10 @@ namespace po = boost::program_options;
 #include <chrono>
 #include <ctime>
 
+#ifdef _WIN32
+#pragma warning(disable : 4996)
+#endif
+
 
 // =============================================================================
 

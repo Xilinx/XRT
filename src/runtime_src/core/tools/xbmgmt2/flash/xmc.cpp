@@ -204,7 +204,7 @@ int XMC_Flasher::xclUpgradeFirmware(std::istream& tiTxtStream) {
         retries--;
 
         ret = erase();
-        XBU::ProgressBar sc_flash("Programming SC", mRecordList.size(), XBU::is_esc_enabled(), std::cout);
+        XBU::ProgressBar sc_flash("Programming SC", static_cast<unsigned int>(mRecordList.size()), XBU::is_esc_enabled(), std::cout);
         int counter = 0;
         for (auto i = mRecordList.begin(); ret == 0 && i != mRecordList.end(); ++i) {
             ret = program(tiTxtStream, *i);

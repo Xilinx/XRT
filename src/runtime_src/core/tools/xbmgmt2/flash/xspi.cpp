@@ -302,8 +302,8 @@ XSPI_Flasher::XSPI_Flasher(std::shared_ptr<xrt_core::device> dev)
     mDev = dev;
 
     std::string err;
-    flash_base = xrt_core::query_device<uint64_t>(mDev, xrt_core::device::QR_FLASH_BAR_OFFSET);
-    if (flash_base == std::numeric_limits<uint64_t>::max())
+    //TODO: Replace with updated call
+    // flash_base = xrt_core::query_device<uint64_t>(mDev, xrt_core::device::QR_FLASH_BAR_OFFSET);
         flash_base = FLASH_BASE;
 
     mFlashDev = nullptr;
@@ -1641,7 +1641,7 @@ int XSPI_Flasher::programXSpi(std::istream& mcsStream, uint32_t bitstream_shift_
 
     //Now we can safely erase all subsectors
     int beatCount = 0;
-    XBU::ProgressBar erase_flash("Erasing flash", recordList.size(), XBU::is_esc_enabled(), std::cout);
+    XBU::ProgressBar erase_flash("Erasing flash", static_cast<unsigned int>(recordList.size()), XBU::is_esc_enabled(), std::cout);
     for (ELARecordList::iterator i = recordList.begin(), e = recordList.end(); i != e; ++i) {
         beatCount++;
         // if(beatCount%20==0) {
@@ -1668,7 +1668,7 @@ int XSPI_Flasher::programXSpi(std::istream& mcsStream, uint32_t bitstream_shift_
 
     //Next we program flash. Note that bitstream guard is still active
     beatCount = 0;
-    XBU::ProgressBar program_flash("Programming flash", recordList.size(), XBU::is_esc_enabled(), std::cout);
+    XBU::ProgressBar program_flash("Programming flash", static_cast<unsigned int>(recordList.size()), XBU::is_esc_enabled(), std::cout);
     for (ELARecordList::iterator i = recordList.begin(), e = recordList.end(); i != e; ++i)
     {
         beatCount++;
