@@ -402,6 +402,9 @@ struct xocl_dev_core {
 	struct xocl_work	works[XOCL_WORK_NUM];
 	struct mutex		wq_lock;
 
+	spinlock_t		api_lock;
+	struct completion	api_comp;
+	int			api_call_cnt;
 };
 
 #define XOCL_DRM(xdev_hdl)					\
@@ -498,7 +501,7 @@ struct xocl_rom_funcs {
 	(ROM_CB(xdev, passthrough_virtualization_on) ?		\
 	ROM_OPS(xdev)->passthrough_virtualization_on(ROM_DEV(xdev)) : false)
 #define xocl_rom_get_uuid(xdev)				\
-	(ROM_CB(xdev, get_timestamp) ? ROM_OPS(xdev)->get_uuid(ROM_DEV(xdev)) : NULL)
+	(ROM_CB(xdev, get_uuid) ? ROM_OPS(xdev)->get_uuid(ROM_DEV(xdev)) : NULL)
 
 /* dma callbacks */
 struct xocl_dma_funcs {
@@ -1334,7 +1337,8 @@ enum {
 };
 
 /* subdev functions */
-int xocl_subdev_init(xdev_handle_t xdev_hdl);
+int xocl_subdev_init(xdev_handle_t xdev_hdl, struct pci_dev *pdev,
+	struct xocl_pci_funcs *pci_ops);
 void xocl_subdev_fini(xdev_handle_t xdev_hdl);
 int xocl_subdev_create(xdev_handle_t xdev_hdl,
 	struct xocl_subdev_info *sdev_info);

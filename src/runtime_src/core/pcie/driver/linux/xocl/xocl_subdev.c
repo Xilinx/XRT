@@ -45,12 +45,25 @@ void xocl_subdev_fini(xdev_handle_t xdev_hdl)
 			core->subdevs[i] = NULL;
 		}
 	}
+
+	if (core->dyn_subdev_store)
+		vfree(core->dyn_subdev_store);
+	mutex_destroy(&core->lock);
+	mutex_destroy(&core->wq_lock);
 }
 
-int xocl_subdev_init(xdev_handle_t xdev_hdl)
+int xocl_subdev_init(xdev_handle_t xdev_hdl, struct pci_dev *pdev,
+		struct xocl_pci_funcs *pci_ops)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
 	int i, ret = 0;
+
+	mutex_init(&core->lock);
+	core->pci_ops = pci_ops;
+	core->pdev = pdev;
+	core->dev_minor = XOCL_INVALID_MINOR;
+	rwlock_init(&core->rwlock);
+	mutex_init(&core->wq_lock);
 
 	for (i = 0; i < XOCL_SUBDEV_NUM; i++) {
 		core->subdevs[i] = vzalloc(sizeof(struct xocl_subdev) *
