@@ -1226,8 +1226,6 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 
 	if (lro->core.fdt_blob)
 		vfree(lro->core.fdt_blob);
-	if (lro->core.dyn_subdev_store)
-		vfree(lro->core.dyn_subdev_store);
 	if (lro->userpf_blob)
 		vfree(lro->userpf_blob);
 	if (lro->bld_blob)
