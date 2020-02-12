@@ -594,6 +594,7 @@ int xocl_init_sysfs(struct device *dev)
 	int ret;
 	struct pci_dev *rdev;
 
+	xocl_info(dev, "Creating sysfs");
 	ret = sysfs_create_group(&dev->kobj, &xocl_attr_group);
 	if (ret)
 		xocl_err(dev, "create xocl attrs failed: %d", ret);
@@ -608,6 +609,7 @@ int xocl_init_sysfs(struct device *dev)
 
 void xocl_fini_sysfs(struct device *dev)
 {
+	xocl_info(dev, "Removing sysfs");
 	sysfs_remove_link(&dev->kobj, "root_dev");
 	sysfs_remove_group(&dev->kobj, &xocl_attr_group);
 }

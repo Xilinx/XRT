@@ -948,9 +948,6 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 			goto fail;
 	}
 
-	lro->core.pci_ops = &xclmgmt_pci_ops;
-	lro->core.pdev = pdev;
-
 	/*
 	 * Workaround needed on some platforms. Will clear out any stale
 	 * data after the platform has been reset
@@ -1087,19 +1084,15 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		lro->core.works[i].op = i;
 	}
 
-	rc = xocl_subdev_init(lro);
+	rc = xocl_subdev_init(lro, pdev, &xclmgmt_pci_ops);
 	if (rc) {
 		xocl_err(&pdev->dev, "init subdev failed");
 		goto err_init_subdev;
 	}
 
-	mutex_init(&lro->core.lock);
-	rwlock_init(&lro->core.rwlock);
-
 	/* create a device to driver reference */
 	dev_set_drvdata(&pdev->dev, lro);
 	/* create a driver to device reference */
-	lro->core.pdev = pdev;
 	lro->pci_dev = pdev;
 	lro->ready = false;
 

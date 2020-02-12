@@ -208,6 +208,9 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 	if (prepare) {
 		/* clean up mem topology */
 		xocl_cleanup_mem(XOCL_DRM(xdev));
+		if (xdev->flags & XOCL_FLAGS_SYSFS_INITIALIZED)
+			xocl_fini_sysfs(&pdev->dev);
+		xdev->flags &= ~XOCL_FLAGS_SYSFS_INITIALIZED;
 		xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 		xocl_subdev_offline_all(xdev);
 	} else {
@@ -221,6 +224,16 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 			xocl_warn(&pdev->dev, "Unable to get on device uuid %d", ret);
 			return;
 		}
+
+		if (!(xdev->flags & XOCL_FLAGS_SYSFS_INITIALIZED)) {
+			ret = xocl_init_sysfs(&pdev->dev);
+			if (ret) {
+				xocl_warn(&pdev->dev, "Unable to create sysfs %d", ret);
+				return;
+			}
+			xdev->flags |= XOCL_FLAGS_SYSFS_INITIALIZED;
+		}
+
 		xocl_exec_reset(xdev, xclbin_id);
 		XOCL_PUT_XCLBIN_ID(xdev);
 	}
@@ -1220,7 +1233,8 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 	xocl_p2p_fini(xdev, false);
 	xocl_subdev_destroy_all(xdev);
 
-	xocl_fini_sysfs(&pdev->dev);
+	if (xdev->flags & XOCL_FLAGS_SYSFS_INITIALIZED)
+		xocl_fini_sysfs(&pdev->dev);
 	if (xdev->core.drm)
 		xocl_drm_fini(xdev->core.drm);
 	xocl_free_dev_minor(xdev);
@@ -1230,13 +1244,9 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 	unmap_bar(xdev);
 
 	xocl_subdev_fini(xdev);
-	if (xdev->core.dyn_subdev_store)
-		vfree(xdev->core.dyn_subdev_store);
 	if (xdev->ulp_blob)
 		vfree(xdev->ulp_blob);
-	mutex_destroy(&xdev->core.lock);
 	mutex_destroy(&xdev->dev_lock);
-	mutex_destroy(&xdev->core.wq_lock);
 
 	pci_set_drvdata(pdev, NULL);
 	xocl_drvinst_free(xdev);
@@ -1274,17 +1284,17 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	/* this is used for all subdevs, bind it to device earlier */
 	pci_set_drvdata(pdev, xdev);
 
-	mutex_init(&xdev->core.lock);
-	xdev->core.pci_ops = &userpf_pci_ops;
-	xdev->core.pdev = pdev;
-	xdev->core.dev_minor = XOCL_INVALID_MINOR;
-	rwlock_init(&xdev->core.rwlock);
 	mutex_init(&xdev->dev_lock);
-	mutex_init(&xdev->core.wq_lock);
 	atomic64_set(&xdev->total_execs, 0);
 	atomic_set(&xdev->outstanding_execs, 0);
 	INIT_LIST_HEAD(&xdev->ctx_list);
 
+
+	ret = xocl_subdev_init(xdev, pdev, &userpf_pci_ops);
+	if (ret) {
+		xocl_err(&pdev->dev, "failed to failed to init subdev");
+		goto failed;
+	}
 
 	ret = xocl_config_pci(xdev);
 	if (ret)
@@ -1295,12 +1305,6 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	for (i = XOCL_WORK_RESET; i < XOCL_WORK_NUM; i++) {
 		INIT_DELAYED_WORK(&xdev->core.works[i].work, xocl_work_cb);
 		xdev->core.works[i].op = i;
-	}
-
-	ret = xocl_subdev_init(xdev);
-	if (ret) {
-		xocl_err(&pdev->dev, "failed to failed to init subdev");
-		goto failed;
 	}
 
 	ret = xocl_alloc_dev_minor(xdev);
@@ -1348,6 +1352,8 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 		xocl_err(&pdev->dev, "failed to init sysfs");
 		goto failed;
 	}
+
+	xdev->flags |= XOCL_FLAGS_SYSFS_INITIALIZED;
 
 	/* Don't check mailbox on versal for now. */
 	if (XOCL_DSA_IS_VERSAL(xdev))

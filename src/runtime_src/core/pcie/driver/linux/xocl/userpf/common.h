@@ -114,6 +114,10 @@ struct xocl_p2p_mem_chunk {
 #endif
 };
 
+enum {
+	XOCL_FLAGS_SYSFS_INITIALIZED = (1 << 0)
+};
+
 struct xocl_dev	{
 	struct xocl_dev_core	core;
 
@@ -150,6 +154,8 @@ struct xocl_dev	{
 
 	uint64_t		mig_cache_expire_secs;
 	ktime_t			mig_cache_expires;
+
+	u32			flags;
 };
 
 /**
