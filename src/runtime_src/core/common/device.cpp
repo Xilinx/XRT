@@ -32,8 +32,6 @@ static std::map<device::QueryRequest, device::QueryRequestEntry> sQueryTable =
   { device::QR_ROM_DDR_BANK_SIZE,         { "QR_ROM_DDR_BANK_SIZE",         "ddr_size_bytes",   &typeid(uint64_t),    device::format_hex_base2_shiftup30 }},
   { device::QR_ROM_DDR_BANK_COUNT_MAX,    { "QR_ROM_DDR_BANK_COUNT_MAX",    "widdr_countdth",   &typeid(uint64_t),    device::format_primative }},
   { device::QR_ROM_FPGA_NAME,             { "QR_ROM_FPGA_NAME",             "fpga_name",        &typeid(std::string), device::format_primative }},
-  { device::QR_DMA_THREADS_RAW,           { "QR_DMA_THREADS_RAW",           "dma_threads",      &typeid(std::vector<std::string>),  device::format_primative }},
-
   { device::QR_XMC_VERSION,               { "QR_XMC_VERSION",               "xmc_version",      &typeid(std::string),  device::format_primative }},
   { device::QR_XMC_SERIAL_NUM,            { "QR_XMC_SERIAL_NUM",            "serial_number",    &typeid(std::string),  device::format_primative }},
   { device::QR_XMC_MAX_POWER,             { "QR_XMC_MAX_POWER",             "max_power",        &typeid(std::string),  device::format_primative }},

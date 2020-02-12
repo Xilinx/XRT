@@ -111,7 +111,6 @@ sysfs_user(const device_type* device, const std::type_info& tinfo, boost::any& v
 
 namespace sp = std::placeholders;
 static std::map<qr_type, query_entry> query_table = {
-  { qr_type::QR_DMA_THREADS_RAW,           {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, "dma", "channel_stat_raw")}},
   { qr_type::QR_ROM_VBNV,                  {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, "rom", "VBNV")}},
   { qr_type::QR_ROM_DDR_BANK_SIZE,         {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, "rom", "ddr_bank_size")}},
   { qr_type::QR_ROM_DDR_BANK_COUNT_MAX,    {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, "rom", "ddr_bank_count_max")}},
@@ -250,6 +249,23 @@ struct sysfs_fcn
   }
 };
 
+template <>
+struct sysfs_fcn<std::vector<std::string>>
+{
+  using ValueType = std::vector<std::string>;
+
+  static ValueType
+  get(const pdev& dev, const char* subdev, const char* entry)
+  {
+    std::string err;
+    ValueType value;
+    dev->sysfs_get(subdev, entry, err, value);
+    if (!err.empty())
+      throw std::runtime_error(err);
+    return value;
+  }
+};
+
 template <typename QueryRequestType>
 struct sysfs_getter : QueryRequestType
 {
@@ -306,6 +322,7 @@ initialize_query_table()
   emplace_sysfs_request<query::pcie_subsystem_id>        ("", "subsystem_device");
   emplace_sysfs_request<query::pcie_link_speed>          ("", "link_speed");
   emplace_sysfs_request<query::pcie_express_lane_width>  ("", "link_width");
+  emplace_sysfs_request<query::dma_threads_raw>          ("dma", "channel_stat_raw");
   emplace_func0_request<query::pcie_bdf,                 bdf>();
 }
 
