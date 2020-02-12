@@ -689,7 +689,6 @@ get_IOCTL_entry(QueryRequest qr) const
   // Initialize our lookup table
   static const std::map<QueryRequest, IOCTLEntry> QueryRequestToIOCTLTable =
   {
-    { QR_DMA_THREADS_RAW,           { nullptr }},
     { QR_ROM_VBNV,                  { rom }},
     { QR_ROM_DDR_BANK_SIZE,         { rom }},
     { QR_ROM_DDR_BANK_COUNT_MAX,    { rom }},

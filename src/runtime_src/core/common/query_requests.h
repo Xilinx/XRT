@@ -260,9 +260,17 @@ struct dma_threads_raw : request
 {
   using result_type = std::vector<std::string>;
   static const key_type key = key_type::dma_threads_raw;
+  static const char* name() { return "dma_threads"; }
 
   virtual boost::any
   get(const device*) const = 0;
+
+  // formatting of individual items for the vector
+  static std::string
+  to_string(const std::string& value)
+  {
+    return value;
+  }
 };
 
 struct rom_vbnv : request

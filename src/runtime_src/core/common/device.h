@@ -52,8 +52,6 @@ public:
    * query requests are implemented as ioctl calls.
    */
   enum QueryRequest {
-      QR_DMA_THREADS_RAW,
-
       QR_ROM_VBNV,
       QR_ROM_DDR_BANK_SIZE,
       QR_ROM_DDR_BANK_COUNT_MAX,
@@ -373,11 +371,35 @@ device_query(const std::shared_ptr<device>& device, Args&&... args)
 template <typename QueryRequestType>
 struct ptree_updater
 {
+  template <typename ValueType>
+  static void
+  put(const ValueType& value, boost::property_tree::ptree& pt)
+  {
+    pt.put(QueryRequestType::name(), QueryRequestType::to_string(value));
+  }
+
+  static void
+  put(const std::vector<std::string>& value, boost::property_tree::ptree& pt)
+  {
+    boost::property_tree::ptree pt_array;
+    for (auto& str : value) {
+      boost::property_tree::ptree pt_item;
+      pt_item.put("", QueryRequestType::to_string(str));
+      pt_array.push_back(std::make_pair("", pt_item));
+    }
+    pt.add_child(QueryRequestType::name(), pt_array);
+  }
+  
   static void
   query_and_put(const device* device, boost::property_tree::ptree& pt)
   {
-    auto value = xrt_core::device_query<QueryRequestType>(device);
-    pt.put(QueryRequestType::name(), QueryRequestType::to_string(value));
+    try {
+      auto value = xrt_core::device_query<QueryRequestType>(device);
+      put(value, pt);
+    }
+    catch (const std::exception& ex) {
+      pt.put(QueryRequestType::name(), ex.what());
+    }
   }
 };
 
