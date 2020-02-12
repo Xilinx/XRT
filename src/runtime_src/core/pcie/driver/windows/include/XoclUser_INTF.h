@@ -16,6 +16,7 @@
 //
 #include <initguid.h>
 #include <stdint.h>
+#include "xclbin.h"
 
 // {45A6FFCA-EF63-4933-9983-F63DEC5816EB}
 DEFINE_GUID(GUID_DEVINTERFACE_XOCL_USER,
@@ -234,30 +235,6 @@ typedef GUID xuid_t;
 typedef unsigned char xuid_t[16];
 #endif
 
-typedef struct _XU_MEM_TOPO_DATA {
-
-    UCHAR m_type; //enum corresponding to mem_type.
-    UCHAR m_used; //if 0 this bank is not present
-    union {
-        ULONGLONG m_size; //if mem_type DDR, then size in KB;
-        ULONGLONG route_id; //if streaming then "route_id"
-    };
-    union {
-        ULONGLONG m_base_address;//if DDR then the base address;
-        ULONGLONG flow_id; //if streaming then "flow id"
-    };
-    UCHAR m_tag[16]; //DDR: BANK0,1,2,3, has to be null terminated; if streaming then stream0, 1 etc
-
-} XU_MEM_TOPO_DATA, *PXU_MEM_TOPO_DATA;
-
-typedef struct _XOCL_MEM_TOPOLOGY_INFORMATION {
-
-    ULONG        MemTopoCount;
-
-    XU_MEM_TOPO_DATA MemTopo[XOCL_MAX_DDR_BANKS];
-
-} XOCL_MEM_TOPOLOGY_INFORMATION, *PXOCL_MEM_TOPOLOGY_INFORMATION;
-
 // 
 // XoclStatMemRaw
 // 
@@ -283,24 +260,6 @@ enum IP_TYPE {
     IP_DDR4_CONTROLLER
 };
 #endif
-typedef struct _XU_IP_DATA {
-    uint32_t m_type; //map to IP_TYPE enum
-    union {
-        uint32_t properties; //32 bits to indicate ip specific property. eg if m_type == IP_KERNEL then bit 0 is for interrupt.
-        struct {     // Used by IP_MEM_* types
-            uint16_t m_index;
-            uint8_t m_pc_index;
-            uint8_t unused;
-        } indices;
-    };
-    uint64_t m_base_address;
-    uint8_t m_name[64]; //eg Kernel name corresponding to KERNEL instance, can embed CU name in future.
-} XU_IP_DATA, *PXU_IP_DATA;
-
-typedef struct _XU_IP_LAYOUT {
-    int32_t m_count;
-    XU_IP_DATA m_ip_data[1]; //All the XU_IP_DATA needs to be sorted by m_base_address.
-} XU_IP_LAYOUT, *PXU_IP_LAYOUT;
 
 // 
 // XoclStatKds
@@ -502,7 +461,7 @@ struct xcl_sensor {
 // IOCTL_XOCL_ICAP_INFO
 // Get sensor info
 // Inbuffer = (not used)
-// OutBuffer = struct xcl_sensor
+// OutBuffer = struct xcl_hwicap
 //
 #define IOCTL_XOCL_ICAP_INFO          CTL_CODE(FILE_DEVICE_XOCL_USER, 2108, METHOD_BUFFERED, FILE_READ_DATA)
 

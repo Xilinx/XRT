@@ -573,77 +573,6 @@ done:
 
   }
 
-  bool SendIoctlStatMemTopo()
-  {
-    HANDLE deviceHandle = m_dev;
-    DWORD error;
-    DWORD bytesWritten;
-    DWORD bytesToRead;
-    XOCL_STAT_CLASS statClass = XoclStatMemTopology;
-    XOCL_MEM_TOPOLOGY_INFORMATION topoInfo;
-    XOCL_MEM_RAW_INFORMATION memRaw;
-
-    bytesToRead = sizeof(topoInfo);
-
-    if (!DeviceIoControl(deviceHandle,
-                         IOCTL_XOCL_STAT,
-                         &statClass,
-                         sizeof(statClass),
-                         &topoInfo,
-                         sizeof(topoInfo),
-                         &bytesWritten,
-                         nullptr)) {
-
-      error = GetLastError();
-
-      xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl failed with error %d", error);
-
-      goto out;
-    }
-
-    printf("Got XoclStatMemTopology Data:\n");
-    printf("Memory regions: %d\n", topoInfo.MemTopoCount);
-    for (size_t i = 0; i < topoInfo.MemTopoCount; i++) {
-      printf("\ttag=%s, start=0x%llx, size=0x%llx\n",
-             topoInfo.MemTopo[i].m_tag,
-             topoInfo.MemTopo[i].m_base_address,
-             topoInfo.MemTopo[i].m_size);
-    }
-
-    statClass = XoclStatMemRaw;
-
-    if (!DeviceIoControl(deviceHandle,
-                         IOCTL_XOCL_STAT,
-                         &statClass,
-                         sizeof(statClass),
-                         &memRaw,
-                         sizeof(memRaw),
-                         &bytesWritten,
-                         nullptr)) {
-
-      error = GetLastError();
-
-      xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl failed with error %d", error);
-
-      goto out;
-    }
-
-    printf("Got XoclStatMemRaw Data:\n");
-    printf("Count: %d\n", memRaw.MemRawCount);
-    for (unsigned int i = 0; i < memRaw.MemRawCount; i++) {
-      printf("\t(%d) BOCount=%llu, MemoryUsage=0x%llx\n"
-             ,i, memRaw.MemRaw[i].BOCount, memRaw.MemRaw[i].MemoryUsage);
-    }
-
-    error = 0;
-
-  out:
-
-    return error ? false : true;
-  }
-
   int
   load_xclbin(const struct axlf* buffer)
   {
@@ -676,8 +605,7 @@ done:
     xrt_core::message::
       send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "Calling IOCTL_XOCL_STAT (XoclStatMemTopology)... ");
 
-    succeeded = SendIoctlStatMemTopo();
-
+ 
     if (succeeded) {
       xrt_core::message::
         send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "OK");
@@ -933,7 +861,7 @@ done:
   void
   get_mem_topology(char* buffer, size_t size, size_t* size_ret)
   {
-    XOCL_MEM_TOPOLOGY_INFORMATION mem_info;
+    struct mem_topology mem_info;
     XOCL_STAT_CLASS_ARGS statargs;
 
     statargs.StatClass = XoclStatMemTopology;
@@ -942,14 +870,14 @@ done:
     auto status = DeviceIoControl(m_dev,
         IOCTL_XOCL_STAT,
         &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
-        &mem_info, sizeof(XOCL_MEM_TOPOLOGY_INFORMATION),
+        &mem_info, sizeof(struct mem_topology),
         &bytes,
         nullptr);
 
-    if (!status || bytes != sizeof(XOCL_MEM_TOPOLOGY_INFORMATION))
+    if (!status || bytes != sizeof(struct mem_topology))
       throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_mem_topology) failed");
 
-    size_t mem_topology_size = sizeof(XOCL_MEM_TOPOLOGY_INFORMATION);
+    DWORD mem_topology_size = sizeof(struct mem_topology) + (mem_info.m_count - 1) * sizeof(struct mem_data);
 
     if (size_ret)
       *size_ret = mem_topology_size;
@@ -963,13 +891,23 @@ done:
          "size (" + std::to_string(size) + ") of buffer too small, "
          "required size (" + std::to_string(mem_topology_size) + ")");
 
-    std::memcpy(buffer, &mem_info, sizeof(XOCL_MEM_TOPOLOGY_INFORMATION));
+    auto memtopology = reinterpret_cast<struct mem_topology*>(buffer);
+
+    status = DeviceIoControl(m_dev,
+        IOCTL_XOCL_STAT,
+        &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
+        memtopology, mem_topology_size,
+        &bytes,
+        nullptr);
+
+    if (!status || bytes != mem_topology_size)
+        throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_mem_topology) failed");
   }
 
   void
   get_ip_layout(char* buffer, size_t size, size_t* size_ret)
   {
-    XU_IP_LAYOUT iplayout_hdr;
+    struct ip_layout iplayout_hdr;
     XOCL_STAT_CLASS_ARGS statargs;
 
     statargs.StatClass =  XoclStatIpLayout;
@@ -978,14 +916,14 @@ done:
     auto status = DeviceIoControl(m_dev,
         IOCTL_XOCL_STAT,
         &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
-        &iplayout_hdr, sizeof(XU_IP_LAYOUT),
+        &iplayout_hdr, sizeof(struct ip_layout),
         &bytes,
         nullptr);
 
-    if (!status || bytes != sizeof(XU_IP_LAYOUT))
+    if (!status || bytes != sizeof(struct ip_layout))
       throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_ip_layout hdr) failed");
 
-    DWORD ip_layout_size = sizeof(XU_IP_LAYOUT) + iplayout_hdr.m_count * sizeof(XU_IP_DATA);
+    DWORD ip_layout_size = sizeof(struct ip_layout) + iplayout_hdr.m_count * sizeof(struct ip_data);
 
     if (size_ret)
       *size_ret = ip_layout_size;
@@ -999,7 +937,7 @@ done:
          "size (" + std::to_string(size) + ") of buffer too small, "
          "required size (" + std::to_string(ip_layout_size) + ")");
 
-    auto iplayout = reinterpret_cast<PXU_IP_LAYOUT>(buffer);
+    auto iplayout = reinterpret_cast<struct ip_layout*>(buffer);
 
     status = DeviceIoControl(m_dev,
        IOCTL_XOCL_STAT,
