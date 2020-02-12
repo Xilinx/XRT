@@ -706,22 +706,14 @@ static int ulp_toggle_axi_gate(void *drvdata)
 	return 0;
 }
 
-static int ulp_freeze_axi_gate(void *drvdata)
+static inline int ulp_freeze_axi_gate(void *drvdata)
 {
-	struct icap *icap = drvdata;
-	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
-
-	return (CLOCK_DEV_LEVEL(xdev) > XOCL_SUBDEV_LEVEL_PRP) ?
-	    0 : icap_freeze_axi_gate(icap);
+	return icap_freeze_axi_gate((struct icap *)drvdata);
 }
 
-static int ulp_free_axi_gate(void *drvdata)
+static inline int ulp_free_axi_gate(void *drvdata)
 {
-	struct icap *icap = drvdata;
-	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
-
-	return (CLOCK_DEV_LEVEL(xdev) > XOCL_SUBDEV_LEVEL_PRP) ?
-	    0 : icap_free_axi_gate(icap);
+	return icap_free_axi_gate((struct icap *)drvdata);
 }
 
 static int ulp_clock_update(struct icap *icap, unsigned short *freqs,
