@@ -166,10 +166,7 @@ int Flasher::upgradeBMCFirmware(firmwareImage* bmc)
     const std::string e = flasher.probingErrMsg();
 
     if (!e.empty())
-    {
-        std::cout << "ERROR: " << e << std::endl;
-        return -EOPNOTSUPP;
-    }
+        throw xrt_core::error(e);
 
     return flasher.xclUpgradeFirmware(*bmc);
 }
