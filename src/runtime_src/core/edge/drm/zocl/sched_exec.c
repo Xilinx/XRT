@@ -820,13 +820,16 @@ configure(struct sched_cmd *cmd)
 		 * Now the zdev->ert is heavily used in configure()
 		 * Need cleanup.
 		 */
+		apt_idx = get_apt_index_by_addr(zdev, cu_addr);
+		if (apt_idx < 0) {
+			DRM_ERROR("CU address %x is not found in XCLBIN\n",
+				  cfg->data[i]);
+			return 1;
+		}
+
+		exec->zcu[i].prop = zdev->apertures[apt_idx].prop;
+
 		if (!zdev->ert) {
-			apt_idx = get_apt_index_by_addr(zdev, cu_addr);
-			if (apt_idx < 0) {
-				DRM_ERROR("CU address %x is not found in XCLBIN\n",
-					  cfg->data[i]);
-				return 1;
-			}
 			update_cu_idx_in_apt(zdev, apt_idx, i);
 			if (is_legacy_intr)
 				irq_id = i;

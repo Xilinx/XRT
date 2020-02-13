@@ -21,6 +21,7 @@
 #include <linux/io.h>
 
 #include "zocl_cu.h"
+#include "xclbin.h"
 
 void
 zocl_cu_disable_intr(struct zocl_cu *cu, u32 type)
@@ -37,6 +38,7 @@ zocl_cu_enable_intr(struct zocl_cu *cu, u32 type)
 u32
 zocl_cu_clear_intr(struct zocl_cu *cu)
 {
+	zocl_cu_check(cu);
 	return cu->funcs->clear_intr(cu->core);
 }
 
@@ -73,10 +75,11 @@ void
 zocl_cu_check(struct zocl_cu *cu)
 {
 	struct zcu_tasks_info tasks;
-
-	cu->funcs->check(cu->core, &tasks);
-	cu->done_cnt += tasks.num_tasks_done;
-	cu->ready_cnt += tasks.num_tasks_ready;
+	if(((cu->prop & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT) == AP_CTRL_CHAIN || cu->done_cnt == 0) {
+		cu->funcs->check(cu->core, &tasks);
+		cu->done_cnt += tasks.num_tasks_done;
+		cu->ready_cnt += tasks.num_tasks_ready;
+	}
 }
 
 void
