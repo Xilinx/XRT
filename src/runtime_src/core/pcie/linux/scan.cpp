@@ -31,6 +31,7 @@
 #include <sys/stat.h>
 #include <sys/file.h>
 #include <poll.h>
+#include <boost/filesystem.hpp>
 #include "xclbin.h"
 #include "scan.h"
 #include "core/common/utils.h"
@@ -769,8 +770,7 @@ static bool is_in_use(std::vector<std::shared_ptr<pcidev::pci_device>>& vec)
 
 void pci_device_scanner::pci_device_scanner::rescan_nolock()
 {
-    DIR *dir;
-    struct dirent *entry;
+    std::vector<boost::filesystem::path> vec;
 
     if (is_in_use(user_list) || is_in_use(mgmt_list)) {
         std::cout << "Device list is in use, can't rescan" << std::endl;
@@ -779,16 +779,23 @@ void pci_device_scanner::pci_device_scanner::rescan_nolock()
 
     user_list.clear();
     mgmt_list.clear();
-
-    dir = opendir(sysfs_root.c_str());
-    if(!dir) {
-        std::cout << "Cannot open " << sysfs_root << std::endl;
+    
+    if(!boost::filesystem::exists(sysfs_root)) {
+        std::cout << "File does not exist : " << sysfs_root << std::endl;
         return;
     }
 
-    while((entry = readdir(dir))) {
+    copy(boost::filesystem::directory_iterator(sysfs_root), boost::filesystem::directory_iterator(),
+            std::back_inserter(vec));
+
+    /* sort, since directory iteration is not ordered on some file systems */
+    sort(vec.begin(), vec.end());
+
+    for (std::vector<boost::filesystem::path>::const_iterator it(vec.begin()), it_end(vec.end());
+            it != it_end; ++it)
+    {
         auto pf = std::make_shared<pcidev::pci_device>(
-            std::string(entry->d_name));
+                std::string(it->filename().c_str()));
         if(pf->domain == INVALID_ID)
             continue;
 
@@ -802,7 +809,6 @@ void pci_device_scanner::pci_device_scanner::rescan_nolock()
         }
     }
 
-    (void) closedir(dir);
 }
 
 
