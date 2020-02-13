@@ -157,68 +157,22 @@ static int updateSC(unsigned index, const char *file)
     if(!flasher.isValid())
         return -EINVAL;
 
-    auto mgmt_dev = pcidev::get_dev(index, false);
-    std::shared_ptr<pcidev::pci_device> dev;
     bool is_mfg = false;
     std::string errmsg;
+    auto mgmt_dev = pcidev::get_dev(index, false);
 
     mgmt_dev->sysfs_get<bool>("", "mfg", errmsg, is_mfg, false);
     if (is_mfg) {
         return writeSCImage(flasher, file);
     }
 
-    int i = 0;
-    for (dev = pcidev::get_dev(i, true); dev; dev = pcidev::get_dev(i, true)) {
-        if(dev->domain == mgmt_dev->domain &&
-            dev->bus == mgmt_dev->bus &&
-            dev->dev == mgmt_dev->dev) {
-                break;
-        }
-        i++;
-    }
-
-    if (!dev) {
-        std::cout << "ERROR: User function is not found. " <<
-            "This is probably due to user function is running in virtual machine or user driver is not loaded. " << std::endl;
-        return -ECANCELED;
-    }
-
-    std::cout << "Stopping user function..." << std::endl;
-
-    dev->sysfs_put("", "shutdown", errmsg, "1\n");
-    if (!errmsg.empty()) {
-        std::cout << "Shutdown user function failed." << std::endl;
-        return -EINVAL;
-    }
-
-    /* Poll till shutdown is done */
-    int shutdownStatus = 0;
-    for (int wait = 0; wait < DEV_TIMEOUT; wait++) {
-        dev->sysfs_get<int>("", "shutdown", errmsg, shutdownStatus, EINVAL);
-        if (!errmsg.empty()) {
-            std::cout << errmsg << std::endl;
-            return -EINVAL;
-        }
-
-        if (shutdownStatus == 1){
-            /* Shutdown is done successfully. Returning from here */
-            break;
-        }
-        sleep(1);
-    }
-
-    if (!shutdownStatus) {
-        std::cout << "Shutdown user function timeout." << std::endl;
-        return -ETIMEDOUT;
-    }
-
-    dev->sysfs_put("", "remove", errmsg, "1\n");
-    if (!errmsg.empty()) {
-        std::cout << "Stopping user function failed" << std::endl;
-        return -EINVAL;
-    }
+    ret = mgmt_dev->shutdown(true);
+    if (ret)
+        return ret;
 
     ret = writeSCImage(flasher, file);
+
+    auto dev = mgmt_dev->lookup_peer_dev();
 
     mgmt_dev->sysfs_put("", "dparent/rescan", errmsg, "1\n");
     if (!errmsg.empty()) {

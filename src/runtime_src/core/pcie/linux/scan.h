@@ -120,6 +120,8 @@ public:
     int munmap(int devhdl, void* addr, size_t len);
     int flock(int devhdl, int op);
     int get_partinfo(std::vector<std::string>& info, void *blob = nullptr);
+    int shutdown(bool remove_user = false, bool remove_mgmt = false);
+    std::shared_ptr<pcidev::pci_device> lookup_peer_dev();
 
 private:
     std::fstream sysfs_open(const std::string& subdev,
@@ -138,6 +140,7 @@ std::shared_ptr<pci_device> get_dev(unsigned index, bool user = true);
 
 int get_axlf_section(std::string filename, int kind, std::shared_ptr<char>& buf);
 int get_uuids(std::shared_ptr<char>& dtbbuf, std::vector<std::string>& uuids);
+std::shared_ptr<pcidev::pci_device> lookup_user_dev(std::shared_ptr<pcidev::pci_device> mgmt_dev);
 } /* pcidev */
 
 // For print out per device info
