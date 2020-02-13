@@ -34,6 +34,9 @@
 #define hex_digit "([0-9a-fA-F]+)"
 
 using namespace boost::filesystem;
+
+const std::string DSAInfo::UNKNOWN = "UNKNOWN";
+
 /*
  * Helper to parse DSA name string and retrieve all tokens
  * The DSA name string is passed in by value since it'll be modified inside.

@@ -38,7 +38,7 @@ XMC_Flasher::XMC_Flasher(std::shared_ptr<pcidev::pci_device> dev)
     bool is_mfg = false;
     mDev->sysfs_get<bool>("", "mfg", err, is_mfg, false);
     if (!is_mfg) {
-         if (!hasXMC())
+        if (!hasXMC())
             goto nosup;
 
         mDev->sysfs_get<unsigned>("xmc", "status", err, val, 0);

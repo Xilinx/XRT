@@ -1687,10 +1687,11 @@ struct xocl_subdev_map {
 		ARRAY_SIZE(XOCL_RES_XMC_MFG_U50),	\
 	}
 
+/* Temporary disable XMC for U50 Golden, see CR-1052500 for more info */
 #define MFG_RES_U50							\
 	((struct xocl_subdev_info []) {					\
 	 	XOCL_DEVINFO_FLASH_MFG_U50,				\
-	 	XOCL_DEVINFO_XMC_MFG_U50,				\
+		/* XOCL_DEVINFO_XMC_U50, */				\
 	 })
 
 #define	XOCL_BOARD_XBB_MFG_U50						\
@@ -1783,9 +1784,27 @@ struct xocl_subdev_map {
 		.board_name = "u250"					\
 	}
 
+#define XOCL_RES_XMC_MFG				\
+	((struct resource []) {				\
+		{					\
+			.start	= 0x120000,		\
+			.end 	= 0x121FFF,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+	})
+
+#define XOCL_DEVINFO_XMC_MFG				\
+	{						\
+		XOCL_SUBDEV_MB,				\
+		XOCL_XMC,				\
+		XOCL_RES_XMC_MFG,			\
+		ARRAY_SIZE(XOCL_RES_XMC_MFG),		\
+	}
+
 #define MFG_RES								\
 	((struct xocl_subdev_info []) {					\
 		XOCL_DEVINFO_FLASH,					\
+		XOCL_DEVINFO_XMC_MFG,					\
 	})
 
 #define	XOCL_BOARD_XBB_MFG(board)					\
