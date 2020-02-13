@@ -124,15 +124,15 @@ pu1_query_report()
   std::cout << "\nTemperature" << std::endl;
 
   std::cout << boost::format("  %-16s : %s C") % "PCB top front" 
-    % xrt_core::query_device<uint64_t>(pDevice, xrt_core::device::QR_TEMP_CARD_TOP_FRONT) << "\n";
+    % xrt_core::device_query<xrt_core::query::temp_card_top_front>(pDevice) << "\n";
   std::cout << boost::format("  %-16s : %s C") % "PCB top rear" 
-    % xrt_core::query_device<uint64_t>(pDevice, xrt_core::device::QR_TEMP_CARD_TOP_REAR) << "\n";
+    % xrt_core::device_query<xrt_core::query::temp_card_top_rear>(pDevice) << "\n";
   std::cout << boost::format("  %-16s : %s C") % "PCB bottom front" 
-    % xrt_core::query_device<uint64_t>(pDevice, xrt_core::device::QR_TEMP_CARD_BOTTOM_FRONT) << "\n";
+    % xrt_core::device_query<xrt_core::query::temp_card_bottom_front>(pDevice) << "\n";
   std::cout << boost::format("  %-16s : %s C") % "FPGA" 
-    % xrt_core::query_device<uint64_t>(pDevice, xrt_core::device::QR_TEMP_FPGA) << "\n";
+    % xrt_core::device_query<xrt_core::query::temp_fpga>(pDevice) << "\n";
   std::cout << boost::format("  %-16s : %s C") % "FAN trig crit" 
-    % xrt_core::query_device<uint64_t>(pDevice, xrt_core::device::QR_FAN_TRIGGER_CRITICAL_TEMP) << "\n";
+    % xrt_core::device_query<xrt_core::query::fan_trigger_critical_temp>(pDevice) << "\n";
 
   std::cout << "----------------------------------------------------------------" << std::endl;
 

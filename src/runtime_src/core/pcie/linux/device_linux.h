@@ -31,7 +31,6 @@ public:
 
   // query functions
   virtual void read_dma_stats(boost::property_tree::ptree& pt) const;
-  virtual void query(QueryRequest qr, const std::type_info& tinfo, boost::any& value) const;
 
   virtual void read(uint64_t addr, void* buf, uint64_t len) const;
   virtual void write(uint64_t addr, const void* buf, uint64_t len) const;

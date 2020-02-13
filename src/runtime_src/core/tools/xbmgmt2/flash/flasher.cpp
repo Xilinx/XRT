@@ -41,9 +41,9 @@ Flasher::E_FlasherType Flasher::getFlashType(std::string typeStr)
     std::string err;
     E_FlasherType type = E_FlasherType::UNKNOWN;
     if (typeStr.empty())
-        typeStr = xrt_core::query_device<std::string>(m_device, xrt_core::device::QR_F_FLASH_TYPE);
+      typeStr = xrt_core::device_query<xrt_core::query::f_flash_type>(m_device);
     if (typeStr.empty())
-        typeStr = xrt_core::query_device<std::string>(m_device, xrt_core::device::QR_FLASH_TYPE);
+      typeStr = xrt_core::device_query<xrt_core::query::flash_type>(m_device);
 
     if (typeStr.empty())
     {
@@ -236,8 +236,7 @@ Flasher::Flasher(unsigned int index) : mFRHeader{}
         return;
     }
 
-    bool is_mfg = false;
-    is_mfg = xrt_core::query_device<bool>(dev, xrt_core::device::QR_IS_MFG);
+    bool is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(dev);
 
     // std::vector<char> feature_rom;
     // auto feature_rom = xrt_core::device_device<xrt_core::query::rom_raw>(dev);
@@ -339,12 +338,10 @@ DSAInfo Flasher::getOnBoardDSA()
     std::string bmc;
     uint64_t ts = NULL_TIMESTAMP;
 
-    std::string board_name;
     std::string uuid;
-    bool is_mfg = false;
 
-    is_mfg = xrt_core::query_device<bool>(m_device, xrt_core::device::QR_IS_MFG);
-    board_name = xrt_core::query_device<std::string>(m_device, xrt_core::device::QR_BOARD_NAME);
+    bool is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(m_device);
+    std::string board_name = xrt_core::device_query<xrt_core::query::board_name>(m_device);
 
     if (is_mfg)
     {

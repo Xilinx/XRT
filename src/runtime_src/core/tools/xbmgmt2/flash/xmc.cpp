@@ -28,6 +28,7 @@
 #include "core/common/utils.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
+#include "core/common/query_requests.h"
 
 //#define XMC_DEBUG
 #define BMC_JUMP_ADDR   0x201  /* Hard-coded for now */
@@ -51,24 +52,24 @@ XMC_Flasher::XMC_Flasher(unsigned int device_index)
 
     std::string err;
     bool is_mfg = false;
-    is_mfg = xrt_core::query_device<bool>(m_device, xrt_core::device::QR_IS_MFG);
+    is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(m_device);
     if (!is_mfg) {
-        val = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_XMC_STATUS);
-	if ((val == xrt_core::invalid_query_value<uint64_t>()) || !(val & 1)) {
-            mProbingErrMsg << "Failed to detect XMC, xmc.bin not loaded";
-            goto nosup;
-        }
+      val = xrt_core::device_query<xrt_core::query::xmc_status>(m_device);
+      if (!(val & 1)) {
+        mProbingErrMsg << "Failed to detect XMC, xmc.bin not loaded";
+        goto nosup;
+      }
     }
     // always takes the false branch so commenting this out for now
     // mRegBase = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_XMC_REG_BASE);
     // if (mRegBase == xrt_core::invalid_query_value<uint64_t>())
-	    mRegBase = XMC_REG_BASE;
+    mRegBase = XMC_REG_BASE;
 
     val = readReg(XMC_REG_OFF_MAGIC);
     if (val != XMC_MAGIC_NUM) {
-        mProbingErrMsg << "Failed to detect XMC, bad magic number: "
-            << std::hex << val << std::dec;
-        goto nosup;
+      mProbingErrMsg << "Failed to detect XMC, bad magic number: "
+                     << std::hex << val << std::dec;
+      goto nosup;
     }
 
     val = readReg(XMC_REG_OFF_VER);
