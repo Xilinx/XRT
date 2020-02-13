@@ -1697,7 +1697,7 @@ int xcldev::device::testP2p()
         std::vector<std::string> supList = { "HBM", "bank" };
 
         //p2p is not supported for DDR on u280
-        if(vbnv.find("u280") == std::string::npos)
+        if(vbnv.find("_u280_") == std::string::npos)
             supList.push_back("DDR");
         
         const std::string name(reinterpret_cast<const char *>(map->m_mem_data[i].m_tag));
