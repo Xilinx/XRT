@@ -166,13 +166,13 @@ static int updateSC(unsigned index, const char *file)
         return writeSCImage(flasher, file);
     }
 
-    ret = pcidev::shutdown(index, true);
+    ret = mgmt_dev->shutdown(true);
     if (ret)
         return ret;
 
     ret = writeSCImage(flasher, file);
 
-    auto dev = pcidev::lookup_user_dev(mgmt_dev);
+    auto dev = mgmt_dev->lookup_user_dev();
 
     mgmt_dev->sysfs_put("", "dparent/rescan", errmsg, "1\n");
     if (!errmsg.empty()) {
