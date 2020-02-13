@@ -118,9 +118,6 @@ static std::map<qr_type, query_entry> query_table = {
   { qr_type::QR_XMC_STATUS,                {std::bind(sysfs_mgmt, sp::_1, sp::_2, sp::_3, "xmc", "status")}},
   { qr_type::QR_XMC_REG_BASE,              {std::bind(sysfs_mgmt, sp::_1, sp::_2, sp::_3, "xmc", "reg_base")}},
   { qr_type::QR_DNA_SERIAL_NUM,            {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, "dna", "dna")}},
-  { qr_type::QR_CLOCK_FREQS,               {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, "icap", "clock_freqs")}},
-  { qr_type::QR_IDCODE,                    {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, "icap", "idcode")}},
-  { qr_type::QR_STATUS_MIG_CALIBRATED,     {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, "", "mig_calibration")}},
   { qr_type::QR_STATUS_P2P_ENABLED,        {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, "", "p2p_enable")}},
   { qr_type::QR_TEMP_CARD_TOP_FRONT,       {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, "xmc", "xmc_se98_temp0")}},
   { qr_type::QR_TEMP_CARD_TOP_REAR,        {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, "xmc", "xmc_se98_temp1")}},
@@ -343,6 +340,9 @@ initialize_query_table()
   emplace_sysfs_request<query::rom_time_since_epoch>     ("rom", "timestamp");
   emplace_sysfs_request<query::mem_topology_raw>         ("icap", "mem_topology");
   emplace_sysfs_request<query::ip_layout_raw>            ("icap", "ip_layout");
+  emplace_sysfs_request<query::clock_freqs>              ("icap", "clock_freqs");
+  emplace_sysfs_request<query::idcode>                   ("icap", "idcode");
+  emplace_sysfs_request<query::status_mig_calibrated>    ("", "mig_calibration");
   emplace_func0_request<query::pcie_bdf,                 bdf>();
 }
 

@@ -220,43 +220,6 @@ sensor_info(const device_type* device, qr_type qr, const std::type_info&, boost:
 }
 
 static void
-icap_info(const device_type* device, qr_type qr, const std::type_info&, boost::any& value)
-{
-  auto init_icap_info = [](const device_type* dev) {
-    xcl_hwicap info = { 0 };
-    userpf::get_icap_info(dev->get_user_handle(), &info);
-    return info;
-  };
-
-  static std::map<const device_type*, xcl_hwicap> info_map;
-  static std::mutex mutex;
-  std::lock_guard<std::mutex> lk(mutex);
-  auto it = info_map.find(device);
-  if (it == info_map.end()) {
-    auto ret = info_map.emplace(device,init_icap_info(device));
-    it = ret.first;
-  }
-
-  const xcl_hwicap& info = (*it).second;
-
-  switch (qr) {
-  case qr_type::QR_CLOCK_FREQS:
-    value = std::vector<std::string>{ std::to_string(info.freq_0), std::to_string(info.freq_1),
-                                       std::to_string(info.freq_2), std::to_string(info.freq_3) };
-    return;
-  case qr_type::QR_IDCODE:
-    value = info.idcode;
-    return;
-  case qr_type::QR_STATUS_MIG_CALIBRATED:
-    value = info.mig_calib;
-    return;
-  default:
-    throw std::runtime_error("device_windows::icap() unexpected qr " + std::to_string(qr));
-  }
-  // No query for freq_cntr_0, freq_cntr_1, freq_cntr_2, freq_cntr_3 and uuid
-}
-
-static void
 board_info(const device_type* device, qr_type qr, const std::type_info&, boost::any& value)
 {
   auto init_board_info = [](const device_type* dev) {
@@ -382,6 +345,68 @@ namespace {
 
 namespace query = xrt_core::query;
 using key_type = xrt_core::query::key_type;
+
+struct icap
+{
+  using result_type = boost::any;
+  using qtype = std::underlying_type<query::key_type>::type;
+
+  static xcl_hwicap
+  init_icap_info(const xrt_core::device* dev)
+  {
+    xcl_hwicap info = { 0 };
+    userpf::get_icap_info(dev->get_user_handle(), &info);
+    return info;
+  };
+
+  static result_type
+  get_info(const xrt_core::device* device, key_type key)
+  {
+    static std::map<const xrt_core::device*, xcl_hwicap> info_map;
+    static std::mutex mutex;
+    std::lock_guard<std::mutex> lk(mutex);
+    auto it = info_map.find(device);
+    if (it == info_map.end()) {
+      auto ret = info_map.emplace(device,init_icap_info(device));
+      it = ret.first;
+    }
+
+    const xcl_hwicap& info = (*it).second;
+
+    switch (key) {
+    case key_type::clock_freqs:
+      return query::clock_freqs::result_type {
+        std::to_string(info.freq_0),
+        std::to_string(info.freq_1),
+        std::to_string(info.freq_2),
+        std::to_string(info.freq_3)
+      };
+    case key_type::idcode:
+      return query::idcode::result_type(info.idcode);
+    case key_type::status_mig_calibrated:
+      return query::status_mig_calibrated::result_type(info.mig_calib);
+    default:
+      throw std::runtime_error("device_windows::icap() unexpected qr("
+                               + std::to_string(static_cast<qtype>(key))
+                               + ") for userpf");
+    }
+    // No query for freq_cntr_0, freq_cntr_1, freq_cntr_2, freq_cntr_3 and uuid
+  }
+
+  static result_type
+  user(const xrt_core::device* device, key_type key)
+  {
+    return get_info(device,key);
+  }
+
+  static result_type
+  mgmt(const xrt_core::device* device, key_type key)
+  {
+    throw std::runtime_error("query request ("
+                             + std::to_string(static_cast<qtype>(key))
+                             + ") not supported for mgmtpf on windows");
+  }
+};
 
 struct xclbin
 {
@@ -691,7 +716,9 @@ initialize_query_table()
   emplace_function0_getter<query::rom_time_since_epoch,   rom>();
   emplace_function0_getter<query::mem_topology_raw,       xclbin>();
   emplace_function0_getter<query::ip_layout_raw,          xclbin>();
-
+  emplace_function0_getter<query::clock_freqs,            icap>();
+  emplace_function0_getter<query::idcode,                 icap>();
+  emplace_function0_getter<query::status_mig_calibrated,  icap>();
 }
 
 struct X { X() { initialize_query_table(); }};
@@ -729,13 +756,6 @@ get_IOCTL_entry(QueryRequest qr) const
     { QR_XMC_MAX_POWER,             { board_info }},
     { QR_XMC_BMC_VERSION,           { board_info }},
     { QR_XMC_STATUS,                { xmc }},
-    { QR_XMC_REG_BASE,              { nullptr }},
-    { QR_DNA_SERIAL_NUM,            { nullptr }},
-    { QR_CLOCK_FREQS,               { icap_info }},
-    { QR_IDCODE,                    { icap_info }},
-    { QR_STATUS_MIG_CALIBRATED,     { icap_info }},
-    { QR_STATUS_P2P_ENABLED,        { nullptr }},
-
     { QR_TEMP_CARD_TOP_FRONT,       { sensor_info }},
     { QR_TEMP_CARD_TOP_REAR,        { sensor_info }},
     { QR_TEMP_CARD_BOTTOM_FRONT,    { sensor_info }},
