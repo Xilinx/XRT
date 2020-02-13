@@ -587,7 +587,7 @@ int pcidev::pci_device::flock(int dev_handle, int op)
     return ::flock(dev_handle, op);
 }
 
-std::shared_ptr<pcidev::pci_device> pcidev::pci_device::lookup_user_dev()
+std::shared_ptr<pcidev::pci_device> pcidev::pci_device::lookup_peer_dev()
 {
     int i = 0;
     std::shared_ptr<pcidev::pci_device> udev;
@@ -613,7 +613,7 @@ int pcidev::pci_device::shutdown(bool remove_user, bool remove_mgmt)
         return -EINVAL;
     }
 
-    udev = lookup_user_dev();
+    udev = lookup_peer_dev();
     if (!udev) {
         std::cout << "ERROR: User function is not found. " <<
             "This is probably due to user function is running in virtual machine or user driver is not loaded. " << std::endl;

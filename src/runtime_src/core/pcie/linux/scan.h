@@ -121,7 +121,7 @@ public:
     int flock(int devhdl, int op);
     int get_partinfo(std::vector<std::string>& info, void *blob = nullptr);
     int shutdown(bool remove_user = false, bool remove_mgmt = false);
-    std::shared_ptr<pcidev::pci_device> lookup_user_dev();
+    std::shared_ptr<pcidev::pci_device> lookup_peer_dev();
 
 private:
     std::fstream sysfs_open(const std::string& subdev,

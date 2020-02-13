@@ -172,7 +172,7 @@ static int updateSC(unsigned index, const char *file)
 
     ret = writeSCImage(flasher, file);
 
-    auto dev = mgmt_dev->lookup_user_dev();
+    auto dev = mgmt_dev->lookup_peer_dev();
 
     mgmt_dev->sysfs_put("", "dparent/rescan", errmsg, "1\n");
     if (!errmsg.empty()) {
