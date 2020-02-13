@@ -70,6 +70,9 @@ def main():
     if "gen3x4" in str(dev):
        threshold = 20000
 
+    if "u25" in str(dev):
+       threshold = 9000
+
     ctx = cl.Context(devices = [dev])
     if not ctx:
        print("ERROR: Failed to create context")
