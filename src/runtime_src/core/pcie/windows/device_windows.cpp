@@ -376,40 +376,49 @@ firewall_info(const device_type* device, qr_type qr, const std::type_info&, boos
   // No query for max_level, curr_status and curr_level
 }
 
-static void
-xclbin_fcn(const device_type* device, qr_type qr, const std::type_info&, boost::any& value)
-{
-  auto uhdl = device->get_user_handle();
-  if (!uhdl)
-    throw std::runtime_error("Query request " + std::to_string(qr) + "requires a userpf device");
-
-  if (qr == qr_type::QR_MEM_TOPOLOGY_RAW) {
-    size_t size_ret = 0;
-    userpf::get_mem_topology(uhdl, nullptr, 0, &size_ret);
-    std::vector<char> data(size_ret);
-    userpf::get_mem_topology(uhdl, data.data(), size_ret, nullptr);
-    value = std::move(data);
-    return;
-  }
-
-  if (qr == qr_type::QR_IP_LAYOUT_RAW) {
-    size_t size_ret = 0;
-    userpf::get_ip_layout(uhdl, nullptr, 0, &size_ret);
-    std::vector<char> data(size_ret);
-    userpf::get_ip_layout(uhdl, data.data(), size_ret, nullptr);
-    value = std::move(data);
-    return;
-  }
-
-  throw std::runtime_error("device_windows::xclbin() unexpected qr " + std::to_string(qr));
-}
-
 } // namespace
 
 namespace {
 
 namespace query = xrt_core::query;
 using key_type = xrt_core::query::key_type;
+
+struct xclbin
+{
+  using result_type = std::vector<char>;
+
+  static result_type
+  user(const xrt_core::device* dev, key_type key)
+  {
+    auto uhdl = dev->get_user_handle();
+    if (!uhdl)
+      throw std::runtime_error("xclbin query request, missing user device handle");
+
+    if (key == key_type::mem_topology_raw) {
+      size_t size_ret = 0;
+      userpf::get_mem_topology(uhdl, nullptr, 0, &size_ret);
+      std::vector<char> data(size_ret);
+      userpf::get_mem_topology(uhdl, data.data(), size_ret, nullptr);
+      return data;
+    }
+
+    if (key == key_type::ip_layout_raw) {
+      size_t size_ret = 0;
+      userpf::get_ip_layout(uhdl, nullptr, 0, &size_ret);
+      std::vector<char> data(size_ret);
+      userpf::get_ip_layout(uhdl, data.data(), size_ret, nullptr);
+      return data;
+    }
+
+    throw std::runtime_error("unexpected error");
+  }
+
+  static result_type
+  mgmt(const xrt_core::device* dev, key_type key)
+  {
+    throw std::runtime_error("mgmt xclbin raw data queries are not implemented on windows");
+  }
+};
 
 struct bdf
 {
@@ -680,6 +689,9 @@ initialize_query_table()
   //emplace_function0_getter<query::rom_raw,                rom>();
   emplace_function0_getter<query::rom_uuid,               rom>();
   emplace_function0_getter<query::rom_time_since_epoch,   rom>();
+  emplace_function0_getter<query::mem_topology_raw,       xclbin>();
+  emplace_function0_getter<query::ip_layout_raw,          xclbin>();
+
 }
 
 struct X { X() { initialize_query_table(); }};
@@ -712,8 +724,6 @@ get_IOCTL_entry(QueryRequest qr) const
   // Initialize our lookup table
   static const std::map<QueryRequest, IOCTLEntry> QueryRequestToIOCTLTable =
   {
-    { QR_MEM_TOPOLOGY_RAW,          { xclbin_fcn }},
-    { QR_IP_LAYOUT_RAW,             { xclbin_fcn }},
     { QR_XMC_VERSION,               { sensor_info }},
     { QR_XMC_SERIAL_NUM,            { board_info }},
     { QR_XMC_MAX_POWER,             { board_info }},

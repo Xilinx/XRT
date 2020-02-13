@@ -52,11 +52,6 @@ public:
    * query requests are implemented as ioctl calls.
    */
   enum QueryRequest {
-      QR_ROM_RAW,
-
-      QR_MEM_TOPOLOGY_RAW,
-      QR_IP_LAYOUT_RAW,
-
       QR_XMC_VERSION,
       QR_XMC_SERIAL_NUM,
       QR_XMC_MAX_POWER,

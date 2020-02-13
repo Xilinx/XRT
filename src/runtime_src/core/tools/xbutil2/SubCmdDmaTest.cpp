@@ -49,7 +49,7 @@ dmatest(const std::shared_ptr<xrt_core::device>& device, size_t block_size, bool
     std::cout << "Total DDR size: " << ddr_mem_size << " MB\n";
 
   // get DDR bank count from mem_topology if possible
-  auto membuf = xrt_core::query_device<std::vector<char>>(device, xrt_core::device::QR_MEM_TOPOLOGY_RAW);
+  auto membuf = xrt_core::device_query<xrt_core::query::mem_topology_raw>(device);
   auto mem_topo = reinterpret_cast<const mem_topology*>(membuf.data());
   if (membuf.empty() || mem_topo->m_count == 0)
     throw std::runtime_error
