@@ -854,9 +854,9 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			mgmt_info(lro, "got the p2p bar len = %lld\n", p2p_bar_len);
 			if (!p2p_bar_addr) {
 				pci_write_config_byte(pdev, 0x188, 0x0);
-				pci_write_config_byte(pdev, 0x190, 0x0);
-				pci_write_config_byte(pdev, 0x194, 0x0);
-				pci_write_config_byte(pdev, 0x18C, 0x0);
+				pci_write_config_dword(pdev, 0x190, 0x0);
+				pci_write_config_dword(pdev, 0x194, 0x0);
+				pci_write_config_dword(pdev, 0x18C, 0x0);
 				ret = 0;
 				(void) xocl_peer_response(lro, req->req, msgid, &ret,
 										  sizeof(ret));
