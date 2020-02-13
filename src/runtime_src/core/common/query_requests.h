@@ -260,7 +260,7 @@ struct dma_threads_raw : request
 {
   using result_type = std::vector<std::string>;
   static const key_type key = key_type::dma_threads_raw;
-  static const char* name() { return "dma_threads"; }
+  static const char* name() { return "dma_threads_raw"; }
 
   virtual boost::any
   get(const device*) const = 0;

@@ -20,9 +20,10 @@
 #include "XBReport.h"
 #include "XBDatabase.h"
 
-#include "common/system.h"
-#include "common/device.h"
-#include "common/xclbin_parser.h"
+#include "core/common/system.h"
+#include "core/common/device.h"
+#include "core/common/query_requests.h"
+#include "core/common/xclbin_parser.h"
 
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
@@ -33,9 +34,6 @@ namespace po = boost::program_options;
 
 // System - Include Files
 #include <iostream>
-
-#include "common/system.h"
-#include "common/device.h"
 #include <boost/format.hpp>
 
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
@@ -104,7 +102,7 @@ pu1_query_report()
     std::cout << "Accelerator"  << std::endl;
 
   try {
-    auto iplbuf = xrt_core::query_device<std::vector<char>>(pDevice, xrt_core::device::QR_IP_LAYOUT_RAW);
+    auto iplbuf = xrt_core::device_query<xrt_core::query::ip_layout_raw>(pDevice);
     auto iplayout = reinterpret_cast<const ip_layout*>(iplbuf.data());
     auto cus = xrt_core::xclbin::get_cus(iplayout);
 

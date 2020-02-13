@@ -111,7 +111,6 @@ sysfs_user(const device_type* device, const std::type_info& tinfo, boost::any& v
 
 namespace sp = std::placeholders;
 static std::map<qr_type, query_entry> query_table = {
-  { qr_type::QR_ROM_RAW,                   {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, "rom", "raw")}},
   { qr_type::QR_XMC_VERSION,               {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, "xmc", "version")}},
   { qr_type::QR_XMC_SERIAL_NUM,            {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, "xmc", "serial_num")}},
   { qr_type::QR_XMC_MAX_POWER,             {std::bind(sysfs_user, sp::_1, sp::_2, sp::_3, "xmc", "max_power")}},
@@ -260,10 +259,11 @@ struct sysfs_fcn<std::string>
   }
 };
 
-template <>
-struct sysfs_fcn<std::vector<std::string>>
+template <typename VectorValueType>
+struct sysfs_fcn<std::vector<VectorValueType>>
 {
-  using ValueType = std::vector<std::string>;
+  //using ValueType = std::vector<std::string>;
+  using ValueType = std::vector<VectorValueType>;
 
   static ValueType
   get(const pdev& dev, const char* subdev, const char* entry)
@@ -338,9 +338,11 @@ initialize_query_table()
   emplace_sysfs_request<query::rom_ddr_bank_size>        ("rom", "ddr_bank_size");
   emplace_sysfs_request<query::rom_ddr_bank_count_max>   ("rom", "ddr_bank_count_max");
   emplace_sysfs_request<query::rom_fpga_name>            ("rom", "FPGA");
-  //emplace_sysfs_request<query::rom_raw>                  ("rom", "raw");
+  emplace_sysfs_request<query::rom_raw>                  ("rom", "raw");
   emplace_sysfs_request<query::rom_uuid>                 ("rom", "uuid");
   emplace_sysfs_request<query::rom_time_since_epoch>     ("rom", "timestamp");
+  emplace_sysfs_request<query::mem_topology_raw>         ("icap", "mem_topology");
+  emplace_sysfs_request<query::ip_layout_raw>            ("icap", "ip_layout");
   emplace_func0_request<query::pcie_bdf,                 bdf>();
 }
 

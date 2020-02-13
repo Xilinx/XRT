@@ -240,8 +240,7 @@ Flasher::Flasher(unsigned int index) : mFRHeader{}
     is_mfg = xrt_core::query_device<bool>(dev, xrt_core::device::QR_IS_MFG);
 
     // std::vector<char> feature_rom;
-    // feature_rom = xrt_core::query_device<std::vector<char>>(dev, xrt_core::device::QR_ROM_RAW);
-    // if (feature_rom != xrt_core::invalid_query_value<std::vector<char>>())
+    // auto feature_rom = xrt_core::device_device<xrt_core::query::rom_raw>(dev);
     // {
     //     memcpy(&mFRHeader, feature_rom.data(), sizeof(struct FeatureRomHeader));
     //     // Something funny going on here. There must be a strange line ending
@@ -253,7 +252,6 @@ Flasher::Flasher(unsigned int index) : mFRHeader{}
     //         std::cout << "ERROR: Failed to detect feature ROM." << std::endl;
     //     }
     // }
-    // else if (is_mfg)
     if (is_mfg)
     {
        dev->read(MFG_REV_OFFSET, &mGoldenVer, sizeof(mGoldenVer));
