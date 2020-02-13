@@ -52,13 +52,7 @@ public:
    * query requests are implemented as ioctl calls.
    */
   enum QueryRequest {
-      QR_ROM_VBNV,
-      QR_ROM_DDR_BANK_SIZE,
-      QR_ROM_DDR_BANK_COUNT_MAX,
-      QR_ROM_FPGA_NAME,
       QR_ROM_RAW,
-      QR_ROM_UUID,
-      QR_ROM_TIME_SINCE_EPOCH,
 
       QR_MEM_TOPOLOGY_RAW,
       QR_IP_LAYOUT_RAW,

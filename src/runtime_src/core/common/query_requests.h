@@ -277,36 +277,64 @@ struct rom_vbnv : request
 {
   using result_type = std::string;
   static const key_type key = key_type::rom_vbnv;
+  static const char* name() { return "vbnv"; }
 
   virtual boost::any
   get(const device*) const = 0;
+
+  static std::string
+  to_string(const result_type& value)
+  {
+    return value;
+  }
 };
 
 struct rom_ddr_bank_size : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::rom_ddr_bank_size;
+  static const char* name() { return "ddr_size_bytes"; }
 
   virtual boost::any
   get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return boost::str(boost::format("0x%x") % (value << 30));
+  }
 };
 
 struct rom_ddr_bank_count_max : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::rom_ddr_bank_count_max;
+  static const char* name() { return "widdr_countdth"; }
 
   virtual boost::any
   get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return std::to_string(value);
+  }
 };
 
 struct rom_fpga_name : request
 {
   using result_type = std::string;
   static const key_type key = key_type::rom_fpga_name;
+  static const char* name() { return "fpga_name"; }
 
   virtual boost::any
   get(const device*) const = 0;
+
+  static std::string
+  to_string(const result_type& value)
+  {
+    return value;
+  }
 };
 
 struct rom_raw : request

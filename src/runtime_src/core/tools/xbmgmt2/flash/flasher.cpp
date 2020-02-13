@@ -361,13 +361,13 @@ DSAInfo Flasher::getOnBoardDSA()
     //    ts = mFRHeader.TimeSinceEpoch;
     //}
     else{
-        vbnv = xrt_core::query_device<std::string>(m_device, xrt_core::device::QR_ROM_VBNV);
-        ts = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_ROM_TIME_SINCE_EPOCH);
-        uuid = xrt_core::query_device<std::string>(m_device, xrt_core::device::QR_ROM_UUID);
-        if (vbnv.empty())
-            throw xrt_core::error("Platform not found. Invalid device name.");
-        if(ts == std::numeric_limits<uint64_t>::max())
-            throw xrt_core::error("Platform not found. Invalid timestamp");
+      vbnv = xrt_core::device_query<xrt_core::query::rom_vbnv>(m_device);
+      ts = xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(m_device);
+      uuid = xrt_core::device_query<xrt_core::query::rom_uuid>(m_device);
+      if (vbnv.empty())
+        throw xrt_core::error("Platform not found. Invalid device name.");
+      if(ts == std::numeric_limits<uint64_t>::max())
+        throw xrt_core::error("Platform not found. Invalid timestamp");
     }
 
     BoardInfo info;
