@@ -177,8 +177,21 @@ static int shutdownDevice(unsigned int index, bool is_userpf)
 static int removeDevice(unsigned int index, bool is_userpf)
 {
     std::string errmsg;
+    std::string active_kids_path;
     int wait  = 0;
+    int act_kids = 0;
     auto dev = pcidev::get_dev(index, is_userpf);
+
+    if (!is_userpf)
+    {
+        active_kids_path = dev->get_sysfs_path("", "dparent/power/runtime_active_kids");
+        /* Get the absolute path */
+        active_kids_path = (boost::filesystem::canonical(active_kids_path)).c_str();
+     
+        /* Get number of active PFs */
+        boost::filesystem::ifstream file(active_kids_path);
+        file >> act_kids;
+    }
 
     /* "echo 1 > /sys/bus/pci/<EndPoint>/remove" to trigger hot remove of the device */
     dev->sysfs_put("", "remove", errmsg, "1");
@@ -189,13 +202,21 @@ static int removeDevice(unsigned int index, bool is_userpf)
     }
 
     /* Poll till remove is done */
-    do {
-        sleep(1);
-        std::string path = dev->get_sysfs_path("", "remove");
-        if (!boost::filesystem::exists(path))
-            break;
+    if (!is_userpf)
+    {
+        int t_act_kids = 0;
+        do {
+            sleep(1);
+            boost::filesystem::ifstream file(active_kids_path);
+            file >> t_act_kids;
+            /* Compare with current active kids and previous active PFs */
+            if (t_act_kids == (act_kids - 2))
+                return 0;
 
-    } while (++wait < POLL_TIMEOUT );
+        } while (++wait < POLL_TIMEOUT );
+
+        return -ETIMEDOUT;
+    }
 
     return 0;
 }
