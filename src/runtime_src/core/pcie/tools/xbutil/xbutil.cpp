@@ -1181,7 +1181,7 @@ int xcldev::device::bandwidthKernelTest(void)
     std::string output;
 
     if ((sensor_tree::get<std::string>("system.linux", "N/A").find("Red Hat") != std::string::npos)
-            && (sensor_tree::get<std::string>("system.machine", "N/A").find("ppc") != std::string::npos)) {
+            && (sensor_tree::get<std::string>("system.machine", "N/A").find("ppc64le") != std::string::npos)) {
         std::cout << "Testcase not supported on Red Hat and PowerPC. Skipping validation"
                   << std::endl;
         return -EOPNOTSUPP;
