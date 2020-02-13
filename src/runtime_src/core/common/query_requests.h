@@ -464,7 +464,7 @@ struct clock_freqs : request
 
 struct idcode : request
 {
-  using result_type = std::string;
+  using result_type = uint64_t;
   static const key_type key = key_type::idcode;
   static const char* name() { return "idcode"; }
 
@@ -474,7 +474,7 @@ struct idcode : request
   static std::string
   to_string(const result_type& value)
   {
-    return value;
+    return boost::str(boost::format("0x%x") % value);
   }
 };
 

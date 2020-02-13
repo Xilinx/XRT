@@ -362,7 +362,7 @@ struct icap
   static result_type
   get_info(const xrt_core::device* device, key_type key)
   {
-    static std::map<const device_type*, xcl_hwicap> info_map;
+    static std::map<const xrt_core::device*, xcl_hwicap> info_map;
     static std::mutex mutex;
     std::lock_guard<std::mutex> lk(mutex);
     auto it = info_map.find(device);
@@ -375,16 +375,16 @@ struct icap
 
     switch (key) {
     case key_type::clock_freqs:
-      return query<clock_freqs>::result_type {
+      return query::clock_freqs::result_type {
         std::to_string(info.freq_0),
         std::to_string(info.freq_1),
         std::to_string(info.freq_2),
         std::to_string(info.freq_3)
       };
     case key_type::idcode:
-    return query<idcode>::result_type(info.idcode);
+      return query::idcode::result_type(info.idcode);
     case key_type::status_mig_calibrated:
-      return query<status_mig_calibrated>::result_type(info.mig_calib);
+      return query::status_mig_calibrated::result_type(info.mig_calib);
     default:
       throw std::runtime_error("device_windows::icap() unexpected qr("
                                + std::to_string(static_cast<qtype>(key))
