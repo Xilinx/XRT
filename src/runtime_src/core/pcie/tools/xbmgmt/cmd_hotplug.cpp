@@ -26,12 +26,9 @@
 #include "xbmgmt.h"
 #include "core/pcie/linux/scan.h"
 
-#define SYSFS_PATH      "/sys/bus/pci/devices"
-#define XILINX_VENDOR   "0x10ee"
-#define XILINX_US       "0x9134"
-#define POLL_TIMEOUT    60      /* Set a pool timeout as 60sec */
+#define SYSFS_PATH      "/sys/bus/pci"
 
-static int hotplugRescan(void);
+static int rescanDevice(void);
 static int removeDevice(unsigned int index);
 
 const char *subCmdHotplugDesc = "Perform managed hotplug on the xilinx device";
@@ -99,8 +96,8 @@ int hotplugHandler(int argc, char *argv[])
 
     if (isRescan)
     {
-        /* Rescan from /sys/bus/pci/<Root Port>/rescan */
-        ret = hotplugRescan();
+        /* Rescan from /sys/bus/pci/rescan */
+        ret = rescanDevice();
         if (ret)
             return ret;
     }
@@ -123,119 +120,41 @@ static int removeDevice(unsigned int index)
     return 0;
 }
 
-static bool check_mgmt_present(boost::filesystem::path rootPath)
-{
-    boost::filesystem::path fileDir(rootPath);
-    boost::filesystem::path vendorPath, devicePath;
-
-    for (boost::filesystem::recursive_directory_iterator iter(fileDir, boost::filesystem::symlink_option::recurse), end;
-            iter != end;)
-    {
-        std::string name = iter->path().string();
-        if (is_symlink(iter->path()))
-            iter.no_push();
-
-        if (iter->path().filename() == "mgmt_pf")
-            return true;
-
-        ++iter;
-    }
-
-    return false;
-}
-
-
-static std::list<std::string> findXilinxRootPort(boost::filesystem::path sysfsPath)
-{
-    std::list<std::string> rootportList;
-
-    for (auto file = boost::filesystem::directory_iterator(sysfsPath);
-            file != boost::filesystem::directory_iterator(); file++)
-    {
-        boost::filesystem::path iPath = file->path();
-        for (auto jfile = boost::filesystem::directory_iterator(iPath);
-                jfile != boost::filesystem::directory_iterator(); jfile++)
-        {
-            boost::filesystem::path dirName = jfile->path();
-            if (!boost::filesystem::is_directory(dirName))
-                continue;
-
-            std::string vendor_id, device_id;
-
-            try
-            {
-                boost::filesystem::path vendorPath = dirName;
-                vendorPath /= "vendor";
-                if (boost::filesystem::exists(vendorPath))
-                {
-                    boost::filesystem::ifstream file(vendorPath);
-                    file >> vendor_id;
-                    file.close();
-                }
-
-                boost::filesystem::path devicePath = dirName;
-                devicePath /= "device";
-                if (boost::filesystem::exists(devicePath))
-                {
-                    boost::filesystem::ifstream file(devicePath);
-                    file >> device_id;
-                    file.close();
-                }
-            }
-            catch (const boost::filesystem::ifstream::failure& e)
-            {
-                continue;
-            }
-
-            if (!vendor_id.compare(XILINX_VENDOR) && !device_id.compare(XILINX_US)) 
-                if (!check_mgmt_present(iPath)) 
-                    rootportList.push_back(iPath.string());
-        }
-    }
-
-    return rootportList;
-}
-
-static int hotplugRescan(void)
+static int rescanDevice(void)
 {
     boost::filesystem::ofstream ofile;
-    /* Find all the RootPorts where Xilinx devices are connected */
-    std::list<std::string> rootportList = findXilinxRootPort(SYSFS_PATH);
+    std::string iPath = SYSFS_PATH;
+    
+    iPath += "/rescan";
+    if (iPath.empty()) 
+        return -ENOENT;
 
-    for (std::list<std::string>::iterator it = rootportList.begin(); it != rootportList.end(); ++it)
+    try
     {
-        std::string iPath = *it;
-        iPath += "/rescan";
-        if (iPath.empty()) 
-            return -ENOENT;
-
-        try
+        ofile.open(iPath);
+        if (!ofile.is_open()) 
         {
-            ofile.open(iPath);
-            if (!ofile.is_open()) 
-            {
-                std::cout << "Failed to open " << iPath << ":" << strerror(errno) << std::endl;
-                return -errno;
-            }
-
-            ofile << 1;
-            ofile.flush();
-            if (!ofile.good()) 
-            {
-                std::cout << "Failed to write " << iPath << ":"  << strerror(errno) << std::endl;
-                ofile.close();
-                return -errno;
-            }
-        }
-        catch (const boost::filesystem::ifstream::failure& err) 
-        {
-            std::cout << "Exception!!!! " << err.what();
-            ofile.close();
+            std::cout << "Failed to open " << iPath << ":" << strerror(errno) << std::endl;
             return -errno;
         }
 
-        ofile.close();
+        ofile << 1;
+        ofile.flush();
+        if (!ofile.good()) 
+        {
+            std::cout << "Failed to write " << iPath << ":"  << strerror(errno) << std::endl;
+            ofile.close();
+            return -errno;
+        }
     }
-    
+    catch (const boost::filesystem::ifstream::failure& err) 
+    {
+        std::cout << "Exception!!!! " << err.what();
+        ofile.close();
+        return -errno;
+    }
+
+    ofile.close();
+
     return 0;
 }
