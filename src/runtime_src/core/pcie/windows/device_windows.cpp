@@ -75,7 +75,7 @@ struct mfg
   }
 };
 
-stuct board_name
+struct board_name
 {
   using result_type = std::string;
 
@@ -107,7 +107,7 @@ struct firewall
   static result_type
   get(const xrt_core::device* device, key_type key)
   {
-    static std::map<const device_type*, xcl_firewall> info_map;
+    static std::map<const xrt_core::device*, xcl_firewall> info_map;
     static std::mutex mutex;
     std::lock_guard<std::mutex> lk(mutex);
     auto it = info_map.find(device);
@@ -115,7 +115,7 @@ struct firewall
       auto ret = info_map.emplace(device,init_firewall_info(device));
       it = ret.first;
     }
-    
+
     auto& info = (*it).second;
 
     switch (key) {
@@ -162,7 +162,7 @@ struct mig
   static result_type
   get(const xrt_core::device* device, key_type key)
   {
-    static std::map<const device_type*, xcl_mig_ecc> info_map;
+    static std::map<const xrt_core::device*, xcl_mig_ecc> info_map;
     static std::mutex mutex;
     std::lock_guard<std::mutex> lk(mutex);
     auto it = info_map.find(device);
@@ -194,13 +194,13 @@ struct mig
   }
 
   static result_type
-  user(const xrt_core::device* device, key_type key)
+  user(const xrt_core::device* device, key_type key, const boost::any&)
   {
     return get(device,key);
   }
 
   static result_type
-  mgmt(const xrt_core::device* device, key_type key)
+  mgmt(const xrt_core::device* device, key_type key, const boost::any&)
   {
     throw std::runtime_error("query request ("
                              + std::to_string(static_cast<qtype>(key))
@@ -212,7 +212,7 @@ struct board
 {
   using result_type = boost::any;
 
-  
+
   static xcl_board_info
   init_board_info(const xrt_core::device* dev)
   {
@@ -250,7 +250,7 @@ struct board
     }
     // No query for mac_addr0, mac_addr1, mac_addr2, mac_addr3, revision, bd_name and config_mode
   }
-    
+
   static result_type
   user(const xrt_core::device* device, key_type key)
   {
@@ -273,7 +273,7 @@ struct xmc
   static result_type
   get(const xrt_core::device* dev, key_type key)
   {
-    if(key == query::xmc_status)
+    if(key == query::key_type::xmc_status)
       return query::xmc_status::result_type(1);
     throw std::runtime_error
       ("Invalid query request (" + std::to_string(static_cast<qtype>(key)) + ")");
@@ -398,7 +398,7 @@ struct sensor
     case key_type::cage_temp_3:
       return query::cage_temp_3::result_type(info.cage_temp3);
     case key_type::xmc_version:
-      return query::xmc_version::result_type(info.version);
+      return std::to_string(info.version);
     default:
       throw std::runtime_error("device_windows::icap() unexpected qr("
                                + std::to_string(static_cast<qtype>(key))
@@ -739,7 +739,8 @@ struct function0_getter : QueryRequestType
 template <typename QueryRequestType, typename Getter>
 struct function1_getter : QueryRequestType
 {
-  static_assert(std::is_same<Getter::result_type, QueryRequestType::result_type>::value, "type mismatch");
+  static_assert(std::is_same<Getter::result_type, QueryRequestType::result_type>::value
+             || std::is_same<Getter::result_type, boost::any>::value, "type mismatch");
 
   boost::any
   get(const xrt_core::device* device, const boost::any& any) const
@@ -837,15 +838,15 @@ initialize_query_table()
   emplace_function0_getter<query::xmc_max_power,             board>();
   emplace_function0_getter<query::xmc_bmc_version,           board>();
   emplace_function0_getter<query::fan_fan_presence,          board>();
-  emplace_function0_getter<query::mig_ecc_enabled,           mig>();
-  emplace_function0_getter<query::mig_ecc_status,            mig>();
-  emplace_function0_getter<query::mig_ecc_ce_cnt,            mig>();
-  emplace_function0_getter<query::mig_ecc_ue_cnt,            mig>();
-  emplace_function0_getter<query::mig_ecc_ce_ffa,            mig>();
-  emplace_function0_getter<query::mig_ecc_ue_ffa,            mig>();
-  emplace_function0_getter<query::firewall_detect_level,     firewall_info>();
-  emplace_function0_getter<query::firewall_status,           firewall_info>();
-  emplace_function0_getter<query::firewall_time_sec,         firewall_info>();
+  emplace_function1_getter<query::mig_ecc_enabled,           mig>();
+  emplace_function1_getter<query::mig_ecc_status,            mig>();
+  emplace_function1_getter<query::mig_ecc_ce_cnt,            mig>();
+  emplace_function1_getter<query::mig_ecc_ue_cnt,            mig>();
+  emplace_function1_getter<query::mig_ecc_ce_ffa,            mig>();
+  emplace_function1_getter<query::mig_ecc_ue_ffa,            mig>();
+  emplace_function0_getter<query::firewall_detect_level,     firewall>();
+  emplace_function0_getter<query::firewall_status,           firewall>();
+  emplace_function0_getter<query::firewall_time_sec,         firewall>();
   emplace_function0_getter<query::f_flash_type,              flash>();
   emplace_function0_getter<query::flash_type,                flash>();
   emplace_function0_getter<query::is_mfg,                    mfg>();

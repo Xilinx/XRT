@@ -441,17 +441,17 @@ struct xmc_serial_num : request
 
 struct xmc_max_power : request
 {
-  using result_type = std::string;
+  using result_type = uint64_t;
   static const key_type key = key_type::xmc_max_power;
   static const char* name() { return "max_power"; }
 
   virtual boost::any
   get(const device*) const = 0;
 
-  static result_type
-  to_string(const result_type& value)
+  static std::string
+  to_string(result_type value)
   {
-    return value;
+    return std::to_string(value);
   }
 };
 
@@ -464,7 +464,7 @@ struct xmc_bmc_version : request
   virtual boost::any
   get(const device*) const = 0;
 
-  static result_type
+  static std::string
   to_string(const result_type& value)
   {
     return value;
@@ -498,7 +498,7 @@ struct dna_serial_num : request
   virtual boost::any
   get(const device*) const = 0;
 
-  static result_type
+  static std::string
   to_string(const result_type& value)
   {
     return value;
@@ -652,7 +652,7 @@ struct fan_trigger_critical_temp : request
 
 struct fan_fan_presence : request
 {
-  using result_type = std::string;
+  using result_type = bool;
   static const key_type key = key_type::fan_fan_presence;
   static const char* name() { return "fan_presence"; }
 
@@ -660,9 +660,9 @@ struct fan_fan_presence : request
   get(const device*) const = 0;
 
   static std::string
-  to_string(const result_type& value)
+  to_string(result_type value)
   {
-    return value;
+    return value ? "true" : "false";
   }
 };
 
