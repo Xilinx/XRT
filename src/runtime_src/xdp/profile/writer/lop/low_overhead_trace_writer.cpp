@@ -28,7 +28,7 @@ namespace xdp {
     VPTraceWriter(filename, 
 		   "1.0", 
 		   getCurrentDateTime(), 
-		   6 /* us */),
+		   9 /* ns */),
     generalAPIBucket(-1), readBucket(-1), writeBucket(-1), enqueueBucket(-1)
   {
   }
