@@ -20,6 +20,11 @@
 #include "core/common/dlfcn.h"
 #include "lop.h"
 
+#ifdef _WIN32
+#pragma warning (disable : 4996)
+/* Disable warning for use of getenv */
+#endif
+
 namespace bfs = boost::filesystem;
 
 // Helper functions for loading the plugin library
