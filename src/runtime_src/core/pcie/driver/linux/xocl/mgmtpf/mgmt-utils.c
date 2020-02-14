@@ -466,6 +466,8 @@ static void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 	/* what if user PF in VM ? */
 	xocl_pci_save_config_all(lro);
 
+	pci_disable_device(pdev);
+
 	/* Reset secondary bus. */
 	bus = pdev->bus;
 	pci_read_config_byte(bus->self, PCI_BRIDGE_CONTROL, &pci_bctl);
@@ -476,6 +478,8 @@ static void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 	pci_bctl &= ~PCI_BRIDGE_CTL_BUS_RESET;
 	pci_write_config_byte(bus->self, PCI_BRIDGE_CONTROL, pci_bctl);
 	ssleep(1);
+
+	pci_enable_device(pdev);
 
 	xocl_wait_pci_status(pdev, 0, 0, 0);
 
