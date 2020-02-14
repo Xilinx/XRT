@@ -30,12 +30,27 @@ set(XRT_XDP_PROFILE_COLLECTION_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/coll
 set(XRT_XDP_PROFILE_WRITER_DIR         "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer")
 set(XRT_XDP_PROFILE_HAL_WRITER_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer/hal")
 set(XRT_XDP_PROFILE_CORE_DIR           "${CMAKE_CURRENT_SOURCE_DIR}/profile/core")
-set(XRT_XDP_PROFILE_DATABASE_DIR       "${CMAKE_CURRENT_SOURCE_DIR}/profile/database")
-set(XRT_XDP_PROFILE_EVENTS_DIR         "${CMAKE_CURRENT_SOURCE_DIR}/profile/database/events")
 set(XRT_XDP_PROFILE_DEVICE_DIR         "${CMAKE_CURRENT_SOURCE_DIR}/profile/device")
 set(XRT_XDP_PROFILE_HAL_DEVICE_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/device/hal_device")
 set(XRT_XDP_PROFILE_LOP_PLUGIN_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/lop")
 set(XRT_XDP_PROFILE_LOP_WRITER_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer/lop")
+
+# Files for the new xdp core
+set(XRT_XDP_PROFILE_BASE_PLUGIN_DIR    "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/vp_base")
+set(XRT_XDP_PROFILE_DATABASE_DIR       "${CMAKE_CURRENT_SOURCE_DIR}/profile/database")
+set(XRT_XDP_PROFILE_EVENTS_DIR         "${CMAKE_CURRENT_SOURCE_DIR}/profile/database/events")
+set(XRT_XDP_PROFILE_VP_WRITER_DIR      "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer/vp_base")
+
+file(GLOB XRT_NEW_XDP_CORE_FILES
+  "${XRT_XDP_PROFILE_BASE_PLUGIN_DIR}/*.h"
+  "${XRT_XDP_PROFILE_BASE_PLUGIN_DIR}/*.cpp"
+  "${XRT_XDP_PROFILE_DATABASE_DIR}/*.h"
+  "${XRT_XDP_PROFILE_DATABASE_DIR}/*.cpp"
+  "${XRT_XDP_PROFILE_EVENTS_DIR}/*.h"
+  "${XRT_XDP_PROFILE_EVENTS_DIR}/*.cpp"
+  "${XRT_XDP_PROFILE_VP_WRITER_DIR}/*.h"
+  "${XRT_XDP_PROFILE_VP_WRITER_DIR}/*.cpp"
+  )
 
 file(GLOB XRT_XDP_APPDEBUG_FILES
   "${XRT_XDP_APPDEBUG_DIR}/*.h"
@@ -60,10 +75,6 @@ file(GLOB XRT_XDP_PROFILE_FILES
   "${XRT_XDP_PROFILE_WRITER_DIR}/*.cpp"
   "${XRT_XDP_PROFILE_CORE_DIR}/*.h"
   "${XRT_XDP_PROFILE_CORE_DIR}/*.cpp"
-  "${XRT_XDP_PROFILE_DATABASE_DIR}/*.h"
-  "${XRT_XDP_PROFILE_DATABASE_DIR}/*.cpp"
-  "${XRT_XDP_PROFILE_EVENTS_DIR}/*.h"
-  "${XRT_XDP_PROFILE_EVENTS_DIR}/*.cpp"
   "${XRT_XDP_PROFILE_DEVICE_DIR}/*.h"
   "${XRT_XDP_PROFILE_DEVICE_DIR}/*.cpp"
   "${XRT_XDP_PROFILE_PLUGIN_DIR}/*.h"
@@ -118,6 +129,7 @@ set(XRT_XDP_ALL_SRC
 if (NOT WIN32)
 
 # ====== Linux XDP Libraries ======
+add_library(xdp_core SHARED ${XRT_NEW_XDP_CORE_FILES})
 add_library(xdp SHARED ${XRT_XDP_ALL_SRC})
 add_library(oclxdp SHARED ${XRT_XDP_PROFILE_OCL_PLUGIN_FILES})
 add_library(xdp_hal_plugin SHARED ${XRT_XDP_PROFILE_HAL_PLUGIN_FILES})
@@ -128,19 +140,19 @@ add_library(xdp_lop_plugin SHARED ${XRT_XDP_PROFILE_LOP_PLUGIN_FILES})
 
 add_dependencies(xdp xrt_core xilinxopencl)
 add_dependencies(oclxdp xdp xilinxopencl)
-add_dependencies(xdp_hal_plugin xdp)
+add_dependencies(xdp_hal_plugin xdp_core)
 add_dependencies(xdp_hal_api_interface_plugin xdp)
 add_dependencies(xdp_debug_plugin xrt_core xilinxopencl)
 add_dependencies(xdp_appdebug_plugin xrt_core xilinxopencl)
-add_dependencies(xdp_lop_plugin xrt_core xdp xilinxopencl)
+add_dependencies(xdp_lop_plugin xdp_core)
 
 target_link_libraries(xdp xrt_core xilinxopencl)
 target_link_libraries(oclxdp xdp xilinxopencl)
-target_link_libraries(xdp_hal_plugin xdp)
+target_link_libraries(xdp_hal_plugin xdp_core)
 target_link_libraries(xdp_hal_api_interface_plugin xdp)
 target_link_libraries(xdp_debug_plugin xrt_core xilinxopencl)
 target_link_libraries(xdp_appdebug_plugin xrt_core xilinxopencl)
-target_link_libraries(xdp_lop_plugin xrt_core xdp xilinxopencl)
+target_link_libraries(xdp_lop_plugin xdp_core)
 
 set_target_properties(xdp PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(oclxdp PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
@@ -150,7 +162,7 @@ set_target_properties(xdp_debug_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} 
 set_target_properties(xdp_appdebug_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_lop_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
-install (TARGETS xdp oclxdp xdp_hal_plugin xdp_hal_api_interface_plugin xdp_debug_plugin xdp_appdebug_plugin xdp_lop_plugin LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
+install (TARGETS xdp oclxdp xdp_core xdp_hal_plugin xdp_hal_api_interface_plugin xdp_debug_plugin xdp_appdebug_plugin xdp_lop_plugin LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
 
 install (FILES "${XRT_XDP_PROFILE_XMA_PLUGIN_DIR}/xma_profile.h" DESTINATION ${XRT_INSTALL_INCLUDE_DIR})
 

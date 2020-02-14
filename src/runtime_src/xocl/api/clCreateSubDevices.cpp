@@ -20,6 +20,7 @@
 #include "detail/device.h"
 #include "api.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 #include <CL/cl.h>
 
 #ifdef _WIN32
@@ -137,6 +138,7 @@ clCreateSubDevices(cl_device_id                         in_device,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clCreateSubDevices
       (in_device,properties,num_entries,out_devices,num_devices);
   }

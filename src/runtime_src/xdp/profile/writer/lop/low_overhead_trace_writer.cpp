@@ -20,14 +20,14 @@
 
 #include "xdp/profile/database/events/opencl_api_calls.h"
 
-#include "xdp/profile/writer/util.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
 
 namespace xdp {
 
   LowOverheadTraceWriter::LowOverheadTraceWriter(const char* filename) :
     VPTraceWriter(filename, 
 		   "1.0", 
-		   xdp::WriterI::getCurrentDateTime(), 
+		   getCurrentDateTime(), 
 		   6 /* us */),
     generalAPIBucket(-1), readBucket(-1), writeBucket(-1), enqueueBucket(-1)
   {
@@ -59,7 +59,7 @@ namespace xdp {
   void LowOverheadTraceWriter::writeHumanReadableHeader()
   {
     VPTraceWriter::writeHeader() ;
-    fout << "XRT Version," << xdp::WriterI::getToolVersion() << std::endl ;
+    fout << "XRT Version," << getToolVersion() << std::endl ;
   }
 
   void LowOverheadTraceWriter::writeHumanReadableStructure()

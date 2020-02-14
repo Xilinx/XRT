@@ -18,7 +18,7 @@
 
 #define XDP_SOURCE
 
-#include "xdp/profile/writer/vp_summary_writer.h"
+#include "xdp/profile/writer/vp_base/vp_summary_writer.h"
 #include "xrt/util/message.h"
 
 namespace xdp {

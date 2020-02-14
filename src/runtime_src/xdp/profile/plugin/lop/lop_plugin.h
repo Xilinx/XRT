@@ -17,7 +17,7 @@
 #ifndef LOP_PLUGIN_DOT_H
 #define LOP_PLUGIN_DOT_H
 
-#include "xdp/profile/plugin/vp_base_plugin.h"
+#include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
 namespace xdp {
 

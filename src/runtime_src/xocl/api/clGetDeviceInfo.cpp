@@ -25,6 +25,7 @@
 
 #include <limits>
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 #ifdef _WIN32
 # pragma warning ( disable : 4267 )
@@ -340,6 +341,7 @@ clGetDeviceInfo(cl_device_id    device,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clGetDeviceInfo
       (device, param_name, param_value_size,param_value, param_value_size_ret);
   }

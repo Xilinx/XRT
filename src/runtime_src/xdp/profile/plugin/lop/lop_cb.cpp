@@ -15,10 +15,7 @@
  */
 
 // The common interface shared between full OpenCL and low overhead OpenCL
-#include "xocl/api/plugin/xdp/profile.h"
-
-// To see if low overhead profiling is turned on
-#include "core/common/config_reader.h"
+//#include "xocl/api/plugin/xdp/profile.h"
 
 #include "xdp/profile/plugin/lop/lop_cb.h"
 #include "xdp/profile/plugin/lop/lop_plugin.h"
@@ -71,6 +68,8 @@ namespace xdp {
     (db->getDynamicInfo()).addEvent(event) ;
   }
 
+
+  /*  
   void register_low_overhead_profile_callbacks()
   {
     // Set up the callbacks for logging the start and end of function calls.
@@ -78,12 +77,35 @@ namespace xdp {
     xocl::profile::register_cb_log_function_start(lop_cb_log_function_start);
     xocl::profile::register_cb_log_function_end(lop_cb_log_function_end);    
   }
+  */
 
 } // end namespace xdp
 
 // This function is called from XRT once when the library is initially loaded
+/*
 extern "C" 
 void initLOP()
 {
   xdp::register_low_overhead_profile_callbacks() ;
 }
+*/
+
+// Due to an issue with linking on Ubuntu 18.04, the model we have
+//  to have for low overhead profiling is to have XRT use dlsym to
+//  look up our functions and call them directly.  There will be no
+//  registering of callbacks here.
+
+extern "C"
+void lop_function_start(const char* functionName, long long queueAddress,
+			unsigned int functionID)
+{
+  xdp::lop_cb_log_function_start(functionName, queueAddress, functionID) ;
+}
+
+extern "C"
+void lop_function_end(const char* functionName, long long queueAddress,
+		      unsigned int functionID)
+{
+  xdp::lop_cb_log_function_end(functionName, queueAddress, functionID) ;
+}
+

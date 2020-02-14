@@ -18,8 +18,18 @@
 #define LOW_OVERHEAD_CALLBACKS_DOT_H
 
 namespace xdp {
-  void register_low_overhead_profile_callbacks() ;
+  //void register_low_overhead_profile_callbacks() ;
 }
+
+// These are the functions that are visible when the plugin is dynamically
+//  linked in.  XRT should call them directly
+extern "C" 
+void lop_function_start(const char* functionName, long long queueAddress, 
+			unsigned int functionID);
+
+extern "C"
+void lop_function_end(const char* functionName, long long queueAddress,
+		      unsigned int functionID);
 
 
 #endif

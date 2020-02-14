@@ -20,6 +20,7 @@
 #include "xocl/core/event.h"
 #include "detail/event.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 #include <CL/opencl.h>
 
@@ -74,6 +75,7 @@ clSetUserEventStatus(cl_event    event ,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clSetUserEventStatus(event,execution_status);
   }
   catch (const xocl::error& ex) {

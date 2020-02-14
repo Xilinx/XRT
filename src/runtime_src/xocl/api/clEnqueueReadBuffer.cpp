@@ -29,6 +29,7 @@
 #include "detail/context.h"
 #include "plugin/xdp/appdebug.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 namespace xocl {
 
@@ -146,6 +147,7 @@ clEnqueueReadBuffer(cl_command_queue   command_queue,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
+    LOP_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
     return xocl::
       clEnqueueReadBuffer
       (command_queue,buffer,blocking,offset,size,ptr,num_events_in_wait_list,event_wait_list,event_parameter);

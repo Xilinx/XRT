@@ -17,7 +17,7 @@
 #ifndef VP_SUMMARY_WRITER_DOT_H
 #define VP_SUMMARY_WRITER_DOT_H
 
-#include "xdp/profile/writer/vp_writer.h"
+#include "xdp/profile/writer/vp_base/vp_writer.h"
 
 #include "xdp/config.h"
 

@@ -27,6 +27,7 @@
 
 #include <bitset>
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 namespace {
 
@@ -149,6 +150,7 @@ clCreateBuffer(cl_context   context,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clCreateBuffer
       (context,flags,size,host_ptr,errcode_ret);
   }
