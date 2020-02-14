@@ -247,6 +247,11 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 
 #define XOCL_MAXNAMELEN	64
 
+#define XOCL_VSEC_XLAT_CTL_REG_ADDR             0x188
+#define XOCL_VSEC_XLAT_GPA_LOWER_REG_ADDR       0x18C
+#define XOCL_VSEC_XLAT_GPA_BASE_UPPER_REG_ADDR  0x190
+#define XOCL_VSEC_XLAT_GPA_LIMIT_UPPER_REG_ADDR 0x194
+
 struct xocl_vsec_header {
 	u32		format;
 	u32		length;

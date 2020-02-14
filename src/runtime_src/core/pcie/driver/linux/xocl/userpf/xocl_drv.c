@@ -21,6 +21,7 @@
 #include <linux/pci.h>
 #include <linux/crc32c.h>
 #include <linux/random.h>
+#include <linux/iommu.h>
 #include "../xocl_drv.h"
 #include "common.h"
 #include "version.h"
@@ -168,8 +169,17 @@ static void xocl_mb_read_p2p_addr(struct xocl_dev *xdev)
 
 	mb_req->req = XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR;
 	mb_p2p = (struct xcl_mailbox_p2p_bar_addr *)mb_req->data;
-	mb_p2p->p2p_bar_len = pci_resource_len(pdev, xdev->p2p_bar_idx);
-	mb_p2p->p2p_bar_addr = pci_resource_start(pdev, xdev->p2p_bar_idx);
+
+	if (!iommu_present(&pci_bus_type)){
+		mb_p2p->p2p_bar_len = pci_resource_len(pdev, xdev->p2p_bar_idx);
+		mb_p2p->p2p_bar_addr = pci_resource_start(pdev, xdev->p2p_bar_idx);
+	} else {
+		mb_p2p->p2p_bar_len = 0;
+		mb_p2p->p2p_bar_addr = 0;
+	}
+	userpf_info(xdev, "sending request %d to peer: p2p_bar_len=%lld, p2p_bar_addr=%lld\n",
+			 XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR, mb_p2p->p2p_bar_len, mb_p2p->p2p_bar_addr);
+
 	ret = xocl_peer_request(xdev, mb_req, reqlen, &ret,
 		&resplen, NULL, NULL, 0);
 	vfree(mb_req);
