@@ -606,9 +606,43 @@ std::shared_ptr<pcidev::pci_device> pcidev::pci_device::lookup_peer_dev()
     return udev;
 }
 
+std::shared_ptr<pcidev::pci_device> pcidev::pci_device::lookup_parent_dev()
+{
+    std::string err;
+    std::shared_ptr<pcidev::pci_device> pdev;
+    boost::filesystem::path sys_path; 
+    uint16_t vendor;
+
+    if (!is_mgmt)
+        return NULL;
+
+    sys_path = get_sysfs_path("", "dparent");
+    if (!boost::filesystem::exists(sys_path) && !boost::filesystem::is_symlink(sys_path))
+        return NULL;
+
+    sys_path = boost::filesystem::read_symlink(sys_path);
+    pdev = std::make_shared<pcidev::pci_device>(
+            std::string(sys_path.filename().c_str()));
+
+    // Determine if device is a xilinx bridge
+    pdev->sysfs_get<uint16_t>("", "vendor", err, vendor,
+            static_cast<uint16_t>(-1));
+    if (!err.empty()) {
+        std::cout << err << std::endl;
+        return NULL;
+    }
+
+    if (vendor != XILINX_ID)
+        return NULL;
+
+    return pdev;
+}
+
+
 int pcidev::pci_device::shutdown(bool remove_user, bool remove_mgmt)
 {
     std::shared_ptr<pcidev::pci_device> udev;
+    std::shared_ptr<pcidev::pci_device> pdev;
     std::string errmsg;
     if (!is_mgmt) {
         return -EINVAL;
@@ -621,7 +655,6 @@ int pcidev::pci_device::shutdown(bool remove_user, bool remove_mgmt)
         return -ECANCELED;
     }
 
-    std::cout << "Stopping user function..." << std::endl;
     udev->sysfs_put("", "shutdown", errmsg, "1\n");
     if (!errmsg.empty()) {
         std::cout << "ERROR: Shutdown user function failed." << std::endl;
@@ -652,8 +685,13 @@ int pcidev::pci_device::shutdown(bool remove_user, bool remove_mgmt)
 
     int rem_dev_cnt = 0;
     int active_dev_num;
-   
-    sysfs_get<int>("", "dparent/power/runtime_active_kids", errmsg, active_dev_num, EINVAL);
+
+    pdev = lookup_parent_dev();
+    if (!pdev) {
+        return -ECANCELED;
+    }
+
+    pdev->sysfs_get<int>("", "power/runtime_active_kids", errmsg, active_dev_num, EINVAL);
 
     if ((remove_user || remove_mgmt) && !errmsg.empty()) {
         std::cout << "ERROR: can not read active device number" << std::endl;
@@ -684,9 +722,9 @@ int pcidev::pci_device::shutdown(bool remove_user, bool remove_mgmt)
 
     for (int wait = 0; wait < DEV_TIMEOUT; wait++) {
         int curr_act_dev;
-       	sysfs_get<int>("", "dparent/power/runtime_active_kids", errmsg, curr_act_dev, EINVAL);
+        pdev->sysfs_get<int>("", "power/runtime_active_kids", errmsg, curr_act_dev, EINVAL);
 
-	if (!errmsg.empty())
+        if (!errmsg.empty())
             continue;
         if (curr_act_dev + rem_dev_cnt == active_dev_num)
             return 0;

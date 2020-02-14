@@ -32,8 +32,7 @@
 #define POLL_TIMEOUT    60      /* Set a pool timeout as 60sec */
 
 static int hotplugRescan(void);
-static int removeDevice(unsigned int index, bool is_userpf);
-static int shutdownDevice(unsigned int index, bool is_userpf);
+static int removeDevice(unsigned int index);
 
 const char *subCmdHotplugDesc = "Perform managed hotplug on the xilinx device";
 const char *subCmdHotplugUsage = "--offline bdf | --online";
@@ -49,7 +48,6 @@ int hotplugHandler(int argc, char *argv[])
     unsigned int index = UINT_MAX;
     int isRemove = 0;
     int isRescan = 0;
-    bool is_userpf = false;
 
     const static option opts[] = {
         { "offline", required_argument, nullptr, '0' },
@@ -93,33 +91,8 @@ int hotplugHandler(int argc, char *argv[])
 
     if (isRemove)
     {
-        /* Shutdown user_pf before trigger hot removal*/
-        is_userpf = true;
-        ret = shutdownDevice(index, is_userpf); 
-        if (ret)
-        {
-            if (ret == -ENOENT)
-            {
-                std::cout << "INFO: Device entry doesn't exists. If you are running on VM Environment, \n" <<
-                   "Please shutdown the VM before performing this operation.\n" << std::endl;
-                return 0;
-            }
-            else
-            {
-                std::cout << "Device Shutdown failed." << std::endl;
-                return -EINVAL;
-            }
-        }
-
-        /* Remove user_pf */
-        is_userpf = true;
-        ret = removeDevice(index, is_userpf);
-        if (ret)
-            return ret;
-
-        /* Remove mgmt_pf */
-        is_userpf = false;
-        ret = removeDevice(index, is_userpf);
+        /* Rescan from /sys/bus/pci/<Endpoint>/remove */
+        ret = removeDevice(index);
         if (ret)
             return ret;
     }
@@ -135,87 +108,16 @@ int hotplugHandler(int argc, char *argv[])
     return ret;
 }
 
-static int shutdownDevice(unsigned int index, bool is_userpf)
+static int removeDevice(unsigned int index)
 {
-    std::string errmsg;
-    int shutdownStatus = -EINVAL;
-    int wait  = 0;
-    auto dev = pcidev::get_dev(index, is_userpf);
+    int ret = 0;
+    auto mgmt_dev = pcidev::get_dev(index, false);
 
-    /* "echo 1 > /sys/bus/pci/<EndPoint>/shutdown" to trigger shutdown of the device */
-    std::string path = dev->get_sysfs_path("", "shutdown");
-    if (!boost::filesystem::exists(path)) 
-        return -ENOENT;
-
-    dev->sysfs_put("", "shutdown", errmsg, "1");
-    if (!errmsg.empty())
-    {
-        std::cout << errmsg << std::endl;
-        return -EINVAL;
-    }
-
-    /* Poll till shutdown is done */
-    do {
-        sleep(1);
-        dev->sysfs_get<int>("", "shutdown", errmsg, shutdownStatus, EINVAL);
-        if (!errmsg.empty())
-        {
-            std::cout << errmsg << std::endl;
-            return -EINVAL;
-        }
-
-        if (shutdownStatus == 1){
-            /* Shutdown is done successfully. Returning from here */
-            return 0;
-        }
-
-    } while (++wait < POLL_TIMEOUT );
-
-    return -ETIMEDOUT;
-}
-
-static int removeDevice(unsigned int index, bool is_userpf)
-{
-    std::string errmsg;
-    std::string active_kids_path;
-    int wait  = 0;
-    int act_kids = 0;
-    auto dev = pcidev::get_dev(index, is_userpf);
-
-    if (!is_userpf)
-    {
-        active_kids_path = dev->get_sysfs_path("", "dparent/power/runtime_active_kids");
-        /* Get the absolute path */
-        active_kids_path = (boost::filesystem::canonical(active_kids_path)).c_str();
-     
-        /* Get number of active PFs */
-        boost::filesystem::ifstream file(active_kids_path);
-        file >> act_kids;
-    }
-
-    /* "echo 1 > /sys/bus/pci/<EndPoint>/remove" to trigger hot remove of the device */
-    dev->sysfs_put("", "remove", errmsg, "1");
-    if (!errmsg.empty())
-    {
-        std::cout << errmsg << std::endl;
-        return -EINVAL;
-    }
-
-    /* Poll till remove is done */
-    if (!is_userpf)
-    {
-        int t_act_kids = 0;
-        do {
-            sleep(1);
-            boost::filesystem::ifstream file(active_kids_path);
-            file >> t_act_kids;
-            /* Compare with current active kids and previous active PFs */
-            if (t_act_kids == (act_kids - 2))
-                return 0;
-
-        } while (++wait < POLL_TIMEOUT );
-
-        return -ETIMEDOUT;
+    /* Remove both user_pf and mgmt_pf */
+    ret = mgmt_dev->shutdown(true, true);
+    if (ret) {
+        std::cout << "Removing device faied. " << ret << std::endl;
+        return ret;
     }
 
     return 0;
