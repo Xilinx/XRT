@@ -147,9 +147,9 @@ namespace xdp {
       inline GuidanceMap4& getKernelBufferInfoMap() {return mKernelBufferInfoMap;}
       // Host Buffer first start to last end
       // Read, Write and Aggregate times
-      void logBufferEvent(double timestamp, bool isRead);
-      double getRdBufferActiveTimeMs() {return mLastBufferReadMs - mFirstBufferReadMs;}
-      double getWrBufferActiveTimeMs() {return mLastBufferWriteMs - mFirstBufferWriteMs;}
+      void logBufferEvent(double timestamp, bool isRead, bool isStart);
+      double getRdBufferActiveTimeMs() {return mReadTimeMs;}
+      double getWrBufferActiveTimeMs() {return mWriteTimeMs;}
       double getBufferActiveTimeMs();
       // Application run time
       void setApplicationEnd() {mApplicationRunTimeMs = getTraceTime();}
@@ -179,11 +179,14 @@ namespace xdp {
       std::string TraceMemory = "NA";
       double mApplicationRunTimeMs = 0.0;
       // Buffer Reads
-      double mFirstBufferReadMs = 0.0;
-      double mLastBufferReadMs = 0.0;
+      double mReadTimeStartMs = 0.0;
+      double mReadTimeMs = 0.0;
       // Buffer Writes
-      double mFirstBufferWriteMs = 0.0;
-      double mLastBufferWriteMs = 0.0;
+      double mWriteTimeStartMs = 0.0;
+      double mWriteTimeMs = 0.0;
+      // All buffers
+      double mActiveTimeStartMs = 0.0;
+      double mActiveTimeEndMs = 0.0;
 
     // ****************************************
     // Platform Metadata required by profiler
