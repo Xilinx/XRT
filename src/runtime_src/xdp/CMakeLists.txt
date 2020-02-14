@@ -181,7 +181,7 @@ endif()
 else()
 # ====== Windows Specifics =======
 
-install(TARGETS xdp_core xdp oclxdp xdp_hal_plugin xdp_hal_api_interface_plugin xdp_debug_plugin xdp_addpdebug_plugin xdp_lop_plugin
+install(TARGETS xdp_core xdp oclxdp xdp_hal_plugin xdp_hal_api_interface_plugin xdp_debug_plugin xdp_appdebug_plugin xdp_lop_plugin
   ARCHIVE DESTINATION ${XRT_INSTALL_DIR}/lib
   LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib
   RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
