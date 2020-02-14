@@ -27,87 +27,6 @@
 
 namespace xrt_core {
 
-static std::map<device::QueryRequest, device::QueryRequestEntry> sQueryTable =
-{
-  { device::QR_XMC_VERSION,               { "QR_XMC_VERSION",               "xmc_version",      &typeid(std::string),  device::format_primative }},
-  { device::QR_XMC_SERIAL_NUM,            { "QR_XMC_SERIAL_NUM",            "serial_number",    &typeid(std::string),  device::format_primative }},
-  { device::QR_XMC_MAX_POWER,             { "QR_XMC_MAX_POWER",             "max_power",        &typeid(std::string),  device::format_primative }},
-  { device::QR_XMC_BMC_VERSION,           { "QR_XMC_BMC_VERSION",           "satellite_controller_version", &typeid(std::string),  device::format_primative }},
-
-  { device::QR_DNA_SERIAL_NUM,            { "QR_DNA_SERIAL_NUM",            "dna",              &typeid(std::string),  device::format_primative }},
-
-  { device::QR_STATUS_P2P_ENABLED,        { "QR_STATUS_P2P_ENABLED",        "p2p_enabled",      &typeid(bool),  device::format_primative }},
-
-  { device::QR_TEMP_CARD_TOP_FRONT,       { "QR_TEMP_CARD_TOP_FRONT",       "temp_top_front_C",    &typeid(uint64_t),  device::format_primative }},
-  { device::QR_TEMP_CARD_TOP_REAR,        { "QR_TEMP_CARD_TOP_REAR",        "temp_top_rear_C",     &typeid(uint64_t),  device::format_primative }},
-  { device::QR_TEMP_CARD_BOTTOM_FRONT,    { "QR_TEMP_CARD_BOTTOM_FRONT",    "temp_bottom_front_C", &typeid(uint64_t),  device::format_primative }},
-
-  { device::QR_TEMP_FPGA,                 { "QR_TEMP_FPGA",                 "temp_C",           &typeid(uint64_t),  device::format_primative }},
-
-  { device::QR_FAN_TRIGGER_CRITICAL_TEMP, { "QR_FAN_TRIGGER_CRITICAL_TEMP", "temp_trigger_critical_C",  &typeid(uint64_t),  device::format_primative }},
-  { device::QR_FAN_FAN_PRESENCE,          { "QR_FAN_FAN_PRESENCE",          "fan_presence",             &typeid(std::string),  device::format_primative }},
-  { device::QR_FAN_SPEED_RPM,             { "QR_FAN_SPEED_RPM",             "fan_speed_rpm",            &typeid(uint64_t),  device::format_primative }},
-
-  { device::QR_CAGE_TEMP_0,               { "QR_CAGE_TEMP_0",               "temp0_C",          &typeid(uint64_t),  device::format_primative }},
-  { device::QR_CAGE_TEMP_1,               { "QR_CAGE_TEMP_1",               "temp1_C",          &typeid(uint64_t),  device::format_primative }},
-  { device::QR_CAGE_TEMP_2,               { "QR_CAGE_TEMP_2",               "temp2_C",          &typeid(uint64_t),  device::format_primative }},
-  { device::QR_CAGE_TEMP_3,               { "QR_CAGE_TEMP_3",               "temp3_C",          &typeid(uint64_t),  device::format_primative }},
-
-  { device::QR_12V_PEX_MILLIVOLTS,        { "QR_12V_PEX_MILLIVOLTS",        "12v_pex.voltage",  &typeid(uint64_t),  device::format_base10_shiftdown3 }},
-  { device::QR_12V_PEX_MILLIAMPS,         { "QR_12V_PEX_MILLIAMPS",         "12v_pex.current",  &typeid(uint64_t),  device::format_base10_shiftdown3 }},
-  { device::QR_12V_AUX_MILLIVOLTS,        { "QR_12V_AUX_MILLIVOLTS",        "12v_aux.voltage",  &typeid(uint64_t),  device::format_base10_shiftdown3 }},
-  { device::QR_12V_AUX_MILLIAMPS,         { "QR_12V_AUX_MILLIAMPS",         "12v_aux.current",  &typeid(uint64_t),  device::format_base10_shiftdown3 }},
-
-  { device::QR_3V3_PEX_MILLIVOLTS,        { "QR_3V3_PEX_MILLIVOLTS",        "3v3_pex.voltaget", &typeid(uint64_t),  device::format_base10_shiftdown3 }},
-  { device::QR_3V3_AUX_MILLIVOLTS,        { "QR_3V3_AUX_MILLIVOLTS",        "3v3_aux.voltage",  &typeid(uint64_t),  device::format_base10_shiftdown3 }},
-
-  { device::QR_DDR_VPP_BOTTOM_MILLIVOLTS, { "QR_DDR_VPP_BOTTOM_MILLIVOLTS", "ddr_vpp_bottom.voltage", &typeid(uint64_t),  device::format_base10_shiftdown3 }},
-  { device::QR_DDR_VPP_TOP_MILLIVOLTS,    { "QR_DDR_VPP_TOP_MILLIVOLTS",    "ddr_vpp_top.voltage",    &typeid(uint64_t),  device::format_base10_shiftdown3 }},
-
-  { device::QR_5V5_SYSTEM_MILLIVOLTS,     { "QR_5V5_SYSTEM_MILLIVOLTS",    "sys_5v5.voltage",   &typeid(uint64_t),  device::format_base10_shiftdown3 }},
-
-  { device::QR_1V2_VCC_TOP_MILLIVOLTS,    { "QR_1V2_VCC_TOP_MILLIVOLTS",    "1v2_top.voltage",  &typeid(uint64_t),  device::format_base10_shiftdown3 }},
-  { device::QR_1V2_VCC_BOTTOM_MILLIVOLTS, { "QR_1V2_VCC_BOTTOM_MILLIVOLTS", "1v2_btm.voltage",  &typeid(uint64_t),  device::format_base10_shiftdown3 }},
-
-  { device::QR_0V85_MILLIVOLTS,           { "QR_0V85_MILLIVOLTS",           "0v85.voltage",     &typeid(uint64_t),  device::format_base10_shiftdown3 }},
-
-  { device::QR_1V8_MILLIVOLTS,            { "QR_1V8_MILLIVOLTS",            "1v8.voltage",      &typeid(uint64_t),  device::format_base10_shiftdown3 }},
-  { device::QR_0V9_VCC_MILLIVOLTS,        { "QR_0V9_VCC_MILLIVOLTS",        "mgt_0v9.voltage",  &typeid(uint64_t),  device::format_base10_shiftdown3 }},
-  { device::QR_12V_SW_MILLIVOLTS,         { "QR_12V_SW_MILLIVOLTS",         "12v_sw.voltage",   &typeid(uint64_t),  device::format_base10_shiftdown3 }},
-
-  { device::QR_MGT_VTT_MILLIVOLTS,        { "QR_MGT_VTT_MILLIVOLTS",        "mgt_vtt.voltage",  &typeid(uint64_t),  device::format_base10_shiftdown3 }},
-  { device::QR_INT_VCC_MILLIVOLTS,        { "QR_INT_VCC_MILLIVOLTS",        "vccint.voltage",   &typeid(uint64_t),  device::format_base10_shiftdown3 }},
-  { device::QR_INT_VCC_MILLIAMPS,         { "QR_INT_VCC_MILLIAMPS",         "vccint.current",   &typeid(uint64_t),  device::format_base10_shiftdown3 }},
-
-  { device::QR_3V3_PEX_MILLIAMPS,         { "QR_3V3_PEX_MILLIAMPS",         "3v3_pex.current",  &typeid(uint64_t),  device::format_base10_shiftdown3 }},
-  { device::QR_0V85_MILLIAMPS,            { "QR_0V85_MILLIAMPS",            "0v85.current",     &typeid(uint64_t),  device::format_base10_shiftdown3 }},
-  { device::QR_3V3_VCC_MILLIVOLTS,        { "QR_3V3_VCC_MILLIVOLTS",        "vcc3v3.voltage",   &typeid(uint64_t),  device::format_base10_shiftdown3 }},
-  { device::QR_HBM_1V2_MILLIVOLTS,        { "QR_HBM_1V2_MILLIVOLTS",        "hbm_1v2.voltage",  &typeid(uint64_t),  device::format_base10_shiftdown3 }},
-  { device::QR_2V5_VPP_MILLIVOLTS,        { "QR_2V5_VPP_MILLIVOLTS",        "vpp2v5.voltage",   &typeid(uint64_t),  device::format_base10_shiftdown3 }},
-  { device::QR_INT_BRAM_VCC_MILLIVOLTS,   { "QR_INT_BRAM_VCC_MILLIVOLTS",   "vccint_bram.voltage",  &typeid(uint64_t),  device::format_base10_shiftdown3 }},
-
-  { device::QR_FIREWALL_DETECT_LEVEL,     { "QR_FIREWALL_DETECT_LEVEL",     "level",            &typeid(uint64_t),  device::format_primative }},
-  { device::QR_FIREWALL_STATUS,           { "QR_FIREWALL_STATUS",           "status",           &typeid(uint64_t),  device::format_hex }},
-  { device::QR_FIREWALL_TIME_SEC,         { "QR_FIREWALL_TIME_SEC",         "time_sec",         &typeid(uint64_t),  device::format_primative }},
-
-  { device::QR_POWER_MICROWATTS,          { "QR_POWER_MICROWATTS",          "power_watts",      &typeid(uint64_t),  device::format_base10_shiftdown6 }}
-};
-
-
-const device::QueryRequestEntry *
-device::
-get_query_entry(QueryRequest qr) const
-{
-  auto it = sQueryTable.find(qr);
-
-  if (it == sQueryTable.end()) {
-    std::string errMsg = boost::str( boost::format("The given query request ID (%d) was dont found.") % qr);
-    throw no_such_query(qr, errMsg);
-  }
-
-  return &((*it).second);
-}
-
 device::device(id_type device_id)
   : m_device_id(device_id)
 {
@@ -208,47 +127,6 @@ device::format_hex_base2_shiftup30(const boost::any &_data)
 
 void
 device::
-query_and_put(QueryRequest qr, boost::property_tree::ptree & pt) const
-{
-  auto qre = get_query_entry(qr);
-  query_and_put(qr, *(qre->pTypeInfo), pt, qre->sPtreeNodeName, qre->string_formatter);
-}
-
-void
-device::
-query_and_put(QueryRequest qr,
-              const std::type_info & tinfo,
-              boost::property_tree::ptree & pt,
-              const std::string& pname,
-              FORMAT_STRING_PTR format) const
-{
-  try {
-    if (format == nullptr) {
-      std::string errMsg = boost::str(boost::format("Missing data format help function for request: %d") % (uint32_t) qr);
-      throw error(errMsg);
-    }
-
-    boost::any value;
-    query(qr, tinfo, value);
-
-    if (tinfo == typeid(std::vector<std::string>)) {
-      boost::property_tree::ptree pt_array;
-      for (auto str : boost::any_cast<std::vector<std::string>>(value)) {
-        boost::property_tree::ptree pt_item;
-        pt_item.put("", format(boost::any(str)));
-        pt_array.push_back(std::make_pair("", pt_item));   // Used to make an array of strings
-      }
-      pt.add_child(pname, pt_array);
-    } else {
-      pt.put(pname, format(value));
-    }
-  } catch (const std::exception& e) {
-    pt.put(pname + ":error_msg", e.what());
-  }
-}
-
-void
-device::
 get_rom_info(boost::property_tree::ptree& pt) const
 {
   ptree_updater<query::rom_vbnv>::query_and_put(this, pt);
@@ -262,97 +140,97 @@ void
 device::
 get_xmc_info(boost::property_tree::ptree& pt) const
 {
-  query_and_put(QR_XMC_VERSION, pt);
-  query_and_put(QR_XMC_SERIAL_NUM, pt);
-  query_and_put(QR_XMC_MAX_POWER, pt);
-  query_and_put(QR_XMC_BMC_VERSION, pt);
+  ptree_updater<query::xmc_version>::query_and_put(this, pt);
+  ptree_updater<query::xmc_serial_num>::query_and_put(this, pt);
+  ptree_updater<query::xmc_max_power>::query_and_put(this, pt);
+  ptree_updater<query::xmc_bmc_version>::query_and_put(this, pt);
 }
 
 void
 device::
 get_platform_info(boost::property_tree::ptree& pt) const
 {
-  query_and_put(QR_DNA_SERIAL_NUM, pt);
+  ptree_updater<query::dna_serial_num>::query_and_put(this, pt);
   ptree_updater<query::clock_freqs>::query_and_put(this, pt);
   ptree_updater<query::idcode>::query_and_put(this, pt);
   ptree_updater<query::status_mig_calibrated>::query_and_put(this, pt);
-  query_and_put(QR_STATUS_P2P_ENABLED, pt);
+  ptree_updater<query::status_p2p_enabled>::query_and_put(this, pt);
 }
 
 void
 device::
 read_thermal_pcb(boost::property_tree::ptree& pt) const
 {
-  query_and_put(QR_TEMP_CARD_TOP_FRONT, pt);
-  query_and_put(QR_TEMP_CARD_TOP_REAR, pt);
-  query_and_put(QR_TEMP_CARD_BOTTOM_FRONT, pt);
+  ptree_updater<query::temp_card_top_front>::query_and_put(this, pt);
+  ptree_updater<query::temp_card_top_rear>::query_and_put(this, pt);
+  ptree_updater<query::temp_card_bottom_front>::query_and_put(this, pt);
 }
 
 void
 device::
 read_thermal_fpga(boost::property_tree::ptree& pt) const
 {
-  query_and_put(QR_TEMP_FPGA, pt);
+  ptree_updater<query::temp_fpga>::query_and_put(this, pt);
 }
 
 void
 device::
 read_fan_info(boost::property_tree::ptree& pt) const
 {
-  query_and_put(QR_FAN_TRIGGER_CRITICAL_TEMP, pt);
-  query_and_put(QR_FAN_FAN_PRESENCE, pt);
-  query_and_put(QR_FAN_SPEED_RPM, pt);
+  ptree_updater<query::fan_trigger_critical_temp>::query_and_put(this, pt);
+  ptree_updater<query::fan_fan_presence>::query_and_put(this, pt);
+  ptree_updater<query::fan_speed_rpm>::query_and_put(this, pt);
 }
 
 void
 device::
 read_thermal_cage(boost::property_tree::ptree& pt) const
 {
-  query_and_put(QR_CAGE_TEMP_0, pt);
-  query_and_put(QR_CAGE_TEMP_1, pt);
-  query_and_put(QR_CAGE_TEMP_2, pt);
-  query_and_put(QR_CAGE_TEMP_3, pt);
+  ptree_updater<query::cage_temp_0>::query_and_put(this, pt);
+  ptree_updater<query::cage_temp_1>::query_and_put(this, pt);
+  ptree_updater<query::cage_temp_2>::query_and_put(this, pt);
+  ptree_updater<query::cage_temp_3>::query_and_put(this, pt);
 }
 
 void
 device::
 read_electrical(boost::property_tree::ptree& pt) const
 {
-  query_and_put(QR_12V_PEX_MILLIVOLTS, pt);
-  query_and_put(QR_12V_PEX_MILLIAMPS,  pt);
-  query_and_put(QR_12V_AUX_MILLIVOLTS, pt);
-  query_and_put(QR_12V_AUX_MILLIAMPS,  pt);
+  ptree_updater<query::v12v_pex_millivolts>::query_and_put(this, pt);
+  ptree_updater<query::v12v_pex_milliamps>::query_and_put(this,  pt);
+  ptree_updater<query::v12v_aux_millivolts>::query_and_put(this, pt);
+  ptree_updater<query::v12v_aux_milliamps>::query_and_put(this,  pt);
 
-  query_and_put(QR_3V3_PEX_MILLIVOLTS, pt);
-  query_and_put(QR_3V3_AUX_MILLIVOLTS, pt);
-  query_and_put(QR_DDR_VPP_BOTTOM_MILLIVOLTS, pt);
-  query_and_put(QR_DDR_VPP_TOP_MILLIVOLTS, pt);
+  ptree_updater<query::v3v3_pex_millivolts>::query_and_put(this, pt);
+  ptree_updater<query::v3v3_aux_millivolts>::query_and_put(this, pt);
+  ptree_updater<query::ddr_vpp_bottom_millivolts>::query_and_put(this, pt);
+  ptree_updater<query::ddr_vpp_top_millivolts>::query_and_put(this, pt);
 
 
-  query_and_put(QR_5V5_SYSTEM_MILLIVOLTS, pt);
-  query_and_put(QR_1V2_VCC_TOP_MILLIVOLTS, pt);
-  query_and_put(QR_1V2_VCC_BOTTOM_MILLIVOLTS, pt);
-  query_and_put(QR_1V8_MILLIVOLTS, pt);
-  query_and_put(QR_0V85_MILLIVOLTS, pt);
-  query_and_put(QR_0V9_VCC_MILLIVOLTS, pt);
-  query_and_put(QR_12V_SW_MILLIVOLTS, pt);
-  query_and_put(QR_MGT_VTT_MILLIVOLTS, pt);
-  query_and_put(QR_INT_VCC_MILLIVOLTS, pt);
-  query_and_put(QR_INT_VCC_MILLIAMPS, pt);
+  ptree_updater<query::v5v5_system_millivolts>::query_and_put(this, pt);
+  ptree_updater<query::v1v2_vcc_top_millivolts>::query_and_put(this, pt);
+  ptree_updater<query::v1v2_vcc_bottom_millivolts>::query_and_put(this, pt);
+  ptree_updater<query::v1v8_millivolts>::query_and_put(this, pt);
+  ptree_updater<query::v0v85_millivolts>::query_and_put(this, pt);
+  ptree_updater<query::v0v9_vcc_millivolts>::query_and_put(this, pt);
+  ptree_updater<query::v12v_sw_millivolts>::query_and_put(this, pt);
+  ptree_updater<query::mgt_vtt_millivolts>::query_and_put(this, pt);
+  ptree_updater<query::int_vcc_millivolts>::query_and_put(this, pt);
+  ptree_updater<query::int_vcc_milliamps>::query_and_put(this, pt);
 
-  query_and_put(QR_3V3_PEX_MILLIAMPS, pt);
-  query_and_put(QR_0V85_MILLIAMPS, pt);
-  query_and_put(QR_3V3_VCC_MILLIVOLTS, pt);
-  query_and_put(QR_HBM_1V2_MILLIVOLTS, pt);
-  query_and_put(QR_2V5_VPP_MILLIVOLTS, pt);
-  query_and_put(QR_INT_BRAM_VCC_MILLIVOLTS, pt);
+  ptree_updater<query::v3v3_pex_milliamps>::query_and_put(this, pt);
+  ptree_updater<query::v0v85_milliamps>::query_and_put(this, pt);
+  ptree_updater<query::v3v3_vcc_millivolts>::query_and_put(this, pt);
+  ptree_updater<query::hbm_1v2_millivolts>::query_and_put(this, pt);
+  ptree_updater<query::v2v5_vpp_millivolts>::query_and_put(this, pt);
+  ptree_updater<query::int_bram_vcc_millivolts>::query_and_put(this, pt);
 }
 
 void
 device::
 read_power(boost::property_tree::ptree& pt) const
 {
-  query_and_put(QR_POWER_MICROWATTS, pt);
+  ptree_updater<query::power_microwatts>::query_and_put(this, pt);
 }
 
 
@@ -360,9 +238,9 @@ void
 device::
 read_firewall(boost::property_tree::ptree& pt) const
 {
-  query_and_put(QR_FIREWALL_DETECT_LEVEL, pt);
-  query_and_put(QR_FIREWALL_STATUS, pt);
-  query_and_put(QR_FIREWALL_TIME_SEC, pt);
+  ptree_updater<query::firewall_detect_level>::query_and_put(this, pt);
+  ptree_updater<query::firewall_status>::query_and_put(this, pt);
+  ptree_updater<query::firewall_time_sec>::query_and_put(this, pt);
 }
 
 } // xrt_core

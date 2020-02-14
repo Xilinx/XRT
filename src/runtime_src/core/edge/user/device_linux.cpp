@@ -24,36 +24,6 @@
 
 namespace xrt_core {
 
-const device_linux::SysDevEntry&
-device_linux::get_sysdev_entry(QueryRequest qr) const
-{
-  static const std::map<QueryRequest, SysDevEntry> QueryRequestToSysDevTable = {};
-
-  // Find the translation entry
-  auto it = QueryRequestToSysDevTable.find(qr);
-
-  if (it == QueryRequestToSysDevTable.end()) {
-    std::string errMsg = boost::str( boost::format("The given query request ID (%d) is not supported.") % qr);
-    throw no_such_query(qr, errMsg);
-  }
-
-  return it->second;
-}
-
-void
-device_linux::
-query(QueryRequest qr, const std::type_info& tinfo, boost::any& value) const
-{
-  boost::any anyEmpty;
-  value.swap(anyEmpty);
-  std::string errmsg;
-  errmsg = boost::str( boost::format("Error: Unsupported query_device return type: '%s'") % tinfo.name());
-
-  if (!errmsg.empty()) {
-    throw std::runtime_error(errmsg);
-  }
-}
-
 device_linux::
 device_linux(id_type device_id, bool user)
   : shim<device_edge>(device_id, user)
