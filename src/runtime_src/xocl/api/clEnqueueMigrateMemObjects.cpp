@@ -97,6 +97,7 @@ clEnqueueMigrateMemObjects(cl_command_queue        command_queue ,
     (uevent.get(),xocl::enqueue::action_migrate_memobjects,num_mem_objects,mem_objects,flags);
   xocl::profile::set_event_action
     (uevent.get(),xocl::profile::action_migrate,num_mem_objects,mem_objects,flags);
+  xocl::lop::set_event_action(uevent.get(), xocl::lop::action_migrate, flags);
   xocl::appdebug::set_event_action
     (uevent.get(),xocl::appdebug::action_migrate,num_mem_objects,mem_objects,flags);
 

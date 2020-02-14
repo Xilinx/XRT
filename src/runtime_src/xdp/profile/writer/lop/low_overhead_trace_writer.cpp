@@ -114,10 +114,13 @@ namespace xdp {
 	// If there was no command queue, put it in the general bucket
 	if (bucket == 0) bucket = generalAPIBucket ;
       }
-      else if (e->isHostEvent())
+      else if (e->isReadBuffer())
       {
-	// Either a kernel enqueue or a buffer transfer.
 	bucket = readBucket ;
+      }
+      else if (e->isWriteBuffer())
+      {
+	bucket = writeBucket ;
       }
       e->dump(fout, bucket) ;
     }

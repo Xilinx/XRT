@@ -31,5 +31,11 @@ extern "C"
 void lop_function_end(const char* functionName, long long queueAddress,
 		      unsigned int functionID);
 
+extern "C"
+void lop_read(unsigned int XRTEventId, bool isStart) ;
+
+extern "C"
+void lop_write(unsigned int XRTEventId, bool isStart) ;
+
 
 #endif

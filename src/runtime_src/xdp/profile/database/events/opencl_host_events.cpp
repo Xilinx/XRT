@@ -73,6 +73,23 @@ namespace xdp {
     fout << std::endl ;
   }
 
+  LOPBufferTransfer::LOPBufferTransfer(uint64_t s_id, double ts, 
+				       VTFEventType ty) :
+    VTFEvent(s_id, ts, ty), threadId(std::this_thread::get_id())
+  {
+    
+  }
+
+  LOPBufferTransfer::~LOPBufferTransfer()
+  {
+  }
+
+  void LOPBufferTransfer::dump(std::ofstream& fout, int bucket)
+  {
+    VTFEvent::dump(fout, bucket) ;
+    fout << "," << std::hex << "0x" << threadId << std::dec << std::endl ;
+  }
+
   StreamRead::StreamRead(uint64_t s_id, double ts) :
     VTFEvent(s_id, ts, STREAM_READ)
   {

@@ -97,6 +97,19 @@ namespace xdp {
     XDP_EXPORT virtual void dump(std::ofstream& fout, int bucket) ;
   } ;
 
+  class LOPBufferTransfer : public VTFEvent
+  {
+  private:
+    std::thread::id threadId ;
+  public:
+    XDP_EXPORT LOPBufferTransfer(uint64_t s_id, double ts, VTFEventType ty) ;
+    XDP_EXPORT ~LOPBufferTransfer() ;
+
+    virtual bool isHostEvent() { return true ; }
+
+    XDP_EXPORT virtual void dump(std::ofstream& fout, int bucket) ;
+  } ;
+
   class StreamRead : public VTFEvent
   {
   private:

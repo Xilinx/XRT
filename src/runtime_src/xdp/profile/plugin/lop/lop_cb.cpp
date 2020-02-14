@@ -68,6 +68,40 @@ namespace xdp {
     (db->getDynamicInfo()).addEvent(event) ;
   }
 
+  static void lop_read(unsigned int XRTEventId, bool isStart)
+  {
+    double timestamp = xrt::time_ns() ;
+    VPDatabase* db = lopPluginInstance.getDatabase() ;
+    
+    uint64_t start = 0 ;
+    if (!isStart) start = (db->getDynamicInfo()).matchingStart(XRTEventId) ;
+
+    VTFEvent* event = new LOPBufferTransfer(start,
+					    timestamp,
+					    LOP_READ_BUFFER) ;
+
+    (db->getDynamicInfo()).addEvent(event) ;
+    if (isStart)
+      (db->getDynamicInfo()).markStart(XRTEventId, event->getEventId()) ;
+  }
+
+  static void lop_write(unsigned int XRTEventId, bool isStart)
+  {
+    double timestamp = xrt::time_ns() ;
+    VPDatabase* db = lopPluginInstance.getDatabase() ;
+
+    uint64_t start = 0 ;
+
+    if (!isStart) start = (db->getDynamicInfo()).matchingStart(XRTEventId) ;
+
+    VTFEvent* event = new LOPBufferTransfer(start,
+					    timestamp,
+					    LOP_WRITE_BUFFER) ;
+    (db->getDynamicInfo()).addEvent(event) ;
+    if (isStart)
+      (db->getDynamicInfo()).markStart(XRTEventId, event->getEventId()) ;
+  }
+
 
   /*  
   void register_low_overhead_profile_callbacks()
@@ -107,5 +141,17 @@ void lop_function_end(const char* functionName, long long queueAddress,
 		      unsigned int functionID)
 {
   xdp::lop_cb_log_function_end(functionName, queueAddress, functionID) ;
+}
+
+extern "C"
+void lop_read(unsigned int XRTEventId, bool isStart)
+{
+  xdp::lop_read(XRTEventId, isStart) ;
+}
+
+extern "C"
+void lop_write(unsigned int XRTEventId, bool isStart)
+{
+  xdp::lop_write(XRTEventId, isStart) ;
 }
 

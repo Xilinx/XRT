@@ -25,6 +25,9 @@
 #include <functional>
 #include <atomic>
 
+#include "core/common/config_reader.h"
+#include "xocl/core/event.h"
+
 // This namespace contains the functions responsible for loading and
 //  linking the LOP functions.
 namespace xdplop {
@@ -53,6 +56,30 @@ namespace xdplop {
   } ;
 
 } // end namespace xdplop
+
+namespace xocl {
+  namespace lop {
+
+    template <typename F, typename ...Args>
+    inline void
+    set_event_action(xocl::event* event, F&& f, Args&&... args)
+    {
+      if (xrt_core::config::get_lop_profile())
+	event->set_lop_action(f(std::forward<Args>(args)...));
+    }
+
+
+    std::function<void (xocl::event*, cl_int)> action_read() ;
+    std::function<void (xocl::event*, cl_int)> action_write() ;
+    std::function<void (xocl::event*, cl_int)> action_migrate(cl_mem_migration_flags flags) ;
+    //std::function<void (xocl::event*)> action_ndrange() ;
+    //std::function<void (xocl::event*)> action_map() ;
+    //std::function<void (xocl::event*)> action_unmap() ;
+    //std::function<void (xocl::event*)> action_ndrange_migrate() ;
+    //std::function<void (xocl::event*)> action_copy() ;
+    
+  } // end namespace lop
+} // end namespace xdp
 
 // Helpful defines
 #define LOP_LOG_FUNCTION_CALL xdplop::LOPFunctionCallLogger LOPObject(__func__);
