@@ -475,7 +475,7 @@ static int clock_ocl_freqscaling(struct clock *clock, bool force,
 		val = reg_rd(clock->clock_bases[i] + OCL_CLKWIZ_STATUS_OFFSET);
 		for (count = 0; val != 1 && count < 10; count++) {
 			/* workaround: after toggle gate, clock wizard stays busy */
-			mdelay(100);
+			mdelay(500);
 			val = reg_rd(clock->clock_bases[i] + OCL_CLKWIZ_STATUS_OFFSET);
 		}
 		if (val != 1) {
