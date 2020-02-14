@@ -126,9 +126,7 @@ set(XRT_XDP_ALL_SRC
   ${XRT_XDP_FILES}
   )
 
-if (NOT WIN32)
-
-# ====== Linux XDP Libraries ======
+# ===== XDP Libraries on both Linux and Windows =======
 add_library(xdp_core SHARED ${XRT_NEW_XDP_CORE_FILES})
 add_library(xdp SHARED ${XRT_XDP_ALL_SRC})
 add_library(oclxdp SHARED ${XRT_XDP_PROFILE_OCL_PLUGIN_FILES})
@@ -154,6 +152,10 @@ target_link_libraries(xdp_debug_plugin xrt_core xilinxopencl)
 target_link_libraries(xdp_appdebug_plugin xrt_core xilinxopencl)
 target_link_libraries(xdp_lop_plugin xdp_core)
 
+if (NOT WIN32)
+
+# ====== Linux Specifics ======
+
 set_target_properties(xdp PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(oclxdp PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_hal_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
@@ -177,80 +179,15 @@ install (FILES
 endif()
 
 else()
-# = WINDOWS ===================================================================
+# ====== Windows Specifics =======
 
-add_library(xdpobj OBJECT ${XRT_XDP_PROFILE_OCL_PLUGIN_FILES})
-
-add_library(xdp SHARED ${XRT_XDP_ALL_SRC}
-  $<TARGET_OBJECTS:xdpobj>
-)
-
-add_dependencies(xdp xrt_core xilinxopencl)
-target_link_libraries (xdp xrt_core xilinxopencl)
-
-install(TARGETS xdp
+install(TARGETS xdp_core xdp oclxdp xdp_hal_plugin xdp_hal_api_interface_plugin xdp_debug_plugin xdp_addpdebug_plugin xdp_lop_plugin
   ARCHIVE DESTINATION ${XRT_INSTALL_DIR}/lib
   LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib
   RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
-
-# oclxdp
-
-add_library(oclxdp SHARED ""
-  $<TARGET_OBJECTS:xdpobj>
-  )
-add_dependencies(oclxdp xdp xilinxopencl)
-target_link_libraries (oclxdp xdp xilinxopencl)
-
-install(TARGETS oclxdp
-  ARCHIVE DESTINATION ${XRT_INSTALL_DIR}/lib
-  LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib
-  RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
-
-# xdp_hal_plugin
-
-add_library(xdp_hal_plugin_obj OBJECT ${XRT_XDP_PROFILE_HAL_PLUGIN_FILES})
-
-add_library(xdp_hal_plugin SHARED
-  $<TARGET_OBJECTS:xdp_hal_plugin_obj>
-  )
-
-add_dependencies(xdp_hal_plugin xdp xrt_core)
-
-target_link_libraries(xdp_hal_plugin xdp xrt_core)
-
-#set_target_properties(xdp_hal_plugin PROPERTIES VERSION ${XRT_VERSION_STRING}
-#  SOVERSION ${XRT_SOVERSION})
-
-install(TARGETS xdp_hal_plugin
-  ARCHIVE DESTINATION ${XRT_INSTALL_DIR}/lib
-  LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib
-  RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
-
-# xdp_hal_api_interface_plugin
-
-add_library(xdp_hal_api_interface_plugin_obj OBJECT ${XRT_XDP_PROFILE_HAL_INTERFACE_PLUGIN_FILES})
-
-add_library(xdp_hal_api_interface_plugin SHARED
-  $<TARGET_OBJECTS:xdp_hal_api_interface_plugin_obj>
-  )
-
-add_dependencies(xdp_hal_api_interface_plugin xdp)
-
-target_link_libraries(xdp_hal_api_interface_plugin xdp)
-
-#set_target_properties(xdp_hal_api_interface_plugin PROPERTIES VERSION ${XRT_VERSION_STRING}
-#  SOVERSION ${XRT_SOVERSION})
-
-install(TARGETS xdp_hal_api_interface_plugin
-  ARCHIVE DESTINATION ${XRT_INSTALL_DIR}/lib
-  LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib
-  RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
-
-# install (FILES "${XRT_XDP_PROFILE_XMA_PLUGIN_DIR}/xma_profile.h" DESTINATION ${XRT_INSTALL_INCLUDE_DIR})
 
 # Only install these files for PCIe device for now, which is .
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
-#set (APPDEBUG_INSTALL_PREFIX "/opt/xilinx/xrt/share/appdebug")
 set (APPDEBUG_INSTALL_PREFIX "${XRT_INSTALL_DIR}/share/appdebug")
 install (FILES
   ${XRT_XDP_APPDEBUG_DIR}/appdebug.py
