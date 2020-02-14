@@ -196,10 +196,16 @@ if [[ $opt == 1 ]]; then
     echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src"
     time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
   fi
-  echo "make -j $jcore $verbose DESTDIR=$PWD install"
-  time make -j $jcore $verbose DESTDIR=$PWD install
-  time ctest --output-on-failure
-  time make package
+
+  if [[ $docs == 1 ]]; then
+    echo "make xrt_docs"
+    make xrt_docs
+  else
+    echo "make -j $jcore $verbose DESTDIR=$PWD install"
+    time make -j $jcore $verbose DESTDIR=$PWD install
+    time ctest --output-on-failure
+    time make package
+  fi
 
   if [[ $driver == 1 ]]; then
     unset CC
@@ -230,12 +236,6 @@ if [[ $CPU != "aarch64" ]] && [[ $edge == 1 ]]; then
 fi
     
     
-
-if [[ $docs == 1 ]]; then
-    echo "make xrt_docs"
-    make xrt_docs
-fi
-
 if [[ $clangtidy == 1 ]]; then
     echo "make clang-tidy"
     make clang-tidy
