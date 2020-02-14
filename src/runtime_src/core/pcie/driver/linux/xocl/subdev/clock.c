@@ -446,6 +446,8 @@ static int clock_ocl_freqscaling(struct clock *clock, bool force,
 	}
 
 	for (i = 0; i < CLOCK_MAX_NUM_CLOCKS; ++i) {
+		int count;
+
 		/* A value of zero means skip scaling for this clock index */
 		if (!new_freq[i])
 			continue;
@@ -470,10 +472,14 @@ static int clock_ocl_freqscaling(struct clock *clock, bool force,
 			continue;
 		}
 
-		val = reg_rd(clock->clock_bases[i] +
-			OCL_CLKWIZ_STATUS_OFFSET);
+		val = reg_rd(clock->clock_bases[i] + OCL_CLKWIZ_STATUS_OFFSET);
+		for (count = 0; val != 1 && count < 10; count++) {
+			/* workaround: after toggle gate, clock wizard stays busy */
+			mdelay(500);
+			val = reg_rd(clock->clock_bases[i] + OCL_CLKWIZ_STATUS_OFFSET);
+		}
 		if (val != 1) {
-			CLOCK_ERR(clock, "clockwiz %d is busy", i);
+			CLOCK_ERR(clock, "clockwiz(%d) is (%u) busy", i, val);
 			err = -EBUSY;
 			break;
 		}
