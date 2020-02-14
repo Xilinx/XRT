@@ -1977,7 +1977,7 @@ static int m2mtest_bank(xclDeviceHandle handle, int bank_a, int bank_b)
 
 int xcldev::device::testM2m()
 {
-    std::string errmsg;
+    std::string errmsg, vbnv;
     std::vector<char> buf;
     int m2m_enabled = 0;
     std::vector<mem_data> usedBanks;
@@ -1989,7 +1989,11 @@ int xcldev::device::testM2m()
         return -EINVAL;
 
     dev->sysfs_get<int>("mb_scheduler", "kds_numcdmas", errmsg, m2m_enabled, 0);
-    if (m2m_enabled == 0) {
+    // Workaround:
+    // u250_xdma_201830_1 falsely shows that m2m is available 
+    // which causes a hang. Skip m2mtest if this platform is installed
+    dev->sysfs_get( "rom", "VBNV", errmsg, vbnv );
+    if (m2m_enabled == 0 || strstr( vbnv.c_str(), "_u250_xdma_201830_1")) {
         std::cout << "M2M is not available. Skipping validation" << std::endl;
         return -EOPNOTSUPP;
     }
