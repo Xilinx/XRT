@@ -241,9 +241,22 @@ public:
   void read_power(boost::property_tree::ptree &pt) const;
   void read_firewall(boost::property_tree::ptree &pt) const;
 
+  /**
+   * read() - maps pcie bar and copy bytes word (32bit) by word
+   */
   virtual void read(uint64_t offset, void* buf, uint64_t len) const = 0;
+  /**
+   * write() - maps pcie bar and copy bytes word (32bit) by word
+   */
   virtual void write(uint64_t offset, const void* buf, uint64_t len) const = 0;
+  /**
+   * open() - opens a device with an fd which can be used for non pcie read/write
+   * xospiversal and xspi use this
+   */
   virtual int  open(const std::string& subdev, int flag) const = 0;
+  /**
+   * close() - close the fd
+   */
   virtual void close(int dev_handle) const = 0;
 
   // Helper methods

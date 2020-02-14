@@ -25,8 +25,8 @@ namespace XBU = XBUtilities;
 #include "core/common/system.h"
 #include "core/common/device.h"
 #include "core/common/error.h"
-#include "core/pcie/common/device_pcie.h"
 #include "core/common/query_requests.h"
+#include "core/common/message.h"
 #include "core/common/error.h"
 #include "flash/flasher.h"
 
@@ -45,7 +45,7 @@ namespace po = boost::program_options;
 #include <ctime>
 
 #ifdef _WIN32
-#pragma warning(disable : 4996)
+#pragma warning(disable : 4996) //std::asctime
 #endif
 
 
@@ -65,8 +65,8 @@ update_shell(uint16_t index, const std::string& flashType,
   std::unique_ptr<firmwareImage> sec;
 
   if (!flashType.empty()) {
-    std::cout << "CAUTION: Overriding flash mode is not recommended. " <<
-      "You may damage your card with this option." << std::endl;
+      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", 
+        "Overriding flash mode is not recommended.\nYou may damage your card with this option.");
   }
 
   Flasher flasher(index);
@@ -78,7 +78,7 @@ update_shell(uint16_t index, const std::string& flashType,
 
   pri = std::make_unique<firmwareImage>(primary.c_str(), MCS_FIRMWARE_PRIMARY);
   if (pri->fail())
-    throw xrt_core::error(boost::str(boost::format("Failed to read %s") % primary.c_str()));
+    throw xrt_core::error(boost::str(boost::format("Failed to read %s") % primary));
   if (!secondary.empty()) {
     sec = std::make_unique<firmwareImage>(secondary.c_str(),
       MCS_FIRMWARE_SECONDARY);
@@ -100,10 +100,10 @@ update_SC(uint16_t index, const std::string& file)
   if(!flasher.isValid())
     throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % index));
 
-  std::shared_ptr<firmwareImage> bmc =
-    std::make_shared<firmwareImage>(file.c_str(), BMC_FIRMWARE);
+  std::unique_ptr<firmwareImage> bmc =
+    std::make_unique<firmwareImage>(file.c_str(), BMC_FIRMWARE);
   if (bmc->fail())
-    throw xrt_core::error(boost::str(boost::format("Failed to read %s") % file.c_str()));
+    throw xrt_core::error(boost::str(boost::format("Failed to read %s") % file));
 
   flasher.upgradeBMCFirmware(bmc.get());
 }
@@ -118,8 +118,10 @@ file_size(const char* file)
   auto total_size = std::to_string(in.tellg()); 
   int strSize = static_cast<int>(total_size.size());
 
-  if (strSize > 3) {
-   for (int i = (strSize - 3);  i > 0;  i -= 3)
+  //if file size is > 3 digits, insert commas after every 3 digits
+  static const int COMMA_SPACING = 3;
+  if (strSize > COMMA_SPACING) {
+   for (int i = (strSize - COMMA_SPACING);  i > 0;  i -= COMMA_SPACING)
      total_size.insert(static_cast<size_t>(i), 1, ',');
   }
   
@@ -153,8 +155,37 @@ deployment_path_and_filename(std::string file)
 static std::string 
 get_file_timestamp(const char* file) 
 {
+  boost::filesystem::path p(file);
+	if (!boost::filesystem::exists(p)) {
+		throw xrt_core::error("Invalid platform path.");
+	}
   std::time_t ftime = boost::filesystem::last_write_time(boost::filesystem::path(file));
   return std::string(std::asctime(std::localtime(&ftime)));
+}
+
+/*
+ * Header info
+ */
+static void
+status_report(const std::string& bdf, const DSAInfo& currentDSA, const DSAInfo& candidate)
+{
+  std::cout << boost::format("%s : %d\n") % "Device BDF" % bdf;
+  std::cout << "Current Configuration\n";
+
+  std::cout << boost::format("  %-20s : %s\n") % "Platform" % currentDSA.name;
+  std::cout << boost::format("  %-20s : %s\n") % "SC Version" % currentDSA.bmcVer;
+  std::cout << boost::format("  %-20s : 0x%x\n") % "Platform ID" % currentDSA.timestamp;
+
+  std::cout << "\nIncoming Configuration\n";
+  std::pair <std::string, std::string> s = deployment_path_and_filename(candidate.file);
+  std::cout << boost::format("  %-20s : %s\n") % "Deployment File" % s.first;
+  std::cout << boost::format("  %-20s : %s\n") % "Deployment Directory" % s.second;
+  std::cout << boost::format("  %-20s : %s\n") % "Size" % file_size(candidate.file.c_str());
+  std::cout << boost::format("  %-20s : %s\n\n") % "Timestamp" % get_file_timestamp(candidate.file.c_str());
+
+  std::cout << boost::format("  %-20s : %s\n") % "Platform" % candidate.name;
+  std::cout << boost::format("  %-20s : %s\n") % "SC Version" % candidate.bmcVer;
+  std::cout << boost::format("  %-20s : 0x%x\n\n") % "Platform ID" % candidate.timestamp;
 }
 
 /* 
@@ -209,26 +240,9 @@ selectShell(uint16_t idx, const std::string& dsa, const std::string& id)
     return DSAInfo("");
   }
 
-  // Header info
-  // May need to refactor this when adding functionality for multiple devices
-  std::cout << boost::format("%s : %d\n") % "Device BDF" % flasher.sGetDBDF();
-  std::cout << "Current Configuration\n";
+  status_report(flasher.sGetDBDF(), currentDSA, candidate);
 
-  std::cout << boost::format("  %-20s : %s\n") % "Platform" % currentDSA.name;
-  std::cout << boost::format("  %-20s : %s\n") % "SC Version" % currentDSA.bmcVer;
-  std::cout << boost::format("  %-20s : 0x%x\n") % "Platform ID" % currentDSA.timestamp;
-
-  std::cout << "\nIncoming Configuration\n";
-  std::pair <std::string, std::string> s = deployment_path_and_filename(candidate.file);
-  std::cout << boost::format("  %-20s : %s\n") % "Deployment File" % s.first;
-  std::cout << boost::format("  %-20s : %s\n") % "Deployment Directory" % s.second;
-  std::cout << boost::format("  %-20s : %s\n") % "Size" % file_size(candidate.file.c_str());
-  std::cout << boost::format("  %-20s : %s\n\n") % "Timestamp" % get_file_timestamp(candidate.file.c_str());
-
-  std::cout << boost::format("  %-20s : %s\n") % "Platform" % candidate.name;
-  std::cout << boost::format("  %-20s : %s\n") % "SC Version" % candidate.bmcVer;
-  std::cout << boost::format("  %-20s : 0x%x\n\n") % "Platform ID" % candidate.timestamp;
-
+  //decide and display which actions to perform
   std::cout << "----------------------------------------------------\n";
   std::cout << "Actions to perform:\n";
   if(!same_dsa)
@@ -236,7 +250,6 @@ selectShell(uint16_t idx, const std::string& dsa, const std::string& id)
   if(!same_bmc)
     std::cout << "  -Program SC image\n";
   std::cout << "----------------------------------------------------\n";
-  // end header info
 
   return candidate;
 }
@@ -245,20 +258,18 @@ selectShell(uint16_t idx, const std::string& dsa, const std::string& id)
  * Confirm with the user
  * Helper method for auto_flash
  */
-bool canProceed()
+static bool 
+canProceed()
 {
   std::string input;
-  bool answered = false;
   bool proceed = false;
 
-  while (!answered) {
-    std::cout << "Are you sure you wish to proceed? [y/n]: ";
-    std::cin >> input;
-    if(input.compare("y") == 0 || input.compare("n") == 0)
-      answered = true;
-  }
+  std::cout << "Are you sure you wish to proceed? [Y/n]: ";
+  std::getline( std::cin, input );
+  std::transform( input.begin(), input.end(), input.begin(), ::tolower );
 
-  proceed = (input.compare("y") == 0);
+  // proceeds for "y", "Y" and no input
+  proceed = ((input.compare("y") == 0) || input.empty());
   if (!proceed)
     std::cout << "Action canceled." << std::endl;
   return proceed;
@@ -274,8 +285,6 @@ updateShellAndSC(uint16_t boardIdx, DSAInfo& candidate, bool& reboot)
   reboot = false;
 
   Flasher flasher(boardIdx);
-  if(!flasher.isValid())
-    throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % boardIdx));
 
   bool same_dsa = false;
   bool same_bmc = false;
@@ -283,17 +292,18 @@ updateShellAndSC(uint16_t boardIdx, DSAInfo& candidate, bool& reboot)
   if (!current.name.empty()) {
     same_dsa = (candidate.name == current.name &&
       candidate.matchId(current));
-    same_bmc = (current.bmcVer.empty() ||
-      candidate.bmcVer == current.bmcVer);
+    same_bmc = (candidate.bmcVer == current.bmcVer);
   }
-  if (same_dsa && same_bmc)
+  if (same_dsa && same_bmc) {
     std::cout << "update not needed" << std::endl;
+    return 0;
+  }
 
   if (!same_bmc) {
     std::cout << "Updating SC firmware on card[" << flasher.sGetDBDF() <<
       "]" << std::endl;
     auto ret = 0;
-    update_SC(boardIdx, candidate.file.c_str());
+    update_SC(boardIdx, candidate.file);
     if (ret != 0) {
       std::cout << "WARNING: Failed to update SC firmware on card ["
         << flasher.sGetDBDF() << "]" << std::endl;
@@ -304,8 +314,8 @@ updateShellAndSC(uint16_t boardIdx, DSAInfo& candidate, bool& reboot)
     std::cout << "Updating shell on card[" << flasher.sGetDBDF() <<
       "]" << std::endl;
     auto ret = 0;
-    update_shell(boardIdx, "", candidate.file.c_str(),
-      candidate.file.c_str());
+    update_shell(boardIdx, "", candidate.file,
+      candidate.file);
     if (ret != 0) {
       std::cout << "ERROR: Failed to update shell on card["
         << flasher.sGetDBDF() << "]" << std::endl;
@@ -320,24 +330,17 @@ updateShellAndSC(uint16_t boardIdx, DSAInfo& candidate, bool& reboot)
   return 0;
 }
 
-std::string getBDF(unsigned int index)
+static std::string 
+getBDF(unsigned int index)
 {
   auto dev =xrt_core::get_mgmtpf_device(index);
   auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(dev);
   return xrt_core::query::pcie_bdf::to_string(bdf);
 }
 
-/* 
- * Update shell and sc firmware on the card automatically
- */
-static void 
-auto_flash(uint16_t index, std::string& name,
-    std::string& id, bool force) 
+static void
+validate_dsa_timestamp(std::string& name, std::string& id)
 {
-  std::vector<uint16_t> boardsToCheck;
-  std::vector<std::pair<uint16_t, DSAInfo>> boardsToUpdate;
-
-  // Sanity check input dsa and timestamp.
   if (!name.empty()) {
     bool foundDSA = false;
     bool multiDSA = false;
@@ -354,6 +357,20 @@ auto_flash(uint16_t index, std::string& name,
     if (multiDSA)
       throw xrt_core::error("Specified shell matched multiple installed shells");
   }
+}
+
+/* 
+ * Update shell and sc firmware on the card automatically
+ */
+static void 
+auto_flash(uint16_t index, std::string& name,
+    std::string& id, bool force) 
+{
+  std::vector<uint16_t> boardsToCheck;
+  std::vector<std::pair<uint16_t, DSAInfo>> boardsToUpdate;
+
+  // Sanity check input dsa and timestamp.
+  validate_dsa_timestamp(name, id);
 
   // Collect all indexes of boards need checking
   auto total = xrt_core::get_total_devices(false).first;
@@ -501,8 +518,8 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   }
 
   // -- Now process the subcommand --------------------------------------------
-  XBU::verbose(XBU::format("  Card: %s", device.c_str()));
-  XBU::verbose(XBU::format("  Update: %s", update.c_str()));
+  XBU::verbose(XBU::format("  Card: %s", device));
+  XBU::verbose(XBU::format("  Update: %s", update));
   // Is valid BDF value valid
 
   if (test_mode) {

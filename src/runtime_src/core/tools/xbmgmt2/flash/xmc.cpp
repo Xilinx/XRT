@@ -292,7 +292,7 @@ int XMC_Flasher::xclGetBoardInfo(std::map<char, std::vector<char>>& info)
     return 0;
 }
 
-int XMC_Flasher::program(std::istream& tiTxtStream, const ELARecord& record)
+int XMC_Flasher::program(std::istream& tiTxtStream, const ELARecord& record) //* prog bar
 {
     std::string byteStr;
     int ret = 0;
@@ -345,7 +345,7 @@ int XMC_Flasher::program(std::istream& tiTxtStream, const ELARecord& record)
 
         // Send out a fully loaded pkt
         mPkt.hdr.payloadSize = pos;
-        if ((ret = sendPkt(true)) != 0)
+        if ((ret = sendPkt(true)) != 0) //* if prog bar val=true sendPkt false
             return ret;
         // Reset opcode and pos for next data pkt
         mPkt.hdr.opCode = XPO_MSP432_SEC_DATA;

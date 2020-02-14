@@ -300,7 +300,6 @@ std::vector<DSAInfo> Flasher::getInstalledDSA()
     if (onBoard.name.empty() && onBoard.uuids.empty())
     {
         std::cout << "Shell on FPGA is unknown" << std::endl;
-        return DSAs;
     }
 
     auto vendor_id = xrt_core::device_query<xrt_core::query::pcie_vendor>(m_device);

@@ -75,6 +75,7 @@ public:
     DSAInfo getOnBoardDSA();
     std::vector<DSAInfo> getInstalledDSA();
     int getBoardInfo(BoardInfo& board);
+    // uint16_t get_dsainfo_canidate(const std::string dsa, const std::string& id);
 
 private:
     enum E_FlasherType {
@@ -92,6 +93,7 @@ private:
 
     FeatureRomHeader mFRHeader;
     unsigned int mGoldenVer = UINT_MAX;
+    
 
     const std::vector<std::pair<std::string, E_FlasherType>> flashPairs = {
         std::make_pair( "7v3", BPI ),
