@@ -2917,14 +2917,6 @@ static int xmc_probe(struct platform_device *pdev)
 	if (READ_GPIO(xmc, 0) == GPIO_ENABLED || autonomous_xmc(pdev))
 		xmc->state = XMC_STATE_ENABLED;
 
-	err = mgmt_sysfs_create_xmc(pdev);
-	if (err) {
-		xocl_err(&pdev->dev, "Create sysfs failed, err %d", err);
-		goto failed;
-	}
-
-	xmc->sysfs_created = true;
-
 	xmc->cache = vzalloc(sizeof(struct xcl_sensor));
 
 	if (!xmc->cache) {
@@ -2957,6 +2949,14 @@ static int xmc_probe(struct platform_device *pdev)
 		if (xmc->cs_on_ptfm)
 			xocl_info(&pdev->dev, "Runtime clock scaling is supported.\n");
 	}
+
+	err = mgmt_sysfs_create_xmc(pdev);
+	if (err) {
+		xocl_err(&pdev->dev, "Create sysfs failed, err %d", err);
+		goto failed;
+	}
+
+	xmc->sysfs_created = true;
 
 	return 0;
 
