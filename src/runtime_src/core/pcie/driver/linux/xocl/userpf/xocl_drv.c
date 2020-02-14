@@ -407,9 +407,6 @@ failed_notify:
 		xocl_reset_notify(xdev->core.pdev, false);
 
 		xocl_drvinst_set_offline(xdev->core.drm, false);
-
-		//Reset Virtualization registers
-		(void) xocl_mb_read_p2p_addr(xdev);
 	}
 
 	return ret;

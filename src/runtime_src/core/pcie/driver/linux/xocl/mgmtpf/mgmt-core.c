@@ -1201,8 +1201,12 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 
 	xclmgmt_connect_notify(lro, false);
 
-	if (xocl_passthrough_virtualization_on(lro))
+	if (xocl_passthrough_virtualization_on(lro)) {
 		pci_write_config_byte(pdev, XOCL_VSEC_XLAT_CTL_REG_ADDR, 0x0);
+		pci_write_config_dword(pdev, XOCL_VSEC_XLAT_GPA_BASE_UPPER_REG_ADDR, 0x0);
+		pci_write_config_dword(pdev, XOCL_VSEC_XLAT_GPA_LIMIT_UPPER_REG_ADDR, 0x0);
+		pci_write_config_dword(pdev, XOCL_VSEC_XLAT_GPA_LOWER_REG_ADDR, 0x0);
+	}
 
 	/* destroy queue before stopping health thread */
 	xocl_queue_destroy(lro);
