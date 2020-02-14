@@ -35,6 +35,7 @@ namespace xdp {
   {
     VPTraceWriter::writeHeader() ;
     fout << "XRT Version," << XRTVersion << std::endl ;
+    //fout << "Profiled Application," << xdp::WriterI::getCurrentExecutableName() << std::endl; // check
   }
 
   void HALHostTraceWriter::writeStructure()

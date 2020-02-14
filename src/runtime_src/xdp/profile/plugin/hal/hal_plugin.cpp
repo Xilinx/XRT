@@ -103,10 +103,13 @@ namespace xdp {
     uint64_t deviceId = getDeviceId(handle);
 
     (db->getStaticInfo()).updateDevice(deviceId, binary);
+
+
     struct xclDeviceInfo2* info = new xclDeviceInfo2;
     xclGetDeviceInfo2(handle, info);
     (db->getStaticInfo()).setDeviceName(deviceId, std::string(info->mName));
 
+    // Update DeviceIntf in HALPlugin
     if(devices.find(deviceId) != devices.end()) {
       delete devices[deviceId];
       devices[deviceId] = nullptr;
