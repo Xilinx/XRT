@@ -35,10 +35,7 @@ static std::map<device::QueryRequest, device::QueryRequestEntry> sQueryTable =
   { device::QR_XMC_BMC_VERSION,           { "QR_XMC_BMC_VERSION",           "satellite_controller_version", &typeid(std::string),  device::format_primative }},
 
   { device::QR_DNA_SERIAL_NUM,            { "QR_DNA_SERIAL_NUM",            "dna",              &typeid(std::string),  device::format_primative }},
-  { device::QR_CLOCK_FREQS,               { "QR_CLOCK_FREQS",               "clocks",           &typeid(std::vector<std::string>),  device::format_primative }},
-  { device::QR_IDCODE,                    { "QR_IDCODE",                    "idcode",           &typeid(std::string),  device::format_primative }},
 
-  { device::QR_STATUS_MIG_CALIBRATED,     { "QR_STATUS_MIG_CALIBRATED",     "mig_calibrated",   &typeid(bool),  device::format_primative }},
   { device::QR_STATUS_P2P_ENABLED,        { "QR_STATUS_P2P_ENABLED",        "p2p_enabled",      &typeid(bool),  device::format_primative }},
 
   { device::QR_TEMP_CARD_TOP_FRONT,       { "QR_TEMP_CARD_TOP_FRONT",       "temp_top_front_C",    &typeid(uint64_t),  device::format_primative }},
@@ -276,9 +273,9 @@ device::
 get_platform_info(boost::property_tree::ptree& pt) const
 {
   query_and_put(QR_DNA_SERIAL_NUM, pt);
-  query_and_put(QR_CLOCK_FREQS, pt);
-  query_and_put(QR_IDCODE, pt);
-  query_and_put(QR_STATUS_MIG_CALIBRATED, pt);
+  ptree_updater<query::clock_freqs>::query_and_put(this, pt);
+  ptree_updater<query::idcode>::query_and_put(this, pt);
+  ptree_updater<query::status_mig_calibrated>::query_and_put(this, pt);
   query_and_put(QR_STATUS_P2P_ENABLED, pt);
 }
 

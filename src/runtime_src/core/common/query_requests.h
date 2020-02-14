@@ -449,27 +449,49 @@ struct clock_freqs : request
 {
   using result_type = std::vector<std::string> ;
   static const key_type key = key_type::clock_freqs;
+  static const char* name() { return "clocks"; }
 
   virtual boost::any
   get(const device*) const = 0;
+
+  // formatting of individual items for the vector
+  static std::string
+  to_string(const std::string& value)
+  {
+    return value;
+  }
 };
 
 struct idcode : request
 {
-  using result_type = std::string;
+  using result_type = uint64_t;
   static const key_type key = key_type::idcode;
+  static const char* name() { return "idcode"; }
 
   virtual boost::any
   get(const device*) const = 0;
+
+  static std::string
+  to_string(const result_type& value)
+  {
+    return boost::str(boost::format("0x%x") % value);
+  }
 };
 
 struct status_mig_calibrated : request
 {
   using result_type = bool;
   static const key_type key = key_type::status_mig_calibrated;
+  static const char* name() { return "mig_calibrated"; }
 
   virtual boost::any
   get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return value ? "true" : "false";
+  }
 };
 
 struct status_p2p_enabled : request
