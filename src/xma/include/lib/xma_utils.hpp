@@ -26,6 +26,7 @@ namespace xma_core {
    
    int32_t finalize_ddr_index(XmaHwKernel* kernel_info, int32_t req_ddr_index, int32_t& ddr_index, const std::string& prefix);
    int32_t create_session_execbo(XmaHwSessionPrivate *priv, int32_t count, const std::string& prefix);
+   int32_t check_plugin_version(int32_t plugin_main_ver, int32_t plugin_sub_ver);
 }
 
 namespace xma_core { namespace utils {
