@@ -51,7 +51,7 @@ namespace xdp {
     ~HALDeviceTraceWriter() ;
 
     virtual void write(bool openNewFile) ;
-    virtual bool isDeviceWriter() { return true ; } 
+    virtual bool isDevice() { return true ; } 
     virtual DeviceIntf* device()  { return dev ; } 
     virtual bool isSameDevice(void* /*handle*/) 
     { // return dev->getAbstractDevice()->getRawDevice() == handle ;

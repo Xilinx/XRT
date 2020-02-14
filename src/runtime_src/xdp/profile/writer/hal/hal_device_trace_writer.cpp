@@ -45,6 +45,7 @@ namespace xdp {
 
   void HALDeviceTraceWriter::writeStructure()
   {
+    uint32_t rowCount = 0;
     fout << "STRUCTURE" << std::endl ;
     
     // Use the database's "static" information to discover how many
@@ -52,37 +53,36 @@ namespace xdp {
     //  to build up the structure of the file we are generating
     
     std::string deviceName = (db->getStaticInfo()).getDeviceName(deviceId) ;
-    std::string xclbinName = (db->getStaticInfo()).getXclbinName(deviceId) ;
+    std::string xclbinName = (db->getStaticInfo()).getXclbinUUID(deviceId) ;
     
-    fout << "Group_start," << deviceName << std::endl ;
-    fout << "Group_start," << xclbinName << std::endl ;
+    fout << "Group_Start," << deviceName << std::endl ;
+    fout << "Group_Start," << xclbinName << std::endl ;
 
     uint16_t numKDMA = (db->getStaticInfo()).getKDMACount(deviceId) ;
-
-    if (numKDMA > 0)
-    {
-      fout << "Group_start,KDMA" << std::endl ;
+    if(numKDMA) {
+      fout << "Group_Start,KDMA" << std::endl ;
       for (unsigned int i = 0 ; i < numKDMA ; ++i)
       {
-	      fout << "Dynamic_Row,Read, ,KERNEL_READ" << std::endl ;
-	      fout << "Dynamic_Row,Write, ,KERNEL_WRITE" << std::endl ;
+	      fout << "Dynamic_Row," << ++rowCount << ",Read, ,KERNEL_READ" << std::endl ;
+	      fout << "Dynamic_Row," << ++rowCount << ",Write, ,KERNEL_WRITE" << std::endl ;
       }
-      fout << "Group_end,KDMA" << std::endl ;
+      fout << "Group_End,KDMA" << std::endl ;
     }
 
-    std::vector<ComputeUnitInstance> cus = (db->getStaticInfo()).getCUs(dev) ;
-    for (unsigned int i = 0 ; i < cus.size() ; ++i)
-    {
-      fout << "Group_start," << cus[i].getName() << std::endl ;
-      fout << "Dynamic_Row_Summary,Executions, ,KERNEL" << std::endl ;
-      // For each memory bank/destination that could be accessed by this
-      //  compute unit, create a row.
-
-      fout << "Group_end," << cus[i].getName() << std::endl ;
+    std::vector<ComputeUnitInstance>* cus = (db->getStaticInfo()).getCUs(deviceId) ;
+    if(cus) {
+      for (unsigned int i = 0 ; i < cus->size() ; ++i)
+      {
+        fout << "Group_Start," << (*cus)[i].getName() << std::endl ;
+        fout << "Dynamic_Row_Summary," << ++rowCount << ",Executions, ,KERNEL" << std::endl ;
+        // For each memory bank/destination that could be accessed by this
+        //  compute unit, create a row.
+        fout << "Group_End," << (*cus)[i].getName() << std::endl ;
+      }
     }
 
-    fout << "Group_end," << xclbinName << std::endl ;
-    fout << "Group_end," << deviceName << std::endl ;
+    fout << "Group_End," << xclbinName << std::endl ;
+    fout << "Group_End," << deviceName << std::endl ;
 
   }
 
