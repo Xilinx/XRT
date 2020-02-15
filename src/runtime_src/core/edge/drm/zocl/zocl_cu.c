@@ -343,7 +343,7 @@ zocl_hls_cu_init(struct zocl_cu *cu, phys_addr_t paddr)
 	}
 
 	core->control = paddr & 0x7;
-	paddr = paddr & ZOCL_KDS_MASK; 
+	paddr = paddr & ZOCL_KDS_MASK;
 	core->paddr = paddr;
 	core->vaddr = ioremap(paddr, CU_SIZE);
 	if (!core->vaddr) {
