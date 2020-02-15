@@ -473,9 +473,8 @@ static int clock_ocl_freqscaling(struct clock *clock, bool force,
 		}
 
 		val = reg_rd(clock->clock_bases[i] + OCL_CLKWIZ_STATUS_OFFSET);
-		for (count = 0; val != 1 && count < 10; count++) {
-			/* workaround: after toggle gate, clock wizard stays busy */
-			mdelay(500);
+		for (count = 0; val != 1 && count < 20; count++) {
+			mdelay(50);
 			val = reg_rd(clock->clock_bases[i] + OCL_CLKWIZ_STATUS_OFFSET);
 		}
 		if (val != 1) {
@@ -581,6 +580,7 @@ static int set_freqs(struct clock *clock, unsigned short *freqs, int num_freqs,
 	/* enable kernel clocks */
 	if (clock->clock_ucs_control_status) {
 		CLOCK_INFO(clock, "Enable kernel clocks ucs control");
+		msleep(10);
 		reg_wr(clock->clock_ucs_control_status +
 			XOCL_RES_OFFSET_CHANNEL2, 0x1);
 	}

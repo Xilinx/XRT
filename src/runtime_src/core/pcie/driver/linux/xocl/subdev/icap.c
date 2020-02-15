@@ -2058,6 +2058,23 @@ static int icap_verify_signature(struct icap *icap,
 	return ret;
 }
 
+static int icap_refresh_freq(struct icap *icap, struct axlf *xclbin)
+{
+	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
+	int err = 0;
+
+	if (ICAP_PRIVILEGED(icap) && !XOCL_DSA_IS_SMARTN(xdev)) {
+		err = xclbin_setup_clock_freq_topology(icap, xclbin);
+		if (!err) {
+			err = axlf_set_freqscaling(icap);
+			err = err == -ENODEV ? 0 : err;
+		}
+	}
+
+	ICAP_INFO(icap, "ret: %d", err);
+	return err;
+}
+
 static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 {
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
@@ -2087,14 +2104,9 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 		goto out;
 	}
 
-	if (!XOCL_DSA_IS_SMARTN(xdev)) {
-		err = xclbin_setup_clock_freq_topology(icap, xclbin);
-		if (err)
-			goto out;
-		err = axlf_set_freqscaling(icap);
-		if (err && err != -ENODEV)
-			goto out;
-	}
+	err = icap_refresh_freq(icap, xclbin);
+	if (err)
+		goto out;
 
 	err = icap_download_bitstream(icap, xclbin);
 	if (err)
@@ -2174,7 +2186,13 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 
 	if (num_dev > 0) {
 		xocl_subdev_create_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
+		/*
+		 * a little bit over kill to refresh lots of things in icap, we
+		 * will refactor code as subdev or different module, for
+		 * example ulp subdev or xclbin util
+		 */
 		icap_refresh_addrs(pdev);
+		icap_refresh_freq(icap, xclbin);
 	}
 
 	if (ICAP_PRIVILEGED(icap)) {
