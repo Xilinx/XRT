@@ -529,7 +529,8 @@ static irqreturn_t sched_exec_isr(int irq, void *arg)
 		return IRQ_NONE;
 	}
 
-	if(zocl_cu_get_control(&zdev->exec->zcu[cu_idx]) == AP_CTRL_CHAIN)
+	/* Check for done and write ap_continue to stop redundent interrupts */
+	if (zocl_cu_get_control(&zdev->exec->zcu[cu_idx]) == AP_CTRL_CHAIN)
 		zocl_cu_check(&zdev->exec->zcu[cu_idx]);
 	
 	/* This function returns the value of the interrupt status register
