@@ -1495,7 +1495,7 @@ int shim::xclGetDebugIPlayoutPath(char* layoutPath, size_t size)
 }
 
 
-int shim::xclGetSubdevPath(const char* subdev, uint32_t idx, char* sysfsPath, size_t size)
+int shim::xclGetSubdevPath(const char* subdev, uint32_t idx, char* path, size_t size)
 {
     auto dev = pcidev::get_dev(mBoardNumber);
     std::string subdev_str = std::string(subdev);
@@ -1506,8 +1506,8 @@ int shim::xclGetSubdevPath(const char* subdev, uint32_t idx, char* sysfsPath, si
       mLogStream << std::endl;
     }
     std::string sysfsFullPath = dev->get_subdev_path(subdev_str, idx);
-    strncpy(sysfsPath, sysfsFullPath.c_str(), size);
-    sysfsPath[size - 1] = '\0';
+    strncpy(path, sysfsFullPath.c_str(), size);
+    path[size - 1] = '\0';
     return 0;
 }
 
@@ -2243,10 +2243,10 @@ int xclCloseIPInterruptNotify(xclDeviceHandle handle, int fd)
 }
 
 int xclGetSubdevPath(xclDeviceHandle handle,  const char* subdev,
-                        uint32_t idx, char* sysfsPath, size_t size)
+                        uint32_t idx, char* path, size_t size)
 {
   xocl::shim *drv = xocl::shim::handleCheck(handle);
   if (!drv)
     return -1;
-  return drv->xclGetSubdevPath(subdev, idx, sysfsPath, size);
+  return drv->xclGetSubdevPath(subdev, idx, path, size);
 }

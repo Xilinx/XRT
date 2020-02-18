@@ -663,8 +663,8 @@ public:
       return hal::operations_result<std::string>();
     }
     path_buf[max_path - 1] = '\0';
-    std::string sysfs_path = std::string(path_buf);
-    return sysfs_path;
+    std::string path = std::string(path_buf);
+    return path;
   }
 
   virtual hal::operations_result<std::string>
