@@ -2424,8 +2424,10 @@ static int stop_xmc(struct platform_device *pdev)
 	else if (!xmc->enabled)
 		return -ENODEV;
 
-	if (xmc->sysfs_created)
+	if (xmc->sysfs_created) {
 		mgmt_sysfs_destroy_xmc(pdev);
+		xmc->sysfs_created = false;
+	}
 
 	mutex_lock(&xmc->xmc_lock);
 	ret = stop_xmc_nolock(pdev);
