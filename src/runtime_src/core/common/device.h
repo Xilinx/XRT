@@ -39,23 +39,6 @@ namespace xrt_core {
 class device : ishim
 {
 
-////
-// struct fd_wrapper
-// {
-// private:
-//   virtual int open(const std::string& subdev, int flag) = const = 0;
-//   virtual void close(int dev_handle) const = 0;
-//   using fdwrap = scope_guard<int, std::function<void(int)>>;
-
-// public:
-//   virtual fdwrap
-//   file_open(const std::string& subdev, int flag)
-//   {
-//     return fdwrap(open(subdev, flag), std::bind(&fd_wrapper::close, this, std::placeholders::_1));
-//   }
-// };
-
-////
 public:
   // device index type
   using id_type = unsigned int;
