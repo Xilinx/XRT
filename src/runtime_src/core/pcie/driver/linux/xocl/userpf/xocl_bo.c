@@ -57,7 +57,7 @@ static inline void *drm_malloc_ab(size_t nmemb, size_t size)
 
 static inline void xocl_release_pages(struct page **pages, int nr, bool cold)
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0)
+#if SUSE_RELEASE_CODE >= SUSE_RELEASE_VERSION(15,0) || LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0)
 	release_pages(pages, nr);
 #else
 	release_pages(pages, nr, cold);
@@ -264,7 +264,7 @@ static int xocl_cma_bo_alloc(struct xocl_drm *drm_p, struct drm_xocl_bo *xobj, u
 			return -ENOMEM;
 
 		err = drm_mm_insert_node_generic(drm_p->cma_chunk[idx]->mm, xobj->cma_mm_node, size, PAGE_SIZE,
-#if defined(XOCL_DRM_FREE_MALLOC)
+#if defined(SUSE_RELEASE_CODE) || defined(XOCL_DRM_FREE_MALLOC)
 			0, 0);
 #else
 			0, 0, 0);

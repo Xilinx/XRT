@@ -189,7 +189,7 @@ static int xocl_mmap(struct file *filp, struct vm_area_struct *vma)
 vm_fault_t xocl_gem_fault(struct vm_fault *vmf)
 {
 	struct vm_area_struct *vma = vmf->vma;
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
+#elif SUSE_RELEASE_CODE >= SUSE_RELEASE_VERSION(15,0) || LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
 int xocl_gem_fault(struct vm_fault *vmf)
 {
 	struct vm_area_struct *vma = vmf->vma;
@@ -397,7 +397,7 @@ static struct drm_driver mm_drm_driver = {
 	.prime_fd_to_handle		= drm_gem_prime_fd_to_handle,
 	.gem_prime_import		= drm_gem_prime_import,
 	.gem_prime_export		= drm_gem_prime_export,
-#if ((LINUX_VERSION_CODE >= KERNEL_VERSION(3, 18, 0)) && (LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)))
+#if !defined(SUSE_RELEASE_CODE) && ((LINUX_VERSION_CODE >= KERNEL_VERSION(3, 18, 0)) && (LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)))
 	.set_busid			= drm_pci_set_busid,
 #endif
 	.name				= XOCL_MODULE_NAME,
@@ -511,7 +511,7 @@ int xocl_mm_insert_node(struct xocl_drm *drm_p, u32 ddr,
 		return -EINVAL;
 
 	return drm_mm_insert_node_generic(drm_p->mm[ddr], node, size, PAGE_SIZE,
-#if defined(XOCL_DRM_FREE_MALLOC)
+#if defined(SUSE_RELEASE_CODE) || defined(XOCL_DRM_FREE_MALLOC)
 		0, 0);
 #else
 		0, 0, 0);
@@ -581,7 +581,7 @@ static void xocl_cma_chunk_free(struct xocl_drm *drm_p, uint32_t idx)
 			drm_mm_takedown(drm_p->cma_chunk[idx]->mm);
 			vfree(drm_p->cma_chunk[idx]->mm);
 		}
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0)
+#if SUSE_RELEASE_CODE >= SUSE_RELEASE_VERSION(15,0) || LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0)
 		release_pages(drm_p->cma_chunk[idx]->pages, drm_p->cma_chunk[idx]->page_count);
 #else
 		release_pages(drm_p->cma_chunk[idx]->pages, drm_p->cma_chunk[idx]->page_count, 0);

@@ -103,7 +103,7 @@ void xocl_cma_chunk_free_helper(struct xocl_drm *drm_p, struct drm_xocl_free_cma
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
 vm_fault_t xocl_gem_fault(struct vm_fault *vmf);
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
+#elif SUSE_RELEASE_CODE >= SUSE_RELEASE_VERSION(15,0) || LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
 int xocl_gem_fault(struct vm_fault *vmf);
 #else
 int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf);
