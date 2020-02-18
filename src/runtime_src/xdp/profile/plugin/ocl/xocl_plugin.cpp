@@ -206,6 +206,9 @@ namespace xdp {
 
     // 5. Bit widths for memory types for each device
     getMemBitWidthDevices();
+
+    // 6. xrt.ini settings
+    getXrtIniSettings();
   }
 
   void XoclPlugin::getDeviceExecutionTimes(RTProfile *profile)
@@ -318,6 +321,17 @@ namespace xdp {
         mDeviceMemTypeBitWidthMap[name + "|PLRAM"] = 512;
       }
     }
+  }
+
+  void XoclPlugin::getXrtIniSettings()
+  {
+    mXrtIniMap["profile"] = std::to_string(xrt::config::get_profile());
+    mXrtIniMap["timeline_trace"] = std::to_string(xrt::config::get_timeline_trace());
+    mXrtIniMap["data_transfer_trace"] = xrt::config::get_data_transfer_trace();
+    mXrtIniMap["power_profile"] = std::to_string(xrt::config::get_power_profile());
+    mXrtIniMap["stall_trace"] = xrt::config::get_stall_trace();
+    mXrtIniMap["trace_buffer_size"] = xrt::config::get_trace_buffer_size();
+    mXrtIniMap["verbosity"] = std::to_string(xrt::config::get_verbosity());
   }
 
   // ****************************************
