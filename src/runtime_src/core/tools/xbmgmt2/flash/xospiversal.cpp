@@ -21,7 +21,7 @@
  * @brief XOSPIVER_Flasher::XOSPIVER_Flasher
  */
 XOSPIVER_Flasher::XOSPIVER_Flasher(std::shared_ptr<xrt_core::device> dev)
-    : m_device(dev)
+    : m_device(std::move(dev))
 {
 }
 
