@@ -179,6 +179,7 @@ static const struct file_operations am_fops = {
 	.open = am_open,
 	.release = am_close,
 	.mmap = am_mmap,
+	.unlocked_ioctl = am_ioctl,
 };
 
 struct xocl_drv_private am_priv = {
@@ -222,5 +223,6 @@ err_chrdev_reg:
 
 void xocl_fini_am(void)
 {
+	unregister_chrdev_region(am_priv.dev, XOCL_MAX_DEVICES);
 	platform_driver_unregister(&am_driver);
 }

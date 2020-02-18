@@ -43,8 +43,6 @@
 #define RENDER_NM       "renderD"
 
 static const std::string sysfs_root = "/sys/bus/pci/devices/";
-static const std::string devfs_root = "/dev/xfpga/";
-
 
 static std::string get_name(const std::string& dir, const std::string& subdir)
 {
@@ -60,7 +58,7 @@ static std::string get_name(const std::string& dir, const std::string& subdir)
 // Helper to find subdevice directory name
 // Assumption: all subdevice's sysfs directory name starts with subdevice name!!
 static int get_subdev_dir_name(const std::string& dir,
-    const std::string& subDevName, uint idx, std::string& subdir)
+    const std::string& subDevName, std::string& subdir)
 {
     DIR *dp;
     size_t sub_nm_sz = subDevName.size();
@@ -97,7 +95,7 @@ std::string pcidev::pci_device::get_sysfs_path(const std::string& subdev,
     const std::string& entry)
 {
     std::string subdir;
-    if (get_subdev_dir_name(sysfs_root + sysfs_name, subdev, 0, subdir) != 0)
+    if (get_subdev_dir_name(sysfs_root + sysfs_name, subdev, subdir) != 0)
         return "";
 
     std::string path = sysfs_root;
@@ -282,7 +280,7 @@ static bool is_admin()
     return (getuid() == 0) || (geteuid() == 0);
 }
 
-int pcidev::pci_device::open(const std::string& subdev, int flag)
+int pcidev::pci_device::open(const std::string& subdev, uint32_t idx, int flag)
 {
     if (is_mgmt && !::is_admin())
         throw std::runtime_error("Root privileges required");

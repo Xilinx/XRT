@@ -84,8 +84,10 @@ XCL_DRIVER_DLLESPEC
 int
 xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* info);
 
-XCL_DRIVER_DLLESPEC int xclGetSubdevPath(xclDeviceHandle handle,  const char* subdev,
-                                         uint idx, char* sysfsPath, size_t size);
+XCL_DRIVER_DLLESPEC
+int 
+xclGetSubdevPath(xclDeviceHandle handle,  const char* subdev,
+                 uint32_t idx, char* sysfsPath, size_t size);
 
 struct KernelTransferData
 {

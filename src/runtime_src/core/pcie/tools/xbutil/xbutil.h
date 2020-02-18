@@ -916,12 +916,6 @@ public:
         sensor_tree::put("debug_profile.device_info.nifd_name", std::string(info.nifd_name));
         /** End of debug and profile device information */
 
-
-        char layoutPath[512];
-
-        err = xclGetSubdevPath(m_handle,  "accel_mon", 0, layoutPath, 512);
-        std::cout << "HAHA " <<layoutPath << std::endl;
-
         return 0;
     }
 

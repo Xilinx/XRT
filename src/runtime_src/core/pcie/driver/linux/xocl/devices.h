@@ -194,16 +194,15 @@ enum {
 #define	XOCL_FLASH		"flash"
 #define	XOCL_DMA_MSIX		"dma_msix"
 #define	XOCL_MAILBOX_VERSAL	"mailbox_versal"
-#define XOCL_ERT		"ert"
-#define XOCL_OSPI_VERSAL	"ospi_versal"
+#define	XOCL_ERT		"ert"
+#define	XOCL_OSPI_VERSAL	"ospi_versal"
 #define	XOCL_AIM		"aximm_mon"
 #define	XOCL_AM			"accel_mon"
 #define	XOCL_ASM		"axistream_mon"
 #define	XOCL_TRACE_FIFO_LITE	"trace_fifo_lite"
 #define	XOCL_TRACE_FIFO_FULL	"trace_fifo_full"
 #define	XOCL_TRACE_FUNNEL	"trace_funnel"
-#define	XOCL_TRACE_S2MM		"TRACE_S2MM"
->>>>>>> dyna create debug ip subdevice
+#define	XOCL_TRACE_S2MM		"trace_s2mm"
 
 #define	XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
 

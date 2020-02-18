@@ -179,6 +179,7 @@ static const struct file_operations trace_fifo_full_fops = {
 	.open = trace_fifo_full_open,
 	.release = trace_fifo_full_close,
 	.mmap = trace_fifo_full_mmap,
+	.unlocked_ioctl = trace_fifo_full_ioctl,
 };
 
 struct xocl_drv_private trace_fifo_full_priv = {
@@ -222,5 +223,6 @@ err_chrdev_reg:
 
 void xocl_fini_trace_fifo_full(void)
 {
+	unregister_chrdev_region(trace_fifo_full_priv.dev, XOCL_MAX_DEVICES);
 	platform_driver_unregister(&trace_fifo_full_driver);
 }

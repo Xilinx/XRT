@@ -179,6 +179,7 @@ static const struct file_operations trace_s2mm_fops = {
 	.open = trace_s2mm_open,
 	.release = trace_s2mm_close,
 	.mmap = trace_s2mm_mmap,
+	.unlocked_ioctl = trace_s2mm_ioctl,
 };
 
 struct xocl_drv_private trace_s2mm_priv = {
@@ -222,5 +223,6 @@ err_chrdev_reg:
 
 void xocl_fini_trace_s2mm(void)
 {
+	unregister_chrdev_region(trace_s2mm_priv.dev, XOCL_MAX_DEVICES);
 	platform_driver_unregister(&trace_s2mm_driver);
 }

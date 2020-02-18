@@ -179,6 +179,7 @@ static const struct file_operations trace_funnel_fops = {
 	.open = trace_funnel_open,
 	.release = trace_funnel_close,
 	.mmap = trace_funnel_mmap,
+	.unlocked_ioctl = trace_funnel_ioctl,
 };
 
 struct xocl_drv_private trace_funnel_priv = {
@@ -222,5 +223,6 @@ err_chrdev_reg:
 
 void xocl_fini_trace_funnel(void)
 {
+	unregister_chrdev_region(trace_funnel_priv.dev, XOCL_MAX_DEVICES);
 	platform_driver_unregister(&trace_funnel_driver);
 }

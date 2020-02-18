@@ -179,6 +179,7 @@ static const struct file_operations aim_fops = {
 	.open = aim_open,
 	.release = aim_close,
 	.mmap = aim_mmap,
+	.unlocked_ioctl = aim_ioctl,
 };
 
 struct xocl_drv_private aim_priv = {
@@ -222,5 +223,6 @@ err_chrdev_reg:
 
 void xocl_fini_aim(void)
 {
+	unregister_chrdev_region(aim_priv.dev, XOCL_MAX_DEVICES);
 	platform_driver_unregister(&aim_driver);
 }
