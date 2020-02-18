@@ -1454,7 +1454,7 @@ int xocl_wait_pci_status(struct pci_dev *pdev, u16 mask, u16 val, int timeout)
 	}
 
 	xocl_info(&pdev->dev, "waiting for %d ms", i);
-	if (i == 5000) 
+	if (i == timeout) 
 		return -ETIME;
 
 	return 0;
