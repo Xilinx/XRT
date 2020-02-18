@@ -17,18 +17,20 @@
 #ifndef PCIE_DEVICE_LINUX_H
 #define PCIE_DEVICE_LINUX_H
 
-#include "common/device_pcie.h"
+#include "core/common/ishim.h"
+#include "core/pcie/common/device_pcie.h"
 
 namespace xrt_core {
 
-class device_linux : public device_pcie
+// concrete class derives from device_pcie, but mixes in
+// shim layer functions for access through base class
+class device_linux : public shim<device_pcie>
 {
 public:
   device_linux(id_type device_id, bool user);
 
   // query functions
   virtual void read_dma_stats(boost::property_tree::ptree& pt) const;
-  virtual void query(QueryRequest qr, const std::type_info& tinfo, boost::any& value) const;
 
   virtual void read(uint64_t addr, void* buf, uint64_t len) const;
   virtual void write(uint64_t addr, const void* buf, uint64_t len) const;

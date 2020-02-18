@@ -41,9 +41,9 @@ Flasher::E_FlasherType Flasher::getFlashType(std::string typeStr)
     std::string err;
     E_FlasherType type = E_FlasherType::UNKNOWN;
     if (typeStr.empty())
-        typeStr = xrt_core::query_device<std::string>(m_device, xrt_core::device::QR_F_FLASH_TYPE);
+      typeStr = xrt_core::device_query<xrt_core::query::f_flash_type>(m_device);
     if (typeStr.empty())
-        typeStr = xrt_core::query_device<std::string>(m_device, xrt_core::device::QR_FLASH_TYPE);
+      typeStr = xrt_core::device_query<xrt_core::query::flash_type>(m_device);
 
     if (typeStr.empty())
     {
@@ -236,12 +236,10 @@ Flasher::Flasher(unsigned int index) : mFRHeader{}
         return;
     }
 
-    bool is_mfg = false;
-    is_mfg = xrt_core::query_device<bool>(dev, xrt_core::device::QR_IS_MFG);
+    bool is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(dev);
 
     // std::vector<char> feature_rom;
-    // feature_rom = xrt_core::query_device<std::vector<char>>(dev, xrt_core::device::QR_ROM_RAW);
-    // if (feature_rom != xrt_core::invalid_query_value<std::vector<char>>())
+    // auto feature_rom = xrt_core::device_device<xrt_core::query::rom_raw>(dev);
     // {
     //     memcpy(&mFRHeader, feature_rom.data(), sizeof(struct FeatureRomHeader));
     //     // Something funny going on here. There must be a strange line ending
@@ -253,7 +251,6 @@ Flasher::Flasher(unsigned int index) : mFRHeader{}
     //         std::cout << "ERROR: Failed to detect feature ROM." << std::endl;
     //     }
     // }
-    // else if (is_mfg)
     if (is_mfg)
     {
        dev->read(MFG_REV_OFFSET, &mGoldenVer, sizeof(mGoldenVer));
@@ -341,12 +338,10 @@ DSAInfo Flasher::getOnBoardDSA()
     std::string bmc;
     uint64_t ts = NULL_TIMESTAMP;
 
-    std::string board_name;
     std::string uuid;
-    bool is_mfg = false;
 
-    is_mfg = xrt_core::query_device<bool>(m_device, xrt_core::device::QR_IS_MFG);
-    board_name = xrt_core::query_device<std::string>(m_device, xrt_core::device::QR_BOARD_NAME);
+    bool is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(m_device);
+    std::string board_name = xrt_core::device_query<xrt_core::query::board_name>(m_device);
 
     if (is_mfg)
     {
@@ -361,13 +356,13 @@ DSAInfo Flasher::getOnBoardDSA()
     //    ts = mFRHeader.TimeSinceEpoch;
     //}
     else{
-        vbnv = xrt_core::query_device<std::string>(m_device, xrt_core::device::QR_ROM_VBNV);
-        ts = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_ROM_TIME_SINCE_EPOCH);
-        uuid = xrt_core::query_device<std::string>(m_device, xrt_core::device::QR_ROM_UUID);
-        if (vbnv.empty())
-            throw xrt_core::error("Platform not found. Invalid device name.");
-        if(ts == std::numeric_limits<uint64_t>::max())
-            throw xrt_core::error("Platform not found. Invalid timestamp");
+      vbnv = xrt_core::device_query<xrt_core::query::rom_vbnv>(m_device);
+      ts = xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(m_device);
+      uuid = xrt_core::device_query<xrt_core::query::rom_uuid>(m_device);
+      if (vbnv.empty())
+        throw xrt_core::error("Platform not found. Invalid device name.");
+      if(ts == std::numeric_limits<uint64_t>::max())
+        throw xrt_core::error("Platform not found. Invalid timestamp");
     }
 
     BoardInfo info;

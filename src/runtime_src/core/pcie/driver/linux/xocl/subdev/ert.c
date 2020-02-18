@@ -81,7 +81,7 @@ static int stop_ert_nolock(struct xocl_ert *ert)
 
 	reg_val = READ_GPIO(ert, 0);
 	if (reg_val != GPIO_ENABLED)
-		WRITE_GPIO(ert, GPIO_ENABLED, 1);
+		WRITE_GPIO(ert, GPIO_ENABLED, 0);
 
 	reg_val = READ_CQ(ert, 0);
 	if (reg_val & ERT_EXIT_ACK) {

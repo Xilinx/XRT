@@ -68,6 +68,16 @@ typedef struct XmaBufferObj
 
 } XmaBufferObj;
 
+typedef struct XmaBufferPoolObj
+{
+    uint64_t buffer_size;
+    int32_t  bank_index;
+    int32_t  dev_index;
+    bool     device_only_buffer;
+    void*    private_do_not_touch;
+
+} XmaBufferPoolObj;
+
 /**
  * struct XmaBufferRef - Reference counted buffer used in XmaFrame and XmaDataBuffer
  *

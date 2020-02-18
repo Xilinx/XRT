@@ -33,6 +33,9 @@
 #define MAX_DSA_NAME            256
 #define MAX_PLUGINS             32//32 encoders+32 decoders+...
 
+#define XMA_LIB_MAIN_VER        2019
+#define XMA_LIB_SUB_VER         2
+
 #define INVALID_M1             -1
 #define STATS_WINDOW            4096.0f
 #define STATS_WINDOW_1          4095

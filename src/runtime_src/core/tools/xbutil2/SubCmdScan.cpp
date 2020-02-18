@@ -93,12 +93,11 @@ SubCmdScan::execute(const SubCmdOptions& _options) const
   if (!devices || (*devices).size()==0)
     throw xrt_core::error("No devices found");
 
-  using query_request = xrt_core::device::QueryRequest;
   std::cout << "INFO: Found total " << (*devices).size() << " card(s), " << "TBD" << " are usable.\n";
   for (auto& device : *devices) {
     auto device_id = device.second.get<unsigned int>("device_id", std::numeric_limits<unsigned int>::max());
     auto udev = xrt_core::get_userpf_device(device_id);
-    auto vbnv = xrt_core::query_device<std::string>(udev, query_request::QR_ROM_VBNV);
+    auto vbnv = xrt_core::device_query<xrt_core::query::rom_vbnv>(udev);
     auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(udev);
     std::cout << "[" << device_id << "]: "
               << xrt_core::query::pcie_bdf::to_string(bdf) << " "

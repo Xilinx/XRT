@@ -65,28 +65,27 @@ namespace xdp {
     // do nothing
   }
 
-  void XDPPluginI::logBufferEvent(double timestamp, bool isRead)
+  void XDPPluginI::logBufferEvent(double timestamp, bool isRead, bool isStart)
   {
+    // Total Active time = Last buffer event - First buffer event
+    if (mActiveTimeStartMs == 0.0)
+      mActiveTimeStartMs = timestamp;
+    mActiveTimeEndMs = timestamp;
     if (isRead) {
-      if (mFirstBufferReadMs == 0.0)
-        mFirstBufferReadMs = timestamp;
-      else
-        mLastBufferReadMs = timestamp;
+      // Total Read time = Sum(Read Activity Intervals)
+      mReadTimeStartMs = isStart ? timestamp : mReadTimeStartMs;
+      mReadTimeMs += (timestamp - mReadTimeStartMs);
     } else {
-      if (mFirstBufferWriteMs == 0.0)
-        mFirstBufferWriteMs = timestamp;
-      else
-        mLastBufferWriteMs = timestamp;
+      // Total Write time = Sum(Write Activity Intervals)
+      mWriteTimeStartMs = isStart ? timestamp : mWriteTimeStartMs;
+      mWriteTimeMs += (timestamp - mWriteTimeStartMs);
     }
   }
 
-  // First Start to Last End
+  // Total Active time =  Last buffer event - First buffer event
   double XDPPluginI::getBufferActiveTimeMs()
   {
-    double start, end;
-    start = (mFirstBufferReadMs < mFirstBufferWriteMs) ? mFirstBufferReadMs : mFirstBufferWriteMs;
-    end = (mLastBufferReadMs > mLastBufferWriteMs) ? mLastBufferReadMs : mLastBufferWriteMs;
-    return end - start;
+    return mActiveTimeEndMs - mActiveTimeStartMs;
   }
 
   // Get name string of guidance
@@ -155,6 +154,9 @@ namespace xdp {
         break;
       case MEMORY_TYPE_BIT_WIDTH:
         name = "MEMORY_TYPE_BIT_WIDTH";
+        break;
+      case XRT_INI_SETTING:
+        name = "XRT_INI_SETTING";
         break;
       case BUFFER_RD_ACTIVE_TIME_MS:
         name = "BUFFER_RD_ACTIVE_TIME_MS";
