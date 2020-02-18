@@ -157,70 +157,22 @@ static int updateSC(unsigned index, const char *file)
     if(!flasher.isValid())
         return -EINVAL;
 
+    bool is_mfg = false;
+    std::string errmsg;
     auto mgmt_dev = pcidev::get_dev(index, false);
-    std::shared_ptr<pcidev::pci_device> dev;
-    int i = 0;
-    for (dev = pcidev::get_dev(i, true); dev; dev = pcidev::get_dev(i, true)) {
-        if(dev->domain == mgmt_dev->domain &&
-            dev->bus == mgmt_dev->bus &&
-            dev->dev == mgmt_dev->dev) {
-                break;
-        }
-	i++;
-    }
 
-    if (!dev) {
+    mgmt_dev->sysfs_get<bool>("", "mfg", errmsg, is_mfg, false);
+    if (is_mfg) {
         return writeSCImage(flasher, file);
     }
 
-    std::string errmsg;
-    std::string tmp;
-    dev->sysfs_get("", "user_pf", errmsg, tmp);
-    if (!errmsg.empty()) {
-        std::cout << "CAUTION: User function is not found. " <<
-            "This is probably due to user function is running in virtual machine or user driver is not loaded. " << std::endl;
-        if(!canProceed())
-            return -ECANCELED;
-	return writeSCImage(flasher, file);
-    }
+    ret = mgmt_dev->shutdown(true);
+    if (ret)
+        return ret;
 
-    std::cout << "Stopping user function..." << std::endl;
-
-    dev->sysfs_put("", "shutdown", errmsg, "1\n");
-    if (!errmsg.empty()) {
-        std::cout << "Shutdown user function failed." << std::endl;
-        return -EINVAL;
-    }
-
-    /* Poll till shutdown is done */
-    int shutdownStatus = 0;
-    for (int wait = 0; wait < DEV_TIMEOUT; wait++) {
-        dev->sysfs_get<int>("", "shutdown", errmsg, shutdownStatus, EINVAL);
-        if (!errmsg.empty()) {
-            std::cout << errmsg << std::endl;
-            return -EINVAL;
-        }
-
-        if (shutdownStatus == 1){
-            /* Shutdown is done successfully. Returning from here */
-            break;
-        }
-        sleep(1);
-    }
-
-    if (!shutdownStatus) {
-        std::cout << "Shutdown user function timeout." << std::endl;
-        return -ETIMEDOUT;
-    }
-
-    dev->sysfs_put("", "remove", errmsg, "1\n");
-    if (!errmsg.empty()) {
-        std::cout << "Stopping user function failed" << std::endl;
-        return -EINVAL;
-    }
-
-    sleep(15);
     ret = writeSCImage(flasher, file);
+
+    auto dev = mgmt_dev->lookup_peer_dev();
 
     mgmt_dev->sysfs_put("", "dparent/rescan", errmsg, "1\n");
     if (!errmsg.empty()) {
@@ -293,6 +245,19 @@ static int resetShell(unsigned index)
     return flasher.upgradeFirmware("", nullptr, nullptr);
 }
 
+/* We do not take the risk to flash any bmc marked as UNKNOWN */
+static void isSameShellOrSC(DSAInfo& candidate, DSAInfo& current,
+	bool *same_dsa, bool *same_bmc)
+{
+    if (!current.name.empty()) {
+        *same_dsa = (candidate.name == current.name &&
+            candidate.matchId(current));
+        *same_bmc = (current.bmcVer.empty() ||
+            current.bmcVer.compare(DSAInfo::UNKNOWN) == 0 ||
+            candidate.bmcVer == current.bmcVer);
+    }
+}
+
 static int updateShellAndSC(unsigned boardIdx, DSAInfo& candidate, bool& reboot)
 {
     reboot = false;
@@ -306,12 +271,8 @@ static int updateShellAndSC(unsigned boardIdx, DSAInfo& candidate, bool& reboot)
     bool same_dsa = false;
     bool same_bmc = false;
     DSAInfo current = flasher.getOnBoardDSA();
-    if (!current.name.empty()) {
-        same_dsa = (candidate.name == current.name &&
-            candidate.matchId(current));
-        same_bmc = (current.bmcVer.empty() ||
-            candidate.bmcVer == current.bmcVer);
-    }
+    isSameShellOrSC(candidate, current, &same_dsa, &same_bmc);
+
     if (same_dsa && same_bmc)
         std::cout << "update not needed" << std::endl;
 
@@ -392,19 +353,23 @@ static DSAInfo selectShell(unsigned idx, std::string& dsa, std::string& id)
     bool same_dsa = false;
     bool same_bmc = false;
     DSAInfo currentDSA = flasher.getOnBoardDSA();
-    if (!currentDSA.name.empty()) {
-        same_dsa = (candidate.name == currentDSA.name &&
-            candidate.matchId(currentDSA));
-        same_bmc = (currentDSA.bmcVer.empty() ||
-            candidate.bmcVer == currentDSA.bmcVer);
-    }
+    isSameShellOrSC(candidate, currentDSA, &same_dsa, &same_bmc);
+ 
     if (same_dsa && same_bmc) {
         std::cout << "\t Status: shell is up-to-date" << std::endl;
         return DSAInfo("");
     }
-    std::cout << "\t Status: shell needs updating" << std::endl;
-    std::cout << "\t Current shell: " << currentDSA.name << std::endl;
-    std::cout << "\t Shell to be flashed: " << candidate.name << std::endl;
+
+    if (!same_bmc) {
+        std::cout << "\t Status: SC needs updating" << std::endl;
+        std::cout << "\t Current SC: " << currentDSA.bmcVer<< std::endl;
+        std::cout << "\t SC to be flashed: " << candidate.bmcVer << std::endl;
+    }
+    if (!same_dsa) {
+        std::cout << "\t Status: shell needs updating" << std::endl;
+        std::cout << "\t Current shell: " << currentDSA.name << std::endl;
+        std::cout << "\t Shell to be flashed: " << candidate.name << std::endl;
+    }
     return candidate;
 }
 

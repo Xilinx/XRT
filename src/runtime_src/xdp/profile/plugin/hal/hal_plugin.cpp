@@ -130,14 +130,14 @@ namespace xdp {
     devInterface->setDevice(new HalDevice(handle)) ;
     devInterface->readDebugIPlayout() ;
     xclCounterResults counters ;
-    devInterface->readCounters(XCL_PERF_MON_MEMORY, counters) ;
+    devInterface->readCounters(counters) ;
     (db->getStats()).updateCounters(devInterface, counters) ;
 
     // Next, read trace and update the dynamic database with appropriate events
     xclTraceResultsVector trace ;
     if (devInterface->hasFIFO())
     {
-      devInterface->readTrace(XCL_PERF_MON_MEMORY, trace) ;
+      devInterface->readTrace(trace) ;
     }
     else if (devInterface->hasTs2mm())
     {
@@ -173,7 +173,7 @@ namespace xdp {
     {
       devInterface->readDebugIPlayout() ;
       xclCounterResults counters ;
-      devInterface->readCounters(XCL_PERF_MON_MEMORY, counters) ;
+      devInterface->readCounters(counters) ;
       (db->getStats()).updateCounters(counters) ;
       
       // Next, read trace and update the dynamic database with
@@ -181,7 +181,7 @@ namespace xdp {
       xclTraceResultsVector trace ;
       if (devInterface->hasFIFO())
       {
-	devInterface->readTrace(XCL_PERF_MON_MEMORY, trace) ;
+	devInterface->readTrace(trace) ;
       }
       else if (devInterface->hasTs2mm())
       {

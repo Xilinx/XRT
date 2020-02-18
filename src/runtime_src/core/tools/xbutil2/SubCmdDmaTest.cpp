@@ -17,8 +17,9 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SubCmdDmaTest.h"
-#include "common/system.h"
-#include "common/device.h"
+#include "core/common/system.h"
+#include "core/common/device.h"
+#include "core/common/query_requests.h"
 #include "core/pcie/common/dmatest.h"
 
 #include "tools/common/XBUtilities.h"
@@ -42,13 +43,13 @@ dmatest(const std::shared_ptr<xrt_core::device>& device, size_t block_size, bool
   if (block_size == 0)
       block_size = 256 * 1024 * 1024; // Default block size
 
-  auto ddr_mem_size = xrt_core::query_device<uint64_t>(device, xrt_core::device::QR_ROM_DDR_BANK_SIZE);
+  auto ddr_mem_size = xrt_core::device_query<xrt_core::query::rom_ddr_bank_size>(device);
 
   if (verbose)
     std::cout << "Total DDR size: " << ddr_mem_size << " MB\n";
 
   // get DDR bank count from mem_topology if possible
-  auto membuf = xrt_core::query_device<std::vector<char>>(device, xrt_core::device::QR_MEM_TOPOLOGY_RAW);
+  auto membuf = xrt_core::device_query<xrt_core::query::mem_topology_raw>(device);
   auto mem_topo = reinterpret_cast<const mem_topology*>(membuf.data());
   if (membuf.empty() || mem_topo->m_count == 0)
     throw std::runtime_error

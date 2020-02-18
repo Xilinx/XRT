@@ -9,16 +9,12 @@ file(GLOB XRT_PCIE_WINDOWS_FILES
   "*.cpp"
   "../common/system_pcie.cpp"
   "../common/device_pcie.cpp"
-  "../../common/system.cpp"
-  "../../common/device.cpp"
   )
 
 file(GLOB XRT_PCIE_WINDOWS_STATIC_FILES
   "device_windows.*"
   "../common/system_pcie.cpp"
-  "../../common/system.cpp"
   "../common/device_pcie.cpp"
-  "../../common/device.cpp"
   )
 
 file(GLOB XRT_PCIE_WINDOWS_SHARED_FILES
@@ -27,10 +23,8 @@ file(GLOB XRT_PCIE_WINDOWS_SHARED_FILES
   "perf.cpp"
   "system_windows.cpp"
   "../common/system_pcie.cpp"
-  "../../common/system.cpp"
   "device_windows.cpp"
   "../common/device_pcie.cpp"
-  "../../common/device.cpp"
   )
 
 set(CMAKE_CXX_FLAGS "-DXCLHAL_MAJOR_VER=2 ${CMAKE_CXX_FLAGS}")

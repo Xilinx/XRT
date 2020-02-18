@@ -27,7 +27,7 @@
 #include <boost/property_tree/json_parser.hpp>
 
 // Generated include files
-#include <version.h>
+#include "version.h"
 
 #include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
@@ -226,7 +226,7 @@ FormattedOutput::getKernelDDRMemory(const std::string _sKernelInstanceName,
 void
 reportBuildVersion( std::ostream & _ostream)
 {
-  _ostream << XUtil::format("%17s: %s", "XRT Build Version", xrt_build_version).c_str() << std::endl;
+  _ostream << XUtil::format("%17s: %s (%s)", "XRT Build Version", xrt_build_version, xrt_build_version_branch).c_str() << std::endl;
   _ostream << XUtil::format("%17s: %s", "Build Date", xrt_build_version_date).c_str() << std::endl;
   _ostream << XUtil::format("%17s: %s", "Hash ID", xrt_build_version_hash).c_str() << std::endl;
 }

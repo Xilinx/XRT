@@ -35,8 +35,8 @@ int XOSPIVER_Flasher::xclUpgradeFirmware(std::istream& binStream)
 
     std::cout << "INFO: ***PDI has " << total_size << " bytes" << std::endl;
 
-    int fd = m_device->open("ospi_versal", O_RDWR); 
-    if (fd == -1) {
+    auto fd = m_device->file_open("ospi_versal", O_RDWR); 
+    if (fd.get() == -1) {
         std::cout << "ERROR Cannot open ospi_versal for writing " << std::endl;
         return -ENODEV;
     }
@@ -45,10 +45,8 @@ int XOSPIVER_Flasher::xclUpgradeFirmware(std::istream& binStream)
     binStream.read(buffer.data(), total_size);
 	ssize_t ret = total_size;
 #ifdef __GNUC__
-	ret = write(fd, buffer.data(), total_size);
+	ret = write(fd.get(), buffer.data(), total_size);
 #endif
-
-    m_device->close(fd);
 
     return ret == total_size ? 0 : -EIO;
 }

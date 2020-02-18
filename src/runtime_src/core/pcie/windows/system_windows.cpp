@@ -19,7 +19,7 @@
 // file from importing symbols from libxrt_core we define this source
 // file to instead export with same macro as used in libxrt_core.
 #define XCL_DRIVER_DLL_EXPORT
-
+#define XRT_CORE_PCIE_WINDOWS_SOURCE
 #include "system_windows.h"
 #include "device_windows.h"
 #include "gen/version.h"
@@ -34,6 +34,10 @@
 #endif
 
 namespace {
+
+// Singleton registers with base class xrt_core::system
+// during static global initialization
+static xrt_core::system_windows singleton;
 
 static std::string
 getmachinename()

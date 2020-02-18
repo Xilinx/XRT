@@ -32,7 +32,7 @@ namespace XUtil = XclBinUtilities;
 
 #include "FormattedOutput.h"
 // Generated include files
-#include <version.h>
+#include "version.h"
 static const std::string MIRROR_DATA_START = "XCLBIN_MIRROR_DATA_START";
 static const std::string MIRROR_DATA_END = "XCLBIN_MIRROR_DATA_END";
 
