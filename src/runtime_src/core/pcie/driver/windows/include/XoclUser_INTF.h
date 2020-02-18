@@ -203,6 +203,7 @@ typedef enum _XOCL_STAT_CLASS {
     XoclStatKds,
     XoclStatKdsCU,
     XoclStatRomInfo,
+    XoclStatDebugIpLayout
 
 } XOCL_STAT_CLASS, *PXOCL_STAT_CLASS;
 
