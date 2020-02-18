@@ -123,6 +123,7 @@ namespace xdp {
     int mHostP2PTransfers;
     uint32_t mCurrentContextId;
     uint32_t mCuStarts;
+    uint32_t mCurrentTxCount = 0;
     std::string mCurrentKernelName;
     std::string mCurrentDeviceName;
     std::string mCurrentBinaryName;

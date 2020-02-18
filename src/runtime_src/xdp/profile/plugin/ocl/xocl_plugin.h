@@ -66,6 +66,7 @@ namespace xdp {
       void getKernelCounts(RTProfile *profile);
       void getPlramSizeDevices();
       void getMemBitWidthDevices();
+      void getXrtIniSettings();
 
     private:
       xocl::platform* mPlatformHandle;
