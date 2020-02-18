@@ -155,6 +155,9 @@ namespace xdp {
       case MEMORY_TYPE_BIT_WIDTH:
         name = "MEMORY_TYPE_BIT_WIDTH";
         break;
+      case XRT_INI_SETTING:
+        name = "XRT_INI_SETTING";
+        break;
       case BUFFER_RD_ACTIVE_TIME_MS:
         name = "BUFFER_RD_ACTIVE_TIME_MS";
         break;

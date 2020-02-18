@@ -110,6 +110,7 @@ namespace xdp {
         KERNEL_BUFFER_INFO,
         TRACE_BUFFER_FULL,
         MEMORY_TYPE_BIT_WIDTH,
+        XRT_INI_SETTING,
         BUFFER_RD_ACTIVE_TIME_MS,
         BUFFER_WR_ACTIVE_TIME_MS,
         BUFFER_TX_ACTIVE_TIME_MS,
@@ -138,6 +139,7 @@ namespace xdp {
       // Get maps of metadata results used for guidance
       inline GuidanceMap& getDeviceExecTimesMap() {return mDeviceExecTimesMap;}
       inline GuidanceMap& getComputeUnitCallsMap() {return mComputeUnitCallsMap;}
+      inline GuidanceMap& getXrtIniMap() {return mXrtIniMap;}
       inline GuidanceMap2& getKernelCountsMap() {return mKernelCountsMap;}
       inline GuidanceMap2& getKernelMaxParallelStartsMap() {return mKernelMaxParallelStartsMap;}
       inline GuidanceMap2& getDeviceMemTypeBitWidthMap() {return mDeviceMemTypeBitWidthMap;}
@@ -170,6 +172,7 @@ namespace xdp {
       GuidanceMap2 mDeviceTraceBufferFullMap;
       GuidanceMap4 mKernelBufferInfoMap;
       GuidanceMap3 mCQInfoMap;
+      GuidanceMap mXrtIniMap;
       bool IsObjectsReleased = false;
       bool IsPlramDevice = false;
       bool IsHbmDevice = false;
