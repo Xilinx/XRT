@@ -91,6 +91,7 @@ private:
     // 4 MB buffer to truncate and send
     static const int TRANSFER_SEGMENT_SIZE { 1024 * 4096 };
     static const int REIMAGE_TIMEOUT { 20 }; //in second
+    static const int UPLOAD_RETRY { 15 };
     std::shared_ptr<pcidev::pci_device> dev;
     size_t index;
     int UploadToWireServer(
