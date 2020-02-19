@@ -22,6 +22,7 @@ namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
 #include <boost/program_options.hpp>
+#include <boost/format.hpp>
 namespace po = boost::program_options;
 
 // System - Include Files
@@ -81,7 +82,7 @@ SubCmdTop::execute(const SubCmdOptions& _options) const
   }
 
   // -- Now process the subcommand --------------------------------------------
-  XBU::verbose(XBU::format("Seconds: %ld", seconds));
+  XBU::verbose(boost::str(boost::format("Seconds: %ld") % seconds));
 
   XBU::error("COMMAND BODY NOT IMPLEMENTED.");
   // TODO: Put working code here

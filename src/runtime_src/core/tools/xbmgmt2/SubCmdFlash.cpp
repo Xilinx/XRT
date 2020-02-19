@@ -487,11 +487,11 @@ SubCmdFlash::execute(const SubCmdOptions& _options) const
   std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
 
   // -- Now process the subcommand --------------------------------------------
-  XBU::verbose(XBU::format("  Scan: %ld", scan));
-  XBU::verbose(XBU::format("  Shell: %ld", shell));
-  XBU::verbose(XBU::format("  sc_firmware: %ld", sc_firmware));
-  XBU::verbose(XBU::format("  Reset: %ld", reset));
-  XBU::verbose(XBU::format("  Update: %ld", update));
+  XBU::verbose(boost::str(boost::format("  Scan: %ld") % scan));
+  XBU::verbose(boost::str(boost::format("  Shell: %ld") % shell));
+  XBU::verbose(boost::str(boost::format("  sc_firmware: %ld") % sc_firmware));
+  XBU::verbose(boost::str(boost::format("  Reset: %ld") % reset));
+  XBU::verbose(boost::str(boost::format("  Update: %ld") % update));
 
   if (scan) {
     bool verbose;
@@ -516,8 +516,7 @@ SubCmdFlash::execute(const SubCmdOptions& _options) const
     }
 
     // -- Now process the subcommand option-------------------------------
-    XBU::verbose(XBU::format("  Verbose: %ld", verbose));
-    //XBU::verbose(XBU::format("  Json: %ld", json));
+    XBU::verbose(boost::str(boost::format("  Verbose: %ld") % verbose));
 
     if (verbose && json) {
       XBU::error("Please specify only one option");
@@ -558,10 +557,10 @@ SubCmdFlash::execute(const SubCmdOptions& _options) const
     }
 
     // -- Now process the subcommand option-------------------------------
-    XBU::verbose(XBU::format("  Force: %ld", force));
-    XBU::verbose(XBU::format("  Card: %s", bdf.c_str()));
-    XBU::verbose(XBU::format("  Shell_name: %s", name.c_str()));
-    XBU::verbose(XBU::format("  Card id: %s", id.c_str()));
+    XBU::verbose(boost::str(boost::format("  Force: %ld") % force));
+    XBU::verbose(boost::str(boost::format("  Card: %s") % bdf.c_str()));
+    XBU::verbose(boost::str(boost::format("  Shell_name: %s") % name.c_str()));
+    XBU::verbose(boost::str(boost::format("  Card id: %s") % id.c_str()));
 
     if (name.empty() && !id.empty()){
       XBU::error("Please specify the shell");
@@ -597,7 +596,7 @@ SubCmdFlash::execute(const SubCmdOptions& _options) const
     }
 
     // -- Now process the subcommand option-------------------------------
-    XBU::verbose(XBU::format("  Card: %s", bdf.c_str()));
+    XBU::verbose(boost::str(boost::format("  Card: %s") % bdf.c_str()));
 
     uint16_t idx = 0;
     if (!bdf.empty())
@@ -635,9 +634,8 @@ SubCmdFlash::execute(const SubCmdOptions& _options) const
     }
 
     // -- Now process the subcommand option-------------------------------
-    XBU::verbose(XBU::format("  Card: %s", bdf.c_str()));
-    XBU::verbose(XBU::format("  File: %s", file.c_str()));
-    // XBU::verbose(XBU::format("  Flash_type: %s", flash_type.c_str()));
+    XBU::verbose(boost::str(boost::format("  Card: %s") % bdf.c_str()));
+    XBU::verbose(boost::str(boost::format("  File: %s") % file.c_str()));
 
     if (file.empty() || bdf.empty()) {
       XBU::error("Please specify the shell file path and the device bdf");
@@ -675,8 +673,8 @@ SubCmdFlash::execute(const SubCmdOptions& _options) const
     }
 
     // -- Now process the subcommand option-------------------------------
-    XBU::verbose(XBU::format("  Card: %s", bdf.c_str()));
-    XBU::verbose(XBU::format("  Sc_file: %s", file.c_str()));
+    XBU::verbose(boost::str(boost::format("  Card: %s") % bdf.c_str()));
+    XBU::verbose(boost::str(boost::format("  Sc_file: %s") % file.c_str()));
     if (file.empty() || bdf.empty()) {
       XBU::error("Please specify the sc file path and the device bdf");
       std::cerr << scDesc <<  "\n";
