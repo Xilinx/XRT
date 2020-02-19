@@ -2424,6 +2424,11 @@ static int stop_xmc(struct platform_device *pdev)
 	else if (!xmc->enabled)
 		return -ENODEV;
 
+	if (xmc->sysfs_created) {
+		mgmt_sysfs_destroy_xmc(pdev);
+		xmc->sysfs_created = false;
+	}
+
 	mutex_lock(&xmc->xmc_lock);
 	ret = stop_xmc_nolock(pdev);
 	mutex_unlock(&xmc->xmc_lock);
@@ -2581,6 +2586,16 @@ static int load_xmc(struct xocl_xmc *xmc)
 	mutex_lock(&xmc->mbx_lock);
 	xmc_load_board_info(xmc);
 	mutex_unlock(&xmc->mbx_lock);
+
+	if (!xmc->sysfs_created) {
+		ret = mgmt_sysfs_create_xmc(xmc->pdev);
+		if (ret) {
+			xocl_err(&xmc->pdev->dev, "Create sysfs failed, err %d", ret);
+			goto out;
+		}
+
+		xmc->sysfs_created = true;
+	}
 
 	return 0;
 out:
