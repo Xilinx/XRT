@@ -983,6 +983,7 @@ struct gate_handler {
 	int (*gate_freeze_cb)(void *drvdata);
 	int (*gate_free_cb)(void *drvdata);
 	int (*gate_toggle_cb)(void *drvdata);
+	int (*gate_hbm_calibration_cb)(void *drvdata);
 	void *gate_args;
 };
 
