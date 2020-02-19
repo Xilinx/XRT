@@ -157,8 +157,11 @@ public:
    * write() - maps pcie bar and copy bytes word (32bit) by word
    */
   virtual void write(uint64_t offset, const void* buf, uint64_t len) const = 0;
-
-  virtual scope_guard<int, std::function<void(int)>>
+  
+  /* 
+   * file_open() - Opens a scoped fd
+   */
+  scope_guard<int, std::function<void(int)>>
   file_open(const std::string& subdev, int flag)
   {
     return scope_guard<int, std::function<void(int)>>(open(subdev, flag), std::bind(&device::close, this, std::placeholders::_1));

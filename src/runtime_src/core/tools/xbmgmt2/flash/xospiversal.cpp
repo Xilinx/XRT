@@ -34,11 +34,12 @@ int XOSPIVER_Flasher::xclUpgradeFirmware(std::istream& binStream)
     binStream.seekg(0, binStream.beg);
 
     std::cout << "INFO: ***PDI has " << total_size << " bytes" << std::endl;
-
-    auto fd = m_device->file_open("ospi_versal", O_RDWR); 
-    if (fd.get() == -1) {
-        std::cout << "ERROR Cannot open ospi_versal for writing " << std::endl;
-        return -ENODEV;
+    
+    xrt_core::scope_guard<int, std::function<void(int)>> fd { 0, nullptr };
+    try {
+        fd = m_device->file_open("ospi_versal", O_RDWR); 
+    } catch (const std::exception& e) {
+        xrt_core::send_exception_message(e.what(), "XBMGMT");
     }
 
     std::vector<char> buffer(total_size);
