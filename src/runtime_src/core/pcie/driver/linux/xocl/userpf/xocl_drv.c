@@ -217,7 +217,10 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 
 	if (prepare) {
 		/* clean up mem topology */
-		xocl_cleanup_mem(XOCL_DRM(xdev));
+		if (xdev->core.drm) {
+			xocl_drm_fini(xdev->core.drm);
+			xdev->core.drm = NULL;
+		}
 		xocl_fini_sysfs(xdev);
 		xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 		xocl_subdev_offline_all(xdev);
@@ -241,6 +244,13 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 
 		xocl_exec_reset(xdev, xclbin_id);
 		XOCL_PUT_XCLBIN_ID(xdev);
+		if (!xdev->core.drm) {
+			xdev->core.drm = xocl_drm_init(xdev);
+			if (!xdev->core.drm) {
+				xocl_warn(&pdev->dev, "Unable to init drm");
+				return;
+			}
+		}
 	}
 }
 

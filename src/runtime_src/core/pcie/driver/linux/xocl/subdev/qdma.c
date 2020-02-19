@@ -1821,7 +1821,7 @@ failed:
 			qdma_device_close(XDEV(xdev)->pdev,
 					(unsigned long)qdma->dma_handle);
 
-		xocl_drvinst_free(qdma);
+		xocl_drvinst_release(qdma, NULL);
 	}
 
 	platform_set_drvdata(pdev, NULL);
@@ -1834,8 +1834,10 @@ static int qdma_remove(struct platform_device *pdev)
 	struct xocl_qdma *qdma= platform_get_drvdata(pdev);
 	xdev_handle_t xdev;
 	struct qdma_irq *irq_entry;
+	void *hdl;
 	int i;
 
+	xocl_drvinst_release(qdma, &hdl);
 	sysfs_remove_group(&pdev->dev.kobj, &qdma_attrgroup);
 
 	if (!qdma) {
@@ -1862,7 +1864,7 @@ static int qdma_remove(struct platform_device *pdev)
 
 
 	platform_set_drvdata(pdev, NULL);
-	xocl_drvinst_free(qdma);
+	xocl_drvinst_free(hdl);
 
 	return 0;
 }

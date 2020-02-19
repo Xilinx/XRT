@@ -2797,11 +2797,14 @@ static void xmc_unload_board_info(struct xocl_xmc *xmc)
 static int xmc_remove(struct platform_device *pdev)
 {
 	struct xocl_xmc *xmc;
+	void *hdl;
 	int	i;
 
 	xmc = platform_get_drvdata(pdev);
 	if (!xmc)
 		return 0;
+
+	xocl_drvinst_release(xmc, &hdl);
 
 	vfree(xmc->mgmt_binary);
 	vfree(xmc->sche_binary);
@@ -2833,7 +2836,7 @@ end:
 	mutex_destroy(&xmc->mbx_lock);
 
 	platform_set_drvdata(pdev, NULL);
-	xocl_drvinst_free(xmc);
+	xocl_drvinst_free(hdl);
 	return 0;
 }
 

@@ -351,10 +351,13 @@ static struct xocl_mb_funcs ert_ops = {
 static int ert_remove(struct platform_device *pdev)
 {
 	struct xocl_ert *ert;
+	void *hdl;
 
 	ert = platform_get_drvdata(pdev);
 	if (!ert)
 		return 0;
+
+	xocl_drvinst_release(ert, &hdl);
 
 	stop_ert(pdev);
 
@@ -376,7 +379,7 @@ static int ert_remove(struct platform_device *pdev)
 	mutex_destroy(&ert->ert_lock);
 
 	platform_set_drvdata(pdev, NULL);
-	xocl_drvinst_free(ert);
+	xocl_drvinst_free(hdl);
 	return 0;
 }
 
