@@ -23,6 +23,8 @@
  */
 
 #include "scan.h"
+#include "core/common/system.h"
+#include "core/common/device.h"
 #include "xclhal2.h"
 #include "core/pcie/driver/linux/include/xocl_ioctl.h"
 #include "core/pcie/driver/linux/include/qdma_ioctl.h"
@@ -161,6 +163,7 @@ public:
 
 private:
     std::shared_ptr<pcidev::pci_device> mDev;
+    std::shared_ptr<xrt_core::device> mCoreDevice;
     xclVerbosityLevel mVerbosity;
     std::ofstream mLogStream;
     int mUserHandle;

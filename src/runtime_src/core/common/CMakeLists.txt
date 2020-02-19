@@ -20,6 +20,7 @@ file(GLOB XRT_CORECOMMON_LIB_FILES
   "sensor.*"
   "system.*"
   "utils.*"
+  "kernel.*"
   )
 
 # Files to include in object list

@@ -79,6 +79,7 @@
 #define MAX_TRACE_NUMBER_SAMPLES                        16384
 #define XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH            64
 
+namespace {
 
 inline bool
 is_multiprocess_mode()
@@ -116,6 +117,7 @@ inline int io_getevents(aio_context_t ctx, long min_nr, long max_nr,
   return syscall(__NR_io_getevents, ctx, min_nr, max_nr, events, timeout);
 }
 
+} // namespace
 
 namespace xocl {
 
@@ -178,6 +180,7 @@ int shim::dev_init()
     mStreamHandle = mDev->open("dma.qdma", O_RDWR | O_SYNC);
     memset(&mAioContext, 0, sizeof(mAioContext));
     mAioEnabled = (io_setup(SHIM_QDMA_AIO_EVT_MAX, &mAioContext) == 0);
+    mCoreDevice = xrt_core::get_userpf_device(this, mBoardNumber);
 
     return 0;
 }

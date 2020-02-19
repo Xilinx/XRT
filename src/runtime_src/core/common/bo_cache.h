@@ -24,7 +24,8 @@
 #include <sys/mman.h>
 #endif
 
-#include "xrt.h"
+#include "system.h"
+#include "device.h"
 #include "ert.h"
 
 namespace xrt_core {
@@ -32,16 +33,18 @@ namespace xrt_core {
 // Create a cache of CMD BO objects -- for now only used for M2M -- to reduce
 // the overhead of BO life cycle management.
 class bo_cache {
+public:
   // Helper typedef for std::pair. Note the elements are const so that the
   // pair is immutable. The clients should not change the contents of cmd_bo.
   template <typename CommandType>
-  using cmd_bo = std::pair<const unsigned int, CommandType *const>;
+  using cmd_bo = std::pair<const xclBufferHandle, CommandType *const>;
+private:
 
   // We are really allocating a page size as that is what xocl/zocl do. Note on
   // POWER9 pagesize maybe more than 4K, xocl would upsize the allocation to the
   // correct pagesize. unmap always unmaps the full page.
   static const size_t mBOSize = 4096;
-  xclDeviceHandle mDevice;
+  std::shared_ptr<device> mDevice;
   // Maximum number of BOs that can be cached in the pool. Value of 0 indicates
   // caching should be disabled.
   const unsigned int mCacheMaxSize;
@@ -50,7 +53,7 @@ class bo_cache {
 
 public:
  bo_cache(xclDeviceHandle handle, unsigned int max_size)
-   : mDevice(handle), mCacheMaxSize(max_size)
+   : mDevice(get_userpf_device(handle)), mCacheMaxSize(max_size)
   {}
 
   ~bo_cache()
@@ -89,8 +92,8 @@ private:
       }
     }
 
-    auto execHandle = xclAllocBO(mDevice, mBOSize, 0, XCL_BO_FLAGS_EXECBUF);
-    return std::make_pair(execHandle, xclMapBO(mDevice, execHandle, true));
+    auto execHandle = mDevice->alloc_bo(mBOSize, XCL_BO_FLAGS_EXECBUF);
+    return std::make_pair(execHandle, mDevice->map_bo(execHandle, true));
   }
 
   void
@@ -110,8 +113,8 @@ private:
   void
   destroy(const cmd_bo<void> &bo)
   {
-    xclUnmapBO(mDevice, bo.first, bo.second);
-    xclFreeBO(mDevice, bo.first);
+    mDevice->unmap_bo(bo.first, bo.second);
+    mDevice->free_bo(bo.first);
   }
 };
 

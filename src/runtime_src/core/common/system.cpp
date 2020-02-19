@@ -65,6 +65,18 @@ get_userpf_device(device::id_type id)
 }
 
 std::shared_ptr<device>
+get_userpf_device(device::handle_type device_handle)
+{
+  return instance().get_userpf_device(device_handle);
+}
+
+std::shared_ptr<device>
+get_userpf_device(device::handle_type device_handle, device::id_type id)
+{
+  return instance().get_userpf_device(device_handle, id);
+}
+  
+std::shared_ptr<device>
 get_mgmtpf_device(device::id_type id)
 {
   return instance().get_mgmtpf_device(id);

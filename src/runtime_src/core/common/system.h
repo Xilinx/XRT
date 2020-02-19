@@ -36,15 +36,33 @@ protected:
   XRT_CORE_COMMON_EXPORT
   system();
 public:
-  virtual void get_xrt_info(boost::property_tree::ptree &pt) = 0;
-  virtual void get_os_info(boost::property_tree::ptree &pt) = 0;
-  virtual void get_devices(boost::property_tree::ptree &pt) const = 0;
-  virtual std::pair<device::id_type, device::id_type> get_total_devices(bool is_user = true) const = 0;
-  virtual uint16_t bdf2index(const std::string& bdfStr) const = 0;
+  virtual void
+  get_xrt_info(boost::property_tree::ptree &pt) = 0;
 
+  virtual void
+  get_os_info(boost::property_tree::ptree &pt) = 0;
 
-  virtual std::shared_ptr<device> get_userpf_device(device::id_type id) const = 0;
-  virtual std::shared_ptr<device> get_mgmtpf_device(device::id_type id) const = 0;
+  virtual void
+  get_devices(boost::property_tree::ptree &pt) const = 0;
+
+  virtual std::pair<device::id_type, device::id_type>
+  get_total_devices(bool is_user = true) const = 0;
+
+  virtual uint16_t
+  bdf2index(const std::string& bdfStr) const = 0;
+
+  virtual std::shared_ptr<device>
+  get_userpf_device(device::id_type id) const = 0;
+
+  virtual std::shared_ptr<device>
+  get_userpf_device(device::handle_type hdl) const = 0;
+
+  virtual std::shared_ptr<device>
+  get_userpf_device(device::handle_type hdl, device::id_type) const = 0;
+
+  virtual std::shared_ptr<device>
+  get_mgmtpf_device(device::id_type id) const = 0;
+
 }; // system
 
 /**
@@ -77,6 +95,14 @@ get_total_devices(bool is_user);
 XRT_CORE_COMMON_EXPORT
 std::shared_ptr<device>
 get_userpf_device(device::id_type id);
+
+XRT_CORE_COMMON_EXPORT
+std::shared_ptr<device>
+get_userpf_device(device::handle_type handle);
+
+XRT_CORE_COMMON_EXPORT
+std::shared_ptr<device>
+get_userpf_device(device::handle_type device_handle, device::id_type id);
 
 XRT_CORE_COMMON_EXPORT
 std::shared_ptr<device>

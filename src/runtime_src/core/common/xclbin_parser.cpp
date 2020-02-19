@@ -17,14 +17,16 @@
 #include "xclbin_parser.h"
 #include "config_reader.h"
 
+#include <regex>
+#include <cstring>
+#include <cstdlib>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 #include <boost/range/iterator_range.hpp>
 #include <boost/optional.hpp>
-#include <cstring>
-#include <cstdlib>
-// This is xclbin parser. Update this file if xclbin format has changed.
+#include <boost/algorithm/string.hpp>
 
+// This is xclbin parser. Update this file if xclbin format has changed.
 #ifdef _WIN32
 #pragma warning ( disable : 4996 )
 #endif
@@ -196,11 +198,58 @@ get_cus(const ip_layout* ip_layout, bool encode)
   return cus;
 }
 
+std::vector<const ip_data*>
+get_cus(const ip_layout* ip_layout, const std::string& kname)
+{
+  // "kernel:{cu1,cu2,cu3}" -> "(kernel):((cu1)|(cu2)|(cu3))"
+  // "kernel" -> "(kernel):((.*))"
+  auto create_regex = [](const auto& str) {
+    std::regex r("^(.*):\\{(.*)\\}$");
+    std::smatch m;
+    if (!regex_search(str,m,r))
+      return "^(" + str + ")((.*))$";            // "(kernel):((.*))"
+
+    std::string kernel = m[1];
+    std::string insts = m[2];                  // "cu1,cu2,cu3"
+    std::string regex = "^(" + kernel + "):(";  // "(kernel):("
+    std::vector<std::string> cus;              // split at ','
+    boost::split(cus,insts,boost::is_any_of(","));
+      
+    // compose final regex
+    int count = 0;
+    for (auto& cu : cus)
+      regex.append("|", count++ ? 1 : 0).append("(").append(cu).append(")");
+    regex += ")$";  // "^(kernel):((cu1)|(cu2)|(cu3))$"
+    return regex;
+  };
+
+  std::regex r(create_regex(kname));
+  std::vector<const ip_data*> ips;
+  for (int32_t count = 0; count < ip_layout->m_count; ++count) {
+    const auto& ip = ip_layout->m_ip_data[count];
+    if (!is_valid_cu(ip))
+      continue;
+    std::string ipname = reinterpret_cast<const char*>(ip.m_name);
+    if (regex_match(ipname, r))
+      ips.push_back(&ip);
+  }
+
+  return ips;
+}
+    
+
 std::vector<uint64_t>
 get_cus(const axlf* top, bool encode)
 {
   auto ip_layout = axlf_section_type<const ::ip_layout*>::get(top,axlf_section_kind::IP_LAYOUT);
   return ip_layout ? get_cus(ip_layout,encode) : std::vector<uint64_t>(0);
+}
+
+std::vector<const ip_data*>
+get_cus(const axlf* top, const std::string& name)
+{
+  auto ip_layout = axlf_section_type<const ::ip_layout*>::get(top,axlf_section_kind::IP_LAYOUT);
+  return ip_layout ? get_cus(ip_layout, name) : std::vector<const ip_data*>(0);
 }
 
 std::string
@@ -387,5 +436,52 @@ get_kernel_freq(const axlf* top)
   return kernel_clk_freq;
 }
 
-} // namespace xclbin
-} // namespace xrt_core
+std::vector<kernel_argument>
+get_kernel_arguments(const axlf* top, const std::string& kname)
+{
+  std::vector<kernel_argument> args;
+  const axlf_section_header *xml_hdr = ::xclbin::get_axlf_section(top, EMBEDDED_METADATA);
+
+  if (!xml_hdr)
+    throw std::runtime_error("No meta data in xclbin");
+
+  auto begin = reinterpret_cast<const char*>(top) + xml_hdr->m_sectionOffset;
+  const char *xml_data = reinterpret_cast<const char*>(begin);
+  uint64_t xml_size = xml_hdr->m_sectionSize;
+
+  pt::ptree xml_project;
+  std::stringstream xml_stream;
+  xml_stream.write(xml_data,xml_size);
+  pt::read_xml(xml_stream,xml_project);
+
+  for (auto& xml_kernel : xml_project.get_child("project.platform.device.core")) {
+    if (xml_kernel.first != "kernel")
+      continue;
+    if (xml_kernel.second.get<std::string>("<xmlattr>.name") != kname)
+      continue;
+
+    for (auto& xml_arg : xml_kernel.second) {
+      if (xml_arg.first != "arg")
+        continue;
+
+      std::string id = xml_arg.second.get<std::string>("<xmlattr>.id");
+      size_t index = id.empty()
+        ? std::numeric_limits<size_t>::max()
+        : convert(id);
+
+      args.emplace_back(kernel_argument{
+          xml_arg.second.get<std::string>("<xmlattr>.name")
+         ,index
+         ,convert(xml_arg.second.get<std::string>("<xmlattr>.offset"))
+         ,convert(xml_arg.second.get<std::string>("<xmlattr>.size"))
+         ,kernel_argument::argtype(xml_arg.second.get<size_t>("<xmlattr>.addressQualifier"))
+      });
+    }
+
+    std::sort(args.begin(), args.end(), [](auto& a1, auto& a2) { return a1.index < a2.index; });
+    break;
+  }
+  return args;
+}
+
+}} // xclbin, xrt_core

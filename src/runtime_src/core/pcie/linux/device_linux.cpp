@@ -273,6 +273,12 @@ device_linux(id_type device_id, bool user)
 {
 }
 
+device_linux::
+device_linux(handle_type device_handle, id_type device_id)
+  : shim<device_pcie>(device_handle, device_id)
+{
+}
+
 void
 device_linux::
 read_dma_stats(boost::property_tree::ptree& pt) const

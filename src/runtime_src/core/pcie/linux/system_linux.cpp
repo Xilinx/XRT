@@ -24,6 +24,8 @@
 
 #include <fstream>
 #include <memory>
+#include <vector>
+#include <map>
 
 #include <sys/utsname.h>
 #include <gnu/libc-version.h>
@@ -51,6 +53,7 @@ driver_version(const std::string& driver)
 
 static std::vector<std::weak_ptr<xrt_core::device_linux>> mgmtpf_devices(16); // fix size
 static std::vector<std::weak_ptr<xrt_core::device_linux>> userpf_devices(16); // fix size
+static std::map<xrt_core::device::handle_type, std::weak_ptr<xrt_core::device_linux>> userpf_device_map;
 
 }
 
@@ -136,6 +139,33 @@ get_userpf_device(device::id_type id) const
     device = std::shared_ptr<device_linux>(new device_linux(id,true));
     userpf_devices[id] = device;
   }
+  return device;
+}
+
+std::shared_ptr<device>
+system_linux::
+get_userpf_device(device::handle_type handle) const
+{
+  auto itr = userpf_device_map.find(handle);
+  if (itr != userpf_device_map.end())
+    return (*itr).second.lock();
+  return nullptr;
+}
+
+std::shared_ptr<device>
+system_linux::
+get_userpf_device(device::handle_type handle, device::id_type id) const
+{
+  // check device map cache
+  if (auto device = get_userpf_device(handle)) {
+    if (device->get_device_id() != id)
+        throw std::runtime_error("get_userpf_device: id mismatch");
+    return device;
+  }
+
+  auto device = std::shared_ptr<device_linux>(new device_linux(handle, id));
+  userpf_devices[id] = device;
+  userpf_device_map.insert(std::make_pair(handle, device));
   return device;
 }
 
