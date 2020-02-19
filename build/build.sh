@@ -6,6 +6,7 @@ OSDIST=`lsb_release -i |awk -F: '{print tolower($2)}' | tr -d ' \t'`
 BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 CORE=`grep -c ^processor /proc/cpuinfo`
 CMAKE=cmake
+CPU=`uname -m`
 
 if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "amazon" ]]; then
     CMAKE=cmake3
@@ -15,20 +16,40 @@ if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "amazon" ]]; then
     fi
 fi
 
+if [[ $CPU == "aarch64" ]] && [[ $OSDIST == "ubuntu" ]]; then
+    # On ARM64 Ubuntu use GCC version 8 if available since default
+    # (GCC version 7) has random Internal Compiler Issues compiling XRT
+    # C++14 code
+    gcc-8 --version > /dev/null 2>&1
+    status1=$?
+    g++-8 --version > /dev/null 2>&1
+    status2=$?
+    if [[ $status1 == 0 ]] && [[ $status2 == 0 ]]; then
+	export CC=gcc-8
+	export CXX=g++-8
+    fi
+fi
+
 usage()
 {
     echo "Usage: build.sh [options]"
     echo
     echo "[-help]                    List this help"
     echo "[clean|-clean]             Remove build directories"
-    echo "[-dbg]                     Build debug library only"
-    echo "[-opt]                     Build optimized library only"
+    echo "[-dbg]                     Build debug library only (default)"
+    echo "[-opt]                     Build optimized library only (default)"
+    echo "[-edge]                    Build edge of x64.  Turns off opt and dbg"
     echo "[-nocmake]                 Skip CMake call"
     echo "[-j <n>]                   Compile parallel (default: system cores)"
     echo "[-ccache]                  Build using RDI's compile cache"
     echo "[-driver]                  Include building driver code"
     echo "[-checkpatch]              Run checkpatch.pl on driver code"
     echo "[-verbose]                 Turn on verbosity when compiling"
+    echo "[-ertfw <dir>]             Path to directory with pre-built ert firmware (default: build the firmware)"
+    echo ""
+    echo "ERT firmware is built if and only if MicroBlaze gcc compiler can be located."
+    echo "When compiler is not accesible, use -ertfw to specify path to directory with"
+    echo "pre-built ert fw to include in XRT packages"
     echo ""
     echo "Compile caching is enabled with '-ccache' but requires access to internal network."
 
@@ -45,7 +66,9 @@ checkpatch=0
 jcore=$CORE
 opt=1
 dbg=1
+edge=0
 nocmake=0
+ertfw=""
 while [ $# -gt 0 ]; do
     case "$1" in
         -help)
@@ -59,6 +82,17 @@ while [ $# -gt 0 ]; do
             dbg=1
             opt=0
             shift
+            ;;
+        -ertfw)
+            shift
+            ertfw=$1
+            shift
+            ;;
+        -edge)
+            shift
+            edge=1
+            opt=0
+            dbg=0
             ;;
         -opt)
             dbg=0
@@ -107,6 +141,7 @@ done
 
 debug_dir=${DEBUG_DIR:-Debug}
 release_dir=${REL_DIR:-Release}
+edge_dir=${EDGE_DIR:-Edge}
 
 here=$PWD
 cd $BUILDDIR
@@ -114,7 +149,7 @@ cd $BUILDDIR
 if [[ $clean == 1 ]]; then
     echo $PWD
     echo "/bin/rm -rf $debug_dir $release_dir"
-    /bin/rm -rf $debug_dir $release_dir
+    /bin/rm -rf $debug_dir $release_dir $edge_dir
     exit 0
 fi
 
@@ -129,6 +164,16 @@ if [[ $ccache == 1 ]]; then
     if [[ -e /proj/rdi/env/HEAD/hierdesign/ccache/cleanup.pl ]]; then
         /proj/rdi/env/HEAD/hierdesign/ccache/cleanup.pl 1 30 $RDI_CCACHEROOT
     fi
+fi
+
+if [[ ! -z $ertfw ]]; then
+    echo "export XRT_FIRMWARE_DIR=$ertfw"
+    export XRT_FIRMWARE_DIR=$ertfw
+fi
+
+# we pick microblaze toolchain from Vitis install
+if [[ -z ${XILINX_VITIS:+x} ]]; then
+    export XILINX_VITIS=/proj/xbuilds/2019.2_released/installs/lin64/Vitis/2019.2
 fi
 
 if [[ $dbg == 1 ]]; then
@@ -151,22 +196,46 @@ if [[ $opt == 1 ]]; then
     echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src"
     time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
   fi
-  echo "make -j $jcore $verbose DESTDIR=$PWD install"
-  time make -j $jcore $verbose DESTDIR=$PWD install
-  time ctest --output-on-failure
-  time make package
-fi
 
-if [[ $driver == 1 ]]; then
-    echo "make -C usr/src/xrt-2.3.0/driver/xocl"
-    make -C usr/src/xrt-2.3.0/driver/xocl
-fi
-
-if [[ $docs == 1 ]]; then
+  if [[ $docs == 1 ]]; then
     echo "make xrt_docs"
     make xrt_docs
+  else
+    echo "make -j $jcore $verbose DESTDIR=$PWD install"
+    time make -j $jcore $verbose DESTDIR=$PWD install
+    time ctest --output-on-failure
+    time make package
+  fi
+
+  if [[ $driver == 1 ]]; then
+    unset CC
+    unset CXX
+    echo "make -C usr/src/xrt-2.3.0/driver/xocl"
+    make -C usr/src/xrt-2.3.0/driver/xocl
+    if [[ $CPU == "aarch64" ]]; then
+	# I know this is dirty as it messes up the source directory with build artifacts but this is the
+	# quickest way to enable native zocl build in Travis CI environment for aarch64
+	ZOCL_SRC=`readlink -f ../../src/runtime_src/core/edge/drm/zocl`
+	make -C $ZOCL_SRC
+    fi
+  fi
+  cd $BUILDDIR
 fi
 
+# Verify compilation on edge
+if [[ $CPU != "aarch64" ]] && [[ $edge == 1 ]]; then
+  mkdir -p $edge_dir
+  cd $edge_dir
+  if [[ $nocmake == 0 ]]; then
+    echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src"
+    time env XRT_NATIVE_BUILD=no $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
+  fi
+  echo "make -j $jcore $verbose DESTDIR=$PWD"
+  time make -j $jcore $verbose DESTDIR=$PWD
+  cd $BUILDDIR
+fi
+    
+    
 if [[ $clangtidy == 1 ]]; then
     echo "make clang-tidy"
     make clang-tidy
