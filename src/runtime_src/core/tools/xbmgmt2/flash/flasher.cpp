@@ -139,7 +139,7 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
     // }
     case OSPIVERSAL:
     {
-        XOSPIVER_Flasher xospi_versal(m_device->get_device_id());
+        XOSPIVER_Flasher xospi_versal(m_device);
         if (primary == nullptr)
         {
             std::cout << "ERROR: OSPIVERSAL mode does not support reverting to MFG." << std::endl;
@@ -166,10 +166,7 @@ int Flasher::upgradeBMCFirmware(firmwareImage* bmc)
     const std::string e = flasher.probingErrMsg();
 
     if (!e.empty())
-    {
-        std::cout << "ERROR: " << e << std::endl;
-        return -EOPNOTSUPP;
-    }
+        throw xrt_core::error(e);
 
     return flasher.xclUpgradeFirmware(*bmc);
 }
@@ -300,7 +297,6 @@ std::vector<DSAInfo> Flasher::getInstalledDSA()
     if (onBoard.name.empty() && onBoard.uuids.empty())
     {
         std::cout << "Shell on FPGA is unknown" << std::endl;
-        return DSAs;
     }
 
     auto vendor_id = xrt_core::device_query<xrt_core::query::pcie_vendor>(m_device);

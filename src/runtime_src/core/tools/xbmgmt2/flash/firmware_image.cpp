@@ -311,7 +311,7 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
         }
         // For 2RP platform, only UUIDs are provided
         //timestamp = ap->m_header.m_featureRomTimeStamp;
-        hasFlashImage = (xclbin::get_axlf_section(ap, MCS) != nullptr);
+        hasFlashImage = (xclbin::get_axlf_section(ap, MCS) != nullptr) || (xclbin::get_axlf_section(ap, PDI) != nullptr);
 
         // Find out BMC version
         // Obtain BMC section header.
@@ -608,7 +608,14 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
         in_file.seekg(0);
         in_file.read(mBuf, bufsize);
     }
-    this->str(mBuf);
+
+// rdbuf doesn't work on windows and str() doesn't work for ospi_versal on linux
+#ifdef __GNUC__
+    this->rdbuf()->pubsetbuf(mBuf, bufsize);
+#endif
+#ifdef _WIN32
+	this->str(mBuf);
+#endif
 }
 
 firmwareImage::~firmwareImage()
