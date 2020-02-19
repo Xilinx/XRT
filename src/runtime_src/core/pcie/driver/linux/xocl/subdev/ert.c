@@ -356,6 +356,8 @@ static int ert_remove(struct platform_device *pdev)
 	if (!ert)
 		return 0;
 
+	stop_ert(pdev);
+
 	if (ert->sche_binary)
 		vfree(ert->sche_binary);
 

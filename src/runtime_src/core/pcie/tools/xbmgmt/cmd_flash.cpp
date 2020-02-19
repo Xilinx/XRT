@@ -167,8 +167,10 @@ static int updateSC(unsigned index, const char *file)
     }
 
     ret = mgmt_dev->shutdown(true);
-    if (ret)
+    if (ret) {
+        std::cout << "Only proceed with SC update if all user applications for the target card(s) are stopped." << std::endl;
         return ret;
+    }
 
     ret = writeSCImage(flasher, file);
 
