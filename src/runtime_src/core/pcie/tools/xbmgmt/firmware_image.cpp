@@ -263,7 +263,7 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
         // For 2RP platform, only UUIDs are provided
         //timestamp = ap->m_header.m_featureRomTimeStamp;
         hasFlashImage = (xclbin::get_axlf_section(ap, MCS) != nullptr) ||
-            (xclbin::get_axlf_section(ap, ASK_FLASH) != nullptr);
+            (xclbin::get_axlf_section(ap, ASK_FLASH) != nullptr) || (xclbin::get_axlf_section(ap, PDI) != nullptr);
 
         // Find out BMC version
         // Obtain BMC section header.
