@@ -540,6 +540,7 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
 
             // Obtain FLASH section header.
             const axlf_section_header* flashSection = xclbin::get_axlf_section(ap, ASK_FLASH);
+            const axlf_section_header* pdiSection = xclbin::get_axlf_section(ap, PDI);
             if (flashSection) {
                 //So far, there is only one type in FLASH section.
                 //Just blindly load that section. Add more checks later.
@@ -558,6 +559,22 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
                 bufsize = flashMeta.m_image_size;
                 mBuf = new char[bufsize];
                 in.seekg(flashSection->m_sectionOffset + flashMeta.m_image_offset);
+                in.read(mBuf, bufsize);
+            } 
+            else if (pdiSection) {
+                // Load entire PDI section.
+                std::shared_ptr<char> pdibuf(new char[pdiSection->m_sectionSize]);
+                in.seekg(pdiSection->m_sectionOffset);
+                in.read(pdibuf.get(), pdiSection->m_sectionSize);
+                if (!in.good())
+                {
+                    this->setstate(failbit);
+                    std::cout << "Can't read PDI section from "<< file << std::endl;
+                    return;
+                }
+                bufsize = pdiSection->m_sectionSize;
+                mBuf = new char[bufsize];
+                in.seekg(pdiSection->m_sectionOffset);
                 in.read(mBuf, bufsize);
             } else {
                 // Obtain MCS section header.
