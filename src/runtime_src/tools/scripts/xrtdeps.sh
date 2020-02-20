@@ -287,9 +287,6 @@ install()
 
     if [ $FLAVOR == "sles" ] ; then
         echo "Installing SUSE packages..."
-        #${SUDO} zypper install http://opensuse.ucom.am/repositories/science/SLE_15/noarch/opencl-headers-2.2+git.20190806-19.1.noarch.rpm
-        #${SUDO} zypper install -y -f http://opensuse.ucom.am/repositories/science/SLE_15/x86_64/ocl-icd-devel-2.2.12-23.1.x86_64.rpm
-        #${SUDO} zypper install -y http://opensuse.mirror.liquidtelecom.com/repositories/home:/airbus-geo/SLE_15/noarch/opencl-headers-2.2+git.20181211-18.1.noarch.rpm
         ${SUDO} zypper install -y "${SUSE_LIST[@]}"
     fi
 }

@@ -59,7 +59,6 @@ ROOT	:= $(dir $(M))
 XILINXINCLUDE := -I$(ROOT)/../include -I$(ROOT)/../../../../include -I$(ROOT)/../../../../common/drv/
 
 ccflags-y += $(XILINXINCLUDE) -DPF=MGMTPF
-
 ifeq ($(DEBUG),1)
 ccflags-y += -DDEBUG
 endif
