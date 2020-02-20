@@ -126,6 +126,7 @@ private:
     int writeReg(unsigned RegOffset, unsigned value);
     bool isXMCReady();
     bool isBMCReady();
+    bool isSCPresence();
 
     // Upgrade SC firmware via driver.
     std::FILE *mXmcDev = nullptr;

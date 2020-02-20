@@ -106,6 +106,9 @@ int XMC_Flasher::xclUpgradeFirmware(std::istream& tiTxtStream) {
     int retries = 5;
     int ret = 0;
 
+    if (!isSCPresence())
+        return -EINVAL;
+
     if (!isXMCReady())
         return -EINVAL;
 
@@ -252,6 +255,9 @@ int XMC_Flasher::erase()
 int XMC_Flasher::xclGetBoardInfo(std::map<char, std::vector<char>>& info)
 {
     int ret = 0;
+
+    if (!isSCPresence())
+        return -EINVAL;
 
     if (!isXMCReady() || !isBMCReady())
         return -EINVAL;
@@ -499,6 +505,26 @@ bool XMC_Flasher::isXMCReady()
         }
     }
     return xmcReady;
+}
+
+bool XMC_Flasher::isBMCReady()
+{
+    unsigned int val;
+    std::string errmsg;
+
+    if (!hasXMC())
+	    return false;
+
+    mDev->sysfs_get<unsigned>("xmc", "sc_presence", errmsg, val, 0);
+    if (!errmsg.empty()) {
+        std::cout << "can't read sc_presence node from " << mDev->sysfs_name <<
+            " : " << errmsg << std::endl;
+        return false;
+    }
+
+    if (val)
+        return true;
+    return false;
 }
 
 bool XMC_Flasher::isBMCReady()
