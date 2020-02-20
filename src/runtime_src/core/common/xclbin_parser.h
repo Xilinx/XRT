@@ -157,6 +157,12 @@ get_softkernels(const axlf* top);
 size_t
 get_kernel_freq(const axlf* top);
 
+/**
+* get_kernel_inst_addrs() - Get sorted list of CU base addresses in xclbin.
+*/
+std::vector<uint64_t>
+get_kernel_inst_addrs(const axlf* top);
+
 } // xclbin
 } // xrt_core
 

@@ -857,6 +857,8 @@ start()
   if (s_running)
     throw std::runtime_error("software command scheduler is already started");
 
+  std::cout << "SWS Thread started " << std::endl;
+
   s_scheduler_thread = std::move(xrt::thread(scheduler_loop));
   if (threaded_notification)
     notifier = std::move(xrt::thread(xrt::task::worker,std::ref(notify_queue)));

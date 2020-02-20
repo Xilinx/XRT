@@ -44,6 +44,7 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
   std::memset(&fRomHeader, 0, sizeof(FeatureRomHeader));
 
   xclcpuemhal2::CpuemShim *handle = NULL;
+  bool bDefaultDevice = false;
   std::map<unsigned int, xclcpuemhal2::CpuemShim*>::iterator it = xclcpuemhal2::devices.find(deviceIndex);
   if(it != xclcpuemhal2::devices.end())
   {
@@ -52,14 +53,22 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
   else
   {
     handle = new xclcpuemhal2::CpuemShim(deviceIndex,info,DDRBankList,false,false,fRomHeader);
+    bDefaultDevice = true;
   }
 
   if (!xclcpuemhal2::CpuemShim::handleCheck(handle)) {
     delete handle;
     handle = 0;
   }
-  if(handle)
+  if (handle) {
     handle->xclOpen(logfileName);
+    if (bDefaultDevice)
+    {
+      std::string sDummyDeviceMsg = "CRITICAL WARNING: [SW-EM 09-0] Unable to find emconfig.json. Using default device \"xilinx:pcie-hw-em:7v3:1.0\"";
+      if (xclemulation::config::getInstance()->isInfosToBePrintedOnConsole())
+        std::cout << sDummyDeviceMsg << std::endl;
+    }
+  }
   return (xclDeviceHandle *)handle;
 }
 
@@ -88,7 +97,11 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
-  return drv->xclLoadXclBin(buffer);
+  auto ret = drv->xclLoadXclBin(buffer);
+  bool isKdsSwEmu = (xclemulation::is_sw_emulation()) ? xrt_core::config::get_flag_kds_sw_emu() : false;
+  if (isKdsSwEmu && !ret)
+    ret = xrt_core::scheduler::init(handle, buffer);
+  return ret;
 }
 
 uint64_t xclAllocDeviceBuffer(xclDeviceHandle handle, size_t size)
