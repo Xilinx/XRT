@@ -58,6 +58,7 @@ enum {
 #define	FLASH_TYPE_SPI	"spi"
 #define	FLASH_TYPE_QSPIPS	"qspi_ps"
 #define	FLASH_TYPE_QSPIPS_X4_SINGLE	"qspi_ps_x4_single"
+#define	FLASH_TYPE_OSPI_VERSAL	"ospi_versal"
 
 #define XOCL_SUBDEV_MAX_RES		32
 #define XOCL_SUBDEV_RES_NAME_LEN	64
@@ -1481,6 +1482,7 @@ struct xocl_subdev_map {
 		.flags		= XOCL_DSAFLAG_VERSAL,			\
 		.subdev_info	= MGMT_RES_VERSAL,			\
 		.subdev_num = ARRAY_SIZE(MGMT_RES_VERSAL),		\
+		.flash_type = FLASH_TYPE_OSPI_VERSAL,			\
 	}
 
 #define	MGMT_RES_6A8F							\
