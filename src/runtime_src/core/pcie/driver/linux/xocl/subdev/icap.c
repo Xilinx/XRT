@@ -1768,7 +1768,95 @@ done:
 	return memidx;
 }
 
-static int icap_create_subdev(struct platform_device *pdev, struct axlf *xclbin)
+static int icap_create_subdev_debugip(struct platform_device *pdev)
+{
+	struct icap *icap = platform_get_drvdata(pdev);
+	int err = 0, i = 0;
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	struct debug_ip_layout *debug_ip_layout = icap->debug_layout;
+
+	if (!debug_ip_layout)
+		return err;
+
+
+	for (i = 0; i < debug_ip_layout->m_count; ++i) {
+		struct debug_ip_data *ip = &debug_ip_layout->m_debug_ip_data[i];
+
+		if (ip->m_type == AXI_MM_MONITOR) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_AIM;
+
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
+			err = xocl_subdev_create(xdev, &subdev_info);
+			if (err) {
+				ICAP_ERR(icap, "can't create AXI_MM_MONITOR subdev");
+				break;
+			}
+		} else if (ip->m_type == ACCEL_MONITOR) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_AM;
+
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
+			err = xocl_subdev_create(xdev, &subdev_info);
+			if (err) {
+				ICAP_ERR(icap, "can't create ACCEL_MONITOR subdev");
+				break;
+			}
+		} else if (ip->m_type == AXI_STREAM_MONITOR) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_ASM;
+
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
+			err = xocl_subdev_create(xdev, &subdev_info);
+			if (err) {
+				ICAP_ERR(icap, "can't create AXI_STREAM_MONITOR subdev");
+				break;
+			}
+		} else if (ip->m_type == AXI_MONITOR_FIFO_LITE) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_TRACE_FIFO_LITE;
+
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
+			err = xocl_subdev_create(xdev, &subdev_info);
+			if (err) {
+				ICAP_ERR(icap, "can't create AXI_MONITOR_FIFO_LITE subdev");
+				break;
+			}
+		} else if (ip->m_type == AXI_MONITOR_FIFO_FULL) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_TRACE_FIFO_FULL;
+
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
+			err = xocl_subdev_create(xdev, &subdev_info);
+			if (err) {
+				ICAP_ERR(icap, "can't create AXI_MONITOR_FIFO_FULL subdev");
+				break;
+			}
+		} else if (ip->m_type == AXI_TRACE_FUNNEL) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_TRACE_FUNNEL;
+
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
+			err = xocl_subdev_create(xdev, &subdev_info);
+			if (err) {
+				ICAP_ERR(icap, "can't create AXI_MONITOR_TRACE_FUNNEL subdev");
+				break;
+			}
+		} else if (ip->m_type == TRACE_S2MM) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_TRACE_S2MM;
+
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
+			err = xocl_subdev_create(xdev, &subdev_info);
+			if (err) {
+				ICAP_ERR(icap, "can't create AXI_MONITOR_TRACE_S2MM subdev");
+				break;
+			}
+		}
+	}
+	return err;
+}
+static int icap_create_subdev(struct platform_device *pdev)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
 	int err = 0, i = 0;
@@ -1894,8 +1982,23 @@ static int icap_create_subdev(struct platform_device *pdev, struct axlf *xclbin)
 			}
 		}
 	}
+	if (!ICAP_PRIVILEGED(icap))
+		err = icap_create_subdev_debugip(pdev);
 done:
 	return err;
+}
+
+static inline void xocl_dyn_subdevs_destory(xdev_handle_t xdev)
+{
+	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_DNA);
+	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_MIG);
+	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_AIM);
+	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_AM);
+	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_ASM);
+	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_TRACE_FIFO_LITE);
+	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_TRACE_FIFO_FULL);
+	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_TRACE_FUNNEL);
+	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_TRACE_S2MM);
 }
 
 static int icap_verify_bitstream_axlf(struct platform_device *pdev,
@@ -1908,8 +2011,7 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 	u32 capability;
 
 	/* Destroy all dynamically add sub-devices*/
-	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_DNA);
-	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_MIG);
+	xocl_dyn_subdevs_destory(xdev);
 	/*
 	 * Add sub device dynamically.
 	 * restrict any dynamically added sub-device and 1 base address,
@@ -1921,7 +2023,7 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 	 *         "m_name": "slr0\/dna_self_check_0"
 	 */
 
-	err = icap_create_subdev(pdev, xclbin);
+	err = icap_create_subdev(pdev);
 	if (err)
 		goto done;
 
@@ -1976,10 +2078,8 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 	}
 
 done:
-	if (err) {
-		xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_DNA);
-		xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_MIG);
-	}
+	if (err)
+		xocl_dyn_subdevs_destory(xdev);
 dna_cert_fail:
 	return err;
 }
@@ -3446,7 +3546,7 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 			axlf_header.m_header.m_length >= GB(1)) {
 			ICAP_ERR(icap, "Invalid xclbin size");
 			ret = -EINVAL;
-			goto failed;			
+			goto failed;
 		}
 
 		icap->rp_bit_len = axlf_header.m_header.m_length;

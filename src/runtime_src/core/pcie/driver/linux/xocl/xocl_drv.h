@@ -1538,4 +1538,26 @@ void xocl_fini_mailbox_versal(void);
 
 int __init xocl_init_ospi_versal(void);
 void xocl_fini_ospi_versal(void);
+
+int __init xocl_init_aim(void);
+void xocl_fini_aim(void);
+
+int __init xocl_init_am(void);
+void xocl_fini_am(void);
+
+int __init xocl_init_asm(void);
+void xocl_fini_asm(void);
+
+int __init xocl_init_trace_fifo_lite(void);
+void xocl_fini_trace_fifo_lite(void);
+
+int __init xocl_init_trace_fifo_full(void);
+void xocl_fini_trace_fifo_full(void);
+
+int __init xocl_init_trace_funnel(void);
+void xocl_fini_trace_funnel(void);
+
+int __init xocl_init_trace_s2mm(void);
+void xocl_fini_trace_s2mm(void);
+
 #endif

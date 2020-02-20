@@ -1472,6 +1472,13 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_mig,
 	xocl_init_dna,
 	xocl_init_mailbox_versal,
+	xocl_init_aim,
+	xocl_init_am,
+	xocl_init_asm,
+	xocl_init_trace_fifo_lite,
+	xocl_init_trace_fifo_full,
+	xocl_init_trace_funnel,
+	xocl_init_trace_s2mm,
 };
 
 static void (*xocl_drv_unreg_funcs[])(void) = {
@@ -1489,6 +1496,13 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_mig,
 	xocl_fini_dna,
 	xocl_fini_mailbox_versal,
+	xocl_fini_aim,
+	xocl_fini_am,
+	xocl_fini_asm,
+	xocl_fini_trace_fifo_lite,
+	xocl_fini_trace_fifo_full,
+	xocl_fini_trace_funnel,
+	xocl_fini_trace_s2mm,
 };
 
 static int __init xocl_init(void)

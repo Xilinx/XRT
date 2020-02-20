@@ -662,6 +662,12 @@ public:
   }
 
   virtual operations_result<std::string>
+  getSubdevPath(const std::string& subdev, uint32_t idx)
+  {
+    return operations_result<std::string>();
+  }
+
+  virtual operations_result<std::string>
   getDebugIPlayoutPath()
   {
     return operations_result<std::string>();

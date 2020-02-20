@@ -222,7 +222,7 @@ static dev_t xocl_subdev_get_devt(struct platform_device *pldev)
 }
 
 static int xocl_subdev_cdev_create(struct platform_device *pdev,
-		struct cdev **cdev)
+		struct xocl_subdev *subdev)
 {
 	struct xocl_dev_core *core;
 	struct device *sysdev;
@@ -257,13 +257,14 @@ static int xocl_subdev_cdev_create(struct platform_device *pdev,
 
 	if (XOCL_GET_DRV_PRI(pdev)->cdev_name)
 		sysdev = device_create(xrt_class, &pdev->dev, cdevp->dev,
-			NULL, "%s%d", XOCL_GET_DRV_PRI(pdev)->cdev_name,
-			XOCL_DEV_ID(core->pdev));
+			NULL, "%s%d.%d", XOCL_GET_DRV_PRI(pdev)->cdev_name,
+			XOCL_DEV_ID(core->pdev), subdev->inst & MINORMASK);
 	else
 		sysdev = device_create(xrt_class, &pdev->dev, cdevp->dev,
-			NULL, "%s/%s%d", XOCL_CDEV_DIR,
+			NULL, "%s/%s%d.%d", XOCL_CDEV_DIR,
 			platform_get_device_id(pdev)->name,
-			XOCL_DEV_ID(core->pdev));
+			XOCL_DEV_ID(core->pdev), subdev->inst & MINORMASK);
+
 	if (IS_ERR(sysdev)) {
 		ret = PTR_ERR(sysdev);
 		xocl_err(&pdev->dev, "device create failed %d", ret);
@@ -272,7 +273,7 @@ static int xocl_subdev_cdev_create(struct platform_device *pdev,
 
 	xocl_drvinst_set_filedev(platform_get_drvdata(pdev), cdevp);
 
-	*cdev = cdevp;
+	subdev->cdev = cdevp;
 	return 0;
 
 failed:
@@ -350,7 +351,6 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 			retval = -ENOENT;
 		goto error;
 	}
-
 	memcpy(&subdev->info, sdev_info, sizeof(subdev->info));
 
 	if (sdev_info->num_res > 0) {
@@ -478,7 +478,7 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 		return -EAGAIN;
 	}
 	subdev->state = XOCL_SUBDEV_STATE_ACTIVE;
-	retval = xocl_subdev_cdev_create(subdev->pldev, &subdev->cdev);
+	retval = xocl_subdev_cdev_create(subdev->pldev, subdev);
 	if (retval) {
 		xocl_xdev_info(xdev_hdl, "failed to create cdev subdev %s, %d",
 			devname, retval);
@@ -831,7 +831,7 @@ static int __xocl_subdev_online(xdev_handle_t xdev_hdl,
 		}
 	}
 
-	ret = xocl_subdev_cdev_create(subdev->pldev, &subdev->cdev);
+	ret = xocl_subdev_cdev_create(subdev->pldev, subdev);
 	if (ret) {
 		xocl_xdev_err(xdev_hdl, "create cdev failed %d", ret);
 		goto failed;
