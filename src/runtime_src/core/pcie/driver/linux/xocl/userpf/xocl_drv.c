@@ -1497,7 +1497,6 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_mig,
 	xocl_fini_dna,
 	xocl_fini_mailbox_versal,
-<<<<<<< cd21b745151c73473ab2e104662aef58ecd83e2a
 	xocl_fini_aim,
 	xocl_fini_am,
 	xocl_fini_asm,
@@ -1505,9 +1504,7 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_trace_fifo_full,
 	xocl_fini_trace_funnel,
 	xocl_fini_trace_s2mm,
-=======
 	xocl_fini_mem_hbm,
->>>>>>> XOCL_MIG_HBM
 };
 
 static int __init xocl_init(void)
