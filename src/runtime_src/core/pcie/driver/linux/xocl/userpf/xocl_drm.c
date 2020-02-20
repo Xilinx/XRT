@@ -470,19 +470,23 @@ failed:
 	if (ddev)
 		XOCL_DRM_DEV_PUT(ddev);
 	if (drm_p)
-		xocl_drvinst_free(drm_p);
+		xocl_drvinst_release(drm_p, NULL);
 
 	return NULL;
 }
 
 void xocl_drm_fini(struct xocl_drm *drm_p)
 {
+	void *hdl;
+
+	xocl_drvinst_release(drm_p, &hdl);
+
 	xocl_cleanup_mem(drm_p);
 	xocl_cma_chunks_free_all(drm_p);
 	drm_put_dev(drm_p->ddev);
 	mutex_destroy(&drm_p->mm_lock);
 
-	xocl_drvinst_free(drm_p);
+	xocl_drvinst_free(hdl);
 }
 
 void xocl_mm_get_usage_stat(struct xocl_drm *drm_p, u32 ddr,
