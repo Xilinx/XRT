@@ -3264,8 +3264,10 @@ static struct attribute_group icap_attr_group = {
 static int icap_remove(struct platform_device *pdev)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
+	void *hdl;
 
 	BUG_ON(icap == NULL);
+	xocl_drvinst_release(icap, &hdl);
 
 	icap_free_bins(icap);
 
@@ -3276,7 +3278,7 @@ static int icap_remove(struct platform_device *pdev)
 	icap_clean_bitstream_axlf(pdev);
 	ICAP_INFO(icap, "cleaned up successfully");
 	platform_set_drvdata(pdev, NULL);
-	xocl_drvinst_free(icap);
+	xocl_drvinst_free(hdl);
 	return 0;
 }
 
