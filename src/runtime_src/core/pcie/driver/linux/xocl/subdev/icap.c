@@ -2291,7 +2291,10 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 			for (i = 0; i < num_dev; i++) {
 				if (subdevs[i].info.id != XOCL_SUBDEV_CLOCK)
 					continue;
-				xocl_subdev_create(xdev, &subdevs[i].info);
+				err = xocl_subdev_create(xdev, &subdevs[i].info);
+				if (err)
+					goto done;
+
 				has_ulp_clock = true;
 				break;
 			}
