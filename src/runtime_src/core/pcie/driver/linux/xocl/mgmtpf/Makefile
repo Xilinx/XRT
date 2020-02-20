@@ -15,6 +15,7 @@
 
 obj-m	+= xclmgmt.o
 include $(PWD)/../lib/Makefile.in
+include $(PWD)/../Makefile.in
 
 xclmgmt-y := \
 	../xocl_subdev.o \
@@ -55,17 +56,9 @@ KERNELDIR ?= /lib/modules/$(shell uname -r)/build
 
 PWD	:= $(shell pwd)
 ROOT	:= $(dir $(M))
-LINUX_FLAVOR    := $(shell lsb_release -is)
-LINUX_VERSION   := $(shell lsb_release -rs)
 XILINXINCLUDE := -I$(ROOT)/../include -I$(ROOT)/../../../../include -I$(ROOT)/../../../../common/drv/
 
 ccflags-y += $(XILINXINCLUDE) -DPF=MGMTPF
-ifeq ($(LINUX_FLAVOR),SUSE)
-major :=$(shell echo "$(LINUX_VERSION).0" | cut -d. -f1)
-minor :=$(shell echo "$(LINUX_VERSION).0" | cut -d. -f2)
-code := $(shell expr $(major) \* 256 + $(minor))
-ccflags-y += -DSUSE_RELEASE_CODE=$(code)
-endif
 
 ifeq ($(DEBUG),1)
 ccflags-y += -DDEBUG

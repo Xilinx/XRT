@@ -145,6 +145,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/subdev/ospi_versal.c
   xocl/subdev/ert.c
   xocl/Makefile
+  xocl/Makefile.in
   )
 
 # includes relative to core/pcie/driver/linux
