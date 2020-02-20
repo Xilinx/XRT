@@ -43,6 +43,7 @@ xocl-y := \
 	../subdev/trace_fifo_full.o\
 	../subdev/trace_funnel.o\
 	../subdev/trace_s2mm.o\
+	../subdev/memory_hbm.o \
 	$(xocl_lib-y)	\
 	xocl_drv.o	\
 	xocl_bo.o	\
