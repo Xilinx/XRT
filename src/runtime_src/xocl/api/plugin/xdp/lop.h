@@ -17,6 +17,8 @@
 #ifndef LOP_DOT_H
 #define LOP_DOT_H
 
+#ifndef _WIN32
+
 /**
  * This file contains the callback mechanisms for connecting the OpenCL
  * layer to the low overhead profiling XDP plugin.
@@ -68,7 +70,6 @@ namespace xocl {
 	event->set_lop_action(f(std::forward<Args>(args)...));
     }
 
-
     std::function<void (xocl::event*, cl_int)> action_read() ;
     std::function<void (xocl::event*, cl_int)> action_write() ;
     std::function<void (xocl::event*, cl_int)> action_migrate(cl_mem_migration_flags flags) ;
@@ -84,5 +85,13 @@ namespace xocl {
 // Helpful defines
 #define LOP_LOG_FUNCTION_CALL xdplop::LOPFunctionCallLogger LOPObject(__func__);
 #define LOP_LOG_FUNCTION_CALL_WITH_QUEUE(Q) xdplop::LOPFunctionCallLogger LOPObject(__func__, (long long int)Q);
+
+#else
+// Due to Windows compiler issues, LOP is initially only supported on Linux
+
+#define LOP_LOG_FUNCTION_CALL
+#define LOP_LOG_FUNCTION_CALL_WITH_QUEUE(Q) 
+
+#endif
 
 #endif

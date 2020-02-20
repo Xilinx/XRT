@@ -14,6 +14,8 @@
  * under the License.
  */
 
+#ifndef _WIN32
+
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
 
@@ -123,7 +125,6 @@ namespace xdplop {
     if (xrt_core::dlerror() != NULL) write_cb = nullptr ;
   }
 
-
   std::atomic<unsigned int> LOPFunctionCallLogger::m_funcid_global(0) ;
 
   LOPFunctionCallLogger::LOPFunctionCallLogger(const char* function) :
@@ -218,4 +219,9 @@ namespace xocl {
     }
 
   } // end namespace lop
-} // end namespace xdp
+} // end namespace xocl
+
+#else 
+// Due to Windows compiler issues, LOP is initially only supported on Linux
+
+#endif
