@@ -61,10 +61,10 @@ class xclbin
 
 public:
   using addr_type = uint64_t;
-  // Max 128 memory indicies for now. This number must be >= to number
+  // Max 256 memory indicies for now. This number must be >= to number
   // of mem_topology.m_count.  Unfortunately it is a compile time constant.
   // A better solution must be found (boost::dynamic_bitset<>???)
-  using memidx_bitmask_type = std::bitset<128>;
+  using memidx_bitmask_type = std::bitset<256>;
   using memidx_type = int32_t;
   using connidx_type = int32_t;
 

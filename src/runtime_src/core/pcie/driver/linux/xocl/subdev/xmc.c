@@ -2424,6 +2424,11 @@ static int stop_xmc(struct platform_device *pdev)
 	else if (!xmc->enabled)
 		return -ENODEV;
 
+	if (xmc->sysfs_created) {
+		mgmt_sysfs_destroy_xmc(pdev);
+		xmc->sysfs_created = false;
+	}
+
 	mutex_lock(&xmc->xmc_lock);
 	ret = stop_xmc_nolock(pdev);
 	mutex_unlock(&xmc->xmc_lock);
@@ -2581,6 +2586,16 @@ static int load_xmc(struct xocl_xmc *xmc)
 	mutex_lock(&xmc->mbx_lock);
 	xmc_load_board_info(xmc);
 	mutex_unlock(&xmc->mbx_lock);
+
+	if (!xmc->sysfs_created) {
+		ret = mgmt_sysfs_create_xmc(xmc->pdev);
+		if (ret) {
+			xocl_err(&xmc->pdev->dev, "Create sysfs failed, err %d", ret);
+			goto out;
+		}
+
+		xmc->sysfs_created = true;
+	}
 
 	return 0;
 out:
@@ -2782,11 +2797,14 @@ static void xmc_unload_board_info(struct xocl_xmc *xmc)
 static int xmc_remove(struct platform_device *pdev)
 {
 	struct xocl_xmc *xmc;
+	void *hdl;
 	int	i;
 
 	xmc = platform_get_drvdata(pdev);
 	if (!xmc)
 		return 0;
+
+	xocl_drvinst_release(xmc, &hdl);
 
 	vfree(xmc->mgmt_binary);
 	vfree(xmc->sche_binary);
@@ -2818,7 +2836,7 @@ end:
 	mutex_destroy(&xmc->mbx_lock);
 
 	platform_set_drvdata(pdev, NULL);
-	xocl_drvinst_free(xmc);
+	xocl_drvinst_free(hdl);
 	return 0;
 }
 

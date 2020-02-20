@@ -247,6 +247,11 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 
 #define XOCL_MAXNAMELEN	64
 
+#define XOCL_VSEC_XLAT_CTL_REG_ADDR             0x188
+#define XOCL_VSEC_XLAT_GPA_LOWER_REG_ADDR       0x18C
+#define XOCL_VSEC_XLAT_GPA_BASE_UPPER_REG_ADDR  0x190
+#define XOCL_VSEC_XLAT_GPA_LIMIT_UPPER_REG_ADDR 0x194
+
 struct xocl_vsec_header {
 	u32		format;
 	u32		length;
@@ -978,6 +983,7 @@ struct gate_handler {
 	int (*gate_freeze_cb)(void *drvdata);
 	int (*gate_free_cb)(void *drvdata);
 	int (*gate_toggle_cb)(void *drvdata);
+	int (*gate_hbm_calibration_cb)(void *drvdata);
 	void *gate_args;
 };
 
@@ -1416,7 +1422,10 @@ extern struct mutex xocl_drvinst_mutex;
 extern struct xocl_drvinst *xocl_drvinst_array[XOCL_MAX_DEVICES * 10];
 
 void *xocl_drvinst_alloc(struct device *dev, u32 size);
-void xocl_drvinst_free(void *data);
+void xocl_drvinst_release(void *data, void **hdl);
+static inline void xocl_drvinst_free(void *hdl) {
+	kfree(hdl);
+}
 void *xocl_drvinst_open(void *file_dev);
 void *xocl_drvinst_open_single(void *file_dev);
 void xocl_drvinst_close(void *data);
@@ -1529,4 +1538,26 @@ void xocl_fini_mailbox_versal(void);
 
 int __init xocl_init_ospi_versal(void);
 void xocl_fini_ospi_versal(void);
+
+int __init xocl_init_aim(void);
+void xocl_fini_aim(void);
+
+int __init xocl_init_am(void);
+void xocl_fini_am(void);
+
+int __init xocl_init_asm(void);
+void xocl_fini_asm(void);
+
+int __init xocl_init_trace_fifo_lite(void);
+void xocl_fini_trace_fifo_lite(void);
+
+int __init xocl_init_trace_fifo_full(void);
+void xocl_fini_trace_fifo_full(void);
+
+int __init xocl_init_trace_funnel(void);
+void xocl_fini_trace_funnel(void);
+
+int __init xocl_init_trace_s2mm(void);
+void xocl_fini_trace_s2mm(void);
+
 #endif

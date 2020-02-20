@@ -1256,11 +1256,13 @@ static void sysfs_destroy_flash(struct xocl_flash *flash)
 static int flash_remove(struct platform_device *pdev)
 {
 	struct xocl_flash *flash;
+	void *hdl;
 
 	flash = platform_get_drvdata(pdev);
 	if (!flash)
 		return -EINVAL;
 
+	xocl_drvinst_release(flash, &hdl);
 	platform_set_drvdata(pdev, NULL);
 
 	sysfs_destroy_flash(flash);
@@ -1271,7 +1273,7 @@ static int flash_remove(struct platform_device *pdev)
 		iounmap(flash->qspi_regs);
 
 	mutex_destroy(&flash->io_lock);
-	xocl_drvinst_free(flash);
+	xocl_drvinst_free(hdl);
 	return 0;
 }
 

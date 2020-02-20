@@ -14,15 +14,14 @@
  * under the License.
  */
 
-// #include <unistd.h>
-
+#include <fcntl.h>
 #include "xospiversal.h"
 
 /**
  * @brief XOSPIVER_Flasher::XOSPIVER_Flasher
  */
-XOSPIVER_Flasher::XOSPIVER_Flasher(unsigned int device_index)
-    : m_device(xrt_core::get_mgmtpf_device(device_index))
+XOSPIVER_Flasher::XOSPIVER_Flasher(std::shared_ptr<xrt_core::device> dev)
+    : m_device(std::move(dev))
 {
 }
 
@@ -35,11 +34,20 @@ int XOSPIVER_Flasher::xclUpgradeFirmware(std::istream& binStream)
     binStream.seekg(0, binStream.beg);
 
     std::cout << "INFO: ***PDI has " << total_size << " bytes" << std::endl;
+    
+    xrt_core::scope_guard<int, std::function<void(int)>> fd { 0, nullptr };
+    try {
+        fd = m_device->file_open("ospi_versal", O_RDWR); 
+    } catch (const std::exception& e) {
+        xrt_core::send_exception_message(e.what(), "XBMGMT");
+    }
 
     std::vector<char> buffer(total_size);
     binStream.read(buffer.data(), total_size);
+	ssize_t ret = total_size;
+#ifdef __GNUC__
+	ret = write(fd.get(), buffer.data(), total_size);
+#endif
 
-    m_device->write(0, buffer.data(), total_size);
-
-    return 0;
+    return ret == total_size ? 0 : -EIO;
 }

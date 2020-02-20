@@ -950,6 +950,59 @@ done:
       throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_ip_layout) failed");
   }
 
+
+  void
+      get_debug_ip_layout(char* buffer, size_t size, size_t* size_ret)
+  {
+      struct debug_ip_layout debug_iplayout_hdr;
+      XOCL_STAT_CLASS_ARGS statargs;
+
+      statargs.StatClass = XoclStatDebugIpLayout;
+
+      DWORD bytes = 0;
+      auto status = DeviceIoControl(m_dev,
+          IOCTL_XOCL_STAT,
+          &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
+          &debug_iplayout_hdr, sizeof(struct debug_ip_layout),
+          &bytes,
+          nullptr);
+
+      if (!status || bytes != sizeof(struct debug_ip_layout))
+          throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_debug_ip_layout hdr) failed");
+
+      if (debug_iplayout_hdr.m_count == 0)
+      {
+          *size_ret = 0; //there is not any debug_ip_layout info
+          return;
+      }
+      
+      DWORD debug_ip_layout_size = sizeof(struct debug_ip_layout) + ((debug_iplayout_hdr.m_count - 1) * sizeof(struct debug_ip_data));
+
+      if (size_ret)
+          *size_ret = debug_ip_layout_size;
+
+      if (!buffer)
+          return;  // size_ret has the required size
+
+      if (size < debug_ip_layout_size)
+          throw std::runtime_error
+          ("DeviceIoControl IOCTL_XOCL_STAT (get_debug_ip_layout) failed "
+              "size (" + std::to_string(size) + ") of buffer too small, "
+              "required size (" + std::to_string(debug_ip_layout_size) + ")");
+
+      auto debug_iplayout = reinterpret_cast<struct debug_ip_layout*>(buffer);
+
+      status = DeviceIoControl(m_dev,
+          IOCTL_XOCL_STAT,
+          &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
+          debug_iplayout, debug_ip_layout_size,
+          &bytes,
+          nullptr);
+
+      if (!status || bytes != debug_ip_layout_size)
+          throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_debug_ip_layout) failed");
+  }
+
   void
   get_sensor_info(xcl_sensor* value)
   {
@@ -1106,6 +1159,15 @@ get_ip_layout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret)
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_ip_layout()");
   auto shim = get_shim_object(hdl);
   shim->get_ip_layout(buffer, size, size_ret);
+}
+
+void
+get_debug_ip_layout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret)
+{
+    xrt_core::message::
+        send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_debug_ip_layout()");
+    auto shim = get_shim_object(hdl);
+    shim->get_debug_ip_layout(buffer, size, size_ret);
 }
 
 void

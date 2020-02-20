@@ -2289,8 +2289,10 @@ static const struct file_operations mailbox_fops = {
 static int mailbox_remove(struct platform_device *pdev)
 {
 	struct mailbox *mbx = platform_get_drvdata(pdev);
+	void *hdl;
 
 	BUG_ON(mbx == NULL);
+	xocl_drvinst_release(mbx, &hdl);
 	/* Stop accessing from sysfs node. */
 	sysfs_remove_group(&pdev->dev.kobj, &mailbox_attrgroup);
 
@@ -2302,7 +2304,7 @@ static int mailbox_remove(struct platform_device *pdev)
 	MBX_INFO(mbx, "mailbox cleaned up successfully");
 
 	platform_set_drvdata(pdev, NULL);
-	xocl_drvinst_free(mbx);
+	xocl_drvinst_free(hdl);
 	return 0;
 }
 

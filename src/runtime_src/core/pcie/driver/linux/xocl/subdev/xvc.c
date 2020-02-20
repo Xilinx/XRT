@@ -369,7 +369,7 @@ static int xvc_probe(struct platform_device *pdev)
 failed:
 	if (xvc->base)
 		iounmap(xvc->base);
-	xocl_drvinst_free(xvc);
+	xocl_drvinst_release(xvc, NULL);
 
 	return err;
 }
@@ -378,17 +378,19 @@ failed:
 static int xvc_remove(struct platform_device *pdev)
 {
 	struct xocl_xvc	*xvc;
+	void *hdl;
 
 	xvc = platform_get_drvdata(pdev);
 	if (!xvc) {
 		xocl_err(&pdev->dev, "driver data is NULL");
 		return -EINVAL;
 	}
+	xocl_drvinst_release(xvc, &hdl);
 	if (xvc->base)
 		iounmap(xvc->base);
 
 	platform_set_drvdata(pdev, NULL);
-	xocl_drvinst_free(xvc);
+	xocl_drvinst_free(hdl);
 
 	return 0;
 }

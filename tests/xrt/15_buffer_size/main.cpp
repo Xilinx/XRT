@@ -390,6 +390,12 @@ int main(int argc, char** argv)
         // memory pressure due to backing pages on host RAM
         //printf("val = 0x%llx\n", info.mDDRSize/4);
 
+        bool is_u280 = std::memcmp(info.mName, "xilinx_u280", 11) ? false : true;
+        bool is_u50  = std::memcmp(info.mName, "xilinx_u50", 10) ? false : true;
+        if (is_u280 || is_u50) {
+            info.mDDRSize = 0x10000000;
+        }
+        
         if (bufferSizeTest(handle, info.mDDRSize / 4, first_mem)) { //2
             std::cout << "FAILED TEST\n";
             return 1;

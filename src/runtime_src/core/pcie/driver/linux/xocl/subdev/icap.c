@@ -359,6 +359,7 @@ static uint64_t icap_get_data(struct platform_device *pdev, enum data_kind kind)
 static const struct axlf_section_header *get_axlf_section_hdr(
 	struct icap *icap, const struct axlf *top, enum axlf_section_kind kind);
 static void icap_refresh_addrs(struct platform_device *pdev);
+static inline int icap_calibrate_mig(struct icap *icap);
 
 static int icap_xclbin_wr_lock(struct icap *icap)
 {
@@ -688,6 +689,15 @@ static void xclbin_get_ocl_frequency_max_min(struct icap *icap,
 	}
 }
 
+static int ulp_hbm_calibration(void *drvdata)
+{
+	struct icap *icap = drvdata;
+	ICAP_INFO(icap, "HBM Calibration");
+	BUG_ON(!mutex_is_locked(&icap->icap_lock));
+
+	return icap_calibrate_mig(icap);
+}
+
 static int ulp_toggle_axi_gate(void *drvdata)
 {
 	struct icap *icap = drvdata;
@@ -720,15 +730,21 @@ static int ulp_clock_update(struct icap *icap, unsigned short *freqs,
 	int num_freqs, int verify)
 {
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
+	int err = 0;
+
 	struct gate_handler gate_handle = {
 		.gate_freeze_cb = ulp_freeze_axi_gate,
 		.gate_free_cb = ulp_free_axi_gate,
 		.gate_toggle_cb = ulp_toggle_axi_gate,
+		.gate_hbm_calibration_cb = ulp_hbm_calibration,
 		.gate_args = icap,
 	};
 
-	return xocl_clock_update_freq(xdev, freqs, num_freqs, verify,
+	err = xocl_clock_update_freq(xdev, freqs, num_freqs, verify,
 		&gate_handle);
+
+	ICAP_INFO(icap, "returns: %d", err);
+	return err;
 }
 
 static int icap_ocl_update_clock_freq_topology(struct platform_device *pdev,
@@ -838,6 +854,7 @@ static int calibrate_mig(struct icap *icap)
 		return -ETIMEDOUT;
 	}
 
+	ICAP_INFO(icap, "took %ds", i/2);
 	return 0;
 }
 
@@ -1751,7 +1768,95 @@ done:
 	return memidx;
 }
 
-static int icap_create_subdev(struct platform_device *pdev, struct axlf *xclbin)
+static int icap_create_subdev_debugip(struct platform_device *pdev)
+{
+	struct icap *icap = platform_get_drvdata(pdev);
+	int err = 0, i = 0;
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	struct debug_ip_layout *debug_ip_layout = icap->debug_layout;
+
+	if (!debug_ip_layout)
+		return err;
+
+
+	for (i = 0; i < debug_ip_layout->m_count; ++i) {
+		struct debug_ip_data *ip = &debug_ip_layout->m_debug_ip_data[i];
+
+		if (ip->m_type == AXI_MM_MONITOR) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_AIM;
+
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
+			err = xocl_subdev_create(xdev, &subdev_info);
+			if (err) {
+				ICAP_ERR(icap, "can't create AXI_MM_MONITOR subdev");
+				break;
+			}
+		} else if (ip->m_type == ACCEL_MONITOR) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_AM;
+
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
+			err = xocl_subdev_create(xdev, &subdev_info);
+			if (err) {
+				ICAP_ERR(icap, "can't create ACCEL_MONITOR subdev");
+				break;
+			}
+		} else if (ip->m_type == AXI_STREAM_MONITOR) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_ASM;
+
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
+			err = xocl_subdev_create(xdev, &subdev_info);
+			if (err) {
+				ICAP_ERR(icap, "can't create AXI_STREAM_MONITOR subdev");
+				break;
+			}
+		} else if (ip->m_type == AXI_MONITOR_FIFO_LITE) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_TRACE_FIFO_LITE;
+
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
+			err = xocl_subdev_create(xdev, &subdev_info);
+			if (err) {
+				ICAP_ERR(icap, "can't create AXI_MONITOR_FIFO_LITE subdev");
+				break;
+			}
+		} else if (ip->m_type == AXI_MONITOR_FIFO_FULL) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_TRACE_FIFO_FULL;
+
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
+			err = xocl_subdev_create(xdev, &subdev_info);
+			if (err) {
+				ICAP_ERR(icap, "can't create AXI_MONITOR_FIFO_FULL subdev");
+				break;
+			}
+		} else if (ip->m_type == AXI_TRACE_FUNNEL) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_TRACE_FUNNEL;
+
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
+			err = xocl_subdev_create(xdev, &subdev_info);
+			if (err) {
+				ICAP_ERR(icap, "can't create AXI_MONITOR_TRACE_FUNNEL subdev");
+				break;
+			}
+		} else if (ip->m_type == TRACE_S2MM) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_TRACE_S2MM;
+
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
+			err = xocl_subdev_create(xdev, &subdev_info);
+			if (err) {
+				ICAP_ERR(icap, "can't create AXI_MONITOR_TRACE_S2MM subdev");
+				break;
+			}
+		}
+	}
+	return err;
+}
+static int icap_create_subdev(struct platform_device *pdev)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
 	int err = 0, i = 0;
@@ -1877,8 +1982,23 @@ static int icap_create_subdev(struct platform_device *pdev, struct axlf *xclbin)
 			}
 		}
 	}
+	if (!ICAP_PRIVILEGED(icap))
+		err = icap_create_subdev_debugip(pdev);
 done:
 	return err;
+}
+
+static inline void xocl_dyn_subdevs_destory(xdev_handle_t xdev)
+{
+	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_DNA);
+	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_MIG);
+	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_AIM);
+	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_AM);
+	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_ASM);
+	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_TRACE_FIFO_LITE);
+	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_TRACE_FIFO_FULL);
+	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_TRACE_FUNNEL);
+	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_TRACE_S2MM);
 }
 
 static int icap_verify_bitstream_axlf(struct platform_device *pdev,
@@ -1891,8 +2011,7 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 	u32 capability;
 
 	/* Destroy all dynamically add sub-devices*/
-	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_DNA);
-	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_MIG);
+	xocl_dyn_subdevs_destory(xdev);
 	/*
 	 * Add sub device dynamically.
 	 * restrict any dynamically added sub-device and 1 base address,
@@ -1904,7 +2023,7 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 	 *         "m_name": "slr0\/dna_self_check_0"
 	 */
 
-	err = icap_create_subdev(pdev, xclbin);
+	err = icap_create_subdev(pdev);
 	if (err)
 		goto done;
 
@@ -1959,10 +2078,8 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 	}
 
 done:
-	if (err) {
-		xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_DNA);
-		xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_MIG);
-	}
+	if (err)
+		xocl_dyn_subdevs_destory(xdev);
 dna_cert_fail:
 	return err;
 }
@@ -2058,9 +2175,37 @@ static int icap_verify_signature(struct icap *icap,
 	return ret;
 }
 
-static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
+static int icap_refresh_clock_freq(struct icap *icap, struct axlf *xclbin)
 {
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
+	int err = 0;
+
+	if (ICAP_PRIVILEGED(icap) && !XOCL_DSA_IS_SMARTN(xdev)) {
+		err = xclbin_setup_clock_freq_topology(icap, xclbin);
+		if (!err) {
+			err = axlf_set_freqscaling(icap);
+			err = err == -ENODEV ? 0 : err;
+		}
+	}
+
+	ICAP_INFO(icap, "ret: %d", err);
+	return err;
+}
+
+static inline int icap_calibrate_mig(struct icap *icap)
+{
+	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
+	int err = 0;
+
+	/* Wait for mig recalibration */
+	if ((xocl_is_unified(xdev) || XOCL_DSA_XPR_ON(xdev)))
+		err = calibrate_mig(icap);
+
+	return err;
+}
+
+static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
+{
 	long err = 0;
 
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
@@ -2087,26 +2232,33 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 		goto out;
 	}
 
-	if (!XOCL_DSA_IS_SMARTN(xdev)) {
-		err = xclbin_setup_clock_freq_topology(icap, xclbin);
-		if (err)
-			goto out;
-		err = axlf_set_freqscaling(icap);
-		if (err && err != -ENODEV)
-			goto out;
-	}
+	err = icap_refresh_clock_freq(icap, xclbin);
+	if (err)
+		goto out;
 
 	err = icap_download_bitstream(icap, xclbin);
 	if (err)
 		goto out;
 
-	/* Wait for mig recalibration */
-	if ((xocl_is_unified(xdev) || XOCL_DSA_XPR_ON(xdev)))
-		err = calibrate_mig(icap);
-
+	/* calibrate hbm and ddr should be performed when resources are ready */
 out:
 	ICAP_INFO(icap, "ret: %d", (int)err);
 	return err;
+}
+
+static void icap_probe_urpdev(struct platform_device *pdev, struct axlf *xclbin,
+	int *num_urpdev, struct xocl_subdev **urpdevs)
+{
+	struct icap *icap = platform_get_drvdata(pdev);
+	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
+
+	icap_parse_bitstream_axlf_section(pdev, xclbin, PARTITION_METADATA);
+	if (icap->partition_metadata) {
+		*num_urpdev = xocl_fdt_parse_blob(xdev, icap->partition_metadata,
+			icap_get_section_size(icap, PARTITION_METADATA),
+			urpdevs);
+		ICAP_INFO(icap, "found %d sub devices", *num_urpdev);
+	}
 }
 
 static int __icap_download_bitstream_axlf(struct platform_device *pdev,
@@ -2116,6 +2268,7 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 	int err = 0, num_dev = -1, i;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct xocl_subdev *subdevs;
+	bool has_ulp_clock = false;
 
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
@@ -2126,11 +2279,35 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 	xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 	icap_refresh_addrs(pdev);
 
+	icap_probe_urpdev(pdev, xclbin, &num_dev, &subdevs);
+
 	if (ICAP_PRIVILEGED(icap)) {
 		err = __icap_xclbin_download(icap, xclbin);
 		if (err)
 			goto done;
 
+		if (num_dev > 0) {
+			/* if has clock, create clock subdev first */
+			for (i = 0; i < num_dev; i++) {
+				if (subdevs[i].info.id != XOCL_SUBDEV_CLOCK)
+					continue;
+				xocl_subdev_create(xdev, &subdevs[i].info);
+				has_ulp_clock = true;
+				break;
+			}
+
+			icap_refresh_addrs(pdev);
+			err = icap_refresh_clock_freq(icap, xclbin);
+			if (err)
+				goto done;
+		}
+
+		if (!has_ulp_clock)
+			err = icap_calibrate_mig(icap);
+		if (err)
+			goto done;
+
+		/* reconfig mig and dna after calibrate_mig */
 		icap_parse_bitstream_axlf_section(pdev, xclbin, MEM_TOPOLOGY);
 		icap_parse_bitstream_axlf_section(pdev, xclbin, IP_LAYOUT);
 		err = icap_verify_bitstream_axlf(pdev, xclbin);
@@ -2162,19 +2339,12 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 		}
 	}
 
-	icap_parse_bitstream_axlf_section(pdev, xclbin, PARTITION_METADATA);
-	if (icap->partition_metadata) {
-		num_dev = xocl_fdt_parse_blob(xdev, icap->partition_metadata,
-				icap_get_section_size(icap, PARTITION_METADATA),
-				&subdevs);
-		ICAP_INFO(icap, "found %d sub devices", num_dev);
+	/* create the reset of subdevs for both mgmt and user pf */
+	if (num_dev > 0) {
 		for (i = 0; i < num_dev; i++)
 			xocl_subdev_create(xdev, &subdevs[i].info);
-	}
 
-	if (num_dev > 0) {
 		xocl_subdev_create_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
-		icap_refresh_addrs(pdev);
 	}
 
 	if (ICAP_PRIVILEGED(icap)) {
@@ -3194,8 +3364,10 @@ static struct attribute_group icap_attr_group = {
 static int icap_remove(struct platform_device *pdev)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
+	void *hdl;
 
 	BUG_ON(icap == NULL);
+	xocl_drvinst_release(icap, &hdl);
 
 	icap_free_bins(icap);
 
@@ -3206,7 +3378,7 @@ static int icap_remove(struct platform_device *pdev)
 	icap_clean_bitstream_axlf(pdev);
 	ICAP_INFO(icap, "cleaned up successfully");
 	platform_set_drvdata(pdev, NULL);
-	xocl_drvinst_free(icap);
+	xocl_drvinst_free(hdl);
 	return 0;
 }
 
@@ -3374,7 +3546,7 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 			axlf_header.m_header.m_length >= GB(1)) {
 			ICAP_ERR(icap, "Invalid xclbin size");
 			ret = -EINVAL;
-			goto failed;			
+			goto failed;
 		}
 
 		icap->rp_bit_len = axlf_header.m_header.m_length;

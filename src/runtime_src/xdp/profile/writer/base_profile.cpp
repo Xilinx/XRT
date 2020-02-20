@@ -691,6 +691,17 @@ namespace xdp {
       }
     }
 
+    // xrt.ini settings
+    {
+      std::string check;
+      auto map = mPluginHandle->getXrtIniMap();
+      XDPPluginI::getGuidanceName(XDPPluginI::XRT_INI_SETTING, check);
+      for (auto const& it : map) {
+        writeTableCells(getStream(), check, it.first, it.second);
+        writeTableRowEnd(getStream());
+      }
+    }
+
     // Time period during which host buffer read transfers were active
     {
       std::string check;

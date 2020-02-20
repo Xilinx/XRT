@@ -31,6 +31,8 @@
 #include <sys/stat.h>
 #include <sys/file.h>
 #include <poll.h>
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/fstream.hpp>
 #include "xclbin.h"
 #include "scan.h"
 #include "core/common/utils.h"
@@ -105,6 +107,18 @@ std::string pcidev::pci_device::get_sysfs_path(const std::string& subdev,
     path += subdir;
     path += "/";
     path += entry;
+    return path;
+}
+
+std::string pcidev::pci_device::get_subdev_path(const std::string& subdev,
+    uint idx)
+{
+    std::string path("/dev/xfpga/");
+
+    path += subdev;
+    path += is_mgmt ? ".m" : ".u";
+    path += std::to_string((domain<<16) + (bus<<8) + (dev<<3) + func);
+    path += "." + std::to_string(idx);
     return path;
 }
 
@@ -269,7 +283,7 @@ static bool is_admin()
     return (getuid() == 0) || (geteuid() == 0);
 }
 
-int pcidev::pci_device::open(const std::string& subdev, int flag)
+int pcidev::pci_device::open(const std::string& subdev, uint32_t idx, int flag)
 {
     if (is_mgmt && !::is_admin())
         throw std::runtime_error("Root privileges required");
@@ -284,7 +298,13 @@ int pcidev::pci_device::open(const std::string& subdev, int flag)
     file += subdev;
     file += is_mgmt ? ".m" : ".u";
     file += std::to_string((domain<<16) + (bus<<8) + (dev<<3) + func);
+    file += "." + std::to_string(idx);
     return ::open(file.c_str(), flag);
+}
+
+int pcidev::pci_device::open(const std::string& subdev, int flag)
+{
+    return open(subdev, 0, flag);
 }
 
 static size_t bar_size(const std::string &dir, unsigned bar)
@@ -651,13 +671,19 @@ int pcidev::pci_device::shutdown(bool remove_user, bool remove_mgmt)
 
     int rem_dev_cnt = 0;
     int active_dev_num;
-   
+    std::string parent_path;
+
     sysfs_get<int>("", "dparent/power/runtime_active_kids", errmsg, active_dev_num, EINVAL);
 
     if ((remove_user || remove_mgmt) && !errmsg.empty()) {
         std::cout << "ERROR: can not read active device number" << std::endl;
         return -ENOENT;
     }
+
+    /* Cache the parent sysfs path before remove the PF */
+    parent_path = get_sysfs_path("", "dparent/power/runtime_active_kids");
+    /* Get the absolute path from the symbolic link */
+    parent_path = (boost::filesystem::canonical(parent_path)).c_str();
 
     if (remove_user) {
         udev->sysfs_put("", "remove", errmsg, "1\n");
@@ -683,12 +709,12 @@ int pcidev::pci_device::shutdown(bool remove_user, bool remove_mgmt)
 
     for (int wait = 0; wait < DEV_TIMEOUT; wait++) {
         int curr_act_dev;
-       	sysfs_get<int>("", "dparent/power/runtime_active_kids", errmsg, curr_act_dev, EINVAL);
-
-	if (!errmsg.empty())
-            continue;
+        boost::filesystem::ifstream file(parent_path);
+        file >> curr_act_dev;
+        
         if (curr_act_dev + rem_dev_cnt == active_dev_num)
             return 0;
+       
         sleep(1);
     }
 
@@ -769,8 +795,7 @@ static bool is_in_use(std::vector<std::shared_ptr<pcidev::pci_device>>& vec)
 
 void pci_device_scanner::pci_device_scanner::rescan_nolock()
 {
-    DIR *dir;
-    struct dirent *entry;
+    std::vector<boost::filesystem::path> vec;
 
     if (is_in_use(user_list) || is_in_use(mgmt_list)) {
         std::cout << "Device list is in use, can't rescan" << std::endl;
@@ -779,16 +804,23 @@ void pci_device_scanner::pci_device_scanner::rescan_nolock()
 
     user_list.clear();
     mgmt_list.clear();
-
-    dir = opendir(sysfs_root.c_str());
-    if(!dir) {
-        std::cout << "Cannot open " << sysfs_root << std::endl;
+    
+    if(!boost::filesystem::exists(sysfs_root)) {
+        std::cout << "File does not exist : " << sysfs_root << std::endl;
         return;
     }
 
-    while((entry = readdir(dir))) {
+    copy(boost::filesystem::directory_iterator(sysfs_root), boost::filesystem::directory_iterator(),
+            std::back_inserter(vec));
+
+    /* sort, since directory iteration is not ordered on some file systems */
+    sort(vec.begin(), vec.end());
+
+    for (std::vector<boost::filesystem::path>::const_iterator it(vec.begin()), it_end(vec.end());
+            it != it_end; ++it)
+    {
         auto pf = std::make_shared<pcidev::pci_device>(
-            std::string(entry->d_name));
+                std::string(it->filename().c_str()));
         if(pf->domain == INVALID_ID)
             continue;
 
@@ -802,7 +834,6 @@ void pci_device_scanner::pci_device_scanner::rescan_nolock()
         }
     }
 
-    (void) closedir(dir);
 }
 
 

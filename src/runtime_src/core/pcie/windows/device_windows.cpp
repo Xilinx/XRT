@@ -919,4 +919,23 @@ write(uint64_t addr, const void* buf, uint64_t len) const
   mgmtpf::write_bar(m_mgmthdl, addr, buf, len);
 }
 
+/* TODO: after 2020.1 
+ * Adding open/close stubs for compilation purposes.
+ * We currently don't use these functions but we'll 
+ * need them when we switch over to using driver for 
+ * flashing
+ */
+int 
+device_windows::
+open(const std::string& subdev, int flag) const
+{
+  return 0;
+}
+
+void
+device_windows::
+close(int dev_handle) const 
+{
+}
+
 } // xrt_core

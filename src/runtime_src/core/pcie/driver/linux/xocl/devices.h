@@ -167,19 +167,19 @@ enum {
 #define SUBDEV_SUFFIX	".u"
 #endif
 
-#define XOCL_FEATURE_ROM	"rom"
-#define XOCL_IORES0		"iores0"
-#define XOCL_IORES1		"iores1"
-#define XOCL_IORES2		"iores2"
-#define XOCL_IORES3		"iores3"
-#define XOCL_XDMA		"dma.xdma"
-#define XOCL_QDMA		"dma.qdma"
-#define XOCL_MB_SCHEDULER	"mb_scheduler"
-#define XOCL_XVC_PUB		"xvc_pub"
-#define XOCL_XVC_PRI		"xvc_pri"
-#define XOCL_NIFD_PRI		"nifd_pri"
-#define XOCL_SYSMON		"sysmon"
-#define XOCL_FIREWALL		"firewall"
+#define	XOCL_FEATURE_ROM	"rom"
+#define	XOCL_IORES0		"iores0"
+#define	XOCL_IORES1		"iores1"
+#define	XOCL_IORES2		"iores2"
+#define	XOCL_IORES3		"iores3"
+#define	XOCL_XDMA		"dma.xdma"
+#define	XOCL_QDMA		"dma.qdma"
+#define	XOCL_MB_SCHEDULER	"mb_scheduler"
+#define	XOCL_XVC_PUB		"xvc_pub"
+#define	XOCL_XVC_PRI		"xvc_pri"
+#define	XOCL_NIFD_PRI		"nifd_pri"
+#define	XOCL_SYSMON		"sysmon"
+#define	XOCL_FIREWALL		"firewall"
 #define	XOCL_MB			"microblaze"
 #define	XOCL_PS			"processor_system"
 #define	XOCL_XIIC		"xiic"
@@ -192,12 +192,19 @@ enum {
 #define	XOCL_DNA		"dna"
 #define	XOCL_FMGR		"fmgr"
 #define	XOCL_FLASH		"flash"
-#define XOCL_DMA_MSIX		"dma_msix"
+#define	XOCL_DMA_MSIX		"dma_msix"
 #define	XOCL_MAILBOX_VERSAL	"mailbox_versal"
-#define XOCL_ERT		"ert"
-#define XOCL_OSPI_VERSAL	"ospi_versal"
+#define	XOCL_ERT		"ert"
+#define	XOCL_OSPI_VERSAL	"ospi_versal"
+#define	XOCL_AIM		"aximm_mon"
+#define	XOCL_AM			"accel_mon"
+#define	XOCL_ASM		"axistream_mon"
+#define	XOCL_TRACE_FIFO_LITE	"trace_fifo_lite"
+#define	XOCL_TRACE_FIFO_FULL	"trace_fifo_full"
+#define	XOCL_TRACE_FUNNEL	"trace_funnel"
+#define	XOCL_TRACE_S2MM		"trace_s2mm"
 
-#define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
+#define	XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
 
 enum subdev_id {
 	XOCL_SUBDEV_FEATURE_ROM,
@@ -223,6 +230,13 @@ enum subdev_id {
 	XOCL_SUBDEV_MAILBOX_VERSAL,
 	XOCL_SUBDEV_OSPI_VERSAL,
 	XOCL_SUBDEV_CLOCK,
+	XOCL_SUBDEV_AIM,
+	XOCL_SUBDEV_AM,
+	XOCL_SUBDEV_ASM,
+	XOCL_SUBDEV_TRACE_FIFO_LITE,
+	XOCL_SUBDEV_TRACE_FIFO_FULL,
+	XOCL_SUBDEV_TRACE_FUNNEL,
+	XOCL_SUBDEV_TRACE_S2MM,
 	XOCL_SUBDEV_NUM
 };
 
@@ -501,6 +515,147 @@ struct xocl_subdev_map {
 		XOCL_RES_DNA,				\
 		ARRAY_SIZE(XOCL_RES_DNA),		\
 		.level = XOCL_SUBDEV_LEVEL_URP,		\
+	}
+
+#define	XOCL_RES_AIM					\
+	((struct resource []) {				\
+		{					\
+			.start	= 0x0,			\
+			.end	= 0xFFF,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+	})
+
+#define	XOCL_DEVINFO_AIM				\
+	{						\
+		XOCL_SUBDEV_AIM,			\
+		XOCL_AIM,				\
+		XOCL_RES_AIM,			\
+		ARRAY_SIZE(XOCL_RES_AIM),		\
+		.level = XOCL_SUBDEV_LEVEL_URP,		\
+		.multi_inst = true,			\
+	}
+
+#define	XOCL_RES_AM					\
+	((struct resource []) {				\
+		{					\
+			.name   = "ACCEL_MONITOR",	\
+			.start	= 0x0,			\
+			.end	= 0xFFF,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+	})
+
+#define	XOCL_DEVINFO_AM				\
+	{						\
+		XOCL_SUBDEV_AM,			\
+		XOCL_AM,				\
+		XOCL_RES_AM,			\
+		ARRAY_SIZE(XOCL_RES_AM),		\
+		.level = XOCL_SUBDEV_LEVEL_URP,		\
+		.multi_inst = true,			\
+	}
+
+
+#define	XOCL_RES_ASM					\
+	((struct resource []) {				\
+		{					\
+			.name   = "AXI_STREAM_MONITOR",	\
+			.start	= 0x0,			\
+			.end	= 0xFFF,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+	})
+
+#define	XOCL_DEVINFO_ASM				\
+	{						\
+		XOCL_SUBDEV_ASM,			\
+		XOCL_ASM,				\
+		XOCL_RES_ASM,			\
+		ARRAY_SIZE(XOCL_RES_ASM),		\
+		.level = XOCL_SUBDEV_LEVEL_URP,		\
+		.multi_inst = true,			\
+	}
+
+#define	XOCL_RES_TRACE_FIFO_LITE			\
+	((struct resource []) {				\
+		{					\
+			.name   = "TRACE_FIFO_LITE",	\
+			.start	= 0x0,			\
+			.end	= 0xFFF,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+	})
+
+#define	XOCL_DEVINFO_TRACE_FIFO_LITE				\
+	{						\
+		XOCL_SUBDEV_TRACE_FIFO_LITE,			\
+		XOCL_TRACE_FIFO_LITE,				\
+		XOCL_RES_TRACE_FIFO_LITE,			\
+		ARRAY_SIZE(XOCL_RES_TRACE_FIFO_LITE),		\
+		.level = XOCL_SUBDEV_LEVEL_URP,		\
+		.multi_inst = true,			\
+	}
+
+#define	XOCL_RES_TRACE_FIFO_FULL			\
+	((struct resource []) {				\
+		{					\
+			.name   = "TRACE_FIFO_FULL",	\
+			.start	= 0x0,			\
+			.end	= 0xFFF,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+	})
+
+#define	XOCL_DEVINFO_TRACE_FIFO_FULL				\
+	{						\
+		XOCL_SUBDEV_TRACE_FIFO_FULL,			\
+		XOCL_TRACE_FIFO_FULL,				\
+		XOCL_RES_TRACE_FIFO_FULL,			\
+		ARRAY_SIZE(XOCL_RES_TRACE_FIFO_FULL),		\
+		.level = XOCL_SUBDEV_LEVEL_URP,		\
+		.multi_inst = true,			\
+	}
+
+
+#define	XOCL_RES_TRACE_FUNNEL			\
+	((struct resource []) {				\
+		{					\
+			.name   = "TRACE_FUNNEL",	\
+			.start	= 0x0,			\
+			.end	= 0xFFF,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+	})
+
+#define	XOCL_DEVINFO_TRACE_FUNNEL				\
+	{						\
+		XOCL_SUBDEV_TRACE_FUNNEL,			\
+		XOCL_TRACE_FUNNEL,				\
+		XOCL_RES_TRACE_FUNNEL,			\
+		ARRAY_SIZE(XOCL_RES_TRACE_FUNNEL),		\
+		.level = XOCL_SUBDEV_LEVEL_URP,		\
+		.multi_inst = true,			\
+	}
+
+#define	XOCL_RES_TRACE_S2MM			\
+	((struct resource []) {				\
+		{					\
+			.name   = "TRACE_S2MM",	\
+			.start	= 0x0,			\
+			.end	= 0xFFF,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+	})
+
+#define	XOCL_DEVINFO_TRACE_S2MM				\
+	{						\
+		XOCL_SUBDEV_TRACE_S2MM,			\
+		XOCL_TRACE_S2MM,				\
+		XOCL_RES_TRACE_S2MM,			\
+		ARRAY_SIZE(XOCL_RES_TRACE_S2MM),		\
+		.level = XOCL_SUBDEV_LEVEL_URP,		\
+		.multi_inst = true,			\
 	}
 
 #define	XOCL_MAILBOX_OFFSET_MGMT	0x210000

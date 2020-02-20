@@ -108,11 +108,12 @@ public:
         std::string& err_msg, const std::vector<char>& buf);
     std::string get_sysfs_path(const std::string& subdev,
         const std::string& entry);
-
+    std::string get_subdev_path(const std::string& subdev, uint32_t idx);
     int pcieBarRead(uint64_t offset, void *buf, uint64_t len);
     int pcieBarWrite(uint64_t offset, const void *buf, uint64_t len);
 
     int open(const std::string& subdev, int flag);
+    int open(const std::string& subdev, uint32_t idx, int flag);
     void close(int devhdl);
     int ioctl(int devhdl, unsigned long cmd, void *arg = nullptr);
     int poll(int devhdl, short events, int timeoutMilliSec);

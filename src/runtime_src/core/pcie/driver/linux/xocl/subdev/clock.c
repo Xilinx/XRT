@@ -473,9 +473,8 @@ static int clock_ocl_freqscaling(struct clock *clock, bool force,
 		}
 
 		val = reg_rd(clock->clock_bases[i] + OCL_CLKWIZ_STATUS_OFFSET);
-		for (count = 0; val != 1 && count < 10; count++) {
-			/* workaround: after toggle gate, clock wizard stays busy */
-			mdelay(500);
+		for (count = 0; val != 1 && count < 20; count++) {
+			mdelay(50);
 			val = reg_rd(clock->clock_bases[i] + OCL_CLKWIZ_STATUS_OFFSET);
 		}
 		if (val != 1) {
@@ -581,6 +580,7 @@ static int set_freqs(struct clock *clock, unsigned short *freqs, int num_freqs,
 	/* enable kernel clocks */
 	if (clock->clock_ucs_control_status) {
 		CLOCK_INFO(clock, "Enable kernel clocks ucs control");
+		msleep(10);
 		reg_wr(clock->clock_ucs_control_status +
 			XOCL_RES_OFFSET_CHANNEL2, 0x1);
 	}
@@ -642,6 +642,7 @@ static int clock_update_freq(struct platform_device *pdev,
 	struct gate_handler *gate_handle)
 {
 	struct clock *clock = platform_get_drvdata(pdev);
+	xdev_handle_t xdev = xocl_get_xdev(clock->clock_pdev);
 	int err = 0;
 
 	if (gate_handle == NULL) {
@@ -654,6 +655,12 @@ static int clock_update_freq(struct platform_device *pdev,
 	    set_and_verify_freqs(clock, freqs, num_freqs, gate_handle) :
 	    set_freqs(clock, freqs, num_freqs, gate_handle);
 	mutex_unlock(&clock->clock_lock);
+
+	/* Done clock programming, wait for HBM Calibration */
+	if (CLOCK_DEV_LEVEL(xdev) > XOCL_SUBDEV_LEVEL_PRP &&
+	    gate_handle && gate_handle->gate_hbm_calibration_cb) {
+		gate_handle->gate_hbm_calibration_cb(gate_handle->gate_args);
+	}
 
 	CLOCK_INFO(clock, "verify: %d ret: %d.", verify, err);
 	return err;

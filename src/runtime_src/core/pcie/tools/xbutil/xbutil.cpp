@@ -1180,8 +1180,9 @@ int xcldev::device::bandwidthKernelTest(void)
 {
     std::string output;
 
-    if (sensor_tree::get<std::string>("system.linux", "N/A").find("Red Hat") != std::string::npos) {
-        std::cout << "Testcase not supported on Red Hat. Skipping validation"
+    if ((sensor_tree::get<std::string>("system.linux", "N/A").find("Red Hat") != std::string::npos)
+            && (sensor_tree::get<std::string>("system.machine", "N/A").find("ppc64le") != std::string::npos)) {
+        std::cout << "Testcase not supported on Red Hat and PowerPC. Skipping validation"
                   << std::endl;
         return -EOPNOTSUPP;
     }
@@ -1666,7 +1667,7 @@ static int p2ptest_bank(xclDeviceHandle handle, int memidx,
  */
 int xcldev::device::testP2p()
 {
-    std::string errmsg;
+    std::string errmsg, vbnv;
     std::vector<char> buf;
     int ret = 0, p2p_enabled = 0;
     xclbin_lock xclbin_lock(m_handle, m_idx);
@@ -1675,6 +1676,7 @@ int xcldev::device::testP2p()
     if (dev == nullptr)
         return -EINVAL;
 
+    dev->sysfs_get("rom", "VBNV", errmsg, vbnv);
     dev->sysfs_get<int>("", "p2p_enable", errmsg, p2p_enabled, 0);
     if (p2p_enabled != 1) {
         std::cout << "P2P BAR is not enabled. Skipping validation" << std::endl;
@@ -1692,7 +1694,12 @@ int xcldev::device::testP2p()
     }
 
     for (int32_t i = 0; i < map->m_count && ret == 0; i++) {
-        const std::vector<std::string> supList = { "HBM", "DDR", "bank" };
+        std::vector<std::string> supList = { "HBM", "bank" };
+
+        //p2p is not supported for DDR on u280
+        if(vbnv.find("_u280_") == std::string::npos)
+            supList.push_back("DDR");
+        
         const std::string name(reinterpret_cast<const char *>(map->m_mem_data[i].m_tag));
         bool find = false;
         for (auto s : supList) {
@@ -1970,7 +1977,7 @@ static int m2mtest_bank(xclDeviceHandle handle, int bank_a, int bank_b)
 
 int xcldev::device::testM2m()
 {
-    std::string errmsg;
+    std::string errmsg, vbnv;
     std::vector<char> buf;
     int m2m_enabled = 0;
     std::vector<mem_data> usedBanks;
@@ -1982,7 +1989,11 @@ int xcldev::device::testM2m()
         return -EINVAL;
 
     dev->sysfs_get<int>("mb_scheduler", "kds_numcdmas", errmsg, m2m_enabled, 0);
-    if (m2m_enabled == 0) {
+    // Workaround:
+    // u250_xdma_201830_1 falsely shows that m2m is available 
+    // which causes a hang. Skip m2mtest if this platform is installed
+    dev->sysfs_get( "rom", "VBNV", errmsg, vbnv );
+    if (m2m_enabled == 0 || strstr( vbnv.c_str(), "_u250_xdma_201830_1")) {
         std::cout << "M2M is not available. Skipping validation" << std::endl;
         return -EOPNOTSUPP;
     }

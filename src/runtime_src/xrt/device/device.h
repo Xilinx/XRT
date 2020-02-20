@@ -870,6 +870,12 @@ public:
   }
 
   hal::operations_result<std::string>
+  getSubdevPath(const std::string& subdev, uint32_t idx)
+  {
+    return m_hal->getSubdevPath(subdev, idx);
+  }
+
+  hal::operations_result<std::string>
   getDebugIPlayoutPath()
   {
     return m_hal->getDebugIPlayoutPath();

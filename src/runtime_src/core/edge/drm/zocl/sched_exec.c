@@ -26,6 +26,7 @@
 #include "sched_exec.h"
 #include "zocl_sk.h"
 #include "zocl_xclbin.h"
+#include "xclbin.h"
 
 /* #define SCHED_VERBOSE */
 
@@ -528,6 +529,10 @@ static irqreturn_t sched_exec_isr(int irq, void *arg)
 		return IRQ_NONE;
 	}
 
+	/* Check for done and write ap_continue to stop redundent interrupts */
+	if (zocl_cu_get_control(&zdev->exec->zcu[cu_idx]) == AP_CTRL_CHAIN)
+		zocl_cu_check(&zdev->exec->zcu[cu_idx]);
+	
 	/* This function returns the value of the interrupt status register
 	 * No need to check the interrupt type for now.
 	 */
@@ -702,6 +707,7 @@ configure(struct sched_cmd *cmd)
 	int apt_idx, irq_id;
 	bool is_legacy_intr = true;
 	int ret;
+	u32 control;
 
 	if (sched_error_on(exec, opcode(cmd) != ERT_CONFIGURE))
 		return 1;
@@ -801,6 +807,7 @@ configure(struct sched_cmd *cmd)
 				has_acc_cu = 1;
 		}
 
+		control = cfg->data[i] & 0x7; //bit [2:0]
 		/* CU address should be masked by encoded handshake for KDS. */
 		cu_addr = cfg->data[i] & ZOCL_KDS_MASK;
 		if (cu_addr == ZOCL_CU_FREE_RUNNING) {
@@ -846,7 +853,7 @@ configure(struct sched_cmd *cmd)
 		cu_addr = zdev->res_start + cu_addr;
 
 		if (!acc_cu)
-			zocl_cu_init(&exec->zcu[i], MODEL_HLS, cu_addr);
+			zocl_cu_init(&exec->zcu[i], MODEL_HLS, cu_addr|control);
 		else {
 			zocl_cu_init(&exec->zcu[i], MODEL_ACC, cu_addr);
 			/* ACCEL adapter CU initial finished.

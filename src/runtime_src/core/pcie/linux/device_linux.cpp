@@ -312,4 +312,18 @@ write(uint64_t offset, const void* buf, uint64_t len) const
     throw error(err, "write failed");
 }
 
+int 
+device_linux::
+open(const std::string& subdev, int flag) const
+{
+  return pcidev::get_dev(get_device_id(), false)->open(subdev, flag);
+}
+
+void
+device_linux::
+close(int dev_handle) const 
+{
+  pcidev::get_dev(get_device_id(), false)->close(dev_handle);
+}
+
 } // xrt_core

@@ -236,25 +236,31 @@ namespace xdp {
     }
     RTUtil::setTimeStamp(objStage, traceObject, timeStamp);
 
+    bool isStart = (objStage == RTUtil::START);
+    bool isEnd = (objStage == RTUtil::END);
+    bool isRead = (objKind == RTUtil::READ_BUFFER);
+    bool isHostTx = (objKind == RTUtil::READ_BUFFER || objKind == RTUtil::WRITE_BUFFER);
+    bool isP2PTx = (objKind == RTUtil::READ_BUFFER_P2P || objKind == RTUtil::WRITE_BUFFER_P2P);
+
     // Log Guidance Data
     // Time period during which host buffer transfers were active
-    if ((objKind == RTUtil::READ_BUFFER || objKind == RTUtil::WRITE_BUFFER) &&
-        (objStage == RTUtil::START || objStage == RTUtil::END)) {
-      mPluginHandle->logBufferEvent(timeStamp, objKind == RTUtil::READ_BUFFER);
+    // In case of parallel transfers, log first start and last end
+    if (isStart) ++mCurrentTxCount;
+    if (isEnd)   --mCurrentTxCount;
+    if (isHostTx && ((isStart && mCurrentTxCount == 1) || (isEnd && mCurrentTxCount == 0))) {
+      mPluginHandle->logBufferEvent(timeStamp, isRead, isStart);
     }
 
     // clEnqueueNDRangeKernel returns END with no START
     // if data transfer was already completed.
     // We can safely discard those events
-    if (objStage == RTUtil::END && (traceObject->getStart() > 0.0)) {
+    if (isEnd && (traceObject->getStart() > 0.0)) {
       // Collect performance counters
       mProfileCounters->logBufferTransfer(objKind, objSize, (traceObject->End - traceObject->Start), contextId, numDevices);
 
-      if (objKind == RTUtil::READ_BUFFER || objKind == RTUtil::WRITE_BUFFER) {
-        bool isRead = (objKind == RTUtil::READ_BUFFER);
+      if (isHostTx) {
         mProfileCounters->pushToSortedTopUsage(traceObject, isRead);
-      }
-      else if (objKind == RTUtil::READ_BUFFER_P2P || objKind == RTUtil::WRITE_BUFFER_P2P)
+      } else if (isP2PTx)
         mHostP2PTransfers++;
 
       // Mark and keep top trace data

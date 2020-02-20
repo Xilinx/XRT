@@ -848,35 +848,34 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 
 		/* Passthrough Virtualization feature configuration */
 		if (xocl_passthrough_virtualization_on(lro)) {
-			if (!iommu_present(&pci_bus_type)) {
-				p2p_bar_addr = mb_p2p->p2p_bar_addr;
-				p2p_bar_len = mb_p2p->p2p_bar_len;
-				mgmt_info(lro, "got the p2p bar addr = %lld\n", p2p_bar_addr);
-				mgmt_info(lro, "got the p2p bar len = %lld\n", p2p_bar_len);
-				if (!p2p_bar_addr) {
-					pci_write_config_byte(pdev, 0x188, 0x0);
-					ret = 0;
-					(void) xocl_peer_response(lro, req->req, msgid, &ret,
+			p2p_bar_addr = mb_p2p->p2p_bar_addr;
+			p2p_bar_len = mb_p2p->p2p_bar_len;
+			mgmt_info(lro, "got the p2p bar addr = %lld\n", p2p_bar_addr);
+			mgmt_info(lro, "got the p2p bar len = %lld\n", p2p_bar_len);
+			if (!p2p_bar_addr) {
+				pci_write_config_byte(pdev, XOCL_VSEC_XLAT_CTL_REG_ADDR, 0x0);
+				pci_write_config_dword(pdev, XOCL_VSEC_XLAT_GPA_BASE_UPPER_REG_ADDR, 0x0);
+				pci_write_config_dword(pdev, XOCL_VSEC_XLAT_GPA_LIMIT_UPPER_REG_ADDR, 0x0);
+				pci_write_config_dword(pdev, XOCL_VSEC_XLAT_GPA_LOWER_REG_ADDR, 0x0);
+				ret = 0;
+				(void) xocl_peer_response(lro, req->req, msgid, &ret,
 										  sizeof(ret));
-					break;
-				}
-				range = p2p_bar_addr + p2p_bar_len - 1;
-				range_base = range & 0xFFFF0000;
-				p2p_addr_base = p2p_bar_addr & 0xFFFF0000;
-				final_val = range_base | (p2p_addr_base >> 16);
-				//Translation enable bit
-				pci_write_config_byte(pdev, 0x188, 0x1);
-				//Bar base address
-				pci_write_config_dword(pdev, 0x190, p2p_bar_addr >> 32);
-				//Bar base address + range
-				pci_write_config_dword(pdev, 0x194, range >> 32);
-				pci_write_config_dword(pdev, 0x18c, final_val);
-				mgmt_info(lro, "Passthrough Virtualization config done\n");
-			} else {
-				mgmt_err(lro, "request (%d) dropped, IOMMU is enabled\n",
-						 XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR);
+				break;
 			}
+			range = p2p_bar_addr + p2p_bar_len - 1;
+			range_base = range & 0xFFFF0000;
+			p2p_addr_base = p2p_bar_addr & 0xFFFF0000;
+			final_val = range_base | (p2p_addr_base >> 16);
+			//Translation enable bit
+			pci_write_config_byte(pdev, XOCL_VSEC_XLAT_CTL_REG_ADDR, 0x1);
+			//Bar base address
+			pci_write_config_dword(pdev, XOCL_VSEC_XLAT_GPA_BASE_UPPER_REG_ADDR, p2p_bar_addr >> 32);
+			//Bar base address + range
+			pci_write_config_dword(pdev, XOCL_VSEC_XLAT_GPA_LIMIT_UPPER_REG_ADDR, range >> 32);
+			pci_write_config_dword(pdev, XOCL_VSEC_XLAT_GPA_LOWER_REG_ADDR, final_val);
+			mgmt_info(lro, "Passthrough Virtualization config done\n");
 		}
+
 		ret = 0;
 		(void) xocl_peer_response(lro, req->req, msgid, &ret, sizeof(ret));
 		break;
@@ -1181,7 +1180,7 @@ err_alloc_minor:
 	xocl_subdev_fini(lro);
 err_init_subdev:
 	dev_set_drvdata(&pdev->dev, NULL);
-	xocl_drvinst_free(lro);
+	xocl_drvinst_release(lro, NULL);
 err_alloc:
 	pci_disable_device(pdev);
 
@@ -1191,6 +1190,7 @@ err_alloc:
 static void xclmgmt_remove(struct pci_dev *pdev)
 {
 	struct xclmgmt_dev *lro;
+	void *hdl;
 
 	if ((pdev == 0) || (dev_get_drvdata(&pdev->dev) == 0))
 		return;
@@ -1200,11 +1200,16 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 	       pdev, lro);
 	BUG_ON(lro->core.pdev != pdev);
 
+	xocl_drvinst_release(lro, &hdl);
+
 	xclmgmt_connect_notify(lro, false);
 
-	if (xocl_passthrough_virtualization_on(lro) &&
-		!iommu_present(&pci_bus_type))
-		pci_write_config_byte(pdev, 0x188, 0x0);
+	if (xocl_passthrough_virtualization_on(lro)) {
+		pci_write_config_byte(pdev, XOCL_VSEC_XLAT_CTL_REG_ADDR, 0x0);
+		pci_write_config_dword(pdev, XOCL_VSEC_XLAT_GPA_BASE_UPPER_REG_ADDR, 0x0);
+		pci_write_config_dword(pdev, XOCL_VSEC_XLAT_GPA_LIMIT_UPPER_REG_ADDR, 0x0);
+		pci_write_config_dword(pdev, XOCL_VSEC_XLAT_GPA_LOWER_REG_ADDR, 0x0);
+	}
 
 	/* destroy queue before stopping health thread */
 	xocl_queue_destroy(lro);
@@ -1235,7 +1240,7 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 
 	dev_set_drvdata(&pdev->dev, NULL);
 
-	xocl_drvinst_free(lro);
+	xocl_drvinst_free(hdl);
 }
 
 static pci_ers_result_t mgmt_pci_error_detected(struct pci_dev *pdev,

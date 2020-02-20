@@ -21,6 +21,7 @@
 #include "query.h"
 #include "error.h"
 #include "ishim.h"
+#include "scope_guard.h"
 #include "xrt.h"
 
 // Please keep eternal include file dependencies to a minimum
@@ -37,6 +38,7 @@ namespace xrt_core {
  */
 class device : ishim
 {
+
 public:
   // device index type
   using id_type = unsigned int;
@@ -93,6 +95,15 @@ public:
   // Private look up function for concrete query::request
   virtual const query::request&
   lookup_query(query::key_type query_key) const = 0;
+  /**
+   * open() - opens a device with an fd which can be used for non pcie read/write
+   * xospiversal and xspi use this
+   */
+  virtual int  open(const std::string& subdev, int flag) const = 0;
+  /**
+   * close() - close the fd
+   */
+  virtual void close(int dev_handle) const = 0;
 
 public:
   /**
@@ -138,8 +149,23 @@ public:
   void read_power(boost::property_tree::ptree &pt) const;
   void read_firewall(boost::property_tree::ptree &pt) const;
 
+  /**
+   * read() - maps pcie bar and copy bytes word (32bit) by word
+   */
   virtual void read(uint64_t offset, void* buf, uint64_t len) const = 0;
+  /**
+   * write() - maps pcie bar and copy bytes word (32bit) by word
+   */
   virtual void write(uint64_t offset, const void* buf, uint64_t len) const = 0;
+  
+  /* 
+   * file_open() - Opens a scoped fd
+   */
+  scope_guard<int, std::function<void(int)>>
+  file_open(const std::string& subdev, int flag)
+  {
+    return scope_guard<int, std::function<void(int)>>(open(subdev, flag), std::bind(&device::close, this, std::placeholders::_1));
+  }
 
   // Helper methods
   typedef std::string (*FORMAT_STRING_PTR)(const boost::any &);

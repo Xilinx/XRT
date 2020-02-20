@@ -21,6 +21,7 @@
 #include <linux/pci.h>
 #include <linux/crc32c.h>
 #include <linux/random.h>
+#include <linux/iommu.h>
 #include "../xocl_drv.h"
 #include "common.h"
 #include "version.h"
@@ -168,8 +169,17 @@ static void xocl_mb_read_p2p_addr(struct xocl_dev *xdev)
 
 	mb_req->req = XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR;
 	mb_p2p = (struct xcl_mailbox_p2p_bar_addr *)mb_req->data;
-	mb_p2p->p2p_bar_len = pci_resource_len(pdev, xdev->p2p_bar_idx);
-	mb_p2p->p2p_bar_addr = pci_resource_start(pdev, xdev->p2p_bar_idx);
+
+	if (!iommu_present(&pci_bus_type)){
+		mb_p2p->p2p_bar_len = pci_resource_len(pdev, xdev->p2p_bar_idx);
+		mb_p2p->p2p_bar_addr = pci_resource_start(pdev, xdev->p2p_bar_idx);
+	} else {
+		mb_p2p->p2p_bar_len = 0;
+		mb_p2p->p2p_bar_addr = 0;
+	}
+	userpf_info(xdev, "sending request %d to peer: p2p_bar_len=%lld, p2p_bar_addr=%lld\n",
+			 XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR, mb_p2p->p2p_bar_len, mb_p2p->p2p_bar_addr);
+
 	ret = xocl_peer_request(xdev, mb_req, reqlen, &ret,
 		&resplen, NULL, NULL, 0);
 	vfree(mb_req);
@@ -207,7 +217,10 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 
 	if (prepare) {
 		/* clean up mem topology */
-		xocl_cleanup_mem(XOCL_DRM(xdev));
+		if (xdev->core.drm) {
+			xocl_drm_fini(xdev->core.drm);
+			xdev->core.drm = NULL;
+		}
 		xocl_fini_sysfs(xdev);
 		xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 		xocl_subdev_offline_all(xdev);
@@ -231,6 +244,13 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 
 		xocl_exec_reset(xdev, xclbin_id);
 		XOCL_PUT_XCLBIN_ID(xdev);
+		if (!xdev->core.drm) {
+			xdev->core.drm = xocl_drm_init(xdev);
+			if (!xdev->core.drm) {
+				xocl_warn(&pdev->dev, "Unable to init drm");
+				return;
+			}
+		}
 	}
 }
 
@@ -257,6 +277,7 @@ int xocl_program_shell(struct xocl_dev *xdev, bool force)
 
 
 	xocl_drvinst_set_offline(xdev->core.drm, true);
+
 	if (force)
 		xocl_drvinst_kill_proc(xdev->core.drm);
 
@@ -326,8 +347,10 @@ int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 
 	userpf_info(xdev, "resetting device...");
 
+#if 0 
 	if (flag & XOCL_RESET_FORCE)
 		xocl_drvinst_kill_proc(xdev->core.drm);
+#endif
 
 	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct xcl_mailbox_req),
 		&ret, &resplen, NULL, NULL, 0);
@@ -1226,11 +1249,18 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 	xocl_queue_destroy(xdev);
 
 	xocl_p2p_fini(xdev, false);
-	xocl_subdev_destroy_all(xdev);
+	/*
+	 * need to shutdown drm and sysfs before destroy subdevices
+	 * drm and sysfs could access subdevices
+	 */
 
-	xocl_fini_sysfs(xdev);
 	if (xdev->core.drm)
 		xocl_drm_fini(xdev->core.drm);
+
+	xocl_fini_sysfs(xdev);
+
+	xocl_subdev_destroy_all(xdev);
+
 	xocl_free_dev_minor(xdev);
 
 	pci_disable_device(pdev);
@@ -1442,6 +1472,13 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_mig,
 	xocl_init_dna,
 	xocl_init_mailbox_versal,
+	xocl_init_aim,
+	xocl_init_am,
+	xocl_init_asm,
+	xocl_init_trace_fifo_lite,
+	xocl_init_trace_fifo_full,
+	xocl_init_trace_funnel,
+	xocl_init_trace_s2mm,
 };
 
 static void (*xocl_drv_unreg_funcs[])(void) = {
@@ -1459,6 +1496,13 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_mig,
 	xocl_fini_dna,
 	xocl_fini_mailbox_versal,
+	xocl_fini_aim,
+	xocl_fini_am,
+	xocl_fini_asm,
+	xocl_fini_trace_fifo_lite,
+	xocl_fini_trace_fifo_full,
+	xocl_fini_trace_funnel,
+	xocl_fini_trace_s2mm,
 };
 
 static int __init xocl_init(void)

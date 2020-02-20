@@ -49,6 +49,7 @@ using Clock = std::chrono::high_resolution_clock;
 /* exposed by shim */
 int xclUpdateSchedulerStat(xclDeviceHandle);
 int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t sz);
+int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* info);
 
 #define TO_STRING(x) #x
 #define AXI_FIREWALL
