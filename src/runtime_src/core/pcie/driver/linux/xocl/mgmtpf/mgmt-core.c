@@ -1180,7 +1180,7 @@ err_alloc_minor:
 	xocl_subdev_fini(lro);
 err_init_subdev:
 	dev_set_drvdata(&pdev->dev, NULL);
-	xocl_drvinst_free(lro);
+	xocl_drvinst_release(lro, NULL);
 err_alloc:
 	pci_disable_device(pdev);
 
@@ -1190,6 +1190,7 @@ err_alloc:
 static void xclmgmt_remove(struct pci_dev *pdev)
 {
 	struct xclmgmt_dev *lro;
+	void *hdl;
 
 	if ((pdev == 0) || (dev_get_drvdata(&pdev->dev) == 0))
 		return;
@@ -1198,6 +1199,8 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 	mgmt_info(lro, "remove(0x%p) where pdev->dev.driver_data = 0x%p",
 	       pdev, lro);
 	BUG_ON(lro->core.pdev != pdev);
+
+	xocl_drvinst_release(lro, &hdl);
 
 	xclmgmt_connect_notify(lro, false);
 
@@ -1237,7 +1240,7 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 
 	dev_set_drvdata(&pdev->dev, NULL);
 
-	xocl_drvinst_free(lro);
+	xocl_drvinst_free(hdl);
 }
 
 static pci_ers_result_t mgmt_pci_error_detected(struct pci_dev *pdev,

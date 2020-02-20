@@ -217,7 +217,10 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 
 	if (prepare) {
 		/* clean up mem topology */
-		xocl_cleanup_mem(XOCL_DRM(xdev));
+		if (xdev->core.drm) {
+			xocl_drm_fini(xdev->core.drm);
+			xdev->core.drm = NULL;
+		}
 		xocl_fini_sysfs(xdev);
 		xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 		xocl_subdev_offline_all(xdev);
@@ -241,6 +244,13 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 
 		xocl_exec_reset(xdev, xclbin_id);
 		XOCL_PUT_XCLBIN_ID(xdev);
+		if (!xdev->core.drm) {
+			xdev->core.drm = xocl_drm_init(xdev);
+			if (!xdev->core.drm) {
+				xocl_warn(&pdev->dev, "Unable to init drm");
+				return;
+			}
+		}
 	}
 }
 
@@ -267,6 +277,7 @@ int xocl_program_shell(struct xocl_dev *xdev, bool force)
 
 
 	xocl_drvinst_set_offline(xdev->core.drm, true);
+
 	if (force)
 		xocl_drvinst_kill_proc(xdev->core.drm);
 
@@ -336,8 +347,10 @@ int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 
 	userpf_info(xdev, "resetting device...");
 
+#if 0 
 	if (flag & XOCL_RESET_FORCE)
 		xocl_drvinst_kill_proc(xdev->core.drm);
+#endif
 
 	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct xcl_mailbox_req),
 		&ret, &resplen, NULL, NULL, 0);
@@ -1236,11 +1249,18 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 	xocl_queue_destroy(xdev);
 
 	xocl_p2p_fini(xdev, false);
-	xocl_subdev_destroy_all(xdev);
+	/*
+	 * need to shutdown drm and sysfs before destroy subdevices
+	 * drm and sysfs could access subdevices
+	 */
 
-	xocl_fini_sysfs(xdev);
 	if (xdev->core.drm)
 		xocl_drm_fini(xdev->core.drm);
+
+	xocl_fini_sysfs(xdev);
+
+	xocl_subdev_destroy_all(xdev);
+
 	xocl_free_dev_minor(xdev);
 
 	pci_disable_device(pdev);
