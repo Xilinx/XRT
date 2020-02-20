@@ -222,6 +222,6 @@ namespace xocl {
 } // end namespace xocl
 
 #else 
-// Due to Windows compiler issues, LOP is initially only supported on Linux
+// LOP is initially only supported on Linux
 
 #endif
