@@ -347,10 +347,8 @@ int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 
 	userpf_info(xdev, "resetting device...");
 
-#if 0 
 	if (flag & XOCL_RESET_FORCE)
 		xocl_drvinst_kill_proc(xdev->core.drm);
-#endif
 
 	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct xcl_mailbox_req),
 		&ret, &resplen, NULL, NULL, 0);
