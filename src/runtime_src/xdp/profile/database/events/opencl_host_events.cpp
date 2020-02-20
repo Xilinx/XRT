@@ -42,6 +42,21 @@ namespace xdp {
     fout << std::endl; 
   }
 
+  LOPKernelEnqueue::LOPKernelEnqueue(uint64_t s_id, double ts) :
+    VTFEvent(s_id, ts, LOP_KERNEL_ENQUEUE)
+  {
+  }
+
+  LOPKernelEnqueue::~LOPKernelEnqueue()
+  {
+  }
+
+  void LOPKernelEnqueue::dump(std::ofstream& fout, int bucket)
+  {
+    VTFEvent::dump(fout, bucket) ;
+    fout << std::endl ;
+  }
+
   CUEnqueue::CUEnqueue(uint64_t s_id, double ts) :
     VTFEvent(s_id, ts, CU_ENQUEUE),
     // Until implemented, initialize all members with a default value

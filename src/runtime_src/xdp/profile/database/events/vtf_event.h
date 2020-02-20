@@ -44,6 +44,7 @@ namespace xdp {
     // Low overhead OpenCL host level events
     LOP_READ_BUFFER      = 21,
     LOP_WRITE_BUFFER     = 22,
+    LOP_KERNEL_ENQUEUE   = 23,
 
     // PL events
     KERNEL               = 30,
@@ -99,6 +100,8 @@ namespace xdp {
     virtual bool isWriteBuffer() { return type == WRITE_BUFFER || 
 	                                  type == WRITE_BUFFER_P2P ||
 	                                  type == LOP_WRITE_BUFFER ; }
+    virtual bool isKernelEnqueue() { return type == KERNEL_ENQUEUE ||
+	                                    type == LOP_KERNEL_ENQUEUE ; }
 
     virtual void* getDevice() { return nullptr ; } 
     XDP_EXPORT virtual void dump(std::ofstream& fout, int bucket) ;

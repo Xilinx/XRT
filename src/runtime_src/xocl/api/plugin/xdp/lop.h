@@ -73,7 +73,7 @@ namespace xocl {
     std::function<void (xocl::event*, cl_int)> action_read() ;
     std::function<void (xocl::event*, cl_int)> action_write() ;
     std::function<void (xocl::event*, cl_int)> action_migrate(cl_mem_migration_flags flags) ;
-    //std::function<void (xocl::event*)> action_ndrange() ;
+    std::function<void (xocl::event*, cl_int)> action_ndrange() ;
     //std::function<void (xocl::event*)> action_map() ;
     //std::function<void (xocl::event*)> action_unmap() ;
     //std::function<void (xocl::event*)> action_ndrange_migrate() ;

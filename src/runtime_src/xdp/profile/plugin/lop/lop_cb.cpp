@@ -14,9 +14,6 @@
  * under the License.
  */
 
-// The common interface shared between full OpenCL and low overhead OpenCL
-//#include "xocl/api/plugin/xdp/profile.h"
-
 #include "xdp/profile/plugin/lop/lop_cb.h"
 #include "xdp/profile/plugin/lop/lop_plugin.h"
 
@@ -102,27 +99,23 @@ namespace xdp {
       (db->getDynamicInfo()).markStart(XRTEventId, event->getEventId()) ;
   }
 
-
-  /*  
-  void register_low_overhead_profile_callbacks()
+  static void lop_kernel_enqueue(unsigned int XRTEventId, bool isStart)
   {
-    // Set up the callbacks for logging the start and end of function calls.
-    //  These use the same hooks as the normal profiling.
-    xocl::profile::register_cb_log_function_start(lop_cb_log_function_start);
-    xocl::profile::register_cb_log_function_end(lop_cb_log_function_end);    
+    double timestamp = xrt::time_ns() ;
+    VPDatabase* db = lopPluginInstance.getDatabase() ;
+
+    uint64_t start = 0 ;
+
+    if (!isStart) start = (db->getDynamicInfo()).matchingStart(XRTEventId) ;
+
+    VTFEvent* event = new LOPKernelEnqueue(start, timestamp) ;
+
+    (db->getDynamicInfo()).addEvent(event) ;
+    if (isStart)
+      (db->getDynamicInfo()).markStart(XRTEventId, event->getEventId()) ;
   }
-  */
 
 } // end namespace xdp
-
-// This function is called from XRT once when the library is initially loaded
-/*
-extern "C" 
-void initLOP()
-{
-  xdp::register_low_overhead_profile_callbacks() ;
-}
-*/
 
 // Due to an issue with linking on Ubuntu 18.04, the model we have
 //  to have for low overhead profiling is to have XRT use dlsym to
@@ -155,3 +148,8 @@ void lop_write(unsigned int XRTEventId, bool isStart)
   xdp::lop_write(XRTEventId, isStart) ;
 }
 
+extern "C"
+void lop_kernel_enqueue(unsigned int XRTEventId, bool isStart) 
+{
+  xdp::lop_kernel_enqueue(XRTEventId, isStart) ;
+}

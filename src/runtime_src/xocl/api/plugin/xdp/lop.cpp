@@ -106,6 +106,7 @@ namespace xdplop {
   std::function<void (const char*, long long int, unsigned int)> function_end_cb;
   std::function<void (unsigned int, bool)> read_cb ;
   std::function<void (unsigned int, bool)> write_cb ;
+  std::function<void (unsigned int, bool)> enqueue_cb ;
 
   void register_lop_functions(void* handle)
   {
@@ -123,6 +124,9 @@ namespace xdplop {
     
     write_cb = (btype)(xrt_core::dlsym(handle, "lop_write")) ;
     if (xrt_core::dlerror() != NULL) write_cb = nullptr ;
+
+    enqueue_cb = (btype)(xrt_core::dlsym(handle, "lop_kernel_enqueue")) ;
+    if (xrt_core::dlerror() != NULL) enqueue_cb = nullptr ;
   }
 
   std::atomic<unsigned int> LOPFunctionCallLogger::m_funcid_global(0) ;
@@ -200,22 +204,42 @@ namespace xocl {
       {
 	return [](xocl::event* e, cl_int status)
 	  {
-	    if (status == CL_RUNNING)
-	      xdplop::read_cb(e->get_uid(), true) ;
-	    else if (status == CL_COMPLETE)
-	      xdplop::read_cb(e->get_uid(), false) ;
+	    if (xdplop::read_cb)
+	    {
+	      if (status == CL_RUNNING)
+		xdplop::read_cb(e->get_uid(), true) ;
+	      else if (status == CL_COMPLETE)
+		xdplop::read_cb(e->get_uid(), false) ;
+	    }
 	  } ;
       }
       else
       {
 	return [](xocl::event* e, cl_int status)
 	  {
-	    if (status == CL_RUNNING)
-	      xdplop::write_cb(e->get_uid(), true) ;
-	    else if (status == CL_COMPLETE)
-	      xdplop::write_cb(e->get_uid(), false) ;
+	    if (xdplop::write_cb)
+	    {
+	      if (status == CL_RUNNING)
+		xdplop::write_cb(e->get_uid(), true) ;
+	      else if (status == CL_COMPLETE)
+		xdplop::write_cb(e->get_uid(), false) ;
+	    }
 	  } ;
       }
+    }
+
+    std::function<void (xocl::event*, cl_int)> action_ndrange()
+    {
+      return [](xocl::event* e, cl_int status)
+	{
+	  if (xdplop::enqueue_cb)
+	  {
+	    if (status == CL_RUNNING || status == CL_SUBMITTED)
+	      xdplop::enqueue_cb(e->get_uid(), true) ;
+	    else if (status == CL_COMPLETE)
+	      xdplop::enqueue_cb(e->get_uid(), false) ;
+	  }
+	} ;
     }
 
   } // end namespace lop

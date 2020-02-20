@@ -52,6 +52,19 @@ namespace xdp {
     XDP_EXPORT virtual void dump(std::ofstream& fout, int bucket) ;
   } ;
 
+  class LOPKernelEnqueue : public VTFEvent
+  {
+  private:
+    LOPKernelEnqueue() = delete ;
+  public:
+    XDP_EXPORT LOPKernelEnqueue(uint64_t s_id, double ts) ;
+    XDP_EXPORT ~LOPKernelEnqueue() ;
+
+    virtual bool isHostEvent() { return true ; }
+
+    XDP_EXPORT virtual void dump(std::ofstream& fout, int bucket) ;
+  } ;
+
   class CUEnqueue : public VTFEvent
   {
   private:

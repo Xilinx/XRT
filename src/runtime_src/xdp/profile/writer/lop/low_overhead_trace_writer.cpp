@@ -85,7 +85,7 @@ namespace xdp {
 	 << ",Write,Write data transfer from host to global memory"
 	 << std::endl ;
     fout << "Group_End,Data Transfer" << std::endl ;
-    fout << "Dynamic_Row," << enqueueBucket 
+    fout << "Dynamic_Row_Summary," << enqueueBucket 
 	 << ",Kernel Enqueues,Activity in kernel enqueues" << std::endl ;
     fout << "Group_End,Host APIs" << std::endl ;
   }
@@ -121,6 +121,10 @@ namespace xdp {
       else if (e->isWriteBuffer())
       {
 	bucket = writeBucket ;
+      }
+      else if (e->isKernelEnqueue())
+      {
+	bucket = enqueueBucket ;
       }
       e->dump(fout, bucket) ;
     }
