@@ -14,12 +14,12 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#include <stdio.h>
+//#include <stdio.h>
 #include <fstream>
 #include <stdexcept>
-#include <string.h>
-#include <stdlib.h>
-#include <stdint.h>
+//#include <string.h>
+//#include <stdlib.h>
+//#include <stdint.h>
 #include "xclbin.h"
 #include "app/xmaerror.h"
 #include "app/xmalogger.h"
@@ -52,13 +52,13 @@ std::vector<char> xma_xclbin_file_open(const char *xclbin_name)
         xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Buffer allocation error: %s\n", ex.what());
         throw;
     } catch (...) {
-        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not allocate buffer for file %s\n", xclbin_name);
+        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not allocate buffer for xclbin file %s\n", xclbin_name);
         throw;
     }
     infile.read(xclbin_buffer.data(), xclbin_size);
     if (infile.gcount() != xclbin_size) {
-        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not read full xclbin file %s\n", xclbin_name);
-        throw std::range_error("Unable to read full xclbin file");
+        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Unable to read full xclbin file %s\n", xclbin_name);
+        throw std::runtime_error("Unable to read full xclbin file");
     }
 
     return xclbin_buffer;
