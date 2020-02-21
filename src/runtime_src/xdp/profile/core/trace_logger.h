@@ -123,6 +123,7 @@ namespace xdp {
     int mHostP2PTransfers;
     uint32_t mCurrentContextId;
     uint32_t mCuStarts;
+    uint32_t mCurrentTxCount = 0;
     std::string mCurrentKernelName;
     std::string mCurrentDeviceName;
     std::string mCurrentBinaryName;
@@ -131,7 +132,7 @@ namespace xdp {
     std::map<uint64_t, KernelTrace*> mKernelTraceMap;
     std::map<uint64_t, BufferTrace*> mBufferTraceMap;
     std::map<uint64_t, DeviceTrace*> mDeviceTraceMap;
-    std::map<std::string, std::queue<double>> mKernelStartsMap;
+    std::map<uint64_t, std::queue<double>> mKernelStartsMap;
     std::map<uint64_t, std::queue<uint32_t>> mCuStartsMap;
     std::set<std::thread::id> mThreadIdSet;
 

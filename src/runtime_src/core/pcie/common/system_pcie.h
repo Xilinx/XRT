@@ -18,8 +18,6 @@
 #define SYSTEM_PCIE_H
 
 #include "common/system.h"
-#include "common/device.h"
-#include "boost/format.hpp"
 
 namespace xrt_core {
 

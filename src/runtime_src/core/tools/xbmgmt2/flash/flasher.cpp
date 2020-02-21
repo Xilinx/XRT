@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * This is a wrapper class that does the prep work required to program a flash
  * device. Flasher will create a specific flash object determined by the program
@@ -19,6 +19,8 @@
  * under the License.
  */
 #include "flasher.h"
+#include "core/common/error.h"
+#include "core/common/query_requests.h"
 #include <limits>
 #include <cstddef>
 #include <cassert>
@@ -27,7 +29,6 @@
 #include <cstdarg>
 #include "boost/format.hpp"
 
-#include "core/common/error.h"
 
 #define INVALID_ID      0xffff
 #define MFG_REV_OFFSET  0x131008 // For obtaining Golden image version number
@@ -40,9 +41,9 @@ Flasher::E_FlasherType Flasher::getFlashType(std::string typeStr)
     std::string err;
     E_FlasherType type = E_FlasherType::UNKNOWN;
     if (typeStr.empty())
-        typeStr = xrt_core::query_device<std::string>(m_device, xrt_core::device::QR_F_FLASH_TYPE);
+      typeStr = xrt_core::device_query<xrt_core::query::f_flash_type>(m_device);
     if (typeStr.empty())
-        typeStr = xrt_core::query_device<std::string>(m_device, xrt_core::device::QR_FLASH_TYPE);
+      typeStr = xrt_core::device_query<xrt_core::query::flash_type>(m_device);
 
     if (typeStr.empty())
     {
@@ -61,6 +62,10 @@ Flasher::E_FlasherType Flasher::getFlashType(std::string typeStr)
         // Use find() for this type of flash.
         // Since it have variations
         type = E_FlasherType::QSPIPS;
+    }
+    else if (typeStr.compare("ospi_versal") == 0)
+    {
+        type = E_FlasherType::OSPIVERSAL;
     }
     else
     {
@@ -132,6 +137,23 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
     //     }
     //     break;
     // }
+    case OSPIVERSAL:
+    {
+        XOSPIVER_Flasher xospi_versal(m_device);
+        if (primary == nullptr)
+        {
+            std::cout << "ERROR: OSPIVERSAL mode does not support reverting to MFG." << std::endl;
+        }
+        else if(secondary != nullptr)
+        {
+            std::cout << "ERROR: OSPIVERSAL mode does not support two mcs files." << std::endl;
+        }
+        else
+        {
+            retVal = xospi_versal.xclUpgradeFirmware(*primary);
+        }
+        break;
+    }
     default:
         break;
     }
@@ -144,10 +166,7 @@ int Flasher::upgradeBMCFirmware(firmwareImage* bmc)
     const std::string e = flasher.probingErrMsg();
 
     if (!e.empty())
-    {
-        std::cout << "ERROR: " << e << std::endl;
-        return -EOPNOTSUPP;
-    }
+        throw xrt_core::error(e);
 
     return flasher.xclUpgradeFirmware(*bmc);
 }
@@ -214,12 +233,10 @@ Flasher::Flasher(unsigned int index) : mFRHeader{}
         return;
     }
 
-    bool is_mfg = false;
-    is_mfg = xrt_core::query_device<bool>(dev, xrt_core::device::QR_IS_MFG);
+    bool is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(dev);
 
     // std::vector<char> feature_rom;
-    // feature_rom = xrt_core::query_device<std::vector<char>>(dev, xrt_core::device::QR_ROM_RAW);
-    // if (feature_rom != xrt_core::invalid_query_value<std::vector<char>>())
+    // auto feature_rom = xrt_core::device_device<xrt_core::query::rom_raw>(dev);
     // {
     //     memcpy(&mFRHeader, feature_rom.data(), sizeof(struct FeatureRomHeader));
     //     // Something funny going on here. There must be a strange line ending
@@ -231,7 +248,6 @@ Flasher::Flasher(unsigned int index) : mFRHeader{}
     //         std::cout << "ERROR: Failed to detect feature ROM." << std::endl;
     //     }
     // }
-    // else if (is_mfg)
     if (is_mfg)
     {
        dev->read(MFG_REV_OFFSET, &mGoldenVer, sizeof(mGoldenVer));
@@ -281,16 +297,10 @@ std::vector<DSAInfo> Flasher::getInstalledDSA()
     if (onBoard.name.empty() && onBoard.uuids.empty())
     {
         std::cout << "Shell on FPGA is unknown" << std::endl;
-        return DSAs;
     }
 
-    uint64_t vendor_id, device_id;
-    vendor_id = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_PCIE_VENDOR);
-    if (vendor_id == xrt_core::invalid_query_value<uint64_t>()) 
-        return DSAs;
-    device_id = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_PCIE_DEVICE);
-    if (device_id == xrt_core::invalid_query_value<uint64_t>()) 
-        return DSAs;
+    auto vendor_id = xrt_core::device_query<xrt_core::query::pcie_vendor>(m_device);
+    auto device_id = xrt_core::device_query<xrt_core::query::pcie_device>(m_device);
 
     // Obtain installed DSA info.
     // std::cout << "ON Board: " << onBoard.vendor << " " << onBoard.board << " " << vendor_id << " " << device_id << std::endl;
@@ -324,13 +334,11 @@ DSAInfo Flasher::getOnBoardDSA()
     std::string bmc;
     uint64_t ts = NULL_TIMESTAMP;
 
-    std::string board_name;
     std::string uuid;
-    bool is_mfg = false;
 
-    is_mfg = xrt_core::query_device<bool>(m_device, xrt_core::device::QR_IS_MFG);
-    board_name = xrt_core::query_device<std::string>(m_device, xrt_core::device::QR_BOARD_NAME);
-    
+    bool is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(m_device);
+    std::string board_name = xrt_core::device_query<xrt_core::query::board_name>(m_device);
+
     if (is_mfg)
     {
         std::stringstream ss;
@@ -344,13 +352,13 @@ DSAInfo Flasher::getOnBoardDSA()
     //    ts = mFRHeader.TimeSinceEpoch;
     //}
     else{
-        vbnv = xrt_core::query_device<std::string>(m_device, xrt_core::device::QR_ROM_VBNV);
-        ts = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_ROM_TIME_SINCE_EPOCH);
-        uuid = xrt_core::query_device<std::string>(m_device, xrt_core::device::QR_ROM_UUID);
-        if (vbnv.empty())
-            throw xrt_core::error("Platform not found. Invalid device name.");
-        if(ts == std::numeric_limits<uint64_t>::max())
-            throw xrt_core::error("Platform not found. Invalid timestamp");
+      vbnv = xrt_core::device_query<xrt_core::query::rom_vbnv>(m_device);
+      ts = xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(m_device);
+      uuid = xrt_core::device_query<xrt_core::query::rom_uuid>(m_device);
+      if (vbnv.empty())
+        throw xrt_core::error("Platform not found. Invalid device name.");
+      if(ts == std::numeric_limits<uint64_t>::max())
+        throw xrt_core::error("Platform not found. Invalid timestamp");
     }
 
     BoardInfo info;
@@ -367,8 +375,6 @@ DSAInfo Flasher::getOnBoardDSA()
 
 std::string Flasher::sGetDBDF()
 {
-    auto bus = xrt_core::query_device<uint16_t>(m_device, xrt_core::device::QR_PCIE_BDF_BUS);
-    auto dev = xrt_core::query_device<uint16_t>(m_device, xrt_core::device::QR_PCIE_BDF_DEVICE);
-    auto func = xrt_core::query_device<uint16_t>(m_device, xrt_core::device::QR_PCIE_BDF_FUNCTION);
-    return boost::str(boost::format("%04x:%02x:%02x.%01x") % 0 % bus % dev % func);
+  auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(m_device);
+  return xrt_core::query::pcie_bdf::to_string(bdf);
 }

@@ -49,6 +49,7 @@ using Clock = std::chrono::high_resolution_clock;
 /* exposed by shim */
 int xclUpdateSchedulerStat(xclDeviceHandle);
 int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t sz);
+int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* info);
 
 #define TO_STRING(x) #x
 #define AXI_FIREWALL
@@ -757,6 +758,20 @@ public:
         sensor_tree::put( "board.info.dna",            dna );
         sensor_tree::put( "board.info.p2p_enabled",    p2p_enabled );
 
+        //interface uuid
+        std::vector<std::string> interface_uuid;
+        pcidev::get_dev(m_idx)->sysfs_get( "", "interface_uuids", errmsg, interface_uuid );
+        for (unsigned i =0; i < interface_uuid.size(); i++) {
+            sensor_tree::put( "board.interface_uuid.uuid" + std::to_string(i), interface_uuid[i] );
+        }
+
+        //logic uuid
+        std::vector<std::string> logic_uuid;
+        pcidev::get_dev(m_idx)->sysfs_get( "", "logic_uuids", errmsg, logic_uuid );
+        for (unsigned i =0; i < logic_uuid.size(); i++) {
+            sensor_tree::put( "board.logic_uuid.uuid" + std::to_string(i), logic_uuid[i] );
+        }
+
         // physical.thermal.pcb
         unsigned int xmc_se98_temp0, xmc_se98_temp1, xmc_se98_temp2;
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_se98_temp0", xmc_se98_temp0 );
@@ -767,17 +782,21 @@ public:
         sensor_tree::put( "board.physical.thermal.pcb.btm_front", xmc_se98_temp2);
 
         // physical.thermal
-        unsigned int fan_rpm, xmc_fpga_temp, xmc_fan_temp;
+        unsigned int fan_rpm, xmc_fpga_temp, xmc_fan_temp, vccint_temp, xmc_hbm_temp;
         std::string fan_presence;
         
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_fpga_temp", xmc_fpga_temp );
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_fan_temp",  xmc_fan_temp );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "fan_presence",         errmsg, fan_presence );
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_fan_rpm",   fan_rpm );
+        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_vccint_temp",  vccint_temp);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_hbm_temp",  xmc_hbm_temp);
         sensor_tree::put( "board.physical.thermal.fpga_temp",    xmc_fpga_temp );
         sensor_tree::put( "board.physical.thermal.tcrit_temp",   xmc_fan_temp );
         sensor_tree::put( "board.physical.thermal.fan_presence", fan_presence );
         sensor_tree::put( "board.physical.thermal.fan_speed",    fan_rpm );
+        sensor_tree::put( "board.physical.thermal.vccint_temp",  vccint_temp);
+        sensor_tree::put( "board.physical.thermal.hbm_temp",     xmc_hbm_temp);
 
         // physical.thermal.cage
         unsigned int temp0, temp1, temp2, temp3;
@@ -1032,10 +1051,11 @@ public:
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Temperature(C)\n";
-        ostr << std::setw(16) << "PCB TOP FRONT" << std::setw(16) << "PCB TOP REAR" << std::setw(16) << "PCB BTM FRONT" << std::endl;
+        ostr << std::setw(16) << "PCB TOP FRONT" << std::setw(16) << "PCB TOP REAR" << std::setw(16) << "PCB BTM FRONT" << std::setw(16) << "VCCINT TEMP" << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.pcb.top_front" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.pcb.top_rear"  )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.pcb.btm_front" ) << std::endl;
+             << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.pcb.btm_front" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.vccint_temp" ) << std::endl;
         ostr << std::setw(16) << "FPGA TEMP" << std::setw(16) << "TCRIT Temp" << std::setw(16) << "FAN Presence" 
              << std::setw(16) << "FAN Speed(RPM)" << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.fpga_temp") 
@@ -1048,6 +1068,8 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.cage.temp1" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.cage.temp2" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.cage.temp3" ) << std::endl;
+        ostr << std::setw(16) << "HBM TEMP" << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.hbm_temp") << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Electrical(mV|mA)\n";
         ostr << std::setw(16) << "12V PEX" << std::setw(16) << "12V AUX" << std::setw(16) << "12V PEX Current" << std::setw(16) 
@@ -1272,7 +1294,7 @@ public:
                   cu_s = subv.second.get_value<std::string>();
                 }
               }
-              if (xclCuName2Index(m_handle, cu_n.c_str(), &cu_i) != 0) {
+              if (xclIPName2Index(m_handle, cu_n.c_str(), &cu_i) != 0) {
                 ostr << "CU: ";
               } else {
                 ostr << "CU[" << std::right << std::setw(2) << cu_i << "]: ";
@@ -1424,9 +1446,9 @@ public:
         std::string hbm_mem_size = unitConvert(map->m_count*(map->m_mem_data[0].m_size << 10));
         if (verbose) {
             std::cout << "INFO: DMA test on [" << m_idx << "]: "<< name() << "\n";
-            if (ddr_mem_size == 0)
-                std::cout << "Total HBM size:" << hbm_mem_size << "\n";
-            else
+            if (hbm_mem_size.compare(std::string("0 Byte")) != 0)
+                std::cout << "Total HBM size: " << hbm_mem_size << "\n";
+            if (ddr_mem_size != 0)
                 std::cout << "Total DDR size: " << ddr_mem_size << " MB\n";
             
             if (blockSize < (1024*1024))

@@ -365,7 +365,7 @@ static ssize_t mgmt_reset_store(struct device *dev,
 	 */
 	switch(val) {
 	case 1:
-		ret = (int) xclmgmt_hot_reset(lro);
+		ret = (int) xclmgmt_hot_reset(lro, true);
 		if (ret < 0)
 			return ret;
 		break;
@@ -503,10 +503,17 @@ int mgmt_init_sysfs(struct device *dev)
 	if (err)
 		xocl_err(dev, "create mgmt attrs failed: %d", err);
 
+	err = sysfs_create_link(&dev->kobj, &dev->parent->kobj, "dparent");
+	if (err) {
+		xocl_err(dev, "create parent link failed");
+		sysfs_remove_group(&dev->kobj, &mgmt_attr_group);
+	}
+
 	return err;
 }
 
 void mgmt_fini_sysfs(struct device *dev)
 {
+	sysfs_remove_link(&dev->kobj, "dparent");
 	sysfs_remove_group(&dev->kobj, &mgmt_attr_group);
 }

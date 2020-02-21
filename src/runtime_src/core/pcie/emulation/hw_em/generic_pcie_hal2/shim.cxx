@@ -1563,6 +1563,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
         || vbnv.find("u280_xdma_201920_2")        != std::string::npos
         || vbnv.find("u280_xdma_201920_3")        != std::string::npos
         || vbnv.find("u50_xdma_201910_1")         != std::string::npos
+        || vbnv.find("u50_xdma_201920_1")         != std::string::npos
         || vbnv.find("u50_xdma_201920_2")         != std::string::npos))
       return true;
 
@@ -2120,7 +2121,7 @@ void *HwEmShim::xclMapBO(unsigned int boHandle, bool write)
   }
 
   void *pBuf=nullptr;
-  if (posix_memalign(&pBuf, sizeof(double)*16, bo->size))
+  if (posix_memalign(&pBuf, getpagesize(), bo->size))
   {
     if (mLogStream.is_open()) mLogStream << "posix_memalign failed" << std::endl;
     pBuf=nullptr;
@@ -2677,7 +2678,7 @@ void * HwEmShim::xclAllocQDMABuf(size_t size, uint64_t *buf_hdl)
     mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
   }
   void *pBuf=nullptr;
-  if (posix_memalign(&pBuf, sizeof(double)*16, size))
+  if (posix_memalign(&pBuf, getpagesize(), size))
   {
     if (mLogStream.is_open()) mLogStream << "posix_memalign failed" << std::endl;
     pBuf=nullptr;

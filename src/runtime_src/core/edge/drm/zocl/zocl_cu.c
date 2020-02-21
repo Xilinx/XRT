@@ -108,6 +108,14 @@ zocl_cu_status_print(struct zocl_cu *cu)
 	    (u64)cu_core->paddr, ioread32(cu_core->vaddr));
 }
 
+u32
+zocl_cu_get_control(struct zocl_cu *cu)
+{
+	struct zcu_core *cu_core = cu->core;
+
+	return cu_core->control;
+}
+
 /* -- HLS adapter start -- */
 /* HLS adapter implementation realted code. */
 static void
@@ -334,6 +342,8 @@ zocl_hls_cu_init(struct zocl_cu *cu, phys_addr_t paddr)
 		return -ENOMEM;
 	}
 
+	core->control = paddr & 0x7;
+	paddr = paddr & ZOCL_KDS_MASK;
 	core->paddr = paddr;
 	core->vaddr = ioremap(paddr, CU_SIZE);
 	if (!core->vaddr) {
@@ -471,6 +481,7 @@ zocl_acc_cu_init(struct zocl_cu *cu, phys_addr_t paddr)
 	core->credits = core->max_credits;
 
 	core->intr_type = 0;
+	core->control = 0;
 
 	cu->done_cnt = 0;
 	cu->ready_cnt = 0;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019, Xilinx Inc - All rights reserved
+ * Copyright (C) 2015-2020, Xilinx Inc - All rights reserved
  * Xilinx Runtime (XRT) APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -410,15 +410,15 @@ xclUnlockDevice(xclDeviceHandle handle);
  *
  * @handle:        Device handle
  * @xclbinId:      UUID of the xclbin image running on the device
- * @ipIndex:       IP/CU index in the IP LAYOUT array
+ * @ipIndex:       IP index
  * @shared:        Shared access or exclusive access
  * Return:         0 on success or appropriate error number
  *
  * The context is necessary before submitting execution jobs using
  * xclExecBuf(). Contexts may be exclusive or shared. Allocation of
- * exclusive contexts on a compute unit would succeed only if another
- * client has not already setup up a context on that compute
- * unit. Shared contexts can be concurrently allocated by many
+ * exclusive contexts on a hardware IP would succeed only if another
+ * client has not already setup up a context on that hardware IP.
+ * Shared contexts can be concurrently allocated by many
  * processes on the same compute units.
  */
 XCL_DRIVER_DLLESPEC
@@ -431,10 +431,10 @@ xclOpenContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int ipIndex,
  *
  * @handle:        Device handle
  * @xclbinId:      UUID of the xclbin image running on the device
- * @ipIndex:       IP/CU index in the IP LAYOUT array
+ * @ipIndex:       ipIndex
  * Return:         0 on success or appropriate error number
  *
- * Close a previously allocated shared/exclusive context for a compute unit.
+ * Close a previously allocated shared/exclusive context for a hardware IP.
  */
 XCL_DRIVER_DLLESPEC
 int

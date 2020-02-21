@@ -81,16 +81,10 @@ static const uint8_t FGC_EXTENDED_BODY    = 70;  // 70
 
 
 // ------ S T A T I C   V A R I A B L E S -------------------------------------
-static bool m_disableEscapeCodes = false;
 static unsigned int m_maxColumnWidth = 90;
 
 
 // ------ F U N C T I O N S ---------------------------------------------------
-void 
-XBUtilities::disable_escape_codes(bool _disable) {
-  m_disableEscapeCodes = _disable;
-}
-
 static bool
 isPositional(const std::string &_name, 
              const boost::program_options::positional_options_description & _pod)
@@ -226,12 +220,12 @@ XBUtilities::report_commands_help( const std::string &_executable,
 { 
   // Formatting color parameters
   // Color references: https://en.wikipedia.org/wiki/ANSI_escape_code
-  const std::string fgc_header     = m_disableEscapeCodes ? "" : ec::fgcolor(FGC_HEADER).string();
-  const std::string fgc_headerBody = m_disableEscapeCodes ? "" : ec::fgcolor(FGC_HEADER_BODY).string();
-  const std::string fgc_usageBody  = m_disableEscapeCodes ? "" : ec::fgcolor(FGC_USAGE_BODY).string();
-  const std::string fgc_subCmd     = m_disableEscapeCodes ? "" : ec::fgcolor(FGC_SUBCMD).string();
-  const std::string fgc_subCmdBody = m_disableEscapeCodes ? "" : ec::fgcolor(FGC_SUBCMD_BODY).string();
-  const std::string fgc_reset      = m_disableEscapeCodes ? "" : ec::fgcolor::reset();
+  const std::string fgc_header     = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_HEADER).string();
+  const std::string fgc_headerBody = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_HEADER_BODY).string();
+  const std::string fgc_usageBody  = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_USAGE_BODY).string();
+  const std::string fgc_subCmd     = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_SUBCMD).string();
+  const std::string fgc_subCmdBody = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_SUBCMD_BODY).string();
+  const std::string fgc_reset      = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor::reset();
 
   // Helper variable
   std::string formattedString;
@@ -348,10 +342,10 @@ XBUtilities::report_option_help( const std::string & _groupName,
 {
   // Formatting color parameters
   // Color references: https://en.wikipedia.org/wiki/ANSI_escape_code
-  const std::string fgc_header     = m_disableEscapeCodes ? "" : ec::fgcolor(FGC_HEADER).string();
-  const std::string fgc_optionName = m_disableEscapeCodes ? "" : ec::fgcolor(FGC_OPTION).string();
-  const std::string fgc_optionBody = m_disableEscapeCodes ? "" : ec::fgcolor(FGC_OPTION_BODY).string();
-  const std::string fgc_reset      = m_disableEscapeCodes ? "" : ec::fgcolor::reset();
+  const std::string fgc_header     = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_HEADER).string();
+  const std::string fgc_optionName = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_OPTION).string();
+  const std::string fgc_optionBody = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_OPTION_BODY).string();
+  const std::string fgc_reset      = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor::reset();
 
   // Determine if there is anything to report
   if (_optionDescription.options().empty())
@@ -390,13 +384,13 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
 {
   // Formatting color parameters
   // Color references: https://en.wikipedia.org/wiki/ANSI_escape_code
-  const std::string fgc_header      = m_disableEscapeCodes ? "" : ec::fgcolor(FGC_HEADER).string();
-  const std::string fgc_headerBody  = m_disableEscapeCodes ? "" : ec::fgcolor(FGC_HEADER_BODY).string();
-  const std::string fgc_poption      = m_disableEscapeCodes ? "" : ec::fgcolor(FGC_POSITIONAL).string();
-  const std::string fgc_poptionBody  = m_disableEscapeCodes ? "" : ec::fgcolor(FGC_POSITIONAL_BODY).string();
-  const std::string fgc_usageBody   = m_disableEscapeCodes ? "" : ec::fgcolor(FGC_USAGE_BODY).string();
-  const std::string fgc_extendedBody = m_disableEscapeCodes ? "" : ec::fgcolor(FGC_EXTENDED_BODY).string();
-  const std::string fgc_reset       = m_disableEscapeCodes ? "" : ec::fgcolor::reset();
+  const std::string fgc_header      = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_HEADER).string();
+  const std::string fgc_headerBody  = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_HEADER_BODY).string();
+  const std::string fgc_poption      = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_POSITIONAL).string();
+  const std::string fgc_poptionBody  = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_POSITIONAL_BODY).string();
+  const std::string fgc_usageBody   = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_USAGE_BODY).string();
+  const std::string fgc_extendedBody = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_EXTENDED_BODY).string();
+  const std::string fgc_reset       = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor::reset();
 
   // Helper string
   std::string formattedString;
@@ -449,17 +443,17 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
 {
   // Formatting color parameters
   // Color references: https://en.wikipedia.org/wiki/ANSI_escape_code
-  const std::string fgc_header       = m_disableEscapeCodes ? "" : ec::fgcolor(FGC_HEADER).string();
-  const std::string fgc_headerBody   = m_disableEscapeCodes ? "" : ec::fgcolor(FGC_HEADER_BODY).string();
-  const std::string fgc_commandBody  = m_disableEscapeCodes ? "" : ec::fgcolor(FGC_SUBCMD).string();
-  const std::string fgc_usageBody    = m_disableEscapeCodes ? "" : ec::fgcolor(FGC_USAGE_BODY).string();
+  const std::string fgc_header       = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_HEADER).string();
+  const std::string fgc_headerBody   = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_HEADER_BODY).string();
+  const std::string fgc_commandBody  = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_SUBCMD).string();
+  const std::string fgc_usageBody    = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_USAGE_BODY).string();
 
-  const std::string fgc_ooption      = m_disableEscapeCodes ? "" : ec::fgcolor(FGC_OOPTION).string();
-  const std::string fgc_ooptionBody  = m_disableEscapeCodes ? "" : ec::fgcolor(FGC_OOPTION_BODY).string();
-  const std::string fgc_poption      = m_disableEscapeCodes ? "" : ec::fgcolor(FGC_POSITIONAL).string();
-  const std::string fgc_poptionBody  = m_disableEscapeCodes ? "" : ec::fgcolor(FGC_POSITIONAL_BODY).string();
-  const std::string fgc_extendedBody = m_disableEscapeCodes ? "" : ec::fgcolor(FGC_EXTENDED_BODY).string();
-  const std::string fgc_reset        = m_disableEscapeCodes ? "" : ec::fgcolor::reset();
+  const std::string fgc_ooption      = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_OOPTION).string();
+  const std::string fgc_ooptionBody  = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_OOPTION_BODY).string();
+  const std::string fgc_poption      = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_POSITIONAL).string();
+  const std::string fgc_poptionBody  = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_POSITIONAL_BODY).string();
+  const std::string fgc_extendedBody = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_EXTENDED_BODY).string();
+  const std::string fgc_reset        = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor::reset();
 
   // Helper string
   std::string formattedString;

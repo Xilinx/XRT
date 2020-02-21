@@ -180,11 +180,11 @@ DeviceIntf::~DeviceIntf()
   // ***************************************************************************
 
   // Start device counters performance monitoring
-  size_t DeviceIntf::startCounters(xclPerfMonType type)
+  size_t DeviceIntf::startCounters()
   {
     if (mVerbose) {
       std::cout << __func__ << ", " << std::this_thread::get_id() << ", "
-                << type << ", Start device counters..." << std::endl;
+                << ", Start device counters..." << std::endl;
     }
 
     // Update addresses for debug/profile IP
@@ -212,10 +212,10 @@ DeviceIntf::~DeviceIntf()
   }
 
   // Stop both profile and trace performance monitoring
-  size_t DeviceIntf::stopCounters(xclPerfMonType type) {
+  size_t DeviceIntf::stopCounters() {
     if (mVerbose) {
       std::cout << __func__ << ", " << std::this_thread::get_id() << ", "
-          << type << ", Stop and reset device counters..." << std::endl;
+                << ", Stop and reset device counters..." << std::endl;
     }
 
     if (!mIsDeviceProfiling)
@@ -245,10 +245,10 @@ DeviceIntf::~DeviceIntf()
   }
 
   // Read AIM performance counters
-  size_t DeviceIntf::readCounters(xclPerfMonType type, xclCounterResults& counterResults) {
+  size_t DeviceIntf::readCounters(xclCounterResults& counterResults) {
     if (mVerbose) {
       std::cout << __func__ << ", " << std::this_thread::get_id()
-      << ", " << type << ", " << &counterResults
+      << ", " << &counterResults
       << ", Read device counters..." << std::endl;
     }
 
@@ -286,7 +286,7 @@ DeviceIntf::~DeviceIntf()
   // ***************************************************************************
 
   // Start trace performance monitoring
-  size_t DeviceIntf::startTrace(xclPerfMonType type, uint32_t startTrigger)
+  size_t DeviceIntf::startTrace(uint32_t startTrigger)
   {
     // StartTrigger Bits:
     // Bit 0: Trace Coarse/Fine     Bit 1: Transfer Trace Ctrl
@@ -294,7 +294,7 @@ DeviceIntf::~DeviceIntf()
     // Bit 4: Str Trace Ctrl        Bit 5: Ext Trace Ctrl
     if (mVerbose) {
       std::cout << __func__ << ", " << std::this_thread::get_id()
-                << ", " << type << ", " << startTrigger
+                << ", " << startTrigger
                 << ", Start device tracing..." << std::endl;
     }
     size_t size = 0;
@@ -325,11 +325,11 @@ DeviceIntf::~DeviceIntf()
   }
 
   // Stop trace performance monitoring
-  size_t DeviceIntf::stopTrace(xclPerfMonType type)
+  size_t DeviceIntf::stopTrace()
   {
     if (mVerbose) {
       std::cout << __func__ << ", " << std::this_thread::get_id() << ", "
-                << type << ", Stop and reset device tracing..." << std::endl;
+                << ", Stop and reset device tracing..." << std::endl;
     }
 
     if (!mIsDeviceProfiling || !fifoCtrl)
@@ -339,10 +339,9 @@ DeviceIntf::~DeviceIntf()
   }
 
   // Get trace word count
-  uint32_t DeviceIntf::getTraceCount(xclPerfMonType type) {
+  uint32_t DeviceIntf::getTraceCount() {
     if (mVerbose) {
-      std::cout << __func__ << ", " << std::this_thread::get_id()
-                << ", " << type << std::endl;
+      std::cout << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
 
     if (!mIsDeviceProfiling || !fifoCtrl)
@@ -352,11 +351,11 @@ DeviceIntf::~DeviceIntf()
   }
 
   // Read all values from APM trace AXI stream FIFOs
-  size_t DeviceIntf::readTrace(xclPerfMonType type, xclTraceResultsVector& traceVector)
+  size_t DeviceIntf::readTrace(xclTraceResultsVector& traceVector)
   {
     if (mVerbose) {
       std::cout << __func__ << ", " << std::this_thread::get_id()
-                << ", " << type << ", " << &traceVector
+                << ", " << &traceVector
                 << ", Reading device trace stream..." << std::endl;
     }
 
@@ -365,7 +364,7 @@ DeviceIntf::~DeviceIntf()
    	  return 0;
 
     size_t size = 0;
-    size += fifoRead->readTrace(traceVector, getTraceCount(type /*does not matter*/));
+    size += fifoRead->readTrace(traceVector, getTraceCount());
 
     return size;
   }

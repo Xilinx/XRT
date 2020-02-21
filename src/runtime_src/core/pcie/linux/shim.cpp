@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2019 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  * Author(s): Umang Parekh
  *          : Sonal Santan
  *          : Ryan Radjabi
@@ -595,7 +595,7 @@ void shim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
     mDev->sysfs_get<unsigned short>("mb_scheduler", "kds_numcdmas", errmsg, info->mNumCDMA, static_cast<unsigned short>(-1));
 
     //get sensors
-    unsigned int m12VPex, m12VAux, mPexCurr, mAuxCurr, mDimmTemp_0, mDimmTemp_1, mDimmTemp_2, 
+    unsigned int m12VPex, m12VAux, mPexCurr, mAuxCurr, mDimmTemp_0, mDimmTemp_1, mDimmTemp_2,
         mDimmTemp_3, mSE98Temp_0, mSE98Temp_1, mSE98Temp_2, mFanTemp, mFanRpm, m3v3Pex, m3v3Aux,
         mDDRVppBottom, mDDRVppTop, mSys5v5, m1v2Top, m1v8Top, m0v85, mMgt0v9, m12vSW, mMgtVtt,
         m1v2Bottom, mVccIntVol,mOnChipTemp;
@@ -680,7 +680,10 @@ int shim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
     info->mHALMajorVersion = XCLHAL_MAJOR_VER;
     info->mHALMinorVersion = XCLHAL_MINOR_VER;
     info->mMinTransferSize = DDR_BUFFER_ALIGNMENT;
-    info->mDMAThreads = 2;
+    std::string errmsg;
+    std::vector<std::string> dmaStatStrs;
+    mDev->sysfs_get("dma", "channel_stat_raw", errmsg, dmaStatStrs);
+    info->mDMAThreads = dmaStatStrs.size();
     xclSysfsGetDeviceInfo(info);
     return 0;
 }
@@ -756,7 +759,7 @@ int shim::cmaEnable(bool enable, uint64_t size)
         cma_info.page_sz = size;
 
         /* Once set MAP_HUGETLB, we have to specify bit[26~31] as size in log
-         * e.g. We like to get 2M huge page, 2M = 2^21, 
+         * e.g. We like to get 2M huge page, 2M = 2^21,
          * 21 = 0x15
          */
         if (size == (1 << 30))
@@ -785,7 +788,7 @@ int shim::cmaEnable(bool enable, uint64_t size)
 
     } else {
         drm_xocl_free_cma_info cma_info = {0};
-        mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_FREE_CMA, &cma_info);
+        ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_FREE_CMA, &cma_info);
     }
 
     return ret;
@@ -1491,6 +1494,23 @@ int shim::xclGetDebugIPlayoutPath(char* layoutPath, size_t size)
   return xclGetSysfsPath("icap", "debug_ip_layout", layoutPath, size);
 }
 
+
+int shim::xclGetSubdevPath(const char* subdev, uint32_t idx, char* path, size_t size)
+{
+    auto dev = pcidev::get_dev(mBoardNumber);
+    std::string subdev_str = std::string(subdev);
+
+    if (mLogStream.is_open()) {
+      mLogStream << "Retrieving [devfs root]";
+      mLogStream << subdev_str << "/" << idx;
+      mLogStream << std::endl;
+    }
+    std::string sysfsFullPath = dev->get_subdev_path(subdev_str, idx);
+    strncpy(path, sysfsFullPath.c_str(), size);
+    path[size - 1] = '\0';
+    return 0;
+}
+
 int shim::xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
 {
   uint32_t bytesPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 8);
@@ -1629,12 +1649,12 @@ int shim::xclGetDebugProfileDeviceInfo(xclDebugProfileDeviceInfo* info)
   return 0;
 }
 
-int shim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap)
+int shim::xclRegRW(bool rd, uint32_t ipIndex, uint32_t offset, uint32_t *datap)
 {
     std::lock_guard<std::mutex> l(mCuMapLock);
 
-    if (cu_index >= mCuMaps.size()) {
-        xrt_logmsg(XRT_ERROR, "%s: invalid CU index: %d", __func__, cu_index);
+    if (ipIndex >= mCuMaps.size()) {
+        xrt_logmsg(XRT_ERROR, "%s: invalid CU index: %d", __func__, ipIndex);
         return -EINVAL;
     }
     if (offset >= mCuMapSize || (offset & (sizeof(uint32_t) - 1)) != 0) {
@@ -1642,16 +1662,16 @@ int shim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap)
         return -EINVAL;
     }
 
-    if (mCuMaps[cu_index] == nullptr) {
+    if (mCuMaps[ipIndex] == nullptr) {
         void *p = mDev->mmap(mUserHandle, mCuMapSize,
-            PROT_READ | PROT_WRITE, MAP_SHARED, (cu_index + 1) * getpagesize());
+            PROT_READ | PROT_WRITE, MAP_SHARED, (ipIndex + 1) * getpagesize());
         if (p != MAP_FAILED)
-            mCuMaps[cu_index] = (uint32_t *)p;
+            mCuMaps[ipIndex] = (uint32_t *)p;
     }
 
-    uint32_t *cumap = mCuMaps[cu_index];
+    uint32_t *cumap = mCuMaps[ipIndex];
     if (cumap == nullptr) {
-        xrt_logmsg(XRT_ERROR, "%s: can't map CU: %d", __func__, cu_index);
+        xrt_logmsg(XRT_ERROR, "%s: can't map CU: %d", __func__, ipIndex);
         return -EINVAL;
     }
 
@@ -1662,17 +1682,17 @@ int shim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap)
     return 0;
 }
 
-int shim::xclRegRead(uint32_t cu_index, uint32_t offset, uint32_t *datap)
+int shim::xclRegRead(uint32_t ipIndex, uint32_t offset, uint32_t *datap)
 {
-    return xclRegRW(true, cu_index, offset, datap);
+    return xclRegRW(true, ipIndex, offset, datap);
 }
 
-int shim::xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data)
+int shim::xclRegWrite(uint32_t ipIndex, uint32_t offset, uint32_t data)
 {
-    return xclRegRW(false, cu_index, offset, &data);
+    return xclRegRW(false, ipIndex, offset, &data);
 }
 
-int shim::xclCuName2Index(const char *name, uint32_t& index)
+int shim::xclIPName2Index(const char *name, uint32_t& index)
 {
     std::string errmsg;
     std::vector<char> buf;
@@ -1808,16 +1828,16 @@ size_t xclRead(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, v
     return drv ? drv->xclRead(space, offset, hostBuf, size) : -ENODEV;
 }
 
-int xclRegWrite(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset, uint32_t data)
+int xclRegWrite(xclDeviceHandle handle, uint32_t ipIndex, uint32_t offset, uint32_t data)
 {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
-    return drv ? drv->xclRegWrite(cu_index, offset, data) : -ENODEV;
+    return drv ? drv->xclRegWrite(ipIndex, offset, data) : -ENODEV;
 }
 
-int xclRegRead(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset, uint32_t *datap)
+int xclRegRead(xclDeviceHandle handle, uint32_t ipIndex, uint32_t offset, uint32_t *datap)
 {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
-    return drv ? drv->xclRegRead(cu_index, offset, datap) : -ENODEV;
+    return drv ? drv->xclRegRead(ipIndex, offset, datap) : -ENODEV;
 }
 
 int xclGetErrorStatus(xclDeviceHandle handle, xclErrorStatus *info)
@@ -2200,14 +2220,33 @@ int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceIn
   return drv ? drv->xclGetDebugProfileDeviceInfo(info) : -ENODEV;
 }
 
-int xclCuName2Index(xclDeviceHandle handle, const char *name, uint32_t *indexp)
+int xclIPName2Index(xclDeviceHandle handle, const char *name, uint32_t *indexp)
 {
   xocl::shim *drv = xocl::shim::handleCheck(handle);
-  return (drv) ? drv->xclCuName2Index(name, *indexp) : -ENODEV;
+  return (drv) ? drv->xclIPName2Index(name, *indexp) : -ENODEV;
 }
 
 int xclUpdateSchedulerStat(xclDeviceHandle handle)
 {
   xocl::shim *drv = xocl::shim::handleCheck(handle);
   return (drv) ? drv->xclUpdateSchedulerStat() : -ENODEV;
+}
+
+int xclOpenIPInterruptNotify(xclDeviceHandle handle, uint32_t ipIndex, int flags)
+{
+    return -ENOSYS;
+}
+
+int xclCloseIPInterruptNotify(xclDeviceHandle handle, int fd)
+{
+    return -ENOSYS;
+}
+
+int xclGetSubdevPath(xclDeviceHandle handle,  const char* subdev,
+                        uint32_t idx, char* path, size_t size)
+{
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
+  if (!drv)
+    return -1;
+  return drv->xclGetSubdevPath(subdev, idx, path, size);
 }

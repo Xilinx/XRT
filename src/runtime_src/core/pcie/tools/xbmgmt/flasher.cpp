@@ -156,8 +156,11 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
 int Flasher::upgradeBMCFirmware(firmwareImage* bmc)
 {
     XMC_Flasher flasher(mDev);
-    const std::string e = flasher.probingErrMsg();
 
+    if (!flasher.hasXMC())
+        return -EOPNOTSUPP;
+
+    const std::string e = flasher.probingErrMsg();
     if (!e.empty())
     {
         std::cout << "ERROR: " << e << std::endl;
@@ -193,6 +196,9 @@ int Flasher::getBoardInfo(BoardInfo& board)
     std::string unassigned_mac = "FF:FF:FF:FF:FF:FF";
     std::map<char, std::vector<char>> info;
     XMC_Flasher flasher(mDev);
+
+    if (!flasher.hasXMC())
+        return -EOPNOTSUPP;
 
     if (!flasher.probingErrMsg().empty())
     {
@@ -385,7 +391,7 @@ DSAInfo Flasher::getOnBoardDSA()
     else if (rc == -EOPNOTSUPP)
         bmc.clear(); // BMC is not supported on DSA
     else
-        bmc = "UNKNOWN"; // BMC not ready, set it to an invalid version string
+        bmc = DSAInfo::UNKNOWN; // BMC not ready, set it to an invalid version string
 
     return DSAInfo(vbnv, ts, uuid, bmc);
 }

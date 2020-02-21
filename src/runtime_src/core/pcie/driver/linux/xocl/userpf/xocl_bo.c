@@ -426,7 +426,7 @@ static struct page **xocl_cma_pool_get_pages(struct xocl_drm *drm_p, uint32_t id
 	uint64_t page_offset = 0;
 	struct page **pages = NULL;
 
-	if (idx > DRM_XOCL_CMA_CHUNK_MAX)
+	if (idx >= DRM_XOCL_CMA_CHUNK_MAX)
 		return ERR_PTR(-EINVAL);
 
 	if (!drm_p->cma_chunk[idx])

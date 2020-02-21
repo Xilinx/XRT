@@ -281,6 +281,7 @@ static unsigned int clock_get_freq_counter_khz_impl(struct clock *clock, int idx
 	u32 freq = 0, status;
 	int times = 10;
 
+	BUG_ON(idx > CLOCK_MAX_NUM_CLOCKS);
 	BUG_ON(!mutex_is_locked(&clock->clock_lock));
 
 	if (clock->clock_freq_counter && idx < 2) {
@@ -385,6 +386,24 @@ static unsigned short clock_get_freq_impl(struct clock *clock, int idx)
 	return freq;
 }
 
+static void clock_freq_request_load(struct clock *clock, u32 *curr_freq,
+	u32 *new_freq, int size, bool need_toggle)
+{
+	int i;
+
+	for (i = 0; i < size; i++) {
+		new_freq[i] = clock->clock_ocl_frequency[i];
+		curr_freq[i] = clock_get_freq_impl(clock, i);
+
+		/*
+		 * toggle gate will reset all clock wizard value to default,
+		 * thus we should preserve all clock wizard value before.
+		 */
+		if (need_toggle && new_freq[i] == 0)
+			new_freq[i] = curr_freq[i];
+	}
+}
+
 /*
  * Based on Clocking Wizard v5.1, section Dynamic Reconfiguration
  * through AXI4-Lite
@@ -393,9 +412,12 @@ static unsigned short clock_get_freq_impl(struct clock *clock, int idx)
  *       based on Linux doc of timers, mdelay may not be exactly accurate
  *       on non-PC devices.
  */
-static int clock_ocl_freqscaling(struct clock *clock, bool force)
+static int clock_ocl_freqscaling(struct clock *clock, bool force,
+	struct gate_handler *gate_handle)
 {
-	unsigned curr_freq;
+	xdev_handle_t xdev = xocl_get_xdev(clock->clock_pdev);
+	u32 curr_freq[CLOCK_MAX_NUM_CLOCKS] = { 0 };
+	u32 new_freq[CLOCK_MAX_NUM_CLOCKS] = { 0 };
 	u32 config;
 	int i;
 	int j = 0;
@@ -405,34 +427,61 @@ static int clock_ocl_freqscaling(struct clock *clock, bool force)
 
 	BUG_ON(!mutex_is_locked(&clock->clock_lock));
 
+	/*
+	 * 2RP workflow will toggle gate instead of freeze/free the gate,
+	 * after each toggle, EVERY value in clock wizard will be reset to
+	 * default value. We have to cache every clock wizard value before
+	 * toggling the gate, and ENFORCE set those value back in the clock
+	 * wizard register after toggling the gate.
+	 */
+	if (CLOCK_DEV_LEVEL(xdev) > XOCL_SUBDEV_LEVEL_PRP &&
+	    gate_handle && gate_handle->gate_toggle_cb) {
+		force = true; /* explicitly force clock update */
+		clock_freq_request_load(clock, curr_freq, new_freq,
+		    CLOCK_MAX_NUM_CLOCKS, true);
+		gate_handle->gate_toggle_cb(gate_handle->gate_args);
+	} else {
+		clock_freq_request_load(clock, curr_freq, new_freq,
+		    CLOCK_MAX_NUM_CLOCKS, false);
+	}
+
 	for (i = 0; i < CLOCK_MAX_NUM_CLOCKS; ++i) {
+		int count;
+
 		/* A value of zero means skip scaling for this clock index */
-		if (!clock->clock_ocl_frequency[i])
+		if (!new_freq[i])
 			continue;
+
 		/* skip if the io does not exist */
 		if (!clock->clock_bases[i])
 			continue;
 
-		idx = find_matching_freq_config(clock->clock_ocl_frequency[i]);
-		curr_freq = clock_get_freq_impl(clock, i);
-		CLOCK_INFO(clock, "Clock %d, Current %d Mhz, New %d Mhz ",
-				i, curr_freq, clock->clock_ocl_frequency[i]);
+		idx = find_matching_freq_config(new_freq[i]);
+
+		CLOCK_INFO(clock,
+		    "Clock: %d, Current: %d Mhz, New: %d Mhz, Force: %d",
+		    i, curr_freq[i], new_freq[i], force);
 
 		/*
 		 * If current frequency is in the same step as the
 		 * requested frequency then nothing to do.
 		 */
-		if (!force && (find_matching_freq_config(curr_freq) == idx))
+		if (!force && (find_matching_freq_config(curr_freq[i]) == idx)) {
+			CLOCK_INFO(clock, "current freq and new freq are the "
+			    "same, skip updating.");
 			continue;
+		}
 
-		val = reg_rd(clock->clock_bases[i] +
-			OCL_CLKWIZ_STATUS_OFFSET);
+		val = reg_rd(clock->clock_bases[i] + OCL_CLKWIZ_STATUS_OFFSET);
+		for (count = 0; val != 1 && count < 20; count++) {
+			mdelay(50);
+			val = reg_rd(clock->clock_bases[i] + OCL_CLKWIZ_STATUS_OFFSET);
+		}
 		if (val != 1) {
-			CLOCK_ERR(clock, "clockwiz %d is busy", i);
+			CLOCK_ERR(clock, "clockwiz(%d) is (%u) busy", i, val);
 			err = -EBUSY;
 			break;
 		}
-
 		config = frequency_table[idx].config0;
 		reg_wr(clock->clock_bases[i] + OCL_CLKWIZ_CONFIG_OFFSET(0),
 			config);
@@ -484,6 +533,7 @@ static int clock_ocl_freqscaling(struct clock *clock, bool force)
 static int set_freqs(struct clock *clock, unsigned short *freqs, int num_freqs,
 	struct gate_handler *gate_handle)
 {
+	xdev_handle_t xdev = xocl_get_xdev(clock->clock_pdev);
 	int i;
 	int err = 0;
 	u32 val;
@@ -510,18 +560,33 @@ static int set_freqs(struct clock *clock, unsigned short *freqs, int num_freqs,
 		sizeof(*freqs) * min(CLOCK_MAX_NUM_CLOCKS, num_freqs));
 
 	/*
-	 * When gate_handler callback funcs are present, we must obey
-	 * the contract, freeze and free the gate. It is caller's fault
-	 * if freeze and free pair has not been set appropriately.
+	 * For ULP clock subdev, we should not freeze and free gate.
+	 * In the future, we will have separate ULP subdev to handle the request.
+	 *
+	 * When gate_handler callback funcs are present, we freeze and free the
+	 * gate. It is caller's fault if freeze and free pair has not been set
+	 * appropriately.
 	 */
-	if (gate_handle->gate_freeze_cb)
+	if (CLOCK_DEV_LEVEL(xdev) <= XOCL_SUBDEV_LEVEL_PRP &&
+	    gate_handle && gate_handle->gate_freeze_cb)
 		gate_handle->gate_freeze_cb(gate_handle->gate_args);
-	err = clock_ocl_freqscaling(clock, false);
-	if (gate_handle->gate_free_cb)
+
+	err = clock_ocl_freqscaling(clock, false, gate_handle);
+
+	if (CLOCK_DEV_LEVEL(xdev) <= XOCL_SUBDEV_LEVEL_PRP &&
+	    gate_handle && gate_handle->gate_free_cb)
 		gate_handle->gate_free_cb(gate_handle->gate_args);
 
+	/* enable kernel clocks */
+	if (clock->clock_ucs_control_status) {
+		CLOCK_INFO(clock, "Enable kernel clocks ucs control");
+		msleep(10);
+		reg_wr(clock->clock_ucs_control_status +
+			XOCL_RES_OFFSET_CHANNEL2, 0x1);
+	}
+
 done:
-	CLOCK_ERR(clock, "returns %d", err);
+	CLOCK_INFO(clock, "returns %d", err);
 	return err;
 }
 
@@ -546,9 +611,10 @@ static int set_and_verify_freqs(struct clock *clock, unsigned short *freqs,
 		clock_freq_counter = clock_get_freq_counter_khz_impl(clock, i);
 		request_in_khz = lookup_freq*1000;
 		tolerance = lookup_freq*50;
+
 		if (tolerance < abs(clock_freq_counter-request_in_khz)) {
 			CLOCK_ERR(clock, "Frequency is higher than tolerance value, request %u"
-					"khz, actual %u khz", request_in_khz, clock_freq_counter);
+					"khz, actual %u khz",request_in_khz, clock_freq_counter);
 			err = -EDOM;
 			break;
 		}
@@ -564,7 +630,7 @@ static int clock_freq_scaling(struct platform_device *pdev, bool force)
 	int err = 0;
 
 	mutex_lock(&clock->clock_lock);
-	err =  clock_ocl_freqscaling(clock, force);
+	err =  clock_ocl_freqscaling(clock, force, NULL);
 	mutex_unlock(&clock->clock_lock);
 
 	CLOCK_INFO(clock, "ret: %d.", err);
@@ -576,6 +642,7 @@ static int clock_update_freq(struct platform_device *pdev,
 	struct gate_handler *gate_handle)
 {
 	struct clock *clock = platform_get_drvdata(pdev);
+	xdev_handle_t xdev = xocl_get_xdev(clock->clock_pdev);
 	int err = 0;
 
 	if (gate_handle == NULL) {
@@ -589,7 +656,13 @@ static int clock_update_freq(struct platform_device *pdev,
 	    set_freqs(clock, freqs, num_freqs, gate_handle);
 	mutex_unlock(&clock->clock_lock);
 
-	CLOCK_INFO(clock, "ret: %d.", err);
+	/* Done clock programming, wait for HBM Calibration */
+	if (CLOCK_DEV_LEVEL(xdev) > XOCL_SUBDEV_LEVEL_PRP &&
+	    gate_handle && gate_handle->gate_hbm_calibration_cb) {
+		gate_handle->gate_hbm_calibration_cb(gate_handle->gate_args);
+	}
+
+	CLOCK_INFO(clock, "verify: %d ret: %d.", verify, err);
 	return err;
 }
 
@@ -783,9 +856,10 @@ static int clock_post_refresh_addrs(struct clock *clock)
 	 *       there is not any clock left in PLP in this case.
 	 */
 	if (clock->clock_ucs_control_status) {
-		err = clock_ocl_freqscaling(clock, true);
+		err = clock_ocl_freqscaling(clock, true, NULL);
 		msleep(10);
-		reg_wr(clock->clock_ucs_control_status + 8, 1);
+		reg_wr(clock->clock_ucs_control_status +
+			XOCL_RES_OFFSET_CHANNEL2, 0x1);
 	}
 
 	mutex_unlock(&clock->clock_lock);
@@ -805,6 +879,7 @@ static ssize_t clock_freqs_show(struct device *dev,
 	mutex_lock(&clock->clock_lock);
 	for (i = 0; i < CLOCK_MAX_NUM_CLOCKS; i++) {
 		freq = clock_get_freq_impl(clock, i);
+
 		if (clock->clock_freq_counter || clock->clock_freq_counters[i]) {
 			freq_counter = clock_get_freq_counter_khz_impl(clock, i);
 			request_in_khz = freq*1000;
@@ -889,6 +964,10 @@ static int clock_probe(struct platform_device *pdev)
 				CLOCK_ERR(clock, "map base %pR failed", res);
 				ret = -EINVAL;
 				goto failed;
+			} else {
+				CLOCK_INFO(clock, "res[%d] %s mapped @ %lx",
+				    i, res->name,
+				    (unsigned long)clock->clock_base_address[id]);
 			}
 		}
 	}

@@ -68,7 +68,7 @@ namespace xdp {
     dev->setDevice(new xdp::HalDevice(handle));
     dev->readDebugIPlayout();
     
-    dev->startCounters((xclPerfMonType)0);
+    dev->startCounters();
 }
 
   void HALAPIInterface::endProfiling()
@@ -79,14 +79,14 @@ namespace xdp {
   void HALAPIInterface::startCounters()
   {
     for(auto itr : devices) {
-      itr.second->startCounters((xclPerfMonType)0);
+      itr.second->startCounters();
     }
   }
 
   void HALAPIInterface::stopCounters()
   {
     for(auto itr : devices) {
-      itr.second->stopCounters((xclPerfMonType)0);
+      itr.second->stopCounters();
     }
   }
 
@@ -94,21 +94,21 @@ namespace xdp {
   {
     xclCounterResults counterResults;
     for(auto itr : devices) {
-      itr.second->readCounters((xclPerfMonType)0, counterResults);
+      itr.second->readCounters(counterResults);
     }
   }
 
   void HALAPIInterface::startTrace()
   {
     for(auto itr : devices) {
-      itr.second->startTrace((xclPerfMonType)0, 0);
+      itr.second->startTrace(0);
     }
   }
 
   void HALAPIInterface::stopTrace()
   {
     for(auto itr : devices) {
-      itr.second->stopTrace((xclPerfMonType)0);
+      itr.second->stopTrace();
     }
   }
 
@@ -116,7 +116,7 @@ namespace xdp {
   {
     xclTraceResultsVector traceVector;
     for(auto itr : devices) {
-      itr.second->readTrace((xclPerfMonType)0, traceVector);
+      itr.second->readTrace(traceVector);
     }
   }
 
@@ -144,7 +144,11 @@ namespace xdp {
     // readDebugIPlayout called from startProfiling : check other cases
 
     xclDeviceInfo2 devInfo;
-    xclGetDeviceInfo2(deviceHandle, &devInfo);
+    if (xclGetDeviceInfo2(deviceHandle, &devInfo) != 0)
+    {
+      // If we cannot get device information, return an empty profile result
+      return ;
+    }
     
     auto deviceNameSz = strlen(devInfo.mName);
     results->deviceName = (char*)malloc(deviceNameSz+1);
@@ -347,7 +351,7 @@ namespace xdp {
     // Step 1: read counters from device
     
     xclCounterResults counterResults;
-    currDevice->readCounters((xclPerfMonType)0 /* does not matter*/, counterResults);  // read from device
+    currDevice->readCounters(counterResults);  // read from device
     
     ProfileResults* results = static_cast<ProfileResults*>(res);
     // Use 1 device now

@@ -1200,10 +1200,16 @@ load_program(program* program)
   auto binary = m_xclbin.binary(); // ::xclbin::binary
 
   // Kernel debug is enabled based on if there is debug_data in the
-  // binary it does not have sdaccel.ini attribute. If there is
-  // debug_data then make sure xdp is loaded
+  // binary it does not have an xrt.ini attribute. If there is
+  // debug_data then make sure xdp kernel debug is loaded
   if (binary.debug_data().first)
-    xrt::hal::load_xdp();
+  {
+#ifdef _WIN32
+    // Kernel debug not supported on Windows
+#else
+    xrt::hal::load_xdp_kernel_debug();
+#endif
+  }
 
   xocl::debug::reset(get_axlf());
   xocl::profile::reset(get_axlf());

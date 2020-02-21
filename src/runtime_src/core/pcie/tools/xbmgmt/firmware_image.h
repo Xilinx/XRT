@@ -55,6 +55,7 @@ public:
     std::string partition_family_name;
     std::string partition_name;
     std::string build_ident;
+    static const std::string UNKNOWN;
 
     DSAInfo(const std::string& filename, uint64_t ts, const std::string& id, const std::string& bmc);
     DSAInfo(const std::string& filename);

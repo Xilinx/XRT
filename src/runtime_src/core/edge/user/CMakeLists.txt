@@ -16,8 +16,6 @@ file(GLOB XRT_USER_FILES
   "*.c"
   "../common/*.cpp"
   "../common/*.h"
-  "../../common/system.cpp"
-  "../../common/device.cpp"
   )
 
 set(CMAKE_CXX_FLAGS "-DXCLHAL_MAJOR_VER=2 ${CMAKE_CXX_FLAGS}")

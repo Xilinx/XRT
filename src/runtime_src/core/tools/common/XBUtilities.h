@@ -28,17 +28,6 @@
 
 namespace XBUtilities {
 
-template<typename ... Args>
-
-std::string format(const std::string& format, Args ... args) {
-  const static size_t NULL_CHAR_SIZE = 1;
-  size_t size = NULL_CHAR_SIZE + snprintf(nullptr, 0, format.c_str(), args ...);
-  std::unique_ptr<char[]> buf(new char[size]);
-  snprintf(buf.get(), size, format.c_str(), args ...);
-  
-  return std::string(buf.get());
-}
-
   typedef enum {
     MT_MESSAGE,
     MT_INFO,
@@ -58,6 +47,8 @@ std::string format(const std::string& format, Args ... args) {
    */
   void setVerbose(bool _bVerbose);
   void setTrace(bool _bVerbose);
+  void disable_escape_codes( bool _disable );
+  bool is_esc_enabled();  
 
   void message_(MessageType _eMT, const std::string& _msg, bool _endl = true);
 
