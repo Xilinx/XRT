@@ -21,7 +21,7 @@
 #define XAM_TRACE_CTRL_OFFSET                       0x10
 #define XAM_SAMPLE_OFFSET                           0x20
 #define XAM_ACCEL_EXECUTION_COUNT_OFFSET            0x80
-#define XAM_ACCEL_EXECUTION_CYCLES_OFFSET           0x84  
+#define XAM_ACCEL_EXECUTION_CYCLES_OFFSET           0x84
 #define XAM_ACCEL_STALL_INT_OFFSET                  0x88
 #define XAM_ACCEL_STALL_STR_OFFSET                  0x8c
 #define XAM_ACCEL_STALL_EXT_OFFSET                  0x90

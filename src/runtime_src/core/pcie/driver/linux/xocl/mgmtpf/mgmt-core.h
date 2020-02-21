@@ -161,9 +161,8 @@ void xclmgmt_connect_notify(struct xclmgmt_dev *lro, bool online);
 /* utils.c */
 int pci_fundamental_reset(struct xclmgmt_dev *lro);
 
-long xclmgmt_hot_reset(struct xclmgmt_dev *lro);
+long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force);
 void xdma_reset(struct pci_dev *pdev, bool prepare);
-void xclmgmt_reset_pci(struct xclmgmt_dev *lro);
 void xclmgmt_connect_notify(struct xclmgmt_dev *lro, bool online);
 
 void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,

@@ -22,6 +22,7 @@ namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
 #include <boost/program_options.hpp>
+#include <boost/format.hpp>
 namespace po = boost::program_options;
 
 // System - Include Files
@@ -87,10 +88,10 @@ SubCmdP2P::execute(const SubCmdOptions& _options) const
   }
 
   // -- Now process the subcommand --------------------------------------------
-  XBU::verbose(XBU::format("    Card: %ld", card));
-  XBU::verbose(XBU::format("  Enable: %d", bEnable));
-  XBU::verbose(XBU::format(" Disable: %d", bDisable));
-  XBU::verbose(XBU::format("Validate: %d", bValidate));
+  XBU::verbose(boost::str(boost::format("    Card: %ld") % card));
+  XBU::verbose(boost::str(boost::format("  Enable: %d") % bEnable));
+  XBU::verbose(boost::str(boost::format(" Disable: %d") % bDisable));
+  XBU::verbose(boost::str(boost::format("Validate: %d") % bValidate));
 
 
   XBU::error("COMMAND BODY NOT IMPLEMENTED.");

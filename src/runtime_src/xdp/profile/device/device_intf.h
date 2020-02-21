@@ -86,11 +86,11 @@ namespace xdp {
     
     // Counters
     XDP_EXPORT
-    size_t startCounters(xclPerfMonType type);
+    size_t startCounters();
     XDP_EXPORT
-    size_t stopCounters(xclPerfMonType type);
+    size_t stopCounters();
     XDP_EXPORT
-    size_t readCounters(xclPerfMonType type, xclCounterResults& counterResults);
+    size_t readCounters(xclCounterResults& counterResults);
 
     // Accelerator Monitor
     XDP_EXPORT
@@ -101,13 +101,13 @@ namespace xdp {
     // Trace FIFO Management
     bool hasFIFO() {return (fifoCtrl != nullptr);};
     XDP_EXPORT
-    uint32_t getTraceCount(xclPerfMonType type);
+    uint32_t getTraceCount();
     XDP_EXPORT
-    size_t startTrace(xclPerfMonType type, uint32_t startTrigger);
+    size_t startTrace(uint32_t startTrigger);
     XDP_EXPORT
-    size_t stopTrace(xclPerfMonType type);
+    size_t stopTrace();
     XDP_EXPORT
-    size_t readTrace(xclPerfMonType type, xclTraceResultsVector& traceVector);
+    size_t readTrace(xclTraceResultsVector& traceVector);
 
     /** Trace S2MM Management
      */

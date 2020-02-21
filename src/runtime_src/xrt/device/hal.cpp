@@ -204,9 +204,8 @@ loadDevices()
 }
 
 
-// Call to load_xdp comes from two places, but the dll should be loaded only once.
-// It is called from function_logger once per application run if app_debug or profile is enabled.
-// It is called from device once per xclbin load, if xclbin has debug_data in it.
+// Call to load_xdp comes from function_logger once per application run if 
+//  profile is enabled.
 void
 load_xdp()
 {
@@ -215,20 +214,18 @@ load_xdp()
     xdp_once_loader()
     {
       bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
-      bfs::path libname ("liboclxdp");
-      libname += dllExt();
       if (xrt.empty()) {
-        throw std::runtime_error("Library " + libname.string() + " not found! XILINX_XRT not set");
+        throw std::runtime_error("Library oclxdp not found! XILINX_XRT not set");
       }
-      bfs::path p(xrt / "lib");
-      directoryOrError(p);
-      p /= libname;
-      if (!isDLL(p)) {
-        throw std::runtime_error("Library " + p.string() + " not found!");
+      bfs::path xrtlib(xrt / "lib");
+      directoryOrError(xrtlib);
+      auto libname = dllpath(xrt, "oclxdp");
+      if (!isDLL(libname)) {
+        throw std::runtime_error("Library " + libname.string() + " not found!");
       }
-      auto handle = xrt_core::dlopen(p.string().c_str(), RTLD_NOW | RTLD_GLOBAL);
+      auto handle = xrt_core::dlopen(libname.string().c_str(), RTLD_NOW | RTLD_GLOBAL);
       if (!handle)
-        throw std::runtime_error("Failed to open XDP library '" + p.string() + "'\n" + xrt_core::dlerror());
+        throw std::runtime_error("Failed to open XDP library '" + libname.string() + "'\n" + xrt_core::dlerror());
 
       typedef void (* xdpInitType)();
 
@@ -243,6 +240,77 @@ load_xdp()
 
   // 'magic static' is thread safe per C++11
   static xdp_once_loader xdp_loaded;
+}
+
+void load_xdp_kernel_debug()
+{
+  struct xdp_kernel_debug_once_loader
+  {
+    xdp_kernel_debug_once_loader()
+    {
+      bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
+      if (xrt.empty()) {
+        throw std::runtime_error("XILINX_XRT not set");
+      }
+      bfs::path xrtlib(xrt / "lib") ;
+      directoryOrError(xrtlib) ;
+      auto libpath = dllpath(xrt, "xdp_debug_plugin") ;
+      if (!isDLL(libpath)) {
+        throw std::runtime_error("Library " + libpath.string() + " not found!");
+      }
+      auto handle = xrt_core::dlopen(libpath.string().c_str(), RTLD_NOW | RTLD_GLOBAL);
+      if (!handle)
+        throw std::runtime_error("Failed to open XDP library '" + libpath.string() + "'\n" + xrt_core::dlerror());
+
+      typedef void (* xdpInitType)();
+
+      const std::string s = "initKernelDebug";
+      auto initFunc = (xdpInitType)xrt_core::dlsym(handle, s.c_str());
+      if (!initFunc)
+        throw std::runtime_error("Failed to initialize XDP Kernel Debug library, '" + s +"' symbol not found.\n" + xrt_core::dlerror());
+
+      initFunc();
+    }
+  };
+
+  // 'magic static' is thread safe per C++11
+  static xdp_kernel_debug_once_loader xdp_kernel_debug_loaded;
+}
+
+void load_xdp_app_debug()
+{
+  struct xdp_app_debug_once_loader
+  {
+    xdp_app_debug_once_loader()
+    {
+      bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
+      if (xrt.empty()) {
+        throw std::runtime_error("XILINX_XRT not set");
+      }
+      bfs::path xrtlib(xrt / "lib");
+      directoryOrError(xrtlib);
+      auto libpath = dllpath(xrt, "xdp_appdebug_plugin");
+
+      if (!isDLL(libpath)) {
+        throw std::runtime_error("Library " + libpath.string() + " not found!");
+      }
+      auto handle = xrt_core::dlopen(libpath.string().c_str(), RTLD_NOW | RTLD_GLOBAL);
+      if (!handle)
+        throw std::runtime_error("Failed to open XDP library '" + libpath.string() + "'\n" + xrt_core::dlerror());
+
+      typedef void (* xdpInitType)();
+
+      const std::string s = "initAppDebug";
+      auto initFunc = (xdpInitType)xrt_core::dlsym(handle, s.c_str());
+      if (!initFunc)
+        throw std::runtime_error("Failed to initialize XDP Kernel Debug library, '" + s +"' symbol not found.\n" + xrt_core::dlerror());
+
+      initFunc();
+    }
+  };
+
+  // 'magic static' is thread safe per C++11
+  static xdp_app_debug_once_loader xdp_app_debug_loaded;
 }
 
 }} // hal,xcl

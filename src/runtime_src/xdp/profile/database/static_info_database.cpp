@@ -32,7 +32,7 @@
 
 namespace xdp {
 
-  ComputeUnitInstance::ComputeUnitInstance(const char* n, int i) : 
+  ComputeUnitInstance::ComputeUnitInstance(const char* n, int i) :
     name(n), index(i)
   {
     dim[0] = 0 ;
@@ -182,12 +182,12 @@ namespace xdp {
   bool VPStaticDatabase::initializeMemory(DeviceInfo* devInfo, const void* binary)
   {
     const axlf* xbin = static_cast<const struct axlf*>(binary) ;
-    const axlf_section_header* memTopologyHeader = 
+    const axlf_section_header* memTopologyHeader =
       xclbin::get_axlf_section(xbin, MEM_TOPOLOGY) ;
     if (memTopologyHeader == nullptr) return false ;
-    const mem_topology* memTopologySection = 
+    const mem_topology* memTopologySection =
       reinterpret_cast<const mem_topology*>(static_cast<const char*>(binary) + memTopologyHeader->m_sectionOffset) ;
-    if (memTopologySection == nullptr) return false ;
+    //if (memTopologySection == nullptr) return false ;
 
     std::lock_guard<std::mutex> lock(dbLock) ;
 
@@ -222,13 +222,13 @@ namespace xdp {
   bool VPStaticDatabase::initializeComputeUnits(DeviceInfo* devInfo, const void* binary)
   {
     const axlf* xbin = static_cast<const struct axlf*>(binary) ;
-    const axlf_section_header* ipLayoutHeader = 
+    const axlf_section_header* ipLayoutHeader =
       xclbin::get_axlf_section(xbin, IP_LAYOUT) ;
     if (ipLayoutHeader == nullptr) return false ;
 
-    const ip_layout* ipLayoutSection = 
+    const ip_layout* ipLayoutSection =
       reinterpret_cast<const ip_layout*>(static_cast<const char*>(binary) + ipLayoutHeader->m_sectionOffset) ;
-    if (ipLayoutSection == nullptr) return false ;
+    //if (ipLayoutSection == nullptr) return false ;
 
     for (int32_t i = 0 ; i < ipLayoutSection->m_count ; ++i)
     {
@@ -244,6 +244,8 @@ namespace xdp {
 
   bool VPStaticDatabase::initializeConnections(DeviceInfo* /*devInfo*/,	const void* binary)
   {
+    // TODO
+    /*
     const axlf* xbin = static_cast<const struct axlf*>(binary) ;
     const axlf_section_header* connectivityHeader =
       xclbin::get_axlf_section(xbin, CONNECTIVITY) ;

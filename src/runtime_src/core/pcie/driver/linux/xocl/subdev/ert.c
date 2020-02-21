@@ -81,7 +81,7 @@ static int stop_ert_nolock(struct xocl_ert *ert)
 
 	reg_val = READ_GPIO(ert, 0);
 	if (reg_val != GPIO_ENABLED)
-		WRITE_GPIO(ert, GPIO_ENABLED, 1);
+		WRITE_GPIO(ert, GPIO_ENABLED, 0);
 
 	reg_val = READ_CQ(ert, 0);
 	if (reg_val & ERT_EXIT_ACK) {
@@ -99,6 +99,7 @@ static int stop_ert_nolock(struct xocl_ert *ert)
 		ret = EIO;
 	}
 	xocl_info(&ert->pdev->dev, "ERT is stopped, %d", retry);
+	ert->state = MB_ENABLED;
 
 	return ret;
 }
@@ -144,7 +145,7 @@ static int load_image(struct xocl_ert *ert)
 		goto out;
 	}
 
-	ert->state = MB_ENABLED;
+	/* ert->state = MB_ENABLED; */
 	/* write ERT_CU_STAT to check if ERT is up and running */
 	ert->state = MB_RUNNING;
 
@@ -350,12 +351,17 @@ static struct xocl_mb_funcs ert_ops = {
 static int ert_remove(struct platform_device *pdev)
 {
 	struct xocl_ert *ert;
+	void *hdl;
 
 	ert = platform_get_drvdata(pdev);
 	if (!ert)
 		return 0;
 
-	if (ert->sche_binary);
+	xocl_drvinst_release(ert, &hdl);
+
+	stop_ert(pdev);
+
+	if (ert->sche_binary)
 		vfree(ert->sche_binary);
 
 	if (ert->sysfs_created)
@@ -373,7 +379,7 @@ static int ert_remove(struct platform_device *pdev)
 	mutex_destroy(&ert->ert_lock);
 
 	platform_set_drvdata(pdev, NULL);
-	xocl_drvinst_free(ert);
+	xocl_drvinst_free(hdl);
 	return 0;
 }
 

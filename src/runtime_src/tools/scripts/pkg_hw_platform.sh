@@ -162,6 +162,7 @@ echo "================================================================"
 xsaFile=""
 mcsPrimary=""
 mcsSecondary=""
+pdiFile=""
 fullBitFile=""
 clearBitstreamFile=""
 metaDataJSONFile=""
@@ -242,6 +243,11 @@ recordXsaFiles()
    # MCS Secondary
    if [ "${ENTITY_ATTRIBUTES_ARRAY[Type]}" == "SECONDARY_MCS" ]; then
      mcsSecondary="firmware/${ENTITY_ATTRIBUTES_ARRAY[Name]}"
+   fi
+
+   # PDI Image
+   if [ "${ENTITY_ATTRIBUTES_ARRAY[Type]}" == "PDI" ]; then
+     pdiFile="${ENTITY_ATTRIBUTES_ARRAY[Name]}"
    fi
 
    # Clear Bitstream
@@ -445,6 +451,12 @@ initXsaBinEnvAndVars()
        unzip -q -d . "${xsaFile}" "${mcsSecondary}"
     fi
 
+    # -- Extract the PDI File --
+    if [ "${pdiFile}" != "" ]; then
+       echo "Info: Extracting PDI Primary file: ${pdiFile}"
+       unzip -q -d . "${xsaFile}" "${pdiFile}"
+    fi
+
     # -- Extract the bitstreams --
     if [ "${fullBitFile}" != "" ]; then
        echo "Info: Extracting Full Bitstream file: ${fullBitFile}"
@@ -573,6 +585,11 @@ doxsabin()
     # -- MCS_SECONDARY image --
     if [ "$mcsSecondary" != "" ]; then
        xclbinOpts+=" --add-section MCS-SECONDARY:RAW:${mcsSecondary}"
+    fi
+    
+    # -- PDI image --
+    if [ "$pdiFile" != "" ]; then
+       xclbinOpts+=" --add-section PDI:RAW:${pdiFile}"
     fi
     
     # -- Firmware: Scheduler --

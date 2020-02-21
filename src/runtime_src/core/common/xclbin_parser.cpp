@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -58,6 +58,34 @@ is_valid_cu(const ip_data& ip)
   // ...
 
   return true;
+}
+
+static bool
+is_legacy_cu_intr(const ip_layout *ips)
+{
+  int32_t num_cus = ips->m_count;
+  int cu_cnt = 0;
+  int intr_cnt = 0;
+
+  for (int i = 0; i < num_cus; i++) {
+    const auto& ip = ips->m_ip_data[i];
+    if (!is_valid_cu(ip))
+      continue;
+
+    cu_cnt++;
+    if ((ip.properties & IP_INTERRUPT_ID_MASK) == 0)
+      intr_cnt++;
+  }
+
+  return (cu_cnt == intr_cnt);
+}
+
+bool compare_intr_id(struct ip_data &l, struct ip_data &r)
+{
+    uint32_t l_id = l.properties & IP_INTERRUPT_ID_MASK;
+    uint32_t r_id = r.properties & IP_INTERRUPT_ID_MASK;
+
+    return l_id < r_id;
 }
 
 // Base address of unused (streaming) CUs is given a max address to
@@ -136,23 +164,35 @@ std::vector<uint64_t>
 get_cus(const ip_layout* ip_layout, bool encode)
 {
   std::vector<uint64_t> cus;
+  std::vector<struct ip_data> ips;
 
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
     const auto& ip_data = ip_layout->m_ip_data[count];
     if (is_valid_cu(ip_data)) {
-      uint64_t addr = get_base_addr(ip_data);
-      if (encode) {
-        // encode handshaking control in lower unused address bits [2-0]
-        addr |= ((ip_data.properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT);
-
-        // encode max context in lower [7-3] bits of addr, assumes IP control
-        // takes three bits only.  This is a hack for now.
-        addr |= (kernel_max_ctx(ip_data) << 3);
-      }
-      cus.push_back(addr);
+      ips.push_back(ip_data);
     }
   }
-  std::sort(cus.begin(),cus.end());
+
+  if (!is_legacy_cu_intr(ip_layout)) {
+      std::sort(ips.begin(), ips.end(), compare_intr_id);
+  }
+
+  for (auto &ip_data : ips) {
+    uint64_t addr = get_base_addr(ip_data);
+    if (encode) {
+      // encode handshaking control in lower unused address bits [2-0]
+      addr |= ((ip_data.properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT);
+
+      // encode max context in lower [7-3] bits of addr, assumes IP control
+      // takes three bits only.  This is a hack for now.
+      addr |= (kernel_max_ctx(ip_data) << 3);
+    }
+    cus.push_back(addr);
+  }
+
+  if (is_legacy_cu_intr(ip_layout)) {
+      std::sort(cus.begin(),cus.end());
+  }
   return cus;
 }
 

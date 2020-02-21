@@ -73,8 +73,14 @@ struct sched_ops;
  * struct sched_client_ctx: Manage user space client attached to device
  *
  * @link: Client context is added to list in device
- * @trigger:
- * @lock:
+ * @trigger: Poll wait counter for number of completed exec buffers
+ * @outstanding_execs: Counter for number outstanding exec buffers
+ * @lock: Mutex lock for exclusive access
+ * @num_cus: Number of resources (CUs) explcitly acquired
+ * @pid: process ID that this context belongs to
+ * @abort: Flag to indicate that this context has detached from user space
+ * @shcus: CUs shared reserved by this context
+ * @excus: CUs exclusively reserved by this context
  */
 struct sched_client_ctx {
 	struct list_head   link;
@@ -84,6 +90,8 @@ struct sched_client_ctx {
 	int		   num_cus;
 	struct pid	   *pid;
 	unsigned int	   abort;
+	DECLARE_BITMAP(shcus, MAX_CU_NUM);
+	DECLARE_BITMAP(excus, MAX_CU_NUM);
 };
 #define CLIENT_NUM_CU_CTX(client) ((client)->num_cus)
 
@@ -271,4 +279,6 @@ void zocl_untrack_ctx(struct drm_device *dev, struct sched_client_ctx *fpriv);
 int zocl_exec_valid_cu(struct sched_exec_core *exec, unsigned int cuid);
 u32 sched_is_busy(struct drm_zocl_dev *zdev);
 u32 sched_live_clients(struct drm_zocl_dev *zdev, pid_t **plist);
+int sched_attach_cu(struct drm_zocl_dev *zdev, int cu_idx);
+int sched_detach_cu(struct drm_zocl_dev *zdev, int cu_idx);
 #endif

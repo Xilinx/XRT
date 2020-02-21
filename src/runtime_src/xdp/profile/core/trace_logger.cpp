@@ -236,18 +236,31 @@ namespace xdp {
     }
     RTUtil::setTimeStamp(objStage, traceObject, timeStamp);
 
+    bool isStart = (objStage == RTUtil::START);
+    bool isEnd = (objStage == RTUtil::END);
+    bool isRead = (objKind == RTUtil::READ_BUFFER);
+    bool isHostTx = (objKind == RTUtil::READ_BUFFER || objKind == RTUtil::WRITE_BUFFER);
+    bool isP2PTx = (objKind == RTUtil::READ_BUFFER_P2P || objKind == RTUtil::WRITE_BUFFER_P2P);
+
+    // Log Guidance Data
+    // Time period during which host buffer transfers were active
+    // In case of parallel transfers, log first start and last end
+    if (isStart) ++mCurrentTxCount;
+    if (isEnd)   --mCurrentTxCount;
+    if (isHostTx && ((isStart && mCurrentTxCount == 1) || (isEnd && mCurrentTxCount == 0))) {
+      mPluginHandle->logBufferEvent(timeStamp, isRead, isStart);
+    }
+
     // clEnqueueNDRangeKernel returns END with no START
     // if data transfer was already completed.
     // We can safely discard those events
-    if (objStage == RTUtil::END && (traceObject->getStart() > 0.0)) {
+    if (isEnd && (traceObject->getStart() > 0.0)) {
       // Collect performance counters
       mProfileCounters->logBufferTransfer(objKind, objSize, (traceObject->End - traceObject->Start), contextId, numDevices);
 
-      if (objKind == RTUtil::READ_BUFFER || objKind == RTUtil::WRITE_BUFFER) {
-        bool isRead = (objKind == RTUtil::READ_BUFFER);
+      if (isHostTx) {
         mProfileCounters->pushToSortedTopUsage(traceObject, isRead);
-      }
-      else if (objKind == RTUtil::READ_BUFFER_P2P || objKind == RTUtil::WRITE_BUFFER_P2P)
+      } else if (isP2PTx)
         mHostP2PTransfers++;
 
       // Mark and keep top trace data
@@ -265,14 +278,6 @@ namespace xdp {
     writeTimelineTrace(timeStamp, objKind, commandString, stageString, eventString, dependString,
                        objSize, srcAddress, srcBank, dstAddress, dstBank, threadId);
 
-#if 0
-    // Write host event to trace buffer
-    if (objStage == RTUtil::START || objStage == RTUtil::END) {
-      xclPerfMonEventType eventType = (objStage == RTUtil::START) ? XCL_PERF_MON_START_EVENT : XCL_PERF_MON_END_EVENT;
-      xclPerfMonEventID eventID = (objKind == RTUtil::READ_BUFFER) ? XCL_PERF_MON_READ_ID : XCL_PERF_MON_WRITE_ID;
-      xdp::profile::platform::write_host_event(xdp::RTSingleton::Instance()->getcl_platform_id(), eventType, eventID);
-    }
-#endif
   }
 
   // ***************************************************************************
@@ -332,16 +337,30 @@ namespace xdp {
     // *******
     if (cu_name.empty()) {
       // Collect stats for max/min/average kernel times
-      // NOTE: create unique kernel name using object ID
-      std::string newKernelName = kernelName + "|" + std::to_string(objId) + "|"  + std::to_string(programId);
+      // NOTE: use object ID to identify unique kernel
       if (objStage == RTUtil::START) {
         // Queue STARTS because events come in async order
-        mKernelStartsMap[newKernelName].push(deviceTimeStamp);
+        auto& q = mKernelStartsMap[objId];
+        q.push(deviceTimeStamp);
+
+        // Collect Guidance data
+        {
+          auto& g_map = mPluginHandle->getKernelMaxParallelStartsMap();
+          auto it = g_map.find(kernelName);
+          if (it != g_map.end()) {
+            if (q.size() > it->second)
+              it->second = q.size();
+          } else {
+            g_map.insert({kernelName, q.size()});
+          }
+        }
+
         XDP_LOG("logKernelExecution: kernel START @ %.3f msec for %s\n", deviceTimeStamp, newKernelName.c_str());
-      }
-      else if (objStage == RTUtil::END) {
-        auto it = mKernelStartsMap.find(newKernelName);
+      } else if (objStage == RTUtil::END) {
+        // Pop from queue and log event
+        auto it = mKernelStartsMap.find(objId);
         if (it != mKernelStartsMap.end() && !it->second.empty()) {
+          std::string newKernelName = kernelName + "|" + std::to_string(objId) + "|"  + std::to_string(programId);
           XDP_LOG("logKernelExecution: kernel END @ %.3f msec for %s\n", deviceTimeStamp, newKernelName.c_str());
           mProfileCounters->logKernelExecutionStart(newKernelName, newDeviceName, it->second.front());
           mProfileCounters->logKernelExecutionEnd(newKernelName, newDeviceName, deviceTimeStamp);
@@ -446,15 +465,6 @@ namespace xdp {
                            objId, workGroupSize, cuId);
       }
     }
-
-#if 0
-    // Write host event to trace buffer (only if used)
-    if (objStage == RTUtil::START || objStage == RTUtil::END) {
-      xclPerfMonEventType eventType = (objStage == RTUtil::START) ? XCL_PERF_MON_START_EVENT : XCL_PERF_MON_END_EVENT;
-      xclPerfMonEventID eventID = (cu_name.empty()) ? XCL_PERF_MON_KERNEL0_ID : XCL_PERF_MON_CU0_ID;
-      xdp::profile::platform::write_host_event(xdp::RTSingleton::Instance()->getcl_platform_id(), eventType, eventID);
-    }
-#endif
   }
 
   // ***************************************************************************

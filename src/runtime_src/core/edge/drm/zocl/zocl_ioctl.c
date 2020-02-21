@@ -20,6 +20,7 @@
 
 #include "sched_exec.h"
 #include "zocl_xclbin.h"
+#include "zocl_generic_cu.h"
 
 /*
  * read_axlf and ctx should be protected by zdev_xclbin_lock exclusively.
@@ -59,6 +60,11 @@ zocl_ctx_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(ddev);
 	int ret = 0;
 
+	if (args->op == ZOCL_CTX_OP_OPEN_GCU_FD) {
+		ret = zocl_open_gcu(zdev, args, filp->driver_priv);
+		return ret;
+	}
+
 	mutex_lock(&zdev->zdev_xclbin_lock);
 	ret = zocl_xclbin_ctx(zdev, args, filp->driver_priv);
 	mutex_unlock(&zdev->zdev_xclbin_lock);
@@ -75,17 +81,31 @@ zocl_info_cu_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 	struct drm_zocl_info_cu *args = data;
 	struct drm_zocl_dev *zdev = ddev->dev_private;
 	struct sched_exec_core *exec = zdev->exec;
+	struct addr_aperture *apts = zdev->apertures;
+	int apt_idx = args->apt_idx;
+	int cu_idx = args->cu_idx;
+	phys_addr_t addr = args->paddr;
 
 	if (!exec->configured) {
 		DRM_ERROR("Schduler is not configured\n");
 		return -EINVAL;
 	}
 
-	args->apt_idx = get_apt_index(zdev, args->paddr);
-	if (args->apt_idx == -EINVAL) {
-		DRM_ERROR("Failed to find CU in aperture list 0x%llx\n",
-		    args->paddr);
-		return -EINVAL;
+	if (cu_idx != -1) {
+		apt_idx = get_apt_index_by_cu_idx(zdev, cu_idx);
+		if (apt_idx != -EINVAL) {
+			addr = apts[apt_idx].addr;
+			goto out;
+		}
 	}
+
+	apt_idx = get_apt_index_by_addr(zdev, args->paddr);
+	if (apt_idx != -EINVAL)
+		cu_idx = apts[apt_idx].cu_idx;
+
+out:
+	args->paddr = addr;
+	args->apt_idx = apt_idx;
+	args->cu_idx = cu_idx;
 	return 0;
 }

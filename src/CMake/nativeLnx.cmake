@@ -139,7 +139,7 @@ install (FILES ${PY_TEST_SRC} DESTINATION ${XRT_INSTALL_DIR}/test)
 message("-- XRT version: ${XRT_VERSION_STRING}")
 
 # -- CPack
-include (CMake/cpack.cmake)
+include (CMake/cpackLin.cmake)
 
 # --- Lint ---
 include (CMake/lint.cmake)

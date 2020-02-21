@@ -65,10 +65,13 @@ def main():
        threshold = 30000
     
     if "u2x4" in str(dev) or "U2x4" in str(dev):
-       threshold = 15000
+       threshold = 10000
 
     if "gen3x4" in str(dev):
        threshold = 20000
+
+    if "_u25_" in str(dev): # so that it doesn't set theshold for u250
+       threshold = 9000
 
     ctx = cl.Context(devices = [dev])
     if not ctx:

@@ -38,8 +38,9 @@
 
 
 #ifdef _WIN32
-#pragma warning (disable : 4996)
-/* Disable warning during Windows compilation for use of std::getenv */
+#pragma warning (disable : 4996 4702)
+/* 4996 : Disable warning during Windows compilation for use of std::getenv */
+/* 4702 : Disable warning for unreachable code. This is a temporary workaround for a crash on Windows */
 #endif
 
 
@@ -78,6 +79,7 @@ namespace xdp {
       // Before deleting, do a final read of counters and force flush of trace buffers
       endDeviceProfiling();
     }
+    Plugin->setApplicationEnd();
     endProfiling();
     reset();
     pDead = true;
@@ -105,8 +107,17 @@ namespace xdp {
 
     if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE)) {
       for (auto device : platform->get_device_range()) {
-        auto power_profile = std::make_unique<OclPowerProfile>(device->get_xrt_device(), Plugin, device->get_unique_name());
-        PowerProfileList.push_back(std::move(power_profile));
+        /*
+         * Initialize Power Profiling Threads
+         */
+        auto power_profile_en = xrt::config::get_power_profile();
+        if (power_profile_en) {
+          auto power_profile = std::make_unique<OclPowerProfile>(device->get_xrt_device(), Plugin, device->get_unique_name());
+          auto& filename = power_profile->get_output_file_name();
+          ProfileMgr->getRunSummary()->addFile(filename, RunSummary::FT_POWER_PROFILE);
+          PowerProfileList.push_back(std::move(power_profile));
+        }
+
       }
     }
     mProfileRunning = true;
@@ -116,6 +127,9 @@ namespace xdp {
   // Perform final read of counters and force flush of trace buffers
   void OCLProfiler::endDeviceProfiling()
   {
+#ifdef _WIN32
+    return;
+#endif
     // Only needs to be called once
     if (mEndDeviceProfilingCalled)
    	  return;
@@ -191,7 +205,7 @@ namespace xdp {
 
       // Reset and Start counters
       if(dInt) {
-        dInt->startCounters(XCL_PERF_MON_MEMORY);
+        dInt->startCounters();
         /* Configure AMs if context monitoring is supported
          * else disable alll AM data
          */
@@ -272,7 +286,7 @@ namespace xdp {
 
       if(dInt) {
         // Configure monitor IP and FIFO if present
-        dInt->startTrace(XCL_PERF_MON_MEMORY, traceOption);
+        dInt->startTrace(traceOption);
         // Configure DMA if present
         if (dInt->hasTs2mm()) {
           info->ts2mm_en = allocateDeviceDDRBufferForTrace(dInt, device);
@@ -390,6 +404,7 @@ namespace xdp {
     // Turn on application profiling
     turnOnProfile(xdp::RTUtil::PROFILE_APPLICATION);
 
+#ifndef _WIN32
     turnOnProfile(xdp::RTUtil::PROFILE_DEVICE_COUNTERS);
 
     char* emuMode = std::getenv("XCL_EMULATION_MODE");
@@ -401,6 +416,7 @@ namespace xdp {
 
     ProfileMgr->setTransferTrace(data_transfer_trace);
     ProfileMgr->setStallTrace(stall_trace);
+#endif
 
     // Enable profile summary if profile is on
     std::string profileFile("profile_summary");
@@ -520,6 +536,9 @@ namespace xdp {
 
   void OCLProfiler::logDeviceCounters(bool firstReadAfterProgram, bool forceReadCounters, bool logAllMonitors, xclPerfMonType type)
   {
+#ifdef _WIN32
+    return;
+#endif
     // check valid perfmon type
     if(!logAllMonitors && !( (deviceCountersProfilingOn() && (type == XCL_PERF_MON_MEMORY || type == XCL_PERF_MON_STR))
         || ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM) && type == XCL_PERF_MON_ACCEL) )) {
@@ -549,7 +568,7 @@ namespace xdp {
               ((nowTime - info->mLastCountersSampleTime) > std::chrono::milliseconds(info->mSampleIntervalMsec)))
       {
         if(dInt) {
-          dInt->readCounters(XCL_PERF_MON_MEMORY, info->mCounterResults);
+          dInt->readCounters(info->mCounterResults);
         } else {
           xdevice->readCounters(XCL_PERF_MON_MEMORY, info->mCounterResults);
         }
@@ -603,6 +622,9 @@ namespace xdp {
 
   int OCLProfiler::logTrace(xclPerfMonType type, bool forceRead, bool logAllMonitors)
   {
+#ifdef _WIN32
+    return -1;
+#endif
     auto profileMgr = getProfileManager();
     if(profileMgr->getLoggingTrace(type)) {
         return -1;
@@ -647,7 +669,7 @@ namespace xdp {
       // Read and log when trace FIFOs are filled beyond specified threshold
       uint32_t numSamples = 0;
       if (!forceRead) {
-        numSamples = (dInt) ? dInt->getTraceCount(type) : xdevice->countTrace(type).get();
+        numSamples = (dInt) ? dInt->getTraceCount() : xdevice->countTrace(type).get();
       }
 
       // Control how often we do clock training: if there are new samples, then don't train
@@ -668,7 +690,7 @@ namespace xdp {
           if (dInt->hasFIFO()) {
             uint32_t numTracePackets = 0;
             while (!endLog) {
-              dInt->readTrace(type, info->mTraceVector);
+              dInt->readTrace(info->mTraceVector);
               endLog = info->mTraceVector.mLength == 0;
               profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector, endLog);
               numTracePackets += info->mTraceVector.mLength;
@@ -677,20 +699,26 @@ namespace xdp {
             // detect if FIFO is full
             auto fifoProperty = dInt->getMonitorProperties(XCL_PERF_MON_FIFO, 0);
             auto fifoSize = RTUtil::getDevTraceBufferSize(fifoProperty);
-            if (numTracePackets >= fifoSize && !isHwEmu)
+            if (numTracePackets >= fifoSize && !isHwEmu) {
               Plugin->sendMessage(FIFO_WARN_MSG);
+              auto& g_map = Plugin->getDeviceTraceBufferFullMap();
+              g_map[device_name] = 1;
+            }
           } else if (dInt->hasTs2mm()) {
             configureDDRTraceReader(dInt->getWordCountTs2mm());
             uint64_t numTraceBytes = 0;
             while (!endLog) {
               auto readBytes = readTraceDataFromDDR(dInt, xdevice, info->mTraceVector);
-              endLog = readBytes != mTraceReadBufChunkSz;
+              endLog = readBytes != mTraceReadBufChunkSize;
               profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector, endLog);
               numTraceBytes += readBytes;
               info->mTraceVector = {};
             }
-            if (numTraceBytes >= mDDRBufferSz)
+            if (numTraceBytes >= mDDRBufferSize) {
               Plugin->sendMessage(TS2MM_WARN_MSG_BUF_FULL);
+              auto& g_map = Plugin->getDeviceTraceBufferFullMap();
+              g_map[device_name] = 1;
+            }
           }
         } else {
           while(1) {
@@ -730,16 +758,16 @@ namespace xdp {
     }
 
     try {
-      mDDRBufferSz = xdp::xoclp::platform::get_ts2mm_buf_size();
+      mDDRBufferSize = xdp::xoclp::platform::get_ts2mm_buf_size();
       auto memorySz = xdp::xoclp::platform::device::getMemSizeBytes(device, dInt->getTS2MmMemIndex());
-      if (memorySz > 0 && mDDRBufferSz > memorySz) {
+      if (memorySz > 0 && mDDRBufferSize > memorySz) {
         std::string msg = "Trace Buffer size is too big for Memory Resource. Using " + std::to_string(memorySz)
                           + " Bytes instead.";
         xrt::message::send(xrt::message::severity_level::XRT_WARNING, msg);
-        mDDRBufferSz = memorySz;
+        mDDRBufferSize = memorySz;
       }
-      mDDRBufferForTrace = xrtDevice->alloc(mDDRBufferSz, xrt::hal::device::Domain::XRT_DEVICE_RAM, dInt->getTS2MmMemIndex(), nullptr);
-      xrtDevice->sync(mDDRBufferForTrace, mDDRBufferSz, 0, xrt::hal::device::direction::HOST2DEVICE, false);
+      mDDRBufferForTrace = xrtDevice->alloc(mDDRBufferSize, xrt::hal::device::Domain::XRT_DEVICE_RAM, dInt->getTS2MmMemIndex(), nullptr);
+      xrtDevice->sync(mDDRBufferForTrace, mDDRBufferSize, 0, xrt::hal::device::direction::HOST2DEVICE, false);
     } catch (const std::exception& ex) {
       std::cerr << ex.what() << std::endl;
       xrt::message::send(xrt::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_ALLOC_FAIL);
@@ -748,7 +776,7 @@ namespace xdp {
     // Data Mover will write input stream to this address
     uint64_t bufAddr = xrtDevice->getDeviceAddr(mDDRBufferForTrace);
 
-    dInt->initTS2MM(mDDRBufferSz, bufAddr);
+    dInt->initTS2MM(mDDRBufferSize, bufAddr);
     return true;
   }
 
@@ -764,16 +792,16 @@ namespace xdp {
     xrtDevice->free(mDDRBufferForTrace);
 
     mDDRBufferForTrace = nullptr;
-    mDDRBufferSz = 0;
+    mDDRBufferSize = 0;
   }
 
   void OCLProfiler::configureDDRTraceReader(uint64_t wordCount)
   {
-    mTraceReadBufSz = wordCount * TRACE_PACKET_SIZE;
-    mTraceReadBufSz = (mTraceReadBufSz > TS2MM_MAX_BUF_SIZE) ? TS2MM_MAX_BUF_SIZE : mTraceReadBufSz;
+    mTraceReadBufSize = wordCount * TRACE_PACKET_SIZE;
+    mTraceReadBufSize = (mTraceReadBufSize > TS2MM_MAX_BUF_SIZE) ? TS2MM_MAX_BUF_SIZE : mTraceReadBufSize;
 
     mTraceReadBufOffset = 0;
-    mTraceReadBufChunkSz = MAX_TRACE_NUMBER_SAMPLES * TRACE_PACKET_SIZE;
+    mTraceReadBufChunkSize = MAX_TRACE_NUMBER_SAMPLES * TRACE_PACKET_SIZE;
   }
 
   /** 
@@ -784,7 +812,7 @@ namespace xdp {
    */
   void* OCLProfiler::syncDeviceDDRToHostForTrace(xrt::device* xrtDevice, uint64_t offset, uint64_t bytes)
   {
-    if(!mDDRBufferSz || !mDDRBufferForTrace)
+    if(!mDDRBufferSize || !mDDRBufferForTrace)
       return nullptr;
 
     auto addr = xrtDevice->map(mDDRBufferForTrace);
@@ -808,12 +836,12 @@ namespace xdp {
    */
   uint64_t OCLProfiler::readTraceDataFromDDR(DeviceIntf* dIntf, xrt::device* xrtDevice, xclTraceResultsVector& traceVector)
   {
-    if(mTraceReadBufOffset >= mTraceReadBufSz)
+    if(mTraceReadBufOffset >= mTraceReadBufSize)
       return false;
 
-    uint64_t nBytes = mTraceReadBufChunkSz;
-    if((mTraceReadBufOffset + mTraceReadBufChunkSz) > mTraceReadBufSz)
-      nBytes = mTraceReadBufSz - mTraceReadBufOffset;
+    uint64_t nBytes = mTraceReadBufChunkSize;
+    if((mTraceReadBufOffset + mTraceReadBufChunkSize) > mTraceReadBufSize)
+      nBytes = mTraceReadBufSize - mTraceReadBufOffset;
     void* hostBuf = syncDeviceDDRToHostForTrace(xrtDevice, mTraceReadBufOffset, nBytes);
     if(hostBuf) {
       dIntf->parseTraceData(hostBuf, nBytes, traceVector);

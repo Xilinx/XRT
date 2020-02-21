@@ -57,10 +57,6 @@ namespace XBUtilities {
    std::string 
      create_usage_string( const boost::program_options::options_description &_od,
                           const boost::program_options::positional_options_description & _pod );
-
-   void 
-     disable_escape_codes( bool _disable );
 };
 
 #endif
-

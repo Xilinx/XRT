@@ -65,6 +65,29 @@ namespace xdp {
     // do nothing
   }
 
+  void XDPPluginI::logBufferEvent(double timestamp, bool isRead, bool isStart)
+  {
+    // Total Active time = Last buffer event - First buffer event
+    if (mActiveTimeStartMs == 0.0)
+      mActiveTimeStartMs = timestamp;
+    mActiveTimeEndMs = timestamp;
+    if (isRead) {
+      // Total Read time = Sum(Read Activity Intervals)
+      mReadTimeStartMs = isStart ? timestamp : mReadTimeStartMs;
+      mReadTimeMs += (timestamp - mReadTimeStartMs);
+    } else {
+      // Total Write time = Sum(Write Activity Intervals)
+      mWriteTimeStartMs = isStart ? timestamp : mWriteTimeStartMs;
+      mWriteTimeMs += (timestamp - mWriteTimeStartMs);
+    }
+  }
+
+  // Total Active time =  Last buffer event - First buffer event
+  double XDPPluginI::getBufferActiveTimeMs()
+  {
+    return mActiveTimeEndMs - mActiveTimeStartMs;
+  }
+
   // Get name string of guidance
   void XDPPluginI::getGuidanceName(e_guidance check, std::string& name)
   {
@@ -113,6 +136,39 @@ namespace xdp {
         break;
       case TRACE_MEMORY:
         name = "TRACE_MEMORY";
+        break;
+      case MAX_PARALLEL_KERNEL_ENQUEUES:
+        name = "MAX_PARALLEL_KERNEL_ENQUEUES";
+        break;
+      case COMMAND_QUEUE_OOO:
+        name = "COMMAND_QUEUE_OOO";
+        break;
+      case PLRAM_SIZE_BYTES:
+        name = "PLRAM_SIZE_BYTES";
+        break;
+      case KERNEL_BUFFER_INFO:
+        name = "KERNEL_BUFFER_INFO";
+        break;
+      case TRACE_BUFFER_FULL:
+        name = "TRACE_BUFFER_FULL";
+        break;
+      case MEMORY_TYPE_BIT_WIDTH:
+        name = "MEMORY_TYPE_BIT_WIDTH";
+        break;
+      case XRT_INI_SETTING:
+        name = "XRT_INI_SETTING";
+        break;
+      case BUFFER_RD_ACTIVE_TIME_MS:
+        name = "BUFFER_RD_ACTIVE_TIME_MS";
+        break;
+      case BUFFER_WR_ACTIVE_TIME_MS:
+        name = "BUFFER_WR_ACTIVE_TIME_MS";
+        break;
+      case BUFFER_TX_ACTIVE_TIME_MS:
+        name = "BUFFER_TX_ACTIVE_TIME_MS";
+        break;
+      case APPLICATION_RUN_TIME_MS:
+        name = "APPLICATION_RUN_TIME_MS";
         break;
       default:
         assert(0);

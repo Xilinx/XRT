@@ -358,9 +358,14 @@ static inline bool flash_has_err(struct xocl_flash *flash)
 static int flash_rx(struct xocl_flash *flash, u8 *buf, size_t len)
 {
 	size_t cnt;
+	u8 c;
 
 	for (cnt = 0; cnt < len; cnt++) {
-		u8 c = flash_read8(flash);
+		if ((flash_get_status(flash) & QSPI_SR_RX_EMPTY) != 0)
+			return -EINVAL;
+
+        	c = flash_read8(flash);
+
 		if (buf)
 			buf[cnt] = c;
 	}
@@ -464,13 +469,13 @@ static int flash_transaction(struct xocl_flash *flash,
 		ret = flash_rx(flash, buf, len);
 	} else {
 		/* Needs to drain the FIFO even when the data is not wanted. */
-		ret = flash_rx(flash, NULL, len);
+		(void) flash_rx(flash, NULL, len);
 	}
 
 	/* Always need to reset slave select register after each transaction */
 	flash_activate_slave(flash, SLAVE_NONE);
 
-	return 0;
+	return ret;
 }
 
 static size_t flash_get_fifo_depth(struct xocl_flash *flash)
@@ -1251,11 +1256,13 @@ static void sysfs_destroy_flash(struct xocl_flash *flash)
 static int flash_remove(struct platform_device *pdev)
 {
 	struct xocl_flash *flash;
+	void *hdl;
 
 	flash = platform_get_drvdata(pdev);
 	if (!flash)
 		return -EINVAL;
 
+	xocl_drvinst_release(flash, &hdl);
 	platform_set_drvdata(pdev, NULL);
 
 	sysfs_destroy_flash(flash);
@@ -1266,7 +1273,7 @@ static int flash_remove(struct platform_device *pdev)
 		iounmap(flash->qspi_regs);
 
 	mutex_destroy(&flash->io_lock);
-	xocl_drvinst_free(flash);
+	xocl_drvinst_free(hdl);
 	return 0;
 }
 

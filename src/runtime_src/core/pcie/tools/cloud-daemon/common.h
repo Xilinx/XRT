@@ -51,16 +51,6 @@ struct queue_msg {
     enum MSG_TYPE type;
 };
 
-enum HOT_RESET_MSG_TYPE {
-    REMOVE_REQ = 0,
-    ADD_REQ,
-};
-
-struct hotreset_msg {
-    std::string sysfs_name;
-    enum HOT_RESET_MSG_TYPE type;
-};
-
 template <typename Msg>
 class Msgq
 {
@@ -97,6 +87,7 @@ public:
 std::string str_trim(const std::string &str);
 int splitLine(const std::string &line, std::string& key,
     std::string& value, const std::string& delim = "=");
+int waitForMsg(int fd, long interval);
 int waitForMsg(const pcieFunc& dev, int localfd, int remotefd, long interval,
     int retfd[2]);
 std::unique_ptr<sw_msg> getLocalMsg(const pcieFunc& dev, int localfd);

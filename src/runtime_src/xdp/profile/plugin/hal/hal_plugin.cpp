@@ -154,19 +154,22 @@ namespace xdp {
     devInterface->readDebugIPlayout();
 
     xclCounterResults counters ;
-    devInterface->readCounters(XCL_PERF_MON_MEMORY, counters);
-    //(db->getStats()).updateCounters(deviceId, counters) ;
+    devInterface->readCounters(counters) ;
+    (db->getStats()).updateCounters(devInterface, counters) ;
 
     // Next, read trace and update the dynamic database with appropriate events
     xclTraceResultsVector trace ;
     if (devInterface->hasFIFO())
     {
-      devInterface->readTrace(XCL_PERF_MON_MEMORY, trace) ;
+      devInterface->readTrace(trace) ;
     }
     else if (devInterface->hasTs2mm())
     {
+      // TODO: Sync the data and parse it.
+      /*
       void* hostBuffer = nullptr ; // Need to sync the data
       devInterface->parseTraceData(hostBuffer, devInterface->getWordCountTs2mm(), trace) ;
+      */
     }
     (db->getDynamicInfo()).addDeviceEvents(deviceId, trace);
   }
@@ -204,15 +207,15 @@ namespace xdp {
       devInterface->readDebugIPlayout() ;
 
       xclCounterResults counters ;
-      devInterface->readCounters(XCL_PERF_MON_MEMORY, counters) ;
-      //(db->getStats()).updateCounters(deviceId, counters) ;
+      devInterface->readCounters(counters) ;
+      (db->getStats()).updateCounters(counters) ;
       
       // Next, read trace and update the dynamic database with
       //  appropriate events
       xclTraceResultsVector trace ;
       if (devInterface->hasFIFO())
       {
-	      devInterface->readTrace(XCL_PERF_MON_MEMORY, trace) ;
+	      devInterface->readTrace(trace) ;
       }
       else if (devInterface->hasTs2mm())
       {

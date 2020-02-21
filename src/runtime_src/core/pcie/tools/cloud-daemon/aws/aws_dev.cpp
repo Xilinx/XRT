@@ -34,12 +34,12 @@
 #include <iostream>
 #include <fstream>
 #include <exception>
+#include <future>
 #include <uuid/uuid.h>
 #include "xclbin.h"
 #include "aws_dev.h"
 
 static std::map<std::string, size_t>index_map;
-
 /*
  * Functions each plugin needs to provide
  */
@@ -333,6 +333,18 @@ int awsGetSubdev(size_t index, char *resp, size_t resp_len)
 }
 
 /*
+ * Reset requires the mailbox msg return before the real reset
+ * happens. So we run user special reset in async thread.
+ */
+std::future<void> nouse; //so far we don't care the return value of reset
+static void awsResetDeviceAsync(size_t index)
+{
+    AwsDev d(index, nullptr);
+    if (d.isGood()) {
+        d.awsResetDevice();
+    }
+}
+/*
  * callback function that is used to handle MAILBOX_REQ_HOT_RESET msg
  * 
  * Input:
@@ -345,13 +357,9 @@ int awsGetSubdev(size_t index, char *resp, size_t resp_len)
  */
 int awsResetDevice(size_t index, int *resp)
 {
-    int ret = -1;
-    AwsDev d(index, nullptr);
-    if (d.isGood()) {
-        *resp = d.awsResetDevice();
-        ret = 0;
-    }
-    return ret;
+    *resp = -ENOTSUP;
+    nouse = std::async(std::launch::async, &awsResetDeviceAsync, index);
+    return 0;
 }
 
 /*
@@ -581,7 +589,19 @@ bool AwsDev::isGood() {
 
 int AwsDev::awsUserProbe(xcl_mailbox_conn_resp *resp)
 {
+#ifndef INTERNAL_TESTING_FOR_AWS
+    fpga_slot_spec spec_array[16];
+    std::memset(spec_array, 0, sizeof(fpga_slot_spec) * 16);
+    if (fpga_pci_get_all_slot_specs(spec_array, 16)) {
+        std::cout << "ERROR: failed at fpga_pci_get_all_slot_specs" << std::endl;
+        return -1;
+    }
+
+    if (spec_array[mBoardNumber].map[FPGA_APP_PF].device_id != AWS_UserPF_DEVICE_ID)
+        resp->conn_flags |= XCL_MB_PEER_READY;
+#else
     resp->conn_flags |= XCL_MB_PEER_READY;
+#endif
     return 0;
 }
 

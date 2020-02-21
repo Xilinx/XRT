@@ -22,6 +22,7 @@ namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
 #include <boost/program_options.hpp>
+#include <boost/format.hpp>
 namespace po = boost::program_options;
 
 // System - Include Files
@@ -106,12 +107,12 @@ SubCmdDD::execute(const SubCmdOptions& _options) const
   }
 
   // -- Now process the subcommand --------------------------------------------
-  XBU::verbose(XBU::format(" InputFile: %s", sInputFile.c_str()));
-  XBU::verbose(XBU::format("OutputFile: %s", sOutputFile.c_str()));
-  XBU::verbose(XBU::format(" BlockSize: %s", sBlockSize.c_str()));
-  XBU::verbose(XBU::format("     Count: %s", sCount.c_str()));
-  XBU::verbose(XBU::format("      Skip: %s", sSkip.c_str()));
-  XBU::verbose(XBU::format("      Seek: %s", sSeek.c_str()));
+  XBU::verbose(boost::str(boost::format(" InputFile: %s") % sInputFile.c_str()));
+  XBU::verbose(boost::str(boost::format("OutputFile: %s") % sOutputFile.c_str()));
+  XBU::verbose(boost::str(boost::format(" BlockSize: %s") % sBlockSize.c_str()));
+  XBU::verbose(boost::str(boost::format("     Count: %s") % sCount.c_str()));
+  XBU::verbose(boost::str(boost::format("      Skip: %s") % sSkip.c_str()));
+  XBU::verbose(boost::str(boost::format("      Seek: %s") % sSeek.c_str()));
 
 
   XBU::error("COMMAND BODY NOT IMPLEMENTED.");

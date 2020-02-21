@@ -21,6 +21,7 @@ namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
 #include <boost/program_options.hpp>
+#include <boost/format.hpp>
 namespace po = boost::program_options;
 
 // System - Include Files
@@ -87,11 +88,11 @@ SubCmdClock::execute(const SubCmdOptions& _options) const
   }
 
   // -- Now process the subcommand --------------------------------------------
-  XBU::verbose(XBU::format("  Card: %ld", card));
-  XBU::verbose(XBU::format("Region: %ld", region));
-  XBU::verbose(XBU::format("Clock1: %ld", clock1FreqMhz));
-  XBU::verbose(XBU::format("Clock2: %ld", clock2FreqMhz));
-  XBU::verbose(XBU::format("Clock3: %ld", clock3FreqMhz));
+  XBU::verbose(boost::str(boost::format("  Card: %ld") % card));
+  XBU::verbose(boost::str(boost::format("Region: %ld") % region));
+  XBU::verbose(boost::str(boost::format("Clock1: %ld") % clock1FreqMhz));
+  XBU::verbose(boost::str(boost::format("Clock2: %ld") % clock2FreqMhz));
+  XBU::verbose(boost::str(boost::format("Clock3: %ld") % clock3FreqMhz));
 
 
   XBU::error("COMMAND BODY NOT IMPLEMENTED.");
