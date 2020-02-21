@@ -91,7 +91,6 @@ failed:
 static void *flash_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 {
 	struct xocl_dev_core *core = XDEV(xdev_hdl);
-	char *priv = NULL;
 	const char *flash_type;
 	void *blob;
 	int node, proplen;
@@ -116,10 +115,11 @@ static void *flash_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 		return NULL;
 	}
 
-	proplen = strlen(flash_type) + 1;
+	BUG_ON(strlen(flash_type) + 1 > sizeof(flash_priv->flash_type));
+	proplen = sizeof(struct xocl_flash_privdata);
 
 	flash_priv = vzalloc(sizeof(*flash_priv));
-	if (!priv)
+	if (!flash_priv)
 		return NULL;
 
 	strcpy(flash_priv->flash_type, flash_type);
@@ -127,7 +127,6 @@ static void *flash_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 	*len = proplen;
 
 	return flash_priv;
-
 }
 
 static void devinfo_cb_setlevel(void *dev_hdl, void *subdevs, int num)
@@ -137,12 +136,12 @@ static void devinfo_cb_setlevel(void *dev_hdl, void *subdevs, int num)
 	subdev->info.override_idx = subdev->info.level;
 }
 
-static void ert_cb_setlevel(void *dev_hdl, void *subdevs, int num)
+static void ert_cb_set_inst(void *dev_hdl, void *subdevs, int num)
 {
 	struct xocl_subdev *subdev = subdevs;
 
 	/* 0 is used by CMC */
-	subdev->info.override_idx = 1;
+	subdev->info.override_idx = MB_ERT;
 }
 
 static void devinfo_cb_xdma(void *dev_hdl, void *subdevs, int num)
@@ -236,7 +235,8 @@ static struct xocl_subdev_map		subdev_map[] = {
 		XOCL_SUBDEV_AF,
 		XOCL_FIREWALL,
 		{
-			NODE_AF_BLP,
+			NODE_AF_BLP_CTRL_MGMT,
+			NODE_AF_BLP_CTRL_USER,
 			NODE_AF_CTRL_MGMT,
 			NODE_AF_CTRL_USER,
 			NODE_AF_CTRL_DEBUG,
@@ -262,7 +262,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 		3,
 		0,
 		NULL,
-		ert_cb_setlevel,
+		ert_cb_set_inst,
 	},
 	{
 		XOCL_SUBDEV_MB,
@@ -315,13 +315,6 @@ static struct xocl_subdev_map		subdev_map[] = {
 		XOCL_SUBDEV_IORES,
 		XOCL_IORES3,
 		{
-			RESNAME_CLKWIZKERNEL1,
-			RESNAME_CLKWIZKERNEL2,
-			RESNAME_CLKWIZKERNEL3,
-			RESNAME_CLKFREQ_K1,
-			RESNAME_CLKFREQ_K2,
-			RESNAME_CLKFREQ_HBM,
-			RESNAME_UCS_CONTROL_STATUS,
 			RESNAME_GAPPING,
 			NULL
 		},
@@ -337,11 +330,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 		{
 			RESNAME_GATEPRPRP,
 			RESNAME_MEMCALIB,
-			RESNAME_CLKWIZKERNEL1,
-			RESNAME_CLKWIZKERNEL2,
-			RESNAME_CLKWIZKERNEL3,
 			RESNAME_KDMA,
-			RESNAME_CLKSHUTDOWN,
 			RESNAME_CMC_MUTEX,
 			NULL
 		},
@@ -349,6 +338,26 @@ static struct xocl_subdev_map		subdev_map[] = {
 		0,
 		NULL,
 		devinfo_cb_setlevel,
+	},
+	{
+		.id = XOCL_SUBDEV_CLOCK,
+		.dev_name = XOCL_CLOCK,
+		.res_names = {
+			RESNAME_CLKWIZKERNEL1,
+			RESNAME_CLKWIZKERNEL2,
+			RESNAME_CLKWIZKERNEL3,
+			RESNAME_CLKFREQ_K1_K2,
+			RESNAME_CLKFREQ_HBM,
+			RESNAME_CLKFREQ_K1,
+			RESNAME_CLKFREQ_K2,
+			RESNAME_CLKSHUTDOWN,
+			RESNAME_UCS_CONTROL_STATUS,
+			NULL
+		},
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = NULL,
+		.devinfo_cb = NULL,
 	},
 	{
 		XOCL_SUBDEV_ICAP,
@@ -375,7 +384,6 @@ static struct xocl_subdev_map		subdev_map[] = {
 		NULL,
 	},
 };
-
 
 /*
  * Functions to parse dtc and create sub devices
@@ -1072,4 +1080,41 @@ const struct axlf_section_header *xocl_axlf_section_header(
 				kind);
 
 	return hdr;
+}
+
+int
+xocl_res_name2id(const struct xocl_iores_map *res_map,
+	int res_map_size, const char *res_name)
+{
+	int i;
+
+	if (!res_name)
+		return -1;
+	for (i = 0; i < res_map_size; i++) {
+		if (!strncmp(res_name, res_map->res_name,
+				strlen(res_map->res_name)))
+			return res_map->res_id;
+		res_map++;
+	}
+
+	return -1;
+}
+
+
+char *
+xocl_res_id2name(const struct xocl_iores_map *res_map,
+	int res_map_size, int id)
+{
+	int i;
+
+	if (id > res_map_size)
+		return NULL;
+
+	for (i = 0; i < res_map_size; i++) {
+		if (res_map->res_id == id)
+			return res_map->res_name;
+		res_map++;
+	}
+
+	return NULL;
 }

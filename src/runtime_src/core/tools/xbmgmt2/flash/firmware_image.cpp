@@ -291,7 +291,7 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
 		
         // get filename without the path
         using tokenizer = boost::tokenizer< boost::char_separator<char> >;
-        boost::char_separator<char> sep("\\");
+        boost::char_separator<char> sep("\\/");
         tokenizer tokens(filename, sep);
         std::string dsafile = "";
         for (auto tok_iter = tokens.begin(); tok_iter != tokens.end(); ++tok_iter) {
@@ -311,7 +311,7 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
         }
         // For 2RP platform, only UUIDs are provided
         //timestamp = ap->m_header.m_featureRomTimeStamp;
-        hasFlashImage = (xclbin::get_axlf_section(ap, MCS) != nullptr);
+        hasFlashImage = (xclbin::get_axlf_section(ap, MCS) != nullptr) || (xclbin::get_axlf_section(ap, PDI) != nullptr);
 
         // Find out BMC version
         // Obtain BMC section header.
@@ -350,7 +350,7 @@ DSAInfo::~DSAInfo()
 {
 }
 
-bool DSAInfo::matchId(std::string &id)
+bool DSAInfo::matchId(const std::string &id) const 
 {
     uint64_t ts = strtoull(id.c_str(), nullptr, 0);
     if (ts != 0 && ts != ULLONG_MAX && ts == timestamp)
@@ -370,7 +370,7 @@ bool DSAInfo::matchId(std::string &id)
     return false;
 }
 
-bool DSAInfo::matchIntId(std::string &id)
+bool DSAInfo::matchIntId(std::string &id) const
 {
     uint64_t ts = strtoull(id.c_str(), nullptr, 0);
 
@@ -394,7 +394,7 @@ bool DSAInfo::matchIntId(std::string &id)
     return false;
 }
 
-bool DSAInfo::matchId(DSAInfo& dsa)
+bool DSAInfo::matchId(DSAInfo& dsa) const
 {
     if (uuids.size() != dsa.uuids.size())
         return false;
@@ -608,7 +608,14 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
         in_file.seekg(0);
         in_file.read(mBuf, bufsize);
     }
-    this->str(mBuf);
+
+// rdbuf doesn't work on windows and str() doesn't work for ospi_versal on linux
+#ifdef __GNUC__
+    this->rdbuf()->pubsetbuf(mBuf, bufsize);
+#endif
+#ifdef _WIN32
+	this->str(mBuf);
+#endif
 }
 
 firmwareImage::~firmwareImage()

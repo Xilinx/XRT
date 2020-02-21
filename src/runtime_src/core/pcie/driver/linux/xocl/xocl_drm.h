@@ -33,6 +33,13 @@ struct drm_xocl_exec_metadata {
 		        struct xocl_cmd            *active;
 };
 
+struct xocl_cma_chunk {
+	uint64_t		start_addr;
+	struct page		**pages;
+	uint64_t		page_count;
+	struct drm_mm 		*mm;
+};
+
 struct xocl_drm {
 	xdev_handle_t		xdev;
 	/* memory management */
@@ -46,7 +53,7 @@ struct xocl_drm {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 	DECLARE_HASHTABLE(mm_range, 6);
 #endif
-
+	struct xocl_cma_chunk  *cma_chunk[DRM_XOCL_CMA_CHUNK_MAX];
 };
 
 struct drm_xocl_bo {
@@ -64,6 +71,7 @@ struct drm_xocl_bo {
 	unsigned              flags;
 	unsigned              mem_idx;
 	void                 *cma_addr;
+	struct drm_mm_node    *cma_mm_node;
 };
 
 struct drm_xocl_unmgd {
@@ -89,6 +97,9 @@ void xocl_drm_fini(struct xocl_drm *drm_p);
 uint32_t xocl_get_shared_ddr(struct xocl_drm *drm_p, struct mem_data *m_data);
 int xocl_init_mem(struct xocl_drm *drm_p);
 int xocl_cleanup_mem(struct xocl_drm *drm_p);
+
+int xocl_cma_chunk_alloc_helper(struct xocl_drm *drm_p, struct drm_xocl_alloc_cma_info *cma_info);
+void xocl_cma_chunk_free_helper(struct xocl_drm *drm_p, struct drm_xocl_free_cma_info *cma_info);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
 vm_fault_t xocl_gem_fault(struct vm_fault *vmf);

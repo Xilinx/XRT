@@ -604,7 +604,7 @@ Section::getSubPayload(std::ostringstream &_buf,
   // All is good now get the data from the section
   getSubPayload(m_pBuffer, m_bufferSize, _buf, _sSubSection, _eFormatType);
 
-  if (_buf.tellp() == 0) {
+  if ((long) _buf.tellp() == 0) {
     return false;
   }
 

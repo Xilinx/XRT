@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,15 +17,13 @@
 #ifndef __XBMgmtMain_h_
 #define __XBMgmtMain_h_
 
+// Include files
+// Please keep these to the bare minimum
+#include "XBHelpMenus.h"
 #include <string>
-#include <vector>
-  
-  typedef enum {
-    RC_SUCCESS = 0,
-    RC_ERROR_IN_COMMAND_LINE = 1,
-    RC_ERROR_UNHANDLED_EXCEPTION = 2
-  } ReturnCodes;
     
-ReturnCodes main_(int argc, char** argv);
-
+// ---------------------- F U N C T I O N S ----------------------------------
+void main_(int argc, char** argv, 
+           const std::string & _description,
+           const SubCmdsCollection & _SubCmds);
 #endif

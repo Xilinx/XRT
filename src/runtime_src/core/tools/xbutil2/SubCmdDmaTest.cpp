@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,8 +17,9 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SubCmdDmaTest.h"
-#include "common/system.h"
-#include "common/device.h"
+#include "core/common/system.h"
+#include "core/common/device.h"
+#include "core/common/query_requests.h"
 #include "core/pcie/common/dmatest.h"
 
 #include "tools/common/XBUtilities.h"
@@ -33,12 +34,6 @@ namespace po = boost::program_options;
 #include <iostream>
 #include <iterator>
 
-// ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
-#include "tools/common/SubCmd.h"
-static const unsigned int registerResult =
-                    register_subcommand("dmatest",
-                                        "Runs a DMA test on a given device",
-                                        subCmdDmaTest);
 // =============================================================================
 namespace {
 
@@ -48,13 +43,13 @@ dmatest(const std::shared_ptr<xrt_core::device>& device, size_t block_size, bool
   if (block_size == 0)
       block_size = 256 * 1024 * 1024; // Default block size
 
-  auto ddr_mem_size = xrt_core::query_device<uint64_t>(device, xrt_core::device::QR_ROM_DDR_BANK_SIZE);
+  auto ddr_mem_size = xrt_core::device_query<xrt_core::query::rom_ddr_bank_size>(device);
 
   if (verbose)
     std::cout << "Total DDR size: " << ddr_mem_size << " MB\n";
 
   // get DDR bank count from mem_topology if possible
-  auto membuf = xrt_core::query_device<std::vector<char>>(device, xrt_core::device::QR_MEM_TOPOLOGY_RAW);
+  auto membuf = xrt_core::device_query<xrt_core::query::mem_topology_raw>(device);
   auto mem_topo = reinterpret_cast<const mem_topology*>(membuf.data());
   if (membuf.empty() || mem_topo->m_count == 0)
     throw std::runtime_error
@@ -99,9 +94,22 @@ dmatest(const std::shared_ptr<xrt_core::device>& device, size_t block_size, bool
 } // namespace
 
 
-// ------ F U N C T I O N S ---------------------------------------------------
+// ----- C L A S S   M E T H O D S -------------------------------------------
 
-int subCmdDmaTest(const std::vector<std::string> &_options)
+SubCmdDmaTest::SubCmdDmaTest(bool _isHidden, bool _isDepricated, bool _isPreliminary)
+    : SubCmd("dmatest", 
+             "See replacement functionality in command: 'advanced'")
+{
+  const std::string longDescription = "<add long description>";
+  setLongDescription(longDescription);
+  setExampleSyntax("");
+  setIsHidden(_isHidden);
+  setIsDeprecated(_isDepricated);
+  setIsPreliminary(_isPreliminary);
+}
+
+void
+SubCmdDmaTest::execute(const SubCmdOptions& _options) const
 // References: dmatest [-d card] [-b [0x]block_size_KB]
 //             Run DMA test on card 1 with 32 KB blocks of buffer
 //               xbutil dmatest -d 1 -b 0x2000
@@ -127,7 +135,7 @@ int subCmdDmaTest(const std::vector<std::string> &_options)
     po::notify(vm); // Can throw
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
-    std::cerr << dmaTestDesc << std::endl;
+    printHelp(dmaTestDesc);
 
     // Re-throw exception
     throw;
@@ -135,8 +143,8 @@ int subCmdDmaTest(const std::vector<std::string> &_options)
 
   // Check to see if help was requested or no command was found
   if (help == true)  {
-    std::cout << dmaTestDesc << std::endl;
-    return 0;
+    printHelp(dmaTestDesc);
+    return;
   }
 
   // -- Now process the subcommand --------------------------------------------
@@ -144,6 +152,4 @@ int subCmdDmaTest(const std::vector<std::string> &_options)
   auto block_size = std::strtoll(sBlockSizeKB.c_str(), nullptr, 0);
   bool verbose = true;
   dmatest(device, block_size, verbose);
-
-  return registerResult;
 }

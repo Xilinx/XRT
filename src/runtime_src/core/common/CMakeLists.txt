@@ -11,13 +11,14 @@ find_package(Boost REQUIRED COMPONENTS system filesystem )
 include_directories(${Boost_INCLUDE_DIRS})
 endif (NOT WIN32)
 
-# Files to include in shared library
 file(GLOB XRT_CORECOMMON_LIB_FILES
   "config_reader.*"
+  "device.*"
   "message.*"
   "time.*"
   "xclbin_parser.*"
   "sensor.*"
+  "system.*"
   "utils.*"
   )
 

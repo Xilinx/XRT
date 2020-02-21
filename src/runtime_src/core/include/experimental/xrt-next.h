@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019, Xilinx Inc - All rights reserved
+ * Copyright (C) 2019-2020, Xilinx Inc - All rights reserved
  * Xilinx Runtime (XRT) Experimental APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -36,14 +36,17 @@ extern "C" {
  *
  * Enable or Disable P2P feature. Warm reboot might be required.
  */
-XCL_DRIVER_DLLESPEC int xclP2pEnable(xclDeviceHandle handle, bool enable, bool force);
+XCL_DRIVER_DLLESPEC
+int
+xclP2pEnable(xclDeviceHandle handle, bool enable, bool force);
 
 /*
  * API to get number of live processes on the given device.
  * This uses kdsstat information in sysfs.
  */
-
-XCL_DRIVER_DLLESPEC uint32_t xclGetNumLiveProcesses(xclDeviceHandle handle);
+XCL_DRIVER_DLLESPEC
+uint32_t
+xclGetNumLiveProcesses(xclDeviceHandle handle);
 
 /**
  * xclGetSysfsPath() - Helper function to build a sysfs node full path
@@ -55,28 +58,15 @@ XCL_DRIVER_DLLESPEC uint32_t xclGetNumLiveProcesses(xclDeviceHandle handle);
  * @size:                Length of the return string
  * Return:               0 or standard error number
  *
- * (For debug and profile usage only for now)
- * The sysfs information is not accessible above XRT layer now. However, debug/profile
- * needs information from sysfs (for example debug_ip_layout) to properly initialize
- * xdp code, so this helper API can be used
+ * (For debug and profile usage only for now) The sysfs information is
+ * not accessible above XRT layer now. However, debug/profile needs
+ * information from sysfs (for example debug_ip_layout) to properly
+ * initialize xdp code, so this helper API can be used
  */
-XCL_DRIVER_DLLESPEC int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev,
-                                        const char* entry, char* sysfsPath, size_t size);
-
-/**
- * Experimental APIs for reading debug and profile
- *
- * Warning: These APIs are experimental and can be
- * changed or removed at any time. They should only
- * be used by debug and profile code.
- *
- * @param handle the device handle
- * @param info the xclDebugProfileDeviceInfo
- * structure that this API will fill in as
- * result
- */
-XCL_DRIVER_DLLESPEC int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* info);
-
+XCL_DRIVER_DLLESPEC
+int
+xclGetSysfsPath(xclDeviceHandle handle, const char* subdev,
+                const char* entry, char* sysfsPath, size_t size);
 
 struct KernelTransferData
 {
@@ -144,90 +134,145 @@ struct ProfileResults
 
 /**
  * int xclCreateProfileResults(xclDeviceHandle, ProfileResults**)
- *     - Creates and initializes buffer for storing the ProfileResults from the device.
- *     - To use this API, "profile_api" configuration needs to be set to "true" in xrt.ini.
- *       "profile_api=true" enables profiling (for profile counters on device) using XRT APIs (no OpenCL API)
+ *
+ *  - Creates and initializes buffer for storing the ProfileResults from
+ *    the device.
+ *  - To use this API, "profile_api" configuration needs to be set to
+ *    "true" in xrt.ini.  "profile_api=true" enables profiling (for
+ *    profile counters on device) using XRT APIs (no OpenCL API)
  *
  * @xclDeviceHandle : Device handle
- * @ProfileResults** : Double pointer to hold the pointer to buffer created to store profiling results (on success)
- *                     This argument remains unchanged if xclCreateProfileResults fails.
- *
+ * @ProfileResults  : Double pointer to hold the pointer to buffer created 
+ *                    to store profiling results (on success). This argument 
+ *                    remains unchanged if xclCreateProfileResults fails.
  */
-XCL_DRIVER_DLLESPEC int xclCreateProfileResults(xclDeviceHandle, struct ProfileResults**);
+XCL_DRIVER_DLLESPEC
+int
+xclCreateProfileResults(xclDeviceHandle, struct ProfileResults**);
 
 /**
  * int xclGetProfileResults(xclDeviceHandle, ProfileResults*)
- *     - Read the profiling counters from the hardware and populate profiling data in the “ProfileResults” structure (created using xclCreateProfileResults).
- *     - To use this API, "profile_api" configuration needs to be set to "true" in xrt.ini.
- *       "profile_api=true" enables profiling (for profile counters on device) using XRT APIs (no OpenCL API)
+ *
+ *  - Read the profiling counters from the hardware and populate
+ *     profiling data in the “ProfileResults” structure (created using
+ *     xclCreateProfileResults).
+ *  - To use this API, "profile_api" configuration needs to be set to
+ *    "true" in xrt.ini.  "profile_api=true" enables profiling (for
+ *    profile counters on device) using XRT APIs (no OpenCL API)
  *
  * @xclDeviceHandle : Device handle
  * @ProfileResults* : Pointer to buffer to store profiling results.
- *                    This buffer should be created using previous call to "xclCreateProfileResults"
- *
+ *                    This buffer should be created using previous 
+ *                    call to "xclCreateProfileResults"
  */
-XCL_DRIVER_DLLESPEC int xclGetProfileResults(xclDeviceHandle, struct ProfileResults*);
+XCL_DRIVER_DLLESPEC
+int
+xclGetProfileResults(xclDeviceHandle, struct ProfileResults*);
 
 /**
  * int xclDestroyProfileResults(xclDeviceHandle, ProfileResults*)
- *     - Traverse the given ProfileResults structure and delete the allocated memory
- *     - To use this API, "profile_api" configuration needs to be set to "true" in xrt.ini.
- *       "profile_api=true" enables profiling (for profile counters on device) using XRT APIs (no OpenCL API)
+ *
+ *  - Traverse the given ProfileResults structure and delete the
+ *    allocated memory
+ *  - To use this API, "profile_api" configuration needs to be set to
+ *    "true" in xrt.ini.  "profile_api=true" enables profiling (for
+ *     profile counters on device) using XRT APIs (no OpenCL API)
  *
  * @xclDeviceHandle : Device handle
- * @ProfileResults* : Pointer to buffer to be deleted
- *
+ * @ProfileResults  : Pointer to buffer to be deleted
  */
-XCL_DRIVER_DLLESPEC int xclDestroyProfileResults(xclDeviceHandle, struct ProfileResults*);
+XCL_DRIVER_DLLESPEC
+int
+xclDestroyProfileResults(xclDeviceHandle, struct ProfileResults*);
 
 /**
- * xclRegRead() - Read register in register space of a CU
+ * xclRegRead() - Read register in register space of an IP
  *
  * @handle:        Device handle
- * @cu_index:      CU index
+ * @ipIndex:       IP index
  * @offset:        Offset in the register space
  * @datap:         Pointer to where result will be saved
  * Return:         0 or appropriate error number
  *
- * Caller should own an exclusive context on the CU obtained via xclOpenContext()
- * This API may be used to read from device registers exposed on PCIe BAR. Offset is relative to the
- * the register map exposed by the CU.
- * Please note that the intent of this API is to support legacy RTL IPs. If you are creating a new
- * IP please use one of the well defined execution models which are natively supported by XRT.
- * If you have a new execution model that you would like to be natively supported by XRT please look
- * into ert.h to define new command objects.
+ * Caller should own an exclusive context on the IP obtained via
+ * xclOpenContext() This API may be used to read from device registers.
+ * Offset is relative to the the register map exposed by the IP.
+ * Please note that the intent of this API is to support legacy RTL IPs.
+ * If you are creating a new IP please use one of the well defined
+ * execution models which are natively supported by XRT.
+ * If you have a new execution model that you would like to be natively
+ * supported by XRT please look into ert.h to define new command objects.
  */
-XCL_DRIVER_DLLESPEC int xclRegRead(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset, uint32_t *datap);
+XCL_DRIVER_DLLESPEC
+int
+xclRegRead(xclDeviceHandle handle, uint32_t ipIndex, uint32_t offset, uint32_t *datap);
 
 /**
- * xclRegWRite() - Write to register in register space of a CU
+ * xclRegWRite() - Write to register in register space of an IP
  *
  * @handle:        Device handle
- * @cu_index:      CU index
+ * @ipIndex:       IP index
  * @offset:        Offset in the register space
  * @data:          Data to be written
  * Return:         0 or appropriate error number
  *
- * Caller should own an exclusive context on the CU obtained via xclOpenContext()
- * This API may be used to write to device registers exposed on PCIe BAR. Offset is relative to the
- * the register map exposed by the CU.
- * Please note that the intent of this API is to support legacy RTL IPs. If you are creating a new
- * IP please use one of the well defined execution models which are natively supported by XRT.
- * If you have a new execution model that you would like to be natively supported by XRT please look
- * into ert.h to define new command objects.
+ * Caller should own an exclusive context on the CU obtained via
+ * xclOpenContext() This API may be used to write to device registers.
+ * Offset is relative to the the register map exposed by the CU.
+ * Please note that the intent of this API is to support legacy RTL IPs.
+ * If you are creating a new IP please use one of the well defined
+ * execution models which are natively supported by XRT.
+ * If you have a new execution model that you would like to be natively
+ * supported by XRT please look into ert.h to define new command objects.
  */
-XCL_DRIVER_DLLESPEC int xclRegWrite(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset, uint32_t data);
+XCL_DRIVER_DLLESPEC
+int
+xclRegWrite(xclDeviceHandle handle, uint32_t ipIndex, uint32_t offset, uint32_t data);
 
 /**
- * xclCuName2Index() - Obtain CU index by CU name
+ * xclIPName2Index() - Obtain IP index by IP name
  *
  * @handle:        Device handle
- * @cu_name:       CU name
- * @cu_index:      Pointer to CU index
+ * @ipName:        IP name. usually "<kernel name>:<instance name>"
+ * @ipIndex:       Pointer to IP index
  * Return:         0 or appropriate error number
  *
  */
-XCL_DRIVER_DLLESPEC int xclCuName2Index(xclDeviceHandle handle, const char *cu_name, uint32_t *cu_index);
+XCL_DRIVER_DLLESPEC
+int
+xclIPName2Index(xclDeviceHandle handle, const char *ipName, uint32_t *ipIndex);
+
+/**
+ * xclOpenIPInterruptNotify() - Open a fd for IP interrupt notify
+ *
+ * @handle:     Device handle
+ * @ipIndex:    IP index
+ * @flags:      flags for the fd
+ * Return:      fd or appropriate error number
+ *
+ * Caller should own an exclusive context on the IP obtained via xclOpenContext()
+ * Support for non managed IP. This is the proper way to support custom IPs which doesn't compliant with supported control protocol.
+ * This API would open a file descriptor used for CU interrupt notification. The usage is similar to open a UIO device.
+ * Caller could use standard read/poll/select system call to wait for IP interrupts.
+ * Once this API was called, xclExecBuf() could not be used to schedule this specific IP.
+ * The expectation is the caller performing any necessary actions to make it work.
+ *
+ * Note: the IP irq would be disable after this is called. Caller could manually enable the interrupt by write().
+ */
+XCL_DRIVER_DLLESPEC int xclOpenIPInterruptNotify(xclDeviceHandle handle, uint32_t ipIndex, unsigned int flags);
+
+/**
+ * xclCloseIPInterruptNotify() - Clost the interrupt notify fd
+ *
+ * @handle:     Device handle
+ * @fd:         fd handle
+ * Return:      0 or appropriate error number
+ *
+ * Caller should own an exclusive context on the IP obtained via xclOpenContext()
+ * This API would close the file descriptor used for IP interrupt notification.
+ * Once this API was called, xclExecBuf() could schedule this specific IP.
+ */
+XCL_DRIVER_DLLESPEC int xclCloseIPInterruptNotify(xclDeviceHandle handle, int fd);
 
 #ifdef __cplusplus
 }

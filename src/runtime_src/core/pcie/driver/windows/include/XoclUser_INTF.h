@@ -16,6 +16,7 @@
 //
 #include <initguid.h>
 #include <stdint.h>
+#include "xclbin.h"
 
 // {45A6FFCA-EF63-4933-9983-F63DEC5816EB}
 DEFINE_GUID(GUID_DEVINTERFACE_XOCL_USER,
@@ -202,6 +203,7 @@ typedef enum _XOCL_STAT_CLASS {
     XoclStatKds,
     XoclStatKdsCU,
     XoclStatRomInfo,
+    XoclStatDebugIpLayout
 
 } XOCL_STAT_CLASS, *PXOCL_STAT_CLASS;
 
@@ -234,30 +236,6 @@ typedef GUID xuid_t;
 typedef unsigned char xuid_t[16];
 #endif
 
-typedef struct _XU_MEM_TOPO_DATA {
-
-    UCHAR m_type; //enum corresponding to mem_type.
-    UCHAR m_used; //if 0 this bank is not present
-    union {
-        ULONGLONG m_size; //if mem_type DDR, then size in KB;
-        ULONGLONG route_id; //if streaming then "route_id"
-    };
-    union {
-        ULONGLONG m_base_address;//if DDR then the base address;
-        ULONGLONG flow_id; //if streaming then "flow id"
-    };
-    UCHAR m_tag[16]; //DDR: BANK0,1,2,3, has to be null terminated; if streaming then stream0, 1 etc
-
-} XU_MEM_TOPO_DATA, *PXU_MEM_TOPO_DATA;
-
-typedef struct _XOCL_MEM_TOPOLOGY_INFORMATION {
-
-    ULONG        MemTopoCount;
-
-    XU_MEM_TOPO_DATA MemTopo[XOCL_MAX_DDR_BANKS];
-
-} XOCL_MEM_TOPOLOGY_INFORMATION, *PXOCL_MEM_TOPOLOGY_INFORMATION;
-
 // 
 // XoclStatMemRaw
 // 
@@ -283,24 +261,6 @@ enum IP_TYPE {
     IP_DDR4_CONTROLLER
 };
 #endif
-typedef struct _XU_IP_DATA {
-    uint32_t m_type; //map to IP_TYPE enum
-    union {
-        uint32_t properties; //32 bits to indicate ip specific property. eg if m_type == IP_KERNEL then bit 0 is for interrupt.
-        struct {     // Used by IP_MEM_* types
-            uint16_t m_index;
-            uint8_t m_pc_index;
-            uint8_t unused;
-        } indices;
-    };
-    uint64_t m_base_address;
-    uint8_t m_name[64]; //eg Kernel name corresponding to KERNEL instance, can embed CU name in future.
-} XU_IP_DATA, *PXU_IP_DATA;
-
-typedef struct _XU_IP_LAYOUT {
-    int32_t m_count;
-    XU_IP_DATA m_ip_data[1]; //All the XU_IP_DATA needs to be sorted by m_base_address.
-} XU_IP_LAYOUT, *PXU_IP_LAYOUT;
 
 // 
 // XoclStatKds
@@ -420,24 +380,180 @@ typedef struct _XOCL_EXECPOLL_ARGS {
 } XOCL_EXECPOLL_ARGS, *PXOCL_EXECPOLL_ARGS;
 
 //
-// IOCTL_XOCL_PREAD_UNMGD
-// THE IOCTL IS NOT IMPLEMENTED
-// RETURN - STATUS_NOT_IMPLEMENTED
+// XOCL_PREAD_PWRITE_UNMGD_ARGS
+//Read IOCTL to unmanaged DDR memory
+// InputBuffer -  XOCL_PREAD_PWRITE_BO_UNMGD_ARGS  
+//OutputBuffer - (not used)
 
-#define IOCTL_XOCL_PREAD_UNMGD         CTL_CODE(FILE_DEVICE_XOCL_USER, 2105, METHOD_OUT_DIRECT, FILE_READ_DATA)
+#define IOCTL_XOCL_PREAD_UNMGD         CTL_CODE(FILE_DEVICE_XOCL_USER, 2105, METHOD_BUFFERED, FILE_READ_DATA)
 
-typedef struct _XOCL_PREAD_BO_UNMGD_ARGS {
-    ULONGLONG   Offset;     // IN: BO offset to read from 
-} XOCL_PREAD_BO_UNMGD_ARGS, *PXOCL_PREAD_BO_UNMGD_ARGS;
-
+typedef struct _XOCL_PREAD_PWRITE_UNMGD_ARGS {
+    uint32_t address_space; //must be 0. We must to keep it to make the structure compatible with Linux code
+    uint32_t pad;           //Currently is unused. We must to keep it to make the structure compatible with Linux code
+    uint64_t paddr;         //Physical address in the specified address space
+    uint64_t size;          //Length of data to write
+    uint64_t data_ptr;      //User's pointer(virtual address) to write the data to
+}XOCL_PREAD_PWRITE_UNMGD_ARGS, *PXOCL_PREAD_PWRITE_UNMGD_ARGS;
 
 //
 // IOCTL_XOCL_PWRITE_UNMGD
-// DRM_IOCTL_XOCL_PWRITE_UNMGD
-// THE IOCTL IS NOT IMPLEMENTED
+//Write IOCTL to unmanaged DDR memory
+// InputBuffer -  XOCL_PREAD_PWRITE_UNMGD_ARGS  
+//OutputBuffer - (not used)
 
-#define IOCTL_XOCL_PWRITE_UNMGD        CTL_CODE(FILE_DEVICE_XOCL_USER, 2106, METHOD_IN_DIRECT, FILE_WRITE_DATA)
+#define IOCTL_XOCL_PWRITE_UNMGD        CTL_CODE(FILE_DEVICE_XOCL_USER, 2106, METHOD_BUFFERED, FILE_WRITE_DATA)
 
-typedef struct _XOCL_PWRITE_BO_UNMGD_ARGS {
-    ULONGLONG   Offset;     // IN: BI offset to write to 
-} XOCL_PWRITE_BO_UNMGD_ARGS, *PXOCL_PWRITE_BO_UNMGD_ARGS;
+//
+// IOCTL_XOCL_SENSOR_INFO
+// Get sensor info
+// Inbuffer = (not used)
+// OutBuffer = struct xcl_sensor
+//
+#define IOCTL_XOCL_SENSOR_INFO          CTL_CODE(FILE_DEVICE_XOCL_USER, 2107, METHOD_BUFFERED, FILE_READ_DATA)
+
+
+/**
+ * struct xcl_sensor - Data structure used to fetch SENSOR group
+ */
+struct xcl_sensor {
+    uint32_t vol_12v_pex;
+    uint32_t vol_12v_aux;
+    uint32_t cur_12v_pex;
+    uint32_t cur_12v_aux;
+    uint32_t vol_3v3_pex;
+    uint32_t vol_3v3_aux;
+    uint32_t ddr_vpp_btm;
+    uint32_t sys_5v5;
+    uint32_t top_1v2;
+    uint32_t vol_1v8;
+    uint32_t vol_0v85;
+    uint32_t ddr_vpp_top;
+    uint32_t mgt0v9avcc;
+    uint32_t vol_12v_sw;
+    uint32_t mgtavtt;
+    uint32_t vcc1v2_btm;
+    uint32_t fpga_temp;
+    uint32_t fan_temp;
+    uint32_t fan_rpm;
+    uint32_t dimm_temp0;
+    uint32_t dimm_temp1;
+    uint32_t dimm_temp2;
+    uint32_t dimm_temp3;
+    uint32_t vccint_vol;
+    uint32_t vccint_curr;
+    uint32_t se98_temp0;
+    uint32_t se98_temp1;
+    uint32_t se98_temp2;
+    uint32_t cage_temp0;
+    uint32_t cage_temp1;
+    uint32_t cage_temp2;
+    uint32_t cage_temp3;
+    uint32_t hbm_temp0;
+    uint32_t cur_3v3_pex;
+    uint32_t cur_0v85;
+    uint32_t vol_3v3_vcc;
+    uint32_t vol_1v2_hbm;
+    uint32_t vol_2v5_vpp;
+    uint32_t vccint_bram;
+    uint32_t version;
+};
+
+//
+// IOCTL_XOCL_ICAP_INFO
+// Get sensor info
+// Inbuffer = (not used)
+// OutBuffer = struct xcl_hwicap
+//
+#define IOCTL_XOCL_ICAP_INFO          CTL_CODE(FILE_DEVICE_XOCL_USER, 2108, METHOD_BUFFERED, FILE_READ_DATA)
+
+/*
+  * UUID_SZ should ALWAYS have the same number
+  * as the MACRO UUID_SIZE defined in linux/uuid.h
+  */
+#define UUID_SZ 16
+/**
+ * Data structure used to fetch ICAP group
+ */
+struct xcl_hwicap {
+    uint64_t freq_0;
+    uint64_t freq_1;
+    uint64_t freq_2;
+    uint64_t freq_3;
+    uint64_t freq_cntr_0;
+    uint64_t freq_cntr_1;
+    uint64_t freq_cntr_2;
+    uint64_t freq_cntr_3;
+    uint64_t idcode;
+    uint8_t uuid[UUID_SZ];
+    uint64_t mig_calib;
+};
+
+//
+// IOCTL_XOCL_BOARD_INFO
+// Get board info
+// Inbuffer = (not used)
+// OutBuffer = struct xcl_board_info
+//
+#define IOCTL_XOCL_BOARD_INFO          CTL_CODE(FILE_DEVICE_XOCL_USER, 2109, METHOD_BUFFERED, FILE_READ_DATA)
+
+/**
+ * struct xcl_board_info - Data structure used to fetch BDINFO group
+ */
+struct xcl_board_info {
+    char     serial_num[256];
+    char     mac_addr0[32];
+    char     mac_addr1[32];
+    char     mac_addr2[32];
+    char     mac_addr3[32];
+    char     revision[256];
+    char     bd_name[256];
+    char     bmc_ver[256];
+    uint32_t max_power;
+    uint32_t fan_presence;
+    uint32_t config_mode;
+};
+
+//
+// IOCTL_XOCL_MIG_ECC_INFO
+// Get MIG ECC info
+// Inbuffer = (not used)
+// OutBuffer = sizeof(struct xcl_sensor) * MAX_M_COUNT
+//
+#define IOCTL_XOCL_MIG_ECC_INFO          CTL_CODE(FILE_DEVICE_XOCL_USER, 2110, METHOD_BUFFERED, FILE_READ_DATA)
+
+#define MAX_M_COUNT      64
+
+/**
+ * struct xcl_mig_ecc -  Data structure used to fetch MIG_ECC group
+ */
+struct xcl_mig_ecc {
+    uint64_t mem_type;
+    uint64_t mem_idx;
+    uint64_t ecc_enabled;
+    uint64_t ecc_status;
+    uint64_t ecc_ce_cnt;
+    uint64_t ecc_ue_cnt;
+    uint64_t ecc_ce_ffa;
+    uint64_t ecc_ue_ffa;
+};
+
+//
+// IOCTL_XOCL_FIREWALL_INFO
+// Get firewall info
+// Inbuffer = (not used)
+// OutBuffer = sizeof(struct xcl_firewall)
+//
+#define IOCTL_XOCL_FIREWALL_INFO          CTL_CODE(FILE_DEVICE_XOCL_USER, 2111, METHOD_BUFFERED, FILE_READ_DATA)
+
+
+/**
+ * struct xcl_firewall -  Data structure used to fetch FIREWALL group
+ */
+struct xcl_firewall {
+    uint64_t max_level;
+    uint64_t curr_status;
+    uint64_t curr_level;
+    uint64_t err_detected_status;
+    uint64_t err_detected_level;
+    uint64_t err_detected_time;
+};

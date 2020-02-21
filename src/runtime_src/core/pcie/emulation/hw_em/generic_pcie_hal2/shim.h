@@ -163,15 +163,6 @@ using addr_type = uint64_t;
       double xclGetDeviceClockFreqMHz();
       double xclGetReadMaxBandwidthMBps();
       double xclGetWriteMaxBandwidthMBps();
-      size_t xclPerfMonClockTraining();
-      void xclPerfMonConfigureDataflow(xclPerfMonType type, unsigned *ip_config);
-      size_t xclPerfMonStartCounters();
-      size_t xclPerfMonStopCounters();
-      size_t xclPerfMonReadCounters( xclPerfMonType type, xclCounterResults& counterResults);
-      size_t xclPerfMonStartTrace(uint32_t startTrigger);
-      size_t xclPerfMonStopTrace();
-      uint32_t xclPerfMonGetTraceCount(xclPerfMonType type);
-      size_t xclPerfMonReadTrace(xclPerfMonType type, xclTraceResultsVector& traceVector);
       size_t xclGetDeviceTimestamp();
       void xclReadBusStatus(xclPerfMonType type);
       void xclGetDebugMessages(bool force = false);
@@ -182,7 +173,6 @@ using addr_type = uint64_t;
       uint32_t getIPCountAddrNames(const std::string debugFileName, int type, uint64_t *baseAddress,
                                    std::string * portNames, uint8_t *properties, size_t size);
       void getPerfMonSlotName(xclPerfMonType type, uint32_t slotnum, char* slotName, uint32_t length);
-      uint32_t getPerfMonProperties(xclPerfMonType type, uint32_t slotnum);
       uint32_t getPerfMonNumberSlots(xclPerfMonType type);
 
       int xclGetDebugIPlayoutPath(char* layoutPath, size_t size);
@@ -220,6 +210,7 @@ using addr_type = uint64_t;
       void setUnified(bool _unified) { bUnified = _unified; }
 
       bool isMBSchedulerEnabled();
+      bool isLegacyErt();
       unsigned int getDsaVersion();
       bool isCdmaEnabled();
       uint64_t getCdmaBaseAddress(unsigned int index);

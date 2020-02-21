@@ -101,6 +101,12 @@ public:
     return m_hal->getName();
   }
 
+  std::string
+  get_bdf() const
+  {
+    return m_hal->get_bdf();
+  }
+
   unsigned int
   getBankCount() const
   {
@@ -632,22 +638,6 @@ public:
     return m_hal->loadXclBin(xclbin);
   }
 
-  /**
-   * Load a bistream from a file
-   *
-   * @param fnm
-   *   Full path to bitsream file
-   * @returns
-   *   A pair <int,bool> where bool is set to true if
-   *   and only if the return int value is valid. The
-   *   return value is implementation dependent.
-   */
-//  hal::operations_result<int>
-//  loadBitstream(const char* fnm)
-//  {
-//    return m_hal->loadBitstream(fnm);
-//  }
-
   bool
   hasBankAlloc() const
   {
@@ -838,12 +828,6 @@ public:
   }
 
   hal::operations_result<void>
-  writeHostEvent(xclPerfMonEventType type, xclPerfMonEventID id)
-  {
-    return m_hal->writeHostEvent(type, id);
-  }
-
-  hal::operations_result<void>
   configureDataflow(xclPerfMonType type, unsigned *ip_config)
   {
     return m_hal->configureDataflow(type, ip_config);
@@ -883,6 +867,12 @@ public:
   getSysfsPath(const std::string& subdev, const std::string& entry)
   {
     return m_hal->getSysfsPath(subdev, entry);
+  }
+
+  hal::operations_result<std::string>
+  getSubdevPath(const std::string& subdev, uint32_t idx)
+  {
+    return m_hal->getSubdevPath(subdev, idx);
   }
 
   hal::operations_result<std::string>

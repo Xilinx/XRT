@@ -98,18 +98,6 @@
 #define XOCL_P2P_CHUNK_SHIFT		28
 #define XOCL_P2P_CHUNK_SIZE		(1ULL << XOCL_P2P_CHUNK_SHIFT)
 
-enum {
-	XOCL_WORK_RESET,
-	XOCL_WORK_PROGRAM_SHELL,
-	XOCL_WORK_REFRESH_SUBDEV,
-	XOCL_WORK_NUM,
-};
-
-struct xocl_work {
-	struct delayed_work	work;
-	int			op;
-};
-
 struct xocl_p2p_mem_chunk {
 	struct xocl_dev		*xpmc_xdev;
 	void			*xpmc_res_grp;
@@ -124,6 +112,10 @@ struct xocl_p2p_mem_chunk {
 #ifdef	P2P_API_V2
 	struct dev_pagemap	xpmc_pgmap;
 #endif
+};
+
+enum {
+	XOCL_FLAGS_SYSFS_INITIALIZED = (1 << 0)
 };
 
 struct xocl_dev	{
@@ -162,6 +154,8 @@ struct xocl_dev	{
 
 	uint64_t		mig_cache_expire_secs;
 	ktime_t			mig_cache_expires;
+
+	u32			flags;
 };
 
 /**
@@ -213,13 +207,21 @@ int xocl_hot_reset_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 int xocl_reclock_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
+int xocl_alloc_cma_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
+int xocl_free_cma_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
 
 /* sysfs functions */
-int xocl_init_sysfs(struct device *dev);
-void xocl_fini_sysfs(struct device *dev);
+int xocl_init_sysfs(struct xocl_dev *xdev);
+void xocl_fini_sysfs(struct xocl_dev *xdev);
 
 /* helper functions */
-int xocl_hot_reset(struct xocl_dev *xdev, bool force);
+enum {
+	XOCL_RESET_FORCE = 1,
+	XOCL_RESET_SHUTDOWN = 2,
+};
+int xocl_hot_reset(struct xocl_dev *xdev, u32 flag);
 void xocl_p2p_fini(struct xocl_dev *xdev, bool recov_bar_sz);
 int xocl_p2p_init(struct xocl_dev *xdev);
 int xocl_p2p_reserve_release_range(struct xocl_dev *xdev,
@@ -232,37 +234,6 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare);
 void user_pci_reset_prepare(struct pci_dev *pdev);
 void user_pci_reset_done(struct pci_dev *pdev);
 #endif
-
-static inline int xocl_queue_work(struct xocl_dev *xdev, int op, int delay)
-{
-	int ret = 0;
-
-	mutex_lock(&xdev->wq_lock);
-	if (xdev->wq)
-		ret = queue_delayed_work(xdev->wq, &xdev->works[op].work,
-			msecs_to_jiffies(delay));
-	mutex_unlock(&xdev->wq_lock);
-
-	return ret;
-}
-
-static inline void xocl_queue_destroy(struct xocl_dev *xdev)
-{
-	int i;
-
-	mutex_lock(&xdev->wq_lock);
-	if (xdev->wq) {
-		for (i = 0; i < XOCL_WORK_NUM; i++) {
-			cancel_delayed_work_sync(&xdev->works[i].work);
-			flush_delayed_work(&xdev->works[i].work);
-		}
-		flush_workqueue(xdev->wq);
-		destroy_workqueue(xdev->wq);
-		xdev->wq = NULL;
-	}
-	mutex_unlock(&xdev->wq_lock);
-}
-
 
 int xocl_refresh_subdevs(struct xocl_dev *xdev);
 

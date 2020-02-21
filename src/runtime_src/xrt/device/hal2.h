@@ -219,6 +219,9 @@ public:
     return m_handle;
   }
 
+  virtual std::string
+  get_bdf() const;
+
   virtual void
   acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared);
 
@@ -581,15 +584,6 @@ public:
   }
 
   virtual hal::operations_result<void>
-  writeHostEvent(xclPerfMonEventType type, xclPerfMonEventID id)
-  {
-    if (!m_ops->mWriteHostEvent)
-      return hal::operations_result<void>();
-    m_ops->mWriteHostEvent(m_handle,type,id);
-    return hal::operations_result<void>(0);
-  }
-
-  virtual hal::operations_result<void>
   configureDataflow(xclPerfMonType type, unsigned *ip_config)
   {
     if (!m_ops->mConfigureDataflow)
@@ -656,6 +650,21 @@ public:
     path_buf[max_path - 1] = '\0';
     std::string sysfs_path = std::string(path_buf);
     return sysfs_path;
+  }
+
+  virtual hal::operations_result<std::string>
+  getSubdevPath(const std::string& subdev, uint32_t idx)
+  {
+    if (!m_ops->mGetSubdevPath)
+      return hal::operations_result<std::string>();
+    constexpr size_t max_path = 256;
+    char path_buf[max_path];
+    if (m_ops->mGetSubdevPath(m_handle, subdev.c_str(), idx, path_buf, max_path)) {
+      return hal::operations_result<std::string>();
+    }
+    path_buf[max_path - 1] = '\0';
+    std::string path = std::string(path_buf);
+    return path;
   }
 
   virtual hal::operations_result<std::string>

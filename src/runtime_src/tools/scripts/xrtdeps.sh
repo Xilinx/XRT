@@ -89,6 +89,7 @@ RH_LIST=(\
      zlib-static \
      curl-devel \
      openssl-devel \
+     libudev-devel \
 )
 
 UB_LIST=(\
@@ -138,6 +139,8 @@ UB_LIST=(\
      uuid-dev \
      libcurl4-openssl-dev \
      libssl-dev \
+     libudev-dev \
+     libsystemd-dev \
 )
 
 if [[ $docker == 0 ]]; then
@@ -213,7 +216,7 @@ install()
     if [ $FLAVOR == "rhel" ]; then
         echo "Enabling RHEL SCL repository..."
         ${SUDO} yum-config-manager --enable rhel-server-rhscl-7-rpms
-    elif [ $FLAVOR == "centos" ]; then
+    elif [ $FLAVOR == "centos" ] && [ $docker == 0 ] ; then
         echo "Enabling CentOS SCL repository..."
         ${SUDO} yum --enablerepo=extras install -y centos-release-scl
     fi

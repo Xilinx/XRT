@@ -23,6 +23,7 @@
 
 #include "xocl_profile.h"
 #include "xocl/api/plugin/xdp/profile.h"
+#include "xdp/config.h"
 
 #include <map>
 #include <sstream>
@@ -32,4 +33,9 @@
 namespace xdp {
 void register_xocl_profile_callbacks();
 }
+
+extern "C" {
+XDP_EXPORT void initXDPLib();
+}
+
 #endif

@@ -57,6 +57,7 @@ public:
   virtual void unmap(uint32_t xdpBoHandle);
   virtual void sync(uint32_t xdpBoHandle, size_t sz, size_t offset, direction dir, bool async=false);
   virtual uint64_t getDeviceAddr(uint32_t xdpBoHandle);
+  virtual void* getRawDevice() { return mXrtDevice ; } 
 };
 }
 

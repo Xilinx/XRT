@@ -145,10 +145,10 @@ get_data_transfer_trace()
   return value;
 }
 
-inline std::string
+inline bool
 get_power_profile()
 {
-  static std::string value = (!get_profile()) ? "off" : detail::get_string_value("Debug.power_profile","off");
+  static bool value = get_profile() && detail::get_bool_value("Debug.power_profile",false);
   return value;
 }
 
@@ -191,6 +191,13 @@ inline bool
 get_profile_api()
 {
   static bool value = detail::get_bool_value("Debug.profile_api", false);
+  return value;
+}
+
+inline bool
+get_hal_profile()
+{
+  static bool value = detail::get_bool_value("Debug.hal_profile", false);
   return value;
 }
 
@@ -404,6 +411,16 @@ inline std::string
 get_kernel_channel_info()
 {
   static std::string value = detail::get_string_value("Runtime.kernel_channels","");
+  return value;
+}
+
+/**
+ * Direct OpenCL kernel execution to acquire exclusive context on CU
+ */
+inline bool
+get_exclusive_cu_context()
+{
+  static bool value = detail::get_bool_value("Runtime.exclusive_cu_context", false);
   return value;
 }
 

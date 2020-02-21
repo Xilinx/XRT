@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2019 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  * Author(s): Hem C. Neema
  *          : Min Ma
  * ZNYQ HAL Driver layered on top of ZYNQ kernel driver
@@ -35,9 +35,6 @@
 
 namespace ZYNQ {
 
-// Forward declaration
-class ZYNQShimProfiling ;
-
 class ZYNQShim {
 
   static const int BUFFER_ALIGNMENT = 0x80; // TODO: UKP
@@ -45,9 +42,6 @@ public:
   ~ZYNQShim();
   ZYNQShim(unsigned index, const char *logfileName,
            xclVerbosityLevel verbosity);
-
-  // The entry of profiling functions
-  std::unique_ptr<ZYNQShimProfiling> profiling;
 
   int mapKernelControl(const std::vector<std::pair<uint64_t, size_t>>& offsets);
   void *getVirtAddressOfApture(xclAddressSpace space, const uint64_t phy_addr, uint64_t& offset);
@@ -58,8 +52,8 @@ public:
   size_t xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf,
                  size_t size);
   // Restricted read/write on IP register space
-  int xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data);
-  int xclRegRead(uint32_t cu_index, uint32_t offset, uint32_t *datap);
+  int xclRegWrite(uint32_t ipIndex, uint32_t offset, uint32_t data);
+  int xclRegRead(uint32_t ipIndex, uint32_t offset, uint32_t *datap);
 
   unsigned int xclAllocBO(size_t size, int unused, unsigned flags);
   unsigned int xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags);
@@ -84,6 +78,8 @@ public:
   int xclSKCreate(unsigned int boHandle, uint32_t cu_idx);
   int xclSKReport(uint32_t cu_idx, xrt_scu_state state);
 
+  double xclGetDeviceClockFreqMHz();
+
   uint xclGetNumLiveProcesses();
 
   std::string xclGetSysfsPath(const std::string& entry);
@@ -103,9 +99,12 @@ public:
 
   int xclGetDeviceInfo2(xclDeviceInfo2 *info);
 
+  int xclOpenIPInterruptNotify(uint32_t ipIndex, unsigned int flags);
+  int xclCloseIPInterruptNotify(int fd);
+
   bool isGood() const;
   static ZYNQShim *handleCheck(void *handle);
-  int xclCuName2Index(const char *name, uint32_t& index);
+  int xclIPName2Index(const char *name, uint32_t& index);
   static int xclLogMsg(xrtLogMsgLevel level, const char* tag,
 		       const char* format, va_list args);
   

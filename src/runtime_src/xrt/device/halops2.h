@@ -113,8 +113,6 @@ private:
   typedef uint32_t (* countTraceFuncType)(xclDeviceHandle handle, xclPerfMonType type);
   typedef size_t (* readTraceFuncType)(xclDeviceHandle handle, xclPerfMonType type,
                                        xclTraceResultsVector& traceVector);
-  typedef void (* writeHostEventFuncType)(xclDeviceHandle handle, xclPerfMonEventType type,
-                                          xclPerfMonEventID id);
   typedef size_t (* debugReadIPStatusFuncType)(xclDeviceHandle handle, xclDebugReadType type,
                                                void* debugResults);
 
@@ -137,6 +135,7 @@ private:
   //APIs using sysfs
   typedef uint32_t(*xclGetNumLiveProcessesFuncType)(xclDeviceHandle handle);
   typedef int     (*xclGetSysfsPathFuncType)(xclDeviceHandle handle, const char* subdev, const char* entry, char* sysfsPath, size_t size);
+  typedef int     (*xclGetSubdevPathFuncType)(xclDeviceHandle handle, const char* subdev, uint32_t idx, char* path, size_t size);
 
   typedef int     (*xclGetDebugIPlayoutPathFuncType)(xclDeviceHandle handle, char* layoutPath, size_t size);
 
@@ -199,7 +198,6 @@ public:
   stopTraceFuncType mStopTrace;
   countTraceFuncType mCountTrace;
   readTraceFuncType mReadTrace;
-  writeHostEventFuncType mWriteHostEvent;
   debugReadIPStatusFuncType mDebugReadIPStatus;
 //Streaming
   createWriteQueueFuncType mCreateWriteQueue;
@@ -215,6 +213,7 @@ public:
   // APIs using sysfs
   xclGetNumLiveProcessesFuncType mGetNumLiveProcesses;
   xclGetSysfsPathFuncType mGetSysfsPath;
+  xclGetSubdevPathFuncType mGetSubdevPath;
 
   xclGetDebugIPlayoutPathFuncType mGetDebugIPlayoutPath;
   xclGetTraceBufferInfoFuncType mGetTraceBufferInfo;

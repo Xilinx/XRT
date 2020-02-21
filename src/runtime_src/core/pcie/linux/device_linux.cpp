@@ -16,168 +16,260 @@
 
 
 #include "device_linux.h"
+#include "core/common/query_requests.h"
+
 #include "common/utils.h"
 #include "xrt.h"
 #include "scan.h"
 #include <string>
 #include <iostream>
 #include <map>
-#include "boost/format.hpp"
+#include <functional>
+#include <boost/format.hpp>
+
+namespace {
+
+namespace query = xrt_core::query;
+using pdev = std::shared_ptr<pcidev::pci_device>;
+using key_type = query::key_type;
+
+inline pdev
+get_pcidev(const xrt_core::device* device)
+{
+  return pcidev::get_dev(device->get_device_id(), device->is_userpf());
+}
+
+struct bdf
+{
+  using result_type = query::pcie_bdf::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    auto pdev = get_pcidev(device);
+    return std::make_tuple(pdev->bus,pdev->dev,pdev->func);
+  }
+};
+
+
+// Specialize for other value types.
+template <typename ValueType>
+struct sysfs_fcn
+{
+  static ValueType
+  get(const pdev& dev, const char* subdev, const char* entry)
+  {
+    std::string err;
+    ValueType value;
+    dev->sysfs_get(subdev, entry, err, value, static_cast<ValueType>(-1));
+    if (!err.empty())
+      throw std::runtime_error(err);
+    return value;
+  }
+};
+
+template <>
+struct sysfs_fcn<std::string>
+{
+  using ValueType = std::string;
+
+  static ValueType
+  get(const pdev& dev, const char* subdev, const char* entry)
+  {
+    std::string err;
+    ValueType value;
+    dev->sysfs_get(subdev, entry, err, value);
+    if (!err.empty())
+      throw std::runtime_error(err);
+    return value;
+  }
+};
+
+template <typename VectorValueType>
+struct sysfs_fcn<std::vector<VectorValueType>>
+{
+  //using ValueType = std::vector<std::string>;
+  using ValueType = std::vector<VectorValueType>;
+
+  static ValueType
+  get(const pdev& dev, const char* subdev, const char* entry)
+  {
+    std::string err;
+    ValueType value;
+    dev->sysfs_get(subdev, entry, err, value);
+    if (!err.empty())
+      throw std::runtime_error(err);
+    return value;
+  }
+};
+
+template <typename QueryRequestType>
+struct sysfs_getter : QueryRequestType
+{
+  const char* entry;
+  const char* subdev;
+
+  sysfs_getter(const char* e, const char* s)
+    : entry(e), subdev(s)
+  {}
+
+  boost::any
+  get(const xrt_core::device* device) const
+  {
+    return sysfs_fcn<typename QueryRequestType::result_type>
+      ::get(get_pcidev(device), entry, subdev);
+  }
+};
+
+template <typename QueryRequestType, typename Getter>
+struct function0_getter : QueryRequestType
+{
+  boost::any
+  get(const xrt_core::device* device) const
+  {
+    auto k = QueryRequestType::key;
+    return Getter::get(device, k);
+  }
+};
+
+static std::map<xrt_core::query::key_type, std::unique_ptr<query::request>> query_tbl;
+
+template <typename QueryRequestType>
+static void
+emplace_sysfs_request(const char* entry, const char* subdev)
+{
+  auto x = QueryRequestType::key;
+  query_tbl.emplace(x, std::make_unique<sysfs_getter<QueryRequestType>>(entry, subdev));
+}
+
+template <typename QueryRequestType, typename Getter>
+static void
+emplace_func0_request()
+{
+  auto k = QueryRequestType::key;
+  query_tbl.emplace(k, std::make_unique<function0_getter<QueryRequestType, Getter>>());
+}
+
+static void
+initialize_query_table()
+{
+  emplace_sysfs_request<query::pcie_vendor>               ("", "vendor");
+  emplace_sysfs_request<query::pcie_device>               ("", "device");
+  emplace_sysfs_request<query::pcie_subsystem_vendor>     ("", "subsystem_vendor");
+  emplace_sysfs_request<query::pcie_subsystem_id>         ("", "subsystem_device");
+  emplace_sysfs_request<query::pcie_link_speed>           ("", "link_speed");
+  emplace_sysfs_request<query::pcie_express_lane_width>   ("", "link_width");
+  emplace_sysfs_request<query::dma_threads_raw>           ("dma", "channel_stat_raw");
+  emplace_sysfs_request<query::rom_vbnv>                  ("rom", "VBNV");
+  emplace_sysfs_request<query::rom_ddr_bank_size>         ("rom", "ddr_bank_size");
+  emplace_sysfs_request<query::rom_ddr_bank_count_max>    ("rom", "ddr_bank_count_max");
+  emplace_sysfs_request<query::rom_fpga_name>             ("rom", "FPGA");
+  emplace_sysfs_request<query::rom_raw>                   ("rom", "raw");
+  emplace_sysfs_request<query::rom_uuid>                  ("rom", "uuid");
+  emplace_sysfs_request<query::rom_time_since_epoch>      ("rom", "timestamp");
+  emplace_sysfs_request<query::mem_topology_raw>          ("icap", "mem_topology");
+  emplace_sysfs_request<query::ip_layout_raw>             ("icap", "ip_layout");
+  emplace_sysfs_request<query::clock_freqs>               ("icap", "clock_freqs");
+  emplace_sysfs_request<query::idcode>                    ("icap", "idcode");
+  emplace_sysfs_request<query::status_mig_calibrated>     ("", "mig_calibration");
+  emplace_sysfs_request<query::xmc_version>               ("xmc", "version");
+  emplace_sysfs_request<query::xmc_serial_num>            ("xmc", "serial_num");
+  emplace_sysfs_request<query::xmc_max_power>             ("xmc", "max_power");
+  emplace_sysfs_request<query::xmc_bmc_version>           ("xmc", "bmc_ver");
+  emplace_sysfs_request<query::xmc_status>                ("xmc", "status");
+  emplace_sysfs_request<query::xmc_reg_base>              ("xmc", "reg_base");
+  emplace_sysfs_request<query::dna_serial_num>            ("dna", "dna");
+  emplace_sysfs_request<query::status_p2p_enabled>        ("", "p2p_enable");
+  emplace_sysfs_request<query::temp_card_top_front>       ("xmc", "xmc_se98_temp0");
+  emplace_sysfs_request<query::temp_card_top_rear>        ("xmc", "xmc_se98_temp1");
+  emplace_sysfs_request<query::temp_card_bottom_front>    ("xmc", "xmc_se98_temp2");
+  emplace_sysfs_request<query::temp_fpga>                 ("xmc", "xmc_fpga_temp");
+  emplace_sysfs_request<query::fan_trigger_critical_temp> ("xmc", "xmc_fan_temp");
+  emplace_sysfs_request<query::fan_fan_presence>          ("xmc", "fan_presence");
+  emplace_sysfs_request<query::fan_speed_rpm>             ("xmc", "xmc_fan_rpm");
+  emplace_sysfs_request<query::ddr_temp_0>                ("xmc", "xmc_ddr_temp0");
+  emplace_sysfs_request<query::ddr_temp_1>                ("xmc", "xmc_ddr_temp1");
+  emplace_sysfs_request<query::ddr_temp_2>                ("xmc", "xmc_ddr_temp2");
+  emplace_sysfs_request<query::ddr_temp_3>                ("xmc", "xmc_ddr_temp3");
+  emplace_sysfs_request<query::hbm_temp>                  ("xmc", "xmc_hbm_temp");
+  emplace_sysfs_request<query::cage_temp_0>               ("xmc", "xmc_cage_temp0");
+  emplace_sysfs_request<query::cage_temp_1>               ("xmc", "xmc_cage_temp1");
+  emplace_sysfs_request<query::cage_temp_2>               ("xmc", "xmc_cage_temp2");
+  emplace_sysfs_request<query::cage_temp_3>               ("xmc", "xmc_cage_temp3");
+  emplace_sysfs_request<query::v12v_pex_millivolts>       ("xmc", "xmc_12v_pex_vol");
+  emplace_sysfs_request<query::v12v_pex_milliamps>        ("xmc", "xmc_12v_pex_curr");
+  emplace_sysfs_request<query::v12v_aux_millivolts>       ("xmc", "xmc_12v_aux_vol");
+  emplace_sysfs_request<query::v12v_aux_milliamps>        ("xmc", "xmc_12v_aux_curr");
+  emplace_sysfs_request<query::v3v3_pex_millivolts>       ("xmc", "xmc_3v3_pex_vol");
+  emplace_sysfs_request<query::v3v3_aux_millivolts>       ("xmc", "xmc_3v3_aux_vol");
+  emplace_sysfs_request<query::ddr_vpp_bottom_millivolts> ("xmc", "xmc_ddr_vpp_btm");
+  emplace_sysfs_request<query::ddr_vpp_top_millivolts>    ("xmc", "xmc_ddr_vpp_top");
+
+  emplace_sysfs_request<query::v5v5_system_millivolts>    ("xmc", "xmc_sys_5v5");
+  emplace_sysfs_request<query::v1v2_vcc_top_millivolts>   ("xmc", "xmc_1v2_top");
+  emplace_sysfs_request<query::v1v2_vcc_bottom_millivolts>("xmc", "xmc_vcc1v2_btm");
+  emplace_sysfs_request<query::v1v8_millivolts>           ("xmc", "xmc_1v8");
+  emplace_sysfs_request<query::v0v85_millivolts>          ("xmc", "xmc_0v85");
+  emplace_sysfs_request<query::v0v9_vcc_millivolts>       ("xmc", "xmc_mgt0v9avcc");
+  emplace_sysfs_request<query::v12v_sw_millivolts>        ("xmc", "xmc_12v_sw");
+  emplace_sysfs_request<query::mgt_vtt_millivolts>        ("xmc", "xmc_mgtavtt");
+  emplace_sysfs_request<query::int_vcc_millivolts>        ("xmc", "xmc_vccint_vol");
+  emplace_sysfs_request<query::int_vcc_milliamps>         ("xmc", "xmc_vccint_curr");
+
+  emplace_sysfs_request<query::v3v3_pex_milliamps>        ("xmc", "xmc_3v3_pex_curr");
+  emplace_sysfs_request<query::v0v85_milliamps>           ("xmc", "xmc_0v85_curr");
+  emplace_sysfs_request<query::v3v3_vcc_millivolts>       ("xmc", "xmc_3v3_vcc_vol");
+  emplace_sysfs_request<query::hbm_1v2_millivolts>        ("xmc", "xmc_hbm_1v2_vol");
+  emplace_sysfs_request<query::v2v5_vpp_millivolts>       ("xmc", "xmc_vpp2v5_vol");
+  emplace_sysfs_request<query::int_bram_vcc_millivolts>   ("xmc", "xmc_vccint_bram_vol");
+
+  emplace_sysfs_request<query::firewall_detect_level>     ("firewall", "detected_level");
+  emplace_sysfs_request<query::firewall_status>           ("firewall", "detected_status");
+  emplace_sysfs_request<query::firewall_time_sec>         ("firewall", "detected_time");
+
+  emplace_sysfs_request<query::power_microwatts>          ("xmc", "xmc_power");
+
+  //emplace_sysfs_request<query::mig_ecc_enabled,         sp::_4, "ecc_enabled");
+  //emplace_sysfs_request<query::mig_ecc_status,          sp::_4, "ecc_status");
+  //emplace_sysfs_request<query::mig_ecc_ce_cnt,          sp::_4, "ecc_ce_cnt");
+  //emplace_sysfs_request<query::mig_ecc_ue_cnt,          sp::_4, "ecc_ue_cnt");
+  //emplace_sysfs_request<query::mig_ecc_ce_ffa,          sp::_4, "ecc_ce_ffa");
+  //emplace_sysfs_request<query::mig_ecc_ue_ffa,          sp::_4, "ecc_ue_ffa");
+
+  emplace_sysfs_request<query::flash_bar_offset>          ("flash", "bar_off");
+  emplace_sysfs_request<query::is_mfg>                    ("", "mfg");
+  emplace_sysfs_request<query::f_flash_type>              ("flash", "flash_type");
+  emplace_sysfs_request<query::flash_type>                ("", "flash_type");
+  emplace_sysfs_request<query::board_name>                ("", "board_name");
+  emplace_func0_request<query::pcie_bdf,                  bdf>();
+}
+
+struct X { X() { initialize_query_table(); }};
+static X x;
+
+}
 
 namespace xrt_core {
 
-const device_linux::SysDevEntry&
-device_linux::get_sysdev_entry(QueryRequest qr) const
-{
-  // Initialize our lookup table
-  static const std::map<QueryRequest, SysDevEntry> QueryRequestToSysDevTable =
-  {
-    { QR_PCIE_VENDOR,               {"",     "vendor"}},
-    { QR_PCIE_DEVICE,               {"",     "device"}},
-    { QR_PCIE_SUBSYSTEM_VENDOR,     {"",     "subsystem_vendor"}},
-    { QR_PCIE_SUBSYSTEM_ID,         {"",     "subsystem_device"}},
-    { QR_PCIE_LINK_SPEED,           {"",     "link_speed"}},
-    { QR_PCIE_EXPRESS_LANE_WIDTH,   {"",     "link_width"}},
-    { QR_DMA_THREADS_RAW,           {"dma",  "channel_stat_raw"}},
-    { QR_ROM_VBNV,                  {"rom",  "VBNV"}},
-    { QR_ROM_DDR_BANK_SIZE,         {"rom",  "ddr_bank_size"}},
-    { QR_ROM_DDR_BANK_COUNT_MAX,    {"rom",  "ddr_bank_count_max"}},
-    { QR_ROM_FPGA_NAME,             {"rom",  "FPGA"}},
-    { QR_ROM_RAW,                   {"rom", "raw"}},
-    { QR_ROM_UUID,                  {"rom", "uuid"}},
-    { QR_XMC_VERSION,               {"xmc",  "version"}},
-    { QR_XMC_SERIAL_NUM,            {"xmc",  "serial_num"}},
-    { QR_XMC_MAX_POWER,             {"xmc",  "max_power"}},
-    { QR_XMC_BMC_VERSION,           {"xmc",  "bmc_ver"}},
-    { QR_XMC_STATUS,                {"xmc", "status"}},
-    { QR_XMC_REG_BASE,              {"xmc", "reg_base"}},
-    { QR_DNA_SERIAL_NUM,            {"dna",  "dna"}},
-    { QR_CLOCK_FREQS,               {"icap", "clock_freqs"}},
-    { QR_IDCODE,                    {"icap", "idcode"}},
-    { QR_STATUS_MIG_CALIBRATED,     {"",     "mig_calibration"}},
-    { QR_STATUS_P2P_ENABLED,        {"",     "p2p_enable"}},
-    { QR_TEMP_CARD_TOP_FRONT,       {"xmc",  "xmc_se98_temp0"}},
-    { QR_TEMP_CARD_TOP_REAR,        {"xmc",  "xmc_se98_temp1"}},
-    { QR_TEMP_CARD_BOTTOM_FRONT,    {"xmc",  "xmc_se98_temp2"}},
-    { QR_TEMP_FPGA,                 {"xmc",  "xmc_fpga_temp"}},
-    { QR_FAN_TRIGGER_CRITICAL_TEMP, {"xmc",  "xmc_fan_temp"}},
-    { QR_FAN_FAN_PRESENCE,          {"xmc",  "fan_presence"}},
-    { QR_FAN_SPEED_RPM,             {"xmc",  "xmc_fan_rpm"}},
-    { QR_CAGE_TEMP_0,               {"xmc",  "xmc_cage_temp0"}},
-    { QR_CAGE_TEMP_1,               {"xmc",  "xmc_cage_temp1"}},
-    { QR_CAGE_TEMP_2,               {"xmc",  "xmc_cage_temp2"}},
-    { QR_CAGE_TEMP_3,               {"xmc",  "xmc_cage_temp3"}},
-    { QR_12V_PEX_MILLIVOLTS,        {"xmc",  "xmc_12v_pex_vol"}},
-    { QR_12V_PEX_MILLIAMPS,         {"xmc",  "xmc_12v_pex_curr"}},
-    { QR_12V_AUX_MILLIVOLTS,        {"xmc",  "xmc_12v_aux_vol"}},
-    { QR_12V_AUX_MILLIAMPS,         {"xmc",  "xmc_12v_aux_curr"}},
-    { QR_3V3_PEX_MILLIVOLTS,        {"xmc",  "xmc_3v3_pex_vol"}},
-    { QR_3V3_AUX_MILLIVOLTS,        {"xmc",  "xmc_3v3_aux_vol"}},
-    { QR_DDR_VPP_BOTTOM_MILLIVOLTS, {"xmc",  "xmc_ddr_vpp_btm"}},
-    { QR_DDR_VPP_TOP_MILLIVOLTS,    {"xmc",  "xmc_ddr_vpp_top"}},
-
-    { QR_5V5_SYSTEM_MILLIVOLTS,     {"xmc",  "xmc_sys_5v5"}},
-    { QR_1V2_VCC_TOP_MILLIVOLTS,    {"xmc",  "xmc_1v2_top"}},
-    { QR_1V2_VCC_BOTTOM_MILLIVOLTS, {"xmc",  "xmc_vcc1v2_btm"}},
-    { QR_1V8_MILLIVOLTS,            {"xmc",  "xmc_1v8"}},
-    { QR_0V85_MILLIVOLTS,           {"xmc",  "xmc_0v85"}},
-    { QR_0V9_VCC_MILLIVOLTS,        {"xmc",  "xmc_mgt0v9avcc"}},
-    { QR_12V_SW_MILLIVOLTS,         {"xmc",  "xmc_12v_sw"}},
-    { QR_MGT_VTT_MILLIVOLTS,        {"xmc",  "xmc_mgtavtt"}},
-    { QR_INT_VCC_MILLIVOLTS,        {"xmc",  "xmc_vccint_vol"}},
-    { QR_INT_VCC_MILLIAMPS,         {"xmc",  "xmc_vccint_curr"}},
-
-    { QR_3V3_PEX_MILLIAMPS,         {"xmc",  "xmc_3v3_pex_curr"}},
-    { QR_0V85_MILLIAMPS,            {"xmc",  "xmc_0v85_curr"}},
-    { QR_3V3_VCC_MILLIVOLTS,        {"xmc",  "xmc_3v3_vcc_vol"}},
-    { QR_HBM_1V2_MILLIVOLTS,        {"xmc",  "xmc_hbm_1v2_vol"}},
-    { QR_2V5_VPP_MILLIVOLTS,        {"xmc",  "xmc_vpp2v5_vol"}},
-    { QR_INT_BRAM_VCC_MILLIVOLTS,   {"xmc",  "xmc_vccint_bram_vol"}},
-
-    { QR_FIREWALL_DETECT_LEVEL,     {"firewall", "detected_level"}},
-    { QR_FIREWALL_STATUS,           {"firewall", "detected_status"}},
-    { QR_FIREWALL_TIME_SEC,         {"firewall", "detected_time"}},
-
-    { QR_POWER_MICROWATTS,          {"xmc", "xmc_power"}},
-
-    { QR_FLASH_BAR_OFFSET,          {"flash", "bar_off"}},
-    { QR_IS_MFG,                    {"", "mfg"}},
-    { QR_F_FLASH_TYPE,              {"flash", "flash_type" }},
-    { QR_FLASH_TYPE,                {"", "flash_type" }}
-  };
-  // Find the translation entry
-  auto it = QueryRequestToSysDevTable.find(qr);
-
-  if (it == QueryRequestToSysDevTable.end()) {
-    std::string errMsg = boost::str( boost::format("The given query request ID (%d) is not supported.") % qr);
-    throw no_such_query(qr, errMsg);
-  }
-
-  return it->second;
-}
-
-void
+const query::request&
 device_linux::
-query(QueryRequest qr, const std::type_info& tinfo, boost::any& value) const
+lookup_query(query::key_type query_key) const
 {
-  // Initialize return data to being empty container.
-  // Note: CentOS Boost 1.53 doesn't support the clear() method.
-  boost::any anyEmpty;
-  value.swap(anyEmpty);
+  auto it = query_tbl.find(query_key);
 
-  auto device_id = get_device_id();
-
-  // Get the sysdev and entry values to call
-  auto& entry = get_sysdev_entry(qr);
-
-  std::string errmsg;
-
-  if (tinfo == typeid(std::string)) {
-    // -- Typeid: std::string --
-    value = std::string("");
-    auto p_str = boost::any_cast<std::string>(&value);
-    pcidev::get_dev(device_id)->sysfs_get(entry.sSubDevice, entry.sEntry, errmsg, *p_str);
-
-  }
-  else if (tinfo == typeid(uint64_t)) {
-    // -- Typeid: uint64_t --
-    value = (uint64_t) -1;
-    std::vector<uint64_t> uint64Vector;
-    pcidev::get_dev(device_id)->sysfs_get(entry.sSubDevice, entry.sEntry, errmsg, uint64Vector);
-    if (!uint64Vector.empty()) {
-      value = uint64Vector[0];
-    }
-
-  }
-  else if (tinfo == typeid(bool)) {
-    // -- Typeid: bool --
-    value = (bool) 0;
-    std::vector<uint64_t> uint64Vector;
-    pcidev::get_dev(device_id)->sysfs_get(entry.sSubDevice, entry.sEntry, errmsg, uint64Vector);
-    if (!uint64Vector.empty()) {
-      value = (bool) uint64Vector[0];
-    }
-
-  }
-  else if (tinfo == typeid(std::vector<std::string>)) {
-    // -- Typeid: std::vector<std::string>
-    value = std::vector<std::string>();
-    auto p_strvec = boost::any_cast<std::vector<std::string>>(&value);
-    pcidev::get_dev(device_id)->sysfs_get(entry.sSubDevice, entry.sEntry, errmsg, *p_strvec);
-
-  }
-  else {
-    errmsg = boost::str( boost::format("Error: Unsupported query_device return type: '%s'") % tinfo.name());
+  if (it == query_tbl.end()) {
+    using qtype = std::underlying_type<query::key_type>::type;
+    std::string err = boost::str( boost::format("The given query request ID (%d) is not supported on Linux.")
+                                  % static_cast<qtype>(query_key));
+    throw std::runtime_error(err);
   }
 
-  if (!errmsg.empty()) {
-    throw std::runtime_error(errmsg);
-  }
+  return *(it->second);
 }
 
 device_linux::
 device_linux(id_type device_id, bool user)
-  : device_pcie(device_id, user)
+  : shim<device_pcie>(device_id, user)
 {
 }
 
@@ -208,7 +300,7 @@ void
 device_linux::
 read(uint64_t offset, void* buf, uint64_t len) const
 {
-  if (auto err = pcidev::get_dev(get_device_id())->pcieBarRead(offset, buf, len))
+  if (auto err = pcidev::get_dev(get_device_id(), false)->pcieBarRead(offset, buf, len))
     throw error(err, "read failed");
 }
 
@@ -216,8 +308,22 @@ void
 device_linux::
 write(uint64_t offset, const void* buf, uint64_t len) const
 {
-  if (auto err = pcidev::get_dev(get_device_id())->pcieBarWrite(offset, buf, len))
+  if (auto err = pcidev::get_dev(get_device_id(), false)->pcieBarWrite(offset, buf, len))
     throw error(err, "write failed");
+}
+
+int 
+device_linux::
+open(const std::string& subdev, int flag) const
+{
+  return pcidev::get_dev(get_device_id(), false)->open(subdev, flag);
+}
+
+void
+device_linux::
+close(int dev_handle) const 
+{
+  pcidev::get_dev(get_device_id(), false)->close(dev_handle);
 }
 
 } // xrt_core

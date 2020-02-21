@@ -22,6 +22,8 @@
 #include <string>
 #include <iostream>
 
+#include "xdp/config.h"
+
 namespace xdp {
 
   class WriterI {
@@ -30,13 +32,13 @@ namespace xdp {
       WriterI() {};
       ~WriterI() {};
 
-      static const char * getToolVersion() { return "2019.2"; }
+      XDP_EXPORT static const char * getToolVersion() { return "2019.2"; }
 
-      static std::string getXRTVersion();
+      XDP_EXPORT static std::string getXRTVersion();
 
-      static std::string getCurrentDateTime();
-      static std::string getCurrentTimeMsec();
-      static std::string getCurrentExecutableName();
+      XDP_EXPORT static std::string getCurrentDateTime();
+      XDP_EXPORT static std::string getCurrentTimeMsec();
+      XDP_EXPORT static std::string getCurrentExecutableName();
   };
 
 } // xdp

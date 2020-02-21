@@ -269,8 +269,31 @@ static ssize_t dev_offline_show(struct device *dev,
 
 	return sprintf(buf, "%d\n", val);
 }
-
 static DEVICE_ATTR(dev_offline, 0444, dev_offline_show, NULL);
+
+static ssize_t shutdown_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d\n", XDEV(xdev)->shutdown);
+}
+
+static ssize_t shutdown_store(struct device *dev,
+		struct device_attribute *da, const char *buf, size_t count)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	u32 val;
+
+
+	if (kstrtou32(buf, 10, &val) == -EINVAL || val != 1)
+		return -EINVAL;
+
+	xocl_queue_work(xdev, XOCL_WORK_SHUTDOWN, 0);
+
+	return count;
+}
+static DEVICE_ATTR(shutdown, 0644, shutdown_show, shutdown_store);
 
 static ssize_t mig_calibration_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -500,6 +523,7 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_user_pf.attr,
 	&dev_attr_p2p_enable.attr,
 	&dev_attr_dev_offline.attr,
+	&dev_attr_shutdown.attr,
 	&dev_attr_mig_calibration.attr,
 	&dev_attr_link_width.attr,
 	&dev_attr_link_speed.attr,
@@ -565,25 +589,46 @@ static struct attribute_group xocl_attr_group = {
 	.bin_attrs = xocl_bin_attrs,
 };
 
-int xocl_init_sysfs(struct device *dev)
+int xocl_init_sysfs(struct xocl_dev *xdev)
 {
 	int ret;
 	struct pci_dev *rdev;
+	struct device *dev = &xdev->core.pdev->dev;
 
+	if (xdev->flags & XOCL_FLAGS_SYSFS_INITIALIZED) {
+		xocl_info(dev, "Sysfs noded already created");
+		return 0;
+	}
+
+	xocl_info(dev, "Creating sysfs");
 	ret = sysfs_create_group(&dev->kobj, &xocl_attr_group);
 	if (ret)
 		xocl_err(dev, "create xocl attrs failed: %d", ret);
 
 	xocl_get_root_dev(to_pci_dev(dev), rdev);
 	ret = sysfs_create_link(&dev->kobj, &rdev->dev.kobj, "root_dev");
-	if (ret)
+	if (ret) {
 		xocl_err(dev, "create root device link failed: %d", ret);
+		sysfs_remove_group(&dev->kobj, &xocl_attr_group);
+	}
+
+	xdev->flags |= XOCL_FLAGS_SYSFS_INITIALIZED;
 
 	return ret;
 }
 
-void xocl_fini_sysfs(struct device *dev)
+void xocl_fini_sysfs(struct xocl_dev *xdev)
 {
+	struct device *dev = &xdev->core.pdev->dev;
+
+	if (!(xdev->flags & XOCL_FLAGS_SYSFS_INITIALIZED)) {
+		xocl_info(dev, "Sysfs nodes already removed");
+		return;
+	}
+
+	xocl_info(dev, "Removing sysfs");
 	sysfs_remove_link(&dev->kobj, "root_dev");
 	sysfs_remove_group(&dev->kobj, &xocl_attr_group);
+
+	xdev->flags &= ~XOCL_FLAGS_SYSFS_INITIALIZED;
 }

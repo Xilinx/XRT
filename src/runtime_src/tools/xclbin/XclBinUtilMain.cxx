@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -89,7 +89,7 @@ void QUIET(const std::string _msg){
 }
 
 // Program entry point
-int main_(int argc, char** argv) {
+int main_(int argc, const char** argv) {
   bool bVerbose = false;
   bool bTrace = false;
   bool bMigrateForward = false;
@@ -188,7 +188,7 @@ int main_(int argc, char** argv) {
 
     if ((vm.count("help")) ||
         (argc == 1)) {
-      std::cout << "This utility operates on a xclbin produced by xocc." << std::endl << std::endl;
+      std::cout << "This utility operates on a xclbin produced by v++." << std::endl << std::endl;
       std::cout << "For example:" << std::endl;
       std::cout << "  1) Reporting xclbin information  : xclbinutil --info --input binary_container_1.xclbin" << std::endl;
       std::cout << "  2) Extracting the bitstream image: xclbinutil --dump-section BITSTREAM:RAW:bitstream.bit --input binary_container_1.xclbin" << std::endl;

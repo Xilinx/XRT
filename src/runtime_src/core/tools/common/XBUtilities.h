@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -22,19 +22,11 @@
 #include <string>
 #include <memory>
 #include <boost/property_tree/ptree.hpp>
+#include <boost/program_options.hpp>
+
+
 
 namespace XBUtilities {
-
-template<typename ... Args>
-
-std::string format(const std::string& format, Args ... args) {
-  const static size_t NULL_CHAR_SIZE = 1;
-  size_t size = NULL_CHAR_SIZE + snprintf(nullptr, 0, format.c_str(), args ...);
-  std::unique_ptr<char[]> buf(new char[size]);
-  snprintf(buf.get(), size, format.c_str(), args ...);
-  
-  return std::string(buf.get());
-}
 
   typedef enum {
     MT_MESSAGE,
@@ -55,6 +47,8 @@ std::string format(const std::string& format, Args ... args) {
    */
   void setVerbose(bool _bVerbose);
   void setTrace(bool _bVerbose);
+  void disable_escape_codes( bool _disable );
+  bool is_esc_enabled();  
 
   void message_(MessageType _eMT, const std::string& _msg, bool _endl = true);
 
@@ -66,7 +60,20 @@ std::string format(const std::string& format, Args ... args) {
   void fatal(const std::string& _msg, bool _endl = true);
   void trace(const std::string& _msg, bool _endl = true);
 
-  void trace_print_tree(const std::string & _name, const boost::property_tree::ptree & _pt);
+  void trace_print_tree(const std::string & _name, 
+                        const boost::property_tree::ptree & _pt);
+
+  // ---------
+  void wrap_paragraph( const std::string & _unformattedString, 
+                       unsigned int _indentWidth, 
+                       unsigned int _columnWidth, 
+                       bool _indentFirstLine,
+                       std::string &_formattedString);
+  void wrap_paragraphs( const std::string & _unformattedString, 
+                        unsigned int _indentWidth, 
+                        unsigned int _columnWidth, 
+                        bool _indentFirstLine,
+                        std::string &_formattedString);
 };
 
 #endif

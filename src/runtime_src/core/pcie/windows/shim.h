@@ -59,9 +59,42 @@ XRT_CORE_PCIE_WINDOWS_EXPORT
 void
 get_ip_layout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret);
 
+/**
+ * get_debug_ip_layout() - Get xclbin debug ip layout  from driver
+ *
+ * @hdl: device handle
+ * @buffer: buffer to hold the debug iplayout section, ignored if nullptr
+ * @size: size of buffer
+ * @size_ret: returns actual size in bytes required for buffer, ignored if nullptr
+ */
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+get_debug_ip_layout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret);
+
+
 XRT_CORE_PCIE_WINDOWS_EXPORT
 void
 get_bdf_info(xclDeviceHandle hdl, uint16_t bdf[3]);
+
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+get_sensor_info(xclDeviceHandle hdl, xcl_sensor* value);
+
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+get_icap_info(xclDeviceHandle hdl, xcl_hwicap* value);
+
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+get_board_info(xclDeviceHandle hdl, xcl_board_info* value);
+
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+get_mig_ecc_info(xclDeviceHandle hdl, xcl_mig_ecc* value);
+
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+get_firewall_info(xclDeviceHandle hdl, xcl_firewall* value);
 
 } // userpf
 

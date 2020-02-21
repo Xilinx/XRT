@@ -29,12 +29,20 @@ xocl-y := \
 	../subdev/mailbox.o \
 	../subdev/xvc.o \
 	../subdev/icap.o \
+	../subdev/clock.o \
 	../subdev/xmc.o \
 	../subdev/firewall.o \
 	../subdev/mig.o \
 	../subdev/dna.o \
 	../subdev/iores.o \
 	../subdev/mailbox_versal.o\
+	../subdev/aim.o\
+	../subdev/am.o\
+	../subdev/asm.o\
+	../subdev/trace_fifo_lite.o\
+	../subdev/trace_fifo_full.o\
+	../subdev/trace_funnel.o\
+	../subdev/trace_s2mm.o\
 	$(xocl_lib-y)	\
 	xocl_drv.o	\
 	xocl_bo.o	\

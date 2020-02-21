@@ -90,7 +90,7 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
         }
         else if(secondary == nullptr)
         {
-            retVal = xspi.xclUpgradeFirmwareXSpi(*primary);
+            retVal = xspi.xclUpgradeFirmware1(*primary);
         }
         else
         {
@@ -156,8 +156,11 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
 int Flasher::upgradeBMCFirmware(firmwareImage* bmc)
 {
     XMC_Flasher flasher(mDev);
-    const std::string e = flasher.probingErrMsg();
 
+    if (!flasher.hasXMC())
+        return -EOPNOTSUPP;
+
+    const std::string e = flasher.probingErrMsg();
     if (!e.empty())
     {
         std::cout << "ERROR: " << e << std::endl;
@@ -190,8 +193,12 @@ std::string int2PowerString(unsigned lvl)
 
 int Flasher::getBoardInfo(BoardInfo& board)
 {
+    std::string unassigned_mac = "FF:FF:FF:FF:FF:FF";
     std::map<char, std::vector<char>> info;
     XMC_Flasher flasher(mDev);
+
+    if (!flasher.hasXMC())
+        return -EOPNOTSUPP;
 
     if (!flasher.probingErrMsg().empty())
     {
@@ -204,13 +211,20 @@ int Flasher::getBoardInfo(BoardInfo& board)
         return ret;
 
     board.mBMCVer = std::move(charVec2String(info[BDINFO_BMC_VER]));
-    board.mConfigMode = info[BDINFO_CONFIG_MODE][0];
-    board.mFanPresence = info[BDINFO_FAN_PRESENCE][0];
-    board.mMacAddr0 = std::move(charVec2String(info[BDINFO_MAC0]));
-    board.mMacAddr1 = std::move(charVec2String(info[BDINFO_MAC1]));
-    board.mMacAddr2 = std::move(charVec2String(info[BDINFO_MAC2]));
-    board.mMacAddr3 = std::move(charVec2String(info[BDINFO_MAC3]));
-    board.mMaxPower = int2PowerString(info[BDINFO_MAX_PWR][0]);
+    board.mConfigMode = info.find(BDINFO_CONFIG_MODE) != info.end() ?
+        info[BDINFO_CONFIG_MODE][0] : '\0';
+    board.mFanPresence = info.find(BDINFO_FAN_PRESENCE) != info.end() ?
+        info[BDINFO_FAN_PRESENCE][0] : '\0';
+    board.mMacAddr0 = charVec2String(info[BDINFO_MAC0]).compare(unassigned_mac) ? 
+        std::move(charVec2String(info[BDINFO_MAC0])) : std::move(std::string("Unassigned"));
+    board.mMacAddr1 = charVec2String(info[BDINFO_MAC1]).compare(unassigned_mac) ? 
+        std::move(charVec2String(info[BDINFO_MAC1])) : std::move(std::string("Unassigned"));
+    board.mMacAddr2 = charVec2String(info[BDINFO_MAC2]).compare(unassigned_mac) ? 
+        std::move(charVec2String(info[BDINFO_MAC2])) : std::move(std::string("Unassigned"));
+    board.mMacAddr3 = charVec2String(info[BDINFO_MAC3]).compare(unassigned_mac) ? 
+        std::move(charVec2String(info[BDINFO_MAC3])) : std::move(std::string("Unassigned"));
+    board.mMaxPower = info.find(BDINFO_MAX_PWR) != info.end() ?
+        int2PowerString(info[BDINFO_MAX_PWR][0]) : "N/A";
     board.mName = std::move(charVec2String(info[BDINFO_NAME]));
     board.mRev = std::move(charVec2String(info[BDINFO_REV]));
     board.mSerialNum = std::move(charVec2String(info[BDINFO_SN]));
@@ -377,7 +391,7 @@ DSAInfo Flasher::getOnBoardDSA()
     else if (rc == -EOPNOTSUPP)
         bmc.clear(); // BMC is not supported on DSA
     else
-        bmc = "UNKNOWN"; // BMC not ready, set it to an invalid version string
+        bmc = DSAInfo::UNKNOWN; // BMC not ready, set it to an invalid version string
 
     return DSAInfo(vbnv, ts, uuid, bmc);
 }

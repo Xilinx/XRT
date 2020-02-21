@@ -16,10 +16,15 @@
 #include "hal2.h"
 #include "xrt/util/thread.h"
 #include "ert.h"
+#include "core/common/system.h"
+#include "core/common/device.h"
+#include "core/common/query_requests.h"
 
+#include <boost/format.hpp>
 #include <cstring> // for std::memcpy
 #include <iostream>
 #include <cerrno>
+#include <regex>
 
 #ifdef _WIN32
 # pragma warning( disable : 4267 4996 4244 4245 )
@@ -119,6 +124,15 @@ getExecBufferObject(const ExecBufferObjectHandle& boh) const
   if (bo->owner != m_handle)
     throw std::runtime_error("bad exec buffer object");
   return bo;
+}
+
+std::string
+device::
+get_bdf() const
+{
+  auto device = xrt_core::get_userpf_device(m_idx);
+  auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
+  return xrt_core::query::pcie_bdf::to_string(bdf);
 }
 
 void

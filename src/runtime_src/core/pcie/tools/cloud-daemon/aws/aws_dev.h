@@ -18,6 +18,9 @@
 
 #include <fstream>
 #include <vector>
+#include <map>
+#include <sstream>
+#include <iomanip>
 #include <string>
 #include "xclhal2.h"
 #include "core/pcie/driver/linux/include/mailbox_proto.h"
@@ -61,6 +64,72 @@ public:
     AwsDev(size_t index, const char *logfileName);
     ~AwsDev();
 
+    static int init(std::map<std::string, size_t>& index_map)
+    {
+#ifndef INTERNAL_TESTING_FOR_AWS
+        int domain, bus, dev, func;
+        if (fpga_mgmt_init() || fpga_pci_init() ) {
+            std::cout << "ERROR: failed to initialized fpga libraries" << std::endl;
+            return -1;
+        }
+        fpga_slot_spec spec_array[16];
+        std::memset(spec_array, 0, sizeof(fpga_slot_spec) * 16);
+        if (fpga_pci_get_all_slot_specs(spec_array, 16)) {
+            std::cout << "ERROR: failed at fpga_pci_get_all_slot_specs" << std::endl;
+            return -1;
+        }
+
+        for (unsigned short i = 0; i < 16; i++) {
+            if (spec_array[i].map[FPGA_APP_PF].vendor_id == 0)
+                break;
+
+            domain = spec_array[i].map[FPGA_APP_PF].domain;
+            bus = spec_array[i].map[FPGA_APP_PF].bus;
+            dev = spec_array[i].map[FPGA_APP_PF].dev;
+            func = spec_array[i].map[FPGA_APP_PF].func;
+
+            std::stringstream domain_str;
+            std::stringstream bus_str;
+            std::stringstream dev_str;
+            //Note: Below works with stringstream only for integers and not for uint8, etc.
+            domain_str << std::setw(4) << std::setfill('0') << domain;
+            bus_str << std::setw(2) << std::setfill('0') << std::hex << bus;
+            dev_str << std::setw(2) << std::setfill('0') << std::hex << dev;
+            std::string func_str = std::to_string(func);//stringstream is giving minimum of two chars
+
+            std::string sysfs_name = domain_str.str() + ":" + bus_str.str() + ":" + dev_str.str() + "." + func_str;
+            index_map[sysfs_name] = i;
+
+            if (spec_array[i].map[FPGA_APP_PF].device_id == AWS_UserPF_DEVICE_ID) {
+                std::cout << "aws: load default afi to " << sysfs_name  << std::endl;
+                std::string agfi = DEFAULT_GLOBAL_AFI;
+                fpga_mgmt_load_local_image( i, const_cast<char*>(agfi.c_str()) );
+                int j, result = 0;
+                for (j = 0; j < 300; j++) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                    fpga_mgmt_image_info info;
+                    std::memset( &info, 0, sizeof(struct fpga_mgmt_image_info));
+                    result = fpga_mgmt_describe_local_image(i, &info, 0);
+                    if (result) {
+                        std::cout << "aws: init: load default afi failed: " << result << std::endl;
+                        break;
+                    }
+                    if( (info.status == FPGA_STATUS_LOADED) && !std::strcmp(info.ids.afi_id, const_cast<char*>(agfi.c_str())) ) {
+                        break;
+                }
+                if (j >= 300) {
+                    std::cout << "aws: init: load default afi timeout" << std::endl;
+                    break;
+                }
+                if (result)
+                    break;
+                fpga_pci_rescan_slot_app_pfs(i);
+                }
+            }
+        }
+#endif
+        return 0;
+    };
     int awsGetIcap(xcl_pr_region *resp);
     int awsGetSensor(xcl_sensor *resp);
     int awsGetBdinfo(xcl_board_info *resp);
@@ -78,14 +147,13 @@ public:
     int awsUserProbe(xcl_mailbox_conn_resp *resp);
     bool isGood();
 private:
-    const int mBoardNumber;
+    int mBoardNumber;
     std::ofstream mLogStream;
 #ifdef INTERNAL_TESTING_FOR_AWS
     int mMgtHandle;
 #else
     int sleepUntilLoaded( const std::string &afi );
     int checkAndSkipReload( char *afi_id, fpga_mgmt_image_info *info );
-    int loadDefaultAfiIfCleared( void );
     char* get_afi_from_axlf(const axlf * buffer);
 #endif
 };

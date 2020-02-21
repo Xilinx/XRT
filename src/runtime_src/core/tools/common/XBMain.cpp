@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -20,58 +20,63 @@
 
 #include "XBUtilities.h"
 #include "SubCmd.h"
+#include "XBHelpMenus.h"
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
 #include <boost/program_options.hpp>
 namespace po = boost::program_options;
-#include "boost/format.hpp"
+#include <boost/format.hpp>
+#include <boost/filesystem.hpp>
 
 // System - Include Files
 #include <iostream>
 
-
-static void printHelp(const po::options_description& _optionDescription)
-{
-  std::cout << "\nSyntax: xbmgmt <subcommand> <options>\n\n";
-  std::cout << "Sub Commands:\n";
-  const SubCmdTable & cmdTable = getSubCmdsTable();
-  for (auto& subCmdEntry : cmdTable) {
-    if (subCmdEntry.second.isHidden == true) {
-      continue;
-    }
-    std::cout << boost::format("  %-10s - %s") % subCmdEntry.second.sSubCmd % subCmdEntry.second.sDescription << "\n";
-  }
-  std::cout << "\n" << _optionDescription << std::endl;
-}
-
 // ------ Program entry point -------------------------------------------------
-ReturnCodes main_(int argc, char** argv) {
-
+void  main_(int argc, char** argv, 
+            const std::string & _description,
+            const SubCmdsCollection &_subCmds) 
+{
+  if (_subCmds.size() == 0) {
+    // do nothing
+  }
+  // Determine the executable name for this application
+  boost::filesystem::path pathAndFile(argv[0]);
+  const std::string executable = pathAndFile.filename().string();
   // Global options
   bool bVerbose = false;
   bool bTrace = false;
   bool bHelp = false;
+  bool bBatchMode = false;
 
-  // Build our global options
-  po::options_description globalOptions("Global options");
+  // Build our options
+  po::options_description globalOptions("Global Options");
   globalOptions.add_options()
-    ("help", boost::program_options::bool_switch(&bHelp), "Help to use this program")
-    ("verbose", boost::program_options::bool_switch(&bVerbose), "Turn on verbosity")
-    ("trace", boost::program_options::bool_switch(&bTrace), "Enables code flow tracing")
-    ("command", po::value<std::string>(), "command to execute")
-    ("subArguments", po::value<std::vector<std::string> >(), "Arguments for command")
+    ("help,h", boost::program_options::bool_switch(&bHelp), "Help to use this application")
+    ("verbose,v", boost::program_options::bool_switch(&bVerbose), "Turn on verbosity")
+    ("batch,b", boost::program_options::bool_switch(&bBatchMode), "Enable batch mode (disables escape characters)")
+
   ;
+
+  po::options_description hiddenOptions("Hidden Options");
+  hiddenOptions.add_options()
+    ("trace", boost::program_options::bool_switch(&bTrace), "Enables code flow tracing")
+    ("subCmd", po::value<std::string>(), "command to execute")
+    ("subCmdArgs", po::value<std::vector<std::string> >(), "Arguments for command")
+  ;
+  // Merge the options to one common collection
+  po::options_description allOptions("Allowed Options");
+  allOptions.add(globalOptions).add(hiddenOptions);
 
   // Create a sub-option command and arguments
   po::positional_options_description positionalCommand;
   positionalCommand.
-    add("command", 1 /* max_count */).
-    add("subArguments", 1 /* Unlimited max_count */);
+    add("subCmd", 1 /* max_count */).
+    add("subCmdArgs", 1 /* Unlimited max_count */);
 
   // Parse the command line
   po::parsed_options parsed = po::command_line_parser(argc, argv).
-    options(globalOptions).         // Global options
+    options(allOptions).            // Global options
     positional(positionalCommand).  // Our commands
     allow_unregistered().           // Allow for unregistered options (needed for sub obtions)
     run();                          // Parse the options
@@ -83,14 +88,16 @@ ReturnCodes main_(int argc, char** argv) {
     po::notify(vm);                 // Can throw
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
-    std::cerr << globalOptions << std::endl;
-    return RC_ERROR_IN_COMMAND_LINE;
+    XBU::report_commands_help(executable, _description, globalOptions, _subCmds);
+    return;
   }
+ 
+  // Disable escape characters if in batch mode
+  XBU::disable_escape_codes( bBatchMode );
 
   // Set the verbosity if enabled
-  if (bVerbose == true) {
+  if (bVerbose == true) 
     XBU::setVerbose( true );
-  }
 
   // Set the tracing if enabled
   if (bTrace == true) {
@@ -98,25 +105,33 @@ ReturnCodes main_(int argc, char** argv) {
   }
 
   // Check to see if help was requested and no command was found
-  if ((bHelp == true) && (vm.count("command") == 0)) {
-    ::printHelp(globalOptions);
-    return RC_SUCCESS;
+  if (vm.count("subCmd") == 0) {
+    XBU::report_commands_help(executable, _description, globalOptions, _subCmds);
+    return;
   }
 
   // Now see if there is a command to work with
   // Get the command of choice
-  std::string sCommand = vm["command"].as<std::string>();
+  std::string sCommand = vm["subCmd"].as<std::string>();
 
   if (sCommand == "help") {
-    ::printHelp(globalOptions);
-    return RC_SUCCESS;
+    XBU::report_commands_help(executable, _description, globalOptions, _subCmds);
+    return;
   }
 
-  const SubCmdEntry *pSubCmdEntry = getSubCmdEntry(sCommand);
-  if (pSubCmdEntry == nullptr) {
-    std::cerr << "ERROR: " << "Unknown sub-command: '" << sCommand << "'" << std::endl;
-    ::printHelp(globalOptions);
-    return RC_ERROR_IN_COMMAND_LINE;
+  // Search for the subcommand (case sensitive)
+  std::shared_ptr<SubCmd> subCommand;
+  for (auto & subCmdEntry :  _subCmds) {
+    if (sCommand.compare(subCmdEntry->getName()) == 0) {
+      subCommand = subCmdEntry;
+      break;
+    }
+  }
+
+  if ( !subCommand) {
+    std::cerr << "ERROR: " << "Unknown command: '" << sCommand << "'" << std::endl;
+    XBU::report_commands_help(executable, _description, globalOptions, _subCmds);
+    return;
   }
 
   // Prepare the data
@@ -127,12 +142,10 @@ ReturnCodes main_(int argc, char** argv) {
       opts.push_back("--help");
   }
 
-  // Call the registered function for this command
-  if (pSubCmdEntry->callBackFunction != nullptr) {
-    pSubCmdEntry->callBackFunction(opts);
-  }
+  // Execute the sub-command
+  subCommand->execute(opts);
 
-  return RC_SUCCESS;
+  return;
 }
 
 

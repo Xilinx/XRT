@@ -18,13 +18,26 @@
 
 namespace xrt_core {
 
-system* system_child_ctor(); // foward declaration
+// Singleton is initialized when libxrt_core is loaded
+// A concrete system object is constructed during static
+// global initialization.  Lifetime is until core library
+// is unloaded. 
+system* singleton = nullptr;
 
-system&
+system::
+system()
+{
+  if (singleton)
+    throw std::runtime_error("singleton ctor error");
+  singleton = this;
+}
+
+inline system&
 instance()
 {
-  static system* singleton = system_child_ctor();
-  return *singleton;
+  if (singleton)
+    return *singleton;
+  throw std::runtime_error("system singleton is not loaded");
 }
 
 void
@@ -45,12 +58,6 @@ get_devices(boost::property_tree::ptree& pt)
   instance().get_devices(pt);
 }
 
-void
-scan_devices(bool verbose, bool json)
-{
-  instance().scan_devices(verbose, json);
-}
-
 std::shared_ptr<device>
 get_userpf_device(device::id_type id)
 {
@@ -64,9 +71,9 @@ get_mgmtpf_device(device::id_type id)
 }
 
 std::pair<uint64_t, uint64_t>
-get_total_devices()
+get_total_devices(bool is_user)
 {
-  return instance().get_total_devices();
+  return instance().get_total_devices(is_user);
 }
 
 uint16_t

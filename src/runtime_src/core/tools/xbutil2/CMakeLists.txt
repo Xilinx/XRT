@@ -12,53 +12,65 @@ include_directories(${CMAKE_BINARY_DIR})
 
 # -----------------------------------------------------------------------------
 
+# Collect files outside of this directory
 file(GLOB XBUTIL_V2_BASE_FILES
   "xbutil.cpp"
   "../common/XBMain.cpp"
   "../common/XBUtilities.cpp"
-  "XBReport.cpp"
-  "XBDatabase.cpp"
   "../common/SubCmd.cpp"
+  "../common/OptionOptions.cpp"
+  "../common/XBHelpMenus.cpp"
 )
 
-if(WIN32)
-  set(XBUTIL2_NAME "xbutil")     # Yes, on windows the file name will be xbutil
-  file(GLOB XBUTIL_V2_SUBCMD_FILES
-    "SubCmdProgram.cpp"
-    "SubCmdClock.cpp"
-    "SubCmdDmaTest.cpp"
-    "SubCmdQuery.cpp"
-    "SubCmdReset.cpp"
-    "SubCmdScan.cpp"
-    "SubCmdVersion.cpp"
-  )
-else()
-  set(XBUTIL2_NAME "xbutil2")
-  file(GLOB XBUTIL_V2_SUBCMD_FILES
-    "SubCmdQuery.cpp"
-    "SubCmdClock.cpp"
-    "SubCmdDmaTest.cpp"
-    "SubCmdDump.cpp"
-    "SubCmdM2MTest.cpp"
-    "SubCmdScan.cpp"
-    "SubCmdProgram.cpp"
-    "SubCmdList.cpp"
-    "SubCmdMem.cpp"
-    "SubCmdDD.cpp"
-    "SubCmdTop.cpp"
-    "SubCmdValidate.cpp"
-    "SubCmdReset.cpp"
-    "SubCmdP2P.cpp"
-    "SubCmdVersion.cpp"
-  )
-endif()
+# Collect local directory files
+file(GLOB XBUTIL_V2_SUBCMD_FILES
+  "XBReport.cpp"
+  "XBDatabase.cpp"
+  "SubCmdClock.cpp"
+  "SubCmdDD.cpp"
+  "SubCmdDmaTest.cpp"
+  "SubCmdDump.cpp"
+  "SubCmdExamine.cpp"
+  "SubCmdList.cpp"
+  "SubCmdM2MTest.cpp"
+  "SubCmdMem.cpp"
+  "SubCmdP2P.cpp"
+  "SubCmdProgram.cpp"
+  "SubCmdQuery.cpp"
+  "SubCmdReset.cpp"
+  "SubCmdScan.cpp"
+  "SubCmdTop.cpp"
+  "SubCmdValidate.cpp"
+  "SubCmdVersion.cpp"
+  "SubCmdAdvanced.cpp"
+  "OO_Clock.cpp"
+  "OO_MemRead.cpp"
+  "OO_MemWrite.cpp"
+  "OO_P2P.cpp"
+)
 
+# Merge the files into one collection
 set(XBUTIL_V2_FILES_SRCS ${XBUTIL_V2_BASE_FILES} ${XBUTIL_V2_SUBCMD_FILES})
 set(XBUTIL_V2_SRCS ${XBUTIL_V2_FILES_SRCS})
 
+# Determine the name of the executable
+if(WIN32)
+  set(XBUTIL2_NAME "xbutil")     # Yes, on windows the file name will be xbutil
+else()
+  set(XBUTIL2_NAME "xbutil2")
+endif()
+
 add_executable(${XBUTIL2_NAME} ${XBUTIL_V2_SRCS})
 
+# Determine what functionality should be added
+if(WIN32)
+  target_compile_definitions(${XBUTIL2_NAME} PUBLIC ENABLE_DEPRECATED_2020_1_SUBCMDS)
+else()
+  target_compile_definitions(${XBUTIL2_NAME} PUBLIC ENABLE_DEPRECATED_2020_1_SUBCMDS)
+endif()
 
+
+# Add the supporting libraries
 if(WIN32)
   target_link_libraries(
     ${XBUTIL2_NAME} PRIVATE
@@ -73,6 +85,7 @@ if(WIN32)
 else()
   target_link_libraries(
     ${XBUTIL2_NAME}
+    xrt_core
     xrt_core_static
     xrt_coreutil_static
     boost_filesystem
@@ -84,6 +97,7 @@ else()
   )
 endif()
 
+# Install our built executable
 install (TARGETS ${XBUTIL2_NAME} RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
 
 # -----------------------------------------------------------------------------

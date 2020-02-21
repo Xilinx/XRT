@@ -174,6 +174,9 @@ public:
   virtual device_handle
   get_handle() const = 0;
 
+  virtual std::string
+  get_bdf() const = 0;
+
   virtual void
   acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared) {}
 
@@ -617,12 +620,6 @@ public:
   }
 
   virtual operations_result<void>
-  writeHostEvent(xclPerfMonEventType type, xclPerfMonEventID id)
-  {
-    return operations_result<void>();
-  }
-
-  virtual operations_result<void>
   configureDataflow(xclPerfMonType, unsigned *ip_config)
   {
     return operations_result<void>();
@@ -660,6 +657,12 @@ public:
 
   virtual operations_result<std::string>
   getSysfsPath(const std::string& subdev, const std::string& entry)
+  {
+    return operations_result<std::string>();
+  }
+
+  virtual operations_result<std::string>
+  getSubdevPath(const std::string& subdev, uint32_t idx)
   {
     return operations_result<std::string>();
   }
@@ -706,6 +709,14 @@ loadDevices();
 XRT_EXPORT
 void
 load_xdp();
+
+XRT_EXPORT
+void
+load_xdp_kernel_debug();
+
+XRT_EXPORT
+void
+load_xdp_app_debug();
 } // namespace hal
 
 namespace hal2 {

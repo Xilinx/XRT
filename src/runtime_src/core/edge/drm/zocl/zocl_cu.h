@@ -68,6 +68,7 @@ struct zcu_core {
 	u32			 intr_type;
 	u32			 pending_intr;
 	u32			 running;
+	u32			 control;
 };
 
 struct zcu_funcs {
@@ -158,6 +159,8 @@ struct zocl_cu {
 	u32			  ready_cnt;
 	u32                       run_timeout;
 	u32                       reset_timeout;
+	u32			  irq;
+	char			 *irq_name;
 	/**
 	 * @funcs:
 	 *
@@ -182,5 +185,6 @@ u32  zocl_cu_clear_intr(struct zocl_cu *cu);
 
 phys_addr_t zocl_cu_get_paddr(struct zocl_cu *cu);
 void zocl_cu_status_print(struct zocl_cu *cu);
+u32 zocl_cu_get_control(struct zocl_cu *cu);
 
 #endif /* _ZOCL_CU_H_ */

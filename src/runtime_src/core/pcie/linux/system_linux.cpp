@@ -30,6 +30,10 @@
 
 namespace {
 
+// Singleton registers with base class xrt_core::system
+// during static global initialization
+static xrt_core::system_linux singleton;
+
 static std::string
 driver_version(const std::string& driver)
 {
@@ -108,9 +112,9 @@ get_os_info(boost::property_tree::ptree &pt)
 
 std::pair<device::id_type, device::id_type>
 system_linux::
-get_total_devices() const
+get_total_devices(bool is_user) const
 {
-  return std::make_pair(pcidev::get_dev_total(), pcidev::get_dev_ready());
+  return std::make_pair(pcidev::get_dev_total(is_user), pcidev::get_dev_ready(is_user));
 }
 
 void

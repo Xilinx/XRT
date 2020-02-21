@@ -81,7 +81,7 @@ void OclDeviceOffload::offload_trace()
 void OclDeviceOffload::read_trace_fifo()
 {
   do {
-    dev_intf->readTrace(m_type, m_trace_vector);
+    dev_intf->readTrace(m_trace_vector);
     prof_mgr->logDeviceTrace(device_name, binary_name, m_type, m_trace_vector, false);
     m_trace_vector = {};
   } while (m_trace_vector.mLength != 0);

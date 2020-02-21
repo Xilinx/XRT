@@ -602,7 +602,7 @@ static int set_max_chan(struct xocl_qdma *qdma, u32 count)
 	int	i, ret;
 	bool	reset = false;
 
-	if (count > QDMA_QSETS_MAX) {
+	if (count > sizeof(qdma->channel_bitmap[0]) * 8) {
 		xocl_info(&pdev->dev, "Invalide number of channels set %d", count);
 		ret = -EINVAL;
 		goto failed_create_queue;
@@ -617,8 +617,7 @@ static int set_max_chan(struct xocl_qdma *qdma, u32 count)
 	sema_init(&qdma->channel_sem[1], qdma->channel);
 
 	/* Initialize bit mask to represent individual channels */
-	qdma->channel_bitmap[0] = BIT(qdma->channel);
-	qdma->channel_bitmap[0]--;
+	qdma->channel_bitmap[0] = GENMASK_ULL(qdma->channel - 1, 0);
 	qdma->channel_bitmap[1] = qdma->channel_bitmap[0];
 
 	xocl_info(&pdev->dev, "Creating MM Queues, Channel %d", qdma->channel);
@@ -1628,8 +1627,12 @@ static long qdma_stream_ioctl_alloc_buffer(struct xocl_qdma *qdma,
 	flags = O_CLOEXEC | O_RDWR;
 
 	XOCL_DRM_GEM_OBJECT_GET(&xobj->base);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0)
 	dmabuf = drm_gem_prime_export(XOCL_DRM(xdev)->ddev,
-				&xobj->base, flags);
+                               &xobj->base, flags);
+#else
+	dmabuf = drm_gem_prime_export(&xobj->base, flags);
+#endif
 	if (IS_ERR(dmabuf)) {
 		xocl_err(&qdma->pdev->dev, "failed to export dma_buf");
 		ret = PTR_ERR(dmabuf);
@@ -1818,7 +1821,7 @@ failed:
 			qdma_device_close(XDEV(xdev)->pdev,
 					(unsigned long)qdma->dma_handle);
 
-		xocl_drvinst_free(qdma);
+		xocl_drvinst_release(qdma, NULL);
 	}
 
 	platform_set_drvdata(pdev, NULL);
@@ -1831,8 +1834,10 @@ static int qdma_remove(struct platform_device *pdev)
 	struct xocl_qdma *qdma= platform_get_drvdata(pdev);
 	xdev_handle_t xdev;
 	struct qdma_irq *irq_entry;
+	void *hdl;
 	int i;
 
+	xocl_drvinst_release(qdma, &hdl);
 	sysfs_remove_group(&pdev->dev.kobj, &qdma_attrgroup);
 
 	if (!qdma) {
@@ -1859,7 +1864,7 @@ static int qdma_remove(struct platform_device *pdev)
 
 
 	platform_set_drvdata(pdev, NULL);
-	xocl_drvinst_free(qdma);
+	xocl_drvinst_free(hdl);
 
 	return 0;
 }

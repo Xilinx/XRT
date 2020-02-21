@@ -516,8 +516,6 @@ namespace awsbwhal {
         // Class-level defaults: mIsDebugIpLayoutRead = mIsDeviceProfiling = false
         mDevUserName = xcldev::pci_device_scanner::device_list[mBoardNumber].user_name;
         mMemoryProfilingNumberSlots = 0;
-        mPerfMonFifoCtrlBaseAddress = 0x00;
-        mPerfMonFifoReadBaseAddress = 0x00;
     }
 
     bool AwsXcl::isGood() const {
@@ -950,6 +948,31 @@ namespace awsbwhal {
 
         return size;
     }
+
+    // Get the device clock frequency (in MHz)
+    double AwsXcl::xclGetDeviceClockFreqMHz() {
+      xclGetDeviceInfo2(&mDeviceInfo);
+      unsigned short clockFreq = mDeviceInfo.mOCLFrequency[0];
+      if (clockFreq == 0)
+        clockFreq = 300;
+  
+      //if (mLogStream.is_open())
+      //  mLogStream << __func__ << ": clock freq = " << clockFreq << std::endl;
+      return ((double)clockFreq);
+    }
+
+    // Get the maximum bandwidth for host reads from the device (in MB/sec)
+    // NOTE: for now, set to: (256/8 bytes) * 300 MHz = 9600 MBps
+    double AwsXcl::xclGetReadMaxBandwidthMBps() {
+      return 9600.0;
+    }
+
+    // Get the maximum bandwidth for host writes to the device (in MB/sec)
+    // NOTE: for now, set to: (256/8 bytes) * 300 MHz = 9600 MBps
+    double AwsXcl::xclGetWriteMaxBandwidthMBps() {
+      return 9600.0;
+    }
+
     
     /*
      * xclExecBuf()
@@ -1580,6 +1603,11 @@ unsigned int xclVersion () {
   return 2;
 }
 
+size_t xclGetDeviceTimestamp(xclDeviceHandle handle)
+{
+  return 0;
+}
+
 int xclGetErrorStatus(xclDeviceHandle handle, xclErrorStatus *info)
 {
   awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
@@ -1635,5 +1663,27 @@ int xclDestroyProfileResults(xclDeviceHandle handle, ProfileResults* results)
   return 0;
 }
 
+double xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
+{
+  awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
+  return drv ? drv->xclGetDeviceClockFreqMHz() : 0.0;
+}
 
+double xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
+  return drv ? drv->xclGetReadMaxBandwidthMBps() : 0.0;
+}
+
+
+double xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
+  return drv ? drv->xclGetWriteMaxBandwidthMBps() : 0.0;
+}
+
+int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* info)
+{
+  return 0;
+}
 

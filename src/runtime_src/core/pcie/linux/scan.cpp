@@ -31,6 +31,8 @@
 #include <sys/stat.h>
 #include <sys/file.h>
 #include <poll.h>
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/fstream.hpp>
 #include "xclbin.h"
 #include "scan.h"
 #include "core/common/utils.h"
@@ -41,6 +43,7 @@
 #define AWS_ID          0x1d0f
 
 #define RENDER_NM       "renderD"
+#define DEV_TIMEOUT	60 // seconds
 
 static const std::string sysfs_root = "/sys/bus/pci/devices/";
 
@@ -104,6 +107,18 @@ std::string pcidev::pci_device::get_sysfs_path(const std::string& subdev,
     path += subdir;
     path += "/";
     path += entry;
+    return path;
+}
+
+std::string pcidev::pci_device::get_subdev_path(const std::string& subdev,
+    uint idx)
+{
+    std::string path("/dev/xfpga/");
+
+    path += subdev;
+    path += is_mgmt ? ".m" : ".u";
+    path += std::to_string((domain<<16) + (bus<<8) + (dev<<3) + func);
+    path += "." + std::to_string(idx);
     return path;
 }
 
@@ -263,8 +278,15 @@ static std::string get_devfs_path(bool is_mgmt, uint32_t instance)
     return prefixStr + instStr;
 }
 
-int pcidev::pci_device::open(const std::string& subdev, int flag)
+static bool is_admin()
+{     
+    return (getuid() == 0) || (geteuid() == 0);
+}
+
+int pcidev::pci_device::open(const std::string& subdev, uint32_t idx, int flag)
 {
+    if (is_mgmt && !::is_admin())
+        throw std::runtime_error("Root privileges required");
     // Open xclmgmt/xocl node
     if (subdev.empty()) {
         std::string devfs = get_devfs_path(is_mgmt, instance);
@@ -276,7 +298,13 @@ int pcidev::pci_device::open(const std::string& subdev, int flag)
     file += subdev;
     file += is_mgmt ? ".m" : ".u";
     file += std::to_string((domain<<16) + (bus<<8) + (dev<<3) + func);
+    file += "." + std::to_string(idx);
     return ::open(file.c_str(), flag);
+}
+
+int pcidev::pci_device::open(const std::string& subdev, int flag)
+{
+    return open(subdev, 0, flag);
 }
 
 static size_t bar_size(const std::string &dir, unsigned bar)
@@ -357,10 +385,9 @@ pcidev::pci_device::pci_device(const std::string& sysfs) : sysfs_name(sysfs)
     if (err.empty()) {
         mgmt = true;
     } else {
+        mgmt = false;
         sysfs_get("", "user_pf", err, tmp);
-        if (err.empty()) {
-            mgmt = false;
-        } else {
+        if (!err.empty()) {
             return; // device not recognized
         }
     }
@@ -378,6 +405,7 @@ pcidev::pci_device::pci_device(const std::string& sysfs) : sysfs_name(sysfs)
     bus = b;
     dev = d;
     func = f;
+
     sysfs_get<int>("", "userbar", err, user_bar, 0);
     user_bar_size = bar_size(dir, user_bar);
     is_mgmt = mgmt;
@@ -579,6 +607,122 @@ int pcidev::pci_device::flock(int dev_handle, int op)
     return ::flock(dev_handle, op);
 }
 
+std::shared_ptr<pcidev::pci_device> pcidev::pci_device::lookup_peer_dev()
+{
+    int i = 0;
+    std::shared_ptr<pcidev::pci_device> udev;
+
+    if (!is_mgmt)
+        return NULL;
+
+    for (udev = pcidev::get_dev(i, true); udev; udev = pcidev::get_dev(i, true)) {
+        if (udev->domain == domain && udev->bus == bus && udev->dev == dev) {
+                break;
+        }
+        i++;
+    }
+
+    return udev;
+}
+
+int pcidev::pci_device::shutdown(bool remove_user, bool remove_mgmt)
+{
+    std::shared_ptr<pcidev::pci_device> udev;
+    std::string errmsg;
+    if (!is_mgmt) {
+        return -EINVAL;
+    }
+
+    udev = lookup_peer_dev();
+    if (!udev) {
+        std::cout << "ERROR: User function is not found. " <<
+            "This is probably due to user function is running in virtual machine or user driver is not loaded. " << std::endl;
+        return -ECANCELED;
+    }
+
+    std::cout << "Stopping user function..." << std::endl;
+    udev->sysfs_put("", "shutdown", errmsg, "1\n");
+    if (!errmsg.empty()) {
+        std::cout << "ERROR: Shutdown user function failed." << std::endl;
+        return -EINVAL;
+    }
+
+    /* Poll till shutdown is done */
+    int shutdownStatus = 0;
+    for (int wait = 0; wait < DEV_TIMEOUT; wait++) {
+        udev->sysfs_get<int>("", "shutdown", errmsg, shutdownStatus, EINVAL);
+        if (!errmsg.empty()) {
+            // shutdow will trigger pci hot reset. sysfs nodes will be removed
+            // during hot reset.
+            continue;
+        }
+
+        if (shutdownStatus == 1){
+            /* Shutdown is done successfully. Returning from here */
+            break;
+        }
+        sleep(1);
+    }
+
+    if (!shutdownStatus) {
+        std::cout << "ERROR: Shutdown user function timeout." << std::endl;
+        return -ETIMEDOUT;
+    }
+
+    int rem_dev_cnt = 0;
+    int active_dev_num;
+    std::string parent_path;
+
+    sysfs_get<int>("", "dparent/power/runtime_active_kids", errmsg, active_dev_num, EINVAL);
+
+    if ((remove_user || remove_mgmt) && !errmsg.empty()) {
+        std::cout << "ERROR: can not read active device number" << std::endl;
+        return -ENOENT;
+    }
+
+    /* Cache the parent sysfs path before remove the PF */
+    parent_path = get_sysfs_path("", "dparent/power/runtime_active_kids");
+    /* Get the absolute path from the symbolic link */
+    parent_path = (boost::filesystem::canonical(parent_path)).c_str();
+
+    if (remove_user) {
+        udev->sysfs_put("", "remove", errmsg, "1\n");
+        if (!errmsg.empty()) {
+            std::cout << "ERROR: removing user function failed" << std::endl;
+            return -EINVAL;
+        }
+        rem_dev_cnt++;
+    }
+
+    if (remove_mgmt) {
+        sysfs_put("", "remove", errmsg, "1\n");
+        if (!errmsg.empty()) {
+            std::cout << "ERROR: removing mgmt function failed" << std::endl;
+            return -EINVAL;
+        }
+        rem_dev_cnt++;
+    }
+
+    if (!rem_dev_cnt) {
+        return 0;
+    }
+
+    for (int wait = 0; wait < DEV_TIMEOUT; wait++) {
+        int curr_act_dev;
+        boost::filesystem::ifstream file(parent_path);
+        file >> curr_act_dev;
+        
+        if (curr_act_dev + rem_dev_cnt == active_dev_num)
+            return 0;
+       
+        sleep(1);
+    }
+
+    std::cout << "ERROR: removing device node timed out" << std::endl;
+
+    return -ETIMEDOUT;
+}
+
 class pci_device_scanner {
 public:
 
@@ -651,8 +795,7 @@ static bool is_in_use(std::vector<std::shared_ptr<pcidev::pci_device>>& vec)
 
 void pci_device_scanner::pci_device_scanner::rescan_nolock()
 {
-    DIR *dir;
-    struct dirent *entry;
+    std::vector<boost::filesystem::path> vec;
 
     if (is_in_use(user_list) || is_in_use(mgmt_list)) {
         std::cout << "Device list is in use, can't rescan" << std::endl;
@@ -661,16 +804,23 @@ void pci_device_scanner::pci_device_scanner::rescan_nolock()
 
     user_list.clear();
     mgmt_list.clear();
-
-    dir = opendir(sysfs_root.c_str());
-    if(!dir) {
-        std::cout << "Cannot open " << sysfs_root << std::endl;
+    
+    if(!boost::filesystem::exists(sysfs_root)) {
+        std::cout << "File does not exist : " << sysfs_root << std::endl;
         return;
     }
 
-    while((entry = readdir(dir))) {
+    copy(boost::filesystem::directory_iterator(sysfs_root), boost::filesystem::directory_iterator(),
+            std::back_inserter(vec));
+
+    /* sort, since directory iteration is not ordered on some file systems */
+    sort(vec.begin(), vec.end());
+
+    for (std::vector<boost::filesystem::path>::const_iterator it(vec.begin()), it_end(vec.end());
+            it != it_end; ++it)
+    {
         auto pf = std::make_shared<pcidev::pci_device>(
-            std::string(entry->d_name));
+                std::string(it->filename().c_str()));
         if(pf->domain == INVALID_ID)
             continue;
 
@@ -684,7 +834,6 @@ void pci_device_scanner::pci_device_scanner::rescan_nolock()
         }
     }
 
-    (void) closedir(dir);
 }
 
 
@@ -743,7 +892,7 @@ std::ostream& operator<<(std::ostream& stream,
     }
     stream << " " << shell_name;
     if (ts != 0)
-        stream << "(ts=0x" << std::hex << ts << ")";
+        stream << "(ID=0x" << std::hex << ts << ")";
 
     // instance number
     if (dev->is_mgmt)
@@ -849,3 +998,4 @@ int pcidev::get_uuids(std::shared_ptr<char>& dtbbuf, std::vector<std::string>& u
 
     return 0;
 }
+

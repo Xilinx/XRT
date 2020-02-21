@@ -258,6 +258,7 @@ struct xocl_flash {
 	size_t qspi_fifo_depth;
 	u8 qspi_curr_sector;
 	struct qspi_flash_vendor *vendor;
+	int qspi_curr_slave;
 };
 
 static inline const char *reg2name(struct xocl_flash *flash, u32 *reg)
@@ -311,7 +312,7 @@ static inline void flash_set_ctrl(struct xocl_flash *flash, u32 ctrl)
 	flash_reg_wr(flash, &flash->qspi_regs->qspi_ctrl, ctrl);
 }
 
-static inline void flash_set_slave(struct xocl_flash *flash, int index)
+static inline void flash_activate_slave(struct xocl_flash *flash, int index)
 {
 	u32 slave_reg;
 
@@ -357,9 +358,14 @@ static inline bool flash_has_err(struct xocl_flash *flash)
 static int flash_rx(struct xocl_flash *flash, u8 *buf, size_t len)
 {
 	size_t cnt;
+	u8 c;
 
 	for (cnt = 0; cnt < len; cnt++) {
-		u8 c = flash_read8(flash);
+		if ((flash_get_status(flash) & QSPI_SR_RX_EMPTY) != 0)
+			return -EINVAL;
+
+        	c = flash_read8(flash);
+
 		if (buf)
 			buf[cnt] = c;
 	}
@@ -431,8 +437,8 @@ static int flash_reset_fifo(struct xocl_flash *flash)
 	flash_set_ctrl(flash, flash_get_ctrl(flash) | QSPI_CR_TXFIFO_RESET |
 		QSPI_CR_RXFIFO_RESET);
 
-	if (FLASH_BUSY_WAIT((flash_get_status(flash) & status_fifo_mask)) ==
-		(QSPI_SR_TX_EMPTY | QSPI_SR_RX_EMPTY)) {
+	if (FLASH_BUSY_WAIT((flash_get_status(flash) & status_fifo_mask) ==
+		(QSPI_SR_TX_EMPTY | QSPI_SR_RX_EMPTY))) {
 		FLASH_ERR(flash, "failed to reset FIFO, status: 0x%x",
 			flash_get_status(flash));
 		return -ETIMEDOUT;
@@ -441,7 +447,7 @@ static int flash_reset_fifo(struct xocl_flash *flash)
 }
 
 static int flash_transaction(struct xocl_flash *flash,
-	u8 *buf, size_t len, int slave, bool need_output)
+	u8 *buf, size_t len, bool need_output)
 {
 	int ret = 0;
 
@@ -451,9 +457,9 @@ static int flash_transaction(struct xocl_flash *flash,
 		return ret;
 
 	/* The slave index should be within range. */
-	if (slave >= MAX_NUM_OF_SLAVES)
+	if (flash->qspi_curr_slave >= MAX_NUM_OF_SLAVES)
 		return -EINVAL;
-	flash_set_slave(flash, slave);
+	flash_activate_slave(flash, flash->qspi_curr_slave);
 
 	ret = flash_tx(flash, buf, len);
 	if (ret)
@@ -463,13 +469,13 @@ static int flash_transaction(struct xocl_flash *flash,
 		ret = flash_rx(flash, buf, len);
 	} else {
 		/* Needs to drain the FIFO even when the data is not wanted. */
-		ret = flash_rx(flash, NULL, len);
+		(void) flash_rx(flash, NULL, len);
 	}
 
 	/* Always need to reset slave select register after each transaction */
-	flash_set_slave(flash, SLAVE_NONE);
+	flash_activate_slave(flash, SLAVE_NONE);
 
-	return 0;
+	return ret;
 }
 
 static size_t flash_get_fifo_depth(struct xocl_flash *flash)
@@ -510,11 +516,11 @@ static size_t flash_get_fifo_depth(struct xocl_flash *flash)
  * Exec flash IO command on specified slave.
  */
 static inline int flash_exec_io_cmd(struct xocl_flash *flash,
-	size_t len, int slave, bool output_needed)
+	size_t len, bool output_needed)
 {
 	char *buf = flash->io_buf;
 
-	return flash_transaction(flash, buf, len, slave, output_needed);
+	return flash_transaction(flash, buf, len, output_needed);
 }
 
 /* Test if flash memory is ready. */
@@ -525,7 +531,7 @@ static bool flash_is_ready(struct xocl_flash *flash)
 	 * after cmd byte. The output is in the 2nd byte.
 	 */
 	u8 cmd[2] = { QSPI_CMD_STATUSREG_READ, };
-	int ret = flash_transaction(flash, cmd, sizeof(cmd), 0, true);
+	int ret = flash_transaction(flash, cmd, sizeof(cmd), true);
 
 	if (ret || (cmd[1] & 0x1)) // flash device is busy
 		return false;
@@ -542,7 +548,7 @@ static int flash_get_ID(struct xocl_flash *flash)
 	 * number is in cmd[3] from output.
 	 */
 	u8 cmd[5] = { QSPI_CMD_IDCODE_READ, };
-	int ret = flash_transaction(flash, cmd, sizeof(cmd), 0, true);
+	int ret = flash_transaction(flash, cmd, sizeof(cmd), true);
 
 	if (ret) {
 		FLASH_ERR(flash, "Can't get flash memory ID, err: %d", ret);
@@ -580,7 +586,7 @@ static int flash_get_ID(struct xocl_flash *flash)
 static int flash_enable_write(struct xocl_flash *flash)
 {
 	u8 cmd = QSPI_CMD_WRITE_ENABLE;
-	int ret = flash_transaction(flash, &cmd, 1, 0, false);
+	int ret = flash_transaction(flash, &cmd, 1, false);
 
 	if (ret)
 		FLASH_ERR(flash, "Failed to enable flash write: %d", ret);
@@ -601,7 +607,7 @@ static int flash_set_sector(struct xocl_flash *flash, u8 sector)
 	if (ret)
 		return ret;
 
-	ret = flash_transaction(flash, cmd, sizeof(cmd), 0, false);
+	ret = flash_transaction(flash, cmd, sizeof(cmd), false);
 	if (ret) {
 		FLASH_ERR(flash, "Failed to set sector %d: %d", sector, ret);
 		return ret;
@@ -620,6 +626,21 @@ static inline void flash_offset2faddr(loff_t addr,
 	faddr->addr_lo = (u8)(addr);
 	faddr->addr_mid = (u8)(addr >> 8);
 	faddr->addr_hi = (u8)(addr >> 16);
+}
+
+static inline loff_t flash_faddr2offset(struct qspi_flash_addr *faddr)
+{
+	loff_t off = 0;
+
+	off |= faddr->sector;
+	off <<= 8;
+	off |= faddr->addr_hi;
+	off <<= 8;
+	off |= faddr->addr_mid;
+	off <<= 8;
+	off |= faddr->addr_lo;
+	off |= ((u64)faddr->slave) << 56;
+	return off;
 }
 
 /* IO cmd starts with op code followed by address. */
@@ -721,7 +742,7 @@ static int flash_fifo_rd(struct xocl_flash *flash,
 	 * by writing that many bytes to it. How hard would it be to just
 	 * add one more integer to specify the length in the input cmd?!
 	 */
-	ret = flash_exec_io_cmd(flash, total_len, faddr.slave, true);
+	ret = flash_exec_io_cmd(flash, total_len, true);
 	if (ret)
 		return ret;
 
@@ -776,7 +797,7 @@ static int flash_fifo_wr(struct xocl_flash *flash,
 	ret = flash_enable_write(flash);
 	if (ret)
 		return ret;
-	ret = flash_exec_io_cmd(flash, total_len, faddr.slave, false);
+	ret = flash_exec_io_cmd(flash, total_len, false);
 	if (ret)
 		return ret;
 	if (!flash_wait_until_ready(flash))
@@ -861,7 +882,7 @@ static int flash_page_erase(struct xocl_flash *flash, loff_t off, size_t pagesz)
 	if (ret)
 		return ret;
 
-	ret = flash_exec_io_cmd(flash, cmdlen, faddr.slave, false);
+	ret = flash_exec_io_cmd(flash, cmdlen, false);
 	if (ret) {
 		FLASH_ERR(flash, "Failed to erase 0x%lx bytes @0x%llx",
 			pagesz, off);
@@ -874,6 +895,17 @@ static int flash_page_erase(struct xocl_flash *flash, loff_t off, size_t pagesz)
 	return 0;
 }
 
+static bool is_valid_offset(struct xocl_flash *flash, loff_t off)
+{
+	struct qspi_flash_addr faddr;
+
+	flash_offset2faddr(off, &faddr);
+	/* Assuming all flash are of the same size, we use
+	 * offset into flash 0 to perform boundary check. */
+	faddr.slave = 0;
+	return flash_faddr2offset(&faddr) < flash->flash_size;
+}
+
 /*
  * Read flash memory page by page into user buf.
  */
@@ -884,15 +916,23 @@ flash_read(struct file *file, char __user *buf, size_t n, loff_t *off)
 	u8 *page = NULL;
 	size_t cnt = 0;
 	int ret = 0;
+	struct qspi_flash_addr faddr;
 
-	if (n == 0 || *off + n >= flash->flash_size)
+	FLASH_INFO(flash, "reading 0x%lx bytes @0x%llx", n, *off);
+
+	if (n == 0 || !is_valid_offset(flash, *off + n)) {
+		FLASH_ERR(flash, "Can't read: out of boundary");
 		return -EINVAL;
+	}
 
 	page = vmalloc(FLASH_PAGE_SIZE);
 	if (page == NULL)
 		return -ENOMEM;
 
 	mutex_lock(&flash->io_lock);
+
+	flash_offset2faddr(*off, &faddr);
+	flash->qspi_curr_slave = faddr.slave;
 
 	if (!flash_wait_until_ready(flash))
 		ret = -EINVAL;
@@ -1015,15 +1055,23 @@ flash_write(struct file *file, const char __user *buf, size_t n, loff_t *off)
 	u8 *page = NULL;
 	size_t cnt = 0;
 	int ret = 0;
+	struct qspi_flash_addr faddr;
 
-	if (n == 0 || *off + n >= flash->flash_size)
+	FLASH_INFO(flash, "writing 0x%lx bytes @0x%llx", n, *off);
+
+	if (n == 0 || !is_valid_offset(flash, *off + n)) {
+		FLASH_ERR(flash, "Can't write: out of boundary");
 		return -EINVAL;
+	}
 
 	page = vmalloc(FLASH_HUGE_PAGE_SIZE);
 	if (page == NULL)
 		return -ENOMEM;
 
 	mutex_lock(&flash->io_lock);
+
+	flash_offset2faddr(*off, &faddr);
+	flash->qspi_curr_slave = faddr.slave;
 
 	if (!flash_wait_until_ready(flash))
 		ret = -EINVAL;
@@ -1208,11 +1256,13 @@ static void sysfs_destroy_flash(struct xocl_flash *flash)
 static int flash_remove(struct platform_device *pdev)
 {
 	struct xocl_flash *flash;
+	void *hdl;
 
 	flash = platform_get_drvdata(pdev);
 	if (!flash)
 		return -EINVAL;
 
+	xocl_drvinst_release(flash, &hdl);
 	platform_set_drvdata(pdev, NULL);
 
 	sysfs_destroy_flash(flash);
@@ -1223,7 +1273,7 @@ static int flash_remove(struct platform_device *pdev)
 		iounmap(flash->qspi_regs);
 
 	mutex_destroy(&flash->io_lock);
-	xocl_drvinst_free(flash);
+	xocl_drvinst_free(hdl);
 	return 0;
 }
 

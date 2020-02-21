@@ -13,17 +13,6 @@ include_directories(
   ${BOOST_SYSTEM_INCLUDE_DIRS}
   )
 
-add_library(oclxdp SHARED
-  $<TARGET_OBJECTS:xdpobj>
-  )
-add_dependencies(oclxdp xdp xilinxopencl)
-
-add_library(xdp_hal_plugin SHARED
-  $<TARGET_OBJECTS:xdp_hal_plugin_obj>
-  )
-
-add_dependencies(xdp_hal_plugin xdp)
-
 option(XOCL_VERBOSE "Enable xocl verbosity" OFF)
 option(XRT_VERBOSE "Enable xrt verbosity" OFF)
 
@@ -68,24 +57,6 @@ set_target_properties(xilinxopencl PROPERTIES
   SOVERSION ${XRT_SOVERSION}
   INSTALL_RPATH $ORIGIN
   )
-
-target_link_libraries(oclxdp
-  xdp
-  xilinxopencl
- )
-
-target_link_libraries(xdp_hal_plugin xdp)
-
-set_target_properties(xdp_hal_plugin PROPERTIES VERSION ${XRT_VERSION_STRING}
-  SOVERSION ${XRT_SOVERSION})
-
-set_target_properties(oclxdp PROPERTIES VERSION ${XRT_VERSION_STRING}
-  SOVERSION ${XRT_SOVERSION})
-
-set_target_properties(xdp PROPERTIES VERSION ${XRT_VERSION_STRING}
-  SOVERSION ${XRT_SOVERSION})
-
-install (TARGETS oclxdp xdp_hal_plugin LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
 
 add_subdirectory(core)
 
