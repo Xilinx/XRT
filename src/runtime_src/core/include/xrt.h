@@ -718,7 +718,7 @@ static inline size_t
 xclGetBOSize(xclDeviceHandle handle, xclBufferHandle boHandle)
 {
     struct xclBOProperties p;
-    return !xclGetBOProperties(handle, boHandle, &p) ? (size_t)p.size : -1;
+    return !xclGetBOProperties(handle, boHandle, &p) ? (size_t)p.size : (size_t)-1;
 }
 
 /*
@@ -736,7 +736,7 @@ static inline uint64_t
 xclGetDeviceAddr(xclDeviceHandle handle, xclBufferHandle boHandle)
 {
     struct xclBOProperties p;
-    return !xclGetBOProperties(handle, boHandle, &p) ? p.paddr : -1;
+    return !xclGetBOProperties(handle, boHandle, &p) ? p.paddr : (uint64_t)-1;
 }
 
 /* End XRT Buffer Management APIs */
