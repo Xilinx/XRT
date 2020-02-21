@@ -28,6 +28,7 @@ struct xocl_am {
 static int am_remove(struct platform_device *pdev)
 {
 	struct xocl_am *am;
+	void *hdl;
 
 	am = platform_get_drvdata(pdev);
 	if (!am) {
@@ -35,12 +36,14 @@ static int am_remove(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
+	xocl_drvinst_release(am, &hdl);
+
 	if (am->base)
 		iounmap(am->base);
 
 	platform_set_drvdata(pdev, NULL);
 
-	xocl_drvinst_free(am);
+	xocl_drvinst_free(hdl);
 
 	return 0;
 }

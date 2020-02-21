@@ -28,6 +28,7 @@ struct xocl_trace_s2mm {
 static int trace_s2mm_remove(struct platform_device *pdev)
 {
 	struct xocl_trace_s2mm *trace_s2mm;
+	void *hdl;
 
 	trace_s2mm = platform_get_drvdata(pdev);
 	if (!trace_s2mm) {
@@ -35,12 +36,14 @@ static int trace_s2mm_remove(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
+	xocl_drv_release(trace_s2mm, &hdl);
+
 	if (trace_s2mm->base)
 		iounmap(trace_s2mm->base);
 
 	platform_set_drvdata(pdev, NULL);
 
-	xocl_drvinst_free(trace_s2mm);
+	xocl_drvinst_free(hdl);
 
 	return 0;
 }

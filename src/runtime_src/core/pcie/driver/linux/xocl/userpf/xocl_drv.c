@@ -347,10 +347,8 @@ int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 
 	userpf_info(xdev, "resetting device...");
 
-#if 0 
 	if (flag & XOCL_RESET_FORCE)
 		xocl_drvinst_kill_proc(xdev->core.drm);
-#endif
 
 	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct xcl_mailbox_req),
 		&ret, &resplen, NULL, NULL, 0);
@@ -1239,6 +1237,7 @@ static void unmap_bar(struct xocl_dev *xdev)
 void xocl_userpf_remove(struct pci_dev *pdev)
 {
 	struct xocl_dev		*xdev;
+	void *hdl;
 
 	xdev = pci_get_drvdata(pdev);
 	if (!xdev) {
@@ -1246,17 +1245,18 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 		return;
 	}
 
-	xocl_queue_destroy(xdev);
+	xocl_drvinst_release(xdev, &hdl);
 
-	xocl_p2p_fini(xdev, false);
 	/*
 	 * need to shutdown drm and sysfs before destroy subdevices
 	 * drm and sysfs could access subdevices
 	 */
-
 	if (xdev->core.drm)
 		xocl_drm_fini(xdev->core.drm);
 
+	xocl_queue_destroy(xdev);
+
+	xocl_p2p_fini(xdev, false);
 	xocl_fini_sysfs(xdev);
 
 	xocl_subdev_destroy_all(xdev);
@@ -1273,7 +1273,7 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 	mutex_destroy(&xdev->dev_lock);
 
 	pci_set_drvdata(pdev, NULL);
-	xocl_drvinst_free(xdev);
+	xocl_drvinst_free(hdl);
 }
 
 int xocl_config_pci(struct xocl_dev *xdev)
