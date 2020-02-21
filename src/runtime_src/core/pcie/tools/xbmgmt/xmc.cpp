@@ -106,8 +106,10 @@ int XMC_Flasher::xclUpgradeFirmware(std::istream& tiTxtStream) {
     int retries = 5;
     int ret = 0;
 
-    if (!isSCPresence())
+    if (!hasSC()) {
+        std::cout << "ERROR: SC is not present on platform" << std::endl;
         return -EINVAL;
+    }
 
     if (!isXMCReady())
         return -EINVAL;
@@ -256,7 +258,7 @@ int XMC_Flasher::xclGetBoardInfo(std::map<char, std::vector<char>>& info)
 {
     int ret = 0;
 
-    if (!isSCPresence())
+    if (!hasSC())
         return -EINVAL;
 
     if (!isXMCReady() || !isBMCReady())
@@ -507,7 +509,7 @@ bool XMC_Flasher::isXMCReady()
     return xmcReady;
 }
 
-bool XMC_Flasher::isBMCReady()
+bool XMC_Flasher::hasSC()
 {
     unsigned int val;
     std::string errmsg;
@@ -530,29 +532,15 @@ bool XMC_Flasher::isBMCReady()
 bool XMC_Flasher::isBMCReady()
 {
     unsigned int val;
-    std::string errmsg;
+    bool bmcReady = (BMC_MODE() == 0x1);
 
-    if (!hasXMC())
-	    return false;
-
-    mDev->sysfs_get<unsigned>("xmc", "sc_presence", errmsg, val, 0);
-    if (!errmsg.empty()) {
-        std::cout << "can't read sc_presence node from " << mDev->sysfs_name <<
-            " : " << errmsg << std::endl;
-        return false;
-    }
-
-    if (val) {
-        bool bmcReady = (BMC_MODE() == 0x1);
-        if (!bmcReady) {
-            xrt_core::ios_flags_restore format(std::cout);
-            std::cout << "ERROR: SC is not ready: 0x" << std::hex
+    if (!bmcReady) {
+        xrt_core::ios_flags_restore format(std::cout);
+        std::cout << "ERROR: SC is not ready: 0x" << std::hex
                 << BMC_MODE() << std::endl;
-        }
-        return bmcReady;
     }
 
-    return true;
+    return bmcReady;
 }
 
 bool XMC_Flasher::hasXMC()
