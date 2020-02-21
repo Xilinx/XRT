@@ -62,7 +62,7 @@ private:
     uint64_t m_trbuf_offset = 0;
     uint64_t m_trbuf_chunk_sz = 0;
 
-    void offload_trace();
+    std::function<void()> m_read_trace;
     void read_trace_fifo();
     void read_trace_end();
     bool read_trace_init();

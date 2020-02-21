@@ -1,6 +1,7 @@
 #include "ocl_device_offload.h"
 #include "xdp/profile/device/tracedefs.h"
 #include <iostream>
+#include <chrono>
 
 namespace xdp {
 
@@ -20,6 +21,13 @@ OclDeviceOffload::OclDeviceOffload(xdp::DeviceIntf* dInt,
                                      binary_name(std::move(binary_name))
                                      
 {
+  // Select appropriate reader
+  if(dev_intf->hasFIFO()) {
+    m_read_trace = std::bind(&OclDeviceOffload::read_trace_fifo, this);
+  } else {
+    m_read_trace = std::bind(&OclDeviceOffload::read_trace_s2mm, this);
+  }
+
   if (start_thread) {
     start_offload();
   }
@@ -41,12 +49,12 @@ void OclDeviceOffload::offload_device_continuous()
 
   while (should_continue()) {
     // Offload and log trace and counters
-    offload_trace();
+    m_read_trace();
     // Sleep for a specified time
     std::this_thread::sleep_for (std::chrono::milliseconds(sleep_interval_ms));
   }
   // Do a final flush
-  offload_trace();
+  m_read_trace();
   read_trace_end();
 }
 
@@ -69,17 +77,11 @@ void OclDeviceOffload::stop_offload()
   status = DeviceOffloadStatus::STOPPING;
 }
 
-void OclDeviceOffload::offload_trace()
-{
-  if (dev_intf->hasFIFO()) {
-    read_trace_fifo();
-  } else {
-    read_trace_s2mm();
-  }
-}
-
 void OclDeviceOffload::read_trace_fifo()
 {
+  debug_stream
+    << "OclDeviceOffload::read_trace_fifo " << std::endl;
+
   do {
     dev_intf->readTrace(m_trace_vector);
     prof_mgr->logDeviceTrace(device_name, binary_name, m_type, m_trace_vector, false);
@@ -108,6 +110,9 @@ void OclDeviceOffload::read_trace_end()
 
 void OclDeviceOffload::read_trace_s2mm()
 {
+  debug_stream
+    << "OclDeviceOffload::read_trace_s2mm " << std::endl;
+
   config_s2mm_reader(dev_intf->getWordCountTs2mm());
   while (1) {
     auto bytes = read_trace_s2mm_partial();
@@ -130,7 +135,14 @@ uint64_t OclDeviceOffload::read_trace_s2mm_partial()
     << "OclDeviceOffload::read_trace_s2mm_partial "
     <<"Reading " << nBytes << " bytes " << std::endl;
 
+  auto start = std::chrono::steady_clock::now();
   void* host_buf = dev_intf->syncTraceBuf( m_trbuf, m_trbuf_offset, nBytes);
+  auto end = std::chrono::steady_clock::now();
+  debug_stream
+    << "Elapsed time in microseconds for sync : "
+		<< std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
+		<< " µs" << std::endl;
+
   if (host_buf) {
     dev_intf->parseTraceData(host_buf, nBytes, m_trace_vector);
     m_trbuf_offset += nBytes;
