@@ -69,15 +69,25 @@ namespace xdp {
       fout << "Group_End,KDMA" << std::endl ;
     }
 
-    std::vector<ComputeUnitInstance>* cus = (db->getStaticInfo()).getCUs(deviceId) ;
+    std::map<int32_t, ComputeUnitInstance*> *cus = (db->getStaticInfo()).getCUs(deviceId);
+    std::map<int32_t, Memory*>           *memory = (db->getStaticInfo()).getMemoryInfo(deviceId);
     if(cus) {
-      for (unsigned int i = 0 ; i < cus->size() ; ++i)
-      {
-        fout << "Group_Start," << (*cus)[i].getName() << std::endl ;
+      for(auto itr : *cus) {
+        ComputeUnitInstance* cu = itr.second;
+        fout << "Group_Start," << cu->getName() << std::endl ;
         fout << "Dynamic_Row_Summary," << ++rowCount << ",Executions, ,KERNEL" << std::endl ;
-        // For each memory bank/destination that could be accessed by this
-        //  compute unit, create a row.
-        fout << "Group_End," << (*cus)[i].getName() << std::endl ;
+        // For each memory bank/destination that could be accessed by this compute unit, create a row.
+        std::map<int32_t, std::vector<int32_t>> *args = cu->getConnections();
+        if(memory && args) {
+          for(auto itr : *args) {
+            int32_t argIdx = itr.first;
+            int32_t memIdx = (itr.second)[0]; // for now just one
+            std::string argStr = "arg" + argIdx;
+			fout << "Group_Start," << argStr << std::endl;
+            fout << "Dynamic_Row," << ++rowCount << ",ArgMemory" << memIdx << ", ,KERNEL_READ" << std::endl;
+          }
+        }
+        fout << "Group_End," << cu->getName() << std::endl ;
       }
     }
 

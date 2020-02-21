@@ -39,7 +39,8 @@ namespace xdp {
     int index ; 
 
     // A mapping of arguments to memory resources
-    std::map<std::string, std::vector<int>> connections ;
+    std::map<int32_t, std::vector<int32_t>> connections ;
+//    std::map<std::string, std::vector<int>> connections ;
 
     ComputeUnitInstance() = delete ;
   public:
@@ -47,6 +48,9 @@ namespace xdp {
     // Getters and setters
     inline const std::string& getName() { return name ; }
     XDP_EXPORT std::string getDim() ;
+    XDP_EXPORT void addConnection(int32_t, int32_t);
+    std::map<int32_t, std::vector<int32_t>>* getConnections()
+    {  return &connections; }
 
     XDP_EXPORT ComputeUnitInstance(const char* n, int i) ;
     XDP_EXPORT ~ComputeUnitInstance() ;
@@ -57,13 +61,23 @@ namespace xdp {
     std::string deviceName;
   };
 
+  struct Memory {
+    uint8_t     type;
+    uint64_t    baseAddress;
+    std::string name;
+
+    Memory(uint8_t ty, uint64_t baseAddr, const char* n)
+      : type(ty),
+        baseAddress(baseAddr),
+        name(n)
+    {}
+  };
+
   struct DeviceInfo {
     struct PlatformInfo platformInfo;
     std::string loadedXclbin;
-    std::vector<ComputeUnitInstance> cus;
-    std::vector<std::pair<uint64_t, std::string>> ddrBanks;
-    std::vector<std::pair<uint64_t, std::string>> hbmBanks;
-    std::vector<std::pair<uint64_t, std::string>> plramBanks;    
+    std::map<int32_t, ComputeUnitInstance*> cus;
+    std::map<int32_t, Memory*> memoryInfo;
   };
 
   class VPStaticDatabase
@@ -96,9 +110,12 @@ namespace xdp {
 
     // Helper functions that fill in device information
     bool setXclbinUUID(DeviceInfo* devInfo, const void* binary);
+    bool initializeComputeUnits(DeviceInfo*, const void* binary);
+#if 0
     bool initializeMemory(DeviceInfo* devInfo, const void* binary) ;
     bool initializeComputeUnits(DeviceInfo* devInfo, const void* binary) ;
     bool initializeConnections(DeviceInfo* devInfo, const void* binary) ;
+#endif
 
   public:
     VPStaticDatabase() ;
@@ -120,11 +137,18 @@ namespace xdp {
         return deviceInfo[deviceId]->loadedXclbin; 
     }
 
-    inline std::vector<ComputeUnitInstance>* getCUs(uint64_t deviceId)
+    inline std::map<int32_t, ComputeUnitInstance*>* getCUs(uint64_t deviceId)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       return &(deviceInfo[deviceId]->cus);
+    }
+
+    inline std::map<int32_t, Memory*>* getMemoryInfo(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return nullptr;
+      return &(deviceInfo[deviceId]->memoryInfo);
     }
 
     // Reseting device information whenever a new xclbin is added

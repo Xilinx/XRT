@@ -15,6 +15,7 @@
  */
 
 #include <iostream>
+#include <sstream>
 
 #ifdef _WIN32
 #include <process.h>
@@ -55,6 +56,11 @@ namespace xdp {
     return combined ;
   }
 
+  void ComputeUnitInstance::addConnection(int32_t argIdx, int32_t memIdx)
+  {
+    
+  }
+
   VPStaticDatabase::VPStaticDatabase()
   {
 #ifdef _WIN32
@@ -77,21 +83,21 @@ namespace xdp {
 
     if (binary == nullptr) return ;
 
-    DeviceInfo *devDetails = new DeviceInfo();
-    devDetails->platformInfo.kdmaCount = 0;
+    DeviceInfo *devInfo = new DeviceInfo();
+    devInfo->platformInfo.kdmaCount = 0;
 
-    deviceInfo[deviceId] = devDetails;
-
-    #if 0
-   
+    deviceInfo[deviceId] = devInfo;
 
     // Currently, we are going through the xclbin using the low level
     //  AXLF structure.  Would sysfs be a better solution?  Does
     //  that work with emulation?
-    if (!initializeMemory(dev, binary)) return ;
-    if (!initializeComputeUnits(dev, binary)) return ;
-    if (!initializeConnections(dev, binary)) return ;
-    #endif
+    if (!setXclbinUUID(devInfo, binary)) return;
+    if (!initializeComputeUnits(devInfo, binary)) return ;
+#if 0
+    if (!initializeMemory(devInfo, binary)) return ;
+    if (!initializeComputeUnits(devInfo, binary)) return ;
+    if (!initializeConnections(devInfo, binary)) return ;
+#endif
   }
 
   void VPStaticDatabase::resetDeviceInfo(uint64_t deviceId)
@@ -105,21 +111,75 @@ namespace xdp {
     }
   }
 
+  bool VPStaticDatabase::setXclbinUUID(DeviceInfo* devInfo, const void* binary)
+  {
+    const axlf* xbin = static_cast<const struct axlf*>(binary) ;
+    (void)xbin;
+    #if 0
+    long double id = *((long double*)xbin->m_header.uuid);
+    std::cout << " the uid " << id << std::endl;
+    devInfo->loadedXclbin = std::to_string(*(long double*)(xbin->m_header.uuid));
+    
+    std::stringstream ss;
+    ss << xbin->m_header.uuid;
+    devInfo->loadedXclbin = ss.str();
+    std::cout << "sizeof xuid_t " << sizeof(xuid_t) << std::endl;
+    std::cout << "sizeof unsigned long long " << sizeof(unsigned long long) << std::endl;
+    std::cout << "sizeof long double " << sizeof(long double) << std::endl;
+    #endif
+    return true;
+  }
 
+  bool VPStaticDatabase::initializeComputeUnits(DeviceInfo* devInfo, const void* binary)
+  {
+    // Look into the connectivity section and load information about the Compute Units and connected Memory
+    const axlf* xbin     = static_cast<const struct axlf*>(binary);
+    const char* chBinary = static_cast<const char*>(binary);
+
+    // Get CONNECTIVITY section
+    const axlf_section_header* connectivityHeader = xclbin::get_axlf_section(xbin, CONNECTIVITY);
+    if (connectivityHeader == nullptr) return false;
+    const connectivity* connectivitySection = reinterpret_cast<const connectivity*>(chBinary + connectivityHeader->m_sectionOffset) ;
+    if (connectivitySection == nullptr) return false;
+
+    // Get IP_LAYOUT section 
+    const axlf_section_header* ipLayoutHeader = xclbin::get_axlf_section(xbin, IP_LAYOUT);
+    if (ipLayoutHeader == nullptr) return false;
+    const ip_layout* ipLayoutSection = reinterpret_cast<const ip_layout*>(chBinary + ipLayoutHeader->m_sectionOffset) ;
+    if (ipLayoutSection == nullptr) return false;
+    
+
+    // Get MEM_TOPOLOGY section 
+    const axlf_section_header* memTopologyHeader = xclbin::get_axlf_section(xbin, MEM_TOPOLOGY);
+    if (memTopologyHeader == nullptr) return false;
+    const mem_topology* memTopologySection = reinterpret_cast<const mem_topology*>(chBinary + memTopologyHeader->m_sectionOffset) ;
+    if (memTopologySection == nullptr) return false;
+
+    // Now make the connections
+    for(int32_t i = 0; i < connectivitySection->m_count ; i++) {
+      const struct connection* connctn = &(connectivitySection->m_connection[i]);
+
+      if(devInfo->cus.find(connctn->m_ip_layout_index) == devInfo->cus.end()) {
+        const struct ip_data* ipData = &(ipLayoutSection->m_ip_data[connctn->m_ip_layout_index]);
+        if(ipData->m_type != IP_KERNEL) {
+          // error ?
+        }
+        devInfo->cus[connctn->m_ip_layout_index] 
+                 = new ComputeUnitInstance(reinterpret_cast<const char*>(ipData->m_name), connctn->m_ip_layout_index);
+      }
+
+      if(devInfo->memoryInfo.find(connctn->mem_data_index) == devInfo->memoryInfo.end()) {
+        const struct mem_data* memData = &(memTopologySection->m_mem_data[connctn->mem_data_index]);
+        devInfo->memoryInfo[connctn->mem_data_index]
+                 = new Memory(memData->m_type, memData->m_base_address, reinterpret_cast<const char*>(memData->m_tag));
+      }
+      (devInfo->cus[connctn->m_ip_layout_index])->addConnection(connctn->arg_index, connctn->mem_data_index);
+    }
+    return true;
+  }
 
 #if 0
-    // All the device specific information has to be reset    
-    kdmaCount[dev] = 0 ;
-    deviceNames[dev] = "" ;
-    loadedXclbins[dev] = "" ;
-    cus[dev].clear() ;
-    ddrBanks[dev].clear() ;d
-    hbmBanks[dev].clear() ;
-    plramBanks[dev].clear() ;
-#endif
-
-#if 0
-  bool VPStaticDatabase::initializeMemory(void* dev, const void* binary)
+  bool VPStaticDatabase::initializeMemory(DeviceInfo* devInfo, const void* binary)
   {
     const axlf* xbin = static_cast<const struct axlf*>(binary) ;
     const axlf_section_header* memTopologyHeader = 
@@ -139,27 +199,27 @@ namespace xdp {
       nextPair.second = reinterpret_cast<const char*>(data->m_tag) ;
       switch (data->m_type)
       {
-      case MEM_DDR3:
-      case MEM_DDR4:
-      case MEM_DRAM:
-	// Currently, everything is in this bucket.  Should this be a CR?
-	ddrBanks[dev].push_back(nextPair) ;	
-	break ;
-      case MEM_HBM:
-	hbmBanks[dev].push_back(nextPair) ;
-	break ;
-      case MEM_BRAM:
-      case MEM_URAM:
-	plramBanks[dev].push_back(nextPair) ;
-	break ;
-      default:
-	break ;	
+        case MEM_DDR3:
+        case MEM_DDR4:
+        case MEM_DRAM:
+	        // Currently, everything is in this bucket.  Should this be a CR?
+          devInfo->ddrBanks.push_back(nextPair);
+          break ;
+        case MEM_HBM:
+          devInfo->hbmBanks.push_back(nextPair);
+          break ;
+        case MEM_BRAM:
+        case MEM_URAM:
+          devInfo->plramBanks.push_back(nextPair);
+          break ;
+        default:
+          break ;	
       }
     }
     return true ;
   }
 
-  bool VPStaticDatabase::initializeComputeUnits(void* dev, const void* binary)
+  bool VPStaticDatabase::initializeComputeUnits(DeviceInfo* devInfo, const void* binary)
   {
     const axlf* xbin = static_cast<const struct axlf*>(binary) ;
     const axlf_section_header* ipLayoutHeader = 
@@ -175,15 +235,14 @@ namespace xdp {
       const struct ip_data* nextIP = &(ipLayoutSection->m_ip_data[i]) ;
       if (nextIP->m_type == IP_KERNEL)
       {
-	ComputeUnitInstance nextCU(reinterpret_cast<const char*>(nextIP->m_name), i);
-	cus[dev].push_back(nextCU) ;
+	      ComputeUnitInstance nextCU(reinterpret_cast<const char*>(nextIP->m_name), i);
+	      devInfo->cus.push_back(nextCU) ;
       }
     }
     return true ;
   }
 
-  bool VPStaticDatabase::initializeConnections(void* /*dev*/, 
-						const void* binary)
+  bool VPStaticDatabase::initializeConnections(DeviceInfo* /*devInfo*/,	const void* binary)
   {
     const axlf* xbin = static_cast<const struct axlf*>(binary) ;
     const axlf_section_header* connectivityHeader =
@@ -192,11 +251,13 @@ namespace xdp {
     const connectivity* connectivitySection =
       reinterpret_cast<const connectivity*>(static_cast<const char*>(binary) + connectivityHeader->m_sectionOffset) ;
     if (connectivitySection == nullptr) return false ;
-    // TBD
+
+    for(int32_t i = 0; i < connectivitySection->m_count; i++) {
+      const struct connection* connectn = &(connectivitySection->m_connection[i]);
+    }
     return true ;
   }
-
-
+#endif
 
   void VPStaticDatabase::addCommandQueueAddress(uint64_t a)
   {
@@ -205,11 +266,4 @@ namespace xdp {
     commandQueueAddresses.emplace(a) ;
   }
 
-  void VPStaticDatabase::addKDMACount(void* dev, uint16_t numKDMAs)
-  {
-    std::lock_guard<std::mutex> lock(dbLock) ;
-
-    kdmaCount[dev] = numKDMAs ;
-  }
-#endif
 }
