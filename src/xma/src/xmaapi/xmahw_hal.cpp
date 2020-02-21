@@ -193,13 +193,9 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
             return false;
         }
         std::string xclbin = std::string(devXclbins[i].xclbin_name);
-        char *buffer = xma_xclbin_file_open(xclbin.c_str());
-        if (!buffer)
-        {
-            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not open xclbin file %s\n",
-                       xclbin.c_str());
-            return false;
-        }
+        std::vector<char> xclbin_buffer = xma_xclbin_file_open(xclbin.c_str());
+        char *buffer = xclbin_buffer.data();
+
         int32_t rc = xma_xclbin_info_get(buffer, &info);
         if (rc != XMA_SUCCESS)
         {

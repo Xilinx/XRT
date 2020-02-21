@@ -16,6 +16,7 @@
  */
 #include <stdio.h>
 #include <fstream>
+#include <stdexcept>
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -35,27 +36,32 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info);
 static int get_xclbin_mem_topology(char *buffer, XmaXclbinInfo *xclbin_info);
 static int get_xclbin_connectivity(char *buffer, XmaXclbinInfo *xclbin_info);
 
-char *xma_xclbin_file_open(const char *xclbin_name)
+std::vector<char> xma_xclbin_file_open(const char *xclbin_name)
 {
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Loading %s\n", xclbin_name);
 
-    std::ifstream file(xclbin_name, std::ios::binary | std::ios::ate);
-    std::streamsize size = file.tellg();
-    file.seekg(0, std::ios::beg);
+    std::ifstream infile(xclbin_name, std::ios::binary | std::ios::ate);
+    std::streamsize xclbin_size = infile.tellg();
+    infile.seekg(0, std::ios::beg);
 
-    char *buffer = (char*)malloc(size);
-    if (buffer == NULL) {
+    std::vector<char> xclbin_buffer;
+    try {
+        xclbin_buffer.reserve(xclbin_size);
+    } catch (const std::bad_alloc& ex) {
         xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not allocate buffer for file %s\n", xclbin_name);
-        return NULL;
+        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Buffer allocation error: %s\n", ex.what());
+        throw;
+    } catch (...) {
+        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not allocate buffer for file %s\n", xclbin_name);
+        throw;
     }
-    if (!file.read(buffer, size))
-    {
-        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not read file %s\n", xclbin_name);
-        free(buffer);
-        buffer = NULL;
+    infile.read(xclbin_buffer.data(), xclbin_size);
+    if (infile.gcount() != xclbin_size) {
+        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not read full xclbin file %s\n", xclbin_name);
+        throw std::range_error("Unable to read full xclbin file");
     }
 
-    return buffer;
+    return xclbin_buffer;
 }
 
 static int32_t kernel_max_channel_id(const ip_data& ip, std::string kernel_channels)
