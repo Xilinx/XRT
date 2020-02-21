@@ -983,6 +983,7 @@ struct gate_handler {
 	int (*gate_freeze_cb)(void *drvdata);
 	int (*gate_free_cb)(void *drvdata);
 	int (*gate_toggle_cb)(void *drvdata);
+	int (*gate_hbm_calibration_cb)(void *drvdata);
 	void *gate_args;
 };
 
@@ -1421,7 +1422,10 @@ extern struct mutex xocl_drvinst_mutex;
 extern struct xocl_drvinst *xocl_drvinst_array[XOCL_MAX_DEVICES * 10];
 
 void *xocl_drvinst_alloc(struct device *dev, u32 size);
-void xocl_drvinst_free(void *data);
+void xocl_drvinst_release(void *data, void **hdl);
+static inline void xocl_drvinst_free(void *hdl) {
+	kfree(hdl);
+}
 void *xocl_drvinst_open(void *file_dev);
 void *xocl_drvinst_open_single(void *file_dev);
 void xocl_drvinst_close(void *data);

@@ -98,7 +98,7 @@ static int mailbox_versal_remove(struct platform_device *pdev)
 	struct mailbox_versal *mbv = platform_get_drvdata(pdev);
 
 	platform_set_drvdata(pdev, NULL);
-	xocl_drvinst_free(mbv);
+	xocl_drvinst_release(mbv, NULL);
 
 	return 0;
 }

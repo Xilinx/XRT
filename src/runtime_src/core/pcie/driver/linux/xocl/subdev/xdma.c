@@ -211,11 +211,14 @@ static int user_intr_unreg(struct platform_device *pdev, u32 intr)
 
 	xdma= platform_get_drvdata(pdev);
 
-	if (intr >= xdma->max_user_intr)
+	if (intr >= xdma->max_user_intr) {
+		xocl_err(&pdev->dev, "intr %d greater than max", intr);
 		return -EINVAL;
+	}
 
 	mutex_lock(&xdma->user_msix_table_lock);
 	if (!xdma->user_msix_table[intr].in_use) {
+		xocl_err(&pdev->dev, "intr %d is not in use", intr);
 		ret = -EINVAL;
 		goto failed;
 	}
