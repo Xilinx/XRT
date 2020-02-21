@@ -36,7 +36,7 @@ static int trace_s2mm_remove(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	xocl_drv_release(trace_s2mm, &hdl);
+	xocl_drvinst_release(trace_s2mm, &hdl);
 
 	if (trace_s2mm->base)
 		iounmap(trace_s2mm->base);

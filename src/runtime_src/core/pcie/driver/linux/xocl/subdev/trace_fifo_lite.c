@@ -30,12 +30,13 @@ static int trace_fifo_lite_remove(struct platform_device *pdev)
 	struct trace_fifo_lite *trace_fifo_lite;
 	void *hdl;
 
-	xocl_drvinst_release(trace_fifo_lite, &hdl);
 	trace_fifo_lite = platform_get_drvdata(pdev);
 	if (!trace_fifo_lite) {
 		xocl_err(&pdev->dev, "driver data is NULL");
 		return -EINVAL;
 	}
+
+	xocl_drvinst_release(trace_fifo_lite, &hdl);
 
 	if (trace_fifo_lite->base)
 		iounmap(trace_fifo_lite->base);
