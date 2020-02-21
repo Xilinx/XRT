@@ -1226,12 +1226,15 @@ static void unmap_bar(struct xocl_dev *xdev)
 void xocl_userpf_remove(struct pci_dev *pdev)
 {
 	struct xocl_dev		*xdev;
+	void *hdl;
 
 	xdev = pci_get_drvdata(pdev);
 	if (!xdev) {
 		xocl_warn(&pdev->dev, "driver data is NULL");
 		return;
 	}
+
+	xocl_drvinst_release(xdev, &hdl);
 
 	xocl_queue_destroy(xdev);
 
@@ -1253,7 +1256,7 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 	mutex_destroy(&xdev->dev_lock);
 
 	pci_set_drvdata(pdev, NULL);
-	xocl_drvinst_free(xdev);
+	xocl_drvinst_free(hdl);
 }
 
 int xocl_config_pci(struct xocl_dev *xdev)
