@@ -119,8 +119,8 @@ namespace xdp {
     devices[deviceId] = devInterface;
 
     devInterface->readDebugIPlayout();
-    devInterface->startCounters(XCL_PERF_MON_MEMORY);
-    devInterface->startTrace(XCL_PERF_MON_MEMORY, 0);
+    devInterface->startCounters();
+    devInterface->startTrace(0);
   }
 
   void HALPlugin::setEncounteredDeviceHandle(void* handle)
@@ -155,7 +155,7 @@ namespace xdp {
 
     xclCounterResults counters ;
     devInterface->readCounters(counters) ;
-    (db->getStats()).updateCounters(devInterface, counters) ;
+    (db->getStats()).updateCounters(deviceId, counters) ;
 
     // Next, read trace and update the dynamic database with appropriate events
     xclTraceResultsVector trace ;

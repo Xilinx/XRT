@@ -257,6 +257,7 @@ namespace xdp {
     for(int32_t i = 0; i < connectivitySection->m_count; i++) {
       const struct connection* connectn = &(connectivitySection->m_connection[i]);
     }
+    */
     return true ;
   }
 #endif

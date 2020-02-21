@@ -58,9 +58,10 @@ namespace xdp {
   BufferTransfer::BufferTransfer(uint64_t s_id, double ts, VTFEventType ty,
                                  size_t bufSz)
                 : VTFEvent(s_id, ts, ty),
+                  size(bufSz)
     // Until implemented, initialize all members with a default value
-    stageString(0), eventString(0), size(0), srcAddress(0), srcBank(0),
-    dstAddress(0), dstBank(0), bufferId(0)
+//    stageString(0), eventString(0), size(0), srcAddress(0), srcBank(0),
+//    dstAddress(0), dstBank(0), bufferId(0)
   {
   }
 
