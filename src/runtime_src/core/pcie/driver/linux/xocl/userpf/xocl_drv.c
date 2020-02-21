@@ -1237,6 +1237,7 @@ static void unmap_bar(struct xocl_dev *xdev)
 void xocl_userpf_remove(struct pci_dev *pdev)
 {
 	struct xocl_dev		*xdev;
+	void *hdl;
 
 	xdev = pci_get_drvdata(pdev);
 	if (!xdev) {
@@ -1244,9 +1245,8 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 		return;
 	}
 
-	xocl_queue_destroy(xdev);
+	xocl_drvinst_release(xdev, &hdl);
 
-	xocl_p2p_fini(xdev, false);
 	/*
 	 * need to shutdown drm and sysfs before destroy subdevices
 	 * drm and sysfs could access subdevices
@@ -1255,6 +1255,9 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 	if (xdev->core.drm)
 		xocl_drm_fini(xdev->core.drm);
 
+	xocl_queue_destroy(xdev);
+
+	xocl_p2p_fini(xdev, false);
 	xocl_fini_sysfs(xdev);
 
 	xocl_subdev_destroy_all(xdev);
@@ -1271,7 +1274,7 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 	mutex_destroy(&xdev->dev_lock);
 
 	pci_set_drvdata(pdev, NULL);
-	xocl_drvinst_free(xdev);
+	xocl_drvinst_free(hdl);
 }
 
 int xocl_config_pci(struct xocl_dev *xdev)
