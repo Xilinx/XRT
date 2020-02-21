@@ -36,7 +36,7 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info);
 static int get_xclbin_mem_topology(char *buffer, XmaXclbinInfo *xclbin_info);
 static int get_xclbin_connectivity(char *buffer, XmaXclbinInfo *xclbin_info);
 
-std::vector<char> xma_xclbin_file_open(const char *xclbin_name)
+std::vector<char> xma_xclbin_file_open(const std::string& xclbin_name)
 {
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Loading %s\n", xclbin_name);
 
