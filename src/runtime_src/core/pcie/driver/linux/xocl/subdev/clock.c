@@ -760,16 +760,17 @@ static int clock_status_check(struct platform_device *pdev, bool *latched)
 		ucs_status_ch1 = (struct ucs_control_status_ch1 *)&status;
 		if (ucs_status_ch1->shutdown_clocks_latched) {
 			CLOCK_ERR(clock, "Critical temperature or power event, "
-			    "ULP kernel clocks have been stopped, reload the "
-			    "ULP to continue.");
+			    "kernel clocks have been stopped, run "
+			    "'xbutil valiate -q' to continue. "
+			    "See AR 73398 for more details.");
 			/* explicitly indicate reset should be latched */
 			*latched = true;
 		} else if (ucs_status_ch1->clock_throttling_average > CLK_MAX_VALUE) {
-			CLOCK_ERR(clock, "ULP kernel clocks %d exceeds "
+			CLOCK_ERR(clock, "kernel clocks %d exceeds "
 			    "expected maximum value %d.",
 			    ucs_status_ch1->clock_throttling_average, CLK_MAX_VALUE);
 		} else if (ucs_status_ch1->clock_throttling_average) {
-			CLOCK_ERR(clock, "ULP kernel clocks throttled at %d%%.",
+			CLOCK_ERR(clock, "kernel clocks throttled at %d%%.",
 			    (ucs_status_ch1->clock_throttling_average /
 			    (CLK_MAX_VALUE / 100)));
 		}
