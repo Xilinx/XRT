@@ -62,7 +62,7 @@ namespace xdp {
 
     KernelEvent() = delete ;
   public:
-    XDP_EXPORT KernelEvent(uint64_t s_id, double ts, uint64_t devId);
+    XDP_EXPORT KernelEvent(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId);
     XDP_EXPORT ~KernelEvent() ;
   };
 
