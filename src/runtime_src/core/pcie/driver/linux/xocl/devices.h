@@ -583,7 +583,7 @@ struct xocl_subdev_map {
 		{					\
 			.name   = "TRACE_FIFO_LITE",	\
 			.start	= 0x0,			\
-			.end	= 0xFFF,		\
+			.end	= 0x1FFF,		\
 			.flags  = IORESOURCE_MEM,	\
 		},					\
 	})
