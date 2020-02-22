@@ -204,8 +204,9 @@ enum {
 #define	XOCL_TRACE_FIFO_FULL	"trace_fifo_full"
 #define	XOCL_TRACE_FUNNEL	"trace_funnel"
 #define	XOCL_TRACE_S2MM		"trace_s2mm"
+#define	XOCL_MIG_HBM		"mig.hbm"
 
-#define	XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
+#define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
 
 enum subdev_id {
 	XOCL_SUBDEV_FEATURE_ROM,
@@ -356,7 +357,7 @@ struct xocl_subdev_map {
 #define	XOCL_DEVINFO_MIG_HBM				\
 	{						\
 		XOCL_SUBDEV_MIG,			\
-		XOCL_MIG,				\
+		XOCL_MIG_HBM,				\
 		XOCL_RES_MIG_HBM,			\
 		ARRAY_SIZE(XOCL_RES_MIG_HBM),		\
 		.level = XOCL_SUBDEV_LEVEL_URP,		\
