@@ -21,6 +21,7 @@
 
 #include "xdp/profile/writer/vp_trace_writer.h"
 #include "xdp/profile/device/device_intf.h"
+#include "xdp/profile/database/database.h"
 
 namespace xdp {
 
@@ -31,6 +32,8 @@ namespace xdp {
 
     // Specific header information
     std::string XRTVersion ;
+
+    std::map<VTFEventType, int> eventTypeBucketIdMap;
 
     // The interface to the specific device we are associated with
     DeviceIntf* dev ;

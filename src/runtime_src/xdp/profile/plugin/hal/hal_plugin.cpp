@@ -200,7 +200,7 @@ namespace xdp {
   {
     for (auto itr : devices)
     {
-      //uint64_t deviceId = itr->first;
+      uint64_t deviceId = itr.first;
       DeviceIntf* devInterface = itr.second;
 
       // Debug IP Layout should have been read but double check for now
@@ -222,7 +222,7 @@ namespace xdp {
 	      void* hostBuffer = nullptr ; // Need to sync the data
 	      devInterface->parseTraceData(hostBuffer, devInterface->getWordCountTs2mm(), trace) ;
       }
-      //(db->getDynamicInfo()).addDeviceEvents(deviceId, trace) ;
+      (db->getDynamicInfo()).addDeviceEvents(deviceId, trace) ;
     }
   }
 

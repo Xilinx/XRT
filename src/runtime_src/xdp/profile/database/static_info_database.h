@@ -96,10 +96,8 @@ namespace xdp {
      *    b. Device Name
      * 2. Loaded xclbin 
      *    a. Name of loaded xclbin
-     *    b. List of Compute Units
-     *    c. Name and Addresses of DDR banks
-     *    d. Name and Addresses of HBM banks
-     *    e. Name and Addresses of PLRAM banks
+     *    b. Map of Compute Units
+     *    c. Map of connected Memory
      */
     std::map<uint64_t, DeviceInfo*> deviceInfo;
 

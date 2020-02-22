@@ -17,6 +17,23 @@
 #define XDP_SOURCE
 
 #include "xdp/profile/database/dynamic_event_database.h"
+#include "xdp/profile/database/events/device_events.h"
+
+
+#if 0
+// type does not matter : as all caculation done at once
+enum xclPerfMonType {
+	XCL_PERF_MON_MEMORY = 0,
+	XCL_PERF_MON_HOST   = 1,
+	XCL_PERF_MON_SHELL  = 2,
+	XCL_PERF_MON_ACCEL  = 3,
+	XCL_PERF_MON_STALL  = 4,
+	XCL_PERF_MON_STR    = 5,
+	XCL_PERF_MON_FIFO   = 6,
+	XCL_PERF_MON_TOTAL_PROFILE = 7
+};
+#endif
+
 
 namespace xdp {
   
@@ -84,21 +101,121 @@ namespace xdp {
       return;
 
     uint64_t timestamp = 0;
-    uint64_t startTime = 0;
 
     for(unsigned int i=0; i < traceVector.mLength; i++) {
       auto& trace = traceVector.mArray[i];
       
       timestamp = trace.Timestamp;
 
-      //if (trace.isClockTrain) {
-      //  trainDeviceHostTimestamps(type, timestamp, trace.HostTimestamp);
-      //}
+      // assign EVENT_TYPE
 
+      if (trace.isClockTrain) {
+        trainDeviceHostTimestamps(timestamp, trace.HostTimestamp);
+      }
 
+      uint32_t s = 0;
+      bool SAMPacket = (trace.TraceID >= MIN_TRACE_ID_AM && trace.TraceID <= MAX_TRACE_ID_AM);
+      bool SPMPacket = (trace.TraceID >= MIN_TRACE_ID_AIM && trace.TraceID <= MAX_TRACE_ID_AIM);
+      bool SSPMPacket = (trace.TraceID >= MIN_TRACE_ID_ASM && trace.TraceID < MAX_TRACE_ID_ASM);
+      if (!SAMPacket && !SPMPacket && !SSPMPacket) {
+        continue;
+      }
+      if (SAMPacket) {
+        s = ((trace.TraceID - MIN_TRACE_ID_AM) / 16);
+        uint32_t cuEvent       = trace.TraceID & XAM_TRACE_CU_MASK;
+        uint32_t stallIntEvent = trace.TraceID & XAM_TRACE_STALL_INT_MASK;
+        uint32_t stallStrEvent = trace.TraceID & XAM_TRACE_STALL_STR_MASK;
+        uint32_t stallExtEvent = trace.TraceID & XAM_TRACE_STALL_EXT_MASK;
+         
+        double hostTimestamp = convertDeviceToHostTimestamp(timestamp);
+
+// set name and every thing, to determine bucket id?
+        if(cuEvent) {
+          KernelDeviceEvent* event = nullptr;
+          if (!(trace.EventFlags & XAM_TRACE_CU_MASK)) {
+            // end event
+            event = new KernelDeviceEvent(matchingDeviceEventStart(trace.TraceID), hostTimestamp, deviceId);
+            event->setDeviceTimestamp(static_cast<double>(timestamp));
+            addEvent(event);
+          } else {
+            // start event
+            event = new KernelDeviceEvent(0, hostTimestamp, deviceId);
+            event->setDeviceTimestamp(static_cast<double>(timestamp));
+            addEvent(event);
+            markDeviceEventStart(trace.TraceID, event->getEventId());
+          }
+        }
+ 
+        if(stallIntEvent) {
+          KernelStall* event = nullptr;
+          if(traceIDMap[s] & XAM_TRACE_STALL_INT_MASK) {
+            // end event
+            event = new KernelStall(matchingDeviceEventStart(trace.TraceID),
+                             hostTimestamp, DATAFLOW_STALL, deviceId);
+            event->setDeviceTimestamp(static_cast<double>(timestamp));
+            addEvent(event);
+          } else {
+            // start event
+            event = new KernelStall(0, hostTimestamp, DATAFLOW_STALL, deviceId);
+            event->setDeviceTimestamp(static_cast<double>(timestamp));
+            addEvent(event);
+            markDeviceEventStart(trace.TraceID, event->getEventId());
+          }
+        } 
+
+        if(stallStrEvent) {
+          KernelStall* event = nullptr;
+          if(traceIDMap[s] & XAM_TRACE_STALL_STR_MASK) {
+            // end event
+            event = new KernelStall(matchingDeviceEventStart(trace.TraceID),
+                             hostTimestamp, PIPE_STALL, deviceId);
+            event->setDeviceTimestamp(static_cast<double>(timestamp));
+            addEvent(event);
+          } else {
+            // start event
+            event = new KernelStall(0, hostTimestamp, PIPE_STALL, deviceId);
+            event->setDeviceTimestamp(static_cast<double>(timestamp));
+            addEvent(event);
+            markDeviceEventStart(trace.TraceID, event->getEventId());
+          }
+        } 
+        if(stallExtEvent) {
+          KernelStall* event = nullptr;
+          if(traceIDMap[s] & XAM_TRACE_STALL_EXT_MASK) {
+            // end event
+            event = new KernelStall(matchingDeviceEventStart(trace.TraceID),
+                             hostTimestamp, EXTERNAL_MEMORY_STALL, deviceId);
+            event->setDeviceTimestamp(static_cast<double>(timestamp));
+            addEvent(event);
+          } else {
+            // start event
+            event = new KernelStall(0, hostTimestamp, EXTERNAL_MEMORY_STALL, deviceId);
+            event->setDeviceTimestamp(static_cast<double>(timestamp));
+            addEvent(event);
+            markDeviceEventStart(trace.TraceID, event->getEventId());
+          }
+        }
+        traceIDMap[s] ^= (trace.TraceID & 0xf);
+      } // SAMPacket 
     }
-    (void)timestamp;
-    (void)startTime;
+  }
+
+  void VPDynamicDatabase::markDeviceEventStart(uint64_t slotID, uint64_t eventID)
+  {
+    std::lock_guard<std::mutex> lock(dbLock) ;
+    deviceEventStartMap[slotID] = eventID ;
+  }
+
+  uint64_t VPDynamicDatabase::matchingDeviceEventStart(uint64_t slotID)
+  {
+    std::lock_guard<std::mutex> lock(dbLock) ;
+    if (deviceEventStartMap.find(slotID) != deviceEventStartMap.end())
+    {
+      uint64_t value = deviceEventStartMap[slotID] ;
+      deviceEventStartMap.erase(slotID) ;
+      return value ;
+    }
+    return 0 ;
   }
 
   void VPDynamicDatabase::markStart(uint64_t functionID, uint64_t eventID)
@@ -159,5 +276,43 @@ namespace xdp {
       fout << s.second << "," << s.first.c_str() << std::endl ;
     }
   }
+
+  // Complete training to convert device timestamp to host time domain
+  // NOTE: see description of PTP @ http://en.wikipedia.org/wiki/Precision_Time_Protocol
+  // clock training relation is linear within small durations (1 sec)
+  // x, y coordinates are used for clock training
+  void VPDynamicDatabase::trainDeviceHostTimestamps(uint64_t deviceTimestamp, uint64_t hostTimestamp)
+  {
+    static double y1 = 0.0;
+    static double y2 = 0.0;
+    static double x1 = 0.0;
+    static double x2 = 0.0;
+//    bool isDeviceFlow = mPluginHandle->getFlowMode() == xdp::RTUtil::DEVICE;
+    if (!y1 && !x1) {
+      y1 = static_cast <double> (hostTimestamp);
+      x1 = static_cast <double> (deviceTimestamp);
+    } else {
+      y2 = static_cast <double> (hostTimestamp);
+      x2 = static_cast <double> (deviceTimestamp);
+      // slope in ns/cycle
+//      if (isDeviceFlow) {
+        mTrainSlope = 1000.0/mTraceClockRateMHz;
+//      } else {
+//        mTrainSlope[type] = (y2 - y1) / (x2 - x1);
+//      }
+      mTrainOffset = y2 - mTrainSlope * x2;
+      // next time update x1, y1
+      y1 = 0.0;
+      x1 = 0.0;
+    }
+  }
+
+  // Convert device timestamp to host time domain (in msec)
+  double VPDynamicDatabase::convertDeviceToHostTimestamp(uint64_t deviceTimestamp)
+  {
+    // Return y = m*x + b
+    return (mTrainSlope * (double)deviceTimestamp + mTrainOffset)/1e6;
+  }
+
 
 }

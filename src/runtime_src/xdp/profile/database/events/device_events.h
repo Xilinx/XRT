@@ -38,6 +38,7 @@ namespace xdp {
   {
   private:
     uint64_t deviceId ; // Either a device handle or an xrt::device
+    double   deviceTimestamp;
 
     VTFDeviceEvent() = delete ;
 
@@ -48,8 +49,13 @@ namespace xdp {
     XDP_EXPORT VTFDeviceEvent(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId);
     XDP_EXPORT ~VTFDeviceEvent() ;
 
+    XDP_EXPORT virtual void dump(std::ofstream& fout, int bucket);
+
     virtual bool isDeviceEvent() { return true ; }
-    virtual uint64_t getDevice() { return deviceId ; } 
+    virtual uint64_t getDevice() { return deviceId ; }
+
+    virtual void   setDeviceTimestamp(double deviceTime) { deviceTimestamp = deviceTime; }
+    virtual double getDevicestamp() { return deviceTimestamp; } 
   } ;
 
   class KernelEvent : public VTFDeviceEvent
@@ -85,7 +91,7 @@ namespace xdp {
 
     KernelStall() = delete ;
   public:
-    XDP_EXPORT KernelStall(uint64_t s_id, double ts, uint64_t devId) ;
+    XDP_EXPORT KernelStall(uint64_t s_id, double ts, KernelStallType stTy, uint64_t devId) ;
     XDP_EXPORT ~KernelStall() ;
   } ;
 

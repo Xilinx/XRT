@@ -28,7 +28,8 @@ namespace xdp {
 
   VTFDeviceEvent::VTFDeviceEvent(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId)
                 : VTFEvent(s_id, ts, ty),
-                  deviceId(devId)
+                  deviceId(devId),
+                  deviceTimestamp(0)
   {
   }
 
@@ -46,6 +47,12 @@ namespace xdp {
     fout.flags(flags) ;
   }
 
+  void VTFDeviceEvent::dump(std::ofstream& fout, int bucket)
+  { 
+    VTFEvent::dump(fout, bucket) ;
+    fout << std::endl;
+  } 
+
   KernelEvent::KernelEvent(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId)
                    : VTFDeviceEvent(s_id, ts, ty, devId),
     // Until implemented, provide a default value for all members
@@ -53,7 +60,7 @@ namespace xdp {
   {
   }
 
-  KernelDeviceEvent::~KernelDeviceEvent()
+  KernelEvent::~KernelEvent()
   {
   }
 
@@ -68,10 +75,11 @@ namespace xdp {
   {
   }
 
-  KernelStall::KernelStall(uint64_t s_id, double ts, uint64_t devId)
+  KernelStall::KernelStall(uint64_t s_id, double ts, KernelStallType stTy, uint64_t devId)
              : KernelEvent(s_id, ts, KERNEL_STALL, devId),
+               stallType(stTy),
     // Until implemented, provide a default value for all members
-    stallType(UNKNOWN_STALL), burstLength(0)
+    burstLength(0)
   {
   }
 

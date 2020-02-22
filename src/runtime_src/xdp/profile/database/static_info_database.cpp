@@ -58,7 +58,12 @@ namespace xdp {
 
   void ComputeUnitInstance::addConnection(int32_t argIdx, int32_t memIdx)
   {
-    
+    if(connections.find(argIdx) == connections.end()) {
+      std::vector<int32_t> mems(1, memIdx);
+      connections[argIdx] = mems;
+      return;
+    }
+    connections[argIdx].push_back(memIdx);
   }
 
   VPStaticDatabase::VPStaticDatabase()
@@ -132,7 +137,7 @@ namespace xdp {
 
   bool VPStaticDatabase::initializeComputeUnits(DeviceInfo* devInfo, const void* binary)
   {
-    // Look into the connectivity section and load information about the Compute Units and connected Memory
+    // Look into the connectivity section and load information about Compute Units and their Memory connections
     const axlf* xbin     = static_cast<const struct axlf*>(binary);
     const char* chBinary = static_cast<const char*>(binary);
 

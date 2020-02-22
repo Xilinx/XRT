@@ -53,7 +53,8 @@ namespace xdp {
     //  to build up the structure of the file we are generating
     
     std::string deviceName = (db->getStaticInfo()).getDeviceName(deviceId) ;
-    std::string xclbinName = (db->getStaticInfo()).getXclbinUUID(deviceId) ;
+//    std::string xclbinName = (db->getStaticInfo()).getXclbinUUID(deviceId) ;
+    std::string xclbinName = "xclbin";
     
     fout << "Group_Start," << deviceName << std::endl ;
     fout << "Group_Start," << xclbinName << std::endl ;
@@ -63,30 +64,39 @@ namespace xdp {
       fout << "Group_Start,KDMA" << std::endl ;
       for (unsigned int i = 0 ; i < numKDMA ; ++i)
       {
-	      fout << "Dynamic_Row," << ++rowCount << ",Read, ,KERNEL_READ" << std::endl ;
-	      fout << "Dynamic_Row," << ++rowCount << ",Write, ,KERNEL_WRITE" << std::endl ;
+	      fout << "Dynamic_Row," << ++rowCount << ",Read, ,KERNEL_READ" << std::endl;
+	      fout << "Dynamic_Row," << ++rowCount << ",Write, ,KERNEL_WRITE" << std::endl;
       }
       fout << "Group_End,KDMA" << std::endl ;
     }
 
     std::map<int32_t, ComputeUnitInstance*> *cus = (db->getStaticInfo()).getCUs(deviceId);
-    std::map<int32_t, Memory*>           *memory = (db->getStaticInfo()).getMemoryInfo(deviceId);
+//    std::map<int32_t, Memory*>           *memory = (db->getStaticInfo()).getMemoryInfo(deviceId);
     if(cus) {
       for(auto itr : *cus) {
         ComputeUnitInstance* cu = itr.second;
         fout << "Group_Start," << cu->getName() << std::endl ;
-        fout << "Dynamic_Row_Summary," << ++rowCount << ",Executions, ,KERNEL" << std::endl ;
+        fout << "Dynamic_Row_Summary," << ++rowCount << ",Executions, ,KERNEL" << std::endl;
+        eventTypeBucketIdMap[KERNEL] = rowCount;
+        fout << "Dynamic_Row_Summary," << ++rowCount << ",Read, ,KERNEL_READ" << std::endl ;
+        eventTypeBucketIdMap[KERNEL_READ] = rowCount;
+        fout << "Dynamic_Row_Summary," << ++rowCount << ",Write, ,KERNEL_WRITE" << std::endl ;
+        eventTypeBucketIdMap[KERNEL_WRITE] = rowCount;
+#if 0
         // For each memory bank/destination that could be accessed by this compute unit, create a row.
         std::map<int32_t, std::vector<int32_t>> *args = cu->getConnections();
         if(memory && args) {
+          int32_t t = 0;
           for(auto itr : *args) {
             int32_t argIdx = itr.first;
-            int32_t memIdx = (itr.second)[0]; // for now just one
+            int32_t memIdx = (itr.second)[t]; // for now just one
             std::string argStr = "arg" + argIdx;
 			fout << "Group_Start," << argStr << std::endl;
             fout << "Dynamic_Row," << ++rowCount << ",ArgMemory" << memIdx << ", ,KERNEL_READ" << std::endl;
+            ++t;
           }
         }
+#endif
         fout << "Group_End," << cu->getName() << std::endl ;
       }
     }
@@ -104,7 +114,14 @@ namespace xdp {
 
   void HALDeviceTraceWriter::writeTraceEvents()
   {
-    fout << "EVENTS" << std::endl ;
+    fout << "EVENTS" << std::endl;
+    std::vector<VTFEvent*> DeviceEvents = 
+      (db->getDynamicInfo()).filterEvents( [](VTFEvent* e)
+          { return e->isDeviceEvent(); });
+    for(auto e : DeviceEvents) {
+      VTFEventType eventType = e->getEventType();
+      e->dump(fout, eventTypeBucketIdMap[eventType]);
+    }
   }
 
   void HALDeviceTraceWriter::writeDependencies()

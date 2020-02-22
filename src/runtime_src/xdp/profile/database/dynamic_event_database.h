@@ -56,6 +56,9 @@ namespace xdp {
     //  as in API calls.  This will match a function ID to event IDs.
     std::map<uint64_t, uint64_t> startMap ;
 
+    // For device events
+    std::map<uint64_t, uint64_t> deviceEventStartMap;
+
     // In order to reduce memory overhead, instead of each event holding
     //  strings, each event will instead point to a unique
     //  instance of that string
@@ -66,8 +69,18 @@ namespace xdp {
     //  we have to maintain exclusivity
     std::mutex dbLock ;
 
+    std::map<uint64_t, uint64_t> traceIDMap; // revisit
+
     void addHostEvent(VTFEvent* event) ;
     void addDeviceEvent(uint64_t deviceId, VTFEvent* event) ;
+
+    // Device to host timestamp adjustment
+    void   trainDeviceHostTimestamps(uint64_t deviceTimestamp, uint64_t hostTimestamp);
+    double convertDeviceToHostTimestamp(uint64_t deviceTimestamp);
+
+    double mTrainOffset;
+    double mTraceClockRateMHz = 285; // 300 ?
+    double mTrainSlope = 1000.0/mTraceClockRateMHz;
     
   public:
     XDP_EXPORT VPDynamicDatabase() ;
@@ -80,6 +93,10 @@ namespace xdp {
     // For API events, find the event id of the start event for an end event
     XDP_EXPORT void markStart(uint64_t functionID, uint64_t eventID) ;
     XDP_EXPORT uint64_t matchingStart(uint64_t functionID) ;
+
+    // For Device Events, find matching start for end event
+    XDP_EXPORT void markDeviceEventStart(uint64_t slotID, uint64_t eventID);
+    XDP_EXPORT uint64_t matchingDeviceEventStart(uint64_t slotID);
 
     // A lookup into the string table
     XDP_EXPORT uint64_t addString(const std::string& value) ;
