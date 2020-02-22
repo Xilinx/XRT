@@ -258,10 +258,7 @@ int XMC_Flasher::xclGetBoardInfo(std::map<char, std::vector<char>>& info)
 {
     int ret = 0;
 
-    if (!hasSC())
-        return -EINVAL;
-
-    if (!isXMCReady() || !isBMCReady())
+    if (!hasSC() || !isXMCReady() || !isBMCReady())
         return -EINVAL;
 
     mPkt = {0};
@@ -509,6 +506,24 @@ bool XMC_Flasher::isXMCReady()
     return xmcReady;
 }
 
+bool XMC_Flasher::isBMCReady()
+{
+    bool bmcReady = (BMC_MODE() == 0x1);
+
+    if (!bmcReady) {
+        xrt_core::ios_flags_restore format(std::cout);
+        std::cout << "ERROR: SC is not ready: 0x" << std::hex
+                << BMC_MODE() << std::endl;
+    }
+
+    return bmcReady;
+}
+
+bool XMC_Flasher::hasXMC()
+{
+        return !mDev->get_sysfs_path("xmc", "").empty();
+}
+
 bool XMC_Flasher::hasSC()
 {
     unsigned int val;
@@ -524,28 +539,7 @@ bool XMC_Flasher::hasSC()
         return false;
     }
 
-    if (val)
-        return true;
-    return false;
-}
-
-bool XMC_Flasher::isBMCReady()
-{
-    unsigned int val;
-    bool bmcReady = (BMC_MODE() == 0x1);
-
-    if (!bmcReady) {
-        xrt_core::ios_flags_restore format(std::cout);
-        std::cout << "ERROR: SC is not ready: 0x" << std::hex
-                << BMC_MODE() << std::endl;
-    }
-
-    return bmcReady;
-}
-
-bool XMC_Flasher::hasXMC()
-{
-        return !mDev->get_sysfs_path("xmc", "").empty();
+    return (val != 0);
 }
 
 static void tiTxtStreamToBin(std::istream& tiTxtStream,
