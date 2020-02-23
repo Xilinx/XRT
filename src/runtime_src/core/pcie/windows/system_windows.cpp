@@ -25,6 +25,7 @@
 #include "gen/version.h"
 #include "core/common/time.h"
 #include "mgmt.h"
+#include <map>
 #include <memory>
 #include <ctime>
 #include <windows.h>
@@ -70,6 +71,7 @@ getmachinename()
 
 static std::vector<std::weak_ptr<xrt_core::device_windows>> mgmtpf_devices(16); // fix size
 static std::vector<std::weak_ptr<xrt_core::device_windows>> userpf_devices(16); // fix size
+static std::map<xrt_core::device::handle_type, std::weak_ptr<xrt_core::device_windows>> userpf_device_map;
 
 }
 
@@ -143,6 +145,33 @@ get_userpf_device(device::id_type id) const
     device = std::shared_ptr<device_windows>(new device_windows(id,true));
     userpf_devices[id] = device;
   }
+  return device;
+}
+
+std::shared_ptr<device>
+system_windows::
+get_userpf_device(device::handle_type handle) const
+{
+  auto itr = userpf_device_map.find(handle);
+  if (itr != userpf_device_map.end())
+    return (*itr).second.lock();
+  return nullptr;
+}
+
+std::shared_ptr<device>
+system_windows::
+get_userpf_device(device::handle_type handle, device::id_type id) const
+{
+  // check device map cache
+  if (auto device = get_userpf_device(handle)) {
+    if (device->get_device_id() != id)
+        throw std::runtime_error("get_userpf_device: id mismatch");
+    return device;
+  }
+
+  auto device = std::shared_ptr<device_windows>(new device_windows(handle, id));
+  userpf_devices[id] = device;
+  userpf_device_map.insert(std::make_pair(handle, device));
   return device;
 }
 

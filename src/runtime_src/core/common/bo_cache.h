@@ -17,16 +17,18 @@
 #ifndef core_common_bo_cache_h_
 #define core_common_bo_cache_h_
 
-#include <vector>
-#include <utility>
-#include <mutex>
-#ifndef _WIN32
-#include <sys/mman.h>
-#endif
-
 #include "system.h"
 #include "device.h"
 #include "ert.h"
+
+#include <vector>
+#include <utility>
+#include <mutex>
+
+#ifdef _WIN32
+# pragma warning( push )
+# pragma warning( disable : 4245 )
+#endif
 
 namespace xrt_core {
 
@@ -109,7 +111,7 @@ private:
     }
     destroy(bo);
   }
-  
+
   void
   destroy(const cmd_bo<void> &bo)
   {
@@ -119,4 +121,9 @@ private:
 };
 
 } // xrt_core
+
+#ifdef _WIN32
+# pragma warning( pop )
+#endif
+
 #endif

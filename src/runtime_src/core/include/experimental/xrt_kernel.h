@@ -33,7 +33,7 @@ extern "C" {
 typedef xclDeviceHandle xrtDeviceHandle;
 typedef xclBufferHandle xrtBufferHandle;
 
-/**  
+/**
  * typedef xrtKernelHandle - opaque kernel handle
  *
  * A kernel handle is obtained by opening a kernel.  Clients
@@ -41,7 +41,7 @@ typedef xclBufferHandle xrtBufferHandle;
  */
 typedef void * xrtKernelHandle;
 
-/**  
+/**
  * typedef xrtRunHandle - opaque handle to a specific kernel run
  *
  * A run handle is obtained by running a kernel.  Clients
@@ -66,7 +66,8 @@ typedef void * xrtRunHandle;
  * and errno is set accordingly.
  *
  * A kernel handle is thread safe and can be shared between threads.
- */  
+ */
+XCL_DRIVER_DLLESPEC
 xrtKernelHandle
 xrtKernelOpen(xrtDeviceHandle deviceHandle, const char* xclbin, const char *name);
 
@@ -74,8 +75,10 @@ xrtKernelOpen(xrtDeviceHandle deviceHandle, const char* xclbin, const char *name
  * xrtKernelClose() - Close an opened kernel
  *
  * @kernelHandle: Handle to kernel previously opened with xrtKernelOpen
+ * Return:        0 on success, -1 on error
  */
-void
+XCL_DRIVER_DLLESPEC
+int
 xrtKernelClose(xrtKernelHandle kernelHandle);
 
 /**
@@ -90,6 +93,7 @@ xrtKernelClose(xrtKernelHandle kernelHandle);
  * same kernel again.  When no longer needed, then run handle must be
  * closed with xrtRunClose().
  */
+XCL_DRIVER_DLLESPEC
 xrtRunHandle
 xrtKernelRun(xrtKernelHandle kernelHandle, ...);
 
@@ -102,7 +106,8 @@ xrtKernelRun(xrtKernelHandle kernelHandle, ...);
  * The handle can be used repeatedly to start an execution of the
  * associated kernel.  This API allows application to manage run
  * handles without maintaining corresponding kernel handle.
- */  
+ */
+XCL_DRIVER_DLLESPEC
 xrtRunHandle
 xrtRunOpen(xrtKernelHandle kernelHandle);
 
@@ -112,23 +117,27 @@ xrtRunOpen(xrtKernelHandle kernelHandle);
  * @runHandle:  Handle to the run object to modify
  * @index:      Index of kernel argument to set
  * @arg:        The argument value to set.
+ * Return:      0 on success, -1 on error
  *
  * Use this API to explicitly set specific kernel arguments prior
- * to starting kernel execution.  After setting all arguments, the 
+ * to starting kernel execution.  After setting all arguments, the
  * kernel execution can be start with xrtRunStart()
  */
-void
+XCL_DRIVER_DLLESPEC
+int
 xrtRunSetArg(xrtRunHandle runHandle, int index, ...);
 
 /**
  * xrtRunStart() - Start existing run handle
- * 
+ *
  * @runHandle:  Handle to the run object to start
+ * Return:      0 on success, -1 on error
  *
  * Use this API when re-using a run handle for more than one execution
  * of the kernel associated with the run handle.
  */
-void
+XCL_DRIVER_DLLESPEC
+int
 xrtRunStart(xrtRunHandle runHandle);
 
 /**
@@ -137,15 +146,18 @@ xrtRunStart(xrtRunHandle runHandle);
  * @runHandle:  Handle to check
  * Return:      The underlying command execution state per ert.h
  */
+XCL_DRIVER_DLLESPEC
 ert_cmd_state
 xrtRunState(xrtRunHandle runHandle);
 
 /**
  * xrtRunClose() - Close a run handle
- * 
+ *
  * @runHandle:  Handle to close
+ * Return:      0 on success, -1 on error
  */
-void
+XCL_DRIVER_DLLESPEC
+int
 xrtRunClose(xrtRunHandle runHandle);
 
 #ifdef __cplusplus

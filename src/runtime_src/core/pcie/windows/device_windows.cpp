@@ -887,6 +887,12 @@ device_windows(id_type device_id, bool user)
 }
 
 device_windows::
+device_windows(handle_type device_handle, id_type device_id)
+  : shim<device_pcie>(device_handle, device_id)
+{
+}
+
+device_windows::
 ~device_windows()
 {
   if (m_mgmthdl)
@@ -919,13 +925,13 @@ write(uint64_t addr, const void* buf, uint64_t len) const
   mgmtpf::write_bar(m_mgmthdl, addr, buf, len);
 }
 
-/* TODO: after 2020.1 
+/* TODO: after 2020.1
  * Adding open/close stubs for compilation purposes.
- * We currently don't use these functions but we'll 
- * need them when we switch over to using driver for 
+ * We currently don't use these functions but we'll
+ * need them when we switch over to using driver for
  * flashing
  */
-int 
+int
 device_windows::
 open(const std::string& subdev, int flag) const
 {
@@ -934,7 +940,7 @@ open(const std::string& subdev, int flag) const
 
 void
 device_windows::
-close(int dev_handle) const 
+close(int dev_handle) const
 {
 }
 

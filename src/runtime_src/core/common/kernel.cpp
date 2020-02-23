@@ -17,12 +17,15 @@
 
 // This file implements XRT kernel APIs as declared in
 // core/include/experimental/xrt_kernel.h
+#define XCL_DRIVER_DLL_EXPORT  // exporting xrt_kernel.h
+#define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/include/experimental/xrt_kernel.h"
 
 #include "system.h"
 #include "device.h"
 #include "xclbin_parser.h"
 #include "bo_cache.h"
+#include "message.h"
 #include "core/include/xclbin.h"
 #include "core/include/ert.h"
 #include <memory>
@@ -32,6 +35,10 @@
 #include <cstdarg>
 #include <type_traits>
 #include <utility>
+
+#ifdef _WIN32
+# pragma warning( disable : 4244 4267)
+#endif
 
 namespace {
 
@@ -68,7 +75,7 @@ struct kernel_type
   using argument = xrt_core::xclbin::kernel_argument;
 
   std::shared_ptr<device_type> device;   // shared ownership
-  std::string name;                      // kernel name 
+  std::string name;                      // kernel name
   const axlf* top = nullptr;             // xclbin
   std::vector<const ip_data*> ips;       // compute units
   std::vector<argument> args;            // kernel args sorted by argument index
@@ -128,7 +135,7 @@ struct run_type
   {
     // TODO: consider if execbuf is cleared on return from cache
     auto cmd = execbuf.second;
-    cmd->count = kernel->num_cumasks + kernel->regmap_size;  
+    cmd->count = kernel->num_cumasks + kernel->regmap_size;
     cmd->opcode = ERT_START_CU;
     cmd->type = ERT_CU;
     cmd->cu_mask = kernel->cumask.to_ulong();  // TODO: fix for > 32 CUs
@@ -142,7 +149,7 @@ struct run_type
 
   // set_global_arg() - set a global argument
   void
-  set_global_arg(int index, xrtBufferHandle bo)
+  set_global_arg(size_t index, xrtBufferHandle bo)
   {
     xclBOProperties prop;
     core_device->get_bo_properties(bo, &prop);
@@ -159,7 +166,7 @@ struct run_type
   // set_scalar_arg() - set a scalar argument
   template <typename ScalarType>
   void
-  set_scalar_arg(int index, ScalarType scalar)
+  set_scalar_arg(size_t index, ScalarType scalar)
   {
     static_assert(std::is_scalar<ScalarType>::value,"Invalid ScalarType");
     // Populate cmd payload with argument
@@ -170,7 +177,7 @@ struct run_type
   }
 
   void
-  set_arg_at_index(int index, std::va_list args)
+  set_arg_at_index(size_t index, std::va_list args)
   {
     auto& arg = kernel->args[index];
     if (arg.index == kernel_type::argument::no_index)
@@ -294,11 +301,8 @@ get_run(xrtRunHandle rhdl)
   return (*itr).second.get();
 }
 
-} // namespace
+namespace api {
 
-////////////////////////////////////////////////////////////////
-// xrt_kernel API implmentations (xrt_kernel.h)
-////////////////////////////////////////////////////////////////
 xrtKernelHandle
 xrtKernelOpen(xrtDeviceHandle dhdl, const char* xclbin, const char *name)
 {
@@ -328,23 +332,6 @@ xrtRunOpen(xrtKernelHandle khdl)
   return handle;
 }
 
-xrtRunHandle
-xrtKernelRun(xrtKernelHandle khdl, ...)
-{
-  auto handle = xrtRunOpen(khdl);
-  auto run = get_run(handle);
-  auto kernel = run->kernel;
-
-  std::va_list args;
-  va_start(args, khdl);
-  run->set_all_args(args);
-  va_end(args);
-
-  run->start();
-  
-  return handle;
-}
-
 void
 xrtRunClose(xrtRunHandle rhdl)
 {
@@ -368,13 +355,132 @@ xrtRunStart(xrtRunHandle rhdl)
   run->start();
 }
 
-void
+} // api
+
+inline void
+send_exception_message(const char* msg)
+{
+  xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR, "XRT", msg);
+}
+
+} // namespace
+
+////////////////////////////////////////////////////////////////
+// xrt_kernel API implmentations (xrt_kernel.h)
+////////////////////////////////////////////////////////////////
+xrtKernelHandle
+xrtKernelOpen(xrtDeviceHandle dhdl, const char* xclbin, const char *name)
+{
+  try {
+    return api::xrtKernelOpen(dhdl, xclbin, name);
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return XRT_NULL_HANDLE;
+  }
+}
+
+int
+xrtKernelClose(xrtKernelHandle khdl)
+{
+  try {
+    api::xrtKernelClose(khdl);
+    return 0;
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return -1;
+  }
+}
+
+xrtRunHandle
+xrtRunOpen(xrtKernelHandle khdl)
+{
+  try {
+    return api::xrtRunOpen(khdl);
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return XRT_NULL_HANDLE;
+  }
+}
+
+xrtRunHandle
+xrtKernelRun(xrtKernelHandle khdl, ...)
+{
+  try {
+    auto handle = xrtRunOpen(khdl);
+    auto run = get_run(handle);
+    auto kernel = run->kernel;
+
+    std::va_list args;
+    va_start(args, khdl);
+    run->set_all_args(args);
+    va_end(args);
+
+    run->start();
+
+    return handle;
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return XRT_NULL_HANDLE;
+  }
+}
+
+int
+xrtRunClose(xrtRunHandle rhdl)
+{
+  try {
+    api::xrtRunClose(rhdl);
+    return 0;
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return -1;
+  }
+}
+
+ert_cmd_state
+xrtRunState(xrtRunHandle rhdl)
+{
+  try {
+    return api::xrtRunState(rhdl);
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+  }
+  return ERT_CMD_STATE_ABORT;
+}
+
+int
+xrtRunStart(xrtRunHandle rhdl)
+{
+  try {
+    api::xrtRunStart(rhdl);
+    return 0;
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return -1;
+  }
+}
+
+int
 xrtRunSetArg(xrtRunHandle rhdl, int index, ...)
 {
-  auto run = get_run(rhdl);
+  try {
+    auto run = get_run(rhdl);
 
-  std::va_list args;
-  va_start(args, index);
-  run->set_arg_at_index(index, args);
-  va_end(args);
+    std::va_list args;
+    va_start(args, index);
+    run->set_arg_at_index(index, args);
+    va_end(args);
+
+    return 0;
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return -1;
+  }
 }
