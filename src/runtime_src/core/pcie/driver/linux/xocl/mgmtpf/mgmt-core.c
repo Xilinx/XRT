@@ -1297,6 +1297,7 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_dna,
 	xocl_init_fmgr,
 	xocl_init_ospi_versal,
+	xocl_init_srsr,
 	xocl_init_mem_hbm,
 };
 
@@ -1322,6 +1323,7 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_dna,
 	xocl_fini_fmgr,
 	xocl_fini_ospi_versal,
+	xocl_fini_srsr,
 	xocl_fini_mem_hbm,
 };
 
