@@ -168,77 +168,76 @@ namespace xocl {
 
     // Create lambda functions that will be attached and triggered
     //  by events when their status changes
-    std::function<void (xocl::event*, cl_int)> action_read()
+    std::function<void (xocl::event*, cl_int)> 
+    action_read()
     {
       return [](xocl::event* e, cl_int status) 
-	{ 
-	  if (xdplop::read_cb)
-	  {
-	    // Only keep track of the start and stop
-	    if (status == CL_RUNNING)
-	      xdplop::read_cb(e->get_uid(), true) ;
-	    else if (status == CL_COMPLETE) 
-	      xdplop::read_cb(e->get_uid(), false) ;
-	  }
+	{
+	  if (!xdplop::read_cb) return ;
+
+	  // Only keep track of the start and stop
+	  if (status == CL_RUNNING)
+	    xdplop::read_cb(e->get_uid(), true) ;
+	  else if (status == CL_COMPLETE) 
+	    xdplop::read_cb(e->get_uid(), false) ;
 	} ;
     }
 
-    std::function<void (xocl::event*, cl_int)> action_write()
+    std::function<void (xocl::event*, cl_int)> 
+    action_write()
     {
       return [](xocl::event* e, cl_int status)
 	{
-	  if (xdplop::write_cb)
-	  {
-	    // Only keep track of the start and stop
-	    if (status == CL_RUNNING)
-	      xdplop::write_cb(e->get_uid(), true) ;
-	    else if (status == CL_COMPLETE) 
-	      xdplop::write_cb(e->get_uid(), false) ;
-	  }
+	  if (!xdplop::write_cb) return ;
+
+	  // Only keep track of the start and stop
+	  if (status == CL_RUNNING)
+	    xdplop::write_cb(e->get_uid(), true) ;
+	  else if (status == CL_COMPLETE) 
+	    xdplop::write_cb(e->get_uid(), false) ;
 	} ;
     }
 
-    std::function<void (xocl::event*, cl_int)> action_migrate(cl_mem_migration_flags flags) 
+    std::function<void (xocl::event*, cl_int)> 
+    action_migrate(cl_mem_migration_flags flags) 
     {
       if (flags & CL_MIGRATE_MEM_OBJECT_HOST)
       {
 	return [](xocl::event* e, cl_int status)
 	  {
-	    if (xdplop::read_cb)
-	    {
-	      if (status == CL_RUNNING)
-		xdplop::read_cb(e->get_uid(), true) ;
-	      else if (status == CL_COMPLETE)
-		xdplop::read_cb(e->get_uid(), false) ;
-	    }
+	    if (!xdplop::read_cb) return ;
+
+	    if (status == CL_RUNNING)
+	      xdplop::read_cb(e->get_uid(), true) ;
+	    else if (status == CL_COMPLETE)
+	      xdplop::read_cb(e->get_uid(), false) ;
 	  } ;
       }
       else
       {
 	return [](xocl::event* e, cl_int status)
 	  {
-	    if (xdplop::write_cb)
-	    {
-	      if (status == CL_RUNNING)
-		xdplop::write_cb(e->get_uid(), true) ;
-	      else if (status == CL_COMPLETE)
-		xdplop::write_cb(e->get_uid(), false) ;
-	    }
+	    if (!xdplop::write_cb) return ;
+
+	    if (status == CL_RUNNING)
+	      xdplop::write_cb(e->get_uid(), true) ;
+	    else if (status == CL_COMPLETE)
+	      xdplop::write_cb(e->get_uid(), false) ;
 	  } ;
       }
     }
 
-    std::function<void (xocl::event*, cl_int)> action_ndrange()
+    std::function<void (xocl::event*, cl_int)> 
+    action_ndrange()
     {
       return [](xocl::event* e, cl_int status)
 	{
-	  if (xdplop::enqueue_cb)
-	  {
-	    if (status == CL_RUNNING || status == CL_SUBMITTED)
-	      xdplop::enqueue_cb(e->get_uid(), true) ;
-	    else if (status == CL_COMPLETE)
-	      xdplop::enqueue_cb(e->get_uid(), false) ;
-	  }
+	  if (!xdplop::enqueue_cb) return ;
+
+	  if (status == CL_RUNNING || status == CL_SUBMITTED)
+	    xdplop::enqueue_cb(e->get_uid(), true) ;
+	  else if (status == CL_COMPLETE)
+	    xdplop::enqueue_cb(e->get_uid(), false) ;
 	} ;
     }
 
