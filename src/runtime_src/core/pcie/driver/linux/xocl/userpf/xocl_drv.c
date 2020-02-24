@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@xilinx.com
  *
@@ -1376,10 +1376,6 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 		xocl_err(&pdev->dev, "failed to init sysfs");
 		goto failed;
 	}
-
-	/* Don't check mailbox on versal for now. */
-	if (XOCL_DSA_IS_VERSAL(xdev))
-		return 0;
 
 	/* Launch the mailbox server. */
 	ret = xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);

@@ -683,6 +683,29 @@ struct xocl_subdev_map {
 		ARRAY_SIZE(XOCL_RES_MAILBOX_MGMT),	\
 	}
 
+#define	XOCL_MAILBOX_OFFSET_MGMT_VERSAL		0x6050000
+#define	XOCL_RES_MAILBOX_MGMT_VERSAL				\
+	((struct resource []) {				\
+		{					\
+			.start	= XOCL_MAILBOX_OFFSET_MGMT_VERSAL, \
+			.end	= 0x605002F,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+		{					\
+			.start	= 3,			\
+			.end	= 3,			\
+			.flags  = IORESOURCE_IRQ,	\
+		},					\
+	})
+
+#define	XOCL_DEVINFO_MAILBOX_MGMT_VERSAL		\
+	{						\
+		XOCL_SUBDEV_MAILBOX,			\
+		XOCL_MAILBOX,				\
+		XOCL_RES_MAILBOX_MGMT_VERSAL,		\
+		ARRAY_SIZE(XOCL_RES_MAILBOX_MGMT_VERSAL),	\
+	}
+
 #define	XOCL_RES_MAILBOX_MGMT_QDMA				\
 	((struct resource []) {				\
 		{					\
@@ -748,6 +771,29 @@ struct xocl_subdev_map {
 		XOCL_MAILBOX,				\
 		XOCL_RES_MAILBOX_USER_QDMA,		\
 		ARRAY_SIZE(XOCL_RES_MAILBOX_USER_QDMA),	\
+	}
+
+#define	XOCL_PF_MAILBOX_OFFSET_USER_VERSAL	0x6010000
+#define	XOCL_RES_PF_MAILBOX_USER_VERSAL				\
+	((struct resource []) {				\
+		{					\
+			.start	= XOCL_PF_MAILBOX_OFFSET_USER_VERSAL, \
+			.end	= 0x601002F,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+		{					\
+			.start	= 4,			\
+			.end	= 4,			\
+			.flags  = IORESOURCE_IRQ,	\
+		},					\
+	})
+
+#define	XOCL_DEVINFO_PF_MAILBOX_USER_VERSAL		\
+	{						\
+		XOCL_SUBDEV_MAILBOX,			\
+		XOCL_MAILBOX,				\
+		XOCL_RES_PF_MAILBOX_USER_VERSAL,	\
+		ARRAY_SIZE(XOCL_RES_PF_MAILBOX_USER_VERSAL),	\
 	}
 
 #define	XOCL_MAILBOX_OFFSET_USER_VERSAL	0x6040000
@@ -1017,6 +1063,23 @@ struct xocl_subdev_map {
 		XOCL_XMC,				\
 		NULL,					\
 		0,					\
+	}
+
+#define	XOCL_RES_XMC_VERSAL				\
+		((struct resource []) {			\
+			{				\
+			.start	= 0x3000000,		\
+			.end 	= 0x3007FFF,		\
+			.flags  = IORESOURCE_MEM,	\
+			},				\
+		})
+
+#define	XOCL_DEVINFO_XMC_VERSAL				\
+	{						\
+		XOCL_SUBDEV_MB,				\
+		XOCL_XMC,				\
+		XOCL_RES_XMC_VERSAL,			\
+		ARRAY_SIZE(XOCL_RES_XMC_VERSAL),	\
 	}
 
 #define	XOCL_RES_MB					\
@@ -1293,7 +1356,9 @@ struct xocl_subdev_map {
 		((struct xocl_subdev_info []) {				\
 		 	XOCL_DEVINFO_FEATURE_ROM_VERSAL,		\
 			XOCL_DEVINFO_XDMA,				\
+			XOCL_DEVINFO_XMC_USER,				\
 		 	XOCL_DEVINFO_SCHEDULER_VERSAL,			\
+		 	XOCL_DEVINFO_PF_MAILBOX_USER_VERSAL,		\
 		 	XOCL_DEVINFO_MAILBOX_USER_VERSAL,		\
 		 	XOCL_DEVINFO_ICAP_USER,				\
 		})
@@ -1420,6 +1485,8 @@ struct xocl_subdev_map {
 #define	MGMT_RES_VERSAL							\
 		((struct xocl_subdev_info []) {				\
 		 	XOCL_DEVINFO_FEATURE_ROM_VERSAL,		\
+			XOCL_DEVINFO_MAILBOX_MGMT_VERSAL,		\
+		 	XOCL_DEVINFO_XMC_VERSAL,			\
 		 	XOCL_DEVINFO_OSPI_VERSAL,			\
 		})
 
@@ -1480,7 +1547,8 @@ struct xocl_subdev_map {
 
 #define	XOCL_BOARD_MGMT_VERSAL						\
 	(struct xocl_board_private){					\
-		.flags		= XOCL_DSAFLAG_VERSAL,			\
+		.flags		= XOCL_DSAFLAG_VERSAL |			\
+			XOCL_DSAFLAG_FIXED_INTR,			\
 		.subdev_info	= MGMT_RES_VERSAL,			\
 		.subdev_num = ARRAY_SIZE(MGMT_RES_VERSAL),		\
 		.flash_type = FLASH_TYPE_OSPI_VERSAL,			\
