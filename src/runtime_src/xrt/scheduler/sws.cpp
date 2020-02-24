@@ -36,6 +36,8 @@
 #include <mutex>
 #include <condition_variable>
 
+//#define EM_DEBUG_SWS
+
 #ifdef _WIN32
 # pragma warning( disable : 4996 4458 4267 4244 )
 #endif
@@ -856,9 +858,9 @@ start()
 {
   if (s_running)
     throw std::runtime_error("software command scheduler is already started");
-
+#ifdef EM_DEBUG_SWS
   std::cout << "SWS Thread started " << std::endl;
-
+#endif
   s_scheduler_thread = std::move(xrt::thread(scheduler_loop));
   if (threaded_notification)
     notifier = std::move(xrt::thread(xrt::task::worker,std::ref(notify_queue)));

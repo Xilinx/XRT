@@ -397,39 +397,44 @@ get_kernel_inst_addrs(const axlf* top)
 {
   std::vector<uint64_t> addrVec;
   const axlf_section_header *xml_hdr = ::xclbin::get_axlf_section(top, EMBEDDED_METADATA);
-  if (xml_hdr) {
-    auto begin = reinterpret_cast<const char*>(top) + xml_hdr->m_sectionOffset;
-    const char *xml_data = reinterpret_cast<const char*>(begin);
-    uint64_t xml_size = xml_hdr->m_sectionSize;
 
-    pt::ptree xml_project;
-    std::stringstream xml_stream;
-    xml_stream.write(xml_data, xml_size);
-    pt::read_xml(xml_stream, xml_project);
+  if (!xml_hdr) {
+    return addrVec;
+  }
 
-    auto xml_plotform = xml_project.get_child_optional("project.platform");
+  auto begin = reinterpret_cast<const char*>(top) + xml_hdr->m_sectionOffset;
+  const char *xml_data = reinterpret_cast<const char*>(begin);
+  uint64_t xml_size = xml_hdr->m_sectionSize;
 
-    if (xml_plotform) {
-      for (auto& xml_device : xml_project.get_child("project.platform")) {
-        if (xml_device.first != "device")
+  pt::ptree xml_project;
+  std::stringstream xml_stream;
+  xml_stream.write(xml_data, xml_size);
+  pt::read_xml(xml_stream, xml_project);
+
+  auto xml_platform = xml_project.get_child_optional("project.platform");
+
+  if (!xml_platform) {
+    return addrVec;
+  }
+
+  for (auto& xml_device : xml_project.get_child("project.platform")) {
+    if (xml_device.first != "device")
+      continue;
+    for (auto& xml_core : xml_device.second) {
+      if (xml_core.first != "core")
+        continue;
+      for (auto& xml_kernel : xml_core.second) {
+        if (xml_kernel.first != "kernel")
           continue;
-        for (auto& xml_core : xml_device.second) {
-          if (xml_core.first != "core")
+        for (auto& xml_inst : xml_kernel.second) {
+          if (xml_inst.first != "instance")
             continue;
-          for (auto& xml_kernel : xml_core.second) {
-            if (xml_kernel.first != "kernel")
+          auto name = xml_inst.second.get<std::string>("<xmlattr>.name");
+          for (auto& xml_remap : xml_inst.second) {
+            if (xml_remap.first != "addrRemap")
               continue;
-            for (auto& xml_inst : xml_kernel.second) {
-              if (xml_inst.first != "instance")
-                continue;
-              auto name = xml_inst.second.get<std::string>("<xmlattr>.name");
-              for (auto& xml_remap : xml_inst.second) {
-                if (xml_remap.first != "addrRemap")
-                  continue;
-                auto base = convert(xml_remap.second.get<std::string>("<xmlattr>.base"));
-                addrVec.push_back(base);
-              }
-            }
+            auto base = convert(xml_remap.second.get<std::string>("<xmlattr>.base"));
+            addrVec.push_back(base);
           }
         }
       }

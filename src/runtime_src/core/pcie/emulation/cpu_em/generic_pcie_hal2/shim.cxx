@@ -981,9 +981,9 @@ namespace xclcpuemhal2 {
       {
         mSWSch->fini_scheduler_thread();
         delete mCore;
-        mCore = NULL;
+        mCore = nullptr;
         delete mSWSch;
-        mSWSch = NULL;
+        mSWSch = nullptr;
       }
       return;
     }
@@ -1012,9 +1012,9 @@ namespace xclcpuemhal2 {
       {
         mSWSch->fini_scheduler_thread();
         delete mCore;
-        mCore = NULL;
+        mCore = nullptr;
         delete mSWSch;
-        mSWSch = NULL;
+        mSWSch = nullptr;
       }
       return;
     }
@@ -1044,15 +1044,15 @@ namespace xclcpuemhal2 {
     
     systemUtil::makeSystemCall(socketName, systemUtil::systemOperation::REMOVE);
     delete sock;
-    sock = NULL;    
+    sock = nullptr;
     PRINTENDFUNC;
     if (mIsKdsSwEmu && mSWSch && mCore)
     {
       mSWSch->fini_scheduler_thread();
       delete mCore;
-      mCore = NULL;
+      mCore = nullptr;
       delete mSWSch;
-      mSWSch = NULL;
+      mSWSch = nullptr;
     }
     //clean up directories which are created inside the driver
     if( xclemulation::config::getInstance()->isKeepRunDirEnabled() == false)
@@ -1063,19 +1063,16 @@ namespace xclcpuemhal2 {
     }
     google::protobuf::ShutdownProtobufLibrary();
   }
-
-
-  
-  
+    
   CpuemShim::~CpuemShim() 
   {
     if (mIsKdsSwEmu && mSWSch && mCore)
     {
       mSWSch->fini_scheduler_thread();
       delete mCore;
-      mCore = NULL;
+      mCore = nullptr;
       delete mSWSch;
-      mSWSch = NULL;
+      mSWSch = nullptr;
     }
     if (mLogStream.is_open()) 
     {

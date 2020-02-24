@@ -6,6 +6,8 @@
 #include <cmath>
 #include <cstdint>
 #include <queue>
+#include <thread>
+#include <condition_variable>
 #include "ert.h"
 
 #define XOCL_U32_MASK 0xFFFFFFFF
@@ -30,9 +32,11 @@ namespace xclcpuemhal2 {
   class xocl_sched
   {
     public:
-      pthread_t                   scheduler_thread;
-      pthread_mutex_t             state_lock;
-      pthread_cond_t              state_cond;
+      //pthread_t                   scheduler_thread;
+      std::thread                 scheduler_thread;
+      //pthread_mutex_t             state_lock;
+      //pthread_cond_t              state_cond;
+      std::condition_variable_any    state_cond;
       std::list<xocl_cmd*>        command_queue;
       bool                        bThreadCreated;
       unsigned int                error;

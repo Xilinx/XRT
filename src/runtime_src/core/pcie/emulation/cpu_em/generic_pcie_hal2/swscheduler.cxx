@@ -1,6 +1,6 @@
 #include "shim.h"
 #include <algorithm>
-//#define EM_DEBUG_KDS
+#define EM_DEBUG_KDS
 #define PRINTSTARTFUNC
 //#define PRINTSTARTFUNC std::cout <<"swscheduler: " <<__func__ << " begin " << std::endl;
 namespace xclcpuemhal2 {
@@ -32,9 +32,9 @@ namespace xclcpuemhal2 {
     poll = 0;
     stop = false;
     pSch = _sch ;
-    pthread_mutex_init(&state_lock,NULL);
-    pthread_cond_init(&state_cond,NULL);
-    scheduler_thread = 0;
+    //pthread_mutex_init(&state_lock,NULL);
+    //pthread_cond_init(&state_cond,NULL);
+    //scheduler_thread = 0;
   }
 
   xocl_sched::~xocl_sched()
@@ -45,8 +45,8 @@ namespace xclcpuemhal2 {
     poll = 0;
     stop = false;
     pSch = NULL ;
-    pthread_mutex_init(&state_lock,NULL);
-    pthread_cond_init(&state_cond,NULL);
+    //pthread_mutex_init(&state_lock,NULL);
+    //pthread_cond_init(&state_cond,NULL);
   }
 
   exec_core::exec_core()
@@ -932,7 +932,7 @@ namespace xclcpuemhal2 {
   }
   
   int SWScheduler::scheduler_wait_condition()
-  {
+  {   
     PRINTSTARTFUNC
     bool bSchComeOutOfCond = false;
     if (mScheduler->stop || mScheduler->error) {
@@ -953,7 +953,8 @@ namespace xclcpuemhal2 {
     }
     if(bSchComeOutOfCond)
     {
-      pthread_cond_signal(&mScheduler->state_cond);
+      //pthread_cond_signal(&mScheduler->state_cond);
+      mScheduler->state_cond.notify_one();
       return 0;
     }
     return 1;
@@ -1058,12 +1059,14 @@ namespace xclcpuemhal2 {
     if (mScheduler->bThreadCreated)
       return 0;
 
-//#ifdef EM_DEBUG_KDS
+#ifdef EM_DEBUG_KDS
     std::cout<<"SWScheduler Thread started "<< std::endl;
-//#endif
+#endif
 
-    int returnStatus  =  pthread_create(&(mScheduler->scheduler_thread) , NULL, scheduler, (void *)mScheduler);
-
+    //int returnStatus  =  pthread_create(&(mScheduler->scheduler_thread) , NULL, scheduler, (void *)mScheduler);
+    int returnStatus = 0;
+    mScheduler->scheduler_thread = std::thread(scheduler, (void *)mScheduler);
+   
     if (returnStatus != 0)
     {
       std::cout << __func__ <<  " pthread_create failed " << " " << returnStatus<< std::endl;
@@ -1087,9 +1090,10 @@ namespace xclcpuemhal2 {
     mScheduler->stop= true;
     scheduler_wait_condition();
     mScheduler->bThreadCreated = false;
-
-    int retval = pthread_join(mScheduler->scheduler_thread,NULL);
-
+    
+    //int retval = pthread_join(mScheduler->scheduler_thread,NULL);
+    int retval = 0;
+    mScheduler->scheduler_thread.join();
     pending_cmds.clear();
     mScheduler->command_queue.clear();
     free_cmds.clear();
