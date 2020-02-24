@@ -362,7 +362,7 @@ public:
                     ostr << "  CU[" << cuCnt << "]: "
                          << computeUnits.at( i ).m_name
                          << "@0x" << std::hex << computeUnits.at( i ).m_base_address << " "
-                         << std::dec << parseCUStatus( statusBuf ) << "\n";
+                         << std::dec << xrt_core::utils::parse_cu_status( statusBuf ) << "\n";
                     cuCnt++;
                 }
             }

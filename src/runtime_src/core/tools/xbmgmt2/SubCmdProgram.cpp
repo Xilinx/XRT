@@ -27,6 +27,7 @@ namespace XBU = XBUtilities;
 #include "core/common/error.h"
 #include "core/common/query_requests.h"
 #include "core/common/message.h"
+#include "core/common/utils.h"
 #include "core/common/error.h"
 #include "flash/flasher.h"
 
@@ -574,7 +575,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     tokenizer tokens(device, sep);
     
     for (auto tok_iter = tokens.begin(); tok_iter != tokens.end(); ++tok_iter) {
-    	uint16_t idx = xrt_core::bdf2index(*tok_iter);
+      uint16_t idx = xrt_core::utils::bdf2index(*tok_iter);
       device_indices.push_back(idx);
     }
   }

@@ -840,7 +840,7 @@ xclWrite(xclDeviceHandle handle, enum xclAddressSpace space, uint64_t offset,
  *
  * This API may be used to read from device registers exposed on PCIe
  * BAR. Offset is relative to the the address space. A device may have
- * many address spaces.  
+ * many address spaces.
  * *This API is deprecated. Please use xclRegRead(), instead.*
  */
 XRT_DEPRECATED

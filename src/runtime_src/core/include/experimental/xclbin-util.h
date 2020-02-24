@@ -30,6 +30,13 @@ xclbin_axlf_handle(const void *xclbin)
   return (strncmp(top->m_magic,"xclbin2",7)) ? NULL : top;
 }
 
+/**
+ * xclbin_uuid() - Get the uuid of an xclbin
+ *
+ * @xclbin:  Raw pointer the enture xclbin file content
+ * @out:     A uuid to populate with the xclbin uuid
+ * Return:   0 on success, errcode otherwise
+ */
 static inline int
 xclbin_uuid(const void *xclbin, xuid_t out)
 {

@@ -23,6 +23,8 @@
  */
 
 #include "scan.h"
+#include "core/common/system.h"
+#include "core/common/device.h"
 #include "xclhal2.h"
 #include "core/pcie/driver/linux/include/xocl_ioctl.h"
 #include "core/pcie/driver/linux/include/qdma_ioctl.h"
@@ -160,6 +162,7 @@ public:
     int xclIPName2Index(const char *name, uint32_t& index);
 
 private:
+    std::shared_ptr<xrt_core::device> mCoreDevice;
     std::shared_ptr<pcidev::pci_device> mDev;
     xclVerbosityLevel mVerbosity;
     std::ofstream mLogStream;

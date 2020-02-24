@@ -446,7 +446,7 @@ std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()
 
 std::ostream& operator<<(std::ostream& stream, const DSAInfo& dsa)
 {
-    xrt_core::ios_flags_restore format(std::cout);
+    auto format = xrt_core::utils::ios_restore(stream);
     stream << dsa.name;
     if (dsa.timestamp != NULL_TIMESTAMP)
     {

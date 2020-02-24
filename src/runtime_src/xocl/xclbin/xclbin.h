@@ -20,7 +20,6 @@
 #include "xocl/config.h"
 #include "core/include/xclbin.h" // definition of binary structs
 
-#include "xocl/core/refcount.h"
 #include "xclbin/binary.h"
 #include "xrt/util/uuid.h"
 

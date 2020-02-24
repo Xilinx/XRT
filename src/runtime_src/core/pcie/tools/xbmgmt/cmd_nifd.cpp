@@ -61,7 +61,7 @@ static int status(unsigned int index)
   }
   else
   {
-    xrt_core::ios_flags_restore format(std::cout);
+    auto format = xrt_core::utils::ios_restore(std::cout);
     std::cout << "Current NIFD status: 0x" << std::hex << status << std::endl;
   }
   dev->close(fd);
@@ -123,7 +123,7 @@ static int readback(const std::string& inputFile, unsigned int index)
     return 0 ;
   }
 
-  xrt_core::ios_flags_restore format(std::cout);
+  auto format = xrt_core::utils::ios_restore(std::cout);
   std::cout << "Value read: " ;
   for (unsigned int i = 0 ; i < resultWords ; ++i)
   {

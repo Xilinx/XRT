@@ -367,7 +367,7 @@ void describePkt(struct xmcPkt& pkt, bool send)
     int lenInUint32 = (sizeof (pkt.hdr) + pkt.hdr.payloadSize +
         sizeof (uint32_t) - 1) / sizeof (uint32_t);
 
-    xrt_core::ios_flags_restore format(std::cout);
+    auto format = xrt_core::utils::ios_restore(std::cout);
 
     if (send)
         std::cout << "Sending XMC packet: ";
@@ -497,7 +497,7 @@ bool XMC_Flasher::isXMCReady()
     bool xmcReady = (XMC_MODE() == XMC_READY);
 
     if (!xmcReady) {
-        xrt_core::ios_flags_restore format(std::cout);
+        auto format = xrt_core::utils::ios_restore(std::cout);
         if (!mDev->get_sysfs_path("xmc", "").empty()) {
             std::cout << "ERROR: XMC is not ready: 0x" << std::hex
                 << XMC_MODE() << std::endl;
@@ -511,7 +511,7 @@ bool XMC_Flasher::isBMCReady()
     bool bmcReady = (BMC_MODE() == 0x1);
 
     if (!bmcReady) {
-        xrt_core::ios_flags_restore format(std::cout);
+      auto format = xrt_core::utils::ios_restore(std::cout);
         std::cout << "ERROR: SC is not ready: 0x" << std::hex
                 << BMC_MODE() << std::endl;
     }

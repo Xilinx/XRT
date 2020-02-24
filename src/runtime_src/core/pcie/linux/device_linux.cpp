@@ -273,6 +273,12 @@ device_linux(id_type device_id, bool user)
 {
 }
 
+device_linux::
+device_linux(handle_type device_handle, id_type device_id)
+  : shim<device_pcie>(device_handle, device_id)
+{
+}
+
 void
 device_linux::
 read_dma_stats(boost::property_tree::ptree& pt) const
@@ -286,8 +292,8 @@ read_dma_stats(boost::property_tree::ptree& pt) const
   for (unsigned int idx = 0; idx < XCL_DEVICE_USAGE_COUNT; ++idx) {
     boost::property_tree::ptree pt_dma;
     pt_dma.put( "id", std::to_string(get_device_id()));
-    pt_dma.put( "h2c", unitConvert(devstat.h2c[idx]) );
-    pt_dma.put( "c2h", unitConvert(devstat.c2h[idx]) );
+    pt_dma.put( "h2c", xrt_core::utils::unit_convert(devstat.h2c[idx]) );
+    pt_dma.put( "c2h", xrt_core::utils::unit_convert(devstat.c2h[idx]) );
 
     // Create our array of data
     pt_channels.push_back(std::make_pair("", pt_dma));
