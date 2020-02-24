@@ -1220,7 +1220,7 @@ static ssize_t queue_aio_write(struct kiocb *kiocb, const struct iovec *iov,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,16,0)
 static ssize_t queue_write_iter(struct kiocb *kiocb, struct iov_iter *io)
 {
-	struct qdma_stream_queue	*queue;
+	struct qdma_stream_queue *queue;
 	struct xocl_qdma	*qdma;
 	unsigned long		nr;
 
@@ -1237,7 +1237,7 @@ static ssize_t queue_write_iter(struct kiocb *kiocb, struct iov_iter *io)
 		return queue_aio_write(kiocb, io->iov, nr, io->iov_offset);
 	}
 
-	return queue_rw(qdma, queue, true, iov, nr, NULL);
+	return queue_rw(qdma, queue, true, io->iov, nr, NULL);
 }
 
 static ssize_t queue_read_iter(struct kiocb *kiocb, struct iov_iter *io)
@@ -1258,7 +1258,7 @@ static ssize_t queue_read_iter(struct kiocb *kiocb, struct iov_iter *io)
 	if (!is_sync_kiocb(kiocb)) {
 		return queue_aio_read(kiocb, io->iov, nr, io->iov_offset);
 	}
-	return queue_rw(qdma, queue, false, iov, nr, NULL);
+	return queue_rw(qdma, queue, false, io->iov, nr, NULL);
 }
 #endif
 
