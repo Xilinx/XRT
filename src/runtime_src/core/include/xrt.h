@@ -705,7 +705,6 @@ xclGetBOProperties(xclDeviceHandle handle, xclBufferHandle boHandle,
 /*
  * xclGetBOSize() - Retrieve size of a BO
  *
- *
  * @handle:        Device handle
  * @boHandle:      BO handle
  * Return          size_t size of the BO on success
