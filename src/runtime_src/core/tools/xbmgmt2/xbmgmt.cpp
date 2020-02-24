@@ -27,6 +27,8 @@
 #include "tools/common/SubCmd.h"
 #include "common/error.h"
 
+#include "xrt.h"
+
 // System include files
 #include <boost/filesystem.hpp>
 #include <string>
@@ -36,6 +38,10 @@
 // Program entry
 int main( int argc, char** argv )
 {
+  // force linking with libxrt_core
+  // find a way in CMake to specify -undef <symbol>
+  xclProbe();
+
   // -- Build the supported subcommands
   SubCmdsCollection subCommands;
 
