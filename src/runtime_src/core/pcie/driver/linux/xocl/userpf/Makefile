@@ -17,6 +17,7 @@ obj-m	+= xocl.o
 ccflags-y := -Iinclude/drm
 
 include $(PWD)/../lib/Makefile.in
+include $(PWD)/../Makefile.in
 xocl-y := \
 	../xocl_subdev.o \
 	../xocl_ctx.o \

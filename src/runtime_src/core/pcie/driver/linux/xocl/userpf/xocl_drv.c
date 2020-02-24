@@ -748,7 +748,7 @@ failed:
 	return ret;
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
+#if SUSE_RELEASE_CODE >= SUSE_RELEASE_VERSION(15,0) || LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
 void user_pci_reset_prepare(struct pci_dev *pdev)
 {
 	xocl_reset_notify(pdev, true);
@@ -1437,7 +1437,7 @@ static const struct pci_error_handlers xocl_err_handler = {
 	.error_detected	= user_pci_error_detected,
 	.slot_reset	= user_pci_slot_reset,
 	.resume		= user_pci_error_resume,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
+#if SUSE_RELEASE_CODE >= SUSE_RELEASE_VERSION(15,0) ||  LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
 	.reset_prepare	= user_pci_reset_prepare,
 	.reset_done	= user_pci_reset_done,
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 16, 0)

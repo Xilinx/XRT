@@ -1,16 +1,28 @@
 # -----------------------------------------------------------------------------
 
+if ((${LINUX_FLAVOR} STREQUAL SUSE))
+set(Boost_USE_STATIC_LIBS OFF)
+set(Boost_USE_MULTITHREADED ON)             # Multi-threaded libraries
+set(Boost_USE_STATIC_RUNTIME OFF)
+else()
 set(Boost_USE_STATIC_LIBS ON)               # Only find static libraries
 set(Boost_USE_MULTITHREADED ON)             # Multi-threaded libraries
 set(Boost_USE_STATIC_RUNTIME ON)            # This is how the boost libraries were build
+endif()
 
 find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
 include_directories(${Boost_INCLUDE_DIRS})
 
 if(NOT WIN32)
+if ((${LINUX_FLAVOR} STREQUAL SUSE))
+set(OPENSSL_USE_STATIC_LIBS FALSE)
+find_package(OpenSSL REQUIRED)
+find_library(CRYPTO_LIB libcrypto.so REQUIRED)
+else()
 set(OPENSSL_USE_STATIC_LIBS TRUE)
 find_package(OpenSSL REQUIRED)
 find_library(CRYPTO_LIB libcrypto.a REQUIRED)
+endif()
 
 find_package(ZLIB REQUIRED)
 find_library(Z_LIB libz.a REQUIRED)
@@ -41,12 +53,18 @@ file(GLOB XCLBINCAT_FILES
 set(XCLBINCAT_SRC ${XCLBINCAT_FILES})
 
 add_executable(xclbincat ${XCLBINCAT_SRC})
-target_link_libraries(xclbincat -static ${Boost_LIBRARIES})
+if ((${LINUX_FLAVOR} STREQUAL SUSE))
+  target_link_libraries(xclbincat ${Boost_LIBRARIES})
+else()
+  target_link_libraries(xclbincat -static ${Boost_LIBRARIES})
+endif()
 # On Ubuntu 18.04 CMake was appending '-Wl,-Bdynamic' to the command line which
 # was causing the executable to reference 'linux-vdso.so.1' which would then
 # produce "Command not found" when running the executable.
 #   Therefore, we direct CMake to end with static, so that it doesn't do that:
+if (NOT (${LINUX_FLAVOR} STREQUAL SUSE))
 set_target_properties(xclbincat PROPERTIES LINK_SEARCH_END_STATIC 1)
+endif()
 
 install (TARGETS xclbincat RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
 
@@ -65,12 +83,18 @@ file(GLOB XCLBINSPLIT_FILES
 set(XCLBINSPLIT_SRC ${XCLBINSPLIT_FILES})
 
 add_executable(xclbinsplit ${XCLBINSPLIT_SRC})
-target_link_libraries(xclbinsplit -static ${Boost_LIBRARIES})
+if ((${LINUX_FLAVOR} STREQUAL SUSE))
+  target_link_libraries(xclbinsplit ${Boost_LIBRARIES})
+else()
+  target_link_libraries(xclbinsplit -static ${Boost_LIBRARIES})
+endif()
 # On Ubuntu 18.04 CMake was appending '-Wl,-Bdynamic' to the command line which
 # was causing the executable to reference 'linux-vdso.so.1' which would then
 # produce "Command not found" when running the executable.
 #   Therefore, we direct CMake to end with static, so that it doesn't do that:
+if (NOT (${LINUX_FLAVOR} STREQUAL SUSE))
 set_target_properties(xclbinsplit PROPERTIES LINK_SEARCH_END_STATIC 1)
+endif()
 
 install (TARGETS xclbinsplit RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
 endif()
@@ -165,7 +189,11 @@ else()
     target_link_libraries(xclbinutil ${CMAKE_DL_LIBS})   # Needs to be shared library
     target_link_libraries(xclbinutil -static-libgcc -static-libstdc++)
   else()
-    target_link_libraries(xclbinutil -static ${Boost_LIBRARIES})
+    if ((${LINUX_FLAVOR} STREQUAL SUSE))
+      target_link_libraries(xclbinutil ${Boost_LIBRARIES})
+    else()
+      target_link_libraries(xclbinutil -static ${Boost_LIBRARIES})
+    endif()
     target_link_libraries(xclbinutil ${CRYPTO_LIB})
     target_link_libraries(xclbinutil ${Z_LIB})            # OpenSSL supporting library
     target_link_libraries(xclbinutil ${DL_LIB})           # OpenSSL supporting library
@@ -175,7 +203,9 @@ else()
     # was causing the executable to reference 'linux-vdso.so.1' which would then
     # produce "Command not found" when running the executable.
     #   Therefore, we direct CMake to end with static, so that it doesn't do that:
+    if (NOT (${LINUX_FLAVOR} STREQUAL SUSE))
     set_target_properties(xclbinutil PROPERTIES LINK_SEARCH_END_STATIC 1)
+    endif()
   endif()
 endif()
 

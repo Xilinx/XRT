@@ -100,11 +100,13 @@
 	#define XOCL_ACCESS_OK(TYPE, ADDR, SIZE) access_ok(TYPE, ADDR, SIZE)
 #endif
 
+#define SUSE_RELEASE_VERSION(a,b) ((a<<8)+b)
+
 #if defined(RHEL_RELEASE_CODE)
 #if RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(7, 4)
 #define XOCL_UUID
 #endif
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 13, 0)
+#elif !defined(SUSE_RELEASE_CODE) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 13, 0)
 #define XOCL_UUID
 #endif
 /* UUID helper functions not present in older kernels */

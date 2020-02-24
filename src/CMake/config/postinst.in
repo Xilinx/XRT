@@ -147,6 +147,10 @@ if [ -z $VERSION ] ; then
         pip install --ignore-installed numpy==1.8
     fi
     pip install pyopencl
+    # following change required because of mismatch between python and pip version
+    if [ $FLAVOR = "sles" ] ; then
+        pip2 install pyopencl
+    fi
 # if older version of pyopencl and import fails prompt user to upgarde pyopencl
 elif [ $VERSION -lt 2019 ] && [ $(python -c "import pyopencl") ]; then
     echo "***********************************************************************"

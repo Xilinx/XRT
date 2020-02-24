@@ -15,6 +15,7 @@
 
 obj-m	+= xclmgmt.o
 include $(PWD)/../lib/Makefile.in
+include $(PWD)/../Makefile.in
 
 xclmgmt-y := \
 	../xocl_subdev.o \

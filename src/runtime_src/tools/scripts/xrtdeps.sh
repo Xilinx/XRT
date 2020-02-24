@@ -143,6 +143,49 @@ UB_LIST=(\
      libsystemd-dev \
 )
 
+SUSE_LIST=(\
+     lsb-release \
+     libboost_filesystem1_66_0-devel \
+     libboost_program_options1_66_0-devel \
+     cmake \
+     #cppcheck \
+     curl \
+     dkms \
+     gcc \
+     gcc-c++ \
+     gdb \
+     git \
+     glibc-devel-static \
+     gnuplot \
+     libgnutls-devel \
+     json-glib-devel \
+     libdrm-devel \
+     libjpeg-devel \
+     libpng12-devel \
+     libtiff-devel \
+     libuuid-devel \
+     libxml2-devel \
+     libyaml-devel \
+     make \
+     ncurses-devel \
+     libopenssl-devel \
+     pciutils \
+     perl \
+     pkg-config \
+     protobuf-devel \
+     python \
+     python3-pip \
+     python2-pip \
+     rpm-build \
+     strace \
+     unzip \
+     zlib-devel-static \
+     libcurl-devel \
+     libopenssl-devel \
+     opencl-cpp-headers \
+     libudev-devel \
+)
+
 if [[ $docker == 0 ]]; then
     #RH_LIST+=(kernel-headers-$(uname -r))
     UB_LIST+=(linux-headers-$(uname -r))
@@ -160,6 +203,9 @@ if [ $ARCH == "x86_64" ]; then
     fi
     if [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ] || [ $FLAVOR == "amzn" ]; then
 	RH_LIST+=( dmidecode )
+    fi
+    if [ $FLAVOR == "sles" ] ; then
+	SUSE_LIST+=( dmidecode )
     fi
 fi
 
@@ -183,6 +229,14 @@ validate()
 
     if [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ] || [ $FLAVOR == "amzn" ]; then
         rpm -q "${RH_LIST[@]}"
+        if [ $? == 0 ] ; then
+            # Validate we have OpenCL 2.X headers installed
+            rpm -q -i opencl-headers | grep '^Version' | grep ': 2\.'
+        fi
+    fi
+
+    if [ $FLAVOR == "sles" ]; then
+        rpm -q "${SUSE_LIST[@]}"
         if [ $? == 0 ] ; then
             # Validate we have OpenCL 2.X headers installed
             rpm -q -i opencl-headers | grep '^Version' | grep ': 2\.'
@@ -229,6 +283,11 @@ install()
 	else
             ${SUDO} yum install -y devtoolset-6
 	fi
+    fi
+
+    if [ $FLAVOR == "sles" ] ; then
+        echo "Installing SUSE packages..."
+        ${SUDO} zypper install -y "${SUSE_LIST[@]}"
     fi
 }
 
