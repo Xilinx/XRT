@@ -89,7 +89,7 @@ static struct xocl_subdev *xocl_subdev_reserve(xdev_handle_t xdev_hdl,
 	int max = sdev_info->multi_inst ? XOCL_SUBDEV_MAX_INST : 1;
 	int i;
 
-	if (sdev_info->override_idx) {
+	if (sdev_info->override_idx != -1) {
 		subdev = &core->subdevs[devid][sdev_info->override_idx];
 		if (subdev->state != XOCL_SUBDEV_STATE_UNINIT) {
 			xocl_xdev_info(xdev_hdl, "subdev %d index %d is in-use",
