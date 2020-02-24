@@ -1737,16 +1737,28 @@ static uint32_t convert_mem_type(const char *name)
 	else if (!strncasecmp(name, "HBM", 3))
 		mem_type = MEM_HBM;
 	else if (!strncasecmp(name, "bank", 4))
-		mem_type = MEM_DDR4;
+		mem_type = MEM_DRAM;
 
 	return mem_type;
 }
 
-static uint16_t icap_get_memidx(struct mem_topology *mem_topo, enum MEM_TYPE mem_type,
+static uint16_t icap_get_memidx(struct mem_topology *mem_topo, enum IP_TYPE ecc_type,
 	int idx)
 {
 	uint16_t memidx = INVALID_MEM_IDX, i, mem_idx = 0;
-	enum MEM_TYPE m_type;
+	enum MEM_TYPE m_type, target_m_type;
+
+	/*
+	 * Get global memory index by feeding desired memory type and index
+	 */
+	if (ecc_type == IP_MEM_DDR4)
+		target_m_type = MEM_DRAM;
+	else if (ecc_type == IP_DDR4_CONTROLLER)
+		target_m_type = MEM_DRAM;
+	else if (ecc_type == IP_MEM_HBM)
+		target_m_type = MEM_HBM;
+	else
+		goto done;
 
 	if (!mem_topo)
 		goto done;
@@ -1757,7 +1769,7 @@ static uint16_t icap_get_memidx(struct mem_topology *mem_topo, enum MEM_TYPE mem
 		 * m_tag[i] = "DDR[1]" -> m_type = MEM_DRAM
 		 */
 		m_type = convert_mem_type(mem_topo->m_mem_data[i].m_tag);
-		if (m_type == mem_type) {
+		if (m_type == target_m_type) {
 			if (idx == mem_idx)
 				return i;
 			mem_idx++;
@@ -1879,18 +1891,8 @@ static int icap_create_subdev(struct platform_device *pdev)
 
 		if (ip->m_type == IP_DDR4_CONTROLLER || ip->m_type == IP_MEM_DDR4) {
 			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_MIG;
-			uint32_t target_m_type;
-			/*
-			 * Get global memory index by feeding desired memory type and index
-			 */
-			if (ip->m_type == IP_MEM_DDR4)
-				target_m_type = MEM_DRAM;
-			else if (ip->m_type == IP_DDR4_CONTROLLER)
-				target_m_type = MEM_DDR4;
-			else
-				continue;
 
-			memidx = icap_get_memidx(mem_topo, target_m_type, ip->properties);
+			memidx = icap_get_memidx(mem_topo, ip->m_type, ip->properties);
 
 			if (memidx == INVALID_MEM_IDX) {
 				ICAP_ERR(icap, "INVALID_MEM_IDX: %u",
@@ -1898,9 +1900,7 @@ static int icap_create_subdev(struct platform_device *pdev)
 				continue;
 			}
 
-			if (!mem_topo || memidx >= mem_topo->m_count ||
-				mem_topo->m_mem_data[memidx].m_type !=
-				target_m_type) {
+			if (!mem_topo || memidx >= mem_topo->m_count) {
 				ICAP_ERR(icap, "bad ECC controller index: %u",
 					ip->properties);
 				continue;
@@ -1931,7 +1931,7 @@ static int icap_create_subdev(struct platform_device *pdev)
 			}
 		} else if (ip->m_type == IP_MEM_HBM) {
 			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_MIG_HBM;
-			uint16_t memidx = icap_get_memidx(mem_topo, MEM_HBM, ip->indices.m_index);
+			uint16_t memidx = icap_get_memidx(mem_topo, IP_MEM_HBM, ip->indices.m_index);
 
 			if (memidx == INVALID_MEM_IDX)
 				continue;
