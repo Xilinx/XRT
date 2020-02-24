@@ -1,5 +1,5 @@
 /**
- *  Copyright (C) 2017-2019 Xilinx, Inc. All rights reserved.
+ *  Copyright (C) 2017-2020 Xilinx, Inc. All rights reserved.
  *  Author: Karen Xie <karen.xie@xilinx.com>
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -471,7 +471,6 @@ static u32 engine_status_read(struct xdma_engine *engine, bool clear, bool dump)
  */
 static void xdma_engine_stop(struct xdma_engine *engine)
 {
-	struct xocl_dev *xcldev = XDMA_ENGINE_TO_XDEV(engine);
 	u32 w;
 
 	BUG_ON(!engine);
@@ -483,7 +482,7 @@ static void xdma_engine_stop(struct xdma_engine *engine)
 	w |= (u32)XDMA_CTRL_IE_READ_ERROR;
 	w |= (u32)XDMA_CTRL_IE_DESC_ERROR;
 
-	if (poll_mode || XOCL_DSA_IS_VERSAL(xcldev)) {
+	if (poll_mode) {
 		w |= (u32) XDMA_CTRL_POLL_MODE_WB;
 	} else {
 		w |= (u32)XDMA_CTRL_IE_DESC_STOPPED;
@@ -506,7 +505,6 @@ static void xdma_engine_stop(struct xdma_engine *engine)
 
 static void engine_start_mode_config(struct xdma_engine *engine)
 {
-	struct xocl_dev *xcldev = XDMA_ENGINE_TO_XDEV(engine);
 	u32 w;
 
 	BUG_ON(!engine);
@@ -533,7 +531,7 @@ static void engine_start_mode_config(struct xdma_engine *engine)
 	w |= (u32)XDMA_CTRL_IE_DESC_ALIGN_MISMATCH;
 	w |= (u32)XDMA_CTRL_IE_MAGIC_STOPPED;
 
-	if (poll_mode || XOCL_DSA_IS_VERSAL(xcldev)) {
+	if (poll_mode) {
 		w |= (u32)XDMA_CTRL_POLL_MODE_WB;
 	} else {
 		w |= (u32)XDMA_CTRL_IE_DESC_STOPPED;
@@ -982,7 +980,6 @@ static int engine_service_cyclic_interrupt(struct xdma_engine *engine)
 /* must be called with engine->lock already acquired */
 static int engine_service_cyclic(struct xdma_engine *engine)
 {
-	struct xocl_dev *xcldev = XDMA_ENGINE_TO_XDEV(engine);
 	int rc = 0;
 
 	dbg_tfr("engine_service_cyclic()");
@@ -990,7 +987,7 @@ static int engine_service_cyclic(struct xdma_engine *engine)
 	BUG_ON(!engine);
 	BUG_ON(engine->magic != MAGIC_ENGINE);
 
-	if (poll_mode || XOCL_DSA_IS_VERSAL(xcldev))
+	if (poll_mode)
 		rc = engine_service_cyclic_polled(engine);
 	else
 		rc = engine_service_cyclic_interrupt(engine);
@@ -1047,7 +1044,6 @@ static int engine_service(struct xdma_engine *engine, int desc_writeback)
 	u32 err_flag = desc_writeback & WB_ERR_MASK;
 	int rv = 0;
 	struct xdma_poll_wb *wb_data;
-	struct xocl_dev *xcldev = XDMA_ENGINE_TO_XDEV(engine);
 
 	BUG_ON(!engine);
 
@@ -1124,7 +1120,7 @@ static int engine_service(struct xdma_engine *engine, int desc_writeback)
 	}
 
 	/* Before starting engine again, clear the writeback data */
-        if (poll_mode || XOCL_DSA_IS_VERSAL(xcldev)) {
+        if (poll_mode) {
 		wb_data = (struct xdma_poll_wb *)engine->poll_mode_addr_virt;
 		wb_data->completed_desc_count = 0;
 	}
@@ -1711,14 +1707,9 @@ static void disable_msi_msix(struct xdma_dev *xdev, struct pci_dev *pdev)
 static int enable_msi_msix(struct xdma_dev *xdev, struct pci_dev *pdev)
 {
 	int rv = 0;
-	struct xocl_dev *xcldev = XOCL_PCI_DEV_TO_XDEV(pdev);
 
 	BUG_ON(!xdev);
 	BUG_ON(!pdev);
-
-	/* Do not set up interrupt on versal for now. */
-	if (XOCL_DSA_IS_VERSAL(xcldev))
-		return rv;
 
 	if (!interrupt_mode && msi_msix_capable(pdev, PCI_CAP_ID_MSIX)) {
 		int req_nvec = xdev->c2h_channel_max + xdev->h2c_channel_max +
@@ -2596,7 +2587,6 @@ static int engine_init_regs(struct xdma_engine *engine)
 {
 	u32 reg_value;
 	int rv = 0;
-	struct xocl_dev *xcldev = XDMA_ENGINE_TO_XDEV(engine);
 
 	write_register(XDMA_CTRL_NON_INCR_ADDR, &engine->regs->control_w1c,
 			(unsigned long)(&engine->regs->control_w1c) -
@@ -2612,7 +2602,7 @@ static int engine_init_regs(struct xdma_engine *engine)
 	reg_value |= XDMA_CTRL_IE_DESC_ERROR;
 
 	/* if using polled mode, configure writeback address */
-	if (poll_mode || XOCL_DSA_IS_VERSAL(xcldev)) {
+	if (poll_mode) {
 		rv = engine_writeback_setup(engine);
 		if (rv) {
 			dbg_init("%s descr writeback setup failed.\n",
@@ -2657,7 +2647,6 @@ fail_wb:
 static int engine_alloc_resource(struct xdma_engine *engine)
 {
 	struct xdma_dev *xdev = engine->xdev;
-	struct xocl_dev *xcldev = XDMA_ENGINE_TO_XDEV(engine);
 
 	engine->desc = dma_alloc_coherent(&xdev->pdev->dev,
 			XDMA_TRANSFER_MAX_DESC * sizeof(struct xdma_desc),
@@ -2668,7 +2657,7 @@ static int engine_alloc_resource(struct xdma_engine *engine)
 		goto err_out;
 	}
 
-	if (poll_mode || XOCL_DSA_IS_VERSAL(xcldev)) {
+	if (poll_mode) {
 		engine->poll_mode_addr_virt = dma_alloc_coherent(
 					&xdev->pdev->dev,
 					sizeof(struct xdma_poll_wb),
@@ -2967,7 +2956,6 @@ ssize_t xdma_xfer_submit(void *dev_hndl, int channel, bool write, u64 ep_addr,
 	int nents;
 	enum dma_data_direction dir = write ? DMA_TO_DEVICE : DMA_FROM_DEVICE;
 	struct xdma_request_cb *req = NULL;
-	struct xocl_dev *xcldev;
 
 	if (!dev_hndl)
 		return -EINVAL;
@@ -3002,8 +2990,6 @@ ssize_t xdma_xfer_submit(void *dev_hndl, int channel, bool write, u64 ep_addr,
 		pr_info("xdev 0x%p, offline.\n", xdev);
 		return -EBUSY;
 	}
-
-	xcldev = XDMA_ENGINE_TO_XDEV(engine);
 
 	/* check the direction */
 	if (engine->dir != dir) {
@@ -3089,7 +3075,7 @@ ssize_t xdma_xfer_submit(void *dev_hndl, int channel, bool write, u64 ep_addr,
 		/*
 		 * When polling, determine how many descriptors have been queued		 * on the engine to determine the writeback value expected
 		 */
-		if (poll_mode || XOCL_DSA_IS_VERSAL(xcldev)) {
+		if (poll_mode) {
 			unsigned int desc_count;
 
 			spin_lock_irqsave(&engine->lock, flags);
@@ -3129,8 +3115,7 @@ ssize_t xdma_xfer_submit(void *dev_hndl, int channel, bool write, u64 ep_addr,
 			rv = -EIO;
 			break;
 		default:
-			if (!poll_mode && rv == -ERESTARTSYS &&
-			    !XOCL_DSA_IS_VERSAL(xcldev)) {
+			if (!poll_mode && rv == -ERESTARTSYS) {
 				pr_info("xfer 0x%p,%llu, canceled, ep 0x%llx.\n",
 					xfer, xfer->len,
 					req->ep_addr - xfer->len);
@@ -3558,7 +3543,6 @@ void *xdma_device_open(const char *mname, struct pci_dev *pdev, int *user_max,
 {
 	struct xdma_dev *xdev = NULL;
 	int rv = 0;
-	struct xocl_dev *xcldev = XOCL_PCI_DEV_TO_XDEV(pdev);
 
 	pr_info("%s device %s, 0x%p.\n", mname, dev_name(&pdev->dev), pdev);
 
@@ -3629,18 +3613,17 @@ void *xdma_device_open(const char *mname, struct pci_dev *pdev, int *user_max,
 	rv = probe_engines(xdev);
 	if (rv)
 		goto err_engines;
-	if (!(XOCL_DSA_IS_VERSAL(xcldev))) {
-		/* re-determine user_max */
-		xdev->user_max = min(xdev->user_max, pci_msix_vec_count(pdev) -
-				xdev->c2h_channel_max - xdev->h2c_channel_max);
-		if (xdev->user_max < 0) {
-			rv = -EINVAL;
-			pr_err("Invalid number of interrupts. "
-				"pci %d, h2c %d, c2h %d",
-				pci_msix_vec_count(pdev), xdev->h2c_channel_max,
-				xdev->c2h_channel_max);
-			goto err_enable_msix;
-		}
+
+	/* re-determine user_max */
+	xdev->user_max = min(xdev->user_max, pci_msix_vec_count(pdev) -
+			xdev->c2h_channel_max - xdev->h2c_channel_max);
+	if (xdev->user_max < 0) {
+		rv = -EINVAL;
+		pr_err("Invalid number of interrupts. "
+			"pci %d, h2c %d, c2h %d",
+			pci_msix_vec_count(pdev), xdev->h2c_channel_max,
+			xdev->c2h_channel_max);
+		goto err_enable_msix;
 	}
 
 	rv = enable_msi_msix(xdev, pdev);
@@ -3651,7 +3634,7 @@ void *xdma_device_open(const char *mname, struct pci_dev *pdev, int *user_max,
 	if (rv < 0)
 		goto err_interrupts;
 
-	if (!poll_mode && !(XOCL_DSA_IS_VERSAL(xcldev)))
+	if (!poll_mode)
 		channel_interrupts_enable(xdev, ~0);
 
 	/* Flush writes */
@@ -3773,7 +3756,6 @@ void xdma_device_online(struct pci_dev *pdev, void *dev_hndl)
 {
 	struct xdma_dev *xdev = (struct xdma_dev *)dev_hndl;
 	struct xdma_engine *engine;
-	struct xocl_dev *xcldev = XOCL_PCI_DEV_TO_XDEV(pdev);
 	unsigned long flags;
 	int i;
 
@@ -3806,7 +3788,7 @@ pr_info("pdev 0x%p, xdev 0x%p.\n", pdev, xdev);
 	}
 
 	/* re-write the interrupt table */
-	if (!poll_mode && !(XOCL_DSA_IS_VERSAL(xcldev))) {
+	if (!poll_mode ) {
 		irq_setup(xdev, pdev);
 
 		channel_interrupts_enable(xdev, ~0);
@@ -3959,7 +3941,6 @@ static int transfer_monitor_cyclic(struct xdma_engine *engine,
 			struct xdma_transfer *transfer, int timeout_ms)
 {
 	struct xdma_result *result;
-	struct xocl_dev *xcldev = XDMA_ENGINE_TO_XDEV(engine);
 	int rc = 0;
 
 	BUG_ON(!engine);
@@ -3968,7 +3949,7 @@ static int transfer_monitor_cyclic(struct xdma_engine *engine,
 	result = engine->cyclic_result;
 	BUG_ON(!result);
 
-	if (poll_mode || XOCL_DSA_IS_VERSAL(xcldev)) {
+	if (poll_mode) {
 		int i ;
 		for (i = 0; i < 5; i++) {
 			rc = engine_service_poll(engine, 0);
@@ -4430,7 +4411,6 @@ int xdma_cyclic_transfer_teardown(struct xdma_engine *engine)
 	int rc;
 	struct xdma_dev *xdev = engine->xdev;
 	struct xdma_transfer *transfer;
-	struct xocl_dev *xcldev = XDMA_ENGINE_TO_XDEV(engine);
 	unsigned long flags;
 
 	transfer = engine_cyclic_stop(engine);
@@ -4448,7 +4428,7 @@ int xdma_cyclic_transfer_teardown(struct xdma_engine *engine)
 	spin_unlock_irqrestore(&engine->lock, flags);
 
 	/* wait for engine to be no longer running */
-	if (poll_mode || XOCL_DSA_IS_VERSAL(xcldev))
+	if (poll_mode)
 		rc = cyclic_shutdown_polled(engine);
 	else
 		rc = cyclic_shutdown_interrupt(engine);

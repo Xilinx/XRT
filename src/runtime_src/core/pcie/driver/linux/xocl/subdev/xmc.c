@@ -877,7 +877,7 @@ static bool autonomous_xmc(struct platform_device *pdev)
 {
 	struct xocl_dev_core *core = xocl_get_xdev(pdev);
 
-	return core->priv.flags & XOCL_DSAFLAG_SMARTN;
+	return core->priv.flags & (XOCL_DSAFLAG_SMARTN | XOCL_DSAFLAG_VERSAL);
 }
 
 static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind,
@@ -887,7 +887,7 @@ static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind,
 	struct xcl_board_info *bdinfo = NULL;
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
 
-	if (XMC_PRIVILEGED(xmc) && !xmc->mgmt_binary)
+	if (XMC_PRIVILEGED(xmc) && !xmc->mgmt_binary && !autonomous_xmc(pdev))
 		return -ENODEV;
 
 	switch (kind) {
@@ -2871,6 +2871,7 @@ static int xmc_probe(struct platform_device *pdev)
 	struct xocl_xmc *xmc;
 	struct resource *res;
 	void *xdev_hdl;
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	int i, err;
 
 	xmc = xocl_drvinst_alloc(&pdev->dev, sizeof(*xmc));
@@ -2916,7 +2917,7 @@ static int xmc_probe(struct platform_device *pdev)
 			goto failed;
 		}
 
-		if (!xmc->base_addrs[IO_GPIO]) {
+		if (!XOCL_DSA_IS_VERSAL(xdev) && !xmc->base_addrs[IO_GPIO]) {
 			xocl_info(&pdev->dev, "minimum mode for SC upgrade");
 			return 0;
 		}
