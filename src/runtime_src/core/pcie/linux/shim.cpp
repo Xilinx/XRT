@@ -20,6 +20,7 @@
  */
 #include "shim.h"
 #include "scan.h"
+#include "system_linux.h"
 #include "core/common/message.h"
 #include "core/common/xclbin_parser.h"
 #include "core/common/scheduler.h"
@@ -125,19 +126,20 @@ namespace xocl {
  * shim()
  */
 shim::shim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity)
-  : mVerbosity(verbosity),
-    mUserHandle(-1),
-    mStreamHandle(-1),
-    mBoardNumber(index),
-    mLocked(false),
-    mLogfileName(nullptr),
-    mOffsets{0x0, 0x0, OCL_CTLR_BASE, 0x0, 0x0},
-    mMemoryProfilingNumberSlots(0),
-    mAccelProfilingNumberSlots(0),
-    mStallProfilingNumberSlots(0),
-    mStreamProfilingNumberSlots(0),
-    mCmdBOCache(nullptr),
-    mCuMaps(128, nullptr)
+  : mCoreDevice(xrt_core::pcie_linux::get_userpf_device(this, index))
+  , mVerbosity(verbosity)
+  , mUserHandle(-1)
+  , mStreamHandle(-1)
+  , mBoardNumber(index)
+  , mLocked(false)
+  , mLogfileName(nullptr)
+  , mOffsets{0x0, 0x0, OCL_CTLR_BASE, 0x0, 0x0}
+  , mMemoryProfilingNumberSlots(0)
+  , mAccelProfilingNumberSlots(0)
+  , mStallProfilingNumberSlots(0)
+  , mStreamProfilingNumberSlots(0)
+  , mCmdBOCache(nullptr)
+  , mCuMaps(128, nullptr)
 {
     init(index, logfileName, verbosity);
 }
@@ -180,7 +182,6 @@ int shim::dev_init()
     mStreamHandle = mDev->open("dma.qdma", O_RDWR | O_SYNC);
     memset(&mAioContext, 0, sizeof(mAioContext));
     mAioEnabled = (io_setup(SHIM_QDMA_AIO_EVT_MAX, &mAioContext) == 0);
-    mCoreDevice = xrt_core::get_userpf_device(this, mBoardNumber);
 
     return 0;
 }
@@ -245,6 +246,10 @@ void shim::init(unsigned index, const char *logfileName,
 shim::~shim()
 {
     xrt_logmsg(XRT_INFO, "%s", __func__);
+
+    // The BO cache unmaps and releases all execbo, but this must
+    // be done before the device is closed.
+    mCmdBOCache.reset(nullptr);
 
     dev_fini();
 

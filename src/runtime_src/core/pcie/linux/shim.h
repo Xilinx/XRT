@@ -162,8 +162,8 @@ public:
     int xclIPName2Index(const char *name, uint32_t& index);
 
 private:
-    std::shared_ptr<pcidev::pci_device> mDev;
     std::shared_ptr<xrt_core::device> mCoreDevice;
+    std::shared_ptr<pcidev::pci_device> mDev;
     xclVerbosityLevel mVerbosity;
     std::ofstream mLogStream;
     int mUserHandle;

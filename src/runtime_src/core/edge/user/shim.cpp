@@ -18,6 +18,7 @@
  */
 
 #include "shim.h"
+#include "system_linux.h"
 #include "core/common/message.h"
 #include "core/common/scheduler.h"
 #include "core/common/xclbin_parser.h"
@@ -73,11 +74,12 @@ inline void* wordcopy(void *dst, const void* src, size_t bytes)
 }
 
 namespace ZYNQ {
-ZYNQShim::ZYNQShim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity) :
-    mBoardNumber(index),
-    mVerbosity(verbosity),
-    mKernelClockFreq(100),
-    mCuMaps(128, nullptr)
+ZYNQShim::ZYNQShim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity)
+  : mCoreDevice(xrt_core::edge_linux::get_userpf_device(this, index))
+  , mBoardNumber(index)
+  , mVerbosity(verbosity)
+  , mKernelClockFreq(100)
+  , mCuMaps(128, nullptr)
 {
   if (logfileName != nullptr)
     xclLog(XRT_WARNING, "XRT", "%s: logfileName is no longer supported", __func__);
@@ -90,13 +92,16 @@ ZYNQShim::ZYNQShim(unsigned index, const char *logfileName, xclVerbosityLevel ve
   }
   mCmdBOCache = std::make_unique<xrt_core::bo_cache>(this, xrt_core::config::get_cmdbo_cache());
   mDev = zynq_device::get_dev();
-  mCoreDevice = xrt_core::get_userpf_device(this, mBoardNumber);
 }
 
 #ifndef __HWEM__
 ZYNQShim::~ZYNQShim()
 {
   xclLog(XRT_INFO, "XRT", "%s", __func__);
+
+  // The BO cache unmaps and releases all execbo, but this must
+  // be done before the device (mKernelFD) is closed.
+  mCmdBOCache.reset(nullptr);
 
   if (mKernelFD > 0) {
     close(mKernelFD);
