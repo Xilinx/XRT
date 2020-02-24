@@ -55,11 +55,41 @@ namespace po = boost::program_options;
 
 namespace {
 /*
- * Update shell on the board
+ * Update shell on the board for auto flash
+ */
+static void 
+update_shell(uint16_t index, const std::string& primary, const std::string& secondary)
+{
+  std::unique_ptr<firmwareImage> pri;
+  std::unique_ptr<firmwareImage> sec;
+
+  Flasher flasher(index);
+  if(!flasher.isValid())
+    throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % index));
+
+  if (primary.empty())
+    throw xrt_core::error("Shell not specified");
+
+  pri = std::make_unique<firmwareImage>(primary.c_str(), MCS_FIRMWARE_PRIMARY);
+  if (pri->fail())
+    throw xrt_core::error(boost::str(boost::format("Failed to read %s") % primary));
+  if (!secondary.empty()) {
+    sec = std::make_unique<firmwareImage>(secondary.c_str(),
+      MCS_FIRMWARE_SECONDARY);
+    if (sec->fail())
+      sec = nullptr;
+  }
+
+  flasher.upgradeFirmware("", pri.get(), sec.get());
+  std::cout << boost::format("%-8s : %s \n") % "INFO" % "Shell is updated succesfully.";
+}
+
+/*
+ * Update shell on the board for manual flash
  */
 static void 
 update_shell(uint16_t index, const std::string& flashType,
-    const std::string& primary, const std::string& secondary)
+  const std::string& primary, const std::string& secondary)
 {
   std::unique_ptr<firmwareImage> pri;
   std::unique_ptr<firmwareImage> sec;
@@ -80,8 +110,7 @@ update_shell(uint16_t index, const std::string& flashType,
   if (pri->fail())
     throw xrt_core::error(boost::str(boost::format("Failed to read %s") % primary));
   if (!secondary.empty()) {
-    sec = std::make_unique<firmwareImage>(secondary.c_str(),
-      MCS_FIRMWARE_SECONDARY);
+    sec = std::make_unique<firmwareImage>(secondary.c_str(), MCS_FIRMWARE_SECONDARY);
     if (sec->fail())
       sec = nullptr;
   }
@@ -314,8 +343,7 @@ updateShellAndSC(uint16_t boardIdx, DSAInfo& candidate, bool& reboot)
     std::cout << "Updating shell on card[" << flasher.sGetDBDF() <<
       "]" << std::endl;
     auto ret = 0;
-    update_shell(boardIdx, "", candidate.file,
-      candidate.file);
+    update_shell(boardIdx, candidate.file, candidate.file);
     if (ret != 0) {
       std::cout << "ERROR: Failed to update shell on card["
         << flasher.sGetDBDF() << "]" << std::endl;
@@ -587,5 +615,10 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     else 
       throw xrt_core::error("Please specify a valid value");
     return;
+  }
+
+  if(!image.empty()) {
+    //call this overloaded function
+    update_shell(device_indices[0], "", "", "");
   }
 }
