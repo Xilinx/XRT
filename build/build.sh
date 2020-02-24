@@ -42,6 +42,7 @@ usage()
     echo "[-nocmake]                 Skip CMake call"
     echo "[-j <n>]                   Compile parallel (default: system cores)"
     echo "[-ccache]                  Build using RDI's compile cache"
+    echo "[-toolchain <file>]        Extra toolchain file to configure CMake"
     echo "[-driver]                  Include building driver code"
     echo "[-checkpatch]              Run checkpatch.pl on driver code"
     echo "[-verbose]                 Turn on verbosity when compiling"
@@ -69,6 +70,7 @@ dbg=1
 edge=0
 nocmake=0
 ertfw=""
+extratoolchain=0
 while [ $# -gt 0 ]; do
     case "$1" in
         -help)
@@ -110,6 +112,12 @@ while [ $# -gt 0 ]; do
             ;;
         -ccache)
             ccache=1
+            shift
+            ;;
+        -toolchain)
+            extratoolchain=1
+            shift
+            toolchain=$1
             shift
             ;;
         -checkpatch)
@@ -180,8 +188,27 @@ if [[ $dbg == 1 ]]; then
   mkdir -p $debug_dir
   cd $debug_dir
   if [[ $nocmake == 0 ]]; then
-    echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src"
-    time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
+	if [[ $extratoolchain == 0 ]]; then
+		echo "$CMAKE -DRDI_CCACHE=$ccache"
+		echo "	-DCMAKE_BUILD_TYPE=Debug"
+		echo "	-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+		echo "	../../src"
+		time $CMAKE -DRDI_CCACHE=$ccache \
+			-DCMAKE_BUILD_TYPE=Debug \
+			-DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+			../../src
+	else
+		echo "$CMAKE -DRDI_CCACHE=$ccache"
+		echo "	-DCMAKE_BUILD_TYPE=Debug"
+		echo "	-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+		echo "	-DCMAKE_TOOLCHAIN_FILE=$toolchain"
+		echo "	../../src"
+		time $CMAKE -DRDI_CCACHE=$ccache \
+			-DCMAKE_BUILD_TYPE=Debug \
+			-DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+			-DCMAKE_TOOLCHAIN_FILE=$toolchain \
+			../../src
+	fi
   fi
   echo "make -j $jcore $verbose DESTDIR=$PWD install"
   time make -j $jcore $verbose DESTDIR=$PWD install
@@ -193,8 +220,27 @@ if [[ $opt == 1 ]]; then
   mkdir -p $release_dir
   cd $release_dir
   if [[ $nocmake == 0 ]]; then
-    echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src"
-    time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
+	if [[ $extratoolchain == 0 ]]; then
+		echo "$CMAKE -DRDI_CCACHE=$ccache"
+		echo "	-DCMAKE_BUILD_TYPE=Release"
+		echo "	-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+		echo "	../../src"
+		time $CMAKE -DRDI_CCACHE=$ccache \
+			-DCMAKE_BUILD_TYPE=Release \
+			-DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+			../../src
+	else
+		echo "$CMAKE -DRDI_CCACHE=$ccache"
+		echo "	-DCMAKE_BUILD_TYPE=Release"
+		echo "	-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+		echo "	-DCMAKE_TOOLCHAIN_FILE=$toolchain"
+		echo "../../src"
+        time $CMAKE -DRDI_CCACHE=$ccache \
+			-DCMAKE_BUILD_TYPE=Release \
+			-DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+			-DCMAKE_TOOLCHAIN_FILE=$toolchain \
+			../../src
+	fi
   fi
 
   if [[ $docs == 1 ]]; then
