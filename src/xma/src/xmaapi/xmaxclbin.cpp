@@ -38,7 +38,7 @@ static int get_xclbin_connectivity(char *buffer, XmaXclbinInfo *xclbin_info);
 
 std::vector<char> xma_xclbin_file_open(const std::string& xclbin_name)
 {
-    xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Loading %s\n", xclbin_name);
+    xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Loading %s\n", xclbin_name.c_str());
 
     std::ifstream infile(xclbin_name, std::ios::binary | std::ios::ate);
     std::streamsize xclbin_size = infile.tellg();
@@ -48,16 +48,16 @@ std::vector<char> xma_xclbin_file_open(const std::string& xclbin_name)
     try {
         xclbin_buffer.reserve(xclbin_size);
     } catch (const std::bad_alloc& ex) {
-        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not allocate buffer for file %s\n", xclbin_name);
+        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not allocate buffer for file %s\n", xclbin_name.c_str());
         xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Buffer allocation error: %s\n", ex.what());
         throw;
     } catch (...) {
-        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not allocate buffer for xclbin file %s\n", xclbin_name);
+        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not allocate buffer for xclbin file %s\n", xclbin_name.c_str());
         throw;
     }
     infile.read(xclbin_buffer.data(), xclbin_size);
     if (infile.gcount() != xclbin_size) {
-        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Unable to read full xclbin file %s\n", xclbin_name);
+        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Unable to read full xclbin file %s\n", xclbin_name.c_str());
         throw std::runtime_error("Unable to read full xclbin file");
     }
 
