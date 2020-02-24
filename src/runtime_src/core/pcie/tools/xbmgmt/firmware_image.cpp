@@ -263,7 +263,7 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
         // For 2RP platform, only UUIDs are provided
         //timestamp = ap->m_header.m_featureRomTimeStamp;
         hasFlashImage = (xclbin::get_axlf_section(ap, MCS) != nullptr) ||
-            (xclbin::get_axlf_section(ap, ASK_FLASH) != nullptr);
+            (xclbin::get_axlf_section(ap, ASK_FLASH) != nullptr) || (xclbin::get_axlf_section(ap, PDI) != nullptr);
 
         // Find out BMC version
         // Obtain BMC section header.
@@ -516,16 +516,16 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
                 return;
             }
             // Load entire BMC section.
-            std::shared_ptr<char> bmcbuf(new char[bmcSection->m_sectionSize]);
+            std::vector<char> bmcbuf(bmcSection->m_sectionSize);
             in.seekg(bmcSection->m_sectionOffset);
-            in.read(bmcbuf.get(), bmcSection->m_sectionSize);
+            in.read(bmcbuf.data(), bmcSection->m_sectionSize);
             if (!in.good())
             {
                 this->setstate(failbit);
                 std::cout << "Can't read SC section from "<< file << std::endl;
                 return;
             }
-            const struct bmc *bmc = reinterpret_cast<const struct bmc *>(bmcbuf.get());
+            const struct bmc *bmc = reinterpret_cast<const struct bmc *>(bmcbuf.data());
             // Load data into stream.
             bufsize = bmc->m_size;
             mBuf = new char[bufsize];
@@ -540,6 +540,7 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
 
             // Obtain FLASH section header.
             const axlf_section_header* flashSection = xclbin::get_axlf_section(ap, ASK_FLASH);
+            const axlf_section_header* pdiSection = xclbin::get_axlf_section(ap, PDI);
             if (flashSection) {
                 //So far, there is only one type in FLASH section.
                 //Just blindly load that section. Add more checks later.
@@ -558,6 +559,22 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
                 bufsize = flashMeta.m_image_size;
                 mBuf = new char[bufsize];
                 in.seekg(flashSection->m_sectionOffset + flashMeta.m_image_offset);
+                in.read(mBuf, bufsize);
+            } 
+            else if (pdiSection) {
+                // Load entire PDI section.
+                std::vector<char> pdibuf(pdiSection->m_sectionSize);
+                in.seekg(pdiSection->m_sectionOffset);
+                in.read(pdibuf.data(), pdiSection->m_sectionSize);
+                if (!in.good())
+                {
+                    this->setstate(failbit);
+                    std::cout << "Can't read PDI section from "<< file << std::endl;
+                    return;
+                }
+                bufsize = pdiSection->m_sectionSize;
+                mBuf = new char[bufsize];
+                in.seekg(pdiSection->m_sectionOffset);
                 in.read(mBuf, bufsize);
             } else {
                 // Obtain MCS section header.
