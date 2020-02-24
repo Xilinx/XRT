@@ -48,19 +48,9 @@ driver_version(const std::string& driver)
   return line;
 }
 
-static std::vector<std::weak_ptr<xrt_core::device_linux>> mgmtpf_devices(16); // fix size
-static std::vector<std::weak_ptr<xrt_core::device_linux>> userpf_devices(16); // fix size
-
 }
 
 namespace xrt_core {
-
-system*  
-system_child_ctor()
-{
-  static system_linux sl;
-  return &sl;
-}
 
 void 
 system_linux::
@@ -111,13 +101,24 @@ std::shared_ptr<device>
 system_linux::
 get_userpf_device(device::id_type id) const
 {
-  return nullptr;
+  // deliberately not using std::make_shared (used with weak_ptr)
+  return std::shared_ptr<device_linux>(new device_linux(id,true));
 }
+
+std::shared_ptr<device>
+system_linux::
+get_userpf_device(device::handle_type handle, device::id_type id) const
+{
+  // deliberately not using std::make_shared (used with weak_ptr)
+  return std::shared_ptr<device_linux>(new device_linux(handle, id));
+}  
 
 std::shared_ptr<device>
 system_linux::
 get_mgmtpf_device(device::id_type id) const
 {
-  return nullptr;
+  // deliberately not using std::make_shared (used with weak_ptr)
+  return std::shared_ptr<device_linux>(new device_linux(id,false));
 }
+
 } // xrt_core

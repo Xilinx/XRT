@@ -18,19 +18,6 @@
  */
 
 #include "shim.h"
-#include <errno.h>
-
-#include <iostream>
-#include <iomanip>
-#include <fcntl.h>
-#include <sys/ioctl.h>
-#include <sys/mman.h>
-#include <cstring>
-#include <thread>
-#include <chrono>
-#include <unistd.h>
-#include <vector>
-#include <poll.h>
 #include "core/common/message.h"
 #include "core/common/scheduler.h"
 #include "core/common/xclbin_parser.h"
@@ -38,8 +25,22 @@
 #include "core/include/xcl_perfmon_parameters.h"
 #include "core/common/bo_cache.h"
 #include "core/common/config_reader.h"
-#include <assert.h>
+
+#include <cerrno>
+#include <iostream>
+#include <iomanip>
+#include <cstring>
+#include <thread>
+#include <chrono>
+#include <vector>
+#include <cassert>
 #include <cstdarg>
+
+#include <fcntl.h>
+#include <poll.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
 
 #ifndef __HWEM__
 #include "plugin/xdp/hal_api_interface.h"
@@ -47,43 +48,6 @@
 
 
 #define GB(x)   ((size_t) (x) << 30)
-
-static std::string parseCUStatus(unsigned val) {
-  char delim = '(';
-  std::string status;
-  if ( val & 0x1) {
-    status += delim;
-    status += "START";
-    delim = '|';
-  }
-  if ( val & 0x2) {
-    status += delim;
-    status += "DONE";
-    delim = '|';
-  }
-  if ( val & 0x4) {
-    status += delim;
-    status += "IDLE";
-    delim = '|';
-  }
-  if ( val & 0x8) {
-    status += delim;
-    status += "READY";
-    delim = '|';
-  }
-  if ( val & 0x10) {
-    status += delim;
-    status += "RESTART";
-    delim = '|';
-  }
-  if ( status.size())
-    status += ')';
-  else if ( val == 0x0)
-    status = "(--)";
-  else
-    status = "(?)";
-  return status;
-}
 
 // TODO: This code is copy from core/pcie/linux/shim.cpp. Considering to create a util library for X86 and ARM.
 // Copy bytes word (32bit) by word.
@@ -126,6 +90,7 @@ ZYNQShim::ZYNQShim(unsigned index, const char *logfileName, xclVerbosityLevel ve
   }
   mCmdBOCache = std::make_unique<xrt_core::bo_cache>(this, xrt_core::config::get_cmdbo_cache());
   mDev = zynq_device::get_dev();
+  mCoreDevice = xrt_core::get_userpf_device(this, mBoardNumber);
 }
 
 #ifndef __HWEM__

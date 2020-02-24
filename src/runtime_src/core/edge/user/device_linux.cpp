@@ -16,17 +16,52 @@
 
 
 #include "device_linux.h"
+#include "core/common/query_requests.h"
+
 #include "xrt.h"
+
 #include <string>
+#include <memory>
 #include <iostream>
 #include <map>
 #include <boost/format.hpp>
 
+namespace {
+
+namespace query = xrt_core::query;
+using key_type = query::key_type;
+
+static std::map<query::key_type, std::unique_ptr<query::request>> query_tbl;
+
+}
+
 namespace xrt_core {
+
+const query::request&
+device_linux::
+lookup_query(query::key_type query_key) const
+{
+  auto it = query_tbl.find(query_key);
+
+  if (it == query_tbl.end()) {
+    using qtype = std::underlying_type<query::key_type>::type;
+    std::string err = boost::str( boost::format("The given query request ID (%d) is not supported on Edge Linux.")
+                                  % static_cast<qtype>(query_key));
+    throw std::runtime_error(err);
+  }
+
+  return *(it->second);
+}
 
 device_linux::
 device_linux(id_type device_id, bool user)
   : shim<device_edge>(device_id, user)
+{
+}
+
+device_linux::
+device_linux(handle_type device_handle, id_type device_id)
+  : shim<device_edge>(device_handle, device_id)
 {
 }
 

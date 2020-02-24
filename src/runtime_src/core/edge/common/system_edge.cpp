@@ -24,12 +24,4 @@ get_devices(boost::property_tree::ptree& pt) const
 {
 }
 
-uint16_t
-system_edge::
-bdf2index(const std::string& bdfStr) const
-{
-  std::string errMsg = boost::str( boost::format("No mgmt PF found for '%s'") % bdfStr);
-  throw error(errMsg);
-}
-
 } // xrt_core

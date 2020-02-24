@@ -336,7 +336,7 @@ public:
             boost::property_tree::ptree ptCu;
             ptCu.put( "name",         ip.m_name );
             ptCu.put( "base_address", ip.m_base_address );
-            ptCu.put( "status",       parseCUStatus( status ) );
+            ptCu.put( "status",       xrt_core::utils::parse_cu_status( status ) );
             sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(i)), ptCu );
         }
         return 0;
@@ -566,8 +566,8 @@ public:
             ptMem.put( "temp",      temp_buf.empty() ? XCL_NO_SENSOR_DEV : temp[i]);
             ptMem.put( "tag",       map->m_mem_data[i].m_tag );
             ptMem.put( "enabled",   map->m_mem_data[i].m_used ? true : false );
-            ptMem.put( "size",      unitConvert(map->m_mem_data[i].m_size << 10) );
-            ptMem.put( "mem_usage", unitConvert(memoryUsage));
+            ptMem.put( "size",      xrt_core::utils::unit_convert(map->m_mem_data[i].m_size << 10) );
+            ptMem.put( "mem_usage", xrt_core::utils::unit_convert(memoryUsage));
             ptMem.put( "bo_count",  boCount);
             sensor_tree::add_child( std::string("board.memory.mem." + std::to_string(m)), ptMem );
             m++;
@@ -652,16 +652,16 @@ public:
             std::stringstream mem_stat(mm_buf[i]);
             mem_stat >> memoryUsage >> boCount;
 
-            ss << std::setw(8) << unitConvert(map->m_mem_data[i].m_size << 10);
-            ss << std::setw(16) << unitConvert(memoryUsage);
+            ss << std::setw(8) << xrt_core::utils::unit_convert(map->m_mem_data[i].m_size << 10);
+            ss << std::setw(16) << xrt_core::utils::unit_convert(memoryUsage);
             // print size
             ss << std::setw(8) << std::dec << boCount << "\n";
         }
 
         ss << "\nTotal DMA Transfer Metrics:" << "\n";
         for (unsigned i = 0; i < 2; i++) {
-            ss << "  Chan[" << i << "].h2c:  " << unitConvert(devstat.h2c[i]) << "\n";
-            ss << "  Chan[" << i << "].c2h:  " << unitConvert(devstat.c2h[i]) << "\n";
+            ss << "  Chan[" << i << "].h2c:  " << xrt_core::utils::unit_convert(devstat.h2c[i]) << "\n";
+            ss << "  Chan[" << i << "].c2h:  " << xrt_core::utils::unit_convert(devstat.c2h[i]) << "\n";
         }
 
         ss << std::setw(80) << std::setfill('#') << std::left << "\n";
@@ -874,15 +874,15 @@ public:
         sensor_tree::put( "board.error.firewall.firewall_level", level );
         sensor_tree::put( "board.error.firewall.firewall_status", status );
         sensor_tree::put( "board.error.firewall.firewall_time", time );
-        sensor_tree::put( "board.error.firewall.status", parseFirewallStatus(status) );
+        sensor_tree::put( "board.error.firewall.status", xrt_core::utils::parse_firewall_status(status) );
         
         // memory
         xclDeviceUsage devstat = { 0 };
         (void) xclGetUsageInfo(m_handle, &devstat);
         for (unsigned i = 0; i < 2; i++) {
             boost::property_tree::ptree pt_dma;
-            pt_dma.put( "h2c", unitConvert(devstat.h2c[i]) );
-            pt_dma.put( "c2h", unitConvert(devstat.c2h[i]) );
+            pt_dma.put( "h2c", xrt_core::utils::unit_convert(devstat.h2c[i]) );
+            pt_dma.put( "c2h", xrt_core::utils::unit_convert(devstat.c2h[i]) );
             sensor_tree::add_child( std::string("board.pcie_dma.transfer_metrics.chan." + std::to_string(i)), pt_dma );
         }
         
@@ -992,7 +992,7 @@ public:
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.serial_number", "N/A" ) << std::endl;
         ostr << std::setw(16) << "DDR size" << std::setw(16) << "DDR count" << std::setw(16) 
              << "Clock0" << std::setw(16) << "Clock1" << std::setw(16) << "Clock2" << std::endl;
-        ostr << std::setw(16) << unitConvert(sensor_tree::get<long long>( "board.info.ddr_size", -1 ))
+        ostr << std::setw(16) << xrt_core::utils::unit_convert(sensor_tree::get<long long>( "board.info.ddr_size", -1 ))
              << std::setw(16) << sensor_tree::get( "board.info.ddr_count", -1 )
              << std::setw(16) << sensor_tree::get( "board.info.clock0", -1 )
              << std::setw(16) << sensor_tree::get( "board.info.clock1", -1 )
@@ -1443,7 +1443,7 @@ public:
         }
         const mem_topology *map = (mem_topology *)buf.data();
 
-        std::string hbm_mem_size = unitConvert(map->m_count*(map->m_mem_data[0].m_size << 10));
+        std::string hbm_mem_size = xrt_core::utils::unit_convert(map->m_count*(map->m_mem_data[0].m_size << 10));
         if (verbose) {
             std::cout << "INFO: DMA test on [" << m_idx << "]: "<< name() << "\n";
             if (hbm_mem_size.compare(std::string("0 Byte")) != 0)

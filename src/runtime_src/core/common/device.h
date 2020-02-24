@@ -102,13 +102,15 @@ public:
    * xospiversal and xspi use this
    */
   virtual int
-  open(const std::string& subdev, int flag) const = 0;
+  open(const std::string& subdev, int flag) const
+  { throw std::runtime_error("Not implemented"); }
 
   /**
    * close() - close the fd
    */
   virtual void
-  close(int dev_handle) const = 0;
+  close(int dev_handle) const
+  { throw std::runtime_error("Not implemented"); }
 
 public:
   /**
@@ -166,10 +168,11 @@ public:
   /** 
    * file_open() - Opens a scoped fd
    */
-  scope_guard<int, std::function<void(int)>>
+  scope_value_guard<int, std::function<void()>>
   file_open(const std::string& subdev, int flag)
   {
-    return {open(subdev, flag), std::bind(&device::close, this, std::placeholders::_1)};
+    auto fd = open(subdev, flag);
+    return {fd, std::bind(&device::close, this, fd)};
   }
 
   // Helper methods

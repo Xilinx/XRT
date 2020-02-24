@@ -40,9 +40,6 @@ public:
   get_userpf_device(device::id_type id) const;
 
   std::shared_ptr<device>
-  get_userpf_device(device::handle_type handle) const;
-
-  std::shared_ptr<device>
   get_userpf_device(device::handle_type device_handle, device::id_type id) const;
 
   std::shared_ptr<device>
