@@ -64,6 +64,8 @@ struct xocl_ert {
 	u32			sche_binary_length;
 
 	struct mutex		ert_lock;
+
+	u32			cq_len;
 };
 
 static int stop_ert_nolock(struct xocl_ert *ert)
@@ -388,7 +390,7 @@ static int ert_probe(struct platform_device *pdev)
 	struct xocl_ert *ert;
 	struct resource *res;
 	void *xdev_hdl;
-	int err;
+	int err, i;
 
 	ert = xocl_drvinst_alloc(&pdev->dev, sizeof(*ert));
 	if (!ert) {
@@ -417,6 +419,7 @@ static int ert_probe(struct platform_device *pdev)
 		goto failed;
 	}
 	ert->cq_addr = ioremap_nocache(res->start, res->end - res->start + 1);
+	ert->cq_len = (u32)(res->end - res->start + 1);
 
 	res = xocl_get_iores_byname(pdev, RESNAME_ERT_RESET);
 	if (!res) {
@@ -433,7 +436,10 @@ static int ert_probe(struct platform_device *pdev)
 	}
 
 	/* GPIO is set to 0 by default, needs to take the ERT out of reset */
+	XOCL_WRITE_REG32(0xb8000000, ert->fw_addr);
 	WRITE_GPIO(ert, GPIO_ENABLED, 0);
+	for (i = 0; i < ert->cq_len; i += 4)
+		XOCL_WRITE_REG32(0, ert->cq_addr + i);
 
 	err = ert_sysfs_create(pdev);
 	if (err) {
