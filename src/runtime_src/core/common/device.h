@@ -102,14 +102,14 @@ public:
    * xospiversal and xspi use this
    */
   virtual int
-  open(const std::string& subdev, int flag) const
+  open(const std::string&, int) const
   { throw std::runtime_error("Not implemented"); }
 
   /**
    * close() - close the fd
    */
   virtual void
-  close(int dev_handle) const
+  close(int) const
   { throw std::runtime_error("Not implemented"); }
 
 public:
@@ -164,8 +164,8 @@ public:
    * write() - maps pcie bar and copy bytes word (32bit) by word
    */
   virtual void write(uint64_t offset, const void* buf, uint64_t len) const = 0;
-  
-  /** 
+
+  /**
    * file_open() - Opens a scoped fd
    */
   scope_value_guard<int, std::function<void()>>
@@ -238,7 +238,7 @@ struct ptree_updater
     }
     pt.add_child(QueryRequestType::name(), pt_array);
   }
-  
+
   static void
   query_and_put(const device* device, boost::property_tree::ptree& pt)
   {

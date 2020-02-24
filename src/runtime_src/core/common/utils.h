@@ -18,6 +18,7 @@
 #ifndef _xrt_core_common_utils_h_
 #define _xrt_core_common_utils_h_
 
+#include "config.h"
 #include "scope_guard.h"
 
 #include <string>
@@ -38,25 +39,29 @@ ios_restore(std::ostream& ostr)
 
 /**
  * parse_cu_status() -
- */  
+ */
+XRT_CORE_COMMON_EXPORT
 std::string
 parse_cu_status(unsigned int val);
 
 /**
  * parse_firewall_status() -
- */  
+ */
+XRT_CORE_COMMON_EXPORT
 std::string
 parse_firewall_status(unsigned int val);
 
 /**
  * parse_firewall_status() -
- */  
+ */
+XRT_CORE_COMMON_EXPORT
 std::string
 parse_dna_status(unsigned int val);
 
 /**
  * unit_covert() -
- */  
+ */
+XRT_CORE_COMMON_EXPORT
 std::string
 unit_convert(size_t size);
 
@@ -68,11 +73,10 @@ unit_convert(size_t size);
  *
  * Throws std::runtime_error if core library is not loaded.
  */
+XRT_CORE_COMMON_EXPORT
 uint16_t
 bdf2index(const std::string& bdf);
 
 }} // utils, xrt_core
 
 #endif
-
-

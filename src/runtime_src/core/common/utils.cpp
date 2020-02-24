@@ -15,7 +15,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
+#define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "utils.h"
 #include "system.h"
 #include "device.h"
@@ -152,7 +152,7 @@ parse_dna_status(unsigned int val)
   else{
     status += delim;
     status += "FAIL";
-    delim = '|';        
+    delim = '|';
   }
   if (status.size())
     status += ')';
@@ -179,20 +179,20 @@ unit_convert(size_t size)
 }
 
 uint16_t
-bdf2index(const std::string& bdf)
+bdf2index(const std::string& bdfstr)
 {
-  auto n = std::count(bdf.begin(), bdf.end(), ':');
+  auto n = std::count(bdfstr.begin(), bdfstr.end(), ':');
 
-  std::stringstream s(bdf);
+  std::stringstream s(bdfstr);
   uint16_t dom = 0, b = 0, d = 0, f = 0;
   char dummy;
-  
+
   if (n == 2)
     s >> std::hex >> dom >> dummy;
   s >> std::hex >> b >> dummy >> d >> dummy >> f;
 
   if ((n != 1 && n != 2) || s.fail())
-    throw std::runtime_error("Bad BDF string '" + bdf + "'");
+    throw std::runtime_error("Bad BDF string '" + bdfstr + "'");
 
   auto devices = xrt_core::get_total_devices(false).first;
   for (uint16_t i = 0; i < devices; i++) {
@@ -202,7 +202,7 @@ bdf2index(const std::string& bdf)
       return i;
   }
 
-  throw std::runtime_error("No mgmt PF found for '" + bdf + "'");
+  throw std::runtime_error("No mgmt PF found for '" + bdfstr + "'");
 }
-    
+
 }} // utils, xrt_core
