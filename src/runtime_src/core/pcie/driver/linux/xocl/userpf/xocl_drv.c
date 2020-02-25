@@ -723,8 +723,12 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 		blob = NULL;
 	}
 
-	if (XOCL_DRM(xdev))
-		xocl_cleanup_mem(XOCL_DRM(xdev));
+	/* clean up mem topology */
+	if (xdev->core.drm) {
+		xocl_drm_fini(xdev->core.drm);
+		xdev->core.drm = NULL;
+	}
+	xocl_fini_sysfs(xdev);
 
 	xocl_subdev_offline_all(xdev);
 	xocl_subdev_destroy_all(xdev);
@@ -735,6 +739,21 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 	}
 	(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
 	(void) xocl_mb_connect(xdev);
+
+	ret = xocl_init_sysfs(xdev);
+	if (ret) {
+		userpf_err(xdev, "Unable to create sysfs %d", ret);
+		goto failed;
+	}
+
+	if (!xdev->core.drm) {
+		xdev->core.drm = xocl_drm_init(xdev);
+		if (!xdev->core.drm) {
+			userpf_err(xdev, "Unable to init drm");
+			goto failed;
+		}
+	}
+
 	xocl_drvinst_set_offline(xdev->core.drm, false);
 
 failed:
