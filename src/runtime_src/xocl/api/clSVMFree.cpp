@@ -25,6 +25,7 @@
 
 #include <bitset>
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 namespace {
 
@@ -96,6 +97,7 @@ void clSVMFree(cl_context     context,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     xocl::clSVMFree
       (context,svm_pointer);
   }

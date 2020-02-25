@@ -19,7 +19,7 @@
 
 #include <string>
 
-#include "xdp/profile/writer/vp_trace_writer.h"
+#include "xdp/profile/writer/vp_base/vp_trace_writer.h"
 #include "xdp/profile/device/device_intf.h"
 
 namespace xdp {

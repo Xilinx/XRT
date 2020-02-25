@@ -188,6 +188,13 @@ get_hal_profile()
 }
 
 inline bool
+get_lop_profile()
+{
+  static bool value = detail::get_bool_value("Debug.lop_profile", false);
+  return value;
+}
+
+inline bool
 get_api_checks()
 {
   static bool value = detail::get_bool_value("Runtime.api_checks",true);

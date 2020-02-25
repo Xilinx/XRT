@@ -41,6 +41,11 @@ namespace xdp {
     STREAM_READ          = 19,
     STREAM_WRITE         = 20,
 
+    // Low overhead OpenCL host level events
+    LOP_READ_BUFFER      = 21,
+    LOP_WRITE_BUFFER     = 22,
+    LOP_KERNEL_ENQUEUE   = 23,
+
     // PL events
     KERNEL               = 30,
     KERNEL_STALL         = 31,
@@ -89,6 +94,14 @@ namespace xdp {
     virtual bool isHALAPI()      { return false ; }
     virtual bool isHostEvent()   { return false ; }
     virtual bool isDeviceEvent() { return false ; }
+    virtual bool isReadBuffer()  { return type == READ_BUFFER || 
+	                                  type == READ_BUFFER_P2P ||
+	                                  type == LOP_READ_BUFFER ; }
+    virtual bool isWriteBuffer() { return type == WRITE_BUFFER || 
+	                                  type == WRITE_BUFFER_P2P ||
+	                                  type == LOP_WRITE_BUFFER ; }
+    virtual bool isKernelEnqueue() { return type == KERNEL_ENQUEUE ||
+	                                    type == LOP_KERNEL_ENQUEUE ; }
 
     virtual void* getDevice() { return nullptr ; } 
     XDP_EXPORT virtual void dump(std::ofstream& fout, int bucket) ;

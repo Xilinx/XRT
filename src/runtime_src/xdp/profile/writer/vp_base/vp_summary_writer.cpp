@@ -18,8 +18,8 @@
 
 #define XDP_SOURCE
 
-#include "xdp/profile/writer/vp_summary_writer.h"
-#include "xrt/util/message.h"
+#include "xdp/profile/writer/vp_base/vp_summary_writer.h"
+#include "core/common/message.h"
 
 namespace xdp {
 
@@ -43,8 +43,9 @@ namespace xdp {
     if (std::rename(getRawBasename(), backupFile.c_str()) != 0)
     {
       // Cannot rename summary file to checkpoint file
-      xrt::message::send(xrt::message::severity_level::XRT_WARNING,
-			 "Cannot create profile summary checkpoint file") ;
+      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, 
+			      "XRT",
+			      "Cannot create profile summary checkpoint file") ;
     }
 
     fout.open(getRawBasename()) ;

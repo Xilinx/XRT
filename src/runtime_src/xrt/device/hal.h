@@ -717,6 +717,10 @@ load_xdp_kernel_debug();
 XRT_EXPORT
 void
 load_xdp_app_debug();
+
+XRT_EXPORT
+void
+load_xdp_lop();
 } // namespace hal
 
 namespace hal2 {

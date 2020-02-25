@@ -16,7 +16,7 @@
 
 #define XDP_SOURCE
 
-#include "xdp/profile/writer/vp_trace_writer.h"
+#include "xdp/profile/writer/vp_base/vp_trace_writer.h"
 #include "xdp/profile/database/database.h"
 
 namespace xdp {
@@ -46,7 +46,7 @@ namespace xdp {
     fout << std::endl ;
     fout << "PID," << (db->getStaticInfo()).getPid() << std::endl ;
     fout << "Generated on," << creationTime << std::endl ;
-    fout << "Resoultion,ms" << std::endl ;
+    fout << "Resolution,ms" << std::endl ;
     fout << "Min Resolution," << (resolution == 6 ? "us" : "ns") << std::endl ;
   }
 

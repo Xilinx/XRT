@@ -21,6 +21,7 @@
 
 #include "detail/event.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 namespace xocl {
 
@@ -87,6 +88,7 @@ clSetEventCallback( cl_event     event ,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return ::xocl::clSetEventCallback
       (event,command_exec_callback_type,pfn_event_notify,user_data);
   }

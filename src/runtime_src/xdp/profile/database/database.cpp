@@ -19,7 +19,7 @@
 #define XDP_SOURCE
 
 #include "xdp/profile/database/database.h"
-#include "xdp/profile/plugin/vp_base_plugin.h"
+#include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
 namespace xdp {
 
