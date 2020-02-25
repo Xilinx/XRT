@@ -45,13 +45,11 @@ class time_guard
   unsigned long zero = 0;
   unsigned long& tally;
 public:
-  XRT_CORE_COMMON_EXPORT
   explicit
   time_guard(unsigned long& t)
     : zero(time_ns()), tally(t)
   {}
 
-  XRT_CORE_COMMON_EXPORT
   ~time_guard()
   {
     tally += time_ns() - zero;
