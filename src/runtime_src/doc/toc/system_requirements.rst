@@ -10,7 +10,7 @@ Host Platform for PCIe Accelerator Cards
 2. AARCH64
 3. PPC64LE
 
-Supported Xilinx® Accelerator Cards are listed in :ref:`platforms.rst`.
+Supported Xilinx® Accelerator Cards are listed in `platforms.rst <platforms.rst>`_.
 
 
 Software Platform for PCIe Accelerator Cards
@@ -35,4 +35,4 @@ Switching to C++14 build environment
 MPSoC Based Embedded Platforms
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-For building embedded platforms please refer to :ref:`yocto.rst`
+For building embedded platforms please refer to `yocto.rst <yocto.rst>`_.
