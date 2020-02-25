@@ -50,7 +50,7 @@ public:
   virtual int readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
 
   // Only device RAM
-  virtual uint32_t alloc(size_t sz, uint64_t memoryIndex);
+  virtual size_t alloc(size_t sz, uint64_t memoryIndex);
   virtual void free(uint32_t xdpBoHandle);
 
   virtual void* map (uint32_t xdpBoHandle);

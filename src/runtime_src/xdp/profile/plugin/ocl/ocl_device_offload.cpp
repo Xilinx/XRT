@@ -1,14 +1,28 @@
+/**
+ * Copyright (C) 2019 Xilinx, Inc
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may
+ * not use this file except in compliance with the License. A copy of the
+ * License is located at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ */
+
 #include "ocl_device_offload.h"
 #include "xdp/profile/device/tracedefs.h"
-#include <iostream>
-#include <chrono>
 
 namespace xdp {
 
 OclDeviceOffload::OclDeviceOffload(xdp::DeviceIntf* dInt,
                                    std::shared_ptr<RTProfile> ProfileMgr,
-                                   std::string device_name,
-                                   std::string binary_name,
+                                   const std::string& device_name,
+                                   const std::string& binary_name,
                                    uint64_t sleep_interval_ms,
                                    uint64_t trbuf_sz,
                                    bool start_thread)
@@ -16,9 +30,9 @@ OclDeviceOffload::OclDeviceOffload(xdp::DeviceIntf* dInt,
                                      sleep_interval_ms(sleep_interval_ms),
                                      m_trbuf_alloc_sz(trbuf_sz),
                                      dev_intf(dInt),
-                                     prof_mgr(std::move(ProfileMgr)),
-                                     device_name(std::move(device_name)),
-                                     binary_name(std::move(binary_name))
+                                     prof_mgr(ProfileMgr),
+                                     device_name(device_name),
+                                     binary_name(binary_name)
                                      
 {
   // Select appropriate reader

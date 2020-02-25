@@ -79,7 +79,7 @@ int XrtDevice::readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSa
  * XDP BO Handle is just an index in BO vector
  * Actual XRT BO Handle is stored within this vector
  */
-uint32_t XrtDevice::alloc(size_t sz, uint64_t memoryIndex)
+size_t XrtDevice::alloc(size_t sz, uint64_t memoryIndex)
 {
   try {
     auto handle = mXrtDevice->alloc(sz, xrt::hal::device::Domain::XRT_DEVICE_RAM, memoryIndex, nullptr);

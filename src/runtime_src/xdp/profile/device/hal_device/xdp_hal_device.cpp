@@ -94,7 +94,7 @@ int HalDevice::readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSa
   return xclReadTraceData(mHalDevice, traceBuf, traceBufSz, numSamples, ipBaseAddress, wordsPerSample);
 }
 
-uint32_t HalDevice::alloc(size_t sz, uint64_t memoryIndex)
+size_t HalDevice::alloc(size_t sz, uint64_t memoryIndex)
 {
   return 0;
 }

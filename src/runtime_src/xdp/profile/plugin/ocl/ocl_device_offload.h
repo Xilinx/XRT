@@ -1,3 +1,19 @@
+/**
+ * Copyright (C) 2019 Xilinx, Inc
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may
+ * not use this file except in compliance with the License. A copy of the
+ * License is located at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ */
+
 #ifndef XDP_PROFILE_OFFLOAD_THREAD_H_
 #define XDP_PROFILE_OFFLOAD_THREAD_H_
 
@@ -27,7 +43,7 @@ if(!m_debug); else std::cout
 class OclDeviceOffload {
 public:
     OclDeviceOffload(xdp::DeviceIntf* dInt, std::shared_ptr<RTProfile> ProfileMgr,
-                     std::string device_name, std::string binary_name,
+                     const std::string& device_name, const std::string& binary_name,
                      uint64_t offload_sleep_ms, uint64_t trbuf_sz,
                      bool start_thread = true);
     ~OclDeviceOffload();
@@ -57,7 +73,7 @@ private:
     xclPerfMonType m_type = XCL_PERF_MON_MEMORY;
 
     xclTraceResultsVector m_trace_vector;
-    uint32_t m_trbuf = 0;
+    size_t m_trbuf = 0;
     uint64_t m_trbuf_sz = 0;
     uint64_t m_trbuf_offset = 0;
     uint64_t m_trbuf_chunk_sz = 0;

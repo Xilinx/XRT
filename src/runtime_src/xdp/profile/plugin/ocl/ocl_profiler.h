@@ -118,7 +118,6 @@ namespace xdp {
     std::shared_ptr<XoclPlugin> Plugin;
     std::shared_ptr<RTProfile> ProfileMgr;
     std::vector<std::unique_ptr<OclDeviceOffload>> DeviceOffloadList;
-    std::unique_ptr<OclDeviceOffload> DeviceOffload;
     std::vector<std::unique_ptr<OclPowerProfile>> PowerProfileList;
 
     // Buffer on Device DDR for Trace

@@ -498,7 +498,7 @@ DeviceIntf::~DeviceIntf()
     }
   }
 
-  uint32_t DeviceIntf::allocTraceBuf(uint64_t sz ,uint8_t memIdx)
+  size_t DeviceIntf::allocTraceBuf(uint64_t sz ,uint8_t memIdx)
   {
     auto bufHandle = mDevice->alloc(sz, memIdx);
     // Can't read a buffer xrt hasn't written to

@@ -42,7 +42,7 @@ public:
   virtual int unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offset) = 0;
 
   // Only device RAM
-  virtual uint32_t alloc(size_t sz, uint64_t memoryIndex) = 0;
+  virtual size_t alloc(size_t sz, uint64_t memoryIndex) = 0;
   virtual void free(uint32_t xdpBoHandle) = 0;
 
   virtual void* map(uint32_t xdpBoHandle) = 0;
