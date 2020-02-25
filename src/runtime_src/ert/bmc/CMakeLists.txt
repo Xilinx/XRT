@@ -1,62 +1,33 @@
-# =============== ALVEO GEN1 =====================
-# Get and rename the files from the repository
-set (ALVEOGEN1 "AlveoGen1")
-set (URL_MSP432_GEN1 "https://raw.gitenterprise.xilinx.com/XBB/BMC-firmware-binaries/master/BMC-card-firmware")
+# =========== Helper Function ====================
+#    Function: GetBMCFWImage
+#
+# Description: Retrieves the given MSP432 FW image and renames it for the given 
+#              Alveo generation.
+#               
+# Example File Names: 
+#               AlveoGen1-BMC-MSP432-4.3.9-35c8bf323af4a5e5a4165d0f2fc29036.txt
+#               AlveoGen2-BMC-MSP432-3.6.4-fb8c68be8a6eb1fcf0632966765fcdd3.txt
+#               AlveoGen3-BMC-MSP432-4.3.10-0fc12509b3106f6a63bffeb4832576b7.txt
+#               AlveoGen4-BMC-MSP432-5.0.27-3fa9028964a7dc81714528ab62e6d40b.txt
+function(GetBMCFWImage ALVEOGEN URL_MSP432_GEN)
+  FILE(DOWNLOAD ${URL_MSP432_GEN}/BMC-MSP432.txt.filename ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN}-BMC-MSP432.txt.filename STATUS mystatus)
+  FILE(STRINGS ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN}-BMC-MSP432.txt.filename ALVEOGEN_FILENAME)
+  FILE(DOWNLOAD ${URL_MSP432_GEN}/BMC-MSP432.txt ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN}-${ALVEOGEN_FILENAME} STATUS mystatus)
 
-# Download the file name, retrieve the file name, and download the FW image with the new file name
-FILE(DOWNLOAD ${URL_MSP432_GEN1}/BMC-MSP432.txt.filename ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN1}-BMC-MSP432.txt.filename STATUS mystatus)
-FILE(STRINGS ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN1}-BMC-MSP432.txt.filename ALVEOGEN1_FILENAME)
-FILE(DOWNLOAD ${URL_MSP432_GEN1}/BMC-MSP432.txt ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN1}-${ALVEOGEN1_FILENAME} STATUS mystatus)
+  # Add this FW image to the list of FW images to be released
+  list(APPEND ALVEO_FW_FILES ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN}-${ALVEOGEN_FILENAME}) 
 
-list(APPEND ALVEO_FW_FILES ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN1}-${ALVEOGEN1_FILENAME})
+  # Rescope the list to the parent domain
+  set (ALVEO_FW_FILES  ${ALVEO_FW_FILES} PARENT_SCOPE)
+endfunction()
 
-# =============== ALVEO GEN2 =====================
-# Get and rename the files from the repository
-set (ALVEOGEN2 "AlveoGen2")
-set (URL_MSP432_GEN2 "https://raw.gitenterprise.xilinx.com/XBB/BMC-firmware-binaries/master-U280/BMC-card-firmware")
-
-# Download the file name, retrieve the file name, and download the FW image with the new file name
-FILE(DOWNLOAD ${URL_MSP432_GEN2}/BMC-MSP432.txt.filename ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN2}-BMC-MSP432.txt.filename STATUS mystatus)
-FILE(STRINGS ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN2}-BMC-MSP432.txt.filename ALVEOGEN2_FILENAME)
-FILE(DOWNLOAD ${URL_MSP432_GEN2}/BMC-MSP432.txt ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN2}-${ALVEOGEN2_FILENAME} STATUS mystatus)
-
-list(APPEND ALVEO_FW_FILES ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN2}-${ALVEOGEN2_FILENAME})
-
-# =============== ALVEO GEN3 =====================
-# Get and rename the files from the repository
-set (ALVEOGEN3 "AlveoGen3")
-set (URL_MSP432_GEN3 "https://raw.gitenterprise.xilinx.com/XBB/BMC-firmware-binaries/U280-prod/BMC-card-firmware")
-
-# Download the file name, retrieve the file name, and download the FW image with the new file name
-FILE(DOWNLOAD ${URL_MSP432_GEN3}/BMC-MSP432.txt.filename ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN3}-BMC-MSP432.txt.filename STATUS mystatus)
-FILE(STRINGS ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN3}-BMC-MSP432.txt.filename ALVEOGEN3_FILENAME)
-FILE(DOWNLOAD ${URL_MSP432_GEN3}/BMC-MSP432.txt ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN3}-${ALVEOGEN3_FILENAME} STATUS mystatus)
-
-list(APPEND ALVEO_FW_FILES ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN3}-${ALVEOGEN3_FILENAME})
-
-# =============== ALVEO GEN4 =====================
-# Get and rename the files from the repository
-set (ALVEOGEN4 "AlveoGen4")
-set (URL_MSP432_GEN4 "https://raw.gitenterprise.xilinx.com/XBB/BMC-firmware-binaries/U50/BMC-card-firmware")
-
-# Download the file name, retrieve the file name, and download the FW image with the new file name
-FILE(DOWNLOAD ${URL_MSP432_GEN4}/BMC-MSP432.txt.filename ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN4}-BMC-MSP432.txt.filename STATUS mystatus)
-FILE(STRINGS ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN4}-BMC-MSP432.txt.filename ALVEOGEN4_FILENAME)
-FILE(DOWNLOAD ${URL_MSP432_GEN4}/BMC-MSP432.txt ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN4}-${ALVEOGEN4_FILENAME} STATUS mystatus)
-
-list(APPEND ALVEO_FW_FILES ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN4}-${ALVEOGEN4_FILENAME})
-
-# =============== ALVEO GEN5 =====================
-# Get and rename the files from the repository
-set (ALVEOGEN5 "AlveoGen5")
-set (URL_MSP432_GEN5 "https://raw.gitenterprise.xilinx.com/XBB/BMC-firmware-binaries/V350/BMC-card-firmware")
-
-# Download the file name, retrieve the file name, and download the FW image with the new file name
-FILE(DOWNLOAD ${URL_MSP432_GEN5}/BMC-MSP432.txt.filename ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN5}-BMC-MSP432.txt.filename STATUS mystatus)
-FILE(STRINGS ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN5}-BMC-MSP432.txt.filename ALVEOGEN5_FILENAME)
-FILE(DOWNLOAD ${URL_MSP432_GEN5}/BMC-MSP432.txt ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN5}-${ALVEOGEN5_FILENAME} STATUS mystatus)
-
-list(APPEND ALVEO_FW_FILES ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN5}-${ALVEOGEN5_FILENAME})
+# ============= Alveo FW Images ==================
+GetBMCFWImage( "AlveoGen1" "https://raw.gitenterprise.xilinx.com/XBB/BMC-firmware-binaries/master/BMC-card-firmware" )
+GetBMCFWImage( "AlveoGen2" "https://raw.gitenterprise.xilinx.com/XBB/BMC-firmware-binaries/master-U280/BMC-card-firmware" )
+GetBMCFWImage( "AlveoGen3" "https://raw.gitenterprise.xilinx.com/XBB/BMC-firmware-binaries/U280-prod/BMC-card-firmware" )
+GetBMCFWImage( "AlveoGen4" "https://raw.gitenterprise.xilinx.com/XBB/BMC-firmware-binaries/U50/BMC-card-firmware")
+GetBMCFWImage( "AlveoGen5" "https://raw.gitenterprise.xilinx.com/XBB/BMC-firmware-binaries/V350/BMC-card-firmware")
 
 # ================= INSTALL FIRMWARE IMAGES =========================
 install (FILES ${ALVEO_FW_FILES} DESTINATION ${ERT_INSTALL_PREFIX})
+
