@@ -68,6 +68,30 @@ int
 xclGetSysfsPath(xclDeviceHandle handle, const char* subdev,
                 const char* entry, char* sysfsPath, size_t size);
 
+
+
+/**
+ * xclGetSubdevPath() - Helper function to build a device node full path
+ *
+ * @handle:              Device handle
+ * @subdev:              Sub-device name
+ * @idx:                 Index of Sub-device
+ * @path:                Return string with full path for sub-device node
+ * @size:                Length of the return string
+ * Return:               0 or standard error number
+ *
+ * (For debug and profile usage only for now) The sysfs information is
+ * not accessible above XRT layer now. However, debug/profile needs
+ * information from sysfs (for example debug_ip_layout) to properly
+ * initialize xdp code, so this helper API can be used
+ */
+XCL_DRIVER_DLLESPEC
+int 
+xclGetSubdevPath(xclDeviceHandle handle, const char* subdev,
+                uint32_t idx, char* path, size_t size);
+
+
+
 struct KernelTransferData
 {
    char* cuPortName;
