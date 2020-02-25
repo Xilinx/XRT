@@ -28,6 +28,7 @@
 #include "core/common/bo_cache.h"
 #include "core/common/xrt_profiling.h"
 #include "core/include/xcl_app_debug.h"
+#include "core/edge/user/aie/aie.h"
 #include <cstdint>
 #include <fstream>
 #include <map>
@@ -123,6 +124,8 @@ public:
   int cmpMonVersions(unsigned int major1, unsigned int minor1, 
 		     unsigned int major2, unsigned int minor2);
 
+  zynqaie::Aie *getAieArray();
+  void setAieArray(zynqaie::Aie *aie);
 
 private:
   const int mBoardNumber = -1;
@@ -145,6 +148,8 @@ private:
   std::mutex mCuMapLock;
   int xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap);
   int xclLog(xrtLogMsgLevel level, const char* tag, const char* format, ...);
+
+  zynqaie::Aie *aieArray;
 };
 
 } // namespace ZYNQ

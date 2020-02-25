@@ -5,6 +5,8 @@ include_directories(
   ${CMAKE_BINARY_DIR} # includes version.h
   )
 
+add_subdirectory(aie)
+
 file(GLOB XRT_EDGE_USER_PLUGIN_XDP_FILES
   "plugin/xdp/*.h"
   "plugin/xdp/*.cpp"
@@ -35,6 +37,7 @@ add_library(core_edgeuser_objects OBJECT ${XRT_USER_FILES})
 add_library(xrt_core SHARED ${XRT_SRC}
   $<TARGET_OBJECTS:core_edgeuser_plugin_xdp_objects>
   $<TARGET_OBJECTS:core_common_objects>
+  $<TARGET_OBJECTS:xrt_aie_object>
   #$<TARGET_OBJECTS:core_edgecommon_objects>
   )
 
@@ -56,6 +59,8 @@ target_link_libraries(xrt_core
   uuid
   boost_filesystem
   boost_system
+  metal
+  xaiengine
   )
 
 install (TARGETS xrt_core LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
