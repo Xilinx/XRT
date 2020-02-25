@@ -40,7 +40,7 @@ TraceFunnel::TraceFunnel(Device* handle /** < [in] the xrt or hal device handle 
 size_t TraceFunnel::initiateClockTraining()
 {
     size_t size = 0;
-    uint32_t regValue = 0;    
+    uint32_t regValue = 0;
 
     for(int i = 0; i < 2 ; i++) {
       uint64_t hostTimeStamp = getDevice()->getTraceTime();

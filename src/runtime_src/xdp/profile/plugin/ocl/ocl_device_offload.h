@@ -74,7 +74,7 @@ private:
     bool init_s2mm();
     void reset_s2mm();
 
-    bool m_debug = true; /* Enable Output stream for log */
+    bool m_debug = false; /* Enable Output stream for log */
 };
 
 }

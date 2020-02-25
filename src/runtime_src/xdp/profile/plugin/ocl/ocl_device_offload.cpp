@@ -161,8 +161,8 @@ void OclDeviceOffload::config_s2mm_reader(uint64_t wordCount)
 
   debug_stream
     << "OclDeviceOffload::config_s2mm_reader "
-    << "Reading from "
-    << std::hex << m_trbuf_offset << " to " << m_trbuf_sz
+    << "Reading from 0x"
+    << std::hex << m_trbuf_offset << " to 0x" << m_trbuf_sz
     << std::dec << std::endl;
 }
 

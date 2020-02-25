@@ -291,7 +291,6 @@ namespace xdp {
       if(dInt) {
         // Configure monitor IP and FIFO if present
         dInt->startTrace(traceOption);
-        std::cout << "Offload Started..." << std::endl;
         dInt->initiateClockTraining();
 
         if (mTraceThreadEn) {
@@ -309,7 +308,7 @@ namespace xdp {
         } else {
           // Configure DMA if present
           if (dInt->hasTs2mm()) {
-            //info->ts2mm_en = allocateDeviceDDRBufferForTrace(dInt, device);
+            info->ts2mm_en = allocateDeviceDDRBufferForTrace(dInt, device);
             /* Todo: Write user specified memory bank here */
             trace_memory = "TS2MM";
           }
@@ -648,6 +647,11 @@ namespace xdp {
 #ifdef _WIN32
     return -1;
 #endif
+
+    // Dedicated thread takes care of all the logging
+    if (mTraceThreadEn)
+      return -1;
+
     auto profileMgr = getProfileManager();
     if(profileMgr->getLoggingTrace(type)) {
         return -1;
@@ -709,39 +713,39 @@ namespace xdp {
           binary_name = device->get_xclbin().project_name();
 
         if (dInt) {    // HW Device flow
-          //bool endLog = false;
+          bool endLog = false;
           if (dInt->hasFIFO()) {
-          //  uint32_t numTracePackets = 0;
-          //  while (!endLog) {
-          //    dInt->readTrace(info->mTraceVector);
-          //    endLog = info->mTraceVector.mLength == 0;
-          //    profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector, endLog);
-          //    numTracePackets += info->mTraceVector.mLength;
-          //    info->mTraceVector = {};
-          //  }
-          //  // detect if FIFO is full
-          //  auto fifoProperty = dInt->getMonitorProperties(XCL_PERF_MON_FIFO, 0);
-          //  auto fifoSize = RTUtil::getDevTraceBufferSize(fifoProperty);
-          //  if (numTracePackets >= fifoSize && !isHwEmu) {
-          //    Plugin->sendMessage(FIFO_WARN_MSG);
-          //    auto& g_map = Plugin->getDeviceTraceBufferFullMap();
-          //    g_map[device_name] = 1;
-          //  }
+            uint32_t numTracePackets = 0;
+            while (!endLog) {
+              dInt->readTrace(info->mTraceVector);
+              endLog = info->mTraceVector.mLength == 0;
+              profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector, endLog);
+              numTracePackets += info->mTraceVector.mLength;
+              info->mTraceVector = {};
+            }
+            // detect if FIFO is full
+            auto fifoProperty = dInt->getMonitorProperties(XCL_PERF_MON_FIFO, 0);
+            auto fifoSize = RTUtil::getDevTraceBufferSize(fifoProperty);
+            if (numTracePackets >= fifoSize && !isHwEmu) {
+              Plugin->sendMessage(FIFO_WARN_MSG);
+              auto& g_map = Plugin->getDeviceTraceBufferFullMap();
+              g_map[device_name] = 1;
+            }
           } else if (dInt->hasTs2mm()) {
-          //  configureDDRTraceReader(dInt->getWordCountTs2mm());
-          //  uint64_t numTraceBytes = 0;
-          //  while (!endLog) {
-          //    auto readBytes = readTraceDataFromDDR(dInt, xdevice, info->mTraceVector);
-          //    endLog = readBytes != mTraceReadBufChunkSize;
-          //    profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector, endLog);
-          //    numTraceBytes += readBytes;
-          //    info->mTraceVector = {};
-          //  }
-          //  if (numTraceBytes >= mDDRBufferSize) {
-          //    Plugin->sendMessage(TS2MM_WARN_MSG_BUF_FULL);
-          //    auto& g_map = Plugin->getDeviceTraceBufferFullMap();
-          //    g_map[device_name] = 1;
-          //  }
+            configureDDRTraceReader(dInt->getWordCountTs2mm());
+            uint64_t numTraceBytes = 0;
+            while (!endLog) {
+              auto readBytes = readTraceDataFromDDR(dInt, xdevice, info->mTraceVector);
+              endLog = readBytes != mTraceReadBufChunkSize;
+              profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector, endLog);
+              numTraceBytes += readBytes;
+              info->mTraceVector = {};
+            }
+            if (numTraceBytes >= mDDRBufferSize) {
+              Plugin->sendMessage(TS2MM_WARN_MSG_BUF_FULL);
+              auto& g_map = Plugin->getDeviceTraceBufferFullMap();
+              g_map[device_name] = 1;
+            }
           }
         } else {
           while(1) {
