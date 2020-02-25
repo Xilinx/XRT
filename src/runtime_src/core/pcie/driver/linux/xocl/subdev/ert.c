@@ -27,7 +27,8 @@
 #define	GPIO_RESET			0x0
 #define	GPIO_ENABLED			0x1
 
-#define	SELF_JUMP(ins)			(((ins) & 0xfc00ffff) == 0xb8000000)
+#define SELF_JUMP_INS			0xb8000000
+#define	SELF_JUMP(ins)			(((ins) & 0xfc00ffff) == SELF_JUMP_INS)
 
 #define READ_GPIO(ert, off)			\
 	(ert->reset_addr ? XOCL_READ_REG32(ert->reset_addr + off) : 0)
@@ -435,8 +436,13 @@ static int ert_probe(struct platform_device *pdev)
 		return 0;
 	}
 
-	/* GPIO is set to 0 by default, needs to take the ERT out of reset */
-	XOCL_WRITE_REG32(0xb8000000, ert->fw_addr);
+	/* GPIO is set to 0 by default. needs to
+	 * 1) replace ERT image with a self jump instruction
+	 * 2) cleanup command queue
+	 * 3) start MB. otherwise any touching of ERT subsystem trips firewall
+	 */
+
+	XOCL_WRITE_REG32(SELF_JUMP_INS, ert->fw_addr);
 	WRITE_GPIO(ert, GPIO_ENABLED, 0);
 	for (i = 0; i < ert->cq_len; i += 4)
 		XOCL_WRITE_REG32(0, ert->cq_addr + i);
