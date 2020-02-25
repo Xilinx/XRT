@@ -111,7 +111,7 @@ namespace xdp {
     XDP_EXPORT
     size_t startTrace(uint32_t startTrigger);
     XDP_EXPORT
-    void initiateClockTraining();
+    void clockTraining(bool force = true);
     XDP_EXPORT
     size_t stopTrace();
     XDP_EXPORT

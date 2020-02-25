@@ -334,9 +334,13 @@ DeviceIntf::~DeviceIntf()
     return size;
   }
 
-  void DeviceIntf::initiateClockTraining()
+  void DeviceIntf::clockTraining(bool force)
   {
-    traceFunnel->initiateClockTraining();
+    if(!traceFunnel)
+      return;
+
+    if (traceFunnel->compareVersion(1,0) == -1 || force == true)
+      traceFunnel->initiateClockTraining();
   }
 
   // Stop trace performance monitoring

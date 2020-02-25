@@ -43,17 +43,16 @@ OclDeviceOffload::~OclDeviceOffload()
 
 void OclDeviceOffload::offload_device_continuous()
 {
-  // Initialization
   if (!read_trace_init())
     return;
 
   while (should_continue()) {
-    // Offload and log trace and counters
+    train_clock();
     m_read_trace();
-    // Sleep for a specified time
-    std::this_thread::sleep_for (std::chrono::milliseconds(sleep_interval_ms));
+    std::this_thread::sleep_for(std::chrono::milliseconds(sleep_interval_ms));
   }
-  // Do a final flush
+
+  // Do a final read
   m_read_trace();
   read_trace_end();
 }
@@ -75,6 +74,14 @@ void OclDeviceOffload::stop_offload()
 {
   std::lock_guard<std::mutex> lock(status_lock);
   status = DeviceOffloadStatus::STOPPING;
+}
+
+void OclDeviceOffload::train_clock()
+{
+  static bool force = true;
+  dev_intf->clockTraining(force);
+  // Don't force continuous training for old IP
+  force = false;
 }
 
 void OclDeviceOffload::read_trace_fifo()

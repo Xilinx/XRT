@@ -291,7 +291,6 @@ namespace xdp {
       if(dInt) {
         // Configure monitor IP and FIFO if present
         dInt->startTrace(traceOption);
-        dInt->initiateClockTraining();
 
         if (mTraceThreadEn) {
           //Begin offload before configuring IP and clock training
@@ -306,6 +305,7 @@ namespace xdp {
                                                            );
           DeviceOffloadList.push_back(std::move(thread));
         } else {
+          dInt->clockTraining();
           // Configure DMA if present
           if (dInt->hasTs2mm()) {
             info->ts2mm_en = allocateDeviceDDRBufferForTrace(dInt, device);

@@ -63,6 +63,7 @@ private:
     uint64_t m_trbuf_chunk_sz = 0;
 
     std::function<void()> m_read_trace;
+    void train_clock();
     void read_trace_fifo();
     void read_trace_end();
     bool read_trace_init();
