@@ -28,6 +28,7 @@ namespace xrt_core {
 struct debug_lock
 {
   std::lock_guard<std::recursive_mutex> m_lk;
+  XRT_CORE_COMMON_EXPORT
   debug_lock();
 };
 
