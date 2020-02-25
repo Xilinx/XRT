@@ -252,6 +252,19 @@ namespace xdp {
     auto platform = getclPlatformID();
     std::string trace_memory = "FIFO";
 
+    /*
+     * Currently continuous offload only works on one active device
+     */
+    unsigned int numActiveDevices = 0;
+    for (auto device : platform->get_device_range()) {
+      if(device->is_active())
+        ++numActiveDevices;
+    }
+    if (numActiveDevices > 1 && mTraceThreadEn) {
+      xrt::message::send(xrt::message::severity_level::XRT_WARNING, CONTINUOUS_OFFLOAD_WARN_MSG);
+      mTraceThreadEn = false;
+    }
+
     for (auto device : platform->get_device_range()) {
       if(!device->is_active()) {
         continue;
