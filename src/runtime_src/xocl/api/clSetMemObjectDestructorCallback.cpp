@@ -21,6 +21,7 @@
 
 #include "detail/memory.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 namespace xocl {
 
@@ -55,6 +56,7 @@ clSetMemObjectDestructorCallback(cl_mem memobj ,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::
       clSetMemObjectDestructorCallback
       (memobj,pfn_notify,user_data);

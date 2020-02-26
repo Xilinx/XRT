@@ -22,8 +22,8 @@ namespace XBU = XBUtilities;
 
 #include "core/common/device.h"
 #include "core/common/system.h"
-#include "core/pcie/common/device_pcie.h"
 #include "core/common/error.h"
+#include "core/common/utils.h"
 #include "flash/flasher.h"
 
 // 3rd Party Library - Include Files
@@ -569,7 +569,7 @@ SubCmdFlash::execute(const SubCmdOptions& _options) const
 
     uint16_t idx = 0;
     if (!bdf.empty())
-      idx = xrt_core::bdf2index(bdf);
+      idx = xrt_core::utils::bdf2index(bdf);
     auto_flash(idx, name, id, force);
     return;
   }
@@ -600,7 +600,7 @@ SubCmdFlash::execute(const SubCmdOptions& _options) const
 
     uint16_t idx = 0;
     if (!bdf.empty())
-      idx = xrt_core::bdf2index(bdf);
+      idx = xrt_core::utils::bdf2index(bdf);
     reset_shell(idx);
     return;
   }
@@ -643,7 +643,7 @@ SubCmdFlash::execute(const SubCmdOptions& _options) const
       std::cerr << "Example: xbmgmt.exe flash --shell --path='path\\to\\dsabin\\file' --card=0000:04:00.0" << std::endl;
       return;
     }
-	  uint16_t idx = xrt_core::bdf2index(bdf);
+    auto idx = xrt_core::utils::bdf2index(bdf);
     update_shell(idx, flash_type, file, secondary);
     return;
   }
@@ -682,7 +682,7 @@ SubCmdFlash::execute(const SubCmdOptions& _options) const
       return;
     }
 
-    uint16_t idx = xrt_core::bdf2index(bdf);
+    auto idx = xrt_core::utils::bdf2index(bdf);
     update_SC(idx, file);
   }
 }

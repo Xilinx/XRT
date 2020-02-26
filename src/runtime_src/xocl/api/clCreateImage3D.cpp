@@ -21,6 +21,7 @@
 #include "xocl/config.h"
 #include "xocl/core/error.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 #include <CL/opencl.h>
 
@@ -58,6 +59,7 @@ clCreateImage3D(cl_context              context,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clCreateImage3D
       (context,flags,image_format,image_width,image_height,image_depth,
        image_row_pitch, image_slice_pitch, host_ptr,errcode_ret);

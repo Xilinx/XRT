@@ -17,6 +17,7 @@
 #include "detail/platform.h"
 #include "xocl/core/platform.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 #include <CL/cl_ext_xilinx.h>
 #include <map>
 
@@ -70,6 +71,7 @@ clGetExtensionFunctionAddressForPlatform(cl_platform_id platform ,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clGetExtensionFunctionAddressForPlatform(platform,func_name);
   }
   catch (const xrt::error& ex) {

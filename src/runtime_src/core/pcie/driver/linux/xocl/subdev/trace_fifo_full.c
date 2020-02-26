@@ -28,6 +28,7 @@ struct trace_fifo_full {
 static int trace_fifo_full_remove(struct platform_device *pdev)
 {
 	struct trace_fifo_full *trace_fifo_full;
+	void *hdl;
 
 	trace_fifo_full = platform_get_drvdata(pdev);
 	if (!trace_fifo_full) {
@@ -35,12 +36,14 @@ static int trace_fifo_full_remove(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
+	xocl_drvinst_release(trace_fifo_full, &hdl);
+
 	if (trace_fifo_full->base)
 		iounmap(trace_fifo_full->base);
 
 	platform_set_drvdata(pdev, NULL);
 
-	xocl_drvinst_free(trace_fifo_full);
+	xocl_drvinst_free(hdl);
 
 	return 0;
 }

@@ -137,10 +137,6 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
         {
             std::cout << "ERROR: OSPIVERSAL mode does not support reverting to MFG." << std::endl;
         }
-        else if(secondary != nullptr)
-        {
-            std::cout << "ERROR: OSPIVERSAL mode does not support two mcs files." << std::endl;
-        }
         else
         {
             retVal = xospi_versal.xclUpgradeFirmware(*primary);

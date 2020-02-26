@@ -28,6 +28,7 @@ struct trace_funnel {
 static int trace_funnel_remove(struct platform_device *pdev)
 {
 	struct trace_funnel *trace_funnel;
+	void *hdl;
 
 	trace_funnel = platform_get_drvdata(pdev);
 	if (!trace_funnel) {
@@ -35,12 +36,14 @@ static int trace_funnel_remove(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
+	xocl_drvinst_release(trace_funnel, &hdl);
+
 	if (trace_funnel->base)
 		iounmap(trace_funnel->base);
 
 	platform_set_drvdata(pdev, NULL);
 
-	xocl_drvinst_free(trace_funnel);
+	xocl_drvinst_free(hdl);
 
 	return 0;
 }

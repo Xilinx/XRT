@@ -36,6 +36,7 @@
 
 #include "plugin/xdp/appdebug.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 #include <sstream>
 #include <CL/opencl.h>
@@ -419,6 +420,9 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
   xocl::enqueue::set_event_action(umEvent.get(),xocl::enqueue::action_ndrange_migrate,mEvent,kernel);
   xocl::profile::set_event_action(umEvent.get(),xocl::profile::action_ndrange_migrate,mEvent,kernel);
   xocl::appdebug::set_event_action(umEvent.get(),xocl::appdebug::action_ndrange_migrate,mEvent,kernel);
+#ifndef _WIN32
+  xocl::lop::set_event_action(umEvent.get(), xocl::lop::action_ndrange) ;
+#endif
 
   // Schedule migration
   umEvent->queue();
@@ -609,6 +613,7 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
+    LOP_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
     return xocl::clEnqueueNDRangeKernel
       ( command_queue,kernel
        ,work_dim,global_work_offset,global_work_size,local_work_size

@@ -74,6 +74,7 @@
 #define NODE_CLKFREQ_HBM "ep_freq_cnt_aclk_hbm_00"
 #define NODE_GAPPING "ep_gapping_demand_00"
 #define NODE_UCS_CONTROL_STATUS "ep_ucs_control_status_00"
+#define NODE_P2P "ep_p2p_00"
 
 #define RESNAME_GATEPRBLD       NODE_GATE_BLP
 #define RESNAME_MEMCALIB        NODE_DDR_CALIB

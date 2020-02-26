@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -13,22 +13,19 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#include "time.h"
-#include <chrono>
 
-namespace xrt {
+#ifndef UTILITY_DOT_H
+#define UTILITY_DOT_H
 
-/**
- * @return
- *   nanoseconds since first call
- */
-unsigned long
-time_ns()
-{
-  static auto zero = std::chrono::high_resolution_clock::now();
-  auto now = std::chrono::high_resolution_clock::now();
-  auto integral_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(now-zero).count();
-  return static_cast<unsigned long>(integral_duration);
-}
+#include <string>
 
-} // xocl
+// Functions that can be used in the database, the plugins, and the writers
+
+namespace xdp {
+
+  std::string getCurrentDateTime() ;
+  const char* getToolVersion() ;
+
+} // end namespace xdp
+
+#endif

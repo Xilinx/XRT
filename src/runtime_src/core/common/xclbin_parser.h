@@ -25,7 +25,23 @@
 namespace xrt_core { namespace xclbin {
 
 /**
- * struct buffer_object - wrapper for a soft kernel object
+ * struct kernel_argument - 
+ */
+struct kernel_argument
+{
+  static constexpr size_t no_index { std::numeric_limits<size_t>::max() };
+  // numbering must match that of meta data addressQualifier
+  enum class argtype { scalar = 0, global = 1 };
+
+  std::string name;
+  size_t index;
+  size_t offset;
+  size_t size;
+  argtype  type;
+};
+
+/**
+ * struct softkernel_object - wrapper for a soft kernel object
  *
  * @ninst: number of instances
  * @symbol_name: soft kernel symbol name
@@ -87,6 +103,22 @@ get_cus(const ip_layout* ip_layout, bool encode=false);
 XRT_CORE_COMMON_EXPORT
 std::vector<uint64_t>
 get_cus(const axlf* top, bool encode=false);
+
+/**
+ * get_cus() - Get list of ip_data matching name
+ *
+ * @kname:  Name of compute unit to match
+ *
+ * The kernel name can optionally specify which kernel instance(s) to
+ * match "kernel:{cu1,cu2,...} syntax.
+ */
+XRT_CORE_COMMON_EXPORT
+std::vector<const ip_data*>
+get_cus(const ip_layout* ip_layout, const std::string& kname);
+
+XRT_CORE_COMMON_EXPORT
+std::vector<const ip_data*>
+get_cus(const axlf* top, const std::string& kname);
 
 /**
  * get_ip_name() - Get name of IP with specified base addr
@@ -156,6 +188,16 @@ get_softkernels(const axlf* top);
  */
 size_t
 get_kernel_freq(const axlf* top);
+
+/**
+ * get_kernel_arguments() - Get argument meta data for a kernel
+ *
+ * @kname : Name of kernel
+ * Return: List of argument per struct kernel_argument
+ */
+XRT_CORE_COMMON_EXPORT
+std::vector<kernel_argument>
+get_kernel_arguments(const axlf* top, const std::string& kname);
 
 } // xclbin
 } // xrt_core

@@ -1161,11 +1161,10 @@ enum {
 	ICAP_OPS(xdev)->put_xclbin_metadata(ICAP_DEV(xdev)) : 	\
 	0)
 
-
 struct xocl_mig_label {
-	unsigned char	tag[16];
-	uint64_t	mem_idx;
-	enum MEM_TYPE	mem_type;	
+	unsigned char		tag[16];
+	uint64_t		mem_idx;
+	enum MEM_TYPE		mem_type;
 };
 
 struct xocl_mig_funcs {
@@ -1192,7 +1191,6 @@ struct xocl_mig_funcs {
 	(MIG_CB(xdev, idx) ?						\
 	MIG_OPS(xdev, idx)->get_id(MIG_DEV(xdev, idx)) : \
 	0)
-
 
 struct xocl_iores_funcs {
 	struct xocl_subdev_funcs common_funcs;
@@ -1559,5 +1557,8 @@ void xocl_fini_trace_funnel(void);
 
 int __init xocl_init_trace_s2mm(void);
 void xocl_fini_trace_s2mm(void);
+
+int __init xocl_init_mem_hbm(void);
+void xocl_fini_mem_hbm(void);
 
 #endif

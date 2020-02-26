@@ -33,6 +33,7 @@
 #include <algorithm>
 
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 #include <CL/opencl.h>
 
@@ -187,6 +188,7 @@ clCreateProgramWithBinary(cl_context                      context ,
 
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clCreateProgramWithBinary
       (context,num_devices,device_list,lengths,binaries,binary_status,errcode_ret);
   }

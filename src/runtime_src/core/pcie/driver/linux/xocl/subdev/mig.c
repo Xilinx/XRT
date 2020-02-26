@@ -42,8 +42,6 @@
 
 enum ecc_type {
 	DRAM_ECC = 0,
-	HBM_ECC_PS0,
-	HBM_ECC_PS1,
 };
 
 enum ecc_prop {
@@ -63,35 +61,6 @@ enum ecc_prop {
 #define UE_ADDR_LO	0x2C0
 #define UE_ADDR_HI	0x2C4
 #define INJ_FAULT_REG	0x300
-
-struct hbm_regs {
-	u8 unuse_pad0[72];
-	u32 cfg_mask;
-	u8 unuse_pad1[100];
-	u32 cfg_hbm_cb_en;
-	u8 unuse_pad2[5964];
-	u32 cfg_dm_en;
-	u32 cfg_rmw_en;
-	u8 unuse_pad3[1016];
-	u32 cfg_ecc_en;
-	u32 scrub_en;
-	u32 scrub_init_en;
-	u32 cfg_scrub_rmw;
-	u8 unuse_pad4[8];
-	u32 err_clr;
-	u8 unuse_pad5[12];
-	u32 cnt_1b_ps0;
-	u32 cnt_2b_ps0;
-	u32 scrub_done_ps0;
-	u32 cnt_1b_ps1;
-	u32 cnt_2b_ps1;
-	u32 scrub_done_ps1;
-	u8 unuse_pad6[12];
-	u32 err_gen_1b_ps0;
-	u32 err_gen_2b_ps0;
-	u32 err_gen_1b_ps1;
-	u32 err_gen_2b_ps1;
-};
 
 struct ddr_regs {
 	u32 ecc_status;
@@ -122,7 +91,6 @@ struct xocl_mig {
 
 static void ecc_reset(struct xocl_mig *mig)
 {
-	struct hbm_regs *h_regs = (struct hbm_regs *)mig->base;
 	xdev_handle_t xdev = MIG_DEV2XDEV(mig->mig_dev);
 
 	if (!MIG_PRIVILEGED(mig)) {
@@ -133,67 +101,31 @@ static void ecc_reset(struct xocl_mig *mig)
 	if (!mig->ecc_enabled)
 		return;
 
-	if (mig->type == DRAM_ECC) {
-		xocl_dr_reg_write32(xdev, 0x3, mig->base + ECC_STATUS);
-		xocl_dr_reg_write32(xdev, 0, mig->base + CE_CNT);
-	} else {
-		xocl_dr_reg_write32(xdev, 0x1, &h_regs->cfg_ecc_en);
-		/*                    cfg_mask  cfg_hbm_cb_en  cfg_dm_en  cfg_rmw_en
-		 *  HBM enable            0            1           0          1
-		 *  HBM disable           1            0           1          0
-		 */
-		xocl_dr_reg_write32(xdev, 0x0, &h_regs->cfg_mask);
-		xocl_dr_reg_write32(xdev, 0x1, &h_regs->cfg_hbm_cb_en);
-		xocl_dr_reg_write32(xdev, 0x0, &h_regs->cfg_dm_en);
-		xocl_dr_reg_write32(xdev, 0x1, &h_regs->cfg_rmw_en);
-		xocl_dr_reg_write32(xdev, 0x1, &h_regs->scrub_en);
-		xocl_dr_reg_write32(xdev, 0x1, &h_regs->scrub_init_en);
-		xocl_dr_reg_write32(xdev, 0x0, &h_regs->err_clr);
-		xocl_dr_reg_write32(xdev, 0x1, &h_regs->err_clr);
-		xocl_dr_reg_write32(xdev, 0x0, &h_regs->err_clr);
-	}
+	xocl_dr_reg_write32(xdev, 0x3, mig->base + ECC_STATUS);
+	xocl_dr_reg_write32(xdev, 0, mig->base + CE_CNT);
+
 }
 
 static void mig_ecc_get_prop(struct device *dev, enum ecc_prop kind, void *buf)
 {
 	xdev_handle_t xdev = MIG_DEV2XDEV(dev);
 	struct xocl_mig *mig = MIG_DEV2MIG(dev);
-	struct hbm_regs *h_regs = (struct hbm_regs *)mig->base;
-	uint32_t err_1b, err_2b, ret = 0;
+	uint32_t ret = 0;
 	uint64_t addr = 0;
 
 	if (MIG_PRIVILEGED(mig)) {
 
 		switch (kind) {
 		case MIG_ECC_ENABLE:
-			if (mig->type == HBM_ECC_PS0 || mig->type == HBM_ECC_PS1)
-				ret = xocl_dr_reg_read32(xdev, &h_regs->cfg_ecc_en);
-			else
-				ret = xocl_dr_reg_read32(xdev, MIG_DEV2BASE(dev) + ECC_ON_OFF);
+			ret = xocl_dr_reg_read32(xdev, MIG_DEV2BASE(dev) + ECC_ON_OFF);
 			*(uint32_t *)buf = ret;
 			break;
 		case MIG_ECC_STATUS:
-			if (mig->type == HBM_ECC_PS0) {
-				err_1b = xocl_dr_reg_read32(xdev, &h_regs->cnt_1b_ps0);
-				err_2b = xocl_dr_reg_read32(xdev, &h_regs->cnt_2b_ps0);
-				ret = (err_1b ? 1 : 0) << 1 | (err_2b ? 1 : 0);
-			} else if (mig->type == HBM_ECC_PS1) {
-				err_1b = xocl_dr_reg_read32(xdev, &h_regs->cnt_1b_ps1);
-				err_2b = xocl_dr_reg_read32(xdev, &h_regs->cnt_2b_ps1);
-				ret = (err_1b ? 1 : 0) << 1 | (err_2b ? 1 : 0);
-			} else {
-				ret = xocl_dr_reg_read32(xdev, MIG_DEV2BASE(dev) + ECC_STATUS);
-			}
+			ret = xocl_dr_reg_read32(xdev, MIG_DEV2BASE(dev) + ECC_STATUS);
 			*(uint32_t *)buf = ret;
 			break;
 		case MIG_ECC_CE_CNT:
-			if (mig->type == HBM_ECC_PS0)
-				ret = xocl_dr_reg_read32(xdev, &h_regs->cnt_1b_ps0);
-			else if (mig->type == HBM_ECC_PS1)
-				ret = xocl_dr_reg_read32(xdev, &h_regs->cnt_1b_ps1);
-			else
-				ret = xocl_dr_reg_read32(xdev, MIG_DEV2BASE(dev) + CE_CNT);
-
+			ret = xocl_dr_reg_read32(xdev, MIG_DEV2BASE(dev) + CE_CNT);
 			*(uint32_t *)buf = ret;
 			break;
 		case MIG_ECC_CE_FFA:
@@ -201,14 +133,6 @@ static void mig_ecc_get_prop(struct device *dev, enum ecc_prop kind, void *buf)
 			addr <<= 32;
 			addr |= xocl_dr_reg_read32(xdev, MIG_DEV2BASE(dev) + CE_ADDR_LO);
 			*(uint64_t *)buf = addr;
-			break;
-		case MIG_ECC_UE_CNT:
-			if (mig->type == HBM_ECC_PS0)
-				ret = xocl_dr_reg_read32(xdev, &h_regs->cnt_2b_ps0);
-			else if (mig->type == HBM_ECC_PS1)
-				ret = xocl_dr_reg_read32(xdev, &h_regs->cnt_2b_ps1);
-
-			*(uint32_t *)buf = ret;
 			break;
 		case MIG_ECC_UE_FFA:
 			addr = xocl_dr_reg_read32(xdev, MIG_DEV2BASE(dev) + UE_ADDR_HI);
@@ -234,9 +158,6 @@ static void mig_ecc_get_prop(struct device *dev, enum ecc_prop kind, void *buf)
 		case MIG_ECC_CE_FFA:
 			*(uint64_t *)buf = mig->cache.ecc_ce_ffa;
 			break;
-		case MIG_ECC_UE_CNT:
-			*(uint32_t *)buf = mig->cache.ecc_ue_cnt;
-			break;
 		case MIG_ECC_UE_FFA:
 			*(uint64_t *)buf = mig->cache.ecc_ue_ffa;
 			break;
@@ -249,7 +170,7 @@ static void mig_ecc_get_prop(struct device *dev, enum ecc_prop kind, void *buf)
 static ssize_t ecc_ue_ffa_show(struct device *dev, struct device_attribute *da,
 	char *buf)
 {
-	uint64_t val;
+	uint64_t val = 0;
 
 	mig_ecc_get_prop(dev, MIG_ECC_UE_FFA, &val);
 	return sprintf(buf, "0x%llx\n", val);
@@ -259,7 +180,7 @@ static DEVICE_ATTR_RO(ecc_ue_ffa);
 static ssize_t ecc_ce_ffa_show(struct device *dev, struct device_attribute *da,
 	char *buf)
 {
-	uint64_t addr;
+	uint64_t addr = 0;
 
 	mig_ecc_get_prop(dev, MIG_ECC_CE_FFA, &addr);
 	return sprintf(buf, "0x%llx\n", addr);
@@ -269,7 +190,7 @@ static DEVICE_ATTR_RO(ecc_ce_ffa);
 static ssize_t ecc_ce_cnt_show(struct device *dev, struct device_attribute *da,
 	char *buf)
 {
-	uint32_t ret;
+	uint32_t ret = 0;
 
 	mig_ecc_get_prop(dev, MIG_ECC_CE_CNT, &ret);
 	return sprintf(buf, "%u\n", ret);
@@ -279,7 +200,7 @@ static DEVICE_ATTR_RO(ecc_ce_cnt);
 static ssize_t ecc_ue_cnt_show(struct device *dev, struct device_attribute *da,
 	char *buf)
 {
-	uint32_t ret;
+	uint32_t ret = 0;
 
 	mig_ecc_get_prop(dev, MIG_ECC_UE_CNT, &ret);
 	return sprintf(buf, "%u\n", ret);
@@ -289,7 +210,7 @@ static DEVICE_ATTR_RO(ecc_ue_cnt);
 static ssize_t ecc_status_show(struct device *dev, struct device_attribute *da,
 	char *buf)
 {
-	uint32_t status;
+	uint32_t status = 0;
 
 	mig_ecc_get_prop(dev, MIG_ECC_STATUS, &status);
 	return sprintf(buf, "%u\n", status);
@@ -320,7 +241,6 @@ static ssize_t ecc_enabled_store(struct device *dev,
 {
 	xdev_handle_t xdev = MIG_DEV2XDEV(dev);
 	struct xocl_mig *mig = MIG_DEV2MIG(dev);
-	struct hbm_regs *h_regs = (struct hbm_regs *)mig->base;
 	uint32_t val;
 
 	if (!MIG_PRIVILEGED(mig))
@@ -335,21 +255,7 @@ static ssize_t ecc_enabled_store(struct device *dev,
 		return -EINVAL;
 	}
 
-	if (mig->type == HBM_ECC_PS0 || mig->type == HBM_ECC_PS1) {
-
-		val &= 0x1;
-		xocl_dr_reg_write32(xdev, val, &h_regs->cfg_ecc_en);
-		/*                    cfg_mask  cfg_hbm_cb_en  cfg_dm_en  cfg_rmw_en
-		 *  HBM enable            0            1           0          1
-		 *  HBM disable           1            0           1          0
-		 */
-		xocl_dr_reg_write32(xdev, val^1, &h_regs->cfg_mask);
-		xocl_dr_reg_write32(xdev, val, &h_regs->cfg_hbm_cb_en);
-		xocl_dr_reg_write32(xdev, val^1, &h_regs->cfg_dm_en);
-		xocl_dr_reg_write32(xdev, val, &h_regs->cfg_rmw_en);
-	} else {
-		xocl_dr_reg_write32(xdev, val, MIG_DEV2BASE(dev) + ECC_ON_OFF);
-	}
+	xocl_dr_reg_write32(xdev, val, MIG_DEV2BASE(dev) + ECC_ON_OFF);
 
 	return count;
 }
@@ -359,9 +265,7 @@ static DEVICE_ATTR_RW(ecc_enabled);
 static ssize_t ecc_clear_store(struct device *dev, struct device_attribute *da,
 	const char *buf, size_t count)
 {
-	xdev_handle_t xdev = MIG_DEV2XDEV(dev);
 	struct xocl_mig *mig = MIG_DEV2MIG(dev);
-	struct hbm_regs *h_regs = (struct hbm_regs *)mig->base;
 	uint32_t val;
 
 	if (!MIG_PRIVILEGED(mig))
@@ -376,8 +280,6 @@ static ssize_t ecc_clear_store(struct device *dev, struct device_attribute *da,
 		return -EINVAL;
 	}
 
-	if (mig->type != DRAM_ECC)
-		xocl_dr_reg_write32(xdev, val, &h_regs->err_clr);
 	return count;
 }
 static DEVICE_ATTR_WO(ecc_clear);
@@ -388,7 +290,6 @@ static ssize_t ecc_inject_store(struct device *dev, struct device_attribute *da,
 {
 	xdev_handle_t xdev = MIG_DEV2XDEV(dev);
 	struct xocl_mig *mig = MIG_DEV2MIG(dev);
-	struct hbm_regs *h_regs = (struct hbm_regs *)mig->base;
 	uint32_t val;
 
 	if (!MIG_PRIVILEGED(mig))
@@ -403,12 +304,7 @@ static ssize_t ecc_inject_store(struct device *dev, struct device_attribute *da,
 		return -EINVAL;
 	}
 
-	if (mig->type == HBM_ECC_PS0)
-		xocl_dr_reg_write32(xdev, val, &h_regs->err_gen_1b_ps0);
-	else if (mig->type == HBM_ECC_PS1)
-		xocl_dr_reg_write32(xdev, val, &h_regs->err_gen_1b_ps1);
-	else
-		xocl_dr_reg_write32(xdev, val, MIG_DEV2BASE(dev) + INJ_FAULT_REG);
+	xocl_dr_reg_write32(xdev, val, MIG_DEV2BASE(dev) + INJ_FAULT_REG);
 
 	return count;
 }
@@ -417,9 +313,7 @@ static DEVICE_ATTR_WO(ecc_inject);
 static ssize_t ecc_inject_2bits_store(struct device *dev, struct device_attribute *da,
 	const char *buf, size_t count)
 {
-	xdev_handle_t xdev = MIG_DEV2XDEV(dev);
 	struct xocl_mig *mig = MIG_DEV2MIG(dev);
-	struct hbm_regs *h_regs = (struct hbm_regs *)mig->base;
 	uint32_t val;
 
 	if (!MIG_PRIVILEGED(mig))
@@ -433,10 +327,6 @@ static ssize_t ecc_inject_2bits_store(struct device *dev, struct device_attribut
 			"usage: echo [0|1] > ecc_enabled");
 		return -EINVAL;
 	}
-	if (mig->type == HBM_ECC_PS0)
-		xocl_dr_reg_write32(xdev, val, &h_regs->err_gen_2b_ps0);
-	else if (mig->type == HBM_ECC_PS1)
-		xocl_dr_reg_write32(xdev, val, &h_regs->err_gen_2b_ps1);
 
 	return count;
 }
@@ -555,9 +445,7 @@ static int mig_probe(struct platform_device *pdev)
 {
 	struct xocl_mig *mig;
 	struct resource *res;
-	int err, digit_len;
-	int idx, i;
-	char *left_parentness = NULL, *right_parentness = NULL, temp[4];
+	int err, i;
 
 	mig = devm_kzalloc(&pdev->dev, sizeof(*mig), GFP_KERNEL);
 	if (!mig)
@@ -574,21 +462,6 @@ static int mig_probe(struct platform_device *pdev)
 	} else if (!strncasecmp(mig->mig_label.tag, "bank", 4)) {
 		mig->type = DRAM_ECC;
 		mig->mig_label.mem_type = MEM_DRAM;
-	} else if (!strncasecmp(mig->mig_label.tag, "HBM", 3)) {
-		left_parentness = strstr(mig->mig_label.tag, "[");
-		right_parentness = strstr(mig->mig_label.tag, "]");
-		digit_len = right_parentness-(1+left_parentness);
-		strncpy(temp, left_parentness+1, digit_len);
-		temp[digit_len] = '\0';
-
-		if (kstrtoint(temp, 10, &idx) != 0)
-			return -EINVAL;
-
-		mig->mig_label.mem_type = MEM_HBM;
-		if (idx % 2)
-			mig->type = HBM_ECC_PS1;
-		else
-			mig->type = HBM_ECC_PS0;
 	}
 
 	for (i = 0; i < MIG_MAX_RES; ++i) {
@@ -601,8 +474,6 @@ static int mig_probe(struct platform_device *pdev)
 
 		if (mig->type == DRAM_ECC)
 			mig->base = ioremap_nocache(res->start, res->end - res->start + 1);
-		else
-			mig->base = ioremap_nocache(res->start, sizeof(struct hbm_regs));
 
 		if (!mig->base) {
 			xocl_err(&pdev->dev, "Map iomem failed");
