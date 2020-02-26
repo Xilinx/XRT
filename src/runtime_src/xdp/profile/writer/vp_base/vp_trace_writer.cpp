@@ -16,7 +16,7 @@
 
 #define XDP_SOURCE
 
-#include "xdp/profile/writer/vp_trace_writer.h"
+#include "xdp/profile/writer/vp_base/vp_trace_writer.h"
 #include "xdp/profile/database/database.h"
 
 namespace xdp {

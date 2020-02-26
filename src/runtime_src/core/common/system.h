@@ -25,10 +25,13 @@
 namespace xrt_core {
 
 /**
- * class isystem - Representation of host system
+ * class system - Representation of host system
  *
  * The system class is a singleton base class specialized by different
  * types of systems we support, e.g. linux, windows, pcie, edge.
+ *
+ * The singleton handle is not available outside implementation so class
+ * defintion is per construction for implementation use only.
  */
 class system
 {
@@ -36,15 +39,44 @@ protected:
   XRT_CORE_COMMON_EXPORT
   system();
 public:
-  virtual void get_xrt_info(boost::property_tree::ptree &pt) = 0;
-  virtual void get_os_info(boost::property_tree::ptree &pt) = 0;
-  virtual void get_devices(boost::property_tree::ptree &pt) const = 0;
-  virtual std::pair<device::id_type, device::id_type> get_total_devices(bool is_user = true) const = 0;
-  virtual uint16_t bdf2index(const std::string& bdfStr) const = 0;
+  // REMOVE
+  virtual void
+  get_xrt_info(boost::property_tree::ptree &pt) = 0;
 
+  // REMOVE
+  virtual void
+  get_os_info(boost::property_tree::ptree &pt) = 0;
 
-  virtual std::shared_ptr<device> get_userpf_device(device::id_type id) const = 0;
-  virtual std::shared_ptr<device> get_mgmtpf_device(device::id_type id) const = 0;
+  // REMOVE
+  virtual void
+  get_devices(boost::property_tree::ptree &pt) const = 0;
+
+  /**
+   */
+  virtual std::pair<device::id_type, device::id_type>
+  get_total_devices(bool is_user = true) const = 0;
+
+  /**
+   * get_userpf_device() - construct from device id
+   */
+  virtual std::shared_ptr<device>
+  get_userpf_device(device::id_type id) const = 0;
+
+  /**
+   * get_userpf_device() - construct from existing handle and id
+   *
+   * @hdl:  Handle for device
+   * @id:   Device index
+   */
+  virtual std::shared_ptr<device>
+  get_userpf_device(device::handle_type hdl, device::id_type) const = 0;
+
+  /**
+   * get_mgmtpf_device() - construct mgmt device from device id
+   */
+  virtual std::shared_ptr<device>
+  get_mgmtpf_device(device::id_type id) const = 0;
+
 }; // system
 
 /**
@@ -74,17 +106,47 @@ XRT_CORE_COMMON_EXPORT
 std::pair<uint64_t, uint64_t>
 get_total_devices(bool is_user);
 
+/**
+ * get_userpf_device() - construct from device id
+ */
 XRT_CORE_COMMON_EXPORT
 std::shared_ptr<device>
 get_userpf_device(device::id_type id);
 
+/**
+ * get_userpf_device() - get userpf device from existing device handle
+ *
+ * @hdl:  Handle for device.  The handle is from xclOpen().
+ *
+ * This is a cached lookup to allow retrieving device associated
+ * with device handle obtained from xclOpen()
+ */
+XRT_CORE_COMMON_EXPORT
+std::shared_ptr<device>
+get_userpf_device(device::handle_type handle);
+
+/**
+ * get_userpf_device() - get userpf mdevice from existing handle and id
+ *
+ * @hdl:  Handle for device
+ * @id:   Device index
+ *
+ * This is used by shim level implementations to construct and
+ * cache a device object as part of constructing shim level handle.
+ * The function is called from shim constructors (xclOpen()).  After
+ * registration the xrt_core::device object can at all times be 
+ * retrived from just an hdl (xclDeviceHandle)
+ */
+XRT_CORE_COMMON_EXPORT
+std::shared_ptr<device>
+get_userpf_device(device::handle_type device_handle, device::id_type id);
+
+/**
+ * get_mgmtpf_device() - get mgmt device from device id
+ */
 XRT_CORE_COMMON_EXPORT
 std::shared_ptr<device>
 get_mgmtpf_device(device::id_type id);
-
-XRT_CORE_COMMON_EXPORT
-uint16_t
-bdf2index(const std::string& bdfStr);
 
 } //xrt_core
 

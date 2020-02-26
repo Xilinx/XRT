@@ -66,6 +66,7 @@
 
 struct firewall {
 	void __iomem		*base_addrs[MAX_LEVEL];
+	u32			base_max_wait[MAX_LEVEL];
 	u32			max_level;
 
 	u32			curr_status;
@@ -398,7 +399,69 @@ static void af_get_data(struct platform_device *pdev, void *buf)
 	}
 }
 
+static void inline reset_max_wait(struct firewall *fw, int idx)
+{
+	u32 value = fw->base_max_wait[idx];
+	void __iomem *addr = fw->base_addrs[idx];
+
+	if (value == 0 || addr == NULL)
+		return;
+
+	XOCL_WRITE_REG32(value, addr + MAX_CONTINUOUS_RTRANSFERS_WAITS);
+	XOCL_WRITE_REG32(value, addr + MAX_WRITE_TO_BVALID_WAITS);
+	XOCL_WRITE_REG32(value, addr + MAX_ARREADY_WAITS);
+	XOCL_WRITE_REG32(value, addr + MAX_AWREADY_WAITS);
+	XOCL_WRITE_REG32(value, addr + MAX_WREADY_WAITS);
+}
+
+static void inline update_max_wait(struct firewall *fw, int idx, u32 value)
+{
+	fw->base_max_wait[idx] = value;
+}
+
+static void
+resource_max_wait_set(struct resource *res, struct firewall *fw, int idx)
+{
+	const char *res_name = res->name;
+
+	if (!res_name)
+		return;
+
+	if (!strncmp(res_name, NODE_AF_CTRL_MGMT, strlen(NODE_AF_CTRL_MGMT)) ||
+	    !strncmp(res_name, NODE_AF_CTRL_USER, strlen(NODE_AF_CTRL_USER)) ||
+	    !strncmp(res_name, NODE_AF_CTRL_DEBUG, strlen(NODE_AF_CTRL_DEBUG))) {
+		update_max_wait(fw, idx, FW_MAX_WAIT_FIC);
+		reset_max_wait(fw, idx);
+	}
+}
+
+static int firewall_offline(struct platform_device *pdev)
+{
+	/* so far nothing to do */
+	return 0;
+}
+
+static int firewall_online(struct platform_device *pdev)
+{
+	struct firewall *fw;
+	int i;
+
+	fw = platform_get_drvdata(pdev);
+	if (!fw) {
+		xocl_err(&pdev->dev, "driver data is NULL");
+		return -EINVAL;
+	}
+
+	/* reset max_wait settings */
+	for (i = 0; i < MAX_LEVEL; i++)
+		reset_max_wait(fw, i);
+
+	return 0;
+}
+
 static struct xocl_firewall_funcs fw_ops = {
+	.offline_cb	= firewall_offline,
+	.online_cb	= firewall_online,
 	.clear_firewall	= clear_firewall,
 	.check_firewall = check_firewall,
 	.get_prop = get_prop,
@@ -425,28 +488,6 @@ static int firewall_remove(struct platform_device *pdev)
 	platform_set_drvdata(pdev, NULL);
 	devm_kfree(&pdev->dev, fw);
 	return 0;
-}
-
-static void inline update_max_wait(void __iomem *addr)
-{
-	XOCL_WRITE_REG32(FW_MAX_WAIT_FIC, addr + MAX_CONTINUOUS_RTRANSFERS_WAITS);
-	XOCL_WRITE_REG32(FW_MAX_WAIT_FIC, addr + MAX_WRITE_TO_BVALID_WAITS);
-	XOCL_WRITE_REG32(FW_MAX_WAIT_FIC, addr + MAX_ARREADY_WAITS);
-	XOCL_WRITE_REG32(FW_MAX_WAIT_FIC, addr + MAX_AWREADY_WAITS);
-	XOCL_WRITE_REG32(FW_MAX_WAIT_FIC, addr + MAX_WREADY_WAITS);
-}
-
-static void resource_additional_check(struct resource *res, void __iomem *addr)
-{
-	const char *res_name = res->name;
-
-	if (!res_name)
-		return;
-
-	if (!strncmp(res_name, NODE_AF_CTRL_MGMT, strlen(NODE_AF_CTRL_MGMT)) ||
-	    !strncmp(res_name, NODE_AF_CTRL_USER, strlen(NODE_AF_CTRL_USER)) ||
-	    !strncmp(res_name, NODE_AF_CTRL_DEBUG, strlen(NODE_AF_CTRL_DEBUG)))
-		update_max_wait(addr);
 }
 
 static int firewall_probe(struct platform_device *pdev)
@@ -477,9 +518,8 @@ static int firewall_probe(struct platform_device *pdev)
 			goto failed;
 		}
 		/* additional check after res mapped */
-		resource_additional_check(res, fw->base_addrs[i]);
+		resource_max_wait_set(res, fw, i);
 	}
-
 
 	ret = sysfs_create_group(&pdev->dev.kobj, &firewall_attrgroup);
 	if (ret) {

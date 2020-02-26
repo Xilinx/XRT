@@ -20,7 +20,7 @@
 #include <vector>
 
 #include "xdp/profile/database/database.h"
-#include "xdp/profile/writer/vp_writer.h"
+#include "xdp/profile/writer/vp_base/vp_writer.h"
 
 #include "xdp/config.h"
 

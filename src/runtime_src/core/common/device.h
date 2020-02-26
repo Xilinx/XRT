@@ -36,12 +36,13 @@ namespace xrt_core {
 /**
  * class device - interface to support OS agnositic operations on a device
  */
-class device : ishim
+class device : public ishim
 {
 
 public:
   // device index type
   using id_type = unsigned int;
+  using handle_type = xclDeviceHandle;
 public:
 
   XRT_CORE_COMMON_EXPORT
@@ -67,16 +68,16 @@ public:
    *
    * Throws if called on non userof devices
    */
-  virtual xclDeviceHandle
+  virtual handle_type
   get_device_handle() const = 0;
 
-  virtual xclDeviceHandle
+  virtual handle_type
   get_mgmt_handle() const
   {
     return XRT_NULL_HANDLE;
   }
 
-  virtual xclDeviceHandle
+  virtual handle_type
   get_user_handle() const
   {
     return XRT_NULL_HANDLE;
@@ -95,15 +96,21 @@ public:
   // Private look up function for concrete query::request
   virtual const query::request&
   lookup_query(query::key_type query_key) const = 0;
+
   /**
    * open() - opens a device with an fd which can be used for non pcie read/write
    * xospiversal and xspi use this
    */
-  virtual int  open(const std::string& subdev, int flag) const = 0;
+  virtual int
+  open(const std::string&, int) const
+  { throw std::runtime_error("Not implemented"); }
+
   /**
    * close() - close the fd
    */
-  virtual void close(int dev_handle) const = 0;
+  virtual void
+  close(int) const
+  { throw std::runtime_error("Not implemented"); }
 
 public:
   /**
@@ -157,14 +164,15 @@ public:
    * write() - maps pcie bar and copy bytes word (32bit) by word
    */
   virtual void write(uint64_t offset, const void* buf, uint64_t len) const = 0;
-  
-  /* 
+
+  /**
    * file_open() - Opens a scoped fd
    */
-  scope_guard<int, std::function<void(int)>>
+  scope_value_guard<int, std::function<void()>>
   file_open(const std::string& subdev, int flag)
   {
-    return scope_guard<int, std::function<void(int)>>(open(subdev, flag), std::bind(&device::close, this, std::placeholders::_1));
+    auto fd = open(subdev, flag);
+    return {fd, std::bind(&device::close, this, fd)};
   }
 
   // Helper methods
@@ -177,6 +185,7 @@ public:
 
  private:
   id_type m_device_id;
+  const axlf* xclbin = nullptr;
 };
 
 /**
@@ -229,7 +238,7 @@ struct ptree_updater
     }
     pt.add_child(QueryRequestType::name(), pt_array);
   }
-  
+
   static void
   query_and_put(const device* device, boost::property_tree::ptree& pt)
   {

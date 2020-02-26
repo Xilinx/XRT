@@ -20,6 +20,7 @@
  */
 #include "shim.h"
 #include "scan.h"
+#include "system_linux.h"
 #include "core/common/message.h"
 #include "core/common/xclbin_parser.h"
 #include "core/common/scheduler.h"
@@ -79,6 +80,7 @@
 #define MAX_TRACE_NUMBER_SAMPLES                        16384
 #define XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH            64
 
+namespace {
 
 inline bool
 is_multiprocess_mode()
@@ -116,6 +118,7 @@ inline int io_getevents(aio_context_t ctx, long min_nr, long max_nr,
   return syscall(__NR_io_getevents, ctx, min_nr, max_nr, events, timeout);
 }
 
+} // namespace
 
 namespace xocl {
 
@@ -123,19 +126,20 @@ namespace xocl {
  * shim()
  */
 shim::shim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity)
-  : mVerbosity(verbosity),
-    mUserHandle(-1),
-    mStreamHandle(-1),
-    mBoardNumber(index),
-    mLocked(false),
-    mLogfileName(nullptr),
-    mOffsets{0x0, 0x0, OCL_CTLR_BASE, 0x0, 0x0},
-    mMemoryProfilingNumberSlots(0),
-    mAccelProfilingNumberSlots(0),
-    mStallProfilingNumberSlots(0),
-    mStreamProfilingNumberSlots(0),
-    mCmdBOCache(nullptr),
-    mCuMaps(128, nullptr)
+  : mCoreDevice(xrt_core::pcie_linux::get_userpf_device(this, index))
+  , mVerbosity(verbosity)
+  , mUserHandle(-1)
+  , mStreamHandle(-1)
+  , mBoardNumber(index)
+  , mLocked(false)
+  , mLogfileName(nullptr)
+  , mOffsets{0x0, 0x0, OCL_CTLR_BASE, 0x0, 0x0}
+  , mMemoryProfilingNumberSlots(0)
+  , mAccelProfilingNumberSlots(0)
+  , mStallProfilingNumberSlots(0)
+  , mStreamProfilingNumberSlots(0)
+  , mCmdBOCache(nullptr)
+  , mCuMaps(128, nullptr)
 {
     init(index, logfileName, verbosity);
 }
@@ -242,6 +246,10 @@ void shim::init(unsigned index, const char *logfileName,
 shim::~shim()
 {
     xrt_logmsg(XRT_INFO, "%s", __func__);
+
+    // The BO cache unmaps and releases all execbo, but this must
+    // be done before the device is closed.
+    mCmdBOCache.reset(nullptr);
 
     dev_fini();
 
