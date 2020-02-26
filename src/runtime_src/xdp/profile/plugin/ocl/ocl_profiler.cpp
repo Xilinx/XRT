@@ -362,11 +362,10 @@ namespace xdp {
       if (itr==DeviceData.end()) {
         return;
       }
-      auto xdevice = device->get_xrt_device();
       xdp::xoclp::platform::device::data* info = &(itr->second);
       if (info->ts2mm_en) {
         auto dInt  = &(info->mDeviceIntf);
-        clearDeviceDDRBufferForTrace(dInt, xdevice);
+        clearDeviceDDRBufferForTrace(dInt);
         info->ts2mm_en = false;
       }
     }
@@ -748,7 +747,7 @@ namespace xdp {
             configureDDRTraceReader(dInt->getWordCountTs2mm());
             uint64_t numTraceBytes = 0;
             while (!endLog) {
-              auto readBytes = readTraceDataFromDDR(dInt, xdevice, info->mTraceVector);
+              auto readBytes = readTraceDataFromDDR(dInt, info->mTraceVector);
               endLog = readBytes != mTraceReadBufChunkSize;
               profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector, endLog);
               numTraceBytes += readBytes;
@@ -802,42 +801,37 @@ namespace xdp {
 
   bool OCLProfiler::allocateDeviceDDRBufferForTrace(DeviceIntf* dInt, xocl::device* device)
   {
-    auto xrtDevice = device->get_xrt_device();
     /* If buffer is already allocated and still attempting to initialize again, 
      * then reset the TS2MM IP and free the old buffer
      */
-    if(mDDRBufferForTrace) {
-      clearDeviceDDRBufferForTrace(dInt, xrtDevice);
+    if (mDDRBufferForTrace) {
+      clearDeviceDDRBufferForTrace(dInt);
     }
 
-    try {
       mDDRBufferSize = getDeviceDDRBufferSize(dInt, device);
-      mDDRBufferForTrace = xrtDevice->alloc(mDDRBufferSize, xrt::hal::device::Domain::XRT_DEVICE_RAM, dInt->getTS2MmMemIndex(), nullptr);
-      xrtDevice->sync(mDDRBufferForTrace, mDDRBufferSize, 0, xrt::hal::device::direction::HOST2DEVICE, false);
-    } catch (const std::exception& ex) {
-      std::cerr << ex.what() << std::endl;
-      xrt::message::send(xrt::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_ALLOC_FAIL);
-      return false;
-    }
-    // Data Mover will write input stream to this address
-    uint64_t bufAddr = xrtDevice->getDeviceAddr(mDDRBufferForTrace);
+      mDDRBufferForTrace = dInt->allocTraceBuf(mDDRBufferSize, dInt->getTS2MmMemIndex());
+      if (!mDDRBufferForTrace) {
+        xrt::message::send(xrt::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_ALLOC_FAIL);
+        return false;
+      }
 
+    // Data Mover will write input stream to this address
+    uint64_t bufAddr = dInt->getDeviceAddr(mDDRBufferForTrace);
     dInt->initTS2MM(mDDRBufferSize, bufAddr);
     return true;
   }
 
 
   // Reset DDR Trace : reset TS2MM IP and clear buffer on Device DDR
-  void OCLProfiler::clearDeviceDDRBufferForTrace(DeviceIntf* dInt, xrt::device* xrtDevice)
+  void OCLProfiler::clearDeviceDDRBufferForTrace(DeviceIntf* dInt)
   {
-    if(!mDDRBufferForTrace)
+    if (!mDDRBufferForTrace)
       return;
 
     dInt->resetTS2MM();
+    dInt->freeTraceBuf(mDDRBufferForTrace);
 
-    xrtDevice->free(mDDRBufferForTrace);
-
-    mDDRBufferForTrace = nullptr;
+    mDDRBufferForTrace = 0;
     mDDRBufferSize = 0;
   }
 
@@ -850,47 +844,22 @@ namespace xdp {
     mTraceReadBufChunkSize = MAX_TRACE_NUMBER_SAMPLES * TRACE_PACKET_SIZE;
   }
 
-  /** 
-   * Takes the offset inside the mapped buffer
-   * and syncs it with device and returns its virtual address.
-   * We can read the entire buffer in one go if we want to
-   * or choose to read in chunks
-   */
-  void* OCLProfiler::syncDeviceDDRToHostForTrace(xrt::device* xrtDevice, uint64_t offset, uint64_t bytes)
-  {
-    if(!mDDRBufferSize || !mDDRBufferForTrace)
-      return nullptr;
-
-    auto addr = xrtDevice->map(mDDRBufferForTrace);
-    xrtDevice->sync(mDDRBufferForTrace, bytes, offset, xrt::hal::device::direction::DEVICE2HOST, false);
-
-    return static_cast<char*>(addr) + offset;
-  }
-
-  void OCLProfiler::readTraceDataFromDDR(DeviceIntf* dIntf, xrt::device* xrtDevice, xclTraceResultsVector& traceVector, uint64_t offset, uint64_t bytes)
-  {
-    void* hostBuf = syncDeviceDDRToHostForTrace(xrtDevice, offset, bytes);
-    if(hostBuf) {
-      dIntf->parseTraceData(hostBuf, bytes, traceVector);
-    }
-  }
-
   /**
    * This reader needs to be initialized once and then
    * returns data as long as it's available
    * returns true if data equal to chunksize was read
    */
-  uint64_t OCLProfiler::readTraceDataFromDDR(DeviceIntf* dIntf, xrt::device* xrtDevice, xclTraceResultsVector& traceVector)
+  uint64_t OCLProfiler::readTraceDataFromDDR(DeviceIntf* dInt, xclTraceResultsVector& traceVector)
   {
-    if(mTraceReadBufOffset >= mTraceReadBufSize)
+    if (mTraceReadBufOffset >= mTraceReadBufSize)
       return false;
 
     uint64_t nBytes = mTraceReadBufChunkSize;
-    if((mTraceReadBufOffset + mTraceReadBufChunkSize) > mTraceReadBufSize)
+    if ((mTraceReadBufOffset + mTraceReadBufChunkSize) > mTraceReadBufSize)
       nBytes = mTraceReadBufSize - mTraceReadBufOffset;
-    void* hostBuf = syncDeviceDDRToHostForTrace(xrtDevice, mTraceReadBufOffset, nBytes);
-    if(hostBuf) {
-      dIntf->parseTraceData(hostBuf, nBytes, traceVector);
+    void* hostBuf = dInt->syncTraceBuf(mDDRBufferForTrace, mTraceReadBufOffset, nBytes);
+    if (hostBuf) {
+      dInt->parseTraceData(hostBuf, nBytes, traceVector);
       mTraceReadBufOffset += nBytes;
       return nBytes;
     }

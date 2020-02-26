@@ -51,12 +51,12 @@ public:
 
   // Only device RAM
   virtual size_t alloc(size_t sz, uint64_t memoryIndex);
-  virtual void free(uint32_t xdpBoHandle);
+  virtual void free(size_t xdpBoHandle);
 
-  virtual void* map (uint32_t xdpBoHandle);
-  virtual void unmap(uint32_t xdpBoHandle);
-  virtual void sync(uint32_t xdpBoHandle, size_t sz, size_t offset, direction dir, bool async=false);
-  virtual uint64_t getDeviceAddr(uint32_t xdpBoHandle);
+  virtual void* map (size_t xdpBoHandle);
+  virtual void unmap(size_t xdpBoHandle);
+  virtual void sync(size_t xdpBoHandle, size_t sz, size_t offset, direction dir, bool async=false);
+  virtual uint64_t getDeviceAddr(size_t xdpBoHandle);
   virtual void* getRawDevice() { return mXrtDevice ; } 
 };
 }

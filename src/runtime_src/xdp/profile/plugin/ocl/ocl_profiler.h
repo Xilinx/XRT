@@ -94,13 +94,11 @@ namespace xdp {
                              std::chrono::steady_clock::time_point end);
 
     uint64_t getDeviceDDRBufferSize(DeviceIntf* dInt, xocl::device* device);
-    bool allocateDeviceDDRBufferForTrace(DeviceIntf* , xocl::device*);
-    void clearDeviceDDRBufferForTrace(DeviceIntf* , xrt::device* );
+    bool allocateDeviceDDRBufferForTrace(DeviceIntf* dInt, xocl::device*);
+    void clearDeviceDDRBufferForTrace(DeviceIntf*);
 
     void configureDDRTraceReader(uint64_t wordCount);
-    void readTraceDataFromDDR(DeviceIntf* dIntf, xrt::device* xrtDevice, xclTraceResultsVector& traceVector, uint64_t offset, uint64_t bytes);
-    uint64_t readTraceDataFromDDR(DeviceIntf* dIntf, xrt::device* xrtDevice, xclTraceResultsVector& traceVector);
-    void* syncDeviceDDRToHostForTrace(xrt::device* xrtDevice, uint64_t offset, uint64_t bytes);
+    uint64_t readTraceDataFromDDR(DeviceIntf* dInt, xclTraceResultsVector& traceVector);
 
   private:
     // Flags
@@ -122,7 +120,7 @@ namespace xdp {
 
     // Buffer on Device DDR for Trace
     uint64_t mDDRBufferSize = 0;
-    xrt::hal::BufferObjectHandle mDDRBufferForTrace = nullptr;
+    size_t mDDRBufferForTrace = 0;
 
     // Buffer on Host for reading Trace Data
     uint64_t mTraceReadBufSize = 0;

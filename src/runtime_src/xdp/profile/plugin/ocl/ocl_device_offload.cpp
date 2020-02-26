@@ -161,8 +161,8 @@ uint64_t OclDeviceOffload::read_trace_s2mm_partial()
   auto end = std::chrono::steady_clock::now();
   debug_stream
     << "Elapsed time in microseconds for sync : "
-		<< std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
-		<< " µs" << std::endl;
+    << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
+    << " µs" << std::endl;
 
   if (host_buf) {
     dev_intf->parseTraceData(host_buf, nBytes, m_trace_vector);

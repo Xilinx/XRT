@@ -100,9 +100,9 @@ namespace xdp {
 
     // Underlying Device APIs
     size_t allocTraceBuf(uint64_t sz ,uint8_t memIdx);
-    void freeTraceBuf(uint32_t bufHandle);
-    void* syncTraceBuf(uint32_t bufHandle ,uint64_t offset, uint64_t bytes);
-    uint64_t getDeviceAddr(uint32_t bufHandle);
+    void freeTraceBuf(size_t bufHandle);
+    void* syncTraceBuf(size_t bufHandle ,uint64_t offset, uint64_t bytes);
+    uint64_t getDeviceAddr(size_t bufHandle);
 
     // Trace FIFO Management
     bool hasFIFO() {return (fifoCtrl != nullptr);};

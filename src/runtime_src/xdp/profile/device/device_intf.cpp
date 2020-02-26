@@ -506,19 +506,27 @@ DeviceIntf::~DeviceIntf()
     return bufHandle;
   }
 
-  void DeviceIntf::freeTraceBuf(uint32_t bufHandle)
+  void DeviceIntf::freeTraceBuf(size_t bufHandle)
   {
     mDevice->free(bufHandle);
   }
 
-  void* DeviceIntf::syncTraceBuf(uint32_t bufHandle ,uint64_t offset, uint64_t bytes)
+  /**
+  * Takes the offset inside the mapped buffer
+  * and syncs it with device and returns its virtual address.
+  * We can read the entire buffer in one go if we want to
+  * or choose to read in chunks
+  */
+  void* DeviceIntf::syncTraceBuf(size_t bufHandle ,uint64_t offset, uint64_t bytes)
   {
     auto addr = mDevice->map(bufHandle);
+    if (!addr)
+      return nullptr;
     mDevice->sync(bufHandle, bytes, offset, xdp::Device::direction::DEVICE2HOST);
     return static_cast<char*>(addr) + offset;
   }
 
-  uint64_t DeviceIntf::getDeviceAddr(uint32_t bufHandle)
+  uint64_t DeviceIntf::getDeviceAddr(size_t bufHandle)
   {
     return mDevice->getDeviceAddr(bufHandle);
   }

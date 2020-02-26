@@ -99,27 +99,27 @@ size_t HalDevice::alloc(size_t sz, uint64_t memoryIndex)
   return 0;
 }
 
-void HalDevice::free(uint32_t xdpBoHandle)
+void HalDevice::free(size_t xdpBoHandle)
 {
 
 }
 
-void* HalDevice::map(uint32_t xdpBoHandle)
+void* HalDevice::map(size_t xdpBoHandle)
 {
   return nullptr;
 }
 
-void HalDevice::unmap(uint32_t xdpBoHandle)
+void HalDevice::unmap(size_t xdpBoHandle)
 {
 
 }
 
-void HalDevice::sync(uint32_t xdpBoHandle, size_t sz, size_t offset, direction dir, bool async)
+void HalDevice::sync(size_t xdpBoHandle, size_t sz, size_t offset, direction dir, bool async)
 {
 
 }
 
-uint64_t HalDevice::getDeviceAddr(uint32_t xdpBoHandle)
+uint64_t HalDevice::getDeviceAddr(size_t xdpBoHandle)
 {
   return 0;
 }
