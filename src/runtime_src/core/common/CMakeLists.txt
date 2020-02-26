@@ -39,13 +39,12 @@ set_target_properties(xrt_coreutil PROPERTIES VERSION ${XRT_VERSION_STRING}
 message("bfl=${Boost_FILESYSTEM_LIBRARY}")
 
 target_link_libraries(xrt_coreutil
-  pthread
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
   )
 
 if (NOT WIN32)
-target_link_libraries(xrt_coreutil uuid)
+target_link_libraries(xrt_coreutil uuid pthread)
 install(TARGETS xrt_coreutil
   LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
 else()
