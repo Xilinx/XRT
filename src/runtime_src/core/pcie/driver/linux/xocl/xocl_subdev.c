@@ -307,7 +307,6 @@ static void __xocl_subdev_destroy(xdev_handle_t xdev_hdl,
 		cdev_del(subdev->cdev);
 		subdev->cdev = NULL;
 	}
-	ida_simple_remove(&subdev_inst_ida, subdev->inst);
 
 	if (pldev) {
 		switch (state) {
@@ -320,6 +319,7 @@ static void __xocl_subdev_destroy(xdev_handle_t xdev_hdl,
 			platform_device_put(pldev);
 		}
 	}
+	ida_simple_remove(&subdev_inst_ida, subdev->inst);
 }
 
 static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
