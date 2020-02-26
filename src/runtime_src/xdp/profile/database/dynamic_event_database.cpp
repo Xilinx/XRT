@@ -50,16 +50,13 @@ namespace xdp {
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
 
-    for (auto event : hostEvents)
-    {
-      delete event ;
+    for (auto event : hostEvents) {
+      delete event;
     }
 
-    for (auto device : deviceEvents)
-    {
-      for (auto element : device.second)
-      {
-	delete element;
+    for (auto device : deviceEvents) {
+      for (auto multimapEntry : device.second) {
+	    delete multimapEntry.second;
       }
       device.second.clear();
     }
@@ -76,8 +73,8 @@ namespace xdp {
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
 
-    deviceEvents[deviceId].push_back(event) ;
-//    deviceEvents[deviceId].emplace(event->getTimestamp(), event) ;
+//    deviceEvents[deviceId].push_back(event) ;
+    deviceEvents[deviceId].emplace(event->getTimestamp(), event) ;
   }
 
   void VPDynamicDatabase::addEvent(VTFEvent* event)
@@ -327,9 +324,9 @@ namespace xdp {
 
     for (auto dev : deviceEvents)
     {
-      for (auto e : dev.second)
+      for (auto multiMapEntry : dev.second)
       {
-	if (filter(e)) collected.push_back(e) ;
+	if (filter(multiMapEntry.second)) collected.push_back(multiMapEntry.second) ;
       }
     }
 
@@ -338,14 +335,14 @@ namespace xdp {
 
   std::vector<VTFEvent*> VPDynamicDatabase::getDeviceEvents(uint64_t deviceId)
   {
-    std::vector<VTFEvent*> devEvents;
+    std::vector<VTFEvent*> events;
     if(deviceEvents.find(deviceId) == deviceEvents.end()) {
-      return devEvents;
+      return events;
     }
-    for(auto e : deviceEvents[deviceId]) {
-      devEvents.push_back(e);
+    for(auto multiMapEntry : deviceEvents[deviceId]) {
+      events.push_back(multiMapEntry.second);
     }
-    return devEvents;
+    return events;
   }
 
   void VPDynamicDatabase::dumpStringTable(std::ofstream& fout)

@@ -47,8 +47,8 @@ namespace xdp {
     // Every device will have its own set of events.  Since the actual
     //  hardware might shuffle the order of events we have to make sure
     //  that this set of events is ordered based on timestamp.
-    std::map<uint64_t, std::vector<VTFEvent*> > deviceEvents ;
-//    std::map<uint64_t, std::multimap<double, VTFEvent*> > deviceEvents ;
+//    std::map<uint64_t, std::vector<VTFEvent*> > deviceEvents ;
+    std::map<uint64_t, std::multimap<double, VTFEvent*>> deviceEvents;
 
     // A unique event id for every event added to the database.
     //  It starts with 1 so we can use 0 as an indicator of NULL
