@@ -14,6 +14,8 @@
  * under the License.
  */
 
+#define XDP_SOURCE
+
 #include "ocl_device_offload.h"
 #include "xdp/profile/device/tracedefs.h"
 
