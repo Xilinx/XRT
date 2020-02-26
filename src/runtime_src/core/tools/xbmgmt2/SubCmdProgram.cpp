@@ -27,7 +27,6 @@ namespace XBU = XBUtilities;
 #include "core/common/error.h"
 #include "core/common/query_requests.h"
 #include "core/common/message.h"
-#include "core/common/error.h"
 #include "flash/flasher.h"
 
 // 3rd Party Library - Include Files
@@ -81,7 +80,7 @@ update_shell(uint16_t index, const std::string& primary, const std::string& seco
   }
 
   flasher.upgradeFirmware("", pri.get(), sec.get());
-  std::cout << boost::format("%-8s : %s \n") % "INFO" % "Shell is updated succesfully.";
+  std::cout << boost::format("%-8s : %s \n") % "INFO" % "Shell is updated successfully.";
 }
 
 /*
@@ -116,7 +115,7 @@ update_shell(uint16_t index, const std::string& flashType,
   }
 
   flasher.upgradeFirmware(flashType, pri.get(), sec.get());
-  std::cout << boost::format("%-8s : %s \n") % "INFO" % "Shell is updated succesfully.";
+  std::cout << boost::format("%-8s : %s \n") % "INFO" % "Shell is updated successfully.";
 }
 
 /*
@@ -500,7 +499,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   // -- Retrieve and parse the subcommand options -----------------------------
   std::string device = "";
-  std::vector<uint16_t> device_indices = {0};
+  std::vector<uint16_t> device_indices; //instead of saving this, can we save Flasher objects?
   std::string plp = "";
   std::string update = "";
   std::string image = "";
@@ -598,6 +597,15 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     	uint16_t idx = xrt_core::bdf2index(*tok_iter);
       device_indices.push_back(idx);
     }
+  } else {
+    //get all devices
+    auto total = xrt_core::get_total_devices(false).first;
+    if (total == 0)
+      throw xrt_core::error("No card found!");
+    //better way to do this?
+    for(uint16_t i = 0; i < total; i++) {
+      device_indices.push_back(i);
+    }
   }
 
   if (!update.empty()) {
@@ -620,5 +628,37 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   if(!image.empty()) {
     //call this overloaded function
     update_shell(device_indices[0], "", "", "");
+  }
+
+  if(revertToGolden) {
+    XBU::verbose("Sub command: --revert-to-golden");
+
+    std::vector<Flasher> flasher_list;
+    for(auto& idx : device_indices) {
+      //collect information of all the cards that will be reset
+      Flasher flasher(idx);
+      if(!flasher.isValid()) {
+        xrt_core::error(boost::str(boost::format("%d is an invalid index") % idx));
+        continue;
+      }
+      std::cout << boost::format("%-8s : %s %s %s \n") % "INFO" % "Resetting card [" 
+        % flasher.sGetDBDF() % "] back to factory mode.";
+      flasher_list.push_back(flasher);
+    }
+    
+    //ask user's permission
+    if(!canProceed())
+      return;
+    
+    for(auto& f : flasher_list) {
+      f.upgradeFirmware("", nullptr, nullptr);
+      std::cout << boost::format("%-8s : %s %s %s\n") % "INFO" % "Shell on [" % f.sGetDBDF() % "] is reset successfully." ;
+    }
+
+    std::cout << "****************************************************\n";
+    std::cout << "Cold reboot machine to load the new image on card(s).\n";
+    std::cout << "****************************************************\n";
+
+    return;
   }
 }
