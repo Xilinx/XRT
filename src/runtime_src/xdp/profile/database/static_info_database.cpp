@@ -32,7 +32,7 @@
 
 namespace xdp {
 
-  ComputeUnitInstance::ComputeUnitInstance(const char* n, int i) :
+  ComputeUnitInstance::ComputeUnitInstance(const char* n, int32_t i) :
     name(n), index(i)
   {
     dim[0] = 0 ;
@@ -98,6 +98,7 @@ namespace xdp {
     //  that work with emulation?
     if (!setXclbinUUID(devInfo, binary)) return;
     if (!initializeComputeUnits(devInfo, binary)) return ;
+    if (!initializeProfileMonitorConnections(devInfo, binary)) return ;
 #if 0
     if (!initializeMemory(devInfo, binary)) return ;
     if (!initializeComputeUnits(devInfo, binary)) return ;
@@ -143,25 +144,25 @@ namespace xdp {
 
     // Get CONNECTIVITY section
     const axlf_section_header* connectivityHeader = xclbin::get_axlf_section(xbin, CONNECTIVITY);
-    if (connectivityHeader == nullptr) return false;
+    if(connectivityHeader == nullptr) return false;
     const connectivity* connectivitySection = reinterpret_cast<const connectivity*>(chBinary + connectivityHeader->m_sectionOffset) ;
-    if (connectivitySection == nullptr) return false;
+    if(connectivitySection == nullptr) return false;
 
     // Get IP_LAYOUT section 
     const axlf_section_header* ipLayoutHeader = xclbin::get_axlf_section(xbin, IP_LAYOUT);
-    if (ipLayoutHeader == nullptr) return false;
+    if(ipLayoutHeader == nullptr) return false;
     const ip_layout* ipLayoutSection = reinterpret_cast<const ip_layout*>(chBinary + ipLayoutHeader->m_sectionOffset) ;
-    if (ipLayoutSection == nullptr) return false;
+    if(ipLayoutSection == nullptr) return false;
     
 
     // Get MEM_TOPOLOGY section 
     const axlf_section_header* memTopologyHeader = xclbin::get_axlf_section(xbin, MEM_TOPOLOGY);
-    if (memTopologyHeader == nullptr) return false;
+    if(memTopologyHeader == nullptr) return false;
     const mem_topology* memTopologySection = reinterpret_cast<const mem_topology*>(chBinary + memTopologyHeader->m_sectionOffset) ;
-    if (memTopologySection == nullptr) return false;
+    if(memTopologySection == nullptr) return false;
 
     // Now make the connections
-    for(int32_t i = 0; i < connectivitySection->m_count ; i++) {
+    for(int32_t i = 0; i < connectivitySection->m_count; i++) {
       const struct connection* connctn = &(connectivitySection->m_connection[i]);
 
       if(devInfo->cus.find(connctn->m_ip_layout_index) == devInfo->cus.end()) {
@@ -176,11 +177,78 @@ namespace xdp {
       if(devInfo->memoryInfo.find(connctn->mem_data_index) == devInfo->memoryInfo.end()) {
         const struct mem_data* memData = &(memTopologySection->m_mem_data[connctn->mem_data_index]);
         devInfo->memoryInfo[connctn->mem_data_index]
-                 = new Memory(memData->m_type, memData->m_base_address, reinterpret_cast<const char*>(memData->m_tag));
+                 = new Memory(memData->m_type, connctn->mem_data_index,
+                              memData->m_base_address, reinterpret_cast<const char*>(memData->m_tag));
       }
       (devInfo->cus[connctn->m_ip_layout_index])->addConnection(connctn->arg_index, connctn->mem_data_index);
     }
     return true;
+  }
+
+  bool VPStaticDatabase::initializeProfileMonitorConnections(DeviceInfo* devInfo, const void* binary)
+  {
+    // Look into the debug_ip_layout section and load information about Profile Monitors
+    const axlf* xbin     = static_cast<const struct axlf*>(binary);
+    const char* chBinary = static_cast<const char*>(binary);
+
+    // Get CONNECTIVITY section
+    const axlf_section_header* debugIpLayoutHeader = xclbin::get_axlf_section(xbin, DEBUG_IP_LAYOUT);
+    if(debugIpLayoutHeader == nullptr) return false;
+    const debug_ip_layout* debugIpLayoutSection = reinterpret_cast<const debug_ip_layout*>(chBinary + debugIpLayoutHeader->m_sectionOffset) ;
+    if(debugIpLayoutSection == nullptr) return false;
+
+    for(uint16_t i = 0; i < debugIpLayoutSection->m_count; i++) {
+      const struct debug_ip_data* debugIpData = &(debugIpLayoutSection->m_debug_ip_data[i]);
+      uint64_t index = static_cast<uint64_t>(debugIpData->m_index_lowbyte) |
+                       (static_cast<uint64_t>(debugIpData->m_index_highbyte) << 8);
+      uint64_t baseAddr = debugIpData->m_base_address;
+      if(devInfo->monitorInfo.find(baseAddr) != devInfo->monitorInfo.end()) {
+        continue;
+      }
+      Monitor* mon = nullptr;
+
+      std::string name(debugIpData->m_name);
+      // find CU
+      if(debugIpData->m_type == ACCEL_MONITOR) {
+		for(auto cu : devInfo->cus) {
+          int pos = cu.second->getName().find(':');
+          std::string cuName = cu.second->getName().substr(pos+1);
+          if(0 == name.compare(cuName)) {
+            mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cu.second->getIndex());
+            break;
+          }
+        }
+      } else if(debugIpData->m_type == AXI_MM_MONITOR) {
+		// parse name to find CU Name and Memory
+        size_t pos = name.find('/');
+        std::string cuMonName = name.substr(0, pos);
+
+        pos = name.find('-');
+        std::string memName = name.substr(pos+1);
+
+        int32_t cuId  = -1;
+        int32_t memId = -1;
+		for(auto cu : devInfo->cus) {
+          int pos = cu.second->getName().find(':');
+          std::string cuName = cu.second->getName().substr(pos+1);
+          if(0 == cuMonName.compare(cuName)) {
+            cuId = cu.second->getIndex();
+            break;
+          }
+        }
+		for(auto mem : devInfo->memoryInfo) {
+          if(0 == memName.compare(mem.second->name)) {
+            memId = mem.second->index;
+            break;
+          }
+        }
+        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId, memId);
+      } else {
+        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name);
+      }
+      devInfo->monitorInfo[baseAddr] = mon;
+    }
+    return true; 
   }
 
 #if 0

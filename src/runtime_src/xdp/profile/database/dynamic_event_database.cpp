@@ -59,8 +59,9 @@ namespace xdp {
     {
       for (auto element : device.second)
       {
-	delete element.second ;
+	delete element;
       }
+      device.second.clear();
     }
   }
 
@@ -75,7 +76,8 @@ namespace xdp {
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
 
-    deviceEvents[deviceId].emplace(event->getTimestamp(), event) ;
+    deviceEvents[deviceId].push_back(event) ;
+//    deviceEvents[deviceId].emplace(event->getTimestamp(), event) ;
   }
 
   void VPDynamicDatabase::addEvent(VTFEvent* event)
@@ -120,6 +122,7 @@ namespace xdp {
       if (!SAMPacket && !SPMPacket && !SSPMPacket) {
         continue;
       }
+      double hostTimestamp = convertDeviceToHostTimestamp(timestamp);
       if (SAMPacket) {
         s = ((trace.TraceID - MIN_TRACE_ID_AM) / 16);
         uint32_t cuEvent       = trace.TraceID & XAM_TRACE_CU_MASK;
@@ -127,14 +130,17 @@ namespace xdp {
         uint32_t stallStrEvent = trace.TraceID & XAM_TRACE_STALL_STR_MASK;
         uint32_t stallExtEvent = trace.TraceID & XAM_TRACE_STALL_EXT_MASK;
          
-        double hostTimestamp = convertDeviceToHostTimestamp(timestamp);
 
 // set name and every thing, to determine bucket id?
         if(cuEvent) {
           KernelDeviceEvent* event = nullptr;
           if (!(trace.EventFlags & XAM_TRACE_CU_MASK)) {
             // end event
-            event = new KernelDeviceEvent(matchingDeviceEventStart(trace.TraceID), hostTimestamp, deviceId);
+            VTFEvent* e = matchingDeviceEventStart(trace.TraceID);
+            if(!e) {
+              continue;
+            }
+            event = new KernelDeviceEvent(e->getEventId(), hostTimestamp, deviceId);
             event->setDeviceTimestamp(static_cast<double>(timestamp));
             addEvent(event);
           } else {
@@ -142,7 +148,7 @@ namespace xdp {
             event = new KernelDeviceEvent(0, hostTimestamp, deviceId);
             event->setDeviceTimestamp(static_cast<double>(timestamp));
             addEvent(event);
-            markDeviceEventStart(trace.TraceID, event->getEventId());
+            markDeviceEventStart(trace.TraceID, event);
           }
         }
  
@@ -150,7 +156,7 @@ namespace xdp {
           KernelStall* event = nullptr;
           if(traceIDMap[s] & XAM_TRACE_STALL_INT_MASK) {
             // end event
-            event = new KernelStall(matchingDeviceEventStart(trace.TraceID),
+            event = new KernelStall(matchingDeviceEventStart(trace.TraceID)->getEventId(),
                              hostTimestamp, DATAFLOW_STALL, deviceId);
             event->setDeviceTimestamp(static_cast<double>(timestamp));
             addEvent(event);
@@ -159,7 +165,7 @@ namespace xdp {
             event = new KernelStall(0, hostTimestamp, DATAFLOW_STALL, deviceId);
             event->setDeviceTimestamp(static_cast<double>(timestamp));
             addEvent(event);
-            markDeviceEventStart(trace.TraceID, event->getEventId());
+            markDeviceEventStart(trace.TraceID, event);
           }
         } 
 
@@ -167,7 +173,7 @@ namespace xdp {
           KernelStall* event = nullptr;
           if(traceIDMap[s] & XAM_TRACE_STALL_STR_MASK) {
             // end event
-            event = new KernelStall(matchingDeviceEventStart(trace.TraceID),
+            event = new KernelStall(matchingDeviceEventStart(trace.TraceID)->getEventId(),
                              hostTimestamp, PIPE_STALL, deviceId);
             event->setDeviceTimestamp(static_cast<double>(timestamp));
             addEvent(event);
@@ -176,14 +182,14 @@ namespace xdp {
             event = new KernelStall(0, hostTimestamp, PIPE_STALL, deviceId);
             event->setDeviceTimestamp(static_cast<double>(timestamp));
             addEvent(event);
-            markDeviceEventStart(trace.TraceID, event->getEventId());
+            markDeviceEventStart(trace.TraceID, event);
           }
         } 
         if(stallExtEvent) {
           KernelStall* event = nullptr;
           if(traceIDMap[s] & XAM_TRACE_STALL_EXT_MASK) {
             // end event
-            event = new KernelStall(matchingDeviceEventStart(trace.TraceID),
+            event = new KernelStall(matchingDeviceEventStart(trace.TraceID)->getEventId(),
                              hostTimestamp, EXTERNAL_MEMORY_STALL, deviceId);
             event->setDeviceTimestamp(static_cast<double>(timestamp));
             addEvent(event);
@@ -192,30 +198,92 @@ namespace xdp {
             event = new KernelStall(0, hostTimestamp, EXTERNAL_MEMORY_STALL, deviceId);
             event->setDeviceTimestamp(static_cast<double>(timestamp));
             addEvent(event);
-            markDeviceEventStart(trace.TraceID, event->getEventId());
+            markDeviceEventStart(trace.TraceID, event);
           }
         }
         traceIDMap[s] ^= (trace.TraceID & 0xf);
-      } // SAMPacket 
+      } // SAMPacket
+      else if(SPMPacket) {
+        KernelMemoryAccess* memEvent = nullptr;
+        if((!trace.TraceID) & 1) { // read packet
+          s = trace.TraceID/2;
+          // KERNEL_READ
+          if(trace.EventType == XCL_PERF_MON_START_EVENT) {
+            memEvent = new KernelMemoryAccess(0, hostTimestamp, KERNEL_READ, deviceId);
+            memEvent->setDeviceTimestamp(static_cast<double>(timestamp)); 
+            addEvent(memEvent);
+            markDeviceEventStart(trace.TraceID, memEvent);
+          } else if(trace.EventType == XCL_PERF_MON_END_EVENT) {
+            // may have to log start and end both
+            // technically matching start can have ID 0, but for now assume matchingStart=0 means no start found. So log both start and end
+            VTFEvent* matchingStart = matchingDeviceEventStart(trace.TraceID);
+            if(nullptr == matchingStart || trace.Reserved == 1) {
+              // add dummy start event
+              memEvent = new KernelMemoryAccess(0, hostTimestamp, KERNEL_READ, deviceId);
+              memEvent->setDeviceTimestamp(static_cast<double>(timestamp)); 
+              addEvent(memEvent);
+              markDeviceEventStart(trace.TraceID, memEvent);
+              matchingStart = memEvent;
+            }
+            // add end event
+            memEvent = new KernelMemoryAccess(matchingStart->getEventId(), hostTimestamp, KERNEL_READ, deviceId);
+            memEvent->setDeviceTimestamp(static_cast<double>(timestamp)); 
+            addEvent(memEvent);
+            memEvent->setBurstLength(timestamp - ((KernelMemoryAccess*)matchingStart)->getDeviceTimestamp() + 1);
+          }
+        } else if(trace.TraceID & 1) {
+          // KERNEL_WRITE
+          s = trace.TraceID/2;
+          // KERNEL_READ
+          if(trace.EventType == XCL_PERF_MON_START_EVENT) {
+            memEvent = new KernelMemoryAccess(0, hostTimestamp, KERNEL_WRITE, deviceId);
+            memEvent->setDeviceTimestamp(static_cast<double>(timestamp)); 
+            addEvent(memEvent);
+            markDeviceEventStart(trace.TraceID, memEvent);
+          } else if(trace.EventType == XCL_PERF_MON_END_EVENT) {
+            // may have to log start and end both
+            // technically matching start can have ID 0, but for now assume matchingStart=0 means no start found. So log both start and end
+            VTFEvent* matchingStart = matchingDeviceEventStart(trace.TraceID);
+            if(nullptr == matchingStart || trace.Reserved == 1) {
+              // add dummy start event
+              memEvent = new KernelMemoryAccess(0, hostTimestamp, KERNEL_WRITE, deviceId);
+              memEvent->setDeviceTimestamp(static_cast<double>(timestamp)); 
+              addEvent(memEvent);
+              markDeviceEventStart(trace.TraceID, memEvent);
+              matchingStart = memEvent;
+            }
+            // add end event
+            memEvent = new KernelMemoryAccess(matchingStart->getEventId(), hostTimestamp, KERNEL_WRITE, deviceId);
+            memEvent->setDeviceTimestamp(static_cast<double>(timestamp)); 
+            addEvent(memEvent);
+            memEvent->setBurstLength(timestamp - ((KernelMemoryAccess*)matchingStart)->getDeviceTimestamp() + 1);
+          }
+        }
+      } // SPMPacket
+      else if(SSPMPacket) {
+      } // SSPMPacket
+      else {}
     }
+
+// LAST TRANSACTION ??
   }
 
-  void VPDynamicDatabase::markDeviceEventStart(uint64_t slotID, uint64_t eventID)
+  void VPDynamicDatabase::markDeviceEventStart(uint64_t traceID, VTFEvent* event)
   {
-    std::lock_guard<std::mutex> lock(dbLock) ;
-    deviceEventStartMap[slotID] = eventID ;
+    std::lock_guard<std::mutex> lock(dbLock);
+    deviceEventStartMap[traceID].push_back(event) ;
   }
 
-  uint64_t VPDynamicDatabase::matchingDeviceEventStart(uint64_t slotID)
+  VTFEvent* VPDynamicDatabase::matchingDeviceEventStart(uint64_t traceID)
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
-    if (deviceEventStartMap.find(slotID) != deviceEventStartMap.end())
+    if (deviceEventStartMap.find(traceID) != deviceEventStartMap.end() && !deviceEventStartMap[traceID].empty())
     {
-      uint64_t value = deviceEventStartMap[slotID] ;
-      deviceEventStartMap.erase(slotID) ;
-      return value ;
+      VTFEvent* startEvent = deviceEventStartMap[traceID].front();
+      deviceEventStartMap[traceID].pop_front();
+      return startEvent ;
     }
-    return 0 ;
+    return nullptr;
   }
 
   void VPDynamicDatabase::markStart(uint64_t functionID, uint64_t eventID)
@@ -261,11 +329,23 @@ namespace xdp {
     {
       for (auto e : dev.second)
       {
-	if (filter(e.second)) collected.push_back(e.second) ;
+	if (filter(e)) collected.push_back(e) ;
       }
     }
 
     return collected ;
+  }
+
+  std::vector<VTFEvent*> VPDynamicDatabase::getDeviceEvents(uint64_t deviceId)
+  {
+    std::vector<VTFEvent*> devEvents;
+    if(deviceEvents.find(deviceId) == deviceEvents.end()) {
+      return devEvents;
+    }
+    for(auto e : deviceEvents[deviceId]) {
+      devEvents.push_back(e);
+    }
+    return devEvents;
   }
 
   void VPDynamicDatabase::dumpStringTable(std::ofstream& fout)

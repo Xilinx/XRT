@@ -36,7 +36,7 @@ namespace xdp {
     int dim[3] ;
 
     // The connections require the original index in the ip_layout
-    int index ; 
+    int32_t index ; 
 
     // A mapping of arguments to memory resources
     std::map<int32_t, std::vector<int32_t>> connections ;
@@ -47,12 +47,13 @@ namespace xdp {
     
     // Getters and setters
     inline const std::string& getName() { return name ; }
+    inline int32_t getIndex() { return index ; }
     XDP_EXPORT std::string getDim() ;
     XDP_EXPORT void addConnection(int32_t, int32_t);
     std::map<int32_t, std::vector<int32_t>>* getConnections()
     {  return &connections; }
 
-    XDP_EXPORT ComputeUnitInstance(const char* n, int i) ;
+    XDP_EXPORT ComputeUnitInstance(const char* n, int32_t i) ;
     XDP_EXPORT ~ComputeUnitInstance() ;
   } ;
 
@@ -63,12 +64,30 @@ namespace xdp {
 
   struct Memory {
     uint8_t     type;
+    int32_t     index;
     uint64_t    baseAddress;
     std::string name;
 
-    Memory(uint8_t ty, uint64_t baseAddr, const char* n)
+    Memory(uint8_t ty, int32_t idx, uint64_t baseAddr, const char* n)
       : type(ty),
+        index(idx),
         baseAddress(baseAddr),
+        name(n)
+    {}
+  };
+
+  struct Monitor {
+    uint8_t     type;
+    uint64_t    index;
+    int32_t     cuIndex;
+    int32_t     memIndex;
+    std::string name;
+
+    Monitor(uint8_t ty, uint64_t idx, const char* n, int32_t cuId = -1, int32_t memId = -1)
+      : type(ty),
+        index(idx),
+        cuIndex(cuId),
+        memIndex(memId),
         name(n)
     {}
   };
@@ -77,7 +96,8 @@ namespace xdp {
     struct PlatformInfo platformInfo;
     std::string loadedXclbin;
     std::map<int32_t, ComputeUnitInstance*> cus;
-    std::map<int32_t, Memory*> memoryInfo;
+    std::map<int32_t, Memory*>   memoryInfo;
+    std::map<uint64_t, Monitor*> monitorInfo;
   };
 
   class VPStaticDatabase
@@ -107,8 +127,9 @@ namespace xdp {
     void resetDeviceInfo(uint64_t deviceId) ;
 
     // Helper functions that fill in device information
-    bool setXclbinUUID(DeviceInfo* devInfo, const void* binary);
+    bool setXclbinUUID(DeviceInfo*, const void* binary);
     bool initializeComputeUnits(DeviceInfo*, const void* binary);
+    bool initializeProfileMonitorConnections(DeviceInfo*, const void* binary);
 #if 0
     bool initializeMemory(DeviceInfo* devInfo, const void* binary) ;
     bool initializeComputeUnits(DeviceInfo* devInfo, const void* binary) ;
@@ -147,6 +168,12 @@ namespace xdp {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       return &(deviceInfo[deviceId]->memoryInfo);
+    }
+    inline std::map<uint64_t, Monitor*>* getMonitorInfo(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return nullptr;
+      return &(deviceInfo[deviceId]->monitorInfo);
     }
 
     // Reseting device information whenever a new xclbin is added

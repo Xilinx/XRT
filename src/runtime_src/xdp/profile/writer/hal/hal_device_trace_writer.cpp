@@ -104,6 +104,17 @@ namespace xdp {
     fout << "Group_End," << xclbinName << std::endl ;
     fout << "Group_End," << deviceName << std::endl ;
 
+#if 0
+// just print monitors
+    std::map<uint64_t, Monitor*> *monitors = (db->getStaticInfo()).getMonitorInfo(deviceId);
+    if(monitors) {
+      fout << " num monitors " << monitors->size() << std::endl;
+      for(auto itr : *monitors) {
+        Monitor* mon = itr.second;
+        fout << " mon ; index " << mon->index << " type " << (int)mon->type << " name " << mon->name << " cu id " << mon->cuIndex << " memIdx " << mon->memIndex << std::endl;
+      }
+    }
+#endif
   }
 
   void HALDeviceTraceWriter::writeStringTable()
@@ -115,9 +126,12 @@ namespace xdp {
   void HALDeviceTraceWriter::writeTraceEvents()
   {
     fout << "EVENTS" << std::endl;
+    std::vector<VTFEvent*> DeviceEvents = (db->getDynamicInfo()).getDeviceEvents(deviceId);
+/*
     std::vector<VTFEvent*> DeviceEvents = 
       (db->getDynamicInfo()).filterEvents( [](VTFEvent* e)
           { return e->isDeviceEvent(); });
+*/
     for(auto e : DeviceEvents) {
       VTFEventType eventType = e->getEventType();
       e->dump(fout, eventTypeBucketIdMap[eventType]);

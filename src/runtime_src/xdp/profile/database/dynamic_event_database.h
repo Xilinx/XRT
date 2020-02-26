@@ -18,6 +18,7 @@
 #define VP_DYNAMIC_EVENT_DATABASE_DOT_H
 
 #include <map>
+#include <list>
 #include <mutex>
 #include <vector>
 #include <fstream>
@@ -46,7 +47,8 @@ namespace xdp {
     // Every device will have its own set of events.  Since the actual
     //  hardware might shuffle the order of events we have to make sure
     //  that this set of events is ordered based on timestamp.
-    std::map<uint64_t, std::multimap<double, VTFEvent*> > deviceEvents ;
+    std::map<uint64_t, std::vector<VTFEvent*> > deviceEvents ;
+//    std::map<uint64_t, std::multimap<double, VTFEvent*> > deviceEvents ;
 
     // A unique event id for every event added to the database.
     //  It starts with 1 so we can use 0 as an indicator of NULL
@@ -57,7 +59,7 @@ namespace xdp {
     std::map<uint64_t, uint64_t> startMap ;
 
     // For device events
-    std::map<uint64_t, uint64_t> deviceEventStartMap;
+    std::map<uint64_t, std::list<VTFEvent*>> deviceEventStartMap;
 
     // In order to reduce memory overhead, instead of each event holding
     //  strings, each event will instead point to a unique
@@ -81,6 +83,10 @@ namespace xdp {
     double mTrainOffset;
     double mTraceClockRateMHz = 285; // 300 ?
     double mTrainSlope = 1000.0/mTraceClockRateMHz;
+
+    // For Device Events, find matching start for end event
+    XDP_EXPORT void markDeviceEventStart(uint64_t slotID, VTFEvent* event);
+    XDP_EXPORT VTFEvent* matchingDeviceEventStart(uint64_t slotID);
     
   public:
     XDP_EXPORT VPDynamicDatabase() ;
@@ -94,16 +100,14 @@ namespace xdp {
     XDP_EXPORT void markStart(uint64_t functionID, uint64_t eventID) ;
     XDP_EXPORT uint64_t matchingStart(uint64_t functionID) ;
 
-    // For Device Events, find matching start for end event
-    XDP_EXPORT void markDeviceEventStart(uint64_t slotID, uint64_t eventID);
-    XDP_EXPORT uint64_t matchingDeviceEventStart(uint64_t slotID);
-
     // A lookup into the string table
     XDP_EXPORT uint64_t addString(const std::string& value) ;
 
     // A function that iterates on the dynamic events and returns
     //  events based upon the filter passed in
     XDP_EXPORT std::vector<VTFEvent*> filterEvents(std::function<bool(VTFEvent*)> filter);
+
+    XDP_EXPORT std::vector<VTFEvent*> getDeviceEvents(uint64_t deviceId);
 
     // Functions that dump large portions of the database
     XDP_EXPORT void dumpStringTable(std::ofstream& fout) ;

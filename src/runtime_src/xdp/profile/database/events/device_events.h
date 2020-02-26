@@ -55,7 +55,7 @@ namespace xdp {
     virtual uint64_t getDevice() { return deviceId ; }
 
     virtual void   setDeviceTimestamp(double deviceTime) { deviceTimestamp = deviceTime; }
-    virtual double getDevicestamp() { return deviceTimestamp; } 
+    virtual double getDeviceTimestamp() { return deviceTimestamp; } 
   } ;
 
   class KernelEvent : public VTFDeviceEvent
@@ -108,6 +108,8 @@ namespace xdp {
   public:
     XDP_EXPORT KernelMemoryAccess(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId);
     XDP_EXPORT ~KernelMemoryAccess() ;
+
+    void setBurstLength(uint16_t length) { burstLength = length; }
   } ;
 
   class KernelStreamAccess : public KernelEvent
