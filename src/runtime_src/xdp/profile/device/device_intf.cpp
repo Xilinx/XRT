@@ -338,7 +338,7 @@ DeviceIntf::~DeviceIntf()
   {
     if(!traceFunnel)
       return;
-
+    // Trace Funnel > 1.0 supports continuous training
     if (traceFunnel->compareVersion(1,0) == -1 || force == true)
       traceFunnel->initiateClockTraining();
   }
