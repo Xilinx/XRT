@@ -369,16 +369,8 @@ initBMCVar()
 {
     prefix=""
     if [ "${SatelliteControllerFamily}" != "" ]; then
-      if [ "${SatelliteControllerFamily}" == "Alveo-Gen1" ]; then
-         prefix="AlveoGen1-"
-      elif [ "${SatelliteControllerFamily}" == "Alveo-Gen2" ]; then
-         prefix="AlveoGen2-"
-      elif [ "${SatelliteControllerFamily}" == "Alveo-Gen3" ]; then
-         prefix="AlveoGen3-"
-      elif [ "${SatelliteControllerFamily}" == "Alveo-Gen4" ]; then
-         prefix="AlveoGen4-"
-      elif [ "${SatelliteControllerFamily}" == "Alveo-Gen5" ]; then
-         prefix="AlveoGen5-"
+      if [[ "${SatelliteControllerFamily}" == Alveo-Gen* ]]; then
+         prefix="${SatelliteControllerFamily/Alveo-Gen/AlveoGen}-"
       else
          echo "ERROR: Unknown satellite controller family: ${SatelliteControllerFamily}"
          exit 1
@@ -423,6 +415,9 @@ initBMCVar()
       # We only go through this loop once
       return
     done
+
+    echo "ERROR: Could not find satellite controller firmmware image for the family: ${SatelliteControllerFamily}"
+    exit 1
 }
 
 initXsaBinEnvAndVars()
