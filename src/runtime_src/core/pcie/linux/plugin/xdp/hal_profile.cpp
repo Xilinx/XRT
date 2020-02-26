@@ -226,7 +226,7 @@ void load_xdp_plugin_library(HalPluginConfig* )
         return;
     }
 
-    if(!xrt_core::config::get_hal_profile()) {
+    if(!xrt_core::config::get_xrt_profile()) {
       loaded = true ;
       return;
     }
@@ -234,7 +234,7 @@ void load_xdp_plugin_library(HalPluginConfig* )
     if(xrt_core::config::get_profile()) {
       // "profile=true" is also set. This enables OpenCL based flow for profiling. 
       // Currently, mix of OpenCL and HAL based profiling is not supported.
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", std::string("Both profile=true and hal_profile=true set in xrt.ini config. Currently, these flows are not supported to work together."));
+      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", std::string("Both profile=true and xrt_profile=true set in xrt.ini config. Currently, these flows are not supported to work together."));
       return;
     }
 
