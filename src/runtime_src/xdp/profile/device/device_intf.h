@@ -99,9 +99,13 @@ namespace xdp {
     void configAmContext(const std::string& ctx_info);
 
     // Underlying Device APIs
+    XDP_EXPORT
     size_t allocTraceBuf(uint64_t sz ,uint8_t memIdx);
+    XDP_EXPORT
     void freeTraceBuf(size_t bufHandle);
+    XDP_EXPORT
     void* syncTraceBuf(size_t bufHandle ,uint64_t offset, uint64_t bytes);
+    XDP_EXPORT
     uint64_t getDeviceAddr(size_t bufHandle);
 
     // Trace FIFO Management
