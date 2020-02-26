@@ -205,6 +205,7 @@ enum {
 #define	XOCL_TRACE_FUNNEL	"trace_funnel"
 #define	XOCL_TRACE_S2MM		"trace_s2mm"
 #define	XOCL_MIG_HBM		"mig.hbm"
+#define	XOCL_SRSR		"srsr"
 
 #define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
 
@@ -239,6 +240,7 @@ enum subdev_id {
 	XOCL_SUBDEV_TRACE_FIFO_FULL,
 	XOCL_SUBDEV_TRACE_FUNNEL,
 	XOCL_SUBDEV_TRACE_S2MM,
+	XOCL_SUBDEV_SRSR,
 	XOCL_SUBDEV_NUM
 };
 
@@ -658,6 +660,25 @@ struct xocl_subdev_map {
 		ARRAY_SIZE(XOCL_RES_TRACE_S2MM),		\
 		.level = XOCL_SUBDEV_LEVEL_URP,		\
 		.multi_inst = true,			\
+	}
+
+/* Will be populated dynamically */
+#define	XOCL_RES_SRSR					\
+	((struct resource []) {				\
+		{					\
+			.start	= 0x0,			\
+			.end	= 0x4FFF,		\
+			.flags  = IORESOURCE_MEM,	\
+		}					\
+	})
+
+#define	XOCL_DEVINFO_SRSR				\
+	{						\
+		XOCL_SUBDEV_SRSR,			\
+		XOCL_SRSR,				\
+		XOCL_RES_SRSR,				\
+		ARRAY_SIZE(XOCL_RES_SRSR),		\
+		.level = XOCL_SUBDEV_LEVEL_URP,		\
 	}
 
 #define	XOCL_MAILBOX_OFFSET_MGMT	0x210000

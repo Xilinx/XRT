@@ -889,6 +889,31 @@ int xocl_subdev_online_by_id(xdev_handle_t xdev_hdl, uint32_t subdev_id)
 	return (ret && ret != -EAGAIN) ? ret : 0;
 }
 
+int xocl_subdev_online_by_id_and_inst(xdev_handle_t xdev_hdl, uint32_t subdev_id, uint32_t inst_id)
+{
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
+	int ret = 0;
+
+	if (subdev_id == INVALID_SUBDEVICE)
+		return -EINVAL;
+	if (inst_id >= XOCL_SUBDEV_MAX_INST)
+		return -EINVAL;
+
+	xocl_lock_xdev(xdev_hdl);
+
+	if (!core->subdevs[subdev_id][inst_id].pldev)
+		goto done;
+	ret = __xocl_subdev_online(xdev_hdl,
+			&core->subdevs[subdev_id][inst_id]);
+	if (ret && ret != -EAGAIN)
+		goto done;
+
+done:
+	xocl_unlock_xdev(xdev_hdl);
+
+	return (ret && ret != -EAGAIN) ? ret : 0;
+}
+
 int xocl_subdev_offline_by_level(xdev_handle_t xdev_hdl, int level)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;

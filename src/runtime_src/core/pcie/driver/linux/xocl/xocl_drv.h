@@ -1293,6 +1293,32 @@ struct xocl_mailbox_versal_funcs {
 	? MAILBOX_VERSAL_OPS(xdev)->get(MAILBOX_VERSAL_DEV(xdev), \
 	data) : -ENODEV)
 
+
+
+/* srsr callbacks */
+struct xocl_srsr_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	int (*save_calib)(struct platform_device *pdev);
+	int (*calib)(struct platform_device *pdev, bool retain);
+};
+#define	SRSR_DEV(xdev, idx)	SUBDEV_MULTI(xdev, XOCL_SUBDEV_SRSR, idx).pldev
+#define	SRSR_OPS(xdev, idx)							\
+	((struct xocl_srsr_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_SRSR, idx).ops)
+#define	SRSR_CB(xdev, idx)	\
+	(SRSR_DEV(xdev, idx) && SRSR_OPS(xdev, idx))
+#define	xocl_srsr_reset(xdev, idx)				\
+	(SRSR_CB(xdev, idx) ?						\
+	SRSR_OPS(xdev, idx)->reset(SRSR_DEV(xdev, idx)) : \
+	-ENODEV)
+#define	xocl_srsr_save_calib(xdev, idx)				\
+	(SRSR_CB(xdev, idx) ?						\
+	SRSR_OPS(xdev, idx)->save_calib(SRSR_DEV(xdev, idx)) : \
+	-ENODEV)
+#define	xocl_srsr_calib(xdev, idx, retain)				\
+	(SRSR_CB(xdev, idx) ?						\
+	SRSR_OPS(xdev, idx)->calib(SRSR_DEV(xdev, idx), retain) : \
+	-ENODEV)
+
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
 void xocl_init_dsa_priv(xdev_handle_t xdev_hdl);
@@ -1355,6 +1381,7 @@ int xocl_subdev_offline_by_id(xdev_handle_t xdev_hdl, u32 id);
 int xocl_subdev_offline_by_level(xdev_handle_t xdev_hdl, int level);
 int xocl_subdev_online_all(xdev_handle_t xdev_hdl);
 int xocl_subdev_online_by_id(xdev_handle_t xdev_hdl, u32 id);
+int xocl_subdev_online_by_id_and_inst(xdev_handle_t xdev_hdl, u32 id, u32 inst_id);
 int xocl_subdev_online_by_level(xdev_handle_t xdev_hdl, int level);
 void xocl_subdev_destroy_by_id(xdev_handle_t xdev_hdl, u32 id);
 void xocl_subdev_destroy_by_level(xdev_handle_t xdev_hdl, int level);
@@ -1560,5 +1587,8 @@ void xocl_fini_trace_s2mm(void);
 
 int __init xocl_init_mem_hbm(void);
 void xocl_fini_mem_hbm(void);
+
+int __init xocl_init_srsr(void);
+void xocl_fini_srsr(void);
 
 #endif
