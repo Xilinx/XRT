@@ -56,6 +56,6 @@ public:
   }
 };
 
-} // xrt
+} // xrt_core
 
 #endif
