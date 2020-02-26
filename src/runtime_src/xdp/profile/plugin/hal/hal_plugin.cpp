@@ -120,7 +120,7 @@ namespace xdp {
 
     devInterface->readDebugIPlayout();
     devInterface->startCounters();
-    devInterface->startTrace(0);
+    devInterface->startTrace(3);
   }
 
   void HALPlugin::setEncounteredDeviceHandle(void* handle)
