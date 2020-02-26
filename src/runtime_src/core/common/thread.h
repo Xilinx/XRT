@@ -14,12 +14,13 @@
  * under the License.
  */
 
-#ifndef xrt_util_thread_h_
-#define xrt_util_thread_h_
+#ifndef xrt_core_common_thread_h_
+#define xrt_core_common_thread_h_
 
+#include "config.h"
 #include <thread>
 
-namespace xrt { 
+namespace xrt_core { 
 
 namespace detail {
 
@@ -29,12 +30,14 @@ namespace detail {
  * 
  * This function is not for public use
  */
+XRT_CORE_COMMON_EXPORT
 void
 set_thread_policy(std::thread& thread);
 
 /**
  * Pin a thread to specified cpus per sdaccel.ini, or all if not specified
  */
+XRT_CORE_COMMON_EXPORT
 void
 set_cpu_affinity(std::thread& thread);
 
@@ -63,7 +66,7 @@ thread(Args&&... args)
 }
 
   
-} // xrt
+} // xrt_core
 
 
 #endif

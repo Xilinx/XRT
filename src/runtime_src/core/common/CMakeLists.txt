@@ -13,6 +13,7 @@ endif (NOT WIN32)
 
 file(GLOB XRT_CORECOMMON_LIB_FILES
   "config_reader.*"
+  "debug.cpp"
   "device.*"
   "message.*"
   "time.*"
@@ -20,8 +21,8 @@ file(GLOB XRT_CORECOMMON_LIB_FILES
   "sensor.*"
   "system.*"
   "utils.*"
+  "thread.cpp"
   "kernel.cpp"
-  "debug.cpp"
   )
 
 # Files to include in object list
@@ -38,6 +39,7 @@ set_target_properties(xrt_coreutil PROPERTIES VERSION ${XRT_VERSION_STRING}
 message("bfl=${Boost_FILESYSTEM_LIBRARY}")
 
 target_link_libraries(xrt_coreutil
+  pthread
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
   )
