@@ -13,6 +13,7 @@ endif (NOT WIN32)
 
 file(GLOB XRT_CORECOMMON_LIB_FILES
   "config_reader.*"
+  "debug.cpp"
   "device.*"
   "message.*"
   "time.*"
@@ -20,8 +21,8 @@ file(GLOB XRT_CORECOMMON_LIB_FILES
   "sensor.*"
   "system.*"
   "utils.*"
+  "thread.cpp"
   "kernel.cpp"
-  "debug.cpp"
   )
 
 # Files to include in object list
@@ -43,7 +44,7 @@ target_link_libraries(xrt_coreutil
   )
 
 if (NOT WIN32)
-target_link_libraries(xrt_coreutil uuid)
+target_link_libraries(xrt_coreutil uuid pthread)
 install(TARGETS xrt_coreutil
   LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
 else()
