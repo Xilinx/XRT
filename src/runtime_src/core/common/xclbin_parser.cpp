@@ -395,11 +395,12 @@ get_softkernels(const axlf* top)
 
       softkernel_object sko;
       sko.ninst = soft->m_num_instances;
-      sko.symbol_name = const_cast<char*>(begin + soft->mpo_symbol_name);
+      sko.symbol_name = std::string(begin + soft->mpo_symbol_name);
+      sko.mpo_name = std::string(begin + soft->mpo_name);
+      sko.mpo_version = std::string(begin + soft->mpo_version);
       sko.size = soft->m_image_size;
       sko.sk_buf = const_cast<char*>(begin + soft->m_image_offset);
-
-      sks.push_back(sko);
+      sks.emplace_back(std::move(sko));
   }
 
   return sks;
