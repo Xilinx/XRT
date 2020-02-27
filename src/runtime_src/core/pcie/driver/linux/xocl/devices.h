@@ -84,6 +84,7 @@ struct xocl_subdev_info {
 	int			dyn_ip;
 	const char		*override_name;
 	int			override_idx;
+	int 			dev_idx;
 };
 
 struct xocl_board_private {
