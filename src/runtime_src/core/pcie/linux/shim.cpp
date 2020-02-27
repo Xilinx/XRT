@@ -1744,6 +1744,24 @@ int shim::xclIPName2Index(const char *name, uint32_t& index)
     return 0;
 }
 
+/*
+ * xclStoreAppContext()
+ */
+int shim::xclStoreAppContext()
+{
+    int ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_STORE_APP_CONTEXT);
+    return ret;
+}
+
+/*
+ * xclDeleteAppContext()
+ */
+int shim::xclDeleteAppContext()
+{
+    int ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_DELETE_APP_CONTEXT);
+    return ret;
+}
+
 } // namespace xocl
 
 /*******************************/
@@ -2258,3 +2276,16 @@ int xclGetSubdevPath(xclDeviceHandle handle,  const char* subdev,
     return -1;
   return drv->xclGetSubdevPath(subdev, idx, path, size);
 }
+
+int xclStoreAppContext(xclDeviceHandle handle)
+{
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
+    return drv ? drv->xclStoreAppContext() : -ENODEV;
+}
+
+int xclDeleteAppContext(xclDeviceHandle handle)
+{
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
+    return drv ? drv->xclDeleteAppContext() : -ENODEV;
+}
+

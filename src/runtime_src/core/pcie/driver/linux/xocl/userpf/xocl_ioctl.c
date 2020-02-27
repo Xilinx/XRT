@@ -528,3 +528,29 @@ int xocl_free_cma_ioctl(struct drm_device *dev, void *data,
 
 	return 0;
 }
+
+extern struct xocl_drm_dev_info uapp_drm_context;
+
+int xocl_store_app_context_ioctl(struct drm_device *dev, void *data,
+        struct drm_file *filp)
+{
+	if(!uapp_drm_context.dev){
+		pr_info("%s: devp %p filp %p", __func__, dev, filp);
+		uapp_drm_context.dev = dev;
+		uapp_drm_context.file = filp;
+		return 0;
+	}
+	else{
+		pr_info("%s: Device context already in use.", __func__);
+		return -1;
+	}
+}
+
+int xocl_delete_app_context_ioctl(struct drm_device *dev, void *data,
+        struct drm_file *filp)
+{
+        pr_info("%s: devp %p filp %p", __func__, dev, filp);
+        uapp_drm_context.dev = NULL;
+        uapp_drm_context.file = NULL;
+        return 0;
+}

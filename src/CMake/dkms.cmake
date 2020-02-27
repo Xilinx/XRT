@@ -61,6 +61,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/userpf/xocl_ioctl.c
   xocl/userpf/xocl_sysfs.c
   xocl/userpf/xocl_drv.c
+  xocl/userpf/xocl_kernel_api.c
   xocl/userpf/xocl.dracut.conf
   xocl/userpf/10-xocl.rules
   xocl/userpf/Makefile
@@ -158,6 +159,7 @@ SET (XRT_DKMS_DRIVER_SRCS
 # includes relative to core/pcie/driver/linux
 SET (XRT_DKMS_DRIVER_INCLUDES
   include/xocl_ioctl.h
+  include/xocl_kernel_api.h
   include/mgmt-reg.h
   include/mgmt-ioctl.h
   include/qdma_ioctl.h

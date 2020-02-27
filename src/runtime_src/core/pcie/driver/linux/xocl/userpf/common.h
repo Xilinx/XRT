@@ -192,6 +192,11 @@ struct xocl_mm_wrapper {
   struct hlist_node node;
 };
 
+struct xocl_drm_dev_info {
+        struct drm_device *dev;
+        struct drm_file *file;
+};
+
 /* ioctl functions */
 int xocl_info_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
@@ -211,6 +216,10 @@ int xocl_alloc_cma_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 int xocl_free_cma_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
+int xocl_store_app_context_ioctl(struct drm_device *dev, void *data,
+        struct drm_file *filp);
+int xocl_delete_app_context_ioctl(struct drm_device *dev, void *data,
+        struct drm_file *filp);
 
 /* sysfs functions */
 int xocl_init_sysfs(struct xocl_dev *xdev);

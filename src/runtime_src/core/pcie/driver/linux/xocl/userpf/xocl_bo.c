@@ -151,6 +151,8 @@ static void xocl_free_bo(struct drm_gem_object *obj)
 		if (xocl_bo_userptr(xobj)) {
 			xocl_release_pages(xobj->pages, npages, 0);
 			drm_free_large(xobj->pages);
+		} else if (xobj->flags == XOCL_BO_KERNPTR) {
+			drm_free_large(xobj->pages);
 		} else if (xocl_bo_p2p(xobj) || xocl_bo_import(xobj)) {
 			drm_free_large(xobj->pages);
 		} else if (xocl_bo_cma(xobj)) {

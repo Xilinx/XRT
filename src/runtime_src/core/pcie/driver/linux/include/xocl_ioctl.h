@@ -157,6 +157,8 @@ enum drm_xocl_ops {
 	DRM_XOCL_ALLOC_CMA,
 	/* Free allocated CMA chunk through userpf*/
 	DRM_XOCL_FREE_CMA,
+	DRM_XOCL_STORE_APP_CONTEXT,
+	DRM_XOCL_DELETE_APP_CONTEXT,
 	DRM_XOCL_NUM_IOCTLS
 };
 
@@ -447,6 +449,8 @@ struct drm_xocl_execbuf {
 	uint32_t ctx_id;
 	uint32_t exec_bo_handle;
 	uint32_t deps[8];
+	uint64_t callback_fn;
+	uint64_t ctx_ptr;
 };
 
 /**
@@ -506,4 +510,6 @@ struct drm_xocl_free_cma_info {
 #define	DRM_IOCTL_XOCL_RECLOCK		XOCL_IOC_ARG(RECLOCK, reclock_info)
 #define	DRM_IOCTL_XOCL_ALLOC_CMA	XOCL_IOC_ARG(ALLOC_CMA, alloc_cma_info)
 #define	DRM_IOCTL_XOCL_FREE_CMA		XOCL_IOC_ARG(FREE_CMA, free_cma_info)
+#define	DRM_IOCTL_XOCL_STORE_APP_CONTEXT	XOCL_IOC(STORE_APP_CONTEXT)
+#define	DRM_IOCTL_XOCL_DELETE_APP_CONTEXT	XOCL_IOC(DELETE_APP_CONTEXT)
 #endif

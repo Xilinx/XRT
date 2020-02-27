@@ -41,6 +41,7 @@
 #define XOCL_BO_IMPORT		(XOCL_HOST_MEM | XOCL_DRM_IMPORT)
 #define XOCL_BO_EXECBUF		(XOCL_HOST_MEM | XOCL_DRV_ALLOC | XOCL_DRM_SHMEM)
 #define XOCL_BO_CMA		(XOCL_HOST_MEM | XOCL_CMA_MEM)
+#define XOCL_BO_KERNPTR	 	(XOCL_DEVICE_MEM | XOCL_HOST_MEM)
 
 #define XOCL_BO_DDR0 (1 << 0)
 #define XOCL_BO_DDR1 (1 << 1)
@@ -124,6 +125,9 @@ static inline unsigned xocl_bo_type(unsigned user_flags)
 		break;
 	case XCL_BO_FLAGS_HOST_ONLY:
 		bo_type = XOCL_BO_CMA;
+		break;
+	case XCL_BO_FLAGS_KERNPTR:
+		bo_type = XOCL_BO_KERNPTR;
 		break;
 	default:
 		bo_type = XOCL_BO_NORMAL;

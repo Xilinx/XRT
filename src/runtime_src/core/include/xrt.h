@@ -1215,6 +1215,21 @@ size_t
 xclDebugReadIPStatus(xclDeviceHandle handle, enum xclDebugReadType type,
                      void* debugResults);
 
+/**
+ * xclStoreAppContext() - Store application context
+ *
+ * @handle:        Device handle
+ */
+XCL_DRIVER_DLLESPEC int xclStoreAppContext(xclDeviceHandle handle);
+
+/**
+ * xclDeleteAppContext() - Delete application context
+ *
+ * @handle:        Device handle
+ */
+XCL_DRIVER_DLLESPEC int xclDeleteAppContext(xclDeviceHandle handle);
+
+
 #ifdef __cplusplus
 }
 #endif

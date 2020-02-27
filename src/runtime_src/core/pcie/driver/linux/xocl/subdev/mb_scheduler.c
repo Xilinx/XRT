@@ -1759,6 +1759,7 @@ struct exec_core {
 	// when the MSB is not set, or the PID of the process that exclusively
 	// reserved it when MSB is set.
 	unsigned int		   ip_reference[MAX_CUS];
+	struct workqueue_struct    *completion_wq;
 };
 
 /**
@@ -2222,6 +2223,8 @@ exec_create(struct platform_device *pdev, struct xocl_scheduler *xs)
 		exec->ert_cfg_priv = *(char *)XOCL_GET_SUBDEV_PRIV(&pdev->dev);
 
 	init_waitqueue_head(&exec->poll_wait_queue);
+	exec->completion_wq = alloc_workqueue("xsched-compltn", WQ_HIGHPRI | WQ_MEM_RECLAIM | WQ_UNBOUND, num_online_cpus());
+
 	exec->scheduler = xs;
 	exec->uid = count++;
 
@@ -2391,6 +2394,7 @@ exec_mark_cmd_state(struct exec_core *exec, struct xocl_cmd *xcmd, enum ert_cmd_
 		ert_release_slot(exec->ert, xcmd);
 
 	exec_notify_host(exec, xcmd);
+	queue_work(exec->completion_wq, &xcmd->bo->metadata.compltn_work);
 
 	// Deactivate command and trigger chain of waiting commands
 	cmd_mark_deactive(xcmd);
@@ -4187,6 +4191,17 @@ static int convert_execbuf(struct xocl_dev *xdev, struct drm_file *filp,
 	return 0;
 }
 
+void xocl_execbuf_completion (struct work_struct* work)
+{
+    struct drm_xocl_exec_metadata *xobj_metadata = container_of(work, 
+				struct drm_xocl_exec_metadata, compltn_work);
+    struct drm_xocl_bo *xobj = container_of(xobj_metadata, 
+				struct drm_xocl_bo, metadata);
+
+    if (xobj->metadata.execbuf_cb_fn)
+        xobj->metadata.execbuf_cb_fn((void *)xobj->metadata.execbuf_cb_data);
+}
+
 static int
 client_ioctl_execbuf(struct platform_device *pdev,
 		     struct client_ctx *client, void *data, struct drm_file *filp)
@@ -4252,6 +4267,13 @@ client_ioctl_execbuf(struct platform_device *pdev,
 		}
 		deps[numdeps] = xbo;
 	}
+
+	if (args->callback_fn) {
+		xobj->metadata.execbuf_cb_fn   = 
+				(xocl_execbuf_callback) args->callback_fn;
+		xobj->metadata.execbuf_cb_data = (void *) args->ctx_ptr;
+	}
+	INIT_WORK(&xobj->metadata.compltn_work, xocl_execbuf_completion);
 
 	/* Add exec buffer to scheduler (kds).	The scheduler manages the
 	 * drm object references acquired by xobj and deps.  It is vital
@@ -4711,6 +4733,7 @@ static int mb_scheduler_remove(struct platform_device *pdev)
 	SCHED_DEBUGF("-> %s\n", __func__);
 	exec_reset_cmds(exec);
 	fini_scheduler_thread(exec_scheduler(exec));
+	destroy_workqueue(exec->completion_wq);
 
 	for (i = 0; i < exec->intr_num; i++) {
 		xocl_user_interrupt_config(xdev, i + exec->intr_base, false);

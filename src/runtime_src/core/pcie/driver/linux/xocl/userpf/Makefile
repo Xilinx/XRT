@@ -49,6 +49,7 @@ xocl-y := \
 	xocl_bo.o	\
 	xocl_drm.o	\
 	xocl_ioctl.o	\
+	xocl_kernel_api.o	\
 	xocl_sysfs.o
 
 xocl-y += $(libfdt-y)

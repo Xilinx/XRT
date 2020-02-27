@@ -96,6 +96,8 @@ public:
     bool xclUnlockDevice();
     int xclReClock2(unsigned short region, const unsigned short *targetFreqMHz);
     int xclGetUsageInfo(xclDeviceUsage *info);
+    int xclStoreAppContext();
+    int xclDeleteAppContext();
 
     int xclTestXSpi(int device_index);
     int xclBootFPGA();
