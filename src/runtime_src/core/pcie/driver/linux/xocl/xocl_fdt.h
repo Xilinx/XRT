@@ -75,6 +75,7 @@
 #define NODE_GAPPING "ep_gapping_demand_00"
 #define NODE_UCS_CONTROL_STATUS "ep_ucs_control_status_00"
 #define NODE_P2P "ep_p2p_00"
+#define NODE_DDR4_RESET_GATE "ep_ddr4_reset_gate_00"
 
 #define RESNAME_GATEPRBLD       NODE_GATE_BLP
 #define RESNAME_MEMCALIB        NODE_DDR_CALIB
@@ -94,7 +95,7 @@
 #define RESNAME_ERT_FW_MEM	NODE_ERT_FW_MEM
 #define RESNAME_ERT_CQ_MGMT	NODE_ERT_CQ_MGMT
 #define RESNAME_ERT_RESET	NODE_ERT_RESET
-
+#define RESNAME_DDR4_RESET_GATE	NODE_DDR4_RESET_GATE
 /*
  * The iores subdev maintains global resources which can be shared to any
  * subdev. We keep a minimized scope of this shared public interface.
@@ -108,6 +109,7 @@ enum {
 	IORES_GAPPING,
 	IORES_CLKFREQ_K1_K2, /* static res config exposed to iores subdev */
 	IORES_CLKFREQ_HBM, /* static res config exposed to iores subdev */
+	IORES_DDR4_RESET_GATE,
 	IORES_MAX,
 };
 

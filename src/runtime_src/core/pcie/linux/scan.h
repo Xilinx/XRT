@@ -106,6 +106,8 @@ public:
         std::string& err_msg, const std::string& input);
     void sysfs_put(const std::string& subdev, const std::string& entry,
         std::string& err_msg, const std::vector<char>& buf);
+    void sysfs_put(const std::string& subdev, const std::string& entry,
+        std::string& err_msg, const unsigned int& buf);
     std::string get_sysfs_path(const std::string& subdev,
         const std::string& entry);
     std::string get_subdev_path(const std::string& subdev, uint32_t idx);

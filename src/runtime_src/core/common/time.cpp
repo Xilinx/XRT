@@ -71,4 +71,4 @@ timestamp()
     : "Time conversion failed";
 }
 
-} // xrt
+} // xrt_core
