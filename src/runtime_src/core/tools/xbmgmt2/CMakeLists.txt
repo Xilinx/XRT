@@ -49,8 +49,10 @@ set(XBMGMT_V2_SRCS ${XBMGMT_V2_FILES_SRCS})
 # Determine the name of the executable
 if(WIN32)
 set(XBMGMT2_NAME "xbmgmt")     # Yes, on windows the file name will be xbmgmt
+set(${SUPPORTS_NIFD} FALSE)
 else()
   set(XBMGMT2_NAME "xbmgmt2")
+  set(${SUPPORTS_NIFD} TRUE)
 endif()
 
 add_executable(${XBMGMT2_NAME} ${XBMGMT_V2_SRCS})

@@ -944,4 +944,14 @@ close(int dev_handle) const
 {
 }
 
+/*
+ * nifd isn't available on windows. Adding this stub for compilation purposes
+ */
+int 
+device_windows::
+ioctl(int dev_handle, unsigned long cmd, void *arg) const
+{
+  return 0;
+}
+
 } // xrt_core

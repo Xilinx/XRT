@@ -76,7 +76,9 @@ SubCmdAdvanced::execute(const SubCmdOptions& _options) const
   SubOptionOptions subOptionOptions;
   subOptionOptions.emplace_back(std::make_shared<OO_Clock>("clock"));
   subOptionOptions.emplace_back(std::make_shared<OO_Config>("config"));
+#if(SUPPORTS_NIFD)
   subOptionOptions.emplace_back(std::make_shared<OO_NIFD>("nifd"));
+#endif
 
   for (auto & subOO : subOptionOptions) {
     allDesc.add_options()(subOO->longName().c_str(), subOO->description().c_str());
