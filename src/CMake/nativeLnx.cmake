@@ -69,10 +69,6 @@ if ((${LINUX_FLAVOR} STREQUAL Ubuntu) AND (${LINUX_VERSION} VERSION_GREATER 17.1
    set(Boost_USE_STATIC_LIBS  ON)
 endif()
 
-if (${LINUX_FLAVOR} STREQUAL pynqlinux)
-   set(Boost_USE_STATIC_LIBS  ON)
-endif()
-
 find_package(Boost REQUIRED COMPONENTS system filesystem )
 
 # -- Cursers ---
