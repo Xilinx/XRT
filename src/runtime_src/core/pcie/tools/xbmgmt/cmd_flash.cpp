@@ -166,7 +166,7 @@ static int updateSC(unsigned index, const char *file)
         return writeSCImage(flasher, file);
     }
 
-    ret = mgmt_dev->shutdown(true);
+    ret = mgmt_dev->shutdown();
     if (ret) {
         std::cout << "Only proceed with SC update if all user applications for the target card(s) are stopped." << std::endl;
         return ret;
@@ -176,9 +176,10 @@ static int updateSC(unsigned index, const char *file)
 
     auto dev = mgmt_dev->lookup_peer_dev();
 
-    mgmt_dev->sysfs_put("", "dparent/rescan", errmsg, "1\n");
+    dev->sysfs_put("", "shutdown", errmsg, "0\n");
     if (!errmsg.empty()) {
-        std::cout << "ERROR: " << errmsg << std::endl;
+        std::cout << "ERROR: online userpf failed. Please warm reboot." << std::endl;
+	return ret;
     }
 
     int wait = 0;
@@ -191,7 +192,7 @@ static int updateSC(unsigned index, const char *file)
         sleep(1);
     } while (++wait < DEV_TIMEOUT);
     if (wait == DEV_TIMEOUT) {
-        std::cout << "ERROR: user function does not back online" << std::endl;
+        std::cout << "ERROR: user function does not back online. Please warm reboot." << std::endl;
     }
 
     return ret;
