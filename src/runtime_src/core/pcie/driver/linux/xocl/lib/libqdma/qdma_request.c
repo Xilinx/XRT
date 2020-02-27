@@ -337,21 +337,25 @@ void qdma_request_cancel_done(struct qdma_descq *descq,
 }
 
 int qdma_request_cancel(unsigned long dev_hndl, unsigned long qhndl,
-			struct qdma_request *req)
+			struct qdma_request *req, unsigned int count)
 {
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
 	struct qdma_descq *descq =
 		qdma_device_get_descq_by_id(xdev, qhndl, NULL, 0, 1);
-	struct qdma_sgt_req_cb *cb = qdma_req_cb_get(req);
-
-	pr_info("%s, %s, cancel req 0x%p.\n",
-		xdev->conf.name, descq->conf.name, req);
-
-        qdma_request_dump(descq->conf.name, req, 1);
+	int i;
 
 	lock_descq(descq);
-	cb->cancel = 1;
-	descq->cancel_cnt++;
+	for (i = 0; i < count; i++, req++) {
+		struct qdma_sgt_req_cb *cb = qdma_req_cb_get(req);
+
+		pr_info("%s, %s, cancel req 0x%p, 0x%x.\n",
+			xdev->conf.name, descq->conf.name, req, req->count);
+
+        	//qdma_request_dump(descq->conf.name, req, 1);
+
+		cb->cancel = 1;
+		descq->cancel_cnt++;
+	}
 	unlock_descq(descq);
 
 	schedule_work(&descq->work);
