@@ -30,8 +30,21 @@
 namespace {
 
 // Singleton registers with base class xrt_core::system
-// during static global initialization
-static xrt_core::system_linux singleton;
+// during static global initialization.  If statically
+// linking with libxrt_core, then explicit initialiation
+// is required
+static xrt_core::system_linux*
+singleton_instance()
+{
+  static xrt_core::system_linux singleton;
+  return &singleton;
+}
+
+// Dynamic linking automatically constructs the singleton
+struct X
+{
+  X() { singleton_instance(); }
+} x;
 
 static std::string
 driver_version(const std::string& driver)
@@ -48,19 +61,9 @@ driver_version(const std::string& driver)
   return line;
 }
 
-static std::vector<std::weak_ptr<xrt_core::device_linux>> mgmtpf_devices(16); // fix size
-static std::vector<std::weak_ptr<xrt_core::device_linux>> userpf_devices(16); // fix size
-
 }
 
 namespace xrt_core {
-
-system*  
-system_child_ctor()
-{
-  static system_linux sl;
-  return &sl;
-}
 
 void 
 system_linux::
@@ -111,13 +114,35 @@ std::shared_ptr<device>
 system_linux::
 get_userpf_device(device::id_type id) const
 {
-  return nullptr;
+  // deliberately not using std::make_shared (used with weak_ptr)
+  return std::shared_ptr<device_linux>(new device_linux(id,true));
 }
+
+std::shared_ptr<device>
+system_linux::
+get_userpf_device(device::handle_type handle, device::id_type id) const
+{
+  // deliberately not using std::make_shared (used with weak_ptr)
+  return std::shared_ptr<device_linux>(new device_linux(handle, id));
+}  
 
 std::shared_ptr<device>
 system_linux::
 get_mgmtpf_device(device::id_type id) const
 {
-  return nullptr;
+  // deliberately not using std::make_shared (used with weak_ptr)
+  return std::shared_ptr<device_linux>(new device_linux(id,false));
 }
+
+namespace edge_linux {
+
+std::shared_ptr<device>
+get_userpf_device(device::handle_type device_handle, device::id_type id)
+{
+  singleton_instance(); // force loading if necessary
+  return xrt_core::get_userpf_device(device_handle, id);
+}
+
+} // edge_linux
+
 } // xrt_core

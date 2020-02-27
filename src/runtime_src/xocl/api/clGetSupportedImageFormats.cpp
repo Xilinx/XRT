@@ -21,6 +21,7 @@
 #include "detail/context.h"
 
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 #include <CL/opencl.h>
 
 namespace xocl {
@@ -99,6 +100,7 @@ clGetSupportedImageFormats(cl_context           context,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clGetSupportedImageFormats
       (context,flags,image_type,num_entries,image_formats,num_image_formats);
   }

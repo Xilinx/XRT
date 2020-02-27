@@ -19,15 +19,7 @@ enum class PowerProfileStatus {
     STOPPED
 };
 
-struct PowerStat {
-    double timestamp;
-    int aux_curr;
-    int aux_vol;
-    int pex_curr;
-    int pex_vol;
-    int vccint_curr;
-    int vccint_vol;
-};
+typedef std::pair<double, std::vector<int>> PowerStat;
 
 class OclPowerProfile {
 public:

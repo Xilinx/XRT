@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -13,28 +13,28 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+#define XRT_CORE_COMMON_SOURCE
+#include "debug.h"
+#include <cstdarg>
+#include <cstdio>
 
-#ifndef VP_SUMMARY_WRITER_DOT_H
-#define VP_SUMMARY_WRITER_DOT_H
+namespace xrt_core {
 
-#include "xdp/profile/writer/vp_writer.h"
+static std::recursive_mutex s_debug_mutex;
 
-#include "xdp/config.h"
+debug_lock::debug_lock()
+  : m_lk(s_debug_mutex)
+{}
 
-namespace xdp {
-
-  class VPSummaryWriter : public VPWriter
-  {
-  private:
-    VPSummaryWriter() = delete ;
-
-  protected:
-    XDP_EXPORT virtual void switchFiles() ;
-  public:
-    XDP_EXPORT VPSummaryWriter(const char* filename) ;
-    XDP_EXPORT ~VPSummaryWriter() ;
-  } ;
-  
+void
+debugf(const char* format,...)
+{
+  debug_lock lk;
+  va_list args;
+  va_start(args,format);
+  printf("%lu: ",time_ns());
+  vprintf(format,args);
+  va_end(args);
 }
 
-#endif
+} // xrt_core

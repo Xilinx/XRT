@@ -17,20 +17,22 @@
 #ifndef SYSTEM_EDGE_H
 #define SYSTEM_EDGE_H
 
-#include "common/system.h"
-#include "common/device.h"
-#include "boost/format.hpp"
+#include "core/common/system.h"
+#include "core/common/device.h"
 
 namespace xrt_core {
 
+/**
+ * class system_edge - base class for system classes under edge
+ *
+ * All shim level libraries define a specific system and device class.
+ * Share system code goes in this class.
+ */  
 class system_edge : public system
 {
 public:
   void
   get_devices(boost::property_tree::ptree& pt) const;
-
-  uint16_t
-  bdf2index(const std::string& bdfStr) const;
 };
 
 } // xrt_core

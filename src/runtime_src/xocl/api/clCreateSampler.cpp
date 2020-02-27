@@ -18,6 +18,7 @@
 #include "xocl/config.h"
 #include "xocl/core/object.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 #include <CL/opencl.h>
 
 namespace xocl {
@@ -60,6 +61,7 @@ clCreateSampler(cl_context           context ,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clCreateSampler
       (context,normalized_coords,addressing_mode,filter_mode,errcode_ret);
   }

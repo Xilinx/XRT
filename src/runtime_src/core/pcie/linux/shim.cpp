@@ -20,6 +20,7 @@
  */
 #include "shim.h"
 #include "scan.h"
+#include "system_linux.h"
 #include "core/common/message.h"
 #include "core/common/xclbin_parser.h"
 #include "core/common/scheduler.h"
@@ -79,6 +80,7 @@
 #define MAX_TRACE_NUMBER_SAMPLES                        16384
 #define XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH            64
 
+namespace {
 
 inline bool
 is_multiprocess_mode()
@@ -116,6 +118,7 @@ inline int io_getevents(aio_context_t ctx, long min_nr, long max_nr,
   return syscall(__NR_io_getevents, ctx, min_nr, max_nr, events, timeout);
 }
 
+} // namespace
 
 namespace xocl {
 
@@ -123,19 +126,20 @@ namespace xocl {
  * shim()
  */
 shim::shim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity)
-  : mVerbosity(verbosity),
-    mUserHandle(-1),
-    mStreamHandle(-1),
-    mBoardNumber(index),
-    mLocked(false),
-    mLogfileName(nullptr),
-    mOffsets{0x0, 0x0, OCL_CTLR_BASE, 0x0, 0x0},
-    mMemoryProfilingNumberSlots(0),
-    mAccelProfilingNumberSlots(0),
-    mStallProfilingNumberSlots(0),
-    mStreamProfilingNumberSlots(0),
-    mCmdBOCache(nullptr),
-    mCuMaps(128, nullptr)
+  : mCoreDevice(xrt_core::pcie_linux::get_userpf_device(this, index))
+  , mVerbosity(verbosity)
+  , mUserHandle(-1)
+  , mStreamHandle(-1)
+  , mBoardNumber(index)
+  , mLocked(false)
+  , mLogfileName(nullptr)
+  , mOffsets{0x0, 0x0, OCL_CTLR_BASE, 0x0, 0x0}
+  , mMemoryProfilingNumberSlots(0)
+  , mAccelProfilingNumberSlots(0)
+  , mStallProfilingNumberSlots(0)
+  , mStreamProfilingNumberSlots(0)
+  , mCmdBOCache(nullptr)
+  , mCuMaps(128, nullptr)
 {
     init(index, logfileName, verbosity);
 }
@@ -242,6 +246,10 @@ void shim::init(unsigned index, const char *logfileName,
 shim::~shim()
 {
     xrt_logmsg(XRT_INFO, "%s", __func__);
+
+    // The BO cache unmaps and releases all execbo, but this must
+    // be done before the device is closed.
+    mCmdBOCache.reset(nullptr);
 
     dev_fini();
 
@@ -1494,6 +1502,23 @@ int shim::xclGetDebugIPlayoutPath(char* layoutPath, size_t size)
   return xclGetSysfsPath("icap", "debug_ip_layout", layoutPath, size);
 }
 
+
+int shim::xclGetSubdevPath(const char* subdev, uint32_t idx, char* path, size_t size)
+{
+    auto dev = pcidev::get_dev(mBoardNumber);
+    std::string subdev_str = std::string(subdev);
+
+    if (mLogStream.is_open()) {
+      mLogStream << "Retrieving [devfs root]";
+      mLogStream << subdev_str << "/" << idx;
+      mLogStream << std::endl;
+    }
+    std::string sysfsFullPath = dev->get_subdev_path(subdev_str, idx);
+    strncpy(path, sysfsFullPath.c_str(), size);
+    path[size - 1] = '\0';
+    return 0;
+}
+
 int shim::xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
 {
   uint32_t bytesPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 8);
@@ -2223,4 +2248,13 @@ int xclOpenIPInterruptNotify(xclDeviceHandle handle, uint32_t ipIndex, int flags
 int xclCloseIPInterruptNotify(xclDeviceHandle handle, int fd)
 {
     return -ENOSYS;
+}
+
+int xclGetSubdevPath(xclDeviceHandle handle,  const char* subdev,
+                        uint32_t idx, char* path, size_t size)
+{
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
+  if (!drv)
+    return -1;
+  return drv->xclGetSubdevPath(subdev, idx, path, size);
 }

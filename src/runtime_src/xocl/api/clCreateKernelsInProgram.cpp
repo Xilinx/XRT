@@ -23,6 +23,7 @@
 #include "detail/program.h"
 #include "api.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 #include <CL/opencl.h>
 
 namespace xocl {
@@ -82,6 +83,7 @@ clCreateKernelsInProgram(cl_program      program ,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clCreateKernelsInProgram
       (program,num_kernels,kernels,num_kernels_ret);
   }

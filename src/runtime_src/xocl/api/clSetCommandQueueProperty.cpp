@@ -26,6 +26,7 @@
 
 #include "api.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 #include <CL/opencl.h>
 
@@ -91,6 +92,7 @@ clSetCommandQueueProperty(cl_command_queue command_queue,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clSetCommandQueueProperty
       (command_queue,properties,enable,old_properties);
   }

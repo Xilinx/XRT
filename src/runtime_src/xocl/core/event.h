@@ -59,6 +59,7 @@ public:
   using action_enqueue_type = std::function<void (event*)>;
   using action_profile_type = std::function<void (event*, cl_int, const std::string&)>;
   using action_debug_type = std::function<void (event*)>;
+  using action_lop_type = std::function<void (event*, int)>;
 
   event(command_queue* cq, context* ctx, cl_command_type cmd);
   event(command_queue* cq, context* ctx, cl_command_type cmd, cl_uint num_deps, const cl_event* deps);
@@ -137,6 +138,13 @@ public:
       m_profile_action = std::move(action);
   }
 
+  void
+  set_lop_action(event::action_lop_type&& action)
+  {
+    if (xrt::config::get_lop_profile())
+      m_lop_action = std::move(action);
+  }
+
   /**
    * Trigger the profiling action
    *
@@ -151,6 +159,14 @@ public:
     if (m_profile_action)
       m_profile_action(this,status,cuname);
   }
+
+  void
+  trigger_lop_action(cl_int status)
+  {
+    if (m_lop_action)
+      m_lop_action(this, status);
+  }
+
   /**
    * This is valid only with event_with_debugging
    */
@@ -506,6 +522,7 @@ private:
   // move to event_with_profiling when logging of
   // profile data is controlled by command queue
   action_profile_type m_profile_action;
+  action_lop_type m_lop_action;
 
   // execution context, probably should create some derived class
   std::unique_ptr<execution_context> m_execution_context;

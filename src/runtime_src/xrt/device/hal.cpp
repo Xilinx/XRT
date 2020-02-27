@@ -312,5 +312,4 @@ void load_xdp_app_debug()
   // 'magic static' is thread safe per C++11
   static xdp_app_debug_once_loader xdp_app_debug_loaded;
 }
-
 }} // hal,xcl

@@ -20,31 +20,35 @@
 #include <utility>
 #include <type_traits>
 
-namespace xrt_core { 
+namespace xrt_core {
 
 /**
  * class scope_guard - RAII for fundamental types that need to be 
  * terminated / cleaned-up at scope exit
  */
-template <typename ValueType, typename ExitFunction>
+template <typename ExitFunction>
 class scope_guard
+{
+  ExitFunction exfcn;
+public:
+  scope_guard(ExitFunction&& exf)
+    : exfcn(std::move(exf))
+  {}
+  ~scope_guard()
+  {
+    exfcn();
+  }
+};
+
+template <typename ValueType, typename ExitFunction>
+class scope_value_guard : public scope_guard<ExitFunction>
 {
   static_assert(std::is_fundamental<ValueType>::value,"Invalid ValueType");
   ValueType value;
-  ExitFunction exfcn;
 public:
-  scope_guard(ValueType v, ExitFunction&& exf)
-    : value(v), exfcn(std::move(exf))
+  scope_value_guard(ValueType v, ExitFunction&& exf)
+    : scope_guard<ExitFunction>(std::forward<ExitFunction>(exf)), value(v)
   {}
-
-  ~scope_guard()
-  {
-    try {
-      exfcn(value);
-    }
-    catch (...) {
-    }
-  }
 
   ValueType
   get() const

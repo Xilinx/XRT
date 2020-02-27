@@ -31,25 +31,31 @@ namespace xrt_core {
 struct ishim
 {
   virtual void
-  open_context(xuid_t xclbin , unsigned int ip_index, bool shared) = 0;
+  open_context(xuid_t xclbin_uuid, unsigned int ip_index, bool shared) = 0;
 
   virtual void
-  close_context(xuid_t xclbin, unsigned int ip_index) = 0;
+  close_context(xuid_t xclbin_uuid, unsigned int ip_index) = 0;
 
   virtual xclBufferHandle
   alloc_bo(size_t size, unsigned int flags) = 0;
 
   virtual void
-  free_bo(xclBufferHandle bohdl) = 0;
+  free_bo(xclBufferHandle boh) = 0;
 
   virtual void*
-  map_bo(xclBufferHandle boHandle, bool write) = 0;
+  map_bo(xclBufferHandle boh, bool write) = 0;
 
   virtual void
-  unmap_bo(xclBufferHandle boHandle, void* addr) = 0;
+  unmap_bo(xclBufferHandle boh, void* addr) = 0;
 
   virtual void
-  get_bo_properties(xclBufferHandle boHandle, struct xclBOProperties *properties) = 0;
+  get_bo_properties(xclBufferHandle boh, struct xclBOProperties *properties) = 0;
+
+  virtual void
+  exec_buf(xclBufferHandle boh) = 0;
+
+  virtual int
+  exec_wait(int timeout_ms) = 0;
 };
 
 template <typename DeviceType>
@@ -61,16 +67,16 @@ struct shim : public DeviceType
   {}
 
   virtual void
-  open_context(xuid_t xclbin , unsigned int ip_index, bool shared)
+  open_context(xuid_t xclbin_uuid , unsigned int ip_index, bool shared)
   {
-    if (auto ret = xclOpenContext(DeviceType::get_device_handle(), xclbin, ip_index, shared))
+    if (auto ret = xclOpenContext(DeviceType::get_device_handle(), xclbin_uuid, ip_index, shared))
       throw error(ret, "failed to open ip context");
   }
 
   virtual void
-  close_context(xuid_t xclbin, unsigned int ip_index)
+  close_context(xuid_t xclbin_uuid, unsigned int ip_index)
   {
-    if (auto ret = xclCloseContext(DeviceType::get_device_handle(), xclbin, ip_index))
+    if (auto ret = xclCloseContext(DeviceType::get_device_handle(), xclbin_uuid, ip_index))
       throw error(ret, "failed to close ip context");
   }
 
@@ -108,6 +114,19 @@ struct shim : public DeviceType
   {
     if (auto ret = xclGetBOProperties(DeviceType::get_device_handle(), bo, properties))
       throw error(ret, "failed to get BO properties");
+  }
+
+  virtual void
+  exec_buf(xclBufferHandle bo)
+  {
+    if (auto ret = xclExecBuf(DeviceType::get_device_handle(), bo))
+      throw error(ret, "failed to launch execution buffer");
+  }
+
+  virtual int
+  exec_wait(int timeout_ms)
+  {
+    return xclExecWait(DeviceType::get_device_handle(), timeout_ms);
   }
 };
 

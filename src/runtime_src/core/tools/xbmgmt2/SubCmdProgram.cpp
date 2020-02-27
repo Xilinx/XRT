@@ -27,13 +27,15 @@ namespace XBU = XBUtilities;
 #include "core/common/error.h"
 #include "core/common/query_requests.h"
 #include "core/common/message.h"
+#include "core/common/utils.h"
 #include "flash/flasher.h"
 
 // 3rd Party Library - Include Files
-#include "boost/format.hpp"
-#include "boost/tokenizer.hpp"
-#include "boost/filesystem.hpp"
-#include "boost/program_options.hpp"
+#include <boost/format.hpp>
+#include <boost/tokenizer.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/program_options.hpp>
+#include <boost/algorithm/string.hpp>
 namespace po = boost::program_options;
 
 // System - Include Files
@@ -42,6 +44,7 @@ namespace po = boost::program_options;
 #include <thread>
 #include <chrono>
 #include <ctime>
+#include <locale>
 
 #ifdef _WIN32
 #pragma warning(disable : 4996) //std::asctime
@@ -289,12 +292,17 @@ selectShell(uint16_t idx, const std::string& dsa, const std::string& id)
 static bool 
 canProceed()
 {
-  std::string input;
   bool proceed = false;
+  std::string input;
 
   std::cout << "Are you sure you wish to proceed? [Y/n]: ";
   std::getline( std::cin, input );
-  std::transform( input.begin(), input.end(), input.begin(), ::tolower );
+
+  // Ugh, the std::transform() produces windows compiler warnings due to 
+  // conversions from 'int' to 'char' in the algorithm header file
+  boost::algorithm::to_lower(input);
+  //std::transform( input.begin(), input.end(), input.begin(), [](unsigned char c){ return std::tolower(c); });
+  //std::transform( input.begin(), input.end(), input.begin(), ::tolower);
 
   // proceeds for "y", "Y" and no input
   proceed = ((input.compare("y") == 0) || input.empty());
@@ -545,8 +553,8 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   }
 
   // -- Now process the subcommand --------------------------------------------
-  XBU::verbose(XBU::format("  Card: %s", device));
-  XBU::verbose(XBU::format("  Update: %s", update));
+  XBU::verbose(boost::str(boost::format("  Card: %s") % device));
+  XBU::verbose(boost::str(boost::format("  Update: %s") % update));
   // Is valid BDF value valid
 
   if (test_mode) {
@@ -594,7 +602,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     tokenizer tokens(device, sep);
     
     for (auto tok_iter = tokens.begin(); tok_iter != tokens.end(); ++tok_iter) {
-    	uint16_t idx = xrt_core::bdf2index(*tok_iter);
+      uint16_t idx = xrt_core::utils::bdf2index(*tok_iter);
       device_indices.push_back(idx);
     }
   } else {

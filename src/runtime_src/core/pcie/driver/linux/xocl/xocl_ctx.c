@@ -60,7 +60,7 @@ failed:
 	return NULL;
 }
 
-void xocl_drvinst_free(void *data)
+void xocl_drvinst_release(void *data, void **hdl)
 {
 	struct xocl_drvinst	*drvinstp;
 	struct xocl_drvinst_proc *proc, *temp;
@@ -103,7 +103,10 @@ void xocl_drvinst_free(void *data)
 		}
 	}
 
-	kfree(drvinstp);
+	if (hdl)
+		*hdl = drvinstp;
+	else
+		kfree(drvinstp);
 }
 
 int xocl_drvinst_kill_proc(void *data)

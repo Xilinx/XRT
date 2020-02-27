@@ -24,6 +24,7 @@
 
 #include "plugin/xdp/profile.h"
 #include "plugin/xdp/appdebug.h"
+#include "plugin/xdp/lop.h"
 
 #include <CL/opencl.h>
 #include <vector>
@@ -86,6 +87,7 @@ clEnqueueMarker(cl_command_queue command_queue,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
+    LOP_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
     return xocl::clEnqueueMarker
       (command_queue,event_parameter);
   }

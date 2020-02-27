@@ -193,19 +193,14 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
             return false;
         }
         std::string xclbin = std::string(devXclbins[i].xclbin_name);
-        char *buffer = xma_xclbin_file_open(xclbin.c_str());
-        if (!buffer)
-        {
-            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not open xclbin file %s\n",
-                       xclbin.c_str());
-            return false;
-        }
+        std::vector<char> xclbin_buffer = xma_xclbin_file_open(xclbin);
+        char *buffer = xclbin_buffer.data();
+
         int32_t rc = xma_xclbin_info_get(buffer, &info);
         if (rc != XMA_SUCCESS)
         {
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not get info for xclbin file %s\n",
                        xclbin.c_str());
-            free(buffer);
             return false;
         }
 
@@ -217,7 +212,6 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
         dev_tmp1.handle = xclOpen(dev_index, NULL, XCL_QUIET);
         if (dev_tmp1.handle == NULL){
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Unable to open device  id: %d\n", dev_index);
-            free(buffer);
             return false;
         }
         dev_tmp1.dev_index = dev_index;
@@ -227,14 +221,12 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
         if (rc != 0)
         {
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "xclGetDeviceInfo2 failed for device id: %d, rc=%d\n", dev_index, rc);
-            free(buffer);
             return false;
         }
 
         /* Always attempt download xclbin */
         rc = load_xclbin_to_device(dev_tmp1.handle, buffer);
         if (rc != 0) {
-            free(buffer);
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not download xclbin file %s to device %d\n",
                         xclbin.c_str(), dev_index);
             return false;
@@ -243,14 +235,12 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
         dev_tmp1.number_of_cus = info.number_of_kernels;
         dev_tmp1.number_of_mem_banks = info.number_of_mem_banks;
         if (dev_tmp1.number_of_cus > MAX_XILINX_KERNELS + MAX_XILINX_SOFT_KERNELS) {
-            free(buffer);
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not download xclbin file %s to device %d\n",
                         xclbin.c_str(), dev_index);
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA & XRT supports max of %d CUs but xclbin has %d number of CUs\n", MAX_XILINX_KERNELS + MAX_XILINX_SOFT_KERNELS, dev_tmp1.number_of_cus);
             return false;
         }
         if (dev_tmp1.number_of_mem_banks > MAX_DDR_MAP) {
-            free(buffer);
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA supports max of only %d mem banks\n", MAX_DDR_MAP);
             return false;
         }
@@ -331,7 +321,6 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
                 /* Not to open context on all CUs
                 Will open during session_create
                 if (xclOpenContext(dev_tmp1.handle, info.uuid, d, true) != 0) {
-                    free(buffer);
                     xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Failed to open context to this CU\n");
                     return false;
                 }
@@ -388,40 +377,6 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
 
             cu_mask = cu_mask << 1;
         }
-        /*
-        int32_t num_execbo = 0;
-        if (dev_tmp1.number_of_cus > MIN_EXECBO_POOL_SIZE) {
-            num_execbo = dev_tmp1.number_of_cus;
-        } else {
-            num_execbo = MIN_EXECBO_POOL_SIZE;
-        }
-        dev_tmp1.kernel_execbos.reserve(num_execbo);
-        dev_tmp1.num_execbo_allocated = num_execbo;
-        for (int32_t d = 0; d < num_execbo; d++) {
-            uint32_t  bo_handle;
-            int       execBO_size = MAX_EXECBO_BUFF_SIZE;
-            //uint32_t  execBO_flags = (1<<31);
-            char     *bo_data;
-            bo_handle = xclAllocBO(dev_tmp1.handle, 
-                                    execBO_size, 
-                                    0, 
-                                    XCL_BO_FLAGS_EXECBUF);
-            if (!bo_handle || bo_handle == mNullBO) 
-            {
-                free(buffer);
-                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Unable to create bo for cu start\n");
-                return false;
-            }
-            bo_data = (char*)xclMapBO(dev_tmp1.handle, bo_handle, true);
-            memset((void*)bo_data, 0x0, execBO_size);
-
-            dev_tmp1.kernel_execbos.emplace_back(XmaHwExecBO{});
-            XmaHwExecBO& dev_execbo = dev_tmp1.kernel_execbos.back();
-            dev_execbo.handle = bo_handle;
-            dev_execbo.data = bo_data;
-        }
-        */
-        free(buffer);
 
         //Opening virtual CU context as some applications may use soft kernels only
         if (xclOpenContext(dev_tmp1.handle, info.uuid, -1, true) != 0) {

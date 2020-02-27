@@ -110,6 +110,18 @@ std::string pcidev::pci_device::get_sysfs_path(const std::string& subdev,
     return path;
 }
 
+std::string pcidev::pci_device::get_subdev_path(const std::string& subdev,
+    uint idx)
+{
+    std::string path("/dev/xfpga/");
+
+    path += subdev;
+    path += is_mgmt ? ".m" : ".u";
+    path += std::to_string((domain<<16) + (bus<<8) + (dev<<3) + func);
+    path += "." + std::to_string(idx);
+    return path;
+}
+
 static std::fstream sysfs_open_path(const std::string& path, std::string& err,
     bool write, bool binary)
 {
@@ -176,6 +188,23 @@ void pcidev::pci_device::sysfs_put(
         return;
 
     fs.write(buf.data(), buf.size());
+    fs.flush();
+    if (!fs.good()) {
+        std::stringstream ss;
+        ss << "Failed to write " << get_sysfs_path(subdev, entry) << ": "
+            << strerror(errno) << std::endl;
+        err_msg = ss.str();
+    }
+}
+
+void pcidev::pci_device::sysfs_put(
+    const std::string& subdev, const std::string& entry,
+    std::string& err_msg, const unsigned int& input)
+{
+    std::fstream fs = sysfs_open(subdev, entry, err_msg, true, false);
+    if (!err_msg.empty())
+        return;
+    fs << input;
     fs.flush();
     if (!fs.good()) {
         std::stringstream ss;
@@ -271,7 +300,7 @@ static bool is_admin()
     return (getuid() == 0) || (geteuid() == 0);
 }
 
-int pcidev::pci_device::open(const std::string& subdev, int flag)
+int pcidev::pci_device::open(const std::string& subdev, uint32_t idx, int flag)
 {
     if (is_mgmt && !::is_admin())
         throw std::runtime_error("Root privileges required");
@@ -286,7 +315,13 @@ int pcidev::pci_device::open(const std::string& subdev, int flag)
     file += subdev;
     file += is_mgmt ? ".m" : ".u";
     file += std::to_string((domain<<16) + (bus<<8) + (dev<<3) + func);
+    file += "." + std::to_string(idx);
     return ::open(file.c_str(), flag);
+}
+
+int pcidev::pci_device::open(const std::string& subdev, int flag)
+{
+    return open(subdev, 0, flag);
 }
 
 static size_t bar_size(const std::string &dir, unsigned bar)

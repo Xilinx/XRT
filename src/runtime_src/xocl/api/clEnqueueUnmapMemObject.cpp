@@ -26,6 +26,7 @@
 #include "enqueue.h"
 #include "plugin/xdp/appdebug.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 #include <CL/opencl.h>
 
@@ -109,6 +110,7 @@ clEnqueueUnmapMemObject(cl_command_queue  command_queue,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
+    LOP_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
     return xocl::clEnqueueUnmapMemObject
       (command_queue,memobj,mapped_ptr,num_events_in_wait_list,event_wait_list,event_parameter);
   }

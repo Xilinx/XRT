@@ -18,6 +18,7 @@
 #include "xocl/config.h"
 #include "xocl/core/error.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 #include <CL/opencl.h>
 
 namespace xocl {
@@ -58,6 +59,7 @@ clSetPrintfCallback(cl_context           context ,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clSetPrintfCallback(context,pfn_notify,user_data);
   }
   catch (const xocl::error& ex) {

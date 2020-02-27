@@ -28,69 +28,36 @@ OclPowerProfile::~OclPowerProfile() {
 }
 
 void OclPowerProfile::poll_power() {
-    // TODO: prepare all the sysfs paths
     std::string subdev = "xmc";
-    std::string aux_curr_entry = "xmc_12v_aux_curr";
-    std::string aux_vol_entry = "xmc_12v_aux_vol";
-    std::string pex_curr_entry = "xmc_12v_pex_curr";
-    std::string pex_vol_entry = "xmc_12v_pex_vol";
-    std::string vccint_curr_entry = "xmc_vccint_curr";
-    std::string vccint_vol_entry = "xmc_vccint_vol";
-    std::string aux_curr_path = target_device->getSysfsPath(subdev, aux_curr_entry).get();
-    std::string aux_vol_path = target_device->getSysfsPath(subdev, aux_vol_entry).get();
-    std::string pex_curr_path = target_device->getSysfsPath(subdev, pex_curr_entry).get();
-    std::string pex_vol_path = target_device->getSysfsPath(subdev, pex_vol_entry).get();
-    std::string vccint_curr_path = target_device->getSysfsPath(subdev, vccint_curr_entry).get();
-    std::string vccint_vol_path = target_device->getSysfsPath(subdev, vccint_vol_entry).get();
+    // TODO: prepare all the sysfs paths
+    std::vector<std::string> entries = {
+        "xmc_12v_aux_curr",
+        "xmc_12v_aux_vol",
+        "xmc_12v_pex_curr",
+        "xmc_12v_pex_vol",
+        "xmc_vccint_curr",
+        "xmc_vccint_vol",
+        "xmc_3v3_pex_curr",
+        "xmc_3v3_pex_vol"
+    };
+
+    std::vector<std::string> paths;
+    for(auto& e : entries) {
+        paths.push_back (target_device->getSysfsPath(subdev, e).get());
+    }
 
     while (should_continue()) {
-        // TODO: do the reading, logging of the data and pausing
-        std::ifstream aux_curr_fs(aux_curr_path);
-        std::ifstream aux_vol_fs(aux_vol_path);
-        std::ifstream pex_curr_fs(pex_curr_path);
-        std::ifstream pex_vol_fs(pex_vol_path);
-        std::ifstream vccint_curr_fs(vccint_curr_path);
-        std::ifstream vccint_vol_fs(vccint_vol_path);
-
-        // TODO: step 1 read sensor values from sysfs
-        std::string aux_curr_str;
-        std::string aux_vol_str;
-        std::string pex_curr_str;
-        std::string pex_vol_str;
-        std::string vccint_curr_str;
-        std::string vccint_vol_str;
-
-        std::getline(aux_curr_fs, aux_curr_str);
-        std::getline(aux_vol_fs, aux_vol_str);
-        std::getline(pex_curr_fs, pex_curr_str);
-        std::getline(pex_vol_fs, pex_vol_str);
-        std::getline(vccint_curr_fs, vccint_curr_str);
-        std::getline(vccint_vol_fs, vccint_vol_str);
-
         double timestamp = target_xocl_plugin->getTraceTime();
-        int aux_curr = aux_curr_str.empty() ? 0 : std::stoi(aux_curr_str);
-        int aux_vol = aux_vol_str.empty() ? 0 : std::stoi(aux_vol_str);
-        int pex_curr = pex_curr_str.empty() ? 0 : std::stoi(pex_curr_str);
-        int pex_vol = pex_vol_str.empty() ? 0 : std::stoi(pex_vol_str);
-        int vccint_curr = vccint_curr_str.empty() ? 0 : std::stoi(vccint_curr_str);
-        int vccint_vol = vccint_vol_str.empty() ? 0 : std::stoi(vccint_vol_str);
+        power_trace.push_back(std::make_pair(timestamp, std::vector<int>()));
 
-        power_trace.push_back({
-            timestamp,
-            aux_curr,
-            aux_vol,
-            pex_curr,
-            pex_vol,
-            vccint_curr,
-            vccint_vol
-        });
-
-        aux_curr_fs.close();
-        aux_vol_fs.close();
-        pex_curr_fs.close();
-        pex_vol_fs.close();
-        vccint_curr_fs.close();
-        vccint_vol_fs.close();
+        for (auto& p: paths) {
+            std::ifstream fs(p);
+            std::string data;
+            std::getline(fs, data);
+            int dp =  data.empty() ? 0 : std::stoi(data);
+            power_trace.back().second.push_back(dp);
+            fs.close();
+        }
 
         // TODO: step 3 pause the thread for certain time
         std::this_thread::sleep_for (std::chrono::milliseconds(20));
@@ -117,23 +84,24 @@ void OclPowerProfile::write_header() {
     power_profiling_output << "Target device: "
                         << target_unique_name << std::endl;
     power_profiling_output << "timestamp,"
-                        << "aux_curr,"
-                        << "aux_vol,"
-                        << "pex_curr,"
-                        << "pex_vol,"
-                        << "vccint_curr,"
-                        << "vccint_vol" << std::endl;
+                        << "12v_aux_curr" << ","
+                        << "12v_aux_vol"  << ","
+                        << "12v_pex_curr" << ","
+                        << "12v_pex_vol"  << ","
+                        << "vccint_curr"  << ","
+                        << "vccint_vol"   <<","
+                        << "3v3_pex_curr" << ","
+                        << "3v3_pex_vol"
+                        << std::endl;
 }
 
 void OclPowerProfile::write_trace() {
-    for (auto power_stat : power_trace) {
-        power_profiling_output << power_stat.timestamp << ","
-                            << power_stat.aux_curr << ","
-                            << power_stat.aux_vol << ","
-                            << power_stat.pex_curr << ","
-                            << power_stat.pex_vol << ","
-                            << power_stat.vccint_curr << ","
-                            << power_stat.vccint_vol << std::endl;
+    for (auto& power_stat : power_trace) {
+        power_profiling_output << power_stat.first << ",";
+        for (auto data : power_stat.second) {
+            power_profiling_output << data << ",";
+        }
+        power_profiling_output << std::endl;
     }
 }
 

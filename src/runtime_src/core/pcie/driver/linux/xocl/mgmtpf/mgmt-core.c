@@ -1,7 +1,7 @@
 /*
  * Simple Driver for Management PF
  *
- * Copyright (C) 2017-2019 Xilinx, Inc.
+ * Copyright (C) 2017-2020 Xilinx, Inc.
  *
  * Code borrowed from Xilinx SDAccel XDMA driver
  *
@@ -933,7 +933,6 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 
 	if (!(dev_info->flags & XOCL_DSAFLAG_DYNAMIC_IP) &&
 	    !(dev_info->flags & XOCL_DSAFLAG_SMARTN) &&
-	    !(dev_info->flags & XOCL_DSAFLAG_VERSAL) &&
 			i == dev_info->subdev_num &&
 			lro->core.intr_bar_addr != NULL) {
 		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_DMA_MSIX;
@@ -1180,7 +1179,7 @@ err_alloc_minor:
 	xocl_subdev_fini(lro);
 err_init_subdev:
 	dev_set_drvdata(&pdev->dev, NULL);
-	xocl_drvinst_free(lro);
+	xocl_drvinst_release(lro, NULL);
 err_alloc:
 	pci_disable_device(pdev);
 
@@ -1190,6 +1189,7 @@ err_alloc:
 static void xclmgmt_remove(struct pci_dev *pdev)
 {
 	struct xclmgmt_dev *lro;
+	void *hdl;
 
 	if ((pdev == 0) || (dev_get_drvdata(&pdev->dev) == 0))
 		return;
@@ -1198,6 +1198,8 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 	mgmt_info(lro, "remove(0x%p) where pdev->dev.driver_data = 0x%p",
 	       pdev, lro);
 	BUG_ON(lro->core.pdev != pdev);
+
+	xocl_drvinst_release(lro, &hdl);
 
 	xclmgmt_connect_notify(lro, false);
 
@@ -1237,7 +1239,7 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 
 	dev_set_drvdata(&pdev->dev, NULL);
 
-	xocl_drvinst_free(lro);
+	xocl_drvinst_free(hdl);
 }
 
 static pci_ers_result_t mgmt_pci_error_detected(struct pci_dev *pdev,
@@ -1295,6 +1297,8 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_dna,
 	xocl_init_fmgr,
 	xocl_init_ospi_versal,
+	xocl_init_srsr,
+	xocl_init_mem_hbm,
 };
 
 static void (*drv_unreg_funcs[])(void) = {
@@ -1319,6 +1323,8 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_dna,
 	xocl_fini_fmgr,
 	xocl_fini_ospi_versal,
+	xocl_fini_srsr,
+	xocl_fini_mem_hbm,
 };
 
 static int __init xclmgmt_init(void)

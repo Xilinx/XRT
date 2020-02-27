@@ -662,6 +662,12 @@ public:
   }
 
   virtual operations_result<std::string>
+  getSubdevPath(const std::string& subdev, uint32_t idx)
+  {
+    return operations_result<std::string>();
+  }
+
+  virtual operations_result<std::string>
   getDebugIPlayoutPath()
   {
     return operations_result<std::string>();
@@ -711,6 +717,10 @@ load_xdp_kernel_debug();
 XRT_EXPORT
 void
 load_xdp_app_debug();
+
+XRT_EXPORT
+void
+load_xdp_lop();
 } // namespace hal
 
 namespace hal2 {

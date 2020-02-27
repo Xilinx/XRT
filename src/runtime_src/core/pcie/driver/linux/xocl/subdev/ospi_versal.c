@@ -258,16 +258,19 @@ static int ospi_versal_close(struct inode *inode, struct file *file)
 static int ospi_versal_remove(struct platform_device *pdev)
 {
 	struct ospi_versal *ov = platform_get_drvdata(pdev);
+	void *hdl;
 
 	if (!ov) {
 		xocl_err(&pdev->dev, "driver data is NULL");
 		return -EINVAL;
 	}
+
+	xocl_drvinst_release(ov, &hdl);
 	if (ov->ov_base)
 		iounmap(ov->ov_base);
 
 	platform_set_drvdata(pdev, NULL);
-	xocl_drvinst_free(ov);
+	xocl_drvinst_free(hdl);
 
 	return 0;
 }
