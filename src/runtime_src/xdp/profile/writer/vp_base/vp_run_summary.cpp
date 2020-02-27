@@ -27,7 +27,7 @@ namespace xdp {
     // Don't actually do anything
   }
 
-  void VPRunSummaryWriter::write(bool openNewFile)
+  void VPRunSummaryWriter::write(bool /*openNewFile*/)
   {
     // Ignore openNewFile
     
