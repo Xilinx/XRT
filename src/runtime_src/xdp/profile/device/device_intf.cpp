@@ -299,6 +299,12 @@ DeviceIntf::~DeviceIntf()
     }
     size_t size = 0;
 
+    // These should be reset before anything
+    if (fifoCtrl)
+      fifoCtrl->reset();
+    if (traceFunnel)
+      traceFunnel->reset();
+
     // This just writes to trace control register
     // Axi Interface Mons
     for(auto mon : aimList) {
@@ -313,15 +319,28 @@ DeviceIntf::~DeviceIntf()
         size += mon->triggerTrace(startTrigger);
     }
 
-    if (fifoCtrl)
-      fifoCtrl->reset();
-
+    uint32_t traceVersion = 0;
     if (traceFunnel) {
-      traceFunnel->reset();
-      traceFunnel->initiateClockTraining();
+      if (traceFunnel->compareVersion(1,0) == -1)
+        traceVersion = 1;
     }
 
+    if (fifoRead)
+      fifoRead->setTraceFormat(traceVersion);
+
+    if (traceDMA)
+      traceDMA->setTraceFormat(traceVersion);
+
     return size;
+  }
+
+  void DeviceIntf::clockTraining(bool force)
+  {
+    if(!traceFunnel)
+      return;
+    // Trace Funnel > 1.0 supports continuous training
+    if (traceFunnel->compareVersion(1,0) == -1 || force == true)
+      traceFunnel->initiateClockTraining();
   }
 
   // Stop trace performance monitoring
@@ -477,6 +496,39 @@ DeviceIntf::~DeviceIntf()
     for (auto mon : amList) {
       mon->disable();
     }
+  }
+
+  size_t DeviceIntf::allocTraceBuf(uint64_t sz ,uint8_t memIdx)
+  {
+    auto bufHandle = mDevice->alloc(sz, memIdx);
+    // Can't read a buffer xrt hasn't written to
+    mDevice->sync(bufHandle, sz, 0, xdp::Device::direction::HOST2DEVICE);
+    return bufHandle;
+  }
+
+  void DeviceIntf::freeTraceBuf(size_t bufHandle)
+  {
+    mDevice->free(bufHandle);
+  }
+
+  /**
+  * Takes the offset inside the mapped buffer
+  * and syncs it with device and returns its virtual address.
+  * We can read the entire buffer in one go if we want to
+  * or choose to read in chunks
+  */
+  void* DeviceIntf::syncTraceBuf(size_t bufHandle ,uint64_t offset, uint64_t bytes)
+  {
+    auto addr = mDevice->map(bufHandle);
+    if (!addr)
+      return nullptr;
+    mDevice->sync(bufHandle, bytes, offset, xdp::Device::direction::DEVICE2HOST);
+    return static_cast<char*>(addr) + offset;
+  }
+
+  uint64_t DeviceIntf::getDeviceAddr(size_t bufHandle)
+  {
+    return mDevice->getDeviceAddr(bufHandle);
   }
 
   void DeviceIntf::initTS2MM(uint64_t bufSz, uint64_t bufAddr)

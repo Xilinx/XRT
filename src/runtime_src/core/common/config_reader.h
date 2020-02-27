@@ -166,6 +166,20 @@ get_timeline_trace()
   return value;
 }
 
+inline bool
+get_continuous_read_trace()
+{
+  static bool value = get_profile() && detail::get_bool_value("Debug.continuous_read_trace",false);
+  return value;
+}
+
+inline unsigned int
+get_continuous_read_trace_interval_ms()
+{
+  static unsigned int value = detail::get_uint_value("Debug.continuous_read_trace_interval_ms",10);
+  return value;
+}
+
 inline std::string
 get_trace_buffer_size()
 {
