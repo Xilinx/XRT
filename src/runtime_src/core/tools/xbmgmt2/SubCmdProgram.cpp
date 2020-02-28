@@ -62,9 +62,6 @@ namespace {
 static void 
 update_shell(uint16_t index, const std::string& primary, const std::string& secondary)
 {
-  std::unique_ptr<firmwareImage> pri;
-  std::unique_ptr<firmwareImage> sec;
-
   Flasher flasher(index);
   if(!flasher.isValid())
     throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % index));
@@ -72,7 +69,8 @@ update_shell(uint16_t index, const std::string& primary, const std::string& seco
   if (primary.empty())
     throw xrt_core::error("Shell not specified");
 
-  pri = std::make_unique<firmwareImage>(primary.c_str(), MCS_FIRMWARE_PRIMARY);
+  auto pri = std::make_unique<firmwareImage>(primary.c_str(), MCS_FIRMWARE_PRIMARY);
+  std::unique_ptr<firmwareImage> sec;
   if (pri->fail())
     throw xrt_core::error(boost::str(boost::format("Failed to read %s") % primary));
   if (!secondary.empty()) {
@@ -93,9 +91,6 @@ static void
 update_shell(uint16_t index, const std::string& flashType,
   const std::string& primary, const std::string& secondary)
 {
-  std::unique_ptr<firmwareImage> pri;
-  std::unique_ptr<firmwareImage> sec;
-
   if (!flashType.empty()) {
       xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", 
         "Overriding flash mode is not recommended.\nYou may damage your card with this option.");
@@ -108,7 +103,8 @@ update_shell(uint16_t index, const std::string& flashType,
   if (primary.empty())
     throw xrt_core::error("Shell not specified");
 
-  pri = std::make_unique<firmwareImage>(primary.c_str(), MCS_FIRMWARE_PRIMARY);
+  auto pri = std::make_unique<firmwareImage>(primary.c_str(), MCS_FIRMWARE_PRIMARY);
+  std::unique_ptr<firmwareImage> sec;
   if (pri->fail())
     throw xrt_core::error(boost::str(boost::format("Failed to read %s") % primary));
   if (!secondary.empty()) {
@@ -226,13 +222,12 @@ status_report(const std::string& bdf, const DSAInfo& currentDSA, const DSAInfo& 
 static DSAInfo 
 selectShell(uint16_t idx, const std::string& dsa, const std::string& id)
 {
-  uint16_t candidateDSAIndex = std::numeric_limits<uint16_t>::max();
   Flasher flasher(idx);
   if(!flasher.isValid())
     throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % idx));
 
   std::vector<DSAInfo> installedDSA = flasher.getInstalledDSA();
-
+  uint16_t candidateDSAIndex = std::numeric_limits<uint16_t>::max();
   // Find candidate DSA from installed DSA list.
   if (dsa.empty()) {
     if (installedDSA.empty())
@@ -507,7 +502,6 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   // -- Retrieve and parse the subcommand options -----------------------------
   std::string device = "";
-  std::vector<uint16_t> device_indices; //instead of saving this, can we save Flasher objects?
   std::string plp = "";
   std::string update = "";
   std::string image = "";
@@ -595,26 +589,8 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   }
 
   // get all device IDs to be processed
-  if (!device.empty()) { 
-    XBU::verbose("Sub command : --device");
-    using tokenizer = boost::tokenizer< boost::char_separator<char> >;
-    boost::char_separator<char> sep(", ");
-    tokenizer tokens(device, sep);
-    
-    for (auto tok_iter = tokens.begin(); tok_iter != tokens.end(); ++tok_iter) {
-      uint16_t idx = xrt_core::utils::bdf2index(*tok_iter);
-      device_indices.push_back(idx);
-    }
-  } else {
-    //get all devices
-    auto total = xrt_core::get_total_devices(false).first;
-    if (total == 0)
-      throw xrt_core::error("No card found!");
-    //better way to do this?
-    for(uint16_t i = 0; i < total; i++) {
-      device_indices.push_back(i);
-    }
-  }
+  std::vector<uint16_t> device_indices; //instead of saving this, can we save Flasher objects?
+  XBU::parse_device_indices(device_indices, device);
 
   if (!update.empty()) {
     XBU::verbose("Sub command: --update");
