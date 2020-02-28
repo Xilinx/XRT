@@ -36,6 +36,7 @@
 using namespace boost::filesystem;
 
 const std::string DSAInfo::UNKNOWN = "UNKNOWN";
+const std::string DSAInfo::INACTIVE = "INACTIVE";
 
 /*
  * Helper to parse DSA name string and retrieve all tokens

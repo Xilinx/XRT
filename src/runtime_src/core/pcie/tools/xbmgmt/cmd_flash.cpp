@@ -257,6 +257,7 @@ static void isSameShellOrSC(DSAInfo& candidate, DSAInfo& current,
             candidate.matchId(current));
         *same_bmc = (current.bmcVer.empty() ||
             current.bmcVer.compare(DSAInfo::UNKNOWN) == 0 ||
+            current.bmcVer.compare(DSAInfo::INACTIVE) == 0 ||
             candidate.bmcVer == current.bmcVer);
     }
 }
