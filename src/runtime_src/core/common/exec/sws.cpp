@@ -20,6 +20,8 @@
  * This is a software model of the kds scheduler.  Primarily
  * for debug and bring up.
  */
+#define XRT_CORE_COMMON_SOURCE // in same dll as core_common
+
 #include "exec.h"
 #include "command.h"
 #include "ert.h"
@@ -725,7 +727,11 @@ class xocl_scheduler
 
   // Free a command
   bool
+#ifdef XRT_VERBOSE
   complete_to_free(const xcmd_ptr& xcmd)
+#else
+  complete_to_free(const xcmd_ptr&)
+#endif
   {
     XRT_DEBUGF("xcmd(%d) [complete->free]\n",xcmd->get_uid());
     return true;

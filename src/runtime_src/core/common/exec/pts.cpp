@@ -13,6 +13,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+#define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 
 #include "exec.h"
 #include "command.h"
@@ -40,7 +41,7 @@ stop()
 }
 
 void
-init(xrt_core::device* device)
+init(xrt_core::device*)
 {
 }
 

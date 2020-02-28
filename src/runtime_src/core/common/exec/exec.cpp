@@ -13,6 +13,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+#define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 
 #include "exec.h"
 #include "core/common/config_reader.h"
@@ -73,7 +74,7 @@ pts_enabled()
 
 // Force disabling of kds if emulation and 5.0 DSA
 static void
-emu_50_disable_kds(const xrt_core::device* device)
+emu_50_disable_kds(const xrt_core::device*)
 {
   static bool done = false;
   if (!done) {
@@ -143,7 +144,7 @@ init(xrt_core::device* device, const axlf* top)
     ~X() { stop(); }
   };
   static X x;
-  
+
   emu_50_disable_kds(device);
 
   static bool started = false;

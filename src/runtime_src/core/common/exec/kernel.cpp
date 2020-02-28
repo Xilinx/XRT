@@ -76,7 +76,7 @@ struct device_type
 
 // class kernel_command - Immplements command API expected by schedulers
 //
-// The kernel command is 
+// The kernel command is
 class kernel_command : public xrt_core::command
 {
 public:
@@ -106,7 +106,7 @@ public:
   {
     return reinterpret_cast<const ERT_COMMAND_TYPE>(get_ert_packet());
   }
-  
+
   /**
    * Cast underlying exec buffer to its requested type
    */
@@ -545,6 +545,8 @@ xrtRunSetCallback(xrtRunHandle rhdl, ert_cmd_state state,
                   void (* pfn_state_notify)(xrtRunHandle, ert_cmd_state, void*),
                   void* data)
 {
+  if (state != ERT_CMD_STATE_COMPLETED)
+    throw std::runtime_error("xrtRunSetCallback state may only be ERT_CMD_STATE_COMPLETED");
   auto run = get_run(rhdl);
   run->add_callback([=](ert_cmd_state state) { pfn_state_notify(rhdl, state, data); });
 }
@@ -712,4 +714,3 @@ xrtRunSetArg(xrtRunHandle rhdl, int index, ...)
     return -1;
   }
 }
-
