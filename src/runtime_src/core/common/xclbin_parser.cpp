@@ -391,7 +391,7 @@ get_kernel_freq(const axlf* top)
   return kernel_clk_freq;
 }
 
-
+//This function will be removed once IP_LAYOUT section is available in sw emu rtd.
 std::vector<uint64_t>
 get_kernel_inst_addrs(const axlf* top)
 {
