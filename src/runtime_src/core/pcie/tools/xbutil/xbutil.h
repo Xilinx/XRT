@@ -912,9 +912,7 @@ public:
         sensor_tree::put("debug_profile.device_info.error", err);
         sensor_tree::put("debug_profile.device_info.device_index", info.device_index);
         sensor_tree::put("debug_profile.device_info.user_instance", info.user_instance);
-        sensor_tree::put("debug_profile.device_info.nifd_instance", info.nifd_instance);
         sensor_tree::put("debug_profile.device_info.device_name", std::string(info.device_name));
-        sensor_tree::put("debug_profile.device_info.nifd_name", std::string(info.nifd_name));
         /** End of debug and profile device information */
 
         return 0;
