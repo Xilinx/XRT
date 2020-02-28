@@ -83,6 +83,12 @@ public:
  */
 XRT_CORE_COMMON_EXPORT
 void
+get_xrt_build_info(boost::property_tree::ptree& pt);
+
+/**
+ */
+XRT_CORE_COMMON_EXPORT
+void
 get_xrt_info(boost::property_tree::ptree& pt);
 
 /**

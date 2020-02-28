@@ -16,6 +16,7 @@
 #define XRT_CORE_COMMON_SOURCE
 #include "core/common/system.h"
 #include "core/common/device.h"
+#include "gen/version.h"
 
 #include <vector>
 #include <map>
@@ -51,6 +52,15 @@ instance()
   if (singleton)
     return *singleton;
   throw std::runtime_error("system singleton is not loaded");
+}
+
+void
+get_xrt_build_info(boost::property_tree::ptree& pt)
+{
+  pt.put("version", xrt_build_version);
+  pt.put("hash",    xrt_build_version_hash);
+  pt.put("date",    xrt_build_version_date);
+  pt.put("branch",  xrt_build_version_branch);
 }
 
 void
