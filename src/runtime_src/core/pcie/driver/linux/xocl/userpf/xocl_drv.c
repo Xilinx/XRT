@@ -225,6 +225,13 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 		xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 		xocl_subdev_offline_all(xdev);
 	} else {
+		(void) xocl_config_pci(xdev);
+
+		if (xdev->p2p_bar_sz_cached) {
+			(void) xocl_pci_resize_resource(xdev->core.pdev,
+				xdev->p2p_bar_idx, xdev->p2p_bar_sz_cached);
+		}
+
 		ret = xocl_subdev_online_all(xdev);
 		if (ret)
 			xocl_warn(&pdev->dev, "Online subdevs failed %d", ret);
@@ -408,13 +415,6 @@ int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 failed_notify:
 
 	if (!(flag & XOCL_RESET_SHUTDOWN)) {
-		(void) xocl_config_pci(xdev);
-
-		if (xdev->p2p_bar_sz_cached) {
-			(void) xocl_pci_resize_resource(xdev->core.pdev,
-				xdev->p2p_bar_idx, xdev->p2p_bar_sz_cached);
-		}
-
 		xocl_reset_notify(xdev->core.pdev, false);
 
 		xocl_drvinst_set_offline(xdev->core.drm, false);
@@ -430,7 +430,7 @@ static void xocl_work_cb(struct work_struct *work)
 	struct xocl_dev *xdev = container_of(_work,
 			struct xocl_dev, core.works[_work->op]);
 
-	if (XDEV(xdev)->shutdown) {
+	if (XDEV(xdev)->shutdown && _work->op != XOCL_WORK_ONLINE) {
 		xocl_xdev_info(xdev, "device is shutdown please hotplug");
 		return;
 	}
@@ -444,6 +444,11 @@ static void xocl_work_cb(struct work_struct *work)
 				XOCL_RESET_SHUTDOWN);
 		/* mark device offline. Only hotplug is allowed. */
 		XDEV(xdev)->shutdown = true;
+		break;
+	case XOCL_WORK_ONLINE:
+		xocl_reset_notify(xdev->core.pdev, false);
+		xocl_drvinst_set_offline(xdev->core.drm, false);
+		XDEV(xdev)->shutdown = false;
 		break;
 	case XOCL_WORK_PROGRAM_SHELL:
 		/* program shell */
@@ -1276,6 +1281,7 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 	xocl_queue_destroy(xdev);
 
 	xocl_p2p_fini(xdev, false);
+	xocl_fini_persist_sysfs(xdev);
 	xocl_fini_sysfs(xdev);
 
 	xocl_subdev_destroy_all(xdev);
@@ -1393,6 +1399,11 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	ret = xocl_init_sysfs(xdev);
 	if (ret) {
 		xocl_err(&pdev->dev, "failed to init sysfs");
+		goto failed;
+	}
+	ret = xocl_init_persist_sysfs(xdev);
+	if (ret) {
+		xocl_err(&pdev->dev, "failed to init persist sysfs");
 		goto failed;
 	}
 
