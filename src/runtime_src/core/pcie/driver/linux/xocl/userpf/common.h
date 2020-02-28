@@ -69,14 +69,20 @@
 #if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(7, 4)
 #define XOCL_DRM_FREE_MALLOC
 #endif
+#elif defined(SUSE_RELEASE_CODE)
+#if SUSE_RELEASE_CODE >= SUSE_RELEASE_VERSION(15,0)
+#define XOCL_DRM_FREE_MALLOC
+#endif
 #endif
 
 /*
  * P2P Linux kernel API has gone through changes over the time. We are trying
  * to maintain our driver compabile w/ all kernels we support here.
  */
-#if SUSE_RELEASE_CODE >= SUSE_RELEASE_VERSION(15,0)
+#if SUSE_RELEASE_CODE <= SUSE_RELEASE_VERSION(15,0)
 #define P2P_API_V1
+#elif SUSE_RELEASE_CODE >= SUSE_RELEASE_VERSION(15,1)
+#define P2P_API_V2
 #elif KERNEL_VERSION(4, 5, 0) > LINUX_VERSION_CODE && \
 	(LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
 #define P2P_API_V0
