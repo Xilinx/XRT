@@ -582,7 +582,7 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 			safe_read32(xmc, XMC_OEM_ID_REG, val);
 			break;
 		case XMC_VCCINT_TEMP:
-			safe_read32(xmc, XMC_VCCINT_TEMP_REG, val);
+			READ_SENSOR(xmc, XMC_VCCINT_TEMP_REG, val, val_kind);
 			break;
 		default:
 			break;
