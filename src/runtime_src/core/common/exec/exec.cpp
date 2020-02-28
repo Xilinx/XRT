@@ -141,7 +141,7 @@ void
 init(xrt_core::device* device, const axlf* top)
 {
   struct X {
-    ~X() { stop(); }
+    ~X() { try { stop(); } catch (...) { } } // coverity
   };
   static X x;
 
