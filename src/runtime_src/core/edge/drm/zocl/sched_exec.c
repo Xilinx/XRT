@@ -2575,7 +2575,11 @@ ps_ert_query(struct sched_cmd *cmd)
 	case ERT_EXEC_WRITE:
 		if (!cu_done(cmd))
 			break;
+#if KERNEL_VERSION(5, 4, 0) > LINUX_VERSION_CODE
 		__attribute__ ((fallthrough));
+#else
+		__attribute__ ((__fallthrough__));
+#endif
 		/* pass through */
 
 	case ERT_CU_STAT:
