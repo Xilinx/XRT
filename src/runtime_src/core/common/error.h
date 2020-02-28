@@ -14,8 +14,8 @@
  * under the License.
  */
 
-#ifndef xrt_util_error_h
-#define xrt_util_error_h
+#ifndef core_common_util_error_h
+#define core_common_util_error_h
 
 #include "message.h"
 #include <stdexcept>
