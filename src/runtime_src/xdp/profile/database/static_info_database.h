@@ -26,7 +26,7 @@
 #include "xdp/config.h"
 
 namespace xdp {
-
+  
   class ComputeUnitInstance
   {
   private:
@@ -57,6 +57,10 @@ namespace xdp {
   private:
     // ********* Information specific to each host execution **********
     int pid ;
+    
+    // The files that need to be included in the run summary for
+    //  consumption by Vitis_Analyzer
+    std::vector<std::pair<std::string, std::string> > openedFiles ;
 
     // ***** OpenCL Information ******
     std::set<uint64_t> commandQueueAddresses ;
@@ -99,6 +103,8 @@ namespace xdp {
 
     // Getters and setters
     inline int getPid() { return pid ; }
+    inline std::vector<std::pair<std::string, std::string>>& getOpenedFiles() 
+      { return openedFiles ; }
     inline std::set<uint64_t>& getCommandQueueAddresses() 
       { return commandQueueAddresses ; }
     inline std::string getDeviceName(void* dev) { return deviceNames[dev] ; }
@@ -113,6 +119,8 @@ namespace xdp {
     // Functions that add information to the database
     XDP_EXPORT void addCommandQueueAddress(uint64_t a) ;
     XDP_EXPORT void addKDMACount(void* dev, uint16_t numKDMAs) ;
+    XDP_EXPORT void addOpenedFile(const std::string& name, 
+				  const std::string& type) ;
   } ;
 
 }
