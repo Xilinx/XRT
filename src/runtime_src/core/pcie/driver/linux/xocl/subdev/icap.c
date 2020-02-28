@@ -3610,11 +3610,13 @@ static struct attribute_group icap_attr_group = {
 static int icap_remove(struct platform_device *pdev)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	void *hdl;
 
 	BUG_ON(icap == NULL);
 	xocl_drvinst_release(icap, &hdl);
 
+	xocl_cmc_freeze(xdev);
 	icap_free_bins(icap);
 
 	iounmap(icap->icap_regs);

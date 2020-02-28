@@ -370,6 +370,7 @@ static void xmc_clk_scale_config(struct platform_device *pdev);
 static int xmc_load_board_info(struct xocl_xmc *xmc);
 static int cmc_access_ops(struct platform_device *pdev, int flags);
 static bool scaling_condition_check(struct xocl_xmc *xmc, struct device *dev);
+static const struct file_operations xmc_fops;
 
 static void set_sensors_data(struct xocl_xmc *xmc, struct xcl_sensor *sensors)
 {
@@ -2885,6 +2886,7 @@ static int xmc_probe(struct platform_device *pdev)
 
 	xmc->pdev = pdev;
 	platform_set_drvdata(pdev, xmc);
+	xocl_dbg(&pdev->dev, "fops %lx", (ulong)&xmc_fops);
 
 	mutex_init(&xmc->xmc_lock);
 	mutex_init(&xmc->mbx_lock);
@@ -2987,7 +2989,6 @@ failed:
 	return err;
 }
 
-static const struct file_operations xmc_fops;
 struct xocl_drv_private	xmc_priv = {
 	.ops = &xmc_ops,
 #if PF == MGMTPF
