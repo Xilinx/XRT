@@ -17,13 +17,13 @@
 #ifndef xrt_core_command_h_
 #define xrt_core_command_h_
 
-#include "exec.h"
+#include "core/common/device.h"
 #include "xrt.h"
 #include "ert.h"
-#include <mutex>
-#include <condition_variable>
-#include <memory>
 
+/**
+ * class command - Command API expected by sws and kds command monitor
+ */
 namespace xrt_core {
 
 class command

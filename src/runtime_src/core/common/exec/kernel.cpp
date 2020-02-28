@@ -37,6 +37,8 @@
 #include <cstdarg>
 #include <type_traits>
 #include <utility>
+#include <mutex>
+#include <condition_variable>
 
 #ifdef _WIN32
 # pragma warning( disable : 4244 4267)
