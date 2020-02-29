@@ -27,33 +27,65 @@
 
 namespace xdp {
 
+  struct Monitor {
+    uint8_t     type;
+    uint64_t    index;
+    int32_t     cuIndex;
+    int32_t     memIndex;
+    std::string name;
+
+    Monitor(uint8_t ty, uint64_t idx, const char* n, int32_t cuId = -1, int32_t memId = -1)
+      : type(ty),
+        index(idx),
+        cuIndex(cuId),
+        memIndex(memId),
+        name(n)
+    {}
+  };
+
   class ComputeUnitInstance
   {
   private:
+    // The connections require the original index in the ip_layout
+    int32_t index ; 
+
     std::string name ;
+    std::string kernelName ;
 
     // In OpenCL, each compute unit is set up with a static workgroup size
     int dim[3] ;
 
-    // The connections require the original index in the ip_layout
-    int32_t index ; 
-
     // A mapping of arguments to memory resources
     std::map<int32_t, std::vector<int32_t>> connections ;
-//    std::map<std::string, std::vector<int>> connections ;
+
+    std::vector<Monitor*> monitors;
+
+    bool stall = false;
+    bool dataTransfer = false;
 
     ComputeUnitInstance() = delete ;
   public:
     
     // Getters and setters
     inline const std::string& getName() { return name ; }
+    inline const std::string& getKernelName() { return kernelName ; }
     inline int32_t getIndex() { return index ; }
     XDP_EXPORT std::string getDim() ;
     XDP_EXPORT void addConnection(int32_t, int32_t);
     std::map<int32_t, std::vector<int32_t>>* getConnections()
     {  return &connections; }
 
-    XDP_EXPORT ComputeUnitInstance(const char* n, int32_t i) ;
+    void addMonitor(Monitor* m) { monitors.push_back(m); }
+
+    void setStallEnabled(bool b) { stall = b; }
+    bool stallEnabled() { return stall; }
+
+    void setDataTransferEnabled(bool b) { dataTransfer = b; }
+    bool dataTransferEnabled() { return dataTransfer; }
+
+    bool hasStream() { return false; }
+
+    XDP_EXPORT ComputeUnitInstance(int32_t i, const char* n);
     XDP_EXPORT ~ComputeUnitInstance() ;
   } ;
 
@@ -76,28 +108,15 @@ namespace xdp {
     {}
   };
 
-  struct Monitor {
-    uint8_t     type;
-    uint64_t    index;
-    int32_t     cuIndex;
-    int32_t     memIndex;
-    std::string name;
-
-    Monitor(uint8_t ty, uint64_t idx, const char* n, int32_t cuId = -1, int32_t memId = -1)
-      : type(ty),
-        index(idx),
-        cuIndex(cuId),
-        memIndex(memId),
-        name(n)
-    {}
-  };
-
   struct DeviceInfo {
     struct PlatformInfo platformInfo;
     std::string loadedXclbin;
     std::map<int32_t, ComputeUnitInstance*> cus;
     std::map<int32_t, Memory*>   memoryInfo;
-    std::map<uint64_t, Monitor*> monitorInfo;
+    std::vector<Monitor*> aimList;
+    std::vector<Monitor*> amList;
+    std::vector<Monitor*> asmList;
+    std::map<uint64_t, Monitor*>   monitorInfo;
   };
 
   class VPStaticDatabase
@@ -156,6 +175,13 @@ namespace xdp {
         return deviceInfo[deviceId]->loadedXclbin; 
     }
 
+    inline ComputeUnitInstance* getCU(uint64_t deviceId, int32_t cuId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return nullptr;
+      return deviceInfo[deviceId]->cus[cuId];
+    }
+
     inline std::map<int32_t, ComputeUnitInstance*>* getCUs(uint64_t deviceId)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
@@ -169,11 +195,26 @@ namespace xdp {
         return nullptr;
       return &(deviceInfo[deviceId]->memoryInfo);
     }
+#if 0
     inline std::map<uint64_t, Monitor*>* getMonitorInfo(uint64_t deviceId)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       return &(deviceInfo[deviceId]->monitorInfo);
+    }
+#endif
+
+    inline Monitor* getAIMonitor(uint64_t deviceId, uint64_t idx)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return nullptr;
+      return deviceInfo[deviceId]->aimList[idx];
+    }
+    inline Monitor* getAMonitor(uint64_t deviceId, uint64_t idx)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return nullptr;
+      return deviceInfo[deviceId]->amList[idx];
     }
 
     // Reseting device information whenever a new xclbin is added

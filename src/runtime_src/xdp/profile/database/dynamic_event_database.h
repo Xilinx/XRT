@@ -94,7 +94,7 @@ namespace xdp {
 
     // Add an event in sorted order in the database
     XDP_EXPORT void addEvent(VTFEvent* event) ;
-    XDP_EXPORT void addDeviceEvents(uint64_t deviceId, xclTraceResultsVector& trace) ;
+    XDP_EXPORT void addDeviceEvents(uint64_t deviceId, xclTraceResultsVector& trace, void*) ;
 
     // For API events, find the event id of the start event for an end event
     XDP_EXPORT void markStart(uint64_t functionID, uint64_t eventID) ;

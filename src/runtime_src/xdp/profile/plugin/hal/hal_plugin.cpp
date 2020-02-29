@@ -171,7 +171,7 @@ namespace xdp {
       devInterface->parseTraceData(hostBuffer, devInterface->getWordCountTs2mm(), trace) ;
       */
     }
-    (db->getDynamicInfo()).addDeviceEvents(deviceId, trace);
+    (db->getDynamicInfo()).addDeviceEvents(deviceId, trace, db);
   }
 
   void HALPlugin::flushDeviceInfo(void* handle)
@@ -222,7 +222,7 @@ namespace xdp {
 	      void* hostBuffer = nullptr ; // Need to sync the data
 	      devInterface->parseTraceData(hostBuffer, devInterface->getWordCountTs2mm(), trace) ;
       }
-      (db->getDynamicInfo()).addDeviceEvents(deviceId, trace) ;
+      (db->getDynamicInfo()).addDeviceEvents(deviceId, trace, db) ;
     }
   }
 

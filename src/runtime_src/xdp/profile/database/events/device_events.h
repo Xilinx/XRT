@@ -55,21 +55,24 @@ namespace xdp {
     virtual uint64_t getDevice() { return deviceId ; }
 
     virtual void   setDeviceTimestamp(double deviceTime) { deviceTimestamp = deviceTime; }
-    virtual double getDeviceTimestamp() { return deviceTimestamp; } 
+    virtual double getDeviceTimestamp() { return deviceTimestamp; }
   } ;
 
   class KernelEvent : public VTFDeviceEvent
   {
-  private:
+  protected:
     uint64_t deviceName;
     uint64_t binaryName;
     uint64_t kernelName;
     uint64_t cuName;
+    uint64_t cuId;
 
     KernelEvent() = delete ;
   public:
-    XDP_EXPORT KernelEvent(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId);
+    XDP_EXPORT KernelEvent(uint64_t s_id, double ts, VTFEventType ty, 
+                   uint64_t devId, uint64_t cuIdx = 0, uint64_t cuName = 0);
     XDP_EXPORT ~KernelEvent() ;
+    virtual uint32_t getCUId() { return cuId;} 
   };
 
   class KernelDeviceEvent : public KernelEvent
@@ -79,8 +82,11 @@ namespace xdp {
 
     KernelDeviceEvent() = delete ;
   public:
-    XDP_EXPORT KernelDeviceEvent(uint64_t s_id, double ts, uint64_t devId) ;
+    XDP_EXPORT KernelDeviceEvent(uint64_t s_id, double ts,
+                   uint64_t devId, uint64_t cuIdx = 0, uint64_t cuName = 0);
     XDP_EXPORT ~KernelDeviceEvent() ;
+
+    XDP_EXPORT virtual void dump(std::ofstream& fout, int bucket);
   } ;
 
   class KernelStall : public KernelEvent
@@ -93,6 +99,7 @@ namespace xdp {
   public:
     XDP_EXPORT KernelStall(uint64_t s_id, double ts, KernelStallType stTy, uint64_t devId) ;
     XDP_EXPORT ~KernelStall() ;
+    KernelStallType getStallType() { return stallType; }
   } ;
 
   class KernelMemoryAccess : public KernelEvent

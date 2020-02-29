@@ -33,7 +33,7 @@ namespace xdp {
     // Specific header information
     std::string XRTVersion ;
 
-    std::map<VTFEventType, int> eventTypeBucketIdMap;
+    std::map<int32_t, uint32_t> cuBucketIdMap;
 
     // The interface to the specific device we are associated with
     DeviceIntf* dev ;
