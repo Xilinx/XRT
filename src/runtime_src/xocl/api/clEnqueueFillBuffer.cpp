@@ -16,7 +16,6 @@
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
 
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/event.h"
 #include "xocl/core/memory.h"
@@ -30,6 +29,9 @@
 #include "enqueue.h"
 #include "plugin/xdp/appdebug.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
+
+#include <CL/opencl.h>
 
 namespace xocl {
 
@@ -109,7 +111,7 @@ validOrError(cl_command_queue command_queue,
   // required by the OpenCL implementation on the host.
 }
 
-static cl_int 
+static cl_int
 clEnqueueFillBuffer(cl_command_queue command_queue,
                     cl_mem           buffer,
                     const void*      pattern,
@@ -137,7 +139,7 @@ clEnqueueFillBuffer(cl_command_queue command_queue,
 
 } // api_impl
 
-cl_int 
+cl_int
 clEnqueueFillBuffer(cl_command_queue command_queue,
                     cl_mem           buffer,
                     const void*      pattern,
@@ -150,6 +152,7 @@ clEnqueueFillBuffer(cl_command_queue command_queue,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
+    LOP_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
     return xocl::clEnqueueFillBuffer
       (command_queue,buffer,pattern,pattern_size,offset,size
        ,num_events_in_wait_list,event_wait_list,event);
@@ -163,5 +166,3 @@ clEnqueueFillBuffer(cl_command_queue command_queue,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

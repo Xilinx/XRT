@@ -17,10 +17,10 @@
 #ifndef xrt_device_pmd_operations_h_
 #define xrt_device_pmd_operations_h_
 
-#include "driver/include/pmdhal.h"
+#include "pmdhal.h"
 
 #ifdef PMD_OCL_DISABLED
-#include "driver/include/xclhal.h"
+#include "xclhal.h"
 #include <string>
 
 namespace xrt { namespace pmd {

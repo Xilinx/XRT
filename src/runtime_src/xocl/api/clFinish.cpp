@@ -24,6 +24,7 @@
 
 #include "xocl/config.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 namespace xocl {
 
@@ -32,7 +33,7 @@ validOrError(const cl_command_queue command_queue)
 {
   if(!config::api_checks())
     return;
-  detail::command_queue::validOrError(command_queue); 
+  detail::command_queue::validOrError(command_queue);
 }
 
 static cl_int
@@ -49,7 +50,8 @@ cl_int
 clFinish(cl_command_queue command_queue)
 {
   try {
-    PROFILE_LOG_FUNCTION_CALL
+    PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clFinish(command_queue);
   }
   catch (const xrt::error& ex) {
@@ -60,9 +62,4 @@ clFinish(cl_command_queue command_queue)
     xocl::send_exception_message(ex.what());
     return CL_OUT_OF_HOST_MEMORY;
   }
-  return CL_SUCCESS;
 }
-
-
-
-
