@@ -653,6 +653,7 @@ done:
   {
     switch (space) {
     case XCL_ADDR_KERNEL_CTRL:
+    case XCL_ADDR_SPACE_DEVICE_PERFMON:
       //Todo: offset += mOffsets[XCL_ADDR_KERNEL_CTRL];
       (void *)wordcopy(((char *)mappedBar[0].Bar + offset), hostbuf, size);
       break;
@@ -669,10 +670,11 @@ done:
   {
     switch (space) {
     case XCL_ADDR_KERNEL_CTRL:
+    case XCL_ADDR_SPACE_DEVICE_PERFMON:
       //Todo: offset += mOffsets[XCL_ADDR_KERNEL_CTRL];
       (void *)wordcopy(hostbuf, ((char *)mappedBar[0].Bar + offset), size);
       break;
-    default:
+    default: 
       xrt_core::message::
         send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "Unsupported Address Space: Read failed");
       return 1;
@@ -1504,6 +1506,12 @@ size_t xclReadBO(xclDeviceHandle handle, xclBufferHandle boHandle, void *dst, si
         send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclReadBO()");
     auto shim = get_shim_object(handle);
     return shim->read_bo(boHandle, dst, size, skip);
+}
+
+void
+xclGetDebugIpLayout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret)
+{
+  userpf::get_debug_ip_layout(hdl, buffer, size, size_ret);
 }
 
 // Deprecated APIs
