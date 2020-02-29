@@ -1271,14 +1271,14 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 
 	xocl_drvinst_release(xdev, &hdl);
 
+	xocl_queue_destroy(xdev);
+
 	/*
 	 * need to shutdown drm and sysfs before destroy subdevices
 	 * drm and sysfs could access subdevices
 	 */
 	if (xdev->core.drm)
 		xocl_drm_fini(xdev->core.drm);
-
-	xocl_queue_destroy(xdev);
 
 	xocl_p2p_fini(xdev, false);
 	xocl_fini_persist_sysfs(xdev);
