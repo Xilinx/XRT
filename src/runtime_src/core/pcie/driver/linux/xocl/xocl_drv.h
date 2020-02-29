@@ -282,7 +282,7 @@ struct xocl_subdev {
 	int				pf;
 	struct cdev			*cdev;
 
-        struct resource		res[XOCL_SUBDEV_MAX_RES];
+	struct resource		res[XOCL_SUBDEV_MAX_RES];
 	char	res_name[XOCL_SUBDEV_MAX_RES][XOCL_SUBDEV_RES_NAME_LEN];
 	char			bar_idx[XOCL_SUBDEV_MAX_RES];
 };

@@ -56,7 +56,7 @@ int xocl_subdev_init(xdev_handle_t xdev_hdl, struct pci_dev *pdev,
 		struct xocl_pci_funcs *pci_ops)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
-	int i, ret = 0;
+	int i, ret = 0, j;
 
 	mutex_init(&core->lock);
 	core->pci_ops = pci_ops;
@@ -72,6 +72,8 @@ int xocl_subdev_init(xdev_handle_t xdev_hdl, struct pci_dev *pdev,
 			ret = -ENOMEM;
 			goto failed;
 		}
+		for (j = 0; j < XOCL_SUBDEV_MAX_INST; ++j)
+			core->subdevs[i][j].info.dev_idx = j;
 	}
 
 	return 0;
@@ -258,12 +260,12 @@ static int xocl_subdev_cdev_create(struct platform_device *pdev,
 	if (XOCL_GET_DRV_PRI(pdev)->cdev_name)
 		sysdev = device_create(xrt_class, &pdev->dev, cdevp->dev,
 			NULL, "%s%d.%d", XOCL_GET_DRV_PRI(pdev)->cdev_name,
-			XOCL_DEV_ID(core->pdev), subdev->inst & MINORMASK);
+			XOCL_DEV_ID(core->pdev), subdev->info.dev_idx);
 	else
 		sysdev = device_create(xrt_class, &pdev->dev, cdevp->dev,
 			NULL, "%s/%s%d.%d", XOCL_CDEV_DIR,
 			platform_get_device_id(pdev)->name,
-			XOCL_DEV_ID(core->pdev), subdev->inst & MINORMASK);
+			XOCL_DEV_ID(core->pdev), subdev->info.dev_idx);
 
 	if (IS_ERR(sysdev)) {
 		ret = PTR_ERR(sysdev);
