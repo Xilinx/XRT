@@ -54,6 +54,12 @@ int XrtDevice::unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offse
   return 0;
 }
 
+void XrtDevice::getDebugIpLayout(char* buffer, size_t size, size_t* size_ret)
+{
+   mXrtDevice->getDebugIpLayout(buffer, size, size_ret);
+}
+
+
 double XrtDevice::getDeviceClock()
 {
   return mXrtDevice->getDeviceClock().get();
