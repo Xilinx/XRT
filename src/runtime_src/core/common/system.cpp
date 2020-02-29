@@ -66,6 +66,7 @@ get_xrt_build_info(boost::property_tree::ptree& pt)
 void
 get_xrt_info(boost::property_tree::ptree &pt)
 {
+  get_xrt_build_info(pt);
   instance().get_xrt_info(pt);
 }
 

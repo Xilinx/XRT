@@ -69,7 +69,6 @@ void
 system_linux::
 get_xrt_info(boost::property_tree::ptree &pt)
 {
-  xrt_core::get_xrt_build_info(pt);
   pt.put("zocl", driver_version("zocl"));
 }
 
