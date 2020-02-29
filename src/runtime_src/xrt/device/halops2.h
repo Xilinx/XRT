@@ -132,6 +132,8 @@ private:
   typedef int     (*pollQueuesFuncType)(xclDeviceHandle handle,int min, int max, xclReqCompletion* completions, int* actual, int timeout);
 //End Streaming
 
+  typedef void (*getDebugIpLayoutType)(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret);
+
   //APIs using sysfs
   typedef uint32_t(*xclGetNumLiveProcessesFuncType)(xclDeviceHandle handle);
   typedef int     (*xclGetSysfsPathFuncType)(xclDeviceHandle handle, const char* subdev, const char* entry, char* sysfsPath, size_t size);
@@ -141,7 +143,7 @@ private:
 
   typedef int (*xclGetTraceBufferInfoFuncType)(xclDeviceHandle handle, uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
   typedef int (*xclReadTraceDataFuncType)(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
-
+ 
 private:
   const std::string mFileName;
   const void *mDriverHandle;
@@ -209,6 +211,8 @@ public:
   readQueueFuncType mReadQueue;
   pollQueuesFuncType mPollQueues;
 //End Streaming
+
+  getDebugIpLayoutType mGetDebugIpLayout;
 
   // APIs using sysfs
   xclGetNumLiveProcessesFuncType mGetNumLiveProcesses;
