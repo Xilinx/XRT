@@ -80,6 +80,11 @@ static int stop_ert_nolock(struct xocl_ert *ert)
 	if (ert->state  < MB_RUNNING)
 		return 0;
 
+	if (SELF_JUMP(XOCL_READ_REG32(ert->fw_addr))) {
+		xocl_info(&ert->pdev->dev, "MB is self jump");
+		return 0;
+	}
+
 	xocl_info(&ert->pdev->dev, "Stopping scheduler...");
 
 	reg_val = READ_GPIO(ert, 0);
@@ -442,10 +447,12 @@ static int ert_probe(struct platform_device *pdev)
 	 * 3) start MB. otherwise any touching of ERT subsystem trips firewall
 	 */
 
-	XOCL_WRITE_REG32(SELF_JUMP_INS, ert->fw_addr);
-	WRITE_GPIO(ert, GPIO_ENABLED, 0);
-	for (i = 0; i < ert->cq_len; i += 4)
-		XOCL_WRITE_REG32(0, ert->cq_addr + i);
+	if (READ_GPIO(ert, 0) == GPIO_RESET) {
+		XOCL_WRITE_REG32(SELF_JUMP_INS, ert->fw_addr);
+		WRITE_GPIO(ert, GPIO_ENABLED, 0);
+		for (i = 0; i < ert->cq_len; i += 4)
+			XOCL_WRITE_REG32(0, ert->cq_addr + i);
+	}
 
 	err = ert_sysfs_create(pdev);
 	if (err) {
