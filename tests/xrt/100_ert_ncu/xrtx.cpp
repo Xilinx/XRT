@@ -268,6 +268,10 @@ int run(int argc, char** argv)
       throw std::runtime_error("bad argument '" + cur + " " + arg + "'");
   }
 
+  auto probe = xclProbe();
+  if (probe < device_index)
+    throw std::runtime_error("Bad device index '" + std::to_string(device_index) + "'");
+
   auto device = xclOpen(device_index, nullptr, XCL_QUIET);
   if (xclLockDevice(device))
     throw std::runtime_error("Cannot lock device");
@@ -298,9 +302,8 @@ int run(int argc, char** argv)
     }
   }
 
-  cus = std::min(cus, maxcus);
-
-  std::string kname = get_kernel_name(compute_units);
+  compute_units = cus = std::min(cus, maxcus);
+  std::string kname = get_kernel_name(cus);
   auto kernel = xrtKernelOpen(device, header.data(), kname.c_str());
 
   run(device,kernel,jobs,secs,first_used_mem);

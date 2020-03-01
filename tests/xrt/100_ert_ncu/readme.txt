@@ -4,13 +4,13 @@ To build and run locally
 For example .../git/XRT/build/run.sh
 
 # build executables
-% cd ..
-% mkdir build
-% cd build
-% [run.sh] cmake ..
-% make
+# [run.sh] <path>/XRT/tests/xrt/build.sh
+# The execs are located under
+# <path>/XRT/tests/xrt/build/<OS>/Debug/100_ert_ncu
 
 # build xclbin
+% pwd
+<here>
 % [run.sh] make -f xclbin.mk DSA=... MODE=... xclbin
 
 # run

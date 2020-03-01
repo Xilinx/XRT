@@ -41,15 +41,15 @@ protected:
 public:
   // REMOVE
   virtual void
-  get_xrt_info(boost::property_tree::ptree &pt) = 0;
+  get_xrt_info(boost::property_tree::ptree &pt) {}
 
   // REMOVE
   virtual void
-  get_os_info(boost::property_tree::ptree &pt) = 0;
+  get_os_info(boost::property_tree::ptree &pt) {}
 
   // REMOVE
   virtual void
-  get_devices(boost::property_tree::ptree &pt) const = 0;
+  get_devices(boost::property_tree::ptree &pt) const {}
 
   /**
    */

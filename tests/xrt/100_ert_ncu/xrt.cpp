@@ -57,7 +57,7 @@ const size_t ELEMENTS = 16;
 const size_t ARRAY_SIZE = 8;
 const size_t MAXCUS = 8;
 
-size_t cus = MAXCUS;
+size_t compute_units = MAXCUS;
 
 static void usage()
 {
@@ -171,7 +171,7 @@ struct job_type
     ecmd->count = 1 + regmap_size;  // cu_mask + regmap
 
     // Program the CU mask. One CU at index 0
-    ecmd->cu_mask = (1<<cus)-1; // 0xFF for 8 CUs
+    ecmd->cu_mask = (1<<compute_units)-1; // 0xFF for 8 CUs
 
     ecmd->data[XADDONE_CONTROL_ADDR_AP_CTRL] = 0x0; // ap_start
     ecmd->data[XADDONE_CONTROL_ADDR_A_DATA/4] = a_addr;
@@ -261,7 +261,7 @@ run(xclDeviceHandle d,size_t num_jobs, size_t seconds, int first_used_mem)
   std::cout << "xrt: ";
   std::cout << "jobsize cus seconds total = "
             << num_jobs << " "
-            << cus << " "
+            << compute_units << " "
             << seconds << " "
             << total << "\n";
 
@@ -304,6 +304,10 @@ int run(int argc, char** argv)
       throw std::runtime_error("bad argument '" + cur + " " + arg + "'");
   }
 
+  auto probe = xclProbe();
+  if (probe < device_index)
+    throw std::runtime_error("Bad device index '" + std::to_string(device_index) + "'");
+
   auto device = xclOpen(device_index, nullptr, XCL_QUIET);
   if (xclLockDevice(device))
     throw std::runtime_error("Cannot lock device");
@@ -334,7 +338,7 @@ int run(int argc, char** argv)
     }
   }
 
-  cus = std::min(cus, maxcus);
+  compute_units = cus = std::min(cus, maxcus);
 
   run(device,jobs,secs,first_used_mem);
 

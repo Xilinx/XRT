@@ -37,13 +37,6 @@ is_windows()
 }
 
 static bool
-emulation_mode()
-{
-  static bool val = (std::getenv("XCL_EMULATION_MODE") != nullptr);
-  return val;
-}
-
-static bool
 is_sw_emulation()
 {
   static auto xem = std::getenv("XCL_EMULATION_MODE");
@@ -70,31 +63,6 @@ pts_enabled()
 {
   static bool enabled = false; // xrt_core::config::get_feature_toggle("Runtime.pts");
   return enabled;
-}
-
-// Force disabling of kds if emulation and 5.0 DSA
-static void
-emu_50_disable_kds(const xrt_core::device*)
-{
-  static bool done = false;
-  if (!done) {
-    done = true;
-
-    if (!kds_enabled())
-      return;
-
-    if (!emulation_mode())
-      return;
-
-    // stop kds thread
-    xrt_core::exec::stop();
-
-    // force kds off
-    kds_enabled(true/*forceoff*/);
-
-    // restart scheduler thread
-    xrt_core::exec::start();
-  }
 }
 
 }
@@ -144,8 +112,6 @@ init(xrt_core::device* device, const axlf* top)
     ~X() { try { stop(); } catch (...) { } } // coverity
   };
   static X x;
-
-  emu_50_disable_kds(device);
 
   static bool started = false;
   if (!started) {

@@ -4,11 +4,17 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 set(XILINX_XRT $ENV{XILINX_XRT})
+set(XRT_CORE_LIBRARY xrt_core)
+
+if (DEFINED ENV{XCL_EMULATION_MODE})
+  string(REPLACE "_" "" XCL_EMU_SUFFIX $ENV{XCL_EMULATION_MODE})
+  set(XRT_CORE_LIBRARY xrt_${XCL_EMU_SUFFIX})
+  message("=============== XRT_CORE_LIB=${XRT_CORE_LIBRARY}")
+endif()
 
 find_library(xrt_core_LIBRARY
-  NAMES xrt_core
+  NAMES ${XRT_CORE_LIBRARY}
   HINTS "${XILINX_XRT}/lib")
-
 message("xrt_core_LIBRARY=${xrt_core_LIBRARY}")
 
 find_library(xrt_coreutil_LIBRARY
