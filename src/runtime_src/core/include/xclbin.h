@@ -219,18 +219,20 @@ extern "C" {
 
     /****   MEMORY TOPOLOGY SECTION ****/
     struct mem_data {
-        uint8_t m_type; //enum corresponding to mem_type.
-        uint8_t m_used; //if 0 this bank is not present
+        uint8_t m_type;          // enum corresponding to mem_type.
+        uint8_t m_used;          // if 0 this bank is not present
+        uint8_t padding[6];      // 8 Byte alignment padding (initialized to zeros)
         union {
-            uint64_t m_size; //if mem_type DDR, then size in KB;
-            uint64_t route_id; //if streaming then "route_id"
+            uint64_t m_size;     // if mem_type DDR, then size in KB;
+            uint64_t route_id;   // if streaming then "route_id"
         };
         union {
-            uint64_t m_base_address;//if DDR then the base address;
-            uint64_t flow_id; //if streaming then "flow id"
+            uint64_t m_base_address; // if DDR then the base address;
+            uint64_t flow_id;        // if streaming then "flow id"
         };
-        unsigned char m_tag[16]; //DDR: BANK0,1,2,3, has to be null terminated; if streaming then stream0, 1 etc
+        unsigned char m_tag[16]; // DDR: BANK0,1,2,3, has to be null terminated; if streaming then stream0, 1 etc
     };
+    static_assert (sizeof(mem_data) == 40, "mem_data structure no longer is 40 bytes in size"); 
 
     struct mem_topology {
         int32_t m_count; //Number of mem_data
