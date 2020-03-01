@@ -232,7 +232,9 @@ extern "C" {
         };
         unsigned char m_tag[16]; // DDR: BANK0,1,2,3, has to be null terminated; if streaming then stream0, 1 etc
     };
-    static_assert (sizeof(mem_data) == 40, "mem_data structure no longer is 40 bytes in size"); 
+    #ifdef __cplusplus
+      static_assert (sizeof(mem_data) == 40, "mem_data structure no longer is 40 bytes in size"); 
+    #endif
 
     struct mem_topology {
         int32_t m_count; //Number of mem_data
