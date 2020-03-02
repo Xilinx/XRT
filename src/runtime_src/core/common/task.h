@@ -383,7 +383,7 @@ worker_ndebug(queue& q)
 inline void
 worker2(queue& q, const std::string& id="")
 {
-  if (xrt::config::get_xrt_debug())
+  if (xrt_core::config::get_xrt_debug())
     return worker_debug(q,id);
   else
     return worker_ndebug(q);

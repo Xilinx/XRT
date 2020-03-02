@@ -542,8 +542,12 @@ static int xocl_fdt_parse_ip(xdev_handle_t xdev_hdl, char *blob,
 			"IP %s, PF index not found", ip->name);
 		return -EINVAL;
 	}
+
+#if PF == MGMTPF
+	/* mgmtpf driver checks pfnum. it will not create userpf subdevices */
 	if (ntohl(*pfnum) != XOCL_PCI_FUNC(xdev_hdl))
 		return 0;
+#endif
 
 	bar_idx = fdt_getprop(blob, off, PROP_BAR_IDX, NULL);
 
@@ -723,9 +727,11 @@ static int xocl_fdt_get_devinfo(xdev_handle_t xdev_hdl, char *blob,
 
 	subdev->pf = XOCL_PCI_FUNC(xdev_hdl);
 
+#if PF == MGMTPF
 	if ((map_p->flags & XOCL_SUBDEV_MAP_USERPF_ONLY) &&
 			subdev->pf != xocl_fdt_get_userpf(xdev_hdl, blob))
 		goto failed;
+#endif
 
 	num = 1;
 	if (!rtn_subdevs)

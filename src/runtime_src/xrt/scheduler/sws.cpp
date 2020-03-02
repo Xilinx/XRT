@@ -22,10 +22,10 @@
  */
 #include "scheduler.h"
 #include "xrt/util/debug.h"
-#include "xrt/util/thread.h"
 #include "xrt/util/task.h"
 #include "ert.h"
 #include "xclbin.h"
+#include "core/common/thread.h"
 #include "core/common/xclbin_parser.h"
 #include "command.h"
 #include <limits>
@@ -857,9 +857,9 @@ start()
   if (s_running)
     throw std::runtime_error("software command scheduler is already started");
 
-  s_scheduler_thread = std::move(xrt::thread(scheduler_loop));
+  s_scheduler_thread = std::move(xrt_core::thread(scheduler_loop));
   if (threaded_notification)
-    notifier = std::move(xrt::thread(xrt::task::worker,std::ref(notify_queue)));
+    notifier = std::move(xrt_core::thread(xrt::task::worker,std::ref(notify_queue)));
   s_running = true;
 }
 

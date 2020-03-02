@@ -1945,17 +1945,19 @@ unmap_sgl:
 }
 
 ssize_t qdma_batch_request_submit(unsigned long dev_hndl, unsigned long id,
-			  unsigned long count, struct qdma_request **reqv)
+			  unsigned long count, struct qdma_request *reqv)
 {
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
+	struct pci_dev *pdev = xdev->conf.pdev;
 	struct qdma_descq *descq =
 		qdma_device_get_descq_by_id(xdev, id, NULL, 0, 0);
 	struct qdma_sgt_req_cb *cb;
 	enum dma_data_direction dir;
 	int rv = 0;
 	unsigned long i;
-	struct qdma_request *req;
+	struct qdma_request *req = reqv;
 	int st_c2h = 0;
+
 
 	/**<b> Detailed Description </b>*/
 	if (!descq)
@@ -1966,7 +1968,6 @@ ssize_t qdma_batch_request_submit(unsigned long dev_hndl, unsigned long id,
 	/** Identify the direction of the transfer */
 	dir = descq->conf.c2h ?  DMA_FROM_DEVICE : DMA_TO_DEVICE;
 
-	req = reqv[0];
 	/** If write request is given on the C2H direction
 	 *  OR, a read request given on non C2H direction
 	 *  then, its an invalid request, return error in this case
@@ -1983,41 +1984,50 @@ ssize_t qdma_batch_request_submit(unsigned long dev_hndl, unsigned long id,
 	}
 
 	if (st_c2h) {
-		for (i = 0; i < count; i++) {
-			req = reqv[i];
+		for (i = 0, req = reqv; i < count; i++, req++) {
 			cb = qdma_req_cb_get(req);
 			/** Reset the local cb request with 0's */
 			memset(cb, 0, QDMA_REQ_OPAQUE_SIZE);
+			/** Initialize the wait queue */
+			qdma_waitq_init(&cb->wq);
+			cb->sg = req->use_sgt ? (void *)req->sgt->sgl :
+						(void *)req->sgl;
 
 			rv = qdma_request_submit_st_c2h(xdev, descq, req);
-			if ((rv < 0) || (rv == req->count))
+			if ((rv < 0) || (rv == req->count)) {
+				cb->done = 1;
+				if (rv < 0)
+					cb->status = rv;
 				req->fp_done(req->uld_data, rv, rv);
+			}
 		}
 
 		return 0;
+	}
 
-	} else {
-		struct pci_dev *pdev = xdev->conf.pdev;
+	/* MM and ST H2C */
+	for (i = 0, req = reqv; i < count; i++, req++) {
+		cb = qdma_req_cb_get(req);
+		/** Reset the local cb request with 0's */
+		memset(cb, 0, QDMA_REQ_OPAQUE_SIZE);
 
-		for (i = 0; i < count; i++) {
-			req = reqv[i];
-			cb = qdma_req_cb_get(req);
-			/** Reset the local cb request with 0's */
-			memset(cb, 0, QDMA_REQ_OPAQUE_SIZE);
-
-			if (!req->dma_mapped) {
-				rv = qdma_request_map(pdev, req);
-				if (unlikely(rv < 0)) {
-					pr_info("%s map sgl %u failed, %u.\n",
-						descq->conf.name,
-						req->sgcnt,
-						req->count);
-					req->fp_done(req->uld_data, 0, rv);
-				}
-				cb->unmap_needed = 1;
+		/** Initialize the wait queue */
+		qdma_waitq_init(&cb->wq);
+		cb->sg = req->use_sgt ? (void *)req->sgt->sgl : (void *)req->sgl;
+		if (!req->dma_mapped) {
+			rv = qdma_request_map(pdev, req);
+			if (unlikely(rv < 0)) {
+				pr_info("%s map sgl %u failed, %u.\n",
+					descq->conf.name, req->sgcnt,
+					req->count);
+				cb->done = 1;
+				cb->status = -EIO;
+				req->fp_done(req->uld_data, 0, rv);
 			}
+			cb->unmap_needed = 1;
 		}
 	}
+
 
 	lock_descq(descq);
 	/**  if the descq is already in online state*/
@@ -2028,11 +2038,16 @@ ssize_t qdma_batch_request_submit(unsigned long dev_hndl, unsigned long id,
 		return -EINVAL;
 	}
 
-	for (i = 0; i < count; i++) {
-		req = reqv[i];
+	for (i = 0, req = reqv; i < count; i++, req++) {
 		cb = qdma_req_cb_get(req);
+		if (!cb->done) {
+			list_add_tail(&cb->list, &descq->work_list);
 
-		list_add_tail(&cb->list, &descq->work_list);
+			descq->stat.pending_bytes += req->count;
+			descq->stat.pending_requests++;
+			descq->pend_req_desc += ((req->count + PAGE_SIZE - 1)
+						>> PAGE_SHIFT);
+		}
 	}
 	unlock_descq(descq);
 

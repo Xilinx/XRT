@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
+#define XRT_CORE_COMMON_SOURCE
 #include "thread.h"
 #include "debug.h"
 #include "message.h"
@@ -70,7 +70,7 @@ set_thread_policy(std::thread& thread)
 
     debug_thread_policy("default",policy,priority);
 
-    static std::string config_policy = xrt::config::detail::get_string_value("Runtime.thread_policy","default");
+    static std::string config_policy = xrt_core::config::detail::get_string_value("Runtime.thread_policy","default");
     if (config_policy=="rr") {
       policy = SCHED_RR;
       priority = 1;
@@ -101,7 +101,7 @@ set_cpu_affinity(std::thread& thread)
   if (!initialized) {
     initialized = true;
 
-    std::string cpus = xrt::config::detail::get_string_value("Runtime.cpu_affinity","default");
+    std::string cpus = xrt_core::config::detail::get_string_value("Runtime.cpu_affinity","default");
     if (cpus=="default")
       all=true;
     else {
@@ -117,7 +117,7 @@ set_cpu_affinity(std::thread& thread)
           CPU_SET(cpu,&cpuset);
         }
         else {
-          xrt::message::send(xrt::message::severity_level::XRT_WARNING,"Ignoring cpu affinity since cpu #" + tok + " is out of range\n");
+          xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING,"XRT", "Ignoring cpu affinity since cpu #" + tok + " is out of range\n");
           all=true;
         }
       }
@@ -150,7 +150,7 @@ set_cpu_affinity(std::thread&)
 
 }
 
-namespace xrt {
+namespace xrt_core {
 
 namespace detail {
 
@@ -166,4 +166,4 @@ void set_cpu_affinity(std::thread& thread)
 
 } // detail
 
-} // xrt
+} // xrt_core

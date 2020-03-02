@@ -51,7 +51,9 @@ struct kernel_argument
 struct softkernel_object
 {
   uint32_t ninst;
-  char *symbol_name;
+  std::string mpo_name;
+  std::string mpo_version;
+  std::string symbol_name;
   size_t size;
   char *sk_buf;
 };
