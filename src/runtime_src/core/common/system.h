@@ -41,15 +41,15 @@ protected:
 public:
   // REMOVE
   virtual void
-  get_xrt_info(boost::property_tree::ptree &pt) = 0;
+  get_xrt_info(boost::property_tree::ptree&) {}
 
   // REMOVE
   virtual void
-  get_os_info(boost::property_tree::ptree &pt) = 0;
+  get_os_info(boost::property_tree::ptree&) {}
 
   // REMOVE
   virtual void
-  get_devices(boost::property_tree::ptree &pt) const = 0;
+  get_devices(boost::property_tree::ptree&) const {}
 
   /**
    */
@@ -140,7 +140,7 @@ get_userpf_device(device::handle_type handle);
  * This is used by shim level implementations to construct and
  * cache a device object as part of constructing shim level handle.
  * The function is called from shim constructors (xclOpen()).  After
- * registration the xrt_core::device object can at all times be 
+ * registration the xrt_core::device object can at all times be
  * retrived from just an hdl (xclDeviceHandle)
  */
 XRT_CORE_COMMON_EXPORT
