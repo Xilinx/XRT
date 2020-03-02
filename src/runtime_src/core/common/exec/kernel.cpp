@@ -21,11 +21,13 @@
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/include/experimental/xrt_kernel.h"
 
-#include "system.h"
-#include "device.h"
-#include "xclbin_parser.h"
-#include "bo_cache.h"
-#include "message.h"
+#include "command.h"
+#include "exec.h"
+#include "core/common/system.h"
+#include "core/common/device.h"
+#include "core/common/xclbin_parser.h"
+#include "core/common/bo_cache.h"
+#include "core/common/message.h"
 #include "core/include/xclbin.h"
 #include "core/include/ert.h"
 #include <memory>
@@ -35,6 +37,8 @@
 #include <cstdarg>
 #include <type_traits>
 #include <utility>
+#include <mutex>
+#include <condition_variable>
 
 #ifdef _WIN32
 # pragma warning( disable : 4244 4267)
@@ -58,11 +62,191 @@ struct device_type
     , exec_buffer_cache(dhdl, 128)
   {}
 
+  template <typename CommandType>
+  xrt_core::bo_cache::cmd_bo<CommandType>
+  create_exec_buf()
+  {
+    return exec_buffer_cache.alloc<CommandType>();
+  }
+
   xrt_core::device*
   get_core_device() const
   {
     return core_device.get();
   }
+};
+
+// class kernel_command - Immplements command API expected by schedulers
+//
+// The kernel command is
+class kernel_command : public xrt_core::command
+{
+public:
+  using execbuf_type = xrt_core::bo_cache::cmd_bo<ert_start_kernel_cmd>;
+  using callback_function_type = std::function<void(ert_cmd_state)>;
+  using callback_list = std::vector<callback_function_type>;
+
+public:
+  kernel_command(device_type* dev)
+    : m_device(dev)
+    , m_execbuf(m_device->create_exec_buf<ert_start_kernel_cmd>())
+    , m_done(true)
+  {}
+
+  ~kernel_command()
+  {
+    // This is problematic, bo_cache should return managed BOs
+    m_device->exec_buffer_cache.release(m_execbuf);
+  }
+
+  /**
+   * Cast underlying exec buffer to its requested type
+   */
+  template <typename ERT_COMMAND_TYPE>
+  const ERT_COMMAND_TYPE
+  get_ert_cmd() const
+  {
+    return reinterpret_cast<const ERT_COMMAND_TYPE>(get_ert_packet());
+  }
+
+  /**
+   * Cast underlying exec buffer to its requested type
+   */
+  template <typename ERT_COMMAND_TYPE>
+  ERT_COMMAND_TYPE
+  get_ert_cmd()
+  {
+    return reinterpret_cast<ERT_COMMAND_TYPE>(get_ert_packet());
+  }
+
+  /**
+   * Add a callback, synchronize with concurrent state change
+   * Call the callback if command is complete.
+   */
+  void
+  add_callback(callback_function_type fcn)
+  {
+    bool complete = false;
+    ert_cmd_state state;
+    {
+      std::lock_guard<std::mutex> lk(m_mutex);
+      if (!m_callbacks)
+        m_callbacks = std::make_unique<callback_list>();
+      m_callbacks->emplace_back(std::move(fcn));
+      complete = m_done;
+      auto pkt = get_ert_packet();
+      state = static_cast<ert_cmd_state>(pkt->state);
+      if (complete && state < ERT_CMD_STATE_COMPLETED)
+        throw std::runtime_error("Unexpected state");
+    }
+
+    // lock must not be helt while calling callback function
+    if (complete)
+      m_callbacks.get()->back()(state);
+  }
+
+  /**
+   * Run registered callbacks.
+   */
+  void
+  run_callbacks(ert_cmd_state state) const
+  {
+    {
+      std::lock_guard<std::mutex> lk(m_mutex);
+      if (!m_callbacks)
+        return;
+    }
+
+    // cannot lock mutex while calling the callbacks
+    // so copy address of callbacks while holding the lock
+    // then execute callbacks without lock
+    std::vector<callback_function_type*> copy;
+    copy.reserve(m_callbacks->size());
+
+    {
+      std::lock_guard<std::mutex> lk(m_mutex);
+      std::transform(m_callbacks->begin(),m_callbacks->end()
+                     ,std::back_inserter(copy)
+                     ,[](callback_function_type& cb) { return &cb; });
+    }
+
+    for (auto cb : copy)
+      (*cb)(state);
+  }
+
+  /**
+   * Submit the command for execution
+   */
+  void
+  run()
+  {
+    {
+      std::lock_guard<std::mutex> lk(m_mutex);
+      if (!m_done)
+        throw std::runtime_error("bad command state, can't launch");
+      m_done = false;
+    }
+    xrt_core::exec::schedule(this);
+  }
+
+  /**
+   * Wait for command completion
+   */
+  ert_cmd_state
+  wait() const
+  {
+    std::unique_lock<std::mutex> lk(m_mutex);
+    while (!m_done)
+      m_exec_done.wait(lk);
+
+    auto pkt = get_ert_packet();
+    return static_cast<ert_cmd_state>(pkt->state);
+  }
+
+  ////////////////////////////////////////////////////////////////
+  // Implement xrt_core::command API
+  ////////////////////////////////////////////////////////////////
+  virtual ert_packet*
+  get_ert_packet() const
+  {
+    return reinterpret_cast<ert_packet*>(m_execbuf.second);
+  }
+
+  virtual xrt_core::device*
+  get_device() const
+  {
+    return m_device->get_core_device();
+  }
+
+  virtual xclBufferHandle
+  get_exec_bo() const
+  {
+    return m_execbuf.first;
+  }
+
+  virtual void
+  notify(ert_cmd_state s)
+  {
+    bool complete = false;
+    if (s>=ERT_CMD_STATE_COMPLETED) {
+      std::lock_guard<std::mutex> lk(m_mutex);
+      complete = m_done = true;
+      m_exec_done.notify_all();  // CAN THIS BE MOVED TO END AFTER CALLBACKS?
+    }
+
+    if (complete)
+      run_callbacks(s);
+  }
+
+private:
+  device_type* m_device = nullptr;
+  execbuf_type m_execbuf; // underlying execution buffer
+  bool m_done = false;
+
+  mutable std::mutex m_mutex;
+  mutable std::condition_variable m_exec_done;
+
+  std::unique_ptr<callback_list> m_callbacks;
 };
 
 // struct kernel_type - The internals of an xrtKernelHandle
@@ -121,9 +305,16 @@ struct kernel_type
 // its own execution buffer (ert command object)
 struct run_type
 {
+  using callback_function_type = std::function<void(ert_cmd_state)>;
   std::shared_ptr<kernel_type> kernel;    // shared ownership
   xrt_core::device* core_device;          // convenience, in scope of kernel
-  xrt_core::bo_cache::cmd_bo<ert_start_kernel_cmd> execbuf;  // execution buffer
+  kernel_command cmd;                     // underlying command object
+
+  void
+  add_callback(callback_function_type fcn)
+  {
+    cmd.add_callback(fcn);
+  }
 
   // run_type() - constructor
   //
@@ -131,20 +322,14 @@ struct run_type
   run_type(std::shared_ptr<kernel_type> k)
     : kernel(std::move(k))                           // share ownership
     , core_device(kernel->device->get_core_device()) // cache core device
-    , execbuf(kernel->device->exec_buffer_cache.alloc<ert_start_kernel_cmd>())
+    , cmd(kernel->device.get())
   {
     // TODO: consider if execbuf is cleared on return from cache
-    auto cmd = execbuf.second;
-    cmd->count = kernel->num_cumasks + kernel->regmap_size;
-    cmd->opcode = ERT_START_CU;
-    cmd->type = ERT_CU;
-    cmd->cu_mask = kernel->cumask.to_ulong();  // TODO: fix for > 32 CUs
-  }
-
-  ~run_type()
-  {
-    // This is problematic, bo_cache should return managed BOs
-    kernel->device->exec_buffer_cache.release(execbuf);
+    auto kcmd = cmd.get_ert_cmd<ert_start_kernel_cmd*>();
+    kcmd->count = kernel->num_cumasks + kernel->regmap_size;
+    kcmd->opcode = ERT_START_CU;
+    kcmd->type = ERT_CU;
+    kcmd->cu_mask = kernel->cumask.to_ulong();  // TODO: fix for > 32 CUs
   }
 
   // set_global_arg() - set a global argument
@@ -156,11 +341,11 @@ struct run_type
     auto addr = prop.paddr;
 
     // Populate cmd payload with argument
-    auto cmd = execbuf.second;
+    auto kcmd = cmd.get_ert_cmd<ert_start_kernel_cmd*>();
     const auto& arg = kernel->args[index];
     auto cmdidx = arg.offset / 4;
-    cmd->data[cmdidx] =  addr;
-    cmd->data[++cmdidx] = (addr >> 32) & 0xFFFFFFFF;
+    kcmd->data[cmdidx] =  addr;
+    kcmd->data[++cmdidx] = (addr >> 32) & 0xFFFFFFFF;
   }
 
   // set_scalar_arg() - set a scalar argument
@@ -170,10 +355,10 @@ struct run_type
   {
     static_assert(std::is_scalar<ScalarType>::value,"Invalid ScalarType");
     // Populate cmd payload with argument
-    auto cmd = execbuf.second;
+    auto kcmd = cmd.get_ert_cmd<ert_start_kernel_cmd*>();
     const auto& arg = kernel->args[index];
     auto cmdidx = arg.offset / 4;
-    cmd->data[cmdidx] =  scalar;
+    kcmd->data[cmdidx] =  scalar;
   }
 
   void
@@ -211,25 +396,26 @@ struct run_type
 
   // start() - start the run object (execbuf)
   void
-  start() const
+  start()
   {
-    auto cmd = execbuf.second;
-    cmd->state = ERT_CMD_STATE_NEW;
-    core_device->exec_buf(execbuf.first);
+    auto pkt = cmd.get_ert_packet();
+    pkt->state = ERT_CMD_STATE_NEW;
+    cmd.run();
   }
 
   // wait() - wait for execution to complete
-  void
+  ert_cmd_state
   wait() const
   {
-    while (core_device->exec_wait(1000) == 0) ;
+    return cmd.wait();
   }
 
   // state() - get current execution state
   ert_cmd_state
   state() const
   {
-    return static_cast<ert_cmd_state>(execbuf.second->state);
+    auto pkt = cmd.get_ert_packet();
+    return static_cast<ert_cmd_state>(pkt->state);
   }
 };
 
@@ -263,7 +449,7 @@ static std::map<void*, std::unique_ptr<run_type>> runs;
 // is cached so that subsequent look-ups from same xrtDeviceHandle
 // result in same device object if it exists already.
 static std::shared_ptr<device_type>
-get_device(xrtDeviceHandle dhdl)
+get_device(xrtDeviceHandle dhdl, const char* xclbin)
 {
   auto itr = devices.find(dhdl);
   std::shared_ptr<device_type> device = (itr != devices.end())
@@ -271,6 +457,7 @@ get_device(xrtDeviceHandle dhdl)
     : nullptr;
   if (!device) {
     device = std::shared_ptr<device_type>(new device_type(dhdl));
+    xrt_core::exec::init(device->get_core_device(), reinterpret_cast<const axlf*>(xclbin));
     devices.emplace(std::make_pair(dhdl, device));
   }
   return device;
@@ -306,7 +493,7 @@ namespace api {
 xrtKernelHandle
 xrtKernelOpen(xrtDeviceHandle dhdl, const char* xclbin, const char *name)
 {
-  auto device = get_device(dhdl);
+  auto device = get_device(dhdl, xclbin);
   auto kernel = std::make_shared<kernel_type>(device, xclbin, name);
   auto handle = kernel.get();
   kernels.emplace(std::make_pair(handle,std::move(kernel)));
@@ -346,6 +533,24 @@ xrtRunState(xrtRunHandle rhdl)
 {
   auto run = get_run(rhdl);
   return run->state();
+}
+
+ert_cmd_state
+xrtRunWait(xrtRunHandle rhdl)
+{
+  auto run = get_run(rhdl);
+  return run->wait();
+}
+
+void
+xrtRunSetCallback(xrtRunHandle rhdl, ert_cmd_state state,
+                  void (* pfn_state_notify)(xrtRunHandle, ert_cmd_state, void*),
+                  void* data)
+{
+  if (state != ERT_CMD_STATE_COMPLETED)
+    throw std::runtime_error("xrtRunSetCallback state may only be ERT_CMD_STATE_COMPLETED");
+  auto run = get_run(rhdl);
+  run->add_callback([=](ert_cmd_state state) { pfn_state_notify(rhdl, state, data); });
 }
 
 void
@@ -451,6 +656,33 @@ xrtRunState(xrtRunHandle rhdl)
     send_exception_message(ex.what());
   }
   return ERT_CMD_STATE_ABORT;
+}
+
+ert_cmd_state
+xrtRunWait(xrtRunHandle rhdl)
+{
+  try {
+    return api::xrtRunWait(rhdl);
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return ERT_CMD_STATE_ABORT;
+  }
+}
+
+int
+xrtRunSetCallback(xrtRunHandle rhdl, ert_cmd_state state,
+                  void (* pfn_state_notify)(xrtRunHandle, ert_cmd_state, void*),
+                  void* data)
+{
+  try {
+    api::xrtRunSetCallback(rhdl, state, pfn_state_notify, data);
+    return 0;
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return -1;
+  }
 }
 
 int

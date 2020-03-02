@@ -1225,49 +1225,10 @@ load_program(program* program)
   if (binary_size == 0)
     return;
 
-  // get the xrt device.  guaranteed to be the final device after
-  // above call to setXrtDevice
-  auto xdevice = get_xrt_device();
-
-  // reclocking - old
-  // This is obsolete and will be removed soon (pending verify.xclbin updates)
-  if (xrt::config::get_frequency_scaling()) {
-    const clock_freq_topology* freqs = m_xclbin.get_clk_freq_topology();
-    if(!freqs) {
-      if (!is_sw_emulation())
-        throw xocl::error(CL_INVALID_PROGRAM,"Legacy xclbin is not supported, please update xclbin");
-      unsigned short idx = 0;
-      unsigned short target_freqs[4] = {0};
-      auto kclocks = m_xclbin.kernel_clocks();
-      if (kclocks.size()>2)
-        throw xocl::error(CL_INVALID_PROGRAM,"Too many kernel clocks");
-      for (auto& clock : kclocks) {
-        if (idx == 0) {
-          std::string device_name = get_unique_name();
-          profile::set_kernel_clock_freq(device_name, clock.frequency);
-        }
-        target_freqs[idx++] = clock.frequency;
-      }
-
-      // System clocks
-      idx=2; // system clocks start at idx==2
-      auto sclocks = m_xclbin.system_clocks();
-      if (sclocks.size()>2)
-        throw xocl::error(CL_INVALID_PROGRAM,"Too many system clocks");
-      for (auto& clock : sclocks)
-        target_freqs[idx++] = clock.frequency;
-
-      auto rv = xdevice->reClock2(0,target_freqs);
-      if (rv.valid() && rv.get())
-        throw xocl::error(CL_INVALID_PROGRAM,"Reclocking failed");
-    }
-  }
-
-
   // programmming
   if (xrt::config::get_xclbin_programing()) {
     auto header = reinterpret_cast<const xclBin *>(binary_data.first);
-    auto xbrv = xdevice->loadXclBin(header);
+    auto xbrv = m_xdevice->loadXclBin(header);
     if (xbrv.valid() && xbrv.get()){
       if(xbrv.get() == -EACCES)
         throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Invalid DNA");

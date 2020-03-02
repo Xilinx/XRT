@@ -44,9 +44,10 @@ XCL_DRIVER_DLLESPEC double xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle);
 XCL_DRIVER_DLLESPEC int xclGetDebugIPlayoutPath(xclDeviceHandle handle, char* layoutPath, size_t size);
 
 XCL_DRIVER_DLLESPEC int xclGetTraceBufferInfo(xclDeviceHandle handle, uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
+
 XCL_DRIVER_DLLESPEC int xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
 
-
+XCL_DRIVER_DLLESPEC int xclGetSubdevPath(xclDeviceHandle handle, const char* subdev, uint32_t idx, char* path, size_t size);
 
 #ifdef __cplusplus
 }

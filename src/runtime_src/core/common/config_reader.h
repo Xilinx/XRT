@@ -357,13 +357,6 @@ get_multiprocess()
 }
 
 inline bool
-get_frequency_scaling()
-{
-  static bool value = !get_multiprocess() && detail::get_bool_value("Runtime.frequency_scaling",true);
-  return value;
-}
-
-inline bool
 get_feature_toggle(const std::string& feature)
 {
   return detail::get_bool_value(feature.c_str(),false);

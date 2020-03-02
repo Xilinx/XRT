@@ -142,8 +142,9 @@ public:
     return qr.get(this, std::forward<Args>(args)...);
   }
 
-  virtual void get_info(boost::property_tree::ptree &pt) const = 0;
-  virtual void read_dma_stats(boost::property_tree::ptree &pt) const = 0;
+  // Move all these 'pt' functions out the class interface
+  virtual void get_info(boost::property_tree::ptree&) const {}
+  virtual void read_dma_stats(boost::property_tree::ptree&) const {}
 
   void get_rom_info(boost::property_tree::ptree & pt) const;
   void get_xmc_info(boost::property_tree::ptree & pt) const;
@@ -158,15 +159,18 @@ public:
 
   /**
    * read() - maps pcie bar and copy bytes word (32bit) by word
+   * THIS FUNCTION DOES NOT BELONG HERE
    */
-  virtual void read(uint64_t offset, void* buf, uint64_t len) const = 0;
+  virtual void read(uint64_t, void*, uint64_t) const {}
   /**
    * write() - maps pcie bar and copy bytes word (32bit) by word
+   * THIS FUNCTION DOES NOT BELONG HERE
    */
-  virtual void write(uint64_t offset, const void* buf, uint64_t len) const = 0;
+  virtual void write(uint64_t, const void*, uint64_t) const {}
 
   /**
    * file_open() - Opens a scoped fd
+   * THIS FUNCTION DOES NOT BELONG HERE
    */
   scope_value_guard<int, std::function<void()>>
   file_open(const std::string& subdev, int flag)
@@ -175,7 +179,7 @@ public:
     return {fd, std::bind(&device::close, this, fd)};
   }
 
-  // Helper methods
+  // Helper methods, move else where
   typedef std::string (*FORMAT_STRING_PTR)(const boost::any &);
   static std::string format_primative(const boost::any & _data);
   static std::string format_hex(const boost::any & _data);
