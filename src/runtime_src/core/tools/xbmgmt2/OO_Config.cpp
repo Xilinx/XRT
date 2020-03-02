@@ -181,7 +181,7 @@ OO_Config::execute(const SubCmdOptions& _options) const
   
   // parse device indices
   std::vector<uint16_t> device_indices;  
-  // XBU::parse_device_indices(device_indices, device); [fix in XBU, else, won't work change it to "ALL"]
+  XBU::parse_device_indices(device_indices, m_device);
   
   //Option:show
   if(show) {

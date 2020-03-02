@@ -951,7 +951,7 @@ int
 device_windows::
 ioctl(int dev_handle, unsigned long cmd, void *arg) const
 {
-  return 0;
+  throw std::runtime_error("not supported on windows");
 }
 
 } // xrt_core

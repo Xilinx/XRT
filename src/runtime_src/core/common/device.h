@@ -168,11 +168,6 @@ public:
    */
   virtual void write(uint64_t, const void*, uint64_t) const {}
 
-  /*
-   * ioctl() - used to check NIFD status (only available on linux)
-   */
-  virtual int ioctl(int dev_handle, unsigned long cmd, void *arg) const {};
-
   /**
    * file_open() - Opens a scoped fd
    * THIS FUNCTION DOES NOT BELONG HERE
@@ -183,6 +178,11 @@ public:
     auto fd = open(subdev, flag);
     return {fd, std::bind(&device::close, this, fd)};
   }
+
+  /*
+   * ioctl() - used to check NIFD status (only available on linux)
+   */
+  virtual int ioctl(int, unsigned long, void *) const { return 0; }
 
   // Helper methods, move else where
   typedef std::string (*FORMAT_STRING_PTR)(const boost::any &);

@@ -283,7 +283,17 @@ XBUtilities::wrap_paragraphs( const std::string & _unformattedString,
 void
 XBUtilities::parse_device_indices(std::vector<uint16_t> &device_indices, std::string device)
 {
-  if (!device.empty()) { 
+  if(device.compare("all") == 0) {
+    ::verbose("Sub command : --device");
+    //get all devices
+    auto total = xrt_core::get_total_devices(false).first;
+    if (total == 0)
+      throw xrt_core::error("No card found!");
+    //better way to do this?
+    for(uint16_t i = 0; i < total; i++) {
+      device_indices.push_back(i);
+    }
+  } else if (!device.empty()) {
     ::verbose("Sub command : --device");
     using tokenizer = boost::tokenizer< boost::char_separator<char> >;
     boost::char_separator<char> sep(", ");
@@ -293,16 +303,7 @@ XBUtilities::parse_device_indices(std::vector<uint16_t> &device_indices, std::st
     	uint16_t idx = xrt_core::utils::bdf2index(*tok_iter);
       device_indices.push_back(idx);
     }
-  } else {
-    //get all devices
-    auto total = xrt_core::get_total_devices(false).first;
-    if (total == 0)
-      throw xrt_core::error("No card found!");
-    //better way to do this?
-    for(uint16_t i = 0; i < total; i++) {
-      device_indices.push_back(i);
-    }
-  }
+  } 
 }
 
 
