@@ -93,10 +93,6 @@ typedef struct {
 /* The imaginary module length register */
 #define XHI_MLR			15
 
-#define	GATE_FREEZE_USER	0x0c
-
-static u32 gate_free_user[] = {0xe, 0xc, 0xe, 0xf};
-
 static struct attribute_group icap_attr_group;
 
 enum icap_sec_level {
@@ -130,12 +126,6 @@ struct icap_generic_state {
 	u32			igs_state;
 } __attribute__((packed));
 
-struct icap_axi_gate {
-	u32			iag_wr;
-	u32			iag_rvsd;
-	u32			iag_rd;
-} __attribute__((packed));
-
 struct icap_bitstream_user {
 	struct list_head	ibu_list;
 	pid_t			ibu_pid;
@@ -148,7 +138,6 @@ struct icap {
 	struct icap_generic_state *icap_state;
 	unsigned int		idcode;
 	bool			icap_axi_gate_frozen;
-	struct icap_axi_gate	*icap_axi_gate;
 
 	xuid_t			icap_bitstream_uuid;
 	int			icap_bitstream_ref;
@@ -532,6 +521,7 @@ static bool icap_bitstream_in_use(struct icap *icap)
 static int icap_freeze_axi_gate(struct icap *icap)
 {
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
+	int ret;
 
 	ICAP_INFO(icap, "freezing CL AXI gate");
 	BUG_ON(icap->icap_axi_gate_frozen);
@@ -539,37 +529,21 @@ static int icap_freeze_axi_gate(struct icap *icap)
 
 	if (XOCL_DSA_IS_SMARTN(xdev)) {
 		xocl_xmc_dr_freeze(xdev);
-	} else if (icap->icap_axi_gate) {
-
-		write_lock(&XDEV(xdev)->rwlock);
-		(void) reg_rd(&icap->icap_axi_gate->iag_rd);
-		reg_wr(&icap->icap_axi_gate->iag_wr, GATE_FREEZE_USER);
-		(void) reg_rd(&icap->icap_axi_gate->iag_rd);
-
-		if (!xocl_is_unified(xdev)) {
-			reg_wr(&icap->icap_regs->ir_cr, 0xc);
-			ndelay(20);
-		} else {
-			/* New ICAP reset sequence applicable only to unified dsa. */
-			reg_wr(&icap->icap_regs->ir_cr, 0x8);
-			ndelay(2000);
-			reg_wr(&icap->icap_regs->ir_cr, 0x0);
-			ndelay(2000);
-			reg_wr(&icap->icap_regs->ir_cr, 0x4);
-			ndelay(2000);
-			reg_wr(&icap->icap_regs->ir_cr, 0x0);
-			ndelay(2000);
-		}
 	}
-	icap->icap_axi_gate_frozen = true;
 
-	return 0;
+	ret = xocl_axigate_freeze(xdev, XOCL_SUBDEV_LEVEL_PRP);
+	if (ret)
+		ICAP_ERR(icap, "freeze ULP gate failed %d", ret);
+	else
+		icap->icap_axi_gate_frozen = true;
+
+	return ret;
 }
 
 static int icap_free_axi_gate(struct icap *icap)
 {
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
-	int i;
+	int ret;
 
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 	ICAP_INFO(icap, "freeing CL AXI gate");
@@ -583,18 +557,13 @@ static int icap_free_axi_gate(struct icap *icap)
 
 	if (XOCL_DSA_IS_SMARTN(xdev)) {
 		xocl_xmc_dr_free(xdev);
-	} else if (icap->icap_axi_gate) {
-		for (i = 0; i < ARRAY_SIZE(gate_free_user); i++) {
-			(void) reg_rd(&icap->icap_axi_gate->iag_rd);
-			reg_wr(&icap->icap_axi_gate->iag_wr, gate_free_user[i]);
-			ndelay(500);
-		}
-
-		(void) reg_rd(&icap->icap_axi_gate->iag_rd);
-
-		write_unlock(&XDEV(xdev)->rwlock);
 	}
-	icap->icap_axi_gate_frozen = false;
+
+	ret = xocl_axigate_free(xdev, XOCL_SUBDEV_LEVEL_PRP);
+	if (ret)
+		ICAP_ERR(icap, "free ULP gate failed %d", ret);
+	else
+		icap->icap_axi_gate_frozen = false;
 	return 0;
 }
 
@@ -702,17 +671,13 @@ static int ulp_hbm_calibration(void *drvdata)
 static int ulp_toggle_axi_gate(void *drvdata)
 {
 	struct icap *icap = drvdata;
+	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 
 	ICAP_INFO(icap, "Toggle CL AXI gate");
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
-	if (!icap->icap_axi_gate) {
-		ICAP_ERR(icap, "no %s resource", NODE_GATE_PRP);
-		return -ENODEV;
-	}
-
-	reg_wr(&icap->icap_axi_gate->iag_wr, 0x0);
-	reg_wr(&icap->icap_axi_gate->iag_wr, 0x1);
+	xocl_axigate_freeze(xdev, XOCL_SUBDEV_LEVEL_PRP);
+	xocl_axigate_free(xdev, XOCL_SUBDEV_LEVEL_PRP);
 
 	return 0;
 }
@@ -2305,8 +2270,7 @@ static int icap_reset_ddr_gate_pin(struct icap *icap)
 	if (err)
 		goto out;
 
-	err = xocl_iores_write32(xdev, XOCL_SUBDEV_LEVEL_PRP,
-		IORES_GATEPRPRP, 0, 0);
+	err = xocl_axigate_freeze(xdev, XOCL_SUBDEV_LEVEL_PRP);
 	if (err)
 		goto out;
 out:
@@ -2319,13 +2283,7 @@ static int icap_release_ddr_gate_pin(struct icap *icap)
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 	int err = 0;
 
-	err = xocl_iores_write32(xdev, XOCL_SUBDEV_LEVEL_PRP,
-		IORES_GATEPRPRP, 0, 1);
-	if (err)
-		goto out;
-
-	err = xocl_iores_write32(xdev, XOCL_SUBDEV_LEVEL_PRP,
-		IORES_GATEPRPRP, 0, 3);
+	err = xocl_axigate_free(xdev, XOCL_SUBDEV_LEVEL_PRP);
 	if (err)
 		goto out;
 
@@ -2966,8 +2924,6 @@ static void icap_refresh_addrs(struct platform_device *pdev)
 
 	icap->icap_state = xocl_iores_get_base(xdev, IORES_MEMCALIB);
 	ICAP_INFO(icap, "memcalib @ %lx", (unsigned long)icap->icap_state);
-	icap->icap_axi_gate = xocl_iores_get_base(xdev, IORES_GATEPRPRP);
-	ICAP_INFO(icap, "axi_gate @ %lx", (unsigned long)icap->icap_axi_gate);
 }
 
 static int icap_offline(struct platform_device *pdev)

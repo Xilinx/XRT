@@ -112,7 +112,7 @@ static int axigate_probe(struct platform_device *pdev)
 {
 	struct axi_gate *gate;
 	struct resource *res;
-	int ret;
+	int ret, level;
 
 	gate = devm_kzalloc(&pdev->dev, sizeof(*gate), GFP_KERNEL);
 	if (!gate)
@@ -149,7 +149,8 @@ static int axigate_probe(struct platform_device *pdev)
 	mutex_init(&gate->gate_lock);
 
 	/* force closing gate */
-	axigate_free(pdev);
+	level = xocl_subdev_get_level(pdev);
+	xocl_axigate_free(pdev, level - 1);
 
 	return 0;
 

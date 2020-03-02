@@ -957,7 +957,7 @@ struct xocl_subdev_map {
 			.flags  = IORESOURCE_MEM,	\
 		},					\
 		{					\
-			.name	= RESNAME_GATEPRPRP,	\
+			.name	= RESNAME_GATEULP,	\
 			.start	= 0x030000,		\
 			.end	= 0x03000b,		\
 			.flags  = IORESOURCE_MEM,	\
@@ -971,7 +971,7 @@ struct xocl_subdev_map {
 			.flags  = IORESOURCE_MEM,	\
 		},					\
 		{					\
-			.name	= RESNAME_GATEPRPRP,	\
+			.name	= RESNAME_GATEULP,	\
 			.start	= 0x134000,		\
 			.end	= 0x13400b,		\
 			.flags  = IORESOURCE_MEM,	\
