@@ -19,10 +19,6 @@ file(GLOB EM_SRC_FILES
   "${EM_SRC_DIR}/*.cpp"
   "${COMMON_SRC_DIR}/common/*.h"
   "${COMMON_SRC_DIR}/common/*.cpp"
-  "${COMMON_SRC_DIR}/../common/system.h"
-  "${COMMON_SRC_DIR}/../common/system.cpp"
-  "${COMMON_SRC_DIR}/../common/device.cpp"
-  "${COMMON_SRC_DIR}/../common/device.h"
   )
 
 add_definitions(-DXCLHAL_MAJOR_VER=1 -DXCLHAL_MINOR_VER=0 -D__HWEM__)
