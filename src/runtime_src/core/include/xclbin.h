@@ -75,6 +75,31 @@
   #endif
 #endif
 
+// ----------------- Custom Assert Macro -------------------------
+// The xclbin.h header file is used both by the driver and host 
+// applications/libraries.  For C++ static_assert() would be used, but
+// for the the drivers (e.g., linux) a more custom solution is needed
+// e.g., BUILD_BUG_ON_ZERO()).  Instead of creating a wrapper around the 
+// various OS builds, a custom assert (based on the linux assert) is used.
+
+#ifdef __cplusplus
+  // Used C++ static assert
+  #define XCLBIN_STATIC_ASSERT(e,m) \
+    static_assert (e, m)
+#else
+  // Use our "custom" kernel compilation assert
+  #define XLCBIN_ASSERT_CONCAT_(a, b) a##b
+  #define XLCBIN_ASSERT_CONCAT(a, b) XLCBIN_ASSERT_CONCAT_(a, b)
+
+  // Create an artifitial assertion via a bad divide by zero assertion.
+  #define XCLBIN_STATIC_ASSERT(e,m) \
+    enum { XLCBIN_ASSERT_CONCAT(assert_line_, __LINE__) = 1/(int)(!!(e)) }
+#endif
+
+// Reports a size of structure via an error 
+#define SIZE_OF_STRUCT(s) \
+   char (*__fail)[sizeof(struct s)] = 1
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -171,6 +196,7 @@ extern "C" {
         uint64_t m_sectionOffset;           /* File offset of section data */
         uint64_t m_sectionSize;             /* Size of section data */
     };
+    XCLBIN_STATIC_ASSERT(sizeof(struct axlf_section_header) == 40, "axlf_section_header structure no longer is 40 bytes in size"); 
 
     struct axlf_header {
         uint64_t m_length;                  /* Total size of the xclbin file */
@@ -195,6 +221,7 @@ extern "C" {
         char m_debug_bin[16];               /* Name of binary with debug information */
         uint32_t m_numSections;             /* Number of section headers */
     };
+    XCLBIN_STATIC_ASSERT(sizeof(struct axlf_header) == 152, "axlf_header structure no longer is 152 bytes in size"); 
 
     struct axlf {
         char m_magic[8];                            /* Should be "xclbin2\0"  */
@@ -206,6 +233,7 @@ extern "C" {
         struct axlf_header m_header;                /* Inline header */
         struct axlf_section_header m_sections[1];   /* One or more section headers follow */
     };
+    XCLBIN_STATIC_ASSERT(sizeof(struct axlf) == 496, "axlf structure no longer is 496 bytes in size"); 
 
     typedef struct axlf xclBin;
 
@@ -216,6 +244,8 @@ extern "C" {
         uint8_t m_freq[8];
         char bits[1];
     };
+    XCLBIN_STATIC_ASSERT(sizeof(struct xlnx_bitstream) == 9, "xlnx_bitstream structure no longer is 9 bytes in size"); 
+
 
     /****   MEMORY TOPOLOGY SECTION ****/
     struct mem_data {
@@ -232,14 +262,14 @@ extern "C" {
         };
         unsigned char m_tag[16]; // DDR: BANK0,1,2,3, has to be null terminated; if streaming then stream0, 1 etc
     };
-    #ifdef __cplusplus
-      static_assert (sizeof(mem_data) == 40, "mem_data structure no longer is 40 bytes in size"); 
-    #endif
+    XCLBIN_STATIC_ASSERT(sizeof(struct mem_data) == 40, "mem_data structure no longer is 40 bytes in size"); 
 
     struct mem_topology {
         int32_t m_count; //Number of mem_data
         struct mem_data m_mem_data[1]; //Should be sorted on mem_type
     };
+    XCLBIN_STATIC_ASSERT(sizeof(struct mem_topology) == 48, "mem_topology structure no longer is 48 bytes in size"); 
+
 
     /****   CONNECTIVITY SECTION ****/
     /* Connectivity of each argument of Kernel. It will be in terms of argument
@@ -255,12 +285,13 @@ extern "C" {
         int32_t m_ip_layout_index; //index into the ip_layout section. ip_layout.m_ip_data[index].m_type == IP_KERNEL
         int32_t mem_data_index; //index of the m_mem_data . Flag error is m_used false.
     };
+    XCLBIN_STATIC_ASSERT(sizeof(struct connection) == 12, "connection structure no longer is 12 bytes in size"); 
 
     struct connectivity {
         int32_t m_count;
         struct connection m_connection[1];
     };
-
+    XCLBIN_STATIC_ASSERT(sizeof(struct connectivity) == 16, "connectivity structure no longer is 16 bytes in size"); 
 
     /****   IP_LAYOUT SECTION ****/
 
@@ -298,11 +329,13 @@ extern "C" {
         uint64_t m_base_address;
         uint8_t m_name[64]; //eg Kernel name corresponding to KERNEL instance, can embed CU name in future.
     };
+    XCLBIN_STATIC_ASSERT(sizeof(struct ip_data) == 80, "ip_data structure no longer is 80 bytes in size"); 
 
     struct ip_layout {
         int32_t m_count;
         struct ip_data m_ip_data[1]; //All the ip_data needs to be sorted by m_base_address.
     };
+    XCLBIN_STATIC_ASSERT(sizeof(struct ip_layout) == 88, "ip_layout structure no longer is 88 bytes in size"); 
 
     /*** Debug IP section layout ****/
     enum DEBUG_IP_TYPE {
@@ -332,11 +365,13 @@ extern "C" {
         uint64_t m_base_address;
         char    m_name[128];
     };
+    XCLBIN_STATIC_ASSERT(sizeof(struct debug_ip_data) == 144, "debug_ip_data structure no longer is 144 bytes in size"); 
 
     struct debug_ip_layout {
         uint16_t m_count;
         struct debug_ip_data m_debug_ip_data[1];
     };
+    XCLBIN_STATIC_ASSERT(sizeof(struct debug_ip_layout) == 152, "debug_ip_layout structure no longer is 152 bytes in size"); 
 
     enum CLOCK_TYPE {                      /* Supported clock frequency types */
         CT_UNUSED = 0,                     /* Initialized value */
@@ -351,11 +386,13 @@ extern "C" {
         uint8_t m_unused[5];               /* Not used - padding */
         char m_name[128];                  /* Clock Name */
     };
+    XCLBIN_STATIC_ASSERT(sizeof(struct clock_freq) == 136, "clock_freq structure no longer is 136 bytes in size"); 
 
     struct clock_freq_topology {           /* Clock frequency section */
         int16_t m_count;                   /* Number of entries */
         struct clock_freq m_clock_freq[1]; /* Clock array */
     };
+    XCLBIN_STATIC_ASSERT(sizeof(struct clock_freq_topology) == 138, "clock_freq_topology structure no longer is 138 bytes in size"); 
 
     enum MCS_TYPE {                        /* Supported MCS file types */
         MCS_UNKNOWN = 0,                   /* Initialized value */
@@ -369,12 +406,14 @@ extern "C" {
         uint64_t m_offset;                 /* data offset from the start of the section */
         uint64_t m_size;                   /* data size */
     };
+    XCLBIN_STATIC_ASSERT(sizeof(struct mcs_chunk) == 24, "mcs_chunk structure no longer is 24 bytes in size"); 
 
     struct mcs {                           /* MCS data section */
         int8_t m_count;                    /* Number of chunks */
         int8_t m_unused[7];                /* padding */
         struct mcs_chunk m_chunk[1];       /* MCS chunks followed by data */
     };
+    XCLBIN_STATIC_ASSERT(sizeof(struct mcs) == 32, "mcs structure no longer is 32 bytes in size"); 
 
     struct bmc {                           /* bmc data section  */
         uint64_t m_offset;                 /* data offset from the start of the section */
@@ -385,6 +424,7 @@ extern "C" {
         char m_md5value[33];               /* MD5 Expected Value(e.g., 56027182079c0bd621761b7dab5a27ca)*/
         char m_padding[7];                 /* Padding */
     };
+    XCLBIN_STATIC_ASSERT(sizeof(struct bmc) == 248, "bmc structure no longer is 248 bytes in size"); 
 
     struct soft_kernel {                   /* soft kernel data section  */
         // Prefix Syntax:
@@ -404,6 +444,7 @@ extern "C" {
         uint8_t padding[36];       // Reserved for future use
         uint8_t reservedExt[16];   // Reserved for future extended data
     };
+    XCLBIN_STATIC_ASSERT(sizeof(struct soft_kernel) == 80, "soft_kernel structure no longer is 80 bytes in size"); 
 
     enum FLASH_TYPE
     {
@@ -429,6 +470,7 @@ extern "C" {
         uint8_t reserved[32];      // Reserved for future use
         uint8_t reservedExt[16];   // Reserved for future extended data
     };
+    XCLBIN_STATIC_ASSERT(sizeof(struct flash) == 72, "flash structure no longer is 72 bytes in size"); 
 
     enum CHECKSUM_TYPE
     {
