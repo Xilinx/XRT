@@ -28,7 +28,6 @@ namespace XBU = XBUtilities;
 #include "core/common/query_requests.h"
 #include "core/common/message.h"
 #include "core/common/utils.h"
-#include "core/common/error.h"
 #include "flash/flasher.h"
 
 // 3rd Party Library - Include Files
@@ -58,15 +57,40 @@ namespace po = boost::program_options;
 
 namespace {
 /*
- * Update shell on the board
+ * Update shell on the board for auto flash
+ */
+static void 
+update_shell(uint16_t index, const std::string& primary, const std::string& secondary)
+{
+  Flasher flasher(index);
+  if(!flasher.isValid())
+    throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % index));
+
+  if (primary.empty())
+    throw xrt_core::error("Shell not specified");
+
+  auto pri = std::make_unique<firmwareImage>(primary.c_str(), MCS_FIRMWARE_PRIMARY);
+  std::unique_ptr<firmwareImage> sec;
+  if (pri->fail())
+    throw xrt_core::error(boost::str(boost::format("Failed to read %s") % primary));
+  if (!secondary.empty()) {
+    sec = std::make_unique<firmwareImage>(secondary.c_str(),
+      MCS_FIRMWARE_SECONDARY);
+    if (sec->fail())
+      sec = nullptr;
+  }
+
+  flasher.upgradeFirmware("", pri.get(), sec.get());
+  std::cout << boost::format("%-8s : %s \n") % "INFO" % "Shell is updated successfully.";
+}
+
+/*
+ * Update shell on the board for manual flash
  */
 static void 
 update_shell(uint16_t index, const std::string& flashType,
-    const std::string& primary, const std::string& secondary)
+  const std::string& primary, const std::string& secondary)
 {
-  std::unique_ptr<firmwareImage> pri;
-  std::unique_ptr<firmwareImage> sec;
-
   if (!flashType.empty()) {
       xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", 
         "Overriding flash mode is not recommended.\nYou may damage your card with this option.");
@@ -79,18 +103,18 @@ update_shell(uint16_t index, const std::string& flashType,
   if (primary.empty())
     throw xrt_core::error("Shell not specified");
 
-  pri = std::make_unique<firmwareImage>(primary.c_str(), MCS_FIRMWARE_PRIMARY);
+  auto pri = std::make_unique<firmwareImage>(primary.c_str(), MCS_FIRMWARE_PRIMARY);
+  std::unique_ptr<firmwareImage> sec;
   if (pri->fail())
     throw xrt_core::error(boost::str(boost::format("Failed to read %s") % primary));
   if (!secondary.empty()) {
-    sec = std::make_unique<firmwareImage>(secondary.c_str(),
-      MCS_FIRMWARE_SECONDARY);
+    sec = std::make_unique<firmwareImage>(secondary.c_str(), MCS_FIRMWARE_SECONDARY);
     if (sec->fail())
       sec = nullptr;
   }
 
   flasher.upgradeFirmware(flashType, pri.get(), sec.get());
-  std::cout << boost::format("%-8s : %s \n") % "INFO" % "Shell is updated succesfully.";
+  std::cout << boost::format("%-8s : %s \n") % "INFO" % "Shell is updated successfully.";
 }
 
 /*
@@ -198,13 +222,12 @@ status_report(const std::string& bdf, const DSAInfo& currentDSA, const DSAInfo& 
 static DSAInfo 
 selectShell(uint16_t idx, const std::string& dsa, const std::string& id)
 {
-  uint16_t candidateDSAIndex = std::numeric_limits<uint16_t>::max();
   Flasher flasher(idx);
   if(!flasher.isValid())
     throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % idx));
 
   std::vector<DSAInfo> installedDSA = flasher.getInstalledDSA();
-
+  uint16_t candidateDSAIndex = std::numeric_limits<uint16_t>::max();
   // Find candidate DSA from installed DSA list.
   if (dsa.empty()) {
     if (installedDSA.empty())
@@ -322,8 +345,7 @@ updateShellAndSC(uint16_t boardIdx, DSAInfo& candidate, bool& reboot)
     std::cout << "Updating shell on card[" << flasher.sGetDBDF() <<
       "]" << std::endl;
     auto ret = 0;
-    update_shell(boardIdx, "", candidate.file,
-      candidate.file);
+    update_shell(boardIdx, candidate.file, candidate.file);
     if (ret != 0) {
       std::cout << "ERROR: Failed to update shell on card["
         << flasher.sGetDBDF() << "]" << std::endl;
@@ -480,7 +502,6 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   // -- Retrieve and parse the subcommand options -----------------------------
   std::string device = "";
-  std::vector<uint16_t> device_indices = {0};
   std::string plp = "";
   std::string update = "";
   std::string image = "";
@@ -568,17 +589,8 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   }
 
   // get all device IDs to be processed
-  if (!device.empty()) { 
-    XBU::verbose("Sub command : --device");
-    using tokenizer = boost::tokenizer< boost::char_separator<char> >;
-    boost::char_separator<char> sep(", ");
-    tokenizer tokens(device, sep);
-    
-    for (auto tok_iter = tokens.begin(); tok_iter != tokens.end(); ++tok_iter) {
-      uint16_t idx = xrt_core::utils::bdf2index(*tok_iter);
-      device_indices.push_back(idx);
-    }
-  }
+  std::vector<uint16_t> device_indices; //instead of saving this, can we save Flasher objects?
+  XBU::parse_device_indices(device_indices, device);
 
   if (!update.empty()) {
     XBU::verbose("Sub command: --update");
@@ -594,6 +606,43 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
       std::cout << "TODO: implement SC only update\n";
     else 
       throw xrt_core::error("Please specify a valid value");
+    return;
+  }
+
+  if(!image.empty()) {
+    //call this overloaded function
+    update_shell(device_indices[0], "", "", "");
+  }
+
+  if(revertToGolden) {
+    XBU::verbose("Sub command: --revert-to-golden");
+
+    std::vector<Flasher> flasher_list;
+    for(auto& idx : device_indices) {
+      //collect information of all the cards that will be reset
+      Flasher flasher(idx);
+      if(!flasher.isValid()) {
+        xrt_core::error(boost::str(boost::format("%d is an invalid index") % idx));
+        continue;
+      }
+      std::cout << boost::format("%-8s : %s %s %s \n") % "INFO" % "Resetting card [" 
+        % flasher.sGetDBDF() % "] back to factory mode.";
+      flasher_list.push_back(flasher);
+    }
+    
+    //ask user's permission
+    if(!canProceed())
+      return;
+    
+    for(auto& f : flasher_list) {
+      f.upgradeFirmware("", nullptr, nullptr);
+      std::cout << boost::format("%-8s : %s %s %s\n") % "INFO" % "Shell on [" % f.sGetDBDF() % "] is reset successfully." ;
+    }
+
+    std::cout << "****************************************************\n";
+    std::cout << "Cold reboot machine to load the new image on card(s).\n";
+    std::cout << "****************************************************\n";
+
     return;
   }
 }

@@ -21,22 +21,42 @@
 #include "common/system.h"
 #include "common/device.h"
 #include "common/xclbin_parser.h"
+#include "flash/flasher.h"
+#include "core/common/error.h"
+#include "core/common/query_requests.h"
+#include "core/common/utils.h"
+#include "core/common/message.h"
 
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
+#include <boost/format.hpp>
+#include <boost/tokenizer.hpp>
 #include <boost/program_options.hpp>
 namespace po = boost::program_options;
 
 // System - Include Files
-#include <iostream> 
-
-#include "common/system.h"
-#include "common/device.h"
-#include <boost/format.hpp>
+#include <iostream>
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
+
+namespace {
+
+static bool 
+same_config(DSAInfo& board, DSAInfo& installed) {
+  if (!board.name.empty()) {
+    bool same_dsa = ((installed.name == board.name) &&
+      (installed.matchId(board)));
+    bool same_bmc = ((board.bmcVer.empty()) ||
+      (installed.bmcVer == board.bmcVer));
+    return same_dsa && same_bmc;
+  }
+  return false;
+}
+
+}
+//end unnamed namespace
 
 SubCmdStatus::SubCmdStatus(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("status", 
@@ -64,8 +84,8 @@ SubCmdStatus::execute(const SubCmdOptions& _options) const
   }
 
   // -- Retrieve and parse the subcommand options -----------------------------
-  std::string device = "all";
-  std::string report = "scan";
+  std::string device = "";
+  std::string report = "";
   std::string format = "text";
   std::string output;
   bool help = false;
@@ -73,7 +93,7 @@ SubCmdStatus::execute(const SubCmdOptions& _options) const
   po::options_description queryDesc("Options");  // Note: Boost will add the colon.
   queryDesc.add_options()
     ("device,d", boost::program_options::value<decltype(device)>(&device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' (default) indicates that every found device should be examined.")
-    ("report,r", boost::program_options::value<decltype(report)>(&report), "The type of report to be produced. Reports currently available are:\n"
+    ("report,r", boost::program_options::value<decltype(report)>(&report)->implicit_value("scan"), "The type of report to be produced. Reports currently available are:\n"
                                                                            "  all         - All known reports are produced\n"
                                                                            "  scan        - Terse report of found devices (default)\n"
                                                                            "  electrical  - Voltages, currents, and power\n"
@@ -109,5 +129,66 @@ SubCmdStatus::execute(const SubCmdOptions& _options) const
   }
 
   // -- Now process the subcommand --------------------------------------------
-  // Is valid BDF value valid
+  // get all device IDs to be processed
+  std::vector<uint16_t> device_indices;
+  XBU::parse_device_indices(device_indices, device);
+  
+  if(!report.empty()) {
+
+    if(report.compare("all") == 0)
+      std::cout << "TODO: implement ALL report\n";
+    else if(report.compare("temperature") == 0)
+      std::cout << "TODO: implement TEMP report\n";
+    else if(report.compare("electrical") == 0)
+      std::cout << "TODO: implement ELECTRICAL report\n";
+    else if(report.compare("os-info") == 0)
+      std::cout << "TODO: implement OS-INFO report\n";
+    else if(report.compare("debug-ip") == 0)
+      std::cout << "TODO: implement DEBUG-IP report\n";
+    else if(report.compare("fans") == 0)
+      std::cout << "TODO: implement FANS report\n";
+    else if(report.compare("scan") == 0) {
+      std::vector<std::string> bdf_list;
+      XBU::verbose("Sub command: --report");
+
+      std::vector<Flasher> flasher_list;
+      for(auto& idx : device_indices) {
+        Flasher f(idx);
+        if(!f.isValid()) {
+          xrt_core::error(boost::str(boost::format("%d is an invalid index") % idx));
+          continue;
+        }
+        DSAInfo board = f.getOnBoardDSA();
+        std::vector<DSAInfo> installedDSA = f.getInstalledDSA();
+
+        BoardInfo info;
+        f.getBoardInfo(info);
+        std::cout << boost::format("%s : %d\n") % "Device BDF" % f.sGetDBDF();
+        std::cout << boost::format("  %-20s : %s\n") % "Card type" % board.board;
+        std::cout << boost::format("  %-20s : %s\n") % "Flash type" % f.sGetFlashType();
+        
+        std::cout << "Flashable partition running on FPGA\n";
+        std::cout << boost::format("  %-20s : %s\n") % "Platform" % board.name;
+        std::cout << boost::format("  %-20s : %s\n") % "SC Version" % board.bmcVer;
+        std::cout << boost::format("  %-20s : 0x%x\n") % "Platform ID" % board.timestamp;
+
+        std::cout << "\nFlashable partitions installed in system\n";
+        std::cout << boost::format("  %-20s : %s\n") % "Platform" % installedDSA.front().name;
+        std::cout << boost::format("  %-20s : %s\n") % "SC Version" % installedDSA.front().bmcVer;
+        std::cout << boost::format("  %-20s : 0x%x\n") % "Platform ID" % installedDSA.front().timestamp;
+        std::cout << "----------------------------------------------------\n";
+
+        //check if the platforms on the machine and card match
+        if(!same_config(board, installedDSA.front())) {
+          bdf_list.push_back(f.sGetDBDF());
+        }
+      }
+
+      //if the device configuration doesn't match the config on the machine, warn the user
+      for(const auto& bdf : bdf_list)
+        std::cout << boost::format("%-8s : %s %s\n") % "WARNING" % bdf % "is not up-to-date." ;
+    }
+    else 
+      throw xrt_core::error("Please specify a valid value");
+  }
 }

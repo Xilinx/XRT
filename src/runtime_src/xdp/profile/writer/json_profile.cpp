@@ -150,7 +150,7 @@ void JSONProfileWriter::writeDocumentHeader(std::ofstream& /*ofs*/,
   header.put("toolVersion", xdp::WriterI::getToolVersion());
 
   boost::property_tree::ptree xrtInfo;
-  xrt_core::get_xrt_info(xrtInfo);
+  xrt_core::get_xrt_build_info(xrtInfo);
   header.put("XRT build version", xrtInfo.get<std::string>("version", "N/A"));
   header.put("Build version branch", xrtInfo.get<std::string>("branch", "N/A"));
   header.put("Build version hash", xrtInfo.get<std::string>("hash", "N/A"));

@@ -1037,7 +1037,7 @@ ssize_t qdma_request_submit(unsigned long dev_hndl, unsigned long qhndl,
 #endif
 
 int qdma_request_cancel(unsigned long dev_hndl, unsigned long qhndl,
-			struct qdma_request *req);
+			struct qdma_request *req, unsigned int count);
 
 /*****************************************************************************/
 /**
@@ -1053,7 +1053,7 @@ int qdma_request_cancel(unsigned long dev_hndl, unsigned long qhndl,
  * @return	<0: error
  *****************************************************************************/
 ssize_t qdma_batch_request_submit(unsigned long dev_hndl, unsigned long qhndl,
-			  unsigned long count, struct qdma_request **reqv);
+			  unsigned long count, struct qdma_request *reqlisvt);
 
 /*****************************************************************************/
 /**
