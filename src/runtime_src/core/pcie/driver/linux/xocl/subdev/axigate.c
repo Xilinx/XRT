@@ -112,7 +112,7 @@ static int axigate_probe(struct platform_device *pdev)
 {
 	struct axi_gate *gate;
 	struct resource *res;
-	int ret, level;
+	int ret;
 
 	gate = devm_kzalloc(&pdev->dev, sizeof(*gate), GFP_KERNEL);
 	if (!gate)
@@ -137,10 +137,8 @@ static int axigate_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
-	if (res->name && sscanf(res->name, "%*s %*d %*d %d", &gate->level))
-		xocl_info(&pdev->dev, "axi_gate level %d probe success",
-			gate->level);
-	else {
+	gate->level = xocl_subdev_get_level(pdev);
+	if (gate->level < 0) {
 		xocl_err(&pdev->dev, "did not find level");
 		ret = -EINVAL;
 		goto failed;
@@ -149,8 +147,8 @@ static int axigate_probe(struct platform_device *pdev)
 	mutex_init(&gate->gate_lock);
 
 	/* force closing gate */
-	level = xocl_subdev_get_level(pdev);
-	xocl_axigate_free(pdev, level - 1);
+	if (gate->level > XOCL_SUBDEV_LEVEL_BLD)
+		xocl_axigate_free(pdev, gate->level - 1);
 
 	return 0;
 
