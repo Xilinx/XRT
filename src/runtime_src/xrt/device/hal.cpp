@@ -87,10 +87,18 @@ dllpath(const boost::filesystem::path& root, const std::string& libnm)
 }
 
 static bool
-isEmulationMode()
+is_emulation()
 {
   static bool val = (std::getenv("XCL_EMULATION_MODE") != nullptr);
   return val;
+}
+
+static bool
+is_sw_emulation()
+{
+  static auto xem = std::getenv("XCL_EMULATION_MODE");
+  static bool swem = xem ? (std::strcmp(xem,"sw_emu")==0) : false;
+  return swem;
 }
 
 // Open the HAL implementation dll and construct a hal::device for
@@ -156,20 +164,20 @@ loadDevices()
   // xrt
   bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
 
-  if (!xrt.empty() && !isEmulationMode()) {
+  if (!xrt.empty() && !is_emulation()) {
     directoryOrError(xrt);
     auto p = dllpath(xrt,"xrt_core");
     if (isDLL(p))
       createHalDevices(devices,p.string());
   }
 
-  if (devices.empty()) { // if failed libxrt_core load, try libxrt_aws
+  if (devices.empty() && !is_emulation()) { // if failed libxrt_core load, try libxrt_aws
     auto p = dllpath(xrt,"xrt_aws");
     if (isDLL(p))
       createHalDevices(devices,p.string());
   }
 
-  if (!xrt.empty() && isEmulationMode()) {
+  if (!xrt.empty() && is_emulation() && !is_sw_emulation()) {
     directoryOrError(xrt);
 
     auto hw_em_driver_path = xrt::config::get_hw_em_driver();
@@ -183,7 +191,7 @@ loadDevices()
       createHalDevices(devices,hw_em_driver_path);
   }
 
-  if (!xrt.empty() && isEmulationMode()) {
+  if (!xrt.empty() && is_emulation() && is_sw_emulation()) {
     directoryOrError(xrt);
 
     auto sw_em_driver_path = xrt::config::get_sw_em_driver();

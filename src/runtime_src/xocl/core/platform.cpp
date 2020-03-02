@@ -50,19 +50,27 @@ get_env(const char* env)
   return value_or_empty(std::getenv(env));
 }
 
-XOCL_UNUSED
 static bool
-is_emulation_mode()
+is_emulation()
 {
-  static bool emulation_mode = false;
-  static bool initialized = false;
-  if (!initialized) {
-    std::string env = get_env("XCL_EMULATION_MODE");
-    if(!env.empty() && (env=="sw_emu" || env=="hw_emu") )
-      emulation_mode = true;
-    initialized = true;
-  }
-  return emulation_mode;
+  static bool val = (std::getenv("XCL_EMULATION_MODE") != nullptr);
+  return val;
+}
+
+static bool
+is_sw_emulation()
+{
+  static auto xem = std::getenv("XCL_EMULATION_MODE");
+  static bool swem = xem ? (std::strcmp(xem,"sw_emu")==0) : false;
+  return swem;
+}
+
+static bool
+is_hw_emulation()
+{
+  static auto xem = std::getenv("XCL_EMULATION_MODE");
+  static bool hwem = xem ? (std::strcmp(xem,"hw_emu")==0) : false;
+  return hwem;
 }
 
 static std::vector<char>
@@ -139,10 +147,6 @@ public:
     std::reverse(m_hw.begin(),m_hw.end());
     std::reverse(m_hwem.begin(),m_hwem.end());
     std::reverse(m_swem.begin(),m_swem.end());
-
-    // Sanity checks
-    if (m_hwem.size() != m_swem.size())
-      throw xocl::error(CL_DEVICE_NOT_FOUND,"Emulation device mismatch");
   }
 
   bool
@@ -223,20 +227,26 @@ platform()
 
   XOCL_DEBUG(std::cout,"xocl::platform::platform(",m_uid,")\n");
 
-  if (is_emulation_mode()) {
-    while (auto hwem_device = m_device_mgr->get_hwem_device()) {
-      auto swem_device = m_device_mgr->get_swem_device();
-      auto udev = std::make_unique<xocl::device>(this,swem_device,hwem_device);
-#ifndef PMD_OCL
+  if (is_sw_emulation()) {
+    while (auto swem_device = m_device_mgr->get_swem_device()) {
+      auto udev = std::make_unique<xocl::device>(this,swem_device,nullptr);
       auto dev = udev.release();
       add_device(dev);
       dev->release();
-#endif
+    }
+  }
+      
+  if (is_hw_emulation()) {
+    while (auto hwem_device = m_device_mgr->get_hwem_device()) {
+      auto udev = std::make_unique<xocl::device>(this,nullptr,hwem_device);
+      auto dev = udev.release();
+      add_device(dev);
+      dev->release();
     }
   }
 
   //User can target either emulation or board. Not both at the same time.
-  if (!is_emulation_mode() && m_device_mgr->has_hw_devices()) {
+  if (!is_emulation() && m_device_mgr->has_hw_devices()) {
     while (xrt::device* hw_device = m_device_mgr->get_hw_device()) {
       auto udev = std::make_unique<xocl::device>(this,hw_device,nullptr,nullptr);
       auto dev = udev.release();
