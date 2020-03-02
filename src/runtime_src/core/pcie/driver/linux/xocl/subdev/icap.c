@@ -2529,8 +2529,11 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 
 	/* create the reset of subdevs for both mgmt and user pf */
 	if (num_dev > 0) {
-		for (i = 0; i < num_dev; i++)
-			xocl_subdev_create(xdev, &subdevs[i].info);
+		for (i = 0; i < num_dev; i++) {
+			err = xocl_subdev_create(xdev, &subdevs[i].info);
+			if (err && err != -EEXIST)
+				goto done;
+		}
 
 		xocl_subdev_create_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 	}
