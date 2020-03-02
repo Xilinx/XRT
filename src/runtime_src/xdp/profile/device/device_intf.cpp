@@ -426,13 +426,13 @@ DeviceIntf::~DeviceIntf()
     if (ifs.gcount() > 0) {
       map = (debug_ip_layout*)(buffer);
 #else
-    debug_ip_layout *map = nullptr;
     size_t sz1 = 0, sectionSz = 0;
     // Get the size of full debug_ip_layout
     mDevice->getDebugIpLayout(nullptr, sz1, &sectionSz);
     // Allocate buffer to retrieve debug_ip_layout information from loaded xclbin
-    map = (debug_ip_layout*)(new char[sectionSz]);
-    mDevice->getDebugIpLayout((char*)map, sectionSz, &sz1);
+    char* buffer = new char[sectionSz];
+    mDevice->getDebugIpLayout(buffer, sectionSz, &sz1);
+    debug_ip_layout* map = (debug_ip_layout*)buffer;
 #endif
       
       for(uint64_t i = 0; i < map->m_count; i++ ) {
@@ -460,7 +460,8 @@ DeviceIntf::~DeviceIntf()
     }
     ifs.close();
 #else
-    delete map;
+    delete [] buffer;
+    buffer = nullptr;
     map = nullptr;
 #endif
 
