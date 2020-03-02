@@ -197,6 +197,8 @@ uint64_t getMemSizeBytes(key k, int idx);
 
 uint64_t getPlramSizeBytes(key k);
 
+void getMemUsageStats(key k, std::map<std::string, uint64_t>& stats);
+
 } // device
 } // platform
 
