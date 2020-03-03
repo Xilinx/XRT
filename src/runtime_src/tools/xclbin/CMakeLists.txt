@@ -1,9 +1,15 @@
 # -----------------------------------------------------------------------------
 
-if ((NOT WIN32) AND (${LINUX_FLAVOR} STREQUAL SUSE))
+if(NOT WIN32)
+if (${LINUX_FLAVOR} STREQUAL SUSE)
 set(Boost_USE_STATIC_LIBS OFF)
 set(Boost_USE_MULTITHREADED ON)             # Multi-threaded libraries
 set(Boost_USE_STATIC_RUNTIME OFF)
+else()
+set(Boost_USE_STATIC_LIBS ON)               # Only find static libraries
+set(Boost_USE_MULTITHREADED ON)             # Multi-threaded libraries
+set(Boost_USE_STATIC_RUNTIME ON)            # This is how the boost libraries were build
+endif()
 else()
 set(Boost_USE_STATIC_LIBS ON)               # Only find static libraries
 set(Boost_USE_MULTITHREADED ON)             # Multi-threaded libraries
