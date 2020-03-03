@@ -593,14 +593,6 @@ void JSONProfileWriter::writeGuidanceMetadataSummary(RTProfile *profile)
   }
 
   // 3. Global memory bit widths
-  XDPPluginI::getGuidanceName(XDPPluginI::MEMORY_BIT_WIDTH, checkName);
-  boost::property_tree::ptree& check3 = metadata.add_child(checkName, boost::property_tree::ptree());
-  uint32_t bitWidth = profile->getGlobalMemoryBitWidth();
-
-  for (auto& itr : deviceExecTimesMap) {
-    // See above use of path_type for explanation.
-    check3.put(boost::property_tree::ptree::path_type(itr.first, '\0'), bitWidth);
-  }
 
   // 4. Usage of MigrateMemObjects
   XDPPluginI::getGuidanceName(XDPPluginI::MIGRATE_MEM, checkName);
