@@ -1,9 +1,15 @@
 # -----------------------------------------------------------------------------
 
-if ((${LINUX_FLAVOR} STREQUAL SUSE))
+if(NOT WIN32)
+if (${LINUX_FLAVOR} STREQUAL SUSE)
 set(Boost_USE_STATIC_LIBS OFF)
 set(Boost_USE_MULTITHREADED ON)             # Multi-threaded libraries
 set(Boost_USE_STATIC_RUNTIME OFF)
+else()
+set(Boost_USE_STATIC_LIBS ON)               # Only find static libraries
+set(Boost_USE_MULTITHREADED ON)             # Multi-threaded libraries
+set(Boost_USE_STATIC_RUNTIME ON)            # This is how the boost libraries were build
+endif()
 else()
 set(Boost_USE_STATIC_LIBS ON)               # Only find static libraries
 set(Boost_USE_MULTITHREADED ON)             # Multi-threaded libraries
@@ -14,7 +20,7 @@ find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
 include_directories(${Boost_INCLUDE_DIRS})
 
 if(NOT WIN32)
-if ((${LINUX_FLAVOR} STREQUAL SUSE))
+if (${LINUX_FLAVOR} STREQUAL SUSE)
 set(OPENSSL_USE_STATIC_LIBS FALSE)
 find_package(OpenSSL REQUIRED)
 find_library(CRYPTO_LIB libcrypto.so REQUIRED)
@@ -53,7 +59,7 @@ file(GLOB XCLBINCAT_FILES
 set(XCLBINCAT_SRC ${XCLBINCAT_FILES})
 
 add_executable(xclbincat ${XCLBINCAT_SRC})
-if ((${LINUX_FLAVOR} STREQUAL SUSE))
+if (${LINUX_FLAVOR} STREQUAL SUSE)
   target_link_libraries(xclbincat ${Boost_LIBRARIES})
 else()
   target_link_libraries(xclbincat -static ${Boost_LIBRARIES})
@@ -83,7 +89,7 @@ file(GLOB XCLBINSPLIT_FILES
 set(XCLBINSPLIT_SRC ${XCLBINSPLIT_FILES})
 
 add_executable(xclbinsplit ${XCLBINSPLIT_SRC})
-if ((${LINUX_FLAVOR} STREQUAL SUSE))
+if (${LINUX_FLAVOR} STREQUAL SUSE)
   target_link_libraries(xclbinsplit ${Boost_LIBRARIES})
 else()
   target_link_libraries(xclbinsplit -static ${Boost_LIBRARIES})
@@ -189,7 +195,7 @@ else()
     target_link_libraries(xclbinutil ${CMAKE_DL_LIBS})   # Needs to be shared library
     target_link_libraries(xclbinutil -static-libgcc -static-libstdc++)
   else()
-    if ((${LINUX_FLAVOR} STREQUAL SUSE))
+    if (${LINUX_FLAVOR} STREQUAL SUSE)
       target_link_libraries(xclbinutil ${Boost_LIBRARIES})
     else()
       target_link_libraries(xclbinutil -static ${Boost_LIBRARIES})
