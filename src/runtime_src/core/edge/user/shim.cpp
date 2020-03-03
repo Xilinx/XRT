@@ -92,6 +92,11 @@ ZYNQShim::ZYNQShim(unsigned index, const char *logfileName, xclVerbosityLevel ve
   }
   mCmdBOCache = std::make_unique<xrt_core::bo_cache>(this, xrt_core::config::get_cmdbo_cache());
   mDev = zynq_device::get_dev();
+
+#ifdef XRT_ENABLE_AIE
+  /* TODO is this necessary? We may want to initialize it when loading xclbin */
+  aieArray = NULL; 
+#endif
 }
 
 #ifndef __HWEM__
@@ -1240,6 +1245,17 @@ int ZYNQShim::xclLogMsg(xrtLogMsgLevel level, const char* tag,
     return (double)clockFreq;
   }
 
+#ifdef XRT_ENABLE_AIE
+  zynqaie::Aie * ZYNQShim::getAieArray()
+  {
+    return aieArray; 
+  }
+
+  void ZYNQShim::setAieArray(zynqaie::Aie *aie)
+  {
+    aieArray = aieArray;
+  }
+#endif
 
 }
 ;
