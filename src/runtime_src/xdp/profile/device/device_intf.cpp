@@ -430,9 +430,9 @@ DeviceIntf::~DeviceIntf()
     // Get the size of full debug_ip_layout
     mDevice->getDebugIpLayout(nullptr, sz1, &sectionSz);
     // Allocate buffer to retrieve debug_ip_layout information from loaded xclbin
-    char* buffer = new char[sectionSz];
-    mDevice->getDebugIpLayout(buffer, sectionSz, &sz1);
-    debug_ip_layout* map = (debug_ip_layout*)buffer;
+    std::vector<char> buffer(sectionSz);
+    mDevice->getDebugIpLayout(buffer.data(), sectionSz, &sz1);
+    auto map = reinterpret_cast<debug_ip_layout*>(buffer.data());
 #endif
       
       for(uint64_t i = 0; i < map->m_count; i++ ) {
@@ -459,10 +459,6 @@ DeviceIntf::~DeviceIntf()
 #ifndef _WIN32
     }
     ifs.close();
-#else
-    delete [] buffer;
-    buffer = nullptr;
-    map = nullptr;
 #endif
 
     auto sorter = [] (const ProfileIP* lhs, const ProfileIP* rhs)
