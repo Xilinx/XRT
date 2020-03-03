@@ -705,7 +705,6 @@ xclGetBOProperties(xclDeviceHandle handle, xclBufferHandle boHandle,
 /*
  * xclGetBOSize() - Retrieve size of a BO
  *
- *
  * @handle:        Device handle
  * @boHandle:      BO handle
  * Return          size_t size of the BO on success
@@ -718,7 +717,7 @@ static inline size_t
 xclGetBOSize(xclDeviceHandle handle, xclBufferHandle boHandle)
 {
     struct xclBOProperties p;
-    return !xclGetBOProperties(handle, boHandle, &p) ? (size_t)p.size : -1;
+    return !xclGetBOProperties(handle, boHandle, &p) ? (size_t)p.size : (size_t)-1;
 }
 
 /*
@@ -736,7 +735,7 @@ static inline uint64_t
 xclGetDeviceAddr(xclDeviceHandle handle, xclBufferHandle boHandle)
 {
     struct xclBOProperties p;
-    return !xclGetBOProperties(handle, boHandle, &p) ? p.paddr : -1;
+    return !xclGetBOProperties(handle, boHandle, &p) ? p.paddr : (uint64_t)-1;
 }
 
 /* End XRT Buffer Management APIs */
@@ -841,7 +840,7 @@ xclWrite(xclDeviceHandle handle, enum xclAddressSpace space, uint64_t offset,
  *
  * This API may be used to read from device registers exposed on PCIe
  * BAR. Offset is relative to the the address space. A device may have
- * many address spaces.  
+ * many address spaces.
  * *This API is deprecated. Please use xclRegRead(), instead.*
  */
 XRT_DEPRECATED

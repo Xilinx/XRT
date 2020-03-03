@@ -18,6 +18,7 @@
 #include "xocl/config.h"
 #include "xocl/core/error.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 #include <CL/opencl.h>
 
 namespace xocl {
@@ -141,6 +142,7 @@ clEnqueueMapImage(cl_command_queue   command_queue ,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
+    LOP_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
     return xocl::clEnqueueMapImage
       (command_queue,image,blocking_map,map_flags,origin,region,image_row_pitch,image_slice_pitch
        ,num_events_in_wait_list,event_wait_list,event,errcode_ret);

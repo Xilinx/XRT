@@ -56,6 +56,7 @@ public:
     std::string partition_name;
     std::string build_ident;
     static const std::string UNKNOWN;
+    static const std::string INACTIVE;
 
     DSAInfo(const std::string& filename, uint64_t ts, const std::string& id, const std::string& bmc);
     DSAInfo(const std::string& filename);

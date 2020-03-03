@@ -40,8 +40,23 @@ public:
   get_userpf_device(device::id_type id) const;
 
   std::shared_ptr<device>
+  get_userpf_device(device::handle_type hdl, device::id_type) const;
+
+  std::shared_ptr<device>
   get_mgmtpf_device(device::id_type id) const;
 };
+
+namespace edge_linux {
+
+/**
+ * get_userpf_device
+ * Force singleton initialization from static linking
+ * with libxrt_core.
+ */ 
+std::shared_ptr<device>
+get_userpf_device(device::handle_type device_handle, device::id_type id);
+
+} // edge_linux
 
 } // xrt_core
 

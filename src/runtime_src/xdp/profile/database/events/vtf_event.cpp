@@ -97,6 +97,15 @@ namespace xdp {
     case STREAM_WRITE:
       humanReadable ? (fout << "STREAM_WRITE") : (fout << STREAM_WRITE) ;
       break ;
+    case LOP_READ_BUFFER:
+      humanReadable ? (fout << "LOP_READ_BUFFER") : (fout << LOP_READ_BUFFER) ;
+      break ;
+    case LOP_WRITE_BUFFER:
+      humanReadable ? (fout << "LOP_WRITE_BUFFER") : (fout << LOP_WRITE_BUFFER);
+      break ;
+    case LOP_KERNEL_ENQUEUE:
+      humanReadable ? (fout << "LOP_KERNEL_ENQUEUE") : (fout << LOP_KERNEL_ENQUEUE) ;
+      break ;
     case KERNEL:
       humanReadable ? (fout << "KERNEL") : (fout << KERNEL) ;
       break ;

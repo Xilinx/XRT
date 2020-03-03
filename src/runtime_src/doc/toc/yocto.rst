@@ -16,16 +16,14 @@ Prerequisite
 ~~~~~~~~~~~~
 
 Before start to build Linux image, make sure your have:
-        1. PetaLinux tool chain installed and setup;
+        1. PetaLinux tool installed and setup;
         2. Hardware Definithion File(.hdf) for your platform;
 
-The PetaLinux tool chain can be downloaded from xilinx.com.
+The PetaLinux tool can be downloaded from xilinx.com.
 If you don't have a .hdf file, please see :ref:`Build Boot Images`.
 
-Create PetaLinux Project with XRT recipes
+Create PetaLinux Project with XRT
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-All of the XRT recipes are in ``<XRT>/src/platform/recipes-xrt`` directory. Where <XRT> is the root directory of your XRT git repository.
 
 .. code-block:: bash
 
@@ -37,50 +35,22 @@ All of the XRT recipes are in ``<XRT>/src/platform/recipes-xrt`` directory. Wher
         #       menu -> "Yocto Setting" -> "Enable Debug Tweaks"
         $ petalinux-config -p <name> --get-hw-description=<HDF>
 
-        # Go to the project specific directory of the project
-        $ cd <name>/project-spec/meta-user/
-
-        # Copy XRT recipes
-        $ cp -r <XRT>/src/platform/recipes-xrt .
-
-        # If you are using PetaLinux 2018.3 or earlier version, do below steps
-        $ mkdir recipes-xrt/opencl-headers
-        $ wget -O recipes-xrt/opencl-headers/opencl-headers_git.bb http://cgit.openembedded.org/meta-openembedded/plain/meta-oe/recipes-core/opencl-headers/opencl-headers_git.bb
-
-The above commands create PetaLinux project and add necessary recipes to build XRT library and driver. Please check all the .bb files for details.
-
-The next step is to add all recipes to PetaLinux Rootfs Menu.
-Still stay in ``meta-user`` directory. Open ``recipes-core/images/petalinux-image.bbappend`` then add below lines at the end.
-
-        | IMAGE_INSTALL_append = " xrt-dev"
-        | IMAGE_INSTALL_append = " xrt"
-        | IMAGE_INSTALL_append = " zocl"
-        | IMAGE_INSTALL_append = " opencl-headers-dev"
-        | IMAGE_INSTALL_append = " opencl-clhpp-dev"
-
-Add XRT kernel node in device tree
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-An example of device tree is in ``<XRT>/src/runtime_src/core/edge/fragments/xlnk_dts_fragment_mpsoc.dts``. You can attach it to ``project-spec/meta-user/recipes-bsp/device-tree/files/system-user.dtsi`` in your PetaLinux project.
-
-Configure Linux kernel and enable XRT module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Now we can configure linux kernel and rootfs.
-Please see the comments in below code block. Enable "xrt" and "xrt-dev" options will install XRT libraries and header files to /opt/xilinx/xrt directory in rootfs. Enable "zocl" option will install zocl.ko in rootfs. The zocl.ko driver is a XRT driver module only for MPSoC platform.
-
-.. code-block:: bash
+        #Now we can configure Linux kernel and rootfs.
 
         #Configure Linux kernel (default kernel config is good for zocl driver)
         $ petalinux-config -c kernel
 
         # Configure rootfs, enable below components:
+
         #   menu -> "user packages" -> xrt
         #   menu -> "user packages" -> xrt-dev
         #   menu -> "user packages" -> zocl
         #   menu -> "user packages" -> opencl-headers-dev
         #   menu -> "user packages" -> opencl-clhpp-dev
         $ petalinux-config -c rootfs
+
+	# Enable "xrt" and "xrt-dev" options will install XRT libraries and header files to /opt/xilinx/xrt directory in rootfs. Enable "zocl" option will install zocl.ko in rootfs. The zocl.ko driver is a XRT driver module only for MPSoC platform.
+
 
         # Build package
         $ petalinux-build
@@ -93,3 +63,20 @@ These files can be used when creating an embedded platform.
 - ``fsbl.elf``
 - ``pmufw.elf``
 - ``u-boot.elf``
+
+Build XRT C/C++ applications through PetaLinux tool flow
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+	$ petalinux-create -t apps [--template TYPE] --name <user-applicationname> --enable
+	#The new application sources can be found in the <plnx-proj-root>/project-spec/meta-user/recipes-apps/myapp directory.	
+
+	# Change to the newly created application directory.
+	$ cd <plnx-proj-root>/project-spec/meta-user/recipes-apps/myapp
+
+	# myapp.c/myapp.cpp file can be edited or replaced with the real source code for your application.
+
+	$ petalinux-build
+	# This will rebuild the system image including the selected user application myapp.
+

@@ -25,7 +25,7 @@
 #include "detail/command_queue.h"
 
 #include "plugin/xdp/profile.h"
-
+#include "plugin/xdp/lop.h"
 
 namespace xocl {
 
@@ -68,6 +68,7 @@ clCreateCommandQueue(cl_context                  context,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clCreateCommandQueue
       (context, device, properties, errcode_ret);
   }

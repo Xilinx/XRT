@@ -1,7 +1,7 @@
 /*
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
- * Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@xilinx.com
  *
@@ -172,6 +172,19 @@ static ssize_t p2p_enable_show(struct device *dev,
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 	u64 size;
+	struct resource *res;
+
+	/*
+	 * temp handle u50 case which has P2P bar however it is not actually
+	 * work
+	 */
+	if (xdev->core.priv.flags & XOCL_DSAFLAG_DYNAMIC_IP) {
+		res = xocl_subdev_get_ioresource(xdev, NODE_P2P);
+		if (!res) {
+			xocl_info(dev, "p2p endpoint is not found");
+			return sprintf(buf, "%d\n", ENXIO);
+		}
+	}
 
 	if (xdev->p2p_mem_chunk_num)
 		return sprintf(buf, "1\n");
@@ -194,10 +207,23 @@ static ssize_t p2p_enable_store(struct device *dev,
 	int ret, p2p_bar;
 	u32 enable;
 	u64 size, curr_size;
+	struct resource *res;
 
 
 	if (kstrtou32(buf, 10, &enable) == -EINVAL || enable > 1)
 		return -EINVAL;
+
+	/*
+	 * temp handle u50 case which has P2P bar however it is not actually
+	 * work
+	 */
+	if (xdev->core.priv.flags & XOCL_DSAFLAG_DYNAMIC_IP) {
+		res = xocl_subdev_get_ioresource(xdev, NODE_P2P);
+		if (!res) {
+			xocl_info(&pdev->dev, "p2p endpoint is not found");
+			return -ENOTSUPP;
+		}
+	}
 
 	p2p_bar = xocl_get_p2p_bar(xdev, &curr_size);
 	if (p2p_bar < 0) {
@@ -286,10 +312,13 @@ static ssize_t shutdown_store(struct device *dev,
 	u32 val;
 
 
-	if (kstrtou32(buf, 10, &val) == -EINVAL || val != 1)
+	if (kstrtou32(buf, 10, &val) == -EINVAL)
 		return -EINVAL;
 
-	xocl_queue_work(xdev, XOCL_WORK_SHUTDOWN, 0);
+	if (val)
+		xocl_queue_work(xdev, XOCL_WORK_SHUTDOWN, 0);
+	else
+		xocl_queue_work(xdev, XOCL_WORK_ONLINE, 0);
 
 	return count;
 }
@@ -389,45 +418,40 @@ static ssize_t ready_show(struct device *dev,
 	uint64_t ch_state = 0, ret = 0, daemon_state = 0;
 	struct xcl_board_info *board_info = NULL;
 
-	/* Bypass this check for versal for now */
-	if (XOCL_DSA_IS_VERSAL(xdev))
-		ret = 1;
+	xocl_mailbox_get(xdev, CHAN_STATE, &ch_state);
+
+	if (ch_state & XCL_MB_PEER_SAME_DOMAIN)
+		ret = (ch_state & XCL_MB_PEER_READY) ? 1 : 0;
 	else {
-		xocl_mailbox_get(xdev, CHAN_STATE, &ch_state);
-
-		if (ch_state & XCL_MB_PEER_SAME_DOMAIN)
-			ret = (ch_state & XCL_MB_PEER_READY) ? 1 : 0;
-		else {
-			/*
-			 * If xocl and xclmgmt are not in the same daemon,
-			 * mark the card as ready only when both MB channel
-			 * and daemon are ready
-			 */
-			xocl_mailbox_get(xdev, DAEMON_STATE, &daemon_state);
-			ret = ((ch_state & XCL_MB_PEER_READY) && daemon_state)
-				? 1 : 0;
-		}
-
-		/* for now skip checking SC compatibility for 1RP flow */
-		if (!ret || !xocl_rom_get_uuid(xdev))
-			goto bail;
-
-		board_info = vzalloc(sizeof(*board_info));
-		if (!board_info)
-			goto bail;
-		xocl_xmc_get_data(xdev, XCL_BDINFO, board_info);
 		/*
-		 * Lift the restriction of mis-matching SC version for
-		 * experienced user to manually update SC firmware than
-		 * installed xsabin may contain.
+		 * If xocl and xclmgmt are not in the same daemon,
+		 * mark the card as ready only when both MB channel
+		 * and daemon are ready
 		 */
-		if (strcmp(board_info->bmc_ver, board_info->exp_bmc_ver)) {
-			xocl_warn(dev, "installed XSABIN has SC version: "
-			    "(%s) mismatch with loaded SC version: (%s).",
-			    board_info->exp_bmc_ver, board_info->bmc_ver);
-		}
-		ret = 1;
+		xocl_mailbox_get(xdev, DAEMON_STATE, &daemon_state);
+		ret = ((ch_state & XCL_MB_PEER_READY) && daemon_state)
+			? 1 : 0;
 	}
+
+	/* for now skip checking SC compatibility for 1RP flow */
+	if (!ret || !xocl_rom_get_uuid(xdev))
+		goto bail;
+
+	board_info = vzalloc(sizeof(*board_info));
+	if (!board_info)
+		goto bail;
+	xocl_xmc_get_data(xdev, XCL_BDINFO, board_info);
+	/*
+	 * Lift the restriction of mis-matching SC version for
+	 * experienced user to manually update SC firmware than
+	 * installed xsabin may contain.
+	 */
+	if (strcmp(board_info->bmc_ver, board_info->exp_bmc_ver)) {
+		xocl_warn(dev, "installed XSABIN has SC version: "
+		    "(%s) mismatch with loaded SC version: (%s).",
+		    board_info->exp_bmc_ver, board_info->bmc_ver);
+	}
+	ret = 1;
 
 bail:
 	if (board_info)
@@ -520,10 +544,8 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_kdsstat.attr,
 	&dev_attr_memstat.attr,
 	&dev_attr_memstat_raw.attr,
-	&dev_attr_user_pf.attr,
 	&dev_attr_p2p_enable.attr,
 	&dev_attr_dev_offline.attr,
-	&dev_attr_shutdown.attr,
 	&dev_attr_mig_calibration.attr,
 	&dev_attr_link_width.attr,
 	&dev_attr_link_speed.attr,
@@ -537,6 +559,17 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_logic_uuids.attr,
 	&dev_attr_ulp_uuids.attr,
 	&dev_attr_mig_cache_update.attr,
+	NULL,
+};
+
+/*
+ * persist entries will only be created/destroyed by driver attach/detach
+ * They will not be removed across hot reset, shutdown, switching PLP etc.
+ * So please DO NOT access any subdevice APIs inside store()/show()
+ */
+static struct attribute *xocl_persist_attrs[] = {
+	&dev_attr_shutdown.attr,
+	&dev_attr_user_pf.attr,
 	NULL,
 };
 
@@ -588,6 +621,45 @@ static struct attribute_group xocl_attr_group = {
 	.attrs = xocl_attrs,
 	.bin_attrs = xocl_bin_attrs,
 };
+
+static struct attribute_group xocl_persist_attr_group = {
+	.attrs = xocl_persist_attrs,
+};
+
+int xocl_init_persist_sysfs(struct xocl_dev *xdev)
+{
+	struct device *dev = &xdev->core.pdev->dev;
+	int ret = 0;
+
+	if (xdev->flags & XOCL_FLAGS_PERSIST_SYSFS_INITIALIZED) {
+		xocl_err(dev, "persist sysfs noded already created");
+		return -EINVAL;
+	}
+
+	xocl_info(dev, "Creating persist sysfs");
+	ret = sysfs_create_group(&dev->kobj, &xocl_persist_attr_group);
+	if (ret)
+		xocl_err(dev, "create xocl persist attrs failed: %d", ret);
+
+	xdev->flags |= XOCL_FLAGS_PERSIST_SYSFS_INITIALIZED;
+
+
+	return ret;
+}
+
+void xocl_fini_persist_sysfs(struct xocl_dev *xdev)
+{
+	struct device *dev = &xdev->core.pdev->dev;
+
+	if (!(xdev->flags & XOCL_FLAGS_PERSIST_SYSFS_INITIALIZED)) {
+		xocl_err(dev, "persist sysfs nodes already removed");
+		return;
+	}
+
+	xocl_info(dev, "Removing persist sysfs");
+	sysfs_remove_group(&dev->kobj, &xocl_persist_attr_group);
+	xdev->flags &= ~XOCL_FLAGS_PERSIST_SYSFS_INITIALIZED;
+}
 
 int xocl_init_sysfs(struct xocl_dev *xdev)
 {

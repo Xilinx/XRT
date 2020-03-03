@@ -14,27 +14,29 @@
  * under the License.
  */
 
-#ifndef VP_SUMMARY_WRITER_DOT_H
-#define VP_SUMMARY_WRITER_DOT_H
+#ifndef VP_RUN_SUMMARY_DOT_H
+#define VP_RUN_SUMMARY_DOT_H
 
-#include "xdp/profile/writer/vp_writer.h"
+#include <vector>
+#include <string>
 
+#include "xdp/profile/writer/vp_base/vp_writer.h"
 #include "xdp/config.h"
 
 namespace xdp {
 
-  class VPSummaryWriter : public VPWriter
+  class VPRunSummaryWriter : public VPWriter
   {
   private:
-    VPSummaryWriter() = delete ;
-
   protected:
-    XDP_EXPORT virtual void switchFiles() ;
+    virtual void switchFiles() ;
   public:
-    XDP_EXPORT VPSummaryWriter(const char* filename) ;
-    XDP_EXPORT ~VPSummaryWriter() ;
+    VPRunSummaryWriter(const char* filename) ;
+    ~VPRunSummaryWriter() ;
+
+    virtual void write(bool openNewFile) ;
   } ;
-  
-}
+
+} // end namespace xdp
 
 #endif

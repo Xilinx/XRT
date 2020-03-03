@@ -20,18 +20,20 @@
 #ifndef _ZYNQ_SHIM_H_
 #define _ZYNQ_SHIM_H_
 
+#include "zynq_dev.h"
 #include "core/edge/include/xclhal2_mpsoc.h"
 #include "core/edge/include/zynq_ioctl.h"
-#include "zynq_dev.h"
+#include "core/common/system.h"
+#include "core/common/device.h"
+#include "core/common/bo_cache.h"
+#include "core/common/xrt_profiling.h"
+#include "core/include/xcl_app_debug.h"
 #include <cstdint>
 #include <fstream>
 #include <map>
 #include <vector>
 #include <mutex>
 #include <memory>
-#include "core/common/bo_cache.h"
-#include "core/common/xrt_profiling.h"
-#include "core/include/xcl_app_debug.h"
 
 namespace ZYNQ {
 
@@ -131,6 +133,7 @@ private:
   std::map<uint64_t, uint32_t *> mKernelControl;
   std::unique_ptr<xrt_core::bo_cache> mCmdBOCache;
   zynq_device *mDev = nullptr;
+  std::shared_ptr<xrt_core::device> mCoreDevice;
   size_t mKernelClockFreq;
 
   /*

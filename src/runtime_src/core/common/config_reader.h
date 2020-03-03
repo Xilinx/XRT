@@ -166,6 +166,20 @@ get_timeline_trace()
   return value;
 }
 
+inline bool
+get_continuous_read_trace()
+{
+  static bool value = get_profile() && detail::get_bool_value("Debug.continuous_read_trace",false);
+  return value;
+}
+
+inline unsigned int
+get_continuous_read_trace_interval_ms()
+{
+  static unsigned int value = detail::get_uint_value("Debug.continuous_read_trace_interval_ms",10);
+  return value;
+}
+
 inline std::string
 get_trace_buffer_size()
 {
@@ -184,6 +198,13 @@ inline bool
 get_hal_profile()
 {
   static bool value = detail::get_bool_value("Debug.hal_profile", false);
+  return value;
+}
+
+inline bool
+get_lop_profile()
+{
+  static bool value = detail::get_bool_value("Debug.lop_profile", false);
   return value;
 }
 
@@ -332,13 +353,6 @@ inline bool
 get_multiprocess()
 {
   static bool value = get_kds() && detail::get_bool_value("Runtime.multiprocess",true);
-  return value;
-}
-
-inline bool
-get_frequency_scaling()
-{
-  static bool value = !get_multiprocess() && detail::get_bool_value("Runtime.frequency_scaling",true);
   return value;
 }
 

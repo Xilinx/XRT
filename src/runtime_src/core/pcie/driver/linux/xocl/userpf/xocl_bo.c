@@ -611,6 +611,7 @@ int xocl_userptr_bo_ioctl(
 	uint64_t page_pinned = 0;
 	struct drm_xocl_userptr_bo *args = data;
 	unsigned user_flags = args->flags;
+	int write = 1;
 
 	if (offset_in_page(args->addr))
 		return -EINVAL;
@@ -632,6 +633,17 @@ int xocl_userptr_bo_ioctl(
 		goto out1;
 	}
 
+	ret = XOCL_ACCESS_OK(VERIFY_WRITE, args->addr, args->size);
+
+
+	if (!ret) {
+		ret = XOCL_ACCESS_OK(VERIFY_READ, args->addr, args->size);
+		if (!ret)
+			goto out0;
+		else
+			write = 0;
+	}
+
 	while (page_pinned < page_count) {
 		/*
 		 * We pin at most 1G at a time to workaround
@@ -641,7 +653,7 @@ int xocl_userptr_bo_ioctl(
 			(1024ULL * 1024 * 1024) / (1ULL << PAGE_SHIFT));
 		if (get_user_pages_fast(
 			args->addr + (page_pinned << PAGE_SHIFT),
-			nr, 1, xobj->pages + page_pinned) != nr) {
+			nr, write, xobj->pages + page_pinned) != nr) {
 			ret = -ENOMEM;
 			goto out0;
 		}

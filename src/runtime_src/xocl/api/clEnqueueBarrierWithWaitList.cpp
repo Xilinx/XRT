@@ -23,6 +23,7 @@
 
 #include "plugin/xdp/appdebug.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 #include <CL/opencl.h>
 
 #ifdef _WIN32
@@ -119,6 +120,7 @@ clEnqueueBarrierWithWaitList(cl_command_queue  command_queue ,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
+    LOP_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
     return xocl::clEnqueueBarrierWithWaitList
       (command_queue,num_events_in_wait_list,event_wait_list,event_parameter);
   }

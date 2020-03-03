@@ -135,6 +135,7 @@ private:
   //APIs using sysfs
   typedef uint32_t(*xclGetNumLiveProcessesFuncType)(xclDeviceHandle handle);
   typedef int     (*xclGetSysfsPathFuncType)(xclDeviceHandle handle, const char* subdev, const char* entry, char* sysfsPath, size_t size);
+  typedef int     (*xclGetSubdevPathFuncType)(xclDeviceHandle handle, const char* subdev, uint32_t idx, char* path, size_t size);
 
   typedef int     (*xclGetDebugIPlayoutPathFuncType)(xclDeviceHandle handle, char* layoutPath, size_t size);
 
@@ -212,6 +213,7 @@ public:
   // APIs using sysfs
   xclGetNumLiveProcessesFuncType mGetNumLiveProcesses;
   xclGetSysfsPathFuncType mGetSysfsPath;
+  xclGetSubdevPathFuncType mGetSubdevPath;
 
   xclGetDebugIPlayoutPathFuncType mGetDebugIPlayoutPath;
   xclGetTraceBufferInfoFuncType mGetTraceBufferInfo;

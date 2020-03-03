@@ -25,6 +25,7 @@
 #include "detail/device.h"
 #include "plugin/xdp/appdebug.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 #ifdef _WIN32
 # pragma warning ( disable : 4996 )
@@ -146,6 +147,7 @@ clBuildProgram(cl_program program ,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clBuildProgram
       (program,num_devices,device_list,options,pfn_notify,user_data);
   }

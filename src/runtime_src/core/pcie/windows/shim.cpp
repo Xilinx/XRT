@@ -21,6 +21,8 @@
 #include "xclfeatures.h"
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
+#include "core/common/system.h"
+#include "core/common/device.h"
 
 #include <windows.h>
 #include <winioctl.h>
@@ -56,6 +58,7 @@ struct shim
   XOCL_MAP_BAR_RESULT	mappedBar[3];
   bool m_locked = false;
   HANDLE m_dev;
+  std::shared_ptr<xrt_core::device> m_core_device;
 
   // create shim object, open the device, store the device handle
   shim(unsigned int devidx)
@@ -122,6 +125,9 @@ struct shim
 
       mappedBar[i].Bar = (PUCHAR)mapBarResult.Bar;
       mappedBar[i].BarLength = mapBarResult.BarLength;
+
+      m_core_device = xrt_core::get_userpf_device(this, devidx);
+
     }
 
   }
@@ -605,7 +611,7 @@ done:
     xrt_core::message::
       send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "Calling IOCTL_XOCL_STAT (XoclStatMemTopology)... ");
 
- 
+
     if (succeeded) {
       xrt_core::message::
         send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "OK");
@@ -975,7 +981,7 @@ done:
           *size_ret = 0; //there is not any debug_ip_layout info
           return;
       }
-      
+
       DWORD debug_ip_layout_size = sizeof(struct debug_ip_layout) + ((debug_iplayout_hdr.m_count - 1) * sizeof(struct debug_ip_data));
 
       if (size_ret)

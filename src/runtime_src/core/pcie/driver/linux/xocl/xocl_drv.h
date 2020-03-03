@@ -282,7 +282,7 @@ struct xocl_subdev {
 	int				pf;
 	struct cdev			*cdev;
 
-        struct resource		res[XOCL_SUBDEV_MAX_RES];
+	struct resource		res[XOCL_SUBDEV_MAX_RES];
 	char	res_name[XOCL_SUBDEV_MAX_RES][XOCL_SUBDEV_RES_NAME_LEN];
 	char			bar_idx[XOCL_SUBDEV_MAX_RES];
 };
@@ -361,6 +361,7 @@ enum {
 	XOCL_WORK_REFRESH_SUBDEV,
 	XOCL_WORK_SHUTDOWN,
 	XOCL_WORK_FORCE_RESET,
+	XOCL_WORK_ONLINE,
 	XOCL_WORK_NUM,
 };
 
@@ -1161,11 +1162,10 @@ enum {
 	ICAP_OPS(xdev)->put_xclbin_metadata(ICAP_DEV(xdev)) : 	\
 	0)
 
-
 struct xocl_mig_label {
-	unsigned char	tag[16];
-	uint64_t	mem_idx;
-	enum MEM_TYPE	mem_type;	
+	unsigned char		tag[16];
+	uint64_t		mem_idx;
+	enum MEM_TYPE		mem_type;
 };
 
 struct xocl_mig_funcs {
@@ -1192,7 +1192,6 @@ struct xocl_mig_funcs {
 	(MIG_CB(xdev, idx) ?						\
 	MIG_OPS(xdev, idx)->get_id(MIG_DEV(xdev, idx)) : \
 	0)
-
 
 struct xocl_iores_funcs {
 	struct xocl_subdev_funcs common_funcs;
@@ -1295,6 +1294,32 @@ struct xocl_mailbox_versal_funcs {
 	? MAILBOX_VERSAL_OPS(xdev)->get(MAILBOX_VERSAL_DEV(xdev), \
 	data) : -ENODEV)
 
+
+
+/* srsr callbacks */
+struct xocl_srsr_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	int (*save_calib)(struct platform_device *pdev);
+	int (*calib)(struct platform_device *pdev, bool retain);
+};
+#define	SRSR_DEV(xdev, idx)	SUBDEV_MULTI(xdev, XOCL_SUBDEV_SRSR, idx).pldev
+#define	SRSR_OPS(xdev, idx)							\
+	((struct xocl_srsr_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_SRSR, idx).ops)
+#define	SRSR_CB(xdev, idx)	\
+	(SRSR_DEV(xdev, idx) && SRSR_OPS(xdev, idx))
+#define	xocl_srsr_reset(xdev, idx)				\
+	(SRSR_CB(xdev, idx) ?						\
+	SRSR_OPS(xdev, idx)->reset(SRSR_DEV(xdev, idx)) : \
+	-ENODEV)
+#define	xocl_srsr_save_calib(xdev, idx)				\
+	(SRSR_CB(xdev, idx) ?						\
+	SRSR_OPS(xdev, idx)->save_calib(SRSR_DEV(xdev, idx)) : \
+	-ENODEV)
+#define	xocl_srsr_calib(xdev, idx, retain)				\
+	(SRSR_CB(xdev, idx) ?						\
+	SRSR_OPS(xdev, idx)->calib(SRSR_DEV(xdev, idx), retain) : \
+	-ENODEV)
+
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
 void xocl_init_dsa_priv(xdev_handle_t xdev_hdl);
@@ -1357,6 +1382,7 @@ int xocl_subdev_offline_by_id(xdev_handle_t xdev_hdl, u32 id);
 int xocl_subdev_offline_by_level(xdev_handle_t xdev_hdl, int level);
 int xocl_subdev_online_all(xdev_handle_t xdev_hdl);
 int xocl_subdev_online_by_id(xdev_handle_t xdev_hdl, u32 id);
+int xocl_subdev_online_by_id_and_inst(xdev_handle_t xdev_hdl, u32 id, u32 inst_id);
 int xocl_subdev_online_by_level(xdev_handle_t xdev_hdl, int level);
 void xocl_subdev_destroy_by_id(xdev_handle_t xdev_hdl, u32 id);
 void xocl_subdev_destroy_by_level(xdev_handle_t xdev_hdl, int level);
@@ -1538,4 +1564,32 @@ void xocl_fini_mailbox_versal(void);
 
 int __init xocl_init_ospi_versal(void);
 void xocl_fini_ospi_versal(void);
+
+int __init xocl_init_aim(void);
+void xocl_fini_aim(void);
+
+int __init xocl_init_am(void);
+void xocl_fini_am(void);
+
+int __init xocl_init_asm(void);
+void xocl_fini_asm(void);
+
+int __init xocl_init_trace_fifo_lite(void);
+void xocl_fini_trace_fifo_lite(void);
+
+int __init xocl_init_trace_fifo_full(void);
+void xocl_fini_trace_fifo_full(void);
+
+int __init xocl_init_trace_funnel(void);
+void xocl_fini_trace_funnel(void);
+
+int __init xocl_init_trace_s2mm(void);
+void xocl_fini_trace_s2mm(void);
+
+int __init xocl_init_mem_hbm(void);
+void xocl_fini_mem_hbm(void);
+
+int __init xocl_init_srsr(void);
+void xocl_fini_srsr(void);
+
 #endif

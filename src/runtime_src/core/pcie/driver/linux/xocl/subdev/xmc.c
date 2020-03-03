@@ -370,6 +370,7 @@ static void xmc_clk_scale_config(struct platform_device *pdev);
 static int xmc_load_board_info(struct xocl_xmc *xmc);
 static int cmc_access_ops(struct platform_device *pdev, int flags);
 static bool scaling_condition_check(struct xocl_xmc *xmc, struct device *dev);
+static const struct file_operations xmc_fops;
 
 static void set_sensors_data(struct xocl_xmc *xmc, struct xcl_sensor *sensors)
 {
@@ -582,7 +583,7 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 			safe_read32(xmc, XMC_OEM_ID_REG, val);
 			break;
 		case XMC_VCCINT_TEMP:
-			safe_read32(xmc, XMC_VCCINT_TEMP_REG, val);
+			READ_SENSOR(xmc, XMC_VCCINT_TEMP_REG, val, val_kind);
 			break;
 		default:
 			break;
@@ -734,6 +735,8 @@ static void read_bdinfo_from_peer(struct platform_device *pdev)
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	int ret = 0;
 
+	BUG_ON(!mutex_is_locked(&xmc->mbx_lock));
+
 	if (xmc->bdinfo_raw)
 		return;
 
@@ -770,6 +773,7 @@ static void xmc_bdinfo(struct platform_device *pdev, enum data_kind kind,
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
 	struct xcl_board_info *bdinfo = NULL;
 
+	BUG_ON(!mutex_is_locked(&xmc->mbx_lock));
 	if (XMC_PRIVILEGED(xmc)) {
 
 		switch (kind) {
@@ -877,7 +881,7 @@ static bool autonomous_xmc(struct platform_device *pdev)
 {
 	struct xocl_dev_core *core = xocl_get_xdev(pdev);
 
-	return core->priv.flags & XOCL_DSAFLAG_SMARTN;
+	return core->priv.flags & (XOCL_DSAFLAG_SMARTN | XOCL_DSAFLAG_VERSAL);
 }
 
 static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind,
@@ -887,7 +891,7 @@ static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind,
 	struct xcl_board_info *bdinfo = NULL;
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
 
-	if (XMC_PRIVILEGED(xmc) && !xmc->mgmt_binary)
+	if (XMC_PRIVILEGED(xmc) && !xmc->mgmt_binary && !autonomous_xmc(pdev))
 		return -ENODEV;
 
 	switch (kind) {
@@ -940,7 +944,6 @@ static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind,
 	case XCL_BDINFO:
 		mutex_lock(&xmc->mbx_lock);
 		xmc_load_board_info(xmc);
-		mutex_unlock(&xmc->mbx_lock);
 
 		bdinfo = (struct xcl_board_info *)buf;
 
@@ -956,6 +959,7 @@ static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind,
 		xmc_bdinfo(pdev, FAN_PRESENCE, &bdinfo->fan_presence);
 		xmc_bdinfo(pdev, CFG_MODE, &bdinfo->config_mode);
 		xmc_bdinfo(pdev, EXP_BMC_VER, (u32 *)bdinfo->exp_bmc_ver);
+		mutex_unlock(&xmc->mbx_lock);
 		break;
 	default:
 		break;
@@ -2871,6 +2875,7 @@ static int xmc_probe(struct platform_device *pdev)
 	struct xocl_xmc *xmc;
 	struct resource *res;
 	void *xdev_hdl;
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	int i, err;
 
 	xmc = xocl_drvinst_alloc(&pdev->dev, sizeof(*xmc));
@@ -2881,6 +2886,7 @@ static int xmc_probe(struct platform_device *pdev)
 
 	xmc->pdev = pdev;
 	platform_set_drvdata(pdev, xmc);
+	xocl_dbg(&pdev->dev, "fops %lx", (ulong)&xmc_fops);
 
 	mutex_init(&xmc->xmc_lock);
 	mutex_init(&xmc->mbx_lock);
@@ -2916,7 +2922,7 @@ static int xmc_probe(struct platform_device *pdev)
 			goto failed;
 		}
 
-		if (!xmc->base_addrs[IO_GPIO]) {
+		if (!XOCL_DSA_IS_VERSAL(xdev) && !xmc->base_addrs[IO_GPIO]) {
 			xocl_info(&pdev->dev, "minimum mode for SC upgrade");
 			return 0;
 		}
@@ -2983,7 +2989,6 @@ failed:
 	return err;
 }
 
-static const struct file_operations xmc_fops;
 struct xocl_drv_private	xmc_priv = {
 	.ops = &xmc_ops,
 #if PF == MGMTPF

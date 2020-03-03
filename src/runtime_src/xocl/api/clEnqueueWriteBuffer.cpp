@@ -29,6 +29,7 @@
 #include "detail/context.h"
 #include "plugin/xdp/appdebug.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 namespace xocl {
 
@@ -103,6 +104,9 @@ clEnqueueWriteBuffer(cl_command_queue   command_queue,
     (command_queue,CL_COMMAND_WRITE_BUFFER,num_events_in_wait_list,event_wait_list);
   xocl::enqueue::set_event_action(uevent.get(),xocl::enqueue::action_write_buffer,buffer,offset,size,ptr);
   xocl::profile::set_event_action(uevent.get(),xocl::profile::action_write,buffer,offset,size,false);
+#ifndef _WIN32
+  xocl::lop::set_event_action(uevent.get(), xocl::lop::action_write);
+#endif
   xocl::appdebug::set_event_action(uevent.get(),xocl::appdebug::action_readwrite,buffer,offset,size,ptr);
  
   uevent->queue();
@@ -147,6 +151,7 @@ clEnqueueWriteBuffer(cl_command_queue   command_queue,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
+    LOP_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
     return xocl::clEnqueueWriteBuffer
       (command_queue,buffer,blocking,offset,size,ptr,num_events_in_wait_list,event_wait_list,event_parameter);
   }

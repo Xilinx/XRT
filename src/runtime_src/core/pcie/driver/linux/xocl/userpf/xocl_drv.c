@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@xilinx.com
  *
@@ -225,6 +225,13 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 		xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 		xocl_subdev_offline_all(xdev);
 	} else {
+		(void) xocl_config_pci(xdev);
+
+		if (xdev->p2p_bar_sz_cached) {
+			(void) xocl_pci_resize_resource(xdev->core.pdev,
+				xdev->p2p_bar_idx, xdev->p2p_bar_sz_cached);
+		}
+
 		ret = xocl_subdev_online_all(xdev);
 		if (ret)
 			xocl_warn(&pdev->dev, "Online subdevs failed %d", ret);
@@ -347,10 +354,8 @@ int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 
 	userpf_info(xdev, "resetting device...");
 
-#if 0 
 	if (flag & XOCL_RESET_FORCE)
 		xocl_drvinst_kill_proc(xdev->core.drm);
-#endif
 
 	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct xcl_mailbox_req),
 		&ret, &resplen, NULL, NULL, 0);
@@ -410,13 +415,6 @@ int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 failed_notify:
 
 	if (!(flag & XOCL_RESET_SHUTDOWN)) {
-		(void) xocl_config_pci(xdev);
-
-		if (xdev->p2p_bar_sz_cached) {
-			(void) xocl_pci_resize_resource(xdev->core.pdev,
-				xdev->p2p_bar_idx, xdev->p2p_bar_sz_cached);
-		}
-
 		xocl_reset_notify(xdev->core.pdev, false);
 
 		xocl_drvinst_set_offline(xdev->core.drm, false);
@@ -432,7 +430,7 @@ static void xocl_work_cb(struct work_struct *work)
 	struct xocl_dev *xdev = container_of(_work,
 			struct xocl_dev, core.works[_work->op]);
 
-	if (XDEV(xdev)->shutdown) {
+	if (XDEV(xdev)->shutdown && _work->op != XOCL_WORK_ONLINE) {
 		xocl_xdev_info(xdev, "device is shutdown please hotplug");
 		return;
 	}
@@ -446,6 +444,11 @@ static void xocl_work_cb(struct work_struct *work)
 				XOCL_RESET_SHUTDOWN);
 		/* mark device offline. Only hotplug is allowed. */
 		XDEV(xdev)->shutdown = true;
+		break;
+	case XOCL_WORK_ONLINE:
+		xocl_reset_notify(xdev->core.pdev, false);
+		xocl_drvinst_set_offline(xdev->core.drm, false);
+		XDEV(xdev)->shutdown = false;
 		break;
 	case XOCL_WORK_PROGRAM_SHELL:
 		/* program shell */
@@ -725,8 +728,12 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 		blob = NULL;
 	}
 
-	if (XOCL_DRM(xdev))
-		xocl_cleanup_mem(XOCL_DRM(xdev));
+	/* clean up mem topology */
+	if (xdev->core.drm) {
+		xocl_drm_fini(xdev->core.drm);
+		xdev->core.drm = NULL;
+	}
+	xocl_fini_sysfs(xdev);
 
 	xocl_subdev_offline_all(xdev);
 	xocl_subdev_destroy_all(xdev);
@@ -737,6 +744,21 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 	}
 	(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
 	(void) xocl_mb_connect(xdev);
+
+	ret = xocl_init_sysfs(xdev);
+	if (ret) {
+		userpf_err(xdev, "Unable to create sysfs %d", ret);
+		goto failed;
+	}
+
+	if (!xdev->core.drm) {
+		xdev->core.drm = xocl_drm_init(xdev);
+		if (!xdev->core.drm) {
+			userpf_err(xdev, "Unable to init drm");
+			goto failed;
+		}
+	}
+
 	xocl_drvinst_set_offline(xdev->core.drm, false);
 
 failed:
@@ -1239,6 +1261,7 @@ static void unmap_bar(struct xocl_dev *xdev)
 void xocl_userpf_remove(struct pci_dev *pdev)
 {
 	struct xocl_dev		*xdev;
+	void *hdl;
 
 	xdev = pci_get_drvdata(pdev);
 	if (!xdev) {
@@ -1246,17 +1269,19 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 		return;
 	}
 
+	xocl_drvinst_release(xdev, &hdl);
+
 	xocl_queue_destroy(xdev);
 
-	xocl_p2p_fini(xdev, false);
 	/*
 	 * need to shutdown drm and sysfs before destroy subdevices
 	 * drm and sysfs could access subdevices
 	 */
-
 	if (xdev->core.drm)
 		xocl_drm_fini(xdev->core.drm);
 
+	xocl_p2p_fini(xdev, false);
+	xocl_fini_persist_sysfs(xdev);
 	xocl_fini_sysfs(xdev);
 
 	xocl_subdev_destroy_all(xdev);
@@ -1273,7 +1298,7 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 	mutex_destroy(&xdev->dev_lock);
 
 	pci_set_drvdata(pdev, NULL);
-	xocl_drvinst_free(xdev);
+	xocl_drvinst_free(hdl);
 }
 
 int xocl_config_pci(struct xocl_dev *xdev)
@@ -1376,10 +1401,11 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 		xocl_err(&pdev->dev, "failed to init sysfs");
 		goto failed;
 	}
-
-	/* Don't check mailbox on versal for now. */
-	if (XOCL_DSA_IS_VERSAL(xdev))
-		return 0;
+	ret = xocl_init_persist_sysfs(xdev);
+	if (ret) {
+		xocl_err(&pdev->dev, "failed to init persist sysfs");
+		goto failed;
+	}
 
 	/* Launch the mailbox server. */
 	ret = xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
@@ -1472,6 +1498,14 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_mig,
 	xocl_init_dna,
 	xocl_init_mailbox_versal,
+	xocl_init_aim,
+	xocl_init_am,
+	xocl_init_asm,
+	xocl_init_trace_fifo_lite,
+	xocl_init_trace_fifo_full,
+	xocl_init_trace_funnel,
+	xocl_init_trace_s2mm,
+	xocl_init_mem_hbm,
 };
 
 static void (*xocl_drv_unreg_funcs[])(void) = {
@@ -1489,6 +1523,14 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_mig,
 	xocl_fini_dna,
 	xocl_fini_mailbox_versal,
+	xocl_fini_aim,
+	xocl_fini_am,
+	xocl_fini_asm,
+	xocl_fini_trace_fifo_lite,
+	xocl_fini_trace_fifo_full,
+	xocl_fini_trace_funnel,
+	xocl_fini_trace_s2mm,
+	xocl_fini_mem_hbm,
 };
 
 static int __init xocl_init(void)
