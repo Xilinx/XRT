@@ -166,6 +166,39 @@ static const std::map<MEM_TYPE, std::string> memtype_map = {
     {MEM_STREAMING_CONNECTION, "MEM_STREAMING_CONNECTION"}
 };
 
+static const std::map<int, std::string> oemid_map = {
+    {0x10da, "Xilinx"},
+    {0x02a2, "Dell"},
+    {0x12a1, "IBM"},
+    {0xb85c, "HP"},
+    {0x2a7c, "Super Micro"},
+    {0x4a66, "Lenovo"},
+    {0xbd80, "Inspur"},
+    {0x12eb, "Amazon"},
+    {0x2b79, "Google"}
+};
+
+static const std::string getOEMID(std::string oemid)
+{
+    unsigned int oemIDValue = 0;
+    std::stringstream ss;
+
+    try {
+        ss << std::hex << oemid;
+        ss >> oemIDValue;
+    } catch (const std::exception&) {
+        //failed to parse oemid to hex value, ignore erros and print origin value
+    }
+
+    ss.str(std::string());
+    ss.clear();
+    auto oemstr = oemid_map.find(oemIDValue);
+
+    ss << oemid << "(" << (oemstr != oemid_map.end() ? oemstr->second : "N/A") << ")";
+
+    return ss.str();
+}
+
 static const std::map<std::string, command> commandTable(map_pairs, map_pairs + sizeof(map_pairs) / sizeof(map_pairs[0]));
 
 static std::string lvl2PowerStr(unsigned int lvl)
@@ -740,7 +773,7 @@ public:
         sensor_tree::put( "board.info.subdevice",      subsystem );
         sensor_tree::put( "board.info.subvendor",      subvendor );
         sensor_tree::put( "board.info.xmcversion",     xmc_ver );
-        sensor_tree::put( "board.info.xmc_oem_id",     xmc_oem_id );
+        sensor_tree::put( "board.info.xmc_oem_id",     getOEMID(xmc_oem_id));
         sensor_tree::put( "board.info.serial_number",  ser_num );
         sensor_tree::put( "board.info.max_power",      lvl2PowerStr(max_power.empty() ? UINT_MAX : stoi(max_power)) );
         sensor_tree::put( "board.info.sc_version",     bmc_ver );
