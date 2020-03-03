@@ -1,6 +1,6 @@
 # -----------------------------------------------------------------------------
 
-if (${LINUX_FLAVOR} STREQUAL SUSE)
+if ((NOT WIN32) AND (${LINUX_FLAVOR} STREQUAL SUSE))
 set(Boost_USE_STATIC_LIBS OFF)
 set(Boost_USE_MULTITHREADED ON)             # Multi-threaded libraries
 set(Boost_USE_STATIC_RUNTIME OFF)
