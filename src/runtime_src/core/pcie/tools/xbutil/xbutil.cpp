@@ -1381,11 +1381,11 @@ int xcldev::device::validate(bool quick, bool hidden)
         if (retVal < 0)
             return retVal;
     }
-    
+
     // Skip the rest of test cases for quicker turn around.
     if (quick)
         return withWarning ? 1 : 0;
-    
+
     // Perform DMA test
     retVal = runOneTest("DMA test",
             std::bind(&xcldev::device::dmatest, this, 0, false));
@@ -2045,6 +2045,35 @@ struct exec_struct {
     unsigned int exec_size;
 };
 
+static int 
+get_first_used_mem(unsigned int idx) 
+{
+    std::string errmsg;
+    std::vector<char> buf;
+    auto dev = pcidev::get_dev(idx);
+    int first_used_mem = -1;
+
+    if (dev == nullptr)
+        return -EINVAL;
+    
+    dev->sysfs_get("icap", "mem_topology", errmsg, buf);
+
+    const mem_topology *map = (mem_topology *)buf.data();
+    if (buf.empty() || map->m_count == 0) {
+        std::cout << "WARNING: 'mem_topology' invalid, "
+            << "unable to perform IOPS Test. Has the bitstream been loaded? "
+            << "See 'xbutil program'." << std::endl;
+        return -EINVAL;
+    }
+    for (int i = 0; i < map->m_count; i++) {
+        if (map->m_mem_data[i].m_used) {
+            first_used_mem = i;
+            break;
+        }
+    }
+    return first_used_mem;
+}
+
 static void 
 iops_free_unmap_bo(xclDeviceHandle handle, unsigned boh,
     void * boptr, size_t boSize)
@@ -2137,34 +2166,42 @@ execute_cmds(xclDeviceHandle handle, std::vector<std::shared_ptr<exec_struct>>& 
     (end - start)).count();
 }
 
+static void
+run_iops_test(xclDeviceHandle handle, std::vector<std::shared_ptr<exec_struct>>& cmds, 
+    std::vector<double>& iops_list, int first_used_mem, unsigned int cmd_per_batch, unsigned int num_execs)
+{
+    double duration = 0;
+    for (unsigned int i = 0; i < cmd_per_batch; i++) {
+        exec_struct info = {0};
+        iops_alloc_init_bo(handle, first_used_mem, &info);
+        auto p = std::make_shared<exec_struct>(info);
+        cmds.push_back(p);
+    }
+
+    // Execute the cmds
+    execute_cmds(handle, cmds, num_execs, duration);
+
+    //verify
+    for(auto& c : cmds) {
+        if(xclSyncBO(handle, c->out_bo_handle, XCL_BO_SYNC_BO_FROM_DEVICE, c->out_size, 0))
+            throw std::runtime_error("Cannot sync output BO from device");
+        if (strncmp(c->output_bo_ptr, "Hello World", 11))
+            throw std::runtime_error("Bad output result after CU execution");
+    }
+    iops_list.push_back(num_execs * 1000 * 1000 / duration);
+    // std::cout << "Combos: b: " << b << " t: " << t << " iops: " << (t * 1000 * 1000 / duration) << std::endl;  
+}
+
 int 
 xcldev::device::iopsTest()
 {
-    std::string errmsg;
-    std::vector<char> buf;
+
     xclbin_lock xclbin_lock(m_handle, m_idx);
-    auto dev = pcidev::get_dev(m_idx);
-    int first_used_mem = -1;
-
-    if (dev == nullptr)
-        return -EINVAL;
+    int first_used_mem = get_first_used_mem(m_idx);
     
-    dev->sysfs_get("icap", "mem_topology", errmsg, buf);
-
-    const mem_topology *map = (mem_topology *)buf.data();
-    if (buf.empty() || map->m_count == 0) {
-        std::cout << "WARNING: 'mem_topology' invalid, "
-            << "unable to perform IOPS Test. Has the bitstream been loaded? "
-            << "See 'xbutil program'." << std::endl;
+    if(first_used_mem == -1)
         return -EINVAL;
-    }
-    for (int i = 0; i < map->m_count; i++) {
-        if (map->m_mem_data[i].m_used) {
-            first_used_mem = i;
-            break;
-        }
-    }
-    
+
     std::vector<std::shared_ptr<exec_struct>> cmds;
     std::vector<unsigned int> cmd_per_batch = { 8,16,32,64,128,256,1024,2048 }; //b
     std::vector<unsigned int> num_execs = { 8,16,32,64,128,256,1024,2048 }; //t
@@ -2176,26 +2213,7 @@ xcldev::device::iopsTest()
     //run different combinations
     for(const auto& b : cmd_per_batch) {
         for(const auto& t : num_execs) {
-            double duration = 0;
-            for (unsigned int i = 0; i < b; i++) {
-            exec_struct info = {0};
-            iops_alloc_init_bo(m_handle, first_used_mem, &info);
-            auto p = std::make_shared<exec_struct>(info);
-            cmds.push_back(p);
-            }
-
-            // Execute the cmds
-            execute_cmds(m_handle, cmds, t, duration);
-
-            //verify
-            for(auto& c : cmds) {
-                if(xclSyncBO(m_handle, c->out_bo_handle, XCL_BO_SYNC_BO_FROM_DEVICE, c->out_size, 0))
-                    throw std::runtime_error("Cannot sync output BO from device");
-                if (strncmp(c->output_bo_ptr, "Hello World", 11))
-                    throw std::runtime_error("Bad output result after CU execution");
-            }
-            iops_list.push_back(t * 1000 * 1000 / duration);
-            // std::cout << "Combos: b: " << b << " t: " << t << " iops: " << (t * 1000 * 1000 / duration) << std::endl;            
+            run_iops_test(m_handle, cmds, iops_list, first_used_mem, b, t);
         }
         std::cout << "." << std::flush;
     }
