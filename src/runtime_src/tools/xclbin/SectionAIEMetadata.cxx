@@ -32,14 +32,14 @@ SectionAIEMetadata::marshalToJSON( char* _pDataSection,
     XUtil::TRACE("");
     XUtil::TRACE("Extracting: AIE_METADATA");
 
-    std::unique_ptr<unsigned char> memBuffer(new unsigned char[_sectionSize + 1]);
-    memcpy((char *) memBuffer.get(), _pDataSection, _sectionSize);
-    memBuffer.get()[_sectionSize] = '\0';
+    std::vector <unsigned char> memBuffer(_sectionSize + 1);  // Extra byte for "null terminate" char
+    memcpy((char *) memBuffer.data(), _pDataSection, _sectionSize);
+    memBuffer[_sectionSize] = '\0';
 
-    std::stringstream ss((char*) memBuffer.get());
+    std::stringstream ss((char*) memBuffer.data());
 
     // TODO: Catch the exception (if any) from this call and produce a nice message
-    XUtil::TRACE_BUF("AIE_METADATA", (const char *) memBuffer.get(), _sectionSize+1);
+    XUtil::TRACE_BUF("AIE_METADATA", (const char *) memBuffer.data(), _sectionSize+1);
     try {
       boost::property_tree::ptree pt;
       boost::property_tree::read_json(ss, pt);
