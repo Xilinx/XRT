@@ -21,10 +21,11 @@
 #include "xdp/profile/writer/hal/hal_device_trace_writer.h"
 #include "xdp/profile/writer/hal/hal_summary_writer.h"
 
-#include "xdp/profile/writer/util.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/database/database.h"
+#include "xdp/profile/database/events/creator/device_event_from_trace.h"
 
 #include "core/common/xrt_profiling.h"
 
@@ -38,15 +39,16 @@ namespace xdp {
 
     std::string version = "1.0" ;
 
-    std::string creationTime = xdp::WriterI::getCurrentDateTime() ;
-    std::string XRTVersion = xdp::WriterI::getToolVersion() ;
+    std::string creationTime = xdp::getCurrentDateTime() ;
+    std::string xrtVersion   = xdp::getXRTVersion() ;
+    std::string toolVersion  = xdp::getToolVersion() ;
 
     // Based upon the configuration, create the appropriate writers
     writers.push_back(new HALHostTraceWriter("hal_host_trace.csv",
 					     version,
-					     //pid,
 					     creationTime,
-					     XRTVersion)) ;
+					     xrtVersion,
+                         toolVersion)) ;
     writers.push_back(new HALSummaryWriter("hal_summary.csv")) ;
 
     // There should be both a writer for each device.
@@ -65,9 +67,9 @@ namespace xdp {
       std::string fileName = "hal_device_trace_" + std::to_string(deviceId) + ".csv" ;
       writers.push_back(new HALDeviceTraceWriter(fileName.c_str(), deviceId,
 						 version,
-						 //pid,
 						 creationTime,
-						 XRTVersion, nullptr));
+						 xrtVersion,
+                         toolVersion));
       ++index;
       handle = xclOpen(index, "/dev/null", XCL_INFO) ;			
     }
@@ -171,7 +173,9 @@ namespace xdp {
       devInterface->parseTraceData(hostBuffer, devInterface->getWordCountTs2mm(), trace) ;
       */
     }
-    (db->getDynamicInfo()).addDeviceEvents(deviceId, trace, db);
+      DeviceEventCreatorFromTrace obj;
+      obj.createDeviceEvents(deviceId, trace, db);
+//    (db->getDynamicInfo()).addDeviceEvents(deviceId, trace, db);
   }
 
   void HALPlugin::flushDeviceInfo(void* handle)
@@ -222,7 +226,9 @@ namespace xdp {
 	      void* hostBuffer = nullptr ; // Need to sync the data
 	      devInterface->parseTraceData(hostBuffer, devInterface->getWordCountTs2mm(), trace) ;
       }
-      (db->getDynamicInfo()).addDeviceEvents(deviceId, trace, db) ;
+      DeviceEventCreatorFromTrace obj;
+      obj.createDeviceEvents(deviceId, trace, db);
+//      (db->getDynamicInfo()).addDeviceEvents(deviceId, trace, db) ;
     }
   }
 

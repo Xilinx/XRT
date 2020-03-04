@@ -16,31 +16,34 @@
 
 #include "xdp/profile/writer/hal/hal_device_trace_writer.h"
 #include "xdp/profile/database/database.h"
+#include "xdp/profile/database/events/device_events.h"
 
 namespace xdp {
 
-  HALDeviceTraceWriter::HALDeviceTraceWriter(const char* filename,
-               uint64_t devId, 
+
+  HALDeviceTraceWriter::HALDeviceTraceWriter(const char* filename, uint64_t devId, 
 					     const std::string& version,
 					     const std::string& creationTime,
 					     const std::string& xrtV,
-					     DeviceIntf* d) :
-    VPTraceWriter(filename, version, creationTime, 9 /* ns */),
-    XRTVersion(xrtV),
-    dev(d),
-    deviceId(devId)
+					     const std::string& toolV)
+      : VPTraceWriter(filename, version, creationTime, 9 /* ns */),
+        xrtVersion(xrtV),
+        toolVersion(xrtV),
+        deviceId(devId)
   {
   }
 
   HALDeviceTraceWriter::~HALDeviceTraceWriter()
   {
-    if (dev != nullptr) delete dev ;
   }
 
   void HALDeviceTraceWriter::writeHeader()
   {
     VPTraceWriter::writeHeader() ;
-    fout << "XRT Version," << XRTVersion << std::endl ;
+    fout << "XRT  Version," << xrtVersion  << std::endl
+         << "Tool Version," << toolVersion << std::endl
+         << "Platform," << (db->getStaticInfo()).getDeviceName(deviceId) << std::endl
+         << "Target,System Run" << std::endl;    // hardcoded for now
   }
 
   void HALDeviceTraceWriter::writeStructure()
@@ -61,6 +64,7 @@ namespace xdp {
 
     uint16_t numKDMA = (db->getStaticInfo()).getKDMACount(deviceId) ;
     if(numKDMA) {
+#if 0
       fout << "Group_Start,KDMA" << std::endl ;
       for (unsigned int i = 0 ; i < numKDMA ; ++i)
       {
@@ -68,6 +72,7 @@ namespace xdp {
 	      fout << "Dynamic_Row," << ++rowCount << ",Write, ,KERNEL_WRITE" << std::endl;
       }
       fout << "Group_End,KDMA" << std::endl ;
+#endif
     }
 
     std::map<int32_t, ComputeUnitInstance*> *cus = (db->getStaticInfo()).getCUs(deviceId);
@@ -75,46 +80,63 @@ namespace xdp {
     if(cus) {
       for(auto itr : *cus) {
         ComputeUnitInstance* cu = itr.second;
-        fout << "Group_Start," << cu->getName() << std::endl ;
-        fout << "Dynamic_Row_Summary," << ++rowCount << ",Executions, ,KERNEL" << std::endl;
-        eventTypeBucketIdMap[KERNEL] = rowCount;
-        fout << "Dynamic_Row_Summary," << ++rowCount << ",Read, ,KERNEL_READ" << std::endl ;
-        eventTypeBucketIdMap[KERNEL_READ] = rowCount;
-        fout << "Dynamic_Row_Summary," << ++rowCount << ",Write, ,KERNEL_WRITE" << std::endl ;
-        eventTypeBucketIdMap[KERNEL_WRITE] = rowCount;
-#if 0
-        // For each memory bank/destination that could be accessed by this compute unit, create a row.
-        std::map<int32_t, std::vector<int32_t>> *args = cu->getConnections();
-        if(memory && args) {
-          int32_t t = 0;
-          for(auto itr : *args) {
-            int32_t argIdx = itr.first;
-            int32_t memIdx = (itr.second)[t]; // for now just one
-            std::string argStr = "arg" + argIdx;
-			fout << "Group_Start," << argStr << std::endl;
-            fout << "Dynamic_Row," << ++rowCount << ",ArgMemory" << memIdx << ", ,KERNEL_READ" << std::endl;
-            ++t;
-          }
+        std::string cuName = cu->getName();
+
+        // Wave Group for CU
+        fout << "Group_Start,Compute Unit " << cuName << ",Activity in accelerator "<< cu->getKernelName() << ":" << cuName << std::endl ;
+        fout << "Dynamic_Row_Summary," << ++rowCount << ",Executions,Execution in accelerator " << cuName << std::endl;
+        cuBucketIdMap[cu->getIndex()] = rowCount;
+
+        // Wave Group for Kernel Stall, if Stall monitoring is enabled in CU
+        if(cu->stallEnabled()) {
+          // KERNEL_STALL : stall type
+          fout << "Group_Summary_Start,Stall,Stalls in accelerator " << cuName << std::endl;
+          fout << "Static_Row," << (rowCount + KERNEL_STALL_EXT_MEM - KERNEL)  << ",External Memory Stall, Stalls from accessing external memory" << std::endl;
+          fout << "Static_Row," << (rowCount + KERNEL_STALL_DATAFLOW - KERNEL) << ",Intra-Kernel Dataflow Stall,Stalls from dataflow streams inside compute unit" << std::endl;
+          fout << "Static_Row," << (rowCount + KERNEL_STALL_PIPE - KERNEL) << ",Inter-Kernel Pipe Stall,Stalls from accessing pipes between kernels" << std::endl;
+          fout << "Group_End,Stall" << std::endl;
         }
-#endif
-        fout << "Group_End," << cu->getName() << std::endl ;
+
+        // Wave Group for Read and Write, if Data transfer monitoring is enabled in CU
+        if(cu->dataTransferEnabled()) {
+          // Read
+          // KERNEL_READ
+          fout << "Group_Start,Read,Read data transfers between " << cuName << " and Global Memory" << std::endl;
+          fout << "Static_Row," << (rowCount + KERNEL_READ - KERNEL) << ",M_AXI_GMEM-MEMORY (port_names)," << "Read Data Transfers " << std::endl;
+          fout << "Group_End,Read" << std::endl;
+
+          // Write
+          // KERNEL_WRITE
+          fout << "Group_Start,Write,Write data transfers between " << cuName << " and Global Memory" << std::endl;
+          fout << "Static_Row," << (rowCount + KERNEL_WRITE - KERNEL) << ",M_AXI_GMEM-MEMORY (port_names)," << "Write Data Transfers " << std::endl;
+          fout << "Group_End,Read" << std::endl;
+        }
+
+        if(cu->hasStream()) {
+          // Read
+          // KERNEL_STREAM_READ
+          fout << "Group_Start,Stream Read,Read AXI Stream transaction between " << cuName << " and Global Memory" << std::endl;
+          fout << "Group_Row_Start," << (rowCount + KERNEL_STREAM_READ - KERNEL) << ",stream port, ,Read AXI Stream transaction between port and memory" << std::endl;
+ //         fout << "Static_Row," << (rowCount + KERNEL_STREAM_READ_STALL - KERNEL) << ",Link Stall" << std::endl;
+  //        fout << "Static_Row," << (rowCount + KERNEL_STREAM_READ_STARVE - KERNEL) << ",Link Starve" << std::endl;
+          fout << "Group_End,Row Read" << std::endl;
+          fout << "Group_End,Stream Read" << std::endl;
+          // KERNEL_STREAM_WRITE
+          fout << "Group_Start,Stream Write,Write AXI Stream transaction between " << cuName << " and Global Memory" << std::endl;
+          fout << "Group_Row_Start," << (rowCount + KERNEL_STREAM_WRITE_STALL - KERNEL) << ",stream port, ,Write AXI Stream transaction between port and memory" << std::endl;
+//          fout << "Static_Row," << (rowCount + KERNEL_STREAM_WRITE_STALL - KERNEL) << ",Link Stall" << std::endl;
+ //         fout << "Static_Row," << (rowCount + KERNEL_STREAM_WRITE_STARVE - KERNEL) << ",Link Starve" << std::endl;
+          fout << "Group_End,Row Write" << std::endl;
+          fout << "Group_End,Stream Write" << std::endl;
+        }
+        fout << "Group_End," << cuName << std::endl ;
+		rowCount += (KERNEL_STREAM_WRITE_STARVE - KERNEL);
+// HOST READ?WRITE
       }
     }
 
     fout << "Group_End," << xclbinName << std::endl ;
     fout << "Group_End," << deviceName << std::endl ;
-
-#if 0
-// just print monitors
-    std::map<uint64_t, Monitor*> *monitors = (db->getStaticInfo()).getMonitorInfo(deviceId);
-    if(monitors) {
-      fout << " num monitors " << monitors->size() << std::endl;
-      for(auto itr : *monitors) {
-        Monitor* mon = itr.second;
-        fout << " mon ; index " << mon->index << " type " << (int)mon->type << " name " << mon->name << " cu id " << mon->cuIndex << " memIdx " << mon->memIndex << std::endl;
-      }
-    }
-#endif
   }
 
   void HALDeviceTraceWriter::writeStringTable()
@@ -133,8 +155,12 @@ namespace xdp {
           { return e->isDeviceEvent(); });
 */
     for(auto e : DeviceEvents) {
-      VTFEventType eventType = e->getEventType();
-      e->dump(fout, eventTypeBucketIdMap[eventType]);
+
+// ORRECT THIS
+      KernelEvent* ke = dynamic_cast<KernelEvent*>(e);
+      if(!e)
+        continue;
+      ke->dump(fout, cuBucketIdMap[ke->getCUId()] + ke->getEventType() - KERNEL);
     }
   }
 

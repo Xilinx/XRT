@@ -21,9 +21,11 @@ namespace xdp {
   HALHostTraceWriter::HALHostTraceWriter(const char* filename, 
 					 const std::string& version,
 					 const std::string& creationTime,
-					 const std::string& xrtV) :
-    VPTraceWriter(filename, version, creationTime, 6 /* us */),
-    XRTVersion(xrtV)
+					 const std::string& xrtV,
+					 const std::string& toolV)
+    : VPTraceWriter(filename, version, creationTime, 6 /* us */),
+      xrtVersion(xrtV),
+      toolVersion(toolV)
   {
   }
 
@@ -34,7 +36,9 @@ namespace xdp {
   void HALHostTraceWriter::writeHeader()
   {
     VPTraceWriter::writeHeader() ;
-    fout << "XRT Version," << XRTVersion << std::endl ;
+    fout << "XRT  Version," << xrtVersion  << std::endl
+         << "Tool Version," << toolVersion << std::endl;
+
     //fout << "Profiled Application," << xdp::WriterI::getCurrentExecutableName() << std::endl; // check
   }
 

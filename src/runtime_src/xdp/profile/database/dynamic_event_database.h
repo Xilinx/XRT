@@ -83,10 +83,6 @@ namespace xdp {
     double mTrainOffset;
     double mTraceClockRateMHz = 285; // 300 ?
     double mTrainSlope = 1000.0/mTraceClockRateMHz;
-
-    // For Device Events, find matching start for end event
-    XDP_EXPORT void markDeviceEventStart(uint64_t slotID, VTFEvent* event);
-    XDP_EXPORT VTFEvent* matchingDeviceEventStart(uint64_t slotID);
     
   public:
     XDP_EXPORT VPDynamicDatabase() ;
@@ -99,6 +95,10 @@ namespace xdp {
     // For API events, find the event id of the start event for an end event
     XDP_EXPORT void markStart(uint64_t functionID, uint64_t eventID) ;
     XDP_EXPORT uint64_t matchingStart(uint64_t functionID) ;
+
+    // For Device Events, find matching start for end event
+    XDP_EXPORT void markDeviceEventStart(uint64_t slotID, VTFEvent* event);
+    XDP_EXPORT VTFEvent* matchingDeviceEventStart(uint64_t slotID);
 
     // A lookup into the string table
     XDP_EXPORT uint64_t addString(const std::string& value) ;

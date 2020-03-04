@@ -112,6 +112,15 @@ namespace xdp {
     case KERNEL_STALL:
       humanReadable ? (fout << "KERNEL_STALL") : (fout << KERNEL_STALL) ;
       break ;
+    case KERNEL_STALL_EXT_MEM:
+      humanReadable ? (fout << "KERNEL_STALL_EXT_MEM") : (fout << KERNEL_STALL_EXT_MEM) ;
+      break ;
+    case KERNEL_STALL_DATAFLOW:
+      humanReadable ? (fout << "KERNEL_STALL_DATAFLOW") : (fout << KERNEL_STALL_DATAFLOW) ;
+      break ;
+    case KERNEL_STALL_PIPE:
+      humanReadable ? (fout << "KERNEL_STALL_PIPE") : (fout << KERNEL_STALL_PIPE) ;
+      break ;
     case KERNEL_READ:
       humanReadable ? (fout << "KERNEL_READ") : (fout << KERNEL_READ) ;
       break ;
@@ -121,14 +130,20 @@ namespace xdp {
     case KERNEL_STREAM_READ:
       humanReadable ? (fout << "KERNEL_STREAM_READ") : (fout << KERNEL_STREAM_READ) ;
       break ;
+    case KERNEL_STREAM_READ_STALL:
+      humanReadable ? (fout << "KERNEL_STREAM_READ_STALL") : (fout << KERNEL_STREAM_READ_STALL) ;
+      break ;
+    case KERNEL_STREAM_READ_STARVE:
+      humanReadable ? (fout << "KERNEL_STREAM_READ_STARVE") : (fout << KERNEL_STREAM_READ_STARVE) ;
+      break ;
     case KERNEL_STREAM_WRITE:
       humanReadable ? (fout << "KERNEL_STREAM_WRITE") : (fout << KERNEL_STREAM_WRITE) ;
       break ;
-    case KERNEL_STREAM_STALL:
-      humanReadable ? (fout << "KERNEL_STREAM_STALL") : (fout << KERNEL_STREAM_STALL) ;
+    case KERNEL_STREAM_WRITE_STALL:
+      humanReadable ? (fout << "KERNEL_STREAM_WRITE_STALL") : (fout << KERNEL_STREAM_WRITE_STALL) ;
       break ;
-    case KERNEL_STREAM_STARVE:
-      humanReadable ? (fout << "KERNEL_STREAM_STARVE") : (fout << KERNEL_STREAM_STARVE) ;
+    case KERNEL_STREAM_WRITE_STARVE:
+      humanReadable ? (fout << "KERNEL_STREAM_WRITE_STARVE") : (fout << KERNEL_STREAM_WRITE_STARVE) ;
       break ;
     case HOST_READ:
       humanReadable ? (fout << "HOST_READ") : (fout << HOST_READ) ;

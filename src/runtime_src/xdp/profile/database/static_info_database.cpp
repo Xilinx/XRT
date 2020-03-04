@@ -30,11 +30,20 @@
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #include "core/include/xclbin.h"
 
+#define XAM_STALL_PROPERTY_MASK        0x4
+
+
+
 namespace xdp {
 
-  ComputeUnitInstance::ComputeUnitInstance(const char* n, int32_t i) :
-    name(n), index(i)
+  ComputeUnitInstance::ComputeUnitInstance(int32_t i, const char* n)
+    : index(i)
   {
+    std::string fullName(n);
+    int pos = fullName.find(':');
+    kernelName = fullName.substr(0, pos);
+    name = fullName.substr(pos+1);
+    
     dim[0] = 0 ;
     dim[1] = 0 ;
     dim[2] = 0 ;
@@ -171,7 +180,7 @@ namespace xdp {
           // error ?
         }
         devInfo->cus[connctn->m_ip_layout_index] 
-                 = new ComputeUnitInstance(reinterpret_cast<const char*>(ipData->m_name), connctn->m_ip_layout_index);
+                 = new ComputeUnitInstance(connctn->m_ip_layout_index, reinterpret_cast<const char*>(ipData->m_name));
       }
 
       if(devInfo->memoryInfo.find(connctn->mem_data_index) == devInfo->memoryInfo.end()) {
@@ -201,38 +210,39 @@ namespace xdp {
       const struct debug_ip_data* debugIpData = &(debugIpLayoutSection->m_debug_ip_data[i]);
       uint64_t index = static_cast<uint64_t>(debugIpData->m_index_lowbyte) |
                        (static_cast<uint64_t>(debugIpData->m_index_highbyte) << 8);
-      uint64_t baseAddr = debugIpData->m_base_address;
-      if(devInfo->monitorInfo.find(baseAddr) != devInfo->monitorInfo.end()) {
-        continue;
-      }
       Monitor* mon = nullptr;
 
       std::string name(debugIpData->m_name);
+      int32_t cuId  = -1;
+      ComputeUnitInstance* cuObj = nullptr;
       // find CU
       if(debugIpData->m_type == ACCEL_MONITOR) {
 		for(auto cu : devInfo->cus) {
-          int pos = cu.second->getName().find(':');
-          std::string cuName = cu.second->getName().substr(pos+1);
-          if(0 == name.compare(cuName)) {
-            mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cu.second->getIndex());
+          if(0 == name.compare(cu.second->getName())) {
+            cuObj = cu.second;
+            cuId = cu.second->getIndex();
+            mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId);
+//            cuObj->addMonitor(mon);
+            if(debugIpData->m_properties & XAM_STALL_PROPERTY_MASK) {
+              cuObj->setStallEnabled(true);
+            }
             break;
           }
         }
+        devInfo->amList.push_back(mon);
       } else if(debugIpData->m_type == AXI_MM_MONITOR) {
 		// parse name to find CU Name and Memory
         size_t pos = name.find('/');
-        std::string cuMonName = name.substr(0, pos);
+        std::string monCuName = name.substr(0, pos);
 
         pos = name.find('-');
         std::string memName = name.substr(pos+1);
 
-        int32_t cuId  = -1;
         int32_t memId = -1;
 		for(auto cu : devInfo->cus) {
-          int pos = cu.second->getName().find(':');
-          std::string cuName = cu.second->getName().substr(pos+1);
-          if(0 == cuMonName.compare(cuName)) {
+          if(0 == monCuName.compare(cu.second->getName())) {
             cuId = cu.second->getIndex();
+            cuObj = cu.second;
             break;
           }
         }
@@ -243,8 +253,11 @@ namespace xdp {
           }
         }
         mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId, memId);
+//        cuObj->addMonitor(mon);
+        cuObj->setDataTransferEnabled(true);
+        devInfo->aimList.push_back(mon);
       } else {
-        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name);
+//        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name);
       }
       devInfo->monitorInfo[baseAddr] = mon;
     }

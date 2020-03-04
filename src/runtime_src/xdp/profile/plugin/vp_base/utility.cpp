@@ -45,4 +45,9 @@ namespace xdp {
     return "2019.2" ;
   }
 
+  const char* getXRTVersion()
+  {
+    return "2.6.0" ;	// To Do
+  }
+
 } // end namespace xdp

@@ -31,7 +31,8 @@ namespace xdp {
     HALDeviceTraceWriter() = delete ;
 
     // Specific header information
-    std::string XRTVersion ;
+    std::string xrtVersion;
+    std::string toolVersion;
 
     std::map<int32_t, uint32_t> cuBucketIdMap;
 
@@ -50,12 +51,13 @@ namespace xdp {
   public:
     HALDeviceTraceWriter(const char* filename, uint64_t deviceId, const std::string& version,
 			 const std::string& creationTime,
-			 const std::string& xrtV, DeviceIntf* d) ;
+			 const std::string& xrtV,
+			 const std::string& toolV);
+
     ~HALDeviceTraceWriter() ;
 
     virtual void write(bool openNewFile) ;
     virtual bool isDevice() { return true ; } 
-    virtual DeviceIntf* device()  { return dev ; } 
     virtual bool isSameDevice(void* /*handle*/) 
     { // return dev->getAbstractDevice()->getRawDevice() == handle ;
       return true ; }

@@ -23,14 +23,6 @@
 
 namespace xdp {
 
-  enum KernelStallType
-  {
-    EXTERNAL_MEMORY_STALL,
-    DATAFLOW_STALL,
-    PIPE_STALL,
-    UNKNOWN_STALL
-  } ;
-
   // **********************
   // Device events
   // **********************
@@ -61,16 +53,12 @@ namespace xdp {
   class KernelEvent : public VTFDeviceEvent
   {
   protected:
-    uint64_t deviceName;
-    uint64_t binaryName;
-    uint64_t kernelName;
-    uint64_t cuName;
     uint64_t cuId;
 
     KernelEvent() = delete ;
   public:
     XDP_EXPORT KernelEvent(uint64_t s_id, double ts, VTFEventType ty, 
-                   uint64_t devId, uint64_t cuIdx = 0, uint64_t cuName = 0);
+                   uint64_t devId, uint64_t cuIdx = 0);
     XDP_EXPORT ~KernelEvent() ;
     virtual uint32_t getCUId() { return cuId;} 
   };
@@ -78,28 +66,21 @@ namespace xdp {
   class KernelDeviceEvent : public KernelEvent
   {
   private:
-    uint64_t workgroupConfiguration ;
-
     KernelDeviceEvent() = delete ;
   public:
-    XDP_EXPORT KernelDeviceEvent(uint64_t s_id, double ts,
-                   uint64_t devId, uint64_t cuIdx = 0, uint64_t cuName = 0);
+    XDP_EXPORT KernelDeviceEvent(uint64_t s_id, double ts, uint64_t devId, uint64_t cuIdx);
     XDP_EXPORT ~KernelDeviceEvent() ;
-
-    XDP_EXPORT virtual void dump(std::ofstream& fout, int bucket);
   } ;
 
   class KernelStall : public KernelEvent
   {
   private:
-    KernelStallType stallType ;
     uint16_t burstLength ;
 
     KernelStall() = delete ;
   public:
-    XDP_EXPORT KernelStall(uint64_t s_id, double ts, KernelStallType stTy, uint64_t devId) ;
+    XDP_EXPORT KernelStall(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId) ;
     XDP_EXPORT ~KernelStall() ;
-    KernelStallType getStallType() { return stallType; }
   } ;
 
   class KernelMemoryAccess : public KernelEvent
@@ -130,30 +111,6 @@ namespace xdp {
   public:
     XDP_EXPORT KernelStreamAccess(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId);
     XDP_EXPORT ~KernelStreamAccess() ;
-  } ;
-
-  class KernelStreamStall : public KernelEvent
-  {
-  private:
-    uint64_t portName ;
-    uint64_t streamName ;
-
-    KernelStreamStall() = delete ;
-  public:
-    XDP_EXPORT KernelStreamStall(uint64_t s_id, double ts, uint64_t devId) ;
-    XDP_EXPORT ~KernelStreamStall() ;
-  } ;
-
-  class KernelStreamStarve : public KernelEvent
-  {
-  private:
-    uint64_t portName ;
-    uint64_t streamName ;
-
-    KernelStreamStarve() = delete ;
-  public:
-    XDP_EXPORT KernelStreamStarve(uint64_t s_id, double ts, uint64_t devId) ;
-    XDP_EXPORT ~KernelStreamStarve() ;
   } ;
 
   class HostRead : public VTFDeviceEvent

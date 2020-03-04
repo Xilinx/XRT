@@ -31,7 +31,8 @@ namespace xdp {
     HALHostTraceWriter() = delete ;
 
     // Header information 
-    std::string XRTVersion ;
+    std::string xrtVersion ;
+    std::string toolVersion ;
 
     std::map<VTFEventType, int> eventTypeBucketIdMap;
 
@@ -47,7 +48,8 @@ namespace xdp {
   public:
     HALHostTraceWriter(const char* filename, const std::string& version, 
 		       const std::string& creationTime, 
-		       const std::string& xrtV) ;
+		       const std::string& xrtV,
+		       const std::string& toolV);
     ~HALHostTraceWriter() ;
 
     virtual void write(bool openNewFile) ;

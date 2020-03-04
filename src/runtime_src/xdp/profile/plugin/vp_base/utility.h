@@ -25,6 +25,7 @@ namespace xdp {
 
   std::string getCurrentDateTime() ;
   const char* getToolVersion() ;
+  const char* getXRTVersion() ;
 
 } // end namespace xdp
 

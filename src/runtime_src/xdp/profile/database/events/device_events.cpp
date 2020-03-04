@@ -53,10 +53,9 @@ namespace xdp {
     fout << std::endl;
   } 
 
-  KernelEvent::KernelEvent(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId)
+  KernelEvent::KernelEvent(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId, uint64_t cuIdx)
                    : VTFDeviceEvent(s_id, ts, ty, devId),
-    // Until implemented, provide a default value for all members
-    deviceName(0), binaryName(0), kernelName(0), cuName(0)
+					 cuId(cuIdx)
   {
   }
 
@@ -64,10 +63,8 @@ namespace xdp {
   {
   }
 
-  KernelDeviceEvent::KernelDeviceEvent(uint64_t s_id, double ts, uint64_t devId)
-                   : KernelEvent(s_id, ts, KERNEL, devId),
-    // Until implemented, provide a default value for all members
-    workgroupConfiguration(0)
+  KernelDeviceEvent::KernelDeviceEvent(uint64_t s_id, double ts, uint64_t devId, uint64_t cuIdx)
+                   : KernelEvent(s_id, ts, KERNEL, devId, cuIdx)
   {
   }
 
@@ -75,9 +72,8 @@ namespace xdp {
   {
   }
 
-  KernelStall::KernelStall(uint64_t s_id, double ts, KernelStallType stTy, uint64_t devId)
-             : KernelEvent(s_id, ts, KERNEL_STALL, devId),
-               stallType(stTy),
+  KernelStall::KernelStall(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId)
+             : KernelEvent(s_id, ts, ty, devId),
     // Until implemented, provide a default value for all members
     burstLength(0)
   {
@@ -107,28 +103,6 @@ namespace xdp {
   }
 
   KernelStreamAccess::~KernelStreamAccess()
-  {
-  }
-
-  KernelStreamStall::KernelStreamStall(uint64_t s_id, double ts, uint64_t devId)
-                   : KernelEvent(s_id, ts, KERNEL_STREAM_STALL, devId),
-    // Until implemented, provide a default value for all members
-    portName(0), streamName(0)
-  {
-  }
-
-  KernelStreamStall::~KernelStreamStall()
-  {
-  }
-
-  KernelStreamStarve::KernelStreamStarve(uint64_t s_id, double ts, uint64_t devId)
-  					        : KernelEvent(s_id, ts, KERNEL_STREAM_STARVE, devId),
-    // Until implemented, provide a default value for all members
-    portName(0), streamName(0)
-  {
-  }
-
-  KernelStreamStarve::~KernelStreamStarve()
   {
   }
 

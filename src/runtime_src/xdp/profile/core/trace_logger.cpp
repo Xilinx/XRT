@@ -515,6 +515,7 @@ namespace xdp {
       tr->Type = (*it).Type;
       tr->Kind = (*it).Kind;
       tr->BurstLength = (*it).BurstLength;
+std::cout << " in logDeviceTrace : numBytes " <<  (*it).NumBytes << std::endl;
       tr->NumBytes = (*it).NumBytes;
       tr->StartTime = (*it).StartTime;
       tr->EndTime = (*it).EndTime;

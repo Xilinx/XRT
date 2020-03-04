@@ -19,6 +19,7 @@
 #include "xdp/profile/database/dynamic_event_database.h"
 #include "xdp/profile/database/events/device_events.h"
 
+#include "xdp/profile/database/database.h"		// CHECK
 
 #if 0
 // type does not matter : as all caculation done at once
@@ -93,12 +94,19 @@ namespace xdp {
   }
 
   void VPDynamicDatabase::addDeviceEvents(uint64_t deviceId, 
-					   xclTraceResultsVector& traceVector)
+					   xclTraceResultsVector& traceVector, void* dbPtr)	// CHECK
   {
+#if 0
     // Create Device Events and log them : do what is done in TraceParser::logTrace
     if(traceVector.mLength == 0)
       return;
 
+    // NULL CHECK
+    VPDatabase* db = dynamic_cast<VPDatabase*>((VPDatabase*)dbPtr);
+    if(nullptr == db) {
+      return;
+    }
+    
     uint64_t timestamp = 0;
 
     for(unsigned int i=0; i < traceVector.mLength; i++) {
@@ -111,6 +119,8 @@ namespace xdp {
       if (trace.isClockTrain) {
         trainDeviceHostTimestamps(timestamp, trace.HostTimestamp);
       }
+
+      
 
       uint32_t s = 0;
       bool SAMPacket = (trace.TraceID >= MIN_TRACE_ID_AM && trace.TraceID <= MAX_TRACE_ID_AM);
@@ -126,8 +136,12 @@ namespace xdp {
         uint32_t stallIntEvent = trace.TraceID & XAM_TRACE_STALL_INT_MASK;
         uint32_t stallStrEvent = trace.TraceID & XAM_TRACE_STALL_STR_MASK;
         uint32_t stallExtEvent = trace.TraceID & XAM_TRACE_STALL_EXT_MASK;
-         
 
+        Monitor* mon  = db->getStaticInfo().getAMonitor(deviceId, s);   
+		int32_t  cuId = mon->cuIndex;
+        ComputeUnitInstance* cu = db->getStaticInfo().getCU(deviceId, cuId);
+		uint64_t cuNameStrId = addString(cu->getName());
+        
 // set name and every thing, to determine bucket id?
         if(cuEvent) {
           KernelDeviceEvent* event = nullptr;
@@ -137,12 +151,12 @@ namespace xdp {
             if(!e) {
               continue;
             }
-            event = new KernelDeviceEvent(e->getEventId(), hostTimestamp, deviceId);
+            event = new KernelDeviceEvent(e->getEventId(), hostTimestamp, deviceId, cuId);
             event->setDeviceTimestamp(static_cast<double>(timestamp));
             addEvent(event);
           } else {
             // start event
-            event = new KernelDeviceEvent(0, hostTimestamp, deviceId);
+            event = new KernelDeviceEvent(0, hostTimestamp, deviceId, cuId);
             event->setDeviceTimestamp(static_cast<double>(timestamp));
             addEvent(event);
             markDeviceEventStart(trace.TraceID, event);
@@ -154,12 +168,12 @@ namespace xdp {
           if(traceIDMap[s] & XAM_TRACE_STALL_INT_MASK) {
             // end event
             event = new KernelStall(matchingDeviceEventStart(trace.TraceID)->getEventId(),
-                             hostTimestamp, DATAFLOW_STALL, deviceId);
+                             hostTimestamp, KERNEL_STALL_DATAFLOW, deviceId);
             event->setDeviceTimestamp(static_cast<double>(timestamp));
             addEvent(event);
           } else {
             // start event
-            event = new KernelStall(0, hostTimestamp, DATAFLOW_STALL, deviceId);
+            event = new KernelStall(0, hostTimestamp, KERNEL_STALL_DATAFLOW, deviceId);
             event->setDeviceTimestamp(static_cast<double>(timestamp));
             addEvent(event);
             markDeviceEventStart(trace.TraceID, event);
@@ -171,12 +185,12 @@ namespace xdp {
           if(traceIDMap[s] & XAM_TRACE_STALL_STR_MASK) {
             // end event
             event = new KernelStall(matchingDeviceEventStart(trace.TraceID)->getEventId(),
-                             hostTimestamp, PIPE_STALL, deviceId);
+                             hostTimestamp, KERNEL_STALL_PIPE, deviceId);
             event->setDeviceTimestamp(static_cast<double>(timestamp));
             addEvent(event);
           } else {
             // start event
-            event = new KernelStall(0, hostTimestamp, PIPE_STALL, deviceId);
+            event = new KernelStall(0, hostTimestamp, KERNEL_STALL_PIPE, deviceId);
             event->setDeviceTimestamp(static_cast<double>(timestamp));
             addEvent(event);
             markDeviceEventStart(trace.TraceID, event);
@@ -187,12 +201,12 @@ namespace xdp {
           if(traceIDMap[s] & XAM_TRACE_STALL_EXT_MASK) {
             // end event
             event = new KernelStall(matchingDeviceEventStart(trace.TraceID)->getEventId(),
-                             hostTimestamp, EXTERNAL_MEMORY_STALL, deviceId);
+                             hostTimestamp, KERNEL_STALL_EXT_MEM, deviceId);
             event->setDeviceTimestamp(static_cast<double>(timestamp));
             addEvent(event);
           } else {
             // start event
-            event = new KernelStall(0, hostTimestamp, EXTERNAL_MEMORY_STALL, deviceId);
+            event = new KernelStall(0, hostTimestamp, KERNEL_STALL_EXT_MEM, deviceId);
             event->setDeviceTimestamp(static_cast<double>(timestamp));
             addEvent(event);
             markDeviceEventStart(trace.TraceID, event);
@@ -204,6 +218,8 @@ namespace xdp {
         KernelMemoryAccess* memEvent = nullptr;
         if((!trace.TraceID) & 1) { // read packet
           s = trace.TraceID/2;
+        Monitor* mon = db->getStaticInfo().getAIMonitor(deviceId, s);  
+(void)mon; 
           // KERNEL_READ
           if(trace.EventType == XCL_PERF_MON_START_EVENT) {
             memEvent = new KernelMemoryAccess(0, hostTimestamp, KERNEL_READ, deviceId);
@@ -231,7 +247,8 @@ namespace xdp {
         } else if(trace.TraceID & 1) {
           // KERNEL_WRITE
           s = trace.TraceID/2;
-          // KERNEL_READ
+        Monitor* mon = db->getStaticInfo().getAIMonitor(deviceId, s);   
+(void)mon; 
           if(trace.EventType == XCL_PERF_MON_START_EVENT) {
             memEvent = new KernelMemoryAccess(0, hostTimestamp, KERNEL_WRITE, deviceId);
             memEvent->setDeviceTimestamp(static_cast<double>(timestamp)); 
@@ -258,11 +275,14 @@ namespace xdp {
         }
       } // SPMPacket
       else if(SSPMPacket) {
+//        Monitor* mon = db->getStaticInfo().getASMonitor(deviceId, s);   
+//(void)mon; 
       } // SSPMPacket
       else {}
     }
 
 // LAST TRANSACTION ??
+#endif
   }
 
   void VPDynamicDatabase::markDeviceEventStart(uint64_t traceID, VTFEvent* event)
