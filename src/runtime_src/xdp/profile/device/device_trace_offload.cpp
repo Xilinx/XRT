@@ -34,7 +34,6 @@ DeviceTraceOffload::DeviceTraceOffload(xdp::DeviceIntf* dInt,
                                      prof_mgr(ProfileMgr),
                                      device_name(device_name),
                                      binary_name(binary_name)
-                                     
 {
   // Select appropriate reader
   if(has_fifo()) {
@@ -104,11 +103,24 @@ void DeviceTraceOffload::read_trace_fifo()
   debug_stream
     << "DeviceTraceOffload::read_trace_fifo " << std::endl;
 
+  uint32_t num_packets = 0;
+
   do {
+    m_trace_vector = {};
     dev_intf->readTrace(m_trace_vector);
     prof_mgr->logDeviceTrace(device_name, binary_name, m_type, m_trace_vector, false);
-    m_trace_vector = {};
+    num_packets += m_trace_vector.mLength;
   } while (m_trace_vector.mLength != 0);
+
+  // Check if fifo is full
+  if (!m_trbuf_full) {
+    auto property = dev_intf->getMonitorProperties(XCL_PERF_MON_FIFO, 0);
+    auto fifo_size = RTUtil::getDevTraceBufferSize(property);
+
+    if (num_packets >= fifo_size)
+      m_trbuf_full = true;
+
+  }
 }
 
 bool DeviceTraceOffload::read_trace_init()
@@ -116,13 +128,15 @@ bool DeviceTraceOffload::read_trace_init()
   if (has_ts2mm()) {
     return init_s2mm();
   }
+  // reset flags
+  m_trbuf_full = false;
   return true;
 }
 
 void DeviceTraceOffload::read_trace_end()
 {
   // Trace logger will clear it's state and add approximations for pending
-  // events 
+  // events
   m_trace_vector = {};
   prof_mgr->logDeviceTrace(device_name, binary_name, m_type, m_trace_vector, true);
   if (dev_intf->hasTs2mm()) {
@@ -135,11 +149,19 @@ void DeviceTraceOffload::read_trace_s2mm()
   debug_stream
     << "DeviceTraceOffload::read_trace_s2mm " << std::endl;
 
+  // No circular buffer support for now
+  if (m_trbuf_full)
+    return;
+
   config_s2mm_reader(dev_intf->getWordCountTs2mm());
   while (1) {
     auto bytes = read_trace_s2mm_partial();
     prof_mgr->logDeviceTrace(device_name, binary_name, m_type, m_trace_vector, false);
     m_trace_vector = {};
+
+    if (m_trbuf_sz == m_trbuf_alloc_sz)
+      m_trbuf_full = true;
+
     if (bytes != m_trbuf_chunk_sz)
       break;
   }
@@ -149,7 +171,9 @@ uint64_t DeviceTraceOffload::read_trace_s2mm_partial()
 {
   if (m_trbuf_offset >= m_trbuf_sz)
     return 0;
+
   uint64_t nBytes = m_trbuf_chunk_sz;
+
   if ((m_trbuf_offset + m_trbuf_chunk_sz) > m_trbuf_sz)
     nBytes = m_trbuf_sz - m_trbuf_offset;
 

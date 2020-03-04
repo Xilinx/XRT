@@ -122,7 +122,7 @@ private:
     void reset_s2mm();
 
     bool m_trbuf_full = false;
-    bool m_debug = true; /* Enable Output stream for log */
+    bool m_debug = false; /* Enable Output stream for log */
 };
 
 }
