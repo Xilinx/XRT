@@ -189,6 +189,7 @@ namespace xclemulation{
   bool copyLogsFromOneFileToAnother(const std::string &logFile, std::ofstream &ofs);
   std::string getEmDebugLogFile();
   bool isXclEmulationModeHwEmuOrSwEmu();
+  bool is_sw_emulation();
   std::string getRunDirectory();
   
   std::map<std::string,std::string> getEnvironmentByReadingIni();
