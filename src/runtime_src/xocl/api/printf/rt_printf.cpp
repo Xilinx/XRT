@@ -16,8 +16,13 @@
 
 // Copyright 2015 Xilinx, Inc. All rights reserved.
 
+#include "xocl/config.h"
 #include "rt_printf.h"
 #include "xocl/core/kernel.h"
+
+#ifdef _WIN32
+# pragma warning( disable : 4996 )
+#endif
 
 namespace XCL {
 namespace Printf {
@@ -77,5 +82,3 @@ bool isPrintfDebugMode()
 
 } // namespace Printf
 } // namespace XCL
-
-

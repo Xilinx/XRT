@@ -26,7 +26,6 @@
 #include "xocl/core/execution_context.h"
 #include <utility>
 #include <string>
-#include <algorithm>
 #include <set>
 #include <map>
 #include <mutex>
