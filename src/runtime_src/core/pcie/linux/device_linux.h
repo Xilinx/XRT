@@ -40,8 +40,6 @@ public:
   virtual int  open(const std::string& subdev, int flag) const;
   virtual void close(int dev_handle) const;
 
-  int ioctl(int dev_handle, unsigned long cmd, void *arg) const;
-
 private:
   // Private look up function for concrete query::request
   virtual const query::request&

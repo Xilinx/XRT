@@ -52,9 +52,9 @@ device_status(const std::string& device)
       xrt_core::send_exception_message(e.what(), "XBMGMT");
   }
 
-  const int NIFD_CHECK_STATUS = 8;
+  // const int NIFD_CHECK_STATUS = 8;
   unsigned int statusReg = 0;
-  int result = dev->ioctl(fd.get(), NIFD_CHECK_STATUS, &statusReg);
+  int result = 0;//dev->ioctl(fd.get(), NIFD_CHECK_STATUS, &statusReg);
   if (result != 0)
     throw xrt_core::error("Could not read status register");
   else
@@ -92,16 +92,16 @@ readback(const std::string& device, const std::string file)
   for (unsigned int i = 0 ; i < hardwareFramesAndOffsets.size() ; ++i)
     packet.push_back(hardwareFramesAndOffsets[i]);
 
-  const int NIFD_READBACK_VARIABLE = 3 ;
-  const int NIFD_SWITCH_ICAP_TO_NIFD = 4 ;
-  const int NIFD_SWITCH_ICAP_TO_PR = 5 ;
+  // const int NIFD_READBACK_VARIABLE = 3 ;
+  // const int NIFD_SWITCH_ICAP_TO_NIFD = 4 ;
+  // const int NIFD_SWITCH_ICAP_TO_PR = 5 ;
   int result = 0 ;
-  result = dev->ioctl(fd.get(), NIFD_SWITCH_ICAP_TO_NIFD, packet.data()); //added 3rd arg for compilation purposes
+  // result = dev->ioctl(fd.get(), NIFD_SWITCH_ICAP_TO_NIFD);
   if (result != 0)
     throw xrt_core::error("Could not switch ICAP to NIFD control");
 
-  result = dev->ioctl(fd.get(), NIFD_READBACK_VARIABLE, packet.data()) ;
-  result |= dev->ioctl(fd.get(), NIFD_SWITCH_ICAP_TO_PR, packet.data()); //added 3rd arg for compilation purposes
+  // result = dev->ioctl(fd.get(), NIFD_READBACK_VARIABLE, packet.data()) ;
+  // result |= dev->ioctl(fd.get(), NIFD_SWITCH_ICAP_TO_PR);
   if (result != 0)
     throw xrt_core::error("Could not readback variable!");
   

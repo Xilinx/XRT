@@ -332,11 +332,4 @@ close(int dev_handle) const
   pcidev::get_dev(get_device_id(), false)->close(dev_handle);
 }
 
-int 
-device_linux::
-ioctl(int dev_handle, unsigned long cmd, void *arg) const
-{
-  return pcidev::get_dev(get_device_id(), false)->ioctl(dev_handle, cmd, arg);;
-}
-
 } // xrt_core

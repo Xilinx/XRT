@@ -179,11 +179,6 @@ public:
     return {fd, std::bind(&device::close, this, fd)};
   }
 
-  /*
-   * ioctl() - used to check NIFD status (only available on linux)
-   */
-  virtual int ioctl(int, unsigned long, void *) const { return 0; }
-
   // Helper methods, move else where
   typedef std::string (*FORMAT_STRING_PTR)(const boost::any &);
   static std::string format_primative(const boost::any & _data);
