@@ -28,9 +28,9 @@
 #define XMAAPI_MOD "xmaxclbin"
 
 /* Private function */
-static int get_xclbin_iplayout(const std::vector<char> &buffer, XmaXclbinInfo *xclbin_info);
-static int get_xclbin_mem_topology(const std::vector<char> &buffer, XmaXclbinInfo *xclbin_info);
-static int get_xclbin_connectivity(const std::vector<char> &buffer, XmaXclbinInfo *xclbin_info);
+static int get_xclbin_iplayout(const char *buffer, XmaXclbinInfo *xclbin_info);
+static int get_xclbin_mem_topology(const char *buffer, XmaXclbinInfo *xclbin_info);
+static int get_xclbin_connectivity(const char *buffer, XmaXclbinInfo *xclbin_info);
 
 std::vector<char> xma_xclbin_file_open(const std::string& xclbin_name)
 {
@@ -84,9 +84,9 @@ static int32_t kernel_max_channel_id(const ip_data* ip, std::string kernel_chann
   return ctxid;
 }
 
-static int get_xclbin_iplayout(const std::vector<char> &buffer, XmaXclbinInfo *xclbin_info)
+static int get_xclbin_iplayout(const char *buffer, XmaXclbinInfo *xclbin_info)
 {
-    const axlf *xclbin = reinterpret_cast<const axlf *>(buffer.data());
+    const axlf *xclbin = reinterpret_cast<const axlf *>(buffer);
 
     const axlf_section_header *ip_hdr = xclbin::get_axlf_section(xclbin, IP_LAYOUT);
     if (ip_hdr)
@@ -171,8 +171,8 @@ static int get_xclbin_iplayout(const std::vector<char> &buffer, XmaXclbinInfo *x
                     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "kernel \"%s\" is a legacy kernel. Channels to be managed by host app and plugins ", cu_name.c_str());
                 }
             } else {
-                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Unexpected CUs for kernel %s  ", cu_name.c_str());
-                throw std::runtime_error("Unexpected CU in xclbin");
+                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "No CU for kernel %s in xclbin", cu_name.c_str());
+                throw std::runtime_error("Unexpected error. CU not found in xclbin");
             }
             xclbin_info->ip_layout[j].soft_kernel = false;
 
@@ -261,9 +261,9 @@ static int get_xclbin_iplayout(const std::vector<char> &buffer, XmaXclbinInfo *x
     return XMA_SUCCESS;
 }
 
-static int get_xclbin_mem_topology(const std::vector<char> &buffer, XmaXclbinInfo *xclbin_info)
+static int get_xclbin_mem_topology(const char *buffer, XmaXclbinInfo *xclbin_info)
 {
-    const axlf *xclbin = reinterpret_cast<const axlf *>(buffer.data());
+    const axlf *xclbin = reinterpret_cast<const axlf *>(buffer);
 
     const axlf_section_header *ip_hdr = xclbin::get_axlf_section(xclbin, MEM_TOPOLOGY);
     if (ip_hdr)
@@ -299,9 +299,9 @@ static int get_xclbin_mem_topology(const std::vector<char> &buffer, XmaXclbinInf
     return XMA_SUCCESS;
 }
 
-static int get_xclbin_connectivity(const std::vector<char> &buffer, XmaXclbinInfo *xclbin_info)
+static int get_xclbin_connectivity(const char *buffer, XmaXclbinInfo *xclbin_info)
 {
-    const axlf *xclbin = reinterpret_cast<const axlf *>(buffer.data());
+    const axlf *xclbin = reinterpret_cast<const axlf *>(buffer);
 
     const axlf_section_header *ip_hdr = xclbin::get_axlf_section(xclbin, CONNECTIVITY);
     if (ip_hdr)
@@ -330,7 +330,7 @@ static int get_xclbin_connectivity(const std::vector<char> &buffer, XmaXclbinInf
     return XMA_SUCCESS;
 }
 
-int xma_xclbin_info_get(const std::vector<char> &buffer, XmaXclbinInfo *info)
+int xma_xclbin_info_get(const char *buffer, XmaXclbinInfo *info)
 {
     get_xclbin_mem_topology(buffer, info);
     get_xclbin_connectivity(buffer, info);

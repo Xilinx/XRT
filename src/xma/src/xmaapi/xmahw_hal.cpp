@@ -196,7 +196,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
         std::vector<char> xclbin_buffer = xma_xclbin_file_open(xclbin);
         char *buffer = xclbin_buffer.data();
 
-        int32_t rc = xma_xclbin_info_get(xclbin_buffer, &info);
+        int32_t rc = xma_xclbin_info_get(buffer, &info);
         if (rc != XMA_SUCCESS)
         {
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not get info for xclbin file %s\n",
