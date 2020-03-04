@@ -1341,48 +1341,50 @@ int xcldev::device::getXclbinuuid(uuid_t &uuid) {
 /*
  * validate
  */
-int xcldev::device::validate(bool quick)
+int xcldev::device::validate(bool quick, bool hidden)
 {
     bool withWarning = false;
     int retVal = 0;
 
-    // retVal = runOneTest("AUX power connector check",
-    //         std::bind(&xcldev::device::auxConnectionTest, this));
-    // withWarning = withWarning || (retVal == 1);
-    // if (retVal < 0)
-    //     return retVal;
-
-    // // Check pcie training
-    // retVal = runOneTest("PCIE link check",
-    //         std::bind(&xcldev::device::pcieLinkTest, this));
-    // withWarning = withWarning || (retVal == 1);
-    // if (retVal < 0)
-    //     return retVal;
-
-    // // Check SC firmware version
-    // retVal = runOneTest("SC firmware version check",
-    //         std::bind(&xcldev::device::scVersionTest, this));
-    // withWarning = withWarning || (retVal == 1);
-    // if (retVal < 0)
-    //     return retVal;
-
-    // // Test verify kernel
-    // retVal = runOneTest("verify kernel test",
-    //         std::bind(&xcldev::device::verifyKernelTest, this));
-    // withWarning = withWarning || (retVal == 1);
-    // if (retVal < 0)
-    //     return retVal;
-
-    // Skip the rest of test cases for quicker turn around.
-    if (quick)
-        return withWarning ? 1 : 0;
-
-    // Perform IOPS test
-    retVal = runOneTest("IOPS test",
-            std::bind(&xcldev::device::iopsTest, this));
+    retVal = runOneTest("AUX power connector check",
+            std::bind(&xcldev::device::auxConnectionTest, this));
     withWarning = withWarning || (retVal == 1);
     if (retVal < 0)
         return retVal;
+
+    // Check pcie training
+    retVal = runOneTest("PCIE link check",
+            std::bind(&xcldev::device::pcieLinkTest, this));
+    withWarning = withWarning || (retVal == 1);
+    if (retVal < 0)
+        return retVal;
+
+    // Check SC firmware version
+    retVal = runOneTest("SC firmware version check",
+            std::bind(&xcldev::device::scVersionTest, this));
+    withWarning = withWarning || (retVal == 1);
+    if (retVal < 0)
+        return retVal;
+
+    // Test verify kernel
+    retVal = runOneTest("verify kernel test",
+            std::bind(&xcldev::device::verifyKernelTest, this));
+    withWarning = withWarning || (retVal == 1);
+    if (retVal < 0)
+        return retVal;
+
+    // Perform IOPS test
+    if(hidden) {
+        retVal = runOneTest("IOPS test",
+            std::bind(&xcldev::device::iopsTest, this));
+        withWarning = withWarning || (retVal == 1);
+        if (retVal < 0)
+            return retVal;
+    }
+    
+    // Skip the rest of test cases for quicker turn around.
+    if (quick)
+        return withWarning ? 1 : 0;
     
     // Perform DMA test
     retVal = runOneTest("DMA test",
@@ -1421,8 +1423,9 @@ int xcldev::xclValidate(int argc, char *argv[])
     const std::string usage("Options: [-d index]");
     int c;
     bool quick = false;
+    bool hidden = false;
 
-    while ((c = getopt(argc, argv, "d:q")) != -1) {
+    while ((c = getopt(argc, argv, "d:qh")) != -1) {
         switch (c) {
         case 'd': {
             int ret = str2index(optarg, index);
@@ -1432,6 +1435,9 @@ int xcldev::xclValidate(int argc, char *argv[])
         }
         case 'q':
             quick = true;
+            break;
+        case 'h':
+            hidden = true;
             break;
         default:
             std::cerr << usage << std::endl;
@@ -1476,7 +1482,7 @@ int xcldev::xclValidate(int argc, char *argv[])
         std::cout << std::endl << "INFO: Validating card[" << i << "]: "
             << dev->name() << std::endl;
 
-        int v = dev->validate(quick);
+        int v = dev->validate(quick, hidden);
         if (v == 1) {
             warning = true;
             std::cout << "INFO: Card[" << i << "] validated with warnings." << std::endl;
@@ -2032,7 +2038,7 @@ int xcldev::device::testM2m()
  */
 struct exec_struct {
     unsigned out_bo_handle;
-    void* output_bo_ptr;
+    char* output_bo_ptr;
     unsigned int out_size;
     unsigned exec_bo_handle;
     ert_start_kernel_cmd* exec_bo_ptr;
@@ -2095,6 +2101,42 @@ iops_alloc_init_bo(xclDeviceHandle handle, int bank, exec_struct* info)
     info->exec_bo_ptr->data[rsz - 2] = (boh_address >> 32);
 }
 
+static void
+execute_cmds(xclDeviceHandle handle, std::vector<std::shared_ptr<exec_struct>>& cmds, 
+    unsigned int num_execs, double& duration)
+{
+    unsigned int num_issued = 0;
+    unsigned int num_completed = 0;
+    auto start = std::chrono::high_resolution_clock::now();
+    for (auto& c : cmds) {
+        if(xclExecBuf(handle, c->exec_bo_handle))
+            throw std::runtime_error("Unable to issue exec buf");
+        num_issued++;
+    }
+    while (num_completed < num_execs) {
+        for (auto& c : cmds) {
+            // c->wait();
+            while (c->exec_bo_ptr->state < ERT_CMD_STATE_COMPLETED) {
+                while (xclExecWait(handle, -1) == 0);
+            }
+            if(c->exec_bo_ptr->state != ERT_CMD_STATE_COMPLETED)
+                throw std::runtime_error("CU execution failed");
+                //wait end
+            num_completed++;
+            if (num_completed >= num_execs)
+                break;
+            if (num_issued < num_execs) {
+                if(xclExecBuf(handle, c->exec_bo_handle))
+                    throw std::runtime_error("Unable to issue exec buf");
+                num_issued++;
+            }
+        }
+    }
+    auto end = std::chrono::high_resolution_clock::now();
+    duration = (std::chrono::duration_cast<std::chrono::microseconds>
+    (end - start)).count();
+}
+
 int 
 xcldev::device::iopsTest()
 {
@@ -2103,11 +2145,6 @@ xcldev::device::iopsTest()
     xclbin_lock xclbin_lock(m_handle, m_idx);
     auto dev = pcidev::get_dev(m_idx);
     int first_used_mem = -1;
-    
-
-    //variables
-    unsigned int cmd_per_batch = 1000; //b
-    unsigned int num_execs = 1; //t
 
     if (dev == nullptr)
         return -EINVAL;
@@ -2127,49 +2164,50 @@ xcldev::device::iopsTest()
             break;
         }
     }
-
-    unsigned int num_issued = 0;
-    unsigned int num_completed = 0;
-    double duration = 0;
-    std::vector<std::shared_ptr<exec_struct>> cmds;
     
-    for (unsigned int i = 0; i < cmd_per_batch; i++) {
-        exec_struct info = {0};
-        iops_alloc_init_bo(m_handle, first_used_mem, &info);
-        auto p = std::make_shared<exec_struct>(info);
-        cmds.push_back(p);
-    }
+    std::vector<std::shared_ptr<exec_struct>> cmds;
+    std::vector<unsigned int> cmd_per_batch = { 8,16,32,64,128,256,1024,2048 }; //b
+    std::vector<unsigned int> num_execs = { 8,16,32,64,128,256,1024,2048 }; //t
+    std::vector<double> iops_list; 
+    
+    if(xclOpenContext(m_handle, xclbin_lock.m_uuid, 0, true))
+            throw std::runtime_error("Cannot create context");
+    
+    //run different combinations
+    for(const auto& b : cmd_per_batch) {
+        for(const auto& t : num_execs) {
+            double duration = 0;
+            for (unsigned int i = 0; i < b; i++) {
+            exec_struct info = {0};
+            iops_alloc_init_bo(m_handle, first_used_mem, &info);
+            auto p = std::make_shared<exec_struct>(info);
+            cmds.push_back(p);
+            }
 
-    // Execute the cmds
-    auto start = std::chrono::high_resolution_clock::now();
-    for (auto& c : cmds) {
-        // std::cout << "Debug: " << c->exec_bo_ptr->cu_mask << std::endl;
-        if(xclExecBuf(m_handle, c->exec_bo_handle))
-            throw std::runtime_error("Unable to issue exec buf");
-        num_issued++;
-    }
-    while (num_completed < num_execs) {
-        for (auto& c : cmds) {
-            // c->wait();
-            while (c->exec_bo_ptr->state < ERT_CMD_STATE_COMPLETED) {
-                while (xclExecWait(m_handle, -1) == 0);
+            // Execute the cmds
+            execute_cmds(m_handle, cmds, t, duration);
+
+            //verify
+            for(auto& c : cmds) {
+                if(xclSyncBO(m_handle, c->out_bo_handle, XCL_BO_SYNC_BO_FROM_DEVICE, c->out_size, 0))
+                    throw std::runtime_error("Cannot sync output BO from device");
+                if (strncmp(c->output_bo_ptr, "Hello World", 11))
+                    throw std::runtime_error("Bad output result after CU execution");
             }
-            if(c->exec_bo_ptr->state != ERT_CMD_STATE_COMPLETED)
-                throw std::runtime_error("CU execution failed");
-            num_completed++;
-            if (num_completed >= num_execs)
-                break;
-            if (num_issued < num_execs) {
-                if(xclExecBuf(m_handle, c->exec_bo_handle))
-                    throw std::runtime_error("Unable to issue exec buf");
-                num_issued++;
-            }
+            iops_list.push_back(t * 1000 * 1000 / duration);
+            // std::cout << "Combos: b: " << b << " t: " << t << " iops: " << (t * 1000 * 1000 / duration) << std::endl;            
         }
+        std::cout << "." << std::flush;
     }
-    auto end = std::chrono::high_resolution_clock::now();
-    duration = (std::chrono::duration_cast<std::chrono::microseconds>
-    (end - start)).count();
 
-    std::cout << "\n\nDuration: " << duration << "\n\n";
+    std::cout << "\nIOPS: " << static_cast<int>(*max_element(iops_list.begin(), iops_list.end())) << std::endl;
+    
+    // release all BOs
+    for(auto& c : cmds) {
+        iops_free_unmap_bo(m_handle, c->out_bo_handle, c->output_bo_ptr, c->out_size);
+        iops_free_unmap_bo(m_handle, c->exec_bo_handle, c->exec_bo_ptr, c->exec_size);
+    }
+
+    xclCloseContext(m_handle, xclbin_lock.m_uuid, 0);
     return 0;
 }
