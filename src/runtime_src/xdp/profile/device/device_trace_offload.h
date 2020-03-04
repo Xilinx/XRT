@@ -14,8 +14,8 @@
  * under the License.
  */
 
-#ifndef XDP_PROFILE_OFFLOAD_THREAD_H_
-#define XDP_PROFILE_OFFLOAD_THREAD_H_
+#ifndef XDP_PROFILE_DEVICE_TRACE_OFFLOAD_H_
+#define XDP_PROFILE_DEVICE_TRACE_OFFLOAD_H_
 
 #include <fstream>
 #include <mutex>
@@ -27,10 +27,11 @@
 #include "xdp/profile/plugin/ocl/xocl_plugin.h"
 #include "xdp/profile/core/rt_profile.h"
 #include "xclperf.h"
+#include "xdp/config.h"
 
 namespace xdp {
 
-enum class DeviceOffloadStatus {
+enum class OffloadThreadStatus {
     IDLE,
     RUNNING,
     STOPPING,
@@ -40,26 +41,58 @@ enum class DeviceOffloadStatus {
 #define debug_stream \
 if(!m_debug); else std::cout
 
-class OclDeviceOffload {
+class DeviceTraceOffload {
 public:
-    OclDeviceOffload(xdp::DeviceIntf* dInt, std::shared_ptr<RTProfile> ProfileMgr,
+    DeviceTraceOffload(xdp::DeviceIntf* dInt, std::shared_ptr<RTProfile> ProfileMgr,
                      const std::string& device_name, const std::string& binary_name,
                      uint64_t offload_sleep_ms, uint64_t trbuf_sz,
                      bool start_thread = true);
-    ~OclDeviceOffload();
+    XDP_EXPORT
+    ~DeviceTraceOffload();
+    XDP_EXPORT
     void offload_device_continuous();
+    XDP_EXPORT
     bool should_continue();
+    XDP_EXPORT
     void start_offload();
+    XDP_EXPORT
     void stop_offload();
 
 public:
+    XDP_EXPORT
+    bool read_trace_init();
+    XDP_EXPORT
+    void read_trace_end();
+
+public:
+    XDP_EXPORT
     void set_trbuf_alloc_sz(uint64_t sz) {
         m_trbuf_alloc_sz = sz;
+    };
+    XDP_EXPORT
+    bool trace_buffer_full() {
+        return m_trbuf_full;
+    };
+    XDP_EXPORT
+    bool has_fifo() {
+        return dev_intf->hasFIFO();
+    };
+    XDP_EXPORT
+    bool has_ts2mm() {
+        return dev_intf->hasTs2mm();
+    };
+    XDP_EXPORT
+    const std::string& get_device_name() {
+        return device_name;
+    }
+    XDP_EXPORT
+    void read_trace() {
+        m_read_trace();
     };
 
 private:
     std::mutex status_lock;
-    DeviceOffloadStatus status;
+    OffloadThreadStatus status = OffloadThreadStatus::IDLE;
     std::thread offload_thread;
 
     uint64_t sleep_interval_ms;
@@ -73,17 +106,14 @@ private:
     xclPerfMonType m_type = XCL_PERF_MON_MEMORY;
 
     xclTraceResultsVector m_trace_vector;
+    std::function<void()> m_read_trace;
     size_t m_trbuf = 0;
     uint64_t m_trbuf_sz = 0;
     uint64_t m_trbuf_offset = 0;
     uint64_t m_trbuf_chunk_sz = 0;
 
-    std::function<void()> m_read_trace;
     void train_clock();
     void read_trace_fifo();
-    void read_trace_end();
-    bool read_trace_init();
-
     void read_trace_s2mm();
     void* sync_trace_buf(uint64_t offset, uint64_t bytes);
     uint64_t read_trace_s2mm_partial();
@@ -91,7 +121,8 @@ private:
     bool init_s2mm();
     void reset_s2mm();
 
-    bool m_debug = false; /* Enable Output stream for log */
+    bool m_trbuf_full = false;
+    bool m_debug = true; /* Enable Output stream for log */
 };
 
 }

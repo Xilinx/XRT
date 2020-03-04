@@ -16,20 +16,19 @@
 
 #define XDP_SOURCE
 
-#include "ocl_device_offload.h"
+#include "device_trace_offload.h"
 #include "xdp/profile/device/tracedefs.h"
 
 namespace xdp {
 
-OclDeviceOffload::OclDeviceOffload(xdp::DeviceIntf* dInt,
+DeviceTraceOffload::DeviceTraceOffload(xdp::DeviceIntf* dInt,
                                    std::shared_ptr<RTProfile> ProfileMgr,
                                    const std::string& device_name,
                                    const std::string& binary_name,
                                    uint64_t sleep_interval_ms,
                                    uint64_t trbuf_sz,
                                    bool start_thread)
-                                   : status(DeviceOffloadStatus::IDLE),
-                                     sleep_interval_ms(sleep_interval_ms),
+                                   : sleep_interval_ms(sleep_interval_ms),
                                      m_trbuf_alloc_sz(trbuf_sz),
                                      dev_intf(dInt),
                                      prof_mgr(ProfileMgr),
@@ -38,10 +37,10 @@ OclDeviceOffload::OclDeviceOffload(xdp::DeviceIntf* dInt,
                                      
 {
   // Select appropriate reader
-  if(dev_intf->hasFIFO()) {
-    m_read_trace = std::bind(&OclDeviceOffload::read_trace_fifo, this);
+  if(has_fifo()) {
+    m_read_trace = std::bind(&DeviceTraceOffload::read_trace_fifo, this);
   } else {
-    m_read_trace = std::bind(&OclDeviceOffload::read_trace_s2mm, this);
+    m_read_trace = std::bind(&DeviceTraceOffload::read_trace_s2mm, this);
   }
 
   if (start_thread) {
@@ -49,7 +48,7 @@ OclDeviceOffload::OclDeviceOffload(xdp::DeviceIntf* dInt,
   }
 }
 
-OclDeviceOffload::~OclDeviceOffload()
+DeviceTraceOffload::~DeviceTraceOffload()
 {
   stop_offload();
   if (offload_thread.joinable()) {
@@ -57,7 +56,7 @@ OclDeviceOffload::~OclDeviceOffload()
   }
 }
 
-void OclDeviceOffload::offload_device_continuous()
+void DeviceTraceOffload::offload_device_continuous()
 {
   if (!read_trace_init())
     return;
@@ -73,26 +72,26 @@ void OclDeviceOffload::offload_device_continuous()
   read_trace_end();
 }
 
-bool OclDeviceOffload::should_continue()
+bool DeviceTraceOffload::should_continue()
 {
   std::lock_guard<std::mutex> lock(status_lock);
-  return status == DeviceOffloadStatus::RUNNING;
+  return status == OffloadThreadStatus::RUNNING;
 }
 
-void OclDeviceOffload::start_offload()
+void DeviceTraceOffload::start_offload()
 {
   std::lock_guard<std::mutex> lock(status_lock);
-  status = DeviceOffloadStatus::RUNNING;
-  offload_thread = std::thread(&OclDeviceOffload::offload_device_continuous, this);
+  status = OffloadThreadStatus::RUNNING;
+  offload_thread = std::thread(&DeviceTraceOffload::offload_device_continuous, this);
 }
 
-void OclDeviceOffload::stop_offload()
+void DeviceTraceOffload::stop_offload()
 {
   std::lock_guard<std::mutex> lock(status_lock);
-  status = DeviceOffloadStatus::STOPPING;
+  status = OffloadThreadStatus::STOPPING;
 }
 
-void OclDeviceOffload::train_clock()
+void DeviceTraceOffload::train_clock()
 {
   static bool force = true;
   dev_intf->clockTraining(force);
@@ -100,10 +99,10 @@ void OclDeviceOffload::train_clock()
   force = false;
 }
 
-void OclDeviceOffload::read_trace_fifo()
+void DeviceTraceOffload::read_trace_fifo()
 {
   debug_stream
-    << "OclDeviceOffload::read_trace_fifo " << std::endl;
+    << "DeviceTraceOffload::read_trace_fifo " << std::endl;
 
   do {
     dev_intf->readTrace(m_trace_vector);
@@ -112,15 +111,15 @@ void OclDeviceOffload::read_trace_fifo()
   } while (m_trace_vector.mLength != 0);
 }
 
-bool OclDeviceOffload::read_trace_init()
+bool DeviceTraceOffload::read_trace_init()
 {
-  if (dev_intf->hasTs2mm()) {
+  if (has_ts2mm()) {
     return init_s2mm();
   }
   return true;
 }
 
-void OclDeviceOffload::read_trace_end()
+void DeviceTraceOffload::read_trace_end()
 {
   // Trace logger will clear it's state and add approximations for pending
   // events 
@@ -131,10 +130,10 @@ void OclDeviceOffload::read_trace_end()
   }
 }
 
-void OclDeviceOffload::read_trace_s2mm()
+void DeviceTraceOffload::read_trace_s2mm()
 {
   debug_stream
-    << "OclDeviceOffload::read_trace_s2mm " << std::endl;
+    << "DeviceTraceOffload::read_trace_s2mm " << std::endl;
 
   config_s2mm_reader(dev_intf->getWordCountTs2mm());
   while (1) {
@@ -146,7 +145,7 @@ void OclDeviceOffload::read_trace_s2mm()
   }
 }
 
-uint64_t OclDeviceOffload::read_trace_s2mm_partial()
+uint64_t DeviceTraceOffload::read_trace_s2mm_partial()
 {
   if (m_trbuf_offset >= m_trbuf_sz)
     return 0;
@@ -155,7 +154,7 @@ uint64_t OclDeviceOffload::read_trace_s2mm_partial()
     nBytes = m_trbuf_sz - m_trbuf_offset;
 
   debug_stream
-    << "OclDeviceOffload::read_trace_s2mm_partial "
+    << "DeviceTraceOffload::read_trace_s2mm_partial "
     <<"Reading " << nBytes << " bytes " << std::endl;
 
   auto start = std::chrono::steady_clock::now();
@@ -174,7 +173,7 @@ uint64_t OclDeviceOffload::read_trace_s2mm_partial()
   return 0;
 }
 
-void OclDeviceOffload::config_s2mm_reader(uint64_t wordCount)
+void DeviceTraceOffload::config_s2mm_reader(uint64_t wordCount)
 {
   // Start from previous offset
   m_trbuf_offset = m_trbuf_sz;
@@ -183,16 +182,16 @@ void OclDeviceOffload::config_s2mm_reader(uint64_t wordCount)
   m_trbuf_chunk_sz = MAX_TRACE_NUMBER_SAMPLES * TRACE_PACKET_SIZE;
 
   debug_stream
-    << "OclDeviceOffload::config_s2mm_reader "
+    << "DeviceTraceOffload::config_s2mm_reader "
     << "Reading from 0x"
     << std::hex << m_trbuf_offset << " to 0x" << m_trbuf_sz
     << std::dec << std::endl;
 }
 
-bool OclDeviceOffload::init_s2mm()
+bool DeviceTraceOffload::init_s2mm()
 {
   debug_stream
-    << "OclDeviceOffload::init_s2mm with size : " << m_trbuf_alloc_sz
+    << "DeviceTraceOffload::init_s2mm with size : " << m_trbuf_alloc_sz
     << std::endl;
   /* If buffer is already allocated and still attempting to initialize again,
    * then reset the TS2MM IP and free the old buffer
@@ -206,7 +205,6 @@ bool OclDeviceOffload::init_s2mm()
 
   m_trbuf = dev_intf->allocTraceBuf(m_trbuf_alloc_sz, dev_intf->getTS2MmMemIndex());
   if (!m_trbuf) {
-    xrt::message::send(xrt::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_ALLOC_FAIL);
     return false;
   }
 
@@ -216,9 +214,9 @@ bool OclDeviceOffload::init_s2mm()
   return true;
 }
 
-void OclDeviceOffload::reset_s2mm()
+void DeviceTraceOffload::reset_s2mm()
 {
-  debug_stream << "OclDeviceOffload::reset_s2mm" << std::endl;
+  debug_stream << "DeviceTraceOffload::reset_s2mm" << std::endl;
   if (!m_trbuf)
     return;
   dev_intf->resetTS2MM();
