@@ -43,6 +43,7 @@ if(!m_debug); else std::cout
 
 class DeviceTraceOffload {
 public:
+    XDP_EXPORT
     DeviceTraceOffload(xdp::DeviceIntf* dInt, std::shared_ptr<RTProfile> ProfileMgr,
                      const std::string& device_name, const std::string& binary_name,
                      uint64_t offload_sleep_ms, uint64_t trbuf_sz,
