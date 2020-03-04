@@ -676,8 +676,7 @@ static int ulp_toggle_axi_gate(void *drvdata)
 	ICAP_INFO(icap, "Toggle CL AXI gate");
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
-	xocl_axigate_freeze(xdev, XOCL_SUBDEV_LEVEL_PRP);
-	xocl_axigate_free(xdev, XOCL_SUBDEV_LEVEL_PRP);
+	xocl_axigate_reset(xdev, XOCL_SUBDEV_LEVEL_PRP);
 
 	return 0;
 }
@@ -2016,26 +2015,16 @@ static int icap_create_post_download_subdevs(struct platform_device *pdev, struc
 				subdev_info.num_res = 0;
 
 
-			/* SRSR sub-devices are permanent.
-			 * Once created, only removed by unloading the driver
-			 * Offline before download xclbin and online just after download xclbin
-			 */
 			err = xocl_subdev_create(xdev, &subdev_info);
-			if (err && err != -EEXIST) {
-				ICAP_ERR(icap, "can't create SRSR subdev");
-				goto done;
-			} else if (err == -EEXIST) {
-				err = xocl_subdev_online_by_id_and_inst(xdev, XOCL_SUBDEV_SRSR, memidx);
-			}
 			if (err) {
-				ICAP_ERR(icap, "can't online SRSR subdev");
+				ICAP_ERR(icap, "can't create SRSR subdev");
 				goto done;
 			}
 		}
 	}
 done:
 	if (err)
-		xocl_subdev_offline_by_id(xdev, XOCL_SUBDEV_SRSR);
+		xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_SRSR);
 	return err;
 }
 
@@ -2166,10 +2155,12 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin)
 		memcpy(mb_req->data, xclbin, xclbin->m_header.m_length);
 	}
 
-	/* Set timeout to be 1s per 2MB for downloading xclbin. */
+	/* Set timeout to be 1s per 2MB for downloading xclbin.
+	 * plus toggling axigate time
+	 */
 	(void) xocl_peer_request(xdev, mb_req, data_len,
 		&msgerr, &resplen, NULL, NULL,
-		xclbin->m_header.m_length / (2048 * 1024));
+		xclbin->m_header.m_length / (2048 * 1024) + 5);
 	vfree(mb_req);
 
 	if (msgerr != 0) {
@@ -2417,7 +2408,7 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 		&xclbin->m_header.uuid, &icap->icap_bitstream_uuid);
 
 	xocl_cmc_freeze(xdev);
-	xocl_subdev_offline_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
+	xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 	icap_refresh_addrs(pdev);
 
 	icap_probe_urpdev(pdev, xclbin, &num_dev, &subdevs);
