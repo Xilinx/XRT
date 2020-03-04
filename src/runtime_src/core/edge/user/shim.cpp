@@ -1813,3 +1813,9 @@ int xclCloseIPInterruptNotify(xclDeviceHandle handle, int fd)
 
   return drv ? drv->xclCloseIPInterruptNotify(fd) : -EINVAL;
 }
+
+void
+xclGetDebugIpLayout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret)
+{
+  return;
+}

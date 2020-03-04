@@ -2258,3 +2258,9 @@ int xclGetSubdevPath(xclDeviceHandle handle,  const char* subdev,
     return -1;
   return drv->xclGetSubdevPath(subdev, idx, path, size);
 }
+
+void
+xclGetDebugIpLayout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret)
+{
+  return;
+}

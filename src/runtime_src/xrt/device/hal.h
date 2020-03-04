@@ -685,6 +685,12 @@ public:
     return operations_result<int>();
   }
 
+  virtual operations_result<void>
+  getDebugIpLayout(char* buffer, size_t size, size_t* size_ret)
+  {
+    return operations_result<void>();
+  }
+
   virtual task::queue*
   getQueue(hal::queue_type qt) {return nullptr; }
 

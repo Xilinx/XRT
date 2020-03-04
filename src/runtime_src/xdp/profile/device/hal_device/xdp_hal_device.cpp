@@ -74,6 +74,12 @@ int HalDevice::unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offse
   return xclUnmgdPread(mHalDevice, flags, buf, count, offset);
 }
 
+
+void HalDevice::getDebugIpLayout(char* buffer, size_t size, size_t* size_ret)
+{
+  xclGetDebugIpLayout(mHalDevice, buffer, size, size_ret);
+}
+
 double HalDevice::getDeviceClock()
 {
   return xclGetDeviceClockFreqMHz(mHalDevice);
