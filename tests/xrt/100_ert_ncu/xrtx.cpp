@@ -287,14 +287,6 @@ int run(int argc, char** argv)
   uuid_copy(xclbin_id, top->m_header.uuid);
 
   int first_used_mem = 0;
-  size_t maxcus = 0;
-  std::for_each(layout->m_ip_data,layout->m_ip_data+layout->m_count,
-                [device,xclbin_id,&maxcus](auto ip_data) mutable{
-                  if (ip_data.m_type != IP_KERNEL)
-                    return;
-                  xclOpenContext(device,xclbin_id,maxcus++,true);
-                });
-
   for (int i=0; i<topology->m_count; ++i) {
     if (topology->m_mem_data[i].m_used) {
       first_used_mem = i;
@@ -302,15 +294,13 @@ int run(int argc, char** argv)
     }
   }
 
-  compute_units = cus = std::min(cus, maxcus);
+  compute_units = cus = std::min(cus, compute_units);
   std::string kname = get_kernel_name(cus);
   auto kernel = xrtKernelOpen(device, header.data(), kname.c_str());
 
   run(device,kernel,jobs,secs,first_used_mem);
 
   xrtKernelClose(kernel);
-  for (size_t cuidx=0; cuidx<cus; ++cuidx)
-    xclCloseContext(device,xclbin_id,cuidx);
   xclClose(device);
 
   return 0;
