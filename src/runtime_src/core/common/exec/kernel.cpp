@@ -62,10 +62,6 @@ struct device_type
     , exec_buffer_cache(dhdl, 128)
   {}
 
-  ~device_type()
-  try {}
-  catch (const std::exception&) {}
-
   template <typename CommandType>
   xrt_core::bo_cache::cmd_bo<CommandType>
   create_exec_buf()
@@ -95,7 +91,7 @@ class ip_context
 {
 public:
   enum class access_mode : bool { exclusive = false, shared = true };
-  
+
   static std::shared_ptr<ip_context>
   open(xrt_core::device* device, xuid_t xclbin_id, unsigned int ipidx, access_mode am)
   {
@@ -342,7 +338,7 @@ struct kernel_type
     , args(xrt_core::xclbin::get_kernel_arguments(top, name))  // kernel argument meta data
   {
     uuid_copy(xclbin_id, top->m_header.uuid);
-    
+
     // Compare the matching CUs against the CU sort order to create cumask
     auto ips = xrt_core::xclbin::get_cus(top, nm);
     if (ips.empty())
