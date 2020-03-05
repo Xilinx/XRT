@@ -849,6 +849,8 @@ int xocl_fdt_parse_blob(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
 {
 	int		dev_num; 
 
+	*subdevs = NULL;
+
 	if (!blob)
 		return -EINVAL;
 

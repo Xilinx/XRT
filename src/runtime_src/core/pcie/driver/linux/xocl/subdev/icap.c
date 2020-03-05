@@ -1673,7 +1673,7 @@ static void icap_clean_axlf_section(struct icap *icap,
 	default:
 		break;
 	}
-	if (target) {
+	if (target && *target) {
 		vfree(*target);
 		*target = NULL;
 	}
@@ -1985,6 +1985,11 @@ static int icap_create_post_download_subdevs(struct platform_device *pdev, struc
 	BUG_ON(!ICAP_PRIVILEGED(icap));
 
 	if (!ip_layout) {
+		err = -ENODEV;
+		goto done;
+	}
+
+	if (!mem_topo) {
 		err = -ENODEV;
 		goto done;
 	}
@@ -2459,9 +2464,16 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 		 * ERT configure cmd will go through
 		 */
 		(void) xocl_exec_reconfig(xdev);
+		/* has to create mem topology even with failure case
+		 * please refer the comment in xocl_ioctl.c
+		 * without creating mem topo, memory corruption could happen
+		 */
+		icap_parse_bitstream_axlf_section(pdev, xclbin, MEM_TOPOLOGY);
+
+		if (err)
+			goto done;
 
 		icap_parse_bitstream_axlf_section(pdev, xclbin, IP_LAYOUT);
-		icap_parse_bitstream_axlf_section(pdev, xclbin, MEM_TOPOLOGY);
 		icap_parse_bitstream_axlf_section(pdev, xclbin, CONNECTIVITY);
 		icap_parse_bitstream_axlf_section(pdev, xclbin,
 			DEBUG_IP_LAYOUT);
@@ -2474,6 +2486,7 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 			 */
 			(void) icap_verify_bitstream_axlf(pdev, xclbin);
 		}
+
 	}
 
 	/* create the reset of subdevs for both mgmt and user pf */
@@ -2492,11 +2505,15 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 
 done:
 	if (err) {
-		icap_clean_bitstream_axlf(pdev);
+		uuid_copy(&icap->icap_bitstream_uuid, &uuid_null);
 	} else {
 		/* Remember "this" bitstream, so avoid redownload next time. */
 		uuid_copy(&icap->icap_bitstream_uuid, &xclbin->m_header.uuid);
 	}
+
+	if (subdevs)
+		vfree(subdevs);
+
 	return err;
 }
 
@@ -2746,7 +2763,7 @@ static int icap_parse_bitstream_axlf_section(struct platform_device *pdev,
 	default:
 		return -EINVAL;
 	}
-	if (target) {
+	if (target && *target) {
 		vfree(*target);
 		*target = NULL;
 	}
@@ -2763,8 +2780,10 @@ static int icap_parse_bitstream_axlf_section(struct platform_device *pdev,
 
 done:
 	if (err) {
-		vfree(*target);
-		*target = NULL;
+		if (target && *target) {
+			vfree(*target);
+			*target = NULL;
+		}
 	}
 	ICAP_INFO(icap, "%s kind %d, err: %ld", __func__, kind, err);
 	return err;

@@ -613,44 +613,6 @@ struct xocl_mb_scheduler_funcs {
 	MB_SCHEDULER_DEV(xdev), cu, filep, addrp) :		\
 	-ENODEV)
 
-#define XOCL_GET_MEM_TOPOLOGY(xdev, mem_topo)						\
-	(xocl_icap_get_xclbin_metadata(xdev, MEMTOPO_AXLF, (void **)&mem_topo))
-
-#define XOCL_GET_IP_LAYOUT(xdev, ip_layout)						\
-	(xocl_icap_get_xclbin_metadata(xdev, IPLAYOUT_AXLF, (void **)&ip_layout))
-#define XOCL_GET_XCLBIN_ID(xdev, xclbin_id)						\
-	(xocl_icap_get_xclbin_metadata(xdev, XCLBIN_UUID, (void **)&xclbin_id))
-
-
-#define XOCL_PUT_MEM_TOPOLOGY(xdev)						\
-	xocl_icap_put_xclbin_metadata(xdev)
-#define XOCL_PUT_IP_LAYOUT(xdev)						\
-	xocl_icap_put_xclbin_metadata(xdev)
-#define XOCL_PUT_XCLBIN_ID(xdev)						\
-	xocl_icap_put_xclbin_metadata(xdev)
-
-#define XOCL_IS_DDR_USED(topo, ddr) 			\
-	(topo->m_mem_data[ddr].m_used == 1)
-
-#define	XOCL_DDR_COUNT_UNIFIED(xdev)		\
-({ \
-	struct mem_topology *topo = NULL; \
-	uint32_t ret = 0; 	\
-	int err = XOCL_GET_MEM_TOPOLOGY(xdev, topo); \
-	if (err)	\
-		return 0;		\
-	ret = topo ? topo->m_count : 0; \
-	XOCL_PUT_MEM_TOPOLOGY(xdev); \
-	(ret); \
-})
-
-#define	XOCL_DDR_COUNT(xdev)			\
-	((xocl_is_unified(xdev) ? XOCL_DDR_COUNT_UNIFIED(xdev) :	\
-	xocl_get_ddr_channel_count(xdev)))
-#define XOCL_IS_STREAM(topo, idx)					\
-	(topo->m_mem_data[idx].m_type == MEM_STREAMING || \
-	 topo->m_mem_data[idx].m_type == MEM_STREAMING_CONNECTION)
-
 /* sysmon callbacks */
 enum {
 	XOCL_SYSMON_PROP_TEMP,
@@ -1161,6 +1123,46 @@ enum {
 	(ICAP_CB(xdev, put_xclbin_metadata) ?				\
 	ICAP_OPS(xdev)->put_xclbin_metadata(ICAP_DEV(xdev)) : 	\
 	0)
+
+#define XOCL_GET_MEM_TOPOLOGY(xdev, mem_topo)						\
+	(xocl_icap_get_xclbin_metadata(xdev, MEMTOPO_AXLF, (void **)&mem_topo))
+
+#define XOCL_GET_IP_LAYOUT(xdev, ip_layout)						\
+	(xocl_icap_get_xclbin_metadata(xdev, IPLAYOUT_AXLF, (void **)&ip_layout))
+#define XOCL_GET_XCLBIN_ID(xdev, xclbin_id)						\
+	(xocl_icap_get_xclbin_metadata(xdev, XCLBIN_UUID, (void **)&xclbin_id))
+
+
+#define XOCL_PUT_MEM_TOPOLOGY(xdev)						\
+	xocl_icap_put_xclbin_metadata(xdev)
+#define XOCL_PUT_IP_LAYOUT(xdev)						\
+	xocl_icap_put_xclbin_metadata(xdev)
+#define XOCL_PUT_XCLBIN_ID(xdev)						\
+	xocl_icap_put_xclbin_metadata(xdev)
+
+#define XOCL_IS_DDR_USED(topo, ddr) 			\
+	(topo->m_mem_data[ddr].m_used == 1)
+
+static inline u32 xocl_ddr_count_unified(xdev_handle_t xdev_hdl)
+{
+	struct mem_topology *topo = NULL;
+	uint32_t ret = 0;
+	int err = XOCL_GET_MEM_TOPOLOGY(xdev_hdl, topo);
+
+	if (err)
+		return 0;
+	ret = topo ? topo->m_count : 0;
+	XOCL_PUT_MEM_TOPOLOGY(xdev_hdl);
+
+	return ret;
+}
+
+#define	XOCL_DDR_COUNT(xdev)			\
+	(xocl_is_unified(xdev) ? xocl_ddr_count_unified(xdev) :	\
+	xocl_get_ddr_channel_count(xdev))
+#define XOCL_IS_STREAM(topo, idx)					\
+	(topo->m_mem_data[idx].m_type == MEM_STREAMING || \
+	 topo->m_mem_data[idx].m_type == MEM_STREAMING_CONNECTION)
 
 struct xocl_mig_label {
 	unsigned char		tag[16];
