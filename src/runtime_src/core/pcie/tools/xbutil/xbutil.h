@@ -29,6 +29,7 @@
 #include <boost/property_tree/json_parser.hpp>
 
 #include "xrt.h"
+#include "ert.h"
 #include "xclperf.h"
 #include "xcl_axi_checker_codes.h"
 #include "core/pcie/common/dmatest.h"
@@ -1752,13 +1753,14 @@ public:
         return xclGetDeviceInfo2(m_handle, &devinfo);
     }
 
-    int validate(bool quick);
+    int validate(bool quick, bool hidden);
 
     int reset(xclResetKind kind);
     int setP2p(bool enable, bool force);
     int setCma(bool enable, uint64_t sz);
     int testP2p(void);
     int testM2m(void);
+    int iopsTest(void);
 
 private:
     // Run a test case as <exe> <xclbin> [-d index] on this device and collect
