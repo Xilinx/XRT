@@ -34,6 +34,7 @@
 #define DSA_FILE_SUFFIX     "mcs"
 #define DSABIN_FILE_SUFFIX  "dsabin"
 #define XSABIN_FILE_SUFFIX  "xsabin"
+#define XCLBIN_FILE_SUFFIX  "xclbin"
 #define NULL_TIMESTAMP      0
 
 class DSAInfo
@@ -83,6 +84,8 @@ public:
     firmwareImage(const char *file, imageType type);
     ~firmwareImage();
     static std::vector<DSAInfo>& getIntalledDSAs();
+    static void clearInstalledDSAs();
+    static void addToInstalledDSAs(DSAInfo& dInfo);
 private:
     static std::vector<DSAInfo> installedDSA;
     int mType;
