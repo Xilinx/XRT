@@ -1592,4 +1592,7 @@ void xocl_fini_mem_hbm(void);
 int __init xocl_init_srsr(void);
 void xocl_fini_srsr(void);
 
+int __init xocl_init_ulite(void);
+void xocl_fini_ulite(void);
+
 #endif
