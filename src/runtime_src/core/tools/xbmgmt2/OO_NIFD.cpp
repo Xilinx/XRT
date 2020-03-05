@@ -62,7 +62,7 @@ device_status(const std::string& device)
 }
 
 static void
-readback(const std::string& device, const std::string file)
+readback(const std::string& device, const std::string& file)
 {
   std::ifstream fin(file.c_str()) ;
   if (!fin)
@@ -143,11 +143,8 @@ OO_NIFD::execute(const SubCmdOptions& _options) const
 {
   XBU::verbose("SubCommand option: nifd");
   XBU::verbose("Option(s):");
-  for (auto & aString : _options) {
-    std::string msg = "   ";
-    msg += aString;
-    XBU::verbose(msg);
-  }
+  for (auto & aString : _options) 
+    XBU::verbose(std::string(" ") + aString);
 
   // Parse sub-command ...
   po::variables_map vm;

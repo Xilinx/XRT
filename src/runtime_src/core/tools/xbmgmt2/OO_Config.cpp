@@ -47,9 +47,10 @@ enum configType {
 };
 
 enum memType {
-    DDR = 0,
+    UNKNOWN= 0,
+    DDR,
     HBM, 
-    UNKNOWN
+    
 };
 
 /*
@@ -78,7 +79,7 @@ show_device_conf(std::shared_ptr<xrt_core::device>& dev)
  * change host name in config
  */
 static void 
-update_daemon_config(const std::string host)
+update_daemon_config(const std::string& host)
 {
   std::cout << "update config with " << host;
 }
@@ -89,7 +90,7 @@ update_daemon_config(const std::string host)
  */
 static void 
 update_device_conf(std::shared_ptr<xrt_core::device>& dev, 
-  const std::string lvl, configType config_type)
+  const std::string& lvl, configType config_type)
 {
   dev=dev;
   config_type=config_type;
@@ -155,11 +156,8 @@ OO_Config::execute(const SubCmdOptions& _options) const
   XBU::verbose("SubCommand option: config");
 
   XBU::verbose("Option(s):");
-  for (auto & aString : _options) {
-    std::string msg = "   ";
-    msg += aString;
-    XBU::verbose(msg);
-  }
+  for (auto & aString : _options)
+    XBU::verbose(std::string(" ") + aString);
 
   // Parse sub-command ...
   po::variables_map vm;

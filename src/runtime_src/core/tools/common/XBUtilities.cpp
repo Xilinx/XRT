@@ -24,6 +24,7 @@
 
 // 3rd Party Library - Include Files
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/algorithm/string.hpp>
 #include <boost/tokenizer.hpp>
 #include <boost/format.hpp>
 
@@ -283,6 +284,7 @@ XBUtilities::wrap_paragraphs( const std::string & _unformattedString,
 void
 XBUtilities::parse_device_indices(std::vector<uint16_t> &device_indices, std::string device)
 {
+  boost::algorithm::to_lower(device);
   if(device.compare("all") == 0) {
     ::verbose("Sub command : --device");
     //get all devices
@@ -300,7 +302,7 @@ XBUtilities::parse_device_indices(std::vector<uint16_t> &device_indices, std::st
     tokenizer tokens(device, sep);
     
     for (auto tok_iter = tokens.begin(); tok_iter != tokens.end(); ++tok_iter) {
-    	uint16_t idx = xrt_core::utils::bdf2index(*tok_iter);
+    	auto idx = xrt_core::utils::bdf2index(*tok_iter);
       device_indices.push_back(idx);
     }
   } 
