@@ -930,8 +930,6 @@ int ZYNQShim::xclLogMsg(xrtLogMsgLevel level, const char* tag,
 
     uint32_t temp[XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT];
 
-    std::cout << "Inside debug read counters!" << std::endl ;
-
     aCounterResults->NumSlots = numSlots;
     snprintf(aCounterResults->DevUserName, 256, "%s", " ");
     for (uint32_t s=0; s < numSlots; s++) {
