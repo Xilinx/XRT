@@ -66,27 +66,21 @@ public:
     void read_trace_end();
 
 public:
-    XDP_EXPORT
     void set_trbuf_alloc_sz(uint64_t sz) {
         m_trbuf_alloc_sz = sz;
     };
-    XDP_EXPORT
     bool trace_buffer_full() {
         return m_trbuf_full;
     };
-    XDP_EXPORT
     bool has_fifo() {
         return dev_intf->hasFIFO();
     };
-    XDP_EXPORT
     bool has_ts2mm() {
         return dev_intf->hasTs2mm();
     };
-    XDP_EXPORT
     const std::string& get_device_name() {
         return device_name;
     }
-    XDP_EXPORT
     void read_trace() {
         m_read_trace();
     };
