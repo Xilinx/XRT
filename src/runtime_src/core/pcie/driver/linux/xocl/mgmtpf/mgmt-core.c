@@ -1299,6 +1299,7 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_ospi_versal,
 	xocl_init_srsr,
 	xocl_init_mem_hbm,
+	xocl_init_ulite,
 };
 
 static void (*drv_unreg_funcs[])(void) = {
@@ -1325,6 +1326,7 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_ospi_versal,
 	xocl_fini_srsr,
 	xocl_fini_mem_hbm,
+	xocl_fini_ulite,
 };
 
 static int __init xclmgmt_init(void)
