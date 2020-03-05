@@ -80,6 +80,8 @@ namespace xclcpuemhal2 {
     mCloseAll = false;
     bUnified = _unified;
     bXPR = _xpr;
+    mCore = nullptr;
+    mSWSch = nullptr;
     mIsKdsSwEmu = (xclemulation::is_sw_emulation()) ? xrt_core::config::get_flag_kds_sw_emu() : false;
   }
  
