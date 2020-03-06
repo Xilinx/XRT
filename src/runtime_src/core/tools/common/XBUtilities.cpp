@@ -282,10 +282,9 @@ XBUtilities::wrap_paragraphs( const std::string & _unformattedString,
 }
 
 void
-XBUtilities::parse_device_indices(std::vector<uint16_t> &device_indices, std::string device)
+XBUtilities::parse_device_indices(std::vector<uint16_t> &device_indices, const std::string &device)
 {
-  boost::algorithm::to_lower(device);
-  if(device.compare("all") == 0) {
+  if(boost::iequals(device, "all") == 0) {
     ::verbose("Sub command : --device");
     //get all devices
     auto total = xrt_core::get_total_devices(false).first;
