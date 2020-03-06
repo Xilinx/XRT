@@ -385,7 +385,7 @@ DSAInfo Flasher::getOnBoardDSA()
     if (rc == 0)
         bmc = info.mBMCVer; // Successfully read BMC version
     else if (rc == -EOPNOTSUPP)
-        bmc.clear(); // BMC is not supported on DSA
+        bmc = DSAInfo::INACTIVE; // BMC is not supported on DSA, state is inactive
     else
         bmc = DSAInfo::UNKNOWN; // BMC not ready, set it to an invalid version string
 

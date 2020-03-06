@@ -265,4 +265,12 @@ namespace xdp {
     commandQueueAddresses.emplace(a) ;
   }
 
+  void VPStaticDatabase::addOpenedFile(const std::string& name,
+				       const std::string& type)
+  {
+    std::lock_guard<std::mutex> lock(dbLock) ;
+
+    openedFiles.push_back(std::make_pair(name, type)) ;
+  }
+
 }

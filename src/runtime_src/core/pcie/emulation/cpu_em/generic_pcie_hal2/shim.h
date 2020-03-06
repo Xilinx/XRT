@@ -30,6 +30,7 @@
 #include "core/common/scheduler.h"
 #include "core/common/message.h"
 #include "core/common/xrt_profiling.h"
+#include "swscheduler.h"
 
 #include <stdarg.h>
 #include <sys/mman.h>
@@ -51,6 +52,7 @@ namespace xclcpuemhal2 {
       static const unsigned CONTROL_AP_START;
       static const unsigned CONTROL_AP_DONE;
       static const unsigned CONTROL_AP_IDLE;
+      static const unsigned CONTROL_AP_CONTINUE;
 
   private:
       // This is a hidden signature of this class and helps in preventing
@@ -154,6 +156,14 @@ namespace xclcpuemhal2 {
       int xclExecBuf(unsigned int cmdBO);
       int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const;
 
+      bool isImported(unsigned int _bo)
+      {
+        if (mImportedBOs.find(_bo) != mImportedBOs.end())
+          return true;
+        return false;
+      }
+      struct exec_core* getExecCore() { return mCore; }
+      SWScheduler* getScheduler() { return mSWSch; }
     private:
       std::mutex mMemManagerMutex;
 
@@ -228,6 +238,10 @@ namespace xclcpuemhal2 {
       uint64_t mReqCounter;
       FeatureRomHeader mFeatureRom;
 
+      std::set<unsigned int > mImportedBOs;
+      exec_core* mCore;
+      SWScheduler* mSWSch;
+      bool mIsKdsSwEmu;
   };
 
   extern std::map<unsigned int, CpuemShim*> devices;

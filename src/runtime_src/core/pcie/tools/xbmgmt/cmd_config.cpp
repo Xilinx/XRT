@@ -29,7 +29,9 @@ const char *subCmdConfigDesc = "Parse or update daemon/device configuration";
 const char *subCmdConfigUsage =
     "--daemon --host ip-or-hostname-for-peer\n"
     "--device [--card bdf] [--security level] [--runtime_clk_scale en(dis)able] [--cs_threshold_power_override val]\n"
-    "--show [--daemon | --device [--card bdf] ]";
+    "--show [--daemon | --device [--card bdf]\n"
+    "--enable_retention [--ddr] [--card bdf]\n"
+    "--disable_retention [--ddr] [--card bdf]";
 
 static struct config {
     std::string host;
@@ -174,7 +176,6 @@ static void showDevConf(std::shared_ptr<pcidev::pci_device>& dev)
         std::cout << "Error: can't read scaling_enabled status from " <<
             dev->sysfs_name << " : " << errmsg << std::endl;
     } else {
-        std::cout << dev->sysfs_name << ":\n";
         std::cout << "\t" << "Runtime clock scaling enabled status: " <<
             lvl << std::endl;
     }
@@ -185,9 +186,17 @@ static void showDevConf(std::shared_ptr<pcidev::pci_device>& dev)
         std::cout << "Error: can't read scaling_threshold_power_override from "
 			<< dev->sysfs_name << " : " << errmsg << std::endl;
     } else {
-        std::cout << dev->sysfs_name << ":\n";
         std::cout << "\t" << "scaling_threshold_power_override: " <<
             svl << std::endl;
+    }
+
+    dev->sysfs_get("icap", "data_retention", errmsg, lvl, 0);
+    if (!errmsg.empty()) {
+        std::cout << "Error: can't read data_retention from " << dev->sysfs_name
+            << " : " << errmsg << "\n";
+            std::cout << "See dmesg log for details" << std::endl;
+    } else {
+        std::cout << "\tData Retention: " << (lvl ? "Enable" : "Disable") << "\n";
     }
 }
 
@@ -345,6 +354,69 @@ static int device(int argc, char *argv[])
     return 0;
 }
 
+static void memoryRetention(pcidev::pci_device *dev, unsigned int mem_type, bool enable)
+{
+    std::string errmsg;
+
+    dev->sysfs_put("icap", "data_retention", errmsg, enable);
+    if (!errmsg.empty()) {
+        std::cout << "Error: Failed to set data_retention for " <<
+            dev->sysfs_name << "\n";
+        std::cout << "See dmesg log for details" << std::endl;
+    } else {
+        std::cout << (enable ? "Enable" : "Disable") << " successfully" << std::endl;
+    }
+}
+
+static int memory(int argc, char *argv[], bool enable)
+{
+    unsigned int index = UINT_MAX;
+    std::string lvl;
+    unsigned int mem_type = 2;
+    const option opts[] = {
+        { "card", required_argument, nullptr, '0' },
+        { "ddr", no_argument, nullptr, '1' },
+        { "hbm", no_argument, nullptr, '2' },
+        { nullptr, 0, nullptr, 0 },
+    };
+
+    while (true) {
+        const auto opt = getopt_long(argc, argv, "", opts, nullptr);
+        if (opt == -1)
+            break;
+
+        switch (opt) {
+        case '0':
+            index = bdf2index(optarg);
+            if (index == UINT_MAX)
+                return -ENOENT;
+            break;
+        case '1':
+            mem_type = 0;
+            break;
+        case '2':
+            mem_type = 1;
+            break;
+        default:
+            return -EINVAL;
+        }
+    }
+
+    if (mem_type & 2)
+        return -EINVAL;
+
+    if (index != UINT_MAX) {
+        auto dev = pcidev::get_dev(index, false);
+        memoryRetention(dev.get(), mem_type, enable);
+        return 0;
+    }
+    for (unsigned i = 0; i < pcidev::get_dev_total(false); i++) {
+        auto dev = pcidev::get_dev(i, false);
+        memoryRetention(dev.get(), mem_type, enable);
+    }
+    return 0;
+}
+
 int configHandler(int argc, char *argv[])
 {
     sudoOrDie();
@@ -364,5 +436,9 @@ int configHandler(int argc, char *argv[])
         return device(argc, argv);
     if (op.compare("--purge") == 0) // hidden opt to remove daemon config file
         return purge(argc, argv);
+    if (op.compare("--enable_retention") == 0)
+        return memory(argc, argv, true);
+    if (op.compare("--disable_retention") == 0)
+        return memory(argc, argv, false);
     return -EINVAL;
 }

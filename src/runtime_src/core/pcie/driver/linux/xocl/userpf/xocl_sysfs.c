@@ -312,10 +312,13 @@ static ssize_t shutdown_store(struct device *dev,
 	u32 val;
 
 
-	if (kstrtou32(buf, 10, &val) == -EINVAL || val != 1)
+	if (kstrtou32(buf, 10, &val) == -EINVAL)
 		return -EINVAL;
 
-	xocl_queue_work(xdev, XOCL_WORK_SHUTDOWN, 0);
+	if (val)
+		xocl_queue_work(xdev, XOCL_WORK_SHUTDOWN, 0);
+	else
+		xocl_queue_work(xdev, XOCL_WORK_ONLINE, 0);
 
 	return count;
 }
@@ -541,10 +544,8 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_kdsstat.attr,
 	&dev_attr_memstat.attr,
 	&dev_attr_memstat_raw.attr,
-	&dev_attr_user_pf.attr,
 	&dev_attr_p2p_enable.attr,
 	&dev_attr_dev_offline.attr,
-	&dev_attr_shutdown.attr,
 	&dev_attr_mig_calibration.attr,
 	&dev_attr_link_width.attr,
 	&dev_attr_link_speed.attr,
@@ -558,6 +559,17 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_logic_uuids.attr,
 	&dev_attr_ulp_uuids.attr,
 	&dev_attr_mig_cache_update.attr,
+	NULL,
+};
+
+/*
+ * persist entries will only be created/destroyed by driver attach/detach
+ * They will not be removed across hot reset, shutdown, switching PLP etc.
+ * So please DO NOT access any subdevice APIs inside store()/show()
+ */
+static struct attribute *xocl_persist_attrs[] = {
+	&dev_attr_shutdown.attr,
+	&dev_attr_user_pf.attr,
 	NULL,
 };
 
@@ -609,6 +621,45 @@ static struct attribute_group xocl_attr_group = {
 	.attrs = xocl_attrs,
 	.bin_attrs = xocl_bin_attrs,
 };
+
+static struct attribute_group xocl_persist_attr_group = {
+	.attrs = xocl_persist_attrs,
+};
+
+int xocl_init_persist_sysfs(struct xocl_dev *xdev)
+{
+	struct device *dev = &xdev->core.pdev->dev;
+	int ret = 0;
+
+	if (xdev->flags & XOCL_FLAGS_PERSIST_SYSFS_INITIALIZED) {
+		xocl_err(dev, "persist sysfs noded already created");
+		return -EINVAL;
+	}
+
+	xocl_info(dev, "Creating persist sysfs");
+	ret = sysfs_create_group(&dev->kobj, &xocl_persist_attr_group);
+	if (ret)
+		xocl_err(dev, "create xocl persist attrs failed: %d", ret);
+
+	xdev->flags |= XOCL_FLAGS_PERSIST_SYSFS_INITIALIZED;
+
+
+	return ret;
+}
+
+void xocl_fini_persist_sysfs(struct xocl_dev *xdev)
+{
+	struct device *dev = &xdev->core.pdev->dev;
+
+	if (!(xdev->flags & XOCL_FLAGS_PERSIST_SYSFS_INITIALIZED)) {
+		xocl_err(dev, "persist sysfs nodes already removed");
+		return;
+	}
+
+	xocl_info(dev, "Removing persist sysfs");
+	sysfs_remove_group(&dev->kobj, &xocl_persist_attr_group);
+	xdev->flags &= ~XOCL_FLAGS_PERSIST_SYSFS_INITIALIZED;
+}
 
 int xocl_init_sysfs(struct xocl_dev *xdev)
 {

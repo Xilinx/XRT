@@ -162,7 +162,6 @@ inline void TraceS2MM::parsePacket(uint64_t packet, uint64_t firstTimestamp, xcl
     result.TraceID = (packet >> 49) & 0xFFF;
     result.Reserved = (packet >> 61) & 0x1;
     result.Overflow = (packet >> 62) & 0x1;
-    result.Error = (packet >> 63) & 0x1;
     result.EventID = XCL_PERF_MON_HW_EVENT;
     result.EventFlags = ((packet >> 45) & 0xF) | ((packet >> 57) & 0x10);
     //result.isClockTrain = false;
@@ -178,7 +177,6 @@ inline void TraceS2MM::parsePacket(uint64_t packet, uint64_t firstTimestamp, xcl
         << "ID : " << result.TraceID << "   "
         << "Pulse : " << static_cast<int>(result.Reserved) << "   "
         << "Overflow : " << static_cast<int>(result.Overflow) << "   "
-        << "Err : " << static_cast<int>(result.Error) << "   "
         << "Flags : " << static_cast<int>(result.EventFlags) << "   "
         << "Interval : " << result.Timestamp - previousTimestamp << "   "
         << std::endl;
@@ -197,6 +195,7 @@ void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector& t
       count = MAX_TRACE_NUMBER_SAMPLES;
     }
     auto pos = static_cast<uint64_t*>(buf);
+    uint32_t mod = 0;
     for (uint32_t i = 0; i < count; i++) {
       auto currentPacket = pos[i];
       if (!currentPacket)
@@ -204,14 +203,24 @@ void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector& t
       // Poor man's reset
       if (i == 0 && !mPacketFirstTs)
         mPacketFirstTs = currentPacket & 0x1FFFFFFFFFFF;
-      if (i < 8 && !mclockTrainingdone) {
-        uint32_t mod = i % 4;
+
+      bool isClockTrain = false;
+      if (mTraceFormat == 1) {
+        isClockTrain = ((currentPacket >> 63) & 0x1);
+      } else {
+        isClockTrain = (i < 8 && !mclockTrainingdone);
+      }
+
+      if (isClockTrain) {
         parsePacketClockTrain(currentPacket, mPacketFirstTs, mod, traceVector.mArray[tvindex]);
         tvindex = (mod == 3) ? tvindex + 1 : tvindex;
+        mod     = (mod == 3) ? 0 : mod + 1;
       }
       else {
         parsePacket(currentPacket, mPacketFirstTs, traceVector.mArray[tvindex++]);
       }
+
+
       traceVector.mLength = tvindex;
     } // For i < count
     mclockTrainingdone = true;

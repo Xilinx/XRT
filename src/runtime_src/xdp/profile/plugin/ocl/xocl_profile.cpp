@@ -839,6 +839,35 @@ getPlramSizeBytes(key k)
   return 0;
 }
 
+void
+getMemUsageStats(key k, std::map<std::string, uint64_t>& stats)
+{
+  auto device = k;
+  const mem_topology* mem_tp;
+  if (!device)
+    return;
+  try {
+    auto xclbin = device->get_xclbin();
+    auto binary = xclbin.binary();
+    auto binary_data = binary.binary_data();
+    auto header = reinterpret_cast<const xclBin *>(binary_data.first);
+    mem_tp = getAxlfSection<const ::mem_topology>(header, axlf_section_kind::MEM_TOPOLOGY);
+  } catch (...) {
+    return;
+  }
+  if(!mem_tp)
+    return;
+
+  auto name = device->get_unique_name();
+  auto m_count = mem_tp->m_count;
+  for (int i=0; i < m_count; i++) {
+    std::string mem_tag(reinterpret_cast<const char*>(mem_tp->m_mem_data[i].m_tag));
+    if (mem_tag.rfind("bank", 0) == 0)
+        mem_tag = "DDR[" + mem_tag.substr(4,4) + "]";
+    stats[name + "|" + mem_tag] = mem_tp->m_mem_data[i].m_used;
+  }
+}
+
 data*
 get_data(key k)
 {

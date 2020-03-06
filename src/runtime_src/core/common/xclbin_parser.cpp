@@ -241,6 +241,10 @@ get_cus(const ip_layout* ip_layout, const std::string& kname)
 std::vector<uint64_t>
 get_cus(const axlf* top, bool encode)
 {
+  if (is_sw_emulation()) {
+    return get_kernel_inst_addrs(top);
+  }
+
   auto ip_layout = axlf_section_type<const ::ip_layout*>::get(top,axlf_section_kind::IP_LAYOUT);
   return ip_layout ? get_cus(ip_layout,encode) : std::vector<uint64_t>(0);
 }
@@ -395,11 +399,12 @@ get_softkernels(const axlf* top)
 
       softkernel_object sko;
       sko.ninst = soft->m_num_instances;
-      sko.symbol_name = const_cast<char*>(begin + soft->mpo_symbol_name);
+      sko.symbol_name = std::string(begin + soft->mpo_symbol_name);
+      sko.mpo_name = std::string(begin + soft->mpo_name);
+      sko.mpo_version = std::string(begin + soft->mpo_version);
       sko.size = soft->m_image_size;
       sko.sk_buf = const_cast<char*>(begin + soft->m_image_offset);
-
-      sks.push_back(sko);
+      sks.emplace_back(std::move(sko));
   }
 
   return sks;
@@ -482,6 +487,57 @@ get_kernel_arguments(const axlf* top, const std::string& kname)
     break;
   }
   return args;
+}
+
+//This function will be removed once IP_LAYOUT section is available in sw emu rtd.
+std::vector<uint64_t>
+get_kernel_inst_addrs(const axlf* top)
+{
+  std::vector<uint64_t> addrVec;
+  const axlf_section_header *xml_hdr = ::xclbin::get_axlf_section(top, EMBEDDED_METADATA);
+
+  if (!xml_hdr) {
+    return addrVec;
+  }
+  auto begin = reinterpret_cast<const char*>(top) + xml_hdr->m_sectionOffset;
+  const char *xml_data = reinterpret_cast<const char*>(begin);
+  uint64_t xml_size = xml_hdr->m_sectionSize;
+
+  pt::ptree xml_project;
+  std::stringstream xml_stream;
+  xml_stream.write(xml_data, xml_size);
+  pt::read_xml(xml_stream, xml_project);
+
+  auto xml_platform = xml_project.get_child_optional("project.platform");
+
+  if (!xml_platform) {
+    return addrVec;
+  }
+
+  for (auto& xml_device : xml_project.get_child("project.platform")) {
+    if (xml_device.first != "device")
+      continue;
+    for (auto& xml_core : xml_device.second) {
+      if (xml_core.first != "core")
+        continue;
+      for (auto& xml_kernel : xml_core.second) {
+        if (xml_kernel.first != "kernel")
+          continue;
+        for (auto& xml_inst : xml_kernel.second) {
+          if (xml_inst.first != "instance")
+            continue;
+          auto name = xml_inst.second.get<std::string>("<xmlattr>.name");
+          for (auto& xml_remap : xml_inst.second) {
+            if (xml_remap.first != "addrRemap")
+              continue;
+            auto base = convert(xml_remap.second.get<std::string>("<xmlattr>.base"));
+            addrVec.push_back(base);
+          }
+        }
+      }
+    }
+  }
+  return addrVec;
 }
 
 }} // xclbin, xrt_core
