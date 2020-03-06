@@ -48,6 +48,8 @@ namespace xclcpuemhal2 {
     sock = NULL;
     ci_msg.set_size(0);
     ci_msg.set_xcl_api(0);
+    mCore = nullptr;
+    mSWSch = nullptr;
 
     ci_buf = malloc(ci_msg.ByteSize());
     ri_msg.set_size(0);
