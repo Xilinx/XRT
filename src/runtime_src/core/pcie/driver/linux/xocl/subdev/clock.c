@@ -65,7 +65,6 @@ struct clock {
 	struct platform_device  *clock_pdev;
 	void __iomem 		*clock_base_address[CLOCK_IORES_MAX]; 
 	struct mutex 		clock_lock;
-
 	void __iomem		*clock_ucs_control_status;
 	/* Below are legacy iores fields, keep unchanged until necessary */
 	void __iomem		*clock_bases[CLOCK_MAX_NUM_CLOCKS];
@@ -386,24 +385,6 @@ static unsigned short clock_get_freq_impl(struct clock *clock, int idx)
 	return freq;
 }
 
-static void clock_freq_request_load(struct clock *clock, u32 *curr_freq,
-	u32 *new_freq, int size, bool need_toggle)
-{
-	int i;
-
-	for (i = 0; i < size; i++) {
-		new_freq[i] = clock->clock_ocl_frequency[i];
-		curr_freq[i] = clock_get_freq_impl(clock, i);
-
-		/*
-		 * toggle gate will reset all clock wizard value to default,
-		 * thus we should preserve all clock wizard value before.
-		 */
-		if (need_toggle && new_freq[i] == 0)
-			new_freq[i] = curr_freq[i];
-	}
-}
-
 /*
  * Based on Clocking Wizard v5.1, section Dynamic Reconfiguration
  * through AXI4-Lite
@@ -412,12 +393,9 @@ static void clock_freq_request_load(struct clock *clock, u32 *curr_freq,
  *       based on Linux doc of timers, mdelay may not be exactly accurate
  *       on non-PC devices.
  */
-static int clock_ocl_freqscaling(struct clock *clock, bool force,
-	struct gate_handler *gate_handle)
+static int clock_ocl_freqscaling_impl(struct clock *clock, bool force,
+	u32 *curr_freq, int level)
 {
-	xdev_handle_t xdev = xocl_get_xdev(clock->clock_pdev);
-	u32 curr_freq[CLOCK_MAX_NUM_CLOCKS] = { 0 };
-	u32 new_freq[CLOCK_MAX_NUM_CLOCKS] = { 0 };
 	u32 config;
 	int i;
 	int j = 0;
@@ -427,40 +405,26 @@ static int clock_ocl_freqscaling(struct clock *clock, bool force,
 
 	BUG_ON(!mutex_is_locked(&clock->clock_lock));
 
-	/*
-	 * 2RP workflow will toggle gate instead of freeze/free the gate,
-	 * after each toggle, EVERY value in clock wizard will be reset to
-	 * default value. We have to cache every clock wizard value before
-	 * toggling the gate, and ENFORCE set those value back in the clock
-	 * wizard register after toggling the gate.
-	 */
-	if (CLOCK_DEV_LEVEL(xdev) > XOCL_SUBDEV_LEVEL_PRP &&
-	    gate_handle && gate_handle->gate_toggle_cb) {
-		force = true; /* explicitly force clock update */
-		clock_freq_request_load(clock, curr_freq, new_freq,
-		    CLOCK_MAX_NUM_CLOCKS, true);
-		gate_handle->gate_toggle_cb(gate_handle->gate_args);
-	} else {
-		clock_freq_request_load(clock, curr_freq, new_freq,
-		    CLOCK_MAX_NUM_CLOCKS, false);
-	}
+	/* explicitly force clock update for ULP */
+	if (level == XOCL_SUBDEV_LEVEL_URP)
+		force = true;
 
 	for (i = 0; i < CLOCK_MAX_NUM_CLOCKS; ++i) {
 		int count;
 
 		/* A value of zero means skip scaling for this clock index */
-		if (!new_freq[i])
+		if (!clock->clock_ocl_frequency[i])
 			continue;
 
 		/* skip if the io does not exist */
 		if (!clock->clock_bases[i])
 			continue;
 
-		idx = find_matching_freq_config(new_freq[i]);
+		idx = find_matching_freq_config(clock->clock_ocl_frequency[i]);
 
 		CLOCK_INFO(clock,
-		    "Clock: %d, Current: %d Mhz, New: %d Mhz, Force: %d",
-		    i, curr_freq[i], new_freq[i], force);
+		    "Clock: %d, Current: %d MHz, New: %d Mhz,  Force: %d",
+		    i, curr_freq[i], clock->clock_ocl_frequency[i], force);
 
 		/*
 		 * If current frequency is in the same step as the
@@ -530,15 +494,12 @@ static int clock_ocl_freqscaling(struct clock *clock, bool force,
 	return err;
 }
 
-static int set_freqs(struct clock *clock, unsigned short *freqs, int num_freqs,
-	struct gate_handler *gate_handle)
+static int clock_update_freqs_request(struct clock *clock, unsigned short *freqs,
+	int num_freqs)
 {
 	xdev_handle_t xdev = xocl_get_xdev(clock->clock_pdev);
 	int i;
-	int err = 0;
 	u32 val;
-
-	BUG_ON(!mutex_is_locked(&clock->clock_lock));
 
 	for (i = 0; i < min(CLOCK_MAX_NUM_CLOCKS, num_freqs); ++i) {
 		if (freqs[i] == 0)
@@ -551,47 +512,126 @@ static int set_freqs(struct clock *clock, unsigned short *freqs, int num_freqs,
 			OCL_CLKWIZ_STATUS_OFFSET);
 		if ((val & 0x1) == 0) {
 			CLOCK_ERR(clock, "clockwiz %d is busy", i);
-			err = -EBUSY;
-			goto done;
+			return -EBUSY;
 		}
 	}
 
 	memcpy(clock->clock_ocl_frequency, freqs,
 		sizeof(*freqs) * min(CLOCK_MAX_NUM_CLOCKS, num_freqs));
 
-	/*
-	 * For ULP clock subdev, we should not freeze and free gate.
-	 * In the future, we will have separate ULP subdev to handle the request.
-	 *
-	 * When gate_handler callback funcs are present, we freeze and free the
-	 * gate. It is caller's fault if freeze and free pair has not been set
-	 * appropriately.
-	 */
-	if (CLOCK_DEV_LEVEL(xdev) <= XOCL_SUBDEV_LEVEL_PRP &&
-	    gate_handle && gate_handle->gate_freeze_cb)
-		gate_handle->gate_freeze_cb(gate_handle->gate_args);
+	if (CLOCK_DEV_LEVEL(xdev) <= XOCL_SUBDEV_LEVEL_PRP)
+		return 0;
 
-	err = clock_ocl_freqscaling(clock, false, gate_handle);
+	/* For ULP level clock, we should also reset all existing freqs */
+	for (i = 0; i < CLOCK_MAX_NUM_CLOCKS; i++) {
+		if (clock->clock_ocl_frequency[i] != 0)
+			continue;
+		clock->clock_ocl_frequency[i] = clock_get_freq_impl(clock, i);
+	}
 
-	if (CLOCK_DEV_LEVEL(xdev) <= XOCL_SUBDEV_LEVEL_PRP &&
-	    gate_handle && gate_handle->gate_free_cb)
-		gate_handle->gate_free_cb(gate_handle->gate_args);
+	return 0;
+}
 
-	/* enable kernel clocks */
-	if (clock->clock_ucs_control_status) {
+/*
+ * Freeze has to be called and succeeded to perform gate reatled operation!
+ */
+static int clock_freeze_axi_gate(struct clock *clock, int level)
+{
+	xdev_handle_t xdev = xocl_get_xdev(clock->clock_pdev);
+	int err;
+
+	BUG_ON(!mutex_is_locked(&clock->clock_lock));
+
+	if (level <= XOCL_SUBDEV_LEVEL_PRP)
+		err = xocl_axigate_freeze(xdev, XOCL_SUBDEV_LEVEL_PRP);
+	else
+		err = xocl_axigate_reset(xdev, XOCL_SUBDEV_LEVEL_PRP);
+
+	CLOCK_INFO(clock, "level %d returns %d", level, err);
+	return err;
+}
+
+static int clock_free_axi_gate(struct clock *clock, int level)
+{
+	xdev_handle_t xdev = xocl_get_xdev(clock->clock_pdev);
+	int err = 0;
+
+	BUG_ON(!mutex_is_locked(&clock->clock_lock));
+
+	if (level <= XOCL_SUBDEV_LEVEL_PRP) {
+		xocl_axigate_free(xdev, XOCL_SUBDEV_LEVEL_PRP);
+	} else {
+		if (!clock->clock_ucs_control_status) {
+			CLOCK_ERR(clock, "URP clock has no %s\n",
+				RESNAME_UCS_CONTROL_STATUS);
+			err = -EEXIST;
+			goto done;
+		}
+		/* enable kernel clocks */
 		CLOCK_INFO(clock, "Enable kernel clocks ucs control");
 		msleep(10);
 		reg_wr(clock->clock_ucs_control_status +
 			XOCL_RES_OFFSET_CHANNEL2, 0x1);
+
+		err = xocl_icap_mig_calibration(xdev);
 	}
 
 done:
+	CLOCK_INFO(clock, "level %d returns %d", level, err);
+	return err;
+}
+
+/*
+ * Legacy flow:
+ *   1) freeze axigate
+ *   2) set clocks
+ *   3) free axigate
+ *
+ * 2RP flow:
+ *   1) reset axigate, clear all clocks and status.
+ *   2) reset clocks, including previous clocks
+ *   3) enable ucs_controll
+ *   4) wait for hbm calibration done
+ *
+ * Note:
+ * Violate this flow will cause random firewall trip.
+ */
+static int clock_ocl_freqscaling(struct clock *clock, bool force, int level)
+{
+	int i, err;
+	u32 curr[CLOCK_MAX_NUM_CLOCKS] = { 0 };
+
+	/* Read current clock freq before freeze/toggle axi gate */
+	for (i = 0; i < CLOCK_MAX_NUM_CLOCKS; i++)
+		curr[i] = clock_get_freq_impl(clock, i);
+
+	err = clock_freeze_axi_gate(clock, level);
+	if (!err) {
+		err = clock_ocl_freqscaling_impl(clock, force, curr, level);
+		clock_free_axi_gate(clock, level);
+	}
+
+	CLOCK_INFO(clock, "level: %d return: %d", level, err);
+	return err;
+}
+
+static int set_freqs(struct clock *clock, unsigned short *freqs, int num_freqs)
+{
+	xdev_handle_t xdev = xocl_get_xdev(clock->clock_pdev);
+	int err;
+
+	BUG_ON(!mutex_is_locked(&clock->clock_lock));
+
+	err = clock_update_freqs_request(clock, freqs, num_freqs);
+	if (!err)
+		err = clock_ocl_freqscaling(clock, false, CLOCK_DEV_LEVEL(xdev));
+
 	CLOCK_INFO(clock, "returns %d", err);
 	return err;
 }
 
 static int set_and_verify_freqs(struct clock *clock, unsigned short *freqs,
-	int num_freqs, struct gate_handler *gate_handle)
+	int num_freqs)
 {
 	int i;
 	int err;
@@ -599,7 +639,7 @@ static int set_and_verify_freqs(struct clock *clock, unsigned short *freqs,
 
 	BUG_ON(!mutex_is_locked(&clock->clock_lock));
 
-	err = set_freqs(clock, freqs, num_freqs, gate_handle);
+	err = set_freqs(clock, freqs, num_freqs);
 	if (err)
 		goto done;
 
@@ -627,10 +667,11 @@ done:
 static int clock_freq_scaling(struct platform_device *pdev, bool force)
 {
 	struct clock *clock = platform_get_drvdata(pdev);
-	int err = 0;
+	xdev_handle_t xdev = xocl_get_xdev(clock->clock_pdev);
+	int err;
 
 	mutex_lock(&clock->clock_lock);
-	err =  clock_ocl_freqscaling(clock, force, NULL);
+	err =  clock_ocl_freqscaling(clock, force, CLOCK_DEV_LEVEL(xdev));
 	mutex_unlock(&clock->clock_lock);
 
 	CLOCK_INFO(clock, "ret: %d.", err);
@@ -638,29 +679,16 @@ static int clock_freq_scaling(struct platform_device *pdev, bool force)
 }
 
 static int clock_update_freq(struct platform_device *pdev,
-	unsigned short *freqs, int num_freqs, int verify,
-	struct gate_handler *gate_handle)
+	unsigned short *freqs, int num_freqs, int verify)
 {
 	struct clock *clock = platform_get_drvdata(pdev);
-	xdev_handle_t xdev = xocl_get_xdev(clock->clock_pdev);
-	int err = 0;
-
-	if (gate_handle == NULL) {
-		CLOCK_ERR(clock, "gate_handle must be set");
-		return -EINVAL;
-	}
+	int err;
 
 	mutex_lock(&clock->clock_lock);
 	err = verify ?
-	    set_and_verify_freqs(clock, freqs, num_freqs, gate_handle) :
-	    set_freqs(clock, freqs, num_freqs, gate_handle);
+	    set_and_verify_freqs(clock, freqs, num_freqs) :
+	    set_freqs(clock, freqs, num_freqs);
 	mutex_unlock(&clock->clock_lock);
-
-	/* Done clock programming, wait for HBM Calibration */
-	if (CLOCK_DEV_LEVEL(xdev) > XOCL_SUBDEV_LEVEL_PRP &&
-	    gate_handle && gate_handle->gate_hbm_calibration_cb) {
-		gate_handle->gate_hbm_calibration_cb(gate_handle->gate_args);
-	}
 
 	CLOCK_INFO(clock, "verify: %d ret: %d.", verify, err);
 	return err;
@@ -741,6 +769,8 @@ static int clock_status_check(struct platform_device *pdev, bool *latched)
 	uint32_t status;
 	int err = 0;
 
+	mutex_lock(&clock->clock_lock);
+
 	if (shutdown_clk) {
 		status = reg_rd(shutdown_clk);
 		/* BIT0:latch bit, BIT1:Debug bit */
@@ -776,7 +806,9 @@ static int clock_status_check(struct platform_device *pdev, bool *latched)
 		}
 	}
 
-	/* do not out put status log here, this function might be called every 5s */
+	mutex_unlock(&clock->clock_lock);
+
+	/* do not output status log here, this function might be called every 5s */
 	return err;
 }
 
@@ -855,13 +887,17 @@ static int clock_post_refresh_addrs(struct clock *clock)
 	 *       operations will be performed.
 	 *       With new 2RP flow, clocks are all moved to ULP.  We assume
 	 *       there is not any clock left in PLP in this case.
+	 * Note: disable clock scaling during probe for ULP, because this will
+	 *       happen only when newer xclbin has been downloaded, we will
+	 *       always reset frequence by using data in xclbin.
+	 *       when driver is reloaded but xclbin is not downloaded yet,
+	 *       no clock data.
+	 *
+	 * Example of reset clock: enable only when we have to, because
+	 *       this requires mig_calibration which will take few seconds.
+	 *  if (clock->clock_ucs_control_status)
+         *	err = clock_ocl_freqscaling(clock, true, XOCL_SUBDEV_LEVEL_URP);
 	 */
-	if (clock->clock_ucs_control_status) {
-		err = clock_ocl_freqscaling(clock, true, NULL);
-		msleep(10);
-		reg_wr(clock->clock_ucs_control_status +
-			XOCL_RES_OFFSET_CHANNEL2, 0x1);
-	}
 
 	mutex_unlock(&clock->clock_lock);
 
@@ -972,7 +1008,9 @@ static int clock_probe(struct platform_device *pdev)
 			}
 		}
 	}
-	clock_post_refresh_addrs(clock);
+	ret = clock_post_refresh_addrs(clock);
+	if (ret)
+		goto failed;
 
 	ret = sysfs_create_group(&pdev->dev.kobj, &clock_attr_group);
 	if (ret) {
