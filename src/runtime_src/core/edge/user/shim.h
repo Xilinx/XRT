@@ -35,6 +35,10 @@
 #include <mutex>
 #include <memory>
 
+#ifdef XRT_ENABLE_AIE
+#include "core/edge/user/aie/aie.h"
+#endif
+
 namespace ZYNQ {
 
 class ZYNQShim {
@@ -123,6 +127,10 @@ public:
   int cmpMonVersions(unsigned int major1, unsigned int minor1, 
 		     unsigned int major2, unsigned int minor2);
 
+#ifdef XRT_ENABLE_AIE
+  zynqaie::Aie *getAieArray();
+  void setAieArray(zynqaie::Aie *aie);
+#endif
 
 private:
   const int mBoardNumber = -1;
@@ -145,6 +153,10 @@ private:
   std::mutex mCuMapLock;
   int xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap);
   int xclLog(xrtLogMsgLevel level, const char* tag, const char* format, ...);
+
+#ifdef XRT_ENABLE_AIE
+  zynqaie::Aie *aieArray;
+#endif
 };
 
 } // namespace ZYNQ

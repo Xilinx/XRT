@@ -424,6 +424,13 @@ get_exclusive_cu_context()
   return value;
 }
 
+inline bool
+get_flag_kds_sw_emu()
+{
+  static bool value = detail::get_bool_value("Runtime.kds_sw_emu", false);
+  return value;
+}
+
 }} // config,xrt_core
 
 #endif

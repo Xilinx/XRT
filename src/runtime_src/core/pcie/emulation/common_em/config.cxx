@@ -311,6 +311,19 @@ namespace xclemulation{
     return false;
   }
 
+  bool is_sw_emulation()
+  {    
+    static auto xem = std::getenv("XCL_EMULATION_MODE");
+    if (xem)
+    {
+      if (std::strcmp(xem, "sw_emu") == 0)
+      {
+        return true;
+      }
+    }
+    return false;
+  }
+
   std::string getEmDebugLogFile()
   {
     std::string executablePath = getExecutablePath();

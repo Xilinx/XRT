@@ -742,6 +742,7 @@ static int xocl_fdt_get_devinfo(xdev_handle_t xdev_hdl, char *blob,
 	//subdev->pf = XOCL_PCI_FUNC(xdev_hdl);
 	subdev->info.res = subdev->res;
 	subdev->info.bar_idx = subdev->bar_idx;
+	subdev->info.override_idx = -1;
 	for (i = 0; i < subdev->info.num_res; i++)
 		subdev->info.res[i].name = subdev->res_name[i];
 

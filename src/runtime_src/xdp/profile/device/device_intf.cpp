@@ -393,6 +393,7 @@ DeviceIntf::~DeviceIntf()
     if(mIsDebugIPlayoutRead || !mDevice)
         return;
 
+#ifndef _WIN32
     std::string path = mDevice->getDebugIPlayoutPath();
     if(path.empty()) {
         // error ? : for HW_emu this will be empty for now ; but as of current status should not have been called 
@@ -419,9 +420,21 @@ DeviceIntf::~DeviceIntf()
     char buffer[65536];
     // debug_ip_layout max size is 65536
     ifs.read(buffer, 65536);
+
+
     debug_ip_layout *map;
     if (ifs.gcount() > 0) {
       map = (debug_ip_layout*)(buffer);
+#else
+    size_t sz1 = 0, sectionSz = 0;
+    // Get the size of full debug_ip_layout
+    mDevice->getDebugIpLayout(nullptr, sz1, &sectionSz);
+    // Allocate buffer to retrieve debug_ip_layout information from loaded xclbin
+    std::vector<char> buffer(sectionSz);
+    mDevice->getDebugIpLayout(buffer.data(), sectionSz, &sz1);
+    auto map = reinterpret_cast<debug_ip_layout*>(buffer.data());
+#endif
+      
       for(uint64_t i = 0; i < map->m_count; i++ ) {
       switch(map->m_debug_ip_data[i].m_type) {
         case AXI_MM_MONITOR :        aimList.push_back(new AIM(mDevice, i, &(map->m_debug_ip_data[i])));
@@ -443,9 +456,10 @@ DeviceIntf::~DeviceIntf()
 
       }
      }
+#ifndef _WIN32
     }
-
     ifs.close();
+#endif
 
     auto sorter = [] (const ProfileIP* lhs, const ProfileIP* rhs)
     {

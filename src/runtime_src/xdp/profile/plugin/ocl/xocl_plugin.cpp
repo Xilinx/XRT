@@ -209,6 +209,9 @@ namespace xdp {
 
     // 6. xrt.ini settings
     getXrtIniSettings();
+
+    // 7. Memory Bank Info from Mem Topology
+    getMemUsageStats();
   }
 
   void XoclPlugin::getDeviceExecutionTimes(RTProfile *profile)
@@ -295,6 +298,15 @@ namespace xdp {
       auto sz = xdp::xoclp::platform::device::getPlramSizeBytes(device);
       if (sz)
         mDevicePlramSizeMap[name] = sz;
+    }
+  }
+
+  void XoclPlugin::getMemUsageStats()
+  {
+    for (auto device : mPlatformHandle->get_device_range()) {
+      if (!device->is_active())
+        continue;
+      xdp::xoclp::platform::device::getMemUsageStats(device, mDeviceMemUsageStatsMap);
     }
   }
 

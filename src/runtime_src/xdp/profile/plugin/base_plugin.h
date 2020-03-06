@@ -91,7 +91,6 @@ namespace xdp {
       enum e_guidance {
         DEVICE_EXEC_TIME,
         CU_CALLS,
-        MEMORY_BIT_WIDTH,
         MIGRATE_MEM,
         MEMORY_USAGE,
         PLRAM_DEVICE,
@@ -145,6 +144,7 @@ namespace xdp {
       inline GuidanceMap2& getDeviceMemTypeBitWidthMap() {return mDeviceMemTypeBitWidthMap;}
       inline GuidanceMap2& getDeviceTraceBufferFullMap() {return mDeviceTraceBufferFullMap;}
       inline GuidanceMap2& getDevicePlramSizeMap() {return mDevicePlramSizeMap;}
+      inline GuidanceMap2& getDeviceMemUsageStatsMap() {return mDeviceMemUsageStatsMap;}
       inline GuidanceMap3& getmCQInfoMap() {return mCQInfoMap;}
       inline GuidanceMap4& getKernelBufferInfoMap() {return mKernelBufferInfoMap;}
       // Host Buffer first start to last end
@@ -170,6 +170,7 @@ namespace xdp {
       GuidanceMap2 mKernelMaxParallelStartsMap;
       GuidanceMap2 mDeviceMemTypeBitWidthMap;
       GuidanceMap2 mDeviceTraceBufferFullMap;
+      GuidanceMap2 mDeviceMemUsageStatsMap;
       GuidanceMap4 mKernelBufferInfoMap;
       GuidanceMap3 mCQInfoMap;
       GuidanceMap mXrtIniMap;
