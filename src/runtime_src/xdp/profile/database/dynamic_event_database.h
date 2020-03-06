@@ -26,9 +26,6 @@
 
 #include "xdp/profile/database/events/vtf_event.h"
 
-// For the Trace results vector
-#include "xclperf.h"
-
 #include "xdp/config.h"
 
 namespace xdp {
@@ -47,7 +44,6 @@ namespace xdp {
     // Every device will have its own set of events.  Since the actual
     //  hardware might shuffle the order of events we have to make sure
     //  that this set of events is ordered based on timestamp.
-//    std::map<uint64_t, std::vector<VTFEvent*> > deviceEvents ;
     std::map<uint64_t, std::multimap<double, VTFEvent*>> deviceEvents;
 
     // A unique event id for every event added to the database.
@@ -71,26 +67,17 @@ namespace xdp {
     //  we have to maintain exclusivity
     std::mutex dbLock ;
 
-    std::map<uint64_t, uint64_t> traceIDMap; // revisit
+    std::map<uint64_t, uint64_t> traceIDMap;
 
     void addHostEvent(VTFEvent* event) ;
     void addDeviceEvent(uint64_t deviceId, VTFEvent* event) ;
 
-    // Device to host timestamp adjustment
-    void   trainDeviceHostTimestamps(uint64_t deviceTimestamp, uint64_t hostTimestamp);
-    double convertDeviceToHostTimestamp(uint64_t deviceTimestamp);
-
-    double mTrainOffset;
-    double mTraceClockRateMHz = 285; // 300 ?
-    double mTrainSlope = 1000.0/mTraceClockRateMHz;
-    
   public:
     XDP_EXPORT VPDynamicDatabase() ;
     XDP_EXPORT ~VPDynamicDatabase() ;
 
     // Add an event in sorted order in the database
     XDP_EXPORT void addEvent(VTFEvent* event) ;
-    XDP_EXPORT void addDeviceEvents(uint64_t deviceId, xclTraceResultsVector& trace, void*) ;
 
     // For API events, find the event id of the start event for an end event
     XDP_EXPORT void markStart(uint64_t functionID, uint64_t eventID) ;
