@@ -137,7 +137,7 @@ namespace xdp {
 
     // Log Counter Data
     logDeviceCounters(true, true, true);  // reads and logs device counters for all monitors in all flows
-#if 0
+#ifndef _WIN32
     // With new XDP flow, HW Emu should be similar to Device flow. So, multiple calls to trace/counters should not be needed.
     // But needed for older flow
     // Log Trace Data
