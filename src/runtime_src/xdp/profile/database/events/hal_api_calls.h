@@ -35,7 +35,7 @@ namespace xdp {
 
     virtual bool isHALAPI() { return true ; }
 
-    XDP_EXPORT virtual void dump(std::ofstream& fout, int bucket) ;
+    XDP_EXPORT virtual void dump(std::ofstream& fout, uint64_t bucket) ;
   } ;
 
   class AllocBoCall : public HALAPICall
@@ -46,7 +46,7 @@ namespace xdp {
     XDP_EXPORT AllocBoCall(uint64_t s_id, double ts, uint64_t name) ;
     XDP_EXPORT ~AllocBoCall() ;
 
-    XDP_EXPORT virtual void dump(std::ofstream& fout, int bucket) ;
+    XDP_EXPORT virtual void dump(std::ofstream& fout, uint64_t bucket) ;
   } ;
 
 } // end namespace xdp

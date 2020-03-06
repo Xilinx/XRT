@@ -28,7 +28,7 @@ namespace xdp {
 					     const std::string& toolV)
       : VPTraceWriter(filename, version, creationTime, 9 /* ns */),
         xrtVersion(xrtV),
-        toolVersion(xrtV),
+        toolVersion(toolV),
         deviceId(devId)
   {
   }
@@ -62,7 +62,7 @@ namespace xdp {
     fout << "Group_Start," << deviceName << std::endl ;
     fout << "Group_Start," << xclbinName << std::endl ;
 
-    uint16_t numKDMA = (db->getStaticInfo()).getKDMACount(deviceId) ;
+    uint64_t numKDMA = (db->getStaticInfo()).getKDMACount(deviceId) ;
     if(numKDMA) {
 #if 0
       fout << "Group_Start,KDMA" << std::endl ;
