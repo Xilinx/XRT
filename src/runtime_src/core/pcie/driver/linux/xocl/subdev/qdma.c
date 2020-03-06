@@ -923,7 +923,8 @@ static int queue_req_complete(unsigned long priv, unsigned int done_bytes,
 	struct qdma_stream_queue *queue = iocb->queue;
 	bool free_req = false;
 
-	pr_debug("%s, q 0x%lx, reqcb 0x%p,err %d, %u,%u, %u,%u, pend %u.\n",
+	xocl_dbg(&queue->qdma->pdev->dev,
+		"%s, q 0x%lx, reqcb 0x%p,err %d, %u,%u, %u,%u, pend %u.\n",
 		__func__, queue->queue, reqcb, error,
 		queue->req_submit_cnt, queue->req_cmpl_cnt,
 		queue->req_cancel_cnt, queue->req_cancel_cmpl_cnt,
@@ -1105,9 +1106,10 @@ static ssize_t queue_rw(struct xocl_qdma *qdma, struct qdma_stream_queue *queue,
 	spin_unlock_bh(&queue->req_lock);
 	pend = true;
 
-	pr_debug("%s, %s ST %s req 0x%p, hndl 0x%lx,0x%lx.\n",
-		__func__, dev_name(&qdma->pdev->dev), write ? "W":"R",
-	       	ioreq, (unsigned long)qdma->dma_handle, queue->queue);
+	xocl_dbg(&qdma->pdev->dev,
+		"%s, ST %s req 0x%p, hndl 0x%lx,0x%lx.\n",
+		__func__, write ? "W":"R", ioreq, 
+		(unsigned long)qdma->dma_handle, queue->queue);
 
 	if (reqcnt > 1)
 		ret = qdma_batch_request_submit((unsigned long)qdma->dma_handle,
@@ -1118,7 +1120,8 @@ static ssize_t queue_rw(struct xocl_qdma *qdma, struct qdma_stream_queue *queue,
 
 error_out:
 	if (ret < 0 || !kiocb) {
-		pr_warn("%s ret %d, kiocb 0x%p.\n", __func__, ret, kiocb);
+		xocl_warn(&qdma->pdev->dev, "%s ret %ld, kiocb 0x%p.\n",
+			  __func__, ret, kiocb);
 
 		for (i = 0, reqcb = iocb->reqcb; i < reqcnt; i++, reqcb++)
 			queue_req_release_resource(queue, reqcb);
@@ -1133,11 +1136,11 @@ error_out:
 		}
 		kfree(ioreq);
 		return ret;
-	} else {
-		spin_lock_bh(&queue->req_lock);
-		queue->req_submit_cnt++;
-		spin_unlock_bh(&queue->req_lock);
 	}
+
+	spin_lock_bh(&queue->req_lock);
+	queue->req_submit_cnt++;
+	spin_unlock_bh(&queue->req_lock);
 
 	return kiocb ? -EIOCBQUEUED : 0;
 }
@@ -1151,10 +1154,11 @@ static int queue_wqe_cancel(struct kiocb *kiocb)
 	struct xocl_qdma *qdma = queue->qdma;
 	struct qdma_stream_req_cb *reqcb = iocb->reqcb;
 
-	pr_debug("%s, %s cancel ST req 0x%p/0x%lu hndl 0x%lx,0x%lx, %s %u.\n",
-		__func__, dev_name(&queue->qdma->pdev->dev),
-		iocb->reqv, iocb->req_count, (unsigned long)qdma->dma_handle,
-		queue->queue, queue->qconf.c2h ? "R":"W", reqcb->req->count);
+	xocl_dbg(&qdma->pdev->dev,
+		"%s cancel ST req 0x%p/0x%lu hndl 0x%lx,0x%lx, %s %u.\n",
+		__func__, iocb->reqv, iocb->req_count,
+		(unsigned long)qdma->dma_handle, queue->queue,
+		queue->qconf.c2h ? "R":"W", reqcb->req->count);
 
 	spin_lock_bh(&queue->req_lock);
 	iocb->cancel = 1;

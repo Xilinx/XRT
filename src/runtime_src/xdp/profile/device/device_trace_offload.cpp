@@ -45,6 +45,8 @@ DeviceTraceOffload::DeviceTraceOffload(xdp::DeviceIntf* dInt,
   if (start_thread) {
     start_offload();
   }
+
+  m_trace_vector = { } ;
 }
 
 DeviceTraceOffload::~DeviceTraceOffload()

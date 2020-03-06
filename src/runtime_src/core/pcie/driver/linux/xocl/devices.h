@@ -986,12 +986,6 @@ struct xocl_subdev_map {
 			.start	= 0x032000,		\
 			.end	= 0x032003,		\
 			.flags  = IORESOURCE_MEM,	\
-		},					\
-		{					\
-			.name	= RESNAME_GATEPRPRP,	\
-			.start	= 0x030000,		\
-			.end	= 0x03000b,		\
-			.flags  = IORESOURCE_MEM,	\
 		}					\
 
 #define __RES_PRP_IORES_MGMT_SMARTN			\
@@ -1000,14 +994,7 @@ struct xocl_subdev_map {
 			.start	= 0x135000,		\
 			.end	= 0x135003,		\
 			.flags  = IORESOURCE_MEM,	\
-		},					\
-		{					\
-			.name	= RESNAME_GATEPRPRP,	\
-			.start	= 0x134000,		\
-			.end	= 0x13400b,		\
-			.flags  = IORESOURCE_MEM,	\
-		}
-
+		}					\
 
 #define XOCL_RES_PRP_IORES_MGMT				\
 	((struct resource []) {				\
@@ -1020,6 +1007,46 @@ struct xocl_subdev_map {
 		XOCL_IORES2,				\
 		XOCL_RES_PRP_IORES_MGMT,		\
 		ARRAY_SIZE(XOCL_RES_PRP_IORES_MGMT),	\
+		.level = XOCL_SUBDEV_LEVEL_PRP,		\
+		.override_idx = XOCL_SUBDEV_LEVEL_PRP,	\
+	}
+
+#define XOCL_RES_AXIGATE_ULP				\
+	((struct resource []) {				\
+		{					\
+			.name	= RESNAME_GATEULP,	\
+			.start	= 0x030000,		\
+			.end	= 0x03000b,		\
+			.flags  = IORESOURCE_MEM,	\
+		}					\
+	 })
+
+#define XOCL_DEVINFO_AXIGATE_ULP			\
+	{						\
+		XOCL_SUBDEV_AXIGATE,			\
+		XOCL_AXIGATE,				\
+		XOCL_RES_AXIGATE_ULP,			\
+		ARRAY_SIZE(XOCL_RES_AXIGATE_ULP),	\
+		.level = XOCL_SUBDEV_LEVEL_PRP,		\
+		.override_idx = XOCL_SUBDEV_LEVEL_PRP,	\
+	}
+
+#define XOCL_RES_AXIGATE_ULP_SMARTN			\
+	((struct resource []) {				\
+		{					\
+			.name	= RESNAME_GATEULP,	\
+			.start	= 0x134000,		\
+			.end	= 0x13400b,		\
+			.flags  = IORESOURCE_MEM,	\
+		}					\
+	 })
+
+#define XOCL_DEVINFO_AXIGATE_ULP_SMARTN			\
+	{						\
+		XOCL_SUBDEV_AXIGATE,			\
+		XOCL_AXIGATE,				\
+		XOCL_RES_AXIGATE_ULP_SMARTN,		\
+		ARRAY_SIZE(XOCL_RES_AXIGATE_ULP_SMARTN),\
 		.level = XOCL_SUBDEV_LEVEL_PRP,		\
 		.override_idx = XOCL_SUBDEV_LEVEL_PRP,	\
 	}
@@ -1538,6 +1565,7 @@ struct xocl_subdev_map {
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
 			XOCL_DEVINFO_PRP_IORES_MGMT,			\
+		 	XOCL_DEVINFO_AXIGATE_ULP,			\
 			XOCL_DEVINFO_CLOCK_LEGACY,			\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF,				\
@@ -1562,6 +1590,7 @@ struct xocl_subdev_map {
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
 			XOCL_DEVINFO_PRP_IORES_MGMT,			\
+		 	XOCL_DEVINFO_AXIGATE_ULP,			\
 			XOCL_DEVINFO_CLOCK_LEGACY,			\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF,				\
@@ -1577,6 +1606,7 @@ struct xocl_subdev_map {
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
 			XOCL_DEVINFO_PRP_IORES_MGMT,			\
+		 	XOCL_DEVINFO_AXIGATE_ULP,			\
 			XOCL_DEVINFO_CLOCK_LEGACY,			\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF,				\
@@ -1626,6 +1656,7 @@ struct xocl_subdev_map {
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
 			XOCL_DEVINFO_PRP_IORES_MGMT,			\
+		 	XOCL_DEVINFO_AXIGATE_ULP,			\
 			XOCL_DEVINFO_CLOCK_LEGACY,			\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF,				\
@@ -1641,6 +1672,7 @@ struct xocl_subdev_map {
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
 			XOCL_DEVINFO_PRP_IORES_MGMT,			\
+		 	XOCL_DEVINFO_AXIGATE_ULP,			\
 			XOCL_DEVINFO_CLOCK_LEGACY,			\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF,				\
@@ -1655,6 +1687,7 @@ struct xocl_subdev_map {
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
 			XOCL_DEVINFO_PRP_IORES_MGMT,			\
+		 	XOCL_DEVINFO_AXIGATE_ULP,			\
 			XOCL_DEVINFO_CLOCK_LEGACY,			\
 			XOCL_DEVINFO_AF,				\
 			XOCL_DEVINFO_XMC,				\
@@ -1695,6 +1728,7 @@ struct xocl_subdev_map {
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
 			XOCL_DEVINFO_PRP_IORES_MGMT,			\
+		 	XOCL_DEVINFO_AXIGATE_ULP,			\
 			XOCL_DEVINFO_CLOCK_LEGACY,			\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF,				\
@@ -1719,6 +1753,7 @@ struct xocl_subdev_map {
 	((struct xocl_subdev_info []) {					\
 		XOCL_DEVINFO_FEATURE_ROM,				\
 		XOCL_DEVINFO_PRP_IORES_MGMT,				\
+		XOCL_DEVINFO_AXIGATE_ULP,				\
 		XOCL_DEVINFO_CLOCK_LEGACY,				\
 		XOCL_DEVINFO_AF_DSA52,					\
 		XOCL_DEVINFO_XMC,					\
@@ -1734,6 +1769,7 @@ struct xocl_subdev_map {
 	((struct xocl_subdev_info []) {					\
 		XOCL_DEVINFO_FEATURE_ROM,				\
 		XOCL_DEVINFO_PRP_IORES_MGMT,				\
+		XOCL_DEVINFO_AXIGATE_ULP,				\
 		XOCL_DEVINFO_CLOCK_HBM,					\
 		XOCL_DEVINFO_AF_DSA52,			 		\
 		XOCL_DEVINFO_XMC,					\
@@ -1769,6 +1805,7 @@ struct xocl_subdev_map {
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
 			XOCL_DEVINFO_PRP_IORES_MGMT,			\
+			XOCL_DEVINFO_AXIGATE_ULP,			\
 			XOCL_DEVINFO_CLOCK_LEGACY,			\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF_DSA52,				\
@@ -1791,6 +1828,7 @@ struct xocl_subdev_map {
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
 			XOCL_DEVINFO_PRP_IORES_MGMT,			\
+			XOCL_DEVINFO_AXIGATE_ULP,			\
 			XOCL_DEVINFO_CLOCK_LEGACY,			\
 			XOCL_DEVINFO_AF_DSA52,				\
 			XOCL_DEVINFO_XMC,				\
@@ -1815,6 +1853,7 @@ struct xocl_subdev_map {
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
 			XOCL_DEVINFO_PRP_IORES_MGMT,			\
+			XOCL_DEVINFO_AXIGATE_ULP,			\
 			XOCL_DEVINFO_CLOCK_HBM,				\
 			XOCL_DEVINFO_AF_DSA52,				\
 			XOCL_DEVINFO_XMC,				\
@@ -1837,6 +1876,7 @@ struct xocl_subdev_map {
 	((struct xocl_subdev_info []) {					\
 		XOCL_DEVINFO_FEATURE_ROM,				\
 		XOCL_DEVINFO_PRP_IORES_MGMT,				\
+		XOCL_DEVINFO_AXIGATE_ULP,				\
 		XOCL_DEVINFO_CLOCK_HBM,					\
 		XOCL_DEVINFO_AF_DSA52,					\
 		XOCL_DEVINFO_XMC,					\
@@ -1859,6 +1899,7 @@ struct xocl_subdev_map {
 	((struct xocl_subdev_info []) {					\
 		XOCL_DEVINFO_FEATURE_ROM_SMARTN,			\
 		XOCL_DEVINFO_PRP_IORES_MGMT_SMARTN,			\
+		XOCL_DEVINFO_AXIGATE_ULP_SMARTN,			\
 		XOCL_DEVINFO_XMC,					\
 		XOCL_DEVINFO_MAILBOX_MGMT_QDMA,				\
 		XOCL_DEVINFO_ICAP_MGMT_SMARTN,				\
@@ -1878,6 +1919,7 @@ struct xocl_subdev_map {
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
 			XOCL_DEVINFO_PRP_IORES_MGMT,			\
+			XOCL_DEVINFO_AXIGATE_ULP,			\
 			XOCL_DEVINFO_CLOCK_LEGACY,			\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF,				\
@@ -1901,6 +1943,7 @@ struct xocl_subdev_map {
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
 			XOCL_DEVINFO_PRP_IORES_MGMT,			\
+			XOCL_DEVINFO_AXIGATE_ULP,			\
 			XOCL_DEVINFO_CLOCK_LEGACY,			\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_XVC_PUB,				\
@@ -1913,6 +1956,7 @@ struct xocl_subdev_map {
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
 			XOCL_DEVINFO_PRP_IORES_MGMT,			\
+			XOCL_DEVINFO_AXIGATE_ULP,			\
 			XOCL_DEVINFO_CLOCK_LEGACY,			\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_PS,				\

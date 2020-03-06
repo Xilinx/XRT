@@ -249,7 +249,7 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 	}
 done:	
 	XOCL_PUT_MEM_TOPOLOGY(xdev);
-	return 0;
+	return err;
 }
 
 static int xocl_cma_bo_alloc(struct xocl_drm *drm_p, struct drm_xocl_bo *xobj, uint64_t size, unsigned idx)
@@ -530,13 +530,17 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 		if (ret)
 			goto out_free;
 
-		xobj->p2p_bar_offset = drm_p->mm_p2p_off[ddr] +
-			xobj->mm_node->start -
-			topo->m_mem_data[ddr].m_base_address;
+		if (topo) {
+			xobj->p2p_bar_offset = drm_p->mm_p2p_off[ddr] +
+				xobj->mm_node->start -
+				topo->m_mem_data[ddr].m_base_address;
+
+			ret = xocl_p2p_reserve_release_range(xdev,
+				xobj->p2p_bar_offset,
+				xobj->base.size, true);
+		}
 
 		XOCL_PUT_MEM_TOPOLOGY(xdev);
-		ret = xocl_p2p_reserve_release_range(xdev, xobj->p2p_bar_offset,
-			xobj->base.size, true);
 		if (ret)
 			goto out_free;
 	}
