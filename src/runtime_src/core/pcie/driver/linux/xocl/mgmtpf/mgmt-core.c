@@ -815,6 +815,9 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			break;
 		}
 
+		if (lro->rp_program == XOCL_RP_PROGRAM)
+			lro->rp_program = 0;
+
 		resp = vzalloc(sizeof(*resp));
 		if (!resp)
 			break;
@@ -833,10 +836,10 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		break;
 	}
 	case XCL_MAILBOX_REQ_PROGRAM_SHELL: {
-		/* blob should already been updated */
-		ret = xclmgmt_program_shell(lro);
+		lro->rp_program = XOCL_RP_PROGRAM;
 		(void) xocl_peer_response(lro, req->req, msgid, &ret,
 				sizeof(ret));
+		ret = xocl_queue_work(lro, XOCL_WORK_PROGRAM_SHELL, 0);
 		break;
 	}
 	case XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR: {
@@ -1046,6 +1049,12 @@ static void xclmgmt_work_cb(struct work_struct *work)
 		ret = (int) xclmgmt_hot_reset(lro, true);
 		if (!ret)
 			xocl_drvinst_set_offline(lro, false);
+		break;
+	case XOCL_WORK_PROGRAM_SHELL:
+		/* blob should already been updated */
+		ret = xclmgmt_program_shell(lro);
+		if (!ret)
+			xclmgmt_connect_notify(lro, true);
 		break;
 	default:
 		mgmt_err(lro, "Invalid op code %d", _work->op);

@@ -578,9 +578,7 @@ static void platform_reset_axi_gate(struct platform_device *pdev)
 	mutex_lock(&icap->icap_lock);
 	if (!icap_bitstream_in_use(icap)) {
 		(void) icap_freeze_axi_gate(platform_get_drvdata(pdev));
-		msleep(500);
 		(void) icap_free_axi_gate(platform_get_drvdata(pdev));
-		msleep(500);
 	}
 	mutex_unlock(&icap->icap_lock);
 }
@@ -2126,6 +2124,8 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin)
 	size_t resplen = sizeof(msgerr);
 	xuid_t *peer_uuid = NULL;
 	struct xcl_mailbox_bitstream_kaddr mb_addr = {0};
+	struct mem_topology *mem_topo = icap->mem_topo;
+	int i, mig_count;
 
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
@@ -2161,11 +2161,22 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin)
 	}
 
 	/* Set timeout to be 1s per 2MB for downloading xclbin.
-	 * plus toggling axigate time
+	 * plus toggling axigate time 5s
+	 * plus #MIG * 0.5s
 	 */
+	if (mem_topo) {
+		for (i = 0; i < mem_topo->m_count; i++) {
+			if (XOCL_IS_STREAM(mem_topo, i))
+				continue;
+
+			if (XOCL_IS_DDR_USED(mem_topo, i))
+				mig_count++;
+		}
+	}
+
 	(void) xocl_peer_request(xdev, mb_req, data_len,
 		&msgerr, &resplen, NULL, NULL,
-		xclbin->m_header.m_length / (2048 * 1024) + 5);
+		xclbin->m_header.m_length / (2048 * 1024) + 5 + mig_count / 2);
 	vfree(mb_req);
 
 	if (msgerr != 0) {
@@ -2456,6 +2467,12 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 		if (err)
 			goto done;
 	} else {
+		/* has to create mem topology even with failure case
+		 * please refer the comment in xocl_ioctl.c
+		 * without creating mem topo, memory corruption could happen
+		 */
+		icap_parse_bitstream_axlf_section(pdev, xclbin, MEM_TOPOLOGY);
+
 		if (!XOCL_DSA_IS_VERSAL(xdev))
 			err = __icap_peer_xclbin_download(icap, xclbin);
 
@@ -2464,12 +2481,6 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 		 * ERT configure cmd will go through
 		 */
 		(void) xocl_exec_reconfig(xdev);
-		/* has to create mem topology even with failure case
-		 * please refer the comment in xocl_ioctl.c
-		 * without creating mem topo, memory corruption could happen
-		 */
-		icap_parse_bitstream_axlf_section(pdev, xclbin, MEM_TOPOLOGY);
-
 		if (err)
 			goto done;
 

@@ -1950,6 +1950,16 @@ int mailbox_set(struct platform_device *pdev, enum mb_kind kind, u64 data)
 
 static void mailbox_stop(struct mailbox *mbx)
 {
+	if (mbx->mbx_state == MBX_STATE_STOPPED)
+		return;
+
+	/* clean up timers for polling mode */
+	clear_bit(MBXCS_BIT_POLL_MODE, &mbx->mbx_tx.mbc_state);
+	chan_config_timer(&mbx->mbx_tx);
+
+	clear_bit(MBXCS_BIT_POLL_MODE, &mbx->mbx_rx.mbc_state);
+	chan_config_timer(&mbx->mbx_rx);
+
 	/* Stop interrupt. */
 	mailbox_disable_intr_mode(mbx, false);
 	/* Tear down all threads. */
