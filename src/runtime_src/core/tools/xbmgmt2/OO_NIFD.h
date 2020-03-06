@@ -29,8 +29,6 @@ class OO_NIFD : public OptionOptions {
  private:
   std::string m_device;
   bool m_help;
-  bool status;
-  std::string readback_file;
 
 };
 
