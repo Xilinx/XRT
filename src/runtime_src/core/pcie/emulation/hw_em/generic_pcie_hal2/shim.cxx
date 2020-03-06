@@ -177,6 +177,9 @@ namespace xclhwemhal2 {
       return -1;
     }
 
+    //check xclbin version with vivado tool version
+    xclemulation::checkXclibinVersionWithTool(header);
+
     auto top = reinterpret_cast<const axlf*>(header);
     if (auto sec = xclbin::get_axlf_section(top, EMBEDDED_METADATA)) {
       xmlFileSize = sec->m_sectionSize;
