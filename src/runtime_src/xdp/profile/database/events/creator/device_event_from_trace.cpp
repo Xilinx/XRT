@@ -20,11 +20,15 @@
 
 namespace xdp {
 
-  void DeviceEventCreatorFromTrace::createDeviceEvents(uint64_t deviceId, xclTraceResultsVector& traceVector, VPDatabase* db)
+  void DeviceEventCreatorFromTrace::createDeviceEvents(uint64_t deviceId, xclTraceResultsVector& traceVector)
   {
     // Create Device Events and log them : do what is done in TraceParser::logTrace
     if(traceVector.mLength == 0)
       return;
+
+    if(!db->alive()) {
+      return;
+    }
 
     uint64_t timestamp = 0;
 

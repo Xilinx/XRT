@@ -28,8 +28,9 @@ namespace xdp {
 
 class DeviceEventCreatorFromTrace
 {
+  VPDatabase* db = nullptr;
 
-    std::map<uint64_t, uint64_t> traceIDMap; // revisit
+  std::map<uint64_t, uint64_t> traceIDMap; // revisit
 
   double mTrainOffset;
   double mTraceClockRateMHz = 285; // 300 ?
@@ -39,10 +40,12 @@ class DeviceEventCreatorFromTrace
   double convertDeviceToHostTimestamp(uint64_t deviceTimestamp);
 
   public :
-  DeviceEventCreatorFromTrace() {}
+  DeviceEventCreatorFromTrace()
+    : db(VPDatabase::Instance())
+  {}
   virtual ~DeviceEventCreatorFromTrace() {}
 
-  XDP_EXPORT void createDeviceEvents(uint64_t deviceId, xclTraceResultsVector& traceVector, VPDatabase* db);
+  XDP_EXPORT void createDeviceEvents(uint64_t deviceId, xclTraceResultsVector& traceVector);
 };
 
 }

@@ -173,9 +173,8 @@ namespace xdp {
       devInterface->parseTraceData(hostBuffer, devInterface->getWordCountTs2mm(), trace) ;
       */
     }
-      DeviceEventCreatorFromTrace obj;
-      obj.createDeviceEvents(deviceId, trace, db);
-//    (db->getDynamicInfo()).addDeviceEvents(deviceId, trace, db);
+    DeviceEventCreatorFromTrace obj;
+    obj.createDeviceEvents(deviceId, trace);
   }
 
   void HALPlugin::flushDeviceInfo(void* handle)
@@ -227,8 +226,7 @@ namespace xdp {
 	      devInterface->parseTraceData(hostBuffer, devInterface->getWordCountTs2mm(), trace) ;
       }
       DeviceEventCreatorFromTrace obj;
-      obj.createDeviceEvents(deviceId, trace, db);
-//      (db->getDynamicInfo()).addDeviceEvents(deviceId, trace, db) ;
+      obj.createDeviceEvents(deviceId, trace);
     }
   }
 
