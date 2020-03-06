@@ -54,6 +54,13 @@ namespace xdphalinterface {
     DestroyProfileResultsCls(xclDeviceHandle handle, ProfileResults*, int& status);
     ~DestroyProfileResultsCls();
   };
+
+  struct APIInterfaceLibraryHandler
+  {
+    void* handle ;
+    APIInterfaceLibraryHandler() ;
+    ~APIInterfaceLibraryHandler() ;
+  } ;
   
   void load_xdp_hal_interface_plugin_library(HalPluginConfig* config);
 

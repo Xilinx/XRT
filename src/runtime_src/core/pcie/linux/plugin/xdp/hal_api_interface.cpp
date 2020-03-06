@@ -1,6 +1,7 @@
 #include "plugin/xdp/hal_api_interface.h"
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
+#include "core/common/dlfcn.h"
 
 namespace bfs = boost::filesystem;
 
@@ -11,6 +12,21 @@ namespace xdphalinterface {
   bool loaded = false;
   std::atomic<unsigned> global_idcode(0);
   std::mutex lock;
+
+  static APIInterfaceLibraryHandler handler ;
+
+  APIInterfaceLibraryHandler::APIInterfaceLibraryHandler()
+  {
+    handle = nullptr ;
+  }
+
+  APIInterfaceLibraryHandler::~APIInterfaceLibraryHandler()
+  {
+    if (handle != nullptr)
+    {
+      xrt_core::dlclose(handle) ;
+    }
+  }
 
   static bool cb_valid() {
     return loaded && cb;
@@ -127,14 +143,14 @@ namespace xdphalinterface {
       xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR, "XRT", std::string("Library " + p.string() + " not found!"));
       exit(EXIT_FAILURE);
     }
-    auto handle = dlopen(p.string().c_str(), RTLD_NOW | RTLD_GLOBAL);
-    if (!handle) {
+    handler.handle = xrt_core::dlopen(p.string().c_str(), RTLD_NOW | RTLD_GLOBAL);
+    if (!handler.handle) {
       xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR, "XRT", std::string("Failed to open XDP hal plugin library '" + p.string() + "'\n" + dlerror()));
       exit(EXIT_FAILURE);
     }
     const std::string cb_func_name = "hal_api_interface_cb_func" ;
     dlerror();
-    cb = cb_func_type(reinterpret_cast<cb_load_func_type>(dlsym(handle, cb_func_name.c_str())));
+    cb = cb_func_type(reinterpret_cast<cb_load_func_type>(dlsym(handler.handle, cb_func_name.c_str())));
     if(dlerror() != NULL) { // check if dlsym was successful
       cb = nullptr;
     }

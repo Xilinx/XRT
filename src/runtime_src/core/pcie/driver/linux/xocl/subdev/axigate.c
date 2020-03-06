@@ -84,9 +84,22 @@ failed:
 	return 0;
 }
 
+static int axigate_reset(struct platform_device *pdev)
+{
+	struct axi_gate *gate = platform_get_drvdata(pdev);
+
+	mutex_lock(&gate->gate_lock);
+	reg_wr(gate, 0x0, iag_wr);
+	reg_wr(gate, 0x1, iag_wr);
+	mutex_unlock(&gate->gate_lock);
+
+	return 0;
+}
+
 static struct xocl_axigate_funcs axigate_ops = {
 	.freeze = axigate_freeze,
 	.free = axigate_free,
+	.reset = axigate_reset,
 };
 
 static int axigate_remove(struct platform_device *pdev)
@@ -112,6 +125,7 @@ static int axigate_probe(struct platform_device *pdev)
 {
 	struct axi_gate *gate;
 	struct resource *res;
+	xdev_handle_t xdev;
 	int ret;
 
 	gate = devm_kzalloc(&pdev->dev, sizeof(*gate), GFP_KERNEL);
@@ -137,10 +151,8 @@ static int axigate_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
-	if (res->name && sscanf(res->name, "%*s %*d %*d %d", &gate->level))
-		xocl_info(&pdev->dev, "axi_gate level %d probe success",
-			gate->level);
-	else {
+	gate->level = xocl_subdev_get_level(pdev);
+	if (gate->level < 0) {
 		xocl_err(&pdev->dev, "did not find level");
 		ret = -EINVAL;
 		goto failed;
@@ -149,7 +161,10 @@ static int axigate_probe(struct platform_device *pdev)
 	mutex_init(&gate->gate_lock);
 
 	/* force closing gate */
-	axigate_free(pdev);
+	if (gate->level > XOCL_SUBDEV_LEVEL_BLD) {
+		xdev = xocl_get_xdev(pdev);
+		xocl_axigate_free(xdev, gate->level - 1);
+	}
 
 	return 0;
 

@@ -266,7 +266,7 @@ static int xocl_preserve_mem(struct xocl_dev *xdev, struct mem_topology *new_top
 
 	ret = XOCL_GET_MEM_TOPOLOGY(xdev, topology);
 	if (ret)
-		return ret;
+		return 0;
 
 	/*
 	 * Compare MEM_TOPOLOGY previous vs new.
