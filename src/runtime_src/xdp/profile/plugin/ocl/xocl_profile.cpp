@@ -467,9 +467,9 @@ DeviceIntf* get_device_interface(key k)
 
   auto itr = device_data.find(device);
   if (itr == device_data.end()) {
-    itr = device_data.emplace(k,data()).first;
+    itr = device_data.emplace(k,(new data())).first;
   }
-  return  &(itr->second.mDeviceIntf);
+  return  &(itr->second->mDeviceIntf);
 }
 
 unsigned int
@@ -877,9 +877,9 @@ get_data(key k)
 
   auto itr = device_data.find(k);
   if (itr==device_data.end()) {
-    itr = device_data.emplace(k,data()).first;
+    itr = device_data.emplace(k,(new data())).first;
   }
-  return &(*itr).second;
+  return itr->second;
 }
 
   }} // device/platform
