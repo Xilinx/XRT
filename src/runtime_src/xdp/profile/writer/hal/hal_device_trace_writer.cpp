@@ -76,7 +76,6 @@ namespace xdp {
     }
 
     std::map<int32_t, ComputeUnitInstance*> *cus = (db->getStaticInfo()).getCUs(deviceId);
-//    std::map<int32_t, Memory*>           *memory = (db->getStaticInfo()).getMemoryInfo(deviceId);
     if(cus) {
       for(auto itr : *cus) {
         ComputeUnitInstance* cu = itr.second;
@@ -112,20 +111,20 @@ namespace xdp {
           fout << "Group_End,Read" << std::endl;
         }
 
-        if(cu->hasStream()) {
+        if(cu->streamEnabled()) {
           // Read
           // KERNEL_STREAM_READ
           fout << "Group_Start,Stream Read,Read AXI Stream transaction between " << cuName << " and Global Memory" << std::endl;
           fout << "Group_Row_Start," << (rowCount + KERNEL_STREAM_READ - KERNEL) << ",stream port, ,Read AXI Stream transaction between port and memory" << std::endl;
- //         fout << "Static_Row," << (rowCount + KERNEL_STREAM_READ_STALL - KERNEL) << ",Link Stall" << std::endl;
-  //        fout << "Static_Row," << (rowCount + KERNEL_STREAM_READ_STARVE - KERNEL) << ",Link Starve" << std::endl;
+          fout << "Static_Row," << (rowCount + KERNEL_STREAM_READ_STALL - KERNEL) << ",Link Stall" << std::endl;
+          fout << "Static_Row," << (rowCount + KERNEL_STREAM_READ_STARVE - KERNEL) << ",Link Starve" << std::endl;
           fout << "Group_End,Row Read" << std::endl;
           fout << "Group_End,Stream Read" << std::endl;
           // KERNEL_STREAM_WRITE
           fout << "Group_Start,Stream Write,Write AXI Stream transaction between " << cuName << " and Global Memory" << std::endl;
           fout << "Group_Row_Start," << (rowCount + KERNEL_STREAM_WRITE_STALL - KERNEL) << ",stream port, ,Write AXI Stream transaction between port and memory" << std::endl;
-//          fout << "Static_Row," << (rowCount + KERNEL_STREAM_WRITE_STALL - KERNEL) << ",Link Stall" << std::endl;
- //         fout << "Static_Row," << (rowCount + KERNEL_STREAM_WRITE_STARVE - KERNEL) << ",Link Starve" << std::endl;
+          fout << "Static_Row," << (rowCount + KERNEL_STREAM_WRITE_STALL - KERNEL) << ",Link Stall" << std::endl;
+          fout << "Static_Row," << (rowCount + KERNEL_STREAM_WRITE_STARVE - KERNEL) << ",Link Starve" << std::endl;
           fout << "Group_End,Row Write" << std::endl;
           fout << "Group_End,Stream Write" << std::endl;
         }
@@ -158,7 +157,7 @@ namespace xdp {
 
 // ORRECT THIS
       KernelEvent* ke = dynamic_cast<KernelEvent*>(e);
-      if(!e)
+      if(!ke)
         continue;
       ke->dump(fout, cuBucketIdMap[ke->getCUId()] + ke->getEventType() - KERNEL);
     }
