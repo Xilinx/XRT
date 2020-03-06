@@ -73,6 +73,8 @@ namespace xdplop {
   {
     struct xdp_lop_once_loader
     {
+      void* handle = nullptr ;
+
       xdp_lop_once_loader()
       {
 	bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
@@ -87,12 +89,19 @@ namespace xdplop {
 	if (!isDLL(libpath)) 
 	  throw std::runtime_error("Library "+libpath.string()+" not found!");
 	
-	auto handle = 
+	handle = 
 	  xrt_core::dlopen(libpath.string().c_str(), RTLD_NOW | RTLD_GLOBAL);
 	if (!handle)
 	  throw std::runtime_error("Failed to open XDP library '" + libpath.string() + "'\n" + xrt_core::dlerror());
 	
 	register_lop_functions(handle) ;
+      }
+      ~xdp_lop_once_loader()
+      {
+	if (handle != nullptr)
+	{
+	  xrt_core::dlclose(handle) ;
+	}
       }
     };
 
