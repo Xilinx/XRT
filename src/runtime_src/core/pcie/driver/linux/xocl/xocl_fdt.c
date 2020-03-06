@@ -144,6 +144,22 @@ static void ert_cb_set_inst(void *dev_hdl, void *subdevs, int num)
 	subdev->info.override_idx = MB_ERT;
 }
 
+static void devinfo_cb_plp_gate(void *dev_hdl, void *subdevs, int num)
+{
+	struct xocl_subdev *subdev = subdevs;
+
+	subdev->info.level = XOCL_SUBDEV_LEVEL_BLD;
+	subdev->info.override_idx = subdev->info.level;
+}
+
+static void devinfo_cb_ulp_gate(void *dev_hdl, void *subdevs, int num)
+{
+	struct xocl_subdev *subdev = subdevs;
+
+	subdev->info.level = XOCL_SUBDEV_LEVEL_PRP;
+	subdev->info.override_idx = subdev->info.level;
+}
+
 static void devinfo_cb_xdma(void *dev_hdl, void *subdevs, int num)
 {
 	struct xocl_subdev *subdev = subdevs;
@@ -303,13 +319,25 @@ static struct xocl_subdev_map		subdev_map[] = {
 		XOCL_SUBDEV_AXIGATE,
 		XOCL_AXIGATE,
 		{
-			NODE_GATE_BLP,
+			NODE_GATE_PLP,
 			NULL,
 		},
 		1,
 		0,
 		NULL,
-		devinfo_cb_setlevel,
+		devinfo_cb_plp_gate,
+	},
+	{
+		XOCL_SUBDEV_AXIGATE,
+		XOCL_AXIGATE,
+		{
+			NODE_GATE_ULP,
+			NULL,
+		},
+		1,
+		0,
+		NULL,
+		devinfo_cb_ulp_gate,
 	},
 	{
 		XOCL_SUBDEV_IORES,
@@ -328,7 +356,6 @@ static struct xocl_subdev_map		subdev_map[] = {
 		XOCL_SUBDEV_IORES,
 		XOCL_IORES2,
 		{
-			RESNAME_GATEPRPRP,
 			RESNAME_MEMCALIB,
 			RESNAME_KDMA,
 			RESNAME_CMC_MUTEX,
@@ -821,6 +848,8 @@ int xocl_fdt_parse_blob(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
 		struct xocl_subdev **subdevs)
 {
 	int		dev_num; 
+
+	*subdevs = NULL;
 
 	if (!blob)
 		return -EINVAL;

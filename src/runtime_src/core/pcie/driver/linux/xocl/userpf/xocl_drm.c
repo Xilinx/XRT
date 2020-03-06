@@ -530,7 +530,7 @@ static int xocl_check_topology(struct xocl_drm *drm_p)
 
 	err = XOCL_GET_MEM_TOPOLOGY(drm_p->xdev, topology);
 	if (err)
-		return err;
+		return 0;
 
 	if (topology == NULL)
 		goto done;
