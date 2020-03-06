@@ -98,7 +98,7 @@ private:
     std::string binary_name;
     xclPerfMonType m_type = XCL_PERF_MON_MEMORY;
 
-    xclTraceResultsVector m_trace_vector;
+    xclTraceResultsVector m_trace_vector = {};
     std::function<void()> m_read_trace;
     size_t m_trbuf = 0;
     uint64_t m_trbuf_sz = 0;
