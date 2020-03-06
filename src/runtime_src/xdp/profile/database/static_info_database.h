@@ -83,7 +83,7 @@ namespace xdp {
     void setDataTransferEnabled(bool b) { dataTransfer = b; }
     bool dataTransferEnabled() { return dataTransfer; }
 
-    bool hasStream() { return false; }
+    bool streamEnabled() { return false; }
 
     XDP_EXPORT ComputeUnitInstance(int32_t i, const char* n);
     XDP_EXPORT ~ComputeUnitInstance() ;
@@ -116,7 +116,6 @@ namespace xdp {
     std::vector<Monitor*> aimList;
     std::vector<Monitor*> amList;
     std::vector<Monitor*> asmList;
-    std::map<uint64_t, Monitor*>   monitorInfo;
   };
 
   class VPStaticDatabase
@@ -148,12 +147,7 @@ namespace xdp {
     // Helper functions that fill in device information
     bool setXclbinUUID(DeviceInfo*, const void* binary);
     bool initializeComputeUnits(DeviceInfo*, const void* binary);
-    bool initializeProfileMonitorConnections(DeviceInfo*, const void* binary);
-#if 0
-    bool initializeMemory(DeviceInfo* devInfo, const void* binary) ;
-    bool initializeComputeUnits(DeviceInfo* devInfo, const void* binary) ;
-    bool initializeConnections(DeviceInfo* devInfo, const void* binary) ;
-#endif
+    bool initializeProfileMonitors(DeviceInfo*, const void* binary);
 
   public:
     VPStaticDatabase() ;
@@ -164,18 +158,39 @@ namespace xdp {
     inline std::set<uint64_t>& getCommandQueueAddresses() 
       { return commandQueueAddresses ; }
 
-    inline void setDeviceName(uint64_t deviceId, std::string name) { if(deviceInfo.find(deviceId) == deviceInfo.end()) return; deviceInfo[deviceId]->platformInfo.deviceName = name; }
-    inline std::string getDeviceName(uint64_t deviceId) { if(deviceInfo.find(deviceId) == deviceInfo.end()) return std::string(""); return deviceInfo[deviceId]->platformInfo.deviceName; }
-
-    inline void setKDMACount(uint64_t deviceId, uint64_t num) { if(deviceInfo.find(deviceId) == deviceInfo.end()) return; deviceInfo[deviceId]->platformInfo.kdmaCount = num; }
-    inline uint16_t getKDMACount(uint64_t deviceId) { if(deviceInfo.find(deviceId) == deviceInfo.end()) return 0; return deviceInfo[deviceId]->platformInfo.kdmaCount; }
-
-    inline std::string getXclbinUUID(uint64_t deviceId) { 
-        if(deviceInfo.find(deviceId) == deviceInfo.end()) return std::string(""); 
-        return deviceInfo[deviceId]->loadedXclbin; 
+    void setDeviceName(uint64_t deviceId, std::string name)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return; 
+      deviceInfo[deviceId]->platformInfo.deviceName = name;
+    }
+    std::string getDeviceName(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return std::string(""); 
+      return deviceInfo[deviceId]->platformInfo.deviceName; 
     }
 
-    inline ComputeUnitInstance* getCU(uint64_t deviceId, int32_t cuId)
+    void setKDMACount(uint64_t deviceId, uint64_t num)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return;
+      deviceInfo[deviceId]->platformInfo.kdmaCount = num;
+    }
+    uint16_t getKDMACount(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return 0;
+      return deviceInfo[deviceId]->platformInfo.kdmaCount; 
+    }
+
+    std::string getXclbinUUID(uint64_t deviceId) { 
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return std::string(""); 
+      return deviceInfo[deviceId]->loadedXclbin; 
+    }
+
+    ComputeUnitInstance* getCU(uint64_t deviceId, int32_t cuId)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
@@ -195,14 +210,6 @@ namespace xdp {
         return nullptr;
       return &(deviceInfo[deviceId]->memoryInfo);
     }
-#if 0
-    inline std::map<uint64_t, Monitor*>* getMonitorInfo(uint64_t deviceId)
-    {
-      if(deviceInfo.find(deviceId) == deviceInfo.end())
-        return nullptr;
-      return &(deviceInfo[deviceId]->monitorInfo);
-    }
-#endif
 
     inline Monitor* getAIMonitor(uint64_t deviceId, uint64_t idx)
     {
@@ -218,7 +225,6 @@ namespace xdp {
     }
 
     // Reseting device information whenever a new xclbin is added
-    //XDP_EXPORT void updateDevice(void* dev, const void* binary) ;
     XDP_EXPORT void updateDevice(uint64_t deviceId, const void* binary) ;
 
     // Functions that add information to the database
