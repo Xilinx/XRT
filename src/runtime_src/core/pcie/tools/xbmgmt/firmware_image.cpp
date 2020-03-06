@@ -373,12 +373,12 @@ std::vector<DSAInfo> firmwareImage::installedDSA;
 
 void firmwareImage::clearInstalledDSAs()
 {
-  installedDSA.clear();
+    installedDSA.clear();
 }
 
 void firmwareImage::addToInstalledDSAs(DSAInfo& dInfo)
 {
-  installedDSA.push_back(dInfo);
+    installedDSA.push_back(dInfo);
 }
 
 std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()

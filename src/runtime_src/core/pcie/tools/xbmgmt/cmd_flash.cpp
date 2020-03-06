@@ -666,7 +666,7 @@ static int update(int argc, char *argv[])
         return -EINVAL;
 
     if (!xclbin.empty()) {
-        std::ifstream in(xclbin);
+        std::ifstream in(xclbin, std::ios::binary);
         if (!in.is_open()) {
             std::cout << "Can't open " << xclbin <<std::endl;
             return -EINVAL;
