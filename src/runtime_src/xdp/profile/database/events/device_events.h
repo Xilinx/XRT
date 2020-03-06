@@ -60,7 +60,7 @@ namespace xdp {
     XDP_EXPORT KernelEvent(uint64_t s_id, double ts, VTFEventType ty, 
                    uint64_t devId, uint64_t cuIdx = 0);
     XDP_EXPORT ~KernelEvent() ;
-    virtual uint32_t getCUId() { return cuId;} 
+    virtual uint64_t getCUId() { return cuId;} 
   };
 
   class KernelDeviceEvent : public KernelEvent

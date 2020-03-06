@@ -40,7 +40,7 @@ namespace xdp {
     : index(i)
   {
     std::string fullName(n);
-    int pos = fullName.find(':');
+    size_t pos = fullName.find(':');
     kernelName = fullName.substr(0, pos);
     name = fullName.substr(pos+1);
     
@@ -125,6 +125,7 @@ namespace xdp {
   {
     const axlf* xbin = static_cast<const struct axlf*>(binary) ;
     (void)xbin;
+    (void)devInfo;
     #if 0
     long double id = *((long double*)xbin->m_header.uuid);
     std::cout << " the uid " << id << std::endl;

@@ -183,7 +183,7 @@ namespace xdp {
         return;
       deviceInfo[deviceId]->platformInfo.kdmaCount = num;
     }
-    uint16_t getKDMACount(uint64_t deviceId)
+    uint64_t getKDMACount(uint64_t deviceId)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return 0;
