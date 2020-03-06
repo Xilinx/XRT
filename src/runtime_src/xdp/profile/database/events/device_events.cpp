@@ -47,13 +47,13 @@ namespace xdp {
     fout.flags(flags) ;
   }
 
-  void VTFDeviceEvent::dump(std::ofstream& fout, int bucket)
+  void VTFDeviceEvent::dump(std::ofstream& fout, uint32_t bucket)
   { 
     VTFEvent::dump(fout, bucket) ;
     fout << std::endl;
   } 
 
-  KernelEvent::KernelEvent(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId, uint64_t cuIdx)
+  KernelEvent::KernelEvent(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId, int32_t cuIdx)
                    : VTFDeviceEvent(s_id, ts, ty, devId),
 					 cuId(cuIdx)
   {
@@ -63,7 +63,7 @@ namespace xdp {
   {
   }
 
-  KernelDeviceEvent::KernelDeviceEvent(uint64_t s_id, double ts, uint64_t devId, uint64_t cuIdx)
+  KernelDeviceEvent::KernelDeviceEvent(uint64_t s_id, double ts, uint64_t devId, int32_t cuIdx)
                    : KernelEvent(s_id, ts, KERNEL, devId, cuIdx)
   {
   }

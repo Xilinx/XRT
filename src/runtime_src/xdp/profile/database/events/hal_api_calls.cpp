@@ -29,7 +29,7 @@ namespace xdp {
   {
   }
 
-  void HALAPICall::dump(std::ofstream& fout, uint64_t bucket)
+  void HALAPICall::dump(std::ofstream& fout, uint32_t bucket)
   {
     VTFEvent::dump(fout, bucket) ;
     fout << "," << functionName << std::endl ;
@@ -44,7 +44,7 @@ namespace xdp {
   {
   }
 
-  void AllocBoCall::dump(std::ofstream& fout, uint64_t bucket)
+  void AllocBoCall::dump(std::ofstream& fout, uint32_t bucket)
   {
     HALAPICall::dump(fout, bucket) ;
   }

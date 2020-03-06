@@ -36,7 +36,7 @@ namespace xdp {
   {
   }
 
-  void VTFEvent::dump(std::ofstream& fout, uint64_t bucket)
+  void VTFEvent::dump(std::ofstream& fout, uint32_t bucket)
   {
     fout << id << "," << start_id << "," ;
     dumpTimestamp(fout) ;

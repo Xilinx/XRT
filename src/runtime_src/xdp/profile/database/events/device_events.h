@@ -41,7 +41,7 @@ namespace xdp {
     XDP_EXPORT VTFDeviceEvent(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId);
     XDP_EXPORT ~VTFDeviceEvent() ;
 
-    XDP_EXPORT virtual void dump(std::ofstream& fout, int bucket);
+    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket);
 
     virtual bool isDeviceEvent() { return true ; }
     virtual uint64_t getDevice() { return deviceId ; }
@@ -53,14 +53,14 @@ namespace xdp {
   class KernelEvent : public VTFDeviceEvent
   {
   protected:
-    uint64_t cuId;
+    int32_t cuId;
 
     KernelEvent() = delete ;
   public:
     XDP_EXPORT KernelEvent(uint64_t s_id, double ts, VTFEventType ty, 
-                   uint64_t devId, uint64_t cuIdx = 0);
+                   uint64_t devId, int32_t cuIdx = 0);
     XDP_EXPORT ~KernelEvent() ;
-    virtual uint64_t getCUId() { return cuId;} 
+    virtual int32_t getCUId() { return cuId;} 
   };
 
   class KernelDeviceEvent : public KernelEvent
@@ -68,7 +68,7 @@ namespace xdp {
   private:
     KernelDeviceEvent() = delete ;
   public:
-    XDP_EXPORT KernelDeviceEvent(uint64_t s_id, double ts, uint64_t devId, uint64_t cuIdx);
+    XDP_EXPORT KernelDeviceEvent(uint64_t s_id, double ts, uint64_t devId, int32_t cuIdx);
     XDP_EXPORT ~KernelDeviceEvent() ;
   } ;
 
