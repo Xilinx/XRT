@@ -48,6 +48,8 @@ namespace xclcpuemhal2 {
     sock = NULL;
     ci_msg.set_size(0);
     ci_msg.set_xcl_api(0);
+    mCore = nullptr;
+    mSWSch = nullptr;
 
     ci_buf = malloc(ci_msg.ByteSize());
     ri_msg.set_size(0);
@@ -80,8 +82,6 @@ namespace xclcpuemhal2 {
     mCloseAll = false;
     bUnified = _unified;
     bXPR = _xpr;
-    mCore = nullptr;
-    mSWSch = nullptr;
     mIsKdsSwEmu = (xclemulation::is_sw_emulation()) ? xrt_core::config::get_flag_kds_sw_emu() : false;
   }
  

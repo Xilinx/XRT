@@ -506,11 +506,7 @@ get_kernel_inst_addrs(const axlf* top)
   pt::ptree xml_project;
   std::stringstream xml_stream;
   xml_stream.write(xml_data, xml_size);
-  try {
-    pt::read_xml(xml_stream, xml_project);
-  } catch(...) {
-    return addrVec;
-  }
+  pt::read_xml(xml_stream, xml_project);
 
   auto xml_platform = xml_project.get_child_optional("project.platform");
 

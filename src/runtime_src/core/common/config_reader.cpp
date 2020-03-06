@@ -171,18 +171,10 @@ get_env_value(const char* env)
 bool
 get_bool_value(const char* key, bool default_value)
 {
-  bool val = default_value;
-
   if (auto env = get_env_value(key))
     return is_true(env);
 
-  try {
-    val = s_tree.m_tree.get<bool>(key,default_value);
-  }catch( std::exception const&) {
-    // eat the exception, probably bad path
-  }
-
-  return val;
+  return s_tree.m_tree.get<bool>(key,default_value);
 }
 
 std::string
