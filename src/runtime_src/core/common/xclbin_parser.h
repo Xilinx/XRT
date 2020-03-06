@@ -51,7 +51,9 @@ struct kernel_argument
 struct softkernel_object
 {
   uint32_t ninst;
-  char *symbol_name;
+  std::string mpo_name;
+  std::string mpo_version;
+  std::string symbol_name;
   size_t size;
   char *sk_buf;
 };
@@ -198,6 +200,15 @@ get_kernel_freq(const axlf* top);
 XRT_CORE_COMMON_EXPORT
 std::vector<kernel_argument>
 get_kernel_arguments(const axlf* top, const std::string& kname);
+
+/**
+* get_kernel_inst_addrs() - Get sorted list of CU base addresses in xclbin.
+*
+* @top : top of xclbin
+* Return: List of kernel instance base addresses.
+*/
+std::vector<uint64_t>
+get_kernel_inst_addrs(const axlf* top);
 
 } // xclbin
 } // xrt_core

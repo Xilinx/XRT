@@ -72,12 +72,15 @@ public:
     virtual uint32_t getProperties() { return properties; }
     void parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector& traceVector);
 
+    void setTraceFormat(uint32_t tf) { mTraceFormat = tf; }
+
 private:
     uint8_t properties;
     uint8_t major_version;
     uint8_t minor_version;
     uint64_t mPacketFirstTs = 0;
     bool mclockTrainingdone = false;
+    uint32_t mTraceFormat = 0;
 
     void write32(uint64_t offset, uint32_t val);
     void parsePacketClockTrain(uint64_t packet, uint64_t firstTimestamp, uint32_t mod, xclTraceResults &result);

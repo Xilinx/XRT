@@ -30,7 +30,7 @@ SET(Boost_VER_STR "${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}")
 SET(Boost_VER_STR_ONEGREATER "${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION_ONEGREATER}")
 
 SET(PACKAGE_KIND "TGZ")
-if (${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian|pynqlinux)")
+if (${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian)")
   execute_process(
     COMMAND dpkg --print-architecture
     OUTPUT_VARIABLE CPACK_ARCH

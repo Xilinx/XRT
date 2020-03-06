@@ -40,7 +40,7 @@ TraceFunnel::TraceFunnel(Device* handle /** < [in] the xrt or hal device handle 
 size_t TraceFunnel::initiateClockTraining()
 {
     size_t size = 0;
-    uint32_t regValue = 0;    
+    uint32_t regValue = 0;
 
     for(int i = 0; i < 2 ; i++) {
       uint64_t hostTimeStamp = getDevice()->getTraceTime();
@@ -68,6 +68,24 @@ void TraceFunnel::showProperties()
     std::ostream* outputStream = (out_stream /*  && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/) ? out_stream : (&(std::cout));
     (*outputStream) << " TraceFunnel " << std::endl;
     ProfileIP::showProperties();
+}
+
+/*
+ * Returns  1 if Version2 > Current Version1
+ * Returns  0 if Version2 = Current Version1
+ * Returns -1 if Version2 < Current Version1
+ */
+signed int TraceFunnel::compareVersion(unsigned major2, unsigned minor2) const
+{
+    if (major2 > major_version)
+      return 1;
+    else if (major2 < major_version)
+      return -1;
+    else if (minor2 > minor_version)
+      return 1;
+    else if (minor2 < minor_version)
+      return -1;
+    else return 0;
 }
 
 }   // namespace xdp

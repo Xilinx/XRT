@@ -29,6 +29,7 @@
 #include <boost/property_tree/json_parser.hpp>
 
 #include "xrt.h"
+#include "ert.h"
 #include "xclperf.h"
 #include "xcl_axi_checker_codes.h"
 #include "core/pcie/common/dmatest.h"
@@ -165,6 +166,39 @@ static const std::map<MEM_TYPE, std::string> memtype_map = {
     {MEM_URAM, "MEM_URAM"},
     {MEM_STREAMING_CONNECTION, "MEM_STREAMING_CONNECTION"}
 };
+
+static const std::map<int, std::string> oemid_map = {
+    {0x10da, "Xilinx"},
+    {0x02a2, "Dell"},
+    {0x12a1, "IBM"},
+    {0xb85c, "HP"},
+    {0x2a7c, "Super Micro"},
+    {0x4a66, "Lenovo"},
+    {0xbd80, "Inspur"},
+    {0x12eb, "Amazon"},
+    {0x2b79, "Google"}
+};
+
+static const std::string getOEMID(std::string oemid)
+{
+    unsigned int oemIDValue = 0;
+    std::stringstream ss;
+
+    try {
+        ss << std::hex << oemid;
+        ss >> oemIDValue;
+    } catch (const std::exception&) {
+        //failed to parse oemid to hex value, ignore erros and print origin value
+    }
+
+    ss.str(std::string());
+    ss.clear();
+    auto oemstr = oemid_map.find(oemIDValue);
+
+    ss << oemid << "(" << (oemstr != oemid_map.end() ? oemstr->second : "N/A") << ")";
+
+    return ss.str();
+}
 
 static const std::map<std::string, command> commandTable(map_pairs, map_pairs + sizeof(map_pairs) / sizeof(map_pairs[0]));
 
@@ -740,7 +774,7 @@ public:
         sensor_tree::put( "board.info.subdevice",      subsystem );
         sensor_tree::put( "board.info.subvendor",      subvendor );
         sensor_tree::put( "board.info.xmcversion",     xmc_ver );
-        sensor_tree::put( "board.info.xmc_oem_id",     xmc_oem_id );
+        sensor_tree::put( "board.info.xmc_oem_id",     getOEMID(xmc_oem_id));
         sensor_tree::put( "board.info.serial_number",  ser_num );
         sensor_tree::put( "board.info.max_power",      lvl2PowerStr(max_power.empty() ? UINT_MAX : stoi(max_power)) );
         sensor_tree::put( "board.info.sc_version",     bmc_ver );
@@ -912,9 +946,7 @@ public:
         sensor_tree::put("debug_profile.device_info.error", err);
         sensor_tree::put("debug_profile.device_info.device_index", info.device_index);
         sensor_tree::put("debug_profile.device_info.user_instance", info.user_instance);
-        sensor_tree::put("debug_profile.device_info.nifd_instance", info.nifd_instance);
         sensor_tree::put("debug_profile.device_info.device_name", std::string(info.device_name));
-        sensor_tree::put("debug_profile.device_info.nifd_name", std::string(info.nifd_name));
         /** End of debug and profile device information */
 
         return 0;
@@ -1097,9 +1129,9 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.mgt_vtt.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.1v2_btm.voltage" ) << std::endl;
         ostr << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << std::setw(16) << "VCCINT BRAM VOL" << std::setw(16) << "VCC3V3 VOL"  << std::endl;
-        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.voltage" )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.current" )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint_bram.voltage" )
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccint.voltage" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccint.current" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccint_bram.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vcc3v3.voltage"  ) << std::endl;
         ostr << std::setw(16) << "3V3 PEX CURR" << std::setw(16) << "VCC0V85 CURR" << std::setw(16) << "HBM1V2 VOL" << std::setw(16) << "VPP2V5 VOL"  << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.3v3_pex.current" )
@@ -1721,13 +1753,14 @@ public:
         return xclGetDeviceInfo2(m_handle, &devinfo);
     }
 
-    int validate(bool quick);
+    int validate(bool quick, bool hidden);
 
     int reset(xclResetKind kind);
     int setP2p(bool enable, bool force);
     int setCma(bool enable, uint64_t sz);
     int testP2p(void);
     int testM2m(void);
+    int iopsTest(void);
 
 private:
     // Run a test case as <exe> <xclbin> [-d index] on this device and collect

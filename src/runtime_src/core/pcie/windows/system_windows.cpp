@@ -81,13 +81,8 @@ system_child_ctor()
 }
 void
 system_windows::
-get_xrt_info(boost::property_tree::ptree &pt)
+get_xrt_info(boost::property_tree::ptree& /*pt*/)
 {
-  pt.put("version",   xrt_build_version);
-  pt.put("hash",      xrt_build_version_hash);
-  pt.put("date",      xrt_build_version_date);
-  pt.put("branch",    xrt_build_version_branch);
-
   //TODO
   // _pt.put("xocl",      driver_version("xocl"));
   // _pt.put("xclmgmt",   driver_version("xclmgmt"));

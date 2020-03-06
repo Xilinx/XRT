@@ -56,7 +56,7 @@ int xocl_subdev_init(xdev_handle_t xdev_hdl, struct pci_dev *pdev,
 		struct xocl_pci_funcs *pci_ops)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
-	int i, ret = 0;
+	int i, ret = 0, j;
 
 	mutex_init(&core->lock);
 	core->pci_ops = pci_ops;
@@ -72,6 +72,8 @@ int xocl_subdev_init(xdev_handle_t xdev_hdl, struct pci_dev *pdev,
 			ret = -ENOMEM;
 			goto failed;
 		}
+		for (j = 0; j < XOCL_SUBDEV_MAX_INST; ++j)
+			core->subdevs[i][j].info.dev_idx = j;
 	}
 
 	return 0;
@@ -89,7 +91,7 @@ static struct xocl_subdev *xocl_subdev_reserve(xdev_handle_t xdev_hdl,
 	int max = sdev_info->multi_inst ? XOCL_SUBDEV_MAX_INST : 1;
 	int i;
 
-	if (sdev_info->override_idx) {
+	if (sdev_info->override_idx != -1) {
 		subdev = &core->subdevs[devid][sdev_info->override_idx];
 		if (subdev->state != XOCL_SUBDEV_STATE_UNINIT) {
 			xocl_xdev_info(xdev_hdl, "subdev %d index %d is in-use",
@@ -258,12 +260,12 @@ static int xocl_subdev_cdev_create(struct platform_device *pdev,
 	if (XOCL_GET_DRV_PRI(pdev)->cdev_name)
 		sysdev = device_create(xrt_class, &pdev->dev, cdevp->dev,
 			NULL, "%s%d.%d", XOCL_GET_DRV_PRI(pdev)->cdev_name,
-			XOCL_DEV_ID(core->pdev), subdev->inst & MINORMASK);
+			XOCL_DEV_ID(core->pdev), subdev->info.dev_idx);
 	else
 		sysdev = device_create(xrt_class, &pdev->dev, cdevp->dev,
 			NULL, "%s/%s%d.%d", XOCL_CDEV_DIR,
 			platform_get_device_id(pdev)->name,
-			XOCL_DEV_ID(core->pdev), subdev->inst & MINORMASK);
+			XOCL_DEV_ID(core->pdev), subdev->info.dev_idx);
 
 	if (IS_ERR(sysdev)) {
 		ret = PTR_ERR(sysdev);
@@ -307,7 +309,6 @@ static void __xocl_subdev_destroy(xdev_handle_t xdev_hdl,
 		cdev_del(subdev->cdev);
 		subdev->cdev = NULL;
 	}
-	ida_simple_remove(&subdev_inst_ida, subdev->inst);
 
 	if (pldev) {
 		switch (state) {
@@ -320,6 +321,7 @@ static void __xocl_subdev_destroy(xdev_handle_t xdev_hdl,
 			platform_device_put(pldev);
 		}
 	}
+	ida_simple_remove(&subdev_inst_ida, subdev->inst);
 }
 
 static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
@@ -884,6 +886,31 @@ int xocl_subdev_online_by_id(xdev_handle_t xdev_hdl, uint32_t subdev_id)
 		if (ret && ret != -EAGAIN)
 			break;
 	}
+	xocl_unlock_xdev(xdev_hdl);
+
+	return (ret && ret != -EAGAIN) ? ret : 0;
+}
+
+int xocl_subdev_online_by_id_and_inst(xdev_handle_t xdev_hdl, uint32_t subdev_id, uint32_t inst_id)
+{
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
+	int ret = 0;
+
+	if (subdev_id == INVALID_SUBDEVICE)
+		return -EINVAL;
+	if (inst_id >= XOCL_SUBDEV_MAX_INST)
+		return -EINVAL;
+
+	xocl_lock_xdev(xdev_hdl);
+
+	if (!core->subdevs[subdev_id][inst_id].pldev)
+		goto done;
+	ret = __xocl_subdev_online(xdev_hdl,
+			&core->subdevs[subdev_id][inst_id]);
+	if (ret && ret != -EAGAIN)
+		goto done;
+
+done:
 	xocl_unlock_xdev(xdev_hdl);
 
 	return (ret && ret != -EAGAIN) ? ret : 0;

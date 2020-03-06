@@ -152,6 +152,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/subdev/trace_funnel.c
   xocl/subdev/trace_s2mm.c
   xocl/subdev/memory_hbm.c
+  xocl/subdev/ddr_srsr.c
   xocl/Makefile
   )
 

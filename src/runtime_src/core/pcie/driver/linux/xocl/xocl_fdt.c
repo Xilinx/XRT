@@ -332,6 +332,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 			RESNAME_MEMCALIB,
 			RESNAME_KDMA,
 			RESNAME_CMC_MUTEX,
+			RESNAME_DDR4_RESET_GATE,
 			NULL
 		},
 		1,
@@ -541,8 +542,12 @@ static int xocl_fdt_parse_ip(xdev_handle_t xdev_hdl, char *blob,
 			"IP %s, PF index not found", ip->name);
 		return -EINVAL;
 	}
+
+#if PF == MGMTPF
+	/* mgmtpf driver checks pfnum. it will not create userpf subdevices */
 	if (ntohl(*pfnum) != XOCL_PCI_FUNC(xdev_hdl))
 		return 0;
+#endif
 
 	bar_idx = fdt_getprop(blob, off, PROP_BAR_IDX, NULL);
 
@@ -722,9 +727,11 @@ static int xocl_fdt_get_devinfo(xdev_handle_t xdev_hdl, char *blob,
 
 	subdev->pf = XOCL_PCI_FUNC(xdev_hdl);
 
+#if PF == MGMTPF
 	if ((map_p->flags & XOCL_SUBDEV_MAP_USERPF_ONLY) &&
 			subdev->pf != xocl_fdt_get_userpf(xdev_hdl, blob))
 		goto failed;
+#endif
 
 	num = 1;
 	if (!rtn_subdevs)
@@ -735,6 +742,7 @@ static int xocl_fdt_get_devinfo(xdev_handle_t xdev_hdl, char *blob,
 	//subdev->pf = XOCL_PCI_FUNC(xdev_hdl);
 	subdev->info.res = subdev->res;
 	subdev->info.bar_idx = subdev->bar_idx;
+	subdev->info.override_idx = -1;
 	for (i = 0; i < subdev->info.num_res; i++)
 		subdev->info.res[i].name = subdev->res_name[i];
 

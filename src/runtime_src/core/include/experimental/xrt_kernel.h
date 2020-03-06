@@ -141,6 +141,19 @@ int
 xrtRunStart(xrtRunHandle runHandle);
 
 /**
+ * xrtRunWait() - Wait for a run to complete
+ *
+ * @runHandle:  Handle to the run object to start
+ * Return:      Run command state for completed run, or
+ *              ERT_CMD_STATE_ABORT on error
+ *
+ * Blocks current thread until job has completed
+ */
+XCL_DRIVER_DLLESPEC
+ert_cmd_state
+xrtRunWait(xrtRunHandle runHandle);
+
+/**
  * xrtRunState() - Check the current state of a run
  *
  * @runHandle:  Handle to check
@@ -149,6 +162,24 @@ xrtRunStart(xrtRunHandle runHandle);
 XCL_DRIVER_DLLESPEC
 ert_cmd_state
 xrtRunState(xrtRunHandle runHandle);
+
+/**
+ * xrtRunSetCallback() - Set a callback function
+ *
+ * @runHandle:   Handle to set callback on
+ * @state:       State to invoke callback on
+ * @callback:    Callback function 
+ * @userdata:    User data to pass to callback function
+ *
+ * Register a run callback function that is invoked when the
+ * run changes underlying execution state to specified state.
+ * Support states are: ERT_CMD_STATE_COMPLETED (to be extended)
+ */
+XCL_DRIVER_DLLESPEC
+int
+xrtRunSetCallback(xrtRunHandle runHandle, ert_cmd_state state,
+                  void (* pfn_state_notify)(xrtRunHandle, ert_cmd_state, void*),
+                  void* data);
 
 /**
  * xrtRunClose() - Close a run handle

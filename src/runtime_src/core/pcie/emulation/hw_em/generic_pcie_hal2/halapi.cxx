@@ -481,3 +481,9 @@ int xclDestroyProfileResults(xclDeviceHandle handle, ProfileResults* results)
 {
   return 0;
 }
+
+void
+xclGetDebugIpLayout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret)
+{
+  return;
+}

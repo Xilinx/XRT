@@ -14,11 +14,11 @@
  * under the License.
  */
 #include "hal2.h"
-#include "xrt/util/thread.h"
 #include "ert.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
 #include "core/common/query_requests.h"
+#include "core/common/thread.h"
 
 #include <boost/format.hpp>
 #include <cstring> // for std::memcpy
@@ -98,11 +98,11 @@ setup()
   XRT_DEBUG(std::cout,"Creating ",2*threads," DMA worker threads\n");
   for (unsigned int i=0; i<threads; ++i) {
     // read and write queue workers
-    m_workers.emplace_back(xrt::thread(task::worker2,std::ref(m_queue[static_cast<qtype>(hal::queue_type::read)]),"read"));
-    m_workers.emplace_back(xrt::thread(task::worker2,std::ref(m_queue[static_cast<qtype>(hal::queue_type::write)]),"write"));
+    m_workers.emplace_back(xrt_core::thread(task::worker2,std::ref(m_queue[static_cast<qtype>(hal::queue_type::read)]),"read"));
+    m_workers.emplace_back(xrt_core::thread(task::worker2,std::ref(m_queue[static_cast<qtype>(hal::queue_type::write)]),"write"));
   }
   // single misc queue worker
-  m_workers.emplace_back(xrt::thread(task::worker2,std::ref(m_queue[static_cast<qtype>(hal::queue_type::misc)]),"misc"));
+  m_workers.emplace_back(xrt_core::thread(task::worker2,std::ref(m_queue[static_cast<qtype>(hal::queue_type::misc)]),"misc"));
 #endif
 }
 
