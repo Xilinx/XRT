@@ -30,8 +30,6 @@ namespace {
 static xrt_core::hwemu::system*
 singleton_instance()
 {
-  if (xrt_core::config::get_profile())
-    return nullptr; // waiting for fix to CR1056184
   static xrt_core::hwemu::system singleton;
   return &singleton;
 }
