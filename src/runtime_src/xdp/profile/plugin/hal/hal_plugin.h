@@ -20,6 +20,7 @@
 #include <vector>
 #include <set>
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
+#include "xdp/profile/database/events/creator/device_event_from_trace.h"
 
 namespace xdp {
 
@@ -30,6 +31,7 @@ namespace xdp {
   {
   private:
     std::map<uint64_t, DeviceIntf*> devices ;
+    std::map<uint64_t, DeviceEventCreatorFromTrace*> deviceEventFromTrace;
     std::set<void*> encounteredHandles ;
 
     void flushDevices() ;

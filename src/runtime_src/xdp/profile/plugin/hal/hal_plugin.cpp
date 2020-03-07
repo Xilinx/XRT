@@ -25,7 +25,6 @@
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/database/database.h"
-#include "xdp/profile/database/events/creator/device_event_from_trace.h"
 
 #include "core/common/xrt_profiling.h"
 
@@ -120,6 +119,12 @@ namespace xdp {
     devInterface->setDevice(new HalDevice(handle));
     devices[deviceId] = devInterface;
 
+    if(deviceEventFromTrace.find(deviceId) != deviceEventFromTrace.end()) {
+      delete deviceEventFromTrace[deviceId];
+      deviceEventFromTrace[deviceId] = nullptr;
+    }
+    deviceEventFromTrace[deviceId] = new DeviceEventCreatorFromTrace(deviceId);
+
     devInterface->readDebugIPlayout();
     devInterface->startCounters();
 
@@ -181,8 +186,7 @@ namespace xdp {
       devInterface->parseTraceData(hostBuffer, devInterface->getWordCountTs2mm(), trace) ;
       */
     }
-    DeviceEventCreatorFromTrace obj;
-    obj.createDeviceEvents(deviceId, trace);
+    deviceEventFromTrace[deviceId]->createDeviceEvents(trace);
   }
 
   void HALPlugin::flushDeviceInfo(void* handle)
@@ -233,8 +237,8 @@ namespace xdp {
 	      void* hostBuffer = nullptr ; // Need to sync the data
 	      devInterface->parseTraceData(hostBuffer, devInterface->getWordCountTs2mm(), trace) ;
       }
-      DeviceEventCreatorFromTrace obj;
-      obj.createDeviceEvents(deviceId, trace);
+      deviceEventFromTrace[deviceId]->createDeviceEvents(trace);
+      deviceEventFromTrace[deviceId]->end();
     }
   }
 

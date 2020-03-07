@@ -148,8 +148,10 @@ namespace xdp {
      *    b. Map of Compute Units
      *    c. Map of connected Memory
      */
+public:
     std::map<uint64_t, DeviceInfo*> deviceInfo;
 
+private:
     // Static info can be accessed via any host thread
     std::mutex dbLock ;
 
@@ -170,6 +172,14 @@ namespace xdp {
       { return openedFiles ; }
     inline std::set<uint64_t>& getCommandQueueAddresses() 
       { return commandQueueAddresses ; }
+
+    inline DeviceInfo* getDeviceInfo(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return nullptr;
+      return deviceInfo[deviceId];
+    }
+
 
     double getClockRateMHz(uint64_t deviceId)
     {
@@ -229,6 +239,27 @@ namespace xdp {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       return &(deviceInfo[deviceId]->memoryInfo);
+    }
+
+    inline uint64_t getNumAIM(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return 0;
+      return deviceInfo[deviceId]->aimList.size();
+    }
+
+    inline uint64_t getNumAM(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return 0;
+      return deviceInfo[deviceId]->amList.size();
+    }
+
+    inline uint64_t getNumASM(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return 0;
+      return deviceInfo[deviceId]->asmList.size();
     }
 
     inline Monitor* getAIMonitor(uint64_t deviceId, uint64_t idx)

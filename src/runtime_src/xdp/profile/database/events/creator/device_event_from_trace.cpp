@@ -20,7 +20,25 @@
 
 namespace xdp {
 
-  void DeviceEventCreatorFromTrace::createDeviceEvents(uint64_t deviceId, xclTraceResultsVector& traceVector)
+  DeviceEventCreatorFromTrace::DeviceEventCreatorFromTrace(uint64_t devId)
+    : deviceId(devId),
+      db(VPDatabase::Instance()),
+      clockTrainOffset(0),
+      traceClockRateMHz(0),
+      clockTrainSlope(0) 
+  {
+    traceClockRateMHz = db->getStaticInfo().getClockRateMHz(deviceId);
+    clockTrainSlope = 1000.0/traceClockRateMHz;
+
+    traceIDs.resize(db->getStaticInfo().getNumAM(deviceId));
+    cuStarts.resize(db->getStaticInfo().getNumAM(deviceId));
+    amLastTrans.resize(db->getStaticInfo().getNumAM(deviceId));
+
+    aimLastTrans.resize(db->getStaticInfo().getNumAIM(deviceId));
+    asmLastTrans.resize(db->getStaticInfo().getNumASM(deviceId));
+  }
+
+  void DeviceEventCreatorFromTrace::createDeviceEvents(xclTraceResultsVector& traceVector)
   {
     // Create Device Events and log them : do what is done in TraceParser::logTrace
     if(traceVector.mLength == 0)
@@ -29,9 +47,6 @@ namespace xdp {
     if(!db->alive()) {
       return;
     }
-    traceClockRateMHz = db->getStaticInfo().getClockRateMHz(deviceId);
-    clockTrainSlope = 1000.0/traceClockRateMHz;
-
     uint64_t timestamp = 0;
     for(unsigned int i=0; i < traceVector.mLength; i++) {
       auto& trace = traceVector.mArray[i];
@@ -70,6 +85,10 @@ namespace xdp {
             if(!e) {
               continue;
             }
+            if(cuStarts[s].empty()) {
+              continue;
+            }
+            cuStarts[s].pop_front();
             event = new KernelDeviceEvent(e->getEventId(), hostTimestamp, deviceId, cuId);
             event->setDeviceTimestamp(static_cast<double>(timestamp));
             db->getDynamicInfo().addEvent(event);
@@ -79,12 +98,13 @@ namespace xdp {
             event->setDeviceTimestamp(static_cast<double>(timestamp));
             db->getDynamicInfo().addEvent(event);
             db->getDynamicInfo().markDeviceEventStart(trace.TraceID, event);
+            cuStarts[s].push_back(event);
           }
         }
  
         if(stallIntEvent) {
           KernelStall* event = nullptr;
-          if(traceIDMap[s] & XAM_TRACE_STALL_INT_MASK) {
+          if(traceIDs[s] & XAM_TRACE_STALL_INT_MASK) {
             // end event
             event = new KernelStall(db->getDynamicInfo().matchingDeviceEventStart(trace.TraceID)->getEventId(),
                              hostTimestamp, KERNEL_STALL_DATAFLOW, deviceId);
@@ -101,7 +121,7 @@ namespace xdp {
 
         if(stallStrEvent) {
           KernelStall* event = nullptr;
-          if(traceIDMap[s] & XAM_TRACE_STALL_STR_MASK) {
+          if(traceIDs[s] & XAM_TRACE_STALL_STR_MASK) {
             // end event
             event = new KernelStall(db->getDynamicInfo().matchingDeviceEventStart(trace.TraceID)->getEventId(),
                              hostTimestamp, KERNEL_STALL_PIPE, deviceId);
@@ -117,7 +137,7 @@ namespace xdp {
         } 
         if(stallExtEvent) {
           KernelStall* event = nullptr;
-          if(traceIDMap[s] & XAM_TRACE_STALL_EXT_MASK) {
+          if(traceIDs[s] & XAM_TRACE_STALL_EXT_MASK) {
             // end event
             event = new KernelStall(db->getDynamicInfo().matchingDeviceEventStart(trace.TraceID)->getEventId(),
                              hostTimestamp, KERNEL_STALL_EXT_MEM, deviceId);
@@ -131,7 +151,8 @@ namespace xdp {
             db->getDynamicInfo().markDeviceEventStart(trace.TraceID, event);
           }
         }
-        traceIDMap[s] ^= (trace.TraceID & 0xf);
+        traceIDs[s] ^= (trace.TraceID & 0xf);
+        amLastTrans[s] = timestamp;
       } // SAMPacket
       else if(SPMPacket) {
         KernelMemoryAccess* memEvent = nullptr;
@@ -161,6 +182,7 @@ namespace xdp {
             memEvent = new KernelMemoryAccess(matchingStart->getEventId(), hostTimestamp, KERNEL_READ, deviceId);
             memEvent->setDeviceTimestamp(static_cast<double>(timestamp)); 
             db->getDynamicInfo().addEvent(memEvent);
+            aimLastTrans[s] = timestamp;
 //            memEvent->setBurstLength(timestamp - ((KernelMemoryAccess*)matchingStart)->getDeviceTimestamp() + 1);
           }
         } else if(trace.TraceID & 1) {
@@ -189,6 +211,7 @@ namespace xdp {
             memEvent = new KernelMemoryAccess(matchingStart->getEventId(), hostTimestamp, KERNEL_WRITE, deviceId);
             memEvent->setDeviceTimestamp(static_cast<double>(timestamp)); 
             db->getDynamicInfo().addEvent(memEvent);
+            aimLastTrans[s] = timestamp;
 //            memEvent->setBurstLength(timestamp - ((KernelMemoryAccess*)matchingStart)->getDeviceTimestamp() + 1);
           }
         }
@@ -202,7 +225,75 @@ namespace xdp {
       else {}
     }
 
-// LAST TRANSACTION ??
+  }
+
+  void DeviceEventCreatorFromTrace::end()
+  {
+    for(uint64_t amIndex = 0; amIndex < cuStarts.size(); ++amIndex) {
+      if(cuStarts[amIndex].empty()) {
+        continue;
+      }
+      // slot : amIndex
+      // start event, end event
+      // start end must have created already
+      // check if the memory ports on current cu has any event
+
+      VTFDeviceEvent* cuStartEvent = cuStarts[amIndex].front();
+      uint64_t cuLastTimestamp  = amLastTrans[amIndex];
+
+      // get CU Id for the current slot
+      Monitor* am = db->getStaticInfo().deviceInfo[deviceId]->amList[amIndex];
+      int32_t  cuId = am->cuIndex;
+
+      // Check if any memory port on current CU had a trace packet
+      for(uint64_t aimIndex = 0; aimIndex < aimLastTrans.size(); ++aimIndex) {
+        /* To reduce overhead, first check the timestamp.
+         * If last activity timestamp on CU is earlier than current AIM, then only check
+         * whether the current AIM is attached to the same CU.
+         */
+        if(cuLastTimestamp >= aimLastTrans[aimIndex]) {
+          continue;
+        }
+        Monitor* aim = db->getStaticInfo().deviceInfo[deviceId]->aimList[aimIndex];
+        if(cuId != aim->cuIndex) {
+          // current AIM attached to a different CU, so continue
+          continue;
+        }
+        // Update lastTimestamp as last activity on the AIM for the current CU is later
+        // than what was recorded for the CU(AM) itself.
+        cuLastTimestamp = aimLastTrans[aimIndex];
+      }
+      // Check if any streaming port on current CU had a trace packet
+      for(uint64_t asmIndex = 0; asmIndex < asmLastTrans.size(); ++asmIndex) {
+        /* To reduce overhead, first check the timestamp.
+         * If last activity timestamp on CU is earlier than current ASM, then only check
+         * whether the current ASM is attached to the same CU.
+         */
+        if(cuLastTimestamp >= asmLastTrans[asmIndex]) {
+          continue;
+        }
+        Monitor* asM = db->getStaticInfo().deviceInfo[deviceId]->asmList[asmIndex];
+        if(cuId != asM->cuIndex) {
+          // current ASM attached to a different CU, so continue
+          continue;
+        }
+        // Update lastTimestamp as last activity on the ASM for the current CU is later
+        // than what was recorded for the CU(AM) itself.
+        cuLastTimestamp = asmLastTrans[asmIndex];
+      }
+      if(0 == cuLastTimestamp) {
+        continue; // nothing to do? what about unmatched start?
+      }
+      // Warning : "Incomplete CU profile trace detected. Timeline trace will have approximate CU End."
+
+      // end event
+      cuStarts[amIndex].pop_front();
+      
+      double hostTimestamp = convertDeviceToHostTimestamp(cuLastTimestamp);
+      KernelDeviceEvent* event = new KernelDeviceEvent(cuStartEvent->getEventId(), hostTimestamp, deviceId, cuId);
+      event->setDeviceTimestamp(static_cast<double>(cuLastTimestamp));
+      db->getDynamicInfo().addEvent(event); 
+    }
   }
 
   // Complete training to convert device timestamp to host time domain
@@ -239,6 +330,7 @@ namespace xdp {
   {
     return (clockTrainSlope * (double)deviceTimestamp + clockTrainOffset)/1e6;
   }
+
 
 
 }
