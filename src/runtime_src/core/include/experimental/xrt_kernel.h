@@ -50,7 +50,7 @@ typedef void * xrtKernelHandle;
 typedef void * xrtRunHandle;
 
 /**
- * xrtKernelOpen() - Open a kernel and obtain its handle.
+ * xrtPLKernelOpen() - Open a PL kernel and obtain its handle.
  *
  * @deviceHandle:  Handle to the device with the kernel
  * @xclbin:        The xclbin with the specified kernel.
@@ -63,7 +63,7 @@ typedef void * xrtRunHandle;
  * The compute units are opened with shared access, meaning that 
  * other kernels and other process will have shared access to same
  * compute units.  If exclusive access is needed then open the 
- * kernel using @xrtKernelOpenExclusve().
+ * kernel using @xrtPLKernelOpenExclusve().
  *
  * An xclbin with the specified kernel must have been loaded prior
  * to calling this function. An XRT_NULL_HANDLE is returned on error
@@ -73,18 +73,18 @@ typedef void * xrtRunHandle;
  */
 XCL_DRIVER_DLLESPEC
 xrtKernelHandle
-xrtKernelOpen(xrtDeviceHandle deviceHandle, const char* xclbin, const char *name);
+xrtPLKernelOpen(xrtDeviceHandle deviceHandle, const char* xclbin, const char *name);
 
 /**
- * xrtKernelOpenExclusive() - Open a kernel and obtain its handle.
+ * xrtPLKernelOpenExclusive() - Open a PL kernel and obtain its handle.
  *
- * Same as @xrtKernelOpen(), but opens compute units with exclusive
+ * Same as @xrtPLKernelOpen(), but opens compute units with exclusive
  * access.  Fails if any compute unit is already opened with either
  * exclusive or shared access.
  */
 XCL_DRIVER_DLLESPEC
 xrtKernelHandle
-xrtKernelOpenExclusive(xrtDeviceHandle deviceHandle, const char* xclbin, const char *name);
+xrtPLKernelOpenExclusive(xrtDeviceHandle deviceHandle, const char* xclbin, const char *name);
 
 /**
  * xrtKernelClose() - Close an opened kernel
