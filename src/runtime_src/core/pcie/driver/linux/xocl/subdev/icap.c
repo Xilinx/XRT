@@ -2078,7 +2078,7 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin)
 	xuid_t *peer_uuid = NULL;
 	struct xcl_mailbox_bitstream_kaddr mb_addr = {0};
 	struct mem_topology *mem_topo = icap->mem_topo;
-	int i, mig_count;
+	int i, mig_count = 0;
 
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
