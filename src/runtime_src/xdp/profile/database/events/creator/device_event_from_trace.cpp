@@ -197,7 +197,6 @@ namespace xdp {
             db->getDynamicInfo().markDeviceEventStart(trace.TraceID, memEvent);
           } else if(trace.EventType == XCL_PERF_MON_END_EVENT) {
             // may have to log start and end both
-            // technically matching start can have ID 0, but for now assume matchingStart=0 means no start found. So log both start and end
             VTFEvent* matchingStart = db->getDynamicInfo().matchingDeviceEventStart(trace.TraceID);
             if(nullptr == matchingStart || trace.Reserved == 1) {
               // add dummy start event
@@ -217,14 +216,51 @@ namespace xdp {
         }
       } // SPMPacket
       else if(SSPMPacket) {
-//        Monitor* mon = db->getStaticInfo().getASMonitor(deviceId, s);   
-//(void)mon;
         s = trace.TraceID - MIN_TRACE_ID_ASM;
- 
+
+        Monitor* mon = db->getStaticInfo().getASMonitor(deviceId, s);
+
+        bool isSingle =    trace.EventFlags & 0x10;
+        bool txEvent =     trace.EventFlags & 0x8;
+        bool stallEvent =  trace.EventFlags & 0x4;
+        bool starveEvent = trace.EventFlags & 0x2;
+        bool isStart =     trace.EventFlags & 0x1;
+
+        VTFEventType streamEventType = KERNEL_STREAM_WRITE;
+        if(txEvent) {
+          streamEventType = (mon->isRead) ? KERNEL_STREAM_READ : KERNEL_STREAM_WRITE;
+        } else if(starveEvent) {
+          streamEventType = (mon->isRead) ? KERNEL_STREAM_READ_STARVE : KERNEL_STREAM_WRITE_STARVE;
+        } else if(stallEvent) {
+          streamEventType = (mon->isRead) ? KERNEL_STREAM_READ_STALL : KERNEL_STREAM_WRITE_STALL;
+        }
+
+        KernelStreamAccess* strmEvent = nullptr;
+        if(isStart) {
+          // start event
+          strmEvent = new KernelStreamAccess(0, hostTimestamp, streamEventType, deviceId);
+          strmEvent->setDeviceTimestamp(static_cast<double>(timestamp));
+          db->getDynamicInfo().addEvent(strmEvent);
+          db->getDynamicInfo().markDeviceEventStart(trace.TraceID, strmEvent);
+        } else {
+          VTFEvent* matchingStart = db->getDynamicInfo().matchingDeviceEventStart(trace.TraceID);
+          if(isSingle || nullptr == matchingStart) {
+            // add dummy start event
+            strmEvent = new KernelStreamAccess(0, hostTimestamp, streamEventType, deviceId);
+            strmEvent->setDeviceTimestamp(static_cast<double>(timestamp)); 
+            db->getDynamicInfo().addEvent(strmEvent);
+            db->getDynamicInfo().markDeviceEventStart(trace.TraceID, strmEvent);
+            matchingStart = strmEvent;
+          }
+          // add end event
+          strmEvent = new KernelStreamAccess(matchingStart->getEventId(), hostTimestamp, streamEventType, deviceId);
+          strmEvent->setDeviceTimestamp(static_cast<double>(timestamp)); 
+          db->getDynamicInfo().addEvent(strmEvent);
+          asmLastTrans[s] = timestamp;
+        }
       } // SSPMPacket
       else {}
     }
-
   }
 
   void DeviceEventCreatorFromTrace::end()

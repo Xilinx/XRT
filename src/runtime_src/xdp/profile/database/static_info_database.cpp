@@ -257,6 +257,25 @@ namespace xdp {
         cuObj->addMonitor(mon);
         cuObj->setDataTransferEnabled(true);
         devInfo->aimList.push_back(mon);
+      } else if(debugIpData->m_type == AXI_STREAM_MONITOR) {
+        // associate with the first CU
+        size_t pos = name.find('/');
+        std::string monCuName = name.substr(0, pos);
+
+		for(auto cu : devInfo->cus) {
+          if(0 == monCuName.compare(cu.second->getName())) {
+            cuId = cu.second->getIndex();
+            cuObj = cu.second;
+            break;
+          }
+        }
+        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId);
+        if(debugIpData->m_properties & 0x2) {
+          mon->isRead = true;
+     	}
+        cuObj->addMonitor(mon);
+        cuObj->setDataTransferEnabled(true);
+        devInfo->asmList.push_back(mon);
       } else {
 //        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name);
       }

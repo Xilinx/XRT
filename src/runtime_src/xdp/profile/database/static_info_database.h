@@ -33,13 +33,15 @@ namespace xdp {
     int32_t     cuIndex;
     int32_t     memIndex;
     std::string name;
+    bool        isRead;
 
     Monitor(uint8_t ty, uint64_t idx, const char* n, int32_t cuId = -1, int32_t memId = -1)
       : type(ty),
         index(idx),
         cuIndex(cuId),
         memIndex(memId),
-        name(n)
+        name(n),
+        isRead(false)
     {}
   };
 
