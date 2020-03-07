@@ -122,7 +122,14 @@ namespace xdp {
 
     devInterface->readDebugIPlayout();
     devInterface->startCounters();
-    devInterface->startTrace(3);
+
+    uint32_t numAM = devInterface->getNumMonitors(XCL_PERF_MON_ACCEL);
+    bool* dataflowConfig = new bool[numAM];
+    db->getStaticInfo().getDataflowConfiguration(deviceId, dataflowConfig, numAM);
+    devInterface->configureDataflow(dataflowConfig);
+    delete [] dataflowConfig;
+
+    devInterface->startTrace(3); // check this
     devInterface->clockTraining();
   }
 

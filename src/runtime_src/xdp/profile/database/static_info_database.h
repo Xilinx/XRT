@@ -60,7 +60,9 @@ namespace xdp {
 
     std::vector<Monitor*> monitors;
 
-    bool stall = false;
+    bool stall        = false;
+    bool stream       = false;
+    bool dataflow     = false;
     bool dataTransfer = false;
 
     ComputeUnitInstance() = delete ;
@@ -80,10 +82,14 @@ namespace xdp {
     void setStallEnabled(bool b) { stall = b; }
     bool stallEnabled() { return stall; }
 
+    void setStreamEnabled(bool b) { stream = b; }
+    bool streamEnabled() { return stream; }
+
+    void setDataflowEnabled(bool b) { dataflow = b; }
+    bool dataflowEnabled() { return dataflow; }
+
     void setDataTransferEnabled(bool b) { dataTransfer = b; }
     bool dataTransferEnabled() { return dataTransfer; }
-
-    bool streamEnabled() { return false; }
 
     XDP_EXPORT ComputeUnitInstance(int32_t i, const char* n);
     XDP_EXPORT ~ComputeUnitInstance() ;
@@ -236,6 +242,21 @@ namespace xdp {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       return deviceInfo[deviceId]->amList[idx];
+    }
+
+    inline void getDataflowConfiguration(uint64_t deviceId, bool* config, size_t size)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return;
+
+      size_t count = 0;
+      for(auto mon : deviceInfo[deviceId]->amList) {
+        if(count >= size)
+          return;
+        auto cu = deviceInfo[deviceId]->cus[mon->cuIndex];
+        config[count] = cu->dataflowEnabled();
+        ++count;
+      }
     }
 
     // Reseting device information whenever a new xclbin is added

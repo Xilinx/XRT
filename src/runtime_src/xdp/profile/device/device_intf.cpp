@@ -490,19 +490,16 @@ DeviceIntf::~DeviceIntf()
     mIsDebugIPlayoutRead = true;
   }
 
-  void DeviceIntf::configureDataflow(bool* /*ipConfig*/)
+  void DeviceIntf::configureDataflow(bool* ipConfig)
   {
-#if 0
     // this ipConfig only tells whether the corresponding CU has ap_control_chain :
     // could have been just a property on the monitor set at compile time (in debug_ip_layout)
     if(!ipConfig)
       return;
 
     uint32_t i = 0;
-#endif
     for(auto mon: amList) {
-        mon->configureDataflow(true);
-//        mon->configureDataflow(ipConfig[i++]);
+      mon->configureDataflow(ipConfig[i++]);
     }
   }
 

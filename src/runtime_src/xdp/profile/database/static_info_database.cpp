@@ -168,6 +168,7 @@ namespace xdp {
     if(memTopologySection == nullptr) return false;
 
     // Now make the connections
+    ComputeUnitInstance* cu = nullptr;
     for(int32_t i = 0; i < connectivitySection->m_count; i++) {
       const struct connection* connctn = &(connectivitySection->m_connection[i]);
 
@@ -176,8 +177,11 @@ namespace xdp {
         if(ipData->m_type != IP_KERNEL) {
           // error ?
         }
-        devInfo->cus[connctn->m_ip_layout_index] 
-                 = new ComputeUnitInstance(connctn->m_ip_layout_index, reinterpret_cast<const char*>(ipData->m_name));
+        cu = new ComputeUnitInstance(connctn->m_ip_layout_index, reinterpret_cast<const char*>(ipData->m_name));
+        devInfo->cus[connctn->m_ip_layout_index] = cu;
+        if((ipData->properties >> IP_CONTROL_SHIFT) & AP_CTRL_CHAIN) {
+          cu->setDataflowEnabled(true);
+        }
       }
 
       if(devInfo->memoryInfo.find(connctn->mem_data_index) == devInfo->memoryInfo.end()) {
@@ -186,7 +190,7 @@ namespace xdp {
                  = new Memory(memData->m_type, connctn->mem_data_index,
                               memData->m_base_address, reinterpret_cast<const char*>(memData->m_tag));
       }
-      (devInfo->cus[connctn->m_ip_layout_index])->addConnection(connctn->arg_index, connctn->mem_data_index);
+      cu->addConnection(connctn->arg_index, connctn->mem_data_index);
     }
     return true;
   }
