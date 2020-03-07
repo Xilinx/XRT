@@ -41,6 +41,8 @@ version but not for the ``Debug`` version::
 Install the XRT RPM package
 ...........................
 
+.. warning:: Before installing a locally built RPM for XRT, please copy aside ``/lib/firmware/xilinx/sched*.bin``, which contain the ERT firmware for MicroBlaze. If XRT is built without access to the MicroBlaze GCC compiler, then ``sched.bin`` and ``sched_u50.bin`` will be missing from the RPM.  After installing a local build of XRT, you must manually copy the firmware files back to ``/lib/firmware/xilinx``.
+
 Install from inside either the ``Release`` or ``Debug`` directory
 according to purpose with (the actual package name might differ) ::
 
@@ -48,6 +50,8 @@ according to purpose with (the actual package name might differ) ::
 
 Install the XRT DEB package
 ...........................
+
+.. warning:: Before installing a locally built DEB for XRT, please copy aside ``/lib/firmware/xilinx/sched*.bin``, which contain the ERT firmware for MicroBlaze. If XRT is built without access to the MicroBlaze GCC compiler, then ``sched.bin`` and ``sched_u50.bin`` will be missing from the DEB.  After installing a local build of XRT, you must manually copy the firmware files back to ``/lib/firmware/xilinx``.
 
 Install from inside either the ``Release`` or ``Debug`` directory
 according to purpose with (the actual package name might differ) ::

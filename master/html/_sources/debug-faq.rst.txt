@@ -13,9 +13,9 @@ Tools of the Trade
 ``gdb``
    Capture stack trace of an XRT application
 ``lspci``
-   Enumerate Xilinx PCIe devices
+   Enumerate Xilinx® PCIe devices
 ``xbutil``
-   Query status of Xilinx PCIe device
+   Query status of Xilinx® PCIe device
 ``xclbinutil``
    Retrieve info from an xclbin
 XRT API Trace
@@ -30,7 +30,7 @@ Validating a Working Setup
 When observing an application failure on a board, it is important to step back and validate the board setup. That will help establish and validate a clean working environment before running the failing application. We need to ensure that the board is enumerating and functioning.
 
 Board Enumeration
-  Check if BIOS and Linux can see the board. So for Xilinx boards use ``lspci`` utility ::
+  Check if BIOS and Linux can see the board. So for Xilinx® boards use ``lspci`` utility ::
 
     lspci -v -d 10ee:
 
@@ -111,7 +111,7 @@ Bitsream Download Failures
   messages in ``dmesg`` would reveal if MIG calibration failed.
 
 Incorrect Timing Constraints
-  If the platform or dynamic region has invalid timing constraints — which is really a platform or SDx tool bug — CUs would show bizarre behaviors. This may result in incorrect outputs or CU/application hangs.
+  If the platform or dynamic region has invalid timing constraints — which is really a platform or Vitis tool bug — CUs would show bizarre behaviors. This may result in incorrect outputs or CU/application hangs.
 
 Board in Crashed State
 ~~~~~~~~~~~~~~~~~~~~~~

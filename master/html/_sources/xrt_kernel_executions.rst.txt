@@ -38,7 +38,7 @@ Below we will discuss each kernel execution model in detail.
 AP_CTRL_HS (Sequentially Executed Kernel)
 =========================================
 
-The AP_CTRL_HS style kernel is the oldest supported model through XRT (before 19.1, this was the only supported kernel type by XRT). The idea of AP_CTRL_HS is the simple one-point synchronization scheme between the host and the kernel using two signals: **ap_start** and **ap_done**. This execution mode allows the kernel only be restarted after it is completed the current execution. So when there are multiple kernel execution requests from the host, the kernel gets executed in sequential order, serving only one execution request at a time.
+The AP_CTRL_HS style kernel is the most sophisticated execution model through XRT (It was the only supported kernel type by XRT before 2019.1). The idea of AP_CTRL_HS is the simple one-point synchronization scheme between the host and the kernel using two signals: **ap_start** and **ap_done**. This execution mode allows the kernel only be restarted after it is completed the current execution. So when there are multiple kernel execution requests from the host, the kernel gets executed in sequential order, serving only one execution request at a time.
 
 Mode of operation
 ~~~~~~~~~~~~~~~~~
@@ -126,7 +126,7 @@ Sometimes the kernel does not need to be controlled by the host. For example, if
 1. Consider a kernel with AP_CTRL_NONE only when it has no memory mapped input and output.
 2. There is no need to start the kernel by ``clEnqueueTask`` or ``clEnqueueNDRangeKernel`` from the host.
 3. Host communicates with a continuously running kernel by the stream read and write requests, if necessary.
-4. Dont use ``clSetKernelArg`` to pass scalar argument to ap_ctrl_none kernel, only use ``xclRegWrite`` (API to be implemented in 19.2) API.
+4. Dont use ``clSetKernelArg`` to pass scalar argument to ap_ctrl_none kernel, only use ``xclRegWrite`` (API implemented in 2019.2) API.
 
 **Note:** To read and write register values from the AXI4-Lite Slave interface, the new APIs ``xclRegRead``/``xclRegWrite`` must be used (replacing obsolated APIs ``xclRead``/``xclWrite``). These APIs require exclusive CU context reservation via API ``xclOpenContext`` as shown in the code sample below.
 

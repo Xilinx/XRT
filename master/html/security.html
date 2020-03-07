@@ -123,14 +123,14 @@
 </ul>
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
-<li class="toctree-l1"><a class="reference internal" href="newxsa-bringup.html">New XSA Bringup</a></li>
 <li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Cloud Support</span></p>
@@ -290,8 +290,8 @@ Bus. Compiled images do have access to device DDR.</p>
 </div>
 <div class="section" id="xclbin-generation">
 <h2>Xclbin Generation<a class="headerlink" href="#xclbin-generation" title="Permalink to this headline">¶</a></h2>
-<p>Users compile their Verilog/VHDL/OpenCL/C/C++ design using SDx compiler which also takes
-the shell specification as a second input. By construction the SDx compiler generates image
+<p>Users compile their Verilog/VHDL/OpenCL/C/C++ design using Vitis™ compiler, v++ which also takes
+the shell specification as a second input. By construction the Vitis™ compiler, v++ generates image
 compatible with DFX partition of the shell. The compiler uses a technology called <em>PR Verify</em>
 to ensure that the user design physically confines itself to DFX partition and does not attempt
 to overwrite portions of the Shell. It also validates that all the IOs between the DFX and
@@ -447,7 +447,7 @@ the device node by sending them a SIGBUS.</p>
 <div class="section" id="shell-update">
 <h2>Shell Update<a class="headerlink" href="#shell-update" title="Permalink to this headline">¶</a></h2>
 <p>Shell update is like firmware update in conventional PCIe devices. Shell updates are distributed as signed
-RPM/DEB package files by Xilinx. Shells may be upgraded using XRT <strong>xbmgmt</strong> utility by system administrators
+RPM/DEB package files by Xilinx®. Shells may be upgraded using XRT <strong>xbmgmt</strong> utility by system administrators
 only. The upgrade process will update the PROM. A cold reboot of host is required in In order to boot the
 platform from the updated image.</p>
 </div>
@@ -480,7 +480,7 @@ API and a <em>wait for exec completion</em> API. These operations are exposed as
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017-2019, Xilinx, Inc
+        &copy; Copyright 2017-2020, Xilinx, Inc
 
     </p>
   </div>

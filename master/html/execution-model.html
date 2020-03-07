@@ -135,14 +135,14 @@
 </ul>
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
-<li class="toctree-l1"><a class="reference internal" href="newxsa-bringup.html">New XSA Bringup</a></li>
 <li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Cloud Support</span></p>
@@ -226,11 +226,11 @@
 <span id="execution-model-rst"></span><h1>Execution Model Overview<a class="headerlink" href="#execution-model-overview" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="introduction">
 <h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h2>
-<p>Xilinx FPGA based acceleration platform architecture are described in the <a class="reference internal" href="platforms.html#platforms-rst"><span class="std std-ref">Platform Overview</span></a> document. On <em>Alveo PCIe</em> platforms <em>xocl</em> driver binds to user physical function and <em>xclmgmt</em> driver binds to management physical function. The ioctls exported by xocl are described in <a class="reference internal" href="xocl_ioctl.main.html#xocl-ioctl-main-rst"><span class="std std-ref">XOCL (PCIe User Physical Function) Driver Interfaces</span></a> document and ioctls exported by xclmgmt are described in <a class="reference internal" href="mgmt-ioctl.main.html#mgmt-ioctl-main-rst"><span class="std std-ref">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</span></a> document. On <em>Zynq Ultrascale+ MPSoC</em> platforms <em>zocl</em> driver binds to the accelerator. The ioctls exported by zocl are listed here TODO.</p>
+<p>Xilinx® FPGA based acceleration platform architecture are described in the <a class="reference internal" href="platforms.html#platforms-rst"><span class="std std-ref">Platform Overview</span></a> document. On <em>Alveo PCIe</em> platforms <em>xocl</em> driver binds to user physical function and <em>xclmgmt</em> driver binds to management physical function. The ioctls exported by xocl are described in <a class="reference internal" href="xocl_ioctl.main.html#xocl-ioctl-main-rst"><span class="std std-ref">XOCL (PCIe User Physical Function) Driver Interfaces</span></a> document and ioctls exported by xclmgmt are described in <a class="reference internal" href="mgmt-ioctl.main.html#mgmt-ioctl-main-rst"><span class="std std-ref">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</span></a> document. On <em>Zynq Ultrascale+ MPSoC</em> platforms <em>zocl</em> driver binds to the accelerator. The ioctls exported by zocl are listed here TODO.</p>
 </div>
 <div class="section" id="image-download">
 <h2>Image Download<a class="headerlink" href="#image-download" title="Permalink to this headline">¶</a></h2>
-<p>Xilinx SDx compiler xocc compiles user’s device code into xclbin file which contains FPGA bitstream and collection of metadata like memory topology, IP instantiations, etc. xclbin format is defined in <a class="reference internal" href="formats.html#formats-rst"><span class="std std-ref">Binary Formats</span></a> document. For Alveo platforms xclmgmt driver provides an ioctl for xclbin download. For Zynq Ultrascale+ MPSoC zocl provides an ioctl for xclbin download. Both drivers support FPGA Manager integration. The drivers walk the xclbin sections, program the FPGA fabric, discover the memory topology, initialize the memory managers for the provided memory topology and discover user’s compute units programmed into the FPGA fabric.</p>
+<p>Xilinx® Vitis compiler, v++ compiles user’s device code into xclbin file which contains FPGA bitstream and collection of metadata like memory topology, IP instantiations, etc. xclbin format is defined in <a class="reference internal" href="formats.html#formats-rst"><span class="std std-ref">Binary Formats</span></a> document. For Alveo platforms xclmgmt driver provides an ioctl for xclbin download. For Zynq Ultrascale+ MPSoC zocl provides an ioctl for xclbin download. Both drivers support FPGA Manager integration. The drivers walk the xclbin sections, program the FPGA fabric, discover the memory topology, initialize the memory managers for the provided memory topology and discover user’s compute units programmed into the FPGA fabric.</p>
 </div>
 <div class="section" id="memory-management">
 <h2>Memory Management<a class="headerlink" href="#memory-management" title="Permalink to this headline">¶</a></h2>
@@ -238,11 +238,11 @@
 <p>For both class of platforms, memory management is performed inside Linux kernel driver. Both drivers use DRM GEM for memory management which includes buffer allocator, buffer mmap support, reference counting of buffers and DMA-BUF export/import. These operations are made available via ioctls exported by the drivers.</p>
 <div class="section" id="xocl">
 <h3>xocl<a class="headerlink" href="#xocl" title="Permalink to this headline">¶</a></h3>
-<p>Xilinx PCIe platforms like Alveo PCIe cards support various memory topologies which can be dynamically loaded as part of FPGA image loading step. This means from one FPGA image to another the device may expose one or more memory controllers where each memory controller has its own memory address range. We use drm_mm for allocation of memory and drm_gem framework for mmap handling. Since ordinarily our device memory is not exposed to host CPU (except when we enable PCIe peer-to-peer feature) we use host memory pages to back device memory for mmap support. For syncing between device memory and host memory pages XDMA PCIe DMA engine is used. Users call sync ioctl to effect DMA in requested direction.</p>
+<p>Xilinx® PCIe platforms like Alveo PCIe cards support various memory topologies which can be dynamically loaded as part of FPGA image loading step. This means from one FPGA image to another the device may expose one or more memory controllers where each memory controller has its own memory address range. We use drm_mm for allocation of memory and drm_gem framework for mmap handling. Since ordinarily our device memory is not exposed to host CPU (except when we enable PCIe peer-to-peer feature) we use host memory pages to back device memory for mmap support. For syncing between device memory and host memory pages XDMA PCIe DMA engine is used. Users call sync ioctl to effect DMA in requested direction.</p>
 </div>
 <div class="section" id="zocl">
 <h3>zocl<a class="headerlink" href="#zocl" title="Permalink to this headline">¶</a></h3>
-<p>Xilinx embedded platforms like Zynq Ultrascale+ MPSoC support various memory topologies as well. In addition to memory shared between PL (FPAG fabric) and PS (ARM A-53) we can also have dedicated memory for PL using a soft memory controller that is instantiated in the PL itself. zocl supports both CMA backed memory management where accelerators in PL use physical addresses and SVM based memory management – with the help of ARM SMMU – where accelerators in PL use virtual addresses also shared with application running on PS.</p>
+<p>Xilinx® embedded platforms like Zynq Ultrascale+ MPSoC support various memory topologies as well. In addition to memory shared between PL (FPAG fabric) and PS (ARM A-53) we can also have dedicated memory for PL using a soft memory controller that is instantiated in the PL itself. zocl supports both CMA backed memory management where accelerators in PL use physical addresses and SVM based memory management – with the help of ARM SMMU – where accelerators in PL use virtual addresses also shared with application running on PS.</p>
 </div>
 </div>
 <div class="section" id="execution-management">
@@ -292,7 +292,7 @@
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017-2019, Xilinx, Inc
+        &copy; Copyright 2017-2020, Xilinx, Inc
 
     </p>
   </div>

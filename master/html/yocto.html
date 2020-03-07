@@ -36,8 +36,8 @@
   <link rel="stylesheet" href="_static/theme_overrides.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="New XSA Bringup" href="newxsa-bringup.html" />
-    <link rel="prev" title="xclbinutil" href="xclbintools.html" /> 
+    <link rel="next" title="Create MPSoC Based Embedded Platforms" href="create_platforms.html" />
+    <link rel="prev" title="xbmgmt" href="xbmgmt.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -123,20 +123,19 @@
 </ul>
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Yocto Recipes For Embedded Flow</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#prerequisite">Prerequisite</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#create-petalinux-project-with-xrt-recipes">Create PetaLinux Project with XRT recipes</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#add-xrt-kernel-node-in-device-tree">Add XRT kernel node in device tree</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#configure-linux-kernel-and-enable-xrt-module">Configure Linux kernel and enable XRT module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#create-petalinux-project-with-xrt">Create PetaLinux Project with XRT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#build-xrt-c-c-applications-through-petalinux-tool-flow">Build XRT C/C++ applications through PetaLinux tool flow</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
-<li class="toctree-l1"><a class="reference internal" href="newxsa-bringup.html">New XSA Bringup</a></li>
 <li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Cloud Support</span></p>
@@ -224,23 +223,22 @@ It is NOT targeting to be a PetaLinux document or user guide.
 Please read PetaLinux document before you read the rest of this page.</p>
 <p><em>NOTE</em> The purpose of this page is only for easy to get started.
 If you are interested in details about creating software images for embedded platform.
-Please read the Software Platform section of Xilinx Document UG1146.</p>
+Please read the Software Platform section of Xilinx® Document UG1146.</p>
 <div class="section" id="prerequisite">
 <h2>Prerequisite<a class="headerlink" href="#prerequisite" title="Permalink to this headline">¶</a></h2>
 <dl class="docutils">
 <dt>Before start to build Linux image, make sure your have:</dt>
 <dd><ol class="first last arabic simple">
-<li>PetaLinux tool chain installed and setup;</li>
+<li>PetaLinux tool installed and setup;</li>
 <li>Hardware Definithion File(.hdf) for your platform;</li>
 </ol>
 </dd>
 </dl>
-<p>The PetaLinux tool chain can be downloaded from xilinx.com.
+<p>The PetaLinux tool can be downloaded from xilinx.com.
 If you don’t have a .hdf file, please see <a class="reference internal" href="create_platforms.html#build-boot-images"><span class="std std-ref">Build Boot Images</span></a>.</p>
 </div>
-<div class="section" id="create-petalinux-project-with-xrt-recipes">
-<h2>Create PetaLinux Project with XRT recipes<a class="headerlink" href="#create-petalinux-project-with-xrt-recipes" title="Permalink to this headline">¶</a></h2>
-<p>All of the XRT recipes are in <code class="docutils literal notranslate"><span class="pre">&lt;XRT&gt;/src/platform/recipes-xrt</span></code> directory. Where &lt;XRT&gt; is the root directory of your XRT git repository.</p>
+<div class="section" id="create-petalinux-project-with-xrt">
+<h2>Create PetaLinux Project with XRT<a class="headerlink" href="#create-petalinux-project-with-xrt" title="Permalink to this headline">¶</a></h2>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Replace &lt;name&gt; in below commands</span>
 $ petalinux-create -t project -n &lt;name&gt; --template zynqMP
 
@@ -249,48 +247,22 @@ $ petalinux-create -t project -n &lt;name&gt; --template zynqMP
 <span class="c1">#       menu -&gt; &quot;Yocto Setting&quot; -&gt; &quot;Enable Debug Tweaks&quot;</span>
 $ petalinux-config -p &lt;name&gt; --get-hw-description<span class="o">=</span>&lt;HDF&gt;
 
-<span class="c1"># Go to the project specific directory of the project</span>
-$ <span class="nb">cd</span> &lt;name&gt;/project-spec/meta-user/
+<span class="c1">#Now we can configure Linux kernel and rootfs.</span>
 
-<span class="c1"># Copy XRT recipes</span>
-$ cp -r &lt;XRT&gt;/src/platform/recipes-xrt .
-
-<span class="c1"># If you are using PetaLinux 2018.3 or earlier version, do below steps</span>
-$ mkdir recipes-xrt/opencl-headers
-$ wget -O recipes-xrt/opencl-headers/opencl-headers_git.bb http://cgit.openembedded.org/meta-openembedded/plain/meta-oe/recipes-core/opencl-headers/opencl-headers_git.bb
-</pre></div>
-</div>
-<p>The above commands create PetaLinux project and add necessary recipes to build XRT library and driver. Please check all the .bb files for details.</p>
-<p>The next step is to add all recipes to PetaLinux Rootfs Menu.
-Still stay in <code class="docutils literal notranslate"><span class="pre">meta-user</span></code> directory. Open <code class="docutils literal notranslate"><span class="pre">recipes-core/images/petalinux-image.bbappend</span></code> then add below lines at the end.</p>
-<blockquote>
-<div><div class="line-block">
-<div class="line">IMAGE_INSTALL_append = ” xrt-dev”</div>
-<div class="line">IMAGE_INSTALL_append = ” xrt”</div>
-<div class="line">IMAGE_INSTALL_append = ” zocl”</div>
-<div class="line">IMAGE_INSTALL_append = ” opencl-headers-dev”</div>
-<div class="line">IMAGE_INSTALL_append = ” opencl-clhpp-dev”</div>
-</div>
-</div></blockquote>
-</div>
-<div class="section" id="add-xrt-kernel-node-in-device-tree">
-<h2>Add XRT kernel node in device tree<a class="headerlink" href="#add-xrt-kernel-node-in-device-tree" title="Permalink to this headline">¶</a></h2>
-<p>An example of device tree is in <code class="docutils literal notranslate"><span class="pre">&lt;XRT&gt;/src/runtime_src/core/edge/fragments/xlnk_dts_fragment_mpsoc.dts</span></code>. You can attach it to <code class="docutils literal notranslate"><span class="pre">project-spec/meta-user/recipes-bsp/device-tree/files/system-user.dtsi</span></code> in your PetaLinux project.</p>
-</div>
-<div class="section" id="configure-linux-kernel-and-enable-xrt-module">
-<h2>Configure Linux kernel and enable XRT module<a class="headerlink" href="#configure-linux-kernel-and-enable-xrt-module" title="Permalink to this headline">¶</a></h2>
-<p>Now we can configure linux kernel and rootfs.
-Please see the comments in below code block. Enable “xrt” and “xrt-dev” options will install XRT libraries and header files to /opt/xilinx/xrt directory in rootfs. Enable “zocl” option will install zocl.ko in rootfs. The zocl.ko driver is a XRT driver module only for MPSoC platform.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1">#Configure Linux kernel (default kernel config is good for zocl driver)</span>
+<span class="c1">#Configure Linux kernel (default kernel config is good for zocl driver)</span>
 $ petalinux-config -c kernel
 
 <span class="c1"># Configure rootfs, enable below components:</span>
+
 <span class="c1">#   menu -&gt; &quot;user packages&quot; -&gt; xrt</span>
 <span class="c1">#   menu -&gt; &quot;user packages&quot; -&gt; xrt-dev</span>
 <span class="c1">#   menu -&gt; &quot;user packages&quot; -&gt; zocl</span>
 <span class="c1">#   menu -&gt; &quot;user packages&quot; -&gt; opencl-headers-dev</span>
 <span class="c1">#   menu -&gt; &quot;user packages&quot; -&gt; opencl-clhpp-dev</span>
 $ petalinux-config -c rootfs
+
+<span class="c1"># Enable &quot;xrt&quot; and &quot;xrt-dev&quot; options will install XRT libraries and header files to /opt/xilinx/xrt directory in rootfs. Enable &quot;zocl&quot; option will install zocl.ko in rootfs. The zocl.ko driver is a XRT driver module only for MPSoC platform.</span>
+
 
 <span class="c1"># Build package</span>
 $ petalinux-build
@@ -306,6 +278,21 @@ These files can be used when creating an embedded platform.</p>
 <li><code class="docutils literal notranslate"><span class="pre">u-boot.elf</span></code></li>
 </ul>
 </div>
+<div class="section" id="build-xrt-c-c-applications-through-petalinux-tool-flow">
+<h2>Build XRT C/C++ applications through PetaLinux tool flow<a class="headerlink" href="#build-xrt-c-c-applications-through-petalinux-tool-flow" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ petalinux-create -t apps <span class="o">[</span>--template TYPE<span class="o">]</span> --name &lt;user-applicationname&gt; --enable
+<span class="c1">#The new application sources can be found in the &lt;plnx-proj-root&gt;/project-spec/meta-user/recipes-apps/myapp directory.</span>
+
+<span class="c1"># Change to the newly created application directory.</span>
+$ <span class="nb">cd</span> &lt;plnx-proj-root&gt;/project-spec/meta-user/recipes-apps/myapp
+
+<span class="c1"># myapp.c/myapp.cpp file can be edited or replaced with the real source code for your application.</span>
+
+$ petalinux-build
+<span class="c1"># This will rebuild the system image including the selected user application myapp.</span>
+</pre></div>
+</div>
+</div>
 </div>
 
 
@@ -316,10 +303,10 @@ These files can be used when creating an embedded platform.</p>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="newxsa-bringup.html" class="btn btn-neutral float-right" title="New XSA Bringup" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="create_platforms.html" class="btn btn-neutral float-right" title="Create MPSoC Based Embedded Platforms" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="xclbintools.html" class="btn btn-neutral float-left" title="xclbinutil" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="xbmgmt.html" class="btn btn-neutral float-left" title="xbmgmt" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -328,7 +315,7 @@ These files can be used when creating an embedded platform.</p>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017-2019, Xilinx, Inc
+        &copy; Copyright 2017-2020, Xilinx, Inc
 
     </p>
   </div>

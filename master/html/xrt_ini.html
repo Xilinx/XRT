@@ -131,14 +131,14 @@
 </ul>
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
-<li class="toctree-l1"><a class="reference internal" href="newxsa-bringup.html">New XSA Bringup</a></li>
 <li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Cloud Support</span></p>
@@ -284,7 +284,7 @@ specified file.
 Example, runtime_log=my_run.log</li>
 </ul>
 </div></blockquote>
-<p class="last">Default: null</p>
+<p class="last">Default: console</p>
 </td>
 </tr>
 <tr class="row-even"><td>cpu_affinity</td>
@@ -340,11 +340,11 @@ generate timeline_trace report</p>
 </td>
 </tr>
 <tr class="row-even"><td>data_transfer_trace</td>
-<td>[course|fine|off]</td>
+<td>[coarse|fine|off]</td>
 <td><p class="first">Enable device-level AXI transfers trace:</p>
 <blockquote>
 <div><ul class="simple">
-<li>course: Shows CU transfer activity</li>
+<li>coarse: Shows CU transfer activity</li>
 <li>fine: Shows all AXI level burst data transfer</li>
 <li>off: Does not show device-level AXI transfer</li>
 </ul>
@@ -386,8 +386,14 @@ data:</p>
 <li>K|M|G: Units Kilobyte or Megabyte or Gigabyte</li>
 </ul>
 </div></blockquote>
-<p>Note: If no unit is given byte is assumed
-Example: trace_buffer_size=100M</p>
+<p>Note:</p>
+<blockquote>
+<div><ul class="simple">
+<li>This option only applicable in hardware flow</li>
+<li>If no unit is given byte is assumed</li>
+</ul>
+</div></blockquote>
+<p>Example: trace_buffer_size=100M</p>
 <p class="last">Default: 1M</p>
 </td>
 </tr>
@@ -419,14 +425,16 @@ messages need to be printed.</p>
 <tr class="row-odd"><td>print_infos_in_console</td>
 <td>[true|false]</td>
 <td><p class="first">Controls the printing of emulation info messages
-to users console. Emulation info messages are
-always logged into a file called
-emulation_debug.log</p>
+to users console.</p>
+<blockquote>
+<div><p>Emulation info messages are always logged into a
+file called emulation_debug.log</p>
 <blockquote>
 <div><ul class="simple">
 <li>true = print in users console</li>
 <li>false = do not print in user console</li>
 </ul>
+</div></blockquote>
 </div></blockquote>
 <p class="last">Default: true</p>
 </td>
@@ -434,14 +442,16 @@ emulation_debug.log</p>
 <tr class="row-even"><td>print_warning_in_console</td>
 <td>[true|false]</td>
 <td><p class="first">Controls the printing of emulation warning messages
-to users console. Emulation warning messages are
-always logged into a file called
-emulation_debug.log</p>
+to users console.</p>
+<blockquote>
+<div><p>Emulation warning messages are always logged into
+a file called emulation_debug.log</p>
 <blockquote>
 <div><ul class="simple">
 <li>true = print in users console</li>
 <li>false = do not print in user console</li>
 </ul>
+</div></blockquote>
 </div></blockquote>
 <p class="last">Default: true</p>
 </td>
@@ -449,14 +459,16 @@ emulation_debug.log</p>
 <tr class="row-odd"><td>print_errors_in_console</td>
 <td>[true|false]</td>
 <td><p class="first">Controls the printing of emulation error messages
-to users console. Emulation error messages are
-always logged into a file called
-emulation_debug.log</p>
+to users console.</p>
+<blockquote>
+<div><p>Emulation error messages are always logged into a
+file called emulation_debug.log</p>
 <blockquote>
 <div><ul class="simple">
 <li>true = print in users console</li>
 <li>false = do not print in user console</li>
 </ul>
+</div></blockquote>
 </div></blockquote>
 <p class="last">Default: true</p>
 </td>
@@ -475,10 +487,11 @@ but save wdb file</li>
 wdb file</li>
 </ul>
 </div></blockquote>
-<p class="last">Default: off
-Note: The kernel needs to be compiled with debug
-enabled for the waveform to be saved and displayed
-in the simulator GUI.</p>
+<p>Default: off</p>
+<blockquote class="last">
+<div>Note: The kernel needs to be compiled with debug
+enabled for the waveform to be saved and
+displayed in the simulator GUI.</div></blockquote>
 </td>
 </tr>
 </tbody>
@@ -507,7 +520,7 @@ in the simulator GUI.</p>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017-2019, Xilinx, Inc
+        &copy; Copyright 2017-2020, Xilinx, Inc
 
     </p>
   </div>
