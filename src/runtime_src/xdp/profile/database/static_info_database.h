@@ -148,10 +148,8 @@ namespace xdp {
      *    b. Map of Compute Units
      *    c. Map of connected Memory
      */
-public:
     std::map<uint64_t, DeviceInfo*> deviceInfo;
 
-private:
     // Static info can be accessed via any host thread
     std::mutex dbLock ;
 
@@ -179,7 +177,6 @@ private:
         return nullptr;
       return deviceInfo[deviceId];
     }
-
 
     double getClockRateMHz(uint64_t deviceId)
     {
@@ -268,11 +265,19 @@ private:
         return nullptr;
       return deviceInfo[deviceId]->aimList[idx];
     }
+
     inline Monitor* getAMonitor(uint64_t deviceId, uint64_t idx)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       return deviceInfo[deviceId]->amList[idx];
+    }
+
+    inline Monitor* getASMonitor(uint64_t deviceId, uint64_t idx)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return nullptr;
+      return deviceInfo[deviceId]->asmList[idx];
     }
 
     inline void getDataflowConfiguration(uint64_t deviceId, bool* config, size_t size)

@@ -242,7 +242,7 @@ namespace xdp {
       uint64_t cuLastTimestamp  = amLastTrans[amIndex];
 
       // get CU Id for the current slot
-      Monitor* am = db->getStaticInfo().deviceInfo[deviceId]->amList[amIndex];
+      Monitor* am = db->getStaticInfo().getAMonitor(deviceId, amIndex);
       int32_t  cuId = am->cuIndex;
 
       // Check if any memory port on current CU had a trace packet
@@ -254,7 +254,7 @@ namespace xdp {
         if(cuLastTimestamp >= aimLastTrans[aimIndex]) {
           continue;
         }
-        Monitor* aim = db->getStaticInfo().deviceInfo[deviceId]->aimList[aimIndex];
+        Monitor* aim = db->getStaticInfo().getAIMonitor(deviceId, aimIndex);
         if(cuId != aim->cuIndex) {
           // current AIM attached to a different CU, so continue
           continue;
@@ -272,7 +272,7 @@ namespace xdp {
         if(cuLastTimestamp >= asmLastTrans[asmIndex]) {
           continue;
         }
-        Monitor* asM = db->getStaticInfo().deviceInfo[deviceId]->asmList[asmIndex];
+        Monitor* asM = db->getStaticInfo().getASMonitor(deviceId, asmIndex);
         if(cuId != asM->cuIndex) {
           // current ASM attached to a different CU, so continue
           continue;
