@@ -76,6 +76,62 @@ struct device_type
   }
 };
 
+
+// struct ip_context - Manages process access to CUs
+//
+// Constructing a kernel object opens a context on the CUs associated
+// with the kernel object.  The context is reference counted such that
+// multiple kernel objects can open a context on the same CU provided
+// the access type is shared.
+//
+// A CU context is released when the last kernel object referencing it
+// is closed.  If the process closes without having released on kernel
+// then behavior is undefined.
+class ip_context
+{
+public:
+  enum class access_mode : bool { exclusive = false, shared = true };
+
+  static std::shared_ptr<ip_context>
+  open(xrt_core::device* device, xuid_t xclbin_id, unsigned int ipidx, access_mode am)
+  {
+    static std::vector<std::weak_ptr<ip_context>> ips(128);
+    auto ip = ips[ipidx].lock();
+    if (!ip) {
+      ip = std::shared_ptr<ip_context>(new ip_context(device, xclbin_id, ipidx, am));
+      ips[ipidx] = ip;
+    }
+
+    if (ip->access != am)
+      throw std::runtime_error("Conflicting access mode for IP(" + std::to_string(ipidx) + ")");
+
+    return ip;
+  }
+
+  // For symmetry
+  void
+  close()
+  {}
+
+  ~ip_context()
+  {
+    device->close_context(xid, idx);
+  }
+
+private:
+  ip_context(xrt_core::device* dev, xuid_t xclbin_id, unsigned int ipidx, access_mode am)
+    : device(dev), idx(ipidx), access(am)
+  {
+    uuid_copy(xid, xclbin_id);
+    device->open_context(xid, idx, std::underlying_type<access_mode>::type(am));
+  }
+
+  xrt_core::device* device;
+  unsigned int idx;
+  access_mode access;
+  xuid_t xid;
+};
+
 // class kernel_command - Immplements command API expected by schedulers
 //
 // The kernel command is
@@ -257,13 +313,15 @@ private:
 struct kernel_type
 {
   using argument = xrt_core::xclbin::kernel_argument;
+  using ipctx = std::shared_ptr<ip_context>;
 
   std::shared_ptr<device_type> device;   // shared ownership
   std::string name;                      // kernel name
   const axlf* top = nullptr;             // xclbin
-  std::vector<const ip_data*> ips;       // compute units
   std::vector<argument> args;            // kernel args sorted by argument index
+  std::vector<ipctx> ipctxs;             // CU context locks
   std::bitset<128> cumask;               // cumask for command execution
+  xuid_t xclbin_id;                      // xclbin uuid
   size_t regmap_size = 0;                // CU register map size
   size_t num_cumasks = 1;                // Required number of command cu masks TODO: compute
 
@@ -272,22 +330,28 @@ struct kernel_type
   // @dev:     device associated with this kernel object
   // @xclbin:  xclbin to mine for kernel meta data
   // @nm:      name identifying kernel and/or kernel and instances
-  kernel_type(std::shared_ptr<device_type> dev, const char* xclbin, const std::string& nm)
+  // @am:      access mode for underlying compute units
+  kernel_type(std::shared_ptr<device_type> dev, const char* xclbin, const std::string& nm, ip_context::access_mode am)
     : device(std::move(dev))                                   // share ownership
     , name(nm.substr(0,nm.find(":")))                          // filter instance names
     , top(reinterpret_cast<const axlf*>(xclbin))               // convert to axlf
-    , ips(xrt_core::xclbin::get_cus(top, nm))                  // CUs matching nm
     , args(xrt_core::xclbin::get_kernel_arguments(top, name))  // kernel argument meta data
   {
+    uuid_copy(xclbin_id, top->m_header.uuid);
+
     // Compare the matching CUs against the CU sort order to create cumask
+    auto ips = xrt_core::xclbin::get_cus(top, nm);
     if (ips.empty())
       throw std::runtime_error("No compute units matching '" + nm + "'");
+
     auto cus = xrt_core::xclbin::get_cus(top);  // sort order
     for (const ip_data* cu : ips) {
       auto itr = std::find(cus.begin(), cus.end(), cu->m_base_address);
       if (itr == cus.end())
         throw std::runtime_error("unexpected error");
-      cumask.set(std::distance(cus.begin(), itr));
+      auto idx = std::distance(cus.begin(), itr);
+      ipctxs.emplace_back(ip_context::open(device->get_core_device(), xclbin_id, idx, am));
+      cumask.set(idx);
     }
 
     // Compute register map size for a kernel invocation
@@ -491,10 +555,10 @@ get_run(xrtRunHandle rhdl)
 namespace api {
 
 xrtKernelHandle
-xrtKernelOpen(xrtDeviceHandle dhdl, const char* xclbin, const char *name)
+xrtKernelOpen(xrtDeviceHandle dhdl, const char* xclbin, const char *name, ip_context::access_mode am)
 {
   auto device = get_device(dhdl, xclbin);
-  auto kernel = std::make_shared<kernel_type>(device, xclbin, name);
+  auto kernel = std::make_shared<kernel_type>(device, xclbin, name, am);
   auto handle = kernel.get();
   kernels.emplace(std::make_pair(handle,std::move(kernel)));
   return handle;
@@ -577,7 +641,19 @@ xrtKernelHandle
 xrtKernelOpen(xrtDeviceHandle dhdl, const char* xclbin, const char *name)
 {
   try {
-    return api::xrtKernelOpen(dhdl, xclbin, name);
+    return api::xrtKernelOpen(dhdl, xclbin, name, ip_context::access_mode::shared);
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return XRT_NULL_HANDLE;
+  }
+}
+
+xrtKernelHandle
+xrtKernelOpenExclusive(xrtDeviceHandle dhdl, const char* xclbin, const char *name)
+{
+  try {
+    return api::xrtKernelOpen(dhdl, xclbin, name, ip_context::access_mode::exclusive);
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
