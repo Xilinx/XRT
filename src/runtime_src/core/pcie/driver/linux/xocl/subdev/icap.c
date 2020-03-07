@@ -2398,7 +2398,7 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 	struct icap *icap = platform_get_drvdata(pdev);
 	int err = 0, num_dev = -1, i;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	struct xocl_subdev *subdevs;
+	struct xocl_subdev *subdevs = NULL;
 	bool has_ulp_clock = false;
 
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
