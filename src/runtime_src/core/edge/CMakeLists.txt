@@ -1,4 +1,5 @@
 add_subdirectory(include)
+add_subdirectory(common)
 add_subdirectory(user)
 add_subdirectory(common_em)
 add_subdirectory(hw_em)

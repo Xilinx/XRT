@@ -16,8 +16,8 @@
  * under the License.
  */
 
-#ifndef _ZYNQ_AIE_H
-#define _ZYNQ_AIE_H
+#ifndef xrt_core_edge_user_aie_h
+#define xrt_core_edge_user_aie_h
 
 extern "C"
 {
