@@ -638,7 +638,7 @@ send_exception_message(const char* msg)
 // xrt_kernel API implmentations (xrt_kernel.h)
 ////////////////////////////////////////////////////////////////
 xrtKernelHandle
-xrtKernelOpen(xrtDeviceHandle dhdl, const char* xclbin, const char *name)
+xrtPLKernelOpen(xrtDeviceHandle dhdl, const char* xclbin, const char *name)
 {
   try {
     return api::xrtKernelOpen(dhdl, xclbin, name, ip_context::access_mode::shared);
@@ -650,7 +650,7 @@ xrtKernelOpen(xrtDeviceHandle dhdl, const char* xclbin, const char *name)
 }
 
 xrtKernelHandle
-xrtKernelOpenExclusive(xrtDeviceHandle dhdl, const char* xclbin, const char *name)
+xrtPLKernelOpenExclusive(xrtDeviceHandle dhdl, const char* xclbin, const char *name)
 {
   try {
     return api::xrtKernelOpen(dhdl, xclbin, name, ip_context::access_mode::exclusive);

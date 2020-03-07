@@ -296,7 +296,7 @@ int run(int argc, char** argv)
 
   compute_units = cus = std::min(cus, compute_units);
   std::string kname = get_kernel_name(cus);
-  auto kernel = xrtKernelOpen(device, header.data(), kname.c_str());
+  auto kernel = xrtPLKernelOpen(device, header.data(), kname.c_str());
 
   run(device,kernel,jobs,secs,first_used_mem);
 
