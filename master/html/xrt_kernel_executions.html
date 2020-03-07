@@ -137,14 +137,14 @@
 </ul>
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
-<li class="toctree-l1"><a class="reference internal" href="newxsa-bringup.html">New XSA Bringup</a></li>
 <li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Cloud Support</span></p>
@@ -252,7 +252,7 @@
 <p>Below we will discuss each kernel execution model in detail.</p>
 <div class="section" id="ap-ctrl-hs-sequentially-executed-kernel">
 <h2>AP_CTRL_HS (Sequentially Executed Kernel)<a class="headerlink" href="#ap-ctrl-hs-sequentially-executed-kernel" title="Permalink to this headline">¶</a></h2>
-<p>The AP_CTRL_HS style kernel is the oldest supported model through XRT (before 19.1, this was the only supported kernel type by XRT). The idea of AP_CTRL_HS is the simple one-point synchronization scheme between the host and the kernel using two signals: <strong>ap_start</strong> and <strong>ap_done</strong>. This execution mode allows the kernel only be restarted after it is completed the current execution. So when there are multiple kernel execution requests from the host, the kernel gets executed in sequential order, serving only one execution request at a time.</p>
+<p>The AP_CTRL_HS style kernel is the most sophisticated execution model through XRT (It was the only supported kernel type by XRT before 2019.1). The idea of AP_CTRL_HS is the simple one-point synchronization scheme between the host and the kernel using two signals: <strong>ap_start</strong> and <strong>ap_done</strong>. This execution mode allows the kernel only be restarted after it is completed the current execution. So when there are multiple kernel execution requests from the host, the kernel gets executed in sequential order, serving only one execution request at a time.</p>
 <div class="section" id="mode-of-operation">
 <h3>Mode of operation<a class="headerlink" href="#mode-of-operation" title="Permalink to this headline">¶</a></h3>
 <img alt="_images/ap_ctrl_hs_2.PNG" class="align-center" src="_images/ap_ctrl_hs_2.PNG" />
@@ -362,7 +362,7 @@
 <li>Consider a kernel with AP_CTRL_NONE only when it has no memory mapped input and output.</li>
 <li>There is no need to start the kernel by <code class="docutils literal notranslate"><span class="pre">clEnqueueTask</span></code> or <code class="docutils literal notranslate"><span class="pre">clEnqueueNDRangeKernel</span></code> from the host.</li>
 <li>Host communicates with a continuously running kernel by the stream read and write requests, if necessary.</li>
-<li>Dont use <code class="docutils literal notranslate"><span class="pre">clSetKernelArg</span></code> to pass scalar argument to ap_ctrl_none kernel, only use <code class="docutils literal notranslate"><span class="pre">xclRegWrite</span></code> (API to be implemented in 19.2) API.</li>
+<li>Dont use <code class="docutils literal notranslate"><span class="pre">clSetKernelArg</span></code> to pass scalar argument to ap_ctrl_none kernel, only use <code class="docutils literal notranslate"><span class="pre">xclRegWrite</span></code> (API implemented in 2019.2) API.</li>
 </ol>
 <p><strong>Note:</strong> To read and write register values from the AXI4-Lite Slave interface, the new APIs <code class="docutils literal notranslate"><span class="pre">xclRegRead</span></code>/<code class="docutils literal notranslate"><span class="pre">xclRegWrite</span></code> must be used (replacing obsolated APIs <code class="docutils literal notranslate"><span class="pre">xclRead</span></code>/<code class="docutils literal notranslate"><span class="pre">xclWrite</span></code>). These APIs require exclusive CU context reservation via API <code class="docutils literal notranslate"><span class="pre">xclOpenContext</span></code> as shown in the code sample below.</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">xclOpenContext</span><span class="p">(</span><span class="n">device_handle</span><span class="p">,</span> <span class="n">xclbin_id</span><span class="p">,</span> <span class="n">cu_index</span><span class="p">,</span> <span class="nb">false</span><span class="p">);</span>
@@ -394,7 +394,7 @@
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017-2019, Xilinx, Inc
+        &copy; Copyright 2017-2020, Xilinx, Inc
 
     </p>
   </div>

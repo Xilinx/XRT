@@ -127,14 +127,14 @@
 </ul>
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
-<li class="toctree-l1"><a class="reference internal" href="newxsa-bringup.html">New XSA Bringup</a></li>
 <li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Cloud Support</span></p>
@@ -228,7 +228,7 @@ peripherals and compute kernels, clocking details and kernel connectivity
 for each compute kernel.</p>
 <p>The compiler generates unique xclbin file tagged with UUID for every application
 compiled. Each xclbin also has a another UUID which defines its compatbility to
-the Shell. Scout compiler generates this file as part of xocc and end-users
+the Shell. Vitis compiler, v++ generates this file as part of linking stage. End-users
 load this file via XRT xclLoadXclbin() API. XRT userspace and kernel space
 components consume different sections of xclbin by programming the hardware
 and initializing key data structures in XRT userspace libraries and XRT
@@ -246,7 +246,7 @@ properties of the device like its name and features enabled in the
 Shell of the platform. The format for the data in Feature ROM is
 defined in file <code class="docutils literal notranslate"><span class="pre">xclfeatures.h</span></code>. It a section of memory mapped BRAM
 memory which can be used for data sharing, error checking,
-functionality discover and optimizations in SDx. The Vivado tools will
+functionality discovery in Alveo platforms. Vivado tools will
 programmatically capture and populate BRAM memory in the platform
 during platform creation time. Runtime components like drivers read it
 and enable functionality in driver and also use the information to
@@ -276,7 +276,7 @@ XRT installation directory.</p>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017-2019, Xilinx, Inc
+        &copy; Copyright 2017-2020, Xilinx, Inc
 
     </p>
   </div>

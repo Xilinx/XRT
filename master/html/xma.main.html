@@ -127,14 +127,14 @@
 </ul>
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
-<li class="toctree-l1"><a class="reference internal" href="newxsa-bringup.html">New XSA Bringup</a></li>
 <li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Cloud Support</span></p>
@@ -383,7 +383,7 @@ int32_t <code class="descname">xma_plg_channel_id</code><span class="sig-paren">
 XMA_ERROR on failure</p>
 <dl class="function">
 <dt id="c.xma_plg_is_work_item_done">
-int32_t <code class="descname">xma_plg_is_work_item_done</code><span class="sig-paren">(</span>XmaSession<em>&nbsp;s_handle</em>, int32_t<em>&nbsp;timeout_in_ms</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_is_work_item_done" title="Permalink to this definition">¶</a></dt>
+int32_t <code class="descname">xma_plg_is_work_item_done</code><span class="sig-paren">(</span>XmaSession<em>&nbsp;s_handle</em>, uint32_t<em>&nbsp;timeout_in_ms</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_is_work_item_done" title="Permalink to this definition">¶</a></dt>
 <dd><p>This function checks if at least one work item previously submitted via <a class="reference internal" href="#c.xma_plg_schedule_work_item" title="xma_plg_schedule_work_item"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_plg_schedule_work_item()</span></code></a> has completed. If the supplied timeout expires before a work item has completed, this function returns an error.</p>
 </dd></dl>
 
@@ -391,7 +391,7 @@ int32_t <code class="descname">xma_plg_is_work_item_done</code><span class="sig-
 <dl class="docutils">
 <dt><code class="docutils literal notranslate"><span class="pre">XmaSession</span> <span class="pre">s_handle</span></code></dt>
 <dd>The session handle associated with this plugin instance</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">int32_t</span> <span class="pre">timeout_in_ms</span></code></dt>
+<dt><code class="docutils literal notranslate"><span class="pre">uint32_t</span> <span class="pre">timeout_in_ms</span></code></dt>
 <dd>A timeout value in milliseconds</dd>
 </dl>
 <p><strong>Return</strong></p>
@@ -443,7 +443,7 @@ So xma_plg_kernel_lock_regmap is not required before this call</p>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017-2019, Xilinx, Inc
+        &copy; Copyright 2017-2020, Xilinx, Inc
 
     </p>
   </div>

@@ -122,14 +122,14 @@
 </ul>
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
-<li class="toctree-l1"><a class="reference internal" href="newxsa-bringup.html">New XSA Bringup</a></li>
 <li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Cloud Support</span></p>
@@ -238,9 +238,9 @@
 <dt><code class="docutils literal notranslate"><span class="pre">gdb</span></code></dt>
 <dd>Capture stack trace of an XRT application</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">lspci</span></code></dt>
-<dd>Enumerate Xilinx PCIe devices</dd>
+<dd>Enumerate Xilinx® PCIe devices</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">xbutil</span></code></dt>
-<dd>Query status of Xilinx PCIe device</dd>
+<dd>Query status of Xilinx® PCIe device</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">xclbinutil</span></code></dt>
 <dd>Retrieve info from an xclbin</dd>
 <dt>XRT API Trace</dt>
@@ -257,7 +257,7 @@ runtime_log=my_run.log
 <p>When observing an application failure on a board, it is important to step back and validate the board setup. That will help establish and validate a clean working environment before running the failing application. We need to ensure that the board is enumerating and functioning.</p>
 <dl class="docutils">
 <dt>Board Enumeration</dt>
-<dd><p class="first">Check if BIOS and Linux can see the board. So for Xilinx boards use <code class="docutils literal notranslate"><span class="pre">lspci</span></code> utility</p>
+<dd><p class="first">Check if BIOS and Linux can see the board. So for Xilinx® boards use <code class="docutils literal notranslate"><span class="pre">lspci</span></code> utility</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>lspci -v -d 10ee:
 </pre></div>
 </div>
@@ -332,7 +332,7 @@ will also show up as bitstream download failure. Usually XRT driver
 messages in <code class="docutils literal notranslate"><span class="pre">dmesg</span></code> would reveal if MIG calibration failed.</p>
 </dd>
 <dt>Incorrect Timing Constraints</dt>
-<dd>If the platform or dynamic region has invalid timing constraints — which is really a platform or SDx tool bug — CUs would show bizarre behaviors. This may result in incorrect outputs or CU/application hangs.</dd>
+<dd>If the platform or dynamic region has invalid timing constraints — which is really a platform or Vitis tool bug — CUs would show bizarre behaviors. This may result in incorrect outputs or CU/application hangs.</dd>
 </dl>
 </div>
 </div>
@@ -388,7 +388,7 @@ kds=false
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017-2019, Xilinx, Inc
+        &copy; Copyright 2017-2020, Xilinx, Inc
 
     </p>
   </div>

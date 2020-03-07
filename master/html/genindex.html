@@ -122,14 +122,14 @@
 </ul>
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
-<li class="toctree-l1"><a class="reference internal" href="newxsa-bringup.html">New XSA Bringup</a></li>
 <li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Cloud Support</span></p>
@@ -213,9 +213,6 @@
 <div class="genindex-jumpbox">
  <a href="#D"><strong>D</strong></a>
  | <a href="#E"><strong>E</strong></a>
- | <a href="#G"><strong>G</strong></a>
- | <a href="#M"><strong>M</strong></a>
- | <a href="#S"><strong>S</strong></a>
  | <a href="#X"><strong>X</strong></a>
  
 </div>
@@ -265,8 +262,6 @@
       <li><a href="zocl_ioctl.main.html#c.drm_zocl_info_cu">drm_zocl_info_cu (C type)</a>
 </li>
       <li><a href="zocl_ioctl.main.html#c.drm_zocl_map_bo">drm_zocl_map_bo (C type)</a>
-</li>
-      <li><a href="zocl_ioctl.main.html#c.drm_zocl_pcap_download">drm_zocl_pcap_download (C type)</a>
 </li>
       <li><a href="zocl_ioctl.main.html#c.drm_zocl_pread_bo">drm_zocl_pread_bo (C type)</a>
 </li>
@@ -341,50 +336,6 @@
   </ul></td>
 </tr></table>
 
-<h2 id="G">G</h2>
-<table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="mailbox.proto.html#c.group_kind">group_kind (C type)</a>
-</li>
-  </ul></td>
-</tr></table>
-
-<h2 id="M">M</h2>
-<table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="mailbox.proto.html#c.mailbox_bitstream_kaddr">mailbox_bitstream_kaddr (C type)</a>
-</li>
-      <li><a href="mailbox.proto.html#c.mailbox_clock_freqscaling">mailbox_clock_freqscaling (C type)</a>
-</li>
-      <li><a href="mailbox.proto.html#c.mailbox_conn">mailbox_conn (C type)</a>
-</li>
-      <li><a href="mailbox.proto.html#c.mailbox_conn_resp">mailbox_conn_resp (C type)</a>
-</li>
-      <li><a href="mailbox.proto.html#c.mailbox_p2p_bar_addr">mailbox_p2p_bar_addr (C type)</a>
-</li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="mailbox.proto.html#c.mailbox_peer_state">mailbox_peer_state (C type)</a>
-</li>
-      <li><a href="mailbox.proto.html#c.mailbox_req">mailbox_req (C type)</a>
-</li>
-      <li><a href="mailbox.proto.html#c.mailbox_req_bitstream_lock">mailbox_req_bitstream_lock (C type)</a>
-</li>
-      <li><a href="mailbox.proto.html#c.mailbox_request">mailbox_request (C type)</a>
-</li>
-      <li><a href="mailbox.proto.html#c.mailbox_subdev_peer">mailbox_subdev_peer (C type)</a>
-</li>
-  </ul></td>
-</tr></table>
-
-<h2 id="S">S</h2>
-<table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="mailbox.proto.html#c.sw_chan">sw_chan (C type)</a>
-</li>
-  </ul></td>
-</tr></table>
-
 <h2 id="X">X</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
@@ -394,11 +345,35 @@
 </li>
       <li><a href="mailbox.proto.html#c.xcl_firewall">xcl_firewall (C type)</a>
 </li>
+      <li><a href="mailbox.proto.html#c.xcl_group_kind">xcl_group_kind (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_mailbox_bitstream_kaddr">xcl_mailbox_bitstream_kaddr (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_mailbox_clock_freqscaling">xcl_mailbox_clock_freqscaling (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_mailbox_conn">xcl_mailbox_conn (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_mailbox_conn_resp">xcl_mailbox_conn_resp (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_mailbox_p2p_bar_addr">xcl_mailbox_p2p_bar_addr (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_mailbox_peer_state">xcl_mailbox_peer_state (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_mailbox_req">xcl_mailbox_req (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_mailbox_req_bitstream_lock">xcl_mailbox_req_bitstream_lock (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_mailbox_request">xcl_mailbox_request (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_mailbox_subdev_peer">xcl_mailbox_subdev_peer (C type)</a>
+</li>
       <li><a href="mailbox.proto.html#c.xcl_mig_ecc">xcl_mig_ecc (C type)</a>
 </li>
       <li><a href="mailbox.proto.html#c.xcl_pr_region">xcl_pr_region (C type)</a>
 </li>
       <li><a href="mailbox.proto.html#c.xcl_sensor">xcl_sensor (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_sw_chan">xcl_sw_chan (C type)</a>
 </li>
       <li><a href="xrt.main.html#c.xclAllocBO">xclAllocBO (C function)</a>
 </li>
@@ -440,6 +415,8 @@
 </li>
       <li><a href="xrt.main.html#c.xclGetErrorStatus">xclGetErrorStatus (C function)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="xrt.main.html#c.xclGetSectionInfo">xclGetSectionInfo (C function)</a>
 </li>
       <li><a href="xrt.main.html#c.xclGetUsageInfo">xclGetUsageInfo (C function)</a>
@@ -450,8 +427,6 @@
 </li>
       <li><a href="xrt.main.html#c.xclLockDevice">xclLockDevice (C function)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="xrt.main.html#c.xclLogMsg">xclLogMsg (C function)</a>
 </li>
       <li><a href="xrt.main.html#c.xclMapBO">xclMapBO (C function)</a>
@@ -485,6 +460,8 @@
       <li><a href="xrt.main.html#c.xclSyncBO">xclSyncBO (C function)</a>
 </li>
       <li><a href="xrt.main.html#c.xclUnlockDevice">xclUnlockDevice (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclUnmapBO">xclUnmapBO (C function)</a>
 </li>
       <li><a href="xrt.main.html#c.xclUnmgdPread">xclUnmgdPread (C function)</a>
 </li>
@@ -531,7 +508,7 @@
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017-2019, Xilinx, Inc
+        &copy; Copyright 2017-2020, Xilinx, Inc
 
     </p>
   </div>

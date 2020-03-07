@@ -123,14 +123,14 @@
 </ul>
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
-<li class="toctree-l1"><a class="reference internal" href="newxsa-bringup.html">New XSA Bringup</a></li>
 <li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Cloud Support</span></p>
@@ -229,7 +229,7 @@ some common concerns need to be addressed.</p>
 should not damage or compromise the operation of MGMT PF.</p>
 </li>
 <li><p class="first">xclbin files needs to be protected</p>
-<p>Some of the xclbin files are provided by third-party ISVs – they don’t want to the users access their
+<p>Some of the xclbin files are provided by third-party ISVs – they don’t want the users access their
 xclbin files, but use them indirectly. That is, the xclbin files in user VM or container are not the
 real ones that are running on the cards. Instead, they are fake one with the BITSTREAM section stripped.
 xclbin download on the fake xclbin files in VM should result in the real one being programed without any
@@ -374,7 +374,7 @@ $ sudo systemctl restart mpd
 <ol class="arabic simple">
 <li>Same XRT pkg is installed everywhere, baremetal/IaaS/PaaS/etc. Vendors only need to create/install their
 specific plugins</li>
-<li>Users have same Xilinx FPGA using experience everywhere – they don’t even know whether they are running
+<li>Users have same Xilinx® FPGA using experience everywhere – they don’t even know whether they are running
 within baremetal, VM, or containers, they don’t know whether the xclbin files they see are real one, fake
 one or any other kind either</li>
 </ol>
@@ -403,7 +403,7 @@ one or any other kind either</li>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017-2019, Xilinx, Inc
+        &copy; Copyright 2017-2020, Xilinx, Inc
 
     </p>
   </div>

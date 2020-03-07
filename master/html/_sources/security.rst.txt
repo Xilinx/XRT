@@ -75,8 +75,8 @@ More information on xclbin can be found in :ref:`formats.rst`.
 Xclbin Generation
 =================
 
-Users compile their Verilog/VHDL/OpenCL/C/C++ design using SDx compiler which also takes
-the shell specification as a second input. By construction the SDx compiler generates image
+Users compile their Verilog/VHDL/OpenCL/C/C++ design using Vitis™ compiler, v++ which also takes
+the shell specification as a second input. By construction the Vitis™ compiler, v++ generates image
 compatible with DFX partition of the shell. The compiler uses a technology called *PR Verify*
 to ensure that the user design physically confines itself to DFX partition and does not attempt
 to overwrite portions of the Shell. It also validates that all the IOs between the DFX and
@@ -203,7 +203,7 @@ Shell Update
 ============
 
 Shell update is like firmware update in conventional PCIe devices. Shell updates are distributed as signed
-RPM/DEB package files by Xilinx. Shells may be upgraded using XRT **xbmgmt** utility by system administrators
+RPM/DEB package files by Xilinx®. Shells may be upgraded using XRT **xbmgmt** utility by system administrators
 only. The upgrade process will update the PROM. A cold reboot of host is required in In order to boot the
 platform from the updated image.
 

@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Memory-to-Memory (M2M) Support &mdash; XRT 2019.2 documentation</title>
+  <title>xbutil &mdash; XRT 2019.2 documentation</title>
   
 
   
@@ -36,8 +36,8 @@
   <link rel="stylesheet" href="_static/theme_overrides.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="XRT Streaming Platform Support" href="streaming_data_support.html" />
-    <link rel="prev" title="PCIe Peer-to-Peer (P2P) Support" href="p2p.html" /> 
+    <link rel="next" title="xbmgmt" href="xbmgmt.html" />
+    <link rel="prev" title="xclbinutil" href="xclbintools.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -93,16 +93,12 @@
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Use Model and Features</span></p>
-<ul class="current">
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P) Support</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Memory-to-Memory (M2M) Support</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#example-scenario">Example scenario</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#some-limitations">Some limitations</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="streaming_data_support.html">XRT Streaming Platform Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
@@ -126,9 +122,9 @@
 <li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
-<ul>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
@@ -195,13 +191,13 @@
     
       <li><a href="index.html">Docs</a> &raquo;</li>
         
-      <li>Memory-to-Memory (M2M) Support</li>
+      <li>xbutil</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
-            <a href="_sources/m2m.rst.txt" rel="nofollow"> View page source</a>
+            <a href="_sources/xbutil.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
@@ -214,38 +210,15 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="memory-to-memory-m2m-support">
-<span id="m2m-rst"></span><h1>Memory-to-Memory (M2M) Support<a class="headerlink" href="#memory-to-memory-m2m-support" title="Permalink to this headline">¶</a></h1>
-<p>Some of the recent Alveo cards support direct Memory to Memory (M2M) data transfer whithin the card, improving the data transfer performance
-as data does not need to be transferred via host while moving from one DDR bank to another.</p>
-<div class="section" id="example-scenario">
-<h2>Example scenario<a class="headerlink" href="#example-scenario" title="Permalink to this headline">¶</a></h2>
-<p>Assume there are two kernels in the XCLBIN, K1 and K2.</p>
-<p>K1 interacts with DDR0 due to location proximity on the FPGA.</p>
-<p>Similarly, K2 interacts with DDR1 due to location proximity on the FPGA.</p>
-<p>The output of the K1 is consumed by K2 for its input. So there has to be data transfer from DDR bank0 to DDR bank1.</p>
-<div align="center" class="align-center"><img alt="_images/M2M-transfer.svg" src="_images/M2M-transfer.svg" /></div>
-<p>In OpenCL host code, let’s assume four buffers: Buf1, Buf2, Buf3, Buf4.</p>
-<dl class="docutils">
-<dt>So the data transfer from the host follow the order</dt>
-<dd>Buf1 -&gt; K1 -&gt; Buf2 -&gt; Buf3 -&gt; K2 -&gt; Buf4</dd>
-</dl>
-<p>We can perform a copy from Buf2 to Buf3 using standard OpenCL API <code class="docutils literal notranslate"><span class="pre">clEnqueueCopyBuffer</span></code>. See below a code segment.</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>clEnqueueTask(queue, K1 ,0,nullptr,&amp;events1);
-clEnqueueCopyBuffer(queue, Buf2,Buf3,0,0,Buffer_size, 1, &amp;event1, &amp;event2);
-clEnqueueTask(queue,K2,1,&amp;event2,nullptr);
-</pre></div>
-</div>
-</div>
-<div class="section" id="some-limitations">
-<h2>Some limitations<a class="headerlink" href="#some-limitations" title="Permalink to this headline">¶</a></h2>
-<ol class="arabic simple">
-<li>Hardware supports M2M between two DDR banks, not other memory types such as HBM or PLRAM</li>
-<li>The data being copied has to be 64 bit aligned. Otherwise, XRT will do copy via host using the same API</li>
-<li>Not all the cards are M2M capable, in that case, XRT will do copy via host using the same API</li>
-<li>M2M copy of OpenCL sub-buffers is not properly supported</li>
-</ol>
-</div>
+  <div class="section" id="xbutil">
+<span id="xbutil-rst"></span><h1>xbutil<a class="headerlink" href="#xbutil" title="Permalink to this headline">¶</a></h1>
+<p>The Xilinx® Board Utility (xbutil) is a standalone command line utility that is included with the
+XRT installation package. The <code class="docutils literal notranslate"><span class="pre">xbutil</span></code> command supports both Alveo Data Center accelerator cards
+and embedded processor-based platforms. It includes multiple commands to validate and identify
+the installed accelerator card(s) along with additional card details including DDR, PCIe®, target
+platform name, and system information. This information can be used for both card administration
+and application debugging.</p>
+<p>For more details please refer <a class="reference external" href="https://www.xilinx.com/html_docs/xilinx2019_2/vitis_doc/Chunk1377771038.html">Vitis Application Acceleration Development Flow Documentation</a></p>
 </div>
 
 
@@ -256,10 +229,10 @@ clEnqueueTask(queue,K2,1,&amp;event2,nullptr);
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="streaming_data_support.html" class="btn btn-neutral float-right" title="XRT Streaming Platform Support" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="xbmgmt.html" class="btn btn-neutral float-right" title="xbmgmt" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="p2p.html" class="btn btn-neutral float-left" title="PCIe Peer-to-Peer (P2P) Support" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="xclbintools.html" class="btn btn-neutral float-left" title="xclbinutil" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

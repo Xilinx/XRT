@@ -36,7 +36,7 @@
   <link rel="stylesheet" href="_static/theme_overrides.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="xbutil" href="tools.html" />
+    <link rel="next" title="xclbinutil" href="xclbintools.html" />
     <link rel="prev" title="XOCL (PCIe User Physical Function) Driver Interfaces" href="xocl_ioctl.main.html" /> 
 </head>
 
@@ -123,14 +123,14 @@
 </ul>
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
-<li class="toctree-l1"><a class="reference internal" href="newxsa-bringup.html">New XSA Bringup</a></li>
 <li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Cloud Support</span></p>
@@ -530,23 +530,6 @@ struct <code class="descname">drm_zocl_pread_bo</code><a class="headerlink" href
 <dd>Pointer to write the data into (pointers not 32/64 compatible)</dd>
 </dl>
 <dl class="type">
-<dt id="c.drm_zocl_pcap_download">
-struct <code class="descname">drm_zocl_pcap_download</code><a class="headerlink" href="#c.drm_zocl_pcap_download" title="Permalink to this definition">¶</a></dt>
-<dd><p>load xclbin (AXLF) device image. Used only in PR platforms used with DRM_IOCTL_ZOCL_PCAP_DOWNLOAD ioctl</p>
-</dd></dl>
-
-<p><strong>Definition</strong></p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_pcap_download {
-  struct axlf * xclbin;
-};
-</pre></div>
-</div>
-<p><strong>Members</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">xclbin</span></code></dt>
-<dd>Pointer to xclbin (AXLF) object</dd>
-</dl>
-<dl class="type">
 <dt id="c.drm_zocl_info_cu">
 struct <code class="descname">drm_zocl_info_cu</code><a class="headerlink" href="#c.drm_zocl_info_cu" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get information about Compute Unit (experimental) used with DRM_IOCTL_ZOCL_INFO_CU ioctl</p>
@@ -556,6 +539,7 @@ struct <code class="descname">drm_zocl_info_cu</code><a class="headerlink" href=
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_info_cu {
   uint64_t paddr;
   int apt_idx;
+  int cu_idx;
 };
 </pre></div>
 </div>
@@ -565,6 +549,8 @@ struct <code class="descname">drm_zocl_info_cu</code><a class="headerlink" href=
 <dd>Physical address</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">apt_idx</span></code></dt>
 <dd>Aperture index</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cu_idx</span></code></dt>
+<dd>CU index</dd>
 </dl>
 <dl class="type">
 <dt id="c.drm_zocl_execbuf">
@@ -680,7 +666,7 @@ struct <code class="descname">drm_zocl_sk_report</code><a class="headerlink" hre
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="tools.html" class="btn btn-neutral float-right" title="xbutil" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="xclbintools.html" class="btn btn-neutral float-right" title="xclbinutil" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="xocl_ioctl.main.html" class="btn btn-neutral float-left" title="XOCL (PCIe User Physical Function) Driver Interfaces" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
@@ -692,7 +678,7 @@ struct <code class="descname">drm_zocl_sk_report</code><a class="headerlink" hre
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017-2019, Xilinx, Inc
+        &copy; Copyright 2017-2020, Xilinx, Inc
 
     </p>
   </div>
