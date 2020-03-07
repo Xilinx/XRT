@@ -123,6 +123,7 @@ namespace xdp {
     devInterface->readDebugIPlayout();
     devInterface->startCounters();
     devInterface->startTrace(3);
+    devInterface->clockTraining();
   }
 
   void HALPlugin::setEncounteredDeviceHandle(void* handle)

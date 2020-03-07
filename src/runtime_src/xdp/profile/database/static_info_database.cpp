@@ -98,6 +98,7 @@ namespace xdp {
     if (binary == nullptr) return ;
 
     DeviceInfo *devInfo = new DeviceInfo();
+    devInfo->clockRateMHz = 300;
     devInfo->platformInfo.kdmaCount = 0;
 
     deviceInfo[deviceId] = devInfo;

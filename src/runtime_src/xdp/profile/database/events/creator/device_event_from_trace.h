@@ -32,16 +32,19 @@ class DeviceEventCreatorFromTrace
 
   std::map<uint64_t, uint64_t> traceIDMap; // revisit
 
-  double mTrainOffset;
-  double mTraceClockRateMHz = 285; // 300 ?
-  double mTrainSlope = 1000.0/mTraceClockRateMHz;
+  double clockTrainOffset;
+  double traceClockRateMHz;
+  double clockTrainSlope;
 
   void trainDeviceHostTimestamps(uint64_t deviceTimestamp, uint64_t hostTimestamp);
   double convertDeviceToHostTimestamp(uint64_t deviceTimestamp);
 
   public :
   DeviceEventCreatorFromTrace()
-    : db(VPDatabase::Instance())
+    : db(VPDatabase::Instance()),
+      clockTrainOffset(0),
+      traceClockRateMHz(0),
+      clockTrainSlope(0)
   {}
   virtual ~DeviceEventCreatorFromTrace() {}
 

@@ -29,9 +29,10 @@ namespace xdp {
     if(!db->alive()) {
       return;
     }
+    traceClockRateMHz = db->getStaticInfo().getClockRateMHz(deviceId);
+    clockTrainSlope = 1000.0/traceClockRateMHz;
 
     uint64_t timestamp = 0;
-
     for(unsigned int i=0; i < traceVector.mLength; i++) {
       auto& trace = traceVector.mArray[i];
       
@@ -204,44 +205,6 @@ namespace xdp {
 // LAST TRANSACTION ??
   }
 
-#if 0
-  void VPDynamicDatabase::markDeviceEventStart(uint64_t traceID, VTFEvent* event)
-  {
-    std::lock_guard<std::mutex> lock(dbLock);
-    deviceEventStartMap[traceID].push_back(event) ;
-  }
-
-  VTFEvent* VPDynamicDatabase::matchingDeviceEventStart(uint64_t traceID)
-  {
-    std::lock_guard<std::mutex> lock(dbLock) ;
-    if (deviceEventStartMap.find(traceID) != deviceEventStartMap.end() && !deviceEventStartMap[traceID].empty())
-    {
-      VTFEvent* startEvent = deviceEventStartMap[traceID].front();
-      deviceEventStartMap[traceID].pop_front();
-      return startEvent ;
-    }
-    return nullptr;
-  }
-
-  void VPDynamicDatabase::markStart(uint64_t functionID, uint64_t eventID)
-  {
-    std::lock_guard<std::mutex> lock(dbLock) ;
-    startMap[functionID] = eventID ;
-  }
-
-  uint64_t VPDynamicDatabase::matchingStart(uint64_t functionID)
-  {
-    std::lock_guard<std::mutex> lock(dbLock) ;
-    if (startMap.find(functionID) != startMap.end())
-    {
-      uint64_t value = startMap[functionID] ;
-      startMap.erase(functionID) ;
-      return value ;
-    }
-    return 0 ;
-  }
-#endif
-
   // Complete training to convert device timestamp to host time domain
   // NOTE: see description of PTP @ http://en.wikipedia.org/wiki/Precision_Time_Protocol
   // clock training relation is linear within small durations (1 sec)
@@ -252,7 +215,6 @@ namespace xdp {
     static double y2 = 0.0;
     static double x1 = 0.0;
     static double x2 = 0.0;
-//    bool isDeviceFlow = mPluginHandle->getFlowMode() == xdp::RTUtil::DEVICE;
     if (!y1 && !x1) {
       y1 = static_cast <double> (hostTimestamp);
       x1 = static_cast <double> (deviceTimestamp);
@@ -261,11 +223,11 @@ namespace xdp {
       x2 = static_cast <double> (deviceTimestamp);
       // slope in ns/cycle
 //      if (isDeviceFlow) {
-        mTrainSlope = 1000.0/mTraceClockRateMHz;
+        clockTrainSlope = 1000.0/traceClockRateMHz;
 //      } else {
-//        mTrainSlope[type] = (y2 - y1) / (x2 - x1);
+//        clockTrainSlope = (y2 - y1) / (x2 - x1);
 //      }
-      mTrainOffset = y2 - mTrainSlope * x2;
+      clockTrainOffset = y2 - clockTrainSlope * x2;
       // next time update x1, y1
       y1 = 0.0;
       x1 = 0.0;
@@ -275,8 +237,7 @@ namespace xdp {
   // Convert device timestamp to host time domain (in msec)
   double DeviceEventCreatorFromTrace::convertDeviceToHostTimestamp(uint64_t deviceTimestamp)
   {
-    // Return y = m*x + b
-    return (mTrainSlope * (double)deviceTimestamp + mTrainOffset)/1e6;
+    return (clockTrainSlope * (double)deviceTimestamp + clockTrainOffset)/1e6;
   }
 
 

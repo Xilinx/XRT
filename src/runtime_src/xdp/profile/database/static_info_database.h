@@ -109,6 +109,7 @@ namespace xdp {
   };
 
   struct DeviceInfo {
+    double clockRateMHz;
     struct PlatformInfo platformInfo;
     std::string loadedXclbin;
     std::map<int32_t, ComputeUnitInstance*> cus;
@@ -163,6 +164,13 @@ namespace xdp {
       { return openedFiles ; }
     inline std::set<uint64_t>& getCommandQueueAddresses() 
       { return commandQueueAddresses ; }
+
+    double getClockRateMHz(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return 300; 
+      return deviceInfo[deviceId]->clockRateMHz;
+    }
 
     void setDeviceName(uint64_t deviceId, std::string name)
     {
