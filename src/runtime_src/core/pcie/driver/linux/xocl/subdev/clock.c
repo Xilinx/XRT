@@ -696,7 +696,7 @@ static int clock_get_freq_by_id(struct platform_device *pdev,
 		return -EINVAL;
 	}
 
-	if (id > CLOCK_MAX_NUM_CLOCKS) {
+	if (id >= CLOCK_MAX_NUM_CLOCKS) {
 		CLOCK_ERR(clock, "id %d cannot be greater than %d",
 		    id, CLOCK_MAX_NUM_CLOCKS);
 		return -EINVAL;
