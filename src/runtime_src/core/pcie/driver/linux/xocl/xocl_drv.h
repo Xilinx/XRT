@@ -676,6 +676,13 @@ struct xocl_firewall_funcs {
 #define	xocl_af_get_data(xdev, buf)				\
 	(AF_CB(xdev, get_data) ? AF_OPS(xdev)->get_data(AF_DEV(xdev), buf) : -ENODEV)
 
+enum xocl_xmc_flags {
+	XOCL_MB_XMC = 0,
+	XOCL_MB_ERT,
+	XOCL_XMC_FREEZE,
+	XOCL_XMC_FREE,
+};
+
 /* microblaze callbacks */
 struct xocl_mb_funcs {
 	struct xocl_subdev_funcs common_funcs;
@@ -686,14 +693,7 @@ struct xocl_mb_funcs {
 	int (*load_sche_image)(struct platform_device *pdev, const char *buf,
 		u32 len);
 	int (*get_data)(struct platform_device *pdev, enum xcl_group_kind kind, void *buf);
-	int (*dr_freeze)(struct platform_device *pdev);
-	int (*dr_free)(struct platform_device *pdev);
-	int (*cmc_access)(struct platform_device *pdev, int flags);
-};
-
-enum {
-	MB_XMC,
-	MB_ERT,
+	int (*xmc_access)(struct platform_device *pdev, enum xocl_xmc_flags flags);
 };
 
 #define	MB_DEV(xdev)		\
@@ -719,22 +719,17 @@ enum {
 #define xocl_xmc_get_data(xdev, kind, buf)			\
 	(MB_CB(xdev, get_data) ? MB_OPS(xdev)->get_data(MB_DEV(xdev), kind, buf) : -ENODEV)
 
-#define xocl_xmc_dr_freeze(xdev)		\
-	(MB_CB(xdev, dr_freeze) ? MB_OPS(xdev)->dr_freeze(MB_DEV(xdev)) : -ENODEV)
-#define xocl_xmc_dr_free(xdev)		\
-	(MB_CB(xdev, dr_free) ? MB_OPS(xdev)->dr_free(MB_DEV(xdev)) : -ENODEV)
-
-#define xocl_cmc_free(xdev) 		\
-	(MB_CB(xdev, cmc_access) ? MB_OPS(xdev)->cmc_access(MB_DEV(xdev), 1) : -ENODEV)
-#define xocl_cmc_freeze(xdev)		\
-	(MB_CB(xdev, cmc_access) ? MB_OPS(xdev)->cmc_access(MB_DEV(xdev), 0) : -ENODEV)
+#define xocl_xmc_freeze(xdev)		\
+	(MB_CB(xdev, xmc_access) ? MB_OPS(xdev)->xmc_access(MB_DEV(xdev), XOCL_XMC_FREEZE) : -ENODEV)
+#define xocl_xmc_free(xdev) 		\
+	(MB_CB(xdev, xmc_access) ? MB_OPS(xdev)->xmc_access(MB_DEV(xdev), XOCL_XMC_FREE) : -ENODEV)
 
 /* ERT FW callbacks */
 #define ERT_DEV(xdev)							\
-	SUBDEV_MULTI(xdev, XOCL_SUBDEV_MB, MB_ERT).pldev
+	SUBDEV_MULTI(xdev, XOCL_SUBDEV_MB, XOCL_MB_ERT).pldev
 #define ERT_OPS(xdev)							\
 	((struct xocl_mb_funcs *)SUBDEV_MULTI(xdev,			\
-	XOCL_SUBDEV_MB, MB_ERT).ops)
+	XOCL_SUBDEV_MB, XOCL_MB_ERT).ops)
 #define ERT_CB(xdev, cb)						\
 	(ERT_DEV(xdev) && ERT_OPS(xdev) && ERT_OPS(xdev)->cb)
 #define xocl_ert_reset(xdev)						\
@@ -942,14 +937,6 @@ struct xocl_mailbox_funcs {
 	(MAILBOX_READY(xdev, get) ? MAILBOX_OPS(xdev)->get(MAILBOX_DEV(xdev), \
 	kind, data) : -ENODEV)
 
-struct gate_handler {
-	int (*gate_freeze_cb)(void *drvdata);
-	int (*gate_free_cb)(void *drvdata);
-	int (*gate_toggle_cb)(void *drvdata);
-	int (*gate_hbm_calibration_cb)(void *drvdata);
-	void *gate_args;
-};
-
 struct xocl_clock_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	int (*freq_scaling)(struct platform_device *pdev, bool force);
@@ -960,8 +947,7 @@ struct xocl_clock_funcs {
 	int (*get_freq_counter_khz)(struct platform_device *pdev,
 		unsigned int *value, int id);
 	int (*update_freq)(struct platform_device *pdev,
-		unsigned short *freqs, int num_freqs, int verify,
-		struct gate_handler *gate_handle);
+		unsigned short *freqs, int num_freqs, int verify);
 	int (*clock_status)(struct platform_device *pdev, bool *latched);
 };
 #define CLOCK_DEV_INFO(xdev, idx)					\
@@ -1018,11 +1004,11 @@ static inline int xocl_clock_ops_level(xdev_handle_t xdev)
 	CLOCK_OPS(xdev, __idx)->get_freq_counter_khz(CLOCK_DEV(xdev, __idx), value, id) : \
 	-ENODEV); \
 })
-#define	xocl_clock_update_freq(xdev, freqs, num_freqs, verify, gate_handle) \
+#define	xocl_clock_update_freq(xdev, freqs, num_freqs, verify) \
 ({ \
 	int __idx = xocl_clock_ops_level(xdev);				\
 	(CLOCK_CB(xdev, __idx, update_freq) ?					\
-	CLOCK_OPS(xdev, __idx)->update_freq(CLOCK_DEV(xdev, __idx), freqs, num_freqs, verify, gate_handle) : \
+	CLOCK_OPS(xdev, __idx)->update_freq(CLOCK_DEV(xdev, __idx), freqs, num_freqs, verify) : \
 	-ENODEV); \
 })
 #define	xocl_clock_status(xdev, latched)				\
@@ -1056,6 +1042,7 @@ struct xocl_icap_funcs {
 	int (*get_xclbin_metadata)(struct platform_device *pdev,
 		enum data_kind kind, void **buf);
 	void (*put_xclbin_metadata)(struct platform_device *pdev);
+	int (*mig_calibration)(struct platform_device *pdev);
 };
 enum {
 	RP_DOWNLOAD_NORMAL,
@@ -1120,9 +1107,13 @@ enum {
 	ICAP_OPS(xdev)->get_xclbin_metadata(ICAP_DEV(xdev), kind, buf) :	\
 	0)
 #define	xocl_icap_put_xclbin_metadata(xdev)			\
-	(ICAP_CB(xdev, put_xclbin_metadata) ?				\
+	(ICAP_CB(xdev, put_xclbin_metadata) ?			\
 	ICAP_OPS(xdev)->put_xclbin_metadata(ICAP_DEV(xdev)) : 	\
 	0)
+#define	xocl_icap_mig_calibration(xdev)				\
+	(ICAP_CB(xdev, mig_calibration) ?			\
+	ICAP_OPS(xdev)->mig_calibration(ICAP_DEV(xdev)) : 	\
+	-ENODEV)
 
 #define XOCL_GET_MEM_TOPOLOGY(xdev, mem_topo)						\
 	(xocl_icap_get_xclbin_metadata(xdev, MEMTOPO_AXLF, (void **)&mem_topo))

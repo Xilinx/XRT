@@ -349,7 +349,7 @@ static uint64_t icap_get_data(struct platform_device *pdev, enum data_kind kind)
 static const struct axlf_section_header *get_axlf_section_hdr(
 	struct icap *icap, const struct axlf *top, enum axlf_section_kind kind);
 static void icap_refresh_addrs(struct platform_device *pdev);
-static inline int icap_calibrate_mig(struct icap *icap);
+static inline int icap_calibrate_mig(struct platform_device *pdev);
 
 static int icap_xclbin_wr_lock(struct icap *icap)
 {
@@ -527,10 +527,6 @@ static int icap_freeze_axi_gate(struct icap *icap)
 	BUG_ON(icap->icap_axi_gate_frozen);
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
-	if (XOCL_DSA_IS_SMARTN(xdev)) {
-		xocl_xmc_dr_freeze(xdev);
-	}
-
 	ret = xocl_axigate_freeze(xdev, XOCL_SUBDEV_LEVEL_PRP);
 	if (ret)
 		ICAP_ERR(icap, "freeze ULP gate failed %d", ret);
@@ -554,10 +550,6 @@ static int icap_free_axi_gate(struct icap *icap)
 
 	if (!icap->icap_axi_gate_frozen)
 		return 0;
-
-	if (XOCL_DSA_IS_SMARTN(xdev)) {
-		xocl_xmc_dr_free(xdev);
-	}
 
 	ret = xocl_axigate_free(xdev, XOCL_SUBDEV_LEVEL_PRP);
 	if (ret)
@@ -657,54 +649,15 @@ static void xclbin_get_ocl_frequency_max_min(struct icap *icap,
 	}
 }
 
-static int ulp_hbm_calibration(void *drvdata)
-{
-	struct icap *icap = drvdata;
-	ICAP_INFO(icap, "HBM Calibration");
-	BUG_ON(!mutex_is_locked(&icap->icap_lock));
-
-	return icap_calibrate_mig(icap);
-}
-
-static int ulp_toggle_axi_gate(void *drvdata)
-{
-	struct icap *icap = drvdata;
-	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
-
-	ICAP_INFO(icap, "Toggle CL AXI gate");
-	BUG_ON(!mutex_is_locked(&icap->icap_lock));
-
-	xocl_axigate_reset(xdev, XOCL_SUBDEV_LEVEL_PRP);
-
-	return 0;
-}
-
-static inline int ulp_freeze_axi_gate(void *drvdata)
-{
-	return icap_freeze_axi_gate((struct icap *)drvdata);
-}
-
-static inline int ulp_free_axi_gate(void *drvdata)
-{
-	return icap_free_axi_gate((struct icap *)drvdata);
-}
-
 static int ulp_clock_update(struct icap *icap, unsigned short *freqs,
 	int num_freqs, int verify)
 {
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 	int err = 0;
 
-	struct gate_handler gate_handle = {
-		.gate_freeze_cb = ulp_freeze_axi_gate,
-		.gate_free_cb = ulp_free_axi_gate,
-		.gate_toggle_cb = ulp_toggle_axi_gate,
-		.gate_hbm_calibration_cb = ulp_hbm_calibration,
-		.gate_args = icap,
-	};
+	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
-	err = xocl_clock_update_freq(xdev, freqs, num_freqs, verify,
-		&gate_handle);
+	err = xocl_clock_update_freq(xdev, freqs, num_freqs, verify);
 
 	ICAP_INFO(icap, "returns: %d", err);
 	return err;
@@ -2125,7 +2078,7 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin)
 	xuid_t *peer_uuid = NULL;
 	struct xcl_mailbox_bitstream_kaddr mb_addr = {0};
 	struct mem_topology *mem_topo = icap->mem_topo;
-	int i, mig_count;
+	int i, mig_count = 0;
 
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
@@ -2304,8 +2257,9 @@ out:
 	return err;
 }
 
-static inline int icap_calibrate_mig(struct icap *icap)
+static int icap_calibrate_mig(struct platform_device *pdev)
 {
+	struct icap *icap = platform_get_drvdata(pdev);
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 	int err = 0;
 
@@ -2409,13 +2363,42 @@ static void icap_probe_urpdev(struct platform_device *pdev, struct axlf *xclbin,
 	}
 }
 
+/*
+ * freeze/free cmc via xmc subdev driver, the cmc is in mgmt pf.
+ *
+ * Before performing hardware configuratin changes, like downloading xclbin
+ * then reset clock, mig etc., we should stop cmc first, in case cmc still
+ * reach out the hardware that could cause potential firewall trip.
+ *
+ * After hardware configuration is done, we can restart the cmc by xmc free.
+ */
+static inline int icap_xmc_freeze(struct icap *icap)
+{
+	int err = 0;
+
+	if (ICAP_PRIVILEGED(icap))
+		err = xocl_xmc_freeze(xocl_get_xdev(icap->icap_pdev));
+
+	return err == -ENODEV ? 0 : err;
+}
+
+static inline int icap_xmc_free(struct icap *icap)
+{
+	int err = 0;
+
+	if (ICAP_PRIVILEGED(icap))
+		err = xocl_xmc_free(xocl_get_xdev(icap->icap_pdev));
+
+	return err == -ENODEV ? 0 : err;
+}
+
 static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 	struct axlf *xclbin)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
 	int err = 0, num_dev = -1, i;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	struct xocl_subdev *subdevs;
+	struct xocl_subdev *subdevs = NULL;
 	bool has_ulp_clock = false;
 
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
@@ -2423,7 +2406,11 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 	ICAP_INFO(icap, "incoming xclbin: %pUb\non device xclbin: %pUb",
 		&xclbin->m_header.uuid, &icap->icap_bitstream_uuid);
 
-	xocl_cmc_freeze(xdev);
+	/* NOTE: xmc freeze -> xclbin download -> xmc free */
+	err = icap_xmc_freeze(icap);
+	if (err)
+		return err;
+
 	xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 	icap_refresh_addrs(pdev);
 
@@ -2458,7 +2445,7 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 		}
 
 		if (!has_ulp_clock)
-			err = icap_calibrate_mig(icap);
+			err = icap_calibrate_mig(pdev);
 		if (err)
 			goto done;
 
@@ -2508,11 +2495,9 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 		xocl_subdev_create_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 	}
 
-	if (ICAP_PRIVILEGED(icap)) {
-		err = xocl_cmc_free(xdev);
-		if (err == -ENODEV)
-			err = 0;
-	}
+	/* Only when everything has been successfully setup, then enable xmc */
+	if (!err)
+		err = icap_xmc_free(icap);
 
 done:
 	if (err) {
@@ -2991,6 +2976,7 @@ static struct xocl_icap_funcs icap_ops = {
 	.get_data = icap_get_data,
 	.get_xclbin_metadata = icap_get_xclbin_metadata,
 	.put_xclbin_metadata = icap_put_xclbin_metadata,
+	.mig_calibration = icap_calibrate_mig,
 };
 
 static ssize_t clock_freqs_show(struct device *dev,
@@ -3593,7 +3579,7 @@ static int icap_remove(struct platform_device *pdev)
 	BUG_ON(icap == NULL);
 	xocl_drvinst_release(icap, &hdl);
 
-	xocl_cmc_freeze(xdev);
+	xocl_xmc_freeze(xdev);
 	icap_free_bins(icap);
 
 	iounmap(icap->icap_regs);
