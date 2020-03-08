@@ -26,9 +26,9 @@ struct tile
 {
   uint16_t row;
   uint16_t col;
-  uint16_t mem_row;
-  uint16_t mem_col;
-  uint64_t mem_addr;
+  uint16_t itr_mem_row;
+  uint16_t itr_mem_col;
+  uint64_t itr_mem_addr;
 };
 
 /**

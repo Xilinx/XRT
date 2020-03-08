@@ -18,7 +18,7 @@ if (DEFINED XRT_AIE_BUILD)
   add_library(xrt_core SHARED ${XRT_EDGE_USER_FILES}
     $<TARGET_OBJECTS:core_edgeuser_plugin_xdp_objects>
     $<TARGET_OBJECTS:core_common_objects>
-    $<TARGET_OBJECTS:xrt_aie_object>
+    $<TARGET_OBJECTS:core_edge_user_aie_object>
     $<TARGET_OBJECTS:core_edge_common_objects>
     )
 else()

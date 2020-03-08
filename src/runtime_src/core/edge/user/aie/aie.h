@@ -19,14 +19,11 @@
 #ifndef xrt_core_edge_user_aie_h
 #define xrt_core_edge_user_aie_h
 
-extern "C"
-{
-#include <xaiengine.h>
-}
-
 #include <vector>
 
-typedef xclDeviceHandle xrtDeviceHandle;
+extern "C" {
+#include <xaiengine.h>
+}
 
 namespace zynqaie {
 

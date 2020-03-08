@@ -19,7 +19,7 @@
 #ifndef _TILE_H_
 #define _TILE_H_
 
-#include "xclhal2.h"
+#include <cstdint>
 
 namespace zynqaie {
 

@@ -87,17 +87,17 @@ get_tiles(const pt::ptree& aie_meta, const std::string& graph_name)
 
     count = 0;
     for (auto& node : graph.second.get_child("iteration_memory_columns"))
-      tiles.at(count++).mem_col = std::stoul(node.second.data());
+      tiles.at(count++).itr_mem_col = std::stoul(node.second.data());
     throw_if_error(count < num_tiles,"iteration_memory_columns < num_tiles");
     
     count = 0;
     for (auto& node : graph.second.get_child("iteration_memory_rows"))
-      tiles.at(count++).mem_row = std::stoul(node.second.data());
+      tiles.at(count++).itr_mem_row = std::stoul(node.second.data());
     throw_if_error(count < num_tiles,"iteration_memory_rows < num_tiles");
 
     count = 0;
     for (auto& node : graph.second.get_child("iteration_memory_addresses"))
-      tiles.at(count++).mem_addr = std::stoul(node.second.data());
+      tiles.at(count++).itr_mem_addr = std::stoul(node.second.data());
     throw_if_error(count < num_tiles,"iteration_memory_addresses < num_tiles");
   }
 
@@ -111,6 +111,9 @@ namespace xrt_core { namespace edge { namespace aie {
 std::vector<tile>
 get_tiles(const axlf* top, const std::string& graph_name)
 {
+  if (!top)
+    return std::vector<tile>();
+
   pt::ptree aie_meta;
   read_aie_metadata(top, aie_meta);
   return ::get_tiles(aie_meta, graph_name);
