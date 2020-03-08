@@ -462,7 +462,7 @@ static struct page **xocl_virt_addr_get_pages(void *vaddr, int npages)
 		pages[i] = p;
 		if (IS_ERR(p))
 			goto fail;
-		offset += PAGE_SIZE; 
+		offset += PAGE_SIZE;
 	}
 
 	return pages;
@@ -522,7 +522,7 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 		 */
 		if (xdev->p2p_mem_chunk_num == 0) {
 			xocl_xdev_err(xdev,
-				"No P2P mem region, Can't create p2p BO");	
+				"No P2P mem region, Can't create p2p BO");
 			ret = -EINVAL;
 			goto out_free;
 		}
@@ -554,8 +554,8 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 		else if (xobj->flags & XOCL_CMA_MEM) {
 			if (xobj->cma_addr)
 				xobj->pages = xocl_virt_addr_get_pages(xobj->cma_addr, xobj->base.size >> PAGE_SHIFT);
-			else 
-				xobj->pages = xocl_cma_pool_get_pages(drm_p, 
+			else
+				xobj->pages = xocl_cma_pool_get_pages(drm_p,
 					0, xobj->cma_mm_node->start, xobj->base.size >> PAGE_SHIFT);
 		}
 		if (IS_ERR(xobj->pages)) {
@@ -1009,7 +1009,7 @@ int xocl_pread_bo_ioctl(struct drm_device *dev, void *data,
 
 	} else {
 		kaddr = xobj->vmapping;
-		kaddr += args->offset;		
+		kaddr += args->offset;
 		ret = copy_to_user(user_data, kaddr, args->size);
 	}
 
@@ -1151,7 +1151,7 @@ struct sg_table *xocl_gem_prime_get_sg_table(struct drm_gem_object *obj)
 	struct drm_xocl_bo *xobj = to_xocl_bo(obj);
 
 	BO_ENTER("xobj %p", xobj);
-	
+
 	if (!xobj->pages)
 		return ERR_PTR(-EINVAL);
 

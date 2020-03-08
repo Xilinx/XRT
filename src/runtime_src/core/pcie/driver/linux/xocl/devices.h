@@ -207,6 +207,8 @@ enum {
 #define	XOCL_TRACE_S2MM		"trace_s2mm"
 #define	XOCL_MIG_HBM		"mig.hbm"
 #define	XOCL_SRSR		"srsr"
+#define	XOCL_UARTLITE		"ulite"
+
 
 #define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
 
@@ -242,6 +244,7 @@ enum subdev_id {
 	XOCL_SUBDEV_TRACE_FUNNEL,
 	XOCL_SUBDEV_TRACE_S2MM,
 	XOCL_SUBDEV_SRSR,
+	XOCL_SUBDEV_UARTLITE,
 	XOCL_SUBDEV_NUM
 };
 
@@ -1251,6 +1254,28 @@ struct xocl_subdev_map {
 		.override_idx = -1,			\
 	}
 
+#define	XOCL_RES_UARTLITE				\
+	((struct resource []) {				\
+		{					\
+			.start	= 0x6060000, \
+			.end	= 0x606FFFF,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+		{					\
+			.start	= 4,			\
+			.end	= 4,			\
+			.flags  = IORESOURCE_IRQ,	\
+		},					\
+	})
+
+#define	XOCL_DEVINFO_UARTLITE				\
+	{						\
+		XOCL_SUBDEV_UARTLITE,			\
+		XOCL_UARTLITE,				\
+		XOCL_RES_UARTLITE,			\
+		ARRAY_SIZE(XOCL_RES_UARTLITE),		\
+	}
+
 #define XOCL_RES_SCHEDULER				\
 		((struct resource []) {			\
 		/*
@@ -1584,6 +1609,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_MAILBOX_MGMT_VERSAL,		\
 		 	XOCL_DEVINFO_XMC_VERSAL,			\
 		 	XOCL_DEVINFO_OSPI_VERSAL,			\
+		 	XOCL_DEVINFO_UARTLITE,				\
 		})
 
 #define	MGMT_RES_DSA50							\

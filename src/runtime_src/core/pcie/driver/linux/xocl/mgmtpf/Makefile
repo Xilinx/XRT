@@ -44,6 +44,7 @@ xclmgmt-y := \
 	../subdev/ert.o \
 	../subdev/ddr_srsr.o \
 	../subdev/memory_hbm.o \
+	../subdev/ulite.o \
 	mgmt-core.o \
 	mgmt-cw.o \
 	mgmt-utils.o \
