@@ -162,14 +162,17 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 
 #define	XDEV2DEV(xdev)		(&XDEV(xdev)->pdev->dev)
 
+#define PDEV(dev)	(((dev)->bus == &platform_bus_type && (dev)->parent) ? (dev)->parent : (dev))
+#define PNAME(dev)	(((dev)->bus == &pci_bus_type) ? "" : dev_name(dev))
+
 #define xocl_err(dev, fmt, args...)			\
-	dev_err(dev, "dev %llx, %s: "fmt, (u64)dev, __func__, ##args)
+	dev_err(PDEV(dev), "%s %llx %s: "fmt, PNAME(dev), (u64)dev, __func__, ##args)
 #define xocl_warn(dev, fmt, args...)			\
-	dev_warn(dev, "dev %llx, %s: "fmt, (u64)dev, __func__, ##args)
+	dev_warn(PDEV(dev), "%s %llx %s: "fmt, PNAME(dev), (u64)dev, __func__, ##args)
 #define xocl_info(dev, fmt, args...)			\
-	dev_info(dev, "dev %llx, %s: "fmt, (u64)dev, __func__, ##args)
+	dev_info(PDEV(dev), "%s %llx %s: "fmt, PNAME(dev), (u64)dev, __func__, ##args)
 #define xocl_dbg(dev, fmt, args...)			\
-	dev_dbg(dev, "dev %llx, %s: "fmt, (u64)dev, __func__, ##args)
+	dev_dbg(PDEV(dev), "%s %llx %s: "fmt, PNAME(dev), (u64)dev, __func__, ##args)
 
 #define xocl_xdev_info(xdev, fmt, args...)		\
 	xocl_info(XDEV2DEV(xdev), fmt, ##args)
