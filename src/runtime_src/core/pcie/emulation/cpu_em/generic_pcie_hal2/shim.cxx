@@ -622,6 +622,10 @@ namespace xclcpuemhal2 {
         delete []memTopology;
         memTopology = NULL;
       }
+      
+      //check xclbin version with vivado tool version
+      xclemulation::checkXclibinVersionWithTool(header);     
+      
       if (mIsKdsSwEmu)
       {
         mCore = new exec_core;
