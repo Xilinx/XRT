@@ -91,7 +91,7 @@ scan_devices(bool verbose, bool json)
 /*
  * Update shell on the board
  */
-static void 
+static int
 update_shell(uint16_t index, const std::string& flashType,
     const std::string& primary, const std::string& secondary)
 {
@@ -104,15 +104,22 @@ update_shell(uint16_t index, const std::string& flashType,
   }
 
   Flasher flasher(index);
-  if(!flasher.isValid())
-    throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % index));
+  if(!flasher.isValid()) {
+    std::cout << index << " is an invalid index\n";
+    return -EINVAL;
+  }
 
-  if (primary.empty())
-    throw xrt_core::error("Shell not specified");
+  if (primary.empty()) {
+    std::cout << "Shell not specified\n";
+    return -EINVAL;
+  }
 
   pri = std::make_unique<firmwareImage>(primary.c_str(), MCS_FIRMWARE_PRIMARY);
-  if (pri->fail())
-    throw xrt_core::error(boost::str(boost::format("Failed to read %s") % primary.c_str()));
+  if (pri->fail()) {
+    std::cout << "Failed to read " << primary.c_str() << std::endl;
+    return -EINVAL;
+  }
+
   if (!secondary.empty()) {
     sec = std::make_unique<firmwareImage>(secondary.c_str(),
       MCS_FIRMWARE_SECONDARY);
@@ -123,35 +130,43 @@ update_shell(uint16_t index, const std::string& flashType,
   flasher.upgradeFirmware(flashType, pri.get(), sec.get());
   std::cout << "Shell is updated successfully\n";
   std::cout << "Cold reboot machine to load new shell on card" << std::endl;
+
+  return 0;
 }
 
 /*
  * Update SC firmware on the board
  */
-static void 
+static int
 update_SC(uint16_t index, const std::string& file)
 {
   Flasher flasher(index);
-  if(!flasher.isValid())
-    throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % index));
+  if(!flasher.isValid()) {
+    std::cout << index << " is an invalid index\n";
+    return -EINVAL;
+  }
 
   std::shared_ptr<firmwareImage> bmc =
     std::make_shared<firmwareImage>(file.c_str(), BMC_FIRMWARE);
-  if (bmc->fail())
-    throw xrt_core::error(boost::str(boost::format("Failed to read %s") % file.c_str()));
+  if (bmc->fail()) {
+    std::cout << "Failed to read " << file.c_str() << std::endl;
+    return -EINVAL;
+  }
 
   flasher.upgradeBMCFirmware(bmc.get());
+
+  return 0;
 }
 
-/* 
+/*
  * Find the correct shell to be flashed on the board
  * Helper method for auto_flash
  */
-static DSAInfo 
+static DSAInfo
 selectShell(uint16_t idx, const std::string& dsa, const std::string& id)
 {
   uint16_t candidateDSAIndex = std::numeric_limits<uint16_t>::max();
-  boost::format fmtStatus("%|8t|Status: %s"); 
+  boost::format fmtStatus("%|8t|Status: %s");
 
   Flasher flasher(idx);
   if(!flasher.isValid())
@@ -262,25 +277,22 @@ updateShellAndSC(uint16_t boardIdx, DSAInfo& candidate, bool& reboot)
   if (!same_bmc) {
     std::cout << "Updating SC firmware on card[" << flasher.sGetDBDF() <<
       "]" << std::endl;
-    auto ret = 0;
-    update_SC(boardIdx, candidate.file.c_str());
-    if (ret != 0) {
+    auto ret = update_SC(boardIdx, candidate.file.c_str());
+    if (ret != 0)
       std::cout << "WARNING: Failed to update SC firmware on card ["
         << flasher.sGetDBDF() << "]" << std::endl;
-    }
   }
 
   if (!same_dsa) {
     std::cout << "Updating shell on card[" << flasher.sGetDBDF() <<
       "]" << std::endl;
-    auto ret = 0;update_shell(boardIdx, "", candidate.file.c_str(),
-      candidate.file.c_str());
-    if (ret != 0) {
+    auto ret = update_shell(boardIdx, "", candidate.file.c_str(),
+                            candidate.file.c_str());
+    if (ret != 0)
       std::cout << "ERROR: Failed to update shell on card["
         << flasher.sGetDBDF() << "]" << std::endl;
-    } else {
+    else
       reboot = true;
-    }
   }
 
   if (!same_dsa && !reboot)
@@ -289,12 +301,12 @@ updateShellAndSC(uint16_t boardIdx, DSAInfo& candidate, bool& reboot)
   return 0;
 }
 
-/* 
+/*
  * Update shell and sc firmware on the card automatically
  */
-static void 
+static void
 auto_flash(uint16_t index, std::string& name,
-    std::string& id, bool force) 
+    std::string& id, bool force)
 {
   std::vector<uint16_t> boardsToCheck;
   std::vector<std::pair<uint16_t, DSAInfo>> boardsToUpdate;
@@ -379,10 +391,10 @@ auto_flash(uint16_t index, std::string& name,
   }
 }
 
-/* 
+/*
  * Factory reset the board
  */
-static void 
+static void
 reset_shell(uint16_t index)
 {
   Flasher flasher(index);
@@ -644,7 +656,9 @@ SubCmdFlash::execute(const SubCmdOptions& _options) const
       return;
     }
     auto idx = xrt_core::utils::bdf2index(bdf);
-    update_shell(idx, flash_type, file, secondary);
+    auto ret = update_shell(idx, flash_type, file, secondary);
+    if (ret != 0)
+      std::cout << "ERROR: Failed to update shell on card" << std::endl;
     return;
   }
 
@@ -683,6 +697,9 @@ SubCmdFlash::execute(const SubCmdOptions& _options) const
     }
 
     auto idx = xrt_core::utils::bdf2index(bdf);
-    update_SC(idx, file);
+    auto ret = update_SC(idx, file);
+    if (ret != 0)
+      std::cout << "WARNING: Failed to update SC firmware on card" << std::endl;
+    return;
   }
 }

@@ -73,6 +73,10 @@ pu1_query_report()
 
   for (auto &ptDevice : devices) {
     int device_id = ptDevice.get<int>("device_id", -1);
+    if (device_id < 0) {
+      std::cout << "No device_id found, setting it to 0" << std::endl;
+      device_id = 0;
+    }
     auto pDevice = xrt_core::get_userpf_device(device_id);
 
     std::cout << boost::format("%s : %d") % "Device ID" % device_id << std::endl;
