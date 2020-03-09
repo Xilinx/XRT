@@ -127,9 +127,6 @@ namespace xdp {
   // Perform final read of counters and force flush of trace buffers
   void OCLProfiler::endDeviceProfiling()
   {
-#ifdef _WIN32
-    return;
-#endif
     // Only needs to be called once
     if (mEndDeviceProfilingCalled)
    	  return;
@@ -140,7 +137,7 @@ namespace xdp {
 
     // Log Counter Data
     logDeviceCounters(true, true, true);  // reads and logs device counters for all monitors in all flows
-
+#ifndef _WIN32
     // With new XDP flow, HW Emu should be similar to Device flow. So, multiple calls to trace/counters should not be needed.
     // But needed for older flow
     // Log Trace Data
@@ -162,7 +159,7 @@ namespace xdp {
     // NOTE: this needs to be done here before the device clears its list of CUs
     // See xocl::device::unload_program as called from xocl::program::~program
     Plugin->getGuidanceMetadata( getProfileManager() );
-
+#endif
     // Record that this was called indirectly by host code
     mEndDeviceProfilingCalled = true;
   }
@@ -189,16 +186,16 @@ namespace xdp {
       }
       auto itr = DeviceData.find(device);
       if (itr==DeviceData.end()) {
-        itr = DeviceData.emplace(device,xdp::xoclp::platform::device::data()).first;
+        itr = DeviceData.emplace(device,(new xdp::xoclp::platform::device::data())).first;
       }
       DeviceIntf* dInt = nullptr;
       auto xdevice = device->get_xrt_device();
       if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE) || (Plugin->getFlowMode() == xdp::RTUtil::HW_EM && Plugin->getSystemDPAEmulation())) {
-        dInt = &(itr->second.mDeviceIntf);
+        dInt = &(itr->second->mDeviceIntf);
         dInt->setDevice(new xdp::XrtDevice(xdevice));
         dInt->readDebugIPlayout();
       }       
-      xdp::xoclp::platform::device::data* info = &(itr->second);
+      xdp::xoclp::platform::device::data* info = itr->second;
 
       // Set clock etc.
       double deviceClockMHz = xdevice->getDeviceClock().get();
@@ -271,17 +268,17 @@ namespace xdp {
       }
       auto itr = DeviceData.find(device);
       if (itr==DeviceData.end()) {
-        itr = DeviceData.emplace(device,xdp::xoclp::platform::device::data()).first;
+        itr = DeviceData.emplace(device,(new xdp::xoclp::platform::device::data())).first;
       }
 
       auto xdevice = device->get_xrt_device();
       DeviceIntf* dInt = nullptr;
       if((Plugin->getFlowMode() == xdp::RTUtil::DEVICE) || (Plugin->getFlowMode() == xdp::RTUtil::HW_EM && Plugin->getSystemDPAEmulation())) {
-        dInt = &(itr->second.mDeviceIntf);
+        dInt = &(itr->second->mDeviceIntf);
         dInt->setDevice(new xdp::XrtDevice(xdevice));
         dInt->readDebugIPlayout();
       }
-      xdp::xoclp::platform::device::data* info = &(itr->second);
+      xdp::xoclp::platform::device::data* info = itr->second;
 
       // Since clock training is performed in mStartTrace, let's record this time
       // XCL_PERF_MON_MEMORY // any type
@@ -362,7 +359,7 @@ namespace xdp {
       if (itr==DeviceData.end()) {
         return;
       }
-      xdp::xoclp::platform::device::data* info = &(itr->second);
+      xdp::xoclp::platform::device::data* info = itr->second;
       if (info->ts2mm_en) {
         auto dInt  = &(info->mDeviceIntf);
         clearDeviceDDRBufferForTrace(dInt);
@@ -436,7 +433,6 @@ namespace xdp {
     // Turn on application profiling
     turnOnProfile(xdp::RTUtil::PROFILE_APPLICATION);
 
-#ifndef _WIN32
     turnOnProfile(xdp::RTUtil::PROFILE_DEVICE_COUNTERS);
 
     char* emuMode = std::getenv("XCL_EMULATION_MODE");
@@ -448,7 +444,6 @@ namespace xdp {
 
     ProfileMgr->setTransferTrace(data_transfer_trace);
     ProfileMgr->setStallTrace(stall_trace);
-#endif
 
     // Enable profile summary if profile is on
     std::string profileFile("profile_summary");
@@ -528,9 +523,9 @@ namespace xdp {
         for (auto device : Platform->get_device_range()) {
           auto itr = DeviceData.find(device);
           if (itr==DeviceData.end()) {
-            itr = DeviceData.emplace(device,xdp::xoclp::platform::device::data()).first;
+            itr = DeviceData.emplace(device,(new xdp::xoclp::platform::device::data())).first;
           }
-          DeviceIntf* dInt = &(itr->second.mDeviceIntf);
+          DeviceIntf* dInt = &(itr->second->mDeviceIntf);
           // Assumption : debug_ip_layout has been read
   
           numStallSlots  += dInt->getNumMonitors(XCL_PERF_MON_STALL);
@@ -570,9 +565,6 @@ namespace xdp {
 
   void OCLProfiler::logDeviceCounters(bool firstReadAfterProgram, bool forceReadCounters, bool logAllMonitors, xclPerfMonType type)
   {
-#ifdef _WIN32
-    return;
-#endif
     // check valid perfmon type
     if(!logAllMonitors && !( (deviceCountersProfilingOn() && (type == XCL_PERF_MON_MEMORY || type == XCL_PERF_MON_STR))
         || ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM) && type == XCL_PERF_MON_ACCEL) )) {
@@ -588,12 +580,12 @@ namespace xdp {
 
       auto itr = DeviceData.find(device);
       if (itr==DeviceData.end()) {
-        itr = DeviceData.emplace(device,xdp::xoclp::platform::device::data()).first;
+        itr = DeviceData.emplace(device,(new xdp::xoclp::platform::device::data())).first;
       }
-      xdp::xoclp::platform::device::data* info = &(itr->second);
+      xdp::xoclp::platform::device::data* info = itr->second;
       DeviceIntf* dInt = nullptr;
       if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE) || (Plugin->getFlowMode() == xdp::RTUtil::HW_EM && Plugin->getSystemDPAEmulation())) {
-        dInt = &(itr->second.mDeviceIntf);
+        dInt = &(itr->second->mDeviceIntf);
         dInt->setDevice(new xdp::XrtDevice(xdevice));
       }
 
@@ -685,13 +677,13 @@ namespace xdp {
 
       auto itr = DeviceData.find(device);
       if (itr==DeviceData.end()) {
-        itr = DeviceData.emplace(device,xdp::xoclp::platform::device::data()).first;
+        itr = DeviceData.emplace(device,(new xdp::xoclp::platform::device::data())).first;
       }
-      xdp::xoclp::platform::device::data* info = &(itr->second);
+      xdp::xoclp::platform::device::data* info = itr->second;
       DeviceIntf* dInt = nullptr;
       bool isHwEmu = Plugin->getFlowMode() == xdp::RTUtil::HW_EM;
       if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE) || (isHwEmu && Plugin->getSystemDPAEmulation())) {
-        dInt = &(itr->second.mDeviceIntf);
+        dInt = &(itr->second->mDeviceIntf);
         dInt->setDevice(new xdp::XrtDevice(xdevice));
       }
 
@@ -938,6 +930,9 @@ namespace xdp {
   void OCLProfiler::reset()
   {
     // resetDeviceProfilingFlag();
+    for(auto itr : DeviceData) {
+      delete itr.second;
+    }
     DeviceData.clear();  
   }
 

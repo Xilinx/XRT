@@ -36,6 +36,8 @@
 #include "xclbin.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
+#define PROGRAM_TIMEOUT		60
+
 using namespace boost::filesystem;
 
 const char *subCmdPartDesc = "Show and download partition onto the device";
@@ -110,6 +112,18 @@ int program_prp(unsigned index, const std::string& xclbin, bool force)
 	{
             std::cout << errmsg << std::endl;
             return -EINVAL;
+        }
+
+        int pending = 1;
+        int retry = 0;
+        while (pending && retry < PROGRAM_TIMEOUT) {
+            dev->sysfs_get<int>("", "rp_program", errmsg, pending, 1);
+            if (!errmsg.empty()) {
+                std::cout << "ERROR: can not read status." << std::endl;
+                return -EINVAL;
+            }
+            sleep(1);
+            retry++;
         }
     }
     std::cout << "Program successfully" << std::endl;

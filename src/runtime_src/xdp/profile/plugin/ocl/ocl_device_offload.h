@@ -66,8 +66,6 @@ private:
     uint64_t m_trbuf_alloc_sz;
     xdp::DeviceIntf* dev_intf;
     std::shared_ptr<RTProfile> prof_mgr;
-    xrt::device* xrt_dev;
-    xocl::device* xocl_dev;
     std::string device_name;
     std::string binary_name;
     xclPerfMonType m_type = XCL_PERF_MON_MEMORY;

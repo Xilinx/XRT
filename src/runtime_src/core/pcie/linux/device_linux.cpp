@@ -106,18 +106,18 @@ struct sysfs_fcn<std::vector<VectorValueType>>
 template <typename QueryRequestType>
 struct sysfs_getter : QueryRequestType
 {
-  const char* entry;
   const char* subdev;
+  const char* entry;
 
-  sysfs_getter(const char* e, const char* s)
-    : entry(e), subdev(s)
+  sysfs_getter(const char* s, const char* e)
+    : subdev(s), entry(e)
   {}
 
   boost::any
   get(const xrt_core::device* device) const
   {
     return sysfs_fcn<typename QueryRequestType::result_type>
-      ::get(get_pcidev(device), entry, subdev);
+      ::get(get_pcidev(device), subdev, entry);
   }
 };
 
@@ -136,10 +136,10 @@ static std::map<xrt_core::query::key_type, std::unique_ptr<query::request>> quer
 
 template <typename QueryRequestType>
 static void
-emplace_sysfs_request(const char* entry, const char* subdev)
+emplace_sysfs_request(const char* subdev, const char* entry)
 {
   auto x = QueryRequestType::key;
-  query_tbl.emplace(x, std::make_unique<sysfs_getter<QueryRequestType>>(entry, subdev));
+  query_tbl.emplace(x, std::make_unique<sysfs_getter<QueryRequestType>>(subdev, entry));
 }
 
 template <typename QueryRequestType, typename Getter>

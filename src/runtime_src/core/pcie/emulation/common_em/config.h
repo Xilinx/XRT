@@ -23,6 +23,7 @@
 #include "xbar_sys_parameters.h"
 #include "xclhal2.h"
 #include "xclfeatures.h"
+#include "xclbin.h"
 
 namespace xclemulation{
 
@@ -80,6 +81,9 @@ namespace xclemulation{
   const uint64_t FIFO_CTRL_INFO_SIZE    = 0x64;
   const uint64_t FIFO_CTRL_WARNING_SIZE = 0x68;
   const uint64_t FIFO_CTRL_ERROR_SIZE   = 0x6C;
+ 
+  const int VIVADO_MIN_VERSION = 2000;
+  const int VIVADO_MAX_VERSION = 2100;
 
   //this class has only one member now. This will be extended to use all the parameters specific to each ddr.
   class DDRBank 
@@ -193,6 +197,9 @@ namespace xclemulation{
   std::string getRunDirectory();
   
   std::map<std::string,std::string> getEnvironmentByReadingIni();
+  std::string getXclbinVersion(const axlf* top);
+  std::string getVivadoVersion();
+  void checkXclibinVersionWithTool(const xclBin *header);
 }
 
 #endif

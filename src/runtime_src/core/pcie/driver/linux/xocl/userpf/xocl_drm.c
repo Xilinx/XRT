@@ -530,7 +530,7 @@ static int xocl_check_topology(struct xocl_drm *drm_p)
 
 	err = XOCL_GET_MEM_TOPOLOGY(drm_p->xdev, topology);
 	if (err)
-		return err;
+		return 0;
 
 	if (topology == NULL)
 		goto done;
@@ -550,7 +550,7 @@ static int xocl_check_topology(struct xocl_drm *drm_p)
 		}
 	}
 
-done:	
+done:
 	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
 	return err;
 }
@@ -597,7 +597,7 @@ static void xocl_cma_chunk_free(struct xocl_drm *drm_p, uint32_t idx)
 		vfree(drm_p->cma_chunk[idx]);
 		drm_p->cma_chunk[idx] = NULL;
 
-	}	
+	}
 }
 
 static void xocl_cma_chunks_free_all(struct xocl_drm *drm_p)

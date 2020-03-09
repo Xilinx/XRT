@@ -16,27 +16,26 @@
  * under the License.
  */
 
+#include "graph.h"
+#include "core/edge/user/shim.h"
+#include "core/include/experimental/xrt_aie.h"
+
+#include <iostream>
+#include <chrono>
+#include <cerrno>
+
 extern "C"
 {
 #include <xaiengine.h>
 }
-#include "xrt_aie.h"
-#include "shim.h"
-#include "tile.h"
-#include "graph.h"
-
-#include <iostream>
-#include <errno.h>
-#include <chrono>
 
 namespace zynqaie {
 
-Graph::Graph(xclDeviceHandle handle, const char *graphName)
+Graph::Graph(xclDeviceHandle handle, const std::string& graphName)
+  : name(graphName)
 {
     ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
     devHandle = handle;
-
-    name = graphName;
 
     /*
      * TODO
@@ -49,12 +48,12 @@ Graph::Graph(xclDeviceHandle handle, const char *graphName)
         drv->setAieArray(aieArray);
     }
 
-    /* TODO
-     * get tiles from xclbin. Will need some interfaces like
-     * xrt_core::xclbin::get_tiles(const axlf *top, char *graphName);
-     * just hard code for now.
-     */
-    tiles.push_back(new Tile(2, 4, 2, 4, 0x17e4));
+    const axlf* top = nullptr; // TBD
+    for (auto& tile : xrt_core::edge::aie::get_tiles(top, name))
+      tiles.emplace_back(std::move(tile));
+
+    // to be removed once TBD decided
+    tiles.emplace_back(tile_type{2, 4, 2, 4, 0x17e4});
 
     state = GRAPH_STATE_STOP;
 }
@@ -76,29 +75,23 @@ Graph *Graph::graphHandleCheck(void *gHandle)
 
 int Graph::xrtGraphReset()
 {
-    for (auto iter = tiles.begin(); iter != tiles.end(); ++iter) {
-        auto col = (*iter)->graphCol;
-        auto row = (*iter)->graphRow;
-        auto pos = aieArray->getTilePos(col, row);
-
-        XAieTile_CoreControl(&(aieArray->tileArray.at(pos)), XAIE_DISABLE, XAIE_ENABLE);
+    for (auto& tile : tiles) {
+      auto pos = aieArray->getTilePos(tile.col, tile.row);
+      XAieTile_CoreControl(&(aieArray->tileArray.at(pos)), XAIE_DISABLE, XAIE_ENABLE);
     }
 
     state = GRAPH_STATE_RESET;
 
-    return 0;
+  return 0;
 }
 
 uint64_t Graph::xrtGraphTimeStamp()
 {
     /* TODO just use the first tile to get the timestamp? */
-    auto col = (*tiles.begin())->graphCol;
-    auto row = (*tiles.begin())->graphRow;
-
-    auto pos = aieArray->getTilePos(col, row);
+    auto& tile = tiles.at(0);
+    auto pos = aieArray->getTilePos(tile.col, tile.row);
 
     uint64_t timeStamp = XAieTile_CoreReadTimer(&(aieArray->tileArray.at(pos)));
-
     return timeStamp;
 }
 
@@ -114,10 +107,8 @@ int Graph::xrtGraphRun()
         xrtGraphReset();
     }
 
-    for (auto iter = tiles.begin(); iter != tiles.end(); ++iter) {
-        auto col = (*iter)->graphCol;
-        auto row = (*iter)->graphRow;
-        auto pos = aieArray->getTilePos(col, row);
+    for (auto& tile : tiles) {
+        auto pos = aieArray->getTilePos(tile.col, tile.row);
         XAieTile_CoreControl(&(aieArray->tileArray.at(pos)), XAIE_ENABLE, XAIE_DISABLE);
     }
 
@@ -128,11 +119,9 @@ int Graph::xrtGraphRun()
 
 int Graph::xrtGraphUpdateIter(int iterations)
 {
-    for (auto iter = tiles.begin(); iter != tiles.end(); ++iter) {
-        auto col = (*iter)->iterCol;
-        auto row = (*iter)->iterRow;
-        auto pos = aieArray->getTilePos(col, row);
-        uint32_t addr = (*iter)->iterMemAddr;
+    for (auto& tile : tiles) {
+        auto pos = aieArray->getTilePos(tile.itr_mem_col, tile.itr_mem_row);
+        uint32_t addr = tile.itr_mem_addr;
         XAieTile_DmWriteWord(&(aieArray->tileArray.at(pos)), addr, iterations);
     }
 
@@ -154,11 +143,8 @@ int Graph::xrtGraphWaitDone(int timeoutMilliSec)
      */
     while (1) {
         uint8_t done;
-        for (auto iter = tiles.begin(); iter != tiles.end(); ++iter) {
-            auto col = (*iter)->iterCol;
-            auto row = (*iter)->iterRow;
-            auto pos = aieArray->getTilePos(col, row);
-            uint32_t addr = (*iter)->iterMemAddr;
+        for (auto& tile : tiles) {
+            auto pos = aieArray->getTilePos(tile.itr_mem_col, tile.itr_mem_row);
             done = XAieTile_CoreReadStatusDone(&(aieArray->tileArray.at(pos)));
             if (!done)
                 break;
@@ -188,10 +174,8 @@ int Graph::xrtGraphSuspend()
 	return -EINVAL;
     }
 
-    for (auto iter = tiles.begin(); iter != tiles.end(); ++iter) {
-        auto col = (*iter)->graphCol;
-        auto row = (*iter)->graphRow;
-        auto pos = aieArray->getTilePos(col, row);
+    for (auto& tile : tiles) {
+        auto pos = aieArray->getTilePos(tile.col, tile.row);
         XAieTile_CoreControl(&(aieArray->tileArray.at(pos)), XAIE_DISABLE, XAIE_DISABLE);
     }
 
@@ -207,10 +191,8 @@ int Graph::xrtGraphResume()
         return -EINVAL;
     }
 
-    for (auto iter = tiles.begin(); iter != tiles.end(); ++iter) {
-        auto col = (*iter)->graphCol;
-        auto row = (*iter)->graphRow;
-        auto pos = aieArray->getTilePos(col, row);
+    for (auto& tile : tiles) {
+        auto pos = aieArray->getTilePos(tile.col, tile.row);
         XAieTile_CoreControl(&(aieArray->tileArray.at(pos)), XAIE_ENABLE, XAIE_DISABLE);
     }
 
@@ -234,10 +216,8 @@ int Graph::xrtGraphStop(int timeoutMilliSec)
      */
     while (1) {
         uint8_t done;
-        for (auto iter = tiles.begin(); iter != tiles.end(); ++iter) {
-            auto col = (*iter)->iterCol;
-            auto row = (*iter)->iterRow;
-            auto pos = aieArray->getTilePos(col, row);
+        for (auto& tile : tiles) {
+            auto pos = aieArray->getTilePos(tile.itr_mem_col, tile.itr_mem_row);
             done = XAieTile_CoreReadStatusDone(&(aieArray->tileArray.at(pos)));
             if (!done)
                 break;
@@ -251,10 +231,8 @@ int Graph::xrtGraphStop(int timeoutMilliSec)
         auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(dur).count();
         if (timeoutMilliSec >= 0 && timeoutMilliSec < ms) {
             std::cout << "Wait Graph " << name << " timeout. Force stop" << std::endl;
-            for (auto iter = tiles.begin(); iter != tiles.end(); ++iter) {
-                auto col = (*iter)->iterCol;
-                auto row = (*iter)->iterRow;
-                auto pos = aieArray->getTilePos(col, row);
+            for (auto& tile : tiles) {
+                auto pos = aieArray->getTilePos(tile.itr_mem_col, tile.itr_mem_row);
                 XAieTile_CoreControl(&(aieArray->tileArray.at(pos)), XAIE_DISABLE, XAIE_DISABLE);
 
                /* TODO any extra action needed to end a graph? */

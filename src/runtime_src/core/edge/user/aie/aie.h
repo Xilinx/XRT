@@ -16,17 +16,14 @@
  * under the License.
  */
 
-#ifndef _ZYNQ_AIE_H
-#define _ZYNQ_AIE_H
-
-extern "C"
-{
-#include <xaiengine.h>
-}
+#ifndef xrt_core_edge_user_aie_h
+#define xrt_core_edge_user_aie_h
 
 #include <vector>
 
-typedef xclDeviceHandle xrtDeviceHandle;
+extern "C" {
+#include <xaiengine.h>
+}
 
 namespace zynqaie {
 

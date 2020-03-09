@@ -1121,7 +1121,7 @@ static ssize_t queue_rw(struct xocl_qdma *qdma, struct qdma_stream_queue *queue,
 error_out:
 	if (ret < 0 || !kiocb) {
 		xocl_warn(&qdma->pdev->dev, "%s ret %ld, kiocb 0x%p.\n",
-			  __func__, ret, kiocb);
+			  __func__, ret, (void *)kiocb);
 
 		for (i = 0, reqcb = iocb->reqcb; i < reqcnt; i++, reqcb++)
 			queue_req_release_resource(queue, reqcb);
@@ -1142,7 +1142,7 @@ error_out:
 	queue->req_submit_cnt++;
 	spin_unlock_bh(&queue->req_lock);
 
-	return kiocb ? -EIOCBQUEUED : 0;
+	return -EIOCBQUEUED;
 }
 
 static int queue_wqe_cancel(struct kiocb *kiocb)

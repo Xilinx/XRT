@@ -1007,6 +1007,29 @@ failed:
 	return ret;
 }
 
+int xocl_subdev_get_level(struct platform_device *pdev)
+{
+	xdev_handle_t xdev_hdl = xocl_get_xdev(pdev);
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
+	int level = -1, i, j;
+
+	xocl_lock_xdev(xdev_hdl);
+
+	for (i = 0; i < ARRAY_SIZE(core->subdevs); i++) {
+		for (j = 0; j < XOCL_SUBDEV_MAX_INST; j++) {
+			if (core->subdevs[i][j].pldev == pdev) {
+				level = core->subdevs[i][j].info.level;
+				goto found;
+			}
+		}
+	}
+
+found:
+	xocl_unlock_xdev(xdev_hdl);
+
+	return level;
+}
+
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev)
 {
 	struct device *dev;

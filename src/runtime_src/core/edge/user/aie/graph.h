@@ -19,17 +19,23 @@
 #ifndef _ZYNQ_GRAPH_H
 #define _ZYNQ_GRAPH_H
 
-#include "tile.h"
+#include "aie.h"
+#include "xrt.h"
+#include "core/edge/common/aie_parser.h"
+#include <string>
+#include <vector>
 
 typedef xclDeviceHandle xrtDeviceHandle;
 
 namespace zynqaie {
 
-class Graph {
-
+class Graph
+{
 public:
+    using tile_type = xrt_core::edge::aie::tile;
+
     ~Graph();
-    Graph(xrtDeviceHandle handle, const char *graphName);
+    Graph(xrtDeviceHandle handle, const std::string& graphName);
 
     static Graph *graphHandleCheck(void *gHandle);
 
@@ -74,7 +80,7 @@ private:
      * TODO A tile is represented by a pair of number <col, row>?
      * It represents the tile position in the AIE array.
      */
-    std::vector<Tile *> tiles;
+    std::vector<tile_type> tiles;
 
 };
 
