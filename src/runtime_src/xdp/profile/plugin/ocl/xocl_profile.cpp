@@ -775,7 +775,7 @@ isAPCtrlChain(key k, const std::string& cu)
   auto binary_data = binary.binary_data();
   auto header = reinterpret_cast<const xclBin *>(binary_data.first);
   auto ip_layout = getAxlfSection<const ::ip_layout>(header, axlf_section_kind::IP_LAYOUT);
-  if (!ip_layout || !base_addr)
+  if (!ip_layout)
     return false;
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
     const auto& ip_data = ip_layout->m_ip_data[count];
