@@ -48,8 +48,8 @@ Graph::Graph(xclDeviceHandle handle, const std::string& graphName)
         drv->setAieArray(aieArray);
     }
 
-    const axlf* top = nullptr; // TBD
-    for (auto& tile : xrt_core::edge::aie::get_tiles(top, name))
+    auto device = xrt_core::get_userpf_device(handle);
+    for (auto& tile : xrt_core::edge::aie::get_tiles(device.get(), name))
       tiles.emplace_back(std::move(tile));
 
     // to be removed once TBD decided

@@ -14,8 +14,9 @@
  * under the License.
  */
 
-#include "core/common/xclbin_parser.h"
 #include "aie_parser.h"
+#include "core/common/device.h"
+#include "core/include/xclbin.h"
 
 #include <sstream>
 #include <string>
@@ -35,32 +36,12 @@ throw_if_error(bool err, const char* msg)
     throw std::runtime_error(msg);
 }
 
-static const std::pair<const char*, size_t>
-aie_metadata(const axlf* top)
-{
-  auto aie_hdr = ::xclbin::get_axlf_section(top, AIE_METADATA);
-  if (!aie_hdr)
-    throw std::runtime_error("No aie meta data in xclbin");
-
-  auto begin = reinterpret_cast<const char*>(top) + aie_hdr->m_sectionOffset;
-  auto json_data = reinterpret_cast<const char*>(begin);
-  uint64_t json_size = aie_hdr->m_sectionSize;
-  return std::make_pair(json_data, json_size);
-}
-
 static void
 read_aie_metadata(const char* data, size_t size, pt::ptree& aie_project)
 {
   std::stringstream aie_stream;
   aie_stream.write(data,size);
   pt::read_json(aie_stream,aie_project);
-}
-
-static void
-read_aie_metadata(const axlf* top, pt::ptree& aie_project)
-{
-  auto aie_data = aie_metadata(top);
-  read_aie_metadata(aie_data.first, aie_data.second, aie_project);
 }
 
 std::vector<tile>
@@ -109,13 +90,14 @@ get_tiles(const pt::ptree& aie_meta, const std::string& graph_name)
 namespace xrt_core { namespace edge { namespace aie {
 
 std::vector<tile>
-get_tiles(const axlf* top, const std::string& graph_name)
+get_tiles(const xrt_core::device* device, const std::string& graph_name)
 {
-  if (!top)
+  auto data = device->get_axlf_section(AIE_METADATA);
+  if (!data.first || !data.second)
     return std::vector<tile>();
 
   pt::ptree aie_meta;
-  read_aie_metadata(top, aie_meta);
+  read_aie_metadata(data.first, data.second, aie_meta);
   return ::get_tiles(aie_meta, graph_name);
 }
 
