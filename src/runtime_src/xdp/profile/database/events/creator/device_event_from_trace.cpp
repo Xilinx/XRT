@@ -60,14 +60,14 @@ namespace xdp {
       }
 
       uint32_t s = 0;
-      bool SAMPacket = (trace.TraceID >= MIN_TRACE_ID_AM && trace.TraceID <= MAX_TRACE_ID_AM);
-      bool SPMPacket = (trace.TraceID >= MIN_TRACE_ID_AIM && trace.TraceID <= MAX_TRACE_ID_AIM);
-      bool SSPMPacket = (trace.TraceID >= MIN_TRACE_ID_ASM && trace.TraceID < MAX_TRACE_ID_ASM);
-      if (!SAMPacket && !SPMPacket && !SSPMPacket) {
+      bool AMPacket  = (trace.TraceID >= MIN_TRACE_ID_AM && trace.TraceID <= MAX_TRACE_ID_AM);
+      bool AIMPacket = (trace.TraceID >= MIN_TRACE_ID_AIM && trace.TraceID <= MAX_TRACE_ID_AIM);
+      bool ASMPacket = (trace.TraceID >= MIN_TRACE_ID_ASM && trace.TraceID < MAX_TRACE_ID_ASM);
+      if (!AMPacket && !AIMPacket && !ASMPacket) {
         continue;
       }
       double hostTimestamp = convertDeviceToHostTimestamp(timestamp);
-      if (SAMPacket) {
+      if (AMPacket) {
         s = ((trace.TraceID - MIN_TRACE_ID_AM) / 16);
         uint32_t cuEvent       = trace.TraceID & XAM_TRACE_CU_MASK;
         uint32_t stallIntEvent = trace.TraceID & XAM_TRACE_STALL_INT_MASK;
@@ -153,8 +153,8 @@ namespace xdp {
         }
         traceIDs[s] ^= (trace.TraceID & 0xf);
         amLastTrans[s] = timestamp;
-      } // SAMPacket
-      else if(SPMPacket) {
+      } // AMPacket
+      else if(AIMPacket) {
         KernelMemoryAccess* memEvent = nullptr;
         if((!trace.TraceID) & 1) { // read packet
           s = trace.TraceID/2;
@@ -214,8 +214,8 @@ namespace xdp {
 //            memEvent->setBurstLength(timestamp - ((KernelMemoryAccess*)matchingStart)->getDeviceTimestamp() + 1);
           }
         }
-      } // SPMPacket
-      else if(SSPMPacket) {
+      } // AIMPacket
+      else if(ASMPacket) {
         s = trace.TraceID - MIN_TRACE_ID_ASM;
 
         Monitor* mon = db->getStaticInfo().getASMonitor(deviceId, s);
@@ -258,7 +258,7 @@ namespace xdp {
           db->getDynamicInfo().addEvent(strmEvent);
           asmLastTrans[s] = timestamp;
         }
-      } // SSPMPacket
+      } // ASMPacket
       else {}
     }
   }
