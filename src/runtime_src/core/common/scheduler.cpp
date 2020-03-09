@@ -106,8 +106,8 @@ create_data_bo(xclDeviceHandle handle, size_t sz, uint32_t flags)
   ubo->data = xclMapBO(ubo->dev,ubo->bo,true /*write*/);
   auto ret = xclGetBOProperties(ubo->dev, ubo->bo, &ubo->prop);
   if (ret < 0) {
-    xclUnmapBO(bo->dev, bo->bo, bo->data);
-    xclFreeBO(bo->dev,bo->bo);
+    xclUnmapBO(ubo->dev, ubo->bo, ubo->data);
+    xclFreeBO(ubo->dev, ubo->bo);
     delete ubo;
     return NULL;
   }
