@@ -335,6 +335,7 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 	struct resource *res = NULL;
 	int i, bar_idx, retval;
 	char devname[64];
+	uint32_t dev_idx = 0;
 
 	if (sdev_info->override_name)
 		snprintf(devname, sizeof(devname) - 1, "%s",
@@ -353,7 +354,12 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 			retval = -ENOENT;
 		goto error;
 	}
+
+
+	/* Restore the dev_idx */
+	dev_idx = subdev->info.dev_idx;
 	memcpy(&subdev->info, sdev_info, sizeof(subdev->info));
+	subdev->info.dev_idx = dev_idx;
 
 	if (sdev_info->num_res > 0) {
 		if (sdev_info->num_res > XOCL_SUBDEV_MAX_RES) {
