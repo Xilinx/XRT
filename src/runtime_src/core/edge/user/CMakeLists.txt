@@ -1,60 +1,37 @@
 include_directories(
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  ${CMAKE_CURRENT_SOURCE_DIR}/../
   ${DRM_INCLUDE_DIRS}
-  ${CMAKE_BINARY_DIR} # includes version.h
+  ${CMAKE_BINARY_DIR} # include gen/version.h
   )
+
+add_subdirectory(plugin/xdp)
 
 if (DEFINED XRT_AIE_BUILD)
   add_subdirectory(aie)
 endif()
 
-file(GLOB XRT_EDGE_USER_PLUGIN_XDP_FILES
-  "plugin/xdp/*.h"
-  "plugin/xdp/*.cpp"
-  )
-
-file(GLOB XRT_USER_FILES
-  "*.h"
-  "*.cpp"
-  "*.c"
-  "../common/*.cpp"
-  "../common/*.h"
-  )
+file(GLOB XRT_EDGE_USER_FILES "*.cpp")
 
 set(CMAKE_CXX_FLAGS "-DXCLHAL_MAJOR_VER=2 ${CMAKE_CXX_FLAGS}")
 set(CMAKE_CXX_FLAGS "-DXCLHAL_MINOR_VER=1 ${CMAKE_CXX_FLAGS}")
 
-set(XRT_SRC
-  ${XRT_USER_FILES}
-  )
-
-add_library(core_edgeuser_plugin_xdp_no_dl_load_objects OBJECT ${XRT_EDGE_USER_PLUGIN_XDP_FILES})
-
-add_compile_options("-DXRT_LOAD_XDP_HAL_PLUGIN")
-add_library(core_edgeuser_plugin_xdp_objects OBJECT ${XRT_EDGE_USER_PLUGIN_XDP_FILES})
-
-add_library(core_edgeuser_objects OBJECT ${XRT_USER_FILES})
-
 if (DEFINED XRT_AIE_BUILD)
-  add_library(xrt_core SHARED ${XRT_SRC}
+  add_library(xrt_core SHARED ${XRT_EDGE_USER_FILES}
     $<TARGET_OBJECTS:core_edgeuser_plugin_xdp_objects>
     $<TARGET_OBJECTS:core_common_objects>
-    $<TARGET_OBJECTS:xrt_aie_object>
-    #$<TARGET_OBJECTS:core_edgecommon_objects>
+    $<TARGET_OBJECTS:core_edge_user_aie_object>
+    $<TARGET_OBJECTS:core_edge_common_objects>
     )
 else()
-  add_library(xrt_core SHARED ${XRT_SRC}
+  add_library(xrt_core SHARED ${XRT_EDGE_USER_FILES}
     $<TARGET_OBJECTS:core_edgeuser_plugin_xdp_objects>
     $<TARGET_OBJECTS:core_common_objects>
-    #$<TARGET_OBJECTS:core_edgecommon_objects>
+    $<TARGET_OBJECTS:core_edge_common_objects>
     )
 endif()
 
-add_library(xrt_core_static STATIC ""
+add_library(xrt_core_static STATIC ${XRT_EDGE_USER_FILES}
   $<TARGET_OBJECTS:core_edgeuser_plugin_xdp_no_dl_load_objects>
-  $<TARGET_OBJECTS:core_edgeuser_objects>
-  #$<TARGET_OBJECTS:core_edgecommon_objects>
+  $<TARGET_OBJECTS:core_edge_common_objects>
   $<TARGET_OBJECTS:core_common_objects>
   )
 
