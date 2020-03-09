@@ -44,6 +44,31 @@ struct tile
 std::vector<tile>
 get_tiles(const xrt_core::device* device, const std::string& graph_name);
 
+struct rtp {
+  std::string     name;
+
+  uint16_t        selector_row;
+  uint16_t        selector_col;
+  uint16_t        selector_lock_id;
+  uint64_t        selector_addr;
+
+  uint16_t        ping_row;
+  uint16_t        ping_col;
+  uint16_t        ping_lock_id;
+  uint64_t        ping_addr;
+
+  uint16_t        pong_row;
+  uint16_t        pong_col;
+  uint16_t        pong_lock_id;
+  uint64_t        pong_addr;
+
+  bool            is_plrtp;
+  bool            is_input;
+  bool            is_async;
+  bool            is_connected;
+  bool            require_lock;
+};
+
 }}} // aie, edge, xrt_core
 
 #endif
