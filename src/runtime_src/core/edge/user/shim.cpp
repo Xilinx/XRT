@@ -18,19 +18,7 @@
  */
 
 #include "shim.h"
-#include <errno.h>
-
-#include <iostream>
-#include <iomanip>
-#include <fcntl.h>
-#include <sys/ioctl.h>
-#include <sys/mman.h>
-#include <cstring>
-#include <thread>
-#include <chrono>
-#include <unistd.h>
-#include <vector>
-#include <poll.h>
+#include "system_linux.h"
 #include "core/common/message.h"
 #include "core/common/scheduler.h"
 #include "core/common/xclbin_parser.h"
@@ -38,8 +26,22 @@
 #include "core/include/xcl_perfmon_parameters.h"
 #include "core/common/bo_cache.h"
 #include "core/common/config_reader.h"
-#include <assert.h>
+
+#include <cerrno>
+#include <iostream>
+#include <iomanip>
+#include <cstring>
+#include <thread>
+#include <chrono>
+#include <vector>
+#include <cassert>
 #include <cstdarg>
+
+#include <fcntl.h>
+#include <poll.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
 
 #ifndef __HWEM__
 #include "plugin/xdp/hal_api_interface.h"
@@ -47,43 +49,6 @@
 
 
 #define GB(x)   ((size_t) (x) << 30)
-
-static std::string parseCUStatus(unsigned val) {
-  char delim = '(';
-  std::string status;
-  if ( val & 0x1) {
-    status += delim;
-    status += "START";
-    delim = '|';
-  }
-  if ( val & 0x2) {
-    status += delim;
-    status += "DONE";
-    delim = '|';
-  }
-  if ( val & 0x4) {
-    status += delim;
-    status += "IDLE";
-    delim = '|';
-  }
-  if ( val & 0x8) {
-    status += delim;
-    status += "READY";
-    delim = '|';
-  }
-  if ( val & 0x10) {
-    status += delim;
-    status += "RESTART";
-    delim = '|';
-  }
-  if ( status.size())
-    status += ')';
-  else if ( val == 0x0)
-    status = "(--)";
-  else
-    status = "(?)";
-  return status;
-}
 
 // TODO: This code is copy from core/pcie/linux/shim.cpp. Considering to create a util library for X86 and ARM.
 // Copy bytes word (32bit) by word.
@@ -109,11 +74,12 @@ inline void* wordcopy(void *dst, const void* src, size_t bytes)
 }
 
 namespace ZYNQ {
-ZYNQShim::ZYNQShim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity) :
-    mBoardNumber(index),
-    mVerbosity(verbosity),
-    mKernelClockFreq(100),
-    mCuMaps(128, nullptr)
+ZYNQShim::ZYNQShim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity)
+  : mCoreDevice(xrt_core::edge_linux::get_userpf_device(this, index))
+  , mBoardNumber(index)
+  , mVerbosity(verbosity)
+  , mKernelClockFreq(100)
+  , mCuMaps(128, nullptr)
 {
   if (logfileName != nullptr)
     xclLog(XRT_WARNING, "XRT", "%s: logfileName is no longer supported", __func__);
@@ -126,12 +92,21 @@ ZYNQShim::ZYNQShim(unsigned index, const char *logfileName, xclVerbosityLevel ve
   }
   mCmdBOCache = std::make_unique<xrt_core::bo_cache>(this, xrt_core::config::get_cmdbo_cache());
   mDev = zynq_device::get_dev();
+
+#ifdef XRT_ENABLE_AIE
+  /* TODO is this necessary? We may want to initialize it when loading xclbin */
+  aieArray = NULL; 
+#endif
 }
 
 #ifndef __HWEM__
 ZYNQShim::~ZYNQShim()
 {
   xclLog(XRT_INFO, "XRT", "%s", __func__);
+
+  // The BO cache unmaps and releases all execbo, but this must
+  // be done before the device (mKernelFD) is closed.
+  mCmdBOCache.reset(nullptr);
 
   if (mKernelFD > 0) {
     close(mKernelFD);
@@ -955,8 +930,6 @@ int ZYNQShim::xclLogMsg(xrtLogMsgLevel level, const char* tag,
 
     uint32_t temp[XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT];
 
-    std::cout << "Inside debug read counters!" << std::endl ;
-
     aCounterResults->NumSlots = numSlots;
     snprintf(aCounterResults->DevUserName, 256, "%s", " ");
     for (uint32_t s=0; s < numSlots; s++) {
@@ -1270,6 +1243,17 @@ int ZYNQShim::xclLogMsg(xrtLogMsgLevel level, const char* tag,
     return (double)clockFreq;
   }
 
+#ifdef XRT_ENABLE_AIE
+  zynqaie::Aie * ZYNQShim::getAieArray()
+  {
+    return aieArray; 
+  }
+
+  void ZYNQShim::setAieArray(zynqaie::Aie *aie)
+  {
+    aieArray = aieArray;
+  }
+#endif
 
 }
 ;
@@ -1826,4 +1810,10 @@ int xclCloseIPInterruptNotify(xclDeviceHandle handle, int fd)
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
 
   return drv ? drv->xclCloseIPInterruptNotify(fd) : -EINVAL;
+}
+
+void
+xclGetDebugIpLayout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret)
+{
+  return;
 }

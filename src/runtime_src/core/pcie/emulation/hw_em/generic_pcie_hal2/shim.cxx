@@ -15,6 +15,7 @@
  */
 
 #include "shim.h"
+#include "system_hwemu.h"
 #include <string.h>
 #include <boost/property_tree/xml_parser.hpp>
 #include <errno.h>
@@ -175,6 +176,9 @@ namespace xclhwemhal2 {
       PRINTENDFUNC;
       return -1;
     }
+
+    //check xclbin version with vivado tool version
+    xclemulation::checkXclibinVersionWithTool(header);
 
     auto top = reinterpret_cast<const axlf*>(header);
     if (auto sec = xclbin::get_axlf_section(top, EMBEDDED_METADATA)) {
@@ -1464,7 +1468,8 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
   }
 
   HwEmShim::HwEmShim( unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool _unified, bool _xpr, FeatureRomHeader &fRomHeader)
-    :mRAMSize(info.mDDRSize)
+    :mCoreDevice(xrt_core::hwemu::get_userpf_device(this, deviceIndex))
+    ,mRAMSize(info.mDDRSize)
     ,mCoalesceThreshold(4)
     ,mDSAMajorVersion(DSA_MAJOR_VERSION)
     ,mDSAMinorVersion(DSA_MINOR_VERSION)

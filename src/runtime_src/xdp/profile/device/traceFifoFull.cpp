@@ -266,28 +266,35 @@ uint32_t TraceFifoFull::readTraceForEdgeDevice(xclTraceResultsVector& traceVecto
 void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t numSamples, void* data, uint32_t /*wordsPerSample*/)
 {
     xclTraceResults results = {};
+    int mod = 0;
+    unsigned int clockWordIndex = 7;
     for (uint32_t i = 0; i < numSamples; i++) {
 
       // Old method has issues with emulation trace
       //uint32_t index = wordsPerSample * i;
       //uint32_t* dataUInt32Ptr = (uint32_t*)data;
       //uint64_t currentSample = *(dataUInt32Ptr + index) | (uint64_t)*(dataUInt32Ptr + index + 1) << 32;
-
       // Works with HW and HW Emu
+
       uint64_t* dataUInt64Ptr = (uint64_t*)data;
       uint64_t currentSample = dataUInt64Ptr[i];
 
       if (!currentSample)
         continue;
 
+      bool isClockTrain = false;
+      if (mTraceFormat == 1) {
+        isClockTrain = ((currentSample >> 63) & 0x1);
+      } else {
+        isClockTrain = (i <= clockWordIndex && !mclockTrainingdone);
+      }
+
       // Poor Man's reset
       if (i == 0 && !mclockTrainingdone)
         mfirstTimestamp = currentSample & 0x1FFFFFFFFFFF;
 
       // This section assumes that we write 8 timestamp packets in startTrace
-      int mod = (i % 4);
-      unsigned int clockWordIndex = 7;
-      if (i <= clockWordIndex && !mclockTrainingdone) {
+      if (isClockTrain) {
         if (mod == 0) {
           uint64_t currentTimestamp = currentSample & 0x1FFFFFFFFFFF;
           if (currentTimestamp >= mfirstTimestamp)
@@ -311,6 +318,7 @@ void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t
           traceVector.mArray[static_cast<int>(i/4)] = results;    // save result
           memset(&results, 0, sizeof(xclTraceResults));
         }
+        mod = (mod == 3) ? 0 : mod + 1;
         continue;
       }
 

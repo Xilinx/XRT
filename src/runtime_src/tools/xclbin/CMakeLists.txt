@@ -110,6 +110,7 @@ file(GLOB XCLBINUTIL_FILES
   "SectionSystemMetadata.cxx"
   "SectionSoftKernel.cxx"
   "SectionFlash.cxx"
+  "SectionAIEMetadata.cxx"
   "DTC.cxx"
   "DTCStringsBlock.cxx"
   "FDTNode.cxx"

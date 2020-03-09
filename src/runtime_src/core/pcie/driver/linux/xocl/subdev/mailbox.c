@@ -1950,6 +1950,16 @@ int mailbox_set(struct platform_device *pdev, enum mb_kind kind, u64 data)
 
 static void mailbox_stop(struct mailbox *mbx)
 {
+	if (mbx->mbx_state == MBX_STATE_STOPPED)
+		return;
+
+	/* clean up timers for polling mode */
+	clear_bit(MBXCS_BIT_POLL_MODE, &mbx->mbx_tx.mbc_state);
+	chan_config_timer(&mbx->mbx_tx);
+
+	clear_bit(MBXCS_BIT_POLL_MODE, &mbx->mbx_rx.mbc_state);
+	chan_config_timer(&mbx->mbx_rx);
+
 	/* Stop interrupt. */
 	mailbox_disable_intr_mode(mbx, false);
 	/* Tear down all threads. */
@@ -2289,8 +2299,10 @@ static const struct file_operations mailbox_fops = {
 static int mailbox_remove(struct platform_device *pdev)
 {
 	struct mailbox *mbx = platform_get_drvdata(pdev);
+	void *hdl;
 
 	BUG_ON(mbx == NULL);
+	xocl_drvinst_release(mbx, &hdl);
 	/* Stop accessing from sysfs node. */
 	sysfs_remove_group(&pdev->dev.kobj, &mailbox_attrgroup);
 
@@ -2302,7 +2314,7 @@ static int mailbox_remove(struct platform_device *pdev)
 	MBX_INFO(mbx, "mailbox cleaned up successfully");
 
 	platform_set_drvdata(pdev, NULL);
-	xocl_drvinst_free(mbx);
+	xocl_drvinst_free(hdl);
 	return 0;
 }
 

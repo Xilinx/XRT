@@ -27,7 +27,8 @@
 #define	GPIO_RESET			0x0
 #define	GPIO_ENABLED			0x1
 
-#define	SELF_JUMP(ins)			(((ins) & 0xfc00ffff) == 0xb8000000)
+#define SELF_JUMP_INS			0xb8000000
+#define	SELF_JUMP(ins)			(((ins) & 0xfc00ffff) == SELF_JUMP_INS)
 
 #define READ_GPIO(ert, off)			\
 	(ert->reset_addr ? XOCL_READ_REG32(ert->reset_addr + off) : 0)
@@ -64,6 +65,8 @@ struct xocl_ert {
 	u32			sche_binary_length;
 
 	struct mutex		ert_lock;
+
+	u32			cq_len;
 };
 
 static int stop_ert_nolock(struct xocl_ert *ert)
@@ -76,6 +79,11 @@ static int stop_ert_nolock(struct xocl_ert *ert)
 		return -ENODEV;
 	if (ert->state  < MB_RUNNING)
 		return 0;
+
+	if (SELF_JUMP(XOCL_READ_REG32(ert->fw_addr))) {
+		xocl_info(&ert->pdev->dev, "MB is self jump");
+		return 0;
+	}
 
 	xocl_info(&ert->pdev->dev, "Stopping scheduler...");
 
@@ -351,10 +359,15 @@ static struct xocl_mb_funcs ert_ops = {
 static int ert_remove(struct platform_device *pdev)
 {
 	struct xocl_ert *ert;
+	void *hdl;
 
 	ert = platform_get_drvdata(pdev);
 	if (!ert)
 		return 0;
+
+	xocl_drvinst_release(ert, &hdl);
+
+	stop_ert(pdev);
 
 	if (ert->sche_binary)
 		vfree(ert->sche_binary);
@@ -374,7 +387,7 @@ static int ert_remove(struct platform_device *pdev)
 	mutex_destroy(&ert->ert_lock);
 
 	platform_set_drvdata(pdev, NULL);
-	xocl_drvinst_free(ert);
+	xocl_drvinst_free(hdl);
 	return 0;
 }
 
@@ -383,7 +396,7 @@ static int ert_probe(struct platform_device *pdev)
 	struct xocl_ert *ert;
 	struct resource *res;
 	void *xdev_hdl;
-	int err;
+	int err, i;
 
 	ert = xocl_drvinst_alloc(&pdev->dev, sizeof(*ert));
 	if (!ert) {
@@ -412,6 +425,7 @@ static int ert_probe(struct platform_device *pdev)
 		goto failed;
 	}
 	ert->cq_addr = ioremap_nocache(res->start, res->end - res->start + 1);
+	ert->cq_len = (u32)(res->end - res->start + 1);
 
 	res = xocl_get_iores_byname(pdev, RESNAME_ERT_RESET);
 	if (!res) {
@@ -427,8 +441,18 @@ static int ert_probe(struct platform_device *pdev)
 		return 0;
 	}
 
-	/* GPIO is set to 0 by default, needs to take the ERT out of reset */
-	WRITE_GPIO(ert, GPIO_ENABLED, 0);
+	/* GPIO is set to 0 by default. needs to
+	 * 1) replace ERT image with a self jump instruction
+	 * 2) cleanup command queue
+	 * 3) start MB. otherwise any touching of ERT subsystem trips firewall
+	 */
+
+	if (READ_GPIO(ert, 0) == GPIO_RESET) {
+		XOCL_WRITE_REG32(SELF_JUMP_INS, ert->fw_addr);
+		WRITE_GPIO(ert, GPIO_ENABLED, 0);
+		for (i = 0; i < ert->cq_len; i += 4)
+			XOCL_WRITE_REG32(0, ert->cq_addr + i);
+	}
 
 	err = ert_sysfs_create(pdev);
 	if (err) {

@@ -74,6 +74,12 @@ int HalDevice::unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offse
   return xclUnmgdPread(mHalDevice, flags, buf, count, offset);
 }
 
+
+void HalDevice::getDebugIpLayout(char* buffer, size_t size, size_t* size_ret)
+{
+  xclGetDebugIpLayout(mHalDevice, buffer, size, size_ret);
+}
+
 double HalDevice::getDeviceClock()
 {
   return xclGetDeviceClockFreqMHz(mHalDevice);
@@ -92,6 +98,36 @@ int HalDevice::getTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uin
 int HalDevice::readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample)
 {
   return xclReadTraceData(mHalDevice, traceBuf, traceBufSz, numSamples, ipBaseAddress, wordsPerSample);
+}
+
+size_t HalDevice::alloc(size_t, uint64_t)
+{
+  return 0;
+}
+
+void HalDevice::free(size_t)
+{
+
+}
+
+void* HalDevice::map(size_t)
+{
+  return nullptr;
+}
+
+void HalDevice::unmap(size_t)
+{
+
+}
+
+void HalDevice::sync(size_t, size_t, size_t, direction, bool)
+{
+
+}
+
+uint64_t HalDevice::getDeviceAddr(size_t)
+{
+  return 0;
 }
 
 }

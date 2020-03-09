@@ -1,7 +1,7 @@
 /*
  * Simple Driver for Management PF
  *
- * Copyright (C) 2017-2019 Xilinx, Inc.
+ * Copyright (C) 2017-2020 Xilinx, Inc.
  *
  * Code borrowed from Xilinx SDAccel XDMA driver
  *
@@ -815,6 +815,9 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			break;
 		}
 
+		if (lro->rp_program == XOCL_RP_PROGRAM)
+			lro->rp_program = 0;
+
 		resp = vzalloc(sizeof(*resp));
 		if (!resp)
 			break;
@@ -833,10 +836,10 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		break;
 	}
 	case XCL_MAILBOX_REQ_PROGRAM_SHELL: {
-		/* blob should already been updated */
-		ret = xclmgmt_program_shell(lro);
+		lro->rp_program = XOCL_RP_PROGRAM;
 		(void) xocl_peer_response(lro, req->req, msgid, &ret,
 				sizeof(ret));
+		ret = xocl_queue_work(lro, XOCL_WORK_PROGRAM_SHELL, 0);
 		break;
 	}
 	case XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR: {
@@ -933,7 +936,6 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 
 	if (!(dev_info->flags & XOCL_DSAFLAG_DYNAMIC_IP) &&
 	    !(dev_info->flags & XOCL_DSAFLAG_SMARTN) &&
-	    !(dev_info->flags & XOCL_DSAFLAG_VERSAL) &&
 			i == dev_info->subdev_num &&
 			lro->core.intr_bar_addr != NULL) {
 		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_DMA_MSIX;
@@ -1047,6 +1049,12 @@ static void xclmgmt_work_cb(struct work_struct *work)
 		ret = (int) xclmgmt_hot_reset(lro, true);
 		if (!ret)
 			xocl_drvinst_set_offline(lro, false);
+		break;
+	case XOCL_WORK_PROGRAM_SHELL:
+		/* blob should already been updated */
+		ret = xclmgmt_program_shell(lro);
+		if (!ret)
+			xclmgmt_connect_notify(lro, true);
 		break;
 	default:
 		mgmt_err(lro, "Invalid op code %d", _work->op);
@@ -1180,7 +1188,7 @@ err_alloc_minor:
 	xocl_subdev_fini(lro);
 err_init_subdev:
 	dev_set_drvdata(&pdev->dev, NULL);
-	xocl_drvinst_free(lro);
+	xocl_drvinst_release(lro, NULL);
 err_alloc:
 	pci_disable_device(pdev);
 
@@ -1190,6 +1198,7 @@ err_alloc:
 static void xclmgmt_remove(struct pci_dev *pdev)
 {
 	struct xclmgmt_dev *lro;
+	void *hdl;
 
 	if ((pdev == 0) || (dev_get_drvdata(&pdev->dev) == 0))
 		return;
@@ -1198,6 +1207,8 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 	mgmt_info(lro, "remove(0x%p) where pdev->dev.driver_data = 0x%p",
 	       pdev, lro);
 	BUG_ON(lro->core.pdev != pdev);
+
+	xocl_drvinst_release(lro, &hdl);
 
 	xclmgmt_connect_notify(lro, false);
 
@@ -1237,7 +1248,7 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 
 	dev_set_drvdata(&pdev->dev, NULL);
 
-	xocl_drvinst_free(lro);
+	xocl_drvinst_free(hdl);
 }
 
 static pci_ers_result_t mgmt_pci_error_detected(struct pci_dev *pdev,
@@ -1295,6 +1306,9 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_dna,
 	xocl_init_fmgr,
 	xocl_init_ospi_versal,
+	xocl_init_srsr,
+	xocl_init_mem_hbm,
+	xocl_init_ulite,
 };
 
 static void (*drv_unreg_funcs[])(void) = {
@@ -1319,6 +1333,9 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_dna,
 	xocl_fini_fmgr,
 	xocl_fini_ospi_versal,
+	xocl_fini_srsr,
+	xocl_fini_mem_hbm,
+	xocl_fini_ulite,
 };
 
 static int __init xclmgmt_init(void)

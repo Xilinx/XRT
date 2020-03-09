@@ -870,6 +870,12 @@ public:
   }
 
   hal::operations_result<std::string>
+  getSubdevPath(const std::string& subdev, uint32_t idx)
+  {
+    return m_hal->getSubdevPath(subdev, idx);
+  }
+
+  hal::operations_result<std::string>
   getDebugIPlayoutPath()
   {
     return m_hal->getDebugIPlayoutPath();
@@ -885,6 +891,12 @@ public:
   readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample)
   {
     return m_hal->readTraceData(traceBuf, traceBufSz, numSamples, ipBaseAddress, wordsPerSample);
+  }
+
+  hal::operations_result<void>
+  getDebugIpLayout(char* buffer, size_t size, size_t* size_ret)
+  {
+    return m_hal->getDebugIpLayout(buffer, size, size_ret);
   }
 
   /**

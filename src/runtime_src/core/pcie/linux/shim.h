@@ -23,6 +23,8 @@
  */
 
 #include "scan.h"
+#include "core/common/system.h"
+#include "core/common/device.h"
 #include "xclhal2.h"
 #include "core/pcie/driver/linux/include/xocl_ioctl.h"
 #include "core/pcie/driver/linux/include/qdma_ioctl.h"
@@ -129,12 +131,12 @@ public:
     int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t sz);
 
     int xclGetDebugIPlayoutPath(char* layoutPath, size_t size);
+    int xclGetSubdevPath(const char* subdev, uint32_t idx, char* path, size_t size);
     int xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
     int xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
 
     // Experimental debug profile device data API
     int xclGetDebugProfileDeviceInfo(xclDebugProfileDeviceInfo* info);
-
 
     // Execute and interrupt abstraction
     int xclExecBuf(unsigned int cmdBO);
@@ -160,6 +162,7 @@ public:
     int xclIPName2Index(const char *name, uint32_t& index);
 
 private:
+    std::shared_ptr<xrt_core::device> mCoreDevice;
     std::shared_ptr<pcidev::pci_device> mDev;
     xclVerbosityLevel mVerbosity;
     std::ofstream mLogStream;

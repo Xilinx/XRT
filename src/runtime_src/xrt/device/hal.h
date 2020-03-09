@@ -662,6 +662,12 @@ public:
   }
 
   virtual operations_result<std::string>
+  getSubdevPath(const std::string& subdev, uint32_t idx)
+  {
+    return operations_result<std::string>();
+  }
+
+  virtual operations_result<std::string>
   getDebugIPlayoutPath()
   {
     return operations_result<std::string>();
@@ -677,6 +683,12 @@ public:
   readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample)
   {
     return operations_result<int>();
+  }
+
+  virtual operations_result<void>
+  getDebugIpLayout(char* buffer, size_t size, size_t* size_ret)
+  {
+    return operations_result<void>();
   }
 
   virtual task::queue*
@@ -711,6 +723,10 @@ load_xdp_kernel_debug();
 XRT_EXPORT
 void
 load_xdp_app_debug();
+
+XRT_EXPORT
+void
+load_xdp_lop();
 } // namespace hal
 
 namespace hal2 {

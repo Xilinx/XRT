@@ -19,6 +19,7 @@
 #include "xspi.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
+#include "core/common/query_requests.h"
 #include <iostream>
 #include <string>
 #include <fstream>
@@ -29,6 +30,14 @@
 #include <vector>
 #include <limits>
 #include <array>
+#include <fcntl.h>
+
+
+#include "core/common/error.h"
+#include "core/tools/common/XBUtilities.h"
+#include "core/tools/common/ProgressBar.h"
+namespace XBU = XBUtilities;
+#include "boost/format.hpp"
 
 template <typename ...Args>
 int
@@ -293,37 +302,24 @@ XSPI_Flasher::XSPI_Flasher(std::shared_ptr<xrt_core::device> dev)
     mDev = dev;
 
     std::string err;
-	//TODO: Replace with updated call
-    //mDev->sysfs_get<unsigned long long>("flash", "bar_off", err, flash_base, -1);
-    if (!err.empty())
+    //TODO: Replace with updated call
+    // flash_base = xrt_core::query_device<uint64_t>(mDev, xrt_core::device::QR_FLASH_BAR_OFFSET);
         flash_base = FLASH_BASE;
 
     mFlashDev = nullptr;
-    //if (std::getenv("FLASH_VIA_DRIVER")) {
-        /* TODO: Replace with updated call
-		 * int fd = mDev->open("flash", O_RDWR);
-        if (fd >= 0)
-            mFlashDev = fdopen(fd, "r+");
+#ifdef __GNUC__
+    if (std::getenv("FLASH_VIA_DRIVER")) {
+        auto fd = mDev->file_open("flash", O_RDWR);
+        if (fd.get() >= 0)
+            mFlashDev = fdopen(fd.get(), "r+");
         if (mFlashDev == NULL)
             std::cout << "Failed to open flash device on card" << std::endl;
-			*/
-    //}
+    }
+#endif
 }
 
 static bool isDualQSPI(xrt_core::device *dev) {
-    std::string err;
-    uint16_t deviceID;
-	dev = dev;
-	//TODO: Replace with updated call
-    //dev->sysfs_get<uint16_t>("", "device", err, deviceID, 0xffff);
-	//TODO: Remove when updated
-	deviceID = 0x0000;
-
-    if (!err.empty()) {
-        std::cout << "Exiting now, as could not find device ID" << std::endl;
-        exit(-EINVAL);
-    }
-
+    auto deviceID = xrt_core::device_query<xrt_core::query::pcie_device>(dev);
     return (deviceID == 0xE987 || deviceID == 0x6987 || deviceID == 0xD030);
 }
 
@@ -550,20 +546,17 @@ int XSPI_Flasher::xclUpgradeFirmware1(std::istream& mcsStream1) {
 
     //Write bitstream guard if MCS file is not at address 0
     if(bitstream_start_loc != 0) {
-        if(!writeBitstreamGuard(bitstream_start_loc)) {
-            std::cout << "ERROR: Unable to set bitstream guard!" << std::endl;
-            return -EINVAL;
-        }
+        if(!writeBitstreamGuard(bitstream_start_loc))
+            throw xrt_core::error("Unable to set bitstream guard!");
         bitstream_shift_addr += BITSTREAM_GUARD_SIZE;
-        std::cout << "Enabled bitstream guard. Bitstream will not be loaded until flashing is finished." << std::endl;
+        std::cout << boost::format("%-8s : %s \n") % "INFO" % "Enabled bitstream guard.";
+        std::cout << boost::format("%-8s : %s\n") % "INFO" % "Bitstream will not be loaded until flashing is finished.";
     }
 
     //Set slave index to 0
-    std::cout << "Preparing flash chip 0" << std::endl;
-    if (!prepareXSpi(0)) {
-        std::cout << "ERROR: Unable to prepare the flash chip 0\n";
-        return -EINVAL;
-    }
+    if (!prepareXSpi(0))
+        throw xrt_core::error("Unable to prepare the flash chip");
+
     //Program MCS file
     status = programXSpi(mcsStream1, bitstream_shift_addr);
     if(status)
@@ -572,16 +565,12 @@ int XSPI_Flasher::xclUpgradeFirmware1(std::istream& mcsStream1) {
     //Finally we clear bitstream guard if not writing to address 0
     //This will allow the bitstream to be loaded
     if(bitstream_start_loc != 0) {
-        if(!clearBitstreamGuard(bitstream_start_loc)) {
-            std::cout << "ERROR: Unable to clear bitstream guard!" << std::endl;
-            return -EINVAL;
-        }
-        std::cout << "Cleared bitstream guard. Bitstream now active." << std::endl;
+        if(!clearBitstreamGuard(bitstream_start_loc)) 
+            throw xrt_core::error("Unable to clear bitstream guard!");
+        std::cout << boost::format("%-8s : %s\n") % "INFO" % "Cleared bitstream guard. Bitstream now active.";
     }
 
     return 0;
-
-    //}
 }
 
 
@@ -744,8 +733,7 @@ int XSPI_Flasher::parseMCS(std::istream& mcsStream) {
     }
 
     mcsStream.seekg(0);
-    std::cout << "INFO: ***Found " << recordList.size() << " ELA Records" << std::endl;
-
+    std::cout << boost::format("%-8s : %s %s %s\n") % "INFO" % "found" % recordList.size() % "ELA Records";
     return 0;
 }
 
@@ -1653,12 +1641,12 @@ int XSPI_Flasher::programXSpi(std::istream& mcsStream, uint32_t bitstream_shift_
 
     //Now we can safely erase all subsectors
     int beatCount = 0;
-    std::cout << "Erasing flash" << std::flush;
+    XBU::ProgressBar erase_flash("Erasing flash", static_cast<unsigned int>(recordList.size()), XBU::is_esc_enabled(), std::cout);
     for (ELARecordList::iterator i = recordList.begin(), e = recordList.end(); i != e; ++i) {
         beatCount++;
-        if(beatCount%20==0) {
-            std::cout << "." << std::flush;
-        }
+        // if(beatCount%20==0) {
+            erase_flash.update(beatCount);
+        // }
 
         //Shift all write addresses below bitstream guard
         i->mStartAddress += bitstream_shift_addr;
@@ -1668,45 +1656,47 @@ int XSPI_Flasher::programXSpi(std::istream& mcsStream, uint32_t bitstream_shift_
         for(uint32_t j = i->mStartAddress; j < i->mEndAddress; j+=0x1000) {
             //std::cout << "DEBUG: Erasing subsector @ 0x" << std::hex << j << std::dec << std::endl;
             if(!sectorErase(j, COMMAND_4KB_SUBSECTOR_ERASE)) {
-                std::cout << "\nERROR: Failed to erase subsector!" << std::endl;
+                // std::cout << "\nERROR: Failed to erase subsector!" << std::endl;
+                erase_flash.finish(false, "Failed to erase subsector!");
                 return -EINVAL;
             }
+            
             std::this_thread::sleep_for(std::chrono::nanoseconds(20000));
         }
     }
-    //New line after ...
-    std::cout << std::endl;
+    erase_flash.finish(true, "Flash erased");
 
     //Next we program flash. Note that bitstream guard is still active
     beatCount = 0;
-    std::cout << "Programming flash" << std::flush;
+    XBU::ProgressBar program_flash("Programming flash", static_cast<unsigned int>(recordList.size()), XBU::is_esc_enabled(), std::cout);
     for (ELARecordList::iterator i = recordList.begin(), e = recordList.end(); i != e; ++i)
     {
         beatCount++;
-        if(beatCount%20==0) {
-            std::cout << "." << std::flush;
-        }
+        // if(beatCount%20==0) {
+            program_flash.update(beatCount);
+        // }
 
         if(TEST_MODE) {
-            std::cout << "INFO: Start address 0x" << std::hex << recordList.front().mStartAddress << std::dec << "\n";
-            std::cout << "INFO: End address 0x" << std::hex << recordList.back().mEndAddress << std::dec << "\n";
+            std::cout << boost::format("%-8s : %s %x\n") % "INFO" % "Start address 0x" % recordList.front().mStartAddress;
+            std::cout << boost::format("%-8s : %s %x\n") % "INFO" % "End address 0x" % recordList.front().mEndAddress;
         }
 
         bool ready = isFlashReady();
         if(!ready){
-            std::cout << "\nERROR: Unable to get flash ready" << std::endl;
+            program_flash.finish(false, "Unable to get flash ready");
             return -EINVAL;
         }
 
         clearBuffers();
 
         if (programRecord(mcsStream, *i)) {
-            std::cout << "\nERROR: Could not program the block" << std::endl;
+            program_flash.finish(false, "Could not program the block");
             return -EINVAL;
         }
+        
         std::this_thread::sleep_for(std::chrono::nanoseconds(20000));
     }
-    std::cout << std::endl;
+    program_flash.finish(true, "Flash programmed");
     return 0;
 }
 

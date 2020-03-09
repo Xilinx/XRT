@@ -144,6 +144,16 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/subdev/mailbox_versal.c
   xocl/subdev/ospi_versal.c
   xocl/subdev/ert.c
+  xocl/subdev/aim.c
+  xocl/subdev/am.c
+  xocl/subdev/asm.c
+  xocl/subdev/trace_fifo_lite.c
+  xocl/subdev/trace_fifo_full.c
+  xocl/subdev/trace_funnel.c
+  xocl/subdev/trace_s2mm.c
+  xocl/subdev/memory_hbm.c
+  xocl/subdev/ddr_srsr.c
+  xocl/subdev/ulite.c
   xocl/Makefile
   )
 

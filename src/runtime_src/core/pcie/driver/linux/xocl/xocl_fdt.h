@@ -55,8 +55,8 @@
 #define NODE_ERT_CQ_USER "ep_ert_command_queue_user_00"
 #define NODE_MAILBOX_MGMT "ep_mailbox_mgmt_00"
 #define NODE_MAILBOX_USER "ep_mailbox_user_00"
-#define NODE_GATE_BLP "ep_pr_isolate_plp_00"
-#define NODE_GATE_PRP "ep_pr_isolate_ulp_00"
+#define NODE_GATE_PLP "ep_pr_isolate_plp_00"
+#define NODE_GATE_ULP "ep_pr_isolate_ulp_00"
 #define NODE_DDR_CALIB "ep_ddr_mem_calib_00"
 #define NODE_CLK_KERNEL1 "ep_aclk_kernel_00"
 #define NODE_CLK_KERNEL2 "ep_aclk_kernel_01"
@@ -74,10 +74,12 @@
 #define NODE_CLKFREQ_HBM "ep_freq_cnt_aclk_hbm_00"
 #define NODE_GAPPING "ep_gapping_demand_00"
 #define NODE_UCS_CONTROL_STATUS "ep_ucs_control_status_00"
+#define NODE_P2P "ep_p2p_00"
+#define NODE_DDR4_RESET_GATE "ep_ddr4_reset_gate_00"
 
-#define RESNAME_GATEPRBLD       NODE_GATE_BLP
+#define RESNAME_GATEPLP       NODE_GATE_PLP
 #define RESNAME_MEMCALIB        NODE_DDR_CALIB
-#define RESNAME_GATEPRPRP       NODE_GATE_PRP
+#define RESNAME_GATEULP       NODE_GATE_ULP
 #define RESNAME_CLKWIZKERNEL1   NODE_CLK_KERNEL1
 #define RESNAME_CLKWIZKERNEL2   NODE_CLK_KERNEL2
 #define RESNAME_CLKWIZKERNEL3   NODE_CLK_KERNEL3
@@ -93,20 +95,21 @@
 #define RESNAME_ERT_FW_MEM	NODE_ERT_FW_MEM
 #define RESNAME_ERT_CQ_MGMT	NODE_ERT_CQ_MGMT
 #define RESNAME_ERT_RESET	NODE_ERT_RESET
-
+#define RESNAME_DDR4_RESET_GATE	NODE_DDR4_RESET_GATE
 /*
  * The iores subdev maintains global resources which can be shared to any
  * subdev. We keep a minimized scope of this shared public interface.
  */
 enum {
-	IORES_GATEPRBLD = 0,
+	IORES_GATEPLP = 0,
 	IORES_MEMCALIB,
-	IORES_GATEPRPRP,
+	IORES_GATEULP,
 	IORES_KDMA,
 	IORES_CMC_MUTEX,
 	IORES_GAPPING,
 	IORES_CLKFREQ_K1_K2, /* static res config exposed to iores subdev */
 	IORES_CLKFREQ_HBM, /* static res config exposed to iores subdev */
+	IORES_DDR4_RESET_GATE,
 	IORES_MAX,
 };
 

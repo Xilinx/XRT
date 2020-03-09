@@ -282,7 +282,7 @@ struct xocl_subdev {
 	int				pf;
 	struct cdev			*cdev;
 
-        struct resource		res[XOCL_SUBDEV_MAX_RES];
+	struct resource		res[XOCL_SUBDEV_MAX_RES];
 	char	res_name[XOCL_SUBDEV_MAX_RES][XOCL_SUBDEV_RES_NAME_LEN];
 	char			bar_idx[XOCL_SUBDEV_MAX_RES];
 };
@@ -361,6 +361,7 @@ enum {
 	XOCL_WORK_REFRESH_SUBDEV,
 	XOCL_WORK_SHUTDOWN,
 	XOCL_WORK_FORCE_RESET,
+	XOCL_WORK_ONLINE,
 	XOCL_WORK_NUM,
 };
 
@@ -612,44 +613,6 @@ struct xocl_mb_scheduler_funcs {
 	MB_SCHEDULER_DEV(xdev), cu, filep, addrp) :		\
 	-ENODEV)
 
-#define XOCL_GET_MEM_TOPOLOGY(xdev, mem_topo)						\
-	(xocl_icap_get_xclbin_metadata(xdev, MEMTOPO_AXLF, (void **)&mem_topo))
-
-#define XOCL_GET_IP_LAYOUT(xdev, ip_layout)						\
-	(xocl_icap_get_xclbin_metadata(xdev, IPLAYOUT_AXLF, (void **)&ip_layout))
-#define XOCL_GET_XCLBIN_ID(xdev, xclbin_id)						\
-	(xocl_icap_get_xclbin_metadata(xdev, XCLBIN_UUID, (void **)&xclbin_id))
-
-
-#define XOCL_PUT_MEM_TOPOLOGY(xdev)						\
-	xocl_icap_put_xclbin_metadata(xdev)
-#define XOCL_PUT_IP_LAYOUT(xdev)						\
-	xocl_icap_put_xclbin_metadata(xdev)
-#define XOCL_PUT_XCLBIN_ID(xdev)						\
-	xocl_icap_put_xclbin_metadata(xdev)
-
-#define XOCL_IS_DDR_USED(topo, ddr) 			\
-	(topo->m_mem_data[ddr].m_used == 1)
-
-#define	XOCL_DDR_COUNT_UNIFIED(xdev)		\
-({ \
-	struct mem_topology *topo = NULL; \
-	uint32_t ret = 0; 	\
-	int err = XOCL_GET_MEM_TOPOLOGY(xdev, topo); \
-	if (err)	\
-		return 0;		\
-	ret = topo ? topo->m_count : 0; \
-	XOCL_PUT_MEM_TOPOLOGY(xdev); \
-	(ret); \
-})
-
-#define	XOCL_DDR_COUNT(xdev)			\
-	((xocl_is_unified(xdev) ? XOCL_DDR_COUNT_UNIFIED(xdev) :	\
-	xocl_get_ddr_channel_count(xdev)))
-#define XOCL_IS_STREAM(topo, idx)					\
-	(topo->m_mem_data[idx].m_type == MEM_STREAMING || \
-	 topo->m_mem_data[idx].m_type == MEM_STREAMING_CONNECTION)
-
 /* sysmon callbacks */
 enum {
 	XOCL_SYSMON_PROP_TEMP,
@@ -713,6 +676,13 @@ struct xocl_firewall_funcs {
 #define	xocl_af_get_data(xdev, buf)				\
 	(AF_CB(xdev, get_data) ? AF_OPS(xdev)->get_data(AF_DEV(xdev), buf) : -ENODEV)
 
+enum xocl_xmc_flags {
+	XOCL_MB_XMC = 0,
+	XOCL_MB_ERT,
+	XOCL_XMC_FREEZE,
+	XOCL_XMC_FREE,
+};
+
 /* microblaze callbacks */
 struct xocl_mb_funcs {
 	struct xocl_subdev_funcs common_funcs;
@@ -723,14 +693,7 @@ struct xocl_mb_funcs {
 	int (*load_sche_image)(struct platform_device *pdev, const char *buf,
 		u32 len);
 	int (*get_data)(struct platform_device *pdev, enum xcl_group_kind kind, void *buf);
-	int (*dr_freeze)(struct platform_device *pdev);
-	int (*dr_free)(struct platform_device *pdev);
-	int (*cmc_access)(struct platform_device *pdev, int flags);
-};
-
-enum {
-	MB_XMC,
-	MB_ERT,
+	int (*xmc_access)(struct platform_device *pdev, enum xocl_xmc_flags flags);
 };
 
 #define	MB_DEV(xdev)		\
@@ -756,22 +719,17 @@ enum {
 #define xocl_xmc_get_data(xdev, kind, buf)			\
 	(MB_CB(xdev, get_data) ? MB_OPS(xdev)->get_data(MB_DEV(xdev), kind, buf) : -ENODEV)
 
-#define xocl_xmc_dr_freeze(xdev)		\
-	(MB_CB(xdev, dr_freeze) ? MB_OPS(xdev)->dr_freeze(MB_DEV(xdev)) : -ENODEV)
-#define xocl_xmc_dr_free(xdev)		\
-	(MB_CB(xdev, dr_free) ? MB_OPS(xdev)->dr_free(MB_DEV(xdev)) : -ENODEV)
-
-#define xocl_cmc_free(xdev) 		\
-	(MB_CB(xdev, cmc_access) ? MB_OPS(xdev)->cmc_access(MB_DEV(xdev), 1) : -ENODEV)
-#define xocl_cmc_freeze(xdev)		\
-	(MB_CB(xdev, cmc_access) ? MB_OPS(xdev)->cmc_access(MB_DEV(xdev), 0) : -ENODEV)
+#define xocl_xmc_freeze(xdev)		\
+	(MB_CB(xdev, xmc_access) ? MB_OPS(xdev)->xmc_access(MB_DEV(xdev), XOCL_XMC_FREEZE) : -ENODEV)
+#define xocl_xmc_free(xdev) 		\
+	(MB_CB(xdev, xmc_access) ? MB_OPS(xdev)->xmc_access(MB_DEV(xdev), XOCL_XMC_FREE) : -ENODEV)
 
 /* ERT FW callbacks */
 #define ERT_DEV(xdev)							\
-	SUBDEV_MULTI(xdev, XOCL_SUBDEV_MB, MB_ERT).pldev
+	SUBDEV_MULTI(xdev, XOCL_SUBDEV_MB, XOCL_MB_ERT).pldev
 #define ERT_OPS(xdev)							\
 	((struct xocl_mb_funcs *)SUBDEV_MULTI(xdev,			\
-	XOCL_SUBDEV_MB, MB_ERT).ops)
+	XOCL_SUBDEV_MB, XOCL_MB_ERT).ops)
 #define ERT_CB(xdev, cb)						\
 	(ERT_DEV(xdev) && ERT_OPS(xdev) && ERT_OPS(xdev)->cb)
 #define xocl_ert_reset(xdev)						\
@@ -979,13 +937,6 @@ struct xocl_mailbox_funcs {
 	(MAILBOX_READY(xdev, get) ? MAILBOX_OPS(xdev)->get(MAILBOX_DEV(xdev), \
 	kind, data) : -ENODEV)
 
-struct gate_handler {
-	int (*gate_freeze_cb)(void *drvdata);
-	int (*gate_free_cb)(void *drvdata);
-	int (*gate_toggle_cb)(void *drvdata);
-	void *gate_args;
-};
-
 struct xocl_clock_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	int (*freq_scaling)(struct platform_device *pdev, bool force);
@@ -996,8 +947,7 @@ struct xocl_clock_funcs {
 	int (*get_freq_counter_khz)(struct platform_device *pdev,
 		unsigned int *value, int id);
 	int (*update_freq)(struct platform_device *pdev,
-		unsigned short *freqs, int num_freqs, int verify,
-		struct gate_handler *gate_handle);
+		unsigned short *freqs, int num_freqs, int verify);
 	int (*clock_status)(struct platform_device *pdev, bool *latched);
 };
 #define CLOCK_DEV_INFO(xdev, idx)					\
@@ -1054,11 +1004,11 @@ static inline int xocl_clock_ops_level(xdev_handle_t xdev)
 	CLOCK_OPS(xdev, __idx)->get_freq_counter_khz(CLOCK_DEV(xdev, __idx), value, id) : \
 	-ENODEV); \
 })
-#define	xocl_clock_update_freq(xdev, freqs, num_freqs, verify, gate_handle) \
+#define	xocl_clock_update_freq(xdev, freqs, num_freqs, verify) \
 ({ \
 	int __idx = xocl_clock_ops_level(xdev);				\
 	(CLOCK_CB(xdev, __idx, update_freq) ?					\
-	CLOCK_OPS(xdev, __idx)->update_freq(CLOCK_DEV(xdev, __idx), freqs, num_freqs, verify, gate_handle) : \
+	CLOCK_OPS(xdev, __idx)->update_freq(CLOCK_DEV(xdev, __idx), freqs, num_freqs, verify) : \
 	-ENODEV); \
 })
 #define	xocl_clock_status(xdev, latched)				\
@@ -1092,6 +1042,7 @@ struct xocl_icap_funcs {
 	int (*get_xclbin_metadata)(struct platform_device *pdev,
 		enum data_kind kind, void **buf);
 	void (*put_xclbin_metadata)(struct platform_device *pdev);
+	int (*mig_calibration)(struct platform_device *pdev);
 };
 enum {
 	RP_DOWNLOAD_NORMAL,
@@ -1156,15 +1107,58 @@ enum {
 	ICAP_OPS(xdev)->get_xclbin_metadata(ICAP_DEV(xdev), kind, buf) :	\
 	0)
 #define	xocl_icap_put_xclbin_metadata(xdev)			\
-	(ICAP_CB(xdev, put_xclbin_metadata) ?				\
+	(ICAP_CB(xdev, put_xclbin_metadata) ?			\
 	ICAP_OPS(xdev)->put_xclbin_metadata(ICAP_DEV(xdev)) : 	\
 	0)
+#define	xocl_icap_mig_calibration(xdev)				\
+	(ICAP_CB(xdev, mig_calibration) ?			\
+	ICAP_OPS(xdev)->mig_calibration(ICAP_DEV(xdev)) : 	\
+	-ENODEV)
 
+#define XOCL_GET_MEM_TOPOLOGY(xdev, mem_topo)						\
+	(xocl_icap_get_xclbin_metadata(xdev, MEMTOPO_AXLF, (void **)&mem_topo))
+
+#define XOCL_GET_IP_LAYOUT(xdev, ip_layout)						\
+	(xocl_icap_get_xclbin_metadata(xdev, IPLAYOUT_AXLF, (void **)&ip_layout))
+#define XOCL_GET_XCLBIN_ID(xdev, xclbin_id)						\
+	(xocl_icap_get_xclbin_metadata(xdev, XCLBIN_UUID, (void **)&xclbin_id))
+
+
+#define XOCL_PUT_MEM_TOPOLOGY(xdev)						\
+	xocl_icap_put_xclbin_metadata(xdev)
+#define XOCL_PUT_IP_LAYOUT(xdev)						\
+	xocl_icap_put_xclbin_metadata(xdev)
+#define XOCL_PUT_XCLBIN_ID(xdev)						\
+	xocl_icap_put_xclbin_metadata(xdev)
+
+#define XOCL_IS_DDR_USED(topo, ddr) 			\
+	(topo->m_mem_data[ddr].m_used == 1)
+
+static inline u32 xocl_ddr_count_unified(xdev_handle_t xdev_hdl)
+{
+	struct mem_topology *topo = NULL;
+	uint32_t ret = 0;
+	int err = XOCL_GET_MEM_TOPOLOGY(xdev_hdl, topo);
+
+	if (err)
+		return 0;
+	ret = topo ? topo->m_count : 0;
+	XOCL_PUT_MEM_TOPOLOGY(xdev_hdl);
+
+	return ret;
+}
+
+#define	XOCL_DDR_COUNT(xdev)			\
+	(xocl_is_unified(xdev) ? xocl_ddr_count_unified(xdev) :	\
+	xocl_get_ddr_channel_count(xdev))
+#define XOCL_IS_STREAM(topo, idx)					\
+	(topo->m_mem_data[idx].m_type == MEM_STREAMING || \
+	 topo->m_mem_data[idx].m_type == MEM_STREAMING_CONNECTION)
 
 struct xocl_mig_label {
-	unsigned char	tag[16];
-	uint64_t	mem_idx;
-	enum MEM_TYPE	mem_type;	
+	unsigned char		tag[16];
+	uint64_t		mem_idx;
+	enum MEM_TYPE		mem_type;
 };
 
 struct xocl_mig_funcs {
@@ -1191,7 +1185,6 @@ struct xocl_mig_funcs {
 	(MIG_CB(xdev, idx) ?						\
 	MIG_OPS(xdev, idx)->get_id(MIG_DEV(xdev, idx)) : \
 	0)
-
 
 struct xocl_iores_funcs {
 	struct xocl_subdev_funcs common_funcs;
@@ -1253,6 +1246,7 @@ struct xocl_axigate_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	int (*freeze)(struct platform_device *pdev);
 	int (*free)(struct platform_device *pdev);
+	int (*reset)(struct platform_device *pdev);
 };
 
 #define AXIGATE_DEV(xdev, idx)			\
@@ -1270,6 +1264,10 @@ struct xocl_axigate_funcs {
 #define xocl_axigate_free(xdev, level)		\
 	(AXIGATE_CB(xdev, level, free) ?		\
 	AXIGATE_OPS(xdev, level)->free(AXIGATE_DEV(xdev, level)) :	\
+	-ENODEV)
+#define xocl_axigate_reset(xdev, level)		\
+	(AXIGATE_CB(xdev, level, reset) ?		\
+	AXIGATE_OPS(xdev, level)->reset(AXIGATE_DEV(xdev, level)) :	\
 	-ENODEV)
 
 struct xocl_mailbox_versal_funcs {
@@ -1293,6 +1291,32 @@ struct xocl_mailbox_versal_funcs {
 	(MAILBOX_VERSAL_READY(xdev, get)	\
 	? MAILBOX_VERSAL_OPS(xdev)->get(MAILBOX_VERSAL_DEV(xdev), \
 	data) : -ENODEV)
+
+
+
+/* srsr callbacks */
+struct xocl_srsr_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	int (*save_calib)(struct platform_device *pdev);
+	int (*calib)(struct platform_device *pdev, bool retain);
+};
+#define	SRSR_DEV(xdev, idx)	SUBDEV_MULTI(xdev, XOCL_SUBDEV_SRSR, idx).pldev
+#define	SRSR_OPS(xdev, idx)							\
+	((struct xocl_srsr_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_SRSR, idx).ops)
+#define	SRSR_CB(xdev, idx)	\
+	(SRSR_DEV(xdev, idx) && SRSR_OPS(xdev, idx))
+#define	xocl_srsr_reset(xdev, idx)				\
+	(SRSR_CB(xdev, idx) ?						\
+	SRSR_OPS(xdev, idx)->reset(SRSR_DEV(xdev, idx)) : \
+	-ENODEV)
+#define	xocl_srsr_save_calib(xdev, idx)				\
+	(SRSR_CB(xdev, idx) ?						\
+	SRSR_OPS(xdev, idx)->save_calib(SRSR_DEV(xdev, idx)) : \
+	-ENODEV)
+#define	xocl_srsr_calib(xdev, idx, retain)				\
+	(SRSR_CB(xdev, idx) ?						\
+	SRSR_OPS(xdev, idx)->calib(SRSR_DEV(xdev, idx), retain) : \
+	-ENODEV)
 
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
@@ -1356,6 +1380,7 @@ int xocl_subdev_offline_by_id(xdev_handle_t xdev_hdl, u32 id);
 int xocl_subdev_offline_by_level(xdev_handle_t xdev_hdl, int level);
 int xocl_subdev_online_all(xdev_handle_t xdev_hdl);
 int xocl_subdev_online_by_id(xdev_handle_t xdev_hdl, u32 id);
+int xocl_subdev_online_by_id_and_inst(xdev_handle_t xdev_hdl, u32 id, u32 inst_id);
 int xocl_subdev_online_by_level(xdev_handle_t xdev_hdl, int level);
 void xocl_subdev_destroy_by_id(xdev_handle_t xdev_hdl, u32 id);
 void xocl_subdev_destroy_by_level(xdev_handle_t xdev_hdl, int level);
@@ -1369,6 +1394,7 @@ int xocl_subdev_create_prp(xdev_handle_t xdev);
 int xocl_subdev_vsec(xdev_handle_t xdev, u32 type, int *bar_idx, u64 *offset);
 u32 xocl_subdev_vsec_read32(xdev_handle_t xdev, int bar, u64 offset);
 int xocl_subdev_create_vsec_devs(xdev_handle_t xdev);
+int xocl_subdev_get_level(struct platform_device *pdev);
 
 struct resource *xocl_subdev_get_ioresource(xdev_handle_t xdev_hdl,
 		char *res_name);
@@ -1421,7 +1447,10 @@ extern struct mutex xocl_drvinst_mutex;
 extern struct xocl_drvinst *xocl_drvinst_array[XOCL_MAX_DEVICES * 10];
 
 void *xocl_drvinst_alloc(struct device *dev, u32 size);
-void xocl_drvinst_free(void *data);
+void xocl_drvinst_release(void *data, void **hdl);
+static inline void xocl_drvinst_free(void *hdl) {
+	kfree(hdl);
+}
 void *xocl_drvinst_open(void *file_dev);
 void *xocl_drvinst_open_single(void *file_dev);
 void xocl_drvinst_close(void *data);
@@ -1534,4 +1563,35 @@ void xocl_fini_mailbox_versal(void);
 
 int __init xocl_init_ospi_versal(void);
 void xocl_fini_ospi_versal(void);
+
+int __init xocl_init_aim(void);
+void xocl_fini_aim(void);
+
+int __init xocl_init_am(void);
+void xocl_fini_am(void);
+
+int __init xocl_init_asm(void);
+void xocl_fini_asm(void);
+
+int __init xocl_init_trace_fifo_lite(void);
+void xocl_fini_trace_fifo_lite(void);
+
+int __init xocl_init_trace_fifo_full(void);
+void xocl_fini_trace_fifo_full(void);
+
+int __init xocl_init_trace_funnel(void);
+void xocl_fini_trace_funnel(void);
+
+int __init xocl_init_trace_s2mm(void);
+void xocl_fini_trace_s2mm(void);
+
+int __init xocl_init_mem_hbm(void);
+void xocl_fini_mem_hbm(void);
+
+int __init xocl_init_srsr(void);
+void xocl_fini_srsr(void);
+
+int __init xocl_init_ulite(void);
+void xocl_fini_ulite(void);
+
 #endif

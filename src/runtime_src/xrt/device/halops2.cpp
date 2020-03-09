@@ -77,6 +77,7 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   ,mWriteQueue(0)
   ,mReadQueue(0)
   ,mPollQueues(0)
+  ,mGetDebugIpLayout(0)
   ,mGetNumLiveProcesses(0)
   ,mGetSysfsPath(0)
 {
@@ -145,9 +146,12 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   mDebugReadIPStatus = (debugReadIPStatusFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclDebugReadIPStatus");
   mGetNumLiveProcesses = (xclGetNumLiveProcessesFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetNumLiveProcesses");
   mGetSysfsPath = (xclGetSysfsPathFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetSysfsPath");
+  mGetSubdevPath = (xclGetSubdevPathFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetSubdevPath");
   mGetDebugIPlayoutPath = (xclGetDebugIPlayoutPathFuncType)xrt_core::dlsym(const_cast<void*>(mDriverHandle), "xclGetDebugIPlayoutPath");
   mGetTraceBufferInfo = (xclGetTraceBufferInfoFuncType)xrt_core::dlsym(const_cast<void*>(mDriverHandle), "xclGetTraceBufferInfo");
   mReadTraceData = (xclReadTraceDataFuncType)xrt_core::dlsym(const_cast<void*>(mDriverHandle), "xclReadTraceData");
+
+  mGetDebugIpLayout = (getDebugIpLayoutType)xrt_core::dlsym(const_cast<void*>(mDriverHandle),"xclGetDebugIpLayout");
 }
 
 operations::

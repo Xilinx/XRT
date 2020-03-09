@@ -25,6 +25,7 @@
 #include "detail/context.h"
 #include "api.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 
 namespace xocl {
@@ -139,6 +140,7 @@ clCreateContextFromType(const cl_context_properties *  properties,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clCreateContextFromType
       (properties,device_type,pfn_notify,user_data,errcode_ret);
   }

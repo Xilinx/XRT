@@ -106,18 +106,18 @@ struct sysfs_fcn<std::vector<VectorValueType>>
 template <typename QueryRequestType>
 struct sysfs_getter : QueryRequestType
 {
-  const char* entry;
   const char* subdev;
+  const char* entry;
 
-  sysfs_getter(const char* e, const char* s)
-    : entry(e), subdev(s)
+  sysfs_getter(const char* s, const char* e)
+    : subdev(s), entry(e)
   {}
 
   boost::any
   get(const xrt_core::device* device) const
   {
     return sysfs_fcn<typename QueryRequestType::result_type>
-      ::get(get_pcidev(device), entry, subdev);
+      ::get(get_pcidev(device), subdev, entry);
   }
 };
 
@@ -136,10 +136,10 @@ static std::map<xrt_core::query::key_type, std::unique_ptr<query::request>> quer
 
 template <typename QueryRequestType>
 static void
-emplace_sysfs_request(const char* entry, const char* subdev)
+emplace_sysfs_request(const char* subdev, const char* entry)
 {
   auto x = QueryRequestType::key;
-  query_tbl.emplace(x, std::make_unique<sysfs_getter<QueryRequestType>>(entry, subdev));
+  query_tbl.emplace(x, std::make_unique<sysfs_getter<QueryRequestType>>(subdev, entry));
 }
 
 template <typename QueryRequestType, typename Getter>
@@ -273,6 +273,12 @@ device_linux(id_type device_id, bool user)
 {
 }
 
+device_linux::
+device_linux(handle_type device_handle, id_type device_id)
+  : shim<device_pcie>(device_handle, device_id)
+{
+}
+
 void
 device_linux::
 read_dma_stats(boost::property_tree::ptree& pt) const
@@ -286,8 +292,8 @@ read_dma_stats(boost::property_tree::ptree& pt) const
   for (unsigned int idx = 0; idx < XCL_DEVICE_USAGE_COUNT; ++idx) {
     boost::property_tree::ptree pt_dma;
     pt_dma.put( "id", std::to_string(get_device_id()));
-    pt_dma.put( "h2c", unitConvert(devstat.h2c[idx]) );
-    pt_dma.put( "c2h", unitConvert(devstat.c2h[idx]) );
+    pt_dma.put( "h2c", xrt_core::utils::unit_convert(devstat.h2c[idx]) );
+    pt_dma.put( "c2h", xrt_core::utils::unit_convert(devstat.c2h[idx]) );
 
     // Create our array of data
     pt_channels.push_back(std::make_pair("", pt_dma));
@@ -310,6 +316,20 @@ write(uint64_t offset, const void* buf, uint64_t len) const
 {
   if (auto err = pcidev::get_dev(get_device_id(), false)->pcieBarWrite(offset, buf, len))
     throw error(err, "write failed");
+}
+
+int 
+device_linux::
+open(const std::string& subdev, int flag) const
+{
+  return pcidev::get_dev(get_device_id(), false)->open(subdev, flag);
+}
+
+void
+device_linux::
+close(int dev_handle) const 
+{
+  pcidev::get_dev(get_device_id(), false)->close(dev_handle);
 }
 
 } // xrt_core

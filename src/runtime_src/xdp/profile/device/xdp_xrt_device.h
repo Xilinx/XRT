@@ -28,7 +28,11 @@ namespace xdp {
 class XrtDevice : public xdp::Device
 {
   xrt::device* mXrtDevice;
-   
+
+private:
+  using BufferObjectHandle  = xrt::hal::BufferObjectHandle;
+  std::vector<BufferObjectHandle> m_bos;
+
 public:
   XDP_EXPORT
   XrtDevice(xrt::device* xrtDevice);
@@ -40,11 +44,21 @@ public:
   virtual int read(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size);
   virtual int unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offset);
 
+  virtual void getDebugIpLayout(char* buffer, size_t size, size_t* size_ret);
+
   virtual double getDeviceClock();
   virtual uint64_t getTraceTime();
   virtual int getTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
   virtual int readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
 
+  // Only device RAM
+  virtual size_t alloc(size_t sz, uint64_t memoryIndex);
+  virtual void free(size_t xdpBoHandle);
+
+  virtual void* map (size_t xdpBoHandle);
+  virtual void unmap(size_t xdpBoHandle);
+  virtual void sync(size_t xdpBoHandle, size_t sz, size_t offset, direction dir, bool async=false);
+  virtual uint64_t getDeviceAddr(size_t xdpBoHandle);
   virtual void* getRawDevice() { return mXrtDevice ; } 
 };
 }

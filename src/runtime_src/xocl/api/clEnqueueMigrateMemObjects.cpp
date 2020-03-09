@@ -23,6 +23,7 @@
 #include "detail/memory.h"
 #include "plugin/xdp/appdebug.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 #include <CL/opencl.h>
 
 namespace xocl {
@@ -96,6 +97,9 @@ clEnqueueMigrateMemObjects(cl_command_queue        command_queue ,
     (uevent.get(),xocl::enqueue::action_migrate_memobjects,num_mem_objects,mem_objects,flags);
   xocl::profile::set_event_action
     (uevent.get(),xocl::profile::action_migrate,num_mem_objects,mem_objects,flags);
+#ifndef _WIN32
+  xocl::lop::set_event_action(uevent.get(), xocl::lop::action_migrate, flags);
+#endif
   xocl::appdebug::set_event_action
     (uevent.get(),xocl::appdebug::action_migrate,num_mem_objects,mem_objects,flags);
 
@@ -117,6 +121,7 @@ clEnqueueMigrateMemObjects(cl_command_queue        command_queue ,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
+    LOP_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
     return xocl::clEnqueueMigrateMemObjects
       (command_queue,num_mem_objects,mem_objects,flags,num_events_in_wait_list,event_wait_list,event_parameter);
   }

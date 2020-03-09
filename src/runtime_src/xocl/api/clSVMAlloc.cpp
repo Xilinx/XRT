@@ -25,6 +25,7 @@
 
 #include <bitset>
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 namespace {
 
@@ -111,6 +112,7 @@ clSVMAlloc(cl_context       context,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clSVMAlloc
       (context,flags,size,alignment);
   }

@@ -653,6 +653,21 @@ public:
   }
 
   virtual hal::operations_result<std::string>
+  getSubdevPath(const std::string& subdev, uint32_t idx)
+  {
+    if (!m_ops->mGetSubdevPath)
+      return hal::operations_result<std::string>();
+    constexpr size_t max_path = 256;
+    char path_buf[max_path];
+    if (m_ops->mGetSubdevPath(m_handle, subdev.c_str(), idx, path_buf, max_path)) {
+      return hal::operations_result<std::string>();
+    }
+    path_buf[max_path - 1] = '\0';
+    std::string path = std::string(path_buf);
+    return path;
+  }
+
+  virtual hal::operations_result<std::string>
   getDebugIPlayoutPath()
   {
     if(!m_ops->mGetDebugIPlayoutPath)
@@ -682,6 +697,16 @@ public:
     if(!m_ops->mReadTraceData)
       return hal::operations_result<int>();
     return m_ops->mReadTraceData(m_handle, traceBuf, traceBufSz, numSamples, ipBaseAddress, wordsPerSample);
+  }
+
+  hal::operations_result<void>
+  getDebugIpLayout(char* buffer, size_t size, size_t* size_ret)
+  {
+    if(!m_ops->mGetDebugIpLayout) {
+      return hal::operations_result<void>();
+    }
+    m_ops->mGetDebugIpLayout(m_handle, buffer, size, size_ret);
+    return hal::operations_result<void>(0);
   }
 
 

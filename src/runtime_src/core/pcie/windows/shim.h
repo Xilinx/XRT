@@ -59,6 +59,19 @@ XRT_CORE_PCIE_WINDOWS_EXPORT
 void
 get_ip_layout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret);
 
+/**
+ * get_debug_ip_layout() - Get xclbin debug ip layout  from driver
+ *
+ * @hdl: device handle
+ * @buffer: buffer to hold the debug iplayout section, ignored if nullptr
+ * @size: size of buffer
+ * @size_ret: returns actual size in bytes required for buffer, ignored if nullptr
+ */
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+get_debug_ip_layout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret);
+
+
 XRT_CORE_PCIE_WINDOWS_EXPORT
 void
 get_bdf_info(xclDeviceHandle hdl, uint16_t bdf[3]);

@@ -1,5 +1,5 @@
 /*
- * Partial Copyright (C) 2019 Xilinx, Inc
+ * Partial Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Microsoft provides sample code how RESTful APIs are being called 
  *
@@ -251,10 +251,11 @@ int AzureDev::azureLoadXclBin(const xclBin *buffer)
             fpgaSerialNumber
         );
         if (splitLine(ret, key, value, delim) != 0 ||
-            key.compare("GetReimagingStatus") != 0)
-            return -EFAULT;
-
-        if (value.compare("3") != 0) {
+            key.compare("GetReimagingStatus") != 0) {
+            std::cout << "Retrying GetReimagingStatus ... " << std::endl;
+            sleep(1);
+            continue;
+        } else if (value.compare("3") != 0) {
             sleep(1);
             wait++;
             continue;
@@ -339,6 +340,8 @@ int AzureDev::UploadToWireServer(
     CURL *curl;
     CURLcode res;
     struct write_unit unit;
+    int retryCounter = 0;
+    long responseCode = 0;
 
     unit.uptr = data.c_str();
     unit.sizeleft = data.size();
@@ -377,12 +380,45 @@ int AzureDev::UploadToWireServer(
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
         //curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-        res = curl_easy_perform(curl);
-
-        if (res != CURLE_OK) {
-            std::cerr << "curl_easy_perform() failed: " <<  curl_easy_strerror(res) << std::endl;
-            return 1;
-        }
+        do
+        {
+            responseCode = 0;
+            res = curl_easy_perform(curl);
+            
+            if (res != CURLE_OK) {
+            	std::cerr << "curl_easy_perform() failed: " <<  curl_easy_strerror(res) << std::endl;
+            	retryCounter++;
+            	if (retryCounter <= UPLOAD_RETRY)
+            	{
+            		std::cout << "Retrying an upload..." << retryCounter << std::endl;
+            		sleep(1);
+            	} else
+            	{
+            		std::cerr << "Max number of retries reached... givin up" << std::endl;
+            		curl_easy_cleanup(curl);
+            		return 1;
+            	}
+            } else {
+            	// check the return code				
+            	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &responseCode);
+            	std::cout << "Debug: status code " << responseCode << std::endl;
+            	if (responseCode >= 400) {
+            		// error range
+            		res = CURLE_HTTP_RETURNED_ERROR;
+            		retryCounter++;
+            		if (retryCounter <= UPLOAD_RETRY)
+            		{
+            			std::cout << "Retrying an upload after http error..." << retryCounter << std::endl;
+            			sleep(1);
+            		} else
+            		{
+            			std::cerr << "Max number of retries reached... givin up" << std::endl;
+            			curl_easy_cleanup(curl);
+            			return 1;
+            		}
+            	}
+            }
+        } while (res != CURLE_OK);
 
         // cleanup
         curl_easy_cleanup(curl);

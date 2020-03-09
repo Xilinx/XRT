@@ -21,6 +21,7 @@
 #include "query.h"
 #include "error.h"
 #include "ishim.h"
+#include "scope_guard.h"
 #include "xrt.h"
 
 // Please keep eternal include file dependencies to a minimum
@@ -35,11 +36,13 @@ namespace xrt_core {
 /**
  * class device - interface to support OS agnositic operations on a device
  */
-class device : ishim
+class device : public ishim
 {
+
 public:
   // device index type
   using id_type = unsigned int;
+  using handle_type = xclDeviceHandle;
 public:
 
   XRT_CORE_COMMON_EXPORT
@@ -65,16 +68,16 @@ public:
    *
    * Throws if called on non userof devices
    */
-  virtual xclDeviceHandle
+  virtual handle_type
   get_device_handle() const = 0;
 
-  virtual xclDeviceHandle
+  virtual handle_type
   get_mgmt_handle() const
   {
     return XRT_NULL_HANDLE;
   }
 
-  virtual xclDeviceHandle
+  virtual handle_type
   get_user_handle() const
   {
     return XRT_NULL_HANDLE;
@@ -93,6 +96,21 @@ public:
   // Private look up function for concrete query::request
   virtual const query::request&
   lookup_query(query::key_type query_key) const = 0;
+
+  /**
+   * open() - opens a device with an fd which can be used for non pcie read/write
+   * xospiversal and xspi use this
+   */
+  virtual int
+  open(const std::string&, int) const
+  { throw std::runtime_error("Not implemented"); }
+
+  /**
+   * close() - close the fd
+   */
+  virtual void
+  close(int) const
+  { throw std::runtime_error("Not implemented"); }
 
 public:
   /**
@@ -124,8 +142,9 @@ public:
     return qr.get(this, std::forward<Args>(args)...);
   }
 
-  virtual void get_info(boost::property_tree::ptree &pt) const = 0;
-  virtual void read_dma_stats(boost::property_tree::ptree &pt) const = 0;
+  // Move all these 'pt' functions out the class interface
+  virtual void get_info(boost::property_tree::ptree&) const {}
+  virtual void read_dma_stats(boost::property_tree::ptree&) const {}
 
   void get_rom_info(boost::property_tree::ptree & pt) const;
   void get_xmc_info(boost::property_tree::ptree & pt) const;
@@ -138,10 +157,29 @@ public:
   void read_power(boost::property_tree::ptree &pt) const;
   void read_firewall(boost::property_tree::ptree &pt) const;
 
-  virtual void read(uint64_t offset, void* buf, uint64_t len) const = 0;
-  virtual void write(uint64_t offset, const void* buf, uint64_t len) const = 0;
+  /**
+   * read() - maps pcie bar and copy bytes word (32bit) by word
+   * THIS FUNCTION DOES NOT BELONG HERE
+   */
+  virtual void read(uint64_t, void*, uint64_t) const {}
+  /**
+   * write() - maps pcie bar and copy bytes word (32bit) by word
+   * THIS FUNCTION DOES NOT BELONG HERE
+   */
+  virtual void write(uint64_t, const void*, uint64_t) const {}
 
-  // Helper methods
+  /**
+   * file_open() - Opens a scoped fd
+   * THIS FUNCTION DOES NOT BELONG HERE
+   */
+  scope_value_guard<int, std::function<void()>>
+  file_open(const std::string& subdev, int flag)
+  {
+    auto fd = open(subdev, flag);
+    return {fd, std::bind(&device::close, this, fd)};
+  }
+
+  // Helper methods, move else where
   typedef std::string (*FORMAT_STRING_PTR)(const boost::any &);
   static std::string format_primative(const boost::any & _data);
   static std::string format_hex(const boost::any & _data);
@@ -151,6 +189,7 @@ public:
 
  private:
   id_type m_device_id;
+  const axlf* xclbin = nullptr;
 };
 
 /**
@@ -203,7 +242,7 @@ struct ptree_updater
     }
     pt.add_child(QueryRequestType::name(), pt_array);
   }
-  
+
   static void
   query_and_put(const device* device, boost::property_tree::ptree& pt)
   {

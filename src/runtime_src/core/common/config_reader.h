@@ -166,6 +166,20 @@ get_timeline_trace()
   return value;
 }
 
+inline bool
+get_continuous_read_trace()
+{
+  static bool value = get_profile() && detail::get_bool_value("Debug.continuous_read_trace",false);
+  return value;
+}
+
+inline unsigned int
+get_continuous_read_trace_interval_ms()
+{
+  static unsigned int value = detail::get_uint_value("Debug.continuous_read_trace_interval_ms",10);
+  return value;
+}
+
 inline std::string
 get_trace_buffer_size()
 {
@@ -184,6 +198,13 @@ inline bool
 get_hal_profile()
 {
   static bool value = detail::get_bool_value("Debug.hal_profile", false);
+  return value;
+}
+
+inline bool
+get_lop_profile()
+{
+  static bool value = detail::get_bool_value("Debug.lop_profile", false);
   return value;
 }
 
@@ -336,13 +357,6 @@ get_multiprocess()
 }
 
 inline bool
-get_frequency_scaling()
-{
-  static bool value = !get_multiprocess() && detail::get_bool_value("Runtime.frequency_scaling",true);
-  return value;
-}
-
-inline bool
 get_feature_toggle(const std::string& feature)
 {
   return detail::get_bool_value(feature.c_str(),false);
@@ -407,6 +421,13 @@ inline bool
 get_exclusive_cu_context()
 {
   static bool value = detail::get_bool_value("Runtime.exclusive_cu_context", false);
+  return value;
+}
+
+inline bool
+get_flag_kds_sw_emu()
+{
+  static bool value = detail::get_bool_value("Runtime.kds_sw_emu", false);
   return value;
 }
 
