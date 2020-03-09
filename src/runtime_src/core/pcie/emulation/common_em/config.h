@@ -199,7 +199,7 @@ namespace xclemulation{
   std::map<std::string,std::string> getEnvironmentByReadingIni();
   std::string getXclbinVersion(const axlf* top);
   std::string getVivadoVersion();
-  bool checkXclibinVersionWithTool(const xclBin *header);
+  void checkXclibinVersionWithTool(const xclBin *header);
 }
 
 #endif

@@ -869,15 +869,15 @@ namespace xclemulation{
       float version = (float)i;
       for (int j = 0; j < 4; j++) {
         version = version + 0.1;
-        std::ostringstream streamObj3;
+        std::ostringstream streamObj;
         // Set Fixed -Point Notation
-        streamObj3 << std::fixed;
-        // Set precision to 1 digits
-        streamObj3 << std::setprecision(1);
+        streamObj << std::fixed;
+        // Set precision to 1 digit
+        streamObj << std::setprecision(1);
         //Add double to stream
-        streamObj3 << version;
+        streamObj << version;
         // Get string from output string stream
-        std::string strVersion = streamObj3.str();
+        std::string strVersion = streamObj.str();
         std::size_t found = sVivadoDir.find(strVersion);
         if (found != std::string::npos) {
           //std::cout << "Vivado Version : " << strVersion << std::endl;
@@ -888,24 +888,18 @@ namespace xclemulation{
     return strVersionTmp;
   }
 
-  bool checkXclibinVersionWithTool(const xclBin *header)
-  {
-    bool check = false;
+  void checkXclibinVersionWithTool(const xclBin *header)
+  {   
     auto top = reinterpret_cast<const axlf*>(header);
     std::string xclbinVersion = xclemulation::getXclbinVersion(top);
-    std::string vivadoVersion = xclemulation::getVivadoVersion();
-    /*if ((vivadoVersion.compare(xclbinVersion)) == 0) {
-      check = true;
-    }*/
-    std::size_t found = xclbinVersion.find(vivadoVersion);
-    if (found != std::string::npos) {
-      check = true;
+    std::string vivadoVersion = xclemulation::getVivadoVersion();   
+    if(!xclbinVersion.empty() && !vivadoVersion.empty()) {
+      std::size_t found = xclbinVersion.find(vivadoVersion);
+      if (found == std::string::npos) {        
+        std::string warnMsg = "WARNING: XCLBIN used is generated with Vivado version " + xclbinVersion + " where as it is run with the Vivado version " + vivadoVersion + " which is not compatible. May result to weird behaviour.";
+        std::cout << warnMsg << std::endl;
+      }
     }
-    if (!check) {
-      std::string warnMsg = "WARNING: XCLBIN used is generated with Vivado version " + xclbinVersion + " where as it is run with the Vivado version " + vivadoVersion + " which is not compatible. May result to weird behaviour.";
-      std::cout << warnMsg << std::endl;
-    }
-    return check;
   }
 
 }
