@@ -980,7 +980,7 @@ PrintfArg BufferPrintf::buildArg(int bufIdx, ConversionSpec& conversion) const
     else {
       double val = 0;
       uint8_t *ptr = (uint8_t*)&val;
-      for ( int i = elementBytes; i >= 0; --i ) {
+      for ( int i = elementBytes-1; i >= 0; --i ) {
         ptr[i] = m_buf[bufIdx+i];
       }
       PrintfArg arg(val);

@@ -254,6 +254,8 @@ void load_xdp_kernel_debug()
 {
   struct xdp_kernel_debug_once_loader
   {
+    void* handle = nullptr ;
+
     xdp_kernel_debug_once_loader()
     {
       bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
@@ -266,7 +268,7 @@ void load_xdp_kernel_debug()
       if (!isDLL(libpath)) {
         throw std::runtime_error("Library " + libpath.string() + " not found!");
       }
-      auto handle = xrt_core::dlopen(libpath.string().c_str(), RTLD_NOW | RTLD_GLOBAL);
+      handle = xrt_core::dlopen(libpath.string().c_str(), RTLD_NOW | RTLD_GLOBAL);
       if (!handle)
         throw std::runtime_error("Failed to open XDP library '" + libpath.string() + "'\n" + xrt_core::dlerror());
 
@@ -279,6 +281,13 @@ void load_xdp_kernel_debug()
 
       initFunc();
     }
+    ~xdp_kernel_debug_once_loader()
+    {
+      if (handle != nullptr)
+      {
+	xrt_core::dlclose(handle) ;
+      }
+    }
   };
 
   // 'magic static' is thread safe per C++11
@@ -289,6 +298,8 @@ void load_xdp_app_debug()
 {
   struct xdp_app_debug_once_loader
   {
+    void* handle = nullptr ;
+
     xdp_app_debug_once_loader()
     {
       bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
@@ -302,7 +313,7 @@ void load_xdp_app_debug()
       if (!isDLL(libpath)) {
         throw std::runtime_error("Library " + libpath.string() + " not found!");
       }
-      auto handle = xrt_core::dlopen(libpath.string().c_str(), RTLD_NOW | RTLD_GLOBAL);
+      handle = xrt_core::dlopen(libpath.string().c_str(), RTLD_NOW | RTLD_GLOBAL);
       if (!handle)
         throw std::runtime_error("Failed to open XDP library '" + libpath.string() + "'\n" + xrt_core::dlerror());
 
@@ -314,6 +325,13 @@ void load_xdp_app_debug()
         throw std::runtime_error("Failed to initialize XDP Kernel Debug library, '" + s +"' symbol not found.\n" + xrt_core::dlerror());
 
       initFunc();
+    }
+    ~xdp_app_debug_once_loader()
+    {
+      if (handle != nullptr)
+      {
+	xrt_core::dlclose(handle) ;
+      }
     }
   };
 
