@@ -16,11 +16,10 @@
  * under the License.
  */
 
-#include "xrt_aie.h"
 #include "aie.h"
 
 #include <iostream>
-#include <errno.h>
+#include <cerrno>
 
 namespace zynqaie {
 

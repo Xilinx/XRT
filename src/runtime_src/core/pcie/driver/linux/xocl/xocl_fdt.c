@@ -141,7 +141,7 @@ static void ert_cb_set_inst(void *dev_hdl, void *subdevs, int num)
 	struct xocl_subdev *subdev = subdevs;
 
 	/* 0 is used by CMC */
-	subdev->info.override_idx = MB_ERT;
+	subdev->info.override_idx = XOCL_MB_ERT;
 }
 
 static void devinfo_cb_plp_gate(void *dev_hdl, void *subdevs, int num)

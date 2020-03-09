@@ -16,6 +16,12 @@
 
 #include "config.h"
 #include "core/common/config_reader.h"
+#include <errno.h>
+#include <unistd.h>
+#include <string>
+#include <iostream>
+#include <sstream>
+#include <iomanip>
 
 namespace xclemulation{
 
@@ -821,4 +827,79 @@ namespace xclemulation{
     ifs.close();
     return false;
   }
+
+  std::string getXclbinVersion(const axlf* top)
+  {
+    std::string sVersion = "";
+    const axlf_section_header *xml_hdr = ::xclbin::get_axlf_section(top, BUILD_METADATA);
+
+    if (!xml_hdr) {
+      return sVersion;
+    }
+    auto begin = reinterpret_cast<const char*>(top) + xml_hdr->m_sectionOffset;
+    const char *json_data = reinterpret_cast<const char*>(begin);
+    uint64_t xml_size = xml_hdr->m_sectionSize;
+
+    boost::property_tree::ptree json_project;
+    std::stringstream json_stream;
+    json_stream.write(json_data, xml_size);
+    boost::property_tree::read_json(json_stream, json_project);
+    auto json_meta = json_project.get_child_optional("build_metadata");
+    if (!json_meta) {
+      return sVersion;
+    }
+    auto buildMetaData = json_project.get_child("build_metadata");
+    //std::string sTool = buildMetaData.get<std::string>("xclbin.generated_by.name", "");
+    sVersion = buildMetaData.get<std::string>("xclbin.generated_by.version", "");
+    //std::string sTimeStamp = buildMetaData.get<std::string>("xclbin.generated_by.time_stamp", "");    
+    //std::cout << __func__ <<" Tool : " << sTool << " Version : " << sVersion << " TimeStamp : " << sTimeStamp << std::endl;
+    return sVersion;
+  }
+
+  std::string getVivadoVersion()
+  {
+    char *xilinxVivadoEnvvar = getenv("XILINX_VIVADO");
+    std::string sVivadoDir = "";
+    if (xilinxVivadoEnvvar)
+    {
+      sVivadoDir = xilinxVivadoEnvvar;
+    }
+    std::string strVersionTmp = "";
+    for (int i = VIVADO_MIN_VERSION; i < VIVADO_MAX_VERSION; i++) {
+      float version = (float)i;
+      for (int j = 0; j < 4; j++) {
+        version = version + 0.1;
+        std::ostringstream streamObj;
+        // Set Fixed -Point Notation
+        streamObj << std::fixed;
+        // Set precision to 1 digit
+        streamObj << std::setprecision(1);
+        //Add double to stream
+        streamObj << version;
+        // Get string from output string stream
+        std::string strVersion = streamObj.str();
+        std::size_t found = sVivadoDir.find(strVersion);
+        if (found != std::string::npos) {
+          //std::cout << "Vivado Version : " << strVersion << std::endl;
+          return strVersion;
+        }
+      }
+    }
+    return strVersionTmp;
+  }
+
+  void checkXclibinVersionWithTool(const xclBin *header)
+  {   
+    auto top = reinterpret_cast<const axlf*>(header);
+    std::string xclbinVersion = xclemulation::getXclbinVersion(top);
+    std::string vivadoVersion = xclemulation::getVivadoVersion();   
+    if(!xclbinVersion.empty() && !vivadoVersion.empty()) {
+      std::size_t found = xclbinVersion.find(vivadoVersion);
+      if (found == std::string::npos) {        
+        std::string warnMsg = "WARNING: XCLBIN used is generated with Vivado version " + xclbinVersion + " where as it is run with the Vivado version " + vivadoVersion + " which is not compatible. May result to weird behaviour.";
+        std::cout << warnMsg << std::endl;
+      }
+    }
+  }
+
 }

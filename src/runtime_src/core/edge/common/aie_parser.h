@@ -1,7 +1,5 @@
 /**
  * Copyright (C) 2020 Xilinx, Inc
- * Author(s): Larry Liu
- * ZNYQ XRT Library layered on top of ZYNQ zocl kernel driver
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,27 +14,32 @@
  * under the License.
  */
 
-#ifndef _TILE_H_
-#define _TILE_H_
+#ifndef edge_common_ai_parser_h_
+#define edge_common_ai_parser_h_
 
-#include <cstdint>
+#include <string>
+#include <vector>
 
-namespace zynqaie {
+namespace xrt_core { namespace edge { namespace aie {
 
-class Tile {
-public:
-    ~Tile();
-    Tile(int gRow, int gCol, int iRow, int iCol, uint32_t iMemAddr);
-
-    int graphRow;
-    int graphCol;
-    int iterRow;
-    int iterCol;
-
-    uint32_t iterMemAddr;
+struct tile
+{
+  uint16_t row;
+  uint16_t col;
+  uint16_t itr_mem_row;
+  uint16_t itr_mem_col;
+  uint64_t itr_mem_addr;
 };
 
-}
+/**
+ * get_tiles() - get tile data from xclbin AIE metadata
+ *
+ * @top: xclbin structure
+ * @graph: name of graph to extract tile data for
+ */
+std::vector<tile>
+get_tiles(const axlf* top, const std::string& graph);
 
+}}} // aie, edge, xrt_core
 
 #endif

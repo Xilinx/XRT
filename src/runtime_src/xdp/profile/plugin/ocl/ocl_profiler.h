@@ -60,7 +60,7 @@ namespace xdp {
 
   // Device metadata
   public:
-    std::map<xoclp::platform::device::key, xoclp::platform::device::data> DeviceData;
+    std::map<xoclp::platform::device::key, xoclp::platform::device::data*> DeviceData;
 
   // Profile settings
   public:
