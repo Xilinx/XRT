@@ -33,7 +33,6 @@
 #include "xbutil.h"
 #include "core/edge/user/shim.h"
 
-static const int debug_ip_layout_max_size = 65536;
 static const int debug_ip_max_type = 9;
 
 uint32_t xcldev::device::getIPCountAddrNames(int type,
@@ -479,7 +478,7 @@ int xcldev::device::map_debug_ip() {
     debug_ip.push_back(next_debug_ip);
   }
 
-  ZYNQ::ZYNQShim* drv = ZYNQ::ZYNQShim::handleCheck(m_handle);
+  ZYNQ::shim* drv = ZYNQ::shim::handleCheck(m_handle);
   if (!drv) return -ENODEV;
   return drv->mapKernelControl(debug_ip);
 }

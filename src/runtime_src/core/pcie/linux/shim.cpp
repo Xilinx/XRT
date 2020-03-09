@@ -870,26 +870,28 @@ bool shim::zeroOutDDR()
  */
 int shim::xclLoadXclBin(const xclBin *buffer)
 {
-    int ret = 0;
-    const char *xclbininmemory = reinterpret_cast<char*> (const_cast<xclBin*> (buffer));
-
-    ret = xclLoadAxlf(reinterpret_cast<const axlf*>(xclbininmemory));
+    auto top = reinterpret_cast<const axlf*>(buffer);
+    auto ret = xclLoadAxlf(top);
     if (ret != 0) {
-        if (ret == -EOPNOTSUPP) {
-            xrt_logmsg(XRT_ERROR, "Xclbin does not match Shell on card.");
-            xrt_logmsg(XRT_ERROR, "Use 'xbmgmt flash' to update Shell.");
-        } else if (ret == -EBUSY) {
-            xrt_logmsg(XRT_ERROR, "Xclbin on card is in use, can't change.");
-        } else if (ret == -EKEYREJECTED) {
-            xrt_logmsg(XRT_ERROR, "Xclbin isn't signed properly");
-        } else if (ret == -ETIMEDOUT) {
-            xrt_logmsg(XRT_ERROR,
-                "Can't reach out to mgmt for xclbin downloading");
-            xrt_logmsg(XRT_ERROR,
-                "Is xclmgmt driver loaded? Or is MSD/MPD running?");
-        }
-        xrt_logmsg(XRT_ERROR, "See dmesg log for details. err=%d", ret);
+      if (ret == -EOPNOTSUPP) {
+        xrt_logmsg(XRT_ERROR, "Xclbin does not match Shell on card.");
+        xrt_logmsg(XRT_ERROR, "Use 'xbmgmt flash' to update Shell.");
+      }
+      else if (ret == -EBUSY) {
+        xrt_logmsg(XRT_ERROR, "Xclbin on card is in use, can't change.");
+      }
+      else if (ret == -EKEYREJECTED) {
+        xrt_logmsg(XRT_ERROR, "Xclbin isn't signed properly");
+      }
+      else if (ret == -ETIMEDOUT) {
+        xrt_logmsg(XRT_ERROR,
+                   "Can't reach out to mgmt for xclbin downloading");
+        xrt_logmsg(XRT_ERROR,
+                   "Is xclmgmt driver loaded? Or is MSD/MPD running?");
+      }
+      xrt_logmsg(XRT_ERROR, "See dmesg log for details. err=%d", ret);
     }
+
     return ret;
 }
 

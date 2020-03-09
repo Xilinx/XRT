@@ -20,7 +20,11 @@
 #include <string>
 #include <vector>
 
-namespace xrt_core { namespace edge { namespace aie {
+namespace xrt_core {
+
+class device;
+
+namespace edge { namespace aie {
 
 struct tile
 {
@@ -34,11 +38,11 @@ struct tile
 /**
  * get_tiles() - get tile data from xclbin AIE metadata
  *
- * @top: xclbin structure
+ * @device: device with loaded meta data
  * @graph: name of graph to extract tile data for
  */
 std::vector<tile>
-get_tiles(const axlf* top, const std::string& graph);
+get_tiles(const xrt_core::device* device, const std::string& graph_name);
 
 }}} // aie, edge, xrt_core
 
