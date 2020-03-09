@@ -34,7 +34,7 @@ namespace zynqaie {
 Graph::Graph(xclDeviceHandle handle, const std::string& graphName)
   : name(graphName)
 {
-    ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+    auto drv = ZYNQ::shim::handleCheck(handle);
     devHandle = handle;
 
     /*
@@ -252,7 +252,7 @@ int Graph::xrtGraphStop(int timeoutMilliSec)
 
 xrtGraphHandle xrtGraphOpen(xclDeviceHandle handle, uuid_t xclbinUUID, const    char *graphName)
 {
-    ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+    auto drv = ZYNQ::shim::handleCheck(handle);
     if (!drv)
         return NULL;
 
