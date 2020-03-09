@@ -18,7 +18,6 @@
 #include "../xocl_drv.h"
 
 struct trace_fifo_full {
-	void __iomem		*base;
 	struct device		*dev;
 	uint64_t		start_paddr;
 	uint64_t		range;
@@ -37,9 +36,6 @@ static int trace_fifo_full_remove(struct platform_device *pdev)
 	}
 
 	xocl_drvinst_release(trace_fifo_full, &hdl);
-
-	if (trace_fifo_full->base)
-		iounmap(trace_fifo_full->base);
 
 	platform_set_drvdata(pdev, NULL);
 
@@ -72,13 +68,6 @@ static int trace_fifo_full_probe(struct platform_device *pdev)
 
 	xocl_info(&pdev->dev, "IO start: 0x%llx, end: 0x%llx",
 		res->start, res->end);
-
-	trace_fifo_full->base = ioremap_nocache(res->start, res->end - res->start + 1);
-	if (!trace_fifo_full->base) {
-		err = -EIO;
-		xocl_err(&pdev->dev, "Map iomem failed");
-		goto done;
-	}
 
 	trace_fifo_full->start_paddr = res->start;
 	trace_fifo_full->range = res->end - res->start + 1;
@@ -131,57 +120,9 @@ long trace_fifo_full_ioctl(struct file *filp, unsigned int cmd, unsigned long ar
 	return result;
 }
 
-
-static int trace_fifo_full_mmap(struct file *filp, struct vm_area_struct *vma)
-{
-
-	int rc;
-	unsigned long off;
-	unsigned long phys;
-	unsigned long vsize;
-	unsigned long psize;
-	struct trace_fifo_full *trace_fifo_full = (struct trace_fifo_full *)filp->private_data;
-	BUG_ON(!trace_fifo_full);
-
-	off = vma->vm_pgoff << PAGE_SHIFT;
-	/* BAR physical address */
-	phys = trace_fifo_full->start_paddr + off;
-	vsize = vma->vm_end - vma->vm_start;
-	/* complete resource */
-	psize = trace_fifo_full->range - off;
-
-
-	if (vsize > psize)
-		return -EINVAL;
-
-	/*
-	 * pages must not be cached as this would result in cache line sized
-	 * accesses to the end point
-	 */
-	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
-	/*
-	 * prevent touching the pages (byte access) for swap-in,
-	 * and prevent the pages from being swapped out
-	 */
-#ifndef VM_RESERVED
-	vma->vm_flags |= VM_IO | VM_DONTEXPAND | VM_DONTDUMP;
-#else
-	vma->vm_flags |= VM_IO | VM_RESERVED;
-#endif
-
-	/* make MMIO accessible to user space */
-	rc = io_remap_pfn_range(vma, vma->vm_start, phys >> PAGE_SHIFT,
-				vsize, vma->vm_page_prot);
-	if (rc)
-		return -EAGAIN;
-	return rc;
-}
-
-
 static const struct file_operations trace_fifo_full_fops = {
 	.open = trace_fifo_full_open,
 	.release = trace_fifo_full_close,
-	.mmap = trace_fifo_full_mmap,
 	.unlocked_ioctl = trace_fifo_full_ioctl,
 };
 

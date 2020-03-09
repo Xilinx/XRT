@@ -17,7 +17,7 @@
 #ifndef EDGE_SYSTEM_LINUX_H
 #define EDGE_SYSTEM_LINUX_H
 
-#include "edge/common/system_edge.h"
+#include "core/edge/common/system_edge.h"
 
 namespace xrt_core {
 

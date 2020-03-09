@@ -220,8 +220,8 @@ init_scheduler(xocl::device* device)
   if (!program)
     throw xocl::error(CL_INVALID_PROGRAM,"Cannot initialize MBS before program is loadded");
 
-  auto axlf = device->get_axlf();
-  if (is_sw_emulation()) {
+  auto axlf = device->get_axlf(); 
+  if (is_sw_emulation() && !xrt_core::config::get_flag_kds_sw_emu()) {
     auto cu2addr = get_xclbin_cus(device);
     xrt::sws::init(device->get_xrt_device(),cu2addr);
   }

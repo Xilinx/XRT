@@ -53,8 +53,9 @@ is_sw_emulation()
 
 inline bool
 kds_enabled(bool forceoff=false)
-{
-  static bool enabled = !is_sw_emulation() && xrt::config::get_kds() && !xrt::config::get_feature_toggle("Runtime.sws") && !is_windows();
+{  
+  bool iskdsemu = is_sw_emulation() ? (xrt_core::config::get_flag_kds_sw_emu() ? false : true) : false;
+  static bool enabled = !iskdsemu && xrt::config::get_kds() && !xrt::config::get_feature_toggle("Runtime.sws") && !is_windows() ;
   if (forceoff)
     enabled = false;
   return enabled;

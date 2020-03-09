@@ -282,14 +282,17 @@ int xocl_program_shell(struct xocl_dev *xdev, bool force)
 
 	userpf_info(xdev, "program shell...");
 
-
 	xocl_drvinst_set_offline(xdev->core.drm, true);
 
 	if (force)
 		xocl_drvinst_kill_proc(xdev->core.drm);
 
-	if (XOCL_DRM(xdev))
-		xocl_cleanup_mem(XOCL_DRM(xdev));
+	/* cleanup drm */
+	if (xdev->core.drm) {
+		xocl_drm_fini(xdev->core.drm);
+		xdev->core.drm = NULL;
+	}
+	xocl_fini_sysfs(xdev);
 
 	ret = xocl_subdev_offline_all(xdev);
 	if (ret) {
@@ -319,14 +322,6 @@ int xocl_program_shell(struct xocl_dev *xdev, bool force)
 				ret, mbret);
 		goto failed;
 	}
-
-	if (xdev->core.fdt_blob) {
-		vfree(xdev->core.fdt_blob);
-		xdev->core.fdt_blob = NULL;
-	}
-
-	xocl_mb_connect(xdev);
-	(void) xocl_refresh_subdevs(xdev);
 
 failed:
 	return ret;
@@ -583,7 +578,6 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 		if (st->state_flags & XCL_MB_STATE_ONLINE) {
 			/* Mgmt is online, try to probe peer */
 			userpf_info(xdev, "mgmt driver online\n");
-			(void) xocl_mb_connect(xdev);
 			xocl_queue_work(xdev, XOCL_WORK_REFRESH_SUBDEV, 1);
 
 		} else if (st->state_flags & XCL_MB_STATE_OFFLINE) {
@@ -743,7 +737,6 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 		goto failed;
 	}
 	(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
-	(void) xocl_mb_connect(xdev);
 
 	ret = xocl_init_sysfs(xdev);
 	if (ret) {
@@ -762,6 +755,8 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 	xocl_drvinst_set_offline(xdev->core.drm, false);
 
 failed:
+	if (!ret)
+		(void) xocl_mb_connect(xdev);
 	if (blob)
 		vfree(blob);
 	if (mb_req)
@@ -1413,8 +1408,7 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 		xocl_err(&pdev->dev, "mailbox subdev is not created");
 		goto failed;
 	}
-	/* Say hi to peer via mailbox. */
-	(void) xocl_mb_connect(xdev);
+
 	xocl_queue_work(xdev, XOCL_WORK_REFRESH_SUBDEV, 1);
 
 

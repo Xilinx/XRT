@@ -41,6 +41,8 @@ public:
   virtual int read(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size) = 0;
   virtual int unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offset) = 0;
 
+  virtual void getDebugIpLayout(char* buffer, size_t size, size_t* size_ret) = 0;
+
   // Only device RAM
   virtual size_t alloc(size_t sz, uint64_t memoryIndex) = 0;
   virtual void free(size_t xdpBoHandle) = 0;

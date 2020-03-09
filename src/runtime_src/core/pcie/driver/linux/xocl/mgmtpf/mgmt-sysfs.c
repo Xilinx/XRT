@@ -258,6 +258,14 @@ static DEVICE_ATTR(config_mailbox_comm_id, 0644,
 	config_mailbox_comm_id_show,
 	config_mailbox_comm_id_store);
 
+static ssize_t rp_program_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d\n", lro->rp_program);
+}
+
 static ssize_t rp_program_store(struct device *dev, struct device_attribute *da,
 	const char *buf, size_t count)
 {
@@ -267,10 +275,13 @@ static ssize_t rp_program_store(struct device *dev, struct device_attribute *da,
 
 	if (kstrtou32(buf, 10, &val) == -EINVAL)
 		return -EINVAL;
-	else if (val == 1)
+	else if (val == 1) {
+		lro->rp_program = XOCL_RP_PROGRAM_REQ;
 		ret = xocl_icap_download_rp(lro, XOCL_SUBDEV_LEVEL_PRP,
 				RP_DOWNLOAD_NORMAL);
-	else if (val == 2) {
+		if (ret)
+			lro->rp_program = 0;
+	} else if (val == 2) {
 		ret = xclmgmt_program_shell(lro);
 		(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv,
 				(void *)lro);
@@ -282,7 +293,7 @@ static ssize_t rp_program_store(struct device *dev, struct device_attribute *da,
 
 	return ret ? ret : count;
 }
-static DEVICE_ATTR_WO(rp_program);
+static DEVICE_ATTR_RW(rp_program);
 
 static ssize_t interface_uuids_show(struct device *dev,
 	struct device_attribute *attr, char *buf)

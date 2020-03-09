@@ -75,6 +75,6 @@ typedef struct XmaXclbinInfo
 } XmaXclbinInfo;
 
 std::vector<char> xma_xclbin_file_open(const std::string& xclbin_name);
-int xma_xclbin_info_get(char *buffer, XmaXclbinInfo *info);
+int xma_xclbin_info_get(const char *buffer, XmaXclbinInfo *info);
 int xma_xclbin_map2ddr(uint64_t bit_map, int* ddr_bank);
 #endif

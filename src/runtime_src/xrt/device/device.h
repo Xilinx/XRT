@@ -893,6 +893,12 @@ public:
     return m_hal->readTraceData(traceBuf, traceBufSz, numSamples, ipBaseAddress, wordsPerSample);
   }
 
+  hal::operations_result<void>
+  getDebugIpLayout(char* buffer, size_t size, size_t* size_ret)
+  {
+    return m_hal->getDebugIpLayout(buffer, size, size_ret);
+  }
+
   /**
    * Explicitly schedule an arbitrary function on the device's
    * task queue.
