@@ -1070,12 +1070,13 @@ xocl_fetch_dynamic_platform(struct xocl_dev_core *core,
 				strncpy(core->vbnv_cache, dsa_map[i].vbnv,
 					sizeof(core->vbnv_cache) - 1);
 				
-				// THIS NEXT PIECE OF CODE IS CRASHING THE WORKSTATION, replaced with below
-				//s = strstr(core->vbnv_cache, "_");
-				//s = strstr(s + 1, "_");
-				//strncpy(s, "_recovery",
-				//    sizeof(core->vbnv_cache) -
-				//    (s - core->vbnv_cache) - 1);
+				// THIS NEXT PIECE OF CODE IS CRASHING THE WORKSTATION, 
+				// replaced with alternate code below
+				// s = strstr(core->vbnv_cache, "_");
+				// s = strstr(s + 1, "_");
+				// strncpy(s, "_recovery",
+				//     sizeof(core->vbnv_cache) -
+				//     (s - core->vbnv_cache) - 1);
 				
 				// find end of vbnv string and append '_recovery'
 				s = strrchr(core->vbnv_cache, NULL);
