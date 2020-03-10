@@ -28,7 +28,7 @@
 #include "ocl_profiler.h"
 #include "xdp/profile/profile_config.h"
 #include "xdp/profile/core/rt_profile.h"
-#include "xdp/profile/device/xdp_xrt_device.h"
+#include "xdp/profile/device/xrt_device/xdp_xrt_device.h"
 #include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/writer/json_profile.h"
 #include "xdp/profile/writer/csv_profile.h"
