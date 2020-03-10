@@ -2040,13 +2040,11 @@ static resource_size_t map_single_bar(struct xdma_dev *xdev,
 	/*
 	 * do not map
 	 * BARs with length 0. Note that start MAY be 0!
-	 * P2P bar (size >= 256M)
+	 * USER and P2P bar (size >= 32M)
 	 */
 	pr_info("map bar %d, len %lld\n", idx, bar_len);
-
-
 	/* do not map BARs with length 0. Note that start MAY be 0! */
-	if (!bar_len || bar_len >= (1 << 28)) {
+	if (!bar_len || bar_len >= (1 << 25)) {
 		pr_info("BAR #%d is not present - skipping\n", idx);
 		return 0;
 	}
@@ -3737,6 +3735,7 @@ void *xdma_device_open(const char *mname, struct pci_dev *pdev, int *user_max,
 		goto err_mask;
 
 	check_nonzero_interrupt_status(xdev);
+
 	/* explicitely zero all interrupt enable masks */
 	channel_interrupts_disable(xdev, ~0);
 	user_interrupts_disable(xdev, ~0);

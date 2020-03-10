@@ -268,7 +268,6 @@ static struct xocl_subdev_map		subdev_map[] = {
 		XOCL_SUBDEV_MB,
 		XOCL_ERT,
 		{
-			NODE_ERT_BASE,
 			NODE_ERT_RESET,
 			NODE_ERT_FW_MEM,
 			NODE_ERT_CQ_MGMT,
