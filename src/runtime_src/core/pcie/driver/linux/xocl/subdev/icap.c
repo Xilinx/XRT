@@ -1423,13 +1423,14 @@ static int icap_download_rp(struct platform_device *pdev, int level, int flag)
 		goto failed;
 	}
 
-	if (!XDEV(xdev)->fdt_blob) {
-		xocl_xdev_err(xdev, "Empty fdt blob");
+	if (!XDEV(xdev)->blp_blob) {
+		xocl_xdev_err(xdev, "Empty BLP blob");
 		ret = -EINVAL;
 		goto failed;
 	}
 
-	ret = xocl_fdt_check_uuids(xdev, icap->rp_fdt, XDEV(xdev)->fdt_blob);
+	ret = xocl_fdt_check_uuids(xdev, icap->rp_fdt,
+		XDEV(xdev)->blp_blob);
 	if (ret) {
 		xocl_xdev_err(xdev, "Incompatible uuids");
 		goto failed;
