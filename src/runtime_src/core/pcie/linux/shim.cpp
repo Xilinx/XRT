@@ -18,6 +18,8 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+
+
 #include "shim.h"
 #include "scan.h"
 #include "system_linux.h"
@@ -1752,6 +1754,9 @@ int shim::xclIPName2Index(const char *name, uint32_t& index)
 
 unsigned xclProbe()
 {
+#ifdef ENABLE_HAL_PROFILING
+  PROBE_CB;
+#endif
     return pcidev::get_dev_ready();
 }
 
@@ -1761,6 +1766,9 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logFileName, xclVerbos
         printf("Cannot find index %u \n", deviceIndex);
         return nullptr;
     }
+#ifdef ENABLE_HAL_PROFILING
+  OPEN_CB;
+#endif
 
     xocl::shim *handle = new xocl::shim(deviceIndex, logFileName, level);
 
@@ -1769,6 +1777,9 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logFileName, xclVerbos
 
 void xclClose(xclDeviceHandle handle)
 {
+#ifdef ENABLE_HAL_PROFILING
+  CLOSE_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     if (drv) {
         delete drv;
@@ -1879,6 +1890,9 @@ unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigne
 
 unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned flags)
 {
+#ifdef ENABLE_HAL_PROFILING
+  ALLOC_USERPTR_BO_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclAllocUserPtrBO(userptr, size, flags) : -ENODEV;
 }
@@ -1939,6 +1953,9 @@ int xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection 
 int xclCopyBO(xclDeviceHandle handle, unsigned int dst_boHandle,
             unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset)
 {
+#ifdef ENABLE_HAL_PROFILING
+  COPY_BO_CB ;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ?
       drv->xclCopyBO(dst_boHandle, src_boHandle, size, dst_offset, src_offset) : -ENODEV;
@@ -1952,6 +1969,9 @@ int xclReClock2(xclDeviceHandle handle, unsigned short region, const unsigned sh
 
 int xclLockDevice(xclDeviceHandle handle)
 {
+#ifdef ENABLE_HAL_PROFILING
+  LOCK_DEVICE_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     if (!drv)
         return -ENODEV;
@@ -1960,6 +1980,9 @@ int xclLockDevice(xclDeviceHandle handle)
 
 int xclUnlockDevice(xclDeviceHandle handle)
 {
+#ifdef ENABLE_HAL_PROFILING
+  UNLOCK_DEVICE_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     if (!drv)
         return -ENODEV;
@@ -2068,6 +2091,9 @@ int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
 
 int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
+#ifdef ENABLE_HAL_PROFILING
+  OPEN_CONTEXT_CB;
+#endif
   xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
 }

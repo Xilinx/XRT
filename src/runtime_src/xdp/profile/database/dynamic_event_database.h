@@ -94,6 +94,7 @@ namespace xdp {
     //  events based upon the filter passed in
     XDP_EXPORT std::vector<VTFEvent*> filterEvents(std::function<bool(VTFEvent*)> filter);
 
+    XDP_EXPORT std::vector<VTFEvent*> getHostEvents();
     XDP_EXPORT std::vector<VTFEvent*> getDeviceEvents(uint64_t deviceId);
 
     // Functions that dump large portions of the database

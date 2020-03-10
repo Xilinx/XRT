@@ -142,6 +142,15 @@ namespace xdp {
     return collected ;
   }
 
+  std::vector<VTFEvent*> VPDynamicDatabase::getHostEvents()
+  {
+    std::vector<VTFEvent*> events;
+    for(auto e : hostEvents) {
+      events.push_back(e);
+    }
+    return events;
+  }
+
   std::vector<VTFEvent*> VPDynamicDatabase::getDeviceEvents(uint64_t deviceId)
   {
     std::vector<VTFEvent*> events;

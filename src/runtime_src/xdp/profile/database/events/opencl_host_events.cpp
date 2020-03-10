@@ -36,7 +36,7 @@ namespace xdp {
   {
   }
 
-  void KernelEnqueue::dump(std::ofstream& fout, int bucket)
+  void KernelEnqueue::dump(std::ofstream& fout, uint32_t bucket)
   {
     VTFEvent::dump(fout, bucket) ;
     fout << std::endl; 
@@ -51,7 +51,7 @@ namespace xdp {
   {
   }
 
-  void LOPKernelEnqueue::dump(std::ofstream& fout, int bucket)
+  void LOPKernelEnqueue::dump(std::ofstream& fout, uint32_t bucket)
   {
     VTFEvent::dump(fout, bucket) ;
     fout << std::endl ;
@@ -84,7 +84,7 @@ namespace xdp {
   {
   }
 
-  void BufferTransfer::dump(std::ofstream& fout, int bucket)
+  void BufferTransfer::dump(std::ofstream& fout, uint32_t bucket)
   {
     VTFEvent::dump(fout, bucket);
     if(0 == start_id) {  // Dump the detailed information only for start event
@@ -104,7 +104,7 @@ namespace xdp {
   {
   }
 
-  void LOPBufferTransfer::dump(std::ofstream& fout, int bucket)
+  void LOPBufferTransfer::dump(std::ofstream& fout, uint32_t bucket)
   {
     VTFEvent::dump(fout, bucket) ;
     fout << "," << std::hex << "0x" << threadId << std::dec << std::endl ;

@@ -78,6 +78,14 @@ namespace xdp {
     log_function_end(payload, "AllocBO") ;
   }
 
+  static void alloc_userptr_bo_start(void* payload) {  
+    log_function_start(payload, "AllocUserPtrBO") ;
+  }
+
+  static void alloc_userptr_bo_end(void* payload) {
+    log_function_end(payload, "AllocUserPtrBO") ;
+  }
+
   static void free_bo_start(void* payload) {
     log_function_start(payload, "FreeBO") ;
   }
@@ -126,6 +134,14 @@ namespace xdp {
 
   static void sync_bo_end(void* payload) {
     log_function_end(payload, "SyncBO") ;
+  }
+
+  static void copy_bo_start(void* payload) {
+    log_function_start(payload, "CopyBO") ;
+  }
+
+  static void copy_bo_end(void* payload) {
+    log_function_end(payload, "CopyBO") ;
   }
 
   static void unmgd_read_start(void* payload) {
@@ -227,6 +243,62 @@ namespace xdp {
     (db->getDynamicInfo()).addEvent(event);
   }
 
+  static void probe_start(void* payload) {
+    log_function_start(payload, "Probe") ;
+  }
+
+  static void probe_end(void* payload) {
+    log_function_end(payload, "Probe") ;
+  }
+
+  static void lock_device_start(void* payload) {
+    log_function_start(payload, "LockDevice") ;
+  }
+
+  static void lock_device_end(void* payload) {
+    log_function_end(payload, "LockDevice") ;
+  }
+
+  static void unlock_device_start(void* payload) {
+    log_function_start(payload, "UnLockDevice") ;
+  }
+
+  static void unlock_device_end(void* payload) {
+    log_function_end(payload, "UnLockDevice") ;
+  }
+
+  static void open_start(void* payload) {
+    log_function_start(payload, "Open") ;
+  }
+
+  static void open_end(void* payload) {
+    log_function_end(payload, "Open") ;
+  }
+
+  static void close_start(void* payload) {
+    log_function_start(payload, "Close") ;
+  }
+
+  static void close_end(void* payload) {
+    log_function_end(payload, "Close") ;
+  }
+
+  static void open_context_start(void* payload) {
+    log_function_start(payload, "OpenContext") ;
+  }
+
+  static void open_context_end(void* payload) {
+    log_function_end(payload, "OpenContext") ;
+  }
+
+  static void close_context_start(void* payload) {
+    log_function_start(payload, "CloseContext") ;
+  }
+
+  static void close_context_end(void* payload) {
+    log_function_end(payload, "CloseContext") ;
+  }
+
   static void load_xclbin_start(void* payload) {
     // The xclbin is about to be loaded, so flush any device information
     //  into the database
@@ -264,6 +336,12 @@ void hal_level_xdp_cb_func(HalCallbackType cb_type, void* payload)
     case HalCallbackType::ALLOC_BO_END:
       xdp::alloc_bo_end(payload);
       break;
+    case HalCallbackType::ALLOC_USERPTR_BO_START:
+      xdp::alloc_userptr_bo_start(payload);
+      break;
+    case HalCallbackType::ALLOC_USERPTR_BO_END:
+      xdp::alloc_userptr_bo_end(payload);
+      break;
     case HalCallbackType::FREE_BO_START:
       xdp::free_bo_start(payload);
       break;
@@ -294,6 +372,12 @@ void hal_level_xdp_cb_func(HalCallbackType cb_type, void* payload)
     case HalCallbackType::SYNC_BO_END:
       xdp::sync_bo_end(payload);
       break;
+    case HalCallbackType::COPY_BO_START:
+      xdp::copy_bo_start(payload);
+      break;
+    case HalCallbackType::COPY_BO_END:
+      xdp::copy_bo_end(payload);
+      break;
     case HalCallbackType::UNMGD_READ_START:
       xdp::unmgd_read_start(payload);
       break;
@@ -317,6 +401,48 @@ void hal_level_xdp_cb_func(HalCallbackType cb_type, void* payload)
       break;
     case HalCallbackType::WRITE_END:
       xdp::write_end(payload);
+      break;
+    case HalCallbackType::PROBE_START:
+      xdp::probe_start(payload);
+      break;
+    case HalCallbackType::PROBE_END:
+      xdp::probe_end(payload);
+      break;
+    case HalCallbackType::LOCK_DEVICE_START:
+      xdp::lock_device_start(payload);
+      break;
+    case HalCallbackType::LOCK_DEVICE_END:
+      xdp::lock_device_end(payload);
+      break;
+    case HalCallbackType::UNLOCK_DEVICE_START:
+      xdp::unlock_device_start(payload);
+      break;
+    case HalCallbackType::UNLOCK_DEVICE_END:
+      xdp::unlock_device_end(payload);
+      break;
+    case HalCallbackType::OPEN_START:
+      xdp::open_start(payload);
+      break;
+    case HalCallbackType::OPEN_END:
+      xdp::open_end(payload);
+      break;
+    case HalCallbackType::CLOSE_START:
+      xdp::close_start(payload);
+      break;
+    case HalCallbackType::CLOSE_END:
+      xdp::close_end(payload);
+      break;
+    case HalCallbackType::OPEN_CONTEXT_START:
+      xdp::open_context_start(payload);
+      break;
+    case HalCallbackType::OPEN_CONTEXT_END:
+      xdp::open_context_end(payload);
+      break;
+    case HalCallbackType::CLOSE_CONTEXT_START:
+      xdp::close_context_start(payload);
+      break;
+    case HalCallbackType::CLOSE_CONTEXT_END:
+      xdp::close_context_end(payload);
       break;
     case HalCallbackType::LOAD_XCLBIN_START:
       xdp::load_xclbin_start(payload) ;

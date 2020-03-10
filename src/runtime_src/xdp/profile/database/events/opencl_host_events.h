@@ -49,7 +49,7 @@ namespace xdp {
 
     virtual bool isHostEvent() { return true ; }
     
-    XDP_EXPORT virtual void dump(std::ofstream& fout, int bucket) ;
+    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   } ;
 
   class LOPKernelEnqueue : public VTFEvent
@@ -62,7 +62,7 @@ namespace xdp {
 
     virtual bool isHostEvent() { return true ; }
 
-    XDP_EXPORT virtual void dump(std::ofstream& fout, int bucket) ;
+    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   } ;
 
   class CUEnqueue : public VTFEvent
@@ -112,7 +112,7 @@ namespace xdp {
 
     virtual bool isHostEvent() { return true ; } 
 
-    XDP_EXPORT virtual void dump(std::ofstream& fout, int bucket) ;
+    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   } ;
 
   class LOPBufferTransfer : public VTFEvent
@@ -125,7 +125,7 @@ namespace xdp {
 
     virtual bool isHostEvent() { return true ; }
 
-    XDP_EXPORT virtual void dump(std::ofstream& fout, int bucket) ;
+    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   } ;
 
   class StreamRead : public VTFEvent

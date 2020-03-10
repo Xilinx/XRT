@@ -49,6 +49,13 @@ public:
   ~AllocBOCallLogger();
 };
 
+class AllocUserPtrBOCallLogger : public CallLogger
+{
+public:
+  AllocUserPtrBOCallLogger(xclDeviceHandle handle, void *userptr, size_t size, unsigned flags);
+  ~AllocUserPtrBOCallLogger();
+};
+
 class FreeBOCallLogger : public CallLogger
 {
 public:
@@ -82,6 +89,14 @@ class SyncBOCallLogger : public CallLogger
 public:
   SyncBOCallLogger(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset);
   ~SyncBOCallLogger();
+};
+
+class CopyBOCallLogger : public CallLogger
+{
+public:
+  CopyBOCallLogger(xclDeviceHandle handle, unsigned int dst_boHandle,
+					   unsigned int src_bohandle, size_t size, size_t dst_offset, size_t src_offset);
+  ~CopyBOCallLogger();
 };
 
 class UnmgdPwriteCallLogger : public CallLogger
@@ -122,6 +137,56 @@ public:
   ~WriteCallLogger();
 };
 
+class ProbeCallLogger : public CallLogger
+{
+  public:
+  ProbeCallLogger();
+  ~ProbeCallLogger();
+};
+
+class LockDeviceCallLogger : public CallLogger
+{
+  public:
+  LockDeviceCallLogger(xclDeviceHandle handle);
+  ~LockDeviceCallLogger();
+};
+
+class UnLockDeviceCallLogger : public CallLogger
+{
+  public:
+  UnLockDeviceCallLogger(xclDeviceHandle handle);
+  ~UnLockDeviceCallLogger();
+};
+
+
+class OpenCallLogger : public CallLogger
+{
+  public:
+  OpenCallLogger();
+  ~OpenCallLogger();
+};
+
+class CloseCallLogger : public CallLogger
+{
+  public:
+  CloseCallLogger(xclDeviceHandle handle);
+  ~CloseCallLogger();
+};
+
+class OpenContextCallLogger : public CallLogger
+{
+  public:
+  OpenContextCallLogger();
+  ~OpenContextCallLogger();
+};
+
+class CloseContextCallLogger : public CallLogger
+{
+  public:
+  CloseContextCallLogger(xclDeviceHandle handle);
+  ~CloseContextCallLogger();
+};
+
  class LoadXclbinCallLogger : public CallLogger
  {
  private:
@@ -143,15 +208,24 @@ void load_xdp_plugin_library(HalPluginConfig* config);
  * the shim implementations
  */
 #define ALLOC_BO_CB xdphal::AllocBOCallLogger alloc_bo_call_logger(handle, size, unused, flags);
+#define ALLOC_USERPTR_BO_CB xdphal::AllocUserPtrBOCallLogger alloc_userptr_bo_call_logger(handle, userptr, size, flags);
 #define FREE_BO_CB xdphal::FreeBOCallLogger free_bo_call_logger(handle, boHandle);
 #define WRITE_BO_CB xdphal::WriteBOCallLogger write_bo_call_logger(handle, boHandle, src, size, seek);
 #define READ_BO_CB xdphal::ReadBOCallLogger read_bo_call_logger(handle, boHandle, dst, size, skip);
 #define MAP_BO_CB xdphal::MapBOCallLogger map_bo_call_logger(handle, boHandle, write);
 #define SYNC_BO_CB xdphal::SyncBOCallLogger sync_bo_call_logger(handle, boHandle, dir, size, offset); 
+#define COPY_BO_CB xdphal::CopyBOCallLogger copy_bo_call_logger(handle, dst_boHandle, src_boHandle, size, dst_offset, src_offset);
 #define UNMGD_PWRITE_CB xdphal::UnmgdPwriteCallLogger unmgd_pwrite_call_logger(handle, flags, buf, count, offset);
 #define UNMGD_PREAD_CB xdphal::UnmgdPreadCallLogger unnmgd_pread_call_logger(handle, flags, buf, count, offset);
 #define WRITE_CB xdphal::WriteCallLogger write_call_logger(handle, space, offset, hostBuf, size);
 #define READ_CB xdphal::ReadCallLogger read_call_logger(handle, space, offset, hostBuf, size);
+#define PROBE_CB xdphal::ProbeCallLogger probe_call_logger();
+#define LOCK_DEVICE_CB xdphal::LockDeviceCallLogger lock_device_call_logger(handle);
+#define UNLOCK_DEVICE_CB xdphal::UnLockDeviceCallLogger unlock_device_call_logger(handle);
+#define OPEN_CB xdphal::OpenCallLogger open_call_logger();
+#define CLOSE_CB xdphal::CloseCallLogger close_call_logger(handle);
+#define OPEN_CONTEXT_CB xdphal::OpenContextCallLogger open_call_logger();
+#define CLOSE_CONTEXT_CB xdphal::CloseContextCallLogger close_context_call_logger(handle);
 #define LOAD_XCLBIN_CB xdphal::LoadXclbinCallLogger xclbin_call_logger(handle, buffer) ;
 
 #endif
