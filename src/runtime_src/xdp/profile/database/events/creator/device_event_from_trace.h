@@ -16,7 +16,6 @@
 
 #ifndef EVENT_CREATOR_FROM_TRACE_H
 #define EVENT_CREATOR_FROM_TRACE_H
-#endif
 
 // For the Trace results vector
 #include "xclperf.h"
@@ -65,3 +64,5 @@ class DeviceEventCreatorFromTrace
 };
 
 }
+#endif
+
