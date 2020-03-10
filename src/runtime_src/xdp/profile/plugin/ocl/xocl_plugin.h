@@ -55,8 +55,8 @@ namespace xdp {
                             std::string& memoryName) override;
 
     private:
-      void getMemoryNameFromIndex(const xocl::device* device_id, const std::shared_ptr<xocl::compute_unit> cu,
-                                  unsigned long index, std::string& memoryName);
+      void getMemoryNameFromID(const xocl::device* device_id, const std::shared_ptr<xocl::compute_unit> cu,
+                               const std::string arg_id, std::string& memoryName);
 
     // *************************
     // Guidance metadata

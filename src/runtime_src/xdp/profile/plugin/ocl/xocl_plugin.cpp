@@ -51,10 +51,11 @@ namespace xdp {
   // *************************
 
   // Get the name of the memory associated with a device, CU, and memory index
-  void XoclPlugin::getMemoryNameFromIndex(const xocl::device* device_id, const std::shared_ptr<xocl::compute_unit> cu,
-                                          unsigned long index, std::string& memoryName)
+  void XoclPlugin::getMemoryNameFromID(const xocl::device* device_id, const std::shared_ptr<xocl::compute_unit> cu,
+                                       const std::string arg_id, std::string& memoryName)
   {
     try {
+      unsigned long index = (unsigned long)std::stoi(arg_id);
       auto memidx_mask = cu->get_memidx(index);
       // auto memidx = 0;
       for (unsigned int memidx=0; memidx<memidx_mask.size(); ++memidx) {
@@ -115,8 +116,7 @@ namespace xdp {
           portSet.insert(portName);
 
           std::string memoryName;
-          unsigned long index = (unsigned long)std::stoi(arg.id);
-          getMemoryNameFromIndex(device_id, cu, index, memoryName);
+          getMemoryNameFromID(device_id, cu, arg.id, memoryName);
           memorySet.insert(memoryName);
         }
 
@@ -142,8 +142,7 @@ namespace xdp {
               std::transform(currPort.begin(), currPort.end(), currPort.begin(), ::tolower);
 
               std::string currMemory;
-              unsigned long index = (unsigned long)std::stoi(arg.id);
-              getMemoryNameFromIndex(device_id, cu, index, currMemory);
+              getMemoryNameFromID(device_id, cu, arg.id, currMemory);
 
               if ((currPort == portName) && (currMemory == memoryName)) {
                 std::get<2>(row) += (!foundArg) ? arg.name : ("|" + arg.name);
@@ -188,7 +187,9 @@ namespace xdp {
       size_t index2 = memoryName.find("[");
       memoryResource = memoryName.substr(0, index2);
     }
-    std::transform(portNameCheck.begin(), portNameCheck.end(), portNameCheck.begin(), ::tolower);
+    // Avoid conflict with boost
+    //std::transform(portNameCheck.begin(), portNameCheck.end(), portNameCheck.begin(), ::tolower);
+    std::transform(portNameCheck.begin(), portNameCheck.end(), portNameCheck.begin(), [](char c){return (char) std::tolower(c);});
 
     // Find CU and port, then capture arguments and bank
     for (auto& row : CUPortVector) {
