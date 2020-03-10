@@ -2314,6 +2314,34 @@ create_attr_failed:
 	return err;
 }
 
+static int stop_ert_nolock(struct platform_device *pdev)
+{
+	struct xocl_xmc *xmc;
+	int retry = 0;
+
+	xmc = platform_get_drvdata(pdev);
+	if (!xmc)
+		return -ENODEV;
+	else if (!xmc->enabled)
+		return -ENODEV;
+
+	while ((READ_CQ(xmc, 0) != (ERT_EXIT_CMD_OP | ERT_EXIT_ACK)) &&
+		retry++ < MAX_ERT_RETRY) {
+		WRITE_CQ(xmc, ERT_EXIT_CMD, 0);
+		msleep(RETRY_INTERVAL);
+	}
+	if (retry >= MAX_ERT_RETRY) {
+		xocl_warn(&xmc->pdev->dev, "Failed to stop sched");
+		xocl_warn(&xmc->pdev->dev, "Scheduler CQ status 0x%x",
+					READ_CQ(xmc, 0));
+		return -ETIMEDOUT;
+	}
+
+	xocl_info(&xmc->pdev->dev, "ERT stopped, retry %d", retry);
+	return 0;
+}
+
+
 static int stop_xmc_nolock(struct platform_device *pdev)
 {
 	struct xocl_xmc *xmc;
@@ -2358,20 +2386,10 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 			WRITE_REG32(xmc, CTL_MASK_STOP, XMC_CONTROL_REG);
 			WRITE_REG32(xmc, 1, XMC_STOP_CONFIRM_REG);
 		}
-		/* Need to check if ERT is loaded before we attempt to stop it */
-		if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0)) &&
-			SCHED_EXIST(xmc)) {
-			reg_val = READ_CQ(xmc, 0);
-			if (!(reg_val & ERT_EXIT_ACK)) {
-				xocl_info(&xmc->pdev->dev,
-					"Stopping scheduler...");
-				WRITE_CQ(xmc, ERT_EXIT_CMD, 0);
-			}
-		}
 
 		retry = 0;
 		while (retry++ < MAX_XMC_RETRY &&
-			!(READ_REG32(xmc, XMC_STATUS_REG) & STATUS_MASK_STOPPED))
+		    !(READ_REG32(xmc, XMC_STATUS_REG) & STATUS_MASK_STOPPED))
 			msleep(RETRY_INTERVAL);
 
 		/* Wait for XMC to stop and then check that ERT has also finished */
@@ -2382,23 +2400,17 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 			xmc->state = XMC_STATE_ERROR;
 			return -ETIMEDOUT;
 		} else if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0)) &&
-			 SCHED_EXIST(xmc) &&
-			 !(READ_CQ(xmc, 0) & ERT_EXIT_ACK)) {
-			while (retry++ < MAX_ERT_RETRY &&
-				!(READ_CQ(xmc, 0) & ERT_EXIT_ACK))
-				msleep(RETRY_INTERVAL);
-			if (retry >= MAX_ERT_RETRY) {
-				xocl_warn(&xmc->pdev->dev,
-					"Failed to stop sched");
-				xocl_warn(&xmc->pdev->dev,
-					"Scheduler CQ status 0x%x",
-					READ_CQ(xmc, 0));
-				/*
-				 * We don't exit if ERT doesn't stop since
-				 * it can hang due to bad kernel xmc->state =
-				 * XMC_STATE_ERROR; return -ETIMEDOUT;
-				 */
-			}
+			 SCHED_EXIST(xmc)) {
+			xocl_info(&xmc->pdev->dev,
+					"Stopping scheduler...");
+			/*
+			 * We don't exit if ERT doesn't stop since
+			 * it can hang due to bad kernel xmc->state =
+			 * XMC_STATE_ERROR;
+			 */
+			ret = stop_ert_nolock(pdev);
+			if (ret)
+				return ret;
 		}
 
 		xocl_info(&xmc->pdev->dev, "XMC/sched Stopped, retry %d",
