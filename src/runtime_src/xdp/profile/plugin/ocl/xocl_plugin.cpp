@@ -19,6 +19,7 @@
 #include "xocl_plugin.h"
 #include "xdp/profile/writer/base_profile.h"
 #include "xdp/profile/core/rt_profile.h"
+#include <cctype> // needed for std::tolower
 
 #ifdef _WIN32
 #pragma warning (disable : 4244)
