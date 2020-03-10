@@ -112,7 +112,9 @@ namespace xdp {
             continue;
 
           auto portName = arg.port;
-          std::transform(portName.begin(), portName.end(), portName.begin(), ::tolower);
+          // Avoid conflict with boost
+          // std::transform(portName.begin(), portName.end(), portName.begin(), ::tolower);
+          std::transform(portName.begin(), portName.end(), portName.begin(), [](char c){return (char) std::tolower(c);});
           portSet.insert(portName);
 
           std::string memoryName;
