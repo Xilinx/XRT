@@ -153,7 +153,7 @@ namespace xdp {
   void RTUtil::getFlowModeName(e_flow_mode flowMode, std::string& str)
   {
     if (flowMode == CPU)
-      str = "CPU Emulation";
+      str = "Software Emulation";
     else if (flowMode == COSIM_EM)
       str = "Co-Sim Emulation";
     else if (flowMode == HW_EM)

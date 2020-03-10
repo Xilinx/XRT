@@ -66,7 +66,7 @@ namespace xocl {
     inline void
     set_event_action(xocl::event* event, F&& f, Args&&... args)
     {
-      if (xrt_core::config::get_lop_profile())
+      if (xrt_core::config::get_lop_trace())
 	event->set_lop_action(f(std::forward<Args>(args)...));
     }
 

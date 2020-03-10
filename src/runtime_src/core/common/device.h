@@ -28,6 +28,7 @@
 #include <cstdint>
 #include <vector>
 #include <string>
+#include <map>
 #include <boost/any.hpp>
 #include <boost/property_tree/ptree.hpp>
 
@@ -142,6 +143,22 @@ public:
     return qr.get(this, std::forward<Args>(args)...);
   }
 
+  /**
+   * register_axlf() - Callback from shim after AXLF has been loaded.
+   *
+   * This function extracts meta data sections as needed.
+   */
+  void
+  register_axlf(const axlf*);
+
+  /**
+   * get_axlf_section() - Get section from currently loaded axlf
+   *
+   * Return: pair of section data and size in bytes
+   */
+  std::pair<const char*, size_t>
+  get_axlf_section(axlf_section_kind section) const;
+
   // Move all these 'pt' functions out the class interface
   virtual void get_info(boost::property_tree::ptree&) const {}
   virtual void read_dma_stats(boost::property_tree::ptree&) const {}
@@ -189,7 +206,7 @@ public:
 
  private:
   id_type m_device_id;
-  const axlf* xclbin = nullptr;
+  std::map<axlf_section_kind, std::vector<char>> m_axlf_sections;
 };
 
 /**

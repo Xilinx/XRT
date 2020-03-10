@@ -202,9 +202,9 @@ get_xrt_profile()
 }
 
 inline bool
-get_lop_profile()
+get_lop_trace()
 {
-  static bool value = detail::get_bool_value("Debug.lop_profile", false);
+  static bool value = detail::get_bool_value("Debug.lop_trace", false);
   return value;
 }
 

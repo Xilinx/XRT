@@ -141,7 +141,7 @@ public:
   void
   set_lop_action(event::action_lop_type&& action)
   {
-    if (xrt::config::get_lop_profile())
+    if (xrt::config::get_lop_trace())
       m_lop_action = std::move(action);
   }
 

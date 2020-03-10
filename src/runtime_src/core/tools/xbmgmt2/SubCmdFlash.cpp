@@ -610,7 +610,6 @@ SubCmdFlash::execute(const SubCmdOptions& _options) const
     std::string bdf;
     std::string file;
     std::string flash_type;
-    std::string secondary;
 
     XBU::verbose("Sub command: --shell");
 
@@ -644,7 +643,7 @@ SubCmdFlash::execute(const SubCmdOptions& _options) const
       return;
     }
     auto idx = xrt_core::utils::bdf2index(bdf);
-    update_shell(idx, flash_type, file, secondary);
+    update_shell(idx, flash_type, file, file);
     return;
   }
 
