@@ -40,16 +40,16 @@ namespace po = boost::program_options;
 
 namespace {
 
-enum configType {
-    CONFIG_SECURITY = 0,
-    CONFIG_CLK_SCALING,
-    CONFIG_CS_THRESHOLD_POWER_OVERRIDE,
+enum class configType {
+    config_security = 0,
+    config_clk_scaling,
+    config_cs_threshold_power_override,
 };
 
-enum memType {
-    UNKNOWN= 0,
-    DDR,
-    HBM, 
+enum class memType {
+    unknown= 0,
+    ddr,
+    hbm, 
     
 };
 
@@ -214,7 +214,7 @@ OO_Config::execute(const SubCmdOptions& _options) const
     if (!security.empty()) {
       for(auto idx : device_indices) {
         auto dev = xrt_core::get_mgmtpf_device(idx);
-        update_device_conf(dev, security, CONFIG_SECURITY);
+        update_device_conf(dev, security, configType::config_security);
       }
     }
 
@@ -222,7 +222,7 @@ OO_Config::execute(const SubCmdOptions& _options) const
     if (!clk_scale.empty()) {
       for(auto idx : device_indices) {
         auto dev = xrt_core::get_mgmtpf_device(idx);
-        update_device_conf(dev, clk_scale, CONFIG_CLK_SCALING);
+        update_device_conf(dev, clk_scale, configType::config_clk_scaling);
       }
     }
     
@@ -230,7 +230,7 @@ OO_Config::execute(const SubCmdOptions& _options) const
     if (!power_override.empty()) {
       for(auto idx : device_indices) {
         auto dev = xrt_core::get_mgmtpf_device(idx);
-        update_device_conf(dev, power_override, CONFIG_CS_THRESHOLD_POWER_OVERRIDE);
+        update_device_conf(dev, power_override, configType::config_cs_threshold_power_override);
       }
     }
   return;
@@ -239,11 +239,11 @@ OO_Config::execute(const SubCmdOptions& _options) const
   //Option:enable_retention
   if(enable_retention) {
     XBU::verbose("Sub command: --enable_retention");
-    memType mem_type = UNKNOWN; 
+    memType mem_type = memType::unknown; 
     if(ddr)
-      mem_type = DDR;
+      mem_type = memType::ddr;
     else if (hbm)
-      mem_type = HBM;
+      mem_type = memType::hbm;
     else
       throw xrt_core::error("Please specify memory type: ddr or hbm");
 
@@ -257,11 +257,11 @@ OO_Config::execute(const SubCmdOptions& _options) const
   //Option:disable_retention
   if(disable_retention) {
     XBU::verbose("Sub command: --disable_retention");
-    memType mem_type = UNKNOWN; 
+    memType mem_type = memType::unknown; 
     if(ddr)
-      mem_type = DDR;
+      mem_type = memType::ddr;
     else if (hbm)
-      mem_type = HBM;
+      mem_type = memType::hbm;
     else
       throw xrt_core::error("Please specify memory type: ddr or hbm");
 
