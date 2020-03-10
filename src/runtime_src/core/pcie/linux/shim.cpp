@@ -19,7 +19,6 @@
  * under the License.
  */
 
-
 #include "shim.h"
 #include "scan.h"
 #include "system_linux.h"

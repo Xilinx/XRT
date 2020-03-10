@@ -9,7 +9,7 @@ namespace xdphal {
 cb_func_type cb;
 
 bool loaded = false;
-std::atomic<unsigned> global_idcode(0);
+std::atomic<uint64_t> global_idcode(0);
 std::mutex lock;
 
 static bool cb_valid() {
@@ -39,7 +39,7 @@ static const char* emptyOrValue(const char* cstr) {
   return cstr ? cstr : "";
 }
 
-CallLogger::CallLogger(unsigned id)
+CallLogger::CallLogger(uint64_t id)
            : m_local_idcode(id)
 {
   load_xdp_plugin_library(nullptr);
@@ -95,33 +95,37 @@ FreeBOCallLogger::~FreeBOCallLogger() {
 
 WriteBOCallLogger::WriteBOCallLogger(xclDeviceHandle handle, unsigned int boHandle, const void *src, size_t size, size_t seek) 
     : CallLogger(global_idcode)
+      ,m_buffer_transfer_id(++global_idcode)
 {
     if (!cb_valid()) return;
     global_idcode++;    // increment only if valid calllback
-    CBPayload payload = {m_local_idcode, handle};
+
+    BOTransferCBPayload payload = {{m_local_idcode, handle}, m_buffer_transfer_id, boHandle, reinterpret_cast<uint64_t>(src), size, seek} ;
     cb(HalCallbackType::WRITE_BO_START, &payload);
 }
 
 WriteBOCallLogger::~WriteBOCallLogger() {
     if (!cb_valid()) return;
-    CBPayload payload = {m_local_idcode, 0};
+
+    BOTransferCBPayload payload = {{m_local_idcode, 0}, m_buffer_transfer_id, 0, 0, 0, 0};
     cb(HalCallbackType::WRITE_BO_END, &payload);
 }
 
 ReadBOCallLogger::ReadBOCallLogger(xclDeviceHandle handle, unsigned int boHandle, void *dst, size_t size, size_t skip) 
     : CallLogger(global_idcode)
+      ,m_buffer_transfer_id(++global_idcode)
 {
     if (!cb_valid()) return;
     global_idcode++;    // increment only if valid calllback
     
-    BOTransferCBPayload payload = {{m_local_idcode, handle}, boHandle, reinterpret_cast<uint64_t>(dst), size, skip} ;
-    //CBPayload payload = {m_local_idcode, handle};
+    BOTransferCBPayload payload = {{m_local_idcode, handle}, m_buffer_transfer_id, boHandle, reinterpret_cast<uint64_t>(dst), size, skip} ;
     cb(HalCallbackType::READ_BO_START, &payload);
 }
 
 ReadBOCallLogger::~ReadBOCallLogger() {
     if (!cb_valid()) return;
-    CBPayload payload = {m_local_idcode, 0};
+
+    BOTransferCBPayload payload = {{m_local_idcode, 0}, m_buffer_transfer_id, 0, 0, 0, 0};
     cb(HalCallbackType::READ_BO_END, &payload);
 }  
 
@@ -202,34 +206,36 @@ UnmgdPreadCallLogger::~UnmgdPreadCallLogger() {
 }
 
 ReadCallLogger::ReadCallLogger(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size) 
-    : CallLogger(global_idcode),
-      m_buffer_transfer_id(++global_idcode)
+    : CallLogger(global_idcode)
 {
     if (!cb_valid()) return;
     global_idcode++;    // increment only if valid calllback
-    ReadWriteCBPayload payload = {{m_local_idcode, handle}, m_buffer_transfer_id, space, offset, size};
+    ReadWriteCBPayload payload = {{m_local_idcode, handle}, space, offset, size};
     cb(HalCallbackType::READ_START, &payload);
 }
 
-ReadCallLogger::~ReadCallLogger() {
+ReadCallLogger::~ReadCallLogger()
+{
     if (!cb_valid()) return;
-    ReadWriteCBPayload payload = {{m_local_idcode, 0}, m_buffer_transfer_id, 0, 0, 0};
+
+    CBPayload payload = {m_local_idcode, 0};
     cb(HalCallbackType::READ_END, &payload);
 }
 
 WriteCallLogger::WriteCallLogger(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size) 
-    : CallLogger(global_idcode),
-      m_buffer_transfer_id(++global_idcode)
+    : CallLogger(global_idcode)
 {
     if (!cb_valid()) return;
     global_idcode++;    // increment only if valid calllback
-    ReadWriteCBPayload payload = { {m_local_idcode, handle}, m_buffer_transfer_id, space, offset, size};
+    ReadWriteCBPayload payload = { {m_local_idcode, handle}, space, offset, size};
     cb(HalCallbackType::WRITE_START, (void*)(&payload));
 }
 
-WriteCallLogger::~WriteCallLogger() {
+WriteCallLogger::~WriteCallLogger()
+{
     if (!cb_valid()) return;
-    ReadWriteCBPayload payload = {{m_local_idcode, 0}, m_buffer_transfer_id, 0, 0, 0};
+
+    CBPayload payload = {m_local_idcode, 0};
     cb(HalCallbackType::WRITE_END, &payload);
 }
 

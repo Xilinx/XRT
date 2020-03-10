@@ -571,7 +571,7 @@ enum HalInterfaceCallbackType {
  * callbacks are likely to take different structs.
  */
 typedef struct CBPayload {
-  unsigned int idcode;
+  uint64_t idcode;
   void* deviceHandle;
 } CBPayload;
 
@@ -583,6 +583,7 @@ typedef struct CBPayload {
 struct BOTransferCBPayload
 {
   struct CBPayload basePayload ;
+  uint64_t bufferTransferId;
   uint32_t boHandle ;
   uint64_t dest ;
   size_t size ;
@@ -592,7 +593,6 @@ struct BOTransferCBPayload
 struct ReadWriteCBPayload
 {
   struct CBPayload basePayload;
-  unsigned int bufferTransferId;
   uint32_t     addressSpace;
   uint64_t     offset;
   size_t       size;

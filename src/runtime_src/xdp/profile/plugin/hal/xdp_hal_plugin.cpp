@@ -96,17 +96,41 @@ namespace xdp {
 
   static void write_bo_start(void* payload) {
     log_function_start(payload, "WriteBO") ;
+
+    BOTransferCBPayload* pLoad = reinterpret_cast<BOTransferCBPayload*>(payload);
+
+    // Also log the amount of data transferred
+    uint64_t deviceId = halPluginInstance.getDeviceId(pLoad->basePayload.deviceHandle);
+    VPDatabase* db = halPluginInstance.getDatabase() ;
+    (db->getStats()).logMemoryTransfer(deviceId,
+				       DeviceMemoryStatistics::BUFFER_WRITE,
+				       pLoad->size) ;
+
+    // Add trace event for start of Buffer Transfer
+    double timestamp = xrt_core::time_ns();
+    VTFEvent* event = new BufferTransfer(0, timestamp, WRITE_BUFFER, pLoad->size);
+    (db->getDynamicInfo()).addEvent(event);
+    (db->getDynamicInfo()).markStart(pLoad->bufferTransferId, event->getEventId());
   }
 
   static void write_bo_end(void* payload) {
     log_function_end(payload, "WriteBO") ;
+
+    BOTransferCBPayload* pLoad = reinterpret_cast<BOTransferCBPayload*>(payload);
+
+    // Add trace event for end of Buffer Transfer
+    double timestamp = xrt_core::time_ns();
+    VPDatabase* db = halPluginInstance.getDatabase();
+    VTFEvent* event = new BufferTransfer(
+                          (db->getDynamicInfo()).matchingStart(pLoad->bufferTransferId),
+                          timestamp, WRITE_BUFFER);
+    (db->getDynamicInfo()).addEvent(event);
   }
 
   static void read_bo_start(void* payload) {
-    BOTransferCBPayload* pLoad = 
-      reinterpret_cast<BOTransferCBPayload*>(payload);
+    log_function_start(payload, "ReadBO") ;
 
-    log_function_start(&(pLoad->basePayload), "ReadBO") ;
+    BOTransferCBPayload* pLoad = reinterpret_cast<BOTransferCBPayload*>(payload);
 
     // Also log the amount of data transferred
     uint64_t deviceId = halPluginInstance.getDeviceId(pLoad->basePayload.deviceHandle);
@@ -114,10 +138,26 @@ namespace xdp {
     (db->getStats()).logMemoryTransfer(deviceId,
 				       DeviceMemoryStatistics::BUFFER_READ,
 				       pLoad->size) ;
+
+    // Add trace event for start of Buffer Transfer
+    double timestamp = xrt_core::time_ns();
+    VTFEvent* event = new BufferTransfer(0, timestamp, READ_BUFFER, pLoad->size);
+    (db->getDynamicInfo()).addEvent(event);
+    (db->getDynamicInfo()).markStart(pLoad->bufferTransferId, event->getEventId());
   }
 
   static void read_bo_end(void* payload) {
     log_function_end(payload, "ReadBO") ;
+
+    BOTransferCBPayload* pLoad = reinterpret_cast<BOTransferCBPayload*>(payload);
+
+    // Add trace event for end of Buffer Transfer
+    double timestamp = xrt_core::time_ns();
+    VPDatabase* db = halPluginInstance.getDatabase();
+    VTFEvent* event = new BufferTransfer(
+                          (db->getDynamicInfo()).matchingStart(pLoad->bufferTransferId),
+                          timestamp, READ_BUFFER);
+    (db->getDynamicInfo()).addEvent(event);
   }
 
   static void map_bo_start(void* payload) {
@@ -191,25 +231,10 @@ namespace xdp {
     VPDatabase* db = halPluginInstance.getDatabase() ;
     (db->getStats()).logMemoryTransfer(deviceId,
 				                DeviceMemoryStatistics::XCLREAD, pLoad->size) ;
-
-    // Add trace event for start of Buffer Transfer
-    double timestamp = xrt_core::time_ns();
-    VTFEvent* event = new BufferTransfer(0, timestamp, READ_BUFFER, pLoad->size);
-    (db->getDynamicInfo()).addEvent(event);
-    (db->getDynamicInfo()).markStart(pLoad->bufferTransferId, event->getEventId());
   }
 
   static void read_end(void* payload) {  
-    ReadWriteCBPayload* pLoad = reinterpret_cast<ReadWriteCBPayload*>(payload);
-    log_function_end(&(pLoad->basePayload), "xclRead") ;
-
-    // Add trace event for end of Buffer Transfer
-    double timestamp = xrt_core::time_ns();
-    VPDatabase* db = halPluginInstance.getDatabase();
-    VTFEvent* event = new BufferTransfer(
-                          (db->getDynamicInfo()).matchingStart(pLoad->bufferTransferId),
-                          timestamp, READ_BUFFER);
-    (db->getDynamicInfo()).addEvent(event);
+    log_function_end(payload, "xclRead") ;
   }
 
   static void write_start(void* payload) {
@@ -222,25 +247,10 @@ namespace xdp {
     (db->getStats()).logMemoryTransfer(deviceId,
 				       DeviceMemoryStatistics::XCLWRITE, 
 				       pLoad->size) ;
-
-    // Add trace event for start of Buffer Transfer
-    double timestamp = xrt_core::time_ns();
-    VTFEvent* event = new BufferTransfer(0, timestamp, WRITE_BUFFER, pLoad->size);
-    (db->getDynamicInfo()).addEvent(event);
-    (db->getDynamicInfo()).markStart(pLoad->bufferTransferId, event->getEventId());
   }
 
   static void write_end(void* payload) {
-    ReadWriteCBPayload* pLoad = reinterpret_cast<ReadWriteCBPayload*>(payload);
-    log_function_end(&(pLoad->basePayload), "xclWrite") ;
-
-    // Add trace event for end of Buffer Transfer
-    double timestamp = xrt_core::time_ns();
-    VPDatabase* db = halPluginInstance.getDatabase();
-    VTFEvent* event = new BufferTransfer(
-                          (db->getDynamicInfo()).matchingStart(pLoad->bufferTransferId),
-                          timestamp, WRITE_BUFFER);
-    (db->getDynamicInfo()).addEvent(event);
+    log_function_end(payload, "xclWrite") ;
   }
 
   static void probe_start(void* payload) {

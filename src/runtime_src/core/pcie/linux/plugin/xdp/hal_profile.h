@@ -29,10 +29,10 @@ using cb_func_type = std::function<void(unsigned, void*)>;
 class CallLogger
 {
   public:
-    CallLogger(unsigned id = 0);
+    CallLogger(uint64_t id = 0);
     ~CallLogger();
 
-    unsigned m_local_idcode;  
+    uint64_t m_local_idcode;  
 };
 
 /**
@@ -65,6 +65,7 @@ public:
 
 class WriteBOCallLogger : public CallLogger
 {
+  uint64_t m_buffer_transfer_id;
 public:
   WriteBOCallLogger(xclDeviceHandle handle, unsigned int boHandle, const void *src, size_t size, size_t seek);
   ~WriteBOCallLogger();
@@ -72,6 +73,7 @@ public:
 
 class ReadBOCallLogger : public CallLogger
 {
+  uint64_t m_buffer_transfer_id;
 public:
   ReadBOCallLogger(xclDeviceHandle handle, unsigned int boHandle, void *dst, size_t size, size_t skip);
   ~ReadBOCallLogger();
@@ -119,7 +121,6 @@ public:
  */
 class ReadCallLogger : public CallLogger
 {
-  unsigned m_buffer_transfer_id;
 public:
   ReadCallLogger(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size);
   ~ReadCallLogger();
@@ -131,7 +132,6 @@ public:
  */
 class WriteCallLogger : public CallLogger
 {
-  unsigned m_buffer_transfer_id;
 public:
   WriteCallLogger(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size);
   ~WriteCallLogger();
