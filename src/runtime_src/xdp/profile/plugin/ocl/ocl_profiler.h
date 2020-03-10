@@ -24,8 +24,8 @@
 #include "xocl_profile.h"
 #include "xdp/profile/core/rt_util.h"
 #include "xdp/profile/writer/csv_trace.h"
+#include "xdp/profile/device/device_trace_offload.h"
 #include "xdp/profile/plugin/ocl/ocl_power_profile.h"
-#include "xdp/profile/plugin/ocl/ocl_device_offload.h"
 
 namespace xdp {
 
@@ -94,11 +94,6 @@ namespace xdp {
                              std::chrono::steady_clock::time_point end);
 
     uint64_t getDeviceDDRBufferSize(DeviceIntf* dInt, xocl::device* device);
-    bool allocateDeviceDDRBufferForTrace(DeviceIntf* dInt, xocl::device*);
-    void clearDeviceDDRBufferForTrace(DeviceIntf*);
-
-    void configureDDRTraceReader(uint64_t wordCount);
-    uint64_t readTraceDataFromDDR(DeviceIntf* dInt, xclTraceResultsVector& traceVector);
 
   private:
     // Flags
@@ -115,8 +110,8 @@ namespace xdp {
     std::shared_ptr<xocl::platform> Platform;
     std::shared_ptr<XoclPlugin> Plugin;
     std::shared_ptr<RTProfile> ProfileMgr;
-    std::vector<std::unique_ptr<OclDeviceOffload>> DeviceOffloadList;
     std::vector<std::unique_ptr<OclPowerProfile>> PowerProfileList;
+    std::vector<std::unique_ptr<DeviceTraceOffload>> DeviceTraceOffloadList;
 
     // Buffer on Device DDR for Trace
     uint64_t mDDRBufferSize = 0;
