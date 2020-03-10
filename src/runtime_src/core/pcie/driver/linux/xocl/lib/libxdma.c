@@ -578,9 +578,6 @@ static int engine_start_mode_config(struct xdma_engine *engine)
 		       (unsigned long)(&engine->regs->control) -
 		       (unsigned long)(&engine->regs));
 
-	/* dummy read of status register to flush all previous writes */
-	dbg_tfr("ioread32(0x%p) = 0x%08x (dummy read flushes writes).\n",
-		&engine->regs->status, rd);
 	dbg_tfr("iowrite32(0x%08x to 0x%p) (control)\n", wr,
 		(void *)&engine->regs->control);
 
@@ -1550,7 +1547,7 @@ loop_again:
 	if (!desc_count) {
 		pr_err("desc count is zero\n");
 		spin_unlock(&engine->lock);
-		goto shutdown_engine;
+		goto wait_cmpl;
 	}
 
 	desc_count = desc_count - engine->desc_dequeued;
@@ -1561,6 +1558,7 @@ loop_again:
 	/* completions need to be processed before engine shutdown */
 	rv = process_completions(engine, desc_count);
 
+wait_cmpl:
 	/* Continue waiting for more completions if not all are dequeued */
 	if (rv < 0 || engine->desc_queued) {
 		if (poll_mode)
@@ -1570,7 +1568,6 @@ loop_again:
 		}
 		return 0; /* more descriptors need to be freed*/
 	}
-shutdown_engine:
 	/*
 	 * engine was running but is no longer busy, or writeback occurred,
 	 * shut down
