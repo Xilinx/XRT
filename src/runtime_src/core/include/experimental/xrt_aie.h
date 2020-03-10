@@ -135,6 +135,6 @@ int xrtGraphStop(xrtGraphHandle gh, int timeoutMilliSec);
  *
  * Note: This is for sychcronous RTP only.
  */
-int xrtGraphRTPUpdate(xrtGraphHandle gh, const char *hierPathPort, const char *buffer, size_t size);
+int xrtGraphUpdateRTP(xrtGraphHandle gh, const char *hierPathPort, const char *buffer, size_t size);
 
 #endif
