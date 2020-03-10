@@ -141,7 +141,9 @@ namespace xdp {
                 continue;
 
               auto currPort = arg.port;
-              std::transform(currPort.begin(), currPort.end(), currPort.begin(), ::tolower);
+              // Avoid conflict with boost
+              // std::transform(currPort.begin(), currPort.end(), currPort.begin(), ::tolower);
+              std::transform(currPort.begin(), currPort.end(), currPort.begin(), [](char c){return (char) std::tolower(c);});
 
               std::string currMemory;
               getMemoryNameFromID(device_id, cu, arg.id, currMemory);
