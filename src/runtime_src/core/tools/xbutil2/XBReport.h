@@ -23,6 +23,7 @@
 namespace XBReport {
   void report_system_config();
   void report_xrt_info();
+  void report_device_info(unsigned int idx);
 };
 
 #endif

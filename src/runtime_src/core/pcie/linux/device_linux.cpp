@@ -79,8 +79,8 @@ struct sysfs_fcn<std::string>
     std::string err;
     ValueType value;
     dev->sysfs_get(subdev, entry, err, value);
-    if (!err.empty())
-      throw std::runtime_error(err);
+    // if (!err.empty())
+    //   throw std::runtime_error(err);
     return value;
   }
 };

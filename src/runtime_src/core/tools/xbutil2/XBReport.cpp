@@ -20,6 +20,7 @@
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 #include "common/system.h"
+#include "common/device.h"
 #include <boost/format.hpp>
 
 // 3rd Party Library - Include Files
@@ -66,4 +67,26 @@ XBReport::report_xrt_info()
   XBU::message(boost::str(boost::format("%-14s: %s") % "Build Date" % pt.get<std::string>("build.date", "N/A")));
   XBU::message(boost::str(boost::format("%-14s: %s") % "XOCL" %       pt.get<std::string>("xocl", "N/A")));
   XBU::message(boost::str(boost::format("%-14s: %s") % "XCLMGMT" %    pt.get<std::string>("xclmgmt", "N/A")));
+}
+
+
+void
+XBReport::report_device_info(unsigned int idx)
+{
+  // -- Get the property tree
+  boost::property_tree::ptree pt;
+  auto device = xrt_core::get_userpf_device(idx);
+  device->get_info(pt);
+  XBU::trace_print_tree("Device", pt);
+
+  XBU::message("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
+  XBU::message("Device Information");
+  XBU::message(boost::str(boost::format("%-18s: %s") % "BDF" %  pt.get<std::string>("bdf", "N/A")));
+  XBU::message(boost::str(boost::format("%-18s: %s") % "Vendor" %  pt.get<std::string>("vendor", "N/A")));
+  XBU::message(boost::str(boost::format("%-18s: %s") % "Device" %  pt.get<std::string>("device", "N/A")));
+  XBU::message(boost::str(boost::format("%-18s: %s") % "Subsystem vendor" %  pt.get<std::string>("subsystem_vendor", "N/A")));
+  XBU::message(boost::str(boost::format("%-18s: %s") % "Subsystem id" %  pt.get<std::string>("subsystem_id", "N/A")));
+  XBU::message(boost::str(boost::format("%-18s: %s") % "Dma threads" %  pt.get<std::string>("dma_threads_raw", "N/A")));
+  XBU::message(boost::str(boost::format("%-18s: %s") % "Width" %    pt.get<std::string>("width", "N/A")));
+  XBU::message(boost::str(boost::format("%-18s: %s") % "Link Speed" %    pt.get<std::string>("link_speed", "N/A")));
 }
