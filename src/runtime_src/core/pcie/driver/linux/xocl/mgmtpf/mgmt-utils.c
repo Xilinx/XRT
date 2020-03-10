@@ -596,7 +596,6 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 
 	xocl_thread_stop(lro);
 
-	xocl_mb_stop(lro);
 
 	ret = xocl_subdev_destroy_prp(lro);
 	if (ret) {
@@ -617,6 +616,8 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 		goto failed;
 	}
 
+	/* reload possible cmc and ert images */
+	(void) xocl_icap_download_boot_firmware(lro);
 	xocl_icap_post_download_rp(lro);
 
 	xocl_thread_start(lro);
