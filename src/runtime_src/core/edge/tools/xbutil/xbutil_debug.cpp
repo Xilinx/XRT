@@ -170,7 +170,6 @@ int xcldev::device::readAIMCounters() {
                   << static_cast<double>(debugResults.WriteBytes[i]) / 1000.0
                   << std::scientific << std::setprecision(ss)
 
-
                   << "  " << std::setw(16) << debugResults.WriteTranx[i]
 
                   << "  " << std::setw(16) << std::fixed << std::setprecision(3)
