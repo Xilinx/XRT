@@ -32,6 +32,7 @@ set(XRT_XDP_PROFILE_HAL_WRITER_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/writ
 set(XRT_XDP_PROFILE_CORE_DIR           "${CMAKE_CURRENT_SOURCE_DIR}/profile/core")
 set(XRT_XDP_PROFILE_DEVICE_DIR         "${CMAKE_CURRENT_SOURCE_DIR}/profile/device")
 set(XRT_XDP_PROFILE_HAL_DEVICE_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/device/hal_device")
+set(XRT_XDP_PROFILE_XRT_DEVICE_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/device/xrt_device")
 set(XRT_XDP_PROFILE_LOP_PLUGIN_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/lop")
 set(XRT_XDP_PROFILE_LOP_WRITER_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer/lop")
 
@@ -47,6 +48,8 @@ file(GLOB XRT_NEW_XDP_CORE_FILES
   "${XRT_XDP_PROFILE_BASE_PLUGIN_DIR}/*.cpp"
   "${XRT_XDP_PROFILE_DATABASE_DIR}/*.h"
   "${XRT_XDP_PROFILE_DATABASE_DIR}/*.cpp"
+  "${XRT_XDP_PROFILE_DEVICE_DIR}/*.h"
+  "${XRT_XDP_PROFILE_DEVICE_DIR}/*.cpp"
   "${XRT_XDP_PROFILE_EVENTS_DIR}/*.h"
   "${XRT_XDP_PROFILE_EVENTS_DIR}/*.cpp"
   "${XRT_XDP_PROFILE_EVENTS_CREATOR_DIR}/*.h"
@@ -80,6 +83,8 @@ file(GLOB XRT_XDP_PROFILE_FILES
   "${XRT_XDP_PROFILE_CORE_DIR}/*.cpp"
   "${XRT_XDP_PROFILE_DEVICE_DIR}/*.h"
   "${XRT_XDP_PROFILE_DEVICE_DIR}/*.cpp"
+  "${XRT_XDP_PROFILE_XRT_DEVICE_DIR}/*.h"
+  "${XRT_XDP_PROFILE_XRT_DEVICE_DIR}/*.cpp"
   "${XRT_XDP_PROFILE_PLUGIN_DIR}/*.h"
   "${XRT_XDP_PROFILE_PLUGIN_DIR}/*.cpp"
   )
@@ -144,7 +149,7 @@ add_library(xdp_lop_plugin SHARED ${XRT_XDP_PROFILE_LOP_PLUGIN_FILES})
 add_dependencies(xdp xrt_coreutil)
 add_dependencies(oclxdp xilinxopencl xdp)
 add_dependencies(xdp_core xrt_coreutil)
-add_dependencies(xdp_hal_plugin xdp_core xdp)
+add_dependencies(xdp_hal_plugin xdp_core)
 add_dependencies(xdp_hal_api_interface_plugin xdp )
 add_dependencies(xdp_debug_plugin xrt_coreutil xilinxopencl)
 add_dependencies(xdp_appdebug_plugin xrt_coreutil xilinxopencl)
@@ -153,7 +158,7 @@ add_dependencies(xdp_lop_plugin xdp_core)
 target_link_libraries(xdp xrt_coreutil)
 target_link_libraries(oclxdp xilinxopencl xdp)
 target_link_libraries(xdp_core xrt_coreutil)
-target_link_libraries(xdp_hal_plugin xdp_core xdp)
+target_link_libraries(xdp_hal_plugin xdp_core)
 target_link_libraries(xdp_hal_api_interface_plugin xdp xrt_core)
 target_link_libraries(xdp_debug_plugin xrt_coreutil xilinxopencl)
 target_link_libraries(xdp_appdebug_plugin xrt_coreutil xilinxopencl)
@@ -212,6 +217,8 @@ file(GLOB XRT_XDP_ALL_SRC_WIN
   "${XRT_XDP_PROFILE_EVENTS_CREATOR_DIR}/*.cpp"
   "${XRT_XDP_PROFILE_DEVICE_DIR}/*.h"
   "${XRT_XDP_PROFILE_DEVICE_DIR}/*.cpp"
+  "${XRT_XDP_PROFILE_XRT_DEVICE_DIR}/*.h"
+  "${XRT_XDP_PROFILE_XRT_DEVICE_DIR}/*.cpp"
   "${XRT_XDP_PROFILE_VP_WRITER_DIR}/*.h"
   "${XRT_XDP_PROFILE_VP_WRITER_DIR}/*.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/*.h"
