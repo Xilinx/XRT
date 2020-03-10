@@ -177,12 +177,16 @@ namespace xdp {
 
     bool foundMemory = false;
     std::string portNameCheck = portName;
+    std::string memoryResource = memoryName;
 
     size_t index = portName.find_last_of(IP_LAYOUT_SEP);
     if (index != std::string::npos) {
       foundMemory = true;
       portNameCheck = portName.substr(0, index);
       memoryName = portName.substr(index+1);
+
+      size_t index2 = memoryName.find("[");
+      memoryResource = memoryName.substr(0, index2);
     }
     std::transform(portNameCheck.begin(), portNameCheck.end(), portNameCheck.begin(), ::tolower);
 
@@ -193,8 +197,11 @@ namespace xdp {
 
       if ((currCU == cuName) && (currPort == portNameCheck)) {
         std::string currMemory = std::get<3>(row);
+        size_t index = currMemory.find("[");
+        auto currMemoryResource = currMemory.substr(0, index);
+
         // Make sure it's the right memory resource
-        if (foundMemory && (currMemory != memoryName))
+        if (foundMemory && (currMemoryResource != memoryResource))
           continue;
 
         argNames = std::get<2>(row);
