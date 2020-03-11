@@ -19,16 +19,13 @@
 
 #include <uuid/uuid.h>
 #include <limits.h>
-//#include "lib/xmacfg.h"
 #include "lib/xmahw_lib.h"
 #include "lib/xmalimits_lib.h"
 #include "xclbin.h"
-//#include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
 
 typedef struct XmaIpLayout
 {
-    //uint8_t      kernel_name[MAX_KERNEL_NAME];
     std::string  kernel_name;
     uint64_t     base_addr;
     bool         soft_kernel;
@@ -57,14 +54,11 @@ typedef struct XmaAXLFConnectivity
 
 typedef struct XmaXclbinInfo
 {
-    std::string         xclbin_name1;
+    std::string         xclbin_name;
     uint16_t            freq_list[MAX_KERNEL_FREQS];
-    //XmaIpLayout         ip_layout[MAX_XILINX_KERNELS + MAX_XILINX_SOFT_KERNELS];
     std::vector<XmaIpLayout> ip_layout;
-    //XmaMemTopology      mem_topology[MAX_DDR_MAP];
     std::vector<XmaMemTopology> mem_topology;
-    //XmaAXLFConnectivity connectivity[MAX_CONNECTION_ENTRIES];
-    std::vector<XmaAXLFConnectivity> connectivity1;
+    std::vector<XmaAXLFConnectivity> connectivity;
     uint32_t            number_of_hardware_kernels;
     uint32_t            number_of_kernels;
     uint32_t            number_of_mem_banks;

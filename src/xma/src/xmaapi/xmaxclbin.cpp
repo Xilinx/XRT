@@ -313,17 +313,20 @@ static int get_xclbin_connectivity(const char *buffer, XmaXclbinInfo *xclbin_inf
     {
         const char *data = &buffer[ip_hdr->m_sectionOffset];
         const connectivity *axlf_conn = reinterpret_cast<const connectivity *>(data);
-        XmaAXLFConnectivity *xma_conn = xclbin_info->connectivity;
+        auto& xma_connectivity = xclbin_info->connectivity;
         xclbin_info->number_of_connections = axlf_conn->m_count;
         xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "CONNECTIVITY - %d connections ",xclbin_info->number_of_connections);
         for (int i = 0; i < axlf_conn->m_count; i++)
         {
-            xma_conn[i].arg_index         = axlf_conn->m_connection[i].arg_index;
-            xma_conn[i].m_ip_layout_index = axlf_conn->m_connection[i].m_ip_layout_index;
-            xma_conn[i].mem_data_index    = axlf_conn->m_connection[i].mem_data_index;
+            XmaAXLFConnectivity temp_conn;
+
+            temp_conn.arg_index         = axlf_conn->m_connection[i].arg_index;
+            temp_conn.m_ip_layout_index = axlf_conn->m_connection[i].m_ip_layout_index;
+            temp_conn.mem_data_index    = axlf_conn->m_connection[i].mem_data_index;
             xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index = %d, arg_idx = %d, ip_idx = %d, mem_idx = %d ",
-                     i, xma_conn[i].arg_index, xma_conn[i].m_ip_layout_index,
-                     xma_conn[i].mem_data_index);
+                     i, temp_conn.arg_index, temp_conn.m_ip_layout_index,
+                     temp_conn.mem_data_index);
+            xma_connectivity.emplace_back(std::move(temp_conn));
         }
     }
     else
@@ -345,10 +348,10 @@ int xma_xclbin_info_get(const char *buffer, XmaXclbinInfo *info)
     uint64_t tmp_ddr_map = 0;
     for(uint32_t c = 0; c < info->number_of_connections; c++)
     {
-        XmaAXLFConnectivity *xma_conn = &info->connectivity[c];
+        auto& xma_conn = info->connectivity[c];
         tmp_ddr_map = 1;
-        tmp_ddr_map = tmp_ddr_map << (xma_conn->mem_data_index);
-        info->ip_ddr_mapping[xma_conn->m_ip_layout_index] |= tmp_ddr_map;
+        tmp_ddr_map = tmp_ddr_map << (xma_conn.mem_data_index);
+        info->ip_ddr_mapping[xma_conn.m_ip_layout_index] |= tmp_ddr_map;
     }
     xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "CU DDR connections bitmap:");
     for(uint32_t i = 0; i < info->number_of_hardware_kernels; i++)

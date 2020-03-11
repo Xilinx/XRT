@@ -301,12 +301,12 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
                 tmp1.ip_ddr_mapping = info.ip_ddr_mapping[d];
                 for(uint32_t c = 0; c < info.number_of_connections; c++)
                 {
-                    XmaAXLFConnectivity *xma_conn = &info.connectivity[c];
-                    if (xma_conn->m_ip_layout_index == (int32_t)d) {
-                        tmp1.CU_arg_to_mem_info.emplace(xma_conn->arg_index, xma_conn->mem_data_index);
+                    auto& xma_conn = info.connectivity[c];
+                    if (xma_conn.m_ip_layout_index == (int32_t)d) {
+                        tmp1.CU_arg_to_mem_info.emplace(xma_conn.arg_index, xma_conn.mem_data_index);
                         //Assume that this mem is definetly in use
-                        if ((uint32_t)xma_conn->mem_data_index < dev_tmp1.number_of_mem_banks && xma_conn->mem_data_index > 0) {
-                            dev_tmp1.ddrs[xma_conn->mem_data_index].in_use = true;
+                        if ((uint32_t)xma_conn.mem_data_index < dev_tmp1.number_of_mem_banks && xma_conn.mem_data_index > 0) {
+                            dev_tmp1.ddrs[xma_conn.mem_data_index].in_use = true;
                         }
                     }
                 }
