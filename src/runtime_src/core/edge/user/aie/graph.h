@@ -36,7 +36,7 @@ public:
     using tile_type = xrt_core::edge::aie::tile;
     using rtp_type = xrt_core::edge::aie::rtp;
 
-    graph_type(std::shared<xrt_core::device> device, uuid_t xclbin_uuid, const std::string& name);
+    graph_type(std::shared_ptr<xrt_core::device> device, uuid_t xclbin_uuid, const std::string& name);
     ~graph_type();
 
     void

@@ -19,7 +19,7 @@
 #include "graph.h"
 #include "core/edge/user/shim.h"
 #include "core/include/experimental/xrt_aie.h"
-#incldue "core/common/error.h"
+#include "core/common/error.h"
 
 #include <iostream>
 #include <chrono>
@@ -32,15 +32,9 @@ extern "C"
 
 namespace zynqaie {
 
-struct device_type
-{
-  std::shared_ptr<xrt_core::device device> core_device;
-  Aie* aie_array;
-};
-
 graph_type::
-graph_type(std::shared_ptr<xrt_core::device> dev, const std::string& graph_name)
-  : device(std::move(dev)), name(graphName)
+graph_type(std::shared_ptr<xrt_core::device> dev, uuid_t, const std::string& graph_name)
+  : device(std::move(dev)), name(graph_name)
 {
     // TODO
     // this is not the right place for creating Aie instance. Should
@@ -52,7 +46,6 @@ graph_type(std::shared_ptr<xrt_core::device> dev, const std::string& graph_name)
       drv->setAieArray(aieArray);
     }
 
-    auto device = xrt_core::get_userpf_device(handle);
     for (auto& tile : xrt_core::edge::aie::get_tiles(device.get(), name))
       tiles.emplace_back(std::move(tile));
 
@@ -87,7 +80,7 @@ graph_type(std::shared_ptr<xrt_core::device> dev, const std::string& graph_name)
                                false,
                                true});
 
-    state = GRAPH_STATE_STOP;
+    state = graph_state::stop;
 }
 
 graph_type::
@@ -108,7 +101,7 @@ reset()
       XAieTile_CoreControl(&(aieArray->tileArray.at(pos)), XAIE_DISABLE, XAIE_ENABLE);
     }
 
-    state = GRAPH_STATE_RESET;
+    state = graph_state::reset;
 }
 
 uint64_t
@@ -127,10 +120,10 @@ void
 graph_type::
 run()
 {
-    if (state != GRAPH_STATE_STOP && state != GRAPH_STATE_RESET)
+    if (state != graph_state::stop && state != graph_state::reset)
       throw xrt_core::error(-EINVAL, "Graph '" + name + "' is already running");
 
-    if (state != GRAPH_STATE_RESET)
+    if (state != graph_state::reset)
       // Reset the graph first
       reset();
 
@@ -139,7 +132,7 @@ run()
         XAieTile_CoreControl(&(aieArray->tileArray.at(pos)), XAIE_ENABLE, XAIE_DISABLE);
     }
 
-    state = GRAPH_STATE_RUNNING;
+    state = graph_state::running;
 }
 
 void
@@ -157,7 +150,7 @@ void
 graph_type::
 wait_done(int timeout_ms)
 {
-    if (state != GRAPH_STATE_RUNNING)
+    if (state != graph_state::running)
       throw xrt_core::error(-EINVAL, "Graph '" + name + "' is not running, cannot wait");
 
     auto begin = std::chrono::high_resolution_clock::now();
@@ -183,18 +176,18 @@ wait_done(int timeout_ms)
         auto current = std::chrono::high_resolution_clock::now();
         auto dur = current - begin;
         auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(dur).count();
-        if (timeoutMilliSec >= 0 && timeoutMilliSec < ms)
+        if (timeout_ms >= 0 && timeout_ms < ms)
           throw xrt_core::error(-ETIME, "Wait graph '" + name + "' timeout.");
     }
 
-    state = GRAPH_STATE_STOP;
+    state = graph_state::stop;
 }
 
 void
 graph_type::
 suspend()
 {
-    if (state != GRAPH_STATE_RUNNING)
+    if (state != graph_state::running)
       throw xrt_core::error(-EINVAL, "Graph '" + name + "' is not running, cannot suspend");
 
     for (auto& tile : tiles) {
@@ -202,14 +195,14 @@ suspend()
         XAieTile_CoreControl(&(aieArray->tileArray.at(pos)), XAIE_DISABLE, XAIE_DISABLE);
     }
 
-    state = GRAPH_STATE_SUSPEND;
+    state = graph_state::suspend;
 }
 
 void
 graph_type::
 resume()
 {
-    if (state != GRAPH_STATE_SUSPEND)
+    if (state != graph_state::suspend)
       throw xrt_core::error(-EINVAL, "Graph '" + name + "' is not suspended, cannot resume");
 
     for (auto& tile : tiles) {
@@ -217,12 +210,14 @@ resume()
         XAieTile_CoreControl(&(aieArray->tileArray.at(pos)), XAIE_ENABLE, XAIE_DISABLE);
     }
 
-    state = GRAPH_STATE_RUNNING;
+    state = graph_state::running;
 }
 
-int graph_type::xrtGraphStop(int timeoutMilliSec)
+void
+graph_type::
+stop(int timeout_ms)
 {
-    if (state != GRAPH_STATE_RUNNING)
+    if (state != graph_state::running)
       throw xrt_core::error(-EINVAL, "Graph '" + name + "' is not running, cannot stop");
 
     auto begin = std::chrono::high_resolution_clock::now();
@@ -248,7 +243,7 @@ int graph_type::xrtGraphStop(int timeoutMilliSec)
         auto current = std::chrono::high_resolution_clock::now();
         auto dur = current - begin;
         auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(dur).count();
-        if (timeoutMilliSec >= 0 && timeoutMilliSec < ms) {
+        if (timeout_ms >= 0 && timeout_ms < ms) {
             std::cout << "Wait Graph " << name << " timeout. Force stop" << std::endl;
             for (auto& tile : tiles) {
                 auto pos = aieArray->getTilePos(tile.itr_mem_col, tile.itr_mem_row);
@@ -261,7 +256,7 @@ int graph_type::xrtGraphStop(int timeoutMilliSec)
         }
     }
 
-    state = GRAPH_STATE_STOP;
+    state = graph_state::stop;
 }
 
 void
@@ -343,6 +338,13 @@ update_rtp(const char* port, const char* buffer, size_t size)
     }
 }
 
+
+} // zynqaie
+
+namespace {
+
+using graph_type = zynqaie::graph_type;
+
 // Active graphs per xrtGraphOpen/Close.  This is a mapping from
 // xrtGraphHandle to the corresponding graph object. xrtGraphHandles
 // is the address of the graph object.  This is shared ownership, as
@@ -361,14 +363,16 @@ get_graph(xrtGraphHandle ghdl)
   return (*itr).second;
 }
 
-} // zynqaie
+}
 
 namespace api {
+
+using graph_type = zynqaie::graph_type;
 
 xrtGraphHandle
 xrtGraphOpen(xclDeviceHandle dhdl, uuid_t xclbin_uuid, const char* name)
 {
-  auto device = xrt_core::get_userpf_device(handle);
+  auto device = xrt_core::get_userpf_device(dhdl);
   auto graph = std::make_shared<graph_type>(device, xclbin_uuid, name);
   auto handle = graph.get();
   graphs.emplace(std::make_pair(handle,std::move(graph)));
@@ -457,12 +461,8 @@ xrtGraphOpen(xclDeviceHandle handle, uuid_t xclbin_uuid, const char* graph)
   try {
     return api::xrtGraphOpen(handle, xclbin_uuid, graph);
   }
-  catch (const xrt_core::error& ex) {
-    send_exception_message(ex.what());
-    return ex.get();
-  }
   catch (const std::exception& ex) {
-    send_exception_message(ex.what());
+    xrt_core::send_exception_message(ex.what());
     return XRT_NULL_HANDLE;
   }
     
@@ -474,12 +474,8 @@ xrtGraphClose(xrtGraphHandle ghdl)
   try {
     api::xrtGraphClose(ghdl);
   }
-  catch (const xrt_core::error& ex) {
-    send_exception_message(ex.what());
-    return ex.get();
-  }
   catch (const std::exception& ex) {
-    send_exception_message(ex.what());
+    xrt_core::send_exception_message(ex.what());
   }
 }
 
@@ -491,11 +487,11 @@ xrtGraphReset(xrtGraphHandle ghdl)
     return 0;
   }
   catch (const xrt_core::error& ex) {
-    send_exception_message(ex.what());
+    xrt_core::send_exception_message(ex.what());
     return ex.get();
   }
   catch (const std::exception& ex) {
-    send_exception_message(ex.what());
+    xrt_core::send_exception_message(ex.what());
     return -1;
   }
 }
@@ -506,12 +502,8 @@ xrtGraphTimeStamp(xrtGraphHandle ghdl)
   try {
     return api::xrtGraphTimeStamp(ghdl);
   }
-  catch (const xrt_core::error& ex) {
-    send_exception_message(ex.what());
-    return ex.get();
-  }
   catch (const std::exception& ex) {
-    send_exception_message(ex.what());
+    xrt_core::send_exception_message(ex.what());
     return -1;
   }
 }
@@ -524,11 +516,11 @@ xrtGraphRun(xrtGraphHandle ghdl)
     return 0;
   }
   catch (const xrt_core::error& ex) {
-    send_exception_message(ex.what());
+    xrt_core::send_exception_message(ex.what());
     return ex.get();
   }
   catch (const std::exception& ex) {
-    send_exception_message(ex.what());
+    xrt_core::send_exception_message(ex.what());
     return -1;
   }
 }
@@ -541,11 +533,11 @@ xrtGraphUpdateIter(xrtGraphHandle ghdl, int iterations)
     return 0;
   }
   catch (const xrt_core::error& ex) {
-    send_exception_message(ex.what());
+    xrt_core::send_exception_message(ex.what());
     return ex.get();
   }
   catch (const std::exception& ex) {
-    send_exception_message(ex.what());
+    xrt_core::send_exception_message(ex.what());
     return -1;
   }
 }
@@ -558,11 +550,11 @@ xrtGraphWaitDone(xrtGraphHandle ghdl, int timeout_ms)
     return 0;
   }
   catch (const xrt_core::error& ex) {
-    send_exception_message(ex.what());
+    xrt_core::send_exception_message(ex.what());
     return ex.get();
   }
   catch (const std::exception& ex) {
-    send_exception_message(ex.what());
+    xrt_core::send_exception_message(ex.what());
     return -1;
   }
 }
@@ -575,11 +567,11 @@ xrtGraphSuspend(xrtGraphHandle ghdl)
     return 0;
   }
   catch (const xrt_core::error& ex) {
-    send_exception_message(ex.what());
+    xrt_core::send_exception_message(ex.what());
     return ex.get();
   }
   catch (const std::exception& ex) {
-    send_exception_message(ex.what());
+    xrt_core::send_exception_message(ex.what());
     return -1;
   }
 }
@@ -592,11 +584,11 @@ xrtGraphResume(xrtGraphHandle ghdl)
     return 0;
   }
   catch (const xrt_core::error& ex) {
-    send_exception_message(ex.what());
+    xrt_core::send_exception_message(ex.what());
     return ex.get();
   }
   catch (const std::exception& ex) {
-    send_exception_message(ex.what());
+    xrt_core::send_exception_message(ex.what());
     return -1;
   }
 }
@@ -605,31 +597,32 @@ int
 xrtGraphStop(xrtGraphHandle ghdl, int timeout_ms)
 {
   try {
-    api::xrtGraphStop(ghdl);
+    api::xrtGraphStop(ghdl, timeout_ms);
     return 0;
   }
   catch (const xrt_core::error& ex) {
-    send_exception_message(ex.what());
+    xrt_core::send_exception_message(ex.what());
     return ex.get();
   }
   catch (const std::exception& ex) {
-    send_exception_message(ex.what());
+    xrt_core::send_exception_message(ex.what());
     return -1;
   }
 }
 
-int xrtGraphUpdateRTP(xrtGraphHandle ghdl, const char* port, const char* buffer, size_t size)
+int
+xrtGraphUpdateRTP(xrtGraphHandle ghdl, const char* port, const char* buffer, size_t size)
 {
   try {
     api::xrtGraphUpdateRTP(ghdl, port, buffer, size);
     return 0;
   }
   catch (const xrt_core::error& ex) {
-    send_exception_message(ex.what());
+    xrt_core::send_exception_message(ex.what());
     return ex.get();
   }
   catch (const std::exception& ex) {
-    send_exception_message(ex.what());
+    xrt_core::send_exception_message(ex.what());
     return -1;
   }
 }
