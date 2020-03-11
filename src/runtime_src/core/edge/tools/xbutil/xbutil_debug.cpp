@@ -144,13 +144,14 @@ int xcldev::device::readAIMCounters() {
     int col1 = std::max(widths.first, strlen("Region or CU")) + 4;
     int col2 = std::max(widths.second, strlen("Type or Port"));
 
+    std::streamsize ss = std::cout.precision();
     std::ios_base::fmtflags f(std::cout.flags());
     std::cout << std::left
               << std::setw(col1) << "Region or CU"
               << " " << std::setw(col2) << "Type or Port"
-              << "  " << std::setw(16)  << "Write Bytes"
+              << "  " << std::setw(16)  << "Write kBytes"
               << "  " << std::setw(16)  << "Write Trans."
-              << "  " << std::setw(16)  << "Read Bytes"
+              << "  " << std::setw(16)  << "Read kBytes"
               << "  " << std::setw(16)  << "Read Tranx."
               << "  " << std::setw(16)  << "Outstanding Cnt"
               << "  " << std::setw(16)  << "Last Wr Addr"
@@ -163,9 +164,17 @@ int xcldev::device::readAIMCounters() {
         std::cout << std::left
                   << std::setw(col1) << cuNameportNames[i].first
                   << " " << std::setw(col2) << cuNameportNames[i].second.c_str()
-                  << "  " << std::setw(16) << debugResults.WriteBytes[i]
+
+                  << "  " << std::setw(16) << std::fixed << std::setprecision(3)
+                  << static_cast<double>(debugResults.WriteBytes[i]) / 1000.0
+                  << std::scientific << std::setprecision(ss)
+
                   << "  " << std::setw(16) << debugResults.WriteTranx[i]
-                  << "  " << std::setw(16) << debugResults.ReadBytes[i]
+
+                  << "  " << std::setw(16) << std::fixed << std::setprecision(3)
+                  << static_cast<double>(debugResults.ReadBytes[i]) / 1000.0
+                  << std::scientific << std::setprecision(ss)
+
                   << "  " << std::setw(16) << debugResults.ReadTranx[i]
                   << "  " << std::setw(16) << debugResults.OutStandCnts[i]
                   << std::hex
@@ -247,12 +256,13 @@ int xcldev::device::readASMCounters() {
     int col1 = std::max(widths.first, strlen("Stream Master")) + 4;
     int col2 = std::max(widths.second, strlen("Stream Slave"));
 
+    std::streamsize ss = std::cout.precision();
     std::ios_base::fmtflags f(std::cout.flags());
     std::cout << std::left
             << std::setw(col1) << "Stream Master"
             << " " << std::setw(col2) << "Stream Slave"
             << "  " << std::setw(16)  << "Num Trans."
-            << "  " << std::setw(16)  << "Data Bytes"
+            << "  " << std::setw(16)  << "Data kBytes"
             << "  " << std::setw(16)  << "Busy Cycles"
             << "  " << std::setw(16)  << "Stall Cycles"
             << "  " << std::setw(16)  << "Starve Cycles"
@@ -262,7 +272,11 @@ int xcldev::device::readASMCounters() {
             << std::setw(col1) << cuNameportNames[i].first
             << " " << std::setw(col2) << cuNameportNames[i].second.c_str()
             << "  " << std::setw(16) << debugResults.StrNumTranx[i]
-            << "  " << std::setw(16) << debugResults.StrDataBytes[i]
+
+            << "  " << std::setw(16)  << std::fixed << std::setprecision(3)
+            << static_cast<double>(debugResults.StrDataBytes[i]) / 1000.0
+            << std::scientific << std::setprecision(ss)
+
             << "  " << std::setw(16) << debugResults.StrBusyCycles[i]
             << "  " << std::setw(16) << debugResults.StrStallCycles[i]
             << "  " << std::setw(16) << debugResults.StrStarveCycles[i]
