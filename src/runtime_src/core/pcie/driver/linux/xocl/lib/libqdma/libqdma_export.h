@@ -230,6 +230,8 @@ struct qdma_dev_conf {
 	char bar_num_bypass;
 	/** STM bar, PF only */
 	char bar_num_stm;
+	/** STM bar register base */
+	unsigned int stm_reg_base;
 	/** user bar, PF only */
 	unsigned int qsets_base;
 	/** device index */
