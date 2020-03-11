@@ -55,6 +55,34 @@ Graph::Graph(xclDeviceHandle handle, const std::string& graphName)
     // to be removed once TBD decided
     tiles.emplace_back(tile_type{2, 4, 2, 4, 0x17e4});
 
+    /* TODO
+     * get RTP port from xclbin. Will need some interfaces like
+     * xrt_core::xclbin::get_rtpports(const axlf *top, char *graphName);
+     * just hard code for now.
+     */
+    rtps.emplace_back(rtp_type{"mygraph.k1.in[0]",
+
+                               1,
+                               0,
+                               0,
+                               0x4000,
+
+                               2,
+                               0,
+                               0,
+                               0,
+
+                               2,
+                               0,
+                               1,
+                               0x2000,
+
+                               false,
+                               true,
+                               false,
+                               false,
+                               true});
+
     state = GRAPH_STATE_STOP;
 }
 
@@ -247,6 +275,95 @@ int Graph::xrtGraphStop(int timeoutMilliSec)
     return 0;
 }
 
+int Graph::xrtGraphRTPUpdate(const char *hierPathPort, const char *buffer, size_t size)
+{
+    auto rtp = std::find_if(rtps.begin(), rtps.end(),
+            [&](rtp_type it) { return it.name.compare(hierPathPort) == 0; });
+
+    if (rtp != rtps.end()) {
+        std::cout << "Can't update Graph " << name << ": RTP port " << hierPathPort << " not found." << std::endl;
+        return -EINVAL;
+    }
+
+    if (rtp->is_plrtp) {
+        std::cout << "Can't update Graph " << name << ": not aie rtp port." << std::endl;
+        return -EINVAL;
+    }
+ 
+    /* We only support input RTP */
+    if (!rtp->is_input) {
+        std::cout << "Can't update Graph " << name << ": only support input RTP port." << std::endl;
+        return -EINVAL;
+    }
+ 
+    /*
+     * Only support sync update
+     * TODO support async update
+     */
+    if (rtp->is_async) {
+        std::cout << "Can't update Graph " << name << ": only support sync update." << std::endl;
+        return -EINVAL;
+    }
+ 
+    /* If RTP port is connected, only support async update */
+    if (rtp->is_connected) {
+        std::cout << "Can't update Graph " << name << ": connected sync update is not supported." << std::endl;
+        return -EINVAL;
+    }
+ 
+    auto selector_pos = aieArray->getTilePos(rtp->selector_col, rtp->selector_row);
+    auto selector_tile = &(aieArray->tileArray.at(selector_pos));
+
+    if (rtp->require_lock)
+        XAieTile_LockAcquire(selector_tile, rtp->selector_lock_id, 0, 0xFFFFFFFF);
+
+    uint32_t selector = XAieTile_DmReadWord(selector_tile, rtp->selector_addr);
+    selector = 1 - selector;
+
+    int update_pos;
+    uint16_t lock_id;
+    uint64_t start_addr;
+    if (selector == 1) {
+        /* update pong buffer */
+        update_pos = aieArray->getTilePos(rtp->pong_col, rtp->pong_row);
+        lock_id = rtp->pong_lock_id;
+        start_addr = rtp->pong_addr;
+    } else {
+        /* update ping buffer */
+        update_pos = aieArray->getTilePos(rtp->ping_col, rtp->ping_row);
+        lock_id = rtp->ping_lock_id;
+        start_addr = rtp->ping_addr;
+    }
+
+   XAieGbl_Tile *update_tile = &(aieArray->tileArray.at(update_pos));
+   if (rtp->require_lock)
+        XAieTile_LockAcquire(update_tile, lock_id, 0, 0xFFFFFFFF);
+
+    size_t iterations = size / 4;
+    size_t remain = size % 4;
+    int i;
+    for (i = 0; i < iterations; ++i) {
+        XAieTile_DmWriteWord(update_tile, start_addr, ((const u32*)buffer)[i]);
+        start_addr += 4;
+    }
+    if (remain) {
+        uint32_t rdata = 0;
+        memcpy(&rdata, &((const u32*)buffer)[i], remain);
+        XAieTile_DmWriteWord(update_tile, start_addr, rdata);
+    }
+
+    /* update selector */
+    XAieTile_DmWriteWord(selector_tile, rtp->selector_addr, selector);
+
+    if (rtp->require_lock) {
+        /* release lock */
+        XAieTile_LockRelease(selector_tile, rtp->selector_lock_id, 1, 0XFFFFFFFF);
+        XAieTile_LockRelease(update_tile, lock_id, 1, 0XFFFFFFFF);
+    }
+
+    return 0;
+}
+
 
 }
 
@@ -350,4 +467,13 @@ int xrtGraphStop(xrtGraphHandle gh, int timeoutMilliSec)
         return -EINVAL;
 
     return graph->xrtGraphStop(timeoutMilliSec);
+}
+
+int xrtGraphRTPUpdate(xrtGraphHandle gh, const char *hierPathPort, const char *buffer, size_t size)
+{
+    zynqaie::Graph *graph = zynqaie::Graph::graphHandleCheck(gh);
+    if (!graph)
+        return -EINVAL;
+
+    return graph->xrtGraphRTPUpdate(hierPathPort, buffer, size);
 }

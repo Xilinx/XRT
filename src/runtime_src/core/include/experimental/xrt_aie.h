@@ -123,4 +123,18 @@ int xrtGraphResume(xrtGraphHandle gh);
  */
 int xrtGraphStop(xrtGraphHandle gh, int timeoutMilliSec);
 
+/**
+ * xrtGraphRTPUpdate() - Update RTP value of port with hierarchical name
+ *
+ * @gh:              Handle to graph previously opened with xrtGraphOpen.
+ * @hierPathPort:    hierarchial name of RTP port.
+ * @buffer:          pointer to the RTP value.
+ * @size:            size in bytes of the RTP value.
+ *
+ * Return:          0 on success, -1 on timeout.
+ *
+ * Note: This is for sychcronous RTP only.
+ */
+int xrtGraphRTPUpdate(xrtGraphHandle gh, const char *hierPathPort, const char *buffer, size_t size);
+
 #endif
