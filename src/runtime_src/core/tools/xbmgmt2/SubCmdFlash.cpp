@@ -44,15 +44,15 @@ namespace {
  * scan all devices on the machine
  * TO-DO: Implement Json
  */
-static void 
+static void
 scan_devices(bool verbose, bool json)
 {
   json = json;
   auto total = xrt_core::get_total_devices(false).first;
-  
+
   if (total == 0)
     throw xrt_core::error("No card found!");
-  
+
   for(uint16_t i = 0; i < total; i++) {
     Flasher f(i);
     if (!f.isValid())
@@ -91,7 +91,7 @@ scan_devices(bool verbose, bool json)
 /*
  * Update shell on the board
  */
-static int
+static void
 update_shell(uint16_t index, const std::string& flashType,
     const std::string& primary, const std::string& secondary)
 {
@@ -104,22 +104,15 @@ update_shell(uint16_t index, const std::string& flashType,
   }
 
   Flasher flasher(index);
-  if(!flasher.isValid()) {
-    std::cout << index << " is an invalid index\n";
-    return -EINVAL;
-  }
+  if(!flasher.isValid())
+    throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % index));
 
-  if (primary.empty()) {
-    std::cout << "Shell not specified\n";
-    return -EINVAL;
-  }
+  if (primary.empty())
+    throw xrt_core::error("Shell not specified");
 
   pri = std::make_unique<firmwareImage>(primary.c_str(), MCS_FIRMWARE_PRIMARY);
-  if (pri->fail()) {
-    std::cout << "Failed to read " << primary.c_str() << std::endl;
-    return -EINVAL;
-  }
-
+  if (pri->fail())
+    throw xrt_core::error(boost::str(boost::format("Failed to read %s") % primary.c_str()));
   if (!secondary.empty()) {
     sec = std::make_unique<firmwareImage>(secondary.c_str(),
       MCS_FIRMWARE_SECONDARY);
@@ -130,32 +123,24 @@ update_shell(uint16_t index, const std::string& flashType,
   flasher.upgradeFirmware(flashType, pri.get(), sec.get());
   std::cout << "Shell is updated successfully\n";
   std::cout << "Cold reboot machine to load new shell on card" << std::endl;
-
-  return 0;
 }
 
 /*
  * Update SC firmware on the board
  */
-static int
+static void
 update_SC(uint16_t index, const std::string& file)
 {
   Flasher flasher(index);
-  if(!flasher.isValid()) {
-    std::cout << index << " is an invalid index\n";
-    return -EINVAL;
-  }
+  if(!flasher.isValid())
+    throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % index));
 
   std::shared_ptr<firmwareImage> bmc =
     std::make_shared<firmwareImage>(file.c_str(), BMC_FIRMWARE);
-  if (bmc->fail()) {
-    std::cout << "Failed to read " << file.c_str() << std::endl;
-    return -EINVAL;
-  }
+  if (bmc->fail())
+    throw xrt_core::error(boost::str(boost::format("Failed to read %s") % file.c_str()));
 
   flasher.upgradeBMCFirmware(bmc.get());
-
-  return 0;
 }
 
 /*
@@ -226,7 +211,7 @@ selectShell(uint16_t idx, const std::string& dsa, const std::string& id)
   return candidate;
 }
 
-/* 
+/*
  * Confirm with the user
  * Helper method for auto_flash
  */
@@ -249,11 +234,11 @@ bool canProceed()
   return proceed;
 }
 
-/* 
+/*
  * Flash shell and sc firmware
  * Helper method for auto_flash
  */
-static int 
+static int
 updateShellAndSC(uint16_t boardIdx, DSAInfo& candidate, bool& reboot)
 {
   reboot = false;
@@ -277,22 +262,24 @@ updateShellAndSC(uint16_t boardIdx, DSAInfo& candidate, bool& reboot)
   if (!same_bmc) {
     std::cout << "Updating SC firmware on card[" << flasher.sGetDBDF() <<
       "]" << std::endl;
-    auto ret = update_SC(boardIdx, candidate.file.c_str());
-    if (ret != 0)
+    try {
+      update_SC(boardIdx, candidate.file.c_str());
+    } catch (...) {
       std::cout << "WARNING: Failed to update SC firmware on card ["
         << flasher.sGetDBDF() << "]" << std::endl;
+    }
   }
 
   if (!same_dsa) {
     std::cout << "Updating shell on card[" << flasher.sGetDBDF() <<
       "]" << std::endl;
-    auto ret = update_shell(boardIdx, "", candidate.file.c_str(),
-                            candidate.file.c_str());
-    if (ret != 0)
+    try {
+      update_shell(boardIdx, "", candidate.file.c_str(), candidate.file.c_str());
+      reboot = true;
+    } catch (...) {
       std::cout << "ERROR: Failed to update shell on card["
         << flasher.sGetDBDF() << "]" << std::endl;
-    else
-      reboot = true;
+    }
   }
 
   if (!same_dsa && !reboot)
@@ -376,9 +363,9 @@ auto_flash(uint16_t index, std::string& name,
   }
 
   if (success != 0) {
-    std::cout << success << " Card(s) flashed successfully." << std::endl; 
+    std::cout << success << " Card(s) flashed successfully." << std::endl;
   } else {
-    std::cout << "No cards were flashed." << std::endl; 
+    std::cout << "No cards were flashed." << std::endl;
   }
 
   if (needreboot) {
@@ -418,7 +405,7 @@ reset_shell(uint16_t index)
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
 SubCmdFlash::SubCmdFlash(bool _isHidden, bool _isDepricated, bool _isPreliminary)
-    : SubCmd("flash", 
+    : SubCmd("flash",
              "Update SC firmware or shell on the device")
 {
   const std::string longDescription = "<add long description>";
@@ -656,9 +643,7 @@ SubCmdFlash::execute(const SubCmdOptions& _options) const
       return;
     }
     auto idx = xrt_core::utils::bdf2index(bdf);
-    auto ret = update_shell(idx, flash_type, file, secondary);
-    if (ret != 0)
-      std::cout << "ERROR: Failed to update shell on card" << std::endl;
+    update_shell(idx, flash_type, file, secondary);
     return;
   }
 
@@ -697,9 +682,6 @@ SubCmdFlash::execute(const SubCmdOptions& _options) const
     }
 
     auto idx = xrt_core::utils::bdf2index(bdf);
-    auto ret = update_SC(idx, file);
-    if (ret != 0)
-      std::cout << "WARNING: Failed to update SC firmware on card" << std::endl;
-    return;
+    update_SC(idx, file);
   }
 }

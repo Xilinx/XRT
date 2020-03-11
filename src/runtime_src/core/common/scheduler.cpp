@@ -96,23 +96,21 @@ create_data_bo(xclDeviceHandle handle, size_t sz, uint32_t flags)
 {
   auto delBO = [](buffer_object* bo) {
     xclUnmapBO(bo->dev, bo->bo, bo->data);
-    xclFreeBO(bo->dev,bo->bo);
+    xclFreeBO(bo->dev, bo->bo);
     delete bo;
   };
 
   auto ubo = std::make_unique<buffer_object>();
   ubo->dev = handle;
-  ubo->bo = xclAllocBO(ubo->dev,sz,0,flags);
-  ubo->data = xclMapBO(ubo->dev,ubo->bo,true /*write*/);
-  auto ret = xclGetBOProperties(ubo->dev, ubo->bo, &ubo->prop);
-  if (ret < 0) {
-    xclUnmapBO(ubo->dev, ubo->bo, ubo->data);
-    xclFreeBO(ubo->dev, ubo->bo);
-    return NULL;
-  }
+  ubo->bo = xclAllocBO(ubo->dev, sz, 0, flags);
+  ubo->data = xclMapBO(ubo->dev, ubo->bo, true /*write*/);
+
+  if (auto ret = xclGetBOProperties(ubo->dev, ubo->bo, &ubo->prop))
+    throw xrt_core::error(ret, "Failed to get BO properties");
+
   ubo->size = sz;
-  std::memset(reinterpret_cast<ert_packet*>(ubo->data),0,sz);
-  return buffer(ubo.release(),delBO);
+  std::memset(reinterpret_cast<ert_packet*>(ubo->data), 0, sz);
+  return buffer(ubo.release(), delBO);
 }
 
 } // unnamed
@@ -181,8 +179,6 @@ init(xclDeviceHandle handle, const axlf* top)
     uint32_t start_cuidx = 0;
     for (const auto& sk:sks) {
       auto skbo = create_data_bo(handle, sk.size, flags);
-      if (!skbo)
-	    throw std::runtime_error("unable to create Buffer obj");
 
       std::memset(scmd, 0, 0x1000);
       scmd->state = ERT_CMD_STATE_NEW;
@@ -195,8 +191,8 @@ init(xclDeviceHandle handle, const axlf* top)
       scmd->sk_addr = skbo->prop.paddr;
       scmd->sk_size = skbo->prop.size;
       std::memcpy(skbo->data, sk.sk_buf, sk.size);
-      if (xclSyncBO(handle, skbo->bo, XCL_BO_SYNC_BO_TO_DEVICE, sk.size, 0))
-	    throw std::runtime_error("unable to synchronize the Buffer contents");
+      if (auto ret = xclSyncBO(handle, skbo->bo, XCL_BO_SYNC_BO_TO_DEVICE, sk.size, 0))
+	    throw xrt_core::error(ret, "unable to synch BO to device");
 
       if (xclExecBuf(handle,execbo->bo))
         throw std::runtime_error("unable to issue xclExecBuf");
@@ -239,13 +235,11 @@ loadXclbinToPS(xclDeviceHandle handle, const axlf* top)
     throw std::runtime_error("unable to get available memory bank");
 
   auto skbo = create_data_bo(handle, top->m_header.m_length, flags);
-  if (!skbo)
-    throw std::runtime_error("unable to create Buffer obj");
   ecmd->sk_addr = skbo->prop.paddr;
   ecmd->sk_size = skbo->prop.size;
   std::memcpy(skbo->data, top, skbo->size);
-  if (xclSyncBO(handle, skbo->bo, XCL_BO_SYNC_BO_TO_DEVICE, skbo->size, 0))
-    throw std::runtime_error("unable to synchronize the Buffer contents");
+  if (auto ret = xclSyncBO(handle, skbo->bo, XCL_BO_SYNC_BO_TO_DEVICE, skbo->size, 0))
+	throw xrt_core::error(ret, "unable to synch BO to device");
 
   uuid_copy(uuid, top->m_header.uuid);
   if (xclOpenContext(handle,uuid,-1,true))
