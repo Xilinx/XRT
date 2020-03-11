@@ -736,7 +736,7 @@ done:
       preadBO.size = size;
       preadBO.data_ptr = offset;
 
-
+std::cout << " in unmgd pread for Winshim offset " << offset << " address in hex " << std::hex << offset << std::dec << std::endl;
       if (!DeviceIoControl(m_dev,
           IOCTL_XOCL_PREAD_UNMGD,
           &preadBO,
