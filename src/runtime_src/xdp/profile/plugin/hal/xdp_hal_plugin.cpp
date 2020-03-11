@@ -170,10 +170,37 @@ namespace xdp {
 
   static void sync_bo_start(void* payload) {
     log_function_start(payload, "SyncBO") ;
+
+    SyncBOCBPayload* pLoad = reinterpret_cast<SyncBOCBPayload*>(payload);
+
+    // Also log the amount of data transferred
+    uint64_t deviceId = halPluginInstance.getDeviceId(pLoad->basePayload.deviceHandle);
+    VPDatabase* db = halPluginInstance.getDatabase() ;
+    (db->getStats()).logMemoryTransfer(deviceId,
+                       (pLoad->isWriteToDevice ? DeviceMemoryStatistics::BUFFER_WRITE : DeviceMemoryStatistics::BUFFER_READ),
+				       pLoad->size) ;
+
+    // Add trace event for start of Buffer Transfer
+    double timestamp = xrt_core::time_ns();
+    VTFEvent* event = new BufferTransfer(0, timestamp,
+                            ((pLoad->isWriteToDevice) ? WRITE_BUFFER : READ_BUFFER), pLoad->size);
+    (db->getDynamicInfo()).addEvent(event);
+    (db->getDynamicInfo()).markStart(pLoad->bufferTransferId, event->getEventId());
   }
 
   static void sync_bo_end(void* payload) {
     log_function_end(payload, "SyncBO") ;
+
+    SyncBOCBPayload* pLoad = reinterpret_cast<SyncBOCBPayload*>(payload);
+
+    // Add trace event for end of Buffer Transfer
+    double timestamp = xrt_core::time_ns();
+    VPDatabase* db = halPluginInstance.getDatabase();
+    VTFEvent* event = new BufferTransfer(
+                          (db->getDynamicInfo()).matchingStart(pLoad->bufferTransferId),
+                          timestamp,
+                          ((pLoad->isWriteToDevice) ? WRITE_BUFFER : READ_BUFFER));
+    (db->getDynamicInfo()).addEvent(event);
   }
 
   static void copy_bo_start(void* payload) {

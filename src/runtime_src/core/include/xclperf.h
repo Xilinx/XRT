@@ -584,18 +584,34 @@ struct BOTransferCBPayload
 {
   struct CBPayload basePayload ;
   uint64_t bufferTransferId;
-  uint32_t boHandle ;
-  uint64_t dest ;
-  size_t size ;
-  size_t skip ;
+  size_t   size;
+#if 0
+  uint32_t boHandle;
+  uint64_t dest;
+  size_t offset;
+#endif
+};
+
+struct SyncBOCBPayload
+{
+  struct CBPayload basePayload ;
+  uint64_t bufferTransferId;
+  size_t   size;
+  bool     isWriteToDevice;
+#if 0
+  uint32_t boHandle;
+  size_t offset;
+#endif
 };
 
 struct ReadWriteCBPayload
 {
   struct CBPayload basePayload;
-  uint32_t     addressSpace;
-  uint64_t     offset;
-  size_t       size;
+  size_t   size;
+#if 0
+  uint32_t addressSpace;
+  uint64_t offset;
+#endif
 };
 
 struct UnmgdPreadPwriteCBPayload
