@@ -33,6 +33,7 @@ class Graph
 {
 public:
     using tile_type = xrt_core::edge::aie::tile;
+    using rtp_type = xrt_core::edge::aie::rtp;
 
     ~Graph();
     Graph(xrtDeviceHandle handle, const std::string& graphName);
@@ -47,6 +48,7 @@ public:
     int xrtGraphSuspend();
     int xrtGraphResume();
     int xrtGraphStop(int timeoutMilliSec);
+    int xrtGraphRTPUpdate(const char *hierPathPort, const char *buffer, size_t size);
 
 private:
 
@@ -82,6 +84,7 @@ private:
      */
     std::vector<tile_type> tiles;
 
+    std::vector<rtp_type> rtps;
 };
 
 }

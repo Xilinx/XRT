@@ -48,11 +48,15 @@ namespace xdp {
     // Accelerator port metadata
     // *************************
     public:
-	  // Arguments and memory resources per accel port
+      // Arguments and memory resources per CU port
       void setArgumentsBank(const std::string& deviceName) override;
       void getArgumentsBank(const std::string& deviceName, const std::string& cuName,
-          const std::string& portName, std::string& argNames,
-          std::string& memoryName) override;
+                            const std::string& portName, std::string& argNames,
+                            std::string& memoryName) override;
+
+    private:
+      void getMemoryNameFromID(const xocl::device* device_id, const std::shared_ptr<xocl::compute_unit> cu,
+                               const std::string arg_id, std::string& memoryName);
 
     // *************************
     // Guidance metadata
