@@ -43,7 +43,7 @@ namespace {
 enum class configType {
     security = 0,
     clk_scaling,
-    cs_threshold_power_override,
+    threshold_power_override,
 };
 
 enum class memType {
@@ -230,7 +230,7 @@ OO_Config::execute(const SubCmdOptions& _options) const
     if (!m_power_override.empty()) {
       for(auto idx : device_indices) {
         auto dev = xrt_core::get_mgmtpf_device(idx);
-        update_device_conf(dev, m_power_override, configType::cs_threshold_power_override);
+        update_device_conf(dev, m_power_override, configType::threshold_power_override);
       }
     }
   return;
