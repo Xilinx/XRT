@@ -19,6 +19,7 @@
 #include "xocl_plugin.h"
 #include "xdp/profile/writer/base_profile.h"
 #include "xdp/profile/core/rt_profile.h"
+#include <cctype> // needed for std::tolower
 
 #ifdef _WIN32
 #pragma warning (disable : 4244)
@@ -50,11 +51,47 @@ namespace xdp {
   // Accelerator port metadata
   // *************************
 
+  // Get the name of the memory associated with a device, CU, and memory index
+  void XoclPlugin::getMemoryNameFromID(const xocl::device* device_id, const std::shared_ptr<xocl::compute_unit> cu,
+                                       const std::string arg_id, std::string& memoryName)
+  {
+    try {
+      unsigned long index = (unsigned long)std::stoi(arg_id);
+      auto memidx_mask = cu->get_memidx(index);
+      // auto memidx = 0;
+      for (unsigned int memidx=0; memidx<memidx_mask.size(); ++memidx) {
+        if (memidx_mask.test(memidx)) {
+          // Get bank tag string from index
+          memoryName = "DDR";
+          if (device_id->is_active())
+            memoryName = device_id->get_xclbin().memidx_to_banktag(memidx);
+
+          XDP_LOG("getMemoryNameFromID: idx = %d, memory = %s\n", memidx, memoryName.c_str());
+          break;
+        }
+      }
+    }
+    catch (const std::runtime_error& ) {
+      memoryName = "DDR";
+      XDP_LOG("getMemoryNameFromID: caught error, using default of %s\n", memoryName.c_str());
+    }
+
+    // Catch old bank format and report as DDR
+    //std::string memoryName2 = memoryName.substr(0, memoryName.find_last_of("["));
+    if (memoryName.find("bank0") != std::string::npos)
+      memoryName = "DDR[0]";
+    else if (memoryName.find("bank1") != std::string::npos)
+      memoryName = "DDR[1]";
+    else if (memoryName.find("bank2") != std::string::npos)
+      memoryName = "DDR[2]";
+    else if (memoryName.find("bank3") != std::string::npos)
+      memoryName = "DDR[3]";
+  }
+
   // Find arguments and memory resources for each accel port on given device
   void XoclPlugin::setArgumentsBank(const std::string& deviceName)
   {
-    const std::string numerical("0123456789");
-
+    // Iterate over all devices in platform
     for (auto device_id : mPlatformHandle->get_device_range()) {
       std::string currDevice = device_id->get_unique_name();
       XDP_LOG("setArgumentsBank: current device = %s, # CUs = %d\n",
@@ -62,110 +99,102 @@ namespace xdp {
       if (currDevice.find(deviceName) == std::string::npos)
         continue;
 
+      // Iterate over all CUs on this device
       for (auto& cu : xocl::xocl(device_id)->get_cus()) {
         auto currCU = cu->get_name();
         auto currSymbol = cu->get_symbol();
 
-        // Compile set of ports on this CU
+        // Compile sets of ports and memories for this CU
         std::set<std::string> portSet;
+        std::set<std::string> memorySet;
         for (auto arg : currSymbol->arguments) {
           if ((arg.address_qualifier == 0)
               || (arg.atype != xocl::xclbin::symbol::arg::argtype::indexed))
             continue;
 
           auto portName = arg.port;
-          std::transform(portName.begin(), portName.end(), portName.begin(), ::tolower);
+          // Avoid conflict with boost
+          // std::transform(portName.begin(), portName.end(), portName.begin(), ::tolower);
+          std::transform(portName.begin(), portName.end(), portName.begin(), [](char c){return (char) std::tolower(c);});
           portSet.insert(portName);
-        }
 
-        // Now find all arguments for each port
-        for (auto portName : portSet) {
-          XDPPluginI::CUPortArgsBankType row;
-          std::get<0>(row) = currCU;
-          std::get<1>(row) = portName;
-
-          bool firstArg = true;
           std::string memoryName;
-
-          for (auto arg : currSymbol->arguments) {
-            auto currPort = arg.port;
-            std::transform(currPort.begin(), currPort.end(), currPort.begin(), ::tolower);
-
-            // Address_Qualifier = 1 : AXI MM Port
-            // Address_Qualifier = 4 : AXI Stream Port
-            if ((currPort == portName) && (arg.address_qualifier == 1 || arg.address_qualifier == 4)
-                && (arg.atype == xocl::xclbin::symbol::arg::argtype::indexed)) {
-              std::get<2>(row) += (firstArg) ? arg.name : ("|" + arg.name);
-
-              auto portWidth = arg.port_width;
-              unsigned long index = (unsigned long)std::stoi(arg.id);
-
-              try {
-                auto memidx_mask = cu->get_memidx(index);
-                // auto memidx = 0;
-                for (unsigned int memidx=0; memidx<memidx_mask.size(); ++memidx) {
-                  if (memidx_mask.test(memidx)) {
-                    // Get bank tag string from index
-                    memoryName = "DDR";
-                    if (device_id->is_active())
-                      memoryName = device_id->get_xclbin().memidx_to_banktag(memidx);
-
-                    XDP_LOG("setArgumentsBank: idx = %d, memory = %s\n", memidx, memoryName.c_str());
-                    break;
-                  }
-                }
-              }
-              catch (const std::runtime_error& ) {
-                memoryName = "DDR";
-                XDP_LOG("setArgumentsBank: caught error, using default of %s\n", memoryName.c_str());
-              }
-
-              // Catch old bank format and report as DDR
-              //std::string memoryName2 = memoryName.substr(0, memoryName.find_last_of("["));
-              if (memoryName.find("bank0") != std::string::npos)
-                memoryName = "DDR[0]";
-              else if (memoryName.find("bank1") != std::string::npos)
-                memoryName = "DDR[1]";
-              else if (memoryName.find("bank2") != std::string::npos)
-                memoryName = "DDR[2]";
-              else if (memoryName.find("bank3") != std::string::npos)
-                memoryName = "DDR[3]";
-
-              std::get<3>(row) = memoryName;
-              std::get<4>(row) = portWidth;
-              firstArg = false;
-            }
-          }
-
-          XDP_LOG("setArgumentsBank: %s/%s, args = %s, memory = %s, width = %d\n",
-              std::get<0>(row).c_str(), std::get<1>(row).c_str(), std::get<2>(row).c_str(),
-              std::get<3>(row).c_str(), std::get<4>(row));
-          CUPortVector.push_back(row);
+          getMemoryNameFromID(device_id, cu, arg.id, memoryName);
+          memorySet.insert(memoryName);
         }
+
+        // Now find all arguments for each port/memory resource pair
+        for (auto portName : portSet) {
+          for (auto memoryName : memorySet) {
+            XDPPluginI::CUPortArgsBankType row;
+            std::get<0>(row) = currCU;
+            std::get<1>(row) = portName;
+            std::get<3>(row) = memoryName;
+
+            bool foundArg = false;
+
+            for (auto arg : currSymbol->arguments) {
+              // Catch arguments we don't care about
+              //   Address_Qualifier = 1 : AXI MM Port
+              //   Address_Qualifier = 4 : AXI Stream Port
+              if (((arg.address_qualifier != 1) && (arg.address_qualifier != 4))
+                  || (arg.atype != xocl::xclbin::symbol::arg::argtype::indexed))
+                continue;
+
+              auto currPort = arg.port;
+              // Avoid conflict with boost
+              // std::transform(currPort.begin(), currPort.end(), currPort.begin(), ::tolower);
+              std::transform(currPort.begin(), currPort.end(), currPort.begin(), [](char c){return (char) std::tolower(c);});
+
+              std::string currMemory;
+              getMemoryNameFromID(device_id, cu, arg.id, currMemory);
+
+              if ((currPort == portName) && (currMemory == memoryName)) {
+                std::get<2>(row) += (!foundArg) ? arg.name : ("|" + arg.name);
+                std::get<4>(row) = arg.port_width;
+                foundArg = true;
+              }
+            } // for args
+
+            if (foundArg) {
+              XDP_LOG("setArgumentsBank: %s/%s, args = %s, memory = %s, width = %d\n",
+                std::get<0>(row).c_str(), std::get<1>(row).c_str(), std::get<2>(row).c_str(),
+                std::get<3>(row).c_str(), std::get<4>(row));
+              CUPortVector.push_back(row);
+            }
+          } // for memory 
+        } // for port
 
         portSet.clear();
-      } // for cu
-    } // for device_id
+        memorySet.clear();
+      } // for CU
+    } // for device
   }
 
   // Get the arguments and memory resource for a given device/CU/port
   void XoclPlugin::getArgumentsBank(const std::string& /*deviceName*/, const std::string& cuName,
    	                                const std::string& portName, std::string& argNames,
-   				                    std::string& memoryName)
+                                    std::string& memoryName)
   {
     argNames = "All";
     memoryName = "DDR";
 
     bool foundMemory = false;
     std::string portNameCheck = portName;
+    std::string memoryResource = memoryName;
 
     size_t index = portName.find_last_of(IP_LAYOUT_SEP);
     if (index != std::string::npos) {
       foundMemory = true;
       portNameCheck = portName.substr(0, index);
       memoryName = portName.substr(index+1);
+
+      size_t index2 = memoryName.find("[");
+      memoryResource = memoryName.substr(0, index2);
     }
-    std::transform(portNameCheck.begin(), portNameCheck.end(), portNameCheck.begin(), ::tolower);
+    // Avoid conflict with boost
+    //std::transform(portNameCheck.begin(), portNameCheck.end(), portNameCheck.begin(), ::tolower);
+    std::transform(portNameCheck.begin(), portNameCheck.end(), portNameCheck.begin(), [](char c){return (char) std::tolower(c);});
 
     // Find CU and port, then capture arguments and bank
     for (auto& row : CUPortVector) {
@@ -173,12 +202,16 @@ namespace xdp {
       std::string currPort = std::get<1>(row);
 
       if ((currCU == cuName) && (currPort == portNameCheck)) {
+        std::string currMemory = std::get<3>(row);
+        size_t index3 = currMemory.find("[");
+        auto currMemoryResource = currMemory.substr(0, index3);
+
+        // Make sure it's the right memory resource
+        if (foundMemory && (currMemoryResource != memoryResource))
+          continue;
+
         argNames = std::get<2>(row);
-        // If already found, replace it; otherwise, use it
-        if (foundMemory)
-          std::get<3>(row) = memoryName;
-        else
-          memoryName = std::get<3>(row);
+        memoryName = currMemory;
         break;
       }
     }
