@@ -264,7 +264,7 @@ get_xclbin_programming()
 }
 
 /**
- * Enable xma mode2 = only one cu command submission per xma_session at a time
+ * Enable xma mode2 = only two cu command submission per xma_session at a time
  */
 inline bool
 get_xma_mode2()

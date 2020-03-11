@@ -510,21 +510,21 @@ void xma_enable_mode1(void) {
         xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "xma_enable_mode1: Mode2 is selected. Use either mode1 or mode2");
         return;
     }
-    if (g_xma_singleton->num_execbos != 3) {
-        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "xma_enable_mode1: Mode already changed");
+    if (g_xma_singleton->num_execbos != XMA_NUM_EXECBO_DEFAULT) {
+        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "xma_enable_mode1: Mode already changed. No action taken");
         return;
     }
-    g_xma_singleton->num_execbos = 64;
+    g_xma_singleton->num_execbos = XMA_NUM_EXECBO_MODE1;
     xma_logmsg(XMA_INFO_LOG, XMAUTILS_MOD, "xma_enable_mode1: Enabling bulk submission of cu commands");
 }
 
 void xma_enable_mode2(void) {
-    if (g_xma_singleton->num_execbos != 3) {
+    if (g_xma_singleton->num_execbos != XMA_NUM_EXECBO_DEFAULT) {
         xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "xma_enable_mode2: Mode already changed");
         return;
     }
-    g_xma_singleton->num_execbos = 1;
-    xma_logmsg(XMA_INFO_LOG, XMAUTILS_MOD, "xma_enable_mode2: Enabling only one cu command submission per xma_session at a time");
+    g_xma_singleton->num_execbos = XMA_NUM_EXECBO_MODE2;
+    xma_logmsg(XMA_INFO_LOG, XMAUTILS_MOD, "xma_enable_mode2: Enabling atmost two cu command submission per xma_session at a time");
 }
 
 
