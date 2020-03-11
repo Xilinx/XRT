@@ -39,6 +39,7 @@ install_recipes()
         echo "EXTERNALSRC = \"$XRT_REPO_DIR/src\"" >> $XRT_BB
         echo 'EXTERNALSRC_BUILD = "${WORKDIR}/build"' >> $XRT_BB
         echo 'PACKAGE_CLASSES = "package_rpm"' >> $XRT_BB
+        echo 'PV = "202010.2.6.0"' >> $XRT_BB
     fi
 
     grep "inherit externalsrc" $ZOCL_BB
@@ -47,6 +48,7 @@ install_recipes()
         echo "EXTERNALSRC = \"$XRT_REPO_DIR/src/runtime_src/core/edge/drm/zocl\"" >> $ZOCL_BB
         echo "EXTERNALSRC_BUILD = \"$XRT_REPO_DIR/src/runtime_src/core/edge/drm/zocl\"" >> $ZOCL_BB
         echo 'PACKAGE_CLASSES = "package_rpm"' >> $ZOCL_BB
+        echo 'PV = "202010.2.6.0"' >> $ZOCL_BB
         echo 'pkg_postinst_ontarget_${PN}() {' >> $ZOCL_BB
         echo '  #!/bin/sh' >> $ZOCL_BB
         echo '  echo "Unloading old XRT Linux kernel modules"' >> $ZOCL_BB
@@ -117,9 +119,7 @@ fi
 
 # we pick Petalinux BSP
 if [[ -z ${PETALINUX:+x} ]]; then
-    export PETALINUX="/proj/petalinux/2020.1/petalinux-v2020.1_0217_1/tool/petalinux-v2020.1-final"
-    export PETALINUX_VER=2020.1
-    export XSCT_TOOLCHAIN="${PETALINUX}/tools/xsct"
+    source petalinux.build
 fi
 
 if [[ $AARCH = $aarch64_dir ]]; then
@@ -155,27 +155,53 @@ if [ ! -d $PETALINUX_NAME ]; then
     echo "[CMD]: petalinux-create -t project -n $PETALINUX_NAME $PETA_CREATE_OPT"
     $PETA_BIN/petalinux-create -t project -n $PETALINUX_NAME $PETA_CREATE_OPT
 else
-    error " * PetaLinux Project existed: $PETALINUX_NAME."
+    echo " * PetaLinux Project existed: $PETALINUX_NAME."
+    #error " * PetaLinux Project existed: $PETALINUX_NAME."
 fi
 
 cd ${PETALINUX_NAME}/project-spec/meta-user/
 install_recipes .
 
 cd $ORIGINAL_DIR/$PETALINUX_NAME
-echo 'CONFIG_TMP_DIR_LOCATION="${PROOT}/build/tmp"' >> project-spec/configs/config
 
 # Build package
 echo " * Performing PetaLinux Build (from: ${PWD})"
 echo "[CMD]: petalinux-build -c xrt"
 $PETA_BIN/petalinux-build -c xrt
+if [ $? != 0 ]; then
+   error "XRT build failed"
+fi
+
 echo "[CMD]: petalinux-build -c zocl"
 $PETA_BIN/petalinux-build -c zocl
+if [ $? != 0 ]; then
+   error "ZOCL build failed"
+fi
+
+echo "Copying rpms in $ORIGINAL_DIR/$PETALINUX_NAME"
+if [ ! -d build/tmp/deploy/rpm ]; then
+  tmp_path=$(cat project-spec/configs/config | grep CONFIG_TMP_DIR_LOCATION \
+	| awk -F'=' '{print $2}' |  sed -e 's/^"//' -e 's/"$//')
+  cp -v ${tmp_path}/deploy/rpm/*/xrt* $ORIGINAL_DIR/$PETALINUX_NAME/.
+  cp -v ${tmp_path}/deploy/rpm/${PLATFORM_NAME}*/*zocl* $ORIGINAL_DIR/$PETALINUX_NAME/.
+else
+  cp -v build/tmp/deploy/rpm/${PLATFORM_NAME}*/*zocl* $ORIGINAL_DIR/$PETALINUX_NAME/.
+  cp -v build/tmp/deploy/rpm/*/xrt* $ORIGINAL_DIR/$PETALINUX_NAME/.
+fi
+
+echo "Creating $ORIGINAL_DIR/$PETALINUX_NAME/rpm.txt"
+echo `ls xrt-dev*` > $ORIGINAL_DIR/$PETALINUX_NAME/rpm.txt
+echo `ls xrt-2*` >> $ORIGINAL_DIR/$PETALINUX_NAME/rpm.txt
+
+echo "Creating $ORIGINAL_DIR/$PETALINUX_NAME/install_edge.sh"
+xrt_dbg=`ls xrt-dbg*`
+zocl_dbg=`ls zocl-dbg*`
+echo dnf install -y *.rpm | sed -e "s/\<$xrt_dbg\>//g" | sed -e "s/\<$zocl_dbg\>//g" > $ORIGINAL_DIR/$PETALINUX_NAME/install_edge.sh
+
+echo "Creating $ORIGINAL_DIR/$PETALINUX_NAME/reinstall_edge.sh"
+echo dnf reinstall -y *.rpm | sed -e "s/\<$xrt_dbg\>//g" | sed -e "s/\<$zocl_dbg\>//g" > $ORIGINAL_DIR/$PETALINUX_NAME/reinstall_edge.sh
 
 cd $ORIGINAL_DIR
-
-echo "Coping rpms in $ORIGINAL_DIR/$PETALINUX_NAME"
-cp -v ${PETALINUX_NAME}/build/tmp/deploy/rpm/${PLATFORM_NAME}*/*zocl* ${PETALINUX_NAME}/.
-cp -v ${PETALINUX_NAME}/build/tmp/deploy/rpm/*/xrt* ${PETALINUX_NAME}/.
 
 eval "$SAVED_OPTIONS"; # Restore shell options
 echo "** COMPLETE [${BASH_SOURCE[0]}] **"
