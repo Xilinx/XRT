@@ -98,6 +98,6 @@ else()
 endif()
 
 # Install our built executable
-install (TARGETS ${XBUTIL2_NAME} RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
+install (TARGETS ${XBUTIL2_NAME} RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
 
 # -----------------------------------------------------------------------------

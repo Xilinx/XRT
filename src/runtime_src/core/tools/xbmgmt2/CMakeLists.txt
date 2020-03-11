@@ -89,6 +89,6 @@ else()
   )
 endif()
 
-install (TARGETS ${XBMGMT2_NAME} RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
+install (TARGETS ${XBMGMT2_NAME} RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
 
 # -----------------------------------------------------------------------------

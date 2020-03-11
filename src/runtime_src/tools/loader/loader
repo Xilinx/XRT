@@ -1,0 +1,53 @@
+#!/bin/bash
+
+# Working Variables 
+XRT_EXEC=""
+
+# -- Examine the options 
+XRT_LOADER_ARGS_size=0
+XRT_LOADER_ARGS=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    # Get the executable program name
+      -exec|--exec)
+      shift
+      XRT_EXEC="$1"
+      shift
+      ;;
+
+    # Copy the remaining unknown options for they are associated with the executable program
+    *)
+      XRT_LOADER_ARGS[$XRT_LOADER_ARGS_size]="$1"
+      XRT_LOADER_ARGS_size=$(($XRT_LOADER_ARGS_size + 1))
+      shift
+      ;;
+  esac
+done
+
+# -- Check to see if the given executable exists
+if [ -z "${XRT_EXEC}" ]; then
+  echo "ERROR: The -exec option wasn't specified."
+  exit 1
+fi
+
+XRT_PROG_UNWRAPPED="`dirname \"$0\"`/unwrapped/${XRT_EXEC}"
+if [ ! -f "${XRT_PROG_UNWRAPPED}" ]; then
+  echo "ERROR: Could not find -exec program: ${XRT_EXEC}"
+  echo "ERROR: ${XRT_PROG_UNWRAPPED} does not exist"
+  exit 1
+fi
+
+# -- Find the setup script and configure environment
+XRT_SETUP_SCRIPT="`dirname \"$0\"`/../setup.sh"
+
+if [ ! -f "$XRT_SETUP_SCRIPT" ]; then
+  echo "ERROR: Could not find XRT setup script."
+  echo "ERROR: ${XRT_SETUP_SCRIPT} does not exist"
+  exit 1
+fi
+
+. "${XRT_SETUP_SCRIPT}" > /dev/null
+
+# -- Execute the wrapped program
+"${XRT_PROG_UNWRAPPED}" "${XRT_LOADER_ARGS[@]}"
+
