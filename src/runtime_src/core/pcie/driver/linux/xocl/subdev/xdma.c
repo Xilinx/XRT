@@ -398,6 +398,7 @@ static int xdma_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
+	platform_set_drvdata(pdev, xdma);
 	ret = sysfs_create_group(&pdev->dev.kobj, &xdma_attr_group);
 	if (ret) {
 		xocl_err(&pdev->dev, "create attrs failed: %d", ret);
@@ -406,8 +407,6 @@ static int xdma_probe(struct platform_device *pdev)
 
 	mutex_init(&xdma->stat_lock);
 	mutex_init(&xdma->user_msix_table_lock);
-
-	platform_set_drvdata(pdev, xdma);
 
 	return 0;
 
