@@ -47,9 +47,9 @@ enum class configType {
 };
 
 enum class memType {
-    unknown= 0,
-    ddr,
-    hbm, 
+    mem_unknown= 0,
+    mem_ddr,
+    mem_hbm, 
     
 };
 
@@ -121,30 +121,30 @@ OO_Config::OO_Config( const std::string &_longName)
     : OptionOptions(_longName, "<Add description>")
     , m_device("")
     , m_help(false)
-    , daemon(false)
-    , host("")
-    , security("")
-    , clk_scale("")
-    , power_override("")
-    , show(false)
-    , ddr(false)
-    , hbm(false)
-    , enable_retention(false)
-    , disable_retention(false)
+    , m_daemon(false)
+    , m_host("")
+    , m_security("")
+    , m_clk_scale("")
+    , m_power_override("")
+    , m_show(false)
+    , m_ddr(false)
+    , m_hbm(false)
+    , m_enable_retention(false)
+    , m_disable_retention(false)
 
 {
   m_optionsDescription.add_options()
     ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
-    ("daemon", boost::program_options::bool_switch(&daemon), "<add description>")
-    ("host", boost::program_options::value<decltype(host)>(&host), "ip or hostname for peer")
-    ("security", boost::program_options::value<decltype(security)>(&security), "<add description>")
-    ("runtime_clk_scale", boost::program_options::value<decltype(clk_scale)>(&clk_scale), "<add description>")
-    ("cs_threshold_power_override", boost::program_options::value<decltype(power_override)>(&power_override), "<add description>")
-    ("show", boost::program_options::bool_switch(&show), "<add description>")
-    ("enable_retention", boost::program_options::bool_switch(&enable_retention), "<add description>")
-    ("disable_retention", boost::program_options::bool_switch(&disable_retention), "<add description>")
-    ("ddr", boost::program_options::bool_switch(&ddr), "<add description>")
-    ("hbm", boost::program_options::bool_switch(&hbm), "<add description>")
+    ("daemon", boost::program_options::bool_switch(&m_daemon), "<add description>")
+    ("host", boost::program_options::value<decltype(m_host)>(&m_host), "ip or hostname for peer")
+    ("security", boost::program_options::value<decltype(m_security)>(&m_security), "<add description>")
+    ("runtime_clk_scale", boost::program_options::value<decltype(m_clk_scale)>(&m_clk_scale), "<add description>")
+    ("cs_threshold_power_override", boost::program_options::value<decltype(m_power_override)>(&m_power_override), "<add description>")
+    ("show", boost::program_options::bool_switch(&m_show), "<add description>")
+    ("enable_retention", boost::program_options::bool_switch(&m_enable_retention), "<add description>")
+    ("disable_retention", boost::program_options::bool_switch(&m_disable_retention), "<add description>")
+    ("ddr", boost::program_options::bool_switch(&m_ddr), "<add description>")
+    ("hbm", boost::program_options::bool_switch(&m_hbm), "<add description>")
     ("help,h", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 }
@@ -172,7 +172,7 @@ OO_Config::execute(const SubCmdOptions& _options) const
   }
 
   //exit if neither daemon or device is specified
-  if(m_help || (m_device.empty() && !daemon)) { 
+  if(m_help || (m_device.empty() && !m_daemon)) { 
     printHelp();
     return;
   }
@@ -182,10 +182,10 @@ OO_Config::execute(const SubCmdOptions& _options) const
   XBU::parse_device_indices(device_indices, m_device);
   
   //Option:show
-  if(show) {
+  if(m_show) {
     XBU::verbose("Sub command: --show");
     //show daemon config
-    if(daemon)
+    if(m_daemon)
       show_daemon_conf();
 
     //show device config
@@ -199,11 +199,11 @@ OO_Config::execute(const SubCmdOptions& _options) const
   }
 
   //Option:daemon
-  if(daemon) {
+  if(m_daemon) {
     XBU::verbose("Sub command: --daemon");
-    if(host.empty())
+    if(m_host.empty())
       throw xrt_core::error("Please specify ip or hostname for peer");
-    update_daemon_config(host);
+    update_daemon_config(m_host);
     return;
   }
 
@@ -211,39 +211,39 @@ OO_Config::execute(const SubCmdOptions& _options) const
   if(!m_device.empty()) {
     XBU::verbose("Sub command: --device");
     //update security
-    if (!security.empty()) {
+    if (!m_security.empty()) {
       for(auto idx : device_indices) {
         auto dev = xrt_core::get_mgmtpf_device(idx);
-        update_device_conf(dev, security, configType::config_security);
+        update_device_conf(dev, m_security, configType::config_security);
       }
     }
 
     //clock scaling
-    if (!clk_scale.empty()) {
+    if (!m_clk_scale.empty()) {
       for(auto idx : device_indices) {
         auto dev = xrt_core::get_mgmtpf_device(idx);
-        update_device_conf(dev, clk_scale, configType::config_clk_scaling);
+        update_device_conf(dev, m_clk_scale, configType::config_clk_scaling);
       }
     }
     
     //update threshold power override
-    if (!power_override.empty()) {
+    if (!m_power_override.empty()) {
       for(auto idx : device_indices) {
         auto dev = xrt_core::get_mgmtpf_device(idx);
-        update_device_conf(dev, power_override, configType::config_cs_threshold_power_override);
+        update_device_conf(dev, m_power_override, configType::config_cs_threshold_power_override);
       }
     }
   return;
   }
 
   //Option:enable_retention
-  if(enable_retention) {
+  if(m_enable_retention) {
     XBU::verbose("Sub command: --enable_retention");
-    memType mem_type = memType::unknown; 
-    if(ddr)
-      mem_type = memType::ddr;
-    else if (hbm)
-      mem_type = memType::hbm;
+    memType mem_type = memType::mem_unknown; 
+    if(m_ddr)
+      mem_type = memType::mem_ddr;
+    else if (m_hbm)
+      mem_type = memType::mem_hbm;
     else
       throw xrt_core::error("Please specify memory type: ddr or hbm");
 
@@ -255,13 +255,13 @@ OO_Config::execute(const SubCmdOptions& _options) const
   }
 
   //Option:disable_retention
-  if(disable_retention) {
+  if(m_disable_retention) {
     XBU::verbose("Sub command: --disable_retention");
-    memType mem_type = memType::unknown; 
-    if(ddr)
-      mem_type = memType::ddr;
-    else if (hbm)
-      mem_type = memType::hbm;
+    memType mem_type = memType::mem_unknown; 
+    if(m_ddr)
+      mem_type = memType::mem_ddr;
+    else if (m_hbm)
+      mem_type = memType::mem_hbm;
     else
       throw xrt_core::error("Please specify memory type: ddr or hbm");
 

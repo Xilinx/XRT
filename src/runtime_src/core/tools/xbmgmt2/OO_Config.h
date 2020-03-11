@@ -29,16 +29,16 @@ class OO_Config : public OptionOptions {
  private:
   std::string m_device;
   bool m_help;
-  bool daemon;
-  std::string host;
-  std::string security;
-  std::string clk_scale;
-  std::string power_override;
-  bool show;
-  bool ddr;
-  bool hbm;
-  bool enable_retention;
-  bool disable_retention;
+  bool m_daemon;
+  std::string m_host;
+  std::string m_security;
+  std::string m_clk_scale;
+  std::string m_power_override;
+  bool m_show;
+  bool m_ddr;
+  bool m_hbm;
+  bool m_enable_retention;
+  bool m_disable_retention;
 
 };
 
