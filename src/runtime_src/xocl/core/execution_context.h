@@ -46,7 +46,7 @@ class event;
  * When a command is constructed all registered construction callbacks
  * are invoked.  When the command completes, all registered completion
  * callbacks are called before the command itself is deleted.
- * 
+ *
  * Command ownership is managed by execution context.
  */
 class execution_context
@@ -93,15 +93,17 @@ private:
   using argument_iterator_type = argument_vector_type::const_iterator;
   argument_vector_type m_kernel_args;
 
+  bool m_dataflow = false;
+
   // The context maintains a list of kernel compute units represented
   // by xcl::cu.  These cus (their base addresses) are used in the command
-  // that starts the mbs. 
+  // that starts the mbs.
   std::vector<const compute_unit*> m_cus;
 
   // Number of active start_kernel commands in this context
   size_t m_active = 0;
 
-  // Flag to indicate the execution context has no more work 
+  // Flag to indicate the execution context has no more work
   // to be scheduled
   bool m_done = false;
 
@@ -118,6 +120,12 @@ private:
 
   void
   encode_compute_units(packet_type& pkt);
+
+  /**
+   * Control type, IP_CONTROL per xclbin ip_layout
+   */
+  uint32_t
+  cu_control_type() const;
 
   /**
    * Update workgroup accounting.
@@ -163,15 +171,15 @@ public:
   }
 
   const size_t*
-  get_global_work_size() const 
+  get_global_work_size() const
   { return m_gsize.data(); }
 
   size_t
-  get_global_work_size(unsigned int d) const 
+  get_global_work_size(unsigned int d) const
   { return m_gsize[d]; }
 
   const size_t*
-  get_local_work_size() const 
+  get_local_work_size() const
   { return m_lsize.data(); }
 
   size_t
@@ -230,6 +238,7 @@ public:
    *   Pointer to compute unit object that maps to cu_idx, nullptr
    *   if no mapping
    */
+  XRT_XOCL_EXPORT
   const compute_unit*
   get_compute_unit(unsigned int cu_idx) const;
 
@@ -240,7 +249,7 @@ public:
    * soon as an event changes state to CL_SUBMITTED.
    *
    * The context creates scheduler commands and submits
-   * these commands to the command queue. 
+   * these commands to the command queue.
    *
    * @return
    *    true if last work group was started, false otherwise
@@ -266,15 +275,18 @@ using command_callback_function_type = std::function<void(const xrt::command*,co
 /**
  * Register function to invoke when a kernel command is constructed
  */
-void add_command_start_callback(command_callback_function_type fcn);
+XRT_XOCL_EXPORT
+void
+add_command_start_callback(command_callback_function_type fcn);
 
 /**
  * Register function to invoke when a kernel command completes
  */
-void add_command_done_callback(command_callback_function_type fcn);
+XRT_XOCL_EXPORT
+void
+add_command_done_callback(command_callback_function_type fcn);
 
 
 } // xocl
 
 #endif
-

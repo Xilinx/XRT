@@ -15,10 +15,11 @@
  */
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#include <CL/cl.h>
+#include "xocl/config.h"
 #include "detail/platform.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
+#include <CL/cl.h>
 
 namespace xocl {
 
@@ -31,7 +32,7 @@ validOrError(cl_platform_id platform)
   detail::platform::validOrError(platform);
 }
 
-static cl_int 
+static cl_int
 clUnloadPlatformCompiler(cl_platform_id platform)
 {
   validOrError(platform);
@@ -45,6 +46,7 @@ clUnloadPlatformCompiler(cl_platform_id  platform )
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clUnloadPlatformCompiler(platform);
   }
   catch (const xrt::error& ex) {
@@ -55,7 +57,4 @@ clUnloadPlatformCompiler(cl_platform_id  platform )
     xocl::send_exception_message(ex.what());
     return CL_OUT_OF_HOST_MEMORY;
   }
-  return CL_SUCCESS;
 }
-
-

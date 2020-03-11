@@ -20,6 +20,7 @@
 #include "xocl/core/device.h"
 #include "detail/device.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 namespace xocl {
 
@@ -55,6 +56,7 @@ clReleaseDevice(cl_device_id device)
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clReleaseDevice(device);
   }
   catch (const xocl::error& ex) {

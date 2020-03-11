@@ -13,17 +13,12 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
-#include <CL/opencl.h>
 #include "xocl/core/stream.h"
 #include "xocl/core/error.h"
 #include "xocl/core/device.h"
-
-//To access make_unique<>. TODO
-#include "xrt/util/memory.h"
+#include <CL/opencl.h>
 
 #include "plugin/xdp/profile.h"
-
 
 // Copyright 2018 Xilinx, Inc. All rights reserved.
 
@@ -32,20 +27,26 @@ static void
 validOrError(cl_device_id          device,
              cl_stream_flags       flags,
 	     cl_stream_attributes  attributes,
-	     cl_mem_ext_ptr_t*      ext,
+	     cl_mem_ext_ptr_t*     ext,
              cl_int *              errcode_ret)
 {
+  if (!ext || !ext->kernel)
+    throw error(CL_INVALID_KERNEL,"No kernel specified to clCreateStream");
+
+  auto kernel = xocl::xocl(ext->kernel);
+  if (kernel->get_num_cus() > 1)
+    throw error(CL_INVALID_KERNEL,"Only one compute unit allowed in kernel for clCreateStream");
 }
 
-static cl_stream 
+static cl_stream
 clCreateStream(cl_device_id           device,
 	       cl_stream_flags        flags,
 	       cl_stream_attributes   attributes,
 	       cl_mem_ext_ptr_t*      ext,
-	       cl_int*                errcode_ret) 
+	       cl_int*                errcode_ret)
 {
   validOrError(device,flags,attributes,ext,errcode_ret);
-  auto stream = xrt::make_unique<xocl::stream>(flags,attributes,ext);
+  auto stream = std::make_unique<xocl::stream>(flags,attributes,ext);
   stream->get_stream(xocl::xocl(device));
   xocl::assign(errcode_ret,CL_SUCCESS);
   return stream.release();
@@ -75,4 +76,3 @@ clCreateStream(cl_device_id           device,
   }
   return nullptr;
 }
-

@@ -17,6 +17,7 @@
 #ifndef xocl_api_detail_context_h_
 #define xocl_api_detail_context_h_
 
+#include "xocl/config.h"
 #include "CL/cl.h"
 #include <vector>
 
@@ -38,5 +39,3 @@ validOrError(const cl_context context,const std::vector<cl_mem>& mem_objects);
 }} // detail,xocl
 
 #endif
-
-
