@@ -335,7 +335,7 @@ static int load_sche_image(struct platform_device *pdev, const char *image,
 	return 0;
 }
 
-static void ert_reset(struct platform_device *pdev)
+static int ert_reset(struct platform_device *pdev)
 {
 	struct xocl_ert *ert;
 
@@ -343,6 +343,8 @@ static void ert_reset(struct platform_device *pdev)
 	ert = platform_get_drvdata(pdev);
 
 	load_image(ert);
+
+	return 0;
 }
 
 static struct xocl_mb_funcs ert_ops = {
