@@ -66,14 +66,14 @@ namespace xdp {
           if (device_id->is_active())
             memoryName = device_id->get_xclbin().memidx_to_banktag(memidx);
 
-          XDP_LOG("getMemoryNameFromIndex: idx = %d, memory = %s\n", memidx, memoryName.c_str());
+          XDP_LOG("getMemoryNameFromID: idx = %d, memory = %s\n", memidx, memoryName.c_str());
           break;
         }
       }
     }
     catch (const std::runtime_error& ) {
       memoryName = "DDR";
-      XDP_LOG("getMemoryNameFromIndex: caught error, using default of %s\n", memoryName.c_str());
+      XDP_LOG("getMemoryNameFromID: caught error, using default of %s\n", memoryName.c_str());
     }
 
     // Catch old bank format and report as DDR
@@ -203,8 +203,8 @@ namespace xdp {
 
       if ((currCU == cuName) && (currPort == portNameCheck)) {
         std::string currMemory = std::get<3>(row);
-        size_t index = currMemory.find("[");
-        auto currMemoryResource = currMemory.substr(0, index);
+        size_t index3 = currMemory.find("[");
+        auto currMemoryResource = currMemory.substr(0, index3);
 
         // Make sure it's the right memory resource
         if (foundMemory && (currMemoryResource != memoryResource))
