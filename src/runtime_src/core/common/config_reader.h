@@ -264,6 +264,16 @@ get_xclbin_programming()
 }
 
 /**
+ * Enable xma mode2 = only two cu command submission per xma_session at a time
+ */
+inline bool
+get_xma_mode2()
+{
+  static bool value = detail::get_bool_value("Runtime.xma_mode2", false);
+  return value;
+}
+
+/**
  * Enable / Disable kernel driver scheduling when running in hardware.
  * If disabled, xrt will be scheduling either using the software scheduler
  * (sws) or the microblaze scheduler (mbs) if ert is enabled

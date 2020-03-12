@@ -17,11 +17,6 @@
 
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <errno.h>
-#include <unistd.h>
-#include <signal.h>
-#include <stdlib.h>
-#include <string.h>
 
 #include "app/xmaerror.h"
 #include "app/xmalogger.h"
@@ -36,6 +31,7 @@
 #include <iostream>
 #include <thread>
 #include <algorithm>
+#include "core/common/config_reader.h"
 
 #define XMAAPI_MOD "xmaapi"
 
@@ -458,6 +454,10 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
         g_xma_singleton->hwcfg.num_devices = -1;
 
         return XMA_ERROR;
+    }
+
+    if (xrt_core::config::get_xma_mode2()) {
+        xma_core::utils::xma_enable_mode2();
     }
 
     /*Sarab: Move plugin loading to session_create
