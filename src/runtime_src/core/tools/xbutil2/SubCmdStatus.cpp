@@ -105,7 +105,7 @@ SubCmdStatus::execute(const SubCmdOptions& _options) const
   xclGetDebugIpLayout(hdl, nullptr, sz1, &sectionSz);
   // Allocate buffer to retrieve debug_ip_layout information from loaded xclbin
   std::vector<char> buffer(sectionSz);
-  xclGetDebugIpLayout(buffer.data(), sectionSz, &sz1);
+  xclGetDebugIpLayout(hdl, buffer.data(), sectionSz, &sz1);
   
   auto map = reinterpret_cast<debug_ip_layout*>(buffer.data());
 
