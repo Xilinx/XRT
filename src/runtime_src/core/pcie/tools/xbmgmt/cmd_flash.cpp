@@ -25,7 +25,7 @@
 #include "core/pcie/linux/scan.h"
 #include "core/common/sensor.h"
 #include "xbmgmt.h"
-#include "xclbin.h"
+
 // For backward compatibility
 const char *subCmdXbutilFlashDesc = "";
 const char *subCmdXbutilFlashUsage =
@@ -630,7 +630,6 @@ static int update(int argc, char *argv[])
         { "shell", required_argument, nullptr, '1' },
         { "id", required_argument, nullptr, '2' },
         { "force", no_argument, nullptr, '3' },
-        { "xclbin", required_argument, nullptr, '4' },
         { nullptr, 0, nullptr, 0 },
     };
 
@@ -665,65 +664,6 @@ static int update(int argc, char *argv[])
     if (shell.empty() && !id.empty())
         return -EINVAL;
 
-    if (!xclbin.empty()) {
-        std::ifstream in(xclbin, std::ios::binary);
-        if (!in.is_open()) {
-            std::cout << "Can't open " << xclbin <<std::endl;
-            return -EINVAL;
-        }
-
-        axlf a1;
-        size_t sz = sizeof (axlf);
-        in.read(reinterpret_cast<char *>(&a1), sz);
-        if (!in.good()) {
-            std::cout << "Can't read axlf from "<< xclbin << std::endl;
-            return -EINVAL;
-        }
-
-        if (a1.m_header.m_numSections > 10000)
-            return -EINVAL;
-
-        sz = sizeof (axlf) + sizeof (axlf_section_header) *(a1.m_header.m_numSections - 1);
-        std::vector<char> top(sz);
-        in.seekg(0);
-        in.read(top.data(), sz);
-        if (!in.good()) {
-            std::cout << "Can't read axlf and section headers from	 "<< xclbin<< std::endl;
-            return -EINVAL;
-        }
-        // TODO... get Following fields to  verify with installedDSAs
-        //currently his information not present in the xclbin
-        //std::string vendor_id;
-        //std::string device_id;
-        const axlf *ap = reinterpret_cast<const axlf *>(top.data());
-        uint64_t timestamp = ap->m_header.m_featureRomTimeStamp;
-
-        auto installedDSAs = firmwareImage::getIntalledDSAs();
-        bool multiDSA = false;
-        bool matched = false;
-        for (DSAInfo& dsa: installedDSAs) {
-            if ((shell == dsa.name) &&
-                (id.empty() || dsa.matchId(id)) &&
-                (timestamp == dsa.timestamp)) {
-                if(!matched)
-                    matched = true;
-                else
-                    multiDSA =true;
-            }
-        }
-        if (multiDSA) {
-            std::cout << "Specified xclbin matched multiple installed shells" << std::endl;
-            return -ENOTUNIQ;
-        }
-
-        if (matched) {
-            //remove the already installedDSAs from the firmwareImage and add xclbin
-            std::cout << "Specified xclbin matched with installed shell" << std::endl;
-            firmwareImage::clearInstalledDSAs();
-            DSAInfo dInfo(xclbin);
-            firmwareImage::addToInstalledDSAs(dInfo);
-        }
-    }
     return autoFlash(index, shell, id, force);
 }
 
@@ -764,7 +704,7 @@ static int shell(int argc, char *argv[])
     if (file.empty() || index == UINT_MAX)
         return -EINVAL;
 
-    int ret = updateShell(index, type, file.c_str(), nullptr);
+    int ret = updateShell(index, type, file.c_str(), file.c_str());
     if (ret)
         return ret;
 

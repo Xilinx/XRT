@@ -84,8 +84,6 @@ public:
     firmwareImage(const char *file, imageType type);
     ~firmwareImage();
     static std::vector<DSAInfo>& getIntalledDSAs();
-    static void clearInstalledDSAs();
-    static void addToInstalledDSAs(DSAInfo& dInfo);
 private:
     static std::vector<DSAInfo> installedDSA;
     int mType;

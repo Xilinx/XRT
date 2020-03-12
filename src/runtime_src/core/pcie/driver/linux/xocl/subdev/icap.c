@@ -2394,21 +2394,15 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 			goto out;
 		}
 	}
-    /* dont need to program the bitstream for flat shell
-       get uuid from board and compare with xclbin uuid 
-       if both are same no need to program the board otherwise return with error */ 
+    /* dont need to program the bitstream for flat shell */
 
     if(xclbin->m_header.m_mode != XCLBIN_FLAT) {
         err = icap_download_bitstream(icap, xclbin);
         if (err)
             goto out;
-    } else if (!uuid_equal(&xclbin->m_header.uuid, (xuid_t *) xocl_rom_get_uuid(xdev))) {
-        ICAP_ERR(icap, "Provided xclbin and on board bitstream are different, please reprogram the board with xclbin ");
-        err = -EINVAL;
-        goto out;
     } else {
         uuid_copy(&icap->icap_bitstream_uuid, &xclbin->m_header.uuid);
-        ICAP_INFO(icap, "xclbin is generated for flat shell, dont need to load bitstream ");
+        ICAP_INFO(icap, "xclbin is generated for flat shell, dont need to program the bitstream ");
     }
 
 	/* calibrate hbm and ddr should be performed when resources are ready */
