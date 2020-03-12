@@ -19,16 +19,14 @@
 
 #include <uuid/uuid.h>
 #include <limits.h>
-//#include "lib/xmacfg.h"
 #include "lib/xmahw_lib.h"
 #include "lib/xmalimits_lib.h"
 #include "xclbin.h"
-//#include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
 
 typedef struct XmaIpLayout
 {
-    uint8_t      kernel_name[MAX_KERNEL_NAME];
+    std::string  kernel_name;
     uint64_t     base_addr;
     bool         soft_kernel;
     bool         kernel_channels;
@@ -44,7 +42,7 @@ typedef struct XmaMemTopology
     uint8_t       m_used;
     uint64_t      m_size;
     uint64_t      m_base_address;
-    unsigned char m_tag[16];
+    std::string   m_tag;
 } XmaMemTopology;
 
 typedef struct XmaAXLFConnectivity
@@ -56,12 +54,11 @@ typedef struct XmaAXLFConnectivity
 
 typedef struct XmaXclbinInfo
 {
-    char                xclbin_name[PATH_MAX + NAME_MAX];
+    std::string         xclbin_name;
     uint16_t            freq_list[MAX_KERNEL_FREQS];
-    XmaIpLayout         ip_layout[MAX_XILINX_KERNELS + MAX_XILINX_SOFT_KERNELS];
-    //TODO HHS Change the limits to be appropriate
-    XmaMemTopology      mem_topology[MAX_DDR_MAP];
-    XmaAXLFConnectivity connectivity[MAX_CONNECTION_ENTRIES];
+    std::vector<XmaIpLayout> ip_layout;
+    std::vector<XmaMemTopology> mem_topology;
+    std::vector<XmaAXLFConnectivity> connectivity;
     uint32_t            number_of_hardware_kernels;
     uint32_t            number_of_kernels;
     uint32_t            number_of_mem_banks;
