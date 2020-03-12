@@ -558,6 +558,7 @@ uint32_t ert_base_addr = 0;
  */
 #define	ERT_EXIT_CMD			  ((ERT_EXIT << 23) | ERT_CMD_STATE_NEW)
 #define	ERT_EXIT_ACK			  (ERT_CMD_STATE_COMPLETED)
+#define	ERT_EXIT_CMD_OP			  (ERT_EXIT << 23)
 
 /**
  * State machine for both CUDMA and CUISR modules

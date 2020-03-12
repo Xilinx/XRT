@@ -162,14 +162,17 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 
 #define	XDEV2DEV(xdev)		(&XDEV(xdev)->pdev->dev)
 
+#define PDEV(dev)	(((dev)->bus == &platform_bus_type && (dev)->parent) ? (dev)->parent : (dev))
+#define PNAME(dev)	(((dev)->bus == &pci_bus_type) ? "" : dev_name(dev))
+
 #define xocl_err(dev, fmt, args...)			\
-	dev_err(dev, "dev %llx, %s: "fmt, (u64)dev, __func__, ##args)
+	dev_err(PDEV(dev), "%s %llx %s: "fmt, PNAME(dev), (u64)dev, __func__, ##args)
 #define xocl_warn(dev, fmt, args...)			\
-	dev_warn(dev, "dev %llx, %s: "fmt, (u64)dev, __func__, ##args)
+	dev_warn(PDEV(dev), "%s %llx %s: "fmt, PNAME(dev), (u64)dev, __func__, ##args)
 #define xocl_info(dev, fmt, args...)			\
-	dev_info(dev, "dev %llx, %s: "fmt, (u64)dev, __func__, ##args)
+	dev_info(PDEV(dev), "%s %llx %s: "fmt, PNAME(dev), (u64)dev, __func__, ##args)
 #define xocl_dbg(dev, fmt, args...)			\
-	dev_dbg(dev, "dev %llx, %s: "fmt, (u64)dev, __func__, ##args)
+	dev_dbg(PDEV(dev), "%s %llx %s: "fmt, PNAME(dev), (u64)dev, __func__, ##args)
 
 #define xocl_xdev_info(xdev, fmt, args...)		\
 	xocl_info(XDEV2DEV(xdev), fmt, ##args)
@@ -395,6 +398,7 @@ struct xocl_dev_core {
 	struct xocl_drm		*drm;
 
 	char			*fdt_blob;
+	char			*blp_blob;
 	u32			fdt_blob_sz;
 	struct xocl_board_private priv;
 	char			vbnv_cache[256];
@@ -686,7 +690,7 @@ enum xocl_xmc_flags {
 /* microblaze callbacks */
 struct xocl_mb_funcs {
 	struct xocl_subdev_funcs common_funcs;
-	void (*reset)(struct platform_device *pdev);
+	int (*reset)(struct platform_device *pdev);
 	int (*stop)(struct platform_device *pdev);
 	int (*load_mgmt_image)(struct platform_device *pdev, const char *buf,
 		u32 len);
@@ -704,7 +708,7 @@ struct xocl_mb_funcs {
 #define MB_CB(xdev, cb)	\
 	(MB_DEV(xdev) && MB_OPS(xdev) && MB_OPS(xdev)->cb)
 #define	xocl_xmc_reset(xdev)			\
-	(MB_CB(xdev, reset) ? MB_OPS(xdev)->reset(MB_DEV(xdev)) : NULL) \
+	(MB_CB(xdev, reset) ? MB_OPS(xdev)->reset(MB_DEV(xdev)) : -ENODEV) \
 
 #define	xocl_xmc_stop(xdev)			\
 	(MB_CB(xdev, stop) ? MB_OPS(xdev)->stop(MB_DEV(xdev)) : -ENODEV)
@@ -733,7 +737,7 @@ struct xocl_mb_funcs {
 #define ERT_CB(xdev, cb)						\
 	(ERT_DEV(xdev) && ERT_OPS(xdev) && ERT_OPS(xdev)->cb)
 #define xocl_ert_reset(xdev)						\
-	(ERT_CB(xdev, reset) ? ERT_OPS(xdev)->reset(ERT_DEV(xdev)) : NULL)
+	(ERT_CB(xdev, reset) ? ERT_OPS(xdev)->reset(ERT_DEV(xdev)) : -ENODEV)
 #define xocl_ert_stop(xdev)						\
 	(ERT_CB(xdev, stop) ? ERT_OPS(xdev)->stop(ERT_DEV(xdev)) : -ENODEV)
 #define xocl_ert_load_sche_image(xdev, buf, len)			\

@@ -127,9 +127,6 @@ namespace xdp {
   // Perform final read of counters and force flush of trace buffers
   void OCLProfiler::endDeviceProfiling()
   {
-#ifdef _WIN32
-    return;
-#endif
     // Only needs to be called once
     if (mEndDeviceProfilingCalled)
    	  return;
@@ -140,7 +137,7 @@ namespace xdp {
 
     // Log Counter Data
     logDeviceCounters(true, true, true);  // reads and logs device counters for all monitors in all flows
-
+#ifndef _WIN32
     // With new XDP flow, HW Emu should be similar to Device flow. So, multiple calls to trace/counters should not be needed.
     // But needed for older flow
     // Log Trace Data
@@ -153,16 +150,25 @@ namespace xdp {
     logFinalTrace(XCL_PERF_MON_MEMORY /* type should not matter */);  // reads and logs trace data for all monitors in HW flow
 
     endTrace();
-    // Close offload threads
-    for (auto& ptr : DeviceOffloadList) {
-      ptr.reset();
+    // End trace offload
+    for (auto& trace_offloader : DeviceTraceOffloadList) {
+      if (trace_offloader->trace_buffer_full()) {
+        if (trace_offloader->has_fifo()) {
+          Plugin->sendMessage(FIFO_WARN_MSG);
+        } else {
+          Plugin->sendMessage(TS2MM_WARN_MSG_BUF_FULL);
+        }
+        auto& g_map = Plugin->getDeviceTraceBufferFullMap();
+        g_map[trace_offloader->get_device_name()] = 1;
+      }
+      trace_offloader.reset();
     }
 
     // Gather info for guidance
     // NOTE: this needs to be done here before the device clears its list of CUs
     // See xocl::device::unload_program as called from xocl::program::~program
     Plugin->getGuidanceMetadata( getProfileManager() );
-
+#endif
     // Record that this was called indirectly by host code
     mEndDeviceProfilingCalled = true;
   }
@@ -189,16 +195,16 @@ namespace xdp {
       }
       auto itr = DeviceData.find(device);
       if (itr==DeviceData.end()) {
-        itr = DeviceData.emplace(device,xdp::xoclp::platform::device::data()).first;
+        itr = DeviceData.emplace(device,(new xdp::xoclp::platform::device::data())).first;
       }
       DeviceIntf* dInt = nullptr;
       auto xdevice = device->get_xrt_device();
       if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE) || (Plugin->getFlowMode() == xdp::RTUtil::HW_EM && Plugin->getSystemDPAEmulation())) {
-        dInt = &(itr->second.mDeviceIntf);
+        dInt = &(itr->second->mDeviceIntf);
         dInt->setDevice(new xdp::XrtDevice(xdevice));
         dInt->readDebugIPlayout();
       }       
-      xdp::xoclp::platform::device::data* info = &(itr->second);
+      xdp::xoclp::platform::device::data* info = itr->second;
 
       // Set clock etc.
       double deviceClockMHz = xdevice->getDeviceClock().get();
@@ -271,17 +277,17 @@ namespace xdp {
       }
       auto itr = DeviceData.find(device);
       if (itr==DeviceData.end()) {
-        itr = DeviceData.emplace(device,xdp::xoclp::platform::device::data()).first;
+        itr = DeviceData.emplace(device,(new xdp::xoclp::platform::device::data())).first;
       }
 
       auto xdevice = device->get_xrt_device();
       DeviceIntf* dInt = nullptr;
       if((Plugin->getFlowMode() == xdp::RTUtil::DEVICE) || (Plugin->getFlowMode() == xdp::RTUtil::HW_EM && Plugin->getSystemDPAEmulation())) {
-        dInt = &(itr->second.mDeviceIntf);
+        dInt = &(itr->second->mDeviceIntf);
         dInt->setDevice(new xdp::XrtDevice(xdevice));
         dInt->readDebugIPlayout();
       }
-      xdp::xoclp::platform::device::data* info = &(itr->second);
+      xdp::xoclp::platform::device::data* info = itr->second;
 
       // Since clock training is performed in mStartTrace, let's record this time
       // XCL_PERF_MON_MEMORY // any type
@@ -304,27 +310,27 @@ namespace xdp {
       if(dInt) {
         // Configure monitor IP and FIFO if present
         dInt->startTrace(traceOption);
-
-        if (mTraceThreadEn) {
-          //Begin offload before configuring IP and clock training
-          std::string  binaryName = device->get_xclbin().project_name();
-          uint64_t traceBufSz = 0;
-          if (dInt->hasTs2mm()) {
-            traceBufSz = getDeviceDDRBufferSize(dInt, device);
-          }
-          auto thread = std::make_unique<OclDeviceOffload>(dInt, ProfileMgr,
-                                                           device->get_unique_name(), binaryName,
-                                                           mTraceReadIntMs, traceBufSz
-                                                           );
-          DeviceOffloadList.push_back(std::move(thread));
-        } else {
+        std::string  binaryName = device->get_xclbin().project_name();
+        uint64_t traceBufSz = 0;
+        if (dInt->hasTs2mm()) {
+          traceBufSz = getDeviceDDRBufferSize(dInt, device);
+          trace_memory = "TS2MM";
+        }
+        auto offloader = std::make_unique<DeviceTraceOffload>(dInt, ProfileMgr,
+                                                         device->get_unique_name(), binaryName,
+                                                         mTraceReadIntMs, traceBufSz, mTraceThreadEn
+                                                         );
+        bool init_done = true;
+        if (!mTraceThreadEn) {
           dInt->clockTraining();
-          // Configure DMA if present
-          if (dInt->hasTs2mm()) {
-            info->ts2mm_en = allocateDeviceDDRBufferForTrace(dInt, device);
-            /* Todo: Write user specified memory bank here */
-            trace_memory = "TS2MM";
-          }
+          init_done = offloader->read_trace_init();
+        }
+
+        if (init_done) {
+          DeviceTraceOffloadList.push_back(std::move(offloader));
+        } else {
+            if (dInt->hasTs2mm())
+              xrt::message::send(xrt::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_ALLOC_FAIL);
         }
       } else {
         xdevice->startTrace(XCL_PERF_MON_MEMORY, traceOption);
@@ -361,12 +367,6 @@ namespace xdp {
       auto itr = DeviceData.find(device);
       if (itr==DeviceData.end()) {
         return;
-      }
-      xdp::xoclp::platform::device::data* info = &(itr->second);
-      if (info->ts2mm_en) {
-        auto dInt  = &(info->mDeviceIntf);
-        clearDeviceDDRBufferForTrace(dInt);
-        info->ts2mm_en = false;
       }
     }
   }
@@ -436,7 +436,6 @@ namespace xdp {
     // Turn on application profiling
     turnOnProfile(xdp::RTUtil::PROFILE_APPLICATION);
 
-#ifndef _WIN32
     turnOnProfile(xdp::RTUtil::PROFILE_DEVICE_COUNTERS);
 
     char* emuMode = std::getenv("XCL_EMULATION_MODE");
@@ -448,7 +447,6 @@ namespace xdp {
 
     ProfileMgr->setTransferTrace(data_transfer_trace);
     ProfileMgr->setStallTrace(stall_trace);
-#endif
 
     // Enable profile summary if profile is on
     std::string profileFile("profile_summary");
@@ -528,9 +526,9 @@ namespace xdp {
         for (auto device : Platform->get_device_range()) {
           auto itr = DeviceData.find(device);
           if (itr==DeviceData.end()) {
-            itr = DeviceData.emplace(device,xdp::xoclp::platform::device::data()).first;
+            itr = DeviceData.emplace(device,(new xdp::xoclp::platform::device::data())).first;
           }
-          DeviceIntf* dInt = &(itr->second.mDeviceIntf);
+          DeviceIntf* dInt = &(itr->second->mDeviceIntf);
           // Assumption : debug_ip_layout has been read
   
           numStallSlots  += dInt->getNumMonitors(XCL_PERF_MON_STALL);
@@ -570,9 +568,6 @@ namespace xdp {
 
   void OCLProfiler::logDeviceCounters(bool firstReadAfterProgram, bool forceReadCounters, bool logAllMonitors, xclPerfMonType type)
   {
-#ifdef _WIN32
-    return;
-#endif
     // check valid perfmon type
     if(!logAllMonitors && !( (deviceCountersProfilingOn() && (type == XCL_PERF_MON_MEMORY || type == XCL_PERF_MON_STR))
         || ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM) && type == XCL_PERF_MON_ACCEL) )) {
@@ -588,12 +583,12 @@ namespace xdp {
 
       auto itr = DeviceData.find(device);
       if (itr==DeviceData.end()) {
-        itr = DeviceData.emplace(device,xdp::xoclp::platform::device::data()).first;
+        itr = DeviceData.emplace(device,(new xdp::xoclp::platform::device::data())).first;
       }
-      xdp::xoclp::platform::device::data* info = &(itr->second);
+      xdp::xoclp::platform::device::data* info = itr->second;
       DeviceIntf* dInt = nullptr;
       if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE) || (Plugin->getFlowMode() == xdp::RTUtil::HW_EM && Plugin->getSystemDPAEmulation())) {
-        dInt = &(itr->second.mDeviceIntf);
+        dInt = &(itr->second->mDeviceIntf);
         dInt->setDevice(new xdp::XrtDevice(xdevice));
       }
 
@@ -675,113 +670,13 @@ namespace xdp {
       return -1;
     }
 
-    auto platform = getclPlatformID();
     profileMgr->setLoggingTrace(type, true);
-    for (auto device : platform->get_device_range()) {
-      if(!device->is_active()) {
-        continue;
-      }
-      auto xdevice = device->get_xrt_device();
 
-      auto itr = DeviceData.find(device);
-      if (itr==DeviceData.end()) {
-        itr = DeviceData.emplace(device,xdp::xoclp::platform::device::data()).first;
-      }
-      xdp::xoclp::platform::device::data* info = &(itr->second);
-      DeviceIntf* dInt = nullptr;
-      bool isHwEmu = Plugin->getFlowMode() == xdp::RTUtil::HW_EM;
-      if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE) || (isHwEmu && Plugin->getSystemDPAEmulation())) {
-        dInt = &(itr->second.mDeviceIntf);
-        dInt->setDevice(new xdp::XrtDevice(xdevice));
-      }
+    for (auto& trace_offloader: DeviceTraceOffloadList) {
+      trace_offloader->read_trace();
+      trace_offloader->read_trace_end();
+    }
 
-      // Do clock training if enough time has passed
-      // NOTE: once we start flushing FIFOs, we stop all training (no longer needed)
-      std::chrono::steady_clock::time_point nowTime = std::chrono::steady_clock::now();
-
-      if (!info->mPerformingFlush &&
-            (nowTime - info->mLastTraceTrainingTime[type]) > std::chrono::microseconds(info->mTrainingIntervalUsec)) {
-        // Empty method // xdevice->clockTraining(type);
-        info->mLastTraceTrainingTime[type] = nowTime;
-      }
-
-      // Read and log when trace FIFOs are filled beyond specified threshold
-      uint32_t numSamples = 0;
-      if (!forceRead) {
-        numSamples = (dInt) ? dInt->getTraceCount() : xdevice->countTrace(type).get();
-      }
-
-      // Control how often we do clock training: if there are new samples, then don't train
-      if (numSamples > info->mLastTraceNumSamples[type]) {
-        info->mLastTraceTrainingTime[type] = nowTime;
-      }
-      info->mLastTraceNumSamples[type] = numSamples;
-
-      if (forceRead || (numSamples > info->mSamplesThreshold)) {
-        // Create unique name for device since system can have multiples of same device
-        std::string device_name = device->get_unique_name();
-        std::string binary_name = "binary";
-        if (device->is_active())
-          binary_name = device->get_xclbin().project_name();
-
-        if (dInt) {    // HW Device flow
-          bool endLog = false;
-          if (dInt->hasFIFO()) {
-            uint32_t numTracePackets = 0;
-            while (!endLog) {
-              dInt->readTrace(info->mTraceVector);
-              endLog = info->mTraceVector.mLength == 0;
-              profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector, endLog);
-              numTracePackets += info->mTraceVector.mLength;
-              info->mTraceVector = {};
-            }
-            // detect if FIFO is full
-            auto fifoProperty = dInt->getMonitorProperties(XCL_PERF_MON_FIFO, 0);
-            auto fifoSize = RTUtil::getDevTraceBufferSize(fifoProperty);
-            if (numTracePackets >= fifoSize && !isHwEmu) {
-              Plugin->sendMessage(FIFO_WARN_MSG);
-              auto& g_map = Plugin->getDeviceTraceBufferFullMap();
-              g_map[device_name] = 1;
-            }
-          } else if (dInt->hasTs2mm()) {
-            configureDDRTraceReader(dInt->getWordCountTs2mm());
-            uint64_t numTraceBytes = 0;
-            while (!endLog) {
-              auto readBytes = readTraceDataFromDDR(dInt, info->mTraceVector);
-              endLog = readBytes != mTraceReadBufChunkSize;
-              profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector, endLog);
-              numTraceBytes += readBytes;
-              info->mTraceVector = {};
-            }
-            if (numTraceBytes >= mDDRBufferSize) {
-              Plugin->sendMessage(TS2MM_WARN_MSG_BUF_FULL);
-              auto& g_map = Plugin->getDeviceTraceBufferFullMap();
-              g_map[device_name] = 1;
-            }
-          }
-        } else {
-          while(1) {
-            xdevice->readTrace(type, info->mTraceVector);
-            if(!info->mTraceVector.mLength)
-              break;
-
-            // log the device trace
-            profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector);
-            info->mTraceVector.mLength= 0;
-
-            // Required for older emualtion platforms
-            // Only check repeatedly for trace buffer flush if HW emulation
-            if(!isHwEmu)
-              break;
-          }  // for HW Emu continue the loop
-
-        }
-      }   // forceRead || (numSamples > info->mSamplesThreshold)
-      if(forceRead)
-        info->mPerformingFlush = true;
-
-    } // for all devices
-    profileMgr->setLoggingTrace(type, false);
     return 0;
   }
 
@@ -796,74 +691,6 @@ namespace xdp {
       xrt::message::send(xrt::message::severity_level::XRT_WARNING, msg);
     }
     return sz;
-  }
-
-
-  bool OCLProfiler::allocateDeviceDDRBufferForTrace(DeviceIntf* dInt, xocl::device* device)
-  {
-    /* If buffer is already allocated and still attempting to initialize again, 
-     * then reset the TS2MM IP and free the old buffer
-     */
-    if (mDDRBufferForTrace) {
-      clearDeviceDDRBufferForTrace(dInt);
-    }
-
-      mDDRBufferSize = getDeviceDDRBufferSize(dInt, device);
-      mDDRBufferForTrace = dInt->allocTraceBuf(mDDRBufferSize, dInt->getTS2MmMemIndex());
-      if (!mDDRBufferForTrace) {
-        xrt::message::send(xrt::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_ALLOC_FAIL);
-        return false;
-      }
-
-    // Data Mover will write input stream to this address
-    uint64_t bufAddr = dInt->getDeviceAddr(mDDRBufferForTrace);
-    dInt->initTS2MM(mDDRBufferSize, bufAddr);
-    return true;
-  }
-
-
-  // Reset DDR Trace : reset TS2MM IP and clear buffer on Device DDR
-  void OCLProfiler::clearDeviceDDRBufferForTrace(DeviceIntf* dInt)
-  {
-    if (!mDDRBufferForTrace)
-      return;
-
-    dInt->resetTS2MM();
-    dInt->freeTraceBuf(mDDRBufferForTrace);
-
-    mDDRBufferForTrace = 0;
-    mDDRBufferSize = 0;
-  }
-
-  void OCLProfiler::configureDDRTraceReader(uint64_t wordCount)
-  {
-    mTraceReadBufSize = wordCount * TRACE_PACKET_SIZE;
-    mTraceReadBufSize = (mTraceReadBufSize > TS2MM_MAX_BUF_SIZE) ? TS2MM_MAX_BUF_SIZE : mTraceReadBufSize;
-
-    mTraceReadBufOffset = 0;
-    mTraceReadBufChunkSize = MAX_TRACE_NUMBER_SAMPLES * TRACE_PACKET_SIZE;
-  }
-
-  /**
-   * This reader needs to be initialized once and then
-   * returns data as long as it's available
-   * returns true if data equal to chunksize was read
-   */
-  uint64_t OCLProfiler::readTraceDataFromDDR(DeviceIntf* dInt, xclTraceResultsVector& traceVector)
-  {
-    if (mTraceReadBufOffset >= mTraceReadBufSize)
-      return false;
-
-    uint64_t nBytes = mTraceReadBufChunkSize;
-    if ((mTraceReadBufOffset + mTraceReadBufChunkSize) > mTraceReadBufSize)
-      nBytes = mTraceReadBufSize - mTraceReadBufOffset;
-    void* hostBuf = dInt->syncTraceBuf(mDDRBufferForTrace, mTraceReadBufOffset, nBytes);
-    if (hostBuf) {
-      dInt->parseTraceData(hostBuf, nBytes, traceVector);
-      mTraceReadBufOffset += nBytes;
-      return nBytes;
-    }
-    return 0;
   }
 
   void OCLProfiler::setTraceFooterString() {
@@ -938,6 +765,9 @@ namespace xdp {
   void OCLProfiler::reset()
   {
     // resetDeviceProfilingFlag();
+    for(auto itr : DeviceData) {
+      delete itr.second;
+    }
     DeviceData.clear();  
   }
 

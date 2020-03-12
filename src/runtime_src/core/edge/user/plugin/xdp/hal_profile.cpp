@@ -1,4 +1,4 @@
-#include "plugin/xdp/hal_profile.h"
+#include "hal_profile.h"
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
 

@@ -1,20 +1,8 @@
-include_directories(
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../include
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../include/experimental
-  ${CMAKE_CURRENT_SOURCE_DIR}/..
-  )
-
-file(GLOB XRT_AIE_FILES
+file(GLOB XRT_CORE_EDGE_USER_AIE_FILES
   "*.h"
   "*.cpp"
   "*.c"
   )
 
-set(AIE_SRC
-  ${XRT_AIE_FILES}
-  )
-
 set(CMAKE_CXX_FLAGS "-DXAIE_DEBUG ${CMAKE_CXX_FLAGS}")
-
-add_library(xrt_aie_object OBJECT ${AIE_SRC})
+add_library(core_edge_user_aie_object OBJECT ${XRT_CORE_EDGE_USER_AIE_FILES})

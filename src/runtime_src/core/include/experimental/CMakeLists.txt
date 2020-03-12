@@ -1,5 +1,6 @@
 set(XRT_EXPERIMENTAL_HEADER_SRC
   xrt-next.h
+  xrt_aie.h
   xrt_kernel.h
   xclbin-util.h)
 
