@@ -19,7 +19,7 @@
 #ifndef _XRT_AIE_H_
 #define _XRT_AIE_H_
 
-#include "xclhal2.h"
+#include "xrt.h"
 
 typedef void *xrtGraphHandle;
 
