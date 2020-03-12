@@ -25,6 +25,7 @@
 #include "SubCmdM2MTest.h"
 #include "SubCmdP2P.h"
 #include "SubCmdProgram.h"
+#include "SubCmdStatus.h"
 #include "SubCmdQuery.h"
 #include "SubCmdReset.h"
 #include "SubCmdScan.h"
@@ -54,6 +55,7 @@ int main( int argc, char** argv )
     // Syntax: SubCmdClass( IsHidden, IsDepricated, IsPreliminary)
     subCommands.emplace_back(std::make_shared<  SubCmdExamine >(false, false,  false));
     subCommands.emplace_back(std::make_shared<  SubCmdProgram >(false, false,  false));
+    subCommands.emplace_back(std::make_shared<   SubCmdStatus >(false, false,  false));
     subCommands.emplace_back(std::make_shared< SubCmdValidate >(false, false,  false));
     subCommands.emplace_back(std::make_shared< SubCmdAdvanced >(false, false, true));
     subCommands.emplace_back(std::make_shared<    SubCmdReset >(false, false,  false));
