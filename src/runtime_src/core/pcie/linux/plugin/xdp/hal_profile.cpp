@@ -95,10 +95,12 @@ FreeBOCallLogger::~FreeBOCallLogger() {
 
 WriteBOCallLogger::WriteBOCallLogger(xclDeviceHandle handle, size_t size /*, unsigned int boHandle, const void *src, size_t seek*/) 
     : CallLogger(global_idcode)
-      ,m_buffer_transfer_id(++global_idcode)
+      ,m_buffer_transfer_id(0)
 {
     if (!cb_valid()) return;
-    global_idcode++;    // increment only if valid calllback
+    // increment global_idcode only if valid calllback
+    m_buffer_transfer_id = ++global_idcode;
+    ++global_idcode;
 
     BOTransferCBPayload payload = {{m_local_idcode, handle}, m_buffer_transfer_id, size} ;
     cb(HalCallbackType::WRITE_BO_START, &payload);
@@ -113,10 +115,12 @@ WriteBOCallLogger::~WriteBOCallLogger() {
 
 ReadBOCallLogger::ReadBOCallLogger(xclDeviceHandle handle, size_t size /*, unsigned int boHandle, void *dst, size_t skip*/) 
     : CallLogger(global_idcode)
-      ,m_buffer_transfer_id(++global_idcode)
+      ,m_buffer_transfer_id(0)
 {
     if (!cb_valid()) return;
-    global_idcode++;    // increment only if valid calllback
+    // increment global_idcode only if valid calllback
+    m_buffer_transfer_id = ++global_idcode;
+    ++global_idcode;
     
     BOTransferCBPayload payload = {{m_local_idcode, handle}, m_buffer_transfer_id, size} ;
     cb(HalCallbackType::READ_BO_START, &payload);
@@ -146,11 +150,14 @@ MapBOCallLogger::~MapBOCallLogger() {
 
 SyncBOCallLogger::SyncBOCallLogger(xclDeviceHandle handle, size_t size, xclBOSyncDirection dir /*, unsigned int boHandle, size_t offset*/) 
     : CallLogger(global_idcode)
-      ,m_buffer_transfer_id(++global_idcode)
+      ,m_buffer_transfer_id(0)
       ,m_is_write_to_device((XCL_BO_SYNC_BO_TO_DEVICE == dir) ? true : false)
 {
     if (!cb_valid()) return;
-    global_idcode++;    // increment only if valid calllback
+    // increment global_idcode only if valid calllback
+    m_buffer_transfer_id = ++global_idcode;
+    ++global_idcode;
+
     SyncBOCBPayload payload = {{m_local_idcode, handle}, m_buffer_transfer_id, size, m_is_write_to_device};
     cb(HalCallbackType::SYNC_BO_START, &payload);
 }
