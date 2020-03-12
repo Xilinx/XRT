@@ -3425,6 +3425,7 @@ xmc_update_sc_firmware(struct file *file, const char __user *ubuf,
 			ret = -ETIMEDOUT;
 		/* Mark new SC firmware is installed */
 		xmc->sc_fw_erased = false;
+		xmc_load_board_info(xmc);
 	} else {
 		size_t sz, thissz;
 
