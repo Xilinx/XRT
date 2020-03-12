@@ -36,6 +36,7 @@ file(GLOB XBUTIL_V2_SUBCMD_FILES
   "SubCmdMem.cpp"
   "SubCmdP2P.cpp"
   "SubCmdProgram.cpp"
+  "SubCmdStatus.cpp"
   "SubCmdQuery.cpp"
   "SubCmdReset.cpp"
   "SubCmdScan.cpp"
