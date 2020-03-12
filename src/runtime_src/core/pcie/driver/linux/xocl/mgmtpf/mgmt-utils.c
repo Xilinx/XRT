@@ -567,7 +567,7 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 		ret = -EINVAL;
 		goto failed;
 	}
-	len = fdt_totalsize(lro->bld_blob);
+	len = fdt_totalsize(lro->core.blp_blob);
 	if (len > 100 * 1024 * 1024) {
 		mgmt_err(lro, "dtb is too big");
 		ret = -EINVAL;
@@ -579,7 +579,7 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 		lro->core.fdt_blob = blob;
 		goto failed;
 	}
-	memcpy(lro->core.fdt_blob, lro->bld_blob, len);
+	memcpy(lro->core.fdt_blob, lro->core.blp_blob, len);
 	ret = xocl_icap_download_rp(lro, XOCL_SUBDEV_LEVEL_PRP,
 			RP_DOWNLOAD_DRY);
 	if (ret) {
@@ -595,7 +595,6 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 	xocl_drvinst_set_offline(lro, true);
 
 	xocl_thread_stop(lro);
-
 
 	ret = xocl_subdev_destroy_prp(lro);
 	if (ret) {
@@ -617,7 +616,6 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 	}
 
 	/* reload possible cmc and ert images */
-	(void) xocl_icap_download_boot_firmware(lro);
 	xocl_icap_post_download_rp(lro);
 
 	xocl_thread_start(lro);
@@ -699,12 +697,12 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 		goto failed;
 	}
 
-	lro->bld_blob = vmalloc(fdt_totalsize(lro->core.fdt_blob));
-	if (!lro->bld_blob) {
+	lro->core.blp_blob = vmalloc(fdt_totalsize(lro->core.fdt_blob));
+	if (!lro->core.blp_blob) {
 		ret = -ENOMEM;
 		goto failed;
 	}
-	memcpy(lro->bld_blob, lro->core.fdt_blob,
+	memcpy(lro->core.blp_blob, lro->core.fdt_blob,
 			fdt_totalsize(lro->core.fdt_blob));
 
 	xclmgmt_connect_notify(lro, false);

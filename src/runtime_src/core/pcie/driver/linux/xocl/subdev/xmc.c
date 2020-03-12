@@ -2620,16 +2620,17 @@ out:
 	return ret;
 }
 
-static void xmc_reset(struct platform_device *pdev)
+static int xmc_reset(struct platform_device *pdev)
 {
 	struct xocl_xmc *xmc;
 
 	xocl_info(&pdev->dev, "Reset Microblaze...");
 	xmc = platform_get_drvdata(pdev);
 	if (!xmc || !xmc->enabled)
-		return;
+		return -EINVAL;
 
 	load_xmc(xmc);
+	return 0;
 }
 
 static int load_mgmt_image(struct platform_device *pdev, const char *image,
@@ -2794,7 +2795,18 @@ fail:
 	return err;
 }
 
+static int xmc_offline(struct platform_device *pdev)
+{
+	return xmc_access(pdev, XOCL_XMC_FREEZE);
+}
+static int xmc_online(struct platform_device *pdev)
+{
+	return xmc_access(pdev, XOCL_XMC_FREE);
+}
+
 static struct xocl_mb_funcs xmc_ops = {
+	.offline_cb		= xmc_offline,
+	.online_cb		= xmc_online,
 	.load_mgmt_image	= load_mgmt_image,
 	.load_sche_image	= load_sche_image,
 	.reset			= xmc_reset,

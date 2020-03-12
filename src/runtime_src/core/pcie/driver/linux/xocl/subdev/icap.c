@@ -1393,7 +1393,9 @@ static int icap_post_download_rp(struct platform_device *pdev)
 		vfree(icap->rp_sche_bin);
 		icap->rp_sche_bin = NULL;
 		icap->rp_sche_bin_len =0;
-		load_mbs = true;
+		/* u200 2RP EA does not have ert subdev */
+		if (xocl_ert_reset(xdev) == -ENODEV)
+			load_mbs = true;
 	}
 
 	if (load_mbs)
@@ -1423,13 +1425,14 @@ static int icap_download_rp(struct platform_device *pdev, int level, int flag)
 		goto failed;
 	}
 
-	if (!XDEV(xdev)->fdt_blob) {
-		xocl_xdev_err(xdev, "Empty fdt blob");
+	if (!XDEV(xdev)->blp_blob) {
+		xocl_xdev_err(xdev, "Empty BLP blob");
 		ret = -EINVAL;
 		goto failed;
 	}
 
-	ret = xocl_fdt_check_uuids(xdev, icap->rp_fdt, XDEV(xdev)->fdt_blob);
+	ret = xocl_fdt_check_uuids(xdev, icap->rp_fdt,
+		XDEV(xdev)->blp_blob);
 	if (ret) {
 		xocl_xdev_err(xdev, "Incompatible uuids");
 		goto failed;
@@ -3719,12 +3722,16 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 		size_t data_len, loff_t *off)
 {
 	struct icap *icap = filp->private_data;
+	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
+	struct pci_dev *pcidev = XOCL_PL_TO_PCI_DEV(icap->icap_pdev);
 	struct axlf axlf_header = { {0} };
 	struct axlf *axlf = NULL;
 	const struct axlf_section_header *section;
 	void *header;
 	XHwIcap_Bit_Header bit_header = { 0 };
+	const struct firmware *sche_fw = NULL;
 	ssize_t ret, len;
+	int err;
 
 	mutex_lock(&icap->icap_lock);
 	if (icap->rp_fdt) {
@@ -3885,12 +3892,29 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 		icap->rp_mgmt_bin_len = section->m_sectionSize;
 	}
 
+	if (XDEV(xdev)->priv.sched_bin) {
+		err = request_firmware(&sche_fw,
+			XDEV(xdev)->priv.sched_bin, &pcidev->dev);
+		if (!err)  {
+			icap->rp_sche_bin = vmalloc(sche_fw->size);
+			if (!icap->rp_sche_bin) {
+				ICAP_ERR(icap, "Not enough mem for sched bin");
+				ret = -ENOMEM;
+				goto failed;
+			}
+			ICAP_INFO(icap, "stashed shared mb sche bin, len %ld", sche_fw->size);
+			icap->rp_sche_bin_len = sche_fw->size;
+			release_firmware(sche_fw);
+		}
+	}
+
+
 	section = get_axlf_section_hdr(icap, axlf, SCHED_FIRMWARE);
-	if (section) {
+	if (section && !icap->rp_sche_bin) {
 		header = (char *)axlf + section->m_sectionOffset;
 		icap->rp_sche_bin = vmalloc(section->m_sectionSize);
 		if (!icap->rp_sche_bin) {
-			ICAP_ERR(icap, "Not enough memory for cmc bin");
+			ICAP_ERR(icap, "Not enough memory for sched bin");
 			ret = -ENOMEM;
 			goto failed;
 		}
@@ -3908,6 +3932,8 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 
 failed:
 	icap_free_bins(icap);
+	if (sche_fw)
+		release_firmware(sche_fw);
 
 	vfree(axlf);
 	mutex_unlock(&icap->icap_lock);
