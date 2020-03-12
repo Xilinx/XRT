@@ -22,6 +22,7 @@
 #include "aie.h"
 #include "xrt.h"
 #include "core/edge/common/aie_parser.h"
+#include "core/common/device.h"
 #include <string>
 #include <vector>
 
@@ -29,45 +30,58 @@ typedef xclDeviceHandle xrtDeviceHandle;
 
 namespace zynqaie {
 
-class Graph
+class graph_type
 {
 public:
     using tile_type = xrt_core::edge::aie::tile;
     using rtp_type = xrt_core::edge::aie::rtp;
 
-    ~Graph();
-    Graph(xrtDeviceHandle handle, const std::string& graphName);
+    graph_type(std::shared_ptr<xrt_core::device> device, uuid_t xclbin_uuid, const std::string& name);
+    ~graph_type();
 
-    static Graph *graphHandleCheck(void *gHandle);
+    void
+    reset();
 
-    int xrtGraphReset();
-    uint64_t xrtGraphTimeStamp();
-    int xrtGraphUpdateIter(int iterations);
-    int xrtGraphRun();
-    int xrtGraphWaitDone(int timeoutMilliSec);
-    int xrtGraphSuspend();
-    int xrtGraphResume();
-    int xrtGraphStop(int timeoutMilliSec);
-    int xrtGraphRTPUpdate(const char *hierPathPort, const char *buffer, size_t size);
+    uint64_t
+    get_timestamp();
+
+    void
+    update_iter(int iterations);
+
+    void
+    run();
+
+    void
+    wait_done(int timeout_ms);
+
+    void
+    suspend();
+
+    void
+    resume();
+
+    void
+    stop(int timeout_ms);
+
+    void
+    update_rtp(const char* path, const char* buffer, size_t size);
 
 private:
+    // Core device to which the graph belongs.  The core device
+    // has been loaded with an xclbin from which meta data can
+    // be extracted
+    std::shared_ptr<xrt_core::device> device;
 
-    enum graphState {
-        GRAPH_STATE_STOP = 0,
-        GRAPH_STATE_RESET = 1,
-        GRAPH_STATE_RUNNING = 2,
-        GRAPH_STATE_SUSPEND = 3,
+    enum class graph_state : unsigned short
+    {
+      stop = 0,
+      reset = 1,
+      running = 2,
+      suspend = 3,
     };
 
-    graphState state;
-
+    graph_state state;
     std::string name;
-
-    /**
-     * This is the XRT device handle that the graph belongs to.
-     * To operate on a graph, XRT device has to be opened first.'
-     */
-    xrtDeviceHandle devHandle;
 
     /**
      * This is the pointer to the AIE array where the AIE part of
@@ -83,7 +97,6 @@ private:
      * It represents the tile position in the AIE array.
      */
     std::vector<tile_type> tiles;
-
     std::vector<rtp_type> rtps;
 };
 
