@@ -248,24 +248,23 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
         dev_tmp1.ddrs.reserve(dev_tmp1.number_of_mem_banks);
 
         xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\nFor device id: %d; DDRs are:", dev_index);
+        auto& xma_mem_topology = info.mem_topology;
         for (uint32_t d = 0; d < info.number_of_mem_banks; d++) {
             dev_tmp1.ddrs.emplace_back(XmaHwMem{});
             XmaHwMem& tmp1 = dev_tmp1.ddrs.back();
-            //tmp1.name = std::string((char*)info.mem_topology[d].m_tag);
             memset((void*)tmp1.name, 0x0, MAX_KERNEL_NAME);
-            std::string str_tmp1 = std::string((char*)info.mem_topology[d].m_tag);
-            str_tmp1.copy((char*)tmp1.name, MAX_KERNEL_NAME-1);
+            xma_mem_topology[d].m_tag.copy((char*)tmp1.name, MAX_KERNEL_NAME-1);
 
-            tmp1.base_address = info.mem_topology[d].m_base_address;
-            tmp1.size_kb = info.mem_topology[d].m_size;
+            tmp1.base_address = xma_mem_topology[d].m_base_address;
+            tmp1.size_kb = xma_mem_topology[d].m_size;
             tmp1.size_mb = tmp1.size_kb / 1024;
             tmp1.size_gb = tmp1.size_mb / 1024;
-            if (info.mem_topology[d].m_used == 1 &&
+            if (xma_mem_topology[d].m_used == 1 &&
                 tmp1.size_kb != 0 &&
-                (info.mem_topology[d].m_type == MEM_TYPE::MEM_DDR3 || 
-                info.mem_topology[d].m_type == MEM_TYPE::MEM_DDR4 ||
-                info.mem_topology[d].m_type == MEM_TYPE::MEM_DRAM ||
-                info.mem_topology[d].m_type == MEM_TYPE::MEM_HBM)
+                (xma_mem_topology[d].m_type == MEM_TYPE::MEM_DDR3 || 
+                xma_mem_topology[d].m_type == MEM_TYPE::MEM_DDR4 ||
+                xma_mem_topology[d].m_type == MEM_TYPE::MEM_DRAM ||
+                xma_mem_topology[d].m_type == MEM_TYPE::MEM_HBM)
                 ) {
                 tmp1.in_use = true;
                 xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tMEM# %d - %s - size: %lu KB", d, (char*)tmp1.name, tmp1.size_kb);
@@ -280,8 +279,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
             dev_tmp1.kernels.emplace_back(XmaHwKernel{});
             XmaHwKernel& tmp1 = dev_tmp1.kernels.back();
             memset((void*)tmp1.name, 0x0, MAX_KERNEL_NAME);
-            std::string str_tmp1 = std::string((char*)info.ip_layout[d].kernel_name);
-            str_tmp1.copy((char*)tmp1.name, MAX_KERNEL_NAME-1);
+            info.ip_layout[d].kernel_name.copy((char*)tmp1.name, MAX_KERNEL_NAME-1);
 
             tmp1.base_address = info.ip_layout[d].base_addr;
             tmp1.cu_index = (int32_t)d;
@@ -303,12 +301,12 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
                 tmp1.ip_ddr_mapping = info.ip_ddr_mapping[d];
                 for(uint32_t c = 0; c < info.number_of_connections; c++)
                 {
-                    XmaAXLFConnectivity *xma_conn = &info.connectivity[c];
-                    if (xma_conn->m_ip_layout_index == (int32_t)d) {
-                        tmp1.CU_arg_to_mem_info.emplace(xma_conn->arg_index, xma_conn->mem_data_index);
+                    auto& xma_conn = info.connectivity[c];
+                    if (xma_conn.m_ip_layout_index == (int32_t)d) {
+                        tmp1.CU_arg_to_mem_info.emplace(xma_conn.arg_index, xma_conn.mem_data_index);
                         //Assume that this mem is definetly in use
-                        if ((uint32_t)xma_conn->mem_data_index < dev_tmp1.number_of_mem_banks && xma_conn->mem_data_index > 0) {
-                            dev_tmp1.ddrs[xma_conn->mem_data_index].in_use = true;
+                        if ((uint32_t)xma_conn.mem_data_index < dev_tmp1.number_of_mem_banks && xma_conn.mem_data_index > 0) {
+                            dev_tmp1.ddrs[xma_conn.mem_data_index].in_use = true;
                         }
                     }
                 }

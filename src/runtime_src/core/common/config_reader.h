@@ -202,9 +202,9 @@ get_hal_profile()
 }
 
 inline bool
-get_lop_profile()
+get_lop_trace()
 {
-  static bool value = detail::get_bool_value("Debug.lop_profile", false);
+  static bool value = detail::get_bool_value("Debug.lop_trace", false);
   return value;
 }
 
@@ -261,6 +261,16 @@ inline bool
 get_xclbin_programming()
 {
   return get_xclbin_programing();
+}
+
+/**
+ * Enable xma mode2 = only two cu command submission per xma_session at a time
+ */
+inline bool
+get_xma_mode2()
+{
+  static bool value = detail::get_bool_value("Runtime.xma_mode2", false);
+  return value;
 }
 
 /**
@@ -421,6 +431,13 @@ inline bool
 get_exclusive_cu_context()
 {
   static bool value = detail::get_bool_value("Runtime.exclusive_cu_context", false);
+  return value;
+}
+
+inline bool
+get_flag_kds_sw_emu()
+{
+  static bool value = detail::get_bool_value("Runtime.kds_sw_emu", false);
   return value;
 }
 

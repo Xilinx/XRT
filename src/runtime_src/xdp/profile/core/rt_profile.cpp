@@ -124,9 +124,6 @@ namespace xdp {
 
   bool RTProfile::isDeviceProfileOn() const
   {
-#ifdef _WIN32
-    return false;
-#endif
     // Device profiling is not valid in cpu flow or old emulation flow
     if (mPluginHandle->getFlowMode() == xdp::RTUtil::CPU
        || mPluginHandle->getFlowMode() == xdp::RTUtil::COSIM_EM)

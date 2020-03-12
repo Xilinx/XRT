@@ -35,14 +35,18 @@
 #include <mutex>
 #include <memory>
 
+#ifdef XRT_ENABLE_AIE
+#include "core/edge/user/aie/aie.h"
+#endif
+
 namespace ZYNQ {
 
-class ZYNQShim {
+class shim {
 
   static const int BUFFER_ALIGNMENT = 0x80; // TODO: UKP
 public:
-  ~ZYNQShim();
-  ZYNQShim(unsigned index, const char *logfileName,
+  ~shim();
+  shim(unsigned index, const char *logfileName,
            xclVerbosityLevel verbosity);
 
   int mapKernelControl(const std::vector<std::pair<uint64_t, size_t>>& offsets);
@@ -105,7 +109,7 @@ public:
   int xclCloseIPInterruptNotify(int fd);
 
   bool isGood() const;
-  static ZYNQShim *handleCheck(void *handle);
+  static shim *handleCheck(void *handle);
   int xclIPName2Index(const char *name, uint32_t& index);
   static int xclLogMsg(xrtLogMsgLevel level, const char* tag,
 		       const char* format, va_list args);
@@ -123,6 +127,10 @@ public:
   int cmpMonVersions(unsigned int major1, unsigned int minor1, 
 		     unsigned int major2, unsigned int minor2);
 
+#ifdef XRT_ENABLE_AIE
+  zynqaie::Aie *getAieArray();
+  void setAieArray(zynqaie::Aie *aie);
+#endif
 
 private:
   const int mBoardNumber = -1;
@@ -145,6 +153,10 @@ private:
   std::mutex mCuMapLock;
   int xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap);
   int xclLog(xrtLogMsgLevel level, const char* tag, const char* format, ...);
+
+#ifdef XRT_ENABLE_AIE
+  zynqaie::Aie *aieArray;
+#endif
 };
 
 } // namespace ZYNQ

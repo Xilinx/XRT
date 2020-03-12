@@ -29,6 +29,7 @@
 #include <boost/property_tree/json_parser.hpp>
 
 #include "xrt.h"
+#include "ert.h"
 #include "xclperf.h"
 #include "xcl_axi_checker_codes.h"
 #include "core/pcie/common/dmatest.h"
@@ -165,6 +166,39 @@ static const std::map<MEM_TYPE, std::string> memtype_map = {
     {MEM_URAM, "MEM_URAM"},
     {MEM_STREAMING_CONNECTION, "MEM_STREAMING_CONNECTION"}
 };
+
+static const std::map<int, std::string> oemid_map = {
+    {0x10da, "Xilinx"},
+    {0x02a2, "Dell"},
+    {0x12a1, "IBM"},
+    {0xb85c, "HP"},
+    {0x2a7c, "Super Micro"},
+    {0x4a66, "Lenovo"},
+    {0xbd80, "Inspur"},
+    {0x12eb, "Amazon"},
+    {0x2b79, "Google"}
+};
+
+static const std::string getOEMID(std::string oemid)
+{
+    unsigned int oemIDValue = 0;
+    std::stringstream ss;
+
+    try {
+        ss << std::hex << oemid;
+        ss >> oemIDValue;
+    } catch (const std::exception&) {
+        //failed to parse oemid to hex value, ignore erros and print origin value
+    }
+
+    ss.str(std::string());
+    ss.clear();
+    auto oemstr = oemid_map.find(oemIDValue);
+
+    ss << oemid << "(" << (oemstr != oemid_map.end() ? oemstr->second : "N/A") << ")";
+
+    return ss.str();
+}
 
 static const std::map<std::string, command> commandTable(map_pairs, map_pairs + sizeof(map_pairs) / sizeof(map_pairs[0]));
 
@@ -707,7 +741,8 @@ public:
     {
         // board info
         std::string vendor, device, subsystem, subvendor, xmc_ver, xmc_oem_id,
-            ser_num, bmc_ver, idcode, fpga, dna, errmsg, max_power;
+            ser_num, bmc_ver, idcode, fpga, dna, errmsg, max_power, mac_addr0, 
+            mac_addr1, mac_addr2, mac_addr3;
         int ddr_size = 0, ddr_count = 0, pcie_speed = 0, pcie_width = 0, p2p_enabled = 0;
         std::vector<std::string> clock_freqs;
         std::vector<std::string> dma_threads;
@@ -723,6 +758,10 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "serial_num",              errmsg, ser_num );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "max_power",               errmsg, max_power );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "bmc_ver",                 errmsg, bmc_ver );
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_addr0",               errmsg, mac_addr0 );
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_addr1",               errmsg, mac_addr1 );
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_addr2",               errmsg, mac_addr2 );
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_addr3",               errmsg, mac_addr3 );
         pcidev::get_dev(m_idx)->sysfs_get<int>("rom", "ddr_bank_size",       errmsg, ddr_size,  0 );
         pcidev::get_dev(m_idx)->sysfs_get<int>( "rom", "ddr_bank_count_max", errmsg, ddr_count, 0 );
         pcidev::get_dev(m_idx)->sysfs_get( "icap", "clock_freqs",            errmsg, clock_freqs ); 
@@ -740,10 +779,14 @@ public:
         sensor_tree::put( "board.info.subdevice",      subsystem );
         sensor_tree::put( "board.info.subvendor",      subvendor );
         sensor_tree::put( "board.info.xmcversion",     xmc_ver );
-        sensor_tree::put( "board.info.xmc_oem_id",     xmc_oem_id );
+        sensor_tree::put( "board.info.xmc_oem_id",     getOEMID(xmc_oem_id));
         sensor_tree::put( "board.info.serial_number",  ser_num );
         sensor_tree::put( "board.info.max_power",      lvl2PowerStr(max_power.empty() ? UINT_MAX : stoi(max_power)) );
         sensor_tree::put( "board.info.sc_version",     bmc_ver );
+        sensor_tree::put( "board.info.mac_addr0",      mac_addr0 );
+        sensor_tree::put( "board.info.mac_addr1",      mac_addr1 );
+        sensor_tree::put( "board.info.mac_addr2",      mac_addr2 );
+        sensor_tree::put( "board.info.mac_addr3",      mac_addr3 );
         sensor_tree::put( "board.info.ddr_size",       GB(ddr_size)*ddr_count );
         sensor_tree::put( "board.info.ddr_count",      ddr_count );
         sensor_tree::put( "board.info.clock0",         clock_freqs[0] );
@@ -1719,13 +1762,14 @@ public:
         return xclGetDeviceInfo2(m_handle, &devinfo);
     }
 
-    int validate(bool quick);
+    int validate(bool quick, bool hidden);
 
     int reset(xclResetKind kind);
     int setP2p(bool enable, bool force);
     int setCma(bool enable, uint64_t sz);
     int testP2p(void);
     int testM2m(void);
+    int iopsTest(void);
 
 private:
     // Run a test case as <exe> <xclbin> [-d index] on this device and collect

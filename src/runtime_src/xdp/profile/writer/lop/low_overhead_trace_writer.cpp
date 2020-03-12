@@ -108,7 +108,7 @@ namespace xdp {
     for (auto e : APIEvents)
     {
       int bucket = 0 ;
-      if (e->isOpenCLAPI())
+      if (e->isOpenCLAPI() && (dynamic_cast<OpenCLAPICall*>(e) != nullptr))
       {
 	bucket = commandQueueToBucket[dynamic_cast<OpenCLAPICall*>(e)->getQueueAddress()] ;
 	// If there was no command queue, put it in the general bucket

@@ -258,6 +258,14 @@ static DEVICE_ATTR(config_mailbox_comm_id, 0644,
 	config_mailbox_comm_id_show,
 	config_mailbox_comm_id_store);
 
+static ssize_t rp_program_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d\n", lro->rp_program);
+}
+
 static ssize_t rp_program_store(struct device *dev, struct device_attribute *da,
 	const char *buf, size_t count)
 {
@@ -267,10 +275,13 @@ static ssize_t rp_program_store(struct device *dev, struct device_attribute *da,
 
 	if (kstrtou32(buf, 10, &val) == -EINVAL)
 		return -EINVAL;
-	else if (val == 1)
+	else if (val == 1) {
+		lro->rp_program = XOCL_RP_PROGRAM_REQ;
 		ret = xocl_icap_download_rp(lro, XOCL_SUBDEV_LEVEL_PRP,
 				RP_DOWNLOAD_NORMAL);
-	else if (val == 2) {
+		if (ret)
+			lro->rp_program = 0;
+	} else if (val == 2) {
 		ret = xclmgmt_program_shell(lro);
 		(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv,
 				(void *)lro);
@@ -282,7 +293,7 @@ static ssize_t rp_program_store(struct device *dev, struct device_attribute *da,
 
 	return ret ? ret : count;
 }
-static DEVICE_ATTR_WO(rp_program);
+static DEVICE_ATTR_RW(rp_program);
 
 static ssize_t interface_uuids_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -297,7 +308,7 @@ static ssize_t interface_uuids_show(struct device *dev,
 	if (!lro->core.fdt_blob)
 		return -EINVAL;
 
-	node = xocl_fdt_get_next_prop_by_name(lro, lro->bld_blob,
+	node = xocl_fdt_get_next_prop_by_name(lro, lro->core.blp_blob,
 		-1, PROP_INTERFACE_UUID, &uuid, NULL);
 	if (!uuid || node < 0)
 		return -EINVAL;
@@ -326,10 +337,10 @@ static ssize_t logic_uuids_show(struct device *dev,
 	if (!lro->core.fdt_blob && xocl_get_timestamp(lro) == 0)
 		xclmgmt_load_fdt(lro);
 
-	if (!lro->bld_blob)
+	if (!lro->core.blp_blob)
 		return -EINVAL;
 
-	node = xocl_fdt_get_next_prop_by_name(lro, lro->bld_blob,
+	node = xocl_fdt_get_next_prop_by_name(lro, lro->core.blp_blob,
 		-1, PROP_LOGIC_UUID, &blp_uuid, NULL);
 	if (blp_uuid && node >= 0)
 		off += sprintf(buf + off, "%s\n", (char *)blp_uuid);

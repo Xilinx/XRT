@@ -93,10 +93,6 @@ typedef struct {
 /* The imaginary module length register */
 #define XHI_MLR			15
 
-#define	GATE_FREEZE_USER	0x0c
-
-static u32 gate_free_user[] = {0xe, 0xc, 0xe, 0xf};
-
 static struct attribute_group icap_attr_group;
 
 enum icap_sec_level {
@@ -130,12 +126,6 @@ struct icap_generic_state {
 	u32			igs_state;
 } __attribute__((packed));
 
-struct icap_axi_gate {
-	u32			iag_wr;
-	u32			iag_rvsd;
-	u32			iag_rd;
-} __attribute__((packed));
-
 struct icap_bitstream_user {
 	struct list_head	ibu_list;
 	pid_t			ibu_pid;
@@ -148,7 +138,6 @@ struct icap {
 	struct icap_generic_state *icap_state;
 	unsigned int		idcode;
 	bool			icap_axi_gate_frozen;
-	struct icap_axi_gate	*icap_axi_gate;
 
 	xuid_t			icap_bitstream_uuid;
 	int			icap_bitstream_ref;
@@ -360,7 +349,7 @@ static uint64_t icap_get_data(struct platform_device *pdev, enum data_kind kind)
 static const struct axlf_section_header *get_axlf_section_hdr(
 	struct icap *icap, const struct axlf *top, enum axlf_section_kind kind);
 static void icap_refresh_addrs(struct platform_device *pdev);
-static inline int icap_calibrate_mig(struct icap *icap);
+static inline int icap_calibrate_mig(struct platform_device *pdev);
 
 static int icap_xclbin_wr_lock(struct icap *icap)
 {
@@ -532,44 +521,25 @@ static bool icap_bitstream_in_use(struct icap *icap)
 static int icap_freeze_axi_gate(struct icap *icap)
 {
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
+	int ret;
 
 	ICAP_INFO(icap, "freezing CL AXI gate");
 	BUG_ON(icap->icap_axi_gate_frozen);
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
-	if (XOCL_DSA_IS_SMARTN(xdev)) {
-		xocl_xmc_dr_freeze(xdev);
-	} else if (icap->icap_axi_gate) {
+	ret = xocl_axigate_freeze(xdev, XOCL_SUBDEV_LEVEL_PRP);
+	if (ret)
+		ICAP_ERR(icap, "freeze ULP gate failed %d", ret);
+	else
+		icap->icap_axi_gate_frozen = true;
 
-		write_lock(&XDEV(xdev)->rwlock);
-		(void) reg_rd(&icap->icap_axi_gate->iag_rd);
-		reg_wr(&icap->icap_axi_gate->iag_wr, GATE_FREEZE_USER);
-		(void) reg_rd(&icap->icap_axi_gate->iag_rd);
-
-		if (!xocl_is_unified(xdev)) {
-			reg_wr(&icap->icap_regs->ir_cr, 0xc);
-			ndelay(20);
-		} else {
-			/* New ICAP reset sequence applicable only to unified dsa. */
-			reg_wr(&icap->icap_regs->ir_cr, 0x8);
-			ndelay(2000);
-			reg_wr(&icap->icap_regs->ir_cr, 0x0);
-			ndelay(2000);
-			reg_wr(&icap->icap_regs->ir_cr, 0x4);
-			ndelay(2000);
-			reg_wr(&icap->icap_regs->ir_cr, 0x0);
-			ndelay(2000);
-		}
-	}
-	icap->icap_axi_gate_frozen = true;
-
-	return 0;
+	return ret;
 }
 
 static int icap_free_axi_gate(struct icap *icap)
 {
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
-	int i;
+	int ret;
 
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 	ICAP_INFO(icap, "freeing CL AXI gate");
@@ -581,20 +551,11 @@ static int icap_free_axi_gate(struct icap *icap)
 	if (!icap->icap_axi_gate_frozen)
 		return 0;
 
-	if (XOCL_DSA_IS_SMARTN(xdev)) {
-		xocl_xmc_dr_free(xdev);
-	} else if (icap->icap_axi_gate) {
-		for (i = 0; i < ARRAY_SIZE(gate_free_user); i++) {
-			(void) reg_rd(&icap->icap_axi_gate->iag_rd);
-			reg_wr(&icap->icap_axi_gate->iag_wr, gate_free_user[i]);
-			ndelay(500);
-		}
-
-		(void) reg_rd(&icap->icap_axi_gate->iag_rd);
-
-		write_unlock(&XDEV(xdev)->rwlock);
-	}
-	icap->icap_axi_gate_frozen = false;
+	ret = xocl_axigate_free(xdev, XOCL_SUBDEV_LEVEL_PRP);
+	if (ret)
+		ICAP_ERR(icap, "free ULP gate failed %d", ret);
+	else
+		icap->icap_axi_gate_frozen = false;
 	return 0;
 }
 
@@ -609,9 +570,7 @@ static void platform_reset_axi_gate(struct platform_device *pdev)
 	mutex_lock(&icap->icap_lock);
 	if (!icap_bitstream_in_use(icap)) {
 		(void) icap_freeze_axi_gate(platform_get_drvdata(pdev));
-		msleep(500);
 		(void) icap_free_axi_gate(platform_get_drvdata(pdev));
-		msleep(500);
 	}
 	mutex_unlock(&icap->icap_lock);
 }
@@ -690,59 +649,15 @@ static void xclbin_get_ocl_frequency_max_min(struct icap *icap,
 	}
 }
 
-static int ulp_hbm_calibration(void *drvdata)
-{
-	struct icap *icap = drvdata;
-	ICAP_INFO(icap, "HBM Calibration");
-	BUG_ON(!mutex_is_locked(&icap->icap_lock));
-
-	return icap_calibrate_mig(icap);
-}
-
-static int ulp_toggle_axi_gate(void *drvdata)
-{
-	struct icap *icap = drvdata;
-
-	ICAP_INFO(icap, "Toggle CL AXI gate");
-	BUG_ON(!mutex_is_locked(&icap->icap_lock));
-
-	if (!icap->icap_axi_gate) {
-		ICAP_ERR(icap, "no %s resource", NODE_GATE_PRP);
-		return -ENODEV;
-	}
-
-	reg_wr(&icap->icap_axi_gate->iag_wr, 0x0);
-	reg_wr(&icap->icap_axi_gate->iag_wr, 0x1);
-
-	return 0;
-}
-
-static inline int ulp_freeze_axi_gate(void *drvdata)
-{
-	return icap_freeze_axi_gate((struct icap *)drvdata);
-}
-
-static inline int ulp_free_axi_gate(void *drvdata)
-{
-	return icap_free_axi_gate((struct icap *)drvdata);
-}
-
 static int ulp_clock_update(struct icap *icap, unsigned short *freqs,
 	int num_freqs, int verify)
 {
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 	int err = 0;
 
-	struct gate_handler gate_handle = {
-		.gate_freeze_cb = ulp_freeze_axi_gate,
-		.gate_free_cb = ulp_free_axi_gate,
-		.gate_toggle_cb = ulp_toggle_axi_gate,
-		.gate_hbm_calibration_cb = ulp_hbm_calibration,
-		.gate_args = icap,
-	};
+	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
-	err = xocl_clock_update_freq(xdev, freqs, num_freqs, verify,
-		&gate_handle);
+	err = xocl_clock_update_freq(xdev, freqs, num_freqs, verify);
 
 	ICAP_INFO(icap, "returns: %d", err);
 	return err;
@@ -1478,7 +1393,9 @@ static int icap_post_download_rp(struct platform_device *pdev)
 		vfree(icap->rp_sche_bin);
 		icap->rp_sche_bin = NULL;
 		icap->rp_sche_bin_len =0;
-		load_mbs = true;
+		/* u200 2RP EA does not have ert subdev */
+		if (xocl_ert_reset(xdev) == -ENODEV)
+			load_mbs = true;
 	}
 
 	if (load_mbs)
@@ -1508,13 +1425,14 @@ static int icap_download_rp(struct platform_device *pdev, int level, int flag)
 		goto failed;
 	}
 
-	if (!XDEV(xdev)->fdt_blob) {
-		xocl_xdev_err(xdev, "Empty fdt blob");
+	if (!XDEV(xdev)->blp_blob) {
+		xocl_xdev_err(xdev, "Empty BLP blob");
 		ret = -EINVAL;
 		goto failed;
 	}
 
-	ret = xocl_fdt_check_uuids(xdev, icap->rp_fdt, XDEV(xdev)->fdt_blob);
+	ret = xocl_fdt_check_uuids(xdev, icap->rp_fdt,
+		XDEV(xdev)->blp_blob);
 	if (ret) {
 		xocl_xdev_err(xdev, "Incompatible uuids");
 		goto failed;
@@ -1709,7 +1627,7 @@ static void icap_clean_axlf_section(struct icap *icap,
 	default:
 		break;
 	}
-	if (target) {
+	if (target && *target) {
 		vfree(*target);
 		*target = NULL;
 	}
@@ -2025,6 +1943,11 @@ static int icap_create_post_download_subdevs(struct platform_device *pdev, struc
 		goto done;
 	}
 
+	if (!mem_topo) {
+		err = -ENODEV;
+		goto done;
+	}
+
 	for (i = 0; i < ip_layout->m_count; ++i) {
 		struct ip_data *ip = &ip_layout->m_ip_data[i];
 
@@ -2051,26 +1974,16 @@ static int icap_create_post_download_subdevs(struct platform_device *pdev, struc
 				subdev_info.num_res = 0;
 
 
-			/* SRSR sub-devices are permanent.
-			 * Once created, only removed by unloading the driver
-			 * Offline before download xclbin and online just after download xclbin
-			 */
 			err = xocl_subdev_create(xdev, &subdev_info);
-			if (err && err != -EEXIST) {
-				ICAP_ERR(icap, "can't create SRSR subdev");
-				goto done;
-			} else if (err == -EEXIST) {
-				err = xocl_subdev_online_by_id_and_inst(xdev, XOCL_SUBDEV_SRSR, memidx);
-			}
 			if (err) {
-				ICAP_ERR(icap, "can't online SRSR subdev");
+				ICAP_ERR(icap, "can't create SRSR subdev");
 				goto done;
 			}
 		}
 	}
 done:
 	if (err)
-		xocl_subdev_offline_by_id(xdev, XOCL_SUBDEV_SRSR);
+		xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_SRSR);
 	return err;
 }
 
@@ -2167,6 +2080,8 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin)
 	size_t resplen = sizeof(msgerr);
 	xuid_t *peer_uuid = NULL;
 	struct xcl_mailbox_bitstream_kaddr mb_addr = {0};
+	struct mem_topology *mem_topo = icap->mem_topo;
+	int i, mig_count = 0;
 
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
@@ -2201,10 +2116,23 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin)
 		memcpy(mb_req->data, xclbin, xclbin->m_header.m_length);
 	}
 
-	/* Set timeout to be 1s per 2MB for downloading xclbin. */
+	/* Set timeout to be 1s per 2MB for downloading xclbin.
+	 * plus toggling axigate time 5s
+	 * plus #MIG * 0.5s
+	 */
+	if (mem_topo) {
+		for (i = 0; i < mem_topo->m_count; i++) {
+			if (XOCL_IS_STREAM(mem_topo, i))
+				continue;
+
+			if (XOCL_IS_DDR_USED(mem_topo, i))
+				mig_count++;
+		}
+	}
+
 	(void) xocl_peer_request(xdev, mb_req, data_len,
 		&msgerr, &resplen, NULL, NULL,
-		xclbin->m_header.m_length / (2048 * 1024));
+		xclbin->m_header.m_length / (2048 * 1024) + 5 + mig_count / 2);
 	vfree(mb_req);
 
 	if (msgerr != 0) {
@@ -2305,8 +2233,7 @@ static int icap_reset_ddr_gate_pin(struct icap *icap)
 	if (err)
 		goto out;
 
-	err = xocl_iores_write32(xdev, XOCL_SUBDEV_LEVEL_PRP,
-		IORES_GATEPRPRP, 0, 0);
+	err = xocl_axigate_freeze(xdev, XOCL_SUBDEV_LEVEL_PRP);
 	if (err)
 		goto out;
 out:
@@ -2319,13 +2246,7 @@ static int icap_release_ddr_gate_pin(struct icap *icap)
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 	int err = 0;
 
-	err = xocl_iores_write32(xdev, XOCL_SUBDEV_LEVEL_PRP,
-		IORES_GATEPRPRP, 0, 1);
-	if (err)
-		goto out;
-
-	err = xocl_iores_write32(xdev, XOCL_SUBDEV_LEVEL_PRP,
-		IORES_GATEPRPRP, 0, 3);
+	err = xocl_axigate_free(xdev, XOCL_SUBDEV_LEVEL_PRP);
 	if (err)
 		goto out;
 
@@ -2339,8 +2260,9 @@ out:
 	return err;
 }
 
-static inline int icap_calibrate_mig(struct icap *icap)
+static int icap_calibrate_mig(struct platform_device *pdev)
 {
+	struct icap *icap = platform_get_drvdata(pdev);
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 	int err = 0;
 
@@ -2444,13 +2366,42 @@ static void icap_probe_urpdev(struct platform_device *pdev, struct axlf *xclbin,
 	}
 }
 
+/*
+ * freeze/free cmc via xmc subdev driver, the cmc is in mgmt pf.
+ *
+ * Before performing hardware configuratin changes, like downloading xclbin
+ * then reset clock, mig etc., we should stop cmc first, in case cmc still
+ * reach out the hardware that could cause potential firewall trip.
+ *
+ * After hardware configuration is done, we can restart the cmc by xmc free.
+ */
+static inline int icap_xmc_freeze(struct icap *icap)
+{
+	int err = 0;
+
+	if (ICAP_PRIVILEGED(icap))
+		err = xocl_xmc_freeze(xocl_get_xdev(icap->icap_pdev));
+
+	return err == -ENODEV ? 0 : err;
+}
+
+static inline int icap_xmc_free(struct icap *icap)
+{
+	int err = 0;
+
+	if (ICAP_PRIVILEGED(icap))
+		err = xocl_xmc_free(xocl_get_xdev(icap->icap_pdev));
+
+	return err == -ENODEV ? 0 : err;
+}
+
 static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 	struct axlf *xclbin)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
 	int err = 0, num_dev = -1, i;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	struct xocl_subdev *subdevs;
+	struct xocl_subdev *subdevs = NULL;
 	bool has_ulp_clock = false;
 
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
@@ -2458,8 +2409,12 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 	ICAP_INFO(icap, "incoming xclbin: %pUb\non device xclbin: %pUb",
 		&xclbin->m_header.uuid, &icap->icap_bitstream_uuid);
 
-	xocl_cmc_freeze(xdev);
-	xocl_subdev_offline_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
+	/* NOTE: xmc freeze -> xclbin download -> xmc free */
+	err = icap_xmc_freeze(icap);
+	if (err)
+		return err;
+
+	xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 	icap_refresh_addrs(pdev);
 
 	icap_probe_urpdev(pdev, xclbin, &num_dev, &subdevs);
@@ -2493,7 +2448,7 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 		}
 
 		if (!has_ulp_clock)
-			err = icap_calibrate_mig(icap);
+			err = icap_calibrate_mig(pdev);
 		if (err)
 			goto done;
 
@@ -2502,6 +2457,12 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 		if (err)
 			goto done;
 	} else {
+		/* has to create mem topology even with failure case
+		 * please refer the comment in xocl_ioctl.c
+		 * without creating mem topo, memory corruption could happen
+		 */
+		icap_parse_bitstream_axlf_section(pdev, xclbin, MEM_TOPOLOGY);
+
 		if (!XOCL_DSA_IS_VERSAL(xdev))
 			err = __icap_peer_xclbin_download(icap, xclbin);
 
@@ -2510,9 +2471,10 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 		 * ERT configure cmd will go through
 		 */
 		(void) xocl_exec_reconfig(xdev);
+		if (err)
+			goto done;
 
 		icap_parse_bitstream_axlf_section(pdev, xclbin, IP_LAYOUT);
-		icap_parse_bitstream_axlf_section(pdev, xclbin, MEM_TOPOLOGY);
 		icap_parse_bitstream_axlf_section(pdev, xclbin, CONNECTIVITY);
 		icap_parse_bitstream_axlf_section(pdev, xclbin,
 			DEBUG_IP_LAYOUT);
@@ -2525,29 +2487,32 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 			 */
 			(void) icap_verify_bitstream_axlf(pdev, xclbin);
 		}
+
 	}
 
 	/* create the reset of subdevs for both mgmt and user pf */
 	if (num_dev > 0) {
 		for (i = 0; i < num_dev; i++)
-			xocl_subdev_create(xdev, &subdevs[i].info);
+			(void) xocl_subdev_create(xdev, &subdevs[i].info);
 
 		xocl_subdev_create_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 	}
 
-	if (ICAP_PRIVILEGED(icap)) {
-		err = xocl_cmc_free(xdev);
-		if (err == -ENODEV)
-			err = 0;
-	}
+	/* Only when everything has been successfully setup, then enable xmc */
+	if (!err)
+		err = icap_xmc_free(icap);
 
 done:
 	if (err) {
-		icap_clean_bitstream_axlf(pdev);
+		uuid_copy(&icap->icap_bitstream_uuid, &uuid_null);
 	} else {
 		/* Remember "this" bitstream, so avoid redownload next time. */
 		uuid_copy(&icap->icap_bitstream_uuid, &xclbin->m_header.uuid);
 	}
+
+	if (subdevs)
+		vfree(subdevs);
+
 	return err;
 }
 
@@ -2797,7 +2762,7 @@ static int icap_parse_bitstream_axlf_section(struct platform_device *pdev,
 	default:
 		return -EINVAL;
 	}
-	if (target) {
+	if (target && *target) {
 		vfree(*target);
 		*target = NULL;
 	}
@@ -2814,8 +2779,10 @@ static int icap_parse_bitstream_axlf_section(struct platform_device *pdev,
 
 done:
 	if (err) {
-		vfree(*target);
-		*target = NULL;
+		if (target && *target) {
+			vfree(*target);
+			*target = NULL;
+		}
 	}
 	ICAP_INFO(icap, "%s kind %d, err: %ld", __func__, kind, err);
 	return err;
@@ -2966,8 +2933,6 @@ static void icap_refresh_addrs(struct platform_device *pdev)
 
 	icap->icap_state = xocl_iores_get_base(xdev, IORES_MEMCALIB);
 	ICAP_INFO(icap, "memcalib @ %lx", (unsigned long)icap->icap_state);
-	icap->icap_axi_gate = xocl_iores_get_base(xdev, IORES_GATEPRPRP);
-	ICAP_INFO(icap, "axi_gate @ %lx", (unsigned long)icap->icap_axi_gate);
 }
 
 static int icap_offline(struct platform_device *pdev)
@@ -3014,6 +2979,7 @@ static struct xocl_icap_funcs icap_ops = {
 	.get_data = icap_get_data,
 	.get_xclbin_metadata = icap_get_xclbin_metadata,
 	.put_xclbin_metadata = icap_put_xclbin_metadata,
+	.mig_calibration = icap_calibrate_mig,
 };
 
 static ssize_t clock_freqs_show(struct device *dev,
@@ -3616,7 +3582,7 @@ static int icap_remove(struct platform_device *pdev)
 	BUG_ON(icap == NULL);
 	xocl_drvinst_release(icap, &hdl);
 
-	xocl_cmc_freeze(xdev);
+	xocl_xmc_freeze(xdev);
 	icap_free_bins(icap);
 
 	iounmap(icap->icap_regs);
@@ -3756,12 +3722,16 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 		size_t data_len, loff_t *off)
 {
 	struct icap *icap = filp->private_data;
+	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
+	struct pci_dev *pcidev = XOCL_PL_TO_PCI_DEV(icap->icap_pdev);
 	struct axlf axlf_header = { {0} };
 	struct axlf *axlf = NULL;
 	const struct axlf_section_header *section;
 	void *header;
 	XHwIcap_Bit_Header bit_header = { 0 };
+	const struct firmware *sche_fw = NULL;
 	ssize_t ret, len;
+	int err;
 
 	mutex_lock(&icap->icap_lock);
 	if (icap->rp_fdt) {
@@ -3922,12 +3892,29 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 		icap->rp_mgmt_bin_len = section->m_sectionSize;
 	}
 
+	if (XDEV(xdev)->priv.sched_bin) {
+		err = request_firmware(&sche_fw,
+			XDEV(xdev)->priv.sched_bin, &pcidev->dev);
+		if (!err)  {
+			icap->rp_sche_bin = vmalloc(sche_fw->size);
+			if (!icap->rp_sche_bin) {
+				ICAP_ERR(icap, "Not enough mem for sched bin");
+				ret = -ENOMEM;
+				goto failed;
+			}
+			ICAP_INFO(icap, "stashed shared mb sche bin, len %ld", sche_fw->size);
+			icap->rp_sche_bin_len = sche_fw->size;
+			release_firmware(sche_fw);
+		}
+	}
+
+
 	section = get_axlf_section_hdr(icap, axlf, SCHED_FIRMWARE);
-	if (section) {
+	if (section && !icap->rp_sche_bin) {
 		header = (char *)axlf + section->m_sectionOffset;
 		icap->rp_sche_bin = vmalloc(section->m_sectionSize);
 		if (!icap->rp_sche_bin) {
-			ICAP_ERR(icap, "Not enough memory for cmc bin");
+			ICAP_ERR(icap, "Not enough memory for sched bin");
 			ret = -ENOMEM;
 			goto failed;
 		}
@@ -3945,6 +3932,8 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 
 failed:
 	icap_free_bins(icap);
+	if (sche_fw)
+		release_firmware(sche_fw);
 
 	vfree(axlf);
 	mutex_unlock(&icap->icap_lock);

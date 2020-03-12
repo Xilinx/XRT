@@ -141,7 +141,23 @@ static void ert_cb_set_inst(void *dev_hdl, void *subdevs, int num)
 	struct xocl_subdev *subdev = subdevs;
 
 	/* 0 is used by CMC */
-	subdev->info.override_idx = MB_ERT;
+	subdev->info.override_idx = XOCL_MB_ERT;
+}
+
+static void devinfo_cb_plp_gate(void *dev_hdl, void *subdevs, int num)
+{
+	struct xocl_subdev *subdev = subdevs;
+
+	subdev->info.level = XOCL_SUBDEV_LEVEL_BLD;
+	subdev->info.override_idx = subdev->info.level;
+}
+
+static void devinfo_cb_ulp_gate(void *dev_hdl, void *subdevs, int num)
+{
+	struct xocl_subdev *subdev = subdevs;
+
+	subdev->info.level = XOCL_SUBDEV_LEVEL_PRP;
+	subdev->info.override_idx = subdev->info.level;
 }
 
 static void devinfo_cb_xdma(void *dev_hdl, void *subdevs, int num)
@@ -252,7 +268,6 @@ static struct xocl_subdev_map		subdev_map[] = {
 		XOCL_SUBDEV_MB,
 		XOCL_ERT,
 		{
-			NODE_ERT_BASE,
 			NODE_ERT_RESET,
 			NODE_ERT_FW_MEM,
 			NODE_ERT_CQ_MGMT,
@@ -303,13 +318,25 @@ static struct xocl_subdev_map		subdev_map[] = {
 		XOCL_SUBDEV_AXIGATE,
 		XOCL_AXIGATE,
 		{
-			NODE_GATE_BLP,
+			NODE_GATE_PLP,
 			NULL,
 		},
 		1,
 		0,
 		NULL,
-		devinfo_cb_setlevel,
+		devinfo_cb_plp_gate,
+	},
+	{
+		XOCL_SUBDEV_AXIGATE,
+		XOCL_AXIGATE,
+		{
+			NODE_GATE_ULP,
+			NULL,
+		},
+		1,
+		0,
+		NULL,
+		devinfo_cb_ulp_gate,
 	},
 	{
 		XOCL_SUBDEV_IORES,
@@ -328,11 +355,21 @@ static struct xocl_subdev_map		subdev_map[] = {
 		XOCL_SUBDEV_IORES,
 		XOCL_IORES2,
 		{
-			RESNAME_GATEPRPRP,
 			RESNAME_MEMCALIB,
 			RESNAME_KDMA,
-			RESNAME_CMC_MUTEX,
 			RESNAME_DDR4_RESET_GATE,
+			NULL
+		},
+		1,
+		0,
+		NULL,
+		devinfo_cb_setlevel,
+	},
+	{
+		XOCL_SUBDEV_IORES,
+		XOCL_IORES1,
+		{
+			RESNAME_CMC_MUTEX,
 			NULL
 		},
 		1,
@@ -742,6 +779,7 @@ static int xocl_fdt_get_devinfo(xdev_handle_t xdev_hdl, char *blob,
 	//subdev->pf = XOCL_PCI_FUNC(xdev_hdl);
 	subdev->info.res = subdev->res;
 	subdev->info.bar_idx = subdev->bar_idx;
+	subdev->info.override_idx = -1;
 	for (i = 0; i < subdev->info.num_res; i++)
 		subdev->info.res[i].name = subdev->res_name[i];
 
@@ -820,6 +858,8 @@ int xocl_fdt_parse_blob(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
 		struct xocl_subdev **subdevs)
 {
 	int		dev_num; 
+
+	*subdevs = NULL;
 
 	if (!blob)
 		return -EINVAL;

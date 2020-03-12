@@ -98,9 +98,6 @@ namespace xdp {
       case CU_CALLS:
         name = "CU_CALLS";
         break;
-      case MEMORY_BIT_WIDTH:
-        name = "MEMORY_BIT_WIDTH";
-        break;
       case MIGRATE_MEM:
         name = "MIGRATE_MEM";
         break;

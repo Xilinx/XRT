@@ -36,6 +36,10 @@
 #define XMA_LIB_MAIN_VER        2019
 #define XMA_LIB_SUB_VER         2
 
+#define XMA_NUM_EXECBO_DEFAULT  1 //ERT has out of order execution bug (Mar 2020); So keep it one
+#define XMA_NUM_EXECBO_MODE1    64 //Bulk mode; out of order execution
+#define XMA_NUM_EXECBO_MODE2    2  //out of order inside ERT; So can not be used with shared CUs
+
 #define INVALID_M1             -1
 #define STATS_WINDOW            4096.0f
 #define STATS_WINDOW_1          4095

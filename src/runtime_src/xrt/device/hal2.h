@@ -699,6 +699,16 @@ public:
     return m_ops->mReadTraceData(m_handle, traceBuf, traceBufSz, numSamples, ipBaseAddress, wordsPerSample);
   }
 
+  hal::operations_result<void>
+  getDebugIpLayout(char* buffer, size_t size, size_t* size_ret)
+  {
+    if(!m_ops->mGetDebugIpLayout) {
+      return hal::operations_result<void>();
+    }
+    m_ops->mGetDebugIpLayout(m_handle, buffer, size, size_ret);
+    return hal::operations_result<void>(0);
+  }
+
 
 
 

@@ -37,6 +37,8 @@ public:
   virtual int read(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size);
   virtual int unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offset);
 
+  virtual void getDebugIpLayout(char* buffer, size_t size, size_t* size_ret);
+
   virtual double getDeviceClock();
   virtual uint64_t getTraceTime();
   virtual int getTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
