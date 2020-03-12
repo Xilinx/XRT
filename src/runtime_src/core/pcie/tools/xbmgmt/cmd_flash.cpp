@@ -624,7 +624,6 @@ static int update(int argc, char *argv[])
     unsigned index = UINT_MAX;
     std::string shell;
     std::string id;
-    std::string xclbin;
     const option opts[] = {
         { "card", required_argument, nullptr, '0' },
         { "shell", required_argument, nullptr, '1' },
@@ -652,9 +651,6 @@ static int update(int argc, char *argv[])
                 break;
             case '3':
                 force = true;
-                break;
-            case '4':
-                xclbin = std::string(optarg);
                 break;
             default:
                 return -EINVAL;

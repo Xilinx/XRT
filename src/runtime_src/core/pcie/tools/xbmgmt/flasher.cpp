@@ -331,7 +331,7 @@ std::vector<DSAInfo> Flasher::getInstalledDSA()
     {
         // std::cout << "DSA " << dsa.name << ": " << dsa.vendor << " " << dsa.board << " " << dsa.vendor_id << " " << dsa.device_id << "TS: " << dsa.timestamp << std::endl;
         if (!dsa.hasFlashImage || dsa.timestamp == NULL_TIMESTAMP)
-	       continue;
+            continue;
 
         if (!onBoard.vendor.empty() && !onBoard.board.empty() &&
             (onBoard.vendor == dsa.vendor) &&
