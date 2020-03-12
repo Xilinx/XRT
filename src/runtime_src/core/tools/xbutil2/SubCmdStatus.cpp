@@ -58,8 +58,6 @@ SubCmdStatus::execute(const SubCmdOptions& _options) const
   XBU::verbose("SubCommand: status");
   // -- Retrieve and parse the subcommand options -----------------------------
   unsigned int card = 0;
-  uint64_t region = 0;
-  std::string xclbin;
   bool help = false;
 
   po::options_description statusDesc("status options");
