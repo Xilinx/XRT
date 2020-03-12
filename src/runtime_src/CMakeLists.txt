@@ -87,8 +87,3 @@ else()
   add_subdirectory(xdp)
 endif()
 
-# Add the loader scripts
-if (${XRT_NATIVE_BUILD} STREQUAL "yes")
-  add_subdirectory(tools/loader)
-endif()
-
