@@ -734,6 +734,8 @@ static void read_bdinfo_from_peer(struct platform_device *pdev)
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	int ret = 0;
 
+	BUG_ON(!mutex_is_locked(&xmc->mbx_lock));
+
 	if (xmc->bdinfo_raw)
 		return;
 
@@ -770,6 +772,7 @@ static void xmc_bdinfo(struct platform_device *pdev, enum data_kind kind,
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
 	struct xcl_board_info *bdinfo = NULL;
 
+	BUG_ON(!mutex_is_locked(&xmc->mbx_lock));
 	if (XMC_PRIVILEGED(xmc)) {
 
 		switch (kind) {
@@ -940,7 +943,6 @@ static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind,
 	case XCL_BDINFO:
 		mutex_lock(&xmc->mbx_lock);
 		xmc_load_board_info(xmc);
-		mutex_unlock(&xmc->mbx_lock);
 
 		bdinfo = (struct xcl_board_info *)buf;
 
@@ -956,6 +958,7 @@ static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind,
 		xmc_bdinfo(pdev, FAN_PRESENCE, &bdinfo->fan_presence);
 		xmc_bdinfo(pdev, CFG_MODE, &bdinfo->config_mode);
 		xmc_bdinfo(pdev, EXP_BMC_VER, (u32 *)bdinfo->exp_bmc_ver);
+		mutex_unlock(&xmc->mbx_lock);
 		break;
 	default:
 		break;
