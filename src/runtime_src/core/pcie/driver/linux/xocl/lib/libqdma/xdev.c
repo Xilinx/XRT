@@ -348,8 +348,8 @@ static int xdev_map_bars(struct xlnx_dma_dev *xdev, struct pci_dev *pdev)
 		resource_size_t bar_start;
 
 		bar_start = pci_resource_start(pdev, (int)xdev->conf.bar_num_stm);
-		xdev->stm_regs = ioremap_nocache(bar_start + STM_REG_BASE,
-				4096);
+		xdev->stm_regs = ioremap_nocache(bar_start +
+			       			xdev->conf.stm_reg_base, 4096);
 		if (!xdev->stm_regs) {
 			pr_warn("%s unable to map bar %d.\n",
 				xdev->conf.name, xdev->conf.bar_num_stm);
@@ -361,9 +361,10 @@ static int xdev_map_bars(struct xlnx_dma_dev *xdev, struct pci_dev *pdev)
 		if ((((rev >> 24) & 0xFF)!= 'S') ||
 			(((rev >> 16) & 0xFF) != 'T') ||
 			(((rev >> 8) & 0xFF) != 'M')) {
-			pr_err("%s: Unknown STM 0x%x, %c%c%c.\n",
-				xdev->conf.name, rev, (rev >> 24) & 0xFF,
-				(rev >> 16) & 0xFF, (rev >> 8) & 0xFF);
+			pr_err("%s: Unknown STM 0x%x, base 0x%x, %c%c%c.\n",
+				xdev->conf.name, xdev->conf.stm_reg_base,
+			       	rev, (rev >> 24) & 0xFF, (rev >> 16) & 0xFF,
+			       	(rev >> 8) & 0xFF);
 			iounmap(xdev->stm_regs);
 			xdev->stm_regs = NULL;
 			return 0;
