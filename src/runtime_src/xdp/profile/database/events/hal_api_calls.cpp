@@ -20,9 +20,8 @@
 
 namespace xdp {
 
-  HALAPICall::HALAPICall(uint64_t s_id, double ts, unsigned int f_id, 
-			 uint64_t name) :
-    APICall(s_id, ts, f_id, name, HAL_API_CALL)
+  HALAPICall::HALAPICall(uint64_t s_id, double ts, uint64_t name)
+            : APICall(s_id, ts, name, HAL_API_CALL)
   {
   }
 
@@ -30,15 +29,14 @@ namespace xdp {
   {
   }
 
-  void HALAPICall::dump(std::ofstream& fout, int bucket)
+  void HALAPICall::dump(std::ofstream& fout, uint32_t bucket)
   {
     VTFEvent::dump(fout, bucket) ;
-    fout << "," << functionId << "," << functionName << std::endl ;
+    fout << "," << functionName << std::endl ;
   }
 
-  AllocBoCall::AllocBoCall(uint64_t s_id, double ts, unsigned int f_id, 
-			   uint64_t name) :
-    HALAPICall(s_id, ts, f_id, name)
+  AllocBoCall::AllocBoCall(uint64_t s_id, double ts, uint64_t name) 
+             : HALAPICall(s_id, ts, name)
   {
   }
 
@@ -46,7 +44,7 @@ namespace xdp {
   {
   }
 
-  void AllocBoCall::dump(std::ofstream& fout, int bucket)
+  void AllocBoCall::dump(std::ofstream& fout, uint32_t bucket)
   {
     HALAPICall::dump(fout, bucket) ;
   }
