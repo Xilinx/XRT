@@ -17,8 +17,29 @@
 #ifndef xocl_config_h_
 #define xocl_config_h_
 
-#include "xocl/core/debug.h"
+#ifndef CL_TARGET_OPENCL_VERSION
+# define CL_TARGET_OPENCL_VERSION 200
+#endif
+
+#ifdef _WIN32
+# ifdef XRT_XOCL_SOURCE
+#  define XRT_XOCL_EXPORT __declspec(dllexport)
+# else
+#  define XRT_XOCL_EXPORT __declspec(dllimport)
+# endif
+#endif
+
+#ifdef __GNUC__
+# ifdef XRT_XOCL_SOURCE
+#  define XRT_XOCL_EXPORT __attribute__ ((visibility("default")))
+# else
+#  define XRT_XOCL_EXPORT
+# endif
+#endif
+
 #include "xrt/config.h"
+#include "xocl/api/icd/ocl_icd_bindings.h"
+#include "xocl/core/debug.h"
 
 #define XOCL_UNUSED XRT_UNUSED
 
@@ -33,5 +54,3 @@ api_checks()
 }}
 
 #endif
-
-

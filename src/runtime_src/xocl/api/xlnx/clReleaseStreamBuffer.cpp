@@ -15,11 +15,11 @@
  */
 
 // Copyright 2018 Xilinx, Inc. All rights reserved.
-
-#include <CL/opencl.h>
+#include "xocl/config.h"
 #include "xocl/core/stream.h"
 #include "xocl/core/error.h"
 #include "plugin/xdp/profile.h"
+#include <CL/opencl.h>
 
 namespace xocl {
 static void
@@ -27,7 +27,7 @@ validOrError(cl_stream_mem stream_obj)
 {
 }
 
-cl_int 
+cl_int
 clReleaseStreamBuffer(cl_stream_mem stream_obj)
 {
   validOrError(stream_obj);

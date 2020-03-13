@@ -15,10 +15,12 @@
  */
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
-#include <CL/opencl.h>
+#include "xocl/config.h"
 #include "xocl/core/kernel.h"
 #include "detail/kernel.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
+#include <CL/opencl.h>
 
 namespace xocl {
 
@@ -46,6 +48,7 @@ clRetainKernel(cl_kernel kernel )
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clRetainKernel(kernel);
   }
   catch (const xrt::error& ex) {
@@ -57,5 +60,3 @@ clRetainKernel(cl_kernel kernel )
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

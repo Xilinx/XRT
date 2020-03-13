@@ -1,0 +1,130 @@
+;
+; Copyright (C) 2019 Xilinx, Inc
+;
+; Licensed under the Apache License, Version 2.0 (the "License"). You may
+;  not use this file except in compliance with the License. A copy of the
+;  License is located at
+;
+;      http://www.apache.org/licenses/LICENSE-2.0
+;
+;  Unless required by applicable law or agreed to in writing, software
+;  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+;  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+;  License for the specific language governing permissions and limitations
+;  under the License.
+;
+LIBRARY XILINXOPENCL
+EXPORTS
+  clIcdGetPlatformIDsKHR
+  clGetPlatformIDs
+  clGetPlatformInfo
+  clGetDeviceIDs
+  clGetDeviceInfo
+  clCreateContext
+  clCreateContextFromType
+  clRetainContext
+  clReleaseContext
+  clGetContextInfo
+  clCreateCommandQueue
+  clRetainCommandQueue
+  clReleaseCommandQueue
+  clGetCommandQueueInfo
+  clSetCommandQueueProperty
+  clCreateBuffer
+  clCreateImage2D
+  clCreateImage3D
+  clRetainMemObject
+  clReleaseMemObject
+  clGetSupportedImageFormats
+  clGetMemObjectInfo
+  clGetImageInfo
+  clCreateSampler
+  clRetainSampler
+  clReleaseSampler
+  clGetSamplerInfo
+  clCreateProgramWithSource
+  clCreateProgramWithBinary
+  clRetainProgram
+  clReleaseProgram
+  clBuildProgram
+  clUnloadCompiler
+  clGetProgramInfo
+  clGetProgramBuildInfo
+  clCreateKernel
+  clCreateKernelsInProgram
+  clRetainKernel
+  clReleaseKernel
+  clSetKernelArg
+  clGetKernelInfo
+  clGetKernelWorkGroupInfo
+  clWaitForEvents
+  clGetEventInfo
+  clRetainEvent
+  clReleaseEvent
+  clGetEventProfilingInfo
+  clFlush
+  clFinish
+  clEnqueueReadBuffer
+  clEnqueueWriteBuffer
+  clEnqueueCopyBuffer
+  clEnqueueReadImage
+  clEnqueueWriteImage
+  clEnqueueCopyImage
+  clEnqueueCopyImageToBuffer
+  clEnqueueCopyBufferToImage
+  clEnqueueMapBuffer
+  clEnqueueMapImage
+  clEnqueueUnmapMemObject
+  clEnqueueNDRangeKernel
+  clEnqueueTask
+  clEnqueueNativeKernel
+  clEnqueueMarker
+  clEnqueueWaitForEvents
+  clEnqueueBarrier
+  clGetExtensionFunctionAddress
+  clSetEventCallback
+  clCreateSubBuffer
+  clSetMemObjectDestructorCallback
+  clCreateUserEvent
+  clSetUserEventStatus
+  clEnqueueReadBufferRect
+  clEnqueueWriteBufferRect
+  clEnqueueCopyBufferRect
+  clCreateSubDevices
+  clRetainDevice
+  clReleaseDevice
+  clCreateImage
+  clCreateProgramWithBuiltInKernels
+  clCompileProgram
+  clLinkProgram
+  clUnloadPlatformCompiler
+  clGetKernelArgInfo
+  clEnqueueFillBuffer
+  clEnqueueFillImage
+  clEnqueueMigrateMemObjects
+  clEnqueueMarkerWithWaitList
+  clEnqueueBarrierWithWaitList
+  clGetExtensionFunctionAddressForPlatform
+  clCreatePipe
+  clGetPipeInfo
+  clSVMAlloc
+  clSVMFree
+  clEnqueueSVMMap
+  clEnqueueSVMUnmap
+  xclGetMemObjDeviceAddress
+  xclGetMemObjectFd
+  xclGetMemObjectFromFd
+  clCreateStream
+  clReleaseStream
+  clWriteStream
+  clReadStream
+  clCreateStreamBuffer
+  clReleaseStreamBuffer
+  clPollStreams
+  clCreateHostPipe
+  clWritePipeBuffers
+  clReadPipeBuffers
+  clAcquirePipeBuffer
+  clReleasePipeBuffer
+  xclGetXrtDevice
+  xclGetComputeUnitInfo
