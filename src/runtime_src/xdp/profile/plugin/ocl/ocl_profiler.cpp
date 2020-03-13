@@ -357,6 +357,7 @@ namespace xdp {
       }
       trace_offloader.reset();
     }
+    DeviceTraceOffloadList.clear();
   }
 
   // Get device counters
