@@ -195,9 +195,9 @@ get_profile_api()
 }
 
 inline bool
-get_hal_profile()
+get_xrt_profile()
 {
-  static bool value = detail::get_bool_value("Debug.hal_profile", false);
+  static bool value = detail::get_bool_value("Debug.xrt_profile", false);
   return value;
 }
 

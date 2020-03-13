@@ -26,6 +26,7 @@ namespace xdp {
   bool VPDatabase::live ;
 
   VPDatabase::VPDatabase()
+            : numDevices(0)
   {
     VPDatabase::live = true ;
   }
@@ -43,6 +44,9 @@ namespace xdp {
       p->writeAll(false) ;
     }
 
+    plugins.clear();
+    devices.clear();
+    numDevices = 0;
     VPDatabase::live = false ;    
   }
 
@@ -56,5 +60,14 @@ namespace xdp {
   {
     return VPDatabase::live ;
   }
+
+  uint64_t VPDatabase::addDevice(std::string& sysfsPath)
+  {
+    if(devices.find(sysfsPath) == devices.end()) {
+      devices[sysfsPath] = numDevices++;
+    }
+    return devices[sysfsPath];
+  }
+
 
 } // end namespace xdp

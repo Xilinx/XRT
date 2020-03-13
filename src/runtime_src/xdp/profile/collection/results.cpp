@@ -17,7 +17,6 @@
 #include "results.h"
 #include "xdp/profile/writer/base_profile.h"
 #include "xdp/profile/writer/base_trace.h"
-#include "xdp/profile/device/trace_parser.h"
 
 #include <iostream>
 #include <sstream>

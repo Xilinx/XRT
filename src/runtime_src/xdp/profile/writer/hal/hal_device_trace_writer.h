@@ -21,6 +21,7 @@
 
 #include "xdp/profile/writer/vp_base/vp_trace_writer.h"
 #include "xdp/profile/device/device_intf.h"
+#include "xdp/profile/database/database.h"
 
 namespace xdp {
 
@@ -30,10 +31,15 @@ namespace xdp {
     HALDeviceTraceWriter() = delete ;
 
     // Specific header information
-    std::string XRTVersion ;
+    std::string xrtVersion;
+    std::string toolVersion;
+
+    std::map<int32_t, uint32_t> cuBucketIdMap;
 
     // The interface to the specific device we are associated with
     DeviceIntf* dev ;
+
+    uint64_t deviceId;
 
   protected:
     virtual void writeHeader() ;
@@ -43,14 +49,15 @@ namespace xdp {
     virtual void writeDependencies() ;
 
   public:
-    HALDeviceTraceWriter(const char* filename, const std::string& version,
+    HALDeviceTraceWriter(const char* filename, uint64_t deviceId, const std::string& version,
 			 const std::string& creationTime,
-			 const std::string& xrtV, DeviceIntf* d) ;
+			 const std::string& xrtV,
+			 const std::string& toolV);
+
     ~HALDeviceTraceWriter() ;
 
     virtual void write(bool openNewFile) ;
-    virtual bool isDeviceWriter() { return true ; } 
-    virtual DeviceIntf* device()  { return dev ; } 
+    virtual bool isDevice() { return true ; } 
     virtual bool isSameDevice(void* /*handle*/) 
     { // return dev->getAbstractDevice()->getRawDevice() == handle ;
       return true ; }

@@ -20,9 +20,10 @@
 
 namespace xdp {
 
-  OpenCLAPICall::OpenCLAPICall(uint64_t s_id, double ts, unsigned int f_id,
-			       uint64_t name, uint64_t q) :
-    APICall(s_id, ts, f_id, name, OPENCL_API_CALL), queueAddress(q)
+  OpenCLAPICall::OpenCLAPICall(uint64_t s_id, double ts, unsigned int /*f_id*/,
+                               uint64_t name, uint64_t q)
+      : APICall(s_id, ts, name, OPENCL_API_CALL),
+        queueAddress(q)
   {
   }
 

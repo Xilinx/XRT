@@ -47,21 +47,27 @@ namespace xdp {
     LOP_KERNEL_ENQUEUE   = 23,
 
     // PL events
-    KERNEL               = 30,
-    KERNEL_STALL         = 31,
-    KERNEL_READ          = 32,
-    KERNEL_WRITE         = 33,
-    KERNEL_STREAM_READ   = 34,
-    KERNEL_STREAM_WRITE  = 35,
-    KERNEL_STREAM_STALL  = 36,
-    KERNEL_STREAM_STARVE = 37,
-    HOST_READ            = 38,
-    HOST_WRITE           = 39,
+    KERNEL                = 30,
+    KERNEL_STALL          = 31,
+    KERNEL_STALL_EXT_MEM  = 32,
+    KERNEL_STALL_DATAFLOW = 33,
+    KERNEL_STALL_PIPE     = 34,
+    KERNEL_READ           = 35,
+    KERNEL_WRITE          = 36,
+    KERNEL_STREAM_READ    = 37,
+    KERNEL_STREAM_WRITE   = 38,
+    KERNEL_STREAM_READ_STALL   = 39,
+    KERNEL_STREAM_READ_STARVE  = 40,
+    KERNEL_STREAM_WRITE_STALL  = 41,
+    KERNEL_STREAM_WRITE_STARVE = 42,
+    HOST_READ             = 43,
+    HOST_WRITE            = 44,
 
     // AIE events
 
     // XRT host level events
-    HAL_API_CALL         = 50,
+    API_CALL             = 50,
+    HAL_API_CALL         = 51,
   } ;
 
   class VTFEvent
@@ -84,9 +90,10 @@ namespace xdp {
     XDP_EXPORT virtual ~VTFEvent() ;
 
     // Getters and Setters
-    inline double   getTimestamp()   const { return timestamp ; }
-    inline uint64_t getEventId()           { return id ; } 
-    inline void     setEventId(uint64_t i) { id = i ; }
+    inline double       getTimestamp()   const { return timestamp ; }
+    inline uint64_t     getEventId()           { return id ; } 
+    inline void         setEventId(uint64_t i) { id = i ; }
+    inline VTFEventType getEventType()         { return type; }
 
     // Functions that can be used as filters
     virtual bool isUserEvent()   { return false ; }
@@ -103,8 +110,8 @@ namespace xdp {
     virtual bool isKernelEnqueue() { return type == KERNEL_ENQUEUE ||
 	                                    type == LOP_KERNEL_ENQUEUE ; }
 
-    virtual void* getDevice() { return nullptr ; } 
-    XDP_EXPORT virtual void dump(std::ofstream& fout, int bucket) ;
+    virtual uint64_t getDevice() { return 0 ; } // CHECK
+    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   } ;
 
   // Used so the database can sort based on timestamp order
@@ -120,13 +127,11 @@ namespace xdp {
   class APICall : public VTFEvent 
   {
   protected:
-    unsigned int functionId ; // Used to match START with END
     uint64_t functionName ; // An index into the string table
 
     APICall() = delete ;
   public:
-    XDP_EXPORT APICall(uint64_t s_id, double ts, unsigned int f_id, 
-		       uint64_t name, VTFEventType ty) ;
+    XDP_EXPORT APICall(uint64_t s_id, double ts, uint64_t name, VTFEventType ty);
     XDP_EXPORT ~APICall() ;
 
     virtual bool isHostEvent() { return true ; } 

@@ -23,21 +23,14 @@
 
 namespace xdp {
 
-  enum KernelStallType
-  {
-    EXTERNAL_MEMORY_STALL,
-    DATAFLOW_STALL,
-    PIPE_STALL,
-    UNKNOWN_STALL
-  } ;
-
   // **********************
   // Device events
   // **********************
   class VTFDeviceEvent : public VTFEvent
   {
   private:
-    void* dev ; // Either a device handle or an xrt::device
+    uint64_t deviceId ; // Either a device handle or an xrt::device
+    double   deviceTimestamp;
 
     VTFDeviceEvent() = delete ;
 
@@ -45,52 +38,54 @@ namespace xdp {
     virtual void dumpTimestamp(std::ofstream& fout) ;
 
   public:
-    XDP_EXPORT VTFDeviceEvent(uint64_t s_id, double ts, VTFEventType ty, 
-			      void* d) ;
+    XDP_EXPORT VTFDeviceEvent(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId);
     XDP_EXPORT ~VTFDeviceEvent() ;
 
-    virtual bool isDeviceEvent() { return false ; }
-    virtual void* getDevice()    { return dev ; } 
+    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket);
+
+    virtual bool isDeviceEvent() { return true ; }
+    virtual uint64_t getDevice() { return deviceId ; }
+
+    virtual void   setDeviceTimestamp(double deviceTime) { deviceTimestamp = deviceTime; }
+    virtual double getDeviceTimestamp() { return deviceTimestamp; }
   } ;
 
-  class KernelDeviceEvent : public VTFDeviceEvent
+  class KernelEvent : public VTFDeviceEvent
+  {
+  protected:
+    int32_t cuId;
+
+    KernelEvent() = delete ;
+  public:
+    XDP_EXPORT KernelEvent(uint64_t s_id, double ts, VTFEventType ty, 
+                   uint64_t devId, int32_t cuIdx = 0);
+    XDP_EXPORT ~KernelEvent() ;
+    virtual int32_t getCUId() { return cuId;} 
+  };
+
+  class KernelDeviceEvent : public KernelEvent
   {
   private:
-    uint64_t deviceName ;
-    uint64_t binaryName ;
-    uint64_t kernelName ;
-    uint64_t workgroupConfiguration ;
-    uint64_t cuName ;
-
     KernelDeviceEvent() = delete ;
   public:
-    XDP_EXPORT KernelDeviceEvent(uint64_t s_id, double ts, void* d) ;
+    XDP_EXPORT KernelDeviceEvent(uint64_t s_id, double ts, uint64_t devId, int32_t cuIdx);
     XDP_EXPORT ~KernelDeviceEvent() ;
   } ;
 
-  class KernelStall : public VTFDeviceEvent
+  class KernelStall : public KernelEvent
   {
   private:
-    uint64_t deviceName ;
-    uint64_t binaryName ;
-    uint64_t kernelName ;
-    uint64_t cuName ;
-    KernelStallType stallType ;
     uint16_t burstLength ;
 
     KernelStall() = delete ;
   public:
-    XDP_EXPORT KernelStall(uint64_t s_id, double ts, void* d) ;
+    XDP_EXPORT KernelStall(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId) ;
     XDP_EXPORT ~KernelStall() ;
   } ;
 
-  class KernelMemoryAccess : public VTFDeviceEvent
+  class KernelMemoryAccess : public KernelEvent
   {
   private:
-    uint64_t deviceName ;
-    uint64_t binaryName ;
-    uint64_t kernelName ;
-    uint64_t cuName ;
     uint64_t portName ;
     uint64_t memoryName ;
     uint64_t argumentNames ;
@@ -99,59 +94,23 @@ namespace xdp {
 
     KernelMemoryAccess() = delete ;
   public:
-    XDP_EXPORT KernelMemoryAccess(uint64_t s_id, double ts, VTFEventType ty, 
-				  void* d) ;
+    XDP_EXPORT KernelMemoryAccess(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId);
     XDP_EXPORT ~KernelMemoryAccess() ;
+
+    void setBurstLength(uint16_t length) { burstLength = length; }
   } ;
 
-  class KernelStreamAccess : public VTFDeviceEvent
+  class KernelStreamAccess : public KernelEvent
   {
   private:
-    uint64_t deviceName ;
-    uint64_t binaryName ;
-    uint64_t kernelName ;
-    uint64_t cuName ;
     uint64_t portName ;
     uint64_t streamName ;
     uint16_t burstLength ;
 
     KernelStreamAccess() = delete ;
   public:
-    XDP_EXPORT KernelStreamAccess(uint64_t s_id, double ts, VTFEventType ty, 
-				  void* d) ;
+    XDP_EXPORT KernelStreamAccess(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId);
     XDP_EXPORT ~KernelStreamAccess() ;
-  } ;
-
-  class KernelStreamStall : public VTFDeviceEvent
-  {
-  private:
-    uint64_t deviceName ;
-    uint64_t binaryName ;
-    uint64_t kernelName ;
-    uint64_t cuName ;
-    uint64_t portName ;
-    uint64_t streamName ;
-
-    KernelStreamStall() = delete ;
-  public:
-    XDP_EXPORT KernelStreamStall(uint64_t s_id, double ts, void* d) ;
-    XDP_EXPORT ~KernelStreamStall() ;
-  } ;
-
-  class KernelStreamStarve : public VTFDeviceEvent
-  {
-  private:
-    uint64_t deviceName ;
-    uint64_t binaryName ;
-    uint64_t kernelName ;
-    uint64_t cuName ;
-    uint64_t portName ;
-    uint64_t streamName ;
-
-    KernelStreamStarve() = delete ;
-  public:
-    XDP_EXPORT KernelStreamStarve(uint64_t s_id, double ts, void* d) ;
-    XDP_EXPORT ~KernelStreamStarve() ;
   } ;
 
   class HostRead : public VTFDeviceEvent
@@ -159,7 +118,7 @@ namespace xdp {
   private:
     HostRead() = delete ;
   public:
-    XDP_EXPORT HostRead(uint64_t s_id, double ts, void* d) ;
+    XDP_EXPORT HostRead(uint64_t s_id, double ts, uint64_t devId) ;
     XDP_EXPORT ~HostRead() ;
   } ;
 
@@ -168,7 +127,7 @@ namespace xdp {
   private:
     HostWrite() = delete ;
   public:
-    XDP_EXPORT HostWrite(uint64_t s_id, double ts, void* d) ;
+    XDP_EXPORT HostWrite(uint64_t s_id, double ts, uint64_t devId) ;
     XDP_EXPORT ~HostWrite() ;
   } ;
 
