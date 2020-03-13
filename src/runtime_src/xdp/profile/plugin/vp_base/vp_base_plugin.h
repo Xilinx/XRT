@@ -43,6 +43,9 @@ namespace xdp {
     
     inline VPDatabase* getDatabase() { return db ; }
 
+    // Update the given device with newly loaded xclbin
+    XDP_EXPORT virtual void updateDevice(void* /*device*/, const void* /*binary*/);
+
     // When the database gets reset or at the end of execution,
     //  the plugins must make sure all of their writers dump a complete file
     XDP_EXPORT virtual void writeAll(bool openNewFiles = true) ;

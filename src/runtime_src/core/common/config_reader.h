@@ -195,9 +195,9 @@ get_profile_api()
 }
 
 inline bool
-get_hal_profile()
+get_xrt_profile()
 {
-  static bool value = detail::get_bool_value("Debug.hal_profile", false);
+  static bool value = detail::get_bool_value("Debug.xrt_profile", false);
   return value;
 }
 
@@ -261,6 +261,16 @@ inline bool
 get_xclbin_programming()
 {
   return get_xclbin_programing();
+}
+
+/**
+ * Enable xma mode2 = only two cu command submission per xma_session at a time
+ */
+inline bool
+get_xma_mode2()
+{
+  static bool value = detail::get_bool_value("Runtime.xma_mode2", false);
+  return value;
 }
 
 /**

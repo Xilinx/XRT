@@ -19,7 +19,7 @@
 #define _XDP_PROIFLE_XDP_XRT_DEVICE_H
 
 #include "xdp/config.h"
-#include "xdp_base_device.h"
+#include "xdp/profile/device/xdp_base_device.h"
 #include "xrt/device/device.h"
 
 namespace xdp {

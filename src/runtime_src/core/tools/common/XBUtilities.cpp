@@ -24,6 +24,7 @@
 
 // 3rd Party Library - Include Files
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/algorithm/string.hpp>
 #include <boost/tokenizer.hpp>
 #include <boost/format.hpp>
 
@@ -281,19 +282,10 @@ XBUtilities::wrap_paragraphs( const std::string & _unformattedString,
 }
 
 void
-XBUtilities::parse_device_indices(std::vector<uint16_t> &device_indices, std::string device)
+XBUtilities::parse_device_indices(std::vector<uint16_t> &device_indices, const std::string &device)
 {
-  if (!device.empty()) { 
+  if(boost::iequals(device, "all")) {
     ::verbose("Sub command : --device");
-    using tokenizer = boost::tokenizer< boost::char_separator<char> >;
-    boost::char_separator<char> sep(", ");
-    tokenizer tokens(device, sep);
-    
-    for (auto tok_iter = tokens.begin(); tok_iter != tokens.end(); ++tok_iter) {
-    	uint16_t idx = xrt_core::utils::bdf2index(*tok_iter);
-      device_indices.push_back(idx);
-    }
-  } else {
     //get all devices
     auto total = xrt_core::get_total_devices(false).first;
     if (total == 0)
@@ -302,7 +294,17 @@ XBUtilities::parse_device_indices(std::vector<uint16_t> &device_indices, std::st
     for(uint16_t i = 0; i < total; i++) {
       device_indices.push_back(i);
     }
-  }
+  } else if (!device.empty()) {
+    ::verbose("Sub command : --device");
+    using tokenizer = boost::tokenizer< boost::char_separator<char> >;
+    boost::char_separator<char> sep(", ");
+    tokenizer tokens(device, sep);
+    
+    for (auto tok_iter = tokens.begin(); tok_iter != tokens.end(); ++tok_iter) {
+    	auto idx = xrt_core::utils::bdf2index(*tok_iter);
+      device_indices.push_back(idx);
+    }
+  } 
 }
 
 

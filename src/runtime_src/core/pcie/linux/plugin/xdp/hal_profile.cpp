@@ -9,7 +9,7 @@ namespace xdphal {
 cb_func_type cb;
 
 bool loaded = false;
-std::atomic<unsigned> global_idcode(0);
+std::atomic<uint64_t> global_idcode(0);
 std::mutex lock;
 
 static bool cb_valid() {
@@ -39,7 +39,7 @@ static const char* emptyOrValue(const char* cstr) {
   return cstr ? cstr : "";
 }
 
-CallLogger::CallLogger(unsigned id)
+CallLogger::CallLogger(uint64_t id)
            : m_local_idcode(id)
 {
   load_xdp_plugin_library(nullptr);
@@ -48,7 +48,7 @@ CallLogger::CallLogger(unsigned id)
 CallLogger::~CallLogger()
 {}
 
-AllocBOCallLogger::AllocBOCallLogger(xclDeviceHandle handle, size_t size, int unused, unsigned flags) 
+AllocBOCallLogger::AllocBOCallLogger(xclDeviceHandle handle /*, size_t size, int unused, unsigned flags*/) 
     : CallLogger(global_idcode)
 {
     if (!cb_valid()) return;
@@ -63,7 +63,22 @@ AllocBOCallLogger::~AllocBOCallLogger() {
     cb(HalCallbackType::ALLOC_BO_END, &payload);
 }
 
-FreeBOCallLogger::FreeBOCallLogger(xclDeviceHandle handle, unsigned int boHandle) 
+AllocUserPtrBOCallLogger::AllocUserPtrBOCallLogger(xclDeviceHandle handle /*, void *userptr, size_t size, unsigned flags*/)
+    : CallLogger(global_idcode)
+{
+    if (!cb_valid()) return;
+    global_idcode++;    // increment only if valid calllback
+    CBPayload payload = {m_local_idcode, handle};
+    cb(HalCallbackType::ALLOC_USERPTR_BO_START, &payload);
+}
+
+AllocUserPtrBOCallLogger::~AllocUserPtrBOCallLogger() {
+    if (!cb_valid()) return;
+    CBPayload payload = {m_local_idcode, 0};
+    cb(HalCallbackType::ALLOC_USERPTR_BO_END, &payload);
+}
+
+FreeBOCallLogger::FreeBOCallLogger(xclDeviceHandle handle /*, unsigned int boHandle*/) 
     : CallLogger(global_idcode)
 {
     if (!cb_valid()) return;
@@ -78,39 +93,47 @@ FreeBOCallLogger::~FreeBOCallLogger() {
     cb(HalCallbackType::FREE_BO_END, &payload);
 }
 
-WriteBOCallLogger::WriteBOCallLogger(xclDeviceHandle handle, unsigned int boHandle, const void *src, size_t size, size_t seek) 
+WriteBOCallLogger::WriteBOCallLogger(xclDeviceHandle handle, size_t size /*, unsigned int boHandle, const void *src, size_t seek*/) 
     : CallLogger(global_idcode)
+      ,m_buffer_transfer_id(0)
 {
     if (!cb_valid()) return;
-    global_idcode++;    // increment only if valid calllback
-    CBPayload payload = {m_local_idcode, handle};
+    // increment global_idcode only if valid calllback
+    m_buffer_transfer_id = ++global_idcode;
+    ++global_idcode;
+
+    BOTransferCBPayload payload = {{m_local_idcode, handle}, m_buffer_transfer_id, size} ;
     cb(HalCallbackType::WRITE_BO_START, &payload);
 }
 
 WriteBOCallLogger::~WriteBOCallLogger() {
     if (!cb_valid()) return;
-    CBPayload payload = {m_local_idcode, 0};
+
+    BOTransferCBPayload payload = {{m_local_idcode, 0}, m_buffer_transfer_id, 0};
     cb(HalCallbackType::WRITE_BO_END, &payload);
 }
 
-ReadBOCallLogger::ReadBOCallLogger(xclDeviceHandle handle, unsigned int boHandle, void *dst, size_t size, size_t skip) 
+ReadBOCallLogger::ReadBOCallLogger(xclDeviceHandle handle, size_t size /*, unsigned int boHandle, void *dst, size_t skip*/) 
     : CallLogger(global_idcode)
+      ,m_buffer_transfer_id(0)
 {
     if (!cb_valid()) return;
-    global_idcode++;    // increment only if valid calllback
+    // increment global_idcode only if valid calllback
+    m_buffer_transfer_id = ++global_idcode;
+    ++global_idcode;
     
-    BOTransferCBPayload payload = {{m_local_idcode, handle}, boHandle, reinterpret_cast<uint64_t>(dst), size, skip} ;
-    //CBPayload payload = {m_local_idcode, handle};
+    BOTransferCBPayload payload = {{m_local_idcode, handle}, m_buffer_transfer_id, size} ;
     cb(HalCallbackType::READ_BO_START, &payload);
 }
 
 ReadBOCallLogger::~ReadBOCallLogger() {
     if (!cb_valid()) return;
-    CBPayload payload = {m_local_idcode, 0};
+
+    BOTransferCBPayload payload = {{m_local_idcode, 0}, m_buffer_transfer_id, 0};
     cb(HalCallbackType::READ_BO_END, &payload);
 }  
 
-MapBOCallLogger::MapBOCallLogger(xclDeviceHandle handle, unsigned int boHandle, bool write) 
+MapBOCallLogger::MapBOCallLogger(xclDeviceHandle handle /*, unsigned int boHandle, bool write*/) 
     : CallLogger(global_idcode)
 {
     if (!cb_valid()) return;
@@ -125,19 +148,40 @@ MapBOCallLogger::~MapBOCallLogger() {
     cb(HalCallbackType::MAP_BO_END, &payload);
 }
 
-SyncBOCallLogger::SyncBOCallLogger(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset) 
+SyncBOCallLogger::SyncBOCallLogger(xclDeviceHandle handle, size_t size, xclBOSyncDirection dir /*, unsigned int boHandle, size_t offset*/) 
     : CallLogger(global_idcode)
+      ,m_buffer_transfer_id(0)
+      ,m_is_write_to_device((XCL_BO_SYNC_BO_TO_DEVICE == dir) ? true : false)
 {
     if (!cb_valid()) return;
-    global_idcode++;    // increment only if valid calllback
-    CBPayload payload = {m_local_idcode, handle};
+    // increment global_idcode only if valid calllback
+    m_buffer_transfer_id = ++global_idcode;
+    ++global_idcode;
+
+    SyncBOCBPayload payload = {{m_local_idcode, handle}, m_buffer_transfer_id, size, m_is_write_to_device};
     cb(HalCallbackType::SYNC_BO_START, &payload);
 }
 
 SyncBOCallLogger::~SyncBOCallLogger() {
     if (!cb_valid()) return;
-    CBPayload payload = {m_local_idcode, 0};
+    SyncBOCBPayload payload = {{m_local_idcode, 0}, m_buffer_transfer_id, 0, m_is_write_to_device};
     cb(HalCallbackType::SYNC_BO_END, &payload);
+}
+
+CopyBOCallLogger::CopyBOCallLogger(xclDeviceHandle handle /*, unsigned int dst_boHandle,
+                                   unsigned int src_bohandle, size_t size, size_t dst_offset, size_t src_offset*/) 
+    : CallLogger(global_idcode)
+{
+    if (!cb_valid()) return;
+    global_idcode++;    // increment only if valid calllback
+    CBPayload payload = {m_local_idcode, handle};
+    cb(HalCallbackType::COPY_BO_START, &payload);
+}
+
+CopyBOCallLogger::~CopyBOCallLogger() {
+    if (!cb_valid()) return;
+    CBPayload payload = {m_local_idcode, 0};
+    cb(HalCallbackType::COPY_BO_END, &payload);
 }
 
 UnmgdPwriteCallLogger::UnmgdPwriteCallLogger(xclDeviceHandle handle, unsigned flags, const void *buf, size_t count, uint64_t offset) 
@@ -170,50 +214,162 @@ UnmgdPreadCallLogger::~UnmgdPreadCallLogger() {
     cb(HalCallbackType::UNMGD_READ_END, &payload);
 }
 
-ReadCallLogger::ReadCallLogger(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size) 
+ReadCallLogger::ReadCallLogger(xclDeviceHandle handle, size_t size /*, xclAddressSpace space, uint64_t offset, void *hostBuf */) 
     : CallLogger(global_idcode)
 {
     if (!cb_valid()) return;
     global_idcode++;    // increment only if valid calllback
-    ReadWriteCBPayload payload = {{m_local_idcode, handle}, space, offset, size};
+    ReadWriteCBPayload payload = {{m_local_idcode, handle}, size};
     cb(HalCallbackType::READ_START, &payload);
 }
 
-ReadCallLogger::~ReadCallLogger() {
+ReadCallLogger::~ReadCallLogger()
+{
     if (!cb_valid()) return;
+
     CBPayload payload = {m_local_idcode, 0};
     cb(HalCallbackType::READ_END, &payload);
 }
 
-WriteCallLogger::WriteCallLogger(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size) 
+WriteCallLogger::WriteCallLogger(xclDeviceHandle handle, size_t size /*, xclAddressSpace space, uint64_t offset, const void *hostBuf */) 
     : CallLogger(global_idcode)
 {
     if (!cb_valid()) return;
     global_idcode++;    // increment only if valid calllback
-    ReadWriteCBPayload payload = { {m_local_idcode, handle}, space, offset, size};
+    ReadWriteCBPayload payload = { {m_local_idcode, handle}, size};
     cb(HalCallbackType::WRITE_START, (void*)(&payload));
 }
 
-WriteCallLogger::~WriteCallLogger() {
+WriteCallLogger::~WriteCallLogger()
+{
     if (!cb_valid()) return;
+
     CBPayload payload = {m_local_idcode, 0};
     cb(HalCallbackType::WRITE_END, &payload);
 }
 
-  LoadXclbinCallLogger::LoadXclbinCallLogger(xclDeviceHandle handle, const void* buffer) : CallLogger(global_idcode), h(handle), mBuffer(buffer)
-  {
-    if (!cb_valid()) return ;
-    ++global_idcode ; // increment only if valid callback
-    XclbinCBPayload payload = { {m_local_idcode, handle}, buffer } ;
-    cb(HalCallbackType::LOAD_XCLBIN_START, &payload) ;
-  }
+ProbeCallLogger::ProbeCallLogger() 
+    : CallLogger(global_idcode)
+{
+    if (!cb_valid()) return;
+    global_idcode++;    // increment only if valid calllback
+    CBPayload payload = {m_local_idcode, nullptr};
+    cb(HalCallbackType::PROBE_START, &payload);
+}
 
-  LoadXclbinCallLogger::~LoadXclbinCallLogger()
-  {
-    if (!cb_valid()) return ;
-    XclbinCBPayload payload = { {m_local_idcode, h}, mBuffer } ;
-    cb(HalCallbackType::LOAD_XCLBIN_END, &payload) ;
-  }
+ProbeCallLogger::~ProbeCallLogger()
+{
+    if (!cb_valid()) return;
+    CBPayload payload = {m_local_idcode, 0};
+    cb(HalCallbackType::PROBE_END, &payload);
+}
+
+LockDeviceCallLogger::LockDeviceCallLogger(xclDeviceHandle handle) 
+    : CallLogger(global_idcode)
+{
+    if (!cb_valid()) return;
+    global_idcode++;    // increment only if valid calllback
+    CBPayload payload = {m_local_idcode, handle};
+    cb(HalCallbackType::LOCK_DEVICE_START, &payload);
+}
+
+LockDeviceCallLogger::~LockDeviceCallLogger() {
+    if (!cb_valid()) return;
+    CBPayload payload = {m_local_idcode, 0};
+    cb(HalCallbackType::LOCK_DEVICE_END, &payload);
+}
+
+UnLockDeviceCallLogger::UnLockDeviceCallLogger(xclDeviceHandle handle) 
+    : CallLogger(global_idcode)
+{
+    if (!cb_valid()) return;
+    global_idcode++;    // increment only if valid calllback
+    CBPayload payload = {m_local_idcode, handle};
+    cb(HalCallbackType::UNLOCK_DEVICE_START, &payload);
+}
+
+UnLockDeviceCallLogger::~UnLockDeviceCallLogger() {
+    if (!cb_valid()) return;
+    CBPayload payload = {m_local_idcode, 0};
+    cb(HalCallbackType::UNLOCK_DEVICE_END, &payload);
+}
+
+OpenCallLogger::OpenCallLogger(/*unsigned deviceIndex*/)
+    : CallLogger(global_idcode)
+{
+    if (!cb_valid()) return;
+    global_idcode++;    // increment only if valid calllback
+    CBPayload payload = {m_local_idcode, 0};
+    cb(HalCallbackType::OPEN_START, &payload);
+}
+
+OpenCallLogger::~OpenCallLogger() {
+    if (!cb_valid()) return;
+    CBPayload payload = {m_local_idcode, 0};
+    cb(HalCallbackType::OPEN_END, &payload);
+}
+
+CloseCallLogger::CloseCallLogger(xclDeviceHandle handle) 
+    : CallLogger(global_idcode)
+{
+    if (!cb_valid()) return;
+    global_idcode++;    // increment only if valid calllback
+    CBPayload payload = {m_local_idcode, handle};
+    cb(HalCallbackType::CLOSE_START, &payload);
+}
+
+CloseCallLogger::~CloseCallLogger() {
+    if (!cb_valid()) return;
+    CBPayload payload = {m_local_idcode, 0};
+    cb(HalCallbackType::CLOSE_END, &payload);
+}
+
+OpenContextCallLogger::OpenContextCallLogger(/*unsigned deviceIndex*/)
+    : CallLogger(global_idcode)
+{
+    if (!cb_valid()) return;
+    global_idcode++;    // increment only if valid calllback
+    CBPayload payload = {m_local_idcode, 0};
+    cb(HalCallbackType::OPEN_CONTEXT_START, &payload);
+}
+
+OpenContextCallLogger::~OpenContextCallLogger() {
+    if (!cb_valid()) return;
+    CBPayload payload = {m_local_idcode, 0};
+    cb(HalCallbackType::OPEN_CONTEXT_END, &payload);
+}
+
+CloseContextCallLogger::CloseContextCallLogger(xclDeviceHandle handle) 
+    : CallLogger(global_idcode)
+{
+    if (!cb_valid()) return;
+    global_idcode++;    // increment only if valid calllback
+    CBPayload payload = {m_local_idcode, handle};
+    cb(HalCallbackType::CLOSE_CONTEXT_START, &payload);
+}
+
+CloseContextCallLogger::~CloseContextCallLogger() {
+    if (!cb_valid()) return;
+    CBPayload payload = {m_local_idcode, 0};
+    cb(HalCallbackType::CLOSE_CONTEXT_END, &payload);
+}
+
+LoadXclbinCallLogger::LoadXclbinCallLogger(xclDeviceHandle handle, const void* buffer) 
+                    : CallLogger(global_idcode), 
+                      h(handle), mBuffer(buffer)
+{
+  if (!cb_valid()) return ;
+  ++global_idcode ; // increment only if valid callback
+  XclbinCBPayload payload = { {m_local_idcode, handle}, buffer } ;
+  cb(HalCallbackType::LOAD_XCLBIN_START, &payload) ;
+}
+
+LoadXclbinCallLogger::~LoadXclbinCallLogger()
+{
+  if (!cb_valid()) return ;
+  XclbinCBPayload payload = { {m_local_idcode, h}, mBuffer } ;
+  cb(HalCallbackType::LOAD_XCLBIN_END, &payload) ;
+}
 
 void load_xdp_plugin_library(HalPluginConfig* )
 {
@@ -222,7 +378,7 @@ void load_xdp_plugin_library(HalPluginConfig* )
         return;
     }
 
-    if(!xrt_core::config::get_hal_profile()) {
+    if(!xrt_core::config::get_xrt_profile()) {
       loaded = true ;
       return;
     }
@@ -230,7 +386,7 @@ void load_xdp_plugin_library(HalPluginConfig* )
     if(xrt_core::config::get_profile()) {
       // "profile=true" is also set. This enables OpenCL based flow for profiling. 
       // Currently, mix of OpenCL and HAL based profiling is not supported.
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", std::string("Both profile=true and hal_profile=true set in xrt.ini config. Currently, these flows are not supported to work together."));
+      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", std::string("Both profile=true and xrt_profile=true set in xrt.ini config. Currently, these flows are not supported to work together."));
       return;
     }
 

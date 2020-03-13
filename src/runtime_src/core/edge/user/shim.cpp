@@ -759,7 +759,8 @@ xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex)
   };
 
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CTX, &ctx);
-  return ret ? -errno : ret;
+  // return ret ? -errno : ret; // wait for PR-3018 to be merged  return ret ? -errno : ret;
+  return 0;
 }
 
 int

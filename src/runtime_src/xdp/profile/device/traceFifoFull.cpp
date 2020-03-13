@@ -338,7 +338,6 @@ void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t
       if (idx < 0)
         continue;
       traceVector.mArray[idx] = results;   // save result
-      memset(&results, 0, sizeof(xclTraceResults));
 
       if(out_stream) {
         uint64_t previousTimestamp = 0;
@@ -357,6 +356,7 @@ void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t
                       << std::endl;
         previousTimestamp = results.Timestamp;
       }
+      memset(&results, 0, sizeof(xclTraceResults));
     }
     mclockTrainingdone = true;
 }

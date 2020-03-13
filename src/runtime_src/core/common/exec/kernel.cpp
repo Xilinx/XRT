@@ -28,6 +28,7 @@
 #include "core/common/xclbin_parser.h"
 #include "core/common/bo_cache.h"
 #include "core/common/message.h"
+#include "core/common/debug.h"
 #include "core/include/xclbin.h"
 #include "core/include/ert.h"
 #include <memory>
@@ -443,8 +444,15 @@ struct run_type
       set_global_arg(arg.index, val);
       break;
     }
+    case kernel_type::argument::argtype::stream : {
+      (void) va_arg(args, void*); // swallow unsettable argument
+      break;
+    }
     default:
-      throw std::runtime_error("Unexpected error");
+      throw std::runtime_error("Unexpected error argument type ("
+               + std::to_string(std::underlying_type<kernel_type::argument::argtype>::type(arg.type))
+               + ") for kernel '" + kernel->name + "' at index ("
+               + std::to_string(index) + ")");
     }
   }
 

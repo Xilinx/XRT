@@ -31,7 +31,7 @@ struct kernel_argument
 {
   static constexpr size_t no_index { std::numeric_limits<size_t>::max() };
   // numbering must match that of meta data addressQualifier
-  enum class argtype { scalar = 0, global = 1 };
+  enum class argtype { scalar = 0, global = 1, stream = 4 };
 
   std::string name;
   size_t index;

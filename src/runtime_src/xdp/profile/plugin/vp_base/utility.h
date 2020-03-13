@@ -18,13 +18,15 @@
 #define UTILITY_DOT_H
 
 #include <string>
+#include "xdp/config.h"
 
 // Functions that can be used in the database, the plugins, and the writers
 
 namespace xdp {
 
-  std::string getCurrentDateTime() ;
-  const char* getToolVersion() ;
+  XDP_EXPORT std::string getCurrentDateTime() ;
+  XDP_EXPORT const char* getToolVersion() ;
+  XDP_EXPORT const char* getXRTVersion() ;
 
 } // end namespace xdp
 
