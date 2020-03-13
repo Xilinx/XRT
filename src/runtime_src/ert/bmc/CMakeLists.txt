@@ -1,23 +1,33 @@
-set (MSP432 "BMC-MSP432")
-set (URL_MSP432 "https://raw.gitenterprise.xilinx.com/XBB/BMC-firmware-binaries/master/BMC-card-firmware")
+# =========== Helper Function ====================
+#    Function: GetBMCFWImage
+#
+# Description: Retrieves the given MSP432 FW image and renames it for the given 
+#              Alveo generation.
+#               
+# Example File Names: 
+#               AlveoGen1-BMC-MSP432-4.3.9-35c8bf323af4a5e5a4165d0f2fc29036.txt
+#               AlveoGen2-BMC-MSP432-3.6.4-fb8c68be8a6eb1fcf0632966765fcdd3.txt
+#               AlveoGen3-BMC-MSP432-4.3.10-0fc12509b3106f6a63bffeb4832576b7.txt
+#               AlveoGen4-BMC-MSP432-5.0.27-3fa9028964a7dc81714528ab62e6d40b.txt
+function(GetBMCFWImage ALVEOGEN URL_MSP432_GEN)
+  FILE(DOWNLOAD ${URL_MSP432_GEN}/BMC-MSP432.txt.filename ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN}-BMC-MSP432.txt.filename STATUS mystatus)
+  FILE(STRINGS ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN}-BMC-MSP432.txt.filename ALVEOGEN_FILENAME)
+  FILE(DOWNLOAD ${URL_MSP432_GEN}/BMC-MSP432.txt ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN}-${ALVEOGEN_FILENAME} STATUS mystatus)
 
-add_custom_command(
-  OUTPUT ${MSP432}.txt {MSP432}.txt.filename 
+  # Add this FW image to the list of FW images to be released
+  list(APPEND ALVEO_FW_FILES ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN}-${ALVEOGEN_FILENAME}) 
 
-  COMMENT "Downloading MSP432..."
-  COMMAND curl ${URL_MSP432}/${MSP432}.txt --output ${MSP432}.txt
-  COMMAND curl ${URL_MSP432}/${MSP432}.txt.filename --output ${MSP432}.txt.filename
-  COMMENT "Completed downloading MSP432"
+  # Rescope the list to the parent domain
+  set (ALVEO_FW_FILES  ${ALVEO_FW_FILES} PARENT_SCOPE)
+endfunction()
 
-  COMMENT "Rename base file name"
-  COMMAND cat ${MSP432}.txt.filename | xargs -t mv ${MSP432}.txt
-)
+# ============= Alveo FW Images ==================
+GetBMCFWImage( "AlveoGen1" "https://raw.gitenterprise.xilinx.com/XBB/BMC-firmware-binaries/master/BMC-card-firmware" )
+GetBMCFWImage( "AlveoGen2" "https://raw.gitenterprise.xilinx.com/XBB/BMC-firmware-binaries/master-U280/BMC-card-firmware" )
+GetBMCFWImage( "AlveoGen3" "https://raw.gitenterprise.xilinx.com/XBB/BMC-firmware-binaries/U280-prod/BMC-card-firmware" )
+GetBMCFWImage( "AlveoGen4" "https://raw.gitenterprise.xilinx.com/XBB/BMC-firmware-binaries/U50/BMC-card-firmware")
+GetBMCFWImage( "AlveoGen5" "https://raw.gitenterprise.xilinx.com/XBB/BMC-firmware-binaries/V350/BMC-card-firmware")
 
-add_custom_target(bmc
-  DEPENDS ${MSP432}.txt
-)
+# ================= INSTALL FIRMWARE IMAGES =========================
+install (FILES ${ALVEO_FW_FILES} DESTINATION ${ERT_INSTALL_PREFIX})
 
-install (
-   CODE "file( GLOB _FlashImages \"${CMAKE_CURRENT_BINARY_DIR}/*.txt\" )"
-   CODE "file( INSTALL \${_FlashImages} DESTINATION \"${ERT_INSTALL_PREFIX}\" )"
-)
