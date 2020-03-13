@@ -331,7 +331,7 @@ std::vector<DSAInfo> Flasher::getInstalledDSA()
     {
         // std::cout << "DSA " << dsa.name << ": " << dsa.vendor << " " << dsa.board << " " << dsa.vendor_id << " " << dsa.device_id << "TS: " << dsa.timestamp << std::endl;
         if (!dsa.hasFlashImage || dsa.timestamp == NULL_TIMESTAMP)
-            continue;
+	       continue;
 
         if (!onBoard.vendor.empty() && !onBoard.board.empty() &&
             (onBoard.vendor == dsa.vendor) &&
@@ -339,14 +339,11 @@ std::vector<DSAInfo> Flasher::getInstalledDSA()
         {
             DSAs.push_back(dsa);
         }
-        else if (!dsa.name.empty() && (vendor_id == dsa.vendor_id) && (device_id == dsa.device_id))
+	else if (!dsa.name.empty() && (vendor_id == dsa.vendor_id) && (device_id == dsa.device_id))
         {
             DSAs.push_back(dsa);
-        } 
-        else if (onBoard.name.empty())
-        {
+        } else if (onBoard.name.empty())
             DSAs.push_back(dsa);
-        }
 
     }
 
