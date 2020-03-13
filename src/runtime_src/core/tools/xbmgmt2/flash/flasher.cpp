@@ -40,36 +40,38 @@ Flasher::E_FlasherType Flasher::getFlashType(std::string typeStr)
 {
     std::string err;
     E_FlasherType type = E_FlasherType::UNKNOWN;
-    if (typeStr.empty())
-      typeStr = xrt_core::device_query<xrt_core::query::f_flash_type>(m_device);
-    if (typeStr.empty())
-      typeStr = xrt_core::device_query<xrt_core::query::flash_type>(m_device);
 
-    if (typeStr.empty())
-    {
-        getProgrammingTypeFromDeviceName(mFRHeader.VBNVName, type);
-    }
-    else if (typeStr.compare("spi") == 0)
-    {
+    // check various locations for flash_type 
+    try {
+        if (typeStr.empty())
+            typeStr = xrt_core::device_query<xrt_core::query::f_flash_type>(m_device);
+    } catch (...) {}
+    try {
+        if (typeStr.empty())
+          typeStr = xrt_core::device_query<xrt_core::query::flash_type>(m_device);
+    } catch (...) {}
+    try {
+        if (typeStr.empty())
+            getProgrammingTypeFromDeviceName(mFRHeader.VBNVName, type);
+    } catch (...) {}
+    
+    //map flash_tyoe str to E_FlasherType
+    if (typeStr.compare("spi") == 0) {
         type = E_FlasherType::SPI;
     }
-    else if (typeStr.compare("bpi") == 0)
-    {
+    else if (typeStr.compare("bpi") == 0) {
         type = E_FlasherType::BPI;
     }
-    else if (typeStr.find("qspi_ps") == 0)
-    {
+    else if (typeStr.find("qspi_ps") == 0) {
         // Use find() for this type of flash.
         // Since it have variations
         type = E_FlasherType::QSPIPS;
     }
-    else if (typeStr.compare("ospi_versal") == 0)
-    {
+    else if (typeStr.compare("ospi_versal") == 0) {
         type = E_FlasherType::OSPIVERSAL;
     }
-    else
-    {
-        std::cout << "Unknown flash type: " << typeStr << std::endl;
+    else {
+        throw xrt_core::error(boost::str(boost::format("Unknown flash type: %s") % typeStr));
     }
 
     return type;
