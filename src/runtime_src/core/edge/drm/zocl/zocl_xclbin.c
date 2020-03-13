@@ -880,9 +880,9 @@ zocl_xclbin_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
 			ret = test_and_clear_bit(cu_idx, client->excus);
 			if (!ret)
 				/* Maybe it is shared CU */
-				ret = test_and_clear_bit(cu_idx, client->shcus);
-
-			if (!ret) {
+				ret = test_and_clear_bit(cu_idx, client->shcus) ?
+                                  0 : -EINVAL;
+			if (ret) {
 				DRM_ERROR("can not remove unreserved cu");
 				goto out;
 			}
