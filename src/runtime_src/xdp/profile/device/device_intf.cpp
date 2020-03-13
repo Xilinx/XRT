@@ -469,7 +469,7 @@ DeviceIntf::~DeviceIntf()
     std::sort(amList.begin(), amList.end(), sorter);
     std::sort(asmList.begin(), asmList.end(), sorter);
 
-
+#if 0
     for(auto mon : aimList) {
         mon->showProperties();
     }
@@ -485,7 +485,7 @@ DeviceIntf::~DeviceIntf()
     if(fifoRead) fifoRead->showProperties();
     if(traceDMA) traceDMA->showProperties();
     if(traceFunnel) traceFunnel->showProperties();
-
+#endif
 
     mIsDebugIPlayoutRead = true;
   }
