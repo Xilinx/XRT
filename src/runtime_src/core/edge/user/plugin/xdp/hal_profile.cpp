@@ -173,7 +173,7 @@ ReadCallLogger::ReadCallLogger(xclDeviceHandle handle, xclAddressSpace space, ui
 {
     if (!cb_valid()) return;
     global_idcode++;    // increment only if valid calllback
-    ReadWriteCBPayload payload = {{m_local_idcode, handle}, space, offset, size};
+    ReadWriteCBPayload payload = {{m_local_idcode, handle}, size};
     cb(HalCallbackType::READ_START, &payload);
 }
 
@@ -188,7 +188,7 @@ WriteCallLogger::WriteCallLogger(xclDeviceHandle handle, xclAddressSpace space, 
 {
     if (!cb_valid()) return;
     global_idcode++;    // increment only if valid calllback
-    ReadWriteCBPayload payload = { {m_local_idcode, handle}, space, offset, size};
+    ReadWriteCBPayload payload = { {m_local_idcode, handle}, size};
     cb(HalCallbackType::WRITE_START, (void*)(&payload));
 }
 
