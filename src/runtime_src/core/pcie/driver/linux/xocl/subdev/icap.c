@@ -2316,11 +2316,19 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 			goto out;
 		}
 	}
-
-
-	err = icap_download_bitstream(icap, xclbin);
-	if (err)
-		goto out;
+    /* xclbin generated for the flat shell contains MCS files which includes the accelerator
+     * these MCS files should have been already flashed into the device using xbmgmt tool
+     * we dont need to reprogram the xclbin for the FLAT shells.
+     * TODO Currently , There is no way to check whether the programmed xclbin matches with this xclbin or not
+     */
+    if(xclbin->m_header.m_mode != XCLBIN_FLAT) {
+        err = icap_download_bitstream(icap, xclbin);
+        if (err)
+            goto out;
+    } else {
+        uuid_copy(&icap->icap_bitstream_uuid, &xclbin->m_header.uuid);
+        ICAP_INFO(icap, "xclbin is generated for flat shell, dont need to program the bitstream ");
+    }
 
 	/* calibrate hbm and ddr should be performed when resources are ready */
 
