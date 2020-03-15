@@ -14,13 +14,13 @@
  * under the License.
  */
 
-#ifndef PCIE_HWEMU_DEVICE_LINUX_H
-#define PCIE_HWEMU_DEVICE_LINUX_H
+#ifndef PCIE_SWEMU_DEVICE_LINUX_H
+#define PCIE_SWEMU_DEVICE_LINUX_H
 
 #include "core/common/ishim.h"
 #include "core/pcie/common/device_pcie.h"
 
-namespace xrt_core { namespace hwemu {
+namespace xrt_core { namespace swemu {
 
 // concrete class derives from device_edge, but mixes in
 // shim layer functions for access through base class
@@ -38,6 +38,6 @@ private:
   lookup_query(query::key_type query_key) const;
 };
 
-}} // hwemu, xrt_core
+}} // swemu, xrt_core
 
 #endif

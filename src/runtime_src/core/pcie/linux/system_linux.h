@@ -44,6 +44,12 @@ public:
 
   std::shared_ptr<device>
   get_mgmtpf_device(device::id_type id) const;
+
+  monitor_access_type
+  get_monitor_access_type() const
+  {
+    return monitor_access_type::mmap;
+  }
 };
 
 namespace pcie_linux {
