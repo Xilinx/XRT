@@ -1830,9 +1830,11 @@ static int readFromFlash(std::FILE *flashDev, int slave,
     if (ret)
         return ret;
 
-    std::fread(buf, 1, len, flashDev);
+    size_t read = std::fread(buf, 1, len, flashDev);
     if (ferror(flashDev))
         ret = -errno;
+    if (read != len)
+        ret = -EIO;
 
     return ret;
 }
