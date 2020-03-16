@@ -137,7 +137,7 @@ namespace xdp {
 
     // Log Counter Data
     logDeviceCounters(true, true, true);  // reads and logs device counters for all monitors in all flows
-#ifndef _WIN32
+
     // With new XDP flow, HW Emu should be similar to Device flow. So, multiple calls to trace/counters should not be needed.
     // But needed for older flow
     // Log Trace Data
@@ -155,7 +155,7 @@ namespace xdp {
     // NOTE: this needs to be done here before the device clears its list of CUs
     // See xocl::device::unload_program as called from xocl::program::~program
     Plugin->getGuidanceMetadata( getProfileManager() );
-#endif
+
     // Record that this was called indirectly by host code
     mEndDeviceProfilingCalled = true;
   }
@@ -640,10 +640,6 @@ namespace xdp {
 
   int OCLProfiler::logTrace(xclPerfMonType type, bool forceRead, bool logAllMonitors)
   {
-#ifdef _WIN32
-    return -1;
-#endif
-
     // Dedicated thread takes care of all the logging
     if (mTraceThreadEn)
       return -1;
