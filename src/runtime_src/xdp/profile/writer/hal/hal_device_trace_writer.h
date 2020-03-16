@@ -36,9 +36,6 @@ namespace xdp {
 
     std::map<int32_t, uint32_t> cuBucketIdMap;
 
-    // The interface to the specific device we are associated with
-    DeviceIntf* dev ;
-
     uint64_t deviceId;
 
   protected:
