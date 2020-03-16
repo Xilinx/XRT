@@ -206,7 +206,7 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
     }
     // DSABIN file path.
     else if ((suffix.compare(XSABIN_FILE_SUFFIX) == 0) ||
-             (suffix.compare(DSABIN_FILE_SUFFIX) == 0))
+            (suffix.compare(DSABIN_FILE_SUFFIX) == 0))
     {
         std::ifstream in(file);
         if (!in.is_open())
@@ -252,6 +252,7 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
             [](const char &a){ return a == ':' || a == '.'; }, '_');
         getVendorBoardFromDSAName(name, vendor, board);
         parseDSAFilename(filename, vendor_id, device_id, subsystem_id, timestamp);
+        
         // Assume there is only 1 interface UUID is provided for BLP,
         // Show it as ID for flashing
         const axlf_section_header* dtbSection = xclbin::get_axlf_section(ap, PARTITION_METADATA);
@@ -475,7 +476,8 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
 
     std::string fn(file);
     if ((fn.find("." XSABIN_FILE_SUFFIX) != std::string::npos) ||
-        (fn.find("." DSABIN_FILE_SUFFIX) != std::string::npos))
+        (fn.find("." DSABIN_FILE_SUFFIX) != std::string::npos) ||
+        (fn.find("." XCLBIN_FILE_SUFFIX) != std::string::npos))
     {
         // Read axlf from dsabin file to find out number of sections in total.
         axlf a;

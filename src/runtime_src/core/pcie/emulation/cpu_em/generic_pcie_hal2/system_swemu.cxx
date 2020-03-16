@@ -14,8 +14,8 @@
  * under the License.
  */
 
-#include "system_hwemu.h"
-#include "device_hwemu.h"
+#include "system_swemu.h"
+#include "device_swemu.h"
 
 #include <memory>
 
@@ -25,10 +25,10 @@ namespace {
 // during static global initialization.  If statically
 // linking with libxrt_core, then explicit initialiation
 // is required
-static xrt_core::hwemu::system*
+static xrt_core::swemu::system*
 singleton_instance()
 {
-  static xrt_core::hwemu::system singleton;
+  static xrt_core::swemu::system singleton;
   return &singleton;
 }
 
@@ -40,7 +40,7 @@ struct X
 
 }
 
-namespace xrt_core { namespace hwemu {
+namespace xrt_core { namespace swemu {
 
 std::pair<device::id_type, device::id_type>
 system::
@@ -54,7 +54,7 @@ system::
 get_userpf_device(device::id_type id) const
 {
   // deliberately not using std::make_shared (used with weak_ptr)
-  return std::shared_ptr<xrt_core::hwemu::device>(new xrt_core::hwemu::device(id,true));
+  return std::shared_ptr<xrt_core::swemu::device>(new xrt_core::swemu::device(id,true));
 }
 
 std::shared_ptr<xrt_core::device>
@@ -62,7 +62,7 @@ system::
 get_userpf_device(device::handle_type handle, device::id_type id) const
 {
   // deliberately not using std::make_shared (used with weak_ptr)
-  return std::shared_ptr<xrt_core::hwemu::device>(new xrt_core::hwemu::device(handle, id));
+  return std::shared_ptr<xrt_core::swemu::device>(new xrt_core::swemu::device(handle, id));
 }
 
 std::shared_ptr<xrt_core::device>
@@ -70,7 +70,7 @@ system::
 get_mgmtpf_device(device::id_type id) const
 {
   // deliberately not using std::make_shared (used with weak_ptr)
-  return std::shared_ptr<xrt_core::hwemu::device>(new xrt_core::hwemu::device(id,false));
+  return std::shared_ptr<xrt_core::swemu::device>(new xrt_core::swemu::device(id,false));
 }
 
 std::shared_ptr<xrt_core::device>
@@ -80,4 +80,4 @@ get_userpf_device(device::handle_type device_handle, device::id_type id)
   return xrt_core::get_userpf_device(device_handle, id);
 }
 
-}} // hwemu, xrt_core
+}} // swemu, xrt_core

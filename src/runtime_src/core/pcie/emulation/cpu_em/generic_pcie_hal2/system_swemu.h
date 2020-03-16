@@ -14,12 +14,12 @@
  * under the License.
  */
 
-#ifndef PCIE_SYSTEM_HWEMU_LINUX_H
-#define PCIE_SYSTEM_HWEMU_LINUX_H
+#ifndef PCIE_SYSTEM_SWEMU_LINUX_H
+#define PCIE_SYSTEM_SWEMU_LINUX_H
 
 #include "pcie/common/system_pcie.h"
 
-namespace xrt_core { namespace hwemu {
+namespace xrt_core { namespace swemu {
 
 class system : public system_pcie
 {
@@ -45,6 +45,6 @@ public:
 std::shared_ptr<device>
 get_userpf_device(device::handle_type device_handle, device::id_type id);
 
-}} // hwemu, xrtcore
+}} // swemu, xrtcore
 
 #endif

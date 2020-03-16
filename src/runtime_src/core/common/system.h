@@ -77,6 +77,22 @@ public:
   virtual std::shared_ptr<device>
   get_mgmtpf_device(device::id_type id) const = 0;
 
+  /**
+   * get_monitor_access_type() - 
+   * 
+   * Each system have different ways of accessing profiling
+   * monitors (IPs in HW).  This function is used to determine
+   * the access type.   It may be better if accessing the monitor
+   * was part of the device class itself and thereby
+   * transparent to end user, but for now the type is provided
+   * here so that clients trigger off of the type.
+   */
+  enum class monitor_access_type { bar, mmap, ioctl };
+  virtual monitor_access_type
+  get_monitor_access_type() const
+  {
+    return monitor_access_type::bar;
+  }
 }; // system
 
 /**
@@ -153,6 +169,20 @@ get_userpf_device(device::handle_type device_handle, device::id_type id);
 XRT_CORE_COMMON_EXPORT
 std::shared_ptr<device>
 get_mgmtpf_device(device::id_type id);
+
+/**
+ * get_monitor_access_type() - How should IPs be accessed from userspace
+ * 
+ * Each system have different ways of accessing profiling
+ * monitors (IPs in HW).  This function is used to determine
+ * the access type.   It may be better if accessing the monitor
+ * was part of the device class itself and thereby
+ * transparent to end user, but for now the type is provided
+ * here so that clients trigger off of the type.
+ */
+XRT_CORE_COMMON_EXPORT
+system::monitor_access_type
+get_monitor_access_type();
 
 } //xrt_core
 

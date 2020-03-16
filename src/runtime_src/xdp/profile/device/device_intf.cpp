@@ -469,7 +469,7 @@ DeviceIntf::~DeviceIntf()
     std::sort(amList.begin(), amList.end(), sorter);
     std::sort(asmList.begin(), asmList.end(), sorter);
 
-
+#if 0
     for(auto mon : aimList) {
         mon->showProperties();
     }
@@ -485,7 +485,7 @@ DeviceIntf::~DeviceIntf()
     if(fifoRead) fifoRead->showProperties();
     if(traceDMA) traceDMA->showProperties();
     if(traceFunnel) traceFunnel->showProperties();
-
+#endif
 
     mIsDebugIPlayoutRead = true;
   }
@@ -547,27 +547,34 @@ DeviceIntf::~DeviceIntf()
 
   void DeviceIntf::initTS2MM(uint64_t bufSz, uint64_t bufAddr)
   {
-    traceDMA->init(bufSz, bufAddr);
+    if (traceDMA)
+      traceDMA->init(bufSz, bufAddr);
   }
 
   uint64_t DeviceIntf::getWordCountTs2mm()
   {
-    return traceDMA->getWordCount();
+    if (traceDMA)
+      return traceDMA->getWordCount();
+    return 0;
   }
 
   uint8_t DeviceIntf::getTS2MmMemIndex()
   {
-    return traceDMA->getMemIndex();
+    if (traceDMA)
+      return traceDMA->getMemIndex();
+    return 0;
   }
 
   void DeviceIntf::resetTS2MM()
   {
-    traceDMA->reset();
+    if (traceDMA)
+      traceDMA->reset();
   }
 
   void DeviceIntf::parseTraceData(void* traceData, uint64_t bytes, xclTraceResultsVector& traceVector)
   {
-    traceDMA->parseTraceBuf(traceData, bytes, traceVector);
+    if (traceDMA)
+      traceDMA->parseTraceBuf(traceData, bytes, traceVector);
   }
 
 } // namespace xdp

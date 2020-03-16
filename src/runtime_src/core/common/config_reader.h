@@ -167,16 +167,16 @@ get_timeline_trace()
 }
 
 inline bool
-get_continuous_read_trace()
+get_continuous_trace()
 {
-  static bool value = get_profile() && detail::get_bool_value("Debug.continuous_read_trace",false);
+  static bool value = get_profile() && detail::get_bool_value("Debug.continuous_trace",false);
   return value;
 }
 
 inline unsigned int
-get_continuous_read_trace_interval_ms()
+get_continuous_trace_interval_ms()
 {
-  static unsigned int value = detail::get_uint_value("Debug.continuous_read_trace_interval_ms",10);
+  static unsigned int value = detail::get_uint_value("Debug.continuous_trace_interval_ms",10);
   return value;
 }
 

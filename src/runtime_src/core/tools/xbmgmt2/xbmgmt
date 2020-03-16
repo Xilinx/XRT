@@ -33,7 +33,7 @@ while [ $# -gt 0 ]; do
 done
 
 # -- Find and call the loader
-XRT_LOADER="`dirname \"$0\"`/loader"
+XRT_LOADER="`dirname \"$0\"`/unwrapped/loader"
 
 if [ ! -f "$XRT_LOADER" ]; then
   echo "ERROR: Could not find 64-bit loader executable."

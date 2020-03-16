@@ -1656,7 +1656,7 @@ static void aio_request_monitor(struct work_struct *work)
 				reschedule = 1;
 		}
 	}
-	spin_lock(&engine->req_list_lock);
+	spin_unlock(&engine->req_list_lock);
 	if (timedout) {
 		pr_err("AIO reqs timedout");
 		engine_status_dump(engine);
@@ -3160,14 +3160,14 @@ ssize_t xdma_xfer_submit(void *dev_hndl, int channel, bool write, u64 ep_addr,
 		nents = pci_map_sg(xdev->pdev, sg, sgt->orig_nents, dir);
 		if (!nents) {
 			pr_info("map sgl failed, sgt 0x%p.\n", sgt);
-			goto unmap_sgl;
+			return -EIO;
 		}
 		sgt->nents = nents;
 	} else {
 		if (!sgt->nents) {
 			pr_err("sg table has invalid number of entries 0x%p.\n",
 			       sgt);
-			goto unmap_sgl;
+			return -EIO;
 		}
 	}
 
@@ -3318,7 +3318,8 @@ int xdma_performance_submit(struct xdma_dev *xdev, struct xdma_engine *engine)
 	if (!buffer_virt) {
 		pr_err("dev %s, %s DMA allocation OOM.\n",
 		       dev_name(&xdev->pdev->dev), engine->name);
-		return rv;
+		rv = -ENOMEM;
+		goto err_dma_desc;
 	}
 
 	engine->perf_buffer = buffer_virt;

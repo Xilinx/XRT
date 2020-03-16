@@ -28,7 +28,7 @@ set XRTWRAP_PROG_ARGS=
   :argsParsed
 
 REM -- Find and call the loader
-set XRT_LOADER=%~dp0loader.bat
+set XRT_LOADER=%~dp0unwrapped/loader.bat
 
 if not exist %XRT_LOADER%  (
   echo ERROR: Could not find 64-bit loader executable.
