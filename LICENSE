@@ -14,8 +14,8 @@ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 License for the specific language governing permissions and limitations
 under the License.
 
-All Linux kernel driver code included in "xocl" authored by Xilinx is
-released under the terms of GNU General Public License version 2:
+All Linux kernel driver code included in "xocl" or "xclmgmt" authored by
+Xilinx is released under the terms of GNU General Public License version 2:
 
 Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
 
