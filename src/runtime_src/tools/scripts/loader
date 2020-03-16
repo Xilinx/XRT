@@ -30,7 +30,7 @@ if [ -z "${XRT_EXEC}" ]; then
   exit 1
 fi
 
-XRT_PROG_UNWRAPPED="`dirname \"$0\"`/unwrapped/${XRT_EXEC}"
+XRT_PROG_UNWRAPPED="`dirname \"$0\"`/${XRT_EXEC}"
 if [ ! -f "${XRT_PROG_UNWRAPPED}" ]; then
   echo "ERROR: Could not find -exec program: ${XRT_EXEC}"
   echo "ERROR: ${XRT_PROG_UNWRAPPED} does not exist"
@@ -38,7 +38,7 @@ if [ ! -f "${XRT_PROG_UNWRAPPED}" ]; then
 fi
 
 # -- Find the setup script and configure environment
-XRT_SETUP_SCRIPT="`dirname \"$0\"`/../setup.sh"
+XRT_SETUP_SCRIPT="`dirname \"$0\"`/../../setup.sh"
 
 if [ ! -f "$XRT_SETUP_SCRIPT" ]; then
   echo "ERROR: Could not find XRT setup script."
