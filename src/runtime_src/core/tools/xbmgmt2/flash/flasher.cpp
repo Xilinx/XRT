@@ -36,26 +36,11 @@
 #define FLASH_BASE_ADDRESS BPI_FLASH_OFFSET
 #define MAGIC_XLNX_STRING "xlnx" // from xclfeatures.h FeatureRomHeader
 
-Flasher::E_FlasherType Flasher::getFlashType(std::string typeStr)
-{
-    std::string err;
-    E_FlasherType type = E_FlasherType::UNKNOWN;
-
-    // check various locations for flash_type 
-    try {
-        if (typeStr.empty())
-            typeStr = xrt_core::device_query<xrt_core::query::f_flash_type>(m_device);
-    } catch (...) {}
-    try {
-        if (typeStr.empty())
-          typeStr = xrt_core::device_query<xrt_core::query::flash_type>(m_device);
-    } catch (...) {}
-    try {
-        if (typeStr.empty())
-            getProgrammingTypeFromDeviceName(mFRHeader.VBNVName, type);
-    } catch (...) {}
-    
-    //map flash_tyoe str to E_FlasherType
+/* 
+ * map flash_tyoe str to E_FlasherType
+ */
+void Flasher::typeStr_to_E_FlasherType(const std::string& typeStr, E_FlasherType &type)
+{    
     if (typeStr.compare("spi") == 0) {
         type = E_FlasherType::SPI;
     }
@@ -73,8 +58,32 @@ Flasher::E_FlasherType Flasher::getFlashType(std::string typeStr)
     else {
         throw xrt_core::error(boost::str(boost::format("Unknown flash type: %s") % typeStr));
     }
+}
 
-    return type;
+Flasher::E_FlasherType Flasher::getFlashType(std::string typeStr)
+{
+    std::string err;
+    E_FlasherType type = E_FlasherType::UNKNOWN;
+
+    // check various locations for flash_type
+    // the node could either be present in flash subdev or exist independently
+    // if the node is not found, then look in feature rom header
+    try {
+        if (typeStr.empty())
+            typeStr = xrt_core::device_query<xrt_core::query::f_flash_type>(m_device);
+    } catch (...) {}
+    try {
+        if (typeStr.empty())
+          typeStr = xrt_core::device_query<xrt_core::query::flash_type>(m_device);
+    } catch (...) {}
+    try {
+        if (typeStr.empty())
+            getProgrammingTypeFromDeviceName(mFRHeader.VBNVName, type);
+    } catch (...) {}
+    
+    typeStr_to_E_FlasherType(typeStr, type);
+
+   return type;
 }
 
 /*
