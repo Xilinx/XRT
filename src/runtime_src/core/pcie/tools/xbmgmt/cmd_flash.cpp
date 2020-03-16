@@ -638,22 +638,22 @@ static int update(int argc, char *argv[])
             break;
 
         switch (opt) {
-        case '0':
-            index = bdf2index(optarg);
-            if (index == UINT_MAX)
-                return -ENOENT;
-            break;
-        case '1':
-            shell = std::string(optarg);
-            break;
-        case '2':
-	    id = std::string(optarg);
-            break;
-        case '3':
-            force = true;
-            break;
-        default:
-            return -EINVAL;
+            case '0':
+                index = bdf2index(optarg);
+                if (index == UINT_MAX)
+                    return -ENOENT;
+                break;
+            case '1':
+                shell = std::string(optarg);
+                break;
+            case '2':
+                id = std::string(optarg);
+                break;
+            case '3':
+                force = true;
+                break;
+            default:
+                return -EINVAL;
         }
     }
 
@@ -700,7 +700,7 @@ static int shell(int argc, char *argv[])
     if (file.empty() || index == UINT_MAX)
         return -EINVAL;
 
-    int ret = updateShell(index, type, file.c_str(), nullptr);
+    int ret = updateShell(index, type, file.c_str(), file.c_str());
     if (ret)
         return ret;
 

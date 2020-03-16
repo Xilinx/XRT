@@ -44,7 +44,7 @@ namespace xdp {
 
   const char* getToolVersion()
   {
-    return "2019.2" ;
+    return "2020.1" ;
   }
 
   const char* getXRTVersion()

@@ -44,6 +44,7 @@ public:
   // device index type
   using id_type = unsigned int;
   using handle_type = xclDeviceHandle;
+
 public:
 
   XRT_CORE_COMMON_EXPORT
@@ -66,26 +67,49 @@ public:
 
   /**
    * get_device_handle() - Get underlying shim device handle
-   *
-   * Throws if called on non userof devices
    */
   virtual handle_type
   get_device_handle() const = 0;
 
+  /**
+   * get_mgmt_handle() - Get underlying mgmt device handle if any
+   *
+   * Return: Handle for mgmt device, or XRT_NULL_HANDLE if undefined
+   *
+   * Currently windows is only OS that differentiates mgmt handle from
+   * device handle.  As such this function really doesn't belong here
+   * in base class, but it avoids dynamic_cast from base device to
+   * concrete device for query calls.
+   */
   virtual handle_type
   get_mgmt_handle() const
   {
     return XRT_NULL_HANDLE;
   }
 
+  /**
+   * get_user_handle() - Get underlying user device handle if any
+   *
+   * Return: Handle for user device.
+   *
+   * User the device is default the same as device handle.
+   */
   virtual handle_type
   get_user_handle() const
   {
-    return XRT_NULL_HANDLE;
+    return get_device_handle();
   }
 
   /**
    * is_userpf_device() - Is this device a userpf
+   *
+   * Return: true if this device is associate with userpf, false otherwise
+   *
+   * This currently makes sense only on Linux.  It used by
+   * device_linux to direct sysfs calls to the proper pf.  As such
+   * this function really doesn't belong here in base class, but it
+   * avoids dynamic_cast from base device to concrete device for
+   * query calls.
    */
   virtual bool
   is_userpf() const

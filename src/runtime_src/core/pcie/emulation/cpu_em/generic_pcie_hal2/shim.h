@@ -27,6 +27,7 @@
 #include "xcl_api_macros.h"
 #include "xcl_macros.h"
 #include "xclbin.h"
+#include "core/common/device.h"
 #include "core/common/scheduler.h"
 #include "core/common/message.h"
 #include "core/common/xrt_profiling.h"
@@ -165,6 +166,7 @@ namespace xclcpuemhal2 {
       struct exec_core* getExecCore() { return mCore; }
       SWScheduler* getScheduler() { return mSWSch; }
     private:
+      std::shared_ptr<xrt_core::device> mCoreDevice;
       std::mutex mMemManagerMutex;
 
       // Performance monitoring helper functions

@@ -377,6 +377,9 @@ namespace xdp {
     mXrtIniMap["stall_trace"] = xrt::config::get_stall_trace();
     mXrtIniMap["trace_buffer_size"] = xrt::config::get_trace_buffer_size();
     mXrtIniMap["verbosity"] = std::to_string(xrt::config::get_verbosity());
+    mXrtIniMap["continuous_trace"] = std::to_string(xrt::config::get_continuous_trace());
+    mXrtIniMap["continuous_trace_interval_ms"] = std::to_string(xrt::config::get_continuous_trace_interval_ms());
+    mXrtIniMap["lop_trace"] = std::to_string(xrt::config::get_lop_trace());
   }
 
   // ****************************************

@@ -125,12 +125,15 @@ void DeviceTraceOffload::read_trace_fifo()
 
 bool DeviceTraceOffload::read_trace_init()
 {
-  if (has_ts2mm()) {
-    return init_s2mm();
-  }
   // reset flags
   m_trbuf_full = false;
-  return true;
+
+  if (has_ts2mm()) {
+    return init_s2mm();
+  } else if (has_fifo()) {
+    return true;
+  }
+  return false;
 }
 
 void DeviceTraceOffload::read_trace_end()

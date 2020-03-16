@@ -154,6 +154,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/subdev/memory_hbm.c
   xocl/subdev/ddr_srsr.c
   xocl/subdev/ulite.c
+  xocl/subdev/calib_storage.c
   xocl/Makefile
   )
 

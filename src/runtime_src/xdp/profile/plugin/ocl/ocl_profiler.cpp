@@ -150,19 +150,6 @@ namespace xdp {
     logFinalTrace(XCL_PERF_MON_MEMORY /* type should not matter */);  // reads and logs trace data for all monitors in HW flow
 
     endTrace();
-    // End trace offload
-    for (auto& trace_offloader : DeviceTraceOffloadList) {
-      if (trace_offloader->trace_buffer_full()) {
-        if (trace_offloader->has_fifo()) {
-          Plugin->sendMessage(FIFO_WARN_MSG);
-        } else {
-          Plugin->sendMessage(TS2MM_WARN_MSG_BUF_FULL);
-        }
-        auto& g_map = Plugin->getDeviceTraceBufferFullMap();
-        g_map[trace_offloader->get_device_name()] = 1;
-      }
-      trace_offloader.reset();
-    }
 
     // Gather info for guidance
     // NOTE: this needs to be done here before the device clears its list of CUs
@@ -358,17 +345,19 @@ namespace xdp {
 
   void OCLProfiler::endTrace()
   {
-    auto platform = getclPlatformID();
-
-    for (auto device : platform->get_device_range()) {
-      if(!device->is_active()) {
-        continue;
+    for (auto& trace_offloader : DeviceTraceOffloadList) {
+      if (trace_offloader->trace_buffer_full()) {
+        if (trace_offloader->has_fifo()) {
+          Plugin->sendMessage(FIFO_WARN_MSG);
+        } else {
+          Plugin->sendMessage(TS2MM_WARN_MSG_BUF_FULL);
+        }
+        auto& g_map = Plugin->getDeviceTraceBufferFullMap();
+        g_map[trace_offloader->get_device_name()] = 1;
       }
-      auto itr = DeviceData.find(device);
-      if (itr==DeviceData.end()) {
-        return;
-      }
+      trace_offloader.reset();
     }
+    DeviceTraceOffloadList.clear();
   }
 
   // Get device counters
@@ -439,9 +428,9 @@ namespace xdp {
     turnOnProfile(xdp::RTUtil::PROFILE_DEVICE_COUNTERS);
 
     char* emuMode = std::getenv("XCL_EMULATION_MODE");
-    if(!emuMode /* Device Flow */
+    if((!emuMode /* Device Flow */
         || ((0 == strcmp(emuMode, "hw_emu")) && xrt::config::get_system_dpa_emulation()) /* HW Emu with System DPA, same as Device Flow */
-        || (data_transfer_trace.find("off") == std::string::npos)) {
+        || (data_transfer_trace.find("off") == std::string::npos)) && xrt::config::get_timeline_trace()  ) {
       turnOnProfile(xdp::RTUtil::PROFILE_DEVICE_TRACE);
     }
 
@@ -467,8 +456,8 @@ namespace xdp {
     if (xrt::config::get_timeline_trace()) {
       timelineFile = "timeline_trace";
       ProfileMgr->turnOnFile(xdp::RTUtil::FILE_TIMELINE_TRACE);
-      mTraceThreadEn = xrt::config::get_continuous_read_trace();
-      mTraceReadIntMs = xrt::config::get_continuous_read_trace_interval_ms();
+      mTraceThreadEn = xrt::config::get_continuous_trace();
+      mTraceReadIntMs = xrt::config::get_continuous_trace_interval_ms();
     }
     xdp::CSVTraceWriter* csvTraceWriter = new xdp::CSVTraceWriter(timelineFile, "Xilinx", Plugin.get());
     TraceWriters.push_back(csvTraceWriter);

@@ -1715,6 +1715,7 @@ static int qdma_probe(struct platform_device *pdev)
 	conf->qsets_max = QDMA_QSETS_MAX;
 	conf->bar_num_config = dma_bar;
 	conf->bar_num_stm = XDEV(xdev)->bar_idx;
+	conf->stm_reg_base = 0x02000000;
 
 	conf->fp_user_isr_handler = qdma_isr;
 	conf->uld = (unsigned long)qdma;

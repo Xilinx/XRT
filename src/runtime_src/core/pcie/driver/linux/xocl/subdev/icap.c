@@ -1956,10 +1956,9 @@ static int icap_create_post_download_subdevs(struct platform_device *pdev, struc
 
 		if (ip->m_type == IP_DDR4_CONTROLLER && !strncasecmp(ip->m_name, "SRSR", 4)) {
 			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_SRSR;
-			uint32_t target_m_type = MEM_DDR4;
 
 			/* hardcoded, to find a global*/
-			memidx = icap_get_memidx(mem_topo, target_m_type, ip->properties-4);
+			memidx = icap_get_memidx(mem_topo, ip->m_type, ip->properties-4);
 			if (memidx == INVALID_MEM_IDX) {
 				ICAP_ERR(icap, "INVALID_MEM_IDX: %u",
 					ip->properties);
@@ -2091,6 +2090,7 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin)
 		ICAP_INFO(icap, "xclbin already on peer, skip downloading");
 		return 0;
 	}
+
 	xocl_mailbox_get(xdev, CHAN_STATE, &ch_state);
 	if ((ch_state & XCL_MB_PEER_SAME_DOMAIN) != 0) {
 		data_len = sizeof(struct xcl_mailbox_req) +
@@ -2205,6 +2205,7 @@ static void icap_save_calib(struct icap *icap)
 		if (err)
 			ICAP_DBG(icap, "Not able to save mem %d calibration data.", i);
 	}
+	err = xocl_calib_storage_save(xdev);
 }
 
 static void icap_calib(struct icap *icap, bool retain)
@@ -2214,6 +2215,8 @@ static void icap_calib(struct icap *icap, bool retain)
 	struct mem_topology *mem_topo = icap->mem_topo;
 
 	BUG_ON(!mem_topo);
+
+	err = xocl_calib_storage_restore(xdev);
 
 	for (; i < mem_topo->m_count; ++i) {
 		err = xocl_srsr_calib(xdev, i, retain);
@@ -2316,11 +2319,19 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 			goto out;
 		}
 	}
-
-
-	err = icap_download_bitstream(icap, xclbin);
-	if (err)
-		goto out;
+    /* xclbin generated for the flat shell contains MCS files which includes the accelerator
+     * these MCS files should have been already flashed into the device using xbmgmt tool
+     * we dont need to reprogram the xclbin for the FLAT shells.
+     * TODO Currently , There is no way to check whether the programmed xclbin matches with this xclbin or not
+     */
+    if(xclbin->m_header.m_mode != XCLBIN_FLAT) {
+        err = icap_download_bitstream(icap, xclbin);
+        if (err)
+            goto out;
+    } else {
+        uuid_copy(&icap->icap_bitstream_uuid, &xclbin->m_header.uuid);
+        ICAP_INFO(icap, "xclbin is generated for flat shell, dont need to program the bitstream ");
+    }
 
 	/* calibrate hbm and ddr should be performed when resources are ready */
 
