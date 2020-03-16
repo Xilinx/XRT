@@ -252,8 +252,10 @@ namespace xdp {
           }
         }
         mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId, memId);
-        cuObj->addMonitor(mon);
-        cuObj->setDataTransferEnabled(true);
+        if(cuObj) {
+          cuObj->addMonitor(mon);
+          cuObj->setDataTransferEnabled(true);
+        }
         devInfo->aimList.push_back(mon);
       } else if(debugIpData->m_type == AXI_STREAM_MONITOR) {
         // associate with the first CU
@@ -271,8 +273,10 @@ namespace xdp {
         if(debugIpData->m_properties & 0x2) {
           mon->isRead = true;
      	}
-        cuObj->addMonitor(mon);
-        cuObj->setDataTransferEnabled(true);
+        if(cuObj) {
+          cuObj->addMonitor(mon);
+          cuObj->setDataTransferEnabled(true);
+        }
         devInfo->asmList.push_back(mon);
       } else {
 //        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name);
