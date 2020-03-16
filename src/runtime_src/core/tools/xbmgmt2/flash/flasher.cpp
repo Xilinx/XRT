@@ -39,8 +39,9 @@
 /* 
  * map flash_tyoe str to E_FlasherType
  */
-void Flasher::typeStr_to_E_FlasherType(const std::string& typeStr, E_FlasherType &type)
+Flasher::E_FlasherType Flasher::typeStr_to_E_FlasherType(const std::string& typeStr)
 {    
+    E_FlasherType type = E_FlasherType::UNKNOWN;
     if (typeStr.compare("spi") == 0) {
         type = E_FlasherType::SPI;
     }
@@ -55,9 +56,7 @@ void Flasher::typeStr_to_E_FlasherType(const std::string& typeStr, E_FlasherType
     else if (typeStr.compare("ospi_versal") == 0) {
         type = E_FlasherType::OSPIVERSAL;
     }
-    else {
-        throw xrt_core::error(boost::str(boost::format("Unknown flash type: %s") % typeStr));
-    }
+    return type;
 }
 
 Flasher::E_FlasherType Flasher::getFlashType(std::string typeStr)
@@ -81,7 +80,9 @@ Flasher::E_FlasherType Flasher::getFlashType(std::string typeStr)
             getProgrammingTypeFromDeviceName(mFRHeader.VBNVName, type);
     } catch (...) {}
     
-    typeStr_to_E_FlasherType(typeStr, type);
+    type = typeStr_to_E_FlasherType(typeStr);
+    if(type == E_FlasherType::UNKNOWN)
+        throw xrt_core::error(boost::str(boost::format("Unknown flash type: %s") % typeStr));
 
    return type;
 }
