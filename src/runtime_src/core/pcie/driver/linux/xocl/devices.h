@@ -208,6 +208,7 @@ enum {
 #define	XOCL_MIG_HBM		"mig.hbm"
 #define	XOCL_SRSR		"srsr"
 #define	XOCL_UARTLITE		"ulite"
+#define	XOCL_CALIB_STORAGE      "calib_storage"
 
 
 #define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
@@ -245,6 +246,7 @@ enum subdev_id {
 	XOCL_SUBDEV_TRACE_S2MM,
 	XOCL_SUBDEV_SRSR,
 	XOCL_SUBDEV_UARTLITE,
+	XOCL_SUBDEV_CALIB_STORAGE,
 	XOCL_SUBDEV_NUM
 };
 
@@ -704,7 +706,20 @@ struct xocl_subdev_map {
 		XOCL_RES_SRSR,				\
 		ARRAY_SIZE(XOCL_RES_SRSR),		\
 		.level = XOCL_SUBDEV_LEVEL_URP,		\
+		.override_idx = -1,			\
 	}
+
+
+#define	XOCL_DEVINFO_CALIB_STORAGE			\
+	{						\
+		XOCL_SUBDEV_CALIB_STORAGE,		\
+		XOCL_CALIB_STORAGE,			\
+		NULL,					\
+		0,					\
+		.level = XOCL_SUBDEV_LEVEL_PRP,		\
+		.override_idx = -1,			\
+	}
+
 
 #define	XOCL_MAILBOX_OFFSET_MGMT	0x210000
 #define	XOCL_RES_MAILBOX_MGMT				\
@@ -2412,6 +2427,7 @@ struct xocl_subdev_map {
 		XOCL_DEVINFO_IORES_MGMT_DYN,			\
 	 	XOCL_DEVINFO_FLASH_BLP,				\
 		XOCL_DEVINFO_FMGR,				\
+		XOCL_DEVINFO_CALIB_STORAGE,			\
 	})
 
 #define	XOCL_BOARD_MGMT_DYNAMIC_IP					\

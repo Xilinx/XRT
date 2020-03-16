@@ -255,6 +255,8 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define XOCL_VSEC_XLAT_GPA_BASE_UPPER_REG_ADDR  0x190
 #define XOCL_VSEC_XLAT_GPA_LIMIT_UPPER_REG_ADDR 0x194
 
+#define XOCL_CALIB_CACHE_SIZE	    0x4000
+
 struct xocl_vsec_header {
 	u32		format;
 	u32		length;
@@ -1304,8 +1306,6 @@ struct xocl_mailbox_versal_funcs {
 	? MAILBOX_VERSAL_OPS(xdev)->get(MAILBOX_VERSAL_DEV(xdev), \
 	data) : -ENODEV)
 
-
-
 /* srsr callbacks */
 struct xocl_srsr_funcs {
 	struct xocl_subdev_funcs common_funcs;
@@ -1330,6 +1330,25 @@ struct xocl_srsr_funcs {
 	SRSR_OPS(xdev, idx)->calib(SRSR_DEV(xdev, idx), retain) : \
 	-ENODEV)
 
+struct calib_storage_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	int (*save)(struct platform_device *pdev);
+	int (*restore)(struct platform_device *pdev);
+};
+
+#define	CALIB_STORAGE_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_CALIB_STORAGE).pldev
+#define	CALIB_STORAGE_OPS(xdev)							\
+	((struct calib_storage_funcs *)SUBDEV(xdev, XOCL_SUBDEV_CALIB_STORAGE).ops)
+#define	CALIB_STORAGE_CB(xdev)	\
+	(CALIB_STORAGE_DEV(xdev) && CALIB_STORAGE_OPS(xdev))
+#define	xocl_calib_storage_save(xdev)				\
+	(CALIB_STORAGE_CB(xdev) ?						\
+	CALIB_STORAGE_OPS(xdev)->save(CALIB_STORAGE_DEV(xdev)) : \
+	-ENODEV)
+#define	xocl_calib_storage_restore(xdev)				\
+	(CALIB_STORAGE_CB(xdev) ?						\
+	CALIB_STORAGE_OPS(xdev)->restore(CALIB_STORAGE_DEV(xdev)) : \
+	-ENODEV)
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
 void xocl_init_dsa_priv(xdev_handle_t xdev_hdl);
@@ -1605,5 +1624,8 @@ void xocl_fini_srsr(void);
 
 int __init xocl_init_ulite(void);
 void xocl_fini_ulite(void);
+
+int __init xocl_init_calib_storage(void);
+void xocl_fini_calib_storage(void);
 
 #endif
