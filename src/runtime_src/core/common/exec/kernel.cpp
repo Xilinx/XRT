@@ -491,6 +491,112 @@ struct run_type
   }
 };
 
+// struct run_update_type - RTP update
+//
+// Asynchronous runtime update of kernel arguments.  Each argument is
+// updated in one execution, e.g.  batching up of multiple arguments
+// changes before physically updating the kernel command is not
+// supported.
+//
+// Once created, the run_update object is alive until the corresponding
+// run handle is closed.
+class run_update_type
+{
+  run_type* run;        // active run object to update
+  kernel_type* kernel;  // kernel associated with run object
+  kernel_command cmd;   // command to use for updating
+
+  void
+  reset_cmd()
+  {
+    auto kcmd = cmd.get_ert_cmd<ert_init_kernel_cmd*>();
+    kcmd->count = 9;  // per ert.h (ert_init_kernel_cmd) TODO: fix for > 1 cu_masks
+  }
+
+  void
+  update_global_arg(size_t index, xrtBufferHandle bo)
+  {
+    xclBOProperties prop;
+    run->core_device->get_bo_properties(bo, &prop);
+    auto addr = prop.paddr;
+
+    // Populate cmd payload with argument
+    auto kcmd = cmd.get_ert_cmd<ert_init_kernel_cmd*>();
+    const auto& arg = kernel->args[index];
+    auto idx = kcmd->count;
+    kcmd->data[idx++] = arg.offset;
+    kcmd->data[idx++] = addr;
+    kcmd->data[idx++] = arg.offset + 4;
+    kcmd->data[idx++] = (addr >> 32) & 0xFFFFFFFF;
+    kcmd->count = idx;
+  }
+
+  template <typename ScalarType>
+  void
+  update_scalar_arg(size_t index, ScalarType scalar)
+  {
+    static_assert(std::is_scalar<ScalarType>::value,"Invalid ScalarType");
+    // Populate cmd payload with argument
+    auto kcmd = cmd.get_ert_cmd<ert_init_kernel_cmd*>();
+    const auto& arg = kernel->args[index];
+    auto idx = kcmd->count;
+    kcmd->data[idx++] = arg.offset;
+    kcmd->data[idx++] = scalar;
+    kcmd->count = idx;
+  }
+  
+public:
+  run_update_type(run_type* r)
+    : run(r)
+    , kernel(run->kernel.get())
+    , cmd(kernel->device.get())
+  {
+    auto kcmd = cmd.get_ert_cmd<ert_init_kernel_cmd*>();
+    kcmd->opcode = ERT_INIT_CU;
+    kcmd->type = ERT_CU;
+    kcmd->cu_mask = kernel->cumask.to_ulong();  // TODO: fix for > 32 CUs
+    reset_cmd();
+  }
+
+  void
+  update_arg_at_index(size_t index, std::va_list args)
+  {
+    reset_cmd();
+
+    auto& arg = kernel->args.at(index);
+    if (arg.index == kernel_type::argument::no_index)
+      throw std::runtime_error("Bad argument index '" + std::to_string(index) + "'");
+
+    switch (arg.type) {
+    case kernel_type::argument::argtype::scalar : {
+      auto val = va_arg(args, size_t); // TODO: handle double, and more get type from meta data
+      update_scalar_arg(arg.index, val);
+      break;
+    }
+    case kernel_type::argument::argtype::global : {
+      auto val = va_arg(args, xrtBufferHandle);
+      update_global_arg(arg.index, val);
+      break;
+    }
+    case kernel_type::argument::argtype::stream : {
+      (void) va_arg(args, void*); // swallow unsettable argument
+      break;
+    }
+    default:
+      throw std::runtime_error("Unexpected error argument type ("
+               + std::to_string(std::underlying_type<kernel_type::argument::argtype>::type(arg.type))
+               + ") for kernel '" + kernel->name + "' at index ("
+               + std::to_string(index) + ")");
+
+    }
+
+    auto pkt = cmd.get_ert_packet();
+    pkt->state = ERT_CMD_STATE_NEW;
+    cmd.run();
+    cmd.wait();
+  }
+};
+
 // Device wrapper.  Lifetime is tied to kernel object.  Using
 // std::weak_ptr to treat as cache rather sharing ownership.
 // Ownership of device is shared by kernel objects, when last kernel
@@ -514,6 +620,10 @@ static std::map<void*, std::shared_ptr<kernel_type>> kernels;
 // run object, e.g. the run object is desctructed immediately when it
 // is closed.
 static std::map<void*, std::unique_ptr<run_type>> runs;
+
+// Run updates, if used are tied to existing runs and removed
+// when run is closed.
+static std::map<run_type*, std::unique_ptr<run_update_type>> run_updates;
 
 // get_device() - get a device object from an xrtDeviceHandle
 //
@@ -560,6 +670,18 @@ get_run(xrtRunHandle rhdl)
   return (*itr).second.get();
 }
 
+static run_update_type*
+get_run_update(xrtRunHandle rhdl)
+{
+  auto run = get_run(rhdl);
+  auto itr = run_updates.find(run);
+  if (itr == run_updates.end()) {
+    auto ret = run_updates.emplace(std::make_pair(run,std::make_unique<run_update_type>(run)));
+    itr = ret.first;
+  }
+  return (*itr).second.get();
+}
+
 namespace api {
 
 xrtKernelHandle
@@ -594,10 +716,13 @@ xrtRunOpen(xrtKernelHandle khdl)
 void
 xrtRunClose(xrtRunHandle rhdl)
 {
-  auto itr = runs.find(rhdl);
-  if (itr == runs.end())
-    throw std::runtime_error("Unknown run handle");
-  runs.erase(itr);
+  auto run = get_run(rhdl);
+  {
+    auto itr = run_updates.find(run);
+    if (itr != run_updates.end())
+      run_updates.erase(itr);
+  }
+  runs.erase(run);
 }
 
 ert_cmd_state
@@ -774,6 +899,24 @@ xrtRunStart(xrtRunHandle rhdl)
 {
   try {
     api::xrtRunStart(rhdl);
+    return 0;
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return -1;
+  }
+}
+
+int
+xrtRunUpdateArg(xrtRunHandle rhdl, int index, ...)
+{
+  try {
+    auto upd = get_run_update(rhdl);
+    
+    std::va_list args;
+    va_start(args, index);
+    upd->update_arg_at_index(index, args);
+    va_end(args);
     return 0;
   }
   catch (const std::exception& ex) {
