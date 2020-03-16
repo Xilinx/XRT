@@ -56,9 +56,9 @@ namespace xcldev {
             while (b < e) {
                 result = xclSyncBO(mHandle, *b, dir, mSize, 0);
                 if (result != 0) {
-                    std::cout << "DMA failed Error = " << result << "\n";
+                    std::cout << "DMA failed with Error = " << result << "\n";
                     break;
-		}
+                }
                 ++b;
             }
             return result;
@@ -105,25 +105,22 @@ namespace xcldev {
 
         int validate(const char *buf) const {
             std::unique_ptr<char[]> bufCmp(new char[mSize]);
-            int error = 0;
             size_t result = 0;
             for (auto i : mBOList) {
                 //Clear out the host buffer
                 std::memset(bufCmp.get(), 0, mSize);
                 result = xclReadBO(mHandle, i, bufCmp.get(), mSize, 0);
                 if (result) {
-                    error = -EIO;
-                    std::cout << "DMA Test data integrity read failed Error = " << result << "\n";
+                    std::cout << "DMA Test data integrity read failed with Error = " << result << "\n";
                     break;
 		}
 
                 if (std::memcmp(buf, bufCmp.get(), mSize)) {
-                    error = -EIO;
                     std::cout << "DMA Test data integrity check failed\n";
                     break;
                 }
             }
-            return error ? error : static_cast<int>(result);
+            return result;
         }
 
         int run() const {
