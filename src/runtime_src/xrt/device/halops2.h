@@ -129,6 +129,7 @@ private:
   typedef int     (*freeQDMABufFuncType)(xclDeviceHandle handle,uint64_t buf_hdl);
   typedef ssize_t (*writeQueueFuncType)(xclDeviceHandle handle,uint64_t q_hdl, xclQueueRequest *wr);
   typedef ssize_t (*readQueueFuncType)(xclDeviceHandle handle,uint64_t q_hdl, xclQueueRequest *wr);
+  typedef int     (*pollQueueFuncType)(xclDeviceHandle handle,uint64_t q_hdl, int min, int max, xclReqCompletion* completions, int* actual, int timeout);
   typedef int     (*pollQueuesFuncType)(xclDeviceHandle handle,int min, int max, xclReqCompletion* completions, int* actual, int timeout);
 //End Streaming
 
@@ -209,6 +210,7 @@ public:
   freeQDMABufFuncType mFreeQDMABuf;
   writeQueueFuncType mWriteQueue;
   readQueueFuncType mReadQueue;
+  pollQueueFuncType mPollQueue;
   pollQueuesFuncType mPollQueues;
 //End Streaming
 

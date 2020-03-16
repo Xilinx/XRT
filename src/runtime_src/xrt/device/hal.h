@@ -318,6 +318,9 @@ public:
   virtual int
   pollStreams(StreamXferCompletions* comps, int min, int max, int* actual, int timeout) = 0;
 
+  virtual int
+  pollStream(hal::StreamHandle stream, StreamXferCompletions* comps, int min, int max, int* actual, int timeout) = 0;
+
 public:
   /**
    * @returns

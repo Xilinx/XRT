@@ -316,6 +316,24 @@ clPollStreams(cl_device_id /*device*/,
 	cl_int /*timeout in ms*/,
 	cl_int * /*errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
 
+/* clPollStream - Poll a single stream on a device for completion.
+ * @stream                : The stream
+ * @completions           : Completions array
+ * @min_num_completions   : Minimum number of completions requested
+ * @max_num_completions   : Maximum number of completions requested
+ * @actual_num_completions: Actual number of completions returned.
+ * @timeout               : Timeout in milliseconds (ms)
+ * @errcode_ret :         : The return value eg CL_SUCCESS
+ * Return a cl_int.
+ */
+extern CL_API_ENTRY cl_int CL_API_CALL
+clPollStream(cl_stream             /* stream*/,
+       	cl_streams_poll_req_completions* /*completions*/,
+	cl_int  /*min_num_completion*/,
+	cl_int  /*max_num_completion*/,
+	cl_int* /*actual num_completion*/,
+	cl_int /*timeout in ms*/,
+	cl_int * /*errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
 //End QDMA APIs
 
 typedef struct _cl_mem * rte_mbuf;

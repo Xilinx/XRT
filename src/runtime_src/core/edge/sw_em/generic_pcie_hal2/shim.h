@@ -148,6 +148,7 @@ namespace xclcpuemhal2 {
       int xclFreeQDMABuf(uint64_t buf_hdl);
       ssize_t xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr);
       ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
+      int xclPollQueue(uint64_t q_hdl, int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout);
       int xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout);
       int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const;
       int xclExecWait(int timeoutMilliSec);

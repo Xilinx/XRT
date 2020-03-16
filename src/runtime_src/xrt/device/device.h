@@ -555,6 +555,12 @@ public:
     return m_hal->pollStreams(comps, min,max,actual,timeout);
   };
 
+  int
+  pollStream(hal::StreamHandle stream, hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout)
+  {
+    return m_hal->pollStream(stream, comps, min,max,actual,timeout);
+  };
+
 //End Streaming APIs
 #ifdef PMD_OCL
 public:

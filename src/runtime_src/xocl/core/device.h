@@ -520,6 +520,9 @@ public:
   free_stream_buf(xrt::device::stream_buf_handle handle);
 
   int
+  poll_stream(xrt::device::stream_handle stream, xrt::device::stream_xfer_completions* comps, int min, int max, int* actual, int timeout);
+
+  int
   poll_streams(xrt::device::stream_xfer_completions* comps, int min, int max, int* actual, int timeout);
 
   /**

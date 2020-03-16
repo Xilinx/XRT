@@ -45,6 +45,7 @@ private:
   int m_connidx = -1;
 public:
   int get_stream(device* device); 
+  int poll_stream(xrt::device::stream_xfer_completions *comps, int min, int max, int *actual, int timeout); 
   ssize_t read(void* ptr, size_t size, stream_xfer_req* req );
   ssize_t write(const void* ptr, size_t size, stream_xfer_req* req);
   int close();

@@ -704,6 +704,14 @@ pollStreams(hal::StreamXferCompletions* comps, int min, int max, int* actual, in
   return m_ops->mPollQueues(m_handle,min,max,req,actual,timeout);
 }
 
+int
+device::
+pollStream(hal::StreamHandle stream, hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout)
+{
+  xclReqCompletion* req = reinterpret_cast<xclReqCompletion*>(comps);
+  return m_ops->mPollQueue(m_handle,stream,min,max,req,actual,timeout);
+}
+
 #ifdef PMD_OCL
 void
 createDevices(hal::device_list& devices,

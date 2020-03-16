@@ -76,6 +76,7 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   ,mFreeQDMABuf(0)
   ,mWriteQueue(0)
   ,mReadQueue(0)
+  ,mPollQueue(0)
   ,mPollQueues(0)
   ,mGetDebugIpLayout(0)
   ,mGetNumLiveProcesses(0)
@@ -123,6 +124,7 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   mFreeQDMABuf = (freeQDMABufFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclFreeQDMABuf");
   mWriteQueue = (writeQueueFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclWriteQueue");
   mReadQueue = (readQueueFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclReadQueue");
+  mPollQueue = (pollQueueFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclPollQueue");
   mPollQueues = (pollQueuesFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclPollCompletion");
 
   // Profiling Functions

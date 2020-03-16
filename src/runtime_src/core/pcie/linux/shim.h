@@ -33,6 +33,8 @@
 #include <linux/aio_abi.h>
 #include <libdrm/drm.h>
 
+#include <iostream>
+
 #include <mutex>
 #include <fstream>
 #include <list>
@@ -50,6 +52,29 @@ namespace xocl {
 
 const uint64_t mNullAddr = 0xffffffffffffffffull;
 const uint64_t mNullBO = 0xffffffff;
+
+class queue_cb {
+public:
+    queue_cb(struct xocl_qdma_ioc_create_queue *qinfo);
+    ~queue_cb();
+    int queue_poll_completion(unsigned int min_compl, unsigned int max_compl,
+		    struct xclReqCompletion *comps, unsigned int* actual,
+		    unsigned int timeout_ms);
+    ssize_t queue_submit_io(xclQueueRequest *wr, bool mAioEn, aio_context_t mAioCtx);
+
+    uint64_t queue_get_hndl() {
+        return qhndl;
+    }
+    bool queue_is_write_dir(void) {
+	return h2c;
+    }
+
+private:
+    uint64_t qhndl;
+    bool h2c; 
+    bool qAioEn;
+    aio_context_t qAioCtx;
+};
 
 class shim
 {
@@ -158,6 +183,7 @@ public:
     int xclFreeQDMABuf(uint64_t buf_hdl);
     ssize_t xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr);
     ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
+    int xclPollQueue(uint64_t q_hdl, int min_compl, int max_compl, xclReqCompletion *comps, int * actual, int timeout /*ms*/);
     int xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int * actual, int timeout /*ms*/);
     int xclIPName2Index(const char *name, uint32_t& index);
 

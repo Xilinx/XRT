@@ -59,6 +59,12 @@ stream::close()
   return m_device->close_stream(m_handle,m_connidx);
 }
 
+int 
+stream
+::poll_stream(xrt::device::stream_xfer_completions *comps, int min, int max, int *actual, int timeout)
+{
+  return m_device->poll_stream(m_handle, comps, min, max, actual, timeout);
+}
 
 int 
 stream_mem::

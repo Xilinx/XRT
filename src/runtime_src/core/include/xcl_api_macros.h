@@ -650,6 +650,33 @@ mtx.unlock();
   xclPollCompletion_SET_PROTO_RESPONSE(vaLenMap); \
   FREE_BUFFERS();
 
+//----------xclPollQueue-------------------
+#define xclPollQueue_SET_PROTOMESSAGE(q_handle,reqcounter) \
+    c_msg.set_q_handle(q_handle); \
+    c_msg.set_req(reqcounter); \
+
+#define xclPollQueue_SET_PROTO_RESPONSE(vaLenMap) \
+  std::map<uint64_t,uint64_t>::iterator vaLenMapItr = vaLenMap.begin();\
+  if(r_msg.fullrequest_size() == (int)(vaLenMap.size()))\
+  {\
+    for(int i = 0; i < r_msg.fullrequest_size() ; i++) \
+    { \
+      const xclPollQUmpletion_response::request &oReq = r_msg.fullrequest(i); \
+      uint64_t read_size = oReq.size();\
+      numBytesProcessed  += read_size; \
+      if((*vaLenMapItr).second != 0) \
+        memcpy((void*)(*vaLenMapItr).first,oReq.dest().c_str(),read_size);\
+      vaLenMapItr++;\
+    } \
+  }\
+
+#define xclQueue_RPC_CALL(func_name,q_handle, reqcounter,vaLenMap) \
+  RPC_PROLOGUE(func_name); \
+  xclPollQueue_SET_PROTOMESSAGE(q_handle, reqcounter); \
+  SERIALIZE_AND_SEND_MSG(func_name) \
+  xclPollQueue_SET_PROTO_RESPONSE(vaLenMap); \
+  FREE_BUFFERS();
+
 //----------xclDestroyQueue-------------------
 #define xclDestroyQueue_SET_PROTOMESSAGE(q_handle) \
     c_msg.set_q_handle(q_handle);
