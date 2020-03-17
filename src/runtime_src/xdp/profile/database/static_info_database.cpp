@@ -152,20 +152,17 @@ namespace xdp {
     const axlf_section_header* connectivityHeader = xclbin::get_axlf_section(xbin, CONNECTIVITY);
     if(connectivityHeader == nullptr) return false;
     const connectivity* connectivitySection = reinterpret_cast<const connectivity*>(chBinary + connectivityHeader->m_sectionOffset) ;
-    if(connectivitySection == nullptr) return false;
 
     // Get IP_LAYOUT section 
     const axlf_section_header* ipLayoutHeader = xclbin::get_axlf_section(xbin, IP_LAYOUT);
     if(ipLayoutHeader == nullptr) return false;
     const ip_layout* ipLayoutSection = reinterpret_cast<const ip_layout*>(chBinary + ipLayoutHeader->m_sectionOffset) ;
-    if(ipLayoutSection == nullptr) return false;
     
 
     // Get MEM_TOPOLOGY section 
     const axlf_section_header* memTopologyHeader = xclbin::get_axlf_section(xbin, MEM_TOPOLOGY);
     if(memTopologyHeader == nullptr) return false;
     const mem_topology* memTopologySection = reinterpret_cast<const mem_topology*>(chBinary + memTopologyHeader->m_sectionOffset) ;
-    if(memTopologySection == nullptr) return false;
 
     // Now make the connections
     ComputeUnitInstance* cu = nullptr;
@@ -182,6 +179,8 @@ namespace xdp {
         if((ipData->properties >> IP_CONTROL_SHIFT) & AP_CTRL_CHAIN) {
           cu->setDataflowEnabled(true);
         }
+      } else {
+        cu = devInfo->cus[connctn->m_ip_layout_index];
       }
 
       if(devInfo->memoryInfo.find(connctn->mem_data_index) == devInfo->memoryInfo.end()) {
@@ -205,7 +204,6 @@ namespace xdp {
     const axlf_section_header* debugIpLayoutHeader = xclbin::get_axlf_section(xbin, DEBUG_IP_LAYOUT);
     if(debugIpLayoutHeader == nullptr) return false;
     const debug_ip_layout* debugIpLayoutSection = reinterpret_cast<const debug_ip_layout*>(chBinary + debugIpLayoutHeader->m_sectionOffset) ;
-    if(debugIpLayoutSection == nullptr) return false;
 
     for(uint16_t i = 0; i < debugIpLayoutSection->m_count; i++) {
       const struct debug_ip_data* debugIpData = &(debugIpLayoutSection->m_debug_ip_data[i]);
@@ -230,7 +228,7 @@ namespace xdp {
             break;
           }
         }
-        devInfo->amList.push_back(mon);
+        if(mon) { devInfo->amList.push_back(mon); }
       } else if(debugIpData->m_type == AXI_MM_MONITOR) {
 		// parse name to find CU Name and Memory
         size_t pos = name.find('/');
@@ -254,8 +252,10 @@ namespace xdp {
           }
         }
         mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId, memId);
-        cuObj->addMonitor(mon);
-        cuObj->setDataTransferEnabled(true);
+        if(cuObj) {
+          cuObj->addMonitor(mon);
+          cuObj->setDataTransferEnabled(true);
+        }
         devInfo->aimList.push_back(mon);
       } else if(debugIpData->m_type == AXI_STREAM_MONITOR) {
         // associate with the first CU
@@ -273,8 +273,10 @@ namespace xdp {
         if(debugIpData->m_properties & 0x2) {
           mon->isRead = true;
      	}
-        cuObj->addMonitor(mon);
-        cuObj->setDataTransferEnabled(true);
+        if(cuObj) {
+          cuObj->addMonitor(mon);
+          cuObj->setDataTransferEnabled(true);
+        }
         devInfo->asmList.push_back(mon);
       } else {
 //        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name);
