@@ -517,11 +517,15 @@ namespace xclhwemhal2 {
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
     std::string launcherArgs = xclemulation::config::getInstance()->getLauncherArgs();
     std::string wdbFileName("");
+    std::string kernelProfileFileName("profile_kernels.csv");
+    std::string kernelTraceFileName("timeline_kernels.csv");
     // The following is evil--hardcoding. This name may change.
     // Is there a way we can determine the name from the directories or otherwise?
     std::string bdName("dr"); // Used to be opencldesign. This is new default.
 
     unsetenv("VITIS_WAVEFORM_WDB_FILENAME");
+    unsetenv("VITIS_KERNEL_PROFILE_FILENAME");
+    unsetenv("VITIS_KERNEL_TRACE_FILENAME");
 
     if (!simDontRun)
     {
@@ -549,6 +553,8 @@ namespace xclhwemhal2 {
         unsetenv("VITIS_LAUNCH_WAVEFORM_BATCH");
         setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
         setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
+        setenv("VITIS_KERNEL_PROFILE_FILENAME", kernelProfileFileName.c_str(), true);
+        setenv("VITIS_KERNEL_TRACE_FILENAME", kernelTraceFileName.c_str(), true);
       }
 
       if (lWaveform == xclemulation::LAUNCHWAVEFORM::BATCH)
@@ -565,6 +571,8 @@ namespace xclhwemhal2 {
         setenv("VITIS_LAUNCH_WAVEFORM_BATCH", "1", true);
         setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
         setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
+        setenv("VITIS_KERNEL_PROFILE_FILENAME", kernelProfileFileName.c_str(), true);
+        setenv("VITIS_KERNEL_TRACE_FILENAME", kernelTraceFileName.c_str(), true);
       }
 
       if (userSpecifiedSimPath.empty() == false)

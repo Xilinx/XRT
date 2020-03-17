@@ -51,7 +51,10 @@ namespace xdp {
   // Accelerator port metadata
   // *************************
 
-  // Get the name of the memory associated with a device, CU, and memory index
+  // Get the name of the memory resource associated with a device, CU, and memory index
+  // NOTE: This is used for comparison purposes to group associated arguments, hence we
+  // use the resource name. The actual reporting (see getArgumentsBank below) may include
+  // the indices as well, as taken from debug_ip_layout.
   void XoclPlugin::getMemoryNameFromID(const xocl::device* device_id, const std::shared_ptr<xocl::compute_unit> cu,
                                        const std::string arg_id, std::string& memoryName)
   {
@@ -77,15 +80,11 @@ namespace xdp {
     }
 
     // Catch old bank format and report as DDR
-    //std::string memoryName2 = memoryName.substr(0, memoryName.find_last_of("["));
-    if (memoryName.find("bank0") != std::string::npos)
-      memoryName = "DDR[0]";
-    else if (memoryName.find("bank1") != std::string::npos)
-      memoryName = "DDR[1]";
-    else if (memoryName.find("bank2") != std::string::npos)
-      memoryName = "DDR[2]";
-    else if (memoryName.find("bank3") != std::string::npos)
-      memoryName = "DDR[3]";
+    if (memoryName.find("bank") != std::string::npos)
+      memoryName = "DDR";
+
+    // Only return the resource name (i.e., remove indices)
+    memoryName = memoryName.substr(0, memoryName.find_last_of("["));
   }
 
   // Find arguments and memory resources for each accel port on given device
@@ -183,6 +182,8 @@ namespace xdp {
     std::string portNameCheck = portName;
     std::string memoryResource = memoryName;
 
+    // Given a port string (e.g., "cu1/port1-DDR[0]"), separate out the port name 
+    // and the memory resource name (e.g., "DDR") 
     size_t index = portName.find_last_of(IP_LAYOUT_SEP);
     if (index != std::string::npos) {
       foundMemory = true;
