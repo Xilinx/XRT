@@ -105,7 +105,7 @@ namespace xcldev {
 
         int validate(const char *buf) const {
             std::unique_ptr<char[]> bufCmp(new char[mSize]);
-            int result = 0;
+            size_t result = 0;
             for (auto i : mBOList) {
                 //Clear out the host buffer
                 std::memset(bufCmp.get(), 0, mSize);
@@ -120,7 +120,7 @@ namespace xcldev {
                     break;
                 }
             }
-            return result;
+            return static_cast<int>(result);
         }
 
         int run() const {
