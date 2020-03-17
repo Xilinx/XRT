@@ -396,9 +396,6 @@ int pci_fundamental_reset(struct xclmgmt_dev *lro)
 	u8 hot;
 	struct pci_dev *pci_dev = lro->pci_dev;
 
-	/* freeze and free AXI gate to reset the OCL region before and after the pcie reset. */
-	xocl_icap_reset_axi_gate(lro);
-
 	/*
 	 * lock pci config space access from userspace,
 	 * save state and issue PCIe fundamental reset
@@ -449,8 +446,6 @@ done:
 	rc = pcie_unmask_surprise_down(pci_dev, orig_mask);
 
 	xocl_pci_restore_config_all(lro);
-	/* Also freeze and free AXI gate to reset the OCL region. */
-	xocl_icap_reset_axi_gate(lro);
 
 	return rc;
 }
