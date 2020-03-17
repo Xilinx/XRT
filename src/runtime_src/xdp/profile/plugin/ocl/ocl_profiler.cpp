@@ -70,8 +70,13 @@ namespace xdp {
 
   OCLProfiler::~OCLProfiler()
   {
+    // Stop power profiling early so no samples during trace offload
+    PowerProfileList.clear();
+
+    // Inform downstream guidance if objects were properly released
     Plugin->setObjectsReleased(mEndDeviceProfilingCalled);
 
+    // End all profiling, including device
     if (!mEndDeviceProfilingCalled && applicationProfilingOn()) {
       xrt::message::send(xrt::message::severity_level::XRT_WARNING,
           "Profiling may contain incomplete information. Please ensure all OpenCL objects are released by your host code (e.g., clReleaseProgram()).");
@@ -105,21 +110,6 @@ namespace xdp {
     if ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM) && Plugin->getSystemDPAEmulation() == false)
       xoclp::platform::start_device_trace(platform, XCL_PERF_MON_ACCEL, numComputeUnits);
 
-    if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE)) {
-      for (auto device : platform->get_device_range()) {
-        /*
-         * Initialize Power Profiling Threads
-         */
-        auto power_profile_en = xrt::config::get_power_profile();
-        if (power_profile_en) {
-          auto power_profile = std::make_unique<OclPowerProfile>(device->get_xrt_device(), Plugin, device->get_unique_name());
-          auto& filename = power_profile->get_output_file_name();
-          ProfileMgr->getRunSummary()->addFile(filename, RunSummary::FT_POWER_PROFILE);
-          PowerProfileList.push_back(std::move(power_profile));
-        }
-
-      }
-    }
     mProfileRunning = true;
   }
 
@@ -137,7 +127,7 @@ namespace xdp {
 
     // Log Counter Data
     logDeviceCounters(true, true, true);  // reads and logs device counters for all monitors in all flows
-#ifndef _WIN32
+
     // With new XDP flow, HW Emu should be similar to Device flow. So, multiple calls to trace/counters should not be needed.
     // But needed for older flow
     // Log Trace Data
@@ -155,7 +145,7 @@ namespace xdp {
     // NOTE: this needs to be done here before the device clears its list of CUs
     // See xocl::device::unload_program as called from xocl::program::~program
     Plugin->getGuidanceMetadata( getProfileManager() );
-#endif
+
     // Record that this was called indirectly by host code
     mEndDeviceProfilingCalled = true;
   }
@@ -411,7 +401,7 @@ namespace xdp {
     ProfileMgr->turnOffProfile(mode);
   }
 
-    // Kick off profiling and open writers
+  // Kick off profiling and open writers
   void OCLProfiler::startProfiling() {
     if (xrt::config::get_profile() == false)
       return;
@@ -463,16 +453,24 @@ namespace xdp {
     TraceWriters.push_back(csvTraceWriter);
     ProfileMgr->attach(csvTraceWriter);
 
-#if 0
-    // Not Used
-    if (std::getenv("SDX_NEW_PROFILE")) {
-      std::string profileFile2("sdx_profile_summary");
-      std::string timelineFile2("sdx_timeline_trace");
-      xdp::UnifiedCSVProfileWriter* csvProfileWriter2 = new xdp::UnifiedCSVProfileWriter(profileFile2, "Xilinx", Plugin.get());
-      ProfileWriters.push_back(csvProfileWriter2);
-      ProfileMgr->attach(csvProfileWriter2);
+    // Start power profiling (device flow only)
+    // NOTE: This starts power profiling when clGetPlatformIDs is called. That is, before a 
+    //       bitstream gets loaded. This allows us to show pre-configuration power samples.
+    if (!emuMode) {
+      auto platform = getclPlatformID();
+      for (auto device : platform->get_device_range()) {
+        /*
+         * Initialize Power Profiling Threads
+         */
+        auto power_profile_en = xrt::config::get_power_profile();
+        if (power_profile_en) {
+          auto power_profile = std::make_unique<OclPowerProfile>(device->get_xrt_device(), Plugin, device->get_unique_name());
+          auto& filename = power_profile->get_output_file_name();
+          ProfileMgr->getRunSummary()->addFile(filename, RunSummary::FT_POWER_PROFILE);
+          PowerProfileList.push_back(std::move(power_profile));
+        }
+      }
     }
-#endif
 
     // Add functions to callback for profiling kernel/CU scheduling
     xocl::add_command_start_callback(xoclp::get_cu_start);
@@ -640,10 +638,6 @@ namespace xdp {
 
   int OCLProfiler::logTrace(xclPerfMonType type, bool forceRead, bool logAllMonitors)
   {
-#ifdef _WIN32
-    return -1;
-#endif
-
     // Dedicated thread takes care of all the logging
     if (mTraceThreadEn)
       return -1;
