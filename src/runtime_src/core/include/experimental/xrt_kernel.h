@@ -143,6 +143,23 @@ int
 xrtRunSetArg(xrtRunHandle runHandle, int index, ...);
 
 /**
+ * xrtRunUpdateArg() - Asynchronous update of kernel argument
+ *
+ * @runHandle:  Handle to the run object to modify
+ * @index:      Index of kernel argument to update
+ * @arg:        The argument value to set.
+ * Return:      0 on success, -1 on error
+ *
+ * Use this API to asynchronously update a specific kernel
+ * argument of an existing run.  
+ *
+ * This API is only supported on Edge.
+ */  
+XCL_DRIVER_DLLESPEC
+int
+xrtRunUpdateArg(xrtRunHandle rhdl, int index, ...);
+
+/**
  * xrtRunStart() - Start existing run handle
  *
  * @runHandle:  Handle to the run object to start
