@@ -25,8 +25,17 @@
 #define	REG_CALIB_OFFSET		0x00000008
 #define	REG_XSDB_RAM_BASE		0x00004000
 
-#define	XSDB_RAM_MAX			2901
+#define	XSDB_RAM_MAX_IN_WORDS		2901
 #define	XSDB_RAM_SIZE			0x1000
+
+/* Calibration cache size may up to XSDB_RAM_MAX_IN_WORDS*4 = ~12kB
+ * And XSDB_RAM_SIZE is 4kB, need to read the cache from XSDB_RAM at least 3 times.
+ * So let's make the cache size to 16kB, read it in 4 iterations. 
+ */
+#define	TIMES_TO_READ_XSDB_RAM		XOCL_CALIB_CACHE_SIZE/XSDB_RAM_SIZE
+
+#define	FULL_CALIB_TIMEOUT		100
+#define	FAST_CALIB_TIMEOUT		15
 
 #define	CTRL_BIT_SYS_RST		0x00000001
 #define	CTRL_BIT_XSDB_SELECT		0x00000010
@@ -76,7 +85,9 @@ static int srsr_full_calibration(struct platform_device *pdev)
 	xocl_dr_reg_write32(xdev, CTRL_BIT_SYS_RST, xocl_ddr_srsr->base+REG_CTRL_OFFSET);
 	xocl_dr_reg_write32(xdev, 0x0, xocl_ddr_srsr->base+REG_CTRL_OFFSET);
 
-	for (; i < 100; ++i) {
+
+	/* Safe to say, full calibration should finish in 2000ms*/
+	for (; i < FULL_CALIB_TIMEOUT; ++i) {
 		val = xocl_dr_reg_read32(xdev, xocl_ddr_srsr->base+REG_STATUS_OFFSET);
 		if (val & STATUS_BIT_CALIB_COMPLETE) {
 			err = 0;
@@ -112,7 +123,7 @@ static int srsr_save_calib(struct platform_device *pdev)
 	}
 	xocl_dr_reg_write32(xdev, CTRL_BIT_SREF_REQ | CTRL_BIT_XSDB_SELECT, xocl_ddr_srsr->base+REG_CTRL_OFFSET);
 
-	for (i = 0; i < 4; ++i) {
+	for (i = 0; i < TIMES_TO_READ_XSDB_RAM; ++i) {
 		memcpy(xocl_ddr_srsr->calib_cache+offset, xocl_ddr_srsr->base+REG_XSDB_RAM_BASE, XSDB_RAM_SIZE);
 		offset += XSDB_RAM_SIZE;
 	}
@@ -140,14 +151,14 @@ static int srsr_fast_calib(struct platform_device *pdev, bool retention)
 		write_val |= CTRL_BIT_MEM_INIT_SKIP;
 
 	xocl_dr_reg_write32(xdev, write_val, xocl_ddr_srsr->base+REG_CTRL_OFFSET);
-	for (i = 0; i < 4; ++i) {
+	for (i = 0; i < TIMES_TO_READ_XSDB_RAM; ++i) {
 		memcpy(xocl_ddr_srsr->base+REG_XSDB_RAM_BASE, xocl_ddr_srsr->calib_cache+offset, XSDB_RAM_SIZE);
 		offset += XSDB_RAM_SIZE;
 	}
 	xocl_dr_reg_write32(xdev, CTRL_BIT_RESTORE_COMPLETE, xocl_ddr_srsr->base+REG_CTRL_OFFSET);
 
 	/* Safe to say, fast calibration should finish in 300ms*/
-	for ( ; i < 15; ++i) {
+	for ( ; i < FAST_CALIB_TIMEOUT; ++i) {
 		val = xocl_dr_reg_read32(xdev, xocl_ddr_srsr->base+REG_STATUS_OFFSET);
 		if (val & STATUS_BIT_CALIB_COMPLETE) {
 			err = 0;
