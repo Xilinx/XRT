@@ -149,7 +149,7 @@ namespace xdp {
         bool stallEvent =  trace.EventFlags & 0x4;
         bool starveEvent = trace.EventFlags & 0x2;
         bool isStart =     trace.EventFlags & 0x1;
-        unsigned int ipInfo = mPluginHandle->getTraceSlotProperties(XCL_PERF_MON_STR, deviceName, s);
+        unsigned int ipInfo = mPluginHandle->getTraceSlotProperties(XCL_PERF_MON_STR, deviceName, trace.TraceID);
         bool isRead = (ipInfo & 0x2) ? true : false;
         if (isStart) {
           if (txEvent)

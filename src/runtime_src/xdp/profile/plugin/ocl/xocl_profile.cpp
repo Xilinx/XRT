@@ -208,7 +208,7 @@ get_trace_slot_name(key k, const std::string& deviceName, xclPerfMonType type,
 
 unsigned int
 get_trace_slot_properties(key k, const std::string& deviceName, xclPerfMonType type,
-		              unsigned int slotnum, std::string& slotName)
+		                      unsigned int slotnum)
 {
   auto platform = k;
   for (auto device : platform->get_device_range()) {
@@ -544,7 +544,6 @@ getTraceSlotName(key k, xclPerfMonType type, unsigned int index,
   else
     slotName = "";
 
-  std::cout << "getProfileSlotNameByTraceID : " << index << " : " << slotName << std::endl;
   return CL_SUCCESS;
 }
 
