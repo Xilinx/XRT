@@ -105,10 +105,13 @@ namespace xdp {
 
     (db->getStaticInfo()).updateDevice(deviceId, binary);
 
-
-    struct xclDeviceInfo2* info = new xclDeviceInfo2;
-    xclGetDeviceInfo2(handle, info);
-    (db->getStaticInfo()).setDeviceName(deviceId, std::string(info->mName));
+    {
+      struct xclDeviceInfo2* info = new xclDeviceInfo2;
+      if(xclGetDeviceInfo2(handle, info) == 0) {
+        (db->getStaticInfo()).setDeviceName(deviceId, std::string(info->mName));
+      }
+      delete info;
+    }
 
     // Update DeviceIntf in HALPlugin
     if(devices.find(deviceId) != devices.end()) {
