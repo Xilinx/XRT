@@ -1311,6 +1311,8 @@ struct xocl_srsr_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	int (*save_calib)(struct platform_device *pdev);
 	int (*calib)(struct platform_device *pdev, bool retain);
+	int (*write_calib)(struct platform_device *pdev, const void *calib_cache, uint32_t size);
+	int (*read_calib)(struct platform_device *pdev, void *calib_cache, uint32_t size);
 };
 #define	SRSR_DEV(xdev, idx)	SUBDEV_MULTI(xdev, XOCL_SUBDEV_SRSR, idx).pldev
 #define	SRSR_OPS(xdev, idx)							\
@@ -1328,6 +1330,14 @@ struct xocl_srsr_funcs {
 #define	xocl_srsr_calib(xdev, idx, retain)				\
 	(SRSR_CB(xdev, idx) ?						\
 	SRSR_OPS(xdev, idx)->calib(SRSR_DEV(xdev, idx), retain) : \
+	-ENODEV)
+#define	xocl_srsr_write_calib(xdev, idx, calib_cache, size)				\
+	(SRSR_CB(xdev, idx) ?						\
+	SRSR_OPS(xdev, idx)->write_calib(SRSR_DEV(xdev, idx), calib_cache, size) : \
+	-ENODEV)
+#define	xocl_srsr_read_calib(xdev, idx, calib_cache, size)				\
+	(SRSR_CB(xdev, idx) ?						\
+	SRSR_OPS(xdev, idx)->read_calib(SRSR_DEV(xdev, idx), calib_cache, size) : \
 	-ENODEV)
 
 struct calib_storage_funcs {

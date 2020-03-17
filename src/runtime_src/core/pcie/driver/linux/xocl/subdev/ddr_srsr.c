@@ -24,10 +24,10 @@
 #define	REG_CTRL_OFFSET			0x00000004
 #define	REG_CALIB_OFFSET		0x00000008
 #define	REG_XSDB_RAM_BASE		0x00004000
- 
+
 #define	XSDB_RAM_MAX			2901
 #define	XSDB_RAM_SIZE			0x1000
- 
+
 #define	CTRL_BIT_SYS_RST		0x00000001
 #define	CTRL_BIT_XSDB_SELECT		0x00000010
 #define	CTRL_BIT_MEM_INIT_SKIP		0x00000020
@@ -40,13 +40,11 @@
 
 #define	SRSR_DEV2XDEV(d)	xocl_get_xdev(to_platform_device(d))
 
-#define CALIB_CACHE_SZ		0x4000
-
 struct xocl_ddr_srsr {
 	void __iomem		*base;
 	struct device		*dev;
 	struct mutex		lock;
-	char 			*calib_cache;
+	char			*calib_cache;
 	bool			online;
 };
 
@@ -78,7 +76,7 @@ static int srsr_full_calibration(struct platform_device *pdev)
 	xocl_dr_reg_write32(xdev, CTRL_BIT_SYS_RST, xocl_ddr_srsr->base+REG_CTRL_OFFSET);
 	xocl_dr_reg_write32(xdev, 0x0, xocl_ddr_srsr->base+REG_CTRL_OFFSET);
 
-	for (;i<100;++i) {
+	for (; i < 100; ++i) {
 		val = xocl_dr_reg_read32(xdev, xocl_ddr_srsr->base+REG_STATUS_OFFSET);
 		if (val & STATUS_BIT_CALIB_COMPLETE) {
 			err = 0;
@@ -86,7 +84,6 @@ static int srsr_full_calibration(struct platform_device *pdev)
 		}
 		msleep(20);
 	}
-
 	return err;
 }
 
@@ -99,19 +96,8 @@ static int srsr_save_calib(struct platform_device *pdev)
 	u32 offset = 0;
 
 	mutex_lock(&xocl_ddr_srsr->lock);
-	if (xocl_ddr_srsr->calib_cache) {
-		err = 0;
-		goto done;
-	}
-
-	if (!xocl_ddr_srsr->online) {
-		err = 0;
-		goto done;
-	}
-
-	xocl_ddr_srsr->calib_cache = vzalloc(CALIB_CACHE_SZ);
 	if (!xocl_ddr_srsr->calib_cache) {
-		err = -ENOMEM;
+		err = -EINVAL;
 		goto done;
 	}
 
@@ -126,7 +112,7 @@ static int srsr_save_calib(struct platform_device *pdev)
 	}
 	xocl_dr_reg_write32(xdev, CTRL_BIT_SREF_REQ | CTRL_BIT_XSDB_SELECT, xocl_ddr_srsr->base+REG_CTRL_OFFSET);
 
-	for ( i = 0; i < 4; ++i) {
+	for (i = 0; i < 4; ++i) {
 		memcpy(xocl_ddr_srsr->calib_cache+offset, xocl_ddr_srsr->base+REG_XSDB_RAM_BASE, XSDB_RAM_SIZE);
 		offset += XSDB_RAM_SIZE;
 	}
@@ -154,7 +140,7 @@ static int srsr_fast_calib(struct platform_device *pdev, bool retention)
 		write_val |= CTRL_BIT_MEM_INIT_SKIP;
 
 	xocl_dr_reg_write32(xdev, write_val, xocl_ddr_srsr->base+REG_CTRL_OFFSET);
-	for ( i = 0; i < 4; ++i) {
+	for (i = 0; i < 4; ++i) {
 		memcpy(xocl_ddr_srsr->base+REG_XSDB_RAM_BASE, xocl_ddr_srsr->calib_cache+offset, XSDB_RAM_SIZE);
 		offset += XSDB_RAM_SIZE;
 	}
@@ -169,19 +155,16 @@ static int srsr_fast_calib(struct platform_device *pdev, bool retention)
 		}
 		msleep(20);
 	}
-
 	return err;
 }
 
 static int srsr_calib(struct platform_device *pdev, bool retention)
 {
 	struct xocl_ddr_srsr *xocl_ddr_srsr = platform_get_drvdata(pdev);
-	int err = 0;
+	int err = -1;
 
 	mutex_lock(&xocl_ddr_srsr->lock);
 
-	if (!xocl_ddr_srsr->online)
-		goto done;
 
 	err = srsr_fast_calib(pdev, retention);
 
@@ -190,7 +173,11 @@ static int srsr_calib(struct platform_device *pdev, bool retention)
 	 */
 	if (err) {
 		vfree(xocl_ddr_srsr->calib_cache);
-		xocl_ddr_srsr->calib_cache = NULL;
+		xocl_ddr_srsr->calib_cache = vzalloc(XOCL_CALIB_CACHE_SIZE);
+		if (!xocl_ddr_srsr->calib_cache) {
+			err = -ENOMEM;
+			goto done;
+		}
 		err = srsr_full_calibration(pdev);
 	}
 done:
@@ -198,34 +185,39 @@ done:
 	return err;
 }
 
-static int srsr_offline(struct platform_device *pdev)
+static int srsr_read_calib(struct platform_device *pdev, void *calib_cache, uint32_t size)
 {
+	int ret = 0;
 	struct xocl_ddr_srsr *xocl_ddr_srsr = platform_get_drvdata(pdev);
 
-	xocl_ddr_srsr->online = false;
-	sysfs_remove_group(&pdev->dev.kobj, &xocl_ddr_srsr_attrgroup);
-	return 0;
+	BUG_ON(!xocl_ddr_srsr->calib_cache);
+	BUG_ON(!calib_cache);
+	BUG_ON(size != XOCL_CALIB_CACHE_SIZE);
+
+	memcpy(calib_cache, xocl_ddr_srsr->calib_cache, size);
+
+	return ret;
 }
 
-static int srsr_online(struct platform_device *pdev)
+static int srsr_write_calib(struct platform_device *pdev, const void *calib_cache, uint32_t size)
 {
-	int ret;
+	int ret = 0;
 	struct xocl_ddr_srsr *xocl_ddr_srsr = platform_get_drvdata(pdev);
 
-	ret = sysfs_create_group(&pdev->dev.kobj, &xocl_ddr_srsr_attrgroup);
-	if (ret)
-		xocl_err(&pdev->dev, "create icap attrs failed: %d", ret);
+	BUG_ON(!xocl_ddr_srsr->calib_cache);
+	BUG_ON(!calib_cache);
+	BUG_ON(size != XOCL_CALIB_CACHE_SIZE);
 
-	xocl_ddr_srsr->online = true;
+	memcpy(xocl_ddr_srsr->calib_cache, calib_cache, size);
 
 	return ret;
 }
 
 static struct xocl_srsr_funcs srsr_ops = {
-	.offline_cb = srsr_offline,
-	.online_cb = srsr_online,
 	.save_calib = srsr_save_calib,
 	.calib = srsr_calib,
+	.read_calib = srsr_read_calib,
+	.write_calib = srsr_write_calib,
 };
 
 static int xocl_ddr_srsr_probe(struct platform_device *pdev)
@@ -255,6 +247,14 @@ static int xocl_ddr_srsr_probe(struct platform_device *pdev)
 	}
 	mutex_init(&xocl_ddr_srsr->lock);
 	platform_set_drvdata(pdev, xocl_ddr_srsr);
+
+	xocl_ddr_srsr->calib_cache = vzalloc(XOCL_CALIB_CACHE_SIZE);
+	if (!xocl_ddr_srsr->calib_cache) {
+		err = -ENOMEM;
+		goto create_xocl_ddr_srsr_failed;
+	}
+
+	iowrite32(CTRL_BIT_SYS_RST, xocl_ddr_srsr->base+REG_CTRL_OFFSET);
 
 	err = sysfs_create_group(&pdev->dev.kobj, &xocl_ddr_srsr_attrgroup);
 	if (err)
