@@ -1374,6 +1374,10 @@ int xcldev::device::validate(bool quick, bool hidden)
     if (retVal < 0)
         return retVal;
 
+    // Skip the rest of test cases for quicker turn around.
+    if (quick)
+        return withWarning ? 1 : 0;
+
     // Perform IOPS test
     if(hidden) {
         retVal = runOneTest("IOPS test",
@@ -1382,10 +1386,6 @@ int xcldev::device::validate(bool quick, bool hidden)
         if (retVal < 0)
             return retVal;
     }
-
-    // Skip the rest of test cases for quicker turn around.
-    if (quick)
-        return withWarning ? 1 : 0;
 
     // Perform DMA test
     retVal = runOneTest("DMA test",
