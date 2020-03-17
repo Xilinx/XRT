@@ -166,6 +166,63 @@ DeviceIntf::~DeviceIntf()
     return std::string("");
   }
 
+  std::string DeviceIntf::getTraceMonName(xclPerfMonType type, uint32_t index)
+  {
+    if (type == XCL_PERF_MON_MEMORY) {
+      // AIMs have indexes in multiples of 2
+      index = index - (index % 2);
+      for (auto& ip: aimList) {
+        if ((ip->getProperties() & 0x1) && (ip->getMIndex() == index ))
+          return ip->getName();
+      }
+    }
+    if (type == XCL_PERF_MON_ACCEL) {
+      // AMs have indexes in multiples of 16
+      index = index - (index % 16);
+      for (auto& ip: amList) {
+        if ((ip->getProperties() & 0x1) && (ip->getMIndex() == index ))
+          return ip->getName();
+      }
+    }
+    if (type == XCL_PERF_MON_STR) {
+      for (auto& ip: asmList) {
+        if ((ip->getProperties() & 0x1) && (ip->getMIndex() == index ))
+          return ip->getName();
+      }
+    }
+    return std::string("");
+  }
+
+  uint32_t DeviceIntf::getTraceMonProperty(xclPerfMonType type, uint32_t index)
+  {
+    if (type == XCL_PERF_MON_MEMORY) {
+      // AIMs have indexes in multiples of 2
+      index = index - (index % 2);
+      for (auto& ip: aimList) {
+        uint32_t p = ip->getProperties();
+        if ((p & 0x1) && (ip->getMIndex() == index ))
+          return p;
+      }
+    }
+    if (type == XCL_PERF_MON_ACCEL) {
+      // AMs have indexes in multiples of 16
+      index = index - (index % 16);
+      for (auto& ip: amList) {
+        uint32_t p = ip->getProperties();
+        if ((p & 0x1) && (ip->getMIndex() == index ))
+          return p;
+      }
+    }
+    if (type == XCL_PERF_MON_STR) {
+      for (auto& ip: asmList) {
+        uint32_t p = ip->getProperties();
+        if ((p & 0x1) && (ip->getMIndex() == index ))
+          return p;
+      }
+    }
+    return 0;
+  }
+
   uint32_t DeviceIntf::getMonitorProperties(xclPerfMonType type, uint32_t index)
   {
     if((type == XCL_PERF_MON_MEMORY) && (index < aimList.size())) { return aimList[index]->getProperties(); }

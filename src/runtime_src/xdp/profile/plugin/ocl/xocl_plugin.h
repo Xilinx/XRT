@@ -90,8 +90,13 @@ namespace xdp {
       void setTraceStringForComputeUnit(const std::string& cuName, std::string& traceString);
       unsigned int getProfileNumberSlots(xclPerfMonType type, const std::string& deviceName) override;
       void getProfileSlotName(xclPerfMonType type, const std::string& deviceName,
+                              unsigned int slotnum, std::string& slotName) override;
+      void getTraceSlotName(xclPerfMonType type, const std::string& deviceName,
                             unsigned int slotnum, std::string& slotName) override;
-      unsigned int getProfileSlotProperties(xclPerfMonType type, const std::string& deviceName, unsigned int slotnum) override;
+      unsigned int getProfileSlotProperties(xclPerfMonType type, const std::string& deviceName,
+                                            unsigned int slotnum) override;
+      unsigned int getTraceSlotProperties(xclPerfMonType type, const std::string& deviceName,
+                                          unsigned int slotnum) override;
       bool isAPCtrlChain(const std::string& deviceName, const std::string& cu) override;
       void sendMessage(const std::string &msg) override;
     };
