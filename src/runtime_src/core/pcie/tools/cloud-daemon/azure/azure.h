@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -89,8 +89,9 @@ public:
     }
 private:
     // 4 MB buffer to truncate and send
-    static const int TRANSFER_SEGMENT_SIZE { 1024 * 4096 };
-    static const int REIMAGE_TIMEOUT { 20 }; //in second
+    static const int transfer_segment_size { 1024 * 4096 };
+    static const int rest_timeout { 20 }; //in second
+    static const int upload_retry { 15 }; //in second
     std::shared_ptr<pcidev::pci_device> dev;
     size_t index;
     int UploadToWireServer(

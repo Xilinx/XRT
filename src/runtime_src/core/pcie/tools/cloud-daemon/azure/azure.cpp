@@ -1,5 +1,5 @@
 /*
- * Partial Copyright (C) 2019 Xilinx, Inc
+ * Partial Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Microsoft provides sample code how RESTful APIs are being called 
  *
@@ -25,6 +25,7 @@
 #include <syslog.h>
 #include <openssl/sha.h>
 #include <curl/curl.h>
+#include <sys/time.h>
 
 #include <cstdio>
 #include <cstring>
@@ -229,6 +230,9 @@ int AzureDev::azureLoadXclBin(const xclBin *buffer)
            index++;
     }
 
+    timeval tim_s, tim_e;
+    gettimeofday(&tim_s, NULL);
+    std::cout << fpgaSerialNumber << " : upload xclbin start @" << tim_s.tv_sec << std::endl;
     //start the re-image process
     std::string delim = ":";
     std::string ret, key, value;
@@ -242,6 +246,10 @@ int AzureDev::azureLoadXclBin(const xclBin *buffer)
         value.compare("0") != 0)
         return -EFAULT;
 
+    gettimeofday(&tim_e, NULL);
+    std::cout << fpgaSerialNumber << " : upload xclbin end @" << tim_e.tv_sec;
+    std::cout << " ,takes " << tim_e.tv_sec - tim_s.tv_sec << " seconds" << std::endl;
+    tim_s = tim_e;
     //check the re-image status
     int wait = 0;
     do {
@@ -251,18 +259,22 @@ int AzureDev::azureLoadXclBin(const xclBin *buffer)
             fpgaSerialNumber
         );
         if (splitLine(ret, key, value, delim) != 0 ||
-            key.compare("GetReimagingStatus") != 0)
-            return -EFAULT;
-
-        if (value.compare("3") != 0) {
+            key.compare("GetReimagingStatus") != 0) {
+            std::cout << "Retrying GetReimagingStatus ... " << std::endl;
+            sleep(1);
+            wait++;
+            continue;
+    	} else if (value.compare("3") != 0) {
             sleep(1);
             wait++;
             continue;
         } else {
-            std::cout << "reimaging return status: " << value << " within " << wait << "s" << std::endl;
+            gettimeofday(&tim_e, NULL);
+            std::cout << fpgaSerialNumber << " : reimage(return status: " << value << ") end @" << tim_e.tv_sec;
+            std::cout << " ,takes " << tim_e.tv_sec - tim_s.tv_sec << " seconds" << std::endl;
             return 0;
         }
-    } while (wait < REIMAGE_TIMEOUT);
+    } while (wait < rest_timeout);
 
     return -ETIMEDOUT;
 }
@@ -311,7 +323,7 @@ int AzureDev::azureHotReset()
             std::cout << "getreset status return status: " << value << " within " << wait << "s" << std::endl;
             return 0;
         }
-    } while (wait < REIMAGE_TIMEOUT);
+    } while (wait < rest_timeout);
     syslog(LOG_INFO, "complete get reset status");
     return 0;
 }
@@ -339,6 +351,8 @@ int AzureDev::UploadToWireServer(
     CURL *curl;
     CURLcode res;
     struct write_unit unit;
+    int retryCounter = 0;
+    long responseCode = 0;
 
     unit.uptr = data.c_str();
     unit.sizeleft = data.size();
@@ -377,12 +391,42 @@ int AzureDev::UploadToWireServer(
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
         //curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-        res = curl_easy_perform(curl);
 
-        if (res != CURLE_OK) {
-            std::cerr << "curl_easy_perform() failed: " <<  curl_easy_strerror(res) << std::endl;
-            return 1;
-        }
+        // add retry for http requests
+        do {
+            responseCode = 0;
+            res = curl_easy_perform(curl);
+
+            if (res != CURLE_OK) {
+                std::cerr << "curl_easy_perform() failed: " <<  curl_easy_strerror(res) << std::endl;
+                if (retryCounter < upload_retry) {
+                    retryCounter++;
+                	std::cout << "Retrying an upload..." << retryCounter << std::endl;
+                	sleep(1);
+                } else {
+                	std::cerr << "Max number of retries reached... givin up" << std::endl;
+                	curl_easy_cleanup(curl);
+                	return 1;
+                }
+            } else {
+                // check the return code
+                curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &responseCode);
+                std::cout << "Debug: status code " << responseCode << std::endl;
+                if (responseCode >= 400) { // retry for networking issue
+                	// error range
+                	res = CURLE_HTTP_RETURNED_ERROR;
+                	if (retryCounter < upload_retry) {
+                	    retryCounter++;
+                		std::cout << "Retrying an upload after http error..." << retryCounter << std::endl;
+                		sleep(1);
+                	} else {
+                		std::cerr << "Max number of retries reached... givin up" << std::endl;
+                		curl_easy_cleanup(curl);
+                		return 1;
+                	}
+                } // if (responseCode > 400)
+            } // if (res != CURLE_OK)
+        } while (res != CURLE_OK);
 
         // cleanup
         curl_easy_cleanup(curl);
@@ -403,7 +447,7 @@ std::string AzureDev::REST_Get(
     std::string readbuff = "";
 
     curl = curl_easy_init();
-    if(curl)
+    if (curl)
     {
         std::stringstream urlStream;
         urlStream << "http://" << ip << "/" << endpoint << "&chipid=" << target;
@@ -445,7 +489,7 @@ int AzureDev::Sha256AndSplit(
 
     while (pos < input.size())
     {
-        std::string segment = input.substr(pos, TRANSFER_SEGMENT_SIZE);
+        std::string segment = input.substr(pos, transfer_segment_size);
 
         if(!SHA256_Update(&context, segment.c_str(), segment.size()))
         {
@@ -453,7 +497,7 @@ int AzureDev::Sha256AndSplit(
             return 1;
         }
         output.push_back(segment);
-        pos += TRANSFER_SEGMENT_SIZE;
+        pos += transfer_segment_size;
     }
 
     // Get Final SHA
