@@ -26,13 +26,13 @@
 #define	REG_XSDB_RAM_BASE		0x00004000
 
 #define	XSDB_RAM_MAX_IN_WORDS		2901
+#define XOCL_CALIB_CACHE_SIZE		XSDB_RAM_MAX_IN_WORDS*4
 #define	XSDB_RAM_SIZE			0x1000
 
 /* Calibration cache size may up to XSDB_RAM_MAX_IN_WORDS*4 = ~12kB
  * And XSDB_RAM_SIZE is 4kB, need to read the cache from XSDB_RAM at least 3 times.
- * So let's make the cache size to 16kB, read it in 4 iterations. 
  */
-#define	TIMES_TO_READ_XSDB_RAM		XOCL_CALIB_CACHE_SIZE/XSDB_RAM_SIZE
+#define	TIMES_TO_READ_XSDB_RAM		3
 
 #define	FULL_CALIB_TIMEOUT		100
 #define	FAST_CALIB_TIMEOUT		15
@@ -105,6 +105,7 @@ static int srsr_save_calib(struct platform_device *pdev)
 	int i = 0, err = -ETIMEDOUT;
 	u32 val = 0;
 	u32 offset = 0;
+	uint32_t cache_size = XOCL_CALIB_CACHE_SIZE;
 
 	mutex_lock(&xocl_ddr_srsr->lock);
 	if (!xocl_ddr_srsr->calib_cache) {
@@ -124,8 +125,11 @@ static int srsr_save_calib(struct platform_device *pdev)
 	xocl_dr_reg_write32(xdev, CTRL_BIT_SREF_REQ | CTRL_BIT_XSDB_SELECT, xocl_ddr_srsr->base+REG_CTRL_OFFSET);
 
 	for (i = 0; i < TIMES_TO_READ_XSDB_RAM; ++i) {
-		memcpy(xocl_ddr_srsr->calib_cache+offset, xocl_ddr_srsr->base+REG_XSDB_RAM_BASE, XSDB_RAM_SIZE);
-		offset += XSDB_RAM_SIZE;
+		uint32_t nr = min(cache_size, (uint32_t)XSDB_RAM_SIZE);
+
+		memcpy(xocl_ddr_srsr->calib_cache+offset, xocl_ddr_srsr->base+REG_XSDB_RAM_BASE, nr);
+		offset += nr;
+		cache_size -= nr;
 	}
 done:
 	mutex_unlock(&xocl_ddr_srsr->lock);
@@ -139,6 +143,7 @@ static int srsr_fast_calib(struct platform_device *pdev, bool retention)
 	int i = 0, err = -ETIMEDOUT;
 	u32 val, write_val = CTRL_BIT_RESTORE_EN | CTRL_BIT_XSDB_SELECT;
 	u32 offset = 0;
+	uint32_t cache_size = XOCL_CALIB_CACHE_SIZE;
 
 
 	if (!xocl_ddr_srsr->calib_cache)
@@ -152,8 +157,11 @@ static int srsr_fast_calib(struct platform_device *pdev, bool retention)
 
 	xocl_dr_reg_write32(xdev, write_val, xocl_ddr_srsr->base+REG_CTRL_OFFSET);
 	for (i = 0; i < TIMES_TO_READ_XSDB_RAM; ++i) {
-		memcpy(xocl_ddr_srsr->base+REG_XSDB_RAM_BASE, xocl_ddr_srsr->calib_cache+offset, XSDB_RAM_SIZE);
-		offset += XSDB_RAM_SIZE;
+		uint32_t nr = min(cache_size, (uint32_t)XSDB_RAM_SIZE);
+
+		memcpy(xocl_ddr_srsr->base+REG_XSDB_RAM_BASE, xocl_ddr_srsr->calib_cache+offset, nr);
+		offset += nr;
+		cache_size -= nr;
 	}
 	xocl_dr_reg_write32(xdev, CTRL_BIT_RESTORE_COMPLETE, xocl_ddr_srsr->base+REG_CTRL_OFFSET);
 
@@ -224,11 +232,18 @@ static int srsr_write_calib(struct platform_device *pdev, const void *calib_cach
 	return ret;
 }
 
+static uint32_t srsr_cache_size(struct platform_device *pdev)
+{
+	return XOCL_CALIB_CACHE_SIZE;
+}
+
+
 static struct xocl_srsr_funcs srsr_ops = {
 	.save_calib = srsr_save_calib,
 	.calib = srsr_calib,
 	.read_calib = srsr_read_calib,
 	.write_calib = srsr_write_calib,
+	.cache_size = srsr_cache_size,
 };
 
 static int xocl_ddr_srsr_probe(struct platform_device *pdev)

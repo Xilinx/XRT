@@ -22,6 +22,7 @@
 struct calib_cache {
 	uint64_t	mem_id;
 	char		*data;
+	uint32_t	cache_size;
 };
 
 struct calib_storage {
@@ -35,6 +36,7 @@ static int calib_storage_save_by_idx(struct platform_device *pdev, uint32_t idx)
 {
 	struct calib_storage *calib_storage = platform_get_drvdata(pdev);
 	int err = 0;
+	uint32_t cache_size = 0;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 
 	BUG_ON(!calib_storage->cache);
@@ -45,14 +47,23 @@ static int calib_storage_save_by_idx(struct platform_device *pdev, uint32_t idx)
 		goto done;
 	}
 
-	calib_storage->cache[idx]->data = vzalloc(XOCL_CALIB_CACHE_SIZE);
+	cache_size = xocl_srsr_cache_size(xdev, idx);
+
+	if (!cache_size) {
+		err = -ENODEV;
+		goto done;
+	}
+
+	calib_storage->cache[idx]->cache_size = cache_size;
+
+	calib_storage->cache[idx]->data = vzalloc(cache_size);
 	if (!calib_storage->cache[idx]->data) {
 		err = -ENOMEM;
 		goto done;
 	}
 
 	err = xocl_srsr_read_calib(xdev, idx, calib_storage->cache[idx]->data,
-					XOCL_CALIB_CACHE_SIZE);
+					cache_size);
 
 done:
 	if (err) {
@@ -122,7 +133,7 @@ static int calib_storage_restore(struct platform_device *pdev)
 			continue;
 
 		err = xocl_srsr_write_calib(xdev, i, calib_storage->cache[i]->data,
-						XOCL_CALIB_CACHE_SIZE);
+						calib_storage->cache[i]->cache_size);
 	}
 
 	mutex_unlock(&calib_storage->lock);
