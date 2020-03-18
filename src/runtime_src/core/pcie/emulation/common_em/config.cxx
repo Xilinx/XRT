@@ -74,6 +74,7 @@ namespace xclemulation{
     mLauncherArgs = "";
     mSystemDPA = true;
     mLegacyErt = ERTMODE::NONE;
+    mCuBaseAddrForce=-1;
   }
 
   static bool getBoolValue(std::string& value,bool defaultValue)
@@ -231,6 +232,8 @@ namespace xclemulation{
           setLegacyErt(ERTMODE::UPDATED);
         else if(boost::iequals(value,"true"))
           setLegacyErt(ERTMODE::LEGACY);
+      } else if (name=="cu_base_addr_force") {
+          mCuBaseAddrForce= strtoll(value.c_str(),NULL,0);
       }
       else if(name.find("Debug.") == std::string::npos)
       {
