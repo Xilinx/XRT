@@ -87,6 +87,7 @@ private:
     };
     const char *E_FlasherTypeStrings[4] = { "UNKNOWN", "SPI", "BPI", "QSPI_PS" };
     const char *getFlasherTypeText( E_FlasherType val ) { return E_FlasherTypeStrings[ val ]; }
+    E_FlasherType typeStr_to_E_FlasherType(const std::string& typeStr); 
     std::shared_ptr<xrt_core::device> m_device;
 
     int getProgrammingTypeFromDeviceName(unsigned char name[], E_FlasherType &type );
