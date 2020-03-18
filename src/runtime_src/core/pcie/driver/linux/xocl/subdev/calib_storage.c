@@ -22,6 +22,7 @@
 struct calib_cache {
 	uint64_t	mem_id;
 	char		*data;
+	uint32_t	cache_size;
 };
 
 struct calib_storage {
@@ -35,6 +36,8 @@ static int calib_storage_save_by_idx(struct platform_device *pdev, uint32_t idx)
 {
 	struct calib_storage *calib_storage = platform_get_drvdata(pdev);
 	int err = 0;
+	uint32_t cache_size = 0;
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
 
 	BUG_ON(!calib_storage->cache);
 
@@ -44,11 +47,23 @@ static int calib_storage_save_by_idx(struct platform_device *pdev, uint32_t idx)
 		goto done;
 	}
 
-	calib_storage->cache[idx]->data = vzalloc(XOCL_CALIB_CACHE_SIZE);
+	cache_size = xocl_srsr_cache_size(xdev, idx);
+
+	if (!cache_size) {
+		err = -ENODEV;
+		goto done;
+	}
+
+	calib_storage->cache[idx]->cache_size = cache_size;
+
+	calib_storage->cache[idx]->data = vzalloc(cache_size);
 	if (!calib_storage->cache[idx]->data) {
 		err = -ENOMEM;
 		goto done;
 	}
+
+	err = xocl_srsr_read_calib(xdev, idx, calib_storage->cache[idx]->data,
+					cache_size);
 
 done:
 	if (err) {
@@ -90,9 +105,6 @@ static int calib_storage_save(struct platform_device *pdev)
 	int err = 0;
 	uint32_t i = 0;
 
-	if (err)
-		return err;
-
 	calib_cache_clean(pdev);
 
 	mutex_lock(&calib_storage->lock);
@@ -109,6 +121,7 @@ static int calib_storage_restore(struct platform_device *pdev)
 	struct calib_storage *calib_storage = platform_get_drvdata(pdev);
 	int err = 0;
 	uint32_t i = 0;
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
 
 	mutex_lock(&calib_storage->lock);
 
@@ -118,6 +131,9 @@ static int calib_storage_restore(struct platform_device *pdev)
 	for (; i < calib_storage->cache_num; ++i) {
 		if (!calib_storage->cache[i])
 			continue;
+
+		err = xocl_srsr_write_calib(xdev, i, calib_storage->cache[i]->data,
+						calib_storage->cache[i]->cache_size);
 	}
 
 	mutex_unlock(&calib_storage->lock);
@@ -138,11 +154,10 @@ static int calib_storage_probe(struct platform_device *pdev)
 	calib_storage = devm_kzalloc(&pdev->dev, sizeof(*calib_storage), GFP_KERNEL);
 	if (!calib_storage)
 		return -ENOMEM;
-	
+
 	calib_storage->cache = vzalloc(MAX_M_COUNT*sizeof(struct calib_cache *));
-	if (!calib_storage->cache) {
+	if (!calib_storage->cache)
 		return -ENOMEM;
-	}
 
 	calib_storage->cache_num = MAX_M_COUNT;
 
