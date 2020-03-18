@@ -12,10 +12,10 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-XOCC := $(XILINX_SDX)/bin/xocc
-EMCONFIGUTIL := $(XILINX_SDX)/bin/emconfigutil
+VPP := $(XILINX_VITIS)/bin/v++
+EMCONFIGUTIL := $(XILINX_VITIS)/bin/emconfigutil
 MODE ?= hw_emu
-DSA ?= xilinx_vcu1525_dynamic_5_1
+DSA ?= xilinx_u200_xdma_201830_1
 
 # % env XILINX_SDX=/proj/xbuilds/2018.3_daily_latest/installs/lin64/SDx/2018.3 make xclbin
 # % env XILINX_SDX=/proj/xbuilds/2018.3_daily_latest/installs/lin64/SDx/2018.3 make emconfig
@@ -33,7 +33,7 @@ XCLBIN := addone.$(MODE).xclbin
 EMCONFIG_FILE := emconfig.json
 
 # flags
-XOCC_LINK_OPTS :=  \
+VPP_LINK_OPTS :=  \
  --nk addone:4 \
  --sp addone_1.a:bank0 \
  --sp addone_1.b:bank1 \
@@ -44,7 +44,7 @@ XOCC_LINK_OPTS :=  \
  --sp addone_4.a:bank3  \
  --sp addone_4.b:bank0
 
-XOCC_COMMON_OPTS := -s -t $(MODE) --platform $(DSA)
+VPP_COMMON_OPTS := -s -t $(MODE) --platform $(DSA)
 CFLAGS := -g -std=c++14 -I$(XILINX_XRT)/include
 LFLAGS := -L$(XILINX_XRT)/lib -lxilinxopencl -lpthread -lrt
 NUMDEVICES := 1
@@ -65,11 +65,11 @@ clean:
 # kernel rules
 $(XOS): $(KERNEL_SRC)
 	$(RM) $@
-	$(XOCC) $(XOCC_COMMON_OPTS) -c -o $@ $+
+	$(VPP) $(VPP_COMMON_OPTS) -c -o $@ $+
 
 
 $(XCLBIN): $(XOS)
-	$(XOCC) $(XOCC_COMMON_OPTS) -l -o $@ $+ $(XOCC_LINK_OPTS)
+	$(VPP) $(VPP_COMMON_OPTS) -l -o $@ $+ $(VPP_LINK_OPTS)
 
 # host rules
 $(HOST_EXE): $(HOST_SRC)

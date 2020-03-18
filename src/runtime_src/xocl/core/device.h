@@ -25,6 +25,7 @@
 #include "xrt/device/device.h"
 #include "xrt/scheduler/command.h"
 #include "core/common/unistd.h"
+#include "core/common/scope_guard.h"
 
 #include <cassert>
 
@@ -53,26 +54,6 @@ public:
    *   The underlying xrt device managed by the platform
    */
   device(platform* pltf, xrt::device* xdevice);
-
-  /**
-   * Construct a schizophrenic device.
-   *
-   * This device doesn't really know what it wants to be. It could be a
-   * hw device, a swem device, or a hwem device, the actual decision
-   * is in some cases deferred until the program binary is loaded.
-   *
-   */
-  device(platform* pltf, xrt::device* hw_device, xrt::device* swem_device, xrt::device* hwem_device);
-
-  /**
-   * Construct a less schizophrenic device.
-   *
-   * This device is on a path to recovery and only suffers from dual
-   * personality disorder.  It could be a swem device or a hwem
-   * device, the actual decision is in some cases deferred until the
-   * program binary is loaded.
-   */
-  device(platform* pltf, xrt::device* swem_device, xrt::device* hwem_device);
 
   /**
    * Sub device constructor
@@ -641,6 +622,14 @@ public:
   unsigned int
   unlock();
 
+  xrt_core::scope_guard<std::function<void()>>
+  lock_guard()
+  {
+    lock();
+    auto unlocker = [](device* d) { d->unlock(); };
+    return {std::bind(unlocker, this)};
+  }
+
   /**
    * Check is this device is available for use by this process.
    *
@@ -742,20 +731,6 @@ private:
   clear_cus();
 
   /**
-   * Set xrt device when the final device is determined
-   *
-   * Throws if device is already set
-   */
-  void
-  set_xrt_device(xrt::device* xd,bool final=true);
-
-  /**
-   * Validate xclbin and set xrt device according to xclbin target
-   */
-  void
-  set_xrt_device(const xocl::xclbin& xclbin);
-
-  /**
    * Track mem object as allocated on this device
    */
   void
@@ -800,10 +775,6 @@ private:
 
   platform* m_platform = nullptr;
   xrt::device* m_xdevice = nullptr;
-
-  xrt::device* m_hw_device = nullptr;
-  xrt::device* m_swem_device = nullptr;
-  xrt::device* m_hwem_device = nullptr;
 
   // Set for sub-device only
   ptr<device> m_parent = nullptr;

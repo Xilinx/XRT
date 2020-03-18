@@ -81,7 +81,6 @@ void
 device::
 setup()
 {
-#ifndef PMD_OCL
   if (!m_workers.empty())
     return;
 
@@ -103,7 +102,6 @@ setup()
   }
   // single misc queue worker
   m_workers.emplace_back(xrt_core::thread(task::worker2,std::ref(m_queue[static_cast<qtype>(hal::queue_type::misc)]),"misc"));
-#endif
 }
 
 device::BufferObject*
@@ -704,23 +702,14 @@ pollStreams(hal::StreamXferCompletions* comps, int min, int max, int* actual, in
   return m_ops->mPollQueues(m_handle,min,max,req,actual,timeout);
 }
 
-#ifdef PMD_OCL
 void
 createDevices(hal::device_list& devices,
-              const std::string& dll, void* handle, unsigned int count, void* pmd)
-{
-  assert(0);
-}
-#else
-void
-createDevices(hal::device_list& devices,
-              const std::string& dll, void* driverHandle, unsigned int deviceCount,void*)
+              const std::string& dll, void* driverHandle, unsigned int deviceCount)
 {
   auto halops = std::make_shared<operations>(dll,driverHandle,deviceCount);
   for (unsigned int idx=0; idx<deviceCount; ++idx)
     devices.emplace_back(std::make_unique<xrt::hal2::device>(halops,idx));
 }
-#endif
 
 
 }} // hal2,xrt

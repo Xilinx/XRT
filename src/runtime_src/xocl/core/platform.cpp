@@ -229,7 +229,7 @@ platform()
 
   if (is_sw_emulation()) {
     while (auto swem_device = m_device_mgr->get_swem_device()) {
-      auto udev = std::make_unique<xocl::device>(this,swem_device,nullptr);
+      auto udev = std::make_unique<xocl::device>(this,swem_device);
       auto dev = udev.release();
       add_device(dev);
       dev->release();
@@ -238,7 +238,7 @@ platform()
       
   if (is_hw_emulation()) {
     while (auto hwem_device = m_device_mgr->get_hwem_device()) {
-      auto udev = std::make_unique<xocl::device>(this,nullptr,hwem_device);
+      auto udev = std::make_unique<xocl::device>(this,hwem_device);
       auto dev = udev.release();
       add_device(dev);
       dev->release();
@@ -248,7 +248,7 @@ platform()
   //User can target either emulation or board. Not both at the same time.
   if (!is_emulation() && m_device_mgr->has_hw_devices()) {
     while (xrt::device* hw_device = m_device_mgr->get_hw_device()) {
-      auto udev = std::make_unique<xocl::device>(this,hw_device,nullptr,nullptr);
+      auto udev = std::make_unique<xocl::device>(this,hw_device);
       auto dev = udev.release();
       add_device(dev);
       dev->release();
