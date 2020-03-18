@@ -255,8 +255,6 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define XOCL_VSEC_XLAT_GPA_BASE_UPPER_REG_ADDR  0x190
 #define XOCL_VSEC_XLAT_GPA_LIMIT_UPPER_REG_ADDR 0x194
 
-#define XOCL_CALIB_CACHE_SIZE	    0x4000
-
 struct xocl_vsec_header {
 	u32		format;
 	u32		length;
@@ -1311,7 +1309,11 @@ struct xocl_srsr_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	int (*save_calib)(struct platform_device *pdev);
 	int (*calib)(struct platform_device *pdev, bool retain);
+	int (*write_calib)(struct platform_device *pdev, const void *calib_cache, uint32_t size);
+	int (*read_calib)(struct platform_device *pdev, void *calib_cache, uint32_t size);
+	uint32_t (*cache_size)(struct platform_device *pdev);
 };
+
 #define	SRSR_DEV(xdev, idx)	SUBDEV_MULTI(xdev, XOCL_SUBDEV_SRSR, idx).pldev
 #define	SRSR_OPS(xdev, idx)							\
 	((struct xocl_srsr_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_SRSR, idx).ops)
@@ -1329,6 +1331,17 @@ struct xocl_srsr_funcs {
 	(SRSR_CB(xdev, idx) ?						\
 	SRSR_OPS(xdev, idx)->calib(SRSR_DEV(xdev, idx), retain) : \
 	-ENODEV)
+#define	xocl_srsr_write_calib(xdev, idx, calib_cache, size)				\
+	(SRSR_CB(xdev, idx) ?						\
+	SRSR_OPS(xdev, idx)->write_calib(SRSR_DEV(xdev, idx), calib_cache, size) : \
+	-ENODEV)
+#define	xocl_srsr_read_calib(xdev, idx, calib_cache, size)				\
+	(SRSR_CB(xdev, idx) ?						\
+	SRSR_OPS(xdev, idx)->read_calib(SRSR_DEV(xdev, idx), calib_cache, size) : \
+	-ENODEV)
+#define	xocl_srsr_cache_size(xdev, idx)				\
+	(SRSR_CB(xdev, idx) ?						\
+	SRSR_OPS(xdev, idx)->cache_size(SRSR_DEV(xdev, idx)) : 0)
 
 struct calib_storage_funcs {
 	struct xocl_subdev_funcs common_funcs;

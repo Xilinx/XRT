@@ -66,8 +66,8 @@ public:
     XDP_EXPORT
     bool isHostMonitor() const ;
     bool isShellMonitor();
-
     bool has64bit() const ;
+    bool hasTraceID (uint32_t index) const;
 
     size_t triggerTrace(uint32_t traceOption /*startTrigger*/);
 

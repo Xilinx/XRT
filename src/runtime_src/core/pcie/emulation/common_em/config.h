@@ -156,6 +156,7 @@ namespace xclemulation{
       inline std::string getLauncherArgs() const { return mLauncherArgs;}
       inline bool isSystemDPAEnabled() const     { return mSystemDPA;              }
       inline ERTMODE getLegacyErt() const         { return mLegacyErt;              }
+      inline long long getCuBaseAddrForce() const         { return mCuBaseAddrForce;              }
       
       void populateEnvironmentSetup(std::map<std::string,std::string>& mEnvironmentNameValueMap);
 
@@ -183,6 +184,7 @@ namespace xclemulation{
       std::string mLauncherArgs;
       bool mSystemDPA;
       ERTMODE mLegacyErt;
+      long long mCuBaseAddrForce;
       
      
       config();

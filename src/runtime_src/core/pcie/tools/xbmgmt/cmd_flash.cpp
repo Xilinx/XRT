@@ -38,7 +38,7 @@ const char *subCmdFlashDesc = "Update SC firmware or shell on the device";
 const char *subCmdFlashUsage =
     "--scan [--verbose|--json]\n"
     "--update [--shell name [--id id]] [--card bdf] [--force]\n"
-    "--factory_reset [--card bdf]\n\n"
+    "--factory_reset [--card bdf] [--force]\n\n"
     "Experts only:\n"
     "--shell --path file --card bdf [--type flash_type]\n"
     "--sc_firmware --path file --card bdf";
@@ -234,7 +234,7 @@ static int updateShell(unsigned index, std::string flashType,
 }
 
 // Reset shell to factory mode.
-static int resetShell(unsigned index)
+static int resetShell(unsigned index, bool force)
 {
     Flasher flasher(index);
     if(!flasher.isValid())
@@ -242,7 +242,7 @@ static int resetShell(unsigned index)
 
     std::cout << "CAUTION: Resetting Card [" << flasher.sGetDBDF() <<
         "] back to factory mode." << std::endl;
-    if(!canProceed())
+    if(force || !canProceed())
         return -ECANCELED;
 
     return flasher.upgradeFirmware("", nullptr, nullptr);
@@ -555,7 +555,7 @@ int flashXbutilFlashHandler(int argc, char *argv[])
     }
 
     if (reset) {
-        int ret = resetShell(devIdx == UINT_MAX ? 0 : devIdx);
+        int ret = resetShell(devIdx == UINT_MAX ? 0 : devIdx, force);
         if (ret)
             return ret;
         std::cout << "Shell is reset successfully" << std::endl;
@@ -752,8 +752,10 @@ static int sc(int argc, char *argv[])
 static int reset(int argc, char *argv[])
 {
     unsigned index = UINT_MAX;
+    bool force = false;
     const option opts[] = {
         { "card", required_argument, nullptr, '0' },
+        { "force", no_argument, nullptr, '1' },
         { nullptr, 0, nullptr, 0 },
     };
 
@@ -768,12 +770,15 @@ static int reset(int argc, char *argv[])
             if (index == UINT_MAX)
                 return -ENOENT;
             break;
+        case '1':
+            force = true;
+            break;
         default:
             return -EINVAL;
         }
     }
 
-    int ret = resetShell(index == UINT_MAX ? 0 : index);
+    int ret = resetShell(index == UINT_MAX ? 0 : index, force);
     if (ret)
         return ret;
 

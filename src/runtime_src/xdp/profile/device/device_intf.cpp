@@ -166,6 +166,52 @@ DeviceIntf::~DeviceIntf()
     return std::string("");
   }
 
+  std::string DeviceIntf::getTraceMonName(xclPerfMonType type, uint32_t index)
+  {
+    if (type == XCL_PERF_MON_MEMORY) {
+      for (auto& ip: aimList) {
+        if (ip->hasTraceID(index))
+          return ip->getName();
+      }
+    }
+    if (type == XCL_PERF_MON_ACCEL) {
+      for (auto& ip: amList) {
+        if (ip->hasTraceID(index))
+          return ip->getName();
+      }
+    }
+    if (type == XCL_PERF_MON_STR) {
+      for (auto& ip: asmList) {
+        if (ip->hasTraceID(index))
+          return ip->getName();
+      }
+    }
+    return std::string("");
+  }
+
+  uint32_t DeviceIntf::getTraceMonProperty(xclPerfMonType type, uint32_t index)
+  {
+    if (type == XCL_PERF_MON_MEMORY) {
+      for (auto& ip: aimList) {
+        if (ip->hasTraceID(index))
+          return ip->getProperties();;
+      }
+    }
+    if (type == XCL_PERF_MON_ACCEL) {
+      for (auto& ip: amList) {
+        if (ip->hasTraceID(index))
+          return ip->getProperties();;
+      }
+    }
+    if (type == XCL_PERF_MON_STR) {
+      for (auto& ip: asmList) {
+        if (ip->hasTraceID(index))
+          return ip->getProperties();;
+      }
+    }
+    return 0;
+  }
+
   uint32_t DeviceIntf::getMonitorProperties(xclPerfMonType type, uint32_t index)
   {
     if((type == XCL_PERF_MON_MEMORY) && (index < aimList.size())) { return aimList[index]->getProperties(); }

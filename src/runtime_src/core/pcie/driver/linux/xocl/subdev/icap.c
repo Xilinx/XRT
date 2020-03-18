@@ -171,7 +171,7 @@ struct icap {
 
 
 	/* Use reader_ref as xclbin metadata reader counter
-	 * Ther reference count increases by 1 
+	 * Ther reference count increases by 1
 	 * if icap_xclbin_rd_lock get called.
 	 */
 	u64			busy;
@@ -364,7 +364,7 @@ static int icap_xclbin_wr_lock(struct icap *icap)
 	}
 	mutex_unlock(&icap->icap_lock);
 
- 	if (ret)
+	if (ret)
 		goto done;
 
 	ret = wait_event_interruptible(icap->reader_wq, icap->reader_ref == 0);
@@ -686,21 +686,21 @@ static int icap_ocl_update_clock_freq_topology(struct platform_device *pdev,
 
 	for (i = 0; i < ARRAY_SIZE(freq_obj->ocl_target_freq); i++) {
 		if (!freq_obj->ocl_target_freq[i])
-		        continue;
+			continue;
 		freq_max = freq_min = 0;
 		xclbin_get_ocl_frequency_max_min(icap, i, &freq_max, &freq_min);
 		ICAP_INFO(icap, "requested frequency is : %d, "
 			"xclbin freq is: %d, "
-		        "xclbin minimum freq allowed is: %d",
-		        freq_obj->ocl_target_freq[i],
-		        freq_max, freq_min);
+			"xclbin minimum freq allowed is: %d",
+			freq_obj->ocl_target_freq[i],
+			freq_max, freq_min);
 		if (freq_obj->ocl_target_freq[i] > freq_max ||
-		        freq_obj->ocl_target_freq[i] < freq_min) {
-		        ICAP_ERR(icap, "Unable to set frequency! "
-		                "Frequency max: %d, Frequency min: %d, "
-		                "Requested frequency: %d",
-		                freq_max, freq_min,
-		                freq_obj->ocl_target_freq[i]);
+			freq_obj->ocl_target_freq[i] < freq_min) {
+			ICAP_ERR(icap, "Unable to set frequency! "
+				"Frequency max: %d, Frequency min: %d, "
+				"Requested frequency: %d",
+				freq_max, freq_min,
+				freq_obj->ocl_target_freq[i]);
 			err = -EDOM;
 			goto done;
 		}
@@ -1392,7 +1392,7 @@ static int icap_post_download_rp(struct platform_device *pdev)
 			icap->rp_sche_bin_len);
 		vfree(icap->rp_sche_bin);
 		icap->rp_sche_bin = NULL;
-		icap->rp_sche_bin_len =0;
+		icap->rp_sche_bin_len = 0;
 		/* u200 2RP EA does not have ert subdev */
 		if (xocl_ert_reset(xdev) == -ENODEV)
 			load_mbs = true;
@@ -1802,7 +1802,7 @@ static int icap_create_subdev(struct platform_device *pdev)
 
 	if (!mem_topo) {
 		err = -ENODEV;
-		goto done;		
+		goto done;
 	}
 
 	for (i = 0; i < ip_layout->m_count; ++i) {
@@ -1956,9 +1956,15 @@ static int icap_create_post_download_subdevs(struct platform_device *pdev, struc
 
 		if (ip->m_type == IP_DDR4_CONTROLLER && !strncasecmp(ip->m_name, "SRSR", 4)) {
 			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_SRSR;
+			uint32_t idx = 0;
+
+			if (sscanf(ip->m_name, "SRSR-BANK%x", &idx) != 1) {
+				err = -EINVAL;
+				goto done;
+			}
 
 			/* hardcoded, to find a global*/
-			memidx = icap_get_memidx(mem_topo, ip->m_type, ip->properties-4);
+			memidx = icap_get_memidx(mem_topo, ip->m_type, idx);
 			if (memidx == INVALID_MEM_IDX) {
 				ICAP_ERR(icap, "INVALID_MEM_IDX: %u",
 					ip->properties);
@@ -1971,7 +1977,6 @@ static int icap_create_post_download_subdevs(struct platform_device *pdev, struc
 
 			if (!ICAP_PRIVILEGED(icap))
 				subdev_info.num_res = 0;
-
 
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
@@ -2281,7 +2286,7 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 	int err = 0;
 	bool retention = (icap->data_retention & 0x1) == 0x1;
-	
+
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
 	if (xclbin->m_signature_length != -1) {
@@ -2319,19 +2324,19 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 			goto out;
 		}
 	}
-    /* xclbin generated for the flat shell contains MCS files which includes the accelerator
-     * these MCS files should have been already flashed into the device using xbmgmt tool
-     * we dont need to reprogram the xclbin for the FLAT shells.
-     * TODO Currently , There is no way to check whether the programmed xclbin matches with this xclbin or not
-     */
-    if(xclbin->m_header.m_mode != XCLBIN_FLAT) {
-        err = icap_download_bitstream(icap, xclbin);
-        if (err)
-            goto out;
-    } else {
-        uuid_copy(&icap->icap_bitstream_uuid, &xclbin->m_header.uuid);
-        ICAP_INFO(icap, "xclbin is generated for flat shell, dont need to program the bitstream ");
-    }
+	/* xclbin generated for the flat shell contains MCS files which includes the accelerator
+	 * these MCS files should have been already flashed into the device using xbmgmt tool
+	 * we dont need to reprogram the xclbin for the FLAT shells.
+	 * TODO Currently , There is no way to check whether the programmed xclbin matches with this xclbin or not
+	 */
+	if (xclbin->m_header.m_mode != XCLBIN_FLAT) {
+		err = icap_download_bitstream(icap, xclbin);
+		if (err)
+			goto out;
+	} else {
+		uuid_copy(&icap->icap_bitstream_uuid, &xclbin->m_header.uuid);
+		ICAP_INFO(icap, "xclbin is generated for flat shell, dont need to program the bitstream ");
+	}
 
 	/* calibrate hbm and ddr should be performed when resources are ready */
 
@@ -2851,7 +2856,7 @@ static uint64_t icap_get_data_nolock(struct platform_device *pdev,
 			target = icap->idcode;
 			break;
 		case CLOCK_FREQ_0:
-			if(!xocl_clock_get_freq_by_id(xdev, 0, &freq, 0))
+			if (!xocl_clock_get_freq_by_id(xdev, 0, &freq, 0))
 				target = freq;
 			break;
 		case CLOCK_FREQ_1:
@@ -2915,23 +2920,23 @@ static int icap_get_xclbin_metadata(struct platform_device *pdev,
 	mutex_lock(&icap->icap_lock);
 
 	switch (kind) {
-		case IPLAYOUT_AXLF:
-			*buf = icap->ip_layout;
-			break;
-		case MEMTOPO_AXLF:
-			*buf = icap->mem_topo;
-			break;
-		case DEBUG_IPLAYOUT_AXLF:
-			*buf = icap->debug_layout;
-			break;
-		case CONNECTIVITY_AXLF:
-			*buf = icap->connectivity;
-			break;
-		case XCLBIN_UUID:
-			*buf = &icap->icap_bitstream_uuid;
-			break;
-		default:
-			break;
+	case IPLAYOUT_AXLF:
+		*buf = icap->ip_layout;
+		break;
+	case MEMTOPO_AXLF:
+		*buf = icap->mem_topo;
+		break;
+	case DEBUG_IPLAYOUT_AXLF:
+		*buf = icap->debug_layout;
+		break;
+	case CONNECTIVITY_AXLF:
+		*buf = icap->connectivity;
+		break;
+	case XCLBIN_UUID:
+		*buf = &icap->icap_bitstream_uuid;
+		break;
+	default:
+		break;
 	}
 	mutex_unlock(&icap->icap_lock);
 	return 0;
@@ -3205,7 +3210,7 @@ static ssize_t sec_level_store(struct device *dev,
 	mutex_lock(&icap->icap_lock);
 
 	if (ICAP_PRIVILEGED(icap)) {
-#if defined(EFI_SECURE_BOOT) 
+#if defined(EFI_SECURE_BOOT)
 		if (!efi_enabled(EFI_SECURE_BOOT)) {
 			icap->sec_level = val;
 		} else {
@@ -3285,7 +3290,7 @@ static ssize_t data_retention_store(struct device *dev,
 			IORES_DDR4_RESET_GATE, 0, &ack);
 	if (err) {
 		xocl_err(&to_platform_device(dev)->dev,
-			"%d", err);	
+			"%d", err);
 		return err;
 	}
 

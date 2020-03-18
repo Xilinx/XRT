@@ -79,6 +79,10 @@ namespace xdp {
     void     getMonitorName(xclPerfMonType type, uint32_t index, char* name, uint32_t length);
     XDP_EXPORT
     std::string  getMonitorName(xclPerfMonType type, uint32_t index);
+    XDP_EXPORT
+    std::string  getTraceMonName(xclPerfMonType type, uint32_t index);
+    XDP_EXPORT
+    uint32_t  getTraceMonProperty(xclPerfMonType type, uint32_t index);
 
     bool     isHostAIM(uint32_t index) {
        return aimList[index]->isHostMonitor();

@@ -284,7 +284,8 @@ XBUtilities::wrap_paragraphs( const std::string & _unformattedString,
 void
 XBUtilities::parse_device_indices(std::vector<uint16_t> &device_indices, const std::string &device)
 {
-  if(boost::iequals(device, "all")) {
+  //if no device is passed or "all" is specified, parse all devices
+  if(boost::iequals(device, "all") || device.empty()) {
     ::verbose("Sub command : --device");
     //get all devices
     auto total = xrt_core::get_total_devices(false).first;
@@ -294,7 +295,7 @@ XBUtilities::parse_device_indices(std::vector<uint16_t> &device_indices, const s
     for(uint16_t i = 0; i < total; i++) {
       device_indices.push_back(i);
     }
-  } else if (!device.empty()) {
+  } else {
     ::verbose("Sub command : --device");
     using tokenizer = boost::tokenizer< boost::char_separator<char> >;
     boost::char_separator<char> sep(", ");
