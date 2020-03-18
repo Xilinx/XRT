@@ -114,8 +114,6 @@ namespace xdp {
     	double timeStamp);
     XDP_EXPORT
     static void getFlowModeName(e_flow_mode flowMode, std::string& str);
-    XDP_EXPORT
-    static uint32_t getDevTraceBufferSize(uint32_t property);
 
   };
 

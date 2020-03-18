@@ -138,6 +138,9 @@ namespace xdp {
 
     inline xdp::Device* getAbstractDevice() { return mDevice ; }
 
+    XDP_EXPORT
+    static uint32_t getDeviceTraceBufferSize(uint32_t property);
+
   private:
     // Turn on/off debug messages to stdout
     bool mVerbose = false;
