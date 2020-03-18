@@ -150,7 +150,7 @@ struct ert_init_kernel_cmd {
     struct {
       uint32_t state:4;          /* [3-0]   */
       uint32_t update_rtp:1;     /* [4]  */
-      uint32_t unused:5;         /* [9-6]  */
+      uint32_t unused:5;         /* [9-5]  */
       uint32_t extra_cu_masks:2; /* [11-10]  */
       uint32_t count:11;         /* [22-12] */
       uint32_t opcode:5;         /* [27-23] */
