@@ -61,6 +61,7 @@ public:
     size_t startCounter();
     size_t stopCounter();
     size_t readCounter(xclCounterResults& counterResult, uint32_t index);
+    bool hasTraceID (uint32_t index) const;
 
     size_t triggerTrace(uint32_t traceOption /*startTrigger*/); 
 
