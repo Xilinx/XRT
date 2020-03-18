@@ -25,9 +25,9 @@ namespace xrt {
 
 class error : public std::runtime_error
 {
-  unsigned int m_code;
+  int m_code;
 public:
-  error(unsigned int ec, const std::string& what = "")
+  error(int ec, const std::string& what = "")
     : std::runtime_error(what), m_code(ec)
   {}
 
@@ -36,7 +36,7 @@ public:
     : std::runtime_error(what), m_code(0)
   {}
 
-  unsigned int
+  int
   get() const
   {
     return m_code;
@@ -52,7 +52,7 @@ public:
 inline void
 send_exception_message(const char* msg)
 {
-  message::send(message::severity_level::ERROR, msg);
+  message::send(message::severity_level::XRT_ERROR, msg);
 }
 
 } // xrt
