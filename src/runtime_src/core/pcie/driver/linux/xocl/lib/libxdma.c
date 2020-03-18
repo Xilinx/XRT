@@ -1439,11 +1439,16 @@ static int xdma_process_requests(struct xdma_engine *engine,
 				msecs_to_jiffies(10000)); /* 10sec timeout */
 
 		/* Check for timeouts or errors */
-		if (timeout == 0 || timeout < 0) {
+		if (timeout == 0) {
 			pr_err("Request completion timeout\n");
 			engine_reg_dump(engine);
 			rv = -EIO;
+		} else if (timeout < 0) {
+			pr_err("Request aborted with error = %d\n", timeout);
+			engine_reg_dump(engine);
+			rv = -EIO;
 		}
+	
 	}
 	if (req->cb && req->cb->io_done) {
 		req->expiry = jiffies + msecs_to_jiffies(10000);
