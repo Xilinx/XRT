@@ -1437,7 +1437,9 @@ static int xdma_process_requests(struct xdma_engine *engine,
 		timeout = wait_event_interruptible_timeout(req->arbtr_wait,
 				req->sw_desc_cnt == req->desc_completed,
 				msecs_to_jiffies(10000)); /* 10sec timeout */
-		if (timeout == 0) {
+
+		/* Check for timeouts or errors */
+		if (timeout == 0 || timeout < 0) {
 			pr_err("Request completion timeout\n");
 			engine_reg_dump(engine);
 			rv = -EIO;
