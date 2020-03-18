@@ -19,23 +19,7 @@
 /* Address offsets in core */
 #define XAIM_CONTROL_OFFSET                          0x08
 #define XAIM_TRACE_CTRL_OFFSET                       0x10
-#define XAIM_EVENT_OFFSET                            0x18
 #define XAIM_SAMPLE_OFFSET                           0x20
-#define XAIM_FIFO_COUNTS_OFFSET                      0x28
-#define XAIM_FIFO_READ_COUNTS_OFFSET                 0x30
-#define XAIM_WRITE_BYTES_OFFSET                      0x40
-#define XAIM_WRITE_TRANX_OFFSET                      0x44
-#define XAIM_WRITE_LATENCY_OFFSET                    0x48
-#define XAIM_READ_BYTES_OFFSET                       0x4C
-#define XAIM_READ_TRANX_OFFSET                       0x50
-#define XAIM_READ_LATENCY_OFFSET                     0x54
-//#define XAIM_MIN_MAX_WRITE_LATENCY_OFFSET          0x58
-//#define XAIM_MIN_MAX_READ_LATENCY_OFFSET           0x5C
-#define XAIM_OUTSTANDING_COUNTS_OFFSET               0x58
-#define XAIM_LAST_WRITE_ADDRESS_OFFSET               0x5C
-#define XAIM_LAST_WRITE_DATA_OFFSET                  0x60
-#define XAIM_LAST_READ_ADDRESS_OFFSET                0x64
-#define XAIM_LAST_READ_DATA_OFFSET                   0x68
 #define XAIM_SAMPLE_WRITE_BYTES_OFFSET               0x80
 #define XAIM_SAMPLE_WRITE_TRANX_OFFSET               0x84
 #define XAIM_SAMPLE_WRITE_LATENCY_OFFSET             0x88
@@ -70,8 +54,6 @@
 #define XAIM_SAMPLE_WRITE_BUSY_CYCLES_UPPER_OFFSET   0xF8
 
 /* SPM Control Register masks */
-#define XAIM_CR_RESET_ON_SAMPLE_MASK             0x00000010
-#define XAIM_CR_FIFO_RESET_MASK                  0x00000008
 #define XAIM_CR_COUNTER_RESET_MASK               0x00000002
 #define XAIM_CR_COUNTER_ENABLE_MASK              0x00000001
 #define XAIM_TRACE_CTRL_MASK                     0x00000003        
