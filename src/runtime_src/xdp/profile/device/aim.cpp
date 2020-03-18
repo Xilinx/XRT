@@ -242,6 +242,13 @@ void AIM::showProperties()
     ProfileIP::showProperties();
 }
 
+bool AIM::hasTraceID (uint32_t index) const
+{
+    // AIMs have indices in multiples of 2
+    index = index - (index % 2);
+    return (properties & 0x1) && (m_index == index);
+}
+
 
 }   // namespace xdp
 

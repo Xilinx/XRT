@@ -442,10 +442,23 @@ namespace xdp {
         type, slotnum, slotName);
   }
 
+  void XoclPlugin::getTraceSlotName(xclPerfMonType type, const std::string& deviceName,
+                                       unsigned int slotnum, std::string& slotName)
+  {
+    xoclp::platform::get_trace_slot_name(mPlatformHandle, deviceName,
+        type, slotnum, slotName);
+  }
+
   unsigned int XoclPlugin::getProfileSlotProperties(xclPerfMonType type, const std::string& deviceName,
                                                 unsigned int slotnum)
   {
     return xoclp::platform::get_profile_slot_properties(mPlatformHandle, deviceName, type, slotnum);
+  }
+
+  unsigned int XoclPlugin::getTraceSlotProperties(xclPerfMonType type, const std::string& deviceName,
+                                                unsigned int slotnum)
+  {
+    return xoclp::platform::get_trace_slot_properties(mPlatformHandle, deviceName, type, slotnum);
   }
 
   bool XoclPlugin::isAPCtrlChain(const std::string& deviceName,

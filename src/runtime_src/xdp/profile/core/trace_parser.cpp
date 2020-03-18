@@ -149,7 +149,7 @@ namespace xdp {
         bool stallEvent =  trace.EventFlags & 0x4;
         bool starveEvent = trace.EventFlags & 0x2;
         bool isStart =     trace.EventFlags & 0x1;
-        unsigned int ipInfo = mPluginHandle->getProfileSlotProperties(XCL_PERF_MON_STR, deviceName, s);
+        unsigned int ipInfo = mPluginHandle->getTraceSlotProperties(XCL_PERF_MON_STR, deviceName, trace.TraceID);
         bool isRead = (ipInfo & 0x2) ? true : false;
         if (isStart) {
           if (txEvent)
@@ -186,7 +186,7 @@ namespace xdp {
             }
             streamTrace.Type = "Stream_Stall";
           }
-          streamTrace.SlotNum = s;
+          streamTrace.SlotNum = trace.TraceID;
           streamTrace.Name = isRead ? "Kernel_Stream_Read" : "Kernel_Stream_Write";
           streamTrace.StartTime = startTime;
           streamTrace.EndTime = timestamp;
@@ -203,7 +203,7 @@ namespace xdp {
         uint32_t stallStrEvent = trace.TraceID & XAM_TRACE_STALL_STR_MASK;
         uint32_t stallExtEvent = trace.TraceID & XAM_TRACE_STALL_EXT_MASK;
         // Common Params for all event types
-        kernelTrace.SlotNum = s;
+        kernelTrace.SlotNum = trace.TraceID;
         kernelTrace.Name = "OCL Region";
         kernelTrace.Kind = DeviceTrace::DEVICE_KERNEL;
         kernelTrace.EndTime = timestamp;
@@ -287,7 +287,7 @@ namespace xdp {
             }
            }
           DeviceTrace readTrace;
-          readTrace.SlotNum = s;
+          readTrace.SlotNum = trace.TraceID;
           readTrace.Type = "Read";
           readTrace.StartTime = startTime;
           readTrace.EndTime = timestamp;
@@ -315,7 +315,7 @@ namespace xdp {
             }
           }
           DeviceTrace writeTrace;
-          writeTrace.SlotNum = s;
+          writeTrace.SlotNum = trace.TraceID;
           writeTrace.Type = "Write";
           writeTrace.StartTime = startTime;
           writeTrace.EndTime = timestamp;
@@ -340,7 +340,7 @@ namespace xdp {
     unsigned int numCu = mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_ACCEL, deviceName);
     for (unsigned int i = 0; i < numCu; i++) {
       if (!mAccelMonCuStarts[i].empty()) {
-        kernelTrace.SlotNum = i;
+        kernelTrace.SlotNum = i * 16 + MIN_TRACE_ID_AM;
         kernelTrace.Name = "OCL Region";
         kernelTrace.Type = "Kernel";
         kernelTrace.Kind = DeviceTrace::DEVICE_KERNEL;
