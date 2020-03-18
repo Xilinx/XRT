@@ -552,6 +552,7 @@ public:
     , cmd(kernel->device.get())
   {
     auto kcmd = cmd.get_ert_cmd<ert_init_kernel_cmd*>();
+    kcmd->update_rtp = 1;
     kcmd->opcode = ERT_INIT_CU;
     kcmd->type = ERT_CU;
     kcmd->cu_mask = kernel->cumask.to_ulong();  // TODO: fix for > 32 CUs
