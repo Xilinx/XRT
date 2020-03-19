@@ -171,7 +171,7 @@ static int updateSC(unsigned index, const char *file)
     ret = pcidev::shutdown(mgmt_dev);
     if (ret) {
         std::cout << "Only proceed with SC update if all user applications for the target card(s) are stopped." << std::endl;
-        return -ETIMEDOUT;
+        return ret;
     }
 
     ret = writeSCImage(flasher, file);
