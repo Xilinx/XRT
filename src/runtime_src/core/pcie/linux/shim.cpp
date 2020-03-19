@@ -126,14 +126,13 @@ namespace xocl {
 /*
  * shim()
  */
-shim::shim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity)
+shim::
+shim(unsigned index)
   : mCoreDevice(xrt_core::pcie_linux::get_userpf_device(this, index))
-  , mVerbosity(verbosity)
   , mUserHandle(-1)
   , mStreamHandle(-1)
   , mBoardNumber(index)
   , mLocked(false)
-  , mLogfileName(nullptr)
   , mOffsets{0x0, 0x0, OCL_CTLR_BASE, 0x0, 0x0}
   , mMemoryProfilingNumberSlots(0)
   , mAccelProfilingNumberSlots(0)
@@ -142,7 +141,7 @@ shim::shim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity)
   , mCmdBOCache(nullptr)
   , mCuMaps(128, nullptr)
 {
-    init(index, logfileName, verbosity);
+  init(index);
 }
 
 int shim::dev_init()
@@ -220,13 +219,10 @@ void shim::dev_fini()
 /*
  * init()
  */
-void shim::init(unsigned index, const char *logfileName,
-    xclVerbosityLevel verbosity)
+void
+shim::
+init(unsigned int index)
 {
-    if(logfileName != nullptr) {
-        xrt_logmsg(XRT_WARNING, "%s: logfileName is no longer supported", __func__);
-    }
-
     xrt_logmsg(XRT_INFO, "%s", __func__);
 
     int ret = dev_init();
@@ -1761,7 +1757,8 @@ unsigned xclProbe()
     return pcidev::get_dev_ready();
 }
 
-xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logFileName, xclVerbosityLevel level)
+xclDeviceHandle
+xclOpen(unsigned int deviceIndex, const char*, xclVerbosityLevel)
 {
     if(pcidev::get_dev_total() <= deviceIndex) {
         printf("Cannot find index %u \n", deviceIndex);
@@ -1771,7 +1768,7 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logFileName, xclVerbos
   OPEN_CB;
 #endif
 
-    xocl::shim *handle = new xocl::shim(deviceIndex, logFileName, level);
+    xocl::shim *handle = new xocl::shim(deviceIndex);
 
     return static_cast<xclDeviceHandle>(handle);
 }
