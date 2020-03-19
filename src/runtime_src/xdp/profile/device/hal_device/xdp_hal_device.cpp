@@ -106,7 +106,7 @@ size_t HalDevice::alloc(size_t size, uint64_t memoryIndex)
 // XRT_DEVICE_RAM
 //    flags |= XCL_BO_FLAGS_CACHEABLE;
 
-  size_t boHandle = static_cast<size_t>(xclAllocBO(mHalDevice, size, 0, flags));
+  xclBufferHandle boHandle = xclAllocBO(mHalDevice, size, 0, flags);
   mBOHandles.push_back(boHandle);
 //  if(0 == boHandle)
 //    error
