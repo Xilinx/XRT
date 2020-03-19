@@ -557,6 +557,7 @@ public:
     auto kcmd = cmd.get_ert_cmd<ert_init_kernel_cmd*>();
     kcmd->opcode = ERT_INIT_CU;
     kcmd->type = ERT_CU;
+    kcmd->update_rtp = 1;
     kcmd->cu_mask = kernel->cumask.to_ulong();  // TODO: fix for > 32 CUs
     reset_cmd();
   }
