@@ -17,36 +17,45 @@
 #ifndef HAL_PLUGIN_DOT_H
 #define HAL_PLUGIN_DOT_H
 
-#include <vector>
-#include <set>
+#include <map>
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
-#include "xdp/profile/database/events/creator/device_event_from_trace.h"
 
 namespace xdp {
 
   // Forward declarations
-  class DeviceIntf ; 
+  class DeviceIntf; 
+  class DeviceTraceLogger; 
+  class DeviceTraceOffload; 
 
   class HALPlugin : public XDPPlugin
   {
   private:
-    std::map<uint64_t, DeviceIntf*> devices ;
-    std::map<uint64_t, DeviceEventCreatorFromTrace*> deviceEventFromTrace;
-    std::set<void*> encounteredHandles ;
+    std::map<uint64_t, DeviceIntf*> devices;
+    std::map<uint64_t, DeviceTraceLogger*>  deviceTraceLoggers;
+    std::map<uint64_t, DeviceTraceOffload*> deviceTraceOffloaders;
 
     void flushDevices() ;
     void continuousOffload() ;
+    void resetDevice(uint64_t deviceId);
+
   public:
+    XDP_EXPORT
     HALPlugin() ;
+
+    XDP_EXPORT
     ~HALPlugin() ;
 
+    XDP_EXPORT
     virtual void updateDevice(void* /*device*/, const void* /*binary*/);
 
+    XDP_EXPORT
     virtual void writeAll(bool openNewFiles) ;
+    XDP_EXPORT
     virtual void readDeviceInfo(void* device) ;
+    XDP_EXPORT
     void flushDeviceInfo(void* device) ;
-    void setEncounteredDeviceHandle(void* handle) ;
 
+    XDP_EXPORT
     uint64_t getDeviceId(void* handle);
   } ;
 

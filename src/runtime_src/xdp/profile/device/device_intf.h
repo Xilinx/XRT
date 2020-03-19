@@ -43,7 +43,16 @@
 
 namespace xdp {
 
-  class DeviceIntf {
+// Helper methods
+
+XDP_EXPORT
+uint32_t GetDeviceTraceBufferSize(uint32_t property);
+
+XDP_EXPORT
+uint64_t GetTS2MMBufSize();
+
+
+class DeviceIntf {
   public:
 
     DeviceIntf() {}
@@ -137,9 +146,6 @@ namespace xdp {
     void parseTraceData(void* traceData, uint64_t bytes, xclTraceResultsVector& traceVector);
 
     inline xdp::Device* getAbstractDevice() { return mDevice ; }
-
-    XDP_EXPORT
-    static uint32_t getDeviceTraceBufferSize(uint32_t property);
 
   private:
     // Turn on/off debug messages to stdout
