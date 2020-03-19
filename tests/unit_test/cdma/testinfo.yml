@@ -1,0 +1,39 @@
+#template_tql < $XTC_TEMPLATES/sdx/sdaccel/swhw/template.tql
+description: testinfo generated using import_sdx_test.py script
+level: 6
+owner: soeren
+user:
+  allowed_test_modes: [hw]
+  excl_platforms: [xilinx_v350-es1_xdma_201920_1, xilinx_u200_qdma_201910_1, xilinx_u200_qdma_201920_1, xilinx_u250_qdma_201910_1, xilinx_u250_qdma_201920_1, xilinx_u280_xdma_201920_1, xilinx_u50_xdma_201920_1, xilinx_u50_xdma_201920_2, xilinx_samsung_U2x4_201920_1, xilinx_samsung_u2x4_201920_2, xilinx_u250_qep_201910_1, xilinx_u50_xdma_gen3x16_201920_3, xilinx_u280_xdma_201920_3]
+  force_makefile: "--force"
+  host_args: {all: addone.xclbin}
+  host_cflags: ' -DDSA64'
+  host_exe: host.exe
+  host_src: main.cpp
+  kernels:
+  - {cflags: {all: ' -I.'}, file: add1.xo, ksrc: addone.cl, name: add1, type: C}
+  - {cflags: {all: ' -I.'}, file: add2.xo, ksrc: addone.cl, name: add2, type: C}
+  - {cflags: {all: ' -I.'}, file: add3.xo, ksrc: addone.cl, name: add3, type: C}
+  - {cflags: {all: ' -I.'}, file: add0.xo, ksrc: addone.cl, name: add0, type: C}
+  name: cdma
+  xclbins:
+  - files: 'add0.xo add1.xo add2.xo add3.xo '
+    kernels:
+    - cus: [add30]
+      name: add3
+      num_cus: 1
+    - cus: [add20]
+      name: add2
+      num_cus: 1
+    - cus: [add10]
+      name: add1
+      num_cus: 1
+    - cus: [add00]
+      name: add0
+      num_cus: 1
+    lflags: {all: ' --sp add00.m_axi_gmem:DDR[0] --sp add10.m_axi_gmem:DDR[1] --sp add20.m_axi_gmem:DDR[2]
+      --sp add30.m_axi_gmem:DDR[3]'}
+    name: addone.xclbin
+  labels:
+    test_type: ['regression']
+  sdx_type: [sdx_fast]

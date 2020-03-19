@@ -20,13 +20,12 @@
 #include "xocl/core/context.h"
 #include "xocl/core/device.h"
 #include "xocl/core/error.h"
-#include "xrt/util/memory.h"
 #include "detail/context.h"
 #include "detail/device.h"
 #include "detail/command_queue.h"
 
 #include "plugin/xdp/profile.h"
-
+#include "plugin/xdp/lop.h"
 
 namespace xocl {
 
@@ -53,7 +52,7 @@ clCreateCommandQueue(cl_context                  context,
   validOrError(context,device,properties);
 
   auto command_queue =
-    xrt::make_unique<xocl::command_queue>(xocl::xocl(context), xocl::xocl(device), properties);
+    std::make_unique<xocl::command_queue>(xocl::xocl(context), xocl::xocl(device), properties);
   xocl::assign(errcode_ret,CL_SUCCESS);
   return command_queue.release();
 }
@@ -69,6 +68,7 @@ clCreateCommandQueue(cl_context                  context,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clCreateCommandQueue
       (context, device, properties, errcode_ret);
   }
