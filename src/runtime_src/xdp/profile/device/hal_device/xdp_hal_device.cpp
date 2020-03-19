@@ -21,8 +21,9 @@
 #include "core/include/experimental/xrt-next.h"
 
 #ifdef _WIN32
-#pragma warning (disable : 4267)
+#pragma warning (disable : 4267 4244)
 /* 4267 : Disable warning for conversion of size_t to int in return statements in read/write methods */
+/* 4244 : Disable warning for conversion of uint64_t to unsigned int in "flag" argument in xclAllocBO */
 #endif
 
 namespace xdp {
