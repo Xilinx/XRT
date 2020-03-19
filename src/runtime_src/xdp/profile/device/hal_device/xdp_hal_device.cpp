@@ -100,34 +100,57 @@ int HalDevice::readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSa
   return xclReadTraceData(mHalDevice, traceBuf, traceBufSz, numSamples, ipBaseAddress, wordsPerSample);
 }
 
-size_t HalDevice::alloc(size_t, uint64_t)
+size_t HalDevice::alloc(size_t size, uint64_t memoryIndex)
 {
-  return 0;
+  uint64_t flags = memoryIndex;
+// XRT_DEVICE_RAM
+//    flags |= XCL_BO_FLAGS_CACHEABLE;
+
+  size_t boHandle = static_cast<size_t>(xclAllocBO(mHalDevice, size, 0, flags));
+  mBOHandles.push_back(boHandle);
+//  if(0 == boHandle)
+//    error
+  void* ptr = xclMapBO(mHalDevice, boHandle, true /* write */);
+  mMappedBO.push_back(ptr);
+  return mBOHandles.size();
 }
 
-void HalDevice::free(size_t)
+void HalDevice::free(size_t id)
 {
-
+  if(!id) return;
+  size_t boIndex = id - 1;
+  xclFreeBO(mHalDevice, mBOHandles[boIndex]);
 }
 
-void* HalDevice::map(size_t)
+void* HalDevice::map(size_t id)
 {
-  return nullptr;
+  if(!id) return nullptr;
+  size_t boIndex = id - 1;
+  return mMappedBO[boIndex];
 }
 
 void HalDevice::unmap(size_t)
 {
-
+  return;
 }
 
-void HalDevice::sync(size_t, size_t, size_t, direction, bool)
+void HalDevice::sync(size_t id, size_t size, size_t offset, direction d, bool )
 {
-
+  if(!id) return;
+  size_t boIndex = id - 1;
+  xclBOSyncDirection dir = (d == direction::DEVICE2HOST) ? XCL_BO_SYNC_BO_FROM_DEVICE : XCL_BO_SYNC_BO_TO_DEVICE;
+  xclSyncBO(mHalDevice, mBOHandles[boIndex], dir, size, offset);
 }
 
-uint64_t HalDevice::getDeviceAddr(size_t)
+uint64_t HalDevice::getDeviceAddr(size_t id)
 {
-  return 0;
+  if(!id) return 0;
+  size_t boIndex = id - 1;
+
+  xclBOProperties p;
+  xclGetBOProperties(mHalDevice, mBOHandles[boIndex], &p);
+  return p.paddr;
+
 }
 
 }

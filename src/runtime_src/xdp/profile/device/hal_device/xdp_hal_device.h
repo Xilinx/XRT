@@ -26,6 +26,8 @@ namespace xdp {
 class HalDevice : public xdp::Device
 {
   xclDeviceHandle mHalDevice;
+  std::vector<size_t> mBOHandles;
+  std::vector<void*>  mMappedBO;
 
 public:
   HalDevice(void* halDeviceHandle);
