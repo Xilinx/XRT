@@ -459,6 +459,11 @@ device(platform* pltf, xrt::device* xdevice)
   : m_uid(uid_count++), m_platform(pltf), m_xdevice(xdevice)
 {
   XOCL_DEBUG(std::cout,"xocl::device::device(",m_uid,")\n");
+
+  // lock/open the device once to ensure that device info data
+  // for this device is cached.  There are device level APIs
+  // that access data from low level device info.
+  (void) lock_guard();
 }
 
 device::
