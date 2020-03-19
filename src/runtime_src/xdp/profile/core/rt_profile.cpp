@@ -71,7 +71,6 @@ namespace xdp {
 
     // Write out the run summary file (if there is data to write)
     mRunSummary->writeContent();    
-
     delete mWriter;
     delete mLogger;
     delete mTraceParser;

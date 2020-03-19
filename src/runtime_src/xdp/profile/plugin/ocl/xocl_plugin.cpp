@@ -31,6 +31,13 @@ namespace xdp {
   XoclPlugin::XoclPlugin(xocl::platform* Platform)
   {
     mPlatformHandle = Platform;
+
+    /*
+     * Gather Static info at init
+     * as it might not be safe at the end
+     */
+    getXrtIniSettings();
+
   }
 
   XoclPlugin::~XoclPlugin()
@@ -241,10 +248,7 @@ namespace xdp {
     // 5. Bit widths for memory types for each device
     getMemBitWidthDevices();
 
-    // 6. xrt.ini settings
-    getXrtIniSettings();
-
-    // 7. Memory Bank Info from Mem Topology
+    // 6. Memory Bank Info from Mem Topology
     getMemUsageStats();
   }
 
