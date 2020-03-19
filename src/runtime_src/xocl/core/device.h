@@ -590,8 +590,8 @@ public:
    * lock count is incremented and returned.
    *
    * If the device is not currently locked, then this function
-   * queries hardware to check if the device is free and then
-   * locks it.
+   * queries hardware to check if the device is free in which 
+   * case it is opened and locked.
    *
    * May throw cl error code if device could not be locked by probing
    * hardware.
@@ -610,7 +610,7 @@ public:
    *
    * If the device is currently locked, then this function
    * decrements the lock count.  If the lock count reaches 0,
-   * the hardware device is unlocked.
+   * the hardware device is unlocked (closed).
    *
    * May throw cl error code if device could not be unlocked by
    * probing hardware.
@@ -622,6 +622,12 @@ public:
   unsigned int
   unlock();
 
+  /**
+   * Return a scoped lock guard managing a lock on the device.
+   *
+   * When the scope goes out of scope, the aquired lock is released
+   * automatically. 
+   */
   xrt_core::scope_guard<std::function<void()>>
   lock_guard()
   {
