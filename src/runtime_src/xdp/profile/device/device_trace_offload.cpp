@@ -106,7 +106,7 @@ void DeviceTraceOffload::read_trace_fifo()
   do {
     m_trace_vector = {};
     dev_intf->readTrace(m_trace_vector);
-	deviceTraceLogger->processTraceData(m_trace_vector);
+    deviceTraceLogger->processTraceData(m_trace_vector);
     num_packets += m_trace_vector.mLength;
   } while (m_trace_vector.mLength != 0);
 
@@ -157,7 +157,7 @@ void DeviceTraceOffload::read_trace_s2mm()
   config_s2mm_reader(dev_intf->getWordCountTs2mm());
   while (1) {
     auto bytes = read_trace_s2mm_partial();
-	deviceTraceLogger->processTraceData(m_trace_vector);
+    deviceTraceLogger->processTraceData(m_trace_vector);
     m_trace_vector = {};
 
     if (m_trbuf_sz == m_trbuf_alloc_sz)

@@ -14,8 +14,8 @@
  * under the License.
  */
 
-#ifndef _XDP_PROFILE_DEVICE_TRACE_LOGGER_CREATING_DEVICE_EVENTS_H
-#define _XDP_PROFILE_DEVICE_TRACE_LOGGER_CREATING_DEVICE_EVENTS_H
+#ifndef _XDP_PROFILE_TRACE_LOGGER_CREATING_DEVICE_EVENTS_H
+#define _XDP_PROFILE_TRACE_LOGGER_CREATING_DEVICE_EVENTS_H
 
 #include "xdp/config.h"
 #include "xdp/profile/device/device_trace_logger.h"
