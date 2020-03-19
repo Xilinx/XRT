@@ -1821,9 +1821,9 @@ int xcldev::xclP2p(int argc, char *argv[])
 
 
 
-int xcldev::device::setCma(bool enable, uint64_t sz)
+int xcldev::device::setCma(bool enable, bool hugepage, uint64_t page_sz)
 {
-    return xclCmaEnable(m_handle, enable, sz);
+    return xclCmaEnable(m_handle, enable, hugepage, page_sz);
 }
 
 int xcldev::xclCma(int argc, char *argv[])
@@ -1831,14 +1831,14 @@ int xcldev::xclCma(int argc, char *argv[])
     int c;
     unsigned int index = 0;
     int cma_enable = -1;
-    uint64_t huge_page_sz = 0x40000000;
+    bool huge_page = false;
+    uint64_t page_sz = 0x40000000;
     bool root = ((getuid() == 0) || (geteuid() == 0));
-    const std::string usage("Options: [-d index] --[enable|disable] --[1G]");
+    const std::string usage("Options: [-d index] --[enable|disable]");
     static struct option long_options[] = {
         {"enable", no_argument, 0, xcldev::CMA_ENABLE},
         {"disable", no_argument, 0, xcldev::CMA_DISABLE},
-        {"1G", no_argument, 0, xcldev::CMA_SIZE_1G},
-        {"2M", no_argument, 0, xcldev::CMA_SIZE_2M},
+        {"hugepage", no_argument, 0, xcldev::CMA_HUGEPAGE},
         {0, 0, 0, 0}
     };
     int long_index, ret;
@@ -1859,11 +1859,8 @@ int xcldev::xclCma(int argc, char *argv[])
         case xcldev::CMA_DISABLE:
             cma_enable = 0;
             break;
-        case xcldev::CMA_SIZE_1G:
-            huge_page_sz = 0x40000000;
-            break;
-        case xcldev::CMA_SIZE_2M:
-            huge_page_sz = 0x200000;
+        case xcldev::CMA_HUGEPAGE:
+            huge_page = true;
             break;
         default:
             xcldev::printHelp(exe);
@@ -1885,7 +1882,11 @@ int xcldev::xclCma(int argc, char *argv[])
         return -EPERM;
     }
 
-    ret = d->setCma(cma_enable, huge_page_sz);
+    /* At this moment, we have two way to collect CMA memory chunk
+     * 1. Call Kernel API
+     * 2. Huge Page MMAP 
+     */
+    ret = d->setCma(cma_enable, huge_page, page_sz);
     if (ret == ENOMEM) {
         std::cout << "ERROR: No enough huge page." << std::endl;
         std::cout << "Please check grub settings" << std::endl;

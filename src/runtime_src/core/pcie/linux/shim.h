@@ -91,7 +91,7 @@ public:
     static shim *handleCheck(void * handle);
     int resetDevice(xclResetKind kind);
     int p2pEnable(bool enable, bool force);
-    int cmaEnable(bool enable, uint64_t size);
+    int cmaEnable(bool enable, bool hugepage, uint64_t size);
     bool xclLockDevice();
     bool xclUnlockDevice();
     int xclReClock2(unsigned short region, const unsigned short *targetFreqMHz);
@@ -128,7 +128,7 @@ public:
      * e.g. enable = true, sz = 0x100000 (2M): add 2M CMA chunk
      *      enable = false: remove CMA chunk
      */
-    int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t sz);
+    int xclCmaEnable(xclDeviceHandle handle, bool enable, bool hugepage, uint64_t page_sz);
 
     int xclGetDebugIPlayoutPath(char* layoutPath, size_t size);
     int xclGetSubdevPath(const char* subdev, uint32_t idx, char* path, size_t size);

@@ -753,47 +753,70 @@ int shim::p2pEnable(bool enable, bool force)
     return p2p_enable;
 }
 
-int shim::cmaEnable(bool enable, uint64_t size)
+int shim::cmaEnable(bool enable, bool hugepage, uint64_t page_sz)
 {
     int ret = 0;
 
     if (enable) {
         uint32_t hugepage_flag = 0;
-
-        drm_xocl_alloc_cma_info cma_info;
-        cma_info.page_sz = size;
-
-        /* Once set MAP_HUGETLB, we have to specify bit[26~31] as size in log
-         * e.g. We like to get 2M huge page, 2M = 2^21,
-         * 21 = 0x15
-         */
-        if (size == (1 << 30))
-            hugepage_flag = 0x1e;
-        else if (size == (2 << 20))
-            hugepage_flag = 0x15;
-
-        if (!hugepage_flag)
-            return -EINVAL;
+        unsigned int page_num = 0;
+        drm_xocl_alloc_cma_info cma_info = {0};
 
 
-        void *addr_local = mmap(0x0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | hugepage_flag << MAP_HUGE_SHIFT, 0, 0);
-        if (addr_local == MAP_FAILED) {
-            xrt_logmsg(XRT_ERROR, "Unable to get huge page.");
-            ret = -ENOMEM;
-        } else {
-            cma_info.user_addr = (uint64_t)addr_local;
-        }
+        /* If allocate CMA chunk by calling kernel API*/
+        if (!hugepage) {
+            cma_info.end = true;
 
-        if (!ret) {
             ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_ALLOC_CMA, &cma_info);
             if (ret)
-                ret = -errno;
-            munmap((void*)cma_info.user_addr, size);
+                return -errno;
+        } else {
+            std::string err;
+
+            cma_info.page_sz = page_sz;
+            mDev->sysfs_get<unsigned int>("address_translator", "num", err, page_num, 0);
+
+            /* Try to allocate huge page as many as possible*/
+
+            if (!page_num)
+                return -ENODEV;
+
+            /* Once set MAP_HUGETLB, we have to specify bit[26~31] as size in log
+             * e.g. We like to get 2M huge page, 2M = 2^21,
+             * 21 = 0x15
+             */
+            if (page_sz == (1 << 30))
+                hugepage_flag = 0x1e;
+            else if (page_sz == (2 << 20))
+                hugepage_flag = 0x15;
+
+            if (!hugepage_flag)
+                return -EINVAL;
+
+            for (uint32_t i = 0; i < page_num; ++i) {
+                void *addr_local = mmap(0x0, page_sz, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | hugepage_flag << MAP_HUGE_SHIFT, 0, 0);
+                if (addr_local == MAP_FAILED) {
+                    xrt_logmsg(XRT_ERROR, "Unable to get huge page.");
+                    ret = -ENOMEM;
+                    break;
+                } else {
+                    cma_info.user_addr = (uint64_t)addr_local;
+                }
+
+                if (!ret) {
+                    ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_ALLOC_CMA, &cma_info);
+                    if (ret) {
+                        ret = -errno;
+                    }
+                    munmap((void*)cma_info.user_addr, page_sz);
+                    if (ret)
+                        break;
+                }
+            }
         }
 
     } else {
-        drm_xocl_free_cma_info cma_info = {0};
-        ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_FREE_CMA, &cma_info);
+        ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_FREE_CMA);
     }
 
     return ret;
@@ -1999,10 +2022,10 @@ int xclP2pEnable(xclDeviceHandle handle, bool enable, bool force)
     return drv ? drv->p2pEnable(enable, force) : -ENODEV;
 }
 
-int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t sz)
+int xclCmaEnable(xclDeviceHandle handle, bool enable, bool hugepage, uint64_t page_sz)
 {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
-    return drv ? drv->cmaEnable(enable, sz) : -ENODEV;
+    return drv ? drv->cmaEnable(enable, hugepage, page_sz) : -ENODEV;
 }
 
 int xclBootFPGA(xclDeviceHandle handle)
