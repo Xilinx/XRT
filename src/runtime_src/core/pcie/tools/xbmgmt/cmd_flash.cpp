@@ -168,32 +168,9 @@ static int updateSC(unsigned index, const char *file)
 
     auto dev = mgmt_dev->lookup_peer_dev();
 
-    std::cout << "Shutdown user function..." << std::endl;
-    dev->sysfs_put("", "shutdown", errmsg, "1\n");
-    if (!errmsg.empty()) {
-        std::cout << "ERROR: Shutdown user function failed." << std::endl;
-        return -EINVAL;
-    }
-
-    /* Poll till shutdown is done */
-    int shutdownStatus = 0;
-    for (int wait = 0; wait < DEV_TIMEOUT; wait++) {
-        dev->sysfs_get<int>("", "shutdown", errmsg, shutdownStatus, EINVAL);
-        if (!errmsg.empty()) {
-            // shutdow will trigger pci hot reset. sysfs nodes will be removed
-            // during hot reset.
-            continue;
-        }
-
-        if (shutdownStatus == 1){
-            /* Shutdown is done successfully. Returning from here */
-            break;
-        }
-        sleep(1);
-    }
-
-    if (shutdownStatus != 1) {
-        std::cout << "Shutdown timed out. Only proceed with SC update if all user applications for the target card(s) are stopped." << std::endl;
+    ret = pcidev::shutdown(mgmt_dev);
+    if (ret) {
+        std::cout << "Only proceed with SC update if all user applications for the target card(s) are stopped." << std::endl;
         return -ETIMEDOUT;
     }
 
