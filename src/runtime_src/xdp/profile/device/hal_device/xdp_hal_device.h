@@ -18,6 +18,7 @@
 #ifndef _XDP_PROIFLE_XDP_HAL_DEVICE_H
 #define _XDP_PROIFLE_XDP_HAL_DEVICE_H
 
+#include<vector>
 #include "xdp/profile/device/xdp_base_device.h"
 
 namespace xdp {
@@ -25,7 +26,7 @@ namespace xdp {
 
 class HalDevice : public xdp::Device
 {
-  xclDeviceHandle mHalDevice;
+  void* mHalDevice;
   std::vector<size_t> mBOHandles;
   std::vector<void*>  mMappedBO;
 
