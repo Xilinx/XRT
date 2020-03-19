@@ -104,13 +104,14 @@ int HalDevice::readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSa
 size_t HalDevice::alloc(size_t size, uint64_t memoryIndex)
 {
   uint64_t flags = memoryIndex;
-// XRT_DEVICE_RAM
-//    flags |= XCL_BO_FLAGS_CACHEABLE;
+  flags |= XCL_BO_FLAGS_CACHEABLE;
 
   xclBufferHandle boHandle = xclAllocBO(mHalDevice, size, 0, flags);
+  if(NULLBO == boHandle)
+    throw std::bad_alloc();
+
   mBOHandles.push_back(boHandle);
-//  if(0 == boHandle)
-//    error
+
   void* ptr = xclMapBO(mHalDevice, boHandle, true /* write */);
   mMappedBO.push_back(ptr);
   return mBOHandles.size();
@@ -149,9 +150,7 @@ uint64_t HalDevice::getDeviceAddr(size_t id)
   size_t boIndex = id - 1;
 
   xclBOProperties p;
-  xclGetBOProperties(mHalDevice, mBOHandles[boIndex], &p);
-  return p.paddr;
-
+  return (!xclGetBOProperties(mHalDevice, mBOHandles[boIndex], &p)) ? p.paddr : ((uint64_t)-1);
 }
 
 }
