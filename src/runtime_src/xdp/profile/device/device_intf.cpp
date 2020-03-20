@@ -214,10 +214,11 @@ DeviceIntf::~DeviceIntf()
 
   uint32_t DeviceIntf::getMonitorProperties(xclPerfMonType type, uint32_t index)
   {
-    if((type == XCL_PERF_MON_MEMORY) && (index < aimList.size())) { return aimList[index]->getProperties(); }
-    if((type == XCL_PERF_MON_ACCEL)  && (index < amList.size()))  { return amList[index]->getProperties(); }
-    if((type == XCL_PERF_MON_STR)    && (index < asmList.size())) { return asmList[index]->getProperties(); }
-    if(type == XCL_PERF_MON_FIFO) { return fifoRead->getProperties(); }
+    if((type == XCL_PERF_MON_MEMORY)    && (index < aimList.size())) { return aimList[index]->getProperties(); }
+    if((type == XCL_PERF_MON_ACCEL)     && (index < amList.size()))  { return amList[index]->getProperties(); }
+    if((type == XCL_PERF_MON_STR)       && (index < asmList.size())) { return asmList[index]->getProperties(); }
+    if((type == XCL_PERF_MON_TRACE_HUB) && (traceFunnel != nullptr)) { return traceFunnel->getProperties(); }
+    if((type == XCL_PERF_MON_FIFO)      && (fifoRead != nullptr))    { return fifoRead->getProperties(); }
     return 0;
   }
 
