@@ -37,6 +37,26 @@ namespace po = boost::program_options;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
+const int8_t maxDebugIpType = 13;  // TRACE_S2MM_FULL
+
+bool debugIpOpt[maxDebugIpType];
+uint64_t debugIpNum[maxDebugIpType];
+static const char* debugIpNames[maxDebugIpType] = {
+  "unknown",
+  "LAPC",
+  "ILA",
+  "AIM",
+  "TraceFunnel",
+  "TraceFifoLite",
+  "TraceFifoFull",
+  "AM",
+  "ASM",
+  "AxiStreamProtocolChecker",
+  "TS2MM",
+  "AxiDMA",
+  "TS2MMFull"
+};
+
 SubCmdStatus::SubCmdStatus(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("status", 
              "List the debug IPs available on the acceleration program loaded on the given device")
@@ -61,15 +81,34 @@ SubCmdStatus::execute(const SubCmdOptions& _options) const
   bool help = false;
 
   po::options_description statusDesc("status options");
+
+enum DEBUG_IP_TYPE {
+UNDEFINED = 0,
+LAPC,
+ILA,
+AXI_MM_MONITOR,
+AXI_TRACE_FUNNEL,
+AXI_MONITOR_FIFO_LITE,
+AXI_MONITOR_FIFO_FULL,
+ACCEL_MONITOR,
+AXI_STREAM_MONITOR,
+AXI_STREAM_PROTOCOL_CHECKER,
+TRACE_S2MM,
+AXI_DMA,
+TRACE_S2MM_FULL
+};
+
+
+
   statusDesc.add_options()
     ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
     (",d", boost::program_options::value<unsigned int>(&card), "Card to be examined")
-    (",aim", boost::program_options::value<unsigned int>(&card), "Status of AXI Interface Monitor")
-    (",accelmonitor", boost::program_options::value<unsigned int>(&card), "Status of Accelerator Monitor")
+    (",aim", boost::program_options::bool_switch(&debugIpOpt[AXI_MM_MONITOR]), "Status of AXI Interface Monitor")
+    (",accelmonitor", boost::program_options::bool_switch(&debugIpOpt[ACCEL_MONITOR]), "Status of Accelerator Monitor")
+    (",asm", boost::program_options::bool_switch(&debugIpOpt[AXI_STREAM_MONITOR]), "Status of AXI Stream Monitor")
 //    (",tracefunnel", boost::program_options::value<unsigned int>(&card), "")
 //    (",monitorfifolite", boost::program_options::value<unsigned int>(&card), "")
 //    (",monitorfifofull", boost::program_options::value<unsigned int>(&card), "")
-//    (",p", boost::program_options::value<std::string>(&xclbin), "The xclbin image to load")
   ;
 
   // Parse sub-command ...
@@ -107,7 +146,29 @@ SubCmdStatus::execute(const SubCmdOptions& _options) const
   
   auto map = reinterpret_cast<debug_ip_layout*>(buffer.data());
 
-  std::cout << " Number of IPs :: " << map->m_count;
+  if (sectionSz == 0 || map->m_count <= 0) {
+    std::cout << "INFO: Failed to find any debug IPs on the platform. "
+         << "Ensure that a valid bitstream with debug IPs (AIM, LAPC) is successfully downloaded. \n";
+    return;
+  }
+
+  std::cout << " Number of IPs found :: " << map->m_count;
+  for(uint64_t i = 0; i < map->m_count; i++) {
+    if (map->m_debug_ip_data[i].m_type > maxDebugIpType) {
+      std::cout << "Found invalid IP in debug ip layout with type "
+                << map->m_debug_ip_data[i].m_type << std::endl;
+      return;
+    }
+    ++debugIpNum[map->m_debug_ip_data[i].m_type];
+  }
+
+  std::stringstream sstr;
+  for(uint64_t i = 0; i < maxDebugIpType; i++) {
+    if(0 == debugIpNum[i]) {
+      continue;
+    }
+    sstr << debugIpNames[i] << "(" << debugIpNum[i] << ")  ";
+  }
 
   std::cout << "INFO: xbutil2 status succeeded.\n";
 }
