@@ -699,7 +699,7 @@ done:
       pwriteBO.pad = 0;
       pwriteBO.paddr = offset;
       pwriteBO.size = count;
-      pwriteBO.data_ptr = offset;
+      pwriteBO.data_ptr = (uint64_t)buf;
 
       if (!DeviceIoControl(m_dev,
           IOCTL_XOCL_PWRITE_UNMGD,
@@ -736,7 +736,7 @@ done:
       preadBO.pad = 0;
       preadBO.paddr = offset;
       preadBO.size = size;
-      preadBO.data_ptr = offset;
+      preadBO.data_ptr = (uint64_t)buf;
 
 
       if (!DeviceIoControl(m_dev,
