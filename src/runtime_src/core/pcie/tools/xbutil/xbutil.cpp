@@ -1821,9 +1821,9 @@ int xcldev::xclP2p(int argc, char *argv[])
 
 
 
-int xcldev::device::setCma(bool enable, bool hugepage, uint64_t page_sz)
+int xcldev::device::setCma(bool enable, uint64_t total_size)
 {
-    return xclCmaEnable(m_handle, enable, hugepage, page_sz);
+    return xclCmaEnable(m_handle, enable, total_size);
 }
 
 int xcldev::xclCma(int argc, char *argv[])
@@ -1831,16 +1831,15 @@ int xcldev::xclCma(int argc, char *argv[])
     int c;
     unsigned int index = 0;
     int cma_enable = -1;
-    bool huge_page = false;
-    uint64_t page_sz = 0x40000000;
+    uint64_t total_size = 0;
     bool root = ((getuid() == 0) || (geteuid() == 0));
-    const std::string usage("Options: [-d index] --[enable|disable]");
+    const std::string usage("Options: [-d index] --[enable|disable] --size [size]");
     static struct option long_options[] = {
         {"enable", no_argument, 0, xcldev::CMA_ENABLE},
         {"disable", no_argument, 0, xcldev::CMA_DISABLE},
-        {"hugepage", no_argument, 0, xcldev::CMA_HUGEPAGE},
-        {0, 0, 0, 0}
+        {"size", required_argument, nullptr, xcldev::CMA_SIZE},
     };
+
     int long_index, ret;
     const char* short_options = "d"; //don't add numbers
     const char* exe = argv[ 0 ];
@@ -1859,8 +1858,8 @@ int xcldev::xclCma(int argc, char *argv[])
         case xcldev::CMA_DISABLE:
             cma_enable = 0;
             break;
-        case xcldev::CMA_HUGEPAGE:
-            huge_page = true;
+        case xcldev::CMA_SIZE:
+            total_size = std::stoi(optarg);
             break;
         default:
             xcldev::printHelp(exe);
@@ -1886,7 +1885,7 @@ int xcldev::xclCma(int argc, char *argv[])
      * 1. Call Kernel API
      * 2. Huge Page MMAP 
      */
-    ret = d->setCma(cma_enable, huge_page, page_sz);
+    ret = d->setCma(cma_enable, total_size);
     if (ret == ENOMEM) {
         std::cout << "ERROR: No enough huge page." << std::endl;
         std::cout << "Please check grub settings" << std::endl;

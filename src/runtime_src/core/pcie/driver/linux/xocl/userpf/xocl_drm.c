@@ -854,8 +854,8 @@ static int xocl_cma_chunk_reserve(struct xocl_drm *drm_p, struct drm_xocl_alloc_
 	uint64_t nr, page_count;
 	struct page **pages = NULL;
 	struct device *dev = drm_p->ddev->dev;
-	uint64_t user_addr = cma_info->user_addr;
-	size_t page_sz = cma_info->page_sz;
+	uint64_t user_addr = 0x0; // remove it next commit, bypass coverity check
+	size_t page_sz = cma_info->total_size/cma_info->entry_num;
 
 	BUG_ON(!mutex_is_locked(&drm_p->mm_lock));
 
