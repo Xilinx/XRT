@@ -2449,12 +2449,13 @@ struct xocl_subdev_map {
 		XOCL_DEVINFO_CALIB_STORAGE,			\
 	})
 
-#define	XOCL_BOARD_MGMT_DYNAMIC_IP					\
+#define	XOCL_BOARD_U200_MGMT_EA						\
 	(struct xocl_board_private){					\
 		.flags		= XOCL_DSAFLAG_DYNAMIC_IP,		\
 		.subdev_info	= MGMT_RES_DYNAMIC_IP,			\
 		.subdev_num = ARRAY_SIZE(MGMT_RES_DYNAMIC_IP),		\
 		.flash_type = FLASH_TYPE_SPI,				\
+		.sched_bin = "xilinx/sched_u50.bin",			\
 	}
 
 #define	XOCL_DEVINFO_SCHEDULER_DYN			\
@@ -2478,7 +2479,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_AF_USER,				\
 		})
 
-#define	XOCL_BOARD_USER_DYNAMIC_IP					\
+#define	XOCL_BOARD_U200_USER_EA						\
 	(struct xocl_board_private){					\
 		.flags		= XOCL_DSAFLAG_DYNAMIC_IP,		\
 		.subdev_info	= USER_RES_DYNAMIC_IP,			\
@@ -2797,11 +2798,11 @@ struct xocl_subdev_map {
 #define XOCL_DSA_DYNAMIC_MAP						\
 	{ 0x10EE, 0x5001, PCI_ANY_ID,					\
 		.vbnv = "xilinx_u200_xdma_201920_1",			\
-		.priv_data = &XOCL_BOARD_USER_DYNAMIC_IP,		\
+		.priv_data = &XOCL_BOARD_U200_USER_EA,			\
 		.type = XOCL_DSAMAP_DYNAMIC },				\
 	{ 0x10EE, 0x5000, PCI_ANY_ID,					\
 		.vbnv = "xilinx_u200_xdma_201920_1",			\
-		.priv_data = &XOCL_BOARD_MGMT_DYNAMIC_IP,		\
+		.priv_data = &XOCL_BOARD_U200_MGMT_EA,			\
 		.type = XOCL_DSAMAP_DYNAMIC },				\
 	{ 0x10EE, 0x5001, PCI_ANY_ID,					\
 		.vbnv = "xilinx_u200",			\
