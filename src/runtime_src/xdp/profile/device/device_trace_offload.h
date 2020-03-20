@@ -44,7 +44,7 @@ if(!m_debug); else std::cout
 class DeviceTraceOffload {
 public:
     XDP_EXPORT
-    DeviceTraceOffload(xdp::DeviceIntf* dInt, std::shared_ptr<RTProfile> ProfileMgr,
+    DeviceTraceOffload(xdp::DeviceIntf* dInt, RTProfile* ProfileMgr,
                      const std::string& device_name, const std::string& binary_name,
                      uint64_t offload_sleep_ms, uint64_t trbuf_sz,
                      bool start_thread = true);
@@ -93,7 +93,7 @@ private:
     uint64_t sleep_interval_ms;
     uint64_t m_trbuf_alloc_sz;
     xdp::DeviceIntf* dev_intf;
-    std::shared_ptr<RTProfile> prof_mgr;
+    RTProfile* prof_mgr;
     std::string device_name;
     std::string binary_name;
     xclPerfMonType m_type = XCL_PERF_MON_MEMORY;

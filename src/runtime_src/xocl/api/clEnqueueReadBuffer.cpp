@@ -63,11 +63,6 @@ validOrError(cl_command_queue   command_queue,
      (xocl::xocl(buffer)->get_flags() & CL_MEM_HOST_NO_ACCESS))
     throw xocl::error(CL_INVALID_OPERATION,"buffer flags do not allow reading");
 
-#ifdef PMD_OCL
-  if (!(xocl(command_queue)->get_properties() & CL_QUEUE_DPDK))
-    throw error(CL_INVALID_COMMAND_QUEUE,"Queue must be a CL_QUEUE_DPDK queue");
-#endif
-
   // CL_INVALID_OPERATION if CL_MEM_REGISTER_MAP and not a blocking read
   if ( (xocl(buffer)->get_flags() & CL_MEM_REGISTER_MAP) && !blocking)
     throw error(CL_INVALID_OPERATION,"CL_MEM_REGISTER_MAP requires block read");

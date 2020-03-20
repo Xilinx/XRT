@@ -506,11 +506,14 @@ class run_update_type
   kernel_type* kernel;  // kernel associated with run object
   kernel_command cmd;   // command to use for updating
 
+  // ert_init_kernel_cmd data offset per ert.h
+  static constexpr size_t data_offset = 9;
+
   void
   reset_cmd()
   {
     auto kcmd = cmd.get_ert_cmd<ert_init_kernel_cmd*>();
-    kcmd->count = 9;  // per ert.h (ert_init_kernel_cmd) TODO: fix for > 1 cu_masks
+    kcmd->count = data_offset;  // reset payload size
   }
 
   void
@@ -523,12 +526,12 @@ class run_update_type
     // Populate cmd payload with argument
     auto kcmd = cmd.get_ert_cmd<ert_init_kernel_cmd*>();
     const auto& arg = kernel->args[index];
-    auto idx = kcmd->count;
+    auto idx = kcmd->count - data_offset;
     kcmd->data[idx++] = arg.offset;
     kcmd->data[idx++] = addr;
     kcmd->data[idx++] = arg.offset + 4;
     kcmd->data[idx++] = (addr >> 32) & 0xFFFFFFFF;
-    kcmd->count = idx;
+    kcmd->count += idx;
   }
 
   template <typename ScalarType>
@@ -539,10 +542,10 @@ class run_update_type
     // Populate cmd payload with argument
     auto kcmd = cmd.get_ert_cmd<ert_init_kernel_cmd*>();
     const auto& arg = kernel->args[index];
-    auto idx = kcmd->count;
+    auto idx = kcmd->count - data_offset;
     kcmd->data[idx++] = arg.offset;
     kcmd->data[idx++] = scalar;
-    kcmd->count = idx;
+    kcmd->count += idx;
   }
   
 public:

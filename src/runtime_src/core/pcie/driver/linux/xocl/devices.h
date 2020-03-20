@@ -208,8 +208,8 @@ enum {
 #define	XOCL_MIG_HBM		"mig.hbm"
 #define	XOCL_SRSR		"srsr"
 #define	XOCL_UARTLITE		"ulite"
-#define	XOCL_CALIB_STORAGE      "calib_storage"
-
+#define	XOCL_CALIB_STORAGE	"calib_storage"
+#define	XOCL_ADDR_TRANSLATOR	"address_translator"
 
 #define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
 
@@ -247,6 +247,7 @@ enum subdev_id {
 	XOCL_SUBDEV_SRSR,
 	XOCL_SUBDEV_UARTLITE,
 	XOCL_SUBDEV_CALIB_STORAGE,
+	XOCL_SUBDEV_ADDR_TRANSLATOR,
 	XOCL_SUBDEV_NUM
 };
 
@@ -689,7 +690,25 @@ struct xocl_subdev_map {
 		.override_idx = -1,			\
 	}
 
-/* Will be populated dynamically */
+#define	XOCL_RES_ADDR_TRANSLATOR					\
+	((struct resource []) {				\
+		{					\
+			.start	= 0,		\
+			.end	= 0xFFF,		\
+			.flags  = IORESOURCE_MEM,	\
+		}					\
+	})
+
+#define	XOCL_DEVINFO_ADDR_TRANSLATOR				\
+	{						\
+		XOCL_SUBDEV_ADDR_TRANSLATOR,			\
+		XOCL_ADDR_TRANSLATOR,				\
+		XOCL_RES_ADDR_TRANSLATOR,				\
+		ARRAY_SIZE(XOCL_RES_ADDR_TRANSLATOR),		\
+		.level = XOCL_SUBDEV_LEVEL_PRP,		\
+		.override_idx = -1,			\
+	}
+
 #define	XOCL_RES_SRSR					\
 	((struct resource []) {				\
 		{					\

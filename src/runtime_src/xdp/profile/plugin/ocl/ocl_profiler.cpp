@@ -64,7 +64,7 @@ namespace xdp {
     Platform = xocl::get_shared_platform();
     Plugin = std::make_shared<XoclPlugin>(getclPlatformID());
     // Share ownership to ensure correct order of destruction
-    ProfileMgr = std::make_shared<RTProfile>(ProfileFlags, Plugin);
+    ProfileMgr = std::make_unique<RTProfile>(ProfileFlags, Plugin);
     startProfiling();
   }
 
@@ -136,7 +136,6 @@ namespace xdp {
       logFinalTrace(XCL_PERF_MON_ACCEL);
       logFinalTrace(XCL_PERF_MON_STR);
     }
-
     logFinalTrace(XCL_PERF_MON_MEMORY /* type should not matter */);  // reads and logs trace data for all monitors in HW flow
 
     endTrace();
@@ -293,7 +292,7 @@ namespace xdp {
           traceBufSz = getDeviceDDRBufferSize(dInt, device);
           trace_memory = "TS2MM";
         }
-        auto offloader = std::make_unique<DeviceTraceOffload>(dInt, ProfileMgr,
+        auto offloader = std::make_unique<DeviceTraceOffload>(dInt, ProfileMgr.get(),
                                                          device->get_unique_name(), binaryName,
                                                          mTraceReadIntMs, traceBufSz, mTraceThreadEn
                                                          );
@@ -486,7 +485,6 @@ namespace xdp {
     if (applicationProfilingOn()) {
       // Write out reports
       ProfileMgr->writeProfileSummary();
-
       // Close writers
       for (auto& w: ProfileWriters) {
         ProfileMgr->detach(w);

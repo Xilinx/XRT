@@ -124,7 +124,8 @@ struct ert_start_kernel_cmd {
  * this command initializes CUs by writing CU registers. CUs are
  * represented by cu_mask and extra_cu_masks.
  *
- * @state:           [3-0] current state of a command
+ * @state:           [3-0]   current state of a command
+ * @update_rtp:      [4]     command is for runtime update of cu argument
  * @extra_cu_masks:  [11-10] extra CU masks in addition to mandatory mask
  * @count:           [22-12] number of words following header
  * @opcode:          [27-23] 0, opcode for init_kernel
@@ -148,7 +149,8 @@ struct ert_init_kernel_cmd {
   union {
     struct {
       uint32_t state:4;          /* [3-0]   */
-      uint32_t unused:6;         /* [9-4]  */
+      uint32_t update_rtp:1;     /* [4]  */
+      uint32_t unused:5;         /* [9-5]  */
       uint32_t extra_cu_masks:2; /* [11-10]  */
       uint32_t count:11;         /* [22-12] */
       uint32_t opcode:5;         /* [27-23] */
