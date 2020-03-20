@@ -45,6 +45,7 @@ xocl-y := \
 	../subdev/trace_s2mm.o\
 	../subdev/ddr_srsr.o\
 	../subdev/memory_hbm.o \
+	../subdev/address_translator.o \
 	$(xocl_lib-y)	\
 	xocl_drv.o	\
 	xocl_bo.o	\
