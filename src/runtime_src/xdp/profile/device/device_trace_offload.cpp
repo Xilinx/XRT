@@ -22,7 +22,7 @@
 namespace xdp {
 
 DeviceTraceOffload::DeviceTraceOffload(xdp::DeviceIntf* dInt,
-                                   std::shared_ptr<RTProfile> ProfileMgr,
+                                   RTProfile* ProfileMgr,
                                    const std::string& device_name,
                                    const std::string& binary_name,
                                    uint64_t sleep_interval_ms,
