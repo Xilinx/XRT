@@ -604,7 +604,7 @@ update_cus_rtp(struct sched_cmd *cmd)
 			/* Clear the mask bit we checked */
 			cmd_mask &= ~(1 << cu_idx);
 
-			cu_idx = cu_idx + 32 * mask_idx;
+			cu_idx = cu_idx_from_mask(cu_idx, mask_idx);
 
 			if (!zocl_cu_is_valid(zdev->exec, cu_idx)) {
 				DRM_WARN("Update invalid CU %d, Skipped.\n",

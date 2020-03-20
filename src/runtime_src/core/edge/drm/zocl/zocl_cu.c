@@ -2,7 +2,7 @@
 /*
  * MPSoC based OpenCL accelerators Compute Units.
  *
- * Copyright (C) 2019i-2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2019-2020 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Min Ma      <min.ma@xilinx.com>
