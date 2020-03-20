@@ -335,6 +335,7 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 	struct resource *res = NULL;
 	int i, bar_idx, retval;
 	char devname[64];
+	uint32_t dev_idx = 0;
 
 	if (sdev_info->override_name)
 		snprintf(devname, sizeof(devname) - 1, "%s",
@@ -353,7 +354,12 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 			retval = -ENOENT;
 		goto error;
 	}
+
+
+	/* Restore the dev_idx */
+	dev_idx = subdev->info.dev_idx;
 	memcpy(&subdev->info, sdev_info, sizeof(subdev->info));
+	subdev->info.dev_idx = dev_idx;
 
 	if (sdev_info->num_res > 0) {
 		if (sdev_info->num_res > XOCL_SUBDEV_MAX_RES) {
@@ -1044,7 +1050,6 @@ xocl_fetch_dynamic_platform(struct xocl_dev_core *core,
 	struct xocl_board_private **in, u32 ptype)
 {
 	struct pci_dev *pdev = core->pdev;
-	char *s;
 	int ret, i;
 	u32 type;
 
@@ -1065,18 +1070,17 @@ xocl_fetch_dynamic_platform(struct xocl_dev_core *core,
 			dsa_map[i].subdevice ||
 			dsa_map[i].subdevice == (u16)PCI_ANY_ID)) {
 			*in = dsa_map[i].priv_data;
-			if (ptype == XOCL_VSEC_PLAT_RECOVERY) {
-				strncpy(core->vbnv_cache, dsa_map[i].vbnv,
-					sizeof(core->vbnv_cache) - 1);
-				s = strstr(core->vbnv_cache, "_");
-				s = strstr(s + 1, "_");
-				strncpy(s, "_recovery",
-				    sizeof(core->vbnv_cache) -
-				    (s - core->vbnv_cache) - 1);
-				core->priv.vbnv = core->vbnv_cache;
-			} else
-				core->priv.vbnv = dsa_map[i].vbnv;
+			core->priv.vbnv = core->vbnv_cache;
+			strncpy(core->vbnv_cache, dsa_map[i].vbnv,
+				sizeof(core->vbnv_cache) - 1);
+			break;
 		}
+	}
+	if (ptype == XOCL_VSEC_PLAT_RECOVERY) {
+		// find end of vbnv string and append '_recovery'
+		snprintf(core->vbnv_cache, sizeof(core->vbnv_cache) - 1,
+				"%s%s", core->priv.vbnv, "_recovery");
+		core->priv.vbnv = core->vbnv_cache;
 	}
 }
 

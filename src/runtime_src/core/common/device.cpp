@@ -27,18 +27,46 @@
 
 namespace xrt_core {
 
-device::device(id_type device_id)
+device::
+device(id_type device_id)
   : m_device_id(device_id)
 {
 }
 
-device::~device()
+device::
+~device()
 {
   // virtual must be declared and defined
 }
 
+void
+device::
+register_axlf(const axlf* top)
+{
+  axlf_section_kind kinds[] = {EMBEDDED_METADATA, AIE_METADATA};
+  for (auto kind : kinds) {
+    auto hdr = xclbin::get_axlf_section(top, kind);
+    if (!hdr)
+      continue;
+    auto section_data = reinterpret_cast<const char*>(top) + hdr->m_sectionOffset;
+    std::vector<char> data{section_data, section_data + hdr->m_sectionSize};
+    m_axlf_sections.emplace(std::make_pair(kind, std::move(data)));
+  }
+}
+
+std::pair<const char*, size_t>
+device::
+get_axlf_section(axlf_section_kind section) const
+{
+  auto itr = m_axlf_sections.find(section);
+  return itr != m_axlf_sections.end()
+    ? std::make_pair((*itr).second.data(), (*itr).second.size())
+    : std::make_pair(nullptr, 0);
+}
+
 std::string
-device::format_primative(const boost::any &_data)
+device::
+format_primative(const boost::any &_data)
 {
   std::string sPropertyValue;
 

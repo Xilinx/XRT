@@ -268,7 +268,6 @@ static struct xocl_subdev_map		subdev_map[] = {
 		XOCL_SUBDEV_MB,
 		XOCL_ERT,
 		{
-			NODE_ERT_BASE,
 			NODE_ERT_RESET,
 			NODE_ERT_FW_MEM,
 			NODE_ERT_CQ_MGMT,
@@ -358,8 +357,19 @@ static struct xocl_subdev_map		subdev_map[] = {
 		{
 			RESNAME_MEMCALIB,
 			RESNAME_KDMA,
-			RESNAME_CMC_MUTEX,
 			RESNAME_DDR4_RESET_GATE,
+			NULL
+		},
+		1,
+		0,
+		NULL,
+		devinfo_cb_setlevel,
+	},
+	{
+		XOCL_SUBDEV_IORES,
+		XOCL_IORES1,
+		{
+			RESNAME_CMC_MUTEX,
 			NULL
 		},
 		1,

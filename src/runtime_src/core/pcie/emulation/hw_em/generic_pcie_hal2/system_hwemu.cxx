@@ -18,8 +18,6 @@
 #include "device_hwemu.h"
 
 #include <memory>
-#include <vector>
-#include <map>
 
 namespace {
 
@@ -39,11 +37,6 @@ struct X
 {
   X() { singleton_instance(); }
 } x;
-
-
-static std::vector<std::weak_ptr<xrt_core::hwemu::device>> mgmtpf_devices(16); // fix size
-static std::vector<std::weak_ptr<xrt_core::hwemu::device>> userpf_devices(16); // fix size
-static std::map<xrt_core::device::handle_type, std::weak_ptr<xrt_core::hwemu::device>> userpf_device_map;
 
 }
 

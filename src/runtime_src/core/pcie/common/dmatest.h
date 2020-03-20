@@ -55,8 +55,10 @@ namespace xcldev {
             int result = 0;
             while (b < e) {
                 result = xclSyncBO(mHandle, *b, dir, mSize, 0);
-                if (result != 0)
+                if (result != 0) {
+                    std::cout << "DMA failed with Error = " << result << "\n";
                     break;
+                }
                 ++b;
             }
             return result;
@@ -103,21 +105,22 @@ namespace xcldev {
 
         int validate(const char *buf) const {
             std::unique_ptr<char[]> bufCmp(new char[mSize]);
-            int error = 0;
             size_t result = 0;
             for (auto i : mBOList) {
                 //Clear out the host buffer
                 std::memset(bufCmp.get(), 0, mSize);
                 result = xclReadBO(mHandle, i, bufCmp.get(), mSize, 0);
-                if (result)
+                if (result) {
+                    std::cout << "DMA Test data integrity read failed with Error = " << result << "\n";
                     break;
+		}
+
                 if (std::memcmp(buf, bufCmp.get(), mSize)) {
-                    error = -EIO;
                     std::cout << "DMA Test data integrity check failed\n";
                     break;
                 }
             }
-            return error ? error : static_cast<int>(result);
+            return static_cast<int>(result);
         }
 
         int run() const {
@@ -143,6 +146,9 @@ namespace xcldev {
 
             Timer timer;
             result = runSync(XCL_BO_SYNC_BO_TO_DEVICE, info.mDMAThreads);
+            if (result)
+                return static_cast<int>(result);
+
             auto timer_stop = timer.stop();
             double rate = static_cast<double>(mBOList.size() * mSize);
             rate /= 0x100000; // MB
@@ -151,7 +157,10 @@ namespace xcldev {
             std::cout << "Host -> PCIe -> FPGA write bandwidth = " << rate << " MB/s\n";
 
             timer.reset();
-            result += runSync(XCL_BO_SYNC_BO_FROM_DEVICE, info.mDMAThreads);
+            result = runSync(XCL_BO_SYNC_BO_FROM_DEVICE, info.mDMAThreads);
+            if (result)
+                return static_cast<int>(result);
+
             timer_stop = timer.stop();
             rate = static_cast<double>(mBOList.size() * mSize);
             rate /= 0x100000; // MB

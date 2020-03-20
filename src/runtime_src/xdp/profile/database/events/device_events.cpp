@@ -26,9 +26,10 @@ namespace xdp {
   // Device event definitions
   // **************************
 
-  VTFDeviceEvent::VTFDeviceEvent(uint64_t s_id, double ts, VTFEventType ty,
-				 void* d) :
-    VTFEvent(s_id, ts, ty), dev(d)
+  VTFDeviceEvent::VTFDeviceEvent(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId)
+                : VTFEvent(s_id, ts, ty),
+                  deviceId(devId),
+                  deviceTimestamp(0)
   {
   }
 
@@ -46,12 +47,24 @@ namespace xdp {
     fout.flags(flags) ;
   }
 
-  KernelDeviceEvent::KernelDeviceEvent(uint64_t s_id, double ts, 
-				       void* d) :
-    VTFDeviceEvent(s_id, ts, KERNEL, d),
-    // Until implemented, provide a default value for all members
-    deviceName(0), binaryName(0), kernelName(0),
-    workgroupConfiguration(0), cuName(0)
+  void VTFDeviceEvent::dump(std::ofstream& fout, uint32_t bucket)
+  { 
+    VTFEvent::dump(fout, bucket) ;
+    fout << std::endl;
+  } 
+
+  KernelEvent::KernelEvent(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId, int32_t cuIdx)
+                   : VTFDeviceEvent(s_id, ts, ty, devId),
+					 cuId(cuIdx)
+  {
+  }
+
+  KernelEvent::~KernelEvent()
+  {
+  }
+
+  KernelDeviceEvent::KernelDeviceEvent(uint64_t s_id, double ts, uint64_t devId, int32_t cuIdx)
+                   : KernelEvent(s_id, ts, KERNEL, devId, cuIdx)
   {
   }
 
@@ -59,11 +72,10 @@ namespace xdp {
   {
   }
 
-  KernelStall::KernelStall(uint64_t s_id, double ts, void* d) :
-    VTFDeviceEvent(s_id, ts, KERNEL_STALL, d),
+  KernelStall::KernelStall(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId)
+             : KernelEvent(s_id, ts, ty, devId),
     // Until implemented, provide a default value for all members
-    deviceName(0), binaryName(0), kernelName(0),
-    cuName(0), stallType(UNKNOWN_STALL), burstLength(0)
+    burstLength(0)
   {
   }
 
@@ -71,11 +83,9 @@ namespace xdp {
   {
   }
 
-  KernelMemoryAccess::KernelMemoryAccess(uint64_t s_id, double ts, 
-					 VTFEventType ty, void* d) :
-    VTFDeviceEvent(s_id, ts, ty, d),
+  KernelMemoryAccess::KernelMemoryAccess(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId)
+                    : KernelEvent(s_id, ts, ty, devId),
     // Until implemented, provide a default value for all members
-    deviceName(0), binaryName(0), kernelName(0), cuName(0),
     portName(0), memoryName(0), argumentNames(0), burstLength(0),
     numBytes(0)
   {
@@ -85,11 +95,9 @@ namespace xdp {
   {
   }
 
-  KernelStreamAccess::KernelStreamAccess(uint64_t s_id, double ts,
-					 VTFEventType ty, void* d) :
-    VTFDeviceEvent(s_id, ts, ty, d),
+  KernelStreamAccess::KernelStreamAccess(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId)
+                    : KernelEvent(s_id, ts, ty, devId),
     // Until implemented, provide a default value for all members
-    deviceName(0), binaryName(0), kernelName(0), cuName(0),
     portName(0), streamName(0), burstLength(0)
   {
   }
@@ -98,34 +106,8 @@ namespace xdp {
   {
   }
 
-  KernelStreamStall::KernelStreamStall(uint64_t s_id, double ts, 
-					 void* d) :
-    VTFDeviceEvent(s_id, ts, KERNEL_STREAM_STALL, d),
-    // Until implemented, provide a default value for all members
-    deviceName(0), binaryName(0), kernelName(0), cuName(0),
-    portName(0), streamName(0)
-  {
-  }
-
-  KernelStreamStall::~KernelStreamStall()
-  {
-  }
-
-  KernelStreamStarve::KernelStreamStarve(uint64_t s_id, double ts, 
-					 void* d) :
-    VTFDeviceEvent(s_id, ts, KERNEL_STREAM_STARVE, d),
-    // Until implemented, provide a default value for all members
-    deviceName(0), binaryName(0), kernelName(0), cuName(0),
-    portName(0), streamName(0)
-  {
-  }
-
-  KernelStreamStarve::~KernelStreamStarve()
-  {
-  }
-
-  HostRead::HostRead(uint64_t s_id, double ts, void* d) :
-    VTFDeviceEvent(s_id, ts, HOST_READ, d)
+  HostRead::HostRead(uint64_t s_id, double ts, uint64_t devId)
+          : VTFDeviceEvent(s_id, ts, HOST_READ, devId)
   {
   }
 
@@ -133,8 +115,8 @@ namespace xdp {
   {
   }
 
-  HostWrite::HostWrite(uint64_t s_id, double ts, void* d) :
-    VTFDeviceEvent(s_id, ts, HOST_WRITE, d)
+  HostWrite::HostWrite(uint64_t s_id, double ts, uint64_t devId)
+           : VTFDeviceEvent(s_id, ts, HOST_WRITE, devId)
   {
   }
 

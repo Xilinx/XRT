@@ -19,6 +19,7 @@
  */
 
 #include "shim.h"
+#include "system_swemu.h"
 #include <errno.h>
 #include <unistd.h>
 namespace xclcpuemhal2 {
@@ -35,8 +36,9 @@ namespace xclcpuemhal2 {
   std::map<std::string, std::string> CpuemShim::mEnvironmentNameValueMap(xclemulation::getEnvironmentByReadingIni());
 #define PRINTENDFUNC if (mLogStream.is_open()) mLogStream << __func__ << " ended " << std::endl;
  
-  CpuemShim::CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool _unified, bool _xpr, FeatureRomHeader& fRomHeader) 
+  CpuemShim::CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool _unified, bool _xpr, FeatureRomHeader& fRomHeader)
     :mTag(TAG)
+    ,mCoreDevice(xrt_core::swemu::get_userpf_device(this, deviceIndex))
     ,mRAMSize(info.mDDRSize)
     ,mCoalesceThreshold(4)
     ,mDSAMajorVersion(DSA_MAJOR_VERSION)
@@ -622,6 +624,10 @@ namespace xclcpuemhal2 {
         delete []memTopology;
         memTopology = NULL;
       }
+      
+      //check xclbin version with vivado tool version
+      xclemulation::checkXclibinVersionWithTool(header);     
+      
       if (mIsKdsSwEmu)
       {
         mCore = new exec_core;

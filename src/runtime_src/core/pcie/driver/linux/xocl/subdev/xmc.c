@@ -88,10 +88,18 @@
 #define	XMC_VPP2V5_REG			0x29C
 #define	XMC_VCCINT_BRAM_REG		0x2A8
 #define	XMC_HBM_TEMP2_REG		0x2B4
+#define	XMC_12V_AUX1_REG                0x2C0
 #define	XMC_VCCINT_TEMP_REG             0x2CC
 #define	XMC_HOST_MSG_OFFSET_REG		0x300
 #define	XMC_HOST_MSG_ERROR_REG		0x304
 #define	XMC_HOST_MSG_HEADER_REG		0x308
+#define	XMC_VCC1V2_I_REG                0x314
+#define	XMC_V12_IN_I_REG                0x320
+#define	XMC_V12_IN_AUX0_I_REG           0x32C
+#define	XMC_V12_IN_AUX1_I_REG           0x338
+#define	XMC_VCCAUX_REG                  0x344
+#define	XMC_VCCAUX_PMC_REG              0x350
+#define	XMC_VCCRAM_REG                  0x35C
 #define	XMC_HOST_NEW_FEATURE_REG1	0xB20
 #define	XMC_OEM_ID_REG                  0xC50
 #define	XMC_HOST_NEW_FEATURE_REG1_FEATURE_PRESENT (1 << 29)
@@ -585,6 +593,30 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 		case XMC_VCCINT_TEMP:
 			READ_SENSOR(xmc, XMC_VCCINT_TEMP_REG, val, val_kind);
 			break;
+		case XMC_12V_AUX1:
+			READ_SENSOR(xmc, XMC_12V_AUX1_REG, val, val_kind);
+			break;
+		case XMC_VCC1V2_I:
+			READ_SENSOR(xmc, XMC_VCC1V2_I_REG, val, val_kind);
+			break;
+		case XMC_V12_IN_I:
+			READ_SENSOR(xmc, XMC_V12_IN_I_REG, val, val_kind);
+			break;
+		case XMC_V12_IN_AUX0_I:
+			READ_SENSOR(xmc, XMC_V12_IN_AUX0_I_REG, val, val_kind);
+			break;
+		case XMC_V12_IN_AUX1_I:
+			READ_SENSOR(xmc, XMC_V12_IN_AUX1_I_REG, val, val_kind);
+			break;
+		case XMC_VCCAUX:
+			READ_SENSOR(xmc, XMC_VCCAUX_REG, val, val_kind);
+			break;
+		case XMC_VCCAUX_PMC:
+			READ_SENSOR(xmc, XMC_VCCAUX_PMC_REG, val, val_kind);
+			break;
+		case XMC_VCCRAM:
+			READ_SENSOR(xmc, XMC_VCCRAM_REG, val, val_kind);
+			break;
 		default:
 			break;
 		}
@@ -718,6 +750,31 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 		case XMC_VCCINT_TEMP:
 			*val = xmc->cache->vccint_temp;
 			break;
+		case XMC_12V_AUX1:
+			*val = xmc->cache->vol_12v_aux1;
+			break;
+		case XMC_VCC1V2_I:
+			*val = xmc->cache->vol_vcc1v2_i;
+			break;
+		case XMC_V12_IN_I:
+			*val = xmc->cache->vol_v12_in_i;
+			break;
+		case XMC_V12_IN_AUX0_I:
+			*val = xmc->cache->vol_v12_in_aux0_i;
+			break;
+		case XMC_V12_IN_AUX1_I:
+			*val = xmc->cache->vol_v12_in_aux1_i;
+			break;
+		case XMC_VCCAUX:
+			*val = xmc->cache->vol_vccaux;
+			break;
+		case XMC_VCCAUX_PMC:
+			*val = xmc->cache->vol_vccaux_pmc;
+			break;
+		case XMC_VCCRAM:
+			*val = xmc->cache->vol_vccram;
+			break;
+
 		default:
 			break;
 		}
@@ -940,6 +997,14 @@ static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind,
 		xmc_sensor(pdev, XMC_VER, &sensors->version, SENSOR_INS);
 		xmc_sensor(pdev, XMC_OEM_ID, &sensors->oem_id, SENSOR_INS);
 		xmc_sensor(pdev, XMC_VCCINT_TEMP, &sensors->vccint_temp, SENSOR_INS);
+		xmc_sensor(pdev, XMC_12V_AUX1, &sensors->vol_12v_aux1, SENSOR_INS);
+		xmc_sensor(pdev, XMC_VCC1V2_I, &sensors->vol_vcc1v2_i, SENSOR_INS);
+		xmc_sensor(pdev, XMC_V12_IN_I, &sensors->vol_v12_in_i, SENSOR_INS);
+		xmc_sensor(pdev, XMC_V12_IN_AUX0_I, &sensors->vol_v12_in_aux0_i, SENSOR_INS);
+		xmc_sensor(pdev, XMC_V12_IN_AUX1_I, &sensors->vol_v12_in_aux1_i, SENSOR_INS);
+		xmc_sensor(pdev, XMC_VCCAUX, &sensors->vol_vccaux, SENSOR_INS);
+		xmc_sensor(pdev, XMC_VCCAUX_PMC, &sensors->vol_vccaux_pmc, SENSOR_INS);
+		xmc_sensor(pdev, XMC_VCCRAM, &sensors->vol_vccram, SENSOR_INS);
 		break;
 	case XCL_BDINFO:
 		mutex_lock(&xmc->mbx_lock);
@@ -1073,6 +1138,14 @@ SENSOR_SYSFS_NODE(xmc_hbm_temp, HBM_TEMP);
 SENSOR_SYSFS_NODE(version, XMC_VER);
 SENSOR_SYSFS_NODE_FORMAT(xmc_oem_id, XMC_OEM_ID, "0x%x\n");
 SENSOR_SYSFS_NODE(xmc_vccint_temp, XMC_VCCINT_TEMP);
+SENSOR_SYSFS_NODE(xmc_12v_aux1, XMC_12V_AUX1);
+SENSOR_SYSFS_NODE(xmc_vcc1v2_i, XMC_VCC1V2_I);
+SENSOR_SYSFS_NODE(xmc_v12_in_i, XMC_V12_IN_I);
+SENSOR_SYSFS_NODE(xmc_v12_in_aux0_i, XMC_V12_IN_AUX0_I);
+SENSOR_SYSFS_NODE(xmc_v12_in_aux1_i, XMC_V12_IN_AUX1_I);
+SENSOR_SYSFS_NODE(xmc_vccaux, XMC_VCCAUX);
+SENSOR_SYSFS_NODE(xmc_vccaux_pmc, XMC_VCCAUX_PMC);
+SENSOR_SYSFS_NODE(xmc_vccram, XMC_VCCRAM);
 
 static ssize_t xmc_power_show(struct device *dev,
 	struct device_attribute *da, char *buf)
@@ -1137,7 +1210,15 @@ static DEVICE_ATTR_RO(status);
 	&dev_attr_xmc_power.attr,					\
 	&dev_attr_version.attr,						\
 	&dev_attr_xmc_oem_id.attr,					\
-	&dev_attr_xmc_vccint_temp.attr
+	&dev_attr_xmc_vccint_temp.attr,					\
+	&dev_attr_xmc_12v_aux1.attr,					\
+	&dev_attr_xmc_vcc1v2_i.attr,					\
+	&dev_attr_xmc_v12_in_i.attr,					\
+	&dev_attr_xmc_v12_in_aux0_i.attr,				\
+	&dev_attr_xmc_v12_in_aux1_i.attr,				\
+	&dev_attr_xmc_vccaux.attr,					\
+	&dev_attr_xmc_vccaux_pmc.attr,					\
+	&dev_attr_xmc_vccram.attr
 
 /*
  * Defining sysfs nodes for reading some of xmc regisers.
@@ -2314,6 +2395,34 @@ create_attr_failed:
 	return err;
 }
 
+static int stop_ert_nolock(struct platform_device *pdev)
+{
+	struct xocl_xmc *xmc;
+	int retry = 0;
+
+	xmc = platform_get_drvdata(pdev);
+	if (!xmc)
+		return -ENODEV;
+	else if (!xmc->enabled)
+		return -ENODEV;
+
+	while ((READ_CQ(xmc, 0) != (ERT_EXIT_CMD_OP | ERT_EXIT_ACK)) &&
+		retry++ < MAX_ERT_RETRY) {
+		WRITE_CQ(xmc, ERT_EXIT_CMD, 0);
+		msleep(RETRY_INTERVAL);
+	}
+	if (retry >= MAX_ERT_RETRY) {
+		xocl_warn(&xmc->pdev->dev, "Failed to stop sched");
+		xocl_warn(&xmc->pdev->dev, "Scheduler CQ status 0x%x",
+					READ_CQ(xmc, 0));
+		return -ETIMEDOUT;
+	}
+
+	xocl_info(&xmc->pdev->dev, "ERT stopped, retry %d", retry);
+	return 0;
+}
+
+
 static int stop_xmc_nolock(struct platform_device *pdev)
 {
 	struct xocl_xmc *xmc;
@@ -2358,20 +2467,10 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 			WRITE_REG32(xmc, CTL_MASK_STOP, XMC_CONTROL_REG);
 			WRITE_REG32(xmc, 1, XMC_STOP_CONFIRM_REG);
 		}
-		/* Need to check if ERT is loaded before we attempt to stop it */
-		if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0)) &&
-			SCHED_EXIST(xmc)) {
-			reg_val = READ_CQ(xmc, 0);
-			if (!(reg_val & ERT_EXIT_ACK)) {
-				xocl_info(&xmc->pdev->dev,
-					"Stopping scheduler...");
-				WRITE_CQ(xmc, ERT_EXIT_CMD, 0);
-			}
-		}
 
 		retry = 0;
 		while (retry++ < MAX_XMC_RETRY &&
-			!(READ_REG32(xmc, XMC_STATUS_REG) & STATUS_MASK_STOPPED))
+		    !(READ_REG32(xmc, XMC_STATUS_REG) & STATUS_MASK_STOPPED))
 			msleep(RETRY_INTERVAL);
 
 		/* Wait for XMC to stop and then check that ERT has also finished */
@@ -2382,23 +2481,17 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 			xmc->state = XMC_STATE_ERROR;
 			return -ETIMEDOUT;
 		} else if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0)) &&
-			 SCHED_EXIST(xmc) &&
-			 !(READ_CQ(xmc, 0) & ERT_EXIT_ACK)) {
-			while (retry++ < MAX_ERT_RETRY &&
-				!(READ_CQ(xmc, 0) & ERT_EXIT_ACK))
-				msleep(RETRY_INTERVAL);
-			if (retry >= MAX_ERT_RETRY) {
-				xocl_warn(&xmc->pdev->dev,
-					"Failed to stop sched");
-				xocl_warn(&xmc->pdev->dev,
-					"Scheduler CQ status 0x%x",
-					READ_CQ(xmc, 0));
-				/*
-				 * We don't exit if ERT doesn't stop since
-				 * it can hang due to bad kernel xmc->state =
-				 * XMC_STATE_ERROR; return -ETIMEDOUT;
-				 */
-			}
+			 SCHED_EXIST(xmc)) {
+			xocl_info(&xmc->pdev->dev,
+					"Stopping scheduler...");
+			/*
+			 * We don't exit if ERT doesn't stop since
+			 * it can hang due to bad kernel xmc->state =
+			 * XMC_STATE_ERROR;
+			 */
+			ret = stop_ert_nolock(pdev);
+			if (ret)
+				return ret;
 		}
 
 		xocl_info(&xmc->pdev->dev, "XMC/sched Stopped, retry %d",
@@ -2608,16 +2701,17 @@ out:
 	return ret;
 }
 
-static void xmc_reset(struct platform_device *pdev)
+static int xmc_reset(struct platform_device *pdev)
 {
 	struct xocl_xmc *xmc;
 
 	xocl_info(&pdev->dev, "Reset Microblaze...");
 	xmc = platform_get_drvdata(pdev);
 	if (!xmc || !xmc->enabled)
-		return;
+		return -EINVAL;
 
 	load_xmc(xmc);
+	return 0;
 }
 
 static int load_mgmt_image(struct platform_device *pdev, const char *image,
@@ -2782,7 +2876,18 @@ fail:
 	return err;
 }
 
+static int xmc_offline(struct platform_device *pdev)
+{
+	return xmc_access(pdev, XOCL_XMC_FREEZE);
+}
+static int xmc_online(struct platform_device *pdev)
+{
+	return xmc_access(pdev, XOCL_XMC_FREE);
+}
+
 static struct xocl_mb_funcs xmc_ops = {
+	.offline_cb		= xmc_offline,
+	.online_cb		= xmc_online,
 	.load_mgmt_image	= load_mgmt_image,
 	.load_sche_image	= load_sche_image,
 	.reset			= xmc_reset,
@@ -3401,6 +3506,7 @@ xmc_update_sc_firmware(struct file *file, const char __user *ubuf,
 			ret = -ETIMEDOUT;
 		/* Mark new SC firmware is installed */
 		xmc->sc_fw_erased = false;
+		xmc_load_board_info(xmc);
 	} else {
 		size_t sz, thissz;
 

@@ -24,7 +24,7 @@ namespace xdphalinterface {
   {
     if (handle != nullptr)
     {
-      xrt_core::dlclose(handle) ;
+      //xrt_core::dlclose(handle) ;
     }
   }
 

@@ -39,49 +39,6 @@ run(xrt::device* mydev)
   std::thread::id tid = std::this_thread::get_id();
   std::cout << "Thread ID: " << tid << "\n";
   std::cout << "Running MBUF tests ...\n";
-
-#ifdef PMD_OCL
-  StreamHandle inStrm = mydev->openStream(0, 1024, xrt::device::direction::DEVICE2HOST);
-  StreamHandle outStrm = mydev->openStream(0, 1024, xrt::device::direction::HOST2DEVICE);
-
-  BOOST_CHECK(inStrm < 0xff);
-  BOOST_CHECK(outStrm < 0xff);
-
-  PacketObject pkts[1024];
-  unsigned count = 0;
-  unsigned count1 = 0;
-  for (int i = 0; i < 32; i++) {
-    count += mydev->recv(i, &pkts[i*32], 32);
-  }
-
-  std::cout << "Sleeping... \n";
-
-  sleep(10);
-
-  for (int j = 0; j < 8; j++) {
-    for (int i = 0; i < 32; i++) {
-      unsigned rxCount = mydev->recv(i, &pkts[i*32], 32);
-      unsigned txCount = mydev->send(i, &pkts[i*32], rxCount);
-      count += rxCount;
-      count1 += txCount;
-    }
-    std::cout << "Received " << count << " packets\n";
-    std::cout << "Transmitted " << count1 << " packets\n";
-    sleep(5);
-  }
-
-  std::cout << "Received " << count << " packets\n";
-  std::cout << "Transmitted " << count1 << " packets\n";
-
-  BOOST_CHECK(count1 != 0);
-  BOOST_CHECK_EQUAL(count1, count);
-
-  PacketObject pkt = mydev->acquirePacket();
-  mydev->releasePacket(pkt);
-
-  mydev->closeStream(outStrm);
-  mydev->closeStream(inStrm);
-#endif
 }
 
 }

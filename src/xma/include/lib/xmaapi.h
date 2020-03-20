@@ -79,7 +79,7 @@ typedef struct XmaSingleton
     num_filters = 0;
     num_kernels = 0;
     num_admins = 0;
-    num_execbos = 3;//Default is 3 execbo per session
+    num_execbos = XMA_NUM_EXECBO_DEFAULT;
     num_of_sessions = 0;
     log_msg_list_locked = false;
     xma_exit = false;

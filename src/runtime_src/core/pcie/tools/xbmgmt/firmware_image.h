@@ -34,6 +34,7 @@
 #define DSA_FILE_SUFFIX     "mcs"
 #define DSABIN_FILE_SUFFIX  "dsabin"
 #define XSABIN_FILE_SUFFIX  "xsabin"
+#define XCLBIN_FILE_SUFFIX  "xclbin"
 #define NULL_TIMESTAMP      0
 
 class DSAInfo

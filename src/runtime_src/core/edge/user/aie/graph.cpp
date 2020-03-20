@@ -16,133 +16,142 @@
  * under the License.
  */
 
+#include "graph.h"
+#include "core/edge/user/shim.h"
+#include "core/include/experimental/xrt_aie.h"
+#include "core/common/error.h"
+
+#include <iostream>
+#include <chrono>
+#include <cerrno>
+
 extern "C"
 {
 #include <xaiengine.h>
 }
-#include "xrt_aie.h"
-#include "shim.h"
-#include "tile.h"
-#include "graph.h"
-
-#include <iostream>
-#include <errno.h>
-#include <chrono>
 
 namespace zynqaie {
 
-Graph::Graph(xclDeviceHandle handle, const char *graphName)
+graph_type::
+graph_type(std::shared_ptr<xrt_core::device> dev, uuid_t, const std::string& graph_name)
+  : device(std::move(dev)), name(graph_name)
 {
-    ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
-    devHandle = handle;
-
-    name = graphName;
-
-    /*
-     * TODO
-     * this is not the right place for creating Aie instance. Should
-     * we move this to loadXclbin when detect Aie Array?
-     */
+    // TODO
+    // this is not the right place for creating Aie instance. Should
+    // we move this to loadXclbin when detect Aie Array?
+    auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
     aieArray = drv->getAieArray();
     if (!aieArray) {
-        aieArray = new Aie();
-        drv->setAieArray(aieArray);
+      aieArray = new Aie();
+      drv->setAieArray(aieArray);
     }
 
+    for (auto& tile : xrt_core::edge::aie::get_tiles(device.get(), name))
+      tiles.emplace_back(std::move(tile));
+
+    // to be removed once TBD decided
+    tiles.emplace_back(tile_type{2, 4, 2, 4, 0x17e4});
+
     /* TODO
-     * get tiles from xclbin. Will need some interfaces like
-     * xrt_core::xclbin::get_tiles(const axlf *top, char *graphName);
+     * get RTP port from xclbin. Will need some interfaces like
+     * xrt_core::xclbin::get_rtpports(const axlf *top, char *graphName);
      * just hard code for now.
      */
-    tiles.push_back(new Tile(2, 4, 2, 4, 0x17e4));
+    rtps.emplace_back(rtp_type{"mygraph.k1.in[0]",
 
-    state = GRAPH_STATE_STOP;
+                               1,
+                               0,
+                               0,
+                               0x4000,
+
+                               2,
+                               0,
+                               0,
+                               0,
+
+                               2,
+                               0,
+                               1,
+                               0x2000,
+
+                               false,
+                               true,
+                               false,
+                               false,
+                               true});
+
+    state = graph_state::stop;
 }
 
-Graph::~Graph()
+graph_type::
+~graph_type()
 {
     /* TODO move this to ZYNQShim destructor or use smart pointer */
     if (aieArray)
         delete aieArray;
 }
 
-Graph *Graph::graphHandleCheck(void *gHandle)
+
+void
+graph_type::
+reset()
 {
-    if (!gHandle)
-        return 0;
-
-    return (Graph *) gHandle;
-}
-
-int Graph::xrtGraphReset()
-{
-    for (auto iter = tiles.begin(); iter != tiles.end(); ++iter) {
-        auto col = (*iter)->graphCol;
-        auto row = (*iter)->graphRow;
-        auto pos = aieArray->getTilePos(col, row);
-
-        XAieTile_CoreControl(&(aieArray->tileArray.at(pos)), XAIE_DISABLE, XAIE_ENABLE);
+    for (auto& tile : tiles) {
+      auto pos = aieArray->getTilePos(tile.col, tile.row);
+      XAieTile_CoreControl(&(aieArray->tileArray.at(pos)), XAIE_DISABLE, XAIE_ENABLE);
     }
 
-    state = GRAPH_STATE_RESET;
-
-    return 0;
+    state = graph_state::reset;
 }
 
-uint64_t Graph::xrtGraphTimeStamp()
+uint64_t
+graph_type::
+get_timestamp()
 {
     /* TODO just use the first tile to get the timestamp? */
-    auto col = (*tiles.begin())->graphCol;
-    auto row = (*tiles.begin())->graphRow;
-
-    auto pos = aieArray->getTilePos(col, row);
+    auto& tile = tiles.at(0);
+    auto pos = aieArray->getTilePos(tile.col, tile.row);
 
     uint64_t timeStamp = XAieTile_CoreReadTimer(&(aieArray->tileArray.at(pos)));
-
     return timeStamp;
 }
 
-int Graph::xrtGraphRun()
+void
+graph_type::
+run()
 {
-    if (state != GRAPH_STATE_STOP && state != GRAPH_STATE_RESET) {
-        std::cout << "Error: xrtGraphRun graph fail, already running" << std::endl;
-	return -EINVAL;
-    }
+    if (state != graph_state::stop && state != graph_state::reset)
+      throw xrt_core::error(-EINVAL, "Graph '" + name + "' is already running");
 
-    if (state != GRAPH_STATE_RESET) {
-        /* Reset the graph first */
-        xrtGraphReset();
-    }
+    if (state != graph_state::reset)
+      // Reset the graph first
+      reset();
 
-    for (auto iter = tiles.begin(); iter != tiles.end(); ++iter) {
-        auto col = (*iter)->graphCol;
-        auto row = (*iter)->graphRow;
-        auto pos = aieArray->getTilePos(col, row);
+    for (auto& tile : tiles) {
+        auto pos = aieArray->getTilePos(tile.col, tile.row);
         XAieTile_CoreControl(&(aieArray->tileArray.at(pos)), XAIE_ENABLE, XAIE_DISABLE);
     }
 
-    state = GRAPH_STATE_RUNNING;
- 
-    return 0;
+    state = graph_state::running;
 }
 
-int Graph::xrtGraphUpdateIter(int iterations)
+void
+graph_type::
+update_iter(int iterations)
 {
-    for (auto iter = tiles.begin(); iter != tiles.end(); ++iter) {
-        auto col = (*iter)->iterCol;
-        auto row = (*iter)->iterRow;
-        auto pos = aieArray->getTilePos(col, row);
-        uint32_t addr = (*iter)->iterMemAddr;
+    for (auto& tile : tiles) {
+        auto pos = aieArray->getTilePos(tile.itr_mem_col, tile.itr_mem_row);
+        uint32_t addr = tile.itr_mem_addr;
         XAieTile_DmWriteWord(&(aieArray->tileArray.at(pos)), addr, iterations);
     }
-
-    return 0;
 }
 
-int Graph::xrtGraphWaitDone(int timeoutMilliSec)
+void
+graph_type::
+wait_done(int timeout_ms)
 {
-    if (state != GRAPH_STATE_RUNNING)
-        return -EINVAL;
+    if (state != graph_state::running)
+      throw xrt_core::error(-EINVAL, "Graph '" + name + "' is not running, cannot wait");
 
     auto begin = std::chrono::high_resolution_clock::now();
 
@@ -154,75 +163,62 @@ int Graph::xrtGraphWaitDone(int timeoutMilliSec)
      */
     while (1) {
         uint8_t done;
-        for (auto iter = tiles.begin(); iter != tiles.end(); ++iter) {
-            auto col = (*iter)->iterCol;
-            auto row = (*iter)->iterRow;
-            auto pos = aieArray->getTilePos(col, row);
-            uint32_t addr = (*iter)->iterMemAddr;
+        for (auto& tile : tiles) {
+            auto pos = aieArray->getTilePos(tile.itr_mem_col, tile.itr_mem_row);
             done = XAieTile_CoreReadStatusDone(&(aieArray->tileArray.at(pos)));
             if (!done)
                 break;
         }
 
         if (done)
-            return 0;
+          return;
 
         auto current = std::chrono::high_resolution_clock::now();
         auto dur = current - begin;
         auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(dur).count();
-        if (timeoutMilliSec >= 0 && timeoutMilliSec < ms) {
-            std::cout << "Wait Graph " << name << " timeout." << std::endl;
-            return -ETIME;
-        }
+        if (timeout_ms >= 0 && timeout_ms < ms)
+          throw xrt_core::error(-ETIME, "Wait graph '" + name + "' timeout.");
     }
 
-    state = GRAPH_STATE_STOP;
-
-    return 0;
+    state = graph_state::stop;
 }
 
-int Graph::xrtGraphSuspend()
+void
+graph_type::
+suspend()
 {
-    if (state != GRAPH_STATE_RUNNING) {
-        std::cout << "Error: xrtGraphDisable graph fail, not running" << std::endl;
-	return -EINVAL;
-    }
+    if (state != graph_state::running)
+      throw xrt_core::error(-EINVAL, "Graph '" + name + "' is not running, cannot suspend");
 
-    for (auto iter = tiles.begin(); iter != tiles.end(); ++iter) {
-        auto col = (*iter)->graphCol;
-        auto row = (*iter)->graphRow;
-        auto pos = aieArray->getTilePos(col, row);
+    for (auto& tile : tiles) {
+        auto pos = aieArray->getTilePos(tile.col, tile.row);
         XAieTile_CoreControl(&(aieArray->tileArray.at(pos)), XAIE_DISABLE, XAIE_DISABLE);
     }
 
-    state = GRAPH_STATE_SUSPEND;
-
-    return 0;
+    state = graph_state::suspend;
 }
 
-int Graph::xrtGraphResume()
+void
+graph_type::
+resume()
 {
-    if (state != GRAPH_STATE_SUSPEND) {
-        std::cout << "Error: xrtGraphEnable graph fail, not suspending" << std::endl;
-        return -EINVAL;
-    }
+    if (state != graph_state::suspend)
+      throw xrt_core::error(-EINVAL, "Graph '" + name + "' is not suspended, cannot resume");
 
-    for (auto iter = tiles.begin(); iter != tiles.end(); ++iter) {
-        auto col = (*iter)->graphCol;
-        auto row = (*iter)->graphRow;
-        auto pos = aieArray->getTilePos(col, row);
+    for (auto& tile : tiles) {
+        auto pos = aieArray->getTilePos(tile.col, tile.row);
         XAieTile_CoreControl(&(aieArray->tileArray.at(pos)), XAIE_ENABLE, XAIE_DISABLE);
     }
 
-    state = GRAPH_STATE_RUNNING;
-
-    return 0;
+    state = graph_state::running;
 }
 
-int Graph::xrtGraphStop(int timeoutMilliSec)
+void
+graph_type::
+stop(int timeout_ms)
 {
-    if (state != GRAPH_STATE_RUNNING)
-        return -EINVAL;
+    if (state != graph_state::running)
+      throw xrt_core::error(-EINVAL, "Graph '" + name + "' is not running, cannot stop");
 
     auto begin = std::chrono::high_resolution_clock::now();
 
@@ -234,27 +230,23 @@ int Graph::xrtGraphStop(int timeoutMilliSec)
      */
     while (1) {
         uint8_t done;
-        for (auto iter = tiles.begin(); iter != tiles.end(); ++iter) {
-            auto col = (*iter)->iterCol;
-            auto row = (*iter)->iterRow;
-            auto pos = aieArray->getTilePos(col, row);
+        for (auto& tile : tiles) {
+            auto pos = aieArray->getTilePos(tile.itr_mem_col, tile.itr_mem_row);
             done = XAieTile_CoreReadStatusDone(&(aieArray->tileArray.at(pos)));
             if (!done)
                 break;
         }
 
         if (done)
-            return 0;
+            return;
 
         auto current = std::chrono::high_resolution_clock::now();
         auto dur = current - begin;
         auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(dur).count();
-        if (timeoutMilliSec >= 0 && timeoutMilliSec < ms) {
+        if (timeout_ms >= 0 && timeout_ms < ms) {
             std::cout << "Wait Graph " << name << " timeout. Force stop" << std::endl;
-            for (auto iter = tiles.begin(); iter != tiles.end(); ++iter) {
-                auto col = (*iter)->iterCol;
-                auto row = (*iter)->iterRow;
-                auto pos = aieArray->getTilePos(col, row);
+            for (auto& tile : tiles) {
+                auto pos = aieArray->getTilePos(tile.itr_mem_col, tile.itr_mem_row);
                 XAieTile_CoreControl(&(aieArray->tileArray.at(pos)), XAIE_DISABLE, XAIE_DISABLE);
 
                /* TODO any extra action needed to end a graph? */
@@ -264,112 +256,373 @@ int Graph::xrtGraphStop(int timeoutMilliSec)
         }
     }
 
-    state = GRAPH_STATE_STOP;
-
-    return 0;
+    state = graph_state::stop;
 }
 
-
-}
-
-xrtGraphHandle xrtGraphOpen(xclDeviceHandle handle, uuid_t xclbinUUID, const    char *graphName)
+void
+graph_type::
+update_rtp(const char* port, const char* buffer, size_t size)
 {
-    ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
-    if (!drv)
-        return NULL;
+    auto rtp = std::find_if(rtps.begin(), rtps.end(),
+            [port](rtp_type it) { return it.name.compare(port) == 0; });
 
-    zynqaie::Graph *gHandle = new zynqaie::Graph(handle, graphName);
-    if (!zynqaie::Graph::graphHandleCheck(gHandle)) {
-        delete gHandle;
-        gHandle = 0;
+    if (rtp != rtps.end())
+      throw xrt_core::error(-EINVAL, "Can't update graph '" + name + "': RTP port '" + port + "' not found");
+
+    if (rtp->is_plrtp)
+      throw xrt_core::error(-EINVAL, "Can't update graph '" + name + "': not aie rtp port");
+ 
+    /* We only support input RTP */
+    if (!rtp->is_input)
+      throw xrt_core::error(-EINVAL, "Can't update graph '" + name + "': only input RTP port supported");
+ 
+    /*
+     * Only support sync update
+     * TODO support async update
+     */
+    if (rtp->is_async)
+      throw xrt_core::error(-EINVAL, "Can't update graph '" + name + "': only synchronous update supported");
+ 
+    /* If RTP port is connected, only support async update */
+    if (rtp->is_connected)
+      throw xrt_core::error(-EINVAL, "Can't update graph '" + name + "': connected sync update is not supported");
+ 
+    auto selector_pos = aieArray->getTilePos(rtp->selector_col, rtp->selector_row);
+    auto selector_tile = &(aieArray->tileArray.at(selector_pos));
+
+    if (rtp->require_lock)
+        XAieTile_LockAcquire(selector_tile, rtp->selector_lock_id, 0, 0xFFFFFFFF);
+
+    uint32_t selector = XAieTile_DmReadWord(selector_tile, rtp->selector_addr);
+    selector = 1 - selector;
+
+    int update_pos;
+    uint16_t lock_id;
+    uint64_t start_addr;
+    if (selector == 1) {
+        /* update pong buffer */
+        update_pos = aieArray->getTilePos(rtp->pong_col, rtp->pong_row);
+        lock_id = rtp->pong_lock_id;
+        start_addr = rtp->pong_addr;
+    } else {
+        /* update ping buffer */
+        update_pos = aieArray->getTilePos(rtp->ping_col, rtp->ping_row);
+        lock_id = rtp->ping_lock_id;
+        start_addr = rtp->ping_addr;
     }
 
-    return (xrtGraphHandle) gHandle;
+   XAieGbl_Tile *update_tile = &(aieArray->tileArray.at(update_pos));
+   if (rtp->require_lock)
+        XAieTile_LockAcquire(update_tile, lock_id, 0, 0xFFFFFFFF);
+
+    size_t iterations = size / 4;
+    size_t remain = size % 4;
+    int i;
+    for (i = 0; i < iterations; ++i) {
+        XAieTile_DmWriteWord(update_tile, start_addr, ((const u32*)buffer)[i]);
+        start_addr += 4;
+    }
+    if (remain) {
+        uint32_t rdata = 0;
+        memcpy(&rdata, &((const u32*)buffer)[i], remain);
+        XAieTile_DmWriteWord(update_tile, start_addr, rdata);
+    }
+
+    /* update selector */
+    XAieTile_DmWriteWord(selector_tile, rtp->selector_addr, selector);
+
+    if (rtp->require_lock) {
+        /* release lock */
+        XAieTile_LockRelease(selector_tile, rtp->selector_lock_id, 1, 0XFFFFFFFF);
+        XAieTile_LockRelease(update_tile, lock_id, 1, 0XFFFFFFFF);
+    }
 }
 
-void xrtGraphClose(xrtGraphHandle gh)
+
+} // zynqaie
+
+namespace {
+
+using graph_type = zynqaie::graph_type;
+
+// Active graphs per xrtGraphOpen/Close.  This is a mapping from
+// xrtGraphHandle to the corresponding graph object. xrtGraphHandles
+// is the address of the graph object.  This is shared ownership, as
+// internals can use the graph object while applicaiton has closed the
+// correspoding handle. The map content is deleted when user closes
+// the handle, but underlying graph object may remain alive per
+// reference count.
+static std::map<xrtGraphHandle, std::shared_ptr<graph_type>> graphs;
+
+static std::shared_ptr<graph_type>
+get_graph(xrtGraphHandle ghdl)
 {
-    if (zynqaie::Graph::graphHandleCheck(gh))
-        delete ((zynqaie::Graph *) gh);
+  auto itr = graphs.find(ghdl);
+  if (itr == graphs.end())
+    throw std::runtime_error("Unknown graph handle");
+  return (*itr).second;
 }
 
-int xrtGraphReset(xrtGraphHandle gh)
-{
-    zynqaie::Graph *graph = zynqaie::Graph::graphHandleCheck(gh);
-    if (!graph)
-        return -EINVAL;
-
-    return graph->xrtGraphReset();
 }
 
-/**
- * Get a timestamp
- */
-uint64_t xrtGraphTimeStamp(xrtGraphHandle gh)
-{
-    zynqaie::Graph *graph = zynqaie::Graph::graphHandleCheck(gh);
-    if (!graph)
-        return -EINVAL;
+namespace api {
 
-    return graph->xrtGraphTimeStamp();
+using graph_type = zynqaie::graph_type;
+
+xrtGraphHandle
+xrtGraphOpen(xclDeviceHandle dhdl, uuid_t xclbin_uuid, const char* name)
+{
+  auto device = xrt_core::get_userpf_device(dhdl);
+  auto graph = std::make_shared<graph_type>(device, xclbin_uuid, name);
+  auto handle = graph.get();
+  graphs.emplace(std::make_pair(handle,std::move(graph)));
+  return handle;
 }
 
-/**
- * Enable tiles and disable tile reset
- */
-int xrtGraphRun(xrtGraphHandle gh)
+void
+xrtGraphClose(xrtGraphHandle ghdl)
 {
-    zynqaie::Graph *graph = zynqaie::Graph::graphHandleCheck(gh);
-    if (!graph)
-        return -EINVAL;
-
-    return graph->xrtGraphRun();
+  auto graph = get_graph(ghdl);
+  graphs.erase(graph.get());
 }
 
-/**
- * Update iter variable locations for all the tiles
- */
-int xrtGraphUpdateIter(xrtGraphHandle gh, int iterations)
+void
+xrtGraphReset(xrtGraphHandle ghdl)
 {
-    zynqaie::Graph *graph = zynqaie::Graph::graphHandleCheck(gh);
-    if (!graph)
-        return -EINVAL;
-
-    return graph->xrtGraphUpdateIter(iterations);
+  auto graph = get_graph(ghdl);
+  graph->reset();
+}
+  
+uint64_t
+xrtGraphTimeStamp(xrtGraphHandle ghdl)
+{
+  auto graph = get_graph(ghdl);
+  return graph->get_timestamp();
 }
 
-int xrtGraphWaitDone(xrtGraphHandle gh, int timeoutMilliSec)
+void
+xrtGraphRun(xrtGraphHandle ghdl)
 {
-    zynqaie::Graph *graph = zynqaie::Graph::graphHandleCheck(gh);
-    if (!graph)
-        return -EINVAL;
-
-    return graph->xrtGraphWaitDone(timeoutMilliSec);
+  auto graph = get_graph(ghdl);
+  graph->run();
 }
 
-int xrtGraphSuspend(xrtGraphHandle gh)
+void
+xrtGraphUpdateIter(xrtGraphHandle ghdl, int iterations)
 {
-    zynqaie::Graph *graph = zynqaie::Graph::graphHandleCheck(gh);
-    if (!graph)
-        return -EINVAL;
-
-    return graph->xrtGraphSuspend();
+  auto graph = get_graph(ghdl);
+  graph->update_iter(iterations);
 }
 
-int xrtGraphResume(xrtGraphHandle gh)
+void
+xrtGraphWaitDone(xrtGraphHandle ghdl, int timeout_ms)
 {
-    zynqaie::Graph *graph = zynqaie::Graph::graphHandleCheck(gh);
-    if (!graph)
-        return -EINVAL;
-
-    return graph->xrtGraphResume();
+  auto graph = get_graph(ghdl);
+  graph->wait_done(timeout_ms);
 }
 
-int xrtGraphStop(xrtGraphHandle gh, int timeoutMilliSec)
+void
+xrtGraphSuspend(xrtGraphHandle ghdl)
 {
-    zynqaie::Graph *graph = zynqaie::Graph::graphHandleCheck(gh);
-    if (!graph)
-        return -EINVAL;
+  auto graph = get_graph(ghdl);
+  graph->suspend();
+}
 
-    return graph->xrtGraphStop(timeoutMilliSec);
+void
+xrtGraphResume(xrtGraphHandle ghdl)
+{
+  auto graph = get_graph(ghdl);
+  graph->resume();
+}
+
+void
+xrtGraphStop(xrtGraphHandle ghdl, int timeout_ms)
+{
+  auto graph = get_graph(ghdl);
+  graph->stop(timeout_ms);
+}
+
+void
+xrtGraphUpdateRTP(xrtGraphHandle ghdl, const char* port, const char* buffer, size_t size)
+{
+  auto graph = get_graph(ghdl);
+  graph->update_rtp(port, buffer, size);
+}
+
+} // api
+  
+
+////////////////////////////////////////////////////////////////
+// xrt_aie API implementations (xrt_aie.h)
+////////////////////////////////////////////////////////////////
+xrtGraphHandle
+xrtGraphOpen(xclDeviceHandle handle, uuid_t xclbin_uuid, const char* graph)
+{
+  try {
+    return api::xrtGraphOpen(handle, xclbin_uuid, graph);
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return XRT_NULL_HANDLE;
+  }
+    
+}
+
+void
+xrtGraphClose(xrtGraphHandle ghdl)
+{
+  try {
+    api::xrtGraphClose(ghdl);
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+  }
+}
+
+int
+xrtGraphReset(xrtGraphHandle ghdl)
+{
+  try {
+    api::xrtGraphReset(ghdl);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -1;
+  }
+}
+
+uint64_t
+xrtGraphTimeStamp(xrtGraphHandle ghdl)
+{
+  try {
+    return api::xrtGraphTimeStamp(ghdl);
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -1;
+  }
+}
+
+int
+xrtGraphRun(xrtGraphHandle ghdl)
+{
+  try {
+    api::xrtGraphRun(ghdl);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -1;
+  }
+}
+
+int
+xrtGraphUpdateIter(xrtGraphHandle ghdl, int iterations)
+{
+  try {
+    api::xrtGraphUpdateIter(ghdl, iterations);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -1;
+  }
+}
+
+int
+xrtGraphWaitDone(xrtGraphHandle ghdl, int timeout_ms)
+{
+  try {
+    api::xrtGraphWaitDone(ghdl, timeout_ms);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -1;
+  }
+}
+
+int
+xrtGraphSuspend(xrtGraphHandle ghdl)
+{
+  try {
+    api::xrtGraphSuspend(ghdl);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -1;
+  }
+}
+
+int
+xrtGraphResume(xrtGraphHandle ghdl)
+{
+  try {
+    api::xrtGraphResume(ghdl);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -1;
+  }
+}
+
+int
+xrtGraphStop(xrtGraphHandle ghdl, int timeout_ms)
+{
+  try {
+    api::xrtGraphStop(ghdl, timeout_ms);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -1;
+  }
+}
+
+int
+xrtGraphUpdateRTP(xrtGraphHandle ghdl, const char* port, const char* buffer, size_t size)
+{
+  try {
+    api::xrtGraphUpdateRTP(ghdl, port, buffer, size);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -1;
+  }
 }

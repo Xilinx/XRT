@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
 /*
  * A GEM style device manager for MPSoC based OpenCL accelerators.
  *
@@ -8,14 +9,8 @@
  *    Min Ma      <min.ma@xilinx.com>
  *    Jan Stephan <j.stephan@hzdr.de>
  *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This file is dual-licensed; you may select either the GNU General Public
+ * License version 2 or Apache License, Version 2.0.
  */
 #include <linux/bitmap.h>
 #include <linux/list.h>
@@ -532,7 +527,7 @@ static irqreturn_t sched_exec_isr(int irq, void *arg)
 	/* Check for done and write ap_continue to stop redundent interrupts */
 	if (zocl_cu_get_control(&zdev->exec->zcu[cu_idx]) == AP_CTRL_CHAIN)
 		zocl_cu_check(&zdev->exec->zcu[cu_idx]);
-	
+
 	/* This function returns the value of the interrupt status register
 	 * No need to check the interrupt type for now.
 	 */

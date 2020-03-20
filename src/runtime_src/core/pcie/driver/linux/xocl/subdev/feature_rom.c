@@ -561,6 +561,7 @@ static int feature_rom_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	rom->pdev =  pdev;
+	platform_set_drvdata(pdev, rom);
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (res == NULL) {
@@ -628,13 +629,12 @@ static int feature_rom_probe(struct platform_device *pdev)
 		rom->header.TimeSinceEpoch);
 	xocl_info(&pdev->dev, "FeatureBitMap: %llx", rom->header.FeatureBitMap);
 
-	platform_set_drvdata(pdev, rom);
-
 	return 0;
 
 failed:
 	if (rom->base)
 		iounmap(rom->base);
+	platform_set_drvdata(pdev, NULL);
 	devm_kfree(&pdev->dev, rom);
 	return ret;
 }

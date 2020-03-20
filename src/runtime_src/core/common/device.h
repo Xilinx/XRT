@@ -28,6 +28,7 @@
 #include <cstdint>
 #include <vector>
 #include <string>
+#include <map>
 #include <boost/any.hpp>
 #include <boost/property_tree/ptree.hpp>
 
@@ -43,6 +44,7 @@ public:
   // device index type
   using id_type = unsigned int;
   using handle_type = xclDeviceHandle;
+
 public:
 
   XRT_CORE_COMMON_EXPORT
@@ -65,26 +67,49 @@ public:
 
   /**
    * get_device_handle() - Get underlying shim device handle
-   *
-   * Throws if called on non userof devices
    */
   virtual handle_type
   get_device_handle() const = 0;
 
+  /**
+   * get_mgmt_handle() - Get underlying mgmt device handle if any
+   *
+   * Return: Handle for mgmt device, or XRT_NULL_HANDLE if undefined
+   *
+   * Currently windows is only OS that differentiates mgmt handle from
+   * device handle.  As such this function really doesn't belong here
+   * in base class, but it avoids dynamic_cast from base device to
+   * concrete device for query calls.
+   */
   virtual handle_type
   get_mgmt_handle() const
   {
     return XRT_NULL_HANDLE;
   }
 
+  /**
+   * get_user_handle() - Get underlying user device handle if any
+   *
+   * Return: Handle for user device.
+   *
+   * User the device is default the same as device handle.
+   */
   virtual handle_type
   get_user_handle() const
   {
-    return XRT_NULL_HANDLE;
+    return get_device_handle();
   }
 
   /**
    * is_userpf_device() - Is this device a userpf
+   *
+   * Return: true if this device is associate with userpf, false otherwise
+   *
+   * This currently makes sense only on Linux.  It used by
+   * device_linux to direct sysfs calls to the proper pf.  As such
+   * this function really doesn't belong here in base class, but it
+   * avoids dynamic_cast from base device to concrete device for
+   * query calls.
    */
   virtual bool
   is_userpf() const
@@ -142,6 +167,22 @@ public:
     return qr.get(this, std::forward<Args>(args)...);
   }
 
+  /**
+   * register_axlf() - Callback from shim after AXLF has been loaded.
+   *
+   * This function extracts meta data sections as needed.
+   */
+  void
+  register_axlf(const axlf*);
+
+  /**
+   * get_axlf_section() - Get section from currently loaded axlf
+   *
+   * Return: pair of section data and size in bytes
+   */
+  std::pair<const char*, size_t>
+  get_axlf_section(axlf_section_kind section) const;
+
   // Move all these 'pt' functions out the class interface
   virtual void get_info(boost::property_tree::ptree&) const {}
   virtual void read_dma_stats(boost::property_tree::ptree&) const {}
@@ -189,7 +230,7 @@ public:
 
  private:
   id_type m_device_id;
-  const axlf* xclbin = nullptr;
+  std::map<axlf_section_kind, std::vector<char>> m_axlf_sections;
 };
 
 /**

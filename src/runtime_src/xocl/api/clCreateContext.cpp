@@ -97,12 +97,6 @@ clCreateContext(const cl_context_properties * properties,
   std::sort(vdevices.begin(),vdevices.end());
   vdevices.erase(std::unique(vdevices.begin(),vdevices.end()),vdevices.end());
 
-  // Ensure devices are available for current process
-  for (auto device : vdevices) {
-    if (!xocl(device)->lock())
-      throw error(CL_DEVICE_NOT_AVAILABLE,"device unavailable");
-  }
-
   //allocate context
   //openccl1.2-rev11.pdf P55
   //8  CL_OUT_OF_RESOURCES if there is a failure to allocate resources required by the

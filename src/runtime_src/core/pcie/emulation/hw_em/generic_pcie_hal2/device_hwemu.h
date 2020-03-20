@@ -14,8 +14,8 @@
  * under the License.
  */
 
-#ifndef HWEMU_DEVICE_LINUX_H
-#define HWEMU_DEVICE_LINUX_H
+#ifndef PCIE_HWEMU_DEVICE_LINUX_H
+#define PCIE_HWEMU_DEVICE_LINUX_H
 
 #include "core/common/ishim.h"
 #include "core/pcie/common/device_pcie.h"

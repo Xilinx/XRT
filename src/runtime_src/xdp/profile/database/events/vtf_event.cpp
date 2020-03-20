@@ -36,7 +36,7 @@ namespace xdp {
   {
   }
 
-  void VTFEvent::dump(std::ofstream& fout, int bucket)
+  void VTFEvent::dump(std::ofstream& fout, uint32_t bucket)
   {
     fout << id << "," << start_id << "," ;
     dumpTimestamp(fout) ;
@@ -112,6 +112,15 @@ namespace xdp {
     case KERNEL_STALL:
       humanReadable ? (fout << "KERNEL_STALL") : (fout << KERNEL_STALL) ;
       break ;
+    case KERNEL_STALL_EXT_MEM:
+      humanReadable ? (fout << "KERNEL_STALL_EXT_MEM") : (fout << KERNEL_STALL_EXT_MEM) ;
+      break ;
+    case KERNEL_STALL_DATAFLOW:
+      humanReadable ? (fout << "KERNEL_STALL_DATAFLOW") : (fout << KERNEL_STALL_DATAFLOW) ;
+      break ;
+    case KERNEL_STALL_PIPE:
+      humanReadable ? (fout << "KERNEL_STALL_PIPE") : (fout << KERNEL_STALL_PIPE) ;
+      break ;
     case KERNEL_READ:
       humanReadable ? (fout << "KERNEL_READ") : (fout << KERNEL_READ) ;
       break ;
@@ -121,14 +130,20 @@ namespace xdp {
     case KERNEL_STREAM_READ:
       humanReadable ? (fout << "KERNEL_STREAM_READ") : (fout << KERNEL_STREAM_READ) ;
       break ;
+    case KERNEL_STREAM_READ_STALL:
+      humanReadable ? (fout << "KERNEL_STREAM_READ_STALL") : (fout << KERNEL_STREAM_READ_STALL) ;
+      break ;
+    case KERNEL_STREAM_READ_STARVE:
+      humanReadable ? (fout << "KERNEL_STREAM_READ_STARVE") : (fout << KERNEL_STREAM_READ_STARVE) ;
+      break ;
     case KERNEL_STREAM_WRITE:
       humanReadable ? (fout << "KERNEL_STREAM_WRITE") : (fout << KERNEL_STREAM_WRITE) ;
       break ;
-    case KERNEL_STREAM_STALL:
-      humanReadable ? (fout << "KERNEL_STREAM_STALL") : (fout << KERNEL_STREAM_STALL) ;
+    case KERNEL_STREAM_WRITE_STALL:
+      humanReadable ? (fout << "KERNEL_STREAM_WRITE_STALL") : (fout << KERNEL_STREAM_WRITE_STALL) ;
       break ;
-    case KERNEL_STREAM_STARVE:
-      humanReadable ? (fout << "KERNEL_STREAM_STARVE") : (fout << KERNEL_STREAM_STARVE) ;
+    case KERNEL_STREAM_WRITE_STARVE:
+      humanReadable ? (fout << "KERNEL_STREAM_WRITE_STARVE") : (fout << KERNEL_STREAM_WRITE_STARVE) ;
       break ;
     case HOST_READ:
       humanReadable ? (fout << "HOST_READ") : (fout << HOST_READ) ;
@@ -137,7 +152,7 @@ namespace xdp {
       humanReadable ? (fout << "HOST_WRITE") : (fout << HOST_WRITE) ;
       break ;
     case HAL_API_CALL:
-      humanReadable ? (fout << "HAL_API_CALL") : (fout << HAL_API_CALL) ;
+      humanReadable ? (fout << "API_CALL") : (fout << API_CALL) ;
       break ;
     default:
       humanReadable ? (fout << "UNKNOWN") : (fout << -1) ;
@@ -149,9 +164,9 @@ namespace xdp {
   // API Call definitions
   // **************************
 
-  APICall::APICall(uint64_t s_id, double ts, unsigned int f_id, uint64_t name,
-		   VTFEventType ty) :
-    VTFEvent(s_id, ts, ty), functionId(f_id), functionName(name)
+  APICall::APICall(uint64_t s_id, double ts, uint64_t name, VTFEventType ty)
+         : VTFEvent(s_id, ts, ty),
+           functionName(name)
   {
   }
 

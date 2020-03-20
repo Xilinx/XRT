@@ -308,7 +308,7 @@ static ssize_t interface_uuids_show(struct device *dev,
 	if (!lro->core.fdt_blob)
 		return -EINVAL;
 
-	node = xocl_fdt_get_next_prop_by_name(lro, lro->bld_blob,
+	node = xocl_fdt_get_next_prop_by_name(lro, lro->core.blp_blob,
 		-1, PROP_INTERFACE_UUID, &uuid, NULL);
 	if (!uuid || node < 0)
 		return -EINVAL;
@@ -337,10 +337,10 @@ static ssize_t logic_uuids_show(struct device *dev,
 	if (!lro->core.fdt_blob && xocl_get_timestamp(lro) == 0)
 		xclmgmt_load_fdt(lro);
 
-	if (!lro->bld_blob)
+	if (!lro->core.blp_blob)
 		return -EINVAL;
 
-	node = xocl_fdt_get_next_prop_by_name(lro, lro->bld_blob,
+	node = xocl_fdt_get_next_prop_by_name(lro, lro->core.blp_blob,
 		-1, PROP_LOGIC_UUID, &blp_uuid, NULL);
 	if (blp_uuid && node >= 0)
 		off += sprintf(buf + off, "%s\n", (char *)blp_uuid);
