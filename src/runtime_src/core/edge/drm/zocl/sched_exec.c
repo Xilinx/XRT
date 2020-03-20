@@ -2,7 +2,7 @@
 /*
  * A GEM style device manager for MPSoC based OpenCL accelerators.
  *
- * Copyright (C) 2017-2019 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2017-2020 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Soren Soe   <soren.soe@xilinx.com>
@@ -572,6 +572,54 @@ init_cu_by_idx(struct sched_cmd *cmd, int cu_idx)
 }
 
 /**
+ * update_cus_rtp() - Update CUs Run Time Parameters from user space command.
+ *
+ * Use {offset, value} pairs to update CU arguments.
+ *
+ * Note: we only support asynchronously update 32 bits scaler.
+ */
+static void
+update_cus_rtp(struct sched_cmd *cmd)
+{
+	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+	struct ert_init_kernel_cmd *ik;
+	uint32_t *cmp;
+	int num_masks = cu_masks(cmd);
+	int mask_idx;
+	u32 size = regmap_size(cmd);
+
+	ik = (struct ert_init_kernel_cmd *)cmd->packet;
+	cmp = &ik->cu_mask;
+
+	for (mask_idx = 0; mask_idx < num_masks; ++mask_idx) {
+		u32 cmd_mask = cmp[mask_idx];
+		int cu_idx;
+
+		while ((cu_idx = ffs(cmd_mask))) {
+			struct zocl_cu *cu;
+
+			/* ffs is "1" based */
+			cu_idx = ffs(cmd_mask) - 1;
+
+			/* Clear the mask bit we checked */
+			cmd_mask &= ~(1 << cu_idx);
+
+			cu_idx = cu_idx_from_mask(cu_idx, mask_idx);
+
+			if (!zocl_cu_is_valid(zdev->exec, cu_idx)) {
+				DRM_WARN("Update invalid CU %d, Skipped.\n",
+				    cu_idx);
+				continue;
+			}
+
+			cu = &cmd->exec->zcu[cu_idx];
+			zocl_cu_configure(cu, ik->data + ik->extra_cu_masks,
+			    size, PAIRS);
+		}
+	}
+}
+
+/**
  * init_cus() - Initialize CUs from user space command.
  *
  * Process the initialize CUs command sent from user space. Only one process
@@ -594,6 +642,9 @@ init_cus(struct sched_cmd *cmd)
 	int warn_flag = 0;
 
 	ik = (struct ert_init_kernel_cmd *)cmd->packet;
+	if (ik->update_rtp)
+		return update_cus_rtp(cmd);
+
 	cmp = &ik->cu_mask;
 
 	run_timeout = ik->cu_run_timeout;
@@ -889,10 +940,10 @@ configure(struct sched_cmd *cmd)
 		if (!zocl_cu_is_valid(exec, i))
 			continue;
 
-		exec->zcu[j].irq_name = kzalloc(20, GFP_KERNEL);
-		sprintf(exec->zcu[j].irq_name, "zocl_cu[%d]", i);
+		exec->zcu[i].irq_name = kzalloc(20, GFP_KERNEL);
+		sprintf(exec->zcu[i].irq_name, "zocl_cu[%d]", i);
 		ret = request_irq(exec->zcu[i].irq, sched_exec_isr, 0,
-				  exec->zcu[j].irq_name, zdev);
+				  exec->zcu[i].irq_name, zdev);
 		if (ret) {
 			/* Fail to install at least one interrupt
 			 * handler. We need to free the handler(s)
