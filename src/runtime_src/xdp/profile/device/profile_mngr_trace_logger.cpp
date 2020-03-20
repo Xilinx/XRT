@@ -16,11 +16,12 @@
 
 #define XDP_SOURCE
 
+#include "xdp/profile/core/rt_profile.h"
 #include "xdp/profile/device/profile_mngr_trace_logger.h"
  
 namespace xdp {
 
-TraceLoggerUsingProfileMngr::TraceLoggerUsingProfileMngr(std::shared_ptr<RTProfile> profMgr,
+TraceLoggerUsingProfileMngr::TraceLoggerUsingProfileMngr(RTProfile* profMgr,
                                   std::string devName, std::string binary)
         : DeviceTraceLogger(),
           profileMngr(profMgr),

@@ -18,21 +18,22 @@
 #define _XDP_PROFILE_DEVICE_TRACE_LOGGER_USING_PROFILE_MNGR_H
 
 #include "xdp/config.h"
-#include "xdp/profile/core/rt_profile.h"
 #include "xdp/profile/device/device_trace_logger.h"
 
 namespace xdp {
 
+class RTProfile;
+
 class TraceLoggerUsingProfileMngr : public DeviceTraceLogger
 {
-  std::shared_ptr<RTProfile> profileMngr;
+  RTProfile* profileMngr;
   std::string deviceName;
   std::string binaryName;
 
 public:
 
   XDP_EXPORT
-  TraceLoggerUsingProfileMngr(std::shared_ptr<RTProfile> profMgr, std::string devName, std::string binary);
+  TraceLoggerUsingProfileMngr(RTProfile* profMgr, std::string devName, std::string binary);
   XDP_EXPORT
   virtual ~TraceLoggerUsingProfileMngr();
 

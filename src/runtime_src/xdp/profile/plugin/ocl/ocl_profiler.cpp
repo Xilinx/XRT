@@ -64,7 +64,6 @@ namespace xdp {
   {
     Platform = xocl::get_shared_platform();
     Plugin = std::make_shared<XoclPlugin>(getclPlatformID());
-    // Share ownership to ensure correct order of destruction
     ProfileMgr = std::make_unique<RTProfile>(ProfileFlags, Plugin);
     startProfiling();
   }
@@ -294,7 +293,7 @@ namespace xdp {
           trace_memory = "TS2MM";
         }
 
-        DeviceTraceLogger* deviceTraceLogger = new TraceLoggerUsingProfileMngr(ProfileMgr, device->get_unique_name(), binaryName);
+        DeviceTraceLogger* deviceTraceLogger = new TraceLoggerUsingProfileMngr(getProfileManager(), device->get_unique_name(), binaryName);
         auto offloader = std::make_unique<DeviceTraceOffload>(dInt, deviceTraceLogger,
                                                          mTraceReadIntMs, traceBufSz, mTraceThreadEn);
         bool init_done = true;
