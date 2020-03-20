@@ -217,6 +217,12 @@ void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector& t
     auto pos = static_cast<uint64_t*>(buf);
     uint32_t mod = 0;
 
+    /*
+    * Seek until we find 8 clock training packets
+    * Everything before that is leftover garbage
+    * data from previous runs.
+    * This scenario occurs when trace buffer gets full.
+    */
     uint32_t idx = seekClockTraining(pos, count);
     // All data is garbage
     if (idx == count)
