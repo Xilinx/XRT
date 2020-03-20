@@ -105,8 +105,8 @@ create_data_bo(xclDeviceHandle handle, size_t sz, uint32_t flags)
   ubo->bo = xclAllocBO(ubo->dev, sz, 0, flags);
   ubo->data = xclMapBO(ubo->dev, ubo->bo, true /*write*/);
 
-  if (auto ret = xclGetBOProperties(ubo->dev, ubo->bo, &ubo->prop))
-    throw xrt_core::error(ret, "Failed to get BO properties");
+  if (xclGetBOProperties(ubo->dev, ubo->bo, &ubo->prop))
+    throw std::runtime_error("Failed to get BO properties");
 
   ubo->size = sz;
   std::memset(reinterpret_cast<ert_packet*>(ubo->data), 0, sz);
@@ -191,8 +191,8 @@ init(xclDeviceHandle handle, const axlf* top)
       scmd->sk_addr = skbo->prop.paddr;
       scmd->sk_size = skbo->prop.size;
       std::memcpy(skbo->data, sk.sk_buf, sk.size);
-      if (auto ret = xclSyncBO(handle, skbo->bo, XCL_BO_SYNC_BO_TO_DEVICE, sk.size, 0))
-	    throw xrt_core::error(ret, "unable to synch BO to device");
+      if (xclSyncBO(handle, skbo->bo, XCL_BO_SYNC_BO_TO_DEVICE, sk.size, 0))
+	    throw std::runtime_error("unable to synch BO to device");
 
       if (xclExecBuf(handle,execbo->bo))
         throw std::runtime_error("unable to issue xclExecBuf");
@@ -238,8 +238,8 @@ loadXclbinToPS(xclDeviceHandle handle, const axlf* top)
   ecmd->sk_addr = skbo->prop.paddr;
   ecmd->sk_size = skbo->prop.size;
   std::memcpy(skbo->data, top, skbo->size);
-  if (auto ret = xclSyncBO(handle, skbo->bo, XCL_BO_SYNC_BO_TO_DEVICE, skbo->size, 0))
-	throw xrt_core::error(ret, "unable to synch BO to device");
+  if (xclSyncBO(handle, skbo->bo, XCL_BO_SYNC_BO_TO_DEVICE, skbo->size, 0))
+	throw std::runtime_error("unable to synch BO to device");
 
   uuid_copy(uuid, top->m_header.uuid);
   if (xclOpenContext(handle,uuid,-1,true))
