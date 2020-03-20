@@ -255,8 +255,6 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define XOCL_VSEC_XLAT_GPA_BASE_UPPER_REG_ADDR  0x190
 #define XOCL_VSEC_XLAT_GPA_LIMIT_UPPER_REG_ADDR 0x194
 
-#define XOCL_CALIB_CACHE_SIZE	    0x4000
-
 struct xocl_vsec_header {
 	u32		format;
 	u32		length;
@@ -818,6 +816,31 @@ struct xocl_dna_funcs {
 	(DNA_CB(xdev, write_cert) ? DNA_OPS(xdev)->write_cert(DNA_DEV(xdev), data, len) : 0)
 #define xocl_dna_get_data(xdev, buf)  \
 	(DNA_CB(xdev, get_data) ? DNA_OPS(xdev)->get_data(DNA_DEV(xdev), buf) : 0)
+
+
+#define	ADDR_TRANSLATOR_DEV(xdev)		\
+	SUBDEV(xdev, XOCL_SUBDEV_ADDR_TRANSLATOR).pldev
+#define	ADDR_TRANSLATOR_OPS(xdev)		\
+	((struct xocl_slbr_funcs *)SUBDEV(xdev,	\
+	XOCL_SUBDEV_ADDR_TRANSLATOR).ops)
+#define ADDR_TRANSLATOR_CB(xdev, cb)	\
+	(ADDR_TRANSLATOR_DEV(xdev) && ADDR_TRANSLATOR_OPS(xdev) && ADDR_TRANSLATOR_OPS(xdev)->cb)
+#define	xocl_addr_translator_get_entries_num(xdev)			\
+	(ADDR_TRANSLATOR_CB(xdev, get_entries_num) ? ADDR_TRANSLATOR_OPS(xdev)->get_entries_num(ADDR_TRANSLATOR_DEV(xdev)) : 0)
+#define	xocl_addr_translator_set_page_table(xdev, addrs, base_addr, sz, num)			\
+	(ADDR_TRANSLATOR_CB(xdev, get_entries_num) ? ADDR_TRANSLATOR_OPS(xdev)->set_page_table(ADDR_TRANSLATOR_DEV(xdev), addrs, base_addr, sz, num) : -ENODEV)
+
+#define ADDR_TRANSLATOR_OFFSET 			0x10000000000
+#define ADDR_TRANSLATOR_ENTRY_4M		0x400000
+#define ADDR_TRANSLATOR_ENTRY_1G		0x40000000
+
+
+struct xocl_addr_translator_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	u32 (*get_entries_num)(struct platform_device *pdev);
+	int (*set_page_table)(struct platform_device *pdev, uint64_t *phys_addrs, uint64_t base_addr, uint64_t entry_sz, uint32_t num);
+};
+
 /**
  *	data_kind
  */
@@ -1311,7 +1334,11 @@ struct xocl_srsr_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	int (*save_calib)(struct platform_device *pdev);
 	int (*calib)(struct platform_device *pdev, bool retain);
+	int (*write_calib)(struct platform_device *pdev, const void *calib_cache, uint32_t size);
+	int (*read_calib)(struct platform_device *pdev, void *calib_cache, uint32_t size);
+	uint32_t (*cache_size)(struct platform_device *pdev);
 };
+
 #define	SRSR_DEV(xdev, idx)	SUBDEV_MULTI(xdev, XOCL_SUBDEV_SRSR, idx).pldev
 #define	SRSR_OPS(xdev, idx)							\
 	((struct xocl_srsr_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_SRSR, idx).ops)
@@ -1329,6 +1356,17 @@ struct xocl_srsr_funcs {
 	(SRSR_CB(xdev, idx) ?						\
 	SRSR_OPS(xdev, idx)->calib(SRSR_DEV(xdev, idx), retain) : \
 	-ENODEV)
+#define	xocl_srsr_write_calib(xdev, idx, calib_cache, size)				\
+	(SRSR_CB(xdev, idx) ?						\
+	SRSR_OPS(xdev, idx)->write_calib(SRSR_DEV(xdev, idx), calib_cache, size) : \
+	-ENODEV)
+#define	xocl_srsr_read_calib(xdev, idx, calib_cache, size)				\
+	(SRSR_CB(xdev, idx) ?						\
+	SRSR_OPS(xdev, idx)->read_calib(SRSR_DEV(xdev, idx), calib_cache, size) : \
+	-ENODEV)
+#define	xocl_srsr_cache_size(xdev, idx)				\
+	(SRSR_CB(xdev, idx) ?						\
+	SRSR_OPS(xdev, idx)->cache_size(SRSR_DEV(xdev, idx)) : 0)
 
 struct calib_storage_funcs {
 	struct xocl_subdev_funcs common_funcs;

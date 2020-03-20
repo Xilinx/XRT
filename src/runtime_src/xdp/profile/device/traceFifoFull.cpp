@@ -16,28 +16,10 @@
 
 #include "traceFifoFull.h"
 
-#define AXI_FIFO_RLR                    0x24
-#define AXI_FIFO_RESET_VALUE            0xA5
-
 #define AXI_FIFO_RDFD_AXI_FULL          0x1000
 
-#define MAX_TRACE_NUMBER_SAMPLES                        16384
-
-#define XPAR_AXI_PERF_MON_0_TRACE_NUMBER_FIFO           3
-#define XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH            64
-#define XPAR_AXI_PERF_MON_0_TRACE_NUMBER_SAMPLES        8192
-
-
-#define XPAR_AXI_PERF_MON_1_TRACE_NUMBER_FIFO           0
-#define XPAR_AXI_PERF_MON_1_TRACE_WORD_WIDTH            0
-#define XPAR_AXI_PERF_MON_1_TRACE_NUMBER_SAMPLES        0
-
-#define XPAR_AXI_PERF_MON_2_TRACE_WORD_WIDTH            64
-#define XPAR_AXI_PERF_MON_2_TRACE_NUMBER_SAMPLES        8192
-
-#define XPAR_AXI_PERF_MON_2_TRACE_OFFSET_0              0x01000
-#define XPAR_AXI_PERF_MON_2_TRACE_OFFSET_1              0x02000
-#define XPAR_AXI_PERF_MON_2_TRACE_OFFSET_2              0x03000
+#define TRACE_WORD_WIDTH            64
+#define TRACE_NUMBER_SAMPLES        8192
 
 #include<iomanip>
 #include<cstring>
@@ -102,15 +84,7 @@ size_t TraceFifoFull::reset()
 
 uint32_t TraceFifoFull::getMaxNumTraceSamples()
 {
-    return XPAR_AXI_PERF_MON_0_TRACE_NUMBER_SAMPLES;
-    
-#if 0
- if (type == XCL_PERF_MON_MEMORY) return XPAR_AXI_PERF_MON_0_TRACE_NUMBER_SAMPLES;
- if (type == XCL_PERF_MON_HOST) return XPAR_AXI_PERF_MON_1_TRACE_NUMBER_SAMPLES;
- // TODO: get number of samples from metadata
- if (type == XCL_PERF_MON_ACCEL) return XPAR_AXI_PERF_MON_2_TRACE_NUMBER_SAMPLES;
-
-#endif
+    return TRACE_NUMBER_SAMPLES;
 }
 
 uint32_t TraceFifoFull::readTrace(xclTraceResultsVector& traceVector, uint32_t nSamples)
@@ -145,123 +119,6 @@ uint32_t TraceFifoFull::readTrace(xclTraceResultsVector& traceVector, uint32_t n
     delete [] traceBuf;
     return 0;
 }
-
-#if 0
-uint32_t TraceFifoFull::readTraceForPCIEDevice(xclTraceResultsVector& traceVector, uint32_t nSamples)
-{
-    if(out_stream)
-        (*out_stream) << " TraceFifoFull::readTraceForPCIEdevice " << std::endl;
-
-    size_t size = 0;
-    // Limit to max number of samples so we don't overrun trace buffer on host
-    uint32_t maxNumSamples = getMaxNumTraceSamples();
-    uint32_t numSamples    = (nSamples > maxNumSamples) ? maxNumSamples : nSamples;
-    traceVector.mLength = numSamples;
-
-    const uint32_t bytesPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 8);
-    const uint32_t wordsPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 32);
-
-    uint32_t numWords = numSamples * wordsPerSample;
-
-    // Create trace buffer on host (requires alignment)
-    const int BUFFER_BYTES = MAX_TRACE_NUMBER_SAMPLES * bytesPerSample;
-    const int BUFFER_WORDS = MAX_TRACE_NUMBER_SAMPLES * wordsPerSample;
-
-#ifndef _WINDOWS
-// TODO: Windows build support
-//    alignas is defined in c++11
-#if GCC_VERSION >= 40800
-    /* Alignment is limited to 16 by PPC64LE : so , should it be 
-    alignas(16) uint32_t hostbuf[BUFFER_WORDS];
-    */
-    alignas(AXI_FIFO_RDFD_AXI_FULL) uint32_t hostbuf[BUFFER_WORDS];
-#else
-    AlignedAllocator<uint32_t> alignedBuffer(AXI_FIFO_RDFD_AXI_FULL, BUFFER_WORDS);
-    uint32_t* hostbuf = alignedBuffer.getBuffer();
-#endif
-#else
-    uint32_t hostbuf[BUFFER_WORDS];
-#endif
-
-    // Now read trace data
-    memset((void *)hostbuf, 0, BUFFER_BYTES);
-    
-    // Iterate over chunks
-    // NOTE: AXI limits this to 4K bytes per transfer
-    uint32_t chunkSizeWords = 256 * wordsPerSample;
-    if (chunkSizeWords > 1024) chunkSizeWords = 1024;
-    uint32_t chunkSizeBytes = 4 * chunkSizeWords;
-    uint32_t words=0;
-
-    // Read trace a chunk of bytes at a time
-    if (numWords > chunkSizeWords) {
-      for (; words < (numWords-chunkSizeWords); words += chunkSizeWords) {
-          if(out_stream)
-            (*out_stream) << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
-                          << std::hex << (getBaseAddress() + AXI_FIFO_RDFD_AXI_FULL) /*fifoReadAddress[0] or AXI_FIFO_RDFD*/ << " and writing it to 0x"
-                          << (void *)(hostbuf + words) << std::dec << std::endl;
-
-        unmgdRead(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, AXI_FIFO_RDFD_AXI_FULL /*offset : or AXI_FIFO_RDFD*/);
-
-        size += chunkSizeBytes;
-      }
-    }    
-
-    // Read remainder of trace not divisible by chunk size
-    if (words < numWords) {
-      chunkSizeBytes = 4 * (numWords - words);
-
-      if(out_stream) {
-        (*out_stream) << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
-                      << std::hex << (getBaseAddress() + AXI_FIFO_RDFD_AXI_FULL) /*fifoReadAddress[0]*/ << " and writing it to 0x"
-                      << (void *)(hostbuf + words) << std::dec << std::endl;
-      }
-
-      unmgdRead(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, AXI_FIFO_RDFD_AXI_FULL /*offset : or AXI_FIFO_RDFD*/);
-
-      size += chunkSizeBytes;
-    }
-
-    if(out_stream)
-        (*out_stream) << __func__ << ": done reading " << size << " bytes " << std::endl;
-
-    processTraceData(traceVector, true /*pcie device*/, numSamples, hostbuf /*trace data*/, (uint32_t)wordsPerSample); 
-    return size;
-}
-
-uint32_t TraceFifoFull::readTraceForEdgeDevice(xclTraceResultsVector& traceVector, uint32_t nSamples)
-{
-    if(out_stream)
-        (*out_stream) << " TraceFifoFull::readTraceForEdgeDevice " << std::endl;
-   
-    size_t size = 0;
-    // Limit to max number of samples so we don't overrun trace buffer on host
-    uint32_t maxNumSamples = getMaxNumTraceSamples();
-    uint32_t numSamples    = (nSamples > maxNumSamples) ? maxNumSamples : nSamples;
-
-    // On Zynq, we are currently storing 2 samples per packet in the FIFO
-    numSamples = numSamples/2 ;
-    traceVector.mLength = numSamples;
-
-    // Read all of the contents of the trace FIFO into local memory
-    uint64_t fifoContents[numSamples] ;
-
-    for (uint32_t i = 0 ; i < numSamples ; ++i)
-    {
-      // For each sample, we will need to read two 32-bit values and assemble them together.
-      uint32_t lowOrder = 0 ;
-      uint32_t highOrder = 0 ;
-      size += read(0x1000, sizeof(uint32_t), &lowOrder);
-      size += read(0x1000, sizeof(uint32_t), &highOrder);
-
-      fifoContents[i] = ((uint64_t)(highOrder) << 32) | (uint64_t)(lowOrder) ;
-    }
-
-    // Process all of the contents of the trace FIFO (now in local memory)
-    processTraceData(traceVector, false /*edge device : not PCIE device*/, numSamples, fifoContents /*trace data*/, 1 /*wordsPerSample*/);
-    return size;
-}
-#endif
 
 void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t numSamples, void* data, uint32_t /*wordsPerSample*/)
 {

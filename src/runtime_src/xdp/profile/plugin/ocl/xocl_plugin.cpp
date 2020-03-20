@@ -31,6 +31,13 @@ namespace xdp {
   XoclPlugin::XoclPlugin(xocl::platform* Platform)
   {
     mPlatformHandle = Platform;
+
+    /*
+     * Gather Static info at init
+     * as it might not be safe at the end
+     */
+    getXrtIniSettings();
+
   }
 
   XoclPlugin::~XoclPlugin()
@@ -241,10 +248,7 @@ namespace xdp {
     // 5. Bit widths for memory types for each device
     getMemBitWidthDevices();
 
-    // 6. xrt.ini settings
-    getXrtIniSettings();
-
-    // 7. Memory Bank Info from Mem Topology
+    // 6. Memory Bank Info from Mem Topology
     getMemUsageStats();
   }
 
@@ -442,10 +446,23 @@ namespace xdp {
         type, slotnum, slotName);
   }
 
+  void XoclPlugin::getTraceSlotName(xclPerfMonType type, const std::string& deviceName,
+                                       unsigned int slotnum, std::string& slotName)
+  {
+    xoclp::platform::get_trace_slot_name(mPlatformHandle, deviceName,
+        type, slotnum, slotName);
+  }
+
   unsigned int XoclPlugin::getProfileSlotProperties(xclPerfMonType type, const std::string& deviceName,
                                                 unsigned int slotnum)
   {
     return xoclp::platform::get_profile_slot_properties(mPlatformHandle, deviceName, type, slotnum);
+  }
+
+  unsigned int XoclPlugin::getTraceSlotProperties(xclPerfMonType type, const std::string& deviceName,
+                                                unsigned int slotnum)
+  {
+    return xoclp::platform::get_trace_slot_properties(mPlatformHandle, deviceName, type, slotnum);
   }
 
   bool XoclPlugin::isAPCtrlChain(const std::string& deviceName,

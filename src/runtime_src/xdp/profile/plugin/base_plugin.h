@@ -196,25 +196,45 @@ namespace xdp {
     // Platform Metadata required by profiler
     // ****************************************
     public:
-      virtual void getProfileKernelName(const std::string& deviceName,
-                                        const std::string& cuName,
-                                        std::string& kernelName) = 0;
-      virtual void getTraceStringFromComputeUnit(const std::string& deviceName,
-                                                 const std::string& cuName,
-                                                 std::string& traceString) = 0;
-      virtual size_t getDeviceTimestamp(const std::string& deviceName) = 0;
-      virtual double getReadMaxBandwidthMBps() = 0 ;
-      virtual double getWriteMaxBandwidthMBps() = 0;
+      virtual void
+      getProfileKernelName(const std::string& deviceName,
+                           const std::string& cuName,
+                           std::string& kernelName) = 0;
+      virtual void
+      getTraceStringFromComputeUnit(const std::string& deviceName,
+                                    const std::string& cuName,
+                                    std::string& traceString) = 0;
+      virtual size_t
+      getDeviceTimestamp(const std::string& deviceName) = 0;
+      virtual double
+      getReadMaxBandwidthMBps() = 0 ;
+      virtual double
+      getWriteMaxBandwidthMBps() = 0;
       // HAL APIS
-      virtual unsigned int getProfileNumberSlots(xclPerfMonType type,
-                                            const std::string& deviceName) = 0;
-      virtual void getProfileSlotName(xclPerfMonType type,
-                                      const std::string& deviceName,
-                                      unsigned int slotnum, std::string& slotName) = 0;
-      virtual unsigned int getProfileSlotProperties(xclPerfMonType type,
-                                                const std::string& deviceName,
-                                                unsigned int slotnum) = 0;
-      virtual bool isAPCtrlChain(const std::string& deviceName, const std::string& cu) = 0;
+      virtual unsigned int
+      getProfileNumberSlots(xclPerfMonType type,
+                            const std::string& deviceName) = 0;
+      virtual void
+      getProfileSlotName(xclPerfMonType type,
+                         const std::string& deviceName,
+                         unsigned int slotnum,
+                         std::string& slotName) = 0;
+      virtual void
+      getTraceSlotName(xclPerfMonType type,
+                       const std::string& deviceName,
+                       unsigned int slotnum,
+                       std::string& slotName) = 0;
+      virtual unsigned int
+      getProfileSlotProperties(xclPerfMonType type,
+                               const std::string& deviceName,
+                               unsigned int slotnum) = 0;
+      virtual unsigned int
+      getTraceSlotProperties(xclPerfMonType type,
+                             const std::string& deviceName,
+                             unsigned int slotnum) = 0;
+      virtual bool
+      isAPCtrlChain(const std::string& deviceName,
+                    const std::string& cu) = 0;
 
     protected:
       std::map<std::string, std::string> mComputeUnitKernelTraceMap;

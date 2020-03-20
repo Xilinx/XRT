@@ -283,6 +283,13 @@ void AM::showProperties()
     ProfileIP::showProperties();
 }
 
+bool AM::hasTraceID (uint32_t index) const
+{
+    // AMs have indices in multiples of 2
+    index = index - (index % 16);
+    return (properties & 0x1) && (m_index == index);
+}
+
 
 }   // namespace xdp
 

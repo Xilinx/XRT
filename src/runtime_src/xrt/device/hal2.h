@@ -19,7 +19,6 @@
 
 #include "xrt/device/hal.h"
 #include "xrt/device/halops2.h"
-#include "xrt/device/PMDOperations.h"
 
 #include "ert.h"
 
@@ -108,12 +107,7 @@ class device : public xrt::hal::device
   getDeviceInfo(hal2::device_info *info)  const
   {
     std::memset(info,0,sizeof(hal2::device_info));
-#ifdef PMD_OCL
-    assert(0);
-    return 0;
-#else
     return m_ops->mGetDeviceInfo(m_handle,info);
-#endif
   }
 
   task::queue&
@@ -188,18 +182,14 @@ public:
   setup();
 
   virtual bool
-  open(const char* log, hal::verbosity_level level)
+  open()
   {
     bool retval = false;
     if (m_handle)
       throw std::runtime_error("device is already open");
-#ifdef PMD_OCL
-    assert(0);
-#else
-    m_handle=m_ops->mOpen(m_idx,log,static_cast<hal2::verbosity_level>(level));
+    m_handle=m_ops->mOpen(m_idx, nullptr, XCL_QUIET);
     if (m_handle)
       retval = true;
-#endif
     getDeviceInfo(&m_devinfo);
     return retval;
   }

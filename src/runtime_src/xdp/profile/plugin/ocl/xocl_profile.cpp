@@ -190,6 +190,38 @@ get_profile_slot_name(key k, const std::string& deviceName, xclPerfMonType type,
   return device::getProfileSlotName(device.get(), type, slotnum, slotName);
 }
 
+cl_int
+get_trace_slot_name(key k, const std::string& deviceName, xclPerfMonType type,
+		              unsigned int slotnum, std::string& slotName)
+{
+  auto platform = k;
+  for (auto device : platform->get_device_range()) {
+    std::string currDeviceName = device->get_unique_name();
+    if (currDeviceName.compare(deviceName) == 0)
+      return device::getTraceSlotName(device, type, slotnum, slotName);
+  }
+
+  // If not found, return the timestamp of the first device
+  auto device = platform->get_device_range()[0];
+  return device::getTraceSlotName(device.get(), type, slotnum, slotName);
+}
+
+unsigned int
+get_trace_slot_properties(key k, const std::string& deviceName, xclPerfMonType type,
+		                      unsigned int slotnum)
+{
+  auto platform = k;
+  for (auto device : platform->get_device_range()) {
+    std::string currDeviceName = device->get_unique_name();
+    if (currDeviceName.compare(deviceName) == 0)
+      return device::getTraceSlotProperties(device, type, slotnum);
+  }
+
+  // If not found, return the timestamp of the first device
+  auto device = platform->get_device_range()[0];
+  return device::getTraceSlotProperties(device.get(), type, slotnum);
+}
+
 unsigned int
 get_profile_slot_properties(key k, const std::string& deviceName, xclPerfMonType type,
 		              unsigned int slotnum)
@@ -498,6 +530,33 @@ getProfileSlotName(key k, xclPerfMonType type, unsigned int index,
   }
   slotName = name;
   return CL_SUCCESS;
+}
+
+cl_int
+getTraceSlotName(key k, xclPerfMonType type, unsigned int index,
+		           std::string& slotName)
+{
+  auto device = k;
+  auto device_interface = get_device_interface(device);
+
+  if (device_interface)
+    slotName = device_interface->getTraceMonName(type, index);
+  else
+    slotName = "";
+
+  return CL_SUCCESS;
+}
+
+unsigned int
+getTraceSlotProperties(key k, xclPerfMonType type, unsigned int index)
+{
+  auto device = k;
+  auto device_interface = get_device_interface(device);
+
+  if (device_interface)
+    return device_interface->getTraceMonProperty(type, index);
+  else
+    return device->get_xrt_device()->getProfilingSlotProperties(type, index).get();
 }
 
 unsigned int
