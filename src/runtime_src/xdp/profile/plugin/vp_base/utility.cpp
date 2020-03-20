@@ -14,6 +14,8 @@
  * under the License.
  */
 
+#define XDP_SOURCE
+
 #include <chrono>
 #include <ctime>
 
@@ -42,7 +44,12 @@ namespace xdp {
 
   const char* getToolVersion()
   {
-    return "2019.2" ;
+    return "2020.1" ;
+  }
+
+  const char* getXRTVersion()
+  {
+    return "2.6.0" ;	// To Do
   }
 
 } // end namespace xdp

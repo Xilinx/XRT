@@ -25,7 +25,8 @@ namespace xdp {
 				 const std::string& v,
 				 const std::string& c,
 				 uint16_t r) :
-    VPWriter(filename), version(v), creationTime(c), resolution(r),
+    VPWriter(filename),
+    version(v), creationTime(c), resolution(r),
     humanReadable(true)
   {
   }
@@ -36,18 +37,19 @@ namespace xdp {
 
   void VPTraceWriter::writeHeader()
   {
-    fout << "HEADER" << std::endl ;
-    fout << "VTF File Version," << version << std::endl ;
+    fout << "HEADER" << std::endl
+         << "VTF File Version," << version << std::endl ;
     fout << "VTF File Type," ;
     if      (isHost())   fout << "0" ;
     else if (isDevice()) fout << "1" ;
     else if (isAIE())    fout << "2" ;
     else if (isKernel()) fout << "3" ;
     fout << std::endl ;
-    fout << "PID," << (db->getStaticInfo()).getPid() << std::endl ;
-    fout << "Generated on," << creationTime << std::endl ;
-    fout << "Resolution,ms" << std::endl ;
-    fout << "Min Resolution," << (resolution == 6 ? "us" : "ns") << std::endl ;
+    fout << "PID," << (db->getStaticInfo()).getPid() << std::endl
+         << "Generated on," << creationTime << std::endl
+         << "Resolution,ms" << std::endl
+         << "Min Resolution," << (resolution == 6 ? "us" : "ns") << std::endl
+         << "Trace Version," << version << std::endl; 
   }
 
 }

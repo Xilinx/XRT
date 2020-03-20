@@ -101,11 +101,11 @@ namespace xdp {
     };
     writeTableHeader(getStream(), "Data Transfer: Host to Global Memory",
         DataTransferSummaryColumnLabels);
-#ifndef _WIN32
+
     if ((flowMode != xdp::RTUtil::CPU) && (flowMode != xdp::RTUtil::COSIM_EM)) {
       profile->writeTransferSummary(this, xdp::RTUtil::MON_HOST_DYNAMIC);
     }
-#endif
+
     writeTableFooter(getStream());
 
     // Table 6: Data Transfer: Kernels to Global Memory

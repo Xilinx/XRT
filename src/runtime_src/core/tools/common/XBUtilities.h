@@ -75,7 +75,7 @@ namespace XBUtilities {
                         bool _indentFirstLine,
                         std::string &_formattedString);
   void parse_device_indices( std::vector<uint16_t> &device_indices, 
-                              std::string device);
+                              const std::string &device);
 };
 
 #endif

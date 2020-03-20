@@ -14,8 +14,8 @@
  * under the License.
  */
 
-#ifndef PCIE_SYSTEM_LINUX_H
-#define PCIE_SYSTEM_LINUX_H
+#ifndef PCIE_SYSTEM_HWEMU_LINUX_H
+#define PCIE_SYSTEM_HWEMU_LINUX_H
 
 #include "pcie/common/system_pcie.h"
 

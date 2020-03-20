@@ -18,6 +18,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+
 #include "shim.h"
 #include "scan.h"
 #include "system_linux.h"
@@ -125,14 +126,13 @@ namespace xocl {
 /*
  * shim()
  */
-shim::shim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity)
+shim::
+shim(unsigned index)
   : mCoreDevice(xrt_core::pcie_linux::get_userpf_device(this, index))
-  , mVerbosity(verbosity)
   , mUserHandle(-1)
   , mStreamHandle(-1)
   , mBoardNumber(index)
   , mLocked(false)
-  , mLogfileName(nullptr)
   , mOffsets{0x0, 0x0, OCL_CTLR_BASE, 0x0, 0x0}
   , mMemoryProfilingNumberSlots(0)
   , mAccelProfilingNumberSlots(0)
@@ -141,7 +141,7 @@ shim::shim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity)
   , mCmdBOCache(nullptr)
   , mCuMaps(128, nullptr)
 {
-    init(index, logfileName, verbosity);
+  init(index);
 }
 
 int shim::dev_init()
@@ -219,13 +219,10 @@ void shim::dev_fini()
 /*
  * init()
  */
-void shim::init(unsigned index, const char *logfileName,
-    xclVerbosityLevel verbosity)
+void
+shim::
+init(unsigned int index)
 {
-    if(logfileName != nullptr) {
-        xrt_logmsg(XRT_WARNING, "%s: logfileName is no longer supported", __func__);
-    }
-
     xrt_logmsg(XRT_INFO, "%s", __func__);
 
     int ret = dev_init();
@@ -1754,23 +1751,33 @@ int shim::xclIPName2Index(const char *name, uint32_t& index)
 
 unsigned xclProbe()
 {
+#ifdef ENABLE_HAL_PROFILING
+  PROBE_CB;
+#endif
     return pcidev::get_dev_ready();
 }
 
-xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logFileName, xclVerbosityLevel level)
+xclDeviceHandle
+xclOpen(unsigned int deviceIndex, const char*, xclVerbosityLevel)
 {
     if(pcidev::get_dev_total() <= deviceIndex) {
         printf("Cannot find index %u \n", deviceIndex);
         return nullptr;
     }
+#ifdef ENABLE_HAL_PROFILING
+  OPEN_CB;
+#endif
 
-    xocl::shim *handle = new xocl::shim(deviceIndex, logFileName, level);
+    xocl::shim *handle = new xocl::shim(deviceIndex);
 
     return static_cast<xclDeviceHandle>(handle);
 }
 
 void xclClose(xclDeviceHandle handle)
 {
+#ifdef ENABLE_HAL_PROFILING
+  CLOSE_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     if (drv) {
         delete drv;
@@ -1881,6 +1888,9 @@ unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigne
 
 unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned flags)
 {
+#ifdef ENABLE_HAL_PROFILING
+  ALLOC_USERPTR_BO_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclAllocUserPtrBO(userptr, size, flags) : -ENODEV;
 }
@@ -1941,6 +1951,9 @@ int xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection 
 int xclCopyBO(xclDeviceHandle handle, unsigned int dst_boHandle,
             unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset)
 {
+#ifdef ENABLE_HAL_PROFILING
+  COPY_BO_CB ;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ?
       drv->xclCopyBO(dst_boHandle, src_boHandle, size, dst_offset, src_offset) : -ENODEV;
@@ -1954,6 +1967,9 @@ int xclReClock2(xclDeviceHandle handle, unsigned short region, const unsigned sh
 
 int xclLockDevice(xclDeviceHandle handle)
 {
+#ifdef ENABLE_HAL_PROFILING
+  LOCK_DEVICE_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     if (!drv)
         return -ENODEV;
@@ -1962,6 +1978,9 @@ int xclLockDevice(xclDeviceHandle handle)
 
 int xclUnlockDevice(xclDeviceHandle handle)
 {
+#ifdef ENABLE_HAL_PROFILING
+  UNLOCK_DEVICE_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     if (!drv)
         return -ENODEV;
@@ -2070,6 +2089,9 @@ int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
 
 int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
+#ifdef ENABLE_HAL_PROFILING
+  OPEN_CONTEXT_CB;
+#endif
   xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
 }

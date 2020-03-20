@@ -167,13 +167,6 @@ sync_to_hbuf(xocl::memory* buffer, size_t offset, size_t size,
   }
 }
 
-static void
-open_or_error(xrt::device* device, const std::string& log)
-{
-  if (!device->open(log.size() ? log.c_str() : nullptr, xrt::device::verbosity_level::quiet))
-    throw xocl::error(CL_DEVICE_NOT_FOUND,"Device setup failed");
-}
-
 static bool
 is_hw_emulation()
 {
@@ -469,67 +462,12 @@ device(platform* pltf, xrt::device* xdevice)
 }
 
 device::
-device(platform* pltf, xrt::device* hw_device, xrt::device* swem_device, xrt::device* hwem_device)
-  : m_uid(uid_count++), m_platform(pltf), m_xdevice(nullptr)
-  , m_hw_device(hw_device), m_swem_device(swem_device), m_hwem_device(hwem_device)
-{
-  XOCL_DEBUG(std::cout,"xocl::device::device(",m_uid,")\n");
-
-  // Open the devices.  I don't recall what it means to open a device?
-  std::string hallog = xrt::config::get_hal_logging();
-  if (!hallog.compare("null"))
-    hallog.clear();
-
-  if (m_swem_device) {
-    std::string log = hallog;
-    if (log.size())
-      log.append(".sw_em");
-    open_or_error(m_swem_device,log);
-  }
-
-  if (m_hwem_device) {
-    std::string log = hallog;
-    if (log.size())
-      log.append(".hw_em");
-    open_or_error(m_hwem_device,log);
-  }
-
-  if (m_hw_device)
-    open_or_error(m_hw_device,hallog);
-
-  // Default to SwEm mode
-  // Later code unconditionally calls through mOperations-> with a
-  // null device handle which then becomes a noop in the shim code
-  // The code should check for a valid mOperations before dereferencing
-  // but for now we just default mOperations as before, but importantly
-  // do not set mDeviceHandle (this is deferred as before to loadBinary).
-  if (m_hwem_device && is_hw_emulation())
-    set_xrt_device(m_hwem_device,true); // final
-  else if (m_swem_device && is_sw_emulation())
-    set_xrt_device(m_swem_device,true); // final
-  else if (m_swem_device)
-    set_xrt_device(m_swem_device,false);
-  else if (m_hwem_device)
-    set_xrt_device(m_hwem_device,false);
-  else
-    set_xrt_device(m_hw_device,true); // final
-}
-
-device::
-device(platform* pltf, xrt::device* swem_device, xrt::device* hwem_device)
-  : device(pltf,nullptr,swem_device,hwem_device)
-{}
-
-device::
 device(device* parent, const compute_unit_vector_type& cus)
   : m_uid(uid_count++)
   , m_active(parent->m_active)
   , m_xclbin(parent->m_xclbin)
   , m_platform(parent->m_platform)
   , m_xdevice(parent->m_xdevice)
-  , m_hw_device(parent->m_hw_device)
-  , m_swem_device(parent->m_swem_device)
-  , m_hwem_device(parent->m_hwem_device)
   , m_parent(parent)
   , m_computeunits(std::move(cus))
 {
@@ -560,45 +498,6 @@ clear_cus()
   m_computeunits.clear();
 }
 
-void
-device::
-set_xrt_device(xrt::device* xd,bool final)
-{
-  if (!final && m_xdevice)
-    throw std::runtime_error("temp device already set");
-  m_xdevice = xd;
-
-  // start the DMA threads if necessary
-  if (final)
-    m_xdevice->setup();
-}
-
-void
-device::
-set_xrt_device(const xocl::xclbin& xclbin)
-{
-  using target_type = xocl::xclbin::target_type;
-  auto core_target = xclbin.target();
-
-  // Check device is capable of core_target
-  if(core_target==target_type::bin && !m_hw_device)
-    throw xocl::error(CL_INVALID_PROGRAM,"device::load_binary binary target=Bin, no Hw HAL handle");
-  if(core_target==target_type::hwem && !m_hwem_device)
-    throw xocl::error(CL_INVALID_PROGRAM,"device::load_binary binary target=HwEm, no HwEm HAL handle");
-  if(core_target==target_type::csim && !m_swem_device)
-    throw xocl::error(CL_INVALID_PROGRAM,"device::load_binary binary target=SwEm, no SwEm HAL handle");
-
-  //Setup device for binary core_target
-  if (core_target==target_type::bin)
-    set_xrt_device(m_hw_device);
-  else if (core_target==target_type::hwem)
-    set_xrt_device(m_hwem_device);
-  else if (core_target==target_type::csim)
-    set_xrt_device(m_swem_device);
-  else
-    throw xocl::error(CL_INVALID_PROGRAM,"Unknown core target");
-}
-
 unsigned int
 device::
 lock()
@@ -608,14 +507,16 @@ lock()
   if (m_locks)
     return ++m_locks;
 
+  // Open the underlying device if not sub device
+  if (!m_parent.get())
+    m_xdevice->open();
+  
   // First time, but only hw devices need locking
-#ifndef PMD_OCL
-  if (m_hw_device) {
-    auto rv = m_hw_device->lockDevice();
+  if (!is_emulation_mode()) {
+    auto rv = m_xdevice->lockDevice();
     if (rv.valid() && rv.get())
       throw  xocl::error(CL_DEVICE_NOT_AVAILABLE,"could not lock device");
   }
-#endif
 
   // All good, return increment lock count
   return ++m_locks;
@@ -631,13 +532,15 @@ unlock()
     return m_locks;
 
   // Last locked was released, now unlock hw device if any
-#ifndef PMD_OCL
-  if (m_hw_device) {
-    auto rv = m_hw_device->unlockDevice();
+  if (!is_emulation_mode()) {
+    auto rv = m_xdevice->unlockDevice();
     if (rv.valid() && rv.get())
       throw  xocl::error(CL_DEVICE_NOT_AVAILABLE,"could not unlock device");
   }
-#endif
+
+  // Close the underlying device
+  if (!m_parent.get())
+    m_xdevice->close();
 
   return m_locks; // 0
 }
@@ -649,14 +552,12 @@ allocate_buffer_object(memory* mem)
   if (mem->get_flags() & CL_MEM_REGISTER_MAP)
     return nullptr;
 
-  auto xdevice = get_xrt_device();
-
   // sub buffer
   if (auto parent = mem->get_sub_buffer_parent()) {
     auto boh = parent->get_buffer_object(this);
     auto offset = mem->get_sub_buffer_offset();
     auto size = mem->get_size();
-    return xdevice->alloc(boh,size,offset);
+    return m_xdevice->alloc(boh,size,offset);
   }
 
   // Else just allocated on any bank
@@ -683,8 +584,6 @@ allocate_buffer_object(memory* mem, memidx_type memidx)
   if (mem->get_flags() & CL_MEM_REGISTER_MAP)
     throw std::runtime_error("Cannot allocate register map buffer on bank");
 
-  auto xdevice = get_xrt_device();
-
   // sub buffer
   if (auto parent = mem->get_sub_buffer_parent()) {
     auto boh = parent->get_buffer_object(this);
@@ -692,7 +591,7 @@ allocate_buffer_object(memory* mem, memidx_type memidx)
     if (pmemidx.test(memidx)) {
       auto offset = mem->get_sub_buffer_offset();
       auto size = mem->get_size();
-      return xdevice->alloc(boh,size,offset);
+      return m_xdevice->alloc(boh,size,offset);
     }
     throw std::runtime_error("parent sub-buffer memory bank mismatch");
   }
@@ -728,16 +627,14 @@ xrt::device::BufferObjectHandle
 device::
 allocate_buffer_object(memory* mem, xrt::device::memoryDomain domain, uint64_t memoryIndex, void* user_ptr)
 {
-  auto xdevice = get_xrt_device();
-  return xdevice->alloc(mem->get_size(),domain,memoryIndex,user_ptr);
+  return m_xdevice->alloc(mem->get_size(),domain,memoryIndex,user_ptr);
 }
 
 uint64_t
 device::
 get_boh_addr(const xrt::device::BufferObjectHandle& boh) const
 {
-  auto xdevice = get_xrt_device();
-  return xdevice->getDeviceAddr(boh);
+  return m_xdevice->getDeviceAddr(boh);
 }
 
 device::memidx_bitmask_type
@@ -831,14 +728,13 @@ void*
 device::
 map_buffer(memory* buffer, cl_map_flags map_flags, size_t offset, size_t size, void* assert_result, bool nosync)
 {
-  auto xdevice = get_xrt_device();
   xrt::device::BufferObjectHandle boh;
 
   // If buffer is resident it must be refreshed unless CL_MAP_INVALIDATE_REGION
   // is specified in which case host will discard current content
   if (!nosync && !(map_flags & CL_MAP_WRITE_INVALIDATE_REGION) && buffer->is_resident(this) && !buffer->no_host_memory()) {
     boh = buffer->get_buffer_object_or_error(this);
-    xdevice->sync(boh,size,offset,xrt::hal::device::direction::DEVICE2HOST,false);
+    m_xdevice->sync(boh,size,offset,xrt::hal::device::direction::DEVICE2HOST,false);
   }
 
   if (!boh)
@@ -847,8 +743,8 @@ map_buffer(memory* buffer, cl_map_flags map_flags, size_t offset, size_t size, v
   auto ubuf = buffer->get_host_ptr();
   if (!ubuf || !is_aligned_ptr(ubuf)) {
     // boh was created with it's own alloced host_ptr
-    auto hbuf = xdevice->map(boh);
-    xdevice->unmap(boh);
+    auto hbuf = m_xdevice->map(boh);
+    m_xdevice->unmap(boh);
     assert(ubuf!=hbuf);
     if (ubuf && !nosync) {
       auto dst = static_cast<char*>(ubuf) + offset;
@@ -897,15 +793,14 @@ unmap_buffer(memory* buffer, void* mapped_ptr)
     }
   }
 
-  auto xdevice = get_xrt_device();
   auto boh = buffer->get_buffer_object_or_error(this);
 
   // Sync data to boh if write flags, and sync to device if resident
   if (flags & (CL_MAP_WRITE | CL_MAP_WRITE_INVALIDATE_REGION)) {
     if (auto ubuf = static_cast<char*>(buffer->get_host_ptr()))
-      xdevice->write(boh,ubuf+offset,size,offset,false);
+      m_xdevice->write(boh,ubuf+offset,size,offset,false);
     if (buffer->is_resident(this) && !buffer->no_host_memory())
-      xdevice->sync(boh,size,offset,xrt::hal::device::direction::HOST2DEVICE,false);
+      m_xdevice->sync(boh,size,offset,xrt::hal::device::direction::HOST2DEVICE,false);
   }
 }
 
@@ -921,20 +816,18 @@ migrate_buffer(memory* buffer,cl_mem_migration_flags flags)
   if (flags & CL_MIGRATE_MEM_OBJECT_HOST) {
     buffer_resident_or_error(buffer,this);
     auto boh = buffer->get_buffer_object_or_error(this);
-    auto xdevice = get_xrt_device();
-    xdevice->sync(boh,buffer->get_size(),0,xrt::hal::device::direction::DEVICE2HOST,false);
-    sync_to_ubuf(buffer,0,buffer->get_size(),xdevice,boh);
+    m_xdevice->sync(boh,buffer->get_size(),0,xrt::hal::device::direction::DEVICE2HOST,false);
+    sync_to_ubuf(buffer,0,buffer->get_size(),m_xdevice,boh);
     return;
   }
 
   // Host to device for kernel args and clEnqueueMigrateMemObjects
   // Get or create the buffer object on this device.
-  auto xdevice = get_xrt_device();
   xrt::device::BufferObjectHandle boh = buffer->get_buffer_object(this);
 
   // Sync from host to device to make make buffer resident of this device
-  sync_to_hbuf(buffer,0,buffer->get_size(),xdevice,boh);
-  xdevice->sync(boh,buffer->get_size(), 0, xrt::hal::device::direction::HOST2DEVICE,false);
+  sync_to_hbuf(buffer,0,buffer->get_size(),m_xdevice,boh);
+  m_xdevice->sync(boh,buffer->get_size(), 0, xrt::hal::device::direction::HOST2DEVICE,false);
   // Now buffer is resident on this device and migrate is complete
   buffer->set_resident(this);
 }
@@ -943,46 +836,42 @@ void
 device::
 write_buffer(memory* buffer, size_t offset, size_t size, const void* ptr)
 {
-  auto xdevice = get_xrt_device();
   auto boh = buffer->get_buffer_object(this);
 
   // Write data to buffer object at offset
-  xdevice->write(boh,ptr,size,offset,false);
+  m_xdevice->write(boh,ptr,size,offset,false);
 
   // Update ubuf if necessary
-  sync_to_ubuf(buffer,offset,size,xdevice,boh);
+  sync_to_ubuf(buffer,offset,size,m_xdevice,boh);
 
   if (buffer->is_resident(this) && !buffer->no_host_memory())
     // Sync new written data to device at offset
     // HAL performs read/modify write if necesary
-    xdevice->sync(boh,size,offset,xrt::hal::device::direction::HOST2DEVICE,false);
+    m_xdevice->sync(boh,size,offset,xrt::hal::device::direction::HOST2DEVICE,false);
 }
 
 void
 device::
 read_buffer(memory* buffer, size_t offset, size_t size, void* ptr)
 {
-  auto xdevice = get_xrt_device();
   auto boh = buffer->get_buffer_object(this);
 
   if (buffer->is_resident(this) && !buffer->no_host_memory())
     // Sync back from device at offset to buffer object
     // HAL performs skip/copy read if necesary
-    xdevice->sync(boh,size,offset,xrt::hal::device::direction::DEVICE2HOST,false);
+    m_xdevice->sync(boh,size,offset,xrt::hal::device::direction::DEVICE2HOST,false);
 
   // Read data from buffer object at offset
-  xdevice->read(boh,ptr,size,offset,false);
+  m_xdevice->read(boh,ptr,size,offset,false);
 
   // Update ubuf if necessary
-  sync_to_ubuf(buffer,offset,size,xdevice,boh);
+  sync_to_ubuf(buffer,offset,size,m_xdevice,boh);
 }
 
 void
 device::
 copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t dst_offset, size_t size, const cmd_type& cmd)
 {
-  auto xdevice = get_xrt_device();
-
   // Check if any of the buffers are imported
   bool imported = is_imported(src_buffer) || is_imported(dst_buffer);
 
@@ -992,7 +881,7 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
     auto src_boh = src_buffer->get_buffer_object(this);
     auto dst_boh = dst_buffer->get_buffer_object(this);
     try {
-      xdevice->fill_copy_pkt(dst_boh,src_boh,size,dst_offset,src_offset,cppkt);
+      m_xdevice->fill_copy_pkt(dst_boh,src_boh,size,dst_offset,src_offset,cppkt);
       cmd->start();    // done() called by scheduler on success
       cmd->execute();  // throws on error
       XOCL_DEBUG(std::cout,"xocl::device::copy_buffer scheduled kdma copy\n");
@@ -1024,7 +913,7 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
       }
     };
     XOCL_DEBUG(std::cout,"xocl::device::copy_buffer schedules host copy\n");
-    xdevice->schedule(cb,xrt::device::queue_type::misc,src_buffer,dst_buffer,src_offset,dst_offset,size,cmd);
+    m_xdevice->schedule(cb,xrt::device::queue_type::misc,src_buffer,dst_buffer,src_offset,dst_offset,size,cmd);
     return;
   }
 
@@ -1061,10 +950,9 @@ void
 device::
 copy_p2p_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t dst_offset, size_t size)
 {
-  auto xdevice = get_xrt_device();
   auto src_boh = src_buffer->get_buffer_object(this);
   auto dst_boh = dst_buffer->get_buffer_object(this);
-  auto rv = xdevice->copy(dst_boh, src_boh, size, dst_offset, src_offset);
+  auto rv = m_xdevice->copy(dst_boh, src_boh, size, dst_offset, src_offset);
   if (rv.get<int>() == 0)
     return;
 
@@ -1214,12 +1102,6 @@ load_program(program* program)
   xocl::debug::reset(get_axlf());
   xocl::profile::reset(get_axlf());
 
-  // validatate target binary for target device and set the xrt device
-  // according to target binary this is likely temp code that is
-  // needed only as long as the concrete device cannot be determined
-  // up front
-  set_xrt_device(m_xclbin);
-
   auto binary_data = binary.binary_data();
   auto binary_size = binary_data.second - binary_data.first;
   if (binary_size == 0)
@@ -1294,8 +1176,7 @@ acquire_context(const compute_unit* cu) const
 
   if (auto program = m_active) {
     auto xclbin = program->get_xclbin(this);
-    auto xdevice = get_xrt_device();
-    xdevice->acquire_cu_context(xclbin.uuid(),cu->get_index(),shared);
+    m_xdevice->acquire_cu_context(xclbin.uuid(),cu->get_index(),shared);
     XOCL_DEBUG(std::cout,"acquired ",shared?"shared":"exclusive"," context for cu(",cu->get_uid(),")\n");
     cu->set_context_type(shared);
     return true;
@@ -1312,8 +1193,7 @@ release_context(const compute_unit* cu) const
 
   if (auto program = m_active) {
     auto xclbin = program->get_xclbin(this);
-    auto xdevice = get_xrt_device();
-    xdevice->release_cu_context(xclbin.uuid(),cu->get_index());
+    m_xdevice->release_cu_context(xclbin.uuid(),cu->get_index());
     XOCL_DEBUG(std::cout,"released context for cu(",cu->get_uid(),")\n");
     cu->reset_context_type();
     return true;

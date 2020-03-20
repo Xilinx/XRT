@@ -136,4 +136,10 @@ get_total_devices(bool is_user)
   return instance().get_total_devices(is_user);
 }
 
+system::monitor_access_type
+get_monitor_access_type()
+{
+  return instance().get_monitor_access_type();
+}
+
 } // xrt_core

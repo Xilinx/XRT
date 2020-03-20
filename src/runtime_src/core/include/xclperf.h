@@ -483,6 +483,8 @@ typedef struct {
 enum HalCallbackType {
   ALLOC_BO_START,
   ALLOC_BO_END,
+  ALLOC_USERPTR_BO_START,
+  ALLOC_USERPTR_BO_END,
   FREE_BO_START,
   FREE_BO_END,
   WRITE_BO_START,
@@ -493,6 +495,8 @@ enum HalCallbackType {
   MAP_BO_END,
   SYNC_BO_START,
   SYNC_BO_END,
+  COPY_BO_START,
+  COPY_BO_END,
   UNMGD_READ_START,
   UNMGD_READ_END,
   UNMGD_WRITE_START,
@@ -501,6 +505,20 @@ enum HalCallbackType {
   READ_END,
   WRITE_START,
   WRITE_END,
+  PROBE_START,
+  PROBE_END,
+  LOCK_DEVICE_START,
+  LOCK_DEVICE_END,
+  UNLOCK_DEVICE_START,
+  UNLOCK_DEVICE_END,
+  OPEN_START,
+  OPEN_END,
+  CLOSE_START,
+  CLOSE_END,
+  OPEN_CONTEXT_START,
+  OPEN_CONTEXT_END,
+  CLOSE_CONTEXT_START,
+  CLOSE_CONTEXT_END,
   LOAD_XCLBIN_START,
   LOAD_XCLBIN_END
 };
@@ -553,7 +571,7 @@ enum HalInterfaceCallbackType {
  * callbacks are likely to take different structs.
  */
 typedef struct CBPayload {
-  unsigned int idcode;
+  uint64_t idcode;
   void* deviceHandle;
 } CBPayload;
 
@@ -565,18 +583,35 @@ typedef struct CBPayload {
 struct BOTransferCBPayload
 {
   struct CBPayload basePayload ;
-  uint32_t boHandle ;
-  uint64_t dest ;
-  size_t size ;
-  size_t skip ;
+  uint64_t bufferTransferId;
+  size_t   size;
+#if 0
+  uint32_t boHandle;
+  uint64_t dest;
+  size_t offset;
+#endif
+};
+
+struct SyncBOCBPayload
+{
+  struct CBPayload basePayload ;
+  uint64_t bufferTransferId;
+  size_t   size;
+  bool     isWriteToDevice;
+#if 0
+  uint32_t boHandle;
+  size_t offset;
+#endif
 };
 
 struct ReadWriteCBPayload
 {
-  struct CBPayload basePayload;  
-  uint32_t  addressSpace;
-  uint64_t  offset;
-  size_t    size;
+  struct CBPayload basePayload;
+  size_t   size;
+#if 0
+  uint32_t addressSpace;
+  uint64_t offset;
+#endif
 };
 
 struct UnmgdPreadPwriteCBPayload

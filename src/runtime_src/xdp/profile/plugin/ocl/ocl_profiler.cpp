@@ -28,7 +28,7 @@
 #include "ocl_profiler.h"
 #include "xdp/profile/profile_config.h"
 #include "xdp/profile/core/rt_profile.h"
-#include "xdp/profile/device/xdp_xrt_device.h"
+#include "xdp/profile/device/xrt_device/xdp_xrt_device.h"
 #include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/writer/json_profile.h"
 #include "xdp/profile/writer/csv_profile.h"
@@ -70,8 +70,13 @@ namespace xdp {
 
   OCLProfiler::~OCLProfiler()
   {
+    // Stop power profiling early so no samples during trace offload
+    PowerProfileList.clear();
+
+    // Inform downstream guidance if objects were properly released
     Plugin->setObjectsReleased(mEndDeviceProfilingCalled);
 
+    // End all profiling, including device
     if (!mEndDeviceProfilingCalled && applicationProfilingOn()) {
       xrt::message::send(xrt::message::severity_level::XRT_WARNING,
           "Profiling may contain incomplete information. Please ensure all OpenCL objects are released by your host code (e.g., clReleaseProgram()).");
@@ -105,21 +110,6 @@ namespace xdp {
     if ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM) && Plugin->getSystemDPAEmulation() == false)
       xoclp::platform::start_device_trace(platform, XCL_PERF_MON_ACCEL, numComputeUnits);
 
-    if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE)) {
-      for (auto device : platform->get_device_range()) {
-        /*
-         * Initialize Power Profiling Threads
-         */
-        auto power_profile_en = xrt::config::get_power_profile();
-        if (power_profile_en) {
-          auto power_profile = std::make_unique<OclPowerProfile>(device->get_xrt_device(), Plugin, device->get_unique_name());
-          auto& filename = power_profile->get_output_file_name();
-          ProfileMgr->getRunSummary()->addFile(filename, RunSummary::FT_POWER_PROFILE);
-          PowerProfileList.push_back(std::move(power_profile));
-        }
-
-      }
-    }
     mProfileRunning = true;
   }
 
@@ -137,7 +127,7 @@ namespace xdp {
 
     // Log Counter Data
     logDeviceCounters(true, true, true);  // reads and logs device counters for all monitors in all flows
-#ifndef _WIN32
+
     // With new XDP flow, HW Emu should be similar to Device flow. So, multiple calls to trace/counters should not be needed.
     // But needed for older flow
     // Log Trace Data
@@ -150,25 +140,12 @@ namespace xdp {
     logFinalTrace(XCL_PERF_MON_MEMORY /* type should not matter */);  // reads and logs trace data for all monitors in HW flow
 
     endTrace();
-    // End trace offload
-    for (auto& trace_offloader : DeviceTraceOffloadList) {
-      if (trace_offloader->trace_buffer_full()) {
-        if (trace_offloader->has_fifo()) {
-          Plugin->sendMessage(FIFO_WARN_MSG);
-        } else {
-          Plugin->sendMessage(TS2MM_WARN_MSG_BUF_FULL);
-        }
-        auto& g_map = Plugin->getDeviceTraceBufferFullMap();
-        g_map[trace_offloader->get_device_name()] = 1;
-      }
-      trace_offloader.reset();
-    }
 
     // Gather info for guidance
     // NOTE: this needs to be done here before the device clears its list of CUs
     // See xocl::device::unload_program as called from xocl::program::~program
     Plugin->getGuidanceMetadata( getProfileManager() );
-#endif
+
     // Record that this was called indirectly by host code
     mEndDeviceProfilingCalled = true;
   }
@@ -361,17 +338,19 @@ xclTraceResultsVector tv;
 
   void OCLProfiler::endTrace()
   {
-    auto platform = getclPlatformID();
-
-    for (auto device : platform->get_device_range()) {
-      if(!device->is_active()) {
-        continue;
+    for (auto& trace_offloader : DeviceTraceOffloadList) {
+      if (trace_offloader->trace_buffer_full()) {
+        if (trace_offloader->has_fifo()) {
+          Plugin->sendMessage(FIFO_WARN_MSG);
+        } else {
+          Plugin->sendMessage(TS2MM_WARN_MSG_BUF_FULL);
+        }
+        auto& g_map = Plugin->getDeviceTraceBufferFullMap();
+        g_map[trace_offloader->get_device_name()] = 1;
       }
-      auto itr = DeviceData.find(device);
-      if (itr==DeviceData.end()) {
-        return;
-      }
+      trace_offloader.reset();
     }
+    DeviceTraceOffloadList.clear();
   }
 
   // Get device counters
@@ -425,7 +404,7 @@ xclTraceResultsVector tv;
     ProfileMgr->turnOffProfile(mode);
   }
 
-    // Kick off profiling and open writers
+  // Kick off profiling and open writers
   void OCLProfiler::startProfiling() {
     if (xrt::config::get_profile() == false)
       return;
@@ -442,9 +421,9 @@ xclTraceResultsVector tv;
     turnOnProfile(xdp::RTUtil::PROFILE_DEVICE_COUNTERS);
 
     char* emuMode = std::getenv("XCL_EMULATION_MODE");
-    if(!emuMode /* Device Flow */
+    if((!emuMode /* Device Flow */
         || ((0 == strcmp(emuMode, "hw_emu")) && xrt::config::get_system_dpa_emulation()) /* HW Emu with System DPA, same as Device Flow */
-        || (data_transfer_trace.find("off") == std::string::npos)) {
+        || (data_transfer_trace.find("off") == std::string::npos)) && xrt::config::get_timeline_trace()  ) {
       turnOnProfile(xdp::RTUtil::PROFILE_DEVICE_TRACE);
     }
 
@@ -470,23 +449,31 @@ xclTraceResultsVector tv;
     if (xrt::config::get_timeline_trace()) {
       timelineFile = "timeline_trace";
       ProfileMgr->turnOnFile(xdp::RTUtil::FILE_TIMELINE_TRACE);
-      mTraceThreadEn = xrt::config::get_continuous_read_trace();
-      mTraceReadIntMs = xrt::config::get_continuous_read_trace_interval_ms();
+      mTraceThreadEn = xrt::config::get_continuous_trace();
+      mTraceReadIntMs = xrt::config::get_continuous_trace_interval_ms();
     }
     xdp::CSVTraceWriter* csvTraceWriter = new xdp::CSVTraceWriter(timelineFile, "Xilinx", Plugin.get());
     TraceWriters.push_back(csvTraceWriter);
     ProfileMgr->attach(csvTraceWriter);
 
-#if 0
-    // Not Used
-    if (std::getenv("SDX_NEW_PROFILE")) {
-      std::string profileFile2("sdx_profile_summary");
-      std::string timelineFile2("sdx_timeline_trace");
-      xdp::UnifiedCSVProfileWriter* csvProfileWriter2 = new xdp::UnifiedCSVProfileWriter(profileFile2, "Xilinx", Plugin.get());
-      ProfileWriters.push_back(csvProfileWriter2);
-      ProfileMgr->attach(csvProfileWriter2);
+    // Start power profiling (device flow only)
+    // NOTE: This starts power profiling when clGetPlatformIDs is called. That is, before a 
+    //       bitstream gets loaded. This allows us to show pre-configuration power samples.
+    if (!emuMode) {
+      auto platform = getclPlatformID();
+      for (auto device : platform->get_device_range()) {
+        /*
+         * Initialize Power Profiling Threads
+         */
+        auto power_profile_en = xrt::config::get_power_profile();
+        if (power_profile_en) {
+          auto power_profile = std::make_unique<OclPowerProfile>(device->get_xrt_device(), Plugin, device->get_unique_name());
+          auto& filename = power_profile->get_output_file_name();
+          ProfileMgr->getRunSummary()->addFile(filename, RunSummary::FT_POWER_PROFILE);
+          PowerProfileList.push_back(std::move(power_profile));
+        }
+      }
     }
-#endif
 
     // Add functions to callback for profiling kernel/CU scheduling
     xocl::add_command_start_callback(xoclp::get_cu_start);
@@ -654,10 +641,6 @@ xclTraceResultsVector tv;
 
   int OCLProfiler::logTrace(xclPerfMonType type, bool forceRead, bool logAllMonitors)
   {
-#ifdef _WIN32
-    return -1;
-#endif
-
     // Dedicated thread takes care of all the logging
     if (mTraceThreadEn)
       return -1;

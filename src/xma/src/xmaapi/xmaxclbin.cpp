@@ -101,86 +101,87 @@ static int get_xclbin_iplayout(const char *buffer, XmaXclbinInfo *xclbin_info)
         if (!has_cuisr) {
             xma_logmsg(XMA_WARNING_LOG, XMAAPI_MOD, "One or more CUs do not support interrupt. Use RTL Wizard or Vitis for xclbin creation ");
         }
-        uint32_t j = 0;
+        auto& xma_ip_layout = xclbin_info->ip_layout;
         for (int i = 0; i < ipl->m_count; i++) {
             if (ipl->m_ip_data[i].m_type != IP_KERNEL)
                 continue;
 
-            if (j == MAX_XILINX_KERNELS) {
+            if (xma_ip_layout.size() == MAX_XILINX_KERNELS) {
                 xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA supports max of only %d kernels per device ", MAX_XILINX_KERNELS);
                 throw std::runtime_error("XMA supports max of only " + std::to_string(MAX_XILINX_KERNELS) + " kernels per device");
             }
-            xclbin_info->ip_layout[j].base_addr = ipl->m_ip_data[i].m_base_address;
-            memset(xclbin_info->ip_layout[j].kernel_name, 0, MAX_KERNEL_NAME);
-            std::string cu_name = std::string((char*)ipl->m_ip_data[i].m_name);
-            cu_name.copy((char*)xclbin_info->ip_layout[j].kernel_name, MAX_KERNEL_NAME-1);
-            auto args = xrt_core::xclbin::get_kernel_arguments(xclbin, cu_name);
-            xclbin_info->ip_layout[j].arg_start = -1;
-            xclbin_info->ip_layout[j].regmap_size = -1;
+
+            XmaIpLayout temp_ip_layout;
+            temp_ip_layout.base_addr = ipl->m_ip_data[i].m_base_address;
+            temp_ip_layout.kernel_name = std::string((char*)ipl->m_ip_data[i].m_name);
+
+            auto args = xrt_core::xclbin::get_kernel_arguments(xclbin, temp_ip_layout.kernel_name);
+            temp_ip_layout.arg_start = -1;
+            temp_ip_layout.regmap_size = -1;
             if (args.size() > 0) {
-                xclbin_info->ip_layout[j].arg_start = args[0].offset;
+                temp_ip_layout.arg_start = args[0].offset;
                 auto& last = args.back();
-                xclbin_info->ip_layout[j].regmap_size = last.offset + last.size;
-                if (xclbin_info->ip_layout[j].arg_start < 0x10) {
-                    xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "kernel %s doesn't meet argument register map spec of HLS/RTL Wizard kernels ", cu_name.c_str());
+                temp_ip_layout.regmap_size = last.offset + last.size;
+                if (temp_ip_layout.arg_start < 0x10) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "kernel %s doesn't meet argument register map spec of HLS/RTL Wizard kernels ", temp_ip_layout.kernel_name.c_str());
                     throw std::runtime_error("kernel doesn't meet argument register map spec of HLS/RTL Wizard kernels");
                 }
             } else {
-                std::string knm = cu_name.substr(0,cu_name.find(":"));
+                std::string knm = temp_ip_layout.kernel_name.substr(0,temp_ip_layout.kernel_name.find(":"));
                 args = xrt_core::xclbin::get_kernel_arguments(xclbin, knm);
                 if (args.size() > 0) {
-                    xclbin_info->ip_layout[j].arg_start = args[0].offset;
+                    temp_ip_layout.arg_start = args[0].offset;
                     auto& last = args.back();
-                    xclbin_info->ip_layout[j].regmap_size = last.offset + last.size;
-                    if (xclbin_info->ip_layout[j].arg_start < 0x10) {
-                        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "kernel %s doesn't meet argument register map spec of HLS/RTL Wizard kernels ", cu_name.c_str());
+                    temp_ip_layout.regmap_size = last.offset + last.size;
+                    if (temp_ip_layout.arg_start < 0x10) {
+                        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "kernel %s doesn't meet argument register map spec of HLS/RTL Wizard kernels ", temp_ip_layout.kernel_name.c_str());
                         throw std::runtime_error("kernel doesn't meet argument register map spec of HLS/RTL Wizard kernels");
                     }
                 }
             }
-            xclbin_info->ip_layout[j].kernel_channels = false;
+            temp_ip_layout.kernel_channels = false;
             xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index = %d, kernel name = %s, base_addr = %lx ",
-                    j, xclbin_info->ip_layout[j].kernel_name, xclbin_info->ip_layout[j].base_addr);
-            if (xclbin_info->ip_layout[j].regmap_size > MAX_KERNEL_REGMAP_SIZE) {
-                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "kernel %s register map size exceeds max limit. regmap_size: %d, max regmap_size: %d . Will use only max regmap_size", cu_name.c_str(), xclbin_info->ip_layout[j].regmap_size, MAX_KERNEL_REGMAP_SIZE);
+                    xma_ip_layout.size(), temp_ip_layout.kernel_name.c_str(), temp_ip_layout.base_addr);
+            if (temp_ip_layout.regmap_size > MAX_KERNEL_REGMAP_SIZE) {
+                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "kernel %s register map size exceeds max limit. regmap_size: %d, max regmap_size: %d . Will use only max regmap_size", temp_ip_layout.kernel_name.c_str(), temp_ip_layout.regmap_size, MAX_KERNEL_REGMAP_SIZE);
                 //DRM IPs have registers at high offset
-                xclbin_info->ip_layout[j].regmap_size = MAX_KERNEL_REGMAP_SIZE;
+                temp_ip_layout.regmap_size = MAX_KERNEL_REGMAP_SIZE;
                 //throw std::runtime_error("kernel regmap exceed's max size");
             }
-            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "%s:- arg_start: 0x%x, regmap_size: 0x%x", cu_name.c_str(), xclbin_info->ip_layout[j].arg_start, xclbin_info->ip_layout[j].regmap_size);
-            auto cu_data = xrt_core::xclbin::get_cus(ipl, cu_name);
+            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "%s:- arg_start: 0x%x, regmap_size: 0x%x", temp_ip_layout.kernel_name.c_str(), temp_ip_layout.arg_start, temp_ip_layout.regmap_size);
+            auto cu_data = xrt_core::xclbin::get_cus(ipl, temp_ip_layout.kernel_name);
             if (cu_data.size() > 0) {
                 if (((cu_data[0]->properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT) == AP_CTRL_CHAIN) {
                     int32_t max_channel_id = kernel_max_channel_id(cu_data[0], kernel_channels_info);
                     if (max_channel_id >= 0) {
-                        xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "kernel \"%s\" is a dataflow kernel. channel_id will be handled by XMA. host app and plugins should not use reserved channle_id registers. Max channel_id is: %d ", cu_name.c_str(), max_channel_id);
-                        xclbin_info->ip_layout[j].kernel_channels = true;
-                        xclbin_info->ip_layout[j].max_channel_id = (uint32_t)max_channel_id;
+                        xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "kernel \"%s\" is a dataflow kernel. channel_id will be handled by XMA. host app and plugins should not use reserved channle_id registers. Max channel_id is: %d ", temp_ip_layout.kernel_name.c_str(), max_channel_id);
+                        temp_ip_layout.kernel_channels = true;
+                        temp_ip_layout.max_channel_id = (uint32_t)max_channel_id;
                     } else {
                         if (max_channel_id == -1) {
-                            xma_logmsg(XMA_WARNING_LOG, XMAAPI_MOD, "kernel \"%s\" is a dataflow kernel. Use kernel_channels xrt.ini setting to enable handling of channel_id by XMA. Treatng it as legacy dataflow kernel and channels to be managed by host app and plugins ", cu_name.c_str());
+                            xma_logmsg(XMA_WARNING_LOG, XMAAPI_MOD, "kernel \"%s\" is a dataflow kernel. Use kernel_channels xrt.ini setting to enable handling of channel_id by XMA. Treatng it as legacy dataflow kernel and channels to be managed by host app and plugins ", temp_ip_layout.kernel_name.c_str());
                         } else if (max_channel_id == -2) {
-                            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "kernel \"%s\" is a dataflow kernel.  xrt.ini kernel_channels setting has incorrect format. setting found is: %s ", cu_name.c_str(), kernel_channels_info.c_str());
+                            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "kernel \"%s\" is a dataflow kernel.  xrt.ini kernel_channels setting has incorrect format. setting found is: %s ", temp_ip_layout.kernel_name.c_str(), kernel_channels_info.c_str());
                             throw std::runtime_error("Incorrect dataflow kernel ini setting");
                         } else if (max_channel_id == -3) {
-                            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "kernel \"%s\" is a dataflow kernel.  xrt.ini kernel_channels setting only supports channel_ids from 0 to 31. setting found is: %s ", cu_name.c_str(), kernel_channels_info.c_str());
+                            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "kernel \"%s\" is a dataflow kernel.  xrt.ini kernel_channels setting only supports channel_ids from 0 to 31. setting found is: %s ", temp_ip_layout.kernel_name.c_str(), kernel_channels_info.c_str());
                             throw std::runtime_error("Incorrect dataflow kernel ini setting");
                         }
                     }
                 } else {
-                    xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "kernel \"%s\" is a legacy kernel. Channels to be managed by host app and plugins ", cu_name.c_str());
+                    xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "kernel \"%s\" is a legacy kernel. Channels to be managed by host app and plugins ", temp_ip_layout.kernel_name.c_str());
                 }
             } else {
-                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "No CU for kernel %s in xclbin", cu_name.c_str());
+                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "No CU for kernel %s in xclbin", temp_ip_layout.kernel_name.c_str());
                 throw std::runtime_error("Unexpected error. CU not found in xclbin");
             }
-            xclbin_info->ip_layout[j].soft_kernel = false;
-
-            j++;
+            temp_ip_layout.soft_kernel = false;
+            
+            xma_ip_layout.emplace_back(std::move(temp_ip_layout));
         }
 
-        xclbin_info->number_of_hardware_kernels = j;
-        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "Num of hardware kernels on this device = %d ", j);
+        xclbin_info->number_of_hardware_kernels = xma_ip_layout.size();
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "Num of hardware kernels on this device = %d ", xclbin_info->number_of_hardware_kernels);
         uint32_t num_soft_kernels = 0;
         //Handle soft kernels just like another hardware IP_Layout kernel
         //soft kernels to follow hardware kernels. so soft kenrel index will start after hardware kernels
@@ -191,27 +192,28 @@ static int get_xclbin_iplayout(const char *buffer, XmaXclbinInfo *xclbin_info)
                 throw std::runtime_error("XMA supports max of only " + std::to_string(MAX_XILINX_SOFT_KERNELS) + " soft kernels per device");
             }
             xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "soft kernel name = %s, version = %s, symbol name = %s, num of instances = %d ", sk.mpo_name.c_str(), sk.mpo_version.c_str(), sk.symbol_name.c_str(), sk.ninst);
+
+            XmaIpLayout temp_ip_layout;
             std::string str_tmp1;
             for (uint32_t i = 0; i < sk.ninst; i++) {
-                memset(xclbin_info->ip_layout[j].kernel_name, 0, MAX_KERNEL_NAME);
-                
                 str_tmp1 = std::string(sk.mpo_name);
                 str_tmp1 += "_";
                 str_tmp1 += std::to_string(i);
-                str_tmp1.copy((char*)xclbin_info->ip_layout[j].kernel_name, MAX_KERNEL_NAME-1);
-                xclbin_info->ip_layout[j].soft_kernel = true;
-                xclbin_info->ip_layout[j].base_addr = 0;
-                xclbin_info->ip_layout[j].arg_start = -1;
-                xclbin_info->ip_layout[j].regmap_size = -1;
-                xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index = %d, soft kernel name = %s ", j, xclbin_info->ip_layout[j].kernel_name);
+                temp_ip_layout.kernel_name = str_tmp1;
 
-                j++;
+                temp_ip_layout.soft_kernel = true;
+                temp_ip_layout.base_addr = 0;
+                temp_ip_layout.arg_start = -1;
+                temp_ip_layout.regmap_size = -1;
+                xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index = %d, soft kernel name = %s ", xma_ip_layout.size(), temp_ip_layout.kernel_name.c_str());
+
+                xma_ip_layout.emplace_back(std::move(temp_ip_layout));
                 num_soft_kernels++;
             }
         }
         xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "Num of soft kernels on this device = %d ", num_soft_kernels);
 
-        xclbin_info->number_of_kernels = j;
+        xclbin_info->number_of_kernels = xma_ip_layout.size();
         xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "Num of total kernels on this device = %d ", xclbin_info->number_of_kernels);
 
         xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "  ");
@@ -270,7 +272,8 @@ static int get_xclbin_mem_topology(const char *buffer, XmaXclbinInfo *xclbin_inf
     {
         const char *data = &buffer[ip_hdr->m_sectionOffset];
         const mem_topology *mem_topo = reinterpret_cast<const mem_topology *>(data);
-        XmaMemTopology *topology = xclbin_info->mem_topology;
+        auto& xma_mem_topology = xclbin_info->mem_topology;
+
         xclbin_info->number_of_mem_banks = mem_topo->m_count;
         xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "MEM TOPOLOGY - %d banks ",xclbin_info->number_of_mem_banks);
         if (xclbin_info->number_of_mem_banks > MAX_DDR_MAP) {
@@ -279,15 +282,17 @@ static int get_xclbin_mem_topology(const char *buffer, XmaXclbinInfo *xclbin_inf
         }
         for (int i = 0; i < mem_topo->m_count; i++)
         {
-            topology[i].m_type = mem_topo->m_mem_data[i].m_type;
-            topology[i].m_used = mem_topo->m_mem_data[i].m_used;
-            topology[i].m_size = mem_topo->m_mem_data[i].m_size;
-            topology[i].m_base_address = mem_topo->m_mem_data[i].m_base_address;
+            XmaMemTopology temp_mem_topology;
+            temp_mem_topology.m_type = mem_topo->m_mem_data[i].m_type;
+            temp_mem_topology.m_used = mem_topo->m_mem_data[i].m_used;
+            temp_mem_topology.m_size = mem_topo->m_mem_data[i].m_size;
+            temp_mem_topology.m_base_address = mem_topo->m_mem_data[i].m_base_address;
             //m_tag is 16 chars
-            memcpy(topology[i].m_tag, mem_topo->m_mem_data[i].m_tag, 16*sizeof(unsigned char));
+            temp_mem_topology.m_tag = std::string((char*)mem_topo->m_mem_data[i].m_tag);
             xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index=%d, tag=%s, type = %d, used = %d, size = %lx, base = %lx ",
-                   i,topology[i].m_tag, topology[i].m_type, topology[i].m_used,
-                   topology[i].m_size, topology[i].m_base_address);
+                   i,temp_mem_topology.m_tag.c_str(), temp_mem_topology.m_type, temp_mem_topology.m_used,
+                   temp_mem_topology.m_size, temp_mem_topology.m_base_address);
+            xma_mem_topology.emplace_back(std::move(temp_mem_topology));
         }
     }
     else
@@ -308,17 +313,20 @@ static int get_xclbin_connectivity(const char *buffer, XmaXclbinInfo *xclbin_inf
     {
         const char *data = &buffer[ip_hdr->m_sectionOffset];
         const connectivity *axlf_conn = reinterpret_cast<const connectivity *>(data);
-        XmaAXLFConnectivity *xma_conn = xclbin_info->connectivity;
+        auto& xma_connectivity = xclbin_info->connectivity;
         xclbin_info->number_of_connections = axlf_conn->m_count;
         xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "CONNECTIVITY - %d connections ",xclbin_info->number_of_connections);
         for (int i = 0; i < axlf_conn->m_count; i++)
         {
-            xma_conn[i].arg_index         = axlf_conn->m_connection[i].arg_index;
-            xma_conn[i].m_ip_layout_index = axlf_conn->m_connection[i].m_ip_layout_index;
-            xma_conn[i].mem_data_index    = axlf_conn->m_connection[i].mem_data_index;
+            XmaAXLFConnectivity temp_conn;
+
+            temp_conn.arg_index         = axlf_conn->m_connection[i].arg_index;
+            temp_conn.m_ip_layout_index = axlf_conn->m_connection[i].m_ip_layout_index;
+            temp_conn.mem_data_index    = axlf_conn->m_connection[i].mem_data_index;
             xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index = %d, arg_idx = %d, ip_idx = %d, mem_idx = %d ",
-                     i, xma_conn[i].arg_index, xma_conn[i].m_ip_layout_index,
-                     xma_conn[i].mem_data_index);
+                     i, temp_conn.arg_index, temp_conn.m_ip_layout_index,
+                     temp_conn.mem_data_index);
+            xma_connectivity.emplace_back(std::move(temp_conn));
         }
     }
     else
@@ -340,15 +348,15 @@ int xma_xclbin_info_get(const char *buffer, XmaXclbinInfo *info)
     uint64_t tmp_ddr_map = 0;
     for(uint32_t c = 0; c < info->number_of_connections; c++)
     {
-        XmaAXLFConnectivity *xma_conn = &info->connectivity[c];
+        auto& xma_conn = info->connectivity[c];
         tmp_ddr_map = 1;
-        tmp_ddr_map = tmp_ddr_map << (xma_conn->mem_data_index);
-        info->ip_ddr_mapping[xma_conn->m_ip_layout_index] |= tmp_ddr_map;
+        tmp_ddr_map = tmp_ddr_map << (xma_conn.mem_data_index);
+        info->ip_ddr_mapping[xma_conn.m_ip_layout_index] |= tmp_ddr_map;
     }
     xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "CU DDR connections bitmap:");
     for(uint32_t i = 0; i < info->number_of_hardware_kernels; i++)
     {
-        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "\t%s - 0x%016llx ",info->ip_layout[i].kernel_name, (unsigned long long)info->ip_ddr_mapping[i]);
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "\t%s - 0x%016llx ",info->ip_layout[i].kernel_name.c_str(), (unsigned long long)info->ip_ddr_mapping[i]);
     }
 
     return XMA_SUCCESS;

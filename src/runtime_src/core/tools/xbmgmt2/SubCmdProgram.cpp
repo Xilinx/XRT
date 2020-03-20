@@ -491,7 +491,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 //                     Download the accelerator program for card 2
 //                       xbutil program -d 2 -p a.xclbin
 {
-  XBU::verbose("SubCommand: examine");
+  XBU::verbose("SubCommand: program");
 
   XBU::verbose("Option(s):");
   for (auto & aString : _options) {
@@ -589,7 +589,9 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   }
 
   // get all device IDs to be processed
-  std::vector<uint16_t> device_indices; //instead of saving this, can we save Flasher objects?
+  if(device.empty())
+    throw xrt_core::error("Please specify a device using --device option");
+  std::vector<uint16_t> device_indices;
   XBU::parse_device_indices(device_indices, device);
 
   if (!update.empty()) {
