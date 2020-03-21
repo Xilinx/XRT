@@ -15,8 +15,8 @@
  */
 #define XCL_DRIVER_DLL_EXPORT
 #define XRT_CORE_PCIE_WINDOWS_SOURCE
-#include "common/xrt_profiling.h"
-#include "experimental/xrt-next.h"
+#include "core/common/xrt_profiling.h"
+#include "core/include/experimental/xrt-next.h"
 #include <stdexcept>
 
 #pragma warning(disable : 4100)

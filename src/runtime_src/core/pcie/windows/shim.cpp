@@ -24,6 +24,7 @@
 #include "core/common/system.h"
 #include "core/common/device.h"
 #include "core/common/AlignedAllocator.h"
+#include "core/common/xrt_profiling.h"
 #include "core/include/xcl_perfmon_parameters.h"
 
 #include <windows.h>
@@ -738,7 +739,6 @@ done:
       preadBO.size = size;
       preadBO.data_ptr = offset;
 
-std::cout << " in unmgd pread for Winshim offset " << offset << " address in hex " << std::hex << offset << std::dec << std::endl;
       if (!DeviceIoControl(m_dev,
           IOCTL_XOCL_PREAD_UNMGD,
           &preadBO,
@@ -1611,9 +1611,6 @@ xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz,
   return size;
 }
 
-
-
-
 /*
  * Returns  1 if Version2 > Version1
  * Returns  0 if Version2 = Version1
@@ -1635,7 +1632,7 @@ signed cmpMonVersions(unsigned major1, unsigned minor1, unsigned major2, unsigne
 
 // Gets the information about the specified IP from the sysfs debug_ip_table.
 // The IP types are defined in xclbin.h
-uint32_t getIPCountAddrNames(xclDeviceHandle handle, int type, uint64_t *baseAddress, std::string * portNames,
+uint32_t getDebugIpData(xclDeviceHandle handle, int type, uint64_t *baseAddress, std::string * portNames,
                                        uint8_t *properties, uint8_t *majorVersions, uint8_t *minorVersions,
                                        size_t size)
 {
@@ -1646,26 +1643,26 @@ uint32_t getIPCountAddrNames(xclDeviceHandle handle, int type, uint64_t *baseAdd
   // Allocate buffer to retrieve debug_ip_layout information from loaded xclbin
   std::vector<char> buffer(sectionSz);
   shim->get_debug_ip_layout(buffer.data(), sectionSz, &sz1);
-  debug_ip_layout *map = (debug_ip_layout*)(buffer.data());
+  debug_ip_layout *map = reinterpret_cast<debug_ip_layout*>(buffer.data());
   uint32_t count = 0;
-  for( unsigned int i = 0; i < map->m_count; i++ ) {
-    if (count >= size) break;
-    if (map->m_debug_ip_data[i].m_type == type) {
-    if(baseAddress)baseAddress[count] = map->m_debug_ip_data[i].m_base_address;
+  for( unsigned int i = 0; (i < map->m_count) && (count < size) ; i++ ) {
+    if(map->m_debug_ip_data[i].m_type != type)
+      continue;
+
+    if(baseAddress) baseAddress[count] = map->m_debug_ip_data[i].m_base_address;
     if(portNames) {
       // Fill up string with 128 characters (padded with null characters)
-              portNames[count].assign(map->m_debug_ip_data[i].m_name, 128);
-              // Strip away extraneous null characters
-              portNames[count].assign(portNames[count].c_str());
-            }
-            if(properties) properties[count] = map->m_debug_ip_data[i].m_properties;
-            if(majorVersions) majorVersions[count] = map->m_debug_ip_data[i].m_major;
-            if(minorVersions) minorVersions[count] = map->m_debug_ip_data[i].m_minor;
-            ++count;
-          }
-        }    
-    return count;
-  }
+      portNames[count].assign(map->m_debug_ip_data[i].m_name, 128);
+      // Strip away extraneous null characters
+      portNames[count].assign(portNames[count].c_str());
+    }
+    if(properties) properties[count] = map->m_debug_ip_data[i].m_properties;
+    if(majorVersions) majorVersions[count] = map->m_debug_ip_data[i].m_major;
+    if(minorVersions) minorVersions[count] = map->m_debug_ip_data[i].m_minor;
+    ++count;
+  }    
+  return count;
+}
 
 
 
@@ -1692,7 +1689,7 @@ uint32_t getIPCountAddrNames(xclDeviceHandle handle, int type, uint64_t *baseAdd
     };
 
     uint64_t baseAddress[XLAPC_MAX_NUMBER_SLOTS];
-    uint32_t numSlots = getIPCountAddrNames(LAPC, baseAddress, nullptr, nullptr, nullptr, nullptr, XLAPC_MAX_NUMBER_SLOTS);
+    uint32_t numSlots = getDebugIpData(LAPC, baseAddress, nullptr, nullptr, nullptr, nullptr, XLAPC_MAX_NUMBER_SLOTS);
     uint32_t temp[XLAPC_STATUS_PER_SLOT];
     aCheckerResults->NumSlots = numSlots;
     snprintf(aCheckerResults->DevUserName, 256, "%s", mDevUserName.c_str());
@@ -1712,9 +1709,7 @@ uint32_t getIPCountAddrNames(xclDeviceHandle handle, int type, uint64_t *baseAdd
 
 size_t xclDebugReadCounters(xclDeviceHandle handle, xclDebugCountersResults* aCounterResults) 
 {
-  xrt_core::message::send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclDebugReadCounters()");
   auto shim = get_shim_object(handle);
-
   size_t size = 0;
 
   uint64_t spm_offsets[] = {
@@ -1744,12 +1739,12 @@ size_t xclDebugReadCounters(xclDeviceHandle handle, xclDebugCountersResults* aCo
   // Read all metric counters
   uint64_t baseAddress[XAIM_MAX_NUMBER_SLOTS];
   uint8_t  perfMonProperties[XAIM_MAX_NUMBER_SLOTS] = {};
-  uint32_t numSlots = getIPCountAddrNames(handle, AXI_MM_MONITOR, baseAddress, nullptr, perfMonProperties, nullptr, nullptr, XAIM_MAX_NUMBER_SLOTS);
+  uint32_t numSlots = getDebugIpData(handle, AXI_MM_MONITOR, baseAddress, nullptr, perfMonProperties, nullptr, nullptr, XAIM_MAX_NUMBER_SLOTS);
 
   uint32_t temp[XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT];
 
   aCounterResults->NumSlots = numSlots;
-  //snprintf(aCounterResults->DevUserName, 256, "%s", mDevUserName.c_str());
+  
   for (uint32_t s=0; s < numSlots; s++) {
     uint32_t sampleInterval;
     // Read sample interval register to latch the sampled metric counters
@@ -1794,22 +1789,19 @@ size_t xclDebugReadCounters(xclDeviceHandle handle, xclDebugCountersResults* aCo
 // Read the streaming performance monitors
 size_t xclDebugReadStreamingCounters(xclDeviceHandle handle, xclStreamingDebugCountersResults* aCounterResults) 
 {
-  xrt_core::message::send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclDebugReadStreamingCounters()");
   auto shim = get_shim_object(handle);
-
   size_t size = 0; // The amount of data read from the hardware
 
   // Get the base addresses of all the SSPM IPs in the debug IP layout
   uint64_t baseAddress[XASM_MAX_NUMBER_SLOTS];
-  uint32_t numSlots = getIPCountAddrNames(handle, AXI_STREAM_MONITOR,
+  uint32_t numSlots = getDebugIpData(handle, AXI_STREAM_MONITOR,
               baseAddress,
               nullptr, nullptr, nullptr, nullptr,
               XASM_MAX_NUMBER_SLOTS);
 
   // Fill up the portions of the return struct that are known by the runtime
   aCounterResults->NumSlots = numSlots ;
-  //snprintf(aCounterResults->DevUserName, 256, "%s", mDevUserName.c_str());
-
+  
   // Fill up the return structure with the values read from the hardware
   uint64_t sspm_offsets[] = {
     XASM_NUM_TRANX_OFFSET,
@@ -1827,7 +1819,7 @@ size_t xclDebugReadStreamingCounters(xclDeviceHandle handle, xclStreamingDebugCo
                      baseAddress[i] + XASM_SAMPLE_OFFSET,
                      &sampleInterval, sizeof(uint32_t));
 
-      // Then read all the individual 64-bit counters
+    // Then read all the individual 64-bit counters
     unsigned long long int tmp[XASM_DEBUG_SAMPLE_COUNTERS_PER_SLOT] ;
 
     for (unsigned int j = 0 ; j < XASM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; ++j)
@@ -1858,7 +1850,7 @@ size_t xclDebugReadStreamingCounters(xclDeviceHandle handle, xclStreamingDebugCo
 
     // Get the base addresses of all the SPC IPs in the debug IP layout
     uint64_t baseAddress[XSPC_MAX_NUMBER_SLOTS];
-    uint32_t numSlots = getIPCountAddrNames(AXI_STREAM_PROTOCOL_CHECKER,
+    uint32_t numSlots = getDebugIpData(AXI_STREAM_PROTOCOL_CHECKER,
               baseAddress,
               nullptr, nullptr, nullptr, nullptr,
               XSPC_MAX_NUMBER_SLOTS);
@@ -1894,7 +1886,6 @@ size_t xclDebugReadStreamingCounters(xclDeviceHandle handle, xclStreamingDebugCo
 
 size_t xclDebugReadAccelMonitorCounters(xclDeviceHandle handle, xclAccelMonitorCounterResults* samResult)
 {
-  xrt_core::message::send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclDebugReadAccelMonitorCounters()");
   auto shim = get_shim_object(handle);
 
   size_t size = 0;
@@ -1933,12 +1924,12 @@ size_t xclDebugReadAccelMonitorCounters(xclDeviceHandle handle, xclAccelMonitorC
   uint8_t  accelmonMajorVersions[XAM_MAX_NUMBER_SLOTS] = {0};
   uint8_t  accelmonMinorVersions[XAM_MAX_NUMBER_SLOTS] = {0};
 
-  uint32_t numSlots = getIPCountAddrNames(handle, ACCEL_MONITOR, baseAddress, nullptr, accelmonProperties,
+  uint32_t numSlots = getDebugIpData(handle, ACCEL_MONITOR, baseAddress, nullptr, accelmonProperties,
                                             accelmonMajorVersions, accelmonMinorVersions, XAM_MAX_NUMBER_SLOTS);
 
   uint32_t temp[XAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT] = {0};
   samResult->NumSlots = numSlots;
-  //snprintf(samResult->DevUserName, 256, "%s", mDevUserName.c_str());
+  
   for (uint32_t s=0; s < numSlots; s++) {
     uint32_t sampleInterval;
     // Read sample interval register to latch the sampled metric counters

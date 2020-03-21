@@ -19,7 +19,6 @@
 
 #include "core/pcie/windows/config.h"
 #include "xrt.h"
-#include "core/common/xrt_profiling.h"
 #include "core/pcie/driver/windows/include/XoclUser_INTF.h"
 
 struct FeatureRomHeader;
