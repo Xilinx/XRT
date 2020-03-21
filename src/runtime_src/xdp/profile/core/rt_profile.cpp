@@ -70,7 +70,7 @@ namespace xdp {
       writeProfileSummary();
 
     // Write out the run summary file (if there is data to write)
-    mRunSummary->writeContent();    
+    mRunSummary->writeContent();
 
     delete mWriter;
     delete mLogger;

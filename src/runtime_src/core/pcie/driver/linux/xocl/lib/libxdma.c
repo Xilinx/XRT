@@ -948,7 +948,7 @@ static int process_completions(struct xdma_engine *engine,
 				cb->io_done((unsigned long)cb->private, 0);
 				xdma_request_release(engine->xdev, req);
 			} else
-				wake_up_interruptible(&req->arbtr_wait);
+				wake_up(&req->arbtr_wait);
 		}
 		spin_unlock(&engine->req_list_lock);
 	}
@@ -1434,14 +1434,17 @@ static int xdma_process_requests(struct xdma_engine *engine,
 		return rv;
 	}
 	if ((!req->cb || !req->cb->io_done) && (rv == 0)) {
-		timeout = wait_event_interruptible_timeout(req->arbtr_wait,
+		timeout = wait_event_timeout(req->arbtr_wait,
 				req->sw_desc_cnt == req->desc_completed,
 				msecs_to_jiffies(10000)); /* 10sec timeout */
+
+		/* Check for timeouts*/
 		if (timeout == 0) {
 			pr_err("Request completion timeout\n");
 			engine_reg_dump(engine);
 			rv = -EIO;
 		}
+	
 	}
 	if (req->cb && req->cb->io_done) {
 		req->expiry = jiffies + msecs_to_jiffies(10000);
