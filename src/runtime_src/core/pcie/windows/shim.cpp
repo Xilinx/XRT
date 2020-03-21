@@ -1629,7 +1629,6 @@ signed cmpMonVersions(unsigned major1, unsigned minor1, unsigned major2, unsigne
 }
 
 
-
 // Gets the information about the specified IP from the sysfs debug_ip_table.
 // The IP types are defined in xclbin.h
 uint32_t getDebugIpData(xclDeviceHandle handle, int type, uint64_t *baseAddress, std::string * portNames,
@@ -1665,48 +1664,38 @@ uint32_t getDebugIpData(xclDeviceHandle handle, int type, uint64_t *baseAddress,
 }
 
 
+size_t xclDebugReadCheckers(xclDeviceHandle handle, xclDebugCheckersResults* aCheckerResults) 
+{
+  auto shim = get_shim_object(handle);
+  size_t size = 0;
+  uint64_t statusRegisters[] = {
+    LAPC_OVERALL_STATUS_OFFSET,
 
+    LAPC_CUMULATIVE_STATUS_0_OFFSET, LAPC_CUMULATIVE_STATUS_1_OFFSET,
+    LAPC_CUMULATIVE_STATUS_2_OFFSET, LAPC_CUMULATIVE_STATUS_3_OFFSET,
 
-#if 0
-  // Read APM performance counters
-  size_t shim::xclDebugReadCheckers(xclDebugCheckersResults* aCheckerResults) {
-    if (mLogStream.is_open()) {
-     0 mLogStream << __func__ << ", " << std::this_thread::get_id()
-      << ", " << aCheckerResults
-      << ", Read protocl checker status..." << std::endl;
-    }
+    LAPC_SNAPSHOT_STATUS_0_OFFSET, LAPC_SNAPSHOT_STATUS_1_OFFSET,
+    LAPC_SNAPSHOT_STATUS_2_OFFSET, LAPC_SNAPSHOT_STATUS_3_OFFSET
+  };
 
-    size_t size = 0;
+  uint64_t baseAddress[XLAPC_MAX_NUMBER_SLOTS];
+  uint32_t numSlots = getDebugIpData(handle, LAPC, baseAddress, nullptr, nullptr, nullptr, nullptr, XLAPC_MAX_NUMBER_SLOTS);
+  uint32_t temp[XLAPC_STATUS_PER_SLOT];
+  aCheckerResults->NumSlots = numSlots;
+  //snprintf(aCheckerResults->DevUserName, 256, "%s", mDevUserName.c_str());
+  for (uint32_t s = 0; s < numSlots; ++s) {
+    for (int c=0; c < XLAPC_STATUS_PER_SLOT; c++)
+      size += shim->read(XCL_ADDR_SPACE_DEVICE_CHECKER, baseAddress[s]+statusRegisters[c], &temp[c], 4);
 
-    uint64_t statusRegisters[] = {
-        LAPC_OVERALL_STATUS_OFFSET,
-
-        LAPC_CUMULATIVE_STATUS_0_OFFSET, LAPC_CUMULATIVE_STATUS_1_OFFSET,
-        LAPC_CUMULATIVE_STATUS_2_OFFSET, LAPC_CUMULATIVE_STATUS_3_OFFSET,
-
-        LAPC_SNAPSHOT_STATUS_0_OFFSET, LAPC_SNAPSHOT_STATUS_1_OFFSET,
-        LAPC_SNAPSHOT_STATUS_2_OFFSET, LAPC_SNAPSHOT_STATUS_3_OFFSET
-    };
-
-    uint64_t baseAddress[XLAPC_MAX_NUMBER_SLOTS];
-    uint32_t numSlots = getDebugIpData(LAPC, baseAddress, nullptr, nullptr, nullptr, nullptr, XLAPC_MAX_NUMBER_SLOTS);
-    uint32_t temp[XLAPC_STATUS_PER_SLOT];
-    aCheckerResults->NumSlots = numSlots;
-    snprintf(aCheckerResults->DevUserName, 256, "%s", mDevUserName.c_str());
-    for (uint32_t s = 0; s < numSlots; ++s) {
-      for (int c=0; c < XLAPC_STATUS_PER_SLOT; c++)
-        size += xclRead(XCL_ADDR_SPACE_DEVICE_CHECKER, baseAddress[s]+statusRegisters[c], &temp[c], 4);
-
-      aCheckerResults->OverallStatus[s]      = temp[XLAPC_OVERALL_STATUS];
-      std::copy(temp+XLAPC_CUMULATIVE_STATUS_0, temp+XLAPC_SNAPSHOT_STATUS_0, aCheckerResults->CumulativeStatus[s]);
-      std::copy(temp+XLAPC_SNAPSHOT_STATUS_0, temp+XLAPC_STATUS_PER_SLOT, aCheckerResults->SnapshotStatus[s]);
-    }
-
-    return size;
+    aCheckerResults->OverallStatus[s] = temp[XLAPC_OVERALL_STATUS];
+    std::copy(temp+XLAPC_CUMULATIVE_STATUS_0, temp+XLAPC_SNAPSHOT_STATUS_0, aCheckerResults->CumulativeStatus[s]);
+    std::copy(temp+XLAPC_SNAPSHOT_STATUS_0, temp+XLAPC_STATUS_PER_SLOT, aCheckerResults->SnapshotStatus[s]);
   }
-#endif
-  // Read APM performance counters
+  return size;
+}
 
+
+// Read APM performance counters
 size_t xclDebugReadCounters(xclDeviceHandle handle, xclDebugCountersResults* aCounterResults) 
 {
   auto shim = get_shim_object(handle);
@@ -1837,52 +1826,46 @@ size_t xclDebugReadStreamingCounters(xclDeviceHandle handle, xclStreamingDebugCo
   return size;
 }
 
-#if 0
-  size_t shim::xclDebugReadStreamingCheckers(xclDebugStreamingCheckersResults* aStreamingCheckerResults) {
 
-    size_t size = 0; // The amount of data read from the hardware
+size_t xclDebugReadStreamingCheckers(xclDeviceHandle handle, xclDebugStreamingCheckersResults* aStreamingCheckerResults)
+{
+  auto shim = get_shim_object(handle);
+  size_t size = 0; // The amount of data read from the hardware
 
-    if (mLogStream.is_open()) {
-      mLogStream << __func__ << ", " << std::this_thread::get_id()
-      << ", " << XCL_PERF_MON_MEMORY << ", " << aStreamingCheckerResults
-      << ", Read streaming protocol checkers..." << std::endl;
-    }
+  // Get the base addresses of all the SPC IPs in the debug IP layout
+  uint64_t baseAddress[XSPC_MAX_NUMBER_SLOTS];
+  uint32_t numSlots = getDebugIpData(handle, AXI_STREAM_PROTOCOL_CHECKER,
+                        baseAddress, nullptr, nullptr, nullptr, nullptr,
+                        XSPC_MAX_NUMBER_SLOTS);
 
-    // Get the base addresses of all the SPC IPs in the debug IP layout
-    uint64_t baseAddress[XSPC_MAX_NUMBER_SLOTS];
-    uint32_t numSlots = getDebugIpData(AXI_STREAM_PROTOCOL_CHECKER,
-              baseAddress,
-              nullptr, nullptr, nullptr, nullptr,
-              XSPC_MAX_NUMBER_SLOTS);
+  // Fill up the portions of the return struct that are known by the runtime
+  aStreamingCheckerResults->NumSlots = numSlots ;
+  //snprintf(aStreamingCheckerResults->DevUserName, 256, "%s", mDevUserName.c_str());
 
-    // Fill up the portions of the return struct that are known by the runtime
-    aStreamingCheckerResults->NumSlots = numSlots ;
-    snprintf(aStreamingCheckerResults->DevUserName, 256, "%s", mDevUserName.c_str());
+  // Fill up the return structure with the values read from the hardware
+  for (unsigned int i = 0 ; i < numSlots ; ++i)
+  {
+    uint32_t pc_asserted ;
+    uint32_t current_pc ;
+    uint32_t snapshot_pc ;
 
-    // Fill up the return structure with the values read from the hardware
-    for (unsigned int i = 0 ; i < numSlots ; ++i)
-    {
-      uint32_t pc_asserted ;
-      uint32_t current_pc ;
-      uint32_t snapshot_pc ;
-
-      size += xclRead(XCL_ADDR_SPACE_DEVICE_CHECKER,
+    size += shim->read(XCL_ADDR_SPACE_DEVICE_CHECKER,
           baseAddress[i] + XSPC_PC_ASSERTED_OFFSET,
           &pc_asserted, sizeof(uint32_t));
-      size += xclRead(XCL_ADDR_SPACE_DEVICE_CHECKER,
+    size += shim->read(XCL_ADDR_SPACE_DEVICE_CHECKER,
           baseAddress[i] + XSPC_CURRENT_PC_OFFSET,
           &current_pc, sizeof(uint32_t));
-      size += xclRead(XCL_ADDR_SPACE_DEVICE_CHECKER,
+    size += shim->read(XCL_ADDR_SPACE_DEVICE_CHECKER,
           baseAddress[i] + XSPC_SNAPSHOT_PC_OFFSET,
           &snapshot_pc, sizeof(uint32_t));
 
-      aStreamingCheckerResults->PCAsserted[i] = pc_asserted;
-      aStreamingCheckerResults->CurrentPC[i] = current_pc;
-      aStreamingCheckerResults->SnapshotPC[i] = snapshot_pc;
-    }
-    return size;
+    aStreamingCheckerResults->PCAsserted[i] = pc_asserted;
+    aStreamingCheckerResults->CurrentPC[i] = current_pc;
+    aStreamingCheckerResults->SnapshotPC[i] = snapshot_pc;
   }
-#endif
+  return size;
+}
+
 
 size_t xclDebugReadAccelMonitorCounters(xclDeviceHandle handle, xclAccelMonitorCounterResults* samResult)
 {
@@ -1996,20 +1979,16 @@ size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type, void*
 {
   xrt_core::message::send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclDebugReadIPStatus()");
   switch (type) {
-    #if 0
     case XCL_DEBUG_READ_TYPE_LAPC :
-      return drv->xclDebugReadCheckers(reinterpret_cast<xclDebugCheckersResults*>(debugResults));
-    #endif
+      return xclDebugReadCheckers(handle, reinterpret_cast<xclDebugCheckersResults*>(debugResults));
     case XCL_DEBUG_READ_TYPE_AIM :
       return xclDebugReadCounters(handle, reinterpret_cast<xclDebugCountersResults*>(debugResults));
     case XCL_DEBUG_READ_TYPE_AM :
       return xclDebugReadAccelMonitorCounters(handle, reinterpret_cast<xclAccelMonitorCounterResults*>(debugResults));
     case XCL_DEBUG_READ_TYPE_ASM :
       return xclDebugReadStreamingCounters(handle, reinterpret_cast<xclStreamingDebugCountersResults*>(debugResults));
-  #if 0
-  case XCL_DEBUG_READ_TYPE_SPC:
-    return drv->xclDebugReadStreamingCheckers(reinterpret_cast<xclDebugStreamingCheckersResults*>(debugResults));
-  #endif
+    case XCL_DEBUG_READ_TYPE_SPC:
+      return xclDebugReadStreamingCheckers(handle, reinterpret_cast<xclDebugStreamingCheckersResults*>(debugResults));
     default:
       ;
   };

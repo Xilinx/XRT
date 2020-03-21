@@ -20,11 +20,13 @@
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 
-#include "xrt.h"
-#include "core/common/xrt_profiling.h"
+#include "core/include/xrt.h"
+
 #include "core/common/system.h"
 #include "core/common/device.h"
 #include "core/common/error.h"
+#include "core/common/xrt_profiling.h"
+#include "core/include/xcl_axi_checker_codes.h"
 
 // 3rd Party Library - Include Files
 #include <boost/program_options.hpp>
@@ -40,7 +42,7 @@ namespace po = boost::program_options;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
-const int8_t maxDebugIpType = 13;  // TRACE_S2MM_FULL
+const int8_t maxDebugIpType = TRACE_S2MM_FULL+1;
 
 bool debugIpOpt[maxDebugIpType];
 uint64_t debugIpNum[maxDebugIpType];
@@ -303,11 +305,176 @@ int readASMCounters(xclDeviceHandle hdl, debug_ip_layout* map)
 }
 
 
+int readLAPCheckers(xclDeviceHandle hdl, debug_ip_layout* map, int aVerbose)
+{
+  std::vector<std::string> lapcSlotNames;  
+  uint32_t count = getDebugIpData(map, LAPC, nullptr, &lapcSlotNames);
+  if (count == 0) {
+    std::cout << "ERROR: LAPC IP does not exist on the platform" << std::endl;
+    return 0;
+  }
+  xclDebugCheckersResults debugResults = {0};
+  std::vector< std::pair<std::string, std::string> > cuNameportNames;
+  std::pair<size_t, size_t> widths = getCUNamePortName(lapcSlotNames, cuNameportNames);
+  xclDebugReadIPStatus(hdl, XCL_DEBUG_READ_TYPE_LAPC, &debugResults);
+
+  bool violations_found = false;
+  bool invalid_codes = false;
+  std::cout << "Light Weight AXI Protocol Checkers codes \n";
+  auto col1 = std::max(widths.first, strlen("CU Name")) + 4;
+  auto col2 = std::max(widths.second, strlen("AXI Portname"));
+
+  for (size_t i = 0; i<debugResults.NumSlots; ++i) {
+    if (!xclAXICheckerCodes::isValidAXICheckerCodes(debugResults.OverallStatus[i],
+                debugResults.SnapshotStatus[i], debugResults.CumulativeStatus[i])) {
+      std::cout << "CU Name: " << cuNameportNames[i].first << " AXI Port: " << cuNameportNames[i].second << "\n";
+      std::cout << "  Invalid codes read, skip decoding\n";
+      invalid_codes = true;
+    }
+    else if (debugResults.OverallStatus[i]) {
+      std::cout << "CU Name: " << cuNameportNames[i].first << " AXI Port: " << cuNameportNames[i].second << "\n";
+      std::cout << "  First violation: \n";
+      std::cout << "    " <<  xclAXICheckerCodes::decodeAXICheckerCodes(debugResults.SnapshotStatus[i]);
+      //snapshot reflects first violation, cumulative has all violations
+      unsigned int tCummStatus[4];
+      std::transform(debugResults.CumulativeStatus[i], debugResults.CumulativeStatus[i]+4, debugResults.SnapshotStatus[i], tCummStatus, std::bit_xor<unsigned int>());
+      std::cout << "  Other violations: \n";
+      std::string tstr = xclAXICheckerCodes::decodeAXICheckerCodes(tCummStatus);
+      if (tstr == "") {
+        std::cout << "    None";
+      } else {
+        std::cout << "    " <<  tstr;
+      }
+      violations_found = true;
+    }
+  }
+  if (!violations_found && !invalid_codes) {
+    std::cout << "No AXI violations found \n";
+  }
+  if (violations_found && aVerbose && !invalid_codes) {
+    std::ofstream saveFormat;
+    saveFormat.copyfmt(std::cout);
+
+    std::cout << "\n";
+    std::cout << std::left
+              << std::setw(col1) << "CU Name"
+              << " " << std::setw(col2) << "AXI Portname"
+              << "  " << std::setw(16) << "Overall Status"
+              << "  " << std::setw(16) << "Snapshot[0]"
+              << "  " << std::setw(16) << "Snapshot[1]"
+              << "  " << std::setw(16) << "Snapshot[2]"
+              << "  " << std::setw(16) << "Snapshot[3]"
+              << "  " << std::setw(16) << "Cumulative[0]"
+              << "  " << std::setw(16) << "Cumulative[1]"
+              << "  " << std::setw(16) << "Cumulative[2]"
+              << "  " << std::setw(16) << "Cumulative[3]"
+              << std::endl;
+    for (size_t i = 0; i<debugResults.NumSlots; ++i) {
+      std::cout << std::left
+              << std::setw(col1) << cuNameportNames[i].first
+              << " " << std::setw(col2) << cuNameportNames[i].second
+              << std::hex
+              << "  " << std::setw(16) << debugResults.OverallStatus[i]
+              << "  " << std::setw(16) << debugResults.SnapshotStatus[i][0]
+              << "  " << std::setw(16) << debugResults.SnapshotStatus[i][1]
+              << "  " << std::setw(16) << debugResults.SnapshotStatus[i][2]
+              << "  " << std::setw(16) << debugResults.SnapshotStatus[i][3]
+              << "  " << std::setw(16) << debugResults.CumulativeStatus[i][0]
+              << "  " << std::setw(16) << debugResults.CumulativeStatus[i][1]
+              << "  " << std::setw(16) << debugResults.CumulativeStatus[i][2]
+              << "  " << std::setw(16) << debugResults.CumulativeStatus[i][3]
+              << std::dec << std::endl;
+    }
+    // Restore formatting
+    std::cout.copyfmt(saveFormat);
+  }
+  return 0;
+}
+
+int readStreamingCheckers(xclDeviceHandle hdl, debug_ip_layout* map, int aVerbose)
+{
+  std::vector<std::string> streamingCheckerSlotNames ;
+  uint32_t numCheckers = getDebugIpData(map, AXI_STREAM_PROTOCOL_CHECKER,
+                            nullptr, &streamingCheckerSlotNames);
+  if (numCheckers == 0) {
+    std::cout << "ERROR: AXI Streaming Protocol Checkers do not exist on the platform" << std::endl ;
+    return 0 ;
+  }
+
+  std::vector< std::pair<std::string, std::string> > cuNameportNames;
+  std::pair<size_t, size_t> widths = getCUNamePortName(streamingCheckerSlotNames, cuNameportNames);
+
+  xclDebugStreamingCheckersResults debugResults = {0};
+  xclDebugReadIPStatus(hdl, XCL_DEBUG_READ_TYPE_SPC, &debugResults);
+
+  // Now print out all of the values (and their interpretations)
+
+  std::cout << "AXI Streaming Protocol Checkers codes\n";
+  bool invalid_codes = false ;
+  bool violations_found = false ;
+
+  for (size_t i = 0 ; i < debugResults.NumSlots; ++i) {
+    std::cout << "CU Name: " << cuNameportNames[i].first 
+              << " AXI Port: " << cuNameportNames[i].second << "\n";
+
+    if (!xclStreamingAXICheckerCodes::isValidStreamingAXICheckerCodes(debugResults.PCAsserted[i], debugResults.CurrentPC[i], debugResults.SnapshotPC[i]))
+    {
+      std::cout << "  Invalid codes read, skip decoding\n";
+      invalid_codes = true ;
+    } else {
+      std::cout << "  First violation: \n";
+      std::cout << "    " << xclStreamingAXICheckerCodes::decodeStreamingAXICheckerCodes(debugResults.SnapshotPC[i]);
+      std::cout << "  Other violations: \n";
+      std::string tstr = xclStreamingAXICheckerCodes::decodeStreamingAXICheckerCodes(debugResults.CurrentPC[i]);
+      if (tstr == "") {
+        std::cout << "    None";
+      } else {
+        std::cout << "    " <<  tstr;
+      }
+      violations_found = true;
+    }
+  }
+  if (!violations_found && !invalid_codes)
+  {
+    std::cout << "No AXI violations found \n";
+  }
+  if (violations_found && aVerbose && !invalid_codes) 
+  {
+    auto col1 = std::max(widths.first, strlen("CU Name")) + 4;
+    auto col2 = std::max(widths.second, strlen("AXI Portname"));
+
+    std::ofstream saveFormat;
+    saveFormat.copyfmt(std::cout);
+
+    std::cout << "\n";
+    std::cout << std::left
+        << std::setw(col1) << "CU Name"
+        << " " << std::setw(col2) << "AXI Portname"
+        << "  " << std::setw(16) << "Overall Status"
+        << "  " << std::setw(16) << "Snapshot"
+        << "  " << std::setw(16) << "Current"
+        << std::endl;
+    for (size_t i = 0; i<debugResults.NumSlots; ++i) {
+      std::cout << std::left
+                << std::setw(col1) << cuNameportNames[i].first
+                << " " << std::setw(col2) << cuNameportNames[i].second
+                << "  " << std::setw(16) << std::hex << debugResults.PCAsserted[i]
+                << "  " << std::setw(16) << std::hex << debugResults.SnapshotPC[i]
+                << "  " << std::setw(16) << std::hex << debugResults.CurrentPC[i]
+                << std::dec << std::endl;
+    }
+    // Restore formatting
+    std::cout.copyfmt(saveFormat);
+  }
+  return 0;
+}
+
+
 SubCmdStatus::SubCmdStatus(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("status", 
              "List the debug IPs available on the acceleration program loaded on the given device")
 {
-  const std::string longDescription = "<add long discription>";
+  const std::string longDescription = "List the debug IPs available on the acceleration program loaded on the given device and show their status";
   setLongDescription(longDescription);
   setExampleSyntax("");
   setIsHidden(_isHidden);
@@ -333,6 +500,8 @@ SubCmdStatus::execute(const SubCmdOptions& _options) const
     ("aim", boost::program_options::bool_switch(&debugIpOpt[AXI_MM_MONITOR]), "Status of AXI Interface Monitor")
     ("accelmonitor", boost::program_options::bool_switch(&debugIpOpt[ACCEL_MONITOR]), "Status of Accelerator Monitor")
     ("asm", boost::program_options::bool_switch(&debugIpOpt[AXI_STREAM_MONITOR]), "Status of AXI Stream Monitor")
+    ("lapc", boost::program_options::bool_switch(&debugIpOpt[LAPC]), "Status of Light Weight AXI Protocol Checkers")
+    ("spc", boost::program_options::bool_switch(&debugIpOpt[AXI_STREAM_PROTOCOL_CHECKER]), "Status of AXI Streaming Protocol Checkers")
 //    (",tracefunnel", boost::program_options::value<unsigned int>(&card), "")
 //    (",monitorfifolite", boost::program_options::value<unsigned int>(&card), "")
 //    (",monitorfifofull", boost::program_options::value<unsigned int>(&card), "")
@@ -376,7 +545,8 @@ SubCmdStatus::execute(const SubCmdOptions& _options) const
 
   if (sectionSz == 0 || map->m_count <= 0) {
     std::cout << "INFO: Failed to find any debug IPs on the platform. "
-         << "Ensure that a valid bitstream with debug IPs (AIM, LAPC) is successfully downloaded. \n";
+              << "Ensure that a valid bitstream with debug IPs (AIM, LAPC) is successfully downloaded. \n"
+              << std::endl;
     return;
   }
 
@@ -389,7 +559,7 @@ SubCmdStatus::execute(const SubCmdOptions& _options) const
   }
 
   if(!ipOpt) {
-    std::cout << " Number of IPs found :: " << map->m_count << std::endl;
+    std::cout << "Number of IPs found :: " << map->m_count << std::endl;
     for(uint64_t i = 0; i < map->m_count; i++) {
       if (map->m_debug_ip_data[i].m_type > maxDebugIpType) {
         std::cout << "Found invalid IP in debug ip layout with type "
@@ -421,6 +591,12 @@ SubCmdStatus::execute(const SubCmdOptions& _options) const
   }
   if(debugIpOpt[AXI_STREAM_MONITOR]) {
     readASMCounters(hdl, map);
+  }
+  if(debugIpOpt[LAPC]) {
+    readLAPCheckers(hdl, map, 1);
+  }
+  if(debugIpOpt[AXI_STREAM_PROTOCOL_CHECKER]) {
+    readStreamingCheckers(hdl, map, 1);
   }
 
   std::cout << "INFO: xbutil2 status succeeded.\n";
