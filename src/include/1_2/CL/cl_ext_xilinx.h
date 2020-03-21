@@ -468,11 +468,11 @@ xclGetComputeUnitInfo(cl_kernel             kernel,
 /**
  * clGetKernelInfo() - kernel information
  *
- * @CL_KERNAL_COMPUTE_UNIT_COUNT
+ * @CL_KERNEL_COMPUTE_UNIT_COUNT
  * @type: cl_uint
  * @return: Number of compute units associated with this kernel object
  *
- * @CL_KERNAL_INSTANCE_BASE_ADDRESS
+ * @CL_KERNEL_INSTANCE_BASE_ADDRESS
  * @type: size_t[]
  * @return: The base address of the compute units of this kernel object
  */
@@ -482,7 +482,7 @@ xclGetComputeUnitInfo(cl_kernel             kernel,
 /**
  * clGetKernelArgInfo() - kernel argument information
  *
- * @CL_KERNAL_ARG_OFFSET
+ * @CL_KERNEL_ARG_OFFSET
  * @type: size_t
  * Return: Address offset for specified kernel argument.
  * The returned offset is relative to the base address of
