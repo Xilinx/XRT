@@ -301,9 +301,6 @@ namespace xdp {
         if (!mTraceThreadEn) {
           dInt->clockTraining();
           init_done = offloader->read_trace_init();
-std::cout << " Force readtrace right after clock training " << std::endl;
-xclTraceResultsVector tv;
-          dInt->readTrace(tv);          
         }
 
         if (init_done) {
