@@ -1656,7 +1656,7 @@ getDebugIpData(xclDeviceHandle handle, int type, uint64_t *baseAddress, std::str
     if(baseAddress) baseAddress[count] = map->m_debug_ip_data[i].m_base_address;
     if(portNames) {
       // Fill up string with 128 characters (padded with null characters)
-      portNames[count].assign(map->m_debug_ip_data[i].m_name, 128);
+      portNames[count].assign(map->m_debug_ip_data[i].m_name, sizeof(map->m_debug_ip_data[i].m_name));
       // Strip away extraneous null characters
       portNames[count].assign(portNames[count].c_str());
     }
@@ -1691,7 +1691,7 @@ xclDebugReadCheckers(xclDeviceHandle handle, xclDebugCheckersResults* aCheckerRe
   //snprintf(aCheckerResults->DevUserName, 256, "%s", mDevUserName.c_str());
   for (uint32_t s = 0; s < numSlots; ++s) {
     for (int c=0; c < XLAPC_STATUS_PER_SLOT; c++)
-      size += shim->read(XCL_ADDR_SPACE_DEVICE_CHECKER, baseAddress[s]+statusRegisters[c], &temp[c], 4);
+      size += shim->read(XCL_ADDR_SPACE_DEVICE_CHECKER, baseAddress[s]+statusRegisters[c], &temp[c], sizeof(uint32_t));
 
     aCheckerResults->OverallStatus[s] = temp[XLAPC_OVERALL_STATUS];
     std::copy(temp+XLAPC_CUMULATIVE_STATUS_0, temp+XLAPC_SNAPSHOT_STATUS_0, aCheckerResults->CumulativeStatus[s]);
@@ -1746,13 +1746,13 @@ xclDebugReadCounters(xclDeviceHandle handle, xclDebugCountersResults* aCounterRe
     // Read sample interval register to latch the sampled metric counters
     size += shim->read(XCL_ADDR_SPACE_DEVICE_PERFMON,
                     baseAddress[s] + XAIM_SAMPLE_OFFSET,
-                    &sampleInterval, 4);
+                    &sampleInterval, sizeof(uint32_t));
 
     // If applicable, read the upper 32-bits of the 64-bit debug counters
     if (perfMonProperties[s] & XAIM_64BIT_PROPERTY_MASK) {
       for (int c = 0 ; c < XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT ; ++c) {
         shim->read(XCL_ADDR_SPACE_DEVICE_PERFMON,
-                   baseAddress[s] + spm_upper_offsets[c], &temp[c], 4) ;
+                   baseAddress[s] + spm_upper_offsets[c], &temp[c], sizeof(uint32_t)) ;
       }
       aCounterResults->WriteBytes[s]    = ((uint64_t)(temp[0])) << 32 ;
       aCounterResults->WriteTranx[s]    = ((uint64_t)(temp[1])) << 32 ;
@@ -1766,7 +1766,7 @@ xclDebugReadCounters(xclDeviceHandle handle, xclDebugCountersResults* aCounterRe
     }
 
     for (int c=0; c < XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; c++) {
-      size += shim->read(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s]+spm_offsets[c], &temp[c], 4);
+      size += shim->read(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s]+spm_offsets[c], &temp[c], sizeof(uint32_t));
     }
 
     aCounterResults->WriteBytes[s]    |= temp[0];
@@ -1810,7 +1810,7 @@ xclDebugReadStreamingCounters(xclDeviceHandle handle, xclStreamingDebugCountersR
 
   for (unsigned int i = 0 ; i < numSlots ; ++i)
   {
-    uint32_t sampleInterval ;
+    uint32_t sampleInterval = 0;
     // Read sample interval register to latch the sampled metric counters
     size += shim->read(XCL_ADDR_SPACE_DEVICE_PERFMON,
                      baseAddress[i] + XASM_SAMPLE_OFFSET,
@@ -1854,9 +1854,9 @@ xclDebugReadStreamingCheckers(xclDeviceHandle handle, xclDebugStreamingCheckersR
   // Fill up the return structure with the values read from the hardware
   for (unsigned int i = 0 ; i < numSlots ; ++i)
   {
-    uint32_t pc_asserted ;
-    uint32_t current_pc ;
-    uint32_t snapshot_pc ;
+    uint32_t pc_asserted = 0;
+    uint32_t current_pc = 0;
+    uint32_t snapshot_pc = 0;
 
     size += shim->read(XCL_ADDR_SPACE_DEVICE_CHECKER,
           baseAddress[i] + XSPC_PC_ASSERTED_OFFSET,
@@ -1924,11 +1924,11 @@ xclDebugReadAccelMonitorCounters(xclDeviceHandle handle, xclAccelMonitorCounterR
   samResult->NumSlots = numSlots;
   
   for (uint32_t s=0; s < numSlots; s++) {
-    uint32_t sampleInterval;
+    uint32_t sampleInterval = 0;
     // Read sample interval register to latch the sampled metric counters
     size += shim->read(XCL_ADDR_SPACE_DEVICE_PERFMON,
                     baseAddress[s] + XAM_SAMPLE_OFFSET,
-                    &sampleInterval, 4);
+                    &sampleInterval, sizeof(uint32_t));
 
     bool hasDataflow = (cmpMonVersions(accelmonMajorVersions[s],accelmonMinorVersions[s],1,1) < 0) ? true : false;
 
@@ -1937,7 +1937,7 @@ xclDebugReadAccelMonitorCounters(xclDeviceHandle handle, xclAccelMonitorCounterR
       for (int c = 0 ; c < XAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT ; ++c) {
         shim->read(XCL_ADDR_SPACE_DEVICE_PERFMON,
             baseAddress[s] + sam_upper_offsets[c],
-            &temp[c], 4) ;
+            &temp[c], sizeof(uint32_t)) ;
       }
       samResult->CuExecCount[s]      = ((uint64_t)(temp[0])) << 32;
       samResult->CuExecCycles[s]     = ((uint64_t)(temp[1])) << 32;
@@ -1950,15 +1950,15 @@ xclDebugReadAccelMonitorCounters(xclDeviceHandle handle, xclAccelMonitorCounterR
 
       if(hasDataflow) {
         uint64_t dfTmp[2] = {0};
-        shim->read(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s] + XAM_BUSY_CYCLES_UPPER_OFFSET, &dfTmp[0], 4);
-        shim->read(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s] + XAM_MAX_PARALLEL_ITER_UPPER_OFFSET, &dfTmp[1], 4);
+        shim->read(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s] + XAM_BUSY_CYCLES_UPPER_OFFSET, &dfTmp[0], sizeof(uint32_t));
+        shim->read(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s] + XAM_MAX_PARALLEL_ITER_UPPER_OFFSET, &dfTmp[1], sizeof(uint32_t));
         samResult->CuBusyCycles[s]      = dfTmp[0] << 32;
         samResult->CuMaxParallelIter[s] = dfTmp[1] << 32;
       }
     }
 
     for (int c=0; c < XAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; c++)
-      size += shim->read(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s]+sam_offsets[c], &temp[c], 4);
+      size += shim->read(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s]+sam_offsets[c], &temp[c], sizeof(uint32_t));
 
     samResult->CuExecCount[s]      |= temp[0];
     samResult->CuExecCycles[s]     |= temp[1];
@@ -1971,8 +1971,8 @@ xclDebugReadAccelMonitorCounters(xclDeviceHandle handle, xclAccelMonitorCounterR
 
     if(hasDataflow) {
       uint64_t dfTmp[2] = {0};
-      shim->read(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s] + XAM_BUSY_CYCLES_OFFSET, &dfTmp[0], 4);
-      shim->read(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s] + XAM_MAX_PARALLEL_ITER_OFFSET, &dfTmp[1], 4);
+      shim->read(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s] + XAM_BUSY_CYCLES_OFFSET, &dfTmp[0], sizeof(uint32_t));
+      shim->read(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s] + XAM_MAX_PARALLEL_ITER_OFFSET, &dfTmp[1], sizeof(uint32_t));
 
       samResult->CuBusyCycles[s]      |= dfTmp[0] << 32;
       samResult->CuMaxParallelIter[s] |= dfTmp[1] << 32;
@@ -2003,3 +2003,4 @@ xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type, void* debugR
   };
   return 0;
 }
+
