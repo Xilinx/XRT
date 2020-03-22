@@ -1616,24 +1616,29 @@ xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz,
  * Returns  0 if Version2 = Version1
  * Returns -1 if Version2 < Version1
  */
-signed cmpMonVersions(unsigned major1, unsigned minor1, unsigned major2, unsigned minor2) {
+signed 
+cmpMonVersions(unsigned major1, unsigned minor1, unsigned major2, unsigned minor2) {
   if (major2 > major1)
     return 1;
-  else if (major2 < major1)
+
+  if (major2 < major1)
     return -1;
-  else if (minor2 > minor1)
+
+  if (minor2 > minor1)
     return 1;
-  else if (minor2 < minor1)
+
+  if (minor2 < minor1)
     return -1;
-  else return 0;
+
+  return 0;
 }
 
 
 // Gets the information about the specified IP from the sysfs debug_ip_table.
 // The IP types are defined in xclbin.h
-uint32_t getDebugIpData(xclDeviceHandle handle, int type, uint64_t *baseAddress, std::string * portNames,
-                                       uint8_t *properties, uint8_t *majorVersions, uint8_t *minorVersions,
-                                       size_t size)
+uint32_t 
+getDebugIpData(xclDeviceHandle handle, int type, uint64_t *baseAddress, std::string * portNames,
+               uint8_t *properties, uint8_t *majorVersions, uint8_t *minorVersions, size_t size)
 {
   auto shim = get_shim_object(handle);
   size_t sz1 = 0, sectionSz = 0;
@@ -1664,7 +1669,8 @@ uint32_t getDebugIpData(xclDeviceHandle handle, int type, uint64_t *baseAddress,
 }
 
 
-size_t xclDebugReadCheckers(xclDeviceHandle handle, xclDebugCheckersResults* aCheckerResults) 
+size_t 
+xclDebugReadCheckers(xclDeviceHandle handle, xclDebugCheckersResults* aCheckerResults) 
 {
   auto shim = get_shim_object(handle);
   size_t size = 0;
@@ -1696,7 +1702,8 @@ size_t xclDebugReadCheckers(xclDeviceHandle handle, xclDebugCheckersResults* aCh
 
 
 // Read APM performance counters
-size_t xclDebugReadCounters(xclDeviceHandle handle, xclDebugCountersResults* aCounterResults) 
+size_t 
+xclDebugReadCounters(xclDeviceHandle handle, xclDebugCountersResults* aCounterResults) 
 {
   auto shim = get_shim_object(handle);
   size_t size = 0;
@@ -1776,7 +1783,8 @@ size_t xclDebugReadCounters(xclDeviceHandle handle, xclDebugCountersResults* aCo
 }
 
 // Read the streaming performance monitors
-size_t xclDebugReadStreamingCounters(xclDeviceHandle handle, xclStreamingDebugCountersResults* aCounterResults) 
+size_t 
+xclDebugReadStreamingCounters(xclDeviceHandle handle, xclStreamingDebugCountersResults* aCounterResults) 
 {
   auto shim = get_shim_object(handle);
   size_t size = 0; // The amount of data read from the hardware
@@ -1827,7 +1835,8 @@ size_t xclDebugReadStreamingCounters(xclDeviceHandle handle, xclStreamingDebugCo
 }
 
 
-size_t xclDebugReadStreamingCheckers(xclDeviceHandle handle, xclDebugStreamingCheckersResults* aStreamingCheckerResults)
+size_t 
+xclDebugReadStreamingCheckers(xclDeviceHandle handle, xclDebugStreamingCheckersResults* aStreamingCheckerResults)
 {
   auto shim = get_shim_object(handle);
   size_t size = 0; // The amount of data read from the hardware
@@ -1867,7 +1876,8 @@ size_t xclDebugReadStreamingCheckers(xclDeviceHandle handle, xclDebugStreamingCh
 }
 
 
-size_t xclDebugReadAccelMonitorCounters(xclDeviceHandle handle, xclAccelMonitorCounterResults* samResult)
+size_t 
+xclDebugReadAccelMonitorCounters(xclDeviceHandle handle, xclAccelMonitorCounterResults* samResult)
 {
   auto shim = get_shim_object(handle);
 
@@ -1975,7 +1985,8 @@ size_t xclDebugReadAccelMonitorCounters(xclDeviceHandle handle, xclAccelMonitorC
 }
 
 
-size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type, void* debugResults)
+size_t 
+xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type, void* debugResults)
 {
   xrt_core::message::send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclDebugReadIPStatus()");
   switch (type) {
@@ -1989,8 +2000,6 @@ size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type, void*
       return xclDebugReadStreamingCounters(handle, reinterpret_cast<xclStreamingDebugCountersResults*>(debugResults));
     case XCL_DEBUG_READ_TYPE_SPC:
       return xclDebugReadStreamingCheckers(handle, reinterpret_cast<xclDebugStreamingCheckersResults*>(debugResults));
-    default:
-      ;
   };
   return 0;
 }

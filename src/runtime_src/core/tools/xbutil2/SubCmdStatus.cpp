@@ -63,8 +63,9 @@ static const char* debugIpNames[maxDebugIpType] = {
 };
 
 
-uint32_t getDebugIpData(debug_ip_layout* map, int type,
-    std::vector<uint64_t> *baseAddress, std::vector<std::string> * portNames) 
+uint32_t 
+getDebugIpData(debug_ip_layout* map, int type,
+        std::vector<uint64_t> *baseAddress, std::vector<std::string> * portNames) 
 {
   uint32_t count = 0;
   for(uint64_t i = 0; i < map->m_count; i++) {
@@ -87,17 +88,17 @@ uint32_t getDebugIpData(debug_ip_layout* map, int type,
 }
 
 
-std::pair<size_t, size_t> getCUNamePortName (std::vector<std::string>& aSlotNames,
-                             std::vector< std::pair<std::string, std::string> >& aCUNamePortNames) 
+std::pair<size_t, size_t> 
+getCUNamePortName (std::vector<std::string>& aSlotNames,
+        std::vector< std::pair<std::string, std::string> >& aCUNamePortNames) 
 {
   //Slotnames are of the format "/cuname/portname" or "cuname/portname", split them and return in separate vector
   //return max length of the cuname and port names
   size_t max1 = 0, max2 = 0;
   char sep = '/';
-  for (auto slotName: aSlotNames) {
-    size_t found1;
+  for (auto &slotName: aSlotNames) {
     size_t start = 0;
-    found1 = slotName.find(sep, 0);
+    size_t found1 = slotName.find(sep, 0);
     if (found1 == 0) {
       //if the cuname starts with a '/'
       start = 1;
@@ -122,8 +123,9 @@ std::pair<size_t, size_t> getCUNamePortName (std::vector<std::string>& aSlotName
   return std::pair<size_t, size_t>(max1, max2);
 }
 
-std::pair<size_t, size_t> getStreamName (const std::vector<std::string>& aSlotNames,
-                             std::vector< std::pair<std::string, std::string> >& aStreamNames) 
+std::pair<size_t, size_t> 
+getStreamName (const std::vector<std::string>& aSlotNames,
+        std::vector< std::pair<std::string, std::string> >& aStreamNames) 
 {
   //Slotnames are of the format "Master-Slave", split them and return in separate vector
   //return max length of the Master and Slave port names
@@ -142,13 +144,13 @@ std::pair<size_t, size_t> getStreamName (const std::vector<std::string>& aSlotNa
 }
 
 
-int readAIMCounters(xclDeviceHandle hdl, debug_ip_layout* map) 
+void 
+readAIMCounters(xclDeviceHandle hdl, debug_ip_layout* map) 
 {
   std::vector<std::string> slotNames;
-  uint32_t count = getDebugIpData(map, AXI_MM_MONITOR, nullptr, &slotNames);
-  if(!count) {
+  if(0 == getDebugIpData(map, AXI_MM_MONITOR, nullptr, &slotNames)) {
     std::cout << "ERROR: AXI Interface Monitor IP does not exist on the platform" << std::endl;
-    return 0;
+    return;
   }
 
   xclDebugCountersResults debugResults = {0};
@@ -201,16 +203,16 @@ int readAIMCounters(xclDeviceHandle hdl, debug_ip_layout* map)
               << std::dec << std::endl;
   }
   std::cout.flags(f);
-  return 0;
+  return;
 }
 
-int readAMCounters(xclDeviceHandle hdl, debug_ip_layout* map)
+void 
+readAMCounters(xclDeviceHandle hdl, debug_ip_layout* map)
 {
   std::vector<std::string> slotNames;
-  uint32_t count = getDebugIpData(map, ACCEL_MONITOR, nullptr, &slotNames);
-  if(!count) {
+  if(0 == getDebugIpData(map, ACCEL_MONITOR, nullptr, &slotNames)) {
     std::cout << "ERROR: Accelerator Monitor IP does not exist on the platform" << std::endl;
-    return 0;
+    return;
   }
 
   xclAccelMonitorCounterResults debugResults = {0};
@@ -219,9 +221,9 @@ int readAMCounters(xclDeviceHandle hdl, debug_ip_layout* map)
   std::cout << "Accelerator Monitor Counters (hex values are cycle count)\n";
 
   size_t maxWidth = 0;
-  for (auto& mon : slotNames) {
+  for (auto &mon : slotNames)
     maxWidth = std::max(strlen(mon.c_str()), maxWidth);
-  }
+
   auto col1 = std::max(maxWidth, strlen("Compute Unit")) + 4;
 
   std::ios_base::fmtflags f(std::cout.flags());
@@ -253,16 +255,16 @@ int readAMCounters(xclDeviceHandle hdl, debug_ip_layout* map)
               << std::dec << std::endl;
   }
   std::cout.flags(f);
-  return 0;
+  return;
 }
 
-int readASMCounters(xclDeviceHandle hdl, debug_ip_layout* map) 
+void 
+readASMCounters(xclDeviceHandle hdl, debug_ip_layout* map) 
 {
   std::vector<std::string> slotNames;
-  uint32_t count = getDebugIpData(map, AXI_STREAM_MONITOR, nullptr, &slotNames);
-  if(!count) {
+  if(0 == getDebugIpData(map, AXI_STREAM_MONITOR, nullptr, &slotNames)) {
     std::cout << "ERROR: AXI Stream Monitor IP does not exist on the platform" << std::endl;
-    return 0;
+    return;
   }
 
   xclStreamingDebugCountersResults debugResults = {0};
@@ -301,17 +303,17 @@ int readASMCounters(xclDeviceHandle hdl, debug_ip_layout* map)
             << std::endl;
   }
   std::cout.flags(f);
-  return 0;
+  return;
 }
 
 
-int readLAPCheckers(xclDeviceHandle hdl, debug_ip_layout* map, int aVerbose)
+void 
+readLAPCheckers(xclDeviceHandle hdl, debug_ip_layout* map, int aVerbose)
 {
   std::vector<std::string> lapcSlotNames;  
-  uint32_t count = getDebugIpData(map, LAPC, nullptr, &lapcSlotNames);
-  if (count == 0) {
+  if (0 == getDebugIpData(map, LAPC, nullptr, &lapcSlotNames)) {
     std::cout << "ERROR: LAPC IP does not exist on the platform" << std::endl;
-    return 0;
+    return;
   }
   xclDebugCheckersResults debugResults = {0};
   std::vector< std::pair<std::string, std::string> > cuNameportNames;
@@ -330,8 +332,7 @@ int readLAPCheckers(xclDeviceHandle hdl, debug_ip_layout* map, int aVerbose)
       std::cout << "CU Name: " << cuNameportNames[i].first << " AXI Port: " << cuNameportNames[i].second << "\n";
       std::cout << "  Invalid codes read, skip decoding\n";
       invalid_codes = true;
-    }
-    else if (debugResults.OverallStatus[i]) {
+    } else if (debugResults.OverallStatus[i]) {
       std::cout << "CU Name: " << cuNameportNames[i].first << " AXI Port: " << cuNameportNames[i].second << "\n";
       std::cout << "  First violation: \n";
       std::cout << "    " <<  xclAXICheckerCodes::decodeAXICheckerCodes(debugResults.SnapshotStatus[i]);
@@ -348,9 +349,9 @@ int readLAPCheckers(xclDeviceHandle hdl, debug_ip_layout* map, int aVerbose)
       violations_found = true;
     }
   }
-  if (!violations_found && !invalid_codes) {
+  if (!violations_found && !invalid_codes)
     std::cout << "No AXI violations found \n";
-  }
+
   if (violations_found && aVerbose && !invalid_codes) {
     std::ofstream saveFormat;
     saveFormat.copyfmt(std::cout);
@@ -388,17 +389,18 @@ int readLAPCheckers(xclDeviceHandle hdl, debug_ip_layout* map, int aVerbose)
     // Restore formatting
     std::cout.copyfmt(saveFormat);
   }
-  return 0;
+  return;
 }
 
-int readStreamingCheckers(xclDeviceHandle hdl, debug_ip_layout* map, int aVerbose)
+void 
+readStreamingCheckers(xclDeviceHandle hdl, debug_ip_layout* map, int aVerbose)
 {
   std::vector<std::string> streamingCheckerSlotNames ;
-  uint32_t numCheckers = getDebugIpData(map, AXI_STREAM_PROTOCOL_CHECKER,
-                            nullptr, &streamingCheckerSlotNames);
-  if (numCheckers == 0) {
+
+  if (0 == getDebugIpData(map, AXI_STREAM_PROTOCOL_CHECKER,
+                          nullptr, &streamingCheckerSlotNames)) {
     std::cout << "ERROR: AXI Streaming Protocol Checkers do not exist on the platform" << std::endl ;
-    return 0 ;
+    return;
   }
 
   std::vector< std::pair<std::string, std::string> > cuNameportNames;
@@ -417,8 +419,9 @@ int readStreamingCheckers(xclDeviceHandle hdl, debug_ip_layout* map, int aVerbos
     std::cout << "CU Name: " << cuNameportNames[i].first 
               << " AXI Port: " << cuNameportNames[i].second << "\n";
 
-    if (!xclStreamingAXICheckerCodes::isValidStreamingAXICheckerCodes(debugResults.PCAsserted[i], debugResults.CurrentPC[i], debugResults.SnapshotPC[i]))
-    {
+    if (!xclStreamingAXICheckerCodes::isValidStreamingAXICheckerCodes(
+                     debugResults.PCAsserted[i], debugResults.CurrentPC[i], 
+                     debugResults.SnapshotPC[i])) {
       std::cout << "  Invalid codes read, skip decoding\n";
       invalid_codes = true ;
     } else {
@@ -435,11 +438,9 @@ int readStreamingCheckers(xclDeviceHandle hdl, debug_ip_layout* map, int aVerbos
     }
   }
   if (!violations_found && !invalid_codes)
-  {
     std::cout << "No AXI violations found \n";
-  }
-  if (violations_found && aVerbose && !invalid_codes) 
-  {
+
+  if (violations_found && aVerbose && !invalid_codes) {
     auto col1 = std::max(widths.first, strlen("CU Name")) + 4;
     auto col2 = std::max(widths.second, strlen("AXI Portname"));
 
@@ -466,7 +467,7 @@ int readStreamingCheckers(xclDeviceHandle hdl, debug_ip_layout* map, int aVerbos
     // Restore formatting
     std::cout.copyfmt(saveFormat);
   }
-  return 0;
+  return;
 }
 
 
@@ -502,9 +503,9 @@ SubCmdStatus::execute(const SubCmdOptions& _options) const
     ("asm", boost::program_options::bool_switch(&debugIpOpt[AXI_STREAM_MONITOR]), "Status of AXI Stream Monitor")
     ("lapc", boost::program_options::bool_switch(&debugIpOpt[LAPC]), "Status of Light Weight AXI Protocol Checkers")
     ("spc", boost::program_options::bool_switch(&debugIpOpt[AXI_STREAM_PROTOCOL_CHECKER]), "Status of AXI Streaming Protocol Checkers")
-//    (",tracefunnel", boost::program_options::value<unsigned int>(&card), "")
-//    (",monitorfifolite", boost::program_options::value<unsigned int>(&card), "")
-//    (",monitorfifofull", boost::program_options::value<unsigned int>(&card), "")
+//    (",tracefunnel", boost::program_options::value<unsigned int>(&debugIpOpt[AXI_TRACE_FUNNEL]), "")
+//    (",monitorfifolite", boost::program_options::value<unsigned int>(&debugIpOpt[AXI_MONITOR_FIFO_LITE]), "")
+//    (",monitorfifofull", boost::program_options::value<unsigned int>(&debugIpOpt[AXI_MONITOR_FIFO_FULL]), "")
   
   ;
 
