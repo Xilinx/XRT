@@ -24,6 +24,7 @@ namespace XBU = XBUtilities;
 
 #include "core/common/system.h"
 #include "core/common/device.h"
+#include "core/common/utils.h"
 #include "core/common/error.h"
 #include "core/common/xrt_profiling.h"
 #include "core/include/xcl_axi_checker_codes.h"
@@ -131,8 +132,7 @@ getStreamName (const std::vector<std::string>& aSlotNames,
   //return max length of the Master and Slave port names
   size_t max1 = 0, max2 = 0;
   for (auto &s: aSlotNames) {
-    size_t found;
-    found = s.find(IP_LAYOUT_SEP, 0);
+    size_t found = s.find(IP_LAYOUT_SEP, 0);
     if (found != std::string::npos)
       aStreamNames.emplace_back(s.substr(0, found), s.substr(found+1));
     else
@@ -163,7 +163,7 @@ readAIMCounters(xclDeviceHandle hdl, debug_ip_layout* map)
   auto col2 = std::max(widths.second, strlen("Type or Port"));
 
   std::streamsize ss = std::cout.precision();
-  std::ios_base::fmtflags f(std::cout.flags());
+  auto iosguard = xrt_core::utils::ios_restore(std::cout);
   std::cout << std::left
             << std::setw(col1) << "Region or CU"
             << " " << std::setw(col2) << "Type or Port"
@@ -202,7 +202,6 @@ readAIMCounters(xclDeviceHandle hdl, debug_ip_layout* map)
               << "  " << "0x" << std::setw(14) << debugResults.LastReadData[i]
               << std::dec << std::endl;
   }
-  std::cout.flags(f);
   return;
 }
 
@@ -226,7 +225,7 @@ readAMCounters(xclDeviceHandle hdl, debug_ip_layout* map)
 
   auto col1 = std::max(maxWidth, strlen("Compute Unit")) + 4;
 
-  std::ios_base::fmtflags f(std::cout.flags());
+  auto iosguard = xrt_core::utils::ios_restore(std::cout);
   std::cout << std::left
             << std::setw(col1) << "Compute Unit"
             << " " << std::setw(8) << "Ends"
@@ -254,7 +253,6 @@ readAMCounters(xclDeviceHandle hdl, debug_ip_layout* map)
               << "  " << "0x" << std::setw(14) << debugResults.CuMaxExecCycles[i]
               << std::dec << std::endl;
   }
-  std::cout.flags(f);
   return;
 }
 
@@ -277,7 +275,7 @@ readASMCounters(xclDeviceHandle hdl, debug_ip_layout* map)
   auto col2 = std::max(widths.second, strlen("Stream Slave"));
 
   std::streamsize ss = std::cout.precision();
-  std::ios_base::fmtflags f(std::cout.flags());
+  auto iosguard = xrt_core::utils::ios_restore(std::cout);
   std::cout << std::left
             << std::setw(col1) << "Stream Master"
             << " " << std::setw(col2) << "Stream Slave"
@@ -302,7 +300,6 @@ readASMCounters(xclDeviceHandle hdl, debug_ip_layout* map)
             << "  " << std::setw(16) << debugResults.StrStarveCycles[i]
             << std::endl;
   }
-  std::cout.flags(f);
   return;
 }
 
