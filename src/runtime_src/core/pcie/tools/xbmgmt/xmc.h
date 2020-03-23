@@ -42,7 +42,7 @@
 #define XMC_BASE_VERSION                    2018201
 
 #define XMC_CTRL_ERR_CLR                    (1 << 1)
-#define XMC_PKT_SUPPORT_MASK                (1 << 3)
+#define XMC_NO_MAILBOX_MASK                 (1 << 3)
 #define XMC_PKT_OWNER_MASK                  (1 << 5)
 #define XMC_PKT_ERR_MASK                    (1 << 26)
 

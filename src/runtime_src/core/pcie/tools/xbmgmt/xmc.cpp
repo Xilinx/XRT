@@ -24,7 +24,6 @@
 #include "flasher.h"
 #include "core/common/utils.h"
 
-//#define XMC_DEBUG
 #define BMC_JUMP_ADDR   0x201  /* Hard-coded for now */
 
 XMC_Flasher::XMC_Flasher(std::shared_ptr<pcidev::pci_device> dev)
@@ -66,8 +65,8 @@ XMC_Flasher::XMC_Flasher(std::shared_ptr<pcidev::pci_device> dev)
     }
 
     val = readReg(XMC_REG_OFF_FEATURE);
-    if (val & XMC_PKT_SUPPORT_MASK) {
-        mProbingErrMsg << "XMC packet buffer is not supported";
+    if (val & XMC_NO_MAILBOX_MASK) {
+        mProbingErrMsg << "XMC mailbox is not supported";
         goto nosup;
     }
 
@@ -602,7 +601,7 @@ static int writeImage(std::FILE *xmcDev,
 {
     int ret = 0;
     size_t len = 0;
-    const size_t max_write = 4000; // Max size per write
+    const size_t max_write = 4050; // Max size per write
 
     ret = std::fseek(xmcDev, addr, SEEK_SET);
     if (ret)
@@ -616,6 +615,8 @@ static int writeImage(std::FILE *xmcDev,
 
         std::size_t s = std::fwrite(buf.data() + i, 1, len, xmcDev);
         if (s != len)
+            ret = -ferror(xmcDev);
+        if (std::fflush(xmcDev))
             ret = -ferror(xmcDev);
     }
     return ret;
