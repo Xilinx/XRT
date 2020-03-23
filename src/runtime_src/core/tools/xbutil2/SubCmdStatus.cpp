@@ -120,7 +120,7 @@ getCUNamePortName (std::vector<std::string>& aSlotNames,
     max1 = std::max(strlen(aCUNamePortNames.back().first.c_str()), max1);
     max2 = std::max(strlen(aCUNamePortNames.back().second.c_str()), max2);
   }
-  return std::pair<size_t, size_t>(max1, max2);
+  return std::make_pair(max1, max2);
 }
 
 std::pair<size_t, size_t> 
@@ -140,7 +140,7 @@ getStreamName (const std::vector<std::string>& aSlotNames,
     max1 = std::max(aStreamNames.back().first.length(), max1);
     max2 = std::max(aStreamNames.back().second.length(), max2);
   }
-  return std::pair<size_t, size_t>(max1, max2);
+  return std::make_pair(max1, max2);
 }
 
 
