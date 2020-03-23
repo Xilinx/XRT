@@ -758,12 +758,14 @@ int shim::cmaEnable(bool enable, uint64_t size)
     int ret = 0;
 
     if (enable) {
-        drm_xocl_alloc_cma_info cma_info = {0};
+        uint32_t page_num = size >> 30;
+        uint32_t cma_info_sz = sizeof(drm_xocl_alloc_cma_info)+sizeof(uint64_t)*page_num;
+        drm_xocl_alloc_cma_info *cma_info = (drm_xocl_alloc_cma_info *)alloca(cma_info_sz);
         int err_code = 0;
 
-        cma_info.total_size = size;
+        cma_info->total_size = size;
 
-        ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_ALLOC_CMA, &cma_info);
+        ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_ALLOC_CMA, cma_info);
 
         err_code = -errno;
         if (ret && err_code != -E2BIG)
@@ -779,8 +781,7 @@ int shim::cmaEnable(bool enable, uint64_t size)
             uint64_t page_sz = 1 << 30;
             std::string err;
 
-            cma_info.user_addr = new uint64_t[page_num];
-            cma_info.total_size = size;
+            cma_info->total_size = size;
 
             for (uint32_t i = 0; i < page_num; ++i) {
                 void *addr_local = mmap(0x0, page_sz, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | hugepage_flag << MAP_HUGE_SHIFT, 0, 0);
@@ -790,23 +791,22 @@ int shim::cmaEnable(bool enable, uint64_t size)
                     ret = -ENOMEM;
                     break;
                 } else {
-                    cma_info.user_addr[i] = (uint64_t)addr_local;
+                    cma_info->user_addr[i] = (uint64_t)addr_local;
                 }
             }
 
             if (!ret) {
-                ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_ALLOC_CMA, &cma_info);
+                ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_ALLOC_CMA, cma_info);
                 if (ret)
                         ret = -errno;
             }
 
             for (uint32_t i = 0; i < page_num; ++i) {
-                if (!cma_info.user_addr[i])
+                if (!cma_info->user_addr[i])
                     continue;
 
-                 munmap((void*)cma_info.user_addr[i], page_sz);
+                 munmap((void*)cma_info->user_addr[i], page_sz);
             }
-             delete [] cma_info.user_addr;
 
         }
 
