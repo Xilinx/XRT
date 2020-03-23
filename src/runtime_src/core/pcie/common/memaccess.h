@@ -173,7 +173,7 @@ namespace xcldev {
 
       size_t count = aSize;
       uint64_t incr;
-      xrt_core::ios_flags_restore format(std::cout);
+      auto guard = xrt_core::utils::ios_restore(std::cout);
       for (uint64_t phy = aStartAddr; phy < aStartAddr+aSize; phy += incr) {
         incr = (count >= blockSize) ? blockSize : count;
         //std::cout << "Reading from addr " << std::hex << phy << " aSize = " << std::hex << incr << std::dec << std::endl;

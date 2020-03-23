@@ -21,6 +21,10 @@
 #include "xclfeatures.h"
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
+#include "core/common/system.h"
+#include "core/common/device.h"
+#include "core/common/AlignedAllocator.h"
+#include "core/include/xcl_perfmon_parameters.h"
 
 #include <windows.h>
 #include <winioctl.h>
@@ -56,6 +60,7 @@ struct shim
   XOCL_MAP_BAR_RESULT	mappedBar[3];
   bool m_locked = false;
   HANDLE m_dev;
+  std::shared_ptr<xrt_core::device> m_core_device;
 
   // create shim object, open the device, store the device handle
   shim(unsigned int devidx)
@@ -122,6 +127,9 @@ struct shim
 
       mappedBar[i].Bar = (PUCHAR)mapBarResult.Bar;
       mappedBar[i].BarLength = mapBarResult.BarLength;
+
+      m_core_device = xrt_core::get_userpf_device(this, devidx);
+
     }
 
   }
@@ -573,77 +581,6 @@ done:
 
   }
 
-  bool SendIoctlStatMemTopo()
-  {
-    HANDLE deviceHandle = m_dev;
-    DWORD error;
-    DWORD bytesWritten;
-    DWORD bytesToRead;
-    XOCL_STAT_CLASS statClass = XoclStatMemTopology;
-    XOCL_MEM_TOPOLOGY_INFORMATION topoInfo;
-    XOCL_MEM_RAW_INFORMATION memRaw;
-
-    bytesToRead = sizeof(topoInfo);
-
-    if (!DeviceIoControl(deviceHandle,
-                         IOCTL_XOCL_STAT,
-                         &statClass,
-                         sizeof(statClass),
-                         &topoInfo,
-                         sizeof(topoInfo),
-                         &bytesWritten,
-                         nullptr)) {
-
-      error = GetLastError();
-
-      xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl failed with error %d", error);
-
-      goto out;
-    }
-
-    printf("Got XoclStatMemTopology Data:\n");
-    printf("Memory regions: %d\n", topoInfo.MemTopoCount);
-    for (size_t i = 0; i < topoInfo.MemTopoCount; i++) {
-      printf("\ttag=%s, start=0x%llx, size=0x%llx\n",
-             topoInfo.MemTopo[i].m_tag,
-             topoInfo.MemTopo[i].m_base_address,
-             topoInfo.MemTopo[i].m_size);
-    }
-
-    statClass = XoclStatMemRaw;
-
-    if (!DeviceIoControl(deviceHandle,
-                         IOCTL_XOCL_STAT,
-                         &statClass,
-                         sizeof(statClass),
-                         &memRaw,
-                         sizeof(memRaw),
-                         &bytesWritten,
-                         nullptr)) {
-
-      error = GetLastError();
-
-      xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl failed with error %d", error);
-
-      goto out;
-    }
-
-    printf("Got XoclStatMemRaw Data:\n");
-    printf("Count: %d\n", memRaw.MemRawCount);
-    for (unsigned int i = 0; i < memRaw.MemRawCount; i++) {
-      printf("\t(%d) BOCount=%llu, MemoryUsage=0x%llx\n"
-             ,i, memRaw.MemRaw[i].BOCount, memRaw.MemRaw[i].MemoryUsage);
-    }
-
-    error = 0;
-
-  out:
-
-    return error ? false : true;
-  }
-
   int
   load_xclbin(const struct axlf* buffer)
   {
@@ -676,7 +613,6 @@ done:
     xrt_core::message::
       send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "Calling IOCTL_XOCL_STAT (XoclStatMemTopology)... ");
 
-    succeeded = SendIoctlStatMemTopo();
 
     if (succeeded) {
       xrt_core::message::
@@ -719,6 +655,7 @@ done:
   {
     switch (space) {
     case XCL_ADDR_KERNEL_CTRL:
+    case XCL_ADDR_SPACE_DEVICE_PERFMON:
       //Todo: offset += mOffsets[XCL_ADDR_KERNEL_CTRL];
       (void *)wordcopy(((char *)mappedBar[0].Bar + offset), hostbuf, size);
       break;
@@ -735,10 +672,11 @@ done:
   {
     switch (space) {
     case XCL_ADDR_KERNEL_CTRL:
+    case XCL_ADDR_SPACE_DEVICE_PERFMON:
       //Todo: offset += mOffsets[XCL_ADDR_KERNEL_CTRL];
       (void *)wordcopy(hostbuf, ((char *)mappedBar[0].Bar + offset), size);
       break;
-    default:
+    default: 
       xrt_core::message::
         send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "Unsupported Address Space: Read failed");
       return 1;
@@ -761,7 +699,7 @@ done:
       pwriteBO.pad = 0;
       pwriteBO.paddr = offset;
       pwriteBO.size = count;
-      pwriteBO.data_ptr = offset;
+      pwriteBO.data_ptr = (uint64_t)buf;
 
       if (!DeviceIoControl(m_dev,
           IOCTL_XOCL_PWRITE_UNMGD,
@@ -798,7 +736,7 @@ done:
       preadBO.pad = 0;
       preadBO.paddr = offset;
       preadBO.size = size;
-      preadBO.data_ptr = offset;
+      preadBO.data_ptr = (uint64_t)buf;
 
 
       if (!DeviceIoControl(m_dev,
@@ -933,7 +871,7 @@ done:
   void
   get_mem_topology(char* buffer, size_t size, size_t* size_ret)
   {
-    XOCL_MEM_TOPOLOGY_INFORMATION mem_info;
+    struct mem_topology mem_info;
     XOCL_STAT_CLASS_ARGS statargs;
 
     statargs.StatClass = XoclStatMemTopology;
@@ -942,14 +880,14 @@ done:
     auto status = DeviceIoControl(m_dev,
         IOCTL_XOCL_STAT,
         &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
-        &mem_info, sizeof(XOCL_MEM_TOPOLOGY_INFORMATION),
+        &mem_info, sizeof(struct mem_topology),
         &bytes,
         nullptr);
 
-    if (!status || bytes != sizeof(XOCL_MEM_TOPOLOGY_INFORMATION))
+    if (!status || bytes != sizeof(struct mem_topology))
       throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_mem_topology) failed");
 
-    size_t mem_topology_size = sizeof(XOCL_MEM_TOPOLOGY_INFORMATION);
+    DWORD mem_topology_size = sizeof(struct mem_topology) + (mem_info.m_count - 1) * sizeof(struct mem_data);
 
     if (size_ret)
       *size_ret = mem_topology_size;
@@ -963,13 +901,23 @@ done:
          "size (" + std::to_string(size) + ") of buffer too small, "
          "required size (" + std::to_string(mem_topology_size) + ")");
 
-    std::memcpy(buffer, &mem_info, sizeof(XOCL_MEM_TOPOLOGY_INFORMATION));
+    auto memtopology = reinterpret_cast<struct mem_topology*>(buffer);
+
+    status = DeviceIoControl(m_dev,
+        IOCTL_XOCL_STAT,
+        &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
+        memtopology, mem_topology_size,
+        &bytes,
+        nullptr);
+
+    if (!status || bytes != mem_topology_size)
+        throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_mem_topology) failed");
   }
 
   void
   get_ip_layout(char* buffer, size_t size, size_t* size_ret)
   {
-    XU_IP_LAYOUT iplayout_hdr;
+    struct ip_layout iplayout_hdr;
     XOCL_STAT_CLASS_ARGS statargs;
 
     statargs.StatClass =  XoclStatIpLayout;
@@ -978,14 +926,14 @@ done:
     auto status = DeviceIoControl(m_dev,
         IOCTL_XOCL_STAT,
         &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
-        &iplayout_hdr, sizeof(XU_IP_LAYOUT),
+        &iplayout_hdr, sizeof(struct ip_layout),
         &bytes,
         nullptr);
 
-    if (!status || bytes != sizeof(XU_IP_LAYOUT))
+    if (!status || bytes != sizeof(struct ip_layout))
       throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_ip_layout hdr) failed");
 
-    DWORD ip_layout_size = sizeof(XU_IP_LAYOUT) + iplayout_hdr.m_count * sizeof(XU_IP_DATA);
+    DWORD ip_layout_size = sizeof(struct ip_layout) + iplayout_hdr.m_count * sizeof(struct ip_data);
 
     if (size_ret)
       *size_ret = ip_layout_size;
@@ -999,7 +947,7 @@ done:
          "size (" + std::to_string(size) + ") of buffer too small, "
          "required size (" + std::to_string(ip_layout_size) + ")");
 
-    auto iplayout = reinterpret_cast<PXU_IP_LAYOUT>(buffer);
+    auto iplayout = reinterpret_cast<struct ip_layout*>(buffer);
 
     status = DeviceIoControl(m_dev,
        IOCTL_XOCL_STAT,
@@ -1010,6 +958,59 @@ done:
 
     if (!status || bytes != ip_layout_size)
       throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_ip_layout) failed");
+  }
+
+
+  void
+      get_debug_ip_layout(char* buffer, size_t size, size_t* size_ret)
+  {
+      struct debug_ip_layout debug_iplayout_hdr;
+      XOCL_STAT_CLASS_ARGS statargs;
+
+      statargs.StatClass = XoclStatDebugIpLayout;
+
+      DWORD bytes = 0;
+      auto status = DeviceIoControl(m_dev,
+          IOCTL_XOCL_STAT,
+          &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
+          &debug_iplayout_hdr, sizeof(struct debug_ip_layout),
+          &bytes,
+          nullptr);
+
+      if (!status || bytes != sizeof(struct debug_ip_layout))
+          throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_debug_ip_layout hdr) failed");
+
+      if (debug_iplayout_hdr.m_count == 0)
+      {
+          *size_ret = 0; //there is not any debug_ip_layout info
+          return;
+      }
+
+      DWORD debug_ip_layout_size = sizeof(struct debug_ip_layout) + ((debug_iplayout_hdr.m_count - 1) * sizeof(struct debug_ip_data));
+
+      if (size_ret)
+          *size_ret = debug_ip_layout_size;
+
+      if (!buffer)
+          return;  // size_ret has the required size
+
+      if (size < debug_ip_layout_size)
+          throw std::runtime_error
+          ("DeviceIoControl IOCTL_XOCL_STAT (get_debug_ip_layout) failed "
+              "size (" + std::to_string(size) + ") of buffer too small, "
+              "required size (" + std::to_string(debug_ip_layout_size) + ")");
+
+      auto debug_iplayout = reinterpret_cast<struct debug_ip_layout*>(buffer);
+
+      status = DeviceIoControl(m_dev,
+          IOCTL_XOCL_STAT,
+          &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
+          debug_iplayout, debug_ip_layout_size,
+          &bytes,
+          nullptr);
+
+      if (!status || bytes != debug_ip_layout_size)
+          throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_debug_ip_layout) failed");
   }
 
   void
@@ -1121,6 +1122,7 @@ done:
                      });
   }
 
+
 }; // struct shim
 
 shim*
@@ -1168,6 +1170,15 @@ get_ip_layout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret)
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_ip_layout()");
   auto shim = get_shim_object(hdl);
   shim->get_ip_layout(buffer, size, size_ret);
+}
+
+void
+get_debug_ip_layout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret)
+{
+    xrt_core::message::
+        send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_debug_ip_layout()");
+    auto shim = get_shim_object(hdl);
+    shim->get_debug_ip_layout(buffer, size, size_ret);
 }
 
 void
@@ -1500,6 +1511,12 @@ size_t xclReadBO(xclDeviceHandle handle, xclBufferHandle boHandle, void *dst, si
     return shim->read_bo(boHandle, dst, size, skip);
 }
 
+void
+xclGetDebugIpLayout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret)
+{
+  userpf::get_debug_ip_layout(hdl, buffer, size, size_ret);
+}
+
 // Deprecated APIs
 size_t
 xclWrite(xclDeviceHandle handle, enum xclAddressSpace space, uint64_t offset, const void *hostbuf, size_t size)
@@ -1518,4 +1535,78 @@ xclRead(xclDeviceHandle handle, enum xclAddressSpace space,
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclRead()");
   auto shim = get_shim_object(handle);
   return shim->read(space,offset,hostbuf,size) ? 0 : size;
+}
+
+int
+xclGetTraceBufferInfo(xclDeviceHandle handle, uint32_t nSamples,
+                      uint32_t& traceSamples, uint32_t& traceBufSz)
+{
+  xrt_core::message::send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclGetTraceBufferInfo()");
+  uint32_t bytesPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 8);
+  traceBufSz = MAX_TRACE_NUMBER_SAMPLES * bytesPerSample;   /* Buffer size in bytes */
+  traceSamples = nSamples;
+  return 0;
+}
+
+int
+xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz,
+                 uint32_t numSamples, uint64_t ipBaseAddress,
+                 uint32_t& wordsPerSample)
+{  
+  xrt_core::message::send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclReadTraceData()");
+  auto shim = get_shim_object(handle);
+
+  // Create trace buffer on host (requires alignment)
+  const int traceBufWordSz = traceBufSz / 4;  // traceBufSz is in number of bytes
+  uint32_t size = 0;
+
+  wordsPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 32);
+  uint32_t numWords = numSamples * wordsPerSample;
+
+  xrt_core::AlignedAllocator<uint32_t> alignedBuffer(AXI_FIFO_RDFD_AXI_FULL, traceBufWordSz);
+  uint32_t* hostbuf = alignedBuffer.getBuffer();
+
+  // Now read trace data
+  memset((void *)hostbuf, 0, traceBufSz);
+  // Iterate over chunks
+  // NOTE: AXI limits this to 4K bytes per transfer
+  uint32_t chunkSizeWords = 256 * wordsPerSample;
+  if (chunkSizeWords > 1024) chunkSizeWords = 1024;
+  uint32_t chunkSizeBytes = 4 * chunkSizeWords;
+  uint32_t words=0;
+
+  // Read trace a chunk of bytes at a time
+  if (numWords > chunkSizeWords) {
+    for (; words < (numWords-chunkSizeWords); words += chunkSizeWords) {
+      #if 0
+          if(mLogStream.is_open())
+            mLogStream << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
+                          << std::hex << (ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL) /*fifoReadAddress[0] or AXI_FIFO_RDFD*/ << " and writing it to 0x"
+                          << (void *)(hostbuf + words) << std::dec << std::endl;
+      #endif
+      shim->unmgd_pread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL /*offset : or AXI_FIFO_RDFD*/);
+      size += chunkSizeBytes;
+    }
+  }
+
+  // Read remainder of trace not divisible by chunk size
+  if (words < numWords) {
+    chunkSizeBytes = 4 * (numWords - words);
+#if 0
+      if(mLogStream.is_open()) {
+        mLogStream << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
+                      << std::hex << (ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL) /*fifoReadAddress[0]*/ << " and writing it to 0x"
+                      << (void *)(hostbuf + words) << std::dec << std::endl;
+      }
+#endif
+    shim->unmgd_pread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL /*offset : or AXI_FIFO_RDFD*/);
+    size += chunkSizeBytes;
+  }
+#if 0
+    if(mLogStream.is_open())
+        mLogStream << __func__ << ": done reading " << size << " bytes " << std::endl;
+#endif
+  memcpy((char*)traceBuf, (char*)hostbuf, traceBufSz);
+
+  return size;
 }

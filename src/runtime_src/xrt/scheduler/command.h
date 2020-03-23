@@ -272,7 +272,7 @@ command_cast(const std::shared_ptr<command>& cmd)
   return cmd->get_ert_cmd<ERT_COMMAND_TYPE>();
 }
 
-  /**
+/**
  * Clear free list of exec buffer objects
  *
  * Command exec buffer objects are recycled, the freelist
@@ -281,6 +281,14 @@ command_cast(const std::shared_ptr<command>& cmd)
 void
 purge_command_freelist();
 
-} // xrt
+/**
+ * Clear free list of exec buffer objects for device
+ *
+ * Command exec buffer objects are recycled, the freelist
+ * must be cleared when device is closed.
+ */
+void
+purge_device_command_freelist(xrt::device* device);
 
+} // xrt
 #endif

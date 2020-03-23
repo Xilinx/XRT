@@ -38,7 +38,7 @@ XMC_Flasher::XMC_Flasher(std::shared_ptr<pcidev::pci_device> dev)
     bool is_mfg = false;
     mDev->sysfs_get<bool>("", "mfg", err, is_mfg, false);
     if (!is_mfg) {
-         if (!hasXMC())
+        if (!hasXMC())
             goto nosup;
 
         mDev->sysfs_get<unsigned>("xmc", "status", err, val, 0);
@@ -105,6 +105,11 @@ int XMC_Flasher::xclUpgradeFirmware(std::istream& tiTxtStream) {
     bool errorFound = false;
     int retries = 5;
     int ret = 0;
+
+    if (!hasSC()) {
+        std::cout << "ERROR: SC is not present on platform" << std::endl;
+        return -EINVAL;
+    }
 
     if (!isXMCReady())
         return -EINVAL;
@@ -253,7 +258,7 @@ int XMC_Flasher::xclGetBoardInfo(std::map<char, std::vector<char>>& info)
 {
     int ret = 0;
 
-    if (!isXMCReady() || !isBMCReady())
+    if (!hasSC() || !isXMCReady() || !isBMCReady())
         return -EINVAL;
 
     mPkt = {0};
@@ -362,7 +367,7 @@ void describePkt(struct xmcPkt& pkt, bool send)
     int lenInUint32 = (sizeof (pkt.hdr) + pkt.hdr.payloadSize +
         sizeof (uint32_t) - 1) / sizeof (uint32_t);
 
-    xrt_core::ios_flags_restore format(std::cout);
+    auto format = xrt_core::utils::ios_restore(std::cout);
 
     if (send)
         std::cout << "Sending XMC packet: ";
@@ -492,7 +497,7 @@ bool XMC_Flasher::isXMCReady()
     bool xmcReady = (XMC_MODE() == XMC_READY);
 
     if (!xmcReady) {
-        xrt_core::ios_flags_restore format(std::cout);
+        auto format = xrt_core::utils::ios_restore(std::cout);
         if (!mDev->get_sysfs_path("xmc", "").empty()) {
             std::cout << "ERROR: XMC is not ready: 0x" << std::hex
                 << XMC_MODE() << std::endl;
@@ -502,6 +507,24 @@ bool XMC_Flasher::isXMCReady()
 }
 
 bool XMC_Flasher::isBMCReady()
+{
+    bool bmcReady = (BMC_MODE() == 0x1);
+
+    if (!bmcReady) {
+      auto format = xrt_core::utils::ios_restore(std::cout);
+        std::cout << "ERROR: SC is not ready: 0x" << std::hex
+                << BMC_MODE() << std::endl;
+    }
+
+    return bmcReady;
+}
+
+bool XMC_Flasher::hasXMC()
+{
+        return !mDev->get_sysfs_path("xmc", "").empty();
+}
+
+bool XMC_Flasher::hasSC()
 {
     unsigned int val;
     std::string errmsg;
@@ -516,22 +539,7 @@ bool XMC_Flasher::isBMCReady()
         return false;
     }
 
-    if (val) {
-        bool bmcReady = (BMC_MODE() == 0x1);
-        if (!bmcReady) {
-            xrt_core::ios_flags_restore format(std::cout);
-            std::cout << "ERROR: SC is not ready: 0x" << std::hex
-                << BMC_MODE() << std::endl;
-        }
-        return bmcReady;
-    }
-
-    return true;
-}
-
-bool XMC_Flasher::hasXMC()
-{
-        return !mDev->get_sysfs_path("xmc", "").empty();
+    return (val != 0);
 }
 
 static void tiTxtStreamToBin(std::istream& tiTxtStream,

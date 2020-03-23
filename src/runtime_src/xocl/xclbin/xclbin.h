@@ -20,7 +20,6 @@
 #include "xocl/config.h"
 #include "core/include/xclbin.h" // definition of binary structs
 
-#include "xocl/core/refcount.h"
 #include "xclbin/binary.h"
 #include "xrt/util/uuid.h"
 
@@ -61,12 +60,13 @@ class xclbin
 
 public:
   using addr_type = uint64_t;
-  // Max 128 memory indicies for now. This number must be >= to number
+  // Max 256 memory indicies for now. This number must be >= to number
   // of mem_topology.m_count.  Unfortunately it is a compile time constant.
   // A better solution must be found (boost::dynamic_bitset<>???)
-  using memidx_bitmask_type = std::bitset<128>;
   using memidx_type = int32_t;
   using connidx_type = int32_t;
+  static constexpr memidx_type max_banks = 256;
+  using memidx_bitmask_type = std::bitset<max_banks>;
 
   enum class target_type{ bin,x86,zynqps7,csim,cosim,hwem,invalid};
 

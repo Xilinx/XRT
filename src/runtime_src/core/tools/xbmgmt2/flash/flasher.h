@@ -75,6 +75,7 @@ public:
     DSAInfo getOnBoardDSA();
     std::vector<DSAInfo> getInstalledDSA();
     int getBoardInfo(BoardInfo& board);
+    // uint16_t get_dsainfo_canidate(const std::string dsa, const std::string& id);
 
 private:
     enum E_FlasherType {
@@ -86,12 +87,14 @@ private:
     };
     const char *E_FlasherTypeStrings[4] = { "UNKNOWN", "SPI", "BPI", "QSPI_PS" };
     const char *getFlasherTypeText( E_FlasherType val ) { return E_FlasherTypeStrings[ val ]; }
+    E_FlasherType typeStr_to_E_FlasherType(const std::string& typeStr); 
     std::shared_ptr<xrt_core::device> m_device;
 
     int getProgrammingTypeFromDeviceName(unsigned char name[], E_FlasherType &type );
 
     FeatureRomHeader mFRHeader;
     unsigned int mGoldenVer = UINT_MAX;
+    
 
     const std::vector<std::pair<std::string, E_FlasherType>> flashPairs = {
         std::make_pair( "7v3", BPI ),

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
 /*
  * MPSoC based OpenCL accelerators Compute Units.
  *
@@ -6,14 +7,8 @@
  * Authors:
  *    David Zhang <davidzha@xilinx.com>
  *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This file is dual-licensed; you may select either the GNU General Public
+ * License version 2 or Apache License, Version 2.0.
  */
 
 #include <linux/fpga/fpga-mgr.h>
@@ -662,7 +657,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 
 	/* For PR support platform, device-tree has configured addr */
 	if (zdev->pr_isolation_addr) {
-		if (axlf_head.m_header.m_mode != XCLBIN_PR) {
+		if (axlf_head.m_header.m_mode != XCLBIN_PR && axlf_head.m_header.m_mode != XCLBIN_HW_EMU) {
 			DRM_ERROR("xclbin m_mod %d is not a PR mode",
 			    axlf_head.m_header.m_mode);
 			ret = -EINVAL;
@@ -880,9 +875,9 @@ zocl_xclbin_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
 			ret = test_and_clear_bit(cu_idx, client->excus);
 			if (!ret)
 				/* Maybe it is shared CU */
-				ret = test_and_clear_bit(cu_idx, client->shcus);
-
-			if (!ret) {
+				ret = test_and_clear_bit(cu_idx, client->shcus) ?
+                                  0 : -EINVAL;
+			if (ret) {
 				DRM_ERROR("can not remove unreserved cu");
 				goto out;
 			}
@@ -1030,4 +1025,3 @@ zocl_xclbin_cus_support_intr(struct drm_zocl_dev *zdev)
 
 	return true;
 }
-

@@ -1,4 +1,4 @@
-#template_tql < $RDI_TEMPLATES/sdx/sdaccel/swhw/template.tql
+#template_tql < $XTC_TEMPLATES/sdx/sdaccel/swhw/template.tql
 description: testinfo generated using import_sdx_test.py script
 level: 6
 owner: vallina

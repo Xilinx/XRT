@@ -22,6 +22,7 @@ namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
 #include <boost/program_options.hpp>
+#include <boost/format.hpp>
 namespace po = boost::program_options;
 
 // System - Include Files
@@ -100,13 +101,13 @@ SubCmdMem::execute(const SubCmdOptions& _options) const
   // -- Do some DRC checks here --------------------------------------------
 
   // -- Now process the subcommand --------------------------------------------
-  XBU::verbose(XBU::format(" Read Operation: %d", bRead));
-  XBU::verbose(XBU::format("Write Operation: %d", bWrite));
-  XBU::verbose(XBU::format("           Card: %ld", card));
-  XBU::verbose(XBU::format("  Start Address: %s", sStartAddr.c_str()));
-  XBU::verbose(XBU::format("     Size Bytes: %s", sSizeBytes.c_str()));
-  XBU::verbose(XBU::format("    Output File: %s", sOutputFile.c_str()));
-  XBU::verbose(XBU::format("        Pattern: %s", sPatternBytes.c_str()));
+  XBU::verbose(boost::str(boost::format(" Read Operation: %d") % bRead));
+  XBU::verbose(boost::str(boost::format("Write Operation: %d") % bWrite));
+  XBU::verbose(boost::str(boost::format("           Card: %ld") % card));
+  XBU::verbose(boost::str(boost::format("  Start Address: %s") % sStartAddr.c_str()));
+  XBU::verbose(boost::str(boost::format("     Size Bytes: %s") % sSizeBytes.c_str()));
+  XBU::verbose(boost::str(boost::format("    Output File: %s") % sOutputFile.c_str()));
+  XBU::verbose(boost::str(boost::format("        Pattern: %s") % sPatternBytes.c_str()));
 
 
   XBU::error("COMMAND BODY NOT IMPLEMENTED.");

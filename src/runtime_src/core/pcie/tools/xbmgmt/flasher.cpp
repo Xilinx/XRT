@@ -137,10 +137,6 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
         {
             std::cout << "ERROR: OSPIVERSAL mode does not support reverting to MFG." << std::endl;
         }
-        else if(secondary != nullptr)
-        {
-            std::cout << "ERROR: OSPIVERSAL mode does not support two mcs files." << std::endl;
-        }
         else
         {
             retVal = xospi_versal.xclUpgradeFirmware(*primary);
@@ -389,9 +385,9 @@ DSAInfo Flasher::getOnBoardDSA()
     if (rc == 0)
         bmc = info.mBMCVer; // Successfully read BMC version
     else if (rc == -EOPNOTSUPP)
-        bmc.clear(); // BMC is not supported on DSA
+        bmc = DSAInfo::INACTIVE; // BMC is not supported on DSA, state is inactive
     else
-        bmc = "UNKNOWN"; // BMC not ready, set it to an invalid version string
+        bmc = DSAInfo::UNKNOWN; // BMC not ready, set it to an invalid version string
 
     return DSAInfo(vbnv, ts, uuid, bmc);
 }

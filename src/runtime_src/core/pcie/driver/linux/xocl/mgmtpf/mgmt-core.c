@@ -1,7 +1,7 @@
 /*
  * Simple Driver for Management PF
  *
- * Copyright (C) 2017-2019 Xilinx, Inc.
+ * Copyright (C) 2017-2020 Xilinx, Inc.
  *
  * Code borrowed from Xilinx SDAccel XDMA driver
  *
@@ -448,20 +448,22 @@ static int health_check_cb(void *data)
 	if (!health_check)
 		return 0;
 
-	tripped = xocl_af_check(lro, NULL);
-	if (tripped)
-		goto skip_checks;
-	
 	(void) xocl_clock_status(lro, &latched);
 
 	check_sensor(lro);
 
-skip_checks:
-	mbreq.req = XCL_MAILBOX_REQ_FIREWALL;
+	/*
+	 * Checking firewall should be the last thing to do.
+	 * There are multiple level firewalls, one of them trips and
+	 * it possibly still has chance to read clock and
+	 * sensor information etc.
+	 */
+	tripped = xocl_af_check(lro, NULL);
 
 	if (latched || tripped) {
 		if (!lro->reset_requested) {
 			mgmt_err(lro, "Card is in a Bad state, notify userpf");
+			mbreq.req = XCL_MAILBOX_REQ_FIREWALL;
 			err = xocl_peer_notify(lro, &mbreq, sizeof(mbreq));
 			if (!err)
 				lro->reset_requested = true;
@@ -813,6 +815,9 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			break;
 		}
 
+		if (lro->rp_program == XOCL_RP_PROGRAM)
+			lro->rp_program = 0;
+
 		resp = vzalloc(sizeof(*resp));
 		if (!resp)
 			break;
@@ -831,10 +836,10 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		break;
 	}
 	case XCL_MAILBOX_REQ_PROGRAM_SHELL: {
-		/* blob should already been updated */
-		ret = xclmgmt_program_shell(lro);
+		lro->rp_program = XOCL_RP_PROGRAM;
 		(void) xocl_peer_response(lro, req->req, msgid, &ret,
 				sizeof(ret));
+		ret = xocl_queue_work(lro, XOCL_WORK_PROGRAM_SHELL, 0);
 		break;
 	}
 	case XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR: {
@@ -846,35 +851,34 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 
 		/* Passthrough Virtualization feature configuration */
 		if (xocl_passthrough_virtualization_on(lro)) {
-			if (!iommu_present(&pci_bus_type)) {
-				p2p_bar_addr = mb_p2p->p2p_bar_addr;
-				p2p_bar_len = mb_p2p->p2p_bar_len;
-				mgmt_info(lro, "got the p2p bar addr = %lld\n", p2p_bar_addr);
-				mgmt_info(lro, "got the p2p bar len = %lld\n", p2p_bar_len);
-				if (!p2p_bar_addr) {
-					pci_write_config_byte(pdev, 0x188, 0x0);
-					ret = 0;
-					(void) xocl_peer_response(lro, req->req, msgid, &ret,
+			p2p_bar_addr = mb_p2p->p2p_bar_addr;
+			p2p_bar_len = mb_p2p->p2p_bar_len;
+			mgmt_info(lro, "got the p2p bar addr = %lld\n", p2p_bar_addr);
+			mgmt_info(lro, "got the p2p bar len = %lld\n", p2p_bar_len);
+			if (!p2p_bar_addr) {
+				pci_write_config_byte(pdev, XOCL_VSEC_XLAT_CTL_REG_ADDR, 0x0);
+				pci_write_config_dword(pdev, XOCL_VSEC_XLAT_GPA_BASE_UPPER_REG_ADDR, 0x0);
+				pci_write_config_dword(pdev, XOCL_VSEC_XLAT_GPA_LIMIT_UPPER_REG_ADDR, 0x0);
+				pci_write_config_dword(pdev, XOCL_VSEC_XLAT_GPA_LOWER_REG_ADDR, 0x0);
+				ret = 0;
+				(void) xocl_peer_response(lro, req->req, msgid, &ret,
 										  sizeof(ret));
-					break;
-				}
-				range = p2p_bar_addr + p2p_bar_len - 1;
-				range_base = range & 0xFFFF0000;
-				p2p_addr_base = p2p_bar_addr & 0xFFFF0000;
-				final_val = range_base | (p2p_addr_base >> 16);
-				//Translation enable bit
-				pci_write_config_byte(pdev, 0x188, 0x1);
-				//Bar base address
-				pci_write_config_dword(pdev, 0x190, p2p_bar_addr >> 32);
-				//Bar base address + range
-				pci_write_config_dword(pdev, 0x194, range >> 32);
-				pci_write_config_dword(pdev, 0x18c, final_val);
-				mgmt_info(lro, "Passthrough Virtualization config done\n");
-			} else {
-				mgmt_err(lro, "request (%d) dropped, IOMMU is enabled\n",
-						 XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR);
+				break;
 			}
+			range = p2p_bar_addr + p2p_bar_len - 1;
+			range_base = range & 0xFFFF0000;
+			p2p_addr_base = p2p_bar_addr & 0xFFFF0000;
+			final_val = range_base | (p2p_addr_base >> 16);
+			//Translation enable bit
+			pci_write_config_byte(pdev, XOCL_VSEC_XLAT_CTL_REG_ADDR, 0x1);
+			//Bar base address
+			pci_write_config_dword(pdev, XOCL_VSEC_XLAT_GPA_BASE_UPPER_REG_ADDR, p2p_bar_addr >> 32);
+			//Bar base address + range
+			pci_write_config_dword(pdev, XOCL_VSEC_XLAT_GPA_LIMIT_UPPER_REG_ADDR, range >> 32);
+			pci_write_config_dword(pdev, XOCL_VSEC_XLAT_GPA_LOWER_REG_ADDR, final_val);
+			mgmt_info(lro, "Passthrough Virtualization config done\n");
 		}
+
 		ret = 0;
 		(void) xocl_peer_response(lro, req->req, msgid, &ret, sizeof(ret));
 		break;
@@ -932,7 +936,6 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 
 	if (!(dev_info->flags & XOCL_DSAFLAG_DYNAMIC_IP) &&
 	    !(dev_info->flags & XOCL_DSAFLAG_SMARTN) &&
-	    !(dev_info->flags & XOCL_DSAFLAG_VERSAL) &&
 			i == dev_info->subdev_num &&
 			lro->core.intr_bar_addr != NULL) {
 		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_DMA_MSIX;
@@ -947,9 +950,6 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 		if (ret)
 			goto fail;
 	}
-
-	lro->core.pci_ops = &xclmgmt_pci_ops;
-	lro->core.pdev = pdev;
 
 	/*
 	 * Workaround needed on some platforms. Will clear out any stale
@@ -1050,6 +1050,12 @@ static void xclmgmt_work_cb(struct work_struct *work)
 		if (!ret)
 			xocl_drvinst_set_offline(lro, false);
 		break;
+	case XOCL_WORK_PROGRAM_SHELL:
+		/* blob should already been updated */
+		ret = xclmgmt_program_shell(lro);
+		if (!ret)
+			xclmgmt_connect_notify(lro, true);
+		break;
 	default:
 		mgmt_err(lro, "Invalid op code %d", _work->op);
 		break;
@@ -1087,19 +1093,15 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		lro->core.works[i].op = i;
 	}
 
-	rc = xocl_subdev_init(lro);
+	rc = xocl_subdev_init(lro, pdev, &xclmgmt_pci_ops);
 	if (rc) {
 		xocl_err(&pdev->dev, "init subdev failed");
 		goto err_init_subdev;
 	}
 
-	mutex_init(&lro->core.lock);
-	rwlock_init(&lro->core.rwlock);
-
 	/* create a device to driver reference */
 	dev_set_drvdata(&pdev->dev, lro);
 	/* create a driver to device reference */
-	lro->core.pdev = pdev;
 	lro->pci_dev = pdev;
 	lro->ready = false;
 
@@ -1186,7 +1188,7 @@ err_alloc_minor:
 	xocl_subdev_fini(lro);
 err_init_subdev:
 	dev_set_drvdata(&pdev->dev, NULL);
-	xocl_drvinst_free(lro);
+	xocl_drvinst_release(lro, NULL);
 err_alloc:
 	pci_disable_device(pdev);
 
@@ -1196,6 +1198,7 @@ err_alloc:
 static void xclmgmt_remove(struct pci_dev *pdev)
 {
 	struct xclmgmt_dev *lro;
+	void *hdl;
 
 	if ((pdev == 0) || (dev_get_drvdata(&pdev->dev) == 0))
 		return;
@@ -1205,11 +1208,16 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 	       pdev, lro);
 	BUG_ON(lro->core.pdev != pdev);
 
+	xocl_drvinst_release(lro, &hdl);
+
 	xclmgmt_connect_notify(lro, false);
 
-	if (xocl_passthrough_virtualization_on(lro) &&
-		!iommu_present(&pci_bus_type))
-		pci_write_config_byte(pdev, 0x188, 0x0);
+	if (xocl_passthrough_virtualization_on(lro)) {
+		pci_write_config_byte(pdev, XOCL_VSEC_XLAT_CTL_REG_ADDR, 0x0);
+		pci_write_config_dword(pdev, XOCL_VSEC_XLAT_GPA_BASE_UPPER_REG_ADDR, 0x0);
+		pci_write_config_dword(pdev, XOCL_VSEC_XLAT_GPA_LIMIT_UPPER_REG_ADDR, 0x0);
+		pci_write_config_dword(pdev, XOCL_VSEC_XLAT_GPA_LOWER_REG_ADDR, 0x0);
+	}
 
 	/* destroy queue before stopping health thread */
 	xocl_queue_destroy(lro);
@@ -1233,16 +1241,14 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 
 	if (lro->core.fdt_blob)
 		vfree(lro->core.fdt_blob);
-	if (lro->core.dyn_subdev_store)
-		vfree(lro->core.dyn_subdev_store);
 	if (lro->userpf_blob)
 		vfree(lro->userpf_blob);
-	if (lro->bld_blob)
-		vfree(lro->bld_blob);
+	if (lro->core.blp_blob)
+		vfree(lro->core.blp_blob);
 
 	dev_set_drvdata(&pdev->dev, NULL);
 
-	xocl_drvinst_free(lro);
+	xocl_drvinst_free(hdl);
 }
 
 static pci_ers_result_t mgmt_pci_error_detected(struct pci_dev *pdev,
@@ -1300,6 +1306,10 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_dna,
 	xocl_init_fmgr,
 	xocl_init_ospi_versal,
+	xocl_init_srsr,
+	xocl_init_mem_hbm,
+	xocl_init_ulite,
+	xocl_init_calib_storage,
 };
 
 static void (*drv_unreg_funcs[])(void) = {
@@ -1324,6 +1334,10 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_dna,
 	xocl_fini_fmgr,
 	xocl_fini_ospi_versal,
+	xocl_fini_srsr,
+	xocl_fini_mem_hbm,
+	xocl_fini_ulite,
+	xocl_fini_calib_storage,
 };
 
 static int __init xclmgmt_init(void)

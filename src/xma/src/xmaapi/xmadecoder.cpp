@@ -197,9 +197,19 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
     int32_t xma_main_ver = -1;
     int32_t xma_sub_ver = -1;
     rc = dec_session->decoder_plugin->xma_version(&xma_main_ver, & xma_sub_ver);
-    if ((xma_main_ver == 2019 && xma_sub_ver < 2) || xma_main_ver < 2019 || rc < 0) {
+    int32_t tmp_check = xma_core::check_plugin_version(xma_main_ver, xma_sub_ver);
+
+    if (rc < 0 || tmp_check == -1) {
         xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
                    "Initalization of plugin failed. Plugin is incompatible with this XMA version\n");
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        free(dec_session);
+        return nullptr;
+    }
+    if (tmp_check <= -2) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
+                   "Initalization of plugin failed. Newer plugin is not allowed with old XMA library\n");
         //Release singleton lock
         g_xma_singleton->locked = false;
         free(dec_session);

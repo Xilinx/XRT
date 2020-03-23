@@ -18,8 +18,10 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+
 #include "shim.h"
 #include "scan.h"
+#include "system_linux.h"
 #include "core/common/message.h"
 #include "core/common/xclbin_parser.h"
 #include "core/common/scheduler.h"
@@ -79,6 +81,7 @@
 #define MAX_TRACE_NUMBER_SAMPLES                        16384
 #define XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH            64
 
+namespace {
 
 inline bool
 is_multiprocess_mode()
@@ -116,28 +119,29 @@ inline int io_getevents(aio_context_t ctx, long min_nr, long max_nr,
   return syscall(__NR_io_getevents, ctx, min_nr, max_nr, events, timeout);
 }
 
+} // namespace
 
 namespace xocl {
 
 /*
  * shim()
  */
-shim::shim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity)
-  : mVerbosity(verbosity),
-    mUserHandle(-1),
-    mStreamHandle(-1),
-    mBoardNumber(index),
-    mLocked(false),
-    mLogfileName(nullptr),
-    mOffsets{0x0, 0x0, OCL_CTLR_BASE, 0x0, 0x0},
-    mMemoryProfilingNumberSlots(0),
-    mAccelProfilingNumberSlots(0),
-    mStallProfilingNumberSlots(0),
-    mStreamProfilingNumberSlots(0),
-    mCmdBOCache(nullptr),
-    mCuMaps(128, nullptr)
+shim::
+shim(unsigned index)
+  : mCoreDevice(xrt_core::pcie_linux::get_userpf_device(this, index))
+  , mUserHandle(-1)
+  , mStreamHandle(-1)
+  , mBoardNumber(index)
+  , mLocked(false)
+  , mOffsets{0x0, 0x0, OCL_CTLR_BASE, 0x0, 0x0}
+  , mMemoryProfilingNumberSlots(0)
+  , mAccelProfilingNumberSlots(0)
+  , mStallProfilingNumberSlots(0)
+  , mStreamProfilingNumberSlots(0)
+  , mCmdBOCache(nullptr)
+  , mCuMaps(128, nullptr)
 {
-    init(index, logfileName, verbosity);
+  init(index);
 }
 
 int shim::dev_init()
@@ -215,13 +219,10 @@ void shim::dev_fini()
 /*
  * init()
  */
-void shim::init(unsigned index, const char *logfileName,
-    xclVerbosityLevel verbosity)
+void
+shim::
+init(unsigned int index)
 {
-    if(logfileName != nullptr) {
-        xrt_logmsg(XRT_WARNING, "%s: logfileName is no longer supported", __func__);
-    }
-
     xrt_logmsg(XRT_INFO, "%s", __func__);
 
     int ret = dev_init();
@@ -242,6 +243,10 @@ void shim::init(unsigned index, const char *logfileName,
 shim::~shim()
 {
     xrt_logmsg(XRT_INFO, "%s", __func__);
+
+    // The BO cache unmaps and releases all execbo, but this must
+    // be done before the device is closed.
+    mCmdBOCache.reset(nullptr);
 
     dev_fini();
 
@@ -862,26 +867,28 @@ bool shim::zeroOutDDR()
  */
 int shim::xclLoadXclBin(const xclBin *buffer)
 {
-    int ret = 0;
-    const char *xclbininmemory = reinterpret_cast<char*> (const_cast<xclBin*> (buffer));
-
-    ret = xclLoadAxlf(reinterpret_cast<const axlf*>(xclbininmemory));
+    auto top = reinterpret_cast<const axlf*>(buffer);
+    auto ret = xclLoadAxlf(top);
     if (ret != 0) {
-        if (ret == -EOPNOTSUPP) {
-            xrt_logmsg(XRT_ERROR, "Xclbin does not match Shell on card.");
-            xrt_logmsg(XRT_ERROR, "Use 'xbmgmt flash' to update Shell.");
-        } else if (ret == -EBUSY) {
-            xrt_logmsg(XRT_ERROR, "Xclbin on card is in use, can't change.");
-        } else if (ret == -EKEYREJECTED) {
-            xrt_logmsg(XRT_ERROR, "Xclbin isn't signed properly");
-        } else if (ret == -ETIMEDOUT) {
-            xrt_logmsg(XRT_ERROR,
-                "Can't reach out to mgmt for xclbin downloading");
-            xrt_logmsg(XRT_ERROR,
-                "Is xclmgmt driver loaded? Or is MSD/MPD running?");
-        }
-        xrt_logmsg(XRT_ERROR, "See dmesg log for details. err=%d", ret);
+      if (ret == -EOPNOTSUPP) {
+        xrt_logmsg(XRT_ERROR, "Xclbin does not match Shell on card.");
+        xrt_logmsg(XRT_ERROR, "Use 'xbmgmt flash' to update Shell.");
+      }
+      else if (ret == -EBUSY) {
+        xrt_logmsg(XRT_ERROR, "Xclbin on card is in use, can't change.");
+      }
+      else if (ret == -EKEYREJECTED) {
+        xrt_logmsg(XRT_ERROR, "Xclbin isn't signed properly");
+      }
+      else if (ret == -ETIMEDOUT) {
+        xrt_logmsg(XRT_ERROR,
+                   "Can't reach out to mgmt for xclbin downloading");
+        xrt_logmsg(XRT_ERROR,
+                   "Is xclmgmt driver loaded? Or is MSD/MPD running?");
+      }
+      xrt_logmsg(XRT_ERROR, "See dmesg log for details. err=%d", ret);
     }
+
     return ret;
 }
 
@@ -1494,6 +1501,23 @@ int shim::xclGetDebugIPlayoutPath(char* layoutPath, size_t size)
   return xclGetSysfsPath("icap", "debug_ip_layout", layoutPath, size);
 }
 
+
+int shim::xclGetSubdevPath(const char* subdev, uint32_t idx, char* path, size_t size)
+{
+    auto dev = pcidev::get_dev(mBoardNumber);
+    std::string subdev_str = std::string(subdev);
+
+    if (mLogStream.is_open()) {
+      mLogStream << "Retrieving [devfs root]";
+      mLogStream << subdev_str << "/" << idx;
+      mLogStream << std::endl;
+    }
+    std::string sysfsFullPath = dev->get_subdev_path(subdev_str, idx);
+    strncpy(path, sysfsFullPath.c_str(), size);
+    path[size - 1] = '\0';
+    return 0;
+}
+
 int shim::xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
 {
   uint32_t bytesPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 8);
@@ -1727,23 +1751,33 @@ int shim::xclIPName2Index(const char *name, uint32_t& index)
 
 unsigned xclProbe()
 {
+#ifdef ENABLE_HAL_PROFILING
+  PROBE_CB;
+#endif
     return pcidev::get_dev_ready();
 }
 
-xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logFileName, xclVerbosityLevel level)
+xclDeviceHandle
+xclOpen(unsigned int deviceIndex, const char*, xclVerbosityLevel)
 {
     if(pcidev::get_dev_total() <= deviceIndex) {
         printf("Cannot find index %u \n", deviceIndex);
         return nullptr;
     }
+#ifdef ENABLE_HAL_PROFILING
+  OPEN_CB;
+#endif
 
-    xocl::shim *handle = new xocl::shim(deviceIndex, logFileName, level);
+    xocl::shim *handle = new xocl::shim(deviceIndex);
 
     return static_cast<xclDeviceHandle>(handle);
 }
 
 void xclClose(xclDeviceHandle handle)
 {
+#ifdef ENABLE_HAL_PROFILING
+  CLOSE_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     if (drv) {
         delete drv;
@@ -1854,6 +1888,9 @@ unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigne
 
 unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned flags)
 {
+#ifdef ENABLE_HAL_PROFILING
+  ALLOC_USERPTR_BO_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclAllocUserPtrBO(userptr, size, flags) : -ENODEV;
 }
@@ -1914,6 +1951,9 @@ int xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection 
 int xclCopyBO(xclDeviceHandle handle, unsigned int dst_boHandle,
             unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset)
 {
+#ifdef ENABLE_HAL_PROFILING
+  COPY_BO_CB ;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ?
       drv->xclCopyBO(dst_boHandle, src_boHandle, size, dst_offset, src_offset) : -ENODEV;
@@ -1927,6 +1967,9 @@ int xclReClock2(xclDeviceHandle handle, unsigned short region, const unsigned sh
 
 int xclLockDevice(xclDeviceHandle handle)
 {
+#ifdef ENABLE_HAL_PROFILING
+  LOCK_DEVICE_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     if (!drv)
         return -ENODEV;
@@ -1935,6 +1978,9 @@ int xclLockDevice(xclDeviceHandle handle)
 
 int xclUnlockDevice(xclDeviceHandle handle)
 {
+#ifdef ENABLE_HAL_PROFILING
+  UNLOCK_DEVICE_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     if (!drv)
         return -ENODEV;
@@ -2043,6 +2089,9 @@ int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
 
 int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
+#ifdef ENABLE_HAL_PROFILING
+  OPEN_CONTEXT_CB;
+#endif
   xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
 }
@@ -2223,4 +2272,19 @@ int xclOpenIPInterruptNotify(xclDeviceHandle handle, uint32_t ipIndex, int flags
 int xclCloseIPInterruptNotify(xclDeviceHandle handle, int fd)
 {
     return -ENOSYS;
+}
+
+int xclGetSubdevPath(xclDeviceHandle handle,  const char* subdev,
+                        uint32_t idx, char* path, size_t size)
+{
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
+  if (!drv)
+    return -1;
+  return drv->xclGetSubdevPath(subdev, idx, path, size);
+}
+
+void
+xclGetDebugIpLayout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret)
+{
+  return;
 }

@@ -72,8 +72,16 @@ cl_int
 get_profile_slot_name(key k, const std::string& deviceName, xclPerfMonType type,
 		              unsigned int slotnum, std::string& slotName);
 
+cl_int
+get_trace_slot_name(key k, const std::string& deviceName, xclPerfMonType type,
+		              unsigned int slotnum, std::string& slotName);
+
 unsigned int
 get_profile_slot_properties(key k, const std::string& deviceName, xclPerfMonType type,
+		              unsigned int slotnum);
+
+unsigned int
+get_trace_slot_properties(key k, const std::string& deviceName, xclPerfMonType type,
 		              unsigned int slotnum);
 
 cl_int
@@ -154,8 +162,14 @@ getProfileNumSlots(key k, xclPerfMonType type);
 cl_int
 getProfileSlotName(key k, xclPerfMonType type, unsigned int slotnum, std::string& slotName);
 
+cl_int
+getTraceSlotName(key k, xclPerfMonType type, unsigned int slotnum, std::string& slotName);
+
 unsigned int
 getProfileSlotProperties(key k, xclPerfMonType type, unsigned int slotnum);
+
+unsigned int
+getTraceSlotProperties(key k, xclPerfMonType type, unsigned int slotnum);
 
 cl_int
 startTrace(key k, xclPerfMonType type, size_t numComputeUnits);
@@ -196,6 +210,8 @@ isAPCtrlChain(key k, const std::string& cu);
 uint64_t getMemSizeBytes(key k, int idx);
 
 uint64_t getPlramSizeBytes(key k);
+
+void getMemUsageStats(key k, std::map<std::string, uint64_t>& stats);
 
 } // device
 } // platform

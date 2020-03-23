@@ -68,22 +68,6 @@ int
 xclGetSysfsPath(xclDeviceHandle handle, const char* subdev,
                 const char* entry, char* sysfsPath, size_t size);
 
-/**
- * Experimental APIs for reading debug and profile
- *
- * Warning: These APIs are experimental and can be
- * changed or removed at any time. They should only
- * be used by debug and profile code.
- *
- * @param handle the device handle
- * @param info the xclDebugProfileDeviceInfo
- * structure that this API will fill in as
- * result
- */
-XCL_DRIVER_DLLESPEC
-int
-xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* info);
-
 struct KernelTransferData
 {
    char* cuPortName;

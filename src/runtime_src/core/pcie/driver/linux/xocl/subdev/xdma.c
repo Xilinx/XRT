@@ -80,7 +80,7 @@ static ssize_t xdma_migrate_bo(struct platform_device *pdev,
 	xocl_dbg(&pdev->dev, "TID %d, Channel:%d, Offset: 0x%llx, Dir: %d",
 		pid, channel, paddr, dir);
 	ret = xdma_xfer_submit(xdma->dma_handle, channel, dir,
-		paddr, sgt, false, 10000);
+		paddr, sgt, false, 10000, NULL);
 	if (ret >= 0) {
 		xdma->channel_usage[dir][channel] += ret;
 		return ret;
@@ -211,11 +211,14 @@ static int user_intr_unreg(struct platform_device *pdev, u32 intr)
 
 	xdma= platform_get_drvdata(pdev);
 
-	if (intr >= xdma->max_user_intr)
+	if (intr >= xdma->max_user_intr) {
+		xocl_err(&pdev->dev, "intr %d greater than max", intr);
 		return -EINVAL;
+	}
 
 	mutex_lock(&xdma->user_msix_table_lock);
 	if (!xdma->user_msix_table[intr].in_use) {
+		xocl_err(&pdev->dev, "intr %d is not in use", intr);
 		ret = -EINVAL;
 		goto failed;
 	}
@@ -395,6 +398,7 @@ static int xdma_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
+	platform_set_drvdata(pdev, xdma);
 	ret = sysfs_create_group(&pdev->dev.kobj, &xdma_attr_group);
 	if (ret) {
 		xocl_err(&pdev->dev, "create attrs failed: %d", ret);
@@ -403,8 +407,6 @@ static int xdma_probe(struct platform_device *pdev)
 
 	mutex_init(&xdma->stat_lock);
 	mutex_init(&xdma->user_msix_table_lock);
-
-	platform_set_drvdata(pdev, xdma);
 
 	return 0;
 

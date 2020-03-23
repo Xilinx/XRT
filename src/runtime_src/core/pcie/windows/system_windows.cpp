@@ -19,12 +19,13 @@
 // file from importing symbols from libxrt_core we define this source
 // file to instead export with same macro as used in libxrt_core.
 #define XCL_DRIVER_DLL_EXPORT
-
+#define XRT_CORE_PCIE_WINDOWS_SOURCE
 #include "system_windows.h"
 #include "device_windows.h"
 #include "gen/version.h"
 #include "core/common/time.h"
 #include "mgmt.h"
+#include <map>
 #include <memory>
 #include <ctime>
 #include <windows.h>
@@ -34,6 +35,10 @@
 #endif
 
 namespace {
+
+// Singleton registers with base class xrt_core::system
+// during static global initialization
+static xrt_core::system_windows singleton;
 
 static std::string
 getmachinename()
@@ -64,9 +69,6 @@ getmachinename()
   return machine;
 }
 
-static std::vector<std::weak_ptr<xrt_core::device_windows>> mgmtpf_devices(16); // fix size
-static std::vector<std::weak_ptr<xrt_core::device_windows>> userpf_devices(16); // fix size
-
 }
 
 namespace xrt_core {
@@ -79,13 +81,8 @@ system_child_ctor()
 }
 void
 system_windows::
-get_xrt_info(boost::property_tree::ptree &pt)
+get_xrt_info(boost::property_tree::ptree& /*pt*/)
 {
-  pt.put("version",   xrt_build_version);
-  pt.put("hash",      xrt_build_version_hash);
-  pt.put("date",      xrt_build_version_date);
-  pt.put("branch",    xrt_build_version_branch);
-
   //TODO
   // _pt.put("xocl",      driver_version("xocl"));
   // _pt.put("xclmgmt",   driver_version("xclmgmt"));
@@ -133,26 +130,24 @@ std::shared_ptr<device>
 system_windows::
 get_userpf_device(device::id_type id) const
 {
-  // check cache
-  auto device = userpf_devices[id].lock();
-  if (!device) {
-    device = std::shared_ptr<device_windows>(new device_windows(id,true));
-    userpf_devices[id] = device;
-  }
-  return device;
+  // deliberately not using std::make_shared (used with weak_ptr)
+  return std::shared_ptr<device_windows>(new device_windows(id,true));
+}
+
+std::shared_ptr<device>
+system_windows::
+get_userpf_device(device::handle_type handle, device::id_type id) const
+{
+  // deliberately not using std::make_shared (used with weak_ptr)
+  return std::shared_ptr<device_windows>(new device_windows(handle, id));
 }
 
 std::shared_ptr<device>
 system_windows::
 get_mgmtpf_device(device::id_type id) const
 {
-  // check cache
-  auto device = mgmtpf_devices[id].lock();
-  if (!device) {
-    device = std::shared_ptr<device_windows>(new device_windows(id,false));
-    mgmtpf_devices[id] = device;
-  }
-  return device;
+  // deliberately not using std::make_shared (used with weak_ptr)
+  return std::shared_ptr<device_windows>(new device_windows(id,false));
 }
 
 } // xrt_core

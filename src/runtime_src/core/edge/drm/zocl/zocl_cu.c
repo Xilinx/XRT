@@ -1,19 +1,14 @@
+/* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
 /*
  * MPSoC based OpenCL accelerators Compute Units.
  *
- * Copyright (C) 2019 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2019-2020 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Min Ma      <min.ma@xilinx.com>
  *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This file is dual-licensed; you may select either the GNU General Public
+ * License version 2 or Apache License, Version 2.0.
  */
 
 
@@ -106,6 +101,14 @@ zocl_cu_status_print(struct zocl_cu *cu)
 
 	DRM_INFO("addr 0x%llx, status 0x%x",
 	    (u64)cu_core->paddr, ioread32(cu_core->vaddr));
+}
+
+u32
+zocl_cu_get_control(struct zocl_cu *cu)
+{
+	struct zcu_core *cu_core = cu->core;
+
+	return cu_core->control;
 }
 
 /* -- HLS adapter start -- */
@@ -203,25 +206,16 @@ zocl_hls_configure(void *core, u32 *data, size_t sz, int type)
 			iowrite32(data[i], base_addr + i);
 		break;
 	case PAIRS:
-		/* This is the {address, value} pairs to configure CU.
+		/* This is the {offset, value} pairs to configure CU.
 		 * It relies on the KDS/ERT command format.
 		 * The data in the command is 32 bits.
-		 * Obviously, it could not support CU at outside of 4GB.
-		 * One solution is use resgiter {offset, value} pairs instead.
-		 *
-		 * Skip 6 data, since this is how user layer construct the
-		 * command.
 		 */
-		for (i = 6; i < sz - 1; i += 2) {
-			/* TODO: Need clearly define the CU address in the
-			 * XCLBIN.
-			 * For DC, the address is the PCIe BAR offset
-			 * For EDGE, the address is the PS absolute address
-			 */
-			offset = *(data + i) - cu_core->paddr;
+		for (i = 0; i < sz - 1; i += 2) {
+			 /* The offset is the offset to CU base address */
+			offset = *(data + i);
 			val = *(data + i + 1);
 
-			iowrite32(val, base_addr + offset/4);
+			iowrite32(val, base_addr + offset / 4);
 		}
 		break;
 	}
@@ -334,6 +328,8 @@ zocl_hls_cu_init(struct zocl_cu *cu, phys_addr_t paddr)
 		return -ENOMEM;
 	}
 
+	core->control = paddr & 0x7;
+	paddr = paddr & ZOCL_KDS_MASK;
 	core->paddr = paddr;
 	core->vaddr = ioremap(paddr, CU_SIZE);
 	if (!core->vaddr) {
@@ -471,6 +467,7 @@ zocl_acc_cu_init(struct zocl_cu *cu, phys_addr_t paddr)
 	core->credits = core->max_credits;
 
 	core->intr_type = 0;
+	core->control = 0;
 
 	cu->done_cnt = 0;
 	cu->ready_cnt = 0;

@@ -14,8 +14,11 @@
  * under the License.
  */
 #include "hal2.h"
-#include "xrt/util/thread.h"
 #include "ert.h"
+#include "core/common/system.h"
+#include "core/common/device.h"
+#include "core/common/query_requests.h"
+#include "core/common/thread.h"
 
 #include <boost/format.hpp>
 #include <cstring> // for std::memcpy
@@ -78,7 +81,6 @@ void
 device::
 setup()
 {
-#ifndef PMD_OCL
   if (!m_workers.empty())
     return;
 
@@ -95,12 +97,11 @@ setup()
   XRT_DEBUG(std::cout,"Creating ",2*threads," DMA worker threads\n");
   for (unsigned int i=0; i<threads; ++i) {
     // read and write queue workers
-    m_workers.emplace_back(xrt::thread(task::worker2,std::ref(m_queue[static_cast<qtype>(hal::queue_type::read)]),"read"));
-    m_workers.emplace_back(xrt::thread(task::worker2,std::ref(m_queue[static_cast<qtype>(hal::queue_type::write)]),"write"));
+    m_workers.emplace_back(xrt_core::thread(task::worker2,std::ref(m_queue[static_cast<qtype>(hal::queue_type::read)]),"read"));
+    m_workers.emplace_back(xrt_core::thread(task::worker2,std::ref(m_queue[static_cast<qtype>(hal::queue_type::write)]),"write"));
   }
   // single misc queue worker
-  m_workers.emplace_back(xrt::thread(task::worker2,std::ref(m_queue[static_cast<qtype>(hal::queue_type::misc)]),"misc"));
-#endif
+  m_workers.emplace_back(xrt_core::thread(task::worker2,std::ref(m_queue[static_cast<qtype>(hal::queue_type::misc)]),"misc"));
 }
 
 device::BufferObject*
@@ -127,21 +128,9 @@ std::string
 device::
 get_bdf() const
 {
-  if (!m_ops->mGetSysfsPath)
-    return "????:??:??.?";
-  char path[256] = {0};
-  if (m_ops->mGetSysfsPath(m_handle,"","",path,sizeof(path)))
-    return "????:??:??.?";
-  const std::regex r("([0-9]+):([0-9]+):([0-9]+)\\.([0-9])");
-  std::cmatch m;
-  if (std::regex_search(path,m,r))
-    return boost::str(boost::format("%04x:%02x:%02x.%01x") % m[1] % m[2] % m[3] % m[4]);
-  return "????:??:??.?";
-#if 0
   auto device = xrt_core::get_userpf_device(m_idx);
   auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
   return xrt_core::query::pcie_bdf::to_string(bdf);
-#endif
 }
 
 void
@@ -713,23 +702,14 @@ pollStreams(hal::StreamXferCompletions* comps, int min, int max, int* actual, in
   return m_ops->mPollQueues(m_handle,min,max,req,actual,timeout);
 }
 
-#ifdef PMD_OCL
 void
 createDevices(hal::device_list& devices,
-              const std::string& dll, void* handle, unsigned int count, void* pmd)
-{
-  assert(0);
-}
-#else
-void
-createDevices(hal::device_list& devices,
-              const std::string& dll, void* driverHandle, unsigned int deviceCount,void*)
+              const std::string& dll, void* driverHandle, unsigned int deviceCount)
 {
   auto halops = std::make_shared<operations>(dll,driverHandle,deviceCount);
   for (unsigned int idx=0; idx<deviceCount; ++idx)
     devices.emplace_back(std::make_unique<xrt::hal2::device>(halops,idx));
 }
-#endif
 
 
 }} // hal2,xrt

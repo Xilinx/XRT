@@ -29,6 +29,7 @@
 #include "detail/context.h"
 #include "plugin/xdp/appdebug.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 namespace xocl {
 
@@ -61,11 +62,6 @@ validOrError(cl_command_queue   command_queue,
   if((xocl::xocl(buffer)->get_flags() & CL_MEM_HOST_WRITE_ONLY) ||
      (xocl::xocl(buffer)->get_flags() & CL_MEM_HOST_NO_ACCESS))
     throw xocl::error(CL_INVALID_OPERATION,"buffer flags do not allow reading");
-
-#ifdef PMD_OCL
-  if (!(xocl(command_queue)->get_properties() & CL_QUEUE_DPDK))
-    throw error(CL_INVALID_COMMAND_QUEUE,"Queue must be a CL_QUEUE_DPDK queue");
-#endif
 
   // CL_INVALID_OPERATION if CL_MEM_REGISTER_MAP and not a blocking read
   if ( (xocl(buffer)->get_flags() & CL_MEM_REGISTER_MAP) && !blocking)
@@ -102,6 +98,9 @@ clEnqueueReadBuffer(cl_command_queue   command_queue,
     (command_queue,CL_COMMAND_READ_BUFFER,num_events_in_wait_list,event_wait_list);
   xocl::enqueue::set_event_action(uevent.get(),xocl::enqueue::action_read_buffer,buffer,offset,size,ptr);
   xocl::profile::set_event_action(uevent.get(),xocl::profile::action_read,buffer,offset,size,false);
+#ifndef _WIN32
+  xocl::lop::set_event_action(uevent.get(), xocl::lop::action_read);
+#endif
   xocl::appdebug::set_event_action(uevent.get(),xocl::appdebug::action_readwrite,buffer,offset,size,ptr);
  
   uevent->queue();
@@ -146,6 +145,7 @@ clEnqueueReadBuffer(cl_command_queue   command_queue,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
+    LOP_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
     return xocl::
       clEnqueueReadBuffer
       (command_queue,buffer,blocking,offset,size,ptr,num_events_in_wait_list,event_wait_list,event_parameter);

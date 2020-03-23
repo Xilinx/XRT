@@ -27,6 +27,7 @@ namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
 #include <boost/program_options.hpp>
+#include <boost/format.hpp>
 namespace po = boost::program_options;
 
 // System - Include Files
@@ -92,9 +93,9 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     throw xrt_core::error("Please specify xclbin file with '-p' switch");
 
   // -- Now process the subcommand --------------------------------------------
-  XBU::verbose(XBU::format("  Card: %ld", card));
-  XBU::verbose(XBU::format("Region: %ld", region));
-  XBU::verbose(XBU::format("XclBin: %s", xclbin.c_str()));
+  XBU::verbose(boost::str(boost::format("  Card: %ld") % card));
+  XBU::verbose(boost::str(boost::format("Region: %ld") % region));
+  XBU::verbose(boost::str(boost::format("XclBin: %s") % xclbin.c_str()));
 
   if (region)
     throw xrt_core::error("region is not supported");

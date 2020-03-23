@@ -23,6 +23,7 @@
 #include "xocl/core/platform.h"
 
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 #include <CL/opencl.h>
 #include <string>
@@ -53,6 +54,7 @@ clGetExtensionFunctionAddress(const char *func_name)
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clGetExtensionFunctionAddress(func_name);
   }
   catch (const xrt::error& ex) {

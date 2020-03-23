@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,14 +17,16 @@
 #include "xclbin_parser.h"
 #include "config_reader.h"
 
+#include <regex>
+#include <cstring>
+#include <cstdlib>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 #include <boost/range/iterator_range.hpp>
 #include <boost/optional.hpp>
-#include <cstring>
-#include <cstdlib>
-// This is xclbin parser. Update this file if xclbin format has changed.
+#include <boost/algorithm/string.hpp>
 
+// This is xclbin parser. Update this file if xclbin format has changed.
 #ifdef _WIN32
 #pragma warning ( disable : 4996 )
 #endif
@@ -58,6 +60,34 @@ is_valid_cu(const ip_data& ip)
   // ...
 
   return true;
+}
+
+static bool
+is_legacy_cu_intr(const ip_layout *ips)
+{
+  int32_t num_cus = ips->m_count;
+  int cu_cnt = 0;
+  int intr_cnt = 0;
+
+  for (int i = 0; i < num_cus; i++) {
+    const auto& ip = ips->m_ip_data[i];
+    if (!is_valid_cu(ip))
+      continue;
+
+    cu_cnt++;
+    if ((ip.properties & IP_INTERRUPT_ID_MASK) == 0)
+      intr_cnt++;
+  }
+
+  return (cu_cnt == intr_cnt);
+}
+
+bool compare_intr_id(struct ip_data &l, struct ip_data &r)
+{
+    uint32_t l_id = l.properties & IP_INTERRUPT_ID_MASK;
+    uint32_t r_id = r.properties & IP_INTERRUPT_ID_MASK;
+
+    return l_id < r_id;
 }
 
 // Base address of unused (streaming) CUs is given a max address to
@@ -136,31 +166,94 @@ std::vector<uint64_t>
 get_cus(const ip_layout* ip_layout, bool encode)
 {
   std::vector<uint64_t> cus;
+  std::vector<struct ip_data> ips;
 
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
     const auto& ip_data = ip_layout->m_ip_data[count];
     if (is_valid_cu(ip_data)) {
-      uint64_t addr = get_base_addr(ip_data);
-      if (encode) {
-        // encode handshaking control in lower unused address bits [2-0]
-        addr |= ((ip_data.properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT);
-
-        // encode max context in lower [7-3] bits of addr, assumes IP control
-        // takes three bits only.  This is a hack for now.
-        addr |= (kernel_max_ctx(ip_data) << 3);
-      }
-      cus.push_back(addr);
+      ips.push_back(ip_data);
     }
   }
-  std::sort(cus.begin(),cus.end());
+
+  if (!is_legacy_cu_intr(ip_layout)) {
+      std::sort(ips.begin(), ips.end(), compare_intr_id);
+  }
+
+  for (auto &ip_data : ips) {
+    uint64_t addr = get_base_addr(ip_data);
+    if (encode) {
+      // encode handshaking control in lower unused address bits [2-0]
+      addr |= ((ip_data.properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT);
+
+      // encode max context in lower [7-3] bits of addr, assumes IP control
+      // takes three bits only.  This is a hack for now.
+      addr |= (kernel_max_ctx(ip_data) << 3);
+    }
+    cus.push_back(addr);
+  }
+
+  if (is_legacy_cu_intr(ip_layout)) {
+      std::sort(cus.begin(),cus.end());
+  }
   return cus;
 }
+
+std::vector<const ip_data*>
+get_cus(const ip_layout* ip_layout, const std::string& kname)
+{
+  // "kernel:{cu1,cu2,cu3}" -> "(kernel):((cu1)|(cu2)|(cu3))"
+  // "kernel" -> "(kernel):((.*))"
+  auto create_regex = [](const auto& str) {
+    std::regex r("^(.*):\\{(.*)\\}$");
+    std::smatch m;
+    if (!regex_search(str,m,r))
+      return "^(" + str + ")((.*))$";            // "(kernel):((.*))"
+
+    std::string kernel = m[1];
+    std::string insts = m[2];                  // "cu1,cu2,cu3"
+    std::string regex = "^(" + kernel + "):(";  // "(kernel):("
+    std::vector<std::string> cus;              // split at ','
+    boost::split(cus,insts,boost::is_any_of(","));
+      
+    // compose final regex
+    int count = 0;
+    for (auto& cu : cus)
+      regex.append("|", count++ ? 1 : 0).append("(").append(cu).append(")");
+    regex += ")$";  // "^(kernel):((cu1)|(cu2)|(cu3))$"
+    return regex;
+  };
+
+  std::regex r(create_regex(kname));
+  std::vector<const ip_data*> ips;
+  for (int32_t count = 0; count < ip_layout->m_count; ++count) {
+    const auto& ip = ip_layout->m_ip_data[count];
+    if (!is_valid_cu(ip))
+      continue;
+    std::string ipname = reinterpret_cast<const char*>(ip.m_name);
+    if (regex_match(ipname, r))
+      ips.push_back(&ip);
+  }
+
+  return ips;
+}
+    
 
 std::vector<uint64_t>
 get_cus(const axlf* top, bool encode)
 {
+  if (is_sw_emulation()) {
+    return get_kernel_inst_addrs(top);
+  }
+
   auto ip_layout = axlf_section_type<const ::ip_layout*>::get(top,axlf_section_kind::IP_LAYOUT);
   return ip_layout ? get_cus(ip_layout,encode) : std::vector<uint64_t>(0);
+}
+
+std::vector<const ip_data*>
+get_cus(const axlf* top, const std::string& name)
+{
+  auto ip_layout = axlf_section_type<const ::ip_layout*>::get(top,axlf_section_kind::IP_LAYOUT);
+  return ip_layout ? get_cus(ip_layout, name) : std::vector<const ip_data*>(0);
 }
 
 std::string
@@ -306,11 +399,12 @@ get_softkernels(const axlf* top)
 
       softkernel_object sko;
       sko.ninst = soft->m_num_instances;
-      sko.symbol_name = const_cast<char*>(begin + soft->mpo_symbol_name);
+      sko.symbol_name = std::string(begin + soft->mpo_symbol_name);
+      sko.mpo_name = std::string(begin + soft->mpo_name);
+      sko.mpo_version = std::string(begin + soft->mpo_version);
       sko.size = soft->m_image_size;
       sko.sk_buf = const_cast<char*>(begin + soft->m_image_offset);
-
-      sks.push_back(sko);
+      sks.emplace_back(std::move(sko));
   }
 
   return sks;
@@ -347,5 +441,103 @@ get_kernel_freq(const axlf* top)
   return kernel_clk_freq;
 }
 
-} // namespace xclbin
-} // namespace xrt_core
+std::vector<kernel_argument>
+get_kernel_arguments(const axlf* top, const std::string& kname)
+{
+  std::vector<kernel_argument> args;
+  const axlf_section_header *xml_hdr = ::xclbin::get_axlf_section(top, EMBEDDED_METADATA);
+
+  if (!xml_hdr)
+    throw std::runtime_error("No meta data in xclbin");
+
+  auto begin = reinterpret_cast<const char*>(top) + xml_hdr->m_sectionOffset;
+  const char *xml_data = reinterpret_cast<const char*>(begin);
+  uint64_t xml_size = xml_hdr->m_sectionSize;
+
+  pt::ptree xml_project;
+  std::stringstream xml_stream;
+  xml_stream.write(xml_data,xml_size);
+  pt::read_xml(xml_stream,xml_project);
+
+  for (auto& xml_kernel : xml_project.get_child("project.platform.device.core")) {
+    if (xml_kernel.first != "kernel")
+      continue;
+    if (xml_kernel.second.get<std::string>("<xmlattr>.name") != kname)
+      continue;
+
+    for (auto& xml_arg : xml_kernel.second) {
+      if (xml_arg.first != "arg")
+        continue;
+
+      std::string id = xml_arg.second.get<std::string>("<xmlattr>.id");
+      size_t index = id.empty()
+        ? std::numeric_limits<size_t>::max()
+        : convert(id);
+
+      args.emplace_back(kernel_argument{
+          xml_arg.second.get<std::string>("<xmlattr>.name")
+         ,index
+         ,convert(xml_arg.second.get<std::string>("<xmlattr>.offset"))
+         ,convert(xml_arg.second.get<std::string>("<xmlattr>.size"))
+         ,kernel_argument::argtype(xml_arg.second.get<size_t>("<xmlattr>.addressQualifier"))
+      });
+    }
+
+    std::sort(args.begin(), args.end(), [](auto& a1, auto& a2) { return a1.index < a2.index; });
+    break;
+  }
+  return args;
+}
+
+//This function will be removed once IP_LAYOUT section is available in sw emu rtd.
+std::vector<uint64_t>
+get_kernel_inst_addrs(const axlf* top)
+{
+  std::vector<uint64_t> addrVec;
+  const axlf_section_header *xml_hdr = ::xclbin::get_axlf_section(top, EMBEDDED_METADATA);
+
+  if (!xml_hdr) {
+    return addrVec;
+  }
+  auto begin = reinterpret_cast<const char*>(top) + xml_hdr->m_sectionOffset;
+  const char *xml_data = reinterpret_cast<const char*>(begin);
+  uint64_t xml_size = xml_hdr->m_sectionSize;
+
+  pt::ptree xml_project;
+  std::stringstream xml_stream;
+  xml_stream.write(xml_data, xml_size);
+  pt::read_xml(xml_stream, xml_project);
+
+  auto xml_platform = xml_project.get_child_optional("project.platform");
+
+  if (!xml_platform) {
+    return addrVec;
+  }
+
+  for (auto& xml_device : xml_project.get_child("project.platform")) {
+    if (xml_device.first != "device")
+      continue;
+    for (auto& xml_core : xml_device.second) {
+      if (xml_core.first != "core")
+        continue;
+      for (auto& xml_kernel : xml_core.second) {
+        if (xml_kernel.first != "kernel")
+          continue;
+        for (auto& xml_inst : xml_kernel.second) {
+          if (xml_inst.first != "instance")
+            continue;
+          auto name = xml_inst.second.get<std::string>("<xmlattr>.name");
+          for (auto& xml_remap : xml_inst.second) {
+            if (xml_remap.first != "addrRemap")
+              continue;
+            auto base = convert(xml_remap.second.get<std::string>("<xmlattr>.base"));
+            addrVec.push_back(base);
+          }
+        }
+      }
+    }
+  }
+  return addrVec;
+}
+
+}} // xclbin, xrt_core

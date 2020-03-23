@@ -32,6 +32,11 @@ context(const cl_context_properties* properties
 
   XOCL_DEBUG(std::cout,"xocl::context::context(",m_uid,")\n");
 
+  // Ensure devices are available for current process
+  for (auto device : xocl::get_range(devices, devices + num_devices))
+    if (!xocl(device)->lock())
+      throw error(CL_DEVICE_NOT_AVAILABLE,"device unavailable");
+
   std::transform(devices,devices+num_devices
                  ,std::back_inserter(m_devices)
                  ,[](cl_device_id dev) {

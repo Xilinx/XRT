@@ -16,47 +16,52 @@
 
 
 #include "device_linux.h"
+#include "core/common/query_requests.h"
+
 #include "xrt.h"
+
 #include <string>
+#include <memory>
 #include <iostream>
 #include <map>
-#include "boost/format.hpp"
+#include <boost/format.hpp>
+
+namespace {
+
+namespace query = xrt_core::query;
+using key_type = query::key_type;
+
+static std::map<query::key_type, std::unique_ptr<query::request>> query_tbl;
+
+}
 
 namespace xrt_core {
 
-const device_linux::SysDevEntry&
-device_linux::get_sysdev_entry(QueryRequest qr) const
-{
-  static const std::map<QueryRequest, SysDevEntry> QueryRequestToSysDevTable = {};
-
-  // Find the translation entry
-  auto it = QueryRequestToSysDevTable.find(qr);
-
-  if (it == QueryRequestToSysDevTable.end()) {
-    std::string errMsg = boost::str( boost::format("The given query request ID (%d) is not supported.") % qr);
-    throw no_such_query(qr, errMsg);
-  }
-
-  return it->second;
-}
-
-void
+const query::request&
 device_linux::
-query(QueryRequest qr, const std::type_info& tinfo, boost::any& value) const
+lookup_query(query::key_type query_key) const
 {
-  boost::any anyEmpty;
-  value.swap(anyEmpty);
-  std::string errmsg;
-  errmsg = boost::str( boost::format("Error: Unsupported query_device return type: '%s'") % tinfo.name());
+  auto it = query_tbl.find(query_key);
 
-  if (!errmsg.empty()) {
-    throw std::runtime_error(errmsg);
+  if (it == query_tbl.end()) {
+    using qtype = std::underlying_type<query::key_type>::type;
+    std::string err = boost::str( boost::format("The given query request ID (%d) is not supported on Edge Linux.")
+                                  % static_cast<qtype>(query_key));
+    throw std::runtime_error(err);
   }
+
+  return *(it->second);
 }
 
 device_linux::
 device_linux(id_type device_id, bool user)
-  : device_edge(device_id, user)
+  : shim<device_edge>(device_id, user)
+{
+}
+
+device_linux::
+device_linux(handle_type device_handle, id_type device_id)
+  : shim<device_edge>(device_handle, device_id)
 {
 }
 

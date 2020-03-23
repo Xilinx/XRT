@@ -24,6 +24,7 @@
 #include "xocl_profile.h"
 #include "xdp/profile/core/rt_util.h"
 #include "xdp/profile/writer/csv_trace.h"
+#include "xdp/profile/device/device_trace_offload.h"
 #include "xdp/profile/plugin/ocl/ocl_power_profile.h"
 
 namespace xdp {
@@ -59,7 +60,7 @@ namespace xdp {
 
   // Device metadata
   public:
-    std::map<xoclp::platform::device::key, xoclp::platform::device::data> DeviceData;
+    std::map<xoclp::platform::device::key, xoclp::platform::device::data*> DeviceData;
 
   // Profile settings
   public:
@@ -92,19 +93,15 @@ namespace xdp {
     uint64_t getTimeDiffUsec(std::chrono::steady_clock::time_point start,
                              std::chrono::steady_clock::time_point end);
 
-    bool allocateDeviceDDRBufferForTrace(DeviceIntf* , xocl::device*);
-    void clearDeviceDDRBufferForTrace(DeviceIntf* , xrt::device* );
-
-    void configureDDRTraceReader(uint64_t wordCount);
-    void readTraceDataFromDDR(DeviceIntf* dIntf, xrt::device* xrtDevice, xclTraceResultsVector& traceVector, uint64_t offset, uint64_t bytes);
-    uint64_t readTraceDataFromDDR(DeviceIntf* dIntf, xrt::device* xrtDevice, xclTraceResultsVector& traceVector);
-    void* syncDeviceDDRToHostForTrace(xrt::device* xrtDevice, uint64_t offset, uint64_t bytes);
+    uint64_t getDeviceDDRBufferSize(DeviceIntf* dInt, xocl::device* device);
 
   private:
     // Flags
     int ProfileFlags;
     bool mProfileRunning = false;
     bool mEndDeviceProfilingCalled = false;
+    bool mTraceThreadEn = false;
+    unsigned int mTraceReadIntMs = 10;
     // Report writers
     std::vector<xdp::ProfileWriterI*> ProfileWriters;
     std::vector<xdp::TraceWriterI*> TraceWriters;
@@ -114,10 +111,11 @@ namespace xdp {
     std::shared_ptr<XoclPlugin> Plugin;
     std::unique_ptr<RTProfile> ProfileMgr;
     std::vector<std::unique_ptr<OclPowerProfile>> PowerProfileList;
+    std::vector<std::unique_ptr<DeviceTraceOffload>> DeviceTraceOffloadList;
 
     // Buffer on Device DDR for Trace
     uint64_t mDDRBufferSize = 0;
-    xrt::hal::BufferObjectHandle mDDRBufferForTrace = nullptr;
+    size_t mDDRBufferForTrace = 0;
 
     // Buffer on Host for reading Trace Data
     uint64_t mTraceReadBufSize = 0;

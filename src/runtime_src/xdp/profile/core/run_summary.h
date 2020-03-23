@@ -43,7 +43,9 @@ class RunSummary {
       FT_TRACE,
       FT_WDB,
       FT_WDB_CONFIG,
-      FT_POWER_PROFILE
+      FT_POWER_PROFILE,
+      FT_KERNEL_PROFILE,
+      FT_KERNEL_TRACE
     };
 
   public:

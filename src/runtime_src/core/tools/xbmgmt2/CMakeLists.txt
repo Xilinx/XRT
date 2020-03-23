@@ -48,9 +48,11 @@ set(XBMGMT_V2_SRCS ${XBMGMT_V2_FILES_SRCS})
 
 # Determine the name of the executable
 if(WIN32)
-set(XBMGMT2_NAME "xbmgmt")     # Yes, on windows the file name will be xbmgmt
+  set(XBMGMT2_NAME "xbmgmt")     # Yes, on windows the file name will be xbmgmt
+  set(XRT_LOADER_SCRIPTS "xbmgmt" "xbmgmt.bat")
 else()
   set(XBMGMT2_NAME "xbmgmt2")
+  set(XRT_LOADER_SCRIPTS "xbmgmt")
 endif()
 
 add_executable(${XBMGMT2_NAME} ${XBMGMT_V2_SRCS})
@@ -89,6 +91,7 @@ else()
   )
 endif()
 
-install (TARGETS ${XBMGMT2_NAME} RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
+install (TARGETS ${XBMGMT2_NAME} RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
+install (PROGRAMS ${XRT_LOADER_SCRIPTS} DESTINATION ${XRT_INSTALL_BIN_DIR})
 
 # -----------------------------------------------------------------------------

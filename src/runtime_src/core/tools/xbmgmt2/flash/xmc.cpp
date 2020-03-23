@@ -28,6 +28,13 @@
 #include "core/common/utils.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
+#include "core/common/error.h"
+#include "core/common/query_requests.h"
+#include "core/tools/common/XBUtilities.h"
+#include "core/tools/common/ProgressBar.h"
+namespace XBU = XBUtilities;
+#include "boost/format.hpp"
+
 
 //#define XMC_DEBUG
 #define BMC_JUMP_ADDR   0x201  /* Hard-coded for now */
@@ -51,24 +58,24 @@ XMC_Flasher::XMC_Flasher(unsigned int device_index)
 
     std::string err;
     bool is_mfg = false;
-    is_mfg = xrt_core::query_device<bool>(m_device, xrt_core::device::QR_IS_MFG);
+    is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(m_device);
     if (!is_mfg) {
-        val = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_XMC_STATUS);
-	if ((val == xrt_core::invalid_query_value<uint64_t>()) || !(val & 1)) {
-            mProbingErrMsg << "Failed to detect XMC, xmc.bin not loaded";
-            goto nosup;
-        }
+      val = xrt_core::device_query<xrt_core::query::xmc_status>(m_device);
+      if (!(val & 1)) {
+        mProbingErrMsg << "Failed to detect XMC, xmc.bin not loaded";
+        goto nosup;
+      }
     }
     // always takes the false branch so commenting this out for now
     // mRegBase = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_XMC_REG_BASE);
     // if (mRegBase == xrt_core::invalid_query_value<uint64_t>())
-	    mRegBase = XMC_REG_BASE;
+    mRegBase = XMC_REG_BASE;
 
     val = readReg(XMC_REG_OFF_MAGIC);
     if (val != XMC_MAGIC_NUM) {
-        mProbingErrMsg << "Failed to detect XMC, bad magic number: "
-            << std::hex << val << std::dec;
-        goto nosup;
+      mProbingErrMsg << "Failed to detect XMC, bad magic number: "
+                     << std::hex << val << std::dec;
+      goto nosup;
     }
 
     val = readReg(XMC_REG_OFF_VER);
@@ -189,25 +196,30 @@ int XMC_Flasher::xclUpgradeFirmware(std::istream& tiTxtStream) {
 
     tiTxtStream.seekg(0);
 
-    if (errorFound) {
-        std::cout << "ERROR: Bad firmware file format." << std::endl;
-        return -EINVAL;
-    }
+    if (errorFound)
+        throw xrt_core::error("Bad firmware file format.");
 
     // Start of flashing BMC firmware
-    std::cout << "INFO: found " << mRecordList.size() << " sections" << std::endl;
+    std::cout << boost::format("%-8s : %s %s %s\n") % "INFO" % "found" % mRecordList.size() % "sections";
     while(retries != 0) {
         retries--;
 
         ret = erase();
+        XBU::ProgressBar sc_flash("Programming SC", static_cast<unsigned int>(mRecordList.size()), XBU::is_esc_enabled(), std::cout);
+        int counter = 0;
         for (auto i = mRecordList.begin(); ret == 0 && i != mRecordList.end(); ++i) {
             ret = program(tiTxtStream, *i);
+            sc_flash.update(counter);
+            counter++;
         }
-        if(ret == 0)
+        
+        if(ret == 0) {
+            sc_flash.finish(true, "SC successfully updated");
             break;
-        std::cout << "WARN: Failed to flash firmware, retrying..." << std::endl;
+        } else {
+            sc_flash.finish(false, "WARN: Failed to flash firmware, retrying...");
+        }
     }
-    std::cout << std::endl;
     // End of flashing BMC firmware
 
     if (ret != 0)
@@ -215,7 +227,7 @@ int XMC_Flasher::xclUpgradeFirmware(std::istream& tiTxtStream) {
 
     // Waiting for BMC to come back online.
     // It should not take more than 10 sec, but wait for 1 min to be safe.
-    std::cout << "INFO: Loading new firmware on SC" << std::endl;
+    std::cout << boost::format("%-8s : %s\n") % "INFO" % "Loading new firmware on SC";
     for (int i = 0; i < 60; i++) {
         if (BMC_MODE() == BMC_STATE_READY)
             break;
@@ -224,12 +236,8 @@ int XMC_Flasher::xclUpgradeFirmware(std::istream& tiTxtStream) {
     }
     std::cout << std::endl;
 
-    if (!isBMCReady()) {
-        std::cout << "ERROR: Time'd out waiting for SC to come back online"
-            << std::endl;
-        return -ETIMEDOUT;
-    }
-
+    if (!isBMCReady())
+        throw xrt_core::error("Time'd out waiting for SC to come back online");
     return 0;
 }
 
@@ -285,7 +293,7 @@ int XMC_Flasher::xclGetBoardInfo(std::map<char, std::vector<char>>& info)
     return 0;
 }
 
-int XMC_Flasher::program(std::istream& tiTxtStream, const ELARecord& record)
+int XMC_Flasher::program(std::istream& tiTxtStream, const ELARecord& record) //* prog bar
 {
     std::string byteStr;
     int ret = 0;
@@ -338,7 +346,7 @@ int XMC_Flasher::program(std::istream& tiTxtStream, const ELARecord& record)
 
         // Send out a fully loaded pkt
         mPkt.hdr.payloadSize = pos;
-        if ((ret = sendPkt(true)) != 0)
+        if ((ret = sendPkt(true)) != 0) //* if prog bar val=true sendPkt false
             return ret;
         // Reset opcode and pos for next data pkt
         mPkt.hdr.opCode = XPO_MSP432_SEC_DATA;
@@ -361,7 +369,7 @@ void describePkt(struct xmcPkt& pkt, bool send)
     int lenInUint32 = (sizeof (pkt.hdr) + pkt.hdr.payloadSize +
         sizeof (uint32_t) - 1) / sizeof (uint32_t);
 
-    xrt_core::ios_flags_restore format(std::cout);
+    auto format = xrt_core::utils::ios_restore(std::cout);
 
     if (send)
         std::cout << "Sending XMC packet: ";
@@ -420,8 +428,8 @@ int XMC_Flasher::sendPkt(bool print_dot)
 #ifdef  XMC_DEBUG
     describePkt(mPkt, true);
 #else
-    if (print_dot)
-        std::cout << "." << std::flush;
+    // if (print_dot)
+    //     std::cout << "." << std::flush;
 #endif
 
     uint32_t *pkt = reinterpret_cast<uint32_t *>(&mPkt);
@@ -484,9 +492,9 @@ bool XMC_Flasher::isXMCReady()
     bool xmcReady = (XMC_MODE() == XMC_READY);
 
     if (!xmcReady) {
-        xrt_core::ios_flags_restore format(std::cout);
+        auto format = xrt_core::utils::ios_restore(std::cout);
         std::cout << "ERROR: XMC is not ready: 0x" << std::hex
-            << XMC_MODE() << std::endl;
+                  << XMC_MODE() << std::endl;
     }
     return xmcReady;
 }
@@ -496,9 +504,9 @@ bool XMC_Flasher::isBMCReady()
     bool bmcReady = (BMC_MODE() == 0x1);
 
     if (!bmcReady) {
-        xrt_core::ios_flags_restore format(std::cout);
+        auto format = xrt_core::utils::ios_restore(std::cout);
         std::cout << "ERROR: SC is not ready: 0x" << std::hex
-            << BMC_MODE() << std::endl;
+                  << BMC_MODE() << std::endl;
     }
     return bmcReady;
 }

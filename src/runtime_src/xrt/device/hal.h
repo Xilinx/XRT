@@ -18,7 +18,6 @@
 #define xrt_device_hal_h
 
 #include "xrt/config.h"
-#include "xrt/device/PMDOperations.h"
 #include "xrt/util/task.h"
 #include "xrt/util/event.h"
 #include "xrt/util/range.h"
@@ -154,9 +153,6 @@ public:
   {
     XRT_DEVICE_RAM
     ,XRT_DEVICE_BRAM
-#ifdef PMD_OCL
-    ,XRT_DEVICE_REGISTER
-#endif
     ,XRT_DEVICE_PREALLOCATED_BRAM
     ,XRT_SHARED_VIRTUAL
     ,XRT_SHARED_PHYSICAL
@@ -166,7 +162,7 @@ public:
   };
 
   virtual bool
-  open(const char* log, verbosity_level l) = 0;
+  open() = 0;
 
   virtual void
   close() = 0;
@@ -182,11 +178,6 @@ public:
 
   virtual void
   release_cu_context(const uuid& uuid,size_t cuidx) {}
-
-  // Hack to copy hw_em device info to sw_em device info
-  // Should not be necessary when we move to sw_emu
-  virtual void
-  copyDeviceInfo(const device* src) {}
 
   virtual std::string
   getDriverLibraryName() const = 0;
@@ -662,6 +653,12 @@ public:
   }
 
   virtual operations_result<std::string>
+  getSubdevPath(const std::string& subdev, uint32_t idx)
+  {
+    return operations_result<std::string>();
+  }
+
+  virtual operations_result<std::string>
   getDebugIPlayoutPath()
   {
     return operations_result<std::string>();
@@ -677,6 +674,12 @@ public:
   readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample)
   {
     return operations_result<int>();
+  }
+
+  virtual operations_result<void>
+  getDebugIpLayout(char* buffer, size_t size, size_t* size_ret)
+  {
+    return operations_result<void>();
   }
 
   virtual task::queue*
@@ -711,6 +714,10 @@ load_xdp_kernel_debug();
 XRT_EXPORT
 void
 load_xdp_app_debug();
+
+XRT_EXPORT
+void
+load_xdp_lop();
 } // namespace hal
 
 namespace hal2 {
@@ -726,10 +733,9 @@ namespace hal2 {
  *   Handle to the dll as was returned by dlopen
  * @param count
  *   Number of devices probed by the dll
- * @param pmd (optional)
  */
 void
-createDevices(hal::device_list&,const std::string&,void*,unsigned int,void* pmd=nullptr);
+createDevices(hal::device_list&,const std::string&,void*,unsigned int);
 
 } // namespace hal2
 

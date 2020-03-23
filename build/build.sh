@@ -42,6 +42,7 @@ usage()
     echo "[-nocmake]                 Skip CMake call"
     echo "[-j <n>]                   Compile parallel (default: system cores)"
     echo "[-ccache]                  Build using RDI's compile cache"
+    echo "[-toolchain <file>]        Extra toolchain file to configure CMake"
     echo "[-driver]                  Include building driver code"
     echo "[-checkpatch]              Run checkpatch.pl on driver code"
     echo "[-verbose]                 Turn on verbosity when compiling"
@@ -112,6 +113,11 @@ while [ $# -gt 0 ]; do
             ccache=1
             shift
             ;;
+        -toolchain)
+            shift
+            toolchain=$1
+            shift
+            ;;
         -checkpatch)
             checkpatch=1
             shift
@@ -180,8 +186,8 @@ if [[ $dbg == 1 ]]; then
   mkdir -p $debug_dir
   cd $debug_dir
   if [[ $nocmake == 0 ]]; then
-    echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src"
-    time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
+	echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain ../../src"
+	time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain ../../src
   fi
   echo "make -j $jcore $verbose DESTDIR=$PWD install"
   time make -j $jcore $verbose DESTDIR=$PWD install
@@ -193,19 +199,25 @@ if [[ $opt == 1 ]]; then
   mkdir -p $release_dir
   cd $release_dir
   if [[ $nocmake == 0 ]]; then
-    echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src"
-    time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
+	echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain ../../src"
+	time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain ../../src
   fi
-  echo "make -j $jcore $verbose DESTDIR=$PWD install"
-  time make -j $jcore $verbose DESTDIR=$PWD install
-  time ctest --output-on-failure
-  time make package
+
+  if [[ $docs == 1 ]]; then
+    echo "make xrt_docs"
+    make xrt_docs
+  else
+    echo "make -j $jcore $verbose DESTDIR=$PWD install"
+    time make -j $jcore $verbose DESTDIR=$PWD install
+    time ctest --output-on-failure
+    time make package
+  fi
 
   if [[ $driver == 1 ]]; then
     unset CC
     unset CXX
-    echo "make -C usr/src/xrt-2.5.0/driver/xocl"
-    make -C usr/src/xrt-2.5.0/driver/xocl
+    echo "make -C usr/src/xrt-2.6.0/driver/xocl"
+    make -C usr/src/xrt-2.6.0/driver/xocl
     if [[ $CPU == "aarch64" ]]; then
 	# I know this is dirty as it messes up the source directory with build artifacts but this is the
 	# quickest way to enable native zocl build in Travis CI environment for aarch64
@@ -230,12 +242,6 @@ if [[ $CPU != "aarch64" ]] && [[ $edge == 1 ]]; then
 fi
     
     
-
-if [[ $docs == 1 ]]; then
-    echo "make xrt_docs"
-    make xrt_docs
-fi
-
 if [[ $clangtidy == 1 ]]; then
     echo "make clang-tidy"
     make clang-tidy
@@ -243,7 +249,7 @@ fi
 
 if [[ $checkpatch == 1 ]]; then
     # check only driver released files
-    DRIVERROOT=`readlink -f $BUILDDIR/$release_dir/usr/src/xrt-2.5.0/driver`
+    DRIVERROOT=`readlink -f $BUILDDIR/$release_dir/usr/src/xrt-2.6.0/driver`
 
     # find corresponding source under src tree so errors can be fixed in place
     XOCLROOT=`readlink -f $BUILDDIR/../src/runtime_src/core/pcie/driver`

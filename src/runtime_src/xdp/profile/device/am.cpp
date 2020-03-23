@@ -21,7 +21,7 @@
 #define XAM_TRACE_CTRL_OFFSET                       0x10
 #define XAM_SAMPLE_OFFSET                           0x20
 #define XAM_ACCEL_EXECUTION_COUNT_OFFSET            0x80
-#define XAM_ACCEL_EXECUTION_CYCLES_OFFSET           0x84  
+#define XAM_ACCEL_EXECUTION_CYCLES_OFFSET           0x84
 #define XAM_ACCEL_STALL_INT_OFFSET                  0x88
 #define XAM_ACCEL_STALL_STR_OFFSET                  0x8c
 #define XAM_ACCEL_STALL_EXT_OFFSET                  0x90
@@ -281,6 +281,13 @@ void AM::showProperties()
     std::ostream *outputStream = (out_stream) ? out_stream : (&(std::cout));
     (*outputStream) << " AM " << std::endl;
     ProfileIP::showProperties();
+}
+
+bool AM::hasTraceID (uint32_t index) const
+{
+    // AMs have indices in multiples of 2
+    index = index - (index % 16);
+    return (properties & 0x1) && (m_index == index);
 }
 
 

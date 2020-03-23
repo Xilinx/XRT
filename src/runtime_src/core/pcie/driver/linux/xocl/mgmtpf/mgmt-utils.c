@@ -396,9 +396,6 @@ int pci_fundamental_reset(struct xclmgmt_dev *lro)
 	u8 hot;
 	struct pci_dev *pci_dev = lro->pci_dev;
 
-	/* freeze and free AXI gate to reset the OCL region before and after the pcie reset. */
-	xocl_icap_reset_axi_gate(lro);
-
 	/*
 	 * lock pci config space access from userspace,
 	 * save state and issue PCIe fundamental reset
@@ -449,8 +446,6 @@ done:
 	rc = pcie_unmask_surprise_down(pci_dev, orig_mask);
 
 	xocl_pci_restore_config_all(lro);
-	/* Also freeze and free AXI gate to reset the OCL region. */
-	xocl_icap_reset_axi_gate(lro);
 
 	return rc;
 }
@@ -466,6 +461,8 @@ static void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 	/* what if user PF in VM ? */
 	xocl_pci_save_config_all(lro);
 
+	pci_disable_device(pdev);
+
 	/* Reset secondary bus. */
 	bus = pdev->bus;
 	pci_read_config_byte(bus->self, PCI_BRIDGE_CONTROL, &pci_bctl);
@@ -476,6 +473,8 @@ static void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 	pci_bctl &= ~PCI_BRIDGE_CTL_BUS_RESET;
 	pci_write_config_byte(bus->self, PCI_BRIDGE_CONTROL, pci_bctl);
 	ssleep(1);
+
+	pci_enable_device(pdev);
 
 	xocl_wait_pci_status(pdev, 0, 0, 0);
 
@@ -563,7 +562,7 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 		ret = -EINVAL;
 		goto failed;
 	}
-	len = fdt_totalsize(lro->bld_blob);
+	len = fdt_totalsize(lro->core.blp_blob);
 	if (len > 100 * 1024 * 1024) {
 		mgmt_err(lro, "dtb is too big");
 		ret = -EINVAL;
@@ -575,7 +574,7 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 		lro->core.fdt_blob = blob;
 		goto failed;
 	}
-	memcpy(lro->core.fdt_blob, lro->bld_blob, len);
+	memcpy(lro->core.fdt_blob, lro->core.blp_blob, len);
 	ret = xocl_icap_download_rp(lro, XOCL_SUBDEV_LEVEL_PRP,
 			RP_DOWNLOAD_DRY);
 	if (ret) {
@@ -591,8 +590,6 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 	xocl_drvinst_set_offline(lro, true);
 
 	xocl_thread_stop(lro);
-
-	xocl_mb_stop(lro);
 
 	ret = xocl_subdev_destroy_prp(lro);
 	if (ret) {
@@ -613,6 +610,7 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 		goto failed;
 	}
 
+	/* reload possible cmc and ert images */
 	xocl_icap_post_download_rp(lro);
 
 	xocl_thread_start(lro);
@@ -694,12 +692,12 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 		goto failed;
 	}
 
-	lro->bld_blob = vmalloc(fdt_totalsize(lro->core.fdt_blob));
-	if (!lro->bld_blob) {
+	lro->core.blp_blob = vmalloc(fdt_totalsize(lro->core.fdt_blob));
+	if (!lro->core.blp_blob) {
 		ret = -ENOMEM;
 		goto failed;
 	}
-	memcpy(lro->bld_blob, lro->core.fdt_blob,
+	memcpy(lro->core.blp_blob, lro->core.fdt_blob,
 			fdt_totalsize(lro->core.fdt_blob));
 
 	xclmgmt_connect_notify(lro, false);

@@ -114,6 +114,11 @@ struct xocl_p2p_mem_chunk {
 #endif
 };
 
+enum {
+	XOCL_FLAGS_SYSFS_INITIALIZED = (1 << 0),
+	XOCL_FLAGS_PERSIST_SYSFS_INITIALIZED = (1 << 1),
+};
+
 struct xocl_dev	{
 	struct xocl_dev_core	core;
 
@@ -150,6 +155,8 @@ struct xocl_dev	{
 
 	uint64_t		mig_cache_expire_secs;
 	ktime_t			mig_cache_expires;
+
+	u32			flags;
 };
 
 /**
@@ -207,8 +214,10 @@ int xocl_free_cma_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 
 /* sysfs functions */
-int xocl_init_sysfs(struct device *dev);
-void xocl_fini_sysfs(struct device *dev);
+int xocl_init_sysfs(struct xocl_dev *xdev);
+void xocl_fini_sysfs(struct xocl_dev *xdev);
+int xocl_init_persist_sysfs(struct xocl_dev *xdev);
+void xocl_fini_persist_sysfs(struct xocl_dev *xdev);
 
 /* helper functions */
 enum {

@@ -106,13 +106,16 @@ public:
         std::string& err_msg, const std::string& input);
     void sysfs_put(const std::string& subdev, const std::string& entry,
         std::string& err_msg, const std::vector<char>& buf);
+    void sysfs_put(const std::string& subdev, const std::string& entry,
+        std::string& err_msg, const unsigned int& buf);
     std::string get_sysfs_path(const std::string& subdev,
         const std::string& entry);
-
+    std::string get_subdev_path(const std::string& subdev, uint32_t idx);
     int pcieBarRead(uint64_t offset, void *buf, uint64_t len);
     int pcieBarWrite(uint64_t offset, const void *buf, uint64_t len);
 
     int open(const std::string& subdev, int flag);
+    int open(const std::string& subdev, uint32_t idx, int flag);
     void close(int devhdl);
     int ioctl(int devhdl, unsigned long cmd, void *arg = nullptr);
     int poll(int devhdl, short events, int timeoutMilliSec);
@@ -120,6 +123,8 @@ public:
     int munmap(int devhdl, void* addr, size_t len);
     int flock(int devhdl, int op);
     int get_partinfo(std::vector<std::string>& info, void *blob = nullptr);
+    int shutdown(bool remove_user = false, bool remove_mgmt = false);
+    std::shared_ptr<pcidev::pci_device> lookup_peer_dev();
 
 private:
     std::fstream sysfs_open(const std::string& subdev,
@@ -138,6 +143,7 @@ std::shared_ptr<pci_device> get_dev(unsigned index, bool user = true);
 
 int get_axlf_section(std::string filename, int kind, std::shared_ptr<char>& buf);
 int get_uuids(std::shared_ptr<char>& dtbbuf, std::vector<std::string>& uuids);
+std::shared_ptr<pcidev::pci_device> lookup_user_dev(std::shared_ptr<pcidev::pci_device> mgmt_dev);
 } /* pcidev */
 
 // For print out per device info

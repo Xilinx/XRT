@@ -26,6 +26,7 @@ namespace xma_core {
    
    int32_t finalize_ddr_index(XmaHwKernel* kernel_info, int32_t req_ddr_index, int32_t& ddr_index, const std::string& prefix);
    int32_t create_session_execbo(XmaHwSessionPrivate *priv, int32_t count, const std::string& prefix);
+   int32_t check_plugin_version(int32_t plugin_main_ver, int32_t plugin_sub_ver);
 }
 
 namespace xma_core { namespace utils {
@@ -35,6 +36,7 @@ int32_t load_libxrt();
 int32_t get_cu_index(int32_t dev_index, char* cu_name);
 int32_t get_default_ddr_index(int32_t dev_index, int32_t cu_index);
 void xma_enable_mode1(void);
+void xma_enable_mode2(void);
 
 int32_t check_all_execbo(XmaSession s_handle);
 

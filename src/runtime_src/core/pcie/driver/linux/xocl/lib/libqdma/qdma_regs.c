@@ -745,7 +745,8 @@ int hw_indirect_stm_prog(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
 		(addr << S_STM_CMD_ADDR) | (fid << S_STM_CMD_FID);
 
 	pr_debug("ctxt_cmd reg 0x%x, qid 0x%x, op 0x%x, fid 0x%x addr 0x%x -> 0x%08x.\n",
-		 STM_REG_BASE + STM_REG_IND_CTXT_CMD, qid_hw, op, fid, addr, v);
+		 xdev->conf.stm_reg_base + STM_REG_IND_CTXT_CMD, qid_hw, op,
+		 fid, addr, v);
 	writel(v, xdev->stm_regs + STM_REG_IND_CTXT_CMD);
 
 	if (op == STM_CSR_CMD_RD) {

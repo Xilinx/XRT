@@ -162,6 +162,7 @@ echo "================================================================"
 xsaFile=""
 mcsPrimary=""
 mcsSecondary=""
+pdiFile=""
 fullBitFile=""
 clearBitstreamFile=""
 metaDataJSONFile=""
@@ -242,6 +243,11 @@ recordXsaFiles()
    # MCS Secondary
    if [ "${ENTITY_ATTRIBUTES_ARRAY[Type]}" == "SECONDARY_MCS" ]; then
      mcsSecondary="firmware/${ENTITY_ATTRIBUTES_ARRAY[Name]}"
+   fi
+
+   # PDI Image
+   if [ "${ENTITY_ATTRIBUTES_ARRAY[Type]}" == "PDI" ]; then
+     pdiFile="${ENTITY_ATTRIBUTES_ARRAY[Name]}"
    fi
 
    # Clear Bitstream
@@ -363,12 +369,8 @@ initBMCVar()
 {
     prefix=""
     if [ "${SatelliteControllerFamily}" != "" ]; then
-      if [ "${SatelliteControllerFamily}" == "Alveo-Gen1" ]; then
-         prefix="AlveoGen1-"
-      elif [ "${SatelliteControllerFamily}" == "Alveo-Gen2" ]; then
-         prefix="AlveoGen2-"
-      elif [ "${SatelliteControllerFamily}" == "Alveo-Gen3" ]; then
-         prefix="AlveoGen3-"
+      if [[ "${SatelliteControllerFamily}" == Alveo-Gen* ]]; then
+         prefix="${SatelliteControllerFamily/Alveo-Gen/AlveoGen}-"
       else
          echo "ERROR: Unknown satellite controller family: ${SatelliteControllerFamily}"
          exit 1
@@ -413,6 +415,9 @@ initBMCVar()
       # We only go through this loop once
       return
     done
+
+    echo "ERROR: Could not find satellite controller firmmware image for the family: ${SatelliteControllerFamily}"
+    exit 1
 }
 
 initXsaBinEnvAndVars()
@@ -443,6 +448,12 @@ initXsaBinEnvAndVars()
     if [ "${mcsSecondary}" != "" ]; then
        echo "Info: Extracting MCS Secondary file: ${mcsSecondary}"
        unzip -q -d . "${xsaFile}" "${mcsSecondary}"
+    fi
+
+    # -- Extract the PDI File --
+    if [ "${pdiFile}" != "" ]; then
+       echo "Info: Extracting PDI Primary file: ${pdiFile}"
+       unzip -q -d . "${xsaFile}" "${pdiFile}"
     fi
 
     # -- Extract the bitstreams --
@@ -573,6 +584,11 @@ doxsabin()
     # -- MCS_SECONDARY image --
     if [ "$mcsSecondary" != "" ]; then
        xclbinOpts+=" --add-section MCS-SECONDARY:RAW:${mcsSecondary}"
+    fi
+    
+    # -- PDI image --
+    if [ "$pdiFile" != "" ]; then
+       xclbinOpts+=" --add-section PDI:RAW:${pdiFile}"
     fi
     
     # -- Firmware: Scheduler --

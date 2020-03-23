@@ -20,9 +20,10 @@
 #include "XBReport.h"
 #include "XBDatabase.h"
 
-#include "common/system.h"
-#include "common/device.h"
-#include "common/xclbin_parser.h"
+#include "core/common/system.h"
+#include "core/common/device.h"
+#include "core/common/query_requests.h"
+#include "core/common/xclbin_parser.h"
 
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
@@ -33,9 +34,6 @@ namespace po = boost::program_options;
 
 // System - Include Files
 #include <iostream>
-
-#include "common/system.h"
-#include "common/device.h"
 #include <boost/format.hpp>
 
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
@@ -75,6 +73,9 @@ pu1_query_report()
 
   for (auto &ptDevice : devices) {
     int device_id = ptDevice.get<int>("device_id", -1);
+    if (device_id < 0)
+      throw xrt_core::error("Please specify valid device id");
+
     auto pDevice = xrt_core::get_userpf_device(device_id);
 
     std::cout << boost::format("%s : %d") % "Device ID" % device_id << std::endl;
@@ -104,7 +105,7 @@ pu1_query_report()
     std::cout << "Accelerator"  << std::endl;
 
   try {
-    auto iplbuf = xrt_core::query_device<std::vector<char>>(pDevice, xrt_core::device::QR_IP_LAYOUT_RAW);
+    auto iplbuf = xrt_core::device_query<xrt_core::query::ip_layout_raw>(pDevice);
     auto iplayout = reinterpret_cast<const ip_layout*>(iplbuf.data());
     auto cus = xrt_core::xclbin::get_cus(iplayout);
 
@@ -126,15 +127,15 @@ pu1_query_report()
   std::cout << "\nTemperature" << std::endl;
 
   std::cout << boost::format("  %-16s : %s C") % "PCB top front" 
-    % xrt_core::query_device<uint64_t>(pDevice, xrt_core::device::QR_TEMP_CARD_TOP_FRONT) << "\n";
+    % xrt_core::device_query<xrt_core::query::temp_card_top_front>(pDevice) << "\n";
   std::cout << boost::format("  %-16s : %s C") % "PCB top rear" 
-    % xrt_core::query_device<uint64_t>(pDevice, xrt_core::device::QR_TEMP_CARD_TOP_REAR) << "\n";
+    % xrt_core::device_query<xrt_core::query::temp_card_top_rear>(pDevice) << "\n";
   std::cout << boost::format("  %-16s : %s C") % "PCB bottom front" 
-    % xrt_core::query_device<uint64_t>(pDevice, xrt_core::device::QR_TEMP_CARD_BOTTOM_FRONT) << "\n";
+    % xrt_core::device_query<xrt_core::query::temp_card_bottom_front>(pDevice) << "\n";
   std::cout << boost::format("  %-16s : %s C") % "FPGA" 
-    % xrt_core::query_device<uint64_t>(pDevice, xrt_core::device::QR_TEMP_FPGA) << "\n";
+    % xrt_core::device_query<xrt_core::query::temp_fpga>(pDevice) << "\n";
   std::cout << boost::format("  %-16s : %s C") % "FAN trig crit" 
-    % xrt_core::query_device<uint64_t>(pDevice, xrt_core::device::QR_FAN_TRIGGER_CRITICAL_TEMP) << "\n";
+    % xrt_core::device_query<xrt_core::query::fan_trigger_critical_temp>(pDevice) << "\n";
 
   std::cout << "----------------------------------------------------------------" << std::endl;
 

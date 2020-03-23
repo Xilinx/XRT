@@ -88,10 +88,18 @@
 #define	XMC_VPP2V5_REG			0x29C
 #define	XMC_VCCINT_BRAM_REG		0x2A8
 #define	XMC_HBM_TEMP2_REG		0x2B4
+#define	XMC_12V_AUX1_REG                0x2C0
 #define	XMC_VCCINT_TEMP_REG             0x2CC
 #define	XMC_HOST_MSG_OFFSET_REG		0x300
 #define	XMC_HOST_MSG_ERROR_REG		0x304
 #define	XMC_HOST_MSG_HEADER_REG		0x308
+#define	XMC_VCC1V2_I_REG                0x314
+#define	XMC_V12_IN_I_REG                0x320
+#define	XMC_V12_IN_AUX0_I_REG           0x32C
+#define	XMC_V12_IN_AUX1_I_REG           0x338
+#define	XMC_VCCAUX_REG                  0x344
+#define	XMC_VCCAUX_PMC_REG              0x350
+#define	XMC_VCCRAM_REG                  0x35C
 #define	XMC_HOST_NEW_FEATURE_REG1	0xB20
 #define	XMC_OEM_ID_REG                  0xC50
 #define	XMC_HOST_NEW_FEATURE_REG1_FEATURE_PRESENT (1 << 29)
@@ -368,8 +376,9 @@ static int load_xmc(struct xocl_xmc *xmc);
 static int stop_xmc(struct platform_device *pdev);
 static void xmc_clk_scale_config(struct platform_device *pdev);
 static int xmc_load_board_info(struct xocl_xmc *xmc);
-static int cmc_access_ops(struct platform_device *pdev, int flags);
+static int xmc_access(struct platform_device *pdev, enum xocl_xmc_flags flags);
 static bool scaling_condition_check(struct xocl_xmc *xmc, struct device *dev);
+static const struct file_operations xmc_fops;
 
 static void set_sensors_data(struct xocl_xmc *xmc, struct xcl_sensor *sensors)
 {
@@ -582,7 +591,31 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 			safe_read32(xmc, XMC_OEM_ID_REG, val);
 			break;
 		case XMC_VCCINT_TEMP:
-			safe_read32(xmc, XMC_VCCINT_TEMP_REG, val);
+			READ_SENSOR(xmc, XMC_VCCINT_TEMP_REG, val, val_kind);
+			break;
+		case XMC_12V_AUX1:
+			READ_SENSOR(xmc, XMC_12V_AUX1_REG, val, val_kind);
+			break;
+		case XMC_VCC1V2_I:
+			READ_SENSOR(xmc, XMC_VCC1V2_I_REG, val, val_kind);
+			break;
+		case XMC_V12_IN_I:
+			READ_SENSOR(xmc, XMC_V12_IN_I_REG, val, val_kind);
+			break;
+		case XMC_V12_IN_AUX0_I:
+			READ_SENSOR(xmc, XMC_V12_IN_AUX0_I_REG, val, val_kind);
+			break;
+		case XMC_V12_IN_AUX1_I:
+			READ_SENSOR(xmc, XMC_V12_IN_AUX1_I_REG, val, val_kind);
+			break;
+		case XMC_VCCAUX:
+			READ_SENSOR(xmc, XMC_VCCAUX_REG, val, val_kind);
+			break;
+		case XMC_VCCAUX_PMC:
+			READ_SENSOR(xmc, XMC_VCCAUX_PMC_REG, val, val_kind);
+			break;
+		case XMC_VCCRAM:
+			READ_SENSOR(xmc, XMC_VCCRAM_REG, val, val_kind);
 			break;
 		default:
 			break;
@@ -717,6 +750,31 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 		case XMC_VCCINT_TEMP:
 			*val = xmc->cache->vccint_temp;
 			break;
+		case XMC_12V_AUX1:
+			*val = xmc->cache->vol_12v_aux1;
+			break;
+		case XMC_VCC1V2_I:
+			*val = xmc->cache->vol_vcc1v2_i;
+			break;
+		case XMC_V12_IN_I:
+			*val = xmc->cache->vol_v12_in_i;
+			break;
+		case XMC_V12_IN_AUX0_I:
+			*val = xmc->cache->vol_v12_in_aux0_i;
+			break;
+		case XMC_V12_IN_AUX1_I:
+			*val = xmc->cache->vol_v12_in_aux1_i;
+			break;
+		case XMC_VCCAUX:
+			*val = xmc->cache->vol_vccaux;
+			break;
+		case XMC_VCCAUX_PMC:
+			*val = xmc->cache->vol_vccaux_pmc;
+			break;
+		case XMC_VCCRAM:
+			*val = xmc->cache->vol_vccram;
+			break;
+
 		default:
 			break;
 		}
@@ -733,6 +791,8 @@ static void read_bdinfo_from_peer(struct platform_device *pdev)
 	size_t reqlen = sizeof(struct xcl_mailbox_req) + data_len;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	int ret = 0;
+
+	BUG_ON(!mutex_is_locked(&xmc->mbx_lock));
 
 	if (xmc->bdinfo_raw)
 		return;
@@ -770,6 +830,7 @@ static void xmc_bdinfo(struct platform_device *pdev, enum data_kind kind,
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
 	struct xcl_board_info *bdinfo = NULL;
 
+	BUG_ON(!mutex_is_locked(&xmc->mbx_lock));
 	if (XMC_PRIVILEGED(xmc)) {
 
 		switch (kind) {
@@ -877,7 +938,7 @@ static bool autonomous_xmc(struct platform_device *pdev)
 {
 	struct xocl_dev_core *core = xocl_get_xdev(pdev);
 
-	return core->priv.flags & XOCL_DSAFLAG_SMARTN;
+	return core->priv.flags & (XOCL_DSAFLAG_SMARTN | XOCL_DSAFLAG_VERSAL);
 }
 
 static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind,
@@ -887,7 +948,7 @@ static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind,
 	struct xcl_board_info *bdinfo = NULL;
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
 
-	if (XMC_PRIVILEGED(xmc) && !xmc->mgmt_binary)
+	if (XMC_PRIVILEGED(xmc) && !xmc->mgmt_binary && !autonomous_xmc(pdev))
 		return -ENODEV;
 
 	switch (kind) {
@@ -936,11 +997,18 @@ static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind,
 		xmc_sensor(pdev, XMC_VER, &sensors->version, SENSOR_INS);
 		xmc_sensor(pdev, XMC_OEM_ID, &sensors->oem_id, SENSOR_INS);
 		xmc_sensor(pdev, XMC_VCCINT_TEMP, &sensors->vccint_temp, SENSOR_INS);
+		xmc_sensor(pdev, XMC_12V_AUX1, &sensors->vol_12v_aux1, SENSOR_INS);
+		xmc_sensor(pdev, XMC_VCC1V2_I, &sensors->vol_vcc1v2_i, SENSOR_INS);
+		xmc_sensor(pdev, XMC_V12_IN_I, &sensors->vol_v12_in_i, SENSOR_INS);
+		xmc_sensor(pdev, XMC_V12_IN_AUX0_I, &sensors->vol_v12_in_aux0_i, SENSOR_INS);
+		xmc_sensor(pdev, XMC_V12_IN_AUX1_I, &sensors->vol_v12_in_aux1_i, SENSOR_INS);
+		xmc_sensor(pdev, XMC_VCCAUX, &sensors->vol_vccaux, SENSOR_INS);
+		xmc_sensor(pdev, XMC_VCCAUX_PMC, &sensors->vol_vccaux_pmc, SENSOR_INS);
+		xmc_sensor(pdev, XMC_VCCRAM, &sensors->vol_vccram, SENSOR_INS);
 		break;
 	case XCL_BDINFO:
 		mutex_lock(&xmc->mbx_lock);
 		xmc_load_board_info(xmc);
-		mutex_unlock(&xmc->mbx_lock);
 
 		bdinfo = (struct xcl_board_info *)buf;
 
@@ -956,6 +1024,7 @@ static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind,
 		xmc_bdinfo(pdev, FAN_PRESENCE, &bdinfo->fan_presence);
 		xmc_bdinfo(pdev, CFG_MODE, &bdinfo->config_mode);
 		xmc_bdinfo(pdev, EXP_BMC_VER, (u32 *)bdinfo->exp_bmc_ver);
+		mutex_unlock(&xmc->mbx_lock);
 		break;
 	default:
 		break;
@@ -1069,6 +1138,14 @@ SENSOR_SYSFS_NODE(xmc_hbm_temp, HBM_TEMP);
 SENSOR_SYSFS_NODE(version, XMC_VER);
 SENSOR_SYSFS_NODE_FORMAT(xmc_oem_id, XMC_OEM_ID, "0x%x\n");
 SENSOR_SYSFS_NODE(xmc_vccint_temp, XMC_VCCINT_TEMP);
+SENSOR_SYSFS_NODE(xmc_12v_aux1, XMC_12V_AUX1);
+SENSOR_SYSFS_NODE(xmc_vcc1v2_i, XMC_VCC1V2_I);
+SENSOR_SYSFS_NODE(xmc_v12_in_i, XMC_V12_IN_I);
+SENSOR_SYSFS_NODE(xmc_v12_in_aux0_i, XMC_V12_IN_AUX0_I);
+SENSOR_SYSFS_NODE(xmc_v12_in_aux1_i, XMC_V12_IN_AUX1_I);
+SENSOR_SYSFS_NODE(xmc_vccaux, XMC_VCCAUX);
+SENSOR_SYSFS_NODE(xmc_vccaux_pmc, XMC_VCCAUX_PMC);
+SENSOR_SYSFS_NODE(xmc_vccram, XMC_VCCRAM);
 
 static ssize_t xmc_power_show(struct device *dev,
 	struct device_attribute *da, char *buf)
@@ -1133,7 +1210,15 @@ static DEVICE_ATTR_RO(status);
 	&dev_attr_xmc_power.attr,					\
 	&dev_attr_version.attr,						\
 	&dev_attr_xmc_oem_id.attr,					\
-	&dev_attr_xmc_vccint_temp.attr
+	&dev_attr_xmc_vccint_temp.attr,					\
+	&dev_attr_xmc_12v_aux1.attr,					\
+	&dev_attr_xmc_vcc1v2_i.attr,					\
+	&dev_attr_xmc_v12_in_i.attr,					\
+	&dev_attr_xmc_v12_in_aux0_i.attr,				\
+	&dev_attr_xmc_v12_in_aux1_i.attr,				\
+	&dev_attr_xmc_vccaux.attr,					\
+	&dev_attr_xmc_vccaux_pmc.attr,					\
+	&dev_attr_xmc_vccram.attr
 
 /*
  * Defining sysfs nodes for reading some of xmc regisers.
@@ -2310,6 +2395,34 @@ create_attr_failed:
 	return err;
 }
 
+static int stop_ert_nolock(struct platform_device *pdev)
+{
+	struct xocl_xmc *xmc;
+	int retry = 0;
+
+	xmc = platform_get_drvdata(pdev);
+	if (!xmc)
+		return -ENODEV;
+	else if (!xmc->enabled)
+		return -ENODEV;
+
+	while ((READ_CQ(xmc, 0) != (ERT_EXIT_CMD_OP | ERT_EXIT_ACK)) &&
+		retry++ < MAX_ERT_RETRY) {
+		WRITE_CQ(xmc, ERT_EXIT_CMD, 0);
+		msleep(RETRY_INTERVAL);
+	}
+	if (retry >= MAX_ERT_RETRY) {
+		xocl_warn(&xmc->pdev->dev, "Failed to stop sched");
+		xocl_warn(&xmc->pdev->dev, "Scheduler CQ status 0x%x",
+					READ_CQ(xmc, 0));
+		return -ETIMEDOUT;
+	}
+
+	xocl_info(&xmc->pdev->dev, "ERT stopped, retry %d", retry);
+	return 0;
+}
+
+
 static int stop_xmc_nolock(struct platform_device *pdev)
 {
 	struct xocl_xmc *xmc;
@@ -2326,7 +2439,7 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 		return -ENODEV;
 
 	/* freeze cmc prior to stop cmc */
-	ret = cmc_access_ops(pdev, 0);
+	ret = xmc_access(pdev, XOCL_XMC_FREEZE);
 	if (ret)
 		return ret;
 
@@ -2354,20 +2467,10 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 			WRITE_REG32(xmc, CTL_MASK_STOP, XMC_CONTROL_REG);
 			WRITE_REG32(xmc, 1, XMC_STOP_CONFIRM_REG);
 		}
-		/* Need to check if ERT is loaded before we attempt to stop it */
-		if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0)) &&
-			SCHED_EXIST(xmc)) {
-			reg_val = READ_CQ(xmc, 0);
-			if (!(reg_val & ERT_EXIT_ACK)) {
-				xocl_info(&xmc->pdev->dev,
-					"Stopping scheduler...");
-				WRITE_CQ(xmc, ERT_EXIT_CMD, 0);
-			}
-		}
 
 		retry = 0;
 		while (retry++ < MAX_XMC_RETRY &&
-			!(READ_REG32(xmc, XMC_STATUS_REG) & STATUS_MASK_STOPPED))
+		    !(READ_REG32(xmc, XMC_STATUS_REG) & STATUS_MASK_STOPPED))
 			msleep(RETRY_INTERVAL);
 
 		/* Wait for XMC to stop and then check that ERT has also finished */
@@ -2378,23 +2481,17 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 			xmc->state = XMC_STATE_ERROR;
 			return -ETIMEDOUT;
 		} else if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0)) &&
-			 SCHED_EXIST(xmc) &&
-			 !(READ_CQ(xmc, 0) & ERT_EXIT_ACK)) {
-			while (retry++ < MAX_ERT_RETRY &&
-				!(READ_CQ(xmc, 0) & ERT_EXIT_ACK))
-				msleep(RETRY_INTERVAL);
-			if (retry >= MAX_ERT_RETRY) {
-				xocl_warn(&xmc->pdev->dev,
-					"Failed to stop sched");
-				xocl_warn(&xmc->pdev->dev,
-					"Scheduler CQ status 0x%x",
-					READ_CQ(xmc, 0));
-				/*
-				 * We don't exit if ERT doesn't stop since
-				 * it can hang due to bad kernel xmc->state =
-				 * XMC_STATE_ERROR; return -ETIMEDOUT;
-				 */
-			}
+			 SCHED_EXIST(xmc)) {
+			xocl_info(&xmc->pdev->dev,
+					"Stopping scheduler...");
+			/*
+			 * We don't exit if ERT doesn't stop since
+			 * it can hang due to bad kernel xmc->state =
+			 * XMC_STATE_ERROR;
+			 */
+			ret = stop_ert_nolock(pdev);
+			if (ret)
+				return ret;
 		}
 
 		xocl_info(&xmc->pdev->dev, "XMC/sched Stopped, retry %d",
@@ -2423,6 +2520,11 @@ static int stop_xmc(struct platform_device *pdev)
 		return -ENODEV;
 	else if (!xmc->enabled)
 		return -ENODEV;
+
+	if (xmc->sysfs_created) {
+		mgmt_sysfs_destroy_xmc(pdev);
+		xmc->sysfs_created = false;
+	}
 
 	mutex_lock(&xmc->xmc_lock);
 	ret = stop_xmc_nolock(pdev);
@@ -2582,6 +2684,16 @@ static int load_xmc(struct xocl_xmc *xmc)
 	xmc_load_board_info(xmc);
 	mutex_unlock(&xmc->mbx_lock);
 
+	if (!xmc->sysfs_created) {
+		ret = mgmt_sysfs_create_xmc(xmc->pdev);
+		if (ret) {
+			xocl_err(&xmc->pdev->dev, "Create sysfs failed, err %d", ret);
+			goto out;
+		}
+
+		xmc->sysfs_created = true;
+	}
+
 	return 0;
 out:
 	mutex_unlock(&xmc->xmc_lock);
@@ -2589,16 +2701,17 @@ out:
 	return ret;
 }
 
-static void xmc_reset(struct platform_device *pdev)
+static int xmc_reset(struct platform_device *pdev)
 {
 	struct xocl_xmc *xmc;
 
 	xocl_info(&pdev->dev, "Reset Microblaze...");
 	xmc = platform_get_drvdata(pdev);
 	if (!xmc || !xmc->enabled)
-		return;
+		return -EINVAL;
 
 	load_xmc(xmc);
+	return 0;
 }
 
 static int load_mgmt_image(struct platform_device *pdev, const char *image,
@@ -2675,25 +2788,22 @@ static void xmc_clk_scale_config(struct platform_device *pdev)
 	WRITE_RUNTIME_CS(xmc, cntrl, XMC_CLOCK_CONTROL_REG);
 }
 
-static int xmc_dynamic_region_free(struct platform_device *pdev);
-static int xmc_dynamic_region_freeze(struct platform_device *pdev);
-
-/*
- * flags can be 1: Grant access (free)
- *              0: Release access (freeze)
- */
-static int cmc_access_ops(struct platform_device *pdev, int flags)
+static int raptor_cmc_access(struct platform_device *pdev,
+	enum xocl_xmc_flags flags)
 {
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
-	u32 val, grant, ack;
+	u32 val, ack;
 	int retry;
 	int err = 0;
+	u32 grant = 0; /* 0 is disabled, 1 is enabled */
 
-	if (flags == 1) {
+	if (flags == XOCL_XMC_FREE) {
 		uint64_t addr;
+
+		grant = 1; /* set to 1:enabled */
 		/*
-		 * for grant access (flags = 1), we are looking for new
+		 * for grant (free) access, we are looking for new
 		 * features, if no new features, skip the grant operation
 		 */
 		addr = xocl_iores_get_offset(xdev, IORES_GAPPING);
@@ -2713,9 +2823,13 @@ static int cmc_access_ops(struct platform_device *pdev, int flags)
 		WRITE_REG32(xmc, val, XMC_HOST_NEW_FEATURE_REG1);
 		xocl_xdev_info(xdev, "%s is 0x%llx, set New Feature Table to 0x%x\n",
 		    NODE_GAPPING, addr, val);
+	} else if (flags == XOCL_XMC_FREEZE) {
+		grant = 0;
+	} else {
+		xocl_xdev_info(xdev, "invalid flags %d", flags);
+		return -EINVAL;
 	}
 
-	grant = (u32)flags & 0x1;
 	err = xocl_iores_write32(xdev, XOCL_SUBDEV_LEVEL_BLD, IORES_CMC_MUTEX,
 	    XOCL_RES_OFFSET_CHANNEL1, grant);
 	if (err == -ENODEV) {
@@ -2741,6 +2855,7 @@ static int cmc_access_ops(struct platform_device *pdev, int flags)
 			goto fail;
 		}
 
+		/* Success condition: grant and ack have same value */
 		if ((grant & MUTEX_GRANT_MASK) == (ack & MUTEX_ACK_MASK))
 			break;
 
@@ -2755,20 +2870,30 @@ static int cmc_access_ops(struct platform_device *pdev, int flags)
 		goto fail;
 	}
 
-	xocl_xdev_info(xdev, "%s CMC succeeded.", flags ? "Grant" : "Release");
+	xocl_xdev_info(xdev, "%s CMC succeeded.",
+	    flags == XOCL_XMC_FREE ? "Grant" : "Release");
 fail:
 	return err;
 }
 
+static int xmc_offline(struct platform_device *pdev)
+{
+	return xmc_access(pdev, XOCL_XMC_FREEZE);
+}
+static int xmc_online(struct platform_device *pdev)
+{
+	return xmc_access(pdev, XOCL_XMC_FREE);
+}
+
 static struct xocl_mb_funcs xmc_ops = {
+	.offline_cb		= xmc_offline,
+	.online_cb		= xmc_online,
 	.load_mgmt_image	= load_mgmt_image,
 	.load_sche_image	= load_sche_image,
 	.reset			= xmc_reset,
 	.stop			= stop_xmc,
 	.get_data		= xmc_get_data,
-	.dr_freeze          	= xmc_dynamic_region_freeze,
-	.dr_free         	= xmc_dynamic_region_free,
-	.cmc_access              = cmc_access_ops,
+	.xmc_access             = xmc_access,
 };
 
 static void xmc_unload_board_info(struct xocl_xmc *xmc)
@@ -2782,11 +2907,14 @@ static void xmc_unload_board_info(struct xocl_xmc *xmc)
 static int xmc_remove(struct platform_device *pdev)
 {
 	struct xocl_xmc *xmc;
+	void *hdl;
 	int	i;
 
 	xmc = platform_get_drvdata(pdev);
 	if (!xmc)
 		return 0;
+
+	xocl_drvinst_release(xmc, &hdl);
 
 	vfree(xmc->mgmt_binary);
 	vfree(xmc->sche_binary);
@@ -2818,7 +2946,7 @@ end:
 	mutex_destroy(&xmc->mbx_lock);
 
 	platform_set_drvdata(pdev, NULL);
-	xocl_drvinst_free(xmc);
+	xocl_drvinst_free(hdl);
 	return 0;
 }
 
@@ -2853,6 +2981,7 @@ static int xmc_probe(struct platform_device *pdev)
 	struct xocl_xmc *xmc;
 	struct resource *res;
 	void *xdev_hdl;
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	int i, err;
 
 	xmc = xocl_drvinst_alloc(&pdev->dev, sizeof(*xmc));
@@ -2863,6 +2992,7 @@ static int xmc_probe(struct platform_device *pdev)
 
 	xmc->pdev = pdev;
 	platform_set_drvdata(pdev, xmc);
+	xocl_dbg(&pdev->dev, "fops %lx", (ulong)&xmc_fops);
 
 	mutex_init(&xmc->xmc_lock);
 	mutex_init(&xmc->mbx_lock);
@@ -2898,7 +3028,7 @@ static int xmc_probe(struct platform_device *pdev)
 			goto failed;
 		}
 
-		if (!xmc->base_addrs[IO_GPIO]) {
+		if (!XOCL_DSA_IS_VERSAL(xdev) && !xmc->base_addrs[IO_GPIO]) {
 			xocl_info(&pdev->dev, "minimum mode for SC upgrade");
 			return 0;
 		}
@@ -2916,14 +3046,6 @@ static int xmc_probe(struct platform_device *pdev)
 
 	if (READ_GPIO(xmc, 0) == GPIO_ENABLED || autonomous_xmc(pdev))
 		xmc->state = XMC_STATE_ENABLED;
-
-	err = mgmt_sysfs_create_xmc(pdev);
-	if (err) {
-		xocl_err(&pdev->dev, "Create sysfs failed, err %d", err);
-		goto failed;
-	}
-
-	xmc->sysfs_created = true;
 
 	xmc->cache = vzalloc(sizeof(struct xcl_sensor));
 
@@ -2958,6 +3080,14 @@ static int xmc_probe(struct platform_device *pdev)
 			xocl_info(&pdev->dev, "Runtime clock scaling is supported.\n");
 	}
 
+	err = mgmt_sysfs_create_xmc(pdev);
+	if (err) {
+		xocl_err(&pdev->dev, "Create sysfs failed, err %d", err);
+		goto failed;
+	}
+
+	xmc->sysfs_created = true;
+
 	return 0;
 
 failed:
@@ -2965,7 +3095,6 @@ failed:
 	return err;
 }
 
-static const struct file_operations xmc_fops;
 struct xocl_drv_private	xmc_priv = {
 	.ops = &xmc_ops,
 #if PF == MGMTPF
@@ -3104,6 +3233,8 @@ static int xmc_recv_pkt(struct xocl_xmc *xmc)
 
 static bool is_xmc_ready(struct xocl_xmc *xmc)
 {
+	BUG_ON(!mutex_is_locked(&xmc->mbx_lock));
+
 	if (xmc->state == XMC_STATE_ENABLED)
 		return true;
 
@@ -3131,51 +3262,48 @@ static bool is_sc_ready(struct xocl_xmc *xmc, bool quiet)
 	return false;
 }
 
-static int xmc_dynamic_region_free(struct platform_device *pdev)
+static int smartnic_cmc_access(struct platform_device *pdev,
+	enum xocl_xmc_flags flags)
 {
 	int ret = 0;
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
 
 	mutex_lock(&xmc->mbx_lock);
-	if (!is_xmc_ready(xmc))
-		return -EINVAL;
+
+	if (!is_xmc_ready(xmc)) {
+		ret = -EINVAL;
+		goto done;
+	}
 
 	/* Load new info from HW. */
 	memset(&xmc->mbx_pkt, 0, sizeof(xmc->mbx_pkt));
-	xmc->mbx_pkt.hdr.op = XPO_DR_FREE;
+	if (flags == XOCL_XMC_FREEZE) {
+		xmc->mbx_pkt.hdr.op = XPO_DR_FREEZE;
+	} else if (flags == XOCL_XMC_FREE) {
+		xmc->mbx_pkt.hdr.op = XPO_DR_FREE;
+	} else {
+		ret = -EINVAL;
+		goto done;
+	}
+
 	ret = xmc_send_pkt(xmc);
 	if (ret)
 		goto done;
 
-	xocl_info(&xmc->pdev->dev, "xmc dynamic region free\n");
-
+	xocl_info(&xmc->pdev->dev, "xmc dynamic region %s done.\n",
+	    (flags == XOCL_XMC_FREEZE) ? "freeze" : "free");
 done:
 	mutex_unlock(&xmc->mbx_lock);
 	return ret;
 }
 
-static int xmc_dynamic_region_freeze(struct platform_device *pdev)
+static int xmc_access(struct platform_device *pdev, enum xocl_xmc_flags flags)
 {
-	int ret = 0;
-	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
 
-	mutex_lock(&xmc->mbx_lock);
-
-	if (!is_xmc_ready(xmc))
-		return -EINVAL;
-
-	/* Load new info from HW. */
-	memset(&xmc->mbx_pkt, 0, sizeof(xmc->mbx_pkt));
-	xmc->mbx_pkt.hdr.op = XPO_DR_FREEZE;
-
-	ret = xmc_send_pkt(xmc);
-	if (ret)
-		goto done;
-
-	xocl_info(&xmc->pdev->dev, "xmc dynamic region freeze\n");
-done:
-	mutex_unlock(&xmc->mbx_lock);
-	return ret;
+	return XOCL_DSA_IS_SMARTN(xdev) ?
+		smartnic_cmc_access(pdev, flags) :
+		raptor_cmc_access(pdev, flags);
 }
 
 static void xmc_set_board_info(uint32_t *bdinfo_raw, uint32_t bd_info_sz,
@@ -3378,6 +3506,7 @@ xmc_update_sc_firmware(struct file *file, const char __user *ubuf,
 			ret = -ETIMEDOUT;
 		/* Mark new SC firmware is installed */
 		xmc->sc_fw_erased = false;
+		xmc_load_board_info(xmc);
 	} else {
 		size_t sz, thissz;
 
