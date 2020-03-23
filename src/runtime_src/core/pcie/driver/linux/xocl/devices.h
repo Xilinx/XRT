@@ -2131,11 +2131,9 @@ struct xocl_subdev_map {
 		.override_idx = -1,			\
 	}
 
-/* Temporary disable XMC for U50 Golden, see CR-1052500 for more info */
 #define MFG_RES_U50							\
 	((struct xocl_subdev_info []) {					\
 	 	XOCL_DEVINFO_FLASH_MFG_U50,				\
-		/* XOCL_DEVINFO_XMC_U50, */				\
 	 })
 
 #define	XOCL_BOARD_XBB_MFG_U50						\
@@ -2307,7 +2305,6 @@ struct xocl_subdev_map {
 #define MFG_RES								\
 	((struct xocl_subdev_info []) {					\
 		XOCL_DEVINFO_FLASH,					\
-		XOCL_DEVINFO_XMC_MFG,					\
 	})
 
 #define	XOCL_BOARD_XBB_MFG(board)					\
