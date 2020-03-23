@@ -40,6 +40,9 @@ install_recipes()
         echo 'EXTERNALSRC_BUILD = "${WORKDIR}/build"' >> $XRT_BB
         echo 'PACKAGE_CLASSES = "package_rpm"' >> $XRT_BB
         echo 'PV = "202010.2.6.0"' >> $XRT_BB
+        echo 'LICENSE = "GPLv2 & Apache-2.0"' >> $XRT_BB
+        echo 'LIC_FILES_CHKSUM = "file://../LICENSE;md5=da5408f748bce8a9851dac18e66f4bcf \' >> $XRT_BB
+        echo '                    file://runtime_src/core/edge/drm/zocl/LICENSE;md5=7d040f51aae6ac6208de74e88a3795f8 "' >> $XRT_BB
     fi
 
     grep "inherit externalsrc" $ZOCL_BB
@@ -49,6 +52,8 @@ install_recipes()
         echo "EXTERNALSRC_BUILD = \"$XRT_REPO_DIR/src/runtime_src/core/edge/drm/zocl\"" >> $ZOCL_BB
         echo 'PACKAGE_CLASSES = "package_rpm"' >> $ZOCL_BB
         echo 'PV = "202010.2.6.0"' >> $ZOCL_BB
+        echo 'LICENSE = "GPLv2 & Apache-2.0"' >> $ZOCL_BB
+        echo 'LIC_FILES_CHKSUM = "file://LICENSE;md5=7d040f51aae6ac6208de74e88a3795f8"' >> $ZOCL_BB
         echo 'pkg_postinst_ontarget_${PN}() {' >> $ZOCL_BB
         echo '  #!/bin/sh' >> $ZOCL_BB
         echo '  echo "Unloading old XRT Linux kernel modules"' >> $ZOCL_BB
@@ -126,6 +131,8 @@ if [[ $AARCH = $aarch64_dir ]]; then
     PETA_BSP="$PETALINUX/../../bsp/release/xilinx-zcu106-v2020.1-final.bsp"
 elif [[ $AARCH = $aarch32_dir ]]; then
     PETA_BSP="$PETALINUX/../../bsp/release/xilinx-zc706-v2020.1-final.bsp"
+elif [[ $AARCH = $versal_dir ]]; then
+    PETA_BSP="$PETALINUX/../../bsp/release/xilinx-vmk180-emmc-v2020.1-final.bsp"
 else
     error "$AARCH not exist"
 fi
@@ -155,8 +162,7 @@ if [ ! -d $PETALINUX_NAME ]; then
     echo "[CMD]: petalinux-create -t project -n $PETALINUX_NAME $PETA_CREATE_OPT"
     $PETA_BIN/petalinux-create -t project -n $PETALINUX_NAME $PETA_CREATE_OPT
 else
-    echo " * PetaLinux Project existed: $PETALINUX_NAME."
-    #error " * PetaLinux Project existed: $PETALINUX_NAME."
+    error " * PetaLinux Project existed: $PETALINUX_NAME."
 fi
 
 cd ${PETALINUX_NAME}/project-spec/meta-user/
