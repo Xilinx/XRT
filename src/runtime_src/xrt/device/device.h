@@ -161,10 +161,7 @@ public:
   }
 
   void
-  close()
-  {
-    m_hal->close();
-  }
+  close();
 
   device_handle
   get_handle() const
