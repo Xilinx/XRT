@@ -113,9 +113,8 @@ namespace xdp {
     // Start power profiling (device flow only)
     auto power_profile_en = xrt::config::get_power_profile();
     if (Plugin->getFlowMode() == xdp::RTUtil::DEVICE && power_profile_en) {
-      auto platform = getclPlatformID();
       for (auto device : platform->get_device_range()) {
-        if(!device->is_active())
+        if (!device->is_active())
           continue;
         /*
          * Initialize Power Profiling Threads
