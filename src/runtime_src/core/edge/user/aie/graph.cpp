@@ -49,36 +49,8 @@ graph_type(std::shared_ptr<xrt_core::device> dev, uuid_t, const std::string& gra
     for (auto& tile : xrt_core::edge::aie::get_tiles(device.get(), name))
       tiles.emplace_back(std::move(tile));
 
-    // to be removed once TBD decided
-    tiles.emplace_back(tile_type{2, 4, 2, 4, 0x17e4});
-
-    /* TODO
-     * get RTP port from xclbin. Will need some interfaces like
-     * xrt_core::xclbin::get_rtpports(const axlf *top, char *graphName);
-     * just hard code for now.
-     */
-    rtps.emplace_back(rtp_type{"mygraph.k1.in[0]",
-
-                               1,
-                               0,
-                               0,
-                               0x4000,
-
-                               2,
-                               0,
-                               0,
-                               0,
-
-                               2,
-                               0,
-                               1,
-                               0x2000,
-
-                               false,
-                               true,
-                               false,
-                               false,
-                               true});
+    for (auto &rtp : xrt_core::edge::aie::get_rtp(device.get()))
+      rtps.emplace_back(std::move(rtp));
 
     state = graph_state::stop;
 }
