@@ -642,104 +642,6 @@ std::shared_ptr<pcidev::pci_device> pcidev::pci_device::lookup_peer_dev()
     return udev;
 }
 
-int pcidev::pci_device::shutdown(bool remove_user, bool remove_mgmt)
-{
-    std::shared_ptr<pcidev::pci_device> udev;
-    std::string errmsg;
-    if (!is_mgmt) {
-        return -EINVAL;
-    }
-
-    udev = lookup_peer_dev();
-    if (!udev) {
-        std::cout << "ERROR: User function is not found. " <<
-            "This is probably due to user function is running in virtual machine or user driver is not loaded. " << std::endl;
-        return -ECANCELED;
-    }
-
-    std::cout << "Stopping user function..." << std::endl;
-    udev->sysfs_put("", "shutdown", errmsg, "1\n");
-    if (!errmsg.empty()) {
-        std::cout << "ERROR: Shutdown user function failed." << std::endl;
-        return -EINVAL;
-    }
-
-    /* Poll till shutdown is done */
-    int shutdownStatus = 0;
-    for (int wait = 0; wait < DEV_TIMEOUT; wait++) {
-        udev->sysfs_get<int>("", "shutdown", errmsg, shutdownStatus, EINVAL);
-        if (!errmsg.empty()) {
-            // shutdow will trigger pci hot reset. sysfs nodes will be removed
-            // during hot reset.
-            continue;
-        }
-
-        if (shutdownStatus == 1){
-            /* Shutdown is done successfully. Returning from here */
-            break;
-        }
-        sleep(1);
-    }
-
-    if (!shutdownStatus) {
-        std::cout << "ERROR: Shutdown user function timeout." << std::endl;
-        return -ETIMEDOUT;
-    }
-
-    int rem_dev_cnt = 0;
-    int active_dev_num;
-    std::string parent_path;
-
-    sysfs_get<int>("", "dparent/power/runtime_active_kids", errmsg, active_dev_num, EINVAL);
-
-    if ((remove_user || remove_mgmt) && !errmsg.empty()) {
-        std::cout << "ERROR: can not read active device number" << std::endl;
-        return -ENOENT;
-    }
-
-    /* Cache the parent sysfs path before remove the PF */
-    parent_path = get_sysfs_path("", "dparent/power/runtime_active_kids");
-    /* Get the absolute path from the symbolic link */
-    parent_path = (boost::filesystem::canonical(parent_path)).c_str();
-
-    if (remove_user) {
-        udev->sysfs_put("", "remove", errmsg, "1\n");
-        if (!errmsg.empty()) {
-            std::cout << "ERROR: removing user function failed" << std::endl;
-            return -EINVAL;
-        }
-        rem_dev_cnt++;
-    }
-
-    if (remove_mgmt) {
-        sysfs_put("", "remove", errmsg, "1\n");
-        if (!errmsg.empty()) {
-            std::cout << "ERROR: removing mgmt function failed" << std::endl;
-            return -EINVAL;
-        }
-        rem_dev_cnt++;
-    }
-
-    if (!rem_dev_cnt) {
-        return 0;
-    }
-
-    for (int wait = 0; wait < DEV_TIMEOUT; wait++) {
-        int curr_act_dev;
-        boost::filesystem::ifstream file(parent_path);
-        file >> curr_act_dev;
-        
-        if (curr_act_dev + rem_dev_cnt == active_dev_num)
-            return 0;
-       
-        sleep(1);
-    }
-
-    std::cout << "ERROR: removing device node timed out" << std::endl;
-
-    return -ETIMEDOUT;
-}
-
 class pci_device_scanner {
 public:
 
@@ -1014,5 +916,107 @@ int pcidev::get_uuids(std::shared_ptr<char>& dtbbuf, std::vector<std::string>& u
         return -EINVAL;
 
     return 0;
+}
+
+int pcidev::shutdown(std::shared_ptr<pcidev::pci_device> mgmt_dev, bool remove_user, bool remove_mgmt)
+{
+    std::shared_ptr<pcidev::pci_device> udev;
+    std::string errmsg;
+    if (!mgmt_dev->is_mgmt) {
+        return -EINVAL;
+    }
+
+    udev = mgmt_dev->lookup_peer_dev();
+    if (!udev) {
+        std::cout << "ERROR: User function is not found. " <<
+            "This is probably due to user function is running in virtual machine or user driver is not loaded. " << std::endl;
+        return -ECANCELED;
+    }
+
+    std::cout << "Stopping user function..." << std::endl;
+    udev->sysfs_put("", "shutdown", errmsg, "1\n");
+    if (!errmsg.empty()) {
+        std::cout << "ERROR: Shutdown user function failed." << std::endl;
+        return -EINVAL;
+    }
+
+    /* Poll till shutdown is done */
+    int shutdownStatus = 0;
+    for (int wait = 0; wait < DEV_TIMEOUT; wait++) {
+        udev->sysfs_get<int>("", "shutdown", errmsg, shutdownStatus, EINVAL);
+        if (!errmsg.empty()) {
+            // shutdow will trigger pci hot reset. sysfs nodes will be removed
+            // during hot reset.
+            continue;
+        }
+
+        if (shutdownStatus == 1){
+            /* Shutdown is done successfully. Returning from here */
+            break;
+        }
+        sleep(1);
+    }
+
+    if (!shutdownStatus) {
+        std::cout << "ERROR: Shutdown user function timeout." << std::endl;
+        return -ETIMEDOUT;
+    }
+
+    if (!remove_user && !remove_mgmt) {
+        return 0;
+    }
+
+    int rem_dev_cnt = 0;
+    int active_dev_num;
+    std::string parent_path;
+
+    mgmt_dev->sysfs_get<int>("", "dparent/power/runtime_active_kids", errmsg, active_dev_num, EINVAL);
+
+    if (!errmsg.empty()) {
+        std::cout << "ERROR: can not read active device number" << std::endl;
+        return -ENOENT;
+    }
+
+    /* Cache the parent sysfs path before remove the PF */
+    parent_path = mgmt_dev->get_sysfs_path("", "dparent/power/runtime_active_kids");
+    /* Get the absolute path from the symbolic link */
+    parent_path = (boost::filesystem::canonical(parent_path)).c_str();
+
+    if (remove_user) {
+        udev->sysfs_put("", "remove", errmsg, "1\n");
+        if (!errmsg.empty()) {
+            std::cout << "ERROR: removing user function failed" << std::endl;
+            return -EINVAL;
+        }
+        rem_dev_cnt++;
+    }
+
+    if (remove_mgmt) {
+        mgmt_dev->sysfs_put("", "remove", errmsg, "1\n");
+        if (!errmsg.empty()) {
+            std::cout << "ERROR: removing mgmt function failed" << std::endl;
+            return -EINVAL;
+        }
+        rem_dev_cnt++;
+    }
+
+    if (!rem_dev_cnt) {
+        return 0;
+    }
+
+    for (int wait = 0; wait < DEV_TIMEOUT; wait++) {
+        int curr_act_dev;
+        boost::filesystem::ifstream file(parent_path);
+        file >> curr_act_dev;
+        
+        if (curr_act_dev + rem_dev_cnt == active_dev_num)
+            return 0;
+       
+        sleep(1);
+    }
+
+    std::cout << "ERROR: removing device node timed out" << std::endl;
+
+    return -ETIMEDOUT;
 }
 
