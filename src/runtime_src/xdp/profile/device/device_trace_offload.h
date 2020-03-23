@@ -22,6 +22,7 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
+#include <functional>
 
 #include "xdp/config.h"
 #include "core/include/xclperf.h"
