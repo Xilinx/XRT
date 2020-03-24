@@ -229,7 +229,7 @@ init(xrt_core::device* device)
   std::lock_guard<std::mutex> lk(s_mutex);
   auto itr = s_device_monitor_threads.find(device);
   if (itr==s_device_monitor_threads.end()) {
-    XRT_DEBUG(std::cout,"creating monitor thread and queue for device '",device->getName(),"'\n");
+    XRT_DEBUG(std::cout,"creating monitor thread and queue for device\n");
     s_device_cmds.emplace(device,command_queue_type());
     s_device_monitor_threads.emplace(device,xrt_core::thread(::monitor,device));
   }
