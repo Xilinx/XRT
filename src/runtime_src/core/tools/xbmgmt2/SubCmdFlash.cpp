@@ -44,15 +44,15 @@ namespace {
  * scan all devices on the machine
  * TO-DO: Implement Json
  */
-static void 
+static void
 scan_devices(bool verbose, bool json)
 {
   json = json;
   auto total = xrt_core::get_total_devices(false).first;
-  
+
   if (total == 0)
     throw xrt_core::error("No card found!");
-  
+
   for(uint16_t i = 0; i < total; i++) {
     Flasher f(i);
     if (!f.isValid())
@@ -91,7 +91,7 @@ scan_devices(bool verbose, bool json)
 /*
  * Update shell on the board
  */
-static void 
+static void
 update_shell(uint16_t index, const std::string& flashType,
     const std::string& primary, const std::string& secondary)
 {
@@ -128,7 +128,7 @@ update_shell(uint16_t index, const std::string& flashType,
 /*
  * Update SC firmware on the board
  */
-static void 
+static void
 update_SC(uint16_t index, const std::string& file)
 {
   Flasher flasher(index);
@@ -143,15 +143,15 @@ update_SC(uint16_t index, const std::string& file)
   flasher.upgradeBMCFirmware(bmc.get());
 }
 
-/* 
+/*
  * Find the correct shell to be flashed on the board
  * Helper method for auto_flash
  */
-static DSAInfo 
+static DSAInfo
 selectShell(uint16_t idx, const std::string& dsa, const std::string& id)
 {
   uint16_t candidateDSAIndex = std::numeric_limits<uint16_t>::max();
-  boost::format fmtStatus("%|8t|Status: %s"); 
+  boost::format fmtStatus("%|8t|Status: %s");
 
   Flasher flasher(idx);
   if(!flasher.isValid())
@@ -211,7 +211,7 @@ selectShell(uint16_t idx, const std::string& dsa, const std::string& id)
   return candidate;
 }
 
-/* 
+/*
  * Confirm with the user
  * Helper method for auto_flash
  */
@@ -234,11 +234,11 @@ bool canProceed()
   return proceed;
 }
 
-/* 
+/*
  * Flash shell and sc firmware
  * Helper method for auto_flash
  */
-static int 
+static int
 updateShellAndSC(uint16_t boardIdx, DSAInfo& candidate, bool& reboot)
 {
   reboot = false;
@@ -262,9 +262,9 @@ updateShellAndSC(uint16_t boardIdx, DSAInfo& candidate, bool& reboot)
   if (!same_bmc) {
     std::cout << "Updating SC firmware on card[" << flasher.sGetDBDF() <<
       "]" << std::endl;
-    auto ret = 0;
-    update_SC(boardIdx, candidate.file.c_str());
-    if (ret != 0) {
+    try {
+      update_SC(boardIdx, candidate.file.c_str());
+    } catch (...) {
       std::cout << "WARNING: Failed to update SC firmware on card ["
         << flasher.sGetDBDF() << "]" << std::endl;
     }
@@ -273,13 +273,12 @@ updateShellAndSC(uint16_t boardIdx, DSAInfo& candidate, bool& reboot)
   if (!same_dsa) {
     std::cout << "Updating shell on card[" << flasher.sGetDBDF() <<
       "]" << std::endl;
-    auto ret = 0;update_shell(boardIdx, "", candidate.file.c_str(),
-      candidate.file.c_str());
-    if (ret != 0) {
+    try {
+      update_shell(boardIdx, "", candidate.file.c_str(), candidate.file.c_str());
+      reboot = true;
+    } catch (...) {
       std::cout << "ERROR: Failed to update shell on card["
         << flasher.sGetDBDF() << "]" << std::endl;
-    } else {
-      reboot = true;
     }
   }
 
@@ -289,12 +288,12 @@ updateShellAndSC(uint16_t boardIdx, DSAInfo& candidate, bool& reboot)
   return 0;
 }
 
-/* 
+/*
  * Update shell and sc firmware on the card automatically
  */
-static void 
+static void
 auto_flash(uint16_t index, std::string& name,
-    std::string& id, bool force) 
+    std::string& id, bool force)
 {
   std::vector<uint16_t> boardsToCheck;
   std::vector<std::pair<uint16_t, DSAInfo>> boardsToUpdate;
@@ -364,9 +363,9 @@ auto_flash(uint16_t index, std::string& name,
   }
 
   if (success != 0) {
-    std::cout << success << " Card(s) flashed successfully." << std::endl; 
+    std::cout << success << " Card(s) flashed successfully." << std::endl;
   } else {
-    std::cout << "No cards were flashed." << std::endl; 
+    std::cout << "No cards were flashed." << std::endl;
   }
 
   if (needreboot) {
@@ -379,10 +378,10 @@ auto_flash(uint16_t index, std::string& name,
   }
 }
 
-/* 
+/*
  * Factory reset the board
  */
-static void 
+static void
 reset_shell(uint16_t index)
 {
   Flasher flasher(index);
@@ -406,7 +405,7 @@ reset_shell(uint16_t index)
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
 SubCmdFlash::SubCmdFlash(bool _isHidden, bool _isDepricated, bool _isPreliminary)
-    : SubCmd("flash", 
+    : SubCmd("flash",
              "Update SC firmware or shell on the device")
 {
   const std::string longDescription = "<add long description>";

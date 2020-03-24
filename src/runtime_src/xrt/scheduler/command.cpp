@@ -86,6 +86,16 @@ purge_command_freelist()
   s_purged = true;
 }
 
+// Purge command list for specific device
+// This function is called when the device is closed
+void
+purge_device_command_freelist(xrt::device* device)
+{
+  auto itr = sx.freelist.find(device);
+  if (itr != sx.freelist.end())
+    (*itr).second.clear();
+}
+
 command::
 command(xrt::device* device, ert_cmd_opcode opcode)
   : m_device(device)

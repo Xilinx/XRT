@@ -87,16 +87,14 @@ get_tiles(const pt::ptree& aie_meta, const std::string& graph_name)
 }
 
 std::vector<rtp_type>
-get_rtp(const pt::ptree& aie_meta, const std::string& port_name)
+get_rtp(const pt::ptree& aie_meta)
 {
   std::vector<rtp_type> rtps;
 
   for (auto& rtp_node : aie_meta.get_child("aie_metadata.RTPs")) {
-    if (rtp_node.second.get<std::string>("port_name") != port_name)
-      continue;
-
     rtp_type rtp;
-    rtp.name = port_name;
+
+    rtp.name = rtp_node.second.get<std::string>("port_name");
     rtp.selector_row = rtp_node.second.get<uint16_t>("selector_row");
     rtp.selector_col = rtp_node.second.get<uint16_t>("selector_column");
     rtp.selector_lock_id = rtp_node.second.get<uint16_t>("selector_lock_id");
@@ -141,7 +139,7 @@ get_tiles(const xrt_core::device* device, const std::string& graph_name)
 }
 
 std::vector<rtp_type>
-get_rtp(const xrt_core::device* device, const std::string& port_name)
+get_rtp(const xrt_core::device* device)
 {
   auto data = device->get_axlf_section(AIE_METADATA);
   if (!data.first || !data.second)
@@ -149,7 +147,7 @@ get_rtp(const xrt_core::device* device, const std::string& port_name)
 
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
-  return ::get_rtp(aie_meta, port_name);
+  return ::get_rtp(aie_meta);
 }
 
 }}} // aie, edge, xrt_core

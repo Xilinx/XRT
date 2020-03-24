@@ -298,8 +298,17 @@ namespace xdp {
                                                          );
         bool init_done = true;
         if (!mTraceThreadEn) {
-          dInt->clockTraining();
           init_done = offloader->read_trace_init();
+          if (init_done) {
+            /* Trace FIFO is usually very small (8k,16k etc)
+             *  Hence enable Continuous clock training by default
+             *  ONLY for Trace Offload to DDR Memory
+             */
+            if (dInt->hasTs2mm())
+              offloader->start_offload(OffloadThreadType::CLOCK_TRAIN);
+            else
+              dInt->clockTraining();
+          }
         }
 
         if (init_done) {

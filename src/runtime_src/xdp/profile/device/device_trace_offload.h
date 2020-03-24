@@ -38,6 +38,11 @@ enum class OffloadThreadStatus {
     STOPPED
 };
 
+enum class OffloadThreadType {
+    TRACE,
+    CLOCK_TRAIN
+};
+
 #define debug_stream \
 if(!m_debug); else std::cout
 
@@ -51,11 +56,7 @@ public:
     XDP_EXPORT
     ~DeviceTraceOffload();
     XDP_EXPORT
-    void offload_device_continuous();
-    XDP_EXPORT
-    bool should_continue();
-    XDP_EXPORT
-    void start_offload();
+    void start_offload(OffloadThreadType type);
     XDP_EXPORT
     void stop_offload();
 
@@ -113,6 +114,9 @@ private:
     void config_s2mm_reader(uint64_t wordCount);
     bool init_s2mm();
     void reset_s2mm();
+    bool should_continue();
+    void train_clock_continuous();
+    void offload_device_continuous();
 
     bool m_trbuf_full = false;
     bool m_debug = false; /* Enable Output stream for log */
