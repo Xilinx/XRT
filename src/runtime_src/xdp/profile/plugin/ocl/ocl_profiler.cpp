@@ -110,6 +110,22 @@ namespace xdp {
     if ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM) && Plugin->getSystemDPAEmulation() == false)
       xoclp::platform::start_device_trace(platform, XCL_PERF_MON_ACCEL, numComputeUnits);
 
+    // Start power profiling (device flow only)
+    auto power_profile_en = xrt::config::get_power_profile();
+    if (Plugin->getFlowMode() == xdp::RTUtil::DEVICE && power_profile_en) {
+      for (auto device : platform->get_device_range()) {
+        if (!device->is_active())
+          continue;
+        /*
+         * Initialize Power Profiling Threads
+         */
+          auto power_profile = std::make_unique<OclPowerProfile>(device->get_xrt_device(), Plugin, device->get_unique_name());
+          auto& filename = power_profile->get_output_file_name();
+          ProfileMgr->getRunSummary()->addFile(filename, RunSummary::FT_POWER_PROFILE);
+          PowerProfileList.push_back(std::move(power_profile));
+      }
+    }
+
     mProfileRunning = true;
   }
 
@@ -460,25 +476,6 @@ namespace xdp {
     xdp::CSVTraceWriter* csvTraceWriter = new xdp::CSVTraceWriter(timelineFile, "Xilinx", Plugin.get());
     TraceWriters.push_back(csvTraceWriter);
     ProfileMgr->attach(csvTraceWriter);
-
-    // Start power profiling (device flow only)
-    // NOTE: This starts power profiling when clGetPlatformIDs is called. That is, before a 
-    //       bitstream gets loaded. This allows us to show pre-configuration power samples.
-    if (!emuMode) {
-      auto platform = getclPlatformID();
-      for (auto device : platform->get_device_range()) {
-        /*
-         * Initialize Power Profiling Threads
-         */
-        auto power_profile_en = xrt::config::get_power_profile();
-        if (power_profile_en) {
-          auto power_profile = std::make_unique<OclPowerProfile>(device->get_xrt_device(), Plugin, device->get_unique_name());
-          auto& filename = power_profile->get_output_file_name();
-          ProfileMgr->getRunSummary()->addFile(filename, RunSummary::FT_POWER_PROFILE);
-          PowerProfileList.push_back(std::move(power_profile));
-        }
-      }
-    }
 
     // Add functions to callback for profiling kernel/CU scheduling
     xocl::add_command_start_callback(xoclp::get_cu_start);
