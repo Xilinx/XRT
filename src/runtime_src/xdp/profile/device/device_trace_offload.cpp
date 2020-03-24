@@ -16,24 +16,22 @@
 
 #define XDP_SOURCE
 
-#include "device_trace_offload.h"
+#include "xdp/profile/device/device_trace_offload.h"
+
 #include "xdp/profile/device/tracedefs.h"
+#include "xdp/profile/device/device_trace_logger.h"
 
 namespace xdp {
 
-DeviceTraceOffload::DeviceTraceOffload(xdp::DeviceIntf* dInt,
-                                   RTProfile* ProfileMgr,
-                                   const std::string& device_name,
-                                   const std::string& binary_name,
+DeviceTraceOffload::DeviceTraceOffload(DeviceIntf* dInt,
+                                   DeviceTraceLogger* dTraceLogger,
                                    uint64_t sleep_interval_ms,
                                    uint64_t trbuf_sz,
                                    bool start_thread)
-                                   : sleep_interval_ms(sleep_interval_ms),
-                                     m_trbuf_alloc_sz(trbuf_sz),
-                                     dev_intf(dInt),
-                                     prof_mgr(ProfileMgr),
-                                     device_name(device_name),
-                                     binary_name(binary_name)
+                   : sleep_interval_ms(sleep_interval_ms),
+                     m_trbuf_alloc_sz(trbuf_sz),
+                     dev_intf(dInt),
+                     deviceTraceLogger(dTraceLogger)
 {
   // Select appropriate reader
   if(has_fifo()) {
@@ -121,14 +119,14 @@ void DeviceTraceOffload::read_trace_fifo()
   do {
     m_trace_vector = {};
     dev_intf->readTrace(m_trace_vector);
-    prof_mgr->logDeviceTrace(device_name, binary_name, m_type, m_trace_vector, false);
+    deviceTraceLogger->processTraceData(m_trace_vector);
     num_packets += m_trace_vector.mLength;
   } while (m_trace_vector.mLength != 0);
 
   // Check if fifo is full
   if (!m_trbuf_full) {
     auto property = dev_intf->getMonitorProperties(XCL_PERF_MON_FIFO, 0);
-    auto fifo_size = RTUtil::getDevTraceBufferSize(property);
+    auto fifo_size = GetDeviceTraceBufferSize(property);
 
     if (num_packets >= fifo_size)
       m_trbuf_full = true;
@@ -154,7 +152,7 @@ void DeviceTraceOffload::read_trace_end()
   // Trace logger will clear it's state and add approximations for pending
   // events
   m_trace_vector = {};
-  prof_mgr->logDeviceTrace(device_name, binary_name, m_type, m_trace_vector, true);
+  deviceTraceLogger->endProcessTraceData(m_trace_vector);
   if (dev_intf->hasTs2mm()) {
     reset_s2mm();
   }
@@ -172,7 +170,7 @@ void DeviceTraceOffload::read_trace_s2mm()
   config_s2mm_reader(dev_intf->getWordCountTs2mm());
   while (1) {
     auto bytes = read_trace_s2mm_partial();
-    prof_mgr->logDeviceTrace(device_name, binary_name, m_type, m_trace_vector, false);
+    deviceTraceLogger->processTraceData(m_trace_vector);
     m_trace_vector = {};
 
     if (m_trbuf_sz == m_trbuf_alloc_sz)

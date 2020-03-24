@@ -44,7 +44,7 @@ namespace xdp {
     if(traceVector.mLength == 0)
       return;
 
-    if(!db->alive()) {
+    if(!VPDatabase::alive()) {
       return;
     }
     uint64_t timestamp = 0;

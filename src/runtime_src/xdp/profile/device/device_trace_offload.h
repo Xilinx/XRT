@@ -22,12 +22,11 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
+#include <functional>
 
-#include "xdp/profile/plugin/ocl/xocl_profile.h"
-#include "xdp/profile/plugin/ocl/xocl_plugin.h"
-#include "xdp/profile/core/rt_profile.h"
-#include "xclperf.h"
 #include "xdp/config.h"
+#include "core/include/xclperf.h"
+#include "xdp/profile/device/device_intf.h"
 
 namespace xdp {
 
@@ -43,14 +42,15 @@ enum class OffloadThreadType {
     CLOCK_TRAIN
 };
 
+class DeviceTraceLogger;
+
 #define debug_stream \
 if(!m_debug); else std::cout
 
 class DeviceTraceOffload {
 public:
     XDP_EXPORT
-    DeviceTraceOffload(xdp::DeviceIntf* dInt, RTProfile* ProfileMgr,
-                     const std::string& device_name, const std::string& binary_name,
+    DeviceTraceOffload(DeviceIntf* dInt, DeviceTraceLogger* dTraceLogger,
                      uint64_t offload_sleep_ms, uint64_t trbuf_sz,
                      bool start_thread = true);
     XDP_EXPORT
@@ -79,12 +79,11 @@ public:
     bool has_ts2mm() {
         return dev_intf->hasTs2mm();
     };
-    const std::string& get_device_name() {
-        return device_name;
-    }
     void read_trace() {
         m_read_trace();
     };
+
+    DeviceTraceLogger* getDeviceTraceLogger() { return deviceTraceLogger; }
 
 private:
     std::mutex status_lock;
@@ -93,11 +92,8 @@ private:
 
     uint64_t sleep_interval_ms;
     uint64_t m_trbuf_alloc_sz;
-    xdp::DeviceIntf* dev_intf;
-    RTProfile* prof_mgr;
-    std::string device_name;
-    std::string binary_name;
-    xclPerfMonType m_type = XCL_PERF_MON_MEMORY;
+    DeviceIntf* dev_intf;
+    DeviceTraceLogger* deviceTraceLogger;
 
     xclTraceResultsVector m_trace_vector = {};
     std::function<void()> m_read_trace;

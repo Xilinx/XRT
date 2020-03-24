@@ -112,6 +112,7 @@ namespace xdp {
     std::unique_ptr<RTProfile> ProfileMgr;
     std::vector<std::unique_ptr<OclPowerProfile>> PowerProfileList;
     std::vector<std::unique_ptr<DeviceTraceOffload>> DeviceTraceOffloadList;
+    std::vector<DeviceTraceLogger*>  DeviceTraceLoggers;
 
     // Buffer on Device DDR for Trace
     uint64_t mDDRBufferSize = 0;
