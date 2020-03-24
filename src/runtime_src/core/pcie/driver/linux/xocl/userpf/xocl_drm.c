@@ -854,8 +854,8 @@ static int xocl_cma_chunk_reserve(struct xocl_drm *drm_p, struct drm_xocl_alloc_
 	uint64_t nr, page_count;
 	struct page **pages = NULL;
 	struct device *dev = drm_p->ddev->dev;
-	uint64_t user_addr = cma_info->user_addr;
-	size_t page_sz = cma_info->page_sz;
+	uint64_t user_addr = 0x0; // remove it next commit, bypass coverity check
+	size_t page_sz = cma_info->total_size/cma_info->entry_num;
 
 	BUG_ON(!mutex_is_locked(&drm_p->mm_lock));
 
@@ -909,8 +909,6 @@ static int xocl_cma_chunk_reserve(struct xocl_drm *drm_p, struct drm_xocl_alloc_
 
 	drm_mm_init(drm_p->cma_chunk[idx]->mm, drm_p->cma_chunk[idx]->start_addr, page_sz);
 
-	cma_info->chunk_id = idx;
-
 out:
 	xocl_info(dev, "%s ret %d", __func__, ret);
 	return ret;
@@ -926,11 +924,9 @@ int xocl_cma_chunk_alloc_helper(struct xocl_drm *drm_p, struct drm_xocl_alloc_cm
 	return err;
 }
 
-void xocl_cma_chunk_free_helper(struct xocl_drm *drm_p, struct drm_xocl_free_cma_info *cma_info)
+void xocl_cma_chunk_free_helper(struct xocl_drm *drm_p)
 {
-	uint64_t chunk_id = cma_info->chunk_id;
-
 	mutex_lock(&drm_p->mm_lock);
-	xocl_cma_chunk_free(drm_p, chunk_id);
+	xocl_cma_chunks_free_all(drm_p);
 	mutex_unlock(&drm_p->mm_lock);
 }

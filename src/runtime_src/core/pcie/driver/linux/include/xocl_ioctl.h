@@ -470,13 +470,9 @@ struct drm_xocl_reclock_info {
 
 
 struct drm_xocl_alloc_cma_info {
-	uint64_t page_sz;
-	uint64_t user_addr;
-	uint64_t chunk_id;
-};
-
-struct drm_xocl_free_cma_info {
-	uint64_t chunk_id;
+	uint64_t	total_size;
+	uint64_t	entry_num;
+	uint64_t	user_addr[1];
 };
 /*
  * Core ioctls numbers
@@ -505,5 +501,5 @@ struct drm_xocl_free_cma_info {
 #define	DRM_IOCTL_XOCL_HOT_RESET	XOCL_IOC(HOT_RESET)
 #define	DRM_IOCTL_XOCL_RECLOCK		XOCL_IOC_ARG(RECLOCK, reclock_info)
 #define	DRM_IOCTL_XOCL_ALLOC_CMA	XOCL_IOC_ARG(ALLOC_CMA, alloc_cma_info)
-#define	DRM_IOCTL_XOCL_FREE_CMA		XOCL_IOC_ARG(FREE_CMA, free_cma_info)
+#define	DRM_IOCTL_XOCL_FREE_CMA		XOCL_IOC(FREE_CMA)
 #endif
