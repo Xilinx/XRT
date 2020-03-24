@@ -56,9 +56,6 @@ clGetDeviceInfo(cl_device_id   device,
   xocl::param_buffer buffer { param_value, param_value_size, param_value_size_ret };
   auto xdevice = xocl::xocl(device);
 
-  // lock the device to ensure that it is opened if necessary
-  auto lock = xdevice->lock_guard();
-
   switch(param_name) {
   case CL_DEVICE_TYPE:
     buffer.as<cl_device_type>() = CL_DEVICE_TYPE_ACCELERATOR;
