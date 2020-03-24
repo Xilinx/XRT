@@ -43,7 +43,7 @@ DeviceTraceOffload::DeviceTraceOffload(xdp::DeviceIntf* dInt,
   }
 
   if (start_thread) {
-    start_offload();
+    start_offload(OffloadThreadType::TRACE);
   }
 }
 
@@ -71,17 +71,30 @@ void DeviceTraceOffload::offload_device_continuous()
   read_trace_end();
 }
 
+void DeviceTraceOffload::train_clock_continuous()
+{
+  while (should_continue()) {
+    train_clock();
+    std::this_thread::sleep_for(std::chrono::milliseconds(sleep_interval_ms));
+  }
+}
+
 bool DeviceTraceOffload::should_continue()
 {
   std::lock_guard<std::mutex> lock(status_lock);
   return status == OffloadThreadStatus::RUNNING;
 }
 
-void DeviceTraceOffload::start_offload()
+void DeviceTraceOffload::start_offload(OffloadThreadType type)
 {
+  if (status == OffloadThreadStatus::RUNNING)
+    return;
   std::lock_guard<std::mutex> lock(status_lock);
   status = OffloadThreadStatus::RUNNING;
-  offload_thread = std::thread(&DeviceTraceOffload::offload_device_continuous, this);
+  if (type == OffloadThreadType::TRACE)
+    offload_thread = std::thread(&DeviceTraceOffload::offload_device_continuous, this);
+  else if (type == OffloadThreadType::CLOCK_TRAIN)
+    offload_thread = std::thread(&DeviceTraceOffload::train_clock_continuous, this);
 }
 
 void DeviceTraceOffload::stop_offload()

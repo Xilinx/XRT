@@ -122,7 +122,6 @@ namespace xdp {
     for (unsigned int i=0; i < traceVector.mLength; i++) {
       auto& trace = traceVector.mArray[i];
       XDP_LOG("[profile_device] Parsing trace sample %d...\n", i);
-      packets_parsed++;
 
       timestamp = trace.Timestamp;
 
