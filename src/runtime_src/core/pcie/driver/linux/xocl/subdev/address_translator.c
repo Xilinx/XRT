@@ -61,36 +61,17 @@ struct addr_translator {
 	bool			online;
 };
 
-static ssize_t status_show(struct device *dev, struct device_attribute *attr,
-	char *buf)
-{
-	u32 status = 1;
-
-	return sprintf(buf, "0x%x\n", status);
-}
-static DEVICE_ATTR_RO(status);
-
-static struct attribute *addr_translator_attributes[] = {
-	&dev_attr_status.attr,
-	NULL
-};
-
-static const struct attribute_group addr_translator_attrgroup = {
-	.attrs = addr_translator_attributes,
-};
-
 static uint32_t addr_translator_get_entries_num(struct platform_device *pdev)
 {
 	struct addr_translator *addr_translator = platform_get_drvdata(pdev);
 	struct trans_regs *regs = (struct trans_regs *)addr_translator->base;
 	xdev_handle_t xdev = ADDR_TRANSLATOR_DEV2XDEV(pdev);
-	uint32_t num;
+	uint32_t num = 0;
 
 	mutex_lock(&addr_translator->lock);
 
 	num = (xocl_dr_reg_read32(xdev, &regs->cap)>>6 & 0x1f) << 8;
 
-	num = 256;
 	mutex_unlock(&addr_translator->lock);
 	return num;
 }
@@ -152,6 +133,26 @@ done:
 static struct xocl_addr_translator_funcs addr_translator_ops = {
 	.get_entries_num = addr_translator_get_entries_num,
 	.set_page_table = addr_translator_set_page_table,
+};
+
+static ssize_t num_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	u32 num = 0;
+
+	num = addr_translator_get_entries_num(to_platform_device(dev));
+
+	return sprintf(buf, "0x%x\n", num);
+}
+static DEVICE_ATTR_RO(num);
+
+static struct attribute *addr_translator_attributes[] = {
+	&dev_attr_num.attr,
+	NULL
+};
+
+static const struct attribute_group addr_translator_attrgroup = {
+	.attrs = addr_translator_attributes,
 };
 
 static int addr_translator_probe(struct platform_device *pdev)

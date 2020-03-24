@@ -31,11 +31,6 @@
 #define	MAX_ERT_RETRY			10
 /* 100ms */
 #define	RETRY_INTERVAL			100
-
-#define	MBX_RETRY_INTERVAL		10 /* us */
-/* Retry is set to 2s for XMC mailbox */
-#define	MAX_XMC_MBX_RETRY		(200 * 1000)
-
 #define	MAX_IMAGE_LEN			0x20000
 
 #define	XMC_MAGIC_REG			0x0
@@ -241,7 +236,7 @@ enum gpio_channel2_mask {
 
 #define	XMC_CTRL_ERR_CLR			(1 << 1)
 
-#define	XMC_PKT_SUPPORT_MASK			(1 << 3)
+#define	XMC_NO_MAILBOX_MASK			(1 << 3)
 #define	XMC_PKT_OWNER_MASK			(1 << 5)
 #define	XMC_PKT_ERR_MASK			(1 << 26)
 
@@ -293,12 +288,17 @@ struct xmc_pkt_sector_start_op {
 	u8 data[1];
 };
 
+struct xmc_pkt_sector_data_op {
+	u8 data[1];
+};
+
 struct xmc_pkt {
 	struct xmc_pkt_hdr hdr;
 	union {
 		u32 data[XMC_PKT_MAX_PAYLOAD_SZ];
 		struct xmc_pkt_image_end_op image_end;
 		struct xmc_pkt_sector_start_op sector_start;
+		struct xmc_pkt_sector_data_op sector_data;
 	};
 };
 
@@ -327,7 +327,6 @@ struct xocl_xmc {
 	struct device		*hwmon_dev;
 	bool			enabled;
 	u32			state;
-	u32			cap;
 	struct mutex		xmc_lock;
 
 	char			*sche_binary;
@@ -2533,6 +2532,26 @@ static int stop_xmc(struct platform_device *pdev)
 	return ret;
 }
 
+static void xmc_enable_mailbox(struct xocl_xmc *xmc)
+{
+	u32 val = 0;
+
+	xmc->mbx_enabled = false;
+
+	if (!XMC_PRIVILEGED(xmc))
+		return;
+
+	if (READ_REG32(xmc, XMC_FEATURE_REG) & XMC_NO_MAILBOX_MASK) {
+		xocl_info(&xmc->pdev->dev, "XMC mailbox is not supported");
+		return;
+	}
+
+	xmc->mbx_enabled = true;
+	safe_read32(xmc, XMC_HOST_MSG_OFFSET_REG, &val);
+	xmc->mbx_offset = val;
+	xocl_info(&xmc->pdev->dev, "XMC mailbox offset: 0x%x", val);
+}
+
 static int load_xmc(struct xocl_xmc *xmc)
 {
 	int retry = 0;
@@ -2663,22 +2682,13 @@ static int load_xmc(struct xocl_xmc *xmc)
 	ssleep(5);
 	xmc->state = XMC_STATE_ENABLED;
 
-	xmc->cap = READ_REG32(xmc, XMC_FEATURE_REG);
-
 	if (XMC_PRIVILEGED(xmc) && xocl_clk_scale_on(xdev_hdl))
 		xmc_clk_scale_config(xmc->pdev);
 
 	mutex_unlock(&xmc->xmc_lock);
 
 	/* Enabling XMC mailbox support. */
-	if (XMC_PRIVILEGED(xmc)) {
-		u32 val = 0;
-
-		xmc->mbx_enabled = true;
-		safe_read32(xmc, XMC_HOST_MSG_OFFSET_REG, &val);
-		xmc->mbx_offset = val;
-		xocl_info(&xmc->pdev->dev, "XMC mailbox offset: 0x%x.\n", val);
-	}
+	xmc_enable_mailbox(xmc);
 
 	mutex_lock(&xmc->mbx_lock);
 	xmc_load_board_info(xmc);
@@ -3030,6 +3040,10 @@ static int xmc_probe(struct platform_device *pdev)
 
 		if (!XOCL_DSA_IS_VERSAL(xdev) && !xmc->base_addrs[IO_GPIO]) {
 			xocl_info(&pdev->dev, "minimum mode for SC upgrade");
+			/* CMC is always enabled on golden image. */
+			xmc->enabled = true;
+			xmc->state = XMC_STATE_ENABLED;
+			xmc_enable_mailbox(xmc);
 			return 0;
 		}
 	}
@@ -3085,7 +3099,6 @@ static int xmc_probe(struct platform_device *pdev)
 		xocl_err(&pdev->dev, "Create sysfs failed, err %d", err);
 		goto failed;
 	}
-
 	xmc->sysfs_created = true;
 
 	return 0;
@@ -3141,15 +3154,16 @@ void xocl_fini_xmc(void)
 
 static int xmc_mailbox_wait(struct xocl_xmc *xmc)
 {
-	int retry = MAX_XMC_MBX_RETRY;
+	int retry = MAX_XMC_RETRY;
 	u32 val, ctrl_val;
 
 	BUG_ON(!mutex_is_locked(&xmc->mbx_lock));
 
 	safe_read32(xmc, XMC_CONTROL_REG, &val);
-	while ((retry-- > 0) && (val & XMC_PKT_OWNER_MASK)) {
-		udelay(MBX_RETRY_INTERVAL);
+	while ((retry > 0) && (val & XMC_PKT_OWNER_MASK)) {
+		msleep(RETRY_INTERVAL);
 		safe_read32(xmc, XMC_CONTROL_REG, &val);
+		retry--;
 	}
 
 	if (retry == 0) {
@@ -3178,6 +3192,11 @@ static int xmc_send_pkt(struct xocl_xmc *xmc)
 	int ret = 0;
 	u32 i;
 	u32 val;
+
+	if (!xmc->mbx_enabled) {
+		xocl_err(&xmc->pdev->dev, "CMC mailbox is not supported");
+		return -ENOTSUPP;
+	}
 
 	BUG_ON(!mutex_is_locked(&xmc->mbx_lock));
 #ifdef	MBX_PKT_DEBUG
@@ -3433,10 +3452,87 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 static int
 xmc_erase_sc_firmware(struct xocl_xmc *xmc)
 {
+	int ret = 0;
+
 	BUG_ON(!mutex_is_locked(&xmc->mbx_lock));
+
+	if (xmc->sc_fw_erased)
+		return 0;
+
+	xocl_info(&xmc->pdev->dev, "erasing SC firmware...");
 	memset(&xmc->mbx_pkt, 0, sizeof(xmc->mbx_pkt));
 	xmc->mbx_pkt.hdr.op = XPO_MSP432_ERASE_FW;
-	return xmc_send_pkt(xmc);
+	ret = xmc_send_pkt(xmc);
+	if (ret == 0)
+		xmc->sc_fw_erased = true;
+	return ret;
+}
+
+static int
+xmc_write_sc_firmware_section(struct xocl_xmc *xmc, loff_t start,
+	size_t n, const char *buf)
+{
+	int ret = 0;
+	size_t sz, thissz;
+
+	xocl_info(&xmc->pdev->dev, "writing %ld bytes @0x%llx", n, start);
+	BUG_ON(!mutex_is_locked(&xmc->mbx_lock));
+	if (n == 0)
+		return 0;
+
+	BUG_ON(!xmc->sc_fw_erased);
+	for (sz = 0; ret == 0 && sz < n; sz += thissz) {
+		if (sz == 0) {
+			/* First packet for the section. */
+			xmc->mbx_pkt.hdr.op = XPO_MSP432_SEC_START;
+			xmc->mbx_pkt.sector_start.addr = start;
+			xmc->mbx_pkt.sector_start.size = n;
+			thissz = XMC_PKT_MAX_PAYLOAD_SZ * sizeof(u32) -
+				offsetof(struct xmc_pkt_sector_start_op, data);
+			thissz = min(thissz, n - sz);
+			xmc->mbx_pkt.hdr.payload_sz = thissz +
+				offsetof(struct xmc_pkt_sector_start_op, data);
+			memcpy(xmc->mbx_pkt.sector_start.data, buf, thissz);
+		} else {
+			xmc->mbx_pkt.hdr.op = XPO_MSP432_SEC_DATA;
+			thissz = XMC_PKT_MAX_PAYLOAD_SZ * sizeof(u32);
+			thissz = min(thissz, n - sz);
+			xmc->mbx_pkt.hdr.payload_sz = thissz;
+			memcpy(xmc->mbx_pkt.sector_data.data, buf + sz, thissz);
+		}
+		ret = xmc_send_pkt(xmc);
+	}
+
+	return ret;
+}
+
+static int
+xmc_boot_sc(struct xocl_xmc *xmc, u32 jump_addr)
+{
+	int retry = 0;
+	int ret = 0;
+
+	xocl_info(&xmc->pdev->dev, "rebooting SC @0x%x", jump_addr);
+	BUG_ON(!mutex_is_locked(&xmc->mbx_lock));
+	BUG_ON(!xmc->sc_fw_erased);
+
+	/* Mark new SC firmware is installed. */
+	xmc->sc_fw_erased = false;
+
+	/* Try booting it up. */
+	xmc->mbx_pkt.hdr.op = XPO_MSP432_IMAGE_END;
+	xmc->mbx_pkt.hdr.payload_sz = sizeof(struct xmc_pkt_image_end_op);
+	xmc->mbx_pkt.image_end.BSL_jump_addr = jump_addr;
+	ret = xmc_send_pkt(xmc);
+	if (ret)
+		return ret;
+
+	/* Wait for SC to reboot */
+	while (retry++ < MAX_XMC_RETRY * 2 && !is_sc_ready(xmc, true))
+		msleep(RETRY_INTERVAL);
+	if (!is_sc_ready(xmc, false))
+		ret = -ETIMEDOUT;
+	return ret;
 }
 
 /*
@@ -3453,83 +3549,47 @@ xmc_update_sc_firmware(struct file *file, const char __user *ubuf,
 	ssize_t ret = 0;
 	u8 *kbuf;
 
-	xocl_info(&xmc->pdev->dev, "writing %ld bytes @0x%llx", n, *off);
-
-	if (n == 0 || n > jump_offset)
+	/* Sanity check input 'n' */
+	if (n == 0 || n > jump_offset || n > 100 * 1024 * 1024)
 		return -EINVAL;
 
 	kbuf = vmalloc(n);
 	if (kbuf == NULL)
 		return -ENOMEM;
-
 	if (copy_from_user(kbuf, ubuf, n)) {
-		ret = -EFAULT;
-		goto done;
+		vfree(kbuf);
+		return -EFAULT;
 	}
 
 	mutex_lock(&xmc->mbx_lock);
 
-	if (!xmc->sc_fw_erased) {
-		ret = xmc_erase_sc_firmware(xmc);
-		if (ret) {
-			xocl_err(&xmc->pdev->dev, "can't erase SC firmware");
-			goto done;
-		}
-		xmc->sc_fw_erased = true;
-	}
-
-	memset(&xmc->mbx_pkt, 0, sizeof(xmc->mbx_pkt));
-	/*
-	 * Write to jump_offset will cause a reboot of SC and jump to address
-	 * that is passed in.
-	 */
-	if (*off == jump_offset) {
-		int retry = 0;
-
-		if (n < sizeof(jump_addr)) {
+	ret = xmc_erase_sc_firmware(xmc);
+	if (ret) {
+		xocl_err(&xmc->pdev->dev, "can't erase SC firmware");
+	} else if (*off == jump_offset) {
+		/*
+		 * Write to jump_offset will cause a reboot of SC and jump
+		 * to address that is passed in.
+		 */
+		if (n != sizeof(jump_addr)) {
 			xocl_err(&xmc->pdev->dev, "invalid jump addr size");
 			ret = -EINVAL;
-			goto done;
+		} else {
+			jump_addr = *(u32 *)kbuf;
+			ret = xmc_boot_sc(xmc, jump_addr);
+			/* Invalid board info cache after new SC is installed */
+			xmc->bdinfo_loaded = false;
 		}
-		jump_addr = *(u32 *)kbuf;
-		xocl_info(&xmc->pdev->dev, "SC jump addr is 0x%x", jump_addr);
-		xmc->mbx_pkt.hdr.op = XPO_MSP432_IMAGE_END;
-		xmc->mbx_pkt.hdr.payload_sz =
-			sizeof(struct xmc_pkt_image_end_op);
-		xmc->mbx_pkt.image_end.BSL_jump_addr = jump_addr;
-		ret = xmc_send_pkt(xmc);
-
-		/* Wait for SC to reboot */
-		while (retry++ < MAX_XMC_RETRY && !is_sc_ready(xmc, true))
-			msleep(RETRY_INTERVAL);
-		if (!is_sc_ready(xmc, false))
-			ret = -ETIMEDOUT;
-		/* Mark new SC firmware is installed */
-		xmc->sc_fw_erased = false;
-		xmc_load_board_info(xmc);
 	} else {
-		size_t sz, thissz;
-
-		for (sz = 0; ret == 0 && sz < n; sz += thissz) {
-			thissz = XMC_PKT_MAX_PAYLOAD_SZ * sizeof(u32) -
-				offsetof(struct xmc_pkt_sector_start_op, data);
-			thissz = min(thissz, n - sz);
-			xmc->mbx_pkt.hdr.op = XPO_MSP432_SEC_START;
-			xmc->mbx_pkt.hdr.payload_sz = thissz +
-				offsetof(struct xmc_pkt_sector_start_op, data);
-			xmc->mbx_pkt.sector_start.addr = *off + sz;
-			xmc->mbx_pkt.sector_start.size = thissz;
-			memcpy(xmc->mbx_pkt.sector_start.data,
-				kbuf + sz, thissz);
-			ret = xmc_send_pkt(xmc);
-		}
+		ret = xmc_write_sc_firmware_section(xmc, *off, n, kbuf);
 	}
 
 	mutex_unlock(&xmc->mbx_lock);
-done:
 	vfree(kbuf);
-	if (ret)
+	if (ret) {
+		xmc->sc_fw_erased = false;
 		return ret;
+	}
 
 	*off += n;
 	return n;

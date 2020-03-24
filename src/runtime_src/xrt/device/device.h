@@ -17,6 +17,7 @@
 #ifndef xrt_device_device_h_
 #define xrt_device_device_h_
 
+#include "xrt/config.h"
 #include "xrt/device/hal.h"
 #include "xrt/util/range.h"
 #include "xclbin.h"
@@ -160,11 +161,9 @@ public:
     return m_hal->open();
   }
 
+  XRT_EXPORT
   void
-  close()
-  {
-    m_hal->close();
-  }
+  close();
 
   device_handle
   get_handle() const

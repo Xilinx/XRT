@@ -139,7 +139,6 @@ namespace xdp {
 
     private:
       bool mclockTrainingdone = false;
-      uint64_t packets_parsed = 0;
 
     private:
       XDPPluginI* mPluginHandle;
