@@ -23,6 +23,7 @@
 #include "core/common/message.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
+#include "core/common/query_requests.h"
 #include "core/common/AlignedAllocator.h"
 #include "core/include/xcl_perfmon_parameters.h"
 
@@ -1455,6 +1456,10 @@ xclGetDeviceInfo2(xclDeviceHandle handle, struct xclDeviceInfo2 *info)
   info->mMinTransferSize = 0;
   info->mDMAThreads = 2;
   info->mDataAlignment = 4096; // 4k
+
+  auto name = xrt_core::device_query<query::rom_vbnv>::get(m_core_device);
+  auto len = name.copy(info->mName, sizeof info->mName - 1, 0);
+  info->mName[length] = 0;
 
   return 0;
 }
