@@ -241,7 +241,7 @@ public:
  */
 
 template <typename QueryRequestType>
-static typename QueryRequestType::result_type
+inline typename QueryRequestType::result_type
 device_query(const device* device)
 {
   auto ret = device->query<QueryRequestType>();
@@ -249,14 +249,14 @@ device_query(const device* device)
 }
 
 template <typename QueryRequestType>
-static typename QueryRequestType::result_type
+inline typename QueryRequestType::result_type
 device_query(const std::shared_ptr<device>& device)
 {
   return device_query<QueryRequestType>(device.get());
 }
 
 template <typename QueryRequestType, typename ...Args>
-static typename QueryRequestType::result_type
+inline typename QueryRequestType::result_type
 device_query(const std::shared_ptr<device>& device, Args&&... args)
 {
   return device_query<QueryRequestType>(device.get(), std::forward<Args>(args)...);
