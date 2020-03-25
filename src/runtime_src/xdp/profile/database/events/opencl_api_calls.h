@@ -35,8 +35,8 @@ namespace xdp {
 
     inline uint64_t getQueueAddress() { return queueAddress ; } 
 
-    virtual bool isOpenCLAPI() { return true ; } 
-    XDP_EXPORT virtual void dump(std::ofstream& fout, int bucket) ;
+    virtual bool isOpenCLAPI() { return true ; }
+    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   } ;
 
 } // end namespace xdp
