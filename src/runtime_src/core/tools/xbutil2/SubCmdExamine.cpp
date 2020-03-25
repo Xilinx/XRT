@@ -33,6 +33,7 @@ namespace po = boost::program_options;
 
 // System - Include Files
 #include <iostream> 
+#include <fstream>
 
 // ---- Reports ------
 #include "tools/common/Report.h"
@@ -160,8 +161,8 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     XBU::produce_reports(deviceCollection, reportsToProcess, schemaVersion, elementsFilter, std::cout);
   }
   else {
-    std::fstream fOutput;
-    fOutput.open(sOutput, std::ifstream::out | std::ifstream::binary);
+    std::ofstream fOutput;
+    fOutput.open(sOutput, std::ios::out | std::ios::binary);
     if (!fOutput.is_open()) 
       throw xrt_core::error((boost::format("Unable to open the file '%s' for writing.") % sOutput).str());
 
