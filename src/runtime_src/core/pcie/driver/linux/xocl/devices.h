@@ -1131,39 +1131,44 @@ struct xocl_subdev_map {
 		.override_idx = -1,			\
 	}
 
+#define __RES_XMC			\
+	{				\
+	.start	= 0x120000,		\
+	.end 	= 0x121FFF,		\
+	.flags  = IORESOURCE_MEM,	\
+	},				\
+	{				\
+	.start	= 0x131000,		\
+	.end 	= 0x131FFF,		\
+	.flags  = IORESOURCE_MEM,	\
+	},				\
+	{				\
+	.start	= 0x140000,		\
+	.end 	= 0x15FFFF,		\
+	.flags  = IORESOURCE_MEM,	\
+	},				\
+	{				\
+	.start	= 0x160000,		\
+	.end 	= 0x17FFFF,		\
+	.flags  = IORESOURCE_MEM,	\
+	},				\
+	{				\
+	.start	= 0x190000,		\
+	.end 	= 0x19FFFF,		\
+	.flags  = IORESOURCE_MEM,	\
+	}				\
+
+#define __RES_XMC_SCALING		\
+/* RUNTIME CLOCK SCALING FEATURE BASE */\
+	{				\
+	.start	= 0x053000,		\
+	.end	= 0x053fff,		\
+	.flags	= IORESOURCE_MEM,	\
+	}				\
+
 #define	XOCL_RES_XMC					\
 		((struct resource []) {			\
-			{				\
-			.start	= 0x120000,		\
-			.end 	= 0x121FFF,		\
-			.flags  = IORESOURCE_MEM,	\
-			},				\
-			{				\
-			.start	= 0x131000,		\
-			.end 	= 0x131FFF,		\
-			.flags  = IORESOURCE_MEM,	\
-			},				\
-			{				\
-			.start	= 0x140000,		\
-			.end 	= 0x15FFFF,		\
-			.flags  = IORESOURCE_MEM,	\
-			},				\
-			{				\
-			.start	= 0x160000,		\
-			.end 	= 0x17FFFF,		\
-			.flags  = IORESOURCE_MEM,	\
-			},				\
-			{				\
-			.start	= 0x190000,		\
-			.end 	= 0x19FFFF,		\
-			.flags  = IORESOURCE_MEM,	\
-			},				\
-			/* RUNTIME CLOCK SCALING FEATURE BASE */	\
-			{				\
-			.start	= 0x053000,		\
-			.end	= 0x053fff,		\
-			.flags	= IORESOURCE_MEM,	\
-			},				\
+			__RES_XMC,			\
 		})
 
 #define	XOCL_DEVINFO_XMC				\
@@ -1172,6 +1177,21 @@ struct xocl_subdev_map {
 		XOCL_XMC,				\
 		XOCL_RES_XMC,				\
 		ARRAY_SIZE(XOCL_RES_XMC),		\
+		.override_idx = -1,			\
+	}
+
+#define	XOCL_RES_XMC_SCALING				\
+		((struct resource []) {			\
+			__RES_XMC,			\
+			__RES_XMC_SCALING,		\
+		})
+
+#define	XOCL_DEVINFO_XMC_SCALING			\
+	{						\
+		XOCL_SUBDEV_MB,				\
+		XOCL_XMC,				\
+		XOCL_RES_XMC_SCALING,				\
+		ARRAY_SIZE(XOCL_RES_XMC_SCALING),		\
 		.override_idx = -1,			\
 	}
 
@@ -1675,7 +1695,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_MAILBOX_MGMT,			\
 			XOCL_DEVINFO_ICAP_MGMT,				\
 			XOCL_DEVINFO_FMGR,				\
-			XOCL_DEVINFO_XMC,				\
+			XOCL_DEVINFO_XMC_SCALING,			\
 			XOCL_DEVINFO_FLASH,				\
 		})
 
