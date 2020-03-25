@@ -285,7 +285,7 @@ void load_xdp_kernel_debug()
     {
       if (handle != nullptr)
       {
-	xrt_core::dlclose(handle) ;
+	//xrt_core::dlclose(handle) ;
       }
     }
   };
@@ -330,7 +330,7 @@ void load_xdp_app_debug()
     {
       if (handle != nullptr)
       {
-	xrt_core::dlclose(handle) ;
+	//xrt_core::dlclose(handle) ;
       }
     }
   };

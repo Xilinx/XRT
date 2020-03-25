@@ -91,17 +91,12 @@ static int stop_ert_nolock(struct xocl_ert *ert)
 	if (reg_val != GPIO_ENABLED)
 		WRITE_GPIO(ert, GPIO_ENABLED, 0);
 
-	reg_val = READ_CQ(ert, 0);
-	if (reg_val & ERT_EXIT_ACK) {
-		xocl_info(&ert->pdev->dev, "Scheduler is not running");
-		return 0;
-	}
-
-	WRITE_CQ(ert, ERT_EXIT_CMD, 0);
-
 	retry = 0;
-	while (!(READ_CQ(ert, 0) & ERT_EXIT_ACK) && retry++ < MAX_ERT_RETRY)
+	while ((READ_CQ(ert, 0) != (ERT_EXIT_CMD_OP | ERT_EXIT_ACK)) &&
+			retry++ < MAX_ERT_RETRY) {
+		WRITE_CQ(ert, ERT_EXIT_CMD, 0);
 		msleep(RETRY_INTERVAL);
+	}
 	if (retry >= MAX_ERT_RETRY) {
 		xocl_info(&ert->pdev->dev, "Failed to stop ERT");
 		ret = EIO;
@@ -340,7 +335,7 @@ static int load_sche_image(struct platform_device *pdev, const char *image,
 	return 0;
 }
 
-static void ert_reset(struct platform_device *pdev)
+static int ert_reset(struct platform_device *pdev)
 {
 	struct xocl_ert *ert;
 
@@ -348,6 +343,8 @@ static void ert_reset(struct platform_device *pdev)
 	ert = platform_get_drvdata(pdev);
 
 	load_image(ert);
+
+	return 0;
 }
 
 static struct xocl_mb_funcs ert_ops = {

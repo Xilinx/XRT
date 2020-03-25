@@ -23,7 +23,7 @@
 #include "xdp/profile/profile_config.h"
 #include "xdp/profile/collection/results.h"
 #include "xdp/profile/collection/counters.h"
-#include "xdp/profile/device/trace_parser.h"
+#include "xdp/profile/core/trace_parser.h"
 #include "xdp/profile/writer/base_profile.h"
 #include "xdp/profile/writer/base_trace.h"
 
@@ -70,7 +70,7 @@ namespace xdp {
       writeProfileSummary();
 
     // Write out the run summary file (if there is data to write)
-    mRunSummary->writeContent();    
+    mRunSummary->writeContent();
 
     delete mWriter;
     delete mLogger;

@@ -19,7 +19,7 @@
 #ifndef _XRT_AIE_H_
 #define _XRT_AIE_H_
 
-#include "xclhal2.h"
+#include "xrt.h"
 
 typedef void *xrtGraphHandle;
 
@@ -34,7 +34,8 @@ typedef void *xrtGraphHandle;
  * An xclbin with the specified graph must have been loaded prior
  * to calling this function.
  */
-xrtGraphHandle xrtGraphOpen(xclDeviceHandle handle, uuid_t xclbinUUID, const char *graphName);
+xrtGraphHandle
+xrtGraphOpen(xclDeviceHandle handle, uuid_t xclbinUUID, const char *graphName);
 
 /**
  * xrtGraphClose() - Close an open graph.
@@ -42,7 +43,8 @@ xrtGraphHandle xrtGraphOpen(xclDeviceHandle handle, uuid_t xclbinUUID, const cha
  * @gh:            Handle to graph previously opened with xrtGraphOpen.
  *
  */
-void xrtGraphClose(xrtGraphHandle gh);
+void
+xrtGraphClose(xrtGraphHandle gh);
 
 /**
  * xrtGraphReset() - Reset a graph.
@@ -52,7 +54,8 @@ void xrtGraphClose(xrtGraphHandle gh);
  *
  * Note: Reset by disable tiles and enable tile reset
  */
-int xrtGraphReset(xrtGraphHandle gh);
+int
+xrtGraphReset(xrtGraphHandle gh);
 
 /**
  * xrtGraphTimeStamp() - Get timestamp of a graph. The unit of timestamp is
@@ -61,7 +64,8 @@ int xrtGraphReset(xrtGraphHandle gh);
  * @gh:             Handle to graph previously opened with xrtGraphOpen.
  * Return:          Timestamp in AIE cycle.
  */
-uint64_t xrtGraphTimeStamp(xrtGraphHandle gh);
+uint64_t
+xrtGraphTimeStamp(xrtGraphHandle gh);
 
 /**
  * xrtGraphUpdateIter() - Update graph run iteration.
@@ -70,7 +74,8 @@ uint64_t xrtGraphTimeStamp(xrtGraphHandle gh);
  * @iterations:     The run iteration to update to graph. -1 for infinite.
  * Return:          0 on success, -1 on error
  */
-int xrtGraphUpdateIter(xrtGraphHandle gh, int iterations);
+int
+xrtGraphUpdateIter(xrtGraphHandle gh, int iterations);
 
 /**
  * xrtGraphRun() - Start a graph execution
@@ -80,7 +85,8 @@ int xrtGraphUpdateIter(xrtGraphHandle gh, int iterations);
  *
  * Note: Run by enable tiles and disable tile reset
  */
-int xrtGraphRun(xrtGraphHandle gh);
+int
+xrtGraphRun(xrtGraphHandle gh);
 
 /**
  * xrtGraphWaitDone() - Wait for graph to stop.
@@ -92,7 +98,8 @@ int xrtGraphRun(xrtGraphHandle gh);
  *
  * Note: Wait for done status of ALL the tiles
  */
-int xrtGraphWaitDone(xrtGraphHandle gh, int timeoutMilliSec);
+int
+xrtGraphWaitDone(xrtGraphHandle gh, int timeoutMilliSec);
 
 /**
  * xrtGraphSuspend() - Suspend a running graph.
@@ -100,7 +107,8 @@ int xrtGraphWaitDone(xrtGraphHandle gh, int timeoutMilliSec);
  * @gh:             Handle to graph previously opened with xrtGraphOpen.
  * Return:          0 on success, -1 on error.
  */
-int xrtGraphSuspend(xrtGraphHandle gh);
+int
+xrtGraphSuspend(xrtGraphHandle gh);
 
 /**
  * xrtGraphResume() - Resume a suspended graph.
@@ -108,7 +116,8 @@ int xrtGraphSuspend(xrtGraphHandle gh);
  * @gh:             Handle to graph previously opened with xrtGraphOpen.
  * Return:          0 on success, -1 on error.
  */
-int xrtGraphResume(xrtGraphHandle gh);
+int
+xrtGraphResume(xrtGraphHandle gh);
 
 /**
  * xrtGraphStop() - Stop a running graph if not done within a given time
@@ -121,6 +130,22 @@ int xrtGraphResume(xrtGraphHandle gh);
  *
  * Note: Wait for done status of ALL the tiles
  */
-int xrtGraphStop(xrtGraphHandle gh, int timeoutMilliSec);
+int
+xrtGraphStop(xrtGraphHandle gh, int timeoutMilliSec);
+
+/**
+ * xrtGraphUpdateRTP() - Update RTP value of port with hierarchical name
+ *
+ * @gh:              Handle to graph previously opened with xrtGraphOpen.
+ * @hierPathPort:    hierarchial name of RTP port.
+ * @buffer:          pointer to the RTP value.
+ * @size:            size in bytes of the RTP value.
+ *
+ * Return:          0 on success, -1 on timeout.
+ *
+ * Note: This is for sychcronous RTP only.
+ */
+int
+xrtGraphUpdateRTP(xrtGraphHandle gh, const char *hierPathPort, const char *buffer, size_t size);
 
 #endif

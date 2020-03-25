@@ -398,6 +398,7 @@ struct xocl_dev_core {
 	struct xocl_drm		*drm;
 
 	char			*fdt_blob;
+	char			*blp_blob;
 	u32			fdt_blob_sz;
 	struct xocl_board_private priv;
 	char			vbnv_cache[256];
@@ -689,7 +690,7 @@ enum xocl_xmc_flags {
 /* microblaze callbacks */
 struct xocl_mb_funcs {
 	struct xocl_subdev_funcs common_funcs;
-	void (*reset)(struct platform_device *pdev);
+	int (*reset)(struct platform_device *pdev);
 	int (*stop)(struct platform_device *pdev);
 	int (*load_mgmt_image)(struct platform_device *pdev, const char *buf,
 		u32 len);
@@ -707,7 +708,7 @@ struct xocl_mb_funcs {
 #define MB_CB(xdev, cb)	\
 	(MB_DEV(xdev) && MB_OPS(xdev) && MB_OPS(xdev)->cb)
 #define	xocl_xmc_reset(xdev)			\
-	(MB_CB(xdev, reset) ? MB_OPS(xdev)->reset(MB_DEV(xdev)) : NULL) \
+	(MB_CB(xdev, reset) ? MB_OPS(xdev)->reset(MB_DEV(xdev)) : -ENODEV) \
 
 #define	xocl_xmc_stop(xdev)			\
 	(MB_CB(xdev, stop) ? MB_OPS(xdev)->stop(MB_DEV(xdev)) : -ENODEV)
@@ -736,7 +737,7 @@ struct xocl_mb_funcs {
 #define ERT_CB(xdev, cb)						\
 	(ERT_DEV(xdev) && ERT_OPS(xdev) && ERT_OPS(xdev)->cb)
 #define xocl_ert_reset(xdev)						\
-	(ERT_CB(xdev, reset) ? ERT_OPS(xdev)->reset(ERT_DEV(xdev)) : NULL)
+	(ERT_CB(xdev, reset) ? ERT_OPS(xdev)->reset(ERT_DEV(xdev)) : -ENODEV)
 #define xocl_ert_stop(xdev)						\
 	(ERT_CB(xdev, stop) ? ERT_OPS(xdev)->stop(ERT_DEV(xdev)) : -ENODEV)
 #define xocl_ert_load_sche_image(xdev, buf, len)			\
@@ -815,6 +816,31 @@ struct xocl_dna_funcs {
 	(DNA_CB(xdev, write_cert) ? DNA_OPS(xdev)->write_cert(DNA_DEV(xdev), data, len) : 0)
 #define xocl_dna_get_data(xdev, buf)  \
 	(DNA_CB(xdev, get_data) ? DNA_OPS(xdev)->get_data(DNA_DEV(xdev), buf) : 0)
+
+
+#define	ADDR_TRANSLATOR_DEV(xdev)		\
+	SUBDEV(xdev, XOCL_SUBDEV_ADDR_TRANSLATOR).pldev
+#define	ADDR_TRANSLATOR_OPS(xdev)		\
+	((struct xocl_slbr_funcs *)SUBDEV(xdev,	\
+	XOCL_SUBDEV_ADDR_TRANSLATOR).ops)
+#define ADDR_TRANSLATOR_CB(xdev, cb)	\
+	(ADDR_TRANSLATOR_DEV(xdev) && ADDR_TRANSLATOR_OPS(xdev) && ADDR_TRANSLATOR_OPS(xdev)->cb)
+#define	xocl_addr_translator_get_entries_num(xdev)			\
+	(ADDR_TRANSLATOR_CB(xdev, get_entries_num) ? ADDR_TRANSLATOR_OPS(xdev)->get_entries_num(ADDR_TRANSLATOR_DEV(xdev)) : 0)
+#define	xocl_addr_translator_set_page_table(xdev, addrs, base_addr, sz, num)			\
+	(ADDR_TRANSLATOR_CB(xdev, get_entries_num) ? ADDR_TRANSLATOR_OPS(xdev)->set_page_table(ADDR_TRANSLATOR_DEV(xdev), addrs, base_addr, sz, num) : -ENODEV)
+
+#define ADDR_TRANSLATOR_OFFSET 			0x10000000000
+#define ADDR_TRANSLATOR_ENTRY_4M		0x400000
+#define ADDR_TRANSLATOR_ENTRY_1G		0x40000000
+
+
+struct xocl_addr_translator_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	u32 (*get_entries_num)(struct platform_device *pdev);
+	int (*set_page_table)(struct platform_device *pdev, uint64_t *phys_addrs, uint64_t base_addr, uint64_t entry_sz, uint32_t num);
+};
+
 /**
  *	data_kind
  */
@@ -891,6 +917,14 @@ enum data_kind {
 	EXP_BMC_VER,
 	XMC_OEM_ID,
 	XMC_VCCINT_TEMP,
+	XMC_12V_AUX1,
+	XMC_VCC1V2_I,
+	XMC_V12_IN_I,
+	XMC_V12_IN_AUX0_I,
+	XMC_V12_IN_AUX1_I,
+	XMC_VCCAUX,
+	XMC_VCCAUX_PMC,
+	XMC_VCCRAM,
 };
 
 enum mb_kind {
@@ -1295,14 +1329,16 @@ struct xocl_mailbox_versal_funcs {
 	? MAILBOX_VERSAL_OPS(xdev)->get(MAILBOX_VERSAL_DEV(xdev), \
 	data) : -ENODEV)
 
-
-
 /* srsr callbacks */
 struct xocl_srsr_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	int (*save_calib)(struct platform_device *pdev);
 	int (*calib)(struct platform_device *pdev, bool retain);
+	int (*write_calib)(struct platform_device *pdev, const void *calib_cache, uint32_t size);
+	int (*read_calib)(struct platform_device *pdev, void *calib_cache, uint32_t size);
+	uint32_t (*cache_size)(struct platform_device *pdev);
 };
+
 #define	SRSR_DEV(xdev, idx)	SUBDEV_MULTI(xdev, XOCL_SUBDEV_SRSR, idx).pldev
 #define	SRSR_OPS(xdev, idx)							\
 	((struct xocl_srsr_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_SRSR, idx).ops)
@@ -1320,7 +1356,37 @@ struct xocl_srsr_funcs {
 	(SRSR_CB(xdev, idx) ?						\
 	SRSR_OPS(xdev, idx)->calib(SRSR_DEV(xdev, idx), retain) : \
 	-ENODEV)
+#define	xocl_srsr_write_calib(xdev, idx, calib_cache, size)				\
+	(SRSR_CB(xdev, idx) ?						\
+	SRSR_OPS(xdev, idx)->write_calib(SRSR_DEV(xdev, idx), calib_cache, size) : \
+	-ENODEV)
+#define	xocl_srsr_read_calib(xdev, idx, calib_cache, size)				\
+	(SRSR_CB(xdev, idx) ?						\
+	SRSR_OPS(xdev, idx)->read_calib(SRSR_DEV(xdev, idx), calib_cache, size) : \
+	-ENODEV)
+#define	xocl_srsr_cache_size(xdev, idx)				\
+	(SRSR_CB(xdev, idx) ?						\
+	SRSR_OPS(xdev, idx)->cache_size(SRSR_DEV(xdev, idx)) : 0)
 
+struct calib_storage_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	int (*save)(struct platform_device *pdev);
+	int (*restore)(struct platform_device *pdev);
+};
+
+#define	CALIB_STORAGE_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_CALIB_STORAGE).pldev
+#define	CALIB_STORAGE_OPS(xdev)							\
+	((struct calib_storage_funcs *)SUBDEV(xdev, XOCL_SUBDEV_CALIB_STORAGE).ops)
+#define	CALIB_STORAGE_CB(xdev)	\
+	(CALIB_STORAGE_DEV(xdev) && CALIB_STORAGE_OPS(xdev))
+#define	xocl_calib_storage_save(xdev)				\
+	(CALIB_STORAGE_CB(xdev) ?						\
+	CALIB_STORAGE_OPS(xdev)->save(CALIB_STORAGE_DEV(xdev)) : \
+	-ENODEV)
+#define	xocl_calib_storage_restore(xdev)				\
+	(CALIB_STORAGE_CB(xdev) ?						\
+	CALIB_STORAGE_OPS(xdev)->restore(CALIB_STORAGE_DEV(xdev)) : \
+	-ENODEV)
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
 void xocl_init_dsa_priv(xdev_handle_t xdev_hdl);
@@ -1596,5 +1662,8 @@ void xocl_fini_srsr(void);
 
 int __init xocl_init_ulite(void);
 void xocl_fini_ulite(void);
+
+int __init xocl_init_calib_storage(void);
+void xocl_fini_calib_storage(void);
 
 #endif

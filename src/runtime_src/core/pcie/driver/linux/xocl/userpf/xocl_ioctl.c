@@ -518,12 +518,11 @@ int xocl_alloc_cma_ioctl(struct drm_device *dev, void *data,
 int xocl_free_cma_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp)
 {
-	struct drm_xocl_free_cma_info *cma_info = data;
 	struct xocl_drm *drm_p = dev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
 
 	mutex_lock(&xdev->dev_lock);
-	xocl_cma_chunk_free_helper(drm_p, cma_info);
+	xocl_cma_chunk_free_helper(drm_p);
 	mutex_unlock(&xdev->dev_lock);
 
 	return 0;

@@ -111,7 +111,7 @@ static int removeDevice(unsigned int index)
     auto mgmt_dev = pcidev::get_dev(index, false);
 
     /* Remove both user_pf and mgmt_pf */
-    ret = mgmt_dev->shutdown(true, true);
+    ret = pcidev::shutdown(mgmt_dev, true, true);
     if (ret) {
         std::cout << "Removing device faied. " << ret << std::endl;
         return ret;

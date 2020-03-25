@@ -36,7 +36,7 @@ namespace xdp {
   {
   }
 
-  void KernelEnqueue::dump(std::ofstream& fout, int bucket)
+  void KernelEnqueue::dump(std::ofstream& fout, uint32_t bucket)
   {
     VTFEvent::dump(fout, bucket) ;
     fout << std::endl; 
@@ -51,7 +51,7 @@ namespace xdp {
   {
   }
 
-  void LOPKernelEnqueue::dump(std::ofstream& fout, int bucket)
+  void LOPKernelEnqueue::dump(std::ofstream& fout, uint32_t bucket)
   {
     VTFEvent::dump(fout, bucket) ;
     fout << std::endl ;
@@ -70,11 +70,13 @@ namespace xdp {
   {
   }
 
-  BufferTransfer::BufferTransfer(uint64_t s_id, double ts, VTFEventType ty) :
-    VTFEvent(s_id, ts, ty),
+  BufferTransfer::BufferTransfer(uint64_t s_id, double ts, VTFEventType ty,
+                                 size_t bufSz)
+                : VTFEvent(s_id, ts, ty),
+                  size(bufSz)
     // Until implemented, initialize all members with a default value
-    stageString(0), eventString(0), size(0), srcAddress(0), srcBank(0),
-    dstAddress(0), dstBank(0), bufferId(0)
+//    stageString(0), eventString(0), size(0), srcAddress(0), srcBank(0),
+//    dstAddress(0), dstBank(0), bufferId(0)
   {
   }
 
@@ -82,10 +84,13 @@ namespace xdp {
   {
   }
 
-  void BufferTransfer::dump(std::ofstream& fout, int bucket)
+  void BufferTransfer::dump(std::ofstream& fout, uint32_t bucket)
   {
-    VTFEvent::dump(fout, bucket) ;
-    fout << std::endl ;
+    VTFEvent::dump(fout, bucket);
+    if(0 == start_id) {  // Dump the detailed information only for start event
+      fout << "," << size;
+    }
+    fout << std::endl;
   }
 
   LOPBufferTransfer::LOPBufferTransfer(uint64_t s_id, double ts, 
@@ -99,7 +104,7 @@ namespace xdp {
   {
   }
 
-  void LOPBufferTransfer::dump(std::ofstream& fout, int bucket)
+  void LOPBufferTransfer::dump(std::ofstream& fout, uint32_t bucket)
   {
     VTFEvent::dump(fout, bucket) ;
     fout << "," << std::hex << "0x" << threadId << std::dec << std::endl ;

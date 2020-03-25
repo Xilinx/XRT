@@ -37,11 +37,18 @@ namespace xdp {
     // All of the writers associated with the plugin
     std::vector<VPWriter*> writers ;
 
+    // If there is something that is common amongst all plugins when
+    //  dealing with emulation flows.
+    XDP_EXPORT void emulationSetup() ;
+
   public:
     XDP_EXPORT XDPPlugin() ;
     XDP_EXPORT virtual ~XDPPlugin() ;
     
     inline VPDatabase* getDatabase() { return db ; }
+
+    // Update the given device with newly loaded xclbin
+    XDP_EXPORT virtual void updateDevice(void* /*device*/, const void* /*binary*/);
 
     // When the database gets reset or at the end of execution,
     //  the plugins must make sure all of their writers dump a complete file

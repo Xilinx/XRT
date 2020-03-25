@@ -20,9 +20,13 @@
 #include <string>
 #include <vector>
 
-namespace xrt_core { namespace edge { namespace aie {
+namespace xrt_core {
 
-struct tile
+class device;
+
+namespace edge { namespace aie {
+
+struct tile_type
 {
   uint16_t row;
   uint16_t col;
@@ -34,11 +38,47 @@ struct tile
 /**
  * get_tiles() - get tile data from xclbin AIE metadata
  *
- * @top: xclbin structure
+ * @device: device with loaded meta data
  * @graph: name of graph to extract tile data for
  */
-std::vector<tile>
-get_tiles(const axlf* top, const std::string& graph);
+std::vector<tile_type>
+get_tiles(const xrt_core::device* device, const std::string& graph_name);
+
+struct rtp_type
+{
+  std::string     name;
+
+  uint16_t        selector_row;
+  uint16_t        selector_col;
+  uint16_t        selector_lock_id;
+  uint64_t        selector_addr;
+
+  uint16_t        ping_row;
+  uint16_t        ping_col;
+  uint16_t        ping_lock_id;
+  uint64_t        ping_addr;
+
+  uint16_t        pong_row;
+  uint16_t        pong_col;
+  uint16_t        pong_lock_id;
+  uint64_t        pong_addr;
+
+  bool            is_plrtp;
+  bool            is_input;
+  bool            is_async;
+  bool            is_connected;
+  bool            require_lock;
+};
+
+ 
+/**
+ * get_rtp() - get rtp data for a port from xclbin AIE metadata
+ *
+ * @device: device with loaded meta data
+ * @port_name: name of port to get data from
+ */
+std::vector<rtp_type>
+get_rtp(const xrt_core::device* device);
 
 }}} // aie, edge, xrt_core
 

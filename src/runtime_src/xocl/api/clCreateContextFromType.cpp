@@ -106,11 +106,8 @@ clCreateContextFromType(const cl_context_properties* properties,
     //todo cl_device_type_default
     validdevice = validdevice || (device_type==CL_DEVICE_TYPE_ALL);
 
-    if(validdevice) {
+    if(validdevice)
       devices.push_back(device);
-      if (!device->lock())
-        throw xocl::error(CL_DEVICE_NOT_AVAILABLE,"device unavailable");
-    }
   }
 
   if (devices.empty())

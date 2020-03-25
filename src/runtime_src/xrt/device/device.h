@@ -17,6 +17,7 @@
 #ifndef xrt_device_device_h_
 #define xrt_device_device_h_
 
+#include "xrt/config.h"
 #include "xrt/device/hal.h"
 #include "xrt/util/range.h"
 #include "xclbin.h"
@@ -138,15 +139,6 @@ public:
   std::ostream&
   printDeviceInfo(std::ostream&) const;
 
-  /**
-   * Hack to accomodate sw_em missing device info
-   */
-  void
-  copyDeviceInfo(const device* src)
-  {
-    m_hal->copyDeviceInfo(src->m_hal.get());
-  }
-
   size_t
   get_cdma_count() const
   {
@@ -164,16 +156,14 @@ public:
    *   If open succeeds then true, false otherwise
    */
   bool
-  open(const char* log=nullptr, verbosity_level level=verbosity_level::quiet)
+  open()
   {
-    return m_hal->open(log,level);
+    return m_hal->open();
   }
 
+  XRT_EXPORT
   void
-  close()
-  {
-    m_hal->close();
-  }
+  close();
 
   device_handle
   get_handle() const
@@ -554,35 +544,6 @@ public:
   {
     return m_hal->pollStreams(comps, min,max,actual,timeout);
   };
-
-//End Streaming APIs
-#ifdef PMD_OCL
-public:
-  StreamHandle openStream(unsigned depth, unsigned q, direction dir)
-  {
-    return m_hal->openStream(depth, q, dir);
-  }
-  void closeStream(StreamHandle strm)
-  {
-    return m_hal->closeStream(strm);
-  }
-  unsigned send(StreamHandle strm, PacketObject *pkts, unsigned count)
-  {
-    return m_hal->send(strm, pkts, count);
-  }
-  unsigned recv(StreamHandle strm, PacketObject *pkts, unsigned count)
-  {
-    return m_hal->recv(strm, pkts, count);
-  }
-  PacketObject acquirePacket()
-  {
-    return m_hal->acquirePacket();
-  }
-  void releasePacket(PacketObject pkt)
-  {
-    return m_hal->releasePacket(pkt);
-  }
-#endif
 
 private:
   void retain(const BufferObjectHandle& bo)

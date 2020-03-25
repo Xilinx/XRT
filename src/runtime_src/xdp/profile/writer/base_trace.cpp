@@ -326,11 +326,11 @@ namespace xdp {
         std::string portName;
         std::string cuPortName;
         if (tr.Kind == DeviceTrace::DEVICE_KERNEL && (tr.Type == "Kernel" || tr.Type.find("Stall") != std::string::npos)) {
-          mPluginHandle->getProfileSlotName(XCL_PERF_MON_ACCEL, deviceName, tr.SlotNum, cuName);
+          mPluginHandle->getTraceSlotName(XCL_PERF_MON_ACCEL, deviceName, tr.SlotNum, cuName);
         }
         else {
           if (tr.Kind == DeviceTrace::DEVICE_STREAM){
-            mPluginHandle->getProfileSlotName(XCL_PERF_MON_STR, deviceName, tr.SlotNum, cuPortName);
+            mPluginHandle->getTraceSlotName(XCL_PERF_MON_STR, deviceName, tr.SlotNum, cuPortName);
             size_t sepIndex = cuPortName.find(IP_LAYOUT_SEP);
             // New format : "MasterName-SlaveName"
             if (sepIndex != std::string::npos) {
@@ -341,7 +341,7 @@ namespace xdp {
             }
           }
           else {
-            mPluginHandle->getProfileSlotName(XCL_PERF_MON_MEMORY, deviceName, tr.SlotNum, cuPortName);
+            mPluginHandle->getTraceSlotName(XCL_PERF_MON_MEMORY, deviceName, tr.SlotNum, cuPortName);
           }
           cuName = cuPortName.substr(0, cuPortName.find_first_of("/"));
           portName = cuPortName.substr(cuPortName.find_first_of("/")+1);

@@ -384,7 +384,7 @@ public:
   ready() const
   {
     if ( (ctrlreg & AP_START) || (is_sw_emulation() && run_cnt) ) {
-      XRT_DEBUGF("sws ready() is polling cu(%d)\n",idx);
+      XRT_DEBUGF("sws ready() is polling cu(%d)\n",cuidx);
       poll();
     }
 
@@ -401,7 +401,7 @@ public:
   get_done() const
   {
     if (!done_cnt) {
-      XRT_DEBUGF("sws get_done() is polling cu(%d)\n",idx);
+      XRT_DEBUGF("sws get_done() is polling cu(%d)\n",cuidx);
       poll();
     }
 
@@ -419,7 +419,7 @@ public:
 
     running_queue.pop();
     --done_cnt;
-    XRT_DEBUGF("sws pop_done() popped cu(%d) done(%d) run(%d)\n",idx,done_cnt,run_cnt);
+    XRT_DEBUGF("sws pop_done() popped cu(%d) done(%d) run(%d)\n",cuidx,done_cnt,run_cnt);
   }
 
   // Start the CU with a new command.
@@ -459,7 +459,7 @@ public:
 
     running_queue.push(xcmd);
     ++run_cnt;
-    XRT_DEBUGF("started cu(%d) xcmd(%d) done(%d) run(%d)\n",idx,xcmd->get_uid(),done_cnt,run_cnt);
+    XRT_DEBUGF("started cu(%d) xcmd(%d) done(%d) run(%d)\n",cuidx,xcmd->get_uid(),done_cnt,run_cnt);
   }
 };
 

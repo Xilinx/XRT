@@ -55,8 +55,8 @@ class shim
 {
 public:
     ~shim();
-    shim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity);
-    void init(unsigned index, const char *logfileName, xclVerbosityLevel verbosity);
+    shim(unsigned index);
+    void init(unsigned index);
 
     static int xclLogMsg(xrtLogMsgLevel level, const char* tag, const char* format, va_list args1);
     // Raw unmanaged read/write on the entire PCIE user BAR
@@ -128,7 +128,7 @@ public:
      * e.g. enable = true, sz = 0x100000 (2M): add 2M CMA chunk
      *      enable = false: remove CMA chunk
      */
-    int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t sz);
+    int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t total_size);
 
     int xclGetDebugIPlayoutPath(char* layoutPath, size_t size);
     int xclGetSubdevPath(const char* subdev, uint32_t idx, char* path, size_t size);
@@ -147,8 +147,6 @@ public:
     int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex);
 
     int getBoardNumber( void ) { return mBoardNumber; }
-    const char *getLogfileName( void ) { return mLogfileName; }
-    xclVerbosityLevel getVerbosity( void ) { return mVerbosity; }
 
     // QDMA streaming APIs
     int xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl);
@@ -164,13 +162,11 @@ public:
 private:
     std::shared_ptr<xrt_core::device> mCoreDevice;
     std::shared_ptr<pcidev::pci_device> mDev;
-    xclVerbosityLevel mVerbosity;
     std::ofstream mLogStream;
     int mUserHandle;
     int mStreamHandle;
     int mBoardNumber;
     bool mLocked;
-    const char *mLogfileName;
     uint64_t mOffsets[XCL_ADDR_SPACE_MAX];
     xclDeviceInfo2 mDeviceInfo;
     uint32_t mMemoryProfilingNumberSlots;

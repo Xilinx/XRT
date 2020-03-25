@@ -30,13 +30,12 @@ namespace xdp {
   private:
     HALAPICall() = delete ;
   public:
-    XDP_EXPORT HALAPICall(uint64_t s_id, double ts, unsigned int f_id, 
-			  uint64_t name) ;
+    XDP_EXPORT HALAPICall(uint64_t s_id, double ts, uint64_t name) ;
     XDP_EXPORT ~HALAPICall() ;
 
     virtual bool isHALAPI() { return true ; }
 
-    XDP_EXPORT virtual void dump(std::ofstream& fout, int bucket) ;
+    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   } ;
 
   class AllocBoCall : public HALAPICall
@@ -44,11 +43,10 @@ namespace xdp {
   private:
     AllocBoCall() = delete ;
   public:
-    XDP_EXPORT AllocBoCall(uint64_t s_id, double ts, unsigned int f_id, 
-			   uint64_t name) ;
+    XDP_EXPORT AllocBoCall(uint64_t s_id, double ts, uint64_t name) ;
     XDP_EXPORT ~AllocBoCall() ;
 
-    XDP_EXPORT virtual void dump(std::ofstream& fout, int bucket) ;
+    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   } ;
 
 } // end namespace xdp

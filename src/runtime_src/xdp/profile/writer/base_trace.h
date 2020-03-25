@@ -19,7 +19,7 @@
 #define __XDP_BASE_TRACE_WRITER_H
 
 #include "xdp/profile/core/rt_util.h"
-#include "xdp/profile/device/trace_parser.h"
+#include "xdp/profile/core/trace_parser.h"
 #include "xdp/profile/plugin/base_plugin.h"
 
 #include <cstdlib>

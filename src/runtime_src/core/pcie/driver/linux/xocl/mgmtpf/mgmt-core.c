@@ -1243,8 +1243,8 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 		vfree(lro->core.fdt_blob);
 	if (lro->userpf_blob)
 		vfree(lro->userpf_blob);
-	if (lro->bld_blob)
-		vfree(lro->bld_blob);
+	if (lro->core.blp_blob)
+		vfree(lro->core.blp_blob);
 
 	dev_set_drvdata(&pdev->dev, NULL);
 
@@ -1309,6 +1309,7 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_srsr,
 	xocl_init_mem_hbm,
 	xocl_init_ulite,
+	xocl_init_calib_storage,
 };
 
 static void (*drv_unreg_funcs[])(void) = {
@@ -1336,6 +1337,7 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_srsr,
 	xocl_fini_mem_hbm,
 	xocl_fini_ulite,
+	xocl_fini_calib_storage,
 };
 
 static int __init xclmgmt_init(void)

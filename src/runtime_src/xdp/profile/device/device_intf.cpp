@@ -166,6 +166,52 @@ DeviceIntf::~DeviceIntf()
     return std::string("");
   }
 
+  std::string DeviceIntf::getTraceMonName(xclPerfMonType type, uint32_t index)
+  {
+    if (type == XCL_PERF_MON_MEMORY) {
+      for (auto& ip: aimList) {
+        if (ip->hasTraceID(index))
+          return ip->getName();
+      }
+    }
+    if (type == XCL_PERF_MON_ACCEL) {
+      for (auto& ip: amList) {
+        if (ip->hasTraceID(index))
+          return ip->getName();
+      }
+    }
+    if (type == XCL_PERF_MON_STR) {
+      for (auto& ip: asmList) {
+        if (ip->hasTraceID(index))
+          return ip->getName();
+      }
+    }
+    return std::string("");
+  }
+
+  uint32_t DeviceIntf::getTraceMonProperty(xclPerfMonType type, uint32_t index)
+  {
+    if (type == XCL_PERF_MON_MEMORY) {
+      for (auto& ip: aimList) {
+        if (ip->hasTraceID(index))
+          return ip->getProperties();;
+      }
+    }
+    if (type == XCL_PERF_MON_ACCEL) {
+      for (auto& ip: amList) {
+        if (ip->hasTraceID(index))
+          return ip->getProperties();;
+      }
+    }
+    if (type == XCL_PERF_MON_STR) {
+      for (auto& ip: asmList) {
+        if (ip->hasTraceID(index))
+          return ip->getProperties();;
+      }
+    }
+    return 0;
+  }
+
   uint32_t DeviceIntf::getMonitorProperties(xclPerfMonType type, uint32_t index)
   {
     if((type == XCL_PERF_MON_MEMORY) && (index < aimList.size())) { return aimList[index]->getProperties(); }
@@ -499,7 +545,7 @@ DeviceIntf::~DeviceIntf()
 
     uint32_t i = 0;
     for(auto mon: amList) {
-        mon->configureDataflow(ipConfig[i++]);
+      mon->configureDataflow(ipConfig[i++]);
     }
   }
 
@@ -547,27 +593,34 @@ DeviceIntf::~DeviceIntf()
 
   void DeviceIntf::initTS2MM(uint64_t bufSz, uint64_t bufAddr)
   {
-    traceDMA->init(bufSz, bufAddr);
+    if (traceDMA)
+      traceDMA->init(bufSz, bufAddr);
   }
 
   uint64_t DeviceIntf::getWordCountTs2mm()
   {
-    return traceDMA->getWordCount();
+    if (traceDMA)
+      return traceDMA->getWordCount();
+    return 0;
   }
 
   uint8_t DeviceIntf::getTS2MmMemIndex()
   {
-    return traceDMA->getMemIndex();
+    if (traceDMA)
+      return traceDMA->getMemIndex();
+    return 0;
   }
 
   void DeviceIntf::resetTS2MM()
   {
-    traceDMA->reset();
+    if (traceDMA)
+      traceDMA->reset();
   }
 
   void DeviceIntf::parseTraceData(void* traceData, uint64_t bytes, xclTraceResultsVector& traceVector)
   {
-    traceDMA->parseTraceBuf(traceData, bytes, traceVector);
+    if (traceDMA)
+      traceDMA->parseTraceBuf(traceData, bytes, traceVector);
   }
 
 } // namespace xdp

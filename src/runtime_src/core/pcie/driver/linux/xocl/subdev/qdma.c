@@ -1693,6 +1693,7 @@ static int qdma_probe(struct platform_device *pdev)
 	}
 
 	qdma->pdev = pdev;
+	platform_set_drvdata(pdev, qdma);
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
@@ -1714,6 +1715,7 @@ static int qdma_probe(struct platform_device *pdev)
 	conf->qsets_max = QDMA_QSETS_MAX;
 	conf->bar_num_config = dma_bar;
 	conf->bar_num_stm = XDEV(xdev)->bar_idx;
+	conf->stm_reg_base = 0x02000000;
 
 	conf->fp_user_isr_handler = qdma_isr;
 	conf->uld = (unsigned long)qdma;
@@ -1753,8 +1755,6 @@ static int qdma_probe(struct platform_device *pdev)
 	qdma->user_msix_mask = QDMA_USER_INTR_MASK;
 
 	spin_lock_init(&qdma->user_msix_table_lock);
-
-	platform_set_drvdata(pdev, qdma);
 
 	return 0;
 

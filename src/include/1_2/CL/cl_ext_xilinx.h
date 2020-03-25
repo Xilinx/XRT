@@ -465,20 +465,62 @@ xclGetComputeUnitInfo(cl_kernel             kernel,
 //accepted by the <flags> paramete of clGetProrgamInfo
 #define CL_PROGRAM_BUFFERS_XILINX       0x1180
 
-// cl_kernel_info
+/**
+ * clGetKernelInfo() - kernel information
+ *
+ * @CL_KERNEL_COMPUTE_UNIT_COUNT
+ * @type: cl_uint
+ * @return: Number of compute units associated with this kernel object
+ *
+ * @CL_KERNEL_INSTANCE_BASE_ADDRESS
+ * @type: size_t[]
+ * @return: The base address of the compute units of this kernel object
+ */
 #define CL_KERNEL_COMPUTE_UNIT_COUNT    0x1300
 #define CL_KERNEL_INSTANCE_BASE_ADDRESS 0x1301
 
-// cl_kernel_arg_info
+/**
+ * clGetKernelArgInfo() - kernel argument information
+ *
+ * @CL_KERNEL_ARG_OFFSET
+ * @type: size_t
+ * Return: Address offset for specified kernel argument.
+ * The returned offset is relative to the base address of
+ * a compute unit associated with the kernel.
+ */
 #define CL_KERNEL_ARG_OFFSET            0x1320
 
-// cl_mem_info
+/**
+ * clGetMemObjectInfo() - Memory object information
+ *
+ * @CL_MEM_BANK
+ * @type: int
+ * Return: The memory index associated with this global
+ * memory object.
+ */
 #define CL_MEM_BANK                     0x1109
 
-// cl_program_build_info (CR962714)
+/**
+ * clGetProgramBuildInfo() - (CR962714)
+ *
+ * @CL_PROGRAM_TARGET_TYPE
+ * @type: cl_program_target_type (see below)
+ * Return: The target type for this program
+ */
 #define CL_PROGRAM_TARGET_TYPE          0x1110
 
-// cl_device_info
+/**
+ * clGetDeviceInfo()
+ *
+ * @CL_DEVICE_PCIE_BDF
+ * @type: char[]
+ * Return: The BDF if this device is a PCIe
+ *
+ * @CL_DEVICE_HANDLE
+ * @type: void*
+ * Return: The underlying device handle for use with low 
+ * level XRT APIs (xrt.h)
+ */
 #define CL_DEVICE_PCIE_BDF              0x1120  // BUS/DEVICE/FUNCTION
 #define CL_DEVICE_HANDLE                0x1121  // XRT device handle
 

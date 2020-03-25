@@ -18,6 +18,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+
 #include "shim.h"
 #include "scan.h"
 #include "system_linux.h"
@@ -125,14 +126,13 @@ namespace xocl {
 /*
  * shim()
  */
-shim::shim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity)
+shim::
+shim(unsigned index)
   : mCoreDevice(xrt_core::pcie_linux::get_userpf_device(this, index))
-  , mVerbosity(verbosity)
   , mUserHandle(-1)
   , mStreamHandle(-1)
   , mBoardNumber(index)
   , mLocked(false)
-  , mLogfileName(nullptr)
   , mOffsets{0x0, 0x0, OCL_CTLR_BASE, 0x0, 0x0}
   , mMemoryProfilingNumberSlots(0)
   , mAccelProfilingNumberSlots(0)
@@ -141,7 +141,7 @@ shim::shim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity)
   , mCmdBOCache(nullptr)
   , mCuMaps(128, nullptr)
 {
-    init(index, logfileName, verbosity);
+  init(index);
 }
 
 int shim::dev_init()
@@ -219,13 +219,10 @@ void shim::dev_fini()
 /*
  * init()
  */
-void shim::init(unsigned index, const char *logfileName,
-    xclVerbosityLevel verbosity)
+void
+shim::
+init(unsigned int index)
 {
-    if(logfileName != nullptr) {
-        xrt_logmsg(XRT_WARNING, "%s: logfileName is no longer supported", __func__);
-    }
-
     xrt_logmsg(XRT_INFO, "%s", __func__);
 
     int ret = dev_init();
@@ -761,42 +758,60 @@ int shim::cmaEnable(bool enable, uint64_t size)
     int ret = 0;
 
     if (enable) {
-        uint32_t hugepage_flag = 0;
+        uint32_t page_num = size >> 30;
+        uint32_t cma_info_sz = sizeof(drm_xocl_alloc_cma_info)+sizeof(uint64_t)*page_num;
+        drm_xocl_alloc_cma_info *cma_info = (drm_xocl_alloc_cma_info *)alloca(cma_info_sz);
+        int err_code = 0;
 
-        drm_xocl_alloc_cma_info cma_info;
-        cma_info.page_sz = size;
+        cma_info->total_size = size;
 
-        /* Once set MAP_HUGETLB, we have to specify bit[26~31] as size in log
-         * e.g. We like to get 2M huge page, 2M = 2^21,
-         * 21 = 0x15
-         */
-        if (size == (1 << 30))
-            hugepage_flag = 0x1e;
-        else if (size == (2 << 20))
-            hugepage_flag = 0x15;
+        ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_ALLOC_CMA, cma_info);
 
-        if (!hugepage_flag)
-            return -EINVAL;
+        err_code = -errno;
+        if (ret && err_code != -E2BIG)
+            return err_code;
+        else if (err_code == -E2BIG) {
+            /* Once set MAP_HUGETLB, we have to specify bit[26~31] as size in log
+             * e.g. We like to get 2M huge page, 2M = 2^21,
+             * 21 = 0x15
+             * Let's find how many 1GB huge page we have to allocate
+             */
+            uint64_t hugepage_flag = 0x1e;
+            uint32_t page_num = size >> 30; 
+            uint64_t page_sz = 1 << 30;
+            std::string err;
 
+            cma_info->total_size = size;
 
-        void *addr_local = mmap(0x0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | hugepage_flag << MAP_HUGE_SHIFT, 0, 0);
-        if (addr_local == MAP_FAILED) {
-            xrt_logmsg(XRT_ERROR, "Unable to get huge page.");
-            ret = -ENOMEM;
-        } else {
-            cma_info.user_addr = (uint64_t)addr_local;
-        }
+            for (uint32_t i = 0; i < page_num; ++i) {
+                void *addr_local = mmap(0x0, page_sz, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | hugepage_flag << MAP_HUGE_SHIFT, 0, 0);
 
-        if (!ret) {
-            ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_ALLOC_CMA, &cma_info);
-            if (ret)
-                ret = -errno;
-            munmap((void*)cma_info.user_addr, size);
+                if (addr_local == MAP_FAILED) {
+                    xrt_logmsg(XRT_ERROR, "Unable to get huge page.");
+                    ret = -ENOMEM;
+                    break;
+                } else {
+                    cma_info->user_addr[i] = (uint64_t)addr_local;
+                }
+            }
+
+            if (!ret) {
+                ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_ALLOC_CMA, cma_info);
+                if (ret)
+                        ret = -errno;
+            }
+
+            for (uint32_t i = 0; i < page_num; ++i) {
+                if (!cma_info->user_addr[i])
+                    continue;
+
+                 munmap((void*)cma_info->user_addr[i], page_sz);
+            }
+
         }
 
     } else {
-        drm_xocl_free_cma_info cma_info = {0};
-        ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_FREE_CMA, &cma_info);
+        ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_FREE_CMA);
     }
 
     return ret;
@@ -870,26 +885,28 @@ bool shim::zeroOutDDR()
  */
 int shim::xclLoadXclBin(const xclBin *buffer)
 {
-    int ret = 0;
-    const char *xclbininmemory = reinterpret_cast<char*> (const_cast<xclBin*> (buffer));
-
-    ret = xclLoadAxlf(reinterpret_cast<const axlf*>(xclbininmemory));
+    auto top = reinterpret_cast<const axlf*>(buffer);
+    auto ret = xclLoadAxlf(top);
     if (ret != 0) {
-        if (ret == -EOPNOTSUPP) {
-            xrt_logmsg(XRT_ERROR, "Xclbin does not match Shell on card.");
-            xrt_logmsg(XRT_ERROR, "Use 'xbmgmt flash' to update Shell.");
-        } else if (ret == -EBUSY) {
-            xrt_logmsg(XRT_ERROR, "Xclbin on card is in use, can't change.");
-        } else if (ret == -EKEYREJECTED) {
-            xrt_logmsg(XRT_ERROR, "Xclbin isn't signed properly");
-        } else if (ret == -ETIMEDOUT) {
-            xrt_logmsg(XRT_ERROR,
-                "Can't reach out to mgmt for xclbin downloading");
-            xrt_logmsg(XRT_ERROR,
-                "Is xclmgmt driver loaded? Or is MSD/MPD running?");
-        }
-        xrt_logmsg(XRT_ERROR, "See dmesg log for details. err=%d", ret);
+      if (ret == -EOPNOTSUPP) {
+        xrt_logmsg(XRT_ERROR, "Xclbin does not match Shell on card.");
+        xrt_logmsg(XRT_ERROR, "Use 'xbmgmt flash' to update Shell.");
+      }
+      else if (ret == -EBUSY) {
+        xrt_logmsg(XRT_ERROR, "Xclbin on card is in use, can't change.");
+      }
+      else if (ret == -EKEYREJECTED) {
+        xrt_logmsg(XRT_ERROR, "Xclbin isn't signed properly");
+      }
+      else if (ret == -ETIMEDOUT) {
+        xrt_logmsg(XRT_ERROR,
+                   "Can't reach out to mgmt for xclbin downloading");
+        xrt_logmsg(XRT_ERROR,
+                   "Is xclmgmt driver loaded? Or is MSD/MPD running?");
+      }
+      xrt_logmsg(XRT_ERROR, "See dmesg log for details. err=%d", ret);
     }
+
     return ret;
 }
 
@@ -1752,23 +1769,33 @@ int shim::xclIPName2Index(const char *name, uint32_t& index)
 
 unsigned xclProbe()
 {
+#ifdef ENABLE_HAL_PROFILING
+  PROBE_CB;
+#endif
     return pcidev::get_dev_ready();
 }
 
-xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logFileName, xclVerbosityLevel level)
+xclDeviceHandle
+xclOpen(unsigned int deviceIndex, const char*, xclVerbosityLevel)
 {
     if(pcidev::get_dev_total() <= deviceIndex) {
         printf("Cannot find index %u \n", deviceIndex);
         return nullptr;
     }
+#ifdef ENABLE_HAL_PROFILING
+  OPEN_CB;
+#endif
 
-    xocl::shim *handle = new xocl::shim(deviceIndex, logFileName, level);
+    xocl::shim *handle = new xocl::shim(deviceIndex);
 
     return static_cast<xclDeviceHandle>(handle);
 }
 
 void xclClose(xclDeviceHandle handle)
 {
+#ifdef ENABLE_HAL_PROFILING
+  CLOSE_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     if (drv) {
         delete drv;
@@ -1879,6 +1906,9 @@ unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigne
 
 unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned flags)
 {
+#ifdef ENABLE_HAL_PROFILING
+  ALLOC_USERPTR_BO_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclAllocUserPtrBO(userptr, size, flags) : -ENODEV;
 }
@@ -1939,6 +1969,9 @@ int xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection 
 int xclCopyBO(xclDeviceHandle handle, unsigned int dst_boHandle,
             unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset)
 {
+#ifdef ENABLE_HAL_PROFILING
+  COPY_BO_CB ;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ?
       drv->xclCopyBO(dst_boHandle, src_boHandle, size, dst_offset, src_offset) : -ENODEV;
@@ -1952,6 +1985,9 @@ int xclReClock2(xclDeviceHandle handle, unsigned short region, const unsigned sh
 
 int xclLockDevice(xclDeviceHandle handle)
 {
+#ifdef ENABLE_HAL_PROFILING
+  LOCK_DEVICE_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     if (!drv)
         return -ENODEV;
@@ -1960,6 +1996,9 @@ int xclLockDevice(xclDeviceHandle handle)
 
 int xclUnlockDevice(xclDeviceHandle handle)
 {
+#ifdef ENABLE_HAL_PROFILING
+  UNLOCK_DEVICE_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     if (!drv)
         return -ENODEV;
@@ -1978,10 +2017,10 @@ int xclP2pEnable(xclDeviceHandle handle, bool enable, bool force)
     return drv ? drv->p2pEnable(enable, force) : -ENODEV;
 }
 
-int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t sz)
+int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t total_size)
 {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
-    return drv ? drv->cmaEnable(enable, sz) : -ENODEV;
+    return drv ? drv->cmaEnable(enable, total_size) : -ENODEV;
 }
 
 int xclBootFPGA(xclDeviceHandle handle)
@@ -2068,6 +2107,9 @@ int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
 
 int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
+#ifdef ENABLE_HAL_PROFILING
+  OPEN_CONTEXT_CB;
+#endif
   xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
 }

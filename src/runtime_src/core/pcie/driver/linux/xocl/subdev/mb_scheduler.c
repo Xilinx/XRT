@@ -4433,6 +4433,13 @@ validate(struct platform_device *pdev, struct client_ctx *client, const struct d
 		return 1;
 	}
 
+	// Filter unsupported opcodes
+	switch (ecmd->opcode) {
+	case ERT_INIT_CU:
+		userpf_err(xocl_get_xdev(pdev), "invalid opcode 'ERT_INIT_CU'\n");
+		return 1;
+	}
+
 	if (ecmd->type == ERT_CTRL)
 		return validate_ctrl(pdev, ecmd);
 		

@@ -49,7 +49,7 @@ using Clock = std::chrono::high_resolution_clock;
 
 /* exposed by shim */
 int xclUpdateSchedulerStat(xclDeviceHandle);
-int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t sz);
+int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t total_size);
 int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* info);
 
 #define TO_STRING(x) #x
@@ -119,8 +119,7 @@ enum cmacommand {
     CMA_ENABLE = 0x0,
     CMA_DISABLE,
     CMA_VALIDATE,
-    CMA_SIZE_1G,
-    CMA_SIZE_2M,
+    CMA_SIZE,
 };
 
 static const std::pair<std::string, command> map_pairs[] = {
@@ -741,7 +740,8 @@ public:
     {
         // board info
         std::string vendor, device, subsystem, subvendor, xmc_ver, xmc_oem_id,
-            ser_num, bmc_ver, idcode, fpga, dna, errmsg, max_power;
+            ser_num, bmc_ver, idcode, fpga, dna, errmsg, max_power, mac_addr0, 
+            mac_addr1, mac_addr2, mac_addr3;
         int ddr_size = 0, ddr_count = 0, pcie_speed = 0, pcie_width = 0, p2p_enabled = 0;
         std::vector<std::string> clock_freqs;
         std::vector<std::string> dma_threads;
@@ -757,6 +757,10 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "serial_num",              errmsg, ser_num );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "max_power",               errmsg, max_power );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "bmc_ver",                 errmsg, bmc_ver );
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_addr0",               errmsg, mac_addr0 );
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_addr1",               errmsg, mac_addr1 );
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_addr2",               errmsg, mac_addr2 );
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_addr3",               errmsg, mac_addr3 );
         pcidev::get_dev(m_idx)->sysfs_get<int>("rom", "ddr_bank_size",       errmsg, ddr_size,  0 );
         pcidev::get_dev(m_idx)->sysfs_get<int>( "rom", "ddr_bank_count_max", errmsg, ddr_count, 0 );
         pcidev::get_dev(m_idx)->sysfs_get( "icap", "clock_freqs",            errmsg, clock_freqs ); 
@@ -778,6 +782,10 @@ public:
         sensor_tree::put( "board.info.serial_number",  ser_num );
         sensor_tree::put( "board.info.max_power",      lvl2PowerStr(max_power.empty() ? UINT_MAX : stoi(max_power)) );
         sensor_tree::put( "board.info.sc_version",     bmc_ver );
+        sensor_tree::put( "board.info.mac_addr0",      mac_addr0 );
+        sensor_tree::put( "board.info.mac_addr1",      mac_addr1 );
+        sensor_tree::put( "board.info.mac_addr2",      mac_addr2 );
+        sensor_tree::put( "board.info.mac_addr3",      mac_addr3 );
         sensor_tree::put( "board.info.ddr_size",       GB(ddr_size)*ddr_count );
         sensor_tree::put( "board.info.ddr_count",      ddr_count );
         sensor_tree::put( "board.info.clock0",         clock_freqs[0] );
@@ -846,7 +854,9 @@ public:
         //electrical
         unsigned int m3v3_pex_vol, m3v3_aux_vol, ddr_vpp_btm, ddr_vpp_top, sys_5v5, m1v2_top, m1v2_btm, m1v8, 
                      m0v85, mgt0v9avcc, m12v_sw, mgtavtt, vccint_vol, vccint_curr, m3v3_pex_curr, m0v85_curr, m3v3_vcc_vol, 
-                     hbm_1v2_vol, vpp2v5_vol, vccint_bram_vol, m12v_pex_vol, m12v_aux_curr, m12v_pex_curr, m12v_aux_vol;
+                     hbm_1v2_vol, vpp2v5_vol, vccint_bram_vol, m12v_pex_vol, m12v_aux_curr, m12v_pex_curr, m12v_aux_vol,
+                     vol_12v_aux1, vol_vcc1v2_i, vol_v12_in_i, vol_v12_in_aux0_i, vol_v12_in_aux1_i, vol_vccaux,
+                     vol_vccaux_pmc, vol_vccram;
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_pex_vol",    m12v_pex_vol);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_pex_curr",   m12v_pex_curr);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_aux_vol",    m12v_aux_vol);
@@ -871,6 +881,14 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_hbm_1v2_vol",     hbm_1v2_vol);
         pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_vpp2v5_vol",      vpp2v5_vol);
         pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_vccint_bram_vol", vccint_bram_vol);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_12v_aux1",        vol_12v_aux1);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_vcc1v2_i",        vol_vcc1v2_i);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_v12_in_i",        vol_v12_in_i);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_v12_in_aux0_i",   vol_v12_in_aux0_i);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_v12_in_aux1_i",   vol_v12_in_aux1_i);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_vccaux",          vol_vccaux);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_vccaux_pmc",      vol_vccaux_pmc);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_vccram",          vol_vccram);
         sensor_tree::put( "board.physical.electrical.12v_pex.voltage",         m12v_pex_vol );
         sensor_tree::put( "board.physical.electrical.12v_pex.current",         m12v_pex_curr );
         sensor_tree::put( "board.physical.electrical.12v_aux.voltage",         m12v_aux_vol );
@@ -895,6 +913,14 @@ public:
         sensor_tree::put( "board.physical.electrical.hbm_1v2.voltage",         hbm_1v2_vol);
         sensor_tree::put( "board.physical.electrical.vpp2v5.voltage",          vpp2v5_vol);
         sensor_tree::put( "board.physical.electrical.vccint_bram.voltage",     vccint_bram_vol);
+        sensor_tree::put( "board.physical.electrical.12v_aux1.current",        vol_12v_aux1);
+        sensor_tree::put( "board.physical.electrical.vcc1v2_i.current",        vol_vcc1v2_i);
+        sensor_tree::put( "board.physical.electrical.v12_in_i.current",        vol_v12_in_i);
+        sensor_tree::put( "board.physical.electrical.v12_in_aux0_i.current",   vol_v12_in_aux0_i);
+        sensor_tree::put( "board.physical.electrical.v12_in_aux1_i.current",   vol_v12_in_aux1_i);
+        sensor_tree::put( "board.physical.electrical.vccaux.current",          vol_vccaux);
+        sensor_tree::put( "board.physical.electrical.vccaux_pmc.current",      vol_vccaux_pmc);
+        sensor_tree::put( "board.physical.electrical.vccram.current",          vol_vccram);
 
         // physical.power
         sensor_tree::put( "board.physical.power", static_cast<unsigned>(sysfs_power())); 
@@ -1138,6 +1164,16 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.0v85.current" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.hbm_1v2.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vpp2v5.voltage"  ) << std::endl;
+        ostr << std::setw(16) << "VCC1V2 CURR" << std::setw(16) << "V12 I CURR" << std::setw(16) << "V12 AUX0 CURR" << std::setw(16) << "V12 AUX1 CURR"  << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vcc1v2_i.current" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.v12_in_i.current" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.v12_in_aux0_i.current" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.v12_in_aux1_i.current"  ) << std::endl;
+        ostr << std::setw(16) << "12V AUX1 CURR" << std::setw(16) << "VCCAUX CURR" << std::setw(16) << "VCCAUX PMC CURR" << std::setw(16) << "VCCRAM CURR"  << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.12v_aux1.current" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccaux.current" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccaux_pmc.current" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccram.current"  ) << std::endl;
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Card Power(W)\n";
@@ -1757,7 +1793,7 @@ public:
 
     int reset(xclResetKind kind);
     int setP2p(bool enable, bool force);
-    int setCma(bool enable, uint64_t sz);
+    int setCma(bool enable, uint64_t total_size);
     int testP2p(void);
     int testM2m(void);
     int iopsTest(void);
