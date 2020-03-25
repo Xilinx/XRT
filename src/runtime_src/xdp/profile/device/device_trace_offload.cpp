@@ -116,14 +116,14 @@ void DeviceTraceOffload::read_trace_fifo()
 
   uint32_t num_packets = 0;
 
-#ifdef _WIN32
+#ifndef _WIN32
   do {
 #endif
     m_trace_vector = {};
     dev_intf->readTrace(m_trace_vector);
     deviceTraceLogger->processTraceData(m_trace_vector);
     num_packets += m_trace_vector.mLength;
-#ifdef _WIN32
+#ifndef _WIN32
   } while (m_trace_vector.mLength != 0);
 #endif
 
