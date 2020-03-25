@@ -318,10 +318,10 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
 
   // -- Collect all of devices if the "all" option is used...anywhere in the collection
   if (_deviceBDFs.find("all") != _deviceBDFs.end()) {
-    uint64_t total = 0;
+    xrt_core::device::id_type total = 0;
     try {
       // If there are no devices in the server a runtime exception is thrown in  mgmt.cpp probe()
-      total = xrt_core::get_total_devices(_inUserDomain /*isUser*/).first;
+      total = (xrt_core::device::id_type) xrt_core::get_total_devices(_inUserDomain /*isUser*/).first;
     } catch (...) { 
       /* Do nothing */ 
     }
@@ -331,7 +331,7 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
       return;
 
     // Now collect the devices and add them to the collection
-    for(uint64_t index = 0; index < total; ++index)  
+    for(xrt_core::device::id_type index = 0; index < total; ++index)  
       _deviceCollection.push_back( xrt_core::get_userpf_device(index) );
 
     return;
