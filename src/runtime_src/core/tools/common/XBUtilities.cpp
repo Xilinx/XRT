@@ -309,7 +309,7 @@ XBUtilities::parse_device_indices(std::vector<uint16_t> &device_indices, const s
 
 void
 XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
-                              xrt_core::DeviceCollection &_deviceCollection)
+                              xrt_core::device_collection &_deviceCollection)
 {
   // -- If the collection is empty then do nothing
   if (_deviceBDFs.empty())

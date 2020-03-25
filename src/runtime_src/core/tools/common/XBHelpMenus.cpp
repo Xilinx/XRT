@@ -573,7 +573,7 @@ XBUtilities::collect_and_validate_reports( const ReportCollection &allReportsAva
 
 
 void 
-XBUtilities::produce_reports( xrt_core::DeviceCollection _devices, 
+XBUtilities::produce_reports( xrt_core::device_collection _devices, 
                               const ReportCollection & _reportsToProcess, 
                               Report::SchemaVersion _schemaVersion, 
                               std::vector<std::string> & _elementFilter,
@@ -585,8 +585,8 @@ XBUtilities::produce_reports( xrt_core::DeviceCollection _devices,
     return;
   }
 
-  if (_schemaVersion == Report::SchemaVersion::UNKNOWN) {
-    _ostream << "Info: No action taken, 'UNKNOWN' schema value specificed.\n";
+  if (_schemaVersion == Report::SchemaVersion::unknown) {
+    _ostream << "Info: No action taken, 'UNKNOWN' schema value specified.\n";
     return;
   }
 
@@ -669,8 +669,8 @@ XBUtilities::produce_reports( xrt_core::DeviceCollection _devices,
 
 
   // Did we add anything to the property tree.  If so, then write it out.
-  if ((_schemaVersion != Report::SchemaVersion::TEXT) &&
-      (_schemaVersion != Report::SchemaVersion::UNKNOWN)) {
+  if ((_schemaVersion != Report::SchemaVersion::text) &&
+      (_schemaVersion != Report::SchemaVersion::unknown)) {
     // Write out JSON format
     std::ostringstream outputBuffer;
     boost::property_tree::write_json(outputBuffer, ptRoot, true /*Pretty print*/);

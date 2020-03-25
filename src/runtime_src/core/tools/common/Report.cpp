@@ -23,10 +23,10 @@
 
 // Initialize our static mapping.
 const Report::SchemaDescriptionVector Report::m_schemaVersionVector = {
-  { SchemaVersion::UNKNOWN,       false, "",              "Unknown entry"},
-  { SchemaVersion::TEXT,          true,  "text",          "Human readable report"},
-  { SchemaVersion::JSON_INTERNAL, false, "JSON-internal", "Internal JSON property tree"},
-  { SchemaVersion::JSON_20201,    true,  "JSON-2020.1",   "JSON 2020.1 schema"}
+  { SchemaVersion::unknown,       false, "",              "Unknown entry"},
+  { SchemaVersion::text,          true,  "text",          "Human readable report"},
+  { SchemaVersion::json_internal, false, "JSON-internal", "Internal JSON property tree"},
+  { SchemaVersion::json_20201,    true,  "JSON-2020.1",   "JSON 2020.1 schema"}
 };
 
 
@@ -53,7 +53,7 @@ Report::getSchemaDescription(SchemaVersion _schemaVersion)
   }
 
   // Return back the unknown entry
-  return getSchemaDescription(SchemaVersion::UNKNOWN);
+  return getSchemaDescription(SchemaVersion::unknown);
 }
 
 
@@ -79,22 +79,22 @@ Report::getFormattedReport(const xrt_core::device *_pDevice,
   boost::any returnValue;
 
   switch (_schemaVersion) {
-    case SchemaVersion::TEXT:  
+    case SchemaVersion::text:  
       writeReport(_pDevice, _elementFilter, _ostream);
       returnValue = _ostream.str();
       return returnValue;
 
-    case SchemaVersion::JSON_INTERNAL:
+    case SchemaVersion::json_internal:
       getPropertyTreeInternal(_pDevice, _pt);
       returnValue = _pt;
       return returnValue;
 
-    case SchemaVersion::JSON_20201:
+    case SchemaVersion::json_20201:
       getPropertyTree20201(_pDevice, _pt);
       returnValue = _pt;
       return returnValue;
 
-    case SchemaVersion::UNKNOWN:
+    case SchemaVersion::unknown:
       throw std::runtime_error("ERROR: Unknown schema version.");
 
     // Note: There is no default in this switch statement.  Relying on the
@@ -103,7 +103,6 @@ Report::getFormattedReport(const xrt_core::device *_pDevice,
   }
 
   // Code will never get here, but the compiler doesn't know that.
-  // Return back an empty value.
-  return boost::any();
+  throw std::runtime_error("Report::getFormattedReport() - Unexpected execution in the code flow.");
 }
 

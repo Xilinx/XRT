@@ -105,8 +105,8 @@ SubCmdStatus::execute(const SubCmdOptions& _options) const
 
   // -- Process the options --------------------------------------------
   ReportCollection reportsToProcess;            // Reports of interest
-  xrt_core::DeviceCollection deviceCollection;  // The collection of devices to examine
-  Report::SchemaVersion schemaVersion = Report::SchemaVersion::UNKNOWN;    // Output schema version
+  xrt_core::device_collection deviceCollection;  // The collection of devices to examine
+  Report::SchemaVersion schemaVersion = Report::SchemaVersion::unknown;    // Output schema version
 
   try {
     // Collect the reports to be processed
@@ -114,7 +114,7 @@ SubCmdStatus::execute(const SubCmdOptions& _options) const
 
     // Output Format
     schemaVersion = Report::getSchemaDescription(sFormat).schemaVersion;
-    if (schemaVersion == Report::SchemaVersion::UNKNOWN) 
+    if (schemaVersion == Report::SchemaVersion::unknown) 
       throw xrt_core::error((boost::format("Unknown output format: '%s'") % sFormat).str());
 
     // Output file
@@ -123,7 +123,7 @@ SubCmdStatus::execute(const SubCmdOptions& _options) const
 
     // Collect all of the devices of interest
     std::set<std::string> deviceNames;
-    for (auto deviceName : devices) 
+    for (const auto & deviceName : devices) 
       deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
 
     XBU::collect_devices(deviceNames, deviceCollection);

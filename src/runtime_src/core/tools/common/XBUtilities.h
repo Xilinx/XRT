@@ -80,7 +80,7 @@ namespace XBUtilities {
                               const std::string &device);
 
   void collect_devices( const std::set<std::string>  &_deviceBDFs,
-                        xrt_core::DeviceCollection &_deviceCollection);
+                        xrt_core::device_collection &_deviceCollection);
 };
 
 #endif

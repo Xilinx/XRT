@@ -82,7 +82,7 @@ namespace XBUtilities {
                                   ReportCollection & reportsToUse);
 
   void 
-     produce_reports( xrt_core::DeviceCollection _devices, 
+     produce_reports( xrt_core::device_collection _devices, 
                       const ReportCollection & _reportsToProcess, 
                       Report::SchemaVersion _schema, 
                       std::vector<std::string> & _elementFilter,

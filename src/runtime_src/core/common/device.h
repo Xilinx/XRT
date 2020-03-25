@@ -34,7 +34,7 @@
 
 namespace xrt_core {
 
-using DeviceCollection = std::vector<std::shared_ptr<xrt_core::device>>;
+using device_collection = std::vector<std::shared_ptr<xrt_core::device>>;
 
 /**
  * class device - interface to support OS agnositic operations on a device

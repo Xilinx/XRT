@@ -31,10 +31,10 @@ class Report {
   // Remember to update the initialization of Report::m_schemaVersionMapping 
   // if new enumeration values are added
   enum class SchemaVersion  {
-    TEXT,
-    UNKNOWN,
-    JSON_INTERNAL,
-    JSON_20201,
+    text,
+    unknown,
+    json_internal,
+    json_20201,
   };
  
   // Helper mapping between string and enum
