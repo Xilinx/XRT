@@ -21,7 +21,6 @@
 #include "xocl/core/param.h"
 #include "xocl/core/refcount.h"
 
-#include "xrt/util/memory.h"
 
 #include <vector>
 
@@ -205,10 +204,10 @@ BOOST_AUTO_TEST_CASE( test_param_1 )
     using blah_iterator_type = xocl::ptr_iterator<vec_type::iterator>;
     static_assert(std::is_same<blah_iterator_type::value_type,blah*>::value,"not the same");
 
-    auto b1 = xrt::make_unique<blah>(1); // clBlahCreate()
-    auto b2 = xrt::make_unique<blah>(2); // clBlahCreate()
-    auto b3 = xrt::make_unique<blah>(3); // clBlahCreate()
-    auto b4 = xrt::make_unique<blah>(4); // clBlahCreate()
+    auto b1 = std::make_unique<blah>(1); // clBlahCreate()
+    auto b2 = std::make_unique<blah>(2); // clBlahCreate()
+    auto b3 = std::make_unique<blah>(3); // clBlahCreate()
+    auto b4 = std::make_unique<blah>(4); // clBlahCreate()
 
     BOOST_CHECK_EQUAL(b1->count(),1);
     {

@@ -16,10 +16,9 @@
 
 #ifndef xocl_core_pmd_pipe_h_
 #define xocl_core_pmd_pipe_h_
-
+#include "xocl/config.h"
 #include "xocl/core/object.h"
 #include "xocl/core/refcount.h"
-
 #include "xrt/device/device.h"
 
 namespace xocl {
@@ -28,7 +27,7 @@ namespace pmd { class pipe; class notype;}
 
 }
 
-struct _cl_pipe : public xocl::object<xocl::pmd::pipe,xocl::pmd::notype,_cl_pipe> {};
+struct _cl_pipe : public xocl::object<xocl::pmd::pipe,_cl_pipe> {};
 
 namespace xocl { namespace pmd {
 
@@ -45,7 +44,7 @@ public:
   virtual ~pipe();
 
   unsigned int
-  get_uid() const 
+  get_uid() const
   {
     return m_uid;
   }
@@ -75,5 +74,3 @@ private:
 }} // pmd,xocl
 
 #endif
-
-

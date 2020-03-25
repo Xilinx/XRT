@@ -24,15 +24,16 @@
 #include "xocl/config.h"
 #include "detail/event.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 namespace xocl {
 
 static void
-validOrError(const cl_event event) 
+validOrError(const cl_event event)
 {
   if(!config::api_checks())
     return;
- detail::event::validOrError(event); 
+ detail::event::validOrError(event);
 }
 
 static cl_int
@@ -68,21 +69,22 @@ clGetEventInfo(cl_event          event ,
      default:
       return CL_INVALID_VALUE;
       break;
-  }     
+  }
   return CL_SUCCESS;
 }
 
 }
 
-cl_int 
+cl_int
 clGetEventInfo(cl_event          event ,
                cl_event_info     param_name ,
                size_t            param_value_size ,
                void *            param_value ,
-               size_t *          param_value_size_ret ) 
+               size_t *          param_value_size_ret )
 {
   try {
-    PROFILE_LOG_FUNCTION_CALL
+    PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::
       clGetEventInfo
       (event,param_name,param_value_size,param_value,param_value_size_ret);
@@ -95,9 +97,4 @@ clGetEventInfo(cl_event          event ,
     xocl::send_exception_message(ex.what());
     return CL_OUT_OF_HOST_MEMORY;
   }
-  return CL_SUCCESS;
 }
-
-
-
-

@@ -27,13 +27,32 @@
 #       -xrt 2.1.0 \
 #       -cl 12345678
 
+if [ "X${XILINX_XRT}" == "X" ]; then
+  echo "Environment variable XILINX_XRT is not set.  Please source the XRT setup script."
+  exit 1;
+fi
+
+opt_xrt=""
+parseVersionFile()
+{
+  # Need to encapsulte this proc so that it doesn't interfer with the usage
+  version_json="${XILINX_XRT}/version.json"
+    if [ -f "${version_json}" ]; then
+    # Get the XRT version
+    set -- `cat "${version_json}" | python -c "import sys, json; print json.load(sys.stdin).get('BUILD_VERSION','')"`
+    opt_xrt="${1}"
+  fi
+}
+
+parseVersionFile
+
 opt_dsa=""
 opt_dsadir=""
 opt_pkgdir="/tmp/pkgdsa"
 opt_sdx="/proj/xbuilds/2018.2_daily_latest/installs/lin64/SDx/2018.2"
-opt_xrt=""
 opt_cl=0
 opt_dev=0
+opt_deploy=0
 license_dir=""
 
 dsa_version="5.1"
@@ -45,11 +64,12 @@ usage()
     echo
     echo "-dsa <name>                Name of dsa, e.g. xilinx-vcu1525-dynamic_5_1"
     echo "-sdx <path>                Full path to SDx install (default: 2018.2_daily_latest)"
-    echo "-xrt <version>             Requires xrt >= <version>"
-    echo "-cl <changelist>           Changelist for package revision"
+    echo "[-xrt <version>]           Requires xrt >= <version>"
+    echo "[-cl <changelist>]         Changelist for package revision"
     echo "[-dsadir <path>]           Full path to directory with platforms (default: <sdx>/platforms/<dsa>)"
-    echo "[-pkgdir <path>]           Full path to direcory used by rpm,dep,xbins (default: /tmp/pkgdsa)"
+    echo "[-pkgdir <path>]           Full path to directory used by rpm,dep,xbins (default: /tmp/pkgdsa)"
     echo "[-dev]                     Build development package"
+    echo "[-deploy]                  Build deployment package [default]"
     echo "[-license <path>]          Include license file(s) from the <path> in the package"
     echo "[-help]                    List this help"
 
@@ -68,6 +88,10 @@ while [ $# -gt 0 ]; do
             ;;
         -dev)
             opt_dev=1
+            shift
+            ;;
+        -deploy)
+            opt_deploy=1
             shift
             ;;
         -dsa)
@@ -135,11 +159,6 @@ if [ "X$opt_xrt" == "X" ]; then
   exit 1;
 fi
 
-if [ "X${XILINX_XRT}" == "X" ]; then
-  echo "Environment variable XILINX_XRT is not set.  Please source the XRT setup script."
-  exit 1;
-fi
-
 # get dsa, version, and revision
 # Parse the platform into the basic parts
 #    Syntax: <vender>_<board>_<name>_<versionMajor>_<versionMinor>
@@ -164,21 +183,28 @@ mcsPrimary=""
 mcsSecondary=""
 fullBitFile=""
 clearBitstreamFile=""
+metaDataJSONFile=""
 dsaXmlFile="dsa.xml"
 featureRomTimestamp="0"
+featureRomUUID=""
 fwScheduler=""
 fwManagement=""
 fwBMC=""
+fwBMCMetaData=""
 vbnv=""
 pci_vendor_id="0x0000"
 pci_device_id="0x0000"
 pci_subsystem_id="0x0000"
 dsabinOutputFile=""
+SatelliteControllerFamily=""
+CardMgmtControllerFamily=""
+SchedulerFamily=""
 
-XBUTIL=/opt/xilinx/xrt/bin/xbutil
+
+XBMGMT=/opt/xilinx/xrt/bin/xbmgmt
 post_inst_msg="DSA package installed successfully.
 Please flash card manually by running below command:
-sudo ${XBUTIL} flash -a ${opt_dsa} -t"
+sudo ${XBMGMT} flash --update --shell ${opt_dsa}"
 
 createEntityAttributeArray ()
 {
@@ -241,6 +267,18 @@ recordDsaFiles()
    if [ "${ENTITY_ATTRIBUTES_ARRAY[Type]}" == "CLEAR_BIT" ]; then
      clearBitstreamFile="${ENTITY_ATTRIBUTES_ARRAY[Name]}"
    fi
+
+   # Metadata
+   if [ "${ENTITY_ATTRIBUTES_ARRAY[Type]}" == "META_JSON" ]; then
+     metaDataJSONFile="${ENTITY_ATTRIBUTES_ARRAY[Name]}"
+   elif [ "${ENTITY_ATTRIBUTES_ARRAY[Type]}" == "EXT_META_JSON" ]; then
+     metaDataJSONFile="${ENTITY_ATTRIBUTES_ARRAY[Name]}"
+   fi
+
+   # Partition Metadata
+   if [ "${ENTITY_ATTRIBUTES_ARRAY[Type]}" == "PARTITION_META_JSON" ]; then
+     partitionMetaDataJSONFile="${ENTITY_ATTRIBUTES_ARRAY[Name]}"
+   fi
 }
 
 readDsaMetaData()
@@ -255,7 +293,7 @@ readDsaMetaData()
       recordDsaFiles
     fi    
 
-    # Record the FeatureRomTimestamp
+    # Record the top level DSA information, including FeatureRomTimestamp
     if [ "${ENTITY_NAME}" == "DSA" ]; then
       createEntityAttributeArray
 
@@ -282,8 +320,9 @@ readDsaMetaData()
     if [ "${ENTITY_NAME}" == "FeatureRom" ]; then
       createEntityAttributeArray
 
-      # Overright previous value
+      # Overwrite previous value
       featureRomTimestamp="${ENTITY_ATTRIBUTES_ARRAY[TimeSinceEpoch]}"
+      featureRomUUID="${ENTITY_ATTRIBUTES_ARRAY[UUID]}"
     fi    
 
   done < "${dsaXmlFile}"
@@ -291,13 +330,35 @@ readDsaMetaData()
 
 initBMCVar()
 {
+    prefix=""
+    if [ "${SatelliteControllerFamily}" != "" ]; then
+      if [ "${SatelliteControllerFamily}" == "Alveo-Gen1" ]; then
+         prefix="AlveoGen1-"
+      elif [ "${SatelliteControllerFamily}" == "Alveo-Gen2" ]; then
+         prefix="AlveoGen2-"
+      elif [ "${SatelliteControllerFamily}" == "Alveo-Gen3" ]; then
+         prefix="AlveoGen3-"
+      elif [ "${SatelliteControllerFamily}" == "Alveo-Gen4" ]; then
+         prefix="AlveoGen4-"
+      elif [ "${SatelliteControllerFamily}" == "Alveo-Gen5" ]; then
+         prefix="AlveoGen5-"
+      else
+         echo "ERROR: Unknown satellite controller family: ${SatelliteControllerFamily}"
+         exit 1
+      fi
+    else
+      # We are not meant to load MSP432 fWFW
+      return
+    fi
+
     # Looking for the MSP432 firmware image
-    for file in ${XILINX_XRT}/share/fw/*.txt; do
+    for file in ${XILINX_XRT}/share/fw/${prefix}*.txt; do
       [ -e "$file" ] || continue
 
       # Found "something" break it down into the basic parts
       baseFileName="${file%.*txt}"        # Remove suffix
       baseFileName="${baseFileName##*/}"  # Remove Path
+      baseFileName=${baseFileName#"$prefix"}  # Remove prefix
 
       set -- `echo ${baseFileName} | tr '-' ' '`
       bmcImageName="${1}"
@@ -310,8 +371,10 @@ initBMCVar()
       bmcMd5Actual="${1}"
 
       if [ "${bmcMd5Expected}" == "${bmcMd5Actual}" ]; then
-         echo "Info: Validated MSP432 flash image MD5 value"
+         echo "Info: Validated ${prefix}:${baseFileName} flash image MD5 value"
          fwBMC="${file}"
+         fwBMCMetaData="${baseFileName}.json"
+         echo "{\"bmc_metadata\": { \"m_image_name\": \"${bmcImageName}\", \"m_device_name\": \"${bmcDeviceName}\", \"m_version\": \"${bmcVersion}\", \"m_md5value\": \"${bmcMd5Expected}\"}}" > "${fwBMCMetaData}"
       else
          echo "ERROR: MSP432 Flash image failed MD5 varification."
          echo "       Expected: ${bmcMd5Expected}"
@@ -319,6 +382,65 @@ initBMCVar()
          echo "       File:   : $file"
          exit 1
       fi
+
+      # We only go through this loop once
+      return
+    done
+}
+
+initCMCVar()
+{
+    fwManagement=""
+    prefix=""
+    if [ "${CardMgmtControllerFamily}" != "" ]; then
+      if [ "${CardMgmtControllerFamily}" == "Legacy" ]; then
+         fwManagement="${XILINX_XRT}/share/fw/mgmt.bin"
+         return
+      elif [ "${CardMgmtControllerFamily}" == "CMC-Gen1" ]; then
+         fwManagement="${XILINX_XRT}/share/fw/cmc.bin"
+         return
+      elif [ "${CardMgmtControllerFamily}" == "CMC-Gen2" ]; then
+         prefix="CmcGen2-"
+      elif [ "${CardMgmtControllerFamily}" == "CMC-NoSC-Gen1" ]; then
+         prefix="CmcNoSCGen1-"
+      else
+         echo "ERROR: Unknown card management controller family: ${CardMgmtControllerFamily}"
+         exit 1
+      fi
+    fi
+
+
+    # Looking for the CMC firmware image
+    for file in ${XILINX_XRT}/share/fw/${prefix}*.bin; do
+      [ -e "$file" ] || continue
+
+      # Found "something" break it down into the basic parts
+      baseFileName="${file%.*bin}"        # Remove suffix
+      baseFileName="${baseFileName##*/}"  # Remove Path
+      baseFileName=${baseFileName#"$prefix"}  # Remove prefix
+
+      set -- `echo ${baseFileName} | tr '-' ' '`
+      cmcImageName="${1}"
+      cmcVersion="${2}"
+      cmcMd5Expected="${3}"
+
+      # Calculate the md5 checksum
+      set -- $(md5sum $file)
+      cmcMd5Actual="${1}"
+
+      if [ "${cmcMd5Expected}" == "${cmcMd5Actual}" ]; then
+         echo "Info: Validated ${prefix}:${baseFileName} image MD5 value"
+         fwManagement="${file}"
+      else
+         echo "ERROR: CMC image failed MD5 varification."
+         echo "       Expected: ${cmcMd5Expected}"
+         echo "       Actual  : ${cmcMd5Actual}"
+         echo "       File:   : $file"
+         exit 1
+      fi
+
+      # We only go through this loop once
+      return
     done
 }
 
@@ -327,6 +449,7 @@ initDsaBinEnvAndVars()
     # Clean out the dsabin directory
     /bin/rm -rf "${opt_pkgdir}/dsabin"
     mkdir -p "${opt_pkgdir}/dsabin"
+    mkdir -p "${opt_pkgdir}/dsabin/firmware"
     cd "${opt_pkgdir}/dsabin"
 
     # -- Get the DSA for this platform --
@@ -362,24 +485,88 @@ initDsaBinEnvAndVars()
        unzip -q -d "./firmware" "${dsaFile}" "${clearBitstreamFile}"
     fi
 
-    # -- Determine firmware --
+    # -- Extract the Metadata
+    # Default values
+    SatelliteControllerFamily=""
+    CardMgmtControllerFamily="Legacy"
+    SchedulerFamily="ERT-Gen1"
+
     if [[ ${opt_dsa} =~ "xdma" ]]; then
-      fwScheduler="${XILINX_XRT}/share/fw/sched.bin"
-      fwManagement="${XILINX_XRT}/share/fw/xmc.bin"
-    else
-      fwScheduler="${XILINX_XRT}/share/fw/sched.bin"
-      fwManagement="${XILINX_XRT}/share/fw/mgmt.bin"
+      CardMgmtControllerFamily="CMC-Gen1"
+      SatelliteControllerFamily="Alveo-Gen1"
     fi
 
+    if [ "${metaDataJSONFile}" != "" ]; then
+       echo "Info: Extracting Metadata file: ${metaDataJSONFile}"
+       unzip -q -d "." "${dsaFile}" "${metaDataJSONFile}"
+
+       # Brute force to obtain this data
+       # See if there is a dsabin section
+       set -- `cat "${metaDataJSONFile}" | python -c "import sys, json; print json.load(sys.stdin).get('dsabin','NOT_DEFINED')"`
+       if [ "${1}" != "NOT_DEFINED" ]; then
+          # Satellite Controller Family (MSP432)
+          set -- `cat "${metaDataJSONFile}" | python -c "import sys, json; print json.load(sys.stdin)['dsabin'].get('Satellite Controller Family','NOT_DEFINED')"`
+          if [ "${1}" != "NOT_DEFINED" ]; then
+            SatelliteControllerFamily="${1}"
+          fi
+
+          # Card Management Controller Family
+          set -- `cat "${metaDataJSONFile}" | python -c "import sys, json; print json.load(sys.stdin)['dsabin'].get('Card Management Controller Family','NOT_DEFINED')"`
+          if [ "${1}" != "NOT_DEFINED" ]; then
+            CardMgmtControllerFamily="${1}"
+          fi
+
+          # Scheduler Family
+          set -- `cat "${metaDataJSONFile}" | python -c "import sys, json; print json.load(sys.stdin)['dsabin'].get('Scheduler Family','NOT_DEFINED')"`
+          if [ "${1}" != "NOT_DEFINED" ]; then
+            SchedulerFamily="${1}"
+          fi
+       fi
+    fi
+
+    if [ "${partitionMetaDataJSONFile}" != "" ]; then
+       echo "Info: Extracting Partition Metadata file: ${partitionMetaDataJSONFile}"
+       unzip -q -d "." "${dsaFile}" "${partitionMetaDataJSONFile}"
+    fi
+
+    echo "Info: Satellite Controller Family: ${SatelliteControllerFamily}"
+    echo "Info: Card Management Controller Family: ${CardMgmtControllerFamily}"
+    echo "Info: Scheduler Family: ${SchedulerFamily}"
+
+    # -- Determine scheduler firmware --
+    fwScheduler=""
+    if [ "${SchedulerFamily}" != "" ]; then
+      if [ "${SchedulerFamily}" == "ERT-Gen1" ]; then
+         fwScheduler="${XILINX_XRT}/share/fw/sched.bin"
+      elif [ "${SchedulerFamily}" == "ERT-Gen2" ]; then
+         fwScheduler="${XILINX_XRT}/share/fw/sched_u50.bin"
+      else
+         echo "ERROR: Unknown scheduler firmware family: ${SchedulerFamily}"
+         exit 1
+      fi
+    fi
+
+    # -- Determine management firmware --
+    initCMCVar
+
+    # -- MSP432 --
     initBMCVar
 }
 
 docentos()
 {
  echo "Packaging for CentOS..."
+
+ # Requesting to create the development package
  if [ $opt_dev == 1 ]; then
+     echo "Creating development package..."
      dorpmdev
- else
+ fi
+
+ # If the development package is not be requested (default is deployment)
+ # OR the deployment package is also being requested to be produced.
+ if [[ $opt_dev == 0 ]] || [[ $opt_deploy == 1 ]]; then
+     echo "Creating deployment package..."
      dodsabin
      dorpm
  fi
@@ -388,9 +575,17 @@ docentos()
 doubuntu()
 {
  echo "Packaging for Ubuntu..."
+ 
+ # Requesting to create the development package
  if [ $opt_dev == 1 ]; then
+     echo "Creating development package..."
      dodebdev
- else
+ fi
+
+ # If the development package is not be requested (default is deployment)
+ # OR the deployment package is also being requested to be produced.
+ if [[ $opt_dev == 0 ]] || [[ $opt_deploy == 1 ]]; then
+     echo "Creating deployment package..."
      dodsabin
      dodeb
  fi
@@ -408,18 +603,18 @@ dodsabin()
 
     # -- MCS_PRIMARY image --
     if [ "$mcsPrimary" != "" ]; then
-       xclbinOpts+=" -s MCS_PRIMARY ${mcsPrimary}"
+       xclbinOpts+=" --add-section MCS-PRIMARY:RAW:${mcsPrimary}"
     fi
     
     # -- MCS_SECONDARY image --
     if [ "$mcsSecondary" != "" ]; then
-       xclbinOpts+=" -s MCS_SECONDARY ${mcsSecondary}"
+       xclbinOpts+=" --add-section MCS-SECONDARY:RAW:${mcsSecondary}"
     fi
     
     # -- Firmware: Scheduler --
     if [ "${fwScheduler}" != "" ]; then
        if [ -f "${fwScheduler}" ]; then
-         xclbinOpts+=" -s SCHEDULER ${fwScheduler}"
+         xclbinOpts+=" --add-section SCHED_FIRMWARE:RAW:${fwScheduler}"
        else
          echo "Warning: Scheduler firmware does not exist: ${fwScheduler}"
        fi
@@ -428,7 +623,7 @@ dodsabin()
     # -- Firmware: Management --
     if [ "${fwManagement}" != "" ]; then
        if [ -f "${fwManagement}" ]; then
-         xclbinOpts+=" -s FIRMWARE ${fwManagement}"
+         xclbinOpts+=" --add-section FIRMWARE:RAW:${fwManagement}"
        else
          echo "Warning: Management firmware does not exist: ${fwManagement}"
       fi
@@ -437,7 +632,8 @@ dodsabin()
     # -- Firmware: MSP432 --
     if [ "${fwBMC}" != "" ]; then
        if [ -f "${fwBMC}" ]; then
-         xclbinOpts+=" -s BMC ${fwBMC}"
+         xclbinOpts+=" --add-section BMC-FW:RAW:${fwBMC}"
+         xclbinOpts+=" --add-section BMC-METADATA:JSON:${fwBMCMetaData}"
        else
          echo "Warning: MSP432 firmware does not exist: ${fwBMC}"
       fi
@@ -445,26 +641,38 @@ dodsabin()
 
     # -- Clear bitstream --
     if [ "${clearBitstreamFile}" != "" ]; then
-       xclbinOpts+=" -s CLEAR_BITSTREAM ./firmware/${clearBitstreamFile}"
+       xclbinOpts+=" --add-section CLEARING_BITSTREAM:RAW:./firmware/${clearBitstreamFile}"
+    fi
+
+    # -- PARTITION_METADATA --
+    if [ "$partitionMetaDataJSONFile" != "" ]; then
+       xclbinOpts+=" --add-section PARTITION_METADATA:JSON:${partitionMetaDataJSONFile}"
     fi
 
     # -- FeatureRom Timestamp --
     if [ "${featureRomTimestamp}" != "" ]; then
-       xclbinOpts+=" --kvp featureRomTimestamp:${featureRomTimestamp}"
+       xclbinOpts+=" --key-value SYS:FeatureRomTimestamp:${featureRomTimestamp}"
     else
        echo "Warning: Missing featureRomTimestamp"
     fi
 
+    # -- FeatureRom UUID --
+    if [ "${featureRomUUID}" != "" ]; then
+       xclbinOpts+=" --key-value SYS:FeatureRomUUID:${featureRomUUID}"
+    else
+       echo "Warning: Missing featureRomUUID"
+    fi
+
     # -- VBNV --
     if [ "${vbnv}" != "" ]; then
-       xclbinOpts+=" --kvp platformVBNV:${vbnv}"
+       xclbinOpts+=" --key-value SYS:PlatformVBNV:${vbnv}"
     else
        echo "Warning: Missing Platform VBNV value"
     fi
 
 
     # -- Mode Hardware PR --
-    xclbinOpts+=" --kvp mode:hw_pr"
+    xclbinOpts+=" --key-value SYS:mode:hw_pr"
 
     # -- Output filename --
     localFeatureRomTimestamp="${featureRomTimestamp}"
@@ -475,22 +683,34 @@ dodsabin()
     # Build output file and lowercase the name
     dsabinOutputFile=$(printf "%s-%s-%s-%016x.dsabin" "${pci_vendor_id#0x}" "${pci_device_id#0x}" "${pci_subsystem_id#0x}" "${localFeatureRomTimestamp}")
     dsabinOutputFile="${dsabinOutputFile,,}"
-    xclbinOpts+=" -o ./firmware/${dsabinOutputFile}"    
+    xclbinOpts+=" --output ./firmware/${dsabinOutputFile}"    
 
 
-    echo "${XILINX_XRT}/bin/xclbincat ${xclbinOpts}"
-    ${XILINX_XRT}/bin/xclbincat ${xclbinOpts}
+    echo "${XILINX_XRT}/bin/xclbinutil ${xclbinOpts}"
+    ${XILINX_XRT}/bin/xclbinutil ${xclbinOpts}
+    retval=$?
 
     popd >/dev/null
+
+    if [ $retval -ne 0 ]; then
+       echo "ERROR: xclbinutil failed.  Exiting."
+       exit
+    fi
 }
 
 dodebdev()
 {
     uRel=`lsb_release -r -s`
     dir=debbuild/$dsa-$version-dev_${uRel}
-    mkdir -p $opt_pkgdir/$dir/DEBIAN
-cat <<EOF > $opt_pkgdir/$dir/DEBIAN/control
+    pkg_dirname=debbuild/$dsa-dev-${version}-${revision}_${uRel}
+    pkgdir=$opt_pkgdir/$pkg_dirname
 
+    # Clean the directory
+    /bin/rm -rf "${pkgdir}"
+
+    mkdir -p $pkgdir/DEBIAN
+
+cat <<EOF > $pkgdir/DEBIAN/control
 Package: $dsa-dev
 Architecture: amd64
 Version: $version-$revision
@@ -501,34 +721,47 @@ Maintainer: Xilinx Inc
 Section: devel
 EOF
 
-    mkdir -p $opt_pkgdir/$dir/opt/xilinx/platforms/$opt_dsa/hw
-    mkdir -p $opt_pkgdir/$dir/opt/xilinx/platforms/$opt_dsa/sw
+    mkdir -p $pkgdir/opt/xilinx/platforms/$opt_dsa/hw
+    mkdir -p $pkgdir/opt/xilinx/platforms/$opt_dsa/sw
     if [ "${license_dir}" != "" ] ; then
 	if [ -d ${license_dir} ] ; then
-	  mkdir -p $opt_pkgdir/$dir/opt/xilinx/platforms/$opt_dsa/license
-	  cp -f ${license_dir}/*  $opt_pkgdir/$dir/opt/xilinx/platforms/$opt_dsa/license
+	  mkdir -p $pkgdir/opt/xilinx/platforms/$opt_dsa/license
+	  cp -f ${license_dir}/*  $pkgdir/opt/xilinx/platforms/$opt_dsa/license
 	fi
     fi
     
-    rsync -avz $opt_dsadir/$opt_dsa.xpfm $opt_pkgdir/$dir/opt/xilinx/platforms/$opt_dsa/
-    rsync -avz $opt_dsadir/hw/$opt_dsa.dsa $opt_pkgdir/$dir/opt/xilinx/platforms/$opt_dsa/hw/
-    rsync -avz $opt_dsadir/sw/$opt_dsa.spfm $opt_pkgdir/$dir/opt/xilinx/platforms/$opt_dsa/sw/
-    chmod -R +r $opt_pkgdir/$dir/opt/xilinx/platforms/$opt_dsa
-    dpkg-deb --build $opt_pkgdir/$dir
+    rsync -avz $opt_dsadir/$opt_dsa.xpfm $pkgdir/opt/xilinx/platforms/$opt_dsa/
+    rsync -avz $opt_dsadir/hw/$opt_dsa.dsa $pkgdir/opt/xilinx/platforms/$opt_dsa/hw/
+    rsync -avz $opt_dsadir/sw/$opt_dsa.spfm $pkgdir/opt/xilinx/platforms/$opt_dsa/sw/
+
+    # Support the ERT directory
+    if [ -d ${opt_dsadir}/sw/ert ] ; then
+       mkdir -p $pkgdir/opt/xilinx/platforms/$opt_dsa/sw/ert
+       rsync -avz ${opt_dsadir}/sw/ert/ $pkgdir/opt/xilinx/platforms/$opt_dsa/sw/ert
+    fi
+
+    chmod -R +r $pkgdir/opt/xilinx/platforms/$opt_dsa
+    chmod -R o=g $pkgdir/opt/xilinx/platforms/$opt_dsa
+    dpkg-deb --build $pkgdir
 
     echo "================================================================"
-    echo "* Please locate dep for $dsa in: $opt_pkgdir/$dir"
+    echo "* Debian package for $dsa generated in: $pkgdir"
     echo "================================================================"
 }
 
 dodeb()
 {
     uRel=`lsb_release -r -s`
-    dir=debbuild/$dsa-$version_${uRel}
-    mkdir -p $opt_pkgdir/$dir/DEBIAN
+    dir=debbuild/$dsa-${version}_${uRel}
+    pkg_dirname=debbuild/$dsa-${version}-${revision}_${uRel}
+    pkgdir=$opt_pkgdir/$pkg_dirname
 
-cat <<EOF > $opt_pkgdir/$dir/DEBIAN/control
+    # Clean the directory
+    /bin/rm -rf "${pkgdir}"
 
+    mkdir -p $pkgdir/DEBIAN
+
+cat <<EOF > $pkgdir/DEBIAN/control
 Package: $dsa
 Architecture: all
 Version: $version-$revision
@@ -540,26 +773,34 @@ Maintainer: Xilinx Inc.
 Section: devel
 EOF
 
-cat <<EOF > $opt_pkgdir/$dir/DEBIAN/postinst
-echo "${post_inst_msg} ${featureRomTimestamp}"
+cat <<EOF > $pkgdir/DEBIAN/postinst
+echo "${post_inst_msg}"
 EOF
-    chmod 755 $opt_pkgdir/$dir/DEBIAN/postinst
+    chmod 755 $pkgdir/DEBIAN/postinst
 
-    mkdir -p $opt_pkgdir/$dir/lib/firmware/xilinx
+    mkdir -p $pkgdir/lib/firmware/xilinx
     if [ "${license_dir}" != "" ] ; then
 	if [ -d ${license_dir} ] ; then
-	  mkdir -p $opt_pkgdir/$dir/opt/xilinx/dsa/$opt_dsa/license
-	  cp -f ${license_dir}/*  $opt_pkgdir/$dir/opt/xilinx/dsa/$opt_dsa/license
+	  mkdir -p $pkgdir/opt/xilinx/dsa/$opt_dsa/license
+	  cp -f ${license_dir}/*  $pkgdir/opt/xilinx/dsa/$opt_dsa/license
 	fi
     fi
-    rsync -avz $opt_pkgdir/dsabin/firmware/ $opt_pkgdir/$dir/lib/firmware/xilinx
-    mkdir -p $opt_pkgdir/$dir/opt/xilinx/dsa/$opt_dsa/test
-    rsync -avz ${opt_dsadir}/test/ $opt_pkgdir/$dir/opt/xilinx/dsa/$opt_dsa/test
-    chmod -R +r $opt_pkgdir/$dir/opt/xilinx/dsa/$opt_dsa
-    dpkg-deb --build $opt_pkgdir/$dir
+   
+    rsync -avz $opt_pkgdir/dsabin/firmware/ $pkgdir/lib/firmware/xilinx
+    mkdir -p $pkgdir/opt/xilinx/dsa/$opt_dsa/test
+
+    # Are there any verification tests
+    if [ -d ${opt_dsadir}/test ] ; then
+       rsync -avz ${opt_dsadir}/test/ $pkgdir/opt/xilinx/dsa/$opt_dsa/test
+    fi
+
+    chmod -R +r $pkgdir/opt/xilinx/dsa/$opt_dsa
+    chmod -R o=g $pkgdir/opt/xilinx/dsa/$opt_dsa
+    chmod -R o=g $pkgdir/lib/firmware/xilinx
+    dpkg-deb --build $pkgdir
 
     echo "================================================================"
-    echo "* Please locate dep for $dsa in: $opt_pkgdir/$dir"
+    echo "* Debian package for $dsa generated in: $pkgdir"
     echo "================================================================"
 }
 
@@ -570,14 +811,14 @@ dorpmdev()
 
 cat <<EOF > $opt_pkgdir/$dir/SPECS/$opt_dsa-dev.spec
 
-%define _rpmfilename %%{ARCH}/%%{NAME}-%%{VERSION}.%%{ARCH}.rpm
+%define _rpmfilename %%{ARCH}/%%{NAME}-%%{VERSION}-%%{RELEASE}.%%{ARCH}.rpm
 
 buildroot:  %{_topdir}
 summary: Xilinx $dsa development DSA
 name: $dsa-dev
 version: $version
 release: $revision
-license: apache
+license: Xilinx EULA
 vendor: Xilinx Inc
 
 requires: $dsa >= $version
@@ -600,6 +841,13 @@ mkdir -p %{buildroot}/opt/xilinx/platforms/$opt_dsa/sw
 rsync -avz $opt_dsadir/$opt_dsa.xpfm %{buildroot}/opt/xilinx/platforms/$opt_dsa/
 rsync -avz $opt_dsadir/hw/$opt_dsa.dsa %{buildroot}/opt/xilinx/platforms/$opt_dsa/hw/
 rsync -avz $opt_dsadir/sw/$opt_dsa.spfm %{buildroot}/opt/xilinx/platforms/$opt_dsa/sw/
+
+# Support the ERT directory
+  if [ -d ${opt_dsadir}/sw/ert ] ; then
+    mkdir -p %{buildroot}/opt/xilinx/platforms/$opt_dsa/sw/ert
+    rsync -avz ${opt_dsadir}/sw/ert/ %{buildroot}/opt/xilinx/platforms/$opt_dsa/sw/ert
+fi
+
 if [ "${license_dir}" != "" ] ; then
   if [ -d ${license_dir} ] ; then
     mkdir -p %{buildroot}/opt/xilinx/platforms/$opt_dsa/license
@@ -610,7 +858,7 @@ chmod -R o=g %{buildroot}/opt/xilinx/platforms/$opt_dsa
 
 %files
 %defattr(-,root,root,-)
-/opt/xilinx
+/opt/xilinx/platforms/$opt_dsa/
 
 %changelog
 * $build_date Xilinx Inc - 5.1-1
@@ -634,12 +882,14 @@ dorpm()
 
 cat <<EOF > $opt_pkgdir/$dir/SPECS/$opt_dsa.spec
 
+%define _rpmfilename %%{ARCH}/%%{NAME}-%%{VERSION}-%%{RELEASE}.%%{ARCH}.rpm
+
 buildroot:  %{_topdir}
 summary: Xilinx $dsa deployment DSA
 name: $dsa
 version: $version
 release: $revision
-license: apache
+license: Apache
 vendor: Xilinx Inc
 autoreqprov: no
 requires: xrt >= $opt_xrt
@@ -650,13 +900,19 @@ Xilinx $dsa deployment DSA. Built on $build_date. This DSA depends on xrt >= $op
 %pre
 
 %post
-echo "${post_inst_msg} ${featureRomTimestamp}"
+echo "${post_inst_msg}"
 
 %install
 mkdir -p %{buildroot}/lib/firmware/xilinx
 cp $opt_pkgdir/dsabin/firmware/* %{buildroot}/lib/firmware/xilinx
-mkdir -p %{buildroot}/opt/xilinx/dsa/$opt_dsa/test
-cp ${opt_dsadir}/test/* %{buildroot}/opt/xilinx/dsa/$opt_dsa/test
+
+mkdir -p %{buildroot}/opt/xilinx/dsa/$opt_dsa
+
+if [ -d ${opt_dsadir}/test ] ; then
+  mkdir -p %{buildroot}/opt/xilinx/dsa/$opt_dsa/test
+  cp ${opt_dsadir}/test/* %{buildroot}/opt/xilinx/dsa/$opt_dsa/test
+fi
+
 if [ "${license_dir}" != "" ] ; then
   if [ -d ${license_dir} ] ; then
     mkdir -p %{buildroot}/opt/xilinx/dsa/$opt_dsa/license
@@ -693,6 +949,7 @@ FLAVOR=`echo $FLAVOR | tr -d '"'`
 
 case "$FLAVOR" in
   ("centos") docentos ;;
+  ("rhel") docentos ;;
   ("ubuntu") doubuntu ;;
   (*) echo "Unsupported OS '${FLAVOR}'" && exit 1 ;;
 esac
