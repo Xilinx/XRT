@@ -309,6 +309,7 @@ XBUtilities::parse_device_indices(std::vector<uint16_t> &device_indices, const s
 
 void
 XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
+                              bool _inUserDomain,
                               xrt_core::device_collection &_deviceCollection)
 {
   // -- If the collection is empty then do nothing
@@ -320,7 +321,7 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
     uint64_t total = 0;
     try {
       // If there are no devices in the server a runtime exception is thrown in  mgmt.cpp probe()
-      total = xrt_core::get_total_devices(false /*isUser*/).first;
+      total = xrt_core::get_total_devices(_inUserDomain /*isUser*/).first;
     } catch (...) { 
       /* Do nothing */ 
     }

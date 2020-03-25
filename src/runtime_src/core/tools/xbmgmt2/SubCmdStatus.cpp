@@ -126,7 +126,7 @@ SubCmdStatus::execute(const SubCmdOptions& _options) const
     for (const auto & deviceName : devices) 
       deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
 
-    XBU::collect_devices(deviceNames, deviceCollection);
+    XBU::collect_devices(deviceNames, false /*inUserDomain*/, deviceCollection);
 
     // DRC check on devices and reports
     if (deviceCollection.empty()) {
