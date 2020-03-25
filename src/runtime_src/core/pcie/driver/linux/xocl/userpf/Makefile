@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
 #
 # Authors:
 #
@@ -17,6 +17,11 @@ obj-m	+= xocl.o
 ccflags-y := -Iinclude/drm
 
 include $(PWD)/../lib/Makefile.in
+
+drv_common-y   := ../../../../../common/drv/kds_core.o \
+		  ../../../../../common/drv/xrt_cu.o \
+		  ../../../../../common/drv/cu_plram.o
+
 xocl-y := \
 	../xocl_subdev.o \
 	../xocl_ctx.o \
@@ -46,21 +51,27 @@ xocl-y := \
 	../subdev/ddr_srsr.o\
 	../subdev/memory_hbm.o \
 	../subdev/address_translator.o \
+	../subdev/cu_ctrl.o \
+	../subdev/cu_plram.o \
 	$(xocl_lib-y)	\
+	$(drv_common-y) \
 	xocl_drv.o	\
 	xocl_bo.o	\
 	xocl_drm.o	\
 	xocl_ioctl.o	\
+	xocl_kds.o 	\
 	xocl_sysfs.o
 
 xocl-y += $(libfdt-y)
+
+xocl-y += $(drv_common-y)
 
 CONFIG_MODULE_SIG=n
 KERNELDIR ?= /lib/modules/$(shell uname -r)/build
 
 PWD	:= $(shell pwd)
 ROOT	:= $(dir $(M))
-XILINXINCLUDE := -I$(ROOT)/../include -I$(ROOT)/../../../../include -I$(ROOT)/../../../../common/drv/
+XILINXINCLUDE := -I$(ROOT) -I$(ROOT)/../include -I$(ROOT)/../../../../include -I$(ROOT)/../../../../common/drv/include
 
 ccflags-y += $(XILINXINCLUDE) -DPF=USERPF -D__XRT__
 ifeq ($(DEBUG),1)
@@ -88,4 +99,5 @@ clean:
 	../subdev/*.o ../subdev/.*.o.cmd ../lib/*.o ../lib/.*.o.cmd	\
 	../lib/libqdma/*.o ../lib/libqdma/.*.o.cmd 			\
 	../lib/libqdma/*.o.ur-safe ../subdev/*.o.ur-safe ./.cache.mk	\
+	../../../../../common/drv/*.o ../../../../../common/drv/*.o.cmd \
 	.tmp_versions *.symvers modules.order
