@@ -17,46 +17,33 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SubCmdStatus.h"
-
-#include "common/system.h"
-#include "common/device.h"
-#include "common/xclbin_parser.h"
-#include "flash/flasher.h"
 #include "core/common/error.h"
-#include "core/common/query_requests.h"
-#include "core/common/utils.h"
-#include "core/common/message.h"
 
+// Utilities
 #include "tools/common/XBUtilities.h"
+#include "tools/common/XBHelpMenus.h"
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
+#include <boost/filesystem.hpp>
 #include <boost/format.hpp>
-#include <boost/tokenizer.hpp>
 #include <boost/program_options.hpp>
 namespace po = boost::program_options;
 
 // System - Include Files
 #include <iostream>
+#include <fstream>
+
+// ---- Reports ------
+#include "tools/common/Report.h"
+#include "tools/common/ReportHost.h"
+
+// Note: Please insert the reports in the order to be displayed (current alphabetical)
+static const ReportCollection fullReportCollection = {
+  std::make_shared<ReportHost>()
+};
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
-
-namespace {
-
-static bool 
-same_config(DSAInfo& board, DSAInfo& installed) {
-  if (!board.name.empty()) {
-    bool same_dsa = ((installed.name == board.name) &&
-      (installed.matchId(board)));
-    bool same_bmc = ((board.bmcVer.empty()) ||
-      (installed.bmcVer == board.bmcVer));
-    return same_dsa && same_bmc;
-  }
-  return false;
-}
-
-}
-//end unnamed namespace
 
 SubCmdStatus::SubCmdStatus(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("status", 
@@ -76,38 +63,27 @@ SubCmdStatus::execute(const SubCmdOptions& _options) const
 {
   XBU::verbose("SubCommand: status");
 
-  XBU::verbose("Option(s):");
-  for (auto & aString : _options) {
-    std::string msg = "   ";
-    msg += aString;
-    XBU::verbose(msg);
-  }
+  // -- Build up the report & format options
+  const std::string reportOptionValues = XBU::create_suboption_list_string(fullReportCollection, true /*add 'verbose' option*/);
+  const std::string formatOptionValues = XBU::create_suboption_list_string(Report::getSchemaDescriptionVector());
+
+  // Option Variables
+  std::vector<std::string> devices = {"all"};
+  std::vector<std::string> reportNames = {"scan"};
+  std::vector<std::string> elementsFilter;
+  std::string sFormat = "text";
+  std::string sOutput = "";
+  bool bHelp = false;
 
   // -- Retrieve and parse the subcommand options -----------------------------
-  std::string device = "";
-  std::string report = "";
-  std::string format = "text";
-  std::string output;
-  bool help = false;
-
   po::options_description queryDesc("Options");  // Note: Boost will add the colon.
   queryDesc.add_options()
-    ("device,d", boost::program_options::value<decltype(device)>(&device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' (default) indicates that every found device should be examined.")
-    ("report,r", boost::program_options::value<decltype(report)>(&report)->implicit_value("scan"), "The type of report to be produced. Reports currently available are:\n"
-                                                                           "  all         - All known reports are produced\n"
-                                                                           "  scan        - Terse report of found devices (default)\n"
-                                                                           "  electrical  - Voltages, currents, and power\n"
-                                                                           "                consumption on the device\n"
-                                                                           "  temperature - Temperatures across the device\n"
-                                                                           "  os-info     - Information relating to the operating\n"
-                                                                           "                system and drivers\n"
-                                                                           "  debug-ip    - Debug IP Status\n"
-                                                                           "  fans        - Fan status")
-    ("format,f", boost::program_options::value<decltype(format)>(&format), "Report output format. Valid values are:\n"
-                                                                           "  text        - Human readable report (default)\n"
-                                                                           "  json-2020.1 - JSON 2020.1 schema")
-    ("output,o", boost::program_options::value<decltype(output)>(&output), "Direct the output to the given file")
-    ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
+    ("device,d", boost::program_options::value<decltype(devices)>(&devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' (default) indicates that every found device should be examined.")
+    ("report,r", boost::program_options::value<decltype(reportNames)>(&reportNames)->multitoken(), (std::string("The type of report to be produced. Reports currently available are:\n") + reportOptionValues).c_str() )
+    ("format,f", boost::program_options::value<decltype(sFormat)>(&sFormat), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
+    ("element,e", boost::program_options::value<decltype(elementsFilter)>(&elementsFilter)->multitoken(), "Filters individual elements(s) from the report. Format: '/<key>/<key>/...'")
+    ("output,o", boost::program_options::value<decltype(sOutput)>(&sOutput), "Direct the output to the given file")
+    ("help,h", boost::program_options::bool_switch(&bHelp), "Help to use this sub-command")
   ;
 
   // Parse sub-command ...
@@ -122,73 +98,69 @@ SubCmdStatus::execute(const SubCmdOptions& _options) const
     throw; // Re-throw exception
   }
 
-  // Check to see if help was requested or no command was found
-  if (help == true)  {
+  // Check to see if help was requested 
+  if (bHelp == true)  {
     printHelp(queryDesc);
     return;
   }
 
-  // -- Now process the subcommand --------------------------------------------
-  // get all device IDs to be processed
-  std::vector<uint16_t> device_indices;
-  XBU::parse_device_indices(device_indices, device);
-  
-  if(!report.empty()) {
+  // -- Process the options --------------------------------------------
+  ReportCollection reportsToProcess;            // Reports of interest
+  xrt_core::device_collection deviceCollection;  // The collection of devices to examine
+  Report::SchemaVersion schemaVersion = Report::SchemaVersion::unknown;    // Output schema version
 
-    if(report.compare("all") == 0)
-      std::cout << "TODO: implement ALL report\n";
-    else if(report.compare("temperature") == 0)
-      std::cout << "TODO: implement TEMP report\n";
-    else if(report.compare("electrical") == 0)
-      std::cout << "TODO: implement ELECTRICAL report\n";
-    else if(report.compare("os-info") == 0)
-      std::cout << "TODO: implement OS-INFO report\n";
-    else if(report.compare("debug-ip") == 0)
-      std::cout << "TODO: implement DEBUG-IP report\n";
-    else if(report.compare("fans") == 0)
-      std::cout << "TODO: implement FANS report\n";
-    else if(report.compare("scan") == 0) {
-      std::vector<std::string> bdf_list;
-      XBU::verbose("Sub command: --report");
+  try {
+    // Collect the reports to be processed
+    XBU::collect_and_validate_reports(fullReportCollection, reportNames, reportsToProcess);
 
-      std::vector<Flasher> flasher_list;
-      for(auto& idx : device_indices) {
-        Flasher f(idx);
-        if(!f.isValid()) {
-          xrt_core::error(boost::str(boost::format("%d is an invalid index") % idx));
-          continue;
-        }
-        DSAInfo board = f.getOnBoardDSA();
-        std::vector<DSAInfo> installedDSA = f.getInstalledDSA();
+    // Output Format
+    schemaVersion = Report::getSchemaDescription(sFormat).schemaVersion;
+    if (schemaVersion == Report::SchemaVersion::unknown) 
+      throw xrt_core::error((boost::format("Unknown output format: '%s'") % sFormat).str());
 
-        BoardInfo info;
-        f.getBoardInfo(info);
-        std::cout << boost::format("%s : %d\n") % "Device BDF" % f.sGetDBDF();
-        std::cout << boost::format("  %-20s : %s\n") % "Card type" % board.board;
-        std::cout << boost::format("  %-20s : %s\n") % "Flash type" % f.sGetFlashType();
-        
-        std::cout << "Flashable partition running on FPGA\n";
-        std::cout << boost::format("  %-20s : %s\n") % "Platform" % board.name;
-        std::cout << boost::format("  %-20s : %s\n") % "SC Version" % board.bmcVer;
-        std::cout << boost::format("  %-20s : 0x%x\n") % "Platform ID" % board.timestamp;
+    // Output file
+    if (!sOutput.empty() && boost::filesystem::exists(sOutput)) 
+        throw xrt_core::error((boost::format("Output file already exists: '%s'") % sOutput).str());
 
-        std::cout << "\nFlashable partitions installed in system\n";
-        std::cout << boost::format("  %-20s : %s\n") % "Platform" % installedDSA.front().name;
-        std::cout << boost::format("  %-20s : %s\n") % "SC Version" % installedDSA.front().bmcVer;
-        std::cout << boost::format("  %-20s : 0x%x\n") % "Platform ID" % installedDSA.front().timestamp;
-        std::cout << "----------------------------------------------------\n";
+    // Collect all of the devices of interest
+    std::set<std::string> deviceNames;
+    for (const auto & deviceName : devices) 
+      deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
 
-        //check if the platforms on the machine and card match
-        if(!same_config(board, installedDSA.front())) {
-          bdf_list.push_back(f.sGetDBDF());
-        }
+    XBU::collect_devices(deviceNames, false /*inUserDomain*/, deviceCollection);
+
+    // DRC check on devices and reports
+    if (deviceCollection.empty()) {
+      std::vector<std::string> missingReports;
+      for (const auto & report : reportsToProcess) {
+        if (report->isDeviceRequired())
+          missingReports.push_back(report->getReportName());
       }
-
-      //if the device configuration doesn't match the config on the machine, warn the user
-      for(const auto& bdf : bdf_list)
-        std::cout << boost::format("%-8s : %s %s\n") % "WARNING" % bdf % "is not up-to-date." ;
+      if (!missingReports.empty()) {
+        std::cout << boost::format("Warning: Due to missing devices, the following reports will not be generated:\n");
+        for (const auto & report : missingReports) 
+          std::cout << boost::format("         - %s\n") % report;
+      }
     }
-    else 
-      throw xrt_core::error("Please specify a valid value");
+  } catch (const xrt_core::error& e) {
+    // Catch only the exceptions that we have generated earlier
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
+    printHelp(queryDesc);
+    return;
+  }
+
+  // -- Create the reports ------------------------------------------------
+  if (sOutput.empty()) {
+    XBU::produce_reports(deviceCollection, reportsToProcess, schemaVersion, elementsFilter, std::cout);
+  }
+  else {
+    std::ofstream fOutput;
+    fOutput.open(sOutput, std::ios::out | std::ios::binary);
+    if (!fOutput.is_open()) 
+      throw xrt_core::error((boost::format("Unable to open the file '%s' for writing.") % sOutput).str());
+
+    XBU::produce_reports(deviceCollection, reportsToProcess, schemaVersion, elementsFilter, fOutput);
+
+    fOutput.close();
   }
 }

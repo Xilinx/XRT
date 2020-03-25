@@ -20,6 +20,7 @@ file(GLOB XBUTIL_V2_BASE_FILES
   "../common/SubCmd.cpp"
   "../common/OptionOptions.cpp"
   "../common/XBHelpMenus.cpp"
+  "../common/Report*.cpp"
 )
 
 # Collect local directory files

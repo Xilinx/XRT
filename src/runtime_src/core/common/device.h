@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -33,6 +33,8 @@
 #include <boost/property_tree/ptree.hpp>
 
 namespace xrt_core {
+
+using device_collection = std::vector<std::shared_ptr<xrt_core::device>>;
 
 /**
  * class device - interface to support OS agnositic operations on a device

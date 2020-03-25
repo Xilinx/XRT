@@ -21,6 +21,7 @@ file(GLOB XBMGMT_V2_BASE_FILES
   "../common/XBHelpMenus.cpp"
   "../common/OptionOptions.cpp"
   "../common/ProgressBar.cpp"
+  "../common/Report*.cpp"
 )
 
 # Collect local directory files
