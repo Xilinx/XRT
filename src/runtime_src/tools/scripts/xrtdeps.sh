@@ -106,7 +106,7 @@ rh_package_list()
 
         RH_LIST+=(\
          libpng12-devel \
-         systemd-devel \
+         libudev-devel \
          kernel-devel-$(uname -r) \
          kernel-headers-$(uname -r) \
          openssl-static \
