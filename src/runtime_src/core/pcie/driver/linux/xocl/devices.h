@@ -2682,27 +2682,9 @@ struct xocl_subdev_map {
 		.flash_type = FLASH_TYPE_QSPIPS_X4_SINGLE		\
 	}
 
-#define XOCL_RES_FLASH_MFG_U25				\
-	((struct resource []) {				\
-		{					\
-			.start	= 0x40000,		\
-			.end	= 0x4ffff,		\
-			.flags  = IORESOURCE_MEM,	\
-		},					\
-	})
-
-#define XOCL_DEVINFO_FLASH_MFG_U25			\
-	{						\
-		XOCL_SUBDEV_FLASH,			\
-		XOCL_FLASH,				\
-		XOCL_RES_FLASH_MFG_U25,			\
-		ARRAY_SIZE(XOCL_RES_FLASH_MFG_U25),	\
-		.override_idx = -1,			\
-	}
-
 #define MFG_RES_U25							\
 	((struct xocl_subdev_info []) {					\
-	 	XOCL_DEVINFO_FLASH_MFG_U25,				\
+	 	XOCL_DEVINFO_FLASH_BLP_U25,				\
 	 	/*XOCL_DEVINFO_XMC_MFG_U25,*/				\
 	 })
 
@@ -2770,7 +2752,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0xD00C, PCI_ANY_ID, XBB_MFG("u280")) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0xD030, PCI_ANY_ID, XBB_MFG("poc1465")) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0xD020, PCI_ANY_ID, XBB_MFG_U50) }, \
-	{ XOCL_PCI_DEVID(0x10EE, 0xD050, PCI_ANY_ID, XBB_MFG_U25) }, \
+	{ XOCL_PCI_DEVID(0x10EE, 0xD04C, PCI_ANY_ID, XBB_MFG_U25) }, \
 	{ XOCL_PCI_DEVID(0x10EE, 0xEB10, PCI_ANY_ID, XBB_MFG("twitch")) }, \
 	{ XOCL_PCI_DEVID(0x13FE, 0x806C, PCI_ANY_ID, XBB_MFG("advantech")) }
 
