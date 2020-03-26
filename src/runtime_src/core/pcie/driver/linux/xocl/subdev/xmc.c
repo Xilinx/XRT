@@ -2939,8 +2939,6 @@ static int xmc_remove(struct platform_device *pdev)
 	mutex_unlock(&xmc->mbx_lock);
 end:
 	for (i = 0; i < NUM_IOADDR; i++) {
-		if ((i == IO_CLK_SCALING) && !xmc->cs_on_ptfm)
-			continue;
 		if (xmc->base_addrs[i]) {
 			iounmap(xmc->base_addrs[i]);
 			xmc->range[i] = 0;
