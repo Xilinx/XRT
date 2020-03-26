@@ -224,7 +224,7 @@ validate()
 
 prep_ubuntu()
 {
-    ehco "Preparing ubuntu ..."
+    echo "Preparing ubuntu ..."
 }
 
 prep_centos7()
