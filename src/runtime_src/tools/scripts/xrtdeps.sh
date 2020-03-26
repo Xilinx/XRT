@@ -3,7 +3,6 @@
 FLAVOR=`grep '^ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
 VERSION=`grep '^VERSION_ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
 ARCH=`uname -m`
-SUDO=${SUDO:-sudo}
 
 usage()
 {
@@ -235,30 +234,30 @@ prep_centos7()
 {
     if [ $docker == 0 ]; then 
         echo "Enabling CentOS SCL repository..."
-        ${SUDO} yum --enablerepo=extras install -y centos-release-scl
+        yum --enablerepo=extras install -y centos-release-scl
     fi
 }
 
 prep_rhel7()
 {
     echo "Enabling RHEL SCL repository..."
-    ${SUDO} yum-config-manager --enable rhel-server-rhscl-7-rpms
+    yum-config-manager --enable rhel-server-rhscl-7-rpms
 }
 
 prep_centos8()
 {
     echo "Enabling PowerTools repo for CentOS8 ..."
-    ${SUDO} yum install -y dnf-plugins-core
-    ${SUDO} yum config-manager --set-enabled PowerTools
-    ${SUDO} yum config-manager --set-enabled AppStream
+    yum install -y dnf-plugins-core
+    yum config-manager --set-enabled PowerTools
+    yum config-manager --set-enabled AppStream
 }
 
 prep_centos()
 {
     echo "Enabling EPEL repository..."
-    ${SUDO} yum install -y epel-release
+    yum install -y epel-release
     echo "Installing cmake3 from EPEL repository..."
-    ${SUDO} yum install -y cmake3
+    yum install -y cmake3
 
     if [ $VERSION == 8 ]; then
         prep_centos8
@@ -272,8 +271,8 @@ prep_rhel()
     echo "Enabling EPEL repository..."
     rpm -q --quiet epel-release
     if [ $? != 0 ]; then
-	${SUDO} yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-	${SUDO} yum check-update
+	yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+	yum check-update
     fi
 
     if [ $VERSION == 8 ]; then
@@ -290,7 +289,7 @@ install()
         prep_ubuntu
 
         echo "Installing packages..."
-        ${SUDO} apt install -y "${UB_LIST[@]}"
+        apt install -y "${UB_LIST[@]}"
     fi
 
     # Enable EPEL on CentOS/RHEL
@@ -302,11 +301,11 @@ install()
 
     if [ $FLAVOR == "rhel" ] || [ $FLAVOR == "centos" ] || [ $FLAVOR == "amzn" ]; then
         echo "Installing RHEL/CentOS packages..."
-        ${SUDO} yum install -y "${RH_LIST[@]}"
+        yum install -y "${RH_LIST[@]}"
 	if [ $ARCH == "ppc64le" ]; then
-            ${SUDO} yum install -y devtoolset-7
+            yum install -y devtoolset-7
 	elif [ $VERSION -lt "8" ]; then
-            ${SUDO} yum install -y devtoolset-6
+            yum install -y devtoolset-6
 	fi
     fi
 }
