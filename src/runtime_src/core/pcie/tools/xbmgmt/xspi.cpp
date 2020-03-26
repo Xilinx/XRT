@@ -16,6 +16,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+#include <boost/format.hpp>
 #include <iostream>
 #include <string>
 #include <fstream>
@@ -28,6 +29,7 @@
 #include <errno.h>
 #include <cstdio>
 #include <stddef.h>
+
 #include "xspi.h"
 #include "core/pcie/driver/linux/include/mgmt-reg.h"
 #include "flasher.h"
@@ -2227,10 +2229,11 @@ int XSPI_Flasher::upgradeFirmware2Drv(std::istream& mcsStream0,
 
 const std::string magic = "XRTDATA";
 struct flash_data_header {
-    char magic[7] = "";
-    char ver = 0;
-    uint32_t data_len = 0;
-    uint32_t parity = 0;
+    char magic[7];
+    char ver;
+    uint32_t data_len;
+    uint32_t parity;
+    uint8_t reserved[16];
 };
 // Max file data length can be saved on flash
 static const size_t xrt_max_data_len = 1024 * 1024;
@@ -2268,6 +2271,8 @@ int XSPI_Flasher::xclWriteData(std::vector<unsigned char>& data)
     if (data.size() > xrt_max_data_len) {
         std::cout << "meta data is too big (" << data.size() << "B) to flash: "
             << std::endl;
+        std::cout << "max data length is " << xrt_max_data_len << " bytes"
+            << std::endl;
         return -EINVAL;
     }
 
@@ -2285,7 +2290,7 @@ int XSPI_Flasher::xclWriteData(std::vector<unsigned char>& data)
     }
 
     // Write meta data onto flash
-    flash_data_header header;
+    flash_data_header header = { 0 };
     std::memcpy(header.magic, magic.c_str(), magic.size());
     header.ver = 0;
     header.data_len = data.size();
@@ -2294,13 +2299,14 @@ int XSPI_Flasher::xclWriteData(std::vector<unsigned char>& data)
     ret = writeToFlash(mFlashDev, flash_index, addr,
         reinterpret_cast<unsigned char *>(&header), sizeof(header));
     if (ret) {
-        std::cout << "failed to write meata data header to flash: " << ret
+        std::cout << "failed to write meta data header to flash: " << ret
             << std::endl;
         return ret;
     }
 
-    std::cout << "Persisted " << data.size() << " bytes of meta data to flash "
-        << flash_index << " @0x" << std::hex << addr << std::dec << std::endl;
+    std::cout << boost::format(
+        "Persisted %d bytes of meta data to flash %d @0x%x\n")
+        %data.size() %flash_index %(addr - data.size());
     return 0;
 }
 
@@ -2308,18 +2314,25 @@ int XSPI_Flasher::xclReadData(std::vector<unsigned char>& data)
 {
     const int flash_index = 0;
 
-    if (mFlashDev == nullptr)
+    if (mFlashDev == nullptr) {
+        std::cout << "failed to find flash device" << std::endl;
         return -EINVAL;
+    }
 
     size_t size = getFlashSize(mDev.get());
-    if (size == 0)
+    if (size == 0) {
+        std::cout << "failed to find meta data on flash" << std::endl;
         return -EINVAL;
+    }
 
     // Read meta data from flash
     flash_data_header header;
     unsigned int addr = size - sizeof(header);
     std::cout << "reading " << sizeof(header) << " bytes of header from flash "
         << flash_index << " @0x" << std::hex << addr << std::dec << std::endl;
+    std::cout << boost::format(
+        "Reading %d bytes of header from flash %d @0x%x\n")
+        %sizeof(header) %flash_index %addr;
     int ret = readFromFlash(mFlashDev, flash_index, addr,
         reinterpret_cast<unsigned char *>(&header), sizeof(header));
     if (ret) {
@@ -2327,7 +2340,9 @@ int XSPI_Flasher::xclReadData(std::vector<unsigned char>& data)
         return ret;
     }
     if (std::memcmp(header.magic, magic.c_str(), magic.size())) {
-        std::cout << "bad header magic: " << header.magic << std::endl;
+        std::cout << "corrupted meta data detected on flash, bad header magic: "
+            << header.magic << std::endl;
+        std::cout << "expected header magic: " << magic << std::endl;
         return -EINVAL;
     }
 

@@ -906,7 +906,7 @@ static bool is_valid_offset(struct xocl_flash *flash, loff_t off)
 	/* Assuming all flash are of the same size, we use
 	 * offset into flash 0 to perform boundary check. */
 	faddr.slave = 0;
-	return flash_faddr2offset(&faddr) <= flash->flash_size;
+	return flash_faddr2offset(&faddr) < flash->flash_size;
 }
 
 /*
@@ -923,13 +923,10 @@ flash_read(struct file *file, char __user *buf, size_t n, loff_t *off)
 
 	FLASH_INFO(flash, "reading 0x%lx bytes @0x%llx", n, *off);
 
-	if (!is_valid_offset(flash, *off)) {
+	if (n == 0 || !is_valid_offset(flash, *off)) {
 		FLASH_ERR(flash, "Can't read: out of boundary");
-		return -EINVAL;
-	}
-
-	if (n == 0 || *off == flash->flash_size)
 		return 0;
+	}
 	n = min(n, flash->flash_size - (size_t)*off);
 
 	page = vmalloc(FLASH_PAGE_SIZE);
@@ -1066,10 +1063,11 @@ flash_write(struct file *file, const char __user *buf, size_t n, loff_t *off)
 
 	FLASH_INFO(flash, "writing 0x%lx bytes @0x%llx", n, *off);
 
-	if (n == 0 || !is_valid_offset(flash, *off + n)) {
+	if (n == 0 || !is_valid_offset(flash, *off)) {
 		FLASH_ERR(flash, "Can't write: out of boundary");
 		return -EINVAL;
 	}
+	n = min(n, flash->flash_size - (size_t)*off);
 
 	page = vmalloc(FLASH_HUGE_PAGE_SIZE);
 	if (page == NULL)
