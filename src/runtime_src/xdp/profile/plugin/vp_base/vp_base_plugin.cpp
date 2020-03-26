@@ -16,8 +16,15 @@
 
 #define XDP_SOURCE
 
+#include <cstdlib>
+
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 #include "xdp/profile/device/device_intf.h"
+
+#ifdef _WIN32
+#pragma warning(disable : 4996)
+/* Disable warning for use of "getenv" */
+#endif
 
 namespace xdp {
 
@@ -32,6 +39,22 @@ namespace xdp {
     for (auto w : writers)
     {
       delete w ;
+    }
+  }
+
+  void XDPPlugin::emulationSetup()
+  {
+    // For hardware emulation flows, check to see if there is a wdb and wcfg
+    char* wdbFile = getenv("VITIS_WAVEFORM_WDB_FILENAME") ;
+    if (wdbFile != nullptr)
+    {
+      (db->getStaticInfo()).addOpenedFile(wdbFile, "WAVEFORM_DATABASE") ;
+
+      // Also the wcfg
+      std::string configName(wdbFile) ;
+      configName = configName.substr(0, configName.rfind('.')) ;
+      configName += ".wcfg" ;
+      (db->getStaticInfo()).addOpenedFile(configName, "WAVEFORM_CONFIGURATION");
     }
   }
 

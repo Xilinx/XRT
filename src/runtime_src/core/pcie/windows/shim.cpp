@@ -23,6 +23,7 @@
 #include "core/common/message.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
+#include "core/common/query_requests.h"
 #include "core/common/AlignedAllocator.h"
 #include "core/include/xcl_perfmon_parameters.h"
 
@@ -676,7 +677,7 @@ done:
       //Todo: offset += mOffsets[XCL_ADDR_KERNEL_CTRL];
       (void *)wordcopy(hostbuf, ((char *)mappedBar[0].Bar + offset), size);
       break;
-    default: 
+    default:
       xrt_core::message::
         send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "Unsupported Address Space: Read failed");
       return 1;
@@ -1456,6 +1457,11 @@ xclGetDeviceInfo2(xclDeviceHandle handle, struct xclDeviceInfo2 *info)
   info->mDMAThreads = 2;
   info->mDataAlignment = 4096; // 4k
 
+  auto shim = get_shim_object(handle);
+  auto name = xrt_core::device_query<xrt_core::query::rom_vbnv>(shim->m_core_device);
+  auto len = name.copy(info->mName, sizeof info->mName - 1, 0);
+  info->mName[len] = 0;
+
   return 0;
 }
 
@@ -1552,7 +1558,7 @@ int
 xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz,
                  uint32_t numSamples, uint64_t ipBaseAddress,
                  uint32_t& wordsPerSample)
-{  
+{
   xrt_core::message::send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclReadTraceData()");
   auto shim = get_shim_object(handle);
 

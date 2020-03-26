@@ -441,6 +441,29 @@ get_flag_kds_sw_emu()
   return value;
 }
 
+inline bool
+get_is_enable_prep_target()
+{
+  static bool value = detail::get_bool_value("Emulation.enable_prep_target", false);
+  return value;
+}
+
+inline bool
+get_is_enable_debug()
+{
+  static bool value = detail::get_bool_value("Emulation.enable_debug", false);
+  return value;
+}
+
+inline std::string
+get_aie_sim_options()
+{
+  static std::string value = detail::get_string_value("Emulation.aie_sim_options", "");
+  return value;
+}
+
+
+
 }} // config,xrt_core
 
 #endif

@@ -29,6 +29,7 @@
 #include "xdp/profile/profile_config.h"
 #include "xdp/profile/core/rt_profile.h"
 #include "xdp/profile/device/xrt_device/xdp_xrt_device.h"
+#include "xdp/profile/device/profile_mngr_trace_logger.h"
 #include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/writer/json_profile.h"
 #include "xdp/profile/writer/csv_profile.h"
@@ -63,7 +64,6 @@ namespace xdp {
   {
     Platform = xocl::get_shared_platform();
     Plugin = std::make_shared<XoclPlugin>(getclPlatformID());
-    // Share ownership to ensure correct order of destruction
     ProfileMgr = std::make_unique<RTProfile>(ProfileFlags, Plugin);
     startProfiling();
   }
@@ -109,6 +109,22 @@ namespace xdp {
     // But needed for older flow
     if ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM) && Plugin->getSystemDPAEmulation() == false)
       xoclp::platform::start_device_trace(platform, XCL_PERF_MON_ACCEL, numComputeUnits);
+
+    // Start power profiling (device flow only)
+    auto power_profile_en = xrt::config::get_power_profile();
+    if (Plugin->getFlowMode() == xdp::RTUtil::DEVICE && power_profile_en) {
+      for (auto device : platform->get_device_range()) {
+        if (!device->is_active())
+          continue;
+        /*
+         * Initialize Power Profiling Threads
+         */
+          auto power_profile = std::make_unique<OclPowerProfile>(device->get_xrt_device(), Plugin, device->get_unique_name());
+          auto& filename = power_profile->get_output_file_name();
+          ProfileMgr->getRunSummary()->addFile(filename, RunSummary::FT_POWER_PROFILE);
+          PowerProfileList.push_back(std::move(power_profile));
+      }
+    }
 
     mProfileRunning = true;
   }
@@ -292,10 +308,10 @@ namespace xdp {
           traceBufSz = getDeviceDDRBufferSize(dInt, device);
           trace_memory = "TS2MM";
         }
-        auto offloader = std::make_unique<DeviceTraceOffload>(dInt, ProfileMgr.get(),
-                                                         device->get_unique_name(), binaryName,
-                                                         mTraceReadIntMs, traceBufSz, mTraceThreadEn
-                                                         );
+
+        DeviceTraceLogger* deviceTraceLogger = new TraceLoggerUsingProfileMngr(getProfileManager(), device->get_unique_name(), binaryName);
+        auto offloader = std::make_unique<DeviceTraceOffload>(dInt, deviceTraceLogger,
+                                                         mTraceReadIntMs, traceBufSz, mTraceThreadEn);
         bool init_done = true;
         if (!mTraceThreadEn) {
           init_done = offloader->read_trace_init();
@@ -312,10 +328,12 @@ namespace xdp {
         }
 
         if (init_done) {
+          DeviceTraceLoggers.push_back(deviceTraceLogger);
           DeviceTraceOffloadList.push_back(std::move(offloader));
         } else {
-            if (dInt->hasTs2mm())
-              xrt::message::send(xrt::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_ALLOC_FAIL);
+          delete deviceTraceLogger;
+          if (dInt->hasTs2mm())
+            xrt::message::send(xrt::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_ALLOC_FAIL);
         }
       } else {
         xdevice->startTrace(XCL_PERF_MON_MEMORY, traceOption);
@@ -344,22 +362,31 @@ namespace xdp {
   void OCLProfiler::endTrace()
   {
     auto& g_map = Plugin->getDeviceTraceBufferFullMap();
-    
     for (auto& trace_offloader : DeviceTraceOffloadList) {
+      TraceLoggerUsingProfileMngr* deviceTraceLogger = 
+			    dynamic_cast<TraceLoggerUsingProfileMngr*>(trace_offloader->getDeviceTraceLogger());
+
       if (trace_offloader->trace_buffer_full()) {
         if (trace_offloader->has_fifo()) {
           Plugin->sendMessage(FIFO_WARN_MSG);
         } else {
           Plugin->sendMessage(TS2MM_WARN_MSG_BUF_FULL);
         }
-        g_map[trace_offloader->get_device_name()] = 1;
+        
+        if (deviceTraceLogger) {
+          g_map[deviceTraceLogger->getDeviceName()] = 1;
+        }
       }
-      else {
-        g_map[trace_offloader->get_device_name()] = 0;
+      else if (deviceTraceLogger) {
+        g_map[deviceTraceLogger->getDeviceName()] = 0;
       }
       trace_offloader.reset();
     }
     DeviceTraceOffloadList.clear();
+    for (auto itr : DeviceTraceLoggers) {
+      delete itr;
+    }
+    DeviceTraceLoggers.clear();
   }
 
   // Get device counters
@@ -464,25 +491,6 @@ namespace xdp {
     xdp::CSVTraceWriter* csvTraceWriter = new xdp::CSVTraceWriter(timelineFile, "Xilinx", Plugin.get());
     TraceWriters.push_back(csvTraceWriter);
     ProfileMgr->attach(csvTraceWriter);
-
-    // Start power profiling (device flow only)
-    // NOTE: This starts power profiling when clGetPlatformIDs is called. That is, before a 
-    //       bitstream gets loaded. This allows us to show pre-configuration power samples.
-    if (!emuMode) {
-      auto platform = getclPlatformID();
-      for (auto device : platform->get_device_range()) {
-        /*
-         * Initialize Power Profiling Threads
-         */
-        auto power_profile_en = xrt::config::get_power_profile();
-        if (power_profile_en) {
-          auto power_profile = std::make_unique<OclPowerProfile>(device->get_xrt_device(), Plugin, device->get_unique_name());
-          auto& filename = power_profile->get_output_file_name();
-          ProfileMgr->getRunSummary()->addFile(filename, RunSummary::FT_POWER_PROFILE);
-          PowerProfileList.push_back(std::move(power_profile));
-        }
-      }
-    }
 
     // Add functions to callback for profiling kernel/CU scheduling
     xocl::add_command_start_callback(xoclp::get_cu_start);
@@ -677,9 +685,10 @@ namespace xdp {
   uint64_t OCLProfiler::getDeviceDDRBufferSize(DeviceIntf* dInt, xocl::device* device)
   {
     uint64_t sz = 0;
-    sz = xdp::xoclp::platform::get_ts2mm_buf_size();
+    sz = GetTS2MMBufSize();
     auto memorySz = xdp::xoclp::platform::device::getMemSizeBytes(device, dInt->getTS2MmMemIndex());
     if (memorySz > 0 && sz > memorySz) {
+      sz = memorySz;
       std::string msg = "Trace Buffer size is too big for Memory Resource. Using " + std::to_string(memorySz)
                         + " Bytes instead.";
       xrt::message::send(xrt::message::severity_level::XRT_WARNING, msg);

@@ -35,7 +35,11 @@ add_subdirectory(xdp)
 # TODO version.h was included.
 # Remove this limitation once we can generate version.h for mpsoc.
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
-  add_subdirectory(tools/xclbin)
+  if ((${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS|Amazon)") AND (${LINUX_VERSION} VERSION_GREATER 8.0))
+    message("******************* Fix xclbinutil for CentOS8")
+  else()
+    add_subdirectory(tools/xclbin)
+  endif()
 endif()
 add_subdirectory(xclbin)
 add_subdirectory(xocl)
