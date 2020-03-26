@@ -153,5 +153,15 @@ uint64_t HalDevice::getDeviceAddr(size_t id)
   return (!xclGetBOProperties(mHalDevice, mBOHandles[boIndex], &p)) ? p.paddr : ((uint64_t)-1);
 }
 
+double HalDevice::getMaxBwRead()
+{
+  return xclGetReadMaxBandwidthMBps(mHalDevice);
+}
+
+double HalDevice::getMaxBwWrite()
+{
+  return xclGetWriteMaxBandwidthMBps(mHalDevice);
+}
+
 }
 
