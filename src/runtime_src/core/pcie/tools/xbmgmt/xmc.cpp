@@ -35,10 +35,13 @@ XMC_Flasher::XMC_Flasher(std::shared_ptr<pcidev::pci_device> dev)
 
     std::string err;
     bool is_mfg = false;
+
+    /* Check xmc subdev. In the future we will use xmc subdev to flash board. */ 
+    if (!hasXMC())
+        goto nosup;
+
     mDev->sysfs_get<bool>("", "mfg", err, is_mfg, false);
     if (!is_mfg) {
-        if (!hasXMC())
-            goto nosup;
 
         mDev->sysfs_get<unsigned>("xmc", "status", err, val, 0);
 	if (!err.empty() || !(val & 1)) {
@@ -107,6 +110,11 @@ int XMC_Flasher::xclUpgradeFirmware(std::istream& tiTxtStream) {
 
     if (!hasSC()) {
         std::cout << "ERROR: SC is not present on platform" << std::endl;
+        return -EINVAL;
+    }
+
+    if (!fixedSC()) {
+        std::cout << "INFO: fixed SC version, skip upgrading" << std::endl;
         return -EINVAL;
     }
 
@@ -534,6 +542,24 @@ bool XMC_Flasher::hasSC()
     mDev->sysfs_get<unsigned>("xmc", "sc_presence", errmsg, val, 0);
     if (!errmsg.empty()) {
         std::cout << "can't read sc_presence node from " << mDev->sysfs_name <<
+            " : " << errmsg << std::endl;
+        return false;
+    }
+
+    return (val != 0);
+}
+
+bool XMC_Flasher::fixedSC()
+{
+    unsigned int val;
+    std::string errmsg;
+
+    if (!hasXMC())
+	    return false;
+
+    mDev->sysfs_get<unsigned>("xmc", "sc_is_fixed", errmsg, val, 0);
+    if (!errmsg.empty()) {
+        std::cout << "can't read sc_is_fixed node from " << mDev->sysfs_name <<
             " : " << errmsg << std::endl;
         return false;
     }

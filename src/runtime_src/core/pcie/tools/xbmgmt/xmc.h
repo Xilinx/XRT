@@ -110,6 +110,7 @@ public:
     int xclGetBoardInfo(std::map<char, std::vector<char>>& info);
     const std::string probingErrMsg() { return mProbingErrMsg.str(); }
     bool hasXMC();
+    bool fixedSC();
 
 private:
     std::shared_ptr<pcidev::pci_device> mDev;
