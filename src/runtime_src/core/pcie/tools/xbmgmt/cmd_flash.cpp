@@ -166,15 +166,15 @@ static int updateSC(unsigned index, const char *file)
         return writeSCImage(flasher, file);
     }
 
-    ret = mgmt_dev->shutdown();
+    auto dev = mgmt_dev->lookup_peer_dev();
+
+    ret = pcidev::shutdown(mgmt_dev);
     if (ret) {
         std::cout << "Only proceed with SC update if all user applications for the target card(s) are stopped." << std::endl;
         return ret;
     }
 
     ret = writeSCImage(flasher, file);
-
-    auto dev = mgmt_dev->lookup_peer_dev();
 
     dev->sysfs_put("", "shutdown", errmsg, "0\n");
     if (!errmsg.empty()) {

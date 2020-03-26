@@ -49,7 +49,7 @@ using Clock = std::chrono::high_resolution_clock;
 
 /* exposed by shim */
 int xclUpdateSchedulerStat(xclDeviceHandle);
-int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t sz);
+int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t total_size);
 int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* info);
 
 #define TO_STRING(x) #x
@@ -119,8 +119,7 @@ enum cmacommand {
     CMA_ENABLE = 0x0,
     CMA_DISABLE,
     CMA_VALIDATE,
-    CMA_SIZE_1G,
-    CMA_SIZE_2M,
+    CMA_SIZE,
 };
 
 static const std::pair<std::string, command> map_pairs[] = {
@@ -1794,7 +1793,7 @@ public:
 
     int reset(xclResetKind kind);
     int setP2p(bool enable, bool force);
-    int setCma(bool enable, uint64_t sz);
+    int setCma(bool enable, uint64_t total_size);
     int testP2p(void);
     int testM2m(void);
     int iopsTest(void);

@@ -109,9 +109,10 @@ namespace xdp {
     static OCLProfiler* mRTInstance;
     std::shared_ptr<xocl::platform> Platform;
     std::shared_ptr<XoclPlugin> Plugin;
-    std::shared_ptr<RTProfile> ProfileMgr;
+    std::unique_ptr<RTProfile> ProfileMgr;
     std::vector<std::unique_ptr<OclPowerProfile>> PowerProfileList;
     std::vector<std::unique_ptr<DeviceTraceOffload>> DeviceTraceOffloadList;
+    std::vector<DeviceTraceLogger*>  DeviceTraceLoggers;
 
     // Buffer on Device DDR for Trace
     uint64_t mDDRBufferSize = 0;

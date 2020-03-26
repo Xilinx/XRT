@@ -85,6 +85,7 @@ private:
     void write32(uint64_t offset, uint32_t val);
     void parsePacketClockTrain(uint64_t packet, uint64_t firstTimestamp, uint32_t mod, xclTraceResults &result);
     void parsePacket(uint64_t packet, uint64_t firstTimestamp, xclTraceResults &result);
+    uint64_t seekClockTraining(uint64_t* arr, uint64_t count);
 };
 
 } //  xdp

@@ -31,7 +31,7 @@ namespace xdp {
   {
   }
 
-  void OpenCLAPICall::dump(std::ofstream& fout, int bucket)
+  void OpenCLAPICall::dump(std::ofstream& fout, uint32_t bucket)
   {
     VTFEvent::dump(fout, bucket) ;
     fout << "," << functionName << std::endl ;

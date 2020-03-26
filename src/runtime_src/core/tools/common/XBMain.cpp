@@ -72,7 +72,7 @@ void  main_(int argc, char** argv,
   po::positional_options_description positionalCommand;
   positionalCommand.
     add("subCmd", 1 /* max_count */).
-    add("subCmdArgs", 1 /* Unlimited max_count */);
+    add("subCmdArgs", -1 /* Unlimited max_count */);
 
   // Parse the command line
   po::parsed_options parsed = po::command_line_parser(argc, argv).

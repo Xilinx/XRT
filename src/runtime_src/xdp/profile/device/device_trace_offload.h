@@ -22,12 +22,11 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
+#include <functional>
 
-#include "xdp/profile/plugin/ocl/xocl_profile.h"
-#include "xdp/profile/plugin/ocl/xocl_plugin.h"
-#include "xdp/profile/core/rt_profile.h"
-#include "xclperf.h"
 #include "xdp/config.h"
+#include "core/include/xclperf.h"
+#include "xdp/profile/device/device_intf.h"
 
 namespace xdp {
 
@@ -38,24 +37,26 @@ enum class OffloadThreadStatus {
     STOPPED
 };
 
+enum class OffloadThreadType {
+    TRACE,
+    CLOCK_TRAIN
+};
+
+class DeviceTraceLogger;
+
 #define debug_stream \
 if(!m_debug); else std::cout
 
 class DeviceTraceOffload {
 public:
     XDP_EXPORT
-    DeviceTraceOffload(xdp::DeviceIntf* dInt, std::shared_ptr<RTProfile> ProfileMgr,
-                     const std::string& device_name, const std::string& binary_name,
+    DeviceTraceOffload(DeviceIntf* dInt, DeviceTraceLogger* dTraceLogger,
                      uint64_t offload_sleep_ms, uint64_t trbuf_sz,
                      bool start_thread = true);
     XDP_EXPORT
     ~DeviceTraceOffload();
     XDP_EXPORT
-    void offload_device_continuous();
-    XDP_EXPORT
-    bool should_continue();
-    XDP_EXPORT
-    void start_offload();
+    void start_offload(OffloadThreadType type);
     XDP_EXPORT
     void stop_offload();
 
@@ -78,12 +79,11 @@ public:
     bool has_ts2mm() {
         return dev_intf->hasTs2mm();
     };
-    const std::string& get_device_name() {
-        return device_name;
-    }
     void read_trace() {
         m_read_trace();
     };
+
+    DeviceTraceLogger* getDeviceTraceLogger() { return deviceTraceLogger; }
 
 private:
     std::mutex status_lock;
@@ -92,11 +92,8 @@ private:
 
     uint64_t sleep_interval_ms;
     uint64_t m_trbuf_alloc_sz;
-    xdp::DeviceIntf* dev_intf;
-    std::shared_ptr<RTProfile> prof_mgr;
-    std::string device_name;
-    std::string binary_name;
-    xclPerfMonType m_type = XCL_PERF_MON_MEMORY;
+    DeviceIntf* dev_intf;
+    DeviceTraceLogger* deviceTraceLogger;
 
     xclTraceResultsVector m_trace_vector = {};
     std::function<void()> m_read_trace;
@@ -113,6 +110,9 @@ private:
     void config_s2mm_reader(uint64_t wordCount);
     bool init_s2mm();
     void reset_s2mm();
+    bool should_continue();
+    void train_clock_continuous();
+    void offload_device_continuous();
 
     bool m_trbuf_full = false;
     bool m_debug = false; /* Enable Output stream for log */

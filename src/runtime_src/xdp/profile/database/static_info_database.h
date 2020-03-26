@@ -106,12 +106,14 @@ namespace xdp {
     uint8_t     type;
     int32_t     index;
     uint64_t    baseAddress;
+    uint64_t    size;
     std::string name;
 
-    Memory(uint8_t ty, int32_t idx, uint64_t baseAddr, const char* n)
+    Memory(uint8_t ty, int32_t idx, uint64_t baseAddr, uint64_t sz, const char* n)
       : type(ty),
         index(idx),
         baseAddress(baseAddr),
+        size(sz),
         name(n)
     {}
   };
@@ -238,6 +240,13 @@ namespace xdp {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       return &(deviceInfo[deviceId]->memoryInfo);
+    }
+
+    Memory* getMemory(uint64_t deviceId, int32_t memId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return nullptr;
+      return deviceInfo[deviceId]->memoryInfo[memId];
     }
 
     inline uint64_t getNumAIM(uint64_t deviceId)

@@ -128,7 +128,7 @@ public:
      * e.g. enable = true, sz = 0x100000 (2M): add 2M CMA chunk
      *      enable = false: remove CMA chunk
      */
-    int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t sz);
+    int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t total_size);
 
     int xclGetDebugIPlayoutPath(char* layoutPath, size_t size);
     int xclGetSubdevPath(const char* subdev, uint32_t idx, char* path, size_t size);

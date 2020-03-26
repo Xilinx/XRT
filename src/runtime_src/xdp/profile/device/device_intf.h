@@ -43,7 +43,16 @@
 
 namespace xdp {
 
-  class DeviceIntf {
+// Helper methods
+
+XDP_EXPORT
+uint32_t GetDeviceTraceBufferSize(uint32_t property);
+
+XDP_EXPORT
+uint64_t GetTS2MMBufSize();
+
+
+class DeviceIntf {
   public:
 
     DeviceIntf() {}
