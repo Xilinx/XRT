@@ -162,7 +162,12 @@ namespace xdp {
     // Get MEM_TOPOLOGY section 
     const axlf_section_header* memTopologyHeader = xclbin::get_axlf_section(xbin, MEM_TOPOLOGY);
     if(memTopologyHeader == nullptr) return false;
-    const mem_topology* memTopologySection = reinterpret_cast<const mem_topology*>(chBinary + memTopologyHeader->m_sectionOffset) ;
+    const mem_topology* memTopologySection = reinterpret_cast<const mem_topology*>(chBinary + memTopologyHeader->m_sectionOffset);
+    for(int32_t i = 0; i < memTopologySection->m_count; i++) {
+      const struct mem_data* memData = &(memTopologySection->m_mem_data[i]);
+      devInfo->memoryInfo[i] = new Memory(memData->m_type, i, memData->m_base_address, memData->m_size,
+                                          reinterpret_cast<const char*>(memData->m_tag));
+    }
 
     // Now make the connections
     ComputeUnitInstance* cu = nullptr;
@@ -187,7 +192,7 @@ namespace xdp {
         const struct mem_data* memData = &(memTopologySection->m_mem_data[connctn->mem_data_index]);
         devInfo->memoryInfo[connctn->mem_data_index]
                  = new Memory(memData->m_type, connctn->mem_data_index,
-                              memData->m_base_address, reinterpret_cast<const char*>(memData->m_tag));
+                              memData->m_base_address, memData->m_size, reinterpret_cast<const char*>(memData->m_tag));
       }
       cu->addConnection(connctn->arg_index, connctn->mem_data_index);
     }

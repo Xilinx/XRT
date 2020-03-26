@@ -37,6 +37,10 @@ namespace xdp {
     // All of the writers associated with the plugin
     std::vector<VPWriter*> writers ;
 
+    // If there is something that is common amongst all plugins when
+    //  dealing with emulation flows.
+    XDP_EXPORT void emulationSetup() ;
+
   public:
     XDP_EXPORT XDPPlugin() ;
     XDP_EXPORT virtual ~XDPPlugin() ;

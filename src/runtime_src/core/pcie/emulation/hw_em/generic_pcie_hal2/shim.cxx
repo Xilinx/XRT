@@ -1578,7 +1578,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
         || vbnv.find("u200_xdma_201830_2")        != std::string::npos 
         || vbnv.find("u250_qep_201910_1")         != std::string::npos
         || vbnv.find("u250_xdma_201830_1")        != std::string::npos 
-        || vbnv.find("u250_xdma_201830_2")        != std::string::npos 
+        || vbnv.find("u250_xdma_201830_2")        != std::string::npos
         || vbnv.find("u280_xdma_201920_1")        != std::string::npos
         || vbnv.find("u280_xdma_201920_2")        != std::string::npos
         || vbnv.find("u280_xdma_201920_3")        != std::string::npos

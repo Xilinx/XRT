@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,27 +14,23 @@
  * under the License.
  */
 
-#define XDP_SOURCE
+#ifndef _XDP_PROFILE_DEVICE_BASE_TRACE_LOGGER_H
+#define _XDP_PROFILE_DEVICE_BASE_TRACE_LOGGER_H
 
-#include "xdp/profile/database/events/opencl_api_calls.h"
+#include "core/include/xclperf.h"
 
 namespace xdp {
 
-  OpenCLAPICall::OpenCLAPICall(uint64_t s_id, double ts, unsigned int /*f_id*/,
-                               uint64_t name, uint64_t q)
-      : APICall(s_id, ts, name, OPENCL_API_CALL),
-        queueAddress(q)
-  {
-  }
+// Interface class
+class DeviceTraceLogger
+{
+public:
+  DeviceTraceLogger() {}
+  virtual ~DeviceTraceLogger() {}
 
-  OpenCLAPICall::~OpenCLAPICall()
-  {
-  }
+  virtual void processTraceData(xclTraceResultsVector& traceVector) = 0; 
+  virtual void endProcessTraceData(xclTraceResultsVector& traceVector) = 0; 
+};
 
-  void OpenCLAPICall::dump(std::ofstream& fout, uint32_t bucket)
-  {
-    VTFEvent::dump(fout, bucket) ;
-    fout << "," << functionName << std::endl ;
-  }
-
-} // end namespace xdp
+}
+#endif

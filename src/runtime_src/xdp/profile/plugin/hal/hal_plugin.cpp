@@ -14,19 +14,27 @@
  * under the License.
  */
 
+#define XDP_SOURCE
+
 #include <cstring>
 
-#include "hal_plugin.h"
+#include "xdp/profile/plugin/hal/hal_plugin.h"
 #include "xdp/profile/writer/hal/hal_host_trace_writer.h"
 #include "xdp/profile/writer/hal/hal_device_trace_writer.h"
 #include "xdp/profile/writer/hal/hal_summary_writer.h"
 
 #include "xdp/profile/plugin/vp_base/utility.h"
-#include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #include "xdp/profile/device/device_intf.h"
+#include "xdp/profile/device/device_trace_offload.h"
+#include "xdp/profile/device/hal_device/xdp_hal_device.h"
+#include "xdp/profile/device/tracedefs.h"
+
 #include "xdp/profile/database/database.h"
+#include "xdp/profile/database/events/creator/device_event_from_trace.h"
+#include "xdp/profile/database/events/creator/device_event_trace_logger.h"
 
 #include "core/common/xrt_profiling.h"
+#include "core/common/message.h"
 
 #define MAX_PATH_SZ 512
 
@@ -86,6 +94,20 @@ namespace xdp {
     }
     // If the database is dead, then we must have already forced a 
     //  write at the database destructor so we can just move on
+
+    // clear all the members
+    for(auto itr : devices) {
+      delete itr.second;
+    }
+    devices.clear();
+    for(auto itr : deviceTraceOffloaders) {
+      delete itr.second;
+    }
+    deviceTraceOffloaders.clear();
+    for(auto itr : deviceTraceLoggers) {
+      delete itr.second;
+    }
+    deviceTraceLoggers.clear();
   }
 
   uint64_t HALPlugin::getDeviceId(void* handle)
@@ -113,20 +135,12 @@ namespace xdp {
       delete info;
     }
 
+    resetDevice(deviceId);
+
     // Update DeviceIntf in HALPlugin
-    if(devices.find(deviceId) != devices.end()) {
-      delete devices[deviceId];
-      devices[deviceId] = nullptr;
-    }
     DeviceIntf* devInterface = new DeviceIntf();
     devInterface->setDevice(new HalDevice(handle));
     devices[deviceId] = devInterface;
-
-    if(deviceEventFromTrace.find(deviceId) != deviceEventFromTrace.end()) {
-      delete deviceEventFromTrace[deviceId];
-      deviceEventFromTrace[deviceId] = nullptr;
-    }
-    deviceEventFromTrace[deviceId] = new DeviceEventCreatorFromTrace(deviceId);
 
     devInterface->readDebugIPlayout();
     devInterface->startCounters();
@@ -139,11 +153,52 @@ namespace xdp {
 
     devInterface->startTrace(3); // check this
     devInterface->clockTraining();
+
+    bool init_done = true;
+
+    uint64_t traceBufSz = 0;
+    if(devInterface->hasTs2mm()) {
+      // Get Trace Buffer Size in bytes
+      traceBufSz = GetTS2MMBufSize();
+      uint64_t memorySz = (db->getStaticInfo().getMemory(deviceId, devInterface->getTS2MmMemIndex())->size) * 1024;
+      if (memorySz > 0 && traceBufSz > memorySz) {
+        traceBufSz = memorySz;
+        std::string msg = "Trace Buffer size is too big for Memory Resource. Using " + std::to_string(memorySz)
+                          + " Bytes instead.";
+        xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg);
+      }
+    }
+
+    DeviceTraceLogger*  deviceTraceLogger    = new TraceLoggerCreatingDeviceEvents(deviceId);
+    DeviceTraceOffload* deviceTraceOffloader = new DeviceTraceOffload(devInterface, deviceTraceLogger, 10, traceBufSz, false);
+    init_done = deviceTraceOffloader->read_trace_init();
+    if (init_done) {
+      deviceTraceLoggers[deviceId]    = deviceTraceLogger;
+      deviceTraceOffloaders[deviceId] = deviceTraceOffloader;
+    } else {
+      if (devInterface->hasTs2mm()) {
+        xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", TS2MM_WARN_MSG_ALLOC_FAIL);
+      }
+      delete deviceTraceLogger;
+      delete deviceTraceOffloader;
+    }
   }
 
-  void HALPlugin::setEncounteredDeviceHandle(void* handle)
+  void HALPlugin::resetDevice(uint64_t deviceId)
   {
-    encounteredHandles.emplace(handle) ;
+    // Reset DeviceIntf, DeviceTraceLogger, DeviceTraceOffloader
+    if(devices.find(deviceId) != devices.end()) {
+      delete devices[deviceId];
+      devices[deviceId] = nullptr;
+    }
+    if(deviceTraceOffloaders.find(deviceId) != deviceTraceOffloaders.end()) {
+      delete deviceTraceOffloaders[deviceId];
+      deviceTraceOffloaders[deviceId] = nullptr;
+    }
+    if(deviceTraceLoggers.find(deviceId) != deviceTraceLoggers.end()) {
+      delete deviceTraceLoggers[deviceId];
+      deviceTraceLoggers[deviceId] = nullptr;
+    }
   }
 
   void HALPlugin::writeAll(bool openNewFiles)
@@ -176,20 +231,11 @@ namespace xdp {
     (db->getStats()).updateCounters(deviceId, counters) ;
 
     // Next, read trace and update the dynamic database with appropriate events
-    xclTraceResultsVector trace ;
-    if (devInterface->hasFIFO())
-    {
-      devInterface->readTrace(trace) ;
+    DeviceTraceOffload* deviceTraceOffloader = deviceTraceOffloaders[deviceId];
+    if(!deviceTraceOffloader) {
+      return;
     }
-    else if (devInterface->hasTs2mm())
-    {
-      // TODO: Sync the data and parse it.
-      /*
-      void* hostBuffer = nullptr ; // Need to sync the data
-      devInterface->parseTraceData(hostBuffer, devInterface->getWordCountTs2mm(), trace) ;
-      */
-    }
-    deviceEventFromTrace[deviceId]->createDeviceEvents(trace);
+    deviceTraceOffloader->read_trace();
   }
 
   void HALPlugin::flushDeviceInfo(void* handle)
@@ -227,21 +273,14 @@ namespace xdp {
       xclCounterResults counters ;
       devInterface->readCounters(counters) ;
       (db->getStats()).updateCounters(counters) ;
-      
-      // Next, read trace and update the dynamic database with
-      //  appropriate events
-      xclTraceResultsVector trace ;
-      if (devInterface->hasFIFO())
-      {
-	      devInterface->readTrace(trace) ;
+
+      // Next, read trace and update the dynamic database with appropriate events
+      DeviceTraceOffload* deviceTraceOffloader = deviceTraceOffloaders[deviceId];
+      if(!deviceTraceOffloader) {
+        continue;
       }
-      else if (devInterface->hasTs2mm())
-      {
-	      void* hostBuffer = nullptr ; // Need to sync the data
-	      devInterface->parseTraceData(hostBuffer, devInterface->getWordCountTs2mm(), trace) ;
-      }
-      deviceEventFromTrace[deviceId]->createDeviceEvents(trace);
-      deviceEventFromTrace[deviceId]->end();
+      deviceTraceOffloader->read_trace();
+      deviceTraceOffloader->read_trace_end();
     }
   }
 
@@ -256,4 +295,5 @@ namespace xdp {
   }
 
 }
-//
+
+

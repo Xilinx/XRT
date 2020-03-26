@@ -20,6 +20,7 @@
 #include "xclperf.h"
 #include "xcl_perfmon_parameters.h"
 #include "tracedefs.h"
+#include "core/common/message.h"
 
 #include <iostream>
 #include <cstdio>
@@ -28,6 +29,7 @@
 #include <vector>
 #include <string>
 #include <chrono>
+#include <regex>
 
 #ifndef _WINDOWS
 // TODO: Windows build support
@@ -47,6 +49,64 @@
 #endif
 
 namespace xdp {
+
+// Helper function
+
+// Same as defined in vpl tcl
+uint32_t GetDeviceTraceBufferSize(uint32_t property)
+{
+  switch(property) {
+    case 0 : return 8192;
+    case 1 : return 1024;
+    case 2 : return 2048;
+    case 3 : return 4096;
+    case 4 : return 16384;
+    case 5 : return 32768;
+    case 6 : return 65536;
+    case 7 : return 131072;
+    default : break;
+  }
+  return 8192;
+}
+
+
+uint64_t GetTS2MMBufSize()
+{
+  std::string size_str = xrt_core::config::get_trace_buffer_size();
+  std::smatch pieces_match;
+  // Default is 1M
+  uint64_t bytes = 1048576;
+  // Regex can parse values like : "1024M" "1G" "8192k"
+  const std::regex size_regex("\\s*([0-9]+)\\s*(K|k|M|m|G|g|)\\s*");
+  if (std::regex_match(size_str, pieces_match, size_regex)) {
+    try {
+      if (pieces_match[2] == "K" || pieces_match[2] == "k") {
+        bytes = std::stoull(pieces_match[1]) * 1024;
+      } else if (pieces_match[2] == "M" || pieces_match[2] == "m") {
+        bytes = std::stoull(pieces_match[1]) * 1024 * 1024;
+      } else if (pieces_match[2] == "G" || pieces_match[2] == "g") {
+        bytes = std::stoull(pieces_match[1]) * 1024 * 1024 * 1024;
+      } else {
+        bytes = std::stoull(pieces_match[1]);
+      }
+    } catch (const std::exception& ) {
+      // User specified number cannot be parsed
+      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", TS2MM_WARN_MSG_BUFSIZE_DEF);
+    }
+  } else {
+    xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", TS2MM_WARN_MSG_BUFSIZE_DEF);
+  }
+  if (bytes > TS2MM_MAX_BUF_SIZE) {
+    bytes = TS2MM_MAX_BUF_SIZE;
+    xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", TS2MM_WARN_MSG_BUFSIZE_BIG);
+  }
+  if (bytes < TS2MM_MIN_BUF_SIZE) {
+    bytes = TS2MM_MIN_BUF_SIZE;
+    xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", TS2MM_WARN_MSG_BUFSIZE_SMALL);
+  }
+  return bytes;
+}
+
 
 DeviceIntf::~DeviceIntf()
 {
