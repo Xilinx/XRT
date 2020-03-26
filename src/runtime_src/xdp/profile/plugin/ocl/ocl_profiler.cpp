@@ -343,6 +343,8 @@ namespace xdp {
 
   void OCLProfiler::endTrace()
   {
+    auto& g_map = Plugin->getDeviceTraceBufferFullMap();
+    
     for (auto& trace_offloader : DeviceTraceOffloadList) {
       if (trace_offloader->trace_buffer_full()) {
         if (trace_offloader->has_fifo()) {
@@ -350,8 +352,10 @@ namespace xdp {
         } else {
           Plugin->sendMessage(TS2MM_WARN_MSG_BUF_FULL);
         }
-        auto& g_map = Plugin->getDeviceTraceBufferFullMap();
         g_map[trace_offloader->get_device_name()] = 1;
+      }
+      else {
+        g_map[trace_offloader->get_device_name()] = 0;
       }
       trace_offloader.reset();
     }
