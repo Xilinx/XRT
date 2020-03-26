@@ -1,7 +1,4 @@
 # -----------------------------------------------------------------------------
-if (NOT WIN32 AND (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS|Amazon)") AND (${LINUX_VERSION} VERSION_GREATER 8.0))
-  message("******************* XCLBINTUTIL Fix me")
-else()
 
 set(Boost_USE_STATIC_LIBS ON)               # Only find static libraries
 set(Boost_USE_MULTITHREADED ON)             # Multi-threaded libraries
@@ -266,4 +263,3 @@ else()
   message (STATUS "GTest was not found, skipping generation of test executables")
 endif()
 # -----------------------------------------------------------------------------
-endif()
