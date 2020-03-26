@@ -126,6 +126,8 @@ namespace xdp {
     XDP_EXPORT
     double getTotalKernelExecutionTime(const std::string& deviceName) const;
     XDP_EXPORT
+    double getTotalApplicationKernelTimeMsec() const;
+    XDP_EXPORT
     uint32_t getComputeUnitCalls(const std::string& deviceName, const std::string& cuName) const;
 
   public:
