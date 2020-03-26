@@ -3,6 +3,7 @@
 FLAVOR=`grep '^ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
 VERSION=`grep '^VERSION_ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
 ARCH=`uname -m`
+SUDO=${SUDO:-sudo}
 
 usage()
 {
@@ -37,6 +38,9 @@ while [ $# -gt 0 ]; do
             ;;
     esac
 done
+
+#UB_LIST=()
+#RH_LIST=()
 
 rh_package_list()
 {
@@ -230,29 +234,29 @@ prep_ubuntu()
 prep_centos7()
 {
     echo "Enabling CentOS SCL repository..."
-    yum --enablerepo=extras install -y centos-release-scl
+    ${SUDO} yum --enablerepo=extras install -y centos-release-scl
 }
 
 prep_rhel7()
 {
     echo "Enabling RHEL SCL repository..."
-    yum-config-manager --enable rhel-server-rhscl-7-rpms
+    ${SUDO} yum-config-manager --enable rhel-server-rhscl-7-rpms
 }
 
 prep_centos8()
 {
     echo "Enabling PowerTools repo for CentOS8 ..."
-    yum install -y dnf-plugins-core
-    yum config-manager --set-enabled PowerTools
-    yum config-manager --set-enabled AppStream
+    ${SUDO} yum install -y dnf-plugins-core
+    ${SUDO} yum config-manager --set-enabled PowerTools
+    ${SUDO} yum config-manager --set-enabled AppStream
 }
 
 prep_centos()
 {
     echo "Enabling EPEL repository..."
-    yum install -y epel-release
+    ${SUDO} yum install -y epel-release
     echo "Installing cmake3 from EPEL repository..."
-    yum install -y cmake3
+    ${SUDO} yum install -y cmake3
 
     if [ $VERSION == 8 ]; then
         prep_centos8
@@ -266,8 +270,8 @@ prep_rhel()
     echo "Enabling EPEL repository..."
     rpm -q --quiet epel-release
     if [ $? != 0 ]; then
-	yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-	yum check-update
+	${SUDO} yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+	${SUDO} yum check-update
     fi
 
     if [ $VERSION == 8 ]; then
@@ -284,7 +288,7 @@ install()
         prep_ubuntu
 
         echo "Installing packages..."
-        apt install -y "${UB_LIST[@]}"
+        ${SUDO} apt install -y "${UB_LIST[@]}"
     fi
 
     # Enable EPEL on CentOS/RHEL
@@ -296,11 +300,11 @@ install()
 
     if [ $FLAVOR == "rhel" ] || [ $FLAVOR == "centos" ] || [ $FLAVOR == "amzn" ]; then
         echo "Installing RHEL/CentOS packages..."
-        yum install -y "${RH_LIST[@]}"
+        ${SUDO} yum install -y "${RH_LIST[@]}"
 	if [ $ARCH == "ppc64le" ]; then
-            yum install -y devtoolset-7
+            ${SUDO} yum install -y devtoolset-7
 	elif [ $VERSION -lt "8" ]; then
-            yum install -y devtoolset-6
+            ${SUDO} yum install -y devtoolset-6
 	fi
     fi
 }
