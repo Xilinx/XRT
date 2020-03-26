@@ -17,7 +17,7 @@
 #define XDP_SOURCE
 
 #include "xdp/profile/core/rt_profile.h"
-#include "xdp/profile/device/profile_mngr_trace_logger.h"
+#include "xdp/profile/device/ocl_device_logger/profile_mngr_trace_logger.h"
  
 namespace xdp {
 
