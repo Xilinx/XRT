@@ -233,8 +233,10 @@ prep_ubuntu()
 
 prep_centos7()
 {
-    echo "Enabling CentOS SCL repository..."
-    ${SUDO} yum --enablerepo=extras install -y centos-release-scl
+    if [ $docker == 0 ]; then 
+        echo "Enabling CentOS SCL repository..."
+        ${SUDO} yum --enablerepo=extras install -y centos-release-scl
+    fi
 }
 
 prep_rhel7()
