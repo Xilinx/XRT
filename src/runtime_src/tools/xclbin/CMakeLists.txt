@@ -1,5 +1,5 @@
 # -----------------------------------------------------------------------------
-if ((${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS|Amazon)") AND (${LINUX_VERSION} VERSION_GREATER 8.0))
+if (NOT WIN32 AND (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS|Amazon)") AND (${LINUX_VERSION} VERSION_GREATER 8.0))
   message("******************* XCLBINTUTIL Fix me")
 else()
 
