@@ -142,12 +142,6 @@ bool DeviceTraceOffload::read_trace_init()
   if (has_ts2mm()) {
     return init_s2mm();
   } else if (has_fifo()) {
-    // Check properties to determine if valid for trace offload
-    // NOTE: this is used for HW emulation where the trace hub is potentially
-    // inserted for live messaging only (i.e., --profile_kernel was not used).
-    // In that case, the hub is included in debug_ip_layout with property = 1.
-    auto property = dev_intf->getMonitorProperties(XCL_PERF_MON_TRACE_HUB, 0);
-    if ((property & 0x1) == 1) return false;
     return true;
   }
   return false;
