@@ -374,17 +374,22 @@ namespace xdp {
   {
     auto& g_map = Plugin->getDeviceTraceBufferFullMap();
     for (auto& trace_offloader : DeviceTraceOffloadList) {
+      TraceLoggerUsingProfileMngr* deviceTraceLogger = 
+          dynamic_cast<TraceLoggerUsingProfileMngr*>(trace_offloader->getDeviceTraceLogger());
+
       if (trace_offloader->trace_buffer_full()) {
         if (trace_offloader->has_fifo()) {
           Plugin->sendMessage(FIFO_WARN_MSG);
         } else {
           Plugin->sendMessage(TS2MM_WARN_MSG_BUF_FULL);
         }
-        TraceLoggerUsingProfileMngr* deviceTraceLogger = 
-					   dynamic_cast<TraceLoggerUsingProfileMngr*>(trace_offloader->getDeviceTraceLogger());
-        if(deviceTraceLogger) {
+        
+        if (deviceTraceLogger) {
           g_map[deviceTraceLogger->getDeviceName()] = 1;
         }
+      }
+      else if (deviceTraceLogger) {
+        g_map[deviceTraceLogger->getDeviceName()] = 0;
       }
       trace_offloader.reset();
     }

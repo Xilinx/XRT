@@ -298,10 +298,16 @@ namespace xdp {
     double timeStamp = (timeStampMsec > 0.0) ? timeStampMsec :
       mPluginHandle->getTraceTime();
 
-    if (mGetFirstCUTimestamp && (objStage == RTUtil::START)) {
-      auto tp = mTraceParserHandle;
+    // Log first start and last end events
+    auto tp = mTraceParserHandle;
+    if (mGetFirstCUTimestamp && (objStage == RTUtil::START) && (tp != nullptr)) {
       tp->setStartTimeMsec(timeStamp);
+      tp->setFirstKernelStartTimeMsec(timeStamp);
       mGetFirstCUTimestamp = false;
+    }
+    if (objStage == RTUtil::END && (tp != nullptr)) {
+      // Since we don't know which one will be the last end, always log it
+      tp->setLastKernelEndTimeMsec(timeStamp);
     }
 
     std::lock_guard<std::mutex> lock(mLogMutex);

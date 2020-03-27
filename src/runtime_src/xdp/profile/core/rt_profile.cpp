@@ -313,6 +313,13 @@ namespace xdp {
     return mProfileCounters->getTotalKernelExecutionTime(deviceName);
   }
 
+  double RTProfile::getTotalApplicationKernelTimeMsec() const {
+    if (mTraceParser == NULL)
+      return 0;
+
+    return mTraceParser->getTotalKernelTimeMsec();
+  }
+
   uint32_t RTProfile::getComputeUnitCalls(const std::string& deviceName, const std::string& cuName) const {
     return mProfileCounters->getComputeUnitCalls(deviceName, cuName);
   }
