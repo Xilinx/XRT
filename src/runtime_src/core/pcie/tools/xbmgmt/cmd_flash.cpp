@@ -161,6 +161,15 @@ static int updateSC(unsigned index, const char *file)
     std::string errmsg;
     auto mgmt_dev = pcidev::get_dev(index, false);
 
+    /*
+     * Some boards have 2 fpgas, shutdown on wrong fpga will cause system panic.
+     * check SC status first, if SC is not ready for flash skip.
+     */
+    if (!flasher.isSCUpgradable()) {
+        std::cout << "SC is not in ready for upgrade.\n";
+	return -EINVAL;
+    }
+
     mgmt_dev->sysfs_get<bool>("", "mfg", errmsg, is_mfg, false);
     if (is_mfg) {
         return writeSCImage(flasher, file);

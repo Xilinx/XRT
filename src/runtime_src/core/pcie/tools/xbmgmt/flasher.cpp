@@ -149,6 +149,13 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
     return retVal;
 }
 
+bool Flasher::isSCUpgradable()
+{
+    XMC_Flasher flasher(mDev);
+
+    return flasher.isSCUpgradable();
+}
+
 int Flasher::upgradeBMCFirmware(firmwareImage* bmc)
 {
     XMC_Flasher flasher(mDev);

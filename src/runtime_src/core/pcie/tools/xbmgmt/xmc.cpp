@@ -261,11 +261,19 @@ int XMC_Flasher::erase()
     return waitTillIdle();
 }
 
+/*
+ * We have to keep existing checks and add data-driven checkes.
+ */
+bool XMC_Flasher::isSCReady()
+{
+    return hasSC() && isXMCReady() && isBMCReady();
+}
+
 int XMC_Flasher::xclGetBoardInfo(std::map<char, std::vector<char>>& info)
 {
     int ret = 0;
 
-    if (!hasSC() || !isXMCReady() || !isBMCReady())
+    if (!isSCReady())
         return -EINVAL;
 
     mPkt = {0};

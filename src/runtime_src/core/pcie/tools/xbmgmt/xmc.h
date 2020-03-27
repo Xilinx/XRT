@@ -111,6 +111,7 @@ public:
     const std::string probingErrMsg() { return mProbingErrMsg.str(); }
     bool hasXMC();
     bool fixedSC();
+    bool isSCUpgradable() { return isSCReady() && !fixedSC(); }
 
 private:
     std::shared_ptr<pcidev::pci_device> mDev;
@@ -128,6 +129,7 @@ private:
     bool isXMCReady();
     bool isBMCReady();
     bool hasSC();
+    bool isSCReady();
 
     // Upgrade SC firmware via driver.
     std::FILE *mXmcDev = nullptr;
