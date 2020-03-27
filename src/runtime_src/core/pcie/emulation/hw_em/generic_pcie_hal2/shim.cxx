@@ -1011,9 +1011,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     logMessage(dMsg,1);
     void *handle = this;
 
-    unsigned int messageSize = xclemulation::config::getInstance()->getPacketSize();
-    unsigned int c_size = messageSize;
-    unsigned int processed_bytes = 0;
+    uint64_t messageSize = xclemulation::config::getInstance()->getPacketSize();
+    uint64_t c_size = messageSize;
+    uint64_t processed_bytes = 0;
     while(processed_bytes < size){
       if((size - processed_bytes) < messageSize){
         c_size = size - processed_bytes;
@@ -1059,9 +1059,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     logMessage(dMsg,1);
     void *handle = this;
 
-    unsigned int messageSize = xclemulation::config::getInstance()->getPacketSize();
-    unsigned int c_size = messageSize;
-    unsigned int processed_bytes = 0;
+    uint64_t messageSize = xclemulation::config::getInstance()->getPacketSize();
+    uint64_t c_size = messageSize;
+    uint64_t processed_bytes = 0;
 
     while(processed_bytes < size){
       if((size - processed_bytes) < messageSize){
