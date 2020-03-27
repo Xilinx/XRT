@@ -1681,7 +1681,8 @@ static int qdma_probe(struct platform_device *pdev)
 	struct qdma_dev_conf *conf;
 	xdev_handle_t	xdev;
 	struct resource *res = NULL;
-	int	ret = 0, dma_bar;
+	int	i, ret = 0, dma_bar = -1, stm_bar = -1;
+	resource_size_t stm_base = -1;
 
 	xdev = xocl_get_xdev(pdev);
 
@@ -1695,15 +1696,31 @@ static int qdma_probe(struct platform_device *pdev)
 	qdma->pdev = pdev;
 	platform_set_drvdata(pdev, qdma);
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res) {
-		xocl_err(&pdev->dev, "Empty resource");
-		return -EINVAL;
+	for (i = 0, res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+		res;	
+		res = platform_get_resource(pdev, IORESOURCE_MEM, ++i)) {
+		if (!strncmp(res->name, NODE_QDMA, strlen(NODE_QDMA))) {
+			ret = xocl_ioaddr_to_baroff(xdev, res->start, &dma_bar, NULL);
+			if (ret) {
+				xocl_err(&pdev->dev, "Invalid resource %pR", res);
+				return -EINVAL;
+			}
+		} else if (!strncmp(res->name, NODE_STM, strlen(NODE_STM))) {
+			ret = xocl_ioaddr_to_baroff(xdev, res->start, &stm_bar, NULL);
+			if (ret) {
+				xocl_err(&pdev->dev, "Invalid resource %pR", res);
+				return -EINVAL;
+			}
+			stm_base = res->start -
+				pci_resource_start(XDEV(xdev)->pdev, stm_bar);
+		} else {
+			xocl_err(&pdev->dev, "Unknown resource: %s", res->name);
+			return -EINVAL;
+		}
 	}
 
-	ret = xocl_ioaddr_to_baroff(xdev, res->start, &dma_bar, NULL);
-	if (ret) {
-		xocl_err(&pdev->dev, "Invalid resource %pR", res);
+	if (dma_bar == -1 || stm_base == -1 || stm_bar == -1) {
+		xocl_err(&pdev->dev, "missing resource");
 		return -EINVAL;
 	}
 
@@ -1714,8 +1731,8 @@ static int qdma_probe(struct platform_device *pdev)
 	conf->master_pf = XOCL_DSA_IS_SMARTN(xdev) ? 0 : 1;
 	conf->qsets_max = QDMA_QSETS_MAX;
 	conf->bar_num_config = dma_bar;
-	conf->bar_num_stm = XDEV(xdev)->bar_idx;
-	conf->stm_reg_base = 0x02000000;
+	conf->bar_num_stm = stm_bar;
+	conf->stm_reg_base = stm_base;
 
 	conf->fp_user_isr_handler = qdma_isr;
 	conf->uld = (unsigned long)qdma;

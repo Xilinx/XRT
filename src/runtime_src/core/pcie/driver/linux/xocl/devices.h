@@ -1278,6 +1278,13 @@ struct xocl_subdev_map {
 		{					\
 			.start = 0x0,			\
 			.end = 0x0,			\
+	 		.name = NODE_QDMA,		\
+			.flags = IORESOURCE_MEM,	\
+		},					\
+		{					\
+			.start = 0x2000000,			\
+			.end = 0x2001000,			\
+	 		.name = NODE_STM,		\
 			.flags = IORESOURCE_MEM,	\
 		},					\
 	 })
@@ -1288,7 +1295,7 @@ struct xocl_subdev_map {
 		XOCL_QDMA,				\
 		XOCL_RES_QDMA,				\
 		ARRAY_SIZE(XOCL_RES_QDMA),		\
-		.bar_idx = (char []){ 2 },		\
+		.bar_idx = (char []){ 2, 0 },		\
 		.override_idx = -1,			\
 	}
 

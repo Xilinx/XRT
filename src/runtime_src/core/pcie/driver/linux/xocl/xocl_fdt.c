@@ -31,6 +31,36 @@ struct ip_node {
 	bool match;
 };
 
+static void *msix_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
+{
+        struct xocl_dev_core *core = XDEV(xdev_hdl);
+        void *blob;
+        int node;
+        struct xocl_msix_privdata *msix_priv;
+
+        blob = core->fdt_blob;
+        if (!blob)
+                return NULL;
+
+        node = fdt_path_offset(blob, LEVEL1_DEV_PATH "/" NODE_MSIX);
+        if (node < 0) {
+                xocl_xdev_err(xdev_hdl, "did not find msix node in %s", LEVEL1_DEV_PATH);
+                return NULL;
+        }
+
+        if (fdt_node_check_compatible(blob, node, "qdma_msix"))
+                return NULL;
+
+        msix_priv = vzalloc(sizeof(*msix_priv));
+        if (!msix_priv)
+                return NULL;
+        msix_priv->start = 0;
+        msix_priv->total = 8;
+
+        *len = sizeof(*msix_priv);
+        return msix_priv;
+}
+
 static void *ert_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 {
 	char *priv_data;
@@ -195,13 +225,13 @@ static struct xocl_subdev_map		subdev_map[] = {
 		{ NODE_MSIX, NULL },
 		1,
 		0,
-		NULL,
+		msix_build_priv,
 		NULL,
 	},
 	{
 		XOCL_SUBDEV_DMA,
 		XOCL_QDMA,
-		{ "qdma", NULL },
+		{ NODE_QDMA, NODE_STM, NULL },
 		1,
 		0,
 		NULL,
@@ -1074,7 +1104,8 @@ int xocl_fdt_build_priv_data(xdev_handle_t xdev_hdl, struct xocl_subdev *subdev,
 
 	for (j = 0; j < ARRAY_SIZE(subdev_map); j++) {
 		map_p = &subdev_map[j];
-		if (map_p->id == subdev->info.id)
+		if (map_p->id == subdev->info.id &&
+			strcmp(map_p->dev_name, subdev->info.name) == 0)
 			break;
 	}
 

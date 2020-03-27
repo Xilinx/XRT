@@ -66,6 +66,8 @@
 #define NODE_ERT_SCHED "ep_ert_sched_00"
 #define NODE_XDMA "ep_xdma_00"
 #define NODE_MSIX "ep_msix_00"
+#define NODE_QDMA "ep_qdma_00"
+#define NODE_STM "ep_stream_traffic_manager_00"
 #define NODE_CLK_SHUTDOWN "ep_aclk_shutdown_00"
 #define NODE_ERT_BASE "ep_ert_base_address_00"
 #define NODE_ERT_RESET "ep_ert_reset_00"
