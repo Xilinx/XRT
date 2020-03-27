@@ -23,22 +23,18 @@
 #include <cstring>
 #include <sys/mman.h>
 
-// driver includes
-#include "ert.h"
+#include "experimental/xrt_kernel.h"
+
 
 // host_src includes
 #include "xclhal2.h"
 #include "xclbin.h"
 
-// lowlevel common include
-
-#include "utils.h"
-
-#if defined(DSA64)
-#include "xloopback_hw_64.h"
-#else
-#include "xloopback_hw.h"
-#endif
+//#if defined(DSA64)
+//#include "xloopback_hw_64.h"
+//#else
+//#include "xloopback_hw.h"
+//#endif
 
 #include <fstream>
 
@@ -152,99 +148,90 @@ int main(int argc, char** argv)
     try
     {
         xclDeviceHandle handle;
-        uint64_t cu_base_addr = 0;
         int first_mem = -1;
-        uuid_t xclbinId;
 
-        if (initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr, first_mem, xclbinId))
-            return 1;
+        // load bit stream
+        std::ifstream stream(bitstreamFile);
+        stream.seekg(0,stream.end);
+        size_t size = stream.tellg();
+        stream.seekg(0,stream.beg);
 
-        if (first_mem < 0)
-            return 1;
+        std::vector<char> header(size);
+        stream.read(header.data(),size);
 
-        if (xclOpenContext(handle, xclbinId, cu_index, true))
-            throw std::runtime_error("Cannot create context");
 
-        unsigned boHandle2 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, first_mem);
-        char* bo2 = (char*)xclMapBO(handle, boHandle2, true);
-        memset(bo2, 0, DATA_SIZE);
-        std::string testVector =  "hello\nthis is Xilinx OpenCL memory read write test\n:-)\n";
-        std::strcpy(bo2, testVector.c_str());
+        handle = xclOpen(index, nullptr, XCL_INFO);
 
-        if(xclSyncBO(handle, boHandle2, XCL_BO_SYNC_BO_TO_DEVICE , DATA_SIZE,0))
-            return 1;
 
-        unsigned boHandle1 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, first_mem);
+        if (xclLockDevice(handle))
+           throw std::runtime_error("Cannot lock device");
+        else 
+           std::cout<<"\n Locked the device sucessfully";
 
-        xclBOProperties p;
-        uint64_t bo2devAddr = !xclGetBOProperties(handle, boHandle2, &p) ? p.paddr : -1;
-        uint64_t bo1devAddr = !xclGetBOProperties(handle, boHandle1, &p) ? p.paddr : -1;
+        auto top = reinterpret_cast<const axlf*>(header.data());
 
-        if( (bo2devAddr == (uint64_t)(-1)) || (bo1devAddr == (uint64_t)(-1)))
-            return 1;
+        if (xclLoadXclBin(handle,top))
+           throw std::runtime_error("Bitstream download failed");
+        else 
+           std::cout<<"\n Bitstream downloaded sucessfully";
 
-        //Allocate the exec_bo
-        unsigned execHandle = xclAllocBO(handle, DATA_SIZE, xclBOKind(0), (1<<31));
-        void* execData = xclMapBO(handle, execHandle, true);
 
-        //construct the exec buffer cmd to start the kernel.
-        {
-            auto ecmd = reinterpret_cast<ert_start_kernel_cmd*>(execData);
-            auto rsz = (XLOOPBACK_CONTROL_ADDR_LENGTH_R_DATA/4+1) + 1; // regmap array size
-            std::memset(ecmd,0,(sizeof *ecmd) + rsz*4);
-            ecmd->state = ERT_CMD_STATE_NEW;
-            ecmd->opcode = ERT_START_CU;
-            ecmd->count = 1 + rsz;
-            ecmd->cu_mask = 0x1;
+       // Detecting the first used memory
+       auto topo = xclbin::get_axlf_section(top, MEM_TOPOLOGY);
+       auto topology = reinterpret_cast<mem_topology*>(header.data() + topo->m_sectionOffset);
 
-            ecmd->data[XLOOPBACK_CONTROL_ADDR_AP_CTRL] = 0x0; // ap_start
-#if defined(DSA64)
-            ecmd->data[XLOOPBACK_CONTROL_ADDR_S1_DATA/4] = bo1devAddr & 0xFFFFFFFF; // s1
-            ecmd->data[XLOOPBACK_CONTROL_ADDR_S1_DATA/4 + 1] = (bo1devAddr >> 32) & 0xFFFFFFFF; // s1
-            ecmd->data[XLOOPBACK_CONTROL_ADDR_S2_DATA/4] = bo2devAddr & 0xFFFFFFFF; // s2
-            ecmd->data[XLOOPBACK_CONTROL_ADDR_S2_DATA/4 + 1] = (bo2devAddr >> 32) & 0xFFFFFFFF; // s2
-            ecmd->data[XLOOPBACK_CONTROL_ADDR_LENGTH_R_DATA/4] = DATA_SIZE; // length
-#else
-            ecmd->data[XLOOPBACK_CONTROL_ADDR_S1_DATA/4] = bo1devAddr; // s1
-            ecmd->data[XLOOPBACK_CONTROL_ADDR_S2_DATA/4] = bo2devAddr; // s2
-            ecmd->data[XLOOPBACK_CONTROL_ADDR_LENGTH_R_DATA/4] = DATA_SIZE; // length
-#endif
-        }
+       for (int i=0; i<topology->m_count; ++i) {
+          if (topology->m_mem_data[i].m_used) {
+             first_mem = i;
+             break;
+          }
+       }
 
-        std::cout << "Starting kernel..." << std::endl;
+       if (first_mem < 0)
+           return 1;
 
-        //Send the "start kernel" command.
-        if(xclExecBuf(handle, execHandle)) {
-            std::cout << "Unable to issue xclExecBuf : start_kernel" << std::endl;
-            std::cout << "FAILED TEST\n";
-            std::cout << "Write failed\n";
-            return 1;
-        }
 
-        //Wait on the command finish
-        while (xclExecWait(handle,1000) == 0) {
-            std::cout << "reentering wait...\n";
-        };
+       std::string kname = "loopback";
+       auto kernel = xrtPLKernelOpen(handle, header.data(), kname.c_str());
 
-        //Get the output;
-        if(xclSyncBO(handle, boHandle1, XCL_BO_SYNC_BO_FROM_DEVICE , DATA_SIZE, 0))
-            return 1;
-        char* bo1 = (char*)xclMapBO(handle, boHandle1, false);
+       auto boHandle2 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, first_mem);
+       char* bo2 = (char*)xclMapBO(handle, boHandle2, true);
+       memset(bo2, 0, DATA_SIZE);
+       std::string testVector =  "hello\nthis is Xilinx OpenCL memory read write test\n:-)\n";
+       std::strcpy(bo2, testVector.c_str());
 
-        if (std::memcmp(bo2, bo1, DATA_SIZE)) {
+       if(xclSyncBO(handle, boHandle2, XCL_BO_SYNC_BO_TO_DEVICE , DATA_SIZE,0))
+           return 1;
+
+       auto boHandle1 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, first_mem);
+
+
+       std::cout << "\nStarting kernel..." << std::endl;
+
+       xrtRunHandle r = xrtKernelRun(kernel, boHandle1, boHandle2,  DATA_SIZE); // kernel, output, input, parameter
+       xrtRunWait(r);
+       xrtRunClose(r);
+
+       //Get the output;
+       if(xclSyncBO(handle, boHandle1, XCL_BO_SYNC_BO_FROM_DEVICE , DATA_SIZE, 0))
+           return 1;
+       char* bo1 = (char*)xclMapBO(handle, boHandle1, false);
+
+       if (std::memcmp(bo2, bo1, DATA_SIZE)) {
             std::cout << "FAILED TEST\n";
             std::cout << "Value read back does not match value written\n";
             return 1;
-        }
+       }
 
         //Clean up stuff
-        munmap(bo1, DATA_SIZE);
-        munmap(bo2, DATA_SIZE);
-        munmap(execData, DATA_SIZE);
+        xclUnmapBO(handle, boHandle1, bo1);
+        xclUnmapBO(handle, boHandle2, bo2);
         xclFreeBO(handle,boHandle1);
         xclFreeBO(handle,boHandle2);
-        xclFreeBO(handle,execHandle);
-        xclCloseContext(handle, xclbinId, cu_index);
+        //xclCloseContext(handle, xclbinId, cu_index);
+
+        xrtKernelClose(kernel);
+        xclClose(handle);
     }
     catch (std::exception const& e)
     {
