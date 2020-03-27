@@ -1454,14 +1454,14 @@ static ssize_t scaling_reset_store(struct device *dev,
 	struct device_attribute *da, const char *buf, size_t count)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
-	u32 val = 0, val2, threshold;
+	u32 buf_val = 0, target, threshold;
 	bool cs_en;
 
 	cs_en = scaling_condition_check(xmc, dev);
 	if (!cs_en)
 		return count;
 
-	if (kstrtou32(buf, 10, &val) == -EINVAL)
+	if (kstrtou32(buf, 10, &buf_val) == -EINVAL)
 		return -EINVAL;
 
 	mutex_lock(&xmc->xmc_lock);
@@ -1469,23 +1469,23 @@ static ssize_t scaling_reset_store(struct device *dev,
 	threshold = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_THRESHOLD_REG);
 	threshold = (threshold >> XMC_CLOCK_SCALING_POWER_THRESHOLD_POS) &
 		XMC_CLOCK_SCALING_POWER_THRESHOLD_MASK;
-	val2 = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_POWER_REG);
-	val2 &= ~XMC_CLOCK_SCALING_POWER_TARGET_MASK;
-	val2 |= (threshold & XMC_CLOCK_SCALING_POWER_TARGET_MASK);
-	WRITE_RUNTIME_CS(xmc, val2, XMC_CLOCK_SCALING_POWER_REG);
+	target = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_POWER_REG);
+	target &= ~XMC_CLOCK_SCALING_POWER_TARGET_MASK;
+	target |= (threshold & XMC_CLOCK_SCALING_POWER_TARGET_MASK);
+	WRITE_RUNTIME_CS(xmc, target, XMC_CLOCK_SCALING_POWER_REG);
 
 	//Reset target temp settings to default values
 	threshold = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_THRESHOLD_REG);
 	threshold = (threshold >> XMC_CLOCK_SCALING_TEMP_THRESHOLD_POS) &
 		XMC_CLOCK_SCALING_TEMP_THRESHOLD_MASK;
-	val2 = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_TEMP_REG);
-	val2 &= ~XMC_CLOCK_SCALING_TEMP_TARGET_MASK;
-	val2 |= (threshold & XMC_CLOCK_SCALING_TEMP_TARGET_MASK);
-	WRITE_RUNTIME_CS(xmc, val2, XMC_CLOCK_SCALING_TEMP_REG);
+	target = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_TEMP_REG);
+	target &= ~XMC_CLOCK_SCALING_TEMP_TARGET_MASK;
+	target |= (threshold & XMC_CLOCK_SCALING_TEMP_TARGET_MASK);
+	WRITE_RUNTIME_CS(xmc, target, XMC_CLOCK_SCALING_TEMP_REG);
 
 	//Reset thresold override settings to default values
-	val2 = READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1);
-	if (val2 & XMC_HOST_NEW_FEATURE_REG1_FEATURE_PRESENT)
+	target = READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1);
+	if (target & XMC_HOST_NEW_FEATURE_REG1_FEATURE_PRESENT)
 		WRITE_REG32(xmc, 0x0, XMC_CLK_THROTTLING_PWR_MGMT_REG);
 
 	mutex_unlock(&xmc->xmc_lock);

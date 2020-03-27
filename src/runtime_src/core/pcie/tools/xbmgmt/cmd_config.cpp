@@ -28,7 +28,7 @@
 const char *subCmdConfigDesc = "Parse or update daemon/device configuration";
 const char *subCmdConfigUsage =
     "--daemon --host ip-or-hostname-for-peer\n"
-    "--device [--card bdf] [--security level] [--runtime_clk_scale en(dis)able] [--cs_threshold_power_override val]\n"
+    "--device [--card bdf] [--security level] [--runtime_clk_scale en(dis)able] [--cs_threshold_power_override val] [--cs_reset val]\n"
     "--show [--daemon | --device [--card bdf]\n"
     "--enable_retention [--ddr] [--card bdf]\n"
     "--disable_retention [--ddr] [--card bdf]";
@@ -43,6 +43,7 @@ enum configs {
     CONFIG_SECURITY = 0,
     CONFIG_CLK_SCALING,
     CONFIG_CS_THRESHOLD_POWER_OVERRIDE,
+    CONFIG_CS_RESET,
 };
 typedef configs configType;
 
@@ -293,6 +294,14 @@ static void updateDevConf(pcidev::pci_device *dev,
             std::cout << "See dmesg log for details" << std::endl;
         }
         break;
+    case CONFIG_CS_RESET:
+        dev->sysfs_put("xmc", "scaling_reset", errmsg, lvl);
+        if (!errmsg.empty()) {
+            std::cout << "Error: Failed to reset clk scaling feature for " <<
+                dev->sysfs_name << "\n";
+            std::cout << "See dmesg log for details" << std::endl;
+        }
+        break;
     }
 }
 
@@ -306,6 +315,7 @@ static int device(int argc, char *argv[])
         { "security", required_argument, nullptr, '1' },
         { "runtime_clk_scale", required_argument, nullptr, '2' },
         { "cs_threshold_power_override", required_argument, nullptr, '3' },
+        { "cs_reset", required_argument, nullptr, '4' },
         { nullptr, 0, nullptr, 0 },
     };
 
@@ -331,6 +341,10 @@ static int device(int argc, char *argv[])
         case '3':
             lvl = optarg;
             config_type = CONFIG_CS_THRESHOLD_POWER_OVERRIDE;
+            break;
+        case '4':
+            lvl = optarg;
+            config_type = CONFIG_CS_RESET;
             break;
         default:
             return -EINVAL;
