@@ -422,11 +422,9 @@ void load_xdp_plugin_library(HalPluginConfig* )
 
     const std::string cb_func_name = "hal_level_xdp_cb_func";
     cb = cb_func_type(reinterpret_cast<cb_load_func_type>(xrt_core::dlsym(handle, cb_func_name.c_str())));
-#ifndef _WIN32
-    if(xrt_core::dlerror() != NULL) { // check if dlsym was successful
-      cb = nullptr;
+    if(!cb) {
+      throw std::runtime_error("Failed to find callback function symbol in XDP HAL Profile library '" + libname.string() + "'\n" + xrt_core::dlerror());
     }
-#endif
     loaded = true;
 }
 
