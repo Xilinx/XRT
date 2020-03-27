@@ -130,6 +130,7 @@ public:
 #ifdef XRT_ENABLE_AIE
   zynqaie::Aie *getAieArray();
   void setAieArray(zynqaie::Aie *aie);
+  int getBOInfo(unsigned bo, drm_zocl_info_bo &info);
 #endif
 
 private:

@@ -35,6 +35,7 @@ class graph_type
 public:
     using tile_type = xrt_core::edge::aie::tile_type;
     using rtp_type = xrt_core::edge::aie::rtp_type;
+    using gmio_type = xrt_core::edge::aie::gmio_type;
 
     graph_type(std::shared_ptr<xrt_core::device> device, uuid_t xclbin_uuid, const std::string& name);
     ~graph_type();
@@ -66,6 +67,9 @@ public:
     void
     update_rtp(const char* path, const char* buffer, size_t size);
 
+    void
+    sync_bo(unsigned bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset);
+
 private:
     // Core device to which the graph belongs.  The core device
     // has been loaded with an xclbin from which meta data can
@@ -93,11 +97,16 @@ private:
 
     /**
      * This is the collections of tiles that this graph uses.
-     * TODO A tile is represented by a pair of number <col, row>?
+     * A tile is represented by a pair of number <col, row>
      * It represents the tile position in the AIE array.
      */
     std::vector<tile_type> tiles;
+
+    /* This is the collections of rtps that are used. */
     std::vector<rtp_type> rtps;
+
+    /* Wait for all the BD trasters for a given channel */
+    void wait_sync_bo(ShimDMA *dmap, uint32_t chan, uint32_t timeout);
 };
 
 }
