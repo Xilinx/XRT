@@ -90,10 +90,40 @@ namespace xdp {
     pDead = true;
   }
 
+  oclDeviceData* OCLProfiler::initializeDeviceInterface(xocl::device* device)
+  {
+    DeviceIntf* dInt = nullptr;
+    auto xdevice = device->get_xrt_device();
+
+    auto itr = DeviceData.find(device);
+    if (itr!=DeviceData.end())
+      return itr->second;
+
+    itr = DeviceData.emplace(device,(new oclDeviceData())).first;
+    auto info = itr->second;
+    if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE) ||
+        (Plugin->getFlowMode() == xdp::RTUtil::HW_EM && Plugin->getSystemDPAEmulation())) {
+      dInt = &(info->mDeviceIntf);
+      dInt->setDevice(new xdp::XrtDevice(xdevice));
+      dInt->readDebugIPlayout();
+      dInt->setMaxBwRead();
+      dInt->setMaxBwWrite();
+    }
+    return info;
+  }
+
   // Start device profiling
   void OCLProfiler::startDeviceProfiling(size_t numComputeUnits)
   {
     auto platform = getclPlatformID();
+
+    // xdp always needs some device data
+    // regardless of whether device profiling
+    // was turned
+    for (auto device: platform->get_device_range()) {
+      if (device->is_active())
+        initializeDeviceInterface(device);
+    }
 
     // Start counters
     if (deviceCountersProfilingOn()) {
@@ -185,18 +215,9 @@ namespace xdp {
       if(!device->is_active()) {
         continue;
       }
-      auto itr = DeviceData.find(device);
-      if (itr==DeviceData.end()) {
-        itr = DeviceData.emplace(device,(new xdp::xoclp::platform::device::data())).first;
-      }
-      DeviceIntf* dInt = nullptr;
+      auto info = initializeDeviceInterface(device);
       auto xdevice = device->get_xrt_device();
-      if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE) || (Plugin->getFlowMode() == xdp::RTUtil::HW_EM && Plugin->getSystemDPAEmulation())) {
-        dInt = &(itr->second->mDeviceIntf);
-        dInt->setDevice(new xdp::XrtDevice(xdevice));
-        dInt->readDebugIPlayout();
-      }       
-      xdp::xoclp::platform::device::data* info = itr->second;
+      DeviceIntf* dInt = &info->mDeviceIntf;
 
       // Set clock etc.
       double deviceClockMHz = xdevice->getDeviceClock().get();
@@ -267,19 +288,9 @@ namespace xdp {
       if(!device->is_active()) {
         continue;
       }
-      auto itr = DeviceData.find(device);
-      if (itr==DeviceData.end()) {
-        itr = DeviceData.emplace(device,(new xdp::xoclp::platform::device::data())).first;
-      }
-
+      auto info = initializeDeviceInterface(device);
       auto xdevice = device->get_xrt_device();
-      DeviceIntf* dInt = nullptr;
-      if((Plugin->getFlowMode() == xdp::RTUtil::DEVICE) || (Plugin->getFlowMode() == xdp::RTUtil::HW_EM && Plugin->getSystemDPAEmulation())) {
-        dInt = &(itr->second->mDeviceIntf);
-        dInt->setDevice(new xdp::XrtDevice(xdevice));
-        dInt->readDebugIPlayout();
-      }
-      xdp::xoclp::platform::device::data* info = itr->second;
+      DeviceIntf* dInt = &info->mDeviceIntf;
 
       // Since clock training is performed in mStartTrace, let's record this time
       // XCL_PERF_MON_MEMORY // any type
@@ -527,7 +538,7 @@ namespace xdp {
         for (auto device : Platform->get_device_range()) {
           auto itr = DeviceData.find(device);
           if (itr==DeviceData.end()) {
-            itr = DeviceData.emplace(device,(new xdp::xoclp::platform::device::data())).first;
+            itr = DeviceData.emplace(device,(new oclDeviceData())).first;
           }
           DeviceIntf* dInt = &(itr->second->mDeviceIntf);
           // Assumption : debug_ip_layout has been read
@@ -584,9 +595,9 @@ namespace xdp {
 
       auto itr = DeviceData.find(device);
       if (itr==DeviceData.end()) {
-        itr = DeviceData.emplace(device,(new xdp::xoclp::platform::device::data())).first;
+        itr = DeviceData.emplace(device,(new oclDeviceData())).first;
       }
-      xdp::xoclp::platform::device::data* info = itr->second;
+      oclDeviceData* info = itr->second;
       DeviceIntf* dInt = nullptr;
       if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE) || (Plugin->getFlowMode() == xdp::RTUtil::HW_EM && Plugin->getSystemDPAEmulation())) {
         dInt = &(itr->second->mDeviceIntf);

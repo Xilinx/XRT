@@ -634,6 +634,9 @@ double
 getMaxRead(key k)
 {
   auto device = k;
+  auto device_interface = get_device_interface(device);
+  if (device_interface)
+    return device_interface->getMaxBwRead();
   return device->get_xrt_device()->getDeviceMaxRead().get();
 }
 
@@ -641,6 +644,9 @@ double
 getMaxWrite(key k)
 {
   auto device = k;
+  auto device_interface = get_device_interface(device);
+  if (device_interface)
+    return device_interface->getMaxBwRead();
   return device->get_xrt_device()->getDeviceMaxWrite().get();
 }
 

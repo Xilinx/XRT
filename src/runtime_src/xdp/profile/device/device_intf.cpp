@@ -683,4 +683,14 @@ DeviceIntf::~DeviceIntf()
       traceDMA->parseTraceBuf(traceData, bytes, traceVector);
   }
 
+  void DeviceIntf::setMaxBwRead()
+  {
+    m_bw_read = mDevice->getMaxBwRead();
+  }
+
+  void DeviceIntf::setMaxBwWrite()
+  {
+    m_bw_read = mDevice->getMaxBwWrite();
+  }
+
 } // namespace xdp
