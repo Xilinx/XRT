@@ -157,6 +157,9 @@ namespace xclemulation{
       {
         setKeepRunDir(getBoolValue(value,false));
       }
+      else if (name == "enable_prep_target" || name == "enable_debug" || name == "aie_sim_options") {
+        //Do nothing: Added to bypass the WARNING that is issued below stating "invalid sdaccel.ini option" 
+      } 
       else if(name == "sim_dir")
       {
         setSimDir(value);
