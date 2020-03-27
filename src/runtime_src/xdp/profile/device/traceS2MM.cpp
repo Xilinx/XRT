@@ -184,19 +184,51 @@ inline void TraceS2MM::parsePacket(uint64_t packet, uint64_t firstTimestamp, xcl
     }
 }
 
+uint64_t TraceS2MM::seekClockTraining(uint64_t* arr, uint64_t count)
+{
+  uint64_t n = 8;
+  if (mTraceFormat < 1  || mclockTrainingdone)
+    return 0;
+  if (count < n)
+    return count;
+
+  count -= n;
+  for (uint64_t i=0; i <= count; i++) {
+    for (uint64_t j=i; j < i + n; j++) {
+      if (!((arr[j] >> 63) & 0x1))
+        break;
+      if (j == i+n-1)
+        return i;
+    }
+  }
+  return count;
+}
+
 void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector& traceVector)
 {
     uint32_t packetSizeBytes = 8;
     uint32_t tvindex = 0;
     traceVector.mLength = 0;
 
-    auto count = size / packetSizeBytes;
+    uint64_t count = size / packetSizeBytes;
     if (count > MAX_TRACE_NUMBER_SAMPLES) {
       count = MAX_TRACE_NUMBER_SAMPLES;
     }
     auto pos = static_cast<uint64_t*>(buf);
     uint32_t mod = 0;
-    for (uint32_t i = 0; i < count; i++) {
+
+    /*
+    * Seek until we find 8 clock training packets
+    * Everything before that is leftover garbage
+    * data from previous runs.
+    * This scenario occurs when trace buffer gets full.
+    */
+    uint64_t idx = seekClockTraining(pos, count);
+    // All data is garbage
+    if (idx == count)
+      return;
+
+    for (auto i = idx; i < count; i++) {
       auto currentPacket = pos[i];
       if (!currentPacket)
         return;

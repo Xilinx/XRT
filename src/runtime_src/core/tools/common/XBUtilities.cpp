@@ -24,7 +24,6 @@
 
 // 3rd Party Library - Include Files
 #include <boost/property_tree/json_parser.hpp>
-#include <boost/algorithm/string.hpp>
 #include <boost/tokenizer.hpp>
 #include <boost/format.hpp>
 
@@ -306,6 +305,43 @@ XBUtilities::parse_device_indices(std::vector<uint16_t> &device_indices, const s
       device_indices.push_back(idx);
     }
   } 
+}
+
+void
+XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
+                              bool _inUserDomain,
+                              xrt_core::device_collection &_deviceCollection)
+{
+  // -- If the collection is empty then do nothing
+  if (_deviceBDFs.empty())
+    return;
+
+  // -- Collect all of devices if the "all" option is used...anywhere in the collection
+  if (_deviceBDFs.find("all") != _deviceBDFs.end()) {
+    xrt_core::device::id_type total = 0;
+    try {
+      // If there are no devices in the server a runtime exception is thrown in  mgmt.cpp probe()
+      total = (xrt_core::device::id_type) xrt_core::get_total_devices(_inUserDomain /*isUser*/).first;
+    } catch (...) { 
+      /* Do nothing */ 
+    }
+
+    // No devices found
+    if (total == 0)
+      return;
+
+    // Now collect the devices and add them to the collection
+    for(xrt_core::device::id_type index = 0; index < total; ++index)  
+      _deviceCollection.push_back( xrt_core::get_userpf_device(index) );
+
+    return;
+  }
+
+  // -- Collect the devices by name
+  for (const auto & deviceBDF : _deviceBDFs) {
+  	auto index = xrt_core::utils::bdf2index(deviceBDF);         // Can throw
+    _deviceCollection.push_back( xrt_core::get_userpf_device(index) );
+  }
 }
 
 

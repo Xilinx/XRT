@@ -19,15 +19,15 @@
 
 // Include files
 // Please keep these to the bare minimum
+#include "core/common/device.h"
+
 #include <string>
 #include <memory>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/program_options.hpp>
-
-
+#include <boost/algorithm/string.hpp>
 
 namespace XBUtilities {
-
   typedef enum {
     MT_MESSAGE,
     MT_INFO,
@@ -74,8 +74,14 @@ namespace XBUtilities {
                         unsigned int _columnWidth, 
                         bool _indentFirstLine,
                         std::string &_formattedString);
+
+  // TODO: Obsolete this function
   void parse_device_indices( std::vector<uint16_t> &device_indices, 
                               const std::string &device);
+
+  void collect_devices( const std::set<std::string>  &_deviceBDFs,
+                        bool _inUserDomain,
+                        xrt_core::device_collection &_deviceCollection);
 };
 
 #endif

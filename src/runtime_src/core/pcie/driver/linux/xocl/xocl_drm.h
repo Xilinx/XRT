@@ -99,7 +99,7 @@ int xocl_init_mem(struct xocl_drm *drm_p);
 int xocl_cleanup_mem(struct xocl_drm *drm_p);
 
 int xocl_cma_chunk_alloc_helper(struct xocl_drm *drm_p, struct drm_xocl_alloc_cma_info *cma_info);
-void xocl_cma_chunk_free_helper(struct xocl_drm *drm_p, struct drm_xocl_free_cma_info *cma_info);
+void xocl_cma_chunk_free_helper(struct xocl_drm *drm_p);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
 vm_fault_t xocl_gem_fault(struct vm_fault *vmf);
