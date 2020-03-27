@@ -251,7 +251,6 @@ public:
   virtual size_t
   getAlignment() const
   {
-    openOrError();
     return m_devinfo.mDataAlignment;
   }
 
