@@ -2986,7 +2986,7 @@ static int xmc_mapio_by_name(struct xocl_xmc *xmc, struct resource *res)
 
 	id = xocl_res_name2id(res_map, ARRAY_SIZE(res_map), res->name);
 	if (id < 0) {
-		xocl_err(&xmc->pdev->dev, "resource %s not found", res->name);
+		xocl_info(&xmc->pdev->dev, "resource %s not found", res->name);
 		return -EINVAL;
 	}
 	if (xmc->base_addrs[id]) {
@@ -3033,9 +3033,8 @@ static int xmc_probe(struct platform_device *pdev)
 				res->start, res->end);
 			if (res->name) {
 			       err = xmc_mapio_by_name(xmc, res);	
-			       if (err)
-				       goto failed;
-			       continue;
+			       if (!err)
+				       continue;
 			}
 			/* fall back to legacy */
 			xmc->base_addrs[i] = ioremap_nocache(res->start,
