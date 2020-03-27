@@ -55,12 +55,12 @@ void fini(void *mpc_cookie);
  * specify its own IP, with format, eg
  * restip = 1.1.1.1
  */
-static std::string RESTIP_ENDPOINT = "168.63.129.16";
+static std::string restip_endpoint = "168.63.129.16";
 /*
  * Maintain the serialNumber of cards.
  * This is required since during reset, the sysfs entry is not available 
  */
-static std::vector<std::string> FPGA_SERIAL_NUMBER;
+static std::vector<std::string> fpga_serial_number;
 /*
  * Init function of the plugin that is used to hook the required functions.
  * The cookie is used by fini (see below). Can be NULL if not required.
@@ -75,11 +75,15 @@ int init(mpd_plugin_callbacks *cbs)
     }
     if (cbs) 
     {
+        // init curl
+        int curlInit = curl_global_init(CURL_GLOBAL_ALL);
+        if (curlInit != 0)
+            syslog(LOG_ERR, "mpd cannot initalize curl: %d", curlInit);
         std::string private_ip = AzureDev::get_wireserver_ip();
         if (!private_ip.empty())
-            RESTIP_ENDPOINT = private_ip;
-        syslog(LOG_INFO, "azure restserver ip: %s\n", RESTIP_ENDPOINT.c_str());
-        FPGA_SERIAL_NUMBER = AzureDev::get_serial_number();
+            restip_endpoint = private_ip;
+        syslog(LOG_INFO, "azure restserver ip: %s\n", restip_endpoint.c_str());
+        fpga_serial_number = AzureDev::get_serial_number();
         // hook functions
         cbs->mpc_cookie = NULL;
         cbs->get_remote_msd_fd = get_remote_msd_fd;
@@ -132,7 +136,14 @@ int get_remote_msd_fd(size_t index, int* fd)
 int azureLoadXclBin(size_t index, const axlf *xclbin, int *resp)
 {
     AzureDev d(index);
+    struct timeval tvStartLoadXclBin, tvEndLoadXclBin;
+    gettimeofday(&tvStartLoadXclBin, NULL);
     *resp = d.azureLoadXclBin(xclbin);
+    gettimeofday(&tvEndLoadXclBin, NULL);
+
+    double loadxclTime = (tvEndLoadXclBin.tv_sec - tvStartLoadXclBin.tv_sec) * 1000.0; 
+    loadxclTime += (tvEndLoadXclBin.tv_usec - tvStartLoadXclBin.tv_usec) / 1000.0;
+    std::cout << "time LoadXclBin (" << index << ") = " << (loadxclTime/1000) << std::endl;
     return 0;
 }
 
@@ -144,7 +155,14 @@ std::future<void> nouse; //so far we don't care the return value of reset
 static void azureHotResetAsync(size_t index)
 {
     AzureDev d(index);
+    struct timeval tvStartReset, tvEndReset;
+    gettimeofday(&tvStartReset, NULL);
     d.azureHotReset();
+    gettimeofday(&tvEndReset, NULL);
+
+    double resetTime = (tvEndReset.tv_sec - tvStartReset.tv_sec) * 1000.0; 
+    resetTime += (tvEndReset.tv_usec - tvStartReset.tv_usec) / 1000.0;
+    std::cout << "time HotReset (" << index << ") = " << (resetTime/1000) << std::endl;
 }
 
 /*
@@ -198,74 +216,117 @@ int AzureDev::azureLoadXclBin(const xclBin *buffer)
            return -1;
     std::string fpgaSerialNumber;
     get_fpga_serialNo(fpgaSerialNumber);
-    std::cout << "FPGA serial No: " << fpgaSerialNumber << std::endl;
+    std::cout << "LoadXclBin FPGA serial No: " << fpgaSerialNumber << std::endl;
     int index = 0;
     std::string imageSHA;
     std::vector<std::string> chunks;
     size_t size = buffer->m_header.m_length;
-    std::cout << "xclbin file size: " << size << std::endl;
+    std::cout << "xclbin file size (" << fpgaSerialNumber << "): " << size << std::endl;
 
     // Generate SHA256 for the kernel and
     // separate in segments ready to upload
     int res = Sha256AndSplit(std::string(xclbininmemory, size), chunks, imageSHA);
     if (res) {
         std::cout << "xclbin split failed!" << std::endl;
-        return -EFAULT;
+        return -E_SPLIT;
     }
-    std::cout << "xclbin file sha256: " << imageSHA << std::endl;
+    std::cout << "xclbin file sha256 (" << fpgaSerialNumber << "): " << imageSHA << std::endl;
 
-    for (auto &chunk: chunks)
-    {
+    struct timeval tvStartUpload, tvEndUpload;
+    std::cout << "Start upload segment (" << fpgaSerialNumber << ")" << std::endl;
+    gettimeofday(&tvStartUpload, NULL);
+    for (auto &chunk: chunks) {
         //upload each segment individually
-        std::cout << "upload segment: " << index << " size: " << chunk.size() << std::endl;
-        UploadToWireServer(
-            RESTIP_ENDPOINT,
+        std::cout << "upload segment (" << fpgaSerialNumber << "): " << index << " size: " << chunk.size() << std::endl;
+        if (UploadToWireServer(
+            restip_endpoint,
             "machine/plugins/?comp=FpgaController&type=SendImageSegment",
             fpgaSerialNumber,
             chunk,
             index,
             chunks.size(),
-            imageSHA);
-           index++;
+            imageSHA))
+            return -E_UPLOAD;
+        index++;
     }
+    gettimeofday(&tvEndUpload, NULL);
+    std::cout << "Done upload segment (" << fpgaSerialNumber << ")" << std::endl;
+    double uploadTime = (tvEndUpload.tv_sec - tvStartUpload.tv_sec) * 1000.0; 
+    uploadTime += (tvEndUpload.tv_usec - tvStartUpload.tv_usec) / 1000.0;
+    std::cout << "time upload segment (" << fpgaSerialNumber << ") = " << (uploadTime/1000) << std::endl;
 
     //start the re-image process
+    int retryCounter = 0;
+    int sleepDelayStartReimagin[] = {1500, 1500, 1000, 1000, 1500, 1500, 1000, 1000, 1500, 1500, 1000, 1000, 1500, 1500, 1000, 1000};
     std::string delim = ":";
     std::string ret, key, value;
-    ret = REST_Get(
-        RESTIP_ENDPOINT,
-        "machine/plugins/?comp=FpgaController&type=StartReimaging",
-        fpgaSerialNumber
-    );
-    if (splitLine(ret, key, value, delim) != 0 ||
-        key.compare("StartReimaging") != 0 ||
-        value.compare("0") != 0)
-        return -EFAULT;
 
+    struct timeval tvStartReimage, tvEndReimage;
+    std::cout << "Start reimage process (" << fpgaSerialNumber << ")" << std::endl;
+    gettimeofday(&tvStartReimage, NULL);
+    do {
+        ret = REST_Get(
+            restip_endpoint,
+            "machine/plugins/?comp=FpgaController&type=StartReimaging",
+            fpgaSerialNumber
+        );
+        if (splitLine(ret, key, value, delim) != 0 ||
+            key.compare("StartReimaging") != 0 ||
+            value.compare("0") != 0) {
+                msleep(sleepDelayStartReimagin[retryCounter]);
+                retryCounter++;
+                if (retryCounter >= upload_retry) {
+                    std::cout << "Timeout trying to start reimging (" << fpgaSerialNumber << ")..." << std::endl;
+                    return -E_START_REIMAGE;
+                }
+        } else {
+            retryCounter = 0;
+        }
+
+    } while (retryCounter > 0);
+    gettimeofday(&tvEndReimage, NULL);
+    std::cout << "Done start reimage (" << fpgaSerialNumber << ")" << std::endl;
+    double reimageTime = (tvEndReimage.tv_sec - tvStartReimage.tv_sec) * 1000.0; 
+    reimageTime += (tvEndReimage.tv_usec - tvStartReimage.tv_usec) / 1000.0;
+    std::cout << "time start reimage (" << fpgaSerialNumber << ") = " << (reimageTime/1000) << std::endl;
+
+    // reconfig takes 8-10 secs as min, per measure, waiting 8000
+    msleep(8000);
     //check the re-image status
+    int sleepDelayReimageStatus[] = {3000, 2000, 2000 , 1500, 1500, 1500, 1000, 1000, 1500, 1500, 1000, 1000, 1500, 1500, 1000, 1000};
+    struct timeval tvStartStatus, tvEndStatus;
+    std::cout << "Start reimage Status (" << fpgaSerialNumber << ")" << std::endl;
+    gettimeofday(&tvStartStatus, NULL);
     int wait = 0;
     do {
         ret = REST_Get(
-            RESTIP_ENDPOINT,
+            restip_endpoint,
             "machine/plugins/?comp=FpgaController&type=GetReimagingStatus",
             fpgaSerialNumber
         );
         if (splitLine(ret, key, value, delim) != 0 ||
             key.compare("GetReimagingStatus") != 0) {
             std::cout << "Retrying GetReimagingStatus ... " << std::endl;
-            sleep(1);
+            msleep(sleepDelayReimageStatus[wait%15]);
+            wait++;
             continue;
         } else if (value.compare("3") != 0) {
-            sleep(1);
+            msleep(sleepDelayReimageStatus[wait%15]); 
             wait++;
             continue;
         } else {
-            std::cout << "reimaging return status: " << value << " within " << wait << "s" << std::endl;
+            std::cout << "reimaging return status (" << fpgaSerialNumber << "): " << value << " within " << wait << "s" << std::endl;
+            gettimeofday(&tvEndStatus, NULL);
+            std::cout << "Done reimage status (" << fpgaSerialNumber << ")" << std::endl;
+            double statusTime  = (tvEndStatus.tv_sec - tvStartStatus.tv_sec) * 1000.0; 
+            statusTime += (tvEndStatus.tv_usec - tvStartStatus.tv_usec) / 1000.0;
+            std::cout << "time reimage status (" << fpgaSerialNumber << ") = " << (statusTime/1000) << std::endl;
             return 0;
         }
-    } while (wait < REIMAGE_TIMEOUT);
+    } while (wait < rest_timeout);
+    std::cout << "Timeout GetImageStatus (" << fpgaSerialNumber << ")..." << std::endl;
 
-    return -ETIMEDOUT;
+    return -E_GET_REIMAGE_STATUS;
 }
 
 int AzureDev::azureHotReset()
@@ -276,45 +337,51 @@ int AzureDev::azureHotReset()
     //start the reset process
     std::string delim = ":";
     std::string ret, key, value;
-    ret = REST_Get(
-        RESTIP_ENDPOINT,
-        "machine/plugins/?comp=FpgaController&type=Reset",
-        fpgaSerialNumber
-    );
-    syslog(LOG_INFO, "obtained ret = %s from reset call", ret.c_str());
-    if (splitLine(ret, key, value, delim) != 0 ||
-        key.compare("Reset") != 0 ||
-        value.compare("0") != 0) {
-        syslog(LOG_INFO, "wasn't expected response...%s", ret.c_str());
-        return -EFAULT;
-    }
- 
-    // poll wireserver for response TBD
-    //check the response
-    syslog(LOG_INFO, "poll for reset status...");
     int wait = 0;
     do {
         ret = REST_Get(
-            RESTIP_ENDPOINT,
+            restip_endpoint,
+            "machine/plugins/?comp=FpgaController&type=Reset",
+            fpgaSerialNumber
+        );
+        syslog(LOG_INFO, "obtained ret = %s from reset call", ret.c_str());
+        if (splitLine(ret, key, value, delim) != 0 ||
+            key.compare("Reset") != 0 ||
+            value.compare("0") != 0) {
+            syslog(LOG_INFO, "wasn't expected response...%s", ret.c_str());
+            sleep(1);
+            wait++;
+            continue;
+        }
+        break;
+    } while (wait < reset_retry);
+
+    if (value.compare("0") != 0)
+        return -E_RESET;
+
+    // poll wireserver for response TBD
+    //check the response
+    syslog(LOG_INFO, "poll for reset status...");
+    wait = 0;
+    do {
+        ret = REST_Get(
+            restip_endpoint,
             "machine/plugins/?comp=FpgaController&type=GetResetStatus",
             fpgaSerialNumber
         );
         syslog(LOG_INFO, "obtained ret = %s from get reset status call", ret.c_str());
         if (splitLine(ret, key, value, delim) != 0 ||
-            key.compare("GetResetStatus") != 0)
-            return -EFAULT;
-
-        if (value.compare("2") != 0) {
+            key.compare("GetResetStatus") != 0 ||
+            value.compare("2") != 0) {
             sleep(1);
             wait++;
             continue;
         } else {
-            std::cout << "getreset status return status: " << value << " within " << wait << "s" << std::endl;
+            std::cout << "get reset status return status: " << value << " within " << wait << "s" << std::endl;
             return 0;
         }
-    } while (wait < REIMAGE_TIMEOUT);
-    syslog(LOG_INFO, "complete get reset status");
-    return 0;
+    } while (wait < rest_timeout);
+    return -E_GET_RESET_STATUS;
 }
 
 AzureDev::~AzureDev()
@@ -340,16 +407,17 @@ int AzureDev::UploadToWireServer(
     CURL *curl;
     CURLcode res;
     struct write_unit unit;
-    int retryCounter = 0;
-    long responseCode = 0;
+    uint8_t retryCounter = 0;
+    uint8_t maxRetryCounter = 15;
+    int sleepDelay[] = {1500, 1500, 1000, 1000, 1500, 1500, 1000, 1000, 1500, 1500, 1000, 1000, 1500, 1500, 1000, 1000};
+    long responseCode=0;
 
     unit.uptr = data.c_str();
     unit.sizeleft = data.size();
 
     curl = curl_easy_init();
 
-    if(curl)
-    {
+    if (curl) {
         std::stringstream urlStream;
         urlStream << "http://" << ip << "/" << endpoint << "&chipid=" << target;
         curl_easy_setopt(curl, CURLOPT_URL, urlStream.str().c_str());
@@ -379,51 +447,47 @@ int AzureDev::UploadToWireServer(
 
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-        //curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-        do
-        {
-            responseCode = 0;
+        do {
+            responseCode=0;
             res = curl_easy_perform(curl);
-            
+
             if (res != CURLE_OK) {
-            	std::cerr << "curl_easy_perform() failed: " <<  curl_easy_strerror(res) << std::endl;
-            	retryCounter++;
-            	if (retryCounter <= UPLOAD_RETRY)
-            	{
-            		std::cout << "Retrying an upload..." << retryCounter << std::endl;
-            		sleep(1);
-            	} else
-            	{
-            		std::cerr << "Max number of retries reached... givin up" << std::endl;
-            		curl_easy_cleanup(curl);
-            		return 1;
-            	}
+                std::cout << "curl_easy_perform() failed: " <<  curl_easy_strerror(res) << std::endl;
+                retryCounter++;
+                if (retryCounter <  maxRetryCounter) {
+                    std::cout << "Retrying an upload (" << target << ") ..." << retryCounter << std::endl;
+                    msleep(sleepDelay[retryCounter-1]);
+                } else {
+                    std::cout << "Max number of retries reached upload (" << target << ")... givin up1" << std::endl;
+                    curl_easy_cleanup(curl);
+                    return 1;
+                }
             } else {
-            	// check the return code				
-            	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &responseCode);
-            	std::cout << "Debug: status code " << responseCode << std::endl;
-            	if (responseCode >= 400) {
-            		// error range
-            		res = CURLE_HTTP_RETURNED_ERROR;
-            		retryCounter++;
-            		if (retryCounter <= UPLOAD_RETRY)
-            		{
-            			std::cout << "Retrying an upload after http error..." << retryCounter << std::endl;
-            			sleep(1);
-            		} else
-            		{
-            			std::cerr << "Max number of retries reached... givin up" << std::endl;
-            			curl_easy_cleanup(curl);
-            			return 1;
-            		}
-            	}
-            }
-        } while (res != CURLE_OK);
+                // check the return code
+                curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &responseCode);
+                std::cout << "DebugUpload: status code (" << target << ") " << responseCode << std::endl;
+                if (responseCode >= 400) {
+                    // error range
+                    res = CURLE_HTTP_RETURNED_ERROR;
+                    retryCounter++;
+                    if (retryCounter <  maxRetryCounter) {
+                        std::cout << "Retrying an upload after http error (" << target << ")..." << retryCounter << std::endl;
+                        msleep(sleepDelay[retryCounter-1]);
+                    } else {
+                        std::cout << "Max number of retries reached upload (" << target << ")... givin up!" << std::endl;
+                        curl_easy_cleanup(curl);
+                        return 1;
+                    }
+                } //if (responseCode >= 400)
+            } //if (res != CURLE_OK)
+        } while (res != CURLE_OK);	
 
         // cleanup
         curl_easy_cleanup(curl);
-        std::cout << "Upload segment " << index + 1 << " of " << total  << std::endl;
-    }
+        std::cout << "Upload segment (" << target << ") " << index + 1 << " of " << total  << std::endl;
+    } else {
+        std::cout << "Failed init (" << target << ")..." << std::endl;
+    } //if (curl)
 
     return 0;
 }
@@ -437,10 +501,10 @@ std::string AzureDev::REST_Get(
     CURL *curl;
     CURLcode res;
     std::string readbuff = "";
+    long responseCode = 0;
 
     curl = curl_easy_init();
-    if(curl)
-    {
+    if (curl) {
         std::stringstream urlStream;
         urlStream << "http://" << ip << "/" << endpoint << "&chipid=" << target;
 
@@ -451,12 +515,17 @@ std::string AzureDev::REST_Get(
         //curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
         res = curl_easy_perform(curl);
 
-        if(res != CURLE_OK)
-        {
+        if (res != CURLE_OK)
             std::cout <<  "curl_easy_perform() failed: " << curl_easy_strerror(res) << std::endl;
-        }
 
-        std::cout << "String returned: " << readbuff << std::endl;
+        // check the return code
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &responseCode);
+        std::cout << "DebugRestGET: (" << target << ") status code " << responseCode << std::endl;
+        std::string printstring(readbuff);
+        if (printstring.length() > 80)
+            printstring.resize(80);
+
+        std::cout << "String RestGET returned (" << target << "): " << printstring << std::endl;
         curl_easy_cleanup(curl);
         //TODO: add code to interpret readbuff to see whether reimage succeeds.
     }
@@ -471,17 +540,15 @@ int AzureDev::Sha256AndSplit(
 {
     // Initialize openssl
     SHA256_CTX context;
-    if(!SHA256_Init(&context))
-    {
+    if (!SHA256_Init(&context)) {
         std::cerr << "Unable to initiate SHA256" << std::endl;
         return 1;
     }
 
     unsigned pos = 0;
 
-    while (pos < input.size())
-    {
-        std::string segment = input.substr(pos, TRANSFER_SEGMENT_SIZE);
+    while (pos < input.size()) {
+        std::string segment = input.substr(pos, transfer_segment_size);
 
         if(!SHA256_Update(&context, segment.c_str(), segment.size()))
         {
@@ -489,24 +556,21 @@ int AzureDev::Sha256AndSplit(
             return 1;
         }
         output.push_back(segment);
-        pos += TRANSFER_SEGMENT_SIZE;
+        pos += transfer_segment_size;
     }
 
     // Get Final SHA
     unsigned char result[SHA256_DIGEST_LENGTH];
-    if(!SHA256_Final(result, &context))
-    {
+    if(!SHA256_Final(result, &context)) {
         std::cerr << "Error finalizing SHA256 calculation" << std::endl;
         return 1;
     }
-    
+
     // Convert the byte array into a string
     std::stringstream shastr;
     shastr << std::hex << std::setfill('0');
     for (auto &byte: result)
-    {
         shastr << std::setw(2) << (int)byte;
-    }
 
     sha = shastr.str();
     return 0;
@@ -518,5 +582,21 @@ void AzureDev::get_fpga_serialNo(std::string &fpgaSerialNo)
     dev->sysfs_get("xmc", "serial_num", errmsg, fpgaSerialNo);
     //fpgaSerialNo = "1281002AT024";
     if (fpgaSerialNo.empty())
-        fpgaSerialNo = FPGA_SERIAL_NUMBER.at(index);
+        fpgaSerialNo = fpga_serial_number.at(index);
+    if (!errmsg.empty() || fpgaSerialNo.empty()) {
+        std::cerr << "azure warning(" << dev->sysfs_name << ")";
+        std::cerr << " sysfs errmsg: " << errmsg;
+        std::cerr << " serialNumber: " << fpga_serial_number.at(index);
+        std::cerr << std::endl;
+    }
+}
+
+void AzureDev::msleep(long msecs)
+{
+    struct timespec ts;
+
+    ts.tv_sec = msecs / 1000;
+    ts.tv_nsec = (msecs % 1000) * 1000000;
+
+    nanosleep(&ts, NULL);
 }

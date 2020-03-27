@@ -227,7 +227,7 @@ MODULE_PARM_DESC(mailbox_no_intr,
 
 #define	MAILBOX_TIMER		(HZ / 50) /* in jiffies */
 #define	MAILBOX_SEC2TIMER(s)	((s) * HZ / MAILBOX_TIMER)
-#define	MSG_RX_DEFAULT_TTL	20UL	/* in seconds */
+#define	MSG_RX_DEFAULT_TTL	60UL	/* in seconds */
 #define	MSG_TX_DEFAULT_TTL	2UL	/* in seconds */
 #define	MSG_TX_PER_MB_TTL	1UL	/* in seconds */
 #define	MSG_MAX_TTL		0xFFFFFFFF /* used to disable timer */
