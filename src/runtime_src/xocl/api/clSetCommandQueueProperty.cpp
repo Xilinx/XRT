@@ -18,7 +18,6 @@
 
 #define CL_USE_DEPRECATED_OPENCL_1_0_APIS
 
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/command_queue.h"
 #include "xocl/core/device.h"
@@ -27,6 +26,13 @@
 
 #include "api.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
+
+#include <CL/opencl.h>
+
+#ifdef _WIN32
+# pragma warning ( disable : 4245 )
+#endif
 
 namespace xocl {
 
@@ -60,8 +66,8 @@ clSetCommandQueueProperty(cl_command_queue command_queue,
       xocl(command_queue)->get_properties() |= CL_QUEUE_PROFILING_ENABLE;
     else
       xocl(command_queue)->get_properties() &= (~CL_QUEUE_PROFILING_ENABLE);
-  }    
- 
+  }
+
   //CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE
   if(properties & CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE) {
     // block until all previousls queued commands in command_queue have completed
@@ -71,7 +77,7 @@ clSetCommandQueueProperty(cl_command_queue command_queue,
       xocl(command_queue)->get_properties() |= CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE;
     else
       xocl(command_queue)->get_properties() &= (~CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE);
-  }    
+  }
 
   return CL_SUCCESS;
 }
@@ -86,6 +92,7 @@ clSetCommandQueueProperty(cl_command_queue command_queue,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clSetCommandQueueProperty
       (command_queue,properties,enable,old_properties);
   }
@@ -98,5 +105,3 @@ clSetCommandQueueProperty(cl_command_queue command_queue,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

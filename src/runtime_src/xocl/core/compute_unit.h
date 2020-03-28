@@ -25,14 +25,23 @@ namespace xocl {
 class device;
 
 // Compute unit
-// 
-// Ownership of cus is shared between program and device with 
-// latter constructing the compute units as a program is 
+//
+// Ownership of cus is shared between program and device with
+// latter constructing the compute units as a program is
 // loaded.
-class compute_unit 
+class compute_unit
 {
+  // device owns compute units and needs private access to some state
+  // information managed exclusively by the device implementation.
+  friend class device;
+  enum class context_type : unsigned short { shared, exclusive, none };
 public:
-  compute_unit(const xclbin::symbol* s, const std::string& n, device* d);
+  const size_t max_index = 128;
+
+private:
+  // construct through static create only
+  compute_unit(const xclbin::symbol* s, const std::string& n, size_t base, size_t idx, const device* d);
+public:
   ~compute_unit();
 
   unsigned int
@@ -45,7 +54,7 @@ public:
    * Address extracted from xclbin
    */
   size_t
-  get_physical_address() const
+  get_base_addr() const
   {
     return m_address;
   }
@@ -72,19 +81,20 @@ public:
   }
 
   /**
-   * Get memory index for indexed kernel argument 
+   * Get memory index for indexed kernel argument
    *
    * @param idx
    *   Argument index
    * @return Memory index identifying DDR bank for argument
    */
+  XRT_XOCL_EXPORT
   xclbin::memidx_bitmask_type
   get_memidx(unsigned int arg) const;
 
   /**
    * Get memory indeces intersection of DDR banks for CU args
    *
-   * @return 
+   * @return
    *   Memory indeces identifying intersection of DDR banks for all CU arguments
    */
   xclbin::memidx_bitmask_type
@@ -93,7 +103,7 @@ public:
   /**
    * Get memory indeces union of DDR banks for CU args
    *
-   * @return 
+   * @return
    *   Memory indeces identifying union of DDR banks for all CU arguments
    */
   xclbin::memidx_bitmask_type
@@ -111,14 +121,68 @@ public:
     return m_symbol->uid;
   }
 
+  context_type
+  get_context_type() const
+  {
+    return m_context_type;
+  }
+
+  uint32_t
+  get_control_type() const
+  {
+    return m_control;
+  }
+
+  const device*
+  get_device() const
+  {
+    return m_device;
+  }
+
+  /**
+   * Static constructor for compute units.
+   *
+   * @symbol: The kernel symbol gather from xclbin meta data
+   * @inst: The kernel instance
+   * @device: The device constructing this compute unit
+   * @cuaddr: Sorted base addresses of all CUs in xclbin
+   *
+   * The kernel instance base address is checked against @cuaddr to
+   * determine its index.  If the instance base address is not in
+   * @cuaddr it is ignored, e.g. no compute unit object constructed.
+   */
+  static std::unique_ptr<compute_unit>
+  create(const xclbin::symbol*, const xclbin::symbol::instance&,
+         const device*, const std::vector<uint64_t>&);
 
 private:
+
+  // Shared implementation by outer locking routines
+  xclbin::memidx_bitmask_type
+  get_memidx_nolock(unsigned int arg) const;
+
+  // Used by xocl::device to cache the acquire context for
+  void
+  set_context_type(bool shared) const
+  {
+    m_context_type = shared ? compute_unit::context_type::shared : compute_unit::context_type::exclusive;
+  }
+
+  // Used by xocl::device when context is released for this CU
+  void
+  reset_context_type() const
+  {
+    m_context_type = compute_unit::context_type::none;
+  }
+
   unsigned int m_uid = 0;
   const xclbin::symbol* m_symbol = nullptr;
   std::string m_name;
-  device* m_device = nullptr;
+  const device* m_device = nullptr;
   size_t m_address = 0;
   size_t m_index = 0;
+  uint32_t m_control = 0;  // IP_CONTROL type per xclbin ip_layout
+  mutable context_type m_context_type = context_type::none;
 
   // Map CU arg to memory bank indicies. An argument can
   // be connected to multiple memory banks.
@@ -126,11 +190,10 @@ private:
 
   // Intersection of all argument masks
   mutable bool cached = false;
-  mutable xclbin::memidx_bitmask_type m_memidx; 
+  mutable xclbin::memidx_bitmask_type m_memidx;
+  mutable std::mutex m_mutex;
 };
 
 } // xocl
 
 #endif
-
-

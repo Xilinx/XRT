@@ -21,7 +21,7 @@ namespace xocl {
 
 sampler::
 sampler(context* ctx, bool norm_mode, cl_addressing_mode addr_mode, cl_filter_mode filter_mode)
-  : m_context(nullptr), m_norm_mode(norm_mode), m_addr_mode(addr_mode), m_filter_mode(filter_mode)
+  : m_context(ctx), m_norm_mode(norm_mode), m_addr_mode(addr_mode), m_filter_mode(filter_mode)
 {}
 
 sampler::
@@ -29,5 +29,3 @@ sampler::
 {}
 
 } // xocl
-
-

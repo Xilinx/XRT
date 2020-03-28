@@ -17,8 +17,9 @@
 #ifndef xocl_api_pmd_detail_pipe_h_
 #define xocl_api_pmd_detail_pipe_h_
 
-#include "CL/cl.h"
+#include "xocl/config.h"
 #include "xocl/core/pipe.h"
+#include "CL/cl.h"
 
 namespace xocl { namespace pmd { namespace detail {
 
@@ -35,5 +36,3 @@ validOrError(const cl_pipe pipe,const cl_command_queue command_queue);
  }}} // pmd,detail,xocl
 
 #endif
-
-
