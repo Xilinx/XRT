@@ -18,9 +18,11 @@
 #define core_include_windows_uuid_h_
 
 #pragma warning( push )
-#pragma warning ( disable : 4100 4996 )
+#pragma warning ( disable : 4100 4996 4244 )
+#include <string>
 #include <cstring>
 #include <cstdio>
+#include <cctype>
 #include <stdexcept>
 typedef unsigned char xuid_t[16];
 
@@ -52,7 +54,7 @@ uuid_parse(const char* str, xuid_t uuid)
 {
   //381d7988-e0b4-421b-811a-cdcf83ad2764
   constexpr int uuid_str_sz = 36;
-    
+
   for (int i=0; i<uuid_str_sz; ++i) {
     if (str[i]==0)
       throw std::runtime_error("invalid uuid: " + std::string(str));

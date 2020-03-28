@@ -174,6 +174,7 @@ public:
    *
    * This function extracts meta data sections as needed.
    */
+  XRT_CORE_COMMON_EXPORT
   void
   register_axlf(const axlf*);
 
