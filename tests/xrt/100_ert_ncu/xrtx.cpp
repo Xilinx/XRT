@@ -17,6 +17,7 @@
 // driver includes
 #include "xrt.h"
 #include "experimental/xrt_kernel.h"
+#include "experimental/xrt_xclbin.h"
 #include "xclbin.h"
 
 #include <fstream>
@@ -285,6 +286,12 @@ int run(int argc, char** argv)
 
   uuid_t xclbin_id;
   uuid_copy(xclbin_id, top->m_header.uuid);
+
+  uuid_t xid;
+  xrtXclbinUUID(device, xid);
+
+  if (uuid_compare(xclbin_id, xid) != 0)
+    throw std::runtime_error("xid mismatch");
 
   int first_used_mem = 0;
   for (int i=0; i<topology->m_count; ++i) {

@@ -1451,7 +1451,10 @@ xclLoadXclBin(xclDeviceHandle handle, const struct axlf *buffer)
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclLoadXclbin()");
   auto shim = get_shim_object(handle);
-  return shim->load_xclbin(buffer);
+  if (auto ret =shim->load_xclbin(buffer))
+    return ret;
+  auto core_device = xrt_core::get_userpf_device(drv);
+  core_device->register_axlf(buffer);
 }
 
 unsigned int

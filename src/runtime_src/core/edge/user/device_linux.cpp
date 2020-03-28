@@ -43,12 +43,8 @@ lookup_query(query::key_type query_key) const
 {
   auto it = query_tbl.find(query_key);
 
-  if (it == query_tbl.end()) {
-    using qtype = std::underlying_type<query::key_type>::type;
-    std::string err = boost::str( boost::format("The given query request ID (%d) is not supported on Edge Linux.")
-                                  % static_cast<qtype>(query_key));
-    throw std::runtime_error(err);
-  }
+  if (it == query_tbl.end())
+    throw query::no_such_key(query_key);
 
   return *(it->second);
 }
