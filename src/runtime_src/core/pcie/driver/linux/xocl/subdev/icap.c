@@ -2029,10 +2029,13 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin)
 		memcpy(mb_req->data, xclbin, xclbin->m_header.m_length);
 	}
 
-	/* Set timeout to be 1s per 2MB for downloading xclbin. */
+	/*
+	 * Set timeout to be 1s per 2MB for downloading xclbin.
+	 * Azure cloud requires at least 50s.
+	 */
 	(void) xocl_peer_request(xdev, mb_req, data_len,
 		&msgerr, &resplen, NULL, NULL,
-		xclbin->m_header.m_length / (2048 * 1024));
+		max(((size_t)xclbin->m_header.m_length) / (2048 * 1024), 50UL));
 	vfree(mb_req);
 
 	if (msgerr != 0) {
