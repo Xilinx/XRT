@@ -2124,6 +2124,8 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin)
 	/* Set timeout to be 1s per 2MB for downloading xclbin.
 	 * plus toggling axigate time 5s
 	 * plus #MIG * 0.5s
+     * In Azure cloud, there is special requirement for xclbin download
+     * that the minumum timeout should be 50s.
 	 */
 	if (mem_topo) {
 		for (i = 0; i < mem_topo->m_count; i++) {
@@ -2137,7 +2139,8 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin)
 
 	(void) xocl_peer_request(xdev, mb_req, data_len,
 		&msgerr, &resplen, NULL, NULL,
-		xclbin->m_header.m_length / (2048 * 1024) + 5 + mig_count / 2);
+		max(((size_t)xclbin->m_header.m_length) / (2048 * 1024) +
+			5 + mig_count / 2, 50UL));
 	vfree(mb_req);
 
 	if (msgerr != 0) {
