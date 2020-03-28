@@ -167,8 +167,19 @@ enum {
 	IO_IMAGE_SCHED,
 	IO_CQ,
 	IO_CLK_SCALING,
+	IO_MUTEX,
 	NUM_IOADDR
 };
+
+static struct xocl_iores_map res_map[] = {
+	{ NODE_CMC_REG, IO_REG},
+	{ NODE_CMC_RESET, IO_GPIO},
+	{ NODE_CMC_FW_MEM, IO_IMAGE_MGMT},
+	{ NODE_ERT_FW_MEM, IO_IMAGE_SCHED},
+	{ NODE_ERT_CQ_MGMT, IO_CQ},
+	{ NODE_CMC_MUTEX, IO_MUTEX},
+};
+
 
 enum sensor_val_kind {
 	SENSOR_MAX,
@@ -2628,17 +2639,18 @@ static int load_xmc(struct xocl_xmc *xmc)
 	 * regmap_ready bit to check whether cmc is ready, otherwise,
 	 * we still use the legacy 'init done' bit in REGMAP
 	 */
-	ret = xocl_iores_read32(xdev_hdl, XOCL_SUBDEV_LEVEL_BLD,
-		IORES_CMC_MUTEX, XOCL_RES_OFFSET_CHANNEL2, &reg_map_ready);
-	if (!ret) {
+	if (xmc->base_addrs[IO_MUTEX]) {
+		reg_map_ready = XOCL_READ_REG32(xmc->base_addrs[IO_MUTEX] +
+				XOCL_RES_OFFSET_CHANNEL2);
 		retry = 0;
-		while (!ret && retry++ < MAX_XMC_RETRY &&
+		while (retry++ < MAX_XMC_RETRY &&
 			!(reg_map_ready & REGMAP_READY_MASK)) {
 			msleep(RETRY_INTERVAL);
-			ret = xocl_iores_read32(xdev_hdl, XOCL_SUBDEV_LEVEL_BLD,
-				IORES_CMC_MUTEX, XOCL_RES_OFFSET_CHANNEL2, &reg_map_ready);
+			reg_map_ready = XOCL_READ_REG32(
+				xmc->base_addrs[IO_MUTEX] +
+				XOCL_RES_OFFSET_CHANNEL2);
                 }
-		if (!ret && (reg_map_ready & REGMAP_READY_MASK)) {
+		if (reg_map_ready & REGMAP_READY_MASK) {
 			xocl_info(&xmc->pdev->dev, "REGMAP ready");
 		} else {
 			xocl_err(&xmc->pdev->dev, "REGMAP not ready : %d", ret);
@@ -2840,35 +2852,19 @@ static int raptor_cmc_access(struct platform_device *pdev,
 		return -EINVAL;
 	}
 
-	err = xocl_iores_write32(xdev, XOCL_SUBDEV_LEVEL_BLD, IORES_CMC_MUTEX,
-	    XOCL_RES_OFFSET_CHANNEL1, grant);
-	if (err == -ENODEV) {
+	if (!xmc->base_addrs[IO_MUTEX]) {
 		xocl_xdev_info(xdev, "No %s resource, skip.",
 		    NODE_CMC_MUTEX);
 		return 0;
-	} else if (err) {
-		xocl_xdev_err(xdev, "Write %s to 0x%x error %d.",
-		    NODE_CMC_MUTEX, grant, err);
-		return err;
 	}
-
+	XOCL_WRITE_REG32(grant, xmc->base_addrs[IO_MUTEX] +
+				XOCL_RES_OFFSET_CHANNEL1);
 	for (retry = 0; retry < 100; retry++) {
-		err = xocl_iores_read32(xdev, XOCL_SUBDEV_LEVEL_BLD,
-		    IORES_CMC_MUTEX, XOCL_RES_OFFSET_CHANNEL2, &ack);
-		if (err) {
-			if (err == -ENODEV)
-				xocl_xdev_info(xdev, "No %s resource, skip.",
-				    NODE_CMC_MUTEX);
-			else
-				xocl_xdev_err(xdev, "Read ack from %s error %d",
-				    NODE_CMC_MUTEX, err);
-			goto fail;
-		}
-
+		ack = XOCL_READ_REG32(xmc->base_addrs[IO_MUTEX] +
+					XOCL_RES_OFFSET_CHANNEL2);
 		/* Success condition: grant and ack have same value */
 		if ((grant & MUTEX_GRANT_MASK) == (ack & MUTEX_ACK_MASK))
-			break;
-
+				break;
 		msleep(100);
 	}
 
@@ -2943,8 +2939,6 @@ static int xmc_remove(struct platform_device *pdev)
 	mutex_unlock(&xmc->mbx_lock);
 end:
 	for (i = 0; i < NUM_IOADDR; i++) {
-		if ((i == IO_CLK_SCALING) && !xmc->cs_on_ptfm)
-			continue;
 		if (xmc->base_addrs[i]) {
 			iounmap(xmc->base_addrs[i]);
 			xmc->range[i] = 0;
@@ -2986,6 +2980,31 @@ static const char *xmc_get_board_info(uint32_t *bdinfo_raw,
 	return NULL;
 }
 
+static int xmc_mapio_by_name(struct xocl_xmc *xmc, struct resource *res)
+{
+	int	id;
+
+	id = xocl_res_name2id(res_map, ARRAY_SIZE(res_map), res->name);
+	if (id < 0) {
+		xocl_info(&xmc->pdev->dev, "resource %s not found", res->name);
+		return -EINVAL;
+	}
+	if (xmc->base_addrs[id]) {
+		xocl_err(&xmc->pdev->dev, "resource %s already mapped",
+				res->name);
+		return -EINVAL;
+	}
+	xmc->base_addrs[id] = ioremap_nocache(res->start,
+			res->end - res->start + 1);
+	if (!xmc->base_addrs[id]) {
+		xocl_err(&xmc->pdev->dev, "resource %s map failed", res->name);
+		return -EIO;
+	}
+	xmc->range[id] = res->end - res->start + 1;
+
+	return 0;
+}
+
 static int xmc_probe(struct platform_device *pdev)
 {
 	struct xocl_xmc *xmc;
@@ -3012,6 +3031,12 @@ static int xmc_probe(struct platform_device *pdev)
 		if (res) {
 			xocl_info(&pdev->dev, "IO start: 0x%llx, end: 0x%llx",
 				res->start, res->end);
+			if (res->name) {
+			       err = xmc_mapio_by_name(xmc, res);	
+			       if (!err)
+				       continue;
+			}
+			/* fall back to legacy */
 			xmc->base_addrs[i] = ioremap_nocache(res->start,
 				res->end - res->start + 1);
 			if (!xmc->base_addrs[i]) {
