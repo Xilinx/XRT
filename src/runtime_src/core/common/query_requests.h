@@ -22,6 +22,7 @@
 #include <vector>
 #include <sstream>
 #include <iomanip>
+#include <stdexcept>
 #include <boost/any.hpp>
 #include <boost/format.hpp>
 
@@ -60,6 +61,7 @@ enum class key_type
   rom_uuid,
   rom_time_since_epoch,
 
+  xclbin_uuid,
   mem_topology_raw,
   ip_layout_raw,
 
@@ -142,6 +144,32 @@ enum class key_type
   f_flash_type,
   flash_type,
   board_name
+};
+
+class no_such_key : public std::exception
+{
+  key_type m_key;
+  std::string msg;
+
+  using qtype = std::underlying_type<query::key_type>::type;
+public:
+  explicit
+  no_such_key(key_type k)
+    : m_key(k)
+    , msg(boost::str(boost::format("No such query request (%d)") % static_cast<qtype>(k)))
+  {}
+
+  key_type
+  get_key() const
+  {
+    return m_key;
+  }
+
+  const char*
+  what() const noexcept
+  {
+    return msg.c_str();
+  }
 };
 
 struct format
@@ -384,6 +412,15 @@ struct rom_time_since_epoch : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::rom_time_since_epoch;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct xclbin_uuid : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::xclbin_uuid;
 
   virtual boost::any
   get(const device*) const = 0;

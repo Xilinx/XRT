@@ -20,6 +20,7 @@
 #include "utils.h"
 #include "query_requests.h"
 #include "core/include/xrt.h"
+#include "core/include/xclbin.h"
 #include <boost/format.hpp>
 #include <string>
 #include <iostream>
@@ -39,10 +40,27 @@ device::
   // virtual must be declared and defined
 }
 
+std::string
+device::
+get_xclbin_uuid() const
+{
+  try {
+    return device_query<query::xclbin_uuid>(this);
+  }
+  catch (const query::no_such_key&) {
+  }
+
+  // Emulation mode likely
+  char uuid_str[64] = { 0 };
+  uuid_unparse_lower(m_xclbin_uuid, uuid_str);
+  return uuid_str;
+}
+
 void
 device::
 register_axlf(const axlf* top)
 {
+  uuid_copy(m_xclbin_uuid, top->m_header.uuid);
   axlf_section_kind kinds[] = {EMBEDDED_METADATA, AIE_METADATA};
   for (auto kind : kinds) {
     auto hdr = xclbin::get_axlf_section(top, kind);
@@ -50,7 +68,7 @@ register_axlf(const axlf* top)
       continue;
     auto section_data = reinterpret_cast<const char*>(top) + hdr->m_sectionOffset;
     std::vector<char> data{section_data, section_data + hdr->m_sectionSize};
-    m_axlf_sections.emplace(std::make_pair(kind, std::move(data)));
+    m_axlf_sections.emplace(kind , std::move(data));
   }
 }
 

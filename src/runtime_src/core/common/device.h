@@ -174,13 +174,27 @@ public:
    *
    * This function extracts meta data sections as needed.
    */
+  XRT_CORE_COMMON_EXPORT
   void
   register_axlf(const axlf*);
+
+  /**
+   * get_xclbin_uuid() - Get uuid of currently loaded xclbin
+   */
+  std::string
+  get_xclbin_uuid() const;
 
   /**
    * get_axlf_section() - Get section from currently loaded axlf
    *
    * Return: pair of section data and size in bytes
+   *
+   * This function is to provide access to meta data sections that are
+   * not cached by the driver.  The returned section is from when the
+   * xclbin was loaded by this process.  The function cannot be used
+   * unless this process loaded the xclbin.
+   *
+   * The function returns {nullptr, 0} if section is not cached.
    */
   std::pair<const char*, size_t>
   get_axlf_section(axlf_section_kind section) const;
@@ -232,6 +246,9 @@ public:
 
  private:
   id_type m_device_id;
+
+  // cache xclbin meta data loaded by this process
+  xuid_t m_xclbin_uuid;
   std::map<axlf_section_kind, std::vector<char>> m_axlf_sections;
 };
 

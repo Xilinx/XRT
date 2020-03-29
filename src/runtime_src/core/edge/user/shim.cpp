@@ -472,10 +472,8 @@ xclLoadXclBin(const xclBin *buffer)
   auto top = reinterpret_cast<const axlf*>(buffer);
   auto ret = xclLoadAxlf(top);
 
-  if (!ret) {
+  if (!ret)
     mKernelClockFreq = xrt_core::xclbin::get_kernel_freq(top);
-    mCoreDevice->register_axlf(top);
-  }
 
   xclLog(XRT_INFO, "XRT", "%s: return %d", __func__, ret);
   return ret;
@@ -1570,6 +1568,8 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 
       return ret;
     }
+    auto core_device = xrt_core::get_userpf_device(handle);
+    core_device->register_axlf(buffer);
     ret = xrt_core::scheduler::init(handle, buffer);
     if (ret) {
       printf("Scheduler init failed\n");
