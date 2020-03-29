@@ -279,19 +279,19 @@ int run(int argc, char** argv)
 
   auto header = load_xclbin(device, xclbin_fnm);
   auto top = reinterpret_cast<const axlf*>(header.data());
-  auto ip = xclbin::get_axlf_section(top, IP_LAYOUT);
-  auto layout = reinterpret_cast<ip_layout*>(header.data() + ip->m_sectionOffset);
   auto topo = xclbin::get_axlf_section(top, MEM_TOPOLOGY);
   auto topology = reinterpret_cast<mem_topology*>(header.data() + topo->m_sectionOffset);
 
-  uuid_t xclbin_id;
-  uuid_copy(xclbin_id, top->m_header.uuid);
+  {
+    // Demo xrt_xclbin API retrieving uuid from kernel if applicable
+    uuid_t xclbin_id;
+    uuid_copy(xclbin_id, top->m_header.uuid);
 
-  uuid_t xid;
-  xrtXclbinUUID(device, xid);
-
-  if (uuid_compare(xclbin_id, xid) != 0)
-    throw std::runtime_error("xid mismatch");
+    uuid_t xid;
+    xrtXclbinUUID(device, xid);
+    if (uuid_compare(xclbin_id, xid) != 0)
+      throw std::runtime_error("xid mismatch");
+  }
 
   int first_used_mem = 0;
   for (int i=0; i<topology->m_count; ++i) {
@@ -303,7 +303,7 @@ int run(int argc, char** argv)
 
   compute_units = cus = std::min(cus, compute_units);
   std::string kname = get_kernel_name(cus);
-  auto kernel = xrtPLKernelOpen(device, header.data(), kname.c_str());
+  auto kernel = xrtPLKernelOpen(device, top->m_header.uuid, kname.c_str());
 
   run(device,kernel,jobs,secs,first_used_mem);
 
