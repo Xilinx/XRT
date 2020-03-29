@@ -46,9 +46,11 @@ graph_type(std::shared_ptr<xrt_core::device> dev, uuid_t, const std::string& gra
       drv->setAieArray(aieArray);
     }
 
+    /* Initialize graph tile metadata */
     for (auto& tile : xrt_core::edge::aie::get_tiles(device.get(), name))
       tiles.emplace_back(std::move(tile));
 
+    /* Initialize graph rtp metadata */
     for (auto &rtp : xrt_core::edge::aie::get_rtp(device.get()))
       rtps.emplace_back(std::move(rtp));
 
@@ -310,6 +312,87 @@ update_rtp(const char* port, const char* buffer, size_t size)
     }
 }
 
+void
+graph_type::
+sync_bo(unsigned bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset)
+{
+  int ret;
+  drm_zocl_info_bo info;
+
+  auto gmio = std::find_if(aieArray->gmios.begin(), aieArray->gmios.end(),
+            [dmaID](gmio_type it) { return it.id.compare(dmaID) == 0; });
+
+  if (gmio != aieArray->gmios.end())
+      throw xrt_core::error(-EINVAL, "Can't sync BO: DMA ID not found");
+
+  auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
+  ret = drv->getBOInfo(bo, info);
+  if (ret)
+    throw xrt_core::error(ret, "Sync AIE Bo fails: can not get BO info.");
+ 
+  if (size & XAIEDMA_SHIM_TXFER_LEN32_MASK != 0)
+    throw xrt_core::error(-EINVAL, "Sync AIE Bo fails: size is not 32 bits aligned.");
+
+  if (offset + size > info.size)
+    throw xrt_core::error(-EINVAL, "Sync AIE Bo fails: exceed BO boundary.");
+
+  uint64_t paddr = info.paddr + offset;
+  if (paddr & XAIEDMA_SHIM_ADDRLOW_ALIGN_MASK != 0)
+    throw xrt_core::error(-EINVAL, "Sync AIE Bo fails: address is not 128 bits aligned.");
+
+  ShimDMA *dmap = &aieArray->shim_dma.at(gmio->shim_col);
+  auto chan = gmio->channel_number;
+
+  /* Find a free BD. Busy wait until we get one. */
+  while (dmap->dma_chan[chan].idle_bds.empty()) {
+    uint8_t npend = XAieDma_ShimPendingBdCount(&(dmap->handle), chan);
+    int num_comp = XAIEGBL_NOC_DMASTA_STARTQ_MAX - npend;
+
+    /* Pending BD is completed by order per Shim DMA spec. */
+    for (int i = 0; i < num_comp; ++i) {
+      BD bd = dmap->dma_chan[chan].pend_bds.front();
+      dmap->dma_chan[chan].pend_bds.pop();
+      dmap->dma_chan[chan].idle_bds.push(bd);
+    }
+  }
+
+  BD bd = dmap->dma_chan[chan].idle_bds.front();
+  dmap->dma_chan[chan].idle_bds.pop();
+  bd.addr_high = GET_BD_HIGH_ADDR(paddr);
+  bd.addr_low = GET_BD_LOW_ADDR(paddr);
+
+  XAieDma_ShimBdSetAddr(&(dmap->handle), bd.bd_num, bd.addr_high, bd.addr_low, size);
+
+  /* Set BD lock */
+  XAieDma_ShimBdSetLock(&(dmap->handle), bd.bd_num, bd.bd_num, 1, XAIEDMA_SHIM_LKACQRELVAL_INVALID, 1, XAIEDMA_SHIM_LKACQRELVAL_INVALID);
+
+  /* Write BD */
+  XAieDma_ShimBdWrite(&(dmap->handle), bd.bd_num);
+
+  /* Enqueue BD */
+  XAieDma_ShimSetStartBd((&(dmap->handle)), chan, bd.bd_num);
+  dmap->dma_chan[chan].pend_bds.push(bd);
+
+  /*
+   * Wait for transfer to be completed
+   * TODO Set a timeout value when we have error handling/reset
+   */
+  wait_sync_bo(dmap, chan, 0);
+}
+
+void
+graph_type::
+wait_sync_bo(ShimDMA *dmap, uint32_t chan, uint32_t timeout)
+{
+  while ((XAieDma_ShimWaitDone(&(dmap->handle), chan, timeout) != XAIEGBL_NOC_DMASTA_STA_IDLE));
+
+  while (!dmap->dma_chan[chan].pend_bds.empty()) {
+    BD bd = dmap->dma_chan[chan].pend_bds.front();
+    dmap->dma_chan[chan].pend_bds.pop();
+    dmap->dma_chan[chan].idle_bds.push(bd);
+  }
+}
+
 
 } // zynqaie
 
@@ -419,6 +502,13 @@ xrtGraphUpdateRTP(xrtGraphHandle ghdl, const char* port, const char* buffer, siz
 {
   auto graph = get_graph(ghdl);
   graph->update_rtp(port, buffer, size);
+}
+
+void
+xrtSyncBOAIE(xrtGraphHandle ghdl, unsigned bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset)
+{
+  auto graph = get_graph(ghdl);
+  graph->sync_bo(bo, dmaID, dir, size, offset);
 }
 
 } // api
@@ -597,4 +687,21 @@ xrtGraphUpdateRTP(xrtGraphHandle ghdl, const char* port, const char* buffer, siz
     xrt_core::send_exception_message(ex.what());
     return -1;
   }
+}
+
+int
+xrtSyncBOAIE(xrtGraphHandle ghdl, unsigned bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset)
+{
+  try {
+    api::xrtSyncBOAIE(ghdl, bo, dmaID, dir, size, offset);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -1;
+  }  
 }

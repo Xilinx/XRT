@@ -175,6 +175,8 @@ enum xclBOKind {
 enum xclBOSyncDirection {
     XCL_BO_SYNC_BO_TO_DEVICE = 0,
     XCL_BO_SYNC_BO_FROM_DEVICE,
+    XCL_BO_SYNC_BO_GMIO_TO_AIE,
+    XCL_BO_SYNC_BO_AIE_TO_GMIO,
 };
 
 /**
