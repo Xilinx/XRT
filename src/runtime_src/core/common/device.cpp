@@ -68,7 +68,7 @@ register_axlf(const axlf* top)
       continue;
     auto section_data = reinterpret_cast<const char*>(top) + hdr->m_sectionOffset;
     std::vector<char> data{section_data, section_data + hdr->m_sectionSize};
-    m_axlf_sections.emplace(std::make_pair(kind, std::move(data)));
+    m_axlf_sections.emplace(kind , std::move(data));
   }
 }
 
