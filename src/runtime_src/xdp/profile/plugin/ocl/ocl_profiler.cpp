@@ -319,6 +319,10 @@ namespace xdp {
           traceBufSz = getDeviceDDRBufferSize(dInt, device);
           trace_memory = "TS2MM";
         }
+        // Continuous trace isn't safe to use with stall setting
+        if (dInt->hasFIFO() && mTraceThreadEn && stallTrace!= xdp::RTUtil::STALL_TRACE_OFF) {
+          xrt::message::send(xrt::message::severity_level::XRT_WARNING, CONTINUOUS_OFFLOAD_WARN_MSG_STALLS);
+        }
 
         DeviceTraceLogger* deviceTraceLogger = new TraceLoggerUsingProfileMngr(getProfileManager(), device->get_unique_name(), binaryName);
         auto offloader = std::make_unique<DeviceTraceOffload>(dInt, deviceTraceLogger,
