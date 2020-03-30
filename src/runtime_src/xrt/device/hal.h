@@ -326,6 +326,13 @@ public:
 
   /**
    * @returns
+   *   The Group index for the argument of the cu
+   */
+  virtual int
+  getMemGroupIndex(unsigned int cuidx, unsigned int argidx) = 0;
+
+  /**
+   * @returns
    *   The device address of a buffer object
    */
   virtual uint64_t
@@ -425,6 +432,18 @@ public:
   hasBankAlloc() const
   {
     return false;
+  }
+
+  virtual bool
+  isBankAlloc() const
+  {
+      return false;
+  }
+
+  virtual void 
+  setBankAlloc(bool flag) const
+  {
+      return;
   }
 
   /**

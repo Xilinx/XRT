@@ -297,6 +297,9 @@ alloc(size_t sz, Domain domain, uint64_t memory_index, void* userptr)
     } else
       flags |= XCL_BO_FLAGS_CACHEABLE;
 
+    if (isBankAlloc()) {
+        flags |= XCL_FLAGS_BANK_ONLY;
+    }
     if (userptr)
       ubo->handle = m_ops->mAllocUserPtrBO(m_handle, userptr, sz, flags);
     else
@@ -543,6 +546,16 @@ import(const BufferObjectHandle& boh)
   return BufferObjectHandle(ubo.release());
 }
 
+int
+device::
+getMemGroupIndex(unsigned int cuidx, unsigned int argidx)
+{
+  if(!m_ops->mGetBOGroup) {
+    return -1;
+  }
+ 
+  return m_ops->mGetBOGroup(m_handle, cuidx, argidx);
+}
 
 uint64_t
 device::

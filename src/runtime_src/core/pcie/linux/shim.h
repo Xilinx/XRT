@@ -67,6 +67,7 @@ public:
     int xclRegWrite(uint32_t ipIndex, uint32_t offset, uint32_t data);
     int xclRegRead(uint32_t ipIndex, uint32_t offset, uint32_t *datap);
 
+    int xclGetBOGroup(unsigned int cuidx, unsigned int argidx);
     unsigned int xclAllocBO(size_t size, int unused, unsigned flags);
     unsigned int xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags);
     void xclFreeBO(unsigned int boHandle);

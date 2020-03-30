@@ -717,9 +717,25 @@ xclExportBO(xclDeviceHandle handle, xclBufferHandle boHandle);
  * Import a BO exported by another device.     *
  * This operation is backed by Linux DMA-BUF framework
  */
+
 XCL_DRIVER_DLLESPEC
 xclBufferHandle
 xclImportBO(xclDeviceHandle handle, int fd, unsigned int flags);
+
+/**
+ * xclGetBOGroup() - Obtain Memory Group id for the argument
+ *
+ * @handle:        Device handle
+ * @argidx:        Argument index
+ * @cuidx:         CU index
+ * Return:         -1 on failure
+ *                 +ve group index
+ *
+ * This is the prefered method for obtaining Group id for the given argument.
+ */
+XCL_DRIVER_DLLESPEC
+int
+xclGetBOGroup(xclDeviceHandle handle, unsigned int cuidx, unsigned int argidx);
 
 /**
  * xclGetBOProperties() - Obtain xclBOProperties struct for a BO

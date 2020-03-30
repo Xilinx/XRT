@@ -63,6 +63,7 @@ private:
 
   typedef xclBufferHandle (*importBOFuncType)(xclDeviceHandle handle, int fd, unsigned int flags);
   typedef int (*exportBOFuncType)(xclDeviceHandle handle, xclBufferHandle boHandle);
+  typedef int (*getBOGroupFuncType)(xclDeviceHandle handle, unsigned int cuidx, unsigned int argidx);
   typedef int (*getBOPropertiesFuncType)(xclDeviceHandle handle, xclBufferHandle boHandle, xclBOProperties*);
   typedef int (*execBOFuncType)(xclDeviceHandle handle, xclBufferHandle cmdBO);
   typedef int (*execWaitFuncType)(xclDeviceHandle handle, int timeoutMS);
@@ -162,6 +163,7 @@ public:
   allocUserPtrBOFuncType mAllocUserPtrBO;
   importBOFuncType mImportBO;
   exportBOFuncType mExportBO;
+  getBOGroupFuncType mGetBOGroup;
   getBOPropertiesFuncType mGetBOProperties;
 
   execBOFuncType mExecBuf;

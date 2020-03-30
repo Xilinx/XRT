@@ -518,7 +518,8 @@ assign_buffer_to_argidx(memory* buf, unsigned long argidx)
     if (trim) {
       auto memidx = buf->get_memidx();
       assert(memidx>=0);
-      validate_cus(device,argidx,memidx);
+      if (buf->is_set_bank_index())
+	      validate_cus(device,argidx,memidx);
     }
   }
 

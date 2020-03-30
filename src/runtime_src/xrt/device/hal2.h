@@ -66,6 +66,7 @@ class device : public xrt::hal::device
 
   std::shared_ptr<hal2::operations> m_ops;
   unsigned int m_idx;
+  mutable bool is_bank_alloc = false;
 
   hal2::device_handle m_handle;
   hal2::device_info m_devinfo;
@@ -369,6 +370,8 @@ public:
   virtual bool
   is_imported(const BufferObjectHandle& boh) const;
 
+  virtual int
+  getMemGroupIndex(unsigned int cuidx, unsigned int argidx);
   virtual uint64_t
   getDeviceAddr(const BufferObjectHandle& boh);
 
@@ -415,6 +418,16 @@ public:
     // PCIe DSAs have device DDRs which allow bank allocation/selection
     // Zynq PL based devices set device id to 0xffff.
     return (m_devinfo.mDeviceId != 0xffff);
+  }
+  virtual bool
+  isBankAlloc() const
+  {
+      return is_bank_alloc;
+  }
+  virtual void 
+  setBankAlloc(bool flag) const
+  {
+      is_bank_alloc = flag;
   }
 
   virtual hal::operations_result<ssize_t>

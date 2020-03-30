@@ -280,6 +280,10 @@ alloc(memory* mem, memidx_type memidx)
   if (is_aligned_ptr(host_ptr)) {
     aligned_flag = true;
     try {
+      if (mem->is_set_bank_index()) {
+          m_xdevice->setBankAlloc(true);
+      }
+
       auto boh = m_xdevice->alloc(sz,xrt::device::memoryDomain::XRT_DEVICE_RAM,memidx,host_ptr);
       track(mem);
       return boh;
@@ -706,6 +710,36 @@ get_cu_memidx() const
     }
   }
   return m_cu_memidx;
+}
+
+device::memidx_bitmask_type
+device::
+get_cu_memidx(kernel* kernel, int argidx) const
+{
+  bool set = false;
+  memidx_bitmask_type memidx;
+  memidx.set();
+  auto sid = kernel->get_symbol_uid();
+
+  // iterate CUs
+  for (auto& cu : get_cus()) {
+    if (cu->get_symbol_uid()!=sid)
+      continue;
+    memidx &= cu->get_memidx(argidx);
+    set = true;
+  }
+
+  if (!set)
+    memidx.reset();
+
+  return memidx;
+}
+
+device::memidx_type
+device::
+get_mem_groupidx(int cuidx, int argidx) const
+{
+  return m_xdevice->getMemGroupIndex(cuidx, argidx); 
 }
 
 xrt::device::BufferObjectHandle

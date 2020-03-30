@@ -1373,6 +1373,40 @@ unsigned int shim::xclImportBO(int fd, unsigned flags)
 }
 
 /*
+ * xclGetBOGroup()
+ * Input:
+ *       argidx : Argument index of the kernel
+ *       cuidx  : Cu index  
+ *
+ * Return value:
+ *        grpidx: Group index for the particular argidx and cuidx 
+ *       -1:      Failure
+ */
+int shim::xclGetBOGroup(unsigned int cuidx, unsigned int argidx)
+{
+    std::string errmsg;
+    int cu_id = -1;
+    int arg_id = -1;
+    int grp_id = -1;
+    
+    std::vector<std::string> memGroupInfo;
+    mDev->sysfs_get("", "mem_group_info", errmsg, memGroupInfo);
+    
+    if (!memGroupInfo.empty()) {
+        /* Skip the first index as this contains only headers */
+        for (unsigned i = 1; i < memGroupInfo.size(); i++) {
+            std::stringstream ss(memGroupInfo[i]);
+            ss >> cu_id >> arg_id >> grp_id;
+            if (((int)argidx == arg_id) && ((int)cuidx == cu_id)) {
+                break;
+            }
+        }
+    }
+
+    return grp_id;
+}
+
+/*
  * xclGetBOProperties()
  */
 int shim::xclGetBOProperties(unsigned int boHandle, xclBOProperties *properties)
@@ -2462,6 +2496,12 @@ ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf, size_t 
 #endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclUnmgdPread(flags, buf, count, offset) : -ENODEV;
+}
+
+int xclGetBOGroup(xclDeviceHandle handle, unsigned int cuidx, unsigned int argidx)
+{
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
+    return drv ? drv->xclGetBOGroup(cuidx, argidx) : -ENODEV;
 }
 
 int xclGetBOProperties(xclDeviceHandle handle, unsigned int boHandle, xclBOProperties *properties)

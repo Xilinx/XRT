@@ -32,6 +32,7 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   ,mAllocUserPtrBO(0)
   ,mImportBO(0)
   ,mExportBO(0)
+  ,mGetBOGroup(0)
   ,mGetBOProperties(0)
   ,mExecBuf(0)
   ,mExecWait(0)
@@ -94,6 +95,7 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   mAllocUserPtrBO = (allocUserPtrBOFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclAllocUserPtrBO");
   mImportBO = (importBOFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclImportBO");
   mExportBO = (exportBOFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclExportBO");
+  mGetBOGroup = (getBOGroupFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetBOGroup");
   mGetBOProperties = (getBOPropertiesFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetBOProperties");
   mExecBuf = (execBOFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclExecBuf");
   mExecWait = (execWaitFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclExecWait");
