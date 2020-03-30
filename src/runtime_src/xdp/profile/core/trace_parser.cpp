@@ -372,9 +372,9 @@ namespace xdp {
           if (found != std::string::npos && lastTimeStamp < mStreamMonLastTranx[j])
             lastTimeStamp = mStreamMonLastTranx[j];
         }
-        // Default case
-        if (lastTimeStamp < mAccelMonLastTranx[i])
-          lastTimeStamp = mAccelMonLastTranx[i];
+        // Use stalls to estimate time
+        //if (lastTimeStamp < mAccelMonLastTranx[i])
+        //  lastTimeStamp = mAccelMonLastTranx[i];
         if (lastTimeStamp) {
           if (!warning) {
             mPluginHandle->sendMessage(
