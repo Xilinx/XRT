@@ -343,7 +343,7 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	struct drm_xocl_bo *xobj;
 	struct xocl_drm *drm_p = dev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
-	unsigned ddr = xocl_bo_ddr_idx(user_flags);
+	unsigned ddr = 0;
 	u16 ddr_count = 0;
 	bool xobj_inited = false;
 	int err = 0;
@@ -376,7 +376,8 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	}
 
 	if (xobj->flags & XOCL_CMA_MEM) {
-		err = xocl_cma_bo_alloc(drm_p, xobj, size);
+        ddr = xocl_bo_ddr_idx(user_flags);
+		err = xocl_cma_bo_alloc(drm_p, xobj, size, ddr);
 		if (err)
 			goto failed;
 	}
@@ -397,14 +398,15 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 
 	mutex_lock(&drm_p->mm_lock);
 	/* Attempt to allocate buffer on the requested DDR */
-	xocl_xdev_dbg(xdev, "alloc bo from bank%u", ddr);
-	err = xocl_mm_insert_node(drm_p, ddr, xobj->mm_node,
-		xobj->base.size);
-	BO_DEBUG("insert mm_node:%p, start:%llx size: %llx",
-		xobj->mm_node, xobj->mm_node->start,
-		xobj->mm_node->size);
+	err = xocl_mm_insert_node_range(drm_p, user_flags, xobj->mm_node,
+		xobj->base.size, &ddr);
 	if (err)
 		goto failed;
+
+	xocl_xdev_dbg(xdev, "allocated bo from bank%u", ddr);
+    BO_DEBUG("insert mm_node:%p, start:%llx size: %llx",
+		xobj->mm_node, xobj->mm_node->start,
+		xobj->mm_node->size);
 
 	xocl_mm_update_usage_stat(drm_p, ddr, xobj->base.size, 1);
 	mutex_unlock(&drm_p->mm_lock);
@@ -501,11 +503,11 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 
 	xobj = xocl_create_bo(dev, args->size, args->flags, bo_type);
 
-	BO_ENTER("xobj %p, mm_node %p", xobj, xobj->mm_node);
 	if (IS_ERR(xobj)) {
 		DRM_ERROR("object creation failed\n");
 		return PTR_ERR(xobj);
 	}
+	BO_ENTER("xobj %p, mm_node %p", xobj, xobj->mm_node);
 
 	if (xobj->flags == XOCL_BO_P2P) {
 		/*

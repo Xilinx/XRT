@@ -22,6 +22,8 @@
 #include <linux/hashtable.h>
 #endif
 
+#define DRM_XOCL_MEM_GROUP_MAX 128
+#define MAX_MEM_BANK_VALUE 128
 /**
  * struct drm_xocl_exec_metadata - Meta data for exec bo
  *
@@ -52,12 +54,47 @@ struct xocl_cma_bank {
 
 };
 
+struct xocl_mem_bank_info {
+    uint32_t bank_id;
+    uint64_t start_addr;
+    uint64_t end_addr;
+    uint32_t grp_id;
+    size_t   size;
+};
+struct xocl_mem_bank {
+    uint32_t b_count;
+    struct xocl_mem_bank_info *m_bank[DRM_XOCL_MEM_GROUP_MAX];
+};
+struct xocl_mem_range {
+    uint32_t l_bank_idx;
+    uint64_t l_start_addr;
+    uint32_t h_bank_idx;
+    uint64_t h_end_addr;
+};
+struct xocl_mem_group {
+    uint32_t g_count;
+    struct xocl_mem_range *m_range[DRM_XOCL_MEM_GROUP_MAX];
+};
+struct xocl_mem_conn_map {
+    uint32_t cu_id;
+    uint32_t arg_idx;
+    uint32_t grp_id;
+};
+struct xocl_mem_conn {
+    uint32_t m_count;
+    struct xocl_mem_conn_map *m_conn[DRM_XOCL_MEM_GROUP_MAX];
+};
+struct xocl_mem_connectivity {
+    struct xocl_mem_conn    *mem_conn;
+    struct xocl_mem_group   *mem_group;
+    struct xocl_mem_bank    *mem_bank;
+};
 struct xocl_drm {
 	xdev_handle_t		xdev;
 	/* memory management */
 	struct drm_device       *ddev;
 	/* Memory manager array, one per DDR channel, protected by mm_lock */
-	struct drm_mm           **mm;
+	struct drm_mm           *mm;
 	struct mutex            mm_lock;
 	struct drm_xocl_mm_stat **mm_usage_stat;
 	u64                     *mm_p2p_off;
@@ -66,6 +103,7 @@ struct xocl_drm {
 	DECLARE_HASHTABLE(mm_range, 6);
 #endif
 	struct xocl_cma_bank  *cma_bank;
+    struct xocl_mem_connectivity *m_connect;
 };
 
 struct drm_xocl_bo {
@@ -106,7 +144,8 @@ void xocl_cma_mm_get_usage_stat(struct xocl_drm *drm_p,
         struct drm_xocl_mm_stat *pstat);
 void xocl_cma_mm_update_usage_stat(struct xocl_drm *drm_p,
         u64 size, int count);
-
+int xocl_mm_insert_node_range(struct xocl_drm *drm_p, unsigned user_flags,
+                    struct drm_mm_node *node, u64 size, u32 *grp_id);
 int xocl_mm_insert_node(struct xocl_drm *drm_p, u32 ddr,
                 struct drm_mm_node *node, u64 size);
 void *xocl_drm_init(xdev_handle_t xdev);
