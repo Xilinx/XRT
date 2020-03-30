@@ -92,6 +92,39 @@ static ssize_t kdsstat_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(kdsstat);
 
+static ssize_t mem_group_info_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+    struct xocl_drm *drm_p = XOCL_DRM(xdev);
+	int i;
+	ssize_t count = 0;
+	ssize_t size = 0;
+	const char *out_fmt_header = "cu_idx\targ_idx\tgrp_idx\n";
+	const char *out_fmt = "%u\t%u\t%u\n";
+    struct xocl_mem_conn *mem_conn = NULL;
+    
+    if (!drm_p || !drm_p->m_connect)
+        return 0;
+    
+    mem_conn = drm_p->m_connect->mem_conn;
+    if (!mem_conn)
+        return 0;
+    
+    count = sprintf(buf, out_fmt_header);
+	buf += count;
+	size += count;
+    for (i = 0; i < mem_conn->m_count; i++) {
+        count = sprintf(buf, out_fmt, mem_conn->m_conn[i]->cu_id,
+                    mem_conn->m_conn[i]->arg_idx, mem_conn->m_conn[i]->grp_id);
+		buf += count;
+		size += count;
+    }
+	
+    return size;
+}
+static DEVICE_ATTR_RO(mem_group_info);
+
 static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 {
 	int i, err;
@@ -543,6 +576,7 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_userbar.attr,
 	&dev_attr_kdsstat.attr,
 	&dev_attr_memstat.attr,
+	&dev_attr_mem_group_info.attr,
 	&dev_attr_memstat_raw.attr,
 	&dev_attr_p2p_enable.attr,
 	&dev_attr_dev_offline.attr,
