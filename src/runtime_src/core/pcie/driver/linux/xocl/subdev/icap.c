@@ -1220,79 +1220,31 @@ done:
 	ICAP_INFO(icap, "%s, err = %d", __func__, err);
 	return err;
 }
+
 static int icap_download_boot_firmware(struct platform_device *pdev)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
 	struct pci_dev *pcidev = XOCL_PL_TO_PCI_DEV(pdev);
-	struct pci_dev *pcidev_user = NULL;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	int funcid = PCI_FUNC(pcidev->devfn);
-	int slotid = PCI_SLOT(pcidev->devfn);
-	unsigned short deviceid = pcidev->device;
 	struct axlf *bin_obj_axlf;
-	const struct firmware *fw, *sche_fw;
-	char fw_name[256];
-	long err = 0;
-	uint64_t length = 0;
+	const struct firmware *sche_fw;
+	int err = 0;
 	uint64_t mbBinaryOffset = 0;
 	uint64_t mbBinaryLength = 0;
 	const struct axlf_section_header *mbHeader = 0;
 	bool load_sched = false, load_mgmt = false;
+	char *fw_buf = NULL;
+	size_t fw_size = 0;
 
 	/* Can only be done from mgmt pf. */
 	if (!ICAP_PRIVILEGED(icap))
 		return -EPERM;
 
-	/* Read xsabin first, if failed, try dsabin from file system. */
-	if (funcid != 0) {
-		pcidev_user = pci_get_slot(pcidev->bus,
-			PCI_DEVFN(slotid, funcid - 1));
-		if (!pcidev_user) {
-			pcidev_user = pci_get_device(pcidev->vendor,
-				pcidev->device + 1, NULL);
-		}
-		if (pcidev_user)
-			deviceid = pcidev_user->device;
-	}
-
-	err = xocl_rom_find_firmware(xdev, fw_name, sizeof(fw_name),
-			deviceid, &fw);
-	if (err) {
-		/* Give up on finding xsabin and dsabin. */
-		ICAP_ERR(icap, "unable to find firmware, giving up");
+	err = xocl_rom_load_firmware(xdev, &fw_buf, &fw_size);
+	if (err)
 		return err;
-	}
 
-	if (memcmp(fw->data, ICAP_XCLBIN_V2, sizeof(ICAP_XCLBIN_V2)) != 0) {
-		ICAP_ERR(icap, "invalid firmware %s", fw_name);
-		err = -EINVAL;
-		goto done;
-	}
-
-	ICAP_INFO(icap, "boot_firmware in axlf format");
-	bin_obj_axlf = (struct axlf *)fw->data;
-	length = bin_obj_axlf->m_header.m_length;
-
-	if (length > fw->size) {
-		err = -EINVAL;
-		goto done;
-	}
-
-	/* Match the xclbin with the hardware. */
-	if (!xocl_verify_timestamp(xdev,
-		bin_obj_axlf->m_header.m_featureRomTimeStamp)) {
-		ICAP_ERR(icap, "timestamp of ROM did not match xclbin");
-		err = -EINVAL;
-		goto done;
-	}
-	ICAP_INFO(icap, "VBNV and timestamps matched");
-
-	if (xocl_xrt_version_check(xdev, bin_obj_axlf, true)) {
-		ICAP_ERR(icap, "Major version does not match xrt");
-		err = -EINVAL;
-		goto done;
-	}
-	ICAP_INFO(icap, "runtime version matched");
+	bin_obj_axlf = (struct axlf *)fw_buf;
 
 	if (xocl_mb_sched_on(xdev)) {
 		/* Try locating the microblaze binary. */
@@ -1314,7 +1266,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 				mbBinaryOffset = mbHeader->m_sectionOffset;
 				mbBinaryLength = mbHeader->m_sectionSize;
 				xocl_mb_load_sche_image(xdev,
-					fw->data + mbBinaryOffset,
+					fw_buf + mbBinaryOffset,
 					mbBinaryLength);
 				ICAP_INFO(icap,
 					"stashed mb sche binary, len %lld",
@@ -1331,7 +1283,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 		if (mbHeader) {
 			mbBinaryOffset = mbHeader->m_sectionOffset;
 			mbBinaryLength = mbHeader->m_sectionSize;
-			xocl_mb_load_mgmt_image(xdev, fw->data + mbBinaryOffset,
+			xocl_mb_load_mgmt_image(xdev, fw_buf + mbBinaryOffset,
 				mbBinaryLength);
 			ICAP_INFO(icap, "stashed mb mgmt binary, len %lld",
 					mbBinaryLength);
@@ -1351,7 +1303,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 					mbHeader->m_sectionSize);
 			goto done;
 		}
-		memcpy(&icap->bmc_header, fw->data + mbHeader->m_sectionOffset,
+		memcpy(&icap->bmc_header, fw_buf + mbHeader->m_sectionOffset,
 				sizeof(struct bmc));
 		if (icap->bmc_header.m_size > mbHeader->m_sectionSize) {
 			err = -EINVAL;
@@ -1363,8 +1315,8 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 
 
 done:
-	release_firmware(fw);
-	ICAP_INFO(icap, "%s err: %ld", __func__, err);
+	vfree(fw_buf);
+	ICAP_INFO(icap, "%s err: %d", __func__, err);
 	return err;
 }
 

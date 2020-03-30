@@ -465,8 +465,8 @@ struct xocl_rom_funcs {
 	u64 (*get_timestamp)(struct platform_device *pdev);
 	int (*get_raw_header)(struct platform_device *pdev, void *header);
 	bool (*runtime_clk_scale_on)(struct platform_device *pdev);
-	int (*find_firmware)(struct platform_device *pdev, char *fw_name,
-		size_t len, u16 deviceid, const struct firmware **fw);
+	int (*load_firmware)(struct platform_device *pdev, char **fw,
+		size_t *fw_size);
 	bool (*passthrough_virtualization_on)(struct platform_device *pdev);
 	char *(*get_uuid)(struct platform_device *pdev);
 };
@@ -504,9 +504,9 @@ struct xocl_rom_funcs {
 #define	xocl_get_raw_header(xdev, header) \
 	(ROM_CB(xdev, get_raw_header) ? ROM_OPS(xdev)->get_raw_header(ROM_DEV(xdev), header) :\
 	-ENODEV)
-#define xocl_rom_find_firmware(xdev, fw_name, len, deviceid, fw)	\
-	(ROM_CB(xdev, find_firmware) ? ROM_OPS(xdev)->find_firmware(	\
-	ROM_DEV(xdev), fw_name, len, deviceid, fw) : -ENODEV)
+#define xocl_rom_load_firmware(xdev, fw, len)	\
+	(ROM_CB(xdev, load_firmware) ?		\
+	ROM_OPS(xdev)->load_firmware(ROM_DEV(xdev), fw, len) : -ENODEV)
 #define xocl_passthrough_virtualization_on(xdev)		\
 	(ROM_CB(xdev, passthrough_virtualization_on) ?		\
 	ROM_OPS(xdev)->passthrough_virtualization_on(ROM_DEV(xdev)) : false)
@@ -1428,6 +1428,23 @@ static inline void xocl_queue_destroy(xdev_handle_t xdev_hdl)
 	}
 	mutex_unlock(&xdev->wq_lock);
 }
+
+struct xocl_flash_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	int (*read)(struct platform_device *pdev,
+		char *buf, size_t n, loff_t off);
+	int (*get_size)(struct platform_device *pdev, size_t *size);
+};
+#define	FLASH_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_FLASH).pldev
+#define	FLASH_OPS(xdev)				\
+	((struct xocl_flash_funcs *)SUBDEV(xdev, XOCL_SUBDEV_FLASH).ops)
+#define	FLASH_CB(xdev)	(FLASH_DEV(xdev) && FLASH_OPS(xdev))
+#define	xocl_flash_read(xdev, buf, n, off)	\
+	(FLASH_CB(xdev) ?			\
+	FLASH_OPS(xdev)->read(FLASH_DEV(xdev), buf, n, off) : -ENODEV)
+#define	xocl_flash_get_size(xdev, size)		\
+	(FLASH_CB(xdev) ?			\
+	FLASH_OPS(xdev)->get_size(FLASH_DEV(xdev), size) : -ENODEV)
 
 /* subdev mbx messages */
 #define XOCL_MSG_SUBDEV_VER	1
