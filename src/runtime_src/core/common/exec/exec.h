@@ -20,8 +20,6 @@
 #include <vector>
 #include <memory>
 
-struct axlf;
-
 namespace xrt_core {
 
 class device;
@@ -42,7 +40,7 @@ void
 stop();
 
 void
-init(xrt_core::device* device, const axlf* top);
+init(xrt_core::device* device);
 
 void
 init(xrt_core::device* device, const std::vector<uint64_t>& cu_addr_map);
@@ -66,12 +64,6 @@ stop();
 void
 init(xrt_core::device* device);
 
-inline void
-init(xrt_core::device* device, const axlf*)
-{
-  init(device);
-}
-
 } // kds
 
 /**
@@ -91,12 +83,6 @@ stop();
 void
 init(xrt_core::device* device);
 
-inline void
-init(xrt_core::device* device, const axlf*)
-{
-  init(device);
-}
-
 } // pts
 
 namespace exec {
@@ -113,7 +99,7 @@ void
 stop();
 
 void
-init(xrt_core::device* device, const axlf* top);
+init(xrt_core::device* device);
 
 } // scheduler
 

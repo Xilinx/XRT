@@ -199,6 +199,16 @@ public:
   std::pair<const char*, size_t>
   get_axlf_section(axlf_section_kind section) const;
 
+  /**
+   * get_axlf_section() - Get section from currently loaded axlf
+   * 
+   * xclbin_id:  Check that xclbin_id matches currently cached
+   *
+   * Same behavior as other get_axlf_section()
+   */
+  std::pair<const char*, size_t>
+  get_axlf_section(axlf_section_kind section, const xuid_t xclbin_id) const;
+
   // Move all these 'pt' functions out the class interface
   virtual void get_info(boost::property_tree::ptree&) const {}
   virtual void read_dma_stats(boost::property_tree::ptree&) const {}

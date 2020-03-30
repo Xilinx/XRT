@@ -38,6 +38,12 @@ uuid_clear(xuid_t uuid)
   std::memset(uuid, 0, sizeof(xuid_t));
 }
 
+inline int
+uuid_compare(const xuid_t uuid1, const xuid_t uuid2)
+{
+  return memcmp(uuid1, uuid2, sizeof(xuid_t));
+}
+
 inline void
 uuid_unparse_lower(const xuid_t uuid, char* str)
 {

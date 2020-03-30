@@ -61,7 +61,7 @@ device::
 register_axlf(const axlf* top)
 {
   uuid_copy(m_xclbin_uuid, top->m_header.uuid);
-  axlf_section_kind kinds[] = {EMBEDDED_METADATA, AIE_METADATA};
+  axlf_section_kind kinds[] = {EMBEDDED_METADATA, AIE_METADATA, IP_LAYOUT};
   for (auto kind : kinds) {
     auto hdr = xclbin::get_axlf_section(top, kind);
     if (!hdr)
@@ -80,6 +80,15 @@ get_axlf_section(axlf_section_kind section) const
   return itr != m_axlf_sections.end()
     ? std::make_pair((*itr).second.data(), (*itr).second.size())
     : std::make_pair(nullptr, 0);
+}
+
+std::pair<const char*, size_t>
+device::
+get_axlf_section(axlf_section_kind section, const xuid_t xclbin_id) const
+{
+  if (uuid_compare(xclbin_id, m_xclbin_uuid))
+    throw std::runtime_error("xclbin id mismatch");
+  return get_axlf_section(section);
 }
 
 std::string
