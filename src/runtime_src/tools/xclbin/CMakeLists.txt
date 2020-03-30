@@ -9,6 +9,7 @@ if(WIN32)
 endif()
 
 find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
+include_directories(${Boost_INCLUDE_DIRS})
 
 # Signing xclbin images are currently only support on Linux
 if(NOT WIN32)
