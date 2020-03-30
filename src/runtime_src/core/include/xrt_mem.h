@@ -38,6 +38,10 @@ extern "C" {
 #define	XCL_BO_FLAGS_P2P		(1 << 30)
 #define	XCL_BO_FLAGS_EXECBUF		(1 << 31)
 
+/* This Flag is used to identify between BANK or GROUP specified for memory allocation */
+#define XCL_FLAGS_BANK_ONLY     (1 << 16)
+#define XRT_FLAGS_BANKIDX_MASK  (0xFFFFUL)
+
 /**
  * This is the legacy usage of XCL DDR Flags.
  *

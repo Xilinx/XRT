@@ -409,6 +409,22 @@ public:
   }
 
   /**
+   * Get the group index for the argument of the cu 
+   *
+   * @param 
+   *   cuidx  Cu index 
+   *   argidx Argument index 
+   * @returns
+   *   -1 Failure
+   *   Group index of the argument as integer 
+   */
+
+  int getMemGroupIndex(unsigned int cuidx, unsigned int argidx)
+  {
+    return m_hal->getMemGroupIndex(cuidx, argidx);
+  }
+
+  /**
    * Get the device address of a buffer object
    *
    * @param boh
@@ -605,6 +621,16 @@ public:
     return m_hal->hasBankAlloc();
   }
 
+  void
+  setBankAlloc(bool flag) const
+  {
+    m_hal->setBankAlloc(flag);
+  }
+  bool
+  isBankAlloc() const
+  {
+    return m_hal->isBankAlloc();
+  }
   /**
    * Check if this device is an ARE device
    */

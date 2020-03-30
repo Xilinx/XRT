@@ -154,6 +154,12 @@ public:
     return is_device_memory_only() || is_device_memory_only_p2p();
   }
 
+  bool
+  is_set_bank_index() const
+  {
+    return memidx_type_bank;
+  }
+
   // Derived classes accessors
   // May be structured differently when _xcl_mem is eliminated
   virtual size_t
@@ -482,6 +488,8 @@ private:
   get_memidx_nolock(const device* d) const;
 
   memidx_type
+  get_groupidx_nolock(const device* d) const;
+  memidx_type
   get_ext_memidx_nolock(const xclbin& xclbin) const;
 
   memidx_type
@@ -503,6 +511,9 @@ private:
   // Assigned memory bank index for this object.  Affects behavior of
   // device side buffer allocation.
   mutable memidx_type m_memidx = -1;
+
+  /* Flags to identify whether this is a bank index or group index */
+  mutable bool memidx_type_bank = false;
 
   // List of dtor callback functions. On heap to avoid
   // allocation unless needed.
