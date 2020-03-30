@@ -43,8 +43,8 @@ const char *subCmdFlashUsage =
     "--shell --path file --card bdf [--type flash_type]\n"
     "--sc_firmware --path file --card bdf";
 
-#define fmt_str		"    "
-#define DEV_TIMEOUT	60
+#define fmt_str        "    "
+#define DEV_TIMEOUT    60
 
 static int scanDevices(bool verbose, bool json)
 {
@@ -179,7 +179,7 @@ static int updateSC(unsigned index, const char *file)
     dev->sysfs_put("", "shutdown", errmsg, "0\n");
     if (!errmsg.empty()) {
         std::cout << "ERROR: online userpf failed. Please warm reboot." << std::endl;
-	return ret;
+    return ret;
     }
 
     int wait = 0;
@@ -204,6 +204,7 @@ static int updateShell(unsigned index, std::string flashType,
 {
     std::shared_ptr<firmwareImage> pri;
     std::shared_ptr<firmwareImage> sec;
+    std::shared_ptr<firmwareImage> stripped;
 
     if (!flashType.empty()) {
         std::cout << "CAUTION: Overriding flash mode is not recommended. " <<
@@ -223,14 +224,19 @@ static int updateShell(unsigned index, std::string flashType,
     if (pri->fail())
         return -EINVAL;
 
+    stripped = std::make_shared<firmwareImage>(primary, STRIPPED_FIRMWARE);
+    if (stripped->fail())
+        stripped = nullptr;
+
     if (secondary != nullptr) {
         sec = std::make_shared<firmwareImage>(secondary,
             MCS_FIRMWARE_SECONDARY);
         if (sec->fail())
             sec = nullptr;
     }
-
-    return flasher.upgradeFirmware(flashType, pri.get(), sec.get());
+ 
+    return flasher.upgradeFirmware(flashType, pri.get(), sec.get(),
+        stripped.get());
 }
 
 // Reset shell to factory mode.
@@ -245,12 +251,12 @@ static int resetShell(unsigned index, bool force)
     if(force || !canProceed())
         return -ECANCELED;
 
-    return flasher.upgradeFirmware("", nullptr, nullptr);
+    return flasher.upgradeFirmware("", nullptr, nullptr, nullptr);
 }
 
 /* We do not take the risk to flash any bmc marked as UNKNOWN */
 static void isSameShellOrSC(DSAInfo& candidate, DSAInfo& current,
-	bool *same_dsa, bool *same_bmc)
+    bool *same_dsa, bool *same_bmc)
 {
     if (!current.name.empty()) {
         *same_dsa = (candidate.name == current.name &&
@@ -544,7 +550,7 @@ int flashXbutilFlashHandler(int argc, char *argv[])
             bmc = optarg;
             break;
         case 't':
-	    id = optarg;
+        id = optarg;
             break;
         case 'r':
             reset = true;
@@ -787,12 +793,90 @@ static int reset(int argc, char *argv[])
     return 0;
 }
 
+static int file(int argc, char *argv[])
+{
+    unsigned index = UINT_MAX;
+    const option opts[] = {
+        { "card", required_argument, nullptr, '0' },
+        { "input", required_argument, nullptr, '1' },
+        { "output", required_argument, nullptr, '2' },
+        { nullptr, 0, nullptr, 0 },
+    };
+    char *input_path = nullptr;
+    char *output_path = nullptr;
+
+    while (true) {
+        const auto opt = getopt_long(argc, argv, "", opts, nullptr);
+        if (opt == -1)
+            break;
+
+        switch (opt) {
+        case '0':
+            index = bdf2index(optarg);
+            if (index == UINT_MAX)
+                return -ENOENT;
+            break;
+        case '1':
+            input_path = optarg;
+            break;
+        case '2':
+            output_path = optarg;
+            break;
+        default:
+            return -EINVAL;
+        }
+    }
+
+    if ((input_path == nullptr) == (output_path == nullptr)) {
+        std::cout << "Specify input or output file path" << std::endl;
+        return -EINVAL;
+    }
+
+    Flasher flasher(index);
+    if(!flasher.isValid())
+        return -EINVAL;
+
+    if (input_path) {
+        std::ifstream ifs(input_path, std::ifstream::binary);
+        if (!ifs.good()) {
+            std::cout << "invalid input path: " << input_path << std::endl;
+            return -EINVAL;
+        }
+        ifs.seekg(0, ifs.end);
+        size_t len = ifs.tellg();
+        ifs.seekg(0, ifs.beg);
+        std::vector<unsigned char> data(len);
+        ifs.read(reinterpret_cast<char *>(data.data()), len);
+        return flasher.writeData(data);
+    }
+
+    if (output_path) {
+        std::ofstream ofs(output_path,
+            std::ofstream::binary | std::ofstream::trunc);
+        if (!ofs.good()) {
+            std::cout << "invalid output path: " << output_path << std::endl;
+            return -EINVAL;
+        }
+        std::vector<unsigned char> data;
+        int ret = flasher.readData(data);
+        if (ret) {
+            std::cout << "failed to read data from flash: " << std::endl;
+            return ret;
+        }
+        ofs.write(reinterpret_cast<char *>(data.data()), data.size());
+        return 0;
+    }
+
+    return 0;
+}
+
 static const std::map<std::string, std::function<int(int, char **)>> optList = {
     { "--scan", scan },
     { "--update", update },
     { "--shell", shell },
     { "--sc_firmware", sc },
     { "--factory_reset", reset },
+    { "--file", file },
 };
 
 int flashHandler(int argc, char *argv[])

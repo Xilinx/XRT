@@ -41,9 +41,13 @@ class XSPI_Flasher
 public:
     XSPI_Flasher(std::shared_ptr<pcidev::pci_device> dev);
     ~XSPI_Flasher();
-    int xclUpgradeFirmware1(std::istream& mcsStream1);
-    int xclUpgradeFirmware2(std::istream& mcsStream1, std::istream& mcsStream2);
+    int xclUpgradeFirmware1(std::istream& mcsStream1, std::istream* stripped);
+    int xclUpgradeFirmware2(std::istream& mcsStream1, std::istream& mcsStream2,
+        std::istream* stripped);
     int revertToMFG(void);
+
+    int xclReadData(std::vector<unsigned char>& data);
+    int xclWriteData(std::vector<unsigned char>& data);
 
 private:
     std::shared_ptr<pcidev::pci_device> mDev;
@@ -75,8 +79,9 @@ private:
     unsigned getSector(unsigned address);
 
     // Upgrade firmware via driver.
-    int upgradeFirmware1Drv(std::istream& mcsStream1);
-    int upgradeFirmware2Drv(std::istream& mcsStream1, std::istream& mcsStream2);
+    int upgradeFirmware1Drv(std::istream& mcsStream1, std::istream* stripped);
+    int upgradeFirmware2Drv(std::istream& mcsStream1, std::istream& mcsStream2,
+        std::istream* stripped);
 };
 
 #endif
