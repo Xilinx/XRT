@@ -959,10 +959,28 @@ static int process_completions(struct xdma_engine *engine,
 	return ret;
 }
 
-static struct xdma_request_cb *xdma_request_alloc(unsigned int sdesc_nr)
+static struct xdma_request_cb *xdma_request_alloc(struct sg_table *sgt)
 {
+	unsigned sdesc_nr = 0;
 	struct xdma_request_cb *req;
-	unsigned int size = sizeof(struct xdma_request_cb) +
+	unsigned int len;
+	int i, extra = 0;
+	unsigned int size;
+
+	if (sgt) {
+		struct scatterlist *sg = sgt->sgl;
+
+		for (i = 0;  i < sgt->nents ; i++, sg = sg_next(sg)) {
+			len = sg_dma_len(sg);
+
+			if (unlikely(len > desc_blen_max))
+				extra += len >> XDMA_DESC_BLEN_BITS;
+		}
+
+		sdesc_nr = sgt->nents + extra;
+	}
+
+	size = sizeof(struct xdma_request_cb) +
 			    sdesc_nr * sizeof(struct sw_desc);
 
 	req = kzalloc(size, GFP_KERNEL);
@@ -985,17 +1003,26 @@ static int xdma_init_request(struct xdma_request_cb *req)
 {
 	struct sg_table *sgt = req->sgt;
 	struct scatterlist *sg = sgt->sgl;
-	int i;
+	int i, j = 0;
 
 	for (i = 0, sg = sgt->sgl; i < sgt->nents; i++, sg = sg_next(sg)) {
 		unsigned int tlen = sg_dma_len(sg);
 		dma_addr_t addr = sg_dma_address(sg);
 
-		if (tlen >= desc_blen_max)
-			return -EINVAL;
 		req->total_len += tlen;
-		req->sdesc[i].addr = addr;
-		req->sdesc[i].len = tlen;
+		while (tlen) {
+			req->sdesc[j].addr = addr;
+			if (tlen > desc_blen_max) {
+				req->sdesc[j].len = desc_blen_max;
+				addr += desc_blen_max;
+				tlen -= desc_blen_max;
+			} else {
+				req->sdesc[j].len = tlen;
+				tlen = 0;
+			}
+			j++;
+
+		}
 	}
 
 #ifdef __LIBXDMA_DEBUG__
@@ -3174,8 +3201,7 @@ ssize_t xdma_xfer_submit(void *dev_hndl, int channel, bool write, u64 ep_addr,
 		}
 	}
 
-
-	req = xdma_request_alloc(sgt->nents);
+	req = xdma_request_alloc(sgt);
 	if (!req)
 		return -ENOMEM;
 	req->dma_mapped = dma_mapped;
