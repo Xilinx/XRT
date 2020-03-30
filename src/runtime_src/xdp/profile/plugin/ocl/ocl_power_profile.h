@@ -49,6 +49,7 @@ public:
     void write_trace();
 
     const std::string& get_output_file_name () { return output_file_name; };
+    const std::string& get_target_device_name () { return target_unique_name; };
 
 private:
     std::ofstream power_profiling_output;

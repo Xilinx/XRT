@@ -146,6 +146,21 @@ namespace xdp {
       for (auto device : platform->get_device_range()) {
         if (!device->is_active())
           continue;
+
+        /*
+         * For multi xclbin host code
+         * start thread only once
+         */
+        bool device_has_power_profiling = false;
+        for (auto& thread: PowerProfileList) {
+          if (thread->get_target_device_name() == device->get_unique_name()) {
+            device_has_power_profiling = true;
+            break;
+          }
+        }
+        if (device_has_power_profiling)
+          continue;
+
         /*
          * Initialize Power Profiling Threads
          */
