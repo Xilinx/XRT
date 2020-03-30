@@ -25,6 +25,7 @@
 #include <thread>
 #include <atomic>
 #include <iostream>
+#include <vector>
 
 static std::vector<char>
 load_xclbin(xclDeviceHandle device, const std::string& fnm)

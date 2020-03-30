@@ -1,9 +1,19 @@
 #!/bin/bash
 
+OSDIST=`lsb_release -i |awk -F: '{print tolower($2)}' | tr -d ' \t'`
 SRCDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 BUILDDIR=$SRCDIR/build
 CMAKEDIR+="$BUILDDIR/cmake"
 WSL=0
+CMAKE=cmake
+
+if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "amazon" ]]; then
+    CMAKE=cmake3
+    if [[ ! -x "$(command -v $CMAKE)" ]]; then
+        echo "$CMAKE is not installed, please run xrtdeps.sh"
+        exit 1
+    fi
+fi
 
 if [[ -z $XILINX_XRT ]]; then
     echo "Please set XILINX_XRT (source xrt setup script)"
@@ -20,7 +30,6 @@ if [[ "$(< /proc/sys/kernel/osrelease)" == *Microsoft ]]; then
     CMAKEGEN="-G \"Visual Studio 15 2017 Win64\""
 else
     CMAKEDIR+="/linux"
-    CMAKE=cmake
 fi
 
 usage()

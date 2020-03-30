@@ -83,13 +83,6 @@
 
 namespace {
 
-inline bool
-is_multiprocess_mode()
-{
-  static bool val = std::getenv("XCL_MULTIPROCESS_MODE") != nullptr;
-  return val;
-}
-
 /*
  * numClocks()
  */
@@ -819,26 +812,29 @@ int shim::cmaEnable(bool enable, uint64_t size)
 /*
  * xclLockDevice()
  */
-bool shim::xclLockDevice()
+bool
+shim::
+xclLockDevice()
 {
-    if (!is_multiprocess_mode() &&
-        mDev->flock(mUserHandle, LOCK_EX | LOCK_NB) == -1)
-        return false;
+  if (!xrt_core::config::get_multiprocess() && mDev->flock(mUserHandle, LOCK_EX | LOCK_NB) == -1)
+    return false;
 
-    mLocked = true;
-    return true;
+  mLocked = true;
+  return true;
 }
 
 /*
  * xclUnlockDevice()
  */
-bool shim::xclUnlockDevice()
+bool
+shim::
+xclUnlockDevice()
 {
-    if (!is_multiprocess_mode())
-      mDev->flock(mUserHandle, LOCK_UN);
+  if (!xrt_core::config::get_multiprocess())
+    mDev->flock(mUserHandle, LOCK_UN);
 
-    mLocked = false;
-    return true;
+  mLocked = false;
+  return true;
 }
 
 /*

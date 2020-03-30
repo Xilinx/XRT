@@ -113,15 +113,6 @@ struct tree
   const boost::property_tree::ptree null_tree;
 
   void
-  setenv()
-  {
-#ifndef _WIN32
-    if (xrt_core::config::get_multiprocess())
-      ::setenv("XCL_MULTIPROCESS_MODE","1",1);
-#endif
-  }
-
-  void
   read(const std::string& path)
   {
     try {
@@ -141,9 +132,6 @@ struct tree
     if (!ini_path.empty())
       read(ini_path);
 
-    // set env vars to expose sdaccel.ini (or default) to hal layer
-    setenv();
-
     return;
   }
 
@@ -152,9 +140,14 @@ struct tree
   {
     read(fnm);
   }
-};
 
-static tree s_tree;
+  static tree*
+  instance()
+  {
+    static tree s_tree;
+    return &s_tree;
+  }
+};
 
 }
 
@@ -174,7 +167,7 @@ get_bool_value(const char* key, bool default_value)
   if (auto env = get_env_value(key))
     return is_true(env);
 
-  return s_tree.m_tree.get<bool>(key,default_value);
+  return tree::instance()->m_tree.get<bool>(key,default_value);
 }
 
 std::string
@@ -182,7 +175,7 @@ get_string_value(const char* key, const std::string& default_value)
 {
   std::string val = default_value;
   try {
-    val = s_tree.m_tree.get<std::string>(key,default_value);
+    val = tree::instance()->m_tree.get<std::string>(key,default_value);
     // Although INI file entries are not supposed to have quotes around strings
     // but we want to be cautious
     if (!val.empty() && (val.front() == '"') && (val.back() == '"')) {
@@ -200,7 +193,7 @@ get_uint_value(const char* key, unsigned int default_value)
 {
   unsigned int val = default_value;
   try {
-    val = s_tree.m_tree.get<unsigned int>(key,default_value);
+    val = tree::instance()->m_tree.get<unsigned int>(key,default_value);
   } catch( std::exception const&) {
     // eat the exception, probably bad path
   }
@@ -211,17 +204,19 @@ get_uint_value(const char* key, unsigned int default_value)
 const boost::property_tree::ptree&
 get_ptree_value(const char* key)
 {
-  boost::property_tree::ptree::const_assoc_iterator i = s_tree.m_tree.find(key);
-  return (i != s_tree.m_tree.not_found()) ? i->second : s_tree.null_tree;
+  auto s_tree  = tree::instance();
+  boost::property_tree::ptree::const_assoc_iterator i = s_tree->m_tree.find(key);
+  return (i != s_tree->m_tree.not_found()) ? i->second : s_tree->null_tree;
 }
 
 std::ostream&
 debug(std::ostream& ostr, const std::string& ini)
 {
+  auto s_tree  = tree::instance();
   if (!ini.empty())
-    s_tree.reread(ini);
+    s_tree->reread(ini);
 
-  for(auto& section : s_tree.m_tree) {
+  for(auto& section : s_tree->m_tree) {
     ostr << "[" << section.first << "]\n";
     for (auto& key:section.second) {
       ostr << key.first << " = " << key.second.get_value<std::string>() << std::endl;
