@@ -40,7 +40,7 @@ const char *subCmdFlashUsage =
     "--update [--shell name [--id id]] [--card bdf] [--force]\n"
     "--factory_reset [--card bdf] [--force]\n\n"
     "Experts only:\n"
-    "--shell --path file --primary primary_file [--secondary secondary_file] --card bdf [--type flash_type]\n"
+    "--shell --primary primary_file [--secondary secondary_file] --card bdf [--type flash_type]\n"
     "--sc_firmware --path file --card bdf";
 
 #define fmt_str		"    "
@@ -666,7 +666,6 @@ static int update(int argc, char *argv[])
 static int shell(int argc, char *argv[])
 {
     unsigned index = UINT_MAX;
-    std::string file;
     std::string type;
     std::string primary_file;
     std::string secondary_file;
@@ -691,8 +690,6 @@ static int shell(int argc, char *argv[])
                 return -ENOENT;
             break;
         case '1':
-            file = std::string(optarg);
-            break;
         case '2':
             primary_file = std::string(optarg);
             break;
@@ -707,31 +704,23 @@ static int shell(int argc, char *argv[])
         }
     }
 
-    // Only one of the --path/--primary switch has to be provided.
-    // Throw an error and exit If both switches are provided
-    if (!file.empty() && !primary_file.empty()) {
-        std::cout << "--primary and --path switches are idential. Please use only one switch." << std::endl;
-        return -EINVAL;
-    }
-    
     // one of the --primary/--path switch has to be provided.
     // Throw an error if no switch is provided
-    if (file.empty() && primary_file.empty()) {
-        std::cout << "provide one of the --primary/--path switch" << std::endl;
+    if ( primary_file.empty() ) {
+        std::cout << "--primary/--path switch is not provided." << std::endl;
         return -EINVAL;
     }
-
-    const char* primary = primary_file.empty() ? file.c_str() : primary_file.c_str() ;
-    const char* secondary = secondary_file.empty() ? nullptr : secondary_file.c_str() ;
 
     // Throw an error if index is not provided
     if (index == UINT_MAX)
     {
-        std::cout << "--card switch is not provided" << std::endl;
+        std::cout << "--card switch is not provided." << std::endl;
         return -EINVAL;
     }
     
-    int ret = updateShell(index, type, primary, secondary);
+    const char* secondary = secondary_file.empty() ? nullptr : secondary_file.c_str() ;
+    
+    int ret = updateShell(index, type, primary_file.c_str(), secondary);
     if (ret)
         return ret;
 
