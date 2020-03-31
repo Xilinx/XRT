@@ -982,9 +982,9 @@ DebugIpStatusCollector::populateAIMResults(boost::property_tree::ptree &_pt)
 
     entry.put("Region or CU", cuNames[AXI_MM_MONITOR][i]);
     entry.put("Type or Port", portNames[AXI_MM_MONITOR][i]);
-    entry.put("Write kBytes", aimResults.WriteBytes[i]);
+    entry.put("Write kBytes", static_cast<double>(aimResults.WriteBytes[i])/1000.0);
     entry.put("Write Trans",  aimResults.WriteTranx[i]);
-    entry.put("Read kBytes",  aimResults.ReadBytes[i]);
+    entry.put("Read kBytes",  static_cast<double>(aimResults.ReadBytes[i])/1000.0);
     entry.put("Read Tranx",   aimResults.ReadTranx[i]);
     entry.put("Outstanding Cnt", aimResults.OutStandCnts[i]);
     entry.put("Last Wr Addr", aimResults.LastWriteAddr[i]);
@@ -1036,7 +1036,7 @@ DebugIpStatusCollector::populateASMResults(boost::property_tree::ptree &_pt)
     entry.put("Stream Master", cuNames[AXI_STREAM_MONITOR][i]);
     entry.put("Stream Slave", portNames[AXI_STREAM_MONITOR][i]);
     entry.put("Num Trans.", asmResults.StrNumTranx[i]); 
-    entry.put("Data kBytes", asmResults.StrDataBytes[i]);
+    entry.put("Data kBytes", static_cast<double>(asmResults.StrDataBytes[i])/1000.0);
     entry.put("Busy Cycles", asmResults.StrBusyCycles[i]);
     entry.put("Stall Cycles", asmResults.StrStallCycles[i]);
     entry.put("Starve Cycles", asmResults.StrStarveCycles[i]);
