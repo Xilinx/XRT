@@ -533,7 +533,7 @@ DebugIpStatusCollector::readAMCounter(debug_ip_data* dbgIpInfo)
   // Get Cu and Port Name
   std::string cuName = dbgIpName;
   cuNames[ACCEL_MONITOR].emplace_back(cuName);
-  portNames[ACCEL_MONITOR].emplace_back("Unknown");
+  portNames[ACCEL_MONITOR].emplace_back("N/A");
   cuNameMaxStrLen[ACCEL_MONITOR] = std::max(strlen(cuName.c_str()), cuNameMaxStrLen[ACCEL_MONITOR]);
   
   size_t size = 0;
@@ -1290,7 +1290,6 @@ ReportDebugIpStatus::writeReport( const xrt_core::device * _pDevice,
   collector.collect(_elementsFilter);
   collector.printAllResults(_output);
 
-  //_output << "Run 'xbutil status' with option --<ipname> to get more information about the IP" << std::endl;
   _output << "INFO: xbutil2 status succeeded.\n";
   return;
 }
