@@ -137,11 +137,17 @@ DebugIpStatusCollector::DebugIpStatusCollector(xclDeviceHandle h)
   size_t sz1 = 0, sectionSz = 0;
   // Get the size of full debug_ip_layout
   xclGetDebugIpLayout(handle, nullptr, sz1, &sectionSz);
+  if(sectionSz == 0) {
+    std::cout << "INFO: Failed to find any Debug IPs on the platform. "
+              << "Ensure that a valid bitstream with debug IPs (AIM, LAPC) is successfully downloaded. \n"
+              << std::endl;
+    return;
+  }
   // Allocate buffer to retrieve debug_ip_layout information from loaded xclbin
   map = reinterpret_cast<debug_ip_layout*>(new char[sectionSz]);
   xclGetDebugIpLayout(handle, ((char*)map), sectionSz, &sz1);
 
-  if (sectionSz == 0 || map->m_count <= 0) {
+  if (map->m_count <= 0) {
     std::cout << "INFO: Failed to find any debug IPs on the platform. "
               << "Ensure that a valid bitstream with debug IPs (AIM, LAPC) is successfully downloaded. \n"
               << std::endl;
