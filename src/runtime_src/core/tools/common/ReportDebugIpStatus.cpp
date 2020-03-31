@@ -397,15 +397,29 @@ DebugIpStatusCollector::readAIMCounter(debug_ip_data* dbgIpInfo)
 
   uint32_t sampleInterval;
   // Read sample interval register to latch the sampled metric counters
+#ifndef _WIN32
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
   size += xclRead(handle, XCL_ADDR_SPACE_DEVICE_PERFMON,
                     dbgIpInfo->m_base_address + XAIM_SAMPLE_OFFSET,
                     &sampleInterval, sizeof(uint32_t));
+#ifndef _WIN32
+#pragma GCC diagnostic pop
+#endif
 
   // If applicable, read the upper 32-bits of the 64-bit debug counters
   if (dbgIpInfo->m_properties & XAIM_64BIT_PROPERTY_MASK) {
     for (int c = 0 ; c < XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT ; ++c) {
+#ifndef _WIN32
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
       xclRead(handle, XCL_ADDR_SPACE_DEVICE_PERFMON,
-                 dbgIpInfo->m_base_address + aim_upper_offsets[c], &currData[c], sizeof(uint32_t)) ;
+                 dbgIpInfo->m_base_address + aim_upper_offsets[c], &currData[c], sizeof(uint32_t));
+#ifndef _WIN32
+#pragma GCC diagnostic pop
+#endif
     }
     aimResults.WriteBytes[index]    = ((uint64_t)(currData[0])) << 32 ;
     aimResults.WriteTranx[index]    = ((uint64_t)(currData[1])) << 32 ;
@@ -419,8 +433,15 @@ DebugIpStatusCollector::readAIMCounter(debug_ip_data* dbgIpInfo)
   }
 
   for (int c=0; c < XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; c++) {
+#ifndef _WIN32
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
     size += xclRead(handle, XCL_ADDR_SPACE_DEVICE_PERFMON, 
                        dbgIpInfo->m_base_address + aim_offsets[c], &currData[c], sizeof(uint32_t));
+#ifndef _WIN32
+#pragma GCC diagnostic pop
+#endif
   }
 
   aimResults.WriteBytes[index]    |= currData[0];
@@ -544,9 +565,16 @@ DebugIpStatusCollector::readAMCounter(debug_ip_data* dbgIpInfo)
 
   uint32_t sampleInterval;
   // Read sample interval register to latch the sampled metric counters
+#ifndef _WIN32
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
   size += xclRead(handle, XCL_ADDR_SPACE_DEVICE_PERFMON,
                   dbgIpInfo->m_base_address + XAM_SAMPLE_OFFSET,
                   &sampleInterval, sizeof(uint32_t));
+#ifndef _WIN32
+#pragma GCC diagnostic pop
+#endif
 
   auto dbgIpVersion = std::make_pair(dbgIpInfo->m_major, dbgIpInfo->m_minor);
   auto refVersion   = std::make_pair((uint8_t)1, (uint8_t)1);
@@ -556,9 +584,16 @@ DebugIpStatusCollector::readAMCounter(debug_ip_data* dbgIpInfo)
   // If applicable, read the upper 32-bits of the 64-bit debug counters
   if (dbgIpInfo->m_properties & XAM_64BIT_PROPERTY_MASK) {
     for (int c = 0 ; c < XAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT ; ++c) {
+#ifndef _WIN32
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
       xclRead(handle, XCL_ADDR_SPACE_DEVICE_PERFMON,
             dbgIpInfo->m_base_address + am_upper_offsets[c],
-            &currData[c], sizeof(uint32_t)) ;
+            &currData[c], sizeof(uint32_t));
+#ifndef _WIN32
+#pragma GCC diagnostic pop
+#endif
     }
     amResults.CuExecCount[index]      = ((uint64_t)(currData[0])) << 32;
     amResults.CuExecCycles[index]     = ((uint64_t)(currData[1])) << 32;
@@ -571,16 +606,31 @@ DebugIpStatusCollector::readAMCounter(debug_ip_data* dbgIpInfo)
 
     if(hasDataflow) {
       uint64_t dfTmp[2] = {0};
+#ifndef _WIN32
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
       xclRead(handle, XCL_ADDR_SPACE_DEVICE_PERFMON, dbgIpInfo->m_base_address + XAM_BUSY_CYCLES_UPPER_OFFSET, &dfTmp[0], sizeof(uint32_t));
       xclRead(handle, XCL_ADDR_SPACE_DEVICE_PERFMON, dbgIpInfo->m_base_address + XAM_MAX_PARALLEL_ITER_UPPER_OFFSET, &dfTmp[1], sizeof(uint32_t));
+#ifndef _WIN32
+#pragma GCC diagnostic pop
+#endif
 
       amResults.CuBusyCycles[index]      = dfTmp[0] << 32;
       amResults.CuMaxParallelIter[index] = dfTmp[1] << 32;
     }
   }
 
-  for (int c=0; c < XAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; c++)
+  for (int c=0; c < XAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; c++) {
+#ifndef _WIN32
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
     size += xclRead(handle, XCL_ADDR_SPACE_DEVICE_PERFMON, dbgIpInfo->m_base_address+am_offsets[c], &currData[c], sizeof(uint32_t));
+#ifndef _WIN32
+#pragma GCC diagnostic pop
+#endif
+  }
 
   amResults.CuExecCount[index]      |= currData[0];
   amResults.CuExecCycles[index]     |= currData[1];
@@ -593,8 +643,15 @@ DebugIpStatusCollector::readAMCounter(debug_ip_data* dbgIpInfo)
 
   if(hasDataflow) {
     uint64_t dfTmp[2] = {0};
+#ifndef _WIN32
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
     xclRead(handle, XCL_ADDR_SPACE_DEVICE_PERFMON, dbgIpInfo->m_base_address + XAM_BUSY_CYCLES_OFFSET, &dfTmp[0], sizeof(uint32_t));
     xclRead(handle, XCL_ADDR_SPACE_DEVICE_PERFMON, dbgIpInfo->m_base_address + XAM_MAX_PARALLEL_ITER_OFFSET, &dfTmp[1], sizeof(uint32_t));
+#ifndef _WIN32
+#pragma GCC diagnostic pop
+#endif
 
     amResults.CuBusyCycles[index]      |= dfTmp[0] << 32;
     amResults.CuMaxParallelIter[index] |= dfTmp[1] << 32;
@@ -686,17 +743,31 @@ DebugIpStatusCollector::readASMCounter(debug_ip_data* dbgIpInfo)
 
   uint32_t sampleInterval ;
   // Read sample interval register to latch the sampled metric counters
+#ifndef _WIN32
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
   size += xclRead(handle, XCL_ADDR_SPACE_DEVICE_PERFMON,
              dbgIpInfo->m_base_address + XASM_SAMPLE_OFFSET,
              &sampleInterval, sizeof(uint32_t));
+#ifndef _WIN32
+#pragma GCC diagnostic pop
+#endif
 
   // Then read all the individual 64-bit counters
   unsigned long long int currData[XASM_DEBUG_SAMPLE_COUNTERS_PER_SLOT] ;
 
   for (unsigned int j = 0 ; j < XASM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; ++j) {
+#ifndef _WIN32
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
     size += xclRead(handle, XCL_ADDR_SPACE_DEVICE_PERFMON,
                dbgIpInfo->m_base_address + asm_offsets[j],
                &currData[j], sizeof(unsigned long long int));
+#ifndef _WIN32
+#pragma GCC diagnostic pop
+#endif
   }
   asmResults.StrNumTranx[index] = currData[0] ;
   asmResults.StrDataBytes[index] = currData[1] ;
@@ -784,8 +855,16 @@ DebugIpStatusCollector::readLAPChecker(debug_ip_data* dbgIpInfo)
 
   uint32_t currData[XLAPC_STATUS_PER_SLOT];
   
-  for (int c=0; c < XLAPC_STATUS_PER_SLOT; c++)
+  for (int c=0; c < XLAPC_STATUS_PER_SLOT; c++) {
+#ifndef _WIN32
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
     size += xclRead(handle, XCL_ADDR_SPACE_DEVICE_CHECKER, dbgIpInfo->m_base_address+statusRegisters[c], &currData[c], sizeof(uint32_t));
+#ifndef _WIN32
+#pragma GCC diagnostic pop
+#endif
+  }
 
   lapcResults.OverallStatus[index]      = currData[XLAPC_OVERALL_STATUS];
   std::copy(currData+XLAPC_CUMULATIVE_STATUS_0, currData+XLAPC_SNAPSHOT_STATUS_0, lapcResults.CumulativeStatus[index]);
@@ -903,6 +982,10 @@ DebugIpStatusCollector::readSPChecker(debug_ip_data* dbgIpInfo)
   uint32_t current_pc ;
   uint32_t snapshot_pc ;
 
+#ifndef _WIN32
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
   size += xclRead(handle, XCL_ADDR_SPACE_DEVICE_CHECKER,
               dbgIpInfo->m_base_address + XSPC_PC_ASSERTED_OFFSET,
               &pc_asserted, sizeof(uint32_t));
@@ -912,6 +995,9 @@ DebugIpStatusCollector::readSPChecker(debug_ip_data* dbgIpInfo)
   size += xclRead(handle, XCL_ADDR_SPACE_DEVICE_CHECKER,
               dbgIpInfo->m_base_address + XSPC_SNAPSHOT_PC_OFFSET,
               &snapshot_pc, sizeof(uint32_t));
+#ifndef _WIN32
+#pragma GCC diagnostic pop
+#endif
 
   spcResults.PCAsserted[index] = pc_asserted;
   spcResults.CurrentPC[index]  = current_pc;
