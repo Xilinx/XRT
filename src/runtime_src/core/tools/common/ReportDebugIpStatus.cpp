@@ -77,9 +77,6 @@ class DebugIpStatusCollector
   std::vector<std::string> cuNames[maxDebugIpType];
   std::vector<std::string> portNames[maxDebugIpType];
 
-//  std::vector< std::vector<std::string> > cuNames;
-//  std::vector< std::vector<std::string> > portNames;
-
   xclDebugCountersResults          aimResults;
   xclStreamingDebugCountersResults asmResults;
   xclAccelMonitorCounterResults    amResults;
@@ -89,13 +86,16 @@ class DebugIpStatusCollector
   xclDeviceHandle handle;
 
 public :
-  DebugIpStatusCollector(xclDeviceHandle h, std::ostream& _output);
+  DebugIpStatusCollector(xclDeviceHandle h);
 
   ~DebugIpStatusCollector();
 
   void printOverview(std::ostream& _output);
   void collect();
   void printAllResults(std::ostream& _output);
+
+  void populateOverview(boost::property_tree::ptree &_pt);
+  void populateAllResults(boost::property_tree::ptree &_pt);
 
 private :
 
@@ -116,9 +116,16 @@ private :
   void printASMResults(std::ostream&);
   void printLAPCResults(std::ostream&);
   void printSPCResults(std::ostream&);
+
+
+  void populateAIMResults(boost::property_tree::ptree &_pt);
+  void populateAMResults(boost::property_tree::ptree &_pt);
+  void populateASMResults(boost::property_tree::ptree &_pt);
+  void populateLAPCResults(boost::property_tree::ptree &_pt);
+  void populateSPCResults(boost::property_tree::ptree &_pt);
 };
 
-DebugIpStatusCollector::DebugIpStatusCollector(xclDeviceHandle h, std::ostream& _output)
+DebugIpStatusCollector::DebugIpStatusCollector(xclDeviceHandle h)
     : handle(h)
 {
   initializeResults();
@@ -131,9 +138,9 @@ DebugIpStatusCollector::DebugIpStatusCollector(xclDeviceHandle h, std::ostream& 
   xclGetDebugIpLayout(handle, ((char*)map), sectionSz, &sz1);
 
   if (sectionSz == 0 || map->m_count <= 0) {
-    _output << "INFO: Failed to find any debug IPs on the platform. "
-            << "Ensure that a valid bitstream with debug IPs (AIM, LAPC) is successfully downloaded. \n"
-            << std::endl;
+    std::cout << "INFO: Failed to find any debug IPs on the platform. "
+              << "Ensure that a valid bitstream with debug IPs (AIM, LAPC) is successfully downloaded. \n"
+              << std::endl;
     return;
   }
 
@@ -186,17 +193,12 @@ DebugIpStatusCollector::printOverview(std::ostream& _output)
 void 
 DebugIpStatusCollector::collect()
 {
-  // reset all info
-  // debugIpNum
-  // results
   getDebugIpData();
-
 }
 
 void 
 DebugIpStatusCollector::printAllResults(std::ostream& _output)
 {
-  // update the numslots in results
   printAIMResults(_output);
   printAMResults(_output);
   printASMResults(_output);
@@ -237,8 +239,7 @@ DebugIpStatusCollector::getCuNamePortName(uint8_t dbgIpType,
                           std::string& cuName, 
                           std::string& portName)
 {
-  //Slotnames are of the format "/cuname/portname" or "cuname/portname", split them and return in separate vector
-  //return max length of the cuname and port names
+  //Slotnames are of the format "/cuname/portname" or "cuname/portname", split them and populate cuname and portName
   char sep = '/';
 
   size_t start = 0;
@@ -304,8 +305,6 @@ DebugIpStatusCollector::readAIMCounter(debug_ip_data* dbgIpInfo)
   getCuNamePortName(dbgIpInfo->m_type, dbgIpName, cuName, portName);
   cuNames[AXI_MM_MONITOR].emplace_back(cuName);
   portNames[AXI_MM_MONITOR].emplace_back(portName);
-
-  std::cout << " AXI_MM_MONITOR : index " << index << " name " << dbgIpName << std::endl;
 
   // read counter values
   size_t size = 0;
@@ -550,7 +549,6 @@ DebugIpStatusCollector::readAMCounter(debug_ip_data* dbgIpInfo)
   // increment debugIpNum
   ++debugIpNum[ACCEL_MONITOR];
   amResults.NumSlots = (unsigned int)debugIpNum[ACCEL_MONITOR];
-  std::cout << " Finish Read ACCEL_MONITOR index " << index << " now debugIpName[ACCEL_MONITOR] " << debugIpNum[ACCEL_MONITOR] << std::endl;
 }
 
 void 
@@ -592,7 +590,6 @@ DebugIpStatusCollector::printAMResults(std::ostream& _output)
             << "  " << "0x" << std::setw(14) << amResults.CuMaxExecCycles[i]
             << std::dec << std::endl;
   }
-std::cout << " Finish PRINT ACCEL_MONITOR " << " now num " << amResults.NumSlots << std::endl;
 }
 
 void 
@@ -614,10 +611,6 @@ DebugIpStatusCollector::readASMCounter(debug_ip_data* dbgIpInfo)
   getStreamName(dbgIpInfo->m_type, dbgIpName, masterName, slaveName);
   cuNames[AXI_STREAM_MONITOR].emplace_back(masterName);
   portNames[AXI_STREAM_MONITOR].emplace_back(slaveName);
-
-  std::cout << " AXI_STREAM_MONITOR : index " << index << " name " << dbgIpName << std::endl;
-
-
 
   size_t size = 0; // The amount of data read from the hardware
 
@@ -657,8 +650,6 @@ DebugIpStatusCollector::readASMCounter(debug_ip_data* dbgIpInfo)
   // increment debugIpNum
   ++debugIpNum[AXI_STREAM_MONITOR];
   asmResults.NumSlots = (unsigned int)debugIpNum[AXI_STREAM_MONITOR];
-  
-  std::cout << " Finish Read AXI_STREAM_MONITOR index " << index << " now debugIpName[AXI_STREAM_MONITOR] " << debugIpNum[AXI_STREAM_MONITOR] << std::endl;
 }
 
 void 
@@ -719,7 +710,6 @@ DebugIpStatusCollector::readLAPChecker(debug_ip_data* dbgIpInfo)
   getCuNamePortName(dbgIpInfo->m_type, dbgIpName, cuName, portName);
   cuNames[LAPC].emplace_back(cuName);
   portNames[LAPC].emplace_back(portName);
-
 
   size_t size = 0;
 
@@ -945,6 +935,223 @@ DebugIpStatusCollector::printSPCResults(std::ostream& _output)
 }
 
 
+void 
+DebugIpStatusCollector::populateOverview(boost::property_tree::ptree &_pt)
+{
+  if(!map) {
+    std::cout << " INFO: Debug IP Data not populated." << std::endl;
+  }
+  _pt.put("total_debug_ip_num", map->m_count);
+
+  for(uint64_t i = 0; i < map->m_count; i++) {
+    if (map->m_debug_ip_data[i].m_type > maxDebugIpType) {
+      std::cout << "Found invalid IP in debug ip layout with type "
+              << map->m_debug_ip_data[i].m_type << std::endl;
+      return;
+    }
+    ++debugIpNum[map->m_debug_ip_data[i].m_type];
+  }
+
+  for(uint8_t i = 0; i < maxDebugIpType; i++) {
+    if(0 == debugIpNum[i]) {
+       continue;
+    }
+    _pt.put(debugIpNames[i], debugIpNum[i]);
+  }
+}
+
+void 
+DebugIpStatusCollector::populateAllResults(boost::property_tree::ptree &_pt)
+{
+  populateAIMResults(_pt);
+  populateAMResults(_pt);
+  populateASMResults(_pt);
+  populateLAPCResults(_pt);
+  populateSPCResults(_pt);
+}
+
+
+void 
+DebugIpStatusCollector::populateAIMResults(boost::property_tree::ptree &_pt)
+{
+  boost::property_tree::ptree aim_pt;
+
+  for(size_t i = 0; i < aimResults.NumSlots; ++i) {
+    boost::property_tree::ptree entry;
+    std::string entryStr = "AIM " + std::to_string(i);
+
+    entry.put("Region or CU", cuNames[AXI_MM_MONITOR][i]);
+    entry.put("Type or Port", portNames[AXI_MM_MONITOR][i]);
+    entry.put("Write kBytes", aimResults.WriteBytes[i]);
+    entry.put("Write Trans",  aimResults.WriteTranx[i]);
+    entry.put("Read kBytes",  aimResults.ReadBytes[i]);
+    entry.put("Read Tranx",   aimResults.ReadTranx[i]);
+    entry.put("Outstanding Cnt", aimResults.OutStandCnts[i]);
+    entry.put("Last Wr Addr", aimResults.LastWriteAddr[i]);
+    entry.put("Last Wr Data", aimResults.LastWriteData[i]);
+    entry.put("Last Rd Addr", aimResults.LastReadAddr[i]);
+    entry.put("Last Rd Data", aimResults.LastReadData[i]);
+
+    aim_pt.add_child(entryStr.c_str(), entry);
+  }
+
+  _pt.add_child("AXI Interface Monitor Counters", aim_pt); 
+}
+
+void 
+DebugIpStatusCollector::populateAMResults(boost::property_tree::ptree &_pt)
+{
+  boost::property_tree::ptree am_pt;
+
+  for(size_t i = 0; i < amResults.NumSlots; ++i) {
+    boost::property_tree::ptree entry;
+    std::string entryStr = "AM " + std::to_string(i);
+
+    entry.put("Compute Unit", cuNames[ACCEL_MONITOR][i]);
+    entry.put("Ends", amResults.CuExecCount[i]);
+    entry.put("Starts", amResults.CuStartCount[i]);
+    entry.put("Max Parallel Itr", amResults.CuMaxParallelIter[i]);
+    entry.put("Execution", amResults.CuExecCycles[i]);
+    entry.put("Memory Stall", amResults.CuStallExtCycles[i]);
+    entry.put("Pipe Stall", amResults.CuStallIntCycles[i]);
+    entry.put("Stream Stall", amResults.CuStallStrCycles[i]);
+    entry.put("Min Exec", amResults.CuMinExecCycles[i]);
+    entry.put("Max Exec", amResults.CuMaxExecCycles[i]);
+
+    am_pt.add_child(entryStr.c_str(), entry);
+  }
+
+  _pt.add_child("Accelerator Monitor Counters", am_pt);
+}
+
+void 
+DebugIpStatusCollector::populateASMResults(boost::property_tree::ptree &_pt)
+{
+  boost::property_tree::ptree asm_pt;
+
+  for(size_t i = 0; i < asmResults.NumSlots; ++i) {
+    boost::property_tree::ptree entry;
+    std::string entryStr = "ASM " + std::to_string(i);
+
+    entry.put("Stream Master", cuNames[AXI_STREAM_MONITOR][i]);
+    entry.put("Stream Slave", portNames[AXI_STREAM_MONITOR][i]);
+    entry.put("Num Trans.", asmResults.StrNumTranx[i]); 
+    entry.put("Data kBytes", asmResults.StrDataBytes[i]);
+    entry.put("Busy Cycles", asmResults.StrBusyCycles[i]);
+    entry.put("Stall Cycles", asmResults.StrStallCycles[i]);
+    entry.put("Starve Cycles", asmResults.StrStarveCycles[i]);
+
+    asm_pt.add_child(entryStr.c_str(), entry);
+  }
+
+  _pt.add_child("AXI Stream Monitor Counters", asm_pt);
+}
+
+void 
+DebugIpStatusCollector::populateLAPCResults(boost::property_tree::ptree &_pt)
+{
+
+  boost::property_tree::ptree lapc_pt;
+
+  for(size_t i = 0; i < lapcResults.NumSlots; ++i) {
+    boost::property_tree::ptree entry;
+    std::string entryStr = "LAPC " + std::to_string(i);
+    lapc_pt.add_child(entryStr.c_str(), entry);
+  }
+
+
+#if 0
+  bool violations_found = false;
+  bool invalid_codes = false;
+  _output << "Light Weight AXI Protocol Checkers codes \n";
+  auto col1 = std::max(cuNameMaxStrLen[LAPC], strlen("CU Name")) + 4;
+  auto col2 = std::max(portNameMaxStrLen[LAPC], strlen("AXI Portname"));
+
+  for (size_t i = 0; i < lapcResults.NumSlots; ++i) {
+    if (!xclAXICheckerCodes::isValidAXICheckerCodes(lapcResults.OverallStatus[i],
+                lapcResults.SnapshotStatus[i], lapcResults.CumulativeStatus[i])) {
+      _output << "CU Name: " << cuNames[LAPC][i] << " AXI Port: " << portNames[LAPC][i] << "\n";
+      _output << "  Invalid codes read, skip decoding\n";
+      invalid_codes = true;
+    } else if (lapcResults.OverallStatus[i]) {
+      _output << "CU Name: " << cuNames[LAPC][i] << " AXI Port: " << portNames[LAPC][i] << "\n";
+      _output << "  First violation: \n";
+      _output << "    " <<  xclAXICheckerCodes::decodeAXICheckerCodes(lapcResults.SnapshotStatus[i]);
+      //snapshot reflects first violation, cumulative has all violations
+      unsigned int tCummStatus[4];
+      std::transform(lapcResults.CumulativeStatus[i], lapcResults.CumulativeStatus[i]+4, lapcResults.SnapshotStatus[i], tCummStatus, std::bit_xor<unsigned int>());
+      _output << "  Other violations: \n";
+      std::string tstr = xclAXICheckerCodes::decodeAXICheckerCodes(tCummStatus);
+      if (tstr == "") {
+        _output << "    None";
+      } else {
+        _output << "    " <<  tstr;
+      }
+      violations_found = true;
+    }
+  }
+  if (!violations_found && !invalid_codes)
+    _output << "No AXI violations found \n";
+
+  if (violations_found && /*aVerbose &&*/ !invalid_codes) {
+    std::ofstream saveFormat;
+    saveFormat.copyfmt(_output);
+
+    _output << "\n";
+    _output << std::left
+              << std::setw(col1) << "CU Name"
+              << " " << std::setw(col2) << "AXI Portname"
+              << "  " << std::setw(16) << "Overall Status"
+              << "  " << std::setw(16) << "Snapshot[0]"
+              << "  " << std::setw(16) << "Snapshot[1]"
+              << "  " << std::setw(16) << "Snapshot[2]"
+              << "  " << std::setw(16) << "Snapshot[3]"
+              << "  " << std::setw(16) << "Cumulative[0]"
+              << "  " << std::setw(16) << "Cumulative[1]"
+              << "  " << std::setw(16) << "Cumulative[2]"
+              << "  " << std::setw(16) << "Cumulative[3]"
+              << std::endl;
+    for (size_t i = 0; i < lapcResults.NumSlots; ++i) {
+      _output << std::left
+              << std::setw(col1) << cuNames[LAPC][i]
+              << " " << std::setw(col2) << portNames[LAPC][i]
+              << std::hex
+              << "  " << std::setw(16) << lapcResults.OverallStatus[i]
+              << "  " << std::setw(16) << lapcResults.SnapshotStatus[i][0]
+              << "  " << std::setw(16) << lapcResults.SnapshotStatus[i][1]
+              << "  " << std::setw(16) << lapcResults.SnapshotStatus[i][2]
+              << "  " << std::setw(16) << lapcResults.SnapshotStatus[i][3]
+              << "  " << std::setw(16) << lapcResults.CumulativeStatus[i][0]
+              << "  " << std::setw(16) << lapcResults.CumulativeStatus[i][1]
+              << "  " << std::setw(16) << lapcResults.CumulativeStatus[i][2]
+              << "  " << std::setw(16) << lapcResults.CumulativeStatus[i][3]
+              << std::dec << std::endl;
+    }
+    // Restore formatting
+    _output.copyfmt(saveFormat);
+  }
+
+#endif
+
+  _pt.add_child("Light Weight AXI Protocol Checkers", lapc_pt);
+
+}
+
+void 
+DebugIpStatusCollector::populateSPCResults(boost::property_tree::ptree &_pt)
+{
+
+  boost::property_tree::ptree spc_pt;
+
+  for(size_t i = 0; i < spcResults.NumSlots; ++i) {
+    boost::property_tree::ptree entry;
+    std::string entryStr = "SPC " + std::to_string(i);
+    spc_pt.add_child(entryStr.c_str(), entry);
+  }
+
+  _pt.add_child("AXI Streaming Protocol Checkers", spc_pt);
+}
+
 
 void 
 ReportDebugIpStatus::getPropertyTreeInternal( const xrt_core::device * _pDevice,
@@ -956,17 +1163,23 @@ ReportDebugIpStatus::getPropertyTreeInternal( const xrt_core::device * _pDevice,
 }
 
 void 
-ReportDebugIpStatus::getPropertyTree20201( const xrt_core::device * /*_pDevice*/,
+ReportDebugIpStatus::getPropertyTree20201( const xrt_core::device * _pDevice,
                                       boost::property_tree::ptree &_pt) const
 {
   boost::property_tree::ptree pt;
   pt.put("Description","Status of Debug IPs present in xclbin loaded on device");
 
+  auto handle = _pDevice->get_device_handle();
+
+  DebugIpStatusCollector collector(handle);
+  collector.populateOverview(pt);
+  collector.collect();
+  collector.populateAllResults(pt);
+
+
   // There can only be 1 root node
   _pt.add_child("debug-ip-status", pt);
-
-  // AIM
-  //_pt.add_child("aim",pt);
+  
 }
 
 
@@ -977,7 +1190,7 @@ ReportDebugIpStatus::writeReport( const xrt_core::device * _pDevice,
 {
   auto handle = _pDevice->get_device_handle();
 
-  DebugIpStatusCollector collector(handle, _output);
+  DebugIpStatusCollector collector(handle);
   collector.printOverview(_output);
   collector.collect();
   collector.printAllResults(_output);
