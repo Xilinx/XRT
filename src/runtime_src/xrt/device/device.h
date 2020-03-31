@@ -515,6 +515,18 @@ public:
     return m_hal->closeStream(stream);
   };
 
+  int
+  setStreamOpt(hal::StreamHandle stream, int type, uint32_t val)
+  {
+    return m_hal->setStreamOpt(stream, type, val);
+  }
+
+  int
+  pollStream(hal::StreamHandle stream, hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout)
+  {
+    return m_hal->pollStream(stream, comps, min,max,actual,timeout);
+  };
+
   hal::StreamBuf
   allocStreamBuf(size_t size, hal::StreamBufHandle *buf)
   {

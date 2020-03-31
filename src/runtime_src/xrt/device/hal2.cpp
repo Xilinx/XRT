@@ -702,6 +702,21 @@ pollStreams(hal::StreamXferCompletions* comps, int min, int max, int* actual, in
   return m_ops->mPollQueues(m_handle,min,max,req,actual,timeout);
 }
 
+int
+device::
+pollStream(hal::StreamHandle stream, hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout)
+{
+  xclReqCompletion* req = reinterpret_cast<xclReqCompletion*>(comps);
+  return m_ops->mPollQueue(m_handle,stream,min,max,req,actual,timeout);
+}
+
+int
+device::
+setStreamOpt(hal::StreamHandle stream, int type, uint32_t val)
+{
+  return m_ops->mSetQueueOpt(m_handle,stream,type,val);
+}
+
 void
 createDevices(hal::device_list& devices,
               const std::string& dll, void* driverHandle, unsigned int deviceCount)

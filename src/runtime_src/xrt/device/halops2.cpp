@@ -77,6 +77,8 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   ,mWriteQueue(0)
   ,mReadQueue(0)
   ,mPollQueues(0)
+  ,mPollQueue(0)
+  ,mSetQueueOpt(0)
   ,mGetDebugIpLayout(0)
   ,mGetNumLiveProcesses(0)
   ,mGetSysfsPath(0)
@@ -124,6 +126,8 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   mWriteQueue = (writeQueueFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclWriteQueue");
   mReadQueue = (readQueueFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclReadQueue");
   mPollQueues = (pollQueuesFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclPollCompletion");
+  mPollQueue = (pollQueueFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclPollQueue");
+  mSetQueueOpt = (setQueueOptFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclSetQueueOpt");
 
   // Profiling Functions
   mGetDeviceTime = (getDeviceTimeFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetDeviceTimestamp");

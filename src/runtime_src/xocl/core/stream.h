@@ -27,12 +27,14 @@ namespace xocl {
 //class stream for qdma and other streaming purposes.
 class stream : public _cl_stream // TODO: public refcount
 {  
+  using stream_opt_type = xrt::hal::StreamOptType;
   using stream_flags_type = property_object<cl_stream_flags>;
   using stream_attributes_type = property_object<cl_stream_attributes>;
 protected:
   using stream_handle = xrt::hal::StreamHandle;
   using stream_xfer_flags = xrt::hal::StreamXferFlags;
   using stream_xfer_req = xrt::hal::StreamXferReq;
+
 public:
   stream(stream_flags_type flags, stream_attributes_type attr, cl_mem_ext_ptr_t* ext);
 private:
@@ -45,6 +47,8 @@ private:
   int m_connidx = -1;
 public:
   int get_stream(device* device); 
+  int poll_stream(xrt::device::stream_xfer_completions *comps, int min, int max, int *actual, int timeout); 
+  int set_stream_opt(int type, uint32_t val);
   ssize_t read(void* ptr, size_t size, stream_xfer_req* req );
   ssize_t write(const void* ptr, size_t size, stream_xfer_req* req);
   int close();

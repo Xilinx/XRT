@@ -81,6 +81,7 @@ typedef uint64_t StreamFlags;
 
 using StreamXferReq = stream_xfer_req;
 using StreamXferCompletions = streams_poll_req_completions;
+using StreamOptType = stream_opt_type;
 /**
  * Helper class to encapsulate return values from HAL operations.
  *
@@ -308,6 +309,13 @@ public:
 
   virtual int
   pollStreams(StreamXferCompletions* comps, int min, int max, int* actual, int timeout) = 0;
+
+  virtual int
+  pollStream(hal::StreamHandle stream, StreamXferCompletions* comps, int min, int max, int* actual, int timeout) = 0;
+
+  virtual int
+  setStreamOpt(hal::StreamHandle stream, int type, uint32_t val) = 0;
+
 
 public:
   /**
