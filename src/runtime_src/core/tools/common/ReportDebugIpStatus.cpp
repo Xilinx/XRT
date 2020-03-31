@@ -94,7 +94,8 @@ public :
   ~DebugIpStatusCollector();
 
   void printOverview(std::ostream& _output);
-  void collect(std::ostream& _output);
+  void collect();
+  void printAllResults(std::ostream& _output);
 
 private :
 
@@ -183,13 +184,18 @@ DebugIpStatusCollector::printOverview(std::ostream& _output)
 }
 
 void 
-DebugIpStatusCollector::collect(std::ostream& _output)
+DebugIpStatusCollector::collect()
 {
   // reset all info
   // debugIpNum
   // results
   getDebugIpData();
 
+}
+
+void 
+DebugIpStatusCollector::printAllResults(std::ostream& _output)
+{
   // update the numslots in results
   printAIMResults(_output);
   printAMResults(_output);
@@ -206,12 +212,8 @@ DebugIpStatusCollector::getDebugIpData()
   }
   // reset to zero
   std::memset((char*)debugIpNum, 0, sizeof(debugIpNum));
-std::cout << " after reset debugIpNum " << std::endl;
-for(uint64_t i = 0 ; i < maxDebugIpType ; i++) {
-  std::cout << " debugIpNum [" << i << "] = " << debugIpNum[i] << std::endl; 
-}
+
   for(uint64_t i = 0; i < map->m_count; i++) {
-    std::cout << " reading count " << i << std::endl;
     switch(map->m_debug_ip_data[i].m_type)
     {
       case AXI_MM_MONITOR     : readAIMCounter(&(map->m_debug_ip_data[i]));
@@ -261,8 +263,6 @@ DebugIpStatusCollector::getCuNamePortName(uint8_t dbgIpType,
   // are always 128 in length, where the end is full of null characters  
   cuNameMaxStrLen[dbgIpType]   = std::max(strlen(cuName.c_str()), cuNameMaxStrLen[dbgIpType]);
   portNameMaxStrLen[dbgIpType] = std::max(strlen(portName.c_str()), portNameMaxStrLen[dbgIpType]);
-
-  std::cout << " FOUND : dbgIpType " << dbgIpType << " cuName " << cuName << " portName " << portName << std::endl;
 }
 
 void 
@@ -447,7 +447,7 @@ DebugIpStatusCollector::readAMCounter(debug_ip_data* dbgIpInfo)
   // Get Debug Ip Name
   std::string dbgIpName;
   // Fill up string with 128 characters (padded with null characters)
-  dbgIpName.assign(dbgIpInfo->m_name, 128);
+  dbgIpName.assign(dbgIpInfo->m_name, sizeof(dbgIpInfo->m_name));
   // Strip away any extraneous null characters
   dbgIpName.assign(dbgIpName.c_str());
 
@@ -488,7 +488,7 @@ DebugIpStatusCollector::readAMCounter(debug_ip_data* dbgIpInfo)
   // Read sample interval register to latch the sampled metric counters
   size += xclRead(handle, XCL_ADDR_SPACE_DEVICE_PERFMON,
                   dbgIpInfo->m_base_address + XAM_SAMPLE_OFFSET,
-                  &sampleInterval, 4);
+                  &sampleInterval, sizeof(uint32_t));
 
   auto dbgIpVersion = std::make_pair(dbgIpInfo->m_major, dbgIpInfo->m_minor);
   auto refVersion   = std::make_pair((uint8_t)1, (uint8_t)1);
@@ -500,7 +500,7 @@ DebugIpStatusCollector::readAMCounter(debug_ip_data* dbgIpInfo)
     for (int c = 0 ; c < XAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT ; ++c) {
       xclRead(handle, XCL_ADDR_SPACE_DEVICE_PERFMON,
             dbgIpInfo->m_base_address + am_upper_offsets[c],
-            &currData[c], 4) ;
+            &currData[c], sizeof(uint32_t)) ;
     }
     amResults.CuExecCount[index]      = ((uint64_t)(currData[0])) << 32;
     amResults.CuExecCycles[index]     = ((uint64_t)(currData[1])) << 32;
@@ -513,8 +513,8 @@ DebugIpStatusCollector::readAMCounter(debug_ip_data* dbgIpInfo)
 
     if(hasDataflow) {
       uint64_t dfTmp[2] = {0};
-      xclRead(handle, XCL_ADDR_SPACE_DEVICE_PERFMON, dbgIpInfo->m_base_address + XAM_BUSY_CYCLES_UPPER_OFFSET, &dfTmp[0], 4);
-      xclRead(handle, XCL_ADDR_SPACE_DEVICE_PERFMON, dbgIpInfo->m_base_address + XAM_MAX_PARALLEL_ITER_UPPER_OFFSET, &dfTmp[1], 4);
+      xclRead(handle, XCL_ADDR_SPACE_DEVICE_PERFMON, dbgIpInfo->m_base_address + XAM_BUSY_CYCLES_UPPER_OFFSET, &dfTmp[0], sizeof(uint32_t));
+      xclRead(handle, XCL_ADDR_SPACE_DEVICE_PERFMON, dbgIpInfo->m_base_address + XAM_MAX_PARALLEL_ITER_UPPER_OFFSET, &dfTmp[1], sizeof(uint32_t));
 
       amResults.CuBusyCycles[index]      = dfTmp[0] << 32;
       amResults.CuMaxParallelIter[index] = dfTmp[1] << 32;
@@ -522,7 +522,7 @@ DebugIpStatusCollector::readAMCounter(debug_ip_data* dbgIpInfo)
   }
 
   for (int c=0; c < XAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; c++)
-    size += xclRead(handle, XCL_ADDR_SPACE_DEVICE_PERFMON, dbgIpInfo->m_base_address+am_offsets[c], &currData[c], 4);
+    size += xclRead(handle, XCL_ADDR_SPACE_DEVICE_PERFMON, dbgIpInfo->m_base_address+am_offsets[c], &currData[c], sizeof(uint32_t));
 
   amResults.CuExecCount[index]      |= currData[0];
   amResults.CuExecCycles[index]     |= currData[1];
@@ -535,8 +535,8 @@ DebugIpStatusCollector::readAMCounter(debug_ip_data* dbgIpInfo)
 
   if(hasDataflow) {
     uint64_t dfTmp[2] = {0};
-    xclRead(handle, XCL_ADDR_SPACE_DEVICE_PERFMON, dbgIpInfo->m_base_address + XAM_BUSY_CYCLES_OFFSET, &dfTmp[0], 4);
-    xclRead(handle, XCL_ADDR_SPACE_DEVICE_PERFMON, dbgIpInfo->m_base_address + XAM_MAX_PARALLEL_ITER_OFFSET, &dfTmp[1], 4);
+    xclRead(handle, XCL_ADDR_SPACE_DEVICE_PERFMON, dbgIpInfo->m_base_address + XAM_BUSY_CYCLES_OFFSET, &dfTmp[0], sizeof(uint32_t));
+    xclRead(handle, XCL_ADDR_SPACE_DEVICE_PERFMON, dbgIpInfo->m_base_address + XAM_MAX_PARALLEL_ITER_OFFSET, &dfTmp[1], sizeof(uint32_t));
 
     amResults.CuBusyCycles[index]      |= dfTmp[0] << 32;
     amResults.CuMaxParallelIter[index] |= dfTmp[1] << 32;
@@ -604,7 +604,7 @@ DebugIpStatusCollector::readASMCounter(debug_ip_data* dbgIpInfo)
   // Get Debug Ip Name
   std::string dbgIpName;
   // Fill up string with 128 characters (padded with null characters)
-  dbgIpName.assign(dbgIpInfo->m_name, 128);
+  dbgIpName.assign(dbgIpInfo->m_name, sizeof(dbgIpInfo->m_name));
   // Strip away any extraneous null characters
   dbgIpName.assign(dbgIpName.c_str());
 
@@ -709,7 +709,7 @@ DebugIpStatusCollector::readLAPChecker(debug_ip_data* dbgIpInfo)
   // Get Debug Ip Name
   std::string dbgIpName;
   // Fill up string with 128 characters (padded with null characters)
-  dbgIpName.assign(dbgIpInfo->m_name, 128);
+  dbgIpName.assign(dbgIpInfo->m_name, sizeof(dbgIpInfo->m_name));
   // Strip away any extraneous null characters
   dbgIpName.assign(dbgIpName.c_str());
 
@@ -736,7 +736,7 @@ DebugIpStatusCollector::readLAPChecker(debug_ip_data* dbgIpInfo)
   uint32_t currData[XLAPC_STATUS_PER_SLOT];
   
   for (int c=0; c < XLAPC_STATUS_PER_SLOT; c++)
-    size += xclRead(handle, XCL_ADDR_SPACE_DEVICE_CHECKER, dbgIpInfo->m_base_address+statusRegisters[c], &currData[c], 4);
+    size += xclRead(handle, XCL_ADDR_SPACE_DEVICE_CHECKER, dbgIpInfo->m_base_address+statusRegisters[c], &currData[c], sizeof(uint32_t));
 
   lapcResults.OverallStatus[index]      = currData[XLAPC_OVERALL_STATUS];
   std::copy(currData+XLAPC_CUMULATIVE_STATUS_0, currData+XLAPC_SNAPSHOT_STATUS_0, lapcResults.CumulativeStatus[index]);
@@ -836,7 +836,7 @@ DebugIpStatusCollector::readSPChecker(debug_ip_data* dbgIpInfo)
   // Get Debug Ip Name
   std::string dbgIpName;
   // Fill up string with 128 characters (padded with null characters)
-  dbgIpName.assign(dbgIpInfo->m_name, 128);
+  dbgIpName.assign(dbgIpInfo->m_name, sizeof(dbgIpInfo->m_name));
   // Strip away any extraneous null characters
   dbgIpName.assign(dbgIpName.c_str());
 
@@ -979,7 +979,8 @@ ReportDebugIpStatus::writeReport( const xrt_core::device * _pDevice,
 
   DebugIpStatusCollector collector(handle, _output);
   collector.printOverview(_output);
-  collector.collect(_output);
+  collector.collect();
+  collector.printAllResults(_output);
 
 
   //_output << "Run 'xbutil status' with option --<ipname> to get more information about the IP" << std::endl;
