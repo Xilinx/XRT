@@ -60,7 +60,7 @@ static unsigned int enable_credit_mp = 1;
 module_param(enable_credit_mp, uint, 0644);
 MODULE_PARM_DESC(enable_credit_mp, "Set 1 to enable creidt feature, default is 0 (no credit control)");
 
-static unsigned int desc_set_depth = 16;
+static unsigned int desc_set_depth = 32;
 module_param(desc_set_depth, uint, 0644);
 MODULE_PARM_DESC(desc_set_depth, "Supported Values 16, 32, 64, 128, default is 32");
 
@@ -628,11 +628,10 @@ static void xdma_desc_link(struct xdma_desc *first, struct xdma_desc *second,
 	 */
 
 	/* Clear adjacent count for last descriptor in first block
-	 * also clear out STOPPED bit. But Let the COMPLETION bit
-	 * be set.
+	 * also clear out STOPPED and COMPLETION bit. 
 	 * TODO - Need to improve this algorithm for setting COMPLETION BIT.
 	 */
-	u32 control = le32_to_cpu(first->control) & 0xffffc0feUL;
+	u32 control = le32_to_cpu(first->control) & 0xffffc0fcUL;
 	/* second descriptor given? */
 	if (second) {
 		/*
