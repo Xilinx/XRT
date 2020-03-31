@@ -16,7 +16,8 @@
 
 #ifndef _ZOCL_DRV_H_
 #define _ZOCL_DRV_H_
-#include <drm/drmP.h>
+#include <drm/drm_device.h>
+#include <drm/drm_drv.h>
 #include <drm/drm_gem.h>
 #include <drm/drm_mm.h>
 #include <drm/drm_gem_cma_helper.h>
