@@ -178,7 +178,7 @@ DebugIpStatusCollector::reset()
 void 
 DebugIpStatusCollector::printOverview(std::ostream& _output)
 {
-  if(!map) {
+  if(!map || !map->m_count) {
     _output << " INFO: Debug IP Data not populated." << std::endl;
     return;
   }
@@ -254,7 +254,7 @@ DebugIpStatusCollector::printAllResults(std::ostream& _output)
 void 
 DebugIpStatusCollector::getDebugIpData()
 {
-  if(!map) {
+  if(!map|| !map->m_count) {
     std::cout << " INFO: Debug IP Data not populated." << std::endl;
     return;
   }
@@ -1084,7 +1084,7 @@ DebugIpStatusCollector::printSPCResults(std::ostream& _output)
 void 
 DebugIpStatusCollector::populateOverview(boost::property_tree::ptree &_pt)
 {
-  if(!map) {
+  if(!map || !map->m_count) {
     std::cout << " INFO: Debug IP Data not populated." << std::endl;
     return;
   }
