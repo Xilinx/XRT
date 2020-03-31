@@ -17,7 +17,7 @@
 #ifndef __ReportDebugIpStatus_h_
 #define __ReportDebugIpStatus_h_
 
-// Please keep eternal include file dependencies to a minimum
+// Please keep external include file dependencies to a minimum
 #include "Report.h"
 
 class ReportDebugIpStatus : public Report {
