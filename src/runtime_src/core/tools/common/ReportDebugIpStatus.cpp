@@ -180,6 +180,7 @@ DebugIpStatusCollector::printOverview(std::ostream& _output)
 {
   if(!map) {
     _output << " INFO: Debug IP Data not populated." << std::endl;
+    return;
   }
   _output << "Number of IPs found :: " << map->m_count << std::endl;
   for(uint64_t i = 0; i < map->m_count; i++) {
@@ -255,6 +256,7 @@ DebugIpStatusCollector::getDebugIpData()
 {
   if(!map) {
     std::cout << " INFO: Debug IP Data not populated." << std::endl;
+    return;
   }
   // reset to zero
   std::memset((char*)debugIpNum, 0, sizeof(debugIpNum));
@@ -1084,6 +1086,7 @@ DebugIpStatusCollector::populateOverview(boost::property_tree::ptree &_pt)
 {
   if(!map) {
     std::cout << " INFO: Debug IP Data not populated." << std::endl;
+    return;
   }
   _pt.put("total_debug_ip_num", map->m_count);
 
