@@ -703,8 +703,11 @@ namespace xclhwemhal2 {
             if (boost::filesystem::exists(binaryDirectory + "/" + kernels.at(0) + "/emulation_data/pmc_args.txt") ) {
               launcherArgs += " -pmc-args-file " + binaryDirectory + "/" + kernels.at(0) + "/emulation_data/pmc_args.txt";
             }
-            else {
+            else if (boost::filesystem::exists(binaryDirectory + "/" + kernels.at(0) + "/emulation_data/pmu_args.txt" ) ) {
               launcherArgs += " -pmc-args-file " + binaryDirectory + "/" + kernels.at(0) + "/emulation_data/pmu_args.txt";
+            }
+            else {
+              std::cout << "[HW-EMU] ERROR: Unable to find either PMU/PMC args" << std::endl;
             }
 
             if (is_enable_debug) {
