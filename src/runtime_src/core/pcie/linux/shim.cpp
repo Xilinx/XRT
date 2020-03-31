@@ -1812,6 +1812,8 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     LOAD_XCLBIN_CB ;
 #endif
     if (!ret) {
+      auto core_device = xrt_core::get_userpf_device(drv);
+      core_device->register_axlf(buffer);
       ret = xrt_core::scheduler::init(handle, buffer);
       START_DEVICE_PROFILING_CB(handle);
     }

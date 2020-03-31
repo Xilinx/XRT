@@ -18,7 +18,9 @@
  * Copyright (C) 2015 Xilinx, Inc
  */
 
-#include <shim.h>
+#include "shim.h"
+#include "core/common/system.h"
+#include "core/common/device.h"
 
 int xclExportBO(xclDeviceHandle handle, unsigned int boHandle)
 {
@@ -292,8 +294,11 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
   if (!drv)
     return -1;
   auto ret = drv->xclLoadXclBin(buffer);
-  if (!ret)
-      ret = xrt_core::scheduler::init(handle, buffer);
+  if (!ret) {
+    auto device = xrt_core::get_userpf_device(drv);
+    device->register_axlf(buffer);
+    ret = xrt_core::scheduler::init(handle, buffer);
+  }
   return ret;
 }
 

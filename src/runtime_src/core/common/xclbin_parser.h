@@ -194,6 +194,18 @@ get_kernel_freq(const axlf* top);
 /**
  * get_kernel_arguments() - Get argument meta data for a kernel
  *
+ * @xml_data: XML metadata from xclbin
+ * @xml_size: Size of XML metadata from xclbin
+ * @kname : Name of kernel
+ * Return: List of argument per struct kernel_argument
+ */
+XRT_CORE_COMMON_EXPORT
+std::vector<kernel_argument>
+get_kernel_arguments(const char* xml_data, size_t xml_size, const std::string& kname);
+
+/**
+ * get_kernel_arguments() - Get argument meta data for a kernel
+ *
  * @kname : Name of kernel
  * Return: List of argument per struct kernel_argument
  */

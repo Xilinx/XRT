@@ -57,6 +57,7 @@ enum {
 
 #define	FLASH_TYPE_SPI	"spi"
 #define	FLASH_TYPE_QSPIPS	"qspi_ps"
+#define	FLASH_TYPE_QSPIPS_X2_SINGLE	"qspi_ps_x2_single"
 #define	FLASH_TYPE_QSPIPS_X4_SINGLE	"qspi_ps_x4_single"
 #define	FLASH_TYPE_OSPI_VERSAL	"ospi_versal"
 
@@ -2071,6 +2072,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_CLOCK_LEGACY,			\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_PS,				\
+			XOCL_DEVINFO_XMC,				\
 			XOCL_DEVINFO_XVC_PUB,				\
 			XOCL_DEVINFO_MAILBOX_MGMT,			\
 			XOCL_DEVINFO_ICAP_MGMT,				\
@@ -2092,7 +2094,7 @@ struct xocl_subdev_map {
 		.subdev_info	= MGMT_RES_MPSOC_U30,			\
 		.subdev_num = ARRAY_SIZE(MGMT_RES_MPSOC_U30),		\
 		.board_name = "u30",					\
-		.flash_type = "qspi_ps_x2_single",				\
+		.flash_type = FLASH_TYPE_QSPIPS_X2_SINGLE,				\
 	}
 
 #define	XOCL_BOARD_USER_XDMA_MPSOC					\
@@ -2100,6 +2102,13 @@ struct xocl_subdev_map {
 		.flags		= XOCL_DSAFLAG_MPSOC,			\
 		.subdev_info	= USER_RES_XDMA,			\
 		.subdev_num = ARRAY_SIZE(USER_RES_XDMA),		\
+	}
+
+#define	XOCL_BOARD_XBB_MFG_U30						\
+	(struct xocl_board_private){					\
+		.flags = XOCL_DSAFLAG_MFG,				\
+		.board_name = "u30",					\
+		.flash_type = FLASH_TYPE_QSPIPS_X2_SINGLE,				\
 	}
 
 #define XOCL_RES_FLASH_MFG_U50				\
@@ -2756,6 +2765,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0xD00C, PCI_ANY_ID, XBB_MFG("u280")) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0xD030, PCI_ANY_ID, XBB_MFG("poc1465")) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0xD020, PCI_ANY_ID, XBB_MFG_U50) }, \
+	{ XOCL_PCI_DEVID(0x10EE, 0xD03C, PCI_ANY_ID, XBB_MFG_U30) }, \
 	{ XOCL_PCI_DEVID(0x10EE, 0xD04C, PCI_ANY_ID, XBB_MFG_U25) }, \
 	{ XOCL_PCI_DEVID(0x10EE, 0xEB10, PCI_ANY_ID, XBB_MFG("twitch")) }, \
 	{ XOCL_PCI_DEVID(0x13FE, 0x806C, PCI_ANY_ID, XBB_MFG("advantech")) }

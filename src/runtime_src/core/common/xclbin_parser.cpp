@@ -442,17 +442,9 @@ get_kernel_freq(const axlf* top)
 }
 
 std::vector<kernel_argument>
-get_kernel_arguments(const axlf* top, const std::string& kname)
+get_kernel_arguments(const char* xml_data, size_t xml_size, const std::string& kname)
 {
   std::vector<kernel_argument> args;
-  const axlf_section_header *xml_hdr = ::xclbin::get_axlf_section(top, EMBEDDED_METADATA);
-
-  if (!xml_hdr)
-    throw std::runtime_error("No meta data in xclbin");
-
-  auto begin = reinterpret_cast<const char*>(top) + xml_hdr->m_sectionOffset;
-  const char *xml_data = reinterpret_cast<const char*>(begin);
-  uint64_t xml_size = xml_hdr->m_sectionSize;
 
   pt::ptree xml_project;
   std::stringstream xml_stream;
@@ -487,6 +479,21 @@ get_kernel_arguments(const axlf* top, const std::string& kname)
     break;
   }
   return args;
+}
+
+std::vector<kernel_argument>
+get_kernel_arguments(const axlf* top, const std::string& kname)
+{
+  const axlf_section_header *xml_hdr = ::xclbin::get_axlf_section(top, EMBEDDED_METADATA);
+
+  if (!xml_hdr)
+    throw std::runtime_error("No meta data in xclbin");
+
+  auto begin = reinterpret_cast<const char*>(top) + xml_hdr->m_sectionOffset;
+  auto xml_data = reinterpret_cast<const char*>(begin);
+  auto xml_size = xml_hdr->m_sectionSize;
+
+  return get_kernel_arguments(xml_data, xml_size, kname);
 }
 
 //This function will be removed once IP_LAYOUT section is available in sw emu rtd.

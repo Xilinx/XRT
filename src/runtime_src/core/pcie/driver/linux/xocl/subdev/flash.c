@@ -676,6 +676,9 @@ static int qspi_probe(struct xocl_flash *flash)
 {
 	int ret;
 
+	/* Probing on first flash only. */
+	flash->qspi_curr_slave = 0;
+
 	flash_set_ctrl(flash, QSPI_CR_INIT_STATE);
 
 	/* Find out fifo depth before any read/write operations. */
@@ -920,10 +923,11 @@ flash_read(struct file *file, char __user *buf, size_t n, loff_t *off)
 
 	FLASH_INFO(flash, "reading 0x%lx bytes @0x%llx", n, *off);
 
-	if (n == 0 || !is_valid_offset(flash, *off + n)) {
+	if (n == 0 || !is_valid_offset(flash, *off)) {
 		FLASH_ERR(flash, "Can't read: out of boundary");
-		return -EINVAL;
+		return 0;
 	}
+	n = min(n, flash->flash_size - (size_t)*off);
 
 	page = vmalloc(FLASH_PAGE_SIZE);
 	if (page == NULL)
@@ -1059,10 +1063,11 @@ flash_write(struct file *file, const char __user *buf, size_t n, loff_t *off)
 
 	FLASH_INFO(flash, "writing 0x%lx bytes @0x%llx", n, *off);
 
-	if (n == 0 || !is_valid_offset(flash, *off + n)) {
+	if (n == 0 || !is_valid_offset(flash, *off)) {
 		FLASH_ERR(flash, "Can't write: out of boundary");
 		return -EINVAL;
 	}
+	n = min(n, flash->flash_size - (size_t)*off);
 
 	page = vmalloc(FLASH_HUGE_PAGE_SIZE);
 	if (page == NULL)
@@ -1223,10 +1228,22 @@ static ssize_t properties_show(struct device *dev,
 
 static DEVICE_ATTR_RO(properties);
 
+/* Show size of one chip. Double it for total size for dual chip platforms. */
+static ssize_t size_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_flash *flash = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%ld\n", flash->flash_size);
+}
+
+static DEVICE_ATTR_RO(size);
+
 static struct attribute *flash_attrs[] = {
 	&dev_attr_bar_off.attr,
 	&dev_attr_flash_type.attr,
 	&dev_attr_properties.attr,
+	&dev_attr_size.attr,
 	NULL,
 };
 

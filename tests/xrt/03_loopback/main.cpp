@@ -190,9 +190,8 @@ int main(int argc, char** argv)
        if (first_mem < 0)
            return 1;
 
-
        std::string kname = "loopback";
-       auto kernel = xrtPLKernelOpen(handle, header.data(), kname.c_str());
+       auto kernel = xrtPLKernelOpen(handle, top->m_header.uuid, kname.c_str());
 
        auto boHandle2 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, first_mem);
        char* bo2 = (char*)xclMapBO(handle, boHandle2, true);

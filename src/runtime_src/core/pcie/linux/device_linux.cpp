@@ -167,6 +167,7 @@ initialize_query_table()
   emplace_sysfs_request<query::rom_raw>                   ("rom", "raw");
   emplace_sysfs_request<query::rom_uuid>                  ("rom", "uuid");
   emplace_sysfs_request<query::rom_time_since_epoch>      ("rom", "timestamp");
+  emplace_sysfs_request<query::xclbin_uuid>               ("", "xclbinuuid");
   emplace_sysfs_request<query::mem_topology_raw>          ("icap", "mem_topology");
   emplace_sysfs_request<query::ip_layout_raw>             ("icap", "ip_layout");
   emplace_sysfs_request<query::clock_freqs>               ("icap", "clock_freqs");
@@ -257,12 +258,8 @@ lookup_query(query::key_type query_key) const
 {
   auto it = query_tbl.find(query_key);
 
-  if (it == query_tbl.end()) {
-    using qtype = std::underlying_type<query::key_type>::type;
-    std::string err = boost::str( boost::format("The given query request ID (%d) is not supported on Linux.")
-                                  % static_cast<qtype>(query_key));
-    throw std::runtime_error(err);
-  }
+  if (it == query_tbl.end())
+    throw query::no_such_key(query_key);
 
   return *(it->second);
 }

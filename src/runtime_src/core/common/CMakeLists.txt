@@ -22,6 +22,7 @@ file(GLOB XRT_CORE_COMMON_LIB_FILES
   "system.*"
   "utils.*"
   "thread.cpp"
+  "xrt_xclbin.cpp"
   "exec/*.cpp"
   )
 

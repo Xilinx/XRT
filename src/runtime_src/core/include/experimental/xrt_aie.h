@@ -141,11 +141,29 @@ xrtGraphStop(xrtGraphHandle gh, int timeoutMilliSec);
  * @buffer:          pointer to the RTP value.
  * @size:            size in bytes of the RTP value.
  *
- * Return:          0 on success, -1 on timeout.
+ * Return:          0 on success, -1 on error.
  *
  * Note: This is for sychcronous RTP only.
  */
 int
 xrtGraphUpdateRTP(xrtGraphHandle gh, const char *hierPathPort, const char *buffer, size_t size);
+
+/**
+ * xrtSyncBOAIE() - Update RTP value of port with hierarchical name
+ *
+ * @gh:              Handle to graph previously opened with xrtGraphOpen.
+ * @bo:              BO handle.
+ * @dmaID:           GMIO DMA ID
+ * @dir:             GMIO to AIE or AIE to GMIO
+ * @size:            Size of data to synchronize
+ * @offset:          Offset within the BO
+ *
+ * Return:          0 on success, -1 on error.
+ *
+ * Synchronize the buffer contents between GMIO and AIE.
+ * Note: Upon return, the synchronization is done or error out
+ */
+int
+xrtSyncBOAIE(xrtGraphHandle gh, unsigned bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset);
 
 #endif

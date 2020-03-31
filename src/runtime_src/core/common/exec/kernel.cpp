@@ -94,7 +94,7 @@ public:
   enum class access_mode : bool { exclusive = false, shared = true };
 
   static std::shared_ptr<ip_context>
-  open(xrt_core::device* device, xuid_t xclbin_id, unsigned int ipidx, access_mode am)
+  open(xrt_core::device* device, const xuid_t xclbin_id, unsigned int ipidx, access_mode am)
   {
     static std::vector<std::weak_ptr<ip_context>> ips(128);
     auto ip = ips[ipidx].lock();
@@ -120,7 +120,7 @@ public:
   }
 
 private:
-  ip_context(xrt_core::device* dev, xuid_t xclbin_id, unsigned int ipidx, access_mode am)
+  ip_context(xrt_core::device* dev, const xuid_t xclbin_id, unsigned int ipidx, access_mode am)
     : device(dev), idx(ipidx), access(am)
   {
     uuid_copy(xid, xclbin_id);
@@ -318,34 +318,42 @@ struct kernel_type
 
   std::shared_ptr<device_type> device;   // shared ownership
   std::string name;                      // kernel name
-  const axlf* top = nullptr;             // xclbin
   std::vector<argument> args;            // kernel args sorted by argument index
   std::vector<ipctx> ipctxs;             // CU context locks
   std::bitset<128> cumask;               // cumask for command execution
-  xuid_t xclbin_id;                      // xclbin uuid
   size_t regmap_size = 0;                // CU register map size
   size_t num_cumasks = 1;                // Required number of command cu masks TODO: compute
 
   // kernel_type - constructor
   //
   // @dev:     device associated with this kernel object
-  // @xclbin:  xclbin to mine for kernel meta data
+  // @uuid:    uuid of xclbin to mine for kernel meta data
   // @nm:      name identifying kernel and/or kernel and instances
   // @am:      access mode for underlying compute units
-  kernel_type(std::shared_ptr<device_type> dev, const char* xclbin, const std::string& nm, ip_context::access_mode am)
+  kernel_type(std::shared_ptr<device_type> dev, const xuid_t xclbin_id, const std::string& nm, ip_context::access_mode am)
     : device(std::move(dev))                                   // share ownership
     , name(nm.substr(0,nm.find(":")))                          // filter instance names
-    , top(reinterpret_cast<const axlf*>(xclbin))               // convert to axlf
-    , args(xrt_core::xclbin::get_kernel_arguments(top, name))  // kernel argument meta data
   {
-    uuid_copy(xclbin_id, top->m_header.uuid);
+    // ip_layout
+    auto ip_section = device->core_device->get_axlf_section(IP_LAYOUT, xclbin_id);
+    if (!ip_section.first)
+      throw std::runtime_error("No ip layout available to construct kernel, make sure xclbin is loaded");
+    auto ip_layout = reinterpret_cast<const ::ip_layout*>(ip_section.first);
 
+    // xml meta data
+    auto xml_section = device->core_device->get_axlf_section(EMBEDDED_METADATA, xclbin_id);
+    if (!xml_section.first) 
+      throw std::runtime_error("No xml metadata available to construct kernel, make sure xclbin is loaded");
+
+    // get kernel arguments
+    args = xrt_core::xclbin::get_kernel_arguments(xml_section.first, xml_section.second, name);
+   
     // Compare the matching CUs against the CU sort order to create cumask
-    auto ips = xrt_core::xclbin::get_cus(top, nm);
+    auto ips = xrt_core::xclbin::get_cus(ip_layout, nm);
     if (ips.empty())
       throw std::runtime_error("No compute units matching '" + nm + "'");
 
-    auto cus = xrt_core::xclbin::get_cus(top);  // sort order
+    auto cus = xrt_core::xclbin::get_cus(ip_layout);  // sort order
     for (const ip_data* cu : ips) {
       auto itr = std::find(cus.begin(), cus.end(), cu->m_base_address);
       if (itr == cus.end())
@@ -635,7 +643,7 @@ static std::map<run_type*, std::unique_ptr<run_update_type>> run_updates;
 // is cached so that subsequent look-ups from same xrtDeviceHandle
 // result in same device object if it exists already.
 static std::shared_ptr<device_type>
-get_device(xrtDeviceHandle dhdl, const char* xclbin)
+get_device(xrtDeviceHandle dhdl)
 {
   auto itr = devices.find(dhdl);
   std::shared_ptr<device_type> device = (itr != devices.end())
@@ -643,7 +651,7 @@ get_device(xrtDeviceHandle dhdl, const char* xclbin)
     : nullptr;
   if (!device) {
     device = std::shared_ptr<device_type>(new device_type(dhdl));
-    xrt_core::exec::init(device->get_core_device(), reinterpret_cast<const axlf*>(xclbin));
+    xrt_core::exec::init(device->get_core_device());
     devices.emplace(std::make_pair(dhdl, device));
   }
   return device;
@@ -689,10 +697,10 @@ get_run_update(xrtRunHandle rhdl)
 namespace api {
 
 xrtKernelHandle
-xrtKernelOpen(xrtDeviceHandle dhdl, const char* xclbin, const char *name, ip_context::access_mode am)
+xrtKernelOpen(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name, ip_context::access_mode am)
 {
-  auto device = get_device(dhdl, xclbin);
-  auto kernel = std::make_shared<kernel_type>(device, xclbin, name, am);
+  auto device = get_device(dhdl);
+  auto kernel = std::make_shared<kernel_type>(device, xclbin_uuid, name, am);
   auto handle = kernel.get();
   kernels.emplace(std::make_pair(handle,std::move(kernel)));
   return handle;
@@ -775,10 +783,10 @@ send_exception_message(const char* msg)
 // xrt_kernel API implmentations (xrt_kernel.h)
 ////////////////////////////////////////////////////////////////
 xrtKernelHandle
-xrtPLKernelOpen(xrtDeviceHandle dhdl, const char* xclbin, const char *name)
+xrtPLKernelOpen(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name)
 {
   try {
-    return api::xrtKernelOpen(dhdl, xclbin, name, ip_context::access_mode::shared);
+    return api::xrtKernelOpen(dhdl, xclbin_uuid, name, ip_context::access_mode::shared);
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
@@ -787,10 +795,10 @@ xrtPLKernelOpen(xrtDeviceHandle dhdl, const char* xclbin, const char *name)
 }
 
 xrtKernelHandle
-xrtPLKernelOpenExclusive(xrtDeviceHandle dhdl, const char* xclbin, const char *name)
+xrtPLKernelOpenExclusive(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name)
 {
   try {
-    return api::xrtKernelOpen(dhdl, xclbin, name, ip_context::access_mode::exclusive);
+    return api::xrtKernelOpen(dhdl, xclbin_uuid, name, ip_context::access_mode::exclusive);
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());

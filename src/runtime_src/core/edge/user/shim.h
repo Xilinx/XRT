@@ -130,9 +130,11 @@ public:
 #ifdef XRT_ENABLE_AIE
   zynqaie::Aie *getAieArray();
   void setAieArray(zynqaie::Aie *aie);
+  int getBOInfo(unsigned bo, drm_zocl_info_bo &info);
 #endif
 
 private:
+  std::shared_ptr<xrt_core::device> mCoreDevice;
   const int mBoardNumber = -1;
   std::ofstream mLogStream;
   std::ifstream mVBNV;
@@ -141,7 +143,6 @@ private:
   std::map<uint64_t, uint32_t *> mKernelControl;
   std::unique_ptr<xrt_core::bo_cache> mCmdBOCache;
   zynq_device *mDev = nullptr;
-  std::shared_ptr<xrt_core::device> mCoreDevice;
   size_t mKernelClockFreq;
 
   /*

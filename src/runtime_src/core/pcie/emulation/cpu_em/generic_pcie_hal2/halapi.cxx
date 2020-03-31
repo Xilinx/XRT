@@ -19,6 +19,8 @@
  */
 
 #include "shim.h"
+#include "core/common/system.h"
+#include "core/common/device.h"
 
 xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbosityLevel level)
 {
@@ -98,9 +100,12 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
   if (!drv)
     return -1;
   auto ret = drv->xclLoadXclBin(buffer);
-  bool isKdsSwEmu = (xclemulation::is_sw_emulation()) ? xrt_core::config::get_flag_kds_sw_emu() : false;
-  if (isKdsSwEmu && !ret)
-    ret = xrt_core::scheduler::init(handle, buffer);
+  if (!ret) {
+    auto device = xrt_core::get_userpf_device(drv);
+    device->register_axlf(buffer);
+    if (xclemulation::is_sw_emulation() && xrt_core::config::get_flag_kds_sw_emu())
+      ret = xrt_core::scheduler::init(handle, buffer);
+  }
   return ret;
 }
 

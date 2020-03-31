@@ -107,7 +107,6 @@ enum {
 	IORES_MEMCALIB,
 	IORES_GATEULP,
 	IORES_KDMA,
-	IORES_CMC_MUTEX,
 	IORES_GAPPING,
 	IORES_CLKFREQ_K1_K2, /* static res config exposed to iores subdev */
 	IORES_CLKFREQ_HBM, /* static res config exposed to iores subdev */

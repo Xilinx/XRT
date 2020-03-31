@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -26,7 +26,16 @@
 #include "core/pcie/driver/linux/include/xocl_ioctl.h"
 #include "../common.h"
 #include "../mpd_plugin.h"
+#include <time.h>
 
+enum azure_rest_err {
+    E_SPLIT = 2000,
+    E_UPLOAD = 2010,
+    E_START_REIMAGE = 2020,
+    E_GET_REIMAGE_STATUS = 2021,
+    E_RESET = 2030,
+    E_GET_RESET_STATUS = 2031,
+};
 /*
  * This class is for azure xclbin download handling.
  *
@@ -74,6 +83,7 @@ public:
     };
     static std::vector<std::string> get_serial_number()
     {
+        std::regex sn("^[0-9a-zA-Z]{12}$");
         std::vector<std::string> ret = {};
 	    size_t total = pcidev::get_dev_total();
 	    if (!total) {
@@ -83,15 +93,22 @@ public:
         for (size_t i = 0; i < total; i++) {
             std::string serialNumber, errmsg;
             pcidev::get_dev(i, true)->sysfs_get("xmc", "serial_num", errmsg, serialNumber); 
+	        if (!errmsg.empty() || !regex_match(serialNumber, sn)) {
+           	    std::cerr << "azure warning(" << pcidev::get_dev(i, true)->sysfs_name << ")";
+                std::cerr << " sysfs errmsg: " << errmsg;
+                std::cerr << " serialNumber: " << serialNumber;
+                std::cerr << std::endl;
+            }
             ret.push_back(serialNumber);
         }
         return ret;
     }
 private:
     // 4 MB buffer to truncate and send
-    static const int TRANSFER_SEGMENT_SIZE { 1024 * 4096 };
-    static const int REIMAGE_TIMEOUT { 20 }; //in second
-    static const int UPLOAD_RETRY { 15 };
+    static const int transfer_segment_size { 1024 * 4096 };
+    static const int rest_timeout { 30 }; //in second
+    static const int upload_retry { 15 };
+    static const int reset_retry { 3 };
     std::shared_ptr<pcidev::pci_device> dev;
     size_t index;
     int UploadToWireServer(
@@ -111,6 +128,7 @@ private:
         std::vector<std::string> &output,
         std::string &sha);
     void get_fpga_serialNo(std::string &fpgaSerialNo);
+    void msleep(long msecs);
 };
 
 

@@ -145,6 +145,16 @@ namespace xclemulation{
       {
         setDontRun(getBoolValue(value,false));
       }
+      else if (name == "ENABLE_GMEM_LATENCY" || name == "enable_gmem_latency") {
+        //This is then new INI option that sets the ENV HW_EM_DISABLE_LATENCY to appropriate value before 
+        //launching simulation
+        bool val = getBoolValue(value, true);
+        if (val) {
+          setenv("HW_EM_DISABLE_LATENCY", "false", true);
+        } else {
+          setenv("HW_EM_DISABLE_LATENCY", "true", true);
+        }
+      }
       else if(name == "enable_shared_memory")
       {
         //this is temporary solution to use legacy DDR model in emulation. We should remove this switch Once all issues in latest model is fixed
