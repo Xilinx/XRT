@@ -23,6 +23,7 @@
 #include <boost/filesystem/operations.hpp>
 #include <iostream>
 #include <cstdlib>
+#include <atomic>
 
 #ifdef __GNUC__
 # include <linux/limits.h>
@@ -107,19 +108,16 @@ get_ini_path()
   return full_path;
 }
 
+// This global  tree represents the config reader for this
+// process.  Once initialized  it is valid and can be used
+// even from the tree construtor itself.  Using the config
+// reader during static global destruction is not possible
+static std::atomic<struct tree*> g_tree {nullptr};
+
 struct tree
 {
   boost::property_tree::ptree m_tree;
   const boost::property_tree::ptree null_tree;
-
-  void
-  setenv()
-  {
-#ifndef _WIN32
-    if (xrt_core::config::get_multiprocess())
-      ::setenv("XCL_MULTIPROCESS_MODE","1",1);
-#endif
-  }
 
   void
   read(const std::string& path)
@@ -127,11 +125,20 @@ struct tree
     try {
       read_ini(path,m_tree);
 
+      // Need to log that ini file was read, but this in turn uses the tree
+      // object which is being constructed now. Use an atomic global to store
+      // this tree which is read for use.
+      g_tree = this;
+
       // inform which .ini was read
       xrt_core::message::send(xrt_core::message::severity_level::XRT_INFO, "XRT", std::string("Read ") + path);
     }
     catch (const std::exception& ex) {
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", ex.what());
+      // Using the tree in this case is not safe, and since message
+      // infra accesses xrt_core::config it can't be used safely.  Log
+      // to stderr instead
+      // xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", ex.what());
+      std::cerr << "[XRT] Failed to read xrt.ini: " << ex.what() << std::endl;
     }
   }
 
@@ -140,11 +147,6 @@ struct tree
     auto ini_path = get_ini_path();
     if (!ini_path.empty())
       read(ini_path);
-
-    // set env vars to expose sdaccel.ini (or default) to hal layer
-    setenv();
-
-    return;
   }
 
   void
@@ -152,9 +154,16 @@ struct tree
   {
     read(fnm);
   }
-};
 
-static tree s_tree;
+  static tree*
+  instance()
+  {
+    if (g_tree)
+      return g_tree;
+    static tree s_tree;
+    return &s_tree;
+  }
+};
 
 }
 
@@ -174,7 +183,7 @@ get_bool_value(const char* key, bool default_value)
   if (auto env = get_env_value(key))
     return is_true(env);
 
-  return s_tree.m_tree.get<bool>(key,default_value);
+  return tree::instance()->m_tree.get<bool>(key,default_value);
 }
 
 std::string
@@ -182,7 +191,7 @@ get_string_value(const char* key, const std::string& default_value)
 {
   std::string val = default_value;
   try {
-    val = s_tree.m_tree.get<std::string>(key,default_value);
+    val = tree::instance()->m_tree.get<std::string>(key,default_value);
     // Although INI file entries are not supposed to have quotes around strings
     // but we want to be cautious
     if (!val.empty() && (val.front() == '"') && (val.back() == '"')) {
@@ -200,7 +209,7 @@ get_uint_value(const char* key, unsigned int default_value)
 {
   unsigned int val = default_value;
   try {
-    val = s_tree.m_tree.get<unsigned int>(key,default_value);
+    val = tree::instance()->m_tree.get<unsigned int>(key,default_value);
   } catch( std::exception const&) {
     // eat the exception, probably bad path
   }
@@ -211,17 +220,19 @@ get_uint_value(const char* key, unsigned int default_value)
 const boost::property_tree::ptree&
 get_ptree_value(const char* key)
 {
-  boost::property_tree::ptree::const_assoc_iterator i = s_tree.m_tree.find(key);
-  return (i != s_tree.m_tree.not_found()) ? i->second : s_tree.null_tree;
+  auto s_tree  = tree::instance();
+  boost::property_tree::ptree::const_assoc_iterator i = s_tree->m_tree.find(key);
+  return (i != s_tree->m_tree.not_found()) ? i->second : s_tree->null_tree;
 }
 
 std::ostream&
 debug(std::ostream& ostr, const std::string& ini)
 {
+  auto s_tree  = tree::instance();
   if (!ini.empty())
-    s_tree.reread(ini);
+    s_tree->reread(ini);
 
-  for(auto& section : s_tree.m_tree) {
+  for(auto& section : s_tree->m_tree) {
     ostr << "[" << section.first << "]\n";
     for (auto& key:section.second) {
       ostr << key.first << " = " << key.second.get_value<std::string>() << std::endl;
