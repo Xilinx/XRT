@@ -2306,5 +2306,6 @@ int xclGetSubdevPath(xclDeviceHandle handle,  const char* subdev,
 void
 xclGetDebugIpLayout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret)
 {
+  *size_ret = 0;
   return;
 }
