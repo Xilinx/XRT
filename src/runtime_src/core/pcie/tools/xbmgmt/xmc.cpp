@@ -32,13 +32,22 @@ XMC_Flasher::XMC_Flasher(std::shared_ptr<pcidev::pci_device> dev)
     mDev = dev;
     mPktBufOffset = 0;
     mPkt = {};
-
     std::string err;
     bool is_mfg = false;
+
+    /*
+     * If xmc subdev is not online, do not allow xmc flash operations.  In the
+     * future, we will use xmc subdev to do xmc validation and flashing at one
+     * place.
+     *
+     * NOTE: we don't build mProbingErrMsg to differentiate "no xmc subdev" and
+     * "other errors". Caller can treat no error message as just not support.
+     */
+    if (!hasXMC())
+        goto nosup;
+
     mDev->sysfs_get<bool>("", "mfg", err, is_mfg, false);
     if (!is_mfg) {
-        if (!hasXMC())
-            goto nosup;
 
         mDev->sysfs_get<unsigned>("xmc", "status", err, val, 0);
 	if (!err.empty() || !(val & 1)) {
