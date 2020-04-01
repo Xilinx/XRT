@@ -41,12 +41,16 @@ struct xocl_cu_ctrl {
 
 };
 
-#if 1
-/* Test_1 */
+#define Test_A_0 0
+#define Test_A_1 1
+#define Test_A_2 0
+#define Test_B 0
+
+#if Test_A_0
 static int cu_ctrl_thread(void *data)
 {
 	struct xrt_cu *xcu = (struct xrt_cu *)data;
-	struct kds_command *xcmd;
+	struct kds_command *xcmd = NULL;
 	unsigned long flags;
 	u32 loop_cnt = 0;
 	int i;
@@ -56,26 +60,21 @@ static int cu_ctrl_thread(void *data)
 	 * let me do everything in a busy loop...
 	 */
 	while (!kthread_should_stop()) {
-		/* TODO: consider semaphore? */
-
-		mutex_lock(&xcu->pq_lock);
-		//spin_lock_irqsave(&xcu->pq_lock, flags);
+		spin_lock_irqsave(&xcu->pq_lock, flags);
 		xcmd = list_first_entry_or_null(&xcu->pq, struct kds_command, list);
-		mutex_unlock(&xcu->pq_lock);
-		//spin_unlock_irqrestore(&xcu->pq_lock, flags);
+		spin_unlock_irqrestore(&xcu->pq_lock, flags);
 
-		if (xcmd != 0) {
-			/* Found a pending command */
+		if (xcmd) {
+			/* submit one command */
 			if (xrt_cu_get_credit(xcu)) {
+				/* if successfully get credit, you must start cu */
 				xrt_cu_config(xcu, (u32 *)xcmd->info, xcmd->isize, 0);
 				xrt_cu_start(xcu);
-
 				/* Move pending command to run queue */
-				mutex_lock(&xcu->pq_lock);
-				//spin_lock_irqsave(&xcu->pq_lock, flags);
+				spin_lock_irqsave(&xcu->pq_lock, flags);
 				list_move_tail(&xcmd->list, &xcu->rq);
-				mutex_unlock(&xcu->pq_lock);
-				//spin_unlock_irqrestore(&xcu->pq_lock, flags);
+				--xcu->num_pq;
+				spin_unlock_irqrestore(&xcu->pq_lock, flags);
 			}
 		}
 
@@ -87,12 +86,13 @@ static int cu_ctrl_thread(void *data)
 			continue;
 		}
 
-		/* Some commands are running, let's check */
 		xrt_cu_check(xcu);
+		xrt_cu_put_credit(xcu, xcu->ready_cnt);
+		xcu->ready_cnt = 0;
+
 		if (!xcu->done_cnt)
 			continue;
 
-		/* Has done command(s) */
 		for (i = 0; i < xcu->done_cnt; ++i) {
 			xcmd = list_first_entry_or_null(&xcu->rq, struct kds_command, list);
 			xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
@@ -100,17 +100,152 @@ static int cu_ctrl_thread(void *data)
 			kds_free_command(xcmd);
 		}
 
-		xrt_cu_put_credit(xcu, xcu->done_cnt);
-		xcu->done_cnt -= xcu->done_cnt;
-		xcu->ready_cnt -= xcu->ready_cnt;
+		xcu->done_cnt = 0;
 	}
 
 	return 0;
 }
 #endif
 
-#if 0
-/* Test_2 */
+#if Test_A_1
+static inline void process_sq_once(struct xrt_cu *xcu)
+{
+	struct list_head *q;
+	struct kds_command *done_xcmd;
+
+	/* This is the critical path, as less check as possible..
+	 * if rq and sq both are empty, please DO NOT call this function
+	 */
+
+	q = list_empty(&xcu->sq) ? &xcu->rq : & xcu->sq;
+
+	xrt_cu_check(xcu);
+	xrt_cu_put_credit(xcu, xcu->ready_cnt);
+	xcu->ready_cnt = 0;
+	if (!xcu->done_cnt)
+		return;
+
+	done_xcmd = list_first_entry_or_null(q, struct kds_command, list);
+	done_xcmd->cb.notify_host(done_xcmd, KDS_COMPLETED);
+	list_del(&done_xcmd->list);
+	kds_free_command(done_xcmd);
+	--xcu->done_cnt;
+}
+
+static inline void process_rq(struct xrt_cu *xcu)
+{
+	struct kds_command *xcmd;
+	struct kds_command *last_xcmd;
+
+	/* This funtion would not return until rq is empty */
+	xcmd = list_first_entry_or_null(&xcu->rq, struct kds_command, list);
+	last_xcmd = list_last_entry(&xcu->rq, struct kds_command, list);
+
+	while (xcmd) {
+		if (xrt_cu_get_credit(xcu)) {
+			/* if successfully get credit, you must start cu */
+			xrt_cu_config(xcu, (u32 *)xcmd->info, xcmd->isize, 0);
+			xrt_cu_start(xcu);
+			/* xcmd should always point to next waiting
+			 * to submit command
+			 */
+			if (xcmd != last_xcmd)
+				xcmd = list_next_entry(xcmd, list);
+			else
+				xcmd = NULL;
+		} else {
+			/* Run out of credit and still have xcmd in rq.
+			 * In this case, only do wait one more command done.
+			 */
+			process_sq_once(xcu);
+		}
+	}
+
+	/* Some commands maybe not completed
+	 * or they are completed but haven't beed processed
+	 * Do not wait, get pending command first.
+	 */
+	if (!list_empty(&xcu->rq))
+		list_splice_tail_init(&xcu->rq, &xcu->sq);
+}
+
+static int cu_ctrl_thread(void *data)
+{
+	struct xrt_cu *xcu = (struct xrt_cu *)data;
+	unsigned long flags;
+
+	/* The CU is not able to interrupt host
+	 * this thread has to poll CU status, so
+	 * let me do everything in a busy loop...
+	 */
+	while (1) {
+		spin_lock_irqsave(&xcu->pq_lock, flags);
+		if (xcu->num_pq > 0) {
+			list_splice_tail_init(&xcu->pq, &xcu->rq);
+			xcu->num_pq = 0;
+		}
+		spin_unlock_irqrestore(&xcu->pq_lock, flags);
+
+		/* Do not change the priority! */
+		if(!list_empty(&xcu->rq)) {
+			/* No matter if sq is emptey or not */
+			process_rq(xcu);
+		} else if (!list_empty(&xcu->sq)) {
+			process_sq_once(xcu);
+		} else {
+			/* TODO: looks like the timeout would impact IOPS
+			 * maybe it depends on the system?
+			 */
+			while (down_timeout(&xcu->sem, 1000) == -ETIME) {
+				if (kthread_should_stop())
+					return 0;
+			}
+			/* Something interesting happened */
+		}
+	}
+
+	return 0;
+}
+#endif
+
+#if Test_A_2
+static int cu_ctrl_thread(void *data)
+{
+	struct xrt_cu *xcu = (struct xrt_cu *)data;
+	struct kds_command *done_xcmd;
+	unsigned long flags;
+
+	/* The CU is not able to interrupt host
+	 * this thread has to poll CU status, so
+	 * let me do everything in a busy loop...
+	 */
+	while (1) {
+		spin_lock_irqsave(&xcu->pq_lock, flags);
+		if (xcu->num_pq > 0) {
+			list_splice_tail_init(&xcu->pq, &xcu->rq);
+			xcu->num_pq = 0;
+		}
+		spin_unlock_irqrestore(&xcu->pq_lock, flags);
+
+		while (!list_empty(&xcu->rq)) {
+			done_xcmd = list_first_entry(&xcu->rq, struct kds_command, list);
+			done_xcmd->cb.notify_host(done_xcmd, KDS_COMPLETED);
+			list_del(&done_xcmd->list);
+			kds_free_command(done_xcmd);
+		}
+
+		while (down_timeout(&xcu->sem, 1000) == -ETIME) {
+			if (kthread_should_stop())
+				return 0;
+		}
+		/* Something interesting happened */
+	}
+
+	return 0;
+}
+#endif
+
+#if Test_B
 static int cu_ctrl_thread(void *data)
 {
 	struct xrt_cu *xcu = (struct xrt_cu *)data;
@@ -129,6 +264,12 @@ static int cu_ctrl_thread(void *data)
 
 		if (xcmd != 0) {
 			xrt_cu_check(xcu);
+			xrt_cu_put_credit(xcu, xcu->ready_cnt);
+			while (xcu->ready_cnt) {
+				xrt_cu_up(xcu);
+				--xcu->ready_cnt;
+			}
+
 			if (!xcu->done_cnt)
 				continue;
 
@@ -139,8 +280,6 @@ static int cu_ctrl_thread(void *data)
 			spin_unlock_irqrestore(&xcu->rq_lock, flags);
 			kds_free_command(xcmd);
 			--xcu->done_cnt;
-			--xcu->ready_cnt;
-			xrt_cu_up(xcu);
 		}
 
 		/* This also impact the IOPS a little bit (about 30K) */
@@ -181,6 +320,7 @@ static inline void stop_all_threads(struct xocl_cu_ctrl *xcuc)
 	for (i = 0; i < xcuc->num_cus; ++i) {
 		if (xcuc->threads[i] != NULL) {
 			kthread_stop(xcuc->threads[i]);
+			//xcu->xcus[i]->stop = 1;
 			xcuc->threads[i] = NULL;
 		}
 	}
@@ -265,13 +405,17 @@ static void cu_ctrl_dispatch(struct xocl_cu_ctrl *xcuc, struct kds_command *xcmd
 	/* Select CU */
 	cu_idx = cu_mask_to_cu_idx(xcmd);
 
-	/* about 850K IOPS, if only do below two lines */
+	/* about 850K IOPS, if only do below two lines
+	 * The purpose is to show how fast a single user thread
+	 * could produce a CU task.
+	 */
 	//xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
 	//kds_free_command(xcmd);
 
 #if 0
-	/* For Test, about 160K IOPS...
+	/* about 160K IOPS...
 	 * This let execbuf becomes a blocking call...
+	 * Start CU, wait CU done, return.
 	 */
 	//xrt_cu_wait(xcuc->xcus[cu_idx]);
 
@@ -293,23 +437,34 @@ static void cu_ctrl_dispatch(struct xocl_cu_ctrl *xcuc, struct kds_command *xcmd
 	}
 #endif
 
-#if 1
-	/* about 400K IOPS with "Test_1" */
-	//spin_lock_irqsave(&xcuc->xcus[cu_idx]->pq_lock, flags);
-	//list_add_tail(&xcmd->list, &xcuc->xcus[cu_idx]->pq);
-	//spin_unlock_irqrestore(&xcuc->xcus[cu_idx]->pq_lock, flags);
-
-	/* about 400K IOPS with "Test_1" */
-	mutex_lock(&xcuc->xcus[cu_idx]->pq_lock);
+#if Test_A_0
+	/* about 500K IOPS with "Test_A_0 echo" */
+	/* about 400K IOPS with "Test_A_0" */
+	spin_lock_irqsave(&xcuc->xcus[cu_idx]->pq_lock, flags);
 	list_add_tail(&xcmd->list, &xcuc->xcus[cu_idx]->pq);
-	mutex_unlock(&xcuc->xcus[cu_idx]->pq_lock);
+	spin_unlock_irqrestore(&xcuc->xcus[cu_idx]->pq_lock, flags);
 #endif
 
-#if 0
-	/* For Test_2, about 350K IOPS...
-	 * This let execbuf becomes a blocking call if CU is busy.
+#if Test_A_1 || Test_A_2
+	/* about 550K IOPS with "Test_A_1 echo" */
+	/* about 500K IOPS with "Test_A_1" */
+	/* about 550K IOPS with "Test_A_2" w/wo echo */
+	spin_lock_irqsave(&xcuc->xcus[cu_idx]->pq_lock, flags);
+	list_add_tail(&xcmd->list, &xcuc->xcus[cu_idx]->pq);
+	if (xcuc->xcus[cu_idx]->num_pq == 0)
+		up(&xcuc->xcus[cu_idx]->sem);
+	++xcuc->xcus[cu_idx]->num_pq;
+	spin_unlock_irqrestore(&xcuc->xcus[cu_idx]->pq_lock, flags);
+#endif
+
+#if Test_B
+	/* This approach is starting CU at this thread,
+	 * Then add xcmd to CU's run queue to wait for complete
 	 */
+
+	/* about 420K IOPS with "Test_B echo*/
 	xrt_cu_wait(xcuc->xcus[cu_idx]);
+	xrt_cu_get_credit(xcuc->xcus[cu_idx]);
 
 	/* start CU */
 	xrt_cu_config(xcuc->xcus[cu_idx], (u32 *)xcmd->info, xcmd->isize, 0);
@@ -319,7 +474,6 @@ static void cu_ctrl_dispatch(struct xocl_cu_ctrl *xcuc, struct kds_command *xcmd
 	list_add_tail(&xcmd->list, &xcuc->xcus[cu_idx]->rq);
 	spin_unlock_irqrestore(&xcuc->xcus[cu_idx]->rq_lock, flags);
 #endif
-
 }
 
 static void cu_ctrl_submit(struct kds_controller *ctrl, struct kds_command *xcmd)
@@ -351,7 +505,7 @@ static int cu_ctrl_add_cu(struct platform_device *pdev, struct xrt_cu *xcu)
 	}
 
 	if (i == MAX_CUS) {
-		XCUC_INFO(xcuc, "Could not find a slot for CU %p", xcu);
+		XCUC_ERR(xcuc, "Could not find a slot for CU %p", xcu);
 		return -ENOSPC;
 	}
 
@@ -389,7 +543,7 @@ static int cu_ctrl_remove_cu(struct platform_device *pdev, struct xrt_cu *xcu)
 	}
 
 	if (i == MAX_CUS) {
-		XCUC_INFO(xcuc, "Could not find CU %p", xcu);
+		XCUC_ERR(xcuc, "Could not find CU %p", xcu);
 		return -EINVAL;
 	}
 

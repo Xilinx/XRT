@@ -147,7 +147,11 @@ int xocl_create_client(struct xocl_dev *xdev, void **priv)
 		client->dev = XDEV2DEV(xdev);
 		client->pid = get_pid(task_pid(current));
 		client->ctrl = XDEV(xdev)->kds.ctrl;
-		kds_init_client(client);
+		ret = kds_init_client(client);
+		if (ret) {
+			kfree(client);
+			goto out;
+		}
 		list_add_tail(&client->link, &xdev->ctx_list);
 		*priv = client;
 	} else {
@@ -156,6 +160,7 @@ int xocl_create_client(struct xocl_dev *xdev, void **priv)
 		ret = -EBUSY;
 	}
 
+out:
 	mutex_unlock(&xdev->dev_lock);
 
 	userpf_info(xdev, "created KDS client for pid(%d), ret: %d\n",

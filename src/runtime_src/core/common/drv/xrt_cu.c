@@ -65,11 +65,16 @@ int xrt_cu_init(struct xrt_cu *xcu)
 	/* Use list for driver space command queue
 	 * Should we consider ring buffer?
 	 */
+	INIT_LIST_HEAD(&xcu->pq);
+	spin_lock_init(&xcu->pq_lock);
 	INIT_LIST_HEAD(&xcu->rq);
 	spin_lock_init(&xcu->rq_lock);
-	INIT_LIST_HEAD(&xcu->pq);
-	//mutex_init(&xcu->pq_lock);
-	spin_lock_init(&xcu->pq_lock);
+	INIT_LIST_HEAD(&xcu->sq);
+	xcu->num_pq = 0;
+	xcu->num_rq = 0;
+	xcu->num_sq = 0;
+	sema_init(&xcu->sem, 0);
+	xcu->stop = 0;
 
 	switch (xcu->info.model) {
 	case MODEL_PLRAM:

@@ -33,6 +33,8 @@ struct kds_controller;
 #define kds_dbg(client, fmt, args...)			\
 	dev_dbg(client->dev, " %llx %s: "fmt, (u64)client->dev, __func__, ##args)
 
+#define PRE_ALLOC 0
+
 /**
  * struct kds_client: Manage user space client context attached to device
  *
@@ -47,6 +49,12 @@ struct kds_client {
 	struct kds_controller   **ctrl;
 	wait_queue_head_t	  waitq;
 	atomic_t		  event;
+#if PRE_ALLOC
+	u32			  max_xcmd;
+	u32			  xcmd_idx;
+	void			 *xcmds;
+	void			 *infos;
+#endif
 };
 #define	CLIENT_NUM_CU(client) (0)
 

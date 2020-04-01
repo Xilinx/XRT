@@ -20,33 +20,51 @@
 
 struct kds_command *kds_alloc_command(struct kds_client *client, u32 size)
 {
+#if PRE_ALLOC
+	struct kds_command *xcmds;
+#endif
 	struct kds_command *xcmd;
 
 	/* TODO: Allocate buffer on critical path is not good
 	 * Consider kmem_cache_alloc()
 	 */
+#if PRE_ALLOC
+	xcmds = client->xcmds;
+	xcmd = &xcmds[client->xcmd_idx];
+#else
 	xcmd = kzalloc(sizeof(struct kds_command), GFP_KERNEL);
 	if (!xcmd)
 		return NULL;
+#endif
 
 	xcmd->client = client;
 	xcmd->type = 0;
 
+#if PRE_ALLOC
+	xcmd->info = client->infos + sizeof(u32) * 128;
+	++client->xcmd_idx;
+	client->xcmd_idx &= (client->max_xcmd - 1);
+#else
 	xcmd->info = kzalloc(size, GFP_KERNEL);
 	if (!xcmd->info) {
 		kfree(xcmd);
 		return NULL;
 	}
+#endif
 
 	return xcmd;
 }
 
 void kds_free_command(struct kds_command *xcmd)
 {
+#if PRE_ALLOC
+	return;
+#else
 	if (xcmd) {
 		kfree(xcmd->info);
 		kfree(xcmd);
 	}
+#endif
 }
 
 int kds_submit_cu(struct kds_command *xcmd)
@@ -99,10 +117,29 @@ int kds_init_client(struct kds_client *client)
 {
 	init_waitqueue_head(&client->waitq);
 	atomic_set(&client->event, 0);
+#if PRE_ALLOC
+	client->max_xcmd = 0x8000;
+	client->xcmd_idx = 0;
+	client->xcmds = vzalloc(sizeof(struct kds_command) * client->max_xcmd);
+	if (!client->xcmds) {
+		kds_err(client, "cound not allocate xcmds");
+		return -ENOMEM;
+	}
+	client->infos = vzalloc(sizeof(u32) * 128 * client->max_xcmd);
+	if (!client->infos) {
+		kds_err(client, "cound not allocate infos");
+		return -ENOMEM;
+	}
+#endif
+
 	return 0;
 }
 
 void kds_fini_client(struct kds_client *client)
 {
+#if PRE_ALLOC
+	vfree(client->xcmds);
+	vfree(client->infos);
+#endif
 	return;
 }

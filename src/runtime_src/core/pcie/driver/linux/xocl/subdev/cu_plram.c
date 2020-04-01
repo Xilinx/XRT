@@ -68,14 +68,14 @@ static int cu_probe(struct platform_device *pdev)
 
 	err = xrt_cu_init(&xcu->base);
 	if (err) {
-		XCU_INFO(xcu, "Not able to initial CU %p", xcu);
+		XCU_ERR(xcu, "Not able to initial CU %p", xcu);
 		goto err;
 	}
 
 	 /* Is time to add this CU to the CU controller's list */
 	err = xocl_cu_ctrl_add_cu(xdev, &xcu->base);
 	if (err) {
-		XCU_INFO(xcu, "Not able to add CU %p to controller", xcu);
+		XCU_ERR(xcu, "Not able to add CU %p to controller", xcu);
 		goto err1;
 	}
 
@@ -106,7 +106,7 @@ static int cu_remove(struct platform_device *pdev)
 
 	err = xocl_cu_ctrl_remove_cu(xdev, &xcu->base);
 	if (err)
-		XCU_INFO(xcu, "Remove CU failed?");
+		XCU_ERR(xcu, "Remove CU failed?");
 
 	xrt_cu_fini(&xcu->base);
 

@@ -144,11 +144,15 @@ struct xrt_cu {
 	struct device		 *dev;
 	struct xrt_cu_info	  info;
 	struct resource		**res;
+	struct list_head	  sq;
+	u32			  num_sq;
 	struct list_head	  rq;
-	//struct mutex		  rq_lock;
 	spinlock_t		  rq_lock;
+	u32			  num_rq;
 	struct list_head	  pq;
 	spinlock_t		  pq_lock;
+	struct semaphore	  sem;
+	u32			  num_pq;
 	void                     *core;
 	u32			  stop;
 	u32			  done_cnt;

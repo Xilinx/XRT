@@ -16,6 +16,8 @@
 
 #include "xrt_cu.h"
 
+#define ECHO 0
+
 static void cu_plram_wait(void *core)
 {
 	struct xrt_cu_plram *cu_plram = core;
@@ -42,30 +44,52 @@ static void cu_plram_put_credit(void *core, u32 count)
 	struct xrt_cu_plram *cu_plram = core;
 
 	cu_plram->credits += count;
+	if (cu_plram->credits > cu_plram->max_credits)
+		cu_plram->credits = cu_plram->max_credits;
 }
 
 static void cu_plram_configure(void *core, u32 *data, size_t sz, int type)
 {
+#if ECHO
+	return;
+#else
 	struct xrt_cu_plram *cu_plram = core;
 
 	/* TODO: Configure in specific slot */
 	memcpy(cu_plram->plram, data, sz);
+#endif
 }
 
 static void cu_plram_start(void *core)
 {
+#if ECHO
+	return;
+#else
 	struct xrt_cu_plram *cu_plram = core;
 
 	/* TODO: Start CU in specific slot */
 	iowrite32(0x0, cu_plram->vaddr + 0x10);
+#endif
 }
 
 static void cu_plram_check(void *core, struct xcu_status *status)
 {
 	struct xrt_cu_plram *cu_plram = core;
-	u32 done_reg;
+	u32 done_reg = 0;
 
-	done_reg = ioread32(cu_plram->vaddr + 0x1C);
+#if ECHO
+	done_reg = 1;
+#else
+	/* There is only one done commands counter in the plram CU
+	 * It tells how many commands are done and how many FIFO slots
+	 * are ready for more commands.
+	 *
+	 * ioread32 is expensive! If no credits are taken(CU is not running),
+	 * DO NOT read done register.
+	 */
+	if (cu_plram->credits != cu_plram->max_credits)
+		done_reg = ioread32(cu_plram->vaddr + 0x1C);
+#endif
 	status->num_done = done_reg;
 	status->num_ready = done_reg;
 }
@@ -131,7 +155,8 @@ int xrt_cu_plram_init(struct xrt_cu *xcu)
 	/* map plram */
 	res = xcu->res[1];
 	size = res->end - res->start + 1;
-	//xcu->plram = ioremap_nocache(res->start, size);
+	/* use wc would make huge different on IOPS */
+	//core->plram = ioremap_nocache(res->start, size);
 	core->plram = ioremap_wc(res->start, size);
 	if (!core->plram) {
 		err = -ENOMEM;
