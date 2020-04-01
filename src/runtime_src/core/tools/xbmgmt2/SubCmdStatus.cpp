@@ -37,10 +37,12 @@ namespace po = boost::program_options;
 // ---- Reports ------
 #include "tools/common/Report.h"
 #include "tools/common/ReportHost.h"
+#include "ReportPlatform.h"
 
 // Note: Please insert the reports in the order to be displayed (current alphabetical)
 static const ReportCollection fullReportCollection = {
-  std::make_shared<ReportHost>()
+  std::make_shared<ReportHost>(),
+  std::make_shared<ReportPlatform>()
 };
 
 // ----- C L A S S   M E T H O D S -------------------------------------------

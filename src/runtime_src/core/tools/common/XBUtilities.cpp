@@ -331,8 +331,12 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
       return;
 
     // Now collect the devices and add them to the collection
-    for(xrt_core::device::id_type index = 0; index < total; ++index)  
-      _deviceCollection.push_back( xrt_core::get_userpf_device(index) );
+    for(xrt_core::device::id_type index = 0; index < total; ++index) {
+      if(_inUserDomain)
+        _deviceCollection.push_back( xrt_core::get_userpf_device(index) );
+      else 
+        _deviceCollection.push_back( xrt_core::get_mgmtpf_device(index) );
+    }
 
     return;
   }
@@ -340,7 +344,10 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
   // -- Collect the devices by name
   for (const auto & deviceBDF : _deviceBDFs) {
   	auto index = xrt_core::utils::bdf2index(deviceBDF);         // Can throw
-    _deviceCollection.push_back( xrt_core::get_userpf_device(index) );
+    if(_inUserDomain)
+        _deviceCollection.push_back( xrt_core::get_userpf_device(index) );
+      else 
+        _deviceCollection.push_back( xrt_core::get_mgmtpf_device(index) );
   }
 }
 

@@ -18,7 +18,7 @@
 #define __ReportPlatform_h_
 
 // Please keep eternal include file dependencies to a minimum
-#include "Report.h"
+#include "tools/common/Report.h"
 
 class ReportPlatform: public Report {
  public:
