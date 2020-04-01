@@ -699,7 +699,16 @@ namespace xclhwemhal2 {
             launcherArgs += " -boot-bh " + binaryDirectory + "/" + kernels.at(0) + "/emulation_data/BOOT_bh.bin";
             launcherArgs += " -ospi-image " + binaryDirectory + "/" + kernels.at(0) + "/emulation_data/qemu_ospi.bin";
             launcherArgs += " -qemu-args-file " + binaryDirectory + "/" + kernels.at(0) + "/emulation_data/qemu_args.txt";
-            launcherArgs += " -pmc-args-file " + binaryDirectory + "/" + kernels.at(0) + "/emulation_data/pmu_args.txt";
+           
+            if (boost::filesystem::exists(binaryDirectory + "/" + kernels.at(0) + "/emulation_data/pmc_args.txt") ) {
+              launcherArgs += " -pmc-args-file " + binaryDirectory + "/" + kernels.at(0) + "/emulation_data/pmc_args.txt";
+            }
+            else if (boost::filesystem::exists(binaryDirectory + "/" + kernels.at(0) + "/emulation_data/pmu_args.txt" ) ) {
+              launcherArgs += " -pmc-args-file " + binaryDirectory + "/" + kernels.at(0) + "/emulation_data/pmu_args.txt";
+            }
+            else {
+              std::cout << "[HW-EMU] ERROR: Unable to find either PMU/PMC args" << std::endl;
+            }
 
             if (is_enable_debug) {
               launcherArgs += " -enable-debug ";
