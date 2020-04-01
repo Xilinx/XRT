@@ -108,12 +108,6 @@ get_ini_path()
   return full_path;
 }
 
-// This global  tree represents the config reader for this
-// process.  Once initialized  it is valid and can be used
-// even from the tree construtor itself.  Using the config
-// reader during static global destruction is not possible
-static std::atomic<struct tree*> g_tree {nullptr};
-
 struct tree
 {
   boost::property_tree::ptree m_tree;
@@ -125,13 +119,8 @@ struct tree
     try {
       read_ini(path,m_tree);
 
-      // Need to log that ini file was read, but this in turn uses the tree
-      // object which is being constructed now. Use an atomic global to store
-      // this tree which is read for use.
-      g_tree = this;
-
       // inform which .ini was read
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_INFO, "XRT", std::string("Read ") + path);
+      //xrt_core::message::send(xrt_core::message::severity_level::XRT_INFO, "XRT", std::string("Read ") + path);
     }
     catch (const std::exception& ex) {
       // Using the tree in this case is not safe, and since message
@@ -158,8 +147,6 @@ struct tree
   static tree*
   instance()
   {
-    if (g_tree)
-      return g_tree;
     static tree s_tree;
     return &s_tree;
   }
