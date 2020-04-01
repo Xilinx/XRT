@@ -1299,7 +1299,6 @@ ReportDebugIpStatus::writeReport( const xrt_core::device * _pDevice,
   collector.collect(_elementsFilter);
   collector.printAllResults(_output);
 
-  _output << "INFO: xbutil2 status succeeded.\n";
   return;
 }
 
