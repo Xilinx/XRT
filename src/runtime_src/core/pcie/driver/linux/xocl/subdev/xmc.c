@@ -1500,6 +1500,8 @@ static ssize_t scaling_reset_store(struct device *dev,
 		WRITE_REG32(xmc, 0x0, XMC_CLK_THROTTLING_PWR_MGMT_REG);
 
 	mutex_unlock(&xmc->xmc_lock);
+
+	return count;
 }
 static DEVICE_ATTR_WO(scaling_reset);
 
@@ -2865,7 +2867,13 @@ static int raptor_cmc_access(struct platform_device *pdev,
 
 	if (flags == XOCL_XMC_FREE) {
 		uint64_t addr;
+		u32 pr_gate = 0;
 
+		xocl_axigate_status(xdev, XOCL_SUBDEV_LEVEL_PRP, &pr_gate);
+		if (!pr_gate) {
+			/* ULP is not connected, return */
+			return -ENODEV;
+		}
 		grant = 1; /* set to 1:enabled */
 		/*
 		 * for grant (free) access, we are looking for new
@@ -2931,7 +2939,13 @@ static int xmc_offline(struct platform_device *pdev)
 }
 static int xmc_online(struct platform_device *pdev)
 {
-	return xmc_access(pdev, XOCL_XMC_FREE);
+	int ret;
+
+	ret = xmc_access(pdev, XOCL_XMC_FREE);
+	if (ret && ret != -ENODEV)
+		return ret;
+
+	return 0;
 }
 
 static struct xocl_mb_funcs xmc_ops = {

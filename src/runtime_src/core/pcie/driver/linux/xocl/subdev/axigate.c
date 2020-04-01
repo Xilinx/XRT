@@ -104,10 +104,22 @@ static int axigate_reset(struct platform_device *pdev)
 	return 0;
 }
 
+static int axigate_status(struct platform_device *pdev, u32 *status)
+{
+	struct axi_gate *gate = platform_get_drvdata(pdev);
+
+	mutex_lock(&gate->gate_lock);
+	*status = reg_rd(gate, iag_rd);
+	mutex_unlock(&gate->gate_lock);
+
+	return 0;
+}
+
 static struct xocl_axigate_funcs axigate_ops = {
 	.freeze = axigate_freeze,
 	.free = axigate_free,
 	.reset = axigate_reset,
+	.get_status = axigate_status,
 };
 
 static int axigate_remove(struct platform_device *pdev)

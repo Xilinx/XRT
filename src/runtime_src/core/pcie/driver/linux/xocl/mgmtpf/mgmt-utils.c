@@ -599,12 +599,16 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 		goto failed;
 	}
 
+	xocl_subdev_destroy_by_id(lro, XOCL_SUBDEV_AF);
+
 	ret = xocl_icap_download_rp(lro, XOCL_SUBDEV_LEVEL_PRP,
 			RP_DOWNLOAD_FORCE);
 	if (ret) {
 		mgmt_err(lro, "program shell failed %d", ret);
 		goto failed;
 	}
+
+	xocl_subdev_create_by_id(lro, XOCL_SUBDEV_AF);
 
 	ret = xocl_subdev_create_prp(lro);
 	if (ret && ret != -ENODEV) {
