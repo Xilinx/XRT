@@ -476,7 +476,7 @@ DebugIpStatusCollector::printAIMResults(std::ostream& _output)
     return;
   }
 
-  _output << "AXI Interface Monitor Counters\n";
+  _output << "\nAXI Interface Monitor Counters\n";
   auto col1 = std::max(cuNameMaxStrLen[AXI_MM_MONITOR], strlen("Region or CU")) + 4;
   auto col2 = std::max(portNameMaxStrLen[AXI_MM_MONITOR], strlen("Type or Port"));
 
@@ -682,7 +682,7 @@ DebugIpStatusCollector::printAMResults(std::ostream& _output)
     return;
   }
 
-  _output << "Accelerator Monitor Counters (hex values are cycle count)\n";
+  _output << "\nAccelerator Monitor Counters (hex values are cycle count)\n";
 
   auto col1 = std::max(cuNameMaxStrLen[ACCEL_MONITOR], strlen("Compute Unit")) + 4;
 
@@ -796,7 +796,7 @@ DebugIpStatusCollector::printASMResults(std::ostream& _output)
   if(0 == asmResults.NumSlots) {
     return;
   }
-  _output << "AXI Stream Monitor Counters\n";
+  _output << "\nAXI Stream Monitor Counters\n";
   auto col1 = std::max(cuNameMaxStrLen[AXI_STREAM_MONITOR], strlen("Stream Master")) + 4;
   auto col2 = std::max(portNameMaxStrLen[AXI_STREAM_MONITOR], strlen("Stream Slave"));
 
@@ -894,7 +894,7 @@ DebugIpStatusCollector::printLAPCResults(std::ostream& _output)
 
   bool violations_found = false;
   bool invalid_codes = false;
-  _output << "Light Weight AXI Protocol Checkers codes \n";
+  _output << "\nLight Weight AXI Protocol Checkers codes \n";
   auto col1 = std::max(cuNameMaxStrLen[LAPC], strlen("CU Name")) + 4;
   auto col2 = std::max(portNameMaxStrLen[LAPC], strlen("AXI Portname"));
 
@@ -1026,7 +1026,7 @@ DebugIpStatusCollector::printSPCResults(std::ostream& _output)
   }
 
   // Now print out all of the values (and their interpretations)
-  _output << "AXI Streaming Protocol Checkers codes\n";
+  _output << "\nAXI Streaming Protocol Checkers codes\n";
   bool invalid_codes = false ;
   bool violations_found = false ;
 
