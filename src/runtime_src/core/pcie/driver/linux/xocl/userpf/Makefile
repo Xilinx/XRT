@@ -18,9 +18,31 @@ ccflags-y := -Iinclude/drm
 
 include $(PWD)/../lib/Makefile.in
 
-drv_common-y   := ../../../../../common/drv/kds_core.o \
-		  ../../../../../common/drv/xrt_cu.o \
-		  ../../../../../common/drv/cu_plram.o
+# Base on Linux Documentation/kbuild/modules.txt.
+# $(src) provides the absolute path by pointing to the directory
+# where the currently executing kbuild file is located.
+ifneq ($(src),)
+# building modules
+ifneq ($(wildcard $(src)/../../common),)
+# dpms dir
+common_dir = ../../common
+else
+# build from source code
+common_dir = ../../../../../common/drv
+endif
+
+else
+# clean
+common_dir = ../../../../../common/drv
+ifeq ($(wildcard ../../../../../common/drv),)
+common_dir = ../../common
+endif
+
+endif
+
+drv_common-y   := $(common_dir)/kds_core.o \
+		  $(common_dir)/xrt_cu.o \
+		  $(common_dir)/cu_plram.o
 
 xocl-y := \
 	../xocl_subdev.o \
@@ -83,7 +105,7 @@ ccflags-y += -g
 endif
 
 all:
-	echo $(PWD)
+	@echo $(PWD)
 	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
 
 install: all
@@ -97,7 +119,7 @@ install: all
 clean:
 	rm -rf *.o *.o.d *~ core .depend .*.cmd *.ko *.ko.unsigned *.mod.c \
 	../subdev/*.o ../subdev/.*.o.cmd ../lib/*.o ../lib/.*.o.cmd	\
-	../lib/libqdma/*.o ../lib/libqdma/.*.o.cmd 			\
+	../lib/*.o.ur-safe ../lib/libqdma/*.o ../lib/libqdma/.*.o.cmd \
 	../lib/libqdma/*.o.ur-safe ../subdev/*.o.ur-safe ./.cache.mk	\
-	../../../../../common/drv/*.o ../../../../../common/drv/*.o.cmd \
+	$(common_dir)/*.o $(common_dir)/.*.o.cmd \
 	.tmp_versions *.symvers modules.order
