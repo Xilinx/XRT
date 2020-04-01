@@ -12,6 +12,7 @@
  * License version 2 or Apache License, Version 2.0.
  */
 
+#include <linux/delay.h>
 #include <linux/kthread.h>
 #include <linux/platform_device.h>
 
