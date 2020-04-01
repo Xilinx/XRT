@@ -714,7 +714,7 @@ struct xocl_subdev_map {
 	((struct resource []) {				\
 		{					\
 			.start	= 0x0,			\
-			.end	= 0x4FFF,		\
+			.end	= 0x7FFF,		\
 			.flags  = IORESOURCE_MEM,	\
 		}					\
 	})
