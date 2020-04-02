@@ -70,8 +70,6 @@ class DebugIpStatusCollector
 
   std::vector<char> map;
 
-  //debug_ip_layout* map = nullptr;
-
   uint64_t debugIpNum[maxDebugIpType];
   bool     debugIpOpt[maxDebugIpType];
 
@@ -135,8 +133,20 @@ private :
 
 DebugIpStatusCollector::DebugIpStatusCollector(xclDeviceHandle h)
     : handle(h)
+    , debugIpNum{0}
+    , debugIpOpt{false}
+    , cuNameMaxStrLen{0}
+    , portNameMaxStrLen{0}
+    , aimResults{0}
+    , asmResults{0}
+    , amResults{0}
+    , lapcResults{0}
+    , spcResults{0}
 {
-  reset();
+  // By default, enable status collection for all Debug IP types
+  for(uint64_t i = 0; i < maxDebugIpType ; ++i) {
+    debugIpOpt[i] = true;
+  }
 
   size_t sz1 = 0, sectionSz = 0;
   // Get the size of full debug_ip_layout
@@ -145,12 +155,13 @@ DebugIpStatusCollector::DebugIpStatusCollector(xclDeviceHandle h)
     std::cout << "INFO: Failed to find any Debug IP Layout section in the bitstream loaded on device. "
               << "Ensure that a valid bitstream with debug IPs (AIM, LAPC) is successfully downloaded. \n"
               << std::endl;
-    return;
+   return;
   }
   // Allocate buffer to retrieve debug_ip_layout information from loaded xclbin
   map.resize(sectionSz);
   xclGetDebugIpLayout(handle, map.data(), sectionSz, &sz1);
 }
+
 
 debug_ip_layout*
 DebugIpStatusCollector::getDebugIpLayout()
@@ -167,25 +178,6 @@ DebugIpStatusCollector::getDebugIpLayout()
   return dbgIpLayout;
 }
 
-
-void 
-DebugIpStatusCollector::reset()
-{
-  std::memset((char*)debugIpNum, 0 , sizeof(debugIpNum));
-  std::memset((char*)cuNameMaxStrLen, 0 , sizeof(cuNameMaxStrLen));
-  std::memset((char*)portNameMaxStrLen, 0 , sizeof(portNameMaxStrLen));
-
-  for(uint64_t i = 0; i < maxDebugIpType ; ++i) {
-    debugIpOpt[i] = true;
-  }
-
-  std::memset(&aimResults, 0, sizeof(aimResults));
-  std::memset(&amResults,  0, sizeof(amResults));
-  std::memset(&asmResults, 0, sizeof(asmResults));
-
-  std::memset(&lapcResults, 0, sizeof(lapcResults));
-  std::memset(&spcResults, 0, sizeof(spcResults));
-}
 
 void 
 DebugIpStatusCollector::printOverview(std::ostream& _output)
@@ -278,27 +270,32 @@ DebugIpStatusCollector::getDebugIpData()
     {
       case AXI_MM_MONITOR : 
       {
-        if(debugIpOpt[AXI_MM_MONITOR]) readAIMCounter(&(dbgIpLayout->m_debug_ip_data[i]));
+        if(debugIpOpt[AXI_MM_MONITOR])
+          readAIMCounter(&(dbgIpLayout->m_debug_ip_data[i]));
         break;
       }
       case ACCEL_MONITOR : 
       {
-        if(debugIpOpt[ACCEL_MONITOR]) readAMCounter(&(dbgIpLayout->m_debug_ip_data[i]));
+        if(debugIpOpt[ACCEL_MONITOR])
+          readAMCounter(&(dbgIpLayout->m_debug_ip_data[i]));
         break;
       }
       case AXI_STREAM_MONITOR : 
       {
-        if(debugIpOpt[AXI_STREAM_MONITOR]) readASMCounter(&(dbgIpLayout->m_debug_ip_data[i]));
+        if(debugIpOpt[AXI_STREAM_MONITOR])
+          readASMCounter(&(dbgIpLayout->m_debug_ip_data[i]));
         break;
       }
       case LAPC :
       {
-        if(debugIpOpt[LAPC]) readLAPChecker(&(dbgIpLayout->m_debug_ip_data[i]));
+        if(debugIpOpt[LAPC])
+          readLAPChecker(&(dbgIpLayout->m_debug_ip_data[i]));
         break;
       }
       case AXI_STREAM_PROTOCOL_CHECKER :
       {
-        if(debugIpOpt[AXI_STREAM_PROTOCOL_CHECKER]) readSPChecker(&(dbgIpLayout->m_debug_ip_data[i]));
+        if(debugIpOpt[AXI_STREAM_PROTOCOL_CHECKER])
+          readSPChecker(&(dbgIpLayout->m_debug_ip_data[i]));
         break;
       }
       default: break;
