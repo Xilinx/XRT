@@ -435,7 +435,7 @@ struct run_type
   }
 
   void
-  set_arg_at_index(size_t index, std::va_list args)
+  set_arg_at_index(size_t index, std::va_list* args)
   {
     auto& arg = kernel->args[index];
     if (arg.index == kernel_type::argument::no_index)
@@ -443,17 +443,20 @@ struct run_type
 
     switch (arg.type) {
     case kernel_type::argument::argtype::scalar : {
-      auto val = va_arg(args, size_t); // TODO: handle double, and more get type from meta data
+      auto val = va_arg(*args, size_t); // TODO: handle double, and more get type from meta data
+      XRT_DEBUGF("scalar: index(%d) val(%d)\n", index, val);
       set_scalar_arg(arg.index, val);
       break;
     }
     case kernel_type::argument::argtype::global : {
-      auto val = va_arg(args, xrtBufferHandle);
+      auto val = va_arg(*args, xrtBufferHandle);
+      XRT_DEBUGF("global: index(%d) bo(%d)\n", index, val);
       set_global_arg(arg.index, val);
       break;
     }
     case kernel_type::argument::argtype::stream : {
-      (void) va_arg(args, void*); // swallow unsettable argument
+      (void) va_arg(*args, void*); // swallow unsettable argument
+      XRT_DEBUGF("global: index(%d) void()\n", index);
       break;
     }
     default:
@@ -465,11 +468,12 @@ struct run_type
   }
 
   void
-  set_all_args(std::va_list args)
+  set_all_args(std::va_list* args)
   {
     for (auto& arg : kernel->args) {
       if (arg.index == kernel_type::argument::no_index)
         break;
+      XRT_DEBUGF("arg name(%s) index(%d) offset(0x%x) size(%d)", arg.name.c_str(), arg.index, arg.offset, arg.size);
       set_arg_at_index(arg.index, args);
     }
   }
@@ -571,7 +575,7 @@ public:
   }
 
   void
-  update_arg_at_index(size_t index, std::va_list args)
+  update_arg_at_index(size_t index, std::va_list* args)
   {
     reset_cmd();
 
@@ -581,17 +585,17 @@ public:
 
     switch (arg.type) {
     case kernel_type::argument::argtype::scalar : {
-      auto val = va_arg(args, size_t); // TODO: handle double, and more get type from meta data
+      auto val = va_arg(*args, size_t); // TODO: handle double, and more get type from meta data
       update_scalar_arg(arg.index, val);
       break;
     }
     case kernel_type::argument::argtype::global : {
-      auto val = va_arg(args, xrtBufferHandle);
+      auto val = va_arg(*args, xrtBufferHandle);
       update_global_arg(arg.index, val);
       break;
     }
     case kernel_type::argument::argtype::stream : {
-      (void) va_arg(args, void*); // swallow unsettable argument
+      (void) va_arg(*args, void*); // swallow unsettable argument
       break;
     }
     default:
@@ -841,7 +845,7 @@ xrtKernelRun(xrtKernelHandle khdl, ...)
 
     std::va_list args;
     va_start(args, khdl);
-    run->set_all_args(args);
+    run->set_all_args(&args);
     va_end(args);
 
     run->start();
@@ -927,7 +931,7 @@ xrtRunUpdateArg(xrtRunHandle rhdl, int index, ...)
     
     std::va_list args;
     va_start(args, index);
-    upd->update_arg_at_index(index, args);
+    upd->update_arg_at_index(index, &args);
     va_end(args);
     return 0;
   }
@@ -945,7 +949,7 @@ xrtRunSetArg(xrtRunHandle rhdl, int index, ...)
 
     std::va_list args;
     va_start(args, index);
-    run->set_arg_at_index(index, args);
+    run->set_arg_at_index(index, &args);
     va_end(args);
 
     return 0;
