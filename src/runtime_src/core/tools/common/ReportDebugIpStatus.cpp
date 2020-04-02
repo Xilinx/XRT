@@ -68,7 +68,9 @@ class DebugIpStatusCollector
 
   xclDeviceHandle handle;
 
-  debug_ip_layout* map = nullptr;
+  std::vector<char> map;
+
+  //debug_ip_layout* map = nullptr;
 
   uint64_t debugIpNum[maxDebugIpType];
   bool     debugIpOpt[maxDebugIpType];
@@ -87,7 +89,7 @@ class DebugIpStatusCollector
 
 public :
   DebugIpStatusCollector(xclDeviceHandle h);
-  ~DebugIpStatusCollector();
+  ~DebugIpStatusCollector() {}
 
   void collect();
   void collect(const std::vector<std::string> & _elementsFilter);
@@ -99,6 +101,8 @@ public :
   void populateAllResults(boost::property_tree::ptree &_pt);
 
 private :
+
+  debug_ip_layout* getDebugIpLayout();
 
   void reset();
 
@@ -138,29 +142,31 @@ DebugIpStatusCollector::DebugIpStatusCollector(xclDeviceHandle h)
   // Get the size of full debug_ip_layout
   xclGetDebugIpLayout(handle, nullptr, sz1, &sectionSz);
   if(sectionSz == 0) {
-    std::cout << "INFO: Failed to find any Debug IPs on the platform. "
+    std::cout << "INFO: Failed to find any Debug IP Layout section in the bitstream loaded on device. "
               << "Ensure that a valid bitstream with debug IPs (AIM, LAPC) is successfully downloaded. \n"
               << std::endl;
     return;
   }
   // Allocate buffer to retrieve debug_ip_layout information from loaded xclbin
-  map = reinterpret_cast<debug_ip_layout*>(new char[sectionSz]);
-  xclGetDebugIpLayout(handle, ((char*)map), sectionSz, &sz1);
-
-  if (map->m_count <= 0) {
-    std::cout << "INFO: Failed to find any debug IPs on the platform. "
-              << "Ensure that a valid bitstream with debug IPs (AIM, LAPC) is successfully downloaded. \n"
-              << std::endl;
-    return;
-  }
-
+  map.resize(sectionSz);
+  xclGetDebugIpLayout(handle, map.data(), sectionSz, &sz1);
 }
 
-DebugIpStatusCollector::~DebugIpStatusCollector()
+debug_ip_layout*
+DebugIpStatusCollector::getDebugIpLayout()
 {
-  delete [] ((char*)map);
-  map = nullptr; 
+  if(0 == map.size()) {
+    std::cout << " INFO: Debug IP Data is not populated." << std::endl;
+    return nullptr;
+  }
+  debug_ip_layout* dbgIpLayout = reinterpret_cast<debug_ip_layout*>(map.data());
+  if(0 == dbgIpLayout->m_count) {
+    std::cout << "INFO: Failed to find any Debug IPs in the bitstream loaded on device." << std::endl;
+    return nullptr;
+  }
+  return dbgIpLayout;
 }
+
 
 void 
 DebugIpStatusCollector::reset()
@@ -184,18 +190,18 @@ DebugIpStatusCollector::reset()
 void 
 DebugIpStatusCollector::printOverview(std::ostream& _output)
 {
-  if(!map || !map->m_count) {
-    _output << " INFO: Debug IP Data not populated." << std::endl;
+  debug_ip_layout* dbgIpLayout = getDebugIpLayout();
+  if(nullptr == dbgIpLayout)
     return;
-  }
-  _output << "Number of IPs found :: " << map->m_count << std::endl;
-  for(uint64_t i = 0; i < map->m_count; i++) {
-    if (map->m_debug_ip_data[i].m_type > maxDebugIpType) {
+
+  _output << "Number of IPs found :: " << dbgIpLayout->m_count << std::endl;
+  for(uint64_t i = 0; i < dbgIpLayout->m_count; i++) {
+    if (dbgIpLayout->m_debug_ip_data[i].m_type > maxDebugIpType) {
       _output << "Found invalid IP in debug ip layout with type "
-              << map->m_debug_ip_data[i].m_type << std::endl;
+              << dbgIpLayout->m_debug_ip_data[i].m_type << std::endl;
       return;
     }
-    ++debugIpNum[map->m_debug_ip_data[i].m_type];
+    ++debugIpNum[dbgIpLayout->m_debug_ip_data[i].m_type];
   }
 
   std::stringstream sstr;
@@ -260,39 +266,39 @@ DebugIpStatusCollector::printAllResults(std::ostream& _output)
 void 
 DebugIpStatusCollector::getDebugIpData()
 {
-  if(!map|| !map->m_count) {
-    std::cout << " INFO: Debug IP Data not populated." << std::endl;
+  debug_ip_layout* dbgIpLayout = getDebugIpLayout();
+  if(nullptr == dbgIpLayout)
     return;
-  }
-  // reset to zero
+
+  // reset debugIpNum to zero
   std::memset((char*)debugIpNum, 0, sizeof(debugIpNum));
 
-  for(uint64_t i = 0; i < map->m_count; i++) {
-    switch(map->m_debug_ip_data[i].m_type)
+  for(uint64_t i = 0; i < dbgIpLayout->m_count; i++) {
+    switch(dbgIpLayout->m_debug_ip_data[i].m_type)
     {
       case AXI_MM_MONITOR : 
       {
-        if(debugIpOpt[AXI_MM_MONITOR]) readAIMCounter(&(map->m_debug_ip_data[i]));
+        if(debugIpOpt[AXI_MM_MONITOR]) readAIMCounter(&(dbgIpLayout->m_debug_ip_data[i]));
         break;
       }
       case ACCEL_MONITOR : 
       {
-        if(debugIpOpt[ACCEL_MONITOR]) readAMCounter(&(map->m_debug_ip_data[i]));
+        if(debugIpOpt[ACCEL_MONITOR]) readAMCounter(&(dbgIpLayout->m_debug_ip_data[i]));
         break;
       }
       case AXI_STREAM_MONITOR : 
       {
-        if(debugIpOpt[AXI_STREAM_MONITOR]) readASMCounter(&(map->m_debug_ip_data[i]));
+        if(debugIpOpt[AXI_STREAM_MONITOR]) readASMCounter(&(dbgIpLayout->m_debug_ip_data[i]));
         break;
       }
       case LAPC :
       {
-        if(debugIpOpt[LAPC]) readLAPChecker(&(map->m_debug_ip_data[i]));
+        if(debugIpOpt[LAPC]) readLAPChecker(&(dbgIpLayout->m_debug_ip_data[i]));
         break;
       }
       case AXI_STREAM_PROTOCOL_CHECKER :
       {
-        if(debugIpOpt[AXI_STREAM_PROTOCOL_CHECKER]) readSPChecker(&(map->m_debug_ip_data[i]));
+        if(debugIpOpt[AXI_STREAM_PROTOCOL_CHECKER]) readSPChecker(&(dbgIpLayout->m_debug_ip_data[i]));
         break;
       }
       default: break;
@@ -1088,19 +1094,19 @@ DebugIpStatusCollector::printSPCResults(std::ostream& _output)
 void 
 DebugIpStatusCollector::populateOverview(boost::property_tree::ptree &_pt)
 {
-  if(!map || !map->m_count) {
-    std::cout << " INFO: Debug IP Data not populated." << std::endl;
+  debug_ip_layout* dbgIpLayout = getDebugIpLayout();
+  if(nullptr == dbgIpLayout)
     return;
-  }
-  _pt.put("total_debug_ip_num", map->m_count);
 
-  for(uint64_t i = 0; i < map->m_count; i++) {
-    if (map->m_debug_ip_data[i].m_type > maxDebugIpType) {
+  _pt.put("total_debug_ip_num", dbgIpLayout->m_count);
+
+  for(uint64_t i = 0; i < dbgIpLayout->m_count; i++) {
+    if (dbgIpLayout->m_debug_ip_data[i].m_type > maxDebugIpType) {
       std::cout << "Found invalid IP in debug ip layout with type "
-              << map->m_debug_ip_data[i].m_type << std::endl;
+                << dbgIpLayout->m_debug_ip_data[i].m_type << std::endl;
       return;
     }
-    ++debugIpNum[map->m_debug_ip_data[i].m_type];
+    ++debugIpNum[dbgIpLayout->m_debug_ip_data[i].m_type];
   }
 
   for(uint8_t i = 0; i < maxDebugIpType; i++) {
