@@ -296,6 +296,7 @@ struct pcie_bdf : request
 {
   using result_type = std::tuple<uint16_t,uint16_t,uint16_t>;
   static const key_type key = key_type::pcie_bdf;
+  static const char* name() { return "bdf"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -403,18 +404,32 @@ struct rom_uuid : request
 {
   using result_type = std::string;
   static const key_type key = key_type::rom_uuid;
+  static const char* name() { return "uuid"; }
 
   virtual boost::any
   get(const device*) const = 0;
+
+  static result_type
+  to_string(const result_type& value)
+  {
+    return value;
+  }
 };
 
 struct rom_time_since_epoch : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::rom_time_since_epoch;
+  static const char* name() { return "id"; }
 
   virtual boost::any
   get(const device*) const = 0;
+
+  static std::string
+  to_string(const result_type& value)
+  {
+    return boost::str(boost::format("0x%x") % value);
+  }
 };
 
 struct xclbin_uuid : request
@@ -496,7 +511,7 @@ struct xmc_bmc_version : request
 {
   using result_type = std::string;
   static const key_type key = key_type::xmc_bmc_version;
-  static const char* name() { return "satellite_controller_version"; }
+  static const char* name() { return "sc_version"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1361,9 +1376,16 @@ struct flash_type : request
 {
   using result_type = std::string;
   static const key_type key = key_type::flash_type;
+  static const char* name() { return "flash_type"; }
 
   virtual boost::any
   get(const device*) const = 0;
+  
+  static std::string
+  to_string(result_type value)
+  {
+    return value;
+  }
 };
 
 struct board_name : request
