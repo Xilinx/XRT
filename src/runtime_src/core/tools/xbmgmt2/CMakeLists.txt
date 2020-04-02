@@ -32,7 +32,6 @@ file(GLOB XBMGMT_V2_SUBCMD_FILES
   "flash/xspi.cpp"
   "flash/xospiversal.cpp"
   "SubCmdFlash.cpp"
-  "SubCmdVersion.cpp"
   "SubCmdProgram.cpp"
   "SubCmdReset.cpp"
   "SubCmdStatus.cpp"
