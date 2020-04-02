@@ -88,6 +88,7 @@ PROJ_NAME=""
 PLATFROM=""
 XRT_REPO_DIR=`readlink -f ${THIS_SCRIPT_DIR}/..`
 clean=0
+SSTATECACHE=""
 
 while [ $# -gt 0 ]; do
 	case $1 in
@@ -101,6 +102,10 @@ while [ $# -gt 0 ]; do
 		-clean | clean )
 			clean=1
 			;;
+		-cache )
+                        shift
+                        SSTATECACHE=$1
+                        ;;
 		--* | -* )
 			error "Unregognized option: $1"
 			;;
@@ -143,6 +148,10 @@ if [ ! -f $PETA_BSP ]; then
     error "$PETA_BSP not accessible"
 fi
 
+if [ ! -d $SSTATECACHE ]; then
+    error "SSTATECACHE= not accessible"
+fi
+
 # Sanity check done
 
 PETA_CONFIG_OPT="--silentconfig"
@@ -169,6 +178,13 @@ cd ${PETALINUX_NAME}/project-spec/meta-user/
 install_recipes .
 
 cd $ORIGINAL_DIR/$PETALINUX_NAME
+
+if [ ! -z $SSTATECACHE ] && [ -d $SSTATECACHE ]; then
+    echo "SSTATE-CACHE:${SSTATECACHE} added"
+    echo "CONFIG_YOCTO_LOCAL_SSTATE_FEEDS_URL=\"${SSTATECACHE}\"" >> project-spec/configs/config
+else
+    echo "SSTATE-CACHE:${SSTATECACHE} not present"
+fi
 
 # Build package
 echo " * Performing PetaLinux Build (from: ${PWD})"
