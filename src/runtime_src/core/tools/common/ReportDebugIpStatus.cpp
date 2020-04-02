@@ -1055,15 +1055,15 @@ DebugIpStatusCollector::populateAIMResults(boost::property_tree::ptree &_pt)
 
     entry.put("Region or CU", cuNames[AXI_MM_MONITOR][i]);
     entry.put("Type or Port", portNames[AXI_MM_MONITOR][i]);
-    entry.put("Write kBytes", static_cast<double>(aimResults.WriteBytes[i])/1000.0);
+    entry.put("Write kBytes", boost::str(boost::format("%.3f") % (static_cast<double>(aimResults.WriteBytes[i])/1000.0)) );
     entry.put("Write Trans",  aimResults.WriteTranx[i]);
-    entry.put("Read kBytes",  static_cast<double>(aimResults.ReadBytes[i])/1000.0);
+    entry.put("Read kBytes",  boost::str(boost::format("%.3f") % (static_cast<double>(aimResults.ReadBytes[i])/1000.0)) );
     entry.put("Read Tranx",   aimResults.ReadTranx[i]);
     entry.put("Outstanding Cnt", aimResults.OutStandCnts[i]);
-    entry.put("Last Wr Addr", aimResults.LastWriteAddr[i]);
-    entry.put("Last Wr Data", aimResults.LastWriteData[i]);
-    entry.put("Last Rd Addr", aimResults.LastReadAddr[i]);
-    entry.put("Last Rd Data", aimResults.LastReadData[i]);
+    entry.put("Last Wr Addr", boost::str(boost::format("0x%x") % aimResults.LastWriteAddr[i]) );
+    entry.put("Last Wr Data", boost::str(boost::format("0x%x") % aimResults.LastWriteData[i]) );
+    entry.put("Last Rd Addr", boost::str(boost::format("0x%x") % aimResults.LastReadAddr[i]) );
+    entry.put("Last Rd Data", boost::str(boost::format("0x%x") % aimResults.LastReadData[i]) );
 
     aim_pt.add_child(entryStr.c_str(), entry);
   }
@@ -1088,12 +1088,12 @@ DebugIpStatusCollector::populateAMResults(boost::property_tree::ptree &_pt)
     entry.put("Ends", amResults.CuExecCount[i]);
     entry.put("Starts", amResults.CuStartCount[i]);
     entry.put("Max Parallel Itr", amResults.CuMaxParallelIter[i]);
-    entry.put("Execution", amResults.CuExecCycles[i]);
-    entry.put("Memory Stall", amResults.CuStallExtCycles[i]);
-    entry.put("Pipe Stall", amResults.CuStallIntCycles[i]);
-    entry.put("Stream Stall", amResults.CuStallStrCycles[i]);
-    entry.put("Min Exec", amResults.CuMinExecCycles[i]);
-    entry.put("Max Exec", amResults.CuMaxExecCycles[i]);
+    entry.put("Execution", boost::str(boost::format("0x%x") % amResults.CuExecCycles[i]) );
+    entry.put("Memory Stall", boost::str(boost::format("0x%x") % amResults.CuStallExtCycles[i]) );
+    entry.put("Pipe Stall", boost::str(boost::format("0x%x") % amResults.CuStallIntCycles[i]) );
+    entry.put("Stream Stall", boost::str(boost::format("0x%x") % amResults.CuStallStrCycles[i]) );
+    entry.put("Min Exec", boost::str(boost::format("0x%x") % amResults.CuMinExecCycles[i]) );
+    entry.put("Max Exec", boost::str(boost::format("0x%x") % amResults.CuMaxExecCycles[i]) );
 
     am_pt.add_child(entryStr.c_str(), entry);
   }
@@ -1117,7 +1117,7 @@ DebugIpStatusCollector::populateASMResults(boost::property_tree::ptree &_pt)
     entry.put("Stream Master", cuNames[AXI_STREAM_MONITOR][i]);
     entry.put("Stream Slave", portNames[AXI_STREAM_MONITOR][i]);
     entry.put("Num Trans.", asmResults.StrNumTranx[i]); 
-    entry.put("Data kBytes", static_cast<double>(asmResults.StrDataBytes[i])/1000.0);
+    entry.put("Data kBytes", boost::str(boost::format("%.3f") % (static_cast<double>(asmResults.StrDataBytes[i])/1000.0)) );
     entry.put("Busy Cycles", asmResults.StrBusyCycles[i]);
     entry.put("Stall Cycles", asmResults.StrStallCycles[i]);
     entry.put("Starve Cycles", asmResults.StrStarveCycles[i]);
