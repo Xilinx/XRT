@@ -970,24 +970,24 @@ DebugIpStatusCollector::populateAIMResults(boost::property_tree::ptree &_pt)
 
   for(size_t i = 0; i < aimResults.NumSlots; ++i) {
     boost::property_tree::ptree entry;
-    std::string entryStr = "AIM " + std::to_string(i);
 
-    entry.put("Region or CU", cuNames[AXI_MM_MONITOR][i]);
-    entry.put("Type or Port", portNames[AXI_MM_MONITOR][i]);
-    entry.put("Write kBytes", boost::str(boost::format("%.3f") % (static_cast<double>(aimResults.WriteBytes[i])/1000.0)) );
-    entry.put("Write Trans",  aimResults.WriteTranx[i]);
-    entry.put("Read kBytes",  boost::str(boost::format("%.3f") % (static_cast<double>(aimResults.ReadBytes[i])/1000.0)) );
-    entry.put("Read Tranx",   aimResults.ReadTranx[i]);
-    entry.put("Outstanding Cnt", aimResults.OutStandCnts[i]);
-    entry.put("Last Wr Addr", boost::str(boost::format("0x%x") % aimResults.LastWriteAddr[i]) );
-    entry.put("Last Wr Data", boost::str(boost::format("0x%x") % aimResults.LastWriteData[i]) );
-    entry.put("Last Rd Addr", boost::str(boost::format("0x%x") % aimResults.LastReadAddr[i]) );
-    entry.put("Last Rd Data", boost::str(boost::format("0x%x") % aimResults.LastReadData[i]) );
+    entry.put("name", std::string(cuNames[AXI_MM_MONITOR][i] + "/" + portNames[AXI_MM_MONITOR][i]));
+    entry.put("region_or_cu", cuNames[AXI_MM_MONITOR][i]);
+    entry.put("type_or_port", portNames[AXI_MM_MONITOR][i]);
+    entry.put("write_kBytes", boost::str(boost::format("%.3f") % (static_cast<double>(aimResults.WriteBytes[i])/1000.0)) );
+    entry.put("write_trans",  aimResults.WriteTranx[i]);
+    entry.put("read_kBytes",  boost::str(boost::format("%.3f") % (static_cast<double>(aimResults.ReadBytes[i])/1000.0)) );
+    entry.put("read_tranx",   aimResults.ReadTranx[i]);
+    entry.put("outstanding_count", aimResults.OutStandCnts[i]);
+    entry.put("last_write_addr", boost::str(boost::format("0x%x") % aimResults.LastWriteAddr[i]) );
+    entry.put("last_write_data", boost::str(boost::format("0x%x") % aimResults.LastWriteData[i]) );
+    entry.put("last_read_addr", boost::str(boost::format("0x%x") % aimResults.LastReadAddr[i]) );
+    entry.put("last_read_data", boost::str(boost::format("0x%x") % aimResults.LastReadData[i]) );
 
-    aim_pt.add_child(entryStr.c_str(), entry);
+    aim_pt.push_back(std::make_pair("", entry));
   }
 
-  _pt.add_child("AXI Interface Monitor Counters", aim_pt); 
+  _pt.add_child("AXI_Interface_Monitor_Counters", aim_pt); 
 }
 
 void 
@@ -1001,23 +1001,23 @@ DebugIpStatusCollector::populateAMResults(boost::property_tree::ptree &_pt)
 
   for(size_t i = 0; i < amResults.NumSlots; ++i) {
     boost::property_tree::ptree entry;
-    std::string entryStr = "AM " + std::to_string(i);
 
-    entry.put("Compute Unit", cuNames[ACCEL_MONITOR][i]);
-    entry.put("Ends", amResults.CuExecCount[i]);
-    entry.put("Starts", amResults.CuStartCount[i]);
-    entry.put("Max Parallel Itr", amResults.CuMaxParallelIter[i]);
-    entry.put("Execution", boost::str(boost::format("0x%x") % amResults.CuExecCycles[i]) );
-    entry.put("Memory Stall", boost::str(boost::format("0x%x") % amResults.CuStallExtCycles[i]) );
-    entry.put("Pipe Stall", boost::str(boost::format("0x%x") % amResults.CuStallIntCycles[i]) );
-    entry.put("Stream Stall", boost::str(boost::format("0x%x") % amResults.CuStallStrCycles[i]) );
-    entry.put("Min Exec", boost::str(boost::format("0x%x") % amResults.CuMinExecCycles[i]) );
-    entry.put("Max Exec", boost::str(boost::format("0x%x") % amResults.CuMaxExecCycles[i]) );
+    entry.put("name", cuNames[ACCEL_MONITOR][i]);
+    entry.put("compute_unit", cuNames[ACCEL_MONITOR][i]);
+    entry.put("ends", amResults.CuExecCount[i]);
+    entry.put("starts", amResults.CuStartCount[i]);
+    entry.put("max_parallel_itr", amResults.CuMaxParallelIter[i]);
+    entry.put("execution", boost::str(boost::format("0x%x") % amResults.CuExecCycles[i]) );
+    entry.put("memory_stall", boost::str(boost::format("0x%x") % amResults.CuStallExtCycles[i]) );
+    entry.put("pipe_stall", boost::str(boost::format("0x%x") % amResults.CuStallIntCycles[i]) );
+    entry.put("stream_stall", boost::str(boost::format("0x%x") % amResults.CuStallStrCycles[i]) );
+    entry.put("min_exec", boost::str(boost::format("0x%x") % amResults.CuMinExecCycles[i]) );
+    entry.put("max_exec", boost::str(boost::format("0x%x") % amResults.CuMaxExecCycles[i]) );
 
-    am_pt.add_child(entryStr.c_str(), entry);
+    am_pt.push_back(std::make_pair("", entry));
   }
 
-  _pt.add_child("Accelerator Monitor Counters", am_pt);
+  _pt.add_child("Accelerator_Monitor_Counters", am_pt);
 }
 
 void 
@@ -1031,20 +1031,20 @@ DebugIpStatusCollector::populateASMResults(boost::property_tree::ptree &_pt)
 
   for(size_t i = 0; i < asmResults.NumSlots; ++i) {
     boost::property_tree::ptree entry;
-    std::string entryStr = "ASM " + std::to_string(i);
 
-    entry.put("Stream Master", cuNames[AXI_STREAM_MONITOR][i]);
-    entry.put("Stream Slave", portNames[AXI_STREAM_MONITOR][i]);
-    entry.put("Num Trans.", asmResults.StrNumTranx[i]); 
-    entry.put("Data kBytes", boost::str(boost::format("%.3f") % (static_cast<double>(asmResults.StrDataBytes[i])/1000.0)) );
-    entry.put("Busy Cycles", asmResults.StrBusyCycles[i]);
-    entry.put("Stall Cycles", asmResults.StrStallCycles[i]);
-    entry.put("Starve Cycles", asmResults.StrStarveCycles[i]);
+    entry.put("name", std::string(cuNames[AXI_STREAM_MONITOR][i] + "/" + portNames[AXI_STREAM_MONITOR][i]));
+    entry.put("stream_master", cuNames[AXI_STREAM_MONITOR][i]);
+    entry.put("stream_slave", portNames[AXI_STREAM_MONITOR][i]);
+    entry.put("num_trans", asmResults.StrNumTranx[i]); 
+    entry.put("data_kBytes", boost::str(boost::format("%.3f") % (static_cast<double>(asmResults.StrDataBytes[i])/1000.0)) );
+    entry.put("busy_cycles", asmResults.StrBusyCycles[i]);
+    entry.put("stall_cycles", asmResults.StrStallCycles[i]);
+    entry.put("starve_cycles", asmResults.StrStarveCycles[i]);
 
-    asm_pt.add_child(entryStr.c_str(), entry);
+    asm_pt.push_back(std::make_pair("", entry));
   }
 
-  _pt.add_child("AXI Stream Monitor Counters", asm_pt);
+  _pt.add_child("AXI_Stream_Monitor_Counters", asm_pt);
 }
 
 void 
@@ -1058,13 +1058,15 @@ DebugIpStatusCollector::populateLAPCResults(boost::property_tree::ptree &_pt)
 
   for(size_t i = 0; i < lapcResults.NumSlots; ++i) {
     boost::property_tree::ptree entry;
-    std::string entryStr = "LAPC " + std::to_string(i);
-    lapc_pt.add_child(entryStr.c_str(), entry);
+
+    entry.put("name", std::string(cuNames[LAPC][i] + "/" + portNames[LAPC][i]));
 
     // To Do : Handle violations
+
+    lapc_pt.push_back(std::make_pair("", entry));
   }
 
-  _pt.add_child("Light Weight AXI Protocol Checkers", lapc_pt);
+  _pt.add_child("Light_Weight_AXI_Protocol_Checkers", lapc_pt);
 
 }
 
@@ -1079,13 +1081,15 @@ DebugIpStatusCollector::populateSPCResults(boost::property_tree::ptree &_pt)
 
   for(size_t i = 0; i < spcResults.NumSlots; ++i) {
     boost::property_tree::ptree entry;
-    std::string entryStr = "SPC " + std::to_string(i);
-    spc_pt.add_child(entryStr.c_str(), entry);
 
-    // To Do
+    entry.put("name", std::string(cuNames[AXI_STREAM_PROTOCOL_CHECKER][i] + "/" + portNames[AXI_STREAM_PROTOCOL_CHECKER][i]));
+
+    // To Do : Handle violations
+
+    spc_pt.push_back(std::make_pair("", entry));
   }
 
-  _pt.add_child("AXI Streaming Protocol Checkers", spc_pt);
+  _pt.add_child("AXI_Streaming_Protocol_Checkers", spc_pt);
 }
 
 };
