@@ -479,48 +479,22 @@ DebugIpStatusCollector::printAIMResults(std::ostream& _output)
   auto col1 = std::max(cuNameMaxStrLen[AXI_MM_MONITOR], strlen("Region or CU")) + 4;
   auto col2 = std::max(portNameMaxStrLen[AXI_MM_MONITOR], strlen("Type or Port"));
 
-  std::streamsize ss = _output.precision();
-  auto iosguard = xrt_core::utils::ios_restore(_output);
-  _output << std::left
-            << std::setw(col1) << "Region or CU"
-            << " " << std::setw(col2) << "Type or Port"
-            << "  " << std::setw(16)  << "Write kBytes"
-            << "  " << std::setw(16)  << "Write Trans."
-            << "  " << std::setw(16)  << "Read kBytes"
-            << "  " << std::setw(16)  << "Read Tranx."
-            << "  " << std::setw(16)  << "Outstanding Cnt"
-            << "  " << std::setw(16)  << "Last Wr Addr"
-            << "  " << std::setw(16)  << "Last Wr Data"
-            << "  " << std::setw(16)  << "Last Rd Addr"
-            << "  " << std::setw(16)  << "Last Rd Data"
-            << std::endl;
+  boost::format header("%-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s %-16s");
+  _output << header % "Region or CU" % "Type or Port" %  "Write kBytes" % "Write Trans." % "Read kBytes" % "Read Tranx."
+                    % "Outstanding_Cnt" % "Last Wr Addr" % "Last Wr Data" % "Last Rd Addr" % "Last Rd Data"
+          << std::endl;
+
+  boost::format valueFormat("%-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16.3f  %-16llu  %-16.3f  %-16llu  %-16llu  0x%-14x  0x%-14x  0x%-14x 0x%-14x");
   for (size_t i = 0; i< aimResults.NumSlots; ++i) {
-    // NOTE: column 2 only aligns if we use c_str() instead of the string
-    _output << std::left
-              << std::setw(col1) << cuNames[AXI_MM_MONITOR][i]
-              << " " << std::setw(col2) << portNames[AXI_MM_MONITOR][i]
-
-              << "  " << std::setw(16) << std::fixed << std::setprecision(3)
-              << static_cast<double>(aimResults.WriteBytes[i]) / 1000.0
-              << std::scientific << std::setprecision(ss)
-
-              << "  " << std::setw(16) << aimResults.WriteTranx[i]
-
-              << "  " << std::setw(16) << std::fixed << std::setprecision(3)
-              << static_cast<double>(aimResults.ReadBytes[i]) / 1000.0
-              << std::scientific << std::setprecision(ss)
-
-              << "  " << std::setw(16) << aimResults.ReadTranx[i]
-              << "  " << std::setw(16) << aimResults.OutStandCnts[i]
-              << std::hex
-              << "  " << "0x" << std::setw(14) << aimResults.LastWriteAddr[i]
-              << "  " << "0x" << std::setw(14) << aimResults.LastWriteData[i]
-              << "  " << "0x" << std::setw(14) << aimResults.LastReadAddr[i]
-              << "  " << "0x" << std::setw(14) << aimResults.LastReadData[i]
-              << std::dec << std::endl;
+    _output << valueFormat
+                  % cuNames[AXI_MM_MONITOR][i] % portNames[AXI_MM_MONITOR][i]
+                  % (static_cast<double>(aimResults.WriteBytes[i]) / 1000.0) % aimResults.WriteTranx[i]
+                  % (static_cast<double>(aimResults.ReadBytes[i]) / 1000.0)  % aimResults.ReadTranx[i]
+                  % aimResults.OutStandCnts[i]
+                  % aimResults.LastWriteAddr[i] % aimResults.LastWriteData[i]
+                  % aimResults.LastReadAddr[i]  % aimResults.LastReadData[i]
+            << std::endl;
   }
-  return;
-
 }
 
 
@@ -696,7 +670,7 @@ DebugIpStatusCollector::printAMResults(std::ostream& _output)
                   % amResults.CuExecCount[i] % amResults.CuStartCount[i] % amResults.CuMaxParallelIter[i] 
                   % amResults.CuExecCycles[i] 
                   % amResults.CuStallExtCycles[i] % amResults.CuStallIntCycles[i] % amResults.CuStallStrCycles[i]
-                  % amResults.CuMinExecCycles[i] % amResults.CuMaxExecCycles[i]
+                  % amResults.CuMinExecCycles[i]  % amResults.CuMaxExecCycles[i]
             << std::endl;
   }
 }
@@ -785,33 +759,19 @@ DebugIpStatusCollector::printASMResults(std::ostream& _output)
   auto col1 = std::max(cuNameMaxStrLen[AXI_STREAM_MONITOR], strlen("Stream Master")) + 4;
   auto col2 = std::max(portNameMaxStrLen[AXI_STREAM_MONITOR], strlen("Stream Slave"));
 
-  std::streamsize ss = _output.precision();
-  auto iosguard = xrt_core::utils::ios_restore(_output);
-  _output << std::left
-          << std::setw(col1) << "Stream Master"
-          << " " << std::setw(col2) << "Stream Slave"
-          << "  " << std::setw(16)  << "Num Trans."
-          << "  " << std::setw(16)  << "Data kBytes"
-          << "  " << std::setw(16)  << "Busy Cycles"
-          << "  " << std::setw(16)  << "Stall Cycles"
-          << "  " << std::setw(16)  << "Starve Cycles"
+  boost::format header("%-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16s  %-16s  %-16s  %-16s  %-16s");
+  _output << header % "Stream Master" % "Stream Slave" % "Num Trans." % "Data kBytes" % "Busy Cycles" % "Stall Cycles" % "Starve Cycles"
           << std::endl;
+
+  boost::format valueFormat("%-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16llu  %-16.3f  %-16llu  %-16llu %-16llu");
   for (size_t i = 0; i < asmResults.NumSlots; ++i) {
-    _output << std::left
-            << std::setw(col1) << cuNames[AXI_STREAM_MONITOR][i]
-            << " " << std::setw(col2) << portNames[AXI_STREAM_MONITOR][i]
-            << "  " << std::setw(16) << asmResults.StrNumTranx[i]
-
-            << "  " << std::setw(16)  << std::fixed << std::setprecision(3)
-            << static_cast<double>(asmResults.StrDataBytes[i]) / 1000.0
-            << std::scientific << std::setprecision(ss)
-
-            << "  " << std::setw(16) << asmResults.StrBusyCycles[i]
-            << "  " << std::setw(16) << asmResults.StrStallCycles[i]
-            << "  " << std::setw(16) << asmResults.StrStarveCycles[i]
+    _output << valueFormat
+                  % cuNames[AXI_STREAM_MONITOR][i] % portNames[AXI_STREAM_MONITOR][i]
+                  % asmResults.StrNumTranx[i]
+                  % (static_cast<double>(asmResults.StrDataBytes[i]) / 1000.0)
+                  % asmResults.StrBusyCycles[i] % asmResults.StrStallCycles[i] % asmResults.StrStarveCycles[i]
             << std::endl;
   }
-  
 }
 
 void 
@@ -910,6 +870,28 @@ DebugIpStatusCollector::printLAPCResults(std::ostream& _output)
     _output << "No AXI violations found \n";
 
   if (violations_found && /*aVerbose &&*/ !invalid_codes) {
+    boost::format header("%-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s");
+    _output << header % "CU Name" % "AXI Portname" % "Overall Status" % "Snapshot[0]" % "Snapshot[1]" % "Snapshot[2]" % "Snapshot[3]"
+                      % "Cumulative[0]" % "Cumulative[1]" % "Cumulative[2]" % "Cumulative[3]"
+            << std::endl;
+
+    boost::format valueFormat("%-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16x  %-16x  %-16x  %-16x  %-16x  %-16x  %-16x  %-16x  %-16x");
+    for (size_t i = 0; i < lapcResults.NumSlots; ++i) {
+      _output << valueFormat
+                    % cuNames[LAPC][i] % portNames[LAPC][i]
+                    % lapcResults.OverallStatus[i]
+                    % lapcResults.SnapshotStatus[i][0] 
+                    % lapcResults.SnapshotStatus[i][1] 
+                    % lapcResults.SnapshotStatus[i][2] 
+                    % lapcResults.SnapshotStatus[i][3]
+                    % lapcResults.CumulativeStatus[i][0] 
+                    % lapcResults.CumulativeStatus[i][1] 
+                    % lapcResults.CumulativeStatus[i][2] 
+                    % lapcResults.CumulativeStatus[i][3] 
+              << std::endl;
+    }
+  }
+#if 0
     std::ofstream saveFormat;
     saveFormat.copyfmt(_output);
 
@@ -945,7 +927,7 @@ DebugIpStatusCollector::printLAPCResults(std::ostream& _output)
     }
     // Restore formatting
     _output.copyfmt(saveFormat);
-  }
+#endif
 }
 
 void 
@@ -1044,6 +1026,22 @@ DebugIpStatusCollector::printSPCResults(std::ostream& _output)
     auto col1 = std::max(cuNameMaxStrLen[AXI_STREAM_PROTOCOL_CHECKER], strlen("CU Name")) + 4;
     auto col2 = std::max(portNameMaxStrLen[AXI_STREAM_PROTOCOL_CHECKER], strlen("AXI Portname"));
 
+    boost::format header("%-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16s  %-16s  %-16s");
+    _output << std::endl
+            << header % "CU Name" % "AXI Portname" % "Overall Status" % "Snapshot" % "Current"
+            << std::endl;
+
+    boost::format valueFormat("%-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16x  %-16x  %-16x");
+    for (size_t i = 0; i < spcResults.NumSlots; ++i) {
+      _output << valueFormat
+                    % cuNames[AXI_STREAM_PROTOCOL_CHECKER][i] % portNames[AXI_STREAM_PROTOCOL_CHECKER][i]
+                    % spcResults.PCAsserted[i] % spcResults.SnapshotPC[i] % spcResults.CurrentPC[i]
+              << std::endl;
+    }
+  }
+
+
+#if 0
     std::ofstream saveFormat;
     saveFormat.copyfmt(_output);
 
@@ -1066,8 +1064,7 @@ DebugIpStatusCollector::printSPCResults(std::ostream& _output)
     }
     // Restore formatting
     _output.copyfmt(saveFormat);
-  }
-
+#endif
   
 }
 
