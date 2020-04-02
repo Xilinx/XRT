@@ -30,9 +30,7 @@ namespace XBU = XBUtilities;
 #include "core/include/xcl_axi_checker_codes.h"
 
 // 3rd Party Library - Include Files
-//#include <boost/program_options.hpp>
-//#include <boost/format.hpp>
-//namespace po = boost::program_options;
+#include <boost/format.hpp>
 
 // System - Include Files
 #include <vector>
@@ -687,6 +685,58 @@ DebugIpStatusCollector::printAMResults(std::ostream& _output)
 
   auto col1 = std::max(cuNameMaxStrLen[ACCEL_MONITOR], strlen("Compute Unit")) + 4;
 
+  boost::format header("%1% %2%  %3%  %4%  %5%  %6%  %7%  %8%  %9%  %10%");
+  _output << header
+                % boost::io::group(std::left, std::setw(col1), "Compute Unit")
+                % boost::io::group(std::left, std::setw(8), "Ends")
+                % boost::io::group(std::left, std::setw(8), "Starts")
+                % boost::io::group(std::left, std::setw(16), "Max Parallel Itr")
+                % boost::io::group(std::left, std::setw(16), "Execution")
+                % boost::io::group(std::left, std::setw(16), "Memory Stall")
+                % boost::io::group(std::left, std::setw(16), "Pipe Stall")
+                % boost::io::group(std::left, std::setw(16), "Stream Stall")
+                % boost::io::group(std::left, std::setw(16), "Min Exec")
+                % boost::io::group(std::left, std::setw(16), "Max Exec")
+          << std::endl;
+
+  boost::format valueFormat("%1% %2%  %3%  %4%  0x%5%  0x%6%  0x%7%  0x%8%  0x%9%  0x%10%");
+  for (size_t i = 0; i < amResults.NumSlots; ++i) {
+    _output << valueFormat
+                  % boost::io::group(std::left, std::setw(col1), cuNames[ACCEL_MONITOR][i])
+                  % boost::io::group(std::left, std::setw(8), amResults.CuExecCount[i])
+                  % boost::io::group(std::left, std::setw(8), amResults.CuStartCount[i])
+                  % boost::io::group(std::left, std::setw(16), amResults.CuMaxParallelIter[i])
+                  % boost::io::group(std::left, std::setw(14), std::hex, amResults.CuExecCycles[i])
+                  % boost::io::group(std::left, std::setw(14), std::hex, amResults.CuStallExtCycles[i])
+                  % boost::io::group(std::left, std::setw(14), std::hex, amResults.CuStallIntCycles[i])
+                  % boost::io::group(std::left, std::setw(14), std::hex, amResults.CuStallStrCycles[i])
+                  % boost::io::group(std::left, std::setw(14), std::hex, amResults.CuMinExecCycles[i])
+                  % boost::io::group(std::left, std::setw(14), std::hex, amResults.CuMaxExecCycles[i])
+            << std::endl;
+  }
+
+
+#if 0
+
+  boost::format header("%|-"+std::to_string(col1)+"s| %|-8s|  %|-8s|  %|-16s|  %|-16s|  %|-16s|  %|-16s|  %|-16s|  %|-16s|  %|-16s|");
+  _output << header % "Compute Unit"  % "Ends" % "Starts" % "Max Parallel Itr" % "Execution" % "Memory Stall" % "Pipe Stall" % "Stream Stall" % "Min Exec" % "Max Exec"
+          << std::endl;
+
+  boost::format valueFormat("%|-"+std::to_string(col1)+"s| %|-8s|  %|-8s|  %|-16s|  0x%|-14s|  0x%|-14s|  0x%|-14s|  0x%|-14s|  0x%|-14s|  0x%|-14s|");
+  for (size_t i = 0; i < amResults.NumSlots; ++i) {
+    _output << valueFormat
+                  % cuNames[ACCEL_MONITOR][i] % amResults.CuExecCount[i] % amResults.CuStartCount[i] % amResults.CuMaxParallelIter[i] 
+                  % boost::io::group(std::hex, amResults.CuExecCycles[i]) 
+                  % boost::io::group(std::hex, amResults.CuStallExtCycles[i]) 
+                  % boost::io::group(std::hex, amResults.CuStallIntCycles[i]) 
+                  % boost::io::group(std::hex, amResults.CuStallStrCycles[i])
+                  % boost::io::group(std::hex, amResults.CuMinExecCycles[i]) 
+                  % boost::io::group(std::hex, amResults.CuMaxExecCycles[i])
+            << std::endl;
+  }
+#endif
+
+#if 0
   auto iosguard = xrt_core::utils::ios_restore(_output);
   _output << std::left
           << std::setw(col1) << "Compute Unit"
@@ -715,6 +765,7 @@ DebugIpStatusCollector::printAMResults(std::ostream& _output)
             << "  " << "0x" << std::setw(14) << amResults.CuMaxExecCycles[i]
             << std::dec << std::endl;
   }
+#endif
 }
 
 void 
