@@ -357,7 +357,7 @@ void
 DebugIpStatusCollector::readAIMCounter(debug_ip_data* dbgIpInfo)
 {
   // index in results is debugIpNum
-  uint64_t index = debugIpNum[AXI_MM_MONITOR];
+  const uint64_t index = debugIpNum[AXI_MM_MONITOR];
 
   // Get Debug Ip Name
   std::string dbgIpName;
@@ -529,7 +529,7 @@ void
 DebugIpStatusCollector::readAMCounter(debug_ip_data* dbgIpInfo)
 {
   // index in results is debugIpNum
-  uint64_t index = debugIpNum[ACCEL_MONITOR];
+  const uint64_t index = debugIpNum[ACCEL_MONITOR];
 
   // Get Debug Ip Name
   std::string dbgIpName;
@@ -720,7 +720,7 @@ void
 DebugIpStatusCollector::readASMCounter(debug_ip_data* dbgIpInfo)
 {
   // index in results is debugIpNum
-  uint64_t index = debugIpNum[AXI_STREAM_MONITOR];
+  const uint64_t index = debugIpNum[AXI_STREAM_MONITOR];
 
   // Get Debug Ip Name
   std::string dbgIpName;
@@ -833,7 +833,7 @@ void
 DebugIpStatusCollector::readLAPChecker(debug_ip_data* dbgIpInfo)
 {
   // index in results is debugIpNum
-  uint64_t index = debugIpNum[LAPC];
+  const uint64_t index = debugIpNum[LAPC];
 
   // Get Debug Ip Name
   std::string dbgIpName;
@@ -967,7 +967,7 @@ void
 DebugIpStatusCollector::readSPChecker(debug_ip_data* dbgIpInfo)
 {
   // index in results is debugIpNum
-  uint64_t index = debugIpNum[AXI_STREAM_PROTOCOL_CHECKER];
+  const uint64_t index = debugIpNum[AXI_STREAM_PROTOCOL_CHECKER];
 
   // Get Debug Ip Name
   std::string dbgIpName;
