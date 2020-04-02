@@ -479,7 +479,7 @@ DebugIpStatusCollector::printAIMResults(std::ostream& _output)
 
   boost::format header("%-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s %-16s");
   _output << header % "Region or CU" % "Type or Port" %  "Write kBytes" % "Write Trans." % "Read kBytes" % "Read Tranx."
-                    % "Outstanding_Cnt" % "Last Wr Addr" % "Last Wr Data" % "Last Rd Addr" % "Last Rd Data"
+                    % "Outstanding Cnt" % "Last Wr Addr" % "Last Wr Data" % "Last Rd Addr" % "Last Rd Data"
           << std::endl;
 
   boost::format valueFormat("%-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16.3f  %-16llu  %-16.3f  %-16llu  %-16llu  0x%-14x  0x%-14x  0x%-14x 0x%-14x");
