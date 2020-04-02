@@ -100,8 +100,6 @@ private :
 
   debug_ip_layout* getDebugIpLayout();
 
-  void reset();
-
   void getDebugIpData();
   void getCuNamePortName(uint8_t type, std::string& dbgIpName, std::string& cuName, std::string& portName); 
   void getStreamName(uint8_t type, std::string& dbgIpName, std::string& masterName, std::string& slaveName); 
