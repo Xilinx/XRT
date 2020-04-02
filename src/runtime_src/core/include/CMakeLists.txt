@@ -23,4 +23,6 @@ foreach (header ${XRT_HEADER_SRC})
 endforeach()
 
 add_subdirectory(experimental)
+if(WIN32)
 add_subdirectory(windows)
+endif()
