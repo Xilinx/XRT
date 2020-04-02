@@ -26,6 +26,7 @@
 #include <thread>
 #include <atomic>
 #include <iostream>
+#include <vector>
 
 namespace {
 

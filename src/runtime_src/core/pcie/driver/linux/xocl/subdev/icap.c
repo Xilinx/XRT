@@ -2206,7 +2206,11 @@ static void icap_save_calib(struct icap *icap)
 	int err = 0, i = 0;
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 
-	BUG_ON(!mem_topo);
+	if (!mem_topo)
+		return;
+
+	if (!ICAP_PRIVILEGED(icap))
+		return;
 
 	for (; i < mem_topo->m_count; ++i) {
 		err = xocl_srsr_save_calib(xdev, i);
@@ -2243,10 +2247,6 @@ static int icap_reset_ddr_gate_pin(struct icap *icap)
 		IORES_DDR4_RESET_GATE, 0, 1);
 	if (err)
 		goto out;
-
-	err = xocl_axigate_freeze(xdev, XOCL_SUBDEV_LEVEL_PRP);
-	if (err)
-		goto out;
 out:
 	ICAP_INFO(icap, "%s ret %d", __func__, err);
 	return err;
@@ -2256,10 +2256,6 @@ static int icap_release_ddr_gate_pin(struct icap *icap)
 {
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 	int err = 0;
-
-	err = xocl_axigate_free(xdev, XOCL_SUBDEV_LEVEL_PRP);
-	if (err)
-		goto out;
 
 	err = xocl_iores_write32(xdev, XOCL_SUBDEV_LEVEL_PRP,
 		IORES_DDR4_RESET_GATE, 0, 0);
@@ -2347,6 +2343,8 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 	if (err)
 		goto out;
 
+	icap_calib(icap, retention);
+
 	if (retention) {
 		err = icap_release_ddr_gate_pin(icap);
 		if (err == -ENODEV)
@@ -2355,14 +2353,10 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 			ICAP_ERR(icap, "not able to release ddr gate pin");
 	}
 
-	icap_calib(icap, retention);
-
 	/* Wait for mig recalibration */
 	if ((xocl_is_unified(xdev) || XOCL_DSA_XPR_ON(xdev)))
 		err = calibrate_mig(icap);
 
-	if (!err)
-		icap_save_calib(icap);
 out:
 	if (err)
 		icap_release_ddr_gate_pin(icap);
@@ -2432,6 +2426,8 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 	err = icap_xmc_freeze(icap);
 	if (err)
 		return err;
+
+	icap_save_calib(icap);
 
 	xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 	icap_refresh_addrs(pdev);

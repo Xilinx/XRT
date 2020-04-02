@@ -261,7 +261,6 @@ int run(int argc, char** argv)
   size_t device_index = 0;
   size_t secs = 0;
   size_t jobs = 1;
-  size_t cus  = 1;
   
   std::string cur;
   for (auto& arg : args) {

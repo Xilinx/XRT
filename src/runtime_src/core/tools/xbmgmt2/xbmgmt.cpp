@@ -16,7 +16,6 @@
 
 // Sub Commands
 #include "SubCmdFlash.h"
-#include "SubCmdVersion.h"
 #include "SubCmdProgram.h"
 #include "SubCmdReset.h"
 #include "SubCmdStatus.h"
@@ -58,7 +57,6 @@ int main( int argc, char** argv )
   {
     // Syntax: SubCmdClass( IsHidden, IsDepricated, IsPreliminary)
     subCommands.emplace_back(std::make_shared<   SubCmdFlash >(false, true, false));
-    subCommands.emplace_back(std::make_shared< SubCmdVersion >(false, true, false));
   }
   #endif
 

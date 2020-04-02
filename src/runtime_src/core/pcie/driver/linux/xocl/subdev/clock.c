@@ -598,7 +598,7 @@ done:
  */
 static int clock_ocl_freqscaling(struct clock *clock, bool force, int level)
 {
-	int i, err;
+	int i, err = 0;
 	u32 curr[CLOCK_MAX_NUM_CLOCKS] = { 0 };
 
 	/* Read current clock freq before freeze/toggle axi gate */

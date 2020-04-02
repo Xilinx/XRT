@@ -15,6 +15,7 @@
  * License version 2 or Apache License, Version 2.0.
  */
 
+#include <linux/delay.h>
 #include <linux/dma-buf.h>
 #include <linux/module.h>
 #include <linux/fpga/fpga-mgr.h>
@@ -24,6 +25,7 @@
 #include <linux/kernel.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
+#include <linux/poll.h>
 #include <linux/spinlock.h>
 #include "zocl_drv.h"
 #include "zocl_sk.h"

@@ -1284,6 +1284,7 @@ struct xocl_axigate_funcs {
 	int (*freeze)(struct platform_device *pdev);
 	int (*free)(struct platform_device *pdev);
 	int (*reset)(struct platform_device *pdev);
+	int (*get_status)(struct platform_device *pdev, u32 *status);
 };
 
 #define AXIGATE_DEV(xdev, idx)			\
@@ -1305,6 +1306,10 @@ struct xocl_axigate_funcs {
 #define xocl_axigate_reset(xdev, level)		\
 	(AXIGATE_CB(xdev, level, reset) ?		\
 	AXIGATE_OPS(xdev, level)->reset(AXIGATE_DEV(xdev, level)) :	\
+	-ENODEV)
+#define xocl_axigate_status(xdev, level, status)		\
+	(AXIGATE_CB(xdev, level, get_status) ?		\
+	AXIGATE_OPS(xdev, level)->get_status(AXIGATE_DEV(xdev, level), status) :\
 	-ENODEV)
 
 struct xocl_mailbox_versal_funcs {

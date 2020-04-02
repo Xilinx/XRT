@@ -47,13 +47,6 @@
 
 namespace { // private implementation details
 
-inline bool
-is_multiprocess_mode()
-{
-  static bool val = xrt_core::config::get_multiprocess() || std::getenv("XCL_MULTIPROCESS_MODE") != nullptr;
-  return val;
-}
-
 struct shim
 {
   using buffer_handle_type = xclBufferHandle; // xrt.h
@@ -816,8 +809,8 @@ done:
   bool
   lock_device()
   {
-    if (!is_multiprocess_mode() && m_locked)
-        return false;
+    if (!xrt_core::config::get_multiprocess() && m_locked)
+      return false;
 
     return m_locked = true;
   }

@@ -1897,7 +1897,7 @@ int xcldev::xclCma(int argc, char *argv[])
     } else if (!ret) {
         std::cout << "xbutil cma done successfully" << std::endl;
     } else if (ret) {
-        std::cout << "ERROR: " << strerror(std::abs(ret)) << std::endl;
+        std::cout << "ERROR: " << strerror(ret) << std::endl;
     }
 
     return ret;

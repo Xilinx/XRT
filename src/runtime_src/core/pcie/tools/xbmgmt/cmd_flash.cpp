@@ -254,17 +254,25 @@ static int resetShell(unsigned index, bool force)
     return flasher.upgradeFirmware("", nullptr, nullptr, nullptr);
 }
 
-/* We do not take the risk to flash any bmc marked as UNKNOWN */
+/*
+ * bmcVer (shown as [SC=version]) can be 3 status:
+ *   1) regular SC version;
+ *        example: [SC=4.1.7]
+ *   2) INACTIVE;
+ *        exmaple: [SC=INACTIVE], this means no xmc subdev, we should not
+ *        attemp to flash the SC;
+ *   3) UNKNOWN;
+ *        example: [SC=UNKNOWN], this means xmc subdev is online, but status in
+ *        not normal, we still allow flashing SC.
+ */
 static void isSameShellOrSC(DSAInfo& candidate, DSAInfo& current,
     bool *same_dsa, bool *same_bmc)
 {
     if (!current.name.empty()) {
-        *same_dsa = (candidate.name == current.name &&
+        *same_dsa = ((candidate.name == current.name) &&
             candidate.matchId(current));
-        *same_bmc = (current.bmcVer.empty() ||
-            current.bmcVer.compare(DSAInfo::UNKNOWN) == 0 ||
-            current.bmcVer.compare(DSAInfo::INACTIVE) == 0 ||
-            candidate.bmcVer == current.bmcVer);
+        *same_bmc = ((candidate.bmcVer == current.bmcVer) ||
+            (current.bmcVer.compare(DSAInfo::INACTIVE) == 0));
     }
 }
 
