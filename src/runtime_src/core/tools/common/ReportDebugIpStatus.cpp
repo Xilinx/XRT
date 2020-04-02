@@ -889,43 +889,6 @@ DebugIpStatusCollector::printLAPCResults(std::ostream& _output)
               << std::endl;
     }
   }
-#if 0
-    std::ofstream saveFormat;
-    saveFormat.copyfmt(_output);
-
-    _output << "\n";
-    _output << std::left
-              << std::setw(col1) << "CU Name"
-              << " " << std::setw(col2) << "AXI Portname"
-              << "  " << std::setw(16) << "Overall Status"
-              << "  " << std::setw(16) << "Snapshot[0]"
-              << "  " << std::setw(16) << "Snapshot[1]"
-              << "  " << std::setw(16) << "Snapshot[2]"
-              << "  " << std::setw(16) << "Snapshot[3]"
-              << "  " << std::setw(16) << "Cumulative[0]"
-              << "  " << std::setw(16) << "Cumulative[1]"
-              << "  " << std::setw(16) << "Cumulative[2]"
-              << "  " << std::setw(16) << "Cumulative[3]"
-              << std::endl;
-    for (size_t i = 0; i < lapcResults.NumSlots; ++i) {
-      _output << std::left
-              << std::setw(col1) << cuNames[LAPC][i]
-              << " " << std::setw(col2) << portNames[LAPC][i]
-              << std::hex
-              << "  " << std::setw(16) << lapcResults.OverallStatus[i]
-              << "  " << std::setw(16) << lapcResults.SnapshotStatus[i][0]
-              << "  " << std::setw(16) << lapcResults.SnapshotStatus[i][1]
-              << "  " << std::setw(16) << lapcResults.SnapshotStatus[i][2]
-              << "  " << std::setw(16) << lapcResults.SnapshotStatus[i][3]
-              << "  " << std::setw(16) << lapcResults.CumulativeStatus[i][0]
-              << "  " << std::setw(16) << lapcResults.CumulativeStatus[i][1]
-              << "  " << std::setw(16) << lapcResults.CumulativeStatus[i][2]
-              << "  " << std::setw(16) << lapcResults.CumulativeStatus[i][3]
-              << std::dec << std::endl;
-    }
-    // Restore formatting
-    _output.copyfmt(saveFormat);
-#endif
 }
 
 void 
@@ -1037,33 +1000,6 @@ DebugIpStatusCollector::printSPCResults(std::ostream& _output)
               << std::endl;
     }
   }
-
-
-#if 0
-    std::ofstream saveFormat;
-    saveFormat.copyfmt(_output);
-
-    _output << "\n";
-    _output << std::left
-        << std::setw(col1) << "CU Name"
-        << " " << std::setw(col2) << "AXI Portname"
-        << "  " << std::setw(16) << "Overall Status"
-        << "  " << std::setw(16) << "Snapshot"
-        << "  " << std::setw(16) << "Current"
-        << std::endl;
-    for (size_t i = 0; i < spcResults.NumSlots; ++i) {
-      _output << std::left
-                << std::setw(col1) << cuNames[AXI_STREAM_PROTOCOL_CHECKER][i] 
-                << " " << std::setw(col2) << portNames[AXI_STREAM_PROTOCOL_CHECKER][i]
-                << "  " << std::setw(16) << std::hex << spcResults.PCAsserted[i]
-                << "  " << std::setw(16) << std::hex << spcResults.SnapshotPC[i]
-                << "  " << std::setw(16) << std::hex << spcResults.CurrentPC[i]
-                << std::dec << std::endl;
-    }
-    // Restore formatting
-    _output.copyfmt(saveFormat);
-#endif
-  
 }
 
 
