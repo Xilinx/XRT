@@ -3918,6 +3918,7 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 				goto failed;
 			}
 			ICAP_INFO(icap, "stashed shared mb sche bin, len %ld", sche_fw->size);
+			memcpy(icap->rp_sche_bin, sche_fw->data, sche_fw->size);
 			icap->rp_sche_bin_len = sche_fw->size;
 			release_firmware(sche_fw);
 		}
