@@ -3055,6 +3055,12 @@ exec_submit_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	bool ret = false;
 
 	SCHED_DEBUGF("-> %s exec(%d) cmd(%lu)\n", __func__, exec->uid, xcmd->uid);
+
+	if (cmd_wait_count(xcmd)) {
+		SCHED_DEBUGF("<- %s ret(false) cmd_wait_count(%d)\n", cmd_wait_count(xcmd));
+		return false;
+	}
+
 	if (cmd_update_state(xcmd) == ERT_CMD_STATE_ABORT)
 		exec_abort_cmd(exec, xcmd);
 	else if (cmd_type(xcmd) == ERT_CU)
