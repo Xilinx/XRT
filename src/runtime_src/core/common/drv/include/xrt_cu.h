@@ -21,7 +21,7 @@
 #include <linux/slab.h>
 #include <linux/semaphore.h>
 #include <linux/spinlock.h>
-#include <linux/circ_buf.h>
+#include <linux/io.h>
 
 #define MAX_CUS 128
 
@@ -165,18 +165,18 @@ struct xrt_cu {
 	struct xcu_funcs          *funcs;
 };
 
-inline int  xrt_cu_get_credit(struct xrt_cu *xcu);
-inline void xrt_cu_put_credit(struct xrt_cu *xcu, u32 count);
-inline void xrt_cu_config(struct xrt_cu *xcu, u32 *data, size_t sz, int type);
-inline void xrt_cu_start(struct xrt_cu *xcu);
-inline void xrt_cu_check(struct xrt_cu *xcu);
-inline void xrt_cu_reset(struct xrt_cu *xcu);
-inline int  xrt_cu_reset_done(struct xrt_cu *xcu);
-inline void xrt_cu_enable_intr(struct xrt_cu *xcu, u32 intr_type);
-inline void xrt_cu_disable_intr(struct xrt_cu *xcu, u32 intr_type);
-inline u32  xrt_cu_clear_intr(struct xrt_cu *xcu);
-inline void xrt_cu_wait(struct xrt_cu *xcu);
-inline void xrt_cu_up(struct xrt_cu *xcu);
+int  xrt_cu_get_credit(struct xrt_cu *xcu);
+void xrt_cu_put_credit(struct xrt_cu *xcu, u32 count);
+void xrt_cu_config(struct xrt_cu *xcu, u32 *data, size_t sz, int type);
+void xrt_cu_start(struct xrt_cu *xcu);
+void xrt_cu_check(struct xrt_cu *xcu);
+void xrt_cu_reset(struct xrt_cu *xcu);
+int  xrt_cu_reset_done(struct xrt_cu *xcu);
+void xrt_cu_enable_intr(struct xrt_cu *xcu, u32 intr_type);
+void xrt_cu_disable_intr(struct xrt_cu *xcu, u32 intr_type);
+u32  xrt_cu_clear_intr(struct xrt_cu *xcu);
+void xrt_cu_wait(struct xrt_cu *xcu);
+void xrt_cu_up(struct xrt_cu *xcu);
 
 int  xrt_cu_init(struct xrt_cu *xcu);
 void xrt_cu_fini(struct xrt_cu *xcu);
