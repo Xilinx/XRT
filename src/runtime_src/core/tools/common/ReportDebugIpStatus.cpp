@@ -307,7 +307,7 @@ DebugIpStatusCollector::getCuNamePortName(uint8_t dbgIpType,
                           std::string& portName)
 {
   //Slotnames are of the format "/cuname/portname" or "cuname/portname", split them and populate cuname and portName
-  char sep = '/';
+  const char sep = '/';
 
   size_t start = 0;
   size_t sepPos = dbgIpName.find(sep, start);
@@ -327,8 +327,6 @@ DebugIpStatusCollector::getCuNamePortName(uint8_t dbgIpType,
     cuName   = "XDMA";
     portName = "N/A";
   }
-  // Use strlen() instead of length() because the strings taken from debug_ip_layout
-  // are always 128 in length, where the end is full of null characters  
   cuNameMaxStrLen[dbgIpType]   = std::max(strlen(cuName.c_str()), cuNameMaxStrLen[dbgIpType]);
   portNameMaxStrLen[dbgIpType] = std::max(strlen(portName.c_str()), portNameMaxStrLen[dbgIpType]);
 }
@@ -376,7 +374,7 @@ DebugIpStatusCollector::readAIMCounter(debug_ip_data* dbgIpInfo)
   // read counter values
   size_t size = 0;
 
-  uint64_t aim_offsets[] = {
+  static const uint64_t aim_offsets[] = {
     XAIM_SAMPLE_WRITE_BYTES_OFFSET,
     XAIM_SAMPLE_WRITE_TRANX_OFFSET,
     XAIM_SAMPLE_READ_BYTES_OFFSET,
@@ -388,7 +386,7 @@ DebugIpStatusCollector::readAIMCounter(debug_ip_data* dbgIpInfo)
     XAIM_SAMPLE_LAST_READ_DATA_OFFSET
   };
 
-  uint64_t aim_upper_offsets[] = {
+  static const uint64_t aim_upper_offsets[] = {
     XAIM_SAMPLE_WRITE_BYTES_UPPER_OFFSET,
     XAIM_SAMPLE_WRITE_TRANX_UPPER_OFFSET,
     XAIM_SAMPLE_READ_BYTES_UPPER_OFFSET,
@@ -546,7 +544,7 @@ DebugIpStatusCollector::readAMCounter(debug_ip_data* dbgIpInfo)
   
   size_t size = 0;
 
-  uint64_t am_offsets[] = {
+  static const uint64_t am_offsets[] = {
     XAM_ACCEL_EXECUTION_COUNT_OFFSET,
     XAM_ACCEL_EXECUTION_CYCLES_OFFSET,
     XAM_ACCEL_STALL_INT_OFFSET,
@@ -557,7 +555,7 @@ DebugIpStatusCollector::readAMCounter(debug_ip_data* dbgIpInfo)
     XAM_ACCEL_TOTAL_CU_START_OFFSET
   };
 
-  uint64_t am_upper_offsets[] = {
+  static const uint64_t am_upper_offsets[] = {
     XAM_ACCEL_EXECUTION_COUNT_UPPER_OFFSET,
     XAM_ACCEL_EXECUTION_CYCLES_UPPER_OFFSET,
     XAM_ACCEL_STALL_INT_UPPER_OFFSET,
@@ -741,7 +739,7 @@ DebugIpStatusCollector::readASMCounter(debug_ip_data* dbgIpInfo)
   // Fill up the portions of the return struct that are known by the runtime
 
   // Fill up the return structure with the values read from the hardware
-  uint64_t asm_offsets[] = {
+  static const uint64_t asm_offsets[] = {
     XASM_NUM_TRANX_OFFSET,
     XASM_DATA_BYTES_OFFSET,
     XASM_BUSY_CYCLES_OFFSET,
@@ -851,7 +849,7 @@ DebugIpStatusCollector::readLAPChecker(debug_ip_data* dbgIpInfo)
 
   size_t size = 0;
 
-  uint64_t statusRegisters[] = {
+  static const uint64_t statusRegisters[] = {
     LAPC_OVERALL_STATUS_OFFSET,
 
     LAPC_CUMULATIVE_STATUS_0_OFFSET, LAPC_CUMULATIVE_STATUS_1_OFFSET,
