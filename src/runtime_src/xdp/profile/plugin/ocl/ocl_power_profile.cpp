@@ -54,7 +54,22 @@ void OclPowerProfile::poll_power() {
         "xmc_vccint_curr",
         "xmc_vccint_vol",
         "xmc_3v3_pex_curr",
-        "xmc_3v3_pex_vol"
+        "xmc_3v3_pex_vol",
+        "xmc_cage_temp0",
+        "xmc_cage_temp1",
+        "xmc_cage_temp2",
+        "xmc_cage_temp3",
+        "xmc_dimm_temp0",
+        "xmc_dimm_temp1",
+        "xmc_dimm_temp2",
+        "xmc_dimm_temp3",
+        "xmc_fan_temp",
+        "xmc_fpga_temp",
+        "xmc_hbm_temp",
+        "xmc_se98_temp0",
+        "xmc_se98_temp1",
+        "xmc_se98_temp2",
+        "xmc_vccint_temp"
     };
 
     std::vector<std::string> paths;
@@ -98,17 +113,33 @@ void OclPowerProfile::stop_polling() {
 
 void OclPowerProfile::write_header() {
     power_profiling_output << "Target device: "
-                        << target_unique_name << std::endl;
+                           << target_unique_name 
+                           << std::endl;
     power_profiling_output << "timestamp,"
-                        << "12v_aux_curr" << ","
-                        << "12v_aux_vol"  << ","
-                        << "12v_pex_curr" << ","
-                        << "12v_pex_vol"  << ","
-                        << "vccint_curr"  << ","
-                        << "vccint_vol"   <<","
-                        << "3v3_pex_curr" << ","
-                        << "3v3_pex_vol"
-                        << std::endl;
+                           << "12v_aux_curr" << ","
+                           << "12v_aux_vol"  << ","
+                           << "12v_pex_curr" << ","
+                           << "12v_pex_vol"  << ","
+                           << "vccint_curr"  << ","
+                           << "vccint_vol"   << ","
+                           << "3v3_pex_curr" << ","
+                           << "3v3_pex_vol"  << ","
+                           << "cage_temp0"   << ","
+                           << "cage_temp1"   << ","
+                           << "cage_temp2"   << ","
+                           << "cage_temp3"   << ","
+                           << "dimm_temp0"   << ","
+                           << "dimm_temp1"   << ","
+                           << "dimm_temp2"   << ","
+                           << "dimm_temp3"   << ","
+                           << "fan_temp"     << ","
+                           << "fpga_temp"    << ","
+                           << "hbm_temp"     << ","
+                           << "se98_temp0"   << ","
+                           << "se98_temp1"   << ","
+                           << "se98_temp2"   << ","
+                           << "vccint_temp"
+                           << std::endl;
 }
 
 void OclPowerProfile::write_trace() {
