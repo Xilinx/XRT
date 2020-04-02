@@ -1819,8 +1819,6 @@ int xcldev::xclP2p(int argc, char *argv[])
     return ret;
 }
 
-
-
 int xcldev::device::setCma(bool enable, uint64_t total_size)
 {
     return xclCmaEnable(m_handle, enable, total_size);
@@ -1859,7 +1857,7 @@ int xcldev::xclCma(int argc, char *argv[])
             cma_enable = 0;
             break;
         case xcldev::CMA_SIZE:
-            total_size = std::stoi(optarg);
+            total_size = std::stoll(optarg);
             break;
         default:
             xcldev::printHelp(exe);
@@ -1872,6 +1870,11 @@ int xcldev::xclCma(int argc, char *argv[])
         return -EINVAL;
 
     if (cma_enable == -1) {
+        std::cerr << usage << std::endl;
+        return -EINVAL;
+    }
+
+    if (cma_enable && !total_size) {
         std::cerr << usage << std::endl;
         return -EINVAL;
     }
