@@ -53,4 +53,4 @@ target_link_libraries(xrt_core
 
 install(TARGETS xrt_core
   LIBRARY
-  DESTINATION ${XRT_INSTALL_DIR}/lib)
+  DESTINATION ${XRT_INSTALL_LIB_DIR})

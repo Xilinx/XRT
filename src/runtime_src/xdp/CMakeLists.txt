@@ -178,7 +178,7 @@ set_target_properties(xdp_debug_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} 
 set_target_properties(xdp_appdebug_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_lop_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
-install (TARGETS xdp oclxdp xdp_core xdp_hal_plugin xdp_hal_api_interface_plugin xdp_debug_plugin xdp_appdebug_plugin xdp_lop_plugin LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
+install (TARGETS xdp oclxdp xdp_core xdp_hal_plugin xdp_hal_api_interface_plugin xdp_debug_plugin xdp_appdebug_plugin xdp_lop_plugin LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR})
 
 install (FILES "${XRT_XDP_PROFILE_XMA_PLUGIN_DIR}/xma_profile.h" DESTINATION ${XRT_INSTALL_INCLUDE_DIR})
 
@@ -246,8 +246,8 @@ target_link_libraries(xdp_hal_plugin xdp xrt_core)
 target_link_libraries(xdp_hal_api_interface_plugin xdp)
 
 install(TARGETS xdp oclxdp xdp_hal_plugin xdp_hal_api_interface_plugin
-  ARCHIVE DESTINATION ${XRT_INSTALL_DIR}/lib
-  LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib
+  ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR}
+  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}
   RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
 
 # Only install these files for PCIe device for now, which is .

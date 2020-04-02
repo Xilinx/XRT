@@ -38,7 +38,7 @@ target_link_libraries(azure_mpd_plugin
 
 install(TARGETS azure_mpd_plugin
   LIBRARY
-  DESTINATION ${XRT_INSTALL_DIR}/lib
+  DESTINATION ${XRT_INSTALL_LIB_DIR}
   COMPONENT azure
   )
 

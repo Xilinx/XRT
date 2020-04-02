@@ -40,4 +40,4 @@ target_link_libraries(xrt_hwemu
   rt
   )
 
-install (TARGETS xrt_hwemu LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
+install (TARGETS xrt_hwemu LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR})
