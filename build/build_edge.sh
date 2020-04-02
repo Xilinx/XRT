@@ -12,6 +12,7 @@ usage()
     echo "  options:"
     echo "          -help                           Print this usage"
     echo "          -aarch                          Architecture <aarch32/aarch64>"
+    echo "          -cache                          path to sstate-cache"
     echo "          -clean, clean                   Remove build directories"
     echo ""
 }
