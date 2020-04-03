@@ -444,7 +444,7 @@ get_flag_kds_sw_emu()
 inline bool
 get_is_enable_prep_target()
 {
-  static bool value = detail::get_bool_value("Emulation.enable_prep_target", false);
+  static bool value = detail::get_bool_value("Emulation.enable_prep_target", true);
   return value;
 }
 
