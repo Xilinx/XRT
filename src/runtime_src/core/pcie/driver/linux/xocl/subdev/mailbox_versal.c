@@ -95,7 +95,6 @@ static int mailbox_versal_enable_intr(struct platform_device *pdev)
 	struct mailbox_versal *mbv = platform_get_drvdata(pdev);
 	u32 is;
 
-
 	/* set interrupt threshold for receive, 2^0=1 pkg will trigger intr */
 	mailbox_versal_reg_wr(mbv, &mbv->mbv_regs->mbr_rit, 0);
 	/* clear pending interrupt */
