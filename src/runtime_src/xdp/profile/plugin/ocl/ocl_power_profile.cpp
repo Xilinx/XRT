@@ -69,7 +69,8 @@ void OclPowerProfile::poll_power() {
         "xmc_se98_temp0",
         "xmc_se98_temp1",
         "xmc_se98_temp2",
-        "xmc_vccint_temp"
+        "xmc_vccint_temp",
+        "xmc_fan_rpm"
     };
 
     std::vector<std::string> paths;
@@ -138,7 +139,8 @@ void OclPowerProfile::write_header() {
                            << "se98_temp0"   << ","
                            << "se98_temp1"   << ","
                            << "se98_temp2"   << ","
-                           << "vccint_temp"
+                           << "vccint_temp"  << ","
+                           << "fan_rpm"
                            << std::endl;
 }
 
