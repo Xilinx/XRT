@@ -37,8 +37,6 @@ namespace XBU = XBUtilities;
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
-#include <boost/property_tree/json_parser.hpp>
-
 namespace po = boost::program_options;
 
 // ---- Reports ------
@@ -68,7 +66,7 @@ namespace {
  * Update shell on the board for auto flash
  */
 static void 
-update_shell(uint16_t index, const std::string& primary, const std::string& secondary)
+update_shell(unsigned int  index, const std::string& primary, const std::string& secondary)
 {
   Flasher flasher(index);
   if(!flasher.isValid())
@@ -90,16 +88,13 @@ update_shell(uint16_t index, const std::string& primary, const std::string& seco
 
   flasher.upgradeFirmware("", pri.get(), sec.get());
   std::cout << boost::format("%-8s : %s \n") % "INFO" % "Shell is updated successfully.";
-  std::cout << "****************************************************\n";
-  std::cout << "Cold reboot machine to load the new image on card.\n";
-  std::cout << "****************************************************\n";
 }
 
 /*
  * Update shell on the board for manual flash
  */
 static void 
-update_shell(uint16_t index, const std::string& flashType,
+update_shell(unsigned int index, const std::string& flashType,
   const std::string& primary, const std::string& secondary)
 {
   if (!flashType.empty()) {
@@ -126,13 +121,16 @@ update_shell(uint16_t index, const std::string& flashType,
 
   flasher.upgradeFirmware(flashType, pri.get(), sec.get());
   std::cout << boost::format("%-8s : %s \n") % "INFO" % "Shell is updated successfully.";
+  std::cout << "****************************************************\n";
+  std::cout << "Cold reboot machine to load the new image on card.\n";
+  std::cout << "****************************************************\n";
 }
 
 /*
  * Update SC firmware on the board
  */
 static void 
-update_SC(uint16_t index, const std::string& file)
+update_SC(unsigned int  index, const std::string& file)
 {
   Flasher flasher(index);
   if(!flasher.isValid())
@@ -283,7 +281,7 @@ canProceed()
  * Helper method for auto_flash
  */
 static int 
-updateShellAndSC(uint16_t boardIdx, DSAInfo& candidate, bool& reboot)
+updateShellAndSC(unsigned int  boardIdx, DSAInfo& candidate, bool& reboot)
 {
   reboot = false;
 
@@ -351,14 +349,14 @@ auto_flash(xrt_core::device_collection& deviceCollection, bool force)
   report_status(deviceCollection, _pt);
 
   // Collect all indexes of boards need updating
-  std::vector<std::pair<uint16_t, DSAInfo>> boardsToUpdate;
+  std::vector<std::pair<unsigned int , DSAInfo>> boardsToUpdate;
   for (const auto & device : deviceCollection) {
     DSAInfo dsa(_pt.get<std::string>(std::to_string(device->get_device_id()) + ".platform.installed_shell.file"));
     //if the shell is not up-to-date and dsa has a flash image, queue the board for update
     if (!_pt.get<bool>(std::to_string(device->get_device_id()) + ".platform.shell_upto_date") ||
           !_pt.get<bool>(std::to_string(device->get_device_id()) + ".platform.sc_upto_date")) {
-        if(!dsa.hasFlashImage)
-          throw xrt_core::error("Flash image is not available");
+      if(!dsa.hasFlashImage)
+        throw xrt_core::error("Flash image is not available");
       boardsToUpdate.push_back(std::make_pair(device->get_device_id(), dsa));
     }
   }
@@ -500,7 +498,6 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   std::vector<uint16_t> device_indices;
     std::string d = "";
   XBU::parse_device_indices(device_indices, d);
-
 
   // Collect all of the devices of interest
   std::set<std::string> deviceNames;
