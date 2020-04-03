@@ -90,6 +90,9 @@ update_shell(uint16_t index, const std::string& primary, const std::string& seco
 
   flasher.upgradeFirmware("", pri.get(), sec.get());
   std::cout << boost::format("%-8s : %s \n") % "INFO" % "Shell is updated successfully.";
+  std::cout << "****************************************************\n";
+  std::cout << "Cold reboot machine to load the new image on card.\n";
+  std::cout << "****************************************************\n";
 }
 
 /*
@@ -234,14 +237,18 @@ report_status(xrt_core::device_collection& deviceCollection, boost::property_tre
     std::cout << "----------------------------------------------------\n";
   }
 
-  std::cout << "Actions to perform:\n";
+  std::stringstream action_list;
   for (const auto & device : deviceCollection) {
     if (!_pt.get<bool>(std::to_string(device->get_device_id()) + ".platform.shell_upto_date"))
-      std::cout << "  -Program flash image on card[" << _pt.get<std::string>(std::to_string(device->get_device_id())+".platform.bdf") << "]\n";
+      action_list << "  -Program flash image on card[" << _pt.get<std::string>(std::to_string(device->get_device_id())+".platform.bdf") << "]\n";
     if (!_pt.get<bool>(std::to_string(device->get_device_id())+".platform.sc_upto_date"))
-      std::cout << "  -Program SC image on card[" << _pt.get<std::string>(std::to_string(device->get_device_id())+".platform.bdf") << "]\n";
+      action_list << "  -Program SC image on card[" << _pt.get<std::string>(std::to_string(device->get_device_id())+".platform.bdf") << "]\n";
   }
-  std::cout << "----------------------------------------------------\n";
+  
+  if(!action_list.str().empty()) {
+    std::cout << "Actions to perform:\n" << action_list.str();
+    std::cout << "----------------------------------------------------\n";
+  }
 
 }
 
@@ -436,17 +443,17 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   }
 
   // -- Retrieve and parse the subcommand options -----------------------------
-  std::string device = "";
-  std::vector<std::string> devices = {"all"};
+  std::vector<std::string> device;
   std::string plp = "";
   std::string update = "";
-  std::string image = "";
+  std::string flashType = "";
+  std::vector<std::string> image;
   bool revertToGolden = false;
   bool help = false;
 
   po::options_description queryDesc("Options");  // Note: Boost will add the colon.
   queryDesc.add_options()
-    ("device,d", boost::program_options::value<decltype(device)>(&device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' (default) indicates that every found device should be examined.")
+    ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' (default) indicates that every found device should be examined.")
     ("plp", boost::program_options::value<decltype(plp)>(&plp), "The partition to be loaded.  Valid values:\n"
                                                                 "  Name (and path) of the partiaion.\n"
                                                                 "  Parition's UUID")
@@ -454,10 +461,13 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
                                                                          "  ALL   - All images will be updated\n"
                                                                          "  FLASH - Flash image\n"
                                                                          "  SC    - Satellite controller\n")
-    ("image", boost::program_options::value<decltype(image)>(&image), "Specifies an image to use used to update the persistent device(s).  Value values:\n"
-                                                                      "  Name of the device\n"
+    ("image", boost::program_options::value<decltype(image)>(&image)->multitoken(), "Specifies an image to use used to update the persistent device(s).  Value values:\n"
                                                                       "  Name (and path) to the mcs image on disk\n"
-                                                                      "  Name (and path) to the xsabin image on disk")
+                                                                      "  Name (and path) to the xsabin image on disk\n"
+                                                                      "Note: Multiple images can be specified separated by a space")
+    ("flash-type", boost::program_options::value<decltype(flashType)>(&flashType), "Overrides the flash mode. Use with caution.  Value values:\n"
+                                                                      "  ospi\n"
+                                                                      "  ospi_versal\n")
     ("revert-to-golden", boost::program_options::bool_switch(&revertToGolden), "Resets the FPGA PROM back to the factory image.  Note: This currently only applies to the flash image.")
     ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
@@ -481,7 +491,6 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   }
 
   // -- Now process the subcommand --------------------------------------------
-  XBU::verbose(boost::str(boost::format("  Card: %s") % device));
   XBU::verbose(boost::str(boost::format("  Update: %s") % update));
 
   // enforce device specification
@@ -489,16 +498,31 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     throw xrt_core::error("Please specify a device using --device option");
   // TO-DO: deprecate this
   std::vector<uint16_t> device_indices;
-  XBU::parse_device_indices(device_indices, device);
+    std::string d = "";
+  XBU::parse_device_indices(device_indices, d);
 
 
   // Collect all of the devices of interest
   std::set<std::string> deviceNames;
   xrt_core::device_collection deviceCollection;
-  for (const auto & deviceName : devices) 
+  for (const auto & deviceName : device) 
     deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
 
   XBU::collect_devices(deviceNames, false /*inUserDomain*/, deviceCollection);
+
+  if(!image.empty()) {
+    //image is a sub-option of update
+    if(update.empty())
+      throw xrt_core::error("Usage: xbmgmt --device='0000:00:00.0' --update --image='/path/to/flash_image'");
+    //allow only 1 device to be manually flashed at a time
+    if(deviceCollection.size() != 1)
+      throw xrt_core::error("Please specify a single device to be flashed");
+    //we support only 2 flash images atm
+    if(image.size() > 2)
+      throw xrt_core::error("Please specify either 1 or 2 flash images");
+    update_shell(deviceCollection.front()->get_device_id(), flashType, image.front(), (image.size() == 2 ? image[1]: ""));
+    return;
+  }
 
   if (!update.empty()) {
     XBU::verbose("Sub command: --update");
@@ -512,11 +536,6 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     else 
       throw xrt_core::error("Please specify a valid value");
     return;
-  }
-
-  if(!image.empty()) {
-    //call this overloaded function
-    update_shell(device_indices[0], "", "", "");
   }
 
   if(revertToGolden) {
