@@ -190,13 +190,42 @@ xclGetMemObjectFromFd(cl_context context,
  */
 
 /**
- * cl_stream_flags. Type of the stream , eg set to CL_STREAM_READ_ONLY for
+ * cl_stream_flags. Type of the stream , eg set to XCL_STREAM_READ_ONLY for
  * read only. Used in clCreateStream()
+ *
+ * This flag specifies that the stream object is a read-only stream
+ * object when used inside a kernel.  Writing to a buffer or image object
+ * created with CL_STREAM_READ_ONLY inside a kernel is undefined.
  */
 typedef uint64_t cl_stream_flags;
-#define CL_STREAM_READ_ONLY			    (1 << 0)
-#define CL_STREAM_WRITE_ONLY                        (1 << 1)
-#define CL_STREAM_POLLING                           (1 << 2)
+#ifdef __GNUC__
+# define CL_STREAM_READ_ONLY                        _Pragma ("GCC warning \"CL_STREAM_READ_ONLY deprecated, please use XCL_STREAM_WRITE_ONLY\"") (1 << 0)
+# define CL_STREAM_WRITE_ONLY                       _Pragma ("GCC warning \"CL_STREAM_WRITE_ONLY deprecated, please use XCL_STREAM_READ_ONLY\"") (1 << 1)
+# define CL_STREAM_POLLING                          _Pragma ("GCC warning \"CL_STREAM_POLLING deprecated, please use XCL_STREAM_POLLING\"") (1 << 2)
+#else
+# define CL_STREAM_READ_ONLY                        (1 << 0)
+# define CL_STREAM_WRITE_ONLY                       (1 << 1)
+# define CL_STREAM_POLLING                          (1 << 2)
+#endif
+
+/**
+ * This flag specifies that the stream object is a read-only stream
+ * object when used inside a kernel.  Writing to a stream
+ * created with CL_STREAM_READ_ONLY inside a kernel is undefined.
+ */
+#define XCL_STREAM_READ_ONLY                        (1 << 1)
+
+/**
+ * This flag specifies that the stream object will be written but not
+ * read by a kernel.  Reading from a stream object created with
+ * CL_STREAM_WRITE_ONLY inside a kernel is undefined.
+ */
+#define XCL_STREAM_WRITE_ONLY                       (1 << 0)
+
+/**
+ * Unused
+ */
+#define XCL_STREAM_POLLING                          (1 << 2)
 
 /**
  * cl_stream_attributes. eg set it to CL_STREAM for stream mode. Used

@@ -36,6 +36,7 @@
 #pragma warning ( disable : 4244 4245 4267 4996 4505 )
 #endif
 
+
 namespace {
 
 static unsigned int uid_count = 0;
@@ -386,11 +387,11 @@ get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, con
 
     //TODO: Put an assert/throw if both read and write are not set, but currently that check will break as full m_tag not yet available
 
-    if(read && !(flags & CL_STREAM_READ_ONLY))
-      throw xocl::error(CL_INVALID_OPERATION,"Connecting a read stream to non-read stream, argument " + ext->flags);
+    if(read && !(flags & XCL_STREAM_WRITE_ONLY))
+      throw xocl::error(CL_INVALID_OPERATION,"Connecting a kernel write only stream to non-user-read stream, argument " + ext->flags);
 
-    if(write &&  !(flags & CL_STREAM_WRITE_ONLY))
-      throw xocl::error(CL_INVALID_OPERATION,"Connecting a write stream to non-write stream, argument " + ext->flags);
+    if(write &&  !(flags & XCL_STREAM_READ_ONLY))
+      throw xocl::error(CL_INVALID_OPERATION,"Connecting a kernel read stream to non-user-write stream, argument " + ext->flags);
 
     if(mem.m_type != MEM_STREAMING)
       throw xocl::error(CL_INVALID_OPERATION,"Connecting a streaming argument to non-streaming bank");
@@ -398,9 +399,9 @@ get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, con
     xocl(kernel)->set_argument(ext->flags,sizeof(cl_mem),nullptr);
   }
 
-  if (flags & CL_STREAM_READ_ONLY)
+  if (flags & XCL_STREAM_WRITE_ONLY)  // kernel writes, user reads
     rc = m_xdevice->createReadStream(flags, attrs, route, flow, stream);
-  else if (flags & CL_STREAM_WRITE_ONLY)
+  else if (flags & XCL_STREAM_READ_ONLY) // kernel reads, user writes
     rc = m_xdevice->createWriteStream(flags, attrs, route, flow, stream);
   else
     throw xocl::error(CL_INVALID_OPERATION,"Unknown stream type specified");
