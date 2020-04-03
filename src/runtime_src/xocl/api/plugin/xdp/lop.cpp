@@ -249,7 +249,7 @@ namespace xocl {
 	{
 	  if (!xdplop::enqueue_cb) return ;
 
-	  if (status == CL_RUNNING || status == CL_SUBMITTED)
+	  if (status == CL_RUNNING)
 	    xdplop::enqueue_cb(e->get_uid(), true) ;
 	  else if (status == CL_COMPLETE)
 	    xdplop::enqueue_cb(e->get_uid(), false) ;
