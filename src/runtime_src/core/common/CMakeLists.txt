@@ -47,7 +47,7 @@ target_link_libraries(xrt_coreutil
 if (NOT WIN32)
 target_link_libraries(xrt_coreutil uuid pthread)
 install(TARGETS xrt_coreutil
-  LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
+  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR})
 else()
 # No external linking with coreutil so release only runtime
 install(TARGETS xrt_coreutil

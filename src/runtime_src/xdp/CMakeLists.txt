@@ -143,11 +143,11 @@ if (NOT WIN32)
 add_library(xdp_core SHARED ${XRT_NEW_XDP_CORE_FILES})
 add_library(xdp SHARED ${XRT_XDP_ALL_SRC})
 add_library(oclxdp SHARED ${XRT_XDP_PROFILE_OCL_PLUGIN_FILES})
-add_library(xdp_hal_plugin SHARED ${XRT_XDP_PROFILE_HAL_PLUGIN_FILES})
-add_library(xdp_hal_api_interface_plugin SHARED ${XRT_XDP_PROFILE_HAL_INTERFACE_PLUGIN_FILES})
-add_library(xdp_debug_plugin SHARED ${XRT_XDP_DEBUG_FILES})
-add_library(xdp_appdebug_plugin SHARED ${XRT_XDP_APPDEBUG_FILES})
-add_library(xdp_lop_plugin SHARED ${XRT_XDP_PROFILE_LOP_PLUGIN_FILES})
+add_library(xdp_hal_plugin MODULE ${XRT_XDP_PROFILE_HAL_PLUGIN_FILES})
+add_library(xdp_hal_api_interface_plugin MODULE ${XRT_XDP_PROFILE_HAL_INTERFACE_PLUGIN_FILES})
+add_library(xdp_debug_plugin MODULE ${XRT_XDP_DEBUG_FILES})
+add_library(xdp_appdebug_plugin MODULE ${XRT_XDP_APPDEBUG_FILES})
+add_library(xdp_lop_plugin MODULE ${XRT_XDP_PROFILE_LOP_PLUGIN_FILES})
 
 add_dependencies(xdp xrt_coreutil)
 add_dependencies(oclxdp xilinxopencl xdp)
@@ -178,7 +178,7 @@ set_target_properties(xdp_debug_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} 
 set_target_properties(xdp_appdebug_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_lop_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
-install (TARGETS xdp oclxdp xdp_core xdp_hal_plugin xdp_hal_api_interface_plugin xdp_debug_plugin xdp_appdebug_plugin xdp_lop_plugin LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
+install (TARGETS xdp oclxdp xdp_core xdp_hal_plugin xdp_hal_api_interface_plugin xdp_debug_plugin xdp_appdebug_plugin xdp_lop_plugin LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR})
 
 install (FILES "${XRT_XDP_PROFILE_XMA_PLUGIN_DIR}/xma_profile.h" DESTINATION ${XRT_INSTALL_INCLUDE_DIR})
 
@@ -232,8 +232,8 @@ file(GLOB XRT_XDP_ALL_SRC_WIN
 
 add_library(xdp SHARED ${XRT_XDP_ALL_SRC_WIN})
 add_library(oclxdp SHARED ${XRT_XDP_PROFILE_OCL_PLUGIN_FILES})
-add_library(xdp_hal_plugin SHARED ${XRT_XDP_PROFILE_HAL_PLUGIN_FILES})
-add_library(xdp_hal_api_interface_plugin SHARED ${XRT_XDP_PROFILE_HAL_INTERFACE_PLUGIN_FILES})
+add_library(xdp_hal_plugin MODULE ${XRT_XDP_PROFILE_HAL_PLUGIN_FILES})
+add_library(xdp_hal_api_interface_plugin MODULE ${XRT_XDP_PROFILE_HAL_INTERFACE_PLUGIN_FILES})
 
 add_dependencies(xdp xrt_core xilinxopencl)
 add_dependencies(oclxdp xdp xilinxopencl)
@@ -246,8 +246,8 @@ target_link_libraries(xdp_hal_plugin xdp xrt_core)
 target_link_libraries(xdp_hal_api_interface_plugin xdp)
 
 install(TARGETS xdp oclxdp xdp_hal_plugin xdp_hal_api_interface_plugin
-  ARCHIVE DESTINATION ${XRT_INSTALL_DIR}/lib
-  LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib
+  ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR}
+  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}
   RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
 
 # Only install these files for PCIe device for now, which is .
