@@ -154,9 +154,7 @@ DebugIpStatusCollector::DebugIpStatusCollector(xclDeviceHandle h)
     , spcResults{0}
 {
   // By default, enable status collection for all Debug IP types
-  for(uint64_t i = 0; i < maxDebugIpType ; ++i) {
-    debugIpOpt[i] = true;
-  }
+  std::fill(debugIpOpt, debugIpOpt + maxDebugIpType, true);
 
   size_t sz1 = 0, sectionSz = 0;
   // Get the size of full debug_ip_layout
@@ -236,20 +234,18 @@ void
 DebugIpStatusCollector::processElementFilter(const std::vector<std::string> & _elementsFilter)
 {
   // reset debugIpOpt to all "false" and then process given element filter
-  for(uint32_t i = 0; i < maxDebugIpType; ++i) {
-    debugIpOpt[i] = false;
-  } 
+  std::fill(debugIpOpt, debugIpOpt + maxDebugIpType, false);
+
   for(auto& itr : _elementsFilter) {
-    const char* element = itr.c_str();
-    if(0 == strcmp(element, "aim")) {
+    if(itr == "aim") {
       debugIpOpt[AXI_MM_MONITOR] = true;
-    } else if(0 == strcmp(element, "am")) {
+    } else if(itr == "am") {
       debugIpOpt[ACCEL_MONITOR] = true;
-    } else if(0 == strcmp(element, "asm")) {
+    } else if(itr == "asm") {
       debugIpOpt[AXI_STREAM_MONITOR] = true;
-    } else if(0 == strcmp(element, "lapc")) {
+    } else if(itr == "lapc") {
       debugIpOpt[LAPC] = true;
-    } else if(0 == strcmp(element, "spc")) {
+    } else if(itr == "spc") {
       debugIpOpt[AXI_STREAM_PROTOCOL_CHECKER] = true;
     }
   }
