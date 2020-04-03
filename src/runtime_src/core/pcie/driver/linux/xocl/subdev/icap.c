@@ -2245,9 +2245,7 @@ static int icap_reset_ddr_gate_pin(struct icap *icap)
 
 	err = xocl_iores_write32(xdev, XOCL_SUBDEV_LEVEL_PRP,
 		IORES_DDR4_RESET_GATE, 0, 1);
-	if (err)
-		goto out;
-out:
+
 	ICAP_INFO(icap, "%s ret %d", __func__, err);
 	return err;
 }
@@ -2259,10 +2257,7 @@ static int icap_release_ddr_gate_pin(struct icap *icap)
 
 	err = xocl_iores_write32(xdev, XOCL_SUBDEV_LEVEL_PRP,
 		IORES_DDR4_RESET_GATE, 0, 0);
-	if (err)
-		goto out;
 
-out:
 	ICAP_INFO(icap, "%s ret %d", __func__, err);
 	return err;
 }
