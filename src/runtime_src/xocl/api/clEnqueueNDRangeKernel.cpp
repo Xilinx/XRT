@@ -421,6 +421,10 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
   xocl::profile::set_event_action(umEvent.get(),xocl::profile::action_ndrange_migrate,mEvent,kernel);
   xocl::appdebug::set_event_action(umEvent.get(),xocl::appdebug::action_ndrange_migrate,mEvent,kernel);
 
+#ifndef _WIN32
+  xocl::lop::set_event_action(umEvent.get(),xocl::lop::action_ndrange_migrate,kernel);
+#endif
+
   // Schedule migration
   umEvent->queue();
 
