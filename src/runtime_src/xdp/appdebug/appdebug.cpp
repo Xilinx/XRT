@@ -35,8 +35,6 @@
 #include "xocl/core/compute_unit.h"
 #include "xocl/core/execution_context.h"
 
-#include "xclbin/binary.h"
-
 #include "core/include/xclperf.h"
 #include "core/include/xcl_app_debug.h"
 #include "core/include/xclbin.h"

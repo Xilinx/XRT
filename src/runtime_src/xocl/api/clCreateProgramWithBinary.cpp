@@ -197,10 +197,6 @@ clCreateProgramWithBinary(cl_context                      context ,
     xocl::send_exception_message(ex.what());
     xocl::assign(errcode_ret,ex.get_code());
   }
-  catch (const xclbin::error& ex) {
-    xocl::send_exception_message(ex.what());
-    xocl::assign(errcode_ret,CL_INVALID_BINARY);
-  }
   catch (const std::exception& ex) {
     xocl::send_exception_message(ex.what());
     xocl::assign(errcode_ret,CL_OUT_OF_HOST_MEMORY);

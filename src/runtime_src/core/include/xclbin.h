@@ -42,6 +42,7 @@
   #include <cstdint>
   #include <algorithm>
   #include "windows/uuid.h"
+  typedef uuid_t xuid_t;
 #else
   #if defined(__KERNEL__)
     #include <linux/types.h>

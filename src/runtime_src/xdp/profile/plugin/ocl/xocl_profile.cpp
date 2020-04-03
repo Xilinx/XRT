@@ -836,8 +836,7 @@ isAPCtrlChain(key k, const std::string& cu)
       base_addr = xcu->get_base_addr();
   }
   auto xclbin = device->get_xclbin();
-  auto binary = xclbin.binary();
-  auto binary_data = binary.binary_data();
+  auto binary_data = xclbin.binary();
   auto header = reinterpret_cast<const xclBin *>(binary_data.first);
   auto ip_layout = getAxlfSection<const ::ip_layout>(header, axlf_section_kind::IP_LAYOUT);
   if (!ip_layout)
@@ -863,8 +862,7 @@ getMemSizeBytes(key k, int idx)
   if (!device)
     return false;
   auto xclbin = device->get_xclbin();
-  auto binary = xclbin.binary();
-  auto binary_data = binary.binary_data();
+  auto binary_data = xclbin.binary();
   auto header = reinterpret_cast<const xclBin *>(binary_data.first);
   auto mem_topology = getAxlfSection<const ::mem_topology>(header, axlf_section_kind::MEM_TOPOLOGY);
   if (mem_topology && idx < mem_topology->m_count) {
@@ -882,8 +880,7 @@ getPlramSizeBytes(key k)
     return 0;
   try {
     auto xclbin = device->get_xclbin();
-    auto binary = xclbin.binary();
-    auto binary_data = binary.binary_data();
+    auto binary_data = xclbin.binary();
     auto header = reinterpret_cast<const xclBin *>(binary_data.first);
     mem_tp = getAxlfSection<const ::mem_topology>(header, axlf_section_kind::MEM_TOPOLOGY);
   } catch (...) {
@@ -913,8 +910,7 @@ getMemUsageStats(key k, std::map<std::string, uint64_t>& stats)
     return;
   try {
     auto xclbin = device->get_xclbin();
-    auto binary = xclbin.binary();
-    auto binary_data = binary.binary_data();
+    auto binary_data = xclbin.binary();
     auto header = reinterpret_cast<const xclBin *>(binary_data.first);
     mem_tp = getAxlfSection<const ::mem_topology>(header, axlf_section_kind::MEM_TOPOLOGY);
   } catch (...) {
