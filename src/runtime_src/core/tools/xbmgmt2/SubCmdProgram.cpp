@@ -228,7 +228,7 @@ report_status(xrt_core::device_collection& deviceCollection, boost::property_tre
   //get platform report for all the devices
   for (const auto & device : deviceCollection) {
     boost::property_tree::ptree _ptDevice;
-    auto _rep = std::make_shared<ReportPlatform>();
+    auto _rep = std::make_unique<ReportPlatform>();
     _rep->getPropertyTree20201(device.get(), _ptDevice);
     _pt.push_back(std::make_pair(std::to_string(device->get_device_id()), _ptDevice));
     pretty_print_platform_info(_ptDevice);

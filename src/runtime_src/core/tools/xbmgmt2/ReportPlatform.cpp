@@ -37,7 +37,7 @@ ReportPlatform::getPropertyTreeInternal( const xrt_core::device * _pDevice,
  */
 static bool 
 same_shell(const std::string& vbnv, const std::string& id, 
-            DSAInfo& installed) 
+            const DSAInfo& installed) 
 {
   if (!vbnv.empty()) {
     bool same_dsa = ((installed.name == vbnv) &&
@@ -51,7 +51,7 @@ same_shell(const std::string& vbnv, const std::string& id,
  * helper function for getPropertyTree20201()
  */
 static bool 
-same_sc(const std::string& sc, DSAInfo& installed) 
+same_sc(const std::string& sc, const DSAInfo& installed) 
 {
   return ((sc.empty()) || (installed.bmcVer == sc));
 }
@@ -95,8 +95,8 @@ ReportPlatform::getPropertyTree20201( const xrt_core::device * _pDevice,
   _pt.put("platform.installed_shell.sc_version", installedDSA.front().bmcVer);
   _pt.put("platform.installed_shell.id", (boost::format("0x%x") % installedDSA.front().timestamp));
   _pt.put("platform.installed_shell.file", installedDSA.front().file);
-  _pt.put("platform.shell_upto_date", same_shell( on_board_rom_info.get<std::string>("vbnv"), on_board_rom_info.get<std::string>("id"), installedDSA.front()));
-  _pt.put("platform.sc_upto_date", same_sc( on_board_xmc_info.get<std::string>("sc_version"), installedDSA.front()));
+  _pt.put("platform.shell_upto_date", same_shell( on_board_rom_info.get<std::string>("vbnv", ""), on_board_rom_info.get<std::string>("id", ""), installedDSA.front()));
+  _pt.put("platform.sc_upto_date", same_sc( on_board_xmc_info.get<std::string>("sc_version", ""), installedDSA.front()));
 
 }
 
@@ -130,7 +130,7 @@ ReportPlatform::writeReport( const xrt_core::device * _pDevice,
   _output << boost::format("  %-20s : %s\n") % "Platform" % _pt.get<std::string>("platform.installed_shell.vbnv", "N/A");
   _output << boost::format("  %-20s : %s\n") % "SC Version" % _pt.get<std::string>("platform.installed_shell.sc_version", "N/A");
   _output << boost::format("  %-20s : 0x%x\n") % "Platform ID" % _pt.get<std::string>("platform.installed_shell.id", "N/A");
-  _output << shell_status(_pt.get<bool>("platform.shell_upto_date"), _pt.get<bool>("platform.sc_upto_date"));
+  _output << shell_status(_pt.get<bool>("platform.shell_upto_date", ""), _pt.get<bool>("platform.sc_upto_date", ""));
   _output << "----------------------------------------------------\n";
 
 }
