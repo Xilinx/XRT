@@ -925,7 +925,7 @@ DebugIpStatusCollector::populateOverview(boost::property_tree::ptree &_pt)
   if(nullptr == dbgIpLayout)
     return;
 
-  _pt.put("total_debug_ip_num", dbgIpLayout->m_count);
+  _pt.put("total_num_debug_ips", dbgIpLayout->m_count);
 
   for(uint64_t i = 0; i < dbgIpLayout->m_count; i++) {
     if (dbgIpLayout->m_debug_ip_data[i].m_type > maxDebugIpType) {
@@ -936,12 +936,18 @@ DebugIpStatusCollector::populateOverview(boost::property_tree::ptree &_pt)
     ++debugIpNum[dbgIpLayout->m_debug_ip_data[i].m_type];
   }
 
+  boost::property_tree::ptree dbg_ip_list_pt;
   for(uint8_t i = 0; i < maxDebugIpType; i++) {
     if(0 == debugIpNum[i]) {
        continue;
     }
-    _pt.put(debugIpNames[i], debugIpNum[i]);
+    boost::property_tree::ptree entry;
+    entry.put("name", debugIpNames[i]);
+    entry.put("count", debugIpNum[i]);
+
+    dbg_ip_list_pt.push_back(std::make_pair("", entry));
   }
+  _pt.add_child("debug_ips", dbg_ip_list_pt);
 }
 
 void 
@@ -983,7 +989,7 @@ DebugIpStatusCollector::populateAIMResults(boost::property_tree::ptree &_pt)
     aim_pt.push_back(std::make_pair("", entry));
   }
 
-  _pt.add_child("AXI_Interface_Monitor_Counters", aim_pt); 
+  _pt.add_child("axi_interface_monitor_counters", aim_pt); 
 }
 
 void 
@@ -1013,7 +1019,7 @@ DebugIpStatusCollector::populateAMResults(boost::property_tree::ptree &_pt)
     am_pt.push_back(std::make_pair("", entry));
   }
 
-  _pt.add_child("Accelerator_Monitor_Counters", am_pt);
+  _pt.add_child("accelerator_monitor_counters", am_pt);
 }
 
 void 
@@ -1040,7 +1046,7 @@ DebugIpStatusCollector::populateASMResults(boost::property_tree::ptree &_pt)
     asm_pt.push_back(std::make_pair("", entry));
   }
 
-  _pt.add_child("AXI_Stream_Monitor_Counters", asm_pt);
+  _pt.add_child("axi_stream_monitor_counters", asm_pt);
 }
 
 void 
@@ -1062,7 +1068,7 @@ DebugIpStatusCollector::populateLAPCResults(boost::property_tree::ptree &_pt)
     lapc_pt.push_back(std::make_pair("", entry));
   }
 
-  _pt.add_child("Light_Weight_AXI_Protocol_Checkers", lapc_pt);
+  _pt.add_child("light_weight_axi_protocol_checkers", lapc_pt);
 
 }
 
@@ -1085,7 +1091,7 @@ DebugIpStatusCollector::populateSPCResults(boost::property_tree::ptree &_pt)
     spc_pt.push_back(std::make_pair("", entry));
   }
 
-  _pt.add_child("AXI_Streaming_Protocol_Checkers", spc_pt);
+  _pt.add_child("axi_streaming_protocol_checkers", spc_pt);
 }
 
 };
@@ -1107,7 +1113,7 @@ ReportDebugIpStatus::getPropertyTree20201( const xrt_core::device * _pDevice,
                                       boost::property_tree::ptree &_pt) const
 {
   boost::property_tree::ptree pt;
-  pt.put("Description","Status of Debug IPs present in xclbin loaded on device");
+  pt.put("description","Status of Debug IPs present in xclbin loaded on device");
 
   auto handle = _pDevice->get_device_handle();
 
@@ -1117,7 +1123,7 @@ ReportDebugIpStatus::getPropertyTree20201( const xrt_core::device * _pDevice,
   collector.populateAllResults(pt);
 
   // There can only be 1 root node
-  _pt.add_child("debug-ip-status", pt);
+  _pt.add_child("debug_ip_status", pt);
   
 }
 
