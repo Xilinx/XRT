@@ -82,33 +82,46 @@ failed:
 	xocl_subdev_fini(xdev_hdl);
 	return ret;
 }
-static struct xocl_subdev *xocl_subdev_reserve(xdev_handle_t xdev_hdl,
+
+static struct xocl_subdev *xocl_subdev_info2dev(xdev_handle_t xdev_hdl,
 		struct xocl_subdev_info *sdev_info)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
 	struct xocl_subdev *subdev;
 	int devid = sdev_info->id;
-	int max = sdev_info->multi_inst ? XOCL_SUBDEV_MAX_INST : 1;
 	int i;
 
-	if (sdev_info->override_idx != -1) {
-		subdev = &core->subdevs[devid][sdev_info->override_idx];
-		if (subdev->state != XOCL_SUBDEV_STATE_UNINIT) {
-			xocl_xdev_info(xdev_hdl, "subdev %d index %d is in-use",
-				devid, sdev_info->override_idx);
-			return NULL;
-		}
-	} else {
-		for (i = 0; i < max; i++) {
-			subdev = &core->subdevs[devid][i];
-			if (subdev->state == XOCL_SUBDEV_STATE_UNINIT)
-				break;
-		}
-		if (i == max)
-			return NULL;
+	if (sdev_info->override_idx != -1)
+		return &core->subdevs[devid][sdev_info->override_idx];
+	else if (!sdev_info->multi_inst)
+		return &core->subdevs[devid][0];
+
+	for (i = 0; i < XOCL_SUBDEV_MAX_INST; i++) {
+		subdev = &core->subdevs[devid][i];
+		if (subdev->state == XOCL_SUBDEV_STATE_UNINIT)
+			return subdev;
 	}
 
-	subdev->state = XOCL_SUBDEV_STATE_INIT;
+	return NULL;
+}
+
+static int xocl_subdev_reserve(xdev_handle_t xdev_hdl,
+		struct xocl_subdev_info *sdev_info,
+		struct xocl_subdev **rtn_subdev)
+{
+	struct xocl_subdev *subdev;
+
+	*rtn_subdev = NULL;
+	subdev = xocl_subdev_info2dev(xdev_hdl, sdev_info);
+	if (!subdev) {
+		xocl_xdev_err(xdev_hdl, "not enough entries");
+		return -ENOENT;
+	}
+
+	if (subdev->state != XOCL_SUBDEV_STATE_UNINIT) {
+		xocl_xdev_info(xdev_hdl, "subdev is in-use");
+		return -EEXIST;
+	}
 
 	subdev->inst = ida_simple_get(&subdev_inst_ida,
 			sdev_info->id << MINORBITS,
@@ -116,15 +129,12 @@ static struct xocl_subdev *xocl_subdev_reserve(xdev_handle_t xdev_hdl,
 			GFP_KERNEL);
 	if (subdev->inst < 0) {
 		xocl_xdev_err(xdev_hdl, "Not enought inst id");
-		goto error;
+		return -ENOENT;
 	}
 
-	return subdev;
-
-error:
-	subdev->state = XOCL_SUBDEV_STATE_UNINIT;
-
-	return NULL;
+	subdev->state = XOCL_SUBDEV_STATE_INIT;
+	*rtn_subdev = subdev;
+	return 0;
 }
 
 static struct xocl_subdev *xocl_subdev_lookup(struct platform_device *pldev)
@@ -346,15 +356,9 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 	xocl_xdev_info(xdev_hdl, "creating subdev %s multi %d level %d",
 		devname, sdev_info->multi_inst, sdev_info->level);
 
-	subdev = xocl_subdev_reserve(xdev_hdl, sdev_info);
-	if (!subdev) {
-		if (!sdev_info->multi_inst)
-			retval = -EEXIST;
-		else
-			retval = -ENOENT;
+	retval = xocl_subdev_reserve(xdev_hdl, sdev_info, &subdev);
+	if (retval)
 		goto error;
-	}
-
 
 	/* Restore the dev_idx */
 	dev_idx = subdev->info.dev_idx;
@@ -499,7 +503,7 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 	return 0;
 
 error:
-	if (subdev)
+	if (retval != -EEXIST && subdev)
 		__xocl_subdev_destroy(xdev_hdl, subdev);
 
 	return retval;
@@ -746,6 +750,31 @@ void xocl_subdev_destroy_by_level(xdev_handle_t xdev_hdl, int level)
 				__xocl_subdev_destroy(xdev_hdl,
 					&core->subdevs[i][j]);
 	xocl_unlock_xdev(xdev_hdl);
+}
+
+static void xocl_subdev_destroy_dup(xdev_handle_t xdev_hdl)
+{
+	int i, subdev_num = 0;
+	struct xocl_subdev_info *subdev_info = NULL;
+	struct xocl_subdev *subdev;
+
+	xocl_lock_xdev(xdev_hdl);
+	subdev_info = xocl_subdev_get_info(xdev_hdl, &subdev_num);
+	for (i = 0; i < subdev_num; i++) {
+		subdev = xocl_subdev_info2dev(xdev_hdl, &subdev_info[i]);
+		if (!subdev || subdev->state == XOCL_SUBDEV_STATE_UNINIT)
+			continue;
+
+		if (subdev->info.level < subdev_info[i].level) {
+			xocl_xdev_info(xdev_hdl, "destroy duplicate subdev %s",
+					subdev->info.name);
+			__xocl_subdev_destroy(xdev_hdl, subdev);
+		}
+	}
+	xocl_unlock_xdev(xdev_hdl);
+
+	if (subdev_info)
+		vfree(subdev_info);
 }
 
 static int __xocl_subdev_offline(xdev_handle_t xdev_hdl,
@@ -1426,6 +1455,7 @@ int xocl_subdev_create_prp(xdev_handle_t xdev)
 {
 	int		ret;
 
+	xocl_subdev_destroy_dup(xdev);
 	ret = xocl_subdev_create_by_level(xdev, XOCL_SUBDEV_LEVEL_PRP);
 	if (ret) {
 		xocl_xdev_err(xdev, "failed to create subdevs %d", ret);
