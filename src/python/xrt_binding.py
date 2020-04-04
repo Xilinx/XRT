@@ -419,7 +419,11 @@ def xclAllocBO(handle, size, unused, flags):
     """
     libc.xclAllocBO.restype = ctypes.c_uint
     libc.xclAllocBO.argtypes = [xclDeviceHandle, ctypes.c_size_t, ctypes.c_int, ctypes.c_uint]
-    return libc.xclAllocBO(handle, size, unused, flags)
+    res = libc.xclAllocBO(handle, size, unused, flags)
+    if (res < 0):
+        res = -res
+        raise OSError(res, os.strerror(res))
+    return res
 
 def xclAllocUserPtrBO(handle, userptr, size, flags):
     """
@@ -432,7 +436,11 @@ def xclAllocUserPtrBO(handle, userptr, size, flags):
     """
     libc.xclAllocUserPtrBO.restype = ctypes.c_uint
     libc.xclAllocUserPtrBO.argtypes = [xclDeviceHandle, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_uint]
-    return libc.xclAllocUserPtrBO(handle, userptr, size, flags)
+    res = libc.xclAllocUserPtrBO(handle, userptr, size, flags)
+    if (res < 0):
+        res = -res
+        raise OSError(res, os.strerror(res))
+    return res
 
 def xclFreeBO(handle, boHandle):
     """
@@ -457,7 +465,11 @@ def xclWriteBO(handle, boHandle, src, size, seek):
     """
     libc.xclWriteBO.restype = ctypes.c_int
     libc.xclWriteBO.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_size_t]
-    return libc.xclWriteBO(handle, boHandle, src, size, seek)
+    res = libc.xclWriteBO(handle, boHandle, src, size, seek)
+    if res:
+        res = -res
+        raise OSError(res, os.strerror(res))
+    return res
 
 def xclReadBO(handle, boHandle, dst, size, skip):
     """
@@ -471,7 +483,11 @@ def xclReadBO(handle, boHandle, dst, size, skip):
     """
     libc.xclReadBO.restype = ctypes.c_int
     libc.xclReadBO.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_size_t]
-    return libc.xclReadBO(handle, boHandle, dst, size, skip)
+    res = libc.xclReadBO(handle, boHandle, dst, size, skip)
+    if res:
+        res = -res
+        raise OSError(res, os.strerror(res))
+    return res
 
 def xclMapBO(handle, boHandle, write, buf_type='char', buf_size=1):
     """
@@ -518,9 +534,13 @@ def xclSyncBO(handle, boHandle, direction, size, offset):
     :param offset: (size_t) Offset within the BO
     :return: 0 on success or standard errno
     """
-    libc.xclSyncBO.restype = ctypes.c_uint
+    libc.xclSyncBO.restype = ctypes.c_int
     libc.xclSyncBO.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_int, ctypes.c_size_t, ctypes.c_size_t]
-    return libc.xclSyncBO(handle, boHandle, direction, size, offset)
+    res = libc.xclSyncBO(handle, boHandle, direction, size, offset)
+    if res:
+        res = -res
+        raise OSError(res, os.strerror(res))
+    return res
 
 def xclCopyBO(handle, dstBoHandle, srcBoHandle, size, dst_offset, src_offset):
     """
@@ -536,7 +556,11 @@ def xclCopyBO(handle, dstBoHandle, srcBoHandle, size, dst_offset, src_offset):
     libc.xclCopyBO.restype = ctypes.c_int
     libc.xclCopyBO.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_uint, ctypes.c_size_t, ctypes.c_size_t,
                                ctypes.c_uint]
-    libc.xclCopyBO(handle, dstBoHandle, srcBoHandle, size, dst_offset, src_offset)
+    res = xclCopyBO(handle, dstBoHandle, srcBoHandle, size, dst_offset, src_offset)
+    if res:
+        res = -res
+        raise OSError(res, os.strerror(res))
+    return res
 
 def xclExportBO(handle, boHandle):
     """
@@ -547,7 +571,11 @@ def xclExportBO(handle, boHandle):
     """
     libc.xclExportBO.restype = ctypes.c_int
     libc.xclExportBO.argtypes = [xclDeviceHandle, ctypes.c_uint]
-    return libc.xclExportBO(handle, boHandle)
+    res = libc.xclExportBO(handle, boHandle)
+    if (res < 0):
+        res = -res
+        raise OSError(res, os.strerror(res))
+    return res
 
 def xclImportBO(handle, fd, flags):
     """
@@ -575,22 +603,11 @@ def xclGetBOProperties(handle, boHandle, properties):
     """
     libc.xclGetBOProperties.restype = ctypes.c_int
     libc.xclGetBOProperties.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.POINTER(xclBOProperties)]
-    return libc.xclGetBOProperties(handle, boHandle, properties)
-
-def xclGetDeviceAddr(handle, boHandle):
-    """
-    Get the physical address on the device
-
-    This API is deprecated and will be removed in future release.
-    New clients should use xclGetBOProperties() instead.
-
-    :param handle: (xclDeviceHandle) device handle
-    :param boHandle: (unsigned int) BO handle
-    :return: uint64_t address of the BO on success
-    """
-    libc.xclGetBOProperties.restype = ctypes.c_uint64
-    libc.xclGetBOProperties.argtypes = [xclDeviceHandle, ctypes.c_uint]
-    return libc.xclGetBOProperties(handle, boHandle)
+    res = libc.xclGetBOProperties(handle, boHandle, properties)
+    if res:
+        res = -res
+        raise OSError(res, os.strerror(res))
+    return res
 
 def xclUnmgdPread(handle, flags, buf, size, offeset):
     """
