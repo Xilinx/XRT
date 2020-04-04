@@ -117,147 +117,151 @@ inline int io_getevents(aio_context_t ctx, long min_nr, long max_nr,
 namespace xocl {
 
 /*
- * queue_cb: control block for a qdma queue
+ * queue_cb: A per queue control block for a qdma stream queue.
+ * queue_cb keeps track of * per-queue i/o related configurations. And it
+ * handles the actual interaction with the kernel on the i/o data path.
+ *
+ * Configuration:
+ * - qAioEn:		per queue aio context enabled or not 
+ * - qAioCtx:		per queue aio context, valid only if qAioEn = true 
+ * - set_option():	optional configurations for aio context and batching
+ *
+ * i/o data path:
+ * - queue_submit_io(): format & submit i/o to the kernel driver
+ * - queue_poll_completion(): polliing for completion event for asynchronously
+ * 			submitted i/o requests, valid only if qAioEn = true
  */
 class queue_cb {
-public:
-    friend class shim;
-
-    queue_cb(struct xocl_qdma_ioc_create_queue *qinfo);
-    ~queue_cb();
-    int set_option(int type, uint32_t val);
-    // get aio completion event of the queue
-    int queue_poll_completion(int min_compl, int max_compl,
-                    struct xclReqCompletion *comps, int* actual, int timeout);
-    // submit the read/write i/o to the queue
-    ssize_t queue_submit_io(xclQueueRequest *wr, aio_context_t *mAioCtx);
-
 private:
     uint64_t qhndl;		/* queue handle */
     bool h2c; 			/* queue is for H2C direction */
     bool qAioEn;		/* per queue aio is enabled */
     aio_context_t qAioCtx;	/* per queue aio context */
-};
 
-queue_cb::~queue_cb()
-{
-    if (qAioEn)
-        io_destroy(qAioCtx);
-}
+public:
+    queue_cb(struct xocl_qdma_ioc_create_queue *qinfo)
+    {
+       qhndl = qinfo->handle;
+       h2c = qinfo->write ? true : false;
+       qAioEn = false;
 
-queue_cb::queue_cb(struct xocl_qdma_ioc_create_queue *qinfo)
-{
-    qhndl = qinfo->handle;
-    h2c = qinfo->write ? true : false;
-    qAioEn = false;
+       memset(&qAioCtx, 0, sizeof(qAioCtx));
+    }
+    ~queue_cb() {
+        if (qAioEn)
+           io_destroy(qAioCtx);
+    }
+    const bool queue_aio_ctx_enabled(void) { return qAioEn; }
+    const bool queue_is_h2c(void) { return h2c; }
+    const int queue_get_handle(void) { return (int)qhndl; }
 
-    memset(&qAioCtx, 0, sizeof(qAioCtx));
-}
-
-int queue_cb::set_option(int type, uint32_t val)
-{
-    int rc = -EINVAL;
-
-    switch(type) {
-    case XCL_QOPT_AIO_MAX_EVENT:
-	if (!qAioEn) {
-		rc = io_setup(SHIM_QDMA_AIO_EVT_MAX, &qAioCtx);
+    // optional configurations
+    int set_option(int type, uint32_t val) 
+    {
+        switch(type) {
+        case STREAM_OPT_AIO_MAX_EVENT:
+	    if (!qAioEn) {
+		auto rc = io_setup(SHIM_QDMA_AIO_EVT_MAX, &qAioCtx);
 		if (!rc)
 			qAioEn = true;
-	}
-        break;
-    /* for packet batching */
-    case XCL_QOPT_AIO_BATCH_THRESH_BYTES:
-    case XCL_QOPT_AIO_BATCH_THRESH_PKTS:
-    case XCL_QOPT_AIO_BATCH_THRESH_TIMER:
-        rc = -ENOSYS;
-        break;
-    default:
-        break;
-    }
-
-    return rc;
-}
-
-int queue_cb::queue_poll_completion(int min_compl, int max_compl, struct xclReqCompletion *comps, int* actual, int timeout /*ms*/)
-{
-    struct timespec time, *ptime = nullptr;
-    unsigned int num_evt;
-
-    *actual = 0;
-
-    if (timeout > 0) {
-        memset(&time, 0, sizeof(time));
-        time.tv_sec = timeout / 1000;
-        time.tv_nsec = (timeout % 1000) * 1000000;
-        ptime = &time;
-    }
-
-    int rc = io_getevents(qAioCtx, min_compl, max_compl, (struct io_event *)comps, ptime);
-    if (rc <= 0)
-        return -ETIME;
-
-    *actual = num_evt = rc;
-    for (int i = num_evt - 1; i >= 0; i--) {
-        comps[i].priv_data = (void *)((struct io_event *)comps)[i].data;
-        if (((struct io_event *)comps)[i].res < 0){
-            /* error returned by AIO framework */
-            comps[i].nbytes = 0;
-            comps[i].err_code = ((struct io_event *)comps)[i].res;
-        } else {
-            comps[i].nbytes = ((struct io_event *)comps)[i].res;
-            comps[i].err_code = ((struct io_event *)comps)[i].res2;
+                return rc;
+	    }
+            return -EINVAL;
+            /* for i/o batching */
+        case STREAM_OPT_AIO_BATCH_THRESH_BYTES:
+        case STREAM_OPT_AIO_BATCH_THRESH_PKTS:
+        case STREAM_OPT_AIO_BATCH_THRESH_TIMER:
+            return -ENOSYS;
+        default:
+            return -EINVAL;
         }
     }
 
-    return 0;
-}
+    // get aio completion event of the queue
+    int queue_poll_completion(int min_compl, int max_compl,
+                              struct xclReqCompletion *comps, int* actual,
+                              int timeout /*ms*/)
+    {
+        struct timespec time, *ptime = nullptr;
+        unsigned int num_evt;
 
-ssize_t queue_cb::queue_submit_io(xclQueueRequest *wr, aio_context_t *mAioCtx)
-{
-    ssize_t rc = 0;
-    aio_context_t *aio_ctx = qAioEn ? &qAioCtx : mAioCtx;
+        *actual = 0;
 
-    for (unsigned i = 0; i < wr->buf_num; i++) {
-        void *buf = (void *)wr->bufs[i].va;
-        struct iovec iov[2];
-        struct xocl_qdma_req_header header;
-
-        header.flags = wr->flag;
-        iov[0].iov_base = &header;
-        iov[0].iov_len = sizeof(header);
-        iov[1].iov_base = buf;
-        iov[1].iov_len = wr->bufs[i].len;
-
-        if (wr->flag & XCL_QUEUE_REQ_NONBLOCKING) {
-            struct iocb cb;
-            struct iocb *cbs[1];
-
-            memset(&cb, 0, sizeof(cb));
-            cb.aio_fildes = (int)qhndl;
-            cb.aio_lio_opcode = h2c ? IOCB_CMD_PWRITEV : IOCB_CMD_PREADV;
-            cb.aio_buf = (uint64_t)iov;
-            cb.aio_offset = 0;
-            cb.aio_nbytes = 2;
-            cb.aio_data = (uint64_t)wr->priv_data;
-
-            cbs[0] = &cb;
-            int rv = io_submit(*aio_ctx, 1, cbs);
-            if (rv <= 0)
-                break;
-            rc++;
-        } else {
-            if (h2c)
-                rc = writev((int)qhndl, iov, 2);
-            else
-                rc = readv((int)qhndl, iov, 2);
-
-            if (rc < 0 || (size_t)rc != wr->bufs[i].len)
-                break;
+        if (timeout > 0) {
+            memset(&time, 0, sizeof(time));
+            time.tv_sec = timeout / 1000;
+            time.tv_nsec = (timeout % 1000) * 1000000;
+            ptime = &time;
         }
+
+        int rc = io_getevents(qAioCtx, min_compl, max_compl, (struct io_event *)comps, ptime);
+        if (rc <= 0)
+            return -ETIME;
+
+        *actual = num_evt = rc;
+        for (int i = num_evt - 1; i >= 0; i--) {
+            comps[i].priv_data = (void *)((struct io_event *)comps)[i].data;
+            if (((struct io_event *)comps)[i].res < 0){
+                /* error returned by AIO framework */
+                comps[i].nbytes = 0;
+                comps[i].err_code = ((struct io_event *)comps)[i].res;
+            } else {
+                comps[i].nbytes = ((struct io_event *)comps)[i].res;
+                comps[i].err_code = ((struct io_event *)comps)[i].res2;
+            }
+        }
+
+        return 0;
     }
-    return rc;
-}
+
+    // submit the read/write i/o to the queue
+    ssize_t queue_submit_io(xclQueueRequest *wr, aio_context_t *mAioCtx)
+    {
+        ssize_t rc = 0;
+        aio_context_t *aio_ctx = qAioEn ? &qAioCtx : mAioCtx;
+
+        for (unsigned int i = 0; i < wr->buf_num; i++) {
+            void *buf = (void *)wr->bufs[i].va;
+            struct iovec iov[2];
+            struct xocl_qdma_req_header header;
+
+            header.flags = wr->flag;
+            iov[0].iov_base = &header;
+            iov[0].iov_len = sizeof(header);
+            iov[1].iov_base = buf;
+            iov[1].iov_len = wr->bufs[i].len;
+
+            if (wr->flag & XCL_QUEUE_REQ_NONBLOCKING) {
+                struct iocb cb;
+                struct iocb *cbs[1];
+
+                memset(&cb, 0, sizeof(cb));
+                cb.aio_fildes = (int)qhndl;
+                cb.aio_lio_opcode = h2c ? IOCB_CMD_PWRITEV : IOCB_CMD_PREADV;
+                cb.aio_buf = (uint64_t)iov;
+                cb.aio_offset = 0;
+                cb.aio_nbytes = 2;
+                cb.aio_data = (uint64_t)wr->priv_data;
+
+                cbs[0] = &cb;
+                int rv = io_submit(*aio_ctx, 1, cbs);
+                if (rv <= 0)
+                    break;
+                rc++;
+            } else {
+                if (h2c)
+                    rc = writev((int)qhndl, iov, 2);
+                else
+                    rc = readv((int)qhndl, iov, 2);
+
+                if (rc < 0 || (size_t)rc != wr->bufs[i].len)
+                    break;
+            }
+        }
+        return rc;
+    }
+
+}; /* queue_cb */
 
 /*
  * shim()
@@ -1418,7 +1422,7 @@ int shim::xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
 int shim::xclDestroyQueue(uint64_t q_hdl)
 {
     queue_cb *qcb = reinterpret_cast<queue_cb *>(q_hdl);
-    int rc = close((int)qcb->qhndl);
+    int rc = close(qcb->queue_get_handle());
 
     if (rc)
         xrt_logmsg(XRT_ERROR, "%s: Destroy Queue failed", __func__);
@@ -1523,7 +1527,7 @@ int shim::xclPollQueue(uint64_t q_hdl, int min_compl, int max_compl, struct xclR
 {
     queue_cb *qcb = reinterpret_cast<queue_cb *>(q_hdl);
 
-    if (!qcb->qAioEn) {
+    if (!qcb->queue_aio_ctx_enabled()) {
         xrt_logmsg(XRT_ERROR, "%s: per-queue AIO is not enabled", __func__);
         return -EINVAL;
     }
@@ -1547,13 +1551,13 @@ ssize_t shim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
 {
     queue_cb *qcb = reinterpret_cast<queue_cb *>(q_hdl);
 
-    if (!qcb->h2c) {
+    if (!qcb->queue_is_h2c()) {
         xrt_logmsg(XRT_ERROR, "%s: queue is read only", __func__);
         return -EINVAL;
     }
 
     if ((wr->flag & XCL_QUEUE_REQ_NONBLOCKING) &&
-        !mAioEnabled && !qcb->qAioEn) {
+        !mAioEnabled && !(qcb->queue_aio_ctx_enabled())) {
          xrt_logmsg(XRT_ERROR, "%s: NONBLOCK but aio NOT enabled.\n", __func__);
          return -EINVAL;
     }
@@ -1578,13 +1582,13 @@ ssize_t shim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr)
 {
     queue_cb *qcb = reinterpret_cast<queue_cb *>(q_hdl);
 
-    if (qcb->h2c) {
+    if (qcb->queue_is_h2c()) {
         xrt_logmsg(XRT_ERROR, "%s: queue is write only", __func__);
         return -EINVAL;
     }
 
     if ((wr->flag & XCL_QUEUE_REQ_NONBLOCKING) &&
-        !mAioEnabled && !qcb->qAioEn) {
+        !mAioEnabled && !(qcb->queue_aio_ctx_enabled())) {
          xrt_logmsg(XRT_ERROR, "%s: NONBLOCK but aio NOT enabled.\n", __func__);
          return -EINVAL;
     }

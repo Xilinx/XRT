@@ -1103,15 +1103,6 @@ struct xclReqBuffer {
     uint64_t  buf_hdl;   // NULL when first field is buffer pointer
 };
 
-enum xclQueueOptions {
-    XCL_QOPT_AIO_MAX_EVENT = 1,      /* maximum # aio event */
-    XCL_QOPT_AIO_BATCH_THRESH_BYTES, /* io batching threshold: # bytes */
-    XCL_QOPT_AIO_BATCH_THRESH_PKTS,  /* io_batching threshold: # request */
-    XCL_QOPT_AIO_BATCH_THRESH_TIMER, /* io batching threshold: timer */
-
-    XCL_QOPT_MAX
-};
-
 /*
  * enum xclQueueRequestKind - request type.
  */

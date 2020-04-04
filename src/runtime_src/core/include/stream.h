@@ -24,15 +24,6 @@
 extern "C" {
 #endif
 
-typedef enum stream_opt_type {
-    STREAM_OPT_AIO_MAX_EVENT = 1,	/* maximum # aio event */
-    STREAM_OPT_AIO_BATCH_THRESH_BYTES,	/* io batching threshold: # bytes */
-    STREAM_OPT_AIO_BATCH_THRESH_PKTS,	/* io_batching threshold: # request */
-    STREAM_OPT_AIO_BATCH_THRESH_TIMER,	/* io batching threshold: timer */
-
-    STREAM_OPT_MAX
-} stream_opt_type;
-
 /**
  * cl_stream_xfer_req.
  * For each read or write request, this extra data needs to be sent.
