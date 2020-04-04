@@ -24,8 +24,6 @@
 extern "C" {
 #endif
 
-typedef uint32_t stream_xfer_req_type;
-
 /**
  * cl_stream_xfer_req.
  * For each read or write request, this extra data needs to be sent.

@@ -246,6 +246,7 @@ typedef uint32_t cl_stream_attributes;
 #define CL_STREAM_NONBLOCKING                       (1 << 2)
 #define CL_STREAM_SILENT                            (1 << 3)
 
+typedef stream_opt_type              cl_stream_opt_type;
 typedef stream_xfer_req_type         cl_stream_xfer_req_type;
 typedef streams_poll_req_completions cl_streams_poll_req_completions;
 typedef stream_xfer_req              cl_stream_xfer_req;
@@ -345,6 +346,37 @@ clPollStreams(cl_device_id /*device*/,
 	cl_int /*timeout in ms*/,
 	cl_int * /*errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
 
+/* clPollStream - Poll a single stream on a device for completion.
+ * @stream                : The stream
+ * @completions           : Completions array
+ * @min_num_completions   : Minimum number of completions requested
+ * @max_num_completions   : Maximum number of completions requested
+ * @actual_num_completions: Actual number of completions returned.
+ * @timeout               : Timeout in milliseconds (ms)
+ * @errcode_ret :         : The return value eg CL_SUCCESS
+ * Return a cl_int.
+ */
+extern CL_API_ENTRY cl_int CL_API_CALL
+clPollStream(cl_stream             /* stream*/,
+       	cl_streams_poll_req_completions* /*completions*/,
+	cl_int  /*min_num_completion*/,
+	cl_int  /*max_num_completion*/,
+	cl_int* /*actual num_completion*/,
+	cl_int /*timeout in ms*/,
+	cl_int * /*errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
+
+/* clSetStreamOpt -Set stream options.
+ * @stream                : The stream
+ * @option                : the option type
+ * @val                   : the option value
+ * @errcode_ret :         : The return value eg CL_SUCCESS
+ * Return a cl_int.
+ */
+extern CL_API_ENTRY cl_int CL_API_CALL
+clSetStreamOpt(cl_stream             /* stream*/,
+	cl_stream_opt_type  /*option_type*/,
+	cl_int  /*option_value*/,
+	cl_int * /*errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
 //End QDMA APIs
 
 typedef struct _cl_mem * rte_mbuf;

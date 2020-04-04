@@ -455,6 +455,20 @@ poll_streams(xrt::device::stream_xfer_completions* comps, int min, int max, int*
   return m_xdevice->pollStreams(comps, min,max,actual,timeout);
 }
 
+int
+device::
+poll_stream(xrt::device::stream_handle stream, xrt::device::stream_xfer_completions* comps, int min, int max, int* actual, int timeout)
+{
+  return m_xdevice->pollStream(stream, comps, min,max,actual,timeout);
+}
+
+int
+device::
+set_stream_opt(xrt::device::stream_handle stream, int type, uint32_t val)
+{
+  return m_xdevice->setStreamOpt(stream, type, val);
+}
+
 device::
 device(platform* pltf, xrt::device* xdevice)
   : m_uid(uid_count++), m_platform(pltf), m_xdevice(xdevice)
