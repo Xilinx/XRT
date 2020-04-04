@@ -939,10 +939,13 @@ static int queue_req_complete(unsigned long priv, unsigned int done_bytes,
 	}
 	iocb->cmpl_count++;
 
-	if (iocb->kiocb && (iocb->cmpl_count == iocb->req_count)) {
-		cmpl_aio(iocb->kiocb, iocb->cmpl_count - iocb->err_cnt,
-			iocb->res2);
-		iocb->kiocb = NULL;
+	/* if aio cancel already called on the request, kiocb could be NULL */
+	if (iocb->cmpl_count == iocb->req_count) {
+		if (iocb->kiocb) {
+			cmpl_aio(iocb->kiocb, iocb->cmpl_count - iocb->err_cnt,
+				iocb->res2);
+			iocb->kiocb = NULL;
+		}
 		free_req = true;
 	}
 	spin_unlock_bh(&iocb->lock);
@@ -1309,9 +1312,9 @@ static int queue_flush(struct qdma_stream_queue *queue)
 		spin_unlock_bh(&queue->req_lock);
 		for (i = 0; i < iocb->req_count; i++, reqcb++) {
 			xocl_info(&qdma->pdev->dev,
-				"Queue 0x%lx, cancel ioreq 0x%p,0x%p, 0x%x",
-				queue->queue, ioreq, reqcb->req,
-				reqcb->req->count);
+				"Queue 0x%lx, cancel ioreq 0x%p,%d/%lu,0x%p, 0x%x",
+				queue->queue, ioreq, i, iocb->req_count,
+				reqcb->req, reqcb->req->count);
 			queue_req_complete((unsigned long)reqcb, 0, -ECANCELED);
 		}
 		spin_lock_bh(&queue->req_lock);
