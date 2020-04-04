@@ -18,6 +18,7 @@
 // Local - Include Files
 #include "SubCmdProgram.h"
 #include "tools/common/XBUtilities.h"
+#include "tools/common/XBHelpMenus.h"
 #include "tools/common/ProgressBar.h"
 namespace XBU = XBUtilities;
 
@@ -37,6 +38,11 @@ namespace XBU = XBUtilities;
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
 namespace po = boost::program_options;
+
+// ---- Reports ------
+#include "tools/common/Report.h"
+#include "tools/common/ReportHost.h"
+#include "ReportPlatform.h"
 
 // System - Include Files
 #include <iostream>
@@ -60,7 +66,7 @@ namespace {
  * Update shell on the board for auto flash
  */
 static void 
-update_shell(uint16_t index, const std::string& primary, const std::string& secondary)
+update_shell(unsigned int  index, const std::string& primary, const std::string& secondary)
 {
   Flasher flasher(index);
   if(!flasher.isValid())
@@ -88,7 +94,7 @@ update_shell(uint16_t index, const std::string& primary, const std::string& seco
  * Update shell on the board for manual flash
  */
 static void 
-update_shell(uint16_t index, const std::string& flashType,
+update_shell(unsigned int index, const std::string& flashType,
   const std::string& primary, const std::string& secondary)
 {
   if (!flashType.empty()) {
@@ -115,13 +121,16 @@ update_shell(uint16_t index, const std::string& flashType,
 
   flasher.upgradeFirmware(flashType, pri.get(), sec.get());
   std::cout << boost::format("%-8s : %s \n") % "INFO" % "Shell is updated successfully.";
+  std::cout << "****************************************************\n";
+  std::cout << "Cold reboot machine to load the new image on card.\n";
+  std::cout << "****************************************************\n";
 }
 
 /*
  * Update SC firmware on the board
  */
 static void 
-update_SC(uint16_t index, const std::string& file)
+update_SC(unsigned int  index, const std::string& file)
 {
   Flasher flasher(index);
   if(!flasher.isValid())
@@ -190,94 +199,55 @@ get_file_timestamp(const char* file)
   return std::string(std::asctime(std::localtime(&ftime)));
 }
 
-/*
- * Header info
- */
 static void
-status_report(const std::string& bdf, const DSAInfo& currentDSA, const DSAInfo& candidate)
+pretty_print_platform_info(const boost::property_tree::ptree& _ptDevice)
 {
-  std::cout << boost::format("%s : %d\n") % "Device BDF" % bdf;
+  std::cout << boost::format("%s : %d\n") % "Device BDF" % _ptDevice.get<std::string>("platform.bdf");
   std::cout << "Current Configuration\n";
 
-  std::cout << boost::format("  %-20s : %s\n") % "Platform" % currentDSA.name;
-  std::cout << boost::format("  %-20s : %s\n") % "SC Version" % currentDSA.bmcVer;
-  std::cout << boost::format("  %-20s : 0x%x\n") % "Platform ID" % currentDSA.timestamp;
+  std::cout << boost::format("  %-20s : %s\n") % "Platform" % _ptDevice.get<std::string>("platform.shell_on_fpga.vbnv", "N/A");
+  std::cout << boost::format("  %-20s : %s\n") % "SC Version" % _ptDevice.get<std::string>("platform.shell_on_fpga.sc_version", "N/A");
+  std::cout << boost::format("  %-20s : 0x%x\n") % "Platform ID" % _ptDevice.get<std::string>("platform.shell_on_fpga.id", "N/A");
 
   std::cout << "\nIncoming Configuration\n";
-  std::pair <std::string, std::string> s = deployment_path_and_filename(candidate.file);
+  std::pair <std::string, std::string> s = deployment_path_and_filename(_ptDevice.get<std::string>("platform.installed_shell.file"));
   std::cout << boost::format("  %-20s : %s\n") % "Deployment File" % s.first;
   std::cout << boost::format("  %-20s : %s\n") % "Deployment Directory" % s.second;
-  std::cout << boost::format("  %-20s : %s\n") % "Size" % file_size(candidate.file.c_str());
-  std::cout << boost::format("  %-20s : %s\n\n") % "Timestamp" % get_file_timestamp(candidate.file.c_str());
+  std::cout << boost::format("  %-20s : %s\n") % "Size" % file_size(_ptDevice.get<std::string>("platform.installed_shell.file").c_str());
+  std::cout << boost::format("  %-20s : %s\n\n") % "Timestamp" % get_file_timestamp(_ptDevice.get<std::string>("platform.installed_shell.file").c_str());
 
-  std::cout << boost::format("  %-20s : %s\n") % "Platform" % candidate.name;
-  std::cout << boost::format("  %-20s : %s\n") % "SC Version" % candidate.bmcVer;
-  std::cout << boost::format("  %-20s : 0x%x\n\n") % "Platform ID" % candidate.timestamp;
+  std::cout << boost::format("  %-20s : %s\n") % "Platform" % _ptDevice.get<std::string>("platform.installed_shell.vbnv", "N/A");
+  std::cout << boost::format("  %-20s : %s\n") % "SC Version" % _ptDevice.get<std::string>("platform.installed_shell.sc_version", "N/A");
+  std::cout << boost::format("  %-20s : 0x%x\n") % "Platform ID" % _ptDevice.get<std::string>("platform.installed_shell.id", "N/A");
 }
 
-/* 
- * Find the correct shell to be flashed on the board
- * Helper method for auto_flash
- */
-static DSAInfo 
-selectShell(uint16_t idx, const std::string& dsa, const std::string& id)
+static void
+report_status(xrt_core::device_collection& deviceCollection, boost::property_tree::ptree& _pt) 
 {
-  Flasher flasher(idx);
-  if(!flasher.isValid())
-    throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % idx));
-
-  std::vector<DSAInfo> installedDSA = flasher.getInstalledDSA();
-  uint16_t candidateDSAIndex = std::numeric_limits<uint16_t>::max();
-  // Find candidate DSA from installed DSA list.
-  if (dsa.empty()) {
-    if (installedDSA.empty())
-      throw xrt_core::error("No platform is installed.");
-    if (installedDSA.size() > 1)
-      throw xrt_core::error("Multiple platforms are installed.");
-    candidateDSAIndex = 0;
-  } else {
-    for (uint16_t i = 0; i < installedDSA.size(); i++) {
-      const DSAInfo& idsa = installedDSA[i];
-      if (dsa != idsa.name)
-        continue;
-      if (!id.empty() && !idsa.matchId(id))
-        continue;
-      if (candidateDSAIndex != std::numeric_limits<uint16_t>::max()) {
-        return DSAInfo("");
-      }
-      candidateDSAIndex = i;
-    }
-  }
-  if (candidateDSAIndex == std::numeric_limits<uint16_t>::max())
-    throw xrt_core::error(boost::str(boost::format
-      ("Failed to flash device[%s]: Specified platform is not applicable") % flasher.sGetDBDF()));
-
-  DSAInfo& candidate = installedDSA[candidateDSAIndex];
-  bool same_dsa = false;
-  bool same_bmc = false;
-  DSAInfo currentDSA = flasher.getOnBoardDSA();
-  if (!currentDSA.name.empty()) {
-    same_dsa = ((candidate.name == currentDSA.name) &&
-      (candidate.matchId(currentDSA)));
-    same_bmc = ((currentDSA.bmcVer.empty()) ||
-      (candidate.bmcVer == currentDSA.bmcVer));
-  }
-  if (same_dsa && same_bmc) {
-    return DSAInfo("");
+  std::vector<std::string> elementsFilter;
+  //get platform report for all the devices
+  for (const auto & device : deviceCollection) {
+    boost::property_tree::ptree _ptDevice;
+    auto _rep = std::make_unique<ReportPlatform>();
+    _rep->getPropertyTree20201(device.get(), _ptDevice);
+    _pt.push_back(std::make_pair(std::to_string(device->get_device_id()), _ptDevice));
+    pretty_print_platform_info(_ptDevice);
+    std::cout << "----------------------------------------------------\n";
   }
 
-  status_report(flasher.sGetDBDF(), currentDSA, candidate);
+  std::stringstream action_list;
+  for (const auto & device : deviceCollection) {
+    if (!_pt.get<bool>(std::to_string(device->get_device_id()) + ".platform.shell_upto_date"))
+      action_list << "  -Program flash image on card[" << _pt.get<std::string>(std::to_string(device->get_device_id())+".platform.bdf") << "]\n";
+    if (!_pt.get<bool>(std::to_string(device->get_device_id())+".platform.sc_upto_date"))
+      action_list << "  -Program SC image on card[" << _pt.get<std::string>(std::to_string(device->get_device_id())+".platform.bdf") << "]\n";
+  }
+  
+  if(!action_list.str().empty()) {
+    std::cout << "Actions to perform:\n" << action_list.str();
+    std::cout << "----------------------------------------------------\n";
+  }
 
-  //decide and display which actions to perform
-  std::cout << "----------------------------------------------------\n";
-  std::cout << "Actions to perform:\n";
-  if(!same_dsa)
-    std::cout << "  -Program flash image\n";
-  if(!same_bmc)
-    std::cout << "  -Program SC image\n";
-  std::cout << "----------------------------------------------------\n";
-
-  return candidate;
 }
 
 /* 
@@ -311,7 +281,7 @@ canProceed()
  * Helper method for auto_flash
  */
 static int 
-updateShellAndSC(uint16_t boardIdx, DSAInfo& candidate, bool& reboot)
+updateShellAndSC(unsigned int  boardIdx, DSAInfo& candidate, bool& reboot)
 {
   reboot = false;
 
@@ -368,57 +338,27 @@ getBDF(unsigned int index)
   return xrt_core::query::pcie_bdf::to_string(bdf);
 }
 
-static void
-validate_dsa_timestamp(std::string& name, std::string& id)
-{
-  if (!name.empty()) {
-    bool foundDSA = false;
-    bool multiDSA = false;
-    auto installedDSAs = firmwareImage::getIntalledDSAs();
-    for (DSAInfo& dsa : installedDSAs) {
-      if (name == dsa.name &&
-        (id.empty() || dsa.matchId(id))) {
-          multiDSA = multiDSA || foundDSA;
-          foundDSA = true;
-      }
-    }
-    if (!foundDSA)
-      throw xrt_core::error("Specified shell not found");
-    if (multiDSA)
-      throw xrt_core::error("Specified shell matched multiple installed shells");
-  }
-}
-
 /* 
  * Update shell and sc firmware on the card automatically
  */
 static void 
-auto_flash(uint16_t index, std::string& name,
-    std::string& id, bool force) 
+auto_flash(xrt_core::device_collection& deviceCollection, bool force) 
 {
-  std::vector<uint16_t> boardsToCheck;
-  std::vector<std::pair<uint16_t, DSAInfo>> boardsToUpdate;
-
-  // Sanity check input dsa and timestamp.
-  validate_dsa_timestamp(name, id);
-
-  // Collect all indexes of boards need checking
-  auto total = xrt_core::get_total_devices(false).first;
-  if (index == std::numeric_limits<uint16_t>::max()) {
-    for(uint16_t i = 0; i < total; i++)
-      boardsToCheck.push_back(i);
-  } else {
-    if (index < total)
-      boardsToCheck.push_back(index);
-  }
-  if (boardsToCheck.empty())
-    throw xrt_core::error("Card not found");
+  //report status of all the devices
+  boost::property_tree::ptree _pt;
+  report_status(deviceCollection, _pt);
 
   // Collect all indexes of boards need updating
-  for (uint16_t i : boardsToCheck) {
-    DSAInfo dsa = selectShell(i, name, id);
-    if (dsa.hasFlashImage)
-      boardsToUpdate.push_back(std::make_pair(i, dsa));
+  std::vector<std::pair<unsigned int , DSAInfo>> boardsToUpdate;
+  for (const auto & device : deviceCollection) {
+    DSAInfo dsa(_pt.get<std::string>(std::to_string(device->get_device_id()) + ".platform.installed_shell.file"));
+    //if the shell is not up-to-date and dsa has a flash image, queue the board for update
+    if (!_pt.get<bool>(std::to_string(device->get_device_id()) + ".platform.shell_upto_date") ||
+          !_pt.get<bool>(std::to_string(device->get_device_id()) + ".platform.sc_upto_date")) {
+      if(!dsa.hasFlashImage)
+        throw xrt_core::error("Flash image is not available");
+      boardsToUpdate.push_back(std::make_pair(device->get_device_id(), dsa));
+    }
   }
 
   // Continue to flash whatever we have collected in boardsToUpdate.
@@ -501,17 +441,17 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   }
 
   // -- Retrieve and parse the subcommand options -----------------------------
-  std::string device = "";
+  std::vector<std::string> device;
   std::string plp = "";
   std::string update = "";
-  std::string image = "";
+  std::string flashType = "";
+  std::vector<std::string> image;
   bool revertToGolden = false;
-  bool test_mode = false;
   bool help = false;
 
   po::options_description queryDesc("Options");  // Note: Boost will add the colon.
   queryDesc.add_options()
-    ("device,d", boost::program_options::value<decltype(device)>(&device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' (default) indicates that every found device should be examined.")
+    ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' (default) indicates that every found device should be examined.")
     ("plp", boost::program_options::value<decltype(plp)>(&plp), "The partition to be loaded.  Valid values:\n"
                                                                 "  Name (and path) of the partiaion.\n"
                                                                 "  Parition's UUID")
@@ -519,12 +459,14 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
                                                                          "  ALL   - All images will be updated\n"
                                                                          "  FLASH - Flash image\n"
                                                                          "  SC    - Satellite controller\n")
-    ("image", boost::program_options::value<decltype(image)>(&image), "Specifies an image to use used to update the persistent device(s).  Value values:\n"
-                                                                      "  Name of the device\n"
+    ("image", boost::program_options::value<decltype(image)>(&image)->multitoken(), "Specifies an image to use used to update the persistent device(s).  Value values:\n"
                                                                       "  Name (and path) to the mcs image on disk\n"
-                                                                      "  Name (and path) to the xsabin image on disk")
+                                                                      "  Name (and path) to the xsabin image on disk\n"
+                                                                      "Note: Multiple images can be specified separated by a space")
+    ("flash-type", boost::program_options::value<decltype(flashType)>(&flashType), "Overrides the flash mode. Use with caution.  Value values:\n"
+                                                                      "  ospi\n"
+                                                                      "  ospi_versal\n")
     ("revert-to-golden", boost::program_options::bool_switch(&revertToGolden), "Resets the FPGA PROM back to the factory image.  Note: This currently only applies to the flash image.")
-    ("test_mode", boost::program_options::bool_switch(&test_mode), "Animate flash progress bar")
     ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
 
@@ -547,61 +489,43 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   }
 
   // -- Now process the subcommand --------------------------------------------
-  XBU::verbose(boost::str(boost::format("  Card: %s") % device));
   XBU::verbose(boost::str(boost::format("  Update: %s") % update));
-  // Is valid BDF value valid
 
-  if (test_mode) {
-    std::cout << "\n>>> TEST MODE <<<\n"
-              << "Simulating programming the flash device with a failure.\n\n"
-              << "Flash image: xilinx_u250_xdma_201830_1.mcs\n"
-              << "  Directory: /lib/firmware/xilinx\n"
-              << "  File Size: 134,401,924 bytes\n"
-              << " Time Stamp: Feb 1, 2020 08:07\n\n";
-    //standard use case
-    XBU::ProgressBar flash("Erasing flash", 8, XBU::is_esc_enabled(), std::cout);
-    for (int i = 1; i <= 8; i++) {
-      if (i != 8) {
-        for (int fastLoop = 0; (fastLoop <= 10); ++fastLoop) {
-          std::this_thread::sleep_for(std::chrono::milliseconds(100));
-          flash.update(i);
-        }
-      } else {
-        flash.update(i);
-      }
-	  }
-    flash.finish(true, "Flash erased");
-
-    //failure case
-    XBU::ProgressBar fail_flash("Programming flash", 10, XBU::is_esc_enabled(), std::cout);
-    for (int i = 1; i <= 8; i++) {
-		  std::this_thread::sleep_for(std::chrono::milliseconds(500));
-		  fail_flash.update(i);
-	  }
-
-    for (int i = 0; i < 20; ++i) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(500));
-      fail_flash.update(8);
-    }
-    fail_flash.finish(false, "An error has occurred while programming the flash image");
-
-    //Add gtest to test error when iteration > max_iter
-  }
-
-  // get all device IDs to be processed
+  // enforce device specification
   if(device.empty())
     throw xrt_core::error("Please specify a device using --device option");
+  // TO-DO: deprecate this
   std::vector<uint16_t> device_indices;
-  XBU::parse_device_indices(device_indices, device);
+    std::string d = "";
+  XBU::parse_device_indices(device_indices, d);
+
+  // Collect all of the devices of interest
+  std::set<std::string> deviceNames;
+  xrt_core::device_collection deviceCollection;
+  for (const auto & deviceName : device) 
+    deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
+
+  XBU::collect_devices(deviceNames, false /*inUserDomain*/, deviceCollection);
+
+  if(!image.empty()) {
+    //image is a sub-option of update
+    if(update.empty())
+      throw xrt_core::error("Usage: xbmgmt --device='0000:00:00.0' --update --image='/path/to/flash_image'");
+    //allow only 1 device to be manually flashed at a time
+    if(deviceCollection.size() != 1)
+      throw xrt_core::error("Please specify a single device to be flashed");
+    //we support only 2 flash images atm
+    if(image.size() > 2)
+      throw xrt_core::error("Please specify either 1 or 2 flash images");
+    update_shell(deviceCollection.front()->get_device_id(), flashType, image.front(), (image.size() == 2 ? image[1]: ""));
+    return;
+  }
 
   if (!update.empty()) {
     XBU::verbose("Sub command: --update");
-    // deal with 
-    //   - list of cards
-    // currently doing 1st card if not specified
     std::string empty = "";
     if(update.compare("all") == 0)
-      auto_flash(device_indices[0], empty, empty, false);
+      auto_flash(deviceCollection, false);
     else if(update.compare("flash") == 0)
       std::cout << "TODO: implement platform only update\n";
     else if(update.compare("sc") == 0)
@@ -609,11 +533,6 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     else 
       throw xrt_core::error("Please specify a valid value");
     return;
-  }
-
-  if(!image.empty()) {
-    //call this overloaded function
-    update_shell(device_indices[0], "", "", "");
   }
 
   if(revertToGolden) {

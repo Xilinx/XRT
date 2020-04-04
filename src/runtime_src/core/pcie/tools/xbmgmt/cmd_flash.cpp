@@ -40,7 +40,7 @@ const char *subCmdFlashUsage =
     "--update [--shell name [--id id]] [--card bdf] [--force]\n"
     "--factory_reset [--card bdf] [--force]\n\n"
     "Experts only:\n"
-    "--shell --primary primary_file [--secondary secondary_file] --card bdf [--type flash_type]\n"
+    "--shell --primary primary_file [--secondary secondary_file] --card bdf [--flash_type flash_type]\n"
     "--sc_firmware --path file --card bdf";
 
 #define fmt_str        "    "

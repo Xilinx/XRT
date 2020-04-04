@@ -420,8 +420,9 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
   xocl::enqueue::set_event_action(umEvent.get(),xocl::enqueue::action_ndrange_migrate,mEvent,kernel);
   xocl::profile::set_event_action(umEvent.get(),xocl::profile::action_ndrange_migrate,mEvent,kernel);
   xocl::appdebug::set_event_action(umEvent.get(),xocl::appdebug::action_ndrange_migrate,mEvent,kernel);
+
 #ifndef _WIN32
-  xocl::lop::set_event_action(umEvent.get(), xocl::lop::action_ndrange) ;
+  xocl::lop::set_event_action(umEvent.get(),xocl::lop::action_ndrange_migrate,kernel);
 #endif
 
   // Schedule migration
@@ -440,6 +441,10 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
 
   xocl::profile::set_event_action(ueEvent.get(),xocl::profile::action_ndrange,eEvent,kernel);
   xocl::appdebug::set_event_action(ueEvent.get(),xocl::appdebug::action_ndrange,eEvent,kernel);
+
+#ifndef _WIN32
+  xocl::lop::set_event_action(ueEvent.get(), xocl::lop::action_ndrange) ;
+#endif
 
   // Schedule execution
   ueEvent->queue();

@@ -1192,6 +1192,41 @@ ssize_t
 xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl, struct xclQueueRequest *rd_req);
 
 /**
+ * xclPollQueue - poll a single read/write queue completion
+ * @handle:        Device handle
+ * @q_hdl:         Queue handle
+ * @min_compl:     Unblock only when receiving min_compl completions
+ * @max_compl:     Max number of completion with one poll
+ * @comps:         Completed request array
+ * @actual_compl:  Number of requests been completed
+ * @timeout:       Timeout
+ * Return:         Number of events or appropriate error number
+ *
+ * Poll completion events of non-blocking read/write requests. Once
+ * this function returns, an array of completed requests is returned.
+ */
+XCL_DRIVER_DLLESPEC
+int
+xclPollQueue(xclDeviceHandle handle, uint64_t q_hdl, int min_compl,
+		   int max_compl, struct xclReqCompletion *comps,
+		   int* actual_compl, int timeout);
+
+/**
+ * xclSetQueueOpt - Set a single read/write queue's option
+ * @handle:        Device handle
+ * @q_hdl:         Queue handle
+ * @type:          option type
+ * @val:           option value
+ * Return:         Number of events or appropriate error number
+ *
+ * Set option of a read or write queue. 
+ */
+XCL_DRIVER_DLLESPEC
+int
+xclSetQueueOpt(xclDeviceHandle handle, uint64_t q_hdl, int type, uint32_t val);
+
+
+/**
  * xclPollCompletion - poll read/write queue completion
  * @min_compl:     Unblock only when receiving min_compl completions
  * @max_compl:     Max number of completion with one poll

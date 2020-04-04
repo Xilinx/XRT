@@ -362,6 +362,12 @@ public:
   virtual int
   pollStreams(hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout);
 
+  virtual int
+  pollStream(hal::StreamHandle stream, hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout);
+
+  virtual int
+  setStreamOpt(hal::StreamHandle stream, int type, uint32_t val);
+
 public:
   virtual bool
   is_imported(const BufferObjectHandle& boh) const;

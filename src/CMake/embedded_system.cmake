@@ -41,8 +41,9 @@ find_package(Boost REQUIRED COMPONENTS system filesystem )
 INCLUDE (FindCurses)
 find_package(Curses REQUIRED)
 
-set (XRT_INSTALL_DIR "/usr")
+set (XRT_INSTALL_DIR         "/usr")
 set (XRT_INSTALL_INCLUDE_DIR "${XRT_INSTALL_DIR}/include/xrt")
+set (XRT_INSTALL_LIB_DIR     "${XRT_INSTALL_DIR}/lib${LIB_SUFFIX}")
 
 # Release OpenCL extension headers
 set(XRT_CL_EXT_SRC

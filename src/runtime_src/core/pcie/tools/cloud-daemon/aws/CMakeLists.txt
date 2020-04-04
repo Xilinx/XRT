@@ -61,7 +61,7 @@ endif()
 
 install(TARGETS aws_mpd_plugin
   LIBRARY
-  DESTINATION ${XRT_INSTALL_DIR}/lib
+  DESTINATION ${XRT_INSTALL_LIB_DIR}
   COMPONENT aws
   )
 

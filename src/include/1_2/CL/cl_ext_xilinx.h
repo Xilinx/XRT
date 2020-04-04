@@ -190,13 +190,42 @@ xclGetMemObjectFromFd(cl_context context,
  */
 
 /**
- * cl_stream_flags. Type of the stream , eg set to CL_STREAM_READ_ONLY for
+ * cl_stream_flags. Type of the stream , eg set to XCL_STREAM_READ_ONLY for
  * read only. Used in clCreateStream()
+ *
+ * This flag specifies that the stream object is a read-only stream
+ * object when used inside a kernel.  Writing to a buffer or image object
+ * created with CL_STREAM_READ_ONLY inside a kernel is undefined.
  */
 typedef uint64_t cl_stream_flags;
-#define CL_STREAM_READ_ONLY			    (1 << 0)
-#define CL_STREAM_WRITE_ONLY                        (1 << 1)
-#define CL_STREAM_POLLING                           (1 << 2)
+#ifdef __GNUC__
+# define CL_STREAM_READ_ONLY                        _Pragma ("GCC warning \"CL_STREAM_READ_ONLY deprecated, please use XCL_STREAM_WRITE_ONLY\"") (1 << 0)
+# define CL_STREAM_WRITE_ONLY                       _Pragma ("GCC warning \"CL_STREAM_WRITE_ONLY deprecated, please use XCL_STREAM_READ_ONLY\"") (1 << 1)
+# define CL_STREAM_POLLING                          _Pragma ("GCC warning \"CL_STREAM_POLLING deprecated, please use XCL_STREAM_POLLING\"") (1 << 2)
+#else
+# define CL_STREAM_READ_ONLY                        (1 << 0)
+# define CL_STREAM_WRITE_ONLY                       (1 << 1)
+# define CL_STREAM_POLLING                          (1 << 2)
+#endif
+
+/**
+ * This flag specifies that the stream object is a read-only stream
+ * object when used inside a kernel.  Writing to a stream
+ * created with CL_STREAM_READ_ONLY inside a kernel is undefined.
+ */
+#define XCL_STREAM_READ_ONLY                        (1 << 1)
+
+/**
+ * This flag specifies that the stream object will be written but not
+ * read by a kernel.  Reading from a stream object created with
+ * CL_STREAM_WRITE_ONLY inside a kernel is undefined.
+ */
+#define XCL_STREAM_WRITE_ONLY                       (1 << 0)
+
+/**
+ * Unused
+ */
+#define XCL_STREAM_POLLING                          (1 << 2)
 
 /**
  * cl_stream_attributes. eg set it to CL_STREAM for stream mode. Used
@@ -217,6 +246,7 @@ typedef uint32_t cl_stream_attributes;
 #define CL_STREAM_NONBLOCKING                       (1 << 2)
 #define CL_STREAM_SILENT                            (1 << 3)
 
+typedef stream_opt_type              cl_stream_opt_type;
 typedef stream_xfer_req_type         cl_stream_xfer_req_type;
 typedef streams_poll_req_completions cl_streams_poll_req_completions;
 typedef stream_xfer_req              cl_stream_xfer_req;
@@ -316,6 +346,37 @@ clPollStreams(cl_device_id /*device*/,
 	cl_int /*timeout in ms*/,
 	cl_int * /*errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
 
+/* clPollStream - Poll a single stream on a device for completion.
+ * @stream                : The stream
+ * @completions           : Completions array
+ * @min_num_completions   : Minimum number of completions requested
+ * @max_num_completions   : Maximum number of completions requested
+ * @actual_num_completions: Actual number of completions returned.
+ * @timeout               : Timeout in milliseconds (ms)
+ * @errcode_ret :         : The return value eg CL_SUCCESS
+ * Return a cl_int.
+ */
+extern CL_API_ENTRY cl_int CL_API_CALL
+clPollStream(cl_stream             /* stream*/,
+       	cl_streams_poll_req_completions* /*completions*/,
+	cl_int  /*min_num_completion*/,
+	cl_int  /*max_num_completion*/,
+	cl_int* /*actual num_completion*/,
+	cl_int /*timeout in ms*/,
+	cl_int * /*errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
+
+/* clSetStreamOpt -Set stream options.
+ * @stream                : The stream
+ * @option                : the option type
+ * @val                   : the option value
+ * @errcode_ret :         : The return value eg CL_SUCCESS
+ * Return a cl_int.
+ */
+extern CL_API_ENTRY cl_int CL_API_CALL
+clSetStreamOpt(cl_stream             /* stream*/,
+	cl_stream_opt_type  /*option_type*/,
+	cl_int  /*option_value*/,
+	cl_int * /*errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
 //End QDMA APIs
 
 typedef struct _cl_mem * rte_mbuf;
