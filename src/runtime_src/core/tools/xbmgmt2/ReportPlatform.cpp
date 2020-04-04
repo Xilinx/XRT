@@ -36,17 +36,24 @@ ReportPlatform::getPropertyTreeInternal( const xrt_core::device * _pDevice,
  * helper function for getPropertyTree20201()
  */
 static bool 
-same_config(const std::string& vbnv, const std::string& sc,
-             const std::string& id, DSAInfo& installed) 
+same_shell(const std::string& vbnv, const std::string& id, 
+            const DSAInfo& installed) 
 {
   if (!vbnv.empty()) {
     bool same_dsa = ((installed.name == vbnv) &&
       (installed.matchId(id)));
-    bool same_bmc = ((sc.empty()) ||
-      (installed.bmcVer == sc));
-    return same_dsa && same_bmc;
+    return same_dsa;
   }
   return false;
+}
+
+/*
+ * helper function for getPropertyTree20201()
+ */
+static bool 
+same_sc(const std::string& sc, const DSAInfo& installed) 
+{
+  return ((sc.empty()) || (installed.bmcVer == sc));
 }
 
 void 
@@ -78,6 +85,7 @@ ReportPlatform::getPropertyTree20201( const xrt_core::device * _pDevice,
 
   Flasher f(_pDevice->get_device_id());
   std::vector<DSAInfo> installedDSA = f.getInstalledDSA();
+  //add a check for multiple DSAs, maybe a node
 
   BoardInfo info;
   f.getBoardInfo(info);
@@ -86,20 +94,19 @@ ReportPlatform::getPropertyTree20201( const xrt_core::device * _pDevice,
   _pt.put("platform.installed_shell.vbnv", installedDSA.front().name);
   _pt.put("platform.installed_shell.sc_version", installedDSA.front().bmcVer);
   _pt.put("platform.installed_shell.id", (boost::format("0x%x") % installedDSA.front().timestamp));
-  _pt.put("platform.shell_upto_date", true);
+  _pt.put("platform.installed_shell.file", installedDSA.front().file);
+  _pt.put("platform.shell_upto_date", same_shell( on_board_rom_info.get<std::string>("vbnv", ""), on_board_rom_info.get<std::string>("id", ""), installedDSA.front()));
+  _pt.put("platform.sc_upto_date", same_sc( on_board_xmc_info.get<std::string>("sc_version", ""), installedDSA.front()));
 
-  //check if the platforms on the machine and card match
-  if(!same_config( on_board_rom_info.get<std::string>("vbnv"), on_board_xmc_info.get<std::string>("sc_version"),
-      on_board_rom_info.get<std::string>("id"), installedDSA.front())) {
-    _pt.put("platform.shell_upto_date", false);
-  }
 }
 
 static const std::string
-shell_status(bool status)
+shell_status(bool shell_status, bool sc_status)
 {
-  if(!status)
+  if(!shell_status)
     return boost::str(boost::format("%-8s : %s\n") % "WARNING" % "Device is not up-to-date.");
+  if(!sc_status)
+    return boost::str(boost::format("%-8s : %s\n") % "WARNING" % "SC image on the device is not up-to-date.");
   return "";
 }
 
@@ -123,7 +130,7 @@ ReportPlatform::writeReport( const xrt_core::device * _pDevice,
   _output << boost::format("  %-20s : %s\n") % "Platform" % _pt.get<std::string>("platform.installed_shell.vbnv", "N/A");
   _output << boost::format("  %-20s : %s\n") % "SC Version" % _pt.get<std::string>("platform.installed_shell.sc_version", "N/A");
   _output << boost::format("  %-20s : 0x%x\n") % "Platform ID" % _pt.get<std::string>("platform.installed_shell.id", "N/A");
-  _output << shell_status(_pt.get<bool>("platform.shell_upto_date"));
+  _output << shell_status(_pt.get<bool>("platform.shell_upto_date", ""), _pt.get<bool>("platform.sc_upto_date", ""));
   _output << "----------------------------------------------------\n";
 
 }
