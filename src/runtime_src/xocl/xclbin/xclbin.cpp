@@ -811,10 +811,7 @@ class xclbin_data_sections
   {
     auto top = reinterpret_cast<const ::axlf*>(raw);
     auto hdr = ::xclbin::get_axlf_section(top, kind);
-    if (!hdr)
-      throw std::runtime_error("No such xclbin section: " + std::to_string(kind));
-
-    return reinterpret_cast<SectionType>(raw + hdr->m_sectionOffset);
+    return hdr ? reinterpret_cast<SectionType>(raw + hdr->m_sectionOffset) : nullptr;
   }
 
 public:
