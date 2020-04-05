@@ -169,7 +169,6 @@ private:
     int mUserHandle;
     int mStreamHandle;
     int mBoardNumber;
-    bool mLocked;
     uint64_t mOffsets[XCL_ADDR_SPACE_MAX];
     xclDeviceInfo2 mDeviceInfo;
     uint32_t mMemoryProfilingNumberSlots;

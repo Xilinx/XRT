@@ -179,7 +179,12 @@ def xclOpen(deviceIndex, logFileName, level):
     """
     libc.xclOpen.restype = ctypes.POINTER(xclDeviceHandle)
     libc.xclOpen.argtypes = [ctypes.c_uint, ctypes.c_char_p, ctypes.c_int]
-    return libc.xclOpen(deviceIndex, logFileName, level)
+    res = libc.xclOpen(deviceIndex, logFileName, level)
+    if (res < 0):
+        res = -res
+        raise OSError(res, os.strerror(res))
+    return res
+
 
 def xclClose(handle):
     """
@@ -214,7 +219,12 @@ def xclGetDeviceInfo2 (handle, info):
 
     libc.xclGetDeviceInfo2.restype = ctypes.c_int
     libc.xclGetDeviceInfo2.argtypes = [xclDeviceHandle, ctypes.POINTER(xclDeviceInfo2)]
-    return libc.xclGetDeviceInfo2(handle, info)
+    res = libc.xclGetDeviceInfo2(handle, info)
+    if (res < 0):
+        res = -res
+        raise OSError(res, os.strerror(res))
+    return res
+
 
 def xclGetUsageInfo (handle, info):
     """
@@ -225,7 +235,12 @@ def xclGetUsageInfo (handle, info):
     """
     libc.xclGetUsageInfo.restype = ctypes.c_int
     libc.xclGetUsageInfo.argtypes = [xclDeviceHandle, ctypes.POINTER(xclDeviceInfo2)]
-    return libc.xclGetUsageInfo(handle, info)
+    res = libc.xclGetUsageInfo(handle, info)
+    if (res < 0):
+        res = -res
+        raise OSError(res, os.strerror(res))
+    return res
+
 
 def xclGetErrorStatus(handle, info):
     """
@@ -236,7 +251,12 @@ def xclGetErrorStatus(handle, info):
     """
     libc.xclGetErrorStatus.restype = ctypes.c_int
     libc.xclGetErrorStatus.argtypes = [xclDeviceHandle, ctypes.POINTER(xclDeviceInfo2)]
-    return libc.xclGetErrorStatus(handle, info)
+    res = libc.xclGetErrorStatus(handle, info)
+    if (res < 0):
+        res = -res
+        raise OSError(res, os.strerror(res))
+    return res
+
 
 def xclLoadXclBin(handle, buf):
     """
@@ -252,7 +272,12 @@ def xclLoadXclBin(handle, buf):
     """
     libc.xclLoadXclBin.restype = ctypes.c_int
     libc.xclLoadXclBin.argtypes = [xclDeviceHandle, ctypes.c_void_p]
-    return libc.xclLoadXclBin(handle, buf)
+    res = libc.xclLoadXclBin(handle, buf)
+    if (res < 0):
+        res = -res
+        raise OSError(res, os.strerror(res))
+    return res
+
 
 def xclGetSectionInfo(handle, info, size, kind, index):
     """
@@ -268,7 +293,12 @@ def xclGetSectionInfo(handle, info, size, kind, index):
     libc.xclGetSectionInfo.argtypes = [xclDeviceHandle, ctypes.POINTER(xclDeviceInfo2),
                                        ctypes.POINTER(ctypes.sizeof(xclDeviceInfo2)),
                                        ctypes.c_int, ctypes.c_int]
-    return libc.xclGetSectionInfo(handle, info, size, kind, index)
+    res = libc.xclGetSectionInfo(handle, info, size, kind, index)
+    if (res < 0):
+        res = -res
+        raise OSError(res, os.strerror(res))
+    return res
+
 
 def xclReClock2(handle, region, targetFreqMHz):
     """
@@ -280,7 +310,12 @@ def xclReClock2(handle, region, targetFreqMHz):
     """
     libc.xclReClock2.restype = ctypes.c_int
     libc.xclReClock2.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_uint]
-    return libc.xclReClock2(handle, region, targetFreqMHz)
+    res = libc.xclReClock2(handle, region, targetFreqMHz)
+    if (res < 0):
+        res = -res
+        raise OSError(res, os.strerror(res))
+    return res
+
 
 def xclLockDevice(handle):
     """
@@ -322,7 +357,12 @@ def xclOpenContext(handle, xclbinId, ipIndex, shared):
     """
     libc.xclOpenContext.restype = ctypes.c_int
     libc.xclOpenContext.argtypes = [xclDeviceHandle, ctypes.c_char_p, ctypes.c_uint, ctypes.c_bool]
-    return libc.xclOpenContext(handle, xclbinId.bytes, ipIndex, shared)
+    res = libc.xclOpenContext(handle, xclbinId.bytes, ipIndex, shared)
+    if (res < 0):
+        res = -res
+        raise OSError(res, os.strerror(res))
+    return res
+
 
 def xclCloseContext(handle, xclbinId, ipIndex):
     """
@@ -336,7 +376,12 @@ def xclCloseContext(handle, xclbinId, ipIndex):
     """
     libc.xclCloseContext.restype = ctypes.c_int
     libc.xclCloseContext.argtypes = [xclDeviceHandle, ctypes.c_char_p, ctypes.c_uint]
-    return libc.xclCloseContext(handle, xclbinId.bytes, ipIndex)
+    res = libc.xclCloseContext(handle, xclbinId.bytes, ipIndex)
+    if (res < 0):
+        res = -res
+        raise OSError(res, os.strerror(res))
+    return res
+
 
 def xclUpgradeFirmware(handle, fileName):
     """
@@ -404,7 +449,11 @@ def xclLogMsg(handle, level, tag, format, *args):
     """
     libc.xclAllocBO.restype = ctypes.c_int
     libc.xclAllocBO.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p]
-    return libc.xclLogMsg(handle, level, tag, format, *args)
+    res = libc.xclLogMsg(handle, level, tag, format, *args)
+    if (res < 0):
+        res = -res
+        raise OSError(res, os.strerror(res))
+    return res
 
 
 def xclAllocBO(handle, size, unused, flags):
@@ -501,7 +550,7 @@ def xclMapBO(handle, boHandle, write, buf_type='char', buf_size=1):
     :return: (pointer) Memory mapped buffer
 
     Map the contents of the buffer object into host memory
-    To unmap the buffer call POSIX unmap() on mapped void pointer returned from xclMapBO
+    To unmap the buffer call xclUnmapBO()
 
     Return type void pointer doesn't get correctly binded in ctypes
     To map the buffer, explicitly specify the type and size of data
@@ -522,6 +571,23 @@ def xclMapBO(handle, boHandle, write, buf_type='char', buf_size=1):
     libc.xclMapBO.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_bool]
     ptr = libc.xclMapBO(handle, boHandle, write)
     return ptr
+
+def xclUnmapBO(handle, boHandle, addr):
+    """
+    Unmap a previously mapped BO from user's address space
+
+    :param handle: (xclDeviceHandle) device handle
+    :param boHandle: (unsigned int) BO handle
+    :param addr: (pointer) buffer pointer
+
+    """
+    libc.xclUnmapBO.restype = ctypes.c_int
+    libc.xclUnmapBO.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_void_p]
+    res = libc.xclUnmapBO(handle, boHandle, addr)
+    if res:
+        res = -res
+        raise OSError(res, os.strerror(res))
+    return res
 
 def xclSyncBO(handle, boHandle, direction, size, offset):
     """

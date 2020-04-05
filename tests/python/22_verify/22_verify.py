@@ -29,56 +29,22 @@ def runKernel(opt):
     xclOpenContext(opt.handle, opt.xuuid, 0, True)
 
     boHandle = xclAllocBO(opt.handle, opt.DATA_SIZE, 0, opt.first_mem)
-    if(boHandle == -1):
-        xclFreeBO(opt.handle, boHandle)
-        xclCloseContext(opt.handle, opt.xuuid, 0)
-        print("Error: Unabe to alloc BO")
-        return 1
-
     bo = xclMapBO(opt.handle, boHandle, True)
-    if not bo: # checks NULLBO
-        xclFreeBO(opt.handle, boHandle)
-        xclCloseContext(opt.handle, opt.xuuid, 0)
-        print("Error: Unable to map BO")
-        return 1
-
     ctypes.memset(bo, 0, opt.DATA_SIZE)
 
-    if xclSyncBO(opt.handle, boHandle, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, opt.DATA_SIZE, 0):
-        xclFreeBO(opt.handle, boHandle)
-        xclCloseContext(opt.handle, opt.xuuid, 0)
-        print("Error: Unable to sync BO")
-        return 1
+    xclSyncBO(opt.handle, boHandle, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, opt.DATA_SIZE, 0)
 
     print("Original string = [%s]\n" % bo.contents[:].decode("utf-8"))
 
-    p = xclBOProperties()
-    bodevAddr = p.paddr if not (xclGetBOProperties(opt.handle, boHandle, p)) else -1
-
-    if bodevAddr is -1:
-        xclFreeBO(opt.handle, boHandle)
-        xclCloseContext(opt.handle, opt.xuuid, 0)
-        print("Error: Unable to get BO properties")
-        return 1
 
     # Allocate the exec_bo
     execHandle = xclAllocBO(opt.handle, opt.DATA_SIZE, 0, (1 << 31))
-    if(execHandle == -1):
-        xclFreeBO(opt.handle, boHandle)
-        xclFreeBO(opt.handle, execHandle)
-        xclCloseContext(opt.handle, opt.xuuid, 0)
-        print("Error: Unable to alloc exec BO")
-        return 1
     execData = xclMapBO(opt.handle, execHandle, True)  # returns mmap()
-    if not execData:
-        xclFreeBO(opt.handle, boHandle)
-        xclFreeBO(opt.handle, execHandle)
-        xclCloseContext(opt.handle, opt.xuuid, 0)
-        print("Error: Unable to map exec BO")
-        return 1
 
     print("Construct the exec command to run the kernel on FPGA")
 
+    p = xclBOProperties()
+    xclGetBOProperties(opt.handle, boHandle, p)
     # construct the exec buffer cmd to start the kernel
     start_cmd = ert_start_kernel_cmd.from_buffer(execData.contents)
     rsz = int((XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA / 4 + 1) + 1)  # regmap array size
@@ -91,18 +57,12 @@ def runKernel(opt):
     # Prepare kernel reg map
     new_data = (ctypes.c_uint32 * rsz).from_buffer(execData.contents, 8)
     new_data[XHELLO_HELLO_CONTROL_ADDR_AP_CTRL] = 0x0
-    new_data[int(XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA / 4)] = bodevAddr
-    new_data[int(XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA / 4 + 1)] = (bodevAddr >> 32) & 0xFFFFFFFF
+    new_data[int(XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA / 4)] = p.paddr
+    new_data[int(XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA / 4 + 1)] = (p.paddr >> 32) & 0xFFFFFFFF
 
-    if xclExecBuf(opt.handle, execHandle):
-        xclFreeBO(opt.handle, boHandle)
-        xclFreeBO(opt.handle, execHandle)
-        xclCloseContext(opt.handle, opt.xuuid, 0)
-        print("Error: Unable to issue exec buf")
-        return 1
-    else:
-        print("Kernel start command issued through xclExecBuf : start_kernel")
-        print("Now wait until the kernel finish")
+    xclExecBuf(opt.handle, execHandle)
+    print("Kernel start command issued through xclExecBuf : start_kernel")
+    print("Now wait until the kernel finish")
 
     print("Wait until the command finish")
     while start_cmd.m_uert.m_start_cmd_struct.state < ert_cmd_state.ERT_CMD_STATE_COMPLETED:
@@ -110,49 +70,42 @@ def runKernel(opt):
             print(".")
 
     print("Get the output data from the device")
-    if xclSyncBO(opt.handle, boHandle, xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, opt.DATA_SIZE, 0):
-        xclFreeBO(opt.handle, boHandle)
-        xclFreeBO(opt.handle, execHandle)
-        xclCloseContext(opt.handle, opt.xuuid, 0)
-        print("Error: Unable to sync BO")
-        return 1
-
+    xclSyncBO(opt.handle, boHandle, xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, opt.DATA_SIZE, 0)
     result = bo.contents[:len("Hello World")]
     print("Result string = [%s]\n" % result.decode("utf-8"))
 
     xclCloseContext(opt.handle, opt.xuuid, 0)
+    xclUnmapBO(opt.handle, boHandle, bo)
     xclFreeBO(opt.handle, execHandle)
     xclFreeBO(opt.handle, boHandle)
 
-    if result != "Hello World":
-        return 1
-    else:
-        return 0
-
+    assert(result == "Hello World")
 
 def main(args):
     opt = Options()
     Options.getOptions(opt, args)
 
     try:
-        if initXRT(opt):
-            xclClose(opt.handle)
-            return 1
-        if opt.first_mem < 0:
-            xclClose(opt.handle)
-            return 1
-        if runKernel(opt):
-            xclClose(opt.handle)
-            return 1
+        initXRT(opt)
+        assert (opt.first_mem >= 0), "Incorrect memory configuration"
 
-    except Exception as exp:
-        print("Exception: ")
-        print(exp)  # prints the err
+        runKernel(opt)
+        print("PASSED TEST")
+
+    except OSError as o:
+        print(o)
         print("FAILED TEST")
-        sys.exit()
-
-    print("PASSED TEST")
-
+        sys.exit(o.errno)
+    except AssertionError as a:
+        print(a)
+        print("FAILED TEST")
+        sys.exit(1)
+    except Exception as e:
+        print(e)
+        print("FAILED TEST")
+        sys.exit(1)
+    finally:
+        xclClose(opt.handle)
 
 if __name__ == "__main__":
     main(sys.argv)
