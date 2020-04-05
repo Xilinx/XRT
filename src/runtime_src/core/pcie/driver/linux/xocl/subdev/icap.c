@@ -1399,7 +1399,8 @@ static int icap_download_rp(struct platform_device *pdev, int level, int flag)
 		goto end;
 	}
 
-	ret = xocl_fdt_blob_input(xdev, icap->rp_fdt, icap->rp_fdt_len);
+	ret = xocl_fdt_blob_input(xdev, icap->rp_fdt, icap->rp_fdt_len,
+			XOCL_SUBDEV_LEVEL_PRP);
 	if (ret) {
 		xocl_xdev_err(xdev, "failed to parse fdt %d", ret);
 		goto failed;

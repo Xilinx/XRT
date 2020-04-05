@@ -27,11 +27,9 @@
 #define PROP_LOGIC_UUID "logic_uuid"
 #define PROP_PARTITION_INFO_BLP "blp_info"
 #define PROP_PARTITION_INFO_PLP "plp_info"
+#define PROP_PARTITION_LEVEL "partition_level"
 
 #define NODE_ENDPOINTS "addressable_endpoints"
-#define LEVEL0_DEV_PATH "/addressable_endpoints_0"
-#define LEVEL1_DEV_PATH "/addressable_endpoints_1"
-#define ULP_DEV_PATH "/addressable_endpoints"
 #define INTERFACES_PATH "/interfaces"
 
 #define NODE_PROPERTIES "partition_info"

@@ -515,7 +515,7 @@ int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
 	userpf_idx = xocl_fdt_get_userpf(lro, lro->core.fdt_blob);
 	if (userpf_idx >= 0) {
 		ret = xocl_fdt_overlay(lro->userpf_blob, 0,
-			lro->core.fdt_blob, 0, userpf_idx);
+			lro->core.fdt_blob, 0, userpf_idx, -1);
 		if (ret) {
 			mgmt_err(lro, "overlay fdt failed %d", ret);
 			goto failed;
@@ -616,6 +616,8 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 		goto failed;
 	}
 
+	(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
+
 	/* reload possible cmc and ert images */
 	xocl_icap_post_download_rp(lro);
 
@@ -672,7 +674,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 
 	ret = xocl_fdt_blob_input(lro,
 			(char *)fw_buf + dtc_header->m_sectionOffset,
-			dtc_header->m_sectionSize);
+			dtc_header->m_sectionSize, XOCL_SUBDEV_LEVEL_BLD);
 	if (ret) {
 		mgmt_err(lro, "Invalid PARTITION_METADATA");
 		goto failed;
