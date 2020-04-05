@@ -1042,6 +1042,7 @@ struct xclbin::impl
   static std::shared_ptr<impl>
   get_impl(const void* buffer, size_t sz)
   {
+    static std::mutex mutex;
     static std::map<xrt_core::uuid, std::weak_ptr<impl>> xclbins;  
 
     const axlf* top = reinterpret_cast<const axlf*>(buffer);
@@ -1049,6 +1050,8 @@ struct xclbin::impl
       throw xocl::error(CL_INVALID_BINARY, "bad magic header in xclbin");
 
     auto uu = xrt_core::uuid(top->m_header.uuid);
+
+    std::lock_guard<std::mutex> lk(mutex);
     auto xbin = xclbins[uu].lock();
     if (!xbin) {
       auto raw = reinterpret_cast<const char*>(buffer);
