@@ -1906,7 +1906,13 @@ void xclClose(xclDeviceHandle handle)
 int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
+
+#ifdef DISABLE_DOWNLOAD_XCLBIN
+    int ret = 0;
+#else
     auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
+#endif
+
 #ifdef ENABLE_HAL_PROFILING
     if (ret != 0) return ret ;
     LOAD_XCLBIN_CB ;
@@ -1914,8 +1920,10 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     if (!ret) {
       auto core_device = xrt_core::get_userpf_device(drv);
       core_device->register_axlf(buffer);
+#ifndef DISABLE_DOWNLOAD_XCLBIN
       ret = xrt_core::scheduler::init(handle, buffer);
       START_DEVICE_PROFILING_CB(handle);
+#endif
     }
     if (!ret && xrt_core::config::get_ert() &&
       (xclbin::get_axlf_section(buffer, PDI) ||
@@ -2209,6 +2217,10 @@ int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
 
 int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
+#ifdef DISABLE_DOWNLOAD_XCLBIN
+  return 0;
+#endif
+
 #ifdef ENABLE_HAL_PROFILING
   OPEN_CONTEXT_CB;
 #endif
@@ -2218,6 +2230,10 @@ int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex
 
 int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
 {
+#ifdef DISABLE_DOWNLOAD_XCLBIN
+  return 0;
+#endif
+  
   xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -ENODEV;
 }

@@ -102,7 +102,8 @@ init_conformance()
     bfs::path file(itr->path());
 
     if (bfs::exists(file) && bfs::is_regular_file(file) && file.extension()==".xclbin") {
-      auto xclbin = xocl::xclbin(read_file(file.string()));
+      auto file_data = read_file(file.string());
+      auto xclbin = xocl::xclbin(file_data.data(), file_data.size());
       for (auto hash : xclbin.conformance_kernel_hashes())  {
         XOCL_DEBUG(std::cout,"(hash,file)=(",hash,",",file.string(),")\n");
         global_conformance_xclbin_map.emplace(hash,file.string());
