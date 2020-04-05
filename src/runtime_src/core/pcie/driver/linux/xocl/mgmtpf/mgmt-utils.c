@@ -644,12 +644,13 @@ static bool xocl_subdev_vsec_is_golden(xdev_handle_t xdev_hdl)
 
 int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 {
-	const struct firmware			*fw = NULL;
 	const struct axlf_section_header	*dtc_header;
 	struct axlf				*bin_axlf;
 	char					*vbnv;
-	char					fw_name[256];
 	int					ret;
+	char					*fw_buf = NULL;
+	size_t					fw_size = 0;
+
 
 	if (xocl_subdev_vsec_is_golden(lro)) {
 		mgmt_info(lro, "Skip load_fdt for vsec Golden image");
@@ -657,20 +658,20 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	}
 
 	mutex_lock(&lro->busy_mutex);
-        ret = xocl_rom_find_firmware(lro, fw_name, sizeof(fw_name),
-		lro->core.pdev->device, &fw);
+	ret = xocl_rom_load_firmware(lro, &fw_buf, &fw_size);
 	if (ret)
 		goto failed;
+	bin_axlf = (struct axlf *)fw_buf;
 
-	mgmt_info(lro, "Load fdt from %s", fw_name);
-
-	bin_axlf = (struct axlf *)fw->data;
 	dtc_header = xocl_axlf_section_header(lro, bin_axlf, PARTITION_METADATA);
-	if (!dtc_header)
+	if (!dtc_header) {
+		ret = -ENOENT;
+		mgmt_err(lro, "firmware does not contain PARTITION_METADATA");
 		goto failed;
+	}
 
 	ret = xocl_fdt_blob_input(lro,
-			(char *)fw->data + dtc_header->m_sectionOffset,
+			(char *)fw_buf + dtc_header->m_sectionOffset,
 			dtc_header->m_sectionSize);
 	if (ret) {
 		mgmt_err(lro, "Invalid PARTITION_METADATA");
@@ -688,11 +689,8 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 		}
 	}
 
-
-	release_firmware(fw);
-	fw = NULL;
-
 	if (lro->core.priv.flags & XOCL_DSAFLAG_MFG) {
+		/* Minimum set up for golden image. */
 		(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FLASH);
 		(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_MB);
 		goto failed;
@@ -726,8 +724,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	lro->ready = true;
 
 failed:
-	if (fw)
-		release_firmware(fw);
+	vfree(fw_buf);
 	mutex_unlock(&lro->busy_mutex);
 
 	return ret;

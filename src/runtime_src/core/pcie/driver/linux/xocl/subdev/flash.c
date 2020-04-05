@@ -909,25 +909,13 @@ static bool is_valid_offset(struct xocl_flash *flash, loff_t off)
 	return flash_faddr2offset(&faddr) < flash->flash_size;
 }
 
-/*
- * Read flash memory page by page into user buf.
- */
-static ssize_t
-flash_read(struct file *file, char __user *buf, size_t n, loff_t *off)
+static int
+flash_do_read(struct xocl_flash *flash, char *kbuf, size_t n, loff_t off)
 {
-	struct xocl_flash *flash = file->private_data;
 	u8 *page = NULL;
 	size_t cnt = 0;
-	int ret = 0;
 	struct qspi_flash_addr faddr;
-
-	FLASH_INFO(flash, "reading 0x%lx bytes @0x%llx", n, *off);
-
-	if (n == 0 || !is_valid_offset(flash, *off)) {
-		FLASH_ERR(flash, "Can't read: out of boundary");
-		return 0;
-	}
-	n = min(n, flash->flash_size - (size_t)*off);
+	int ret = 0;
 
 	page = vmalloc(FLASH_PAGE_SIZE);
 	if (page == NULL)
@@ -935,14 +923,14 @@ flash_read(struct file *file, char __user *buf, size_t n, loff_t *off)
 
 	mutex_lock(&flash->io_lock);
 
-	flash_offset2faddr(*off, &faddr);
+	flash_offset2faddr(off, &faddr);
 	flash->qspi_curr_slave = faddr.slave;
 
 	if (!flash_wait_until_ready(flash))
 		ret = -EINVAL;
 
-	while (cnt < n) {
-		loff_t thisoff = *off + cnt;
+	while (ret == 0 && cnt < n) {
+		loff_t thisoff = off + cnt;
 		size_t thislen = min(n - cnt,
 			FLASH_PAGE_ROUNDUP(thisoff) - (size_t)thisoff);
 		char *thisbuf = &page[FLASH_PAGE_OFFSET(thisoff)];
@@ -951,22 +939,57 @@ flash_read(struct file *file, char __user *buf, size_t n, loff_t *off)
 		if (ret)
 			break;
 
-		if (copy_to_user(&buf[cnt], thisbuf, thislen) != 0) {
-			ret = -EFAULT;
-			break;
-		}
-
+		memcpy(&kbuf[cnt], thisbuf, thislen);
 		cnt += thislen;
 	}
 
 	mutex_unlock(&flash->io_lock);
-
 	vfree(page);
+	return ret;
+}
+
+/*
+ * Read flash memory page by page into user buf.
+ */
+static ssize_t
+flash_read(struct file *file, char __user *ubuf, size_t n, loff_t *off)
+{
+	struct xocl_flash *flash = file->private_data;
+	char *kbuf = NULL;
+	int ret = 0;
+
+	FLASH_INFO(flash, "reading %ld bytes @0x%llx", n, *off);
+
+	if (n == 0 || !is_valid_offset(flash, *off)) {
+		FLASH_ERR(flash, "Can't read: out of boundary");
+		return 0;
+	}
+	n = min(n, flash->flash_size - (size_t)*off);
+	kbuf = vmalloc(n);
+	if (kbuf == NULL)
+		return -ENOMEM;
+
+	ret = flash_do_read(flash, kbuf, n, *off);
+	if (ret == 0) {
+		if (copy_to_user(ubuf, kbuf, n) != 0)
+			ret = -EFAULT;
+	}
+	vfree(kbuf);
+
 	if (ret)
 		return ret;
 
 	*off += n;
 	return n;
+}
+
+/* Read request from other parts of driver. */
+static int flash_kread(struct platform_device *pdev,
+		char *buf, size_t n, loff_t off)
+{
+	struct xocl_flash *flash = platform_get_drvdata(pdev);
+	FLASH_INFO(flash, "kernel reading %ld bytes @0x%llx", n, off);
+	return flash_do_read(flash, buf, n, off);
 }
 
 /*
@@ -1061,11 +1084,11 @@ flash_write(struct file *file, const char __user *buf, size_t n, loff_t *off)
 	int ret = 0;
 	struct qspi_flash_addr faddr;
 
-	FLASH_INFO(flash, "writing 0x%lx bytes @0x%llx", n, *off);
+	FLASH_INFO(flash, "writing %ld bytes @0x%llx", n, *off);
 
 	if (n == 0 || !is_valid_offset(flash, *off)) {
 		FLASH_ERR(flash, "Can't write: out of boundary");
-		return -EINVAL;
+		return -ENOSPC;
 	}
 	n = min(n, flash->flash_size - (size_t)*off);
 
@@ -1354,6 +1377,20 @@ error:
 	return ret;
 }
 
+/* Get size request from other parts of driver. */
+static int flash_ksize(struct platform_device *pdev, size_t *n)
+{
+	struct xocl_flash *flash = platform_get_drvdata(pdev);
+	*n = flash->flash_size;
+	return 0;
+}
+
+/* Kernel APIs exported from this sub-device driver. */
+static struct xocl_flash_funcs flash_ops = {
+	.read		= flash_kread,
+	.get_size	= flash_ksize,
+};
+
 static const struct file_operations flash_fops = {
 	.owner = THIS_MODULE,
 	.open = flash_open,
@@ -1364,7 +1401,7 @@ static const struct file_operations flash_fops = {
 };
 
 struct xocl_drv_private flash_priv = {
-	.ops = NULL,
+	.ops = &flash_ops,
 	.fops = &flash_fops,
 	.dev = -1,
 };

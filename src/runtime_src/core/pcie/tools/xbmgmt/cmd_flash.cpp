@@ -892,7 +892,6 @@ static int file(int argc, char *argv[])
             return ret;
         }
         ofs.write(reinterpret_cast<char *>(data.data()), data.size());
-        return 0;
     }
 
     return 0;
