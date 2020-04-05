@@ -707,7 +707,7 @@ namespace xclhwemhal2 {
               launcherArgs += " -pmc-args-file " + binaryDirectory + "/" + kernels.at(0) + "/emulation_data/pmu_args.txt";
             }
             else {
-              std::cout << "[HW-EMU] ERROR: Unable to find either PMU/PMC args" << std::endl;
+              std::cout << "ERROR: [HW-EMU] Unable to find either PMU/PMC args which are required to launch the emulation." << std::endl;
             }
 
             if (is_enable_debug) {
