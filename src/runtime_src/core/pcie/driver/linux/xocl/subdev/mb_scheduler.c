@@ -1900,8 +1900,7 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	userpf_info(xdev, "dsa52 = %d", dsa);
 
 	if (XOCL_DSA_IS_VERSAL(xdev)) {
-		userpf_info(xdev, "force polling mode for versal");
-		cfg->polling = true;
+		userpf_info(xdev, "versal polling mode %d", cfg->polling);
 
 
 		// For versal device, we will use ert_full if we are
@@ -2132,14 +2131,39 @@ exec_stop(struct exec_core *exec)
 		userpf_err(xdev, "unexpected outstanding commands %d after flush", outstanding);
 }
 
-/*
- */
+static irqreturn_t
+versal_isr(int irq, void *arg)
+{
+	struct exec_core *exec = (struct exec_core *)arg;
+	SCHED_DEBUGF("-> %s %d\n", __func__, irq);
+
+	if (exec) {
+		xocl_mailbox_versal_handle_intr(exec_get_xdev(exec));
+
+		if (!exec->polling_mode)
+			scheduler_intr(exec->scheduler);
+		else
+			userpf_err(exec_get_xdev(exec), "unhandled isr irq %d", irq);
+	}
+
+	SCHED_DEBUGF("<- %s\n", __func__);
+	return IRQ_HANDLED;
+}
+
 static irqreturn_t
 exec_isr(int irq, void *arg)
 {
 	struct exec_core *exec = (struct exec_core *)arg;
 
 	SCHED_DEBUGF("-> xocl_user_event %d\n", irq);
+
+	/*
+	 * versal_isr is registered here,
+	 * but versal interrupt is enabled by mailbox_versal subdev.
+	 */
+	if (XOCL_DSA_IS_VERSAL(exec_get_xdev(exec)))
+		return versal_isr(irq, arg);
+
 	if (exec && !exec->polling_mode) {
 
 		irq -= exec->intr_base;

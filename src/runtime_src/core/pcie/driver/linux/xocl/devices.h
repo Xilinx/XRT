@@ -1417,8 +1417,9 @@ struct xocl_subdev_map {
 		.override_idx = -1,			\
 	}
 
+#define	ERT_CSR_ADDR_VERSAL		0x6040000
 #define	ERT_CQ_BASE_ADDR_VERSAL		0x4000000
-#define ERT_CSR_ADDR_VERSAL		0x6040000
+
 #define XOCL_RES_SCHEDULER_VERSAL				\
 		((struct resource []) {				\
 		/*
@@ -1435,6 +1436,11 @@ struct xocl_subdev_map {
 			.end	= ERT_CQ_BASE_ADDR_VERSAL +	\
 			ERT_CQ_SIZE - 1,			\
 			.flags	= IORESOURCE_MEM,		\
+			},					\
+			{					\
+			.start	= 0,				\
+			.end	= 0,				\
+			.flags	= IORESOURCE_IRQ,		\
 			}					\
 		})
 
@@ -1540,8 +1546,8 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_XDMA,				\
 			XOCL_DEVINFO_XMC_USER,				\
 		 	XOCL_DEVINFO_SCHEDULER_VERSAL,			\
-		 	XOCL_DEVINFO_PF_MAILBOX_USER_VERSAL,		\
-		 	XOCL_DEVINFO_MAILBOX_USER_VERSAL,		\
+			XOCL_DEVINFO_PF_MAILBOX_USER_VERSAL,		\
+			XOCL_DEVINFO_MAILBOX_USER_VERSAL,		\
 		 	XOCL_DEVINFO_ICAP_USER,				\
 		})
 
