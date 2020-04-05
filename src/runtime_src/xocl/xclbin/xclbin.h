@@ -137,6 +137,7 @@ public:
    *
    * Return: data range of binary
    */
+  XRT_XOCL_EXPORT
   std::pair<const char*, const char*>
   binary() const;
 
@@ -166,6 +167,7 @@ public:
   /**
    * Access the project name per xml meta data
    */
+  XRT_XOCL_EXPORT
   std::string
   project_name() const;
 

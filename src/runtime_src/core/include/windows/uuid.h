@@ -24,28 +24,28 @@
 #include <cstdio>
 #include <cctype>
 #include <stdexcept>
-typedef unsigned char uuid_t[16];
+typedef unsigned char xuid_t[16];
 
 inline void
-uuid_copy(uuid_t dst, const uuid_t src)
+uuid_copy(xuid_t dst, const xuid_t src)
 {
-  std::memcpy(dst,src,sizeof(uuid_t));
+  std::memcpy(dst,src,sizeof(xuid_t));
 }
 
 inline void
-uuid_clear(uuid_t uuid)
+uuid_clear(xuid_t uuid)
 {
-  std::memset(uuid, 0, sizeof(uuid_t));
+  std::memset(uuid, 0, sizeof(xuid_t));
 }
 
 inline int
-uuid_compare(const uuid_t uuid1, const uuid_t uuid2)
+uuid_compare(const xuid_t uuid1, const xuid_t uuid2)
 {
-  return memcmp(uuid1, uuid2, sizeof(uuid_t));
+  return memcmp(uuid1, uuid2, sizeof(xuid_t));
 }
 
 inline void
-uuid_unparse_lower(const uuid_t uuid, char* str)
+uuid_unparse_lower(const xuid_t uuid, char* str)
 {
   std::sprintf(str,"%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
 	       uuid[0], uuid[1], uuid[2], uuid[3],
@@ -56,7 +56,7 @@ uuid_unparse_lower(const uuid_t uuid, char* str)
 }
 
 inline void
-uuid_parse(const char* str, uuid_t uuid)
+uuid_parse(const char* str, xuid_t uuid)
 {
   //381d7988-e0b4-421b-811a-cdcf83ad2764
   constexpr int uuid_str_sz = 36;
