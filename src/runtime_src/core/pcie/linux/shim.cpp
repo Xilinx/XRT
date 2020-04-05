@@ -125,7 +125,6 @@ shim(unsigned index)
   , mUserHandle(-1)
   , mStreamHandle(-1)
   , mBoardNumber(index)
-  , mLocked(false)
   , mOffsets{0x0, 0x0, OCL_CTLR_BASE, 0x0, 0x0}
   , mMemoryProfilingNumberSlots(0)
   , mAccelProfilingNumberSlots(0)
@@ -770,7 +769,7 @@ int shim::cmaEnable(bool enable, uint64_t size)
              * Let's find how many 1GB huge page we have to allocate
              */
             uint64_t hugepage_flag = 0x1e;
-            uint32_t page_num = size >> 30; 
+            uint32_t page_num = size >> 30;
             uint64_t page_sz = 1 << 30;
             std::string err;
 
@@ -816,10 +815,6 @@ bool
 shim::
 xclLockDevice()
 {
-  if (!xrt_core::config::get_multiprocess() && mDev->flock(mUserHandle, LOCK_EX | LOCK_NB) == -1)
-    return false;
-
-  mLocked = true;
   return true;
 }
 
@@ -830,10 +825,6 @@ bool
 shim::
 xclUnlockDevice()
 {
-  if (!xrt_core::config::get_multiprocess())
-    mDev->flock(mUserHandle, LOCK_UN);
-
-  mLocked = false;
   return true;
 }
 
@@ -912,11 +903,6 @@ int shim::xclLoadXclBin(const xclBin *buffer)
 int shim::xclLoadAxlf(const axlf *buffer)
 {
     xrt_logmsg(XRT_INFO, "%s, buffer: %s", __func__, buffer);
-
-    if (!mLocked) {
-        xrt_logmsg(XRT_ERROR, "%s: Device is not locked", __func__);
-        return -EPERM;
-    }
 
     drm_xocl_axlf axlf_obj = {const_cast<axlf *>(buffer)};
     int ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
