@@ -47,24 +47,6 @@ public:
 
   enum class target_type{ bin,x86,zynqps7,csim,cosim,hwem,invalid};
 
-  struct clocks
-  {
-    std::string region_name;
-    std::string clock_name;
-    unsigned int frequency;
-
-    clocks(std::string&& rn,std::string&& cn,unsigned int f)
-    : region_name(std::move(rn)), clock_name(std::move(cn)), frequency(f)
-    {}
-  };
-
-  struct profiler
-  {
-    using slot_type = std::tuple<int, std::string, std::string>; // index, cuname, type
-    std::vector<slot_type> slots;
-    std::string name;
-  };
-
   // A symbol captures all data required to construct an xocl::kernel
   // object.  It is associated with all kernel objects in the xclbin.
   // The symbol is returned up stream via xclbin::lookup_kernel(name).
@@ -178,24 +160,6 @@ public:
   target() const;
 
   /**
-   * Access the kernel clocks per OCL region
-   *
-   * This is meta data extraction
-   */
-  using kernel_clocks_type = std::vector<clocks>;
-  kernel_clocks_type
-  kernel_clocks();
-
-  /**
-   * Access the system clocks per OCL region
-   *
-   * This is meta data extraction
-   */
-  using system_clocks_type = std::vector<clocks>;
-  system_clocks_type
-  system_clocks();
-
-  /**
    * Number of kernels
    */
   unsigned int
@@ -229,34 +193,10 @@ public:
   lookup_kernel(const std::string& name) const;
 
   /**
-   * Get the list of profilers
-   *
-   * @return
-   *  Vector of profiler struct objects constructed from the xclbin meta data.
-   */
-  using profilers_type = std::vector<profiler>;
-  profilers_type
-  profilers() const;
-
-  /**
-   * Get the clock frequency sections in xclbin
-   */
-  const clock_freq_topology*
-  get_clk_freq_topology() const;
-
-  /**
    * Get the mem topology section in xclbin
    */
   const mem_topology*
   get_mem_topology() const;
-
-  /**
-   * Get a sorted address map of all CUs in this xclbin
-   *
-   * The map is sorted in order of increasing base addresses.
-   */
-  std::vector<uint64_t>
-  cu_base_address_map() const;
 
   /**
    * Get memory connection indeces for CU argument at specified index

@@ -191,11 +191,6 @@ is_sw_emulation()
 static std::vector<uint64_t>
 get_xclbin_cus(const xocl::device* device)
 {
-  if (is_sw_emulation()) {
-    auto xclbin = device->get_xclbin();
-    return xclbin.cu_base_address_map();
-  }
-
   return xrt_core::xclbin::get_cus(device->get_axlf());
 }
 

@@ -130,7 +130,47 @@ kernel_max_ctx(const ip_data& ip)
   return ctxid;
 }
 
+
+// Extract CU base addresses for xml meta data
+// Used in sw_emu because IP_LAYOUT section is not available in sw emu.
+static std::vector<uint64_t>
+get_cus_from_xml(const axlf* top)
+{
+  std::vector<uint64_t> cus;
+  auto xml_hdr = ::xclbin::get_axlf_section(top, EMBEDDED_METADATA);
+
+  if (!xml_hdr)
+    return cus;
+
+  auto begin = reinterpret_cast<const char*>(top) + xml_hdr->m_sectionOffset;
+  const char *xml_data = reinterpret_cast<const char*>(begin);
+  uint64_t xml_size = xml_hdr->m_sectionSize;
+
+  pt::ptree xml_project;
+  std::stringstream xml_stream;
+  xml_stream.write(xml_data, xml_size);
+  pt::read_xml(xml_stream, xml_project);
+
+  for (auto& xml_kernel : xml_project.get_child("project.platform.device.core")) {
+    if (xml_kernel.first != "kernel")
+      continue;
+    for (auto& xml_inst : xml_kernel.second) {
+      if (xml_inst.first != "instance")
+        continue;
+      for (auto& xml_remap : xml_inst.second) {
+        if (xml_remap.first != "addrRemap")
+          continue;
+        auto base = convert(xml_remap.second.get<std::string>("<xmlattr>.base"));
+        cus.push_back(base);
+      }
+    }
+  }
+  
+  std::sort(cus.begin(), cus.end());
+  return cus;
 }
+
+} // namespace
 
 namespace xrt_core { namespace xclbin {
 
@@ -241,19 +281,18 @@ get_cus(const ip_layout* ip_layout, const std::string& kname)
 std::vector<uint64_t>
 get_cus(const axlf* top, bool encode)
 {
-  if (is_sw_emulation()) {
-    return get_kernel_inst_addrs(top);
-  }
+  if (is_sw_emulation())
+    return get_cus_from_xml(top);
 
   auto ip_layout = axlf_section_type<const ::ip_layout*>::get(top,axlf_section_kind::IP_LAYOUT);
   return ip_layout ? get_cus(ip_layout,encode) : std::vector<uint64_t>(0);
 }
 
 std::vector<const ip_data*>
-get_cus(const axlf* top, const std::string& name)
+get_cus(const axlf* top, const std::string& kname)
 {
   auto ip_layout = axlf_section_type<const ::ip_layout*>::get(top,axlf_section_kind::IP_LAYOUT);
-  return ip_layout ? get_cus(ip_layout, name) : std::vector<const ip_data*>(0);
+  return ip_layout ? get_cus(ip_layout, kname) : std::vector<const ip_data*>(0);
 }
 
 std::string
@@ -269,6 +308,15 @@ get_ip_name(const ip_layout* ip_layout, uint64_t addr)
     return reinterpret_cast<const char*>((*it).m_name);
 
   throw std::runtime_error("No IP with base address " + std::to_string(addr));
+}
+
+std::string
+get_ip_name(const axlf* top, uint64_t addr)
+{
+  if (auto ip_layout = axlf_section_type<const ::ip_layout*>::get(top,axlf_section_kind::IP_LAYOUT))
+    return get_ip_name(ip_layout, addr);
+
+  throw std::runtime_error("No IP layout in xclbin");
 }
 
 std::vector<std::pair<uint64_t, size_t>>
@@ -494,57 +542,6 @@ get_kernel_arguments(const axlf* top, const std::string& kname)
   auto xml_size = xml_hdr->m_sectionSize;
 
   return get_kernel_arguments(xml_data, xml_size, kname);
-}
-
-//This function will be removed once IP_LAYOUT section is available in sw emu rtd.
-std::vector<uint64_t>
-get_kernel_inst_addrs(const axlf* top)
-{
-  std::vector<uint64_t> addrVec;
-  const axlf_section_header *xml_hdr = ::xclbin::get_axlf_section(top, EMBEDDED_METADATA);
-
-  if (!xml_hdr) {
-    return addrVec;
-  }
-  auto begin = reinterpret_cast<const char*>(top) + xml_hdr->m_sectionOffset;
-  const char *xml_data = reinterpret_cast<const char*>(begin);
-  uint64_t xml_size = xml_hdr->m_sectionSize;
-
-  pt::ptree xml_project;
-  std::stringstream xml_stream;
-  xml_stream.write(xml_data, xml_size);
-  pt::read_xml(xml_stream, xml_project);
-
-  auto xml_platform = xml_project.get_child_optional("project.platform");
-
-  if (!xml_platform) {
-    return addrVec;
-  }
-
-  for (auto& xml_device : xml_project.get_child("project.platform")) {
-    if (xml_device.first != "device")
-      continue;
-    for (auto& xml_core : xml_device.second) {
-      if (xml_core.first != "core")
-        continue;
-      for (auto& xml_kernel : xml_core.second) {
-        if (xml_kernel.first != "kernel")
-          continue;
-        for (auto& xml_inst : xml_kernel.second) {
-          if (xml_inst.first != "instance")
-            continue;
-          auto name = xml_inst.second.get<std::string>("<xmlattr>.name");
-          for (auto& xml_remap : xml_inst.second) {
-            if (xml_remap.first != "addrRemap")
-              continue;
-            auto base = convert(xml_remap.second.get<std::string>("<xmlattr>.base"));
-            addrVec.push_back(base);
-          }
-        }
-      }
-    }
-  }
-  return addrVec;
 }
 
 }} // xclbin, xrt_core
