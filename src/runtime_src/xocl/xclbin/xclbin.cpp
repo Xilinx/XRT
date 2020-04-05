@@ -28,6 +28,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <sstream>
+#include <mutex>
 
 #ifdef _WIN32
 # pragma warning( disable : 4267 4996 4244 )
