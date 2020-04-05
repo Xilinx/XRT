@@ -20,8 +20,6 @@
 #include "xocl/core/debug.h"
 #include "xocl/core/error.h"
 
-#include "xclbin/binary.h"
-
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 
@@ -30,6 +28,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <sstream>
+#include <mutex>
 
 #ifdef _WIN32
 # pragma warning( disable : 4267 4996 4244 )
@@ -37,7 +36,6 @@
 
 namespace {
 
-using data_range = ::xclbin::data_range;
 using target_type = xocl::xclbin::target_type;
 using addr_type = xocl::xclbin::addr_type;
 
@@ -617,15 +615,22 @@ private:
 
 public:
   explicit
-  metadata(const data_range& xml)
+  metadata(const char* raw)
   {
     try {
+      auto top = reinterpret_cast<const ::axlf*>(raw);
+      auto hdr = xclbin::get_axlf_section(top, EMBEDDED_METADATA);
+      if (!hdr)
+        throw std::runtime_error("No EMBEDDED_METADATA");
+
+      auto section_data = raw + hdr->m_sectionOffset;
+
       std::stringstream xml_stream;
-      xml_stream.write(xml.first,xml.second-xml.first);
+      xml_stream.write(section_data, hdr->m_sectionSize);
       pt::read_xml(xml_stream,xml_project);
     }
-    catch ( const std::exception& ) {
-      throw xocl::error(CL_INVALID_BINARY,"Failed to parse xclbin xml data");
+    catch ( const std::exception& ex) {
+      throw xocl::error(CL_INVALID_BINARY,"Failed to parse xclbin xml data: " + std::string(ex.what()));
     }
 
     // iterate platforms
@@ -800,14 +805,23 @@ class xclbin_data_sections
   std::vector<membank> m_membanks;
   std::vector<int> m_used_connections;
 
+  template <typename SectionType>
+  SectionType
+  get_xclbin_section(const char* raw, axlf_section_kind kind)
+  {
+    auto top = reinterpret_cast<const ::axlf*>(raw);
+    auto hdr = ::xclbin::get_axlf_section(top, kind);
+    return hdr ? reinterpret_cast<SectionType>(raw + hdr->m_sectionOffset) : nullptr;
+  }
+
 public:
   explicit
-  xclbin_data_sections(const xocl::xclbin::binary_type& binary)
-    : m_top(reinterpret_cast<const ::axlf*>(binary.binary_data().first))
-    , m_con(reinterpret_cast<const ::connectivity*>(binary.connectivity_data().first))
-    , m_mem(reinterpret_cast<const ::mem_topology*>(binary.mem_topology_data().first))
-    , m_ip(reinterpret_cast<const ::ip_layout*>(binary.ip_layout_data().first))
-    , m_clk(reinterpret_cast<const ::clock_freq_topology*>(binary.clk_freq_data().first))
+  xclbin_data_sections(const char* raw)
+    : m_top(reinterpret_cast<const ::axlf*>(raw))
+    , m_con(get_xclbin_section<const ::connectivity*>(raw, CONNECTIVITY))
+    , m_mem(get_xclbin_section<const ::mem_topology*>(raw, MEM_TOPOLOGY))
+    , m_ip (get_xclbin_section<const ::ip_layout*>(raw, IP_LAYOUT))
+    , m_clk(get_xclbin_section<const ::clock_freq_topology*>(raw, CLOCK_FREQ_TOPOLOGY))
   {
     // populate mem bank
     if (m_mem) {
@@ -997,7 +1011,7 @@ public:
     return -1;
   }
 
-  xocl::xclbin::uuid_type
+  xrt_core::uuid
   uuid() const
   {
     return m_top->m_header.uuid;
@@ -1013,108 +1027,38 @@ namespace xocl {
 // should be extracted from xclbin::binary
 struct xclbin::impl
 {
-  binary_type m_binary;
+  std::vector<char> m_binary;
   metadata m_xml;
   xclbin_data_sections m_sections;
 
-  impl(std::vector<char>&& xb)
-    : m_binary(std::move(xb))
-    , m_xml(m_binary.meta_data())
-    , m_sections(m_binary)
+  impl(const char* begin, const char* end)
+    : m_binary(begin, end)
+    , m_xml(m_binary.data())
+    , m_sections(m_binary.data())
   {}
 
-  std::string
-  project_name() const
-  { return m_xml.project_name(); }
+  static std::shared_ptr<impl>
+  get_impl(const void* buffer, size_t sz)
+  {
+    static std::mutex mutex;
+    static std::map<xrt_core::uuid, std::weak_ptr<impl>> xclbins;  
 
-  target_type
-  target() const
-  { return m_xml.target(); }
+    const axlf* top = reinterpret_cast<const axlf*>(buffer);
+    if (strncmp(top->m_magic,"xclbin2",7))
+      throw xocl::error(CL_INVALID_BINARY, "bad magic header in xclbin");
 
-  unsigned int
-  num_kernels() const
-  { return m_xml.num_kernels(); }
+    auto uu = xrt_core::uuid(top->m_header.uuid);
 
-  std::vector<std::string>
-  kernel_names() const
-  { return m_xml.kernel_names(); }
+    std::lock_guard<std::mutex> lk(mutex);
+    auto xbin = xclbins[uu].lock();
+    if (!xbin) {
+      auto raw = reinterpret_cast<const char*>(buffer);
+      xbin = std::shared_ptr<impl>(new impl(raw, raw+sz));
+      xclbins[uu] = xbin;
+    }
 
-  std::vector<const symbol*>
-  kernel_symbols() const
-  { return m_xml.kernel_symbols(); }
-
-  const symbol&
-  lookup_kernel(const std::string& name) const
-  { return m_xml.lookup_kernel(name); }
-
-  system_clocks_type
-  system_clocks() const
-  { return m_xml.system_clocks(); }
-
-  kernel_clocks_type
-  kernel_clocks() const
-  { return m_xml.kernel_clocks(); }
-
-  profilers_type
-  profilers() const
-  { return m_xml.profilers(); }
-
-  std::vector<uint64_t>
-  cu_base_address_map() const
-  { return m_xml.cu_base_address_map(); }
-
-  uuid_type
-  uuid() const
-  { return m_sections.uuid(); }
-
-  const clock_freq_topology*
-  get_clk_freq_topology() const
-  { return m_sections.get_clk_freq_topology(); }
-
-  const mem_topology*
-  get_mem_topology() const
-  { return m_sections.get_mem_topology(); }
-
-  memidx_bitmask_type
-  cu_address_to_memidx(addr_type cuaddr, int32_t arg) const
-  { return m_sections.cu_address_to_memidx(cuaddr,arg); }
-
-  memidx_bitmask_type
-  cu_address_to_memidx(addr_type cuaddr) const
-  { return m_sections.cu_address_to_memidx(cuaddr); }
-
-  memidx_bitmask_type
-  mem_address_to_memidx(addr_type memaddr) const
-  { return m_sections.mem_address_to_memidx(memaddr); }
-
-  memidx_type
-  mem_address_to_first_memidx(addr_type memaddr) const
-  { return m_sections.mem_address_to_first_memidx(memaddr); }
-
-  std::string
-  memidx_to_banktag(memidx_type memidx) const
-  { return m_sections.memidx_to_banktag(memidx); }
-
-  memidx_type
-  banktag_to_memidx(const std::string& banktag) const
-  { return m_sections.banktag_to_memidx(banktag); }
-
-  memidx_type
-  get_memidx_from_arg(const std::string& kernel_name, int32_t arg, int32_t& conn)
-  { return m_sections.get_memidx_from_arg(kernel_name, arg, conn); }
-
-  void
-  clear_connection(connidx_type conn)
-  { return m_sections.clear_connection(conn); }
-
-  unsigned int
-  conformance_rename_kernel(const std::string& hash)
-  { return m_xml.conformance_rename_kernel(hash); }
-
-  std::vector<std::string>
-  conformance_kernel_hashes() const
-  { return m_xml.conformance_kernel_hashes(); }
-
+    return xbin;
+  }
 };
 
 xclbin::
@@ -1122,48 +1066,9 @@ xclbin()
 {}
 
 xclbin::
-xclbin(std::vector<char>&& xb)
-  : m_impl(std::make_unique<xclbin::impl>(std::move(xb)))
-{
-}
-
-xclbin::
-xclbin(xclbin&& rhs)
-  : m_impl(std::move(rhs.m_impl))
+xclbin(const void* buffer, size_t sz)
+  : m_impl(impl::get_impl(buffer, sz))
 {}
-
-xclbin::
-xclbin(const xclbin& rhs)
-  : m_impl(rhs.m_impl)
-{
-}
-
-xclbin::
-~xclbin()
-{}
-
-xclbin&
-xclbin::
-operator=(const xclbin&& rhs)
-{
-  m_impl=std::move(rhs.m_impl);
-  return *this;
-}
-
-xclbin&
-xclbin::
-operator=(const xclbin& rhs)
-{
-  m_impl=rhs.m_impl;
-  return *this;
-}
-
-bool
-xclbin::
-operator==(const xclbin& rhs) const
-{
-  return m_impl==rhs.m_impl;
-}
 
 xclbin::impl*
 xclbin::
@@ -1174,156 +1079,159 @@ impl_or_error() const
   throw std::runtime_error("xclbin has not been loaded");
 }
 
-xclbin::binary_type
+std::pair<const char*, const char*>
 xclbin::
 binary() const
 {
-  return impl_or_error()->m_binary;
+  auto& binary = impl_or_error()->m_binary;
+  return std::make_pair(binary.data(), binary.data() + binary.size());
 }
 
-xclbin::uuid_type
+xrt_core::uuid
 xclbin::
 uuid() const
 {
-  return impl_or_error()->uuid();
+  return impl_or_error()->m_sections.uuid();
 }
 
 std::string
 xclbin::
 project_name() const
 {
-  return impl_or_error()->project_name();
+  return impl_or_error()->m_xml.project_name();
 }
 
 xclbin::target_type
 xclbin::
 target() const
 {
-  return impl_or_error()->target();
+  return impl_or_error()->m_xml.target();
 }
 
 xclbin::system_clocks_type
 xclbin::
 system_clocks()
 {
-  return impl_or_error()->system_clocks();
+  return impl_or_error()->m_xml.system_clocks();
 }
 
 xclbin::kernel_clocks_type
 xclbin::
 kernel_clocks()
 {
-  return impl_or_error()->kernel_clocks();
+  return impl_or_error()->m_xml.kernel_clocks();
 }
 
 unsigned int
 xclbin::
 num_kernels() const
 {
-  return impl_or_error()->num_kernels();
+  return impl_or_error()->m_xml.num_kernels();
 }
 
 std::vector<std::string>
 xclbin::
 kernel_names() const
 {
-  return impl_or_error()->kernel_names();
+  return impl_or_error()->m_xml.kernel_names();
 }
 
 std::vector<const xclbin::symbol*>
 xclbin::
 kernel_symbols() const
-{ return impl_or_error()->kernel_symbols(); }
+{
+  return impl_or_error()->m_xml.kernel_symbols();
+}
 
 const xclbin::symbol&
 xclbin::
 lookup_kernel(const std::string& name) const
 {
-  return impl_or_error()->lookup_kernel(name);
+  return impl_or_error()->m_xml.lookup_kernel(name);
 }
 
 xclbin::profilers_type
 xclbin::
 profilers() const
 {
-  return impl_or_error()->profilers();
+  return impl_or_error()->m_xml.profilers();
 }
 
 const clock_freq_topology*
 xclbin::
 get_clk_freq_topology() const
 {
-  return impl_or_error()->get_clk_freq_topology();
+  return impl_or_error()->m_sections.get_clk_freq_topology();
 }
 
 const mem_topology*
 xclbin::
 get_mem_topology() const
 {
-  return impl_or_error()->get_mem_topology();
+  return impl_or_error()->m_sections.get_mem_topology();
 }
 
 std::vector<uint64_t>
 xclbin::
 cu_base_address_map() const
 {
-  return impl_or_error()->cu_base_address_map();
+  return impl_or_error()->m_xml.cu_base_address_map();
 }
 
 xclbin::memidx_bitmask_type
 xclbin::
 cu_address_to_memidx(addr_type cuaddr, int32_t arg) const
 {
-  return impl_or_error()->cu_address_to_memidx(cuaddr,arg);
+  return impl_or_error()->m_sections.cu_address_to_memidx(cuaddr,arg);
 }
 
 xclbin::memidx_bitmask_type
 xclbin::
 cu_address_to_memidx(addr_type cuaddr) const
 {
-  return impl_or_error()->cu_address_to_memidx(cuaddr);
+  return impl_or_error()->m_sections.cu_address_to_memidx(cuaddr);
 }
 
 xclbin::memidx_bitmask_type
 xclbin::
 mem_address_to_memidx(addr_type memaddr) const
 {
-  return impl_or_error()->mem_address_to_memidx(memaddr);
+  return impl_or_error()->m_sections.mem_address_to_memidx(memaddr);
 }
 
 xclbin::memidx_type
 xclbin::
 mem_address_to_first_memidx(addr_type memaddr) const
 {
-  return impl_or_error()->mem_address_to_first_memidx(memaddr);
+  return impl_or_error()->m_sections.mem_address_to_first_memidx(memaddr);
 }
 
 std::string
 xclbin::
-memidx_to_banktag(memidx_type bankidx) const
+memidx_to_banktag(memidx_type memidx) const
 {
-  return impl_or_error()->memidx_to_banktag(bankidx);
+  return impl_or_error()->m_sections.memidx_to_banktag(memidx);
 }
 
 xclbin::memidx_type
 xclbin::
 banktag_to_memidx(const std::string& tag) const
 {
-  return impl_or_error()->banktag_to_memidx(tag);
+  return impl_or_error()->m_sections.banktag_to_memidx(tag);
 }
 
 xclbin::memidx_type
 xclbin::
 get_memidx_from_arg(const std::string& kernel_name, int32_t arg, connidx_type& conn)
 {
-  return impl_or_error()->get_memidx_from_arg(kernel_name, arg, conn);
+  return impl_or_error()->m_sections.get_memidx_from_arg(kernel_name, arg, conn);
 }
 
 void
 xclbin::
 clear_connection(connidx_type conn)
 {
-  return impl_or_error()->clear_connection(conn);
+  return impl_or_error()->m_sections.clear_connection(conn);
 }
 
 unsigned int
@@ -1331,13 +1239,15 @@ xclbin::
 conformance_rename_kernel(const std::string& hash)
 {
   assert(std::getenv("XCL_CONFORMANCE"));
-  return impl_or_error()->conformance_rename_kernel(hash);
+  return impl_or_error()->m_xml.conformance_rename_kernel(hash);
 }
 
 std::vector<std::string>
 xclbin::
 conformance_kernel_hashes() const
-{ return impl_or_error()->conformance_kernel_hashes(); }
+{
+  return impl_or_error()->m_xml.conformance_kernel_hashes();
+}
 
 // Convert kernel arg data to string per type of argument
 // Interpret the passed data pointer as per the type of the arg and

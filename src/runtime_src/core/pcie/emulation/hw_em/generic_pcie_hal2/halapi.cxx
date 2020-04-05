@@ -293,11 +293,17 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   if (!drv)
     return -1;
+#ifdef DISABLE_DOWNLOAD_XCLBIN
+  int ret = 0;
+#else
   auto ret = drv->xclLoadXclBin(buffer);
+#endif
   if (!ret) {
     auto device = xrt_core::get_userpf_device(drv);
     device->register_axlf(buffer);
+#ifndef DISABLE_DOWNLOAD_XCLBIN
     ret = xrt_core::scheduler::init(handle, buffer);
+#endif
   }
   return ret;
 }

@@ -1105,12 +1105,11 @@ load_program(program* program)
     throw xocl::error(CL_OUT_OF_RESOURCES,"program already loaded on device");
 
   m_xclbin = program->get_xclbin(this);
-  auto binary = m_xclbin.binary(); // ::xclbin::binary
 
   // Kernel debug is enabled based on if there is debug_data in the
   // binary it does not have an xrt.ini attribute. If there is
   // debug_data then make sure xdp kernel debug is loaded
-  if (binary.debug_data().first)
+  if (m_xclbin.get_xclbin_section(axlf_section_kind::DEBUG_DATA).first)
   {
 #ifdef _WIN32
     // Kernel debug not supported on Windows
@@ -1122,7 +1121,7 @@ load_program(program* program)
   xocl::debug::reset(get_axlf());
   xocl::profile::reset(get_axlf());
 
-  auto binary_data = binary.binary_data();
+  auto binary_data = m_xclbin.binary();
   auto binary_size = binary_data.second - binary_data.first;
   if (binary_size == 0)
     return;
@@ -1243,8 +1242,7 @@ get_axlf() const
 {
   assert(!m_active || m_active->get_xclbin(this)==m_xclbin);
   auto binary = m_xclbin.binary();
-  auto binary_data = binary.binary_data();
-  return reinterpret_cast<const axlf*>(binary_data.first);
+  return reinterpret_cast<const axlf*>(binary.first);
 }
 
 unsigned short
