@@ -21,17 +21,14 @@ namespace xdp {
 
 ProfileIP::ProfileIP(Device* handle, uint64_t index, debug_ip_data* data)
           : device(nullptr),
-            mapped(false),
             exclusive(false),
             ip_index(static_cast<uint64_t>(-1)),
-            ip_base_address(0),
-            mapped_address(0)
+            ip_base_address(0)
 {
     // check for exclusive access to this IP
     request_exclusive_ip_access(index);
 
     // For now, set these to true
-    mapped = true;  
     exclusive = true;
 
     if (exclusive && data) {
@@ -43,20 +40,12 @@ ProfileIP::ProfileIP(Device* handle, uint64_t index, debug_ip_data* data)
         ip_name.assign(reinterpret_cast<const char*>(&data->m_name), 128);
         // Strip away extraneous null characters
         ip_name.assign(ip_name.c_str()); 
-
-        mapped_address = 0; 
-        /* 0 for now. This will be populated when XRT implements APIs to share the user-space address of Monitor IP registers.
-         * Then data can be directly read using those addresses instead of xclRead/xclWrite/xclUnmgdPread
-         */
     } else {
         showWarning("Cannot get exclusive access");
     }
 }
 
 ProfileIP::~ProfileIP() {
-    if (mapped) {
-        unmap();
-    }
     if (exclusive) {
         release_exclusive_ip_access(ip_index);
     }
@@ -90,6 +79,10 @@ void ProfileIP::map() {
      * TODO: so far we are asking the debug_ip_layout where the IP is. Once the XRT hal implements
      * the function that maps the IP registers to user memory space, this method should be simplified
      * to one function call to the hal API and saves the result in a mapped_address and set mapped flag.
+     ****
+     * XRT has implemented such mapping infrastructure only for PCIeLinux flow. So, XDP has 
+     * specialization for Monitors which handles mapping and unmapping. For now, this base class does not 
+     * need such implementation.
      */
     if (!exclusive) {
         return;
@@ -100,12 +93,14 @@ void ProfileIP::unmap() {
     /**
      * TODO: This should use the unmapping API provided by XRT hal in
      * the future. Now the API is not in place
+     ****
+     * XRT has implemented such mapping infrastructure only for PCIeLinux flow. So, XDP has 
+     * specialization for Monitors which handles mapping and unmapping. For now, this base class does not 
+     * need such implementation.
      */
-    if (!exclusive || !mapped) {
+    if (!exclusive) {
         return;
     }
-    mapped = false;
-    mapped_address = 0;
     return;
 }
 
@@ -114,8 +109,12 @@ int ProfileIP::read(uint64_t offset, size_t size, void* data) {
      * TODO: so far we are using xclRead under the hood because the hal API that maps
      * the IP is not ready yet. Once the API is ready, xclRead should be replaced by a
      * memcpy from the mapped address with exception handling.
+     ****
+     * XRT has implemented such mapping infrastructure only for PCIeLinux flow. So, XDP has 
+     * specialization for Monitors which handles mapping and unmapping. For now, this base class does not 
+     * need such implementation.
      */
-    if (!exclusive || !mapped) {
+    if (!exclusive) {
         return -1;
     }
     uint64_t absolute_offset = ip_base_address + offset;
@@ -134,8 +133,12 @@ int ProfileIP::write(uint64_t offset, size_t size, void* data) {
      * TODO: so far we are using xclWrite under the hood because the hal API that maps
      * the IP is not ready yet. Once the API is ready, xclWrite should be replaced by a
      * memcpy to the mapped address with exception handling.
+     ****
+     * XRT has implemented such mapping infrastructure only for PCIeLinux flow. So, XDP has 
+     * specialization for Monitors which handles mapping and unmapping. For now, this base class does not 
+     * need such implementation.
      */
-    if (!exclusive || !mapped) {
+    if (!exclusive) {
         return -1;
     }
     uint64_t absolute_offset = ip_base_address + offset;
@@ -151,7 +154,7 @@ int ProfileIP::write(uint64_t offset, size_t size, void* data) {
 
 int ProfileIP::unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offset)
 {
-    if (!exclusive || !mapped) {
+    if (!exclusive) {
         return -1;
     }
     uint64_t absolute_offset = ip_base_address + offset;

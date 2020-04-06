@@ -27,6 +27,9 @@
 #include "core/include/xclperf.h"
 #include "xdp_base_device.h"
 
+#define PROFILE_IP_SZ 0x1000
+#define TRACE_FIFO_LITE_SZ 0x2000
+
 namespace xdp {
 
 /**
@@ -132,6 +135,8 @@ public:
     virtual void showProperties();
     virtual uint32_t getProperties()  { return 0; }
 
+    virtual bool isMMapped() { return false; }
+
     uint64_t    getBaseAddress() { return ip_base_address; }
     std::string getName() { return ip_name; }
 
@@ -145,11 +150,9 @@ public:
 //    bool   isOnEdgeDevice();
 private:
     xdp::Device* device;      /* device handle */
-    bool  mapped;             /* flag to keep track of if the ip has been mapped */
     bool  exclusive;          /* flag indicating if the IP has exclusive access */
     uint64_t ip_index;        /* the index of the IP in debug_ip_layout */
     uint64_t ip_base_address; /* Base address of the Monitor IP as given in debug_ip_layout ; Used with xclRead/xclWrite/xclUnmgdPread */
-    uint64_t mapped_address;  /* the mapped address in user space used to access the registers */
     std::string ip_name;      /* the string name of the IP for better debuggability */ 
 
 protected:
