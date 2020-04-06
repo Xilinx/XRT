@@ -821,7 +821,7 @@ struct xocl_dna_funcs {
 #define	ADDR_TRANSLATOR_DEV(xdev)		\
 	SUBDEV(xdev, XOCL_SUBDEV_ADDR_TRANSLATOR).pldev
 #define	ADDR_TRANSLATOR_OPS(xdev)		\
-	((struct xocl_slbr_funcs *)SUBDEV(xdev,	\
+	((struct xocl_addr_translator_funcs *)SUBDEV(xdev,	\
 	XOCL_SUBDEV_ADDR_TRANSLATOR).ops)
 #define ADDR_TRANSLATOR_CB(xdev, cb)	\
 	(ADDR_TRANSLATOR_DEV(xdev) && ADDR_TRANSLATOR_OPS(xdev) && ADDR_TRANSLATOR_OPS(xdev)->cb)
@@ -830,10 +830,7 @@ struct xocl_dna_funcs {
 #define	xocl_addr_translator_set_page_table(xdev, addrs, base_addr, sz, num)			\
 	(ADDR_TRANSLATOR_CB(xdev, get_entries_num) ? ADDR_TRANSLATOR_OPS(xdev)->set_page_table(ADDR_TRANSLATOR_DEV(xdev), addrs, base_addr, sz, num) : -ENODEV)
 
-#define ADDR_TRANSLATOR_OFFSET 			0x10000000000
-#define ADDR_TRANSLATOR_ENTRY_4M		0x400000
-#define ADDR_TRANSLATOR_ENTRY_1G		0x40000000
-
+#define ADDR_TRANSLATOR_OFFSET		0x10000000000
 
 struct xocl_addr_translator_funcs {
 	struct xocl_subdev_funcs common_funcs;

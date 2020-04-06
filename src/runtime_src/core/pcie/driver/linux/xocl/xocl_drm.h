@@ -29,15 +29,26 @@
  * @active: Reverse mapping to kds command object managed exclusively by kds
  */
 struct drm_xocl_exec_metadata {
-	        enum drm_xocl_execbuf_state state;
-		        struct xocl_cmd            *active;
+	enum drm_xocl_execbuf_state state;
+	struct xocl_cmd            *active;
 };
 
-struct xocl_cma_chunk {
-	uint64_t		start_addr;
+struct xocl_cma_memory {
+	uint64_t		paddr;
 	struct page		**pages;
-	uint64_t		page_count;
-	struct drm_mm 		*mm;
+	void 			*vaddr;
+	uint64_t		size;
+};
+
+struct xocl_cma_bank {
+	uint64_t		start_addr;
+	uint64_t		entry_sz;
+	uint64_t		entry_num;
+	struct drm_mm		mm;
+	struct drm_xocl_mm_stat	mm_usage_stat;
+	bool			mm_inited;
+	struct xocl_cma_memory	cma_mem[1];
+
 };
 
 struct xocl_drm {
@@ -53,7 +64,7 @@ struct xocl_drm {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 	DECLARE_HASHTABLE(mm_range, 6);
 #endif
-	struct xocl_cma_chunk  *cma_chunk[DRM_XOCL_CMA_CHUNK_MAX];
+	struct xocl_cma_bank  *cma_bank;
 };
 
 struct drm_xocl_bo {
@@ -90,6 +101,11 @@ void xocl_mm_get_usage_stat(struct xocl_drm *drm_p, u32 ddr,
         struct drm_xocl_mm_stat *pstat);
 void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u32 ddr,
         u64 size, int count);
+void xocl_cma_mm_get_usage_stat(struct xocl_drm *drm_p,
+        struct drm_xocl_mm_stat *pstat);
+void xocl_cma_mm_update_usage_stat(struct xocl_drm *drm_p,
+        u64 size, int count);
+
 int xocl_mm_insert_node(struct xocl_drm *drm_p, u32 ddr,
                 struct drm_mm_node *node, u64 size);
 void *xocl_drm_init(xdev_handle_t xdev);
@@ -98,8 +114,8 @@ uint32_t xocl_get_shared_ddr(struct xocl_drm *drm_p, struct mem_data *m_data);
 int xocl_init_mem(struct xocl_drm *drm_p);
 int xocl_cleanup_mem(struct xocl_drm *drm_p);
 
-int xocl_cma_chunk_alloc_helper(struct xocl_drm *drm_p, struct drm_xocl_alloc_cma_info *cma_info);
-void xocl_cma_chunk_free_helper(struct xocl_drm *drm_p);
+int xocl_cma_bank_alloc(struct xocl_drm *drm_p, struct drm_xocl_alloc_cma_info *cma_info);
+void xocl_cma_bank_free(struct xocl_drm *drm_p);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
 vm_fault_t xocl_gem_fault(struct vm_fault *vmf);
