@@ -7,7 +7,7 @@ from utils_binding import *
 
 def runKernel(opt):
     count = 1024
-    DATA_SIZE = ctypes.sizeof(ctypes.c_int64) * count
+    DATA_SIZE = ctypes.sizeof(ctypes.c_int32) * count
 
     khandle = xrtPLKernelOpen(opt.handle, opt.xuuid, "simple")
 
@@ -17,21 +17,14 @@ def runKernel(opt):
     bo1 = xclMapBO(opt.handle, boHandle1, True, 'int')
     bo2 = xclMapBO(opt.handle, boHandle2, True, 'int')
 
-    ctypes.memset(bo1, 0, opt.DATA_SIZE)
-    ctypes.memset(bo2, 0, opt.DATA_SIZE)
+    ctypes.memset(bo1, 0, DATA_SIZE)
+    ctypes.memset(bo2, 0, DATA_SIZE)
 
-    # bo1
-    bo1_arr = [0X586C0C6C for _ in range(count)]
-    arr = (ctypes.c_int * len(bo1_arr))(*bo1_arr)
-    ctypes.memmove(bo1, arr, count*5)
-
-    #bo2
-    bo2_arr = [i*i for i in range(count)]
-    arr = (ctypes.c_int * len(bo2_arr))(*bo2_arr)
-    ctypes.memmove(bo2, arr, count*5)
+    for i in range(len(bo1.contents)):
+        bo1.contents[i] = i * i
 
     # bufReference
-    bufReference = [i * i+i*16 for i in range(count)]
+    bufReference = [i*i + i*16 for i in range(count)]
 
     xclSyncBO(opt.handle, boHandle1, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE, 0)
     xclSyncBO(opt.handle, boHandle2, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE, 0)
@@ -48,12 +41,12 @@ def runKernel(opt):
 
     xrtRunClose(rhandle1)
     xrtKernelClose(khandle)
+
+    assert (bufReference[:count] == bo1.contents[:count]), "Computed value does not match reference"
     xclUnmapBO(opt.handle, boHandle2, bo2)
     xclFreeBO(opt.handle, boHandle2)
     xclUnmapBO(opt.handle, boHandle1, bo1)
     xclFreeBO(opt.handle, boHandle1)
-
-    assert (bufReference[:count] == bo1[:count]), "Value read back does not match value written"
 
 def main(args):
     opt = Options()

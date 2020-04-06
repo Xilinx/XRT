@@ -507,16 +507,15 @@ def xclMapBO(handle, boHandle, write, buf_type='char', buf_size=1):
     Return type void pointer doesn't get correctly binded in ctypes
     To map the buffer, explicitly specify the type and size of data
     """
+    prop = xclBOProperties()
+    xclGetBOProperties(handle, boHandle, prop)
+
     if buf_type == 'char':
-        prop = xclBOProperties()
-        xclGetBOProperties(handle, boHandle, prop)
         libcore.xclMapBO.restype = ctypes.POINTER(ctypes.c_char * prop.size)
-
-    elif buf_size == 1 and buf_type == 'int':
-        libcore.xclMapBO.restype = ctypes.POINTER(ctypes.c_int)
-
     elif buf_type == 'int':
-        libcore.xclMapBO.restype = ctypes.POINTER(ctypes.c_int * buf_size)
+        element_size = ctypes.sizeof(ctypes.c_int)
+        size = prop.size/element_size
+        libcore.xclMapBO.restype = ctypes.POINTER(ctypes.c_int * size)
     else:
         print("ERROR: This data type is not supported ")
 
