@@ -125,21 +125,6 @@ private:
     name() const
     { return xml_device.get<std::string>("<xmlattr>.name"); }
 
-    xocl::xclbin::system_clocks_type
-    system_clocks() const
-    {
-      xocl::xclbin::system_clocks_type clocks;
-      pt::ptree default_value;
-      for (auto& xml_clock : xml_device.get_child("systemClocks",default_value)) {
-        if (xml_clock.first != "clock")
-          continue;
-        auto port = xml_clock.second.get<std::string>("<xmlattr>.port");
-        auto freq = convert(xml_clock.second.get<std::string>("<xmlattr>.frequency"));
-        clocks.emplace_back(name(),std::move(port),freq);
-      }
-      return clocks;
-    }
-
   }; // class device
 
 
@@ -254,69 +239,6 @@ private:
     name() const
     {
       return xml_core.get<std::string>("<xmlattr>.name");
-    }
-
-    xocl::xclbin::kernel_clocks_type
-    kernel_clocks() const
-    {
-      xocl::xclbin::kernel_clocks_type clocks;
-      bool set = false;
-      for (auto& xml : xml_core) {
-        if (xml.first != "kernelClocks")
-          continue;
-        set = true;
-        for (auto& xml_clock : xml.second ) {
-          if (xml_clock.first != "clock")
-            continue;
-          auto port = xml_clock.second.get<std::string>("<xmlattr>.port");
-          auto freq = convert(xml_clock.second.get<std::string>("<xmlattr>.frequency"));
-          clocks.emplace_back(name(),std::move(port),freq);
-        }
-        // There is an implicit assumption in the hal driver that
-        // DATA_CLK is before KERNEL_CLK. This is the case in our
-        // xclbins, but not in AWS'., Just sort the container here.
-        std::sort(clocks.begin(),clocks.end(),
-                  [](const xocl::xclbin::clocks& clk1,const xocl::xclbin::clocks& clk2) {
-                    return clk1.clock_name < clk2.clock_name;
-                  });
-      }
-      if (!set) {
-        auto corefreq = xml_core.get<std::string>("<xmlattr>.clockFreq");
-        auto port = std::string("");
-        auto freq = m_platform->version() > 21
-          ? std::stoi(corefreq)
-          : 0;
-        clocks.emplace_back(name(),std::move(port),freq);
-      }
-      return clocks;
-    }
-
-    xocl::xclbin::profilers_type
-    profilers() const
-    {
-      xocl::xclbin::profilers_type profilers;
-      for (auto& xml_profilers : xml_core) {
-        if (xml_profilers.first != "profilers")
-          continue;
-        for (auto& xml_inst : xml_profilers.second) {
-          if (xml_inst.first != "instance")
-            continue;
-          xocl::xclbin::profiler profiler;
-          profiler.name = xml_inst.second.get<std::string>("<xmlattr>.name");
-
-          for (auto& xml_slot : xml_inst.second) {
-            if (xml_slot.first != "slot")
-              continue;
-            auto slotnum = xml_slot.second.get<int>("<xmlattr>.index");
-            auto cuname = xml_slot.second.get<std::string>("<xmlattr>.name");
-            auto type = xml_slot.second.get<std::string>("<xmlattr>.type");
-            profiler.slots.emplace_back(slotnum,std::move(cuname),std::move(type));
-          }
-
-          profilers.emplace_back(std::move(profiler));
-        }
-      }
-      return profilers;
     }
 
   }; // class core
@@ -579,13 +501,6 @@ private:
       return m_symbol;
     }
 
-    void
-    cu_base_address_map(std::vector<uint64_t>& amap) const
-    {
-      for (auto& instance : m_symbol.instances)
-        amap.push_back(instance.base);
-    }
-
     std::string
     conformance_rename()
     {
@@ -656,7 +571,6 @@ public:
     auto device = m_devices.back().get();
 
     auto nm = device->name();
-    auto c = device->system_clocks();
 
     // iterate cores
     count = 0;
@@ -676,28 +590,6 @@ public:
       XOCL_DEBUG(std::cout,"xclbin found kernel '" + xml_kernel.second.get<std::string>("<xmlattr>.name") + "'\n");
       m_kernels.emplace_back(std::make_unique<kernel_wrapper>(platform,device,core,xml_kernel.second));
     }
-  }
-
-  xocl::xclbin::system_clocks_type
-  system_clocks() const
-  {
-    xocl::xclbin::system_clocks_type clocks;
-    for (auto& device : m_devices) {
-      auto cclocks = device->system_clocks();
-      std::move(cclocks.begin(),cclocks.end(),std::back_inserter(clocks));
-    }
-    return clocks;
-  }
-
-  xocl::xclbin::kernel_clocks_type
-  kernel_clocks() const
-  {
-    xocl::xclbin::kernel_clocks_type clocks;
-    for (auto& core : m_cores) {
-      auto cclocks = core->kernel_clocks();
-      std::move(cclocks.begin(),cclocks.end(),std::back_inserter(clocks));
-    }
-    return clocks;
   }
 
   unsigned int
@@ -746,23 +638,6 @@ public:
     return m_cores[0]->target();
   }
 
-  xocl::xclbin::profilers_type
-  profilers() const
-  {
-    return m_cores[0]->profilers();
-  }
-
-  std::vector<uint64_t>
-  cu_base_address_map() const
-  {
-    std::vector<uint64_t> amap;
-    for (auto& kernel : m_kernels)
-      kernel->cu_base_address_map(amap);
-
-    std::sort(amap.begin(),amap.end());
-    return amap;
-  }
-
   unsigned int
   conformance_rename_kernel(const std::string& hash)
   {
@@ -792,7 +667,6 @@ class xclbin_data_sections
   const ::connectivity* m_con          = nullptr;
   const ::mem_topology* m_mem          = nullptr;
   const ::ip_layout* m_ip              = nullptr;
-  const ::clock_freq_topology* m_clk   = nullptr;
 
   struct membank
   {
@@ -821,7 +695,6 @@ public:
     , m_con(get_xclbin_section<const ::connectivity*>(raw, CONNECTIVITY))
     , m_mem(get_xclbin_section<const ::mem_topology*>(raw, MEM_TOPOLOGY))
     , m_ip (get_xclbin_section<const ::ip_layout*>(raw, IP_LAYOUT))
-    , m_clk(get_xclbin_section<const ::clock_freq_topology*>(raw, CLOCK_FREQ_TOPOLOGY))
   {
     // populate mem bank
     if (m_mem) {
@@ -841,11 +714,7 @@ public:
   bool
   is_valid() const
   {
-#if 0
-    return (m_con && m_mem && m_ip && m_clk);
-#else
     return (m_con && m_mem && m_ip);
-#endif
   }
 
   xocl::xclbin::memidx_type
@@ -891,12 +760,6 @@ public:
   clear_connection(xocl::xclbin::connidx_type conn)
   {
     m_used_connections.erase(std::remove(m_used_connections.begin(), m_used_connections.end(), conn), m_used_connections.end());
-  }
-
-  const clock_freq_topology*
-  get_clk_freq_topology() const
-  {
-    return m_clk;
   }
 
   const mem_topology*
@@ -1108,20 +971,6 @@ target() const
   return impl_or_error()->m_xml.target();
 }
 
-xclbin::system_clocks_type
-xclbin::
-system_clocks()
-{
-  return impl_or_error()->m_xml.system_clocks();
-}
-
-xclbin::kernel_clocks_type
-xclbin::
-kernel_clocks()
-{
-  return impl_or_error()->m_xml.kernel_clocks();
-}
-
 unsigned int
 xclbin::
 num_kernels() const
@@ -1150,32 +999,11 @@ lookup_kernel(const std::string& name) const
   return impl_or_error()->m_xml.lookup_kernel(name);
 }
 
-xclbin::profilers_type
-xclbin::
-profilers() const
-{
-  return impl_or_error()->m_xml.profilers();
-}
-
-const clock_freq_topology*
-xclbin::
-get_clk_freq_topology() const
-{
-  return impl_or_error()->m_sections.get_clk_freq_topology();
-}
-
 const mem_topology*
 xclbin::
 get_mem_topology() const
 {
   return impl_or_error()->m_sections.get_mem_topology();
-}
-
-std::vector<uint64_t>
-xclbin::
-cu_base_address_map() const
-{
-  return impl_or_error()->m_xml.cu_base_address_map();
 }
 
 xclbin::memidx_bitmask_type
