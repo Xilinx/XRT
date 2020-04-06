@@ -1,8 +1,6 @@
 """
- Copyright (C) 2018 Xilinx, Inc
- Author(s): Ryan Radjabi
-            Shivangi Agarwal
-            Sonal Santan
+ Copyright (C) 2019 Xilinx, Inc
+
  ctypes based Python binding for XRT
 
  Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -162,6 +160,16 @@ class xclBOProperties (ctypes.Structure):
      ("reserved", ctypes.c_uint), # not implemented
     ]
 
+def _valueOrError(res):
+    """
+    Validate return code from XRT C library and raise an exception if necessary
+    """
+    if (res < 0):
+        res = -res
+        raise OSError(res, os.strerror(res))
+    return res
+
+
 def xclProbe():
     """
     xclProbe() - Enumerate devices found in the system
@@ -186,11 +194,7 @@ def xclOpen(deviceIndex, logFileName, level):
     """
     libcore.xclOpen.restype = ctypes.POINTER(xclDeviceHandle)
     libcore.xclOpen.argtypes = [ctypes.c_uint, ctypes.c_char_p, ctypes.c_int]
-    res = libcore.xclOpen(deviceIndex, logFileName, level)
-    if (res < 0):
-        res = -res
-        raise OSError(res, os.strerror(res))
-    return res
+    return _valueOrError(libcore.xclOpen(deviceIndex, logFileName, level))
 
 
 def xclClose(handle):
@@ -226,11 +230,7 @@ def xclGetDeviceInfo2 (handle, info):
 
     libcore.xclGetDeviceInfo2.restype = ctypes.c_int
     libcore.xclGetDeviceInfo2.argtypes = [xclDeviceHandle, ctypes.POINTER(xclDeviceInfo2)]
-    res = libcore.xclGetDeviceInfo2(handle, info)
-    if (res < 0):
-        res = -res
-        raise OSError(res, os.strerror(res))
-    return res
+    return _valueOrError(libcore.xclGetDeviceInfo2(handle, info))
 
 
 def xclGetUsageInfo (handle, info):
@@ -242,11 +242,7 @@ def xclGetUsageInfo (handle, info):
     """
     libcore.xclGetUsageInfo.restype = ctypes.c_int
     libcore.xclGetUsageInfo.argtypes = [xclDeviceHandle, ctypes.POINTER(xclDeviceInfo2)]
-    res = libcore.xclGetUsageInfo(handle, info)
-    if (res < 0):
-        res = -res
-        raise OSError(res, os.strerror(res))
-    return res
+    return _valueOrError(libcore.xclGetUsageInfo(handle, info))
 
 
 def xclGetErrorStatus(handle, info):
@@ -258,11 +254,7 @@ def xclGetErrorStatus(handle, info):
     """
     libcore.xclGetErrorStatus.restype = ctypes.c_int
     libcore.xclGetErrorStatus.argtypes = [xclDeviceHandle, ctypes.POINTER(xclDeviceInfo2)]
-    res = libcore.xclGetErrorStatus(handle, info)
-    if (res < 0):
-        res = -res
-        raise OSError(res, os.strerror(res))
-    return res
+    return _valueOrError(libcore.xclGetErrorStatus(handle, info))
 
 
 def xclLoadXclBin(handle, buf):
@@ -279,11 +271,7 @@ def xclLoadXclBin(handle, buf):
     """
     libcore.xclLoadXclBin.restype = ctypes.c_int
     libcore.xclLoadXclBin.argtypes = [xclDeviceHandle, ctypes.c_void_p]
-    res = libcore.xclLoadXclBin(handle, buf)
-    if (res < 0):
-        res = -res
-        raise OSError(res, os.strerror(res))
-    return res
+    return _valueOrError(libcore.xclLoadXclBin(handle, buf))
 
 
 def xclGetSectionInfo(handle, info, size, kind, index):
@@ -300,11 +288,7 @@ def xclGetSectionInfo(handle, info, size, kind, index):
     libcore.xclGetSectionInfo.argtypes = [xclDeviceHandle, ctypes.POINTER(xclDeviceInfo2),
                                        ctypes.POINTER(ctypes.sizeof(xclDeviceInfo2)),
                                        ctypes.c_int, ctypes.c_int]
-    res = libcore.xclGetSectionInfo(handle, info, size, kind, index)
-    if (res < 0):
-        res = -res
-        raise OSError(res, os.strerror(res))
-    return res
+    return _valueOrError(libcore.xclGetSectionInfo(handle, info, size, kind, index))
 
 
 def xclReClock2(handle, region, targetFreqMHz):
@@ -317,36 +301,20 @@ def xclReClock2(handle, region, targetFreqMHz):
     """
     libcore.xclReClock2.restype = ctypes.c_int
     libcore.xclReClock2.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_uint]
-    res = libcore.xclReClock2(handle, region, targetFreqMHz)
-    if (res < 0):
-        res = -res
-        raise OSError(res, os.strerror(res))
-    return res
+    return _valueOrError(libcore.xclReClock2(handle, region, targetFreqMHz))
 
 
 def xclLockDevice(handle):
     """
-    Get exclusive ownership of the device
-
-    :param handle: (xclDeviceHandle) device handle
-    :return: 0 on success or appropriate error number
-
-    The lock is necessary before performing buffer migration, register access or bitstream downloads
+    The function is NOP; it exists for backward compatiblity.
     """
-    libcore.xclLockDevice.restype = ctypes.c_int
-    libcore.xclLockDevice.argtype = xclDeviceHandle
-    return libcore.xclLockDevice(handle)
+    return 0
 
 def xclUnlockDevice(handle):
     """
-    xclUnlockDevice() - Release exclusive ownership of the device
-
-    :param handle: (xclDeviceHandle) device handle
-    :return: 0 on success or appropriate error number
+    The function is NOP; it exists for backward compatiblity.
     """
-    libcore.xclUnlockDevice.restype = ctypes.c_int
-    libcore.xclUnlockDevice.argtype = xclDeviceHandle
-    return libcore.xclUnlockDevice(handle)
+    return 0
 
 def xclOpenContext(handle, xclbinId, ipIndex, shared):
     """
@@ -364,11 +332,7 @@ def xclOpenContext(handle, xclbinId, ipIndex, shared):
     """
     libcore.xclOpenContext.restype = ctypes.c_int
     libcore.xclOpenContext.argtypes = [xclDeviceHandle, ctypes.c_char_p, ctypes.c_uint, ctypes.c_bool]
-    res = libcore.xclOpenContext(handle, xclbinId.bytes, ipIndex, shared)
-    if (res < 0):
-        res = -res
-        raise OSError(res, os.strerror(res))
-    return res
+    return _valueOrError(libcore.xclOpenContext(handle, xclbinId.bytes, ipIndex, shared))
 
 
 def xclCloseContext(handle, xclbinId, ipIndex):
@@ -383,11 +347,7 @@ def xclCloseContext(handle, xclbinId, ipIndex):
     """
     libcore.xclCloseContext.restype = ctypes.c_int
     libcore.xclCloseContext.argtypes = [xclDeviceHandle, ctypes.c_char_p, ctypes.c_uint]
-    res = libcore.xclCloseContext(handle, xclbinId.bytes, ipIndex)
-    if (res < 0):
-        res = -res
-        raise OSError(res, os.strerror(res))
-    return res
+    return _valueOrError(libcore.xclCloseContext(handle, xclbinId.bytes, ipIndex))
 
 
 def xclUpgradeFirmware(handle, fileName):
@@ -456,11 +416,7 @@ def xclLogMsg(handle, level, tag, format, *args):
     """
     libcore.xclAllocBO.restype = ctypes.c_int
     libcore.xclAllocBO.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p]
-    res = libcore.xclLogMsg(handle, level, tag, format, *args)
-    if (res < 0):
-        res = -res
-        raise OSError(res, os.strerror(res))
-    return res
+    return _valueOrError(libcore.xclLogMsg(handle, level, tag, format, *args))
 
 
 def xclAllocBO(handle, size, unused, flags):
@@ -475,11 +431,8 @@ def xclAllocBO(handle, size, unused, flags):
     """
     libcore.xclAllocBO.restype = ctypes.c_uint
     libcore.xclAllocBO.argtypes = [xclDeviceHandle, ctypes.c_size_t, ctypes.c_int, ctypes.c_uint]
-    res = libcore.xclAllocBO(handle, size, unused, flags)
-    if (res < 0):
-        res = -res
-        raise OSError(res, os.strerror(res))
-    return res
+    return _valueOrError(libcore.xclAllocBO(handle, size, unused, flags))
+
 
 def xclAllocUserPtrBO(handle, userptr, size, flags):
     """
@@ -492,11 +445,8 @@ def xclAllocUserPtrBO(handle, userptr, size, flags):
     """
     libcore.xclAllocUserPtrBO.restype = ctypes.c_uint
     libcore.xclAllocUserPtrBO.argtypes = [xclDeviceHandle, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_uint]
-    res = libcore.xclAllocUserPtrBO(handle, userptr, size, flags)
-    if (res < 0):
-        res = -res
-        raise OSError(res, os.strerror(res))
-    return res
+    return _valueOrError(libcore.xclAllocUserPtrBO(handle, userptr, size, flags))
+
 
 def xclFreeBO(handle, boHandle):
     """
@@ -508,6 +458,7 @@ def xclFreeBO(handle, boHandle):
     libcore.xclFreeBO.restype = None
     libcore.xclFreeBO.argtypes = [xclDeviceHandle, ctypes.c_uint]
     libcore.xclFreeBO(handle, boHandle)
+
 
 def xclWriteBO(handle, boHandle, src, size, seek):
     """
@@ -521,11 +472,8 @@ def xclWriteBO(handle, boHandle, src, size, seek):
     """
     libcore.xclWriteBO.restype = ctypes.c_int
     libcore.xclWriteBO.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_size_t]
-    res = libcore.xclWriteBO(handle, boHandle, src, size, seek)
-    if res:
-        res = -res
-        raise OSError(res, os.strerror(res))
-    return res
+    return _valueOrError(libcore.xclWriteBO(handle, boHandle, src, size, seek))
+
 
 def xclReadBO(handle, boHandle, dst, size, skip):
     """
@@ -539,11 +487,8 @@ def xclReadBO(handle, boHandle, dst, size, skip):
     """
     libcore.xclReadBO.restype = ctypes.c_int
     libcore.xclReadBO.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_size_t]
-    res = libcore.xclReadBO(handle, boHandle, dst, size, skip)
-    if res:
-        res = -res
-        raise OSError(res, os.strerror(res))
-    return res
+    return _valueOrError(libcore.xclReadBO(handle, boHandle, dst, size, skip))
+
 
 def xclMapBO(handle, boHandle, write, buf_type='char', buf_size=1):
     """
@@ -590,11 +535,8 @@ def xclUnmapBO(handle, boHandle, addr):
     """
     libcore.xclUnmapBO.restype = ctypes.c_int
     libcore.xclUnmapBO.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_void_p]
-    res = libcore.xclUnmapBO(handle, boHandle, addr)
-    if res:
-        res = -res
-        raise OSError(res, os.strerror(res))
-    return res
+    return _valueOrError(libcore.xclUnmapBO(handle, boHandle, addr))
+
 
 def xclSyncBO(handle, boHandle, direction, size, offset):
     """
@@ -609,11 +551,8 @@ def xclSyncBO(handle, boHandle, direction, size, offset):
     """
     libcore.xclSyncBO.restype = ctypes.c_int
     libcore.xclSyncBO.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_int, ctypes.c_size_t, ctypes.c_size_t]
-    res = libcore.xclSyncBO(handle, boHandle, direction, size, offset)
-    if res:
-        res = -res
-        raise OSError(res, os.strerror(res))
-    return res
+    return _valueOrError(libcore.xclSyncBO(handle, boHandle, direction, size, offset))
+
 
 def xclCopyBO(handle, dstBoHandle, srcBoHandle, size, dst_offset, src_offset):
     """
@@ -629,11 +568,8 @@ def xclCopyBO(handle, dstBoHandle, srcBoHandle, size, dst_offset, src_offset):
     libcore.xclCopyBO.restype = ctypes.c_int
     libcore.xclCopyBO.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_uint, ctypes.c_size_t, ctypes.c_size_t,
                                ctypes.c_uint]
-    res = xclCopyBO(handle, dstBoHandle, srcBoHandle, size, dst_offset, src_offset)
-    if res:
-        res = -res
-        raise OSError(res, os.strerror(res))
-    return res
+    return _valueOrError(xclCopyBO(handle, dstBoHandle, srcBoHandle, size, dst_offset, src_offset))
+
 
 def xclExportBO(handle, boHandle):
     """
@@ -644,11 +580,8 @@ def xclExportBO(handle, boHandle):
     """
     libcore.xclExportBO.restype = ctypes.c_int
     libcore.xclExportBO.argtypes = [xclDeviceHandle, ctypes.c_uint]
-    res = libcore.xclExportBO(handle, boHandle)
-    if (res < 0):
-        res = -res
-        raise OSError(res, os.strerror(res))
-    return res
+    return _valueOrError(libcore.xclExportBO(handle, boHandle))
+
 
 def xclImportBO(handle, fd, flags):
     """
@@ -676,11 +609,8 @@ def xclGetBOProperties(handle, boHandle, properties):
     """
     libcore.xclGetBOProperties.restype = ctypes.c_int
     libcore.xclGetBOProperties.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.POINTER(xclBOProperties)]
-    res = libcore.xclGetBOProperties(handle, boHandle, properties)
-    if res:
-        res = -res
-        raise OSError(res, os.strerror(res))
-    return res
+    return _valueOrError(libcore.xclGetBOProperties(handle, boHandle, properties))
+
 
 def xclUnmgdPread(handle, flags, buf, size, offeset):
     """
@@ -1105,11 +1035,7 @@ def xrtPLKernelOpen(handle, xclbinId, name):
     """
     libcoreutil.xrtPLKernelOpen.restype = ctypes.POINTER(xrtKernelHandle)
     libcoreutil.xrtPLKernelOpen.argtypes = [xclDeviceHandle, ctypes.c_char_p, ctypes.c_char_p]
-    res = libcoreutil.xrtPLKernelOpen(handle, xclbinId.bytes, name)
-    if (res == 0):
-        err = ctypes.get_errno()
-        raise OSError(err, os.strerror(err))
-    return res
+    return _valueOrError(libcoreutil.xrtPLKernelOpen(handle, xclbinId.bytes, name))
 
 
 def xrtKernelClose(khandle):
@@ -1122,8 +1048,8 @@ def xrtKernelClose(khandle):
     libcoreutil.xrtKernelClose.argtypes = [xrtKernelHandle]
     res = libcoreutil.xrtKernelClose(khandle)
     if (res):
-        raise OSError(errno.EINVAL, os.strerror(errno.EINVAL))
-    return res
+        res = errno.EINVAL
+    return _valueOrError(-res);
 
 
 def xrtKernelRun(khandle, *args):
@@ -1134,8 +1060,8 @@ def xrtKernelRun(khandle, *args):
     :return: Run handle which must be closed with xrtRunClose()
     """
     libcoreutil.xrtKernelRun.restype = ctypes.POINTER(xrtKernelRunHandle)
-#   TODO: Figure out how do we pass hint for tuple/varargs for ctypes
-#   libcoreutil.xrtKerneRun.argtypes = [xrtKernelHandle]
+    # TODO: Figure out how do we pass hint for tuple/varargs for ctypes
+    # libcoreutil.xrtKerneRun.argtypes = [xrtKernelHandle]
     return libcoreutil.xrtKernelRun(khandle, *args)
 
 
@@ -1160,5 +1086,5 @@ def xrtRunClose(rhandle):
     libcoreutil.xrtRunClose.argtypes = [xrtRunHandle]
     res = libcoreutil.xrtRunClose(rhandle)
     if (res):
-        raise OSError(errno.EINVAL, os.strerror(errno.EINVAL))
-    return res
+        res = errno.EINVAL
+    return _valueOrError(-res);
