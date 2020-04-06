@@ -13,11 +13,11 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
 #include "device.h"
 
 #include "xrt/util/task.h"
 #include "xrt/util/event.h"
+#include "xrt/scheduler/command.h"
 
 #include <future>
 #include <cstring> // for std::memset
@@ -31,6 +31,12 @@ printDeviceInfo(std::ostream& ostr) const
   return m_hal->printDeviceInfo(ostr);
 }
 
+void
+device::
+close()
+{
+  purge_device_command_freelist(this); // command.h
+  m_hal->close();
+}
+
 } // xrt
-
-

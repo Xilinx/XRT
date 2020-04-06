@@ -15,8 +15,6 @@
  */
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/param.h"
 #include "xocl/core/error.h"
@@ -24,10 +22,14 @@
 #include "xocl/core/program.h"
 #include "xocl/core/context.h"
 #include "xocl/core/device.h"
-
 #include "detail/program.h"
-
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
+#include <CL/opencl.h>
+
+#ifdef _WIN32
+# pragma warning ( disable : 4267 )
+#endif
 
 namespace xocl {
 
@@ -95,8 +97,7 @@ clGetProgramInfo(cl_program         program,
       //a prior call with CL_PROGRAM_BINARY_SIZES.  Skip device binary for entry with nullptr.
       for (auto device : xocl(program)->get_device_range()) {
         auto buf = buffer.as_array<unsigned char*>(1); // unsigned char**
-        auto xclbin = xocl(program)->get_binary(device);
-        auto binary_data = xclbin.binary_data();
+        auto binary_data = xocl(program)->get_xclbin_binary(device);
         auto binary = binary_data.first;
         auto sz = binary_data.second - binary_data.first;
         if (buf && *buf && binary && sz) {
@@ -152,6 +153,7 @@ clGetProgramInfo(cl_program         program,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clGetProgramInfo
       (program,param_name,param_value_size,param_value,param_value_size_ret);
   }
@@ -163,7 +165,5 @@ clGetProgramInfo(cl_program         program,
     xocl::send_exception_message(ex.what());
     return CL_OUT_OF_HOST_MEMORY;
   }
-  
+
 }
-
-

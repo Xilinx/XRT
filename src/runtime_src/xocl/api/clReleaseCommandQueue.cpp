@@ -15,13 +15,13 @@
  */
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/command_queue.h"
 #include "detail/command_queue.h"
 
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
+#include <CL/opencl.h>
 
 namespace xocl {
 
@@ -39,7 +39,7 @@ clReleaseCommandQueue(cl_command_queue command_queue)
 {
   validOrError(command_queue);
   if (xocl(command_queue)->release())
-    delete xocl(command_queue); 
+    delete xocl(command_queue);
   return CL_SUCCESS;
 }
 
@@ -50,6 +50,7 @@ clReleaseCommandQueue(cl_command_queue command_queue)
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clReleaseCommandQueue(command_queue);
   }
   catch (const xrt::error& ex) {
@@ -61,5 +62,3 @@ clReleaseCommandQueue(cl_command_queue command_queue)
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-
