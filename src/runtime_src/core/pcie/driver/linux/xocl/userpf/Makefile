@@ -74,7 +74,7 @@ xocl-y := \
 	../subdev/memory_hbm.o \
 	../subdev/address_translator.o \
 	../subdev/cu_ctrl.o \
-	../subdev/cu_plram.o \
+	../subdev/cu.o \
 	$(xocl_lib-y)	\
 	$(drv_common-y) \
 	xocl_drv.o	\

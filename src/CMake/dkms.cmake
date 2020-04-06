@@ -158,7 +158,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/subdev/calib_storage.c
   xocl/subdev/address_translator.c
   xocl/subdev/cu_ctrl.c
-  xocl/subdev/cu_plram.c
+  xocl/subdev/cu.c
   xocl/Makefile
   )
 
