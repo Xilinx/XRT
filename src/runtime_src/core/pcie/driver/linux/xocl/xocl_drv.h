@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@Xilinx.com
  *          Jan Stephan <j.stephan@hzdr.de>
@@ -33,6 +33,8 @@
 #include <linux/libfdt_env.h>
 #include "lib/libfdt/libfdt.h"
 #include <linux/firmware.h>
+#include "kds_core.h"
+#include "xrt_cu.h"
 
 #ifndef mmiowb
 #define mmiowb()		do { } while (0)
@@ -373,6 +375,10 @@ struct xocl_work {
 	int			op;
 };
 
+struct kds_sched {
+	struct kds_controller *ctrl[KDS_MAX_TYPE];
+};
+
 struct xocl_dev_core {
 	struct pci_dev		*pdev;
 	int			dev_minor;
@@ -411,6 +417,8 @@ struct xocl_dev_core {
 	struct workqueue_struct	*wq;
 	struct xocl_work	works[XOCL_WORK_NUM];
 	struct mutex		wq_lock;
+
+	struct kds_sched	kds;
 
 	spinlock_t		api_lock;
 	struct completion	api_comp;
@@ -1401,6 +1409,26 @@ struct calib_storage_funcs {
 	(CALIB_STORAGE_CB(xdev) ?						\
 	CALIB_STORAGE_OPS(xdev)->restore(CALIB_STORAGE_DEV(xdev)) : \
 	-ENODEV)
+
+/* CU controller callback */
+struct xocl_kds_ctrl_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	int (* add_cu)(struct platform_device *pdev, struct xrt_cu *xcu);
+	int (* remove_cu)(struct platform_device *pdev, struct xrt_cu *xcu);
+};
+#define CU_CTRL_DEV(xdev) \
+	SUBDEV(xdev, XOCL_SUBDEV_CU_CTRL).pldev
+#define CU_CTRL_OPS(xdev) \
+	((struct xocl_kds_ctrl_funcs *)SUBDEV(xdev, XOCL_SUBDEV_CU_CTRL).ops)
+#define CU_CTRL_CB(xdev, cb) \
+	(CU_CTRL_DEV(xdev) && CU_CTRL_OPS(xdev) && CU_CTRL_OPS(xdev)->cb)
+#define xocl_cu_ctrl_add_cu(xdev, xcu) \
+	(CU_CTRL_CB(xdev, add_cu)? \
+	 CU_CTRL_OPS(xdev)->add_cu(CU_CTRL_DEV(xdev), xcu) : -ENXIO)
+#define xocl_cu_ctrl_remove_cu(xdev, xcu) \
+	(CU_CTRL_CB(xdev, remove_cu)? \
+	 CU_CTRL_OPS(xdev)->remove_cu(CU_CTRL_DEV(xdev), xcu) : 0)
+
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
 void xocl_init_dsa_priv(xdev_handle_t xdev_hdl);
@@ -1496,6 +1524,9 @@ u32 xocl_subdev_vsec_read32(xdev_handle_t xdev, int bar, u64 offset);
 int xocl_subdev_create_vsec_devs(xdev_handle_t xdev);
 int xocl_subdev_get_level(struct platform_device *pdev);
 
+void xocl_subdev_register(struct platform_device *pldev, void *ops);
+void xocl_subdev_unregister(struct platform_device *pldev);
+
 struct resource *xocl_subdev_get_ioresource(xdev_handle_t xdev_hdl,
 		char *res_name);
 
@@ -1540,6 +1571,11 @@ static inline void xocl_dr_reg_write32(xdev_handle_t xdev, u32 value, void __iom
 	read_lock(&XDEV(xdev)->rwlock);
 	iowrite32(value, addr);
 	read_unlock(&XDEV(xdev)->rwlock);
+}
+
+static inline void xocl_kds_setctrl(xdev_handle_t xdev, int type, struct kds_controller *ctrl)
+{
+	XDEV(xdev)->kds.ctrl[type] = ctrl;
 }
 
 /* context helpers */
@@ -1698,5 +1734,14 @@ void xocl_fini_ulite(void);
 
 int __init xocl_init_calib_storage(void);
 void xocl_fini_calib_storage(void);
+
+int __init xocl_init_kds(void);
+void xocl_fini_kds(void);
+
+int __init xocl_init_cu_ctrl(void);
+void xocl_fini_cu_ctrl(void);
+
+int __init xocl_init_cu(void);
+void xocl_fini_cu(void);
 
 #endif

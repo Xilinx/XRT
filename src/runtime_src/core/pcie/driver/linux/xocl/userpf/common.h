@@ -24,6 +24,7 @@
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 #include <linux/hashtable.h>
 #endif
+#include "kds_core.h"
 
 #define XOCL_DRIVER_DESC        "Xilinx PCIe Accelerator Device Manager"
 #define XOCL_DRIVER_DATE        "20180612"
@@ -256,5 +257,18 @@ static inline u64 xocl_pci_rebar_size_to_bytes(int size)
 {
 	return 1ULL << (size + 20);
 }
+
+/* KDS functions */
+int xocl_create_client(struct xocl_dev *xdev, void **priv);
+void xocl_destroy_client(struct xocl_dev *xdev, void **priv);
+int xocl_poll_client(struct xocl_dev *xdev, struct file *filp,
+		     poll_table *wait, void *priv);
+int xocl_client_ioctl(struct xocl_dev *xdev, int op, void *data,
+		      struct drm_file *filp);
+int xocl_kds_stop(struct xocl_dev *xdev);
+int xocl_kds_reset(struct xocl_dev *xdev, const xuid_t *xclbin_id);
+int xocl_kds_reconfig(struct xocl_dev *xdev);
+int xocl_cu_map_addr(struct xocl_dev *xdev, u32 cu_idx,
+		     void *drm_filp, u32 *addrp);
 
 #endif

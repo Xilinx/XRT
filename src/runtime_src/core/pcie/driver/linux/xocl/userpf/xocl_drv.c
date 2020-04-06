@@ -50,6 +50,8 @@
 #define MAX_DYN_SUBDEV		1024
 #define XDEV_DEFAULT_EXPIRE_SECS	1
 
+extern int kds_mode;
+
 static const struct pci_device_id pciidlist[] = {
 	XOCL_USER_XDMA_PCI_IDS,
 	{ 0, }
@@ -249,7 +251,10 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 			return;
 		}
 
-		xocl_exec_reset(xdev, xclbin_id);
+		if (kds_mode)
+			xocl_kds_reset(xdev, xclbin_id);
+		else
+			xocl_exec_reset(xdev, xclbin_id);
 		XOCL_PUT_XCLBIN_ID(xdev);
 		if (!xdev->core.drm) {
 			xdev->core.drm = xocl_drm_init(xdev);
@@ -547,6 +552,9 @@ int xocl_reclock(struct xocl_dev *xdev, void *data)
 	 * go through
 	 */
 	if (err == 0)
+		if (kds_mode)
+		(void) xocl_kds_reconfig(xdev);
+		else
 		(void) xocl_exec_reconfig(xdev);
 
 	kfree(req);
@@ -1504,6 +1512,8 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_trace_funnel,
 	xocl_init_trace_s2mm,
 	xocl_init_mem_hbm,
+	xocl_init_cu_ctrl,
+	xocl_init_cu,
 };
 
 static void (*xocl_drv_unreg_funcs[])(void) = {
@@ -1529,6 +1539,8 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_trace_funnel,
 	xocl_fini_trace_s2mm,
 	xocl_fini_mem_hbm,
+	xocl_fini_cu_ctrl,
+	xocl_fini_cu,
 };
 
 static int __init xocl_init(void)

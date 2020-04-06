@@ -211,6 +211,8 @@ enum {
 #define	XOCL_UARTLITE		"ulite"
 #define	XOCL_CALIB_STORAGE	"calib_storage"
 #define	XOCL_ADDR_TRANSLATOR	"address_translator"
+#define	XOCL_CU_CTRL		"cu_ctrl"
+#define	XOCL_CU			"cu"
 
 #define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
 
@@ -249,6 +251,8 @@ enum subdev_id {
 	XOCL_SUBDEV_UARTLITE,
 	XOCL_SUBDEV_CALIB_STORAGE,
 	XOCL_SUBDEV_ADDR_TRANSLATOR,
+	XOCL_SUBDEV_CU_CTRL,
+	XOCL_SUBDEV_CU,
 	XOCL_SUBDEV_NUM
 };
 
@@ -648,6 +652,53 @@ struct xocl_subdev_map {
 		.override_idx = -1,			\
 	}
 
+/* Fake resource for FIFO base CU
+ * Res 0: CU registers on AXI-Lite
+ * Res 1: CU argument ram on AXI-full (hard code for U.2)
+ */
+#define XOCL_RES_CU_PLRAM				\
+	((struct resource []) {				\
+		{					\
+			.start	= 0x0,			\
+			.end	= 0x7FFFFF,		\
+			.flags	= IORESOURCE_MEM,	\
+		},					\
+		{					\
+			.start	= 0x100000000,		\
+			.end	= 0x1000FFFFF,		\
+			.flags	= IORESOURCE_MEM,	\
+		}					\
+	})
+
+#define XOCL_DEVINFO_CU					\
+	{						\
+		XOCL_SUBDEV_CU,				\
+		XOCL_CU,				\
+		XOCL_RES_CU_PLRAM,			\
+		ARRAY_SIZE(XOCL_RES_CU_PLRAM),		\
+		.level = XOCL_SUBDEV_LEVEL_URP,		\
+		.multi_inst = true,			\
+		.override_idx = -1,			\
+		.bar_idx = (char []){ 0, 4 },		\
+	}
+
+#define XOCL_RES_CU_CTRL				\
+	((struct resource []) {				\
+		{					\
+			.start	= 0,			\
+			.end	= 3,			\
+			.flags	= IORESOURCE_IRQ,	\
+		}					\
+	})
+
+#define XOCL_DEVINFO_CU_CTRL				\
+	{						\
+		XOCL_SUBDEV_CU_CTRL,			\
+		XOCL_CU_CTRL,				\
+		XOCL_RES_CU_CTRL,			\
+		ARRAY_SIZE(XOCL_RES_CU_CTRL),		\
+		.override_idx = -1,			\
+	}
 
 #define	XOCL_RES_TRACE_FUNNEL			\
 	((struct resource []) {				\
@@ -1572,6 +1623,19 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_AF_USER,				\
 		})
 
+#define	USER_RES_DSA52_U2						\
+		((struct xocl_subdev_info []) {				\
+			XOCL_DEVINFO_FEATURE_ROM,			\
+			XOCL_DEVINFO_XDMA,				\
+			XOCL_DEVINFO_SCHEDULER,				\
+			XOCL_DEVINFO_MAILBOX_USER,			\
+			XOCL_DEVINFO_XVC_PUB,				\
+			XOCL_DEVINFO_ICAP_USER,				\
+			XOCL_DEVINFO_XMC_USER,				\
+			XOCL_DEVINFO_AF_USER,				\
+			XOCL_DEVINFO_CU_CTRL,				\
+		})
+
 #define USER_RES_SMARTN							\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM_SMARTN,		\
@@ -1620,8 +1684,8 @@ struct xocl_subdev_map {
 #define	XOCL_BOARD_USER_DSA52_U2				\
 	(struct xocl_board_private){					\
 		.flags		= XOCL_DSAFLAG_NOSC,			\
-		.subdev_info	= USER_RES_DSA52,			\
-		.subdev_num = ARRAY_SIZE(USER_RES_DSA52),		\
+		.subdev_info	= USER_RES_DSA52_U2,			\
+		.subdev_num = ARRAY_SIZE(USER_RES_DSA52_U2),		\
 	}
 
 #define	XOCL_BOARD_USER_DSA52						\

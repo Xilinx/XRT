@@ -30,6 +30,8 @@
 #include "version.h"
 #include "common.h"
 
+extern int kds_mode;
+
 #if defined(XOCL_UUID)
 xuid_t uuid_null = NULL_UUID_LE;
 #endif
@@ -62,8 +64,12 @@ int xocl_execbuf_ioctl(struct drm_device *dev,
 	struct xocl_drm *drm_p = dev->dev_private;
 	int ret = 0;
 
-	ret = xocl_exec_client_ioctl(drm_p->xdev,
-		       DRM_XOCL_EXECBUF, data, filp);
+	if (kds_mode == 1)
+		ret = xocl_client_ioctl(drm_p->xdev,
+					DRM_XOCL_EXECBUF, data, filp);
+	else
+		ret = xocl_exec_client_ioctl(drm_p->xdev,
+					     DRM_XOCL_EXECBUF, data, filp);
 
 	return ret;
 }
@@ -79,8 +85,12 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 	struct xocl_drm *drm_p = dev->dev_private;
 	int ret = 0;
 
-	ret = xocl_exec_client_ioctl(drm_p->xdev,
-		       DRM_XOCL_CTX, data, filp);
+	if (kds_mode == 1)
+		ret = xocl_client_ioctl(drm_p->xdev,
+					DRM_XOCL_CTX, data, filp);
+	else
+		ret = xocl_exec_client_ioctl(drm_p->xdev,
+					     DRM_XOCL_CTX, data, filp);
 
 	return ret;
 }
@@ -194,32 +204,57 @@ xocl_read_sect(enum axlf_section_kind kind, void **sect, struct axlf *axlf_full)
 static uint live_clients(struct xocl_dev *xdev, pid_t **plist)
 {
 	const struct list_head *ptr;
-	const struct client_ctx *entry;
 	uint count = 0;
 	uint i = 0;
 	pid_t *pl = NULL;
 
 	BUG_ON(!mutex_is_locked(&xdev->dev_lock));
 
-	/* Find out number of active client */
-	list_for_each(ptr, &xdev->ctx_list) {
-		entry = list_entry(ptr, struct client_ctx, link);
-		if (CLIENT_NUM_CU_CTX(entry) > 0)
-			count++;
-	}
-	if (count == 0 || plist == NULL)
-		goto out;
+	if (kds_mode) {
+		const struct kds_client *entry;
+		/* Find out number of active client */
+		list_for_each(ptr, &xdev->ctx_list) {
+			entry = list_entry(ptr, struct kds_client, link);
+			if (CLIENT_NUM_CU(entry) > 0)
+				count++;
+		}
+		if (count == 0 || plist == NULL)
+			goto out;
 
-	/* Collect list of PIDs of active client */
-	pl = (pid_t *)vmalloc(sizeof(pid_t) * count);
-	if (pl == NULL)
-		goto out;
+		/* Collect list of PIDs of active client */
+		pl = (pid_t *)vmalloc(sizeof(pid_t) * count);
+		if (pl == NULL)
+			goto out;
 
-	list_for_each(ptr, &xdev->ctx_list) {
-		entry = list_entry(ptr, struct client_ctx, link);
-		if (CLIENT_NUM_CU_CTX(entry) > 0) {
-			pl[i] = pid_nr(entry->pid);
-			i++;
+		list_for_each(ptr, &xdev->ctx_list) {
+			entry = list_entry(ptr, struct kds_client, link);
+			if (CLIENT_NUM_CU(entry) > 0) {
+				pl[i] = pid_nr(entry->pid);
+				i++;
+			}
+		}
+	} else {
+		const struct client_ctx *entry;
+		/* Find out number of active client */
+		list_for_each(ptr, &xdev->ctx_list) {
+			entry = list_entry(ptr, struct client_ctx, link);
+			if (CLIENT_NUM_CU_CTX(entry) > 0)
+				count++;
+		}
+		if (count == 0 || plist == NULL)
+			goto out;
+
+		/* Collect list of PIDs of active client */
+		pl = (pid_t *)vmalloc(sizeof(pid_t) * count);
+		if (pl == NULL)
+			goto out;
+
+		list_for_each(ptr, &xdev->ctx_list) {
+			entry = list_entry(ptr, struct client_ctx, link);
+			if (CLIENT_NUM_CU_CTX(entry) > 0) {
+				pl[i] = pid_nr(entry->pid);
+				i++;
+			}
 		}
 	}
 
@@ -426,7 +461,10 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		 * We have to clear uuid cached in scheduler here if
 		 * download xclbin failed
 		 */
-		(void) xocl_exec_reset(xdev, &uuid_null);
+		if (kds_mode)
+			(void) xocl_kds_reset(xdev, &uuid_null);
+		else
+			(void) xocl_exec_reset(xdev, &uuid_null);
 		/*
 		 * Don't just bail out here, always recreate drm mem
 		 * since we have cleaned it up before download.

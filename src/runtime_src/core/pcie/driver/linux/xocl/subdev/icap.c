@@ -1,5 +1,5 @@
 /**
- *  Copyright (C) 2017-2019 Xilinx, Inc. All rights reserved.
+ *  Copyright (C) 2017-2020 Xilinx, Inc. All rights reserved.
  *  Author: Sonal Santan
  *  Code copied verbatim from SDAccel xcldma kernel mode driver
  *
@@ -1740,6 +1740,56 @@ static int icap_create_subdev_debugip(struct platform_device *pdev)
 	}
 	return err;
 }
+
+static int icap_create_cu(struct platform_device *pdev)
+{
+	struct icap *icap = platform_get_drvdata(pdev);
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	struct ip_layout *ip_layout = icap->ip_layout;
+	struct xrt_cu_info info;
+	int err = 0, i;
+
+	/* Let CU controller know the dynamic resources */
+	for (i = 0; i < ip_layout->m_count; ++i) {
+		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_CU;
+		struct ip_data *ip = &ip_layout->m_ip_data[i];
+
+		if (ip->m_type != IP_KERNEL)
+			continue;
+
+		if (ip->m_base_address == 0xFFFFFFFF)
+			continue;
+
+		/* let me only consider plram CU before we know
+		 * how to distinguish it from normal CU
+		 */
+		info.model = MODEL_PLRAM;
+		info.num_res = subdev_info.num_res;
+
+		/* TODO: Consider where should we determine CU index in
+		 * the driver.. Right now, user space determine it and let
+		 * driver known by configure command
+		 */
+		info.cu_idx = -1;
+		info.addr = ip->m_base_address;
+		info.intr_enable = ip->properties & IP_INT_ENABLE_MASK;
+		info.protocol = (ip->properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT;
+		info.intr_id = (ip->properties & IP_INTERRUPT_ID_MASK) >> IP_INTERRUPT_ID_SHIFT;
+
+		subdev_info.res[0].start += ip->m_base_address;
+		subdev_info.res[0].end += ip->m_base_address;
+		subdev_info.priv_data = &info;
+		subdev_info.data_len = sizeof(info);
+		err = xocl_subdev_create(xdev, &subdev_info);
+		if (err) {
+			ICAP_ERR(icap, "can't create CU subdev");
+			break;
+		}
+	}
+
+	return err;
+}
+
 static int icap_create_subdev(struct platform_device *pdev)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
@@ -1861,6 +1911,10 @@ static int icap_create_subdev(struct platform_device *pdev)
 			}
 		}
 	}
+
+	if (!ICAP_PRIVILEGED(icap))
+		err = icap_create_cu(pdev);
+
 	if (!ICAP_PRIVILEGED(icap))
 		err = icap_create_subdev_debugip(pdev);
 done:
@@ -1878,6 +1932,7 @@ static inline void xocl_dyn_subdevs_destory(xdev_handle_t xdev)
 	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_TRACE_FIFO_FULL);
 	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_TRACE_FUNNEL);
 	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_TRACE_S2MM);
+	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_CU);
 }
 
 static int icap_create_post_download_subdevs(struct platform_device *pdev, struct axlf *xclbin)

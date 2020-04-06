@@ -56,6 +56,11 @@
 # pragma warning( disable : 4201 )
 #endif
 
+#define to_cfg_pkg(pkg) \
+    ((struct ert_configure_cmd *)(pkg))
+#define to_start_krnl_pkg(pkg) \
+    ((struct ert_start_kernel_cmd *)(pkg))
+
 /**
  * struct ert_packet: ERT generic packet format
  *
