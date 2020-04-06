@@ -362,6 +362,11 @@ bool DSAInfo::matchId(DSAInfo& dsa)
     return false;
 }
 
+bool DSAInfo::bmcVerIsFixed()
+{
+	return (bmcVer.find("FIXED") != std::string::npos);
+}
+
 std::vector<DSAInfo> firmwareImage::installedDSA;
 
 std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()

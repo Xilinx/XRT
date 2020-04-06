@@ -516,7 +516,8 @@ bool XMC_Flasher::isXMCReady()
 
 bool XMC_Flasher::isBMCReady()
 {
-    bool bmcReady = (BMC_MODE() == 0x1);
+    bool bmcReady = (BMC_MODE() == BMC_STATE_READY) ||
+        (BMC_MODE() == BMC_STATE_READY_NOTUPGRADABLE);
 
     if (!bmcReady) {
       auto format = xrt_core::utils::ios_restore(std::cout);
@@ -543,6 +544,24 @@ bool XMC_Flasher::hasSC()
     mDev->sysfs_get<unsigned>("xmc", "sc_presence", errmsg, val, 0);
     if (!errmsg.empty()) {
         std::cout << "can't read sc_presence node from " << mDev->sysfs_name <<
+            " : " << errmsg << std::endl;
+        return false;
+    }
+
+    return (val != 0);
+}
+
+bool XMC_Flasher::fixedSC()
+{
+    unsigned int val;
+    std::string errmsg;
+
+    if (!hasXMC())
+	    return false;
+
+    mDev->sysfs_get<unsigned>("xmc", "sc_is_fixed", errmsg, val, 0);
+    if (!errmsg.empty()) {
+        std::cout << "can't read sc_is_fixed node from " << mDev->sysfs_name <<
             " : " << errmsg << std::endl;
         return false;
     }

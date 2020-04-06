@@ -43,7 +43,7 @@
 #define AWS_ID          0x1d0f
 
 #define RENDER_NM       "renderD"
-#define DEV_TIMEOUT	60 // seconds
+#define DEV_TIMEOUT	90 // seconds
 
 static const std::string sysfs_root = "/sys/bus/pci/devices/";
 

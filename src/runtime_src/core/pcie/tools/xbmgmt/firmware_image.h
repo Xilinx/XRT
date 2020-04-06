@@ -67,6 +67,7 @@ public:
     bool matchId(std::string& id);
     bool matchId(DSAInfo& dsa);
     bool matchIntId(std::string& id);
+    bool bmcVerIsFixed();
 };
 
 std::ostream& operator<<(std::ostream& stream, const DSAInfo& dsa);

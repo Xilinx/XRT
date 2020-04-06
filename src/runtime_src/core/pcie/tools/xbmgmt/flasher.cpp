@@ -207,6 +207,8 @@ int Flasher::getBoardInfo(BoardInfo& board)
         return ret;
 
     board.mBMCVer = std::move(charVec2String(info[BDINFO_BMC_VER]));
+    if (flasher.fixedSC())
+        board.mBMCVer += "(FIXED)";
     board.mConfigMode = info.find(BDINFO_CONFIG_MODE) != info.end() ?
         info[BDINFO_CONFIG_MODE][0] : '\0';
     board.mFanPresence = info.find(BDINFO_FAN_PRESENCE) != info.end() ?
