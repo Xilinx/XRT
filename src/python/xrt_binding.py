@@ -698,7 +698,7 @@ def xclExecBuf(handle, cmdBO):
     """
     libcore.xclExecBuf.restype = ctypes.c_int
     libcore.xclExecBuf.argtypes = [xclDeviceHandle, ctypes.c_uint]
-    return libcore.xclExecBuf(handle, cmdBO)
+    return _valueOrError(libcore.xclExecBuf(handle, cmdBO))
 
 def xclExecBufWithWaitList(handle, cmdBO, num_bo_in_wait_list, bo_wait_list):
     """
@@ -716,7 +716,7 @@ def xclExecBufWithWaitList(handle, cmdBO, num_bo_in_wait_list, bo_wait_list):
     """
     libcore.xclExecBufWithWaitList.restype = ctypes.c_int
     libcore.xclExecBufWithWaitList.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_size_t, ctypes.POINTER(ctypes.c_uint)]
-    return libcore.xclExecBufWithWaitList(handle, cmdBO, num_bo_in_wait_list, bo_wait_list)
+    return _valueOrError(libcore.xclExecBufWithWaitList(handle, cmdBO, num_bo_in_wait_list, bo_wait_list))
 
 def xclExecWait(handle, timeoutMilliSec):
     """
@@ -747,7 +747,7 @@ def xclRegisterInterruptNotify(handle, userInterrupt, fd):
     """
     libcore.xclRegisterInterruptNotify.restype = ctypes.c_int
     libcore.xclRegisterInterruptNotify.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_int]
-    return libcore.xclRegisterInterruptNotify(handle, userInterrupt, fd)
+    return _valueOrError(libcore.xclRegisterInterruptNotify(handle, userInterrupt, fd))
 
 class xclStreamContextFlags:
     XRT_QUEUE_FLAG_POLLING = (1 << 2)
@@ -998,9 +998,10 @@ def xclRegRead(handle, cu_index, offset, datap):
     """
     libcore.xclRegRead.restype = ctypes.c_int
     libcore.xclRegRead.argtypes = [xclDeviceHandle, ctypes.uint32_t, ctypes.uint32_t, ctypes.POINTER(ctypes.c_uint32_t)]
-    return libcore.xclRegRead(handle, cu_index, offset, datap)
+    return _valueOrError(libcore.xclRegRead(handle, cu_index, offset, datap))
 
-def xclRgWrite(handle, cu_index, offset, data):
+
+def xclRegWrite(handle, cu_index, offset, data):
     """
     Write register in register space of a CU
     :param handle: Device handle
@@ -1011,7 +1012,8 @@ def xclRgWrite(handle, cu_index, offset, data):
     """
     libcore.xclRegRead.restype = ctypes.c_int
     libcore.xclRegRead.argtypes = [xclDeviceHandle, ctypes.uint32_t, ctypes.uint32_t, ctypes.c_uint32_t]
-    return libcore.xclRegRead(handle, cu_index, offset, data)
+    return _valueOrError(libcore.xclRegRead(handle, cu_index, offset, data))
+
 
 def xclDebugReadIPStatus(handle, type, debugResults):
     """
