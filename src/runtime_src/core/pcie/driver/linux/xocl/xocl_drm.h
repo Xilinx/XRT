@@ -44,9 +44,11 @@ struct xocl_cma_bank {
 	uint64_t		start_addr;
 	uint64_t		entry_sz;
 	uint64_t		entry_num;
-	struct xocl_cma_memory	**cma_mem;
-	struct drm_mm		*mm;
-	struct drm_xocl_mm_stat	*mm_usage_stat;
+	struct drm_mm		mm;
+	struct drm_xocl_mm_stat	mm_usage_stat;
+	bool			mm_inited;
+	struct xocl_cma_memory	cma_mem[1];
+
 };
 
 struct xocl_drm {

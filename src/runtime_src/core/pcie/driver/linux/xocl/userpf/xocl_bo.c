@@ -265,7 +265,7 @@ static int xocl_cma_bo_alloc(struct xocl_drm *drm_p, struct drm_xocl_bo *xobj, u
 	if (!xobj->cma_mm_node)
 		return -ENOMEM;
 
-	err = drm_mm_insert_node_generic(drm_p->cma_bank->mm, xobj->cma_mm_node, size, PAGE_SIZE,
+	err = drm_mm_insert_node_generic(&drm_p->cma_bank->mm, xobj->cma_mm_node, size, PAGE_SIZE,
 #if defined(XOCL_DRM_FREE_MALLOC)
 		0, 0);
 #else
