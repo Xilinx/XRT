@@ -20,28 +20,30 @@ def runKernel(opt):
     xclSyncBO(opt.handle, boHandle1, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, opt.DATA_SIZE, 0)
     xclSyncBO(opt.handle, boHandle2, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, opt.DATA_SIZE, 0)
 
-    print("Original string = [%s]\n" % bo1.contents[:].decode("utf-8"))
-    print("Original string = [%s]\n" % bo2.contents[:].decode("utf-8"))
+    print("Original string = [%s]" % bo1.contents[:64].decode("utf-8"))
+    print("Original string = [%s]" % bo2.contents[:64].decode("utf-8"))
 
-    print("Kernel start command issued through xrtKernelRun")
+    print("Issue kernel start requests using xrtKernelRun()")
     rhandle1 = xrtKernelRun(khandle, boHandle1)
     rhandle2 = xrtKernelRun(khandle, boHandle2)
 
-    print("Now wait until the kernel finish")
+    print("Now wait for the kernels to finish using xrtRunWait()")
     xrtRunWait(rhandle1)
     xrtRunWait(rhandle2)
 
-    print("Get the output data from the device")
+    print("Get the output data produced by the 2 kernel runs from the device")
     xclSyncBO(opt.handle, boHandle1, xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, opt.DATA_SIZE, 0)
     xclSyncBO(opt.handle, boHandle2, xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, opt.DATA_SIZE, 0)
     result1 = bo1.contents[:len("Hello World")]
     result2 = bo2.contents[:len("Hello World")]
-    print("Result string = [%s]\n" % result1.decode("utf-8"))
-    print("Result string = [%s]\n" % result2.decode("utf-8"))
+    print("Result string = [%s]" % result1.decode("utf-8"))
+    print("Result string = [%s]" % result2.decode("utf-8"))
 
-    assert(result1 == "Hello World")
-    assert(result2 == "Hello World")
+    assert(result1 == "Hello World"), "Incorrect output from kernel"
+    assert(result2 == "Hello World"), "Incorrect output from kernel"
 
+    xrtRunClose(rhandle2)
+    xrtRunClose(rhandle1)
     xrtKernelClose(khandle)
     xclUnmapBO(opt.handle, boHandle2, bo2)
     xclFreeBO(opt.handle, boHandle2)
