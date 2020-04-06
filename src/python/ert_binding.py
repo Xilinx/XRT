@@ -20,12 +20,13 @@
 
 import ctypes
 import os
+from enum import IntEnum
 
 libc = ctypes.CDLL(os.environ['XILINX_XRT'] + "/lib/libxrt_core.so")
 
 ##  START OF ENUMS  ##
 
-class ert_cmd_state:
+class ert_cmd_state(IntEnum):
     ERT_CMD_STATE_NEW        = 1
     ERT_CMD_STATE_QUEUED     = 2
     ERT_CMD_STATE_RUNNING    = 3
@@ -36,7 +37,7 @@ class ert_cmd_state:
     ERT_CMD_STATEIMEOUT      = 8
     ERT_CMD_STATE_NORESPONSE = 9
 
-class ert_cmd_opcode:
+class ert_cmd_opcode(IntEnum):
     ERT_START_CU      = 0
     ERT_START_KERNEL  = 0
     ERT_CONFIGURE     = 2
@@ -50,7 +51,7 @@ class ert_cmd_opcode:
     ERT_SK_UNCONFIG   = 10
     ERT_INIT_CU       = 11
 
-class ert_cmdype:
+class ert_cmdype(IntEnum):
     ERT_DEFAULT   = 0
     ERT_KDS_LOCAL = 1
     ERT_CTRL      = 2
@@ -301,21 +302,21 @@ class ert_unconfigure_sk_cmd (ctypes.Structure):
 # Helper functions to hide details of ert_start_copybo_cmd
 def ert_fill_copybo_cmd(pkt, src_bo, dst_bo, src_offset, dst_offset, size):
     libc.ert_fill_copybo_cmd.restype = None
-    libc.ert_fill_copybo_cmd.argtypes = [ctypes.POINTER(ert_start_copybo_cmd), ctypes.c_uint32, ctypes.c_uint32, 
+    libc.ert_fill_copybo_cmd.argtypes = [ctypes.POINTER(ert_start_copybo_cmd), ctypes.c_uint32, ctypes.c_uint32,
                                             ctypes.c_uint64, ctypes.c_uint64, ctypes.c_uint64]
     return libc.ert_fill_copybo_cmd(pkt, src_bo, dst_bo, src_offset, dst_offset, size)
 
 def ert_copybo_src_offset(pkt):
     libc.ert_copybo_src_offset.restype = ctypes.c_uint64
     libc.ert_copybo_src_offset.argtype = ctypes.POINTER(ert_start_copybo_cmd)
-    return libc.ert_copybo_src_offset(pkt)    
+    return libc.ert_copybo_src_offset(pkt)
 
 def ert_copybo_dst_offset(pkt):
     libc.ert_copybo_dst_offset.restype = ctypes.c_uint64
     libc.ert_copybo_dst_offset.argtype = ctypes.POINTER(ert_start_copybo_cmd)
-    return libc.ert_copybo_dst_offset(pkt) 
+    return libc.ert_copybo_dst_offset(pkt)
 
 def ert_copybo_size(pkt):
     libc.ert_copybo_size.restype = ctypes.c_uint64
     libc.ert_copybo_size.argtype = ctypes.POINTER(ert_start_copybo_cmd)
-    return libc.ert_copybo_size(pkt) 
+    return libc.ert_copybo_size(pkt)
