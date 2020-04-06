@@ -198,6 +198,7 @@ struct xcl_pr_region {
 	uint64_t idcode;
 	uint8_t uuid[XCL_UUID_SZ];
 	uint64_t mig_calib;
+	uint64_t data_retention;
 };
 
 /**
