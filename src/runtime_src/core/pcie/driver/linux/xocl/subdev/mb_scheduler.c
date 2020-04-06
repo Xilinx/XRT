@@ -2160,8 +2160,9 @@ exec_isr(int irq, void *arg)
 	/*
 	 * versal_isr is registered here,
 	 * but versal interrupt is enabled by mailbox_versal subdev.
+	 * Note: should be separated from exec_isr in new scheduler.
 	 */
-	if (XOCL_DSA_IS_VERSAL(exec_get_xdev(exec)))
+	if (exec && XOCL_DSA_IS_VERSAL(exec_get_xdev(exec)))
 		return versal_isr(irq, arg);
 
 	if (exec && !exec->polling_mode) {
