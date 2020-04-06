@@ -82,7 +82,7 @@ XMC_Flasher::XMC_Flasher(std::shared_ptr<pcidev::pci_device> dev)
     mPktBufOffset = readReg(XMC_REG_OFF_PKT_OFFSET);
 
     mXmcDev = nullptr;
-    if (std::getenv("FLASH_VIA_DRIVER")) {
+    if (std::getenv("FLASH_VIA_USER") == NULL) {
         int fd = mDev->open("xmc", O_RDWR);
         if (fd >= 0)
             mXmcDev = fdopen(fd, "r+");
