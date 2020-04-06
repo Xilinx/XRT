@@ -163,5 +163,15 @@ double HalDevice::getMaxBwWrite()
   return xclGetWriteMaxBandwidthMBps(mHalDevice);
 }
 
+std::string HalDevice::getSubDevicePath(std::string& subdev, uint32_t index)
+{
+  constexpr size_t maxSz = 256;
+  char buffer[maxSz];
+  buffer[maxSz - 1] = '\0';
+  xclGetSubdevPath(mHalDevice, subdev.c_str(), index, buffer, maxSz);
+
+  return std::string(buffer);
+}
+
 }
 

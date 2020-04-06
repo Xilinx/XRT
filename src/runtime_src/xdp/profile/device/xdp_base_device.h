@@ -63,6 +63,7 @@ public:
 
   virtual void* getRawDevice() = 0 ;
 
+  virtual std::string getSubDevicePath(std::string& subdev, uint32_t index) = 0;
 };
 
 }

@@ -58,6 +58,8 @@ public:
 
   virtual double getMaxBwRead();
   virtual double getMaxBwWrite();
+
+  virtual std::string getSubDevicePath(std::string& subdev, uint32_t index);
 };
 }
 
