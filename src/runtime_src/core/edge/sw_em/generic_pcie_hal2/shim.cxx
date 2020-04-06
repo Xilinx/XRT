@@ -45,7 +45,7 @@ namespace xclcpuemhal2 {
   {
     binaryCounter = 0;
     mReqCounter = 0;
-    sock = NULL;
+    sock = nullptr;
     ci_msg.set_size(0);
     ci_msg.set_xcl_api(0);
     mCore = nullptr;
@@ -54,7 +54,7 @@ namespace xclcpuemhal2 {
     ci_buf = malloc(ci_msg.ByteSize());
     ri_msg.set_size(0);
     ri_buf = malloc(ri_msg.ByteSize());
-    buf = NULL;
+    buf = nullptr;
     buf_size = 0;
     
     deviceName = "device"+std::to_string(deviceIndex); 
@@ -72,7 +72,7 @@ namespace xclcpuemhal2 {
     char* pack_size = getenv("SW_EMU_PACKET_SIZE");
     if(pack_size)
     {
-      unsigned int messageSize = strtoll(pack_size,NULL,0);
+      unsigned int messageSize = strtoll(pack_size,nullptr,0);
       message_size = messageSize;
     }
     else
@@ -419,7 +419,7 @@ namespace xclcpuemhal2 {
 #endif
 
         FILE *filep;
-        if ((filep = fopen(modelDirectory.c_str(), "r")) != NULL)
+        if ((filep = fopen(modelDirectory.c_str(), "r")) != nullptr)
         {
           // file exists
           fclose(filep);
@@ -431,7 +431,7 @@ namespace xclcpuemhal2 {
           exit(1);
         }
 
-        const char* childArgv[6] = { NULL, NULL, NULL, NULL, NULL, NULL } ;
+        const char* childArgv[6] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr } ;
         childArgv[0] = modelDirectory.c_str() ;
 
         // If we determined this should be debuggable, pass the proper
@@ -450,7 +450,7 @@ namespace xclcpuemhal2 {
         }
         int r = execl(modelDirectory.c_str(), childArgv[0], childArgv[1],
             childArgv[2], childArgv[3], childArgv[4], childArgv[5],
-            NULL) ;
+          nullptr) ;
 
         //fclose (stdout);
         if(r == -1){std::cerr << "FATAL ERROR : child process did not launch : " << modelDirectory  << std::endl; exit(1);}
@@ -475,7 +475,7 @@ namespace xclcpuemhal2 {
     //  files.  Also, the GUI can overwrite this by setting an
     //  environment variable
     bool debuggable = false ;
-    if (getenv("ENABLE_KERNEL_DEBUG") != NULL &&
+    if (getenv("ENABLE_KERNEL_DEBUG") != nullptr &&
 	strcmp("true", getenv("ENABLE_KERNEL_DEBUG")) == 0)
     {
       char* xclbininmemory = 
@@ -549,7 +549,7 @@ namespace xclcpuemhal2 {
         unsigned int counter = 0;
         while( !tempfilecreated ) {
           FILE *fp = fopen(tempdlopenfilename.c_str(),"rb");
-          if(fp==NULL)
+          if(fp== nullptr)
           {
             tempfilecreated = true;
           }
@@ -1166,8 +1166,8 @@ uint64_t CpuemShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   xobj->base = xclAllocDeviceBuffer2(size,XCL_MEM_DEVICE_RAM,ddr,noHostMemory,sFileName);
   xobj->filename = sFileName;
   xobj->size = size;
-  xobj->userptr = NULL;
-  xobj->buf = NULL;
+  xobj->userptr = nullptr;
+  xobj->buf = nullptr;
   xobj->fd = -1;
 
   if (xobj->base == xclemulation::MemoryManager::mNull)

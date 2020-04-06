@@ -7,21 +7,21 @@ namespace xclcpuemhal2 {
 
   xocl_cmd::xocl_cmd()
   {
-    bo = NULL;
-    exec = NULL;
+    bo = nullptr;
+    exec = nullptr;
     cu_idx = 0;
     slot_idx = 0;
-    packet = NULL;
+    packet = nullptr;
     state = ERT_CMD_STATE_NEW;
   }
 
   xocl_cmd::~xocl_cmd()
   {
-    bo = NULL;
-    exec = NULL;
+    bo = nullptr;
+    exec = nullptr;
     cu_idx = 0;
     slot_idx = 0;
-    packet = NULL;
+    packet = nullptr;
   }
 
   xocl_sched::xocl_sched (SWScheduler* _sch)
@@ -32,8 +32,8 @@ namespace xclcpuemhal2 {
     poll = 0;
     stop = false;
     pSch = _sch ;
-    //pthread_mutex_init(&state_lock,NULL);
-    //pthread_cond_init(&state_cond,NULL);
+    //pthread_mutex_init(&state_lock,nullptr);
+    //pthread_cond_init(&state_cond,nullptr);
     //scheduler_thread = 0;
   }
 
@@ -44,9 +44,9 @@ namespace xclcpuemhal2 {
     intc = 0;
     poll = 0;
     stop = false;
-    pSch = NULL ;
-    //pthread_mutex_init(&state_lock,NULL);
-    //pthread_cond_init(&state_cond,NULL);
+    pSch = nullptr ;
+    //pthread_mutex_init(&state_lock,nullptr);
+    //pthread_cond_init(&state_cond,nullptr);
   }
 
   exec_core::exec_core()
@@ -55,7 +55,7 @@ namespace xclcpuemhal2 {
     intr_base = 0;
     intr_num = 0;
 
-    scheduler = NULL;
+    scheduler = nullptr;
 
     num_slots = 0;
     num_cus = 0;
@@ -71,7 +71,7 @@ namespace xclcpuemhal2 {
       slot_status[i] = 0;
 
     for(unsigned i=0; i <MAX_SLOTS; ++i)
-      submitted_cmds[i] = NULL;
+      submitted_cmds[i] = nullptr;
 
     for (unsigned int i=0; i<MAX_CUS; ++i)
     {
@@ -234,7 +234,7 @@ namespace xclcpuemhal2 {
     if (!xcu->done_cnt && xcu->run_cnt)
       cu_poll(xcu);
 
-    return xcu->done_cnt ? (xcu->running_queue).front() : NULL;
+    return xcu->done_cnt ? (xcu->running_queue).front() : nullptr;
   }
 
   void SWScheduler::cu_pop_done(struct xocl_cu *xcu)
@@ -312,7 +312,7 @@ namespace xclcpuemhal2 {
   {
     PRINTSTARTFUNC
     delete mScheduler;
-    mScheduler = NULL;
+    mScheduler = nullptr;
     num_pending = 0;
   }
 
@@ -436,7 +436,7 @@ namespace xclcpuemhal2 {
         if(cu_start(xcu,xcmd))
         {
           xcmd->slot_idx = l_slot_idx;
-          exec->submitted_cmds[xcmd->slot_idx] = NULL;
+          exec->submitted_cmds[xcmd->slot_idx] = nullptr;
           //exec_release_slot(exec, xcmd);
           xcmd->cu_idx = cuidx;
           ++xcmd->exec->cu_usage[xcmd->cu_idx];
@@ -742,7 +742,7 @@ namespace xclcpuemhal2 {
   void SWScheduler::mark_cmd_complete(xocl_cmd *xcmd)
   {
     PRINTSTARTFUNC
-    xcmd->exec->submitted_cmds[xcmd->slot_idx] = NULL;
+    xcmd->exec->submitted_cmds[xcmd->slot_idx] = nullptr;
     set_cmd_state(xcmd,ERT_CMD_STATE_COMPLETED);
     if (xcmd->exec->polling_mode)
       mScheduler->poll--;
@@ -1050,7 +1050,7 @@ namespace xclcpuemhal2 {
       scheduler_loop(xs);
       usleep(10);
     }
-    return NULL;
+    return nullptr;
   }
 
   int SWScheduler::init_scheduler_thread(void)
@@ -1063,7 +1063,7 @@ namespace xclcpuemhal2 {
     std::cout<<"SWScheduler Thread started "<< std::endl;
 #endif
 
-    //int returnStatus  =  pthread_create(&(mScheduler->scheduler_thread) , NULL, scheduler, (void *)mScheduler);
+    //int returnStatus  =  pthread_create(&(mScheduler->scheduler_thread) , nullptr, scheduler, (void *)mScheduler);
     int returnStatus = 0;
     mScheduler->scheduler_thread = std::thread(scheduler, (void *)mScheduler);
    
@@ -1091,7 +1091,7 @@ namespace xclcpuemhal2 {
     scheduler_wait_condition();
     mScheduler->bThreadCreated = false;
     
-    //int retval = pthread_join(mScheduler->scheduler_thread,NULL);
+    //int retval = pthread_join(mScheduler->scheduler_thread,nullptr);
     int retval = 0;
     mScheduler->scheduler_thread.join();
     pending_cmds.clear();

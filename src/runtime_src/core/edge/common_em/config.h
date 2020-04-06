@@ -199,9 +199,6 @@ namespace xclemulation{
   std::string getRunDirectory();
   
   std::map<std::string,std::string> getEnvironmentByReadingIni();
-  std::string getXclbinVersion(const axlf* top);
-  std::string getVivadoVersion();
-  void checkXclibinVersionWithTool(const xclBin *header);
 }
 
 #endif

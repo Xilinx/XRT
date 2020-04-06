@@ -62,7 +62,7 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
   FeatureRomHeader fRomHeader;
   std::memset(&fRomHeader, 0, sizeof(FeatureRomHeader));
 
-  xclcpuemhal2::CpuemShim *handle = NULL;
+  xclcpuemhal2::CpuemShim *handle = nullptr;
   bool bDefaultDevice = false;
   std::map<unsigned int, xclcpuemhal2::CpuemShim*>::iterator it = xclcpuemhal2::devices.find(deviceIndex);
   if(it != xclcpuemhal2::devices.end())
@@ -441,7 +441,7 @@ void *xclMapBO(xclDeviceHandle handle, unsigned int boHandle, bool write)
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
-    return NULL;
+    return nullptr;
   return drv->xclMapBO(boHandle, write);
 }
 
@@ -508,7 +508,7 @@ int xclDestroyQueue(xclDeviceHandle handle, uint64_t q_hdl)
 void *xclAllocQDMABuf(xclDeviceHandle handle, size_t size, uint64_t *buf_hdl)
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-  return drv ? drv->xclAllocQDMABuf(size, buf_hdl) : NULL;
+  return drv ? drv->xclAllocQDMABuf(size, buf_hdl) : nullptr;
 }
 
 int xclFreeQDMABuf(xclDeviceHandle handle, uint64_t buf_hdl)
