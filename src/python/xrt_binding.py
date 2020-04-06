@@ -1096,6 +1096,13 @@ def xclDebugReadIPStatus(handle, type, debugResults):
     return libcore.xclDebugReadIPStatus(handle, type, debugResults)
 
 def xrtPLKernelOpen(handle, xclbinId, name):
+    """
+    Open a PL kernel and obtain its handle
+    :param handle: Device handle
+    :param xclbinId: UUID of the xclbin image running on the device
+    :param name: Name of PL kernel
+    :return: Kernel handle which must be closed with xrtKernelClose()
+    """
     libcoreutil.xrtPLKernelOpen.restype = ctypes.POINTER(xrtKernelHandle)
     libcoreutil.xrtPLKernelOpen.argtypes = [xclDeviceHandle, ctypes.c_char_p, ctypes.c_char_p]
     res = libcoreutil.xrtPLKernelOpen(handle, xclbinId.bytes, name)
@@ -1106,6 +1113,11 @@ def xrtPLKernelOpen(handle, xclbinId, name):
 
 
 def xrtKernelClose(khandle):
+    """
+    Close an opened kernel
+    :param khandle: Kernel handle obtained in xrtPLKernelOpen()
+    :return: 0 or raises an OSError exception
+    """
     libcoreutil.xrtKernelClose.restype = ctypes.c_int
     libcoreutil.xrtKernelClose.argtypes = [xrtKernelHandle]
     res = libcoreutil.xrtKernelClose(khandle)
@@ -1115,12 +1127,38 @@ def xrtKernelClose(khandle):
 
 
 def xrtKernelRun(khandle, *args):
+    """
+    Start a kernel execution
+    :param khandle: kernel handle obtained in xrtPLKernelOpen()
+    :param args: variable number of kernel arguments
+    :return: Run handle which must be closed with xrtRunClose()
+    """
     libcoreutil.xrtKernelRun.restype = ctypes.POINTER(xrtKernelRunHandle)
+#   TODO: Figure out how do we pass hint for tuple/varargs for ctypes
 #   libcoreutil.xrtKerneRun.argtypes = [xrtKernelHandle]
     return libcoreutil.xrtKernelRun(khandle, *args)
 
 
 def xrtRunWait(rhandle):
+    """
+    Wait for a kernel execution to finish
+    :param rhandle: kernel run handle obtained in xrtKernelRun()
+    :return: ert_cmd_state code
+    """
     libcoreutil.xrtRunWait.restype = ert_cmd_state
     libcoreutil.xrtRunWait.argtypes = [xrtRunHandle]
     return libcoreutil.xrtRunWait(rhandle)
+
+
+def xrtRunClose(rhandle):
+    """
+    Close a run handle
+    :param rhandle: kernel run handle obtained in xrtKernelRun()
+    :return: 0 or throw OSError with error code
+    """
+    libcoreutil.xrtRunClose.restype = ctypes.c_int
+    libcoreutil.xrtRunClose.argtypes = [xrtRunHandle]
+    res = libcoreutil.xrtRunClose(rhandle)
+    if (res):
+        raise OSError(errno.EINVAL, os.strerror(errno.EINVAL))
+    return res
