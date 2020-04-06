@@ -42,6 +42,10 @@ enum class key_type;
  */
 struct request
 {
+  virtual
+  ~request()
+  {}
+  
   virtual boost::any
   get(const device*) const
   { throw std::runtime_error("query request requires arguments"); };
