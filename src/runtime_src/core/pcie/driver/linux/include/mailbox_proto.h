@@ -77,6 +77,7 @@ enum xcl_mailbox_request {
 	XCL_MAILBOX_REQ_CHG_SHELL =		13,
 	XCL_MAILBOX_REQ_PROGRAM_SHELL =		14,
 	XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR =	15,
+	XCL_MAILBOX_REQ_ERT_RESET =		16,
 	/* Version 0 OP code ends */
 };
 
@@ -172,6 +173,14 @@ struct xcl_sensor {
 	uint32_t version;
 	uint32_t oem_id;
 	uint32_t vccint_temp;
+	uint32_t vol_12v_aux1;
+	uint32_t vol_vcc1v2_i;
+	uint32_t vol_v12_in_i;
+	uint32_t vol_v12_in_aux0_i;
+	uint32_t vol_v12_in_aux1_i;
+	uint32_t vol_vccaux;
+	uint32_t vol_vccaux_pmc;
+	uint32_t vol_vccram;
 };
 
 /**

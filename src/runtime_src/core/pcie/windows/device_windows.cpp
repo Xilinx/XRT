@@ -16,15 +16,12 @@
 #define XRT_CORE_PCIE_WINDOWS_SOURCE
 #define XCL_DRIVER_DLL_EXPORT
 #include "device_windows.h"
-#include "core/common/query_requests.h"
 #include "mgmt.h"
 #include "shim.h"
-#include "common/utils.h"
-#include "xrt.h"
-#include "xclfeatures.h"
-
-//#include "core/pcie/driver/windows/include/XoclUser_INTF.h"
-//#include "core/pcie/driver/windows/include/XoclMgmt_INTF.h"
+#include "core/common/query_requests.h"
+#include "core/common/utils.h"
+#include "core/include/xrt.h"
+#include "core/include/xclfeatures.h"
 
 #include <boost/format.hpp>
 #include <type_traits>
@@ -459,6 +456,11 @@ struct icap
       return query::idcode::result_type(info.idcode);
     case key_type::status_mig_calibrated:
       return query::status_mig_calibrated::result_type(info.mig_calib);
+    case key_type::xclbin_uuid: {
+      char uuid_str[64] = { 0 };
+      uuid_unparse_lower(info.uuid, uuid_str);
+      return query::xclbin_uuid::result_type(uuid_str);
+    }
     default:
       throw std::runtime_error("device_windows::icap() unexpected qr("
                                + std::to_string(static_cast<qtype>(key))
@@ -793,6 +795,7 @@ initialize_query_table()
   emplace_function0_getter<query::clock_freqs,               icap>();
   emplace_function0_getter<query::idcode,                    icap>();
   emplace_function0_getter<query::status_mig_calibrated,     icap>();
+  emplace_function0_getter<query::xclbin_uuid,               icap>();
   emplace_function0_getter<query::v12v_pex_millivolts,       sensor>();
   emplace_function0_getter<query::v12v_aux_millivolts,       sensor>();
   emplace_function0_getter<query::v12v_pex_milliamps,        sensor>();
@@ -866,12 +869,8 @@ lookup_query(query::key_type query_key) const
 {
   auto it = query_tbl.find(query_key);
 
-  if (it == query_tbl.end()) {
-    using qtype = std::underlying_type<query::key_type>::type;
-    std::string err = boost::str( boost::format("The given query request ID (%d) is not supported on Linux.")
-                                  % static_cast<qtype>(query_key));
-    throw std::runtime_error(err);
-  }
+  if (it == query_tbl.end())
+    throw query::no_such_key(query_key);
 
   return *(it->second);
 }
@@ -884,6 +883,12 @@ device_windows(id_type device_id, bool user)
     return;
 
   m_mgmthdl = mgmtpf::open(device_id);
+}
+
+device_windows::
+device_windows(handle_type device_handle, id_type device_id)
+  : shim<device_pcie>(device_handle, device_id)
+{
 }
 
 device_windows::
@@ -919,13 +924,13 @@ write(uint64_t addr, const void* buf, uint64_t len) const
   mgmtpf::write_bar(m_mgmthdl, addr, buf, len);
 }
 
-/* TODO: after 2020.1 
+/* TODO: after 2020.1
  * Adding open/close stubs for compilation purposes.
- * We currently don't use these functions but we'll 
- * need them when we switch over to using driver for 
+ * We currently don't use these functions but we'll
+ * need them when we switch over to using driver for
  * flashing
  */
-int 
+int
 device_windows::
 open(const std::string& subdev, int flag) const
 {
@@ -934,7 +939,7 @@ open(const std::string& subdev, int flag) const
 
 void
 device_windows::
-close(int dev_handle) const 
+close(int dev_handle) const
 {
 }
 

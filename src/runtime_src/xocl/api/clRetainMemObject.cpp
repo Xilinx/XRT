@@ -19,6 +19,7 @@
 #include "xocl/core/memory.h"
 #include "detail/memory.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 #include <CL/opencl.h>
 
@@ -48,6 +49,7 @@ clRetainMemObject(cl_mem memobj)
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clRetainMemObject(memobj);
   }
   catch (const xrt::error& ex) {

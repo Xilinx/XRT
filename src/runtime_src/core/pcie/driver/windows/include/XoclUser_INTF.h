@@ -511,6 +511,7 @@ struct xcl_board_info {
     uint32_t max_power;
     uint32_t fan_presence;
     uint32_t config_mode;
+    char     exp_bmc_ver[256];
 };
 
 //

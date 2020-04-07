@@ -245,7 +245,7 @@ public:
 	        }
             ptCu.put( "name",         computeUnits.at( i ).m_name );
             ptCu.put( "base_address", computeUnits.at( i ).m_base_address );
-            ptCu.put( "status",       parseCUStatus( statusBuf ) );
+            ptCu.put( "status",       xrt_core::utils::parse_cu_status( statusBuf ) );
             sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(i)), ptCu );
         }
         return 0;
@@ -285,8 +285,8 @@ public:
             ptMem.put( "type",      str );
             ptMem.put( "tag",       map->m_mem_data[i].m_tag );
             ptMem.put( "enabled",   map->m_mem_data[i].m_used ? true : false );
-            ptMem.put( "size",      unitConvert(map->m_mem_data[i].m_size << 10) );
-            ptMem.put( "mem_usage", unitConvert(memoryUsage));
+            ptMem.put( "size",      xrt_core::utils::unit_convert(map->m_mem_data[i].m_size << 10) );
+            ptMem.put( "mem_usage", xrt_core::utils::unit_convert(memoryUsage));
             ptMem.put( "bo_count",  boCount);
             sensor_tree::add_child( std::string("board.memory.mem." + std::to_string(m)), ptMem );
             m++;
@@ -360,7 +360,7 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.info.subdevice", "N/A", true )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.info.subvendor", "N/A", true ) << std::dec << std::endl;
         ostr << std::setw(16) << "DDR size" << std::setw(16) << "DDR count" << std::setw(16) << "Clock0" << std::setw(16) << "Clock1" << std::setw(16) << "Clock2" << std::endl;
-        ostr << std::setw(16) << unitConvert(sensor_tree::get<long long>( "board.info.ddr_size", -1 ))
+        ostr << std::setw(16) << xrt_core::utils::unit_convert(sensor_tree::get<long long>( "board.info.ddr_size", -1 ))
              << std::setw(16) << sensor_tree::get( "board.info.ddr_count", -1 )
              << std::setw(16) << sensor_tree::get( "board.info.clock0", -1 )
              << std::setw(16) << sensor_tree::get( "board.info.clock1", -1 )

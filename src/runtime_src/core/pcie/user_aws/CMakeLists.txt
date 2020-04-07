@@ -65,7 +65,7 @@ endif ()
 
 install(TARGETS xrt_aws
         LIBRARY
-        DESTINATION ${XRT_INSTALL_DIR}/lib
+        DESTINATION ${XRT_INSTALL_LIB_DIR}
         COMPONENT aws)
 
 endif (NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")

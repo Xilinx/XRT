@@ -172,7 +172,11 @@ void log_buffer_guidance(xocl::event* event, cl_kernel kernel)
       mem_tag = device->get_xclbin().memidx_to_banktag(mem_id);
       if (mem_tag.rfind("bank", 0) == 0)
         mem_tag = "DDR[" + mem_tag.substr(4,4) + "]";
-      g_map[key].push_back(kname + "|" + arg_name + "|" + mem_tag + "," + std::to_string(buf_size));
+      g_map[key].push_back(kname + "|"
+                           + arg_name + "|"
+                           + mem_tag + "|"
+                           + std::to_string(mem->is_aligned()) + ","
+                           + std::to_string(buf_size));
     } catch (...) {
       continue;
     }

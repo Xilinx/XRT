@@ -19,6 +19,7 @@
 
 #include <vector>
 #include <list>
+#include <map>
 
 #include "xdp/profile/database/statistics_database.h"
 #include "xdp/profile/database/static_info_database.h"
@@ -52,6 +53,10 @@ namespace xdp {
     //  destroyed at the end of execution.
     std::list<XDPPlugin*> plugins ;
 
+    // A map of Device SysFs Path to Device Id
+    std::map<std::string, uint64_t> devices;
+    uint64_t numDevices;
+
   private:
     VPDatabase() ;
 
@@ -70,6 +75,9 @@ namespace xdp {
     // Functions that plugins call on startup and destruction
     inline void registerPlugin(XDPPlugin* p)   { plugins.push_back(p) ; }
     inline void unregisterPlugin(XDPPlugin* p) { plugins.remove(p) ; }
+
+    XDP_EXPORT uint64_t addDevice(std::string&);
+    XDP_EXPORT uint64_t getDeviceId(std::string&);
   } ;
 }
 

@@ -22,6 +22,7 @@ add_library(sw_emu_objects OBJECT ${EM_SRC_FILES})
 set(CURR_SOURCE "")
 add_library(xrt_swemu SHARED ${CURR_SOURCE}
   $<TARGET_OBJECTS:sw_emu_objects>
+  $<TARGET_OBJECTS:core_common_objects>
   )
 
 set_target_properties(xrt_swemu PROPERTIES VERSION ${XRT_VERSION_STRING}
@@ -37,4 +38,4 @@ target_link_libraries(xrt_swemu
   uuid
   )
 
-install (TARGETS xrt_swemu LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
+install (TARGETS xrt_swemu LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR})

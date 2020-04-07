@@ -318,6 +318,20 @@ static u32 check_firewall(struct platform_device *pdev, int *level)
 	fw->curr_status = val;
 	fw->curr_level = i >= fw->max_level ? -1 : i;
 
+	if (val) {
+		for (i = 0; i < fw->max_level; i++) {
+			res = platform_get_resource(pdev, IORESOURCE_MEM, i);
+			if (res) {
+				(void) xocl_ioaddr_to_baroff(xdev, res->start,
+					&bar_idx, &bar_off);
+			}
+			xocl_info(&pdev->dev,
+				"Firewall %d, ep %s, status: 0x%x, bar offset 0x%llx",
+				i, (res && res->name) ? res->name : "N/A",
+				READ_STATUS(fw, i), bar_off);
+		}
+	}
+
 	/* Inject firewall for testing. */
 	if (fw->curr_level == -1 && fw->inject_firewall) {
 		fw->inject_firewall = false;

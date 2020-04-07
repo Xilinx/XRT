@@ -20,7 +20,7 @@
 #include "xocl/core/command_queue.h"
 #include "detail/command_queue.h"
 #include "plugin/xdp/profile.h"
-
+#include "plugin/xdp/lop.h"
 
 namespace xocl {
 
@@ -46,7 +46,8 @@ cl_int
 clFlush(cl_command_queue command_queue)
 {
   try {
-    PROFILE_LOG_FUNCTION_CALL
+    PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clFlush(command_queue);
   }
   catch (const xrt::error& ex) {

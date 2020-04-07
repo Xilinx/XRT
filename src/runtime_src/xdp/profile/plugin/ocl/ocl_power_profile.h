@@ -1,3 +1,19 @@
+/**
+ * Copyright (C) 2019 Xilinx, Inc
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may
+ * not use this file except in compliance with the License. A copy of the
+ * License is located at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ */
+
 #ifndef XDP_PROFILE_CORE_SYSTEM_MONITOR_H_
 #define XDP_PROFILE_CORE_SYSTEM_MONITOR_H_
 
@@ -19,15 +35,7 @@ enum class PowerProfileStatus {
     STOPPED
 };
 
-struct PowerStat {
-    double timestamp;
-    int aux_curr;
-    int aux_vol;
-    int pex_curr;
-    int pex_vol;
-    int vccint_curr;
-    int vccint_vol;
-};
+typedef std::pair<double, std::vector<int>> PowerStat;
 
 class OclPowerProfile {
 public:
@@ -41,6 +49,7 @@ public:
     void write_trace();
 
     const std::string& get_output_file_name () { return output_file_name; };
+    const std::string& get_target_device_name () { return target_unique_name; };
 
 private:
     std::ofstream power_profiling_output;

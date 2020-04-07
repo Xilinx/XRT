@@ -20,6 +20,7 @@
 #include "xocl/core/command_queue.h"
 #include "detail/command_queue.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 #include <CL/opencl.h>
 
@@ -49,6 +50,7 @@ clRetainCommandQueue(cl_command_queue command_queue)
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clRetainCommandQueue(command_queue);
   }
   catch (const xrt::error& ex) {

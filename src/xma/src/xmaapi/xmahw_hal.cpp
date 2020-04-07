@@ -193,19 +193,14 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
             return false;
         }
         std::string xclbin = std::string(devXclbins[i].xclbin_name);
-        char *buffer = xma_xclbin_file_open(xclbin.c_str());
-        if (!buffer)
-        {
-            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not open xclbin file %s\n",
-                       xclbin.c_str());
-            return false;
-        }
+        std::vector<char> xclbin_buffer = xma_xclbin_file_open(xclbin);
+        char *buffer = xclbin_buffer.data();
+
         int32_t rc = xma_xclbin_info_get(buffer, &info);
         if (rc != XMA_SUCCESS)
         {
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not get info for xclbin file %s\n",
                        xclbin.c_str());
-            free(buffer);
             return false;
         }
 
@@ -217,7 +212,6 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
         dev_tmp1.handle = xclOpen(dev_index, NULL, XCL_QUIET);
         if (dev_tmp1.handle == NULL){
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Unable to open device  id: %d\n", dev_index);
-            free(buffer);
             return false;
         }
         dev_tmp1.dev_index = dev_index;
@@ -227,14 +221,12 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
         if (rc != 0)
         {
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "xclGetDeviceInfo2 failed for device id: %d, rc=%d\n", dev_index, rc);
-            free(buffer);
             return false;
         }
 
         /* Always attempt download xclbin */
         rc = load_xclbin_to_device(dev_tmp1.handle, buffer);
         if (rc != 0) {
-            free(buffer);
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not download xclbin file %s to device %d\n",
                         xclbin.c_str(), dev_index);
             return false;
@@ -243,14 +235,12 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
         dev_tmp1.number_of_cus = info.number_of_kernels;
         dev_tmp1.number_of_mem_banks = info.number_of_mem_banks;
         if (dev_tmp1.number_of_cus > MAX_XILINX_KERNELS + MAX_XILINX_SOFT_KERNELS) {
-            free(buffer);
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not download xclbin file %s to device %d\n",
                         xclbin.c_str(), dev_index);
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA & XRT supports max of %d CUs but xclbin has %d number of CUs\n", MAX_XILINX_KERNELS + MAX_XILINX_SOFT_KERNELS, dev_tmp1.number_of_cus);
             return false;
         }
         if (dev_tmp1.number_of_mem_banks > MAX_DDR_MAP) {
-            free(buffer);
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA supports max of only %d mem banks\n", MAX_DDR_MAP);
             return false;
         }
@@ -258,24 +248,23 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
         dev_tmp1.ddrs.reserve(dev_tmp1.number_of_mem_banks);
 
         xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\nFor device id: %d; DDRs are:", dev_index);
+        auto& xma_mem_topology = info.mem_topology;
         for (uint32_t d = 0; d < info.number_of_mem_banks; d++) {
             dev_tmp1.ddrs.emplace_back(XmaHwMem{});
             XmaHwMem& tmp1 = dev_tmp1.ddrs.back();
-            //tmp1.name = std::string((char*)info.mem_topology[d].m_tag);
             memset((void*)tmp1.name, 0x0, MAX_KERNEL_NAME);
-            std::string str_tmp1 = std::string((char*)info.mem_topology[d].m_tag);
-            str_tmp1.copy((char*)tmp1.name, MAX_KERNEL_NAME-1);
+            xma_mem_topology[d].m_tag.copy((char*)tmp1.name, MAX_KERNEL_NAME-1);
 
-            tmp1.base_address = info.mem_topology[d].m_base_address;
-            tmp1.size_kb = info.mem_topology[d].m_size;
+            tmp1.base_address = xma_mem_topology[d].m_base_address;
+            tmp1.size_kb = xma_mem_topology[d].m_size;
             tmp1.size_mb = tmp1.size_kb / 1024;
             tmp1.size_gb = tmp1.size_mb / 1024;
-            if (info.mem_topology[d].m_used == 1 &&
+            if (xma_mem_topology[d].m_used == 1 &&
                 tmp1.size_kb != 0 &&
-                (info.mem_topology[d].m_type == MEM_TYPE::MEM_DDR3 || 
-                info.mem_topology[d].m_type == MEM_TYPE::MEM_DDR4 ||
-                info.mem_topology[d].m_type == MEM_TYPE::MEM_DRAM ||
-                info.mem_topology[d].m_type == MEM_TYPE::MEM_HBM)
+                (xma_mem_topology[d].m_type == MEM_TYPE::MEM_DDR3 || 
+                xma_mem_topology[d].m_type == MEM_TYPE::MEM_DDR4 ||
+                xma_mem_topology[d].m_type == MEM_TYPE::MEM_DRAM ||
+                xma_mem_topology[d].m_type == MEM_TYPE::MEM_HBM)
                 ) {
                 tmp1.in_use = true;
                 xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tMEM# %d - %s - size: %lu KB", d, (char*)tmp1.name, tmp1.size_kb);
@@ -290,8 +279,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
             dev_tmp1.kernels.emplace_back(XmaHwKernel{});
             XmaHwKernel& tmp1 = dev_tmp1.kernels.back();
             memset((void*)tmp1.name, 0x0, MAX_KERNEL_NAME);
-            std::string str_tmp1 = std::string((char*)info.ip_layout[d].kernel_name);
-            str_tmp1.copy((char*)tmp1.name, MAX_KERNEL_NAME-1);
+            info.ip_layout[d].kernel_name.copy((char*)tmp1.name, MAX_KERNEL_NAME-1);
 
             tmp1.base_address = info.ip_layout[d].base_addr;
             tmp1.cu_index = (int32_t)d;
@@ -313,12 +301,12 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
                 tmp1.ip_ddr_mapping = info.ip_ddr_mapping[d];
                 for(uint32_t c = 0; c < info.number_of_connections; c++)
                 {
-                    XmaAXLFConnectivity *xma_conn = &info.connectivity[c];
-                    if (xma_conn->m_ip_layout_index == (int32_t)d) {
-                        tmp1.CU_arg_to_mem_info.emplace(xma_conn->arg_index, xma_conn->mem_data_index);
+                    auto& xma_conn = info.connectivity[c];
+                    if (xma_conn.m_ip_layout_index == (int32_t)d) {
+                        tmp1.CU_arg_to_mem_info.emplace(xma_conn.arg_index, xma_conn.mem_data_index);
                         //Assume that this mem is definetly in use
-                        if ((uint32_t)xma_conn->mem_data_index < dev_tmp1.number_of_mem_banks && xma_conn->mem_data_index > 0) {
-                            dev_tmp1.ddrs[xma_conn->mem_data_index].in_use = true;
+                        if ((uint32_t)xma_conn.mem_data_index < dev_tmp1.number_of_mem_banks && xma_conn.mem_data_index > 0) {
+                            dev_tmp1.ddrs[xma_conn.mem_data_index].in_use = true;
                         }
                     }
                 }
@@ -331,7 +319,6 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
                 /* Not to open context on all CUs
                 Will open during session_create
                 if (xclOpenContext(dev_tmp1.handle, info.uuid, d, true) != 0) {
-                    free(buffer);
                     xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Failed to open context to this CU\n");
                     return false;
                 }
@@ -388,40 +375,6 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
 
             cu_mask = cu_mask << 1;
         }
-        /*
-        int32_t num_execbo = 0;
-        if (dev_tmp1.number_of_cus > MIN_EXECBO_POOL_SIZE) {
-            num_execbo = dev_tmp1.number_of_cus;
-        } else {
-            num_execbo = MIN_EXECBO_POOL_SIZE;
-        }
-        dev_tmp1.kernel_execbos.reserve(num_execbo);
-        dev_tmp1.num_execbo_allocated = num_execbo;
-        for (int32_t d = 0; d < num_execbo; d++) {
-            uint32_t  bo_handle;
-            int       execBO_size = MAX_EXECBO_BUFF_SIZE;
-            //uint32_t  execBO_flags = (1<<31);
-            char     *bo_data;
-            bo_handle = xclAllocBO(dev_tmp1.handle, 
-                                    execBO_size, 
-                                    0, 
-                                    XCL_BO_FLAGS_EXECBUF);
-            if (!bo_handle || bo_handle == mNullBO) 
-            {
-                free(buffer);
-                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Unable to create bo for cu start\n");
-                return false;
-            }
-            bo_data = (char*)xclMapBO(dev_tmp1.handle, bo_handle, true);
-            memset((void*)bo_data, 0x0, execBO_size);
-
-            dev_tmp1.kernel_execbos.emplace_back(XmaHwExecBO{});
-            XmaHwExecBO& dev_execbo = dev_tmp1.kernel_execbos.back();
-            dev_execbo.handle = bo_handle;
-            dev_execbo.data = bo_data;
-        }
-        */
-        free(buffer);
 
         //Opening virtual CU context as some applications may use soft kernels only
         if (xclOpenContext(dev_tmp1.handle, info.uuid, -1, true) != 0) {

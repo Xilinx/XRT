@@ -19,6 +19,7 @@
 #include "xocl/core/error.h"
 #include "detail/device.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 namespace xocl {
 
@@ -47,6 +48,7 @@ clRetainDevice(cl_device_id device)
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clRetainDevice(device);
   }
   catch (const xocl::error& ex) {

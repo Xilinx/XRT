@@ -101,11 +101,11 @@ namespace xdp {
     };
     writeTableHeader(getStream(), "Data Transfer: Host to Global Memory",
         DataTransferSummaryColumnLabels);
-#ifndef _WIN32
+
     if ((flowMode != xdp::RTUtil::CPU) && (flowMode != xdp::RTUtil::COSIM_EM)) {
       profile->writeTransferSummary(this, xdp::RTUtil::MON_HOST_DYNAMIC);
     }
-#endif
+
     writeTableFooter(getStream());
 
     // Table 6: Data Transfer: Kernels to Global Memory
@@ -508,15 +508,7 @@ namespace xdp {
     }
 
     // 3. Global memory bit widths
-    std::string checkName3;
-    XDPPluginI::getGuidanceName(XDPPluginI::MEMORY_BIT_WIDTH, checkName3);
-    uint32_t bitWidth = profile->getGlobalMemoryBitWidth();
-
-    for(auto& itr : deviceExecTimesMap) {
-      writeTableRowStart(getStream());
-      writeTableCells(getStream(), checkName3, itr.first /*deviceName*/, bitWidth);
-      writeTableRowEnd(getStream());
-    }
+    // Replaced by memory type bit widths
 
     // 4. Usage of MigrateMemObjects
     std::string checkName4;
@@ -526,24 +518,15 @@ namespace xdp {
     writeTableRowEnd(getStream());
 
     // 5. Usage of memory resources
-    std::string checkName5;
-    XDPPluginI::getGuidanceName(XDPPluginI::MEMORY_USAGE, checkName5);
-
-    auto cuPortVector = mPluginHandle->getCUPortVector();
-    std::map<std::string, int> cuPortsToMemory;
-
-    for (auto& cuPort : cuPortVector) {
-      auto memoryName = std::get<3>(cuPort);
-      auto iter = cuPortsToMemory.find(memoryName);
-      int numPorts = (iter == cuPortsToMemory.end()) ? 1 : (iter->second + 1);
-      cuPortsToMemory[memoryName] = numPorts;
+    {
+      std::string check;
+      auto map = mPluginHandle->getDeviceMemUsageStatsMap();
+      XDPPluginI::getGuidanceName(XDPPluginI::MEMORY_USAGE, check);
+      for (auto const& it : map) {
+        writeTableCells(getStream(), check, it.first, it.second);
+        writeTableRowEnd(getStream());
+      }
     }
-
-    for(auto& itr : cuPortsToMemory) {
-      writeTableCells(getStream(), checkName5, itr.first, itr.second);
-      writeTableRowEnd(getStream());
-    }
-    cuPortsToMemory.clear();
 
     // 5a. PLRAM device
     std::string checkName5a;
@@ -583,6 +566,7 @@ namespace xdp {
     // 6. Port data widths
     std::string checkName6;
     XDPPluginI::getGuidanceName(XDPPluginI::PORT_BIT_WIDTH, checkName6);
+    auto cuPortVector = mPluginHandle->getCUPortVector();
 
     for (auto& cuPort : cuPortVector) {
       auto cu    = std::get<0>(cuPort);
@@ -734,6 +718,15 @@ namespace xdp {
       std::string check;
       double time = mPluginHandle->getApplicationRunTimeMs();
       XDPPluginI::getGuidanceName(XDPPluginI::APPLICATION_RUN_TIME_MS, check);
+      writeTableCells(getStream(), check, "all", time);
+      writeTableRowEnd(getStream());
+    }
+
+    // Total kernel runtime across entire application
+    {
+      std::string check;
+      double time = mPluginHandle->getTotalApplicationKernelTimeMs();
+      XDPPluginI::getGuidanceName(XDPPluginI::TOTAL_KERNEL_RUN_TIME_MS, check);
       writeTableCells(getStream(), check, "all", time);
       writeTableRowEnd(getStream());
     }

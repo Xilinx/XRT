@@ -69,6 +69,7 @@ public:
     bool has64bit() const;
     bool hasDataflow() const;
     bool hasStall() const;
+    bool hasTraceID (uint32_t index) const;
 
     signed compareVersion(unsigned major2, unsigned minor2) const;
 

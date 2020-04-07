@@ -34,6 +34,7 @@
 #define DSA_FILE_SUFFIX     "mcs"
 #define DSABIN_FILE_SUFFIX  "dsabin"
 #define XSABIN_FILE_SUFFIX  "xsabin"
+#define XCLBIN_FILE_SUFFIX  "xclbin"
 #define NULL_TIMESTAMP      0
 
 class DSAInfo
@@ -56,6 +57,7 @@ public:
     std::string partition_name;
     std::string build_ident;
     static const std::string UNKNOWN;
+    static const std::string INACTIVE;
 
     DSAInfo(const std::string& filename, uint64_t ts, const std::string& id, const std::string& bmc);
     DSAInfo(const std::string& filename);
@@ -65,6 +67,7 @@ public:
     bool matchId(std::string& id);
     bool matchId(DSAInfo& dsa);
     bool matchIntId(std::string& id);
+    bool bmcVerIsFixed();
 };
 
 std::ostream& operator<<(std::ostream& stream, const DSAInfo& dsa);
@@ -74,6 +77,7 @@ enum imageType
     BMC_FIRMWARE,
     MCS_FIRMWARE_PRIMARY,
     MCS_FIRMWARE_SECONDARY,
+    STRIPPED_FIRMWARE,
 };
 
 class firmwareImage : public std::istringstream

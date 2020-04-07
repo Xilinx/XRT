@@ -174,58 +174,24 @@ namespace xclhwemhal2 {
 
   //To get and print the debug messages
   void HwEmShim::fetchAndPrintMessages() {
-	  if(xclemulation::config::getInstance()->isSystemDPAEnabled() == false) {
-		  return;
-	  }
 
-	  //check to find out if Trace Hub is available.
-	  if(mIsTraceHubAvailable == false) {
-		  return;
-	  }
-
-	  std::string info_msgs("");
+	  std::string logMsgs("");
 	  std::string warning_msgs("");
-	  std::string error_msgs("");
+	  std::string stopMsgs("");
+	  std::string displayMsgs("");
+	  bool ack =false;
+	  bool force =false;
 	  //Read Fifo for size of Info Messages available
-	  char buffer[4] = "0";
-	  xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,mPerfMonFifoCtrlBaseAddress+xclemulation::FIFO_CTRL_INFO_SIZE, buffer, 4);
 
-	  unsigned int msg_size_bytes;
-	  memcpy(&msg_size_bytes,buffer,4);
-	  if(msg_size_bytes > 0) {
-		  char info_buffer[msg_size_bytes];
-		  xclUnmgdPread(0, info_buffer, msg_size_bytes, mPerfMonFifoReadBaseAddress+xclemulation::FIFO_INFO_MESSAGES);
-		  info_msgs = std::string(info_buffer);
-		  info_msgs.erase(info_msgs.find_last_of('\n')+1);
+	  xclGetDebugMessages_RPC_CALL(xclGetDebugMessages,ack,force,displayMsgs,logMsgs,stopMsgs);
+
+	  if(mDebugLogStream.is_open() && displayMsgs.empty() == false) {
+		mDebugLogStream << displayMsgs;
+		mDebugLogStream.flush();
 	  }
 
-	  strncpy(buffer,"0",4);
-	  //Read Fifo for size of Warning Messages available
-	  xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,mPerfMonFifoCtrlBaseAddress+xclemulation::FIFO_CTRL_WARNING_SIZE, buffer, 4);
-
-	  memcpy(&msg_size_bytes,buffer,4);
-	  if(msg_size_bytes > 0) {
-		  char warning_buffer[msg_size_bytes];
-	      xclUnmgdPread(0, warning_buffer, msg_size_bytes, mPerfMonFifoReadBaseAddress+xclemulation::FIFO_WARNING_MESSAGES);
-		  warning_msgs = std::string(warning_buffer);
-		  warning_msgs.erase(warning_msgs.find_last_of('\n')+1);
-	  }
-
-	  strncpy(buffer,"0",4);
-	  //Read Fifo for size of Info Messages available
-	  xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,mPerfMonFifoCtrlBaseAddress+xclemulation::FIFO_CTRL_ERROR_SIZE, buffer, 4);
-
-	  memcpy(&msg_size_bytes,buffer,4);
-
-	  if(msg_size_bytes > 0) {
-		  char error_buffer[msg_size_bytes];
-		  xclUnmgdPread(0, error_buffer, msg_size_bytes, mPerfMonFifoReadBaseAddress+xclemulation::FIFO_ERROR_MESSAGES);
-		  error_msgs = std::string(error_buffer);
-		  error_msgs.erase(error_msgs.find_last_of('\n')+1);
-	  }
-
-	  if(mDebugLogStream.is_open() && info_msgs.empty() == false) {
-		mDebugLogStream << info_msgs;
+	  if(mDebugLogStream.is_open() && logMsgs.empty() == false) {
+		mDebugLogStream << logMsgs;
 		mDebugLogStream.flush();
 	  }
 
@@ -234,14 +200,19 @@ namespace xclhwemhal2 {
 		mDebugLogStream.flush();
 	  }
 
-	  if(mDebugLogStream.is_open() && error_msgs.empty() == false) {
-		mDebugLogStream << error_msgs;
+	  if(mDebugLogStream.is_open() && stopMsgs.empty() == false) {
+		mDebugLogStream << stopMsgs;
 		mDebugLogStream.flush();
 	  }
-
-	  if(info_msgs.empty() == false)
+	  if(displayMsgs.empty() == false)
 	  {
-	    std::cout<<info_msgs;
+	 	std::cout<<displayMsgs;
+	 	std::cout.flush();
+	  }
+
+	  if(logMsgs.empty() == false)
+	  {
+	    std::cout<<logMsgs;
 	    std::cout.flush();
 	  }
 
@@ -251,9 +222,9 @@ namespace xclhwemhal2 {
 	    std::cout.flush();
 	  }
 
-	  if(error_msgs.empty() == false)
+	  if(stopMsgs.empty() == false)
 	  {
-	    std::cout<<error_msgs;
+	    std::cout<<stopMsgs;
 	    std::cout.flush();
 	  }
   }

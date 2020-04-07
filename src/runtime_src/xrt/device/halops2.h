@@ -129,8 +129,12 @@ private:
   typedef int     (*freeQDMABufFuncType)(xclDeviceHandle handle,uint64_t buf_hdl);
   typedef ssize_t (*writeQueueFuncType)(xclDeviceHandle handle,uint64_t q_hdl, xclQueueRequest *wr);
   typedef ssize_t (*readQueueFuncType)(xclDeviceHandle handle,uint64_t q_hdl, xclQueueRequest *wr);
+  typedef int     (*setQueueOptFuncType)(xclDeviceHandle handle,uint64_t q_hdl, int type, uint32_t val);
+  typedef int     (*pollQueueFuncType)(xclDeviceHandle handle,uint64_t q_hdl, int min, int max, xclReqCompletion* completions, int* actual, int timeout);
   typedef int     (*pollQueuesFuncType)(xclDeviceHandle handle,int min, int max, xclReqCompletion* completions, int* actual, int timeout);
 //End Streaming
+
+  typedef void (*getDebugIpLayoutType)(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret);
 
   //APIs using sysfs
   typedef uint32_t(*xclGetNumLiveProcessesFuncType)(xclDeviceHandle handle);
@@ -141,7 +145,7 @@ private:
 
   typedef int (*xclGetTraceBufferInfoFuncType)(xclDeviceHandle handle, uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
   typedef int (*xclReadTraceDataFuncType)(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
-
+ 
 private:
   const std::string mFileName;
   const void *mDriverHandle;
@@ -208,7 +212,11 @@ public:
   writeQueueFuncType mWriteQueue;
   readQueueFuncType mReadQueue;
   pollQueuesFuncType mPollQueues;
+  pollQueueFuncType mPollQueue;
+  setQueueOptFuncType mSetQueueOpt;
 //End Streaming
+
+  getDebugIpLayoutType mGetDebugIpLayout;
 
   // APIs using sysfs
   xclGetNumLiveProcessesFuncType mGetNumLiveProcesses;

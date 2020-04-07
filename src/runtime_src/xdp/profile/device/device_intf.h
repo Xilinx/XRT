@@ -43,7 +43,16 @@
 
 namespace xdp {
 
-  class DeviceIntf {
+// Helper methods
+
+XDP_EXPORT
+uint32_t GetDeviceTraceBufferSize(uint32_t property);
+
+XDP_EXPORT
+uint64_t GetTS2MMBufSize();
+
+
+class DeviceIntf {
   public:
 
     DeviceIntf() {}
@@ -79,6 +88,10 @@ namespace xdp {
     void     getMonitorName(xclPerfMonType type, uint32_t index, char* name, uint32_t length);
     XDP_EXPORT
     std::string  getMonitorName(xclPerfMonType type, uint32_t index);
+    XDP_EXPORT
+    std::string  getTraceMonName(xclPerfMonType type, uint32_t index);
+    XDP_EXPORT
+    uint32_t  getTraceMonProperty(xclPerfMonType type, uint32_t index);
 
     bool     isHostAIM(uint32_t index) {
        return aimList[index]->isHostMonitor();
@@ -98,12 +111,24 @@ namespace xdp {
     XDP_EXPORT
     void configAmContext(const std::string& ctx_info);
 
+    // Underlying Device APIs
+    XDP_EXPORT
+    size_t allocTraceBuf(uint64_t sz ,uint8_t memIdx);
+    XDP_EXPORT
+    void freeTraceBuf(size_t bufHandle);
+    XDP_EXPORT
+    void* syncTraceBuf(size_t bufHandle ,uint64_t offset, uint64_t bytes);
+    XDP_EXPORT
+    uint64_t getDeviceAddr(size_t bufHandle);
+
     // Trace FIFO Management
     bool hasFIFO() {return (fifoCtrl != nullptr);};
     XDP_EXPORT
     uint32_t getTraceCount();
     XDP_EXPORT
     size_t startTrace(uint32_t startTrigger);
+    XDP_EXPORT
+    void clockTraining(bool force = true);
     XDP_EXPORT
     size_t stopTrace();
     XDP_EXPORT
@@ -123,6 +148,13 @@ namespace xdp {
 
     XDP_EXPORT
     void parseTraceData(void* traceData, uint64_t bytes, xclTraceResultsVector& traceVector);
+
+    double getMaxBwRead() const {return m_bw_read;}
+    double getMaxBwWrite() const {return m_bw_write;}
+    XDP_EXPORT
+    void setMaxBwRead();
+    XDP_EXPORT
+    void setMaxBwWrite();
 
     inline xdp::Device* getAbstractDevice() { return mDevice ; }
 
@@ -147,8 +179,17 @@ namespace xdp {
 
     TraceS2MM* traceDMA = nullptr;
 
-// lapc ip data holder
-//
+    /*
+     * Set bandwidth number to a reasonable default
+     * For PCIE Device:
+     *   bw_per_lane = 985 MB/s (Wikipedia on PCIE 3.0)
+     *   num_lanes = 16/8/4 depending on host system
+     *   total bw = bw_per_lane * num_lanes
+     * For Edge Device:
+     *  total bw = DDR4 memory bandwidth
+     */
+    double m_bw_read = 9600.0;
+    double m_bw_write = 9600.0;
 
 }; /* DeviceIntf */
 

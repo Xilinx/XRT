@@ -27,11 +27,9 @@
 #define PROP_LOGIC_UUID "logic_uuid"
 #define PROP_PARTITION_INFO_BLP "blp_info"
 #define PROP_PARTITION_INFO_PLP "plp_info"
+#define PROP_PARTITION_LEVEL "partition_level"
 
 #define NODE_ENDPOINTS "addressable_endpoints"
-#define LEVEL0_DEV_PATH "/addressable_endpoints_0"
-#define LEVEL1_DEV_PATH "/addressable_endpoints_1"
-#define ULP_DEV_PATH "/addressable_endpoints"
 #define INTERFACES_PATH "/interfaces"
 
 #define NODE_PROPERTIES "partition_info"
@@ -46,6 +44,8 @@
 #define NODE_AF_CTRL_USER "ep_firewall_ctrl_user_00"
 #define NODE_AF_CTRL_DEBUG "ep_firewall_ctrl_debug_00"
 #define NODE_AF_DATA_H2C "ep_firewall_data_h2c_00"
+#define NODE_AF_DATA_P2P "ep_firewall_data_p2p_00"
+#define NODE_AF_DATA_M2M "ep_firewall_data_m2m_00"
 #define NODE_CMC_REG "ep_cmc_regmap_00"
 #define NODE_CMC_RESET "ep_cmc_reset_00"
 #define NODE_CMC_MUTEX "ep_cmc_mutex_00"
@@ -55,8 +55,8 @@
 #define NODE_ERT_CQ_USER "ep_ert_command_queue_user_00"
 #define NODE_MAILBOX_MGMT "ep_mailbox_mgmt_00"
 #define NODE_MAILBOX_USER "ep_mailbox_user_00"
-#define NODE_GATE_BLP "ep_pr_isolate_plp_00"
-#define NODE_GATE_PRP "ep_pr_isolate_ulp_00"
+#define NODE_GATE_PLP "ep_pr_isolate_plp_00"
+#define NODE_GATE_ULP "ep_pr_isolate_ulp_00"
 #define NODE_DDR_CALIB "ep_ddr_mem_calib_00"
 #define NODE_CLK_KERNEL1 "ep_aclk_kernel_00"
 #define NODE_CLK_KERNEL2 "ep_aclk_kernel_01"
@@ -66,6 +66,8 @@
 #define NODE_ERT_SCHED "ep_ert_sched_00"
 #define NODE_XDMA "ep_xdma_00"
 #define NODE_MSIX "ep_msix_00"
+#define NODE_QDMA "ep_qdma_00"
+#define NODE_STM "ep_stream_traffic_manager_00"
 #define NODE_CLK_SHUTDOWN "ep_aclk_shutdown_00"
 #define NODE_ERT_BASE "ep_ert_base_address_00"
 #define NODE_ERT_RESET "ep_ert_reset_00"
@@ -75,10 +77,11 @@
 #define NODE_GAPPING "ep_gapping_demand_00"
 #define NODE_UCS_CONTROL_STATUS "ep_ucs_control_status_00"
 #define NODE_P2P "ep_p2p_00"
+#define NODE_DDR4_RESET_GATE "ep_ddr4_reset_gate_00"
 
-#define RESNAME_GATEPRBLD       NODE_GATE_BLP
+#define RESNAME_GATEPLP       NODE_GATE_PLP
 #define RESNAME_MEMCALIB        NODE_DDR_CALIB
-#define RESNAME_GATEPRPRP       NODE_GATE_PRP
+#define RESNAME_GATEULP       NODE_GATE_ULP
 #define RESNAME_CLKWIZKERNEL1   NODE_CLK_KERNEL1
 #define RESNAME_CLKWIZKERNEL2   NODE_CLK_KERNEL2
 #define RESNAME_CLKWIZKERNEL3   NODE_CLK_KERNEL3
@@ -94,20 +97,20 @@
 #define RESNAME_ERT_FW_MEM	NODE_ERT_FW_MEM
 #define RESNAME_ERT_CQ_MGMT	NODE_ERT_CQ_MGMT
 #define RESNAME_ERT_RESET	NODE_ERT_RESET
-
+#define RESNAME_DDR4_RESET_GATE	NODE_DDR4_RESET_GATE
 /*
  * The iores subdev maintains global resources which can be shared to any
  * subdev. We keep a minimized scope of this shared public interface.
  */
 enum {
-	IORES_GATEPRBLD = 0,
+	IORES_GATEPLP = 0,
 	IORES_MEMCALIB,
-	IORES_GATEPRPRP,
+	IORES_GATEULP,
 	IORES_KDMA,
-	IORES_CMC_MUTEX,
 	IORES_GAPPING,
 	IORES_CLKFREQ_K1_K2, /* static res config exposed to iores subdev */
 	IORES_CLKFREQ_HBM, /* static res config exposed to iores subdev */
+	IORES_DDR4_RESET_GATE,
 	IORES_MAX,
 };
 

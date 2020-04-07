@@ -23,6 +23,7 @@
 #include "detail/memory.h"
 #include "detail/context.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 #include <CL/opencl.h>
 #include <cstdlib>
 
@@ -658,6 +659,7 @@ clCreateImage(cl_context              context,
 {
     try {
       PROFILE_LOG_FUNCTION_CALL;
+      LOP_LOG_FUNCTION_CALL;
       return xocl::clCreateImage
         (context,flags,image_format,image_desc,host_ptr,errcode_ret);
     }

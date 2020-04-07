@@ -106,18 +106,18 @@ struct sysfs_fcn<std::vector<VectorValueType>>
 template <typename QueryRequestType>
 struct sysfs_getter : QueryRequestType
 {
-  const char* entry;
   const char* subdev;
+  const char* entry;
 
-  sysfs_getter(const char* e, const char* s)
-    : entry(e), subdev(s)
+  sysfs_getter(const char* s, const char* e)
+    : subdev(s), entry(e)
   {}
 
   boost::any
   get(const xrt_core::device* device) const
   {
     return sysfs_fcn<typename QueryRequestType::result_type>
-      ::get(get_pcidev(device), entry, subdev);
+      ::get(get_pcidev(device), subdev, entry);
   }
 };
 
@@ -136,10 +136,10 @@ static std::map<xrt_core::query::key_type, std::unique_ptr<query::request>> quer
 
 template <typename QueryRequestType>
 static void
-emplace_sysfs_request(const char* entry, const char* subdev)
+emplace_sysfs_request(const char* subdev, const char* entry)
 {
   auto x = QueryRequestType::key;
-  query_tbl.emplace(x, std::make_unique<sysfs_getter<QueryRequestType>>(entry, subdev));
+  query_tbl.emplace(x, std::make_unique<sysfs_getter<QueryRequestType>>(subdev, entry));
 }
 
 template <typename QueryRequestType, typename Getter>
@@ -167,6 +167,7 @@ initialize_query_table()
   emplace_sysfs_request<query::rom_raw>                   ("rom", "raw");
   emplace_sysfs_request<query::rom_uuid>                  ("rom", "uuid");
   emplace_sysfs_request<query::rom_time_since_epoch>      ("rom", "timestamp");
+  emplace_sysfs_request<query::xclbin_uuid>               ("", "xclbinuuid");
   emplace_sysfs_request<query::mem_topology_raw>          ("icap", "mem_topology");
   emplace_sysfs_request<query::ip_layout_raw>             ("icap", "ip_layout");
   emplace_sysfs_request<query::clock_freqs>               ("icap", "clock_freqs");
@@ -257,12 +258,8 @@ lookup_query(query::key_type query_key) const
 {
   auto it = query_tbl.find(query_key);
 
-  if (it == query_tbl.end()) {
-    using qtype = std::underlying_type<query::key_type>::type;
-    std::string err = boost::str( boost::format("The given query request ID (%d) is not supported on Linux.")
-                                  % static_cast<qtype>(query_key));
-    throw std::runtime_error(err);
-  }
+  if (it == query_tbl.end())
+    throw query::no_such_key(query_key);
 
   return *(it->second);
 }
@@ -270,6 +267,12 @@ lookup_query(query::key_type query_key) const
 device_linux::
 device_linux(id_type device_id, bool user)
   : shim<device_pcie>(device_id, user)
+{
+}
+
+device_linux::
+device_linux(handle_type device_handle, id_type device_id)
+  : shim<device_pcie>(device_handle, device_id)
 {
 }
 
@@ -286,8 +289,8 @@ read_dma_stats(boost::property_tree::ptree& pt) const
   for (unsigned int idx = 0; idx < XCL_DEVICE_USAGE_COUNT; ++idx) {
     boost::property_tree::ptree pt_dma;
     pt_dma.put( "id", std::to_string(get_device_id()));
-    pt_dma.put( "h2c", unitConvert(devstat.h2c[idx]) );
-    pt_dma.put( "c2h", unitConvert(devstat.c2h[idx]) );
+    pt_dma.put( "h2c", xrt_core::utils::unit_convert(devstat.h2c[idx]) );
+    pt_dma.put( "c2h", xrt_core::utils::unit_convert(devstat.c2h[idx]) );
 
     // Create our array of data
     pt_channels.push_back(std::make_pair("", pt_dma));

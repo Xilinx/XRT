@@ -33,6 +33,7 @@
 
 // should use some md5 checksum instead
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 #ifndef _WIN32
 #include <crypt.h>
@@ -171,6 +172,7 @@ clCreateProgramWithSource(cl_context        context,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
 #ifdef _WIN32
     throw xocl::error(CL_INVALID_OPERATION,"clCreateProgramWithSource() is not supported, please use clCreateProgramWithBinary().");
 #else

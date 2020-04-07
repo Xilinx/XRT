@@ -20,5 +20,13 @@
 
 int main(int argc, char *argv[])
 {
-    return xcldev::xclAwssak(argc, argv);
+    try {
+      return xcldev::xclAwssak(argc, argv);
+    } catch (const std::exception& ex) {
+      std::cout << ex.what() << std::endl;
+    } catch(...) {
+      std::cout << "Unknown exception caught from xcldev::xclAwssak()" << std::endl;
+    }
+
+    return 1;
 }

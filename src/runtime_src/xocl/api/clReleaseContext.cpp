@@ -19,6 +19,7 @@
 #include "xocl/core/context.h"
 #include "detail/context.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 #include <CL/opencl.h>
 
 namespace xocl {
@@ -48,6 +49,7 @@ clReleaseContext(cl_context context)
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clReleaseContext(context);
   }
   catch (const xrt::error& ex) {

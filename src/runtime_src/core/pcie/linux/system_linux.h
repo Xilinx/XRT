@@ -40,8 +40,29 @@ public:
   get_userpf_device(device::id_type id) const;
 
   std::shared_ptr<device>
+  get_userpf_device(device::handle_type device_handle, device::id_type id) const;
+
+  std::shared_ptr<device>
   get_mgmtpf_device(device::id_type id) const;
+
+  monitor_access_type
+  get_monitor_access_type() const
+  {
+    return monitor_access_type::mmap;
+  }
 };
+
+namespace pcie_linux {
+
+/**
+ * get_userpf_device
+ * Force singleton initialization from static linking
+ * with libxrt_core.
+ */ 
+std::shared_ptr<device>
+get_userpf_device(device::handle_type device_handle, device::id_type id);
+
+} // pcie_linux
 
 } // xrt_core
 

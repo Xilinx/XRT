@@ -74,7 +74,7 @@ Flasher::E_FlasherType Flasher::getFlashType(std::string typeStr)
  * upgradeFirmware
  */
 int Flasher::upgradeFirmware(const std::string& flasherType,
-    firmwareImage *primary, firmwareImage *secondary)
+    firmwareImage *primary, firmwareImage *secondary, firmwareImage *stripped)
 {
     int retVal = -EINVAL;
     E_FlasherType type = getFlashType(flasherType);
@@ -90,11 +90,11 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
         }
         else if(secondary == nullptr)
         {
-            retVal = xspi.xclUpgradeFirmware1(*primary);
+            retVal = xspi.xclUpgradeFirmware1(*primary, stripped);
         }
         else
         {
-            retVal = xspi.xclUpgradeFirmware2(*primary, *secondary);
+            retVal = xspi.xclUpgradeFirmware2(*primary, *secondary, stripped);
         }
         break;
     }
@@ -207,6 +207,8 @@ int Flasher::getBoardInfo(BoardInfo& board)
         return ret;
 
     board.mBMCVer = std::move(charVec2String(info[BDINFO_BMC_VER]));
+    if (flasher.fixedSC())
+        board.mBMCVer += "(FIXED)";
     board.mConfigMode = info.find(BDINFO_CONFIG_MODE) != info.end() ?
         info[BDINFO_CONFIG_MODE][0] : '\0';
     board.mFanPresence = info.find(BDINFO_FAN_PRESENCE) != info.end() ?
@@ -385,7 +387,7 @@ DSAInfo Flasher::getOnBoardDSA()
     if (rc == 0)
         bmc = info.mBMCVer; // Successfully read BMC version
     else if (rc == -EOPNOTSUPP)
-        bmc.clear(); // BMC is not supported on DSA
+        bmc = DSAInfo::INACTIVE; // BMC is not supported on DSA, state is inactive
     else
         bmc = DSAInfo::UNKNOWN; // BMC not ready, set it to an invalid version string
 
@@ -399,4 +401,16 @@ std::string Flasher::sGetDBDF()
     sprintf(cDBDF, "%.4x:%.2x:%.2x.%.1x",
         mDev->domain, mDev->bus, mDev->dev, mDev->func);
     return std::string(cDBDF);
+}
+
+int Flasher::readData(std::vector<unsigned char>& data)
+{
+    XSPI_Flasher xspi(mDev);
+    return xspi.xclReadData(data);
+}
+
+int Flasher::writeData(std::vector<unsigned char>& data)
+{
+    XSPI_Flasher xspi(mDev);
+    return xspi.xclWriteData(data);
 }

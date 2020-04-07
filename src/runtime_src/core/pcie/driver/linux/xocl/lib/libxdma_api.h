@@ -57,6 +57,24 @@ typedef struct {
 	u64 msix_trigger;
 } xdma_statistics;
 
+struct xdma_io_cb {
+	void __user *buf;
+	size_t len;
+	void *private;
+	unsigned int pages_nr;
+	struct sg_table *sgt;
+	struct page **pages;
+	/** total data size */
+	unsigned int count;
+	/** MM only, DDR/BRAM memory addr */
+	u64 ep_addr;
+	/** write: if write to the device */
+	struct xdma_request_cb *req;
+	u8 write:1;
+	void (*io_done)(unsigned long cb_hndl, int err);
+};
+
+
 /*
  * This struct should be constantly updated by XMDA using u64_stats_* APIs
  * The front end will read the structure without locking (That's why updating atomically is a must)
@@ -149,7 +167,8 @@ int xdma_user_isr_disable(void *dev_hndl, unsigned int mask);
  * TODO: exact error code will be defined later
  */
 ssize_t xdma_xfer_submit(void *dev_hndl, int channel, bool write, u64 ep_addr,
-			struct sg_table *sgt, bool dma_mapped, int timeout_ms);
+			struct sg_table *sgt, bool dma_mapped, int timeout_ms,
+		       	struct xdma_io_cb *cb);
 			
 /*
  * xdma_device_online - bring device offline

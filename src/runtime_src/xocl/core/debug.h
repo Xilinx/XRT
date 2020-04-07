@@ -18,7 +18,7 @@
 #define xocl_util_debug_h_
 
 #include "xocl/config.h"
-#include "xrt/util/debug.h"
+#include "core/common/debug.h"
 
 #include <CL/cl.h>
 #include <vector>
@@ -35,15 +35,15 @@ logf(const char* format,...);
 } // xocl
 
 #ifdef XOCL_VERBOSE
-# define XOCL_DEBUG(...) xrt::debug(__VA_ARGS__)
-# define XOCL_DEBUGF(format,...) xrt::debugf(format, ##__VA_ARGS__)
-# define XOCL_PRINT(...) xrt::debug(__VA_ARGS__)
-# define XOCL_PRINTF(format,...) xrt::debugf(format, ##__VA_ARGS__)
+# define XOCL_DEBUG(...) xrt_core::debug(__VA_ARGS__)
+# define XOCL_DEBUGF(format,...) xrt_core::debugf(format, ##__VA_ARGS__)
+# define XOCL_PRINT(...) xrt_core::debug(__VA_ARGS__)
+# define XOCL_PRINTF(format,...) xrt_core::debugf(format, ##__VA_ARGS__)
 #else
 # define XOCL_DEBUG(...)
 # define XOCL_DEBUGF(...)
-# define XOCL_PRINT(...) xrt::debug(__VA_ARGS__)
-# define XOCL_PRINTF(format,...) xrt::debugf(format, ##__VA_ARGS__)
+# define XOCL_PRINT(...) xrt_core::debug(__VA_ARGS__)
+# define XOCL_PRINTF(format,...) xrt_core::debugf(format, ##__VA_ARGS__)
 #endif
 
 #ifdef VERBOSE

@@ -48,33 +48,4 @@ get_devices(boost::property_tree::ptree& pt) const
   pt.add_child("devices", pt_devices);
 }
 
-uint16_t
-system_pcie::
-bdf2index(const std::string& bdfStr) const
-{
-  // Extract bdf from bdfStr.
-  uint16_t dom = 0, b= 0, d = 0, f = 0;
-  char dummy;
-  std::stringstream s(bdfStr);
-  size_t n = std::count(bdfStr.begin(), bdfStr.end(), ':');
-  
-  if (n == 1)
-    s >> std::hex >> b >> dummy >> d >> dummy >> f;
-  else if (n == 2)
-    s >> std::hex >> dom >> dummy >> b >> dummy >> d >> dummy >> f;
-  if ((n != 1 && n != 2) || s.fail()) {
-    std::string errMsg = boost::str( boost::format("Can't extract BDF from '%s'") % bdfStr);
-    throw error(errMsg);
-	}
-
-  for (uint16_t i = 0; i < get_total_devices(false).first; i++) {
-    auto device = get_mgmtpf_device(i);
-    auto bdf = device_query<query::pcie_bdf>(device);
-    if (b == std::get<0>(bdf) && d == std::get<1>(bdf) && f == std::get<2>(bdf))
-      return i;
-  }
-  std::string errMsg = boost::str( boost::format("No mgmt PF found for '%s'") % bdfStr);
-  throw error(errMsg);
-}
-
 } // xrt_core

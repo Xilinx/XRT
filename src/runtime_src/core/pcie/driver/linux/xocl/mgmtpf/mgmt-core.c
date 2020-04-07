@@ -815,6 +815,9 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			break;
 		}
 
+		if (lro->rp_program == XOCL_RP_PROGRAM)
+			lro->rp_program = 0;
+
 		resp = vzalloc(sizeof(*resp));
 		if (!resp)
 			break;
@@ -833,10 +836,10 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		break;
 	}
 	case XCL_MAILBOX_REQ_PROGRAM_SHELL: {
-		/* blob should already been updated */
-		ret = xclmgmt_program_shell(lro);
+		lro->rp_program = XOCL_RP_PROGRAM;
 		(void) xocl_peer_response(lro, req->req, msgid, &ret,
 				sizeof(ret));
+		ret = xocl_queue_work(lro, XOCL_WORK_PROGRAM_SHELL, 0);
 		break;
 	}
 	case XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR: {
@@ -1047,6 +1050,12 @@ static void xclmgmt_work_cb(struct work_struct *work)
 		if (!ret)
 			xocl_drvinst_set_offline(lro, false);
 		break;
+	case XOCL_WORK_PROGRAM_SHELL:
+		/* blob should already been updated */
+		ret = xclmgmt_program_shell(lro);
+		if (!ret)
+			xclmgmt_connect_notify(lro, true);
+		break;
 	default:
 		mgmt_err(lro, "Invalid op code %d", _work->op);
 		break;
@@ -1234,8 +1243,8 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 		vfree(lro->core.fdt_blob);
 	if (lro->userpf_blob)
 		vfree(lro->userpf_blob);
-	if (lro->bld_blob)
-		vfree(lro->bld_blob);
+	if (lro->core.blp_blob)
+		vfree(lro->core.blp_blob);
 
 	dev_set_drvdata(&pdev->dev, NULL);
 
@@ -1297,7 +1306,10 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_dna,
 	xocl_init_fmgr,
 	xocl_init_ospi_versal,
+	xocl_init_srsr,
 	xocl_init_mem_hbm,
+	xocl_init_ulite,
+	xocl_init_calib_storage,
 };
 
 static void (*drv_unreg_funcs[])(void) = {
@@ -1322,7 +1334,10 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_dna,
 	xocl_fini_fmgr,
 	xocl_fini_ospi_versal,
+	xocl_fini_srsr,
 	xocl_fini_mem_hbm,
+	xocl_fini_ulite,
+	xocl_fini_calib_storage,
 };
 
 static int __init xclmgmt_init(void)

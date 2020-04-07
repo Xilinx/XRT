@@ -69,7 +69,7 @@ class Flasher
 {
 public:
     Flasher(unsigned int index);
-    int upgradeFirmware(const std::string& typeStr, firmwareImage* primary, firmwareImage* secondary);
+    int upgradeFirmware(const std::string& typeStr, firmwareImage* primary, firmwareImage* secondary, firmwareImage* stripped);
     int upgradeBMCFirmware(firmwareImage* bmc);
     bool isValid(void) { return mDev != nullptr; }
 
@@ -79,6 +79,9 @@ public:
     std::vector<DSAInfo> getInstalledDSA();
     int getBoardInfo(BoardInfo& board);
 
+    int readData(std::vector<unsigned char>& data);
+    int writeData(std::vector<unsigned char>& data);
+
 private:
     enum E_FlasherType {
         UNKNOWN,
@@ -87,7 +90,7 @@ private:
         QSPIPS,
         OSPIVERSAL,
     };
-    const char *E_FlasherTypeStrings[4] = { "UNKNOWN", "SPI", "BPI", "QSPI_PS" };
+    const char *E_FlasherTypeStrings[5] = { "UNKNOWN", "SPI", "BPI", "QSPI_PS", "OSPI_VERSAL"};
     const char *getFlasherTypeText( E_FlasherType val ) { return E_FlasherTypeStrings[ val ]; }
     std::shared_ptr<pcidev::pci_device> mDev;
 

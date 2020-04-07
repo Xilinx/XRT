@@ -26,6 +26,7 @@
 
 #include "api.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 #include <CL/opencl.h>
 
@@ -144,6 +145,7 @@ clLinkProgram(cl_context            context ,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clLinkProgram
       (context, num_devices, device_list,options,num_input_programs,
        input_programs,pfn_notify,user_data,errcode_ret);

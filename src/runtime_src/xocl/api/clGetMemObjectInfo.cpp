@@ -23,6 +23,7 @@
 #include "xocl/core/memory.h"
 #include "detail/memory.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 #include <CL/opencl.h>
 
@@ -130,6 +131,7 @@ clGetMemObjectInfo(cl_mem           memobj,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clGetMemObjectInfo
       (memobj,param_name,param_value_size,param_value,param_value_size_ret);
   }

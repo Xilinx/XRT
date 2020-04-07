@@ -47,8 +47,6 @@ class Section {
   };
 
  public:
-
- public:
   virtual ~Section();
 
  public:
@@ -127,9 +125,8 @@ class Section {
   static std::map<enum axlf_section_kind, bool> m_mapIdToSectionIndexSupport;
 
  private:
-  // Purposefully private and undefined ctors...
-  Section(const Section& obj);
-  Section& operator=(const Section& obj);
+  Section(const Section& obj) = delete;
+  Section& operator=(const Section& obj) = delete;
 };
 
 #endif

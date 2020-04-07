@@ -21,6 +21,7 @@
 #include "xocl/config.h"
 #include "api.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 #include <CL/opencl.h>
 
 namespace xocl {
@@ -43,6 +44,7 @@ clEnqueueWaitForEvents(cl_command_queue command_queue,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
+    LOP_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
     return xocl::clEnqueueWaitForEvents(command_queue,num_events,event_list);
   }
   catch (const xocl::error& ex) {

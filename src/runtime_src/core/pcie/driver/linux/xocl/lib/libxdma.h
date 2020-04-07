@@ -35,6 +35,12 @@
 #include <linux/kernel.h>
 #include <linux/pci.h>
 #include <linux/workqueue.h>
+#include <linux/slab.h>
+#include <linux/kthread.h>
+#include <linux/cpuset.h>
+#include <linux/signal.h>
+#include <linux/errno.h>
+
 
 #include "../xocl_drv.h"
 
@@ -67,12 +73,16 @@
 #define XDMA_OFS_INT_CTRL	(0x2000UL)
 #define XDMA_OFS_CONFIG		(0x3000UL)
 
-/* maximum number of desc per transfer request */
-#define XDMA_TRANSFER_MAX_DESC (2048)
 
 /* maximum size of a single DMA transfer descriptor */
 #define XDMA_DESC_BLEN_BITS 	28
 #define XDMA_DESC_BLEN_MAX	((1 << (XDMA_DESC_BLEN_BITS)) - 1)
+
+#define XDMA_DESC_SETS_MAX 128
+/* maximum number of desc per transfer request */
+#define XDMA_TRANSFER_MAX_DESC (4096)
+#define XDMA_DESC_SETS_AVAIL_MAX (XDMA_DESC_SETS_MAX - 1)
+
 
 /* bits of the SG DMA control register */
 #define XDMA_CTRL_RUN_STOP			(1UL << 0)
@@ -250,6 +260,8 @@ enum dev_capabilities {
 	CAP_ENGINE_READ = 16
 };
 
+
+
 /* SECTION: Structure definitions */
 
 struct config_regs {
@@ -351,7 +363,7 @@ struct sgdma_common_regs {
 
 /* Structure for polled mode descriptor writeback */
 struct xdma_poll_wb {
-	u32 completed_desc_count;
+	volatile u32 completed_desc_count;
 	u32 reserved_1[7];
 } __packed;
 
@@ -393,32 +405,27 @@ struct sw_desc {
 	u64 len;
 };
 
-/* Describes a (SG DMA) single transfer for the engine */
-struct xdma_transfer {
-	struct list_head entry;		/* queue of non-completed transfers */
-	struct xdma_desc *desc_virt;	/* virt addr of the 1st descriptor */
-	dma_addr_t desc_bus;		/* bus addr of the first descriptor */
-	int desc_adjacent;		/* adjacent descriptors at desc_bus */
-	int desc_num;			/* number of descriptors in transfer */
-	enum dma_data_direction dir;
-	wait_queue_head_t wq;		/* wait queue for transfer completion */
-
-	enum transfer_state state;	/* state of the transfer */
-	unsigned int flags;
-#define XFER_FLAG_NEED_UNMAP	0x1
-	int cyclic;			/* flag if transfer is cyclic */
-	int last_in_request;		/* flag if last within request */
-	u64 len;
-	struct sg_table *sgt;
+struct desc_sets {
+	dma_addr_t desc_bus;
+	unsigned int desc_set_offset;
+	unsigned char last_set;
 };
 
 struct xdma_request_cb {
+	struct list_head entry;		/* queue of non-completed requests */
+	wait_queue_head_t arbtr_wait;
+	dma_addr_t desc_bus;
+	struct xdma_desc *desc_virt;
+	unsigned int desc_adjacent;
+	unsigned int desc_completed;
+	unsigned int done;
 	struct sg_table *sgt;
-	u64 total_len;
+	unsigned int total_len;
 	u64 ep_addr;
-
-	struct xdma_transfer xfer;
-
+	unsigned char dma_mapped;
+	enum dma_data_direction dir;
+	unsigned long expiry;
+	struct xdma_io_cb *cb;
 	unsigned int sw_desc_idx;
 	unsigned int sw_desc_cnt;
 	struct sw_desc sdesc[0];
@@ -447,8 +454,11 @@ struct xdma_engine {
 	int len_granularity;	/* transfer length multiple */
 	int addr_bits;		/* HW datapath address width */
 	int channel;		/* engine indices */
+	unsigned int cpu_idx;
 	int max_extra_adj;	/* descriptor prefetch capability */
 	int desc_dequeued;	/* num descriptors of completed transfers */
+	int desc_queued;
+	int wq_serviced;
 	u32 status;		/* last known status of device */
 	u32 interrupt_enable_mask_value;/* only used for MSIX mode to store per-engine interrupt mask value */
 
@@ -461,6 +471,7 @@ struct xdma_engine {
 	struct xdma_request_cb *cyclic_req;
 	struct sg_table cyclic_sgt;
 	u8 eop_found; /* used only for cyclic(rx:c2h) */
+	int eop_count;
 
 	int rx_tail;	/* follows the HW */
 	int rx_head;	/* where the SW reads from */
@@ -480,18 +491,44 @@ struct xdma_engine {
 	int msix_irq_line;		/* MSI-X vector for this engine */
 	u32 irq_bitmask;		/* IRQ bit mask for this engine */
 	struct work_struct work;	/* Work queue for interrupt handling */
+	struct work_struct req_proc;	/* Work queue for processing reqs */
+	
 
 	spinlock_t desc_lock;		/* protects concurrent access */
+	u32 pidx;
+	u32 cidx;
+	u32 sw_cidx;
+	struct desc_sets sets[XDMA_DESC_SETS_MAX];
+	volatile unsigned long flags;
+	unsigned int avail_sets;
+	unsigned int sets_ready;
+	struct list_head work_list;	/* queue of requests */
+	struct list_head pend_list;	/* queue of pending requests */
+	spinlock_t req_list_lock;		/* protects concurrent access */
+	struct work_struct poll;
+	struct work_struct aio_mon;
 #ifdef CONFIG_PREEMPT_COUNT
 	struct mutex desc_mutex;
 #endif
 
 	dma_addr_t desc_bus;
 	struct xdma_desc *desc;
+	int desc_idx;			/* current descriptor index */
+	int desc_used;			/* total descriptors used */
+	unsigned int result_pidx;
+	unsigned int result_cidx;
+
 
 	/* for performance test support */
 	struct xdma_performance_ioctl *xdma_perf;	/* perf test control */
+	dma_addr_t perf_bus;	/* Performance Submit Buffer */
+	void *perf_buffer;
+	unsigned int perf_size;
 	wait_queue_head_t xdma_perf_wq;	/* Perf test sync */
+
+	/* cpu attached to intr_work */
+	unsigned int intr_work_cpu;
+
 };
 
 struct xdma_user_irq {
@@ -602,6 +639,8 @@ static inline void xdma_device_flag_clear(struct xdma_dev *xdev, unsigned int f)
 	spin_unlock_irqrestore(&xdev->lock, flags);
 }
 
+/* ********************* global variables *********************************** */
+
 void write_register(u32 value, void *iomem);
 u32 read_register(void *iomem);
 
@@ -609,14 +648,12 @@ void xdma_device_offline(struct pci_dev *pdev, void *dev_handle);
 void xdma_device_online(struct pci_dev *pdev, void *dev_handle);
 
 int xdma_performance_submit(struct xdma_dev *xdev, struct xdma_engine *engine);
-struct xdma_transfer *engine_cyclic_stop(struct xdma_engine *engine);
+int engine_cyclic_stop(struct xdma_engine *engine);
+
 void enable_perf(struct xdma_engine *engine);
 void get_perf_stats(struct xdma_engine *engine);
+void xdma_proc_aio_requests(void *dev_hndl, int channel, bool write);
 
-int xdma_cyclic_transfer_setup(struct xdma_engine *engine);
-int xdma_cyclic_transfer_teardown(struct xdma_engine *engine);
-ssize_t xdma_engine_read_cyclic(struct xdma_engine *, char __user *, size_t,
-			 int);
 
 #endif /* XDMA_LIB_H */
 

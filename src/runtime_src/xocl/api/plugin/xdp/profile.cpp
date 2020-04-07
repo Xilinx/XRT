@@ -189,14 +189,20 @@ void
 log(xocl::event* event, cl_int status)
 {
   if (!s_exiting)
+  {
     event->trigger_profile_action(status,"");
+    event->trigger_lop_action(status);
+  }
 }
 
 void
 log(xocl::event* event, cl_int status, const std::string& cuname)
 {
   if (!s_exiting)
+  {
     event->trigger_profile_action(status,cuname);
+    event->trigger_lop_action(status);
+  }
 }
 
 void

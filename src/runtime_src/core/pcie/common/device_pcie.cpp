@@ -28,16 +28,22 @@ namespace xrt_core {
 
 device_pcie::
 device_pcie(id_type device_id, bool user)
-    : device(device_id), m_userpf(user)
+  : device(device_id), m_userpf(user), m_managed(true)
 {
   if (m_userpf)
     m_handle = xclOpen(device_id, nullptr, XCL_QUIET);
 }
 
 device_pcie::
+device_pcie(handle_type device_handle, id_type device_id)
+  : device(device_id), m_handle(device_handle), m_userpf(true), m_managed(false)
+{
+}
+
+device_pcie::
 ~device_pcie()
 {
-  if (m_userpf && m_handle)
+  if (m_userpf && m_handle && m_managed)
     xclClose(m_handle);
 }
 
@@ -59,6 +65,7 @@ get_info(boost::property_tree::ptree& pt) const
   ptree_updater<query::pcie_link_speed>::query_and_put(this, pt);
   ptree_updater<query::pcie_express_lane_width>::query_and_put(this, pt);
   ptree_updater<query::dma_threads_raw>::query_and_put(this, pt);
+  ptree_updater<query::pcie_bdf>::query_and_put(this, pt);
 }
 
 } // xrt_core

@@ -25,6 +25,7 @@
 #include "detail/context.h"
 #include "api.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 
 namespace xocl {
@@ -105,11 +106,8 @@ clCreateContextFromType(const cl_context_properties* properties,
     //todo cl_device_type_default
     validdevice = validdevice || (device_type==CL_DEVICE_TYPE_ALL);
 
-    if(validdevice) {
+    if(validdevice)
       devices.push_back(device);
-      if (!device->lock())
-        throw xocl::error(CL_DEVICE_NOT_AVAILABLE,"device unavailable");
-    }
   }
 
   if (devices.empty())
@@ -139,6 +137,7 @@ clCreateContextFromType(const cl_context_properties *  properties,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clCreateContextFromType
       (properties,device_type,pfn_notify,user_data,errcode_ret);
   }

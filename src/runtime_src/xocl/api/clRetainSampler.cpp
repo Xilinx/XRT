@@ -19,6 +19,7 @@
 #include "xocl/core/sampler.h"
 #include "detail/sampler.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 #include <CL/opencl.h>
 
 namespace xocl {
@@ -47,6 +48,7 @@ clRetainSampler(cl_sampler sampler)
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clRetainSampler(sampler);
   }
   catch (const xrt::error& ex) {

@@ -190,6 +190,38 @@ get_profile_slot_name(key k, const std::string& deviceName, xclPerfMonType type,
   return device::getProfileSlotName(device.get(), type, slotnum, slotName);
 }
 
+cl_int
+get_trace_slot_name(key k, const std::string& deviceName, xclPerfMonType type,
+		              unsigned int slotnum, std::string& slotName)
+{
+  auto platform = k;
+  for (auto device : platform->get_device_range()) {
+    std::string currDeviceName = device->get_unique_name();
+    if (currDeviceName.compare(deviceName) == 0)
+      return device::getTraceSlotName(device, type, slotnum, slotName);
+  }
+
+  // If not found, return the timestamp of the first device
+  auto device = platform->get_device_range()[0];
+  return device::getTraceSlotName(device.get(), type, slotnum, slotName);
+}
+
+unsigned int
+get_trace_slot_properties(key k, const std::string& deviceName, xclPerfMonType type,
+		                      unsigned int slotnum)
+{
+  auto platform = k;
+  for (auto device : platform->get_device_range()) {
+    std::string currDeviceName = device->get_unique_name();
+    if (currDeviceName.compare(deviceName) == 0)
+      return device::getTraceSlotProperties(device, type, slotnum);
+  }
+
+  // If not found, return the timestamp of the first device
+  auto device = platform->get_device_range()[0];
+  return device::getTraceSlotProperties(device.get(), type, slotnum);
+}
+
 unsigned int
 get_profile_slot_properties(key k, const std::string& deviceName, xclPerfMonType type,
 		              unsigned int slotnum)
@@ -467,9 +499,9 @@ DeviceIntf* get_device_interface(key k)
 
   auto itr = device_data.find(device);
   if (itr == device_data.end()) {
-    itr = device_data.emplace(k,data()).first;
+    itr = device_data.emplace(k,(new data())).first;
   }
-  return  &(itr->second.mDeviceIntf);
+  return  &(itr->second->mDeviceIntf);
 }
 
 unsigned int
@@ -498,6 +530,33 @@ getProfileSlotName(key k, xclPerfMonType type, unsigned int index,
   }
   slotName = name;
   return CL_SUCCESS;
+}
+
+cl_int
+getTraceSlotName(key k, xclPerfMonType type, unsigned int index,
+		           std::string& slotName)
+{
+  auto device = k;
+  auto device_interface = get_device_interface(device);
+
+  if (device_interface)
+    slotName = device_interface->getTraceMonName(type, index);
+  else
+    slotName = "";
+
+  return CL_SUCCESS;
+}
+
+unsigned int
+getTraceSlotProperties(key k, xclPerfMonType type, unsigned int index)
+{
+  auto device = k;
+  auto device_interface = get_device_interface(device);
+
+  if (device_interface)
+    return device_interface->getTraceMonProperty(type, index);
+  else
+    return device->get_xrt_device()->getProfilingSlotProperties(type, index).get();
 }
 
 unsigned int
@@ -575,6 +634,9 @@ double
 getMaxRead(key k)
 {
   auto device = k;
+  auto device_interface = get_device_interface(device);
+  if (device_interface)
+    return device_interface->getMaxBwRead();
   return device->get_xrt_device()->getDeviceMaxRead().get();
 }
 
@@ -582,6 +644,9 @@ double
 getMaxWrite(key k)
 {
   auto device = k;
+  auto device_interface = get_device_interface(device);
+  if (device_interface)
+    return device_interface->getMaxBwRead();
   return device->get_xrt_device()->getDeviceMaxWrite().get();
 }
 
@@ -771,11 +836,10 @@ isAPCtrlChain(key k, const std::string& cu)
       base_addr = xcu->get_base_addr();
   }
   auto xclbin = device->get_xclbin();
-  auto binary = xclbin.binary();
-  auto binary_data = binary.binary_data();
+  auto binary_data = xclbin.binary();
   auto header = reinterpret_cast<const xclBin *>(binary_data.first);
   auto ip_layout = getAxlfSection<const ::ip_layout>(header, axlf_section_kind::IP_LAYOUT);
-  if (!ip_layout || !base_addr)
+  if (!ip_layout)
     return false;
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
     const auto& ip_data = ip_layout->m_ip_data[count];
@@ -798,8 +862,7 @@ getMemSizeBytes(key k, int idx)
   if (!device)
     return false;
   auto xclbin = device->get_xclbin();
-  auto binary = xclbin.binary();
-  auto binary_data = binary.binary_data();
+  auto binary_data = xclbin.binary();
   auto header = reinterpret_cast<const xclBin *>(binary_data.first);
   auto mem_topology = getAxlfSection<const ::mem_topology>(header, axlf_section_kind::MEM_TOPOLOGY);
   if (mem_topology && idx < mem_topology->m_count) {
@@ -817,8 +880,7 @@ getPlramSizeBytes(key k)
     return 0;
   try {
     auto xclbin = device->get_xclbin();
-    auto binary = xclbin.binary();
-    auto binary_data = binary.binary_data();
+    auto binary_data = xclbin.binary();
     auto header = reinterpret_cast<const xclBin *>(binary_data.first);
     mem_tp = getAxlfSection<const ::mem_topology>(header, axlf_section_kind::MEM_TOPOLOGY);
   } catch (...) {
@@ -839,6 +901,34 @@ getPlramSizeBytes(key k)
   return 0;
 }
 
+void
+getMemUsageStats(key k, std::map<std::string, uint64_t>& stats)
+{
+  auto device = k;
+  const mem_topology* mem_tp;
+  if (!device)
+    return;
+  try {
+    auto xclbin = device->get_xclbin();
+    auto binary_data = xclbin.binary();
+    auto header = reinterpret_cast<const xclBin *>(binary_data.first);
+    mem_tp = getAxlfSection<const ::mem_topology>(header, axlf_section_kind::MEM_TOPOLOGY);
+  } catch (...) {
+    return;
+  }
+  if(!mem_tp)
+    return;
+
+  auto name = device->get_unique_name();
+  auto m_count = mem_tp->m_count;
+  for (int i=0; i < m_count; i++) {
+    std::string mem_tag(reinterpret_cast<const char*>(mem_tp->m_mem_data[i].m_tag));
+    if (mem_tag.rfind("bank", 0) == 0)
+        mem_tag = "DDR[" + mem_tag.substr(4,4) + "]";
+    stats[name + "|" + mem_tag] = mem_tp->m_mem_data[i].m_used;
+  }
+}
+
 data*
 get_data(key k)
 {
@@ -848,9 +938,9 @@ get_data(key k)
 
   auto itr = device_data.find(k);
   if (itr==device_data.end()) {
-    itr = device_data.emplace(k,data()).first;
+    itr = device_data.emplace(k,(new data())).first;
   }
-  return &(*itr).second;
+  return itr->second;
 }
 
   }} // device/platform

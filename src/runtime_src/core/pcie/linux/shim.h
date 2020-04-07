@@ -23,10 +23,13 @@
  */
 
 #include "scan.h"
+#include "core/common/system.h"
+#include "core/common/device.h"
 #include "xclhal2.h"
 #include "core/pcie/driver/linux/include/xocl_ioctl.h"
 #include "core/pcie/driver/linux/include/qdma_ioctl.h"
 #include "core/common/xrt_profiling.h"
+#include "core/include/xstream.h" /* for stream_opt_type */
 
 #include <linux/aio_abi.h>
 #include <libdrm/drm.h>
@@ -53,8 +56,8 @@ class shim
 {
 public:
     ~shim();
-    shim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity);
-    void init(unsigned index, const char *logfileName, xclVerbosityLevel verbosity);
+    shim(unsigned index);
+    void init(unsigned index);
 
     static int xclLogMsg(xrtLogMsgLevel level, const char* tag, const char* format, va_list args1);
     // Raw unmanaged read/write on the entire PCIE user BAR
@@ -126,7 +129,7 @@ public:
      * e.g. enable = true, sz = 0x100000 (2M): add 2M CMA chunk
      *      enable = false: remove CMA chunk
      */
-    int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t sz);
+    int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t total_size);
 
     int xclGetDebugIPlayoutPath(char* layoutPath, size_t size);
     int xclGetSubdevPath(const char* subdev, uint32_t idx, char* path, size_t size);
@@ -145,8 +148,6 @@ public:
     int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex);
 
     int getBoardNumber( void ) { return mBoardNumber; }
-    const char *getLogfileName( void ) { return mLogfileName; }
-    xclVerbosityLevel getVerbosity( void ) { return mVerbosity; }
 
     // QDMA streaming APIs
     int xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl);
@@ -156,18 +157,19 @@ public:
     int xclFreeQDMABuf(uint64_t buf_hdl);
     ssize_t xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr);
     ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
+    int xclPollQueue(uint64_t q_hdl, int min_compl, int max_compl, xclReqCompletion *comps, int * actual, int timeout /*ms*/);
+    int xclSetQueueOpt(uint64_t q_hdl, int type, uint32_t val);
     int xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int * actual, int timeout /*ms*/);
     int xclIPName2Index(const char *name, uint32_t& index);
 
 private:
+    std::shared_ptr<xrt_core::device> mCoreDevice;
     std::shared_ptr<pcidev::pci_device> mDev;
-    xclVerbosityLevel mVerbosity;
     std::ofstream mLogStream;
     int mUserHandle;
     int mStreamHandle;
     int mBoardNumber;
     bool mLocked;
-    const char *mLogfileName;
     uint64_t mOffsets[XCL_ADDR_SPACE_MAX];
     xclDeviceInfo2 mDeviceInfo;
     uint32_t mMemoryProfilingNumberSlots;

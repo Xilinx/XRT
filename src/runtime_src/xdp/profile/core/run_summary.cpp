@@ -68,6 +68,8 @@ RunSummary::getFileTypeAsStr(enum RunSummary::FileType eFileType)
     case FT_WDB: return "WAVEFORM_DATABASE";
     case FT_WDB_CONFIG: return "WAVEFORM_CONFIGURATION";
     case FT_POWER_PROFILE: return "XRT_POWER_PROFILE";
+    case FT_KERNEL_PROFILE: return "KERNEL_PROFILE";
+    case FT_KERNEL_TRACE: return "KERNEL_TRACE";
   }
 
   // Yeah, the code will never get here, but it makes for a clean flow
@@ -162,6 +164,23 @@ void RunSummary::writeContent()
       configName += ".wcfg";
       ptFile.put("name", configName.c_str());
       ptFile.put("type", getFileTypeAsStr(FT_WDB_CONFIG).c_str());
+      ptFiles.push_back(std::make_pair("", ptFile));
+    }
+
+    // If kernel profile and trace files are available add them to the report
+    // NOTE: HW emulation only
+    char* pKernelProfileFile = getenv("VITIS_KERNEL_PROFILE_FILENAME");
+    if (pKernelProfileFile != nullptr) {
+      boost::property_tree::ptree ptFile;
+      ptFile.put("name", pKernelProfileFile);
+      ptFile.put("type", getFileTypeAsStr(FT_KERNEL_PROFILE).c_str());
+      ptFiles.push_back(std::make_pair("", ptFile));
+    }
+    char* pKernelTraceFile = getenv("VITIS_KERNEL_TRACE_FILENAME");
+    if (pKernelTraceFile != nullptr) {
+      boost::property_tree::ptree ptFile;
+      ptFile.put("name", pKernelTraceFile);
+      ptFile.put("type", getFileTypeAsStr(FT_KERNEL_TRACE).c_str());
       ptFiles.push_back(std::make_pair("", ptFile));
     }
 

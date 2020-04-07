@@ -111,6 +111,11 @@ struct xclmgmt_char {
 	struct device *sys_device;
 };
 
+enum {
+	XOCL_RP_PROGRAM_REQ = 1,
+	XOCL_RP_PROGRAM = 2
+};
+
 struct xclmgmt_dev {
 	struct xocl_dev_core	core;
 	/* MAGIC_DEVICE == 0xAAAAAAAA */
@@ -136,13 +141,15 @@ struct xclmgmt_dev {
 
 	void *userpf_blob;
 	bool userpf_blob_updated;
-	void *bld_blob;
 
 	/* ID set on mgmt and passed to user for inter-domain communication */
 	u64 comm_id;
 
 	/* save config for pci reset */
 	u32 saved_config[8][16];
+
+	/* programming shell flag */
+	u32 rp_program;
 };
 
 extern int health_check;

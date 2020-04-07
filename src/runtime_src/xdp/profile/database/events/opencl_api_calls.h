@@ -30,14 +30,13 @@ namespace xdp {
 
     OpenCLAPICall() = delete ;
   public:
-    XDP_EXPORT OpenCLAPICall(uint64_t s_id, double ts, unsigned int f_id, 
-			     uint64_t name, uint64_t q) ;
+    XDP_EXPORT OpenCLAPICall(uint64_t s_id, double ts, unsigned int f_id, uint64_t name, uint64_t q);
     XDP_EXPORT ~OpenCLAPICall() ;
 
     inline uint64_t getQueueAddress() { return queueAddress ; } 
 
-    virtual bool isOpenCLAPI() { return true ; } 
-    XDP_EXPORT virtual void dump(std::ofstream& fout, int bucket) ;
+    virtual bool isOpenCLAPI() { return true ; }
+    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   } ;
 
 } // end namespace xdp

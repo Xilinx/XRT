@@ -21,6 +21,7 @@
 #include "xocl/core/command_queue.h"
 #include "detail/memory.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 #include <CL/opencl.h>
 
 namespace xocl {
@@ -73,6 +74,7 @@ clReleaseMemObject(cl_mem memobj)
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clReleaseMemObject(memobj);
   }
   catch (const xrt::error& ex) {

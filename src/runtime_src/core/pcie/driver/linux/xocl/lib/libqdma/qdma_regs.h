@@ -656,7 +656,6 @@ struct qdma_c2h_cmpt_cmpl_status {
 #define S_C2H_CMPT_INT_STATE	1
 #define M_C2H_CMPT_INT_STATE	0x3U
 
-#define STM_REG_BASE			0x02000000
 #define STM_REG_IND_CTXT_DATA_BASE	0x0
 #define STM_REG_IND_CTXT_DATA3		0xC
 #define STM_REG_IND_CTXT_CMD		0x14

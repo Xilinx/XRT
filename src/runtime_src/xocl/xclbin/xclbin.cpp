@@ -20,9 +20,6 @@
 #include "xocl/core/debug.h"
 #include "xocl/core/error.h"
 
-#include "xclbin/binary.h"
-
-
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 
@@ -31,6 +28,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <sstream>
+#include <mutex>
 
 #ifdef _WIN32
 # pragma warning( disable : 4267 4996 4244 )
@@ -38,7 +36,6 @@
 
 namespace {
 
-using data_range = ::xclbin::data_range;
 using target_type = xocl::xclbin::target_type;
 using addr_type = xocl::xclbin::addr_type;
 
@@ -127,21 +124,6 @@ private:
     std::string
     name() const
     { return xml_device.get<std::string>("<xmlattr>.name"); }
-
-    xocl::xclbin::system_clocks_type
-    system_clocks() const
-    {
-      xocl::xclbin::system_clocks_type clocks;
-      pt::ptree default_value;
-      for (auto& xml_clock : xml_device.get_child("systemClocks",default_value)) {
-        if (xml_clock.first != "clock")
-          continue;
-        auto port = xml_clock.second.get<std::string>("<xmlattr>.port");
-        auto freq = convert(xml_clock.second.get<std::string>("<xmlattr>.frequency"));
-        clocks.emplace_back(name(),std::move(port),freq);
-      }
-      return clocks;
-    }
 
   }; // class device
 
@@ -257,69 +239,6 @@ private:
     name() const
     {
       return xml_core.get<std::string>("<xmlattr>.name");
-    }
-
-    xocl::xclbin::kernel_clocks_type
-    kernel_clocks() const
-    {
-      xocl::xclbin::kernel_clocks_type clocks;
-      bool set = false;
-      for (auto& xml : xml_core) {
-        if (xml.first != "kernelClocks")
-          continue;
-        set = true;
-        for (auto& xml_clock : xml.second ) {
-          if (xml_clock.first != "clock")
-            continue;
-          auto port = xml_clock.second.get<std::string>("<xmlattr>.port");
-          auto freq = convert(xml_clock.second.get<std::string>("<xmlattr>.frequency"));
-          clocks.emplace_back(name(),std::move(port),freq);
-        }
-        // There is an implicit assumption in the hal driver that
-        // DATA_CLK is before KERNEL_CLK. This is the case in our
-        // xclbins, but not in AWS'., Just sort the container here.
-        std::sort(clocks.begin(),clocks.end(),
-                  [](const xocl::xclbin::clocks& clk1,const xocl::xclbin::clocks& clk2) {
-                    return clk1.clock_name < clk2.clock_name;
-                  });
-      }
-      if (!set) {
-        auto corefreq = xml_core.get<std::string>("<xmlattr>.clockFreq");
-        auto port = std::string("");
-        auto freq = m_platform->version() > 21
-          ? std::stoi(corefreq)
-          : 0;
-        clocks.emplace_back(name(),std::move(port),freq);
-      }
-      return clocks;
-    }
-
-    xocl::xclbin::profilers_type
-    profilers() const
-    {
-      xocl::xclbin::profilers_type profilers;
-      for (auto& xml_profilers : xml_core) {
-        if (xml_profilers.first != "profilers")
-          continue;
-        for (auto& xml_inst : xml_profilers.second) {
-          if (xml_inst.first != "instance")
-            continue;
-          xocl::xclbin::profiler profiler;
-          profiler.name = xml_inst.second.get<std::string>("<xmlattr>.name");
-
-          for (auto& xml_slot : xml_inst.second) {
-            if (xml_slot.first != "slot")
-              continue;
-            auto slotnum = xml_slot.second.get<int>("<xmlattr>.index");
-            auto cuname = xml_slot.second.get<std::string>("<xmlattr>.name");
-            auto type = xml_slot.second.get<std::string>("<xmlattr>.type");
-            profiler.slots.emplace_back(slotnum,std::move(cuname),std::move(type));
-          }
-
-          profilers.emplace_back(std::move(profiler));
-        }
-      }
-      return profilers;
     }
 
   }; // class core
@@ -582,13 +501,6 @@ private:
       return m_symbol;
     }
 
-    void
-    cu_base_address_map(std::vector<uint64_t>& amap) const
-    {
-      for (auto& instance : m_symbol.instances)
-        amap.push_back(instance.base);
-    }
-
     std::string
     conformance_rename()
     {
@@ -618,15 +530,22 @@ private:
 
 public:
   explicit
-  metadata(const data_range& xml)
+  metadata(const char* raw)
   {
     try {
+      auto top = reinterpret_cast<const ::axlf*>(raw);
+      auto hdr = xclbin::get_axlf_section(top, EMBEDDED_METADATA);
+      if (!hdr)
+        throw std::runtime_error("No EMBEDDED_METADATA");
+
+      auto section_data = raw + hdr->m_sectionOffset;
+
       std::stringstream xml_stream;
-      xml_stream.write(xml.first,xml.second-xml.first);
+      xml_stream.write(section_data, hdr->m_sectionSize);
       pt::read_xml(xml_stream,xml_project);
     }
-    catch ( const std::exception& ) {
-      throw xocl::error(CL_INVALID_BINARY,"Failed to parse xclbin xml data");
+    catch ( const std::exception& ex) {
+      throw xocl::error(CL_INVALID_BINARY,"Failed to parse xclbin xml data: " + std::string(ex.what()));
     }
 
     // iterate platforms
@@ -652,7 +571,6 @@ public:
     auto device = m_devices.back().get();
 
     auto nm = device->name();
-    auto c = device->system_clocks();
 
     // iterate cores
     count = 0;
@@ -672,28 +590,6 @@ public:
       XOCL_DEBUG(std::cout,"xclbin found kernel '" + xml_kernel.second.get<std::string>("<xmlattr>.name") + "'\n");
       m_kernels.emplace_back(std::make_unique<kernel_wrapper>(platform,device,core,xml_kernel.second));
     }
-  }
-
-  xocl::xclbin::system_clocks_type
-  system_clocks() const
-  {
-    xocl::xclbin::system_clocks_type clocks;
-    for (auto& device : m_devices) {
-      auto cclocks = device->system_clocks();
-      std::move(cclocks.begin(),cclocks.end(),std::back_inserter(clocks));
-    }
-    return clocks;
-  }
-
-  xocl::xclbin::kernel_clocks_type
-  kernel_clocks() const
-  {
-    xocl::xclbin::kernel_clocks_type clocks;
-    for (auto& core : m_cores) {
-      auto cclocks = core->kernel_clocks();
-      std::move(cclocks.begin(),cclocks.end(),std::back_inserter(clocks));
-    }
-    return clocks;
   }
 
   unsigned int
@@ -742,23 +638,6 @@ public:
     return m_cores[0]->target();
   }
 
-  xocl::xclbin::profilers_type
-  profilers() const
-  {
-    return m_cores[0]->profilers();
-  }
-
-  std::vector<uint64_t>
-  cu_base_address_map() const
-  {
-    std::vector<uint64_t> amap;
-    for (auto& kernel : m_kernels)
-      kernel->cu_base_address_map(amap);
-
-    std::sort(amap.begin(),amap.end());
-    return amap;
-  }
-
   unsigned int
   conformance_rename_kernel(const std::string& hash)
   {
@@ -788,7 +667,6 @@ class xclbin_data_sections
   const ::connectivity* m_con          = nullptr;
   const ::mem_topology* m_mem          = nullptr;
   const ::ip_layout* m_ip              = nullptr;
-  const ::clock_freq_topology* m_clk   = nullptr;
 
   struct membank
   {
@@ -801,14 +679,22 @@ class xclbin_data_sections
   std::vector<membank> m_membanks;
   std::vector<int> m_used_connections;
 
+  template <typename SectionType>
+  SectionType
+  get_xclbin_section(const char* raw, axlf_section_kind kind)
+  {
+    auto top = reinterpret_cast<const ::axlf*>(raw);
+    auto hdr = ::xclbin::get_axlf_section(top, kind);
+    return hdr ? reinterpret_cast<SectionType>(raw + hdr->m_sectionOffset) : nullptr;
+  }
+
 public:
   explicit
-  xclbin_data_sections(const xocl::xclbin::binary_type& binary)
-    : m_top(reinterpret_cast<const ::axlf*>(binary.binary_data().first))
-    , m_con(reinterpret_cast<const ::connectivity*>(binary.connectivity_data().first))
-    , m_mem(reinterpret_cast<const ::mem_topology*>(binary.mem_topology_data().first))
-    , m_ip(reinterpret_cast<const ::ip_layout*>(binary.ip_layout_data().first))
-    , m_clk(reinterpret_cast<const ::clock_freq_topology*>(binary.clk_freq_data().first))
+  xclbin_data_sections(const char* raw)
+    : m_top(reinterpret_cast<const ::axlf*>(raw))
+    , m_con(get_xclbin_section<const ::connectivity*>(raw, CONNECTIVITY))
+    , m_mem(get_xclbin_section<const ::mem_topology*>(raw, MEM_TOPOLOGY))
+    , m_ip (get_xclbin_section<const ::ip_layout*>(raw, IP_LAYOUT))
   {
     // populate mem bank
     if (m_mem) {
@@ -828,11 +714,7 @@ public:
   bool
   is_valid() const
   {
-#if 0
-    return (m_con && m_mem && m_ip && m_clk);
-#else
     return (m_con && m_mem && m_ip);
-#endif
   }
 
   xocl::xclbin::memidx_type
@@ -878,12 +760,6 @@ public:
   clear_connection(xocl::xclbin::connidx_type conn)
   {
     m_used_connections.erase(std::remove(m_used_connections.begin(), m_used_connections.end(), conn), m_used_connections.end());
-  }
-
-  const clock_freq_topology*
-  get_clk_freq_topology() const
-  {
-    return m_clk;
   }
 
   const mem_topology*
@@ -950,7 +826,7 @@ public:
     // 30,20,10,0
     xocl::xclbin::memidx_bitmask_type bitmask = 0;
     for (auto& mb : m_membanks) {
-      if (mb.index > 63)
+      if (mb.index >= xocl::xclbin::max_banks)
         throw std::runtime_error("bad mem_data index '" + std::to_string(mb.index) + "'");
       if (!m_mem->m_mem_data[mb.index].m_used)
         continue;
@@ -967,7 +843,7 @@ public:
     // 30,20,10,0
     int bankidx = -1;
     for (auto& mb : m_membanks) {
-      if (mb.index > 63)
+      if (mb.index >= xocl::xclbin::max_banks)
         throw std::runtime_error("bad mem_data index '" + std::to_string(mb.index) + "'");
       if (!m_mem->m_mem_data[mb.index].m_used)
         continue;
@@ -998,7 +874,7 @@ public:
     return -1;
   }
 
-  xocl::xclbin::uuid_type
+  xrt_core::uuid
   uuid() const
   {
     return m_top->m_header.uuid;
@@ -1014,108 +890,38 @@ namespace xocl {
 // should be extracted from xclbin::binary
 struct xclbin::impl
 {
-  binary_type m_binary;
+  std::vector<char> m_binary;
   metadata m_xml;
   xclbin_data_sections m_sections;
 
-  impl(std::vector<char>&& xb)
-    : m_binary(std::move(xb))
-    , m_xml(m_binary.meta_data())
-    , m_sections(m_binary)
+  impl(const char* begin, const char* end)
+    : m_binary(begin, end)
+    , m_xml(m_binary.data())
+    , m_sections(m_binary.data())
   {}
 
-  std::string
-  project_name() const
-  { return m_xml.project_name(); }
+  static std::shared_ptr<impl>
+  get_impl(const void* buffer, size_t sz)
+  {
+    static std::mutex mutex;
+    static std::map<xrt_core::uuid, std::weak_ptr<impl>> xclbins;  
 
-  target_type
-  target() const
-  { return m_xml.target(); }
+    const axlf* top = reinterpret_cast<const axlf*>(buffer);
+    if (strncmp(top->m_magic,"xclbin2",7))
+      throw xocl::error(CL_INVALID_BINARY, "bad magic header in xclbin");
 
-  unsigned int
-  num_kernels() const
-  { return m_xml.num_kernels(); }
+    auto uu = xrt_core::uuid(top->m_header.uuid);
 
-  std::vector<std::string>
-  kernel_names() const
-  { return m_xml.kernel_names(); }
+    std::lock_guard<std::mutex> lk(mutex);
+    auto xbin = xclbins[uu].lock();
+    if (!xbin) {
+      auto raw = reinterpret_cast<const char*>(buffer);
+      xbin = std::shared_ptr<impl>(new impl(raw, raw+sz));
+      xclbins[uu] = xbin;
+    }
 
-  std::vector<const symbol*>
-  kernel_symbols() const
-  { return m_xml.kernel_symbols(); }
-
-  const symbol&
-  lookup_kernel(const std::string& name) const
-  { return m_xml.lookup_kernel(name); }
-
-  system_clocks_type
-  system_clocks() const
-  { return m_xml.system_clocks(); }
-
-  kernel_clocks_type
-  kernel_clocks() const
-  { return m_xml.kernel_clocks(); }
-
-  profilers_type
-  profilers() const
-  { return m_xml.profilers(); }
-
-  std::vector<uint64_t>
-  cu_base_address_map() const
-  { return m_xml.cu_base_address_map(); }
-
-  uuid_type
-  uuid() const
-  { return m_sections.uuid(); }
-
-  const clock_freq_topology*
-  get_clk_freq_topology() const
-  { return m_sections.get_clk_freq_topology(); }
-
-  const mem_topology*
-  get_mem_topology() const
-  { return m_sections.get_mem_topology(); }
-
-  memidx_bitmask_type
-  cu_address_to_memidx(addr_type cuaddr, int32_t arg) const
-  { return m_sections.cu_address_to_memidx(cuaddr,arg); }
-
-  memidx_bitmask_type
-  cu_address_to_memidx(addr_type cuaddr) const
-  { return m_sections.cu_address_to_memidx(cuaddr); }
-
-  memidx_bitmask_type
-  mem_address_to_memidx(addr_type memaddr) const
-  { return m_sections.mem_address_to_memidx(memaddr); }
-
-  memidx_type
-  mem_address_to_first_memidx(addr_type memaddr) const
-  { return m_sections.mem_address_to_first_memidx(memaddr); }
-
-  std::string
-  memidx_to_banktag(memidx_type memidx) const
-  { return m_sections.memidx_to_banktag(memidx); }
-
-  memidx_type
-  banktag_to_memidx(const std::string& banktag) const
-  { return m_sections.banktag_to_memidx(banktag); }
-
-  memidx_type
-  get_memidx_from_arg(const std::string& kernel_name, int32_t arg, int32_t& conn)
-  { return m_sections.get_memidx_from_arg(kernel_name, arg, conn); }
-
-  void
-  clear_connection(connidx_type conn)
-  { return m_sections.clear_connection(conn); }
-
-  unsigned int
-  conformance_rename_kernel(const std::string& hash)
-  { return m_xml.conformance_rename_kernel(hash); }
-
-  std::vector<std::string>
-  conformance_kernel_hashes() const
-  { return m_xml.conformance_kernel_hashes(); }
-
+    return xbin;
+  }
 };
 
 xclbin::
@@ -1123,48 +929,9 @@ xclbin()
 {}
 
 xclbin::
-xclbin(std::vector<char>&& xb)
-  : m_impl(std::make_unique<xclbin::impl>(std::move(xb)))
-{
-}
-
-xclbin::
-xclbin(xclbin&& rhs)
-  : m_impl(std::move(rhs.m_impl))
+xclbin(const void* buffer, size_t sz)
+  : m_impl(impl::get_impl(buffer, sz))
 {}
-
-xclbin::
-xclbin(const xclbin& rhs)
-  : m_impl(rhs.m_impl)
-{
-}
-
-xclbin::
-~xclbin()
-{}
-
-xclbin&
-xclbin::
-operator=(const xclbin&& rhs)
-{
-  m_impl=std::move(rhs.m_impl);
-  return *this;
-}
-
-xclbin&
-xclbin::
-operator=(const xclbin& rhs)
-{
-  m_impl=rhs.m_impl;
-  return *this;
-}
-
-bool
-xclbin::
-operator==(const xclbin& rhs) const
-{
-  return m_impl==rhs.m_impl;
-}
 
 xclbin::impl*
 xclbin::
@@ -1175,156 +942,124 @@ impl_or_error() const
   throw std::runtime_error("xclbin has not been loaded");
 }
 
-xclbin::binary_type
+std::pair<const char*, const char*>
 xclbin::
 binary() const
 {
-  return impl_or_error()->m_binary;
+  auto& binary = impl_or_error()->m_binary;
+  return std::make_pair(binary.data(), binary.data() + binary.size());
 }
 
-xclbin::uuid_type
+xrt_core::uuid
 xclbin::
 uuid() const
 {
-  return impl_or_error()->uuid();
+  return impl_or_error()->m_sections.uuid();
 }
 
 std::string
 xclbin::
 project_name() const
 {
-  return impl_or_error()->project_name();
+  return impl_or_error()->m_xml.project_name();
 }
 
 xclbin::target_type
 xclbin::
 target() const
 {
-  return impl_or_error()->target();
-}
-
-xclbin::system_clocks_type
-xclbin::
-system_clocks()
-{
-  return impl_or_error()->system_clocks();
-}
-
-xclbin::kernel_clocks_type
-xclbin::
-kernel_clocks()
-{
-  return impl_or_error()->kernel_clocks();
+  return impl_or_error()->m_xml.target();
 }
 
 unsigned int
 xclbin::
 num_kernels() const
 {
-  return impl_or_error()->num_kernels();
+  return impl_or_error()->m_xml.num_kernels();
 }
 
 std::vector<std::string>
 xclbin::
 kernel_names() const
 {
-  return impl_or_error()->kernel_names();
+  return impl_or_error()->m_xml.kernel_names();
 }
 
 std::vector<const xclbin::symbol*>
 xclbin::
 kernel_symbols() const
-{ return impl_or_error()->kernel_symbols(); }
+{
+  return impl_or_error()->m_xml.kernel_symbols();
+}
 
 const xclbin::symbol&
 xclbin::
 lookup_kernel(const std::string& name) const
 {
-  return impl_or_error()->lookup_kernel(name);
-}
-
-xclbin::profilers_type
-xclbin::
-profilers() const
-{
-  return impl_or_error()->profilers();
-}
-
-const clock_freq_topology*
-xclbin::
-get_clk_freq_topology() const
-{
-  return impl_or_error()->get_clk_freq_topology();
+  return impl_or_error()->m_xml.lookup_kernel(name);
 }
 
 const mem_topology*
 xclbin::
 get_mem_topology() const
 {
-  return impl_or_error()->get_mem_topology();
-}
-
-std::vector<uint64_t>
-xclbin::
-cu_base_address_map() const
-{
-  return impl_or_error()->cu_base_address_map();
+  return impl_or_error()->m_sections.get_mem_topology();
 }
 
 xclbin::memidx_bitmask_type
 xclbin::
 cu_address_to_memidx(addr_type cuaddr, int32_t arg) const
 {
-  return impl_or_error()->cu_address_to_memidx(cuaddr,arg);
+  return impl_or_error()->m_sections.cu_address_to_memidx(cuaddr,arg);
 }
 
 xclbin::memidx_bitmask_type
 xclbin::
 cu_address_to_memidx(addr_type cuaddr) const
 {
-  return impl_or_error()->cu_address_to_memidx(cuaddr);
+  return impl_or_error()->m_sections.cu_address_to_memidx(cuaddr);
 }
 
 xclbin::memidx_bitmask_type
 xclbin::
 mem_address_to_memidx(addr_type memaddr) const
 {
-  return impl_or_error()->mem_address_to_memidx(memaddr);
+  return impl_or_error()->m_sections.mem_address_to_memidx(memaddr);
 }
 
 xclbin::memidx_type
 xclbin::
 mem_address_to_first_memidx(addr_type memaddr) const
 {
-  return impl_or_error()->mem_address_to_first_memidx(memaddr);
+  return impl_or_error()->m_sections.mem_address_to_first_memidx(memaddr);
 }
 
 std::string
 xclbin::
-memidx_to_banktag(memidx_type bankidx) const
+memidx_to_banktag(memidx_type memidx) const
 {
-  return impl_or_error()->memidx_to_banktag(bankidx);
+  return impl_or_error()->m_sections.memidx_to_banktag(memidx);
 }
 
 xclbin::memidx_type
 xclbin::
 banktag_to_memidx(const std::string& tag) const
 {
-  return impl_or_error()->banktag_to_memidx(tag);
+  return impl_or_error()->m_sections.banktag_to_memidx(tag);
 }
 
 xclbin::memidx_type
 xclbin::
 get_memidx_from_arg(const std::string& kernel_name, int32_t arg, connidx_type& conn)
 {
-  return impl_or_error()->get_memidx_from_arg(kernel_name, arg, conn);
+  return impl_or_error()->m_sections.get_memidx_from_arg(kernel_name, arg, conn);
 }
 
 void
 xclbin::
 clear_connection(connidx_type conn)
 {
-  return impl_or_error()->clear_connection(conn);
+  return impl_or_error()->m_sections.clear_connection(conn);
 }
 
 unsigned int
@@ -1332,13 +1067,15 @@ xclbin::
 conformance_rename_kernel(const std::string& hash)
 {
   assert(std::getenv("XCL_CONFORMANCE"));
-  return impl_or_error()->conformance_rename_kernel(hash);
+  return impl_or_error()->m_xml.conformance_rename_kernel(hash);
 }
 
 std::vector<std::string>
 xclbin::
 conformance_kernel_hashes() const
-{ return impl_or_error()->conformance_kernel_hashes(); }
+{
+  return impl_or_error()->m_xml.conformance_kernel_hashes();
+}
 
 // Convert kernel arg data to string per type of argument
 // Interpret the passed data pointer as per the type of the arg and

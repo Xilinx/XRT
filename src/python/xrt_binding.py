@@ -22,7 +22,7 @@ import os
 import ctypes
 from xclbin_binding import *
 
-libc = ctypes.CDLL(os.environ['XILINX_XRT'] + "/lib/libxrt_core.so")
+libc = ctypes.CDLL(os.environ['XILINX_XRT'] + "/lib/libxrt_core.so", mode=ctypes.RTLD_GLOBAL)
 
 xclDeviceHandle = ctypes.c_void_p
 

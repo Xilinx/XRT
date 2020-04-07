@@ -1,8 +1,10 @@
-ROOT	:= $(dir $(M))
-
 KERNEL_SRC ?= /lib/modules/$(shell uname -r)/build
 
-ccflags-y := -Iinclude/drm -I${ROOT}/../../include -I${ROOT}/../../common/drv
+# Base on Linux Documentation/kbuild/modules.txt.
+# $(src) provides the absolute path by pointing to the directory
+# where the currently executing kbuild file is located.
+ccflags-y := -I$(src)/include -I$(src)/../../include -I$(src)/../../../include -I$(src)/../../../common/drv/include
+
 zocl-y := \
 	sched_exec.o \
 	zocl_sysfs.o \
@@ -20,7 +22,6 @@ zocl-y := \
 	zocl_generic_cu.o
 
 obj-m	+= zocl.o
-
 
 SRC := $(shell pwd)
 

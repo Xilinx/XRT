@@ -3,14 +3,12 @@ include_directories(
   ${CMAKE_BINARY_DIR}/gen # includes version.h
   )
 
-file(GLOB XBUTIL_FILES
+file(GLOB XRT_EDGE_TOOLS_XBUTIL_FILES
   "*.h"
   "*.cpp"
   )
 
-set(XBUTIL_SRC ${XBUTIL_FILES})
-
-add_executable(xbutil ${XBUTIL_SRC})
+add_executable(xbutil ${XRT_EDGE_TOOLS_XBUTIL_FILES})
 
 target_link_libraries(xbutil
   xrt_core_static

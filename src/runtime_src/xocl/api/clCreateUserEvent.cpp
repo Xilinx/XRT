@@ -20,6 +20,7 @@
 #include "xocl/core/event.h"
 #include "detail/context.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 #include <CL/opencl.h>
 
 namespace xocl {
@@ -64,6 +65,7 @@ clCreateUserEvent(cl_context     context ,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clCreateUserEvent(context,errcode_ret);
   }
   catch (const xrt::error& ex) {

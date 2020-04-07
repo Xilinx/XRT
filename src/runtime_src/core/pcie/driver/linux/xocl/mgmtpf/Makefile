@@ -42,7 +42,10 @@ xclmgmt-y := \
 	../subdev/axigate.o \
 	../subdev/ospi_versal.o \
 	../subdev/ert.o \
+	../subdev/ddr_srsr.o \
 	../subdev/memory_hbm.o \
+	../subdev/ulite.o \
+	../subdev/calib_storage.o \
 	mgmt-core.o \
 	mgmt-cw.o \
 	mgmt-utils.o \
@@ -56,7 +59,7 @@ KERNELDIR ?= /lib/modules/$(shell uname -r)/build
 
 PWD	:= $(shell pwd)
 ROOT	:= $(dir $(M))
-XILINXINCLUDE := -I$(ROOT)/../include -I$(ROOT)/../../../../include -I$(ROOT)/../../../../common/drv/
+XILINXINCLUDE := -I$(ROOT)/../include -I$(ROOT)/../../../../include -I$(ROOT)/../../../../common/drv/include
 
 ccflags-y += $(XILINXINCLUDE) -DPF=MGMTPF
 ifeq ($(DEBUG),1)

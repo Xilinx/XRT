@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
 /*
  * A GEM style (optionally CMA backed) device manager for ZynQ based
  * OpenCL accelerators.
@@ -9,19 +10,15 @@
  *    Umang Parekh <umang.parekh@xilinx.com>
  *    Jan Stephan  <j.stephan@hzdr.de>
  *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This file is dual-licensed; you may select either the GNU General Public
+ * License version 2 or Apache License, Version 2.0.
  */
 
 #ifndef _ZOCL_DRV_H_
 #define _ZOCL_DRV_H_
-#include <drm/drmP.h>
+#include <drm/drm.h>
+#include <drm/drm_device.h>
+#include <drm/drm_drv.h>
 #include <drm/drm_gem.h>
 #include <drm/drm_mm.h>
 #include <drm/drm_gem_cma_helper.h>

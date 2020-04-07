@@ -21,8 +21,9 @@
 #include "core/include/experimental/xrt-next.h"
 
 #ifdef _WIN32
-#pragma warning (disable : 4267)
+#pragma warning (disable : 4267 4244)
 /* 4267 : Disable warning for conversion of size_t to int in return statements in read/write methods */
+/* 4244 : Disable warning for conversion of uint64_t to unsigned int in "flag" argument in xclAllocBO */
 #endif
 
 namespace xdp {
@@ -74,6 +75,12 @@ int HalDevice::unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offse
   return xclUnmgdPread(mHalDevice, flags, buf, count, offset);
 }
 
+
+void HalDevice::getDebugIpLayout(char* buffer, size_t size, size_t* size_ret)
+{
+  xclGetDebugIpLayout(mHalDevice, buffer, size, size_ret);
+}
+
 double HalDevice::getDeviceClock()
 {
   return xclGetDeviceClockFreqMHz(mHalDevice);
@@ -92,6 +99,68 @@ int HalDevice::getTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uin
 int HalDevice::readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample)
 {
   return xclReadTraceData(mHalDevice, traceBuf, traceBufSz, numSamples, ipBaseAddress, wordsPerSample);
+}
+
+size_t HalDevice::alloc(size_t size, uint64_t memoryIndex)
+{
+  uint64_t flags = memoryIndex;
+  flags |= XCL_BO_FLAGS_CACHEABLE;
+
+  xclBufferHandle boHandle = xclAllocBO(mHalDevice, size, 0, flags);
+  if(NULLBO == boHandle)
+    throw std::bad_alloc();
+
+  mBOHandles.push_back(boHandle);
+
+  void* ptr = xclMapBO(mHalDevice, boHandle, true /* write */);
+  mMappedBO.push_back(ptr);
+  return mBOHandles.size();
+}
+
+void HalDevice::free(size_t id)
+{
+  if(!id) return;
+  size_t boIndex = id - 1;
+  xclFreeBO(mHalDevice, mBOHandles[boIndex]);
+}
+
+void* HalDevice::map(size_t id)
+{
+  if(!id) return nullptr;
+  size_t boIndex = id - 1;
+  return mMappedBO[boIndex];
+}
+
+void HalDevice::unmap(size_t)
+{
+  return;
+}
+
+void HalDevice::sync(size_t id, size_t size, size_t offset, direction d, bool )
+{
+  if(!id) return;
+  size_t boIndex = id - 1;
+  xclBOSyncDirection dir = (d == direction::DEVICE2HOST) ? XCL_BO_SYNC_BO_FROM_DEVICE : XCL_BO_SYNC_BO_TO_DEVICE;
+  xclSyncBO(mHalDevice, mBOHandles[boIndex], dir, size, offset);
+}
+
+uint64_t HalDevice::getDeviceAddr(size_t id)
+{
+  if(!id) return 0;
+  size_t boIndex = id - 1;
+
+  xclBOProperties p;
+  return (!xclGetBOProperties(mHalDevice, mBOHandles[boIndex], &p)) ? p.paddr : ((uint64_t)-1);
+}
+
+double HalDevice::getMaxBwRead()
+{
+  return xclGetReadMaxBandwidthMBps(mHalDevice);
+}
+
+double HalDevice::getMaxBwWrite()
+{
+  return xclGetWriteMaxBandwidthMBps(mHalDevice);
 }
 
 }

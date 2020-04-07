@@ -36,43 +36,55 @@
 #define FLASH_BASE_ADDRESS BPI_FLASH_OFFSET
 #define MAGIC_XLNX_STRING "xlnx" // from xclfeatures.h FeatureRomHeader
 
-Flasher::E_FlasherType Flasher::getFlashType(std::string typeStr)
-{
-    std::string err;
+/* 
+ * map flash_tyoe str to E_FlasherType
+ */
+Flasher::E_FlasherType Flasher::typeStr_to_E_FlasherType(const std::string& typeStr)
+{    
     E_FlasherType type = E_FlasherType::UNKNOWN;
-    if (typeStr.empty())
-      typeStr = xrt_core::device_query<xrt_core::query::f_flash_type>(m_device);
-    if (typeStr.empty())
-      typeStr = xrt_core::device_query<xrt_core::query::flash_type>(m_device);
-
-    if (typeStr.empty())
-    {
-        getProgrammingTypeFromDeviceName(mFRHeader.VBNVName, type);
-    }
-    else if (typeStr.compare("spi") == 0)
-    {
+    if (typeStr.compare("spi") == 0) {
         type = E_FlasherType::SPI;
     }
-    else if (typeStr.compare("bpi") == 0)
-    {
+    else if (typeStr.compare("bpi") == 0) {
         type = E_FlasherType::BPI;
     }
-    else if (typeStr.find("qspi_ps") == 0)
-    {
+    else if (typeStr.find("qspi_ps") == 0) {
         // Use find() for this type of flash.
         // Since it have variations
         type = E_FlasherType::QSPIPS;
     }
-    else if (typeStr.compare("ospi_versal") == 0)
-    {
+    else if (typeStr.compare("ospi_versal") == 0) {
         type = E_FlasherType::OSPIVERSAL;
     }
-    else
-    {
-        std::cout << "Unknown flash type: " << typeStr << std::endl;
-    }
-
     return type;
+}
+
+Flasher::E_FlasherType Flasher::getFlashType(std::string typeStr)
+{
+    std::string err;
+    E_FlasherType type = E_FlasherType::UNKNOWN;
+
+    // check various locations for flash_type
+    // the node could either be present in flash subdev or exist independently
+    // if the node is not found, then look in feature rom header
+    try {
+        if (typeStr.empty())
+            typeStr = xrt_core::device_query<xrt_core::query::f_flash_type>(m_device);
+    } catch (...) {}
+    try {
+        if (typeStr.empty())
+          typeStr = xrt_core::device_query<xrt_core::query::flash_type>(m_device);
+    } catch (...) {}
+    try {
+        if (typeStr.empty())
+            getProgrammingTypeFromDeviceName(mFRHeader.VBNVName, type);
+    } catch (...) {}
+    
+    type = typeStr_to_E_FlasherType(typeStr);
+    if(type == E_FlasherType::UNKNOWN)
+        throw xrt_core::error(boost::str(boost::format("Unknown flash type: %s") % typeStr));
+
+   return type;
 }
 
 /*
@@ -207,14 +219,22 @@ int Flasher::getBoardInfo(BoardInfo& board)
     if (ret != 0)
         return ret;
 
+    std::string unassigned_mac = "FF:FF:FF:FF:FF:FF";
     board.mBMCVer = std::move(charVec2String(info[BDINFO_BMC_VER]));
-    board.mConfigMode = info[BDINFO_CONFIG_MODE][0];
-    board.mFanPresence = info[BDINFO_FAN_PRESENCE][0];
-    board.mMacAddr0 = std::move(charVec2String(info[BDINFO_MAC0]));
-    board.mMacAddr1 = std::move(charVec2String(info[BDINFO_MAC1]));
-    board.mMacAddr2 = std::move(charVec2String(info[BDINFO_MAC2]));
-    board.mMacAddr3 = std::move(charVec2String(info[BDINFO_MAC3]));
-    board.mMaxPower = int2PowerString(info[BDINFO_MAX_PWR][0]);
+    board.mConfigMode = info.find(BDINFO_CONFIG_MODE) != info.end() ?
+        info[BDINFO_CONFIG_MODE][0] : '\0';
+    board.mFanPresence = info.find(BDINFO_FAN_PRESENCE) != info.end() ?
+        info[BDINFO_FAN_PRESENCE][0] : '\0';
+    board.mMacAddr0 = charVec2String(info[BDINFO_MAC0]).compare(unassigned_mac) ? 
+        std::move(charVec2String(info[BDINFO_MAC0])) : std::move(std::string("Unassigned"));
+    board.mMacAddr1 = charVec2String(info[BDINFO_MAC1]).compare(unassigned_mac) ? 
+        std::move(charVec2String(info[BDINFO_MAC1])) : std::move(std::string("Unassigned"));
+    board.mMacAddr2 = charVec2String(info[BDINFO_MAC2]).compare(unassigned_mac) ? 
+        std::move(charVec2String(info[BDINFO_MAC2])) : std::move(std::string("Unassigned"));
+    board.mMacAddr3 = charVec2String(info[BDINFO_MAC3]).compare(unassigned_mac) ? 
+        std::move(charVec2String(info[BDINFO_MAC3])) : std::move(std::string("Unassigned"));
+    board.mMaxPower = info.find(BDINFO_MAX_PWR) != info.end() ?
+        int2PowerString(info[BDINFO_MAX_PWR][0]) : "N/A";
     board.mName = std::move(charVec2String(info[BDINFO_NAME]));
     board.mRev = std::move(charVec2String(info[BDINFO_REV]));
     board.mSerialNum = std::move(charVec2String(info[BDINFO_SN]));

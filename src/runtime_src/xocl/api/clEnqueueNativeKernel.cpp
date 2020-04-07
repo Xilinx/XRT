@@ -19,6 +19,7 @@
 #include "xocl/config.h"
 #include "xocl/core/error.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 #include <CL/opencl.h>
 
 namespace xocl {
@@ -122,6 +123,7 @@ clEnqueueNativeKernel(cl_command_queue   command_queue ,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
+    LOP_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
     return xocl::clEnqueueNativeKernel
       (command_queue,user_func,args,cb_args,num_mem_objects,mem_list,args_mem_loc,
        num_events_in_wait_list,event_wait_list,event);

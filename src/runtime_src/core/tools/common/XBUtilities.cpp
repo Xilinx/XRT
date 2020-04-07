@@ -17,9 +17,12 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "XBUtilities.h"
+#include "core/common/error.h"
+#include "core/common/utils.h"
+#include "core/common/message.h"
+#include "common/system.h"
 
 // 3rd Party Library - Include Files
-#include "common/core_system.h"
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/tokenizer.hpp>
 #include <boost/format.hpp>
@@ -274,6 +277,77 @@ XBUtilities::wrap_paragraphs( const std::string & _unformattedString,
     // Determine if a '\n' should be added
     if (iter != paragraphs.end()) 
       _formattedString += "\n";
+  }
+}
+
+void
+XBUtilities::parse_device_indices(std::vector<uint16_t> &device_indices, const std::string &device)
+{
+  //if no device is passed or "all" is specified, parse all devices
+  if(boost::iequals(device, "all") || device.empty()) {
+    ::verbose("Sub command : --device");
+    //get all devices
+    auto total = xrt_core::get_total_devices(false).first;
+    if (total == 0)
+      throw xrt_core::error("No card found!");
+    //better way to do this?
+    for(uint16_t i = 0; i < total; i++) {
+      device_indices.push_back(i);
+    }
+  } else {
+    ::verbose("Sub command : --device");
+    using tokenizer = boost::tokenizer< boost::char_separator<char> >;
+    boost::char_separator<char> sep(", ");
+    tokenizer tokens(device, sep);
+    
+    for (auto tok_iter = tokens.begin(); tok_iter != tokens.end(); ++tok_iter) {
+    	auto idx = xrt_core::utils::bdf2index(*tok_iter);
+      device_indices.push_back(idx);
+    }
+  } 
+}
+
+void
+XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
+                              bool _inUserDomain,
+                              xrt_core::device_collection &_deviceCollection)
+{
+  // -- If the collection is empty then do nothing
+  if (_deviceBDFs.empty())
+    return;
+
+  // -- Collect all of devices if the "all" option is used...anywhere in the collection
+  if (_deviceBDFs.find("all") != _deviceBDFs.end()) {
+    xrt_core::device::id_type total = 0;
+    try {
+      // If there are no devices in the server a runtime exception is thrown in  mgmt.cpp probe()
+      total = (xrt_core::device::id_type) xrt_core::get_total_devices(_inUserDomain /*isUser*/).first;
+    } catch (...) { 
+      /* Do nothing */ 
+    }
+
+    // No devices found
+    if (total == 0)
+      return;
+
+    // Now collect the devices and add them to the collection
+    for(xrt_core::device::id_type index = 0; index < total; ++index) {
+      if(_inUserDomain)
+        _deviceCollection.push_back( xrt_core::get_userpf_device(index) );
+      else 
+        _deviceCollection.push_back( xrt_core::get_mgmtpf_device(index) );
+    }
+
+    return;
+  }
+
+  // -- Collect the devices by name
+  for (const auto & deviceBDF : _deviceBDFs) {
+  	auto index = xrt_core::utils::bdf2index(deviceBDF);         // Can throw
+    if(_inUserDomain)
+        _deviceCollection.push_back( xrt_core::get_userpf_device(index) );
+      else 
+        _deviceCollection.push_back( xrt_core::get_mgmtpf_device(index) );
   }
 }
 

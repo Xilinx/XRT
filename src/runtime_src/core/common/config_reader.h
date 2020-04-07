@@ -166,6 +166,20 @@ get_timeline_trace()
   return value;
 }
 
+inline bool
+get_continuous_trace()
+{
+  static bool value = get_profile() && detail::get_bool_value("Debug.continuous_trace",false);
+  return value;
+}
+
+inline unsigned int
+get_continuous_trace_interval_ms()
+{
+  static unsigned int value = detail::get_uint_value("Debug.continuous_trace_interval_ms",10);
+  return value;
+}
+
 inline std::string
 get_trace_buffer_size()
 {
@@ -181,9 +195,16 @@ get_profile_api()
 }
 
 inline bool
-get_hal_profile()
+get_xrt_profile()
 {
-  static bool value = detail::get_bool_value("Debug.hal_profile", false);
+  static bool value = detail::get_bool_value("Debug.xrt_profile", false);
+  return value;
+}
+
+inline bool
+get_lop_trace()
+{
+  static bool value = detail::get_bool_value("Debug.lop_trace", false);
   return value;
 }
 
@@ -240,6 +261,16 @@ inline bool
 get_xclbin_programming()
 {
   return get_xclbin_programing();
+}
+
+/**
+ * Enable xma mode2 = only two cu command submission per xma_session at a time
+ */
+inline bool
+get_xma_mode2()
+{
+  static bool value = detail::get_bool_value("Runtime.xma_mode2", false);
+  return value;
 }
 
 /**
@@ -336,13 +367,6 @@ get_multiprocess()
 }
 
 inline bool
-get_frequency_scaling()
-{
-  static bool value = !get_multiprocess() && detail::get_bool_value("Runtime.frequency_scaling",true);
-  return value;
-}
-
-inline bool
 get_feature_toggle(const std::string& feature)
 {
   return detail::get_bool_value(feature.c_str(),false);
@@ -409,6 +433,36 @@ get_exclusive_cu_context()
   static bool value = detail::get_bool_value("Runtime.exclusive_cu_context", false);
   return value;
 }
+
+inline bool
+get_flag_kds_sw_emu()
+{
+  static bool value = detail::get_bool_value("Runtime.kds_sw_emu", false);
+  return value;
+}
+
+inline bool
+get_is_enable_prep_target()
+{
+  static bool value = detail::get_bool_value("Emulation.enable_prep_target", true);
+  return value;
+}
+
+inline bool
+get_is_enable_debug()
+{
+  static bool value = detail::get_bool_value("Emulation.enable_debug", false);
+  return value;
+}
+
+inline std::string
+get_aie_sim_options()
+{
+  static std::string value = detail::get_string_value("Emulation.aie_sim_options", "");
+  return value;
+}
+
+
 
 }} // config,xrt_core
 

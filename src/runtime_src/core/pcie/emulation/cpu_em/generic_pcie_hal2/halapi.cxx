@@ -19,6 +19,8 @@
  */
 
 #include "shim.h"
+#include "core/common/system.h"
+#include "core/common/device.h"
 
 xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbosityLevel level)
 {
@@ -44,6 +46,7 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
   std::memset(&fRomHeader, 0, sizeof(FeatureRomHeader));
 
   xclcpuemhal2::CpuemShim *handle = NULL;
+  bool bDefaultDevice = false;
   std::map<unsigned int, xclcpuemhal2::CpuemShim*>::iterator it = xclcpuemhal2::devices.find(deviceIndex);
   if(it != xclcpuemhal2::devices.end())
   {
@@ -52,14 +55,22 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
   else
   {
     handle = new xclcpuemhal2::CpuemShim(deviceIndex,info,DDRBankList,false,false,fRomHeader);
+    bDefaultDevice = true;
   }
 
   if (!xclcpuemhal2::CpuemShim::handleCheck(handle)) {
     delete handle;
     handle = 0;
   }
-  if(handle)
+  if (handle) {
     handle->xclOpen(logfileName);
+    if (bDefaultDevice)
+    {
+      std::string sDummyDeviceMsg = "CRITICAL WARNING: [SW-EM 09-0] Unable to find emconfig.json. Using default device \"xilinx:pcie-hw-em:7v3:1.0\"";
+      if (xclemulation::config::getInstance()->isInfosToBePrintedOnConsole())
+        std::cout << sDummyDeviceMsg << std::endl;
+    }
+  }
   return (xclDeviceHandle *)handle;
 }
 
@@ -88,7 +99,14 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
-  return drv->xclLoadXclBin(buffer);
+  auto ret = drv->xclLoadXclBin(buffer);
+  if (!ret) {
+    auto device = xrt_core::get_userpf_device(drv);
+    device->register_axlf(buffer);
+    if (xclemulation::is_sw_emulation() && xrt_core::config::get_flag_kds_sw_emu())
+      ret = xrt_core::scheduler::init(handle, buffer);
+  }
+  return ret;
 }
 
 uint64_t xclAllocDeviceBuffer(xclDeviceHandle handle, size_t size)
@@ -580,4 +598,12 @@ int xclGetProfileResults(xclDeviceHandle handle, ProfileResults* results)
 int xclDestroyProfileResults(xclDeviceHandle handle, ProfileResults* results)
 {
   return 0;
+}
+
+void
+xclGetDebugIpLayout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret)
+{
+  if(size_ret)
+    *size_ret = 0;
+  return;
 }

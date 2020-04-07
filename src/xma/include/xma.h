@@ -57,6 +57,7 @@ int32_t xma_get_default_ddr_index(int32_t dev_index, int32_t cu_index, char* cu_
 void xma_get_session_cmd_load(void);
 
 void xma_enable_mode1(void);//Hidden mode. To allow bulk submission of cu commands
+void xma_enable_mode2(void);//Hidden mode. To allow only one cu command submission per session at a time
 
 #ifdef __cplusplus
 }

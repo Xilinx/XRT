@@ -17,6 +17,7 @@
 #define XDP_SOURCE
 
 #include "xdp/profile/database/dynamic_event_database.h"
+#include "xdp/profile/database/events/device_events.h"
 
 namespace xdp {
   
@@ -33,17 +34,15 @@ namespace xdp {
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
 
-    for (auto event : hostEvents)
-    {
-      delete event ;
+    for (auto event : hostEvents) {
+      delete event;
     }
 
-    for (auto device : deviceEvents)
-    {
-      for (auto element : device.second)
-      {
-	delete element.second ;
+    for (auto device : deviceEvents) {
+      for (auto multimapEntry : device.second) {
+	    delete multimapEntry.second;
       }
+      device.second.clear();
     }
   }
 
@@ -54,11 +53,10 @@ namespace xdp {
     hostEvents.push_back(event) ;
   }
 
-  void VPDynamicDatabase::addDeviceEvent(void* dev, VTFEvent* event)
+  void VPDynamicDatabase::addDeviceEvent(uint64_t deviceId, VTFEvent* event)
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
-
-    deviceEvents[dev].emplace(event->getTimestamp(), event) ;
+    deviceEvents[deviceId].emplace(event->getTimestamp(), event) ;
   }
 
   void VPDynamicDatabase::addEvent(VTFEvent* event)
@@ -76,10 +74,22 @@ namespace xdp {
     }
   }
 
-  void VPDynamicDatabase::addDeviceEvents(void* /*dev*/, 
-					   xclTraceResultsVector& /*trace*/)
+  void VPDynamicDatabase::markDeviceEventStart(uint64_t traceID, VTFEvent* event)
   {
-    // TBD
+    std::lock_guard<std::mutex> lock(dbLock);
+    deviceEventStartMap[traceID].push_back(event) ;
+  }
+
+  VTFEvent* VPDynamicDatabase::matchingDeviceEventStart(uint64_t traceID)
+  {
+    std::lock_guard<std::mutex> lock(dbLock) ;
+    if (deviceEventStartMap.find(traceID) != deviceEventStartMap.end() && !deviceEventStartMap[traceID].empty())
+    {
+      VTFEvent* startEvent = deviceEventStartMap[traceID].front();
+      deviceEventStartMap[traceID].pop_front();
+      return startEvent ;
+    }
+    return nullptr;
   }
 
   void VPDynamicDatabase::markStart(uint64_t functionID, uint64_t eventID)
@@ -123,13 +133,34 @@ namespace xdp {
 
     for (auto dev : deviceEvents)
     {
-      for (auto e : dev.second)
+      for (auto multiMapEntry : dev.second)
       {
-	if (filter(e.second)) collected.push_back(e.second) ;
+	if (filter(multiMapEntry.second)) collected.push_back(multiMapEntry.second) ;
       }
     }
 
     return collected ;
+  }
+
+  std::vector<VTFEvent*> VPDynamicDatabase::getHostEvents()
+  {
+    std::vector<VTFEvent*> events;
+    for(auto e : hostEvents) {
+      events.push_back(e);
+    }
+    return events;
+  }
+
+  std::vector<VTFEvent*> VPDynamicDatabase::getDeviceEvents(uint64_t deviceId)
+  {
+    std::vector<VTFEvent*> events;
+    if(deviceEvents.find(deviceId) == deviceEvents.end()) {
+      return events;
+    }
+    for(auto multiMapEntry : deviceEvents[deviceId]) {
+      events.push_back(multiMapEntry.second);
+    }
+    return events;
   }
 
   void VPDynamicDatabase::dumpStringTable(std::ofstream& fout)
@@ -140,5 +171,4 @@ namespace xdp {
       fout << s.second << "," << s.first.c_str() << std::endl ;
     }
   }
-
 }

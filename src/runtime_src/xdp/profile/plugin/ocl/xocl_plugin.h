@@ -48,11 +48,15 @@ namespace xdp {
     // Accelerator port metadata
     // *************************
     public:
-	  // Arguments and memory resources per accel port
+      // Arguments and memory resources per CU port
       void setArgumentsBank(const std::string& deviceName) override;
       void getArgumentsBank(const std::string& deviceName, const std::string& cuName,
-          const std::string& portName, std::string& argNames,
-          std::string& memoryName) override;
+                            const std::string& portName, std::string& argNames,
+                            std::string& memoryName) override;
+
+    private:
+      void getMemoryNameFromID(const xocl::device* device_id, const std::shared_ptr<xocl::compute_unit> cu,
+                               const std::string arg_id, std::string& memoryName);
 
     // *************************
     // Guidance metadata
@@ -67,6 +71,7 @@ namespace xdp {
       void getPlramSizeDevices();
       void getMemBitWidthDevices();
       void getXrtIniSettings();
+      void getMemUsageStats();
 
     private:
       xocl::platform* mPlatformHandle;
@@ -85,8 +90,13 @@ namespace xdp {
       void setTraceStringForComputeUnit(const std::string& cuName, std::string& traceString);
       unsigned int getProfileNumberSlots(xclPerfMonType type, const std::string& deviceName) override;
       void getProfileSlotName(xclPerfMonType type, const std::string& deviceName,
+                              unsigned int slotnum, std::string& slotName) override;
+      void getTraceSlotName(xclPerfMonType type, const std::string& deviceName,
                             unsigned int slotnum, std::string& slotName) override;
-      unsigned int getProfileSlotProperties(xclPerfMonType type, const std::string& deviceName, unsigned int slotnum) override;
+      unsigned int getProfileSlotProperties(xclPerfMonType type, const std::string& deviceName,
+                                            unsigned int slotnum) override;
+      unsigned int getTraceSlotProperties(xclPerfMonType type, const std::string& deviceName,
+                                          unsigned int slotnum) override;
       bool isAPCtrlChain(const std::string& deviceName, const std::string& cu) override;
       void sendMessage(const std::string &msg) override;
     };

@@ -24,7 +24,6 @@
 #include "flasher.h"
 #include "core/common/utils.h"
 
-//#define XMC_DEBUG
 #define BMC_JUMP_ADDR   0x201  /* Hard-coded for now */
 
 XMC_Flasher::XMC_Flasher(std::shared_ptr<pcidev::pci_device> dev)
@@ -33,13 +32,22 @@ XMC_Flasher::XMC_Flasher(std::shared_ptr<pcidev::pci_device> dev)
     mDev = dev;
     mPktBufOffset = 0;
     mPkt = {};
-
     std::string err;
     bool is_mfg = false;
+
+    /*
+     * If xmc subdev is not online, do not allow xmc flash operations.  In the
+     * future, we will use xmc subdev to do xmc validation and flashing at one
+     * place.
+     *
+     * NOTE: we don't build mProbingErrMsg to differentiate "no xmc subdev" and
+     * "other errors". Caller can treat no error message as just not support.
+     */
+    if (!hasXMC())
+        goto nosup;
+
     mDev->sysfs_get<bool>("", "mfg", err, is_mfg, false);
     if (!is_mfg) {
-        if (!hasXMC())
-            goto nosup;
 
         mDev->sysfs_get<unsigned>("xmc", "status", err, val, 0);
 	if (!err.empty() || !(val & 1)) {
@@ -66,8 +74,8 @@ XMC_Flasher::XMC_Flasher(std::shared_ptr<pcidev::pci_device> dev)
     }
 
     val = readReg(XMC_REG_OFF_FEATURE);
-    if (val & XMC_PKT_SUPPORT_MASK) {
-        mProbingErrMsg << "XMC packet buffer is not supported";
+    if (val & XMC_NO_MAILBOX_MASK) {
+        mProbingErrMsg << "XMC mailbox is not supported";
         goto nosup;
     }
 
@@ -367,7 +375,7 @@ void describePkt(struct xmcPkt& pkt, bool send)
     int lenInUint32 = (sizeof (pkt.hdr) + pkt.hdr.payloadSize +
         sizeof (uint32_t) - 1) / sizeof (uint32_t);
 
-    xrt_core::ios_flags_restore format(std::cout);
+    auto format = xrt_core::utils::ios_restore(std::cout);
 
     if (send)
         std::cout << "Sending XMC packet: ";
@@ -497,7 +505,7 @@ bool XMC_Flasher::isXMCReady()
     bool xmcReady = (XMC_MODE() == XMC_READY);
 
     if (!xmcReady) {
-        xrt_core::ios_flags_restore format(std::cout);
+        auto format = xrt_core::utils::ios_restore(std::cout);
         if (!mDev->get_sysfs_path("xmc", "").empty()) {
             std::cout << "ERROR: XMC is not ready: 0x" << std::hex
                 << XMC_MODE() << std::endl;
@@ -508,10 +516,11 @@ bool XMC_Flasher::isXMCReady()
 
 bool XMC_Flasher::isBMCReady()
 {
-    bool bmcReady = (BMC_MODE() == 0x1);
+    bool bmcReady = (BMC_MODE() == BMC_STATE_READY) ||
+        (BMC_MODE() == BMC_STATE_READY_NOTUPGRADABLE);
 
     if (!bmcReady) {
-        xrt_core::ios_flags_restore format(std::cout);
+      auto format = xrt_core::utils::ios_restore(std::cout);
         std::cout << "ERROR: SC is not ready: 0x" << std::hex
                 << BMC_MODE() << std::endl;
     }
@@ -535,6 +544,24 @@ bool XMC_Flasher::hasSC()
     mDev->sysfs_get<unsigned>("xmc", "sc_presence", errmsg, val, 0);
     if (!errmsg.empty()) {
         std::cout << "can't read sc_presence node from " << mDev->sysfs_name <<
+            " : " << errmsg << std::endl;
+        return false;
+    }
+
+    return (val != 0);
+}
+
+bool XMC_Flasher::fixedSC()
+{
+    unsigned int val;
+    std::string errmsg;
+
+    if (!hasXMC())
+	    return false;
+
+    mDev->sysfs_get<unsigned>("xmc", "sc_is_fixed", errmsg, val, 0);
+    if (!errmsg.empty()) {
+        std::cout << "can't read sc_is_fixed node from " << mDev->sysfs_name <<
             " : " << errmsg << std::endl;
         return false;
     }
@@ -602,7 +629,7 @@ static int writeImage(std::FILE *xmcDev,
 {
     int ret = 0;
     size_t len = 0;
-    const size_t max_write = 4000; // Max size per write
+    const size_t max_write = 4050; // Max size per write
 
     ret = std::fseek(xmcDev, addr, SEEK_SET);
     if (ret)
@@ -616,6 +643,8 @@ static int writeImage(std::FILE *xmcDev,
 
         std::size_t s = std::fwrite(buf.data() + i, 1, len, xmcDev);
         if (s != len)
+            ret = -ferror(xmcDev);
+        if (std::fflush(xmcDev))
             ret = -ferror(xmcDev);
     }
     return ret;

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -459,6 +459,7 @@ namespace xclbincat1 {
       case SYSTEM_METADATA: return "SYSTEM_METADATA";
       case SOFT_KERNEL: return "SOFT_KERNEL";
       case ASK_FLASH: return "FLASH";
+      case AIE_METADATA: return "AIE_METADATA";
 
         break;
     }

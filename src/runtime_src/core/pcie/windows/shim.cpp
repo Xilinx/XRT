@@ -21,6 +21,11 @@
 #include "xclfeatures.h"
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
+#include "core/common/system.h"
+#include "core/common/device.h"
+#include "core/common/query_requests.h"
+#include "core/common/AlignedAllocator.h"
+#include "core/include/xcl_perfmon_parameters.h"
 
 #include <windows.h>
 #include <winioctl.h>
@@ -42,13 +47,6 @@
 
 namespace { // private implementation details
 
-inline bool
-is_multiprocess_mode()
-{
-  static bool val = xrt_core::config::get_multiprocess() || std::getenv("XCL_MULTIPROCESS_MODE") != nullptr;
-  return val;
-}
-
 struct shim
 {
   using buffer_handle_type = xclBufferHandle; // xrt.h
@@ -56,6 +54,7 @@ struct shim
   XOCL_MAP_BAR_RESULT	mappedBar[3];
   bool m_locked = false;
   HANDLE m_dev;
+  std::shared_ptr<xrt_core::device> m_core_device;
 
   // create shim object, open the device, store the device handle
   shim(unsigned int devidx)
@@ -122,6 +121,9 @@ struct shim
 
       mappedBar[i].Bar = (PUCHAR)mapBarResult.Bar;
       mappedBar[i].BarLength = mapBarResult.BarLength;
+
+      m_core_device = xrt_core::get_userpf_device(this, devidx);
+
     }
 
   }
@@ -605,7 +607,7 @@ done:
     xrt_core::message::
       send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "Calling IOCTL_XOCL_STAT (XoclStatMemTopology)... ");
 
- 
+
     if (succeeded) {
       xrt_core::message::
         send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "OK");
@@ -647,6 +649,7 @@ done:
   {
     switch (space) {
     case XCL_ADDR_KERNEL_CTRL:
+    case XCL_ADDR_SPACE_DEVICE_PERFMON:
       //Todo: offset += mOffsets[XCL_ADDR_KERNEL_CTRL];
       (void *)wordcopy(((char *)mappedBar[0].Bar + offset), hostbuf, size);
       break;
@@ -663,6 +666,7 @@ done:
   {
     switch (space) {
     case XCL_ADDR_KERNEL_CTRL:
+    case XCL_ADDR_SPACE_DEVICE_PERFMON:
       //Todo: offset += mOffsets[XCL_ADDR_KERNEL_CTRL];
       (void *)wordcopy(hostbuf, ((char *)mappedBar[0].Bar + offset), size);
       break;
@@ -689,7 +693,7 @@ done:
       pwriteBO.pad = 0;
       pwriteBO.paddr = offset;
       pwriteBO.size = count;
-      pwriteBO.data_ptr = offset;
+      pwriteBO.data_ptr = (uint64_t)buf;
 
       if (!DeviceIoControl(m_dev,
           IOCTL_XOCL_PWRITE_UNMGD,
@@ -726,7 +730,7 @@ done:
       preadBO.pad = 0;
       preadBO.paddr = offset;
       preadBO.size = size;
-      preadBO.data_ptr = offset;
+      preadBO.data_ptr = (uint64_t)buf;
 
 
       if (!DeviceIoControl(m_dev,
@@ -805,8 +809,8 @@ done:
   bool
   lock_device()
   {
-    if (!is_multiprocess_mode() && m_locked)
-        return false;
+    if (!xrt_core::config::get_multiprocess() && m_locked)
+      return false;
 
     return m_locked = true;
   }
@@ -975,7 +979,7 @@ done:
           *size_ret = 0; //there is not any debug_ip_layout info
           return;
       }
-      
+
       DWORD debug_ip_layout_size = sizeof(struct debug_ip_layout) + ((debug_iplayout_hdr.m_count - 1) * sizeof(struct debug_ip_data));
 
       if (size_ret)
@@ -1111,6 +1115,7 @@ done:
                        return static_cast<uint16_t>(std::stoi(m.str()));
                      });
   }
+
 
 }; // struct shim
 
@@ -1409,6 +1414,20 @@ xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
   return shim->exec_wait(timeoutMilliSec);
 }
 
+int xclExportBO(xclDeviceHandle handle, unsigned int boHandle)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclExportBO() NOT IMPLEMENTED");
+  return ERROR_INVALID_FUNCTION;
+}
+
+xclBufferHandle xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclImportBO() NOT IMPLEMENTED");
+  return INVALID_HANDLE_VALUE;
+}
+
 int
 xclGetBOProperties(xclDeviceHandle handle, xclBufferHandle boHandle,
 		   struct xclBOProperties *properties)
@@ -1425,7 +1444,11 @@ xclLoadXclBin(xclDeviceHandle handle, const struct axlf *buffer)
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclLoadXclbin()");
   auto shim = get_shim_object(handle);
-  return shim->load_xclbin(buffer);
+  if (auto ret =shim->load_xclbin(buffer))
+    return ret;
+  auto core_device = xrt_core::get_userpf_device(shim);
+  core_device->register_axlf(buffer);
+  return 0;
 }
 
 unsigned int
@@ -1444,6 +1467,11 @@ xclGetDeviceInfo2(xclDeviceHandle handle, struct xclDeviceInfo2 *info)
   info->mMinTransferSize = 0;
   info->mDMAThreads = 2;
   info->mDataAlignment = 4096; // 4k
+
+  auto shim = get_shim_object(handle);
+  auto name = xrt_core::device_query<xrt_core::query::rom_vbnv>(shim->m_core_device);
+  auto len = name.copy(info->mName, sizeof info->mName - 1, 0);
+  info->mName[len] = 0;
 
   return 0;
 }
@@ -1500,6 +1528,12 @@ size_t xclReadBO(xclDeviceHandle handle, xclBufferHandle boHandle, void *dst, si
     return shim->read_bo(boHandle, dst, size, skip);
 }
 
+void
+xclGetDebugIpLayout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret)
+{
+  userpf::get_debug_ip_layout(hdl, buffer, size, size_ret);
+}
+
 // Deprecated APIs
 size_t
 xclWrite(xclDeviceHandle handle, enum xclAddressSpace space, uint64_t offset, const void *hostbuf, size_t size)
@@ -1518,4 +1552,78 @@ xclRead(xclDeviceHandle handle, enum xclAddressSpace space,
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclRead()");
   auto shim = get_shim_object(handle);
   return shim->read(space,offset,hostbuf,size) ? 0 : size;
+}
+
+int
+xclGetTraceBufferInfo(xclDeviceHandle handle, uint32_t nSamples,
+                      uint32_t& traceSamples, uint32_t& traceBufSz)
+{
+  xrt_core::message::send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclGetTraceBufferInfo()");
+  uint32_t bytesPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 8);
+  traceBufSz = MAX_TRACE_NUMBER_SAMPLES * bytesPerSample;   /* Buffer size in bytes */
+  traceSamples = nSamples;
+  return 0;
+}
+
+int
+xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz,
+                 uint32_t numSamples, uint64_t ipBaseAddress,
+                 uint32_t& wordsPerSample)
+{
+  xrt_core::message::send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclReadTraceData()");
+  auto shim = get_shim_object(handle);
+
+  // Create trace buffer on host (requires alignment)
+  const int traceBufWordSz = traceBufSz / 4;  // traceBufSz is in number of bytes
+  uint32_t size = 0;
+
+  wordsPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 32);
+  uint32_t numWords = numSamples * wordsPerSample;
+
+  xrt_core::AlignedAllocator<uint32_t> alignedBuffer(AXI_FIFO_RDFD_AXI_FULL, traceBufWordSz);
+  uint32_t* hostbuf = alignedBuffer.getBuffer();
+
+  // Now read trace data
+  memset((void *)hostbuf, 0, traceBufSz);
+  // Iterate over chunks
+  // NOTE: AXI limits this to 4K bytes per transfer
+  uint32_t chunkSizeWords = 256 * wordsPerSample;
+  if (chunkSizeWords > 1024) chunkSizeWords = 1024;
+  uint32_t chunkSizeBytes = 4 * chunkSizeWords;
+  uint32_t words=0;
+
+  // Read trace a chunk of bytes at a time
+  if (numWords > chunkSizeWords) {
+    for (; words < (numWords-chunkSizeWords); words += chunkSizeWords) {
+      #if 0
+          if(mLogStream.is_open())
+            mLogStream << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
+                          << std::hex << (ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL) /*fifoReadAddress[0] or AXI_FIFO_RDFD*/ << " and writing it to 0x"
+                          << (void *)(hostbuf + words) << std::dec << std::endl;
+      #endif
+      shim->unmgd_pread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL /*offset : or AXI_FIFO_RDFD*/);
+      size += chunkSizeBytes;
+    }
+  }
+
+  // Read remainder of trace not divisible by chunk size
+  if (words < numWords) {
+    chunkSizeBytes = 4 * (numWords - words);
+#if 0
+      if(mLogStream.is_open()) {
+        mLogStream << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
+                      << std::hex << (ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL) /*fifoReadAddress[0]*/ << " and writing it to 0x"
+                      << (void *)(hostbuf + words) << std::dec << std::endl;
+      }
+#endif
+    shim->unmgd_pread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL /*offset : or AXI_FIFO_RDFD*/);
+    size += chunkSizeBytes;
+  }
+#if 0
+    if(mLogStream.is_open())
+        mLogStream << __func__ << ": done reading " << size << " bytes " << std::endl;
+#endif
+  memcpy((char*)traceBuf, (char*)hostbuf, traceBufSz);
+
+  return size;
 }

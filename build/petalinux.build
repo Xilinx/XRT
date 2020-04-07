@@ -1,0 +1,3 @@
+export PETALINUX="/proj/petalinux/2020.1/petalinux-v2020.1_0310_1/tool/petalinux-v2020.1-final"
+export PETALINUX_VER=2020.1
+export XSCT_TOOLCHAIN="${PETALINUX}/tools/xsct"

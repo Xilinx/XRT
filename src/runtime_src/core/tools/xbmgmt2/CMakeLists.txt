@@ -21,17 +21,12 @@ file(GLOB XBMGMT_V2_BASE_FILES
   "../common/XBHelpMenus.cpp"
   "../common/OptionOptions.cpp"
   "../common/ProgressBar.cpp"
+  "../common/Report*.cpp"
 )
 
 # Collect local directory files
 file(GLOB XBMGMT_V2_SUBCMD_FILES
-  "flash/firmware_image.cpp"
-  "flash/flasher.cpp"
-  "flash/xmc.cpp"
-  "flash/xspi.cpp"
-  "flash/xospiversal.cpp"
   "SubCmdFlash.cpp"
-  "SubCmdVersion.cpp"
   "SubCmdProgram.cpp"
   "SubCmdReset.cpp"
   "SubCmdStatus.cpp"
@@ -39,6 +34,8 @@ file(GLOB XBMGMT_V2_SUBCMD_FILES
   "OO_Clock.cpp"
   "OO_Config.cpp"
   "OO_NIFD.cpp"
+  "ReportPlatform.cpp"
+  "flash/*.cpp"
 )
 
 # Merge the files into one collection
@@ -48,9 +45,11 @@ set(XBMGMT_V2_SRCS ${XBMGMT_V2_FILES_SRCS})
 
 # Determine the name of the executable
 if(WIN32)
-set(XBMGMT2_NAME "xbmgmt")     # Yes, on windows the file name will be xbmgmt
+  set(XBMGMT2_NAME "xbmgmt")     # Yes, on windows the file name will be xbmgmt
+  set(XRT_LOADER_SCRIPTS "xbmgmt" "xbmgmt.bat")
 else()
   set(XBMGMT2_NAME "xbmgmt2")
+  set(XRT_LOADER_SCRIPTS "xbmgmt")
 endif()
 
 add_executable(${XBMGMT2_NAME} ${XBMGMT_V2_SRCS})
@@ -89,6 +88,7 @@ else()
   )
 endif()
 
-install (TARGETS ${XBMGMT2_NAME} RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
+install (TARGETS ${XBMGMT2_NAME} RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
+install (PROGRAMS ${XRT_LOADER_SCRIPTS} DESTINATION ${XRT_INSTALL_BIN_DIR})
 
 # -----------------------------------------------------------------------------

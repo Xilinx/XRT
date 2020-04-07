@@ -19,6 +19,7 @@
 #include "xocl/config.h"
 #include "api.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 cl_int
 clEnqueueTask(cl_command_queue   command_queue ,
@@ -29,6 +30,7 @@ clEnqueueTask(cl_command_queue   command_queue ,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
+    LOP_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
 
     const size_t global_work_offset[1]={0};
     const size_t global_work_size[1]={1};

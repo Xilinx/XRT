@@ -21,6 +21,7 @@
 #include "xocl/core/param.h"
 #include "xocl/core/error.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 #include "xrt/config.h"
 
 namespace xocl {
@@ -71,7 +72,8 @@ clGetPipeInfo(cl_mem           pipe,
               size_t *         param_value_size_ret ) 
 {
   try {
-    PROFILE_LOG_FUNCTION_CALL
+    PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::
       clGetPipeInfo
       (pipe,param_name,param_value_size,param_value,param_value_size_ret);

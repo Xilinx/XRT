@@ -31,6 +31,36 @@ struct ip_node {
 	bool match;
 };
 
+static void *msix_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
+{
+        struct xocl_dev_core *core = XDEV(xdev_hdl);
+        void *blob;
+        int node;
+        struct xocl_msix_privdata *msix_priv;
+
+        blob = core->fdt_blob;
+        if (!blob)
+                return NULL;
+
+        node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_MSIX);
+        if (node < 0) {
+                xocl_xdev_err(xdev_hdl, "did not find msix node in %s", NODE_ENDPOINTS);
+                return NULL;
+        }
+
+        if (fdt_node_check_compatible(blob, node, "qdma_msix"))
+                return NULL;
+
+        msix_priv = vzalloc(sizeof(*msix_priv));
+        if (!msix_priv)
+                return NULL;
+        msix_priv->start = 0;
+        msix_priv->total = 8;
+
+        *len = sizeof(*msix_priv);
+        return msix_priv;
+}
+
 static void *ert_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 {
 	char *priv_data;
@@ -100,7 +130,7 @@ static void *flash_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 	if (!blob)
 		return NULL;
 
-	node = fdt_path_offset(blob, LEVEL0_DEV_PATH "/" NODE_FLASH);
+	node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_FLASH);
 	if (node < 0) {
 		xocl_xdev_err(xdev_hdl, "did not find flash node");
 		return NULL;
@@ -141,7 +171,23 @@ static void ert_cb_set_inst(void *dev_hdl, void *subdevs, int num)
 	struct xocl_subdev *subdev = subdevs;
 
 	/* 0 is used by CMC */
-	subdev->info.override_idx = MB_ERT;
+	subdev->info.override_idx = XOCL_MB_ERT;
+}
+
+static void devinfo_cb_plp_gate(void *dev_hdl, void *subdevs, int num)
+{
+	struct xocl_subdev *subdev = subdevs;
+
+	subdev->info.level = XOCL_SUBDEV_LEVEL_BLD;
+	subdev->info.override_idx = subdev->info.level;
+}
+
+static void devinfo_cb_ulp_gate(void *dev_hdl, void *subdevs, int num)
+{
+	struct xocl_subdev *subdev = subdevs;
+
+	subdev->info.level = XOCL_SUBDEV_LEVEL_PRP;
+	subdev->info.override_idx = subdev->info.level;
 }
 
 static void devinfo_cb_xdma(void *dev_hdl, void *subdevs, int num)
@@ -179,13 +225,13 @@ static struct xocl_subdev_map		subdev_map[] = {
 		{ NODE_MSIX, NULL },
 		1,
 		0,
-		NULL,
+		msix_build_priv,
 		NULL,
 	},
 	{
 		XOCL_SUBDEV_DMA,
 		XOCL_QDMA,
-		{ "qdma", NULL },
+		{ NODE_QDMA, NODE_STM, NULL },
 		1,
 		0,
 		NULL,
@@ -241,6 +287,8 @@ static struct xocl_subdev_map		subdev_map[] = {
 			NODE_AF_CTRL_USER,
 			NODE_AF_CTRL_DEBUG,
 			NODE_AF_DATA_H2C,
+			NODE_AF_DATA_P2P,
+			NODE_AF_DATA_M2M,
 			NULL
 		},
 		1,
@@ -252,7 +300,6 @@ static struct xocl_subdev_map		subdev_map[] = {
 		XOCL_SUBDEV_MB,
 		XOCL_ERT,
 		{
-			NODE_ERT_BASE,
 			NODE_ERT_RESET,
 			NODE_ERT_FW_MEM,
 			NODE_ERT_CQ_MGMT,
@@ -273,6 +320,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 			NODE_CMC_FW_MEM,
 			NODE_ERT_FW_MEM,
 			NODE_ERT_CQ_MGMT,
+			NODE_CMC_MUTEX,
 			// 0x53000 runtime clk scaling
 			NULL
 		},
@@ -303,13 +351,25 @@ static struct xocl_subdev_map		subdev_map[] = {
 		XOCL_SUBDEV_AXIGATE,
 		XOCL_AXIGATE,
 		{
-			NODE_GATE_BLP,
+			NODE_GATE_PLP,
 			NULL,
 		},
 		1,
 		0,
 		NULL,
-		devinfo_cb_setlevel,
+		devinfo_cb_plp_gate,
+	},
+	{
+		XOCL_SUBDEV_AXIGATE,
+		XOCL_AXIGATE,
+		{
+			NODE_GATE_ULP,
+			NULL,
+		},
+		1,
+		0,
+		NULL,
+		devinfo_cb_ulp_gate,
 	},
 	{
 		XOCL_SUBDEV_IORES,
@@ -328,10 +388,9 @@ static struct xocl_subdev_map		subdev_map[] = {
 		XOCL_SUBDEV_IORES,
 		XOCL_IORES2,
 		{
-			RESNAME_GATEPRPRP,
 			RESNAME_MEMCALIB,
 			RESNAME_KDMA,
-			RESNAME_CMC_MUTEX,
+			RESNAME_DDR4_RESET_GATE,
 			NULL
 		},
 		1,
@@ -450,11 +509,13 @@ static bool get_userpf_info(void *fdt, int node, u32 pf)
 }
 
 int xocl_fdt_overlay(void *fdt, int target,
-			      void *fdto, int node, int pf)
+			      void *fdto, int node, int pf, int part_level)
 {
 	int property;
 	int subnode;
 	int ret = 0;
+	int offset;
+	const void *val;
 
 	if (pf != XOCL_FDT_ALL &&
 		!get_userpf_info(fdto, node, pf)) {
@@ -481,21 +542,26 @@ int xocl_fdt_overlay(void *fdt, int target,
 			return ret;
 	}
 
+	offset = fdt_parent_offset(fdto, node);
+	if (part_level > 0 && offset >= 0) {
+		val = fdt_get_name(fdto, offset, NULL);
+		if (!strncmp(val, NODE_ENDPOINTS, strlen(NODE_ENDPOINTS))) {
+			u32 prop = cpu_to_be32(part_level);
+			ret = fdt_setprop(fdt, target, PROP_PARTITION_LEVEL, &prop,
+					sizeof(prop));
+			if (ret)
+				return ret;
+		}
+	}
+
+
 	fdt_for_each_subnode(subnode, fdto, node) {
 		const char *name = fdt_get_name(fdto, subnode, NULL);
 		char temp[64];
 		int nnode = -FDT_ERR_EXISTS;
 		int level;
 
-		if (!strcmp(name, NODE_ENDPOINTS)) {
-			level = 0;
-			while (nnode == -FDT_ERR_EXISTS) {
-				snprintf(temp, strlen(name) + 10, "%s_%d",
-					NODE_ENDPOINTS, level);
-				nnode = fdt_add_subnode(fdt, target, temp);
-				level++;
-			}
-		} else if (!strcmp(name, NODE_PROPERTIES)) {
+		if (!strcmp(name, NODE_PROPERTIES)) {
 			level = 0;
 			while (nnode == -FDT_ERR_EXISTS) {
 				snprintf(temp, strlen(name) + 10, "%s_%d",
@@ -515,7 +581,7 @@ int xocl_fdt_overlay(void *fdt, int target,
 		if (nnode < 0)
 			return nnode;
 
-		ret = xocl_fdt_overlay(fdt, nnode, fdto, subnode, pf);
+		ret = xocl_fdt_overlay(fdt, nnode, fdto, subnode, pf, part_level);
 		if (ret)
 			return ret;
 	}
@@ -541,8 +607,12 @@ static int xocl_fdt_parse_ip(xdev_handle_t xdev_hdl, char *blob,
 			"IP %s, PF index not found", ip->name);
 		return -EINVAL;
 	}
+
+#if PF == MGMTPF
+	/* mgmtpf driver checks pfnum. it will not create userpf subdevices */
 	if (ntohl(*pfnum) != XOCL_PCI_FUNC(xdev_hdl))
 		return 0;
+#endif
 
 	bar_idx = fdt_getprop(blob, off, PROP_BAR_IDX, NULL);
 
@@ -596,35 +666,28 @@ static int xocl_fdt_parse_ip(xdev_handle_t xdev_hdl, char *blob,
 static int xocl_fdt_next_ip(xdev_handle_t xdev_hdl, char *blob,
 		int off, struct ip_node *ip)
 {
-	char *l0_path = LEVEL0_DEV_PATH;
-	char *l1_path = LEVEL1_DEV_PATH;
-	int l1_off, l0_off, ulp_off, node;
+	int node, offset;
 	const char *comp, *p;
-
-	l0_off = fdt_path_offset(blob, l0_path);
-	l1_off = fdt_path_offset(blob, l1_path);
-	ulp_off = fdt_path_offset(blob, ULP_DEV_PATH);
+	const u32 *level;
 
 	for (node = fdt_next_node(blob, off, NULL);
 	    node >= 0;
 	    node = fdt_next_node(blob, node, NULL)) {
-		if (fdt_parent_offset(blob, node) == l0_off) {
-			if (ip)
-				ip->level = XOCL_SUBDEV_LEVEL_BLD;
-			goto found;
-		}
-
-		if (fdt_parent_offset(blob, node) == l1_off) {
-			if (ip)
-				ip->level = XOCL_SUBDEV_LEVEL_PRP;
-			goto found;
-		}
-
-		if (fdt_parent_offset(blob, node) == ulp_off) {
-			if (ip)
+		offset = fdt_parent_offset(blob, node);
+		if (offset >= 0) {
+			p = fdt_get_name(blob, offset, NULL);
+			if (!p || strncmp(p, NODE_ENDPOINTS, strlen(NODE_ENDPOINTS)))
+				continue;
+			if (!ip)
+				goto found;
+			level = fdt_getprop(blob, node, PROP_PARTITION_LEVEL, NULL);
+			if (level)
+				ip->level = be32_to_cpu(*level);
+			else
 				ip->level = XOCL_SUBDEV_LEVEL_URP;
 			goto found;
 		}
+
 	}
 
 	return -ENODEV;
@@ -722,9 +785,11 @@ static int xocl_fdt_get_devinfo(xdev_handle_t xdev_hdl, char *blob,
 
 	subdev->pf = XOCL_PCI_FUNC(xdev_hdl);
 
+#if PF == MGMTPF
 	if ((map_p->flags & XOCL_SUBDEV_MAP_USERPF_ONLY) &&
 			subdev->pf != xocl_fdt_get_userpf(xdev_hdl, blob))
 		goto failed;
+#endif
 
 	num = 1;
 	if (!rtn_subdevs)
@@ -735,6 +800,7 @@ static int xocl_fdt_get_devinfo(xdev_handle_t xdev_hdl, char *blob,
 	//subdev->pf = XOCL_PCI_FUNC(xdev_hdl);
 	subdev->info.res = subdev->res;
 	subdev->info.bar_idx = subdev->bar_idx;
+	subdev->info.override_idx = -1;
 	for (i = 0; i < subdev->info.num_res; i++)
 		subdev->info.res[i].name = subdev->res_name[i];
 
@@ -813,6 +879,8 @@ int xocl_fdt_parse_blob(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
 		struct xocl_subdev **subdevs)
 {
 	int		dev_num; 
+
+	*subdevs = NULL;
 
 	if (!blob)
 		return -EINVAL;
@@ -920,7 +988,7 @@ int xocl_fdt_add_pair(xdev_handle_t xdev_hdl, void *blob, char *name,
 	return ret;
 }
 
-int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz)
+int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz, int part_level)
 {
 	struct xocl_dev_core	*core = XDEV(xdev_hdl);
 	struct xocl_subdev	*subdevs;
@@ -952,14 +1020,16 @@ int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz)
 	}
 
 	if (core->fdt_blob) {
-		ret = xocl_fdt_overlay(output_blob, 0, core->fdt_blob, 0, XOCL_FDT_ALL);
+		ret = xocl_fdt_overlay(output_blob, 0, core->fdt_blob, 0,
+				XOCL_FDT_ALL, -1);
 		if (ret) {
 			xocl_xdev_err(xdev_hdl, "overlay fdt_blob failed %d", ret);
 			goto failed;
 		}
 	}
 
-	ret = xocl_fdt_overlay(output_blob, 0, blob, 0, XOCL_FDT_ALL);
+	ret = xocl_fdt_overlay(output_blob, 0, blob, 0,
+			XOCL_FDT_ALL, part_level);
 	if (ret) {
 		xocl_xdev_err(xdev_hdl, "Overlay output blob failed %d", ret);
 		goto failed;
@@ -1027,7 +1097,8 @@ int xocl_fdt_build_priv_data(xdev_handle_t xdev_hdl, struct xocl_subdev *subdev,
 
 	for (j = 0; j < ARRAY_SIZE(subdev_map); j++) {
 		map_p = &subdev_map[j];
-		if (map_p->id == subdev->info.id)
+		if (map_p->id == subdev->info.id &&
+			strcmp(map_p->dev_name, subdev->info.name) == 0)
 			break;
 	}
 

@@ -35,7 +35,7 @@ int XOSPIVER_Flasher::xclUpgradeFirmware(std::istream& binStream)
 
     std::cout << "INFO: ***PDI has " << total_size << " bytes" << std::endl;
     
-    xrt_core::scope_guard<int, std::function<void(int)>> fd { 0, nullptr };
+    xrt_core::scope_value_guard<int, std::function<void()>> fd { 0, nullptr };
     try {
         fd = m_device->file_open("ospi_versal", O_RDWR); 
     } catch (const std::exception& e) {

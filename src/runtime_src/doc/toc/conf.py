@@ -49,7 +49,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'XRT'
-copyright = '2017-2019, Xilinx, Inc'
+copyright = '2017-2020, Xilinx, Inc'
 author = 'Xilinx, Inc'
 
 # The version info for the project you're documenting, acts as replacement for

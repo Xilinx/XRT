@@ -28,6 +28,7 @@
 #include "xcl_api_macros.h"
 #include "xcl_macros.h"
 #include "xclbin.h"
+#include "core/common/device.h"
 #include "core/common/scheduler.h"
 #include "core/common/message.h"
 #include "core/common/xrt_profiling.h"
@@ -244,7 +245,7 @@ using addr_type = uint64_t;
       std::mutex mPrintMessagesLock;
 
     private:
-      //hw_em_profile* _profile_inst;
+      std::shared_ptr<xrt_core::device> mCoreDevice;
       bool simulator_started;
       uint64_t mRAMSize;
       size_t mCoalesceThreshold;

@@ -1,4 +1,8 @@
-#include "plugin/xdp/hal_profile.h"
+/* HAL profiling is not yet supported for Edge and no callbacks are added to Edge SHIM.
+ * The following implementation is targeted for future use
+ */
+
+#include "hal_profile.h"
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
 
@@ -173,7 +177,7 @@ ReadCallLogger::ReadCallLogger(xclDeviceHandle handle, xclAddressSpace space, ui
 {
     if (!cb_valid()) return;
     global_idcode++;    // increment only if valid calllback
-    ReadWriteCBPayload payload = {{m_local_idcode, handle}, space, offset, size};
+    ReadWriteCBPayload payload = {{m_local_idcode, handle}, size};
     cb(HalCallbackType::READ_START, &payload);
 }
 
@@ -188,7 +192,7 @@ WriteCallLogger::WriteCallLogger(xclDeviceHandle handle, xclAddressSpace space, 
 {
     if (!cb_valid()) return;
     global_idcode++;    // increment only if valid calllback
-    ReadWriteCBPayload payload = { {m_local_idcode, handle}, space, offset, size};
+    ReadWriteCBPayload payload = { {m_local_idcode, handle}, size};
     cb(HalCallbackType::WRITE_START, (void*)(&payload));
 }
 
@@ -207,17 +211,17 @@ void load_xdp_plugin_library(HalPluginConfig* )
         return;
     }
 
-    if(!xrt_core::config::get_hal_profile()) {
-      // hal_profile is not set to correct configuration. Skip loading xdp_hal_plugin.
+    if(!xrt_core::config::get_xrt_profile()) {
+      // xrt_profile is not set to correct configuration. Skip loading xdp_hal_plugin.
       return;
     }
 
-    // hal_profile is set to "true". Try to load xdp_hal_plugin library
+    // xrt_profile is set to "true". Try to load xdp_hal_plugin library
     if(xrt_core::config::get_profile()) {
       // "profile=true" is also set. This enables OpenCL based flow for profiling. 
       // Currently, mix of OpenCL and HAL based profiling is not supported.
       // So, give error and skip loading of xdp_hal_plugin library
-      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", std::string("Both profile=true and hal_profile=true set in xrt.ini config. Currently, these flows are not supported to work together. Hence, retrieving profile results using APIs will not be available in this run. To enable profiling with APIs, please set profile_api=true only and re-run."));
+      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", std::string("Both profile=true and xrt_profile=true set in xrt.ini config. Currently, these flows are not supported to work together. Hence, retrieving profile results using APIs will not be available in this run. To enable profiling with APIs, please set profile_api=true only and re-run."));
       return;
     }
 

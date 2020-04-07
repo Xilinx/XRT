@@ -98,9 +98,6 @@ namespace xdp {
       case CU_CALLS:
         name = "CU_CALLS";
         break;
-      case MEMORY_BIT_WIDTH:
-        name = "MEMORY_BIT_WIDTH";
-        break;
       case MIGRATE_MEM:
         name = "MIGRATE_MEM";
         break;
@@ -169,6 +166,9 @@ namespace xdp {
         break;
       case APPLICATION_RUN_TIME_MS:
         name = "APPLICATION_RUN_TIME_MS";
+        break;
+      case TOTAL_KERNEL_RUN_TIME_MS:
+        name = "TOTAL_KERNEL_RUN_TIME_MS";
         break;
       default:
         assert(0);

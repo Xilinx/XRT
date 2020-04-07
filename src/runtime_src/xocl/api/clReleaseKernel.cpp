@@ -19,6 +19,7 @@
 #include "xocl/core/kernel.h"
 #include "detail/kernel.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 #include <CL/opencl.h>
 
@@ -49,6 +50,7 @@ clReleaseKernel(cl_kernel kernel)
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clReleaseKernel(kernel);
   }
   catch (const xrt::error& ex) {

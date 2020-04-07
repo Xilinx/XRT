@@ -59,27 +59,27 @@ namespace xma_core {
         ddr_index = INVALID_M1;
         if (kernel_info->soft_kernel) {
             if (req_ddr_index != 0) {
-                xma_logmsg(XMA_WARNING_LOG, prefix.c_str(), "XMA session with soft_kernel only allows ddr bank of zero\n");
+                xma_logmsg(XMA_WARNING_LOG, prefix.c_str(), "XMA session with soft_kernel only allows ddr bank of zero");
             }
             //Only allow ddr_bank == 0;
             ddr_index = 0;
-            xma_logmsg(XMA_DEBUG_LOG, prefix.c_str(), "XMA session with soft_kernel default ddr_bank: %d\n", ddr_index);
+            xma_logmsg(XMA_DEBUG_LOG, prefix.c_str(), "XMA session with soft_kernel default ddr_bank: %d", ddr_index);
             return XMA_SUCCESS;
         }
         if (req_ddr_index < 0) {
             ddr_index = kernel_info->default_ddr_bank;
-            xma_logmsg(XMA_DEBUG_LOG, prefix.c_str(), "XMA session default ddr_bank: %d\n", ddr_index);
+            xma_logmsg(XMA_DEBUG_LOG, prefix.c_str(), "XMA session default ddr_bank: %d", ddr_index);
             return XMA_SUCCESS;
         }
         std::bitset<MAX_DDR_MAP> tmp_bset;
         tmp_bset = kernel_info->ip_ddr_mapping;
         if (tmp_bset[req_ddr_index]) {
             ddr_index = req_ddr_index;
-            xma_logmsg(XMA_DEBUG_LOG, prefix.c_str(), "Using user supplied default ddr_bank. XMA session default ddr_bank: %d\n", ddr_index);
+            xma_logmsg(XMA_DEBUG_LOG, prefix.c_str(), "Using user supplied default ddr_bank. XMA session default ddr_bank: %d", ddr_index);
             return XMA_SUCCESS;
         }
         xma_logmsg(XMA_ERROR_LOG, prefix.c_str(),
-            "User supplied default ddr_bank is invalid. Valid ddr_bank mapping for this CU: %s\n", tmp_bset.to_string().c_str());
+            "User supplied default ddr_bank is invalid. Valid ddr_bank mapping for this CU: %s", tmp_bset.to_string().c_str());
         return XMA_ERROR;
     }
 
@@ -95,7 +95,7 @@ namespace xma_core {
                                     XCL_BO_FLAGS_EXECBUF);
             if (!bo_handle || bo_handle == NULLBO) 
             {
-                xma_logmsg(XMA_ERROR_LOG, prefix.c_str(), "Initalization of plugin failed. Failed to alloc execbo\n");
+                xma_logmsg(XMA_ERROR_LOG, prefix.c_str(), "Initalization of plugin failed. Failed to alloc execbo");
                 return XMA_ERROR;
             }
             bo_data = (char*)xclMapBO(priv->dev_handle, bo_handle, true);
@@ -447,12 +447,12 @@ int32_t get_cu_index(int32_t dev_index, char* cu_name1) {
     }
     if (!found) {
         xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD,
-                   "dev_index %d not loaded with xclbin\n", dev_index);
+                   "dev_index %d not loaded with xclbin", dev_index);
         return -1;
     }
     if (cu_name1 == nullptr) {
         xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD,
-                   "cu_name is null\n");
+                   "cu_name is null");
         return -1;
     }
     std::string cu_name = std::string(cu_name1);
@@ -462,7 +462,7 @@ int32_t get_cu_index(int32_t dev_index, char* cu_name1) {
         }
     }
     xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD,
-                "cu_name %s not found\n", cu_name.c_str());
+                "cu_name %s not found", cu_name.c_str());
     return -1;
 }
 
@@ -471,7 +471,7 @@ int32_t get_default_ddr_index(int32_t dev_index, int32_t cu_index) {
     XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
     if (dev_index >= hwcfg->num_devices || dev_index < 0) {
         xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD,
-                   "dev_index not found\n");
+                   "dev_index not found");
         return -1;
     }
 
@@ -486,12 +486,12 @@ int32_t get_default_ddr_index(int32_t dev_index, int32_t cu_index) {
     }
     if (!found) {
         xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD,
-                   "dev_index %d not loaded with xclbin\n", dev_index);
+                   "dev_index %d not loaded with xclbin", dev_index);
         return -1;
     }
     if ((cu_index > 0 && (uint32_t)cu_index >= hwcfg->devices[hwcfg_dev_index].number_of_cus) || cu_index < 0) {
         xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD,
-                   "Invalid cu_index = %d\n", cu_index);
+                   "Invalid cu_index = %d", cu_index);
         return -1;
     }
 
@@ -506,8 +506,25 @@ int32_t get_default_ddr_index(int32_t dev_index, int32_t cu_index) {
 }
 
 void xma_enable_mode1(void) {
-    g_xma_singleton->num_execbos = 64;
-    xma_logmsg(XMA_INFO_LOG, XMAUTILS_MOD, "xma_enable_mode1: Enabling bulk submission of cu commands\n");
+    if (xrt_core::config::get_xma_mode2()) {
+        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "xma_enable_mode1: Mode2 is selected. Use either mode1 or mode2");
+        return;
+    }
+    if (g_xma_singleton->num_execbos != XMA_NUM_EXECBO_DEFAULT) {
+        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "xma_enable_mode1: Mode already changed. No action taken");
+        return;
+    }
+    g_xma_singleton->num_execbos = XMA_NUM_EXECBO_MODE1;
+    xma_logmsg(XMA_INFO_LOG, XMAUTILS_MOD, "xma_enable_mode1: Enabling bulk submission of cu commands");
+}
+
+void xma_enable_mode2(void) {
+    if (g_xma_singleton->num_execbos != XMA_NUM_EXECBO_DEFAULT) {
+        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "xma_enable_mode2: Mode already changed");
+        return;
+    }
+    g_xma_singleton->num_execbos = XMA_NUM_EXECBO_MODE2;
+    xma_logmsg(XMA_INFO_LOG, XMAUTILS_MOD, "xma_enable_mode2: Enabling atmost two cu command submission per xma_session at a time");
 }
 
 
@@ -554,6 +571,8 @@ int32_t check_all_execbo(XmaSession s_handle) {
 
                   itr_tmp1 = priv1->CU_cmds.erase(itr_tmp1);
                   priv1->num_cu_cmds--;
+                } else {
+                ++itr_tmp1;
                 }
             } else {
               ++itr_tmp1;

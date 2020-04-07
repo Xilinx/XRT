@@ -33,21 +33,6 @@ xclGetDebugIPlayoutPath(xclDeviceHandle handle, char* layoutPath, size_t size)
   return 1;
 }
 
-int
-xclGetTraceBufferInfo(xclDeviceHandle handle, uint32_t nSamples,
-                      uint32_t& traceSamples, uint32_t& traceBufSz)
-{
-  return 1;
-}
-
-int
-xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz,
-                 uint32_t numSamples, uint64_t ipBaseAddress,
-                 uint32_t& wordsPerSample)
-{
-  return 1;
-}
-
 uint32_t
 xclGetNumLiveProcesses(xclDeviceHandle handle)
 {
@@ -62,15 +47,15 @@ xclGetDeviceTimestamp(xclDeviceHandle handle)
 
 double xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
 {
-   return 0.0;
+  return 9600.0;
 }
-
-#if 0
-
 
 double xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle)
 {
+  return 9600.0;
 }
+
+#if 0
 
 void xclSetProfilingNumberSlots(xclDeviceHandle handle, enum xclPerfMonType type,
                                 uint32_t numSlots)

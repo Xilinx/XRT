@@ -18,35 +18,12 @@
 #define xrt_util_time_h_
 
 #include "xrt/config.h"
+#include "core/common/time.h"
 
 namespace xrt {
 
-/**
- * @return
- *   nanoseconds since first call
- */
-XRT_EXPORT
-unsigned long
-time_ns();
-
-/**
- * Simple time guard to accumulate scoped time
- */
-class time_guard
-{
-  unsigned long zero = 0;
-  unsigned long& tally;
-public:
-  explicit
-  time_guard(unsigned long& t)
-    : zero(time_ns()), tally(t)
-  {}
-
-  ~time_guard()
-  {
-    tally += time_ns() - zero;
-  }
-};
+using xrt_core::time_ns;
+using xrt_core::time_guard;
 
 } // xocl
 

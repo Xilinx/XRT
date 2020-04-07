@@ -17,6 +17,7 @@
 
 #include "xrt/util/task.h"
 #include "xrt/util/event.h"
+#include "xrt/scheduler/command.h"
 
 #include <future>
 #include <cstring> // for std::memset
@@ -28,6 +29,14 @@ device::
 printDeviceInfo(std::ostream& ostr) const
 {
   return m_hal->printDeviceInfo(ostr);
+}
+
+void
+device::
+close()
+{
+  purge_device_command_freelist(this); // command.h
+  m_hal->close();
 }
 
 } // xrt

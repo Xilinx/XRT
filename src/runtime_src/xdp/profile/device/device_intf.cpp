@@ -20,6 +20,7 @@
 #include "xclperf.h"
 #include "xcl_perfmon_parameters.h"
 #include "tracedefs.h"
+#include "core/common/message.h"
 
 #include <iostream>
 #include <cstdio>
@@ -28,6 +29,7 @@
 #include <vector>
 #include <string>
 #include <chrono>
+#include <regex>
 
 #ifndef _WINDOWS
 // TODO: Windows build support
@@ -47,6 +49,64 @@
 #endif
 
 namespace xdp {
+
+// Helper function
+
+// Same as defined in vpl tcl
+uint32_t GetDeviceTraceBufferSize(uint32_t property)
+{
+  switch(property) {
+    case 0 : return 8192;
+    case 1 : return 1024;
+    case 2 : return 2048;
+    case 3 : return 4096;
+    case 4 : return 16384;
+    case 5 : return 32768;
+    case 6 : return 65536;
+    case 7 : return 131072;
+    default : break;
+  }
+  return 8192;
+}
+
+
+uint64_t GetTS2MMBufSize()
+{
+  std::string size_str = xrt_core::config::get_trace_buffer_size();
+  std::smatch pieces_match;
+  // Default is 1M
+  uint64_t bytes = 1048576;
+  // Regex can parse values like : "1024M" "1G" "8192k"
+  const std::regex size_regex("\\s*([0-9]+)\\s*(K|k|M|m|G|g|)\\s*");
+  if (std::regex_match(size_str, pieces_match, size_regex)) {
+    try {
+      if (pieces_match[2] == "K" || pieces_match[2] == "k") {
+        bytes = std::stoull(pieces_match[1]) * 1024;
+      } else if (pieces_match[2] == "M" || pieces_match[2] == "m") {
+        bytes = std::stoull(pieces_match[1]) * 1024 * 1024;
+      } else if (pieces_match[2] == "G" || pieces_match[2] == "g") {
+        bytes = std::stoull(pieces_match[1]) * 1024 * 1024 * 1024;
+      } else {
+        bytes = std::stoull(pieces_match[1]);
+      }
+    } catch (const std::exception& ) {
+      // User specified number cannot be parsed
+      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", TS2MM_WARN_MSG_BUFSIZE_DEF);
+    }
+  } else {
+    xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", TS2MM_WARN_MSG_BUFSIZE_DEF);
+  }
+  if (bytes > TS2MM_MAX_BUF_SIZE) {
+    bytes = TS2MM_MAX_BUF_SIZE;
+    xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", TS2MM_WARN_MSG_BUFSIZE_BIG);
+  }
+  if (bytes < TS2MM_MIN_BUF_SIZE) {
+    bytes = TS2MM_MIN_BUF_SIZE;
+    xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", TS2MM_WARN_MSG_BUFSIZE_SMALL);
+  }
+  return bytes;
+}
+
 
 DeviceIntf::~DeviceIntf()
 {
@@ -166,12 +226,58 @@ DeviceIntf::~DeviceIntf()
     return std::string("");
   }
 
+  std::string DeviceIntf::getTraceMonName(xclPerfMonType type, uint32_t index)
+  {
+    if (type == XCL_PERF_MON_MEMORY) {
+      for (auto& ip: aimList) {
+        if (ip->hasTraceID(index))
+          return ip->getName();
+      }
+    }
+    if (type == XCL_PERF_MON_ACCEL) {
+      for (auto& ip: amList) {
+        if (ip->hasTraceID(index))
+          return ip->getName();
+      }
+    }
+    if (type == XCL_PERF_MON_STR) {
+      for (auto& ip: asmList) {
+        if (ip->hasTraceID(index))
+          return ip->getName();
+      }
+    }
+    return std::string("");
+  }
+
+  uint32_t DeviceIntf::getTraceMonProperty(xclPerfMonType type, uint32_t index)
+  {
+    if (type == XCL_PERF_MON_MEMORY) {
+      for (auto& ip: aimList) {
+        if (ip->hasTraceID(index))
+          return ip->getProperties();;
+      }
+    }
+    if (type == XCL_PERF_MON_ACCEL) {
+      for (auto& ip: amList) {
+        if (ip->hasTraceID(index))
+          return ip->getProperties();;
+      }
+    }
+    if (type == XCL_PERF_MON_STR) {
+      for (auto& ip: asmList) {
+        if (ip->hasTraceID(index))
+          return ip->getProperties();;
+      }
+    }
+    return 0;
+  }
+
   uint32_t DeviceIntf::getMonitorProperties(xclPerfMonType type, uint32_t index)
   {
     if((type == XCL_PERF_MON_MEMORY) && (index < aimList.size())) { return aimList[index]->getProperties(); }
     if((type == XCL_PERF_MON_ACCEL)  && (index < amList.size()))  { return amList[index]->getProperties(); }
     if((type == XCL_PERF_MON_STR)    && (index < asmList.size())) { return asmList[index]->getProperties(); }
-    if(type == XCL_PERF_MON_FIFO) { return fifoRead->getProperties(); }
+    if((type == XCL_PERF_MON_FIFO)   && (fifoRead != nullptr))    { return fifoRead->getProperties(); }
     return 0;
   }
 
@@ -299,6 +405,12 @@ DeviceIntf::~DeviceIntf()
     }
     size_t size = 0;
 
+    // These should be reset before anything
+    if (fifoCtrl)
+      fifoCtrl->reset();
+    if (traceFunnel)
+      traceFunnel->reset();
+
     // This just writes to trace control register
     // Axi Interface Mons
     for(auto mon : aimList) {
@@ -313,15 +425,28 @@ DeviceIntf::~DeviceIntf()
         size += mon->triggerTrace(startTrigger);
     }
 
-    if (fifoCtrl)
-      fifoCtrl->reset();
-
+    uint32_t traceVersion = 0;
     if (traceFunnel) {
-      traceFunnel->reset();
-      traceFunnel->initiateClockTraining();
+      if (traceFunnel->compareVersion(1,0) == -1)
+        traceVersion = 1;
     }
 
+    if (fifoRead)
+      fifoRead->setTraceFormat(traceVersion);
+
+    if (traceDMA)
+      traceDMA->setTraceFormat(traceVersion);
+
     return size;
+  }
+
+  void DeviceIntf::clockTraining(bool force)
+  {
+    if(!traceFunnel)
+      return;
+    // Trace Funnel > 1.0 supports continuous training
+    if (traceFunnel->compareVersion(1,0) == -1 || force == true)
+      traceFunnel->initiateClockTraining();
   }
 
   // Stop trace performance monitoring
@@ -374,6 +499,7 @@ DeviceIntf::~DeviceIntf()
     if(mIsDebugIPlayoutRead || !mDevice)
         return;
 
+#ifndef _WIN32
     std::string path = mDevice->getDebugIPlayoutPath();
     if(path.empty()) {
         // error ? : for HW_emu this will be empty for now ; but as of current status should not have been called 
@@ -400,9 +526,21 @@ DeviceIntf::~DeviceIntf()
     char buffer[65536];
     // debug_ip_layout max size is 65536
     ifs.read(buffer, 65536);
+
+
     debug_ip_layout *map;
     if (ifs.gcount() > 0) {
       map = (debug_ip_layout*)(buffer);
+#else
+    size_t sz1 = 0, sectionSz = 0;
+    // Get the size of full debug_ip_layout
+    mDevice->getDebugIpLayout(nullptr, sz1, &sectionSz);
+    // Allocate buffer to retrieve debug_ip_layout information from loaded xclbin
+    std::vector<char> buffer(sectionSz);
+    mDevice->getDebugIpLayout(buffer.data(), sectionSz, &sz1);
+    auto map = reinterpret_cast<debug_ip_layout*>(buffer.data());
+#endif
+      
       for(uint64_t i = 0; i < map->m_count; i++ ) {
       switch(map->m_debug_ip_data[i].m_type) {
         case AXI_MM_MONITOR :        aimList.push_back(new AIM(mDevice, i, &(map->m_debug_ip_data[i])));
@@ -424,9 +562,10 @@ DeviceIntf::~DeviceIntf()
 
       }
      }
+#ifndef _WIN32
     }
-
     ifs.close();
+#endif
 
     auto sorter = [] (const ProfileIP* lhs, const ProfileIP* rhs)
     {
@@ -466,7 +605,7 @@ DeviceIntf::~DeviceIntf()
 
     uint32_t i = 0;
     for(auto mon: amList) {
-        mon->configureDataflow(ipConfig[i++]);
+      mon->configureDataflow(ipConfig[i++]);
     }
   }
 
@@ -479,29 +618,79 @@ DeviceIntf::~DeviceIntf()
     }
   }
 
+  size_t DeviceIntf::allocTraceBuf(uint64_t sz ,uint8_t memIdx)
+  {
+    auto bufHandle = mDevice->alloc(sz, memIdx);
+    // Can't read a buffer xrt hasn't written to
+    mDevice->sync(bufHandle, sz, 0, xdp::Device::direction::HOST2DEVICE);
+    return bufHandle;
+  }
+
+  void DeviceIntf::freeTraceBuf(size_t bufHandle)
+  {
+    mDevice->free(bufHandle);
+  }
+
+  /**
+  * Takes the offset inside the mapped buffer
+  * and syncs it with device and returns its virtual address.
+  * We can read the entire buffer in one go if we want to
+  * or choose to read in chunks
+  */
+  void* DeviceIntf::syncTraceBuf(size_t bufHandle ,uint64_t offset, uint64_t bytes)
+  {
+    auto addr = mDevice->map(bufHandle);
+    if (!addr)
+      return nullptr;
+    mDevice->sync(bufHandle, bytes, offset, xdp::Device::direction::DEVICE2HOST);
+    return static_cast<char*>(addr) + offset;
+  }
+
+  uint64_t DeviceIntf::getDeviceAddr(size_t bufHandle)
+  {
+    return mDevice->getDeviceAddr(bufHandle);
+  }
+
   void DeviceIntf::initTS2MM(uint64_t bufSz, uint64_t bufAddr)
   {
-    traceDMA->init(bufSz, bufAddr);
+    if (traceDMA)
+      traceDMA->init(bufSz, bufAddr);
   }
 
   uint64_t DeviceIntf::getWordCountTs2mm()
   {
-    return traceDMA->getWordCount();
+    if (traceDMA)
+      return traceDMA->getWordCount();
+    return 0;
   }
 
   uint8_t DeviceIntf::getTS2MmMemIndex()
   {
-    return traceDMA->getMemIndex();
+    if (traceDMA)
+      return traceDMA->getMemIndex();
+    return 0;
   }
 
   void DeviceIntf::resetTS2MM()
   {
-    traceDMA->reset();
+    if (traceDMA)
+      traceDMA->reset();
   }
 
   void DeviceIntf::parseTraceData(void* traceData, uint64_t bytes, xclTraceResultsVector& traceVector)
   {
-    traceDMA->parseTraceBuf(traceData, bytes, traceVector);
+    if (traceDMA)
+      traceDMA->parseTraceBuf(traceData, bytes, traceVector);
+  }
+
+  void DeviceIntf::setMaxBwRead()
+  {
+    m_bw_read = mDevice->getMaxBwRead();
+  }
+
+  void DeviceIntf::setMaxBwWrite()
+  {
+    m_bw_read = mDevice->getMaxBwWrite();
   }
 
 } // namespace xdp

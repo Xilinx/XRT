@@ -24,6 +24,16 @@
 
 int main( int argc, char** argv )
 {
+  // Check to see if the user doesn't wish for "known" exceptions to be reported
+  bool bQuiet = false;
+  for (int index = 0; index < argc; ++index) {
+    const static std::string sQuiet = "--quiet";
+    if (sQuiet.compare(argv[index]) == 0) {
+      bQuiet = true;
+      break;
+    }
+  }
+
   // A kludge fix around changes in boost with regards to implicit values
   // and adjacent key value pairs.  In other words, depending on which version
   // of boost you are using, the syntax:
@@ -70,7 +80,9 @@ int main( int argc, char** argv )
   try {
     return main_(new_argc, new_argv );
   } catch( XclBinUtilities::XclBinUtilException &e) {
-    std::cerr << e.what() << std::endl;
+    if (bQuiet == false) {
+      std::cerr << e.what() << std::endl;
+    }
     return (int) e.exceptionType();
   } catch ( std::exception &e ) {
     std::string msg = e.what();

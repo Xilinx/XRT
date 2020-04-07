@@ -25,15 +25,15 @@ struct iores {
 	int			bar_idx[IORES_MAX];
 };
 
-struct xocl_iores_map res_map[] = {
-	{ RESNAME_GATEPRBLD, IORES_GATEPRBLD },
+static struct xocl_iores_map res_map[] = {
+	{ RESNAME_GATEPLP, IORES_GATEPLP },
 	{ RESNAME_MEMCALIB, IORES_MEMCALIB },
-	{ RESNAME_GATEPRPRP, IORES_GATEPRPRP },
+	{ RESNAME_GATEULP, IORES_GATEULP },
 	{ RESNAME_KDMA, IORES_KDMA },
-	{ RESNAME_CMC_MUTEX, IORES_CMC_MUTEX},
 	{ RESNAME_GAPPING, IORES_GAPPING},
 	{ RESNAME_CLKFREQ_K1_K2, IORES_CLKFREQ_K1_K2},
 	{ RESNAME_CLKFREQ_HBM, IORES_CLKFREQ_HBM },
+	{ RESNAME_DDR4_RESET_GATE, IORES_DDR4_RESET_GATE}
 };
 
 static int read32(struct platform_device *pdev, u32 id, u32 off, u32 *val)

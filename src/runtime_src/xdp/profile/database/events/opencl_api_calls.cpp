@@ -20,9 +20,10 @@
 
 namespace xdp {
 
-  OpenCLAPICall::OpenCLAPICall(uint64_t s_id, double ts, unsigned int f_id,
-			       uint64_t name, uint64_t q) :
-    APICall(s_id, ts, f_id, name, OPENCL_API_CALL), queueAddress(q)
+  OpenCLAPICall::OpenCLAPICall(uint64_t s_id, double ts, unsigned int /*f_id*/,
+                               uint64_t name, uint64_t q)
+      : APICall(s_id, ts, name, OPENCL_API_CALL),
+        queueAddress(q)
   {
   }
 
@@ -30,7 +31,7 @@ namespace xdp {
   {
   }
 
-  void OpenCLAPICall::dump(std::ofstream& fout, int bucket)
+  void OpenCLAPICall::dump(std::ofstream& fout, uint32_t bucket)
   {
     VTFEvent::dump(fout, bucket) ;
     fout << "," << functionName << std::endl ;

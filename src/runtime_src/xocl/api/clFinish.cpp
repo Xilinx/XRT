@@ -24,6 +24,7 @@
 
 #include "xocl/config.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 namespace xocl {
 
@@ -49,7 +50,8 @@ cl_int
 clFinish(cl_command_queue command_queue)
 {
   try {
-    PROFILE_LOG_FUNCTION_CALL
+    PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clFinish(command_queue);
   }
   catch (const xrt::error& ex) {

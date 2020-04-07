@@ -25,6 +25,7 @@
 #include "detail/context.h"
 #include "detail/device.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 namespace xocl {
 
@@ -72,6 +73,7 @@ clCreateProgramWithBuiltInKernels(cl_context          context ,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clCreateProgramWithBuiltInKernels
       (context, num_devices, device_list, kernel_names, errcode_ret);
   }

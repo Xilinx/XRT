@@ -87,7 +87,7 @@ namespace xdp {
 
     // For HAL, each device will have four different read/write
     //  channels that need to be kept track of.
-    std::map<void*, DeviceMemoryStatistics> memoryStats ;
+    std::map<uint64_t, DeviceMemoryStatistics> memoryStats ;
 
     // Statistics on kernel enqueues and executions
     std::map<std::string, TimeStatistics> kernelExecutionStats ;
@@ -110,7 +110,7 @@ namespace xdp {
     inline const std::map<std::pair<std::string, std::thread::id>,
                     std::vector<std::pair<double, double>>>& getCallCount() 
       { return callCount ; }
-    inline const std::map<void*, DeviceMemoryStatistics>& getMemoryStats() 
+    inline const std::map<uint64_t, DeviceMemoryStatistics>& getMemoryStats() 
       { return memoryStats ; }
     inline const std::map<std::string, TimeStatistics>& getKernelExecutionStats() 
       { return kernelExecutionStats ; }
@@ -123,7 +123,7 @@ namespace xdp {
     XDP_EXPORT void logFunctionCallEnd(const std::string& name, 
 				       double timestamp) ;
 
-    XDP_EXPORT void logMemoryTransfer(void* deviceHandle, 
+    XDP_EXPORT void logMemoryTransfer(uint64_t deviceId, 
 				      DeviceMemoryStatistics::ChannelType channelType,
 				      size_t byteCount) ;
 
@@ -132,7 +132,7 @@ namespace xdp {
     XDP_EXPORT void logComputeUnitExecution(const std::string& computeUnitName,
 					    double executionTime) ;
 
-    XDP_EXPORT void updateCounters(void* deviceHandle, 
+    XDP_EXPORT void updateCounters(uint64_t deviceId, 
 				   xclCounterResults& counters) ;
     XDP_EXPORT void updateCounters(xclCounterResults& counters) ;
 

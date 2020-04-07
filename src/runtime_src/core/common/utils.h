@@ -15,30 +15,68 @@
  * under the License.
  */
 
-#ifndef XRT_USER_COMMON_UTILS_H_
-#define XRT_USER_COMMON_UTILS_H_
+#ifndef _xrt_core_common_utils_h_
+#define _xrt_core_common_utils_h_
+
+#include "config.h"
+#include "scope_guard.h"
 
 #include <string>
+#include <functional>
 #include <iostream>
 
-std::string parseCUStatus(unsigned int val);
-std::string parseFirewallStatus(unsigned int val);
-std::string parseDNAStatus(unsigned int val);
-std::string unitConvert(size_t size);
+namespace xrt_core { namespace utils {
 
-namespace xrt_core {
-    class ios_flags_restore {
-    public:
-        ios_flags_restore(std::ostream& _ios): ios(_ios), f(_ios.flags()) { }
+/**
+ * ios_flags_restore() - scope guard for ios flags
+ */
+inline scope_guard<std::function<void()>>
+ios_restore(std::ostream& ostr)
+{
+  auto restore = [](std::ostream& ostr, std::ios_base::fmtflags f) { ostr.flags(f); };
+  return {std::bind(restore, std::ref(ostr), ostr.flags())};
+}
 
-        ~ios_flags_restore() { ios.flags(f); }
+/**
+ * parse_cu_status() -
+ */
+XRT_CORE_COMMON_EXPORT
+std::string
+parse_cu_status(unsigned int val);
 
-    private:
-        std::ostream& ios;
-        std::ios_base::fmtflags f;
-    };
-} //xrt_core
+/**
+ * parse_firewall_status() -
+ */
+XRT_CORE_COMMON_EXPORT
+std::string
+parse_firewall_status(unsigned int val);
 
-#endif /* _COMMON_UTILS_H_ */
+/**
+ * parse_firewall_status() -
+ */
+XRT_CORE_COMMON_EXPORT
+std::string
+parse_dna_status(unsigned int val);
 
+/**
+ * unit_covert() -
+ */
+XRT_CORE_COMMON_EXPORT
+std::string
+unit_convert(size_t size);
 
+/**
+ * bdf2index() - convert bdf to device index
+ *
+ * @bdf:   BDF string in [domain:]bus:device.function format
+ * Return: Corresponding device index
+ *
+ * Throws std::runtime_error if core library is not loaded.
+ */
+XRT_CORE_COMMON_EXPORT
+uint16_t
+bdf2index(const std::string& bdf);
+
+}} // utils, xrt_core
+
+#endif

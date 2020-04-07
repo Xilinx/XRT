@@ -18,6 +18,7 @@
 #include "xocl/config.h"
 #include "detail/platform.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 #include <CL/cl.h>
 
 namespace xocl {
@@ -45,6 +46,7 @@ clUnloadPlatformCompiler(cl_platform_id  platform )
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clUnloadPlatformCompiler(platform);
   }
   catch (const xrt::error& ex) {

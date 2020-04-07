@@ -26,6 +26,7 @@
 #include "detail/memory.h"
 #include "detail/event.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 namespace xocl {
 
@@ -195,6 +196,7 @@ clEnqueueReadBufferRect(cl_command_queue     command_queue ,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
+    LOP_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
     return xocl::clEnqueueReadBufferRect
       (command_queue,buffer,blocking,buffer_origin,host_origin,region
        ,buffer_row_pitch,buffer_slice_pitch

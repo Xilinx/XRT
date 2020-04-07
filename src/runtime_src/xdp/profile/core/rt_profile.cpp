@@ -23,7 +23,7 @@
 #include "xdp/profile/profile_config.h"
 #include "xdp/profile/collection/results.h"
 #include "xdp/profile/collection/counters.h"
-#include "xdp/profile/device/trace_parser.h"
+#include "xdp/profile/core/trace_parser.h"
 #include "xdp/profile/writer/base_profile.h"
 #include "xdp/profile/writer/base_trace.h"
 
@@ -70,7 +70,7 @@ namespace xdp {
       writeProfileSummary();
 
     // Write out the run summary file (if there is data to write)
-    mRunSummary->writeContent();    
+    mRunSummary->writeContent();
 
     delete mWriter;
     delete mLogger;
@@ -124,9 +124,6 @@ namespace xdp {
 
   bool RTProfile::isDeviceProfileOn() const
   {
-#ifdef _WIN32
-    return false;
-#endif
     // Device profiling is not valid in cpu flow or old emulation flow
     if (mPluginHandle->getFlowMode() == xdp::RTUtil::CPU
        || mPluginHandle->getFlowMode() == xdp::RTUtil::COSIM_EM)
@@ -314,6 +311,13 @@ namespace xdp {
 
   double RTProfile::getTotalKernelExecutionTime(const std::string& deviceName) const {
     return mProfileCounters->getTotalKernelExecutionTime(deviceName);
+  }
+
+  double RTProfile::getTotalApplicationKernelTimeMsec() const {
+    if (mTraceParser == NULL)
+      return 0;
+
+    return mTraceParser->getTotalKernelTimeMsec();
   }
 
   uint32_t RTProfile::getComputeUnitCalls(const std::string& deviceName, const std::string& cuName) const {

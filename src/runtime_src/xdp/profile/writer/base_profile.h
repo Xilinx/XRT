@@ -19,7 +19,7 @@
 
 #include <boost/format.hpp>
 #include <boost/property_tree/ptree.hpp>
-#include "xdp/profile/device/trace_parser.h"
+#include "xdp/profile/core/trace_parser.h"
 #include "xdp/profile/plugin/base_plugin.h"
 
 #include <cstdlib>

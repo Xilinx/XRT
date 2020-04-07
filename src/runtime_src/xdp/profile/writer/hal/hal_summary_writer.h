@@ -17,7 +17,7 @@
 #ifndef HAL_SUMMARY_WRITER_DOT_H
 #define HAL_SUMMARY_WRITER_DOT_H
 
-#include "xdp/profile/writer/vp_summary_writer.h"
+#include "xdp/profile/writer/vp_base/vp_summary_writer.h"
 
 namespace xdp {
 

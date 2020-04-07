@@ -18,6 +18,7 @@
 #include "xocl/core/event.h"
 #include "detail/event.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 #include <CL/opencl.h>
 
 namespace xocl {
@@ -46,6 +47,7 @@ clRetainEvent(cl_event event)
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clRetainEvent(event);
   }
   catch (const xrt::error& ex) {

@@ -69,10 +69,6 @@ if ((${LINUX_FLAVOR} STREQUAL Ubuntu) AND (${LINUX_VERSION} VERSION_GREATER 17.1
    set(Boost_USE_STATIC_LIBS  ON)
 endif()
 
-if (${LINUX_FLAVOR} STREQUAL pynqlinux)
-   set(Boost_USE_STATIC_LIBS  ON)
-endif()
-
 find_package(Boost REQUIRED COMPONENTS system filesystem )
 
 # -- Cursers ---
@@ -81,8 +77,11 @@ find_package(Curses REQUIRED)
 
 
 # --- XRT Variables ---
-set (XRT_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/xrt")
-set (XRT_INSTALL_INCLUDE_DIR "${XRT_INSTALL_DIR}/include")
+set (XRT_INSTALL_DIR           "${CMAKE_INSTALL_PREFIX}/xrt")
+set (XRT_INSTALL_BIN_DIR       "${XRT_INSTALL_DIR}/bin")
+set (XRT_INSTALL_UNWRAPPED_DIR "${XRT_INSTALL_BIN_DIR}/unwrapped")
+set (XRT_INSTALL_INCLUDE_DIR   "${XRT_INSTALL_DIR}/include")
+set (XRT_INSTALL_LIB_DIR       "${XRT_INSTALL_DIR}/lib${LIB_SUFFIX}")
 
 # --- Release: OpenCL extension headers ---
 set(XRT_CL_EXT_SRC

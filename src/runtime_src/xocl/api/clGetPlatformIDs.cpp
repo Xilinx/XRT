@@ -22,6 +22,7 @@
 #include "detail/platform.h"
 
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 namespace xocl {
 
@@ -72,6 +73,7 @@ clGetPlatformIDs(cl_uint          num_entries,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clGetPlatformIDs
       (num_entries, platforms, num_platforms);
   }

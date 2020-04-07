@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
 /*
  * MPSoC based OpenCL accelerators Generic Compute Units.
  *
@@ -6,18 +7,13 @@
  * Authors:
  *    Min Ma      <min.ma@xilinx.com>
  *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This file is dual-licensed; you may select either the GNU General Public
+ * License version 2 or Apache License, Version 2.0.
  */
 
-#include <drm/drmP.h>
+#include <drm/drm_print.h>
 #include <linux/anon_inodes.h>
+#include <linux/poll.h>
 #include "zocl_util.h"
 #include "sched_exec.h"
 #include "zocl_generic_cu.h"
@@ -203,4 +199,3 @@ int zocl_open_gcu(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
 
 	return _open_generic_cu(zdev, info);
 }
-

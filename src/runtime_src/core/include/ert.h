@@ -56,6 +56,11 @@
 # pragma warning( disable : 4201 )
 #endif
 
+#define to_cfg_pkg(pkg) \
+    ((struct ert_configure_cmd *)(pkg))
+#define to_start_krnl_pkg(pkg) \
+    ((struct ert_start_kernel_cmd *)(pkg))
+
 /**
  * struct ert_packet: ERT generic packet format
  *
@@ -124,7 +129,8 @@ struct ert_start_kernel_cmd {
  * this command initializes CUs by writing CU registers. CUs are
  * represented by cu_mask and extra_cu_masks.
  *
- * @state:           [3-0] current state of a command
+ * @state:           [3-0]   current state of a command
+ * @update_rtp:      [4]     command is for runtime update of cu argument
  * @extra_cu_masks:  [11-10] extra CU masks in addition to mandatory mask
  * @count:           [22-12] number of words following header
  * @opcode:          [27-23] 0, opcode for init_kernel
@@ -148,7 +154,8 @@ struct ert_init_kernel_cmd {
   union {
     struct {
       uint32_t state:4;          /* [3-0]   */
-      uint32_t unused:6;         /* [9-4]  */
+      uint32_t update_rtp:1;     /* [4]  */
+      uint32_t unused:5;         /* [9-5]  */
       uint32_t extra_cu_masks:2; /* [11-10]  */
       uint32_t count:11;         /* [22-12] */
       uint32_t opcode:5;         /* [27-23] */
@@ -558,6 +565,7 @@ uint32_t ert_base_addr = 0;
  */
 #define	ERT_EXIT_CMD			  ((ERT_EXIT << 23) | ERT_CMD_STATE_NEW)
 #define	ERT_EXIT_ACK			  (ERT_CMD_STATE_COMPLETED)
+#define	ERT_EXIT_CMD_OP			  (ERT_EXIT << 23)
 
 /**
  * State machine for both CUDMA and CUISR modules

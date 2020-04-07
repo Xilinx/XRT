@@ -17,6 +17,7 @@
 #include "detail/platform.h"
 #include "xocl/core/platform.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 #include <CL/cl_ext_xilinx.h>
 #include <map>
 
@@ -30,6 +31,8 @@ static const std::map<const std::string, void *> extensionFunctionTable = {
   std::pair<const std::string, void *>("clCreateStreamBuffer", (void *)clCreateStreamBuffer),
   std::pair<const std::string, void *>("clReleaseStreamBuffer", (void *)clReleaseStreamBuffer),
   std::pair<const std::string, void *>("clPollStreams", (void *)clPollStreams),
+  std::pair<const std::string, void *>("clPollStream", (void *)clPollStream),
+  std::pair<const std::string, void *>("clSetStreamOpt", (void *)clSetStreamOpt),
   std::pair<const std::string, void *>("xclGetMemObjectFd", (void *)xclGetMemObjectFd),
   std::pair<const std::string, void *>("xclGetMemObjectFromFd", (void *)xclGetMemObjectFromFd),
   std::pair<const std::string, void *>("xclGetXrtDevice", (void *)xclGetXrtDevice),
@@ -70,6 +73,7 @@ clGetExtensionFunctionAddressForPlatform(cl_platform_id platform ,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clGetExtensionFunctionAddressForPlatform(platform,func_name);
   }
   catch (const xrt::error& ex) {

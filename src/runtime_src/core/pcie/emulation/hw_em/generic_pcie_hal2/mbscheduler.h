@@ -66,7 +66,7 @@ namespace xclhwemhal2 {
       xclemulation::drm_xocl_bo *bo;
       exec_core *exec;
       enum ert_cmd_state state;
-      unsigned int cu_idx;
+      int cu_idx;
       int slot_idx;
       /* The actual cmd object representation */
       struct ert_packet *packet;
@@ -74,7 +74,7 @@ namespace xclhwemhal2 {
       ~xocl_cmd();
   };
 
-  class exec_core 
+  class exec_core
   {
     public:
       exec_core();

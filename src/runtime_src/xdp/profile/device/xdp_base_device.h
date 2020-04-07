@@ -27,6 +27,10 @@ namespace xdp {
 // interface class
 class Device
 {
+
+public:
+  enum class direction { HOST2DEVICE, DEVICE2HOST };
+
 public:
   Device() {}
   virtual ~Device() {}
@@ -37,11 +41,25 @@ public:
   virtual int read(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size) = 0;
   virtual int unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offset) = 0;
 
+  virtual void getDebugIpLayout(char* buffer, size_t size, size_t* size_ret) = 0;
+
+  // Only device RAM
+  virtual size_t alloc(size_t sz, uint64_t memoryIndex) = 0;
+  virtual void free(size_t xdpBoHandle) = 0;
+
+  virtual void* map(size_t xdpBoHandle) = 0;
+  virtual void unmap(size_t xdpBoHandle) = 0;
+  virtual void sync(size_t xdpBoHandle, size_t sz, size_t offset, direction dir, bool async=false) = 0;
+  virtual uint64_t getDeviceAddr(size_t xdpBoHandle) = 0;
+
   virtual double getDeviceClock() = 0;
   virtual uint64_t getTraceTime() = 0;
 
   virtual int getTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz) = 0;
   virtual int readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample) = 0;
+
+  virtual double getMaxBwRead() = 0;
+  virtual double getMaxBwWrite() = 0;
 
   virtual void* getRawDevice() = 0 ;
 

@@ -20,27 +20,33 @@
 #ifndef _ZYNQ_SHIM_H_
 #define _ZYNQ_SHIM_H_
 
+#include "zynq_dev.h"
 #include "core/edge/include/xclhal2_mpsoc.h"
 #include "core/edge/include/zynq_ioctl.h"
-#include "zynq_dev.h"
+#include "core/common/system.h"
+#include "core/common/device.h"
+#include "core/common/bo_cache.h"
+#include "core/common/xrt_profiling.h"
+#include "core/include/xcl_app_debug.h"
 #include <cstdint>
 #include <fstream>
 #include <map>
 #include <vector>
 #include <mutex>
 #include <memory>
-#include "core/common/bo_cache.h"
-#include "core/common/xrt_profiling.h"
-#include "core/include/xcl_app_debug.h"
+
+#ifdef XRT_ENABLE_AIE
+#include "core/edge/user/aie/aie.h"
+#endif
 
 namespace ZYNQ {
 
-class ZYNQShim {
+class shim {
 
   static const int BUFFER_ALIGNMENT = 0x80; // TODO: UKP
 public:
-  ~ZYNQShim();
-  ZYNQShim(unsigned index, const char *logfileName,
+  ~shim();
+  shim(unsigned index, const char *logfileName,
            xclVerbosityLevel verbosity);
 
   int mapKernelControl(const std::vector<std::pair<uint64_t, size_t>>& offsets);
@@ -103,7 +109,7 @@ public:
   int xclCloseIPInterruptNotify(int fd);
 
   bool isGood() const;
-  static ZYNQShim *handleCheck(void *handle);
+  static shim *handleCheck(void *handle);
   int xclIPName2Index(const char *name, uint32_t& index);
   static int xclLogMsg(xrtLogMsgLevel level, const char* tag,
 		       const char* format, va_list args);
@@ -121,8 +127,14 @@ public:
   int cmpMonVersions(unsigned int major1, unsigned int minor1, 
 		     unsigned int major2, unsigned int minor2);
 
+#ifdef XRT_ENABLE_AIE
+  zynqaie::Aie *getAieArray();
+  void setAieArray(zynqaie::Aie *aie);
+  int getBOInfo(unsigned bo, drm_zocl_info_bo &info);
+#endif
 
 private:
+  std::shared_ptr<xrt_core::device> mCoreDevice;
   const int mBoardNumber = -1;
   std::ofstream mLogStream;
   std::ifstream mVBNV;
@@ -142,6 +154,10 @@ private:
   std::mutex mCuMapLock;
   int xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap);
   int xclLog(xrtLogMsgLevel level, const char* tag, const char* format, ...);
+
+#ifdef XRT_ENABLE_AIE
+  zynqaie::Aie *aieArray;
+#endif
 };
 
 } // namespace ZYNQ

@@ -19,6 +19,8 @@
 
 #define	MBV_ERR(mbv, fmt, arg...)    \
     xocl_err(&mbv->mbv_pdev->dev, fmt "\n", ##arg)
+#define	MBV_INFO(mbv, fmt, arg...)    \
+    xocl_info(&mbv->mbv_pdev->dev, fmt "\n", ##arg)
 
 #define	STATUS_EMPTY	(1 << 0)
 #define	STATUS_FULL	(1 << 1)
@@ -88,14 +90,62 @@ static int mailbox_versal_get(struct platform_device *pdev, u32 *data)
 	return 0;
 }
 
+static int mailbox_versal_enable_intr(struct platform_device *pdev)
+{
+	struct mailbox_versal *mbv = platform_get_drvdata(pdev);
+	u32 is;
+
+	/* set interrupt threshold for receive, 2^0=1 pkg will trigger intr */
+	mailbox_versal_reg_wr(mbv, &mbv->mbv_regs->mbr_rit, 0);
+	/* clear pending interrupt */
+	is = mailbox_versal_reg_rd(mbv, &mbv->mbv_regs->mbr_is);
+	mailbox_versal_reg_wr(mbv, &mbv->mbv_regs->mbr_is, is);
+
+	/* enable receive interrupt */
+	mailbox_versal_reg_wr(mbv, &mbv->mbv_regs->mbr_ie, 2);
+
+	return 0;
+}
+
+static int mailbox_versal_disable_intr(struct platform_device *pdev)
+{
+	struct mailbox_versal *mbv = platform_get_drvdata(pdev);
+
+	/* clear interrupt enable register */
+	mailbox_versal_reg_wr(mbv, &mbv->mbv_regs->mbr_ie, 0);
+	/* clear interrupt threshold for receive */
+	mailbox_versal_reg_wr(mbv, &mbv->mbv_regs->mbr_rit, 0);
+
+	return 0;
+}
+
+static int mailbox_versal_handle_intr(struct platform_device *pdev)
+{
+	struct mailbox_versal *mbv = platform_get_drvdata(pdev);
+	u32 is = mailbox_versal_reg_rd(mbv, &mbv->mbv_regs->mbr_is);
+
+	/* Acknowledge all existing is in mailbox */
+	while (is) {
+		mailbox_versal_reg_wr(mbv, &mbv->mbv_regs->mbr_is, is);
+		is = mailbox_versal_reg_rd(mbv, &mbv->mbv_regs->mbr_is);
+	}
+
+	return 0;
+}
+
 static struct xocl_mailbox_versal_funcs mailbox_versal_ops = {
 	.set		= mailbox_versal_set,
 	.get		= mailbox_versal_get,
+	.enable_intr 	= mailbox_versal_enable_intr,
+	.disable_intr 	= mailbox_versal_disable_intr,
+	.handle_intr 	= mailbox_versal_handle_intr,
 };
 
 static int mailbox_versal_remove(struct platform_device *pdev)
 {
 	struct mailbox_versal *mbv = platform_get_drvdata(pdev);
+
+	mailbox_versal_disable_intr(pdev);
 
 	platform_set_drvdata(pdev, NULL);
 	xocl_drvinst_release(mbv, NULL);
@@ -127,6 +177,8 @@ static int mailbox_versal_probe(struct platform_device *pdev)
 
 	/* Reset both RX channel and RX channel */
 	mailbox_versal_reg_wr(mbv, &mbv->mbv_regs->mbr_ctrl, 0x3);
+
+	mailbox_versal_enable_intr(pdev);
 
 	return 0;
 

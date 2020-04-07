@@ -23,13 +23,13 @@
  */
 #include "scheduler.h"
 #include "xrt/util/error.h"
-#include "xrt/util/thread.h"
 #include "xrt/util/debug.h"
 #include "xrt/util/time.h"
 #include "xrt/util/task.h"
 #include "xrt/device/device.h"
 #include "ert.h"
 #include "command.h"
+#include "core/common/thread.h"
 
 #include <memory>
 #include <cstring>
@@ -218,7 +218,7 @@ start()
 
   std::lock_guard<std::mutex> lk(s_mutex);
   if (threaded_notification)
-    notifier = std::move(xrt::thread(xrt::task::worker,std::ref(notify_queue)));
+    notifier = std::move(xrt_core::thread(xrt::task::worker,std::ref(notify_queue)));
   s_running = true;
 }
 
@@ -254,7 +254,7 @@ init(xrt::device* device, const axlf*)
   if (itr==s_device_monitor_threads.end()) {
     XRT_DEBUG(std::cout,"creating monitor thread and queue for device '",device->getName(),"'\n");
     s_device_cmds.emplace(device,command_queue_type());
-    s_device_monitor_threads.emplace(device,xrt::thread(::monitor,device));
+    s_device_monitor_threads.emplace(device,xrt_core::thread(::monitor,device));
   }
 }
 

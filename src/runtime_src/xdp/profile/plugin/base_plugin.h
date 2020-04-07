@@ -91,7 +91,6 @@ namespace xdp {
       enum e_guidance {
         DEVICE_EXEC_TIME,
         CU_CALLS,
-        MEMORY_BIT_WIDTH,
         MIGRATE_MEM,
         MEMORY_USAGE,
         PLRAM_DEVICE,
@@ -114,7 +113,8 @@ namespace xdp {
         BUFFER_RD_ACTIVE_TIME_MS,
         BUFFER_WR_ACTIVE_TIME_MS,
         BUFFER_TX_ACTIVE_TIME_MS,
-        APPLICATION_RUN_TIME_MS
+        APPLICATION_RUN_TIME_MS,
+        TOTAL_KERNEL_RUN_TIME_MS
       };
 
     public:
@@ -145,6 +145,7 @@ namespace xdp {
       inline GuidanceMap2& getDeviceMemTypeBitWidthMap() {return mDeviceMemTypeBitWidthMap;}
       inline GuidanceMap2& getDeviceTraceBufferFullMap() {return mDeviceTraceBufferFullMap;}
       inline GuidanceMap2& getDevicePlramSizeMap() {return mDevicePlramSizeMap;}
+      inline GuidanceMap2& getDeviceMemUsageStatsMap() {return mDeviceMemUsageStatsMap;}
       inline GuidanceMap3& getmCQInfoMap() {return mCQInfoMap;}
       inline GuidanceMap4& getKernelBufferInfoMap() {return mKernelBufferInfoMap;}
       // Host Buffer first start to last end
@@ -156,6 +157,8 @@ namespace xdp {
       // Application run time
       void setApplicationEnd() {mApplicationRunTimeMs = getTraceTime();}
       double getApplicationRunTimeMs() {return mApplicationRunTimeMs;}
+      void setTotalApplicationKernelTimeMs(double totalTimeMs) {mTotalApplicationKernelTimeMs = totalTimeMs;}
+      double getTotalApplicationKernelTimeMs() {return mTotalApplicationKernelTimeMs;}
       //Profiling infrastructure metadata
       void setCtxEn(bool ctxEn) {IsCtxEn = ctxEn;}
       bool isCtxEn() {return IsCtxEn;}
@@ -170,6 +173,7 @@ namespace xdp {
       GuidanceMap2 mKernelMaxParallelStartsMap;
       GuidanceMap2 mDeviceMemTypeBitWidthMap;
       GuidanceMap2 mDeviceTraceBufferFullMap;
+      GuidanceMap2 mDeviceMemUsageStatsMap;
       GuidanceMap4 mKernelBufferInfoMap;
       GuidanceMap3 mCQInfoMap;
       GuidanceMap mXrtIniMap;
@@ -181,6 +185,7 @@ namespace xdp {
       bool IsCtxEn = false;
       std::string TraceMemory = "NA";
       double mApplicationRunTimeMs = 0.0;
+      double mTotalApplicationKernelTimeMs = 0.0;
       // Buffer Reads
       double mReadTimeStartMs = 0.0;
       double mReadTimeMs = 0.0;
@@ -195,25 +200,45 @@ namespace xdp {
     // Platform Metadata required by profiler
     // ****************************************
     public:
-      virtual void getProfileKernelName(const std::string& deviceName,
-                                        const std::string& cuName,
-                                        std::string& kernelName) = 0;
-      virtual void getTraceStringFromComputeUnit(const std::string& deviceName,
-                                                 const std::string& cuName,
-                                                 std::string& traceString) = 0;
-      virtual size_t getDeviceTimestamp(const std::string& deviceName) = 0;
-      virtual double getReadMaxBandwidthMBps() = 0 ;
-      virtual double getWriteMaxBandwidthMBps() = 0;
+      virtual void
+      getProfileKernelName(const std::string& deviceName,
+                           const std::string& cuName,
+                           std::string& kernelName) = 0;
+      virtual void
+      getTraceStringFromComputeUnit(const std::string& deviceName,
+                                    const std::string& cuName,
+                                    std::string& traceString) = 0;
+      virtual size_t
+      getDeviceTimestamp(const std::string& deviceName) = 0;
+      virtual double
+      getReadMaxBandwidthMBps() = 0 ;
+      virtual double
+      getWriteMaxBandwidthMBps() = 0;
       // HAL APIS
-      virtual unsigned int getProfileNumberSlots(xclPerfMonType type,
-                                            const std::string& deviceName) = 0;
-      virtual void getProfileSlotName(xclPerfMonType type,
-                                      const std::string& deviceName,
-                                      unsigned int slotnum, std::string& slotName) = 0;
-      virtual unsigned int getProfileSlotProperties(xclPerfMonType type,
-                                                const std::string& deviceName,
-                                                unsigned int slotnum) = 0;
-      virtual bool isAPCtrlChain(const std::string& deviceName, const std::string& cu) = 0;
+      virtual unsigned int
+      getProfileNumberSlots(xclPerfMonType type,
+                            const std::string& deviceName) = 0;
+      virtual void
+      getProfileSlotName(xclPerfMonType type,
+                         const std::string& deviceName,
+                         unsigned int slotnum,
+                         std::string& slotName) = 0;
+      virtual void
+      getTraceSlotName(xclPerfMonType type,
+                       const std::string& deviceName,
+                       unsigned int slotnum,
+                       std::string& slotName) = 0;
+      virtual unsigned int
+      getProfileSlotProperties(xclPerfMonType type,
+                               const std::string& deviceName,
+                               unsigned int slotnum) = 0;
+      virtual unsigned int
+      getTraceSlotProperties(xclPerfMonType type,
+                             const std::string& deviceName,
+                             unsigned int slotnum) = 0;
+      virtual bool
+      isAPCtrlChain(const std::string& deviceName,
+                    const std::string& cu) = 0;
 
     protected:
       std::map<std::string, std::string> mComputeUnitKernelTraceMap;

@@ -32,7 +32,7 @@ namespace xdp {
       WriterI() {};
       ~WriterI() {};
 
-      XDP_EXPORT static const char * getToolVersion() { return "2019.2"; }
+      XDP_EXPORT static const char * getToolVersion() { return "2020.1"; }
 
       XDP_EXPORT static std::string getXRTVersion();
 

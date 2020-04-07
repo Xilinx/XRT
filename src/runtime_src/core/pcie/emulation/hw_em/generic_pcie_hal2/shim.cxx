@@ -15,6 +15,7 @@
  */
 
 #include "shim.h"
+#include "system_hwemu.h"
 #include <string.h>
 #include <boost/property_tree/xml_parser.hpp>
 #include <errno.h>
@@ -176,6 +177,9 @@ namespace xclhwemhal2 {
       return -1;
     }
 
+    //check xclbin version with vivado tool version
+    xclemulation::checkXclibinVersionWithTool(header);
+
     auto top = reinterpret_cast<const axlf*>(header);
     if (auto sec = xclbin::get_axlf_section(top, EMBEDDED_METADATA)) {
       xmlFileSize = sec->m_sectionSize;
@@ -291,6 +295,10 @@ namespace xclhwemhal2 {
 
   int HwEmShim::xclLoadBitstreamWorker(bitStreamArg args)
   {
+    bool is_prep_target = xrt_core::config::get_is_enable_prep_target();
+    bool is_enable_debug = xrt_core::config::get_is_enable_debug();
+    std::string aie_sim_options = xrt_core::config::get_aie_sim_options();
+
     if (mLogStream.is_open()) {
       //    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << args.m_zipFile << std::endl;
     }
@@ -369,21 +377,24 @@ namespace xclhwemhal2 {
       fclose(fp2);
     }
 
-    std::unique_ptr<char[]> emuDataFileName(new char[1024]);
+    //Having this until all the tests are migrated to prep_target flow
+    if (!is_prep_target) {
+      std::unique_ptr<char[]> emuDataFileName(new char[1024]);
 #ifndef _WINDOWS
-    // TODO: Windows build support
-    // getpid is defined in unistd.h
-    std::sprintf(emuDataFileName.get(), "%s/emuDataFile_%d", binaryDirectory.c_str(), binaryCounter);
+      // TODO: Windows build support
+      // getpid is defined in unistd.h
+      std::sprintf(emuDataFileName.get(), "%s/emuDataFile_%d", binaryDirectory.c_str(), binaryCounter);
 #endif
 
-    if ((args.m_emuData != nullptr) && (args.m_emuDataSize > 1))
-    {
-      std::ofstream os(emuDataFileName.get());
-      os.write(args.m_emuData, args.m_emuDataSize);
-      os.close();
+      if ((args.m_emuData != nullptr) && (args.m_emuDataSize > 1))
+      {
+        std::ofstream os(emuDataFileName.get());
+        os.write(args.m_emuData, args.m_emuDataSize);
+        os.close();
 
-      std::string emuDataFilePath(emuDataFileName.get());
-      systemUtil::makeSystemCall(emuDataFilePath, systemUtil::systemOperation::UNZIP, binaryDirectory);
+        std::string emuDataFilePath(emuDataFileName.get());
+        systemUtil::makeSystemCall(emuDataFilePath, systemUtil::systemOperation::UNZIP, binaryDirectory);
+      }
     }
 
     readDebugIpLayout(debugFileName);
@@ -488,6 +499,13 @@ namespace xclhwemhal2 {
               continue;
             uint64_t base = convert(xml_remap.second.get<std::string>("<xmlattr>.base"));
             mCuBaseAddress = base & 0xFFFFFFFF00000000;
+            std::string vbnv  = mDeviceInfo.mName;
+            //BAD Worharound for vck5000 need to remove once SIM_QDMA supports PCIE bar 
+            if(xclemulation::config::getInstance()->getCuBaseAddrForce()!=-1) {
+              mCuBaseAddress = xclemulation::config::getInstance()->getCuBaseAddrForce();
+            } else if(!vbnv.empty() && (  vbnv.find("vck5000-es1_g3x16_202010_1") != std::string::npos)) {
+              mCuBaseAddress = 0x20200000000;
+            }
             mKernelOffsetArgsInfoMap[base] = kernelArgInfo;
             if (xclemulation::config::getInstance()->isMemLogsEnabled())
             {
@@ -510,14 +528,46 @@ namespace xclhwemhal2 {
       mMessengerThreadStarted = true;
     }
 
+    //Creating the Kernel Directory and dumping the emulation data into Kernel Dir
+    //For timebeing having this under is_prep_target condition, will remove this
+    //condition once this flow is obsorbed by the Sprite and Canary Verification
+    if (is_prep_target) {
+      std::stringstream ks;
+      ks << binaryDirectory << "/" << kernels.at(0);
+      std::string kernelDir = ks.str();
+      systemUtil::makeSystemCall(kernelDir, systemUtil::systemOperation::CREATE);
+
+      std::unique_ptr<char[]> emuDataFileName(new char[1024]);
+#ifndef _WINDOWS
+      // TODO: Windows build support
+      // getpid is defined in unistd.h
+      std::sprintf(emuDataFileName.get(), "%s/emuDataFile_%d", kernelDir.c_str(), binaryCounter);
+#endif
+
+      if ((args.m_emuData != nullptr) && (args.m_emuDataSize > 1))
+      {
+        std::ofstream os(emuDataFileName.get());
+        os.write(args.m_emuData, args.m_emuDataSize);
+        os.close();
+
+        std::string emuDataFilePath(emuDataFileName.get());
+        systemUtil::makeSystemCall(emuDataFilePath, systemUtil::systemOperation::UNZIP, kernelDir);
+      }
+    }
+    //End of the Kernel Dir creation
+
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
     std::string launcherArgs = xclemulation::config::getInstance()->getLauncherArgs();
     std::string wdbFileName("");
+    std::string kernelProfileFileName("profile_kernels.csv");
+    std::string kernelTraceFileName("timeline_kernels.csv");
     // The following is evil--hardcoding. This name may change.
     // Is there a way we can determine the name from the directories or otherwise?
     std::string bdName("dr"); // Used to be opencldesign. This is new default.
 
     unsetenv("VITIS_WAVEFORM_WDB_FILENAME");
+    unsetenv("VITIS_KERNEL_PROFILE_FILENAME");
+    unsetenv("VITIS_KERNEL_TRACE_FILENAME");
 
     if (!simDontRun)
     {
@@ -545,6 +595,8 @@ namespace xclhwemhal2 {
         unsetenv("VITIS_LAUNCH_WAVEFORM_BATCH");
         setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
         setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
+        setenv("VITIS_KERNEL_PROFILE_FILENAME", kernelProfileFileName.c_str(), true);
+        setenv("VITIS_KERNEL_TRACE_FILENAME", kernelTraceFileName.c_str(), true);
       }
 
       if (lWaveform == xclemulation::LAUNCHWAVEFORM::BATCH)
@@ -561,6 +613,8 @@ namespace xclhwemhal2 {
         setenv("VITIS_LAUNCH_WAVEFORM_BATCH", "1", true);
         setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
         setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
+        setenv("VITIS_KERNEL_PROFILE_FILENAME", kernelProfileFileName.c_str(), true);
+        setenv("VITIS_KERNEL_TRACE_FILENAME", kernelTraceFileName.c_str(), true);
       }
 
       if (userSpecifiedSimPath.empty() == false)
@@ -636,11 +690,46 @@ namespace xclhwemhal2 {
         if (args.m_emuData) {
           //So far assuming that we will have only one AIE Kernel, need to 
           //update this logic when we have suport for multiple AIE Kernels
-          launcherArgs += " -emuData " + binaryDirectory + "/" + kernels.at(0) + "/aieshim_solution.aiesol";
-          launcherArgs += " -emu-data " + binaryDirectory + "/" + kernels.at(0) + "/aieshim_solution.aiesol";
-          launcherArgs += " -bootBH " + binaryDirectory + "/" + kernels.at(0) + "/boot_bh.bin";
-          launcherArgs += " -boot-bh " + binaryDirectory + "/" + kernels.at(0) + "/boot_bh.bin";
-          launcherArgs += " -image " + binaryDirectory + "/" + kernels.at(0) + "/qemu_qspi.bin";
+
+          //For timebeing having this under is_prep_target condition, will remove this
+          //condition once this flow is obsorbed by the Sprite and Canary Verification
+          if (is_prep_target) {
+            launcherArgs += " -emuData " + binaryDirectory + "/" + kernels.at(0) + "/emulation_data/libsdf/cfg/aie.sim.config.txt";
+            launcherArgs += " -aie-sim-config " + binaryDirectory + "/" + kernels.at(0) + "/emulation_data/libsdf/cfg/aie.sim.config.txt";
+            launcherArgs += " -boot-bh " + binaryDirectory + "/" + kernels.at(0) + "/emulation_data/BOOT_bh.bin";
+            launcherArgs += " -ospi-image " + binaryDirectory + "/" + kernels.at(0) + "/emulation_data/qemu_ospi.bin";
+            launcherArgs += " -qemu-args-file " + binaryDirectory + "/" + kernels.at(0) + "/emulation_data/qemu_args.txt";
+           
+            if (boost::filesystem::exists(binaryDirectory + "/" + kernels.at(0) + "/emulation_data/pmc_args.txt") ) {
+              launcherArgs += " -pmc-args-file " + binaryDirectory + "/" + kernels.at(0) + "/emulation_data/pmc_args.txt";
+            }
+            else if (boost::filesystem::exists(binaryDirectory + "/" + kernels.at(0) + "/emulation_data/pmu_args.txt" ) ) {
+              launcherArgs += " -pmc-args-file " + binaryDirectory + "/" + kernels.at(0) + "/emulation_data/pmu_args.txt";
+            }
+            else {
+              std::cout << "ERROR: [HW-EMU] Unable to find either PMU/PMC args which are required to launch the emulation." << std::endl;
+            }
+
+            if (is_enable_debug) {
+              launcherArgs += " -enable-debug ";
+            }
+
+            if (aie_sim_options != "") {
+              launcherArgs += " -aie-sim-options " + aie_sim_options;
+            }
+          }
+          else { 
+            // Added to be compatible for older flows, will remove this once the prep_target aka pack flow is stabilized and obsorbed by the DSV
+            launcherArgs += " -emuData " + binaryDirectory + "/" + kernels.at(0) + "/aieshim_solution.aiesol";
+            launcherArgs += " -emu-data " + binaryDirectory + "/" + kernels.at(0) + "/aieshim_solution.aiesol";
+            launcherArgs += " -bootBH " + binaryDirectory + "/" + kernels.at(0) + "/boot_bh.bin";
+            launcherArgs += " -boot-bh " + binaryDirectory + "/" + kernels.at(0) + "/boot_bh.bin";
+            launcherArgs += " -image " + binaryDirectory + "/" + kernels.at(0) + "/qemu_qspi.bin";
+
+            if (is_enable_debug) {
+              launcherArgs += " -enable-debug ";
+            }
+          }
         }
 
         if (!launcherArgs.empty())
@@ -931,9 +1020,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     logMessage(dMsg,1);
     void *handle = this;
 
-    unsigned int messageSize = xclemulation::config::getInstance()->getPacketSize();
-    unsigned int c_size = messageSize;
-    unsigned int processed_bytes = 0;
+    uint64_t messageSize = xclemulation::config::getInstance()->getPacketSize();
+    uint64_t c_size = messageSize;
+    uint64_t processed_bytes = 0;
     while(processed_bytes < size){
       if((size - processed_bytes) < messageSize){
         c_size = size - processed_bytes;
@@ -979,9 +1068,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     logMessage(dMsg,1);
     void *handle = this;
 
-    unsigned int messageSize = xclemulation::config::getInstance()->getPacketSize();
-    unsigned int c_size = messageSize;
-    unsigned int processed_bytes = 0;
+    uint64_t messageSize = xclemulation::config::getInstance()->getPacketSize();
+    uint64_t c_size = messageSize;
+    uint64_t processed_bytes = 0;
 
     while(processed_bytes < size){
       if((size - processed_bytes) < messageSize){
@@ -1464,7 +1553,8 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
   }
 
   HwEmShim::HwEmShim( unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool _unified, bool _xpr, FeatureRomHeader &fRomHeader)
-    :mRAMSize(info.mDDRSize)
+    :mCoreDevice(xrt_core::hwemu::get_userpf_device(this, deviceIndex))
+    ,mRAMSize(info.mDDRSize)
     ,mCoalesceThreshold(4)
     ,mDSAMajorVersion(DSA_MAJOR_VERSION)
     ,mDSAMinorVersion(DSA_MINOR_VERSION)
@@ -1558,7 +1648,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
         || vbnv.find("u200_xdma_201830_2")        != std::string::npos 
         || vbnv.find("u250_qep_201910_1")         != std::string::npos
         || vbnv.find("u250_xdma_201830_1")        != std::string::npos 
-        || vbnv.find("u250_xdma_201830_2")        != std::string::npos 
+        || vbnv.find("u250_xdma_201830_2")        != std::string::npos
         || vbnv.find("u280_xdma_201920_1")        != std::string::npos
         || vbnv.find("u280_xdma_201920_2")        != std::string::npos
         || vbnv.find("u280_xdma_201920_3")        != std::string::npos

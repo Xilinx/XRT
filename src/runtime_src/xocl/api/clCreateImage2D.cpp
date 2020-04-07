@@ -20,6 +20,7 @@
 #include "xocl/config.h"
 #include "xocl/core/error.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 #include <CL/opencl.h>
 
 namespace xocl {
@@ -51,6 +52,7 @@ clCreateImage2D(cl_context              context,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clCreateImage2D(context,flags,image_format,image_width,image_height,
                                  image_row_pitch,host_ptr,errcode_ret);
   }

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
 /*
  * A GEM style (optionally CMA backed) device manager for ZynQ based
  * OpenCL accelerators.
@@ -10,16 +11,11 @@
  *    Min Ma       <min.ma@xilinx.com>
  *    Jan Stephan  <j.stephan@hzdr.de>
  *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This file is dual-licensed; you may select either the GNU General Public
+ * License version 2 or Apache License, Version 2.0.
  */
 
+#include <linux/delay.h>
 #include <linux/dma-buf.h>
 #include <linux/module.h>
 #include <linux/fpga/fpga-mgr.h>
@@ -29,6 +25,7 @@
 #include <linux/kernel.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
+#include <linux/poll.h>
 #include <linux/spinlock.h>
 #include "zocl_drv.h"
 #include "zocl_sk.h"
@@ -668,7 +665,11 @@ static const struct file_operations zocl_driver_fops = {
 };
 
 static struct drm_driver zocl_driver = {
+#if KERNEL_VERSION(5, 4, 0) > LINUX_VERSION_CODE
 	.driver_features           = DRIVER_GEM | DRIVER_PRIME | DRIVER_RENDER,
+#else
+	.driver_features           = DRIVER_GEM | DRIVER_RENDER,
+#endif
 	.open                      = zocl_client_open,
 	.postclose                 = zocl_client_release,
 	.gem_free_object           = zocl_free_bo,

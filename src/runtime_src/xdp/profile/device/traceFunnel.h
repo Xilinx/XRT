@@ -61,6 +61,7 @@ public:
     {}
 
     size_t initiateClockTraining();
+    signed int compareVersion(unsigned major2, unsigned minor2) const;
     void reset();
 
     virtual void showProperties();

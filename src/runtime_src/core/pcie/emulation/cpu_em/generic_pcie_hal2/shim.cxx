@@ -19,6 +19,7 @@
  */
 
 #include "shim.h"
+#include "system_swemu.h"
 #include <errno.h>
 #include <unistd.h>
 namespace xclcpuemhal2 {
@@ -31,11 +32,13 @@ namespace xclcpuemhal2 {
   const unsigned CpuemShim::CONTROL_AP_START = 1;
   const unsigned CpuemShim::CONTROL_AP_DONE  = 2;
   const unsigned CpuemShim::CONTROL_AP_IDLE  = 4;
+  const unsigned CpuemShim::CONTROL_AP_CONTINUE = 0x10;
   std::map<std::string, std::string> CpuemShim::mEnvironmentNameValueMap(xclemulation::getEnvironmentByReadingIni());
 #define PRINTENDFUNC if (mLogStream.is_open()) mLogStream << __func__ << " ended " << std::endl;
  
-  CpuemShim::CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool _unified, bool _xpr, FeatureRomHeader& fRomHeader) 
+  CpuemShim::CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool _unified, bool _xpr, FeatureRomHeader& fRomHeader)
     :mTag(TAG)
+    ,mCoreDevice(xrt_core::swemu::get_userpf_device(this, deviceIndex))
     ,mRAMSize(info.mDDRSize)
     ,mCoalesceThreshold(4)
     ,mDSAMajorVersion(DSA_MAJOR_VERSION)
@@ -47,6 +50,8 @@ namespace xclcpuemhal2 {
     sock = NULL;
     ci_msg.set_size(0);
     ci_msg.set_xcl_api(0);
+    mCore = nullptr;
+    mSWSch = nullptr;
 
     ci_buf = malloc(ci_msg.ByteSize());
     ri_msg.set_size(0);
@@ -79,6 +84,7 @@ namespace xclcpuemhal2 {
     mCloseAll = false;
     bUnified = _unified;
     bXPR = _xpr;
+    mIsKdsSwEmu = (xclemulation::is_sw_emulation()) ? xrt_core::config::get_flag_kds_sw_emu() : false;
   }
  
   size_t CpuemShim::alloc_void(size_t new_size) 
@@ -618,7 +624,16 @@ namespace xclcpuemhal2 {
         delete []memTopology;
         memTopology = NULL;
       }
-
+      
+      //check xclbin version with vivado tool version
+      xclemulation::checkXclibinVersionWithTool(header);     
+      
+      if (mIsKdsSwEmu)
+      {
+        mCore = new exec_core;
+        mSWSch = new SWScheduler(this);
+        mSWSch->init_scheduler_thread();
+      }
       bool ack = true;
       bool verbose = false;
       if(mLogStream.is_open())
@@ -809,13 +824,13 @@ namespace xclcpuemhal2 {
 
     if(space != XCL_ADDR_KERNEL_CTRL)
     {
-      if (mLogStream.is_open()) mLogStream << "xclWrite called with xclAddressSpace != XCL_ADDR_KERNEL_CTRL " << std::endl;
+      if (mLogStream.is_open()) mLogStream << "xclRead called with xclAddressSpace != XCL_ADDR_KERNEL_CTRL " << std::endl;
       PRINTENDFUNC;
       return -1;
     }
     if(size!=4)
     {
-      if (mLogStream.is_open()) mLogStream << "xclWrite called with size != 4 " << std::endl;
+      if (mLogStream.is_open()) mLogStream << "xclRead called with size != 4 " << std::endl;
       PRINTENDFUNC;
       return -1;
     }
@@ -968,8 +983,18 @@ namespace xclcpuemhal2 {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
-    if(!sock)
+    if (!sock) {
+      PRINTENDFUNC
+      if (mIsKdsSwEmu && mSWSch && mCore)
+      {
+        mSWSch->fini_scheduler_thread();
+        delete mCore;
+        mCore = nullptr;
+        delete mSWSch;
+        mSWSch = nullptr;
+      }
       return;
+    }
     
     std::string socketName = sock->get_name();
     if(socketName.empty() == false)// device is active if socketName is non-empty
@@ -991,6 +1016,14 @@ namespace xclcpuemhal2 {
     {
       if( xclemulation::config::getInstance()->isKeepRunDirEnabled() == false)
         systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::REMOVE);
+      if (mIsKdsSwEmu && mSWSch && mCore)
+      {
+        mSWSch->fini_scheduler_thread();
+        delete mCore;
+        mCore = nullptr;
+        delete mSWSch;
+        mSWSch = nullptr;
+      }
       return;
     }
     for (auto& it: mFdToFileNameMap)
@@ -1019,7 +1052,16 @@ namespace xclcpuemhal2 {
     
     systemUtil::makeSystemCall(socketName, systemUtil::systemOperation::REMOVE);
     delete sock;
-    sock = NULL;
+    sock = nullptr;
+    PRINTENDFUNC;
+    if (mIsKdsSwEmu && mSWSch && mCore)
+    {
+      mSWSch->fini_scheduler_thread();
+      delete mCore;
+      mCore = nullptr;
+      delete mSWSch;
+      mSWSch = nullptr;
+    }
     //clean up directories which are created inside the driver
     if( xclemulation::config::getInstance()->isKeepRunDirEnabled() == false)
     {
@@ -1029,12 +1071,17 @@ namespace xclcpuemhal2 {
     }
     google::protobuf::ShutdownProtobufLibrary();
   }
-
-
-  
-  
+    
   CpuemShim::~CpuemShim() 
   {
+    if (mIsKdsSwEmu && mSWSch && mCore)
+    {
+      mSWSch->fini_scheduler_thread();
+      delete mCore;
+      mCore = nullptr;
+      delete mSWSch;
+      mSWSch = nullptr;
+    }
     if (mLogStream.is_open()) 
     {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
@@ -1240,6 +1287,7 @@ unsigned int CpuemShim::xclImportBO(int boGlobalHandle, unsigned flags)
       std::cout<<"ERROR HERE in importBO "<<std::endl;
       return -1;
     }
+    mImportedBOs.insert(importedBo);
     bo->fd = boGlobalHandle;
     bool ack;
     xclImportBO_RPC_CALL(xclImportBO,fileName,bo->base,size);
@@ -1744,17 +1792,17 @@ int CpuemShim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool 
 */
 int CpuemShim::xclExecWait(int timeoutMilliSec)
 {
-  unsigned int tSec = 0;
-  static bool bConfig = true;
-  tSec = timeoutMilliSec / 1000;
-  if (bConfig)
-  {
-    tSec = timeoutMilliSec / 100;
-    bConfig = false;
-  }
-  sleep(tSec);
+  //unsigned int tSec = 0;
+  //static bool bConfig = true;
+  //tSec = timeoutMilliSec / 1000;
+  //if (bConfig)
+  //{
+  //  tSec = timeoutMilliSec / 1000;
+  //  bConfig = false;
+  //}
+  //sleep(tSec);
   //PRINTENDFUNC;
-  return 0;
+  return 1;
 }
 
 /*
@@ -1762,7 +1810,23 @@ int CpuemShim::xclExecWait(int timeoutMilliSec)
 */
 int CpuemShim::xclExecBuf(unsigned int cmdBO)
 {
-  return 0;
+  if (mLogStream.is_open())
+  {
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << cmdBO << std::endl;
+  }
+
+  if (!mIsKdsSwEmu)
+    return 0;
+
+  xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(cmdBO);
+  if (!mSWSch || !bo)
+  {
+    PRINTENDFUNC;
+    return -1;
+  }
+  int ret = mSWSch->add_exec_buffer(mCore, bo);
+  PRINTENDFUNC;
+  return ret;
 }
 
 /*

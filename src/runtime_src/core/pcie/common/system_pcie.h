@@ -26,9 +26,6 @@ class system_pcie : public system
 public:
   void
   get_devices(boost::property_tree::ptree& pt) const;
-
-  uint16_t
-  bdf2index(const std::string& bdfStr) const;
 };
 
 } // xrt_core

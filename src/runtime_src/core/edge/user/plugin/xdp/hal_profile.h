@@ -1,3 +1,7 @@
+/* HAL profiling is not yet supported for Edge and no callbacks are added to Edge SHIM.
+ * The following implementation is targeted for future use
+ */
+
 #ifndef XDP_PROFILE_HAL_PLUGIN_H_
 #define XDP_PROFILE_HAL_PLUGIN_H_
 

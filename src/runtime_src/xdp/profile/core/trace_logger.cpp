@@ -19,7 +19,7 @@
 #include "xdp/profile/profile_config.h"
 #include "xdp/profile/collection/results.h"
 #include "xdp/profile/collection/counters.h"
-#include "xdp/profile/device/trace_parser.h"
+#include "xdp/profile/core/trace_parser.h"
 #include "xdp/profile/writer/base_profile.h"
 #include "xdp/profile/writer/base_trace.h"
 
@@ -298,10 +298,16 @@ namespace xdp {
     double timeStamp = (timeStampMsec > 0.0) ? timeStampMsec :
       mPluginHandle->getTraceTime();
 
-    if (mGetFirstCUTimestamp && (objStage == RTUtil::START)) {
-      auto tp = mTraceParserHandle;
+    // Log first start and last end events
+    auto tp = mTraceParserHandle;
+    if (mGetFirstCUTimestamp && (objStage == RTUtil::START) && (tp != nullptr)) {
       tp->setStartTimeMsec(timeStamp);
+      tp->setFirstKernelStartTimeMsec(timeStamp);
       mGetFirstCUTimestamp = false;
+    }
+    if (objStage == RTUtil::END && (tp != nullptr)) {
+      // Since we don't know which one will be the last end, always log it
+      tp->setLastKernelEndTimeMsec(timeStamp);
     }
 
     std::lock_guard<std::mutex> lock(mLogMutex);

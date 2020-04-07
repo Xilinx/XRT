@@ -1,4 +1,4 @@
-#include "plugin/xdp/hal_api_interface.h"
+#include "hal_api_interface.h"
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
 

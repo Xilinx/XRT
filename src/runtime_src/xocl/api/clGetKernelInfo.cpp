@@ -26,6 +26,7 @@
 #include "xocl/xclbin/xclbin.h"
 #include "detail/kernel.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 #include <CL/opencl.h>
 
 #ifdef _WIN32
@@ -114,6 +115,7 @@ clGetKernelInfo(cl_kernel        kernel,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clGetKernelInfo
       (kernel,param_name,param_value_size,param_value,param_value_size_ret);
   }

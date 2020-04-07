@@ -27,6 +27,7 @@
 
 #include "api.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 #include <CL/opencl.h>
 #include <cstdlib>
 #include <mutex>
@@ -152,6 +153,7 @@ clCreatePipe(cl_context                context,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clCreatePipe
       (context,flags,pipe_packet_size,pipe_max_packets,properties,errcode_ret);
   }

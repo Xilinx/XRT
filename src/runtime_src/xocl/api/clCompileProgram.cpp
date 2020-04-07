@@ -22,6 +22,7 @@
 #include "detail/device.h"
 #include "api.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 #include <CL/cl.h>
 
 namespace xocl {
@@ -101,6 +102,7 @@ clCompileProgram(cl_program            program ,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clCompileProgram
       (program, num_devices, device_list, options, num_input_headers, input_headers,
        header_include_names, pfn_notify, user_data);

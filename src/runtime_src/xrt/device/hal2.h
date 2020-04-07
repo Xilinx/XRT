@@ -19,7 +19,6 @@
 
 #include "xrt/device/hal.h"
 #include "xrt/device/halops2.h"
-#include "xrt/device/PMDOperations.h"
 
 #include "ert.h"
 
@@ -108,12 +107,7 @@ class device : public xrt::hal::device
   getDeviceInfo(hal2::device_info *info)  const
   {
     std::memset(info,0,sizeof(hal2::device_info));
-#ifdef PMD_OCL
-    assert(0);
-    return 0;
-#else
     return m_ops->mGetDeviceInfo(m_handle,info);
-#endif
   }
 
   task::queue&
@@ -188,18 +182,14 @@ public:
   setup();
 
   virtual bool
-  open(const char* log, hal::verbosity_level level)
+  open()
   {
     bool retval = false;
     if (m_handle)
       throw std::runtime_error("device is already open");
-#ifdef PMD_OCL
-    assert(0);
-#else
-    m_handle=m_ops->mOpen(m_idx,log,static_cast<hal2::verbosity_level>(level));
+    m_handle=m_ops->mOpen(m_idx, nullptr, XCL_QUIET);
     if (m_handle)
       retval = true;
-#endif
     getDeviceInfo(&m_devinfo);
     return retval;
   }
@@ -261,7 +251,6 @@ public:
   virtual size_t
   getAlignment() const
   {
-    openOrError();
     return m_devinfo.mDataAlignment;
   }
 
@@ -372,6 +361,12 @@ public:
 
   virtual int
   pollStreams(hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout);
+
+  virtual int
+  pollStream(hal::StreamHandle stream, hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout);
+
+  virtual int
+  setStreamOpt(hal::StreamHandle stream, int type, uint32_t val);
 
 public:
   virtual bool
@@ -697,6 +692,16 @@ public:
     if(!m_ops->mReadTraceData)
       return hal::operations_result<int>();
     return m_ops->mReadTraceData(m_handle, traceBuf, traceBufSz, numSamples, ipBaseAddress, wordsPerSample);
+  }
+
+  hal::operations_result<void>
+  getDebugIpLayout(char* buffer, size_t size, size_t* size_ret)
+  {
+    if(!m_ops->mGetDebugIpLayout) {
+      return hal::operations_result<void>();
+    }
+    m_ops->mGetDebugIpLayout(m_handle, buffer, size, size_ret);
+    return hal::operations_result<void>(0);
   }
 
 

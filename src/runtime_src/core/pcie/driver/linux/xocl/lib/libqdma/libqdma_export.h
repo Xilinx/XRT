@@ -230,6 +230,8 @@ struct qdma_dev_conf {
 	char bar_num_bypass;
 	/** STM bar, PF only */
 	char bar_num_stm;
+	/** STM bar register base */
+	unsigned int stm_reg_base;
 	/** user bar, PF only */
 	unsigned int qsets_base;
 	/** device index */
@@ -1037,7 +1039,7 @@ ssize_t qdma_request_submit(unsigned long dev_hndl, unsigned long qhndl,
 #endif
 
 int qdma_request_cancel(unsigned long dev_hndl, unsigned long qhndl,
-			struct qdma_request *req);
+			struct qdma_request *req, unsigned int count);
 
 /*****************************************************************************/
 /**
@@ -1053,7 +1055,7 @@ int qdma_request_cancel(unsigned long dev_hndl, unsigned long qhndl,
  * @return	<0: error
  *****************************************************************************/
 ssize_t qdma_batch_request_submit(unsigned long dev_hndl, unsigned long qhndl,
-			  unsigned long count, struct qdma_request **reqv);
+			  unsigned long count, struct qdma_request *reqlisvt);
 
 /*****************************************************************************/
 /**

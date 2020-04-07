@@ -43,8 +43,10 @@ namespace xrt_core {
           }
       }
       ~AlignedAllocator() {
-          if (mBuffer)
-              free(mBuffer);
+        if (mBuffer) {
+          xrt_core::aligned_ptr_deleter pDel;
+          pDel(mBuffer);
+        }
       }
   };
 }

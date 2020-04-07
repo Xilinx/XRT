@@ -530,17 +530,19 @@ out:
 	return ret;
 }
 
-static void mb_reset(struct platform_device *pdev)
+static int mb_reset(struct platform_device *pdev)
 {
 	struct xocl_mb *mb;
 
 	xocl_info(&pdev->dev, "Reset Microblaze...");
 	mb = platform_get_drvdata(pdev);
 	if (!mb)
-		return;
+		return -EINVAL;
 
 	mb_stop(mb);
 	mb_start(mb);
+
+	return 0;
 }
 
 static int load_mgmt_image(struct platform_device *pdev, const char *image,

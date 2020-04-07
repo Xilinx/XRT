@@ -31,6 +31,7 @@ namespace xclcpuemhal2 {
   const unsigned CpuemShim::CONTROL_AP_START = 1;
   const unsigned CpuemShim::CONTROL_AP_DONE  = 2;
   const unsigned CpuemShim::CONTROL_AP_IDLE  = 4;
+  const unsigned CpuemShim::CONTROL_AP_CONTINUE = 0x10;
   std::map<std::string, std::string> CpuemShim::mEnvironmentNameValueMap(xclemulation::getEnvironmentByReadingIni());
 #define PRINTENDFUNC if (mLogStream.is_open()) mLogStream << __func__ << " ended " << std::endl;
  
@@ -44,14 +45,16 @@ namespace xclcpuemhal2 {
   {
     binaryCounter = 0;
     mReqCounter = 0;
-    sock = NULL;
+    sock = nullptr;
     ci_msg.set_size(0);
     ci_msg.set_xcl_api(0);
+    mCore = nullptr;
+    mSWSch = nullptr;
 
     ci_buf = malloc(ci_msg.ByteSize());
     ri_msg.set_size(0);
     ri_buf = malloc(ri_msg.ByteSize());
-    buf = NULL;
+    buf = nullptr;
     buf_size = 0;
     
     deviceName = "device"+std::to_string(deviceIndex); 
@@ -69,7 +72,7 @@ namespace xclcpuemhal2 {
     char* pack_size = getenv("SW_EMU_PACKET_SIZE");
     if(pack_size)
     {
-      unsigned int messageSize = strtoll(pack_size,NULL,0);
+      unsigned int messageSize = strtoll(pack_size,nullptr,0);
       message_size = messageSize;
     }
     else
@@ -79,6 +82,7 @@ namespace xclcpuemhal2 {
     mCloseAll = false;
     bUnified = _unified;
     bXPR = _xpr;
+    mIsKdsSwEmu = (xclemulation::is_sw_emulation()) ? xrt_core::config::get_flag_kds_sw_emu() : false;
   }
  
   size_t CpuemShim::alloc_void(size_t new_size) 
@@ -380,8 +384,7 @@ namespace xclcpuemhal2 {
           {
             xilinxInstall = std::string(installEnvvar);
           }
-        }       
-        
+        }
         char *xilinxVivadoEnvvar = getenv("XILINX_VIVADO");
         if(xilinxVivadoEnvvar)
         {
@@ -400,6 +403,12 @@ namespace xclcpuemhal2 {
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "lib"   + DS + "csim";
           setenv("LD_LIBRARY_PATH",sLdLibs.c_str(),true);
         }
+
+        if (xilinxInstall.empty()) {
+           std::cerr << "ERROR : [SW-EM 10] Please make sure that the XILINX_VITIS environment variable is set correctly" << std::endl;
+           exit(1);
+        }
+
         std::string modelDirectory("");
         modelDirectory = xilinxInstall + "/data/emulation/unified/cpu_em/zynqu/model/genericpciemodel";  
 
@@ -408,7 +417,21 @@ namespace xclcpuemhal2 {
 #elif defined(__arm__)
   modelDirectory = xilinxInstall + "/data/emulation/unified/cpu_em/zynq/model/genericpciemodel";
 #endif
-        const char* childArgv[6] = { NULL, NULL, NULL, NULL, NULL, NULL } ;
+
+        FILE *filep;
+        if ((filep = fopen(modelDirectory.c_str(), "r")) != nullptr)
+        {
+          // file exists
+          fclose(filep);
+        }
+        else
+        {
+          //File not found, no memory leak since 'file' == NULL
+          std::cerr << "ERROR : [SW-EM 11] Unable to launch Device process, Please make sure that the XILINX_VITIS environment variable is set correctly" << std::endl;
+          exit(1);
+        }
+
+        const char* childArgv[6] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr } ;
         childArgv[0] = modelDirectory.c_str() ;
 
         // If we determined this should be debuggable, pass the proper
@@ -427,7 +450,7 @@ namespace xclcpuemhal2 {
         }
         int r = execl(modelDirectory.c_str(), childArgv[0], childArgv[1],
             childArgv[2], childArgv[3], childArgv[4], childArgv[5],
-            NULL) ;
+          nullptr) ;
 
         //fclose (stdout);
         if(r == -1){std::cerr << "FATAL ERROR : child process did not launch : " << modelDirectory  << std::endl; exit(1);}
@@ -452,7 +475,7 @@ namespace xclcpuemhal2 {
     //  files.  Also, the GUI can overwrite this by setting an
     //  environment variable
     bool debuggable = false ;
-    if (getenv("ENABLE_KERNEL_DEBUG") != NULL &&
+    if (getenv("ENABLE_KERNEL_DEBUG") != nullptr &&
 	strcmp("true", getenv("ENABLE_KERNEL_DEBUG")) == 0)
     {
       char* xclbininmemory = 
@@ -526,7 +549,7 @@ namespace xclcpuemhal2 {
         unsigned int counter = 0;
         while( !tempfilecreated ) {
           FILE *fp = fopen(tempdlopenfilename.c_str(),"rb");
-          if(fp==NULL)
+          if(fp== nullptr)
           {
             tempfilecreated = true;
           }
@@ -599,7 +622,12 @@ namespace xclcpuemhal2 {
         delete []memTopology;
         memTopology = NULL;
       }
-
+      if (mIsKdsSwEmu)
+      {
+        mCore = new exec_core;
+        mSWSch = new SWScheduler(this);
+        mSWSch->init_scheduler_thread();
+      }
       bool ack = true;
       bool verbose = false;
       if(mLogStream.is_open())
@@ -660,9 +688,9 @@ namespace xclcpuemhal2 {
     //   Memory Manager Has allocated aligned address, 
 	//   size contains alignement + original size requested.
 	//   We are passing original size to device process for exact stats.	
-    bool p2pBuffer = false;
+    bool noHostMemory = false;
     std::string sFileName("");
-    xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer,result,requestedSize,p2pBuffer);
+    xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer,result,requestedSize,noHostMemory);
     if(!ack)
     {
       PRINTENDFUNC;
@@ -672,7 +700,7 @@ namespace xclcpuemhal2 {
     return result;
   }
   
-  uint64_t CpuemShim::xclAllocDeviceBuffer2(size_t& size, xclMemoryDomains domain, unsigned flags,bool p2pBuffer,std::string &sFileName)
+  uint64_t CpuemShim::xclAllocDeviceBuffer2(size_t& size, xclMemoryDomains domain, unsigned flags,bool noHostMemory,std::string &sFileName)
   {
     if (mLogStream.is_open()) {
       mLogStream << __func__ <<" , "<<std::this_thread::get_id() << ", " << size <<", "<<domain<<", "<< flags <<std::endl;
@@ -697,11 +725,20 @@ namespace xclcpuemhal2 {
     }
 
     uint64_t result = mDDRMemoryManager[flags]->alloc(size);
+
+    if (result == xclemulation::MemoryManager::mNull) {  
+      auto ddrSize = mDDRMemoryManager[flags]->size();
+      std::string ddrSizeStr = std::to_string(ddrSize);
+      std::string initMsg = "ERROR: [SW-EM 12] OutOfMemoryError : Requested Global memory size exceeds DDR limit " + ddrSizeStr + " Bytes";
+      std::cout << initMsg << std::endl;      
+      return result;
+    }
+
     bool ack = false;
     //   Memory Manager Has allocated aligned address, 
 	//   size contains alignement + original size requested.
 	//   We are passing original size to device process for exact stats.	
-    xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer,result,size,p2pBuffer);
+    xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer,result,size,noHostMemory);
     
     if(!ack)
     {
@@ -781,13 +818,13 @@ namespace xclcpuemhal2 {
 
     if(space != XCL_ADDR_KERNEL_CTRL)
     {
-      if (mLogStream.is_open()) mLogStream << "xclWrite called with xclAddressSpace != XCL_ADDR_KERNEL_CTRL " << std::endl;
+      if (mLogStream.is_open()) mLogStream << "xclRead called with xclAddressSpace != XCL_ADDR_KERNEL_CTRL " << std::endl;
       PRINTENDFUNC;
       return -1;
     }
     if(size!=4)
     {
-      if (mLogStream.is_open()) mLogStream << "xclWrite called with size != 4 " << std::endl;
+      if (mLogStream.is_open()) mLogStream << "xclRead called with size != 4 " << std::endl;
       PRINTENDFUNC;
       return -1;
     }
@@ -940,8 +977,18 @@ namespace xclcpuemhal2 {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
-    if(!sock)
+    if (!sock) {
+      PRINTENDFUNC
+      if (mIsKdsSwEmu && mSWSch && mCore)
+      {
+        mSWSch->fini_scheduler_thread();
+        delete mCore;
+        mCore = nullptr;
+        delete mSWSch;
+        mSWSch = nullptr;
+      }
       return;
+    }
     
     std::string socketName = sock->get_name();
     if(socketName.empty() == false)// device is active if socketName is non-empty
@@ -963,6 +1010,14 @@ namespace xclcpuemhal2 {
     {
       if( xclemulation::config::getInstance()->isKeepRunDirEnabled() == false)
         systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::REMOVE);
+      if (mIsKdsSwEmu && mSWSch && mCore)
+      {
+        mSWSch->fini_scheduler_thread();
+        delete mCore;
+        mCore = nullptr;
+        delete mSWSch;
+        mSWSch = nullptr;
+      }
       return;
     }
     for (auto& it: mFdToFileNameMap)
@@ -991,7 +1046,16 @@ namespace xclcpuemhal2 {
     
     systemUtil::makeSystemCall(socketName, systemUtil::systemOperation::REMOVE);
     delete sock;
-    sock = NULL;
+    sock = nullptr;
+    PRINTENDFUNC;
+    if (mIsKdsSwEmu && mSWSch && mCore)
+    {
+      mSWSch->fini_scheduler_thread();
+      delete mCore;
+      mCore = nullptr;
+      delete mSWSch;
+      mSWSch = nullptr;
+    }
     //clean up directories which are created inside the driver
     if( xclemulation::config::getInstance()->isKeepRunDirEnabled() == false)
     {
@@ -1001,12 +1065,17 @@ namespace xclcpuemhal2 {
     }
     google::protobuf::ShutdownProtobufLibrary();
   }
-
-
-  
-  
+    
   CpuemShim::~CpuemShim() 
   {
+    if (mIsKdsSwEmu && mSWSch && mCore)
+    {
+      mSWSch->fini_scheduler_thread();
+      delete mCore;
+      mCore = nullptr;
+      delete mSWSch;
+      mSWSch = nullptr;
+    }
     if (mLogStream.is_open()) 
     {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
@@ -1073,7 +1142,7 @@ int CpuemShim::xclGetBOProperties(unsigned int boHandle, xclBOProperties *proper
 /*****************************************************************************************/
 
 /******************************** xclAllocBO *********************************************/
-int CpuemShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
+uint64_t CpuemShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
 {
   size_t size = info->size;
   unsigned ddr = xclemulation::xocl_bo_ddr_idx(info->flags);
@@ -1088,20 +1157,26 @@ int CpuemShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
     ddr = 0;
   }
   
-  struct xclemulation::drm_xocl_bo *xobj = new xclemulation::drm_xocl_bo;
+  //struct xclemulation::drm_xocl_bo *xobj = new xclemulation::drm_xocl_bo;
+  auto xobj = std::make_unique<xclemulation::drm_xocl_bo>();
   xobj->flags=info->flags;
   /* check whether buffer is p2p or not*/
-  bool p2pBuffer = xocl_bo_p2p(xobj); 
+  bool noHostMemory = xclemulation::no_host_memory(xobj.get());
   std::string sFileName("");
-  xobj->base = xclAllocDeviceBuffer2(size,XCL_MEM_DEVICE_RAM,ddr,p2pBuffer,sFileName);
+  xobj->base = xclAllocDeviceBuffer2(size,XCL_MEM_DEVICE_RAM,ddr,noHostMemory,sFileName);
   xobj->filename = sFileName;
   xobj->size = size;
-  xobj->userptr = NULL;
-  xobj->buf = NULL;
+  xobj->userptr = nullptr;
+  xobj->buf = nullptr;
   xobj->fd = -1;
 
+  if (xobj->base == xclemulation::MemoryManager::mNull)
+  { 
+    return xclemulation::MemoryManager::mNull;
+  }
+
   info->handle = mBufferCount;
-  mXoclObjMap[mBufferCount++] = xobj;
+  mXoclObjMap[mBufferCount++] = xobj.release();
   return 0;
 }
 
@@ -1113,7 +1188,7 @@ unsigned int CpuemShim::xclAllocBO(size_t size, int unused, unsigned flags)
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << size << std::dec << " , "<< unused <<" , "<< flags << std::endl;
   }
   xclemulation::xocl_create_bo info = {size, mNullBO, flags};
-  int result = xoclCreateBo(&info);
+  uint64_t result = xoclCreateBo(&info);
   PRINTENDFUNC;
   return result ? mNullBO : info.handle;
 }
@@ -1128,7 +1203,7 @@ unsigned int CpuemShim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned f
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << userptr <<", " << std::hex << size << std::dec <<" , "<< flags << std::endl;
   }
   xclemulation::xocl_create_bo info = {size, mNullBO, flags};
-  int result = xoclCreateBo(&info);
+  uint64_t result = xoclCreateBo(&info);
   xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(info.handle);
   if (bo) {
     bo->userptr = userptr;
@@ -1206,6 +1281,7 @@ unsigned int CpuemShim::xclImportBO(int boGlobalHandle, unsigned flags)
       std::cout<<"ERROR HERE in importBO "<<std::endl;
       return -1;
     }
+    mImportedBOs.insert(importedBo);
     bo->fd = boGlobalHandle;
     bool ack;
     xclImportBO_RPC_CALL(xclImportBO,fileName,bo->base,size);
@@ -1317,7 +1393,7 @@ int CpuemShim::xclUnmapBO(unsigned int boHandle, void* addr)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
   auto bo = xclGetBoByHandle(boHandle);
-  return munmap(addr,bo->size);
+  return bo ? munmap(addr,bo->size) : -1;
 }
 
 /**************************************************************************************/
@@ -1710,17 +1786,17 @@ int CpuemShim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool 
 */
 int CpuemShim::xclExecWait(int timeoutMilliSec)
 {
-  unsigned int tSec = 0;
-  static bool bConfig = true;
-  tSec = timeoutMilliSec / 1000;
-  if (bConfig)
-  {
-    tSec = timeoutMilliSec / 100;
-    bConfig = false;
-  }
-  sleep(tSec);
+  //unsigned int tSec = 0;
+  //static bool bConfig = true;
+  //tSec = timeoutMilliSec / 1000;
+  //if (bConfig)
+  //{
+  //  tSec = timeoutMilliSec / 1000;
+  //  bConfig = false;
+  //}
+  //sleep(tSec);
   //PRINTENDFUNC;
-  return 0;
+  return 1;
 }
 
 /*
@@ -1728,7 +1804,23 @@ int CpuemShim::xclExecWait(int timeoutMilliSec)
 */
 int CpuemShim::xclExecBuf(unsigned int cmdBO)
 {
-  return 0;
+  if (mLogStream.is_open())
+  {
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << cmdBO << std::endl;
+  }
+
+  if (!mIsKdsSwEmu)
+    return 0;
+
+  xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(cmdBO);
+  if (!mSWSch || !bo)
+  {
+    PRINTENDFUNC;
+    return -1;
+  }
+  int ret = mSWSch->add_exec_buffer(mCore, bo);
+  PRINTENDFUNC;
+  return ret;
 }
 
 /*

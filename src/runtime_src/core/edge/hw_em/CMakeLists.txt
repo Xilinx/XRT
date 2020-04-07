@@ -19,10 +19,6 @@ file(GLOB EM_SRC_FILES
   "${EM_SRC_DIR}/*.cpp"
   "${COMMON_SRC_DIR}/common/*.h"
   "${COMMON_SRC_DIR}/common/*.cpp"
-  "${COMMON_SRC_DIR}/../common/system.h"
-  "${COMMON_SRC_DIR}/../common/system.cpp"
-  "${COMMON_SRC_DIR}/../common/device.cpp"
-  "${COMMON_SRC_DIR}/../common/device.h"
   )
 
 add_definitions(-DXCLHAL_MAJOR_VER=1 -DXCLHAL_MINOR_VER=0 -D__HWEM__)
@@ -44,4 +40,4 @@ target_link_libraries(xrt_hwemu
   rt
   )
 
-install (TARGETS xrt_hwemu LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
+install (TARGETS xrt_hwemu LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR})

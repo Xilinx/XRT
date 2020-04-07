@@ -24,6 +24,7 @@
 #include "detail/program.h"
 #include "detail/device.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 #include <CL/opencl.h>
 
 namespace xocl {
@@ -103,6 +104,7 @@ clGetProgramBuildInfo(cl_program            program,
 
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clGetProgramBuildInfo
       (program, device,param_name, param_value_size, param_value, param_value_size_ret);
   }
