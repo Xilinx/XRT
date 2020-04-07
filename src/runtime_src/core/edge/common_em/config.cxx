@@ -16,6 +16,12 @@
 
 #include "config.h"
 #include "core/common/config_reader.h"
+#include <errno.h>
+#include <unistd.h>
+#include <string>
+#include <iostream>
+#include <sstream>
+#include <iomanip>
 
 namespace xclemulation{
 
@@ -66,6 +72,9 @@ namespace xclemulation{
     mServerPort = 0;
     mKeepRunDir=false;
     mLauncherArgs = "";
+    mSystemDPA = true;
+    mLegacyErt = ERTMODE::NONE;
+    mCuBaseAddrForce=-1;
   }
 
   static bool getBoolValue(std::string& value,bool defaultValue)
@@ -136,6 +145,16 @@ namespace xclemulation{
       {
         setDontRun(getBoolValue(value,false));
       }
+      else if (name == "ENABLE_GMEM_LATENCY" || name == "enable_gmem_latency") {
+        //This is then new INI option that sets the ENV HW_EM_DISABLE_LATENCY to appropriate value before 
+        //launching simulation
+        bool val = getBoolValue(value, true);
+        if (val) {
+          setenv("HW_EM_DISABLE_LATENCY", "false", true);
+        } else {
+          setenv("HW_EM_DISABLE_LATENCY", "true", true);
+        }
+      }
       else if(name == "enable_shared_memory")
       {
         //this is temporary solution to use legacy DDR model in emulation. We should remove this switch Once all issues in latest model is fixed
@@ -148,6 +167,9 @@ namespace xclemulation{
       {
         setKeepRunDir(getBoolValue(value,false));
       }
+      else if (name == "enable_prep_target" || name == "enable_debug" || name == "aie_sim_options") {
+        //Do nothing: Added to bypass the WARNING that is issued below stating "invalid sdaccel.ini option" 
+      } 
       else if(name == "sim_dir")
       {
         setSimDir(value);
@@ -212,6 +234,19 @@ namespace xclemulation{
       else if(name == "aliveness_message_interval")
       {
         //Nothing to do
+      }
+      else if(name == "system_dpa")
+      {
+        setSystemDPA(getBoolValue(value,true));
+      }
+      else if(name == "legacy_ert")
+      {
+        if (boost::iequals(value,"false" ))
+          setLegacyErt(ERTMODE::UPDATED);
+        else if(boost::iequals(value,"true"))
+          setLegacyErt(ERTMODE::LEGACY);
+      } else if (name=="cu_base_addr_force") {
+          mCuBaseAddrForce= strtoll(value.c_str(),NULL,0);
       }
       else if(name.find("Debug.") == std::string::npos)
       {
@@ -296,6 +331,12 @@ namespace xclemulation{
       }
     }
     return false;
+  }
+
+  bool is_sw_emulation()
+  {    
+    static auto xem = std::getenv("XCL_EMULATION_MODE");  
+    return xem ? (!std::strcmp(xem, "sw_emu") ?  true : false): false;
   }
 
   std::string getEmDebugLogFile()
