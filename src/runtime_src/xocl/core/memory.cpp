@@ -178,10 +178,7 @@ get_buffer_object(device* device)
 
   // Get memory bank index if assigned, -1 if not assigned, which will trigger
   // allocation error when default allocation is disabled
-  int grpidx = get_groupidx_nolock(device);
-  if (grpidx < 0) {
-    get_memidx_nolock(device); // computes m_memidx
-  }
+  get_memidx_nolock(device); // computes m_memidx
   auto boh = (m_bomap[device] = device->allocate_buffer_object(this,m_memidx));
 
   // To be deleted when strict bank rules are enforced
@@ -302,48 +299,28 @@ get_groupidx_nolock(const device* dev) const
 {
   int cuidx = -1;
   int argidx = -1;
-  int grpidx = -1;
 
-  // already initialized
-  if (m_memidx>=0)
-    return m_memidx;
-  if (m_flags & CL_MEM_REGISTER_MAP)
-    return -1;
-  if (auto parent = get_sub_buffer_parent()) {
-    m_memidx = parent->get_memidx();
-    if (m_memidx>=0)
-      return m_memidx;
-  }
-  // ext assigned
-  m_memidx = get_ext_memidx_nolock(dev->get_xclbin());
-  if (m_memidx>=0) {
-    /* Set the flag for bank is specified in the flag */
-    memidx_type_bank = true;
-    return m_memidx;
-  }
   if (m_karg.empty())
     return -1;
 
-  /* TODO : SAIF Find a better way to get the cu index */
+  /* TODO : Find a better way to get the cu index */
   for (auto& karg : m_karg) {
     auto kernel = karg.first;
     auto arg = karg.second;
-    if (get_uid() == arg) {
+    if (kernel) {
         argidx = arg;
         cuidx = kernel->get_uid();
         break;
     }
   }
+  
   if ((cuidx == -1) || (argidx == -1))
       return -1;
 
-  grpidx = dev->get_mem_groupidx(cuidx, argidx);
-  if (grpidx >= 0) // Valid Group Index
-      m_memidx = grpidx;
-
-  return grpidx;
+  return dev->get_mem_groupidx(cuidx, argidx);
 }
 
+// private
 memory::memidx_type
 memory::
 get_memidx_nolock(const device* dev) const
@@ -361,6 +338,20 @@ get_memidx_nolock(const device* dev) const
     if (m_memidx>=0)
       return m_memidx;
   }
+
+  // ext assigned
+  m_memidx = get_ext_memidx_nolock(dev->get_xclbin());
+
+  if (m_memidx>=0) {
+    /* Set the flag for bank is specified in the flag */
+    memidx_type_bank = true;
+    return m_memidx;
+  }
+
+  /* Get the group index if available */
+  m_memidx = get_groupidx_nolock(dev);
+  if (m_memidx >= 0)
+      return m_memidx;
 
   // unique CU connectivity
   m_memidx = dev->get_cu_memidx();

@@ -363,7 +363,7 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 		xobj->mm_node, xobj->mm_node->start,
 		xobj->mm_node->size);
 
-	xocl_mm_update_usage_stat(drm_p, ddr, xobj->base.size, 1);
+	xocl_mm_update_usage_stat(drm_p, xobj->mm_node->start, xobj->base.size, 1);
 	mutex_unlock(&drm_p->mm_lock);
 	/* Record the DDR we allocated the buffer on */
 	xobj->mem_idx = ddr;

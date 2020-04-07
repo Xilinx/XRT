@@ -126,7 +126,7 @@ void xocl_drm_free_bo(struct drm_gem_object *obj);
 
 void xocl_mm_get_usage_stat(struct xocl_drm *drm_p, u32 ddr,
         struct drm_xocl_mm_stat *pstat);
-void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u32 ddr,
+void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u64 addr,
         u64 size, int count);
 int xocl_mm_insert_node_range(struct xocl_drm *drm_p, unsigned user_flags,
                     struct drm_mm_node *node, u64 size, u32 *grp_id);

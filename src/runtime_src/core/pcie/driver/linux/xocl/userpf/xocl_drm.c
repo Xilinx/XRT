@@ -499,55 +499,113 @@ void xocl_mm_get_usage_stat(struct xocl_drm *drm_p, u32 ddr,
 		drm_p->mm_usage_stat[ddr]->bo_count : 0;
 }
 
-void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u32 ddr,
+int get_start_bank_id(struct xocl_drm *drm_p, u64 addr)
+{
+    size_t bank_size = 0;
+	uint64_t start_addr = 0;
+    struct xocl_mem_bank *mem_bank;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
+    struct xocl_mm_wrapper *wrapper;
+#else
+    int i;
+#endif
+    
+    mem_bank = drm_p->m_connect->mem_bank;
+    /* As we support only equal size bank */
+    bank_size = mem_bank->m_bank[0]->size;
+    start_addr = (addr + (uintptr_t)(bank_size - 1)) & ~((uintptr_t)(bank_size - 1));
+    
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
+    hash_for_each_possible(drm_p->mm_range, wrapper, node, start_addr) {
+        if (!wrapper)
+            continue;
+
+        if (wrapper->start_addr == start_addr) {
+            return wrapper->ddr;
+        }
+    }
+#else
+    for (i=0; i<mem_bank->b_count; i++) {
+        if (mem_bank->m_bank[i].start_addr == start_addr)
+            return i;
+    }
+#endif
+    return -EINVAL;
+}
+
+void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u64 addr,
 	u64 size, int count)
 {
-	BUG_ON(!drm_p->mm_usage_stat[ddr]);
+    int ddr = get_start_bank_id(drm_p, addr);
+    struct xocl_mem_bank *mem_bank;
+    u64 bank_addr = 0;
+    u64 alloc_size = 0;
+    int64_t total_size = size;
 
-	drm_p->mm_usage_stat[ddr]->memory_usage += (count > 0) ? size : -size;
-	drm_p->mm_usage_stat[ddr]->bo_count += count;
+    BUG_ON(!drm_p->mm_usage_stat[ddr]);
+
+    mem_bank = drm_p->m_connect->mem_bank;
+    bank_addr = addr;
+    while (total_size >= 0) {
+        alloc_size = mem_bank->m_bank[ddr]->end_addr - bank_addr;
+        drm_p->mm_usage_stat[ddr]->memory_usage += (count > 0) ? alloc_size : -alloc_size;
+        drm_p->mm_usage_stat[ddr]->bo_count += count;
+        ddr++;
+        if (mem_bank->m_bank[ddr] == NULL)
+            break;
+
+        bank_addr = mem_bank->m_bank[ddr]->start_addr;
+        total_size -= alloc_size;
+    }
 }
 
 int xocl_mm_insert_node_range(struct xocl_drm *drm_p, unsigned user_flags,
-			struct drm_mm_node *node, u64 size, u32 *grp_id)
+			struct drm_mm_node *node, u64 size, u32 *ddr_id)
 {
+    struct xocl_mem_range *xocl_mem = NULL;
+    unsigned mem_id = xocl_bo_ddr_idx(user_flags);
     uint64_t start_addr_range = 0;
     uint64_t end_addr_range = 0;
-    struct xocl_mem_bank_info *mem_info = NULL;
-    struct xocl_mem_range *m_range = NULL;
-    unsigned ddr = xocl_bo_ddr_idx(user_flags);
+    struct xocl_mem_bank_info *mem_info;
+    int err = 0;
 
-    BUG_ON(!mutex_is_locked(&drm_p->mm_lock));
-
+	BUG_ON(!mutex_is_locked(&drm_p->mm_lock));
+	
     if (drm_p->mm == NULL)
-        return -EINVAL;
+		return -EINVAL;
 
     if (user_flags & XCL_FLAGS_BANK_ONLY) { // Bank id is specified
-        printk("Bank INdex : %d\n", ddr);
-        mem_info = drm_p->m_connect->mem_bank->m_bank[ddr];
-        if (mem_info == NULL)
-            return -EINVAL;
-
-        if (mem_info->bank_id != ddr) 
-            return -EINVAL;
-
+        mem_info = drm_p->m_connect->mem_bank->m_bank[mem_id];
+	    if (mem_info == NULL)
+	    	return -EINVAL;
+       
         start_addr_range = mem_info->start_addr;
         end_addr_range = mem_info->end_addr;
-        *grp_id = mem_info->grp_id;
+        err = drm_mm_insert_node_in_range(drm_p->mm, node, size, PAGE_SIZE, 0, 
+                start_addr_range, end_addr_range, 0);
+        
+        *ddr_id = mem_id;
     }
     else { // Group id is specified 
-        printk("Group INdex : %d\n", ddr);
-        m_range = drm_p->m_connect->mem_group->m_range[ddr];
-        if (m_range == NULL)
-            return -EINVAL;
+        xocl_mem = drm_p->m_connect->mem_group->m_range[mem_id];
+	    if (xocl_mem == NULL)
+		    return -EINVAL;
 
-        start_addr_range = m_range->l_start_addr;
-        end_addr_range = m_range->h_end_addr;
-        *grp_id = ddr;
+        start_addr_range = xocl_mem->l_start_addr;
+        end_addr_range = xocl_mem->h_end_addr;
+        err = drm_mm_insert_node_in_range(drm_p->mm, node, size, PAGE_SIZE, 0, 
+                start_addr_range, end_addr_range, 0);
+
+        if (!err) {
+            mem_id = get_start_bank_id(drm_p, node->start); 
+            if (mem_id == -EINVAL)
+                return -EINVAL;
+
+            *ddr_id = mem_id;
+        }
     }
 
-    return drm_mm_insert_node_in_range(drm_p->mm, node, size, PAGE_SIZE, 0, 
-            start_addr_range, end_addr_range, 0);
+    return err;
 }
 
 int xocl_mm_insert_node(struct xocl_drm *drm_p, u32 ddr,
@@ -620,27 +678,6 @@ uint32_t xocl_get_shared_ddr(struct xocl_drm *drm_p, struct mem_data *m_data)
 	}
 #endif
 	return 0xffffffff;
-}
-
-static int xocl_get_group_id(struct xocl_drm *drm_p, struct mem_topology *topo, struct mem_data *m_data)
-{
-    int i;
-    int grp_id = -1;
-    int l_idx = 0, h_idx = 0;
-    struct xocl_mem_group *xocl_grp = NULL; 
-    xocl_grp = drm_p->m_connect->mem_group;
-    
-    for (i = 0; i < xocl_grp->g_count; i++) {
-        l_idx = xocl_grp->m_range[i]->l_bank_idx;
-        h_idx = xocl_grp->m_range[i]->h_bank_idx;
-        if ((topo->m_mem_data[l_idx].m_base_address <= m_data->m_base_address) &&
-                (topo->m_mem_data[h_idx].m_base_address >= m_data->m_base_address)) {
-            grp_id = i;
-            break;
-        }
-    }
-
-    return grp_id;
 }
 
 static void xocl_cma_chunk_free(struct xocl_drm *drm_p, uint32_t idx)
@@ -937,7 +974,6 @@ int xocl_init_connectivity(struct xocl_drm *drm_p, struct mem_topology *topo)
         mem_conn->m_conn[mem_conn->m_count] = vzalloc(sizeof(struct xocl_mem_conn_map));
         if (mem_conn->m_conn[mem_conn->m_count] == NULL) {
             err = -ENOMEM;
-            printk("ERROR : %s : %d\n", __FUNCTION__, __LINE__);
             goto failed;
         }
 
@@ -972,129 +1008,114 @@ failed:
 
 int xocl_init_mem(struct xocl_drm *drm_p)
 {
-	size_t length = 0;
+    size_t length = 0;
+    size_t mm_stat_size = 0;
+    size_t size = 0, wrapper_size = 0;
     size_t total_mem_size = 0;
-	size_t mm_size = 0, mm_stat_size = 0;
-	size_t size = 0, wrapper_size = 0;
-	size_t ddr_bank_size;
-	struct mem_topology *topo = NULL;
-	struct mem_data *mem_data;
-	uint32_t shared;
-	struct xocl_mm_wrapper *wrapper = NULL;
+    size_t ddr_bank_size;
+    struct mem_topology *topo = NULL;
+    struct mem_data *mem_data;
+	struct hlist_node *tmp;
+    struct xocl_mm_wrapper *wrapper = NULL;
     struct xocl_mem_bank_info *m_bank = NULL;
-	uint64_t reserved1 = 0;
-	uint64_t reserved2 = 0;
-	uint64_t reserved_start;
-	uint64_t reserved_end;
-    int grp_id = 0;
-	int err = 0;
-	int i = -1;
+    uint64_t reserved1 = 0;
+    uint64_t reserved2 = 0;
+    uint64_t reserved_start;
+    uint64_t reserved_end;
+    uint32_t shared;
+    uint64_t addr;
+    int err = 0;
+    int i = -1;
 
-	if (XOCL_DSA_IS_MPSOC(drm_p->xdev)) {
-		/* TODO: This is still hardcoding.. */
-		reserved1 = 0x80000000;
-		reserved2 = 0x1000000;
-	}
+    if (XOCL_DSA_IS_MPSOC(drm_p->xdev)) {
+        /* TODO: This is still hardcoding.. */
+        reserved1 = 0x80000000;
+        reserved2 = 0x1000000;
+    }
 
-	err = XOCL_GET_MEM_TOPOLOGY(drm_p->xdev, topo);
+    err = XOCL_GET_MEM_TOPOLOGY(drm_p->xdev, topo);
+    if (err)
+        return err;
+
+    if (topo == NULL) {
+        err = -ENODEV;
+        goto failed;
+    }
+
+	err = xocl_init_connectivity(drm_p, topo);
 	if (err)
 		return err;
 
-	if (topo == NULL) {
-		err = -ENODEV;
-		goto failed;
-	}
+    length = topo->m_count * sizeof(struct mem_data);
+    size = topo->m_count * sizeof(void *);
+    wrapper_size = sizeof(struct xocl_mm_wrapper);
+    mm_stat_size = sizeof(struct drm_xocl_mm_stat);
+    xocl_info(drm_p->ddev->dev, "Topology count = %d, data_length = %ld",
+        topo->m_count, length);
 
-	length = topo->m_count * sizeof(struct mem_data);
-	wrapper_size = sizeof(struct xocl_mm_wrapper);
-	mm_size = sizeof(struct drm_mm);
-	mm_stat_size = sizeof(struct drm_xocl_mm_stat);
-	xocl_info(drm_p->ddev->dev, "Topology count = %d, data_length = %ld",
-		topo->m_count, length);
-
-    err = xocl_init_connectivity(drm_p, topo);
-    if (err)
-        return err;
-	
     mutex_lock(&drm_p->mm_lock);
 
-	size = drm_p->m_connect->mem_group->g_count * sizeof(void *);
+    drm_p->mm_usage_stat = vzalloc(size);
     drm_p->m_connect->mem_bank = vzalloc(sizeof(struct xocl_mem_bank));
-	drm_p->mm = vzalloc(mm_size);
-	drm_p->mm_usage_stat = vzalloc(size);
-	drm_p->mm_p2p_off = vzalloc((topo->m_count + 1) * sizeof(u64));
-	if (!drm_p->mm || !drm_p->mm_usage_stat || !drm_p->mm_p2p_off || 
-            !drm_p->m_connect->mem_bank) {
-		err = -ENOMEM;
-		goto failed;
-	}
+    drm_p->mm_p2p_off = vzalloc((topo->m_count + 1) * sizeof(u64));
+    if (!drm_p->mm_usage_stat || !drm_p->mm_p2p_off || !drm_p->m_connect->mem_bank) {
+        err = -ENOMEM;
+        goto failed;
+    }
+
+    for (i = 0; i < topo->m_count; i++) {
+        mem_data = &topo->m_mem_data[i];
+        ddr_bank_size = mem_data->m_size * 1024;
+
+        xocl_info(drm_p->ddev->dev, "  Memory Bank: %s", mem_data->m_tag);
+        xocl_info(drm_p->ddev->dev, "  Base Address:0x%llx",
+            mem_data->m_base_address);
+        xocl_info(drm_p->ddev->dev, "  Size:0x%lx", ddr_bank_size);
+        xocl_info(drm_p->ddev->dev, "  Type:%d", mem_data->m_type);
+        xocl_info(drm_p->ddev->dev, "  Used:%d", mem_data->m_used);
+    }
 
     drm_p->m_connect->mem_bank->b_count = topo->m_count;
+    /* Initialize the used banks and their sizes */
+    /* Currently only fixed sizes are supported */
+    for (i = 0; i < topo->m_count; i++) {
+        mem_data = &topo->m_mem_data[i];
 
-	for (i = 0; i < topo->m_count; i++) {
-		mem_data = &topo->m_mem_data[i];
-		ddr_bank_size = mem_data->m_size * 1024;
+        ddr_bank_size = XOCL_IS_STREAM(topo, i) ? 0 :
+            mem_data->m_size * 1024;
 
-		xocl_info(drm_p->ddev->dev, "  Memory Bank: %s", mem_data->m_tag);
-		xocl_info(drm_p->ddev->dev, "  Base Address:0x%llx",
-			mem_data->m_base_address);
-		xocl_info(drm_p->ddev->dev, "  Size:0x%lx", ddr_bank_size);
-		xocl_info(drm_p->ddev->dev, "  Type:%d", mem_data->m_type);
-		xocl_info(drm_p->ddev->dev, "  Used:%d", mem_data->m_used);
-	}
+        total_mem_size += (ddr_bank_size - reserved1 - reserved2);
 
-	/* Initialize the used banks and their sizes */
-	/* Currently only fixed sizes are supported */
-	for (i = 0; i < topo->m_count; i++) {
-		mem_data = &topo->m_mem_data[i];
+        drm_p->mm_p2p_off[i + 1] = drm_p->mm_p2p_off[i] + ddr_bank_size;
 
-		ddr_bank_size = XOCL_IS_STREAM(topo, i) ? 0 :
-			mem_data->m_size * 1024;
-        total_mem_size += ddr_bank_size;
+        if (!mem_data->m_used)
+            continue;
 
-		drm_p->mm_p2p_off[i + 1] = drm_p->mm_p2p_off[i] + ddr_bank_size;
+        if (XOCL_IS_STREAM(topo, i))
+            continue;
 
-		if (!mem_data->m_used)
-			continue;
+        xocl_info(drm_p->ddev->dev, "Allocating Memory Bank: %s", mem_data->m_tag);
+        xocl_info(drm_p->ddev->dev, "  base_addr:0x%llx, total size:0x%lx",
+            mem_data->m_base_address, ddr_bank_size);
 
-		if (XOCL_IS_STREAM(topo, i))
-			continue;
-
-		xocl_info(drm_p->ddev->dev, "Allocating Memory Bank: %s", mem_data->m_tag);
-		xocl_info(drm_p->ddev->dev, "  base_addr:0x%llx, total size:0x%lx",
-			mem_data->m_base_address, ddr_bank_size);
-
-		if (XOCL_DSA_IS_MPSOC(drm_p->xdev)) {
-			reserved_end = mem_data->m_base_address + ddr_bank_size;
-			reserved_start = reserved_end - reserved1 - reserved2;
-			xocl_info(drm_p->ddev->dev, "  reserved region:0x%llx - 0x%llx",
-				reserved_start, reserved_end - 1);
-		}
-
-		shared = xocl_get_shared_ddr(drm_p, mem_data);
-		if (shared != 0xffffffff) {
-			xocl_info(drm_p->ddev->dev, "Found duplicated memory region!");
-			drm_p->mm_usage_stat[grp_id] = drm_p->mm_usage_stat[shared];
-			continue;
-		}
-
-		xocl_info(drm_p->ddev->dev, "Found a new memory region");
-        grp_id = xocl_get_group_id(drm_p, topo, mem_data);
-        if (grp_id == -1) {
-            err = -EINVAL;
-            goto failed;
+        if (XOCL_DSA_IS_MPSOC(drm_p->xdev)) {
+            reserved_end = mem_data->m_base_address + ddr_bank_size;
+        drm_p->m_connect->mem_bank->m_bank[i] = m_bank;
+            reserved_start = reserved_end - reserved1 - reserved2;
+            xocl_info(drm_p->ddev->dev, "  reserved region:0x%llx - 0x%llx",
+                reserved_start, reserved_end - 1);
         }
-        
-        if (!drm_p->mm_usage_stat[grp_id]) {
-            drm_p->mm_usage_stat[grp_id] = vzalloc(mm_stat_size);
-            if (!drm_p->mm_usage_stat[grp_id]) {
-                err = -ENOMEM;
-                goto failed;
-            }
+
+        shared = xocl_get_shared_ddr(drm_p, mem_data);
+        if (shared != 0xffffffff) {
+            xocl_info(drm_p->ddev->dev, "Found duplicated memory region!");
+            drm_p->mm_usage_stat[i] = drm_p->mm_usage_stat[shared];
+            continue;
         }
-        
+
         m_bank = vzalloc(sizeof(struct xocl_mem_bank_info));
         if (!m_bank) {
+		    xocl_err(drm_p->ddev->dev, "memory bank allocation Failed !!!!");
 			err = -ENOMEM;
 			goto failed;
         }
@@ -1102,56 +1123,67 @@ int xocl_init_mem(struct xocl_drm *drm_p)
         m_bank->start_addr = mem_data->m_base_address;
         m_bank->size = ddr_bank_size;
         m_bank->end_addr = m_bank->start_addr + m_bank->size;
-        m_bank->grp_id = grp_id;
         drm_p->m_connect->mem_bank->m_bank[i] = m_bank;
-        
-		wrapper = vzalloc(wrapper_size);
-		if (!wrapper) {
-			err = -ENOMEM;
-			goto failed;
-		}
 
-		wrapper->start_addr = mem_data->m_base_address;
-		wrapper->size = mem_data->m_size*1024;
-		wrapper->mm_usage_stat = drm_p->mm_usage_stat[grp_id];
-		wrapper->ddr = grp_id;
+        xocl_info(drm_p->ddev->dev, "Found a new memory region");
+        wrapper = vzalloc(wrapper_size);
+        drm_p->mm_usage_stat[i] = vzalloc(mm_stat_size);
+        if ( !drm_p->mm_usage_stat[i] || !wrapper) {
+		    xocl_err(drm_p->ddev->dev, "Wrapper allocation Failed !!!!");
+            err = -ENOMEM;
+            goto failed;
+        }
 
+        wrapper->start_addr = mem_data->m_base_address;
+        wrapper->size = mem_data->m_size*1024;
+        wrapper->mm_usage_stat = drm_p->mm_usage_stat[i];
+        wrapper->ddr = i;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
-		hash_add(drm_p->mm_range, &wrapper->node, wrapper->start_addr);
+        hash_add(drm_p->mm_range, &wrapper->node, wrapper->start_addr);
 #endif
+    }
 
+    drm_p->mm = vzalloc(size);
+    if (!drm_p->mm) { 
+        err = -ENOMEM;
+        goto failed;
+    }
 
-	}
+    /* Get the start address */
+    mem_data = &topo->m_mem_data[0];
+    drm_mm_init(drm_p->mm, mem_data->m_base_address,
+            total_mem_size);
 
-    drm_mm_init(drm_p->mm, topo->m_mem_data[0].m_base_address,
-            total_mem_size - reserved1 - reserved2);
+    xocl_info(drm_p->ddev->dev, "drm_mm_init called");
 
-    xocl_info(drm_p->ddev->dev, "drm_mm_init called with size %lx", total_mem_size);
 	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
-
     mutex_unlock(&drm_p->mm_lock);
-
+    
     return 0;
 
 failed:
-	vfree(wrapper);
+    for (; i >= 0; i--) {
+        addr = topo->m_mem_data[i].m_base_address;
+        hash_for_each_possible_safe(drm_p->mm_range, wrapper,
+                tmp, node, addr) {
+            if (wrapper->ddr == i) {
+                hash_del(&wrapper->node);
+                vfree(wrapper);
+            }
+        }
+        vfree(drm_p->mm_usage_stat[i]);
+    }
     if (drm_p->mm) {
-        drm_mm_takedown(drm_p->mm);
         vfree(drm_p->mm);
         drm_p->mm = NULL;
-        for (i = 0; i < drm_p->m_connect->mem_group->g_count; i++) {
-            if (drm_p->mm_usage_stat[i])
-                vfree(drm_p->mm_usage_stat[i]);
-        }
     }
-
     vfree(drm_p->mm_usage_stat);
-	drm_p->mm_usage_stat = NULL;
-	vfree(drm_p->mm_p2p_off);
-	drm_p->mm_p2p_off = NULL;
+    drm_p->mm_usage_stat = NULL;
+    vfree(drm_p->mm_p2p_off);
+    drm_p->mm_p2p_off = NULL;
 
     XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
-	mutex_unlock(&drm_p->mm_lock);
+    mutex_unlock(&drm_p->mm_lock);
 
     return err;
 }
