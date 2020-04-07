@@ -15,7 +15,6 @@
  */
 
 // Sub Commands
-#include "SubCmdFlash.h"
 #include "SubCmdProgram.h"
 #include "SubCmdReset.h"
 #include "SubCmdStatus.h"
@@ -51,14 +50,6 @@ int main( int argc, char** argv )
     subCommands.emplace_back(std::make_shared<  SubCmdAdvanced  >(false, false,  true));
     subCommands.emplace_back(std::make_shared<     SubCmdStatus >(false, false, false));
   }
-
-  // Add depricated commands
-  #ifdef ENABLE_DEPRECATED_2020_1_SUBCMDS
-  {
-    // Syntax: SubCmdClass( IsHidden, IsDepricated, IsPreliminary)
-    subCommands.emplace_back(std::make_shared<   SubCmdFlash >(false, true, false));
-  }
-  #endif
 
   // -- Determine and set the executable name for each subcommand
   boost::filesystem::path pathAndFile(argv[0]);

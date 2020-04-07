@@ -448,6 +448,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   std::vector<std::string> image;
   bool revertToGolden = false;
   bool help = false;
+  bool force = false;
 
   po::options_description queryDesc("Options");  // Note: Boost will add the colon.
   queryDesc.add_options()
@@ -463,6 +464,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
                                                                       "  Name (and path) to the mcs image on disk\n"
                                                                       "  Name (and path) to the xsabin image on disk\n"
                                                                       "Note: Multiple images can be specified separated by a space")
+    ("force,f", boost::program_options::bool_switch(&force), "Force update the flash image")
     ("flash-type", boost::program_options::value<decltype(flashType)>(&flashType), "Overrides the flash mode. Use with caution.  Value values:\n"
                                                                       "  ospi\n"
                                                                       "  ospi_versal\n")
@@ -507,10 +509,16 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   XBU::collect_devices(deviceNames, false /*inUserDomain*/, deviceCollection);
 
+  if(force) {
+    //force is a sub-option of update
+    if(update.empty())
+      throw xrt_core::error("Usage: xbmgmt program --device='0000:00:00.0' --update --force'");
+  }
+
   if(!image.empty()) {
     //image is a sub-option of update
     if(update.empty())
-      throw xrt_core::error("Usage: xbmgmt --device='0000:00:00.0' --update --image='/path/to/flash_image'");
+      throw xrt_core::error("Usage: xbmgmt program --device='0000:00:00.0' --update --image='/path/to/flash_image'");
     //allow only 1 device to be manually flashed at a time
     if(deviceCollection.size() != 1)
       throw xrt_core::error("Please specify a single device to be flashed");
@@ -525,7 +533,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     XBU::verbose("Sub command: --update");
     std::string empty = "";
     if(update.compare("all") == 0)
-      auto_flash(deviceCollection, false);
+      auto_flash(deviceCollection, force);
     else if(update.compare("flash") == 0)
       std::cout << "TODO: implement platform only update\n";
     else if(update.compare("sc") == 0)
