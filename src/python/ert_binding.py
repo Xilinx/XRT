@@ -301,21 +301,21 @@ class ert_unconfigure_sk_cmd (ctypes.Structure):
 # Helper functions to hide details of ert_start_copybo_cmd
 def ert_fill_copybo_cmd(pkt, src_bo, dst_bo, src_offset, dst_offset, size):
     libc.ert_fill_copybo_cmd.restype = None
-    libc.ert_fill_copybo_cmd.argtypes = [ctypes.POINTER(ert_start_copybo_cmd), ctypes.c_uint32, ctypes.c_uint32, 
+    libc.ert_fill_copybo_cmd.argtypes = [ctypes.POINTER(ert_start_copybo_cmd), ctypes.c_uint32, ctypes.c_uint32,
                                             ctypes.c_uint64, ctypes.c_uint64, ctypes.c_uint64]
     return libc.ert_fill_copybo_cmd(pkt, src_bo, dst_bo, src_offset, dst_offset, size)
 
 def ert_copybo_src_offset(pkt):
     libc.ert_copybo_src_offset.restype = ctypes.c_uint64
     libc.ert_copybo_src_offset.argtype = ctypes.POINTER(ert_start_copybo_cmd)
-    return libc.ert_copybo_src_offset(pkt)    
+    return libc.ert_copybo_src_offset(pkt)
 
 def ert_copybo_dst_offset(pkt):
     libc.ert_copybo_dst_offset.restype = ctypes.c_uint64
     libc.ert_copybo_dst_offset.argtype = ctypes.POINTER(ert_start_copybo_cmd)
-    return libc.ert_copybo_dst_offset(pkt) 
+    return libc.ert_copybo_dst_offset(pkt)
 
 def ert_copybo_size(pkt):
     libc.ert_copybo_size.restype = ctypes.c_uint64
     libc.ert_copybo_size.argtype = ctypes.POINTER(ert_start_copybo_cmd)
-    return libc.ert_copybo_size(pkt) 
+    return libc.ert_copybo_size(pkt)

@@ -74,18 +74,16 @@ class Options(object):
                 assert False, "unhandled option"
 
         if self.bitstreamFile is None:
-            print("FAILED TEST" + "\n" + "No bitstream specified")
-            sys.exit()
+            raise RuntimeError("No bitstream specified")
 
         if self.halLogFile:
-            print("Using " + self.halLogFile + " as HAL driver logfile")
+            print("Log files are not supported on command line, Please use xrt.ini to specify logging configuration")
         print("Host buffer alignment " + str(self.alignment) + " bytes")
         print("Compiled kernel = " + self.bitstreamFile)
 
     def printHelp(self):
         print("usage: %s [options] -k <bitstream>")
         print("  -k <bitstream>")
-        print("  -l <hal_logfile>")
         print("  -a <alignment>")
         print("  -d <device_index>")
         print("  -c <cu_index>")
@@ -103,13 +101,11 @@ class Options(object):
 def initXRT(opt):
     deviceInfo = xclDeviceInfo2()
     if opt.index >= xclProbe():
-        print("Error")
-        return -1
-    opt.handle = xclOpen(opt.index, opt.halLogFile, xclVerbosityLevel.XCL_INFO)
+        raise RuntimeError("Incorrect device index")
 
-    if xclGetDeviceInfo2(opt.handle, ctypes.byref(deviceInfo)):
-        print("Error 2")
-        return -1
+    opt.handle = xclOpen(opt.index, "", xclVerbosityLevel.XCL_INFO)
+
+    xclGetDeviceInfo2(opt.handle, ctypes.byref(deviceInfo))
 
     if sys.version_info[0] == 3:
         print("Shell = %s" % deviceInfo.mName)
@@ -128,14 +124,6 @@ def initXRT(opt):
         print("Device Temp = %d C") % deviceInfo.mOnChipTemp
         print("MIG Calibration = %s") % deviceInfo.mMigCalib
 
-    if not opt.bitstreamFile or not len(opt.bitstreamFile):
-        print(opt.bitstreamFile)
-        return 0
-
-    if xclLockDevice(opt.handle):
-        print("Cannot unlock device")
-        sys.exit()
-
     tempFileName = opt.bitstreamFile
 
     with open(tempFileName, "rb") as f:
@@ -145,22 +133,18 @@ def initXRT(opt):
         blob = (ctypes.c_char * len(data)).from_buffer(data)
         xbinary = axlf.from_buffer(data)
         if xbinary.m_magic.decode("utf-8") != "xclbin2":
-            print("Invalid Bitsream")
-            sys.exit()
-
-        if xclLoadXclBin(opt.handle, blob):
-            print("Bitsream download failed")
+            raise RuntimeError("Invalid Bitsream")
 
         xclLoadXclBin(opt.handle, blob)
         print("Finished downloading bitstream %s" % opt.bitstreamFile)
+
         myuuid = memoryview(xbinary.m_header.u2.uuid)[:]
         opt.xuuid = uuid.UUID(bytes=myuuid.tobytes())
         head = wrap_get_axlf_section(blob, AXLF_SECTION_KIND.IP_LAYOUT)
         layout = ip_layout.from_buffer(data, head.contents.m_sectionOffset)
 
         if opt.cu_index > layout.m_count:
-            print("Can't determine cu base address")
-            sys.exit()
+            raise RuntimeError("Can't determine cu base address")
 
         ip = (ip_data * layout.m_count).from_buffer(data, head.contents.m_sectionOffset + 8)
 
