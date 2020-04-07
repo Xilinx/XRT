@@ -20,13 +20,12 @@
 
 import ctypes
 import os
-import enum
 
 libc = ctypes.CDLL(os.environ['XILINX_XRT'] + "/lib/libxrt_core.so")
 
 ##  START OF ENUMS  ##
 
-class ert_cmd_state(enum.IntEnum):
+class ert_cmd_state:
     ERT_CMD_STATE_NEW        = 1
     ERT_CMD_STATE_QUEUED     = 2
     ERT_CMD_STATE_RUNNING    = 3
@@ -37,7 +36,7 @@ class ert_cmd_state(enum.IntEnum):
     ERT_CMD_STATEIMEOUT      = 8
     ERT_CMD_STATE_NORESPONSE = 9
 
-class ert_cmd_opcode(enum.IntEnum):
+class ert_cmd_opcode:
     ERT_START_CU      = 0
     ERT_START_KERNEL  = 0
     ERT_CONFIGURE     = 2
@@ -51,7 +50,7 @@ class ert_cmd_opcode(enum.IntEnum):
     ERT_SK_UNCONFIG   = 10
     ERT_INIT_CU       = 11
 
-class ert_cmdype(enum.IntEnum):
+class ert_cmdype:
     ERT_DEFAULT   = 0
     ERT_KDS_LOCAL = 1
     ERT_CTRL      = 2

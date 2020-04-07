@@ -1072,7 +1072,7 @@ def xrtRunWait(rhandle):
     :param rhandle: kernel run handle obtained in xrtKernelRun()
     :return: ert_cmd_state code
     """
-    libcoreutil.xrtRunWait.restype = ert_cmd_state
+    libcoreutil.xrtRunWait.restype = ctypes.c_int
     libcoreutil.xrtRunWait.argtypes = [xrtRunHandle]
     return libcoreutil.xrtRunWait(rhandle)
 
