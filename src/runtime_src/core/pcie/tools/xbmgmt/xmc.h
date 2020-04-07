@@ -54,13 +54,16 @@
 #define XMC_HOST_MSG_BRD_INFO_MISSING_ERR   0x05
 
 #define XMC_MODE()      (readReg(XMC_REG_OFF_STATUS) & 0x3)
+/* Note: newer CMC always set 31bit to 0, which is compitible with older CMC status */
 #define BMC_MODE()      (readReg(XMC_REG_OFF_STATUS) >> 28)
 
 enum bmc_state {
-        BMC_STATE_UNKNOWN = 0,
-        BMC_STATE_READY,
-        BMC_STATE_BSL_UNSYNC,
-        BMC_STATE_BSL_SYNC
+    BMC_STATE_UNKNOWN = 0,
+    BMC_STATE_READY,
+    BMC_STATE_BSL_UNSYNC,
+    BMC_STATE_BSL_SYNC,
+    BMC_STATE_BSL_SYNC_NOTUPGRADABLE,
+    BMC_STATE_READY_NOTUPGRADABLE,
 };
 
 #define XMC_READY       (0x1 << 0)
@@ -110,6 +113,7 @@ public:
     int xclGetBoardInfo(std::map<char, std::vector<char>>& info);
     const std::string probingErrMsg() { return mProbingErrMsg.str(); }
     bool hasXMC();
+    bool fixedSC();
 
 private:
     std::shared_ptr<pcidev::pci_device> mDev;

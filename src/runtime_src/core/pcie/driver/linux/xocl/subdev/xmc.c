@@ -96,6 +96,7 @@
 #define	XMC_VCCAUX_PMC_REG              0x350
 #define	XMC_VCCRAM_REG                  0x35C
 #define	XMC_HOST_NEW_FEATURE_REG1	0xB20
+#define	XMC_CORE_VERSION_REG		0xC4C
 #define	XMC_OEM_ID_REG                  0xC50
 #define	XMC_HOST_NEW_FEATURE_REG1_FEATURE_PRESENT (1 << 29)
 #define	XMC_HOST_NEW_FEATURE_REG1_FEATURE_ENABLE (1 << 28)
@@ -104,7 +105,7 @@
 #define	XMC_CLK_THROTTLING_PWR_MGMT_REG_PWR_OVRD_EN (1 << 31)
 
 #define	VALID_ID			0x74736574
-
+#define	XMC_CORE_SUPPORT_NOTUPGRADABLE	0x0c010004
 #define	GPIO_RESET			0x0
 #define	GPIO_ENABLED			0x1
 
@@ -194,6 +195,15 @@ enum gpio_channel1_mask {
 enum gpio_channel2_mask {
 	MUTEX_ACK_MASK		= 0x1,
 	REGMAP_READY_MASK	= 0x2,
+};
+
+enum sc_mode {
+	XMC_SC_UNKNOWN = 0,
+	XMC_SC_NORMAL = 1,
+	XMC_SC_BSL_MODE_UNSYNCED = 2,
+	XMC_SC_BSL_MODE_SYNCED = 3,
+	XMC_SC_BSL_MODE_SYNCED_SC_NOT_UPGRADABLE = 4,
+	XMC_SC_NORMAL_MODE_SC_NOT_UPGRADABLE = 5
 };
 
 #define	READ_REG32(xmc, off)			\
@@ -330,6 +340,19 @@ enum board_info_key {
 	BDINFO_MAX_KEY = BDINFO_CONFIG_MODE,
 };
 
+struct xmc_status {
+	u32 init_done		: 1;
+	u32 mb_stopped		: 1;
+	u32 reserved0		: 1;
+	u32 watchdog_reset	: 1;
+	u32 reserved1		: 6;
+	u32 power_mode		: 2;
+	u32 reserved2		: 12;
+	u32 sc_comm_ver		: 4;
+	u32 sc_mode		: 3;
+	u32 invalid_sc		: 1;
+};
+
 struct xocl_xmc {
 	struct platform_device	*pdev;
 	void __iomem		*base_addrs[NUM_IOADDR];
@@ -389,6 +412,7 @@ static int xmc_load_board_info(struct xocl_xmc *xmc);
 static int xmc_access(struct platform_device *pdev, enum xocl_xmc_flags flags);
 static bool scaling_condition_check(struct xocl_xmc *xmc, struct device *dev);
 static const struct file_operations xmc_fops;
+static bool is_sc_fixed(struct xocl_xmc *xmc);
 
 static void set_sensors_data(struct xocl_xmc *xmc, struct xcl_sensor *sensors)
 {
@@ -1177,6 +1201,17 @@ static ssize_t status_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(status);
 
+static ssize_t core_version_show(struct device *dev,
+	struct device_attribute *da, char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val = READ_REG32(xmc, XMC_CORE_VERSION_REG);
+
+	return sprintf(buf, "%u.%u.%u\n",
+	    (val & 0xff0000) >> 16, (val & 0xff00) >> 8, (val & 0xff));
+}
+static DEVICE_ATTR_RO(core_version);
+
 #define	SENSOR_SYSFS_NODE_ATTRS						\
 	&dev_attr_xmc_12v_pex_vol.attr,					\
 	&dev_attr_xmc_12v_aux_vol.attr,					\
@@ -1658,6 +1693,15 @@ static ssize_t sc_presence_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(sc_presence);
 
+static ssize_t sc_is_fixed_show(struct device *dev,
+	struct device_attribute *da, char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d\n", is_sc_fixed(xmc));
+}
+static DEVICE_ATTR_RO(sc_is_fixed);
+
 static ssize_t scaling_enabled_store(struct device *dev,
 	struct device_attribute *da, const char *buf, size_t count)
 {
@@ -1962,6 +2006,8 @@ static struct attribute *xmc_mini_attrs[] = {
 	&dev_attr_reg_base.attr,
 	&dev_attr_status.attr,
 	&dev_attr_sc_presence.attr,
+	&dev_attr_sc_is_fixed.attr,
+	&dev_attr_core_version.attr,
 	NULL,
 };
 
@@ -3360,6 +3406,23 @@ static bool is_sc_ready(struct xocl_xmc *xmc, bool quiet)
 
 	if (!quiet)
 		xocl_err(&xmc->pdev->dev, "SC is not ready, state=%d\n", val);
+	return false;
+}
+
+static bool is_sc_fixed(struct xocl_xmc *xmc)
+{
+	struct xmc_status status;
+	u32 xmc_core_version;
+
+	safe_read32(xmc, XMC_CORE_VERSION_REG, &xmc_core_version);
+	safe_read32(xmc, XMC_STATUS_REG, (u32 *)&status);
+
+	if (xmc_core_version >= XMC_CORE_SUPPORT_NOTUPGRADABLE &&
+	    !status.invalid_sc &&
+	    (status.sc_mode == XMC_SC_BSL_MODE_SYNCED_SC_NOT_UPGRADABLE ||
+	     status.sc_mode == XMC_SC_NORMAL_MODE_SC_NOT_UPGRADABLE))
+		return true;
+
 	return false;
 }
 
