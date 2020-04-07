@@ -1390,6 +1390,8 @@ static int queue_close(struct inode *inode, struct file *file)
 	if (!queue) 
 		return 0;
 
+	queue_flush(queue);
+
 	qdma = queue->qdma;
 	devm_kfree(&qdma->pdev->dev, queue);
 	file->private_data = NULL;
