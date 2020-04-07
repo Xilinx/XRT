@@ -1,55 +1,55 @@
 import sys
-sys.path.append('../') # utils_binding.py
+# Following is found in PYTHONPATH
 from xrt_binding import *
+# Following is found in ..
+sys.path.append('../')
 from utils_binding import *
-
 
 def main(args):
     opt = Options()
     Options.getOptions(opt, args)
     try:
-        if initXRT(opt):
-            return 1
-        if opt.first_mem < 0:
-            return 1
+        initXRT(opt)
+        assert (opt.first_mem >= 0), "Incorrect memory configuration"
 
         boHandle1 = xclAllocBO(opt.handle, opt.DATA_SIZE, 0, opt.first_mem)
-
         bo1 = xclMapBO(opt.handle, boHandle1, True)
+
         testVector = "hello\nthis is Xilinx OpenCL memory read write test\n:-)\n"
         ctypes.memset(bo1, 0, opt.DATA_SIZE)
-
         ctypes.memmove(bo1, testVector, len(testVector))
 
-        print("buffer from device: \n%s") % bo1.contents[:55]
+        xclSyncBO(opt.handle, boHandle1, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, opt.DATA_SIZE, 0)
 
-        if xclSyncBO(opt.handle, boHandle1, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, opt.DATA_SIZE, 0):
-            return 1
+        p = xclBOProperties(boHandle1)
+        xclGetBOProperties(opt.handle, boHandle1, p)
+        assert (p.paddr != 0xffffffffffffffff), "Illegal physical address for buffer"
 
-        p = xclBOProperties()
-        bo1devAddr = p.paddr if not(xclGetBOProperties(opt.handle, boHandle1, p)) else -1
+        # Clear our shadow buffer on host
+        ctypes.memset(bo1, 0, opt.DATA_SIZE)
 
-        if bo1devAddr is -1:
-            return 1
+        # Move the buffer from device back to the shadow buffer on host
+        xclSyncBO(opt.handle, boHandle1, xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, opt.DATA_SIZE, False)
 
-        # Get the output
-        if xclSyncBO(opt.handle, boHandle1, xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, opt.DATA_SIZE, False):
-            return 1
+        assert (bo1.contents[:len(testVector)] == testVector[:]), "Data migration error"
+        print("PASSED TEST")
+        xclUnmapBO(opt.handle, boHandle1, bo1)
+        xclFreeBO(opt.handle, boHandle1)
 
-        bo2 = xclMapBO(opt.handle, boHandle1, False)
-
-        if bo1.contents[:] != bo2.contents[:]:
-            print("FAILED TEST")
-            print("Value read back does not match value written")
-            return 1
-
-    except Exception as exp:
-        print("Exception: ")
-        print(exp)  # prints the err
-        sys.exit()
-
-    print("PASSED TEST")
-
+    except OSError as o:
+        print(o)
+        print("FAILED TEST")
+        sys.exit(o.errno)
+    except AssertionError as a:
+        print(a)
+        print("FAILED TEST")
+        sys.exit(1)
+    except Exception as e:
+        print(e)
+        print("FAILED TEST")
+        sys.exit(1)
+    finally:
+        xclClose(opt.handle)
 
 if __name__ == "__main__":
     main(sys.argv)

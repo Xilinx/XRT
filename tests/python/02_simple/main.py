@@ -5,33 +5,11 @@ from xrt_binding import *
 sys.path.append('../')
 from utils_binding import *
 
-XSIMPLE_CONTROL_ADDR_AP_CTRL = 0x00
-XSIMPLE_CONTROL_ADDR_GIE = 0x04
-XSIMPLE_CONTROL_ADDR_IER = 0x08
-XSIMPLE_CONTROL_ADDR_ISR = 0x0c
-XSIMPLE_CONTROL_ADDR_GROUP_ID_X_DATA = 0x10
-XSIMPLE_CONTROL_BITS_GROUP_ID_X_DATA = 32
-XSIMPLE_CONTROL_ADDR_GROUP_ID_Y_DATA = 0x18
-XSIMPLE_CONTROL_BITS_GROUP_ID_Y_DATA = 32
-XSIMPLE_CONTROL_ADDR_GROUP_ID_Z_DATA = 0x20
-XSIMPLE_CONTROL_BITS_GROUP_ID_Z_DATA = 32
-XSIMPLE_CONTROL_ADDR_GLOBAL_OFFSET_X_DATA = 0x28
-XSIMPLE_CONTROL_BITS_GLOBAL_OFFSET_X_DATA = 32
-XSIMPLE_CONTROL_ADDR_GLOBAL_OFFSET_Y_DATA = 0x30
-XSIMPLE_CONTROL_BITS_GLOBAL_OFFSET_Y_DATA = 32
-XSIMPLE_CONTROL_ADDR_GLOBAL_OFFSET_Z_DATA = 0x38
-XSIMPLE_CONTROL_BITS_GLOBAL_OFFSET_Z_DATA = 32
-XSIMPLE_CONTROL_ADDR_S1_DATA = 0x40
-XSIMPLE_CONTROL_BITS_S1_DATA = 64
-XSIMPLE_CONTROL_ADDR_S2_DATA = 0x4c
-XSIMPLE_CONTROL_BITS_S2_DATA = 64
-XSIMPLE_CONTROL_ADDR_FOO_DATA = 0x58
-XSIMPLE_CONTROL_BITS_FOO_DATA = 32
-
-
 def runKernel(opt):
     count = 1024
-    DATA_SIZE = ctypes.sizeof(ctypes.c_int64) * count
+    DATA_SIZE = ctypes.sizeof(ctypes.c_int32) * count
+
+    khandle = xrtPLKernelOpen(opt.handle, opt.xuuid, "simple")
 
     boHandle1 = xclAllocBO(opt.handle, DATA_SIZE, 0, opt.first_mem)
     boHandle2 = xclAllocBO(opt.handle, DATA_SIZE, 0, opt.first_mem)
@@ -39,121 +17,62 @@ def runKernel(opt):
     bo1 = xclMapBO(opt.handle, boHandle1, True, 'int')
     bo2 = xclMapBO(opt.handle, boHandle2, True, 'int')
 
-    ctypes.memset(bo1, 0, opt.DATA_SIZE)
-    ctypes.memset(bo2, 0, opt.DATA_SIZE)
+    ctypes.memset(bo1, 0, DATA_SIZE)
+    ctypes.memset(bo2, 0, DATA_SIZE)
 
-    # bo1
-    bo1_arr = [0X586C0C6C for _ in range(count)]
-    arr = (ctypes.c_int * len(bo1_arr))(*bo1_arr)
-    ctypes.memmove(bo1, arr, count*5)
-
-    #bo2
-    bo2_arr = [i*i for i in range(count)]
-    arr = (ctypes.c_int * len(bo2_arr))(*bo2_arr)
-    ctypes.memmove(bo2, arr, count*5)
+    for i in range(len(bo1.contents)):
+        bo1.contents[i] = i * i
 
     # bufReference
-    bufReference = [i * i+i*16 for i in range(count)]
+    bufReference = [i*i + i*16 for i in range(count)]
 
-    if xclSyncBO(opt.handle, boHandle1, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE, 0):
-        return 1
+    xclSyncBO(opt.handle, boHandle1, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE, 0)
+    xclSyncBO(opt.handle, boHandle2, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE, 0)
 
-    if xclSyncBO(opt.handle, boHandle2, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE, 0):
-        return 1
+    print("Issue kernel start requests using xrtKernelRun()")
+    rhandle1 = xrtKernelRun(khandle, boHandle1, boHandle2, 0x10)
 
-    p = xclBOProperties()
-    bo1devAddr = p.paddr if not (xclGetBOProperties(opt.handle, boHandle1, p)) else -1
-    bo2devAddr = p.paddr if not (xclGetBOProperties(opt.handle, boHandle2, p)) else -1
-
-    if bo1devAddr is -1 or bo2devAddr is -1:
-        return 1
-
-    # Allocate the exec_bo
-    execHandle = xclAllocBO(opt.handle, DATA_SIZE, 0, (1 << 31))
-    execData = xclMapBO(opt.handle, execHandle, True, 'int', 32)  # required buffer size = 128
-
-    if execData is None:
-        print("execData is NULL")
-    xclOpenContext(opt.handle, opt.xuuid, 0, True)
-
-    print("Construct the exec command to run the kernel on FPGA")
-    print("Due to the 1D OpenCL group size, the kernel must be launched %d times") % count
-
-    # construct the exec buffer cmd to start the kernel
-    for id in range(count):
-        start_cmd = ert_start_kernel_cmd.from_buffer(execData.contents)
-        rsz = XSIMPLE_CONTROL_ADDR_FOO_DATA/4 + 2  # regmap array size
-        ctypes.memset(execData.contents, 0, ctypes.sizeof(ert_start_kernel_cmd) + rsz*4)
-        start_cmd.m_uert.m_start_cmd_struct.state = 1  # ERT_CMD_STATE_NEW
-        start_cmd.m_uert.m_start_cmd_struct.opcode = 0  # ERT_START_CU
-        start_cmd.m_uert.m_start_cmd_struct.count = 1 + rsz
-        start_cmd.cu_mask = 0x1
-
-        # Prepare kernel reg map
-        new_data = (ctypes.c_uint32 * rsz).from_buffer(execData.contents, 8)
-        new_data[XSIMPLE_CONTROL_ADDR_AP_CTRL] = 0x0
-        new_data[XSIMPLE_CONTROL_ADDR_GROUP_ID_X_DATA/4] = id
-        new_data[XSIMPLE_CONTROL_ADDR_S1_DATA / 4] = bo1devAddr & 0xFFFFFFFF  # output
-        new_data[XSIMPLE_CONTROL_ADDR_S2_DATA / 4] = bo2devAddr & 0xFFFFFFFF
-        new_data[XSIMPLE_CONTROL_ADDR_S1_DATA / 4 + 1] = (bo1devAddr >> 32) & 0xFFFFFFFF  # output
-        new_data[XSIMPLE_CONTROL_ADDR_S2_DATA / 4 + 1] = (bo2devAddr >> 32) & 0xFFFFFFFF  # input
-        new_data[XSIMPLE_CONTROL_ADDR_FOO_DATA/4] = 0x10  # foo
-
-        if xclExecBuf(opt.handle, execHandle):
-            print("Unable to issue xclExecBuf")
-            return 1
-
-        if id is 1:
-            print("Wait until the command finish")
-
-        while xclExecWait(opt.handle, 100) == 0:
-            print("reentering wait... \n")
-
-
-    if start_cmd.m_uert.m_start_cmd_struct.state != 4:
-        print("configure command failed")
-        return 1
+    print("Now wait for the kernels to finish using xrtRunWait()")
+    xrtRunWait(rhandle1)
 
     # get the output xclSyncBO
     print("Get the output data from the device")
-    if xclSyncBO(opt.handle, boHandle1, xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, DATA_SIZE, 0):
-        return 1
+    xclSyncBO(opt.handle, boHandle1, xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, DATA_SIZE, 0)
 
-    xclCloseContext(opt.handle, opt.xuuid, 0)
-    xclFreeBO(opt.handle, execHandle)
-    xclFreeBO(opt.handle, boHandle1)
+    xrtRunClose(rhandle1)
+    xrtKernelClose(khandle)
+
+    assert (bufReference[:count] == bo1.contents[:count]), "Computed value does not match reference"
+    xclUnmapBO(opt.handle, boHandle2, bo2)
     xclFreeBO(opt.handle, boHandle2)
-
-    print("RESULT: ")
-    if bufReference[:count] != bo1[:count]:
-        print("FAILED TEST")
-        print("Value read back does not match value written")
-        sys.exit()
-
+    xclUnmapBO(opt.handle, boHandle1, bo1)
+    xclFreeBO(opt.handle, boHandle1)
 
 def main(args):
     opt = Options()
     Options.getOptions(opt, args)
 
     try:
-        if initXRT(opt):
-            xclClose(opt.handle)
-            return 1
-        if opt.first_mem < 0:
-            xclClose(opt.handle)
-            return 1
-        if runKernel(opt):
-            xclClose(opt.handle)
-            return 1
+        initXRT(opt)
+        assert (opt.first_mem >= 0), "Incorrect memory configuration"
 
-    except Exception as exp:
-        print("Exception: ")
-        print(exp)  # prints the err
+        runKernel(opt)
+        print("PASSED TEST")
+
+    except OSError as o:
+        print(o)
         print("FAILED TEST")
-        sys.exit()
-
-    print("PASSED TEST")
-
+        sys.exit(o.errno)
+    except AssertionError as a:
+        print(a)
+        print("FAILED TEST")
+        sys.exit(1)
+    except Exception as e:
+        print(e)
+        print("FAILED TEST")
+        sys.exit(1)
+    finally:
+        xclClose(opt.handle)
 
 if __name__ == "__main__":
     main(sys.argv)
