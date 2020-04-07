@@ -119,7 +119,7 @@ memory_retention(std::shared_ptr<xrt_core::device>& dev,
 
 OO_Config::OO_Config( const std::string &_longName)
     : OptionOptions(_longName, "<Add description>")
-    , m_device("")
+    , m_device({})
     , m_help(false)
     , m_daemon(false)
     , m_host("")
@@ -134,7 +134,7 @@ OO_Config::OO_Config( const std::string &_longName)
 
 {
   m_optionsDescription.add_options()
-    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
+    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("daemon", boost::program_options::bool_switch(&m_daemon), "<add description>")
     ("host", boost::program_options::value<decltype(m_host)>(&m_host), "ip or hostname for peer")
     ("security", boost::program_options::value<decltype(m_security)>(&m_security), "<add description>")
@@ -176,10 +176,15 @@ OO_Config::execute(const SubCmdOptions& _options) const
     printHelp();
     return;
   }
-  
-  // parse device indices
-  std::vector<uint16_t> device_indices;  
-  XBU::parse_device_indices(device_indices, m_device);
+
+  // -- process option: device -----------------------------------------------
+  // Collect all of the devices of interest
+  std::set<std::string> deviceNames;
+  xrt_core::device_collection deviceCollection;
+  for (const auto & deviceName : m_device) 
+    deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
+
+  XBU::collect_devices(deviceNames, false /*inUserDomain*/, deviceCollection);
   
   //Option:show
   if(m_show) {
@@ -189,16 +194,14 @@ OO_Config::execute(const SubCmdOptions& _options) const
       show_daemon_conf();
 
     //show device config
-    if (!device_indices.empty()) {
-      for(auto idx : device_indices) {
-        auto dev = xrt_core::get_mgmtpf_device(idx);
-        show_device_conf(dev);
-      }
+    for (const auto & device : deviceCollection) {
+      auto dev = xrt_core::get_mgmtpf_device(device->get_device_id());
+      show_device_conf(dev);
     }
   return;
   }
 
-  //Option:daemon
+  //-- process option: daemon -----------------------------------------------
   if(m_daemon) {
     XBU::verbose("Sub command: --daemon");
     if(m_host.empty())
@@ -207,38 +210,38 @@ OO_Config::execute(const SubCmdOptions& _options) const
     return;
   }
 
-  //Option:device
+  //-- process option: device -----------------------------------------------
   if(!m_device.empty()) {
     XBU::verbose("Sub command: --device");
     //update security
     if (!m_security.empty()) {
-      for(auto idx : device_indices) {
-        auto dev = xrt_core::get_mgmtpf_device(idx);
+      for (const auto & device : deviceCollection) {
+        auto dev = xrt_core::get_mgmtpf_device(device->get_device_id());
         update_device_conf(dev, m_security, configType::security);
       }
     }
 
     //clock scaling
     if (!m_clk_scale.empty()) {
-      for(auto idx : device_indices) {
-        auto dev = xrt_core::get_mgmtpf_device(idx);
+      for (const auto & device : deviceCollection) {
+        auto dev = xrt_core::get_mgmtpf_device(device->get_device_id());
         update_device_conf(dev, m_clk_scale, configType::clk_scaling);
       }
     }
     
     //update threshold power override
     if (!m_power_override.empty()) {
-      for(auto idx : device_indices) {
-        auto dev = xrt_core::get_mgmtpf_device(idx);
+      for (const auto & device : deviceCollection) {
+        auto dev = xrt_core::get_mgmtpf_device(device->get_device_id());
         update_device_conf(dev, m_power_override, configType::threshold_power_override);
       }
     }
   return;
   }
 
-  //Option:enable_retention
+  //-- process option: enable_retention -----------------------------------------------
   if(m_enable_retention) {
-    XBU::verbose("Sub command: --enable_retention");
+    XBU::verbose("Sub command: --enable-retention");
     memType mem_type = memType::unknown; 
     if(m_ddr)
       mem_type = memType::ddr;
@@ -247,16 +250,16 @@ OO_Config::execute(const SubCmdOptions& _options) const
     else
       throw xrt_core::error("Please specify memory type: ddr or hbm");
 
-    for(auto idx : device_indices) {
-        auto dev = xrt_core::get_mgmtpf_device(idx);
+    for (const auto & device : deviceCollection) {
+        auto dev = xrt_core::get_mgmtpf_device(device->get_device_id());
         memory_retention(dev, mem_type, true);
       }
     return;
   }
 
-  //Option:disable_retention
+  //-- process option: disable_retention -----------------------------------------------
   if(m_disable_retention) {
-    XBU::verbose("Sub command: --disable_retention");
+    XBU::verbose("Sub command: --disable-retention");
     memType mem_type = memType::unknown; 
     if(m_ddr)
       mem_type = memType::ddr;
@@ -265,8 +268,8 @@ OO_Config::execute(const SubCmdOptions& _options) const
     else
       throw xrt_core::error("Please specify memory type: ddr or hbm");
 
-    for(auto idx : device_indices) {
-        auto dev = xrt_core::get_mgmtpf_device(idx);
+    for (const auto & device : deviceCollection) {
+        auto dev = xrt_core::get_mgmtpf_device(device->get_device_id());
         memory_retention(dev, mem_type, false);
       }
     return;
