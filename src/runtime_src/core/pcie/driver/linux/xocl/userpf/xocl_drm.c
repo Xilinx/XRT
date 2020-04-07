@@ -958,7 +958,7 @@ static int xocl_cma_mem_alloc_huge_page(struct xocl_drm *drm_p, struct drm_xocl_
 	if (!user_addr)
 		return -ENOMEM;
 
-	ret = copy_from_user(user_addr, cma_info->user_addr, sizeof(uint64_t *)*rounddown_num);
+	ret = copy_from_user(user_addr, cma_info->user_addr, sizeof(uint64_t)*rounddown_num);
 	if (ret) {
 		ret = -EFAULT;
 		goto done;

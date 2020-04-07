@@ -509,7 +509,7 @@ public:
         std::string errmsg;
         std::vector<char> buf, temp_buf;
         std::vector<std::string> mm_buf, stream_stat;
-        uint64_t memoryUsage, boCount;
+        uint64_t memoryUsage, boCount, memBankSize;
         auto dev = pcidev::get_dev(m_idx);
 
         dev->sysfs_get("icap", "mem_topology", errmsg, buf);
@@ -605,6 +605,23 @@ public:
             sensor_tree::add_child( std::string("board.memory.mem." + std::to_string(m)), ptMem );
             m++;
         }
+ 
+        boost::property_tree::ptree ptMem;
+
+        std::string str = "**UNUSED**";
+
+        std::stringstream ss(mm_buf[m]);
+        ss >> memoryUsage >> boCount >> memBankSize;
+
+        ptMem.put( "type",      str );
+        ptMem.put( "temp",      XCL_NO_SENSOR_DEV);
+        ptMem.put( "tag",       "CMA_BANK" );
+        ptMem.put( "enabled",   false);
+        ptMem.put( "size",      xrt_core::utils::unit_convert(memBankSize));
+        ptMem.put( "mem_usage", xrt_core::utils::unit_convert(memoryUsage));
+        ptMem.put( "bo_count",  boCount);
+        sensor_tree::add_child( std::string("board.memory.mem." + std::to_string(m)), ptMem );
+
     }
 
     void m_mem_usage_stringize_dynamics(xclDeviceUsage &devstat, std::vector<std::string> &lines) const
