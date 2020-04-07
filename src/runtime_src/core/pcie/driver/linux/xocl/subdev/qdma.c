@@ -992,15 +992,6 @@ static ssize_t queue_rw(struct xocl_qdma *qdma, struct qdma_stream_queue *queue,
 		return -EINVAL;
 	}
 
-	spin_lock(&queue->qlock);
-	if (queue->state == QUEUE_STATE_CLEANUP) {
-		xocl_err(&qdma->pdev->dev, "Invalid queue state");
-		spin_unlock(&queue->qlock);
-		return -EINVAL;
-	}
-	queue->refcnt++;
-	spin_unlock(&queue->qlock);
-
 	ioreq = kzalloc(sizeof(struct qdma_stream_ioreq) + 
 			reqcnt * (sizeof(struct qdma_request) +
 				    sizeof(struct qdma_stream_req_cb)),
@@ -1012,6 +1003,16 @@ static ssize_t queue_rw(struct xocl_qdma *qdma, struct qdma_stream_queue *queue,
 			write ? "W":"R", nr);
 		return -ENOMEM;
 	}
+
+	spin_lock(&queue->qlock);
+	if (queue->state == QUEUE_STATE_CLEANUP) {
+		xocl_err(&qdma->pdev->dev, "Invalid queue state");
+		spin_unlock(&queue->qlock);
+		kfree(ioreq);
+		return -EINVAL;
+	}
+	queue->refcnt++;
+	spin_unlock(&queue->qlock);
 
 	iocb = &ioreq->iocb;
 	spin_lock_init(&iocb->lock);
@@ -1152,14 +1153,21 @@ error_out:
 			spin_unlock_bh(&queue->req_lock);
 		}
 		kfree(ioreq);
-		return ret;
+	} else {
+
+		spin_lock_bh(&queue->req_lock);
+		queue->req_submit_cnt++;
+		spin_unlock_bh(&queue->req_lock);
+		ret = -EIOCBQUEUED;
 	}
 
-	spin_lock_bh(&queue->req_lock);
-	queue->req_submit_cnt++;
-	spin_unlock_bh(&queue->req_lock);
+	spin_lock(&queue->qlock);
+	queue->refcnt--;
+	if (!queue->refcnt && queue->state == QUEUE_STATE_CLEANUP)
+		wake_up(&queue->wq);
+	spin_unlock(&queue->qlock);
 
-	return -EIOCBQUEUED;
+	return ret;
 }
 
 static int queue_wqe_cancel(struct kiocb *kiocb)
@@ -1347,12 +1355,6 @@ static int queue_flush(struct qdma_stream_queue *queue)
 		spin_lock_bh(&queue->req_lock);
 	}
 	spin_unlock_bh(&queue->req_lock);
-
-	spin_lock(&queue->qlock);
-	queue->refcnt--;
-	if (!queue->refcnt && queue->state == QUEUE_STATE_CLEANUP)
-		wake_up(&queue->wq);
-	spin_unlock(&queue->qlock);
 
 	return ret;
 }
