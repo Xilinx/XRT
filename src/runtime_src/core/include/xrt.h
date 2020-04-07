@@ -242,6 +242,18 @@ struct xclDeviceUsage {
     uint64_t memSize[XCL_DEVICE_USAGE_COUNT];
 };
 
+struct xcl_mem_group {
+    uint32_t cu_id;
+    uint32_t arg_id;
+    uint32_t grp_id;
+};
+
+#define XCL_MEM_GROUP_MAX 128
+struct xcl_mem_conn {
+    uint32_t m_count;
+    struct xcl_mem_group *m_conn[XCL_MEM_GROUP_MAX];
+};
+
 struct xclBOProperties {
     uint32_t handle;
     uint32_t flags;

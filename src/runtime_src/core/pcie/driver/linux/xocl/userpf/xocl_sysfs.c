@@ -97,12 +97,10 @@ static ssize_t mem_group_info_show(struct device *dev,
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
     struct xocl_drm *drm_p = XOCL_DRM(xdev);
-	int i;
-	ssize_t count = 0;
-	ssize_t size = 0;
-	const char *out_fmt_header = "cu_idx\targ_idx\tgrp_idx\n";
-	const char *out_fmt = "%u\t%u\t%u\n";
     struct xocl_mem_conn *mem_conn = NULL;
+    struct xocl_mem_conn_map *m_conn = NULL;
+	ssize_t size = 0;
+	int i;
     
     if (!drm_p || !drm_p->m_connect)
         return 0;
@@ -111,16 +109,13 @@ static ssize_t mem_group_info_show(struct device *dev,
     if (!mem_conn)
         return 0;
     
-    count = sprintf(buf, out_fmt_header);
-	buf += count;
-	size += count;
     for (i = 0; i < mem_conn->m_count; i++) {
-        count = sprintf(buf, out_fmt, mem_conn->m_conn[i]->cu_id,
-                    mem_conn->m_conn[i]->arg_idx, mem_conn->m_conn[i]->grp_id);
-		buf += count;
-		size += count;
+        m_conn = mem_conn->m_conn[i];
+        memcpy((void *)buf, (void *)m_conn, sizeof(*m_conn));
+		buf += sizeof(*m_conn);
+		size += sizeof(*m_conn);
     }
-	
+
     return size;
 }
 static DEVICE_ATTR_RO(mem_group_info);

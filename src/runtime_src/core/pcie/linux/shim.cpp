@@ -1385,25 +1385,25 @@ unsigned int shim::xclImportBO(int fd, unsigned flags)
 int shim::xclGetBOGroup(unsigned int cuidx, unsigned int argidx)
 {
     std::string errmsg;
-    int cu_id = -1;
-    int arg_id = -1;
-    int grp_id = -1;
+    struct xcl_mem_group m_conn;
+    struct xcl_mem_group *m_conn_ptr = &m_conn;
     
-    std::vector<std::string> memGroupInfo;
+    std::vector<char> memGroupInfo;
     mDev->sysfs_get("", "mem_group_info", errmsg, memGroupInfo);
     
     if (!memGroupInfo.empty()) {
-        /* Skip the first index as this contains only headers */
-        for (unsigned i = 1; i < memGroupInfo.size(); i++) {
-            std::stringstream ss(memGroupInfo[i]);
-            ss >> cu_id >> arg_id >> grp_id;
-            if (((int)argidx == arg_id) && ((int)cuidx == cu_id)) {
-                break;
+        char* memblock = memGroupInfo.data();
+        for (unsigned count = 0; count < memGroupInfo.size();) {
+            memcpy((void *)m_conn_ptr, memblock, sizeof(m_conn));
+            if ((argidx == m_conn_ptr->arg_id) && (cuidx == m_conn_ptr->cu_id)) {
+                return m_conn_ptr->grp_id;
             }
+            count += sizeof(m_conn);
+            memblock += sizeof(m_conn);
         }
     }
 
-    return grp_id;
+    return -EINVAL;
 }
 
 /*

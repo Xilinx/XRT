@@ -548,10 +548,9 @@ int get_start_bank_id(struct xocl_drm *drm_p, u64 addr)
     return -EINVAL;
 }
 
-void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u64 addr,
+void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u32 ddr, u64 addr,
 	u64 size, int count)
 {
-    int ddr = get_start_bank_id(drm_p, addr);
     struct xocl_mem_bank *mem_bank;
     u64 bank_addr = 0;
     u64 alloc_size = 0;
@@ -1017,7 +1016,7 @@ int xocl_init_connectivity(struct xocl_drm *drm_p, struct mem_topology *topo)
         }
 
         mem_conn->m_conn[mem_conn->m_count]->cu_id = ip_cnt;
-        mem_conn->m_conn[mem_conn->m_count]->arg_idx = arg_cnt;
+        mem_conn->m_conn[mem_conn->m_count]->arg_id = arg_cnt;
         mem_conn->m_conn[mem_conn->m_count]->grp_id = group_id;
         mem_conn->m_count++;
         arg_cnt++;
