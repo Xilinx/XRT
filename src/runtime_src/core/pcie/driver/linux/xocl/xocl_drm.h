@@ -138,7 +138,7 @@ void xocl_drm_free_bo(struct drm_gem_object *obj);
 
 void xocl_mm_get_usage_stat(struct xocl_drm *drm_p, u32 ddr,
         struct drm_xocl_mm_stat *pstat);
-void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u32 ddr,
+void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u64 addr,
         u64 size, int count);
 void xocl_cma_mm_get_usage_stat(struct xocl_drm *drm_p,
         struct drm_xocl_mm_stat *pstat);
