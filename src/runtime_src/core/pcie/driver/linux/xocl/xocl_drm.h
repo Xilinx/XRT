@@ -49,34 +49,41 @@ struct xocl_mem_bank_info {
     uint32_t grp_id;
     size_t   size;
 };
+
 struct xocl_mem_bank {
     uint32_t b_count;
     struct xocl_mem_bank_info *m_bank[DRM_XOCL_MEM_GROUP_MAX];
 };
+
 struct xocl_mem_range {
     uint32_t l_bank_idx;
     uint64_t l_start_addr;
     uint32_t h_bank_idx;
     uint64_t h_end_addr;
 };
+
 struct xocl_mem_group {
     uint32_t g_count;
     struct xocl_mem_range *m_range[DRM_XOCL_MEM_GROUP_MAX];
 };
+
 struct xocl_mem_conn_map {
     uint32_t cu_id;
-    uint32_t arg_idx;
+    uint32_t arg_id;
     uint32_t grp_id;
 };
+
 struct xocl_mem_conn {
     uint32_t m_count;
     struct xocl_mem_conn_map *m_conn[DRM_XOCL_MEM_GROUP_MAX];
 };
+
 struct xocl_mem_connectivity {
     struct xocl_mem_conn    *mem_conn;
     struct xocl_mem_group   *mem_group;
     struct xocl_mem_bank    *mem_bank;
 };
+
 struct xocl_drm {
 	xdev_handle_t		xdev;
 	/* memory management */
@@ -126,7 +133,7 @@ void xocl_drm_free_bo(struct drm_gem_object *obj);
 
 void xocl_mm_get_usage_stat(struct xocl_drm *drm_p, u32 ddr,
         struct drm_xocl_mm_stat *pstat);
-void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u64 addr,
+void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u32 ddr, u64 addr,
         u64 size, int count);
 int xocl_mm_insert_node_range(struct xocl_drm *drm_p, unsigned user_flags,
                     struct drm_mm_node *node, u64 size, u32 *grp_id);
