@@ -129,7 +129,7 @@ clGetDeviceInfo(cl_device_id   device,
   case CL_DEVICE_MAX_MEM_ALLOC_SIZE:
     buffer.as<cl_ulong>() =
 #ifdef __x86_64__
-      4*1024*1024*1024; // 4GB
+      4ULL *1024*1024*1024; // 4GB
 #else
       128*1024*1024; //128 MB
 #endif
