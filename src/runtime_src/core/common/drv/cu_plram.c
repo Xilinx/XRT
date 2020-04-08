@@ -108,15 +108,12 @@ int xrt_cu_plram_init(struct xrt_cu *xcu)
 
 	if (info->num_res != 2) {
 		xcu_err(xcu, "2 resources are required");
-		err = -EINVAL;
-		goto err;
+		return -EINVAL;
 	}
 
 	core = kzalloc(sizeof(struct xrt_cu_plram), GFP_KERNEL);
-	if (!core) {
-		err = -ENOMEM;
-		goto err;
-	}
+	if (!core)
+		return -ENOMEM;
 
 	/* map CU register */
 	res = xcu->res[0];
@@ -164,6 +161,7 @@ int xrt_cu_plram_init(struct xrt_cu *xcu)
 err1:
 	iounmap(core->vaddr);
 err:
+	kfree(core);
 	return err;
 }
 
