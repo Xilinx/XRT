@@ -84,7 +84,6 @@ public:
     ~firmwareImage();
     static std::vector<DSAInfo> getIntalledDSAs();
 private:
-    static std::vector<DSAInfo> installedDSA;
     int mType;
     char *mBuf;
 };

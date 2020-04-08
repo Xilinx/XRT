@@ -551,11 +551,11 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     XBU::verbose("Sub command: --revert-to-golden");
 
     std::vector<Flasher> flasher_list;
-    for (const auto & device : deviceCollection) {
+    for (const auto & dev : deviceCollection) {
       //collect information of all the cards that will be reset
-      Flasher flasher(device->get_device_id());
+      Flasher flasher(dev->get_device_id());
       if(!flasher.isValid()) {
-        xrt_core::error(boost::str(boost::format("%d is an invalid index") % device->get_device_id()));
+        xrt_core::error(boost::str(boost::format("%d is an invalid index") % dev->get_device_id()));
         continue;
       }
       std::cout << boost::format("%-8s : %s %s %s \n") % "INFO" % "Resetting card [" 
