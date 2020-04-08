@@ -292,19 +292,6 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
         return nullptr;
     }
 
-    rc = enc_session->encoder_plugin->init(enc_session);
-    if (rc) {
-        xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
-                   "Initalization of encoder plugin failed. Return code %d\n",
-                   rc);
-        //Release singleton lock
-        g_xma_singleton->locked = false;
-        free(enc_session->base.plugin_data);
-        free(enc_session);
-        delete priv1;
-        return nullptr;
-    }
-
     // Create encoder file if it does not exist and initialize all fields 
     xma_enc_session_statsfile_init(enc_session);
 
@@ -317,7 +304,22 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
     g_xma_singleton->num_encoders++;
     g_xma_singleton->num_of_sessions = enc_session->base.session_id;
 
-    g_xma_singleton->all_sessions.emplace(g_xma_singleton->num_of_sessions, enc_session->base);
+    g_xma_singleton->all_sessions_vec.push_back(enc_session->base);
+    //g_xma_singleton->all_sessions.emplace(g_xma_singleton->num_of_sessions, enc_session->base);
+
+    //init can execute cu cmds as well so must be fater adding to singleton above
+    rc = enc_session->encoder_plugin->init(enc_session);
+    if (rc) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
+                   "Initalization of encoder plugin failed. Return code %d\n",
+                   rc);
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        free(enc_session->base.plugin_data);
+        //free(enc_session); Added to singleton above; Keep it as checked for cu cmds
+        //delete priv1;
+        return nullptr;
+    }
 
     //Release singleton lock
     g_xma_singleton->locked = false;

@@ -251,19 +251,6 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
         return nullptr;
     }
 
-    rc = filter_session->filter_plugin->init(filter_session);
-    if (rc) {
-        xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
-                   "Initalization of filter plugin failed. Return code %d\n",
-                   rc);
-        //Release singleton lock
-        g_xma_singleton->locked = false;
-        free(filter_session->base.plugin_data);
-        free(filter_session);
-        delete priv1;
-        return nullptr;
-    }
-
     g_xma_singleton->num_filters++;
     g_xma_singleton->num_of_sessions = filter_session->base.session_id;
     if (kernel_info->in_use) {
@@ -273,7 +260,22 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     }
     kernel_info->num_sessions++;
 
-    g_xma_singleton->all_sessions.emplace(g_xma_singleton->num_of_sessions, filter_session->base);
+    g_xma_singleton->all_sessions_vec.push_back(filter_session->base);
+    //g_xma_singleton->all_sessions.emplace(g_xma_singleton->num_of_sessions, filter_session->base);
+
+    //init can execute cu cmds as well so must be fater adding to singleton above
+    rc = filter_session->filter_plugin->init(filter_session);
+    if (rc) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
+                   "Initalization of filter plugin failed. Return code %d\n",
+                   rc);
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        free(filter_session->base.plugin_data);
+        //free(filter_session); Added to singleton above; Keep it as checked for cu cmds
+        //delete priv1;
+        return nullptr;
+    }
 
     //Release singleton lock
     g_xma_singleton->locked = false;

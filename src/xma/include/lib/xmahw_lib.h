@@ -36,9 +36,8 @@
 #include <random>
 #include <chrono>
 #include <list>
-#include <queue>
+#include <condition_variable>
 
-#define MIN_EXECBO_POOL_SIZE      16
 #define MAX_EXECBO_BUFF_SIZE      4096// 4KB
 #define MAX_KERNEL_REGMAP_SIZE    4032//Some space used by ert pkt
 #define MAX_REGMAP_ENTRIES        1024//Int32 entries; So 4B x 1024 = 4K Bytes
@@ -69,17 +68,19 @@ typedef struct XmaCUCmdObjPrivate
     int32_t cmd_id2;//Random number
     int32_t   cu_id;
     int32_t   execbo_id;
+    bool      cmd_finished;
 
   XmaCUCmdObjPrivate() {
     cmd_id2 = 0;
     cu_id = -1;
     execbo_id = -1;
+    cmd_finished = false;
   }
 } XmaCUCmdObjPrivate;
 
 typedef struct XmaHwExecBO
 {
-    uint32_t    handle;
+    xclBufferHandle    handle;
     char*       data;//execBO size is 4096 in xmahw_hal.cpp
     bool        in_use;
     int32_t     cu_index;
@@ -89,7 +90,7 @@ typedef struct XmaHwExecBO
 
   XmaHwExecBO() {
     in_use = false;
-    handle = 0;
+    handle = NULLBO;
     data = NULL;
     cu_index = -1;
     cu_cmd_id1 = 0;
@@ -161,12 +162,20 @@ typedef struct XmaHwSessionPrivate
     std::atomic<uint32_t> cmd_idle_ticks;
     std::atomic<uint32_t> cmd_busy_ticks_tmp;
     std::atomic<uint32_t> cmd_idle_ticks_tmp;
+    std::atomic<bool> slowest_element;
+    std::mutex m_mutex;
+    std::condition_variable work_item_done_1plus;//Use with xma_plg_work_item_done
+    std::condition_variable execbo_is_free; //Use with xma_plg_schedule_work_item and xma_plg_schedule_cu_cmd
+    std::condition_variable kernel_done_or_free;//Use with xma_plg_cu_cmd_status; CU completion is must every outstanding cmd;
+    xclBufferHandle  last_execbo_handle;
+
+    std::vector<uint32_t> execbo_lru;
+    std::vector<uint32_t> execbo_to_check;
     bool     using_work_item_done;
     bool     using_cu_cmd_status;
     std::atomic<bool> execbo_locked;
     std::vector<XmaHwExecBO> kernel_execbos;
     int32_t    num_execbo_allocated;
-    std::atomic<bool> execwait_locked;
     std::list<XmaBufferPool>   buffer_pools;
 
     uint32_t reserved[4];
@@ -188,10 +197,11 @@ typedef struct XmaHwSessionPrivate
     cmd_busy_ticks_tmp = 0;
     cmd_idle_ticks_tmp = 0;
     execbo_locked = false;
-    execwait_locked = false;
     num_execbo_allocated = -1;
     using_work_item_done = false;
     using_cu_cmd_status = false;
+    slowest_element = false;
+    last_execbo_handle = NULLBO;
   }
 } XmaHwSessionPrivate;
 

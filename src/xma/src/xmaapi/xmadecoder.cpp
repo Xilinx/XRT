@@ -161,10 +161,10 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
 
     if (hwcfg->devices[hwcfg_dev_index].kernels[cu_index].in_use) {
         xma_logmsg(XMA_DEBUG_LOG, XMA_DECODER_MOD,
-                   "XMA session sharing CU: %s\n", hwcfg->devices[hwcfg_dev_index].kernels[cu_index].name);
+                   "XMA session sharing CU: %s, cu_index: %d", hwcfg->devices[hwcfg_dev_index].kernels[cu_index].name, cu_index);
     } else {
         xma_logmsg(XMA_DEBUG_LOG, XMA_DECODER_MOD,
-                   "XMA session with CU: %s\n", hwcfg->devices[hwcfg_dev_index].kernels[cu_index].name);
+                   "XMA session with CU: %s, cu_index: %d", hwcfg->devices[hwcfg_dev_index].kernels[cu_index].name, cu_index);
     }
 
     void* dev_handle = hwcfg->devices[hwcfg_dev_index].handle;
@@ -254,16 +254,6 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
         return nullptr;
     }
 
-    if (dec_session->decoder_plugin->init(dec_session)) {
-        xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
-                   "Initalization of plugin failed\n");
-        //Release singleton lock
-        g_xma_singleton->locked = false;
-        free(dec_session->base.plugin_data);
-        free(dec_session);
-        delete priv1;
-        return nullptr;
-    }
     if (kernel_info->in_use) {
         kernel_info->is_shared = true;
     } else {
@@ -273,7 +263,20 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
     g_xma_singleton->num_decoders++;
     g_xma_singleton->num_of_sessions = dec_session->base.session_id;
 
-    g_xma_singleton->all_sessions.emplace(g_xma_singleton->num_of_sessions, dec_session->base);
+    g_xma_singleton->all_sessions_vec.push_back(dec_session->base);
+    //g_xma_singleton->all_sessions.emplace(g_xma_singleton->num_of_sessions, dec_session->base);
+
+    //init can execute cu cmds as well so must be fater adding to singleton above
+    if (dec_session->decoder_plugin->init(dec_session)) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
+                   "Initalization of plugin failed\n");
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        free(dec_session->base.plugin_data);
+        //free(dec_session);  Added to singleton above; Keep it as checked for cu cmds
+        //delete priv1;
+        return nullptr;
+    }
 
     //Release singleton lock
     g_xma_singleton->locked = false;

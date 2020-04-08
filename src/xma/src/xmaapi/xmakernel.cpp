@@ -248,19 +248,6 @@ xma_kernel_session_create(XmaKernelProperties *props)
         return nullptr;
     }
 
-    rc = session->kernel_plugin->init(session);
-    if (rc) {
-        xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
-                   "Initalization of kernel plugin failed. Return code %d\n",
-                   rc);
-        //Release singleton lock
-        g_xma_singleton->locked = false;
-        free(session->base.plugin_data);
-        free(session);
-        delete priv1;
-        return nullptr;
-    }
-
     if (kernel_info->in_use) {
         kernel_info->is_shared = true;
     } else {
@@ -269,7 +256,22 @@ xma_kernel_session_create(XmaKernelProperties *props)
     kernel_info->num_sessions++;
     g_xma_singleton->num_kernels++;
     g_xma_singleton->num_of_sessions = session->base.session_id;
-    g_xma_singleton->all_sessions.emplace(g_xma_singleton->num_of_sessions, session->base);
+    g_xma_singleton->all_sessions_vec.push_back(session->base);
+    //g_xma_singleton->all_sessions.emplace(g_xma_singleton->num_of_sessions, session->base);
+
+    //init can execute cu cmds as well so must be fater adding to singleton above
+    rc = session->kernel_plugin->init(session);
+    if (rc) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
+                   "Initalization of kernel plugin failed. Return code %d\n",
+                   rc);
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        free(session->base.plugin_data);
+        //free(session); Added to singleton above; Keep it as checked for cu cmds
+        //delete priv1;
+        return nullptr;
+    }
 
     //Release singleton lock
     g_xma_singleton->locked = false;

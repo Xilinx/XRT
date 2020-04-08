@@ -191,6 +191,12 @@ xma_admin_session_create(XmaAdminProperties *props)
         return nullptr;
     }
 
+    g_xma_singleton->num_admins++;
+    g_xma_singleton->num_of_sessions = session->base.session_id;
+    g_xma_singleton->all_sessions_vec.push_back(session->base);
+    //g_xma_singleton->all_sessions.emplace(g_xma_singleton->num_of_sessions, session->base);
+
+    //init can execute cu cmds as well so must be fater adding to singleton above
     rc = session->admin_plugin->init(session);
     if (rc) {
         xma_logmsg(XMA_ERROR_LOG, XMA_ADMIN_MOD,
@@ -199,14 +205,10 @@ xma_admin_session_create(XmaAdminProperties *props)
         //Release singleton lock
         g_xma_singleton->locked = false;
         free(session->base.plugin_data);
-        free(session);
-        delete priv1;
+        //free(session); Added to singleton above; Keep it as checked for cu cmds
+        //delete priv1;
         return nullptr;
     }
-
-    g_xma_singleton->num_admins++;
-    g_xma_singleton->num_of_sessions = session->base.session_id;
-    g_xma_singleton->all_sessions.emplace(g_xma_singleton->num_of_sessions, session->base);
 
     //Release singleton lock
     g_xma_singleton->locked = false;

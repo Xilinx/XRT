@@ -43,6 +43,7 @@ typedef struct XmaSingleton
     //XmaSystemCfg      systemcfg;
     XmaHwCfg          hwcfg;
     bool              xma_initialized;
+    uint32_t          cpu_mode;
     //XmaConnect        connections[MAX_CONNECTION_ENTRIES];
     //Sarab: Remove logger stuff
     //XmaLogger         logger;
@@ -59,7 +60,7 @@ typedef struct XmaSingleton
     std::atomic<uint32_t> num_kernels;
     std::atomic<uint32_t> num_admins;
     std::atomic<uint32_t> num_of_sessions;
-    std::unordered_map<uint32_t, XmaSession> all_sessions;// XMASessions
+    std::vector<XmaSession> all_sessions_vec;// XMASessions
     std::list<XmaLogMsg>   log_msg_list;
     std::atomic<bool> log_msg_list_locked;
     std::atomic<uint32_t> num_execbos;
@@ -83,6 +84,7 @@ typedef struct XmaSingleton
     num_of_sessions = 0;
     log_msg_list_locked = false;
     xma_exit = false;
+    cpu_mode = 0;
   }
 } XmaSingleton;
 

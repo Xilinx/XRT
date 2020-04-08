@@ -350,18 +350,6 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
         return nullptr;
     }
 
-    rc = sc_session->scaler_plugin->init(sc_session);
-    if (rc) {
-        xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
-                   "Initalization of plugin failed. Return code %d\n",
-                   rc);
-        //Release singleton lock
-        g_xma_singleton->locked = false;
-        free(sc_session->base.plugin_data);
-        free(sc_session);
-        delete priv1;
-        return nullptr;
-    }
     if (kernel_info->in_use) {
         kernel_info->is_shared = true;
     } else {
@@ -371,7 +359,22 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
     g_xma_singleton->num_scalers++;
     g_xma_singleton->num_of_sessions = sc_session->base.session_id;
 
-    g_xma_singleton->all_sessions.emplace(g_xma_singleton->num_of_sessions, sc_session->base);
+    g_xma_singleton->all_sessions_vec.push_back(sc_session->base);
+    //g_xma_singleton->all_sessions.emplace(g_xma_singleton->num_of_sessions, sc_session->base);
+
+    //init can execute cu cmds as well so must be fater adding to singleton above
+    rc = sc_session->scaler_plugin->init(sc_session);
+    if (rc) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
+                   "Initalization of plugin failed. Return code %d\n",
+                   rc);
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        free(sc_session->base.plugin_data);
+        //free(sc_session); Added to singleton above; Keep it as checked for cu cmds
+        //delete priv1;
+        return nullptr;
+    }
 
     //Release singleton lock
     g_xma_singleton->locked = false;
