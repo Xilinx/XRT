@@ -133,7 +133,7 @@ ReportPlatform::writeReport( const xrt_core::device * _pDevice,
   _output << "Flashable partition running on FPGA\n";
   _output << boost::format("  %-20s : %s\n") % "Platform" % _pt.get<std::string>("platform.shell_on_fpga.vbnv", "N/A");
   _output << boost::format("  %-20s : %s\n") % "SC Version" % _pt.get<std::string>("platform.shell_on_fpga.sc_version", "N/A");
-  _output << boost::format("  %-20s : 0x%x\n") % "Platform ID" % _pt.get<std::string>("platform.shell_on_fpga.id", "N/A");
+  _output << boost::format("  %-20s : %x\n") % "Platform ID" % _pt.get<std::string>("platform.shell_on_fpga.id", "N/A");
   
   _output << "\nFlashable partitions installed in system\n";  
   for(int i = 0; i < _pt.get<int>("platform.number_of_installed_shells"); i++) {

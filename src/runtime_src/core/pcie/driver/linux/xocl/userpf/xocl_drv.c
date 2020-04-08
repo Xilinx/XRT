@@ -551,11 +551,12 @@ int xocl_reclock(struct xocl_dev *xdev, void *data)
 	/* Re-clock changes PR region, make sure next ERT configure cmd will
 	 * go through
 	 */
-	if (err == 0)
+	if (err == 0) {
 		if (kds_mode)
-		(void) xocl_kds_reconfig(xdev);
+			(void) xocl_kds_reconfig(xdev);
 		else
-		(void) xocl_exec_reconfig(xdev);
+			(void) xocl_exec_reconfig(xdev);
+	}
 
 	kfree(req);
 	return err;

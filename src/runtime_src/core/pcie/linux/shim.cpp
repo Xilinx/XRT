@@ -1409,8 +1409,14 @@ int shim::xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
 int shim::xclDestroyQueue(uint64_t q_hdl)
 {
     queue_cb *qcb = reinterpret_cast<queue_cb *>(q_hdl);
-    int rc = close(qcb->queue_get_handle());
+    int qfd = qcb->queue_get_handle();
 
+    int rc = ioctl(qfd, XOCL_QDMA_IOC_QUEUE_FLUSH, NULL);
+
+    if (rc)
+        xrt_logmsg(XRT_ERROR, "%s: Flush Queue failed", __func__);
+
+    rc = close(qfd);
     if (rc)
         xrt_logmsg(XRT_ERROR, "%s: Destroy Queue failed", __func__);
 

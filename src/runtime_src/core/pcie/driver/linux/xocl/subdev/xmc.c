@@ -2571,10 +2571,12 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 
 		retry = 0;
 		while (retry++ < MAX_XMC_RETRY &&
-		    !(READ_REG32(xmc, XMC_STATUS_REG) & STATUS_MASK_STOPPED))
+			!(READ_REG32(xmc, XMC_STATUS_REG) &
+			STATUS_MASK_STOPPED))
 			msleep(RETRY_INTERVAL);
 
-		/* Wait for XMC to stop and then check that ERT has also finished */
+		/* Wait for XMC to stop and then check that ERT
+		 * has also finished */
 		if (retry >= MAX_XMC_RETRY) {
 			xocl_err(&xmc->pdev->dev, "Failed to stop XMC");
 			xocl_err(&xmc->pdev->dev, "XMC Error Reg 0x%x",
@@ -2583,16 +2585,13 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 			return -ETIMEDOUT;
 		} else if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0)) &&
 			 SCHED_EXIST(xmc)) {
-			xocl_info(&xmc->pdev->dev,
-					"Stopping scheduler...");
-			/*
-			 * We don't exit if ERT doesn't stop since
-			 * it can hang due to bad kernel xmc->state =
-			 * XMC_STATE_ERROR;
+			xocl_info(&xmc->pdev->dev, "Stopping scheduler...");
+			/* We try to stop ERT, but based on existing HW design
+			 * this can't be done reliably. We will ignore the
+			 * error, and if it doesn't stop, system needs to be
+			 * cold rebooted to recover from the HW failure.
 			 */
-			ret = stop_ert_nolock(pdev);
-			if (ret)
-				return ret;
+			(void) stop_ert_nolock(pdev);
 		}
 
 		xocl_info(&xmc->pdev->dev, "XMC/sched Stopped, retry %d",
