@@ -3286,7 +3286,7 @@ void xocl_fini_xmc(void)
 
 static int xmc_mailbox_wait(struct xocl_xmc *xmc)
 {
-	int retry = MAX_XMC_RETRY;
+	int retry = MAX_XMC_RETRY * 4;
 	u32 val, ctrl_val;
 
 	BUG_ON(!mutex_is_locked(&xmc->mbx_lock));
