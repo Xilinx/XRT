@@ -1,3 +1,7 @@
+/* HAL profiling is not yet supported for Edge and no callbacks are added to Edge SHIM.
+ * The following implementation is targeted for future use
+ */
+
 #include "hal_profile.h"
 #include "core/common/config_reader.h"
 #include "core/common/message.h"

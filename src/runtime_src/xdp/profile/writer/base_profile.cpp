@@ -721,6 +721,15 @@ namespace xdp {
       writeTableCells(getStream(), check, "all", time);
       writeTableRowEnd(getStream());
     }
+
+    // Total kernel runtime across entire application
+    {
+      std::string check;
+      double time = mPluginHandle->getTotalApplicationKernelTimeMs();
+      XDPPluginI::getGuidanceName(XDPPluginI::TOTAL_KERNEL_RUN_TIME_MS, check);
+      writeTableCells(getStream(), check, "all", time);
+      writeTableRowEnd(getStream());
+    }
   }
 
 } // xdp

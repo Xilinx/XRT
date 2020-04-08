@@ -18,6 +18,7 @@
 #include <linux/pci.h>
 #include <linux/platform_device.h>
 #include "xclfeatures.h"
+#include "flash_xrt_data.h"
 #include "../xocl_drv.h"
 
 #define	MAGIC_NUM	0x786e6c78
@@ -309,64 +310,220 @@ static int get_raw_header(struct platform_device *pdev, void *header)
 	return 0;
 }
 
-static int __find_firmware(struct platform_device *pdev, char *fw_name,
-	size_t len, u16 deviceid, const struct firmware **fw, char *suffix)
+static const char *get_uuid_from_firmware(struct platform_device *pdev,
+	const struct axlf *axlf)
+{
+	int node = -1;
+	const void *uuid = NULL;
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+
+	const struct axlf_section_header *dtc_header =
+		xocl_axlf_section_header(xdev, axlf, PARTITION_METADATA);
+
+	if (dtc_header == NULL)
+		return NULL;
+	node = xocl_fdt_get_next_prop_by_name(xdev,
+		(char *)axlf + dtc_header->m_sectionOffset,
+		-1, PROP_LOGIC_UUID, &uuid, NULL);
+	if (uuid && node >= 0)
+		return uuid;
+	return NULL;
+}
+
+static inline bool is_multi_rp(struct feature_rom *rom)
+{
+	return strlen(rom->uuid) > 0;
+}
+
+static bool is_valid_firmware(struct platform_device *pdev,
+	char *fw_buf, size_t fw_len)
+{
+	struct axlf *axlf = (struct axlf *)fw_buf;
+	struct feature_rom *rom = platform_get_drvdata(pdev);
+	size_t axlflen = axlf->m_header.m_length;
+	u64 ts = axlf->m_header.m_featureRomTimeStamp;
+	u64 rts = rom->header.TimeSinceEpoch;
+
+	if (memcmp(fw_buf, ICAP_XCLBIN_V2, sizeof(ICAP_XCLBIN_V2)) != 0) {
+		xocl_err(&pdev->dev, "unknown fw format");
+		return false;
+	}
+
+	if (axlflen > fw_len) {
+		xocl_err(&pdev->dev, "truncated fw, length: %ld, expect: %ld",
+			fw_len, axlflen);
+		return false;
+	}
+
+	if (xocl_xrt_version_check(xocl_get_xdev(pdev), axlf, true)) {
+		xocl_err(&pdev->dev, "fw version is not supported by xrt");
+		return false;
+	}
+
+	if (is_multi_rp(rom)) {
+		const char *uuid = get_uuid_from_firmware(pdev, axlf);
+		if (uuid == NULL || strcmp(rom->uuid, uuid) != 0) {
+			xocl_err(&pdev->dev, "bad fw UUID: %s, expect: %s",
+				uuid ? uuid : "<none>", rom->uuid);
+			return false;
+		}
+	}
+
+	if (ts != rts) {
+		xocl_err(&pdev->dev,
+			"bad fw timestamp: 0x%llx, exptect: 0x%llx", ts, rts);
+		return false;
+	}
+
+	return true;
+}
+
+static int load_firmware_from_flash(struct platform_device *pdev,
+	char **fw_buf, size_t *fw_len)
+{
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	struct flash_data_header header = { 0 };
+	const size_t magiclen = sizeof(header.fdh_id_begin.fdi_magic);
+	size_t flash_size = 0;
+	int ret = 0;
+	char *buf = NULL;
+	struct flash_data_ident id = { 0 };
+
+	xocl_info(&pdev->dev, "try loading fw from flash");
+
+	(void) xocl_flash_get_size(xdev, &flash_size);
+	BUG_ON(flash_size == 0);
+
+	ret = xocl_flash_read(xdev, (char *)&header, sizeof(header),
+		flash_size - sizeof(header));
+	if (ret) {
+		xocl_err(&pdev->dev,
+			"failed to read meta data header from flash: %d", ret);
+		return ret;
+	}
+	/* Pick the end ident since header is aligned in the end of flash. */
+	id = header.fdh_id_end;
+
+	if (strncmp(id.fdi_magic, XRT_DATA_MAGIC, magiclen)) {
+		char tmp[sizeof(id.fdi_magic) + 1] = { 0 };
+		memcpy(tmp, id.fdi_magic, magiclen);
+		xocl_info(&pdev->dev, "ignore meta data, bad magic: %s", tmp);
+		return -ENOENT;
+	}
+
+	if (id.fdi_version != 0) {
+		xocl_info(&pdev->dev,
+			"flash meta data version is not supported: %d",
+			id.fdi_version);
+		return -EOPNOTSUPP;
+	}
+
+	buf = vmalloc(header.fdh_data_len);
+	if (buf == NULL)
+		return -ENOMEM;
+
+	ret = xocl_flash_read(xdev, buf, header.fdh_data_len,
+		header.fdh_data_offset);
+	if (ret) {
+		xocl_err(&pdev->dev,
+			"failed to read meta data from flash: %d", ret);
+	} else if (flash_xrt_data_get_parity32(buf, header.fdh_data_len) ^
+		header.fdh_data_parity) {
+		xocl_err(&pdev->dev, "meta data is corrupted");
+		ret = -EINVAL;
+	}
+
+	xocl_info(&pdev->dev, "found meta data of %d bytes @0x%x",
+		header.fdh_data_len, header.fdh_data_offset);
+	*fw_buf = buf;
+	*fw_len = header.fdh_data_len;
+	return ret;
+}
+
+static int load_firmware_from_disk(struct platform_device *pdev, char **fw_buf,
+	size_t *fw_len, char *suffix)
 {
 	struct feature_rom *rom = platform_get_drvdata(pdev);
 	struct pci_dev *pcidev = XOCL_PL_TO_PCI_DEV(pdev);
+	struct pci_dev *pcidev_user = NULL;
 	u16 vendor = le16_to_cpu(pcidev->vendor);
 	u16 subdevice = le16_to_cpu(pcidev->subsystem_device);
+	u16 deviceid = le16_to_cpu(pcidev->device);
+	int funcid = PCI_FUNC(pcidev->devfn);
+	int slotid = PCI_SLOT(pcidev->devfn);
 	u64 timestamp = rom->header.TimeSinceEpoch;
-	bool is_multi_rp = (strlen(rom->uuid) > 0) ? true : false;
 	int err = 0;
+	char fw_name[256];
+	const struct firmware *fw;
+
+	if (funcid != 0) {
+		pcidev_user = pci_get_slot(pcidev->bus,
+			PCI_DEVFN(slotid, funcid - 1));
+		if (!pcidev_user) {
+			pcidev_user = pci_get_device(pcidev->vendor,
+				pcidev->device + 1, NULL);
+		}
+		if (pcidev_user)
+			deviceid = le16_to_cpu(pcidev_user->device);
+	}
 
 	/* For 2RP, only uuid is provided */
-	if (is_multi_rp) {
-		snprintf(fw_name, len, "xilinx/%s/partition.%s", rom->uuid,
-			suffix);
+	if (is_multi_rp(rom)) {
+		snprintf(fw_name, sizeof(fw_name),
+			"xilinx/%s/partition.%s", rom->uuid, suffix);
 	} else {
-		snprintf(fw_name, len, "xilinx/%04x-%04x-%04x-%016llx.%s",
+		snprintf(fw_name, sizeof(fw_name),
+			"xilinx/%04x-%04x-%04x-%016llx.%s",
 			vendor, deviceid, subdevice, timestamp, suffix);
 	}
 
-	/* deviceid is arg, the others are from pdev) */
-	xocl_info(&pdev->dev, "try load %s", fw_name);
-	err = request_firmware(fw, fw_name, &pcidev->dev);
-	if (err && !is_multi_rp) {
-		snprintf(fw_name, len, "xilinx/%04x-%04x-%04x-%016llx.%s",
+	xocl_info(&pdev->dev, "try loading fw: %s", fw_name);
+	err = request_firmware(&fw, fw_name, &pcidev->dev);
+	if (err && !is_multi_rp(rom)) {
+		snprintf(fw_name, sizeof(fw_name),
+			"xilinx/%04x-%04x-%04x-%016llx.%s",
 			vendor, (deviceid + 1), subdevice, timestamp, suffix);
-		xocl_info(&pdev->dev, "try load %s", fw_name);
-		err = request_firmware(fw, fw_name, &pcidev->dev);
+		xocl_info(&pdev->dev, "try loading fw: %s", fw_name);
+		err = request_firmware(&fw, fw_name, &pcidev->dev);
+	}
+	if (err)
+		return err;
+
+	*fw_buf = vmalloc(fw->size);
+	if (*fw_buf != NULL) {
+		memcpy(*fw_buf, fw->data, fw->size);
+		*fw_len = fw->size;
+	} else {
+		err = -ENOMEM;
 	}
 
-	if (err && is_multi_rp) {
-		snprintf(fw_name, len, "xilinx/%s/%s.%s", rom->uuid, rom->uuid,
-			suffix);
-		err = request_firmware(fw, fw_name, &pcidev->dev);
-	}
-
-	/* Retry with the legacy dsabin */
-	if (err && !is_multi_rp) {
-		snprintf(fw_name, len, "xilinx/%04x-%04x-%04x-%016llx.%s",
-			vendor, le16_to_cpu(pcidev->device + 1), subdevice,
-			le64_to_cpu(0x0000000000000000), suffix);
-		xocl_info(&pdev->dev, "try load %s", fw_name);
-		err = request_firmware(fw, fw_name, &pcidev->dev);
-	}
-
-	xocl_info(&pdev->dev, "return %d", err);
-	return err;
+	release_firmware(fw);
+	return 0;
 }
 
-static int find_firmware(struct platform_device *pdev, char *fw_name,
-	size_t len, u16 deviceid, const struct firmware **fw)
+static int load_firmware(struct platform_device *pdev, char **fw, size_t *len)
 {
-	// try xsabin first, then dsabin
-	if (__find_firmware(pdev, fw_name, len, deviceid, fw, "xsabin")) {
-		return __find_firmware(pdev, fw_name, len, deviceid, fw,
-			"dsabin");
+	char *buf = NULL;
+	size_t size = 0;
+	int ret;
+
+	ret = load_firmware_from_disk(pdev, &buf, &size, "xsabin");
+	if (ret)
+		ret = load_firmware_from_disk(pdev, &buf, &size, "dsabin");
+	if (ret)
+		ret = load_firmware_from_flash(pdev, &buf, &size);
+	if (ret) {
+		xocl_info(&pdev->dev, "can't load firmware, give up");
+		return ret;
 	}
 
+	if (!is_valid_firmware(pdev, buf, size)) {
+		vfree(buf);
+		return -EINVAL;
+	}
+
+	*fw = buf;
+	*len = size;
 	return 0;
 }
 
@@ -383,7 +540,7 @@ static struct xocl_rom_funcs rom_ops = {
 	.get_timestamp = get_timestamp,
 	.get_raw_header = get_raw_header,
 	.runtime_clk_scale_on = runtime_clk_scale_on,
-	.find_firmware = find_firmware,
+	.load_firmware = load_firmware,
 	.passthrough_virtualization_on = passthrough_virtualization_on,
 	.get_uuid = get_uuid,
 };

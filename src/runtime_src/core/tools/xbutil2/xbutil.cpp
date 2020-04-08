@@ -16,20 +16,11 @@
 
 // Sub Commands
 #include "SubCmdExamine.h"
-#include "SubCmdClock.h"
-#include "SubCmdDD.h"
-#include "SubCmdDump.h"
 #include "SubCmdDmaTest.h"
-#include "SubCmdList.h"
-#include "SubCmdMem.h"
-#include "SubCmdM2MTest.h"
-#include "SubCmdP2P.h"
 #include "SubCmdProgram.h"
 #include "SubCmdQuery.h"
 #include "SubCmdReset.h"
 #include "SubCmdScan.h"
-#include "SubCmdTop.h"
-#include "SubCmdVersion.h"
 #include "SubCmdValidate.h"
 #include "SubCmdAdvanced.h"
 
@@ -52,29 +43,20 @@ int main( int argc, char** argv )
 
   {
     // Syntax: SubCmdClass( IsHidden, IsDepricated, IsPreliminary)
-    subCommands.emplace_back(std::make_shared<  SubCmdExamine >(false, false,  false));
-    subCommands.emplace_back(std::make_shared<  SubCmdProgram >(false, false,  false));
-    subCommands.emplace_back(std::make_shared< SubCmdValidate >(false, false,  false));
-    subCommands.emplace_back(std::make_shared< SubCmdAdvanced >(false, false, true));
-    subCommands.emplace_back(std::make_shared<    SubCmdReset >(false, false,  false));
+    subCommands.emplace_back(std::make_shared<  SubCmdExamine >(false, false, false));
+    subCommands.emplace_back(std::make_shared<  SubCmdProgram >(false, false, false));
+    subCommands.emplace_back(std::make_shared< SubCmdValidate >(false, false, false));
+    subCommands.emplace_back(std::make_shared< SubCmdAdvanced >(false, false, true ));
+    subCommands.emplace_back(std::make_shared<    SubCmdReset >(false, false, false));
   }
 
   // Add depricated commands
   #ifdef ENABLE_DEPRECATED_2020_1_SUBCMDS
   {
     // Syntax: SubCmdClass( IsHidden, IsDepricated, IsPreliminary)
-    subCommands.emplace_back(std::make_shared<   SubCmdClock >(false, true, false));
-    subCommands.emplace_back(std::make_shared<      SubCmdDD >(false, true, false));
-    subCommands.emplace_back(std::make_shared<    SubCmdDump >(false, true, false));
-    subCommands.emplace_back(std::make_shared< SubCmdDmaTest >(false, true, false));
-    subCommands.emplace_back(std::make_shared<    SubCmdList >(false, true, false));
-    subCommands.emplace_back(std::make_shared< SubCmdM2MTest >(false, true, false));
-    subCommands.emplace_back(std::make_shared<     SubCmdMem >(false, true, false));
-    subCommands.emplace_back(std::make_shared<     SubCmdP2P >(false, true, false));
-    subCommands.emplace_back(std::make_shared<   SubCmdQuery >(false, true, false));
-    subCommands.emplace_back(std::make_shared<    SubCmdScan >(false, true, false));
-    subCommands.emplace_back(std::make_shared< SubCmdVersion >( true, true, false));
-    subCommands.emplace_back(std::make_shared<     SubCmdTop >(false, true, false));
+    subCommands.emplace_back(std::make_shared< SubCmdDmaTest >(true, true, false));
+    subCommands.emplace_back(std::make_shared<   SubCmdQuery >(true, true, false));
+    subCommands.emplace_back(std::make_shared<    SubCmdScan >(true, true, false));
   }
   #endif
 

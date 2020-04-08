@@ -21,17 +21,11 @@ file(GLOB XBMGMT_V2_BASE_FILES
   "../common/XBHelpMenus.cpp"
   "../common/OptionOptions.cpp"
   "../common/ProgressBar.cpp"
+  "../common/Report*.cpp"
 )
 
 # Collect local directory files
 file(GLOB XBMGMT_V2_SUBCMD_FILES
-  "flash/firmware_image.cpp"
-  "flash/flasher.cpp"
-  "flash/xmc.cpp"
-  "flash/xspi.cpp"
-  "flash/xospiversal.cpp"
-  "SubCmdFlash.cpp"
-  "SubCmdVersion.cpp"
   "SubCmdProgram.cpp"
   "SubCmdReset.cpp"
   "SubCmdStatus.cpp"
@@ -39,6 +33,8 @@ file(GLOB XBMGMT_V2_SUBCMD_FILES
   "OO_Clock.cpp"
   "OO_Config.cpp"
   "OO_NIFD.cpp"
+  "ReportPlatform.cpp"
+  "flash/*.cpp"
 )
 
 # Merge the files into one collection

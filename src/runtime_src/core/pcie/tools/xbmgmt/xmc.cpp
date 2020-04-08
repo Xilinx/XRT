@@ -32,13 +32,22 @@ XMC_Flasher::XMC_Flasher(std::shared_ptr<pcidev::pci_device> dev)
     mDev = dev;
     mPktBufOffset = 0;
     mPkt = {};
-
     std::string err;
     bool is_mfg = false;
+
+    /*
+     * If xmc subdev is not online, do not allow xmc flash operations.  In the
+     * future, we will use xmc subdev to do xmc validation and flashing at one
+     * place.
+     *
+     * NOTE: we don't build mProbingErrMsg to differentiate "no xmc subdev" and
+     * "other errors". Caller can treat no error message as just not support.
+     */
+    if (!hasXMC())
+        goto nosup;
+
     mDev->sysfs_get<bool>("", "mfg", err, is_mfg, false);
     if (!is_mfg) {
-        if (!hasXMC())
-            goto nosup;
 
         mDev->sysfs_get<unsigned>("xmc", "status", err, val, 0);
 	if (!err.empty() || !(val & 1)) {
@@ -73,7 +82,7 @@ XMC_Flasher::XMC_Flasher(std::shared_ptr<pcidev::pci_device> dev)
     mPktBufOffset = readReg(XMC_REG_OFF_PKT_OFFSET);
 
     mXmcDev = nullptr;
-    if (std::getenv("FLASH_VIA_DRIVER")) {
+    if (std::getenv("FLASH_VIA_USER") == NULL) {
         int fd = mDev->open("xmc", O_RDWR);
         if (fd >= 0)
             mXmcDev = fdopen(fd, "r+");
@@ -507,7 +516,8 @@ bool XMC_Flasher::isXMCReady()
 
 bool XMC_Flasher::isBMCReady()
 {
-    bool bmcReady = (BMC_MODE() == 0x1);
+    bool bmcReady = (BMC_MODE() == BMC_STATE_READY) ||
+        (BMC_MODE() == BMC_STATE_READY_NOTUPGRADABLE);
 
     if (!bmcReady) {
       auto format = xrt_core::utils::ios_restore(std::cout);
@@ -534,6 +544,24 @@ bool XMC_Flasher::hasSC()
     mDev->sysfs_get<unsigned>("xmc", "sc_presence", errmsg, val, 0);
     if (!errmsg.empty()) {
         std::cout << "can't read sc_presence node from " << mDev->sysfs_name <<
+            " : " << errmsg << std::endl;
+        return false;
+    }
+
+    return (val != 0);
+}
+
+bool XMC_Flasher::fixedSC()
+{
+    unsigned int val;
+    std::string errmsg;
+
+    if (!hasXMC())
+	    return false;
+
+    mDev->sysfs_get<unsigned>("xmc", "sc_is_fixed", errmsg, val, 0);
+    if (!errmsg.empty()) {
+        std::cout << "can't read sc_is_fixed node from " << mDev->sysfs_name <<
             " : " << errmsg << std::endl;
         return false;
     }

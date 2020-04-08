@@ -13,8 +13,6 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
-
 #include "device_swemu.h"
 #include "core/common/query_requests.h"
 
@@ -26,8 +24,17 @@ namespace {
 
 namespace query = xrt_core::query;
 using key_type = query::key_type;
+using qtype = std::underlying_type<query::key_type>::type;
 
 static std::map<query::key_type, std::unique_ptr<query::request>> query_tbl;
+
+static void
+initialize_query_table()
+{
+}
+
+struct X { X() { initialize_query_table(); }};
+static X x;
 
 }
 
@@ -39,12 +46,8 @@ lookup_query(query::key_type query_key) const
 {
   auto it = query_tbl.find(query_key);
 
-  if (it == query_tbl.end()) {
-    using qtype = std::underlying_type<query::key_type>::type;
-    std::string err = boost::str( boost::format("The given query request ID (%d) is not supported on Edge Linux.")
-                                  % static_cast<qtype>(query_key));
-    throw std::runtime_error(err);
-  }
+  if (it == query_tbl.end())
+    throw query::no_such_key(query_key);
 
   return *(it->second);
 }

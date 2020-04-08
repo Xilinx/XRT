@@ -277,7 +277,7 @@ DeviceIntf::~DeviceIntf()
     if((type == XCL_PERF_MON_MEMORY) && (index < aimList.size())) { return aimList[index]->getProperties(); }
     if((type == XCL_PERF_MON_ACCEL)  && (index < amList.size()))  { return amList[index]->getProperties(); }
     if((type == XCL_PERF_MON_STR)    && (index < asmList.size())) { return asmList[index]->getProperties(); }
-    if(type == XCL_PERF_MON_FIFO) { return fifoRead->getProperties(); }
+    if((type == XCL_PERF_MON_FIFO)   && (fifoRead != nullptr))    { return fifoRead->getProperties(); }
     return 0;
   }
 
@@ -681,6 +681,16 @@ DeviceIntf::~DeviceIntf()
   {
     if (traceDMA)
       traceDMA->parseTraceBuf(traceData, bytes, traceVector);
+  }
+
+  void DeviceIntf::setMaxBwRead()
+  {
+    m_bw_read = mDevice->getMaxBwRead();
+  }
+
+  void DeviceIntf::setMaxBwWrite()
+  {
+    m_bw_read = mDevice->getMaxBwWrite();
   }
 
 } // namespace xdp

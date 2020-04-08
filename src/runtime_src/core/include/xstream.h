@@ -27,6 +27,42 @@ extern "C" {
 typedef uint32_t stream_xfer_req_type;
 
 /**
+ * stream_opt_type
+ *
+ * For streaming queues, additional control can be set on a per-queue basis via
+ * clSetStreamOpt(opt_type, opt_value)
+ *
+ * The following options are available:
+ * - STREAM_OPT_AIO_MAX_EVENT: maximum # aio event
+ *   this option creates a per-queue asynchronous i/o context with
+ *   the "opt_value" as the maximum # concurrently i/o operations.
+ *
+ * The next 3 options will allow accumulation of the io requests before 
+ * submitting to the kernel for processing. This accumulation will increase
+ * the latency but may increase throughput.
+ *
+ * -  STREAM_OPT_AIO_BATCH_THRESH_BYTES,  io batching threshold: # bytes
+ *    Keep accumulating the i/o request, until the total # of r/w bytes reaches
+ *    the threshold of "opt_value" of bytes
+ *
+ * -  STREAM_OPT_AIO_BATCH_THRESH_PKTS,   io_batching threshold: # request
+ *    Keep accumulating the i/o request, until the total # of r/w request
+ *    reaches the threshold of "opt_value" of requests
+ *
+ * -  STREAM_OPT_AIO_BATCH_THRESH_TIMER,  io_batching threshold: # request
+ *    Keep accumulating the i/o request, until the timer pops.
+ *    The timer duration is "opt_value" milisecond.
+ */
+typedef enum stream_opt_type {
+    STREAM_OPT_AIO_MAX_EVENT = 1,       /* maximum # aio event */
+    STREAM_OPT_AIO_BATCH_THRESH_BYTES,  /* io batching threshold: # bytes */
+    STREAM_OPT_AIO_BATCH_THRESH_PKTS,   /* io_batching threshold: # request */
+    STREAM_OPT_AIO_BATCH_THRESH_TIMER,  /* io batching threshold: timer in ms */
+
+    STREAM_OPT_MAX
+} stream_opt_type;
+
+/**
  * cl_stream_xfer_req.
  * For each read or write request, this extra data needs to be sent.
  */

@@ -47,15 +47,15 @@ xclGetDeviceTimestamp(xclDeviceHandle handle)
 
 double xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
 {
-   return 0.0;
+  return 9600.0;
 }
-
-#if 0
-
 
 double xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle)
 {
+  return 9600.0;
 }
+
+#if 0
 
 void xclSetProfilingNumberSlots(xclDeviceHandle handle, enum xclPerfMonType type,
                                 uint32_t numSlots)

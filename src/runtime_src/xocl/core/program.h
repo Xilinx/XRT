@@ -153,8 +153,8 @@ public:
    * @return
    *   The xclbin binary object associated with the device
    */
-  xclbin::binary_type
-  get_binary(const device* d) const;
+  std::pair<const char*, const char*>
+  get_xclbin_binary(const device* d) const;
 
   /**
    * Return the target type for this program

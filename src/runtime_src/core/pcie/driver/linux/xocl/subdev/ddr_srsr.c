@@ -25,15 +25,6 @@
 #define	REG_CALIB_OFFSET		0x00000008
 #define	REG_XSDB_RAM_BASE		0x00004000
 
-#define	XSDB_RAM_MAX_IN_WORDS		2901
-#define XOCL_CALIB_CACHE_SIZE		XSDB_RAM_MAX_IN_WORDS*4
-#define	XSDB_RAM_SIZE			0x1000
-
-/* Calibration cache size may up to XSDB_RAM_MAX_IN_WORDS*4 = ~12kB
- * And XSDB_RAM_SIZE is 4kB, need to read the cache from XSDB_RAM at least 3 times.
- */
-#define	TIMES_TO_READ_XSDB_RAM		3
-
 #define	FULL_CALIB_TIMEOUT		100
 #define	FAST_CALIB_TIMEOUT		15
 
@@ -53,8 +44,9 @@ struct xocl_ddr_srsr {
 	void __iomem		*base;
 	struct device		*dev;
 	struct mutex		lock;
-	char			*calib_cache;
-	bool			online;
+	uint32_t		*calib_cache;
+	uint32_t		cache_size;
+	bool			restored;
 };
 
 static ssize_t status_show(struct device *dev, struct device_attribute *attr,
@@ -104,34 +96,28 @@ static int srsr_save_calib(struct platform_device *pdev)
 	xdev_handle_t xdev = SRSR_DEV2XDEV(xocl_ddr_srsr->dev);
 	int i = 0, err = -ETIMEDOUT;
 	u32 val = 0;
-	u32 offset = 0;
-	uint32_t cache_size = XOCL_CALIB_CACHE_SIZE;
+	u32 cache_size_in_words = xocl_ddr_srsr->cache_size/sizeof(uint32_t);
+
+	BUG_ON(!xocl_ddr_srsr->calib_cache);
 
 	mutex_lock(&xocl_ddr_srsr->lock);
-	if (!xocl_ddr_srsr->calib_cache) {
-		err = -EINVAL;
-		goto done;
-	}
-
 	xocl_dr_reg_write32(xdev, CTRL_BIT_SREF_REQ, xocl_ddr_srsr->base+REG_CTRL_OFFSET);
 	for ( ; i < 20; ++i) {
 		val = xocl_dr_reg_read32(xdev, xocl_ddr_srsr->base+REG_STATUS_OFFSET);
-		if (val & STATUS_BIT_SREF_ACK) {
+		if (val == (STATUS_BIT_SREF_ACK|STATUS_BIT_CALIB_COMPLETE)) {
 			err = 0;
 			break;
 		}
 		msleep(20);
 	}
+
 	xocl_dr_reg_write32(xdev, CTRL_BIT_SREF_REQ | CTRL_BIT_XSDB_SELECT, xocl_ddr_srsr->base+REG_CTRL_OFFSET);
 
-	for (i = 0; i < TIMES_TO_READ_XSDB_RAM; ++i) {
-		uint32_t nr = min(cache_size, (uint32_t)XSDB_RAM_SIZE);
-
-		memcpy(xocl_ddr_srsr->calib_cache+offset, xocl_ddr_srsr->base+REG_XSDB_RAM_BASE, nr);
-		offset += nr;
-		cache_size -= nr;
+	for (i = 0; i < cache_size_in_words; ++i) {
+		val = xocl_dr_reg_read32(xdev, xocl_ddr_srsr->base+REG_XSDB_RAM_BASE+i*4);
+		*(xocl_ddr_srsr->calib_cache+i) = val;
 	}
-done:
+
 	mutex_unlock(&xocl_ddr_srsr->lock);
 	return err;
 }
@@ -142,31 +128,29 @@ static int srsr_fast_calib(struct platform_device *pdev, bool retention)
 	xdev_handle_t xdev = SRSR_DEV2XDEV(xocl_ddr_srsr->dev);
 	int i = 0, err = -ETIMEDOUT;
 	u32 val, write_val = CTRL_BIT_RESTORE_EN | CTRL_BIT_XSDB_SELECT;
-	u32 offset = 0;
-	uint32_t cache_size = XOCL_CALIB_CACHE_SIZE;
+	u32 cache_size_in_words = xocl_ddr_srsr->cache_size/sizeof(uint32_t);
 
-
-	if (!xocl_ddr_srsr->calib_cache)
-		return err;
-
-	xocl_dr_reg_write32(xdev, CTRL_BIT_SYS_RST, xocl_ddr_srsr->base+REG_CTRL_OFFSET);
-	val = xocl_dr_reg_read32(xdev, xocl_ddr_srsr->base+REG_STATUS_OFFSET);
+	BUG_ON(!xocl_ddr_srsr->calib_cache);
 
 	if (retention)
 		write_val |= CTRL_BIT_MEM_INIT_SKIP;
 
 	xocl_dr_reg_write32(xdev, write_val, xocl_ddr_srsr->base+REG_CTRL_OFFSET);
-	for (i = 0; i < TIMES_TO_READ_XSDB_RAM; ++i) {
-		uint32_t nr = min(cache_size, (uint32_t)XSDB_RAM_SIZE);
 
-		memcpy(xocl_ddr_srsr->base+REG_XSDB_RAM_BASE, xocl_ddr_srsr->calib_cache+offset, nr);
-		offset += nr;
-		cache_size -= nr;
+	msleep(20);
+	for (i = 0; i < cache_size_in_words; ++i) {
+		val = *(xocl_ddr_srsr->calib_cache+i);
+		xocl_dr_reg_write32(xdev, val, xocl_ddr_srsr->base+REG_XSDB_RAM_BASE+i*4);
 	}
-	xocl_dr_reg_write32(xdev, CTRL_BIT_RESTORE_COMPLETE, xocl_ddr_srsr->base+REG_CTRL_OFFSET);
+
+	write_val = CTRL_BIT_RESTORE_EN | CTRL_BIT_RESTORE_COMPLETE;
+	if (retention)
+		write_val |= CTRL_BIT_MEM_INIT_SKIP;
+
+	xocl_dr_reg_write32(xdev, write_val, xocl_ddr_srsr->base+REG_CTRL_OFFSET);
 
 	/* Safe to say, fast calibration should finish in 300ms*/
-	for ( ; i < FAST_CALIB_TIMEOUT; ++i) {
+	for ( i = 0; i < FAST_CALIB_TIMEOUT; ++i) {
 		val = xocl_dr_reg_read32(xdev, xocl_ddr_srsr->base+REG_STATUS_OFFSET);
 		if (val & STATUS_BIT_CALIB_COMPLETE) {
 			err = 0;
@@ -174,30 +158,56 @@ static int srsr_fast_calib(struct platform_device *pdev, bool retention)
 		}
 		msleep(20);
 	}
+
+	xocl_dr_reg_write32(xdev, CTRL_BIT_RESTORE_COMPLETE, xocl_ddr_srsr->base+REG_CTRL_OFFSET);
+	val = xocl_dr_reg_read32(xdev, xocl_ddr_srsr->base+REG_CTRL_OFFSET);
 	return err;
 }
 
 static int srsr_calib(struct platform_device *pdev, bool retention)
 {
 	struct xocl_ddr_srsr *xocl_ddr_srsr = platform_get_drvdata(pdev);
+	xdev_handle_t xdev = SRSR_DEV2XDEV(xocl_ddr_srsr->dev);
 	int err = -1;
+	uint32_t addr0, addr1;
 
 	mutex_lock(&xocl_ddr_srsr->lock);
 
-
-	err = srsr_fast_calib(pdev, retention);
+	if (xocl_ddr_srsr->restored)
+		err = srsr_fast_calib(pdev, retention);
 
 	/* Fast calibration fails then fall back to full calibration
 	 * Wipe out calibration cache before full calibration
 	 */
 	if (err) {
+		err = srsr_full_calibration(pdev);
+		if (err)
+			goto done;
+
+		/* END_ADDR0/1 provides the end address for a given memory configuration
+		 * END_ADDR 0 is lower 9 bits, the other one is higher 9 bits
+		 * E.g. addr0 = 0x155,     0'b 1 0101 0101
+		 *      addr1 = 0x5    0'b 0101
+		 *                     0'b 01011 0101 0101
+		 *                   =  0xB55
+		 * and the total size is 0xB55+1
+		 * Check the value, it should not excess predefined XSDB range
+		 */
+		addr0 = xocl_dr_reg_read32(xdev, xocl_ddr_srsr->base+REG_XSDB_RAM_BASE+4);
+		addr1 = xocl_dr_reg_read32(xdev, xocl_ddr_srsr->base+REG_XSDB_RAM_BASE+8);
+
+		xocl_ddr_srsr->cache_size = (((addr1 << 9) | addr0)+1)*sizeof(uint32_t);
+
+		if (xocl_ddr_srsr->cache_size >= 0x4000) {
+			err = -ENOMEM;
+			goto done;
+		}
 		vfree(xocl_ddr_srsr->calib_cache);
-		xocl_ddr_srsr->calib_cache = vzalloc(XOCL_CALIB_CACHE_SIZE);
+		xocl_ddr_srsr->calib_cache = vzalloc(xocl_ddr_srsr->cache_size);
 		if (!xocl_ddr_srsr->calib_cache) {
 			err = -ENOMEM;
 			goto done;
 		}
-		err = srsr_full_calibration(pdev);
 	}
 done:
 	mutex_unlock(&xocl_ddr_srsr->lock);
@@ -211,30 +221,46 @@ static int srsr_read_calib(struct platform_device *pdev, void *calib_cache, uint
 
 	BUG_ON(!xocl_ddr_srsr->calib_cache);
 	BUG_ON(!calib_cache);
-	BUG_ON(size != XOCL_CALIB_CACHE_SIZE);
+	BUG_ON(size != xocl_ddr_srsr->cache_size);
 
+	mutex_lock(&xocl_ddr_srsr->lock);
 	memcpy(calib_cache, xocl_ddr_srsr->calib_cache, size);
-
+	mutex_unlock(&xocl_ddr_srsr->lock);
 	return ret;
 }
 
 static int srsr_write_calib(struct platform_device *pdev, const void *calib_cache, uint32_t size)
 {
-	int ret = 0;
+	int ret = 0, err = 0;
 	struct xocl_ddr_srsr *xocl_ddr_srsr = platform_get_drvdata(pdev);
 
-	BUG_ON(!xocl_ddr_srsr->calib_cache);
 	BUG_ON(!calib_cache);
-	BUG_ON(size != XOCL_CALIB_CACHE_SIZE);
+
+	mutex_lock(&xocl_ddr_srsr->lock);
+	xocl_ddr_srsr->cache_size = size;
+
+	vfree(xocl_ddr_srsr->calib_cache);
+	xocl_ddr_srsr->calib_cache = vzalloc(xocl_ddr_srsr->cache_size);
+	if (!xocl_ddr_srsr->calib_cache) {
+		err = -ENOMEM;
+		goto done;
+	}
 
 	memcpy(xocl_ddr_srsr->calib_cache, calib_cache, size);
 
+	xocl_ddr_srsr->restored = true;
+done:
+	mutex_unlock(&xocl_ddr_srsr->lock);
 	return ret;
 }
 
 static uint32_t srsr_cache_size(struct platform_device *pdev)
 {
-	return XOCL_CALIB_CACHE_SIZE;
+	struct xocl_ddr_srsr *xocl_ddr_srsr = platform_get_drvdata(pdev);
+
+	BUG_ON(!xocl_ddr_srsr->calib_cache);
+
+	return xocl_ddr_srsr->cache_size;
 }
 
 
@@ -273,14 +299,6 @@ static int xocl_ddr_srsr_probe(struct platform_device *pdev)
 	}
 	mutex_init(&xocl_ddr_srsr->lock);
 	platform_set_drvdata(pdev, xocl_ddr_srsr);
-
-	xocl_ddr_srsr->calib_cache = vzalloc(XOCL_CALIB_CACHE_SIZE);
-	if (!xocl_ddr_srsr->calib_cache) {
-		err = -ENOMEM;
-		goto create_xocl_ddr_srsr_failed;
-	}
-
-	iowrite32(CTRL_BIT_SYS_RST, xocl_ddr_srsr->base+REG_CTRL_OFFSET);
 
 	err = sysfs_create_group(&pdev->dev.kobj, &xocl_ddr_srsr_attrgroup);
 	if (err)

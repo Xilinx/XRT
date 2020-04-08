@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
 #
 # Authors:
 #
@@ -17,6 +17,33 @@ obj-m	+= xocl.o
 ccflags-y := -Iinclude/drm
 
 include $(PWD)/../lib/Makefile.in
+
+# Base on Linux Documentation/kbuild/modules.txt.
+# $(src) provides the absolute path by pointing to the directory
+# where the currently executing kbuild file is located.
+ifneq ($(src),)
+# building modules
+ifneq ($(wildcard $(src)/../../common),)
+# dpms dir
+common_dir = ../../common
+else
+# build from source code
+common_dir = ../../../../../common/drv
+endif
+
+else
+# clean
+common_dir = ../../../../../common/drv
+ifeq ($(wildcard ../../../../../common/drv),)
+common_dir = ../../common
+endif
+
+endif
+
+drv_common-y   := $(common_dir)/kds_core.o \
+		  $(common_dir)/xrt_cu.o \
+		  $(common_dir)/cu_plram.o
+
 xocl-y := \
 	../xocl_subdev.o \
 	../xocl_ctx.o \
@@ -46,21 +73,27 @@ xocl-y := \
 	../subdev/ddr_srsr.o\
 	../subdev/memory_hbm.o \
 	../subdev/address_translator.o \
+	../subdev/cu_ctrl.o \
+	../subdev/cu.o \
 	$(xocl_lib-y)	\
+	$(drv_common-y) \
 	xocl_drv.o	\
 	xocl_bo.o	\
 	xocl_drm.o	\
 	xocl_ioctl.o	\
+	xocl_kds.o 	\
 	xocl_sysfs.o
 
 xocl-y += $(libfdt-y)
+
+xocl-y += $(drv_common-y)
 
 CONFIG_MODULE_SIG=n
 KERNELDIR ?= /lib/modules/$(shell uname -r)/build
 
 PWD	:= $(shell pwd)
 ROOT	:= $(dir $(M))
-XILINXINCLUDE := -I$(ROOT)/../include -I$(ROOT)/../../../../include -I$(ROOT)/../../../../common/drv/
+XILINXINCLUDE := -I$(ROOT) -I$(ROOT)/../include -I$(ROOT)/../../../../include -I$(ROOT)/../../../../common/drv/include
 
 ccflags-y += $(XILINXINCLUDE) -DPF=USERPF -D__XRT__
 ifeq ($(DEBUG),1)
@@ -72,7 +105,7 @@ ccflags-y += -g
 endif
 
 all:
-	echo $(PWD)
+	@echo $(PWD)
 	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
 
 install: all
@@ -86,6 +119,7 @@ install: all
 clean:
 	rm -rf *.o *.o.d *~ core .depend .*.cmd *.ko *.ko.unsigned *.mod.c \
 	../subdev/*.o ../subdev/.*.o.cmd ../lib/*.o ../lib/.*.o.cmd	\
-	../lib/libqdma/*.o ../lib/libqdma/.*.o.cmd 			\
+	../lib/*.o.ur-safe ../lib/libqdma/*.o ../lib/libqdma/.*.o.cmd \
 	../lib/libqdma/*.o.ur-safe ../subdev/*.o.ur-safe ./.cache.mk	\
+	$(common_dir)/*.o $(common_dir)/.*.o.cmd \
 	.tmp_versions *.symvers modules.order

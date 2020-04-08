@@ -29,6 +29,8 @@
 
 namespace xdp {
 
+  using oclDeviceData = xoclp::platform::device::data;
+
   class OCLProfiler {
   public:
     static OCLProfiler* Instance();
@@ -94,6 +96,8 @@ namespace xdp {
                              std::chrono::steady_clock::time_point end);
 
     uint64_t getDeviceDDRBufferSize(DeviceIntf* dInt, xocl::device* device);
+
+    oclDeviceData* initializeDeviceInterface(xocl::device* device);
 
   private:
     // Flags

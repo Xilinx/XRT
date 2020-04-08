@@ -113,7 +113,8 @@ namespace xdp {
         BUFFER_RD_ACTIVE_TIME_MS,
         BUFFER_WR_ACTIVE_TIME_MS,
         BUFFER_TX_ACTIVE_TIME_MS,
-        APPLICATION_RUN_TIME_MS
+        APPLICATION_RUN_TIME_MS,
+        TOTAL_KERNEL_RUN_TIME_MS
       };
 
     public:
@@ -156,6 +157,8 @@ namespace xdp {
       // Application run time
       void setApplicationEnd() {mApplicationRunTimeMs = getTraceTime();}
       double getApplicationRunTimeMs() {return mApplicationRunTimeMs;}
+      void setTotalApplicationKernelTimeMs(double totalTimeMs) {mTotalApplicationKernelTimeMs = totalTimeMs;}
+      double getTotalApplicationKernelTimeMs() {return mTotalApplicationKernelTimeMs;}
       //Profiling infrastructure metadata
       void setCtxEn(bool ctxEn) {IsCtxEn = ctxEn;}
       bool isCtxEn() {return IsCtxEn;}
@@ -182,6 +185,7 @@ namespace xdp {
       bool IsCtxEn = false;
       std::string TraceMemory = "NA";
       double mApplicationRunTimeMs = 0.0;
+      double mTotalApplicationKernelTimeMs = 0.0;
       // Buffer Reads
       double mReadTimeStartMs = 0.0;
       double mReadTimeMs = 0.0;

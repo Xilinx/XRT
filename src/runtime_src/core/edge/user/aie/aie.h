@@ -20,22 +20,54 @@
 #define xrt_core_edge_user_aie_h
 
 #include <vector>
+#include <queue>
 
+#include "core/edge/common/aie_parser.h"
 extern "C" {
 #include <xaiengine.h>
 }
 
 namespace zynqaie {
 
+#define BD_HIGH_ADDR_MASK               0xFF00000000L
+#define BD_LOW_ADDR_MASK                0xFFFFFFFF
+
+#define GET_BD_HIGH_ADDR(addr)          (((addr) & BD_HIGH_ADDR_MASK) >> 32)
+#define GET_BD_LOW_ADDR(addr)           ((addr) & BD_LOW_ADDR_MASK)
+
+struct BD {
+    uint16_t bd_num;
+    uint16_t addr_high;
+    uint32_t addr_low;
+};
+
+struct DMAChannel {
+    std::queue<BD> idle_bds;
+    std::queue<BD> pend_bds;
+};
+
+struct ShimDMA {
+    XAieDma_Shim handle;
+    DMAChannel dma_chan[XAIEDMA_SHIM_MAX_NUM_CHANNELS];
+    bool configured;
+};
+
+
 class Aie {
 public:
+    using gmio_type = xrt_core::edge::aie::gmio_type;
+
     ~Aie();
     Aie();
 
     std::vector<XAieGbl_Tile> tileArray;  // Tile Array
+    std::vector<ShimDMA> shim_dma;   // shim DMA
+
+    /* This is the collections of gmios that are used. */
+    std::vector<gmio_type> gmios;
 
     int getTilePos(int col, int row);
-
+    
 private:
     int numRows;
     int numCols;

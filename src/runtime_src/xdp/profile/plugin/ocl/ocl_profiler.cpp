@@ -29,7 +29,7 @@
 #include "xdp/profile/profile_config.h"
 #include "xdp/profile/core/rt_profile.h"
 #include "xdp/profile/device/xrt_device/xdp_xrt_device.h"
-#include "xdp/profile/device/profile_mngr_trace_logger.h"
+#include "xdp/profile/device/ocl_device_logger/profile_mngr_trace_logger.h"
 #include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/writer/json_profile.h"
 #include "xdp/profile/writer/csv_profile.h"
@@ -90,10 +90,40 @@ namespace xdp {
     pDead = true;
   }
 
+  oclDeviceData* OCLProfiler::initializeDeviceInterface(xocl::device* device)
+  {
+    DeviceIntf* dInt = nullptr;
+    auto xdevice = device->get_xrt_device();
+
+    auto itr = DeviceData.find(device);
+    if (itr!=DeviceData.end())
+      return itr->second;
+
+    itr = DeviceData.emplace(device,(new oclDeviceData())).first;
+    auto info = itr->second;
+    if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE) ||
+        (Plugin->getFlowMode() == xdp::RTUtil::HW_EM && Plugin->getSystemDPAEmulation())) {
+      dInt = &(info->mDeviceIntf);
+      dInt->setDevice(new xdp::XrtDevice(xdevice));
+      dInt->readDebugIPlayout();
+      dInt->setMaxBwRead();
+      dInt->setMaxBwWrite();
+    }
+    return info;
+  }
+
   // Start device profiling
   void OCLProfiler::startDeviceProfiling(size_t numComputeUnits)
   {
     auto platform = getclPlatformID();
+
+    // xdp always needs some device data
+    // regardless of whether device profiling
+    // was turned
+    for (auto device: platform->get_device_range()) {
+      if (device->is_active())
+        initializeDeviceInterface(device);
+    }
 
     // Start counters
     if (deviceCountersProfilingOn()) {
@@ -116,6 +146,21 @@ namespace xdp {
       for (auto device : platform->get_device_range()) {
         if (!device->is_active())
           continue;
+
+        /*
+         * For multi xclbin host code
+         * start thread only once
+         */
+        bool device_has_power_profiling = false;
+        for (auto& thread: PowerProfileList) {
+          if (thread->get_target_device_name() == device->get_unique_name()) {
+            device_has_power_profiling = true;
+            break;
+          }
+        }
+        if (device_has_power_profiling)
+          continue;
+
         /*
          * Initialize Power Profiling Threads
          */
@@ -185,18 +230,9 @@ namespace xdp {
       if(!device->is_active()) {
         continue;
       }
-      auto itr = DeviceData.find(device);
-      if (itr==DeviceData.end()) {
-        itr = DeviceData.emplace(device,(new xdp::xoclp::platform::device::data())).first;
-      }
-      DeviceIntf* dInt = nullptr;
+      auto info = initializeDeviceInterface(device);
       auto xdevice = device->get_xrt_device();
-      if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE) || (Plugin->getFlowMode() == xdp::RTUtil::HW_EM && Plugin->getSystemDPAEmulation())) {
-        dInt = &(itr->second->mDeviceIntf);
-        dInt->setDevice(new xdp::XrtDevice(xdevice));
-        dInt->readDebugIPlayout();
-      }       
-      xdp::xoclp::platform::device::data* info = itr->second;
+      DeviceIntf* dInt = &info->mDeviceIntf;
 
       // Set clock etc.
       double deviceClockMHz = xdevice->getDeviceClock().get();
@@ -251,35 +287,33 @@ namespace xdp {
     std::string trace_memory = "FIFO";
 
     /*
-     * Currently continuous offload only works on one active device
+     * Currently continuous offload only works on :
+     * 1. one active device
+     * 2. hardware flow
      */
-    unsigned int numActiveDevices = 0;
-    for (auto device : platform->get_device_range()) {
-      if(device->is_active())
-        ++numActiveDevices;
-    }
-    if (numActiveDevices > 1 && mTraceThreadEn) {
-      xrt::message::send(xrt::message::severity_level::XRT_WARNING, CONTINUOUS_OFFLOAD_WARN_MSG);
-      mTraceThreadEn = false;
+    if (mTraceThreadEn) {
+       unsigned int numActiveDevices = 0;
+       for (auto device : platform->get_device_range()) {
+         if(device->is_active())
+           ++numActiveDevices;
+       }
+       if (numActiveDevices > 1) {
+         xrt::message::send(xrt::message::severity_level::XRT_WARNING, CONTINUOUS_OFFLOAD_WARN_MSG_DEVICE);
+         mTraceThreadEn = false;
+       }
+       if (Plugin->getFlowMode() != xdp::RTUtil::DEVICE) {
+         xrt::message::send(xrt::message::severity_level::XRT_WARNING, CONTINUOUS_OFFLOAD_WARN_MSG_FLOW);
+         mTraceThreadEn = false;
+       }
     }
 
     for (auto device : platform->get_device_range()) {
       if(!device->is_active()) {
         continue;
       }
-      auto itr = DeviceData.find(device);
-      if (itr==DeviceData.end()) {
-        itr = DeviceData.emplace(device,(new xdp::xoclp::platform::device::data())).first;
-      }
-
+      auto info = initializeDeviceInterface(device);
       auto xdevice = device->get_xrt_device();
-      DeviceIntf* dInt = nullptr;
-      if((Plugin->getFlowMode() == xdp::RTUtil::DEVICE) || (Plugin->getFlowMode() == xdp::RTUtil::HW_EM && Plugin->getSystemDPAEmulation())) {
-        dInt = &(itr->second->mDeviceIntf);
-        dInt->setDevice(new xdp::XrtDevice(xdevice));
-        dInt->readDebugIPlayout();
-      }
-      xdp::xoclp::platform::device::data* info = itr->second;
+      DeviceIntf* dInt = &info->mDeviceIntf;
 
       // Since clock training is performed in mStartTrace, let's record this time
       // XCL_PERF_MON_MEMORY // any type
@@ -307,6 +341,10 @@ namespace xdp {
         if (dInt->hasTs2mm()) {
           traceBufSz = getDeviceDDRBufferSize(dInt, device);
           trace_memory = "TS2MM";
+        }
+        // Continuous trace isn't safe to use with stall setting
+        if (dInt->hasFIFO() && mTraceThreadEn && stallTrace!= xdp::RTUtil::STALL_TRACE_OFF) {
+          xrt::message::send(xrt::message::severity_level::XRT_WARNING, CONTINUOUS_OFFLOAD_WARN_MSG_STALLS);
         }
 
         DeviceTraceLogger* deviceTraceLogger = new TraceLoggerUsingProfileMngr(getProfileManager(), device->get_unique_name(), binaryName);
@@ -363,17 +401,22 @@ namespace xdp {
   {
     auto& g_map = Plugin->getDeviceTraceBufferFullMap();
     for (auto& trace_offloader : DeviceTraceOffloadList) {
+      TraceLoggerUsingProfileMngr* deviceTraceLogger =
+          dynamic_cast<TraceLoggerUsingProfileMngr*>(trace_offloader->getDeviceTraceLogger());
+
       if (trace_offloader->trace_buffer_full()) {
         if (trace_offloader->has_fifo()) {
           Plugin->sendMessage(FIFO_WARN_MSG);
         } else {
           Plugin->sendMessage(TS2MM_WARN_MSG_BUF_FULL);
         }
-        TraceLoggerUsingProfileMngr* deviceTraceLogger = 
-					   dynamic_cast<TraceLoggerUsingProfileMngr*>(trace_offloader->getDeviceTraceLogger());
-        if(deviceTraceLogger) {
+
+        if (deviceTraceLogger) {
           g_map[deviceTraceLogger->getDeviceName()] = 1;
         }
+      }
+      else if (deviceTraceLogger) {
+        g_map[deviceTraceLogger->getDeviceName()] = 0;
       }
       trace_offloader.reset();
     }
@@ -527,11 +570,11 @@ namespace xdp {
         for (auto device : Platform->get_device_range()) {
           auto itr = DeviceData.find(device);
           if (itr==DeviceData.end()) {
-            itr = DeviceData.emplace(device,(new xdp::xoclp::platform::device::data())).first;
+            itr = DeviceData.emplace(device,(new oclDeviceData())).first;
           }
           DeviceIntf* dInt = &(itr->second->mDeviceIntf);
           // Assumption : debug_ip_layout has been read
-  
+
           numStallSlots  += dInt->getNumMonitors(XCL_PERF_MON_STALL);
           numStreamSlots += dInt->getNumMonitors(XCL_PERF_MON_STR);
           numShellSlots  += dInt->getNumMonitors(XCL_PERF_MON_SHELL);
@@ -584,9 +627,9 @@ namespace xdp {
 
       auto itr = DeviceData.find(device);
       if (itr==DeviceData.end()) {
-        itr = DeviceData.emplace(device,(new xdp::xoclp::platform::device::data())).first;
+        itr = DeviceData.emplace(device,(new oclDeviceData())).first;
       }
-      xdp::xoclp::platform::device::data* info = itr->second;
+      oclDeviceData* info = itr->second;
       DeviceIntf* dInt = nullptr;
       if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE) || (Plugin->getFlowMode() == xdp::RTUtil::HW_EM && Plugin->getSystemDPAEmulation())) {
         dInt = &(itr->second->mDeviceIntf);
@@ -594,7 +637,7 @@ namespace xdp {
       }
 
       std::chrono::steady_clock::time_point nowTime = std::chrono::steady_clock::now();
-      if (forceReadCounters || 
+      if (forceReadCounters ||
               ((nowTime - info->mLastCountersSampleTime) > std::chrono::milliseconds(info->mSampleIntervalMsec)))
       {
         if(dInt) {
@@ -603,7 +646,7 @@ namespace xdp {
           xdevice->readCounters(XCL_PERF_MON_MEMORY, info->mCounterResults);
         }
 
-        // Record the counter data 
+        // Record the counter data
         auto timeSinceEpoch = (std::chrono::steady_clock::now()).time_since_epoch();
         auto value = std::chrono::duration_cast<std::chrono::nanoseconds>(timeSinceEpoch);
         uint64_t timeNsec = value.count();
@@ -615,7 +658,7 @@ namespace xdp {
         getProfileManager()->logDeviceCounters(device_name, binary_name, program_id,
                                      XCL_PERF_MON_MEMORY /*For HW flow all types handled together */,
                                      info->mCounterResults, timeNsec, firstReadAfterProgram);
- 
+
         //update the last time sample
         info->mLastCountersSampleTime = nowTime;
       }
@@ -766,7 +809,7 @@ namespace xdp {
     for(auto itr : DeviceData) {
       delete itr.second;
     }
-    DeviceData.clear();  
+    DeviceData.clear();
   }
 
   /*

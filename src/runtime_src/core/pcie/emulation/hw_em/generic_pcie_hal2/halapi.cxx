@@ -18,7 +18,9 @@
  * Copyright (C) 2015 Xilinx, Inc
  */
 
-#include <shim.h>
+#include "shim.h"
+#include "core/common/system.h"
+#include "core/common/device.h"
 
 int xclExportBO(xclDeviceHandle handle, unsigned int boHandle)
 {
@@ -291,9 +293,18 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   if (!drv)
     return -1;
+#ifdef DISABLE_DOWNLOAD_XCLBIN
+  int ret = 0;
+#else
   auto ret = drv->xclLoadXclBin(buffer);
-  if (!ret)
-      ret = xrt_core::scheduler::init(handle, buffer);
+#endif
+  if (!ret) {
+    auto device = xrt_core::get_userpf_device(drv);
+    device->register_axlf(buffer);
+#ifndef DISABLE_DOWNLOAD_XCLBIN
+    ret = xrt_core::scheduler::init(handle, buffer);
+#endif
+  }
   return ret;
 }
 
@@ -485,5 +496,7 @@ int xclDestroyProfileResults(xclDeviceHandle handle, ProfileResults* results)
 void
 xclGetDebugIpLayout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret)
 {
+  if(size_ret)
+    *size_ret = 0;
   return;
 }

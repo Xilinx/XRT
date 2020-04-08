@@ -47,13 +47,6 @@
 
 namespace { // private implementation details
 
-inline bool
-is_multiprocess_mode()
-{
-  static bool val = xrt_core::config::get_multiprocess() || std::getenv("XCL_MULTIPROCESS_MODE") != nullptr;
-  return val;
-}
-
 struct shim
 {
   using buffer_handle_type = xclBufferHandle; // xrt.h
@@ -816,8 +809,8 @@ done:
   bool
   lock_device()
   {
-    if (!is_multiprocess_mode() && m_locked)
-        return false;
+    if (!xrt_core::config::get_multiprocess() && m_locked)
+      return false;
 
     return m_locked = true;
   }
@@ -1421,6 +1414,20 @@ xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
   return shim->exec_wait(timeoutMilliSec);
 }
 
+int xclExportBO(xclDeviceHandle handle, unsigned int boHandle)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclExportBO() NOT IMPLEMENTED");
+  return ERROR_INVALID_FUNCTION;
+}
+
+xclBufferHandle xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclImportBO() NOT IMPLEMENTED");
+  return INVALID_HANDLE_VALUE;
+}
+
 int
 xclGetBOProperties(xclDeviceHandle handle, xclBufferHandle boHandle,
 		   struct xclBOProperties *properties)
@@ -1437,7 +1444,11 @@ xclLoadXclBin(xclDeviceHandle handle, const struct axlf *buffer)
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclLoadXclbin()");
   auto shim = get_shim_object(handle);
-  return shim->load_xclbin(buffer);
+  if (auto ret =shim->load_xclbin(buffer))
+    return ret;
+  auto core_device = xrt_core::get_userpf_device(shim);
+  core_device->register_axlf(buffer);
+  return 0;
 }
 
 unsigned int

@@ -65,6 +65,7 @@ get_info(boost::property_tree::ptree& pt) const
   ptree_updater<query::pcie_link_speed>::query_and_put(this, pt);
   ptree_updater<query::pcie_express_lane_width>::query_and_put(this, pt);
   ptree_updater<query::dma_threads_raw>::query_and_put(this, pt);
+  ptree_updater<query::pcie_bdf>::query_and_put(this, pt);
 }
 
 } // xrt_core

@@ -140,5 +140,15 @@ uint64_t XrtDevice::getDeviceAddr(size_t xdpBoHandle)
   return mXrtDevice->getDeviceAddr(m_bos[idx]);
 }
 
+double XrtDevice::getMaxBwRead()
+{
+  return mXrtDevice->getDeviceMaxRead().get();
+}
+
+double XrtDevice::getMaxBwWrite()
+{
+  return mXrtDevice->getDeviceMaxWrite().get();
+}
+
 }
 

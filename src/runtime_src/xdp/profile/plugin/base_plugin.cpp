@@ -167,6 +167,9 @@ namespace xdp {
       case APPLICATION_RUN_TIME_MS:
         name = "APPLICATION_RUN_TIME_MS";
         break;
+      case TOTAL_KERNEL_RUN_TIME_MS:
+        name = "TOTAL_KERNEL_RUN_TIME_MS";
+        break;
       default:
         assert(0);
         break;

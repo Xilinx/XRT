@@ -55,6 +55,9 @@ public:
   virtual void sync(size_t xdpBoHandle, size_t sz, size_t offset, direction dir, bool async=false);
   virtual uint64_t getDeviceAddr(size_t xdpBoHandle);
   virtual void* getRawDevice() { return mHalDevice ; }
+
+  virtual double getMaxBwRead();
+  virtual double getMaxBwWrite();
 };
 }
 

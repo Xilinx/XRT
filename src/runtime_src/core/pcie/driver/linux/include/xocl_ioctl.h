@@ -472,7 +472,7 @@ struct drm_xocl_reclock_info {
 struct drm_xocl_alloc_cma_info {
 	uint64_t	total_size;
 	uint64_t	entry_num;
-	uint64_t	user_addr[1];
+	uint64_t	*user_addr;
 };
 /*
  * Core ioctls numbers

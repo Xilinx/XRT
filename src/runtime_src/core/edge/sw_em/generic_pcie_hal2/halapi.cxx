@@ -28,11 +28,11 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
   info.mHALMajorVersion = XCLHAL_MAJOR_VER;
   info.mHALMinorVersion = XCLHAL_MINOR_VER;
   info.mMinTransferSize = 32;
-  info.mVendorId = 0x10ee;   // TODO: UKP
-  info.mDeviceId = 0xffff;   // TODO: UKP
+  info.mVendorId = 0x10ee;
+  info.mDeviceId = 0x0000;
   info.mSubsystemId = 0xffff;
-  info.mSubsystemVendorId = 0xffff;
-  info.mDeviceVersion = 0xffff;
+  info.mSubsystemVendorId = 0x0000;
+  info.mDeviceVersion = 0x0000;
   info.mDDRSize = xclemulation::MEMSIZE_4G;
   info.mDataAlignment = DDR_BUFFER_ALIGNMENT;
   info.mDDRBankCount = 1;
@@ -62,7 +62,8 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
   FeatureRomHeader fRomHeader;
   std::memset(&fRomHeader, 0, sizeof(FeatureRomHeader));
 
-  xclcpuemhal2::CpuemShim *handle = NULL;
+  xclcpuemhal2::CpuemShim *handle = nullptr;
+  bool bDefaultDevice = false;
   std::map<unsigned int, xclcpuemhal2::CpuemShim*>::iterator it = xclcpuemhal2::devices.find(deviceIndex);
   if(it != xclcpuemhal2::devices.end())
   {
@@ -71,14 +72,22 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
   else
   {
     handle = new xclcpuemhal2::CpuemShim(deviceIndex,info,DDRBankList,false,false,fRomHeader);
+    bDefaultDevice = true;
   }
 
   if (!xclcpuemhal2::CpuemShim::handleCheck(handle)) {
     delete handle;
     handle = 0;
   }
-  if(handle)
+  if (handle) {
     handle->xclOpen(logfileName);
+    if (bDefaultDevice)
+    {
+      std::string sDummyDeviceMsg = "INFO: [SW-EM 09-0] Unable to find emconfig.json. Using default device.";
+      if (xclemulation::config::getInstance()->isInfosToBePrintedOnConsole())
+        std::cout << sDummyDeviceMsg << std::endl;
+    }
+  }
   return (xclDeviceHandle *)handle;
 }
 
@@ -107,7 +116,14 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
-  return drv->xclLoadXclBin(buffer);
+  auto ret = drv->xclLoadXclBin(buffer);
+  if (!ret) {
+    //auto device = xrt_core::get_userpf_device(drv);
+    //device->register_axlf(buffer);
+    if (xclemulation::is_sw_emulation() && xrt_core::config::get_flag_kds_sw_emu())
+      ret = xrt_core::scheduler::init(handle, buffer);
+  }
+  return ret;
 }
 
 uint64_t xclAllocDeviceBuffer(xclDeviceHandle handle, size_t size)
@@ -246,7 +262,7 @@ size_t xclPerfMonClockTraining(xclDeviceHandle handle, xclPerfMonType type)
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
-  return 0; 
+  return 0;
 }
 
 
@@ -347,10 +363,10 @@ unsigned xclProbe()
   unsigned int deviceIndex = 0;
   std::vector<std::tuple<xclDeviceInfo2,std::list<xclemulation::DDRBank> ,bool, bool, FeatureRomHeader> > devicesInfo;
   getDevicesInfo(devicesInfo);
-  
+
   if(devicesInfo.size() == 0)
     return 1;
-  
+
   for(auto &it: devicesInfo)
   {
     xclDeviceInfo2 info = std::get<0>(it);
@@ -358,7 +374,7 @@ unsigned xclProbe()
     bool bUnified = std::get<2>(it);
     bool bXPR = std::get<3>(it);
     FeatureRomHeader fRomHeader = std::get<4>(it);
-    
+
     xclcpuemhal2::CpuemShim *handle = new xclcpuemhal2::CpuemShim(deviceIndex,info,DDRBankList, bUnified, bXPR, fRomHeader);
     xclcpuemhal2::devices[deviceIndex++] = handle;
   }
@@ -373,7 +389,7 @@ unsigned int xclVersion ()
   return 2;
 }
 
-int xclExportBO(xclDeviceHandle handle, unsigned int boHandle) 
+int xclExportBO(xclDeviceHandle handle, unsigned int boHandle)
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
@@ -381,7 +397,7 @@ int xclExportBO(xclDeviceHandle handle, unsigned int boHandle)
   return drv->xclExportBO(boHandle);
 }
 
-unsigned int xclImportBO(xclDeviceHandle handle, int boGlobalHandle,unsigned flags) 
+unsigned int xclImportBO(xclDeviceHandle handle, int boGlobalHandle,unsigned flags)
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
@@ -409,7 +425,7 @@ unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t siz
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return mNullBO;
-  return drv->xclAllocUserPtrBO(userptr,size,flags); 
+  return drv->xclAllocUserPtrBO(userptr,size,flags);
 }
 
 unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned flags)
@@ -425,7 +441,7 @@ void *xclMapBO(xclDeviceHandle handle, unsigned int boHandle, bool write)
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
-    return NULL;
+    return nullptr;
   return drv->xclMapBO(boHandle, write);
 }
 
@@ -437,7 +453,7 @@ int xclUnmapBO(xclDeviceHandle handle, unsigned int boHandle, void* addr)
   return drv->xclUnmapBO(boHandle, addr);
 }
 
-int xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset) 
+int xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset)
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
@@ -492,7 +508,7 @@ int xclDestroyQueue(xclDeviceHandle handle, uint64_t q_hdl)
 void *xclAllocQDMABuf(xclDeviceHandle handle, size_t size, uint64_t *buf_hdl)
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-  return drv ? drv->xclAllocQDMABuf(size, buf_hdl) : NULL;
+  return drv ? drv->xclAllocQDMABuf(size, buf_hdl) : nullptr;
 }
 
 int xclFreeQDMABuf(xclDeviceHandle handle, uint64_t buf_hdl)
@@ -519,15 +535,38 @@ int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclR
   return drv ? drv->xclPollCompletion(min_compl, max_compl, comps, actual, timeout) : -ENODEV;
 }
 
-/*
- * API to get number of live processes. 
- * Applicable only for System Flow as it supports Multiple processes on same device.
- * For CPU emulation, return 0
- */
-uint xclGetNumLiveProcesses(xclDeviceHandle handle)
+ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf, size_t count, uint64_t offset)
 {
   return 0;
 }
+
+
+/*
+ * API to get number of live processes.
+ * Applicable only for System Flow as it supports Multiple processes on same device.
+ * For CPU emulation, return 0
+ */
+uint32_t xclGetNumLiveProcesses(xclDeviceHandle handle)
+{
+  return 0;
+}
+
+int xclGetDebugIPlayoutPath(xclDeviceHandle handle, char* layoutPath, size_t size)
+{
+  return -1;
+}
+
+int xclGetTraceBufferInfo(xclDeviceHandle handle, uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
+{
+  return -1;
+}
+
+int xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample)
+{
+  return -1;
+}
+
+
 
 int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, const char* format, ...)
 {
@@ -578,3 +617,8 @@ int xclDestroyProfileResults(xclDeviceHandle handle, ProfileResults* results)
   return 0;
 }
 
+void
+xclGetDebugIpLayout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret)
+{
+  return;
+}

@@ -97,8 +97,7 @@ clGetProgramInfo(cl_program         program,
       //a prior call with CL_PROGRAM_BINARY_SIZES.  Skip device binary for entry with nullptr.
       for (auto device : xocl(program)->get_device_range()) {
         auto buf = buffer.as_array<unsigned char*>(1); // unsigned char**
-        auto xclbin = xocl(program)->get_binary(device);
-        auto binary_data = xclbin.binary_data();
+        auto binary_data = xocl(program)->get_xclbin_binary(device);
         auto binary = binary_data.first;
         auto sz = binary_data.second - binary_data.first;
         if (buf && *buf && binary && sz) {

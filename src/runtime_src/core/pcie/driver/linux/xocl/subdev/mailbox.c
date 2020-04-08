@@ -324,7 +324,7 @@ enum mailbox_chan_type {
 };
 
 struct mailbox_channel;
-typedef	void (*chan_func_t)(struct mailbox_channel *ch);
+typedef	bool (*chan_func_t)(struct mailbox_channel *ch);
 struct mailbox_channel {
 	struct mailbox		*mbc_parent;
 	enum mailbox_chan_type	mbc_type;
@@ -393,6 +393,7 @@ struct mailbox {
 	/* Req list for all incoming request message */
 	struct completion	mbx_comp;
 	struct mutex		mbx_lock;
+	struct spinlock		mbx_intr_lock;
 	struct list_head	mbx_req_list;
 	uint32_t		mbx_req_cnt;
 	size_t			mbx_req_sz;
@@ -486,27 +487,19 @@ irqreturn_t mailbox_isr(int irq, void *arg)
 	struct mailbox *mbx = (struct mailbox *)arg;
 	u32 is = mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_is);
 
-	while (is) {
-		MBX_DBG(mbx, "intr status: 0x%x", is);
+	MBX_DBG(mbx, "intr status: 0x%x", is);
 
-		if ((is & FLAG_STI) != 0) {
-			/* A packet has been sent successfully. */
-			complete(&mbx->mbx_tx.mbc_worker);
-		}
-		if ((is & FLAG_RTI) != 0) {
-			/* A packet is waiting to be received from mailbox. */
-			complete(&mbx->mbx_rx.mbc_worker);
-		}
-		/* Anything else is not expected. */
-		if ((is & (FLAG_STI | FLAG_RTI)) == 0) {
-			MBX_ERR(mbx, "spurious mailbox irq %d, is=0x%x",
-				irq, is);
-		}
+	mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_is, FLAG_STI | FLAG_RTI);
 
-		/* Clear intr state for receiving next one. */
-		mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_is, is);
+	/* notify both RX and TX channel anyway */
+	complete(&mbx->mbx_tx.mbc_worker);
+	complete(&mbx->mbx_rx.mbc_worker);
 
-		is = mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_is);
+
+	/* Anything else is not expected. */
+	if ((is & (FLAG_STI | FLAG_RTI)) == 0) {
+		MBX_ERR(mbx, "spurious mailbox irq %d, is=0x%x",
+			irq, is);
 	}
 
 	return IRQ_HANDLED;
@@ -589,6 +582,8 @@ static void msg_done(struct mailbox_msg *msg, int err)
 	if (is_rx_msg(msg) && (msg->mbm_flags & XCL_MB_REQ_FLAG_REQUEST)) {
 		if ((mbx->mbx_req_sz+msg->mbm_len) >= MAX_MSG_QUEUE_SZ ||
 			mbx->mbx_req_cnt >= MAX_MSG_QUEUE_LEN) {
+			MBX_WARN(mbx, "Too many cached messages, dropped");
+			complete(&ch->mbc_parent->mbx_comp);
 			goto done;
 		}
 		mutex_lock(&ch->mbc_parent->mbx_lock);
@@ -689,12 +684,11 @@ static void chann_worker(struct work_struct *work)
 {
 	struct mailbox_channel *ch =
 		container_of(work, struct mailbox_channel, mbc_work);
-	struct mailbox *mbx = ch->mbc_parent;
 
 	while (!test_bit(MBXCS_BIT_STOP, &ch->mbc_state)) {
-		MBX_DBG(mbx, "%s worker start", ch_name(ch));
-		ch->mbc_tran(ch);
 		wait_for_completion_interruptible(&ch->mbc_worker);
+		/* poll before clear interrupt to avoid too many interrupts */
+		while (ch->mbc_tran(ch));
 	}
 }
 
@@ -1023,7 +1017,7 @@ static void dequeue_rx_msg(struct mailbox_channel *ch,
 		chan_msg_done(ch, err);
 }
 
-static void do_sw_rx(struct mailbox_channel *ch)
+static bool do_sw_rx(struct mailbox_channel *ch)
 {
 	u32 flags = 0;
 	u64 id = 0;
@@ -1034,7 +1028,7 @@ static void do_sw_rx(struct mailbox_channel *ch)
 	 * for simplicity.
 	 */
 	if (ch->mbc_cur_msg)
-		return;
+		return false;
 
 	mutex_lock(&ch->sw_chan_mutex);
 
@@ -1046,7 +1040,7 @@ static void do_sw_rx(struct mailbox_channel *ch)
 
 	/* Nothing to receive. */
 	if (id == 0)
-		return;
+		return false;
 
 	/* Prepare outstanding msg. */
 	dequeue_rx_msg(ch, flags, id, len);
@@ -1070,9 +1064,11 @@ static void do_sw_rx(struct mailbox_channel *ch)
 	wake_up_interruptible(&ch->sw_chan_wq);
 
 	chan_msg_done(ch, 0);
+
+	return true;
 }
 
-static void do_hw_rx(struct mailbox_channel *ch)
+static bool do_hw_rx(struct mailbox_channel *ch)
 {
 	struct mailbox *mbx = ch->mbc_parent;
 	struct mailbox_pkt *pkt = &ch->mbc_packet;
@@ -1089,8 +1085,13 @@ static void do_hw_rx(struct mailbox_channel *ch)
 	} else {
 		read_hw = ((st & STATUS_RTA) != 0);
 	}
-	if (!read_hw)
-		return;
+	if (!read_hw) {
+		mutex_lock(&mbx->mbx_lock);
+		if (mbx->mbx_req_cnt > 0)
+			complete(&mbx->mbx_comp);
+		mutex_unlock(&mbx->mbx_lock);
+		return false;
+	}
 
 	chan_recv_pkt(ch);
 	type = pkt->hdr.type & PKT_TYPE_MASK;
@@ -1101,7 +1102,7 @@ static void do_hw_rx(struct mailbox_channel *ch)
 		(void) memcpy(&mbx->mbx_tst_pkt, &ch->mbc_packet,
 			sizeof(struct mailbox_pkt));
 		reset_pkt(pkt);
-		return;
+		return true;
 	case PKT_MSG_START:
 		if (ch->mbc_cur_msg) {
 			MBX_ERR(mbx, "Received partial msg (id 0x%llx)\n",
@@ -1128,7 +1129,7 @@ static void do_hw_rx(struct mailbox_channel *ch)
 	default:
 		MBX_ERR(mbx, "invalid mailbox pkt type\n");
 		reset_pkt(pkt);
-		return;
+		return true;
 	}
 
 	if (valid_pkt(pkt)) {
@@ -1136,6 +1137,8 @@ static void do_hw_rx(struct mailbox_channel *ch)
 		if (err || eom)
 			chan_msg_done(ch, err);
 	}
+
+	return true;
 }
 
 static void handle_timer_event(struct mailbox_channel *ch)
@@ -1149,13 +1152,16 @@ static void handle_timer_event(struct mailbox_channel *ch)
 /*
  * Worker for RX channel.
  */
-static void chan_do_rx(struct mailbox_channel *ch)
+static bool chan_do_rx(struct mailbox_channel *ch)
 {
 	struct mailbox *mbx = ch->mbc_parent;
-	do_sw_rx(ch);
+	bool recvd = false;
+	recvd = do_sw_rx(ch);
 	if (!MB_SW_ONLY(mbx))
-		do_hw_rx(ch);
+		recvd = do_hw_rx(ch);
 	handle_timer_event(ch);
+
+	return recvd;
 }
 
 static void chan_msg2pkt(struct mailbox_channel *ch)
@@ -1285,7 +1291,7 @@ static bool is_tx_chan_ready(struct mailbox_channel *ch)
 /*
  * Worker for TX channel.
  */
-static void chan_do_tx(struct mailbox_channel *ch)
+static bool chan_do_tx(struct mailbox_channel *ch)
 {
 	struct mailbox *mbx = ch->mbc_parent;
 	bool chan_ready = is_tx_chan_ready(ch);
@@ -1315,6 +1321,8 @@ static void chan_do_tx(struct mailbox_channel *ch)
 	}
 
 	handle_timer_event(ch);
+
+	return (chan_ready && ch->mbc_cur_msg);
 }
 
 static int mailbox_connect_status(struct platform_device *pdev)
@@ -1787,6 +1795,8 @@ int mailbox_listen(struct platform_device *pdev,
 	mbx->mbx_listen_cb_arg = cbarg;
 	wmb();
 	mbx->mbx_listen_cb = cb;
+	wmb();
+	complete(&mbx->mbx_rx.mbc_worker);
 
 	return 0;
 }
@@ -2333,6 +2343,7 @@ static int mailbox_probe(struct platform_device *pdev)
 
 	init_completion(&mbx->mbx_comp);
 	mutex_init(&mbx->mbx_lock);
+	spin_lock_init(&mbx->mbx_intr_lock);
 	INIT_LIST_HEAD(&mbx->mbx_req_list);
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);

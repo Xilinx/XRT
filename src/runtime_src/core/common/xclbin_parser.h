@@ -134,6 +134,10 @@ std::string
 get_ip_name(const ip_layout* ip_layout, uint64_t addr);
 
 XRT_CORE_COMMON_EXPORT
+std::string
+get_ip_name(const axlf* top, uint64_t addr);
+
+XRT_CORE_COMMON_EXPORT
 std::vector<std::pair<uint64_t, size_t>>
 get_debug_ips(const axlf* top);
 
@@ -194,6 +198,18 @@ get_kernel_freq(const axlf* top);
 /**
  * get_kernel_arguments() - Get argument meta data for a kernel
  *
+ * @xml_data: XML metadata from xclbin
+ * @xml_size: Size of XML metadata from xclbin
+ * @kname : Name of kernel
+ * Return: List of argument per struct kernel_argument
+ */
+XRT_CORE_COMMON_EXPORT
+std::vector<kernel_argument>
+get_kernel_arguments(const char* xml_data, size_t xml_size, const std::string& kname);
+
+/**
+ * get_kernel_arguments() - Get argument meta data for a kernel
+ *
  * @kname : Name of kernel
  * Return: List of argument per struct kernel_argument
  */
@@ -201,16 +217,6 @@ XRT_CORE_COMMON_EXPORT
 std::vector<kernel_argument>
 get_kernel_arguments(const axlf* top, const std::string& kname);
 
-/**
-* get_kernel_inst_addrs() - Get sorted list of CU base addresses in xclbin.
-*
-* @top : top of xclbin
-* Return: List of kernel instance base addresses.
-*/
-std::vector<uint64_t>
-get_kernel_inst_addrs(const axlf* top);
-
-} // xclbin
-} // xrt_core
+}} // xclbin, xrt_core
 
 #endif

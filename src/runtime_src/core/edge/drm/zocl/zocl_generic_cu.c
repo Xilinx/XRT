@@ -11,8 +11,9 @@
  * License version 2 or Apache License, Version 2.0.
  */
 
-#include <drm/drmP.h>
+#include <drm/drm_print.h>
 #include <linux/anon_inodes.h>
+#include <linux/poll.h>
 #include "zocl_util.h"
 #include "sched_exec.h"
 #include "zocl_generic_cu.h"

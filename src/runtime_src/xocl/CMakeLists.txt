@@ -54,7 +54,6 @@ include_directories(
 
 add_library(xilinxopencl SHARED
   $<TARGET_OBJECTS:xocl>
-  $<TARGET_OBJECTS:xclbin>
   ${XRT_XOCL_API_DIR}/icd/windows/xilinxopencl.def
   )
 
@@ -69,7 +68,6 @@ else ()
 
 add_library(xilinxopencl SHARED
   $<TARGET_OBJECTS:xocl>
-  $<TARGET_OBJECTS:xclbin>
   )
 
 # Attach to the user's linker flags
@@ -95,7 +93,7 @@ target_link_libraries(xilinxopencl
 endif ()
 
 install(TARGETS xilinxopencl
-  ARCHIVE DESTINATION ${XRT_INSTALL_DIR}/lib
-  LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib
+  ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR}
+  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}
   RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
 

@@ -260,6 +260,10 @@ namespace xdp {
     setKdmaDevice(false);
     setP2PDevice(false);
 
+    // Total kernel time for entire application = (last end - first start)
+    double totalKernelTimeMsec = profile->getTotalApplicationKernelTimeMsec();
+    setTotalApplicationKernelTimeMs(totalKernelTimeMsec);
+
     // Traverse all devices in platform
     for (auto device_id : mPlatformHandle->get_device_range()) {
       std::string deviceName = device_id->get_unique_name();

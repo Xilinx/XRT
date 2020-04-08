@@ -90,7 +90,7 @@ program(context* ctx,cl_uint num_devices, const cl_device_id* devices,
 {
   for (cl_uint i=0; i<num_devices; ++i) {
     m_devices.push_back(xocl::xocl(devices[i]));
-    m_binaries.emplace(xocl::xocl(devices[i]),std::vector<char>(binaries[i],binaries[i]+lengths[i]));
+    m_binaries.emplace(xocl::xocl(devices[i]),xclbin(binaries[i],lengths[i]));
   }
 
   // Verify that each binary contains the same kernels
@@ -121,17 +121,6 @@ program::
 add_device(device* d)
 {
   m_devices.push_back(d);
-}
-
-xclbin::binary_type
-program::
-get_binary(const device* d) const
-{
-  auto itr = m_binaries.find(d);
-  if (itr==m_binaries.end())
-    throw xocl::error(CL_INVALID_DEVICE,"No binary for device");
-
-  return (*itr).second.binary();
 }
 
 program::target_type
@@ -182,6 +171,18 @@ get_xclbin(const device* d) const
   return m_binaries.begin()->second;
 }
 
+std::pair<const char*, const char*>
+program::
+get_xclbin_binary(const device* d) const
+{
+  auto itr = m_binaries.find(d);
+  if (itr==m_binaries.end())
+    throw xocl::error(CL_INVALID_DEVICE,"No binary for device");
+
+  return (*itr).second.binary();
+}
+  
+
 std::vector<size_t>
 program::
 get_binary_sizes() const
@@ -191,8 +192,8 @@ get_binary_sizes() const
   // because clGetProgramInfo relies on binary sizes to match the
   // binaries returned by iterating device range
   for (auto& device : m_devices) {
-    auto xclbin = get_binary(device.get());
-    sizes.push_back(xclbin.size());
+    auto xclbin = get_xclbin_binary(device.get());
+    sizes.push_back(xclbin.second - xclbin.first);
   }
   return sizes;
 }

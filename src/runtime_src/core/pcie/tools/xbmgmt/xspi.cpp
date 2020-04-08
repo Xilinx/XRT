@@ -16,6 +16,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+#include <boost/format.hpp>
 #include <iostream>
 #include <string>
 #include <fstream>
@@ -28,8 +29,10 @@
 #include <errno.h>
 #include <cstdio>
 #include <stddef.h>
+
 #include "xspi.h"
 #include "core/pcie/driver/linux/include/mgmt-reg.h"
+#include "core/pcie/driver/linux/include/flash_xrt_data.h"
 #include "flasher.h"
 
 #ifdef WINDOWS
@@ -290,7 +293,7 @@ XSPI_Flasher::XSPI_Flasher(std::shared_ptr<pcidev::pci_device> dev)
         flash_base = FLASH_BASE;
 
     mFlashDev = nullptr;
-    if (std::getenv("FLASH_VIA_DRIVER")) {
+    if (std::getenv("FLASH_VIA_USER") == NULL) {
         int fd = mDev->open("flash", O_RDWR);
         if (fd >= 0)
             mFlashDev = fdopen(fd, "r+");
@@ -518,12 +521,13 @@ int XSPI_Flasher::xclTestXSpi(int index)
 }
 
 //Method for updating QSPI (expects 1 MCS files)
-int XSPI_Flasher::xclUpgradeFirmware1(std::istream& mcsStream1) {
+int XSPI_Flasher::xclUpgradeFirmware1(std::istream& mcsStream1,
+    std::istream* stripped) {
     int status = 0;
     uint32_t bitstream_start_loc = 0, bitstream_shift_addr = 0;
 
     if (mFlashDev)
-        return upgradeFirmware1Drv(mcsStream1);
+        return upgradeFirmware1Drv(mcsStream1, stripped);
     
     //Parse MCS file for first flash device 
     status = parseMCS(mcsStream1);
@@ -571,7 +575,8 @@ int XSPI_Flasher::xclUpgradeFirmware1(std::istream& mcsStream1) {
 
 
 //Method for updating dual QSPI (expects 2 MCS files)
-int XSPI_Flasher::xclUpgradeFirmware2(std::istream& mcsStream1, std::istream& mcsStream2) {
+int XSPI_Flasher::xclUpgradeFirmware2(std::istream& mcsStream1,
+    std::istream& mcsStream2, std::istream* stripped) {
     int status = 0;
     uint32_t bitstream_start_loc = 0, bitstream_shift_addr = 0;
 
@@ -581,7 +586,7 @@ int XSPI_Flasher::xclUpgradeFirmware2(std::istream& mcsStream1, std::istream& mc
     }
 
     if (mFlashDev)
-        return upgradeFirmware2Drv(mcsStream1, mcsStream2);
+        return upgradeFirmware2Drv(mcsStream1, mcsStream2, stripped);
 
     //Parse MCS file for first flash device 
     status = parseMCS(mcsStream1);
@@ -1818,6 +1823,25 @@ static int writeToFlash(std::FILE *flashDev, int slave,
     return ret;
 }
 
+static int readFromFlash(std::FILE *flashDev, int slave,
+    const unsigned int address, unsigned char *buf, size_t len)
+{
+    int ret = 0;
+    long addr = toAddr(slave, address);
+
+    ret = std::fseek(flashDev, addr, SEEK_SET);
+    if (ret)
+        return ret;
+
+    size_t read = std::fread(buf, 1, len, flashDev);
+    if (ferror(flashDev))
+        ret = -errno;
+    if (read != len)
+        ret = -EIO;
+
+    return ret;
+}
+
 static int installBitstreamGuard(pcidev::pci_device *dev, std::FILE *flashDev,
     uint32_t address)
 {
@@ -2121,7 +2145,8 @@ static int programXSpiDrv(std::FILE *mFlashDev, std::istream& mcsStream,
     return 0;
 }
 
-int XSPI_Flasher::upgradeFirmware1Drv(std::istream& mcsStream)
+int XSPI_Flasher::upgradeFirmware1Drv(std::istream& mcsStream,
+    std::istream* stripped)
 {
     int ret = 0;
     uint32_t bsGuardAddr;
@@ -2138,6 +2163,17 @@ int XSPI_Flasher::upgradeFirmware1Drv(std::istream& mcsStream)
     if (ret)
         return ret;
 
+    // Persist non-bitstream part of firmware, should happen before we
+    // start writing bitstream, so that we don't corrupt bitstream.
+    if (stripped) {
+        std::vector<unsigned char> data{
+            std::istreambuf_iterator<char>(*stripped),
+            std::istreambuf_iterator<char>()};
+        ret = xclWriteData(data);
+        if (ret)
+            return ret;
+    }
+
     // Write MCS
     ret = programXSpiDrv(mFlashDev, mcsStream, 0, bitstreamGuardSize);
     if (ret)
@@ -2148,7 +2184,7 @@ int XSPI_Flasher::upgradeFirmware1Drv(std::istream& mcsStream)
 }
 
 int XSPI_Flasher::upgradeFirmware2Drv(std::istream& mcsStream0,
-    std::istream& mcsStream1)
+    std::istream& mcsStream1, std::istream* stripped)
 {
     int ret = 0;
     uint32_t bsGuardAddr;
@@ -2169,6 +2205,17 @@ int XSPI_Flasher::upgradeFirmware2Drv(std::istream& mcsStream0,
     if (ret)
         return ret;
 
+    // Persist non-bitstream part of firmware, should happen before we
+    // start writing bitstream, so that we don't corrupt bitstream.
+    if (stripped) {
+        std::vector<unsigned char> data{
+            std::istreambuf_iterator<char>(*stripped),
+            std::istreambuf_iterator<char>()};
+        ret = xclWriteData(data);
+        if (ret)
+            return ret;
+    }
+
     // Write MCS
     ret = programXSpiDrv(mFlashDev, mcsStream0, 0, bitstreamGuardSize);
     if (ret)
@@ -2179,4 +2226,135 @@ int XSPI_Flasher::upgradeFirmware2Drv(std::istream& mcsStream0,
 
     // Disable bitstream guard.
     return removeBitstreamGuard(mDev.get(), mFlashDev, bsGuardAddr);
+}
+
+// Max file data length can be saved on flash
+static const size_t xrt_max_data_len = 1024 * 1024;
+
+static size_t getFlashSize(pcidev::pci_device* dev)
+{
+    std::string err;
+    size_t size;
+
+    dev->sysfs_get<size_t>("flash", "size", err, size, 0);
+    if (size == 0)
+        std::cout << "can't detect flash size: " << err << std::endl;
+    return size;
+}
+
+int XSPI_Flasher::xclWriteData(std::vector<unsigned char>& data)
+{
+    const int flash_index = 0;
+
+    if (mFlashDev == nullptr)
+        return -EINVAL;
+
+    if (data.size() > xrt_max_data_len) {
+        std::cout << "meta data is too big (" << data.size() << "B) to flash: "
+            << std::endl;
+        std::cout << "max data length is " << xrt_max_data_len << " bytes"
+            << std::endl;
+        return -EINVAL;
+    }
+
+    size_t size = getFlashSize(mDev.get());
+    if (size == 0)
+        return -EINVAL;
+
+    // Write file data onto the end of flash
+    unsigned int addr = size - sizeof(flash_data_header) - data.size();
+    int ret = writeToFlash(mFlashDev, flash_index, addr,
+        data.data(), data.size());
+    if (ret) {
+        std::cout << "failed to write meta data to flash: " << ret << std::endl;
+        return ret;
+    }
+
+    // Write meta data onto flash
+    flash_data_ident ident = { 0 };
+    std::memcpy(ident.fdi_magic, XRT_DATA_MAGIC, sizeof(ident.fdi_magic));
+    ident.fdi_version = 0;
+
+    flash_data_header header = { 0 };
+    header.fdh_id_begin = ident;
+    header.fdh_id_end = ident;
+    header.fdh_data_offset = addr;
+    header.fdh_data_len = data.size();
+    header.fdh_data_parity =
+        flash_xrt_data_get_parity32(data.data(), data.size());
+
+    addr += data.size();
+    ret = writeToFlash(mFlashDev, flash_index, addr,
+        reinterpret_cast<unsigned char *>(&header), sizeof(header));
+    if (ret) {
+        std::cout << "failed to write meta data header to flash: " << ret
+            << std::endl;
+        return ret;
+    }
+
+    std::cout << boost::format(
+        "Persisted %d bytes of meta data to flash %d @0x%x\n")
+        %data.size() %flash_index %header.fdh_data_offset;
+    return 0;
+}
+
+int XSPI_Flasher::xclReadData(std::vector<unsigned char>& data)
+{
+    const int flash_index = 0;
+
+    if (mFlashDev == nullptr) {
+        std::cout << "failed to find flash device" << std::endl;
+        return -EINVAL;
+    }
+
+    size_t size = getFlashSize(mDev.get());
+    if (size == 0) {
+        std::cout << "failed to find meta data on flash" << std::endl;
+        return -EINVAL;
+    }
+
+    // Read header from flash
+    flash_data_header header;
+    unsigned int addr = size - sizeof(header);
+    int ret = readFromFlash(mFlashDev, flash_index, addr,
+        reinterpret_cast<unsigned char *>(&header), sizeof(header));
+    if (ret) {
+        std::cout << "failed to read header from flash: " << ret << std::endl;
+        return ret;
+    }
+
+    // Sanity check header
+    flash_data_ident ident = header.fdh_id_end;
+    const size_t magiclen = sizeof(ident.fdi_magic);
+    if (std::memcmp(ident.fdi_magic, XRT_DATA_MAGIC, magiclen)) {
+        char tmp[sizeof(ident.fdi_magic) + 1] = { 0 };
+        std::memcpy(tmp, ident.fdi_magic, magiclen);
+        std::cout << "corrupted meta data detected on flash, bad header magic: "
+            << tmp << std::endl;
+        std::cout << "expected header magic: " << XRT_DATA_MAGIC << std::endl;
+        return -EINVAL;
+    } else if (ident.fdi_version != 0) {
+        std::cout << "header version " << ident.fdi_version <<
+            " is not supported" << std::endl;
+        return -ENOTSUP;
+    }
+
+    // Read file data from flash
+    data.resize(header.fdh_data_len);
+    addr = header.fdh_data_offset;
+    ret = readFromFlash(mFlashDev, flash_index, addr, data.data(), data.size());
+    if (ret) {
+        std::cout << "failed to read data from flash: " << ret << std::endl;
+        return ret;
+    }
+    if (header.fdh_data_parity ^
+        flash_xrt_data_get_parity32(data.data(), data.size())) {
+        std::cout << "data on flash is corrupted" << std::endl;
+        return -EINVAL;
+    }
+
+    std::cout << boost::format(
+        "Loaded %d bytes of meta data from flash %d @0x%x\n")
+        %header.fdh_data_len %flash_index %addr;
+    return 0;
 }

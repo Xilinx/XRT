@@ -114,7 +114,7 @@ get_userpf_device(device::handle_type handle, device::id_type id)
 
   auto device = instance().get_userpf_device(handle,id);
   userpf_devices[id] = device;
-  userpf_device_map.insert(std::make_pair(handle, device));
+  userpf_device_map[handle] = device;  // create or replace
   return device;
 }
   

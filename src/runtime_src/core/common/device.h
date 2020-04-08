@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -33,6 +33,8 @@
 #include <boost/property_tree/ptree.hpp>
 
 namespace xrt_core {
+
+using device_collection = std::vector<std::shared_ptr<xrt_core::device>>;
 
 /**
  * class device - interface to support OS agnositic operations on a device
@@ -172,16 +174,40 @@ public:
    *
    * This function extracts meta data sections as needed.
    */
+  XRT_CORE_COMMON_EXPORT
   void
   register_axlf(const axlf*);
+
+  /**
+   * get_xclbin_uuid() - Get uuid of currently loaded xclbin
+   */
+  std::string
+  get_xclbin_uuid() const;
 
   /**
    * get_axlf_section() - Get section from currently loaded axlf
    *
    * Return: pair of section data and size in bytes
+   *
+   * This function is to provide access to meta data sections that are
+   * not cached by the driver.  The returned section is from when the
+   * xclbin was loaded by this process.  The function cannot be used
+   * unless this process loaded the xclbin.
+   *
+   * The function returns {nullptr, 0} if section is not cached.
    */
   std::pair<const char*, size_t>
   get_axlf_section(axlf_section_kind section) const;
+
+  /**
+   * get_axlf_section() - Get section from currently loaded axlf
+   * 
+   * xclbin_id:  Check that xclbin_id matches currently cached
+   *
+   * Same behavior as other get_axlf_section()
+   */
+  std::pair<const char*, size_t>
+  get_axlf_section(axlf_section_kind section, const xuid_t xclbin_id) const;
 
   // Move all these 'pt' functions out the class interface
   virtual void get_info(boost::property_tree::ptree&) const {}
@@ -230,6 +256,9 @@ public:
 
  private:
   id_type m_device_id;
+
+  // cache xclbin meta data loaded by this process
+  xuid_t m_xclbin_uuid;
   std::map<axlf_section_kind, std::vector<char>> m_axlf_sections;
 };
 

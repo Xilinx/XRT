@@ -150,6 +150,8 @@ if [[ "X$xrt" != "X" && -d "$xrt" ]] ; then
  export XILINX_XRT=${XILINX_XRT:=$xrt}
  export LD_LIBRARY_PATH=$XILINX_XRT/lib
  export PATH=$XILINX_XRT/bin:${PATH}
+ echo "echo $XILINX_XRT/lib/libxilinxopencl.so > /etc/OpenCL/vendors/xilinx.icd"
+ echo "$XILINX_XRT/lib/libxilinxopencl.so" | sudo tee /etc/OpenCL/vendors/xilinx.icd > /dev/null
 fi
 
 if [[ "X$sdx" != "X" && -d "$sdx" ]] ; then
@@ -248,8 +250,12 @@ for f in ${tests[*]}; do
   fi
 
   echo "Running $cmd"
+  sudo dmesg -C
   $cmd | tee run.log
   rc=${PIPESTATUS[0]}
+  if [ $rc != 0 ]; then
+      dmesg |& tee run.log
+  fi
   cd $here
   if [ $rc != 0 ]; then
    echo "FAIL: $f $cmd" | tee -a results.all

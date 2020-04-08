@@ -3,6 +3,7 @@ setlocal
 
 REM Working Variables 
 set XRT_EXEC=""
+set XRT_UNWRAPPED_DIR=%~dp0
 
 REM -- Examine the options
 REM Warning: Do not put any echo statements in the "IF" blocks.  Doing so
@@ -37,7 +38,7 @@ if [%XRT_EXEC%] == [] (
   GOTO:EOF
 )
 
-set XRT_PROG_UNWRAPPED=%~dp0\%XRT_EXEC%.exe
+set XRT_PROG_UNWRAPPED=%XRT_UNWRAPPED_DIR%%XRT_EXEC%.exe
 if not exist %XRT_PROG_UNWRAPPED% (
   echo ERROR: Could not find -exec program: %XRT_EXEC%
   echo ERROR: %XRT_PROG_UNWRAPPED% does not exist"
@@ -45,7 +46,7 @@ if not exist %XRT_PROG_UNWRAPPED% (
 )
 
 REM -- Find the setup script and configure environment
-set XRT_SETUP_SCRIPT=%~dp0..\..\setup.bat
+set XRT_SETUP_SCRIPT=%XRT_UNWRAPPED_DIR%..\..\setup.bat
 
 if not exist %XRT_SETUP_SCRIPT% (
   echo ERROR: Could not find XRT setup script.

@@ -50,6 +50,8 @@
 #define MAX_DYN_SUBDEV		1024
 #define XDEV_DEFAULT_EXPIRE_SECS	1
 
+extern int kds_mode;
+
 static const struct pci_device_id pciidlist[] = {
 	XOCL_USER_XDMA_PCI_IDS,
 	{ 0, }
@@ -249,7 +251,10 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 			return;
 		}
 
-		xocl_exec_reset(xdev, xclbin_id);
+		if (kds_mode)
+			xocl_kds_reset(xdev, xclbin_id);
+		else
+			xocl_exec_reset(xdev, xclbin_id);
 		XOCL_PUT_XCLBIN_ID(xdev);
 		if (!xdev->core.drm) {
 			xdev->core.drm = xocl_drm_init(xdev);
@@ -546,8 +551,12 @@ int xocl_reclock(struct xocl_dev *xdev, void *data)
 	/* Re-clock changes PR region, make sure next ERT configure cmd will
 	 * go through
 	 */
-	if (err == 0)
-		(void) xocl_exec_reconfig(xdev);
+	if (err == 0) {
+		if (kds_mode)
+			(void) xocl_kds_reconfig(xdev);
+		else
+			(void) xocl_exec_reconfig(xdev);
+	}
 
 	kfree(req);
 	return err;
@@ -592,6 +601,10 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	case XCL_MAILBOX_REQ_CHG_SHELL:
 		xocl_queue_work(xdev, XOCL_WORK_PROGRAM_SHELL,
 				XOCL_PROGRAM_SHELL_DELAY);
+		break;
+	case XCL_MAILBOX_REQ_ERT_RESET:
+		userpf_info(xdev, "ERT was reset.");
+		(void) xocl_exec_reconfig(xdev);
 		break;
 	default:
 		userpf_err(xdev, "dropped bad request (%d)\n", req->req);
@@ -714,7 +727,7 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 
 	xocl_drvinst_set_offline(xdev->core.drm, true);
 	if (blob) {
-		ret = xocl_fdt_blob_input(xdev, blob, blob_len);
+		ret = xocl_fdt_blob_input(xdev, blob, blob_len, -1);
 		if (ret) {
 			userpf_err(xdev, "parse blob failed %d", ret);
 			goto failed;
@@ -1500,6 +1513,8 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_trace_funnel,
 	xocl_init_trace_s2mm,
 	xocl_init_mem_hbm,
+	xocl_init_cu_ctrl,
+	xocl_init_cu,
 };
 
 static void (*xocl_drv_unreg_funcs[])(void) = {
@@ -1525,6 +1540,8 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_trace_funnel,
 	xocl_fini_trace_s2mm,
 	xocl_fini_mem_hbm,
+	xocl_fini_cu_ctrl,
+	xocl_fini_cu,
 };
 
 static int __init xocl_init(void)

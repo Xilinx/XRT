@@ -909,12 +909,17 @@ init(xrt_core::device* xdev, const std::vector<uint64_t>& cu_addr_map)
 }
 
 void
-init(xrt_core::device* xdev, const axlf* top)
+init(xrt_core::device* xdev)
 {
+  auto ip_section = xdev->get_axlf_section(IP_LAYOUT);
+  auto ip_layout = reinterpret_cast<const ::ip_layout*>(ip_section.first);
+  if (!ip_layout)
+    throw std::runtime_error("No ip layout available to initialize sws, make sure xclbin is loaded");
+  
   // create execution core for this device
   auto slots = ERT_CQ_SIZE / xrt_core::config::get_ert_slotsize();
   cu_trace_enabled = xrt_core::config::get_profile();
-  auto cuaddrs = xrt_core::xclbin::get_cus(top);
+  auto cuaddrs = xrt_core::xclbin::get_cus(ip_layout);
   std::vector<addr_type> amap(cuaddrs.begin(),cuaddrs.end());
   s_device_exec_core.erase(xdev);
   s_device_exec_core.insert

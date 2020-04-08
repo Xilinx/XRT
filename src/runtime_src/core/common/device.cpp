@@ -20,6 +20,7 @@
 #include "utils.h"
 #include "query_requests.h"
 #include "core/include/xrt.h"
+#include "core/include/xclbin.h"
 #include <boost/format.hpp>
 #include <string>
 #include <iostream>
@@ -39,18 +40,35 @@ device::
   // virtual must be declared and defined
 }
 
+std::string
+device::
+get_xclbin_uuid() const
+{
+  try {
+    return device_query<query::xclbin_uuid>(this);
+  }
+  catch (const query::no_such_key&) {
+  }
+
+  // Emulation mode likely
+  char uuid_str[64] = { 0 };
+  uuid_unparse_lower(m_xclbin_uuid, uuid_str);
+  return uuid_str;
+}
+
 void
 device::
 register_axlf(const axlf* top)
 {
-  axlf_section_kind kinds[] = {EMBEDDED_METADATA, AIE_METADATA};
+  uuid_copy(m_xclbin_uuid, top->m_header.uuid);
+  axlf_section_kind kinds[] = {EMBEDDED_METADATA, AIE_METADATA, IP_LAYOUT};
   for (auto kind : kinds) {
     auto hdr = xclbin::get_axlf_section(top, kind);
     if (!hdr)
       continue;
     auto section_data = reinterpret_cast<const char*>(top) + hdr->m_sectionOffset;
     std::vector<char> data{section_data, section_data + hdr->m_sectionSize};
-    m_axlf_sections.emplace(std::make_pair(kind, std::move(data)));
+    m_axlf_sections.emplace(kind , std::move(data));
   }
 }
 
@@ -62,6 +80,15 @@ get_axlf_section(axlf_section_kind section) const
   return itr != m_axlf_sections.end()
     ? std::make_pair((*itr).second.data(), (*itr).second.size())
     : std::make_pair(nullptr, 0);
+}
+
+std::pair<const char*, size_t>
+device::
+get_axlf_section(axlf_section_kind section, const xuid_t xclbin_id) const
+{
+  if (uuid_compare(xclbin_id, m_xclbin_uuid))
+    throw std::runtime_error("xclbin id mismatch");
+  return get_axlf_section(section);
 }
 
 std::string
@@ -161,6 +188,7 @@ get_rom_info(boost::property_tree::ptree& pt) const
   ptree_updater<query::rom_ddr_bank_size>::query_and_put(this, pt);
   ptree_updater<query::rom_ddr_bank_count_max>::query_and_put(this, pt);
   ptree_updater<query::rom_fpga_name>::query_and_put(this, pt);
+  ptree_updater<query::rom_time_since_epoch>::query_and_put(this, pt);
 }
 
 
@@ -183,6 +211,7 @@ get_platform_info(boost::property_tree::ptree& pt) const
   ptree_updater<query::idcode>::query_and_put(this, pt);
   ptree_updater<query::status_mig_calibrated>::query_and_put(this, pt);
   ptree_updater<query::status_p2p_enabled>::query_and_put(this, pt);
+  ptree_updater<query::flash_type>::query_and_put(this, pt);
 }
 
 void

@@ -43,6 +43,10 @@
 
 static struct sg_table *alloc_onetime_sg_table(struct page **pages, uint64_t offset, uint64_t size);
 
+static void xocl_cma_bo_free(struct xocl_drm *drm_p, struct drm_xocl_bo *xobj);
+
+static int xocl_cma_bo_alloc(struct xocl_drm *drm_p, struct drm_xocl_bo *xobj, uint64_t size);
+
 #if defined(XOCL_DRM_FREE_MALLOC)
 static inline void drm_free_large(void *ptr)
 {
@@ -128,12 +132,6 @@ static void xocl_free_bo(struct drm_gem_object *obj)
 			xobj->p2p_bar_offset, obj->size, false);
 	}
 
-	if (xocl_bo_cma(xobj) && xobj->cma_mm_node) {
-		drm_mm_remove_node(xobj->cma_mm_node);
-		kfree(xobj->cma_mm_node);
-		xobj->cma_mm_node = NULL;
-	}
-
 	if (xobj->vmapping)
 		vunmap(xobj->vmapping);
 	xobj->vmapping = NULL;
@@ -154,8 +152,7 @@ static void xocl_free_bo(struct drm_gem_object *obj)
 		} else if (xocl_bo_p2p(xobj) || xocl_bo_import(xobj)) {
 			drm_free_large(xobj->pages);
 		} else if (xocl_bo_cma(xobj)) {
-			if (xobj->cma_addr)
-				free_pages_exact(xobj->cma_addr, npages << PAGE_SHIFT);
+			xocl_cma_bo_free(drm_p, xobj);
 			drm_free_large(xobj->pages);
 		} else {
 			drm_gem_put_pages(obj, xobj->pages, false, false);
@@ -217,15 +214,16 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 	struct mem_topology *topo = NULL;
 	int err = 0;
 
-	if (type == XOCL_BO_EXECBUF || type == XOCL_BO_IMPORT)
+	if (type == XOCL_BO_EXECBUF || type == XOCL_BO_IMPORT || 
+	    type == XOCL_BO_CMA)
 		return 0;
-
 	//From "mem_topology" or "feature rom" depending on
 	//unified or non-unified dsa
 	ddr_count = XOCL_DDR_COUNT(xdev);
 
 	if (ddr_count == 0)
 		return -EINVAL;
+
 	ddr = xocl_bo_ddr_idx(flags);
 	if (ddr >= ddr_count)
 		return -EINVAL;
@@ -252,39 +250,82 @@ done:
 	return err;
 }
 
-static int xocl_cma_bo_alloc(struct xocl_drm *drm_p, struct drm_xocl_bo *xobj, uint64_t size, unsigned idx)
+static void xocl_cma_bo_free(struct xocl_drm *drm_p, struct drm_xocl_bo *xobj)
+{
+	if (xobj->cma_mm_node) {
+		xocl_cma_mm_update_usage_stat(drm_p, xobj->base.size, -1);
+		drm_mm_remove_node(xobj->cma_mm_node);
+		kfree(xobj->cma_mm_node);
+		xobj->cma_mm_node = NULL;
+	}
+}
+
+static struct page **xocl_cma_collect_pages(struct xocl_drm *drm_p, uint64_t start, uint64_t size)
+{
+	uint64_t entry_sz = drm_p->cma_bank->entry_sz;
+	uint64_t chunk_offset, page_copied = 0, page_offset_start, page_offset_end;
+	int64_t addr_offset = 0;
+	struct page **pages = NULL;
+	uint64_t pages_per_chunk = entry_sz >> PAGE_SHIFT;
+
+	addr_offset = start - drm_p->cma_bank->start_addr;
+
+	if (addr_offset < 0)
+		return ERR_PTR(-EINVAL);
+
+	page_offset_start = addr_offset >> PAGE_SHIFT;
+	page_offset_end = (addr_offset + size) >> PAGE_SHIFT;
+
+	pages = vzalloc((size >> PAGE_SHIFT) * sizeof(struct page*));
+
+
+	while (page_offset_start < page_offset_end) {
+		uint64_t nr = min(page_offset_end - page_offset_start, (pages_per_chunk - page_offset_start % pages_per_chunk));
+		
+		chunk_offset = page_offset_start / pages_per_chunk;
+		DRM_DEBUG("chunk_offset %lld start 0x%llx, end 0x%llx\n", chunk_offset, page_offset_start, page_offset_end);
+
+		memcpy(pages+page_copied, drm_p->cma_bank->cma_mem[chunk_offset].pages+(page_offset_start%pages_per_chunk), nr*sizeof(struct page*));
+		page_offset_start += nr;
+		page_copied += nr;
+	}
+
+	if (page_copied != size >> PAGE_SHIFT)
+		return ERR_PTR(-ENOMEM);
+
+
+	return pages;
+}
+
+static int xocl_cma_bo_alloc(struct xocl_drm *drm_p, struct drm_xocl_bo *xobj, uint64_t size)
 {
 	int err = 0;
 
-	if (drm_p->cma_chunk[idx]) {
+	if (!drm_p->cma_bank)
+		return -ENOMEM;
 
-		xobj->cma_mm_node = kzalloc(sizeof(*xobj->cma_mm_node), GFP_KERNEL);
+	xobj->cma_mm_node = kzalloc(sizeof(*xobj->cma_mm_node), GFP_KERNEL);
 
-		if (!xobj->cma_mm_node)
-			return -ENOMEM;
+	if (!xobj->cma_mm_node)
+		return -ENOMEM;
 
-		err = drm_mm_insert_node_generic(drm_p->cma_chunk[idx]->mm, xobj->cma_mm_node, size, PAGE_SIZE,
+	err = drm_mm_insert_node_generic(&drm_p->cma_bank->mm, xobj->cma_mm_node, size, PAGE_SIZE,
 #if defined(XOCL_DRM_FREE_MALLOC)
-			0, 0);
+		0, 0);
 #else
-			0, 0, 0);
+		0, 0, 0);
 #endif
-		if (err) {
-			kfree(xobj->cma_mm_node);
-			xobj->cma_mm_node = NULL;
-			return err;
-		}
 
-		DRM_DEBUG("xobj->cma_mm_node.start 0x%llx, xobj->cma_mm_node.size %llx", xobj->cma_mm_node->start,
-			xobj->cma_mm_node->size);
-	} else {
-		xobj->cma_addr = alloc_pages_exact(size, GFP_KERNEL | __GFP_ZERO);
+	if (err)
+		goto failed;
 
-		if (!xobj->cma_addr) {
-			DRM_ERROR("Unable to alloc %llx bytes CMA buffer", size);
-			return -ENOMEM;
-		}
-	}
+	xocl_cma_mm_update_usage_stat(drm_p, size, 1);
+	DRM_INFO("xobj->cma_mm_node.start 0x%llx, xobj->cma_mm_node.size %llx\n", xobj->cma_mm_node->start,
+		xobj->cma_mm_node->size);
+
+	return 0;
+failed:
+	xocl_cma_bo_free(drm_p, xobj);
 	return err;
 }
 
@@ -321,7 +362,6 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	if (xobj->flags == XOCL_BO_EXECBUF)
 		xobj->metadata.state = DRM_XOCL_EXECBUF_STATE_ABORT;
 
-
 	if (xobj->flags & XOCL_DRM_SHMEM) {
 		err = drm_gem_object_init(dev, &xobj->base, size);
 		if (err)
@@ -331,7 +371,7 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	}
 
 	if (xobj->flags & XOCL_CMA_MEM) {
-		err = xocl_cma_bo_alloc(drm_p, xobj, size, ddr);
+		err = xocl_cma_bo_alloc(drm_p, xobj, size);
 		if (err)
 			goto failed;
 	}
@@ -369,13 +409,6 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	return xobj;
 failed:
 	mutex_unlock(&drm_p->mm_lock);
-	if (xobj->cma_mm_node) {
-		drm_mm_remove_node(xobj->cma_mm_node);
-		kfree(xobj->cma_mm_node);
-		xobj->cma_mm_node = NULL;
-	}
-	if (xobj->cma_addr)
-		free_pages_exact(xobj->cma_addr, size);
 	kfree(xobj->mm_node);
 	if (xobj_inited)
 		drm_gem_object_release(&xobj->base);
@@ -421,56 +454,6 @@ fail:
 	return ERR_CAST(p);
 }
 
-static struct page **xocl_cma_pool_get_pages(struct xocl_drm *drm_p, uint32_t idx, uint64_t offset, size_t nr_pages)
-{
-	uint64_t page_offset = 0;
-	struct page **pages = NULL;
-
-	if (idx >= DRM_XOCL_CMA_CHUNK_MAX)
-		return ERR_PTR(-EINVAL);
-
-	if (!drm_p->cma_chunk[idx])
-		return ERR_PTR(-ENOMEM);
-
-	if (offset < drm_p->cma_chunk[idx]->start_addr)
-		return ERR_PTR(-EINVAL);
-
-	page_offset = (offset - drm_p->cma_chunk[idx]->start_addr) >> PAGE_SHIFT;
-
-	pages = drm_malloc_ab(nr_pages, sizeof(struct page *));
-	if (pages == NULL)
-		return ERR_PTR(-ENOMEM);
-
-	memcpy(pages, drm_p->cma_chunk[idx]->pages+page_offset, nr_pages*sizeof(struct page *));
-
-	return pages;
-}
-
-static struct page **xocl_virt_addr_get_pages(void *vaddr, int npages)
-
-{
-	struct page *p, **pages;
-	int i;
-	uint64_t offset = 0;
-
-	pages = drm_malloc_ab(npages, sizeof(struct page *));
-	if (pages == NULL)
-		return ERR_PTR(-ENOMEM);
-
-	for (i = 0; i < npages; i++) {
-		p = virt_to_page(vaddr + offset);
-		pages[i] = p;
-		if (IS_ERR(p))
-			goto fail;
-		offset += PAGE_SIZE;
-	}
-
-	return pages;
-fail:
-	drm_free_large(pages);
-	return ERR_CAST(p);
-}
-
 static struct sg_table *alloc_onetime_sg_table(struct page **pages, uint64_t offset, uint64_t size)
 {
 	int ret;
@@ -487,6 +470,7 @@ static struct sg_table *alloc_onetime_sg_table(struct page **pages, uint64_t off
 	ret = sg_alloc_table_from_pages(sgt, pages, nr_pages, offset, size, GFP_KERNEL);
 	if (ret)
 		goto cleanup;
+
 	return sgt;
 
 cleanup:
@@ -551,13 +535,9 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 				xobj->p2p_bar_offset, xobj->base.size);
 		else if (xobj->flags & XOCL_DRM_SHMEM)
 			xobj->pages = drm_gem_get_pages(&xobj->base);
-		else if (xobj->flags & XOCL_CMA_MEM) {
-			if (xobj->cma_addr)
-				xobj->pages = xocl_virt_addr_get_pages(xobj->cma_addr, xobj->base.size >> PAGE_SHIFT);
-			else
-				xobj->pages = xocl_cma_pool_get_pages(drm_p,
-					0, xobj->cma_mm_node->start, xobj->base.size >> PAGE_SHIFT);
-		}
+		else if (xobj->flags & XOCL_CMA_MEM)
+			xobj->pages = xocl_cma_collect_pages(drm_p, xobj->cma_mm_node->start, xobj->cma_mm_node->size);
+
 		if (IS_ERR(xobj->pages)) {
 			ret = PTR_ERR(xobj->pages);
 			xobj->pages = NULL;

@@ -149,6 +149,13 @@ class DeviceIntf {
     XDP_EXPORT
     void parseTraceData(void* traceData, uint64_t bytes, xclTraceResultsVector& traceVector);
 
+    double getMaxBwRead() const {return m_bw_read;}
+    double getMaxBwWrite() const {return m_bw_write;}
+    XDP_EXPORT
+    void setMaxBwRead();
+    XDP_EXPORT
+    void setMaxBwWrite();
+
     inline xdp::Device* getAbstractDevice() { return mDevice ; }
 
   private:
@@ -172,8 +179,17 @@ class DeviceIntf {
 
     TraceS2MM* traceDMA = nullptr;
 
-// lapc ip data holder
-//
+    /*
+     * Set bandwidth number to a reasonable default
+     * For PCIE Device:
+     *   bw_per_lane = 985 MB/s (Wikipedia on PCIE 3.0)
+     *   num_lanes = 16/8/4 depending on host system
+     *   total bw = bw_per_lane * num_lanes
+     * For Edge Device:
+     *  total bw = DDR4 memory bandwidth
+     */
+    double m_bw_read = 9600.0;
+    double m_bw_write = 9600.0;
 
 }; /* DeviceIntf */
 

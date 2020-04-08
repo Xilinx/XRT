@@ -49,6 +49,9 @@ static int axigate_freeze(struct platform_device *pdev)
 	if (!freeze)
 		goto done; /* Already freeze */
 
+	reg_wr(gate, 0x1, iag_wr);
+	ndelay(500);
+
 	reg_wr(gate, 0, iag_wr);
 	ndelay(500);
 	(void) reg_rd(gate, iag_rd);
@@ -73,7 +76,7 @@ static int axigate_free(struct platform_device *pdev)
 	if (freeze)
 		goto done; /* Already free */
 
-	reg_wr(gate, 0x2, iag_wr);
+	reg_wr(gate, 0x1, iag_wr);
 	ndelay(500);
 	(void) reg_rd(gate, iag_rd);
 	reg_wr(gate, 0x3, iag_wr);
@@ -101,10 +104,22 @@ static int axigate_reset(struct platform_device *pdev)
 	return 0;
 }
 
+static int axigate_status(struct platform_device *pdev, u32 *status)
+{
+	struct axi_gate *gate = platform_get_drvdata(pdev);
+
+	mutex_lock(&gate->gate_lock);
+	*status = reg_rd(gate, iag_rd);
+	mutex_unlock(&gate->gate_lock);
+
+	return 0;
+}
+
 static struct xocl_axigate_funcs axigate_ops = {
 	.freeze = axigate_freeze,
 	.free = axigate_free,
 	.reset = axigate_reset,
+	.get_status = axigate_status,
 };
 
 static int axigate_remove(struct platform_device *pdev)

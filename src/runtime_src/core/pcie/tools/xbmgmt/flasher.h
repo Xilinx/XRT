@@ -69,7 +69,7 @@ class Flasher
 {
 public:
     Flasher(unsigned int index);
-    int upgradeFirmware(const std::string& typeStr, firmwareImage* primary, firmwareImage* secondary);
+    int upgradeFirmware(const std::string& typeStr, firmwareImage* primary, firmwareImage* secondary, firmwareImage* stripped);
     int upgradeBMCFirmware(firmwareImage* bmc);
     bool isValid(void) { return mDev != nullptr; }
 
@@ -78,6 +78,9 @@ public:
     DSAInfo getOnBoardDSA();
     std::vector<DSAInfo> getInstalledDSA();
     int getBoardInfo(BoardInfo& board);
+
+    int readData(std::vector<unsigned char>& data);
+    int writeData(std::vector<unsigned char>& data);
 
 private:
     enum E_FlasherType {

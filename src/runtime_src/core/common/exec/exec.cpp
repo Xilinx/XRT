@@ -106,7 +106,7 @@ schedule(command* cmd)
 }
 
 void
-init(xrt_core::device* device, const axlf* top)
+init(xrt_core::device* device)
 {
   struct X {
     ~X() { try { stop(); } catch (...) { } } // coverity
@@ -120,11 +120,11 @@ init(xrt_core::device* device, const axlf* top)
   }
 
   if (pts_enabled())
-    pts::init(device,top);
+    pts::init(device);
   if (kds_enabled())
-    kds::init(device,top);
+    kds::init(device);
   else
-    sws::init(device,top);
+    sws::init(device);
 }
 
 }} // exec, xrt_core

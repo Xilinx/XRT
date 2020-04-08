@@ -27,11 +27,9 @@
 #define PROP_LOGIC_UUID "logic_uuid"
 #define PROP_PARTITION_INFO_BLP "blp_info"
 #define PROP_PARTITION_INFO_PLP "plp_info"
+#define PROP_PARTITION_LEVEL "partition_level"
 
 #define NODE_ENDPOINTS "addressable_endpoints"
-#define LEVEL0_DEV_PATH "/addressable_endpoints_0"
-#define LEVEL1_DEV_PATH "/addressable_endpoints_1"
-#define ULP_DEV_PATH "/addressable_endpoints"
 #define INTERFACES_PATH "/interfaces"
 
 #define NODE_PROPERTIES "partition_info"
@@ -46,6 +44,8 @@
 #define NODE_AF_CTRL_USER "ep_firewall_ctrl_user_00"
 #define NODE_AF_CTRL_DEBUG "ep_firewall_ctrl_debug_00"
 #define NODE_AF_DATA_H2C "ep_firewall_data_h2c_00"
+#define NODE_AF_DATA_P2P "ep_firewall_data_p2p_00"
+#define NODE_AF_DATA_M2M "ep_firewall_data_m2m_00"
 #define NODE_CMC_REG "ep_cmc_regmap_00"
 #define NODE_CMC_RESET "ep_cmc_reset_00"
 #define NODE_CMC_MUTEX "ep_cmc_mutex_00"
@@ -66,6 +66,8 @@
 #define NODE_ERT_SCHED "ep_ert_sched_00"
 #define NODE_XDMA "ep_xdma_00"
 #define NODE_MSIX "ep_msix_00"
+#define NODE_QDMA "ep_qdma_00"
+#define NODE_STM "ep_stream_traffic_manager_00"
 #define NODE_CLK_SHUTDOWN "ep_aclk_shutdown_00"
 #define NODE_ERT_BASE "ep_ert_base_address_00"
 #define NODE_ERT_RESET "ep_ert_reset_00"
@@ -105,7 +107,6 @@ enum {
 	IORES_MEMCALIB,
 	IORES_GATEULP,
 	IORES_KDMA,
-	IORES_CMC_MUTEX,
 	IORES_GAPPING,
 	IORES_CLKFREQ_K1_K2, /* static res config exposed to iores subdev */
 	IORES_CLKFREQ_HBM, /* static res config exposed to iores subdev */

@@ -52,6 +52,10 @@ namespace xdp {
     mTraceSamplesThreshold = MAX_TRACE_NUMBER_SAMPLES / 4;
     mSampleIntervalMsec = 10;
 
+    mStartTimeNsec = 0;
+    mFirstKernelStartTimeMsec = 0;
+    mLastKernelEndTimeMsec = 0;
+
     mTraceClockRateMHz = 300.0;
     mDeviceClockRateMHz = 300.0;
     mGlobalMemoryClockRateMHz = 300.0;
@@ -368,9 +372,9 @@ namespace xdp {
           if (found != std::string::npos && lastTimeStamp < mStreamMonLastTranx[j])
             lastTimeStamp = mStreamMonLastTranx[j];
         }
-        // Default case
-        if (lastTimeStamp < mAccelMonLastTranx[i])
-          lastTimeStamp = mAccelMonLastTranx[i];
+        // Use stalls to estimate time
+        //if (lastTimeStamp < mAccelMonLastTranx[i])
+        //  lastTimeStamp = mAccelMonLastTranx[i];
         if (lastTimeStamp) {
           if (!warning) {
             mPluginHandle->sendMessage(

@@ -53,7 +53,7 @@ typedef void * xrtRunHandle;
  * xrtPLKernelOpen() - Open a PL kernel and obtain its handle.
  *
  * @deviceHandle:  Handle to the device with the kernel
- * @xclbin:        The xclbin with the specified kernel.
+ * @xclbinId:      The uuid of the xclbin with the specified kernel.
  * @name:          Name of kernel to open.
  * Return:         Handle representing the opened kernel.
  *
@@ -73,7 +73,7 @@ typedef void * xrtRunHandle;
  */
 XCL_DRIVER_DLLESPEC
 xrtKernelHandle
-xrtPLKernelOpen(xrtDeviceHandle deviceHandle, const char* xclbin, const char *name);
+xrtPLKernelOpen(xrtDeviceHandle deviceHandle, const xuid_t xclbinId, const char *name);
 
 /**
  * xrtPLKernelOpenExclusive() - Open a PL kernel and obtain its handle.
@@ -84,7 +84,7 @@ xrtPLKernelOpen(xrtDeviceHandle deviceHandle, const char* xclbin, const char *na
  */
 XCL_DRIVER_DLLESPEC
 xrtKernelHandle
-xrtPLKernelOpenExclusive(xrtDeviceHandle deviceHandle, const char* xclbin, const char *name);
+xrtPLKernelOpenExclusive(xrtDeviceHandle deviceHandle, const xuid_t xclbinId, const char *name);
 
 /**
  * xrtKernelClose() - Close an opened kernel

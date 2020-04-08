@@ -31,6 +31,8 @@ static const std::map<const std::string, void *> extensionFunctionTable = {
   std::pair<const std::string, void *>("clCreateStreamBuffer", (void *)clCreateStreamBuffer),
   std::pair<const std::string, void *>("clReleaseStreamBuffer", (void *)clReleaseStreamBuffer),
   std::pair<const std::string, void *>("clPollStreams", (void *)clPollStreams),
+  std::pair<const std::string, void *>("clPollStream", (void *)clPollStream),
+  std::pair<const std::string, void *>("clSetStreamOpt", (void *)clSetStreamOpt),
   std::pair<const std::string, void *>("xclGetMemObjectFd", (void *)xclGetMemObjectFd),
   std::pair<const std::string, void *>("xclGetMemObjectFromFd", (void *)xclGetMemObjectFromFd),
   std::pair<const std::string, void *>("xclGetXrtDevice", (void *)xclGetXrtDevice),

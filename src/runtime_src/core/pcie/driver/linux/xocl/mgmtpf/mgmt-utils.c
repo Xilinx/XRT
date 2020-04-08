@@ -515,7 +515,7 @@ int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
 	userpf_idx = xocl_fdt_get_userpf(lro, lro->core.fdt_blob);
 	if (userpf_idx >= 0) {
 		ret = xocl_fdt_overlay(lro->userpf_blob, 0,
-			lro->core.fdt_blob, 0, userpf_idx);
+			lro->core.fdt_blob, 0, userpf_idx, -1);
 		if (ret) {
 			mgmt_err(lro, "overlay fdt failed %d", ret);
 			goto failed;
@@ -599,6 +599,8 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 		goto failed;
 	}
 
+	xocl_subdev_destroy_by_id(lro, XOCL_SUBDEV_AF);
+
 	ret = xocl_icap_download_rp(lro, XOCL_SUBDEV_LEVEL_PRP,
 			RP_DOWNLOAD_FORCE);
 	if (ret) {
@@ -606,11 +608,15 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 		goto failed;
 	}
 
+	xocl_subdev_create_by_id(lro, XOCL_SUBDEV_AF);
+
 	ret = xocl_subdev_create_prp(lro);
 	if (ret && ret != -ENODEV) {
 		mgmt_err(lro, "failed to create prp %d", ret);
 		goto failed;
 	}
+
+	(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
 
 	/* reload possible cmc and ert images */
 	xocl_icap_post_download_rp(lro);
@@ -640,12 +646,13 @@ static bool xocl_subdev_vsec_is_golden(xdev_handle_t xdev_hdl)
 
 int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 {
-	const struct firmware			*fw = NULL;
 	const struct axlf_section_header	*dtc_header;
 	struct axlf				*bin_axlf;
 	char					*vbnv;
-	char					fw_name[256];
 	int					ret;
+	char					*fw_buf = NULL;
+	size_t					fw_size = 0;
+
 
 	if (xocl_subdev_vsec_is_golden(lro)) {
 		mgmt_info(lro, "Skip load_fdt for vsec Golden image");
@@ -653,21 +660,21 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	}
 
 	mutex_lock(&lro->busy_mutex);
-        ret = xocl_rom_find_firmware(lro, fw_name, sizeof(fw_name),
-		lro->core.pdev->device, &fw);
+	ret = xocl_rom_load_firmware(lro, &fw_buf, &fw_size);
 	if (ret)
 		goto failed;
+	bin_axlf = (struct axlf *)fw_buf;
 
-	mgmt_info(lro, "Load fdt from %s", fw_name);
-
-	bin_axlf = (struct axlf *)fw->data;
 	dtc_header = xocl_axlf_section_header(lro, bin_axlf, PARTITION_METADATA);
-	if (!dtc_header)
+	if (!dtc_header) {
+		ret = -ENOENT;
+		mgmt_err(lro, "firmware does not contain PARTITION_METADATA");
 		goto failed;
+	}
 
 	ret = xocl_fdt_blob_input(lro,
-			(char *)fw->data + dtc_header->m_sectionOffset,
-			dtc_header->m_sectionSize);
+			(char *)fw_buf + dtc_header->m_sectionOffset,
+			dtc_header->m_sectionSize, XOCL_SUBDEV_LEVEL_BLD);
 	if (ret) {
 		mgmt_err(lro, "Invalid PARTITION_METADATA");
 		goto failed;
@@ -684,11 +691,8 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 		}
 	}
 
-
-	release_firmware(fw);
-	fw = NULL;
-
 	if (lro->core.priv.flags & XOCL_DSAFLAG_MFG) {
+		/* Minimum set up for golden image. */
 		(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FLASH);
 		(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_MB);
 		goto failed;
@@ -722,8 +726,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	lro->ready = true;
 
 failed:
-	if (fw)
-		release_firmware(fw);
+	vfree(fw_buf);
 	mutex_unlock(&lro->busy_mutex);
 
 	return ret;
@@ -736,12 +739,18 @@ void xclmgmt_ocl_reset(struct xclmgmt_dev *lro)
 
 void xclmgmt_ert_reset(struct xclmgmt_dev *lro)
 {
+	struct xcl_mailbox_req mbreq = { 0 };
 	/* This is for reset PS ERT */
 	xocl_ps_reset(lro);
 	xocl_ps_wait(lro);
+	mbreq.req = XCL_MAILBOX_REQ_ERT_RESET;
+	(void) xocl_peer_notify(lro, &mbreq, sizeof(mbreq));
 }
 
 void xclmgmt_softkernel_reset(struct xclmgmt_dev *lro)
 {
+	struct xcl_mailbox_req mbreq = { 0 };
 	xocl_ps_sk_reset(lro);
+	mbreq.req = XCL_MAILBOX_REQ_ERT_RESET;
+	(void) xocl_peer_notify(lro, &mbreq, sizeof(mbreq));
 }

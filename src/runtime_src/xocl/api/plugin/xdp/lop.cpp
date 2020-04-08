@@ -249,11 +249,48 @@ namespace xocl {
 	{
 	  if (!xdplop::enqueue_cb) return ;
 
-	  if (status == CL_RUNNING || status == CL_SUBMITTED)
+	  if (status == CL_RUNNING)
 	    xdplop::enqueue_cb(e->get_uid(), true) ;
 	  else if (status == CL_COMPLETE)
 	    xdplop::enqueue_cb(e->get_uid(), false) ;
 	} ;
+    }
+
+    std::function<void (xocl::event*, cl_int)>
+    action_ndrange_migrate(cl_kernel kernel)
+    {
+      // Only check to see if any of the memory objects are going
+      //  to move.
+      bool writeWillHappen = false ;
+      for (auto& arg : xocl::xocl(kernel)->get_argument_range())
+      {
+	auto mem = arg->get_memory_object() ;
+	if (mem != nullptr && !(arg->is_progvar()) && !(mem->is_resident()))
+	{
+	  writeWillHappen = true ;
+	  break ;
+	}
+      }
+      
+      if (writeWillHappen)
+      {
+	return [](xocl::event* e, cl_int status)
+	{
+	  if (!xdplop::write_cb) return ;
+	  
+	  if (status == CL_RUNNING)
+	    xdplop::write_cb(e->get_uid(), true) ;
+	  else if (status == CL_COMPLETE)
+	    xdplop::write_cb(e->get_uid(), false) ;
+	} ;	
+      }
+      else
+      {
+	return [](xocl::event* e, cl_int status)
+	  {
+	    return ;
+	  } ;
+      }
     }
 
   } // end namespace lop

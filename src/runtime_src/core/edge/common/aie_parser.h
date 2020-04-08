@@ -80,6 +80,17 @@ struct rtp_type
 std::vector<rtp_type>
 get_rtp(const xrt_core::device* device);
 
+struct gmio_type
+{
+  std::string     id;
+  std::string     name;
+
+  uint16_t        type;
+  uint16_t        shim_col;
+  uint16_t        channel_number;
+  uint16_t        burst_len;
+};
+
 }}} // aie, edge, xrt_core
 
 #endif

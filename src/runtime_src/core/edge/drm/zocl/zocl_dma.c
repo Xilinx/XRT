@@ -15,7 +15,7 @@
  */
 
 #include "zocl_dma.h"
-#include <drm/drmP.h>
+#include <drm/drm_print.h>
 
 static void zocl_dma_irq_done(void *data)
 {

@@ -42,6 +42,7 @@ namespace xdp {
 
     public:
       // get functions
+      double getTotalKernelTimeMsec() {return (mLastKernelEndTimeMsec - mFirstKernelStartTimeMsec);}
       uint32_t getTraceSamplesThreshold() {return mTraceSamplesThreshold;}
       uint32_t getSampleIntervalMsec() {return mSampleIntervalMsec;}
       double getDeviceClockFreqMHz() {return mDeviceClockRateMHz;}
@@ -53,10 +54,12 @@ namespace xdp {
       }
 
       // set functions
+      void setFirstKernelStartTimeMsec(double startTimeMsec) {mFirstKernelStartTimeMsec = startTimeMsec;}
+      void setLastKernelEndTimeMsec(double endTimeMsec) {mLastKernelEndTimeMsec = endTimeMsec;}
       void setStartTimeMsec(double startTimeMsec) {
         mStartTimeNsec = (uint64_t)((startTimeMsec + PCIE_DELAY_OFFSET_MSEC) * 1.0e6);
       }
-
+      
       void setKernelClockFreqMHz(const std::string& /*deviceName*/, unsigned int clockRateMHz) {
     	  // In 2017.4, trace events are captured at the kernel clock
     	  setTraceClockFreqMHz(clockRateMHz);
@@ -114,6 +117,8 @@ namespace xdp {
       double mDeviceClockRateMHz;
       double mGlobalMemoryClockRateMHz;
       double mEmuTraceMsecOneCycle;
+      double mFirstKernelStartTimeMsec;
+      double mLastKernelEndTimeMsec;
       double mTrainSlope[XCL_PERF_MON_TOTAL_PROFILE];
       double mTrainOffset[XCL_PERF_MON_TOTAL_PROFILE];
       uint64_t mAccelMonCuTime[XAM_MAX_NUMBER_SLOTS]       = { 0 };

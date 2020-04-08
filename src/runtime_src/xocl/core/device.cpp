@@ -36,6 +36,7 @@
 #pragma warning ( disable : 4244 4245 4267 4996 4505 )
 #endif
 
+
 namespace {
 
 static unsigned int uid_count = 0;
@@ -190,11 +191,6 @@ is_sw_emulation()
 static std::vector<uint64_t>
 get_xclbin_cus(const xocl::device* device)
 {
-  if (is_sw_emulation()) {
-    auto xclbin = device->get_xclbin();
-    return xclbin.cu_base_address_map();
-  }
-
   return xrt_core::xclbin::get_cus(device->get_axlf());
 }
 
@@ -386,11 +382,11 @@ get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, con
 
     //TODO: Put an assert/throw if both read and write are not set, but currently that check will break as full m_tag not yet available
 
-    if(read && !(flags & CL_STREAM_READ_ONLY))
-      throw xocl::error(CL_INVALID_OPERATION,"Connecting a read stream to non-read stream, argument " + ext->flags);
+    if(read && !(flags & XCL_STREAM_WRITE_ONLY))
+      throw xocl::error(CL_INVALID_OPERATION,"Connecting a kernel write only stream to non-user-read stream, argument " + ext->flags);
 
-    if(write &&  !(flags & CL_STREAM_WRITE_ONLY))
-      throw xocl::error(CL_INVALID_OPERATION,"Connecting a write stream to non-write stream, argument " + ext->flags);
+    if(write &&  !(flags & XCL_STREAM_READ_ONLY))
+      throw xocl::error(CL_INVALID_OPERATION,"Connecting a kernel read stream to non-user-write stream, argument " + ext->flags);
 
     if(mem.m_type != MEM_STREAMING)
       throw xocl::error(CL_INVALID_OPERATION,"Connecting a streaming argument to non-streaming bank");
@@ -398,9 +394,9 @@ get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, con
     xocl(kernel)->set_argument(ext->flags,sizeof(cl_mem),nullptr);
   }
 
-  if (flags & CL_STREAM_READ_ONLY)
+  if (flags & XCL_STREAM_WRITE_ONLY)  // kernel writes, user reads
     rc = m_xdevice->createReadStream(flags, attrs, route, flow, stream);
-  else if (flags & CL_STREAM_WRITE_ONLY)
+  else if (flags & XCL_STREAM_READ_ONLY) // kernel reads, user writes
     rc = m_xdevice->createWriteStream(flags, attrs, route, flow, stream);
   else
     throw xocl::error(CL_INVALID_OPERATION,"Unknown stream type specified");
@@ -452,6 +448,20 @@ device::
 poll_streams(xrt::device::stream_xfer_completions* comps, int min, int max, int* actual, int timeout)
 {
   return m_xdevice->pollStreams(comps, min,max,actual,timeout);
+}
+
+int
+device::
+poll_stream(xrt::device::stream_handle stream, xrt::device::stream_xfer_completions* comps, int min, int max, int* actual, int timeout)
+{
+  return m_xdevice->pollStream(stream, comps, min,max,actual,timeout);
+}
+
+int
+device::
+set_stream_opt(xrt::device::stream_handle stream, int type, uint32_t val)
+{
+  return m_xdevice->setStreamOpt(stream, type, val);
 }
 
 device::
@@ -1090,12 +1100,11 @@ load_program(program* program)
     throw xocl::error(CL_OUT_OF_RESOURCES,"program already loaded on device");
 
   m_xclbin = program->get_xclbin(this);
-  auto binary = m_xclbin.binary(); // ::xclbin::binary
 
   // Kernel debug is enabled based on if there is debug_data in the
   // binary it does not have an xrt.ini attribute. If there is
   // debug_data then make sure xdp kernel debug is loaded
-  if (binary.debug_data().first)
+  if (m_xclbin.get_xclbin_section(axlf_section_kind::DEBUG_DATA).first)
   {
 #ifdef _WIN32
     // Kernel debug not supported on Windows
@@ -1107,7 +1116,7 @@ load_program(program* program)
   xocl::debug::reset(get_axlf());
   xocl::profile::reset(get_axlf());
 
-  auto binary_data = binary.binary_data();
+  auto binary_data = m_xclbin.binary();
   auto binary_size = binary_data.second - binary_data.first;
   if (binary_size == 0)
     return;
@@ -1228,8 +1237,7 @@ get_axlf() const
 {
   assert(!m_active || m_active->get_xclbin(this)==m_xclbin);
   auto binary = m_xclbin.binary();
-  auto binary_data = binary.binary_data();
-  return reinterpret_cast<const axlf*>(binary_data.first);
+  return reinterpret_cast<const axlf*>(binary.first);
 }
 
 unsigned short
