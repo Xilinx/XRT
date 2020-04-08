@@ -108,9 +108,7 @@ static void print_pci_info(std::ostream &ostr)
     }
 
     if (pcidev::get_dev_total() != pcidev::get_dev_ready()) {
-        ostr << "WARNING: "
-            << "card(s) marked by '*' are not ready, is MPD runing? "
-            << "run 'systemctl status mpd' to check MPD details." << std::endl;
+        ostr << "WARNING: card(s) marked by '*' are not ready." << std::endl;
     }
 }
 
