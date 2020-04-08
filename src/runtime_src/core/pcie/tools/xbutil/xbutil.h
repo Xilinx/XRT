@@ -757,14 +757,15 @@ public:
     {
         // board info
         std::string vendor, device, subsystem, subvendor, xmc_ver, xmc_oem_id,
-            ser_num, bmc_ver, idcode, fpga, dna, errmsg, max_power, mac_addr0, 
-            mac_addr1, mac_addr2, mac_addr3;
+            ser_num, bmc_ver, idcode, fpga, dna, errmsg, max_power;
         int ddr_size = 0, ddr_count = 0, pcie_speed = 0, pcie_width = 0, p2p_enabled = 0;
         std::vector<std::string> clock_freqs;
         std::vector<std::string> dma_threads;
+        std::vector<std::string> mac_addrs;
         bool mig_calibration;
         
         clock_freqs.resize(3);
+        mac_addrs.resize(4);
         pcidev::get_dev(m_idx)->sysfs_get( "", "vendor",                     errmsg, vendor );
         pcidev::get_dev(m_idx)->sysfs_get( "", "device",                     errmsg, device );
         pcidev::get_dev(m_idx)->sysfs_get( "", "subsystem_device",           errmsg, subsystem );
@@ -774,10 +775,10 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "serial_num",              errmsg, ser_num );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "max_power",               errmsg, max_power );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "bmc_ver",                 errmsg, bmc_ver );
-        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_addr0",               errmsg, mac_addr0 );
-        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_addr1",               errmsg, mac_addr1 );
-        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_addr2",               errmsg, mac_addr2 );
-        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_addr3",               errmsg, mac_addr3 );
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_addr0",               errmsg, mac_addrs[0] );
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_addr1",               errmsg, mac_addrs[1] );
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_addr2",               errmsg, mac_addrs[2] );
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_addr3",               errmsg, mac_addrs[3] );
         pcidev::get_dev(m_idx)->sysfs_get<int>("rom", "ddr_bank_size",       errmsg, ddr_size,  0 );
         pcidev::get_dev(m_idx)->sysfs_get<int>( "rom", "ddr_bank_count_max", errmsg, ddr_count, 0 );
         pcidev::get_dev(m_idx)->sysfs_get( "icap", "clock_freqs",            errmsg, clock_freqs ); 
@@ -799,10 +800,6 @@ public:
         sensor_tree::put( "board.info.serial_number",  ser_num );
         sensor_tree::put( "board.info.max_power",      lvl2PowerStr(max_power.empty() ? UINT_MAX : stoi(max_power)) );
         sensor_tree::put( "board.info.sc_version",     bmc_ver );
-        sensor_tree::put( "board.info.mac_addr0",      mac_addr0 );
-        sensor_tree::put( "board.info.mac_addr1",      mac_addr1 );
-        sensor_tree::put( "board.info.mac_addr2",      mac_addr2 );
-        sensor_tree::put( "board.info.mac_addr3",      mac_addr3 );
         sensor_tree::put( "board.info.ddr_size",       GB(ddr_size)*ddr_count );
         sensor_tree::put( "board.info.ddr_count",      ddr_count );
         sensor_tree::put( "board.info.clock0",         clock_freqs[0] );
@@ -817,6 +814,14 @@ public:
         sensor_tree::put( "board.info.dna",            dna );
         sensor_tree::put( "board.info.p2p_enabled",    p2p_enabled );
 
+        for (uint32_t i = 0; i < mac_addrs.size(); ++i) {
+            std::string entry_name = "board.info.mac_addr."+std::to_string(i);
+
+            if (mac_addrs[i].empty())
+                continue;
+
+            sensor_tree::put( entry_name,     mac_addrs[i]);
+        }
         //interface uuid
         std::vector<std::string> interface_uuid;
         pcidev::get_dev(m_idx)->sysfs_get( "", "interface_uuids", errmsg, interface_uuid );
