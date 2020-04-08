@@ -2499,7 +2499,12 @@ create_attr_failed:
 static int stop_ert_nolock(struct platform_device *pdev)
 {
 	struct xocl_xmc *xmc;
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	int retry = 0;
+
+	/* MPSOC platforms do not have MB ERT */
+	if (XOCL_DSA_IS_MPSOC(xdev))
+		return 0;
 
 	xmc = platform_get_drvdata(pdev);
 	if (!xmc)
