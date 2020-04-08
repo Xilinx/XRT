@@ -90,10 +90,8 @@ static int cu_remove(struct platform_device *pdev)
 	int err = 0;
 
 	xcu = platform_get_drvdata(pdev);
-	if (!xcu) {
-		XCU_ERR(xcu, "driver data is NULL");
+	if (!xcu)
 		return -EINVAL;
-	}
 
 	err = xocl_cu_ctrl_remove_cu(xdev, &xcu->base);
 	if (err)

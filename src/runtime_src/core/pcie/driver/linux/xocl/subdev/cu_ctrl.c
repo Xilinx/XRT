@@ -570,10 +570,8 @@ static int cu_ctrl_remove(struct platform_device *pdev)
 	void *hdl;
 
 	xcuc = platform_get_drvdata(pdev);
-	if (!xcuc) {
-		XCUC_ERR(xcuc, "driver data is NULL");
+	if (!xcuc)
 		return -EINVAL;
-	}
 
 	if (xcuc->threads) {
 		stop_all_threads(xcuc);
