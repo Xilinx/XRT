@@ -210,15 +210,19 @@ pretty_print_platform_info(const boost::property_tree::ptree& _ptDevice)
   std::cout << boost::format("  %-20s : 0x%x\n") % "Platform ID" % _ptDevice.get<std::string>("platform.shell_on_fpga.id", "N/A");
 
   std::cout << "\nIncoming Configuration\n";
-  std::pair <std::string, std::string> s = deployment_path_and_filename(_ptDevice.get<std::string>("platform.installed_shell.file"));
+  // if multiple shells are installed, do not proceed
+  if( _ptDevice.get<int>("platform.number_of_installed_shells") > 1)
+      throw xrt_core::error("Auto update is not possible when multiple shells are installed on the system. Please use --image option to specify the path of a particular flash image.");
+
+  std::pair <std::string, std::string> s = deployment_path_and_filename(_ptDevice.get<std::string>("platform.installed_shell.0.file"));
   std::cout << boost::format("  %-20s : %s\n") % "Deployment File" % s.first;
   std::cout << boost::format("  %-20s : %s\n") % "Deployment Directory" % s.second;
-  std::cout << boost::format("  %-20s : %s\n") % "Size" % file_size(_ptDevice.get<std::string>("platform.installed_shell.file").c_str());
-  std::cout << boost::format("  %-20s : %s\n\n") % "Timestamp" % get_file_timestamp(_ptDevice.get<std::string>("platform.installed_shell.file").c_str());
+  std::cout << boost::format("  %-20s : %s\n") % "Size" % file_size(_ptDevice.get<std::string>("platform.installed_shell.0.file").c_str());
+  std::cout << boost::format("  %-20s : %s\n\n") % "Timestamp" % get_file_timestamp(_ptDevice.get<std::string>("platform.installed_shell.0.file").c_str());
 
-  std::cout << boost::format("  %-20s : %s\n") % "Platform" % _ptDevice.get<std::string>("platform.installed_shell.vbnv", "N/A");
-  std::cout << boost::format("  %-20s : %s\n") % "SC Version" % _ptDevice.get<std::string>("platform.installed_shell.sc_version", "N/A");
-  std::cout << boost::format("  %-20s : 0x%x\n") % "Platform ID" % _ptDevice.get<std::string>("platform.installed_shell.id", "N/A");
+  std::cout << boost::format("  %-20s : %s\n") % "Platform" % _ptDevice.get<std::string>("platform.installed_shell.0.vbnv", "N/A");
+  std::cout << boost::format("  %-20s : %s\n") % "SC Version" % _ptDevice.get<std::string>("platform.installed_shell.0.sc_version", "N/A");
+  std::cout << boost::format("  %-20s : 0x%x\n") % "Platform ID" % _ptDevice.get<std::string>("platform.installed_shell.0.id", "N/A");
 }
 
 static void
@@ -493,13 +497,10 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   // -- Now process the subcommand --------------------------------------------
   XBU::verbose(boost::str(boost::format("  Update: %s") % update));
 
+  // -- process "device" option -----------------------------------------------
   // enforce device specification
   if(device.empty())
     throw xrt_core::error("Please specify a device using --device option");
-  // TO-DO: deprecate this
-  std::vector<uint16_t> device_indices;
-    std::string d = "";
-  XBU::parse_device_indices(device_indices, d);
 
   // Collect all of the devices of interest
   std::set<std::string> deviceNames;
@@ -515,6 +516,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
       throw xrt_core::error("Usage: xbmgmt program --device='0000:00:00.0' --update --force'");
   }
 
+    // -- process "image" sub-option --------------------------------------------
   if(!image.empty()) {
     //image is a sub-option of update
     if(update.empty())
@@ -529,6 +531,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     return;
   }
 
+  // -- process "update" option ------------------------------------------------
   if (!update.empty()) {
     XBU::verbose("Sub command: --update");
     std::string empty = "";
@@ -542,16 +545,17 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
       throw xrt_core::error("Please specify a valid value");
     return;
   }
-
+  
+  // -- process "revert-to-golden" option ---------------------------------------
   if(revertToGolden) {
     XBU::verbose("Sub command: --revert-to-golden");
 
     std::vector<Flasher> flasher_list;
-    for(auto& idx : device_indices) {
+    for (const auto & dev : deviceCollection) {
       //collect information of all the cards that will be reset
-      Flasher flasher(idx);
+      Flasher flasher(dev->get_device_id());
       if(!flasher.isValid()) {
-        xrt_core::error(boost::str(boost::format("%d is an invalid index") % idx));
+        xrt_core::error(boost::str(boost::format("%d is an invalid index") % dev->get_device_id()));
         continue;
       }
       std::cout << boost::format("%-8s : %s %s %s \n") % "INFO" % "Resetting card [" 
@@ -571,7 +575,6 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     std::cout << "****************************************************\n";
     std::cout << "Cold reboot machine to load the new image on card(s).\n";
     std::cout << "****************************************************\n";
-
     return;
   }
 }

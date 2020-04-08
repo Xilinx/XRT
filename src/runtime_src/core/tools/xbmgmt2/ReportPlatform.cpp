@@ -84,25 +84,34 @@ ReportPlatform::getPropertyTree20201( const xrt_core::device * _pDevice,
   _pt.put("platform.shell_on_fpga.id", on_board_rom_info.get<std::string>("id", "N/A"));
 
   Flasher f(_pDevice->get_device_id());
-  std::vector<DSAInfo> installedDSA = f.getInstalledDSA();
-  //add a check for multiple DSAs, maybe a node
+  std::vector<DSAInfo> installedDSAs = f.getInstalledDSA();
+  _pt.put("platform.number_of_installed_shells", installedDSAs.size());
 
   BoardInfo info;
   f.getBoardInfo(info);
 
   //Flashable partitions installed in system
-  _pt.put("platform.installed_shell.vbnv", installedDSA.front().name);
-  _pt.put("platform.installed_shell.sc_version", installedDSA.front().bmcVer);
-  _pt.put("platform.installed_shell.id", (boost::format("0x%x") % installedDSA.front().timestamp));
-  _pt.put("platform.installed_shell.file", installedDSA.front().file);
-  _pt.put("platform.shell_upto_date", same_shell( on_board_rom_info.get<std::string>("vbnv", ""), on_board_rom_info.get<std::string>("id", ""), installedDSA.front()));
-  _pt.put("platform.sc_upto_date", same_sc( on_board_xmc_info.get<std::string>("sc_version", ""), installedDSA.front()));
+  for(unsigned int i = 0; i < installedDSAs.size(); i++) {
+    boost::property_tree::ptree _ptInstalledShell;
+    DSAInfo installedDSA = installedDSAs[i];
+    _ptInstalledShell.put("vbnv", installedDSA.name);
+    _ptInstalledShell.put("sc_version", installedDSA.bmcVer);
+    _ptInstalledShell.put("id", (boost::format("0x%x") % installedDSA.timestamp));
+    _ptInstalledShell.put("file", installedDSA.file);
+    _pt.put("platform.shell_upto_date", same_shell( on_board_rom_info.get<std::string>("vbnv", ""), 
+              on_board_rom_info.get<std::string>("id", ""), installedDSA));
+    _pt.put("platform.sc_upto_date", same_sc( on_board_xmc_info.get<std::string>("sc_version", ""), 
+             installedDSA));
+    _pt.add_child("platform.installed_shell." + std::to_string(i), _ptInstalledShell);
+  }
 
 }
 
 static const std::string
-shell_status(bool shell_status, bool sc_status)
+shell_status(bool shell_status, bool sc_status, int multiDSA)
 {
+  if(multiDSA > 1)
+    return boost::str(boost::format("%-8s : %s\n") % "WARNING" % "Multiple shells are installed on the system.");
   if(!shell_status)
     return boost::str(boost::format("%-8s : %s\n") % "WARNING" % "Device is not up-to-date.");
   if(!sc_status)
@@ -126,13 +135,16 @@ ReportPlatform::writeReport( const xrt_core::device * _pDevice,
   _output << boost::format("  %-20s : %s\n") % "SC Version" % _pt.get<std::string>("platform.shell_on_fpga.sc_version", "N/A");
   _output << boost::format("  %-20s : %x\n") % "Platform ID" % _pt.get<std::string>("platform.shell_on_fpga.id", "N/A");
   
-  _output << "\nFlashable partitions installed in system\n";
-  _output << boost::format("  %-20s : %s\n") % "Platform" % _pt.get<std::string>("platform.installed_shell.vbnv", "N/A");
-  _output << boost::format("  %-20s : %s\n") % "SC Version" % _pt.get<std::string>("platform.installed_shell.sc_version", "N/A");
-  _output << boost::format("  %-20s : %x\n") % "Platform ID" % _pt.get<std::string>("platform.installed_shell.id", "N/A");
-  _output << shell_status(_pt.get<bool>("platform.shell_upto_date", ""), _pt.get<bool>("platform.sc_upto_date", ""));
-  _output << "----------------------------------------------------\n";
+  _output << "\nFlashable partitions installed in system\n";  
+  for(int i = 0; i < _pt.get<int>("platform.number_of_installed_shells"); i++) {
+    std::string prefix = "platform.installed_shell." + std::to_string(i);
+    _output << boost::format("  %-20s : %s\n") % "Platform" % _pt.get<std::string>(prefix + ".vbnv", "N/A");
+    _output << boost::format("  %-20s : %s\n") % "SC Version" % _pt.get<std::string>(prefix + ".sc_version", "N/A");
+    _output << boost::format("  %-20s : 0x%x\n") % "Platform ID" % _pt.get<std::string>(prefix + ".id", "N/A") << "\n";
+  }
 
+  _output << "----------------------------------------------------\n"
+          << shell_status(_pt.get<bool>("platform.shell_upto_date", ""), 
+                          _pt.get<bool>("platform.sc_upto_date", ""), 
+                          _pt.get<int>("platform.number_of_installed_shells"));
 }
-
-

@@ -75,10 +75,6 @@ namespace XBUtilities {
                         bool _indentFirstLine,
                         std::string &_formattedString);
 
-  // TODO: Obsolete this function
-  void parse_device_indices( std::vector<uint16_t> &device_indices, 
-                              const std::string &device);
-
   void collect_devices( const std::set<std::string>  &_deviceBDFs,
                         bool _inUserDomain,
                         xrt_core::device_collection &_deviceCollection);
