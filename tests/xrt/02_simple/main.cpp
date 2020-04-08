@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2018 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -20,33 +20,22 @@
 #include <string>
 #include <cstring>
 #include <sys/mman.h>
-#include <time.h>
-#include <chrono>
-#include <thread>
 
-// driver includes
+// XRT includes
+#include "xrt.h"
 #include "ert.h"
-
-// host_src includes
-#include "xclhal2.h"
+#include "experimental/xrt_kernel.h"
+#include "experimental/xrt_xclbin.h"
 #include "xclbin.h"
 
 // lowlevel common include
 #include "utils.h"
 
-#if defined(DSA64)
-#include "xsimple_hw_64.h"     
-#else
-#include "xsimple_hw.h"  
-#endif
-
-static const int count = 1024;
-int foo;
+// This value is shared with worgroup size in kernel.cl
+static const int COUNT = 1024;
 
 const static struct option long_options[] = {
-{"hal_driver",      required_argument, 0, 's'},
 {"bitstream",       required_argument, 0, 'k'},
-{"hal_logfile",     required_argument, 0, 'l'},
 {"device",          required_argument, 0, 'd'},
 {"verbose",         no_argument,       0, 'v'},
 {"help",            no_argument,       0, 'h'},
@@ -56,137 +45,63 @@ const static struct option long_options[] = {
 static void printHelp()
 {
     std::cout << "usage: %s [options] -k <bitstream>\n\n";
-    std::cout << "  -s <hal_driver>\n";
     std::cout << "  -k <bitstream>\n";
-    std::cout << "  -l <hal_logfile>\n";
     std::cout << "  -d <index>\n";
     std::cout << "  -v\n";
     std::cout << "  -h\n\n";
-    std::cout << "* If HAL driver is not specified, application will try to find the HAL driver\n";
-    std::cout << "  using XILINX_OPENCL and XCL_PLATFORM environment variables\n";
     std::cout << "* Bitstream is required\n";
-    std::cout << "* HAL logfile is optional but useful for capturing messages from HAL driver\n";
 }
 
-static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alignment, bool ert, bool verbose, int first_mem, unsigned cu_index, uuid_t xclbinId)
+static int runKernel(xclDeviceHandle handle, bool verbose, int first_mem, const uuid_t xclbinId)
 {
-    if(xclOpenContext(handle, xclbinId, cu_index, true))
-        throw std::runtime_error("Cannot create context");
+    xrtKernelHandle khandle = xrtPLKernelOpen(handle, xclbinId, "simple");
 
-    const size_t DATA_SIZE = count * sizeof(int);
+    const size_t DATA_SIZE = COUNT * sizeof(int);
 
     unsigned boHandle1 = xclAllocBO(handle, DATA_SIZE, 0, first_mem); //output s1
-    unsigned boHandle2 = xclAllocBO(handle, DATA_SIZE, 0, first_mem); // input s2
-    int *bo2 = (int*)xclMapBO(handle, boHandle2, true);
+    validHandleOrError(boHandle1);
     int *bo1 = (int*)xclMapBO(handle, boHandle1, true);
-    
-    int bufReference[count];
+
+    unsigned boHandle2 = xclAllocBO(handle, DATA_SIZE, 0, first_mem); // input s2
+    validHandleOrError(boHandle2);
+    int *bo2 = (int*)xclMapBO(handle, boHandle2, true);
+
+    int bufReference[COUNT];
 
     memset(bo2, 0, DATA_SIZE);
+    memset(bo1, 0, DATA_SIZE);
 
     // Fill our data sets with pattern
-    foo = 0x10;
-    for (int i = 0; i < count; i++) {
-        bo2[i] = i * i;
-        bo1[i] = 0X586C0C6C; // XL OpenCL X->58(ASCII), L->6C(ASCII), O->0 C->C L->6C(ASCII)
+    int foo = 0x10;
+    for (int i = 0; i < COUNT; i++) {
+        bo2[i] = i;
         bufReference[i] = bo2[i] + i * foo;
     }
 
-    if(xclSyncBO(handle, boHandle2, XCL_BO_SYNC_BO_TO_DEVICE , count * sizeof(int), 0)) {
-        return 1;
-    }
-    
-    if(xclSyncBO(handle, boHandle1, XCL_BO_SYNC_BO_TO_DEVICE , count * sizeof(int), 0)) {
-        return 1;
-    }
+    validOrError(xclSyncBO(handle, boHandle2, XCL_BO_SYNC_BO_TO_DEVICE , COUNT * sizeof(int), 0), "xclSyncBO");
+    validOrError(xclSyncBO(handle, boHandle1, XCL_BO_SYNC_BO_TO_DEVICE , COUNT * sizeof(int), 0), "xclSyncBO");
 
+    xrtRunHandle runh = xrtKernelRun(khandle, boHandle1, boHandle2, 0x10);
 
-    xclBOProperties p;
-    uint64_t bo2devAddr = !xclGetBOProperties(handle, boHandle2, &p) ? p.paddr : -1;
-    uint64_t bo1devAddr = !xclGetBOProperties(handle, boHandle1, &p) ? p.paddr : -1;
-
-    if( (bo2devAddr == (uint64_t)(-1)) || (bo1devAddr == (uint64_t)(-1)))
-        return 1;
-    unsigned execHandle = xclAllocBO(handle, DATA_SIZE, 0, (1<<31));
-    void* execData = xclMapBO(handle, execHandle, true);
-
-    std::cout << "Construct the exec command to run the kernel on FPGA" << std::endl;
-    std::cout << "Due to the 1D OpenCL group size, the kernel must be launched ("<< count << ") times" << std::endl;
-    //--
-    //construct the exec buffer cmd to start the kernel.
-    for (int id = 0; id < count; id++) {
-        {
-            auto ecmd = reinterpret_cast<ert_start_kernel_cmd*>(execData);
-            auto rsz = XSIMPLE_CONTROL_ADDR_FOO_DATA/4 + 2; // regmap array size
-            std::memset(ecmd,0,(sizeof *ecmd) + rsz);
-            ecmd->state = ERT_CMD_STATE_NEW;
-            ecmd->opcode = ERT_START_CU;
-            ecmd->count = 1 + rsz;
-            ecmd->cu_mask = 0x1;
-            
-            ecmd->data[XSIMPLE_CONTROL_ADDR_AP_CTRL] = 0x0; // ap_start
-            ecmd->data[XSIMPLE_CONTROL_ADDR_GROUP_ID_X_DATA/4] = id; // group id
-            ecmd->data[XSIMPLE_CONTROL_ADDR_S1_DATA/4] = bo1devAddr & 0xFFFFFFFF;
-            ecmd->data[XSIMPLE_CONTROL_ADDR_S2_DATA/4] = bo2devAddr & 0xFFFFFFFF;
-#if defined(DSA64)
-            ecmd->data[XSIMPLE_CONTROL_ADDR_S1_DATA/4 + 1] = (bo1devAddr >> 32) & 0xFFFFFFFF; // output
-            ecmd->data[XSIMPLE_CONTROL_ADDR_S2_DATA/4 + 1] = (bo2devAddr >> 32) & 0xFFFFFFFF; // input
-#endif
-            ecmd->data[XSIMPLE_CONTROL_ADDR_FOO_DATA/4] = 0x10; //foo
-        }
-
-        //Send the "start kernel" command.
-        if(xclExecBuf(handle, execHandle)) {
-            std::cout << "Unable to issue xclExecBuf : start_kernel" << std::endl;
-            std::cout << "FAILED TEST\n";
-            std::cout << "Write failed\n";
-            return 1;
-        }
-        /*
-        else {
-            std::cout << "Kernel start command issued through xclExecBuf : start_kernel" << std::endl;
-            std::cout << "Now wait until the kernel finish" << std::endl;
-        }
-        */
-
-        //Wait on the command finish
-        while (xclExecWait(handle,100) == 0) {
-            std::cout << "reentering wait...\n";
-        };
-
-
-    }
-    
+    ert_cmd_state state = xrtRunWait(runh);
 
     //Get the output;
     std::cout << "Get the output data from the device" << std::endl;
-    if(xclSyncBO(handle, boHandle1, XCL_BO_SYNC_BO_FROM_DEVICE, DATA_SIZE, 0)) {
-        return 1;
-    }
+    validOrError(xclSyncBO(handle, boHandle1, XCL_BO_SYNC_BO_FROM_DEVICE, DATA_SIZE, 0), "xclSyncBO");
 
-    /*
-    for (int i = 0; i < count; i++) {
-        std::cout << "bo1[" << i << "]= " << bo1[i]<< ", bufReference[" << i << "]= " << bufReference[i] << std::endl;
-    }
-    */
     // Validate our results
     //
-    if (std::memcmp(bo1, bufReference, DATA_SIZE)) {
-        std::cout << "FAILED TEST\n";
-        std::cout << "Value read back does not match value written\n";
-        return 1;
-    }
+    if (std::memcmp(bo1, bufReference, DATA_SIZE))
+        throw std::runtime_error("Value read back does not match reference");
+
+    xrtRunClose(runh);
+    xrtKernelClose(khandle);
 
     // Clean up stuff
-    munmap(bo1, DATA_SIZE);
-    munmap(bo2, DATA_SIZE);
-    munmap(execData, DATA_SIZE);
+    xclUnmapBO(handle, boHandle1, bo1);
+    xclUnmapBO(handle, boHandle2, bo2);
     xclFreeBO(handle, boHandle1);
     xclFreeBO(handle, boHandle2);
-    xclFreeBO(handle, execHandle);
-
-    xclCloseContext(handle, xclbinId, cu_index);
-
     return 0;
 }
 
@@ -203,25 +118,16 @@ int main(int argc, char** argv)
     bool verbose = false;
     bool ert = false;
     int c;
-    //size_t n_elements = 16;
-    //int cu = 0;
-    //findSharedLibrary(sharedLibrary);
 
-    while ((c = getopt_long(argc, argv, "s:k:l:d:vh", long_options, &option_index)) != -1)
+    while ((c = getopt_long(argc, argv, "k:d:vh", long_options, &option_index)) != -1)
     {
         switch (c)
         {
         case 0:
             if (long_options[option_index].flag != 0)
                 break;
-        case 's':
-            sharedLibrary = optarg;
-            break;
         case 'k':
             bitstreamFile = optarg;
-            break;
-        case 'l':
-            halLogfile = optarg;
             break;
         case 'd':
             index = std::atoi(optarg);
@@ -266,10 +172,9 @@ int main(int argc, char** argv)
 
         if (first_mem < 0)
             return 1;
-        
-        if (runKernel(handle, cu_base_addr, alignment, ert, verbose, first_mem, cu_index, xclbinId))
-            return 1;
 
+        runKernel(handle, verbose, first_mem, xclbinId);
+        xclClose(handle);
     }
     catch (std::exception const& e)
     {

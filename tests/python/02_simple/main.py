@@ -6,8 +6,8 @@ sys.path.append('../')
 from utils_binding import *
 
 def runKernel(opt):
-    count = 1024
-    DATA_SIZE = ctypes.sizeof(ctypes.c_int32) * count
+    COUNT = 1024
+    DATA_SIZE = ctypes.sizeof(ctypes.c_int32) * COUNT
 
     khandle = xrtPLKernelOpen(opt.handle, opt.xuuid, "simple")
 
@@ -21,10 +21,10 @@ def runKernel(opt):
     ctypes.memset(bo2, 0, DATA_SIZE)
 
     for i in range(len(bo1.contents)):
-        bo1.contents[i] = i * i
+        bo2.contents[i] = i
 
     # bufReference
-    bufReference = [i*i + i*16 for i in range(count)]
+    bufReference = [i + i*16 for i in range(COUNT)]
 
     xclSyncBO(opt.handle, boHandle1, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE, 0)
     xclSyncBO(opt.handle, boHandle2, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE, 0)
@@ -42,7 +42,7 @@ def runKernel(opt):
     xrtRunClose(rhandle1)
     xrtKernelClose(khandle)
 
-    assert (bufReference[:count] == bo1.contents[:count]), "Computed value does not match reference"
+    assert (bufReference[:COUNT] == bo1.contents[:COUNT]), "Computed value does not match reference"
     xclUnmapBO(opt.handle, boHandle2, bo2)
     xclFreeBO(opt.handle, boHandle2)
     xclUnmapBO(opt.handle, boHandle1, bo1)
