@@ -124,12 +124,12 @@ ReportPlatform::writeReport( const xrt_core::device * _pDevice,
   _output << "Flashable partition running on FPGA\n";
   _output << boost::format("  %-20s : %s\n") % "Platform" % _pt.get<std::string>("platform.shell_on_fpga.vbnv", "N/A");
   _output << boost::format("  %-20s : %s\n") % "SC Version" % _pt.get<std::string>("platform.shell_on_fpga.sc_version", "N/A");
-  _output << boost::format("  %-20s : 0x%x\n") % "Platform ID" % _pt.get<std::string>("platform.shell_on_fpga.id", "N/A");
+  _output << boost::format("  %-20s : %x\n") % "Platform ID" % _pt.get<std::string>("platform.shell_on_fpga.id", "N/A");
   
   _output << "\nFlashable partitions installed in system\n";
   _output << boost::format("  %-20s : %s\n") % "Platform" % _pt.get<std::string>("platform.installed_shell.vbnv", "N/A");
   _output << boost::format("  %-20s : %s\n") % "SC Version" % _pt.get<std::string>("platform.installed_shell.sc_version", "N/A");
-  _output << boost::format("  %-20s : 0x%x\n") % "Platform ID" % _pt.get<std::string>("platform.installed_shell.id", "N/A");
+  _output << boost::format("  %-20s : %x\n") % "Platform ID" % _pt.get<std::string>("platform.installed_shell.id", "N/A");
   _output << shell_status(_pt.get<bool>("platform.shell_upto_date", ""), _pt.get<bool>("platform.sc_upto_date", ""));
   _output << "----------------------------------------------------\n";
 

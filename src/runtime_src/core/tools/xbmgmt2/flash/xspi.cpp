@@ -549,8 +549,8 @@ int XSPI_Flasher::xclUpgradeFirmware1(std::istream& mcsStream1) {
         if(!writeBitstreamGuard(bitstream_start_loc))
             throw xrt_core::error("Unable to set bitstream guard!");
         bitstream_shift_addr += BITSTREAM_GUARD_SIZE;
-        std::cout << boost::format("%-8s : %s \n") % "INFO" % "Enabled bitstream guard.";
-        std::cout << boost::format("%-8s : %s\n") % "INFO" % "Bitstream will not be loaded until flashing is finished.";
+        std::cout << boost::format("%-8s : %s \n") % "INFO" % "Enabled bitstream guard";
+        std::cout << boost::format("%-8s : %s\n") % "INFO" % "Bitstream will not be loaded until flashing is finished";
     }
 
     //Set slave index to 0
@@ -733,7 +733,7 @@ int XSPI_Flasher::parseMCS(std::istream& mcsStream) {
     }
 
     mcsStream.seekg(0);
-    std::cout << boost::format("%-8s : %s %s %s\n") % "INFO" % "found" % recordList.size() % "ELA Records";
+    std::cout << boost::format("%-8s : %s %s %s\n") % "INFO" % "Found" % recordList.size() % "ELA records";
     return 0;
 }
 
