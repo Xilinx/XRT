@@ -395,7 +395,7 @@ struct pci_dev *find_user_node(const struct pci_dev *pdev)
 inline void check_temp_within_range(struct xclmgmt_dev *lro, u32 temp)
 {
 	if (temp > HI_TEMP)
-		mgmt_err(lro, "Warning: Card is hot at: %d.", temp);
+		mgmt_err(lro, "Warning: Card is hot at: %d. There is a card shutdown limit at 97C. Please keep the card below 88C.", temp);
 }
 
 inline void check_volt_within_range(struct xclmgmt_dev *lro, u16 volt)
