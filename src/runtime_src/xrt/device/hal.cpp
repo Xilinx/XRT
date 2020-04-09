@@ -272,7 +272,7 @@ void load_xdp_kernel_debug()
       if (xrt.empty()) {
         throw std::runtime_error("XILINX_XRT not set");
       }
-      bfs::path xrtlib(xrt / "lib") ;
+      bfs::path xrtlib(xrt / "lib" / "xrt" / "module" ) ;
       directoryOrError(xrtlib) ;
       auto libpath = modulepath(xrt, "xdp_debug_plugin") ;
       if (!isDLL(libpath)) {
@@ -316,9 +316,7 @@ void load_xdp_app_debug()
       if (xrt.empty()) {
         throw std::runtime_error("XILINX_XRT not set");
       }
-      bfs::path xrtlib(xrt / "lib");
-      xrtlib /= "xrt" ;
-      xrtlib /= "module" ;
+      bfs::path xrtlib(xrt / "lib" / "xrt" / "module");
       directoryOrError(xrtlib);
       auto libpath = modulepath(xrt, "xdp_appdebug_plugin");
 

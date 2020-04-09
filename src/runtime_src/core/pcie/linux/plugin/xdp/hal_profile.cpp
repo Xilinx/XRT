@@ -410,7 +410,7 @@ void load_xdp_plugin_library(HalPluginConfig* )
     if (xrt.empty()) {
       throw std::runtime_error("Library xdp_hal_plugin not found! XILINX_XRT not set");
     }
-    bfs::path xrtlib(xrt / "lib");
+    bfs::path xrtlib(xrt / "lib" / "xrt" / "module");
     directoryOrError(xrtlib);
     auto libname = modulepath(xrt, "xdp_hal_plugin");
     if (!isDLL(libname)) {

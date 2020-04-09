@@ -81,7 +81,7 @@ namespace xdplop {
 	if (xrt.empty()) 
 	  throw std::runtime_error("XILINX_XRT not set");
 	
-	bfs::path xrtlib(xrt / "lib");
+	bfs::path xrtlib(xrt / "lib" / "xrt" / "module");
 	if (!bfs::is_directory(xrtlib))
 	  throw std::runtime_error("No such directory '"+xrtlib.string()+"'");
 
