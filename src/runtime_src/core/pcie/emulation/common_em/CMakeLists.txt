@@ -48,4 +48,3 @@ target_link_libraries(common_em
   rt
   )
 
-#install (TARGETS common_em LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR})
