@@ -86,6 +86,16 @@ dllpath(const boost::filesystem::path& root, const std::string& libnm)
 #endif
 }
 
+boost::filesystem::path
+modulepath(const boost::filesystem::path& root, const std::string& libnm)
+{
+#ifdef _WIN32
+  return root / "bin" / (libnm + ".dll") ;
+#else
+  return root / "lib" / "xrt" / "module" / ("lib" + libnm + ".so") ;
+#endif
+}
+
 static bool
 is_emulation()
 {
@@ -264,7 +274,7 @@ void load_xdp_kernel_debug()
       }
       bfs::path xrtlib(xrt / "lib") ;
       directoryOrError(xrtlib) ;
-      auto libpath = dllpath(xrt, "xdp_debug_plugin") ;
+      auto libpath = modulepath(xrt, "xdp_debug_plugin") ;
       if (!isDLL(libpath)) {
         throw std::runtime_error("Library " + libpath.string() + " not found!");
       }
@@ -307,8 +317,10 @@ void load_xdp_app_debug()
         throw std::runtime_error("XILINX_XRT not set");
       }
       bfs::path xrtlib(xrt / "lib");
+      xrtlib /= "xrt" ;
+      xrtlib /= "module" ;
       directoryOrError(xrtlib);
-      auto libpath = dllpath(xrt, "xdp_appdebug_plugin");
+      auto libpath = modulepath(xrt, "xdp_appdebug_plugin");
 
       if (!isDLL(libpath)) {
         throw std::runtime_error("Library " + libpath.string() + " not found!");

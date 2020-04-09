@@ -58,7 +58,7 @@ namespace {
 #ifdef _WIN32
     return root / "bin" / (libnm + ".dll");
 #else
-    return root / "lib" / ("lib" + libnm + ".so");
+    return root / "lib" / "xrt" / "module" / ("lib" + libnm + ".so");
 #endif
   }
 } // end anonymous namespace
