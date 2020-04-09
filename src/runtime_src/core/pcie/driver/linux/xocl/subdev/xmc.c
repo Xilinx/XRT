@@ -2499,7 +2499,12 @@ create_attr_failed:
 static int stop_ert_nolock(struct platform_device *pdev)
 {
 	struct xocl_xmc *xmc;
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	int retry = 0;
+
+	/* MPSOC platforms do not have MB ERT */
+	if (XOCL_DSA_IS_MPSOC(xdev))
+		return 0;
 
 	xmc = platform_get_drvdata(pdev);
 	if (!xmc)
@@ -3281,7 +3286,7 @@ void xocl_fini_xmc(void)
 
 static int xmc_mailbox_wait(struct xocl_xmc *xmc)
 {
-	int retry = MAX_XMC_RETRY;
+	int retry = MAX_XMC_RETRY * 4;
 	u32 val, ctrl_val;
 
 	BUG_ON(!mutex_is_locked(&xmc->mbx_lock));
