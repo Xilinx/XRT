@@ -17,6 +17,7 @@
  */
 
 #include "aie.h"
+#include "core/common/error.h"
 
 #include <iostream>
 #include <cerrno>
@@ -89,25 +90,129 @@ Aie::Aie()
         }
     }
 
-#if 0
-    /* TODO Register Event, Error XRT handler here ? */
-    xaie_register_event_handler(event, module, xrtAieEventCallBack);
-    xaie_register_error_notification(error, module, xrtAieErrorCallBack, arg);
-#endif
+    /* Disable AIE interrupts */
+    u32 reg = XAieGbl_NPIRead32(XAIE_NPI_ISR);
+    XAieGbl_NPIWrite32(XAIE_NPI_ISR, reg);
+
+    if (XAieTile_EventsHandlingInitialize(&aieInst) != XAIE_SUCCESS)
+        throw xrt_core::error("Failed to initialize AIE Events Handling.");
+
+    /* Register all AIE error events */
+    XAieTile_ErrorRegisterNotification(&aieInst, XAIEGBL_MODULE_ALL, XAIETILE_ERROR_ALL, error_cb, NULL);
+
+    /* Enable AIE interrupts */
+    XAieTile_EventsEnableInterrupt(&aieInst);
 }
 
 Aie::~Aie()
 {
-#if 0
-    /* TODO Unregister AIE Event, Error XRT handler. */
-    xaie_unregister_events_notification();
-    xaie_unregister_error_notification();
-#endif
+    XAieTile_ErrorUnregisterNotification(&aieInst, XAIEGBL_MODULE_ALL, XAIETILE_ERROR_ALL, XAIE_ENABLE);
 }
 
 int Aie::getTilePos(int col, int row)
 {
     return col * (numRows + 1) + row;
 }
+
+XAieGbl* Aie::getAieInst()
+{
+    return &aieInst;
+}
+
+XAieGbl_ErrorHandleStatus
+Aie::error_cb(struct XAieGbl *aie_inst, XAie_LocType loc, u8 module, u8 error, void *arg)
+{
+    auto severity = xrt_core::message::severity_level::XRT_INFO;
+
+    switch (module) {
+    case XAIEGBL_MODULE_CORE:
+        switch (error) {
+            case XAIETILE_EVENT_CORE_TLAST_IN_WSS_WORDS_0_2:
+            case XAIETILE_EVENT_CORE_PM_REG_ACCESS_FAILURE:
+            case XAIETILE_EVENT_CORE_STREAM_PKT_PARITY_ERROR:
+            case XAIETILE_EVENT_CORE_CONTROL_PKT_ERROR:
+            case XAIETILE_EVENT_CORE_INSTRUCTION_DECOMPRESSION_ERROR:
+            case XAIETILE_EVENT_CORE_DM_ADDRESS_OUT_OF_RANGE:
+            case XAIETILE_EVENT_CORE_AXI_MM_SLAVE_ERROR:
+            case XAIETILE_EVENT_CORE_PM_ECC_ERROR_SCRUB_2BIT:
+            case XAIETILE_EVENT_CORE_PM_ADDRESS_OUT_OF_RANGE:
+            case XAIETILE_EVENT_CORE_DM_ACCESS_TO_UNAVAILABLE:
+            case XAIETILE_EVENT_CORE_LOCK_ACCESS_TO_UNAVAILABLE:
+                severity = xrt_core::message::severity_level::XRT_EMERGENCY;
+                break;
+
+            case XAIETILE_EVENT_CORE_FP_OVERFLOW:
+            case XAIETILE_EVENT_CORE_FP_UNDERFLOW:
+            case XAIETILE_EVENT_CORE_FP_INVALID:
+            case XAIETILE_EVENT_CORE_FP_DIV_BY_ZERO:
+            case XAIETILE_EVENT_CORE_INSTR_WARNING:
+            case XAIETILE_EVENT_CORE_INSTR_ERROR:
+                severity = xrt_core::message::severity_level::XRT_ERROR;
+                break;
+
+            case XAIETILE_EVENT_CORE_SRS_SATURATE:
+            case XAIETILE_EVENT_CORE_UPS_SATURATE:
+                severity = xrt_core::message::severity_level::XRT_NOTICE;
+                break;
+
+            default:
+                break;
+        }
+        break;
+
+    case XAIEGBL_MODULE_MEM:
+        switch (error) {
+            case XAIETILE_EVENT_MEM_DM_ECC_ERROR_2BIT:
+            case XAIETILE_EVENT_MEM_DMA_S2MM_0_ERROR:
+            case XAIETILE_EVENT_MEM_DMA_S2MM_1_ERROR:
+            case XAIETILE_EVENT_MEM_DMA_MM2S_0_ERROR:
+            case XAIETILE_EVENT_MEM_DMA_MM2S_1_ERROR:
+                severity = xrt_core::message::severity_level::XRT_EMERGENCY;
+                break;
+
+            case XAIETILE_EVENT_MEM_DM_PARITY_ERROR_BANK_2:
+            case XAIETILE_EVENT_MEM_DM_PARITY_ERROR_BANK_3:
+            case XAIETILE_EVENT_MEM_DM_PARITY_ERROR_BANK_4:
+            case XAIETILE_EVENT_MEM_DM_PARITY_ERROR_BANK_5:
+            case XAIETILE_EVENT_MEM_DM_PARITY_ERROR_BANK_6:
+            case XAIETILE_EVENT_MEM_DM_PARITY_ERROR_BANK_7:
+                severity = xrt_core::message::severity_level::XRT_CRITICAL;
+                break;
+
+            default:
+                break;
+        }
+        break;
+
+    case XAIEGBL_MODULE_PL:
+        switch (error) {
+            case XAIETILE_EVENT_SHIM_AXI_MM_SLAVE_TILE_ERROR:
+            case XAIETILE_EVENT_SHIM_CONTROL_PKT_ERROR:
+            case XAIETILE_EVENT_SHIM_AXI_MM_DECODE_NSU_ERROR_NOC:
+            case XAIETILE_EVENT_SHIM_AXI_MM_SLAVE_NSU_ERROR_NOC:
+            case XAIETILE_EVENT_SHIM_AXI_MM_UNSUPPORTED_TRAFFIC_NOC:
+            case XAIETILE_EVENT_SHIM_AXI_MM_UNSECURE_ACCESS_IN_SECURE_MODE_NOC:
+            case XAIETILE_EVENT_SHIM_AXI_MM_BYTE_STROBE_ERROR_NOC:
+            case XAIETILE_EVENT_SHIM_DMA_S2MM_0_ERROR_NOC:
+            case XAIETILE_EVENT_SHIM_DMA_S2MM_1_ERROR_NOC:
+            case XAIETILE_EVENT_SHIM_DMA_MM2S_0_ERROR_NOC:
+            case XAIETILE_EVENT_SHIM_DMA_MM2S_1_ERROR_NOC:
+                severity = xrt_core::message::severity_level::XRT_EMERGENCY;
+                break;
+
+            default:
+                break;
+        }
+        break;
+
+    default:
+        break;
+    }
+
+    xrt_core::message::send(severity, "XRT", "AIE ERROR: module %d, error %d", module, error);
+
+    return XAIETILE_ERROR_HANDLED;
+}
+
 
 }

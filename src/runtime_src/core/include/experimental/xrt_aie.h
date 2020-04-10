@@ -35,7 +35,7 @@ typedef void *xrtGraphHandle;
  * to calling this function.
  */
 xrtGraphHandle
-xrtGraphOpen(xclDeviceHandle handle, uuid_t xclbinUUID, const char *graphName);
+xrtGraphOpen(xclDeviceHandle handle, const uuid_t xclbinUUID, const char *graphName);
 
 /**
  * xrtGraphClose() - Close an open graph.
