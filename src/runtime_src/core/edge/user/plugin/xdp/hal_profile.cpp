@@ -232,6 +232,8 @@ void load_xdp_plugin_library(HalPluginConfig* )
       exit(EXIT_FAILURE);
     }
     bfs::path p(xrt / "lib");
+    p /= "xrt" ;
+    p /= "module" ;
     if(directoryOrError(p)) {
       exit(EXIT_FAILURE);
     }
