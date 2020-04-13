@@ -675,6 +675,7 @@ class xclbin_data_sections
     uint64_t size;       // size of this bank in bytes
     int32_t memidx;      // mem topology index of this bank
     int32_t grpidx;      // grp index
+    bool used;           // reflects mem topology used for this bank
   };
 
   std::vector<membank> m_membanks;
@@ -702,8 +703,9 @@ public:
     if (m_mem) {
       for (int32_t i=0; i<m_mem->m_count; ++i) {
         std::string tag = reinterpret_cast<const char*>(m_mem->m_mem_data[i].m_tag);
+        bool used = m_mem->m_mem_data[i].m_used;
         m_membanks.emplace_back
-          (membank{m_mem->m_mem_data[i].m_base_address,tag,m_mem->m_mem_data[i].m_size*1024,i,i});
+          (membank{m_mem->m_mem_data[i].m_base_address,tag,m_mem->m_mem_data[i].m_size*1024,i,i,used});
       }
       // sort on addr decreasing order
       std::sort(m_membanks.begin(),m_membanks.end(),
@@ -722,10 +724,13 @@ public:
       auto itr = m_membanks.begin();
       while (itr != m_membanks.end()) {
         auto addr = (*itr).base_addr;
-        auto memidx = (*itr).memidx;
 
         // first element not part of the sorted (decreasing) range
         auto upper = std::find_if(itr, m_membanks.end(), [addr] (auto& mb) { return mb.base_addr < addr; });
+
+        // find first used memidx if any, default to first memidx in range if unused
+        auto used = std::find_if(itr, upper, [](auto& mb) { return mb.used; });
+        auto memidx = (used != upper) ? (*used).memidx : (*itr).memidx;
 
         // process the range
         for (; itr < upper; ++itr) {
