@@ -59,7 +59,7 @@
 
 #define	QUEUE_POST_TIMEOUT	10000
 #define QDMA_MAX_INTR		16
-#define QDMA_USER_INTR_MASK	0xfe
+#define QDMA_USER_INTR_MASK	0xff
 
 #define QDMA_QSETS_MAX		256
 
