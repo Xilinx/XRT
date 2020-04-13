@@ -170,12 +170,6 @@ get_buffer_object(device* device)
   if (itr!=m_bomap.end())
     return (*itr).second;
 
-  // Maybe import from XARE device
-  if (m_bomap.size() && itr==m_bomap.end() && device->is_xare_device()) {
-    auto first = m_bomap.begin(); // import any existing BO
-    return (m_bomap[device] = device->import_buffer_object(first->first,first->second));
-  }
-
   // Get memory bank index if assigned, -1 if not assigned, which will trigger
   // allocation error when default allocation is disabled
   get_memidx_nolock(device); // computes m_memidx

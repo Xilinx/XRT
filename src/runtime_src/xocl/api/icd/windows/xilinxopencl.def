@@ -121,10 +121,5 @@ EXPORTS
   clCreateStreamBuffer
   clReleaseStreamBuffer
   clPollStreams
-  clCreateHostPipe
-  clWritePipeBuffers
-  clReadPipeBuffers
-  clAcquirePipeBuffer
-  clReleasePipeBuffer
   xclGetXrtDevice
   xclGetComputeUnitInfo

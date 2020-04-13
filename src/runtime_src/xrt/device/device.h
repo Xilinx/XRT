@@ -618,16 +618,6 @@ public:
   }
 
   /**
-   * Check if this device is an ARE device
-   */
-  bool
-  is_xare_device() const
-  {
-    //return m_hal->isAreDevice();
-    return (m_hal->getName().find("-xare")!=std::string::npos);
-  }
-
-  /**
    * Read kernel control register from device
    *
    * @param offset
