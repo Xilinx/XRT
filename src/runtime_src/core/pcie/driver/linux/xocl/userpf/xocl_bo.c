@@ -76,7 +76,12 @@ static inline void __user *to_user_ptr(u64 address)
 
 static size_t xocl_bo_physical_addr(const struct drm_xocl_bo *xobj)
 {
-	uint64_t paddr = xobj->mm_node ? xobj->mm_node->start : INVALID_BO_PADDR;
+	uint64_t paddr;
+
+	if (xocl_bo_cma(xobj))
+		paddr = xobj->cma_mm_node->start;
+	else
+		paddr = xobj->mm_node ? xobj->mm_node->start : INVALID_BO_PADDR;
 
 	return paddr;
 }
