@@ -621,9 +621,7 @@ namespace xclhwemhal2 {
         setenv("VITIS_KERNEL_TRACE_FILENAME", kernelTraceFileName.c_str(), true);
       }
       if (lWaveform == xclemulation::LAUNCHWAVEFORM::OFF)
-      {
         sim_path = binaryDirectory + "/behav_gdb/xsim";
-      }
 
       if (userSpecifiedSimPath.empty() == false)
       {
@@ -658,12 +656,10 @@ namespace xclhwemhal2 {
           else {
             std::string dMsg;
             sim_path = binaryDirectory + "/behav_gdb/xsim";
-            if (lWaveform == xclemulation::LAUNCHWAVEFORM::GUI) {
+            if (lWaveform == xclemulation::LAUNCHWAVEFORM::GUI) 
               dMsg = "WARNING: [HW-EM 07] Launch Waveform is set to GUI in ini file. Could not find a xsim binary. Running simulation using axsim. Cannot enable simulator GUI in this mode. Using " + sim_path + " as simulation directory.";
-            }
-            else {
+            else 
               dMsg = "WARNING: [HW-EM 07] Launch Waveform is set to BATCH in ini file (or) considered by default. Could not find a xsim binary. Running simulation using axsim. Using " + sim_path + " as simulation directory.";
-            }
             logMessage(dMsg, 0);
           }
         }
