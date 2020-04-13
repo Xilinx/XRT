@@ -59,6 +59,7 @@ namespace xclemulation{
     mLaunchWaveform = LAUNCHWAVEFORM::BATCH;
     mDontRun = false;
     mSimDir = "";
+    mUserPreSimScript = "";
     mPacketSize = 0x800000;
     mMaxTraceCount = 1;
     mPaddingFactor = 1;
@@ -144,6 +145,9 @@ namespace xclemulation{
       else if(name == "dont_run")
       {
         setDontRun(getBoolValue(value,false));
+      }
+      else if (name == "user_pre_sim_script") {
+        setUserPreSimScript(value);
       }
       else if (name == "ENABLE_GMEM_LATENCY" || name == "enable_gmem_latency") {
         //This is then new INI option that sets the ENV HW_EM_DISABLE_LATENCY to appropriate value before 

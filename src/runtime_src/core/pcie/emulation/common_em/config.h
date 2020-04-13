@@ -120,6 +120,7 @@ namespace xclemulation{
       inline void setMaxTraceCount( unsigned int maxTraceCount) { mMaxTraceCount    = maxTraceCount; }
       inline void setPaddingFactor( unsigned int paddingFactor) { mPaddingFactor    = paddingFactor; }
       inline void setSimDir( std::string& simDir)               { mSimDir           = simDir;        }
+      inline void setUserPreSimScript( std::string& userPreSimScript) {mUserPreSimScript = userPreSimScript; }
       inline void setLaunchWaveform( LAUNCHWAVEFORM lWaveform)  { mLaunchWaveform   = lWaveform;     }
       inline void suppressInfo( bool suppress)                  { mSuppressInfo     = suppress;      }
       inline void suppressWarnings( bool suppress)              { mSuppressWarnings = suppress;      }
@@ -143,6 +144,7 @@ namespace xclemulation{
       inline unsigned int getMaxTraceCount()    const { return mMaxTraceCount;  }
       inline unsigned int getPaddingFactor()    const { if(!mOOBChecks) return 0; return mPaddingFactor;  }
       inline std::string getSimDir()            const { return mSimDir;         }
+      inline std::string getUserPreSimScript()  const { return mUserPreSimScript;}
       inline LAUNCHWAVEFORM getLaunchWaveform() const { return mLaunchWaveform; }
       inline bool isInfoSuppressed()            const { return mSuppressInfo;    }
       inline bool isWarningsuppressed()         const { return mSuppressWarnings;}
@@ -169,6 +171,7 @@ namespace xclemulation{
       bool mDontRun;
       LAUNCHWAVEFORM mLaunchWaveform;
       std::string mSimDir;
+      std::string mUserPreSimScript;
       unsigned int mPacketSize;
       unsigned int mMaxTraceCount;
       unsigned int mPaddingFactor;
