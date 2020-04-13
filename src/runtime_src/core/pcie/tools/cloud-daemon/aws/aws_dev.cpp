@@ -526,6 +526,7 @@ int AwsDev::awsGetIcap(xcl_pr_region *data)
     FIELD(data, freq_cntr, 1) = mgmt_info_obj.ocl_frequency[1] * 1000;
     FIELD(data, freq_cntr, 2) = mgmt_info_obj.ocl_frequency[2] * 1000;
     FIELD(data, freq_cntr, 3) = mgmt_info_obj.ocl_frequency[3] * 1000;
+    data->data_retention = 1;
 #else
     fpga_mgmt_image_info imageInfo;
     fpga_mgmt_describe_local_image( mBoardNumber, &imageInfo, 0 );
@@ -535,6 +536,7 @@ int AwsDev::awsGetIcap(xcl_pr_region *data)
     FIELD(data, freq_cntr, 0) = imageInfo.metrics.clocks[0].frequency[0] / 1000;
     FIELD(data, freq_cntr, 1) = imageInfo.metrics.clocks[1].frequency[0] / 1000;
     FIELD(data, freq_cntr, 2) = imageInfo.metrics.clocks[2].frequency[0] / 1000;
+    data->data_retention = 1;
 #endif
     //do we need to save uuid of xclbin loaded so that we can return xclbin uuid here?
     //seems not. we check afi before load new xclbin.

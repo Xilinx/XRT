@@ -2847,6 +2847,9 @@ static uint64_t icap_get_data_nolock(struct platform_device *pdev,
 		case MIG_CALIB:
 			target = (uint64_t)icap->cache.mig_calib;
 			break;
+		case DATA_RETAIN:
+			target = (uint64_t)icap->cache.data_retention;
+			break;
 		default:
 			break;
 		}
@@ -2883,6 +2886,9 @@ static uint64_t icap_get_data_nolock(struct platform_device *pdev,
 			break;
 		case EXP_BMC_VER:
 			target = (uint64_t)icap->bmc_header.m_version;
+			break;
+		case DATA_RETAIN:
+			target = (uint64_t)icap->data_retention;
 			break;
 		default:
 			break;

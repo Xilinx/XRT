@@ -930,6 +930,7 @@ enum data_kind {
 	XMC_VCCAUX,
 	XMC_VCCAUX_PMC,
 	XMC_VCCRAM,
+	DATA_RETAIN,
 };
 
 enum mb_kind {
