@@ -29,6 +29,7 @@
 #include <ctime>
 #include <map>
 #include <chrono>
+#include <system_error>
 
 #include <sys/mman.h>
 #include <sys/types.h>
@@ -132,7 +133,7 @@ static int initXRT( const char*bit,
             break;
         }
     }
-    
+
     uuid_copy(xclbinId, top->m_header.uuid);
 
     delete [] header;
@@ -148,4 +149,15 @@ static inline std::ostream& stamp(std::ostream& os) {
     os << '[' << getpid() << "] (" << st << "): ";
     return os;
 }
+
+static inline void validHandleOrError(unsigned int handle)
+{
+    if (handle == XRT_NULL_BO) throw std::system_error(errno, std::generic_category(), "buffer object allocation");
+}
+
+static inline void validOrError(int res, const char *what)
+{
+    if (res) throw std::system_error(-res, std::generic_category(), what);
+}
+
 #endif

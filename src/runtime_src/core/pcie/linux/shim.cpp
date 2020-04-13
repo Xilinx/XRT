@@ -122,8 +122,8 @@ namespace xocl {
  * handles the actual interaction with the kernel on the i/o data path.
  *
  * Configuration:
- * - qAioEn:		per queue aio context enabled or not 
- * - qAioCtx:		per queue aio context, valid only if qAioEn = true 
+ * - qAioEn:		per queue aio context enabled or not
+ * - qAioCtx:		per queue aio context, valid only if qAioEn = true
  * - set_option():	optional configurations for aio context and batching
  *
  * i/o data path:
@@ -156,7 +156,7 @@ public:
     const int queue_get_handle(void) { return (int)qhndl; }
 
     // optional configurations
-    int set_option(int type, uint32_t val) 
+    int set_option(int type, uint32_t val)
     {
         switch(type) {
         case STREAM_OPT_AIO_MAX_EVENT:
@@ -523,8 +523,13 @@ size_t shim::xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size
 unsigned int shim::xclAllocBO(size_t size, int unused, unsigned flags)
 {
     drm_xocl_create_bo info = {size, mNullBO, flags};
+    unsigned int bo = mNullBO;
     int result = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CREATE_BO, &info);
-    return result ? mNullBO : info.handle;
+    if (result)
+        errno = result;
+    else
+        bo = info.handle;
+    return bo;
 }
 
 /*
@@ -534,8 +539,13 @@ unsigned int shim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
 {
     drm_xocl_userptr_bo user =
         {reinterpret_cast<uint64_t>(userptr), size, mNullBO, flags};
+    unsigned int bo = mNullBO;
     int result = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_USERPTR_BO, &user);
-    return result ? mNullBO : user.handle;
+    if (result)
+        errno = result;
+    else
+        bo = user.handle;
+    return bo;
 }
 
 /*
@@ -916,7 +926,7 @@ int shim::cmaEnable(bool enable, uint64_t size)
              * 21 = 0x15
              * Let's find how many 1GB huge page we have to allocate
              */
-            uint64_t hugepage_flag = 0x1e; 
+            uint64_t hugepage_flag = 0x1e;
             cma_info.entry_num = page_num;
 
             cma_info.user_addr = (uint64_t *)alloca(sizeof(uint64_t)*page_num);
@@ -2226,7 +2236,7 @@ int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
 #ifdef DISABLE_DOWNLOAD_XCLBIN
   return 0;
 #endif
-  
+
   xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -ENODEV;
 }
@@ -2427,7 +2437,7 @@ int xclGetSubdevPath(xclDeviceHandle handle,  const char* subdev,
 void
 xclGetDebugIpLayout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret)
 {
-  if(size_ret) 
+  if(size_ret)
     *size_ret = 0;
   return;
 }
