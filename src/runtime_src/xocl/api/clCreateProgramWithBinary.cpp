@@ -15,11 +15,7 @@
  */
 
 // (c) Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#include <CL/opencl.h>
-#include "xclbin.h"
-
-#include "xrt/util/memory.h"
+#include "xocl/config.h"
 #include "xocl/core/range.h"
 #include "xocl/core/error.h"
 #include "xocl/core/device.h"
@@ -30,11 +26,20 @@
 #include "detail/context.h"
 #include "detail/device.h"
 
+#include "xclbin.h"
+
 #include <exception>
 #include <string>
 #include <algorithm>
 
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
+
+#include <CL/opencl.h>
+
+#ifdef _WIN32
+# pragma warning ( disable : 4996 )
+#endif
 
 namespace {
 
@@ -111,7 +116,7 @@ clCreateProgramWithBinary(cl_context                      context ,
                           cl_int *                        errcode_ret )
 {
   validOrError(context,num_devices,device_list,lengths,binaries,binary_status,errcode_ret);
-               
+
   // Flushing device trace (not done on first call to program with binary)
   static bool once = false;
   if (!once) {
@@ -124,17 +129,19 @@ clCreateProgramWithBinary(cl_context                      context ,
     std::fill(binary_status,binary_status+num_devices,CL_INVALID_VALUE);
 
   // Construct program object
-  auto program = xrt::make_unique<xocl::program>(xocl::xocl(context),num_devices,device_list,binaries,lengths);
+  auto program = std::make_unique<xocl::program>(xocl::xocl(context),num_devices,device_list,binaries,lengths);
 
   // Assign binaries to all devices in the list
   size_t idx = 0;
   for (auto device : xocl::get_range(device_list,device_list+num_devices)) {
     try {
       loadProgramBinary(program.get(),xocl(device));
-      xocl::assign(&binary_status[idx++],CL_SUCCESS);
+      if (binary_status)
+        xocl::assign(&binary_status[idx++],CL_SUCCESS);
     }
-    catch (const xocl::error& ex) {
-      xocl::assign(&binary_status[idx],CL_INVALID_BINARY);
+    catch (const xocl::error&) {
+      if (binary_status)
+        xocl::assign(&binary_status[idx],CL_INVALID_BINARY);
       throw;
     }
   }
@@ -181,6 +188,7 @@ clCreateProgramWithBinary(cl_context                      context ,
 
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clCreateProgramWithBinary
       (context,num_devices,device_list,lengths,binaries,binary_status,errcode_ret);
   }
@@ -189,10 +197,6 @@ clCreateProgramWithBinary(cl_context                      context ,
     xocl::send_exception_message(ex.what());
     xocl::assign(errcode_ret,ex.get_code());
   }
-  catch (const xclbin::error& ex) {
-    xocl::send_exception_message(ex.what());
-    xocl::assign(errcode_ret,CL_INVALID_BINARY);
-  }
   catch (const std::exception& ex) {
     xocl::send_exception_message(ex.what());
     xocl::assign(errcode_ret,CL_OUT_OF_HOST_MEMORY);
@@ -200,5 +204,3 @@ clCreateProgramWithBinary(cl_context                      context ,
 
   return nullptr;
 }
-
-

@@ -195,8 +195,14 @@ class param_buffer
       {
         size_t l = r.size();
         auto buffer = allocator<T>::get(b,l);
-        if (buffer)
+        if (buffer) {
+#ifndef _WIN32
           std::copy(r.begin(),r.end(),buffer);
+#else
+          for (auto v : r)
+            *buffer++ = v;
+#endif
+        }
         return l*sizeof(T);
       }
     };

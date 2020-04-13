@@ -13,14 +13,19 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
-#include <CL/cl.h>
+#include "xocl/config.h"
 #include "command_queue.h"
 #include "context.h"
 #include "xocl/core/command_queue.h"
 #include "xocl/core/context.h"
 #include "xocl/core/error.h"
 #include "xocl/api/api.h"
+#include <CL/cl.h>
+
+#ifdef _WIN32
+# pragma warning( disable : 4245)
+#endif
+
 
 namespace xocl { namespace detail {
 
@@ -35,7 +40,7 @@ validOrError(const cl_command_queue command_queue)
 }
 
 void
-validOrError(cl_command_queue_properties properties) 
+validOrError(cl_command_queue_properties properties)
 {
   cl_bitfield valid = CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE | CL_QUEUE_PROFILING_ENABLE | CL_QUEUE_DPDK;
   if(properties & (~valid))
@@ -56,5 +61,3 @@ validOrError(const cl_device_id device, cl_command_queue_properties properties)
 }
 
 }} // detail,xocl
-
-

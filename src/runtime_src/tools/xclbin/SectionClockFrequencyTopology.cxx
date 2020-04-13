@@ -19,6 +19,7 @@
 #include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
 #include <iostream>
+#include <stdint.h>
 
 // Static Variables / Classes
 SectionClockFrequencyTopology::_init SectionClockFrequencyTopology::_initializer;
@@ -44,7 +45,7 @@ SectionClockFrequencyTopology::getClockTypeStr(enum CLOCK_TYPE _clockType) const
       return "SYSTEM";
   }
 
-  return XUtil::format("UNKNOWN (%d) CLOCK_TYPE", (unsigned int)_clockType);
+  return XUtil::format("UNKNOWN (%d) CLOCK_TYPE", (unsigned int) _clockType);
 }
 
 enum CLOCK_TYPE
@@ -86,15 +87,15 @@ SectionClockFrequencyTopology::marshalToJSON(char* _pDataSection,
   XUtil::TRACE(XUtil::format("m_count: %d", (uint32_t)pHdr->m_count));
 
   // Write out the entire structure except for the array structure
-  XUtil::TRACE_BUF("clock_freq", reinterpret_cast<const char*>(pHdr), (unsigned long)&(pHdr->m_clock_freq[0]) - (unsigned long)pHdr);
+  XUtil::TRACE_BUF("clock_freq", reinterpret_cast<const char*>(pHdr), ((uint64_t)&(pHdr->m_clock_freq[0]) - (uint64_t) pHdr));
   clock_freq_topology.put("m_count", XUtil::format("%d", (unsigned int)pHdr->m_count).c_str());
 
-  clock_freq mydata = (clock_freq){ 0 };
+  clock_freq mydata = clock_freq {0};
 
   XUtil::TRACE(XUtil::format("Size of clock_freq: %d\nSize of mydata: %d",
                              sizeof(clock_freq),
                              sizeof(mydata)));
-  unsigned int expectedSize = ((unsigned long)&(pHdr->m_clock_freq[0]) - (unsigned long)pHdr) + (sizeof(clock_freq) * (uint32_t)pHdr->m_count);
+  uint64_t expectedSize = ((uint64_t)&(pHdr->m_clock_freq[0]) - (uint64_t) pHdr) + (sizeof(clock_freq) * (uint64_t)pHdr->m_count);
 
   if (_sectionSize != expectedSize) {
     throw std::runtime_error(XUtil::format("ERROR: Section size (%d) does not match expected sections size (%d).",
@@ -108,7 +109,7 @@ SectionClockFrequencyTopology::marshalToJSON(char* _pDataSection,
     XUtil::TRACE(XUtil::format("[%d]: m_freq_Mhz: %d, m_type: %d, m_name: '%s'",
                                index,
                                (unsigned int)pHdr->m_clock_freq[index].m_freq_Mhz,
-                               getClockTypeStr((enum CLOCK_TYPE)pHdr->m_clock_freq[index].m_type),
+                               getClockTypeStr((enum CLOCK_TYPE)pHdr->m_clock_freq[index].m_type).c_str(),
                                pHdr->m_clock_freq[index].m_name));
 
     // Write out the entire structure
@@ -118,7 +119,7 @@ SectionClockFrequencyTopology::marshalToJSON(char* _pDataSection,
     clock_freq.put("m_type", getClockTypeStr((enum CLOCK_TYPE)pHdr->m_clock_freq[index].m_type).c_str());
     clock_freq.put("m_name", XUtil::format("%s", pHdr->m_clock_freq[index].m_name).c_str());
 
-    m_clock_freq.add_child("clock_freq", clock_freq);
+    m_clock_freq.push_back(std::make_pair("", clock_freq));   // Used to make an array of objects
   }
 
   clock_freq_topology.add_child("m_clock_freq", m_clock_freq);
@@ -132,13 +133,13 @@ SectionClockFrequencyTopology::marshalToJSON(char* _pDataSection,
 void
 SectionClockFrequencyTopology::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
                                                std::ostringstream& _buf) const {
-  const boost::property_tree::ptree& ptClockFreq = _ptSection.get_child("clock_freq_topology");
+  const boost::property_tree::ptree& ptClockFreqTopo = _ptSection.get_child("clock_freq_topology");
 
   // Initialize the memory to zero's
-  clock_freq_topology clockFreqTopologyHdr = (clock_freq_topology){ 0 };
+  clock_freq_topology clockFreqTopologyHdr = clock_freq_topology {0};
 
   // Read, store, and report clock frequency topology data
-  clockFreqTopologyHdr.m_count = ptClockFreq.get<uint16_t>("m_count");
+  clockFreqTopologyHdr.m_count = ptClockFreqTopo.get<uint16_t>("m_count");
 
   XUtil::TRACE("CLOCK_FREQ_TOPOLOGY");
   XUtil::TRACE(XUtil::format("m_count: %d", clockFreqTopologyHdr.m_count));
@@ -154,19 +155,19 @@ SectionClockFrequencyTopology::marshalFromJSON(const boost::property_tree::ptree
 
   // Read, store, and report connection sections
   unsigned int count = 0;
-  const boost::property_tree::ptree clockFreqs = ptClockFreq.get_child("m_clock_freq");
+  const boost::property_tree::ptree clockFreqs = ptClockFreqTopo.get_child("m_clock_freq");
   for (const auto& kv : clockFreqs) {
-    clock_freq clockFreqHdr = (clock_freq){ 0 };
+    clock_freq clockFreqHdr = clock_freq {0};
     boost::property_tree::ptree ptClockFreq = kv.second;
 
-    clockFreqHdr.m_freq_Mhz = ptClockFreq.get<u_int16_t>("m_freq_Mhz");
+    clockFreqHdr.m_freq_Mhz = ptClockFreq.get<uint16_t>("m_freq_Mhz");
     std::string sm_type = ptClockFreq.get<std::string>("m_type");
-    clockFreqHdr.m_type = getClockType(sm_type);
+    clockFreqHdr.m_type = (uint8_t) getClockType(sm_type);
 
     std::string sm_name = ptClockFreq.get<std::string>("m_name");
     if (sm_name.length() >= sizeof(clock_freq::m_name)) {
       std::string errMsg = XUtil::format("ERROR: The m_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'",
-                                         (unsigned int)sm_name.length(), (unsigned int)sizeof(clock_freq::m_name), sm_name);
+                                         (unsigned int)sm_name.length(), (unsigned int)sizeof(clock_freq::m_name), sm_name.c_str());
       throw std::runtime_error(errMsg);
     }
 
@@ -193,3 +194,24 @@ SectionClockFrequencyTopology::marshalFromJSON(const boost::property_tree::ptree
   }
 }
 
+bool 
+SectionClockFrequencyTopology::doesSupportAddFormatType(FormatType _eFormatType) const
+{
+  if (_eFormatType == FT_JSON) {
+    return true;
+  }
+  return false;
+}
+
+bool 
+SectionClockFrequencyTopology::doesSupportDumpFormatType(FormatType _eFormatType) const
+{
+    if ((_eFormatType == FT_JSON) ||
+        (_eFormatType == FT_HTML) ||
+        (_eFormatType == FT_RAW))
+    {
+      return true;
+    }
+
+    return false;
+}
