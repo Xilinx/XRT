@@ -3,7 +3,7 @@
  * Compute unit execution, interrupt management and
  * client context core data structures.
  *
- * Copyright (C) 2017-2019 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2017-2020 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Sonal Santan <sonal.santan@xilinx.com>
@@ -276,4 +276,6 @@ u32 sched_is_busy(struct drm_zocl_dev *zdev);
 u32 sched_live_clients(struct drm_zocl_dev *zdev, pid_t **plist);
 int sched_attach_cu(struct drm_zocl_dev *zdev, int cu_idx);
 int sched_detach_cu(struct drm_zocl_dev *zdev, int cu_idx);
+int zocl_execbuf_exec(struct drm_device *dev, void *data,
+		      struct drm_file *filp);
 #endif

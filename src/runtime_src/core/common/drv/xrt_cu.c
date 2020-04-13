@@ -70,7 +70,10 @@ int xrt_cu_init(struct xrt_cu *xcu)
 	xcu->stop = 0;
 
 	switch (xcu->info.model) {
-	case MODEL_PLRAM:
+	case XCU_HLS:
+		err = xrt_cu_hls_init(xcu);
+		break;
+	case XCU_PLRAM:
 		err = xrt_cu_plram_init(xcu);
 		break;
 	default:
@@ -84,7 +87,10 @@ int xrt_cu_init(struct xrt_cu *xcu)
 void xrt_cu_fini(struct xrt_cu *xcu)
 {
 	switch (xcu->info.model) {
-	case MODEL_PLRAM:
+	case XCU_HLS:
+		xrt_cu_hls_fini(xcu);
+		break;
+	case XCU_PLRAM:
 		xrt_cu_plram_fini(xcu);
 		break;
 	default:

@@ -25,15 +25,25 @@
 #define xcu_dbg(xcu, fmt, args...)			\
 	dev_dbg(xcu->dev, " %llx %s: "fmt, (u64)xcu->dev, __func__, ##args)
 
+/* HLS CU macros */
+#define CU_AP_START	(0x1 << 0)
+#define CU_AP_DONE	(0x1 << 1)
+#define CU_AP_IDLE	(0x1 << 2)
+#define CU_AP_READY	(0x1 << 3)
+#define CU_AP_CONTINUE	(0x1 << 4)
+#define CU_AP_RESET	(0x1 << 5)
+
+/* PLRAM CU macros */
+
 enum xcu_model {
-	MODEL_HLS,
-	MODEL_ACC,
-	MODEL_PLRAM,
+	XCU_HLS,
+	XCU_ACC,
+	XCU_PLRAM,
 };
 
 enum xcu_config_type {
-	CONSECUTIVE,
-	PAIRS,
+	CONSECUTIVE_T,
+	PAIRS_T,
 };
 
 struct xcu_status {
@@ -175,6 +185,16 @@ int  xrt_cu_init(struct xrt_cu *xcu);
 void xrt_cu_fini(struct xrt_cu *xcu);
 
 /* CU Implementations */
+struct xrt_cu_hls {
+	void __iomem		*vaddr;
+	int			 max_credits;
+	int			 credits;
+	struct semaphore	 sem;
+};
+
+int xrt_cu_hls_init(struct xrt_cu *xcu);
+void xrt_cu_hls_fini(struct xrt_cu *xcu);
+
 struct xrt_cu_plram {
 	void __iomem		*vaddr;
 	void __iomem		*plram;

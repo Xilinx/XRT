@@ -3,7 +3,7 @@
  * A GEM style (optionally CMA backed) device manager for ZynQ based
  * OpenCL accelerators.
  *
- * Copyright (C) 2019 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2019-2020 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    David Zhang <davidzha@xilinx.com>
@@ -36,10 +36,10 @@ struct mailbox_reg {
 	u32			mbr_ie;
 	u32			mbr_ip;
 	u32			mbr_ctrl;
-} __attribute__((packed));
+} __packed;
 
 struct mailbox {
-	struct mailbox_reg 	*mbx_regs;
+	struct mailbox_reg	*mbx_regs;
 };
 
 u32 zocl_mailbox_status(struct mailbox *mbx);

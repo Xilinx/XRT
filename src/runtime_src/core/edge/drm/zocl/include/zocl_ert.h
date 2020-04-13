@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
 /*
- * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
  *
  * Author(s):
  *        Min Ma <min.ma@xilinx.com>
@@ -160,7 +160,7 @@ struct zocl_ert_ops {
 	 * @fini:
 	 *
 	 * Finish ERT dedicated FPGA module
-	 * */
+	 */
 	void (*fini)(struct zocl_ert_dev *ert);
 	/**
 	 * @config:

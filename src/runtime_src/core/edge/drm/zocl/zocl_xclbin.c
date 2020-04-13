@@ -2,7 +2,7 @@
 /*
  * MPSoC based OpenCL accelerators Compute Units.
  *
- * Copyright (C) 2019 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2019-2020 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    David Zhang <davidzha@xilinx.com>
@@ -32,6 +32,7 @@
 
 #define VIRTUAL_CU(id) (id == (u32)-1)
 
+extern int kds_mode;
 /**
  * Bitstream header information.
  */
@@ -417,6 +418,27 @@ zocl_read_sect(enum axlf_section_kind kind, void *sect,
 	return size;
 }
 
+static inline u32 xclbin_protocol(u32 prop)
+{
+	u32 intr_id = prop & IP_CONTROL_MASK;
+
+	return intr_id >> IP_CONTROL_SHIFT;
+}
+
+static inline u32 xclbin_intr_enable(u32 prop)
+{
+	u32 intr_enable = prop & IP_INT_ENABLE_MASK;
+
+	return intr_enable;
+}
+
+static inline u32 xclbin_intr_id(u32 prop)
+{
+	u32 intr_id = prop & IP_INTERRUPT_ID_MASK;
+
+	return intr_id >> IP_INTERRUPT_ID_SHIFT;
+}
+
 /* Record all of the hardware address apertures in the XCLBIN
  * This could be used to verify if the configure command set wrong CU base
  * address and allow user map one of the aperture to user space.
@@ -485,6 +507,59 @@ zocl_update_apertures(struct drm_zocl_dev *zdev)
 	zdev->apertures = apt;
 
 	return 0;
+}
+
+static int
+zocl_create_cu(struct drm_zocl_dev *zdev)
+{
+	struct ip_data *ip;
+	struct xrt_cu_info info;
+	int err;
+	int i;
+
+	if (!zdev->ip)
+		return 0;
+
+	for (i = 0; i < zdev->ip->m_count; ++i) {
+		ip = &zdev->ip->m_ip_data[i];
+
+		if (ip->m_type != IP_KERNEL)
+			continue;
+
+		/* Skip streaming kernel */
+		if (ip->m_base_address == -1)
+			continue;
+
+		/* TODO: use HLS CU as default.
+		 * don't know how to distinguish HLS CU and other CU
+		 */
+		info.model = XCU_HLS;
+		info.num_res = 1;
+		info.addr = ip->m_base_address;
+		info.intr_enable = xclbin_intr_enable(ip->properties);
+		info.protocol = xclbin_protocol(ip->properties);
+		info.intr_id = xclbin_intr_id(ip->properties);
+
+		/* TODO: Consider where should we determine CU index in
+		 * the driver.. Right now, user space determine it and let
+		 * driver known by configure command
+		 */
+		info.cu_idx = -1;
+
+		/* CU sub device is a virtual device, which means there is no
+		 * device tree nodes
+		 */
+		err = subdev_create_cu(zdev, &info);
+		if (err) {
+			DRM_ERROR("cannot create CU subdev");
+			goto err;
+		}
+	}
+
+	return 0;
+err:
+	subdev_destroy_cu(zdev);
+	return err;
 }
 
 /*
@@ -609,10 +684,12 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 
 	write_lock(&zdev->attr_rwlock);
 
-	if (sched_live_clients(zdev, NULL) || sched_is_busy(zdev)) {
-		DRM_ERROR("Current xclbin is in-use, can't change");
-		ret = -EBUSY;
-		goto out0;
+	if (kds_mode == 0) {
+		if (sched_live_clients(zdev, NULL) || sched_is_busy(zdev)) {
+			DRM_ERROR("Current xclbin is in-use, can't change");
+			ret = -EBUSY;
+			goto out0;
+		}
 	}
 
 	/* Check unique ID */
@@ -626,9 +703,11 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 	/* uuid is null means first time load xclbin */
 	if (zocl_xclbin_get_uuid(zdev) != NULL) {
 		/* reset scheduler prior to load new xclbin */
-		ret = sched_reset_exec(zdev->ddev);
-		if (ret)
-			goto out0;
+		if (kds_mode == 0) {
+			ret = sched_reset_exec(zdev->ddev);
+			if (ret)
+				goto out0;
+		}
 	}
 
 	zocl_free_sections(zdev);
@@ -707,6 +786,13 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 	ret = zocl_update_apertures(zdev);
 	if (ret)
 		goto out0;
+
+	if (kds_mode == 1) {
+		subdev_destroy_cu(zdev);
+		ret = zocl_create_cu(zdev);
+		if (ret)
+			goto out0;
+	}
 
 	/* Populating CONNECTIVITY sections */
 	size = zocl_read_sect(CONNECTIVITY, &zdev->connectivity, axlf, xclbin);
@@ -970,6 +1056,9 @@ zocl_xclbin_fini(struct drm_zocl_dev *zdev)
 	zdev->zdev_xclbin->zx_uuid = NULL;
 	vfree(zdev->zdev_xclbin);
 	zdev->zdev_xclbin = NULL;
+
+	/* Delete CU devices if exist */
+	subdev_destroy_cu(zdev);
 }
 
 bool
@@ -999,9 +1088,8 @@ u32
 zocl_xclbin_intr_id(struct drm_zocl_dev *zdev, u32 idx)
 {
 	u32 prop = zdev->apertures[idx].prop;
-	u32 intr_id = prop & IP_INTERRUPT_ID_MASK;
 
-	return intr_id >> IP_INTERRUPT_ID_SHIFT;
+	return xclbin_intr_id(prop);
 }
 
 /*

@@ -52,7 +52,7 @@ static int cu_probe(struct platform_device *pdev)
 		res[i] = platform_get_resource(pdev, IORESOURCE_MEM, i);
 		if (!res[i]) {
 			err = -EINVAL;
-			goto err;
+			goto err1;
 		}
 	}
 	xcu->base.res = res;
@@ -60,22 +60,25 @@ static int cu_probe(struct platform_device *pdev)
 	err = xrt_cu_init(&xcu->base);
 	if (err) {
 		XCU_ERR(xcu, "Not able to initial CU %p", xcu);
-		goto err;
+		goto err1;
 	}
 
 	 /* Is time to add this CU to the CU controller's list */
 	err = xocl_cu_ctrl_add_cu(xdev, &xcu->base);
 	if (err) {
-		XCU_ERR(xcu, "Not able to add CU %p to controller", xcu);
-		goto err1;
+		err = 0; //Ignore this error until all platforms support CU controller
+		//XCU_ERR(xcu, "Not able to add CU %p to controller", xcu);
+		goto err2;
 	}
 
 	platform_set_drvdata(pdev, xcu);
 
 	return 0;
 
-err1:
+err2:
 	xrt_cu_fini(&xcu->base);
+err1:
+	vfree(res);
 err:
 	xocl_drvinst_release(xcu, &hdl);
 	xocl_drvinst_free(hdl);
