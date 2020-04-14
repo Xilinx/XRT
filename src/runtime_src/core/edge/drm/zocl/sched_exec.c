@@ -1736,8 +1736,10 @@ zocl_print_stale_cmd(struct sched_cmd *cmd)
 {
 	DRM_INFO("stale cmd state[%d], cu[%d], slot[%d], cq_slot[%d]",
 	    cmd->state, cmd->cu_idx, cmd->slot_idx, cmd->cq_slot_idx);
-	DRM_INFO("          check_timeout=%d, client pid %d.",
-	    cmd->check_timeout, pid_nr(cmd->client->pid));
+	if (!is_ert(cmd->ddev)) {
+		DRM_INFO("          check_timeout=%d, client pid %d.",
+			 cmd->check_timeout, pid_nr(cmd->client->pid));
+	}
 }
 
 /**
