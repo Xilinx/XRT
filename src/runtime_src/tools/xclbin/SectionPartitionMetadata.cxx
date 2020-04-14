@@ -228,21 +228,9 @@ SchemaTransformToDTC_addressable_endpoint( const std::string _sEndPointName,
                                            const boost::property_tree::ptree& _ptOriginal,
                                            boost::property_tree::ptree & _ptTransformed)
 {
-  // DRC check for known values
-  if (_ptOriginal.find("offset") == _ptOriginal.not_found()) {
-    throw std::runtime_error("Error: 'addressable_endpoints." + _sEndPointName + ".offset' key not found.");
-  }
-
-  if (_ptOriginal.find("range") == _ptOriginal.not_found()) {
-    throw std::runtime_error("Error: 'addressable_endpoints." + _sEndPointName + ".range' key not found.");
-  }
-
-  if (_ptOriginal.find("register_abstraction_name") == _ptOriginal.not_found()) {
-    throw std::runtime_error("Error: 'addressable_endpoints." + _sEndPointName + ".register_abstraction_name' key not found.");
-  }
-
   // -- Transform 'offset' and 'range' to 'reg'
-  {
+  if ((_ptOriginal.find("offset") != _ptOriginal.not_found()) &&
+      (_ptOriginal.find("range") != _ptOriginal.not_found())) {
     boost::property_tree::ptree ptRegOffset;
     ptRegOffset.put("", _ptOriginal.get<std::string>("offset").c_str());
 
@@ -257,10 +245,10 @@ SchemaTransformToDTC_addressable_endpoint( const std::string _sEndPointName,
   }
 
   // -- Get 'pcie_physical_function'
-  SchemaTransform_nameValue("pcie_physical_function", "", true  /*required*/, _ptOriginal, _ptTransformed);
+  SchemaTransform_nameValue("pcie_physical_function", "", false  /* required*/, _ptOriginal, _ptTransformed);
 
   // -- Transform 'register_abstraction_name' to 'compatible'
-  {
+  if (_ptOriginal.find("register_abstraction_name") != _ptOriginal.not_found()) {
     std::string sAbstractName = _ptOriginal.get<std::string>("register_abstraction_name");
 
     const std::string delimiters = ":";      // Our delimiter
@@ -429,7 +417,7 @@ SchemaTransformToPM_interfaces( const boost::property_tree::ptree& _ptOriginal,
 }
 
 /**
- * Transform the addressable endpoint to the DTC schema format
+ * Transform the addressable endpoint to the DTB schema format
  * 
  * @param _sEndPointName The name of the endpoint
  * @param _ptOriginal The original endpoint node
@@ -440,17 +428,8 @@ SchemaTransformToPM_addressable_endpoint( const std::string _sEndPointName,
                                           const boost::property_tree::ptree& _ptOriginal,
                                           boost::property_tree::ptree & _ptTransformed)
 {
-  // DRC check for known values
-  if (_ptOriginal.find("reg") == _ptOriginal.not_found()) {
-    throw std::runtime_error("Error: 'addressable_endpoints." + _sEndPointName + ".reg' key not found.");
-  }
-
-  if (_ptOriginal.find("compatible") == _ptOriginal.not_found()) {
-    throw std::runtime_error("Error: 'addressable_endpoints." + _sEndPointName + ".compatible' key not found.");
-  }
-
   // -- Transform 'reg' to 'offset' and 'range'
-  {
+  if (_ptOriginal.find("reg") != _ptOriginal.not_found()) {
     std::vector<std::string> regVector = as_vector<std::string>(_ptOriginal, "reg");
     
     if (regVector.size() != 2) {
@@ -462,10 +441,10 @@ SchemaTransformToPM_addressable_endpoint( const std::string _sEndPointName,
   }
 
   // -- Get 'pcie_physical_function'
-  SchemaTransform_nameValue("pcie_physical_function", "", true  /*required*/, _ptOriginal, _ptTransformed);
+  SchemaTransform_nameValue("pcie_physical_function", "", false  /*required*/, _ptOriginal, _ptTransformed);
 
   // -- Transform 'compatible' to 'register_abstraction_name'
-  {
+  if (_ptOriginal.find("compatible") != _ptOriginal.not_found()) {
     std::vector<std::string> compatableVector = as_vector<std::string>(_ptOriginal, "compatible");
     if (compatableVector.size() != 2) {
       throw std::runtime_error("Error: 'addressable_endpoints." + _sEndPointName + ".compatible' doesn't have 2 items.");
