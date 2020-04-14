@@ -523,7 +523,7 @@ static int cu_ctrl_remove_cu(struct platform_device *pdev, struct xrt_cu *xcu)
 			continue;
 
 		/* Maybe the thread is running */
-		if (xcuc->threads[i] != NULL) {
+		if (xcuc->threads && xcuc->threads[i]) {
 			ret = kthread_stop(xcuc->threads[i]);
 			xcuc->threads[i] = NULL;
 		}
