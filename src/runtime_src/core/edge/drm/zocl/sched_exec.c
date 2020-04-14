@@ -3002,7 +3002,9 @@ create_cmd_buffer(struct ert_packet *packet, unsigned int slot_size)
  *
  * @drm:  DRM device
  *
- * Return: errno
+ * Return: 0: One iteration done
+ *	   1: Exit command...
+ *	   -errno: error number
  */
 static int
 iterate_packets(struct drm_device *drm)
@@ -3018,6 +3020,14 @@ iterate_packets(struct drm_device *drm)
 	packet = ert->cq_ioremap;
 	num_slots = exec_core->num_slots;
 	slot_sz = slot_size(zdev->ddev);
+
+	/* The first slot is ctrl slot in CQ.
+	 * It might has special command.
+	 */
+	if (packet->opcode == ERT_EXIT) {
+		packet->state = ERT_CMD_STATE_COMPLETED;
+		return 1;
+	}
 
 	for (slot_idx = 0; slot_idx < num_slots; slot_idx++) {
 		buffer = create_cmd_buffer(packet, slot_sz);
@@ -3054,7 +3064,11 @@ cq_check(void *data)
 
 	SCHED_DEBUG("-> %s", __func__);
 	while (!kthread_should_stop() && !exec_core->cq_interrupt) {
-		iterate_packets(zdev->ddev);
+		if (iterate_packets(zdev->ddev) == 1) {
+			/* This thread should exit */
+			exec_core->cq_thread = NULL;
+			break;
+		}
 		schedule();
 	}
 	SCHED_DEBUG("<- %s", __func__);
@@ -3074,6 +3088,16 @@ static irqreturn_t sched_cq_isr(int irq, void *arg)
 	good_pkg = 1;
 	slot_sz = slot_size(zdev->ddev);
 	pkg = zdev->ert->ops->get_next_cmd(zdev->ert, NULL, &slot_idx);
+	/* The first slot is ctrl slot in CQ.
+	 * It might has special command.
+	 */
+	if (slot_idx == 0 && pkg->opcode == ERT_EXIT) {
+		/* Exit command, do not response to CQ interrupt anymore */
+		disable_irq_nosync(irq);
+		pkg->state = ERT_CMD_STATE_COMPLETED;
+		goto out;
+	}
+
 	while (pkg) {
 		/* Usually, if the status of the pkg is not NEW. We think it is
 		 * not 'good' at this point.
@@ -3091,6 +3115,7 @@ static irqreturn_t sched_cq_isr(int irq, void *arg)
 		good_pkg = 1;
 	}
 
+out:
 	SCHED_DEBUG("<- %s", __func__);
 	return IRQ_HANDLED;
 }
