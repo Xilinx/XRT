@@ -586,11 +586,15 @@ namespace xclhwemhal2 {
         // NOTE: proto inst filename must match name in HPIKernelCompilerHwEmu.cpp
         std::string protoFileName = "./" + bdName + "_behav.protoinst";
         std::stringstream cmdLineOption;
-        cmdLineOption << " -g --wdb " << wdbFileName << ".wdb"
-          << " --protoinst " << protoFileName;
 
-        launcherArgs = launcherArgs + cmdLineOption.str();
         sim_path = binaryDirectory + "/behav_waveform/xsim";
+
+        if (boost::filesystem::exists(sim_path) != false) {
+          cmdLineOption << " -g --wdb " << wdbFileName << ".wdb"
+            << " --protoinst " << protoFileName;
+
+          launcherArgs = launcherArgs + cmdLineOption.str();
+        }
         std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
         unsetenv("VITIS_LAUNCH_WAVEFORM_BATCH");
         setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
@@ -616,6 +620,8 @@ namespace xclhwemhal2 {
         setenv("VITIS_KERNEL_PROFILE_FILENAME", kernelProfileFileName.c_str(), true);
         setenv("VITIS_KERNEL_TRACE_FILENAME", kernelTraceFileName.c_str(), true);
       }
+      if (lWaveform == xclemulation::LAUNCHWAVEFORM::OFF)
+        sim_path = binaryDirectory + "/behav_gdb/xsim";
 
       if (userSpecifiedSimPath.empty() == false)
       {
@@ -629,9 +635,33 @@ namespace xclhwemhal2 {
         }
         if (boost::filesystem::exists(sim_path) == false)
         {
-          std::string dMsg = "WARNING: [HW-EM 07] None of the kernels is compiled in debug mode. Compile kernels in debug mode to launch waveform";
-          logMessage(dMsg, 0);
-          sim_path = binaryDirectory + "/behav_gdb/xsim";
+          if (lWaveform == xclemulation::LAUNCHWAVEFORM::OFF) {
+            sim_path = binaryDirectory + "/behav_waveform/xsim";
+            std::string dMsg = "WARNING: [HW-EM 07] Launch Waveform is set to OFF in ini file. Could not find an axsim binary. Running simulation using xsim. Using " + sim_path + " as simulation directory.";
+            logMessage(dMsg, 0);
+            std::string protoFileName = "./" + bdName + "_behav.protoinst";
+            std::stringstream cmdLineOption;
+            cmdLineOption << " --wdb " << wdbFileName << ".wdb"
+              << " --protoinst " << protoFileName;
+
+            launcherArgs = launcherArgs + cmdLineOption.str();
+            std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
+            setenv("VITIS_LAUNCH_WAVEFORM_BATCH", "1", true);
+            setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
+            setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
+            setenv("VITIS_KERNEL_PROFILE_FILENAME", kernelProfileFileName.c_str(), true);
+            setenv("VITIS_KERNEL_TRACE_FILENAME", kernelTraceFileName.c_str(), true);
+
+          }
+          else {
+            std::string dMsg;
+            sim_path = binaryDirectory + "/behav_gdb/xsim";
+            if (lWaveform == xclemulation::LAUNCHWAVEFORM::GUI) 
+              dMsg = "WARNING: [HW-EM 07] Launch Waveform is set to GUI in ini file. Could not find a xsim binary. Running simulation using axsim. Cannot enable simulator GUI in this mode. Using " + sim_path + " as simulation directory.";
+            else 
+              dMsg = "WARNING: [HW-EM 07] Launch Waveform is set to BATCH in ini file (or) considered by default. Could not find a xsim binary. Running simulation using axsim. Using " + sim_path + " as simulation directory.";
+            logMessage(dMsg, 0);
+          }
         }
       }
       std::stringstream socket_id;
