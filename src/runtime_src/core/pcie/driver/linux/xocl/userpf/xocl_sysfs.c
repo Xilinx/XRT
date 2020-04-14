@@ -232,7 +232,7 @@ static ssize_t p2p_enable_store(struct device *dev,
 	int ret, p2p_bar;
 	u32 enable;
 	u64 size, curr_size;
-	struct resource *res;
+	struct resource res;
 
 
 	if (kstrtou32(buf, 10, &enable) == -EINVAL || enable > 1)
