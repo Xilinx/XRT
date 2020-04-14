@@ -733,7 +733,7 @@ public:
         auto memidx = (used != upper) ? (*used).memidx : (*itr).memidx;
 
         // process the range
-        for (; itr < upper; ++itr) {
+        for (; itr != upper; ++itr) {
           auto& mb = (*itr);
           m_mem2grp[mb.memidx] = mb.grpidx = memidx;
         }
