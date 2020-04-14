@@ -1777,6 +1777,9 @@ static int qdma_probe(struct platform_device *pdev)
 				xocl_err(&pdev->dev, "Invalid resource %pR", res);
 				return -EINVAL;
 			}
+			if (stm_bar == -1)
+				return -EINVAL;
+
 			stm_base = res->start -
 				pci_resource_start(XDEV(xdev)->pdev, stm_bar);
 		} else {
