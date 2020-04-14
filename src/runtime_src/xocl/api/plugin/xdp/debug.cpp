@@ -15,9 +15,34 @@
  */
 
 #include "core/include/xclbin.h"
+#include "core/common/dlfcn.h"
 #include "plugin/xdp/debug.h"
+#include "plugin/xdp/xdp_util.h"
 
-namespace xocl { namespace debug {
+namespace xocl {
+namespace debug {
+
+  void load_xdp_kernel_debug()
+  {
+    static xdputil::XDPLoader xdp_kernel_debug_loader("xdp_debug_plugin",
+						      register_kdbg_functions,
+						      nullptr) ;
+  }
+
+  void register_kdbg_functions(void* handle)
+  {
+    typedef void (*xdpInitType)() ;
+    
+    auto initFunc = (xdpInitType)(xrt_core::dlsym(handle, "initKernelDebug")) ;
+    if (!initFunc)
+    {
+      std::string errMsg = "Failed to initialize XDP Kernel Debug library, 'initKernelDebug' symbol not found.\n" ;
+      errMsg += xrt_core::dlerror() ;
+      throw std::runtime_error(errMsg.c_str()) ;
+    }
+
+    initFunc() ;
+  }
 
 cb_reset_type cb_reset;
 

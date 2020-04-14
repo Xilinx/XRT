@@ -46,6 +46,9 @@ namespace xocl {
 
 namespace debug {
 
+void load_xdp_kernel_debug() ;
+void register_kdbg_functions(void* handle) ;
+
 using cb_reset_type = std::function<void (const axlf* xclbin)>;
 
 XRT_XOCL_EXPORT
