@@ -1219,12 +1219,16 @@ int xocl_gem_prime_mmap(struct drm_gem_object *obj, struct vm_area_struct *vma)
 	drm_gem_object_get(obj);
 
 	fput(vma->vm_file);
-	if (!IS_ERR_OR_NULL(xobj->base.dma_buf->file) && !IS_ERR_OR_NULL(xobj->base.dev->driver->gem_vm_ops)) {
+	if(!IS_ERR_OR_NULL(xobj->dmabuf) && !IS_ERR_OR_NULL(xobj->dmabuf->file)) {
+		vma->vm_file = get_file(xobj->dmabuf->file);
+		vma->vm_ops = xobj->dmabuf_vm_ops;
+	} else if (!IS_ERR_OR_NULL(xobj->base.dma_buf) && !IS_ERR_OR_NULL(xobj->base.dma_buf->file)) {
 		vma->vm_file = get_file(xobj->base.dma_buf->file);
 		vma->vm_ops = xobj->base.dev->driver->gem_vm_ops;
-		vma->vm_private_data = obj;
-		vma->vm_flags |= VM_MIXEDMAP;
 	}
+	
+	vma->vm_private_data = obj;
+	vma->vm_flags |= VM_MIXEDMAP;
 
 	return 0;
 }
