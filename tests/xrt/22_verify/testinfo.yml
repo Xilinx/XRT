@@ -6,7 +6,7 @@ user:
   allowed_test_modes: [hw]
   force_makefile: "--force"
   host_args: {all: -k verify.xclbin}
-  host_cflags: ' -DDSA64 -ldl -luuid -Wl,-rpath-link,${XILINX_XRT}/lib -lxrt_core -I${HOST_SRC_PATH} '
+  host_cflags: ' -DDSA64 -ldl -luuid -Wl,-rpath-link,${XILINX_XRT}/lib -lxrt_core -lxrt_coreutil  -I${HOST_SRC_PATH} '
   host_exe: host.exe
   host_src: main.cpp
   kernels:
