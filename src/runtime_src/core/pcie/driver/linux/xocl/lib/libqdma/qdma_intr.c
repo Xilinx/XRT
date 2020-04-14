@@ -671,16 +671,6 @@ int intr_setup(struct xlnx_dma_dev *xdev)
 	 * The remaining vectors are for Data interrupts
 	 */
 	i = 0;
-#ifndef __QDMA_VF__
-	/* global error interrupt */
-	if (xdev->conf.master_pf) {
-		rv = intr_vector_setup(xdev, 0, INTR_TYPE_ERROR,
-					error_intr_handler);
-		if (rv)
-			goto cleanup_irq;
-		i = 1;
-	}
-#endif
 
 	/* user interrupt */
 	for (tmp = 0; tmp < QDMA_USER_INTR_NUM; tmp++) {
@@ -690,6 +680,16 @@ int intr_setup(struct xlnx_dma_dev *xdev)
 		i++;
 	}
 
+#ifndef __QDMA_VF__
+	/* global error interrupt */
+	if (xdev->conf.master_pf) {
+		rv = intr_vector_setup(xdev, i, INTR_TYPE_ERROR,
+					error_intr_handler);
+		if (rv)
+			goto cleanup_irq;
+		i++;
+	}
+#endif
 	/* data interrupt */
 	xdev->dvec_start_idx = i;
 	for (; i < xdev->num_vecs; i++) {
