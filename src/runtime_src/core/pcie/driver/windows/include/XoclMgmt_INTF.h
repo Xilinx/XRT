@@ -97,9 +97,9 @@ typedef union _DRIVER_VERSION
 {
     struct
     {
-        /* [Minor Version Number] Indicates the minor version is “0”. */
+        /* [Minor Version Number] Indicates the minor version is ï¿½0ï¿½. */
         USHORT MNR;
-        /* [Major Version Number] Indicates the major version is “1”. */
+        /* [Major Version Number] Indicates the major version is ï¿½1ï¿½. */
         USHORT MJR;
     };
     ULONG AsUlong;
@@ -139,7 +139,7 @@ typedef struct xclmgmt_ioc_device_info {
     CHAR             vbnv[64];
     CHAR             fpga[64];
     SYSMON_INFO      sysmoninfo;
-    ULONGLONG        ocl_frequency[XCLMGMT_NUM_SUPPORTED_CLOCKS];
+    UINT32           ocl_frequency[XCLMGMT_NUM_SUPPORTED_CLOCKS];
     bool             mig_calibration[4];
     USHORT           num_clocks;
 	struct FeatureRomHeader rom_hdr;
