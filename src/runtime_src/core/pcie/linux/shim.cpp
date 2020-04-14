@@ -1085,7 +1085,7 @@ int shim::xclExportBO(unsigned int boHandle)
         result = ioctl(mUserHandle, DRM_IOCTL_PRIME_HANDLE_TO_FD, &info);
     }
 
-    xrt_logmsg(XRT_INFO, "XRT", "%s: boHandle %d, ioctl return %ld, fd %d", __func__, boHandle, result, info.fd);
+    xrt_logmsg(XRT_DEBUG, "XRT", "%s: boHandle %d, ioctl return %ld, fd %d", __func__, boHandle, result, info.fd);
     return !result ? info.fd : result;
 }
 
