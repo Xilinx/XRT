@@ -1803,7 +1803,7 @@ int mailbox_listen(struct platform_device *pdev,
 
 static int mailbox_enable_intr_mode(struct mailbox *mbx)
 {
-	struct resource *res;
+	struct resource *res, dyn_res;
 	int ret;
 	struct platform_device *pdev = mbx->mbx_pdev;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
@@ -1815,11 +1815,22 @@ static int mailbox_enable_intr_mode(struct mailbox *mbx)
 	if (mbx->mbx_irq != -1)
 		return 0;
 
-	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
-	if (res == NULL) {
-		MBX_WARN(mbx, "failed to acquire intr resource");
-		return -EINVAL;
-	}
+#if PF == MGMTPF
+	ret = xocl_subdev_get_resource(xdev, NODE_MAILBOX_MGMT,
+			IORESOURCE_IRQ, &dyn_res);
+#else
+	ret = xocl_subdev_get_resource(xdev, NODE_MAILBOX_USER,
+			IORESOURCE_IRQ, &dyn_res);
+#endif
+	if (ret) {
+		/* fall back to try static defined irq */
+		res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
+		if (res == NULL) {
+			MBX_WARN(mbx, "failed to acquire intr resource");
+			return -EINVAL;
+		}
+	} else
+		res = &dyn_res;
 
 	ret = xocl_user_interrupt_reg(xdev, res->start, mailbox_isr, mbx);
 	if (ret) {

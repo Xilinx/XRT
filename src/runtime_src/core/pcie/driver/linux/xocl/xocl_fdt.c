@@ -545,7 +545,8 @@ int xocl_fdt_overlay(void *fdt, int target,
 	offset = fdt_parent_offset(fdto, node);
 	if (part_level > 0 && offset >= 0) {
 		val = fdt_get_name(fdto, offset, NULL);
-		if (!strncmp(val, NODE_ENDPOINTS, strlen(NODE_ENDPOINTS))) {
+		if (!strncmp(val, NODE_ENDPOINTS, strlen(NODE_ENDPOINTS)) &&
+		    !fdt_getprop(fdt, target, PROP_PARTITION_LEVEL, NULL)) {
 			u32 prop = cpu_to_be32(part_level);
 			ret = fdt_setprop(fdt, target, PROP_PARTITION_LEVEL, &prop,
 					sizeof(prop));

@@ -195,15 +195,17 @@ static ssize_t p2p_enable_show(struct device *dev,
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 	u64 size;
-	struct resource *res;
+	struct resource res;
+	int ret;
 
 	/*
 	 * temp handle u50 case which has P2P bar however it is not actually
 	 * work
 	 */
 	if (xdev->core.priv.flags & XOCL_DSAFLAG_DYNAMIC_IP) {
-		res = xocl_subdev_get_ioresource(xdev, NODE_P2P);
-		if (!res) {
+		ret = xocl_subdev_get_resource(xdev, NODE_P2P,
+				IORESOURCE_MEM, &res);
+		if (ret) {
 			xocl_info(dev, "p2p endpoint is not found");
 			return sprintf(buf, "%d\n", ENXIO);
 		}
@@ -241,8 +243,9 @@ static ssize_t p2p_enable_store(struct device *dev,
 	 * work
 	 */
 	if (xdev->core.priv.flags & XOCL_DSAFLAG_DYNAMIC_IP) {
-		res = xocl_subdev_get_ioresource(xdev, NODE_P2P);
-		if (!res) {
+		ret = xocl_subdev_get_resource(xdev, NODE_P2P,
+				IORESOURCE_MEM, &res);
+		if (ret) {
 			xocl_info(&pdev->dev, "p2p endpoint is not found");
 			return -ENOTSUPP;
 		}

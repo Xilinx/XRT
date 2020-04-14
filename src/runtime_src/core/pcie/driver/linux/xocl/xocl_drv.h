@@ -1528,8 +1528,8 @@ int xocl_subdev_get_level(struct platform_device *pdev);
 void xocl_subdev_register(struct platform_device *pldev, void *ops);
 void xocl_subdev_unregister(struct platform_device *pldev);
 
-struct resource *xocl_subdev_get_ioresource(xdev_handle_t xdev_hdl,
-		char *res_name);
+int xocl_subdev_get_resource(xdev_handle_t xdev_hdl,
+		char *res_name, u32 type, struct resource *res);
 
 void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in);
 int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
