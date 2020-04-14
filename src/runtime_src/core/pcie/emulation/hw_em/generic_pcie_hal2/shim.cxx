@@ -666,7 +666,7 @@ namespace xclhwemhal2 {
       setenv("SYSTEMC_DISABLE_COPYRIGHT_MESSAGE", "1", true);
       pid_t pid = fork();
       assert(pid >= 0);
-      if (pid == 0){ //I am child
+      if (pid == 0) { //I am child
         //Redirecting the XSIM log to a file
         FILE* nP = freopen("/dev/null", "w", stdout);
         if (!nP) { std::cerr << "FATAR ERROR : Unable to redirect simulation output " << std::endl; exit(1); }
@@ -699,11 +699,11 @@ namespace xclhwemhal2 {
             launcherArgs += " -boot-bh " + binaryDirectory + "/" + kernels.at(0) + "/emulation_data/BOOT_bh.bin";
             launcherArgs += " -ospi-image " + binaryDirectory + "/" + kernels.at(0) + "/emulation_data/qemu_ospi.bin";
             launcherArgs += " -qemu-args-file " + binaryDirectory + "/" + kernels.at(0) + "/emulation_data/qemu_args.txt";
-           
-            if (boost::filesystem::exists(binaryDirectory + "/" + kernels.at(0) + "/emulation_data/pmc_args.txt") ) {
+
+            if (boost::filesystem::exists(binaryDirectory + "/" + kernels.at(0) + "/emulation_data/pmc_args.txt")) {
               launcherArgs += " -pmc-args-file " + binaryDirectory + "/" + kernels.at(0) + "/emulation_data/pmc_args.txt";
             }
-            else if (boost::filesystem::exists(binaryDirectory + "/" + kernels.at(0) + "/emulation_data/pmu_args.txt" ) ) {
+            else if (boost::filesystem::exists(binaryDirectory + "/" + kernels.at(0) + "/emulation_data/pmu_args.txt")) {
               launcherArgs += " -pmc-args-file " + binaryDirectory + "/" + kernels.at(0) + "/emulation_data/pmu_args.txt";
             }
             else {
@@ -717,8 +717,14 @@ namespace xclhwemhal2 {
             if (aie_sim_options != "") {
               launcherArgs += " -aie-sim-options " + aie_sim_options;
             }
+
+            std::string userSpecifiedPreSimScript = xclemulation::config::getInstance()->getUserPreSimScript();
+
+            if (userSpecifiedPreSimScript != "") {
+              launcherArgs += " -user-pre-sim-script " + userSpecifiedPreSimScript;
+            }
           }
-          else { 
+          else {
             // Added to be compatible for older flows, will remove this once the prep_target aka pack flow is stabilized and obsorbed by the DSV
             launcherArgs += " -emuData " + binaryDirectory + "/" + kernels.at(0) + "/aieshim_solution.aiesol";
             launcherArgs += " -emu-data " + binaryDirectory + "/" + kernels.at(0) + "/aieshim_solution.aiesol";
