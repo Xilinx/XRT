@@ -1603,7 +1603,7 @@ int xocl_thread_stop(xdev_handle_t xdev);
 
 /* subdev blob functions */
 int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
-		int part_level);
+		int part_level, char *vbnv);
 int xocl_fdt_remove_subdevs(xdev_handle_t xdev_hdl, struct list_head *devlist);
 int xocl_fdt_unlink_node(xdev_handle_t xdev_hdl, void *node);
 int xocl_fdt_overlay(void *fdt, int target, void *fdto, int node, int pf,
