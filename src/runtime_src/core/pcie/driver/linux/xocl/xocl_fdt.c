@@ -989,7 +989,8 @@ int xocl_fdt_add_pair(xdev_handle_t xdev_hdl, void *blob, char *name,
 	return ret;
 }
 
-int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz, int part_level)
+int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
+		int part_level, char *vbnv)
 {
 	struct xocl_dev_core	*core = XDEV(xdev_hdl);
 	struct xocl_subdev	*subdevs;
@@ -1035,6 +1036,18 @@ int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz, int par
 		xocl_xdev_err(xdev_hdl, "Overlay output blob failed %d", ret);
 		goto failed;
 	}
+
+	if (vbnv && strlen(vbnv) > 0) {
+		xocl_xdev_info(xdev_hdl, "Board VBNV: %s", vbnv);
+		ret = xocl_fdt_add_pair(xdev_hdl, output_blob, "vbnv", vbnv,
+			strlen(vbnv) + 1);
+		if (ret) {
+			xocl_xdev_err(xdev_hdl, "Adding VBNV pair failed, %d",
+				ret);
+			goto failed;
+		}
+	}
+
 
 	ret = xocl_fdt_parse_blob(xdev_hdl, output_blob, len, &subdevs);
 	if (ret < 0)
