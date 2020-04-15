@@ -27,7 +27,6 @@
 #include <drm/drm_backport.h>
 #endif
 #include <drm/drmP.h>
-#include <drm/drm_gem.h>
 #include "common.h"
 
 #ifdef _XOCL_BO_DEBUG
@@ -1217,7 +1216,7 @@ int xocl_gem_prime_mmap(struct drm_gem_object *obj, struct vm_area_struct *vma)
 	ret = obj->filp->f_op->mmap(obj->filp, vma);
 	if (ret)
 		return ret;
-	drm_gem_object_get(obj);
+	XOCL_DRM_GEM_OBJECT_GET(obj);
 
 	fput(vma->vm_file);
 	if(!IS_ERR_OR_NULL(xobj->dmabuf) && !IS_ERR_OR_NULL(xobj->dmabuf->file)) {
