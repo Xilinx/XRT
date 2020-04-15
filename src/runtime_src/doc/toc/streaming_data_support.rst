@@ -102,7 +102,7 @@ In the following code block, the stream read and write transfers are executed wi
 
 **IMPORTANT**: In case of using blocking version of the API, the user should be careful as blocking API blocks the host execution. Hence it may ends up application to hang, for example a blocking read action before a blocking write in the same thread. The general recommendation is to use blocking streams APIs from differnt threads to avoid application hang situation. 
 
-**IMPORTANT**: The buffer used for kernel to host data transfer has to be page aligned (In the above code example, the buffer `host_read_ptr` has to be page aligned). 
+**IMPORTANT**: The buffer used for kernel to host data transfer has to be page aligned (In the above code example, the buffer ``host_read_ptr`` has to be page aligned). 
 
 
 - Poll all the streams for completion. For the non-blocking transfer, a polling API is provided to ensure the read/write transfers are completed. For the blocking version of the API, polling is not required.
