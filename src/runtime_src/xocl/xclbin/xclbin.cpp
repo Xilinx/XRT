@@ -673,11 +673,14 @@ class xclbin_data_sections
     addr_type base_addr; // base address of bank
     std::string tag;     // bank tag in lowercase
     uint64_t size;       // size of this bank in bytes
-    int32_t index;       // bank id
+    int32_t memidx;      // mem topology index of this bank
+    int32_t grpidx;      // grp index
+    bool used;           // reflects mem topology used for this bank
   };
 
   std::vector<membank> m_membanks;
   std::vector<int> m_used_connections;
+  std::vector<int32_t> m_mem2grp;
 
   template <typename SectionType>
   SectionType
@@ -700,14 +703,41 @@ public:
     if (m_mem) {
       for (int32_t i=0; i<m_mem->m_count; ++i) {
         std::string tag = reinterpret_cast<const char*>(m_mem->m_mem_data[i].m_tag);
+        bool used = m_mem->m_mem_data[i].m_used;
         m_membanks.emplace_back
-          (membank{m_mem->m_mem_data[i].m_base_address,tag,m_mem->m_mem_data[i].m_size*1024,i});
+          (membank{m_mem->m_mem_data[i].m_base_address,tag,m_mem->m_mem_data[i].m_size*1024,i,i,used});
       }
       // sort on addr decreasing order
       std::sort(m_membanks.begin(),m_membanks.end(),
                 [](const membank& b1, const membank& b2) {
                   return b1.base_addr > b2.base_addr;
                 });
+
+      // Merge overlaping banks into groups, overlap is currently
+      // defined as same base address.  The grpidx becomes the memidx
+      // of exactly one memory bank in the group. This ensures that
+      // grpidx can be used directly to index mem_topology entries,
+      // which in turn simplifies upstream code that work with mem
+      // indices and are blissfully unaware of the concept of group
+      // indices.
+      m_mem2grp.resize(m_membanks.size());
+      auto itr = m_membanks.begin();
+      while (itr != m_membanks.end()) {
+        auto addr = (*itr).base_addr;
+
+        // first element not part of the sorted (decreasing) range
+        auto upper = std::find_if(itr, m_membanks.end(), [addr] (auto& mb) { return mb.base_addr < addr; });
+
+        // find first used memidx if any, default to first memidx in range if unused
+        auto used = std::find_if(itr, upper, [](auto& mb) { return mb.used; });
+        auto memidx = (used != upper) ? (*used).memidx : (*itr).memidx;
+
+        // process the range
+        for (; itr != upper; ++itr) {
+          auto& mb = (*itr);
+          m_mem2grp[mb.memidx] = mb.grpidx = memidx;
+        }
+      }
     }
   }
 
@@ -790,7 +820,7 @@ public:
       size_t memidx = m_con->m_connection[i].mem_data_index;
       assert(m_mem->m_mem_data[memidx].m_used);
       assert(memidx<bitmask.size());
-      bitmask.set(memidx);
+      bitmask.set(m_mem2grp[memidx]);
     }
 
     if (bitmask.none())
@@ -814,7 +844,7 @@ public:
         continue;
 
       auto idx = m_con->m_connection[i].mem_data_index;
-      bitmask.set(idx);
+      bitmask.set(m_mem2grp[idx]);
     }
     return bitmask;
   }
@@ -826,12 +856,12 @@ public:
     // 30,20,10,0
     xocl::xclbin::memidx_bitmask_type bitmask = 0;
     for (auto& mb : m_membanks) {
-      if (mb.index >= xocl::xclbin::max_banks)
-        throw std::runtime_error("bad mem_data index '" + std::to_string(mb.index) + "'");
-      if (!m_mem->m_mem_data[mb.index].m_used)
+      if (mb.memidx >= xocl::xclbin::max_banks)
+        throw std::runtime_error("bad mem_data index '" + std::to_string(mb.memidx) + "'");
+      if (!m_mem->m_mem_data[mb.memidx].m_used)
         continue;
       if (addr>=mb.base_addr && addr<mb.base_addr+mb.size)
-        bitmask.set(mb.index);
+        bitmask.set(mb.grpidx);
     }
     return bitmask;
   }
@@ -843,12 +873,12 @@ public:
     // 30,20,10,0
     int bankidx = -1;
     for (auto& mb : m_membanks) {
-      if (mb.index >= xocl::xclbin::max_banks)
-        throw std::runtime_error("bad mem_data index '" + std::to_string(mb.index) + "'");
-      if (!m_mem->m_mem_data[mb.index].m_used)
+      if (mb.memidx >= xocl::xclbin::max_banks)
+        throw std::runtime_error("bad mem_data index '" + std::to_string(mb.memidx) + "'");
+      if (!m_mem->m_mem_data[mb.memidx].m_used)
         continue;
       if (addr>=mb.base_addr && addr<mb.base_addr+mb.size) {
-        return mb.index;
+        return mb.grpidx;
       }
     }
     return bankidx;
@@ -870,7 +900,7 @@ public:
   {
     for (auto& mb : m_membanks)
       if (banktag==mb.tag)
-        return mb.index;
+        return mb.grpidx;
     return -1;
   }
 
