@@ -1210,17 +1210,25 @@ int xocl_gem_prime_mmap(struct drm_gem_object *obj, struct vm_area_struct *vma)
 	if (!obj->filp)
 		return -ENODEV;
 
+	/* Add the fake offset */
+	vma->vm_pgoff += drm_vma_node_start(&obj->vma_node);
+
 	ret = obj->filp->f_op->mmap(obj->filp, vma);
 	if (ret)
 		return ret;
+	XOCL_DRM_GEM_OBJECT_GET(obj);
 
 	fput(vma->vm_file);
-	if (!IS_ERR(xobj->dmabuf)) {
+	if(!IS_ERR_OR_NULL(xobj->dmabuf) && !IS_ERR_OR_NULL(xobj->dmabuf->file)) {
 		vma->vm_file = get_file(xobj->dmabuf->file);
 		vma->vm_ops = xobj->dmabuf_vm_ops;
-		vma->vm_private_data = obj;
-		vma->vm_flags |= VM_MIXEDMAP;
+	} else if (!IS_ERR_OR_NULL(xobj->base.dma_buf) && !IS_ERR_OR_NULL(xobj->base.dma_buf->file)) {
+		vma->vm_file = get_file(xobj->base.dma_buf->file);
+		vma->vm_ops = xobj->base.dev->driver->gem_vm_ops;
 	}
+	
+	vma->vm_private_data = obj;
+	vma->vm_flags |= VM_MIXEDMAP;
 
 	return 0;
 }
