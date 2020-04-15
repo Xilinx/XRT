@@ -484,12 +484,13 @@ static int ulite_remove(struct platform_device *pdev)
 {
 	struct uart_port *port = platform_get_drvdata(pdev);
 	int ret = 0;
-	struct uartlite_data *pdata = port->private_data;
+	struct uartlite_data *pdata;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	
 	if (!port)
 		return ret;
 
+	pdata = port->private_data;
 	if (!pdata)
 		return ret;
 

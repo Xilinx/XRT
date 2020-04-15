@@ -122,8 +122,8 @@ namespace xocl {
  * handles the actual interaction with the kernel on the i/o data path.
  *
  * Configuration:
- * - qAioEn:		per queue aio context enabled or not 
- * - qAioCtx:		per queue aio context, valid only if qAioEn = true 
+ * - qAioEn:		per queue aio context enabled or not
+ * - qAioCtx:		per queue aio context, valid only if qAioEn = true
  * - set_option():	optional configurations for aio context and batching
  *
  * i/o data path:
@@ -156,7 +156,7 @@ public:
     const int queue_get_handle(void) { return (int)qhndl; }
 
     // optional configurations
-    int set_option(int type, uint32_t val) 
+    int set_option(int type, uint32_t val)
     {
         switch(type) {
         case STREAM_OPT_AIO_MAX_EVENT:
@@ -272,7 +272,6 @@ shim(unsigned index)
   , mUserHandle(-1)
   , mStreamHandle(-1)
   , mBoardNumber(index)
-  , mLocked(false)
   , mOffsets{0x0, 0x0, OCL_CTLR_BASE, 0x0, 0x0}
   , mMemoryProfilingNumberSlots(0)
   , mAccelProfilingNumberSlots(0)
@@ -524,8 +523,13 @@ size_t shim::xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size
 unsigned int shim::xclAllocBO(size_t size, int unused, unsigned flags)
 {
     drm_xocl_create_bo info = {size, mNullBO, flags};
+    unsigned int bo = mNullBO;
     int result = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CREATE_BO, &info);
-    return result ? mNullBO : info.handle;
+    if (result)
+        errno = result;
+    else
+        bo = info.handle;
+    return bo;
 }
 
 /*
@@ -535,8 +539,13 @@ unsigned int shim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
 {
     drm_xocl_userptr_bo user =
         {reinterpret_cast<uint64_t>(userptr), size, mNullBO, flags};
+    unsigned int bo = mNullBO;
     int result = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_USERPTR_BO, &user);
-    return result ? mNullBO : user.handle;
+    if (result)
+        errno = result;
+    else
+        bo = user.handle;
+    return bo;
 }
 
 /*
@@ -917,12 +926,11 @@ int shim::cmaEnable(bool enable, uint64_t size)
              * 21 = 0x15
              * Let's find how many 1GB huge page we have to allocate
              */
-            uint64_t hugepage_flag = 0x1e; 
+            uint64_t hugepage_flag = 0x1e;
             cma_info.entry_num = page_num;
 
             cma_info.user_addr = (uint64_t *)alloca(sizeof(uint64_t)*page_num);
             ret = 0;
-
 
 
             for (uint32_t i = 0; i < page_num; ++i) {
@@ -965,10 +973,6 @@ bool
 shim::
 xclLockDevice()
 {
-  if (!xrt_core::config::get_multiprocess() && mDev->flock(mUserHandle, LOCK_EX | LOCK_NB) == -1)
-    return false;
-
-  mLocked = true;
   return true;
 }
 
@@ -979,10 +983,6 @@ bool
 shim::
 xclUnlockDevice()
 {
-  if (!xrt_core::config::get_multiprocess())
-    mDev->flock(mUserHandle, LOCK_UN);
-
-  mLocked = false;
   return true;
 }
 
@@ -1061,11 +1061,6 @@ int shim::xclLoadXclBin(const xclBin *buffer)
 int shim::xclLoadAxlf(const axlf *buffer)
 {
     xrt_logmsg(XRT_INFO, "%s, buffer: %s", __func__, buffer);
-
-    if (!mLocked) {
-        xrt_logmsg(XRT_ERROR, "%s: Device is not locked", __func__);
-        return -EPERM;
-    }
 
     drm_xocl_axlf axlf_obj = {const_cast<axlf *>(buffer)};
     int ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
@@ -1424,8 +1419,14 @@ int shim::xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
 int shim::xclDestroyQueue(uint64_t q_hdl)
 {
     queue_cb *qcb = reinterpret_cast<queue_cb *>(q_hdl);
-    int rc = close(qcb->queue_get_handle());
+    int qfd = qcb->queue_get_handle();
 
+    int rc = ioctl(qfd, XOCL_QDMA_IOC_QUEUE_FLUSH, NULL);
+
+    if (rc)
+        xrt_logmsg(XRT_ERROR, "%s: Flush Queue failed", __func__);
+
+    rc = close(qfd);
     if (rc)
         xrt_logmsg(XRT_ERROR, "%s: Destroy Queue failed", __func__);
 
@@ -2235,7 +2236,7 @@ int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
 #ifdef DISABLE_DOWNLOAD_XCLBIN
   return 0;
 #endif
-  
+
   xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -ENODEV;
 }
@@ -2436,7 +2437,7 @@ int xclGetSubdevPath(xclDeviceHandle handle,  const char* subdev,
 void
 xclGetDebugIpLayout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret)
 {
-  if(size_ret) 
+  if(size_ret)
     *size_ret = 0;
   return;
 }

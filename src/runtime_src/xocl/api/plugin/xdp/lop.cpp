@@ -58,7 +58,7 @@ namespace {
 #ifdef _WIN32
     return root / "bin" / (libnm + ".dll");
 #else
-    return root / "lib" / ("lib" + libnm + ".so");
+    return root / "lib" / "xrt" / "module" / ("lib" + libnm + ".so");
 #endif
   }
 } // end anonymous namespace
@@ -81,7 +81,7 @@ namespace xdplop {
 	if (xrt.empty()) 
 	  throw std::runtime_error("XILINX_XRT not set");
 	
-	bfs::path xrtlib(xrt / "lib");
+	bfs::path xrtlib(xrt / "lib" / "xrt" / "module");
 	if (!bfs::is_directory(xrtlib))
 	  throw std::runtime_error("No such directory '"+xrtlib.string()+"'");
 

@@ -26,7 +26,6 @@ file(GLOB XBMGMT_V2_BASE_FILES
 
 # Collect local directory files
 file(GLOB XBMGMT_V2_SUBCMD_FILES
-  "SubCmdFlash.cpp"
   "SubCmdProgram.cpp"
   "SubCmdReset.cpp"
   "SubCmdStatus.cpp"

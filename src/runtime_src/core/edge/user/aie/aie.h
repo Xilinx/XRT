@@ -67,6 +67,11 @@ public:
     std::vector<gmio_type> gmios;
 
     int getTilePos(int col, int row);
+
+    XAieGbl *getAieInst();
+
+    static XAieGbl_ErrorHandleStatus
+    error_cb(struct XAieGbl *aie_inst, XAie_LocType loc, u8 module, u8 error, void *arg);
     
 private:
     int numRows;

@@ -1889,18 +1889,21 @@ int xcldev::xclCma(int argc, char *argv[])
      * 2. Huge Page MMAP 
      */
     ret = d->setCma(cma_enable, total_size);
-    if (ret == ENOMEM) {
-        std::cout << "ERROR: No enough huge page." << std::endl;
+    if (ret == -ENOMEM) {
+        std::cout << "ERROR: No enough CMA." << std::endl;
         std::cout << "Please check grub settings" << std::endl;
-    } else if (ret == EINVAL) {
-        std::cout << "ERROR: Invalid huge page." << std::endl;
-    } else if (ret == ENXIO) {
+    } else if (ret == -EINVAL) {
+        std::cout << "ERROR: Invalid cma size." << std::endl;
+    } else if (ret == -ENXIO) {
         std::cout << "ERROR: Huge page is not supported on this platform"
+            << std::endl;
+    } else if (ret == -ENODEV) {
+        std::cout << "ERROR: Does not support CMA feature"
             << std::endl;
     } else if (!ret) {
         std::cout << "xbutil cma done successfully" << std::endl;
     } else if (ret) {
-        std::cout << "ERROR: " << strerror(ret) << std::endl;
+        std::cout << "ERROR: " << strerror(std::abs(ret)) << std::endl;
     }
 
     return ret;

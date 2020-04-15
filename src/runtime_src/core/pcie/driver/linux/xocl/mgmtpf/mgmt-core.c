@@ -53,7 +53,7 @@ module_param(minimum_initialization, int, (S_IRUGO|S_IWUSR));
 MODULE_PARM_DESC(minimum_initialization,
 	"Enable minimum_initialization to force driver to load without vailid firmware or DSA. Thus xbsak flash is able to upgrade firmware. (0 = normal initialization, 1 = minimum initialization)");
 
-#define	HI_TEMP			85
+#define	HI_TEMP			88
 #define	LOW_MILLVOLT		500
 #define	HI_MILLVOLT		2500
 
@@ -395,7 +395,7 @@ struct pci_dev *find_user_node(const struct pci_dev *pdev)
 inline void check_temp_within_range(struct xclmgmt_dev *lro, u32 temp)
 {
 	if (temp > HI_TEMP)
-		mgmt_err(lro, "Temperature is too high: %d.", temp);
+		mgmt_err(lro, "Warning: Card is hot at: %d. There is a card shutdown limit at 97C. Please keep the card below 88C.", temp);
 }
 
 inline void check_volt_within_range(struct xclmgmt_dev *lro, u16 volt)

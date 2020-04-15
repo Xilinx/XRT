@@ -33,7 +33,7 @@ extern "C"
 namespace zynqaie {
 
 graph_type::
-graph_type(std::shared_ptr<xrt_core::device> dev, uuid_t, const std::string& graph_name)
+graph_type(std::shared_ptr<xrt_core::device> dev, const uuid_t, const std::string& graph_name)
   : device(std::move(dev)), name(graph_name)
 {
     // TODO
@@ -55,16 +55,34 @@ graph_type(std::shared_ptr<xrt_core::device> dev, uuid_t, const std::string& gra
       rtps.emplace_back(std::move(rtp));
 
     state = graph_state::stop;
+
+    auto aie_inst = aieArray->getAieInst();
+    std::vector<XAie_LocType> locs(tiles.size());
+    for (auto& tile : tiles) {
+      XAie_LocType loc = {tile.row, tile.col};
+      locs.emplace_back(loc);
+    }
+
+    /* Register all AIE events */
+    XAieTile_EventRegisterNotification(aie_inst, locs.data(), locs.size(), XAIEGBL_MODULE_ALL, XAIETILE_EVENT_CORE_PERF_CNT0, event_cb, NULL);
 }
 
 graph_type::
 ~graph_type()
 {
+    auto aie_inst = aieArray->getAieInst();
+    std::vector<XAie_LocType> locs(tiles.size());
+    for (auto& tile : tiles) {
+      XAie_LocType loc = {tile.row, tile.col};
+      locs.emplace_back(loc);
+    }
+
+    XAieTile_EventUnregisterNotification(aie_inst, locs.data(), locs.size(), XAIEGBL_MODULE_ALL, XAIETILE_EVENTS_ALL);
+
     /* TODO move this to ZYNQShim destructor or use smart pointer */
     if (aieArray)
         delete aieArray;
 }
-
 
 void
 graph_type::
@@ -393,6 +411,12 @@ wait_sync_bo(ShimDMA *dmap, uint32_t chan, uint32_t timeout)
   }
 }
 
+void
+graph_type::
+event_cb(struct XAieGbl *aie_inst, XAie_LocType Loc, u8 module, u8 event, void *arg)
+{
+    xrt_core::message::send(xrt_core::message::severity_level::XRT_NOTICE, "XRT", "AIE EVENT: module %d, event %d",  module, event);
+}
 
 } // zynqaie
 
@@ -425,7 +449,7 @@ namespace api {
 using graph_type = zynqaie::graph_type;
 
 xrtGraphHandle
-xrtGraphOpen(xclDeviceHandle dhdl, uuid_t xclbin_uuid, const char* name)
+xrtGraphOpen(xclDeviceHandle dhdl, const uuid_t xclbin_uuid, const char* name)
 {
   auto device = xrt_core::get_userpf_device(dhdl);
   auto graph = std::make_shared<graph_type>(device, xclbin_uuid, name);
@@ -518,7 +542,7 @@ xrtSyncBOAIE(xrtGraphHandle ghdl, unsigned bo, const char *dmaID, enum xclBOSync
 // xrt_aie API implementations (xrt_aie.h)
 ////////////////////////////////////////////////////////////////
 xrtGraphHandle
-xrtGraphOpen(xclDeviceHandle handle, uuid_t xclbin_uuid, const char* graph)
+xrtGraphOpen(xclDeviceHandle handle, const uuid_t xclbin_uuid, const char* graph)
 {
   try {
     return api::xrtGraphOpen(handle, xclbin_uuid, graph);

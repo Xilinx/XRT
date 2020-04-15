@@ -531,9 +531,14 @@ namespace xclhwemhal2 {
     //Creating the Kernel Directory and dumping the emulation data into Kernel Dir
     //For timebeing having this under is_prep_target condition, will remove this
     //condition once this flow is obsorbed by the Sprite and Canary Verification
+    std::string xclbinName("xclbin");
+    if(kernels.size() > 0) {
+      xclbinName = kernels.at(0);
+    }
+
     if (is_prep_target) {
       std::stringstream ks;
-      ks << binaryDirectory << "/" << kernels.at(0);
+      ks << binaryDirectory << "/" << xclbinName;
       std::string kernelDir = ks.str();
       systemUtil::makeSystemCall(kernelDir, systemUtil::systemOperation::CREATE);
 
@@ -586,11 +591,15 @@ namespace xclhwemhal2 {
         // NOTE: proto inst filename must match name in HPIKernelCompilerHwEmu.cpp
         std::string protoFileName = "./" + bdName + "_behav.protoinst";
         std::stringstream cmdLineOption;
-        cmdLineOption << " -g --wdb " << wdbFileName << ".wdb"
-          << " --protoinst " << protoFileName;
 
-        launcherArgs = launcherArgs + cmdLineOption.str();
         sim_path = binaryDirectory + "/behav_waveform/xsim";
+
+        if (boost::filesystem::exists(sim_path) != false) {
+          cmdLineOption << " -g --wdb " << wdbFileName << ".wdb"
+            << " --protoinst " << protoFileName;
+
+          launcherArgs = launcherArgs + cmdLineOption.str();
+        }
         std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
         unsetenv("VITIS_LAUNCH_WAVEFORM_BATCH");
         setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
@@ -616,6 +625,8 @@ namespace xclhwemhal2 {
         setenv("VITIS_KERNEL_PROFILE_FILENAME", kernelProfileFileName.c_str(), true);
         setenv("VITIS_KERNEL_TRACE_FILENAME", kernelTraceFileName.c_str(), true);
       }
+      if (lWaveform == xclemulation::LAUNCHWAVEFORM::OFF)
+        sim_path = binaryDirectory + "/behav_gdb/xsim";
 
       if (userSpecifiedSimPath.empty() == false)
       {
@@ -629,9 +640,33 @@ namespace xclhwemhal2 {
         }
         if (boost::filesystem::exists(sim_path) == false)
         {
-          std::string dMsg = "WARNING: [HW-EM 07] None of the kernels is compiled in debug mode. Compile kernels in debug mode to launch waveform";
-          logMessage(dMsg, 0);
-          sim_path = binaryDirectory + "/behav_gdb/xsim";
+          if (lWaveform == xclemulation::LAUNCHWAVEFORM::OFF) {
+            sim_path = binaryDirectory + "/behav_waveform/xsim";
+            std::string dMsg = "WARNING: [HW-EM 07] Launch Waveform is set to OFF in ini file. Could not find an axsim binary. Running simulation using xsim. Using " + sim_path + " as simulation directory.";
+            logMessage(dMsg, 0);
+            std::string protoFileName = "./" + bdName + "_behav.protoinst";
+            std::stringstream cmdLineOption;
+            cmdLineOption << " --wdb " << wdbFileName << ".wdb"
+              << " --protoinst " << protoFileName;
+
+            launcherArgs = launcherArgs + cmdLineOption.str();
+            std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
+            setenv("VITIS_LAUNCH_WAVEFORM_BATCH", "1", true);
+            setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
+            setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
+            setenv("VITIS_KERNEL_PROFILE_FILENAME", kernelProfileFileName.c_str(), true);
+            setenv("VITIS_KERNEL_TRACE_FILENAME", kernelTraceFileName.c_str(), true);
+
+          }
+          else {
+            std::string dMsg;
+            sim_path = binaryDirectory + "/behav_gdb/xsim";
+            if (lWaveform == xclemulation::LAUNCHWAVEFORM::GUI) 
+              dMsg = "WARNING: [HW-EM 07] Launch Waveform is set to GUI in ini file. Could not find a xsim binary. Running simulation using axsim. Cannot enable simulator GUI in this mode. Using " + sim_path + " as simulation directory.";
+            else 
+              dMsg = "WARNING: [HW-EM 07] Launch Waveform is set to BATCH in ini file (or) considered by default. Could not find a xsim binary. Running simulation using axsim. Using " + sim_path + " as simulation directory.";
+            logMessage(dMsg, 0);
+          }
         }
       }
       std::stringstream socket_id;
@@ -666,7 +701,7 @@ namespace xclhwemhal2 {
       setenv("SYSTEMC_DISABLE_COPYRIGHT_MESSAGE", "1", true);
       pid_t pid = fork();
       assert(pid >= 0);
-      if (pid == 0){ //I am child
+      if (pid == 0) { //I am child
         //Redirecting the XSIM log to a file
         FILE* nP = freopen("/dev/null", "w", stdout);
         if (!nP) { std::cerr << "FATAR ERROR : Unable to redirect simulation output " << std::endl; exit(1); }
@@ -694,17 +729,17 @@ namespace xclhwemhal2 {
           //For timebeing having this under is_prep_target condition, will remove this
           //condition once this flow is obsorbed by the Sprite and Canary Verification
           if (is_prep_target) {
-            launcherArgs += " -emuData " + binaryDirectory + "/" + kernels.at(0) + "/emulation_data/libsdf/cfg/aie.sim.config.txt";
-            launcherArgs += " -aie-sim-config " + binaryDirectory + "/" + kernels.at(0) + "/emulation_data/libsdf/cfg/aie.sim.config.txt";
-            launcherArgs += " -boot-bh " + binaryDirectory + "/" + kernels.at(0) + "/emulation_data/BOOT_bh.bin";
-            launcherArgs += " -ospi-image " + binaryDirectory + "/" + kernels.at(0) + "/emulation_data/qemu_ospi.bin";
-            launcherArgs += " -qemu-args-file " + binaryDirectory + "/" + kernels.at(0) + "/emulation_data/qemu_args.txt";
-           
-            if (boost::filesystem::exists(binaryDirectory + "/" + kernels.at(0) + "/emulation_data/pmc_args.txt") ) {
-              launcherArgs += " -pmc-args-file " + binaryDirectory + "/" + kernels.at(0) + "/emulation_data/pmc_args.txt";
+            launcherArgs += " -emuData " + binaryDirectory + "/" + xclbinName + "/emulation_data/libsdf/cfg/aie.sim.config.txt";
+            launcherArgs += " -aie-sim-config " + binaryDirectory + "/" + xclbinName + "/emulation_data/libsdf/cfg/aie.sim.config.txt";
+            launcherArgs += " -boot-bh " + binaryDirectory + "/" + xclbinName + "/emulation_data/BOOT_bh.bin";
+            launcherArgs += " -ospi-image " + binaryDirectory + "/" + xclbinName + "/emulation_data/qemu_ospi.bin";
+            launcherArgs += " -qemu-args-file " + binaryDirectory + "/" + xclbinName + "/emulation_data/qemu_args.txt";
+
+            if (boost::filesystem::exists(binaryDirectory + "/" + xclbinName + "/emulation_data/pmc_args.txt")) {
+              launcherArgs += " -pmc-args-file " + binaryDirectory + "/" + xclbinName + "/emulation_data/pmc_args.txt";
             }
-            else if (boost::filesystem::exists(binaryDirectory + "/" + kernels.at(0) + "/emulation_data/pmu_args.txt" ) ) {
-              launcherArgs += " -pmc-args-file " + binaryDirectory + "/" + kernels.at(0) + "/emulation_data/pmu_args.txt";
+            else if (boost::filesystem::exists(binaryDirectory + "/" + xclbinName + "/emulation_data/pmu_args.txt")) {
+              launcherArgs += " -pmc-args-file " + binaryDirectory + "/" + xclbinName + "/emulation_data/pmu_args.txt";
             }
             else {
               std::cout << "ERROR: [HW-EMU] Unable to find either PMU/PMC args which are required to launch the emulation." << std::endl;
@@ -717,14 +752,20 @@ namespace xclhwemhal2 {
             if (aie_sim_options != "") {
               launcherArgs += " -aie-sim-options " + aie_sim_options;
             }
+
+            std::string userSpecifiedPreSimScript = xclemulation::config::getInstance()->getUserPreSimScript();
+
+            if (userSpecifiedPreSimScript != "") {
+              launcherArgs += " -user-pre-sim-script " + userSpecifiedPreSimScript;
+            }
           }
-          else { 
+          else {
             // Added to be compatible for older flows, will remove this once the prep_target aka pack flow is stabilized and obsorbed by the DSV
-            launcherArgs += " -emuData " + binaryDirectory + "/" + kernels.at(0) + "/aieshim_solution.aiesol";
-            launcherArgs += " -emu-data " + binaryDirectory + "/" + kernels.at(0) + "/aieshim_solution.aiesol";
-            launcherArgs += " -bootBH " + binaryDirectory + "/" + kernels.at(0) + "/boot_bh.bin";
-            launcherArgs += " -boot-bh " + binaryDirectory + "/" + kernels.at(0) + "/boot_bh.bin";
-            launcherArgs += " -image " + binaryDirectory + "/" + kernels.at(0) + "/qemu_qspi.bin";
+            launcherArgs += " -emuData " + binaryDirectory + "/" + xclbinName + "/aieshim_solution.aiesol";
+            launcherArgs += " -emu-data " + binaryDirectory + "/" + xclbinName + "/aieshim_solution.aiesol";
+            launcherArgs += " -bootBH " + binaryDirectory + "/" + xclbinName + "/boot_bh.bin";
+            launcherArgs += " -boot-bh " + binaryDirectory + "/" + xclbinName + "/boot_bh.bin";
+            launcherArgs += " -image " + binaryDirectory + "/" + xclbinName + "/qemu_qspi.bin";
 
             if (is_enable_debug) {
               launcherArgs += " -enable-debug ";

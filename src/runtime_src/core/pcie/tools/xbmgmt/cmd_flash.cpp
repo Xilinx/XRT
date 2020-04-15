@@ -264,6 +264,9 @@ static int resetShell(unsigned index, bool force)
  *   3) UNKNOWN;
  *        example: [SC=UNKNOWN], this means xmc subdev is online, but status in
  *        not normal, we still allow flashing SC.
+ *   4) FIXED SC version;
+ *        example: [SC=4.1.7(FIXED)], this means SC is running on slave mgmt pf
+ *        and cannot be updated throught this pf, SC version cannot be changed.
  */
 static void isSameShellOrSC(DSAInfo& candidate, DSAInfo& current,
     bool *same_dsa, bool *same_bmc)
@@ -271,8 +274,9 @@ static void isSameShellOrSC(DSAInfo& candidate, DSAInfo& current,
     if (!current.name.empty()) {
         *same_dsa = ((candidate.name == current.name) &&
             candidate.matchId(current));
-        *same_bmc = ((candidate.bmcVer == current.bmcVer) ||
-            (current.bmcVer.compare(DSAInfo::INACTIVE) == 0));
+        *same_bmc = (current.bmcVerIsFixed() ||
+            (current.bmcVer.compare(DSAInfo::INACTIVE) == 0) ||
+            (candidate.bmcVer == current.bmcVer));
     }
 }
 

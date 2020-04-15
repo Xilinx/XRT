@@ -410,10 +410,11 @@ bool DSAInfo::matchId(DSAInfo& dsa) const
     return false;
 }
 
-std::vector<DSAInfo> firmwareImage::installedDSA;
 
-std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()
+
+std::vector<DSAInfo> firmwareImage::getIntalledDSAs()
 {
+    std::vector<DSAInfo> installedDSA;
     // Obtain installed DSA info.
     boost::filesystem::path p(FIRMWARE_DIR);
 	if (!boost::filesystem::is_directory(p)) {

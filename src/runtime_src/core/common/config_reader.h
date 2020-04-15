@@ -418,6 +418,13 @@ get_system_dpa_emulation()
 }
 
 inline std::string
+get_launch_waveform()
+{
+  static std::string value = detail::get_string_value("Emulation.launch_waveform","batch");
+  return value;
+}
+
+inline std::string
 get_kernel_channel_info()
 {
   static std::string value = detail::get_string_value("Runtime.kernel_channels","");

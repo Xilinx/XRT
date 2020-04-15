@@ -30,6 +30,7 @@ namespace xdp {
   class HALPlugin : public XDPPlugin
   {
   private:
+    std::map<uint64_t, void*> deviceHandles;
     std::map<uint64_t, DeviceIntf*> devices;
     std::map<uint64_t, DeviceTraceLogger*>  deviceTraceLoggers;
     std::map<uint64_t, DeviceTraceOffload*> deviceTraceOffloaders;

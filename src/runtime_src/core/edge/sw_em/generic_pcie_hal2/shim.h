@@ -29,6 +29,8 @@
 #include "xclbin.h"
 #include "core/common/scheduler.h"
 #include "core/common/message.h"
+#include "core/common/xrt_profiling.h"
+#include "swscheduler.h"
 
 #include <stdarg.h>
 #include <sys/mman.h>
@@ -42,7 +44,6 @@
 #include <dlfcn.h>
 #endif
 
-
 namespace xclcpuemhal2 {
   // XDMA Shim
   class CpuemShim {
@@ -51,6 +52,7 @@ namespace xclcpuemhal2 {
       static const unsigned CONTROL_AP_START;
       static const unsigned CONTROL_AP_DONE;
       static const unsigned CONTROL_AP_IDLE;
+      static const unsigned CONTROL_AP_CONTINUE;
 
   private:
       // This is a hidden signature of this class and helps in preventing
@@ -65,26 +67,26 @@ namespace xclcpuemhal2 {
   public:
       // HAL2 RELATED member functions start
       unsigned int xclAllocBO(size_t size, int unused, unsigned flags);
-      int xoclCreateBo(xclemulation::xocl_create_bo *info);
+      uint64_t xoclCreateBo(xclemulation::xocl_create_bo *info);
       void* xclMapBO(unsigned int boHandle, bool write);
       int xclUnmapBO(unsigned int boHandle, void* addr);
-      int xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset); 
+      int xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset);
       unsigned int xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags);
       int xclGetBOProperties(unsigned int boHandle, xclBOProperties *properties);
       size_t xclWriteBO(unsigned int boHandle, const void *src, size_t size, size_t seek);
       size_t xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t skip);
       void xclFreeBO(unsigned int boHandle);
       //P2P buffer support
-      int xclExportBO(unsigned int boHandle); 
+      int xclExportBO(unsigned int boHandle);
       unsigned int xclImportBO(int boGlobalHandle, unsigned flags);
       int xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset);
       static int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, const char* format, va_list args1);
-      
+
 
       xclemulation::drm_xocl_bo* xclGetBoByHandle(unsigned int boHandle);
       inline unsigned short xocl_ddr_channel_count();
       inline unsigned long long xocl_ddr_channel_size();
-      // HAL2 RELATED member functions end 
+      // HAL2 RELATED member functions end
 
       //Configuration
       void xclOpen(const char* logfileName);
@@ -129,7 +131,7 @@ namespace xclcpuemhal2 {
       static unsigned xclProbe();
       void fillDeviceInfo(xclDeviceInfo2* dest, xclDeviceInfo2* src);
       void saveDeviceProcessOutput();
-      
+
       void set_messagesize( unsigned int messageSize ) { message_size = messageSize; }
       unsigned int get_messagesize(){ return message_size; }
 
@@ -154,6 +156,14 @@ namespace xclcpuemhal2 {
       int xclExecBuf(unsigned int cmdBO);
       int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const;
 
+      bool isImported(unsigned int _bo)
+      {
+        if (mImportedBOs.find(_bo) != mImportedBOs.end())
+          return true;
+        return false;
+      }
+      struct exec_core* getExecCore() { return mCore; }
+      SWScheduler* getScheduler() { return mSWSch; }
     private:
       std::mutex mMemManagerMutex;
 
@@ -213,7 +223,7 @@ namespace xclcpuemhal2 {
       int mDSAMinorVersion;
       unsigned int mDeviceIndex;
       bool mCloseAll;
-      
+
       std::mutex mProcessLaunchMtx;
       std::mutex mApiMtx;
       static bool mFirstBinary;
@@ -223,16 +233,18 @@ namespace xclcpuemhal2 {
       std::map<int, xclemulation::drm_xocl_bo*> mXoclObjMap;
       static unsigned int mBufferCount;
       static std::map<int, std::tuple<std::string,int,void*> > mFdToFileNameMap;
-      // HAL2 RELATED member variables end 
+      // HAL2 RELATED member variables end
       std::list<std::tuple<uint64_t ,void*, std::map<uint64_t , uint64_t> > > mReqList;
       uint64_t mReqCounter;
       FeatureRomHeader mFeatureRom;
 
+      std::set<unsigned int > mImportedBOs;
+      exec_core* mCore;
+      SWScheduler* mSWSch;
+      bool mIsKdsSwEmu;
   };
-  
+
   extern std::map<unsigned int, CpuemShim*> devices;
 }
 
 #endif
-
-

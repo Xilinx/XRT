@@ -71,6 +71,8 @@ namespace xdp {
       std::string sysfsPath(pathBuf);
       uint64_t deviceId = db->addDevice(sysfsPath);
 
+      deviceHandles[deviceId] = handle;
+
       std::string fileName = "hal_device_trace_" + std::to_string(deviceId) + ".csv" ;
       writers.push_back(new HALDeviceTraceWriter(fileName.c_str(), deviceId,
 						 version,
@@ -108,6 +110,11 @@ namespace xdp {
       delete itr.second;
     }
     deviceTraceLoggers.clear();
+
+    for(auto itr : deviceHandles) {
+      xclClose(itr.second);
+    }
+    deviceHandles.clear();
   }
 
   uint64_t HALPlugin::getDeviceId(void* handle)
@@ -125,6 +132,8 @@ namespace xdp {
 
     uint64_t deviceId = getDeviceId(handle);
 
+    if(deviceHandles.find(deviceId) == deviceHandles.end()) return;
+
     (db->getStaticInfo()).updateDevice(deviceId, binary);
 
     {
@@ -139,7 +148,7 @@ namespace xdp {
 
     // Update DeviceIntf in HALPlugin
     DeviceIntf* devInterface = new DeviceIntf();
-    devInterface->setDevice(new HalDevice(handle));
+    devInterface->setDevice(new HalDevice(deviceHandles[deviceId]));
     devices[deviceId] = devInterface;
 
     devInterface->readDebugIPlayout();

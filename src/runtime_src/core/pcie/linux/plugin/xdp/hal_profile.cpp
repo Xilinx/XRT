@@ -33,12 +33,12 @@ inline bool isDLL(const bfs::path& path) {
 }
 
 boost::filesystem::path
-dllpath(const boost::filesystem::path& root, const std::string& libnm)
+modulepath(const boost::filesystem::path& root, const std::string& libnm)
 {
 #ifdef _WIN32
   return root / "bin" / (libnm + ".dll");
 #else
-  return root / "lib" / ("lib" + libnm + ".so");
+  return root / "lib" / "xrt" / "module" / ("lib" + libnm + ".so");
 #endif
 }
 
@@ -410,9 +410,9 @@ void load_xdp_plugin_library(HalPluginConfig* )
     if (xrt.empty()) {
       throw std::runtime_error("Library xdp_hal_plugin not found! XILINX_XRT not set");
     }
-    bfs::path xrtlib(xrt / "lib");
+    bfs::path xrtlib(xrt / "lib" / "xrt" / "module");
     directoryOrError(xrtlib);
-    auto libname = dllpath(xrt, "xdp_hal_plugin");
+    auto libname = modulepath(xrt, "xdp_hal_plugin");
     if (!isDLL(libname)) {
       throw std::runtime_error("Library " + libname.string() + " not found!");
     }

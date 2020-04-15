@@ -120,6 +120,8 @@ namespace xdphalinterface {
       exit(EXIT_FAILURE);
     }
     bfs::path p(xrt / "lib");
+    p /= "xrt" ;
+    p /= "module" ;
     if(directoryOrError(p)) {
       exit(EXIT_FAILURE);
     }
