@@ -27,6 +27,7 @@
 #include <drm/drm_backport.h>
 #endif
 #include <drm/drmP.h>
+#include <drm/drm_gem.h>
 #include "common.h"
 
 #ifdef _XOCL_BO_DEBUG
