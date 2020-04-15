@@ -1090,6 +1090,32 @@ int xocl_fdt_get_userpf(xdev_handle_t xdev_hdl, void *blob)
 	return ntohl(*pfnum);
 }
 
+int xocl_fdt_get_p2pbar(xdev_handle_t xdev_hdl, void *blob)
+{
+	int offset;
+	const u32 *p2p_bar;
+	const char *ipname;
+
+	if (!blob)
+		return -EINVAL;
+
+	for (offset = fdt_next_node(blob, -1, NULL);
+		offset >= 0;
+		offset = fdt_next_node(blob, offset, NULL)) {
+		ipname = fdt_get_name(blob, offset, NULL);
+		if (ipname && strncmp(ipname, NODE_P2P, strlen(NODE_P2P)) == 0)
+			break;
+	}
+	if (offset < 0)
+		return -ENODEV;
+
+	p2p_bar = fdt_getprop(blob, offset, PROP_BAR_IDX, NULL);
+	if (!p2p_bar)
+		return -EINVAL;
+
+	return ntohl(*p2p_bar);
+}
+
 int xocl_fdt_build_priv_data(xdev_handle_t xdev_hdl, struct xocl_subdev *subdev,
 	void **priv_data, size_t *data_len)
 {
