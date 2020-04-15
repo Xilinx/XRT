@@ -88,8 +88,7 @@ In the following code block, the stream read and write transfers are executed wi
    cl_stream_xfer_req rd_req {0};
 
    rd_req.flags = CL_STREAM_EOT | CL_STREAM_NONBLOCKING;
-   rd_req.priv_data = (void*)"read"; // You can think this as tagging the
-									 transfer with a name
+   rd_req.priv_data = (void*)"read"; // You can think this as tagging the transfer with a name
    clReadStream(k2h_stream, host_read_ptr, max_read_size, &rd_req, &ret);
 
    // Initiating the WRITE transfer
