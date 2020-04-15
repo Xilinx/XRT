@@ -37,7 +37,7 @@ The typical API flow is described below:
      - An appropriate flag should be used to denote stream write/read operation (from the kernel perspective).
      - To specify how the stream is connected to the device, a predefined extension pointer (cl_mem_ext_ptr_t) should be used to denote the kernel and its argument the stream is associated with.
 
-In the code block below, a Read Stream (named read_stream) and a Write Stream (named write_stream) are created.
+In the code block below, a stream for kernel to host data transfer (named k2h_stream) and a stream for host to kernel data transfer (named h2k_stream) are created.
 
 .. code-block:: c++
 
