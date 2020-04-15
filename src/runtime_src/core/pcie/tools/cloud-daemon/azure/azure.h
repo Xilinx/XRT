@@ -35,6 +35,7 @@ enum azure_rest_err {
     E_GET_REIMAGE_STATUS = 2021,
     E_RESET = 2030,
     E_GET_RESET_STATUS = 2031,
+    E_EMPTY_SN = 2040,
 };
 /*
  * This class is for azure xclbin download handling.
