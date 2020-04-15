@@ -947,8 +947,7 @@ static int queue_req_complete(unsigned long priv, unsigned int done_bytes,
 	/* if aio cancel already called on the request, kiocb could be NULL */
 	if (iocb->cmpl_count == iocb->req_count) {
 		if (iocb->kiocb) {
-			cmpl_aio(iocb->kiocb, iocb->cmpl_count - iocb->err_cnt,
-				iocb->res2);
+			cmpl_aio(iocb->kiocb, done_bytes, iocb->res2);
 			iocb->kiocb = NULL;
 		}
 		free_req = true;
