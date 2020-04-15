@@ -29,6 +29,14 @@ namespace xdp {
 MMappedTraceFifoFull::MMappedTraceFifoFull(Device* handle, uint64_t index, debug_ip_data* data)
                     : TraceFifoFull(handle, index, data)
 {
+/*
+ * Base address of TraceFifoFull is actually not used in any mapped read/write.
+ * Only unmanaged read with DMA is used.
+ * So, open-mmap for TraceFifoFull is not needed.
+ * This specialised class is only for consistency with other profile monitors which
+ * use device driver files mmapped to virtual memory address space.
+ */
+#if 0
   // Open TraceFifoFull Device Driver File
   std::string subDev("trace_fifo_full");
   std::string driverFileName = getDevice()->getSubDevicePath(subDev, 0 /* a design can have atmost 1 TraceFifoFull*/);
@@ -45,39 +53,49 @@ MMappedTraceFifoFull::MMappedTraceFifoFull(Device* handle, uint64_t index, debug
     showWarning("mmap failed for device file.");
     return;
   }
+#endif
 }
 
 MMappedTraceFifoFull::~MMappedTraceFifoFull()
 {
+#if 0
   munmap(mapped_device, PROFILE_IP_SZ);
   close(driver_FD);
+#endif
 }
 
 bool MMappedTraceFifoFull::isMMapped()
 {
+#if 0
   if(mapped_device == nullptr || mapped_device == MAP_FAILED) {
     return false;
   }
+#endif
   return true;
 }
 
-int MMappedTraceFifoFull::read(uint64_t offset, size_t size, void* data)
+int MMappedTraceFifoFull::read(uint64_t /*offset*/, size_t /*size*/, void* /*data*/)
 {
+  return 0;
+#if 0
   if(!isMMapped()) {
     return 0;
   }
   memcpy((char*)data, mapped_device + offset, size);
   return size;
+#endif
 }
 
-int MMappedTraceFifoFull::write(uint64_t offset, size_t size, void* data)
+int MMappedTraceFifoFull::write(uint64_t /*offset*/, size_t /*size*/, void* /*data*/)
 {
+  return 0;
+#if 0
   if(!isMMapped()) {
     return 0;
   }
   memcpy(mapped_device + offset, (char*)data, size);
   return size;
+#endif
 }
-
 }
 #endif
