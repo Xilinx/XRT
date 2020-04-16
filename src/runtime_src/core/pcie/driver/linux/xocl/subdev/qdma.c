@@ -1177,6 +1177,7 @@ static int queue_wqe_cancel(struct kiocb *kiocb)
 	struct qdma_stream_queue *queue = ioreq->iocb.queue;
 	struct xocl_qdma *qdma = queue->qdma;
 	struct qdma_stream_req_cb *reqcb = iocb->reqcb;
+	unsigned long flags;
 
 	xocl_dbg(&qdma->pdev->dev,
 		"%s cancel ST req 0x%p/0x%lu hndl 0x%lx,0x%lx, %s %u.\n",
@@ -1184,10 +1185,10 @@ static int queue_wqe_cancel(struct kiocb *kiocb)
 		(unsigned long)qdma->dma_handle, queue->queue,
 		queue->qconf.c2h ? "R":"W", reqcb->req->count);
 
-	spin_lock_bh(&queue->req_lock);
+	spin_lock_irqsave(&queue->req_lock, flags);
 	iocb->cancel = 1;
 	queue->req_cancel_cnt++;;
-	spin_unlock_bh(&queue->req_lock);
+	spin_unlock_irqrestore(&queue->req_lock, flags);
 
 	/* delayed aio cancel completion */
 	INIT_WORK(&iocb->work, cmpl_aio_cancel);
