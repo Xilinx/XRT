@@ -148,6 +148,27 @@ namespace xclemulation{
       }
       else if (name == "user_pre_sim_script") {
         setUserPreSimScript(value);
+        setenv("USER_PRE_SIM_SCRIPT", value.c_str(), true);
+      }
+      else if (name == "user_post_sim_script") {
+        setUserPostSimScript(value);
+        setenv("USER_POST_SIM_SCRIPT", value.c_str(), true);
+      } 
+      else if (name == "xtlm_aximm_log") {
+        bool val = getBoolValue(value, true);
+        if (val) {
+          setenv("ENABLE_XTLM_AXIMM_LOG", "1", true);
+        } else {
+          setenv("ENABLE_XTLM_AXIMM_LOG", "0", true);
+        }
+      }
+      else if (name == "xtlm_axis_log") {
+        bool val = getBoolValue(value, true);
+        if (val) {
+          setenv("ENABLE_XTLM_AXIS_LOG", "1", true);
+        } else {
+          setenv("ENABLE_XTLM_AXIS_LOG", "0", true);
+        }
       }
       else if (name == "ENABLE_GMEM_LATENCY" || name == "enable_gmem_latency") {
         //This is then new INI option that sets the ENV HW_EM_DISABLE_LATENCY to appropriate value before 
