@@ -420,6 +420,12 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 							bar_idx);
 				else
 					res[i].end += iostart;
+				/*
+				 * Make sure the resource of subdevice is a
+				 * child of the pci bar resource in the 
+				 * resource tree.
+				 */
+				res[i].parent = &(core->pdev->resource[bar_idx]);
 			}
 			xocl_xdev_info(xdev_hdl, "resource %pR", &res[i]);
 		}
