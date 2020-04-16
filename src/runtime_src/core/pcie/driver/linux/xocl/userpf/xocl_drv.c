@@ -727,7 +727,7 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 
 	xocl_drvinst_set_offline(xdev->core.drm, true);
 	if (blob) {
-		ret = xocl_fdt_blob_input(xdev, blob, blob_len, -1);
+		ret = xocl_fdt_blob_input(xdev, blob, blob_len, -1, NULL);
 		if (ret) {
 			userpf_err(xdev, "parse blob failed %d", ret);
 			goto failed;
@@ -742,6 +742,8 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 	}
 	xocl_fini_sysfs(xdev);
 
+	xocl_p2p_fini(xdev, false);
+
 	xocl_subdev_offline_all(xdev);
 	xocl_subdev_destroy_all(xdev);
 	ret = xocl_subdev_create_all(xdev);
@@ -750,6 +752,20 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 		goto failed;
 	}
 	(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
+
+	ret = xocl_fdt_get_p2pbar(xdev, xdev->core.fdt_blob);
+	if (ret > 0) {
+		xdev->p2p_bar_idx = ret;
+		xdev->p2p_bar_len = pci_resource_len(xdev->core.pdev, ret);
+	} else {
+		xdev->p2p_bar_idx = -1;
+		xdev->p2p_bar_len = 0;
+	}
+	ret = xocl_p2p_init(xdev);
+	if (ret) {
+		userpf_err(xdev, "Unable to init p2p  %d", ret);
+		goto failed;
+	}
 
 	ret = xocl_init_sysfs(xdev);
 	if (ret) {
@@ -1061,6 +1077,10 @@ void xocl_p2p_fini(struct xocl_dev *xdev, bool recov_bar_sz)
 			(1 << XOCL_P2P_CHUNK_SHIFT));
 	}
 
+	if (xdev->p2p_bar_len)
+		pci_release_selected_regions(xdev->core.pdev,
+			1 << xdev->p2p_bar_idx);
+
 	//Reset Virtualization registers
 	(void) xocl_mb_read_p2p_addr(xdev);
 }
@@ -1088,6 +1108,8 @@ int xocl_p2p_init(struct xocl_dev *xdev)
 	if (xdev->p2p_mem_chunks == NULL)
 		return -ENOMEM;
 
+	pci_request_selected_regions(pdev, 1 << xdev->p2p_bar_idx,
+			XOCL_MODULE_NAME);
 	pa = pci_resource_start(pdev, xdev->p2p_bar_idx);
 	for (i = 0; i < xdev->p2p_mem_chunk_num; i++) {
 		xocl_p2p_mem_chunk_init(xdev, &xdev->p2p_mem_chunks[i],
@@ -1239,8 +1261,6 @@ static int identify_bar(struct xocl_dev *xdev)
 		if (bar_len >= XOCL_P2P_CHUNK_SIZE) {
 			xdev->p2p_bar_idx = i;
 			xdev->p2p_bar_len = bar_len;
-			pci_request_selected_regions(pdev, 1 << i,
-				XOCL_MODULE_NAME);
 		} else if (bar_len >= 32 * 1024 * 1024) {
 			xdev->core.bar_addr = ioremap_nocache(
 				pci_resource_start(pdev, i), bar_len);
@@ -1260,10 +1280,6 @@ static void unmap_bar(struct xocl_dev *xdev)
 		iounmap(xdev->core.bar_addr);
 		xdev->core.bar_addr = NULL;
 	}
-
-	if (xdev->p2p_bar_len)
-		pci_release_selected_regions(xdev->core.pdev,
-				1 << xdev->p2p_bar_idx);
 }
 
 void xocl_userpf_remove(struct pci_dev *pdev)

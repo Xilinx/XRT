@@ -545,7 +545,8 @@ int xocl_fdt_overlay(void *fdt, int target,
 	offset = fdt_parent_offset(fdto, node);
 	if (part_level > 0 && offset >= 0) {
 		val = fdt_get_name(fdto, offset, NULL);
-		if (!strncmp(val, NODE_ENDPOINTS, strlen(NODE_ENDPOINTS))) {
+		if (!strncmp(val, NODE_ENDPOINTS, strlen(NODE_ENDPOINTS)) &&
+		    !fdt_getprop(fdt, target, PROP_PARTITION_LEVEL, NULL)) {
 			u32 prop = cpu_to_be32(part_level);
 			ret = fdt_setprop(fdt, target, PROP_PARTITION_LEVEL, &prop,
 					sizeof(prop));
@@ -988,7 +989,8 @@ int xocl_fdt_add_pair(xdev_handle_t xdev_hdl, void *blob, char *name,
 	return ret;
 }
 
-int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz, int part_level)
+int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
+		int part_level, char *vbnv)
 {
 	struct xocl_dev_core	*core = XDEV(xdev_hdl);
 	struct xocl_subdev	*subdevs;
@@ -1034,6 +1036,18 @@ int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz, int par
 		xocl_xdev_err(xdev_hdl, "Overlay output blob failed %d", ret);
 		goto failed;
 	}
+
+	if (vbnv && strlen(vbnv) > 0) {
+		xocl_xdev_info(xdev_hdl, "Board VBNV: %s", vbnv);
+		ret = xocl_fdt_add_pair(xdev_hdl, output_blob, "vbnv", vbnv,
+			strlen(vbnv) + 1);
+		if (ret) {
+			xocl_xdev_err(xdev_hdl, "Adding VBNV pair failed, %d",
+				ret);
+			goto failed;
+		}
+	}
+
 
 	ret = xocl_fdt_parse_blob(xdev_hdl, output_blob, len, &subdevs);
 	if (ret < 0)
@@ -1087,6 +1101,32 @@ int xocl_fdt_get_userpf(xdev_handle_t xdev_hdl, void *blob)
 		return -EINVAL;
 
 	return ntohl(*pfnum);
+}
+
+int xocl_fdt_get_p2pbar(xdev_handle_t xdev_hdl, void *blob)
+{
+	int offset;
+	const u32 *p2p_bar;
+	const char *ipname;
+
+	if (!blob)
+		return -EINVAL;
+
+	for (offset = fdt_next_node(blob, -1, NULL);
+		offset >= 0;
+		offset = fdt_next_node(blob, offset, NULL)) {
+		ipname = fdt_get_name(blob, offset, NULL);
+		if (ipname && strncmp(ipname, NODE_P2P, strlen(NODE_P2P)) == 0)
+			break;
+	}
+	if (offset < 0)
+		return -ENODEV;
+
+	p2p_bar = fdt_getprop(blob, offset, PROP_BAR_IDX, NULL);
+	if (!p2p_bar)
+		return -EINVAL;
+
+	return ntohl(*p2p_bar);
 }
 
 int xocl_fdt_build_priv_data(xdev_handle_t xdev_hdl, struct xocl_subdev *subdev,

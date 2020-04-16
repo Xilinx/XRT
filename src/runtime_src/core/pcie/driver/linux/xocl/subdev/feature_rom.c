@@ -548,8 +548,9 @@ static struct xocl_rom_funcs rom_ops = {
 static int get_header_from_peer(struct feature_rom *rom)
 {
 	struct FeatureRomHeader *header;
-	struct resource *res;
+	struct resource res;
 	xdev_handle_t xdev = xocl_get_xdev(rom->pdev);
+	int ret;
 	
 	header = XOCL_GET_SUBDEV_PRIV(&rom->pdev->dev);
 	if (!header)
@@ -558,12 +559,13 @@ static int get_header_from_peer(struct feature_rom *rom)
 	memcpy(&rom->header, header, sizeof(*header));
 
 	xocl_xdev_info(xdev, "Searching CMC in dtb.");
-	res = xocl_subdev_get_ioresource(xdev, RESNAME_KDMA);
-	if (res) {
+	ret = xocl_subdev_get_resource(xdev, RESNAME_KDMA,
+			IORESOURCE_MEM, &res);
+	if (!ret) {
                 rom->header.FeatureBitMap |= CDMA;
 		memset(rom->header.CDMABaseAddress, 0,
 			sizeof(rom->header.CDMABaseAddress));
-		rom->header.CDMABaseAddress[0] = (uint32_t)res->start;
+		rom->header.CDMABaseAddress[0] = (uint32_t)res.start;
 
 		xocl_xdev_info(xdev, "CDMA is on, CU offset: 0x%x",
 				rom->header.CDMABaseAddress[0]);
@@ -576,9 +578,9 @@ static int init_rom_by_dtb(struct feature_rom *rom)
 {
 	xdev_handle_t xdev = xocl_get_xdev(rom->pdev);
 	struct FeatureRomHeader *header = &rom->header;
-	struct resource *res;
+	struct resource res;
 	const char *vbnv;
-	int i;
+	int i, ret;
 
 	header->FeatureBitMap = UNIFIED_PLATFORM;
 	*(u32 *)header->EntryPointString = MAGIC_NUM;
@@ -601,14 +603,16 @@ static int init_rom_by_dtb(struct feature_rom *rom)
 	}
 
 	xocl_xdev_info(xdev, "Searching ERT and CMC in dtb.");
-	res = xocl_subdev_get_ioresource(xdev, NODE_CMC_FW_MEM);
-	if (res) {
+	ret = xocl_subdev_get_resource(xdev, NODE_CMC_FW_MEM,
+			IORESOURCE_MEM, &res);
+	if (!ret) {
 		xocl_xdev_info(xdev, "CMC is on");
 		header->FeatureBitMap |= BOARD_MGMT_ENBLD;
 	}
 
-	res = xocl_subdev_get_ioresource(xdev, NODE_ERT_FW_MEM);
-	if (res) {
+	ret = xocl_subdev_get_resource(xdev, NODE_ERT_FW_MEM,
+			IORESOURCE_MEM, &res);
+	if (!ret) {
 		xocl_xdev_info(xdev, "ERT is on");
 		header->FeatureBitMap |= MB_SCHEDULER;
 	}

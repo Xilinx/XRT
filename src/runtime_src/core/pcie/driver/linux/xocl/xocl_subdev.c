@@ -631,32 +631,37 @@ int xocl_subdev_create_by_level(xdev_handle_t xdev_hdl, int level)
 	return ret;
 }
 
-struct resource *xocl_subdev_get_ioresource(xdev_handle_t xdev_hdl,
-		char *res_name)
+int xocl_subdev_get_resource(xdev_handle_t xdev_hdl,
+		char *res_name, u32 type, struct resource *res)
 {
 	struct xocl_subdev_info *subdev_info = NULL;
-	int i, j, subdev_num;
+	int i, j, subdev_num, ret = -EINVAL;
 
 	xocl_lock_xdev(xdev_hdl);
 	subdev_info = xocl_subdev_get_info(xdev_hdl, &subdev_num);
 	if (!subdev_info)
-		return NULL;
+		return ret;
 
 	for (i = 0; i < subdev_num; i++) {
 		for (j = 0; j < subdev_info[i].num_res; j++) {
-			if ((subdev_info[i].res[j].flags & IORESOURCE_MEM) &&
+			if ((subdev_info[i].res[j].flags & type) &&
 			    subdev_info[i].res[j].name &&
 			    !strncmp(subdev_info[i].res[j].name, res_name,
 			    strlen(res_name))) {
-				xocl_unlock_xdev(xdev_hdl);
-				return &subdev_info[i].res[j];
+				memcpy(res, &subdev_info[i].res[j],
+						sizeof(*res));
+				ret = 0;
+				goto end;
 			}
 		}
 	}
 
+end:
 	xocl_unlock_xdev(xdev_hdl);
+	if (subdev_info)
+		vfree(subdev_info);
 
-	return NULL;
+	return ret;
 }
 
 int xocl_subdev_create_all(xdev_handle_t xdev_hdl)
@@ -756,31 +761,6 @@ void xocl_subdev_destroy_by_level(xdev_handle_t xdev_hdl, int level)
 				__xocl_subdev_destroy(xdev_hdl,
 					&core->subdevs[i][j]);
 	xocl_unlock_xdev(xdev_hdl);
-}
-
-static void xocl_subdev_destroy_dup(xdev_handle_t xdev_hdl)
-{
-	int i, subdev_num = 0;
-	struct xocl_subdev_info *subdev_info = NULL;
-	struct xocl_subdev *subdev;
-
-	xocl_lock_xdev(xdev_hdl);
-	subdev_info = xocl_subdev_get_info(xdev_hdl, &subdev_num);
-	for (i = 0; i < subdev_num; i++) {
-		subdev = xocl_subdev_info2dev(xdev_hdl, &subdev_info[i]);
-		if (!subdev || subdev->state == XOCL_SUBDEV_STATE_UNINIT)
-			continue;
-
-		if (subdev->info.level < subdev_info[i].level) {
-			xocl_xdev_info(xdev_hdl, "destroy duplicate subdev %s",
-					subdev->info.name);
-			__xocl_subdev_destroy(xdev_hdl, subdev);
-		}
-	}
-	xocl_unlock_xdev(xdev_hdl);
-
-	if (subdev_info)
-		vfree(subdev_info);
 }
 
 static int __xocl_subdev_offline(xdev_handle_t xdev_hdl,
@@ -1461,7 +1441,6 @@ int xocl_subdev_create_prp(xdev_handle_t xdev)
 {
 	int		ret;
 
-	xocl_subdev_destroy_dup(xdev);
 	ret = xocl_subdev_create_by_level(xdev, XOCL_SUBDEV_LEVEL_PRP);
 	if (ret) {
 		xocl_xdev_err(xdev, "failed to create subdevs %d", ret);
