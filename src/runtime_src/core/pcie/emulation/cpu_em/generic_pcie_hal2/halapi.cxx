@@ -607,3 +607,11 @@ xclGetDebugIpLayout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size
     *size_ret = 0;
   return;
 }
+
+int xclGetSubdevPath(xclDeviceHandle handle,  const char* subdev,
+                        uint32_t idx, char* path, size_t size)
+{
+  return 0;
+}
+
+
