@@ -40,8 +40,14 @@ struct ishim
   virtual xclBufferHandle
   alloc_bo(size_t size, unsigned int flags) = 0;
 
+  virtual xclBufferHandle
+  alloc_bo(void* userptr, size_t size, unsigned int flags) = 0;
+
   virtual void
   free_bo(xclBufferHandle boh) = 0;
+
+  virtual void
+  sync_bo(xclBufferHandle bo, xclBOSyncDirection dir, size_t size, size_t offset) = 0;
 
   virtual void*
   map_bo(xclBufferHandle boh, bool write) = 0;
@@ -102,10 +108,24 @@ struct shim : public DeviceType
     throw std::bad_alloc();
   }
 
+  virtual xclBufferHandle
+  alloc_bo(void* userptr, size_t size, unsigned int flags)
+  {
+    if (auto bo = xclAllocUserPtrBO(DeviceType::get_device_handle(), userptr, size, flags))
+      return bo;
+    throw std::bad_alloc();
+  }
+
   virtual void
   free_bo(xclBufferHandle bo)
   {
     xclFreeBO(DeviceType::get_device_handle(), bo);
+  }
+
+  virtual void
+  sync_bo(xclBufferHandle bo, xclBOSyncDirection dir, size_t size, size_t offset)
+  {
+    xclSyncBO(DeviceType::get_device_handle(), bo, dir, size, offset);
   }
 
   virtual void*
