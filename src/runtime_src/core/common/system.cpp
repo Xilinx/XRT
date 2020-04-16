@@ -15,6 +15,7 @@
  */
 #define XRT_CORE_COMMON_SOURCE
 #include "core/common/system.h"
+#include "gen/version.h"
 
 namespace xrt_core {
 
@@ -41,8 +42,18 @@ instance()
 }
 
 void
+get_xrt_build_info(boost::property_tree::ptree& pt)
+{
+  pt.put("version", xrt_build_version);
+  pt.put("hash",    xrt_build_version_hash);
+  pt.put("date",    xrt_build_version_date);
+  pt.put("branch",  xrt_build_version_branch);
+}
+
+void
 get_xrt_info(boost::property_tree::ptree &pt)
 {
+  get_xrt_build_info(pt);
   instance().get_xrt_info(pt);
 }
 
