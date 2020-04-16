@@ -1,56 +1,41 @@
+.. _system_requirements.rst:
+
 System Requirements
 -------------------
 
-Host Platform
-~~~~~~~~~~~~~
+Host Platform for PCIe Accelerator Cards
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 1. x86_64
 2. AARCH64
 3. PPC64LE
 
-Xilinx Accelerator Card
-~~~~~~~~~~~~~~~~~~~~~~~
+Supported Xilinx® Accelerator Cards are listed in :ref:`platforms.rst`.
 
-1. VCU1525 (xilinx_vcu1525_dynamic_5_1)
-2. KCU1500 (xilinx_kcu1500_dynamic_5_0)
-3. AWS F1 (xilinx_aws-vu9p-f1_dynamic_5_0)
 
-Software Platform
-~~~~~~~~~~~~~~~~~
+Software Platform for PCIe Accelerator Cards
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-XRT and OpenCL runtime require Linux kernel 3.10 and GCC with C++11 features. The stack has been tested on RHEL/CentOS 7.4 and Ubuntu 16.04.4 LTS. CentOS/RHEL 7.4 requires additional steps to get C++11 tool set. Detailed dependencies and instructions are below.
+XRT and OpenCL runtime require Linux kernel 3.10+ and GCC with C++14 features. 
 
-CentOS/RHEL 7.4
-...............
+The stack has been tested on the following OS distributions
 
-Please install *EPEL 7* by following instructions at https://fedoraproject.org/wiki/EPEL
+1. RHEL/CentOS 7.4 
+2. RHEL/CentOS 7.5 
+3. RHEL/CentOS 7.6 
+4. Ubuntu 16.04.4 LTS
+5. Ubuntu 18.04.1 LTS 
 
-Then install required packages using the provided script ``src/runtime_src/tools/scripts/xrtdeps.sh``
+CentOS/RHEL 7.4, 7.5, 7.6 require additional steps to install C++14 tool set and a few dependent libraries. Please use the provided script ``src/runtime_src/tools/scripts/xrtdeps.sh`` to install the dependencies for both CentOS/RHEL and Ubuntu distributions. Additional information for RHEL/CentOS is below.
 
-Installing C++11 build tools on CentOS 7.X
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+To deploy XRT, simply install
+the proper RPM or DEB package obtained from Xilinx.
 
-::
+To build a custom
+version of XRT, please follow the instructions in :ref:`build.rst`.
 
- sudo yum install centos-release-scl (CentOS)
- sudo yum install devtoolset-6
 
-Installing C++11 build tools on RHEL 7.X
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+MPSoC Based Embedded Platforms
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-::
-
- sudo yum-config-manager --enable rhel-server-rhscl-7-rpms
- sudo yum install devtoolset-6
-
-Switching to C++11 build environment
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-::
-
- scl enable devtoolset-6 bash
-
-Ubuntu 16.04.4 LTS
-..................
-
-Install required packages using the provided script ``src/runtime_src/tools/scripts/xrtdeps.sh``
+For building embedded platforms please refer to :ref:`yocto.rst`.

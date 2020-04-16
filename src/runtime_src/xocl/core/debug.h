@@ -17,7 +17,8 @@
 #ifndef xocl_util_debug_h_
 #define xocl_util_debug_h_
 
-#include "xrt/util/debug.h"
+#include "xocl/config.h"
+#include "core/common/debug.h"
 
 #include <CL/cl.h>
 #include <vector>
@@ -26,6 +27,7 @@
 namespace xocl {
 
 #ifdef VERBOSE
+XRT_XOCL_EXPORT
 void
 logf(const char* format,...);
 #endif
@@ -33,15 +35,15 @@ logf(const char* format,...);
 } // xocl
 
 #ifdef XOCL_VERBOSE
-# define XOCL_DEBUG(...) xrt::debug(__VA_ARGS__)
-# define XOCL_DEBUGF(format,...) xrt::debugf(format, ##__VA_ARGS__)
-# define XOCL_PRINT(...) xrt::debug(__VA_ARGS__)
-# define XOCL_PRINTF(format,...) xrt::debugf(format, ##__VA_ARGS__)
+# define XOCL_DEBUG(...) xrt_core::debug(__VA_ARGS__)
+# define XOCL_DEBUGF(format,...) xrt_core::debugf(format, ##__VA_ARGS__)
+# define XOCL_PRINT(...) xrt_core::debug(__VA_ARGS__)
+# define XOCL_PRINTF(format,...) xrt_core::debugf(format, ##__VA_ARGS__)
 #else
 # define XOCL_DEBUG(...)
 # define XOCL_DEBUGF(...)
-# define XOCL_PRINT(...) xrt::debug(__VA_ARGS__)
-# define XOCL_PRINTF(format,...) xrt::debugf(format, ##__VA_ARGS__)
+# define XOCL_PRINT(...) xrt_core::debug(__VA_ARGS__)
+# define XOCL_PRINTF(format,...) xrt_core::debugf(format, ##__VA_ARGS__)
 #endif
 
 #ifdef VERBOSE
@@ -52,16 +54,16 @@ logf(const char* format,...);
 # define XOCL_LOG(...)
 #endif
 
-namespace xocl { 
+namespace xocl {
 
 class event;
 
 namespace debug {
 
-void 
+void
 time_log(event* ev, cl_int status, cl_ulong ns);
 
-void 
+void
 time_log(event* ev, cl_int status);
 
 void
@@ -74,5 +76,3 @@ add_command_type(event* event, cl_uint ct);
 } // xocl
 
 #endif
-
-

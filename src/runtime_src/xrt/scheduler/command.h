@@ -17,12 +17,14 @@
 #ifndef xrt_command_h_
 #define xrt_command_h_
 
-#include "driver/include/ert.h"
+#include "xrt/config.h"
+#include "ert.h"
 #include "xrt/util/regmap.h"
 #include "xrt/device/device.h"
 
 #include <cstddef>
 #include <array>
+#include <memory>
 
 namespace xrt {
 
@@ -32,7 +34,7 @@ namespace xrt {
  * A command consist of a 4K packet.  Each word (u32) of the packet
  * can be accessed through the command API.
  */
-class command
+class command : public std::enable_shared_from_this<command>
 {
   static constexpr auto regmap_size = 4096/sizeof(uint32_t);
 public:
@@ -45,6 +47,7 @@ public:
    *
    * @device:  device on which the exec buffer is allocated
    */
+  XRT_EXPORT
   command(xrt::device* device, ert_cmd_opcode opcode);
 
   /**
@@ -55,7 +58,14 @@ public:
   /**
    * Dtor.  Recycles the underlying exec buffer
    */
+  XRT_EXPORT
   ~command();
+
+  std::shared_ptr<command>
+  get_ptr()
+  {
+    return shared_from_this();
+  }
 
   /**
    * Unique ID for this command.
@@ -170,6 +180,13 @@ public:
   }
 
   /**
+   * Execute this command
+   */
+  XRT_EXPORT
+  void
+  execute();
+
+  /**
    * Wait for command completion
    */
   void
@@ -178,6 +195,15 @@ public:
     std::unique_lock<std::mutex> lk(m_mutex);
     while (!m_done)
       m_cmd_done.wait(lk);
+  }
+
+  /**
+   * Check if command has completed
+   */
+  bool
+  completed() const
+  {
+    return m_done;
   }
 
   /**
@@ -191,6 +217,12 @@ public:
    */
   virtual void
   done() const {}
+
+  /**
+   * Client call back for command error
+   */
+  virtual void
+  error(const std::exception&) const {}
 
 public:
 
@@ -240,7 +272,7 @@ command_cast(const std::shared_ptr<command>& cmd)
   return cmd->get_ert_cmd<ERT_COMMAND_TYPE>();
 }
 
-  /**
+/**
  * Clear free list of exec buffer objects
  *
  * Command exec buffer objects are recycled, the freelist
@@ -249,6 +281,14 @@ command_cast(const std::shared_ptr<command>& cmd)
 void
 purge_command_freelist();
 
-} // xrt
+/**
+ * Clear free list of exec buffer objects for device
+ *
+ * Command exec buffer objects are recycled, the freelist
+ * must be cleared when device is closed.
+ */
+void
+purge_device_command_freelist(xrt::device* device);
 
+} // xrt
 #endif

@@ -57,7 +57,8 @@ if [ $etags == 1 ]; then
     grep \"file\": $project | awk '{print $2}' | sed 's/\"//g' | ctags --totals -e -L - -f user.TAGS
 fi
 
-XOCL_FILES=$(git ls-files --full-name ../../src/runtime_src/driver/xclng/drm/xocl)
+XOCL_FILES=$(git ls-files --full-name ../../src/runtime_src/core/pcie/driver/linux/xocl)
+ZOCL_FILES=$(git ls-files --full-name ../../src/runtime_src/core/edge/drm/zocl)
 BASE_DIR=$(readlink -e ../../)
 
 FILES=()
@@ -67,7 +68,12 @@ do
     FILES=("${FILES[@]}$BASE_DIR/$item\n")
 done
 
-echo "Generating Emacs TAGS file for XRT Linux driver code..."
-echo -e ${FILES[@]} | ctags --totals -e -L - -f xocl.TAGS
+for item in $ZOCL_FILES;
+do
+    FILES=("${FILES[@]}$BASE_DIR/$item\n")
+done
 
-ctags -e --etags-include="$PWD/user.TAGS" --etags-include="$PWD/xocl.TAGS" -f $out
+echo "Generating Emacs TAGS file for XRT Linux driver code..."
+echo -e ${FILES[@]} | ctags --totals -e -L - -f kernel.TAGS
+
+ctags -e --etags-include="$PWD/user.TAGS" --etags-include="$PWD/kernel.TAGS" -f $out

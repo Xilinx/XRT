@@ -15,16 +15,16 @@
  */
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#include <CL/opencl.h>
+#include "xocl/config.h"
 #include "xocl/core/pipe.h"
 #include "xocl/api/detail/pipe.h"
 #include "xocl/core/error.h"
+#include <CL/opencl.h>
 
 namespace xocl {
 
 static void
-validOrError(cl_command_queue command_queue, 
+validOrError(cl_command_queue command_queue,
              cl_pipe          pipe)
 {
   if (!config::api_checks())
@@ -42,7 +42,7 @@ clReadPipeBuffers(cl_command_queue command_queue,
 {
   validOrError(command_queue,pipe);
   xocl::assign(errcode_ret,CL_SUCCESS);
-  return xocl::xocl(pipe)->recv(buf,count);
+  return static_cast<cl_uint>(xocl::xocl(pipe)->recv(buf,count));
 }
 
 } // xocl
@@ -67,5 +67,3 @@ clReadPipeBuffers(cl_command_queue command_queue,
   }
   return 0;
 }
-
-

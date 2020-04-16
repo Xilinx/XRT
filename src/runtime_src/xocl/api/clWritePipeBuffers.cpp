@@ -16,15 +16,20 @@
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
 
-#include <CL/opencl.h>
+#include "xocl/config.h"
 #include "xocl/core/pipe.h"
 #include "xocl/api/detail/pipe.h"
 #include "xocl/core/error.h"
 
+#include <CL/opencl.h>
+#ifdef _WIN32
+# pragma warning ( disable : 4267 )
+#endif
+
 namespace xocl {
 
 static void
-validOrError(cl_command_queue command_queue, 
+validOrError(cl_command_queue command_queue,
              cl_pipe          pipe)
 {
   if (!config::api_checks())
@@ -68,6 +73,3 @@ clWritePipeBuffers(cl_command_queue command_queue,
   }
   return 0;
 }
-
-
-

@@ -1,0 +1,113 @@
+{
+    "version": "1.0.0",
+    "device": {
+        "info": {
+            "name": "xilinx_u200_xdma_201830_2",
+            "clocks": {
+                "0": {
+                    "name": ["board","info","clock0"],
+                    "frequency": 300
+                },
+                "1": {
+                    "name": ["board","info","clock1"],
+                    "frequency": 500
+                }
+            }
+        },
+        "runtime": {
+            "download_time": 7500000
+        },
+        "physical": {
+            "thermal": {
+                "calibration": {
+                    "a": 0.0,
+                    "b": 0.0003207230441983557,
+                    "c": 0.03031110828771181
+                },
+                "temp_sources": {
+                    "0": {
+                        "name": ["board","physical","thermal","fpga_temp"],
+                        "source_name": "fpga",
+                        "limit": 105
+                    }
+                }
+            },
+            "power": {
+                "power_target": {
+                    "min": 50,
+                    "max": 200
+                },
+                "power_sources": {
+                    "0": {
+                        "name_current": ["board","physical","electrical","12v_pex","current"],
+                        "name_voltage": ["board","physical","electrical","12v_pex","voltage"],
+                        "source_name": "12v pex",
+                        "limit": 65,
+                        "powertest": true,
+                        "calibration": 65
+                    },
+                    "1": {
+                        "name_current": ["board","physical","electrical","12v_aux","current"],
+                        "name_voltage": ["board","physical","electrical","12v_aux","voltage"],
+                        "source_name": "12v aux",
+                        "limit": 180,
+                        "powertest": true,
+                        "calibration": 180
+                    },
+                    "2": {
+                        "name_current": ["board","physical","electrical","vccint","current"],
+                        "name_voltage": ["board","physical","electrical","vccint","voltage"],
+                        "source_name": "vccint",
+                        "powertest": false
+                    },
+                    "3": {
+                        "name": ["board","physical","power"],
+                        "source_name": "fpga",
+                        "powertest": false
+                    }
+                }
+            }
+        },
+        "memory": {
+            "DDR":
+            {
+                "size": 16384,
+                "quantity": 4,
+                "dma_bw": {
+                    "write": {
+                        "high": 12500,
+                        "low":  10000
+                    },
+                    "read": {
+                        "high": 12500,
+                        "low":  10000
+                    }
+                },
+                "cu_bw": {
+                    "alt_wr_rd": {
+                        "write": {
+                            "high": 9500,
+                            "low":  7600
+                        },
+                        "read": {
+                            "high": 9500,
+                            "low":  7600
+                        }
+                    },
+                    "only_wr": {
+                        "write": {
+                            "high": 20000,
+                            "low":  14200
+                        }
+                    },
+                    "only_rd": {
+                        "read": {
+                            "high": 20000,
+                            "low":  14200
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

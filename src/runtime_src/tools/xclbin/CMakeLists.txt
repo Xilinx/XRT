@@ -1,71 +1,84 @@
-include_directories(
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../driver/include
-  )
+# -----------------------------------------------------------------------------
+# Required libraries
+
+#TODO: Remove the window dependency on these settings.  
+if(WIN32)
+  set(Boost_USE_STATIC_LIBS ON)      # Only find static libraries
+  set(Boost_USE_MULTITHREADED ON)    # Multi-threaded libraries
+  set(Boost_USE_STATIC_RUNTIME ON)   # This is how the boost libraries were build
+endif()
 
 find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
+include_directories(${Boost_INCLUDE_DIRS})
+
+# Signing xclbin images are currently only support on Linux
+if(NOT WIN32)
+  find_package(OpenSSL REQUIRED)      
+endif()
 
 # -----------------------------------------------------------------------------
-
+# Include the generated header files (e.g., version.h)
 include_directories(${CMAKE_BINARY_DIR}/gen)
 
-# -----------------------------------------------------------------------------
 
-file(GLOB XCLBINCAT_FILES
-  "xclbincat.cxx"
-  "xclbincat1.cxx"
-  "xclbindata.cxx"
-  "xclbinutils.cxx"
+## ==-- x c l b i n c a t --====================================================
+
+if(NOT WIN32)    # xclbincat is not supported on windows
+  file(GLOB XCLBINCAT_FILES
+    "xclbincat.cxx"
+    "xclbincat1.cxx"
+    "xclbindata.cxx"
+    "xclbinutils.cxx"
+    )
+  
+  set(XCLBINCAT_SRC ${XCLBINCAT_FILES})
+  
+  add_executable(xclbincat ${XCLBINCAT_SRC})
+  target_link_libraries(xclbincat ${Boost_LIBRARIES})
+  
+  install (TARGETS xclbincat RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR})
+endif()
+
+# ==-- x c l b i n s p l i t --================================================
+
+if(NOT WIN32)    # xclbinsplit is not supported on windows
+  file(GLOB XCLBINSPLIT_FILES
+    "xclbinsplit.cxx"
+    "xclbinsplit1.cxx"
+    "xclbindata.cxx"
+    "xclbinutils.cxx"
   )
+  
+  set(XCLBINSPLIT_SRC ${XCLBINSPLIT_FILES})
+  
+  add_executable(xclbinsplit ${XCLBINSPLIT_SRC})
+  target_link_libraries(xclbinsplit ${Boost_LIBRARIES})
+  install (TARGETS xclbinsplit RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR})
+endif()
 
-set(XCLBINCAT_SRC ${XCLBINCAT_FILES})
 
-add_executable(xclbincat ${XCLBINCAT_SRC})
-target_link_libraries(xclbincat -static ${Boost_LIBRARIES})
+# ==-- x c l b i n u t i l --==================================================
 
-# -----------------------------------------------------------------------------
+set(XCLBINUTIL_NAME "xclbinutil")
 
-target_link_libraries(xclbincat -static ${Boost_LIBRARIES})
+set(XRT_LOADER_SCRIPTS ${XCLBINUTIL_NAME})
 
-# -----------------------------------------------------------------------------
-
-file(GLOB XCLBINSPLIT_FILES
-  "xclbinsplit.cxx"
-  "xclbinsplit1.cxx"
-  "xclbindata.cxx"
-  "xclbinutils.cxx"
-)
-
-set(XCLBINSPLIT_SRC ${XCLBINSPLIT_FILES})
-
-add_executable(xclbinsplit ${XCLBINSPLIT_SRC})
-target_link_libraries(xclbinsplit -static ${Boost_LIBRARIES})
-
-# -----------------------------------------------------------------------------
+if(WIN32)
+  # Add the command shell wrapper in addition to the bash shell wrapper. 
+  # Note: The bash shell wrapper is smart and will call this wrapper
+  list(APPEND XRT_LOADER_SCRIPTS ${XCLBINUTIL_NAME}.bat)
+endif()
 
 file(GLOB XCLBINUTIL_FILES
+  "DTC*.cxx"
+  "FDT*.cxx"
+  "FormattedOutput.cxx"
   "ParameterSectionData.cxx"
-  "XclBinUtilMain.cxx"
-  "XclBin.cxx"
-  "SectionHeader.cxx"
+  "Section*.cxx"
+  "XclBinClass.cxx"
+  "XclBinSignature.cxx"
   "XclBinUtilities.cxx"
-  "Section.cxx"
-  "SectionBitstream.cxx"
-  "SectionClearBitstream.cxx"
-  "SectionEmbeddedMetadata.cxx"
-  "SectionManagementFW.cxx"
-  "SectionDebugData.cxx"
-  "SectionSchedulerFW.cxx"
-  "SectionMemTopology.cxx"
-  "SectionConnectivity.cxx"
-  "SectionIPLayout.cxx"
-  "SectionDebugIPLayout.cxx"
-  "SectionDesignCheckPoint.cxx"
-  "SectionClockFrequencyTopology.cxx"
-  "SectionMCS.cxx"
-  "SectionBMC.cxx"
-  "SectionBuildMetadata.cxx"
-  "SectionKeyValueMetadata.cxx"
-  "SectionUserMetadata.cxx"
+  "XclBinUtilMain.cxx"
 )
 set(XCLBINUTIL_FILES_SRCS ${XCLBINUTIL_FILES})
 
@@ -74,18 +87,40 @@ file(GLOB XCLBINUTIL_MAIN_FILE
 )
 set(XCLBINUTIL_SRCS ${XCLBINUTIL_MAIN_FILE} ${XCLBINUTIL_FILES_SRCS})
 
-add_executable(xclbinutil ${XCLBINUTIL_SRCS})
-target_link_libraries(xclbinutil -static ${Boost_LIBRARIES} )
+add_executable(${XCLBINUTIL_NAME} ${XCLBINUTIL_SRCS})
 
-# -----------------------------------------------------------------------------
+if(WIN32)
+  # Use the static version of the run-time library
+  # Note: Needed to link with boost
+  if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    target_compile_options(${XCLBINUTIL_NAME} PRIVATE /MTd)
+  else()
+    target_compile_options(${XCLBINUTIL_NAME} PRIVATE /MT)
+  endif()
+endif()
 
-install (TARGETS xclbincat xclbinsplit xclbinutil RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
+# Signing xclbin images currently is not support on windows
+if(NOT WIN32)
+  target_link_libraries(${XCLBINUTIL_NAME} crypto)
+endif()
 
-# -----------------------------------------------------------------------------
+target_link_libraries(${XCLBINUTIL_NAME} ${Boost_LIBRARIES} )
+
+install (TARGETS ${XCLBINUTIL_NAME} RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
+install (PROGRAMS ${XRT_LOADER_SCRIPTS} DESTINATION ${XRT_INSTALL_BIN_DIR})
+
+# ==-- x c l b i n t e s t --==================================================
+
+if (WIN32)
+  set(GTEST_ROOT "C:/Xilinx/XRT/ext")
+endif()
 
 find_package(GTest)
 
 if (GTEST_FOUND)
+  set(UNIT_TEST_NAME "xclbintest")
+
+  # Copy the unit test to the build directory
   message (STATUS "Copying test data")
   file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/unittests/test_data/" DESTINATION "unittests/test_data")
 
@@ -98,10 +133,52 @@ if (GTEST_FOUND)
   )
 
   set(XCLBINTEST_SRCS ${XCLBINTEST_FILES} ${XCLBINUTIL_FILES_SRCS})
-  add_executable(xclbintest ${XCLBINTEST_SRCS})
+  add_executable(${UNIT_TEST_NAME} ${XCLBINTEST_SRCS})
 
-  message (STATUS "GTest libraries: '${Boost_LIBRARIES} ${GTEST_BOTH_LIBRARIES} pthread'")
-  target_link_libraries(xclbintest ${Boost_LIBRARIES} ${GTEST_BOTH_LIBRARIES} pthread )
+  if(WIN32) 
+    target_link_libraries(${UNIT_TEST_NAME} PRIVATE Boost::filesystem Boost::program_options Boost::system )
+    target_link_libraries(${UNIT_TEST_NAME} PRIVATE ${GTEST_BOTH_LIBRARIES})
+
+    # Use the static version of the run-time library 
+    # Note: Needed to link with boost
+    if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+      target_compile_options(${UNIT_TEST_NAME} PRIVATE /MTd)
+    else()
+      target_compile_options(${UNIT_TEST_NAME} PRIVATE /MT)
+    endif()
+  else()
+    target_link_libraries(xclbintest ${Boost_LIBRARIES} ${GTEST_BOTH_LIBRARIES} pthread crypto)
+  endif()
+
+  message(STATUS "Configuring CMake to run unit test after building")
+  add_test(NAME ${UNIT_TEST_NAME} 
+           COMMAND ${UNIT_TEST_NAME}
+           WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+  # Execute unit tests after the xclbintest is created.
+  # Note: This command works GREAT if the tests pass.  If they fail xclbintest is deleted :(
+  if (0)
+    add_custom_command(
+         TARGET ${UNIT_TEST_NAME}
+         COMMENT "Run xclbinutil unit-tests"
+         POST_BUILD 
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+         COMMAND ${CMAKE_CTEST_COMMAND} -C ${CMAKE_BUILD_TYPE} -R ${UNIT_TEST_NAME} --output-on-failures
+      )
+  endif()
+
+  # Execute unit tests after the xclbintest is created.
+  # Note: This command works GREAT if the tests pass.  If they fail xclbintest is deleted, 
+  #       hence this code is commented out.
+  #  add_custom_command(
+  #     TARGET ${UNIT_TEST_XCLBINUTIL}
+  #     COMMENT "Run xclbinutil unit-tests"
+  #     POST_BUILD
+  #     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+  #     COMMAND ${CMAKE_CTEST_COMMAND} -C ${CMAKE_BUILD_TYPE} -R ${UNIT_TEST_XCLBINUTIL} --output-on-failures
+  #  )
+
 else()
   message (STATUS "GTest was not found, skipping generation of test executables")
 endif()
+# -----------------------------------------------------------------------------

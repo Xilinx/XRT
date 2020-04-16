@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -30,6 +30,8 @@
 #include <vector>
  
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string.hpp>
 #include <boost/uuid/uuid.hpp>          // for uuid
 #include <boost/uuid/uuid_generators.hpp> // generators
 #include <boost/uuid/uuid_io.hpp>       // for to_string
@@ -449,6 +451,16 @@ namespace xclbincat1 {
       case BUILD_METADATA: return "BUILD_METADATA";
       case KEYVALUE_METADATA: return "KEYVALUE_METADATA";
       case USER_METADATA: return "USER_METADATA";
+      case DNA_CERTIFICATE: return "DNA_CERTIFICATE";
+      case PDI: return "PDI";
+      case BITSTREAM_PARTIAL_PDI: return "BITSTREAM_PARTIAL_PDI";
+      case PARTITION_METADATA: return "PARTITION_METADATA";
+      case EMULATION_DATA: return "EMULATION_DATA";
+      case SYSTEM_METADATA: return "SYSTEM_METADATA";
+      case SOFT_KERNEL: return "SOFT_KERNEL";
+      case ASK_FLASH: return "FLASH";
+      case AIE_METADATA: return "AIE_METADATA";
+
         break;
     }
 
@@ -558,11 +570,14 @@ namespace xclbincat1 {
   {
     const char* magic = "xclbin2\0";
     memcpy( data.getHead().m_magic, magic, sizeof(data.getHead().m_magic) );
-    memset( data.getHead().m_cipher, 0xFF, sizeof(data.getHead().m_cipher) );
+    data.getHead().m_signature_length = -1;
+    memset( data.getHead().reserved, 0xFF, sizeof(data.getHead().reserved) );
     memset( data.getHead().m_keyBlock, 0xFF, sizeof(data.getHead().m_keyBlock) );
     data.getHead().m_uniqueId = time( nullptr );
     data.getHead().m_header.m_timeStamp = time( nullptr );
-    data.getHead().m_header.m_version = 2017;
+    data.getHead().m_header.m_versionMajor = 0;
+    data.getHead().m_header.m_versionMinor = 0;
+    data.getHead().m_header.m_versionPatch = 2017;
     populateXclbinUUID(data);
   }
 
@@ -672,10 +687,10 @@ namespace xclbincat1 {
       ss.str("");
       ss.clear();
       XclBinUtil::hex2data( ss, (const unsigned char*)value.c_str(), value.size() ); 
-      if ( strcmp( key.c_str(), "cipher" ) == 0 ) {
-        memset( _data.getHead().m_cipher, 0, sizeof(_data.getHead().m_cipher) );
-        ss >> std::hex >> _data.getHead().m_cipher;
-      } else if ( strcmp( key.c_str(), "keyBlock" ) == 0 ) {
+//      if ( strcmp( key.c_str(), "cipher" ) == 0 ) {
+//        memset( _data.getHead().m_cipher, 0, sizeof(_data.getHead().m_cipher) );
+//        ss >> std::hex >> _data.getHead().m_cipher;
+      if ( strcmp( key.c_str(), "keyBlock" ) == 0 ) {
         memset( _data.getHead().m_keyBlock, 0, sizeof(_data.getHead().m_keyBlock) );
         ss >> std::hex >> _data.getHead().m_keyBlock;
       } else if ( strcmp( key.c_str(), "uniqueId" ) == 0 ) {
@@ -685,7 +700,16 @@ namespace xclbincat1 {
       } else if ( strcmp( key.c_str(), "featureRomTimestamp" ) == 0 ) {
         populateFeatureRomTimestamp( value.c_str(), _data );
       } else if ( strcmp( key.c_str(), "version" ) == 0 ) {
-        ss >> std::hex >> _data.getHead().m_header.m_version;
+        std::vector<std::string> tokens;
+        boost::split(tokens, value, boost::is_any_of("."));
+        if ( tokens.size() != 3 ) {
+          std::ostringstream errMsgBuf;
+          errMsgBuf << "ERROR: The version value (" << value << "') is not in the form <major>.<minor>.<patch>.  For example: 2.1.0\n";
+          throw std::runtime_error(errMsgBuf.str());
+        }
+        _data.getHead().m_header.m_versionMajor = (uint8_t) std::stoi(tokens[0]);
+        _data.getHead().m_header.m_versionMinor = (uint8_t) std::stoi(tokens[1]);
+        _data.getHead().m_header.m_versionPatch = (uint16_t) std::stoi(tokens[2]);
       } else if ( strcmp( key.c_str(), "mode" ) == 0 ) {
         if ( ! populateMode( value.c_str(), _data ) ) {
           std::ostringstream errMsgBuf;
@@ -702,7 +726,8 @@ namespace xclbincat1 {
         ss >> std::hex >> _data.getHead().m_header.m_next_axlf;
       } else if ( strcmp( key.c_str(), "debugBin" ) == 0 ) {
         ss >> std::hex >> _data.getHead().m_header.m_debug_bin;
-      } else if ( strcmp( key.c_str(), "dsaUUID" ) == 0 ) {
+      } else if ( (strcmp( key.c_str(), "xsaUUID" ) == 0) ||
+                  (strcmp( key.c_str(), "dsaUUID" ) == 0)) {
         populateDSAUUID(value, _data);
       } else {
         std::cout << "WARNING: Unknown key '" << key.c_str() << "' will be ignored from key-value pair switch (-k).\n";

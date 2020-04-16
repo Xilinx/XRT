@@ -1,0 +1,8 @@
+modules:
+	cd zocl; make $@
+
+modules_install:
+	cd zocl; make $@
+
+clean:
+	cd zocl; make $@
