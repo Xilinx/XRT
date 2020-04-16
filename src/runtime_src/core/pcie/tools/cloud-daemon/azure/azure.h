@@ -36,6 +36,7 @@ enum azure_rest_err {
     E_RESET = 2030,
     E_GET_RESET_STATUS = 2031,
     E_EMPTY_SN = 2040,
+    E_REST_TIMEOUT = 2050,
 };
 /*
  * This class is for azure xclbin download handling.
@@ -110,8 +111,10 @@ private:
     static const int rest_timeout { 30 }; //in second
     static const int upload_retry { 15 };
     static const int reset_retry { 3 };
+    static const int timeout_threshold { 49 }; //mailbox timeout set as 50s
     std::shared_ptr<pcidev::pci_device> dev;
     size_t index;
+    struct timeval start;
     int UploadToWireServer(
         const std::string &ip,
         const std::string &endpoint,
@@ -130,6 +133,7 @@ private:
         std::string &sha);
     void get_fpga_serialNo(std::string &fpgaSerialNo);
     void msleep(long msecs);
+    int goingTimeout();
 };
 
 

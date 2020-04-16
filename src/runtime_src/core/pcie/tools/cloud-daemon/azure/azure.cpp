@@ -252,6 +252,8 @@ int AzureDev::azureLoadXclBin(const xclBin *buffer)
     std::cout << "Start upload segment (" << fpgaSerialNumber << ")" << std::endl;
     gettimeofday(&tvStartUpload, NULL);
     for (auto &chunk: chunks) {
+        if (goingTimeout())
+            return -E_REST_TIMEOUT;
         //upload each segment individually
         std::cout << "upload segment (" << fpgaSerialNumber << "): " << index << " size: " << chunk.size() << std::endl;
         if (UploadToWireServer(
@@ -281,6 +283,8 @@ int AzureDev::azureLoadXclBin(const xclBin *buffer)
     std::cout << "Start reimage process (" << fpgaSerialNumber << ")" << std::endl;
     gettimeofday(&tvStartReimage, NULL);
     do {
+        if (goingTimeout())
+            return -E_REST_TIMEOUT;
         ret = REST_Get(
             restip_endpoint,
             "machine/plugins/?comp=FpgaController&type=StartReimaging",
@@ -315,6 +319,8 @@ int AzureDev::azureLoadXclBin(const xclBin *buffer)
     gettimeofday(&tvStartStatus, NULL);
     int wait = 0;
     do {
+        if (goingTimeout())
+            return -E_REST_TIMEOUT;
         ret = REST_Get(
             restip_endpoint,
             "machine/plugins/?comp=FpgaController&type=GetReimagingStatus",
@@ -407,6 +413,7 @@ AzureDev::~AzureDev()
 AzureDev::AzureDev(size_t index) : index(index)
 {
     dev = pcidev::get_dev(index, true);
+    gettimeofday(&start, NULL);
 }
 
 //private methods
@@ -619,3 +626,14 @@ void AzureDev::msleep(long msecs)
 
     nanosleep(&ts, NULL);
 }
+
+int AzureDev::goingTimeout()
+{
+    struct timeval now;
+    gettimeofday(&now, NULL);
+    if (now.tv_sec - start.tv_sec > timeout_threshold)
+        return 1;
+    else
+        return 0;
+}
+
