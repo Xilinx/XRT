@@ -144,20 +144,25 @@ namespace xdp {
 
   bool VPStaticDatabase::initializeComputeUnits(DeviceInfo* devInfo, const void* binary)
   {
-    // Look into the connectivity section and load information about Compute Units and their Memory connections
     const axlf* xbin     = static_cast<const struct axlf*>(binary);
     const char* chBinary = static_cast<const char*>(binary);
-
-    // Get CONNECTIVITY section
-    const axlf_section_header* connectivityHeader = xclbin::get_axlf_section(xbin, CONNECTIVITY);
-    if(connectivityHeader == nullptr) return false;
-    const connectivity* connectivitySection = reinterpret_cast<const connectivity*>(chBinary + connectivityHeader->m_sectionOffset) ;
 
     // Get IP_LAYOUT section 
     const axlf_section_header* ipLayoutHeader = xclbin::get_axlf_section(xbin, IP_LAYOUT);
     if(ipLayoutHeader == nullptr) return false;
     const ip_layout* ipLayoutSection = reinterpret_cast<const ip_layout*>(chBinary + ipLayoutHeader->m_sectionOffset) ;
-    
+    ComputeUnitInstance* cu = nullptr;
+    for(int32_t i = 0; i < ipLayoutSection->m_count; i++) {
+      const struct ip_data* ipData = &(ipLayoutSection->m_ip_data[i]);
+      if(ipData->m_type != IP_KERNEL) {
+        continue;
+      }
+      cu = new ComputeUnitInstance(i, reinterpret_cast<const char*>(ipData->m_name));
+      devInfo->cus[i] = cu;
+      if((ipData->properties >> IP_CONTROL_SHIFT) & AP_CTRL_CHAIN) {
+        cu->setDataflowEnabled(true);
+      }
+    }
 
     // Get MEM_TOPOLOGY section 
     const axlf_section_header* memTopologyHeader = xclbin::get_axlf_section(xbin, MEM_TOPOLOGY);
@@ -169,8 +174,13 @@ namespace xdp {
                                           reinterpret_cast<const char*>(memData->m_tag));
     }
 
+    // Look into the connectivity section and load information about Compute Units and their Memory connections
+    // Get CONNECTIVITY section
+    const axlf_section_header* connectivityHeader = xclbin::get_axlf_section(xbin, CONNECTIVITY);
+    if(connectivityHeader == nullptr) return true;
+    const connectivity* connectivitySection = reinterpret_cast<const connectivity*>(chBinary + connectivityHeader->m_sectionOffset) ;
     // Now make the connections
-    ComputeUnitInstance* cu = nullptr;
+    cu = nullptr;
     for(int32_t i = 0; i < connectivitySection->m_count; i++) {
       const struct connection* connctn = &(connectivitySection->m_connection[i]);
 
