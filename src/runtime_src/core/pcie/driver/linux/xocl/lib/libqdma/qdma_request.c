@@ -341,10 +341,11 @@ int qdma_request_cancel(unsigned long dev_hndl, unsigned long qhndl,
 {
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
 	struct qdma_descq *descq =
-		qdma_device_get_descq_by_id(xdev, qhndl, NULL, 0, 1);
+		qdma_device_get_descq_by_id(xdev, qhndl, NULL, 0, 0);
 	int i;
+	unsigned long flags;
 
-	lock_descq(descq);
+	spin_lock_irqsave(&descq->lock, flags);
 	for (i = 0; i < count; i++, req++) {
 		struct qdma_sgt_req_cb *cb = qdma_req_cb_get(req);
 
@@ -356,7 +357,7 @@ int qdma_request_cancel(unsigned long dev_hndl, unsigned long qhndl,
 		cb->cancel = 1;
 		descq->cancel_cnt++;
 	}
-	unlock_descq(descq);
+	spin_unlock_irqrestore(&descq->lock, flags);
 
 	schedule_work(&descq->work);
 
