@@ -15,7 +15,7 @@ user:
   xclbins:
   - files: 'hello.xo '
     kernels:
-    - cus: [hello]
+    - cus: [hello_1]
       name: hello
       num_cus: 1
     name: verify.xclbin
