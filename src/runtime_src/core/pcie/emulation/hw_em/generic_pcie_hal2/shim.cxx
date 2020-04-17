@@ -847,35 +847,6 @@ namespace xclhwemhal2 {
 
     return 0;
   }
-  
-  void 
-  HwEmShim::replaceWrapperTemplates(std::string sim_path, std::string bdName, std::string templateName, std::string script_path) {
-    
-    std::string filePath = sim_path + "/pfm_top_wrapper.tcl";
-    std::string filePath_updated = sim_path + "/pfm_top_wrapper_update.tcl";
-    
-    std::ofstream outfile(filePath_updated, std::ofstream::out | std::ofstream::app);
-    std::ifstream infile(filePath, std::ifstream::in);
-    
-    std::string line;
-    if (infile.is_open())
-    {
-      while (getline(infile, line))
-      {
-        std::size_t pos;
-        if ((pos = line.find(templateName)) != std::string::npos)
-        {
-          std::string script_path_replace_str = "source " + script_path;
-          line.replace(pos, templateName.length(), script_path_replace_str);
-        }
-        outfile << line << std::endl;
-      }
-    }
-    
-    infile.close();
-    outfile.close();
-    std::rename(filePath_updated.c_str(), filePath.c_str());
-  }
 
    size_t HwEmShim::xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size) {
 
