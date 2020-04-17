@@ -648,7 +648,6 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 {
 	const struct axlf_section_header	*dtc_header;
 	struct axlf				*bin_axlf;
-	char					*vbnv;
 	int					ret;
 	char					*fw_buf = NULL;
 	size_t					fw_size = 0;
@@ -674,21 +673,11 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 
 	ret = xocl_fdt_blob_input(lro,
 			(char *)fw_buf + dtc_header->m_sectionOffset,
-			dtc_header->m_sectionSize, XOCL_SUBDEV_LEVEL_BLD);
+			dtc_header->m_sectionSize, XOCL_SUBDEV_LEVEL_BLD,
+			bin_axlf->m_header.m_platformVBNV);
 	if (ret) {
 		mgmt_err(lro, "Invalid PARTITION_METADATA");
 		goto failed;
-	}
-
-	vbnv = bin_axlf->m_header.m_platformVBNV;
-	if (strlen(vbnv) > 0) {
-		mgmt_info(lro, "Board VBNV: %s", vbnv);
-		ret = xocl_fdt_add_pair(lro, lro->core.fdt_blob, "vbnv", vbnv,
-				strlen(vbnv) + 1);
-		if (ret) {
-			mgmt_err(lro, "Adding VBNV pair failed, %d", ret);
-			goto failed;
-		}
 	}
 
 	if (lro->core.priv.flags & XOCL_DSAFLAG_MFG) {

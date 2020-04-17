@@ -40,6 +40,9 @@ namespace xdplop {
 
   // The function that makes connections via dynamic linking and dynamic symbols
   void register_lop_functions(void* handle) ;
+
+  // A function that outputs any warnings based upon status and configuration
+  void lop_warning_function() ;
   
   // Every OpenCL API we are interested in will have an instance
   //  of this class constructed at the start

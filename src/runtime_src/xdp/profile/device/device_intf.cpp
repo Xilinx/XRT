@@ -17,10 +17,22 @@
 #define XDP_SOURCE
 
 #include "device_intf.h"
+
+#ifndef _WIN32
+#include "mmapped_monitors/mmapped_aim.h"
+#include "mmapped_monitors/mmapped_am.h"
+#include "mmapped_monitors/mmapped_asm.h"
+#include "mmapped_monitors/mmapped_traceFifoLite.h"
+#include "mmapped_monitors/mmapped_traceFifoFull.h"
+#include "mmapped_monitors/mmapped_traceFunnel.h"
+#include "mmapped_monitors/mmapped_traceS2MM.h"
+#endif
+
 #include "xclperf.h"
 #include "xcl_perfmon_parameters.h"
 #include "tracedefs.h"
 #include "core/common/message.h"
+#include "core/common/system.h"
 
 #include <iostream>
 #include <cstdio>
@@ -535,34 +547,122 @@ DeviceIntf::~DeviceIntf()
     size_t sz1 = 0, sectionSz = 0;
     // Get the size of full debug_ip_layout
     mDevice->getDebugIpLayout(nullptr, sz1, &sectionSz);
+    if(0 == sectionSz) {
+      return;
+    }
     // Allocate buffer to retrieve debug_ip_layout information from loaded xclbin
     std::vector<char> buffer(sectionSz);
     mDevice->getDebugIpLayout(buffer.data(), sectionSz, &sz1);
     auto map = reinterpret_cast<debug_ip_layout*>(buffer.data());
 #endif
-      
-      for(uint64_t i = 0; i < map->m_count; i++ ) {
-      switch(map->m_debug_ip_data[i].m_type) {
-        case AXI_MM_MONITOR :        aimList.push_back(new AIM(mDevice, i, &(map->m_debug_ip_data[i])));
-                                     break;
-        case ACCEL_MONITOR  :        amList.push_back(new AM(mDevice, i, &(map->m_debug_ip_data[i])));
-                                     break;
-        case AXI_STREAM_MONITOR :    asmList.push_back(new ASM(mDevice, i, &(map->m_debug_ip_data[i])));
-                                     break;
-        case AXI_MONITOR_FIFO_LITE : fifoCtrl = new TraceFifoLite(mDevice, i, &(map->m_debug_ip_data[i]));
-                                     break;
-        case AXI_MONITOR_FIFO_FULL : fifoRead = new TraceFifoFull(mDevice, i, &(map->m_debug_ip_data[i]));
-                                     break;
-        case AXI_TRACE_FUNNEL :      traceFunnel = new TraceFunnel(mDevice, i, &(map->m_debug_ip_data[i]));
-                                     break;
-        case TRACE_S2MM :            traceDMA = new TraceS2MM(mDevice, i, &(map->m_debug_ip_data[i]));
-                                     break;
-        default : break;
-        // case AXI_STREAM_PROTOCOL_CHECKER
 
+      xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
+      /* Currently, only PCIeLinux Device flow uses open+mmap and hence specialized monitors are instantiated.
+       * All other flows(including PCIe Windows) use the older mechanism and should use old monitor abstraction.
+       */
+      if(xrt_core::system::monitor_access_type::bar == accessType) {
+        for(uint64_t i = 0; i < map->m_count; i++ ) {
+          switch(map->m_debug_ip_data[i].m_type) {
+            case AXI_MM_MONITOR :        aimList.push_back(new AIM(mDevice, i, &(map->m_debug_ip_data[i])));
+                                         break;
+            case ACCEL_MONITOR  :        amList.push_back(new AM(mDevice, i, &(map->m_debug_ip_data[i])));
+                                         break;
+            case AXI_STREAM_MONITOR :    asmList.push_back(new ASM(mDevice, i, &(map->m_debug_ip_data[i])));
+                                         break;
+            case AXI_MONITOR_FIFO_LITE : fifoCtrl = new TraceFifoLite(mDevice, i, &(map->m_debug_ip_data[i]));
+                                         break;
+            case AXI_MONITOR_FIFO_FULL : fifoRead = new TraceFifoFull(mDevice, i, &(map->m_debug_ip_data[i]));
+                                         break;
+            case AXI_TRACE_FUNNEL :      traceFunnel = new TraceFunnel(mDevice, i, &(map->m_debug_ip_data[i]));
+                                         break;
+            case TRACE_S2MM :            traceDMA = new TraceS2MM(mDevice, i, &(map->m_debug_ip_data[i]));
+                                         break;
+            default : break;
+            // case AXI_STREAM_PROTOCOL_CHECKER
+          }
+        }
       }
-     }
 #ifndef _WIN32
+      else if(xrt_core::system::monitor_access_type::mmap == accessType) {
+        for(uint64_t i = 0; i < map->m_count; i++ ) {
+          switch(map->m_debug_ip_data[i].m_type) {
+            case AXI_MM_MONITOR :
+            {
+              MMappedAIM* pMon = new MMappedAIM(mDevice, i, aimList.size(), &(map->m_debug_ip_data[i]));
+              if(pMon->isMMapped()) {
+                aimList.push_back(pMon);
+              } else {
+                delete pMon;
+                pMon = nullptr;
+              }
+              break;
+            }
+            case ACCEL_MONITOR  :
+            {
+              MMappedAM* pMon = new MMappedAM(mDevice, i, amList.size(), &(map->m_debug_ip_data[i]));
+              if(pMon->isMMapped()) {
+                amList.push_back(pMon);
+              } else {
+                delete pMon;
+                pMon = nullptr;
+              }
+              break;
+            }
+            case AXI_STREAM_MONITOR :
+            {
+              MMappedASM* pMon = new MMappedASM(mDevice, i, asmList.size(), &(map->m_debug_ip_data[i]));
+              if(pMon->isMMapped()) {
+                asmList.push_back(pMon);
+              } else {
+                delete pMon;
+                pMon = nullptr;
+              }
+              break;
+            }
+            case AXI_MONITOR_FIFO_LITE :
+            {
+              fifoCtrl = new MMappedTraceFifoLite(mDevice, i, &(map->m_debug_ip_data[i]));
+              if(!fifoCtrl->isMMapped()) {
+                delete fifoCtrl;
+                fifoCtrl = nullptr;
+              }
+              break;
+            }
+            case AXI_MONITOR_FIFO_FULL :
+            {
+              fifoRead = new MMappedTraceFifoFull(mDevice, i, &(map->m_debug_ip_data[i]));
+              if(!fifoRead->isMMapped()) {
+                delete fifoRead;
+                fifoRead = nullptr;
+              }
+              break;
+            }
+            case AXI_TRACE_FUNNEL :
+            {
+              traceFunnel = new MMappedTraceFunnel(mDevice, i, &(map->m_debug_ip_data[i]));
+              if(!traceFunnel->isMMapped()) {
+                delete traceFunnel;
+                traceFunnel = nullptr;
+              }
+              break;
+            }
+            case TRACE_S2MM :
+            {
+              traceDMA = new MMappedTraceS2MM(mDevice, i, 0, &(map->m_debug_ip_data[i]));
+              if(!traceDMA->isMMapped()) {
+                delete traceDMA;
+                traceDMA = nullptr;
+              }
+              break;
+            }
+            default : break;
+            // case AXI_STREAM_PROTOCOL_CHECKER
+          }
+        }
+      }
+      else {
+        // other access types not supported yet
+      }
     }
     ifs.close();
 #endif

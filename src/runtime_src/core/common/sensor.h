@@ -83,6 +83,14 @@ get_child(const std::string &path)
  */
 void json_dump(std::ostream &ostr);
 
+/* 
+ * Wipe out whole ptree.
+ */
+inline void clear()
+{
+    instance().clear();
+}
+
 /*
  * Pretty formats @val. If @val is non-string, and is equal to max_value of type @T, 
  * returns @default_val.

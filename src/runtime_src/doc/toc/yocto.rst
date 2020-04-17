@@ -20,7 +20,6 @@ Before start to build Linux image, make sure your have:
         2. Hardware Definithion File(.hdf) for your platform;
 
 The PetaLinux tool can be downloaded from xilinx.com.
-If you don't have a .hdf file, please see :ref:`Build Boot Images`.
 
 Create PetaLinux Project with XRT
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

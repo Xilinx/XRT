@@ -38,6 +38,7 @@
 #include <map>
 #include <sstream>
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/appdebug.h"
 
 namespace {
 
@@ -460,7 +461,7 @@ function_call_logger(const char* function, long long address)
     // Application debug not supported on Windows
 #else
     if (xrt::config::get_app_debug()) {
-      xrt::hal::load_xdp_app_debug();
+      xocl::appdebug::load_xdp_app_debug() ;
     }
 #endif
   }

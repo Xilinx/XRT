@@ -195,19 +195,6 @@ static ssize_t p2p_enable_show(struct device *dev,
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 	u64 size;
-	struct resource *res;
-
-	/*
-	 * temp handle u50 case which has P2P bar however it is not actually
-	 * work
-	 */
-	if (xdev->core.priv.flags & XOCL_DSAFLAG_DYNAMIC_IP) {
-		res = xocl_subdev_get_ioresource(xdev, NODE_P2P);
-		if (!res) {
-			xocl_info(dev, "p2p endpoint is not found");
-			return sprintf(buf, "%d\n", ENXIO);
-		}
-	}
 
 	if (xdev->p2p_mem_chunk_num)
 		return sprintf(buf, "1\n");
@@ -230,22 +217,13 @@ static ssize_t p2p_enable_store(struct device *dev,
 	int ret, p2p_bar;
 	u32 enable;
 	u64 size, curr_size;
-	struct resource *res;
-
 
 	if (kstrtou32(buf, 10, &enable) == -EINVAL || enable > 1)
 		return -EINVAL;
 
-	/*
-	 * temp handle u50 case which has P2P bar however it is not actually
-	 * work
-	 */
-	if (xdev->core.priv.flags & XOCL_DSAFLAG_DYNAMIC_IP) {
-		res = xocl_subdev_get_ioresource(xdev, NODE_P2P);
-		if (!res) {
-			xocl_info(&pdev->dev, "p2p endpoint is not found");
-			return -ENOTSUPP;
-		}
+	if (xdev->p2p_bar_idx < 0) {
+		xocl_err(&pdev->dev, "p2p bar is not identified");
+		return -ENXIO;
 	}
 
 	p2p_bar = xocl_get_p2p_bar(xdev, &curr_size);

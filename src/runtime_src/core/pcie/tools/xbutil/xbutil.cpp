@@ -778,6 +778,8 @@ static void topPrintUsage(const xcldev::device *dev, xclDeviceUsage& devstat)
 {
     std::vector<std::string> lines;
 
+    dev->readSensors();
+
     dev->m_mem_usage_bar(devstat, lines);
 
     dev->sysfs_stringize_power(lines);
@@ -788,6 +790,7 @@ static void topPrintUsage(const xcldev::device *dev, xclDeviceUsage& devstat)
 
     dev->m_cu_usage_stringize_dynamics(lines);
 
+    dev->clearSensorTree();
     for(auto line:lines) {
             printw("%s\n", line.c_str());
     }

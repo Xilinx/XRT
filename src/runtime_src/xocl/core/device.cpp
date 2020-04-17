@@ -1109,7 +1109,7 @@ load_program(program* program)
 #ifdef _WIN32
     // Kernel debug not supported on Windows
 #else
-    xrt::hal::load_xdp_kernel_debug();
+    xocl::debug::load_xdp_kernel_debug() ;
 #endif
   }
 
