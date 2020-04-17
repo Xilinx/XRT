@@ -51,6 +51,11 @@ enum class key_type
   pcie_express_lane_width,
   pcie_bdf,
 
+  edge_vendor,
+  edge_device,
+  edge_subsystem_vendor,
+  edge_subsystem_id,
+
   dma_threads_raw,
 
   rom_vbnv,
@@ -304,9 +309,86 @@ struct pcie_bdf : request
   static std::string
   to_string(const result_type& value)
   {
+    if(std::get<0>(value) == std::get<1>(value) && std::get<1>(value) == std::get<2>(value) && std::get<2>(value) == std::numeric_limits<uint16_t>::max()) {
+      return std::string("NA");
+    }
     return boost::str
       (boost::format("%04x:%02x:%02x.%01x") % 0 % std::get<0>(value)
        % std::get<1>(value) % std::get<2>(value));
+  }
+};
+
+struct edge_vendor : request
+{
+  using result_type = uint16_t;
+  static const key_type key = key_type::edge_vendor;
+  static const char* name() { return "vendor"; }
+
+  virtual boost::any
+    get(const device*) const = 0;
+
+  static std::string
+    to_string(result_type val)
+  {
+    return boost::str(boost::format("0x%x") % val);
+  }
+};
+
+struct edge_device : request
+{
+  using result_type = uint16_t;
+  static const key_type key = key_type::edge_device;
+  static const char* name() { return "device"; }
+
+  virtual boost::any
+    get(const device*) const = 0;
+
+
+  static std::string
+    to_string(result_type val)
+  {
+    if (val >= std::numeric_limits<uint16_t>::max() || val == 0) {
+      return std::string("N/A");
+    }
+    return boost::str(boost::format("0x%x") % val);
+  }
+};
+
+struct edge_subsystem_vendor : request
+{
+  using result_type = uint16_t;
+  static const key_type key = key_type::edge_subsystem_vendor;
+  static const char* name() { return "subsystem_vendor"; }
+
+  virtual boost::any
+    get(const device*) const = 0;
+
+  static std::string
+    to_string(result_type val)
+  {
+    if (val >= std::numeric_limits<uint16_t>::max() || val == 0) {
+      return std::string("N/A");
+    }
+    return boost::str(boost::format("0x%x") % val);
+  }
+};
+
+struct edge_subsystem_id : request
+{
+  using result_type = uint16_t;
+  static const key_type key = key_type::edge_subsystem_id;
+  static const char* name() { return "subsystem_id"; }
+
+  virtual boost::any
+    get(const device*) const = 0;
+
+  static std::string
+    to_string(result_type val)
+  {
+    if (val >= std::numeric_limits<uint16_t>::max() || val == 0) {
+      return std::string("N/A");
+    }
+    return boost::str(boost::format("0x%x") % val);
   }
 };
 

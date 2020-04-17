@@ -35,11 +35,14 @@ get_devices(boost::property_tree::ptree& pt) const
     // Key: device_id
     pt_device.put("device_id", std::to_string(device_id));
 
-    // Key: pcie
+    // Key: platform_name
+    pt_device.put("platform_name", std::string("PCIE"));
+
+    // Key: platform
     auto device = get_userpf_device(device_id);
     boost::property_tree::ptree pt_pcie;
     device->get_info(pt_pcie);
-    pt_device.add_child("pcie", pt_pcie);
+    pt_device.add_child("platform", pt_pcie);
 
     // Create our array of data
     pt_devices.push_back(std::make_pair("", pt_device));

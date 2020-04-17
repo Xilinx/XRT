@@ -99,9 +99,12 @@ SubCmdScan::execute(const SubCmdOptions& _options) const
     auto udev = xrt_core::get_userpf_device(device_id);
     auto vbnv = xrt_core::device_query<xrt_core::query::rom_vbnv>(udev);
     auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(udev);
-    std::cout << "[" << device_id << "]: "
-              << xrt_core::query::pcie_bdf::to_string(bdf) << " "
-              << vbnv << "\n";
+    std::cout << "[" << device_id << "]: ";
+    std::string bdf_val = xrt_core::query::pcie_bdf::to_string(bdf);
+    if(bdf_val != std::string("NA"))
+      std::cout << xrt_core::query::pcie_bdf::to_string(bdf) << " ";
+
+    std::cout << vbnv << "\n";
 #if 0
     dev->read_ready_status(_pt);
     bool ready = _pt.get<bool>("ready", "false");

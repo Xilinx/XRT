@@ -17,6 +17,8 @@
 #define XCL_DRIVER_DLL_EXPORT
 
 #include "device_edge.h"
+#include "core/common/query_requests.h"
+#include <boost/property_tree/ptree.hpp>
 
 namespace xrt_core {
 
@@ -52,6 +54,10 @@ void
 device_edge::
 get_info(boost::property_tree::ptree& pt) const
 {
+  ptree_updater<query::edge_vendor>::query_and_put(this, pt);
+  ptree_updater<query::edge_device>::query_and_put(this, pt);
+  ptree_updater<query::edge_subsystem_vendor>::query_and_put(this, pt);
+  ptree_updater<query::edge_subsystem_id>::query_and_put(this, pt);
 }
 
 } // xrt_core

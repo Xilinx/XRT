@@ -80,17 +80,17 @@ pu1_query_report()
 
     std::cout << boost::format("%s : %d") % "Device ID" % device_id << std::endl;
 
-    std::cout << "PCIe Interface" << std::endl;
-    boost::property_tree::ptree ptPcie = ptDevice.get_child("pcie");
+    std::cout << ptDevice.get<std::string>("platform_name")<< " Interface" << std::endl;
+    boost::property_tree::ptree ptPlatform = ptDevice.get_child("platform");
 
-    std::cout << boost::format("  %-16s : %s") % "Vendor" % ptPcie.get<std::string>("vendor") << std::endl;
-    std::cout << boost::format("  %-16s : %s") % "Device" % ptPcie.get<std::string>("device") << std::endl;
-    std::cout << boost::format("  %-16s : %s") % "Subsystem Vendor" % ptPcie.get<std::string>("subsystem_vendor") << std::endl;
-    std::cout << boost::format("  %-16s : %s") % "Subsystem ID" % ptPcie.get<std::string>("subsystem_id") << std::endl;
-//    std::cout << boost::format("  %-16s : %s") % "Link Speed" % ptPcie.get<std::string>("link_speed") << std::endl;
-//    std::cout << boost::format("  %-16s : %s (bits)") % "Data Width" % ptPcie.get<std::string>("width") << std::endl;
+    std::cout << boost::format("  %-16s : %s") % "Vendor" % ptPlatform.get<std::string>("vendor") << std::endl;
+    std::cout << boost::format("  %-16s : %s") % "Device" % ptPlatform.get<std::string>("device") << std::endl;
+    std::cout << boost::format("  %-16s : %s") % "Subsystem Vendor" % ptPlatform.get<std::string>("subsystem_vendor") << std::endl;
+    std::cout << boost::format("  %-16s : %s") % "Subsystem ID" % ptPlatform.get<std::string>("subsystem_id") << std::endl;
+//    std::cout << boost::format("  %-16s : %s") % "Link Speed" % ptPlatform.get<std::string>("link_speed") << std::endl;
+//    std::cout << boost::format("  %-16s : %s (bits)") % "Data Width" % ptPlatform.get<std::string>("width") << std::endl;
 
-//    std::vector<boost::property_tree::ptree> threads = as_vector<boost::property_tree::ptree>(ptPcie, "dma_threads");
+//    std::vector<boost::property_tree::ptree> threads = as_vector<boost::property_tree::ptree>(ptPlatform, "dma_threads");
 //    std::cout << boost::format("  %-16s : %d") % "DMA Thread Count" % threads.size() << std::endl;
 
     std::cout << std::endl;

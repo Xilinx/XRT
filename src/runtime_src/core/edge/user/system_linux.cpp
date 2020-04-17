@@ -94,7 +94,8 @@ std::pair<device::id_type, device::id_type>
 system_linux::
 get_total_devices(bool is_user) const
 {
-  return std::make_pair(0,0);
+  device::id_type num = xclProbe();
+  return std::make_pair(num, num); 
 }
 
 void
