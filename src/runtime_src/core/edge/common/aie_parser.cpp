@@ -136,6 +136,8 @@ get_gmio(const pt::ptree& aie_meta)
     gmio.type = gmio_node.second.get<uint16_t>("type");
     gmio.shim_col = gmio_node.second.get<uint16_t>("shim_column");
     gmio.burst_len = gmio_node.second.get<uint16_t>("burst_length_in_16byte");
+
+    gmios.emplace_back(std::move(gmio));
   }
 
   return gmios;
