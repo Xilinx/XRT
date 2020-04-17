@@ -1,5 +1,5 @@
 """
- Copyright (C) 2019 Xilinx, Inc
+ Copyright (C) 2019-2020 Xilinx, Inc
 
  ctypes based Python binding for XRT
 
@@ -490,15 +490,13 @@ def xclReadBO(handle, boHandle, dst, size, skip):
     return _valueOrError(libcore.xclReadBO(handle, boHandle, dst, size, skip))
 
 
-def xclMapBO(handle, boHandle, write, buf_type='char', buf_size=1):
+def xclMapBO(handle, boHandle, write):
     """
     Memory map BO into user's address space
 
     :param handle: (xclDeviceHandle) device handle
     :param boHandle: (unsigned int) BO handle
     :param write: (boolean) READ only or READ/WRITE mapping
-    :param buf_type: type of memory mapped buffer
-    :param buf_size: size of buffer
     :return: (pointer) Memory mapped buffer
 
     Map the contents of the buffer object into host memory
@@ -507,18 +505,8 @@ def xclMapBO(handle, boHandle, write, buf_type='char', buf_size=1):
     Return type void pointer doesn't get correctly binded in ctypes
     To map the buffer, explicitly specify the type and size of data
     """
-    prop = xclBOProperties()
-    xclGetBOProperties(handle, boHandle, prop)
 
-    if buf_type == 'char':
-        libcore.xclMapBO.restype = ctypes.POINTER(ctypes.c_char * prop.size)
-    elif buf_type == 'int':
-        element_size = ctypes.sizeof(ctypes.c_int)
-        size = prop.size/element_size
-        libcore.xclMapBO.restype = ctypes.POINTER(ctypes.c_int * size)
-    else:
-        print("ERROR: This data type is not supported ")
-
+    libcore.xclMapBO.restype = ctypes.POINTER(ctypes.c_char)
     libcore.xclMapBO.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_bool]
     ptr = libcore.xclMapBO(handle, boHandle, write)
     return ptr

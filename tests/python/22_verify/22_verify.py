@@ -1,13 +1,39 @@
+"""
+ Copyright (C) 2019-2020 Xilinx, Inc
+
+ ctypes based Python binding for XRT
+
+ Licensed under the Apache License, Version 2.0 (the "License"). You may
+ not use this file except in compliance with the License. A copy of the
+ License is located at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ License for the specific language governing permissions and limitations
+ under the License.
+"""
+
 import sys
 import uuid
-from xrt_binding import * # found in PYTHONPATH
-from ert_binding import * # found in PYTHONPATH
-sys.path.append('../') # utils_binding.py
+import re
+
+# Following found in PYTHONPATH setup by XRT
+from xrt_binding import *
+from ert_binding import *
+
+# utils_binding.py
+sys.path.append('../')
 from utils_binding import *
+
 
 def runKernel(opt):
 
-    khandle = xrtPLKernelOpen(opt.handle, opt.xuuid, "hello:hello_1")
+    rule = re.compile("hello*")
+    name = filter(rule.match, opt.kernels)[0]
+    khandle = xrtPLKernelOpen(opt.handle, opt.xuuid, name)
 
     boHandle1 = xclAllocBO(opt.handle, opt.DATA_SIZE, 0, opt.first_mem)
     bo1 = xclMapBO(opt.handle, boHandle1, True)
@@ -20,8 +46,8 @@ def runKernel(opt):
     xclSyncBO(opt.handle, boHandle1, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, opt.DATA_SIZE, 0)
     xclSyncBO(opt.handle, boHandle2, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, opt.DATA_SIZE, 0)
 
-    print("Original string = [%s]" % bo1.contents[:64].decode("utf-8"))
-    print("Original string = [%s]" % bo2.contents[:64].decode("utf-8"))
+    print("Original string = [%s]" % bo1[:64].decode("utf-8"))
+    print("Original string = [%s]" % bo2[:64].decode("utf-8"))
 
     print("Issue kernel start requests using xrtKernelRun()")
     rhandle1 = xrtKernelRun(khandle, boHandle1)
@@ -34,8 +60,8 @@ def runKernel(opt):
     print("Get the output data produced by the 2 kernel runs from the device")
     xclSyncBO(opt.handle, boHandle1, xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, opt.DATA_SIZE, 0)
     xclSyncBO(opt.handle, boHandle2, xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, opt.DATA_SIZE, 0)
-    result1 = bo1.contents[:len("Hello World")]
-    result2 = bo2.contents[:len("Hello World")]
+    result1 = bo1[:len("Hello World")]
+    result2 = bo2[:len("Hello World")]
     print("Result string = [%s]" % result1.decode("utf-8"))
     print("Result string = [%s]" % result2.decode("utf-8"))
 
