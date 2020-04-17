@@ -145,12 +145,10 @@ private:
        struct xocl_qdma_req_header header;	/* used for io_submit */
     };
 
-    uint64_t qhndl;		/* queue handle */
-    bool h2c; 			/* queue is for H2C direction */
     bool qAioEn;		/* per queue aio is enabled */
     bool qAioBatchEn;		/* per queue aio req. batching is enabled */
     bool qExit;			/* queue is being stopped/released */
-    aio_context_t qAioCtx;	/* per queue aio context */
+    bool h2c; 			/* queue is for H2C direction */
     unsigned int aio_max_evts;	/* for io_setup() max. event concurrently */
 
     /* aio batching threshold to flush the queued i/o */
@@ -164,6 +162,9 @@ private:
     unsigned int cbPollCnt;	/* total # of polled/completed i/o */
     int cbErrCnt;		/* submission error */
     int cbErrCode;		/* submission error code */
+
+    uint64_t qhndl;		/* queue handle */
+    aio_context_t qAioCtx;	/* per queue aio context */
 
     std::thread qWorker;	/* aio batching thread */
     std::mutex reqLock;		/* lock to protect i/o related info. */
@@ -184,9 +185,36 @@ private:
             byteCnt -= qio.len;
             reqList.pop_front();
         }
-        
+
         return i;
     } 
+
+    int queue_up_request(xclQueueRequest *wr)
+    {
+        std::lock_guard<std::mutex> lk(reqLock);
+
+        /* if there was io submission error, wait till all requests are
+         * drained or list full*/
+        if (cbErrCnt || (reqList.size() == aio_max_evts))
+            return -EAGAIN;
+
+        /* queue up this async i/o request */
+        unsigned int bytes = 0;
+        for (unsigned int i = 0; i < wr->buf_num; i++) {
+             bytes += wr->bufs[i].len; 
+             reqList.push_back({wr->flag, (uint64_t)wr->priv_data,
+				wr->bufs[i].va, wr->bufs[i].len});
+        }
+        bufCnt += wr->buf_num;
+        byteCnt += bytes;
+
+	/* wake up the batch worker thread if threshold is reached */
+        if ((pktThresh && bufCnt >= pktThresh) ||
+            (byteThresh && byteCnt >= byteThresh))
+            cv.notify_one();
+
+        return wr->buf_num;
+    }
 
     int check_io_submission_error(int nr_comps, struct xclReqCompletion *comps)
     {
@@ -242,12 +270,12 @@ private:
     {
         /* if there is submission error, wait till all requests are drained */
         if (cbErrCnt)
-            return 0;
+            return -EAGAIN;
 
         /* submit all queued requests */
         unsigned int cb_max = bufCnt;
         unsigned int cb_cnt = 0;
-        std::vector <struct iocb *> cbpp;
+        std::vector <struct iocb *> cbpp(cb_max);
 
         auto end = reqList.end();
         for (auto it = reqList.begin(); it != end && cb_cnt < cb_max;
@@ -257,7 +285,7 @@ private:
             qio.header.flags = qio.flags;
             prepare_io(&qio.cb, qio.iov, &qio.header, qio.buf_va, qio.len,
 			qio.priv_data);
-            cbpp.push_back(&qio.cb);
+            cbpp[cb_cnt] = &qio.cb;
         }
 
         int submitted = io_submit(qAioCtx, cb_cnt, cbpp.data());
@@ -275,6 +303,7 @@ private:
             release_request(submitted);
             cbSubmitCnt += submitted;
         }
+
         return 0;
     }
 
@@ -282,37 +311,40 @@ private:
     void queue_aio_worker(void)
     {
         byteCnt = bufCnt = 0;
-        cbSubmitCnt = cbPollCnt = cbErrCnt = 0;
 
-        std::mutex mtx;
-        std::unique_lock<std::mutex> lck(mtx);
         do {
+            std::unique_lock<std::mutex> lck(reqLock);
 	    /* set a time out to prevent holding the i/o forever */
             if (!timer_ms)
 		cv.wait_for(lck, std::chrono::milliseconds(1000));
             else
 		cv.wait_for(lck, std::chrono::milliseconds(timer_ms));
 
-            std::lock_guard<std::mutex> lk(reqLock);
-            if (reqList.empty()) {
+            if (reqList.empty())
                 continue;
-            }
+
             queue_flush_aio_request();
         } while(!qExit);
 
         qAioBatchEn = false;
     }
 
-    void queue_aio_batch_disable_check(void)
+    void stop_aio_worker(void)
     {
-        if (qAioBatchEn && !byteThresh && !pktThresh && !timer_ms) {
+        if (qAioBatchEn) {
             std::lock_guard<std::mutex> lk(reqLock);
             /* stop the worker thread */
             qExit = true;
             cv.notify_one();
-            if (qWorker.joinable())
-                qWorker.join();
         }
+        if (qWorker.joinable())
+            qWorker.join();
+    }
+
+    void queue_aio_batch_disable_check(void)
+    {
+        if (!byteThresh && !pktThresh && !timer_ms)
+            stop_aio_worker();
     }
 
     void queue_aio_batch_enable_check(void)
@@ -329,14 +361,13 @@ private:
 
 public:
     queue_cb(struct xocl_qdma_ioc_create_queue *qinfo)
+        : qAioEn{false}, qAioBatchEn{false}, qExit{false}, aio_max_evts{0},
+          timer_ms{0}, byteThresh{0}, pktThresh{0}, byteCnt{0}, bufCnt{0},
+          cbSubmitCnt{0}, cbPollCnt{0}, cbErrCnt{0}
     {
        qhndl = qinfo->handle;
        h2c = qinfo->write ? true : false;
-       qAioEn = qAioBatchEn = qExit = false;
-       byteThresh = pktThresh = timer_ms = 0;
-
        memset(&qAioCtx, 0, sizeof(qAioCtx));
-       aio_max_evts = 0;
     }
 
     ~queue_cb()
@@ -344,20 +375,13 @@ public:
         if (!qAioEn)
            return;
 
-        if (qAioBatchEn) {
-            qExit = true;
-            cv.notify_one();
-            if (qWorker.joinable())
-                qWorker.join();
-        }
-	
+        stop_aio_worker();
         io_destroy(qAioCtx);
     }
 
     const bool queue_aio_ctx_enabled(void) { return qAioEn; }
     const bool queue_is_h2c(void) { return h2c; }
-    const bool queue_aio_batch_enabled(void) {return qAioBatchEn; }
-    const int queue_get_handle(void) { return (int)qhndl; }
+    const int queue_get_handle(void) { return qhndl; }
 
     // optional configurations
     int set_option(int type, uint32_t val)
@@ -453,38 +477,15 @@ public:
     {
         ssize_t rc = 0;
         bool aio = (wr->flag & XCL_QUEUE_REQ_NONBLOCKING) ? true : false;
-        aio_context_t *aio_ctx = qAioEn ? &qAioCtx : mAioCtx;
 
         if (qAioBatchEn) {
-            std::lock_guard<std::mutex> lk(reqLock);
-
-            /* if there was io submission error, wait till all requests are
-             * drained or list full*/
-            if (cbErrCnt || (reqList.size() == aio_max_evts))
-                return -EAGAIN;
-
             /* queue up this async i/o request */
             if (aio) {
-                unsigned int bytes = 0;
-
-                for (unsigned int i = 0; i < wr->buf_num; i++) {
-                    bytes += wr->bufs[i].len; 
-                    reqList.push_back({wr->flag, (uint64_t)wr->priv_data,
-					wr->bufs[i].va, wr->bufs[i].len});
-                }
-                bufCnt += wr->buf_num;
-                byteCnt += bytes;
-
-		/* wake up the batch worker thread if threshold is reached */
-                if ((pktThresh && bufCnt >= pktThresh) ||
-                    (byteThresh && byteCnt >= byteThresh))
-                    cv.notify_one();
-            
-                return bytes;
-
+                return queue_up_request(wr);
             } else {
-                /* for synchronous i/o, flush all of the queued requests
+                /* this is synchronous i/o, flush all of the queued requests
                  * first to maintain the order */
+                std::lock_guard<std::mutex> lk(reqLock);
                 while (!reqList.empty()) {
    		    rc = queue_flush_aio_request();
                     if (rc < 0)
@@ -496,10 +497,12 @@ public:
             }
         }
 
-        /* synchronous i/o or no batching configured on the queue */
+        /* synchronous i/o or no batching configured on the queue, submit the
+         * i/o right away */
         struct xocl_qdma_req_header header;
         header.flags = wr->flag;
         if (aio) {
+            aio_context_t *aio_ctx = qAioEn ? &qAioCtx : mAioCtx;
             for (unsigned int i = 0; i < wr->buf_num; i++) {
                 struct iovec iov[2];
 		struct iocb cb;
