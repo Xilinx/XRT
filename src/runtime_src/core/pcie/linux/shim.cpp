@@ -149,6 +149,7 @@ private:
     bool qAioBatchEn;		/* per queue aio req. batching is enabled */
     bool qExit;			/* queue is being stopped/released */
     bool h2c; 			/* queue is for H2C direction */
+    uint64_t qhndl;		/* queue handle */
     unsigned int aio_max_evts;	/* for io_setup() max. event concurrently */
 
     /* aio batching threshold to flush the queued i/o */
@@ -163,7 +164,6 @@ private:
     int cbErrCnt;		/* submission error */
     int cbErrCode;		/* submission error code */
 
-    uint64_t qhndl;		/* queue handle */
     aio_context_t qAioCtx;	/* per queue aio context */
 
     std::thread qWorker;	/* aio batching thread */
@@ -316,7 +316,7 @@ private:
             std::unique_lock<std::mutex> lck(reqLock);
 	    /* set a time out to prevent holding the i/o forever */
             if (!timer_ms)
-		cv.wait_for(lck, std::chrono::milliseconds(1000));
+		cv.wait(lck);
             else
 		cv.wait_for(lck, std::chrono::milliseconds(timer_ms));
 
@@ -361,12 +361,11 @@ private:
 
 public:
     queue_cb(struct xocl_qdma_ioc_create_queue *qinfo)
-        : qAioEn{false}, qAioBatchEn{false}, qExit{false}, aio_max_evts{0},
-          timer_ms{0}, byteThresh{0}, pktThresh{0}, byteCnt{0}, bufCnt{0},
-          cbSubmitCnt{0}, cbPollCnt{0}, cbErrCnt{0}
+        : qAioEn{false}, qAioBatchEn{false}, qExit{false},
+          h2c{qinfo->write ? true : false}, qhndl{qinfo->handle},
+          aio_max_evts{0}, timer_ms{0}, byteThresh{0}, pktThresh{0},
+          byteCnt{0}, bufCnt{0}, cbSubmitCnt{0}, cbPollCnt{0}, cbErrCnt{0}
     {
-       qhndl = qinfo->handle;
-       h2c = qinfo->write ? true : false;
        memset(&qAioCtx, 0, sizeof(qAioCtx));
     }
 
@@ -506,11 +505,10 @@ public:
             for (unsigned int i = 0; i < wr->buf_num; i++) {
                 struct iovec iov[2];
 		struct iocb cb;
-		struct iocb *cbs[1];
+		struct iocb *cbs[1] = {&cb};
 
                 prepare_io(&cb, iov, &header, wr->bufs[i].va, wr->bufs[i].len,
 			 (uint64_t)wr->priv_data);
-                cbs[0] = &cb;
                 int rv = io_submit(*aio_ctx, 1, cbs);
                 if (rv <= 0)
                     break;
@@ -521,7 +519,7 @@ public:
         } else {
             for (unsigned int i = 0; i < wr->buf_num; i++) {
                 struct iovec iov[2];
-                prepare_io(NULL, iov, &header, wr->bufs[i].va, wr->bufs[i].len, 0);
+                prepare_io(nullptr, iov, &header, wr->bufs[i].va, wr->bufs[i].len, 0);
                 if (h2c)
                     rc = writev((int)qhndl, iov, 2);
                 else
