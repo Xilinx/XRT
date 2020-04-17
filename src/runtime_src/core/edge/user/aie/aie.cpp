@@ -24,7 +24,7 @@
 
 namespace zynqaie {
 
-Aie::Aie()
+Aie::Aie(std::shared_ptr<xrt_core::device> device)
 {
     /* TODO where are these number from */
     numRows = 8;
@@ -45,17 +45,9 @@ Aie::Aie()
      */
     (void) XAieGbl_CfgInitialize(&aieInst, tileArray.data(), aieConfigPtr);
 
-    /*
-     * Initialize graph GMIO metadata
-     * TODO get gmio metadata from Xclbin
-     */
-    xrt_core::edge::aie::gmio_type gmio1;
-    gmio1.id = "0";
-    gmio1.name = "gmio1";
-    gmio1.type = 0;
-    gmio1.shim_col = 3;
-    gmio1.channel_number = 2;
-    gmios.emplace_back(gmio1);
+    /* Initialize graph GMIO metadata */
+    for (auto& gmio : xrt_core::edge::aie::get_gmios(device.get()))
+        gmios.emplace_back(std::move(gmio));
 
     /*
      * Initialize AIE shim DMA on column base if there is one for
@@ -99,14 +91,13 @@ Aie::Aie()
 
     /* Register all AIE error events */
     XAieTile_ErrorRegisterNotification(&aieInst, XAIEGBL_MODULE_ALL, XAIETILE_ERROR_ALL, error_cb, NULL);
-
+ 
     /* Enable AIE interrupts */
     XAieTile_EventsEnableInterrupt(&aieInst);
 }
 
 Aie::~Aie()
 {
-    XAieTile_ErrorUnregisterNotification(&aieInst, XAIEGBL_MODULE_ALL, XAIETILE_ERROR_ALL, XAIE_ENABLE);
 }
 
 int Aie::getTilePos(int col, int row)
