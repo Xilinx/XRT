@@ -47,7 +47,6 @@ class memory : public refcount, public _cl_mem
 
 protected:
   using buffer_object_handle = xrt::device::BufferObjectHandle;
-  using pipe_property_type = property_object<cl_pipe_attributes>;
   using buffer_object_map_type = std::map<const device*,buffer_object_handle>;
   using bomap_type = std::map<const device*,buffer_object_handle>;
   using bomap_value_type = bomap_type::value_type;
@@ -272,18 +271,6 @@ public:
     throw std::runtime_error("set_image_slice_pitch called on bad object");
   }
 
-  virtual void*
-  get_pipe_host_ptr() const
-  {
-    throw std::runtime_error("get_pipe_host_ptr called on bad object");
-  }
-
-  virtual const pipe_property_type
-  get_pipe_properties() const
-  {
-    throw std::runtime_error("get_pipe_properties called on bad object");
-  }
-
   virtual cl_uint
   get_pipe_packet_size() const
   {
@@ -395,7 +382,7 @@ public:
    * Used for progvar memory objects exclusively.
    */
   virtual buffer_object_handle
-  get_buffer_object(device* device, xrt::device::memoryDomain domain, uint64_t memoryIndex);
+  get_buffer_object(device* device, xrt::device::memoryDomain domain, uint64_t memidx);
 
   /**
    * Check if buffer is resident on any device
@@ -780,7 +767,6 @@ private:
  */
 class pipe : public memory
 {
-  using pipe_property_type = memory::pipe_property_type;
 public:
   pipe(context* ctx,cl_mem_flags flags, cl_uint packet_size, cl_uint max_packets)
     : memory(ctx,flags), m_packet_size(packet_size), m_max_packets(max_packets)
@@ -798,18 +784,6 @@ public:
     return CL_MEM_OBJECT_PIPE;
   }
 
-  virtual void*
-  get_pipe_host_ptr() const
-  {
-    return m_host_ptr;
-  }
-
-  virtual const pipe_property_type
-  get_pipe_properties() const
-  {
-    return m_props;
-  }
-
   virtual cl_uint
   get_pipe_packet_size() const
   {
@@ -823,7 +797,6 @@ public:
   }
 
 private:
-  pipe_property_type m_props;
   cl_uint m_packet_size = 0;
   cl_uint m_max_packets = 0;
   void* m_host_ptr = nullptr;

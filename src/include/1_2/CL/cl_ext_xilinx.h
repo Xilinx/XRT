@@ -108,20 +108,12 @@ typedef struct cl_mem_ext_ptr_t {
 
 #define CL_XILINX_UNIMPLEMENTED  -20
 
-/* New flags for cl_queue */
-#define CL_QUEUE_DPDK                               (1 << 31)
-
 #define CL_MEM_REGISTER_MAP                         (1 << 27)
 #ifdef PMD_OCL
 # define CL_REGISTER_MAP CL_MEM_REGISTER_MAP
 #endif
 /* Delay device side buffer allocation for progvars */
 #define CL_MEM_PROGVAR                              (1 << 28)
-/* New cl_mem flags for DPDK Buffer integration */
-#define CL_MEM_RTE_MBUF_READ_ONLY                   (1 << 29)
-#define CL_MEM_RTE_MBUF_WRITE_ONLY                  (1 << 30)
-
-#define CL_PIPE_ATTRIBUTE_DPDK_ID                   (1 << 31)
 
 /* Additional cl_device_partition_property */
 #define CL_DEVICE_PARTITION_BY_CONNECTIVITY         (1 << 31)
@@ -379,68 +371,13 @@ clSetStreamOpt(cl_stream             /* stream*/,
 	cl_int * /*errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
 //End QDMA APIs
 
-typedef struct _cl_mem * rte_mbuf;
-typedef struct _cl_pipe * cl_pipe;
-
 // incorrectly placed in cl.h
-typedef cl_uint cl_pipe_attributes;
 typedef struct _cl_image_filler_xilinx {
     cl_uint                 t0;
     cl_uint                 t1;
     cl_uint                 t2;
     cl_uint                 t3;
 } cl_image_fillier_xilinx;
-
-/* New flag RTE_MBUF_READ_ONLY or RTE_MBUF_WRITE_ONLY
- * OpenCL runtime will use rte_eth_rx_queue_setup to create DPDK RX Ring. The API will return cl_pipe object.
- * OpenCL runtime will use rte_eth_tx_queue_setup to create DPDK TX Ring. The API will return cl_pipe object.
- */
-extern CL_API_ENTRY cl_pipe CL_API_CALL
-    clCreateHostPipe(cl_device_id device,
-	    cl_mem_flags flags,
-	    cl_uint packet_size,
-	    cl_uint max_packets,
-	    const cl_pipe_attributes *attributes, //TODO: properties?
-	    cl_int *errcode_ret) CL_API_SUFFIX__VERSION_1_0;
-
-/* OpenCL runtime will use rte_eth_tx_burst to send the buffers to TX queue.
- * The API will return count of buffers successfully sent. The API would bind the buffers
- * to descriptors in the TX Ring
- */
-extern CL_API_ENTRY cl_uint CL_API_CALL
-    clWritePipeBuffers(cl_command_queue command_queue,
-	    cl_pipe pipe,
-	    rte_mbuf** buf,
-	    cl_uint count,
-	    cl_int* errcode_ret) CL_API_SUFFIX__VERSION_1_0;
-
-/* OpenCL runtime will use rte_eth_rx_burst to receive buffers from RX queue.
- * The API will return count of buffers received. The API would unbind the buffers
- * from the descriptors in the RX Ring.
- */
-extern CL_API_ENTRY cl_uint CL_API_CALL
-    clReadPipeBuffers(cl_command_queue command_queue,
-	    cl_pipe pipe,
-	    rte_mbuf** buf,
-	    cl_uint count,
-	    cl_int* errcode_ret) CL_API_SUFFIX__VERSION_1_0;
-
-/*Use rte_pktmbuf_alloc to allocate a buffer from the same mempool used by the pipe.
- * This buffer is not yet bound to any descriptor in the RX/TX queue referred to by the pipe.
- */
-extern CL_API_ENTRY rte_mbuf* CL_API_CALL
-    clAcquirePipeBuffer(cl_command_queue command_queue,
-	    cl_pipe pipe,
-	    cl_int* errcode_ret) CL_API_SUFFIX__VERSION_1_0;
-
-
-/*Use rte_pktmbuf_free to return a buffer to the same mempool used by the pipe.
- * This buffer should not be bound to any descriptor in the RX/TX queue referred to by the pipe.
- */
-extern CL_API_ENTRY cl_int CL_API_CALL
-    clReleasePipeBuffer(cl_command_queue command_queue,
-	    cl_pipe pipe,
-	    rte_mbuf* buf) CL_API_SUFFIX__VERSION_1_0;
 
 /*
  * Low level access to XRT device for use with xrt++

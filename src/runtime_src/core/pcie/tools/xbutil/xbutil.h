@@ -1471,16 +1471,8 @@ public:
         if (ddr_mem_size == -EINVAL)
             return -EINVAL;
 
-        bool isAREDevice = false;
-
-
-        if (strstr(name().c_str(), "-xare")) {//This is ARE device
-            isAREDevice = true;
-        }
-
         int result = 0;
         unsigned long long addr = 0x0;
-        unsigned long long sz = 0x1;
         unsigned int pattern = 'J';
 
         // get DDR bank count from mem_topology if possible
@@ -1545,59 +1537,12 @@ public:
             }
         }
 
-        if (isAREDevice) {//This is ARE device
-            //XARE Status Reg Base Addr = 0x90000
-            //XARE Channel Up Addr is = 0x90010 (& 0x98010)
-            // 32 bits = 0x2 means clock is up but channel is down
-            // 32 bits = 0x3 mean clocks and channel both are up..
-            //??? Sarab: Also check if link channel is up;
-            //After that see if we should do one hope or more hops..
-
-            //Raw Read/Write Delay Check
-            unsigned numIteration = 10000;
-            //addr = 0xC00000000;//48GB = 3 hops
-            addr = 0x400000000;//16GB = one hop
-            sz = 0x20000;//128KB
-            long numHops = addr / get_ddr_mem_size();
-            auto t1 = Clock::now();
-            for (unsigned i = 0; i < numIteration; i++) {
-                memwriteQuiet(addr, sz, pattern);
-            }
-            auto t2 = Clock::now();
-            auto timeARE = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count();
-
-            addr = 0x0;
-            sz = 0x1;
-            t1 = Clock::now();
-            for (unsigned i = 0; i < numIteration; i++) {
-                memwriteQuiet(addr, sz, pattern);
-            }
-            t2 = Clock::now();
-            auto timeDDR = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count();
-            long delayPerHop = (timeARE - timeDDR) / (numIteration * numHops);
-            std::cout << "Averaging ARE hardware latency over " << numIteration * numHops << " hops\n";
-            std::cout << "Latency per ARE hop for 128KB: " << delayPerHop << " ns\n";
-            std::cout << "Total latency over ARE: " << (timeARE - timeDDR) << " ns\n";
-        }
         return result;
     }
 
-    int memread(std::string aFilename, unsigned long long aStartAddr = 0, unsigned long long aSize = 0) {
-        std::ios_base::fmtflags f(std::cout.flags());
+    int memread(std::string aFilename, unsigned long long aStartAddr = 0, unsigned long long aSize = 0)
+    {
         xclbin_lock xclbin_lock(m_handle, m_idx);
-
-        if (strstr(name().c_str(), "-xare")) {//This is ARE device
-          if (aStartAddr > get_ddr_mem_size()) {
-              std::cout << "Start address " << std::hex << aStartAddr <<
-                           " is over ARE" << std::endl;
-          }
-          if (aSize > get_ddr_mem_size() || aStartAddr+aSize > get_ddr_mem_size()) {
-              std::cout << "Read size " << std::dec << aSize << " from address 0x" << std::hex << aStartAddr <<
-                           " is over ARE" << std::endl;
-          }
-        }
-        std::cout.flags(f);
-
         return memaccess(m_handle, get_ddr_mem_size(), getpagesize(),
             pcidev::get_dev(m_idx)->sysfs_name).read(
             aFilename, aStartAddr, aSize);
@@ -1616,21 +1561,9 @@ public:
             aStartAddr, aSize, aPattern, checks);
     }
 
-    int memwrite(unsigned long long aStartAddr, unsigned long long aSize, unsigned int aPattern = 'J') {
-        std::ios_base::fmtflags f(std::cout.flags());
+    int memwrite(unsigned long long aStartAddr, unsigned long long aSize, unsigned int aPattern = 'J')
+    {
         xclbin_lock xclbin_lock(m_handle, m_idx);
-
-        if (strstr(name().c_str(), "-xare")) {//This is ARE device
-            if (aStartAddr > get_ddr_mem_size()) {
-                std::cout << "Start address " << std::hex << aStartAddr <<
-                             " is over ARE" << std::endl;
-            }
-            if (aSize > get_ddr_mem_size() || aStartAddr+aSize > get_ddr_mem_size()) {
-                std::cout << "Write size " << std::dec << aSize << " from address 0x" << std::hex << aStartAddr <<
-                             " is over ARE" << std::endl;
-            }
-        }
-        std::cout.flags(f);
         return memaccess(m_handle, get_ddr_mem_size(), getpagesize(),
             pcidev::get_dev(m_idx)->sysfs_name).write(
             aStartAddr, aSize, aPattern);
@@ -1638,19 +1571,6 @@ public:
 
     int memwrite( unsigned long long aStartAddr, unsigned long long aSize, char *srcBuf )
     {
-        std::ios_base::fmtflags f(std::cout.flags());
-
-        if( strstr( name().c_str(), "-xare" ) ) { //This is ARE device
-            if( aStartAddr > get_ddr_mem_size() ) {
-                std::cout << "Start address " << std::hex << aStartAddr <<
-                             " is over ARE" << std::endl;
-            }
-            if( aSize > get_ddr_mem_size() || aStartAddr + aSize > get_ddr_mem_size() ) {
-                std::cout << "Write size " << std::dec << aSize << " from address 0x" << std::hex << aStartAddr <<
-                             " is over ARE" << std::endl;
-            }
-        }
-        std::cout.flags(f);
         return memaccess(m_handle, get_ddr_mem_size(), getpagesize(),
             pcidev::get_dev(m_idx)->sysfs_name).write(
             aStartAddr, aSize, srcBuf);

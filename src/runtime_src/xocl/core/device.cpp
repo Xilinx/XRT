@@ -355,11 +355,11 @@ alloc(memory* mem)
 
 int
 device::
-get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, const cl_mem_ext_ptr_t* ext, xrt::device::stream_handle* stream, int32_t& conn)
+get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs,
+           const cl_mem_ext_ptr_t* ext, xrt::device::stream_handle* stream, int32_t& conn)
 {
-  uint64_t route = (uint64_t)-1;
-  uint64_t flow = (uint64_t)-1;
-  int rc = 0;
+  uint64_t route = std::numeric_limits<uint64_t>::max();
+  uint64_t flow = std::numeric_limits<uint64_t>::max();
 
   if(ext && ext->param) {
     auto kernel = xocl::xocl(ext->kernel);
@@ -370,6 +370,7 @@ get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, con
 
     if (!mems)
       throw xocl::error(CL_INVALID_OPERATION,"Mem topology section does not exist");
+
     if(memidx<0 || (memidx+1)>mems->m_count)
       throw xocl::error(CL_INVALID_OPERATION,"Mem topology section count is less than memidex");
 
@@ -377,23 +378,27 @@ get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, con
     route = mem.route_id;
     flow = mem.flow_id;
 
-    char* read = strstr((char*)mem.m_tag, "_r");
-    char* write = strstr((char*)mem.m_tag, "_w");
+    auto read = strstr((const char*)mem.m_tag, "_r");
+    auto write = strstr((const char*)mem.m_tag, "_w");
 
     //TODO: Put an assert/throw if both read and write are not set, but currently that check will break as full m_tag not yet available
 
     if(read && !(flags & XCL_STREAM_WRITE_ONLY))
-      throw xocl::error(CL_INVALID_OPERATION,"Connecting a kernel write only stream to non-user-read stream, argument " + ext->flags);
+      throw xocl::error(CL_INVALID_OPERATION,
+           "Connecting a kernel write only stream to non-user-read stream, argument " + ext->flags);
 
     if(write &&  !(flags & XCL_STREAM_READ_ONLY))
-      throw xocl::error(CL_INVALID_OPERATION,"Connecting a kernel read stream to non-user-write stream, argument " + ext->flags);
+      throw xocl::error(CL_INVALID_OPERATION,
+           "Connecting a kernel read stream to non-user-write stream, argument " + ext->flags);
 
     if(mem.m_type != MEM_STREAMING)
-      throw xocl::error(CL_INVALID_OPERATION,"Connecting a streaming argument to non-streaming bank");
+      throw xocl::error(CL_INVALID_OPERATION,
+           "Connecting a streaming argument to non-streaming bank");
 
     xocl(kernel)->set_argument(ext->flags,sizeof(cl_mem),nullptr);
   }
 
+  int rc = 0;
   if (flags & XCL_STREAM_WRITE_ONLY)  // kernel writes, user reads
     rc = m_xdevice->createReadStream(flags, attrs, route, flow, stream);
   else if (flags & XCL_STREAM_READ_ONLY) // kernel reads, user writes
@@ -700,29 +705,6 @@ get_cu_memidx() const
     }
   }
   return m_cu_memidx;
-}
-
-device::memidx_bitmask_type
-device::
-get_cu_memidx(kernel* kernel, int argidx) const
-{
-  bool set = false;
-  memidx_bitmask_type memidx;
-  memidx.set();
-  auto sid = kernel->get_symbol_uid();
-
-  // iterate CUs
-  for (auto& cu : get_cus()) {
-    if (cu->get_symbol_uid()!=sid)
-      continue;
-    memidx &= cu->get_memidx(argidx);
-    set = true;
-  }
-
-  if (!set)
-    memidx.reset();
-
-  return memidx;
 }
 
 xrt::device::BufferObjectHandle

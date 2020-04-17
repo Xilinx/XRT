@@ -42,7 +42,7 @@ validOrError(const cl_command_queue command_queue)
 void
 validOrError(cl_command_queue_properties properties)
 {
-  cl_bitfield valid = CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE | CL_QUEUE_PROFILING_ENABLE | CL_QUEUE_DPDK;
+  cl_bitfield valid = CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE | CL_QUEUE_PROFILING_ENABLE;
   if(properties & (~valid))
     throw error(CL_INVALID_VALUE);
 }
