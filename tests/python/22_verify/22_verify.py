@@ -18,6 +18,7 @@
 
 import sys
 import uuid
+import re
 
 # Following found in PYTHONPATH setup by XRT
 from xrt_binding import *
@@ -27,9 +28,12 @@ from ert_binding import *
 sys.path.append('../')
 from utils_binding import *
 
+
 def runKernel(opt):
 
-    khandle = xrtPLKernelOpen(opt.handle, opt.xuuid, "hello:hello_1")
+    rule = re.compile("hello*")
+    name = filter(rule.match, opt.kernels)[0]
+    khandle = xrtPLKernelOpen(opt.handle, opt.xuuid, name)
 
     boHandle1 = xclAllocBO(opt.handle, opt.DATA_SIZE, 0, opt.first_mem)
     bo1 = xclMapBO(opt.handle, boHandle1, True)

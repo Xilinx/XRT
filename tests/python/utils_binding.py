@@ -1,8 +1,5 @@
 ##
- # Copyright (C) 2018 Xilinx, Inc
- # Author(s): Ryan Radjabi
- #            Shivangi Agarwal
- #            Sonal Santan
+ # Copyright (C) 2018-2020 Xilinx, Inc
  # Helper routines for Python based XRT tests
  #
  # Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -44,6 +41,7 @@ class Options(object):
         self.cu_base_addr = -1
         self.ert = False
         self.xuuid = uuid.uuid4()
+        self.kernels = []
 
     def getOptions(self, argv):
         try:
@@ -92,8 +90,6 @@ class Options(object):
         print("")
         print("  [--ert] enable embedded runtime (default: false)")
         print("")
-        print("* If HAL driver is not specified, application will try to find the HAL driver")
-        print("  using XILINX_OPENCL and XCL_PLATFORM environment variables")
         print("* Bitstream is required")
         print("* HAL logfile is optional but useful for capturing messages from HAL driver")
 
@@ -152,7 +148,8 @@ def initXRT(opt):
             if (ip[i].m_type != 1):
                 continue
             opt.cu_base_addr = ip[i].ip_u1.m_base_address
-            print("CU[%d] %s @0x%x" % (i, ctypes.cast(ip[i].m_name, ctypes.c_char_p).value, opt.cu_base_addr))
+            opt.kernels.append(ctypes.cast(ip[i].m_name, ctypes.c_char_p).value)
+            print("CU[%d] %s @0x%x" % (i, opt.kernels[len(opt.kernels)-1], opt.cu_base_addr))
 
         head = wrap_get_axlf_section(blob, AXLF_SECTION_KIND.MEM_TOPOLOGY)
         topo = mem_topology.from_buffer(data, head.contents.m_sectionOffset)
