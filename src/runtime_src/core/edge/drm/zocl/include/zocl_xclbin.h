@@ -13,7 +13,6 @@
 #define _ZOCL_XCLBIN_H_
 
 struct zocl_xclbin {
-	u64		zx_last_bitstream;
 	int		zx_refcnt;
 	void		*zx_uuid;
 };

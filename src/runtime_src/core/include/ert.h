@@ -417,7 +417,8 @@ enum ert_cmd_type {
  */
 enum softkernel_type {
   SOFTKERNEL_TYPE_EXEC = 0,
-  SOFTKERNEL_TYPE_XCLBIN = 1,
+  SOFTKERNEL_TYPE_XCLBIN_STATIC = 1,
+  SOFTKERNEL_TYPE_XCLBIN_DYNAMIC = 2,
 };
 
 /*
