@@ -1087,8 +1087,15 @@ int shim::xclLoadAxlf(const axlf *buffer)
  */
 int shim::xclExportBO(unsigned int boHandle)
 {
-    drm_prime_handle info = {boHandle, 0, -1};
+    drm_prime_handle info = {boHandle, DRM_RDWR, -1};
     int result = mDev->ioctl(mUserHandle, DRM_IOCTL_PRIME_HANDLE_TO_FD, &info);
+    if (result) {
+        xrt_logmsg(XRT_WARNING, "XRT", "%s: DRM prime handle to fd failed with DRM_RDWR. Trying default flags.", __func__);
+        info.flags = 0;
+        result = ioctl(mUserHandle, DRM_IOCTL_PRIME_HANDLE_TO_FD, &info);
+    }
+
+    xrt_logmsg(XRT_DEBUG, "XRT", "%s: boHandle %d, ioctl return %ld, fd %d", __func__, boHandle, result, info.fd);
     return !result ? info.fd : result;
 }
 

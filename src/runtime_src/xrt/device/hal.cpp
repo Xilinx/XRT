@@ -86,16 +86,6 @@ dllpath(const boost::filesystem::path& root, const std::string& libnm)
 #endif
 }
 
-boost::filesystem::path
-modulepath(const boost::filesystem::path& root, const std::string& libnm)
-{
-#ifdef _WIN32
-  return root / "bin" / (libnm + ".dll") ;
-#else
-  return root / "lib" / "xrt" / "module" / ("lib" + libnm + ".so") ;
-#endif
-}
-
 static bool
 is_emulation()
 {
@@ -260,92 +250,4 @@ load_xdp()
   static xdp_once_loader xdp_loaded;
 }
 
-void load_xdp_kernel_debug()
-{
-  struct xdp_kernel_debug_once_loader
-  {
-    void* handle = nullptr ;
-
-    xdp_kernel_debug_once_loader()
-    {
-      bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
-      if (xrt.empty()) {
-        throw std::runtime_error("XILINX_XRT not set");
-      }
-      bfs::path xrtlib(xrt / "lib" / "xrt" / "module" ) ;
-      directoryOrError(xrtlib) ;
-      auto libpath = modulepath(xrt, "xdp_debug_plugin") ;
-      if (!isDLL(libpath)) {
-        throw std::runtime_error("Library " + libpath.string() + " not found!");
-      }
-      handle = xrt_core::dlopen(libpath.string().c_str(), RTLD_NOW | RTLD_GLOBAL);
-      if (!handle)
-        throw std::runtime_error("Failed to open XDP library '" + libpath.string() + "'\n" + xrt_core::dlerror());
-
-      typedef void (* xdpInitType)();
-
-      const std::string s = "initKernelDebug";
-      auto initFunc = (xdpInitType)xrt_core::dlsym(handle, s.c_str());
-      if (!initFunc)
-        throw std::runtime_error("Failed to initialize XDP Kernel Debug library, '" + s +"' symbol not found.\n" + xrt_core::dlerror());
-
-      initFunc();
-    }
-    ~xdp_kernel_debug_once_loader()
-    {
-      if (handle != nullptr)
-      {
-	//xrt_core::dlclose(handle) ;
-      }
-    }
-  };
-
-  // 'magic static' is thread safe per C++11
-  static xdp_kernel_debug_once_loader xdp_kernel_debug_loaded;
-}
-
-void load_xdp_app_debug()
-{
-  struct xdp_app_debug_once_loader
-  {
-    void* handle = nullptr ;
-
-    xdp_app_debug_once_loader()
-    {
-      bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
-      if (xrt.empty()) {
-        throw std::runtime_error("XILINX_XRT not set");
-      }
-      bfs::path xrtlib(xrt / "lib" / "xrt" / "module");
-      directoryOrError(xrtlib);
-      auto libpath = modulepath(xrt, "xdp_appdebug_plugin");
-
-      if (!isDLL(libpath)) {
-        throw std::runtime_error("Library " + libpath.string() + " not found!");
-      }
-      handle = xrt_core::dlopen(libpath.string().c_str(), RTLD_NOW | RTLD_GLOBAL);
-      if (!handle)
-        throw std::runtime_error("Failed to open XDP library '" + libpath.string() + "'\n" + xrt_core::dlerror());
-
-      typedef void (* xdpInitType)();
-
-      const std::string s = "initAppDebug";
-      auto initFunc = (xdpInitType)xrt_core::dlsym(handle, s.c_str());
-      if (!initFunc)
-        throw std::runtime_error("Failed to initialize XDP Kernel Debug library, '" + s +"' symbol not found.\n" + xrt_core::dlerror());
-
-      initFunc();
-    }
-    ~xdp_app_debug_once_loader()
-    {
-      if (handle != nullptr)
-      {
-	//xrt_core::dlclose(handle) ;
-      }
-    }
-  };
-
-  // 'magic static' is thread safe per C++11
-  static xdp_app_debug_once_loader xdp_app_debug_loaded;
-}
 }} // hal,xcl
