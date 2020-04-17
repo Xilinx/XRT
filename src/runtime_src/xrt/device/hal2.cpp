@@ -41,7 +41,6 @@ device(std::shared_ptr<operations> ops, unsigned int idx)
 device::
 ~device()
 {
-  close();
   for (auto& q : m_queue)
     q.stop();
   for (auto& t : m_workers)
