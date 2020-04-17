@@ -1,7 +1,26 @@
+"""
+ Copyright (C) 2019-2020 Xilinx, Inc
+
+ ctypes based Python binding for XRT
+
+ Licensed under the Apache License, Version 2.0 (the "License"). You may
+ not use this file except in compliance with the License. A copy of the
+ License is located at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ License for the specific language governing permissions and limitations
+ under the License.
+"""
+
 import sys
-# import source files
-sys.path.append('../../../src/python/')
+
+# Following found in PYTHONPATH setup by XRT
 from xrt_binding import *
+
 sys.path.append('../')
 from utils_binding import *
 
@@ -14,14 +33,17 @@ def runKernel(opt):
     boHandle1 = xclAllocBO(opt.handle, DATA_SIZE, 0, opt.first_mem)
     boHandle2 = xclAllocBO(opt.handle, DATA_SIZE, 0, opt.first_mem)
 
-    bo1 = xclMapBO(opt.handle, boHandle1, True, 'int')
-    bo2 = xclMapBO(opt.handle, boHandle2, True, 'int')
+    bo1 = xclMapBO(opt.handle, boHandle1, True)
+    bo2 = xclMapBO(opt.handle, boHandle2, True)
 
     ctypes.memset(bo1, 0, DATA_SIZE)
     ctypes.memset(bo2, 0, DATA_SIZE)
 
-    for i in range(len(bo1.contents)):
-        bo2.contents[i] = i
+    bo1Int = ctypes.cast(bo1, ctypes.POINTER(ctypes.c_int))
+    bo2Int = ctypes.cast(bo2, ctypes.POINTER(ctypes.c_int))
+
+    for i in range(COUNT):
+        bo2Int[i] = i
 
     # bufReference
     bufReference = [i + i*16 for i in range(COUNT)]
@@ -42,7 +64,7 @@ def runKernel(opt):
     xrtRunClose(rhandle1)
     xrtKernelClose(khandle)
 
-    assert (bufReference[:COUNT] == bo1.contents[:COUNT]), "Computed value does not match reference"
+    assert (bufReference[:COUNT] == bo1Int[:COUNT]), "Computed value does not match reference"
     xclUnmapBO(opt.handle, boHandle2, bo2)
     xclFreeBO(opt.handle, boHandle2)
     xclUnmapBO(opt.handle, boHandle1, bo1)
