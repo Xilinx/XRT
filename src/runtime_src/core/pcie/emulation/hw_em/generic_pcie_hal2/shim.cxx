@@ -586,19 +586,27 @@ namespace xclhwemhal2 {
         // NOTE: proto inst filename must match name in HPIKernelCompilerHwEmu.cpp
         std::string protoFileName = "./" + bdName + "_behav.protoinst";
         std::stringstream cmdLineOption;
-
+        std::string waveformDebugfilePath = "";
         sim_path = binaryDirectory + "/behav_waveform/xsim";
 
         if (boost::filesystem::exists(sim_path) != false) {
+          
+          std::string waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
           cmdLineOption << " -g --wdb " << wdbFileName << ".wdb"
             << " --protoinst " << protoFileName;
 
           launcherArgs = launcherArgs + cmdLineOption.str();
         }
+        
         std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
         unsetenv("VITIS_LAUNCH_WAVEFORM_BATCH");
-        setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
-        setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
+        if (waveformDebugfilePath != "" && boost::filesystem::exists(waveformDebugfilePath) != false) {
+          setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
+          setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
+        } else {
+          std::string dMsg = "WARNING: [HW-EMU 08-1] None of the Kernels compiled in the Waveform enabled mode to get the WDB file.";
+          logMessage(dMsg, 0);
+        }
         setenv("VITIS_KERNEL_PROFILE_FILENAME", kernelProfileFileName.c_str(), true);
         setenv("VITIS_KERNEL_TRACE_FILENAME", kernelTraceFileName.c_str(), true);
       }
@@ -613,10 +621,17 @@ namespace xclhwemhal2 {
 
         launcherArgs = launcherArgs + cmdLineOption.str();
         sim_path = binaryDirectory + "/behav_waveform/xsim";
+        std::string waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
+        
         std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
         setenv("VITIS_LAUNCH_WAVEFORM_BATCH", "1", true);
-        setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
-        setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
+        if (boost::filesystem::exists(waveformDebugfilePath) != false) {          
+          setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
+          setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
+        } else {
+          std::string dMsg = "WARNING: [HW-EMU 08-2] None of the Kernels compiled in the Waveform enabled mode to get the WDB file.";
+          logMessage(dMsg, 0);
+        }
         setenv("VITIS_KERNEL_PROFILE_FILENAME", kernelProfileFileName.c_str(), true);
         setenv("VITIS_KERNEL_TRACE_FILENAME", kernelTraceFileName.c_str(), true);
       }
@@ -637,7 +652,9 @@ namespace xclhwemhal2 {
         {
           if (lWaveform == xclemulation::LAUNCHWAVEFORM::OFF) {
             sim_path = binaryDirectory + "/behav_waveform/xsim";
-            std::string dMsg = "WARNING: [HW-EM 07] Launch Waveform is set to OFF in ini file. Could not find an axsim binary. Running simulation using xsim. Using " + sim_path + " as simulation directory.";
+            std::string waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
+            
+            std::string dMsg = "WARNING: [HW-EMU 07] Launch Waveform is set to OFF in INI file. And none of kernels compiled in GDB mode. Running simulation using waveform mode.";
             logMessage(dMsg, 0);
             std::string protoFileName = "./" + bdName + "_behav.protoinst";
             std::stringstream cmdLineOption;
@@ -647,8 +664,13 @@ namespace xclhwemhal2 {
             launcherArgs = launcherArgs + cmdLineOption.str();
             std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
             setenv("VITIS_LAUNCH_WAVEFORM_BATCH", "1", true);
-            setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
-            setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
+            if (boost::filesystem::exists(waveformDebugfilePath) != false) {          
+              setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
+              setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
+            } else {
+              std::string dMsg = "WARNING: [HW-EMU 08-3] None of the Kernels compiled in the Waveform enabled mode to get the WDB file.";
+              logMessage(dMsg, 0);
+            }
             setenv("VITIS_KERNEL_PROFILE_FILENAME", kernelProfileFileName.c_str(), true);
             setenv("VITIS_KERNEL_TRACE_FILENAME", kernelTraceFileName.c_str(), true);
 
