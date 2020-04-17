@@ -48,16 +48,11 @@ typedef uint32_t stream_xfer_req_type;
  * -  STREAM_OPT_AIO_BATCH_THRESH_PKTS,   io_batching threshold: # request
  *    Keep accumulating the i/o request, until the total # of r/w request
  *    reaches the threshold of "opt_value" of requests
- *
- * -  STREAM_OPT_AIO_BATCH_THRESH_TIMER,  io_batching threshold: # request
- *    Keep accumulating the i/o request, until the timer pops.
- *    The timer duration is "opt_value" milisecond.
  */
 typedef enum stream_opt_type {
     STREAM_OPT_AIO_MAX_EVENT = 1,       /* maximum # aio event */
     STREAM_OPT_AIO_BATCH_THRESH_BYTES,  /* io batching threshold: # bytes */
     STREAM_OPT_AIO_BATCH_THRESH_PKTS,   /* io_batching threshold: # request */
-    STREAM_OPT_AIO_BATCH_THRESH_TIMER,  /* io batching threshold: timer in ms */
 
     STREAM_OPT_MAX
 } stream_opt_type;

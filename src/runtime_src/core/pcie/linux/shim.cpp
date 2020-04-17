@@ -153,7 +153,6 @@ private:
     unsigned int aio_max_evts;	/* for io_setup() max. event concurrently */
 
     /* aio batching threshold to flush the queued i/o */
-    unsigned int timer_ms;	/* timer in milisecond */
     unsigned int byteThresh;	/* total bytes count */
     unsigned int pktThresh;	/* total buffer/packet count */
 
@@ -314,15 +313,8 @@ private:
 
         do {
             std::unique_lock<std::mutex> lck(reqLock);
-	    /* set a time out to prevent holding the i/o forever */
-            if (!timer_ms)
-		cv.wait(lck);
-            else
-		cv.wait_for(lck, std::chrono::milliseconds(timer_ms));
-
-            if (reqList.empty())
-                continue;
-
+	    while (reqList.empty() && !qExit)
+                cv.wait(lck);
             queue_flush_aio_request();
         } while(!qExit);
 
@@ -343,7 +335,7 @@ private:
 
     void queue_aio_batch_disable_check(void)
     {
-        if (!byteThresh && !pktThresh && !timer_ms)
+        if (!byteThresh && !pktThresh)
             stop_aio_worker();
     }
 
@@ -352,7 +344,7 @@ private:
         /* to enable aio batching, the stream needs to have its own context
          * and any of the 
          */
-        if (qAioEn && (byteThresh || pktThresh || timer_ms)) {
+        if (qAioEn && (byteThresh || pktThresh)) {
             qExit = false;
             qWorker = std::thread(&queue_cb::queue_aio_worker, this);
             qAioBatchEn = true;
@@ -363,8 +355,8 @@ public:
     queue_cb(struct xocl_qdma_ioc_create_queue *qinfo)
         : qAioEn{false}, qAioBatchEn{false}, qExit{false},
           h2c{qinfo->write ? true : false}, qhndl{qinfo->handle},
-          aio_max_evts{0}, timer_ms{0}, byteThresh{0}, pktThresh{0},
-          byteCnt{0}, bufCnt{0}, cbSubmitCnt{0}, cbPollCnt{0}, cbErrCnt{0}
+          aio_max_evts{0}, byteThresh{0}, pktThresh{0}, byteCnt{0}, bufCnt{0},
+          cbSubmitCnt{0}, cbPollCnt{0}, cbErrCnt{0}
     {
        memset(&qAioCtx, 0, sizeof(qAioCtx));
     }
@@ -408,13 +400,6 @@ public:
             return 0;
         case STREAM_OPT_AIO_BATCH_THRESH_PKTS:
 	    pktThresh = val;
-            if (val && qAioEn && !qAioBatchEn)
-                queue_aio_batch_enable_check();
-            else if (!val && qAioBatchEn)
-                queue_aio_batch_disable_check();
-            return 0;
-        case STREAM_OPT_AIO_BATCH_THRESH_TIMER:
-	    timer_ms = val;
             if (val && qAioEn && !qAioBatchEn)
                 queue_aio_batch_enable_check();
             else if (!val && qAioBatchEn)
