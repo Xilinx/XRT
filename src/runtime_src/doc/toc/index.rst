@@ -76,7 +76,6 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
 
    yocto.rst
    test.rst
-   create_platforms.rst
 
 
 .. toctree::

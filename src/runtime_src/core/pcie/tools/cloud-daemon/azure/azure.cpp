@@ -178,10 +178,23 @@ static void azureHotResetAsync(size_t index)
  */
 int azureHotReset(size_t index, int *resp)
 {
-    //tell xocl don't try to restore anything since we are going
-    //to do hotplug in wireserver
-    *resp = -ESHUTDOWN;
-    nouse = std::async(std::launch::async, &azureHotResetAsync, index);
+    /*
+     * Tell xocl don't try to restore anything since we are going
+     * to do hotplug in wireserver
+     * If we can't get S/N of the card, we are not even going to issue the reset
+     * to wireserver since this makes no sense and even hangs the instance.
+     * Empty S/N may happen in this scenario,
+     *  1. vm boots and is ready before the mgmt side is ready
+     *  2. 'xbutil reset' tries to reset the card immediately after mgmt is ready
+     *  in this case, there is no chance for mpd to get S/N info. so we just fails
+     *  the reset
+     */
+    if (fpga_serial_number.at(index).empty()) {
+        *resp = -E_EMPTY_SN;
+    } else {
+        *resp = -ESHUTDOWN;
+        nouse = std::async(std::launch::async, &azureHotResetAsync, index);
+    }
     return 0;
 }
 
@@ -213,9 +226,12 @@ int AzureDev::azureLoadXclBin(const xclBin *buffer)
 {
     char *xclbininmemory = reinterpret_cast<char*> (const_cast<xclBin*> (buffer));
     if (memcmp(xclbininmemory, "xclbin2", 8) != 0)
-           return -1;
+        return -1;
     std::string fpgaSerialNumber;
     get_fpga_serialNo(fpgaSerialNumber);
+
+    if (fpgaSerialNumber.empty())
+        return -E_EMPTY_SN;
     std::cout << "LoadXclBin FPGA serial No: " << fpgaSerialNumber << std::endl;
     int index = 0;
     std::string imageSHA;
@@ -236,6 +252,8 @@ int AzureDev::azureLoadXclBin(const xclBin *buffer)
     std::cout << "Start upload segment (" << fpgaSerialNumber << ")" << std::endl;
     gettimeofday(&tvStartUpload, NULL);
     for (auto &chunk: chunks) {
+        if (goingTimeout())
+            return -E_REST_TIMEOUT;
         //upload each segment individually
         std::cout << "upload segment (" << fpgaSerialNumber << "): " << index << " size: " << chunk.size() << std::endl;
         if (UploadToWireServer(
@@ -265,6 +283,8 @@ int AzureDev::azureLoadXclBin(const xclBin *buffer)
     std::cout << "Start reimage process (" << fpgaSerialNumber << ")" << std::endl;
     gettimeofday(&tvStartReimage, NULL);
     do {
+        if (goingTimeout())
+            return -E_REST_TIMEOUT;
         ret = REST_Get(
             restip_endpoint,
             "machine/plugins/?comp=FpgaController&type=StartReimaging",
@@ -299,6 +319,8 @@ int AzureDev::azureLoadXclBin(const xclBin *buffer)
     gettimeofday(&tvStartStatus, NULL);
     int wait = 0;
     do {
+        if (goingTimeout())
+            return -E_REST_TIMEOUT;
         ret = REST_Get(
             restip_endpoint,
             "machine/plugins/?comp=FpgaController&type=GetReimagingStatus",
@@ -391,6 +413,7 @@ AzureDev::~AzureDev()
 AzureDev::AzureDev(size_t index) : index(index)
 {
     dev = pcidev::get_dev(index, true);
+    gettimeofday(&start, NULL);
 }
 
 //private methods
@@ -583,8 +606,11 @@ void AzureDev::get_fpga_serialNo(std::string &fpgaSerialNo)
     //fpgaSerialNo = "1281002AT024";
     if (fpgaSerialNo.empty())
         fpgaSerialNo = fpga_serial_number.at(index);
+    else if (fpga_serial_number.at(index).empty())
+        //save the serial in case the already saved is empty
+        fpga_serial_number.at(index) = fpgaSerialNo;
     if (!errmsg.empty() || fpgaSerialNo.empty()) {
-        std::cerr << "azure warning(" << dev->sysfs_name << ")";
+        std::cerr << "get_fpga_serialNo warning(" << dev->sysfs_name << ")";
         std::cerr << " sysfs errmsg: " << errmsg;
         std::cerr << " serialNumber: " << fpga_serial_number.at(index);
         std::cerr << std::endl;
@@ -600,3 +626,14 @@ void AzureDev::msleep(long msecs)
 
     nanosleep(&ts, NULL);
 }
+
+int AzureDev::goingTimeout()
+{
+    struct timeval now;
+    gettimeofday(&now, NULL);
+    if (now.tv_sec - start.tv_sec > timeout_threshold)
+        return 1;
+    else
+        return 0;
+}
+

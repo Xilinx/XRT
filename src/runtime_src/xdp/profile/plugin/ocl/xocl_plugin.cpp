@@ -389,6 +389,7 @@ namespace xdp {
     mXrtIniMap["continuous_trace"] = std::to_string(xrt::config::get_continuous_trace());
     mXrtIniMap["continuous_trace_interval_ms"] = std::to_string(xrt::config::get_continuous_trace_interval_ms());
     mXrtIniMap["lop_trace"] = std::to_string(xrt::config::get_lop_trace());
+    mXrtIniMap["launch_waveform"] = xrt::config::get_launch_waveform();
   }
 
   // ****************************************

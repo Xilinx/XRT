@@ -130,6 +130,10 @@ get_total_devices(bool is_user);
 
 /**
  * get_userpf_device() - construct from device id
+ *
+ * This API is ambiguous in multi-threaded applications that
+ * open a device in each thread. In these cases only the device
+ * handle can be used to locate correspoding device object
  */
 XRT_CORE_COMMON_EXPORT
 std::shared_ptr<device>
@@ -165,6 +169,10 @@ get_userpf_device(device::handle_type device_handle, device::id_type id);
 
 /**
  * get_mgmtpf_device() - get mgmt device from device id
+ *
+ * This API is ambiguous in multi-threaded applications that
+ * open a device in each thread. In these cases only the device
+ * handle can be used to locate correspoding device object
  */
 XRT_CORE_COMMON_EXPORT
 std::shared_ptr<device>

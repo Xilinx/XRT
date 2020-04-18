@@ -160,6 +160,7 @@ struct icap {
 	unsigned long		rp_sche_bin_len;
 	void			*rp_sc_bin;
 	unsigned long		*rp_sc_bin_len;
+	char			rp_vbnv[128];
 
 	struct bmc		bmc_header;
 
@@ -1400,7 +1401,7 @@ static int icap_download_rp(struct platform_device *pdev, int level, int flag)
 	}
 
 	ret = xocl_fdt_blob_input(xdev, icap->rp_fdt, icap->rp_fdt_len,
-			XOCL_SUBDEV_LEVEL_PRP);
+			XOCL_SUBDEV_LEVEL_PRP, icap->rp_vbnv);
 	if (ret) {
 		xocl_xdev_err(xdev, "failed to parse fdt %d", ret);
 		goto failed;
@@ -2847,6 +2848,9 @@ static uint64_t icap_get_data_nolock(struct platform_device *pdev,
 		case MIG_CALIB:
 			target = (uint64_t)icap->cache.mig_calib;
 			break;
+		case DATA_RETAIN:
+			target = (uint64_t)icap->cache.data_retention;
+			break;
 		default:
 			break;
 		}
@@ -2883,6 +2887,9 @@ static uint64_t icap_get_data_nolock(struct platform_device *pdev,
 			break;
 		case EXP_BMC_VER:
 			target = (uint64_t)icap->bmc_header.m_version;
+			break;
+		case DATA_RETAIN:
+			target = (uint64_t)icap->data_retention;
 			break;
 		default:
 			break;
@@ -3835,6 +3842,8 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 	icap->rp_bit = NULL;
 	icap->rp_bit_len = 0;
 
+	strncpy(icap->rp_vbnv, axlf->m_header.m_platformVBNV,
+			sizeof(icap->rp_vbnv) - 1);
 	section = get_axlf_section_hdr(icap, axlf, PARTITION_METADATA);
 	if (!section) {
 		ICAP_ERR(icap, "did not find PARTITION_METADATA section");

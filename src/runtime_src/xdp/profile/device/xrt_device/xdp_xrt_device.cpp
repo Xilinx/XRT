@@ -150,5 +150,10 @@ double XrtDevice::getMaxBwWrite()
   return mXrtDevice->getDeviceMaxWrite().get();
 }
 
+std::string XrtDevice::getSubDevicePath(std::string& subdev, uint32_t index)
+{
+  return mXrtDevice->getSubdevPath(subdev, index).get();
+}
+
 }
 

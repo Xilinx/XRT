@@ -35,7 +35,7 @@ typedef void *xrtGraphHandle;
  * to calling this function.
  */
 xrtGraphHandle
-xrtGraphOpen(xclDeviceHandle handle, uuid_t xclbinUUID, const char *graphName);
+xrtGraphOpen(xclDeviceHandle handle, const uuid_t xclbinUUID, const char *graphName);
 
 /**
  * xrtGraphClose() - Close an open graph.
@@ -164,6 +164,6 @@ xrtGraphUpdateRTP(xrtGraphHandle gh, const char *hierPathPort, const char *buffe
  * Note: Upon return, the synchronization is done or error out
  */
 int
-xrtSyncBOAIE(xrtGraphHandle gh, unsigned bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset);
+xrtSyncBOAIE(xrtGraphHandle gh, unsigned int bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset);
 
 #endif

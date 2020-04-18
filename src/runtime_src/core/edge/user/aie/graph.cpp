@@ -32,8 +32,22 @@ extern "C"
 
 namespace zynqaie {
 
+static inline uint64_t
+get_bd_high_addr(uint64_t addr)
+{
+  constexpr uint64_t hi_mask = 0xFFFF00000000L;
+  return ((addr & hi_mask) >> 32);
+}
+
+static inline uint64_t
+get_bd_low_addr(uint64_t addr)
+{
+  constexpr uint32_t low_mask = 0xFFFFFFFFL;
+  return (addr & low_mask);
+}
+
 graph_type::
-graph_type(std::shared_ptr<xrt_core::device> dev, uuid_t, const std::string& graph_name)
+graph_type(std::shared_ptr<xrt_core::device> dev, const uuid_t, const std::string& graph_name)
   : device(std::move(dev)), name(graph_name)
 {
     // TODO
@@ -42,13 +56,21 @@ graph_type(std::shared_ptr<xrt_core::device> dev, uuid_t, const std::string& gra
     auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
     aieArray = drv->getAieArray();
     if (!aieArray) {
-      aieArray = new Aie();
+      aieArray = new Aie(device);
       drv->setAieArray(aieArray);
     }
 
     /* Initialize graph tile metadata */
-    for (auto& tile : xrt_core::edge::aie::get_tiles(device.get(), name))
+    for (auto& tile : xrt_core::edge::aie::get_tiles(device.get(), name)) {
+      /*
+       * Since row 0 is shim row, according to Cardano, row data in
+       * xclbin is off-by-one. To talk to AIE driver, we need to add
+       * shim row back.
+       */ 
+      tile.row += 1;
+      tile.itr_mem_row += 1;
       tiles.emplace_back(std::move(tile));
+    }
 
     /* Initialize graph rtp metadata */
     for (auto &rtp : xrt_core::edge::aie::get_rtp(device.get()))
@@ -64,7 +86,6 @@ graph_type::
     if (aieArray)
         delete aieArray;
 }
-
 
 void
 graph_type::
@@ -358,8 +379,8 @@ sync_bo(unsigned bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size
 
   BD bd = dmap->dma_chan[chan].idle_bds.front();
   dmap->dma_chan[chan].idle_bds.pop();
-  bd.addr_high = GET_BD_HIGH_ADDR(paddr);
-  bd.addr_low = GET_BD_LOW_ADDR(paddr);
+  bd.addr_high = get_bd_high_addr(paddr);
+  bd.addr_low = get_bd_low_addr(paddr);
 
   XAieDma_ShimBdSetAddr(&(dmap->handle), bd.bd_num, bd.addr_high, bd.addr_low, size);
 
@@ -393,6 +414,12 @@ wait_sync_bo(ShimDMA *dmap, uint32_t chan, uint32_t timeout)
   }
 }
 
+void
+graph_type::
+event_cb(struct XAieGbl *aie_inst, XAie_LocType Loc, u8 module, u8 event, void *arg)
+{
+    xrt_core::message::send(xrt_core::message::severity_level::XRT_NOTICE, "XRT", "AIE EVENT: module %d, event %d",  module, event);
+}
 
 } // zynqaie
 
@@ -425,7 +452,7 @@ namespace api {
 using graph_type = zynqaie::graph_type;
 
 xrtGraphHandle
-xrtGraphOpen(xclDeviceHandle dhdl, uuid_t xclbin_uuid, const char* name)
+xrtGraphOpen(xclDeviceHandle dhdl, const uuid_t xclbin_uuid, const char* name)
 {
   auto device = xrt_core::get_userpf_device(dhdl);
   auto graph = std::make_shared<graph_type>(device, xclbin_uuid, name);
@@ -505,7 +532,7 @@ xrtGraphUpdateRTP(xrtGraphHandle ghdl, const char* port, const char* buffer, siz
 }
 
 void
-xrtSyncBOAIE(xrtGraphHandle ghdl, unsigned bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset)
+xrtSyncBOAIE(xrtGraphHandle ghdl, unsigned int bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
   auto graph = get_graph(ghdl);
   graph->sync_bo(bo, dmaID, dir, size, offset);
@@ -518,7 +545,7 @@ xrtSyncBOAIE(xrtGraphHandle ghdl, unsigned bo, const char *dmaID, enum xclBOSync
 // xrt_aie API implementations (xrt_aie.h)
 ////////////////////////////////////////////////////////////////
 xrtGraphHandle
-xrtGraphOpen(xclDeviceHandle handle, uuid_t xclbin_uuid, const char* graph)
+xrtGraphOpen(xclDeviceHandle handle, const uuid_t xclbin_uuid, const char* graph)
 {
   try {
     return api::xrtGraphOpen(handle, xclbin_uuid, graph);
@@ -690,7 +717,7 @@ xrtGraphUpdateRTP(xrtGraphHandle ghdl, const char* port, const char* buffer, siz
 }
 
 int
-xrtSyncBOAIE(xrtGraphHandle ghdl, unsigned bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset)
+xrtSyncBOAIE(xrtGraphHandle ghdl, unsigned int bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
   try {
     api::xrtSyncBOAIE(ghdl, bo, dmaID, dir, size, offset);

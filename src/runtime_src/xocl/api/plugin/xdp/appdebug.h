@@ -22,6 +22,9 @@
 namespace xocl {
 namespace appdebug {
 
+  void load_xdp_app_debug() ;
+  void register_appdebug_functions(void* handle) ;
+
 using action_debug_type = xocl::event::action_debug_type;
 
 /*

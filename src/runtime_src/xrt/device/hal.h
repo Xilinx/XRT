@@ -70,8 +70,6 @@ enum class queue_type : unsigned short
  ,max=3
 };
 
-//typedef rte_mbuf * PacketObject;
-typedef void* PacketObject;
 typedef uint64_t StreamHandle;
 typedef void*    StreamBuf;
 typedef uint64_t StreamBufHandle;
@@ -418,22 +416,6 @@ public:
   }
 
   /**
-   * Load a bistream from a file
-   *
-   * @param fnm
-   *   Full path to bitsream file
-   * @returns
-   *   A pair <int,bool> where bool is set to true if
-   *   and only if the return int value is valid. The
-   *   return value is implementation dependent.
-   */
-//  virtual operations_result<int>
-//  loadBitstream(const char* fnm)
-//  {
-//    return operations_result<int>(); // invalid result
-//  }
-
-  /**
    * Check if bank allocation is supported
    *
    * @return
@@ -715,17 +697,6 @@ XRT_EXPORT
 void
 load_xdp();
 
-XRT_EXPORT
-void
-load_xdp_kernel_debug();
-
-XRT_EXPORT
-void
-load_xdp_app_debug();
-
-XRT_EXPORT
-void
-load_xdp_lop();
 } // namespace hal
 
 namespace hal2 {

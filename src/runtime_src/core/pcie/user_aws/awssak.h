@@ -555,16 +555,6 @@ public:
 
     int memwrite( unsigned long long aStartAddr, unsigned long long aSize, char *srcBuf )
     {
-        if( strstr( m_devinfo.mName, "-xare" ) ) { //This is ARE device
-            if( aStartAddr > m_devinfo.mDDRSize ) {
-                std::cout << "Start address " << std::hex << aStartAddr <<
-                             " is over ARE" << std::endl;
-            }
-            if( aSize > m_devinfo.mDDRSize || aStartAddr + aSize > m_devinfo.mDDRSize ) {
-                std::cout << "Write size " << std::dec << aSize << " from address 0x" << std::hex << aStartAddr <<
-                             " is over ARE" << std::endl;
-            }
-        }
         return memaccess(m_handle, m_devinfo.mDDRSize, m_devinfo.mDataAlignment, xcldev::pci_device_scanner::device_list[ m_idx ].user_name).write( aStartAddr, aSize, srcBuf );
     }
 

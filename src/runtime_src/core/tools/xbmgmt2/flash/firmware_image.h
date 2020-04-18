@@ -82,9 +82,8 @@ class firmwareImage : public std::istringstream
 public:
     firmwareImage(const char *file, imageType type);
     ~firmwareImage();
-    static std::vector<DSAInfo>& getIntalledDSAs();
+    static std::vector<DSAInfo> getIntalledDSAs();
 private:
-    static std::vector<DSAInfo> installedDSA;
     int mType;
     char *mBuf;
 };

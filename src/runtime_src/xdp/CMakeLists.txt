@@ -31,7 +31,8 @@ set(XRT_XDP_PROFILE_WRITER_DIR         "${CMAKE_CURRENT_SOURCE_DIR}/profile/writ
 set(XRT_XDP_PROFILE_HAL_WRITER_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer/hal")
 set(XRT_XDP_PROFILE_CORE_DIR           "${CMAKE_CURRENT_SOURCE_DIR}/profile/core")
 set(XRT_XDP_PROFILE_DEVICE_DIR         "${CMAKE_CURRENT_SOURCE_DIR}/profile/device")
-set(XRT_XDP_PROFILE_OCL_DEVICE_LOGGER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/device/ocl_device_logger")
+set(XRT_XDP_PROFILE_DEVICE_MMAPPED_MON_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/device/mmapped_monitors")
+set(XRT_XDP_PROFILE_OCL_DEVICE_LOGGER_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/profile/device/ocl_device_logger")
 set(XRT_XDP_PROFILE_HAL_DEVICE_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/device/hal_device")
 set(XRT_XDP_PROFILE_XRT_DEVICE_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/device/xrt_device")
 set(XRT_XDP_PROFILE_LOP_PLUGIN_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/lop")
@@ -51,6 +52,8 @@ file(GLOB XRT_NEW_XDP_CORE_FILES
   "${XRT_XDP_PROFILE_DATABASE_DIR}/*.cpp"
   "${XRT_XDP_PROFILE_DEVICE_DIR}/*.h"
   "${XRT_XDP_PROFILE_DEVICE_DIR}/*.cpp"
+  "${XRT_XDP_PROFILE_DEVICE_MMAPPED_MON_DIR}/*.h"
+  "${XRT_XDP_PROFILE_DEVICE_MMAPPED_MON_DIR}/*.cpp"
   "${XRT_XDP_PROFILE_EVENTS_DIR}/*.h"
   "${XRT_XDP_PROFILE_EVENTS_DIR}/*.cpp"
   "${XRT_XDP_PROFILE_EVENTS_CREATOR_DIR}/*.h"
@@ -84,6 +87,8 @@ file(GLOB XRT_XDP_PROFILE_FILES
   "${XRT_XDP_PROFILE_CORE_DIR}/*.cpp"
   "${XRT_XDP_PROFILE_DEVICE_DIR}/*.h"
   "${XRT_XDP_PROFILE_DEVICE_DIR}/*.cpp"
+  "${XRT_XDP_PROFILE_DEVICE_MMAPPED_MON_DIR}/*.h"
+  "${XRT_XDP_PROFILE_DEVICE_MMAPPED_MON_DIR}/*.cpp"
   "${XRT_XDP_PROFILE_OCL_DEVICE_LOGGER_DIR}/*.h"
   "${XRT_XDP_PROFILE_OCL_DEVICE_LOGGER_DIR}/*.cpp"
   "${XRT_XDP_PROFILE_XRT_DEVICE_DIR}/*.h"
@@ -143,6 +148,8 @@ if (NOT WIN32)
 add_library(xdp_core SHARED ${XRT_NEW_XDP_CORE_FILES})
 add_library(xdp SHARED ${XRT_XDP_ALL_SRC})
 add_library(oclxdp SHARED ${XRT_XDP_PROFILE_OCL_PLUGIN_FILES})
+
+# Plugin modules
 add_library(xdp_hal_plugin MODULE ${XRT_XDP_PROFILE_HAL_PLUGIN_FILES})
 add_library(xdp_hal_api_interface_plugin MODULE ${XRT_XDP_PROFILE_HAL_INTERFACE_PLUGIN_FILES})
 add_library(xdp_debug_plugin MODULE ${XRT_XDP_DEBUG_FILES})
@@ -178,7 +185,9 @@ set_target_properties(xdp_debug_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} 
 set_target_properties(xdp_appdebug_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_lop_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
-install (TARGETS xdp oclxdp xdp_core xdp_hal_plugin xdp_hal_api_interface_plugin xdp_debug_plugin xdp_appdebug_plugin xdp_lop_plugin LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR})
+install (TARGETS xdp oclxdp xdp_core LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR})
+
+install (TARGETS xdp_hal_plugin xdp_hal_api_interface_plugin xdp_debug_plugin xdp_appdebug_plugin xdp_lop_plugin LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module)
 
 install (FILES "${XRT_XDP_PROFILE_XMA_PLUGIN_DIR}/xma_profile.h" DESTINATION ${XRT_INSTALL_INCLUDE_DIR})
 
@@ -232,6 +241,8 @@ file(GLOB XRT_XDP_ALL_SRC_WIN
 
 add_library(xdp SHARED ${XRT_XDP_ALL_SRC_WIN})
 add_library(oclxdp SHARED ${XRT_XDP_PROFILE_OCL_PLUGIN_FILES})
+
+# Plugin modules
 add_library(xdp_hal_plugin MODULE ${XRT_XDP_PROFILE_HAL_PLUGIN_FILES})
 add_library(xdp_hal_api_interface_plugin MODULE ${XRT_XDP_PROFILE_HAL_INTERFACE_PLUGIN_FILES})
 

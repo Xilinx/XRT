@@ -28,6 +28,7 @@
 #include "core/common/xclbin_parser.h"
 #include "core/common/bo_cache.h"
 #include "core/common/message.h"
+#include "core/common/error.h"
 #include "core/common/debug.h"
 #include "core/include/xclbin.h"
 #include "core/include/ert.h"
@@ -670,7 +671,7 @@ get_kernel(xrtKernelHandle khdl)
 {
   auto itr = kernels.find(khdl);
   if (itr == kernels.end())
-    throw std::runtime_error("Unknown kernel handle");
+    throw xrt_core::error(-EINVAL, "Unknown kernel handle");
   return (*itr).second;
 }
 
@@ -682,7 +683,7 @@ get_run(xrtRunHandle rhdl)
 {
   auto itr = runs.find(rhdl);
   if (itr == runs.end())
-    throw std::runtime_error("Unknown run handle");
+    throw xrt_core::error(-EINVAL, "Unknown run handle");
   return (*itr).second.get();
 }
 
@@ -715,7 +716,7 @@ xrtKernelClose(xrtKernelHandle khdl)
 {
   auto itr = kernels.find(khdl);
   if (itr == kernels.end())
-    throw std::runtime_error("Unknown kernel handle");
+    throw xrt_core::error(-EINVAL, "Unknown kernel handle");
   kernels.erase(itr);
 }
 
@@ -761,7 +762,7 @@ xrtRunSetCallback(xrtRunHandle rhdl, ert_cmd_state state,
                   void* data)
 {
   if (state != ERT_CMD_STATE_COMPLETED)
-    throw std::runtime_error("xrtRunSetCallback state may only be ERT_CMD_STATE_COMPLETED");
+    throw xrt_core::error(-EINVAL, "xrtRunSetCallback state may only be ERT_CMD_STATE_COMPLETED");
   auto run = get_run(rhdl);
   run->add_callback([=](ert_cmd_state state) { pfn_state_notify(rhdl, state, data); });
 }
@@ -817,6 +818,10 @@ xrtKernelClose(xrtKernelHandle khdl)
     api::xrtKernelClose(khdl);
     return 0;
   }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
     return -1;
@@ -865,6 +870,10 @@ xrtRunClose(xrtRunHandle rhdl)
     api::xrtRunClose(rhdl);
     return 0;
   }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
     return -1;
@@ -904,6 +913,10 @@ xrtRunSetCallback(xrtRunHandle rhdl, ert_cmd_state state,
     api::xrtRunSetCallback(rhdl, state, pfn_state_notify, data);
     return 0;
   }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
     return -1;
@@ -916,6 +929,10 @@ xrtRunStart(xrtRunHandle rhdl)
   try {
     api::xrtRunStart(rhdl);
     return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
@@ -935,6 +952,10 @@ xrtRunUpdateArg(xrtRunHandle rhdl, int index, ...)
     va_end(args);
     return 0;
   }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
     return -1;
@@ -953,6 +974,10 @@ xrtRunSetArg(xrtRunHandle rhdl, int index, ...)
     va_end(args);
 
     return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());

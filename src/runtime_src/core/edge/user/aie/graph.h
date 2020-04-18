@@ -37,7 +37,7 @@ public:
     using rtp_type = xrt_core::edge::aie::rtp_type;
     using gmio_type = xrt_core::edge::aie::gmio_type;
 
-    graph_type(std::shared_ptr<xrt_core::device> device, uuid_t xclbin_uuid, const std::string& name);
+    graph_type(std::shared_ptr<xrt_core::device> device, const uuid_t xclbin_uuid, const std::string& name);
     ~graph_type();
 
     void
@@ -69,6 +69,9 @@ public:
 
     void
     sync_bo(unsigned bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset);
+
+    static void
+    event_cb(struct XAieGbl *aie_inst, XAie_LocType loc, u8 module, u8 event, void *arg);
 
 private:
     // Core device to which the graph belongs.  The core device

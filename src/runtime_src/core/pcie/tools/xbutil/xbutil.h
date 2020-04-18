@@ -335,18 +335,14 @@ public:
        if (custat.empty())
           return 0;
 
-       std::stringstream ss;
-       ss << "0x" << std::hex << offset;
-       auto addr = ss.str();
-
        for (auto& line : custat) {
-           auto pos = line.find(addr);
-           if (pos == std::string::npos)
+           uint32_t ba = 0, cnt = 0, sta = 0;
+           std::sscanf(line.c_str(), "CU[@0x%x] : %d status : %d", &ba, &cnt, &sta);
+
+           if (offset != ba)
                continue;
-           pos = line.find("status : ");
-           if (pos == std::string::npos)
-             return 0;
-           return std::stoi(line.substr(pos + strlen("status : ")));
+
+           return sta;
        }
 
        return 0;
@@ -392,15 +388,10 @@ public:
     void sysfs_stringize_power(std::vector<std::string> &lines) const
     { 
         std::stringstream ss;
-        float power = sysfs_power();
         ss << std::left << "\n";
         ss << std::setw(16) << "Power" << "\n";
 
-        if (power) {
-            ss << std::to_string(power).substr(0, 4) + "W" << "\n";
-        } else {
-            ss << std::setw(16) << "Not support" << "\n";
-        }
+        ss << sensor_tree::get_pretty<unsigned>( "board.physical.power" ) << + "W" << "\n";
 
         lines.push_back(ss.str());
     }
@@ -409,69 +400,53 @@ public:
         std::vector<std::string> &lines) const
     {
         std::stringstream ss;
-        std::string errmsg;
-        std::vector<char> buf;
-        std::vector<std::string> mm_buf;
         ss << "Device Memory Usage\n";
 
-        pcidev::get_dev(m_idx)->sysfs_get("icap", "mem_topology", errmsg, buf);
+        try {
+          for (auto& v : sensor_tree::get_child("board.memory.mem")) {
+            int index = std::stoi(v.first);
+            if( index >= 0 ) {
+              uint64_t size = 0, mem_usage = 0;
+              std::string tag, type, temp;
+              bool enabled = false;
 
-        if (!errmsg.empty()) {
-            ss << errmsg << std::endl;
-            lines.push_back(ss.str());
-            return;
-        }
-
-        const mem_topology *map = (mem_topology *)buf.data();
-
-        if(buf.empty() || map->m_count < 0) {
-            ss << "WARNING: 'mem_topology' invalid, unable to report topology. "
-                << "Has the bitstream been loaded? See 'xbutil program'.";
-            lines.push_back(ss.str());
-            return;
-        }
-
-        if(map->m_count == 0) {
-            ss << "-- none found --. See 'xbutil program'.";
-            lines.push_back(ss.str());
-            return;
-        }
-
-        pcidev::get_dev(m_idx)->sysfs_get("", "memstat_raw", errmsg, mm_buf);
-        if (!errmsg.empty()) {
-            ss << errmsg << std::endl;
-            lines.push_back(ss.str());
-            return;
-        }
-
-        if(mm_buf.empty()){
-            ss << "WARNING: 'memstat_raw' invalid, unable to report memory stats. "
-                << "Has the bitstream been loaded? See 'xbutil program'.";
-            lines.push_back(ss.str());
-            return;
-        }
-        unsigned numDDR = map->m_count;
-        for(unsigned i = 0; i < numDDR; i++ ) {
-            if(map->m_mem_data[i].m_type == MEM_STREAMING)
+              for (auto& subv : v.second) {
+                  if( subv.first == "type" ) {
+                      type = subv.second.get_value<std::string>();
+                  } else if( subv.first == "tag" ) {
+                      tag = subv.second.get_value<std::string>();
+                  } else if( subv.first == "temp" ) {
+                      unsigned int t = subv.second.get_value<unsigned int>();
+                      temp = sensor_tree::pretty<unsigned int>(t == XCL_INVALID_SENSOR_VAL ? XCL_NO_SENSOR_DEV : t, "N/A");
+                  } else if( subv.first == "mem_usage_raw" ) {
+                      mem_usage = subv.second.get_value<uint64_t>();
+                  } else if( subv.first == "size_raw" ) {
+                      size = subv.second.get_value<uint64_t>();
+                  } else if( subv.first == "enabled" ) {
+                      enabled = subv.second.get_value<bool>();
+                  }
+              }
+              if (!enabled || !size)
                 continue;
-            if(!map->m_mem_data[i].m_used)
-                continue;
-            uint64_t memoryUsage, boCount;
-            std::stringstream mem_usage(mm_buf[i]);
-            mem_usage >> memoryUsage >> boCount;
 
-            float percentage = (float)memoryUsage * 100 /
-                (map->m_mem_data[i].m_size << 10);
-            int nums_fiftieth = (int)percentage / 2;
-            std::string str = std::to_string(percentage).substr(0, 4) + "%";
+              float percentage = (float)mem_usage * 100 /
+                    (size << 10);
+              int nums_fiftieth = (int)percentage / 2;
+              std::string str = std::to_string(percentage).substr(0, 4) + "%";
 
-            ss << " [" << i << "] "
-                << std::setw(16 - (std::to_string(i).length()) - 4)
-                << std::left << map->m_mem_data[i].m_tag;
-            ss << "[ " << std::right << std::setw(nums_fiftieth)
-                << std::setfill('|') << (nums_fiftieth ? " ":"")
-                <<  std::setw(56 - nums_fiftieth);
-            ss << std::setfill(' ') << str << " ]" << "\n";
+              ss << " [" << index << "] "
+                 << std::setw(16 - (std::to_string(index).length()) - 4) 
+                 << std::left << tag
+                 << "[ " << std::right << std::setw(nums_fiftieth)
+                 << std::setfill('|') << (nums_fiftieth ? " ":"")
+                 <<  std::setw(56 - nums_fiftieth)
+                 << std::setfill(' ') << str << " ]" << std::endl;
+
+            }
+          }
+        } catch( std::exception const& e) {
+            ss << "WARNING: Unable to report memory stats. "
+               << "Has the bitstream been loaded? See 'xbutil program'.";
         }
 
         lines.push_back(ss.str());
@@ -509,7 +484,7 @@ public:
         std::string errmsg;
         std::vector<char> buf, temp_buf;
         std::vector<std::string> mm_buf, stream_stat;
-        uint64_t memoryUsage, boCount;
+        uint64_t memoryUsage, boCount, memBankSize;
         auto dev = pcidev::get_dev(m_idx);
 
         dev->sysfs_get("icap", "mem_topology", errmsg, buf);
@@ -600,19 +575,35 @@ public:
             ptMem.put( "tag",       map->m_mem_data[i].m_tag );
             ptMem.put( "enabled",   map->m_mem_data[i].m_used ? true : false );
             ptMem.put( "size",      xrt_core::utils::unit_convert(map->m_mem_data[i].m_size << 10) );
+            ptMem.put( "size_raw",  map->m_mem_data[i].m_size << 10 );
             ptMem.put( "mem_usage", xrt_core::utils::unit_convert(memoryUsage));
+            ptMem.put( "mem_usage_raw", memoryUsage);
             ptMem.put( "bo_count",  boCount);
             sensor_tree::add_child( std::string("board.memory.mem." + std::to_string(m)), ptMem );
             m++;
         }
+ 
+        boost::property_tree::ptree ptMem;
+
+        std::string str = "MEM_HOST";
+
+        std::stringstream ss(mm_buf[m]);
+        ss >> memoryUsage >> boCount >> memBankSize;
+
+        ptMem.put( "type",      str );
+        ptMem.put( "temp",      XCL_NO_SENSOR_DEV);
+        ptMem.put( "tag",       "CMA_BANK" );
+        ptMem.put( "enabled",   memBankSize ? true : false);
+        ptMem.put( "size",      xrt_core::utils::unit_convert(memBankSize));
+        ptMem.put( "mem_usage", xrt_core::utils::unit_convert(memoryUsage));
+        ptMem.put( "bo_count",  boCount);
+        sensor_tree::add_child( std::string("board.memory.mem." + std::to_string(m)), ptMem );
+
     }
 
     void m_mem_usage_stringize_dynamics(xclDeviceUsage &devstat, std::vector<std::string> &lines) const
     {
         std::stringstream ss;
-        std::string errmsg;
-        std::vector<char> buf, temp_buf;
-        std::vector<std::string> mm_buf;
 
         ss << std::left << std::setw(48) << "Mem Topology"
             << std::setw(32) << "Device Memory Usage" << "\n";
@@ -622,73 +613,52 @@ public:
             lines.push_back(ss.str());
             return;
         }
-        pcidev::get_dev(m_idx)->sysfs_get("icap", "mem_topology", errmsg, buf);
-        if (!errmsg.empty()) {
-            ss << errmsg << std::endl;
-            lines.push_back(ss.str());
-            return;
-        }
 
-        pcidev::get_dev(m_idx)->sysfs_get("xmc", "temp_by_mem_topology", errmsg, temp_buf);
-        const uint32_t *temp = (uint32_t *)temp_buf.data();
-
-        const mem_topology *map = (mem_topology *)buf.data();
-        unsigned numDDR = 0;
-
-        if(buf.empty() || map->m_count == 0) {
-            return;
-        } else {
-            numDDR = map->m_count;
-        }
-
-        ss << std::setw(16) << "Tag"  << std::setw(12) << "Type"
-           << std::setw(12) << "Temp" << std::setw(8) << "Size";
-        ss << std::setw(16) << "Mem Usage" << std::setw(8) << "BO nums"
-           << "\n";
-
-        pcidev::get_dev(m_idx)->sysfs_get("", "memstat_raw", errmsg, mm_buf);
-        if(mm_buf.empty())
-            return;
-
-        for(unsigned i = 0; i < numDDR; i++) {
-            if (map->m_mem_data[i].m_type == MEM_STREAMING)
+        try {
+           ss << std::setw(17) << "Tag"  << std::setw(12) << "Type"
+              << std::setw(9) << "Temp" << std::setw(10) << "Size";
+           ss << std::setw(16) << "Mem Usage" << std::setw(8) << "BO nums"
+              << "\n";
+          for (auto& v : sensor_tree::get_child("board.memory.mem")) {
+            int index = std::stoi(v.first);
+            if( index >= 0 ) {
+              std::string mem_usage, tag, size, type, temp;
+              unsigned bo_count = 0;
+              bool enabled = false;
+              for (auto& subv : v.second) {
+                  if( subv.first == "type" ) {
+                      type = subv.second.get_value<std::string>();
+                  } else if( subv.first == "tag" ) {
+                      tag = subv.second.get_value<std::string>();
+                  } else if( subv.first == "temp" ) {
+                      unsigned int t = subv.second.get_value<unsigned int>();
+                      temp = sensor_tree::pretty<unsigned int>(t == XCL_INVALID_SENSOR_VAL ? XCL_NO_SENSOR_DEV : t, "N/A");
+                  } else if( subv.first == "bo_count" ) {
+                      bo_count = subv.second.get_value<unsigned>();
+                  } else if( subv.first == "mem_usage" ) {
+                      mem_usage = subv.second.get_value<std::string>();
+                  } else if( subv.first == "size" ) {
+                      size = subv.second.get_value<std::string>();
+                  } else if( subv.first == "enabled" ) {
+                      enabled = subv.second.get_value<bool>();
+                  }
+              }
+              if (!enabled)
                 continue;
-            if (!map->m_mem_data[i].m_used)
-                continue;
-            ss << " [" << i << "] " <<
-                std::setw(16 - (std::to_string(i).length()) - 4) << std::left
-                << map->m_mem_data[i].m_tag;
 
-            std::string str;
-            if(map->m_mem_data[i].m_used == 0) {
-                str = "**UNUSED**";
-            } else {
-                std::map<MEM_TYPE, std::string> my_map = {
-                    {MEM_DDR3, "MEM_DDR3"}, {MEM_DDR4, "MEM_DDR4"},
-                    {MEM_DRAM, "MEM_DRAM"}, {MEM_STREAMING, "MEM_STREAMING"},
-                    {MEM_PREALLOCATED_GLOB, "MEM_PREALLOCATED_GLOB"},
-                    {MEM_ARE, "MEM_ARE"}, {MEM_HBM, "MEM_HBM"},
-                    {MEM_BRAM, "MEM_BRAM"}, {MEM_URAM, "MEM_URAM"}
-                };
-                auto search = my_map.find((MEM_TYPE)map->m_mem_data[i].m_type );
-                str = search->second;
+              ss   << " [" << std::right << index << "] "
+                   << std::setw(17 - (std::to_string(index).length()) - 4)
+                   << std::left << tag
+                   << std::setw(12) << type
+                   << std::setw(9) << temp
+                   << std::setw(10) << size
+                   << std::setw(16) << mem_usage
+                   << std::setw(8) << bo_count << std::endl;
             }
-
-            ss << std::left << std::setw(12) << str;
-
-            if (!temp_buf.empty()) {
-                ss << std::setw(12) << std::to_string(temp[i]) + " C";
-            } else {
-                ss << std::setw(12) << "Not Supp";
-            }
-            uint64_t memoryUsage, boCount;
-            std::stringstream mem_stat(mm_buf[i]);
-            mem_stat >> memoryUsage >> boCount;
-
-            ss << std::setw(8) << xrt_core::utils::unit_convert(map->m_mem_data[i].m_size << 10);
-            ss << std::setw(16) << xrt_core::utils::unit_convert(memoryUsage);
-            // print size
-            ss << std::setw(8) << std::dec << boCount << "\n";
+          }
+        } catch( std::exception const& e) {
+            ss << "WARNING: Unable to report memory stats. "
+               << "Has the bitstream been loaded? See 'xbutil program'.";
         }
 
         ss << "\nTotal DMA Transfer Metrics:" << "\n";
@@ -711,43 +681,54 @@ public:
     void m_cu_usage_stringize_dynamics(std::vector<std::string>& lines) const
     {
         std::stringstream ss;
-        std::string errmsg;
-        std::vector<std::string> custat;
 
-        schedulerUpdateStat();
-        pcidev::get_dev(m_idx)->sysfs_get("mb_scheduler", "kds_custat", errmsg, custat);
+        ss << "\nCompute Unit Usage:" << "\n";
 
-        if (!errmsg.empty()) {
-            ss << errmsg << std::endl;
-            lines.push_back(ss.str());
-            return;
+        try {
+          for (auto& v : sensor_tree::get_child( "board.compute_unit" )) {
+            int index = std::stoi(v.first);
+            if( index >= 0 ) {
+              std::string cu_s, cu_ba;
+              for (auto& subv : v.second) {
+                if( subv.first == "base_address" ) {
+                  auto addr = subv.second.get_value<uint64_t>();
+                  cu_ba = (addr == (uint64_t)-1) ? "N/A" : sensor_tree::pretty<uint64_t>(addr, "N/A", true);
+                } else if( subv.first == "status" ) {
+                  cu_s = subv.second.get_value<std::string>();
+                }
+              }
+
+              ss << "CU[@" << std::hex << cu_ba
+                   << "] : "<<cu_s << std::endl;
+            }
+          }
         }
-
-        if (custat.size())
-          ss << "\nCompute Unit Usage:" << "\n";
-
-        for (auto& line : custat) {
-          auto pos = line.find(" status :");
-          if (pos != std::string::npos)
-            ss << line.substr(0,line.find(" status :")) << "\n";
+        catch( std::exception const& e) {
+            // eat the exception, probably bad path
         }
 
         ss << std::setw(80) << std::setfill('#') << std::left << "\n";
         lines.push_back(ss.str());
     }
 
+    void clearSensorTree( void ) const
+    {
+        sensor_tree::clear();
+    }
+
     int readSensors( void ) const
     {
         // board info
         std::string vendor, device, subsystem, subvendor, xmc_ver, xmc_oem_id,
-            ser_num, bmc_ver, idcode, fpga, dna, errmsg, max_power, mac_addr0, 
-            mac_addr1, mac_addr2, mac_addr3;
+            ser_num, bmc_ver, idcode, fpga, dna, errmsg, max_power;
         int ddr_size = 0, ddr_count = 0, pcie_speed = 0, pcie_width = 0, p2p_enabled = 0;
         std::vector<std::string> clock_freqs;
         std::vector<std::string> dma_threads;
+        std::vector<std::string> mac_addrs;
         bool mig_calibration;
         
         clock_freqs.resize(3);
+        mac_addrs.resize(4);
         pcidev::get_dev(m_idx)->sysfs_get( "", "vendor",                     errmsg, vendor );
         pcidev::get_dev(m_idx)->sysfs_get( "", "device",                     errmsg, device );
         pcidev::get_dev(m_idx)->sysfs_get( "", "subsystem_device",           errmsg, subsystem );
@@ -757,10 +738,10 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "serial_num",              errmsg, ser_num );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "max_power",               errmsg, max_power );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "bmc_ver",                 errmsg, bmc_ver );
-        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_addr0",               errmsg, mac_addr0 );
-        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_addr1",               errmsg, mac_addr1 );
-        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_addr2",               errmsg, mac_addr2 );
-        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_addr3",               errmsg, mac_addr3 );
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_addr0",               errmsg, mac_addrs[0] );
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_addr1",               errmsg, mac_addrs[1] );
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_addr2",               errmsg, mac_addrs[2] );
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_addr3",               errmsg, mac_addrs[3] );
         pcidev::get_dev(m_idx)->sysfs_get<int>("rom", "ddr_bank_size",       errmsg, ddr_size,  0 );
         pcidev::get_dev(m_idx)->sysfs_get<int>( "rom", "ddr_bank_count_max", errmsg, ddr_count, 0 );
         pcidev::get_dev(m_idx)->sysfs_get( "icap", "clock_freqs",            errmsg, clock_freqs ); 
@@ -782,10 +763,6 @@ public:
         sensor_tree::put( "board.info.serial_number",  ser_num );
         sensor_tree::put( "board.info.max_power",      lvl2PowerStr(max_power.empty() ? UINT_MAX : stoi(max_power)) );
         sensor_tree::put( "board.info.sc_version",     bmc_ver );
-        sensor_tree::put( "board.info.mac_addr0",      mac_addr0 );
-        sensor_tree::put( "board.info.mac_addr1",      mac_addr1 );
-        sensor_tree::put( "board.info.mac_addr2",      mac_addr2 );
-        sensor_tree::put( "board.info.mac_addr3",      mac_addr3 );
         sensor_tree::put( "board.info.ddr_size",       GB(ddr_size)*ddr_count );
         sensor_tree::put( "board.info.ddr_count",      ddr_count );
         sensor_tree::put( "board.info.clock0",         clock_freqs[0] );
@@ -800,6 +777,14 @@ public:
         sensor_tree::put( "board.info.dna",            dna );
         sensor_tree::put( "board.info.p2p_enabled",    p2p_enabled );
 
+        for (uint32_t i = 0; i < mac_addrs.size(); ++i) {
+            std::string entry_name = "board.info.mac_addr."+std::to_string(i);
+
+            if (mac_addrs[i].empty())
+                continue;
+
+            sensor_tree::put( entry_name,     mac_addrs[i]);
+        }
         //interface uuid
         std::vector<std::string> interface_uuid;
         pcidev::get_dev(m_idx)->sysfs_get( "", "interface_uuids", errmsg, interface_uuid );
@@ -1486,16 +1471,8 @@ public:
         if (ddr_mem_size == -EINVAL)
             return -EINVAL;
 
-        bool isAREDevice = false;
-
-
-        if (strstr(name().c_str(), "-xare")) {//This is ARE device
-            isAREDevice = true;
-        }
-
         int result = 0;
         unsigned long long addr = 0x0;
-        unsigned long long sz = 0x1;
         unsigned int pattern = 'J';
 
         // get DDR bank count from mem_topology if possible
@@ -1560,59 +1537,12 @@ public:
             }
         }
 
-        if (isAREDevice) {//This is ARE device
-            //XARE Status Reg Base Addr = 0x90000
-            //XARE Channel Up Addr is = 0x90010 (& 0x98010)
-            // 32 bits = 0x2 means clock is up but channel is down
-            // 32 bits = 0x3 mean clocks and channel both are up..
-            //??? Sarab: Also check if link channel is up;
-            //After that see if we should do one hope or more hops..
-
-            //Raw Read/Write Delay Check
-            unsigned numIteration = 10000;
-            //addr = 0xC00000000;//48GB = 3 hops
-            addr = 0x400000000;//16GB = one hop
-            sz = 0x20000;//128KB
-            long numHops = addr / get_ddr_mem_size();
-            auto t1 = Clock::now();
-            for (unsigned i = 0; i < numIteration; i++) {
-                memwriteQuiet(addr, sz, pattern);
-            }
-            auto t2 = Clock::now();
-            auto timeARE = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count();
-
-            addr = 0x0;
-            sz = 0x1;
-            t1 = Clock::now();
-            for (unsigned i = 0; i < numIteration; i++) {
-                memwriteQuiet(addr, sz, pattern);
-            }
-            t2 = Clock::now();
-            auto timeDDR = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count();
-            long delayPerHop = (timeARE - timeDDR) / (numIteration * numHops);
-            std::cout << "Averaging ARE hardware latency over " << numIteration * numHops << " hops\n";
-            std::cout << "Latency per ARE hop for 128KB: " << delayPerHop << " ns\n";
-            std::cout << "Total latency over ARE: " << (timeARE - timeDDR) << " ns\n";
-        }
         return result;
     }
 
-    int memread(std::string aFilename, unsigned long long aStartAddr = 0, unsigned long long aSize = 0) {
-        std::ios_base::fmtflags f(std::cout.flags());
+    int memread(std::string aFilename, unsigned long long aStartAddr = 0, unsigned long long aSize = 0)
+    {
         xclbin_lock xclbin_lock(m_handle, m_idx);
-
-        if (strstr(name().c_str(), "-xare")) {//This is ARE device
-          if (aStartAddr > get_ddr_mem_size()) {
-              std::cout << "Start address " << std::hex << aStartAddr <<
-                           " is over ARE" << std::endl;
-          }
-          if (aSize > get_ddr_mem_size() || aStartAddr+aSize > get_ddr_mem_size()) {
-              std::cout << "Read size " << std::dec << aSize << " from address 0x" << std::hex << aStartAddr <<
-                           " is over ARE" << std::endl;
-          }
-        }
-        std::cout.flags(f);
-
         return memaccess(m_handle, get_ddr_mem_size(), getpagesize(),
             pcidev::get_dev(m_idx)->sysfs_name).read(
             aFilename, aStartAddr, aSize);
@@ -1631,21 +1561,9 @@ public:
             aStartAddr, aSize, aPattern, checks);
     }
 
-    int memwrite(unsigned long long aStartAddr, unsigned long long aSize, unsigned int aPattern = 'J') {
-        std::ios_base::fmtflags f(std::cout.flags());
+    int memwrite(unsigned long long aStartAddr, unsigned long long aSize, unsigned int aPattern = 'J')
+    {
         xclbin_lock xclbin_lock(m_handle, m_idx);
-
-        if (strstr(name().c_str(), "-xare")) {//This is ARE device
-            if (aStartAddr > get_ddr_mem_size()) {
-                std::cout << "Start address " << std::hex << aStartAddr <<
-                             " is over ARE" << std::endl;
-            }
-            if (aSize > get_ddr_mem_size() || aStartAddr+aSize > get_ddr_mem_size()) {
-                std::cout << "Write size " << std::dec << aSize << " from address 0x" << std::hex << aStartAddr <<
-                             " is over ARE" << std::endl;
-            }
-        }
-        std::cout.flags(f);
         return memaccess(m_handle, get_ddr_mem_size(), getpagesize(),
             pcidev::get_dev(m_idx)->sysfs_name).write(
             aStartAddr, aSize, aPattern);
@@ -1653,19 +1571,6 @@ public:
 
     int memwrite( unsigned long long aStartAddr, unsigned long long aSize, char *srcBuf )
     {
-        std::ios_base::fmtflags f(std::cout.flags());
-
-        if( strstr( name().c_str(), "-xare" ) ) { //This is ARE device
-            if( aStartAddr > get_ddr_mem_size() ) {
-                std::cout << "Start address " << std::hex << aStartAddr <<
-                             " is over ARE" << std::endl;
-            }
-            if( aSize > get_ddr_mem_size() || aStartAddr + aSize > get_ddr_mem_size() ) {
-                std::cout << "Write size " << std::dec << aSize << " from address 0x" << std::hex << aStartAddr <<
-                             " is over ARE" << std::endl;
-            }
-        }
-        std::cout.flags(f);
         return memaccess(m_handle, get_ddr_mem_size(), getpagesize(),
             pcidev::get_dev(m_idx)->sysfs_name).write(
             aStartAddr, aSize, srcBuf);

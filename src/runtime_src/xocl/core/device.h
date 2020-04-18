@@ -90,16 +90,6 @@ public:
 
   virtual ~device();
 
-  /**
-   * Set platform, until passed in ctor.
-   * This is temp till we get rid of xcl_device_sim
-   */
-  void
-  set_platform(platform* platform)
-  {
-    m_platform = platform;
-  }
-
   unsigned int
   get_uid() const
   {
@@ -197,18 +187,6 @@ public:
    */
   unsigned short
   get_max_clock_frequency() const;
-
-  /**
-   * Check if this device is an ARE device
-   *
-   * @return
-   *  True if ARE, false otherwise
-   */
-  bool
-  is_xare_device() const
-  {
-    return m_xdevice->is_xare_device();
-  }
 
 public:
   /**
@@ -357,27 +335,6 @@ public:
    */
   memidx_type
   get_cu_memidx() const;
-
-  /**
-   * Get the indices of memory banks which CU argument is connected to
-   * for specified kernel.
-   *
-   * The function returns a bitset with bits for each bank connected
-   * to the specified argument of all device CUs for given kernel.
-   *
-   * If device has multiple CUs for given kernel and memory bank indeces
-   * have no overlap, then the function returns 0.
-   *
-   * @param kernel
-   *   Kernel used to identify CUs.  The device may contain CUs for
-   *   multiple kernels.
-   * @param argidx
-   *   The index of the kernel argument.
-   * @return
-   *   Bitset with matching mem bank indices or none() if no matches.
-   */
-  memidx_bitmask_type
-  get_cu_memidx(kernel* kernel, int argidx) const;
 
   /**
    * Map buffer (clEnqueueMapBuffer) implementation

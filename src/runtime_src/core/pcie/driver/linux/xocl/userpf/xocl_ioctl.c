@@ -307,7 +307,7 @@ static int xocl_preserve_mem(struct xocl_dev *xdev, struct mem_topology *new_top
 	 * Compare MEM_TOPOLOGY previous vs new.
 	 * Ignore this and keep disable preserve_mem if not for aws.
 	 */
-	if (xocl_is_aws(xdev) && (topology != NULL)) {
+	if (xocl_icap_get_data(xdev, DATA_RETAIN) && (topology != NULL)) {
 		if ((size == sizeof_sect(topology, m_mem_data)) &&
 		    !memcmp(new_topology, topology, size)) {
 			userpf_info(xdev, "preserving mem_topology.");

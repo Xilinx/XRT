@@ -126,7 +126,7 @@ clGetDeviceInfo(cl_device_id   device,
   case CL_DEVICE_MAX_MEM_ALLOC_SIZE:
     buffer.as<cl_ulong>() =
 #ifdef __x86_64__
-      512*1024*1024; //512 MB
+      4ULL *1024*1024*1024; // 4GB
 #else
       128*1024*1024; //128 MB
 #endif
@@ -232,7 +232,6 @@ clGetDeviceInfo(cl_device_id   device,
       (
        CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE
        | CL_QUEUE_PROFILING_ENABLE
-       | CL_QUEUE_DPDK
      );
     break;
   case CL_DEVICE_BUILT_IN_KERNELS:

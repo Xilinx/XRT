@@ -325,7 +325,7 @@ std::vector<DSAInfo> Flasher::getInstalledDSA()
     // Obtain installed DSA info.
     // std::cout << "ON Board: " << onBoard.vendor << " " << onBoard.board << " " << vendor_id << " " << device_id << std::endl;
     auto installedDSAs = firmwareImage::getIntalledDSAs();
-    for (DSAInfo& dsa : installedDSAs)
+    for (const auto& dsa : installedDSAs)
     {
         // std::cout << "DSA " << dsa.name << ": " << dsa.vendor << " " << dsa.board << " " << dsa.vendor_id << " " << dsa.device_id << "TS: " << dsa.timestamp << std::endl;
         if (!dsa.hasFlashImage || dsa.timestamp == NULL_TIMESTAMP)

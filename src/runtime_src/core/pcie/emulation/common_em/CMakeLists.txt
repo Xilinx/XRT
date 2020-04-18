@@ -28,7 +28,7 @@ add_definitions(-DXCLHAL_MAJOR_VER=1 -DXCLHAL_MINOR_VER=0)
 add_library(common_em_objects OBJECT ${COMMON_EM_SRC_FILES} ${ProtoHeaders} ${ProtoSources})
 
 set(CURR_SOURCE "")
-add_library(common_em SHARED ${CURR_SOURCE}
+add_library(common_em STATIC ${CURR_SOURCE}
   $<TARGET_OBJECTS:common_em_objects>
   )
 
@@ -48,4 +48,3 @@ target_link_libraries(common_em
   rt
   )
 
-install (TARGETS common_em LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR})

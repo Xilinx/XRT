@@ -14,19 +14,23 @@
  * under the License.
  */
 #define XRT_CORE_COMMON_SOURCE
-#include "core/common/system.h"
-#include "core/common/device.h"
+#include "system.h"
+#include "device.h"
 #include "gen/version.h"
 
 #include <vector>
 #include <map>
 #include <memory>
+#include <mutex>
 
 namespace {
 
 static std::vector<std::weak_ptr<xrt_core::device>> mgmtpf_devices(16); // fix size
 static std::vector<std::weak_ptr<xrt_core::device>> userpf_devices(16); // fix size
 static std::map<xrt_core::device::handle_type, std::weak_ptr<xrt_core::device>> userpf_device_map;
+
+// mutex to protect insertion
+static std::mutex mutex;
 
 }
 
@@ -113,6 +117,7 @@ get_userpf_device(device::handle_type handle, device::id_type id)
   }
 
   auto device = instance().get_userpf_device(handle,id);
+  std::lock_guard<std::mutex> lk(mutex);
   userpf_devices[id] = device;
   userpf_device_map[handle] = device;  // create or replace
   return device;

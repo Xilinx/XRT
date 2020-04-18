@@ -19,6 +19,8 @@
 
 #include "tools/common/OptionOptions.h"
 
+#include <vector>
+
 class OO_Config : public OptionOptions {
  public:
   virtual void execute( const SubCmdOptions &_options ) const;
@@ -27,7 +29,7 @@ class OO_Config : public OptionOptions {
   OO_Config(const std::string &_longName);
 
  private:
-  std::string m_device;
+  std::vector<std::string> m_device;
   bool m_help;
   bool m_daemon;
   std::string m_host;
