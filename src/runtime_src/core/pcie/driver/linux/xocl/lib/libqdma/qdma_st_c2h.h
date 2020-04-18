@@ -184,6 +184,8 @@ int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget,
 int descq_st_c2h_read(struct qdma_descq *descq, struct qdma_request *req,
 			bool update, bool refill);
 
+void c2h_req_work(struct work_struct *work);
+
 /*****************************************************************************/
 /**
  * descq_cmpt_cidx_update() - inline function to update the writeback cidx

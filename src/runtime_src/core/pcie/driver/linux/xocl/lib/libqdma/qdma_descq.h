@@ -102,6 +102,7 @@ struct qdma_descq {
 	u8 *desc_cmpl_status;
 
 	/* ST C2H */
+	struct work_struct req_work;
 	/** programming order of the data in ST c2h mode*/
 	unsigned char fl_pg_order;
 	/** cmpt entry length*/
@@ -144,6 +145,7 @@ struct qdma_descq {
 	struct dentry *dbgfs_cmpt_queue_root;
 #endif
 };
+
 #ifdef DEBUG_THREADS
 #define lock_descq(descq)	\
 	do { \
