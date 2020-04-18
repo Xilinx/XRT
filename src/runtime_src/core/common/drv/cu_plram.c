@@ -111,6 +111,10 @@ int xrt_cu_plram_init(struct xrt_cu *xcu)
 		return -EINVAL;
 	}
 
+	err = xrt_cu_init(xcu);
+	if (err)
+		return err;
+
 	core = kzalloc(sizeof(struct xrt_cu_plram), GFP_KERNEL);
 	if (!core)
 		return -ENOMEM;
@@ -176,4 +180,6 @@ void xrt_cu_plram_fini(struct xrt_cu *xcu)
 			iounmap(core->plram);
 		kfree(xcu->core);
 	}
+
+	xrt_cu_fini(xcu);
 }

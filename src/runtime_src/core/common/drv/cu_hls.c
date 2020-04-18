@@ -123,10 +123,13 @@ static struct xcu_funcs xrt_cu_hls_funcs = {
 int xrt_cu_hls_init(struct xrt_cu *xcu)
 {
 	struct xrt_cu_hls *core;
-	struct xrt_cu_info *info = &xcu->info;
 	struct resource *res;
 	size_t size;
 	int err = 0;
+
+	err = xrt_cu_init(xcu);
+	if (err)
+		return err;
 
 	core = kzalloc(sizeof(struct xrt_cu_hls), GFP_KERNEL);
 	if (!core) {
@@ -167,4 +170,6 @@ void xrt_cu_hls_fini(struct xrt_cu *xcu)
 			iounmap(core->vaddr);
 		kfree(xcu->core);
 	}
+
+	xrt_cu_fini(xcu);
 }

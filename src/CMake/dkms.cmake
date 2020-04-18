@@ -184,6 +184,7 @@ SET (XRT_DKMS_CORE_INCLUDES
 SET (XRT_DKMS_COMMON_XRT_DRV
   common/drv/kds_core.c
   common/drv/xrt_cu.c
+  common/drv/cu_hls.c
   common/drv/cu_plram.c
   )
 

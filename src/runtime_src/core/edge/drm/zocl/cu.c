@@ -23,7 +23,7 @@ static int cu_probe(struct platform_device *pdev)
 	struct resource **res;
 	struct xrt_cu_info *info;
 	struct drm_zocl_dev *zdev;
-	int err;
+	int err = 0;
 	int i;
 
 	zcu = kzalloc(sizeof(*zcu), GFP_KERNEL);
@@ -51,13 +51,6 @@ static int cu_probe(struct platform_device *pdev)
 	}
 	zcu->base.res = res;
 
-	err = xrt_cu_init(&zcu->base);
-	if (err) {
-		DRM_ERROR("Not able to initial CU %p\n", zcu);
-		goto err1;
-	}
-
-	 /* Is time to add this CU to the CU controller's list */
 	zdev = platform_get_drvdata(to_platform_device(pdev->dev.parent));
 	err = cu_ctrl_add_cu(zdev, &zcu->base);
 	if (err) {
@@ -65,9 +58,23 @@ static int cu_probe(struct platform_device *pdev)
 		goto err1;
 	}
 
+	switch (info->model) {
+	case XCU_HLS:
+		err = xrt_cu_hls_init(&zcu->base);
+		break;
+	default:
+		err = -EINVAL;
+	}
+	if (err) {
+		DRM_ERROR("Not able to initial CU %p\n", zcu);
+		goto err2;
+	}
+
 	platform_set_drvdata(pdev, zcu);
 
 	return 0;
+err2:
+	cu_ctrl_remove_cu(zdev, &zcu->base);
 err1:
 	vfree(res);
 err:
@@ -79,15 +86,21 @@ static int cu_remove(struct platform_device *pdev)
 {
 	struct zocl_cu *zcu;
 	struct drm_zocl_dev *zdev;
+	struct xrt_cu_info *info;
 
 	zcu = platform_get_drvdata(pdev);
 	if (!zcu)
 		return -EINVAL;
 
+	info = &zcu->base.info;
+	switch (info->model) {
+	case XCU_HLS:
+		xrt_cu_hls_fini(&zcu->base);
+		break;
+	}
+
 	zdev = platform_get_drvdata(to_platform_device(pdev->dev.parent));
 	cu_ctrl_remove_cu(zdev, &zcu->base);
-
-	xrt_cu_fini(&zcu->base);
 
 	if (zcu->base.res)
 		vfree(zcu->base.res);

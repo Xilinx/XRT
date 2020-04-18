@@ -57,17 +57,25 @@ static int cu_probe(struct platform_device *pdev)
 	}
 	xcu->base.res = res;
 
-	err = xrt_cu_init(&xcu->base);
-	if (err) {
-		XCU_ERR(xcu, "Not able to initial CU %p", xcu);
-		goto err1;
-	}
-
-	 /* Is time to add this CU to the CU controller's list */
 	err = xocl_cu_ctrl_add_cu(xdev, &xcu->base);
 	if (err) {
 		err = 0; //Ignore this error until all platforms support CU controller
 		//XCU_ERR(xcu, "Not able to add CU %p to controller", xcu);
+		goto err1;
+	}
+
+	switch (info->model) {
+	case XCU_HLS:
+		err = xrt_cu_hls_init(&xcu->base);
+		break;
+	case XCU_PLRAM:
+		err = xrt_cu_plram_init(&xcu->base);
+		break;
+	default:
+		err = -EINVAL;
+	}
+	if (err) {
+		XCU_ERR(xcu, "Not able to initial CU %p", xcu);
 		goto err2;
 	}
 
@@ -76,7 +84,7 @@ static int cu_probe(struct platform_device *pdev)
 	return 0;
 
 err2:
-	xrt_cu_fini(&xcu->base);
+	xocl_cu_ctrl_remove_cu(xdev, &xcu->base);
 err1:
 	vfree(res);
 err:
@@ -88,19 +96,25 @@ err:
 static int cu_remove(struct platform_device *pdev)
 {
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	struct xrt_cu_info *info;
 	struct xocl_cu *xcu;
 	void *hdl;
-	int err = 0;
 
 	xcu = platform_get_drvdata(pdev);
 	if (!xcu)
 		return -EINVAL;
 
-	err = xocl_cu_ctrl_remove_cu(xdev, &xcu->base);
-	if (err)
-		XCU_ERR(xcu, "Remove CU failed?");
+	info = &xcu->base.info;
+	switch (info->model) {
+	case XCU_HLS:
+		xrt_cu_hls_fini(&xcu->base);
+		break;
+	case XCU_PLRAM:
+		xrt_cu_plram_fini(&xcu->base);
+		break;
+	}
 
-	xrt_cu_fini(&xcu->base);
+	(void) xocl_cu_ctrl_remove_cu(xdev, &xcu->base);
 
 	if (xcu->base.res)
 		vfree(xcu->base.res);

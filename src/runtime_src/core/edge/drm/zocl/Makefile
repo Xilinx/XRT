@@ -6,7 +6,6 @@ KERNEL_SRC ?= /lib/modules/$(shell uname -r)/build
 ccflags-y := -I$(src)/include -I$(src)/../../include -I$(src)/../../../include -I$(src)/../../../common/drv/include
 
 drv_common-y   := ../../../common/drv/kds_core.o \
-		  ../../../common/drv/cu_plram.o \
 		  ../../../common/drv/cu_hls.o \
 		  ../../../common/drv/xrt_cu.o
 
