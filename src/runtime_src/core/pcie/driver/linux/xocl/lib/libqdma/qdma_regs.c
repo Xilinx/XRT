@@ -589,6 +589,10 @@ void hw_mm_channel_enable(struct xlnx_dma_dev *xdev, int channel, bool c2h)
 
 	__write_reg(xdev, reg + channel * QDMA_REG_MM_CONTROL_STEP,
 			 QDMA_REG_MM_CONTROL_RUN);
+
+	if (!c2h)
+		__write_reg(xdev, QDMA_REG_H2C_MM_ERR_CODE_ENABLE_MASK,
+			 H2C_MM_ERR_CODE_ENABLE_ALL);
 }
 
 void hw_mm_channel_disable(struct xlnx_dma_dev *xdev, int channel, bool c2h)
