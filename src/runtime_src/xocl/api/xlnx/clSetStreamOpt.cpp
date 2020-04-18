@@ -44,7 +44,6 @@ clSetStreamOpt(cl_stream           stream,
 	       cl_int*             errcode_ret)
 {
   validOrError(stream,type,val,errcode_ret);
-printf("%s: call xocl(stream 0x%p)->set_stream_opt(%d,%u).\n", __func__, stream, type, val);
   return xocl::xocl(stream)->set_stream_opt(type, val);
 }
 
@@ -58,7 +57,6 @@ clSetStreamOpt(cl_stream           stream,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
-printf("%s: call xocl::clSetStreamOpt(0x%p,%d,%u, err).\n", __func__, stream, type, val);
     return xocl::clSetStreamOpt(stream,type,val,errcode_ret);
   }
   catch (const xrt::error& ex) {
