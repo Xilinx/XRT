@@ -32,6 +32,20 @@ extern "C"
 
 namespace zynqaie {
 
+static inline uint64_t
+get_bd_high_addr(uint64_t addr)
+{
+  constexpr uint64_t hi_mask = 0xFFFF00000000L;
+  return ((addr & hi_mask) >> 32);
+}
+
+static inline uint64_t
+get_bd_low_addr(uint64_t addr)
+{
+  constexpr uint32_t low_mask = 0xFFFFFFFFL;
+  return (addr & low_mask);
+}
+
 graph_type::
 graph_type(std::shared_ptr<xrt_core::device> dev, const uuid_t, const std::string& graph_name)
   : device(std::move(dev)), name(graph_name)
@@ -42,43 +56,32 @@ graph_type(std::shared_ptr<xrt_core::device> dev, const uuid_t, const std::strin
     auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
     aieArray = drv->getAieArray();
     if (!aieArray) {
-      aieArray = new Aie();
+      aieArray = new Aie(device);
       drv->setAieArray(aieArray);
     }
 
     /* Initialize graph tile metadata */
-    for (auto& tile : xrt_core::edge::aie::get_tiles(device.get(), name))
+    for (auto& tile : xrt_core::edge::aie::get_tiles(device.get(), name)) {
+      /*
+       * Since row 0 is shim row, according to Cardano, row data in
+       * xclbin is off-by-one. To talk to AIE driver, we need to add
+       * shim row back.
+       */ 
+      tile.row += 1;
+      tile.itr_mem_row += 1;
       tiles.emplace_back(std::move(tile));
+    }
 
     /* Initialize graph rtp metadata */
     for (auto &rtp : xrt_core::edge::aie::get_rtp(device.get()))
       rtps.emplace_back(std::move(rtp));
 
     state = graph_state::stop;
-
-    auto aie_inst = aieArray->getAieInst();
-    std::vector<XAie_LocType> locs(tiles.size());
-    for (auto& tile : tiles) {
-      XAie_LocType loc = {tile.row, tile.col};
-      locs.emplace_back(loc);
-    }
-
-    /* Register all AIE events */
-    XAieTile_EventRegisterNotification(aie_inst, locs.data(), locs.size(), XAIEGBL_MODULE_ALL, XAIETILE_EVENT_CORE_PERF_CNT0, event_cb, NULL);
 }
 
 graph_type::
 ~graph_type()
 {
-    auto aie_inst = aieArray->getAieInst();
-    std::vector<XAie_LocType> locs(tiles.size());
-    for (auto& tile : tiles) {
-      XAie_LocType loc = {tile.row, tile.col};
-      locs.emplace_back(loc);
-    }
-
-    XAieTile_EventUnregisterNotification(aie_inst, locs.data(), locs.size(), XAIEGBL_MODULE_ALL, XAIETILE_EVENTS_ALL);
-
     /* TODO move this to ZYNQShim destructor or use smart pointer */
     if (aieArray)
         delete aieArray;
@@ -376,8 +379,8 @@ sync_bo(unsigned bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size
 
   BD bd = dmap->dma_chan[chan].idle_bds.front();
   dmap->dma_chan[chan].idle_bds.pop();
-  bd.addr_high = GET_BD_HIGH_ADDR(paddr);
-  bd.addr_low = GET_BD_LOW_ADDR(paddr);
+  bd.addr_high = get_bd_high_addr(paddr);
+  bd.addr_low = get_bd_low_addr(paddr);
 
   XAieDma_ShimBdSetAddr(&(dmap->handle), bd.bd_num, bd.addr_high, bd.addr_low, size);
 
@@ -529,7 +532,7 @@ xrtGraphUpdateRTP(xrtGraphHandle ghdl, const char* port, const char* buffer, siz
 }
 
 void
-xrtSyncBOAIE(xrtGraphHandle ghdl, unsigned bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset)
+xrtSyncBOAIE(xrtGraphHandle ghdl, unsigned int bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
   auto graph = get_graph(ghdl);
   graph->sync_bo(bo, dmaID, dir, size, offset);
@@ -714,7 +717,7 @@ xrtGraphUpdateRTP(xrtGraphHandle ghdl, const char* port, const char* buffer, siz
 }
 
 int
-xrtSyncBOAIE(xrtGraphHandle ghdl, unsigned bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset)
+xrtSyncBOAIE(xrtGraphHandle ghdl, unsigned int bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
   try {
     api::xrtSyncBOAIE(ghdl, bo, dmaID, dir, size, offset);

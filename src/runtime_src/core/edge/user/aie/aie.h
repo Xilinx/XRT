@@ -22,18 +22,13 @@
 #include <vector>
 #include <queue>
 
+#include "core/common/device.h"
 #include "core/edge/common/aie_parser.h"
 extern "C" {
 #include <xaiengine.h>
 }
 
 namespace zynqaie {
-
-#define BD_HIGH_ADDR_MASK               0xFF00000000L
-#define BD_LOW_ADDR_MASK                0xFFFFFFFF
-
-#define GET_BD_HIGH_ADDR(addr)          (((addr) & BD_HIGH_ADDR_MASK) >> 32)
-#define GET_BD_LOW_ADDR(addr)           ((addr) & BD_LOW_ADDR_MASK)
 
 struct BD {
     uint16_t bd_num;
@@ -58,7 +53,7 @@ public:
     using gmio_type = xrt_core::edge::aie::gmio_type;
 
     ~Aie();
-    Aie();
+    Aie(std::shared_ptr<xrt_core::device> device);
 
     std::vector<XAieGbl_Tile> tileArray;  // Tile Array
     std::vector<ShimDMA> shim_dma;   // shim DMA

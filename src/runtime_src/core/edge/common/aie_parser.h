@@ -70,12 +70,10 @@ struct rtp_type
   bool            require_lock;
 };
 
- 
 /**
- * get_rtp() - get rtp data for a port from xclbin AIE metadata
+ * get_rtp() - get rtp data from xclbin AIE metadata
  *
  * @device: device with loaded meta data
- * @port_name: name of port to get data from
  */
 std::vector<rtp_type>
 get_rtp(const xrt_core::device* device);
@@ -90,6 +88,14 @@ struct gmio_type
   uint16_t        channel_number;
   uint16_t        burst_len;
 };
+
+/**
+ * get_gmios() - get gmio data from xclbin AIE metadata
+ *
+ * @device: device with loaded meta data
+ */
+std::vector<gmio_type>
+get_gmios(const xrt_core::device* device);
 
 }}} // aie, edge, xrt_core
 
