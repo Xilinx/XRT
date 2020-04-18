@@ -23,6 +23,7 @@
 #include <drm/drm_mm.h>
 #include <drm/drm_gem_cma_helper.h>
 #include <linux/version.h>
+#include <linux/poll.h>
 #include "zocl_util.h"
 #include "zocl_ioctl.h"
 #include "zocl_ert.h"

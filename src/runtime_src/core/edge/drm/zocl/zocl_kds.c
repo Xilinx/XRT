@@ -9,6 +9,7 @@
  * License version 2 or Apache License, Version 2.0.
  */
 
+#include <linux/sched/signal.h>
 #include "zocl_drv.h"
 #include "zocl_util.h"
 #include "kds_core.h"
