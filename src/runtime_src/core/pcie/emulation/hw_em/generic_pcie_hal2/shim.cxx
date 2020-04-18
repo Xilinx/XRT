@@ -440,16 +440,30 @@ namespace xclhwemhal2 {
         //Give error and return from here
       }
     }
-
+    
+    std::string fpgaDevice="";
+    
     // iterate devices
     count = 0;
     for (auto& xml_device : xml_project.get_child("project.platform"))
     {
       if (xml_device.first != "device")
         continue;
+      
+      fpgaDevice = xml_device.second.get<std::string>("<xmlattr>.fpgaDevice");
+      
       if (++count > 1)
       {
         //Give error and return from here
+      }
+    }
+    
+    //New DRC check for Versal Platforms
+    if (fpgaDevice != "" && fpgaDevice.find("versal:") != std::string::npos) {
+      if ((args.m_emuData == nullptr) && (args.m_emuDataSize <= 0)) {
+        std::string dMsg = "ERROR: [HW-EMU 09] EMULATION_DATA section in XCLBIN is missing. This is mandatory section required for Versal platforms";
+        logMessage(dMsg, 0);
+        return -1;
       }
     }
 
@@ -591,19 +605,27 @@ namespace xclhwemhal2 {
         // NOTE: proto inst filename must match name in HPIKernelCompilerHwEmu.cpp
         std::string protoFileName = "./" + bdName + "_behav.protoinst";
         std::stringstream cmdLineOption;
-
+        std::string waveformDebugfilePath = "";
         sim_path = binaryDirectory + "/behav_waveform/xsim";
 
         if (boost::filesystem::exists(sim_path) != false) {
+          
+          std::string waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
           cmdLineOption << " -g --wdb " << wdbFileName << ".wdb"
             << " --protoinst " << protoFileName;
 
           launcherArgs = launcherArgs + cmdLineOption.str();
         }
+        
         std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
         unsetenv("VITIS_LAUNCH_WAVEFORM_BATCH");
-        setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
-        setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
+        if (waveformDebugfilePath != "" && boost::filesystem::exists(waveformDebugfilePath) != false) {
+          setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
+          setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
+        } else {
+          std::string dMsg = "WARNING: [HW-EMU 08-1] None of the Kernels compiled in the Waveform enabled mode to get the WDB file.";
+          logMessage(dMsg, 0);
+        }
         setenv("VITIS_KERNEL_PROFILE_FILENAME", kernelProfileFileName.c_str(), true);
         setenv("VITIS_KERNEL_TRACE_FILENAME", kernelTraceFileName.c_str(), true);
       }
@@ -618,10 +640,17 @@ namespace xclhwemhal2 {
 
         launcherArgs = launcherArgs + cmdLineOption.str();
         sim_path = binaryDirectory + "/behav_waveform/xsim";
+        std::string waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
+        
         std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
         setenv("VITIS_LAUNCH_WAVEFORM_BATCH", "1", true);
-        setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
-        setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
+        if (boost::filesystem::exists(waveformDebugfilePath) != false) {          
+          setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
+          setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
+        } else {
+          std::string dMsg = "WARNING: [HW-EMU 08-2] None of the Kernels compiled in the Waveform enabled mode to get the WDB file.";
+          logMessage(dMsg, 0);
+        }
         setenv("VITIS_KERNEL_PROFILE_FILENAME", kernelProfileFileName.c_str(), true);
         setenv("VITIS_KERNEL_TRACE_FILENAME", kernelTraceFileName.c_str(), true);
       }
@@ -642,7 +671,9 @@ namespace xclhwemhal2 {
         {
           if (lWaveform == xclemulation::LAUNCHWAVEFORM::OFF) {
             sim_path = binaryDirectory + "/behav_waveform/xsim";
-            std::string dMsg = "WARNING: [HW-EM 07] Launch Waveform is set to OFF in ini file. Could not find an axsim binary. Running simulation using xsim. Using " + sim_path + " as simulation directory.";
+            std::string waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
+            
+            std::string dMsg = "WARNING: [HW-EMU 07] Launch Waveform is set to OFF in INI file. And none of kernels compiled in GDB mode. Running simulation using waveform mode.";
             logMessage(dMsg, 0);
             std::string protoFileName = "./" + bdName + "_behav.protoinst";
             std::stringstream cmdLineOption;
@@ -652,8 +683,13 @@ namespace xclhwemhal2 {
             launcherArgs = launcherArgs + cmdLineOption.str();
             std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
             setenv("VITIS_LAUNCH_WAVEFORM_BATCH", "1", true);
-            setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
-            setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
+            if (boost::filesystem::exists(waveformDebugfilePath) != false) {          
+              setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
+              setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
+            } else {
+              std::string dMsg = "WARNING: [HW-EMU 08-3] None of the Kernels compiled in the Waveform enabled mode to get the WDB file.";
+              logMessage(dMsg, 0);
+            }
             setenv("VITIS_KERNEL_PROFILE_FILENAME", kernelProfileFileName.c_str(), true);
             setenv("VITIS_KERNEL_TRACE_FILENAME", kernelTraceFileName.c_str(), true);
 
@@ -669,6 +705,7 @@ namespace xclhwemhal2 {
           }
         }
       }
+	  
       std::stringstream socket_id;
       socket_id << deviceName << "_" << binaryCounter << "_";
 #ifndef _WINDOWS
@@ -693,7 +730,8 @@ namespace xclhwemhal2 {
     }
 
     //launch simulation
-    if (!sim_path.empty()) {
+    if (!sim_path.empty()) {      
+		
 #ifndef _WINDOWS
       // TODO: Windows build support
       //   pid_t, fork, chdir, execl is defined in unistd.h
@@ -752,11 +790,16 @@ namespace xclhwemhal2 {
             if (aie_sim_options != "") {
               launcherArgs += " -aie-sim-options " + aie_sim_options;
             }
-
+            
             std::string userSpecifiedPreSimScript = xclemulation::config::getInstance()->getUserPreSimScript();
+            std::string userSpecifiedPostSimScript = xclemulation::config::getInstance()->getUserPostSimScript();
 
             if (userSpecifiedPreSimScript != "") {
               launcherArgs += " -user-pre-sim-script " + userSpecifiedPreSimScript;
+            }
+
+            if (userSpecifiedPostSimScript != "") {
+              launcherArgs += " -user-post-sim-script " + userSpecifiedPostSimScript;
             }
           }
           else {
