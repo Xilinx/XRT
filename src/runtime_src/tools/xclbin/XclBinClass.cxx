@@ -619,7 +619,7 @@ XclBin::removeSection(const Section* _pSection)
 
 Section *
 XclBin::findSection(enum axlf_section_kind _eKind, 
-                    const std::string _indexName)
+                    const std::string & _indexName) const
 {
   for (unsigned int index = 0; index < m_sections.size(); ++index) {
     if (m_sections[index]->getSectionKind() == _eKind) {
