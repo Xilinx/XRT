@@ -317,14 +317,15 @@ private:
                 cv.wait(lck);
             queue_flush_aio_request();
         } while(!qExit);
+
+        qAioBatchEn = false;
     }
 
     void stop_aio_worker(void)
     {
         if (qAioBatchEn) {
-            /* stop the worker thread */
             std::lock_guard<std::mutex> lk(reqLock);
-            qAioBatchEn = false;
+            /* stop the worker thread */
             qExit = true;
             cv.notify_one();
         }
@@ -343,13 +344,11 @@ private:
         /* to enable aio batching, the stream needs to have its own context
          * and any of the 
          */
-        if (qAioEn && (byteThresh || pktThresh)) {
+        if (qAioEn && (byteThresh || pktThresh) && !qAioBatchEn) {
             std::lock_guard<std::mutex> lk(reqLock);
-            if (qAioBatchEn) {
-                qAioBatchEn = true;
-                qExit = false;
-                qWorker = std::thread(&queue_cb::queue_aio_worker, this);
-            }
+            qExit = false;
+            qWorker = std::thread(&queue_cb::queue_aio_worker, this);
+            qAioBatchEn = true;
         }
     }
 
