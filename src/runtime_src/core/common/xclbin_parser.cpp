@@ -84,6 +84,12 @@ is_legacy_cu_intr(const ip_layout *ips)
 
 bool compare_intr_id(struct ip_data &l, struct ip_data &r)
 {
+    /* We need to put free running CU at the end */
+    if (l.m_base_address == static_cast<size_t>(-1))
+        return false;
+    if (r.m_base_address == static_cast<size_t>(-1))
+        return true;
+
     uint32_t l_id = l.properties & IP_INTERRUPT_ID_MASK;
     uint32_t r_id = r.properties & IP_INTERRUPT_ID_MASK;
 
