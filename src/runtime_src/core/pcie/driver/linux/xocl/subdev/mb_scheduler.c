@@ -1369,6 +1369,28 @@ ert_cfg(struct xocl_ert *xert, unsigned int cq_size, unsigned int num_slots, boo
 	xert->ctrl_busy = false;
 }
 
+/**
+ * Clear the ERT command queue status register
+ *
+ * This can be necessary in ert polling mode, where KDS itself
+ * can be ahead of ERT, so stale interrupts are possible which
+ * is bad during reconfig.
+ */
+static void
+ert_clear_csr(struct xocl_ert *xert)
+{
+        unsigned int idx;
+
+	for (idx = 0; idx < 4; ++idx) {
+		u32 csr_addr = ERT_STATUS_REGISTER_ADDR + (idx<<2);
+		u32 val = csr_read32(xert->csr_base, csr_addr);
+
+		if (val)
+                        userpf_info(xert->xdev,
+				    "csr[%d]=0x%x cleared\n", idx, val);
+	}
+}
+
 /*
  * acquire_slot_idx() - First available slot index
  */
@@ -2655,22 +2677,11 @@ exec_ert_start_ctrl_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
  * can be ahead of ERT, so stale interrupts are possible which
  * is bad during reconfig.
  */
-static void
+static inline void
 exec_ert_clear_csr(struct exec_core *exec)
 {
-	unsigned int idx;
-
-	if (!exec_is_ert(exec) && !exec_is_ert_poll(exec))
-		return;
-
-	for (idx = 0; idx < 4; ++idx) {
-		u32 csr_addr = ERT_STATUS_REGISTER_ADDR + (idx<<2);
-		u32 val = csr_read32(exec->csr_base, csr_addr);
-
-		if (val)
-			userpf_info(exec_get_xdev(exec),
-				    "csr[%d]=0x%x cleared\n", idx, val);
-	}
+	if (exec_is_ert(exec) || exec_is_ert_poll(exec))
+              ert_clear_csr(exec->ert);
 }
 
 /**
@@ -3155,6 +3166,14 @@ exec_submitted_to_running(struct exec_core *exec)
 	started += exec_start_kds(exec);
 	started += exec_start_scu(exec);
 	exec->num_pending_cmds -= started;
+
+        // Force at least one iteration if in ert poll mode where kds can be
+        // ahead of ert polling.  A pending interrupt has to be cleared before
+        // new interrupts can be send by ERT.
+        if (started && exec_is_ert_poll(exec))
+          scheduler_intr(exec->scheduler);
+       
+	
 	SCHED_DEBUGF("<- %s started(%d)\n", __func__, started);
 }
 
