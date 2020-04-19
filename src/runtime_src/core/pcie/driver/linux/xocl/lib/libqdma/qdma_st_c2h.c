@@ -286,7 +286,8 @@ int descq_st_c2h_read(struct qdma_descq *descq, struct qdma_request *req,
 	return copied;
 }
 
-static int qdma_c2h_packets_proc_dflt(struct qdma_descq *descq)
+static int qdma_c2h_read_packets(struct qdma_descq *descq, bool update_pidx,
+				bool refill)
 {
 	struct qdma_sgt_req_cb *cb, *tmp;
 
@@ -310,7 +311,8 @@ static int qdma_c2h_packets_proc_dflt(struct qdma_descq *descq)
 			return 0;
 		}
 
-		rv = descq_st_c2h_read(descq, (struct qdma_request *)cb, 0, 0);
+		rv = descq_st_c2h_read(descq, (struct qdma_request *)cb,
+					update_pidx, refill);
 		if (rv < 0) {
 			pr_info("req 0x%p, error %d.\n", cb, rv);
 			qdma_sgt_req_done(descq, cb, rv);
@@ -327,6 +329,21 @@ static int qdma_c2h_packets_proc_dflt(struct qdma_descq *descq)
 
 	return 0;
 }
+
+static int qdma_c2h_packets_proc_dflt(struct qdma_descq *descq)
+{
+	return qdma_c2h_read_packets(descq, 0, 0);
+}
+
+void c2h_req_work(struct work_struct *work)
+{
+	struct qdma_descq *descq = container_of(work, struct qdma_descq,
+						req_work);
+	lock_descq(descq);
+	qdma_c2h_read_packets(descq, 1, 1);
+	unlock_descq(descq);
+}
+
 
 static inline void cmpt_next(struct qdma_descq *descq)
 {
