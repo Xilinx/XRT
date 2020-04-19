@@ -324,7 +324,6 @@ private:
     void stop_aio_worker(void)
     {
         if (qAioBatchEn) {
-            std::lock_guard<std::mutex> lk(reqLock);
             /* stop the worker thread */
             qExit = true;
             cv.notify_one();
@@ -344,7 +343,7 @@ private:
         /* to enable aio batching, the stream needs to have its own context
          * and any of the 
          */
-        if (qAioEn && (byteThresh || pktThresh)) {
+        if (qAioEn && (byteThresh || pktThresh) && !qAioBatchEn) {
             qExit = false;
             qWorker = std::thread(&queue_cb::queue_aio_worker, this);
             qAioBatchEn = true;
@@ -356,7 +355,7 @@ public:
         : qAioEn{false}, qAioBatchEn{false}, qExit{false},
           h2c{qinfo->write ? true : false}, qhndl{qinfo->handle},
           aio_max_evts{0}, byteThresh{0}, pktThresh{0}, byteCnt{0}, bufCnt{0},
-          cbSubmitCnt{0}, cbPollCnt{0}, cbErrCnt{0}
+          cbSubmitCnt{0}, cbPollCnt{0}, cbErrCnt{0}, cbErrCode{0}
     {
        memset(&qAioCtx, 0, sizeof(qAioCtx));
     }
