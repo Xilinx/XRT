@@ -1290,10 +1290,10 @@ XclBin::dumpSections(ParameterSectionData &_PSD)
                                           _PSD.getFormatTypeAsStr().c_str(), sDumpFileName.c_str()).c_str() << std::endl;
 }
 
-std::string 
+std::string
 XclBin::findKeyAndGetValue(const std::string & _searchDomain, 
                            const std::string & _searchKey, 
-                           std::vector<std::string> _keyValues)
+                           const std::vector<std::string> & _keyValues)
 {
   std::string sDomain;
   std::string sKey;
