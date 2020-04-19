@@ -34,8 +34,11 @@
  */
 #define WORD_SIZE                     4          /* 4 bytes */
 #define CQ_SIZE                       0x10000    /* 64K */
+#define CQ_SLOT_SIZE                  0x1000     /* 4K each cq slot */
 #define CQ_BASE_ADDR                  0x190000
 #define CSR_ADDR                      0x180000
+
+#define CQ_SLOT_NUM	(CQ_SIZE / CQ_SLOT_SIZE)      /* defult cq slot num = 16 */
 
 /**
  * The STATUS REGISTER is for communicating completed CQ slot indices
