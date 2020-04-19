@@ -74,7 +74,8 @@ file(GLOB XCLBINUTIL_FILES
   "FDT*.cxx"
   "FormattedOutput.cxx"
   "ParameterSectionData.cxx"
-  "Section*.cxx"
+  "Section.cxx"     # Note: Due to linking dependency issue, this entry needs to be before the other sections
+  "Section*.cxx"  
   "XclBinClass.cxx"
   "XclBinSignature.cxx"
   "XclBinUtilities.cxx"

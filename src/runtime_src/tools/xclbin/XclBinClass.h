@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -54,6 +54,10 @@ class XclBin {
   void dumpSections(ParameterSectionData &_PSD);
   void setKeyValue(const std::string & _keyValue);
   void removeKey(const std::string & _keyValue);
+
+  public:
+    static void getKeyValueComponents(const std::string & _keyValue, std::string & _domain, std::string & _key,std::string & _value);
+    static std::string findKeyAndGetValue(const std::string & _searchDomain, const std::string & _searchKey, std::vector<std::string> _keyValues);
 
  public:
   Section *findSection(enum axlf_section_kind _eKind, const std::string _indexName = "");

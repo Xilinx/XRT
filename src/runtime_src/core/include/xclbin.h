@@ -121,6 +121,7 @@ extern "C" {
         XCLBIN_TANDEM_STAGE2_WITH_PR,
         XCLBIN_HW_EMU,
         XCLBIN_SW_EMU,
+        XCLBIN_HW_EMU_PR,
         XCLBIN_MODE_MAX
     };
 
