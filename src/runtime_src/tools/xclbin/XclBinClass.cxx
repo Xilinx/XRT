@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -619,7 +619,7 @@ XclBin::removeSection(const Section* _pSection)
 
 Section *
 XclBin::findSection(enum axlf_section_kind _eKind, 
-                    const std::string _indexName)
+                    const std::string & _indexName) const
 {
   for (unsigned int index = 0; index < m_sections.size(); ++index) {
     if (m_sections[index]->getSectionKind() == _eKind) {
@@ -1290,10 +1290,37 @@ XclBin::dumpSections(ParameterSectionData &_PSD)
                                           _PSD.getFormatTypeAsStr().c_str(), sDumpFileName.c_str()).c_str() << std::endl;
 }
 
+std::string
+XclBin::findKeyAndGetValue(const std::string & _searchDomain, 
+                           const std::string & _searchKey, 
+                           const std::vector<std::string> & _keyValues)
+{
+  std::string sDomain;
+  std::string sKey;
+  std::string sValue;
+
+  for (auto const & keyValue : _keyValues) {
+    getKeyValueComponents(keyValue, sDomain, sKey, sValue);
+    if ((_searchDomain == sDomain) &&
+        (_searchKey == sKey)) {
+      return sValue;
+    }
+  }
+  return std::string("");
+}
+
 
 void 
-XclBin::setKeyValue(const std::string & _keyValue)
+XclBin::getKeyValueComponents( const std::string & _keyValue, 
+                               std::string & _domain, 
+                               std::string & _key,
+                               std::string & _value)
 {
+  // Reset output arguments
+  _domain.clear();
+  _key.clear();
+  _value.clear();
+
   const std::string& delimiters = ":";      // Our delimiter
 
   // Working variables
@@ -1323,10 +1350,17 @@ XclBin::setKeyValue(const std::string & _keyValue)
   }
 
   boost::to_upper(tokens[0]);
-  std::string sDomain = tokens[0];
-  std::string sKey = tokens[1];
-  std::string sValue = tokens[2];
-  
+  _domain = tokens[0];
+  _key = tokens[1];
+  _value = tokens[2];
+}
+
+void 
+XclBin::setKeyValue(const std::string & _keyValue)
+{
+  std::string sDomain, sKey, sValue;
+  getKeyValueComponents(_keyValue, sDomain, sKey, sValue);
+
   XUtil::TRACE(XUtil::format("Setting key-value pair \"%s\":  domain:'%s', key:'%s', value:'%s'", 
                              _keyValue.c_str(), sDomain.c_str(), sKey.c_str(), sValue.c_str()));
 
@@ -1344,6 +1378,8 @@ XclBin::setKeyValue(const std::string & _keyValue)
         m_xclBinHeader.m_header.m_mode = XCLBIN_HW_EMU;
       } else if (sValue == "sw_emu") {
         m_xclBinHeader.m_header.m_mode = XCLBIN_SW_EMU;
+      } else if (sValue == "hw_emu_pr") {
+        m_xclBinHeader.m_header.m_mode = XCLBIN_HW_EMU_PR;
       } else {
         std::string errMsg = XUtil::format("ERROR: Unknown value '%s' for key '%s'. Key-value pair: '%s'.", sValue.c_str(), sKey.c_str(), _keyValue.c_str());
         throw std::runtime_error(errMsg);

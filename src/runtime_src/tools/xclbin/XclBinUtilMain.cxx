@@ -26,6 +26,7 @@
 // 3rd Party Library - Include Files
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/algorithm/string.hpp>
 #include <stdexcept>
 
 // System - Include Files
@@ -81,6 +82,50 @@ void drcCheckFiles(const std::vector<std::string> & _inputFiles,
    }
 }
 
+void insertTargetMode(const std::string & _sTarget, std::vector<std::string> & _keyValuePairs)
+{
+  bool bDfxEnable = false;
+  std::string sDomain, sKey, sValue;
+
+  // Extract the DFX_ENABLE key (if present)
+  for (unsigned int index = 0; index < _keyValuePairs.size(); ++index) {
+    XclBin::getKeyValueComponents(_keyValuePairs[index], sDomain, sKey, sValue);
+    if ((sDomain == "SYS") && (sKey == "dfx_enable")) {
+      boost::to_upper(sValue);
+      if ((sValue != "TRUE") && (sValue != "FALSE")) {
+        std::string errMsg = "ERROR: Unsupported key value for SYS:dfx_enable : '" + sValue + "'";
+        throw std::runtime_error(errMsg);
+      }
+
+      bDfxEnable = (sValue == "TRUE") ? true : false;
+
+      // Remove the key
+      _keyValuePairs.erase(_keyValuePairs.begin() + index);
+      break;
+    }
+  }
+
+  // Build the SYS:mode key value
+  std::string modeValue;
+  if (_sTarget == "hw") 
+    modeValue = bDfxEnable ? "hw_pr" : "flat";
+  else if (_sTarget == "hw_emu") 
+    modeValue = bDfxEnable ? "hw_emu_pr" : "hw_emu";
+  else if (_sTarget == "sw_emu") {
+    if (bDfxEnable)
+      throw std::runtime_error("ERROR: Target 'sw_emu' does not support the dfx_enable value of 'TRUE'");
+    modeValue = "sw_emu";
+  } else {
+    std::string errMsg = "ERROR: Unknown target option: '" + _sTarget + "'";
+    throw std::runtime_error(errMsg);
+  }
+
+  // Add a new key
+  std::string keyValue = "SYS:mode:" + modeValue;
+  _keyValuePairs.push_back(keyValue);
+}
+
+
 static bool bQuiet = false;
 void QUIET(const std::string _msg){
   if (bQuiet == false) {
@@ -111,6 +156,8 @@ int main_(int argc, const char** argv) {
   std::string sCertificate;
   bool bValidateSignature = false;
 
+  std::string sTarget;
+
   std::string sInputFile;
   std::string sOutputFile;
 
@@ -131,6 +178,8 @@ int main_(int argc, const char** argv) {
       ("help,h", "Print help messages")
       ("input,i", boost::program_options::value<std::string>(&sInputFile), "Input file name. Reads xclbin into memory.")
       ("output,o", boost::program_options::value<std::string>(&sOutputFile), "Output file name. Writes in memory xclbin image to a file.")
+
+      ("target", boost::program_options::value<decltype(sTarget)>(&sTarget), "Target flow for this image.  Valid values: HW, HW_EMU, and SW_EMU.")
 
       ("private-key", boost::program_options::value<std::string>(&sPrivateKey), "Private key used in signing the xclbin image.")
       ("certificate", boost::program_options::value<std::string>(&sCertificate), "Certificate used in signing and validating the xclbin image.")
@@ -257,6 +306,24 @@ int main_(int argc, const char** argv) {
     }
     XUtil::printKinds();
     return RC_SUCCESS;
+  }
+
+  // Pre-processing
+  // -- Map the target to the mode
+  if (!sTarget.empty()) {
+    // Make sure that SYS:mode isn't being used
+    if (!XclBin::findKeyAndGetValue("SYS","mode", keyValuePairs).empty()) {
+      std::string errMsg = "ERROR: The option '--target' and the key 'SYS:mode' are mutually exclusive.";
+      throw std::runtime_error(errMsg);
+    }
+
+    insertTargetMode(sTarget, keyValuePairs);
+  } else {
+    // Validate that the SYS:dfx_enable is not set
+    if (!XclBin::findKeyAndGetValue("SYS","dfx_enable", keyValuePairs).empty()) {
+      std::string errMsg = "ERROR: The option '--target' needs to be defined when using 'SYS:dfx_enable'.";
+      throw std::runtime_error(errMsg);
+    }
   }
 
   // Signing DRCs

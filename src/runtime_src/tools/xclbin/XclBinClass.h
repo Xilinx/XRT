@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -55,8 +55,13 @@ class XclBin {
   void setKeyValue(const std::string & _keyValue);
   void removeKey(const std::string & _keyValue);
 
+  public:
+    // Helper method to take given encoded keyValue and break it down to its individual values (e.g., domain, key, and value)
+    static void getKeyValueComponents(const std::string & _keyValue, std::string & _domain, std::string & _key, std::string & _value);
+    static std::string findKeyAndGetValue(const std::string & _searchDomain, const std::string & _searchKey, const std::vector<std::string> & _keyValues);
+
  public:
-  Section *findSection(enum axlf_section_kind _eKind, const std::string _indexName = "");
+  Section *findSection(enum axlf_section_kind _eKind, const std::string & _indexName = "") const;
 
  private:
   void updateHeaderFromSection(Section *_pSection);
