@@ -248,7 +248,7 @@ static int resetShell(unsigned index, bool force)
 
     std::cout << "CAUTION: Resetting Card [" << flasher.sGetDBDF() <<
         "] back to factory mode." << std::endl;
-    if(force || !canProceed())
+    if(!force && !canProceed())
         return -ECANCELED;
 
     return flasher.upgradeFirmware("", nullptr, nullptr, nullptr);
