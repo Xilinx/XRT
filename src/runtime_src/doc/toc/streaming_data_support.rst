@@ -34,10 +34,10 @@ The typical API flow is described below:
 - Create the required number of the read/write streams by clCreateStream.
 
      - Streams should be directly attached to the OpenCL device object because it does not use any command queue. A stream itself is a command queue that only passes the data to a particular direction, either from host to kernel or from kernel to host.
-     - An appropriate flag should be used to denote stream write/read operation (from the host perspective).
+     - An appropriate flag should be used to denote stream write/read operation (from the kernel perspective).
      - To specify how the stream is connected to the device, a predefined extension pointer (cl_mem_ext_ptr_t) should be used to denote the kernel and its argument the stream is associated with.
 
-In the code block below, a Read Stream (named read_stream) and a Write Stream (named write_stream) are created.
+In the code block below, a stream for kernel to host data transfer (named k2h_stream) and a stream for host to kernel data transfer (named h2k_stream) are created.
 
 .. code-block:: c++
 
@@ -51,11 +51,11 @@ In the code block below, a Read Stream (named read_stream) and a Write Stream (n
    // The .flag should be used to denote the kernel argument
    // Create write stream for argument 3 of kernel
    ext.flags = 3;
-   cl_stream write_stream = clCreateStream(device_id, CL_STREAM_WRITE_ONLY, CL_STREAM, &ext, &ret);
+   cl_stream h2k_stream = clCreateStream(device_id, XCL_STREAM_READ_ONLY, CL_STREAM, &ext, &ret);
 
    // Create read stream for argument 4 of kernel
    ext.flags = 4;
-   cl_stream read_stream = clCreateStream(device_id, CL_STREAM_READ_ONLY, CL_STREAM, &ext,&ret);
+   cl_stream k2h_stream = clCreateStream(device_id, XCL_STREAM_WRITE_ONLY, CL_STREAM, &ext,&ret);
 
 
 - Set the remaining non-stream kernel arguments and enqueue the kernel. The following code block shows typical kernel argument (non-stream arguments such as buffer and/or scalar) setting and kernel enqueuing.
@@ -88,9 +88,8 @@ In the following code block, the stream read and write transfers are executed wi
    cl_stream_xfer_req rd_req {0};
 
    rd_req.flags = CL_STREAM_EOT | CL_STREAM_NONBLOCKING;
-   rd_req.priv_data = (void*)"read"; // You can think this as tagging the
-									 transfer with a name
-   clReadStream(read_stream, host_read_ptr, max_read_size, &rd_req, &ret);
+   rd_req.priv_data = (void*)"read"; // You can think this as tagging the transfer with a name
+   clReadStream(k2h_stream, host_read_ptr, max_read_size, &rd_req, &ret);
 
    // Initiating the WRITE transfer
    cl_stream_xfer_req wr_req {0};
@@ -98,7 +97,12 @@ In the following code block, the stream read and write transfers are executed wi
    wr_req.flags = CL_STREAM_EOT | CL_STREAM_NONBLOCKING;
    wr_req.priv_data = (void*)"write";
 
-   clWriteStream(write_stream, host_write_ptr, write_size, &wr_req , &ret);
+   clWriteStream(h2k_stream, host_write_ptr, write_size, &wr_req , &ret);
+
+**IMPORTANT**: In case of using blocking version of the API, the user should be careful as blocking API blocks the host execution. Hence it may ends up application to hang, for example a blocking read operation from a kernel before a blocking write to the same kernel (in the situation when the kernel output stream depends on the kernel input stream) in the same thread. The general recommendation is to use blocking streams APIs from differnt threads to avoid application hang situation. 
+
+**IMPORTANT**: The buffer used for kernel to host data transfer has to be page aligned (In the above code example, the buffer ``host_read_ptr`` has to be page aligned). 
+
 
 - Poll all the streams for completion. For the non-blocking transfer, a polling API is provided to ensure the read/write transfers are completed. For the blocking version of the API, polling is not required.
 
