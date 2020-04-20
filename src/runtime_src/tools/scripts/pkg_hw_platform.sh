@@ -181,6 +181,7 @@ xsabinOutputFile=""
 SatelliteControllerFamily=""
 CardMgmtControllerFamily=""
 SchedulerFamily=""
+SysMode="hw_pr"
 
 
 XBMGMT=/opt/xilinx/xrt/bin/xbmgmt
@@ -503,12 +504,19 @@ initXsaBinEnvAndVars()
           if [ "${1}" != "NOT_DEFINED" ]; then
             SchedulerFamily="${1}"
           fi
+          
+          # Sys Mod
+          set -- `cat "${metaDataJSONFile}" | python -c "import sys, json; print json.load(sys.stdin)['xsabin'].get('Sys Mode','NOT_DEFINED')"`
+          if [ "${1}" != "NOT_DEFINED" ]; then
+            SysMode="${1}"
+          fi
        fi
     fi
 
     echo "Info: Satellite Controller Family: ${SatelliteControllerFamily}"
     echo "Info: Card Management Controller Family: ${CardMgmtControllerFamily}"
     echo "Info: Scheduler Family: ${SchedulerFamily}"
+    echo "Info: Sys Mode: ${SysMode}"
 
     # -- Determine scheduler firmware --
     fwScheduler=""
@@ -647,7 +655,7 @@ doxsabin()
 
 
     # -- Mode Hardware PR --
-    xclbinOpts+=" --key-value SYS:mode:hw_pr"
+    xclbinOpts+=" --key-value SYS:mode:${SysMode}"
 
     # -- Output filename --
     localFeatureRomTimestamp="${featureRomTimestamp}"
