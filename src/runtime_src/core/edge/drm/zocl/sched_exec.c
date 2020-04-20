@@ -776,7 +776,7 @@ configure(struct sched_cmd *cmd)
 	}
 
 	SCHED_DEBUG("Configuring scheduler\n");
-	/* ??? so slot_size can be not 4k, but cq_size is always 64k? */
+	/* Note: for current design: the slot_size can be not 4k, but cq_size is always 64k. */
 	exec->num_slots       = CQ_SIZE / cfg->slot_size;
 	write_lock(&zdev->attr_rwlock);
 	exec->num_cus         = cfg->num_cus;
