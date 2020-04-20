@@ -52,14 +52,15 @@ namespace xcldev {
         // DMARunner now uses xclAllocUserPtrBO() to allocate buffers. This reduces memory pressure on
         // Linux kernel which other wise tries very hard inside xocl to allocate and pin pages when
         // xlcAllocBO() is used may oops.
-        std::vector<std::pair<xclBufferHandle, xrt_core::aligned_ptr_type>> mBOList;
+        using buffer_and_deleter = std::pair<xclBufferHandle, xrt_core::aligned_ptr_type>;
+        std::vector<buffer_and_deleter> mBOList;
         xclDeviceHandle mHandle;
         size_t mSize;
         unsigned mFlags;
-        char pattern;
+        char mPattern;
 
-        int runSyncWorker(std::vector<std::pair<xclBufferHandle, xrt_core::aligned_ptr_type>>::const_iterator b,
-                          std::vector<std::pair<xclBufferHandle, xrt_core::aligned_ptr_type>>::const_iterator e,
+        int runSyncWorker(std::vector<buffer_and_deleter>::const_iterator b,
+                          std::vector<buffer_and_deleter>::const_iterator e,
                           xclBOSyncDirection dir) const {
             int result = 0;
             while (b < e) {
@@ -99,8 +100,8 @@ namespace xcldev {
         }
 
         int validate() const {
-            std::vector<char> bufCmp(mSize, pattern);
-            for (const std::pair<xclBufferHandle, xrt_core::aligned_ptr_type> &bo : mBOList) {
+            std::vector<char> bufCmp(mSize, mPattern);
+            for (const buffer_and_deleter &bo : mBOList) {
                 if (!std::memcmp(bo.second.get(), bufCmp.data(), mSize))
                     continue;
                 throw xrt_core::error(-EIO, "DMA test data integrity check failed.");
@@ -110,7 +111,7 @@ namespace xcldev {
 
     public:
         DMARunner(xclDeviceHandle handle , size_t size, unsigned flags=0) : mHandle(handle), mSize(size),
-                                                                            mFlags(flags), pattern('x') {
+                                                                            mFlags(flags), mPattern('x') {
             long long count = 0x100000000/size;
 
             if (count == 0)
@@ -125,7 +126,7 @@ namespace xcldev {
                 xclBufferHandle bo = xclAllocUserPtrBO(mHandle, buf.get(), mSize, mFlags);
                 if (bo == XRT_NULL_BO)
                     break;
-                std::memset(buf.get(), pattern, mSize);
+                std::memset(buf.get(), mPattern, mSize);
                 mBOList.emplace_back(bo, std::move(buf));
             }
             if (mBOList.size() == 0)
