@@ -95,21 +95,17 @@ namespace xcldev {
 
         void clear() {
             //Clear out the host shadow buffer
-            std::for_each(mBOList.begin(), mBOList.end(), [&](std::pair<xclBufferHandle, xrt_core::aligned_ptr_type> &v) {
-                    std::memset(v.second.get(), 'x', mSize);
-                });
+            std::for_each(mBOList.begin(), mBOList.end(), [&](auto &v) {std::memset(v.second.get(), 0, mSize);});
         }
 
         int validate() const {
-            std::unique_ptr<char[]> bufCmp(new char[mSize]);
-            std::memset(bufCmp.get(), pattern, mSize);
-            int result = 0;
+            std::vector<char> bufCmp(mSize, pattern);
             for (const std::pair<xclBufferHandle, xrt_core::aligned_ptr_type> &bo : mBOList) {
-                if (!std::memcmp(bo.second.get(), bufCmp.get(), mSize))
+                if (!std::memcmp(bo.second.get(), bufCmp.data(), mSize))
                     continue;
-                throw xrt_core::error(-EIO, "DMA Test data integrity check failed.");
+                throw xrt_core::error(-EIO, "DMA test data integrity check failed.");
             }
-            return result;
+            return 0;
         }
 
     public:
@@ -137,9 +133,7 @@ namespace xcldev {
         }
 
         ~DMARunner() {
-            std::for_each(mBOList.begin(), mBOList.end(), [&](std::pair<xclBufferHandle, xrt_core::aligned_ptr_type> &bo) {
-                    xclFreeBO(mHandle, bo.first);
-                });
+            std::for_each(mBOList.begin(), mBOList.end(), [&](auto &bo) {xclFreeBO(mHandle, bo.first); });
         }
 
         int run() const {
