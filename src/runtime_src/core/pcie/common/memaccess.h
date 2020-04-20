@@ -216,11 +216,13 @@ namespace xcldev {
             result = readCompare(itr.m_base_address, itr.m_size, aPattern, false);
             if(result < 0)
                 return result;
-            DMARunner runner(mHandle, blocksize, 1 << itr.m_index);
-            result = runner.run();
-            if( result < 0 )
-                return result;
-
+            try {
+                DMARunner runner(mHandle, blocksize, 1 << itr.m_index);
+                result = runner.run();
+            } catch (const xrt_core::error &ex) {
+                std::cout << "ERROR: " << ex.what() << std::endl;
+                return ex.get();
+            }
         }
 
 
