@@ -90,7 +90,7 @@ PROJ_NAME=""
 PLATFROM=""
 XRT_REPO_DIR=`readlink -f ${THIS_SCRIPT_DIR}/..`
 clean=0
-SSTATECACHE=""
+SSTATE_CACHE=""
 SETTINGS_FILE="petalinux.build"
 while [ $# -gt 0 ]; do
 	case $1 in
@@ -110,7 +110,7 @@ while [ $# -gt 0 ]; do
 			;;
 		-cache )
                         shift
-                        SSTATECACHE=$1
+                        SSTATE_CACHE=$1
                         ;;
 		--* | -* )
 			error "Unregognized option: $1"
@@ -157,8 +157,8 @@ if [ ! -f $PETA_BSP ]; then
     error "$PETA_BSP not accessible"
 fi
 
-if [ ! -d $SSTATECACHE ]; then
-    error "SSTATECACHE= not accessible"
+if [ ! -d $SSTATE_CACHE ]; then
+    error "SSTATE_CACHE= not accessible"
 fi
 
 # Sanity check done
@@ -192,11 +192,11 @@ echo "CONFIG_YOCTO_MACHINE_NAME=\"${YOCTO_MACHINE}\""
 echo "CONFIG_YOCTO_MACHINE_NAME=\"${YOCTO_MACHINE}\"" >> project-spec/configs/config 
 
 
-if [ ! -z $SSTATECACHE ] && [ -d $SSTATECACHE ]; then
-    echo "SSTATE-CACHE:${SSTATECACHE} added"
-    echo "CONFIG_YOCTO_LOCAL_SSTATE_FEEDS_URL=\"${SSTATECACHE}\"" >> project-spec/configs/config
+if [ ! -z $SSTATE_CACHE ] && [ -d $SSTATE_CACHE ]; then
+    echo "SSTATE-CACHE:${SSTATE_CACHE} added"
+    echo "CONFIG_YOCTO_LOCAL_SSTATE_FEEDS_URL=\"${SSTATE_CACHE}\"" >> project-spec/configs/config
 else
-    echo "SSTATE-CACHE:${SSTATECACHE} not present"
+    echo "SSTATE-CACHE:${SSTATE_CACHE} not present"
 fi
 
 # Build package
