@@ -29,6 +29,7 @@
 #include "xdp/profile/profile_config.h"
 #include "xdp/profile/plugin/base_plugin.h"
 #include "xdp/profile/core/rt_util.h"
+#include "xdp/profile/device/tracedefs.h"
 
 namespace xdp {
   class DeviceTrace;
@@ -130,10 +131,10 @@ namespace xdp {
       uint64_t mPerfMonLastTranx[XAIM_MAX_NUMBER_SLOTS]     = { 0 };
       uint64_t mAccelMonLastTranx[XAM_MAX_NUMBER_SLOTS]    = { 0 };
       uint64_t mStreamMonLastTranx[XASM_MAX_NUMBER_SLOTS]  = { 0 };
-      std::list<uint64_t> mWriteStarts[XAIM_MAX_NUMBER_SLOTS];
-      std::list<uint64_t> mHostWriteStarts[XAIM_MAX_NUMBER_SLOTS];
-      std::list<uint64_t> mReadStarts[XAIM_MAX_NUMBER_SLOTS];
-      std::list<uint64_t> mHostReadStarts[XAIM_MAX_NUMBER_SLOTS];
+      uint64_t mWriteStarts[XAIM_MAX_NUMBER_SLOTS] = { INVALID_DEVICE_TIMESTAMP };
+      uint64_t mHostWriteStarts[XAIM_MAX_NUMBER_SLOTS] = { 0 };
+      uint64_t mReadStarts[XAIM_MAX_NUMBER_SLOTS] = { INVALID_DEVICE_TIMESTAMP };
+      uint64_t mHostReadStarts[XAIM_MAX_NUMBER_SLOTS] = { 0 };
       std::list<uint64_t> mStreamTxStarts[XASM_MAX_NUMBER_SLOTS];
       std::list<uint64_t> mStreamStallStarts[XASM_MAX_NUMBER_SLOTS];
       std::list<uint64_t> mStreamStarveStarts[XASM_MAX_NUMBER_SLOTS];

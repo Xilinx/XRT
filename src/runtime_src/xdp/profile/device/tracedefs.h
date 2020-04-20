@@ -17,7 +17,9 @@
 #ifndef _XDP_DEVICE_TRACEDEFS_H_
 #define _XDP_DEVICE_TRACEDEFS_H_
 
-#define TRACE_PACKET_SIZE       8
+#define TRACE_PACKET_SIZE        8
+// Device timestamp is 45 bits so it can never be this value
+#define INVALID_DEVICE_TIMESTAMP 0xffffffffffffffff
 
 // Offsets
 #define TS2MM_COUNT_LOW         0x10

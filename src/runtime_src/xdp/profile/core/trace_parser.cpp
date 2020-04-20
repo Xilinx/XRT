@@ -81,14 +81,17 @@ namespace xdp {
   }
 
   void TraceParser::ResetState() {
+    // AM State
     std::fill_n(mAccelMonStartedEvents,XAM_MAX_NUMBER_SLOTS,0);
-    // Clear queues
-    for (int i=0; i < XAIM_MAX_NUMBER_SLOTS; i++) {
-      mWriteStarts[i].clear();
-      mHostWriteStarts[i].clear();
-      mReadStarts[i].clear();
-      mHostReadStarts[i].clear();
+    for (int i=0; i< XAM_MAX_NUMBER_SLOTS; i++) {
+      mAccelMonCuStarts[i].clear();
     }
+    // AIM State
+    std::fill_n(mWriteStarts,XAIM_MAX_NUMBER_SLOTS,0);
+    std::fill_n(mHostWriteStarts,XAIM_MAX_NUMBER_SLOTS,0);
+    std::fill_n(mReadStarts,XAIM_MAX_NUMBER_SLOTS,0);
+    std::fill_n(mHostReadStarts,XAIM_MAX_NUMBER_SLOTS,0);
+    // ASM State
     for (int i=0; i< XASM_MAX_NUMBER_SLOTS; i++) {
       mStreamTxStarts[i].clear();
       mStreamStallStarts[i].clear();
@@ -96,9 +99,6 @@ namespace xdp {
       mStreamTxStartsHostTime[i].clear();
       mStreamStallStartsHostTime[i].clear();
       mStreamStarveStartsHostTime[i].clear();
-    }
-    for (int i=0; i< XAM_MAX_NUMBER_SLOTS; i++) {
-      mAccelMonCuStarts[i].clear();
     }
   }
 
@@ -228,6 +228,10 @@ namespace xdp {
           }
           else {
             mAccelMonCuStarts[s].push_back(timestamp);
+            // Reset stall state when this CU starts running
+            if (mAccelMonCuStarts[s].size() == 1) {
+              mAccelMonStartedEvents[s] = 0;
+            }
           }
         }
         if (stallIntEvent) {
@@ -275,20 +279,14 @@ namespace xdp {
       } else if (IS_READ(trace.TraceID)) {         // SPM Read Trace
         s = trace.TraceID/2;
         if (trace.EventType == XCL_PERF_MON_START_EVENT) {
-          mReadStarts[s].push_back(timestamp);
+          mReadStarts[s] = timestamp;
         }
         else if (trace.EventType == XCL_PERF_MON_END_EVENT) {
-           if (trace.Reserved == 1) {
+          if (trace.Reserved == 1 || mReadStarts[s] == INVALID_DEVICE_TIMESTAMP)
             startTime = timestamp;
-           }
-           else {
-            if(mReadStarts[s].empty()) {
-              startTime = timestamp;
-            } else {
-              startTime = mReadStarts[s].front();
-              mReadStarts[s].pop_front();
-            }
-           }
+          else
+            startTime = mReadStarts[s];
+
           DeviceTrace readTrace;
           readTrace.SlotNum = trace.TraceID;
           readTrace.Type = "Read";
@@ -298,25 +296,20 @@ namespace xdp {
           readTrace.Start = convertDeviceToHostTimestamp(startTime, type, deviceName);
           readTrace.End = convertDeviceToHostTimestamp(timestamp, type, deviceName);
           resultVector.push_back(readTrace);
+          mReadStarts[s] = INVALID_DEVICE_TIMESTAMP;
           mPerfMonLastTranx[s] = timestamp;
         }
       } else if (IS_WRITE(trace.TraceID)) {           // SPM Write Trace
         s = trace.TraceID/2;
         if (trace.EventType == XCL_PERF_MON_START_EVENT) {
-          mWriteStarts[s].push_back(timestamp);
+          mWriteStarts[s] = timestamp;
         }
         else if (trace.EventType == XCL_PERF_MON_END_EVENT) {
-          if (trace.Reserved == 1) {
+          if (trace.Reserved == 1 || mWriteStarts[s] == INVALID_DEVICE_TIMESTAMP)
             startTime = timestamp;
-          }
-          else {
-            if(mWriteStarts[s].empty()) {
-              startTime = timestamp;
-            } else {
-              startTime = mWriteStarts[s].front();
-              mWriteStarts[s].pop_front();
-            }
-          }
+          else
+            startTime = mWriteStarts[s];
+
           DeviceTrace writeTrace;
           writeTrace.SlotNum = trace.TraceID;
           writeTrace.Type = "Write";
@@ -326,6 +319,7 @@ namespace xdp {
           writeTrace.Start = convertDeviceToHostTimestamp(startTime, type, deviceName);
           writeTrace.End = convertDeviceToHostTimestamp(timestamp, type, deviceName);
           resultVector.push_back(writeTrace);
+          mWriteStarts[s] = INVALID_DEVICE_TIMESTAMP;
           mPerfMonLastTranx[s] = timestamp;
         }
       }
@@ -441,22 +435,15 @@ namespace xdp {
         
         // Write start
         if (getBit(flags, XAPM_WRITE_FIRST)) {
-          mWriteStarts[s].push_back(timestamp);
-          mHostWriteStarts[s].push_back(hostTimestampNsec);
+          mWriteStarts[s] = timestamp;
+          mHostWriteStarts[s] = hostTimestampNsec;
         }
   
         // Write end
         // NOTE: does not support out-of-order tranx
         if (getBit(flags, XAPM_WRITE_LAST)) {
-          if (mWriteStarts[s].empty()) {
-            XDP_LOG("[profile_device] WARNING: Found write end with write start queue empty @ %d\n", timestamp);
-            continue;
-          }
-
-          uint64_t startTime = mWriteStarts[s].front();
-          uint64_t hostStartTime = mHostWriteStarts[s].front();  
-          mWriteStarts[s].pop_front();
-          mHostWriteStarts[s].pop_front();
+          uint64_t startTime = mWriteStarts[s];
+          uint64_t hostStartTime = mHostWriteStarts[s];
   
           // Add write trace class to vector
           DeviceTrace writeTrace;
@@ -478,23 +465,16 @@ namespace xdp {
   
         // Read start
         if (getBit(flags, XAPM_READ_FIRST)) {
-          mReadStarts[s].push_back(timestamp);
-          mHostReadStarts[s].push_back(hostTimestampNsec);
+          mReadStarts[s] = timestamp;
+          mHostReadStarts[s] = hostTimestampNsec;
         }
   
         // Read end
         // NOTE: does not support out-of-order tranx
         if (getBit(flags, XAPM_READ_LAST)) {
-          if (mReadStarts[s].empty()) {
-            XDP_LOG("[profile_device] WARNING: Found read end with read start queue empty @ %d\n", timestamp);
-            continue;
-          }
+          uint64_t startTime = mReadStarts[s];
+          uint64_t hostStartTime = mHostReadStarts[s];
 
-          uint64_t startTime = mReadStarts[s].front();
-          uint64_t hostStartTime = mHostReadStarts[s].front();
-          mReadStarts[s].pop_front();
-          mHostReadStarts[s].pop_front();
-  
           // Add read trace class to vector
           DeviceTrace readTrace;
           readTrace.SlotNum = s;
