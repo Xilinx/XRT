@@ -129,8 +129,8 @@ YOCTO_MACHINE=""
 
 if [[ $clean == 1 ]]; then
     echo $PWD
-    echo "/bin/rm -rf $aarch64_dir $arm_dir"
-    /bin/rm -rf $aarch64_dir $arm_dir
+    echo "/bin/rm -rf $aarch64_dir $arm_dir $versal_dir"
+    /bin/rm -rf $aarch64_dir $arm_dir $versal_dir
     exit 0
 fi
 
