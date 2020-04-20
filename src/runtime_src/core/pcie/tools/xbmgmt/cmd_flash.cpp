@@ -327,7 +327,7 @@ static int updateShellAndSC(unsigned boardIdx, DSAInfo& candidate, bool& reboot)
     return 0;
 }
 
-static DSAInfo selectShell(unsigned idx, std::string& dsa, std::string& id)
+static DSAInfo selectShell(unsigned idx, std::string& dsa, std::string& id, bool& multi_shell)
 {
     unsigned candidateDSAIndex = UINT_MAX;
 
@@ -346,6 +346,7 @@ static DSAInfo selectShell(unsigned idx, std::string& dsa, std::string& id)
         }
         if (installedDSA.size() > 1) {
             std::cout << "\t Status: multiple shells are installed" << std::endl;
+            multi_shell = true;
             return DSAInfo("");
         }
         candidateDSAIndex = 0;
@@ -358,6 +359,7 @@ static DSAInfo selectShell(unsigned idx, std::string& dsa, std::string& id)
                 continue;
             if (candidateDSAIndex != UINT_MAX) {
                 std::cout << "\t Status: multiple shells are installed" << std::endl;
+                multi_shell = true;
                 return DSAInfo("");
             }
             candidateDSAIndex = i;
@@ -440,9 +442,10 @@ static int autoFlash(unsigned index, std::string& shell,
         return -ENOENT;
     }
 
+    bool has_multiple_shells = false;
     // Collect all indexes of boards need updating
     for (unsigned i : boardsToCheck) {
-        DSAInfo dsa = selectShell(i, shell, id);
+        DSAInfo dsa = selectShell(i, shell, id, has_multiple_shells);
         if (dsa.hasFlashImage)
             boardsToUpdate.push_back(std::make_pair(i, dsa));
     }
@@ -469,6 +472,11 @@ static int autoFlash(unsigned index, std::string& shell,
     }
 
     std::cout << std::endl;
+
+    if (has_multiple_shells) {
+        std::cout << "Card(s) can not be auto updated. \nPlease make sure only one shell is installed." <<std::endl;
+        return 0;
+    }
 
     if (boardsToUpdate.size() == 0) {
         std::cout << "Card(s) up-to-date and do not need to be flashed." << std::endl;
