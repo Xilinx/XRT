@@ -1186,6 +1186,9 @@ int shim::cmaEnable(bool enable, uint64_t size)
             uint64_t hugepage_flag = 0x1e;
             cma_info.entry_num = page_num;
 
+            if (size < page_sz)
+                return -EINVAL;
+
             cma_info.user_addr = (uint64_t *)alloca(sizeof(uint64_t)*page_num);
             ret = 0;
 
