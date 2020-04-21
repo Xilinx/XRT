@@ -34,11 +34,10 @@
 namespace {
 
 static bool
-is_hw_emulation()
+is_emulation()
 {
-  static auto xem = std::getenv("XCL_EMULATION_MODE");
-  static bool hwem = xem ? (std::strcmp(xem,"hw_emu")==0) : false;
-  return hwem;
+  static bool val = (std::getenv("XCL_EMULATION_MODE") != nullptr);
+  return val;
 }
 
 }
@@ -54,7 +53,7 @@ device(std::shared_ptr<operations> ops, unsigned int idx)
 device::
 ~device()
 {
-  if (is_hw_emulation())
+  if (is_emulation())
     // xsim will not shutdown unless there is a guaranteed call to xclClose
     close();  
   
