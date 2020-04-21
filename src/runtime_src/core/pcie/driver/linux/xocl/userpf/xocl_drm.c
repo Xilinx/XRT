@@ -1106,24 +1106,32 @@ static void __xocl_cma_bank_free(struct xocl_drm *drm_p)
 	drm_p->cma_bank = NULL;
 }
 
-static uint32_t xocl_cma_mem_alloc(struct xocl_drm *drm_p, uint64_t size)
+static int xocl_cma_mem_alloc(struct xocl_drm *drm_p, uint64_t size)
 {
 	xdev_handle_t xdev = drm_p->xdev;
 	int ret = 0;
-	uint64_t i = 0, page_sz = MAX_ORDER_NR_PAGES, page_num = size/page_sz;
-	uint64_t rounddown_num =  rounddown_pow_of_two(page_num);
-	uint32_t max_num = xocl_addr_translator_get_entries_num(xdev);
+	uint64_t i = 0, page_sz;
+	uint64_t page_num = xocl_addr_translator_get_entries_num(xdev);
 	uint64_t *phys_addrs = NULL, cma_mem_size = 0;
 
-	if (rounddown_num > max_num)
-		return -EINVAL;
+	if (!page_num) {
+		DRM_ERROR("Doesn't support CMA BANK feature");
+		return -EINVAL;		
+	}
 
-	if (rounddown_num != page_num) {
-		DRM_ERROR("Invalod page number %lld which must be order of two", page_num);
+	page_sz = size/page_num;
+
+	if (page_sz < PAGE_SIZE || !is_power_of_2(page_sz)) {
+		DRM_ERROR("Invalid CMA bank size");
 		return -EINVAL;
 	}
 
-	for (; i < rounddown_num; ++i) {
+	if (page_sz > (PAGE_SIZE << (MAX_ORDER-1))) {
+		DRM_WARN("Unable to allocate with page size 0x%llx", page_sz);
+		return -EINVAL;
+	}
+
+	for (; i < page_num; ++i) {
 		ret = xocl_cma_mem_alloc_by_idx(drm_p, page_sz, i);
 		if (ret) {
 			ret = -ENOMEM;
@@ -1131,13 +1139,13 @@ static uint32_t xocl_cma_mem_alloc(struct xocl_drm *drm_p, uint64_t size)
 		}
 	}
 
-	phys_addrs = vzalloc(rounddown_num*sizeof(uint64_t));
+	phys_addrs = vzalloc(page_num*sizeof(uint64_t));
 	if (!phys_addrs) {
 		ret = -ENOMEM;
 		goto done;		
 	}
 
-	for (i = 0; i < rounddown_num; ++i) {
+	for (i = 0; i < page_num; ++i) {
 		struct xocl_cma_memory *cma_mem = &drm_p->cma_bank->cma_mem[i];
 
 		if (!cma_mem) {
@@ -1162,15 +1170,15 @@ static uint32_t xocl_cma_mem_alloc(struct xocl_drm *drm_p, uint64_t size)
 		goto done;
 
 	drm_p->cma_bank->start_addr = ADDR_TRANSLATOR_OFFSET;
-	drm_p->cma_bank->entry_num = rounddown_num;
+	drm_p->cma_bank->entry_num = page_num;
 	drm_p->cma_bank->entry_sz = page_sz;
 
-	drm_mm_init(&drm_p->cma_bank->mm, ADDR_TRANSLATOR_OFFSET, page_sz*rounddown_num);
+	drm_mm_init(&drm_p->cma_bank->mm, ADDR_TRANSLATOR_OFFSET, page_sz*page_num);
 
 	drm_p->cma_bank->mm_inited = true;
 
 	ret = xocl_addr_translator_set_page_table(xdev, phys_addrs, drm_p->cma_bank->start_addr,
-							page_sz, rounddown_num);
+							page_sz, page_num);
 
 done:	
 	vfree(phys_addrs);
