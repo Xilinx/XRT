@@ -609,11 +609,9 @@ namespace xclhwemhal2 {
         sim_path = binaryDirectory + "/behav_waveform/xsim";
 
         if (boost::filesystem::exists(sim_path) != false) {
-          
-          std::string waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
+          waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
           cmdLineOption << " -g --wdb " << wdbFileName << ".wdb"
             << " --protoinst " << protoFileName;
-
           launcherArgs = launcherArgs + cmdLineOption.str();
         }
         
@@ -623,7 +621,7 @@ namespace xclhwemhal2 {
           setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
           setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
         } else {
-          std::string dMsg = "WARNING: [HW-EMU 08-1] None of the Kernels compiled in the Waveform enabled mode to get the WDB file.";
+          std::string dMsg = "WARNING: [HW-EMU 08-1] None of the Kernels compiled in the waveform enabled mode to get the WDB file. Run V++ link with the -g switch";
           logMessage(dMsg, 0);
         }
         setenv("VITIS_KERNEL_PROFILE_FILENAME", kernelProfileFileName.c_str(), true);
@@ -635,6 +633,7 @@ namespace xclhwemhal2 {
         // NOTE: proto inst filename must match name in HPIKernelCompilerHwEmu.cpp
         std::string protoFileName = "./" + bdName + "_behav.protoinst";
         std::stringstream cmdLineOption;
+
         cmdLineOption << " --wdb " << wdbFileName << ".wdb"
           << " --protoinst " << protoFileName;
 
@@ -648,13 +647,37 @@ namespace xclhwemhal2 {
           setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
           setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
         } else {
-          std::string dMsg = "WARNING: [HW-EMU 08-2] None of the Kernels compiled in the Waveform enabled mode to get the WDB file.";
+          std::string dMsg = "WARNING: [HW-EMU 08-2] None of the Kernels compiled in the waveform enabled mode to get the WDB file. Do run v++ link with the -g option";
           logMessage(dMsg, 0);
         }
         setenv("VITIS_KERNEL_PROFILE_FILENAME", kernelProfileFileName.c_str(), true);
         setenv("VITIS_KERNEL_TRACE_FILENAME", kernelTraceFileName.c_str(), true);
       }
-      if (lWaveform == xclemulation::LAUNCHWAVEFORM::OFF)
+      
+      if (lWaveform == xclemulation::LAUNCHWAVEFORM::OFF) {
+        // NOTE: proto inst filename must match name in HPIKernelCompilerHwEmu.cpp
+        std::string protoFileName = "./" + bdName + "_behav.protoinst";
+        std::stringstream cmdLineOption;
+
+        cmdLineOption << " --wdb " << wdbFileName << ".wdb"
+          << " --protoinst " << protoFileName;
+
+        launcherArgs = launcherArgs + cmdLineOption.str();
+        sim_path = binaryDirectory + "/behav_waveform/xsim";
+        std::string waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
+        
+        std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
+        setenv("VITIS_LAUNCH_WAVEFORM_BATCH", "1", true);
+        if (boost::filesystem::exists(waveformDebugfilePath) != false) {
+          setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
+          setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
+        } 
+        
+        setenv("VITIS_KERNEL_PROFILE_FILENAME", kernelProfileFileName.c_str(), true);
+        setenv("VITIS_KERNEL_TRACE_FILENAME", kernelTraceFileName.c_str(), true);
+      }
+      
+      if (lWaveform == xclemulation::LAUNCHWAVEFORM::GDB) 
         sim_path = binaryDirectory + "/behav_gdb/xsim";
 
       if (userSpecifiedSimPath.empty() == false)
@@ -667,14 +690,16 @@ namespace xclhwemhal2 {
         {
           sim_path = binaryDirectory + "/behav_gdb/xsim";
         }
+        
         if (boost::filesystem::exists(sim_path) == false)
         {
-          if (lWaveform == xclemulation::LAUNCHWAVEFORM::OFF) {
+          if (lWaveform == xclemulation::LAUNCHWAVEFORM::GDB) {
             sim_path = binaryDirectory + "/behav_waveform/xsim";
             std::string waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
             
-            std::string dMsg = "WARNING: [HW-EMU 07] Launch Waveform is set to OFF in INI file. And none of kernels compiled in GDB mode. Running simulation using waveform mode.";
+            std::string dMsg = "WARNING: [HW-EMU 07] launch_waveform is set to 'gdb' in INI file and none of kernels compiled in GDB mode. Running simulation using waveform mode. Do run v++ link with -g and --xp param:hw_emu.debugMode=gdb options to launch simulation in gdb mode";
             logMessage(dMsg, 0);
+            
             std::string protoFileName = "./" + bdName + "_behav.protoinst";
             std::stringstream cmdLineOption;
             cmdLineOption << " --wdb " << wdbFileName << ".wdb"
@@ -683,24 +708,24 @@ namespace xclhwemhal2 {
             launcherArgs = launcherArgs + cmdLineOption.str();
             std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
             setenv("VITIS_LAUNCH_WAVEFORM_BATCH", "1", true);
-            if (boost::filesystem::exists(waveformDebugfilePath) != false) {          
+            if (boost::filesystem::exists(waveformDebugfilePath) != false) {
               setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
               setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
-            } else {
-              std::string dMsg = "WARNING: [HW-EMU 08-3] None of the Kernels compiled in the Waveform enabled mode to get the WDB file.";
-              logMessage(dMsg, 0);
-            }
+            } 
+
             setenv("VITIS_KERNEL_PROFILE_FILENAME", kernelProfileFileName.c_str(), true);
             setenv("VITIS_KERNEL_TRACE_FILENAME", kernelTraceFileName.c_str(), true);
-
           }
           else {
             std::string dMsg;
             sim_path = binaryDirectory + "/behav_gdb/xsim";
             if (lWaveform == xclemulation::LAUNCHWAVEFORM::GUI) 
-              dMsg = "WARNING: [HW-EM 07] Launch Waveform is set to GUI in ini file. Could not find a xsim binary. Running simulation using axsim. Cannot enable simulator GUI in this mode. Using " + sim_path + " as simulation directory.";
+              dMsg = "WARNING: [HW-EM 07] launch_waveform is set to 'gui' in ini file. Cannot enable simulator gui in this mode. Using " + sim_path + " as simulation directory.";
+            else if (lWaveform == xclemulation::LAUNCHWAVEFORM::BATCH) 
+              dMsg = "WARNING: [HW-EM 07] launch_waveform is set to 'batch' in ini file. Using " + sim_path + " as simulation directory.";
             else 
-              dMsg = "WARNING: [HW-EM 07] Launch Waveform is set to BATCH in ini file (or) considered by default. Could not find a xsim binary. Running simulation using axsim. Using " + sim_path + " as simulation directory.";
+              dMsg = "WARNING: [HW-EM 07] launch_waveform is set to 'off' in ini file (or) considered by default. Using " + sim_path + " as simulation directory.";
+            
             logMessage(dMsg, 0);
           }
         }
@@ -1392,7 +1417,8 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
     int status = 0;
     xclemulation::LAUNCHWAVEFORM lWaveform = xclemulation::config::getInstance()->getLaunchWaveform();
-    if(( lWaveform == xclemulation::LAUNCHWAVEFORM::GUI || lWaveform == xclemulation::LAUNCHWAVEFORM::BATCH) && xclemulation::config::getInstance()->isInfoSuppressed() == false)
+    if(( lWaveform == xclemulation::LAUNCHWAVEFORM::GUI || lWaveform == xclemulation::LAUNCHWAVEFORM::BATCH || lWaveform == xclemulation::LAUNCHWAVEFORM::OFF)
+      && xclemulation::config::getInstance()->isInfoSuppressed() == false)
     {
       std::string waitingMsg ="INFO: [HW-EM 06-0] Waiting for the simulator process to exit";
       logMessage(waitingMsg);
@@ -1402,7 +1428,8 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     if(!simDontRun)
       while (-1 == waitpid(0, &status, 0));
 
-    if(( lWaveform == xclemulation::LAUNCHWAVEFORM::GUI || lWaveform == xclemulation::LAUNCHWAVEFORM::BATCH) && xclemulation::config::getInstance()->isInfoSuppressed() == false)
+    if(( lWaveform == xclemulation::LAUNCHWAVEFORM::GUI || lWaveform == xclemulation::LAUNCHWAVEFORM::BATCH || lWaveform == xclemulation::LAUNCHWAVEFORM::OFF)
+      && xclemulation::config::getInstance()->isInfoSuppressed() == false)
     {
       std::string waitingMsg ="INFO: [HW-EM 06-1] All the simulator processes exited successfully";
       logMessage(waitingMsg);
@@ -1511,7 +1538,8 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     {
       int status = 0;
       xclemulation::LAUNCHWAVEFORM lWaveform = xclemulation::config::getInstance()->getLaunchWaveform();
-      if(( lWaveform == xclemulation::LAUNCHWAVEFORM::GUI || lWaveform == xclemulation::LAUNCHWAVEFORM::BATCH) && xclemulation::config::getInstance()->isInfoSuppressed() == false)
+      if(( lWaveform == xclemulation::LAUNCHWAVEFORM::GUI || lWaveform == xclemulation::LAUNCHWAVEFORM::BATCH || lWaveform == xclemulation::LAUNCHWAVEFORM::OFF ) 
+        && xclemulation::config::getInstance()->isInfoSuppressed() == false)
       {
         std::string waitingMsg ="INFO: [HW-EM 06-0] Waiting for the simulator process to exit";
         logMessage(waitingMsg);
@@ -1521,7 +1549,8 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       if(!simDontRun)
         while (-1 == waitpid(0, &status, 0));
 
-      if(( lWaveform == xclemulation::LAUNCHWAVEFORM::GUI || lWaveform == xclemulation::LAUNCHWAVEFORM::BATCH) && xclemulation::config::getInstance()->isInfoSuppressed() == false)
+      if(( lWaveform == xclemulation::LAUNCHWAVEFORM::GUI || lWaveform == xclemulation::LAUNCHWAVEFORM::BATCH || lWaveform == xclemulation::LAUNCHWAVEFORM::OFF )
+        && xclemulation::config::getInstance()->isInfoSuppressed() == false)
       {
         std::string waitingMsg ="INFO: [HW-EM 06-1] All the simulator processes exited successfully";
         logMessage(waitingMsg);
@@ -1677,7 +1706,8 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     // NOTE: do this only if we're going to write a new one
     xclemulation::LAUNCHWAVEFORM lWaveform = xclemulation::config::getInstance()->getLaunchWaveform();
     if (lWaveform == xclemulation::LAUNCHWAVEFORM::GUI
-        || lWaveform == xclemulation::LAUNCHWAVEFORM::BATCH) {
+        || lWaveform == xclemulation::LAUNCHWAVEFORM::BATCH
+        || lWaveform == xclemulation::LAUNCHWAVEFORM::OFF) {
       char path[FILENAME_MAX];
       size_t size = MAXPATHLEN;
       char* pPath = GetCurrentDir(path,size);

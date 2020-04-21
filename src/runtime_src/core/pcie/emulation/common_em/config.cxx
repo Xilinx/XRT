@@ -56,7 +56,7 @@ namespace xclemulation{
     mUMRChecks = false;
     mOOBChecks = false;
     mMemLogs = false;
-    mLaunchWaveform = LAUNCHWAVEFORM::BATCH;
+    mLaunchWaveform = LAUNCHWAVEFORM::OFF;
     mDontRun = false;
     mSimDir = "";
     mUserPreSimScript = "";
@@ -241,9 +241,13 @@ namespace xclemulation{
         {
           setLaunchWaveform(LAUNCHWAVEFORM::OFF);
         }
+        else if (boost::iequals(value,"gdb" ))
+        {
+          setLaunchWaveform(LAUNCHWAVEFORM::GDB);
+        }
         else
         {
-          setLaunchWaveform(LAUNCHWAVEFORM::BATCH);
+          setLaunchWaveform(LAUNCHWAVEFORM::OFF);
         }
       }
       else if(name == "Debug.sdx_server_port")

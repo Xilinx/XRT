@@ -96,7 +96,8 @@ namespace xclemulation{
   enum LAUNCHWAVEFORM {
     OFF,
     BATCH,
-    GUI
+    GUI,
+    GDB
   };
   
   enum ERTMODE {
