@@ -227,13 +227,15 @@ public:
   /**
    * read() - maps pcie bar and copy bytes word (32bit) by word
    * THIS FUNCTION DOES NOT BELONG HERE
-   */
+   */ 
   virtual void read(uint64_t, void*, uint64_t) const {}
   /**
    * write() - maps pcie bar and copy bytes word (32bit) by word
    * THIS FUNCTION DOES NOT BELONG HERE
    */
   virtual void write(uint64_t, const void*, uint64_t) const {}
+
+  virtual void reset(const char*, const char*, const char*) const {}
 
   /**
    * file_open() - Opens a scoped fd

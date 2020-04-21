@@ -63,6 +63,7 @@ namespace XBUtilities {
   void trace_print_tree(const std::string & _name, 
                         const boost::property_tree::ptree & _pt);
 
+  bool can_proceed();
   // ---------
   void wrap_paragraph( const std::string & _unformattedString, 
                        unsigned int _indentWidth, 
