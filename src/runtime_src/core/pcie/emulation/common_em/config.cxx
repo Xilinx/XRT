@@ -56,7 +56,7 @@ namespace xclemulation{
     mUMRChecks = false;
     mOOBChecks = false;
     mMemLogs = false;
-    mLaunchWaveform = LAUNCHWAVEFORM::OFF;
+    mLaunchWaveform = DEBUG_MODE::OFF;
     mDontRun = false;
     mSimDir = "";
     mUserPreSimScript = "";
@@ -227,27 +227,30 @@ namespace xclemulation{
       {
         setLauncherArgs(value);
       }
-      else if(name == "launch_waveform")
+      else if(name == "launch_waveform" || name == "debug_mode" )
       {
+        if (name == "launch_waveform")
+          std::cout << "WARNING: [HW-EMU 09] INI option 'launch_waveform' is deprecated and replaced with the new switch 'debug_mode'." << std::endl;
+        
         if (boost::iequals(value,"gui" ))
         {
-          setLaunchWaveform(LAUNCHWAVEFORM::GUI);
+          setLaunchWaveform(DEBUG_MODE::GUI);
         }
         else if (boost::iequals(value,"batch" ))
         {
-          setLaunchWaveform(LAUNCHWAVEFORM::BATCH);
+          setLaunchWaveform(DEBUG_MODE::BATCH);
         }
         else if (boost::iequals(value,"off" ))
         {
-          setLaunchWaveform(LAUNCHWAVEFORM::OFF);
+          setLaunchWaveform(DEBUG_MODE::OFF);
         }
         else if (boost::iequals(value,"gdb" ))
         {
-          setLaunchWaveform(LAUNCHWAVEFORM::GDB);
+          setLaunchWaveform(DEBUG_MODE::GDB);
         }
         else
         {
-          setLaunchWaveform(LAUNCHWAVEFORM::OFF);
+          setLaunchWaveform(DEBUG_MODE::OFF);
         }
       }
       else if(name == "Debug.sdx_server_port")
@@ -289,21 +292,22 @@ namespace xclemulation{
       std::string simulationMode = simMode;
       if (boost::iequals(simulationMode,"gui" ))
       {
-        setLaunchWaveform(LAUNCHWAVEFORM::GUI);
+        setLaunchWaveform(DEBUG_MODE::GUI);
       }
       else if (boost::iequals(simulationMode,"batch" ))
       {
-        setLaunchWaveform(LAUNCHWAVEFORM::BATCH);
+        setLaunchWaveform(DEBUG_MODE::BATCH);
       }
       else if (boost::iequals(simulationMode,"off" ))
       {
-        setLaunchWaveform(LAUNCHWAVEFORM::OFF);
+        setLaunchWaveform(DEBUG_MODE::OFF);
       }
-
+      else if (boost::iequals(simulationMode,"gdb" ))
+      {
+        setLaunchWaveform(DEBUG_MODE::GDB);
+      }
     }
-
   }
-
 
   static std::string getSelfPath()
   {
