@@ -772,6 +772,7 @@ void qdma_descq_init(struct qdma_descq *descq, struct xlnx_dma_dev *xdev,
 	INIT_LIST_HEAD(&descq->intr_list);
 	INIT_LIST_HEAD(&descq->legacy_intr_q_list);
 	INIT_WORK(&descq->work, intr_work);
+	INIT_WORK(&descq->req_work, c2h_req_work);
 
 	descq->xdev = xdev;
 	descq->channel = 0;
@@ -1237,8 +1238,8 @@ void qdma_sgt_req_done(struct qdma_descq *descq, struct qdma_sgt_req_cb *cb,
 	struct qdma_request *req = (struct qdma_request *)cb;
 
 	if (error)
-		pr_info("req 0x%p, cb 0x%p, fp_done 0x%p done, err %d.\n",
-			req, cb, req->fp_done, error);
+		pr_info("%s, req 0x%p, cancel %d, fp_done 0x%p done, err %d.\n",
+			descq->conf.name, req, cb->cancel, req->fp_done, error);
 
 	list_del(&cb->list);
 	if (cb->unmap_needed) {
