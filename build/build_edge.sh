@@ -11,8 +11,9 @@ usage()
     echo "Usage: $PROGRAM [options] "
     echo "  options:"
     echo "          -help                           Print this usage"
-    echo "          -aarch                          Architecture <aarch32/aarch64/versal>"
+    echo "          -aarch                          Architecture <arm/aarch64/versal>"
     echo "          -cache                          path to sstate-cache"
+    echo "          -setup                          setup file to use"
     echo "          -clean, clean                   Remove build directories"
     echo ""
 }
@@ -89,8 +90,8 @@ PROJ_NAME=""
 PLATFROM=""
 XRT_REPO_DIR=`readlink -f ${THIS_SCRIPT_DIR}/..`
 clean=0
-SSTATECACHE=""
-
+SSTATE_CACHE=""
+SETTINGS_FILE="petalinux.build"
 while [ $# -gt 0 ]; do
 	case $1 in
 		-help )
@@ -100,12 +101,16 @@ while [ $# -gt 0 ]; do
 			shift
 			AARCH=$1
 			;;
+		-setup )
+			shift
+			SETTINGS_FILE=$1
+			;;
 		-clean | clean )
 			clean=1
 			;;
 		-cache )
                         shift
-                        SSTATECACHE=$1
+                        SSTATE_CACHE=$1
                         ;;
 		--* | -* )
 			error "Unregognized option: $1"
@@ -118,26 +123,25 @@ while [ $# -gt 0 ]; do
 done
 
 aarch64_dir="aarch64"
-aarch32_dir="aarch32"
+arm_dir="arm"
 versal_dir="versal"
 YOCTO_MACHINE=""
 
 if [[ $clean == 1 ]]; then
     echo $PWD
-    echo "/bin/rm -rf $aarch64_dir $aarch32_dir"
-    /bin/rm -rf $aarch64_dir $aarch32_dir
+    echo "/bin/rm -rf $aarch64_dir $arm_dir $versal_dir"
+    /bin/rm -rf $aarch64_dir $arm_dir $versal_dir
     exit 0
 fi
 
 # we pick Petalinux BSP
-if [[ -z ${PETALINUX:+x} ]]; then
-    source petalinux.build
-fi
+source $SETTINGS_FILE
+source $PETALINUX/settings.sh 
 
 if [[ $AARCH = $aarch64_dir ]]; then
     PETA_BSP="$PETALINUX/../../bsp/release/xilinx-zcu106-v2020.1-final.bsp"
     YOCTO_MACHINE="zynqmp-generic"
-elif [[ $AARCH = $aarch32_dir ]]; then
+elif [[ $AARCH = $arm_dir ]]; then
     PETA_BSP="$PETALINUX/../../bsp/release/xilinx-zc706-v2020.1-final.bsp"
     YOCTO_MACHINE="zynq-generic"
 elif [[ $AARCH = $versal_dir ]]; then
@@ -153,8 +157,8 @@ if [ ! -f $PETA_BSP ]; then
     error "$PETA_BSP not accessible"
 fi
 
-if [ ! -d $SSTATECACHE ]; then
-    error "SSTATECACHE= not accessible"
+if [ ! -d $SSTATE_CACHE ]; then
+    error "SSTATE_CACHE= not accessible"
 fi
 
 # Sanity check done
@@ -188,11 +192,11 @@ echo "CONFIG_YOCTO_MACHINE_NAME=\"${YOCTO_MACHINE}\""
 echo "CONFIG_YOCTO_MACHINE_NAME=\"${YOCTO_MACHINE}\"" >> project-spec/configs/config 
 
 
-if [ ! -z $SSTATECACHE ] && [ -d $SSTATECACHE ]; then
-    echo "SSTATE-CACHE:${SSTATECACHE} added"
-    echo "CONFIG_YOCTO_LOCAL_SSTATE_FEEDS_URL=\"${SSTATECACHE}\"" >> project-spec/configs/config
+if [ ! -z $SSTATE_CACHE ] && [ -d $SSTATE_CACHE ]; then
+    echo "SSTATE-CACHE:${SSTATE_CACHE} added"
+    echo "CONFIG_YOCTO_LOCAL_SSTATE_FEEDS_URL=\"${SSTATE_CACHE}\"" >> project-spec/configs/config
 else
-    echo "SSTATE-CACHE:${SSTATECACHE} not present"
+    echo "SSTATE-CACHE:${SSTATE_CACHE} not present"
 fi
 
 # Build package
