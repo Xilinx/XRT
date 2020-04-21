@@ -580,8 +580,13 @@ int xocl_mm_insert_node_range(struct xocl_drm *drm_p, unsigned user_flags,
        
         start_addr_range = mem_info->start_addr;
         end_addr_range = mem_info->end_addr;
+#if defined(XOCL_DRM_FREE_MALLOC)
         err = drm_mm_insert_node_in_range(drm_p->mm, node, size, PAGE_SIZE, 0, 
-                start_addr_range, end_addr_range, 0);
+			start_addr_range, end_addr_range, 0);
+#else
+	err = drm_mm_insert_node_in_range(drm_p->mm, node, size, PAGE_SIZE,
+			start_addr_range, end_addr_range);
+#endif
         
         *ddr_id = mem_id;
     }
@@ -592,8 +597,13 @@ int xocl_mm_insert_node_range(struct xocl_drm *drm_p, unsigned user_flags,
 
         start_addr_range = xocl_mem->l_start_addr;
         end_addr_range = xocl_mem->h_end_addr;
-        err = drm_mm_insert_node_in_range(drm_p->mm, node, size, PAGE_SIZE, 0, 
-                start_addr_range, end_addr_range, 0);
+#if defined(XOCL_DRM_FREE_MALLOC)
+	err = drm_mm_insert_node_in_range(drm_p->mm, node, size, PAGE_SIZE, 0, 
+			start_addr_range, end_addr_range, 0);
+#else
+	err = drm_mm_insert_node_in_range(drm_p->mm, node, size, PAGE_SIZE,
+			start_addr_range, end_addr_range);
+#endif
 
         if (!err) {
             mem_id = get_start_bank_id(drm_p, node->start); 
@@ -765,13 +775,15 @@ int xocl_cleanup_mem(struct xocl_drm *drm_p)
     xocl_cleanup_connectivity(drm_p);
 
 done:
-    if (drm_p->mm) {
-	drm_mm_takedown(drm_p->mm);
-	vfree(drm_p->mm);
-    }
+	if (drm_p->mm) {
+			drm_mm_takedown(drm_p->mm);
+			vfree(drm_p->mm);
+	}
+
 	drm_p->mm = NULL;
-    if (drm_p->mm_usage_stat)
-	vfree(drm_p->mm_usage_stat);
+	if (drm_p->mm_usage_stat)
+			vfree(drm_p->mm_usage_stat);
+
 	drm_p->mm_usage_stat = NULL;
 	vfree(drm_p->mm_p2p_off);
 	drm_p->mm_p2p_off = NULL;
