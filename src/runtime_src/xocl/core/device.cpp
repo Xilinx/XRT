@@ -527,6 +527,10 @@ lock()
   if (m_locks)
     return ++m_locks;
 
+  // sub-device should lock parent as well
+  if (m_parent.get())
+    m_parent->lock();
+
   // Open the underlying device if not sub device
   if (!m_parent.get())
     m_xdevice->open();
@@ -557,6 +561,10 @@ unlock()
     if (rv.valid() && rv.get())
       throw  xocl::error(CL_DEVICE_NOT_AVAILABLE,"could not unlock device");
   }
+
+  // sub-device should unlock the parent
+  if (m_parent.get())
+    m_parent->unlock();
 
   // Close the underlying device
   if (!m_parent.get())
