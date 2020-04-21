@@ -88,7 +88,7 @@ enum command {
     DD,
     STATUS,
     CMD_MAX,
-    M2MTEST, 
+    M2MTEST,
     VERSION
 };
 enum subcommand {
@@ -356,7 +356,7 @@ public:
         std::vector<std::string> custat;
         std::string errmsg;
         pcidev::get_dev(m_idx)->sysfs_get("mb_scheduler", "kds_custat", errmsg, custat);
-          
+
         for (unsigned int i = 0; i < computeUnits.size(); ++i) {
             const auto& ip = computeUnits[i];
             if (ip.m_type != IP_KERNEL)
@@ -386,7 +386,7 @@ public:
     }
 
     void sysfs_stringize_power(std::vector<std::string> &lines) const
-    { 
+    {
         std::stringstream ss;
         ss << std::left << "\n";
         ss << std::setw(16) << "Power" << "\n";
@@ -435,7 +435,7 @@ public:
               std::string str = std::to_string(percentage).substr(0, 4) + "%";
 
               ss << " [" << index << "] "
-                 << std::setw(16 - (std::to_string(index).length()) - 4) 
+                 << std::setw(16 - (std::to_string(index).length()) - 4)
                  << std::left << tag
                  << "[ " << std::right << std::setw(nums_fiftieth)
                  << std::setfill('|') << (nums_fiftieth ? " ":"")
@@ -582,7 +582,7 @@ public:
             sensor_tree::add_child( std::string("board.memory.mem." + std::to_string(m)), ptMem );
             m++;
         }
- 
+
         boost::property_tree::ptree ptMem;
 
         std::string str = "MEM_HOST";
@@ -726,7 +726,7 @@ public:
         std::vector<std::string> dma_threads;
         std::vector<std::string> mac_addrs;
         bool mig_calibration;
-        
+
         clock_freqs.resize(3);
         mac_addrs.resize(4);
         pcidev::get_dev(m_idx)->sysfs_get( "", "vendor",                     errmsg, vendor );
@@ -744,8 +744,8 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "mac_addr3",               errmsg, mac_addrs[3] );
         pcidev::get_dev(m_idx)->sysfs_get<int>("rom", "ddr_bank_size",       errmsg, ddr_size,  0 );
         pcidev::get_dev(m_idx)->sysfs_get<int>( "rom", "ddr_bank_count_max", errmsg, ddr_count, 0 );
-        pcidev::get_dev(m_idx)->sysfs_get( "icap", "clock_freqs",            errmsg, clock_freqs ); 
-        pcidev::get_dev(m_idx)->sysfs_get( "dma", "channel_stat_raw",        errmsg, dma_threads ); 
+        pcidev::get_dev(m_idx)->sysfs_get( "icap", "clock_freqs",            errmsg, clock_freqs );
+        pcidev::get_dev(m_idx)->sysfs_get( "dma", "channel_stat_raw",        errmsg, dma_threads );
         pcidev::get_dev(m_idx)->sysfs_get<int>( "", "link_speed",            errmsg, pcie_speed, 0 );
         pcidev::get_dev(m_idx)->sysfs_get<int>( "", "link_width",            errmsg, pcie_width, 0 );
         pcidev::get_dev(m_idx)->sysfs_get<bool>( "", "mig_calibration",      errmsg, mig_calibration, false );
@@ -811,7 +811,7 @@ public:
         // physical.thermal
         unsigned int fan_rpm, xmc_fpga_temp, xmc_fan_temp, vccint_temp, xmc_hbm_temp;
         std::string fan_presence;
-        
+
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_fpga_temp", xmc_fpga_temp );
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_fan_temp",  xmc_fan_temp );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "fan_presence",         errmsg, fan_presence );
@@ -837,8 +837,8 @@ public:
         sensor_tree::put( "board.physical.thermal.cage.temp3", temp3);
 
         //electrical
-        unsigned int m3v3_pex_vol, m3v3_aux_vol, ddr_vpp_btm, ddr_vpp_top, sys_5v5, m1v2_top, m1v2_btm, m1v8, 
-                     m0v85, mgt0v9avcc, m12v_sw, mgtavtt, vccint_vol, vccint_curr, m3v3_pex_curr, m0v85_curr, m3v3_vcc_vol, 
+        unsigned int m3v3_pex_vol, m3v3_aux_vol, ddr_vpp_btm, ddr_vpp_top, sys_5v5, m1v2_top, m1v2_btm, m1v8,
+                     m0v85, mgt0v9avcc, m12v_sw, mgtavtt, vccint_vol, vccint_curr, m3v3_pex_curr, m0v85_curr, m3v3_vcc_vol,
                      hbm_1v2_vol, vpp2v5_vol, vccint_bram_vol, m12v_pex_vol, m12v_aux_curr, m12v_pex_curr, m12v_aux_vol,
                      vol_12v_aux1, vol_vcc1v2_i, vol_v12_in_i, vol_v12_in_aux0_i, vol_v12_in_aux1_i, vol_vccaux,
                      vol_vccaux_pmc, vol_vccram;
@@ -847,7 +847,7 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_aux_vol",    m12v_aux_vol);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_aux_curr",   m12v_aux_curr);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_3v3_pex_vol",    m3v3_pex_vol);
-        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_3v3_aux_vol",    m3v3_aux_vol); 
+        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_3v3_aux_vol",    m3v3_aux_vol);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_ddr_vpp_btm",    ddr_vpp_btm);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_ddr_vpp_top",    ddr_vpp_top);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_sys_5v5",        sys_5v5);
@@ -908,19 +908,19 @@ public:
         sensor_tree::put( "board.physical.electrical.vccram.current",          vol_vccram);
 
         // physical.power
-        sensor_tree::put( "board.physical.power", static_cast<unsigned>(sysfs_power())); 
+        sensor_tree::put( "board.physical.power", static_cast<unsigned>(sysfs_power()));
 
         // firewall
         unsigned int level = 0, status = 0;
         unsigned long long time = 0;
         pcidev::get_dev(m_idx)->sysfs_get<unsigned int>( "firewall", "detected_level",      errmsg, level, 0 );
-        pcidev::get_dev(m_idx)->sysfs_get<unsigned int>( "firewall", "detected_status",     errmsg, status, 0 ); 
-        pcidev::get_dev(m_idx)->sysfs_get<unsigned long long>( "firewall", "detected_time", errmsg, time, 0 ); 
+        pcidev::get_dev(m_idx)->sysfs_get<unsigned int>( "firewall", "detected_status",     errmsg, status, 0 );
+        pcidev::get_dev(m_idx)->sysfs_get<unsigned long long>( "firewall", "detected_time", errmsg, time, 0 );
         sensor_tree::put( "board.error.firewall.firewall_level", level );
         sensor_tree::put( "board.error.firewall.firewall_status", status );
         sensor_tree::put( "board.error.firewall.firewall_time", time );
         sensor_tree::put( "board.error.firewall.status", xrt_core::utils::parse_firewall_status(status) );
-        
+
         // memory
         xclDeviceUsage devstat = { 0 };
         (void) xclGetUsageInfo(m_handle, &devstat);
@@ -930,7 +930,7 @@ public:
             pt_dma.put( "c2h", xrt_core::utils::unit_convert(devstat.c2h[i]) );
             sensor_tree::add_child( std::string("board.pcie_dma.transfer_metrics.chan." + std::to_string(i)), pt_dma );
         }
-        
+
         getMemTopology( devstat );
 
         // xclbin
@@ -979,7 +979,7 @@ public:
             ostr << ": " << pt.data() << std::endl;
         } else {
             if (level > 0)
-                ostr << std::endl; 
+                ostr << std::endl;
             for (auto pos = pt.begin(); pos != pt.end();) {
                 std::cout << indent(level+1) << pos->first;
                 printTree(ostr, pos->second, level + 1);
@@ -1026,14 +1026,14 @@ public:
         ostr << std::setw(32) << sensor_tree::get<std::string>( "board.info.dsa_name",  "N/A" )
              << std::setw(32) << sensor_tree::get<std::string>( "board.info.fpga_name", "N/A" )
              << sensor_tree::get<std::string>( "board.info.idcode",    "N/A" ) << std::endl;
-        ostr << std::setw(16) << "Vendor" << std::setw(16) << "Device" << std::setw(16) << "SubDevice" 
+        ostr << std::setw(16) << "Vendor" << std::setw(16) << "Device" << std::setw(16) << "SubDevice"
              << std::setw(16) << "SubVendor" << std::setw(16) << "SerNum" << std::endl;
         ostr << std::setw(16) << sensor_tree::get<std::string>( "board.info.vendor",    "N/A" )
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.device",    "N/A" )
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.subdevice", "N/A" )
-             << std::setw(16) << sensor_tree::get<std::string>( "board.info.subvendor", "N/A" ) 
+             << std::setw(16) << sensor_tree::get<std::string>( "board.info.subvendor", "N/A" )
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.serial_number", "N/A" ) << std::endl;
-        ostr << std::setw(16) << "DDR size" << std::setw(16) << "DDR count" << std::setw(16) 
+        ostr << std::setw(16) << "DDR size" << std::setw(16) << "DDR count" << std::setw(16)
              << "Clock0" << std::setw(16) << "Clock1" << std::setw(16) << "Clock2" << std::endl;
         ostr << std::setw(16) << xrt_core::utils::unit_convert(sensor_tree::get<long long>( "board.info.ddr_size", -1 ))
              << std::setw(16) << sensor_tree::get( "board.info.ddr_count", -1 )
@@ -1045,7 +1045,7 @@ public:
              << std::setw(16) << "MIG Calibrated"
              << std::setw(16) << "P2P Enabled"
 	     << std::setw(16) << "OEM ID" << std::endl;
-        ostr << "GEN " << sensor_tree::get( "board.info.pcie_speed", -1 ) << "x" << std::setw(10) 
+        ostr << "GEN " << sensor_tree::get( "board.info.pcie_speed", -1 ) << "x" << std::setw(10)
              << sensor_tree::get( "board.info.pcie_width", -1 ) << std::setw(16) << sensor_tree::get( "board.info.dma_threads", -1 )
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.mig_calibrated", "N/A" );
              switch(sensor_tree::get( "board.info.p2p_enabled", -1)) {
@@ -1099,13 +1099,13 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.pcb.top_rear"  )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.pcb.btm_front" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.vccint_temp" ) << std::endl;
-        ostr << std::setw(16) << "FPGA TEMP" << std::setw(16) << "TCRIT Temp" << std::setw(16) << "FAN Presence" 
+        ostr << std::setw(16) << "FPGA TEMP" << std::setw(16) << "TCRIT Temp" << std::setw(16) << "FAN Presence"
              << std::setw(16) << "FAN Speed(RPM)" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.fpga_temp") 
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.fpga_temp")
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.tcrit_temp")
              << std::setw(16) << sensor_tree::get<std::string>( "board.physical.thermal.fan_presence")
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.fan_speed" ) << std::endl;
-        ostr << std::setw(16) << "QSFP 0" << std::setw(16) << "QSFP 1" << std::setw(16) << "QSFP 2" << std::setw(16) << "QSFP 3" 
+        ostr << std::setw(16) << "QSFP 0" << std::setw(16) << "QSFP 1" << std::setw(16) << "QSFP 2" << std::setw(16) << "QSFP 3"
              << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.cage.temp0" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.cage.temp1" )
@@ -1115,25 +1115,25 @@ public:
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.thermal.hbm_temp") << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Electrical(mV|mA)\n";
-        ostr << std::setw(16) << "12V PEX" << std::setw(16) << "12V AUX" << std::setw(16) << "12V PEX Current" << std::setw(16) 
+        ostr << std::setw(16) << "12V PEX" << std::setw(16) << "12V AUX" << std::setw(16) << "12V PEX Current" << std::setw(16)
              << "12V AUX Current" << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.12v_pex.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.12v_aux.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.12v_pex.current" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.12v_aux.current" ) << std::endl;
-        ostr << std::setw(16) << "3V3 PEX" << std::setw(16) << "3V3 AUX" << std::setw(16) << "DDR VPP BOTTOM" << std::setw(16) 
+        ostr << std::setw(16) << "3V3 PEX" << std::setw(16) << "3V3 AUX" << std::setw(16) << "DDR VPP BOTTOM" << std::setw(16)
              << "DDR VPP TOP" << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.3v3_pex.voltage"        )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.3v3_aux.voltage"        )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.ddr_vpp_bottom.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.ddr_vpp_top.voltage"    ) << std::endl;
-        ostr << std::setw(16) << "SYS 5V5" << std::setw(16) << "1V2 TOP" << std::setw(16) << "1V8 TOP" << std::setw(16) 
+        ostr << std::setw(16) << "SYS 5V5" << std::setw(16) << "1V2 TOP" << std::setw(16) << "1V8 TOP" << std::setw(16)
              << "0V85" << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.sys_5v5.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.1v2_top.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.1v8.voltage"     )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.0v85.voltage"    ) << std::endl;
-        ostr << std::setw(16) << "MGT 0V9" << std::setw(16) << "12V SW" << std::setw(16) << "MGT VTT" 
+        ostr << std::setw(16) << "MGT 0V9" << std::setw(16) << "12V SW" << std::setw(16) << "MGT VTT"
              << std::setw(16) << "1V2 BTM" << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.mgt_0v9.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.12v_sw.voltage"  )
@@ -1466,7 +1466,7 @@ public:
 
         if (blockSize == 0)
             blockSize = 256 * 1024 * 1024; // Default block size
-        
+
         int ddr_mem_size = get_ddr_mem_size();
         if (ddr_mem_size == -EINVAL)
             return -EINVAL;
@@ -1495,7 +1495,7 @@ public:
                 std::cout << "Total HBM size: " << hbm_mem_size << "\n";
             if (ddr_mem_size != 0)
                 std::cout << "Total DDR size: " << ddr_mem_size << " MB\n";
-            
+
             if (blockSize < (1024*1024))
                 std::cout << "Buffer Size: " << blockSize/(1024) << " KB\n";
             else
@@ -1532,8 +1532,13 @@ public:
                     if( result < 0 )
                         return result;
                 }
-                DMARunner runner( m_handle, blockSize, i);
-                result = runner.run();
+                try {
+                    DMARunner runner( m_handle, blockSize, i);
+                    result = runner.run();
+                } catch (const xrt_core::error &ex) {
+                    std::cout << "ERROR: " << ex.what() << std::endl;
+                    return ex.get();
+                }
             }
         }
 

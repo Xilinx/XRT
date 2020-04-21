@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2015-2019 Xilinx, Inc
+ * Copyright (C) 2015-2020 Xilinx, Inc
  *
  * PCIe DMA Test implementation
  *
@@ -26,6 +26,9 @@
 #include <iostream>
 
 #include "xrt.h"
+#include "core/common/memalign.h"
+#include "core/common/unistd.h"
+#include "core/common/error.h"
 
 namespace xcldev {
     class Timer {
@@ -44,17 +47,24 @@ namespace xcldev {
     };
 
     class DMARunner {
-        std::vector<xclBufferHandle> mBOList;
+        // Ideally I would use a C++ BO object which hides this detail completely inside
+        // but that feature is coming in a future release. For now use a poor man implementation.
+        // DMARunner now uses xclAllocUserPtrBO() to allocate buffers. This reduces memory pressure on
+        // Linux kernel which other wise tries very hard inside xocl to allocate and pin pages when
+        // xlcAllocBO() is used may oops.
+        using buffer_and_deleter = std::pair<xclBufferHandle, xrt_core::aligned_ptr_type>;
+        std::vector<buffer_and_deleter> mBOList;
         xclDeviceHandle mHandle;
         size_t mSize;
         unsigned mFlags;
+        char mPattern;
 
-        int runSyncWorker(std::vector<xclBufferHandle>::const_iterator b,
-                          std::vector<xclBufferHandle>::const_iterator e,
+        int runSyncWorker(std::vector<buffer_and_deleter>::const_iterator b,
+                          std::vector<buffer_and_deleter>::const_iterator e,
                           xclBOSyncDirection dir) const {
             int result = 0;
             while (b < e) {
-                result = xclSyncBO(mHandle, *b, dir, mSize, 0);
+                result = xclSyncBO(mHandle, b->first, dir, mSize, 0);
                 if (result != 0) {
                     std::cout << "DMA failed with Error = " << result << "\n";
                     break;
@@ -80,74 +90,67 @@ namespace xcldev {
             }
 
             int result = 0;
-            for_each(threads.begin(), threads.end(), [&](std::future<int> &v) {result += v.get();});
+            std::for_each(threads.begin(), threads.end(), [&](std::future<int> &v) {result += v.get();});
             return result;
         }
 
+        void clear() {
+            //Clear out the host shadow buffer
+            std::for_each(mBOList.begin(), mBOList.end(), [&](auto &v) {std::memset(v.second.get(), 0, mSize);});
+        }
+
+        int validate() const {
+            std::vector<char> bufCmp(mSize, mPattern);
+            for (const buffer_and_deleter &bo : mBOList) {
+                if (!std::memcmp(bo.second.get(), bufCmp.data(), mSize))
+                    continue;
+                throw xrt_core::error(-EIO, "DMA test data integrity check failed.");
+            }
+            return 0;
+        }
+
     public:
-        DMARunner(xclDeviceHandle handle, size_t size, unsigned flags=0) : mHandle(handle), mSize(size), mFlags(flags) {
+        DMARunner(xclDeviceHandle handle , size_t size, unsigned flags=0) : mHandle(handle), mSize(size),
+                                                                            mFlags(flags), mPattern('x') {
             long long count = 0x100000000/size;
+
+            if (count == 0)
+                throw xrt_core::error(-EINVAL, "DMA buffer size cannot be larger than 0x100000000.");
+
             if (count > 0x40000)
                 count = 0x40000;
 
             for (long long i = 0; i < count; i++) {
-                auto bo = xclAllocBO(mHandle, mSize, 0, mFlags);
+                // This can throw and callers of DMARunner are supposed to catch this.
+                xrt_core::aligned_ptr_type buf = xrt_core::aligned_alloc(xrt_core::getpagesize(), mSize);
+                xclBufferHandle bo = xclAllocUserPtrBO(mHandle, buf.get(), mSize, mFlags);
                 if (bo == XRT_NULL_BO)
                     break;
-                mBOList.push_back(bo);
+                std::memset(buf.get(), mPattern, mSize);
+                mBOList.emplace_back(bo, std::move(buf));
             }
+            if (mBOList.size() == 0)
+                throw xrt_core::error(-ENOMEM, "No DMA buffers could be allocated.");
         }
 
         ~DMARunner() {
-            for (auto bo : mBOList)
-                xclFreeBO(mHandle, bo);
-        }
-
-        int validate(const char *buf) const {
-            std::unique_ptr<char[]> bufCmp(new char[mSize]);
-            size_t result = 0;
-            for (auto i : mBOList) {
-                //Clear out the host buffer
-                std::memset(bufCmp.get(), 0, mSize);
-                result = xclReadBO(mHandle, i, bufCmp.get(), mSize, 0);
-                if (result) {
-                    std::cout << "DMA Test data integrity read failed with Error = " << result << "\n";
-                    break;
-		}
-
-                if (std::memcmp(buf, bufCmp.get(), mSize)) {
-                    std::cout << "DMA Test data integrity check failed\n";
-                    break;
-                }
-            }
-            return static_cast<int>(result);
+            std::for_each(mBOList.begin(), mBOList.end(), [&](auto &bo) {xclFreeBO(mHandle, bo.first); });
         }
 
         int run() const {
-            std::unique_ptr<char[]> buf(new char[mSize]);
-            std::memset(buf.get(), 'x', mSize);
-
             xclDeviceInfo2 info;
             int rc = xclGetDeviceInfo2(mHandle, &info);
             if (rc)
-                return rc;
+                throw xrt_core::error(rc, "Unable to get device information.");
 
             if (info.mDMAThreads == 0)
-                return -EINVAL;
-
-            //std::cout << "Using " << info.mDMAThreads << " bi-directional PCIe DMA channels for DMA test\n";
+                throw xrt_core::error(-EINVAL, "Unable to determine number of DMA channels.");
 
             size_t result = 0;
-            for (auto i : mBOList)
-                result += xclWriteBO(mHandle, i, buf.get(), mSize, 0);
-
-            if (result)
-                return static_cast<int>(result);
-
             Timer timer;
             result = runSync(XCL_BO_SYNC_BO_TO_DEVICE, info.mDMAThreads);
             if (result)
-                return static_cast<int>(result);
+                throw xrt_core::error(static_cast<int>(result), "DMA from host to device failed.");
 
             auto timer_stop = timer.stop();
             double rate = static_cast<double>(mBOList.size() * mSize);
@@ -159,7 +162,7 @@ namespace xcldev {
             timer.reset();
             result = runSync(XCL_BO_SYNC_BO_FROM_DEVICE, info.mDMAThreads);
             if (result)
-                return static_cast<int>(result);
+                throw xrt_core::error(static_cast<int>(result), "DMA from device to host failed.");
 
             timer_stop = timer.stop();
             rate = static_cast<double>(mBOList.size() * mSize);
@@ -168,9 +171,8 @@ namespace xcldev {
             rate *= 1000000; //
             std::cout << "Host <- PCIe <- FPGA read bandwidth = " << rate << " MB/s\n";
 
-            // data integrity check: compare with initialized value 'x'
-            result = validate(buf.get());
-            return static_cast<int>(result);
+            // data integrity check: compare with initialized pattern
+            return validate();
         }
     };
 }

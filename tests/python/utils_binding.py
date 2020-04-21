@@ -149,7 +149,7 @@ def initXRT(opt):
                 continue
             opt.cu_base_addr = ip[i].ip_u1.m_base_address
             opt.kernels.append(ctypes.cast(ip[i].m_name, ctypes.c_char_p).value)
-            print("CU[%d] %s @0x%x" % (i, opt.kernels[len(opt.kernels)-1], opt.cu_base_addr))
+            print("CU[%d] %s @0x%x" % (i, opt.kernels[-1], opt.cu_base_addr))
 
         head = wrap_get_axlf_section(blob, AXLF_SECTION_KIND.MEM_TOPOLOGY)
         topo = mem_topology.from_buffer(data, head.contents.m_sectionOffset)

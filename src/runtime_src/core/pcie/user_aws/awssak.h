@@ -238,7 +238,7 @@ public:
             if (!((buf[0] == 0x0) || (buf[0] == 0x4) || (buf[0] == 0x6))) {
                 return -EBUSY;
             }
-        }        
+        }
         return 0;
     }
 
@@ -298,8 +298,8 @@ public:
         if (!buf.empty())
              ostr << "\nXclbin ID:  0x" << buf << "\n";
         else
-            ostr << "WARNING: 'xclbinuuid' invalid, unable to report xclbinuuid. Has the bitstream been loaded? See 'awssak program'.\n"; 
- 
+            ostr << "WARNING: 'xclbinuuid' invalid, unable to report xclbinuuid. Has the bitstream been loaded? See 'awssak program'.\n";
+
         std::vector<char> mem_topo;
         xcldev::sysfs_get(dev_name, "icap", "mem_topology", errmsg, mem_topo);
 
@@ -502,8 +502,13 @@ public:
                                 break;
                         }
                         if( result >= 0 ) {
-                            DMARunner runner( m_handle, blockSize, i );
-                            result = runner.run();
+                            try {
+                                DMARunner runner( m_handle, blockSize, i );
+                                result = runner.run();
+                            } catch (const xrt_core::error &ex) {
+                                std::cout << "ERROR: " << ex.what() << std::endl;
+                                result = ex.get();
+                            }
                         }
 
                         if( result < 0 ) {
@@ -531,10 +536,13 @@ public:
                         return result;
                 }
 
-                DMARunner runner( m_handle, blockSize );//, xcl_bank[i] );
-                result = runner.run();
-                if( result < 0 )
-                    return result;
+                try {
+                    DMARunner runner( m_handle, blockSize );//, xcl_bank[i] );
+                    result = runner.run();
+                } catch (const xrt_core::error &ex) {
+                    std::cout << "ERROR: " << ex.what() << std::endl;
+                    return ex.get();
+                }
             }
         }
 

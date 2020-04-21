@@ -112,7 +112,7 @@ static void print_pci_info(std::ostream &ostr)
     }
 }
 
-static int xrt_xbutil_version_cmp() 
+static int xrt_xbutil_version_cmp()
 {
     /*check xbutil tools and xrt versions*/
     std::string xrt = "";
@@ -499,7 +499,7 @@ int main(int argc, char *argv[])
             }
 
             if (blockSize > 0x100000) {
-                std::cout << "ERROR: block size cannot be greater than 0x100000 MB\n";
+                std::cout << "ERROR: block size cannot be greater than 0x100000 KB\n";
                 return -1;
             }
             blockSize *= 1024; // convert kilo bytes to bytes
@@ -1254,7 +1254,7 @@ int xcldev::device::pcieLinkTest(void)
     return 0;
 }
 
-int xcldev::device::auxConnectionTest(void) 
+int xcldev::device::auxConnectionTest(void)
 {
     std::string name, errmsg;
     unsigned short max_power = 0;
@@ -1708,7 +1708,7 @@ int xcldev::device::testP2p()
         //p2p is not supported for DDR on u280
         if(vbnv.find("_u280_") == std::string::npos)
             supList.push_back("DDR");
-        
+
         const std::string name(reinterpret_cast<const char *>(map->m_mem_data[i].m_tag));
         bool find = false;
         for (auto s : supList) {
@@ -1882,7 +1882,7 @@ int xcldev::xclCma(int argc, char *argv[])
 
     /* At this moment, we have two way to collect CMA memory chunk
      * 1. Call Kernel API
-     * 2. Huge Page MMAP 
+     * 2. Huge Page MMAP
      */
     ret = d->setCma(cma_enable, total_size);
     if (ret == -ENOMEM) {
@@ -2005,7 +2005,7 @@ int xcldev::device::testM2m()
 
     dev->sysfs_get<int>("mb_scheduler", "kds_numcdmas", errmsg, m2m_enabled, 0);
     // Workaround:
-    // u250_xdma_201830_1 falsely shows that m2m is available 
+    // u250_xdma_201830_1 falsely shows that m2m is available
     // which causes a hang. Skip m2mtest if this platform is installed
     dev->sysfs_get( "rom", "VBNV", errmsg, vbnv );
     if (m2m_enabled == 0 || strstr( vbnv.c_str(), "_u250_xdma_201830_1")) {
@@ -2058,8 +2058,8 @@ struct exec_struct {
     unsigned int exec_size;
 };
 
-static int 
-get_first_used_mem(unsigned int idx) 
+static int
+get_first_used_mem(unsigned int idx)
 {
     std::string errmsg;
     std::vector<char> buf;
@@ -2068,7 +2068,7 @@ get_first_used_mem(unsigned int idx)
 
     if (dev == nullptr)
         return -EINVAL;
-    
+
     dev->sysfs_get("icap", "mem_topology", errmsg, buf);
 
     const mem_topology *map = (mem_topology *)buf.data();
@@ -2087,7 +2087,7 @@ get_first_used_mem(unsigned int idx)
     return first_used_mem;
 }
 
-static void 
+static void
 iops_free_unmap_bo(xclDeviceHandle handle, unsigned boh,
     void * boptr, size_t boSize)
 {
@@ -2097,7 +2097,7 @@ iops_free_unmap_bo(xclDeviceHandle handle, unsigned boh,
         xclFreeBO(handle, boh);
 }
 
-static void 
+static void
 iops_alloc_init_bo(xclDeviceHandle handle, int bank, exec_struct* info)
 {
     info->out_size = 20;
@@ -2144,7 +2144,7 @@ iops_alloc_init_bo(xclDeviceHandle handle, int bank, exec_struct* info)
 }
 
 static void
-execute_cmds(xclDeviceHandle handle, std::vector<std::shared_ptr<exec_struct>>& cmds, 
+execute_cmds(xclDeviceHandle handle, std::vector<std::shared_ptr<exec_struct>>& cmds,
     unsigned int num_execs, double& duration)
 {
     unsigned int num_issued = 0;
@@ -2180,7 +2180,7 @@ execute_cmds(xclDeviceHandle handle, std::vector<std::shared_ptr<exec_struct>>& 
 }
 
 static void
-run_iops_test(xclDeviceHandle handle, std::vector<std::shared_ptr<exec_struct>>& cmds, 
+run_iops_test(xclDeviceHandle handle, std::vector<std::shared_ptr<exec_struct>>& cmds,
     std::vector<double>& iops_list, int first_used_mem, unsigned int cmd_per_batch, unsigned int num_execs)
 {
     double duration = 0;
@@ -2202,27 +2202,27 @@ run_iops_test(xclDeviceHandle handle, std::vector<std::shared_ptr<exec_struct>>&
             throw std::runtime_error("Bad output result after CU execution");
     }
     iops_list.push_back(num_execs * 1000 * 1000 / duration);
-    // std::cout << "Combos: b: " << b << " t: " << t << " iops: " << (t * 1000 * 1000 / duration) << std::endl;  
+    // std::cout << "Combos: b: " << b << " t: " << t << " iops: " << (t * 1000 * 1000 / duration) << std::endl;
 }
 
-int 
+int
 xcldev::device::iopsTest()
 {
 
     xclbin_lock xclbin_lock(m_handle, m_idx);
     int first_used_mem = get_first_used_mem(m_idx);
-    
+
     if(first_used_mem == -1)
         return -EINVAL;
 
     std::vector<std::shared_ptr<exec_struct>> cmds;
     std::vector<unsigned int> cmd_per_batch = { 8,16,32,64,128,256,1024,2048 }; //b
     std::vector<unsigned int> num_execs = { 8,16,32,64,128,256,1024,2048 }; //t
-    std::vector<double> iops_list; 
-    
+    std::vector<double> iops_list;
+
     if(xclOpenContext(m_handle, xclbin_lock.m_uuid, 0, true))
             throw std::runtime_error("Cannot create context");
-    
+
     //run different combinations
     for(const auto& b : cmd_per_batch) {
         for(const auto& t : num_execs) {
@@ -2232,7 +2232,7 @@ xcldev::device::iopsTest()
     }
 
     std::cout << "\nIOPS: " << static_cast<int>(*max_element(iops_list.begin(), iops_list.end())) << std::endl;
-    
+
     // release all BOs
     for(auto& c : cmds) {
         iops_free_unmap_bo(m_handle, c->out_bo_handle, c->output_bo_ptr, c->out_size);
