@@ -631,22 +631,12 @@ struct xocl_subdev_map {
 		.override_idx = -1,			\
 	}
 
-#define	XOCL_RES_TRACE_FIFO_FULL			\
-	((struct resource []) {				\
-		{					\
-			.name   = "TRACE_FIFO_FULL",	\
-			.start	= 0x0,			\
-			.end	= 0xFFF,		\
-			.flags  = IORESOURCE_MEM,	\
-		},					\
-	})
-
 #define	XOCL_DEVINFO_TRACE_FIFO_FULL				\
 	{						\
 		XOCL_SUBDEV_TRACE_FIFO_FULL,			\
 		XOCL_TRACE_FIFO_FULL,				\
-		XOCL_RES_TRACE_FIFO_FULL,			\
-		ARRAY_SIZE(XOCL_RES_TRACE_FIFO_FULL),		\
+		NULL,			\
+		0,		\
 		.level = XOCL_SUBDEV_LEVEL_URP,		\
 		.multi_inst = true,			\
 		.override_idx = -1,			\

@@ -19,8 +19,6 @@
 
 struct trace_fifo_full {
 	struct device		*dev;
-	uint64_t		start_paddr;
-	uint64_t		range;
 	struct mutex 		lock;
 };
 
@@ -47,8 +45,6 @@ static int trace_fifo_full_remove(struct platform_device *pdev)
 static int trace_fifo_full_probe(struct platform_device *pdev)
 {
 	struct trace_fifo_full *trace_fifo_full;
-	struct resource *res;
-	int err = 0;
 
 	trace_fifo_full = xocl_drvinst_alloc(&pdev->dev, sizeof(struct trace_fifo_full));
 	if (!trace_fifo_full)
@@ -59,24 +55,6 @@ static int trace_fifo_full_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, trace_fifo_full);
 	mutex_init(&trace_fifo_full->lock);
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res) {
-		err = -ENOMEM;
-		goto done;
-	}
-		
-
-	xocl_info(&pdev->dev, "IO start: 0x%llx, end: 0x%llx",
-		res->start, res->end);
-
-	trace_fifo_full->start_paddr = res->start;
-	trace_fifo_full->range = res->end - res->start + 1;
-
-done:
-	if (err) {
-		trace_fifo_full_remove(pdev);
-		return err;
-	}
 	return 0;
 }
 

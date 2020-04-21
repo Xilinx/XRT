@@ -1710,8 +1710,6 @@ static int icap_create_subdev_debugip(struct platform_device *pdev)
 		} else if (ip->m_type == AXI_MONITOR_FIFO_FULL) {
 			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_TRACE_FIFO_FULL;
 
-			subdev_info.res[0].start += ip->m_base_address;
-			subdev_info.res[0].end += ip->m_base_address;
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create AXI_MONITOR_FIFO_FULL subdev");
