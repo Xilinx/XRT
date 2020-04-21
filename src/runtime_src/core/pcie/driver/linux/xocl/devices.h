@@ -642,6 +642,29 @@ struct xocl_subdev_map {
 		.override_idx = -1,			\
 	}
 
+/* Fake resource for HLS CU
+ * Res 0: CU registers on AXI-Lite
+ */
+#define XOCL_RES_CU					\
+	((struct resource []) {				\
+		{					\
+			.start	= 0x0,			\
+			.end	= 0x0FFFF,		\
+			.flags	= IORESOURCE_MEM,	\
+		}					\
+	})
+
+#define XOCL_DEVINFO_CU					\
+	{						\
+		XOCL_SUBDEV_CU,				\
+		XOCL_CU,				\
+		XOCL_RES_CU,				\
+		ARRAY_SIZE(XOCL_RES_CU),		\
+		.level = XOCL_SUBDEV_LEVEL_URP,		\
+		.multi_inst = true,			\
+		.override_idx = -1,			\
+	}
+
 /* Fake resource for FIFO base CU
  * Res 0: CU registers on AXI-Lite
  * Res 1: CU argument ram on AXI-full (hard code for U.2)
@@ -660,7 +683,7 @@ struct xocl_subdev_map {
 		}					\
 	})
 
-#define XOCL_DEVINFO_CU					\
+#define XOCL_DEVINFO_CU_PLRAM				\
 	{						\
 		XOCL_SUBDEV_CU,				\
 		XOCL_CU,				\
@@ -1579,6 +1602,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_ICAP_USER,				\
 			XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_AF_USER,				\
+			XOCL_DEVINFO_CU_CTRL,				\
 		})
 
 #define	USER_RES_XDMA_VERSAL						\
@@ -1611,6 +1635,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_ICAP_USER,				\
 			XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_AF_USER,				\
+			XOCL_DEVINFO_CU_CTRL,				\
 		})
 
 #define	USER_RES_DSA52_U2						\

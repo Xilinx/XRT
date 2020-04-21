@@ -69,26 +69,10 @@ int xrt_cu_init(struct xrt_cu *xcu)
 	sema_init(&xcu->sem, 0);
 	xcu->stop = 0;
 
-	switch (xcu->info.model) {
-	case MODEL_PLRAM:
-		err = xrt_cu_plram_init(xcu);
-		break;
-	default:
-		xcu_err(xcu, "Unknown CU execution model");
-		err = -EINVAL;
-	}
-
 	return err;
 }
 
 void xrt_cu_fini(struct xrt_cu *xcu)
 {
-	switch (xcu->info.model) {
-	case MODEL_PLRAM:
-		xrt_cu_plram_fini(xcu);
-		break;
-	default:
-		/* It should never go here */
-		xcu_err(xcu, "Unknown CU execution model");
-	}
+	return;
 }

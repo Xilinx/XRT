@@ -2811,7 +2811,7 @@ zocl_dma_check(struct drm_device *dev, struct drm_zocl_bo *bo)
 }
 
 /**
- * zocl_execbuf_ioctl() - Entry point for exec buffer.
+ * zocl_execbuf_exec() - Entry point for exec buffer.
  *
  * @dev: Device node calling execbuf
  * @data: Payload
@@ -2822,7 +2822,7 @@ zocl_dma_check(struct drm_device *dev, struct drm_zocl_bo *bo)
  * Return: 0 on success, -errno otherwise
  */
 int
-zocl_execbuf_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
+zocl_execbuf_exec(struct drm_device *dev, void *data, struct drm_file *filp)
 {
 	struct drm_gem_object *gem_obj;
 	struct drm_zocl_bo *zocl_bo;

@@ -1759,10 +1759,10 @@ static int icap_create_cu(struct platform_device *pdev)
 		if (ip->m_base_address == 0xFFFFFFFF)
 			continue;
 
-		/* let me only consider plram CU before we know
-		 * how to distinguish it from normal CU
+		/* TODO: use HLS CU as default.
+		 * don't know how to distinguish plram CU and normal CU
 		 */
-		info.model = MODEL_PLRAM;
+		info.model = XCU_HLS;
 		info.num_res = subdev_info.num_res;
 
 		/* TODO: Consider where should we determine CU index in
@@ -1781,7 +1781,7 @@ static int icap_create_cu(struct platform_device *pdev)
 		subdev_info.data_len = sizeof(info);
 		err = xocl_subdev_create(xdev, &subdev_info);
 		if (err) {
-			ICAP_ERR(icap, "can't create CU subdev");
+			//ICAP_ERR(icap, "can't create CU subdev");
 			break;
 		}
 	}

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
 /*
- * Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
  *
  * Author(s):
  *        Min Ma <min.ma@xilinx.com>
@@ -11,6 +11,8 @@
 
 #ifndef _ZOCL_UTIL_H_
 #define _ZOCL_UTIL_H_
+
+#include "kds_core.h"
 
 #define zocl_err(dev, fmt, args...)     \
 	dev_err(dev, "%s: "fmt, __func__, ##args)
@@ -87,6 +89,10 @@ struct zdev_data {
 	char fpga_driver_name[64];
 };
 
+struct kds_sched {
+	struct kds_controller *ctrl[KDS_MAX_TYPE];
+};
+
 struct drm_zocl_dev {
 	struct drm_device       *ddev;
 	struct fpga_manager     *fpga_mgr;
@@ -103,12 +109,18 @@ struct drm_zocl_dev {
 	struct zocl_mem		*mem;
 	struct mutex		 mm_lock;
 
+	struct list_head	 ctx_list;
+
 	struct mem_topology	*topology;
 	struct ip_layout	*ip;
 	struct debug_ip_layout	*debug_ip;
 	struct connectivity	*connectivity;
 	struct addr_aperture	*apertures;
 	unsigned int		 num_apts;
+
+	struct kds_sched	 kds;
+	struct platform_device	*cu_pldev[MAX_CU_NUM];
+	unsigned int		 num_pldev;
 
 	/*
 	 * This RW lock is to protect the sysfs nodes exported

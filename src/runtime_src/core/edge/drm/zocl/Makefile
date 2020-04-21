@@ -5,7 +5,12 @@ KERNEL_SRC ?= /lib/modules/$(shell uname -r)/build
 # where the currently executing kbuild file is located.
 ccflags-y := -I$(src)/include -I$(src)/../../include -I$(src)/../../../include -I$(src)/../../../common/drv/include
 
+drv_common-y   := ../../../common/drv/kds_core.o \
+		  ../../../common/drv/cu_hls.o \
+		  ../../../common/drv/xrt_cu.o
+
 zocl-y := \
+	$(drv_common-y) \
 	sched_exec.o \
 	zocl_sysfs.o \
 	zocl_ioctl.o \
@@ -19,6 +24,9 @@ zocl-y := \
 	zocl_ospi_versal.o \
 	zocl_xclbin.o \
 	zocl_sk.o \
+	zocl_kds.o \
+	zocl_cu_ctrl.o \
+	cu.o \
 	zocl_generic_cu.o
 
 obj-m	+= zocl.o
@@ -35,3 +43,4 @@ clean:
 	rm -f *.o *~ core .depend .*.cmd *.ko *.mod.c
 	rm -f Module.markers Module.symvers modules.order
 	rm -rf .tmp_versions Modules.symvers
+	$(MAKE) -C ../../../common/drv clean

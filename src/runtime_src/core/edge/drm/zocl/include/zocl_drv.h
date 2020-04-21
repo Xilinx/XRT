@@ -3,7 +3,7 @@
  * A GEM style (optionally CMA backed) device manager for ZynQ based
  * OpenCL accelerators.
  *
- * Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Sonal Santan <sonal.santan@xilinx.com>
@@ -23,12 +23,14 @@
 #include <drm/drm_mm.h>
 #include <drm/drm_gem_cma_helper.h>
 #include <linux/version.h>
+#include <linux/poll.h>
 #include "zocl_util.h"
 #include "zocl_ioctl.h"
 #include "zocl_ert.h"
 #include "zocl_bo.h"
 #include "zocl_dma.h"
 #include "zocl_ospi_versal.h"
+#include "xrt_cu.h"
 
 #if defined(CONFIG_ARM64)
 #define ZOCL_PLATFORM_ARM64   1
@@ -154,37 +156,18 @@ zocl_bo_execbuf(const struct drm_zocl_bo *bo)
 	return (bo->flags & ZOCL_BO_FLAGS_EXECBUF);
 }
 
+static inline void
+zocl_kds_setctrl(struct drm_zocl_dev *zdev, int type,
+		 struct kds_controller *ctrl)
+{
+	zdev->kds.ctrl[type] = ctrl;
+}
 
-int zocl_create_bo_ioctl(struct drm_device *dev, void *data,
-		struct drm_file *filp);
-int zocl_userptr_bo_ioctl(struct drm_device *dev, void *data,
-		struct drm_file *filp);
-int zocl_get_hbo_ioctl(struct drm_device *dev, void *data,
-		struct drm_file *filp);
-int zocl_sync_bo_ioctl(struct drm_device *dev, void *data,
-		struct drm_file *filp);
-int zocl_map_bo_ioctl(struct drm_device *dev, void *data,
-		struct drm_file *filp);
-int zocl_info_bo_ioctl(struct drm_device *dev, void *data,
-		struct drm_file *filp);
-int zocl_pwrite_bo_ioctl(struct drm_device *dev, void *data,
-		struct drm_file *filp);
-int zocl_pread_bo_ioctl(struct drm_device *dev, void *data,
-		struct drm_file *filp);
-int zocl_execbuf_ioctl(struct drm_device *dev, void *data,
-		struct drm_file *filp);
-int zocl_read_axlf_ioctl(struct drm_device *dev, void *data,
-		struct drm_file *filp);
-int zocl_sk_getcmd_ioctl(struct drm_device *dev, void *data,
-		struct drm_file *filp);
-int zocl_sk_create_ioctl(struct drm_device *dev, void *data,
-		struct drm_file *filp);
-int zocl_sk_report_ioctl(struct drm_device *dev, void *data,
-		struct drm_file *filp);
-int zocl_info_cu_ioctl(struct drm_device *dev, void *data,
-		struct drm_file *filp);
-int zocl_ctx_ioctl(struct drm_device *dev, void *data,
-		struct drm_file *filp);
+static inline struct kds_controller *
+zocl_kds_getctrl(struct drm_zocl_dev *zdev, int type)
+{
+	return zdev->kds.ctrl[type];
+}
 
 int zocl_copy_bo_async(struct drm_device *dev, struct drm_file *fipl,
 		zocl_dma_handle_t *handle, struct drm_zocl_copy_bo *bo);
@@ -209,7 +192,25 @@ void zocl_update_mem_stat(struct drm_zocl_dev *zdev, u64 size,
 void zocl_init_mem(struct drm_zocl_dev *zdev, struct mem_topology *mtopo);
 void zocl_clear_mem(struct drm_zocl_dev *zdev);
 
+int zocl_create_client(struct drm_zocl_dev *zdev, void **priv);
+void zocl_destroy_client(struct drm_zocl_dev *zdev, void **priv);
+uint zocl_poll_client(struct file *filp, poll_table *wait);
+int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
+		       struct drm_file *filp);
+
+/* CU controller */
+int cu_ctrl_init(struct drm_zocl_dev *zdev);
+void cu_ctrl_fini(struct drm_zocl_dev *zdev);
+int cu_ctrl_add_cu(struct drm_zocl_dev *zdev, struct xrt_cu *xcu);
+int cu_ctrl_remove_cu(struct drm_zocl_dev *zdev, struct xrt_cu *xcu);
+
 int get_apt_index_by_addr(struct drm_zocl_dev *zdev, phys_addr_t addr);
 int get_apt_index_by_cu_idx(struct drm_zocl_dev *zdev, int cu_idx);
 void update_cu_idx_in_apt(struct drm_zocl_dev *zdev, int apt_idx, int cu_idx);
+
+int subdev_create_cu(struct drm_zocl_dev *zdev, struct xrt_cu_info *info);
+void subdev_destroy_cu(struct drm_zocl_dev *zdev);
+/* Sub device driver */
+extern struct platform_driver cu_driver;
+
 #endif

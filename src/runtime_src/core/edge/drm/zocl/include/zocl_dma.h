@@ -3,7 +3,7 @@
  * A GEM style (optionally CMA backed) device manager for ZynQ based
  * OpenCL accelerators.
  *
- * Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Sonal Santan <sonal.santan@xilinx.com>
@@ -46,12 +46,12 @@ typedef void (*zocl_dma_complete_cb)(void *arg, int ret);
  * via zocl_dma_complete_cb argument ret.
  */
 typedef struct zocl_dma_handle {
-	int		 	dma_flags;
-	struct dma_chan 	*dma_chan;
+	int			dma_flags;
+	struct dma_chan		*dma_chan;
 	dma_cookie_t		dma_cookie;
-	struct completion 	dma_done;
-	zocl_dma_complete_cb 	dma_func;
-	void 			*dma_arg;
+	struct completion	dma_done;
+	zocl_dma_complete_cb	dma_func;
+	void			*dma_arg;
 } zocl_dma_handle_t;
 
 /**
@@ -62,8 +62,8 @@ typedef struct zocl_dma_handle {
  * @src_paddr: source dma address
  * @size: number of bytes to read from source
  */
-int zocl_dma_memcpy_pre(zocl_dma_handle_t *dma_handle,
-    dma_addr_t dst_paddr, dma_addr_t src_paddr, size_t size);
+int zocl_dma_memcpy_pre(zocl_dma_handle_t *dma_handle, dma_addr_t dst_paddr,
+			dma_addr_t src_paddr, size_t size);
 
 /**
  * zocl_dma_start() - Start DMA Engine.
