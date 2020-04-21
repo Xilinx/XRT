@@ -776,6 +776,7 @@ configure(struct sched_cmd *cmd)
 	}
 
 	SCHED_DEBUG("Configuring scheduler\n");
+	/* Note: for current design: the slot_size can be not 4k, but cq_size is always 64k. */
 	exec->num_slots       = CQ_SIZE / cfg->slot_size;
 	write_lock(&zdev->attr_rwlock);
 	exec->num_cus         = cfg->num_cus;
@@ -3125,7 +3126,7 @@ static inline void init_exec(struct sched_exec_core *exec_core)
 	unsigned int i;
 
 	exec_core->scheduler = &g_sched0;
-	exec_core->num_slots = 16;
+	exec_core->num_slots = CQ_SLOT_NUM;
 	exec_core->num_cus = 0;
 	exec_core->cu_base_addr = 0;
 	exec_core->cu_shift_offset = 0;
