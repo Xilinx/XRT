@@ -702,10 +702,12 @@ public:
     // populate mem bank
     if (m_mem) {
       for (int32_t i=0; i<m_mem->m_count; ++i) {
-        std::string tag = reinterpret_cast<const char*>(m_mem->m_mem_data[i].m_tag);
-        bool used = m_mem->m_mem_data[i].m_used;
+        auto& mdata = m_mem->m_mem_data[i];
+        std::string tag = reinterpret_cast<const char*>(mdata.m_tag);
+        // pretend streams are unused for the purpose of grouping
+        bool used = (mdata.m_type != MEM_STREAMING) ? mdata.m_used : false;
         m_membanks.emplace_back
-          (membank{m_mem->m_mem_data[i].m_base_address,tag,m_mem->m_mem_data[i].m_size*1024,i,i,used});
+          (membank{mdata.m_base_address,tag,mdata.m_size*1024,i,i,used});
       }
       // sort on addr decreasing order
       std::sort(m_membanks.begin(),m_membanks.end(),
