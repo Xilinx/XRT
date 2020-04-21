@@ -621,7 +621,7 @@ namespace xclhwemhal2 {
           setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
           setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
         } else {
-          std::string dMsg = "WARNING: [HW-EMU 08-1] None of the Kernels compiled in the Waveform enabled mode to get the WDB file.";
+          std::string dMsg = "WARNING: [HW-EMU 08-1] None of the Kernels compiled in the waveform enabled mode to get the WDB file. Run V++ link with the -g switch";
           logMessage(dMsg, 0);
         }
         setenv("VITIS_KERNEL_PROFILE_FILENAME", kernelProfileFileName.c_str(), true);
@@ -647,7 +647,7 @@ namespace xclhwemhal2 {
           setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
           setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
         } else {
-          std::string dMsg = "WARNING: [HW-EMU 08-2] None of the Kernels compiled in the Waveform enabled mode to get the WDB file.";
+          std::string dMsg = "WARNING: [HW-EMU 08-2] None of the Kernels compiled in the waveform enabled mode to get the WDB file. Do run v++ link with the -g option";
           logMessage(dMsg, 0);
         }
         setenv("VITIS_KERNEL_PROFILE_FILENAME", kernelProfileFileName.c_str(), true);
@@ -697,7 +697,7 @@ namespace xclhwemhal2 {
             sim_path = binaryDirectory + "/behav_waveform/xsim";
             std::string waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
             
-            std::string dMsg = "WARNING: [HW-EMU 07] Launch Waveform is set to GDB in INI file. And none of kernels compiled in GDB mode. Running simulation using waveform mode.";
+            std::string dMsg = "WARNING: [HW-EMU 07] launch_waveform is set to 'gdb' in INI file and none of kernels compiled in GDB mode. Running simulation using waveform mode. Do run v++ link with -g and --xp param:hw_emu.debugMode=gdb options to launch simulation in gdb mode";
             logMessage(dMsg, 0);
             
             std::string protoFileName = "./" + bdName + "_behav.protoinst";
@@ -720,11 +720,11 @@ namespace xclhwemhal2 {
             std::string dMsg;
             sim_path = binaryDirectory + "/behav_gdb/xsim";
             if (lWaveform == xclemulation::LAUNCHWAVEFORM::GUI) 
-              dMsg = "WARNING: [HW-EM 07] Launch Waveform is set to GUI in ini file. Cannot enable simulator GUI in this mode. Using " + sim_path + " as simulation directory.";
+              dMsg = "WARNING: [HW-EM 07] launch_waveform is set to 'gui' in ini file. Cannot enable simulator gui in this mode. Using " + sim_path + " as simulation directory.";
             else if (lWaveform == xclemulation::LAUNCHWAVEFORM::BATCH) 
-              dMsg = "WARNING: [HW-EM 07] Launch Waveform is set to BATCH in ini file. Using " + sim_path + " as simulation directory.";
+              dMsg = "WARNING: [HW-EM 07] launch_waveform is set to 'batch' in ini file. Using " + sim_path + " as simulation directory.";
             else 
-              dMsg = "WARNING: [HW-EM 07] Launch Waveform is set to OFF in ini file (or) considered by default. Using " + sim_path + " as simulation directory.";
+              dMsg = "WARNING: [HW-EM 07] launch_waveform is set to 'off' in ini file (or) considered by default. Using " + sim_path + " as simulation directory.";
             
             logMessage(dMsg, 0);
           }
