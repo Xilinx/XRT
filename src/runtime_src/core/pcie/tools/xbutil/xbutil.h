@@ -590,15 +590,18 @@ public:
         std::stringstream ss(mm_buf[m]);
         ss >> memoryUsage >> boCount >> memBankSize;
 
-        ptMem.put( "type",      str );
-        ptMem.put( "temp",      XCL_NO_SENSOR_DEV);
-        ptMem.put( "tag",       "CMA_BANK" );
-        ptMem.put( "enabled",   memBankSize ? true : false);
-        ptMem.put( "size",      xrt_core::utils::unit_convert(memBankSize));
-        ptMem.put( "mem_usage", xrt_core::utils::unit_convert(memoryUsage));
-        ptMem.put( "bo_count",  boCount);
-        sensor_tree::add_child( std::string("board.memory.mem." + std::to_string(m)), ptMem );
+        bool enabled = memBankSize ? true : false;
 
+        if (enabled) {
+            ptMem.put( "type",      str );
+            ptMem.put( "temp",      XCL_INVALID_SENSOR_VAL);
+            ptMem.put( "tag",       "CMA_BANK" );
+            ptMem.put( "enabled",   memBankSize ? true : false);
+            ptMem.put( "size",      xrt_core::utils::unit_convert(memBankSize));
+            ptMem.put( "mem_usage", xrt_core::utils::unit_convert(memoryUsage));
+            ptMem.put( "bo_count",  boCount);
+            sensor_tree::add_child( std::string("board.memory.mem." + std::to_string(m)), ptMem );
+        }
     }
 
     void m_mem_usage_stringize_dynamics(xclDeviceUsage &devstat, std::vector<std::string> &lines) const
