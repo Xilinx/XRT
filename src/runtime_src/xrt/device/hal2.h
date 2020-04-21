@@ -30,6 +30,7 @@
 #include <memory>
 #include <map>
 #include <array>
+#include <mutex>
 
 namespace xrt { namespace hal2 {
 
@@ -68,6 +69,8 @@ class device : public xrt::hal::device
 
   hal2::device_handle m_handle;
   hal2::device_info m_devinfo;
+
+  std::mutex m_mutex;
 
   struct BufferObject : hal::buffer_object
   {
@@ -195,13 +198,7 @@ public:
   }
 
   virtual void
-  close()
-  {
-    if (m_handle) {
-      m_ops->mClose(m_handle);
-      m_handle=nullptr;
-    }
-  }
+  close();
 
   virtual hal::device_handle
   get_handle() const

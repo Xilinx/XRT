@@ -25,10 +25,22 @@
 #include <iostream>
 #include <cerrno>
 #include <regex>
+#include <cstdlib>
 
 #ifdef _WIN32
 # pragma warning( disable : 4267 4996 4244 4245 )
 #endif
+
+namespace {
+
+static bool
+is_emulation()
+{
+  static bool val = (std::getenv("XCL_EMULATION_MODE") != nullptr);
+  return val;
+}
+
+}
 
 namespace xrt { namespace hal2 {
 
@@ -41,10 +53,25 @@ device(std::shared_ptr<operations> ops, unsigned int idx)
 device::
 ~device()
 {
+  if (is_emulation())
+    // xsim will not shutdown unless there is a guaranteed call to xclClose
+    close();  
+  
   for (auto& q : m_queue)
     q.stop();
   for (auto& t : m_workers)
     t.join();
+}
+
+void
+device::
+close()
+{
+  std::lock_guard<std::mutex> lk(m_mutex);
+  if (m_handle) {
+    m_ops->mClose(m_handle);
+    m_handle=nullptr;
+  }
 }
 
 std::ostream&
@@ -80,6 +107,7 @@ void
 device::
 setup()
 {
+  std::lock_guard<std::mutex> lk(m_mutex);
   if (!m_workers.empty())
     return;
 
@@ -576,6 +604,7 @@ void
 device::
 emplaceSVMBufferObjectMap(const BufferObjectHandle& boh, void* ptr)
 {
+  std::lock_guard<std::mutex> lk(m_mutex);
   auto itr = m_svmbomap.find(ptr);
   if (itr == m_svmbomap.end())
     m_svmbomap[ptr] = boh;
@@ -585,6 +614,7 @@ void
 device::
 eraseSVMBufferObjectMap(void* ptr)
 {
+  std::lock_guard<std::mutex> lk(m_mutex);
   auto itr = m_svmbomap.find(ptr);
   if (itr != m_svmbomap.end())
     m_svmbomap.erase(itr);
@@ -594,6 +624,7 @@ BufferObjectHandle
 device::
 svm_bo_lookup(void* ptr)
 {
+  std::lock_guard<std::mutex> lk(m_mutex);
   auto itr = m_svmbomap.find(ptr);
   if (itr != m_svmbomap.end())
     return (*itr).second;
