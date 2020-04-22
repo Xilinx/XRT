@@ -108,6 +108,12 @@ namespace xdp {
       dInt->readDebugIPlayout();
       dInt->setMaxBwRead();
       dInt->setMaxBwWrite();
+
+      // Record number of monitors
+      auto deviceName = device->get_unique_name();
+      Plugin->addNumMonitorMap(deviceName + "|XCL_PERF_MON_ACCEL", dInt->getNumMonitors(XCL_PERF_MON_ACCEL));
+      Plugin->addNumMonitorMap(deviceName + "|XCL_PERF_MON_MEMORY", dInt->getNumMonitors(XCL_PERF_MON_MEMORY));
+      Plugin->addNumMonitorMap(deviceName + "|XCL_PERF_MON_STR", dInt->getNumMonitors(XCL_PERF_MON_STR));
     }
     return info;
   }
@@ -405,10 +411,12 @@ namespace xdp {
           dynamic_cast<TraceLoggerUsingProfileMngr*>(trace_offloader->getDeviceTraceLogger());
 
       if (trace_offloader->trace_buffer_full()) {
-        if (trace_offloader->has_fifo()) {
-          Plugin->sendMessage(FIFO_WARN_MSG);
-        } else {
-          Plugin->sendMessage(TS2MM_WARN_MSG_BUF_FULL);
+        // Only show FIFO full messages for device runs
+        if (Plugin->getFlowMode() == xdp::RTUtil::DEVICE) {
+          if (trace_offloader->has_fifo())
+            Plugin->sendMessage(FIFO_WARN_MSG);
+          else
+            Plugin->sendMessage(TS2MM_WARN_MSG_BUF_FULL);
         }
 
         if (deviceTraceLogger) {

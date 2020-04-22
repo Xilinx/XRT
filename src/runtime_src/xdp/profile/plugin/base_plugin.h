@@ -114,7 +114,8 @@ namespace xdp {
         BUFFER_WR_ACTIVE_TIME_MS,
         BUFFER_TX_ACTIVE_TIME_MS,
         APPLICATION_RUN_TIME_MS,
-        TOTAL_KERNEL_RUN_TIME_MS
+        TOTAL_KERNEL_RUN_TIME_MS,
+        NUM_MONITORS
       };
 
     public:
@@ -148,6 +149,9 @@ namespace xdp {
       inline GuidanceMap2& getDeviceMemUsageStatsMap() {return mDeviceMemUsageStatsMap;}
       inline GuidanceMap3& getmCQInfoMap() {return mCQInfoMap;}
       inline GuidanceMap4& getKernelBufferInfoMap() {return mKernelBufferInfoMap;}
+      inline GuidanceMap2& getNumMonitorMap() {return mNumMonitorMap;}
+      // Adding to monitor map
+      void addNumMonitorMap(std::string name, uint64_t value) {mNumMonitorMap[name] = value;}
       // Host Buffer first start to last end
       // Read, Write and Aggregate times
       void logBufferEvent(double timestamp, bool isRead, bool isStart);
@@ -175,6 +179,7 @@ namespace xdp {
       GuidanceMap2 mDeviceTraceBufferFullMap;
       GuidanceMap2 mDeviceMemUsageStatsMap;
       GuidanceMap4 mKernelBufferInfoMap;
+      GuidanceMap2 mNumMonitorMap;
       GuidanceMap3 mCQInfoMap;
       GuidanceMap mXrtIniMap;
       bool IsObjectsReleased = false;

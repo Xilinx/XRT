@@ -71,14 +71,19 @@ namespace xdp {
     if (mActiveTimeStartMs == 0.0)
       mActiveTimeStartMs = timestamp;
     mActiveTimeEndMs = timestamp;
+    
     if (isRead) {
       // Total Read time = Sum(Read Activity Intervals)
-      mReadTimeStartMs = isStart ? timestamp : mReadTimeStartMs;
-      mReadTimeMs += (timestamp - mReadTimeStartMs);
+      if (isStart)
+        mReadTimeStartMs = timestamp;
+      else if (timestamp > mReadTimeStartMs)
+        mReadTimeMs += (timestamp - mReadTimeStartMs);
     } else {
       // Total Write time = Sum(Write Activity Intervals)
-      mWriteTimeStartMs = isStart ? timestamp : mWriteTimeStartMs;
-      mWriteTimeMs += (timestamp - mWriteTimeStartMs);
+      if (isStart)
+        mWriteTimeStartMs = timestamp;
+      else if (timestamp > mWriteTimeStartMs)
+        mWriteTimeMs += (timestamp - mWriteTimeStartMs);
     }
   }
 
@@ -169,6 +174,9 @@ namespace xdp {
         break;
       case TOTAL_KERNEL_RUN_TIME_MS:
         name = "TOTAL_KERNEL_RUN_TIME_MS";
+        break;
+      case NUM_MONITORS:
+        name = "NUM_MONITORS";
         break;
       default:
         assert(0);
