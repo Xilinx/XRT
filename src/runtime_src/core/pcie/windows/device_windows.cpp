@@ -928,6 +928,7 @@ void
 device_windows::
 reset(const char*, const char*, const char*) const 
 {
+  throw std::runtime_error("Reset is not supported on Windows.");
 }
 
 /* TODO: after 2020.1
