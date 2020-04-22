@@ -602,10 +602,6 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 		xocl_queue_work(xdev, XOCL_WORK_PROGRAM_SHELL,
 				XOCL_PROGRAM_SHELL_DELAY);
 		break;
-	case XCL_MAILBOX_REQ_ERT_RESET:
-		userpf_info(xdev, "ERT was reset.");
-		(void) xocl_exec_reconfig(xdev);
-		break;
 	default:
 		userpf_err(xdev, "dropped bad request (%d)\n", req->req);
 		break;
