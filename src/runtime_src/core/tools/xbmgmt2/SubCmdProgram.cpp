@@ -220,8 +220,8 @@ pretty_print_platform_info(const boost::property_tree::ptree& _ptDevice)
   std::pair <std::string, std::string> s = deployment_path_and_filename(_ptDevice.get<std::string>("platform.installed_shell.0.file"));
   std::cout << boost::format("  %-20s : %s\n") % "Deployment File" % s.first;
   std::cout << boost::format("  %-20s : %s\n") % "Deployment Directory" % s.second;
-  std::cout << boost::format("  %-20s : %s\n") % "Size" % file_size(_ptDevice.get<std::string>("platform.installed_shell.file"));
-  std::cout << boost::format("  %-20s : %s\n") % "Timestamp" % get_file_timestamp(_ptDevice.get<std::string>("platform.installed_shell.file"));
+  std::cout << boost::format("  %-20s : %s\n") % "Size" % file_size(_ptDevice.get<std::string>("platform.installed_shell.0.file"));
+  std::cout << boost::format("  %-20s : %s\n") % "Timestamp" % get_file_timestamp(_ptDevice.get<std::string>("platform.installed_shell.0.file"));
 
   std::cout << boost::format("  %-20s : %s\n") % "Platform" % _ptDevice.get<std::string>("platform.installed_shell.0.vbnv", "N/A");
   std::cout << boost::format("  %-20s : %s\n") % "SC Version" % _ptDevice.get<std::string>("platform.installed_shell.0.sc_version", "N/A");
