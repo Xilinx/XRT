@@ -125,23 +125,24 @@ ReportPlatform::writeReport( const xrt_core::device * _pDevice,
                              std::iostream & _output) const
 {
   boost::property_tree::ptree _pt;
-  getPropertyTree20201(_pDevice, _pt);
+  getPropertyTreeInternal(_pDevice, _pt);
 
-  _output << boost::format("%s : %d\n") % "Device BDF" % _pt.get<std::string>("platform.bdf");
-  _output << boost::format("  %-20s : %s\n") % "Flash type" % _pt.get<std::string>("platform.flash_type", "N/A");
+  _output << boost::format("%s : [%s]\n") % "Device" % _pt.get<std::string>("platform.bdf");
+  _output << std::endl;
+  _output << "Flash properties\n";
+  _output << boost::format("  %-20s : %s\n") % "Type" % _pt.get<std::string>("platform.flash_type", "N/A");
 
+  _output << std::endl;
   _output << "Flashable partition running on FPGA\n";
   _output << boost::format("  %-20s : %s\n") % "Platform" % _pt.get<std::string>("platform.shell_on_fpga.vbnv", "N/A");
   _output << boost::format("  %-20s : %s\n") % "SC Version" % _pt.get<std::string>("platform.shell_on_fpga.sc_version", "N/A");
-  _output << boost::format("  %-20s : %x\n") % "Platform ID" % _pt.get<std::string>("platform.shell_on_fpga.id", "N/A");
+  _output << boost::format("  %-20s : %s\n") % "Platform ID" % _pt.get<std::string>("platform.shell_on_fpga.id", "N/A");
   
-  _output << "\nFlashable partitions installed in system\n";  
-  for(int i = 0; i < _pt.get<int>("platform.number_of_installed_shells"); i++) {
-    std::string prefix = "platform.installed_shell." + std::to_string(i);
-    _output << boost::format("  %-20s : %s\n") % "Platform" % _pt.get<std::string>(prefix + ".vbnv", "N/A");
-    _output << boost::format("  %-20s : %s\n") % "SC Version" % _pt.get<std::string>(prefix + ".sc_version", "N/A");
-    _output << boost::format("  %-20s : 0x%x\n") % "Platform ID" % _pt.get<std::string>(prefix + ".id", "N/A") << "\n";
-  }
+  _output << std::endl;
+  _output << "Flashable partitions installed in system\n";
+  _output << boost::format("  %-20s : %s\n") % "Platform" % _pt.get<std::string>("platform.installed_shell.vbnv", "N/A");
+  _output << boost::format("  %-20s : %s\n") % "SC Version" % _pt.get<std::string>("platform.installed_shell.sc_version", "N/A");
+  _output << boost::format("  %-20s : %s\n") % "Platform ID" % _pt.get<std::string>("platform.installed_shell.id", "N/A");
 
   _output << "----------------------------------------------------\n"
           << shell_status(_pt.get<bool>("platform.shell_upto_date", ""), 

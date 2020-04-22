@@ -37,7 +37,7 @@ static boost::format fmtUpdate(EscapeCodes::cursor().hide()+
                                EscapeCodes::fgcolor(EscapeCodes::FGC_IN_PROGRESS).string()+ "%-" + std::to_string(ProgressBarWidth)+ "s" +
                                EscapeCodes::fgcolor::reset()+ "]" +
                                EscapeCodes::fgcolor(EscapeCodes::FGC_IN_PROGRESS).string()+ "%3d%%" +
-                               EscapeCodes::fgcolor::reset()+ ": %s... < %s >"
+                               EscapeCodes::fgcolor::reset()+ ": %s... < %s >    "
                               );
 
 static boost::format fmtPassed(EscapeCodes::cursor().hide()+
@@ -59,17 +59,17 @@ static std::string
 format_time(std::chrono::duration<double> duration) 
 {
   auto hours = std::chrono::duration_cast<std::chrono::hours>(duration);
-  auto minutes = std::chrono::duration_cast<std::chrono::minutes>(duration - hours);
-  auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration - minutes);
+  auto minutes = std::chrono::duration_cast<std::chrono::minutes>(duration);
+  auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
 
   std::string formattedTime;
   if (hours.count() != 0) 
     formattedTime += std::to_string(hours.count()) + "h ";
 
   if (hours.count() != 0 || minutes.count() != 0) 
-    formattedTime += std::to_string(minutes.count()) + "m ";
+    formattedTime += std::to_string(minutes.count() % 60) + "m ";
 
-  formattedTime += std::to_string(seconds.count()) + "s";
+  formattedTime += std::to_string(seconds.count() % 60) + "s";
 
   return formattedTime;
 }
