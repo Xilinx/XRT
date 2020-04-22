@@ -705,7 +705,9 @@ public:
         auto& mdata = m_mem->m_mem_data[i];
         std::string tag = reinterpret_cast<const char*>(mdata.m_tag);
         // pretend streams are unused for the purpose of grouping
-        bool used = (mdata.m_type != MEM_STREAMING) ? mdata.m_used : false;
+        bool used = (mdata.m_type != MEM_STREAMING && mdata.m_type != MEM_STREAMING_CONNECTION) 
+          ? mdata.m_used 
+          : false;
         m_membanks.emplace_back
           (membank{mdata.m_base_address,tag,mdata.m_size*1024,i,i,used});
       }
