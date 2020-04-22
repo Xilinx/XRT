@@ -24,7 +24,6 @@
 #include <string>
 #include <fstream>
 #include <cassert>
-#include <thread>
 #include <cstring>
 #include <climits>
 #include <vector>
@@ -289,6 +288,19 @@ static void stripe_data(uint8_t *intrlv_buf, uint8_t *buf0, uint8_t *buf1, uint3
         buf0[i/2] = (intrlv_buf[i] << 4) | (intrlv_buf[i+1] & 0x0F);
         buf1[i/2] = (intrlv_buf[i] & 0xF0) | (intrlv_buf[i+1] >> 4);
     }
+}
+
+/*
+ * Chronos sleep resolution on Windows is 1 ms which is exponentially bigger than
+ * the required sleep. This is a busy loop to mimick the accurate amount of sleep.
+ */
+static void delay(std::chrono::microseconds us) 
+{
+	std::chrono::high_resolution_clock::time_point currTime;
+	const std::chrono::high_resolution_clock::time_point startTime = std::chrono::high_resolution_clock::now();
+	do {
+		currTime = std::chrono::high_resolution_clock::now();
+	} while (std::chrono::duration<double>(currTime - startTime) < us);
 }
 
 XSPI_Flasher::~XSPI_Flasher()
@@ -752,43 +764,41 @@ int XSPI_Flasher::writeReg(unsigned int RegOffset, unsigned int value)
 
 
 bool XSPI_Flasher::waitTxEmpty() {
-    long long delay = 0;
-    while (delay < 30000000000) {
+    std::chrono::high_resolution_clock::time_point currTime;
+	const std::chrono::high_resolution_clock::time_point startTime = std::chrono::high_resolution_clock::now();
+	do {
         uint32_t StatusReg = XSpi_GetStatusReg();
         if(StatusReg & XSP_SR_TX_EMPTY_MASK )
             return true;
         //If not empty, check how many bytes remain.
         uint32_t Data = XSpi_ReadReg(XSP_TFO_OFFSET);
         std::cout << std::hex << Data << std::dec << std::endl;
-        std::this_thread::sleep_for(std::chrono::nanoseconds(5000));
-        delay += 5000;
-    }
-    std::cout << "Unable to get Tx Empty\n";
-    return false;
+        delay(std::chrono::microseconds(5));
+        currTime = std::chrono::high_resolution_clock::now();
+	} while (std::chrono::duration<double>(currTime - startTime) < std::chrono::seconds(3));
+
+    throw xrt_core::error("Unable to get Tx Empty");
 }
 
 bool XSPI_Flasher::isFlashReady() {
     uint32_t StatusReg;
-    long long delay = 0;
-    while (delay < 30000000000) {
-        //StatusReg = XSpi_GetStatusReg();
+    std::chrono::high_resolution_clock::time_point currTime;
+	const std::chrono::high_resolution_clock::time_point startTime = std::chrono::high_resolution_clock::now();
+	do {
         WriteBuffer[BYTE1] = COMMAND_STATUSREG_READ;
         bool status = finalTransfer(WriteBuffer, ReadBuffer, STATUS_READ_BYTES);
-        if( !status ) {
-            return false;
-        }
-        //TODO: wait ?
+        if(!status)
+            throw xrt_core::error("Unable to get Flash Ready");
         StatusReg = ReadBuffer[1];
-        if( (StatusReg & FLASH_SR_IS_READY_MASK) == 0) {
+        if((StatusReg & FLASH_SR_IS_READY_MASK) == 0)
             return true;
-        }
         //TODO: Try resetting. Uncomment next line?
         //XSpi_WriteReg(XSP_SRR_OFFSET, XSP_SRR_RESET_MASK);
-        std::this_thread::sleep_for(std::chrono::nanoseconds(5000));
-        delay += 5000;
-    }
-    std::cout << "Unable to get Flash Ready\n";
-    return false;
+        delay(std::chrono::microseconds(5));
+        currTime = std::chrono::high_resolution_clock::now();
+	} while (std::chrono::duration<double>(currTime - startTime) < std::chrono::seconds(3));
+
+    throw xrt_core::error("Unable to get Flash Ready");
 }
 
 bool XSPI_Flasher::sectorErase(unsigned int Addr, uint8_t erase_cmd) {
@@ -1490,8 +1500,7 @@ bool XSPI_Flasher::prepareXSpi(uint8_t slave_sel)
     std::cout << "Slave " << slave_sel << " ready" << std::endl;
 #endif
 
-    //TODO: Do we need this short delay still?
-    std::this_thread::sleep_for(std::chrono::nanoseconds(20000));
+    delay(std::chrono::microseconds(20));
 
     return true;
 }
@@ -1590,7 +1599,7 @@ int XSPI_Flasher::programRecord(std::istream& mcsStream, const ELARecord& record
                 }
             }
             pageIndex++;
-            std::this_thread::sleep_for(std::chrono::nanoseconds(20000));
+            delay(std::chrono::microseconds(20));
             bufferIndex = 0;
         }
         prevLine = line;
@@ -1621,7 +1630,7 @@ int XSPI_Flasher::programRecord(std::istream& mcsStream, const ELARecord& record
 
             if(!writePage(record.mStartAddress + pageIndex*WRITE_DATA_SIZE))
                 return -ENXIO;
-            std::this_thread::sleep_for(std::chrono::nanoseconds(20000));
+            delay(std::chrono::microseconds(20));
             clearBuffers();
             {
                 //debug stuff
@@ -1661,7 +1670,7 @@ int XSPI_Flasher::programXSpi(std::istream& mcsStream, uint32_t bitstream_shift_
                 return -EINVAL;
             }
             
-            std::this_thread::sleep_for(std::chrono::nanoseconds(20000));
+            delay(std::chrono::microseconds(20));
         }
     }
     erase_flash.finish(true, "Flash erased");
@@ -1694,7 +1703,7 @@ int XSPI_Flasher::programXSpi(std::istream& mcsStream, uint32_t bitstream_shift_
             return -EINVAL;
         }
         
-        std::this_thread::sleep_for(std::chrono::nanoseconds(20000));
+        delay(std::chrono::microseconds(20));
     }
     program_flash.finish(true, "Flash programmed");
     return 0;
