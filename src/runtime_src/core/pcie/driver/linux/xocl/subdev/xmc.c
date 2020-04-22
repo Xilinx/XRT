@@ -2985,6 +2985,13 @@ fail:
 
 static int xmc_offline(struct platform_device *pdev)
 {
+	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
+
+	if (!xmc)
+		return 0;
+
+	xmc->bdinfo_loaded = false;
+
 	return xmc_access(pdev, XOCL_XMC_FREEZE);
 }
 static int xmc_online(struct platform_device *pdev)
