@@ -20,12 +20,19 @@
 #include "xrt_drv.h"
 #include "zocl_ospi_versal.h"
 
+/* #define ZOCL_OSPI_VERBOSE */
+
 #define ov_err(pdev, fmt, args...)  \
 	zocl_err(&pdev->dev, fmt"\n", ##args)
 #define ov_info(pdev, fmt, args...)  \
 	zocl_info(&pdev->dev, fmt"\n", ##args)
+
+#ifdef ZOCL_OSPI_VERBOSE
 #define ov_dbg(pdev, fmt, args...)  \
 	zocl_dbg(&pdev->dev, fmt"\n", ##args)
+#else
+#define ov_dbg(pdev, fmt, args...)
+#endif
 
 static inline u32 wait_for_status(struct zocl_ov_dev *ov, u8 status)
 {
@@ -99,11 +106,14 @@ static int zocl_ov_get_pdi(struct zocl_ov_dev *ov)
 	struct zocl_ov_pkt_node *node = ov->head;
 	u32 *base = ov->base;
 	int ret;
+	int len = 0, next = 0;
 
 	/* Clear the done flag */
 	write_lock(&ov->att_rwlock);
 	ov->pdi_done = 0;
 	write_unlock(&ov->att_rwlock);
+
+	ov_info(ov->pdev, "pdi is being downloaded...");
 
 	for (;;) {
 		u32 pkt_header;
@@ -134,6 +144,12 @@ static int zocl_ov_get_pdi(struct zocl_ov_dev *ov)
 		/* Notify host that the data has been read */
 		set_status(ov, XRT_PDI_PKT_STATUS_IDLE);
 
+		len += ov->size;
+		if ((len / 1000000) > next) {
+			ov_dbg(ov->pdev, "%d M", len / 1000000);
+			next++;
+		}
+
 		/* Add packet data to linked list */
 		if (node)
 			node->zn_next = new;
@@ -145,6 +161,8 @@ static int zocl_ov_get_pdi(struct zocl_ov_dev *ov)
 		if (pkt->pkt_flags & XRT_PDI_PKT_FLAGS_LAST)
 			break;
 	}
+
+	ov_info(ov->pdev, "pdi is ready for ospi_daemon");
 
 	/* Set ready flag */
 	write_lock(&ov->att_rwlock);
@@ -173,6 +191,8 @@ static int zocl_ov_get_pdi(struct zocl_ov_dev *ov)
 		break;
 	}
 	read_unlock(&ov->att_rwlock);
+
+	ov_info(ov->pdev, "pdi_done: %d", ov->pdi_done);
 
 	/* Clear ready flag */
 	write_lock(&ov->att_rwlock);
@@ -255,6 +275,7 @@ static int zocl_ov_probe(struct platform_device  *pdev)
 	ov->base = map;
 	ov->size = res->end - res->start + 1;
 	memset_io(ov->base, 0, ov->size);
+	ov->pdev = pdev;
 
 	rwlock_init(&ov->att_rwlock);
 
