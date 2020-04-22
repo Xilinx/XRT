@@ -329,7 +329,7 @@ auto_flash(xrt_core::device_collection& deviceCollection, bool force)
   // Collect all indexes of boards need updating
   std::vector<std::pair<unsigned int , DSAInfo>> boardsToUpdate;
   for (const auto & device : deviceCollection) {
-    DSAInfo dsa(_pt.get<std::string>(std::to_string(device->get_device_id()) + ".platform.installed_shell.file"));
+    DSAInfo dsa(_pt.get<std::string>(std::to_string(device->get_device_id()) + ".platform.installed_shell.0.file"));
     //if the shell is not up-to-date and dsa has a flash image, queue the board for update
     if (!_pt.get<bool>(std::to_string(device->get_device_id()) + ".platform.shell_upto_date") ||
           !_pt.get<bool>(std::to_string(device->get_device_id()) + ".platform.sc_upto_date")) {
