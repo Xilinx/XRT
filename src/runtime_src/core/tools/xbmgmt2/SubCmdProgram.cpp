@@ -255,32 +255,6 @@ report_status(xrt_core::device_collection& deviceCollection, boost::property_tre
 }
 
 /* 
- * Confirm with the user
- * Helper method for auto_flash
- */
-static bool 
-canProceed()
-{
-  bool proceed = false;
-  std::string input;
-
-  std::cout << "Are you sure you wish to proceed? [Y/n]: ";
-  std::getline( std::cin, input );
-
-  // Ugh, the std::transform() produces windows compiler warnings due to 
-  // conversions from 'int' to 'char' in the algorithm header file
-  boost::algorithm::to_lower(input);
-  //std::transform( input.begin(), input.end(), input.begin(), [](unsigned char c){ return std::tolower(c); });
-  //std::transform( input.begin(), input.end(), input.begin(), ::tolower);
-
-  // proceeds for "y", "Y" and no input
-  proceed = ((input.compare("y") == 0) || input.empty());
-  if (!proceed)
-    std::cout << "Action canceled." << std::endl;
-  return proceed;
-}
-
-/* 
  * Flash shell and sc firmware
  * Helper method for auto_flash
  */
@@ -372,7 +346,7 @@ auto_flash(xrt_core::device_collection& deviceCollection, bool force)
   if (!boardsToUpdate.empty()) {
 
     // Prompt user about what boards will be updated and ask for permission.
-    if(!force && !canProceed())
+    if(!force && !XBU::can_proceed())
       return;
 
     // Perform DSA and BMC updating
@@ -564,7 +538,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     }
     
     //ask user's permission
-    if(!canProceed())
+    if(!XBU::can_proceed())
       return;
     
     for(auto& f : flasher_list) {
