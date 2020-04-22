@@ -81,7 +81,7 @@ reset_ecc(std::shared_ptr<xrt_core::device> dev)
     for(int32_t i = 0; i < map->m_count; i++) {
       if(!map->m_mem_data[i].m_used)
         continue;
-        dev->reset(reinterpret_cast<const char *>(map->m_mem_data[i].m_tag), "ecc_reset", "1");
+      dev->reset(reinterpret_cast<const char *>(map->m_mem_data[i].m_tag), "ecc_reset", "1");
       std::cout << boost::format("Successfully reset Device[%s]\n") 
         % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(dev));
     }
