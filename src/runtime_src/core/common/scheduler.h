@@ -36,7 +36,7 @@ int
 init(xclDeviceHandle handle, const axlf* top);
 
 int
-loadXclbinToPS(xclDeviceHandle handle, const axlf* top);
+loadXclbinToPS(xclDeviceHandle handle, const axlf* top, bool pdi_load);
 
 }} // utils,xrt
 

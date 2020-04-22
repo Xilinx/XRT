@@ -3606,8 +3606,8 @@ add_xcmd(struct xocl_cmd *xcmd)
 	SCHED_DEBUGF("+ exec stopped(%d) configured(%d)\n", exec->stopped, exec->configured);
 
 	if (exec->stopped || (!exec->configured && cmd_opcode(xcmd) != ERT_CONFIGURE)) {
-		userpf_err(xdev, "scheduler can't add cmd(%lu) opcode(%d)\n",
-			   xcmd->uid, cmd_opcode(xcmd));
+		userpf_err(xdev, "scheduler can't add cmd(%lu) opcode(%d) exec stopped(%d) exec confgured(%d)\n",
+			   xcmd->uid, cmd_opcode(xcmd), exec->stopped, exec->configured);
 		goto err;
 	}
 

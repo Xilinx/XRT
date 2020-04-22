@@ -52,6 +52,7 @@
 
 static int cq_check(void *data);
 static irqreturn_t sched_cq_isr(int irq, void *arg);
+static void zocl_cu_reclaim(struct drm_zocl_dev *zdev);
 
 /* Scheduler call schedule() every MAX_SCHED_LOOP loop*/
 #define MAX_SCHED_LOOP 8
@@ -750,6 +751,7 @@ configure(struct sched_cmd *cmd)
 	int cq_irq;
 	int acc_cu = 0;
 	int has_acc_cu = 0;
+	int has_dynamic_region = 0;
 	int apt_idx, irq_id;
 	bool is_legacy_intr = true;
 	int ret;
@@ -776,13 +778,7 @@ configure(struct sched_cmd *cmd)
 	}
 
 	SCHED_DEBUG("Configuring scheduler\n");
-	/* Note: for current design: the slot_size can be not 4k, but cq_size is always 64k. */
-	exec->num_slots       = CQ_SIZE / cfg->slot_size;
 	write_lock(&zdev->attr_rwlock);
-	exec->num_cus         = cfg->num_cus;
-	exec->cu_shift_offset = cfg->cu_shift;
-	exec->cu_base_addr    = cfg->cu_base_addr;
-	exec->num_cu_masks    = ((exec->num_cus - 1)>>5) + 1;
 
 	if (!zdev->ert) {
 		if (cfg->ert)
@@ -802,6 +798,27 @@ configure(struct sched_cmd *cmd)
 		exec->configured = 1;
 	} else {
 		SCHED_DEBUG("++ configuring PS ERT mode\n");
+
+		/*
+		 * Block comment for the big picture of ert with static or
+		 * dynamic xclbins.
+		 *   - versal ERT defer dynamic region xclbin download, so we
+		 *     call init_cu_soft in configure and defer the
+		 *     init_cu_hard till pdi is downloaded via softkernel.
+		 *   - other ERT will load xclbin first then call configure, so
+		 *     that we call init_cu_full in configure.
+		 */
+		if (zdev->ert->ops->static_xclbin()) {
+			exec->configured = 1;
+		} else {
+			/*
+			 * dynamic xclbin like versal, the procedure is:
+			 * loalxclbin->scheduler:init->configure->load_pdi.
+			 */
+			zocl_cu_reclaim(zdev);
+			has_dynamic_region = 1;
+		}
+
 		exec->ops = &ps_ert_ops;
 		exec->polling_mode = cfg->polling;
 		exec->cq_interrupt = cfg->cq_int;
@@ -813,8 +830,15 @@ configure(struct sched_cmd *cmd)
 		DRM_INFO("  host_polling_mode(%d)", exec->polling_mode);
 		DRM_INFO("  cq_interrupt(%d)", exec->cq_interrupt);
 		zdev->ert->ops->config(zdev->ert, cfg);
-		exec->configured = 1;
 	}
+
+	/* Note: for current design: the slot_size can be not 4k, but cq_size is always 64k. */
+	exec->num_slots       = CQ_SIZE / cfg->slot_size;
+	exec->num_cus         = cfg->num_cus;
+	exec->cu_shift_offset = cfg->cu_shift;
+	exec->cu_base_addr    = cfg->cu_base_addr;
+	exec->num_cu_masks    = ((exec->num_cus - 1)>>5) + 1;
+
 	write_unlock(&zdev->attr_rwlock);
 
 	/* Enable interrupt from host to PS when new commands are ready */
@@ -899,8 +923,17 @@ configure(struct sched_cmd *cmd)
 		    i, (uint64_t)zdev->res_start, (uint64_t)cu_addr);
 		cu_addr = zdev->res_start + cu_addr;
 
+		/*
+		 * has_dynamic_region is a flag for ERT only. If it is set, the
+		 * cu_init should not touch any hardware during configure
+		 * because the dynamic region has not been configured by later
+		 * softkernel command yet. After softkernel command has been
+		 * done with dynamic region downloaed, making sure cu_init_hard
+		 * will be called.
+		 */
 		if (!acc_cu)
-			zocl_cu_init(&exec->zcu[i], MODEL_HLS, cu_addr|control);
+			zocl_cu_init(&exec->zcu[i], has_dynamic_region ?
+			    MODEL_HLS_SOFT : MODEL_HLS_FULL, cu_addr|control);
 		else {
 			zocl_cu_init(&exec->zcu[i], MODEL_ACC, cu_addr);
 			/* ACCEL adapter CU initial finished.
@@ -1046,6 +1079,42 @@ cu_stat(struct sched_cmd *cmd)
 	SCHED_DEBUG("<- %s\n", __func__);
 }
 
+static void
+zocl_cu_reclaim(struct drm_zocl_dev *zdev)
+{
+	struct sched_exec_core *exec = zdev->exec;
+	int i;
+
+	for (i = 0; i < exec->num_cus; i++) {
+		if (zocl_cu_is_valid(exec, i)) {
+			zocl_cu_set_invalid(exec, i);
+			zocl_cu_fini(&exec->zcu[i]);
+		}
+	}
+
+	vfree(zdev->exec->zcu);
+}
+
+/*
+ * Probe any deferred cu initiation due to dynamic region has not been enabled
+ * yet by early prevision time. After dynamic region is enabled, we should
+ * continue to accessing cu hardware address safely.
+ */
+static void
+zocl_cu_probe(struct sched_cmd *cmd)
+{
+	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+	struct sched_exec_core *exec = zdev->exec;
+	int i;
+
+	for (i = 0; i < exec->num_cus; i++) {
+		if (zocl_cu_is_valid(exec, i) &&
+		    exec->zcu[i].model == MODEL_HLS_SOFT) {
+			zocl_cu_init(&exec->zcu[i], MODEL_HLS_HARD, (phys_addr_t)NULL);
+		}
+	}
+}
+
 static int
 configure_soft_kernel(struct sched_cmd *cmd)
 {
@@ -1060,7 +1129,11 @@ configure_soft_kernel(struct sched_cmd *cmd)
 
 	cfg = (struct ert_configure_sk_cmd *)(cmd->packet);
 
-	if (cfg->sk_type == SOFTKERNEL_TYPE_XCLBIN) {
+	if (cfg->sk_type == SOFTKERNEL_TYPE_XCLBIN_STATIC) {
+		zocl_cu_probe(cmd);
+		return 0;
+	}
+	if (cfg->sk_type == SOFTKERNEL_TYPE_XCLBIN_DYNAMIC) {
 		void *xclbin_buffer = NULL;
 
 		/* remap device physical addr to kernel virtual addr */
@@ -1070,8 +1143,12 @@ configure_soft_kernel(struct sched_cmd *cmd)
 			ret = -ENOMEM;
 			goto fail;
 		}
+		mutex_lock(&zdev->zdev_xclbin_lock);
 		ret = zocl_xclbin_load_pdi(zdev, xclbin_buffer);
+		mutex_unlock(&zdev->zdev_xclbin_lock);
 		memunmap(xclbin_buffer);
+		if (!ret)
+			zocl_cu_probe(cmd);
 		return ret;
 	}
 
@@ -3221,6 +3298,8 @@ fini_configure(struct drm_device *drm)
 
 	if (zdev->exec->cq_interrupt)
 		free_irq(zdev->ert->irq[ERT_CQ_IRQ], zdev);
+
+	zocl_cu_reclaim(zdev);
 }
 
 /**
@@ -3242,7 +3321,6 @@ int sched_fini_exec(struct drm_device *drm)
 		kthread_stop(zdev->exec->cq_thread);
 
 	fini_scheduler_thread();
-	vfree(zdev->exec->zcu);
 	zocl_cleanup_cu_timer(zdev);
 	SCHED_DEBUG("<- %s\n", __func__);
 
