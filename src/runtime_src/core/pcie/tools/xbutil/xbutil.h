@@ -122,10 +122,10 @@ enum cmacommand {
     CMA_SIZE,
 };
 
-enum cu_stat {
-    CU_USAGE = 0x0,
-    CU_ADDR,
-    CU_STATUS,
+enum class cu_stat : unsigned short { 
+  usage = 0, 
+  addr, 
+  stat
 };
 
 static const std::pair<std::string, command> map_pairs[] = {
@@ -336,7 +336,7 @@ public:
         return 0;
     }
 
-    uint32_t parseComputeUnitStat(const std::vector<std::string>& custat, uint32_t offset, enum cu_stat kind) const
+    uint32_t parseComputeUnitStat(const std::vector<std::string>& custat, uint32_t offset, cu_stat kind) const
     {
        uint32_t ret = 0;
 
@@ -350,9 +350,9 @@ public:
            if (offset != ba)
                continue;
 
-           if (kind == CU_USAGE)
+           if (kind == cu_stat::usage)
                 ret = cnt;
-           else if (kind == CU_STATUS)
+           else if (kind == cu_stat::stat)
                 ret = sta;
 
            return ret;
@@ -374,8 +374,8 @@ public:
             const auto& ip = computeUnits[i];
             if (ip.m_type != IP_KERNEL)
                 continue;
-            uint32_t status = parseComputeUnitStat(custat,ip.m_base_address, CU_STATUS);
-            uint32_t usage = parseComputeUnitStat(custat,ip.m_base_address, CU_USAGE);
+            uint32_t status = parseComputeUnitStat(custat,ip.m_base_address, cu_stat::stat);
+            uint32_t usage = parseComputeUnitStat(custat,ip.m_base_address, cu_stat::usage);
             boost::property_tree::ptree ptCu;
             ptCu.put( "name",         ip.m_name );
             ptCu.put( "base_address", ip.m_base_address );
