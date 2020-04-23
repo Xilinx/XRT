@@ -585,7 +585,7 @@ int xocl_mm_insert_node_range(struct xocl_drm *drm_p, unsigned user_flags,
 			start_addr_range, end_addr_range, 0);
 #else
 	err = drm_mm_insert_node_in_range(drm_p->mm, node, size, PAGE_SIZE,
-			start_addr_range, end_addr_range);
+			start_addr_range, end_addr_range, 0);
 #endif
         
         *ddr_id = mem_id;
@@ -602,7 +602,7 @@ int xocl_mm_insert_node_range(struct xocl_drm *drm_p, unsigned user_flags,
 			start_addr_range, end_addr_range, 0);
 #else
 	err = drm_mm_insert_node_in_range(drm_p->mm, node, size, PAGE_SIZE,
-			start_addr_range, end_addr_range);
+			start_addr_range, end_addr_range, 0);
 #endif
 
         if (!err) {
