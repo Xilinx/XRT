@@ -141,9 +141,11 @@ int resetHandler(int argc, char *argv[])
         } else if (ecc) {
             std::cout << "CAUTION: resetting all ECC counters. " << std::endl;
         } else if (sk) {
-            std::cout << "CAUTION: Performing Soft Kernel reset. " << std::endl;
+            std::cout << "CAUTION: Performing Soft Kernel reset. " <<
+                "Please make sure xocl driver is unloaded." << std::endl;
         } else if (ert) {
-            std::cout << "CAUTION: Performing PS ERT reset. " << std::endl;
+            std::cout << "CAUTION: Performing PS ERT reset. " <<
+                "Please make sure xocl driver is unloaded." << std::endl;
         }
         if(!canProceed())
             return -ECANCELED;
