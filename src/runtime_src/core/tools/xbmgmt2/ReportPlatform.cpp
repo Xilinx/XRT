@@ -61,7 +61,6 @@ ReportPlatform::getPropertyTree20201( const xrt_core::device * _pDevice,
                                       boost::property_tree::ptree &_pt) const
 {
   boost::property_tree::ptree pt;
-  pt.put("Description","Platform Information");
 
   // There can only be 1 root node
   _pt.add_child("platform", pt);
@@ -79,32 +78,32 @@ ReportPlatform::getPropertyTree20201( const xrt_core::device * _pDevice,
   _pt.put("platform.bdf", on_board_dev_info.get<std::string>("bdf"));
   _pt.put("platform.flash_type", on_board_platform_info.get<std::string>("flash_type", "N/A"));
   //Flashable partition running on FPGA
-  _pt.put("platform.shell_on_fpga.vbnv", on_board_rom_info.get<std::string>("vbnv", "N/A"));
-  _pt.put("platform.shell_on_fpga.sc_version", on_board_xmc_info.get<std::string>("sc_version", "N/A"));
-  _pt.put("platform.shell_on_fpga.id", on_board_rom_info.get<std::string>("id", "N/A"));
+  _pt.put("platform.current_shell.vbnv", on_board_rom_info.get<std::string>("vbnv", "N/A"));
+  _pt.put("platform.current_shell.sc_version", on_board_xmc_info.get<std::string>("sc_version", "N/A"));
+  _pt.put("platform.current_shell.id", on_board_rom_info.get<std::string>("id", "N/A"));
 
   Flasher f(_pDevice->get_device_id());
-  std::vector<DSAInfo> installedDSAs = f.getInstalledDSA();
-  _pt.put("platform.number_of_installed_shells", installedDSAs.size());
+  std::vector<DSAInfo> availableDSAs = f.getInstalledDSA();
 
   BoardInfo info;
   f.getBoardInfo(info);
 
   //Flashable partitions installed in system
-  for(unsigned int i = 0; i < installedDSAs.size(); i++) {
-    boost::property_tree::ptree _ptInstalledShell;
-    DSAInfo installedDSA = installedDSAs[i];
-    _ptInstalledShell.put("vbnv", installedDSA.name);
-    _ptInstalledShell.put("sc_version", installedDSA.bmcVer);
-    _ptInstalledShell.put("id", (boost::format("0x%x") % installedDSA.timestamp));
-    _ptInstalledShell.put("file", installedDSA.file);
-    _pt.put("platform.shell_upto_date", same_shell( on_board_rom_info.get<std::string>("vbnv", ""), 
+  boost::property_tree::ptree _ptAvailableShells;
+  for(unsigned int i = 0; i < availableDSAs.size(); i++) {
+    boost::property_tree::ptree _ptAvailableShell;
+    DSAInfo installedDSA = availableDSAs[i];
+    _ptAvailableShell.put("vbnv", installedDSA.name);
+    _ptAvailableShell.put("sc_version", installedDSA.bmcVer);
+    _ptAvailableShell.put("id", (boost::format("0x%x") % installedDSA.timestamp));
+    _ptAvailableShell.put("file", installedDSA.file);
+    _pt.put("platform.status.shell", same_shell( on_board_rom_info.get<std::string>("vbnv", ""), 
               on_board_rom_info.get<std::string>("id", ""), installedDSA));
-    _pt.put("platform.sc_upto_date", same_sc( on_board_xmc_info.get<std::string>("sc_version", ""), 
+    _pt.put("platform.status.sc", same_sc( on_board_xmc_info.get<std::string>("sc_version", ""), 
              installedDSA));
-    _pt.add_child("platform.installed_shell." + std::to_string(i), _ptInstalledShell);
+     _ptAvailableShells.push_back( std::make_pair("", _ptAvailableShell) );
   }
-
+_pt.put_child("platform.available_shells", _ptAvailableShells);
 }
 
 static const std::string
@@ -134,18 +133,23 @@ ReportPlatform::writeReport( const xrt_core::device * _pDevice,
 
   _output << std::endl;
   _output << "Flashable partition running on FPGA\n";
-  _output << boost::format("  %-20s : %s\n") % "Platform" % _pt.get<std::string>("platform.shell_on_fpga.vbnv", "N/A");
-  _output << boost::format("  %-20s : %s\n") % "SC Version" % _pt.get<std::string>("platform.shell_on_fpga.sc_version", "N/A");
-  _output << boost::format("  %-20s : %s\n") % "Platform ID" % _pt.get<std::string>("platform.shell_on_fpga.id", "N/A");
+  _output << boost::format("  %-20s : %s\n") % "Platform" % _pt.get<std::string>("platform.current_shell.vbnv", "N/A");
+  _output << boost::format("  %-20s : %s\n") % "SC Version" % _pt.get<std::string>("platform.current_shell.sc_version", "N/A");
+  _output << boost::format("  %-20s : %x\n") % "Platform ID" % _pt.get<std::string>("platform.current_shell.id", "N/A");
   
   _output << std::endl;
-  _output << "Flashable partitions installed in system\n";
-  _output << boost::format("  %-20s : %s\n") % "Platform" % _pt.get<std::string>("platform.installed_shell.vbnv", "N/A");
-  _output << boost::format("  %-20s : %s\n") % "SC Version" % _pt.get<std::string>("platform.installed_shell.sc_version", "N/A");
-  _output << boost::format("  %-20s : %s\n") % "Platform ID" % _pt.get<std::string>("platform.installed_shell.id", "N/A");
+  _output << "Flashable partitions installed in system\n"; 
+  boost::property_tree::ptree& available_shells = _pt.get_child("platform.available_shells");
+  for(auto& kv : available_shells) {
+    // std::string prefix = "platform.available_shells." + std::to_string(i);
+    boost::property_tree::ptree& available_shell = kv.second;
+    _output << boost::format("  %-20s : %s\n") % "Platform" % available_shell.get<std::string>("vbnv", "N/A");
+    _output << boost::format("  %-20s : %s\n") % "SC Version" % available_shell.get<std::string>("sc_version", "N/A");
+    _output << boost::format("  %-20s : 0x%x\n") % "Platform ID" % available_shell.get<std::string>("id", "N/A") << "\n";
+  }
+
 
   _output << "----------------------------------------------------\n"
-          << shell_status(_pt.get<bool>("platform.shell_upto_date", ""), 
-                          _pt.get<bool>("platform.sc_upto_date", ""), 
-                          _pt.get<int>("platform.number_of_installed_shells"));
+          << shell_status(_pt.get<bool>("platform.status.shell", ""), 
+                          _pt.get<bool>("platform.status.sc", ""),  static_cast<int>(available_shells.size()));
 }
