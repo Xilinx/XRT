@@ -11,7 +11,7 @@ usage()
     echo "Usage: $PROGRAM [options] "
     echo "  options:"
     echo "          -help                           Print this usage"
-    echo "          -aarch                          Architecture <arm/aarch64/versal>"
+    echo "          -aarch                          Architecture <aarch32/aarch64/versal>"
     echo "          -cache                          path to sstate-cache"
     echo "          -setup                          setup file to use"
     echo "          -clean, clean                   Remove build directories"
@@ -123,14 +123,14 @@ while [ $# -gt 0 ]; do
 done
 
 aarch64_dir="aarch64"
-arm_dir="arm"
+aarch32_dir="aarch32"
 versal_dir="versal"
 YOCTO_MACHINE=""
 
 if [[ $clean == 1 ]]; then
     echo $PWD
-    echo "/bin/rm -rf $aarch64_dir $arm_dir $versal_dir"
-    /bin/rm -rf $aarch64_dir $arm_dir $versal_dir
+    echo "/bin/rm -rf $aarch64_dir $aarch32_dir $versal_dir"
+    /bin/rm -rf $aarch64_dir $aarch32_dir $versal_dir
     exit 0
 fi
 
@@ -141,7 +141,7 @@ source $PETALINUX/settings.sh
 if [[ $AARCH = $aarch64_dir ]]; then
     PETA_BSP="$PETALINUX/../../bsp/release/xilinx-zcu106-v2020.1-final.bsp"
     YOCTO_MACHINE="zynqmp-generic"
-elif [[ $AARCH = $arm_dir ]]; then
+elif [[ $AARCH = $aarch32_dir ]]; then
     PETA_BSP="$PETALINUX/../../bsp/release/xilinx-zc706-v2020.1-final.bsp"
     YOCTO_MACHINE="zynq-generic"
 elif [[ $AARCH = $versal_dir ]]; then
