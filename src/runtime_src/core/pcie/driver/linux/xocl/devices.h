@@ -1610,7 +1610,6 @@ struct xocl_subdev_map {
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
 			XOCL_DEVINFO_PRP_IORES_MGMT,			\
-			XOCL_DEVINFO_AXIGATE_ULP,			\
 			XOCL_DEVINFO_CLOCK_LEGACY,			\
 			XOCL_DEVINFO_AF_DSA52,				\
 			XOCL_DEVINFO_XMC_SCALING,			\
