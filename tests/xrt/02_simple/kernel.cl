@@ -16,11 +16,11 @@
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
 
-__attribute__ ((reqd_work_group_size(1, 1, 1)))
+__attribute__ ((reqd_work_group_size(1024, 1, 1)))
 kernel void simple(global int *restrict s1,
                    global const int *s2,
                    int foo)
 {
-    const int id = get_global_id(0);
+    const int id = get_local_id(0);
     s1[id] = s2[id] + id * foo;
 }
