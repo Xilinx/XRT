@@ -129,6 +129,7 @@ namespace xdp {
     std::string mCurrentDeviceName;
     std::string mCurrentBinaryName;
     std::mutex mLogMutex;
+    std::mutex mLogNext;
 
     std::map<uint64_t, KernelTrace*> mKernelTraceMap;
     std::map<uint64_t, BufferTrace*> mBufferTraceMap;
