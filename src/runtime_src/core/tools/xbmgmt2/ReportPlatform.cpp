@@ -151,5 +151,5 @@ ReportPlatform::writeReport( const xrt_core::device * _pDevice,
 
   _output << "----------------------------------------------------\n"
           << shell_status(_pt.get<bool>("platform.status.shell", ""), 
-                          _pt.get<bool>("platform.status.sc", ""), available_shells.size());
+                          _pt.get<bool>("platform.status.sc", ""),  static_cast<int>(available_shells.size()));
 }
