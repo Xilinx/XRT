@@ -2149,8 +2149,10 @@ xclDeviceHandle
 xclOpen(unsigned int deviceIndex, const char*, xclVerbosityLevel)
 {
     if(pcidev::get_dev_total() <= deviceIndex) {
+      if(XRT_INFO <= xrt_core::config::get_verbosity()) {
         printf("Cannot find index %u \n", deviceIndex);
-        return nullptr;
+      }
+      return nullptr;
     }
 #ifdef ENABLE_HAL_PROFILING
   OPEN_CB;
