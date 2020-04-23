@@ -545,6 +545,9 @@ class run_update_type
     kcmd->data[idx++] = arg.offset + 4;
     kcmd->data[idx++] = (addr >> 32) & 0xFFFFFFFF;
     kcmd->count += idx;
+
+    // make the updated arg sticky in current run
+    run->set_global_arg(index, bo);
   }
 
   template <typename ScalarType>
@@ -559,6 +562,9 @@ class run_update_type
     kcmd->data[idx++] = arg.offset;
     kcmd->data[idx++] = scalar;
     kcmd->count += idx;
+
+    // make the updated arg sticky in current run
+    run->set_scalar_arg(index, scalar);
   }
   
 public:

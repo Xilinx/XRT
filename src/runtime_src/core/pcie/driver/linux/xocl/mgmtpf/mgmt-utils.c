@@ -728,18 +728,12 @@ void xclmgmt_ocl_reset(struct xclmgmt_dev *lro)
 
 void xclmgmt_ert_reset(struct xclmgmt_dev *lro)
 {
-	struct xcl_mailbox_req mbreq = { 0 };
 	/* This is for reset PS ERT */
 	xocl_ps_reset(lro);
 	xocl_ps_wait(lro);
-	mbreq.req = XCL_MAILBOX_REQ_ERT_RESET;
-	(void) xocl_peer_notify(lro, &mbreq, sizeof(mbreq));
 }
 
 void xclmgmt_softkernel_reset(struct xclmgmt_dev *lro)
 {
-	struct xcl_mailbox_req mbreq = { 0 };
 	xocl_ps_sk_reset(lro);
-	mbreq.req = XCL_MAILBOX_REQ_ERT_RESET;
-	(void) xocl_peer_notify(lro, &mbreq, sizeof(mbreq));
 }

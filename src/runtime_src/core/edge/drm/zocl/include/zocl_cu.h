@@ -42,8 +42,10 @@ struct zocl_cu;
 
 /* Supported CU models */
 enum zcu_model {
-	MODEL_HLS,
 	MODEL_ACC,
+	MODEL_HLS_SOFT,
+	MODEL_HLS_HARD,
+	MODEL_HLS_FULL,
 };
 
 enum zcu_configure_type {

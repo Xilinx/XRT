@@ -924,6 +924,13 @@ write(uint64_t addr, const void* buf, uint64_t len) const
   mgmtpf::write_bar(m_mgmthdl, addr, buf, len);
 }
 
+void 
+device_windows::
+reset(const char*, const char*, const char*) const 
+{
+  throw std::runtime_error("Reset is not supported on Windows.");
+}
+
 /* TODO: after 2020.1
  * Adding open/close stubs for compilation purposes.
  * We currently don't use these functions but we'll

@@ -165,6 +165,23 @@ init(xclDeviceHandle handle, const axlf* top)
   while (ecmd->state < ERT_CMD_STATE_COMPLETED)
     while (xclExecWait(handle,1000)==0) ;
 
+  /*
+   * We ignore any error here and continue to finish. But if we have 2+
+   * applications calling init simultaneously, the second init would fail due
+   * to the ERT_CONFIGURE cmd won't be processed during exec->active,
+   * (configure is in progress before exec->configured is set), status.
+   *
+   * should we need this?
+   * if (ecmd->state != ERT_CMD_STATE_COMPLETED)
+   *    throw std::runtime_error("xclExecBuf incompleted with state: %d", ecmd->state);
+   *
+   * Note: this would not be an issue for other boards which do have icap.
+   *       because the softkernel is not being protected by the lock.
+   * i.e. for u200, (acquire lock -> reset scheduler -> download xclbin > release lock) -> configure
+   *      for u30,  (acquire lock ->reset scheduler -> download xclbin -> release lock) ->configure
+   *      for versal, (acquire lock -> download xclbin > release lock) -> configure -> softkenrel(download pdi)
+   */
+
   auto sks = xclbin::get_softkernels(top);
 
   if (!sks.empty()) {
@@ -217,7 +234,7 @@ init(xclDeviceHandle handle, const axlf* top)
  * command.
  */
 int
-loadXclbinToPS(xclDeviceHandle handle, const axlf* top)
+loadXclbinToPS(xclDeviceHandle handle, const axlf* top, bool pdi_load)
 {
   xuid_t uuid;
   auto execbo = create_exec_bo(handle,0x1000);
@@ -227,7 +244,7 @@ loadXclbinToPS(xclDeviceHandle handle, const axlf* top)
   ecmd->type = ERT_CTRL;
   ecmd->count = 13;
   ecmd->start_cuidx = 0;
-  ecmd->sk_type = SOFTKERNEL_TYPE_XCLBIN;
+  ecmd->sk_type = pdi_load ? SOFTKERNEL_TYPE_XCLBIN_DYNAMIC : SOFTKERNEL_TYPE_XCLBIN_STATIC;
   ecmd->num_cus = 0;
 
   auto flags = xclbin::get_first_used_mem(top);
