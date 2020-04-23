@@ -1011,10 +1011,6 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 
 	/* return -ENODEV for 2RP platform */
 	if (!ret) {
-
-		/* Reset PCI link monitor */
-		check_pcie_link_toggle(lro, 1);
-
 		xocl_thread_start(lro);
 
 		/* Launch the mailbox server. */
@@ -1028,6 +1024,9 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 			goto fail_all_subdev;
 	} else
 		goto fail_all_subdev;
+
+	/* Reset PCI link monitor */
+	check_pcie_link_toggle(lro, 1);
 
 	/* Notify our peer that we're listening. */
 	xclmgmt_connect_notify(lro, true);
