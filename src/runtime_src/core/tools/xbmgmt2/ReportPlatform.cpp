@@ -124,17 +124,21 @@ ReportPlatform::writeReport( const xrt_core::device * _pDevice,
                              std::iostream & _output) const
 {
   boost::property_tree::ptree _pt;
-  getPropertyTree20201(_pDevice, _pt);
+  getPropertyTreeInternal(_pDevice, _pt);
 
-  _output << boost::format("%s : %d\n") % "Device BDF" % _pt.get<std::string>("platform.bdf");
-  _output << boost::format("  %-20s : %s\n") % "Flash type" % _pt.get<std::string>("platform.flash_type", "N/A");
+  _output << boost::format("%s : [%s]\n") % "Device" % _pt.get<std::string>("platform.bdf");
+  _output << std::endl;
+  _output << "Flash properties\n";
+  _output << boost::format("  %-20s : %s\n") % "Type" % _pt.get<std::string>("platform.flash_type", "N/A");
 
+  _output << std::endl;
   _output << "Flashable partition running on FPGA\n";
   _output << boost::format("  %-20s : %s\n") % "Platform" % _pt.get<std::string>("platform.current_shell.vbnv", "N/A");
   _output << boost::format("  %-20s : %s\n") % "SC Version" % _pt.get<std::string>("platform.current_shell.sc_version", "N/A");
   _output << boost::format("  %-20s : %x\n") % "Platform ID" % _pt.get<std::string>("platform.current_shell.id", "N/A");
   
-  _output << "\nFlashable partitions installed in system\n"; 
+  _output << std::endl;
+  _output << "Flashable partitions installed in system\n"; 
   boost::property_tree::ptree& available_shells = _pt.get_child("platform.available_shells");
   for(auto& kv : available_shells) {
     // std::string prefix = "platform.available_shells." + std::to_string(i);
@@ -143,6 +147,7 @@ ReportPlatform::writeReport( const xrt_core::device * _pDevice,
     _output << boost::format("  %-20s : %s\n") % "SC Version" % available_shell.get<std::string>("sc_version", "N/A");
     _output << boost::format("  %-20s : 0x%x\n") % "Platform ID" % available_shell.get<std::string>("id", "N/A") << "\n";
   }
+
 
   _output << "----------------------------------------------------\n"
           << shell_status(_pt.get<bool>("platform.status.shell", ""), 

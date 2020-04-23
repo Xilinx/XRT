@@ -315,6 +315,16 @@ write(uint64_t offset, const void* buf, uint64_t len) const
     throw error(err, "write failed");
 }
 
+void 
+device_linux::
+reset(const char* subdev, const char* key, const char* value) const 
+{
+  std::string err;
+  pcidev::get_dev(get_device_id(), false)->sysfs_put(subdev, key, err, value);
+  if (!err.empty())
+    throw error("reset failed");
+}
+
 int 
 device_linux::
 open(const std::string& subdev, int flag) const

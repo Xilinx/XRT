@@ -41,7 +41,6 @@ namespace po = boost::program_options;
 
 // Note: Please insert the reports in the order to be displayed (current alphabetical)
 static const ReportCollection fullReportCollection = {
-  std::make_shared<ReportHost>(),
   std::make_shared<ReportPlatform>()
 };
 
@@ -71,7 +70,7 @@ SubCmdStatus::execute(const SubCmdOptions& _options) const
 
   // Option Variables
   std::vector<std::string> devices = {"all"};
-  std::vector<std::string> reportNames = {"scan"};
+  std::vector<std::string> reportNames = {"platform"};
   std::vector<std::string> elementsFilter;
   std::string sFormat = "text";
   std::string sOutput = "";
@@ -83,7 +82,7 @@ SubCmdStatus::execute(const SubCmdOptions& _options) const
     ("device,d", boost::program_options::value<decltype(devices)>(&devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' (default) indicates that every found device should be examined.")
     ("report,r", boost::program_options::value<decltype(reportNames)>(&reportNames)->multitoken(), (std::string("The type of report to be produced. Reports currently available are:\n") + reportOptionValues).c_str() )
     ("format,f", boost::program_options::value<decltype(sFormat)>(&sFormat), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
-    ("element,e", boost::program_options::value<decltype(elementsFilter)>(&elementsFilter)->multitoken(), "Filters individual elements(s) from the report. Format: '/<key>/<key>/...'")
+    ("element,e", boost::program_options::value<decltype(elementsFilter)>(&elementsFilter)->multitoken(), "Filters individual elements(s) from the report.")
     ("output,o", boost::program_options::value<decltype(sOutput)>(&sOutput), "Direct the output to the given file")
     ("help,h", boost::program_options::bool_switch(&bHelp), "Help to use this sub-command")
   ;

@@ -53,6 +53,7 @@ public:
   virtual void write(uint64_t addr, const void* buf, uint64_t len) const;
   virtual int  open(const std::string& subdev, int flag) const;
   virtual void close(int dev_handle) const;
+  virtual void reset(const char*, const char*, const char*) const;
 
 private:
   // Private look up function for concrete query::request

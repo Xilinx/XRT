@@ -391,8 +391,16 @@ static int load_firmware_from_flash(struct platform_device *pdev,
 
 	xocl_info(&pdev->dev, "try loading fw from flash");
 
-	(void) xocl_flash_get_size(xdev, &flash_size);
-	BUG_ON(flash_size == 0);
+	ret = xocl_flash_get_size(xdev, &flash_size);
+	if (ret == -ENODEV) {
+		xocl_info(&pdev->dev,
+			"no flash subdev");
+		return ret;
+	} else if (flash_size == 0) {
+		xocl_err(&pdev->dev,
+			"failed to get flash size");
+		return -EINVAL;
+	}
 
 	ret = xocl_flash_read(xdev, (char *)&header, sizeof(header),
 		flash_size - sizeof(header));
