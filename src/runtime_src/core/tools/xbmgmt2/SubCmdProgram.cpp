@@ -205,24 +205,26 @@ pretty_print_platform_info(const boost::property_tree::ptree& _ptDevice)
   std::cout << boost::format("%s : %d\n") % "Device BDF" % _ptDevice.get<std::string>("platform.bdf");
   std::cout << "Current Configuration\n";
 
-  std::cout << boost::format("  %-20s : %s\n") % "Platform" % _ptDevice.get<std::string>("platform.shell_on_fpga.vbnv", "N/A");
-  std::cout << boost::format("  %-20s : %s\n") % "SC Version" % _ptDevice.get<std::string>("platform.shell_on_fpga.sc_version", "N/A");
-  std::cout << boost::format("  %-20s : 0x%x\n") % "Platform ID" % _ptDevice.get<std::string>("platform.shell_on_fpga.id", "N/A");
+  std::cout << boost::format("  %-20s : %s\n") % "Platform" % _ptDevice.get<std::string>("platform.current_shell.vbnv", "N/A");
+  std::cout << boost::format("  %-20s : %s\n") % "SC Version" % _ptDevice.get<std::string>("platform.current_shell.sc_version", "N/A");
+  std::cout << boost::format("  %-20s : 0x%x\n") % "Platform ID" % _ptDevice.get<std::string>("platform.current_shell.id", "N/A");
 
   std::cout << "\nIncoming Configuration\n";
+  const boost::property_tree::ptree& available_shells = _ptDevice.get_child("platform.available_shells");
   // if multiple shells are installed, do not proceed
-  if( _ptDevice.get<int>("platform.number_of_installed_shells") > 1)
+  if( available_shells.size() > 1)
       throw xrt_core::error("Auto update is not possible when multiple shells are installed on the system. Please use --image option to specify the path of a particular flash image.");
 
-  std::pair <std::string, std::string> s = deployment_path_and_filename(_ptDevice.get<std::string>("platform.installed_shell.0.file"));
+  const boost::property_tree::ptree& available_shell = available_shells.front().second;
+  std::pair <std::string, std::string> s = deployment_path_and_filename(available_shell.get<std::string>("file"));
   std::cout << boost::format("  %-20s : %s\n") % "Deployment File" % s.first;
   std::cout << boost::format("  %-20s : %s\n") % "Deployment Directory" % s.second;
-  std::cout << boost::format("  %-20s : %s\n") % "Size" % file_size(_ptDevice.get<std::string>("platform.installed_shell.0.file").c_str());
-  std::cout << boost::format("  %-20s : %s\n\n") % "Timestamp" % get_file_timestamp(_ptDevice.get<std::string>("platform.installed_shell.0.file").c_str());
+  std::cout << boost::format("  %-20s : %s\n") % "Size" % file_size(available_shell.get<std::string>("file").c_str());
+  std::cout << boost::format("  %-20s : %s\n\n") % "Timestamp" % get_file_timestamp(available_shell.get<std::string>("file").c_str());
 
-  std::cout << boost::format("  %-20s : %s\n") % "Platform" % _ptDevice.get<std::string>("platform.installed_shell.0.vbnv", "N/A");
-  std::cout << boost::format("  %-20s : %s\n") % "SC Version" % _ptDevice.get<std::string>("platform.installed_shell.0.sc_version", "N/A");
-  std::cout << boost::format("  %-20s : 0x%x\n") % "Platform ID" % _ptDevice.get<std::string>("platform.installed_shell.0.id", "N/A");
+  std::cout << boost::format("  %-20s : %s\n") % "Platform" % available_shell.get<std::string>("vbnv", "N/A");
+  std::cout << boost::format("  %-20s : %s\n") % "SC Version" % available_shell.get<std::string>("sc_version", "N/A");
+  std::cout << boost::format("  %-20s : 0x%x\n") % "Platform ID" % available_shell.get<std::string>("id", "N/A");
 }
 
 static void
@@ -241,9 +243,9 @@ report_status(xrt_core::device_collection& deviceCollection, boost::property_tre
 
   std::stringstream action_list;
   for (const auto & device : deviceCollection) {
-    if (!_pt.get<bool>(std::to_string(device->get_device_id()) + ".platform.shell_upto_date"))
+    if (!_pt.get<bool>(std::to_string(device->get_device_id()) + ".platform.status.shell"))
       action_list << "  -Program flash image on card[" << _pt.get<std::string>(std::to_string(device->get_device_id())+".platform.bdf") << "]\n";
-    if (!_pt.get<bool>(std::to_string(device->get_device_id())+".platform.sc_upto_date"))
+    if (!_pt.get<bool>(std::to_string(device->get_device_id())+".platform.status.sc"))
       action_list << "  -Program SC image on card[" << _pt.get<std::string>(std::to_string(device->get_device_id())+".platform.bdf") << "]\n";
   }
   
@@ -355,10 +357,10 @@ auto_flash(xrt_core::device_collection& deviceCollection, bool force)
   // Collect all indexes of boards need updating
   std::vector<std::pair<unsigned int , DSAInfo>> boardsToUpdate;
   for (const auto & device : deviceCollection) {
-    DSAInfo dsa(_pt.get<std::string>(std::to_string(device->get_device_id()) + ".platform.installed_shell.file"));
+    DSAInfo dsa(_pt.get_child(std::to_string(device->get_device_id()) + ".platform.available_shells").front().second.get<std::string>("file"));
     //if the shell is not up-to-date and dsa has a flash image, queue the board for update
-    if (!_pt.get<bool>(std::to_string(device->get_device_id()) + ".platform.shell_upto_date") ||
-          !_pt.get<bool>(std::to_string(device->get_device_id()) + ".platform.sc_upto_date")) {
+    if (!_pt.get<bool>(std::to_string(device->get_device_id()) + ".platform.status.shell") ||
+          !_pt.get<bool>(std::to_string(device->get_device_id()) + ".platform.status.sc")) {
       if(!dsa.hasFlashImage)
         throw xrt_core::error("Flash image is not available");
       boardsToUpdate.push_back(std::make_pair(device->get_device_id(), dsa));
