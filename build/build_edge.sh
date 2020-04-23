@@ -228,13 +228,13 @@ echo "Creating $ORIGINAL_DIR/$PETALINUX_NAME/rpm.txt"
 echo `ls xrt-dev*` > $ORIGINAL_DIR/$PETALINUX_NAME/rpm.txt
 echo `ls xrt-2*` >> $ORIGINAL_DIR/$PETALINUX_NAME/rpm.txt
 
-echo "Creating $ORIGINAL_DIR/$PETALINUX_NAME/install_edge.sh"
+echo "Creating $ORIGINAL_DIR/$PETALINUX_NAME/install_xrt.sh"
 xrt_dbg=`ls xrt-dbg*`
 zocl_dbg=`ls zocl-dbg*`
-echo dnf install -y *.rpm | sed -e "s/\<$xrt_dbg\>//g" | sed -e "s/\<$zocl_dbg\>//g" > $ORIGINAL_DIR/$PETALINUX_NAME/install_edge.sh
+echo dnf install -y *.rpm | sed -e "s/\<$xrt_dbg\>//g" | sed -e "s/\<$zocl_dbg\>//g" > $ORIGINAL_DIR/$PETALINUX_NAME/install_xrt.sh
 
-echo "Creating $ORIGINAL_DIR/$PETALINUX_NAME/reinstall_edge.sh"
-echo dnf reinstall -y *.rpm | sed -e "s/\<$xrt_dbg\>//g" | sed -e "s/\<$zocl_dbg\>//g" > $ORIGINAL_DIR/$PETALINUX_NAME/reinstall_edge.sh
+echo "Creating $ORIGINAL_DIR/$PETALINUX_NAME/reinstall_xrt.sh"
+echo dnf reinstall -y *.rpm | sed -e "s/\<$xrt_dbg\>//g" | sed -e "s/\<$zocl_dbg\>//g" > $ORIGINAL_DIR/$PETALINUX_NAME/reinstall_xrt.sh
 
 cd $ORIGINAL_DIR
 
