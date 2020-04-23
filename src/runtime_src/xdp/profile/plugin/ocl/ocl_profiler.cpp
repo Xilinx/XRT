@@ -109,11 +109,29 @@ namespace xdp {
       dInt->setMaxBwRead();
       dInt->setMaxBwWrite();
 
-      // Record number of monitors
+      // Record number of monitors and how many have trace
       auto deviceName = device->get_unique_name();
-      Plugin->addNumMonitorMap(deviceName + "|XCL_PERF_MON_ACCEL", dInt->getNumMonitors(XCL_PERF_MON_ACCEL));
-      Plugin->addNumMonitorMap(deviceName + "|XCL_PERF_MON_MEMORY", dInt->getNumMonitors(XCL_PERF_MON_MEMORY));
-      Plugin->addNumMonitorMap(deviceName + "|XCL_PERF_MON_STR", dInt->getNumMonitors(XCL_PERF_MON_STR));
+      for (uint32_t m=0; m < 3; ++m) {
+        auto monType = XCL_PERF_MON_ACCEL;
+        std::string monName = "XCL_PERF_MON_ACCEL";
+        if (m == 1) {
+          monType = XCL_PERF_MON_MEMORY;
+          monName = "XCL_PERF_MON_MEMORY";
+        } else if (m == 2) {
+          monType = XCL_PERF_MON_STR;
+          monName = "XCL_PERF_MON_STR";
+        }
+
+        uint32_t numMonitors = dInt->getNumMonitors(monType);
+        uint32_t numTrace = 0;
+        for (uint32_t n=0; n < numMonitors; ++n) {
+          if (dInt->getMonitorProperties(monType, n) & XCL_PERF_MON_TRACE_MASK)
+            numTrace++;
+        }
+
+        std::string key = deviceName + "|" + monName + "|" + std::to_string(numTrace);
+        Plugin->addNumMonitorMap(key, numMonitors);
+      }
     }
     return info;
   }
