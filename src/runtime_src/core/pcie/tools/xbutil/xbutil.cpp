@@ -1128,6 +1128,9 @@ int xcldev::device::runTestCase(const std::string& py,
     xclbinPath += xclbin;
 
     if (stat(xrtTestCasePath.c_str(), &st) != 0 || stat(xclbinPath.c_str(), &st) != 0) {
+        //if bandwidth xclbin isn't present, skip the test
+        if(xclbin.compare("bandwidth.xclbin") == 0)
+            return -EOPNOTSUPP;
         output += "ERROR: Failed to find ";
         output += py;
         output += " or ";
@@ -1187,7 +1190,8 @@ int xcldev::device::bandwidthKernelTest(void)
         std::string("bandwidth.xclbin"), output);
 
     if (ret != 0) {
-        std::cout << output << std::endl;
+        if(!output.empty())
+            std::cout << output << std::endl;
         return ret;
     }
 
