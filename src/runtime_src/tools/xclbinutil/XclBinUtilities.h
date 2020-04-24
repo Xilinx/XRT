@@ -125,7 +125,7 @@ unsigned int alignBytes(std::ostream & _buf, unsigned int _byteBoundary);
 
 void binaryBufferToHexString(const unsigned char* _binBuf, uint64_t _size, std::string& _outputString);
 void hexStringToBinaryBuffer(const std::string& _inputString, unsigned char* _destBuf, unsigned int _bufferSize);
-uint64_t stringToUInt64(const std::string& _sInteger);
+uint64_t stringToUInt64(const std::string& _sInteger, bool _bForceHex = false);
 void printKinds();
 std::string getUUIDAsString( const unsigned char (&_uuid)[16] );
 
