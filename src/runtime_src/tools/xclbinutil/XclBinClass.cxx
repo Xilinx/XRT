@@ -1149,7 +1149,7 @@ XclBin::dumpSubSection(ParameterSectionData &_PSD)
   // Determine if the section exists
   Section *pSection = findSection(eKind, _PSD.getSectionIndexName());
   if (pSection == nullptr) {
-    std::string errMsg = XUtil::format("ERROR: Section '%s' does not exist.", pSection->getSectionKindAsString().c_str());
+    std::string errMsg = XUtil::format("ERROR: Section %s[%s] does not exist.", _PSD.getSectionName().c_str(), _PSD.getSectionIndexName().c_str());
     throw std::runtime_error(errMsg);
   }
 
