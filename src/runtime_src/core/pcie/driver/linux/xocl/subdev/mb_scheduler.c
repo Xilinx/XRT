@@ -68,6 +68,12 @@
 
 //#define SCHED_VERBOSE
 
+/* This is for performance test purpose.
+ * Use this with regular ap_ctrl_hs CUs and KDS mode.
+ * It is by default disabled.
+ */
+extern int kds_echo;
+
 #if defined(__GNUC__)
 #define SCHED_UNUSED __attribute__((unused))
 #endif
@@ -1094,7 +1100,10 @@ cu_continue(struct xocl_cu *xcu)
 static inline u32
 cu_status(struct xocl_cu *xcu)
 {
-	return ioread32(xcu->base + xcu->addr);
+	if (!kds_echo)
+		return ioread32(xcu->base + xcu->addr);
+	else
+		return (AP_DONE | AP_IDLE);
 }
 
 /**
@@ -1196,12 +1205,14 @@ cu_configure_ooo(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
 
 	SCHED_DEBUGF("-> %s cu(%d) xcmd(%lu)\n", __func__, xcu->idx, xcmd->uid);
 	// past reserved 4 ctrl + 2 ctx
-	for (idx = 6; idx < size - 1; idx += 2) {
-		u32 offset = *(regmap + idx);
-		u32 val = *(regmap + idx + 1);
+	if (!kds_echo) {
+		for (idx = 6; idx < size - 1; idx += 2) {
+			u32 offset = *(regmap + idx);
+			u32 val = *(regmap + idx + 1);
 
-		SCHED_DEBUGF("+ base[0x%x] = 0x%x\n", offset, val);
-		iowrite32(val, xcu->base + xcu->addr + offset);
+			SCHED_DEBUGF("+ base[0x%x] = 0x%x\n", offset, val);
+			iowrite32(val, xcu->base + xcu->addr + offset);
+		}
 	}
 	SCHED_DEBUGF("<- %s\n", __func__);
 }
@@ -1217,8 +1228,10 @@ cu_configure_ino(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
 	unsigned int idx;
 
 	SCHED_DEBUGF("-> %s cu(%d) xcmd(%lu)\n", __func__, xcu->idx, xcmd->uid);
-	for (idx = 4; idx < size; ++idx)
-		iowrite32(*(regmap + idx), xcu->base + xcu->addr + (idx << 2));
+	if (!kds_echo) {
+		for (idx = 4; idx < size; ++idx)
+			iowrite32(*(regmap + idx), xcu->base + xcu->addr + (idx << 2));
+	}
 	SCHED_DEBUGF("<- %s\n", __func__);
 }
 
@@ -1253,7 +1266,8 @@ cu_start(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
 	// start cu.  update local state as we may not be polling prior
 	// to next ready check.
 	xcu->ctrlreg |= AP_START;
-	iowrite32(AP_START, xcu->base + xcu->addr);
+	if (!kds_echo)
+		iowrite32(AP_START, xcu->base + xcu->addr);
 
 	// in ert poll mode request ERT to poll CU
 	if (xcu->polladdr) {
