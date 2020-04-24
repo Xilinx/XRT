@@ -245,12 +245,27 @@ namespace xdp {
     // Log Guidance Data
     // Time period during which host buffer transfers were active
     // In case of parallel transfers, log first start and last end
-    if (isStart) ++mCurrentTxCount;
-    if (isEnd)   --mCurrentTxCount;
-    if (isHostTx && ((isStart && mCurrentTxCount == 1) || (isEnd && mCurrentTxCount == 0))) {
-      mPluginHandle->logBufferEvent(timeStamp, isRead, isStart);
+    if (isHostTx && (isStart || isEnd)) {
+      if (isRead) {
+        if (isStart) 
+          ++mCurrentReadCount;
+        else if (mCurrentReadCount > 0)
+          --mCurrentReadCount;
+        
+        if ((isStart && mCurrentReadCount == 1) || (isEnd && mCurrentReadCount == 0))
+          mPluginHandle->logBufferEvent(timeStamp, true, isStart);
+      }
+      else {
+        if (isStart) 
+          ++mCurrentWriteCount;
+        else if (mCurrentWriteCount > 0)
+          --mCurrentWriteCount;
+        
+        if ((isStart && mCurrentWriteCount == 1) || (isEnd && mCurrentWriteCount == 0))
+          mPluginHandle->logBufferEvent(timeStamp, false, isStart);
+      }
     }
-
+    
     // clEnqueueNDRangeKernel returns END with no START
     // if data transfer was already completed.
     // We can safely discard those events

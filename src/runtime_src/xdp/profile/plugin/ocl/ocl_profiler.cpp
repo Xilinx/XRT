@@ -108,6 +108,22 @@ namespace xdp {
       dInt->readDebugIPlayout();
       dInt->setMaxBwRead();
       dInt->setMaxBwWrite();
+
+      // Record number of monitors and how many have trace enabled
+      auto deviceName = device->get_unique_name();
+      xclPerfMonType monType [] = {XCL_PERF_MON_ACCEL, XCL_PERF_MON_MEMORY, XCL_PERF_MON_STR};
+      std::string    monName [] = {"XCL_PERF_MON_ACCEL", "XCL_PERF_MON_MEMORY", "XCL_PERF_MON_STR"};
+      for (uint32_t m=0; m < 3; ++m) {
+        uint32_t numMonitors = dInt->getNumMonitors(monType[m]);
+        uint32_t numTrace = 0;
+        for (uint32_t n=0; n < numMonitors; ++n) {
+          if (dInt->getMonitorProperties(monType[m], n) & XCL_PERF_MON_TRACE_MASK)
+            numTrace++;
+        }
+
+        std::string key = deviceName + "|" + monName[m] + "|" + std::to_string(numTrace);
+        Plugin->addNumMonitorMap(key, numMonitors);
+      }
     }
     return info;
   }
@@ -405,10 +421,12 @@ namespace xdp {
           dynamic_cast<TraceLoggerUsingProfileMngr*>(trace_offloader->getDeviceTraceLogger());
 
       if (trace_offloader->trace_buffer_full()) {
-        if (trace_offloader->has_fifo()) {
-          Plugin->sendMessage(FIFO_WARN_MSG);
-        } else {
-          Plugin->sendMessage(TS2MM_WARN_MSG_BUF_FULL);
+        // Only show FIFO full messages for device runs
+        if (Plugin->getFlowMode() == xdp::RTUtil::DEVICE) {
+          if (trace_offloader->has_fifo())
+            Plugin->sendMessage(FIFO_WARN_MSG);
+          else
+            Plugin->sendMessage(TS2MM_WARN_MSG_BUF_FULL);
         }
 
         if (deviceTraceLogger) {
