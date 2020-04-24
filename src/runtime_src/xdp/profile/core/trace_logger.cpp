@@ -246,10 +246,6 @@ namespace xdp {
     // Time period during which host buffer transfers were active
     // In case of parallel transfers, log first start and last end
     if (isHostTx && (isStart || isEnd)) {
-      //std::cout << "logDataTransfer - isRead: " << isRead << ", isStart: " << isStart 
-      //          << ", read count: " << mCurrentReadCount 
-      //          << ", write count: " << mCurrentWriteCount << std::endl;
-
       if (isRead) {
         if (isStart) 
           ++mCurrentReadCount;
