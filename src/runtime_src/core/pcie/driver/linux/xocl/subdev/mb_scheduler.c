@@ -2657,6 +2657,7 @@ exec_ert_start_ctrl_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	// is nothing to do, mark complete immediately
 	if (cmd_opcode(xcmd) == ERT_CU_STAT && exec_is_ert_poll(exec)) {
 		exec_mark_cmd_complete(exec, xcmd);
+		cmd_free(xcmd);
 		return true;
 	}
 
@@ -3093,7 +3094,7 @@ exec_submit_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	SCHED_DEBUGF("-> %s exec(%d) cmd(%lu)\n", __func__, exec->uid, xcmd->uid);
 
 	if (cmd_wait_count(xcmd)) {
-		SCHED_DEBUGF("<- %s ret(false) cmd_wait_count(%d)\n", cmd_wait_count(xcmd));
+		SCHED_DEBUGF("<- %s ret(false) cmd_wait_count(%d)\n", __func__, cmd_wait_count(xcmd));
 		return false;
 	}
 
@@ -3172,7 +3173,6 @@ exec_submitted_to_running(struct exec_core *exec)
         // new interrupts can be send by ERT.
         if (started && exec_is_ert_poll(exec))
           scheduler_intr(exec->scheduler);
-       
 	
 	SCHED_DEBUGF("<- %s started(%d)\n", __func__, started);
 }
