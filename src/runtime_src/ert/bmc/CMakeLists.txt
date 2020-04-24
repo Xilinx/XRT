@@ -1,4 +1,22 @@
-# =========== Helper Function ====================
+# =========== Helper Functions ====================
+
+#------------------------------------------------------------------------------
+#    Function: CheckStatus
+#
+# Description: Checks the return status of the FILE DOWNLOAD operation.  If
+#              an error occurs (e.g., can't connect to the server) the error
+#              will be reported and build will be stopped.
+#               
+#------------------------------------------------------------------------------
+function(CheckStatus status_code status_error URL_MSP432_GEN)
+ if(NOT status_code EQUAL 0)
+   message(FATAL_ERROR "ERROR: Failed to retrieve files from: ${URL_MSP432_GEN}\n"
+                        "   error code: ${status_code}\n"
+                        "   error message: ${status_error}\n")
+  endif()
+endfunction()
+
+#------------------------------------------------------------------------------
 #    Function: GetBMCFWImage
 #
 # Description: Retrieves the given MSP432 FW image and renames it for the given 
@@ -9,10 +27,15 @@
 #               AlveoGen2-BMC-MSP432-3.6.4-fb8c68be8a6eb1fcf0632966765fcdd3.txt
 #               AlveoGen3-BMC-MSP432-4.3.10-0fc12509b3106f6a63bffeb4832576b7.txt
 #               AlveoGen4-BMC-MSP432-5.0.27-3fa9028964a7dc81714528ab62e6d40b.txt
+#------------------------------------------------------------------------------
 function(GetBMCFWImage ALVEOGEN URL_MSP432_GEN)
-  FILE(DOWNLOAD ${URL_MSP432_GEN}/BMC-MSP432.txt.filename ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN}-BMC-MSP432.txt.filename STATUS mystatus)
+FILE(DOWNLOAD ${URL_MSP432_GEN}/BMC-MSP432.txt.filename ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN}-BMC-MSP432.txt.filename STATUS mystatus)
+  CheckStatus( ${mystatus} ${URL_MSP432_GEN})
+
   FILE(STRINGS ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN}-BMC-MSP432.txt.filename ALVEOGEN_FILENAME)
+
   FILE(DOWNLOAD ${URL_MSP432_GEN}/BMC-MSP432.txt ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN}-${ALVEOGEN_FILENAME} STATUS mystatus)
+  CheckStatus( ${mystatus} ${URL_MSP432_GEN})
 
   # Add this FW image to the list of FW images to be released
   list(APPEND ALVEO_FW_FILES ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN}-${ALVEOGEN_FILENAME}) 
