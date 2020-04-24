@@ -64,8 +64,6 @@
 #include "../xocl_drv.h"
 #include "xrt_drv.h"
 
-// #define OSPI_VERBOSE
-
 #define	OSPI_VERSAL_DEV_NAME "ospi_versal" SUBDEV_SUFFIX
 
 /* Timer interval of checking OSPI done */
@@ -85,13 +83,8 @@ struct ospi_versal {
 	xocl_err(&ov->ov_pdev->dev, fmt "\n", ##arg)
 #define	OV_INFO(ov, fmt, arg...)    \
 	xocl_info(&ov->ov_pdev->dev, fmt "\n", ##arg)
-
-#ifdef OSPI_VERBOSE
 #define	OV_DEBUG(ov, fmt, arg...)    \
 	xocl_dbg(&ov->ov_pdev->dev, fmt "\n", ##arg)
-#else
-#define OV_DEBUG(ov, fmt, arg...)
-#endif
 
 /*
  * If return 0, we get the expected status.

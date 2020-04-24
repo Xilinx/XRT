@@ -20,19 +20,12 @@
 #include "xrt_drv.h"
 #include "zocl_ospi_versal.h"
 
-/* #define ZOCL_OSPI_VERBOSE */
-
 #define ov_err(pdev, fmt, args...)  \
 	zocl_err(&pdev->dev, fmt"\n", ##args)
 #define ov_info(pdev, fmt, args...)  \
 	zocl_info(&pdev->dev, fmt"\n", ##args)
-
-#ifdef ZOCL_OSPI_VERBOSE
 #define ov_dbg(pdev, fmt, args...)  \
 	zocl_dbg(&pdev->dev, fmt"\n", ##args)
-#else
-#define ov_dbg(pdev, fmt, args...)
-#endif
 
 static inline u32 wait_for_status(struct zocl_ov_dev *ov, u8 status)
 {
