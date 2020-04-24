@@ -122,6 +122,12 @@ enum cmacommand {
     CMA_SIZE,
 };
 
+enum class cu_stat : unsigned short { 
+  usage = 0, 
+  addr, 
+  stat
+};
+
 static const std::pair<std::string, command> map_pairs[] = {
     std::make_pair("program", PROGRAM),
     std::make_pair("clock", CLOCK),
@@ -330,10 +336,12 @@ public:
         return 0;
     }
 
-    uint32_t parseComputeUnitStatus(const std::vector<std::string>& custat, uint32_t offset) const
+    uint32_t parseComputeUnitStat(const std::vector<std::string>& custat, uint32_t offset, cu_stat kind) const
     {
+       uint32_t ret = 0;
+
        if (custat.empty())
-          return 0;
+          return ret;
 
        for (auto& line : custat) {
            uint32_t ba = 0, cnt = 0, sta = 0;
@@ -342,10 +350,15 @@ public:
            if (offset != ba)
                continue;
 
-           return sta;
+           if (kind == cu_stat::usage)
+                ret = cnt;
+           else if (kind == cu_stat::stat)
+                ret = sta;
+
+           return ret;
        }
 
-       return 0;
+       return ret;
     }
 
     int parseComputeUnits(const std::vector<ip_data> &computeUnits) const
@@ -361,10 +374,12 @@ public:
             const auto& ip = computeUnits[i];
             if (ip.m_type != IP_KERNEL)
                 continue;
-            uint32_t status = parseComputeUnitStatus(custat,ip.m_base_address);
+            uint32_t status = parseComputeUnitStat(custat,ip.m_base_address, cu_stat::stat);
+            uint32_t usage = parseComputeUnitStat(custat,ip.m_base_address, cu_stat::usage);
             boost::property_tree::ptree ptCu;
             ptCu.put( "name",         ip.m_name );
             ptCu.put( "base_address", ip.m_base_address );
+            ptCu.put( "usage",        usage );
             ptCu.put( "status",       xrt_core::utils::parse_cu_status( status ) );
             sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(i)), ptCu );
         }
@@ -696,13 +711,13 @@ public:
                 if( subv.first == "base_address" ) {
                   auto addr = subv.second.get_value<uint64_t>();
                   cu_ba = (addr == (uint64_t)-1) ? "N/A" : sensor_tree::pretty<uint64_t>(addr, "N/A", true);
-                } else if( subv.first == "status" ) {
+                } else if( subv.first == "usage" ) {
                   cu_s = subv.second.get_value<std::string>();
                 }
               }
 
               ss << "CU[@" << std::hex << cu_ba
-                   << "] : "<<cu_s << std::endl;
+                   << "] : "<< cu_s << std::endl;
             }
           }
         }

@@ -438,6 +438,39 @@ static void check_sensor(struct xclmgmt_dev *lro)
 	vfree(s);
 }
 
+static void check_pcie_link_toggle(struct xclmgmt_dev *lro, int clear)
+{
+	u32 sts;
+	int err;
+
+
+	err = xocl_iores_read32(lro, XOCL_SUBDEV_LEVEL_BLD,
+			IORES_PCIE_MON, 0x8, &sts);
+	if (err)
+		return;
+
+	if (sts && !clear) {
+		mgmt_err(lro, "PCI link toggle was detected\n");
+		clear = 1;
+	}
+
+	if (clear) {
+		
+		xocl_iores_write32(lro,XOCL_SUBDEV_LEVEL_BLD ,
+				IORES_PCIE_MON, 0, 1);
+
+		xocl_iores_read32(lro, XOCL_SUBDEV_LEVEL_BLD,
+				IORES_PCIE_MON, 0, &sts);
+
+		xocl_iores_write32(lro, XOCL_SUBDEV_LEVEL_BLD,
+				IORES_PCIE_MON, 0, 0);
+	}
+
+		
+
+}
+
+
 static int health_check_cb(void *data)
 {
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)data;
@@ -451,6 +484,9 @@ static int health_check_cb(void *data)
 	(void) xocl_clock_status(lro, &latched);
 
 	check_sensor(lro);
+
+	/* Check PCIe Link Toggle */
+	check_pcie_link_toggle(lro, 0);
 
 	/*
 	 * Checking firewall should be the last thing to do.
@@ -988,6 +1024,9 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 			goto fail_all_subdev;
 	} else
 		goto fail_all_subdev;
+
+	/* Reset PCI link monitor */
+	check_pcie_link_toggle(lro, 1);
 
 	/* Notify our peer that we're listening. */
 	xclmgmt_connect_notify(lro, true);
