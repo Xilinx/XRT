@@ -50,7 +50,7 @@ clPollStreams(cl_device_id              device,
   int ret;
   validOrError(device,completions,min,max,actual,timeout,errcode_ret);
   ret = xocl::xocl(device)->poll_streams(completions,min,max,actual,timeout);
-  if (errcode_ret)
+  if (ret < 0)
     *errcode_ret = ret;
   return (ret && ret != -ETIMEDOUT) ? CL_DEVICE_NOT_AVAILABLE : CL_SUCCESS;
 }
