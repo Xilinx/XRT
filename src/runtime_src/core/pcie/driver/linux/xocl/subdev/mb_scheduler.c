@@ -139,6 +139,22 @@ static void scheduler_intr(struct xocl_scheduler *xs);
 static void scheduler_decr_poll(struct xocl_scheduler *xs);
 static void scheduler_incr_poll(struct xocl_scheduler *xs);
 
+static inline u32
+cu_ioread32(void __iomem *addr, u32 val)
+{
+	if (kds_echo)
+		return val;
+	return ioread32(addr);
+}
+
+static inline void
+cu_iowrite32(u32 val, void __iomem *addr)
+{
+	if (kds_echo)
+		return;
+	iowrite32(val, addr);
+}
+
 /*
  */
 static void
@@ -1100,10 +1116,7 @@ cu_continue(struct xocl_cu *xcu)
 static inline u32
 cu_status(struct xocl_cu *xcu)
 {
-	if (!kds_echo)
-		return ioread32(xcu->base + xcu->addr);
-	else
-		return (AP_DONE | AP_IDLE);
+	return cu_ioread32(xcu->base + xcu->addr, AP_DONE | AP_IDLE);
 }
 
 /**
@@ -1205,14 +1218,12 @@ cu_configure_ooo(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
 
 	SCHED_DEBUGF("-> %s cu(%d) xcmd(%lu)\n", __func__, xcu->idx, xcmd->uid);
 	// past reserved 4 ctrl + 2 ctx
-	if (!kds_echo) {
-		for (idx = 6; idx < size - 1; idx += 2) {
-			u32 offset = *(regmap + idx);
-			u32 val = *(regmap + idx + 1);
+	for (idx = 6; idx < size - 1; idx += 2) {
+		u32 offset = *(regmap + idx);
+		u32 val = *(regmap + idx + 1);
 
-			SCHED_DEBUGF("+ base[0x%x] = 0x%x\n", offset, val);
-			iowrite32(val, xcu->base + xcu->addr + offset);
-		}
+		SCHED_DEBUGF("+ base[0x%x] = 0x%x\n", offset, val);
+		cu_iowrite32(val, xcu->base + xcu->addr + offset);
 	}
 	SCHED_DEBUGF("<- %s\n", __func__);
 }
@@ -1228,10 +1239,8 @@ cu_configure_ino(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
 	unsigned int idx;
 
 	SCHED_DEBUGF("-> %s cu(%d) xcmd(%lu)\n", __func__, xcu->idx, xcmd->uid);
-	if (!kds_echo) {
-		for (idx = 4; idx < size; ++idx)
-			iowrite32(*(regmap + idx), xcu->base + xcu->addr + (idx << 2));
-	}
+	for (idx = 4; idx < size; ++idx)
+		cu_iowrite32(*(regmap + idx), xcu->base + xcu->addr + (idx << 2));
 	SCHED_DEBUGF("<- %s\n", __func__);
 }
 
@@ -1266,8 +1275,7 @@ cu_start(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
 	// start cu.  update local state as we may not be polling prior
 	// to next ready check.
 	xcu->ctrlreg |= AP_START;
-	if (!kds_echo)
-		iowrite32(AP_START, xcu->base + xcu->addr);
+	iowrite32(AP_START, xcu->base + xcu->addr);
 
 	// in ert poll mode request ERT to poll CU
 	if (xcu->polladdr) {
