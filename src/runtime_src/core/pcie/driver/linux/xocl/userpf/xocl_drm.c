@@ -621,7 +621,7 @@ static void xocl_cma_mem_free(struct xocl_drm *drm_p, uint32_t idx)
 		return;
 
 	if (cma_mem->vaddr) {
-		dma_free_coherent(&drm_p->ddev->pdev->dev, cma_mem->size, cma_mem->vaddr, cma_mem->paddr);
+		dma_free_coherent(&drm_p->ddev->pdev->dev, cma_mem->size, cma_mem->vaddr, cma_mem->dma_addr);
 	} else if (cma_mem->pages) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0)
 		release_pages(cma_mem->pages, cma_mem->size >> PAGE_SHIFT);
@@ -921,7 +921,7 @@ static int xocl_cma_mem_alloc_huge_page_by_idx(struct xocl_drm *drm_p, uint32_t 
 	}
 
 	cma_mem->size = page_sz;
-
+	cma_mem->paddr = page_to_phys(cma_mem->pages[0]);
 done:
 	if (ret) {
 		vfree(cma_mem->pages);
@@ -1027,7 +1027,6 @@ static int xocl_cma_mem_alloc_huge_page(struct xocl_drm *drm_p, struct drm_xocl_
 
 	ret = xocl_addr_translator_set_page_table(xdev, phys_addrs, drm_p->cma_bank->start_addr,
 							page_sz, rounddown_num);
-
 done:
 	vfree(user_addr);
 	vfree(phys_addrs);
@@ -1065,11 +1064,11 @@ static int xocl_cma_mem_alloc_by_idx(struct xocl_drm *drm_p, uint64_t size, uint
 	uint64_t page_count;
 	struct xocl_cma_memory *cma_mem = &drm_p->cma_bank->cma_mem[idx];
 	struct page **pages = NULL;
-	dma_addr_t phys_addrs;
+	dma_addr_t dma_addr;
 
 	page_count = (size) >> PAGE_SHIFT;
 
-	cma_mem->vaddr = dma_alloc_coherent(&drm_p->ddev->pdev->dev, size, &phys_addrs, GFP_KERNEL);
+	cma_mem->vaddr = dma_alloc_coherent(&drm_p->ddev->pdev->dev, size, &dma_addr, GFP_KERNEL);
 
 	if (!cma_mem->vaddr) {
 		DRM_ERROR("Unable to alloc %llx bytes CMA buffer", size);
@@ -1084,8 +1083,9 @@ static int xocl_cma_mem_alloc_by_idx(struct xocl_drm *drm_p, uint64_t size, uint
 	}
 
 	cma_mem->pages = pages;
-	cma_mem->paddr = phys_addrs;
+	cma_mem->paddr = page_to_phys(pages[0]);
 	cma_mem->size = size;
+	cma_mem->dma_addr = dma_addr;
 
 done:
 	if (ret)
@@ -1179,7 +1179,6 @@ static int xocl_cma_mem_alloc(struct xocl_drm *drm_p, uint64_t size)
 
 	ret = xocl_addr_translator_set_page_table(xdev, phys_addrs, drm_p->cma_bank->start_addr,
 							page_sz, page_num);
-
 done:	
 	vfree(phys_addrs);
 	return ret;

@@ -1832,10 +1832,11 @@ int xcldev::xclCma(int argc, char *argv[])
         {"enable", no_argument, 0, xcldev::CMA_ENABLE},
         {"disable", no_argument, 0, xcldev::CMA_DISABLE},
         {"size", required_argument, nullptr, xcldev::CMA_SIZE},
+        {0, 0, 0, 0}
     };
 
     int long_index, ret;
-    const char* short_options = "d"; //don't add numbers
+    const char* short_options = "d:"; //don't add numbers
     const char* exe = argv[ 0 ];
     std::string optarg_s;
     const char *unit = NULL;
