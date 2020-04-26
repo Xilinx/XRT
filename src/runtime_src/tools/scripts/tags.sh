@@ -4,7 +4,7 @@ set -e
 
 usage()
 {
-    echo "Usage: tags.sh [options] --project <compile_commands.json>"
+    echo "Usage: tags.sh [options] --root directory"
     echo
     echo "Options:"
     echo "    [--etags]  Generate Emacs TAGS file"
@@ -18,12 +18,14 @@ usage()
 out=TAGS
 cscope=0
 etags=0
+ROOT=../../src
+FILES=()
 
 while [ $# -gt 0 ]; do
     key=$1
     case $key in
-        --project)
-            project="$2"
+        --root)
+            ROOT="$2"
 	    shift
 	    shift
             ;;
@@ -51,29 +53,13 @@ if [ $cscope == 1 ]; then
     echo "Generating cscope database is currently not supported"
 fi
 
-
 if [ $etags == 1 ]; then
-    echo "Generating Emacs TAGS file for XRT userspace code..."
-    grep \"file\": $project | awk '{print $2}' | sed 's/\"//g' | ctags --totals -e -L - -f user.TAGS
+    echo "Generating Emacs TAGS file $out..."
+    ALL_FILES=$(git ls-files --exclude-standard --full-name $ROOT)
+    BASE_DIR=$(readlink -e ../../)
+    for item in $ALL_FILES;
+    do
+	FILES=("${FILES[@]}$BASE_DIR/$item\n")
+    done
+    echo -e ${FILES[@]} | ctags --totals -e -L - -f $out
 fi
-
-XOCL_FILES=$(git ls-files --full-name ../../src/runtime_src/core/pcie/driver/linux/xocl)
-ZOCL_FILES=$(git ls-files --full-name ../../src/runtime_src/core/edge/drm/zocl)
-BASE_DIR=$(readlink -e ../../)
-
-FILES=()
-
-for item in $XOCL_FILES;
-do
-    FILES=("${FILES[@]}$BASE_DIR/$item\n")
-done
-
-for item in $ZOCL_FILES;
-do
-    FILES=("${FILES[@]}$BASE_DIR/$item\n")
-done
-
-echo "Generating Emacs TAGS file for XRT Linux driver code..."
-echo -e ${FILES[@]} | ctags --totals -e -L - -f kernel.TAGS
-
-ctags -e --etags-include="$PWD/user.TAGS" --etags-include="$PWD/kernel.TAGS" -f $out
