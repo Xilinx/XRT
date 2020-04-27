@@ -746,7 +746,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 
 	/* For PR support platform, device-tree has configured addr */
 	if (zdev->pr_isolation_addr) {
-		if (axlf_head.m_header.m_mode != XCLBIN_PR && axlf_head.m_header.m_mode != XCLBIN_HW_EMU) {
+		if (axlf_head.m_header.m_mode != XCLBIN_PR && axlf_head.m_header.m_mode != XCLBIN_HW_EMU && axlf_head.m_header.m_mode != XCLBIN_HW_EMU_PR) {
 			DRM_ERROR("xclbin m_mod %d is not a PR mode",
 			    axlf_head.m_header.m_mode);
 			ret = -EINVAL;
