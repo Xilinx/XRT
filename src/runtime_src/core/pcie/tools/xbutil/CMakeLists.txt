@@ -24,7 +24,5 @@ target_link_libraries(xbutil
   ${CURSES_LIBRARIES}
   )
 
-set_property(TARGET xbutil PROPERTY ENABLE_EXPORTS 1)
-
 install (TARGETS xbutil RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
 install (PROGRAMS "xbsak.sh" DESTINATION ${XRT_INSTALL_DIR}/bin RENAME "xbsak")
