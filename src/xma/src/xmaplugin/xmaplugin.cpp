@@ -477,6 +477,35 @@ int32_t xma_plg_execbo_avail_get(XmaSession s_handle)
     return -1;
 }
 
+int32_t xma_plg_execbo_avail_get2(XmaSession s_handle)
+{
+    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
+    //std::cout << "Sarab: Debug - " << __func__ << "; " << __LINE__ << std::endl;
+    XmaHwKernel* kernel_tmp1 = priv1->kernel_info;
+    int32_t num_execbo = priv1->num_execbo_allocated;
+    int32_t i; 
+    int32_t rc = -1;
+    bool    found = false;
+    //NOTE: execbo lock must be already acquired
+
+    for (i = 0; i < num_execbo; i++) {
+        XmaHwExecBO* execbo_tmp1 = &priv1->kernel_execbos[i];
+        if (!execbo_tmp1->in_use) {
+            found = true;
+        }
+        if (found) {
+            execbo_tmp1->in_use = true;
+            execbo_tmp1->cu_index = kernel_tmp1->cu_index;
+            execbo_tmp1->session_id = s_handle.session_id;
+            rc = i;
+            break;
+        }
+    }
+    //std::cout << "Sarab: Debug - " << __func__ << "; " << __LINE__ << std::endl;
+
+    return rc;
+}
+
 XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
                                  void            *regmap,
                                  int32_t         regmap_size,
@@ -559,7 +588,11 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
             expected = false;
         }
 
-        bo_idx = xma_plg_execbo_avail_get(s_handle);
+        if (g_xma_singleton->cpu_mode == XMA_CPU_MODE2) {
+            bo_idx = xma_plg_execbo_avail_get2(s_handle);
+        } else {
+            bo_idx = xma_plg_execbo_avail_get(s_handle);
+        }
         if (bo_idx != -1) {
             break;
         }
@@ -572,7 +605,7 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
         }
         std::unique_lock<std::mutex> lk(priv1->m_mutex);
         priv1->execbo_is_free.wait(lk);
-        //lk.unlock();
+        lk.unlock();
         itr++;
     }
 
@@ -613,7 +646,7 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
     
     // Set count to size in 32-bit words + 4; Three extra_cu_mask are present
     cu_cmd->count = (regmap_size >> 2) + 4;
-    
+
     if (priv1->num_cu_cmds != 0) {
         if (xclExecBufWithWaitList(priv1->dev_handle, 
                         priv1->kernel_execbos[bo_idx].handle, 1, &priv1->last_execbo_handle) != 0) {
@@ -776,14 +809,17 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
     // Find an available execBO buffer
     uint32_t itr = 0;
     while (true) {
-        std::unique_lock<std::mutex> lk(priv1->m_mutex);
         expected = false;
         while (!priv1->execbo_locked.compare_exchange_weak(expected, desired)) {
             std::this_thread::yield();
             expected = false;
         }
 
-        bo_idx = xma_plg_execbo_avail_get(s_handle);
+        if (g_xma_singleton->cpu_mode == XMA_CPU_MODE2) {
+            bo_idx = xma_plg_execbo_avail_get2(s_handle);
+        } else {
+            bo_idx = xma_plg_execbo_avail_get(s_handle);
+        }
         if (bo_idx != -1) {
             break;
         }
@@ -794,8 +830,9 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
             if (return_code) *return_code = XMA_ERROR;
             return cmd_obj_error;
         }
+        std::unique_lock<std::mutex> lk(priv1->m_mutex);
         priv1->execbo_is_free.wait(lk);
-        //lk.unlock();
+        lk.unlock();
         itr++;
     }
 
@@ -1003,7 +1040,9 @@ int32_t xma_plg_cu_cmd_status(XmaSession s_handle, XmaCUCmdObj* cmd_obj_array, i
             if (g_xma_singleton->cpu_mode == XMA_CPU_MODE1) {
                 std::unique_lock<std::mutex> lk(priv1->m_mutex);
                 priv1->work_item_done_1plus.wait(lk);
-                //lk.unlock();
+                lk.unlock();
+            } else if (g_xma_singleton->cpu_mode == XMA_CPU_MODE2) {
+                std::this_thread::yield();
             } else {
                 xclExecWait(priv1->dev_handle, 100);
             }
@@ -1061,6 +1100,7 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
     }
     bool expected = false;
     bool desired = true;
+/*
     while (!priv1->execbo_locked.compare_exchange_weak(expected, desired)) {
         std::this_thread::yield();
         expected = false;
@@ -1086,7 +1126,7 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
     if (priv1->num_cu_cmds == 0 && count == 0) {
         xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. There may not be any outstandng CU command to wait for\n", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
     }
-
+*/
     uint32_t iter1 = timeout_ms / 10;
     if (iter1 < 10) {
         iter1 = 10;
@@ -1095,7 +1135,7 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
         while (iter1 > 0) {
             std::unique_lock<std::mutex> lk(priv1->m_mutex);
             priv1->work_item_done_1plus.wait(lk);
-            //lk.unlock();
+            lk.unlock();
 
             count = priv1->kernel_complete_count;
             if (count) {
@@ -1114,11 +1154,42 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
         return XMA_ERROR;
     }
 
-    uint32_t timeout1 = 10;
     if (g_xma_singleton->cpu_mode == XMA_CPU_MODE2) {
         while (iter1 > 0) {
-            xclExecWait(priv1->dev_handle, timeout1);
+            expected = false;
+            if (priv1->execbo_locked.compare_exchange_weak(expected, desired)) {
+                //kernel completion lock acquired
 
+                if (xma_core::utils::check_all_execbo(s_handle) != XMA_SUCCESS) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "check_all-2: Unexpected error\n");
+                    //Release execbo lock
+                    priv1->execbo_locked = false;
+                    return XMA_ERROR;
+                }
+                //Release execbo lock
+                priv1->execbo_locked = false;
+            }
+            count = priv1->kernel_complete_count;
+            if (count) {
+                priv1->kernel_complete_count--;
+                if (count > 255) {
+                    xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "CU completion count is more than 256. Application maybe slow to process CU output");
+                }
+                return XMA_SUCCESS;
+            }
+            if (priv1->num_cu_cmds == 0 && count == 0) {
+                xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. There may not be any outstandng CU command to wait for\n", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
+            }
+
+            iter1--;
+            std::this_thread::yield();
+        }
+        return XMA_ERROR;
+    }
+
+    uint32_t timeout1 = 10;
+    if (g_xma_singleton->cpu_mode == XMA_CPU_MODE3) {
+        while (iter1 > 0) {
             expected = false;
             while (!priv1->execbo_locked.compare_exchange_weak(expected, desired)) {
                 std::this_thread::yield();
@@ -1146,12 +1217,13 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
                 xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. There may not be any outstandng CU command to wait for\n", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
             }
 
+            xclExecWait(priv1->dev_handle, timeout1);
             iter1--;
         }
         return XMA_ERROR;
     }
 
-    //Below is CPU mode-3; low cpu load mode
+    //Below is CPU mode-4; low cpu load mode
     int32_t give_up = 0;
     while (give_up < 20) {
         count = priv1->kernel_complete_count;
@@ -1318,3 +1390,11 @@ int32_t xma_plg_add_ref_cnt(XmaBufferObj *b_obj, int32_t num) {
     return b_obj_priv->ref_cnt;
 }
 
+void* xma_plg_get_dev_handle(XmaSession s_handle) {
+    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
+    if (priv1 == nullptr) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_get_dev_handle failed. XMASession is corrupted.");
+        return nullptr;
+    }
+    return priv1->dev_handle;
+}

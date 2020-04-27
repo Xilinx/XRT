@@ -511,55 +511,79 @@ int32_t check_all_execbo(XmaSession s_handle) {
 
     XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
 
-    if (priv1->num_cu_cmds != 0) {
-        bool notify_work_item_done_1plus = false;
-        bool notify_execbo_is_free = false;
-
-        for (auto ebo_it = priv1->execbo_to_check.begin(); ebo_it != priv1->execbo_to_check.end(); /*incr inside*/) {
-            int32_t val = *ebo_it;
-            auto& ebo = priv1->kernel_execbos[val];
-            if (ebo.in_use) {
-                ert_start_kernel_cmd *cu_cmd = 
-                    (ert_start_kernel_cmd*)ebo.data;
-                if (cu_cmd->state == ERT_CMD_STATE_COMPLETED) {
-                    if (s_handle.session_type < XMA_ADMIN) {
-                        priv1->kernel_complete_count++;
-                        priv1->kernel_complete_total++;
+    if (g_xma_singleton->cpu_mode == XMA_CPU_MODE2) {
+        if (priv1->num_cu_cmds != 0) {
+            int32_t i;
+            int32_t num_execbo = priv1->num_execbo_allocated;
+            for (i = 0; i < num_execbo; i++) {
+                auto& ebo = priv1->kernel_execbos[i];
+                if (ebo.in_use) {
+                    ert_start_kernel_cmd *cu_cmd = 
+                        (ert_start_kernel_cmd*)ebo.data;
+                    if (cu_cmd->state == ERT_CMD_STATE_COMPLETED) {
+                        if (s_handle.session_type < XMA_ADMIN) {
+                            priv1->kernel_complete_count++;
+                            priv1->kernel_complete_total++;
+                        }
+                        ebo.in_use = false;
+                        cu_cmd->state = ERT_CMD_STATE_MAX;
+                        priv1->CU_cmds.erase(ebo.cu_cmd_id1);
+                        priv1->num_cu_cmds--;
                     }
-                    ebo.in_use = false;
-                    cu_cmd->state = ERT_CMD_STATE_MAX;
-                    notify_work_item_done_1plus = true;
-                    notify_execbo_is_free = true;
-                    priv1->CU_cmds.erase(ebo.cu_cmd_id1);
-                    priv1->num_cu_cmds--;
-                    //priv1->execbo_lru.emplace_back(val);Let's not reuse execbo immediately after completion
-                    ebo_it = priv1->execbo_to_check.erase(ebo_it);
-                } else {
-                    ebo_it++;
                 }
-            } else {
-                notify_execbo_is_free = true;
-                ebo_it++;
-            }
-        }
-
-        if (notify_execbo_is_free) {
-            priv1->execbo_is_free.notify_all();
-        }
-        if (notify_work_item_done_1plus) {
-            priv1->work_item_done_1plus.notify_all();
-            if (priv1->slowest_element) {
-                std::this_thread::yield();
-            }
-        } else if (priv1->kernel_complete_count != 0) {
-            priv1->work_item_done_1plus.notify_all();
-            if (priv1->slowest_element) {
-                std::this_thread::yield();
             }
         }
     } else {
-        priv1->kernel_done_or_free.notify_all();
-        priv1->execbo_is_free.notify_all();
+        if (priv1->num_cu_cmds != 0) {
+            bool notify_work_item_done_1plus = false;
+            bool notify_execbo_is_free = false;
+
+            for (auto ebo_it = priv1->execbo_to_check.begin(); ebo_it != priv1->execbo_to_check.end(); /*incr inside*/) {
+                int32_t val = *ebo_it;
+                auto& ebo = priv1->kernel_execbos[val];
+                if (ebo.in_use) {
+                    ert_start_kernel_cmd *cu_cmd = 
+                        (ert_start_kernel_cmd*)ebo.data;
+                    if (cu_cmd->state == ERT_CMD_STATE_COMPLETED) {
+                        if (s_handle.session_type < XMA_ADMIN) {
+                            priv1->kernel_complete_count++;
+                            priv1->kernel_complete_total++;
+                        }
+                        ebo.in_use = false;
+                        cu_cmd->state = ERT_CMD_STATE_MAX;
+                        notify_work_item_done_1plus = true;
+                        notify_execbo_is_free = true;
+                        priv1->CU_cmds.erase(ebo.cu_cmd_id1);
+                        priv1->num_cu_cmds--;
+                        //priv1->execbo_lru.emplace_back(val);Let's not reuse execbo immediately after completion
+                        ebo_it = priv1->execbo_to_check.erase(ebo_it);
+                    } else {
+                        ebo_it++;
+                    }
+                } else {
+                    notify_execbo_is_free = true;
+                    ebo_it++;
+                }
+            }
+
+            if (notify_execbo_is_free) {
+                priv1->execbo_is_free.notify_all();
+            }
+            if (notify_work_item_done_1plus) {
+                priv1->work_item_done_1plus.notify_all();
+                if (priv1->slowest_element) {
+                    std::this_thread::yield();
+                }
+            } else if (priv1->kernel_complete_count != 0) {
+                priv1->work_item_done_1plus.notify_all();
+                if (priv1->slowest_element) {
+                    std::this_thread::yield();
+                }
+            }
+        } else {
+            priv1->kernel_done_or_free.notify_all();
+            priv1->execbo_is_free.notify_all();
+        }
     }
 
     return XMA_SUCCESS;

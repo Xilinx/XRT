@@ -86,13 +86,16 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     filter_session->private_session_data_size = -1;//Managed by host video application
 
     filter_session->filter_plugin = plg;
-
+/*
     bool expected = false;
     bool desired = true;
     while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
         expected = false;
     }
+*/
+    //Moving it later; as already initialized so new xclbin will not load now
+    //std::lock_guard<std::mutex> guard1(g_xma_singleton->m_mutex);
     //Singleton lock acquired
 
     int32_t rc, dev_index, cu_index;
@@ -105,7 +108,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
                    "XMA session creation failed. dev_index not found\n");
         //Release singleton lock
-        g_xma_singleton->locked = false;
+        //g_xma_singleton->locked = false;
         free(filter_session);
         return nullptr;
     }
@@ -123,7 +126,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
                    "XMA session creation failed. dev_index not loaded with xclbin\n");
         //Release singleton lock
-        g_xma_singleton->locked = false;
+        //g_xma_singleton->locked = false;
         free(filter_session);
         return nullptr;
     }
@@ -131,7 +134,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
                    "XMA session creation failed. Invalid cu_index = %d\n", cu_index);
         //Release singleton lock
-        g_xma_singleton->locked = false;
+        //g_xma_singleton->locked = false;
         free(filter_session);
         return nullptr;
     }
@@ -149,18 +152,10 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
             xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
                     "XMA session creation failed. cu %s not found\n", cu_name.c_str());
             //Release singleton lock
-            g_xma_singleton->locked = false;
+            //g_xma_singleton->locked = false;
             free(filter_session);
             return nullptr;
         }
-    }
-
-    if (hwcfg->devices[hwcfg_dev_index].kernels[cu_index].in_use) {
-        xma_logmsg(XMA_DEBUG_LOG, XMA_FILTER_MOD,
-                   "XMA session sharing CU: %s\n", hwcfg->devices[hwcfg_dev_index].kernels[cu_index].name);
-    } else {
-        xma_logmsg(XMA_DEBUG_LOG, XMA_FILTER_MOD,
-                   "XMA session with CU: %s\n", hwcfg->devices[hwcfg_dev_index].kernels[cu_index].name);
     }
 
     void* dev_handle = hwcfg->devices[hwcfg_dev_index].handle;
@@ -172,7 +167,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     if (xma_core::finalize_ddr_index(kernel_info, filter_props->ddr_bank_index, 
         filter_session->base.hw_session.bank_index, XMA_FILTER_MOD) != XMA_SUCCESS) {
         //Release singleton lock
-        g_xma_singleton->locked = false;
+        //g_xma_singleton->locked = false;
         free(filter_session);
         return nullptr;
     }
@@ -183,7 +178,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
                 "Selected dataflow CU with channels has ini setting with max channel_id of %d. Cannot create session with higher channel_id of %d\n", kernel_info->max_channel_id, filter_session->base.channel_id);
             
             //Release singleton lock
-            g_xma_singleton->locked = false;
+            //g_xma_singleton->locked = false;
             free(filter_session);
             return nullptr;
         }
@@ -200,7 +195,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
                    "Initalization of plugin failed. Plugin is incompatible with this XMA version\n");
         //Release singleton lock
-        g_xma_singleton->locked = false;
+        //g_xma_singleton->locked = false;
         free(filter_session);
         return nullptr;
     }
@@ -208,28 +203,15 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
                    "Initalization of plugin failed. Newer plugin is not allowed with old XMA library\n");
         //Release singleton lock
-        g_xma_singleton->locked = false;
+        //g_xma_singleton->locked = false;
         free(filter_session);
         return nullptr;
     }
 
     XmaHwDevice& dev_tmp1 = hwcfg->devices[hwcfg_dev_index];
-    if (!kernel_info->soft_kernel && !kernel_info->in_use) {
-        if (xclOpenContext(dev_handle, dev_tmp1.uuid, kernel_info->cu_index_ert, true) != 0) {
-            xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD, "Failed to open context to CU %s for this session\n", kernel_info->name);
-            //Release singleton lock
-            g_xma_singleton->locked = false;
-            free(filter_session);
-            return nullptr;
-        }
-    }
     // Allocate the private data
     filter_session->base.plugin_data =
         calloc(filter_session->filter_plugin->plugin_data_size, sizeof(uint8_t));
-
-    filter_session->base.session_id = g_xma_singleton->num_of_sessions + 1;
-    xma_logmsg(XMA_INFO_LOG, XMA_FILTER_MOD,
-                "XMA session channel_id: %d; session_id: %d\n", filter_session->base.channel_id, filter_session->base.session_id);
 
     XmaHwSessionPrivate *priv1 = new XmaHwSessionPrivate();
     priv1->dev_handle = dev_handle;
@@ -244,24 +226,50 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     priv1->num_execbo_allocated = num_execbo;
     if (xma_core::create_session_execbo(priv1, num_execbo, XMA_FILTER_MOD) != XMA_SUCCESS) {
         //Release singleton lock
-        g_xma_singleton->locked = false;
+        //g_xma_singleton->locked = false;
         free(filter_session->base.plugin_data);
         free(filter_session);
         delete priv1;
         return nullptr;
     }
 
-    g_xma_singleton->num_filters++;
-    g_xma_singleton->num_of_sessions = filter_session->base.session_id;
+    //Obtain lock only for a) singleton changes & b) kernel_info changes
+    std::unique_lock<std::mutex> guard1(g_xma_singleton->m_mutex);
+    //Singleton lock acquired
+
+    if (!kernel_info->soft_kernel && !kernel_info->in_use) {
+        if (xclOpenContext(dev_handle, dev_tmp1.uuid, kernel_info->cu_index_ert, true) != 0) {
+            xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD, "Failed to open context to CU %s for this session\n", kernel_info->name);
+            //Release singleton lock
+            //g_xma_singleton->locked = false;
+            free(filter_session->base.plugin_data);
+            free(filter_session);
+            delete priv1;
+            return nullptr;
+        }
+    }
+    filter_session->base.session_id = g_xma_singleton->num_of_sessions + 1;
+    xma_logmsg(XMA_INFO_LOG, XMA_FILTER_MOD,
+                "XMA session channel_id: %d; session_id: %d\n", filter_session->base.channel_id, filter_session->base.session_id);
+
     if (kernel_info->in_use) {
         kernel_info->is_shared = true;
+        xma_logmsg(XMA_DEBUG_LOG, XMA_FILTER_MOD,
+                   "XMA session sharing CU: %s\n", hwcfg->devices[hwcfg_dev_index].kernels[cu_index].name);
     } else {
         kernel_info->in_use = true;
+        xma_logmsg(XMA_DEBUG_LOG, XMA_FILTER_MOD,
+                   "XMA session with CU: %s\n", hwcfg->devices[hwcfg_dev_index].kernels[cu_index].name);
     }
     kernel_info->num_sessions++;
+    g_xma_singleton->num_filters++;
+    g_xma_singleton->num_of_sessions = filter_session->base.session_id;
 
     g_xma_singleton->all_sessions_vec.push_back(filter_session->base);
     //g_xma_singleton->all_sessions.emplace(g_xma_singleton->num_of_sessions, filter_session->base);
+
+    //Release singleton lock
+    guard1.unlock();
 
     //init can execute cu cmds as well so must be fater adding to singleton above
     rc = filter_session->filter_plugin->init(filter_session);
@@ -270,7 +278,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
                    "Initalization of filter plugin failed. Return code %d\n",
                    rc);
         //Release singleton lock
-        g_xma_singleton->locked = false;
+        //g_xma_singleton->locked = false;
         free(filter_session->base.plugin_data);
         //free(filter_session); Added to singleton above; Keep it as checked for cu cmds
         //delete priv1;
@@ -278,7 +286,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     }
 
     //Release singleton lock
-    g_xma_singleton->locked = false;
+    //g_xma_singleton->locked = false;
 
     return filter_session;
 }
@@ -289,12 +297,15 @@ xma_filter_session_destroy(XmaFilterSession *session)
     int32_t rc;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_FILTER_MOD, "%s()\n", __func__);
+/*
     bool expected = false;
     bool desired = true;
     while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
         expected = false;
     }
+*/
+    std::lock_guard<std::mutex> guard1(g_xma_singleton->m_mutex);
     //Singleton lock acquired
 
     if (session == NULL) {
@@ -302,7 +313,7 @@ xma_filter_session_destroy(XmaFilterSession *session)
                    "Session is already released\n");
 
         //Release singleton lock
-        g_xma_singleton->locked = false;
+        //g_xma_singleton->locked = false;
 
         return XMA_ERROR;
     }
@@ -311,7 +322,7 @@ xma_filter_session_destroy(XmaFilterSession *session)
                    "Session is corrupted\n");
 
         //Release singleton lock
-        g_xma_singleton->locked = false;
+        //g_xma_singleton->locked = false;
 
         return XMA_ERROR;
     }
@@ -320,7 +331,7 @@ xma_filter_session_destroy(XmaFilterSession *session)
                    "Session is corrupted\n");
 
         //Release singleton lock
-        g_xma_singleton->locked = false;
+        //g_xma_singleton->locked = false;
 
         return XMA_ERROR;
     }
@@ -347,7 +358,7 @@ xma_filter_session_destroy(XmaFilterSession *session)
     session = nullptr;
 
     //Release singleton lock
-    g_xma_singleton->locked = false;
+    //g_xma_singleton->locked = false;
 
     return XMA_SUCCESS;
 }

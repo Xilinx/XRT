@@ -46,26 +46,28 @@ int32_t xma_get_default_ddr_index(int32_t dev_index, int32_t cu_index, char* cu_
                    "ddr_index can be obtained only after xma_initialization\n");
         return -1;
     }
-
+/*
     bool expected = false;
     bool desired = true;
     while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
         expected = false;
     }
+*/
+    std::lock_guard<std::mutex> guard1(g_xma_singleton->m_mutex);
     //Singleton lock acquired
 
     if (cu_index < 0) {
         cu_index = xma_core::utils::get_cu_index(dev_index, cu_name);
         if (cu_index < 0) {
             //Release singleton lock
-            g_xma_singleton->locked = false;
+            //g_xma_singleton->locked = false;
             return -1;
         }
     }
     int32_t ddr_index = xma_core::utils::get_default_ddr_index(dev_index, cu_index);
     //Release singleton lock
-    g_xma_singleton->locked = false;
+    //g_xma_singleton->locked = false;
 
     return ddr_index;
 }
@@ -261,7 +263,11 @@ void xma_thread2() {
             session_index = 0;
         }
         XmaHwSessionPrivate *priv2 = (XmaHwSessionPrivate*) g_xma_singleton->all_sessions_vec[session_index].hw_session.private_do_not_use;
-        xclExecWait(priv2->dev_handle, 100);
+        if (g_xma_singleton->cpu_mode == XMA_CPU_MODE2) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(3));
+        } else {
+            xclExecWait(priv2->dev_handle, 100);
+        }
         session_index++;
 
         for (auto& itr1: g_xma_singleton->all_sessions_vec) {
@@ -270,9 +276,14 @@ void xma_thread2() {
             }
             XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) itr1.hw_session.private_do_not_use;
             expected = false;
+/*
             while (!priv1->execbo_locked.compare_exchange_weak(expected, desired)) {
                 std::this_thread::yield();
                 expected = false;
+            }
+*/
+            if (!priv1->execbo_locked.compare_exchange_weak(expected, desired)) {
+                continue;
             }
             //execbo lock acquired
 
@@ -308,19 +319,22 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
     }
 
     //Sarab: TODO initialize all elements of singleton
+/*
     bool expected = false;
     bool desired = true;
     while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
         expected = false;
     }
+*/
+    std::lock_guard<std::mutex> guard1(g_xma_singleton->m_mutex);
     //Singleton lock acquired
 
     if (g_xma_singleton->xma_initialized) {
         std::cout << "XMA FATAL: XMA is already initialized" << std::endl;
 
         //Release singleton lock
-        g_xma_singleton->locked = false;
+        //g_xma_singleton->locked = false;
         return XMA_ERROR;
     }
 
@@ -330,7 +344,7 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
           std::cout << "XMA FATAL: Unable to load XRT library" << std::endl;
 
           //Release singleton lock
-          g_xma_singleton->locked = false;
+          //g_xma_singleton->locked = false;
           return XMA_ERROR;
           break;
         case 1:
@@ -355,7 +369,7 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
           std::cout << "XMA FATAL: Unexpected error. Unable to load XRT library" << std::endl;
 
           //Release singleton lock
-          g_xma_singleton->locked = false;
+          //g_xma_singleton->locked = false;
           return XMA_ERROR;
           break;
     }
@@ -391,7 +405,7 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
     ret = xma_hw_probe(&g_xma_singleton->hwcfg);
     if (ret != XMA_SUCCESS) {
         //Release singleton lock
-        g_xma_singleton->locked = false;
+        //g_xma_singleton->locked = false;
         for (XmaHwDevice& hw_device: g_xma_singleton->hwcfg.devices) {
             hw_device.kernels.clear();
         }
@@ -412,7 +426,7 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Configure hardware\n");
     if (!xma_hw_configure(&g_xma_singleton->hwcfg, devXclbins, num_parms)) {
         //Release singleton lock
-        g_xma_singleton->locked = false;
+        //g_xma_singleton->locked = false;
         for (XmaHwDevice& hw_device: g_xma_singleton->hwcfg.devices) {
             hw_device.kernels.clear();
         }
@@ -457,7 +471,7 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
         //xma_res_shm_unmap(g_xma_singleton->shm_res_cfg);
 
         //Release singleton lock
-        g_xma_singleton->locked = false;
+        //g_xma_singleton->locked = false;
         for (XmaHwDevice& hw_device: g_xma_singleton->hwcfg.devices) {
             hw_device.kernels.clear();
         }
@@ -478,7 +492,7 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
     xma_init_sighandlers();
     //xma_res_mark_xma_ready(g_xma_singleton->shm_res_cfg);
 
-    g_xma_singleton->locked = false;
+    //g_xma_singleton->locked = false;
     g_xma_singleton->xma_initialized = true;
     return XMA_SUCCESS;
 }

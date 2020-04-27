@@ -77,6 +77,7 @@ typedef struct XmaAdminProperties
     uint32_t        param_cnt;
     int32_t         dev_index;
     char            *plugin_lib;
+    bool            ooo_execution;//Out of order execution of cu cmds
     int32_t         reserved[4];
 } XmaAdminProperties;
 

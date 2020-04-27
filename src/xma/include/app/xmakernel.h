@@ -81,6 +81,7 @@ typedef struct XmaKernelProperties
     int32_t         ddr_bank_index;//Used for allocating device buffers. Used only if valid index is provide (>= 0); value of -1 imples that XMA should select automatically and then XMA will set it with bank index used automatically
     int32_t         channel_id;
     char            *plugin_lib;
+    bool            ooo_execution;//Out of order execution of cu cmds
     int32_t         reserved[4];
 } XmaKernelProperties;
 

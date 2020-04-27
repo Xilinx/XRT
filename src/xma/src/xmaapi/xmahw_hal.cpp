@@ -214,15 +214,17 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Unable to open device  id: %d\n", dev_index);
             return false;
         }
+
         dev_tmp1.dev_index = dev_index;
-        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "xclOpen handle = %p\n",
-            dev_tmp1.handle);
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "xclOpen handle = %p\n", dev_tmp1.handle);
+/* This is adding to start delay
         rc = xclGetDeviceInfo2(dev_tmp1.handle, &dev_tmp1.info);
         if (rc != 0)
         {
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "xclGetDeviceInfo2 failed for device id: %d, rc=%d\n", dev_index, rc);
             return false;
         }
+*/
 
         /* Always attempt download xclbin */
         rc = load_xclbin_to_device(dev_tmp1.handle, buffer);
@@ -231,6 +233,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
                         xclbin.c_str(), dev_index);
             return false;
         }
+
         uuid_copy(dev_tmp1.uuid, info.uuid); 
         dev_tmp1.number_of_cus = info.number_of_kernels;
         dev_tmp1.number_of_mem_banks = info.number_of_mem_banks;
@@ -337,12 +340,19 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
             cu_index_ert = 0;
 
             for (uint32_t d2 = 0; d2 < info.number_of_hardware_kernels; d2++) {
+                if (base_addr1 == info.cu_addrs_sorted[d2]) {
+                    break;
+                }
+                cu_mask = cu_mask << 1;
+                cu_index_ert++;
+                /*
                 if (d1 != d2) {
                     if (dev_tmp1.kernels[d2].base_address < base_addr1) {
                         cu_mask = cu_mask << 1;
                         cu_index_ert++;
                     }
                 }
+                */
             }
             dev_tmp1.kernels[d1].cu_index_ert = cu_index_ert;
             //dev_tmp1.kernels[d1].cu_mask0 = cu_mask & 0xFFFFFFFF;
@@ -376,11 +386,15 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
             cu_mask = cu_mask << 1;
         }
 
+/* TODO Sarab For debug
         //Opening virtual CU context as some applications may use soft kernels only
         if (xclOpenContext(dev_tmp1.handle, info.uuid, -1, true) != 0) {
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Failed to open virtual CU context\n");
             return false;
         }
+*/
+        xclOpenContext(dev_tmp1.handle, info.uuid, dev_tmp1.kernels[0].cu_index_ert, true);
+        dev_tmp1.kernels[0].in_use = true;
     }
 
     return true;

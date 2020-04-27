@@ -27,6 +27,7 @@
 #include <list>
 #include <unordered_map>
 #include <thread>
+#include <mutex>
 
 typedef struct XmaLogMsg
 {
@@ -52,7 +53,8 @@ typedef struct XmaSingleton
     //XmaScalerPlugin   scalercfg[MAX_PLUGINS];
     //XmaFilterPlugin   filtercfg[MAX_PLUGINS];
     //XmaKernelPlugin   kernelcfg[MAX_PLUGINS];
-    std::atomic<bool> locked;
+    //std::atomic<bool> locked;
+    std::mutex            m_mutex;
     std::atomic<uint32_t> num_decoders;
     std::atomic<uint32_t> num_encoders;
     std::atomic<uint32_t> num_scalers;
@@ -64,6 +66,7 @@ typedef struct XmaSingleton
     std::list<XmaLogMsg>   log_msg_list;
     std::atomic<bool> log_msg_list_locked;
     std::atomic<uint32_t> num_execbos;
+    XmaEncoderPlugin*   encoder_plugin_lib_func;
 
     std::atomic<bool> xma_exit;
     std::thread       xma_thread1;
@@ -72,7 +75,7 @@ typedef struct XmaSingleton
     uint32_t          reserved[4];
 
   XmaSingleton() {
-    locked = false;
+    //locked = false;
     xma_initialized = false;
     num_decoders = 0;
     num_encoders = 0;
@@ -85,6 +88,7 @@ typedef struct XmaSingleton
     log_msg_list_locked = false;
     xma_exit = false;
     cpu_mode = 0;
+    encoder_plugin_lib_func = nullptr;
   }
 } XmaSingleton;
 
