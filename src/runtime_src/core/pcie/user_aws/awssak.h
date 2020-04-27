@@ -47,6 +47,11 @@
 #include "core/common/utils.h"
 #include "core/pcie/common/dd.h"
 
+#ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 #define TO_STRING(x) #x
 //#define AXI_FIREWALL Not supported for AWS
 
@@ -659,5 +664,9 @@ void printHelp(const std::string& exe);
 int xclAwssak(int argc, char *argv[]);
 
 } // end namespace xcldev
+
+#ifdef __GNUC__
+# pragma GCC diagnostic pop
+#endif
 
 #endif /* AWSSAK_H */

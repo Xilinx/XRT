@@ -1507,7 +1507,15 @@ int xcldev::xclValidate(int argc, char *argv[])
 
 int xcldev::device::reset(xclResetKind kind)
 {
+#ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
     return xclResetDevice(m_handle, kind);
+#ifdef __GNUC__
+# pragma GCC diagnostic pop
+#endif
+    
 }
 
 static bool canProceed()
