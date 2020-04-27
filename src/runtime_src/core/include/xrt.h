@@ -298,6 +298,9 @@ xclClose(xclDeviceHandle handle);
  * purged. A device may be reset if a user's application dies without waiting for
  * running kernel(s) to finish.
  * NOTE: Only implemeted Reset kind through user pf is XCL_USER_RESET
+ *
+ * This API is deprecated and will be removed in future release.
+ * New clients should run xbutil reset instead
  */
 XRT_DEPRECATED
 XCL_DRIVER_DLLESPEC
@@ -445,6 +448,9 @@ xclCloseContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int ipIndex);
 
 /*
  * Update the device BPI PROM with new image, deprecated
+ *
+ * This API is deprecated and will be removed in future release.
+ * New clients should run xbmgmt flash instead
  */
 XRT_DEPRECATED
 XCL_DRIVER_DLLESPEC
@@ -453,6 +459,9 @@ xclUpgradeFirmware(xclDeviceHandle handle, const char *fileName);
 
 /*
  * Update the device PROM with new image with clearing bitstream, deprecated
+ *
+ * This API is deprecated and will be removed in future release.
+ * New clients should run xbmgmt flash instead
  */
 XRT_DEPRECATED
 XCL_DRIVER_DLLESPEC
@@ -461,6 +470,9 @@ xclUpgradeFirmware2(xclDeviceHandle handle, const char *file1, const char* file2
 
 /*
  * Update the device SPI PROM with new image, deprecated
+ *
+ * This API is deprecated and will be removed in future release.
+ * New clients should run xbmgmt flash instead
  */
 XRT_DEPRECATED
 XCL_DRIVER_DLLESPEC
@@ -474,6 +486,9 @@ xclUpgradeFirmwareXSpi(xclDeviceHandle handle, const char *fileName, int index);
  * Return:         0 on success or appropriate error number
  *
  * This should only be called when there are no other clients. It will cause PCIe bus re-enumeration
+ *
+ * This API is deprecated and will be removed in future release.
+ * This functionality is no longer supported.
  */
 XRT_DEPRECATED
 XCL_DRIVER_DLLESPEC
@@ -483,6 +498,9 @@ xclBootFPGA(xclDeviceHandle handle);
 /*
  * Write to /sys/bus/pci/devices/<deviceHandle>/remove and initiate a pci rescan by
  * writing to /sys/bus/pci/rescan, deprecated
+ *
+ * This API is deprecated and will be removed in future release.
+ * This functionality is no longer supported.
  */
 XRT_DEPRECATED
 XCL_DRIVER_DLLESPEC
