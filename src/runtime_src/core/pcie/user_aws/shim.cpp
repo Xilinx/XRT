@@ -38,6 +38,11 @@
 #define MMAP_SIZE_USER         0x400000
 #endif
 
+#ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 /* Aligning access to FPGA DRAM space to 4096 Byte */
 //TODO : Should this be pagesize too ?
 #define DDR_BUFFER_ALIGNMENT   0x1000
@@ -1687,3 +1692,6 @@ int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceIn
   return 0;
 }
 
+#ifdef __GNUC__
+# pragma GCC diagnostic pop
+#endif

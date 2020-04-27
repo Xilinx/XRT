@@ -483,9 +483,10 @@ namespace xdp {
 
   void ProfileWriterI::writeGuidanceMetadataSummary(RTProfile *profile)
   {
-    auto deviceExecTimesMap = mPluginHandle->getDeviceExecTimesMap();
+    auto deviceExecTimesMap  = mPluginHandle->getDeviceExecTimesMap();
     auto computeUnitCallsMap = mPluginHandle->getComputeUnitCallsMap();
-    auto kernelCountsMap = mPluginHandle->getKernelCountsMap();
+    auto kernelCountsMap     = mPluginHandle->getKernelCountsMap();
+    auto numMonitorMap       = mPluginHandle->getNumMonitorMap();
 
     // 1. Device execution times
     std::string checkName;
@@ -507,8 +508,15 @@ namespace xdp {
       writeTableRowEnd(getStream());
     }
 
-    // 3. Global memory bit widths
-    // Replaced by memory type bit widths
+    // 3. Number of monitors on devices
+    std::string checkName3;
+    XDPPluginI::getGuidanceName(XDPPluginI::NUM_MONITORS, checkName3);
+
+    for(auto& itr : numMonitorMap) {
+      writeTableRowStart(getStream());
+      writeTableCells(getStream(), checkName3, itr.first /*deviceName|monType*/, itr.second /*value*/);
+      writeTableRowEnd(getStream());
+    }
 
     // 4. Usage of MigrateMemObjects
     std::string checkName4;

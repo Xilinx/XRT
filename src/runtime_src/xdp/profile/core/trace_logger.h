@@ -124,7 +124,8 @@ namespace xdp {
     int mHostP2PTransfers;
     uint32_t mCurrentContextId;
     uint32_t mCuStarts;
-    uint32_t mCurrentTxCount = 0;
+    uint32_t mCurrentReadCount = 0;
+    uint32_t mCurrentWriteCount = 0;
     std::string mCurrentKernelName;
     std::string mCurrentDeviceName;
     std::string mCurrentBinaryName;

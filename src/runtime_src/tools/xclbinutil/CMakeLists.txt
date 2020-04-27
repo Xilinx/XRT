@@ -21,42 +21,6 @@ endif()
 include_directories(${CMAKE_BINARY_DIR}/gen)
 
 
-## ==-- x c l b i n c a t --====================================================
-
-if(NOT WIN32)    # xclbincat is not supported on windows
-  file(GLOB XCLBINCAT_FILES
-    "xclbincat.cxx"
-    "xclbincat1.cxx"
-    "xclbindata.cxx"
-    "xclbinutils.cxx"
-    )
-  
-  set(XCLBINCAT_SRC ${XCLBINCAT_FILES})
-  
-  add_executable(xclbincat ${XCLBINCAT_SRC})
-  target_link_libraries(xclbincat ${Boost_LIBRARIES})
-  
-  install (TARGETS xclbincat RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR})
-endif()
-
-# ==-- x c l b i n s p l i t --================================================
-
-if(NOT WIN32)    # xclbinsplit is not supported on windows
-  file(GLOB XCLBINSPLIT_FILES
-    "xclbinsplit.cxx"
-    "xclbinsplit1.cxx"
-    "xclbindata.cxx"
-    "xclbinutils.cxx"
-  )
-  
-  set(XCLBINSPLIT_SRC ${XCLBINSPLIT_FILES})
-  
-  add_executable(xclbinsplit ${XCLBINSPLIT_SRC})
-  target_link_libraries(xclbinsplit ${Boost_LIBRARIES})
-  install (TARGETS xclbinsplit RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR})
-endif()
-
-
 # ==-- x c l b i n u t i l --==================================================
 
 set(XCLBINUTIL_NAME "xclbinutil")

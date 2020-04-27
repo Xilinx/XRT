@@ -18,6 +18,7 @@
 
 #include <getopt.h>
 #include <iostream>
+#include <vector>
 #include <stdexcept>
 #include <string>
 #include <cstring>

@@ -3574,7 +3574,7 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 		vfree(bdinfo_raw);
 	} else {
 
-		if (xmc->bdinfo_raw &&
+		if (xmc->bdinfo_loaded &&
 			!strcmp(xmc->bmc_ver, xmc->exp_bmc_ver)) {
 			xocl_info(&xmc->pdev->dev, "board info loaded, skip\n");
 			return 0;

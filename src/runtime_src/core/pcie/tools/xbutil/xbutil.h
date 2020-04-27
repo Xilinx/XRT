@@ -1455,7 +1455,14 @@ public:
             return -EACCES;
         } else {
             int retVal = -1;
+#ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
             retVal = xclBootFPGA(m_handle);
+#ifdef __GNUC__
+# pragma GCC diagnostic pop
+#endif
             if( retVal == 0 )
             {
                 m_handle = xclOpen( m_idx, nullptr, XCL_QUIET );

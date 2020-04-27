@@ -292,13 +292,13 @@ XclBinUtilities::hexStringToBinaryBuffer(const std::string& _inputString,
 
 #ifdef _WIN32
 uint64_t
-XclBinUtilities::stringToUInt64(const std::string& _sInteger) {
+XclBinUtilities::stringToUInt64(const std::string& _sInteger, bool _bForceHex) {
   uint64_t value = 0;
 
   // Is it a hex value
-  if ((_sInteger.length() > 2) &&
-      (_sInteger[0] == '0') &&
-      (_sInteger[1] == 'x')) {
+  if ( _bForceHex || 
+       ((_sInteger.length() > 2) &&
+        (_sInteger[0] == '0') && (_sInteger[1] == 'x'))) {
     if (1 == sscanf_s(_sInteger.c_str(), "%" PRIx64 "", &value)) {
       return value;
     }
@@ -313,13 +313,13 @@ XclBinUtilities::stringToUInt64(const std::string& _sInteger) {
 }
 #else
 uint64_t
-XclBinUtilities::stringToUInt64(const std::string& _sInteger) {
+XclBinUtilities::stringToUInt64(const std::string& _sInteger, bool _bForceHex) {
   uint64_t value = 0;
 
   // Is it a hex value
-  if ((_sInteger.length() > 2) &&
-      (_sInteger[0] == '0') &&
-      (_sInteger[1] == 'x')) {
+  if (_bForceHex || 
+      ((_sInteger.length() > 2) &&
+       (_sInteger[0] == '0') && (_sInteger[1] == 'x'))) {
     if (1 == sscanf(_sInteger.c_str(), "%" PRIx64 "", &value)) {
       return value;
     }

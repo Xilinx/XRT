@@ -9,7 +9,7 @@
 
 #include "xrt_cu.h"
 
-#define ECHO 0
+extern int kds_echo;
 
 static void cu_hls_wait(void *core)
 {
@@ -43,13 +43,13 @@ static void cu_hls_put_credit(void *core, u32 count)
 
 static void cu_hls_configure(void *core, u32 *data, size_t sz, int type)
 {
-#if ECHO
-	return;
-#else
 	struct xrt_cu_hls *cu_hls = core;
 	u32 *base_addr = cu_hls->vaddr;
 	size_t num_reg;
 	u32 i;
+
+	if (kds_echo)
+		return;
 
 	num_reg = sz / sizeof(u32);
 	/* Write register map, starting at base_addr + 0x10 (byte)
@@ -61,15 +61,14 @@ static void cu_hls_configure(void *core, u32 *data, size_t sz, int type)
 	 */
 	for (i = 0; i < num_reg; ++i)
 		iowrite32(data[i], base_addr + 4 + i);
-#endif
 }
 
 static void cu_hls_start(void *core)
 {
-#if ECHO
-	return;
-#else
 	struct xrt_cu_hls *cu_hls = core;
+
+	if (kds_echo)
+		return;
 
 	/* Bit 0 -- The CU start control bit.
 	 * Write 0 to this bit will be ignored.
@@ -78,7 +77,6 @@ static void cu_hls_start(void *core)
 	 * So, if this bit is 1, it means the CU is running.
 	 */
 	iowrite32(0x1, cu_hls->vaddr);
-#endif
 }
 
 static void cu_hls_check(void *core, struct xcu_status *status)
@@ -87,24 +85,22 @@ static void cu_hls_check(void *core, struct xcu_status *status)
 	u32 ctrl_reg;
 	u32 done_reg = 0;
 
-#if ECHO
+	if (!kds_echo) {
+		/* ioread32/iowrite32 is expensive! */
+		if (cu_hls->credits == cu_hls->max_credits)
+			goto out;
+
+		/* done is indicated by AP_DONE(2) alone or by AP_DONE(2) | AP_IDLE(4)
+		 * but not by AP_IDLE itself.  Since 0x10 | (0x10 | 0x100) = 0x110
+		 * checking for 0x10 is sufficient.
+		 */
+		ctrl_reg  = ioread32(cu_hls->vaddr);
+
+		if (!(ctrl_reg & CU_AP_DONE))
+			goto out;
+	}
+
 	done_reg = 1;
-#else
-	/* ioread32/iowrite32 is expensive! */
-	if (cu_hls->credits == cu_hls->max_credits)
-		goto out;
-
-	/* done is indicated by AP_DONE(2) alone or by AP_DONE(2) | AP_IDLE(4)
-	 * but not by AP_IDLE itself.  Since 0x10 | (0x10 | 0x100) = 0x110
-	 * checking for 0x10 is sufficient.
-	 */
-	ctrl_reg  = ioread32(cu_hls->vaddr);
-
-	if (!(ctrl_reg & CU_AP_DONE))
-		goto out;
-
-	done_reg = 1;
-#endif
 out:
 	status->num_done = done_reg;
 	status->num_ready = done_reg;

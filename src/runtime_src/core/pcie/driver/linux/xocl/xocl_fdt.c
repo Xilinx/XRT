@@ -391,6 +391,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 			RESNAME_MEMCALIB,
 			RESNAME_KDMA,
 			RESNAME_DDR4_RESET_GATE,
+			RESNAME_PCIEMON,
 			NULL
 		},
 		1,
@@ -440,6 +441,15 @@ static struct xocl_subdev_map		subdev_map[] = {
 		1,
 		0,
 		flash_build_priv,
+		NULL,
+	},
+	{
+		XOCL_SUBDEV_ADDR_TRANSLATOR,
+		XOCL_ADDR_TRANSLATOR,
+		{ NODE_ADDR_TRANSLATOR, NULL },
+		1,
+		0,
+		NULL,
 		NULL,
 	},
 };
