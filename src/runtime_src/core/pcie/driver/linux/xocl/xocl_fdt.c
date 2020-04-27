@@ -443,6 +443,15 @@ static struct xocl_subdev_map		subdev_map[] = {
 		flash_build_priv,
 		NULL,
 	},
+	{
+		XOCL_SUBDEV_ADDR_TRANSLATOR,
+		XOCL_ADDR_TRANSLATOR,
+		{ NODE_ADDR_TRANSLATOR, NULL },
+		1,
+		0,
+		NULL,
+		NULL,
+	},
 };
 
 /*

@@ -79,6 +79,7 @@
 #define NODE_UCS_CONTROL_STATUS "ep_ucs_control_status_00"
 #define NODE_P2P "ep_p2p_00"
 #define NODE_DDR4_RESET_GATE "ep_ddr4_reset_gate_00"
+#define NODE_ADDR_TRANSLATOR "ep_remap_data_c2h_00"
 
 #define RESNAME_GATEPLP       NODE_GATE_PLP
 #define RESNAME_PCIEMON       NODE_PCIE_MON
@@ -100,6 +101,7 @@
 #define RESNAME_ERT_CQ_MGMT	NODE_ERT_CQ_MGMT
 #define RESNAME_ERT_RESET	NODE_ERT_RESET
 #define RESNAME_DDR4_RESET_GATE	NODE_DDR4_RESET_GATE
+#define RESNAME_ADDR_TRANSLATOR NODE_ADDR_TRANSLATOR
 /*
  * The iores subdev maintains global resources which can be shared to any
  * subdev. We keep a minimized scope of this shared public interface.

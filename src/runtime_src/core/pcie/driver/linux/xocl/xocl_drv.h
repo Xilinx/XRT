@@ -1746,4 +1746,6 @@ void xocl_fini_cu_ctrl(void);
 int __init xocl_init_cu(void);
 void xocl_fini_cu(void);
 
+int __init xocl_init_addr_translator(void);
+void xocl_fini_addr_translator(void);
 #endif

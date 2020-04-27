@@ -38,6 +38,7 @@ struct xocl_cma_memory {
 	struct page		**pages;
 	void 			*vaddr;
 	uint64_t		size;
+	uint64_t		dma_addr;
 };
 
 struct xocl_cma_bank {
