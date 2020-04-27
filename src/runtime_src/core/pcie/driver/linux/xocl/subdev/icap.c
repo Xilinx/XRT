@@ -1759,6 +1759,8 @@ static int icap_create_cu(struct platform_device *pdev)
 		if (ip->m_base_address == 0xFFFFFFFF)
 			continue;
 
+		/* NOTE: Only support 64 instences in subdev framework */
+
 		/* TODO: use HLS CU as default.
 		 * don't know how to distinguish plram CU and normal CU
 		 */
@@ -1767,9 +1769,10 @@ static int icap_create_cu(struct platform_device *pdev)
 
 		/* TODO: Consider where should we determine CU index in
 		 * the driver.. Right now, user space determine it and let
-		 * driver known by configure command
+		 * driver known by configure command.
 		 */
 		info.cu_idx = -1;
+		info.inst_idx = i;
 		info.addr = ip->m_base_address;
 		info.intr_enable = ip->properties & IP_INT_ENABLE_MASK;
 		info.protocol = (ip->properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT;
@@ -1779,6 +1782,7 @@ static int icap_create_cu(struct platform_device *pdev)
 		subdev_info.res[0].end += ip->m_base_address;
 		subdev_info.priv_data = &info;
 		subdev_info.data_len = sizeof(info);
+		subdev_info.override_idx = info.inst_idx;
 		err = xocl_subdev_create(xdev, &subdev_info);
 		if (err) {
 			//ICAP_ERR(icap, "can't create CU subdev");

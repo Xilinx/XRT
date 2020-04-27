@@ -17,6 +17,23 @@ struct zocl_cu {
 	struct platform_device	*pdev;
 };
 
+static int cu_submit(struct platform_device *pdev, struct kds_command *xcmd)
+{
+	struct zocl_cu *xcu = platform_get_drvdata(pdev);
+
+	xrt_cu_submit(&xcu->base, xcmd);
+
+	return 0;
+}
+
+static struct zocl_cu_ops cu_ops = {
+	.submit = &cu_submit,
+};
+
+static struct zocl_drv_private cu_priv = {
+	.ops = &cu_ops,
+};
+
 static int cu_probe(struct platform_device *pdev)
 {
 	struct zocl_cu *zcu;
@@ -111,7 +128,7 @@ static int cu_remove(struct platform_device *pdev)
 }
 
 static struct platform_device_id cu_id_table[] = {
-	{"CU", 0},
+	{"CU", (kernel_ulong_t)&cu_priv},
 	{ },
 };
 

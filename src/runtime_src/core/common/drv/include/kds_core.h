@@ -61,4 +61,6 @@ struct kds_command *kds_alloc_command(struct kds_client *client, u32 size);
 int kds_add_command(struct kds_command *xcmd);
 void kds_free_command(struct kds_command *xcmd);
 
+void notify_execbuf(struct kds_command *xcmd, int status);
+
 #endif

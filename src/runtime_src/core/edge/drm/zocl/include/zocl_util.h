@@ -120,7 +120,6 @@ struct drm_zocl_dev {
 
 	struct kds_sched	 kds;
 	struct platform_device	*cu_pldev[MAX_CU_NUM];
-	unsigned int		 num_pldev;
 
 	/*
 	 * This RW lock is to protect the sysfs nodes exported

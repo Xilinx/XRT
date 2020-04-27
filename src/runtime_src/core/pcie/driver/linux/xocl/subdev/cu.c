@@ -22,6 +22,15 @@ struct xocl_cu {
 	struct platform_device	*pdev;
 };
 
+static int cu_submit(struct platform_device *pdev, struct kds_command *xcmd)
+{
+	struct xocl_cu *xcu = platform_get_drvdata(pdev);
+
+	xrt_cu_submit(&xcu->base, xcmd);
+
+	return 0;
+}
+
 static int cu_probe(struct platform_device *pdev)
 {
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
@@ -127,8 +136,16 @@ static int cu_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static struct xocl_cu_funcs cu_ops = {
+	.submit	= cu_submit,
+};
+
+static struct xocl_drv_private cu_priv = {
+	.ops = &cu_ops,
+};
+
 static struct platform_device_id cu_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_CU), 0 },
+	{ XOCL_DEVNAME(XOCL_CU), (kernel_ulong_t)&cu_priv },
 	{ },
 };
 

@@ -10,6 +10,8 @@
 #ifndef _KDS_COMMAND_H
 #define _KDS_COMMAND_H
 
+#include "ert.h"
+
 #define REGMAP 0
 #define KEY_VAL 1
 
@@ -33,6 +35,7 @@ struct kds_command;
 
 struct kds_cmd_ops {
 	void (*notify_host)(struct kds_command *xcmd, int status);
+	void (*free)(struct kds_command *xcmd);
 };
 
 /**
@@ -60,5 +63,11 @@ struct kds_command {
 	 */
 	u32			*execbuf;
 };
+
+/* command convert */
+void cfg_ecmd2xcmd(struct ert_configure_cmd *ecmd,
+		   struct kds_command *xcmd);
+void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
+			  struct kds_command *xcmd);
 
 #endif

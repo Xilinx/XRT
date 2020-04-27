@@ -1430,6 +1430,21 @@ struct xocl_kds_ctrl_funcs {
 	(CU_CTRL_CB(xdev, remove_cu)? \
 	 CU_CTRL_OPS(xdev)->remove_cu(CU_CTRL_DEV(xdev), xcu) : 0)
 
+/* CU callback */
+struct xocl_cu_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	int (* submit)(struct platform_device *pdev, struct kds_command *xcmd);
+};
+#define CU_DEV(xdev, idx) \
+	SUBDEV_MULTI(xdev, XOCL_SUBDEV_CU, idx).pldev
+#define CU_OPS(xdev, idx) \
+	((struct xocl_cu_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_CU, idx).ops)
+#define CU_CB(xdev, idx, cb) \
+	(CU_DEV(xdev, idx) && CU_OPS(xdev, idx) && CU_OPS(xdev, idx)->cb)
+#define xocl_cu_submit_xcmd(xdev, idx, xcmd) \
+	(CU_CB(xdev, idx, submit)? \
+	 CU_OPS(xdev, idx)->submit(CU_DEV(xdev, idx), xcmd) : -ENXIO)
+
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
 void xocl_init_dsa_priv(xdev_handle_t xdev_hdl);
