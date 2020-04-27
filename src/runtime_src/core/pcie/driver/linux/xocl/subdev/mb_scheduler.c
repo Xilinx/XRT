@@ -68,6 +68,12 @@
 
 //#define SCHED_VERBOSE
 
+/* This is for performance test purpose.
+ * Use this with regular ap_ctrl_hs CUs and KDS mode.
+ * It is by default disabled.
+ */
+extern int kds_echo;
+
 #if defined(__GNUC__)
 #define SCHED_UNUSED __attribute__((unused))
 #endif
@@ -132,6 +138,22 @@ static void scheduler_wake_up(struct xocl_scheduler *xs);
 static void scheduler_intr(struct xocl_scheduler *xs);
 static void scheduler_decr_poll(struct xocl_scheduler *xs);
 static void scheduler_incr_poll(struct xocl_scheduler *xs);
+
+static inline u32
+cu_ioread32(void __iomem *addr, u32 val)
+{
+	if (kds_echo)
+		return val;
+	return ioread32(addr);
+}
+
+static inline void
+cu_iowrite32(u32 val, void __iomem *addr)
+{
+	if (kds_echo)
+		return;
+	iowrite32(val, addr);
+}
 
 /*
  */
@@ -1094,7 +1116,7 @@ cu_continue(struct xocl_cu *xcu)
 static inline u32
 cu_status(struct xocl_cu *xcu)
 {
-	return ioread32(xcu->base + xcu->addr);
+	return cu_ioread32(xcu->base + xcu->addr, AP_DONE | AP_IDLE);
 }
 
 /**
@@ -1201,7 +1223,7 @@ cu_configure_ooo(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
 		u32 val = *(regmap + idx + 1);
 
 		SCHED_DEBUGF("+ base[0x%x] = 0x%x\n", offset, val);
-		iowrite32(val, xcu->base + xcu->addr + offset);
+		cu_iowrite32(val, xcu->base + xcu->addr + offset);
 	}
 	SCHED_DEBUGF("<- %s\n", __func__);
 }
@@ -1218,7 +1240,7 @@ cu_configure_ino(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
 
 	SCHED_DEBUGF("-> %s cu(%d) xcmd(%lu)\n", __func__, xcu->idx, xcmd->uid);
 	for (idx = 4; idx < size; ++idx)
-		iowrite32(*(regmap + idx), xcu->base + xcu->addr + (idx << 2));
+		cu_iowrite32(*(regmap + idx), xcu->base + xcu->addr + (idx << 2));
 	SCHED_DEBUGF("<- %s\n", __func__);
 }
 
