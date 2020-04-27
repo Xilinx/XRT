@@ -300,7 +300,7 @@ xclClose(xclDeviceHandle handle);
  * NOTE: Only implemeted Reset kind through user pf is XCL_USER_RESET
  *
  * This API is deprecated and will be removed in future release.
- * New clients should run xbutil reset instead
+ * New clients should use xbutil utility to reset device instead
  */
 XRT_DEPRECATED
 XCL_DRIVER_DLLESPEC
@@ -450,7 +450,7 @@ xclCloseContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int ipIndex);
  * Update the device BPI PROM with new image, deprecated
  *
  * This API is deprecated and will be removed in future release.
- * New clients should run xbmgmt flash instead
+ * New clients should use xbmgmt utility to flash device instead
  */
 XRT_DEPRECATED
 XCL_DRIVER_DLLESPEC
@@ -461,7 +461,7 @@ xclUpgradeFirmware(xclDeviceHandle handle, const char *fileName);
  * Update the device PROM with new image with clearing bitstream, deprecated
  *
  * This API is deprecated and will be removed in future release.
- * New clients should run xbmgmt flash instead
+ * New clients should use xbmgmt utility to flash device instead
  */
 XRT_DEPRECATED
 XCL_DRIVER_DLLESPEC
@@ -472,7 +472,7 @@ xclUpgradeFirmware2(xclDeviceHandle handle, const char *file1, const char* file2
  * Update the device SPI PROM with new image, deprecated
  *
  * This API is deprecated and will be removed in future release.
- * New clients should run xbmgmt flash instead
+ * New clients should use xbmgmt utility to flash device instead
  */
 XRT_DEPRECATED
 XCL_DRIVER_DLLESPEC
