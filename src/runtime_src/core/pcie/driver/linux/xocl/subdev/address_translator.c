@@ -18,41 +18,41 @@
 #include "../xocl_drv.h"
 #include "xocl_ioctl.h"
 
+#define	ADDR_TRANSLATOR_DEV2XDEV(d)	xocl_get_xdev(d)
 
 struct trans_addr {
 	u32 lo;
 	u32 hi;
 };
 
-#define ADDR_TRANSLATOR_VER			0x0
-#define ADDR_TRANSLATOR_CAP			0x4
-#define ADDR_TRANSLATOR_VALID_PAGE			0x8
-#define ADDR_TRANSLATOR_ENTRY_NUM			0xC
-#define ADDR_TRANSLATOR_MIN_ADDR_LO		0x10
-#define ADDR_TRANSLATOR_MIN_ADDR_HI		0x14
-#define ADDR_TRANSLATOR_MAX_ADDR_LO		0x18
-#define ADDR_TRANSLATOR_MAX_ADDR_HI		0x1C
-#define ADDR_TRANSLATOR_ERR_STA			0x20
-#define ADDR_TRANSLATOR_FIRST_FAIL_ADDR_LO		0x24
-#define ADDR_TRANSLATOR_FIRST_FAIL_ADDR_HI		0x28
-#define ADDR_TRANSLATOR_LATEST_FAIL_ADDR_LO	0x2C
-#define ADDR_TRANSLATOR_LATEST_FAIL_ADDR_HI	0x30
 
+/*	ver: 0x0 RO 		Bit 5-0: Revision
+ *				Bit 9-6: Minor version
+ *				Bit 13-10: Major version
+ *				Bit 31-14: all-zeroes (Reserved)
+ *	cap: 0x4 RO 		Bit 7-0: MAX_APERTURE_SIZE (power of 2)
+ *				Bit 15-8: APERTURE_SIZ (power of 2)
+ *				Bit 24-16: MAX_NUM_APERTURES (1~256)
+ *				Bit 31-25: all-zeroes (Reserved)
+ *	entry_num: 0x8 RW	Bit 8-0: NUM_APERTURES
+ *				Bit 31-9: all-zeroes (Reserved)
+ *	base_addr: 0x10	RW	Bit 31-0: low 32 bit address
+ *				Bit 63-32: high 32 bit address
+ *	addr_range: 0x18 RW	Bit 7-0: SI_ADDR_RANGE (power of 2)
+ *				Bit 31-8: all-zeroes (Reserved)
+ *	page_table_phys: 0x800	Bit 31-0: low 32 bit address
+ *			~0xFFC	Bit 63-32: high 32 bit address
+ */
 struct trans_regs {
 	u32 ver;
-	u32 cap;
-	u32 valid_page;
-	u32 entries_num;
-	struct trans_addr min_addr;
-	struct trans_addr max_addr;
-	u32 err_status;
-	struct trans_addr first_fail_addr;
-	struct trans_addr latest_fail_addr;
-	u8 padding[204];
+	u32 cap; 
+	u32 entry_num;
+	u32 unused;
+	struct trans_addr base_addr;
+	u32 addr_range;
+	u8 padding[2020];
 	struct trans_addr page_table_phys[256];
 };
-
-#define	ADDR_TRANSLATOR_DEV2XDEV(d)	xocl_get_xdev(d)
 
 struct addr_translator {
 	void __iomem		*base;
@@ -69,9 +69,7 @@ static uint32_t addr_translator_get_entries_num(struct platform_device *pdev)
 	uint32_t num = 0;
 
 	mutex_lock(&addr_translator->lock);
-
-	num = (xocl_dr_reg_read32(xdev, &regs->cap)>>6 & 0x1f) << 8;
-
+	num = (xocl_dr_reg_read32(xdev, &regs->cap)>>16 & 0x1ff);
 	mutex_unlock(&addr_translator->lock);
 	return num;
 }
@@ -80,27 +78,23 @@ static uint32_t addr_translator_get_entries_num(struct platform_device *pdev)
 static int addr_translator_set_page_table(struct platform_device *pdev, uint64_t *phys_addrs, uint64_t base_addr, uint64_t entry_sz, uint32_t num)
 {
 	int ret = 0, i = 0;
-	uint32_t num_max;
+	uint32_t num_max, range_in_log;
 	struct addr_translator *addr_translator = platform_get_drvdata(pdev);
 	struct trans_regs *regs = (struct trans_regs *)addr_translator->base;
 	xdev_handle_t xdev = ADDR_TRANSLATOR_DEV2XDEV(pdev);
-	uint64_t min_addr = base_addr, max_addr = base_addr + num * entry_sz;
+	uint64_t range = num * entry_sz;
 
 	mutex_lock(&addr_translator->lock);
 
-	num_max = (xocl_dr_reg_read32(xdev, &regs->cap)>>6 & 0x1f) << 8;
-
+	num_max = (xocl_dr_reg_read32(xdev, &regs->cap)>>16 & 0x1ff);
 	if (num > num_max) {
 		ret = -EINVAL;
 		goto done;
 	}
-
-
 	if (!is_power_of_2(num)) {
 		ret = -EINVAL;
 		goto done;
 	}
-
 	for ( ; i < num; ++i) {
 		uint64_t addr = phys_addrs[i];
 
@@ -108,25 +102,23 @@ static int addr_translator_set_page_table(struct platform_device *pdev, uint64_t
 			ret = -EINVAL;
 			goto done;
 		}
-
 		xocl_dr_reg_write32(xdev, (addr & 0xFFFFFFFF), &regs->page_table_phys[i].lo);
 		addr >>= 32;
 		xocl_dr_reg_write32(xdev, addr, &regs->page_table_phys[i].hi);
 
 	}
 
-	xocl_dr_reg_write32(xdev, num, &regs->entries_num);
+	xocl_dr_reg_write32(xdev, base_addr & 0xFFFFFFFF, &regs->base_addr.lo);
+	xocl_dr_reg_write32(xdev, (base_addr>>32) & 0xFFFFFFFF, &regs->base_addr.hi);
 
+	range_in_log = ilog2(range);
+	xocl_dr_reg_write32(xdev, range_in_log, &regs->addr_range);
 
-	xocl_dr_reg_write32(xdev, min_addr & 0xFFFFFFFF, &regs->min_addr.lo);
-	xocl_dr_reg_write32(xdev, (min_addr>>32) & 0xFFFFFFFF, &regs->min_addr.hi);
-
-	xocl_dr_reg_write32(xdev, max_addr & 0xFFFFFFFF, &regs->max_addr.lo);
-	xocl_dr_reg_write32(xdev, (max_addr>>32) & 0xFFFFFFFF, &regs->max_addr.hi);
+	xocl_dr_reg_write32(xdev, num, &regs->entry_num);
 
 done:
 	mutex_unlock(&addr_translator->lock);
-	return num;
+	return ret;
 }
 
 
@@ -221,7 +213,7 @@ struct xocl_drv_private addr_translator_priv = {
 };
 
 struct platform_device_id addr_translator_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_SRSR), (kernel_ulong_t)&addr_translator_priv },
+	{ XOCL_DEVNAME(XOCL_ADDR_TRANSLATOR), (kernel_ulong_t)&addr_translator_priv },
 	{ },
 };
 

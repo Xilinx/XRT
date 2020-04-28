@@ -17,7 +17,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     # Indicates that the new version of xbutil (e.g., xbutil2) should be used
     -new|--new)
-      XRT_PROG=xbutil2
+      XRT_PROG=xbmgmt2
       shift
       echo "-----------------------------------------------------"
       echo " Involking next generation of the xbmgmt application "

@@ -1186,6 +1186,9 @@ int shim::cmaEnable(bool enable, uint64_t size)
             uint64_t hugepage_flag = 0x1e;
             cma_info.entry_num = page_num;
 
+            if (size < page_sz)
+                return -EINVAL;
+
             cma_info.user_addr = (uint64_t *)alloca(sizeof(uint64_t)*page_num);
             ret = 0;
 
@@ -2146,8 +2149,9 @@ xclDeviceHandle
 xclOpen(unsigned int deviceIndex, const char*, xclVerbosityLevel)
 {
     if(pcidev::get_dev_total() <= deviceIndex) {
-        printf("Cannot find index %u \n", deviceIndex);
-        return nullptr;
+      xrt_core::message::send(xrt_core::message::severity_level::XRT_INFO, "XRT",
+                       std::string("Cannot find index " + std::to_string(deviceIndex) + " \n"));
+      return nullptr;
     }
 #ifdef ENABLE_HAL_PROFILING
   OPEN_CB;
@@ -2194,9 +2198,10 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     }
     if (!ret && xrt_core::config::get_ert() &&
       (xclbin::get_axlf_section(buffer, PDI) ||
-      xclbin::get_axlf_section(buffer, BITSTREAM_PARTIAL_PDI)) &&
-      xrt_core::config::get_pdi_load())
-        ret = xrt_core::scheduler::loadXclbinToPS(handle, buffer);
+      xclbin::get_axlf_section(buffer, BITSTREAM_PARTIAL_PDI))) {
+        ret = xrt_core::scheduler::loadXclbinToPS(handle, buffer,
+          xrt_core::config::get_pdi_load());
+    }
     return ret;
 }
 

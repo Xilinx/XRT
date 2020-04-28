@@ -77,7 +77,6 @@ enum xcl_mailbox_request {
 	XCL_MAILBOX_REQ_CHG_SHELL =		13,
 	XCL_MAILBOX_REQ_PROGRAM_SHELL =		14,
 	XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR =	15,
-	XCL_MAILBOX_REQ_ERT_RESET =		16,
 	/* Version 0 OP code ends */
 };
 

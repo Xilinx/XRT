@@ -93,7 +93,7 @@ namespace xclemulation{
       DDRBank();
   };
 
-  enum LAUNCHWAVEFORM {
+  enum DEBUG_MODE {
     OFF,
     BATCH,
     GUI,
@@ -122,8 +122,8 @@ namespace xclemulation{
       inline void setPaddingFactor( unsigned int paddingFactor) { mPaddingFactor    = paddingFactor; }
       inline void setSimDir( std::string& simDir)               { mSimDir           = simDir;        }
       inline void setUserPreSimScript( std::string& userPreSimScript) {mUserPreSimScript = userPreSimScript; }
-	  inline void setUserPostSimScript( std::string& userPostSimScript) {mUserPostSimScript = userPostSimScript; }
-      inline void setLaunchWaveform( LAUNCHWAVEFORM lWaveform)  { mLaunchWaveform   = lWaveform;     }
+	    inline void setUserPostSimScript( std::string& userPostSimScript) {mUserPostSimScript = userPostSimScript; }
+      inline void setLaunchWaveform( DEBUG_MODE lWaveform)  { mLaunchWaveform   = lWaveform;     }
       inline void suppressInfo( bool suppress)                  { mSuppressInfo     = suppress;      }
       inline void suppressWarnings( bool suppress)              { mSuppressWarnings = suppress;      }
       inline void suppressErrors( bool suppress)                { mSuppressErrors   = suppress;      }
@@ -147,8 +147,8 @@ namespace xclemulation{
       inline unsigned int getPaddingFactor()    const { if(!mOOBChecks) return 0; return mPaddingFactor;  }
       inline std::string getSimDir()            const { return mSimDir;         }
       inline std::string getUserPreSimScript()  const { return mUserPreSimScript;}
-	  inline std::string getUserPostSimScript()  const { return mUserPostSimScript;}
-      inline LAUNCHWAVEFORM getLaunchWaveform() const { return mLaunchWaveform; }
+  	  inline std::string getUserPostSimScript()  const { return mUserPostSimScript;}
+      inline DEBUG_MODE getLaunchWaveform() const { return mLaunchWaveform; }
       inline bool isInfoSuppressed()            const { return mSuppressInfo;    }
       inline bool isWarningsuppressed()         const { return mSuppressWarnings;}
       inline bool isErrorsSuppressed()          const { return mSuppressErrors;  }
@@ -162,7 +162,7 @@ namespace xclemulation{
       inline bool isSystemDPAEnabled() const     { return mSystemDPA;              }
       inline ERTMODE getLegacyErt() const         { return mLegacyErt;              }
       inline long long getCuBaseAddrForce() const         { return mCuBaseAddrForce;              }
-      
+      inline bool isSharedFmodel() const         {return mIsSharedFmodel; } 
       void populateEnvironmentSetup(std::map<std::string,std::string>& mEnvironmentNameValueMap);
 
     private:
@@ -172,10 +172,10 @@ namespace xclemulation{
       bool mOOBChecks;
       bool mMemLogs;
       bool mDontRun;
-      LAUNCHWAVEFORM mLaunchWaveform;
+      DEBUG_MODE mLaunchWaveform;
       std::string mSimDir;
       std::string mUserPreSimScript;
-	  std::string mUserPostSimScript;
+	    std::string mUserPostSimScript;
       unsigned int mPacketSize;
       unsigned int mMaxTraceCount;
       unsigned int mPaddingFactor;
@@ -192,8 +192,7 @@ namespace xclemulation{
       bool mSystemDPA;
       ERTMODE mLegacyErt;
       long long mCuBaseAddrForce;
-      
-     
+      bool      mIsSharedFmodel;
       config();
       ~config() { };//empty destructor
   };

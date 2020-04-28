@@ -16,6 +16,11 @@ module_param(kds_mode, int, (S_IRUGO|S_IWUSR));
 MODULE_PARM_DESC(kds_mode,
 		 "enable new KDS (0 = disable (default), 1 = enable)");
 
+int kds_echo = 0;
+module_param(kds_echo, int, (S_IRUGO|S_IWUSR));
+MODULE_PARM_DESC(kds_echo,
+		 "enable KDS echo (0 = disable (default), 1 = enable)");
+
 static void notify_execbuf(struct kds_command *xcmd, int status)
 {
 	struct kds_client *client = xcmd->client;

@@ -602,10 +602,6 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 		xocl_queue_work(xdev, XOCL_WORK_PROGRAM_SHELL,
 				XOCL_PROGRAM_SHELL_DELAY);
 		break;
-	case XCL_MAILBOX_REQ_ERT_RESET:
-		userpf_info(xdev, "ERT was reset.");
-		(void) xocl_exec_reconfig(xdev);
-		break;
 	default:
 		userpf_err(xdev, "dropped bad request (%d)\n", req->req);
 		break;
@@ -1531,6 +1527,7 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_mem_hbm,
 	xocl_init_cu_ctrl,
 	xocl_init_cu,
+	xocl_init_addr_translator,
 };
 
 static void (*xocl_drv_unreg_funcs[])(void) = {
@@ -1558,6 +1555,7 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_mem_hbm,
 	xocl_fini_cu_ctrl,
 	xocl_fini_cu,
+	xocl_fini_addr_translator
 };
 
 static int __init xocl_init(void)

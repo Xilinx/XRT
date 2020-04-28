@@ -24,7 +24,7 @@ static ssize_t xclbinid_show(struct device *dev,
 	if (!zdev)
 		return 0;
 
-	size = sprintf(buf, "%llx\n", zdev->zdev_xclbin->zx_last_bitstream);
+	size = sprintf(buf, "%pUb\n", zdev->zdev_xclbin->zx_uuid);
 
 	return size;
 }

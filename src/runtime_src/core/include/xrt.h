@@ -288,7 +288,7 @@ void
 xclClose(xclDeviceHandle handle);
 
 /**
- * xclResetDevice() - Reset a device or its CL
+ * xclResetDevice() - Reset a device, deprecated
  *
  * @handle:        Device handle
  * @kind:          Reset kind
@@ -298,7 +298,11 @@ xclClose(xclDeviceHandle handle);
  * purged. A device may be reset if a user's application dies without waiting for
  * running kernel(s) to finish.
  * NOTE: Only implemeted Reset kind through user pf is XCL_USER_RESET
+ *
+ * This API is deprecated and will be removed in future release.
+ * New clients should use xbutil utility to reset device instead
  */
+XRT_DEPRECATED
 XCL_DRIVER_DLLESPEC
 int
 xclResetDevice(xclDeviceHandle handle, enum xclResetKind kind);
@@ -443,42 +447,62 @@ int
 xclCloseContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int ipIndex);
 
 /*
- * Update the device BPI PROM with new image
+ * Update the device BPI PROM with new image, deprecated
+ *
+ * This API is deprecated and will be removed in future release.
+ * New clients should use xbmgmt utility to flash device instead
  */
+XRT_DEPRECATED
 XCL_DRIVER_DLLESPEC
 int
 xclUpgradeFirmware(xclDeviceHandle handle, const char *fileName);
 
 /*
- * Update the device PROM with new image with clearing bitstream
+ * Update the device PROM with new image with clearing bitstream, deprecated
+ *
+ * This API is deprecated and will be removed in future release.
+ * New clients should use xbmgmt utility to flash device instead
  */
+XRT_DEPRECATED
 XCL_DRIVER_DLLESPEC
 int
 xclUpgradeFirmware2(xclDeviceHandle handle, const char *file1, const char* file2);
 
 /*
- * Update the device SPI PROM with new image
+ * Update the device SPI PROM with new image, deprecated
+ *
+ * This API is deprecated and will be removed in future release.
+ * New clients should use xbmgmt utility to flash device instead
  */
+XRT_DEPRECATED
 XCL_DRIVER_DLLESPEC
 int
 xclUpgradeFirmwareXSpi(xclDeviceHandle handle, const char *fileName, int index);
 
 /**
- * xclBootFPGA() - Boot the FPGA from PROM
+ * xclBootFPGA() - Boot the FPGA from PROM, deprecated
  *
  * @handle:        Device handle
  * Return:         0 on success or appropriate error number
  *
  * This should only be called when there are no other clients. It will cause PCIe bus re-enumeration
+ *
+ * This API is deprecated and will be removed in future release.
+ * This functionality is no longer supported.
  */
+XRT_DEPRECATED
 XCL_DRIVER_DLLESPEC
 int
 xclBootFPGA(xclDeviceHandle handle);
 
 /*
  * Write to /sys/bus/pci/devices/<deviceHandle>/remove and initiate a pci rescan by
- * writing to /sys/bus/pci/rescan.
+ * writing to /sys/bus/pci/rescan, deprecated
+ *
+ * This API is deprecated and will be removed in future release.
+ * This functionality is no longer supported.
  */
+XRT_DEPRECATED
 XCL_DRIVER_DLLESPEC
 int
 xclRemoveAndScanFPGA();
@@ -705,7 +729,7 @@ xclGetBOProperties(xclDeviceHandle handle, xclBufferHandle boHandle,
                    struct xclBOProperties *properties);
 
 /*
- * xclGetBOSize() - Retrieve size of a BO
+ * xclGetBOSize() - Retrieve size of a BO, deprecated
  *
  * @handle:        Device handle
  * @boHandle:      BO handle
@@ -723,7 +747,7 @@ xclGetBOSize(xclDeviceHandle handle, xclBufferHandle boHandle)
 }
 
 /*
- * Get the physical address on the device
+ * Get the physical address on the device, deprecated
  *
  * This API is deprecated and will be removed in future release.
  * New clients should use xclGetBOProperties() instead.

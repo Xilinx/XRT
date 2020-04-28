@@ -205,6 +205,18 @@ update_cmd(struct zocl_ert_dev *ert, int idx, void *data, int sz)
 	memcpy_toio(pkg->data, data, sz);
 }
 
+static int
+ert_mpsoc_xclbin(void)
+{
+	return 1;
+}
+
+static int
+ert_versal_xclbin(void)
+{
+	return 0;
+}
+
 static struct zocl_ert_ops mpsoc_ops = {
 	.init         = ert_mpsoc_init,
 	.fini         = ert_mpsoc_fini,
@@ -212,6 +224,7 @@ static struct zocl_ert_ops mpsoc_ops = {
 	.get_next_cmd = ert_mpsoc_next,
 	.notify_host  = ert_mpsoc_notify_host,
 	.update_cmd   = update_cmd,
+	.static_xclbin	= ert_mpsoc_xclbin,
 };
 
 static struct zocl_ert_ops versal_ops = {
@@ -221,6 +234,7 @@ static struct zocl_ert_ops versal_ops = {
 	.get_next_cmd = ert_versal_next,
 	.notify_host  = ert_versal_notify_host,
 	.update_cmd   = update_cmd,
+	.static_xclbin	= ert_versal_xclbin,
 };
 
 static const struct zocl_ert_info mpsoc_ert_info = {

@@ -191,6 +191,11 @@ struct zocl_ert_ops {
 	 */
 	void (*update_cmd)(struct zocl_ert_dev *ert, int idx,
 			    void *data, int sz);
+
+	/**
+	 * if this platform is static or dynamic
+	 */
+	int (*static_xclbin)(void);
 };
 
 struct zocl_ert_info {

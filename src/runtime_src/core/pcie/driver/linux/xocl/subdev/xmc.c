@@ -2985,6 +2985,13 @@ fail:
 
 static int xmc_offline(struct platform_device *pdev)
 {
+	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
+
+	if (!xmc)
+		return 0;
+
+	xmc->bdinfo_loaded = false;
+
 	return xmc_access(pdev, XOCL_XMC_FREEZE);
 }
 static int xmc_online(struct platform_device *pdev)
@@ -3567,7 +3574,7 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 		vfree(bdinfo_raw);
 	} else {
 
-		if (xmc->bdinfo_raw &&
+		if (xmc->bdinfo_loaded &&
 			!strcmp(xmc->bmc_ver, xmc->exp_bmc_ver)) {
 			xocl_info(&xmc->pdev->dev, "board info loaded, skip\n");
 			return 0;

@@ -99,6 +99,7 @@ void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t
     xclTraceResults results = {};
     int mod = 0;
     unsigned int clockWordIndex = 7;
+    unsigned int idx = 0;
     for (uint32_t i = 0; i < numSamples; i++) {
 
       // Old method has issues with emulation trace
@@ -146,7 +147,7 @@ void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t
                           << " Host Timestamp : " << std::hex << results.HostTimestamp << std::endl;
           }
           results.isClockTrain = 1 ;
-          traceVector.mArray[static_cast<int>(i/4)] = results;    // save result
+          traceVector.mArray[idx++] = results;    // save result
           memset(&results, 0, sizeof(xclTraceResults));
         }
         mod = (mod == 3) ? 0 : mod + 1;
@@ -165,10 +166,7 @@ void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t
       results.EventFlags = ((currentSample >> 45) & 0xF) | ((currentSample >> 57) & 0x10) ;
       results.isClockTrain = 0 ;
 
-      int idx = mclockTrainingdone ? i : i - clockWordIndex + 1;
-      if (idx < 0)
-        continue;
-      traceVector.mArray[idx] = results;   // save result
+      traceVector.mArray[idx++] = results;   // save result
 
       if(out_stream) {
         uint64_t previousTimestamp = 0;
@@ -189,6 +187,7 @@ void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t
       }
       memset(&results, 0, sizeof(xclTraceResults));
     }
+    traceVector.mLength = idx;
     mclockTrainingdone = true;
 }
 

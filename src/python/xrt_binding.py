@@ -1077,3 +1077,20 @@ def xrtRunClose(rhandle):
     if (res):
         res = errno.EINVAL
     return _valueOrError(-res);
+
+
+def xclIPName2Index(rhandle, name):
+    """
+    Obtain index of a kernel given its name.
+    :param handle: Device handle
+    :param name: Name of PL kernel
+    :return: index of Kernel
+
+    The index is used in APIs like xclOpenContext(), etc.
+    """
+    value = ctypes.c_int(0)
+    value_p = ctypes.pointer(value)
+    libcore.xclIPName2Index.restype = ctypes.c_int
+    libcore.xclIPName2Index.argtypes = [xclDeviceHandle, ctypes.c_char_p, ctypes.POINTER(ctypes.c_int)]
+    _valueOrError(libcore.xclIPName2Index(handle, name, value_p))
+    return value_p[0]

@@ -1,11 +1,27 @@
 XRT ChangeLog
 -------------
 
+2.6.0 (Unreleased)
+~~~~~~~~~~~~~~~~~~
+
+Added
+.....
+
+* XRT native APIs for PL kernel have been added. These APIs are defined in new header file ``xrt_kernel.h``. Please see ``tests/xrt/22_verify/main.cpp`` and ``tests/xrt/02_simple/main.cpp`` for examples. The APIs are also accessible from python. Please see ``tests/python/22_verify/22_verify.py`` and ``tests/python/02_simple/main.py`` for examples.
+* Support for data-driven platforms have been added. XRT uses PCIe VSEC to identify data-driven platforms. For these class of platforms XRT uses device tree to discover IPs in the shell and then initialize them.
+* Experimental APIs have been added for AIE control for edge platforms. The APIs are defined in header file ``xrt_aie.h``
+
+Removed
+.......
+
+* Deprecated utilties xclbincat and xclbinsplit have been removed. Please use xclbinutil to work with xclbin files.
+
 2.4.0 (202010.2.4)
 ~~~~~~~~~~~~~~~~~~
 
 Added
 .....
+
 * ``xclUnmapBO()`` was added to match ``xclMapBO()``.  This new API should be called when unmapping addresses returned by ``xclMapB()``.  On Linux the API ends up calling POSIX ``munmap()`` but on Windows the implementation is different.
 
 2.3.0 (201920.2.3)

@@ -1128,6 +1128,11 @@ int xcldev::device::runTestCase(const std::string& py,
     xclbinPath += xclbin;
 
     if (stat(xrtTestCasePath.c_str(), &st) != 0 || stat(xclbinPath.c_str(), &st) != 0) {
+        //if bandwidth xclbin isn't present, skip the test
+        if(xclbin.compare("bandwidth.xclbin") == 0) {
+            output += "Bandwidth xclbin not available. Skipping validation.";
+            return -EOPNOTSUPP;
+        }
         output += "ERROR: Failed to find ";
         output += py;
         output += " or ";
@@ -1507,7 +1512,15 @@ int xcldev::xclValidate(int argc, char *argv[])
 
 int xcldev::device::reset(xclResetKind kind)
 {
+#ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
     return xclResetDevice(m_handle, kind);
+#ifdef __GNUC__
+# pragma GCC diagnostic pop
+#endif
+    
 }
 
 static bool canProceed()
@@ -1825,18 +1838,22 @@ int xcldev::xclCma(int argc, char *argv[])
     int c;
     unsigned int index = 0;
     int cma_enable = -1;
-    uint64_t total_size = 0;
+    uint64_t total_size = 0, unit_sz = 0;
     bool root = ((getuid() == 0) || (geteuid() == 0));
-    const std::string usage("Options: [-d index] --[enable|disable] --size [size]");
+    const std::string usage("Options: [-d index] --[enable|disable] --size [size M|G]");
     static struct option long_options[] = {
         {"enable", no_argument, 0, xcldev::CMA_ENABLE},
         {"disable", no_argument, 0, xcldev::CMA_DISABLE},
         {"size", required_argument, nullptr, xcldev::CMA_SIZE},
+        {0, 0, 0, 0}
     };
 
     int long_index, ret;
-    const char* short_options = "d"; //don't add numbers
+    const char* short_options = "d:"; //don't add numbers
     const char* exe = argv[ 0 ];
+    std::string optarg_s;
+    const char *unit = NULL;
+    size_t end = 0;
 
     while ((c = getopt_long(argc, argv, short_options, long_options,
         &long_index)) != -1) {
@@ -1853,7 +1870,21 @@ int xcldev::xclCma(int argc, char *argv[])
             cma_enable = 0;
             break;
         case xcldev::CMA_SIZE:
-            total_size = std::stoll(optarg);
+            optarg_s += optarg;
+            try {
+                total_size = std::stoll(optarg_s, &end, 0);
+            } catch (const std::exception& ex) {
+                //out of range, invalid argument ex
+                std::cout << "ERROR: Value supplied to --size option is invalid\n";
+                return -1;
+            }
+            unit = optarg_s.substr(end).c_str();
+            if (std::tolower(unit[0]) == 'm')
+                unit_sz = 1024*1024;
+            else if (std::tolower(unit[0]) == 'g')
+                unit_sz = 1024*1024*1024;
+
+            total_size *= unit_sz;
             break;
         default:
             xcldev::printHelp(exe);

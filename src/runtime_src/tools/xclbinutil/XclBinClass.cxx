@@ -513,7 +513,7 @@ XclBin::readXclBinHeader(const boost::property_tree::ptree& _ptHeader,
   _axlfHeader.m_signature_length = _ptHeader.get<int32_t>("SignatureLength", -1);
   std::string sKeyBlock = _ptHeader.get<std::string>("KeyBlock");
   XUtil::hexStringToBinaryBuffer(sKeyBlock, (unsigned char*)&_axlfHeader.m_keyBlock, sizeof(axlf::m_keyBlock));
-  _axlfHeader.m_uniqueId = XUtil::stringToUInt64(_ptHeader.get<std::string>("UniqueID"));
+  _axlfHeader.m_uniqueId = XUtil::stringToUInt64(_ptHeader.get<std::string>("UniqueID"), true /*forceHex*/);
 
   _axlfHeader.m_header.m_timeStamp = XUtil::stringToUInt64(_ptHeader.get<std::string>("TimeStamp"));
   _axlfHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(_ptHeader.get<std::string>("FeatureRomTimeStamp"));
@@ -1149,7 +1149,7 @@ XclBin::dumpSubSection(ParameterSectionData &_PSD)
   // Determine if the section exists
   Section *pSection = findSection(eKind, _PSD.getSectionIndexName());
   if (pSection == nullptr) {
-    std::string errMsg = XUtil::format("ERROR: Section '%s' does not exist.", pSection->getSectionKindAsString().c_str());
+    std::string errMsg = XUtil::format("ERROR: Section %s[%s] does not exist.", _PSD.getSectionName().c_str(), _PSD.getSectionIndexName().c_str());
     throw std::runtime_error(errMsg);
   }
 
