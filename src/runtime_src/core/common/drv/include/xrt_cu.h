@@ -131,8 +131,6 @@ struct xcu_funcs {
 	 * Clear interrupt.
 	 */
 	u32 (*clear_intr)(void *core);
-	void (* wait)(void *core);
-	void (* up)(void *core);
 };
 
 struct xrt_cu_info {
@@ -200,16 +198,6 @@ static inline void xrt_cu_check(struct xrt_cu *xcu)
 	xcu->ready_cnt += status.num_ready;
 }
 
-static inline void xrt_cu_wait(struct xrt_cu *xcu)
-{
-	xcu->funcs->wait(xcu->core);
-}
-
-static inline void xrt_cu_up(struct xrt_cu *xcu)
-{
-	xcu->funcs->up(xcu->core);
-}
-
 static inline int xrt_cu_get_credit(struct xrt_cu *xcu)
 {
 	return xcu->funcs->get_credit(xcu->core);
@@ -235,7 +223,6 @@ struct xrt_cu_hls {
 	void __iomem		*vaddr;
 	int			 max_credits;
 	int			 credits;
-	struct semaphore	 sem;
 };
 
 int xrt_cu_hls_init(struct xrt_cu *xcu);
@@ -246,7 +233,6 @@ struct xrt_cu_plram {
 	void __iomem		*plram;
 	int			 max_credits;
 	int			 credits;
-	struct semaphore	 sem;
 };
 
 int xrt_cu_plram_init(struct xrt_cu *xcu);
