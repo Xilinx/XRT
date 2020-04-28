@@ -74,7 +74,10 @@ namespace xdp {
   // Attach new trace writer
   void TraceLogger::attach(TraceWriterI* writer)
   {
-    std::lock_guard < std::mutex > lock(mLogMutex);
+    std::unique_lock<std::mutex> next(mLogNext);
+    std::unique_lock<std::mutex> lock(mLogMutex);
+    next.unlock();
+
     auto itr = std::find(mTraceWriters.begin(), mTraceWriters.end(), writer);
     if (itr == mTraceWriters.end())
       mTraceWriters.push_back(writer);
@@ -83,7 +86,10 @@ namespace xdp {
   // Detach new trace writer
   void TraceLogger::detach(TraceWriterI* writer)
   {
-    std::lock_guard < std::mutex > lock(mLogMutex);
+    std::unique_lock<std::mutex> next(mLogNext);
+    std::unique_lock<std::mutex> lock(mLogMutex);
+    next.unlock();
+
     auto itr = std::find(mTraceWriters.begin(), mTraceWriters.end(), writer);
     if (itr != mTraceWriters.end())
       mTraceWriters.erase(itr);
@@ -178,7 +184,11 @@ namespace xdp {
       name += "|General";
     else
       (name += "|") +=std::to_string(queueAddress);
-    std::lock_guard<std::mutex> lock(mLogMutex);
+
+    std::unique_lock<std::mutex> next(mLogNext);
+    std::unique_lock<std::mutex> lock(mLogMutex);
+    next.unlock();
+
     mProfileCounters->logFunctionCallStart(functionName, timeStamp);
     writeTimelineTrace(timeStamp, name.c_str(), "START", functionID);
     mFunctionStartLogged = true;
@@ -199,7 +209,10 @@ namespace xdp {
     else
       (name += "|") +=std::to_string(queueAddress);
 
-    std::lock_guard<std::mutex> lock(mLogMutex);
+    std::unique_lock<std::mutex> next(mLogNext);
+    std::unique_lock<std::mutex> lock(mLogMutex);
+    next.unlock();
+
     mProfileCounters->logFunctionCallEnd(functionName, timeStamp);
     writeTimelineTrace(timeStamp, name.c_str(), "END", functionID);
   }
@@ -220,7 +233,11 @@ namespace xdp {
 
     std::string commandString;
     std::string stageString;
-    std::lock_guard < std::mutex > lock(mLogMutex);
+
+    std::unique_lock<std::mutex> next(mLogNext);
+    std::unique_lock<std::mutex> lock(mLogMutex);
+    next.unlock();
+
     RTUtil::commandKindToString(objKind, commandString);
     RTUtil::commandStageToString(objStage, stageString);
 
@@ -325,7 +342,9 @@ namespace xdp {
       tp->setLastKernelEndTimeMsec(timeStamp);
     }
 
-    std::lock_guard<std::mutex> lock(mLogMutex);
+    std::unique_lock<std::mutex> next(mLogNext);
+    std::unique_lock<std::mutex> lock(mLogMutex);
+    next.unlock();
 
     // TODO: create unique name for device since currently all devices are called fpga0
     // NOTE: see also logCounters for corresponding device name for counters
@@ -496,7 +515,11 @@ namespace xdp {
       const std::string& eventString, const std::string& dependString)
   {
     std::string commandString;
-    std::lock_guard < std::mutex > lock(mLogMutex);
+
+    std::unique_lock<std::mutex> next(mLogNext);
+    std::unique_lock<std::mutex> lock(mLogMutex);
+    next.unlock();
+
     RTUtil::commandKindToString(objKind, commandString);
 
     double traceTime = mPluginHandle->getTraceTime();
@@ -513,7 +536,6 @@ namespace xdp {
     if (tp == NULL || (traceVector.mLength == 0 && endLog == false))
       return;
 
-    std::lock_guard<std::mutex> lock(mLogMutex);
     TraceParser::TraceResultVector resultVector;
     tp->logTrace(deviceName, type, traceVector, resultVector);
     if (endLog)
@@ -555,12 +577,22 @@ namespace xdp {
       mProfileCounters->pushToSortedTopUsage(tr, isRead, isKernelTransfer);
     }
 
-    // Write trace results vector to files
-    //if (this->isTimelineTraceFileOn()) {
-      for (auto w : mTraceWriters) {
-        w->writeDeviceTrace(resultVector, deviceName, binaryName);
+    /*
+     * Device Trace offload is low priority
+     * Write one packet and yield locks
+     */
+    std::unique_lock<std::mutex> next(mLogNext, std::defer_lock);
+    std::unique_lock<std::mutex> lock(mLogMutex, std::defer_lock);
+
+    for (auto w : mTraceWriters) {
+      for (auto& tr: resultVector) {
+        next.lock();
+        lock.lock();
+        next.unlock();
+        w->writeDeviceTrace(tr, deviceName, binaryName);
+        lock.unlock();
       }
-    //}
+    }
 
     resultVector.clear();
   }

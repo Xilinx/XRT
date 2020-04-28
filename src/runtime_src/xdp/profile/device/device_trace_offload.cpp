@@ -55,7 +55,7 @@ DeviceTraceOffload::~DeviceTraceOffload()
 
 void DeviceTraceOffload::offload_device_continuous()
 {
-  if (!read_trace_init())
+  if (!m_initialized && !read_trace_init())
     return;
 
   while (should_continue()) {
@@ -144,11 +144,13 @@ bool DeviceTraceOffload::read_trace_init()
   m_trbuf_full = false;
 
   if (has_ts2mm()) {
-    return init_s2mm();
+    m_initialized = init_s2mm();
   } else if (has_fifo()) {
-    return true;
+    m_initialized = true;
+  } else {
+    m_initialized = false;
   }
-  return false;
+  return m_initialized;
 }
 
 void DeviceTraceOffload::read_trace_end()
@@ -159,6 +161,7 @@ void DeviceTraceOffload::read_trace_end()
   deviceTraceLogger->endProcessTraceData(m_trace_vector);
   if (dev_intf->hasTs2mm()) {
     reset_s2mm();
+    m_initialized = false;
   }
 }
 

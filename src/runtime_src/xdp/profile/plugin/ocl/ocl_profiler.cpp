@@ -365,23 +365,19 @@ namespace xdp {
 
         DeviceTraceLogger* deviceTraceLogger = new TraceLoggerUsingProfileMngr(getProfileManager(), device->get_unique_name(), binaryName);
         auto offloader = std::make_unique<DeviceTraceOffload>(dInt, deviceTraceLogger,
-                                                         mTraceReadIntMs, traceBufSz, mTraceThreadEn);
-        bool init_done = true;
-        if (!mTraceThreadEn) {
-          init_done = offloader->read_trace_init();
-          if (init_done) {
-            /* Trace FIFO is usually very small (8k,16k etc)
-             *  Hence enable Continuous clock training by default
-             *  ONLY for Trace Offload to DDR Memory
-             */
-            if (dInt->hasTs2mm())
-              offloader->start_offload(OffloadThreadType::CLOCK_TRAIN);
-            else
-              dInt->clockTraining();
-          }
-        }
-
+                                                         mTraceReadIntMs, traceBufSz, false);
+        bool init_done = offloader->read_trace_init();
         if (init_done) {
+          offloader->train_clock();
+          /* Trace FIFO is usually very small (8k,16k etc)
+           *  Hence enable Continuous clock training by default
+           *  ONLY for Trace Offload to DDR Memory
+           */
+          if (mTraceThreadEn)
+            offloader->start_offload(OffloadThreadType::TRACE);
+          else if (dInt->hasTs2mm())
+            offloader->start_offload(OffloadThreadType::CLOCK_TRAIN);
+
           DeviceTraceLoggers.push_back(deviceTraceLogger);
           DeviceTraceOffloadList.push_back(std::move(offloader));
         } else {
