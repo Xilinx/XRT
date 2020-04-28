@@ -1,0 +1,43 @@
+#!/bin/bash
+
+# -- Detect a Windows environment and automatically switch to the .bat file
+if [[ "`uname`" == windows32* ]] || [[ "`uname`" == CYGWIN* ]] ; then
+  trap "" INT
+  "$0.bat" "$@"
+  exit $?
+fi
+
+# Working variables
+XRT_PROG=xclbinutil
+
+# -- Examine the options 
+XRTWARP_PROG_ARGS_size=0
+XRTWRAP_PROG_ARGS=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    #  Future option example syntax
+    #    -futureOption|--futureOption)
+    #      XRT_PROG=xbutil2
+    #      shift
+    #      ;;
+
+    # Copy the remaining options
+    *)
+      XRTWRAP_PROG_ARGS[$XRTWARP_PROG_ARGS_size]="$1"
+      XRTWARP_PROG_ARGS_size=$(($XRTWARP_PROG_ARGS_size + 1))
+      shift
+      ;;
+  esac
+done
+
+# -- Find and call the loader
+XRT_LOADER="`dirname \"$0\"`/unwrapped/loader"
+
+if [ ! -f "$XRT_LOADER" ]; then
+  echo "ERROR: Could not find 64-bit loader executable."
+  echo "ERROR: ${XRT_LOADER} does not exist."
+  exit 1
+fi
+
+"${XRT_LOADER}" -exec $XRT_PROG "${XRTWRAP_PROG_ARGS[@]}"
+

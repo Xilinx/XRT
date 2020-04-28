@@ -16,7 +16,7 @@
 
 #ifndef xocl_core_device_h_
 #define xocl_core_device_h_
-
+#include "xocl/config.h"
 #include "xocl/core/object.h"
 #include "xocl/core/refcount.h"
 #include "xocl/core/error.h"
@@ -24,8 +24,8 @@
 #include "xocl/xclbin/xclbin.h"
 #include "xrt/device/device.h"
 #include "xrt/scheduler/command.h"
-
-#include <unistd.h>
+#include "core/common/unistd.h"
+#include "core/common/scope_guard.h"
 
 #include <cassert>
 
@@ -42,6 +42,8 @@ public:
   using compute_unit_range = compute_unit_vector_type;
   using compute_unit_iterator = compute_unit_vector_type::const_iterator;
   using cmd_type = std::shared_ptr<xrt::command>;
+  using memidx_type = xclbin::memidx_type;
+  using connidx_type = xclbin::connidx_type;
 
   /**
    * Construct an xocl::device.
@@ -52,26 +54,6 @@ public:
    *   The underlying xrt device managed by the platform
    */
   device(platform* pltf, xrt::device* xdevice);
-
-  /**
-   * Construct a schizophrenic device.
-   *
-   * This device doesn't really know what it wants to be. It could be a
-   * hw device, a swem device, or a hwem device, the actual decision
-   * is in some cases deferred until the program binary is loaded.
-   *
-   */
-  device(platform* pltf, xrt::device* hw_device, xrt::device* swem_device, xrt::device* hwem_device);
-
-  /**
-   * Construct a less schizophrenic device.
-   *
-   * This device is on a path to recovery and only suffers from dual
-   * personality disorder.  It could be a swem device or a hwem
-   * device, the actual decision is in some cases deferred until the
-   * program binary is loaded.
-   */
-  device(platform* pltf, xrt::device* swem_device, xrt::device* hwem_device);
 
   /**
    * Sub device constructor
@@ -107,16 +89,6 @@ public:
   {}
 
   virtual ~device();
-
-  /**
-   * Set platform, until passed in ctor.
-   * This is temp till we get rid of xcl_device_sim
-   */
-  void
-  set_platform(platform* platform)
-  {
-    m_platform = platform;
-  }
 
   unsigned int
   get_uid() const
@@ -166,6 +138,20 @@ public:
   }
 
   /**
+   * Get the BDF of the device
+   *
+   * Throws on error
+   */
+  std::string
+  get_bdf() const;
+
+  /**
+   * Get underlying driver device handle
+   */
+  void*
+  get_handle() const;
+
+  /**
    * Get the number of DDR memory banks on the current device
    *
    * @return
@@ -202,19 +188,16 @@ public:
   unsigned short
   get_max_clock_frequency() const;
 
+public:
   /**
-   * Check if this device is an ARE device
-   *
-   * @return
-   *  True if ARE, false otherwise
+   * @return Minimum buffer alignment in bytes
    */
-  bool
-  is_xare_device() const
+  size_t
+  get_alignment() const
   {
-    return m_xdevice->is_xare_device();
+    return m_xdevice ? m_xdevice->getAlignment() : xrt_core::getpagesize();
   }
 
-public:
   /**
    * Check if memory is aligned per device requirement.
    *
@@ -226,8 +209,7 @@ public:
   bool
   is_aligned_ptr(void* p) const
   {
-    auto alignment = m_xdevice ? m_xdevice->getAlignment() : getpagesize();
-    return p && (reinterpret_cast<uintptr_t>(p) % alignment)==0;
+    return p && (reinterpret_cast<uintptr_t>(p) % get_alignment())==0;
   }
 
   /**
@@ -278,7 +260,7 @@ public:
    *   The buffer object that was created.
    */
   xrt::device::BufferObjectHandle
-  allocate_buffer_object(memory* mem, uint64_t memidx);
+  allocate_buffer_object(memory* mem, memidx_type memidx);
 
   /**
    * Special interface to allocate a buffer object undconditionally
@@ -301,6 +283,17 @@ public:
   free(const memory* mem);
 
   /**
+   * Check if buffer is imported to this device
+   *
+   * If the buffer is allocated on this device, then check if the
+   * corresponding buffer object is an imported buffer object
+   *
+   * @return: true if imported, false otherwise
+   */
+  bool
+  is_imported(const memory* mem) const;
+
+  /**
    * Get memory addr for the given boh
    *
    * @return
@@ -312,8 +305,8 @@ public:
   /**
    * Get indicies of matching memory banks on which mem is allocated
    *
-   * The memory indicies are returned as a bitmask because a given ddr address
-   * can be access through multiple banks
+   * The memory indicies are returned as a bitmask because a given ddr
+   * address can be access through multiple banks
    *
    * @return
    *   Memory indeces identifying bank or -1 if not allocated
@@ -340,35 +333,14 @@ public:
    * @return Memory index for DDR bank if all CUs are uniquely connected
    *  to same DDR bank for all arguments, -1 otherwise
    */
-  int
+  memidx_type
   get_cu_memidx() const;
-
-  /**
-   * Get the indices of memory banks which CU argument is connected to
-   * for specified kernel.
-   *
-   * The function returns a bitset with bits for each bank connected
-   * to the specified argument of all device CUs for given kernel.
-   *
-   * If device has multiple CUs for given kernel and memory bank indeces
-   * have no overlap, then the function returns 0.
-   *
-   * @param kernel
-   *   Kernel used to identify CUs.  The device may contain CUs for
-   *   multiple kernels.
-   * @param argidx
-   *   The index of the kernel argument.
-   * @return
-   *   Bitset with matching mem bank indices or none() if no matches.
-   */
-  memidx_bitmask_type
-  get_cu_memidx(kernel* kernel, int argidx) const;
 
   /**
    * Map buffer (clEnqueueMapBuffer) implementation
    */
   void*
-  map_buffer(memory* mem, cl_map_flags map_flags, size_t offset, size_t size, void* assert_result);
+  map_buffer(memory* mem, cl_map_flags map_flags, size_t offset, size_t size, void* assert_result, bool nosync=false);
 
   /**
    * Unmap buffer (clEnqueueUnmapMemObjects) implementation
@@ -467,18 +439,17 @@ public:
   void
   read_image(memory* image,const size_t* origin,const size_t* region,size_t row_pitch,size_t slice_pitch,void *ptr);
 
-  //streaming APIs. TODO : document them.
   int
-  get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, const cl_mem_ext_ptr_t* ext, xrt::device::stream_handle* stream);
+  get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, const cl_mem_ext_ptr_t* ext, xrt::device::stream_handle* stream, int32_t& m_conn);
 
   int
-  close_stream(xrt::device::stream_handle stream);
+  close_stream(xrt::device::stream_handle stream, int connidx);
 
   ssize_t
-  write_stream(xrt::device::stream_handle stream, const void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_req* req);
+  write_stream(xrt::device::stream_handle stream, const void* ptr, size_t size, xrt::device::stream_xfer_req* req);
 
   ssize_t
-  read_stream(xrt::device::stream_handle stream, void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_req* req);
+  read_stream(xrt::device::stream_handle stream, void* ptr, size_t size, xrt::device::stream_xfer_req* req);
 
   xrt::device::stream_buf
   alloc_stream_buf(size_t size, xrt::device::stream_buf_handle* handle);
@@ -486,7 +457,13 @@ public:
   int
   free_stream_buf(xrt::device::stream_buf_handle handle);
 
-  int 
+  int
+  set_stream_opt(xrt::device::stream_handle stream, int type, uint32_t val);
+
+  int
+  poll_stream(xrt::device::stream_handle stream, xrt::device::stream_xfer_completions* comps, int min, int max, int* actual, int timeout);
+
+  int
   poll_streams(xrt::device::stream_xfer_completions* comps, int min, int max, int* actual, int timeout);
 
   /**
@@ -552,8 +529,16 @@ public:
    * @return
    *  Current loaded xclbin
    */
+  XRT_XOCL_EXPORT
   xclbin
   get_xclbin() const;
+
+  /**
+   * @return
+   *  AXLF top
+   */
+  const axlf*
+  get_axlf() const;
 
   /**
    * Check if this device is active, meaning it is programmed
@@ -568,8 +553,8 @@ public:
    * lock count is incremented and returned.
    *
    * If the device is not currently locked, then this function
-   * queries hardware to check if the device is free and then
-   * locks it.
+   * queries hardware to check if the device is free in which 
+   * case it is opened and locked.
    *
    * May throw cl error code if device could not be locked by probing
    * hardware.
@@ -588,7 +573,7 @@ public:
    *
    * If the device is currently locked, then this function
    * decrements the lock count.  If the lock count reaches 0,
-   * the hardware device is unlocked.
+   * the hardware device is unlocked (closed).
    *
    * May throw cl error code if device could not be unlocked by
    * probing hardware.
@@ -599,6 +584,20 @@ public:
    */
   unsigned int
   unlock();
+
+  /**
+   * Return a scoped lock guard managing a lock on the device.
+   *
+   * When the scope goes out of scope, the aquired lock is released
+   * automatically. 
+   */
+  xrt_core::scope_guard<std::function<void()>>
+  lock_guard()
+  {
+    lock();
+    auto unlocker = [](device* d) { d->unlock(); };
+    return {std::bind(unlocker, this)};
+  }
 
   /**
    * Check is this device is available for use by this process.
@@ -651,13 +650,41 @@ public:
     return m_computeunits.size();
   }
 
-  size_t
-  get_num_cdmas() const
-  {
-    return m_xdevice->get_cdma_count();
-  }
+  /**
+   * Acquire a context for a given compute unit on this device.
+   *
+   * By default the context is acquired as shared.
+   * Throws exception if context cannot be acquired on device.
+   *
+   * @return
+   *   @true on success, @false if no program loaded.
+   */
+  bool
+  acquire_context(const compute_unit* cu) const;
 
-protected:
+  /**
+   * Release a context for a given compute unit on this device
+   *
+   * Throws exception if context cannot be release properly.
+   *
+   * @return
+   *   @true on success, @false if no program loaded.
+   */
+  bool
+  release_context(const compute_unit* cu) const;
+
+  /**
+   * @return
+   *   Number of CDMA copy kernels available
+   */
+  size_t
+  get_num_cdmas() const;
+
+  void
+  clear_connection(connidx_type conn);
+
+private:
+
   /**
    * Add a cu this device can use
    *
@@ -669,20 +696,8 @@ protected:
     m_computeunits.emplace_back(std::move(cu));
   }
 
-private:
-  /**
-   * Set xrt device when the final device is determined
-   *
-   * Throws if device is already set
-   */
   void
-  set_xrt_device(xrt::device* xd,bool final=true);
-
-  /**
-   * Validate xclbin and set xrt device according to xclbin target
-   */
-  void
-  set_xrt_device(const xocl::xclbin& xclbin);
+  clear_cus();
 
   /**
    * Track mem object as allocated on this device
@@ -701,7 +716,7 @@ private:
    *  Buffer object handle for allocated memory
    */
   xrt::device::BufferObjectHandle
-  alloc(memory* mem, unsigned int bank);
+  alloc(memory* mem, memidx_type memidx);
 
   /**
    * Allocate device side buffer in first available DDR bank
@@ -730,10 +745,6 @@ private:
   platform* m_platform = nullptr;
   xrt::device* m_xdevice = nullptr;
 
-  xrt::device* m_hw_device = nullptr;
-  xrt::device* m_swem_device = nullptr;
-  xrt::device* m_hwem_device = nullptr;
-
   // Set for sub-device only
   ptr<device> m_parent = nullptr;
 
@@ -752,7 +763,7 @@ private:
   compute_unit_vector_type m_computeunits;
 
   // Caching.  Purely implementation detail (-2 => not initialized)
-  mutable int m_cu_memidx = -2;
+  mutable memidx_type m_cu_memidx = -2;
 };
 
 } // xocl
