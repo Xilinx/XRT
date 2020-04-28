@@ -39,7 +39,7 @@ namespace xclhwemhal2 {
   namespace pt = boost::property_tree;
   std::map<unsigned int, HwEmShim*> devices;
   std::map<std::string, std::string> HwEmShim::mEnvironmentNameValueMap(xclemulation::getEnvironmentByReadingIni());
-  std::map<int, std::tuple<std::string,int,void*> > HwEmShim::mFdToFileNameMap;
+  std::map<int, std::tuple<std::string,int,void*, unsigned int> > HwEmShim::mFdToFileNameMap;
   std::ofstream HwEmShim::mDebugLogStream;
   bool HwEmShim::mFirstBinary = true;
   unsigned int HwEmShim::mBufferCount = 0;
@@ -2198,7 +2198,7 @@ int HwEmShim::xclExportBO(unsigned int boHandle)
     munmap(data,size);
     return -1;
   }
-  mFdToFileNameMap [fd] = std::make_tuple(sFileName,size,(void*)data);
+  mFdToFileNameMap [fd] = std::make_tuple(sFileName,size,(void*)data,bo->flags);
   PRINTENDFUNC;
   return fd;
 }
@@ -2217,8 +2217,9 @@ unsigned int HwEmShim::xclImportBO(int boGlobalHandle, unsigned flags)
   {
     const std::string& fileName = std::get<0>((*itr).second);
     int size = std::get<1>((*itr).second);
+    unsigned boFlags = std::get<3>((*itr).second);
 
-    unsigned int importedBo = xclAllocBO(size, 0, flags);
+    unsigned int importedBo = xclAllocBO(size, 0, boFlags);
     xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(importedBo);
     if(!bo)
     {
@@ -2318,7 +2319,7 @@ void *HwEmShim::xclMapBO(unsigned int boHandle, bool write)
       munmap(data,bo->size);
       return nullptr;
     }
-    mFdToFileNameMap [fd] = std::make_tuple(sFileName,bo->size,(void*)data);
+    mFdToFileNameMap [fd] = std::make_tuple(sFileName,bo->size,(void*)data, bo->flags);
     bo->buf = data;
     PRINTENDFUNC;
     return data;

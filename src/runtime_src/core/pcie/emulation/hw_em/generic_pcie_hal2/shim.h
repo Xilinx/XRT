@@ -322,7 +322,7 @@ using addr_type = uint64_t;
       uint8_t mAccelmonProperties[XAM_MAX_NUMBER_SLOTS];
       uint8_t mStreamMonProperties[XASM_MAX_NUMBER_SLOTS];
       std::vector<membank> mMembanks;
-      static std::map<int, std::tuple<std::string,int,void*> > mFdToFileNameMap;
+      static std::map<int, std::tuple<std::string,int,void*, unsigned int> > mFdToFileNameMap;
       std::list<std::tuple<uint64_t ,void*, std::map<uint64_t , uint64_t> > > mReqList;
       uint64_t mReqCounter;
       FeatureRomHeader mFeatureRom;
