@@ -1759,7 +1759,7 @@ int shim::xclPollCompletion(int min_compl, int max_compl, struct xclReqCompletio
     *actual = 0;
     if (!mAioEnabled) {
         xrt_logmsg(XRT_ERROR, "%s: async io is not enabled", __func__);
-        return -EINVAL;
+        throw std::runtime_error("sync io is not enabled");
     }
 
     if (timeout > 0) {
