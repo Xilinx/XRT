@@ -1128,6 +1128,11 @@ int xcldev::device::runTestCase(const std::string& py,
     xclbinPath += xclbin;
 
     if (stat(xrtTestCasePath.c_str(), &st) != 0 || stat(xclbinPath.c_str(), &st) != 0) {
+        //if bandwidth xclbin isn't present, skip the test
+        if(xclbin.compare("bandwidth.xclbin") == 0) {
+            output += "Bandwidth xclbin not available. Skipping validation.";
+            return -EOPNOTSUPP;
+        }
         output += "ERROR: Failed to find ";
         output += py;
         output += " or ";
