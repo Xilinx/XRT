@@ -391,7 +391,6 @@ static struct xocl_subdev_map		subdev_map[] = {
 			RESNAME_MEMCALIB,
 			RESNAME_KDMA,
 			RESNAME_DDR4_RESET_GATE,
-			RESNAME_PCIEMON,
 			NULL
 		},
 		1,
