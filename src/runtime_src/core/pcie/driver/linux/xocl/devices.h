@@ -918,7 +918,6 @@ struct xocl_subdev_map {
 		XOCL_XMC,				\
 		XOCL_RES_XMC_SCALING,				\
 		ARRAY_SIZE(XOCL_RES_XMC_SCALING),		\
-		.override_idx = -1,			\
 	}
 
 #define	XOCL_DEVINFO_XMC_USER			\
