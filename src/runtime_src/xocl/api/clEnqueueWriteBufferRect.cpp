@@ -28,6 +28,7 @@
 #include "detail/event.h"
 #include "detail/context.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 namespace xocl {
 
@@ -161,6 +162,7 @@ clEnqueueWriteBufferRect(cl_command_queue     command_queue ,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
+    LOP_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
     return xocl::clEnqueueWriteBufferRect
       (command_queue,buffer,blocking,buffer_origin,host_origin,region
        ,buffer_row_pitch,buffer_slice_pitch
