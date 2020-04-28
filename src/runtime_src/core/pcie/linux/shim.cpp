@@ -2149,9 +2149,8 @@ xclDeviceHandle
 xclOpen(unsigned int deviceIndex, const char*, xclVerbosityLevel)
 {
     if(pcidev::get_dev_total() <= deviceIndex) {
-      if(XRT_INFO <= xrt_core::config::get_verbosity()) {
-        printf("Cannot find index %u \n", deviceIndex);
-      }
+      xrt_core::message::send(xrt_core::message::severity_level::XRT_INFO, "XRT",
+                       std::string("Cannot find index " + std::to_string(deviceIndex) + " \n"));
       return nullptr;
     }
 #ifdef ENABLE_HAL_PROFILING
