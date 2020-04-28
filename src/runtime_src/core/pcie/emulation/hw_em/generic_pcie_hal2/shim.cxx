@@ -2007,6 +2007,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       mGlobalInMemStream.open("global_in.mem");
       mGlobalOutMemStream.open("global_out.mem");
     }
+    if (xclemulation::config::getInstance()->isSharedFmodel()) {
+      setenv("SDX_USE_SHARED_MEMORY","true",true); 
+    }
   }
 
 /**********************************************HAL2 API's START HERE **********************************************/

@@ -162,7 +162,7 @@ namespace xclemulation{
       inline bool isSystemDPAEnabled() const     { return mSystemDPA;              }
       inline ERTMODE getLegacyErt() const         { return mLegacyErt;              }
       inline long long getCuBaseAddrForce() const         { return mCuBaseAddrForce;              }
-      
+      inline bool isSharedFmodel() const         {return mIsSharedFmodel; } 
       void populateEnvironmentSetup(std::map<std::string,std::string>& mEnvironmentNameValueMap);
 
     private:
@@ -192,7 +192,7 @@ namespace xclemulation{
       bool mSystemDPA;
       ERTMODE mLegacyErt;
       long long mCuBaseAddrForce;
-     
+      bool      mIsSharedFmodel;
       config();
       ~config() { };//empty destructor
   };
