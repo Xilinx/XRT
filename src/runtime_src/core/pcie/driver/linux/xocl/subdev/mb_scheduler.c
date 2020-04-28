@@ -1921,6 +1921,17 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	userpf_info(xdev, "ert per feature rom = %d", ert);
 	userpf_info(xdev, "dsa52 = %d", dsa);
 
+	/* The header first command slot should be zero at this time
+	 * If it is not zero, fallback to kds mode for safe
+	 * This is good for us to implement ERT version machanism in the
+	 * future and keep compatibility
+	 */
+	if ((ert_full || ert_poll) && ioread32(exec->cq_base)) {
+		DRM_INFO("Unexpected CQ slot header, fallback to kds mode\n");
+		ert_full = false;
+		ert_poll = false;
+	}
+
 	if (XOCL_DSA_IS_VERSAL(xdev)) {
 		userpf_info(xdev, "versal polling mode %d", cfg->polling);
 
@@ -2074,6 +2085,10 @@ exec_reset(struct exec_core *exec, const xuid_t *xclbin_id)
 	exec->stopped = false;
 	exec->flush = false;
 	exec->ops = &penguin_ops;
+	if (exec->ert) {
+		/* Reset header of CQ ctrl slot after allow reconfigure */
+		iowrite32(0, exec->cq_base);
+	}
 
 	for (idx = 0; idx < MAX_CUS; ++idx) {
 		INIT_LIST_HEAD(&exec->pending_cu_queue[idx]);
@@ -4418,6 +4433,10 @@ reconfig(struct platform_device *pdev)
 	struct exec_core *exec = platform_get_drvdata(pdev);
 	exec->configure_active = false;
 	exec->configured = false;
+	if (exec->ert) {
+		/* Reset header of CQ ctrl slot after allow reconfigure */
+		iowrite32(0, exec->cq_base);
+	}
 	return 0;
 }
 
