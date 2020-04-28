@@ -400,6 +400,18 @@ static struct xocl_subdev_map		subdev_map[] = {
 		devinfo_cb_setlevel,
 	},
 	{
+		XOCL_SUBDEV_IORES,
+		XOCL_IORES1,
+		{
+			RESNAME_PCIEMON,
+			NULL
+		},
+		1,
+		0,
+		NULL,
+		devinfo_cb_setlevel,
+	},
+	{
 		.id = XOCL_SUBDEV_CLOCK,
 		.dev_name = XOCL_CLOCK,
 		.res_names = {
