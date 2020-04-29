@@ -1206,8 +1206,9 @@ xocl_subdev_vsec(xdev_handle_t xdev, u32 type,
 		found = true;
 		off_high = ioread32(bar_addr + i + 4);
 		off = ((u64)off_high << 16) | (off_low & 0xffff0000) >> 16;
+		/* Note: 15:13 is bar, 12:8 is rev, 7:0 is type */
 		if (bar_idx)
-			*bar_idx = (off_low >> 12) & 0xf;
+			*bar_idx = (off_low >> 13) & 0x7;
 		if (offset)
 			*offset = off;
 	}
