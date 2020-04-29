@@ -413,8 +413,11 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 
 	return xobj;
 failed:
-	mutex_unlock(&drm_p->mm_lock);
-	kfree(xobj->mm_node);
+	if (xobj->mm_node) {
+		mutex_unlock(&drm_p->mm_lock);
+		kfree(xobj->mm_node);
+	}
+
 	if (xobj_inited)
 		drm_gem_object_release(&xobj->base);
 	kfree(xobj);
