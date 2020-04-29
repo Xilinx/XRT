@@ -34,6 +34,8 @@ validOrError(cl_device_id               device,
 	cl_int*                         errcode_ret)
 
 {
+  if (min_num_completion <= 0)
+    throw error(CL_INVALID_VALUE,"minimum number of completion argument must be greater than zero");
 }
 
 static cl_int
@@ -45,9 +47,10 @@ clPollStreams(cl_device_id              device,
 	cl_int                          timeout,
 	cl_int*                         errcode_ret)
 {
+  int ret;
   validOrError(device,completions,min,max,actual,timeout,errcode_ret);
-  xocl::xocl(device)->poll_streams(completions,min,max,actual,timeout);
-  xocl::assign(errcode_ret,CL_SUCCESS);
+  ret = xocl::xocl(device)->poll_streams(completions,min,max,actual,timeout);
+  *errcode_ret = (ret < 0) ? ret : 0;
   return CL_SUCCESS;
 }
 

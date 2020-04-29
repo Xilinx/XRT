@@ -1759,7 +1759,7 @@ int shim::xclPollCompletion(int min_compl, int max_compl, struct xclReqCompletio
     *actual = 0;
     if (!mAioEnabled) {
         xrt_logmsg(XRT_ERROR, "%s: async io is not enabled", __func__);
-        return -EINVAL;
+        throw std::runtime_error("sync io is not enabled");
     }
 
     if (timeout > 0) {
@@ -1771,9 +1771,9 @@ int shim::xclPollCompletion(int min_compl, int max_compl, struct xclReqCompletio
     num_evt = io_getevents(mAioContext, min_compl, max_compl, (struct io_event *)comps, ptime);
 
     *actual = num_evt;
-    if (num_evt == 0) {
-        xrt_logmsg(XRT_ERROR, "%s: failed to poll Queue Completions", __func__);
-        return -EINVAL;
+    if (num_evt <= 0) {
+        xrt_logmsg(XRT_DEBUG, "%s: failed to poll Queue Completions", __func__);
+        return -ETIMEDOUT;
     }
 
     for (i = num_evt - 1; i >= 0; i--) {
