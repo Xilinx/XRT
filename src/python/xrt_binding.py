@@ -170,10 +170,10 @@ def _valueOrError(res):
     # functions return long and Python3 dropped support for long
     if isinstance(res, Integral):
         if res < 0:
-            raise OSError(res, os.strerror(res))
+            raise OSError(abs(res), os.strerror(abs(res)))
     # check if result type is a pointer. Python3 doesn't support pointer and int comparison
     elif isinstance(res.contents, ctypes.c_void_p) and res is None:
-        raise OSError(errno.ENODEV, os.strerror(res))
+        raise OSError(errno.ENODEV, os.strerror(errno.ENODEV))
     return res
 
 
