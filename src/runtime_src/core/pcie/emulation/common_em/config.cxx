@@ -77,6 +77,7 @@ namespace xclemulation{
     mLegacyErt = ERTMODE::NONE;
     mCuBaseAddrForce=-1;
     mIsSharedFmodel=true;
+    mTimeOutScale=TIMEOUT_SCALE::NA;
   }
 
   static bool getBoolValue(std::string& value,bool defaultValue)
@@ -276,6 +277,16 @@ namespace xclemulation{
           setLegacyErt(ERTMODE::LEGACY);
       } else if (name=="cu_base_addr_force") {
           mCuBaseAddrForce= strtoll(value.c_str(),NULL,0);
+      } else if (name == "timeout_scale") {
+      	  if (boost::iequals(value,"ms")) {
+      		mTimeOutScale=TIMEOUT_SCALE::MS;
+      	  } else if (boost::iequals(value,"sec")) {
+    		  mTimeOutScale=TIMEOUT_SCALE::SEC;
+    	  } else if (boost::iequals(value,"min")) {
+    		  mTimeOutScale=TIMEOUT_SCALE::MIN;
+    	  } else {
+    		  mTimeOutScale=TIMEOUT_SCALE::NA;
+    	  }
       }
       else if(name.find("Debug.") == std::string::npos)
       {
