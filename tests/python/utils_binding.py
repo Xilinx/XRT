@@ -99,7 +99,7 @@ def initXRT(opt):
     if opt.index >= xclProbe():
         raise RuntimeError("Incorrect device index")
 
-    opt.handle = xclOpen(opt.index, "", xclVerbosityLevel.XCL_INFO)
+    opt.handle = xclOpen(opt.index, None, xclVerbosityLevel.XCL_INFO)
 
     xclGetDeviceInfo2(opt.handle, ctypes.byref(deviceInfo))
 
