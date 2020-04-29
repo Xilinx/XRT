@@ -2838,16 +2838,10 @@ int HwEmShim::xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << " , "<< max_compl <<", "<<min_compl<<" ," << *actual <<" ," << timeout << std::endl;
   }
-//  struct timespec time, *ptime = NULL;
-//
-//  if (timeout > 0) 
-//  {
-//    memset(&time, 0, sizeof(time));
-//    time.tv_sec = timeout / 1000;
-//    time.tv_nsec = (timeout % 1000) * 1000000;
-//    ptime = &time;
-//  }
+  xclemulation::TIMEOUT_SCALE timeout_scale=xclemulation::config::getInstance()->getTimeOutScale();
 
+  xclemulation::ApiWatchdog watch(timeout_scale,timeout);
+  watch.reset();
   *actual = 0;
   while(*actual < min_compl)
   {
@@ -2870,6 +2864,11 @@ int HwEmShim::xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *
       {
         it++;
       }
+      if(watch.isTimeout()) {
+    	 PRINTENDFUNC;
+    	 return -1;
+     }
+
     }
   }
   PRINTENDFUNC;
