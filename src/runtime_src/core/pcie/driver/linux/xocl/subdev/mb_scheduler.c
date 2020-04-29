@@ -1676,6 +1676,7 @@ static struct exec_ops penguin_ops;   // kds mode (no ert)
  * @base: BAR address
  * @csr_base: Status register base address
  * @cq_base: CQ base address
+ * @cq_init: CQ slot 0 init value
  * @intr_base:
  * @intr_num:
  * @ert_cfg_priv: Private data for scheduler subdevice
@@ -1723,6 +1724,7 @@ struct exec_core {
 	void __iomem *		   csr_base;
 	void __iomem *		   cq_base;
 	unsigned int               cq_size;
+	u32			   cq_init;
 
 	u32			   intr_base;
 	u32			   intr_num;
@@ -1921,13 +1923,13 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	userpf_info(xdev, "ert per feature rom = %d", ert);
 	userpf_info(xdev, "dsa52 = %d", dsa);
 
-	/* The header first command slot should be zero at this time
+	/* The header first command slot should be initialized to 0
 	 * If it is not zero, fallback to kds mode for safe
 	 * This is good for us to implement ERT version machanism in the
 	 * future and keep compatibility
 	 */
-	if ((ert_full || ert_poll) && ioread32(exec->cq_base)) {
-		DRM_INFO("Unexpected CQ slot header, fallback to kds mode\n");
+	if ((ert_full || ert_poll) && exec->cq_init) {
+		DRM_INFO("Unexpected CQ slot header initial value, fallback to kds mode\n");
 		ert_full = false;
 		ert_poll = false;
 	}
@@ -2085,10 +2087,6 @@ exec_reset(struct exec_core *exec, const xuid_t *xclbin_id)
 	exec->stopped = false;
 	exec->flush = false;
 	exec->ops = &penguin_ops;
-	if (exec->ert) {
-		/* Reset header of CQ ctrl slot after allow reconfigure */
-		iowrite32(0, exec->cq_base);
-	}
 
 	for (idx = 0; idx < MAX_CUS; ++idx) {
 		INIT_LIST_HEAD(&exec->pending_cu_queue[idx]);
@@ -2277,6 +2275,7 @@ exec_create(struct platform_device *pdev, struct xocl_scheduler *xs)
 			return NULL;
 		}
 		xocl_info(&pdev->dev, "CQ size is %d\n", exec->cq_size);
+		exec->cq_init = ioread32(exec->cq_base);
 	}
 
 	exec->pdev = pdev;
@@ -4433,10 +4432,6 @@ reconfig(struct platform_device *pdev)
 	struct exec_core *exec = platform_get_drvdata(pdev);
 	exec->configure_active = false;
 	exec->configured = false;
-	if (exec->ert) {
-		/* Reset header of CQ ctrl slot after allow reconfigure */
-		iowrite32(0, exec->cq_base);
-	}
 	return 0;
 }
 
