@@ -33,7 +33,6 @@ def runKernel(opt):
 
     rule = re.compile("hello*")
     name = list(filter(lambda val: rule.match, opt.kernels))[0]
-    # import pdb; pdb.set_trace()
     khandle = xrtPLKernelOpen(opt.handle, opt.xuuid, name)
 
     boHandle1 = xclAllocBO(opt.handle, opt.DATA_SIZE, 0, opt.first_mem)
