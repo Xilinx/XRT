@@ -11,20 +11,6 @@
 
 #define ECHO 0
 
-static void cu_plram_wait(void *core)
-{
-	struct xrt_cu_plram *cu_plram = core;
-
-	down_interruptible(&cu_plram->sem);
-}
-
-static void cu_plram_up(void *core)
-{
-	struct xrt_cu_plram *cu_plram = core;
-
-	up(&cu_plram->sem);
-}
-
 static int cu_plram_get_credit(void *core)
 {
 	struct xrt_cu_plram *cu_plram = core;
@@ -93,8 +79,6 @@ static struct xcu_funcs xrt_cu_plram_funcs = {
 	.configure	= cu_plram_configure,
 	.start		= cu_plram_start,
 	.check		= cu_plram_check,
-	.wait		= cu_plram_wait,
-	.up		= cu_plram_up,
 };
 
 int xrt_cu_plram_init(struct xrt_cu *xcu)
@@ -140,7 +124,6 @@ int xrt_cu_plram_init(struct xrt_cu *xcu)
 	xcu_info(xcu, "FIFO depth 0x%x", val);
 	core->max_credits = val;
 	core->credits = core->max_credits;
-	sema_init(&core->sem, core->max_credits);
 
 	/* Set plram base address, this is hard coding */
 	iowrite32(0x00, core->vaddr + 0x20);

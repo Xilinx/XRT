@@ -7,7 +7,6 @@
  * Authors: min.ma@xilinx.com
  */
 
-#include <ert.h>
 #include "common.h"
 #include "kds_core.h"
 
@@ -20,52 +19,6 @@ int kds_echo = 0;
 module_param(kds_echo, int, (S_IRUGO|S_IWUSR));
 MODULE_PARM_DESC(kds_echo,
 		 "enable KDS echo (0 = disable (default), 1 = enable)");
-
-static void notify_execbuf(struct kds_command *xcmd, int status)
-{
-	struct kds_client *client = xcmd->client;
-	struct ert_packet *ecmd = (struct ert_packet *)xcmd->execbuf;
-
-	if (status == KDS_COMPLETED)
-		ecmd->state = ERT_CMD_STATE_COMPLETED;
-	else if (status == KDS_ERROR)
-		ecmd->state = ERT_CMD_STATE_ERROR;
-
-	atomic_inc(&client->event);
-	wake_up_interruptible(&client->waitq);
-}
-
-static inline void cfg_ecmd2xcmd(struct ert_configure_cmd *ecmd,
-				 struct kds_command *xcmd)
-{
-	xcmd->type = KDS_CU;
-	xcmd->opcode = OP_CONFIG_CTRL;
-
-	xcmd->cb.notify_host = notify_execbuf;
-	xcmd->execbuf = (u32 *)ecmd;
-
-	xcmd->isize = ecmd->num_cus * sizeof(u32);
-	/* Expect a ordered list of CU address */
-	memcpy(xcmd->info, ecmd->data, xcmd->isize);
-}
-
-static inline void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
-					struct kds_command *xcmd)
-{
-	xcmd->type = KDS_CU;
-	xcmd->opcode = OP_START;
-
-	xcmd->cb.notify_host = notify_execbuf;
-	xcmd->execbuf = (u32 *)ecmd;
-
-	xcmd->cu_mask[0] = ecmd->cu_mask;
-	memcpy(&xcmd->cu_mask[1], ecmd->data, ecmd->extra_cu_masks);
-	xcmd->num_mask = 1 + ecmd->extra_cu_masks;
-
-	/* Skip first 4 control registers */
-	xcmd->isize = (ecmd->count - xcmd->num_mask - 4) * sizeof(u32);
-	memcpy(xcmd->info, &ecmd->data[4], xcmd->isize);
-}
 
 static int xocl_context_ioctl(struct xocl_dev *xdev, void *data,
 			      struct drm_file *filp)
@@ -110,6 +63,7 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 		ret = -ENOMEM;
 		goto out;
 	}
+	xcmd->cb.free = kds_free_command;
 
 	/* TODO: one ecmd to one xcmd now. Maybe we will need
 	 * one ecmd to multiple xcmds

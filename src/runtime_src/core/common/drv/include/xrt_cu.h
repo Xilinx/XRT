@@ -15,6 +15,8 @@
 #include <linux/semaphore.h>
 #include <linux/spinlock.h>
 #include <linux/io.h>
+#include <linux/kthread.h>
+#include "kds_command.h"
 
 #define MAX_CUS 128
 
@@ -129,13 +131,12 @@ struct xcu_funcs {
 	 * Clear interrupt.
 	 */
 	u32 (*clear_intr)(void *core);
-	void (* wait)(void *core);
-	void (* up)(void *core);
 };
 
 struct xrt_cu_info {
 	u32	model;
 	int	cu_idx;
+	int	inst_idx;
 	u64	addr;
 	u32	protocol;
 	u32	intr_id;
@@ -150,8 +151,6 @@ struct xrt_cu {
 	struct list_head	  sq;
 	u32			  num_sq;
 	struct list_head	  rq;
-	spinlock_t		  rq_lock;
-	u32			  num_rq;
 	struct list_head	  pq;
 	spinlock_t		  pq_lock;
 	struct semaphore	  sem;
@@ -166,20 +165,55 @@ struct xrt_cu {
 	 * Compute unit functions.
 	 */
 	struct xcu_funcs          *funcs;
+	/* TODO: Maybe rethink if we should use two threads,
+	 * one for submit, one for complete
+	 */
+	struct task_struct	  *thread;
 };
 
-int  xrt_cu_get_credit(struct xrt_cu *xcu);
-void xrt_cu_put_credit(struct xrt_cu *xcu, u32 count);
-void xrt_cu_config(struct xrt_cu *xcu, u32 *data, size_t sz, int type);
-void xrt_cu_start(struct xrt_cu *xcu);
-void xrt_cu_check(struct xrt_cu *xcu);
 void xrt_cu_reset(struct xrt_cu *xcu);
 int  xrt_cu_reset_done(struct xrt_cu *xcu);
 void xrt_cu_enable_intr(struct xrt_cu *xcu, u32 intr_type);
 void xrt_cu_disable_intr(struct xrt_cu *xcu, u32 intr_type);
 u32  xrt_cu_clear_intr(struct xrt_cu *xcu);
-void xrt_cu_wait(struct xrt_cu *xcu);
-void xrt_cu_up(struct xrt_cu *xcu);
+
+static inline void xrt_cu_config(struct xrt_cu *xcu, u32 *data, size_t sz, int type)
+{
+	xcu->funcs->configure(xcu->core, data, sz, type);
+}
+
+static inline void xrt_cu_start(struct xrt_cu *xcu)
+{
+	xcu->funcs->start(xcu->core);
+}
+
+static inline void xrt_cu_check(struct xrt_cu *xcu)
+{
+	struct xcu_status status;
+
+	xcu->funcs->check(xcu->core, &status);
+	/* XRT CU assume command finished in order
+	 */
+	xcu->done_cnt += status.num_done;
+	xcu->ready_cnt += status.num_ready;
+}
+
+static inline int xrt_cu_get_credit(struct xrt_cu *xcu)
+{
+	return xcu->funcs->get_credit(xcu->core);
+}
+
+static inline void xrt_cu_put_credit(struct xrt_cu *xcu, u32 count)
+{
+	xcu->funcs->put_credit(xcu->core, count);
+}
+
+/* 1. Move commands from pending command queue to running queue
+ * 2. If CU is ready, submit command(Configure hardware)
+ * 3. Check if submitted command is completed or not
+ */
+int xrt_cu_thread(void *data);
+void xrt_cu_submit(struct xrt_cu *xcu, struct kds_command *xcmd);
 
 int  xrt_cu_init(struct xrt_cu *xcu);
 void xrt_cu_fini(struct xrt_cu *xcu);
@@ -189,7 +223,6 @@ struct xrt_cu_hls {
 	void __iomem		*vaddr;
 	int			 max_credits;
 	int			 credits;
-	struct semaphore	 sem;
 };
 
 int xrt_cu_hls_init(struct xrt_cu *xcu);
@@ -200,7 +233,6 @@ struct xrt_cu_plram {
 	void __iomem		*plram;
 	int			 max_credits;
 	int			 credits;
-	struct semaphore	 sem;
 };
 
 int xrt_cu_plram_init(struct xrt_cu *xcu);

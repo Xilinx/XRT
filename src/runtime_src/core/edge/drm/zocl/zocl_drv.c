@@ -261,8 +261,7 @@ int subdev_create_cu(struct drm_zocl_dev *zdev, struct xrt_cu_info *info)
 		DRM_ERROR("Failed to probe device\n");
 		goto err1;
 	}
-	zdev->cu_pldev[zdev->num_pldev] = pldev;
-	zdev->num_pldev++;
+	zdev->cu_pldev[info->inst_idx] = pldev;
 
 	return 0;
 err1:
@@ -276,15 +275,13 @@ void subdev_destroy_cu(struct drm_zocl_dev *zdev)
 {
 	int i;
 
-	if (!zdev->num_pldev)
-		return;
-
-	for (i = 0; i < zdev->num_pldev; ++i) {
+	for (i = 0; i < MAX_CU_NUM; ++i) {
+		if (!zdev->cu_pldev[i])
+			continue;
 		platform_device_del(zdev->cu_pldev[i]);
 		platform_device_put(zdev->cu_pldev[i]);
 		zdev->cu_pldev[i] = NULL;
 	}
-	zdev->num_pldev = 0;
 }
 
 /**
@@ -916,8 +913,6 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_drm;
 	mutex_init(&zdev->zdev_xclbin_lock);
-
-	zdev->num_pldev = 0;
 
 	/* doen with zdev initialization */
 	drm->dev_private = zdev;

@@ -105,6 +105,10 @@ struct drm_zocl_exec_metadata {
 	unsigned int                index;
 };
 
+struct zocl_drv_private {
+	void		       *ops;
+};
+
 struct drm_zocl_bo {
 	union {
 		struct drm_gem_cma_object       cma_base;
@@ -212,5 +216,21 @@ int subdev_create_cu(struct drm_zocl_dev *zdev, struct xrt_cu_info *info);
 void subdev_destroy_cu(struct drm_zocl_dev *zdev);
 /* Sub device driver */
 extern struct platform_driver cu_driver;
+struct zocl_cu_ops {
+	int (*submit)(struct platform_device *pdev, struct kds_command *xcmd);
+};
+
+static inline int
+zocl_cu_submit_xcmd(struct drm_zocl_dev *zdev, int i, struct kds_command *xcmd)
+{
+	struct platform_device *pdev;
+	struct zocl_drv_private *priv;
+	struct zocl_cu_ops *ops;
+
+	pdev = zdev->cu_pldev[i];
+	priv = (void *)platform_get_device_id(pdev)->driver_data;
+	ops = (struct zocl_cu_ops *)priv->ops;
+	return ops->submit(pdev, xcmd);
+}
 
 #endif

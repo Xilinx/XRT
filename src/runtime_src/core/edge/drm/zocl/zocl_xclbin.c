@@ -545,6 +545,7 @@ zocl_create_cu(struct drm_zocl_dev *zdev)
 		 * driver known by configure command
 		 */
 		info.cu_idx = -1;
+		info.inst_idx = i;
 
 		/* CU sub device is a virtual device, which means there is no
 		 * device tree nodes
