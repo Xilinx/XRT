@@ -19,7 +19,7 @@ ELSE(DRM_FOUND)
 ENDIF(DRM_FOUND)
 
 
-# --- OpenCL header files --- 
+# --- OpenCL header files ---
 pkg_check_modules(OPENCL REQUIRED OpenCL)
 IF(OPENCL_FOUND)
   MESSAGE(STATUS "Looking for OPENCL - found at ${OPENCL_PREFIX} ${OPENCL_VERSION} ${OPENCL_INCLUDEDIR}")
@@ -133,7 +133,9 @@ set(PY_TEST_SRC
   ../tests/python/22_verify/22_verify.py
   ../tests/python/utils_binding.py
   ../tests/pyopencl/23_bandwidth.py)
-install (FILES ${PY_TEST_SRC} DESTINATION ${XRT_INSTALL_DIR}/test)
+install (FILES ${PY_TEST_SRC}
+  PERMISSIONS OWNER_READ OWNER_EXECUTE OWNER_WRITE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+  DESTINATION ${XRT_INSTALL_DIR}/test)
 
 message("-- XRT version: ${XRT_VERSION_STRING}")
 
@@ -164,4 +166,3 @@ include (CMake/coverity.cmake)
 
 set (CTAGS "${CMAKE_SOURCE_DIR}/runtime_src/tools/scripts/tags.sh")
 include (CMake/tags.cmake)
-

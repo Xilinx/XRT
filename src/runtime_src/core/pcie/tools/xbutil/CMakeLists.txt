@@ -26,3 +26,8 @@ target_link_libraries(xbutil
 
 install (TARGETS xbutil RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
 install (PROGRAMS "xbsak.sh" DESTINATION ${XRT_INSTALL_DIR}/bin RENAME "xbsak")
+
+enable_testing()
+add_test(NAME xbutil
+  COMMAND ${CMAKE_BINARY_DIR}/${XRT_INSTALL_BIN_DIR}/xbutil scan
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})

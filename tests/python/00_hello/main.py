@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 """
  Copyright (C) 2019-2020 Xilinx, Inc
 

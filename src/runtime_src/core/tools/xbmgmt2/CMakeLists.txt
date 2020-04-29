@@ -90,4 +90,10 @@ endif()
 install (TARGETS ${XBMGMT2_NAME} RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
 install (PROGRAMS ${XRT_LOADER_SCRIPTS} DESTINATION ${XRT_INSTALL_BIN_DIR})
 
+enable_testing()
+add_test(NAME xbmgmt2
+  COMMAND ${CMAKE_BINARY_DIR}/${XRT_INSTALL_BIN_DIR}/xbmgmt --new scan
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+
 # -----------------------------------------------------------------------------
