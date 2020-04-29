@@ -512,6 +512,7 @@ int32_t check_all_execbo(XmaSession s_handle) {
     XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
 
     if (g_xma_singleton->cpu_mode == XMA_CPU_MODE2) {
+        bool notify_execbo_is_free = false;
         if (priv1->num_cu_cmds != 0) {
             int32_t i;
             int32_t num_execbo = priv1->num_execbo_allocated;
@@ -525,6 +526,7 @@ int32_t check_all_execbo(XmaSession s_handle) {
                             priv1->kernel_complete_count++;
                             priv1->kernel_complete_total++;
                         }
+                        notify_execbo_is_free = true;
                         ebo.in_use = false;
                         cu_cmd->state = ERT_CMD_STATE_MAX;
                         priv1->CU_cmds.erase(ebo.cu_cmd_id1);
@@ -532,6 +534,12 @@ int32_t check_all_execbo(XmaSession s_handle) {
                     }
                 }
             }
+        } else {
+            notify_execbo_is_free = true;
+        }
+        //In this mode schedule_work_item still waits for this
+        if (notify_execbo_is_free) {
+            priv1->execbo_is_free.notify_all();
         }
     } else {
         if (priv1->num_cu_cmds != 0) {
