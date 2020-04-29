@@ -74,8 +74,9 @@ int xrt_cu_thread(void *data)
 {
 	struct xrt_cu *xcu = (struct xrt_cu *)data;
 	unsigned long flags;
+	int ret = 0;
 
-	while (1) {
+	while (!xcu->stop) {
 		// Check num_pq here
 		spin_lock_irqsave(&xcu->pq_lock, flags);
 		// double check
@@ -91,14 +92,12 @@ int xrt_cu_thread(void *data)
 		} else if (!list_empty(&xcu->sq)) {
 			process_sq_once(xcu);
 		} else {
-			while (down_timeout(&xcu->sem, 1000) == -ETIME) {
-				if (kthread_should_stop())
-					return 0;
-			}
+			if (down_interruptible(&xcu->sem))
+				ret = -ERESTARTSYS;
 		}
 	}
 
-	return 0;
+	return ret;
 }
 
 void xrt_cu_submit(struct xrt_cu *xcu, struct kds_command *xcmd)
@@ -135,6 +134,8 @@ int xrt_cu_init(struct xrt_cu *xcu)
 
 void xrt_cu_fini(struct xrt_cu *xcu)
 {
+	xcu->stop = 1;
+	up(&xcu->sem);
 	(void) kthread_stop(xcu->thread);
 
 	return;
