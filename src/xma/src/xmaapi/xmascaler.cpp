@@ -21,8 +21,6 @@
 #include "lib/xmaapi.h"
 #include "app/xma_utils.hpp"
 #include "lib/xma_utils.hpp"
-//#include "lib/xmahw_hal.h"
-//#include "lib/xmares.h"
 #include "xmaplugin.h"
 #include <bitset>
 
@@ -181,30 +179,15 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
     sc_session->private_session_data_size = -1;//Managed by host video application
 
     sc_session->scaler_plugin = plg;
-/*
-    bool expected = false;
-    bool desired = true;
-    while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        expected = false;
-    }
-*/
-    //xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD, "%s(): Line# %d\n", __func__, __LINE__);
-    //Moving it later; as already initialized so new xclbin will not load now
-    //std::lock_guard<std::mutex> guard1(g_xma_singleton->m_mutex);
-    //Singleton lock acquired
 
     int32_t rc, dev_index, cu_index;
     dev_index = sc_props->dev_index;
     cu_index = sc_props->cu_index;
-    //enc_handle = enc_props->cu_index;
 
     XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
     if (dev_index >= hwcfg->num_devices || dev_index < 0) {
         xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
                    "XMA session creation failed. dev_index not found\n");
-        //Release singleton lock
-        //g_xma_singleton->locked = false;
         free(sc_session);
         return nullptr;
     }
@@ -221,16 +204,12 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
     if (!found) {
         xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
                    "XMA session creation failed. dev_index not loaded with xclbin\n");
-        //Release singleton lock
-        //g_xma_singleton->locked = false;
         free(sc_session);
         return nullptr;
     }
     if ((cu_index > 0 && (uint32_t)cu_index >= hwcfg->devices[hwcfg_dev_index].number_of_cus) || (cu_index < 0 && sc_props->cu_name == NULL)) {
         xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
                    "XMA session creation failed. Invalid cu_index = %d\n", cu_index);
-        //Release singleton lock
-        //g_xma_singleton->locked = false;
         free(sc_session);
         return nullptr;
     }
@@ -247,8 +226,6 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
         if (!found) {
             xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
                     "XMA session creation failed. cu %s not found\n", cu_name.c_str());
-            //Release singleton lock
-            //g_xma_singleton->locked = false;
             free(sc_session);
             return nullptr;
         }
@@ -261,8 +238,6 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
     //Allow user selected default ddr bank per XMA session
     if (xma_core::finalize_ddr_index(kernel_info, sc_props->ddr_bank_index, 
         sc_session->base.hw_session.bank_index, XMA_SCALER_MOD) != XMA_SUCCESS) {
-        //Release singleton lock
-        //g_xma_singleton->locked = false;
         free(sc_session);
         return nullptr;
     }
@@ -280,7 +255,6 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
     }
 
     // Call the plugins initialization function with this session data
-    //Sarab: Check plugin compatibility to XMA
     int32_t xma_main_ver = -1;
     int32_t xma_sub_ver = -1;
     rc = sc_session->scaler_plugin->xma_version(&xma_main_ver, & xma_sub_ver);
@@ -289,16 +263,12 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
     if (rc < 0 || tmp_check == -1) {
         xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
                    "Initalization of plugin failed. Plugin is incompatible with this XMA version\n");
-        //Release singleton lock
-        //g_xma_singleton->locked = false;
         free(sc_session);
         return nullptr;
     }
     if (tmp_check <= -2) {
         xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
                    "Initalization of plugin failed. Newer plugin is not allowed with old XMA library\n");
-        //Release singleton lock
-        //g_xma_singleton->locked = false;
         free(sc_session);
         return nullptr;
     }
@@ -325,8 +295,6 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
     priv1->num_execbo_allocated = num_execbo;
 
     if (xma_core::create_session_execbo(priv1, num_execbo, XMA_SCALER_MOD) != XMA_SUCCESS) {
-        //Release singleton lock
-        //g_xma_singleton->locked = false;
         free(sc_session->base.plugin_data);
         free(sc_session);
         delete priv1;
@@ -337,11 +305,9 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
     std::unique_lock<std::mutex> guard1(g_xma_singleton->m_mutex);
     //Singleton lock acquired
 
-    if (!kernel_info->soft_kernel && !kernel_info->in_use) {
+    if (!kernel_info->soft_kernel && !kernel_info->in_use && !kernel_info->context_opened) {
         if (xclOpenContext(dev_handle, dev_tmp1.uuid, kernel_info->cu_index_ert, true) != 0) {
             xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD, "Failed to open context to CU %s for this session\n", kernel_info->name);
-            //Release singleton lock
-            //g_xma_singleton->locked = false;
             free(sc_session->base.plugin_data);
             free(sc_session);
             delete priv1;
@@ -366,7 +332,6 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
     g_xma_singleton->num_of_sessions = sc_session->base.session_id;
 
     g_xma_singleton->all_sessions_vec.push_back(sc_session->base);
-    //g_xma_singleton->all_sessions.emplace(g_xma_singleton->num_of_sessions, sc_session->base);
 
     //Release singleton lock
     guard1.unlock();
@@ -377,16 +342,11 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
         xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
                    "Initalization of plugin failed. Return code %d\n",
                    rc);
-        //Release singleton lock
-        //g_xma_singleton->locked = false;
         free(sc_session->base.plugin_data);
         //free(sc_session); Added to singleton above; Keep it as checked for cu cmds
         //delete priv1;
         return nullptr;
     }
-
-    //Release singleton lock
-    //g_xma_singleton->locked = false;
 
     return sc_session;
 }
@@ -397,14 +357,6 @@ xma_scaler_session_destroy(XmaScalerSession *session)
     int32_t rc;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_SCALER_MOD, "%s()\n", __func__);
-/*
-    bool expected = false;
-    bool desired = true;
-    while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        expected = false;
-    }
-*/
     std::lock_guard<std::mutex> guard1(g_xma_singleton->m_mutex);
     //Singleton lock acquired
 
@@ -412,26 +364,17 @@ xma_scaler_session_destroy(XmaScalerSession *session)
         xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
                    "Session is already released\n");
 
-        //Release singleton lock
-        //g_xma_singleton->locked = false;
-
         return XMA_ERROR;
     }
     if (session->base.hw_session.private_do_not_use == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
                    "Session is corrupted\n");
 
-        //Release singleton lock
-        //g_xma_singleton->locked = false;
-
         return XMA_ERROR;
     }
     if (session->scaler_plugin == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
                    "Session is corrupted\n");
-
-        //Release singleton lock
-        //g_xma_singleton->locked = false;
 
         return XMA_ERROR;
     }
@@ -456,9 +399,6 @@ xma_scaler_session_destroy(XmaScalerSession *session)
     session->base.session_signature = NULL;
     free(session);
     session = nullptr;
-
-    //Release singleton lock
-    //g_xma_singleton->locked = false;
 
     return XMA_SUCCESS;
 }

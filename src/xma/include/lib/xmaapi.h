@@ -18,10 +18,7 @@
 #define _XMA_API_
 
 #include "xmaplugin.h"
-//#include "lib/xmacfg.h"
-//#include "lib/xmaconnect.h"
 #include "lib/xmahw_lib.h"
-//#include "lib/xmares.h"
 #include "lib/xmalogger.h"
 #include <atomic>
 #include <list>
@@ -41,19 +38,9 @@ typedef struct XmaLogMsg
 
 typedef struct XmaSingleton
 {
-    //XmaSystemCfg      systemcfg;
     XmaHwCfg          hwcfg;
     bool              xma_initialized;
     uint32_t          cpu_mode;
-    //XmaConnect        connections[MAX_CONNECTION_ENTRIES];
-    //Sarab: Remove logger stuff
-    //XmaLogger         logger;
-    //XmaDecoderPlugin  decodercfg[MAX_PLUGINS];
-    //XmaEncoderPlugin  encodercfg[MAX_PLUGINS];
-    //XmaScalerPlugin   scalercfg[MAX_PLUGINS];
-    //XmaFilterPlugin   filtercfg[MAX_PLUGINS];
-    //XmaKernelPlugin   kernelcfg[MAX_PLUGINS];
-    //std::atomic<bool> locked;
     std::mutex            m_mutex;
     std::atomic<uint32_t> num_decoders;
     std::atomic<uint32_t> num_encoders;
@@ -66,7 +53,6 @@ typedef struct XmaSingleton
     std::list<XmaLogMsg>   log_msg_list;
     std::atomic<bool> log_msg_list_locked;
     std::atomic<uint32_t> num_execbos;
-    XmaEncoderPlugin*   encoder_plugin_lib_func;
 
     std::atomic<bool> xma_exit;
     std::thread       xma_thread1;
@@ -75,7 +61,6 @@ typedef struct XmaSingleton
     uint32_t          reserved[4];
 
   XmaSingleton() {
-    //locked = false;
     xma_initialized = false;
     num_decoders = 0;
     num_encoders = 0;
@@ -88,7 +73,6 @@ typedef struct XmaSingleton
     log_msg_list_locked = false;
     xma_exit = false;
     cpu_mode = 0;
-    encoder_plugin_lib_func = nullptr;
   }
 } XmaSingleton;
 

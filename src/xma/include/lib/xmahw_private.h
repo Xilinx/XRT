@@ -18,18 +18,8 @@
 #define _XMA_HW_PRIVATE_H_
 
 #include "lib/xmahw_lib.h"
-//#include "lib/xmacfg.h"
 #include "app/xmaparam.h"
 
-/*Sarab: Remove yaml system cfg stuff
-typedef struct XmaHwInterface
-{
-    int32_t (*probe)(XmaHwCfg *hwcfg);
-    bool    (*is_compatible)(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg);
-    bool    (*configure)(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg,
-                         bool hw_cfg_status);
-} XmaHwInterface;
-*/
 typedef struct XmaHwInterface
 {
     int32_t (*probe)(XmaHwCfg *hwcfg);

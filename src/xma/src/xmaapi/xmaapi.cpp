@@ -318,23 +318,12 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
         return XMA_ERROR;
     }
 
-    //Sarab: TODO initialize all elements of singleton
-/*
-    bool expected = false;
-    bool desired = true;
-    while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        expected = false;
-    }
-*/
     std::lock_guard<std::mutex> guard1(g_xma_singleton->m_mutex);
     //Singleton lock acquired
 
     if (g_xma_singleton->xma_initialized) {
         std::cout << "XMA FATAL: XMA is already initialized" << std::endl;
 
-        //Release singleton lock
-        //g_xma_singleton->locked = false;
         return XMA_ERROR;
     }
 
@@ -342,9 +331,6 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
     switch(xrtlib) {
         case XMA_ERROR:
           std::cout << "XMA FATAL: Unable to load XRT library" << std::endl;
-
-          //Release singleton lock
-          //g_xma_singleton->locked = false;
           return XMA_ERROR;
           break;
         case 1:
@@ -367,45 +353,15 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
           break;
         default:
           std::cout << "XMA FATAL: Unexpected error. Unable to load XRT library" << std::endl;
-
-          //Release singleton lock
-          //g_xma_singleton->locked = false;
           return XMA_ERROR;
           break;
     }
 
-    //g_xma_singleton->encoders.reserve(32);
-    //g_xma_singleton->encoders.emplace_back(XmaEncoderPlugin{});
     g_xma_singleton->hwcfg.devices.reserve(MAX_XILINX_DEVICES);
-
-    /*Sarab: Remove yaml cfg stuff
-    ret = xma_cfg_parse(cfgfile, &g_xma_singleton->systemcfg);
-    if (ret != XMA_SUCCESS) {
-        printf("XMA ERROR: yaml cfg parsing failed\n");
-        return ret;
-    }
-    */
-
-    /*Sarab: Remove xma_res stuff
-    ret = xma_logger_init(&g_xma_singleton->logger);
-    if (ret != XMA_SUCCESS) {
-        return ret;
-        printf("XMA ERROR: logger init failed\n");
-    }
-
-    xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD,
-               "Creating resource shared mem database\n");
-    g_xma_singleton->shm_res_cfg = xma_res_shm_map(&g_xma_singleton->systemcfg);
-
-    if (!g_xma_singleton->shm_res_cfg)
-        return XMA_ERROR;
-    */
    
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Probing hardware\n");
     ret = xma_hw_probe(&g_xma_singleton->hwcfg);
     if (ret != XMA_SUCCESS) {
-        //Release singleton lock
-        //g_xma_singleton->locked = false;
         for (XmaHwDevice& hw_device: g_xma_singleton->hwcfg.devices) {
             hw_device.kernels.clear();
         }
@@ -415,18 +371,8 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
         return ret;
     }
 
-    /*Sarab: Remove yaml cfg stuff
-    xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Checking hardware compatibility\n");
-    rc = xma_hw_is_compatible(&g_xma_singleton->hwcfg,
-                              &g_xma_singleton->systemcfg);
-    if (!rc)
-        return XMA_ERROR_INVALID;
-    */
-
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Configure hardware\n");
     if (!xma_hw_configure(&g_xma_singleton->hwcfg, devXclbins, num_parms)) {
-        //Release singleton lock
-        //g_xma_singleton->locked = false;
         for (XmaHwDevice& hw_device: g_xma_singleton->hwcfg.devices) {
             hw_device.kernels.clear();
         }
@@ -467,11 +413,6 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
     ret = std::atexit(xma_exit);
     if (ret) {
         xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Error initalizing XMA\n");
-        //Sarab: Remove xmares stuff
-        //xma_res_shm_unmap(g_xma_singleton->shm_res_cfg);
-
-        //Release singleton lock
-        //g_xma_singleton->locked = false;
         for (XmaHwDevice& hw_device: g_xma_singleton->hwcfg.devices) {
             hw_device.kernels.clear();
         }
@@ -481,18 +422,14 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
         return XMA_ERROR;
     }
 
-    //std::thread threadObjSystem(xma_thread1);
     g_xma_singleton->xma_thread1 = std::thread(xma_thread1);
     g_xma_singleton->xma_thread2 = std::thread(xma_thread2);
     //Detach threads to let them run independently
-    //threadObjSystem.detach();
     g_xma_singleton->xma_thread1.detach();
     g_xma_singleton->xma_thread2.detach();
 
     xma_init_sighandlers();
-    //xma_res_mark_xma_ready(g_xma_singleton->shm_res_cfg);
 
-    //g_xma_singleton->locked = false;
     g_xma_singleton->xma_initialized = true;
     return XMA_SUCCESS;
 }

@@ -83,17 +83,6 @@ xma_admin_session_create(XmaAdminProperties *props)
     session->private_session_data = NULL;//Managed by host video application
     session->private_session_data_size = -1;//Managed by host video application
     session->admin_plugin = plg;
-/*
-    bool expected = false;
-    bool desired = true;
-    while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        expected = false;
-    }
-*/
-    //Moving it later; as already initialized so new xclbin will not load now
-    //std::lock_guard<std::mutex> guard1(g_xma_singleton->m_mutex);
-    //Singleton lock acquired
 
     int32_t rc, dev_index;
     dev_index = props->dev_index;
@@ -182,8 +171,6 @@ xma_admin_session_create(XmaAdminProperties *props)
     priv1->kernel_execbos.reserve(num_execbo);
     priv1->num_execbo_allocated = num_execbo;
     if (xma_core::create_session_execbo(priv1, num_execbo, XMA_ADMIN_MOD) != XMA_SUCCESS) {
-        //Release singleton lock
-        //g_xma_singleton->locked = false;
         free(session->base.plugin_data);
         free(session);
         delete priv1;
@@ -202,7 +189,6 @@ xma_admin_session_create(XmaAdminProperties *props)
     g_xma_singleton->num_admins++;
     g_xma_singleton->num_of_sessions = session->base.session_id;
     g_xma_singleton->all_sessions_vec.push_back(session->base);
-    //g_xma_singleton->all_sessions.emplace(g_xma_singleton->num_of_sessions, session->base);
 
     //Release singleton lock
     guard1.unlock();
@@ -213,16 +199,11 @@ xma_admin_session_create(XmaAdminProperties *props)
         xma_logmsg(XMA_ERROR_LOG, XMA_ADMIN_MOD,
                    "Initalization of kernel plugin failed. Return code %d\n",
                    rc);
-        //Release singleton lock
-        //g_xma_singleton->locked = false;
         free(session->base.plugin_data);
         //free(session); Added to singleton above; Keep it as checked for cu cmds
         //delete priv1;
         return nullptr;
     }
-
-    //Release singleton lock
-    //g_xma_singleton->locked = false;
 
     return session;
 }
@@ -233,14 +214,6 @@ xma_admin_session_destroy(XmaAdminSession *session)
     int32_t rc;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_ADMIN_MOD, "%s()\n", __func__);
-/*
-    bool expected = false;
-    bool desired = true;
-    while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        expected = false;
-    }
-*/
     std::lock_guard<std::mutex> guard1(g_xma_singleton->m_mutex);
     //Singleton lock acquired
 
@@ -248,26 +221,17 @@ xma_admin_session_destroy(XmaAdminSession *session)
         xma_logmsg(XMA_ERROR_LOG, XMA_ADMIN_MOD,
                    "Session is already released\n");
 
-        //Release singleton lock
-        //g_xma_singleton->locked = false;
-
         return XMA_ERROR;
     }
     if (session->base.hw_session.private_do_not_use == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMA_ADMIN_MOD,
                    "Session is corrupted\n");
 
-        //Release singleton lock
-        //g_xma_singleton->locked = false;
-
         return XMA_ERROR;
     }
     if (session->admin_plugin == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMA_ADMIN_MOD,
                    "Session is corrupted\n");
-
-        //Release singleton lock
-        //g_xma_singleton->locked = false;
 
         return XMA_ERROR;
     }
@@ -292,9 +256,6 @@ xma_admin_session_destroy(XmaAdminSession *session)
     session->base.session_signature = NULL;
     free(session);
     session = nullptr;
-
-    //Release singleton lock
-    //g_xma_singleton->locked = false;
 
     return XMA_SUCCESS;
 }

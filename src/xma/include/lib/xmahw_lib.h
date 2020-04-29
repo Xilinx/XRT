@@ -233,6 +233,7 @@ typedef struct XmaBufferObjPrivate
 typedef struct XmaHwKernel
 {
     uint8_t     name[MAX_KERNEL_NAME];
+    bool        context_opened;
     bool        in_use;
     int32_t     cu_index;
     uint64_t    base_address;
@@ -246,7 +247,6 @@ typedef struct XmaHwKernel
     uint32_t    cu_mask1;
     uint32_t    cu_mask2;
     uint32_t    cu_mask3;
-    //For execbo:
 
     bool soft_kernel;
     bool kernel_channels;
@@ -265,13 +265,12 @@ typedef struct XmaHwKernel
     uint32_t cu_busy_tmp;
     uint32_t num_samples_tmp;
 
-    //bool             have_lock;
     uint32_t    reserved[16];
 
   XmaHwKernel() {
-    //name = std::string("Yet-to-Initialize");
    std::memset(name, 0, sizeof(name));
     in_use = false;
+    context_opened = false;
     cu_index = -1;
     default_ddr_bank = -1;
     ip_ddr_mapping = 0;
@@ -323,21 +322,13 @@ typedef struct XmaHwDevice
     //char        dsa[MAX_DSA_NAME];
     xclDeviceHandle    handle;
     xclDeviceInfo2     info;
-    //For execbo:
     uint32_t           dev_index;
     uuid_t             uuid; 
     uint32_t           number_of_cus;
+    uint32_t           number_of_hardware_kernels;
     uint32_t           number_of_mem_banks;
-    //bool        in_use;
-    //XmaHwKernel kernels[MAX_KERNEL_CONFIGS];
     std::vector<XmaHwKernel> kernels;
     std::vector<XmaHwMem> ddrs;
-    /*
-    std::unique_ptr<std::atomic<bool>> execbo_locked;
-    std::vector<XmaHwExecBO> kernel_execbos;
-    int32_t    num_execbo_allocated;
-    std::unique_ptr<std::atomic<bool>> execwait_locked;
-    */
 
     uint32_t    cu_cmd_id1;//Counter
     uint32_t    cu_cmd_id2;//Counter
@@ -346,32 +337,24 @@ typedef struct XmaHwDevice
 
     uint32_t    reserved[16];
 
-//  XmaHwDevice(): execbo_locked(new std::atomic<bool>), mt_gen(std::mt19937(std::seed_seq(static_cast<long unsigned int>(time(0)), std::random_device()))), rnd_dis(-97986387, 97986387) {
-//  XmaHwDevice(): execbo_locked(std::make_unique<std::atomic<bool>>()), execwait_locked(std::make_unique<std::atomic<bool>>()), rnd_dis(-97986387, 97986387) {
   XmaHwDevice(): rnd_dis(-97986387, 97986387) {
-    //in_use = false;
     dev_index = -1;
     number_of_cus = 0;
-    //*execbo_locked = false;
-    //*execwait_locked = false;
-    //num_execbo_allocated = -1;
+    number_of_hardware_kernels = 0;
     number_of_mem_banks = 0;
     handle = NULL;
     cu_cmd_id1 = 0;
     cu_cmd_id2 = 0;
-    //mt = std::mt19937(std::random_device{}());
     std::random_device rd;
     uint32_t tmp_int = time(0);
     std::seed_seq seed_seq{rd(), tmp_int};
     mt_gen = std::mt19937(seed_seq);
-    //mt_gen = std::mt19937(std::seed_seq(static_cast<long unsigned int>(time(0)), std::random_device()));
   }
 } XmaHwDevice;
 
 typedef struct XmaHwCfg
 {
     int32_t     num_devices;
-    //XmaHwDevice devices[MAX_XILINX_DEVICES];
     std::vector<XmaHwDevice> devices;
 
     uint32_t    reserved[16];

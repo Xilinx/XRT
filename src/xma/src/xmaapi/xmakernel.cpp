@@ -85,17 +85,6 @@ xma_kernel_session_create(XmaKernelProperties *props)
     session->private_session_data = NULL;//Managed by host video application
     session->private_session_data_size = -1;//Managed by host video application
     session->kernel_plugin = plg;
-/*
-    bool expected = false;
-    bool desired = true;
-    while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        expected = false;
-    }
-*/
-    //Moving it later; as already initialized so new xclbin will not load now
-    //std::lock_guard<std::mutex> guard1(g_xma_singleton->m_mutex);
-    //Singleton lock acquired
 
     int32_t rc, dev_index, cu_index;
     dev_index = props->dev_index;
@@ -105,8 +94,6 @@ xma_kernel_session_create(XmaKernelProperties *props)
     if (dev_index >= hwcfg->num_devices || dev_index < 0) {
         xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
                    "XMA session creation failed. dev_index not found\n");
-        //Release singleton lock
-        //g_xma_singleton->locked = false;
         free(session);
         return nullptr;
     }
@@ -123,16 +110,12 @@ xma_kernel_session_create(XmaKernelProperties *props)
     if (!found) {
         xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
                    "XMA session creation failed. dev_index not loaded with xclbin\n");
-        //Release singleton lock
-        //g_xma_singleton->locked = false;
         free(session);
         return nullptr;
     }
     if ((cu_index > 0 && (uint32_t)cu_index >= hwcfg->devices[hwcfg_dev_index].number_of_cus) || (cu_index < 0 && props->cu_name == NULL)) {
         xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
                    "XMA session creation failed. Invalid cu_index = %d\n", cu_index);
-        //Release singleton lock
-        //g_xma_singleton->locked = false;
         free(session);
         return nullptr;
     }
@@ -149,8 +132,6 @@ xma_kernel_session_create(XmaKernelProperties *props)
         if (!found) {
             xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
                     "XMA session creation failed. cu %s not found\n", cu_name.c_str());
-            //Release singleton lock
-            //g_xma_singleton->locked = false;
             free(session);
             return nullptr;
         }
@@ -163,8 +144,6 @@ xma_kernel_session_create(XmaKernelProperties *props)
     //Allow user selected default ddr bank per XMA session
     if (xma_core::finalize_ddr_index(kernel_info, props->ddr_bank_index, 
         session->base.hw_session.bank_index, XMA_KERNEL_MOD) != XMA_SUCCESS) {
-        //Release singleton lock
-        //g_xma_singleton->locked = false;
         free(session);
         return nullptr;
     }
@@ -174,8 +153,6 @@ xma_kernel_session_create(XmaKernelProperties *props)
             xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
                 "Selected dataflow CU with channels has ini setting with max channel_id of %d. Cannot create session with higher channel_id of %d\n", kernel_info->max_channel_id, session->base.channel_id);
             
-            //Release singleton lock
-            //g_xma_singleton->locked = false;
             free(session);
             return nullptr;
         }
@@ -191,16 +168,12 @@ xma_kernel_session_create(XmaKernelProperties *props)
     if (rc < 0 || tmp_check == -1) {
         xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
                    "Initalization of plugin failed. Plugin is incompatible with this XMA version\n");
-        //Release singleton lock
-        //g_xma_singleton->locked = false;
         free(session);
         return nullptr;
     }
     if (tmp_check <= -2) {
         xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
                    "Initalization of plugin failed. Newer plugin is not allowed with old XMA library\n");
-        //Release singleton lock
-        //g_xma_singleton->locked = false;
         free(session);
         return nullptr;
     }
@@ -222,8 +195,6 @@ xma_kernel_session_create(XmaKernelProperties *props)
     priv1->kernel_execbos.reserve(num_execbo);
     priv1->num_execbo_allocated = num_execbo;
     if (xma_core::create_session_execbo(priv1, num_execbo, XMA_KERNEL_MOD) != XMA_SUCCESS) {
-        //Release singleton lock
-        //g_xma_singleton->locked = false;
         free(session->base.plugin_data);
         free(session);
         delete priv1;
@@ -234,11 +205,9 @@ xma_kernel_session_create(XmaKernelProperties *props)
     std::unique_lock<std::mutex> guard1(g_xma_singleton->m_mutex);
     //Singleton lock acquired
 
-    if (!kernel_info->soft_kernel && !kernel_info->in_use) {
+    if (!kernel_info->soft_kernel && !kernel_info->in_use && !kernel_info->context_opened) {
         if (xclOpenContext(dev_handle, dev_tmp1.uuid, kernel_info->cu_index_ert, true) != 0) {
             xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD, "Failed to open context to CU %s for this session\n", kernel_info->name);
-            //Release singleton lock
-            //g_xma_singleton->locked = false;
             free(session->base.plugin_data);
             free(session);
             delete priv1;
@@ -262,7 +231,6 @@ xma_kernel_session_create(XmaKernelProperties *props)
     g_xma_singleton->num_kernels++;
     g_xma_singleton->num_of_sessions = session->base.session_id;
     g_xma_singleton->all_sessions_vec.push_back(session->base);
-    //g_xma_singleton->all_sessions.emplace(g_xma_singleton->num_of_sessions, session->base);
 
     //Release singleton lock
     guard1.unlock();
@@ -273,16 +241,11 @@ xma_kernel_session_create(XmaKernelProperties *props)
         xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
                    "Initalization of kernel plugin failed. Return code %d\n",
                    rc);
-        //Release singleton lock
-        //g_xma_singleton->locked = false;
         free(session->base.plugin_data);
         //free(session); Added to singleton above; Keep it as checked for cu cmds
         //delete priv1;
         return nullptr;
     }
-
-    //Release singleton lock
-    //g_xma_singleton->locked = false;
 
     return session;
 }
@@ -293,14 +256,7 @@ xma_kernel_session_destroy(XmaKernelSession *session)
     int32_t rc;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_KERNEL_MOD, "%s()\n", __func__);
-/*
-    bool expected = false;
-    bool desired = true;
-    while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        expected = false;
-    }
-*/
+
     std::lock_guard<std::mutex> guard1(g_xma_singleton->m_mutex);
     //Singleton lock acquired
 
@@ -308,26 +264,17 @@ xma_kernel_session_destroy(XmaKernelSession *session)
         xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
                    "Session is already released\n");
 
-        //Release singleton lock
-        //g_xma_singleton->locked = false;
-
         return XMA_ERROR;
     }
     if (session->base.hw_session.private_do_not_use == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
                    "Session is corrupted\n");
 
-        //Release singleton lock
-        //g_xma_singleton->locked = false;
-
         return XMA_ERROR;
     }
     if (session->kernel_plugin == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
                    "Session is corrupted\n");
-
-        //Release singleton lock
-        //g_xma_singleton->locked = false;
 
         return XMA_ERROR;
     }
@@ -352,9 +299,6 @@ xma_kernel_session_destroy(XmaKernelSession *session)
     session->base.session_signature = NULL;
     free(session);
     session = nullptr;
-
-    //Release singleton lock
-    //g_xma_singleton->locked = false;
 
     return XMA_SUCCESS;
 }
