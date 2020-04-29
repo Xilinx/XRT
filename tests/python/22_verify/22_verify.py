@@ -32,7 +32,7 @@ from utils_binding import *
 def runKernel(opt):
 
     rule = re.compile("hello*")
-    name = filter(rule.match, opt.kernels)[0]
+    name = list(filter(lambda val: rule.match, opt.kernels))[0]
     khandle = xrtPLKernelOpen(opt.handle, opt.xuuid, name)
 
     boHandle1 = xclAllocBO(opt.handle, opt.DATA_SIZE, 0, opt.first_mem)
@@ -64,9 +64,8 @@ def runKernel(opt):
     result2 = bo2[:len("Hello World")]
     print("Result string = [%s]" % result1.decode("utf-8"))
     print("Result string = [%s]" % result2.decode("utf-8"))
-
-    assert(result1 == "Hello World"), "Incorrect output from kernel"
-    assert(result2 == "Hello World"), "Incorrect output from kernel"
+    assert(result1.decode("utf-8") == "Hello World"), "Incorrect output from kernel"
+    assert(result2.decode("utf-8") == "Hello World"), "Incorrect output from kernel"
 
     xrtRunClose(rhandle2)
     xrtRunClose(rhandle1)
