@@ -15,6 +15,9 @@ Removed
 .......
 
 * Deprecated utilties xclbincat and xclbinsplit have been removed. Please use xclbinutil to work with xclbin files.
+* ``xclResetDevice()`` has been marked as deprecated in this release and will be removed in a future release. Please use xbutil reset to reset device.
+* ``xclUpgradeFirmware()``, ``xclUpgradeFirmware2()`` and ``xclUpgradeFirmwareXSpi()`` have been marked as deprecated in this release and will be removed in a future release. Please use xbmgmt utility to flash device.
+* ``xclBootFPGA()``, ``xclRemoveAndScanFPGA()`` and ``xclRegisterInterruptNotify()`` have been marked as deprecated in this release and will be removed in a future release. These functionalities are no longer supported.
 
 2.4.0 (202010.2.4)
 ~~~~~~~~~~~~~~~~~~

@@ -950,7 +950,7 @@ int
 xclExecWait(xclDeviceHandle handle, int timeoutMilliSec);
 
 /**
- * xclRegisterInterruptNotify() - register *eventfd* file handle for a MSIX interrupt
+ * xclRegisterInterruptNotify() - register *eventfd* file handle for a MSIX interrupt, deprecated
  *
  * @handle:        Device handle
  * @userInterrupt: MSIX interrupt number
@@ -962,7 +962,11 @@ xclExecWait(xclDeviceHandle handle, int timeoutMilliSec);
  * standard poll/read eventfd framework in order to wait for
  * interrupts. The handles are automatically unregistered on process
  * exit.
+ *
+ * This API is deprecated and will be removed in future release.
+ * This functionality is no longer supported.
  */
+XRT_DEPRECATED
 XCL_DRIVER_DLLESPEC
 int
 xclRegisterInterruptNotify(xclDeviceHandle handle, unsigned int userInterrupt,
