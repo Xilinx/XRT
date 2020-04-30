@@ -904,27 +904,28 @@ public:
         sensor_tree::put( "board.physical.electrical.1v2_top.voltage",         m1v2_top );
         sensor_tree::put( "board.physical.electrical.1v2_btm.voltage",         m1v2_btm );
         sensor_tree::put( "board.physical.electrical.1v8.voltage",             m1v8 );
-        sensor_tree::put( "board.physical.electrical.0v85.voltage",            m0v85 );
+        sensor_tree::put( "board.physical.electrical.0v85.voltage",            m0v85 ); //to-do: deprecate, moved to vccint_io.voltage
         sensor_tree::put( "board.physical.electrical.mgt_0v9.voltage",         mgt0v9avcc );
         sensor_tree::put( "board.physical.electrical.12v_sw.voltage",          m12v_sw );
         sensor_tree::put( "board.physical.electrical.mgt_vtt.voltage",         mgtavtt );
         sensor_tree::put( "board.physical.electrical.vccint.voltage",          vccint_vol );
         sensor_tree::put( "board.physical.electrical.vccint.current",          vccint_curr);
         sensor_tree::put( "board.physical.electrical.3v3_pex.current",         m3v3_pex_curr);
-        sensor_tree::put( "board.physical.electrical.0v85.current",            m0v85_curr);
+        sensor_tree::put( "board.physical.electrical.0v85.current",            m0v85_curr); //to-do: deprecate, moved to vccint_io.current
         sensor_tree::put( "board.physical.electrical.vcc3v3.voltage",          m3v3_vcc_vol);
         sensor_tree::put( "board.physical.electrical.hbm_1v2.voltage",         hbm_1v2_vol);
         sensor_tree::put( "board.physical.electrical.vpp2v5.voltage",          vpp2v5_vol);
-        sensor_tree::put( "board.physical.electrical.vccint_bram.voltage",     vccint_bram_vol);
-        sensor_tree::put( "board.physical.electrical.vcc_io.voltage",          vccint_bram_vol);
-        sensor_tree::put( "board.physical.electrical.12v_aux1.current",        vol_12v_aux1);
+        sensor_tree::put( "board.physical.electrical.vccint_bram.voltage",     vccint_bram_vol); //to-do: deprecate, moved to vccint_io.voltage
+        sensor_tree::put( "board.physical.electrical.vccint_io.voltage",       vccint_bram_vol);
+        sensor_tree::put( "board.physical.electrical.vccint_io.current",       m0v85_curr);
+        sensor_tree::put( "board.physical.electrical.12v_aux1.voltage",        vol_12v_aux1);
         sensor_tree::put( "board.physical.electrical.vcc1v2_i.current",        vol_vcc1v2_i);
         sensor_tree::put( "board.physical.electrical.v12_in_i.current",        vol_v12_in_i);
         sensor_tree::put( "board.physical.electrical.v12_in_aux0_i.current",   vol_v12_in_aux0_i);
         sensor_tree::put( "board.physical.electrical.v12_in_aux1_i.current",   vol_v12_in_aux1_i);
-        sensor_tree::put( "board.physical.electrical.vccaux.current",          vol_vccaux);
-        sensor_tree::put( "board.physical.electrical.vccaux_pmc.current",      vol_vccaux_pmc);
-        sensor_tree::put( "board.physical.electrical.vccram.current",          vol_vccram);
+        sensor_tree::put( "board.physical.electrical.vccaux.voltage",          vol_vccaux);
+        sensor_tree::put( "board.physical.electrical.vccaux_pmc.voltage",      vol_vccaux_pmc);
+        sensor_tree::put( "board.physical.electrical.vccram.voltage",          vol_vccram);
 
         // physical.power
         sensor_tree::put( "board.physical.power", static_cast<unsigned>(sysfs_power()));
@@ -1161,11 +1162,11 @@ public:
         ostr << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << std::setw(16) << "VCCINT IO VOL" << std::setw(16) << "VCC3V3 VOL"  << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccint.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccint.current" )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccint_bram.voltage" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccint_io.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vcc3v3.voltage"  ) << std::endl;
-        ostr << std::setw(16) << "3V3 PEX CURR" << std::setw(16) << "VCC0V85 CURR" << std::setw(16) << "HBM1V2 VOL" << std::setw(16) << "VPP2V5 VOL"  << std::endl;
+        ostr << std::setw(16) << "3V3 PEX CURR" << std::setw(16) << "VCCINT IO CURR" << std::setw(16) << "HBM1V2 VOL" << std::setw(16) << "VPP2V5 VOL"  << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.3v3_pex.current" )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.0v85.current" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccint_io.current" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.hbm_1v2.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vpp2v5.voltage"  ) << std::endl;
         ostr << std::setw(16) << "VCC1V2 CURR" << std::setw(16) << "V12 I CURR" << std::setw(16) << "V12 AUX0 CURR" << std::setw(16) << "V12 AUX1 CURR"  << std::endl;
@@ -1173,11 +1174,11 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.v12_in_i.current" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.v12_in_aux0_i.current" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.v12_in_aux1_i.current"  ) << std::endl;
-        ostr << std::setw(16) << "12V AUX1 CURR" << std::setw(16) << "VCCAUX CURR" << std::setw(16) << "VCCAUX PMC CURR" << std::setw(16) << "VCCRAM CURR"  << std::endl;
-        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.12v_aux1.current" )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccaux.current" )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccaux_pmc.current" )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccram.current"  ) << std::endl;
+        ostr << std::setw(16) << "12V AUX1 VOL" << std::setw(16) << "VCCAUX VOL" << std::setw(16) << "VCCAUX PMC VOL" << std::setw(16) << "VCCRAM VOL"  << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.12v_aux1.voltage" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccaux.voltage" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccaux_pmc.voltage" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccram.voltage"  ) << std::endl;
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Card Power(W)\n";
