@@ -2259,6 +2259,7 @@ struct xocl_subdev_map {
 	((struct xocl_subdev_info []) {					\
 	 	XOCL_DEVINFO_FEATURE_ROM_MGMT_DYN,			\
 		XOCL_DEVINFO_FMGR,					\
+		XOCL_DEVINFO_CALIB_STORAGE,				\
 	 })
 
 #define RES_USER_VSEC							\
