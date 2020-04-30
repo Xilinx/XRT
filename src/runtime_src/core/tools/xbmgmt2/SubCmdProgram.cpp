@@ -441,9 +441,9 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
                                                                 "  Name (and path) of the partiaion.\n"
                                                                 "  Parition's UUID")
     ("update", boost::program_options::value<decltype(update)>(&update)->implicit_value("all"), "Update the persistent images.  Value values:\n"
-                                                                         "  ALL   - All images will be updated\n"
-                                                                         "  FLASH - Flash image\n"
-                                                                         "  SC    - Satellite controller\n")
+                                                                         "  ALL   - All images will be updated"
+                                                                     /*  "  FLASH - Flash image\n"
+                                                                         "  SC    - Satellite controller"*/)
     ("image", boost::program_options::value<decltype(image)>(&image)->multitoken(), "Specifies an image to use used to update the persistent device(s).  Value values:\n"
                                                                       "  Name (and path) to the mcs image on disk\n"
                                                                       "  Name (and path) to the xsabin image on disk\n"
@@ -451,7 +451,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     ("force,f", boost::program_options::bool_switch(&force), "Force update the flash image")
     ("flash-type", boost::program_options::value<decltype(flashType)>(&flashType), "Overrides the flash mode. Use with caution.  Value values:\n"
                                                                       "  ospi\n"
-                                                                      "  ospi_versal\n")
+                                                                      "  ospi_versal")
     ("revert-to-golden", boost::program_options::bool_switch(&revertToGolden), "Resets the FPGA PROM back to the factory image.  Note: This currently only applies to the flash image.")
     ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
@@ -522,9 +522,9 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     if(update.compare("all") == 0)
       auto_flash(deviceCollection, force);
     else if(update.compare("flash") == 0)
-      std::cout << "TODO: implement platform only update\n";
+      throw xrt_core::error("Platform only update is not supported");
     else if(update.compare("sc") == 0)
-      std::cout << "TODO: implement SC only update\n";
+      throw xrt_core::error("SC only update is not supported");
     else 
       throw xrt_core::error("Please specify a valid value");
     return;
