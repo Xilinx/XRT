@@ -2357,6 +2357,12 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 	if (err)
 		goto out;
 
+	/* For 2RP, the majority of ULP IP can only be touched after ucs control bit set to 0x1
+	 * which is done in icap_refresh_clock_freq. Move so logics(create clock devices and set ucs control bit)
+	 * to xclbin download function as workaround to solve interleaving issue.
+	 * DDR SRSR IP and MIG need to wait until ucs control bit set to 0x1, 
+	 * and icap mig calibration needs to wait until DDR SRSR calibration finish
+	 */
 	if (num_dev > 0) {
 		/* if has clock, create clock subdev first */
 		for (i = 0; i < num_dev; i++) {
