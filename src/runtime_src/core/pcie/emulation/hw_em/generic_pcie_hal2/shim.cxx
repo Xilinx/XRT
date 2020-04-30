@@ -2851,7 +2851,7 @@ int HwEmShim::xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *
   }
   xclemulation::TIMEOUT_SCALE timeout_scale=xclemulation::config::getInstance()->getTimeOutScale();
   if(timeout_scale==xclemulation::TIMEOUT_SCALE::NA) {
-      std::string dMsg = "WARNING: [HW-EMU 10] xclPollCompletion : Timeout is not enabled in enulation by default. Please use xrt.ini to enable";
+      std::string dMsg = "WARNING: [HW-EMU 10] xclPollCompletion : Timeout is not enabled in emulation by default.Please use xrt.ini (key: timeout_scale=ms|sec|min) to enable";
       logMessage(dMsg, 0); 
   }
 
