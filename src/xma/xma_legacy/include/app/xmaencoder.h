@@ -255,6 +255,8 @@ typedef struct XmaEncoderProperties
     int32_t         minQP;
     /** force property values to be accepted by encoder plugin */
     int32_t         force_param;
+    /** Rate Control Mode for Custom Rate Control **/
+    int32_t        rc_mode;
     /** array of kernel-specific custom initialization parameters */
     XmaParameter    *params;
     /** count of custom parameters for port */
