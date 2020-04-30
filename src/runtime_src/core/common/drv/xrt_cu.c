@@ -141,6 +141,7 @@ int xrt_cu_thread(void *data)
 void xrt_cu_submit(struct xrt_cu *xcu, struct kds_command *xcmd)
 {
 	unsigned long flags;
+	bool first_command;
 
 	/* Add command to pending queue
 	 * wakeup CU thread if it is the first command
@@ -148,9 +149,10 @@ void xrt_cu_submit(struct xrt_cu *xcu, struct kds_command *xcmd)
 	spin_lock_irqsave(&xcu->pq_lock, flags);
 	list_add_tail(&xcmd->list, &xcu->pq);
 	++xcu->num_pq;
-	if (xcu->num_pq == 1)
-		up(&xcu->sem);
+	first_command = (xcu->num_pq == 1);
 	spin_unlock_irqrestore(&xcu->pq_lock, flags);
+	if (first_command)
+		up(&xcu->sem);
 }
 
 int xrt_cu_init(struct xrt_cu *xcu)
