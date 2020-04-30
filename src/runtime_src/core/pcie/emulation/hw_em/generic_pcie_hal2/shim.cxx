@@ -2850,6 +2850,10 @@ int HwEmShim::xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *
     mLogStream << __func__ << ", " << std::this_thread::get_id() << " , "<< max_compl <<", "<<min_compl<<" ," << *actual <<" ," << timeout << std::endl;
   }
   xclemulation::TIMEOUT_SCALE timeout_scale=xclemulation::config::getInstance()->getTimeOutScale();
+  if(timeout_scale==xclemulation::TIMEOUT_SCALE::NA) {
+      std::string dMsg = "WARNING: [HW-EMU 10] xclPollCompletion : Timeout is not enabled in enulation by default. Please use xrt.ini to enable";
+      logMessage(dMsg, 0); 
+  }
 
   xclemulation::ApiWatchdog watch(timeout_scale,timeout);
   watch.reset();
