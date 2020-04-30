@@ -148,13 +148,20 @@ struct xrt_cu {
 	struct device		 *dev;
 	struct xrt_cu_info	  info;
 	struct resource		**res;
-	struct list_head	  sq;
-	u32			  num_sq;
-	struct list_head	  rq;
+	/* pending queue */
 	struct list_head	  pq;
 	spinlock_t		  pq_lock;
-	struct semaphore	  sem;
 	u32			  num_pq;
+	/* run queue */
+	struct list_head	  rq;
+	u32			  num_rq;
+	/* submitted queue */
+	struct list_head	  sq;
+	u32			  num_sq;
+	/* completed queue */
+	struct list_head	  cq;
+	u32			  num_cq;
+	struct semaphore	  sem;
 	void                     *core;
 	u32			  stop;
 	u32			  done_cnt;
