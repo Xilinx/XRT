@@ -265,6 +265,7 @@ int32_t xma_res_alloc_next_dev(XmaResources shm_cfg, int dev_handle, bool excl)
 }
 
 
+/* must call while holding shm_lock */
 static int32_t xma_alloc_next_dev(XmaResources shm_cfg,
                                   int *dev_handle,
                                   bool excl)
@@ -274,15 +275,11 @@ static int32_t xma_alloc_next_dev(XmaResources shm_cfg,
     while (*dev_handle < MAX_XILINX_DEVICES)
     {
         int ret;
-        if (xma_shm_lock(xma_shm))
-            return XMA_ERROR;
         ret = xma_get_next_free_dev(xma_shm, dev_handle);
         if (ret < 0) {
-            xma_shm_unlock(xma_shm);
             return ret;
         }
         ret = xma_alloc_dev(xma_shm, *dev_handle, excl);
-        xma_shm_unlock(xma_shm);
         if (ret < 0)
             continue;
 
@@ -953,6 +950,10 @@ static int32_t xma_res_alloc_kernel(XmaResources shm_cfg,
     if (!session)
         return XMA_ERROR_INVALID;
 
+    /* init kernel mutex */
+    if (xma_shm_lock(xma_shm))
+        return XMA_ERROR;
+
 kern_alloc_loop:
     for (dev_id = -1; !kern_aquired && (dev_id < MAX_XILINX_DEVICES);)
     {
@@ -1040,7 +1041,7 @@ kern_alloc_loop:
                                        (void *)plugin_alloc_chan;
                     bool alloc_chan_mp_flg = plugin_alloc_chan_mp ? true : false;
 
-                /* register client thread id with kernel */
+                    /* register client thread id with kernel */
                     ret = xma_client_kernel_alloc(shm_cfg, dev, kern_idx,
                                                   session, kernel_data_size,
                                                   alloc_chan_fn, alloc_chan_mp_flg);
@@ -1073,6 +1074,7 @@ kern_alloc_loop:
         }
 
         if (ret < 0) {
+            xma_shm_unlock(xma_shm);
             return XMA_ERROR;
         }
     }
@@ -1081,6 +1083,8 @@ kern_alloc_loop:
         kern_affinity_pass = false; /* open up search to all kernels */
         goto kern_alloc_loop;
     }
+
+    xma_shm_unlock(xma_shm);
 
     if (kern_aquired) {
         session->kern_res = (XmaKernelRes)kern_props;
@@ -1101,6 +1105,7 @@ kern_alloc_loop:
 
 }
 
+/* Must hold shm_lock while calling */
 static int32_t xma_client_kernel_alloc(XmaResources shm_cfg,
                                        XmaDevice *dev,
                                        int dev_kern_idx,
@@ -1112,7 +1117,6 @@ static int32_t xma_client_kernel_alloc(XmaResources shm_cfg,
     XmaKernelInstance *kernel_inst = &dev->kernels[dev_kern_idx];
     xma_plg_alloc_chan_mp plugin_alloc_chan_mp = NULL;
     xma_plg_alloc_chan plugin_alloc_chan = NULL;
-    XmaResConfig *xma_shm = (XmaResConfig *)shm_cfg;
 
     if (alloc_chan_fn && alloc_chan_mp_flg)
         plugin_alloc_chan_mp = (xma_plg_alloc_chan_mp) alloc_chan_fn;
@@ -1121,14 +1125,8 @@ static int32_t xma_client_kernel_alloc(XmaResources shm_cfg,
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD, "%s()\n", __func__);
 
-    /* init kernel mutex */
-    if (xma_shm_lock(xma_shm))
-        return XMA_ERROR;
-
     if (!kernel_inst->lock_initialized)
         xma_kern_mutex_init(kernel_inst);
-
-    xma_shm_unlock(xma_shm);
 
     /* use xma_client_mp_alloc for general case and if alloc_chan_mp is set */
     if (plugin_alloc_chan_mp || !plugin_alloc_chan)
@@ -1140,13 +1138,13 @@ static int32_t xma_client_kernel_alloc(XmaResources shm_cfg,
                                kernel_data_size, plugin_alloc_chan);
 }
 
+/* must call while holding shm_lock */
 static int32_t xma_client_mp_alloc(XmaResources shm_cfg,
                                    XmaKernelInstance *kernel_inst,
                                    XmaSession *session,
                                    size_t kernel_data_size,
                                    xma_plg_alloc_chan_mp alloc_chan)
 {
-    XmaResConfig *xma_shm = (XmaResConfig *)shm_cfg;
     int32_t chan_ids[MAX_KERNEL_CHANS] = {0};
     pthread_t thread_id = pthread_self();
     pid_t proc_id = getpid();
@@ -1154,8 +1152,6 @@ static int32_t xma_client_mp_alloc(XmaResources shm_cfg,
     int ret;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD, "%s()\n", __func__);
-    if (xma_shm_lock(xma_shm))
-        return XMA_ERROR;
 
     for (j = 0;
          kernel_inst->channels[j].client_id &&
@@ -1190,8 +1186,6 @@ static int32_t xma_client_mp_alloc(XmaResources shm_cfg,
 
                 if (ret == XMA_ERROR_NO_CHAN || ret == XMA_ERROR)
                     kernel_inst->no_chan_cap = true;
-
-                xma_shm_unlock(xma_shm);
                 return ret;
             }
         } else {
@@ -1212,8 +1206,8 @@ static int32_t xma_client_mp_alloc(XmaResources shm_cfg,
         xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD,
                    "%s() Kernel aquired. Channel id %d\n",
                    __func__, session->chan_id);
-        xma_shm_unlock(xma_shm);
         return XMA_SUCCESS;
+
     } else if (j                         && /* this is not the first chan alloc */
                j < MAX_KERNEL_CHANS      && /* we've not maxed our db space */
                !kernel_inst->no_chan_cap && /* kernel will support more channels */
@@ -1242,7 +1236,6 @@ static int32_t xma_client_mp_alloc(XmaResources shm_cfg,
             if (ret == XMA_ERROR_NO_CHAN || ret == XMA_ERROR)
                 kernel_inst->no_chan_cap = true;
 
-            xma_shm_unlock(xma_shm);
             return ret < 0 ? ret : XMA_ERROR;
         }
         kernel_inst->channels[j].client_id = proc_id;
@@ -1253,38 +1246,32 @@ static int32_t xma_client_mp_alloc(XmaResources shm_cfg,
         kernel_inst->chan_cnt++;
         session->chan_id = new_chan.chan_id;
         xma_add_client_to_kernel(kernel_inst, proc_id);
-        xma_shm_unlock(xma_shm);
         return XMA_SUCCESS;
     } else if (j && !alloc_chan) {
         /* kernel is in-use and doesn't support channels */
         xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD,
                    "%s() All kernel channels in-use \n", __func__);
-        xma_shm_unlock(xma_shm);
         return XMA_ERROR_NO_KERNEL;
     }
-    xma_shm_unlock(xma_shm);
     return XMA_ERROR;
 
 }
 
+/* must hold shm_lock when calling */
 static int32_t xma_client_sp_alloc(XmaResources shm_cfg,
                                    XmaKernelInstance *kernel_inst,
                                    XmaSession *session,
                                    size_t kernel_data_size,
                                    xma_plg_alloc_chan alloc_chan)
 {
-    XmaResConfig *xma_shm = (XmaResConfig *)shm_cfg;
     XmaSession *sessions[MAX_KERNEL_CHANS];
     pthread_t thread_id = pthread_self();
     pid_t proc_id = getpid();
     int j, ret;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD, "%s()\n", __func__);
-    if (xma_shm_lock(xma_shm))
-        return XMA_ERROR;
 
     if (kernel_inst->client_cnt && kernel_inst->clients[0] != proc_id) {
-        xma_shm_unlock(xma_shm);
         return XMA_ERROR_NO_KERNEL; /* some other process has this kernel */
     }
 
@@ -1304,7 +1291,6 @@ static int32_t xma_client_sp_alloc(XmaResources shm_cfg,
             if (ret) {
                 xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD,
                            "%s() Channel request rejected\n", __func__);
-                xma_shm_unlock(xma_shm);
                 return ret;
             }
         }
@@ -1318,7 +1304,6 @@ static int32_t xma_client_sp_alloc(XmaResources shm_cfg,
         xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD,
                    "%s() Kernel aquired. Channel id %d\n",
                    __func__, session->chan_id);
-        xma_shm_unlock(xma_shm);
         return XMA_SUCCESS;
     } else if (j && j < MAX_KERNEL_CHANS && alloc_chan) {
         /* verify it can support another request */
@@ -1329,7 +1314,6 @@ static int32_t xma_client_sp_alloc(XmaResources shm_cfg,
             session->kernel_data = sessions[0]->kernel_data;
         ret = alloc_chan(session, sessions, j);
         if (ret) {
-            xma_shm_unlock(xma_shm);
             return ret;
         }
         kernel_inst->channels[j].client_id = proc_id;
@@ -1337,16 +1321,13 @@ static int32_t xma_client_sp_alloc(XmaResources shm_cfg,
         kernel_inst->channels[j].session = session;
         kernel_inst->channels[j].thread_id = thread_id;
         kernel_inst->chan_cnt++;
-        xma_shm_unlock(xma_shm);
         return XMA_SUCCESS;
     } else if (j && !alloc_chan) {
         /* kernel is in-use and doesn't support channels */
         xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD,
                    "%s() All kernel channels in-use \n", __func__);
-        xma_shm_unlock(xma_shm);
         return XMA_ERROR_NO_KERNEL;
     }
-    xma_shm_unlock(xma_shm);
     return XMA_ERROR;
 }
 
