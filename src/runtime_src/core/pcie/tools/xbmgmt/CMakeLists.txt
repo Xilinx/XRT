@@ -21,8 +21,3 @@ target_link_libraries(xbmgmt
   )
 
 install (TARGETS xbmgmt RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
-
-enable_testing()
-add_test(NAME xbmgmt
-  COMMAND ${CMAKE_BINARY_DIR}/${XRT_INSTALL_BIN_DIR}/xbmgmt scan
-  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
