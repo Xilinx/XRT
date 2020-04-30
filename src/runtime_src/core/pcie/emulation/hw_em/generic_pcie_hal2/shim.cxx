@@ -1280,17 +1280,28 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
   }
 
 
-  void HwEmShim::xclFreeDeviceBuffer(uint64_t buf)
+  void HwEmShim::xclFreeDeviceBuffer(uint64_t offset)
   {
     if (mLogStream.is_open()) {
-      mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << buf << std::endl;
+      mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << offset << std::endl;
     }
 
     for (auto i : mDDRMemoryManager) {
-      if (buf < i->start() + i->size()) {
-        i->free(buf);
+      if (offset < i->start() + i->size()) {
+        i->free(offset);
       }
     }
+    bool ack = true;
+    if(sock)
+    {
+      xclFreeDeviceBuffer_RPC_CALL(xclFreeDeviceBuffer,offset);
+    }
+    if(!ack)
+    {
+      PRINTENDFUNC;
+      return;
+    }
+
     PRINTENDFUNC;
   }
   void HwEmShim::logMessage(std::string& msg , int verbosity)
