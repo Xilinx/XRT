@@ -1727,12 +1727,7 @@ static ssize_t scaling_enabled_show(struct device *dev,
 		return sprintf(buf, "%d\n", val);
 
 	mutex_lock(&xmc->xmc_lock);
-	val = READ_RUNTIME_CS(xmc, XMC_CLOCK_CONTROL_REG);
-	if (val & XMC_CLOCK_SCALING_EN)
-		val = 1;
-	else
-		val = 0;
-
+	val =  xmc->runtime_cs_enabled;
 	mutex_unlock(&xmc->xmc_lock);
 	return sprintf(buf, "%d\n", val);
 }
