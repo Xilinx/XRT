@@ -1414,11 +1414,11 @@ xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
   return shim->exec_wait(timeoutMilliSec);
 }
 
-int xclExportBO(xclDeviceHandle handle, unsigned int boHandle)
+int xclExportBO(xclDeviceHandle handle, xclBufferHandle boHandle)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclExportBO() NOT IMPLEMENTED");
-  return ERROR_INVALID_FUNCTION;
+  return EDOM;
 }
 
 xclBufferHandle xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
