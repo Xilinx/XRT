@@ -3423,11 +3423,19 @@ static struct xocl_scheduler scheduler0;
 static void
 scheduler_reset(struct xocl_scheduler *xs)
 {
+	struct list_head *pos, *next;
+
 	xs->error = false;
 	xs->stop = false;
 	xs->reset = false;
 	xs->poll = 0;
 	xs->intc = 0;
+
+	list_for_each_safe(pos, next, &xs->cores) {
+		struct exec_core *exec =
+			list_entry(pos, struct exec_core, core_list);
+		exec_reset_cmds(exec);
+	}
 }
 
 static void
