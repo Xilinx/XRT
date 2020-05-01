@@ -859,7 +859,7 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	 * For PR platform, the FPGA manager is required. No good way to
 	 * determin if it is a PR platform at probe.
 	 */
-	fnode = of_get_child_by_name(of_root,
+	fnode = of_find_node_by_name(of_root,
 	    zdev->zdev_data_info->fpga_driver_name);
 	if (fnode) {
 		zdev->fpga_mgr = of_fpga_mgr_get(fnode);
