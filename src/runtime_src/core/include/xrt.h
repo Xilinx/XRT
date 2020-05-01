@@ -389,24 +389,32 @@ xclReClock2(xclDeviceHandle handle, unsigned short region,
             const unsigned short *targetFreqMHz);
 
 /**
- * xclLockDevice() - Get exclusive ownership of the device
+ * xclLockDevice() - Get exclusive ownership of the device, deprecated
  *
  * @handle:        Device handle
  * Return:         0 on success or appropriate error number
  *
  * The lock is necessary before performing buffer migration, register
  * access or bitstream downloads.
+ *
+ * This API is deprecated and will be removed in future release.
+ * This functionality is no longer supported.
  */
+XRT_DEPRECATED
 XCL_DRIVER_DLLESPEC
 int
 xclLockDevice(xclDeviceHandle handle);
 
 /**
- * xclUnlockDevice() - Release exclusive ownership of the device
+ * xclUnlockDevice() - Release exclusive ownership of the device, deprecated
  *
  * @handle:        Device handle
  * Return:         0 on success or appropriate error number
+ *
+ * This API is deprecated and will be removed in future release.
+ * This functionality is no longer supported.
  */
+XRT_DEPRECATED
 XCL_DRIVER_DLLESPEC
 int
 xclUnlockDevice(xclDeviceHandle handle);

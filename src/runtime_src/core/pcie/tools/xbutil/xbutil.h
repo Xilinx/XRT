@@ -1432,11 +1432,8 @@ public:
         char *buffer = new char[length];
         stream.read(buffer, length);
         const xclBin *header = (const xclBin *)buffer;
-        int result = xclLockDevice(m_handle);
-        if (result == 0)
-            result = xclLoadXclBin(m_handle, header);
+        int result = xclLoadXclBin(m_handle, header);
         delete [] buffer;
-        (void) xclUnlockDevice(m_handle);
 
         return result;
     }

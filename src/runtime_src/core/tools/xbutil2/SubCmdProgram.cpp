@@ -115,12 +115,8 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
     auto device = xrt_core::get_userpf_device(card);
     auto hdl = device->get_device_handle();
-    if (auto err = xclLockDevice(hdl))
-      throw xrt_core::error(err, "Could not lock device " + std::to_string(card));
     if (auto err = xclLoadXclBin(hdl,reinterpret_cast<const axlf*>(raw.data())))
       throw xrt_core::error(err,"Could not program device" + std::to_string(card));
-    if (auto err = xclUnlockDevice(hdl))
-      throw xrt_core::error(err, "Could not unlock device " + std::to_string(card));
 
     std::cout << "INFO: xbutil2 program succeeded.\n";
     return;
