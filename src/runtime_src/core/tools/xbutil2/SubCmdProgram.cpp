@@ -76,7 +76,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     po::store(po::command_line_parser(_options).options(programDesc).run(), vm);
     po::notify(vm); // Can throw
   } catch (po::error& e) {
-    xrt_core::send_exception_message(e.what(), "XBUTIL");
+    std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
     printHelp(programDesc);
 
     // Re-throw exception
@@ -89,9 +89,6 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     return;
   }
 
-  if (xclbin.empty())
-    throw xrt_core::error("Please specify xclbin file with '-p' switch");
-
   // -- Now process the subcommand --------------------------------------------
   XBU::verbose(boost::str(boost::format("  Card: %ld") % card));
   XBU::verbose(boost::str(boost::format("Region: %ld") % region));
@@ -100,29 +97,34 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   if (region)
     throw xrt_core::error("region is not supported");
 
-  std::ifstream stream(xclbin, std::ios::binary);
-  if (!stream)
-    throw std::runtime_error("could not open " + xclbin + " for reading");
+  if (!xclbin.empty()) {
+    std::ifstream stream(xclbin, std::ios::binary);
+    if (!stream)
+      throw std::runtime_error("could not open " + xclbin + " for reading");
 
-  stream.seekg(0,stream.end);
-  size_t size = stream.tellg();
-  stream.seekg(0,stream.beg);
+    stream.seekg(0,stream.end);
+    size_t size = stream.tellg();
+    stream.seekg(0,stream.beg);
 
-  std::vector<char> raw(size);
-  stream.read(raw.data(),size);
+    std::vector<char> raw(size);
+    stream.read(raw.data(),size);
 
-  std::string v(raw.data(),raw.data()+7);
-  if (v != "xclbin2")
-    throw xrt_core::error("bad binary version '" + v + "'");
+    std::string v(raw.data(),raw.data()+7);
+    if (v != "xclbin2")
+      throw xrt_core::error("bad binary version '" + v + "'");
 
-  auto device = xrt_core::get_userpf_device(card);
-  auto hdl = device->get_device_handle();
-  if (auto err = xclLockDevice(hdl))
-    throw xrt_core::error(err, "Could not lock device " + std::to_string(card));
-  if (auto err = xclLoadXclBin(hdl,reinterpret_cast<const axlf*>(raw.data())))
-    throw xrt_core::error(err,"Could not program device" + std::to_string(card));
-  if (auto err = xclUnlockDevice(hdl))
-    throw xrt_core::error(err, "Could not unlock device " + std::to_string(card));
+    auto device = xrt_core::get_userpf_device(card);
+    auto hdl = device->get_device_handle();
+    if (auto err = xclLockDevice(hdl))
+      throw xrt_core::error(err, "Could not lock device " + std::to_string(card));
+    if (auto err = xclLoadXclBin(hdl,reinterpret_cast<const axlf*>(raw.data())))
+      throw xrt_core::error(err,"Could not program device" + std::to_string(card));
+    if (auto err = xclUnlockDevice(hdl))
+      throw xrt_core::error(err, "Could not unlock device " + std::to_string(card));
 
-  std::cout << "INFO: xbutil2 program succeeded.\n";
+    std::cout << "INFO: xbutil2 program succeeded.\n";
+    return;
+  }
+  std::cout << "\nERROR: Missing program operation. No action taken.\n\n";
+  printHelp(programDesc);
 }
