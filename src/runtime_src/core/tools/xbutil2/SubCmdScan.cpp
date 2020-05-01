@@ -90,7 +90,7 @@ SubCmdScan::execute(const SubCmdOptions& _options) const
 
   // Walk the property tree and print info
   auto devices = pt.get_child_optional("devices");
-  if (!devices || (*devices).size()==0) {
+  if (!devices || devices->size()==0) {
     // No devices when scanning is not an error condition
     std::cout << "No devices found" << std::endl;
     return;
