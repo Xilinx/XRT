@@ -1009,7 +1009,17 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	if (!(dev_info->flags & (XOCL_DSAFLAG_SMARTN | XOCL_DSAFLAG_VERSAL | XOCL_DSAFLAG_MPSOC)))
 		ret = xocl_icap_download_boot_firmware(lro);
 
-	/* return -ENODEV for 2RP platform */
+	/*
+	 * All 2.0 shell will not have icap for mgmt at this moment, thus we will
+	 * get ENODEV (see RES_MGMT_VSEC).
+	 * If we don't want to break the existing rule but still apply the rule
+	 * like if versal has vesc, then it is a 2.0 shell. We can add the following
+	 * condition.
+	 */
+	if ((dev_info->flags & XOCL_DSAFLAG_VERSAL) &&
+	    xocl_subdev_is_vsec(lro))
+		ret = -ENODEV;
+
 	if (!ret) {
 		xocl_thread_start(lro);
 
@@ -1210,8 +1220,6 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	 */
 	(void) xocl_subdev_create_by_level(lro, XOCL_SUBDEV_LEVEL_BLD);
 	(void) xocl_subdev_create_vsec_devs(lro);
-
-
 
 	return 0;
 

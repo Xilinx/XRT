@@ -646,6 +646,7 @@ static bool xocl_subdev_vsec_is_golden(xdev_handle_t xdev_hdl)
 
 int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 {
+	struct xocl_board_private *dev_info = &lro->core.priv;
 	const struct axlf_section_header	*dtc_header;
 	struct axlf				*bin_axlf;
 	int					ret;
@@ -701,7 +702,10 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	if (ret)
 		goto failed;
 
-	ret = xocl_icap_download_boot_firmware(lro);
+	/* VERSAL doesn't have icap to download, will need to refactor the code */
+	if (!(dev_info->flags & XOCL_DSAFLAG_VERSAL))
+		ret = xocl_icap_download_boot_firmware(lro);
+
 	if (ret)
 		goto failed;
 

@@ -1220,6 +1220,15 @@ xocl_subdev_vsec(xdev_handle_t xdev, u32 type,
 	return found ? 0 : -ENOENT;
 }
 
+bool xocl_subdev_is_vsec(xdev_handle_t xdev)
+{
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev;
+	struct pci_dev *pdev = core->pdev;
+	int cap;
+
+	return pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_VNDR) != 0;
+}
+
 int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 {
 	u64 offset;
@@ -1230,7 +1239,8 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_FLASH_VSEC;
 
 		xocl_xdev_info(xdev,
-			"Vendor Specific FLASH RES Start 0x%llx", offset);
+			"Vendor Specific FLASH RES Start 0x%llx, bar %d",
+			 offset, bar);
 		subdev_info.res[0].start = offset;
 		subdev_info.res[0].end = offset + 0xfff;
 		subdev_info.bar_idx[0] = bar;
@@ -1245,7 +1255,8 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_MAILBOX_VSEC;
 
 		xocl_xdev_info(xdev,
-			"Vendor Specific MAILBOX RES Start 0x%llx", offset);
+			"Vendor Specific MAILBOX RES Start 0x%llx, bar %d",
+			 offset, bar);
 		subdev_info.res[0].start = offset;
 		subdev_info.res[0].end = offset + 0xfff;
 		subdev_info.bar_idx[0] = bar;
