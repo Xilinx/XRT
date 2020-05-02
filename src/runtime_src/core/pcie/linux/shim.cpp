@@ -2148,6 +2148,7 @@ unsigned xclProbe()
 xclDeviceHandle
 xclOpen(unsigned int deviceIndex, const char*, xclVerbosityLevel)
 {
+  try {
     if(pcidev::get_dev_total() <= deviceIndex) {
       xrt_core::message::send(xrt_core::message::severity_level::XRT_INFO, "XRT",
                        std::string("Cannot find index " + std::to_string(deviceIndex) + " \n"));
@@ -2160,6 +2161,15 @@ xclOpen(unsigned int deviceIndex, const char*, xclVerbosityLevel)
     xocl::shim *handle = new xocl::shim(deviceIndex);
 
     return static_cast<xclDeviceHandle>(handle);
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+  }
+
+  return nullptr;
 }
 
 void xclClose(xclDeviceHandle handle)
@@ -2176,6 +2186,7 @@ void xclClose(xclDeviceHandle handle)
 
 int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 {
+  try {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
 
 #ifdef DISABLE_DOWNLOAD_XCLBIN
@@ -2197,12 +2208,21 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 #endif
     }
     if (!ret && xrt_core::config::get_ert() &&
-      (xclbin::get_axlf_section(buffer, PDI) ||
-      xclbin::get_axlf_section(buffer, BITSTREAM_PARTIAL_PDI))) {
-        ret = xrt_core::scheduler::loadXclbinToPS(handle, buffer,
-          xrt_core::config::get_pdi_load());
+        (xclbin::get_axlf_section(buffer, PDI) ||
+         xclbin::get_axlf_section(buffer, BITSTREAM_PARTIAL_PDI))) {
+      ret = xrt_core::scheduler::
+        loadXclbinToPS(handle, buffer,xrt_core::config::get_pdi_load());
     }
     return ret;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get_code();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -EINVAL;
+  }
 }
 
 int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, const char* format, ...)
