@@ -209,6 +209,17 @@ public:
   std::pair<const char*, size_t>
   get_axlf_section(axlf_section_kind section, const xuid_t xclbin_id) const;
 
+  /**
+   * get_ert_slots() - Get number of ERT CQ slots
+   *
+   * Returns: Pair of number of slots and size of each slot
+   */
+  std::pair<size_t, size_t>
+  get_ert_slots(const char* xml, size_t xml_size) const;
+
+  std::pair<size_t, size_t>
+  get_ert_slots(const axlf* top) const;
+
   // Move all these 'pt' functions out the class interface
   virtual void get_info(boost::property_tree::ptree&) const {}
   virtual void read_dma_stats(boost::property_tree::ptree&) const {}

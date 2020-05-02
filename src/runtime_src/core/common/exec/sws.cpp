@@ -894,33 +894,32 @@ stop()
 }
 
 void
-init(xrt_core::device* xdev, const std::vector<uint64_t>& cu_addr_map)
-{
-  if (!is_sw_emulation())
-    throw std::runtime_error("unexpected scheduler initialization call in non sw emulation");
-
-  std::vector<addr_type> amap(cu_addr_map.begin(),cu_addr_map.end());
-  auto slots = ERT_CQ_SIZE / xrt_core::config::get_ert_slotsize();
-  cu_trace_enabled = xrt_core::config::get_profile();
-  s_device_exec_core.erase(xdev);
-  s_device_exec_core.insert
-    (std::make_pair
-     (xdev,std::make_unique<exec_core>(xdev,&s_global_scheduler,slots,amap)));
-}
-
-void
 init(xrt_core::device* xdev)
 {
   auto ip_section = xdev->get_axlf_section(IP_LAYOUT);
   auto ip_layout = reinterpret_cast<const ::ip_layout*>(ip_section.first);
-  if (!ip_layout)
+  if (!is_sw_emulation() && !ip_layout)
     throw std::runtime_error("No ip layout available to initialize sws, make sure xclbin is loaded");
+
+  // XML meta data needed to get ert slot size
+  auto xml_section = xdev->get_axlf_section(EMBEDDED_METADATA);
+  auto xml_data = xml_section.first;
+  auto xml_size = xml_section.second;
+  if (!xml_data)
+    throw std::runtime_error("No xml metadata available to initialize sws, make sure xclbin is loaded");
+
+  // CU base addresses from IP_LAYOUT except in SW EMU where xml is parsed
+  auto cuaddrs = is_sw_emulation()
+    ? xrt_core::xclbin::get_cus(xml_data, xml_size)
+    : xrt_core::xclbin::get_cus(ip_layout);
+  std::vector<addr_type> amap(cuaddrs.begin(),cuaddrs.end());
+
+  // Slots are computed by device, its a function of device properties
+  auto slots = xdev->get_ert_slots(xml_data, xml_size).first;
   
   // create execution core for this device
-  auto slots = ERT_CQ_SIZE / xrt_core::config::get_ert_slotsize();
   cu_trace_enabled = xrt_core::config::get_profile();
-  auto cuaddrs = xrt_core::xclbin::get_cus(ip_layout);
-  std::vector<addr_type> amap(cuaddrs.begin(),cuaddrs.end());
+
   s_device_exec_core.erase(xdev);
   s_device_exec_core.insert
     (std::make_pair

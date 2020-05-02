@@ -43,10 +43,6 @@ XRT_EXPORT
 void
 init(xrt::device* device, const axlf* top);
 
-XRT_EXPORT
-void
-init(xrt::device* device, const std::vector<uint64_t>& cu_addr_map);
-
 } // sws
 
 /**

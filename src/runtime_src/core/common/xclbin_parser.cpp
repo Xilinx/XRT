@@ -17,6 +17,7 @@
 #include "xclbin_parser.h"
 #include "config_reader.h"
 
+#include <algorithm>
 #include <regex>
 #include <cstring>
 #include <cstdlib>
@@ -47,6 +48,20 @@ is_sw_emulation()
   static auto xem = std::getenv("XCL_EMULATION_MODE");
   static bool swem = xem ? std::strcmp(xem,"sw_emu")==0 : false;
   return swem;
+}
+
+static std::pair<const char*, size_t>
+get_xml_section(const axlf* top)
+{
+  const axlf_section_header* xml_hdr = ::xclbin::get_axlf_section(top, EMBEDDED_METADATA);
+
+  if (!xml_hdr)
+    throw std::runtime_error("No xml meta data in xclbin");
+
+  auto begin = reinterpret_cast<const char*>(top) + xml_hdr->m_sectionOffset;
+  auto xml_data = reinterpret_cast<const char*>(begin);
+  auto xml_size = xml_hdr->m_sectionSize;
+  return std::make_pair(xml_data, xml_size);
 }
 
 // Filter out IPs with invalid base address (streaming kernel)
@@ -137,45 +152,6 @@ kernel_max_ctx(const ip_data& ip)
 }
 
 
-// Extract CU base addresses for xml meta data
-// Used in sw_emu because IP_LAYOUT section is not available in sw emu.
-static std::vector<uint64_t>
-get_cus_from_xml(const axlf* top)
-{
-  std::vector<uint64_t> cus;
-  auto xml_hdr = ::xclbin::get_axlf_section(top, EMBEDDED_METADATA);
-
-  if (!xml_hdr)
-    return cus;
-
-  auto begin = reinterpret_cast<const char*>(top) + xml_hdr->m_sectionOffset;
-  const char *xml_data = reinterpret_cast<const char*>(begin);
-  uint64_t xml_size = xml_hdr->m_sectionSize;
-
-  pt::ptree xml_project;
-  std::stringstream xml_stream;
-  xml_stream.write(xml_data, xml_size);
-  pt::read_xml(xml_stream, xml_project);
-
-  for (auto& xml_kernel : xml_project.get_child("project.platform.device.core")) {
-    if (xml_kernel.first != "kernel")
-      continue;
-    for (auto& xml_inst : xml_kernel.second) {
-      if (xml_inst.first != "instance")
-        continue;
-      for (auto& xml_remap : xml_inst.second) {
-        if (xml_remap.first != "addrRemap")
-          continue;
-        auto base = convert(xml_remap.second.get<std::string>("<xmlattr>.base"));
-        cus.push_back(base);
-      }
-    }
-  }
-  
-  std::sort(cus.begin(), cus.end());
-  return cus;
-}
-
 } // namespace
 
 namespace xrt_core { namespace xclbin {
@@ -206,6 +182,40 @@ get_first_used_mem(const axlf* top)
   }
 
   return -1;
+}
+
+// Compute max register map size of CUs in xclbin
+size_t
+get_max_cu_size(const char* xml_data, size_t xml_size)
+{
+  pt::ptree xml_project;
+  std::stringstream xml_stream;
+  xml_stream.write(xml_data,xml_size);
+  pt::read_xml(xml_stream,xml_project);
+
+  size_t maxsz = 0;
+
+  for (auto& xml_kernel : xml_project.get_child("project.platform.device.core")) {
+    if (xml_kernel.first != "kernel")
+      continue;
+
+    for (auto& xml_arg : xml_kernel.second) {
+      if (xml_arg.first != "arg")
+        continue;
+
+      auto ofs = convert(xml_arg.second.get<std::string>("<xmlattr>.offset"));
+      auto sz = convert(xml_arg.second.get<std::string>("<xmlattr>.size"));
+      maxsz = std::max(maxsz, ofs + sz);
+    }
+  }
+  return maxsz;
+}
+
+size_t
+get_max_cu_size(const axlf* top)
+{
+  auto xml = get_xml_section(top);
+  return get_max_cu_size(xml.first, xml.second);
 }
 
 std::vector<uint64_t>
@@ -260,7 +270,7 @@ get_cus(const ip_layout* ip_layout, const std::string& kname)
     std::string regex = "^(" + kernel + "):(";  // "(kernel):("
     std::vector<std::string> cus;              // split at ','
     boost::split(cus,insts,boost::is_any_of(","));
-      
+
     // compose final regex
     int count = 0;
     for (auto& cu : cus)
@@ -282,13 +292,45 @@ get_cus(const ip_layout* ip_layout, const std::string& kname)
 
   return ips;
 }
-    
+
+// Extract CU base addresses for xml meta data
+// Used in sw_emu because IP_LAYOUT section is not available in sw emu.
+std::vector<uint64_t>
+get_cus(const char* xml_data, size_t xml_size, bool)
+{
+  std::vector<uint64_t> cus;
+
+  pt::ptree xml_project;
+  std::stringstream xml_stream;
+  xml_stream.write(xml_data, xml_size);
+  pt::read_xml(xml_stream, xml_project);
+
+  for (auto& xml_kernel : xml_project.get_child("project.platform.device.core")) {
+    if (xml_kernel.first != "kernel")
+      continue;
+    for (auto& xml_inst : xml_kernel.second) {
+      if (xml_inst.first != "instance")
+        continue;
+      for (auto& xml_remap : xml_inst.second) {
+        if (xml_remap.first != "addrRemap")
+          continue;
+        auto base = convert(xml_remap.second.get<std::string>("<xmlattr>.base"));
+        cus.push_back(base);
+      }
+    }
+  }
+
+  std::sort(cus.begin(), cus.end());
+  return cus;
+}
 
 std::vector<uint64_t>
 get_cus(const axlf* top, bool encode)
 {
-  if (is_sw_emulation())
-    return get_cus_from_xml(top);
+  if (is_sw_emulation()) {
+    auto xml = get_xml_section(top);
+    return get_cus(xml.first, xml.second);
+  }
 
   auto ip_layout = axlf_section_type<const ::ip_layout*>::get(top,axlf_section_kind::IP_LAYOUT);
   return ip_layout ? get_cus(ip_layout,encode) : std::vector<uint64_t>(0);
@@ -468,30 +510,26 @@ size_t
 get_kernel_freq(const axlf* top)
 {
   size_t kernel_clk_freq = 100; //default clock frequency is 100
-  const axlf_section_header *xml_hdr = ::xclbin::get_axlf_section(top, EMBEDDED_METADATA);
-  if (xml_hdr) {
-    auto begin = reinterpret_cast<const char*>(top) + xml_hdr->m_sectionOffset;
-    const char *xml_data = reinterpret_cast<const char*>(begin);
-    uint64_t xml_size = xml_hdr->m_sectionSize;
+  auto xml = get_xml_section(top);
 
-    pt::ptree xml_project;
-    std::stringstream xml_stream;
-    xml_stream.write(xml_data,xml_size);
-    pt::read_xml(xml_stream,xml_project);
+  pt::ptree xml_project;
+  std::stringstream xml_stream;
+  xml_stream.write(xml.first,xml.second);
+  pt::read_xml(xml_stream,xml_project);
 
-    auto clock_child = xml_project.get_child_optional("project.platform.device.core.kernelClocks");
+  auto clock_child = xml_project.get_child_optional("project.platform.device.core.kernelClocks");
 
-    if (clock_child) { // check whether kernelClocks field exists or not
-      for (auto& xml_clock : xml_project.get_child("project.platform.device.core.kernelClocks")) {
-        if (xml_clock.first != "clock")
-          continue;
-        auto port = xml_clock.second.get<std::string>("<xmlattr>.port","");
-        auto freq = convert(xml_clock.second.get<std::string>("<xmlattr>.frequency","100"));
-        if(port == "KERNEL_CLK")
-          kernel_clk_freq = freq;
-      }
+  if (clock_child) { // check whether kernelClocks field exists or not
+    for (auto& xml_clock : xml_project.get_child("project.platform.device.core.kernelClocks")) {
+      if (xml_clock.first != "clock")
+        continue;
+      auto port = xml_clock.second.get<std::string>("<xmlattr>.port","");
+      auto freq = convert(xml_clock.second.get<std::string>("<xmlattr>.frequency","100"));
+      if(port == "KERNEL_CLK")
+        kernel_clk_freq = freq;
     }
   }
+
   return kernel_clk_freq;
 }
 
@@ -538,16 +576,8 @@ get_kernel_arguments(const char* xml_data, size_t xml_size, const std::string& k
 std::vector<kernel_argument>
 get_kernel_arguments(const axlf* top, const std::string& kname)
 {
-  const axlf_section_header *xml_hdr = ::xclbin::get_axlf_section(top, EMBEDDED_METADATA);
-
-  if (!xml_hdr)
-    throw std::runtime_error("No meta data in xclbin");
-
-  auto begin = reinterpret_cast<const char*>(top) + xml_hdr->m_sectionOffset;
-  auto xml_data = reinterpret_cast<const char*>(begin);
-  auto xml_size = xml_hdr->m_sectionSize;
-
-  return get_kernel_arguments(xml_data, xml_size, kname);
+  auto xml = get_xml_section(top);
+  return get_kernel_arguments(xml.first, xml.second, kname);
 }
 
 }} // xclbin, xrt_core

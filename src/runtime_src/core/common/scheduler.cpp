@@ -15,6 +15,8 @@
  */
 
 #include "scheduler.h"
+#include "system.h"
+#include "device.h"
 #include "config_reader.h"
 #include "xclbin_parser.h"
 #include "message.h"
@@ -24,6 +26,7 @@
 #include <memory>
 #include <string>
 #include <cstring>
+#include <iostream>
 
 #ifdef __GNUC__
 #include <sys/mman.h>
@@ -130,16 +133,19 @@ namespace xrt_core { namespace scheduler {
 int
 init(xclDeviceHandle handle, const axlf* top)
 {
-  xuid_t uuid = {0};
   auto execbo = create_exec_bo(handle,0x1000);
   auto ecmd = reinterpret_cast<ert_configure_cmd*>(execbo->data);
   ecmd->state = ERT_CMD_STATE_NEW;
   ecmd->opcode = ERT_CONFIGURE;
   ecmd->type = ERT_CTRL;
 
-  auto cus = xclbin::get_cus(top, true);
+  auto device = xrt_core::get_userpf_device(handle);
+  ecmd->slot_size = device->get_ert_slots(top).second;
 
-  ecmd->slot_size = config::get_ert_slotsize();
+  if (ecmd->slot_size != 4096)
+    std::cout << "ERT slotsize computed to: " << ecmd->slot_size << "\n";
+  
+  auto cus = xclbin::get_cus(top, true);
   ecmd->num_cus = cus.size();
   ecmd->cu_shift = 16;
   ecmd->cu_base_addr = xclbin::get_cu_base_offset(top);
@@ -154,6 +160,7 @@ init(xclDeviceHandle handle, const axlf* top)
   std::copy(cus.begin(), cus.end(), ecmd->data);
   ecmd->count = 5 + cus.size();
 
+  xuid_t uuid = {0};
   uuid_copy(uuid, top->m_header.uuid);
   if (xclOpenContext(handle,uuid,std::numeric_limits<unsigned int>::max(),true))
     throw std::runtime_error("unable to reserve virtual CU");
