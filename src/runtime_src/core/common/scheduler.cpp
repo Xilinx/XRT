@@ -139,7 +139,7 @@ init(xclDeviceHandle handle, const axlf* top)
 
   auto cus = xclbin::get_cus(top, true);
 
-  ecmd->slot_size = config::get_ert_slotsize();
+  ecmd->slot_size = xclbin::get_ert_slotsize(top);
   ecmd->num_cus = cus.size();
   ecmd->cu_shift = 16;
   ecmd->cu_base_addr = xclbin::get_cu_base_offset(top);

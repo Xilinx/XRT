@@ -16,6 +16,7 @@
 #define XRT_CORE_COMMON_SOURCE
 #include "xclbin_parser.h"
 #include "config_reader.h"
+#include "core/include/ert.h"
 
 #include <regex>
 #include <cstring>
@@ -47,6 +48,20 @@ is_sw_emulation()
   static auto xem = std::getenv("XCL_EMULATION_MODE");
   static bool swem = xem ? std::strcmp(xem,"sw_emu")==0 : false;
   return swem;
+}
+
+static std::pair<const char*, size_t>
+get_xml_section(const axlf* top)
+{
+  const axlf_section_header* xml_hdr = ::xclbin::get_axlf_section(top, EMBEDDED_METADATA);
+
+  if (!xml_hdr)
+    throw std::runtime_error("No xml meta data in xclbin");
+
+  auto begin = reinterpret_cast<const char*>(top) + xml_hdr->m_sectionOffset;
+  auto xml_data = reinterpret_cast<const char*>(begin);
+  auto xml_size = xml_hdr->m_sectionSize;
+  return std::make_pair(xml_data, xml_size);
 }
 
 // Filter out IPs with invalid base address (streaming kernel)
@@ -136,44 +151,31 @@ kernel_max_ctx(const ip_data& ip)
   return ctxid;
 }
 
-
-// Extract CU base addresses for xml meta data
-// Used in sw_emu because IP_LAYOUT section is not available in sw emu.
-static std::vector<uint64_t>
-get_cus_from_xml(const axlf* top)
+// Compute max register map size of CUs in xclbin
+static size_t
+get_max_cu_size(const char* xml_data, size_t xml_size)
 {
-  std::vector<uint64_t> cus;
-  auto xml_hdr = ::xclbin::get_axlf_section(top, EMBEDDED_METADATA);
-
-  if (!xml_hdr)
-    return cus;
-
-  auto begin = reinterpret_cast<const char*>(top) + xml_hdr->m_sectionOffset;
-  const char *xml_data = reinterpret_cast<const char*>(begin);
-  uint64_t xml_size = xml_hdr->m_sectionSize;
-
   pt::ptree xml_project;
   std::stringstream xml_stream;
-  xml_stream.write(xml_data, xml_size);
-  pt::read_xml(xml_stream, xml_project);
+  xml_stream.write(xml_data,xml_size);
+  pt::read_xml(xml_stream,xml_project);
+
+  size_t maxsz = 0;
 
   for (auto& xml_kernel : xml_project.get_child("project.platform.device.core")) {
     if (xml_kernel.first != "kernel")
       continue;
-    for (auto& xml_inst : xml_kernel.second) {
-      if (xml_inst.first != "instance")
+
+    for (auto& xml_arg : xml_kernel.second) {
+      if (xml_arg.first != "arg")
         continue;
-      for (auto& xml_remap : xml_inst.second) {
-        if (xml_remap.first != "addrRemap")
-          continue;
-        auto base = convert(xml_remap.second.get<std::string>("<xmlattr>.base"));
-        cus.push_back(base);
-      }
+
+      auto ofs = convert(xml_arg.second.get<std::string>("<xmlattr>.offset"));
+      auto sz = convert(xml_arg.second.get<std::string>("<xmlattr>.size"));
+      maxsz = std::max(maxsz, ofs + sz);
     }
   }
-  
-  std::sort(cus.begin(), cus.end());
-  return cus;
+  return maxsz;
 }
 
 } // namespace
@@ -282,13 +284,45 @@ get_cus(const ip_layout* ip_layout, const std::string& kname)
 
   return ips;
 }
-    
+
+// Extract CU base addresses for xml meta data
+// Used in sw_emu because IP_LAYOUT section is not available in sw emu.
+std::vector<uint64_t>
+get_cus(const char* xml_data, size_t xml_size, bool)
+{
+  std::vector<uint64_t> cus;
+
+  pt::ptree xml_project;
+  std::stringstream xml_stream;
+  xml_stream.write(xml_data, xml_size);
+  pt::read_xml(xml_stream, xml_project);
+
+  for (auto& xml_kernel : xml_project.get_child("project.platform.device.core")) {
+    if (xml_kernel.first != "kernel")
+      continue;
+    for (auto& xml_inst : xml_kernel.second) {
+      if (xml_inst.first != "instance")
+        continue;
+      for (auto& xml_remap : xml_inst.second) {
+        if (xml_remap.first != "addrRemap")
+          continue;
+        auto base = convert(xml_remap.second.get<std::string>("<xmlattr>.base"));
+        cus.push_back(base);
+      }
+    }
+  }
+  
+  std::sort(cus.begin(), cus.end());
+  return cus;
+}
 
 std::vector<uint64_t>
 get_cus(const axlf* top, bool encode)
 {
-  if (is_sw_emulation())
-    return get_cus_from_xml(top);
+  if (is_sw_emulation()) {
+    auto xml = get_xml_section(top);
+    return get_cus(xml.first, xml.second);
+  }
 
   auto ip_layout = axlf_section_type<const ::ip_layout*>::get(top,axlf_section_kind::IP_LAYOUT);
   return ip_layout ? get_cus(ip_layout,encode) : std::vector<uint64_t>(0);
@@ -468,30 +502,26 @@ size_t
 get_kernel_freq(const axlf* top)
 {
   size_t kernel_clk_freq = 100; //default clock frequency is 100
-  const axlf_section_header *xml_hdr = ::xclbin::get_axlf_section(top, EMBEDDED_METADATA);
-  if (xml_hdr) {
-    auto begin = reinterpret_cast<const char*>(top) + xml_hdr->m_sectionOffset;
-    const char *xml_data = reinterpret_cast<const char*>(begin);
-    uint64_t xml_size = xml_hdr->m_sectionSize;
+  auto xml = get_xml_section(top);
 
-    pt::ptree xml_project;
-    std::stringstream xml_stream;
-    xml_stream.write(xml_data,xml_size);
-    pt::read_xml(xml_stream,xml_project);
+  pt::ptree xml_project;
+  std::stringstream xml_stream;
+  xml_stream.write(xml.first,xml.second);
+  pt::read_xml(xml_stream,xml_project);
 
-    auto clock_child = xml_project.get_child_optional("project.platform.device.core.kernelClocks");
+  auto clock_child = xml_project.get_child_optional("project.platform.device.core.kernelClocks");
 
-    if (clock_child) { // check whether kernelClocks field exists or not
-      for (auto& xml_clock : xml_project.get_child("project.platform.device.core.kernelClocks")) {
-        if (xml_clock.first != "clock")
-          continue;
-        auto port = xml_clock.second.get<std::string>("<xmlattr>.port","");
-        auto freq = convert(xml_clock.second.get<std::string>("<xmlattr>.frequency","100"));
-        if(port == "KERNEL_CLK")
-          kernel_clk_freq = freq;
-      }
+  if (clock_child) { // check whether kernelClocks field exists or not
+    for (auto& xml_clock : xml_project.get_child("project.platform.device.core.kernelClocks")) {
+      if (xml_clock.first != "clock")
+        continue;
+      auto port = xml_clock.second.get<std::string>("<xmlattr>.port","");
+      auto freq = convert(xml_clock.second.get<std::string>("<xmlattr>.frequency","100"));
+      if(port == "KERNEL_CLK")
+        kernel_clk_freq = freq;
     }
   }
+
   return kernel_clk_freq;
 }
 
@@ -538,16 +568,58 @@ get_kernel_arguments(const char* xml_data, size_t xml_size, const std::string& k
 std::vector<kernel_argument>
 get_kernel_arguments(const axlf* top, const std::string& kname)
 {
-  const axlf_section_header *xml_hdr = ::xclbin::get_axlf_section(top, EMBEDDED_METADATA);
+  auto xml = get_xml_section(top);
+  return get_kernel_arguments(xml.first, xml.second, kname);
+}
 
-  if (!xml_hdr)
-    throw std::runtime_error("No meta data in xclbin");
+size_t
+get_ert_slotsize(const char* xml_data, size_t xml_size)
+{
+    // xrt.ini overrides all (defaults to 0)
+  if (auto size = config::get_ert_slotsize()) {
+    // 128 slots max (4 status registers)
+    if ((ERT_CQ_SIZE / size) > 128)
+      throw std::runtime_error("invalid slot size '" + std::to_string(size) + "' in xrt.ini");
+    return size;
+  }
 
-  auto begin = reinterpret_cast<const char*>(top) + xml_hdr->m_sectionOffset;
-  auto xml_data = reinterpret_cast<const char*>(begin);
-  auto xml_size = xml_hdr->m_sectionSize;
+  size_t cq_size = ERT_CQ_SIZE;
 
-  return get_kernel_arguments(xml_data, xml_size, kname);
+  // Determine number of slots needed, bounded by
+  //  - minimum 2 concurrently scheduled CUs, plus 1 reserved slot
+  //  - minimum 16 slots
+  //  - maximum 128 slots
+  auto num_cus = get_cus(xml_data, xml_size).size();
+  auto slots = std::min(128ul, std::max(16ul, (num_cus * 2) + 1));
+
+  // Required slot size bounded by max of 
+  //  - number of slots needed
+  //  - max cu_size per xclbin
+  auto size = std::max(cq_size / slots, get_max_cu_size(xml_data, xml_size));
+  slots = ERT_CQ_SIZE / size;
+
+  // Round desired slots to minimum 32, 64, 96, 128 (status register boundary)
+  if (slots > 16) {
+    auto idx = ((slots - 1) / 32); // max mask idx needed to handle slots
+    slots = (idx + 1) * 32;        // round up
+  }
+
+  return cq_size / slots;
+}
+
+size_t
+get_ert_slotsize(const axlf* top)
+{
+  // xrt.ini overrides all (defaults to 0)
+  if (auto size = config::get_ert_slotsize()) {
+    // 128 slots max (4 status registers)
+    if ((ERT_CQ_SIZE / size) > 128)
+      throw std::runtime_error("invalid slot size '" + std::to_string(size) + "' in xrt.ini");
+    return size;
+  }
+
+  auto xml = get_xml_section(top);
+  return get_ert_slotsize(xml.first, xml.second);
 }
 
 }} // xclbin, xrt_core

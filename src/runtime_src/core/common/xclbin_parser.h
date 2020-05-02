@@ -100,6 +100,10 @@ get_first_used_mem(const axlf* top);
  */
 XRT_CORE_COMMON_EXPORT
 std::vector<uint64_t>
+get_cus(const char* xml_data, size_t xml_size, bool encode=false);
+
+XRT_CORE_COMMON_EXPORT
+std::vector<uint64_t>
 get_cus(const ip_layout* ip_layout, bool encode=false);
 
 XRT_CORE_COMMON_EXPORT
@@ -216,6 +220,20 @@ get_kernel_arguments(const char* xml_data, size_t xml_size, const std::string& k
 XRT_CORE_COMMON_EXPORT
 std::vector<kernel_argument>
 get_kernel_arguments(const axlf* top, const std::string& kname);
+
+/**
+ * get_ert_slotsize() - Compute the ERT slot size
+ *
+ * Slot size depends on number of CUs and register map size of CUs
+ */
+XRT_CORE_COMMON_EXPORT
+size_t
+get_ert_slotsize(const char* xml_data, size_t xml_size);
+
+XRT_CORE_COMMON_EXPORT
+size_t
+get_ert_slotsize(const axlf* top);
+ 
 
 }} // xclbin, xrt_core
 
