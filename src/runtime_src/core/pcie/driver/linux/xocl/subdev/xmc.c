@@ -3164,7 +3164,11 @@ static int xmc_probe(struct platform_device *pdev)
 			goto failed;
 		}
 
-		if (!XOCL_DSA_IS_VERSAL(xdev) && !xmc->base_addrs[IO_GPIO]) {
+		if (XOCL_DSA_IS_VERSAL(xdev)) {
+			xmc->enabled = true;
+			xmc->state = XMC_STATE_ENABLED;
+			xmc_enable_mailbox(xmc);
+		} else if (!xmc->base_addrs[IO_GPIO]) {
 			xocl_info(&pdev->dev, "minimum mode for SC upgrade");
 			/* CMC is always enabled on golden image. */
 			xmc->enabled = true;
