@@ -18,6 +18,7 @@
 #include "config_reader.h"
 #include "core/include/ert.h"
 
+#include <algorithm>
 #include <regex>
 #include <cstring>
 #include <cstdlib>
@@ -262,7 +263,7 @@ get_cus(const ip_layout* ip_layout, const std::string& kname)
     std::string regex = "^(" + kernel + "):(";  // "(kernel):("
     std::vector<std::string> cus;              // split at ','
     boost::split(cus,insts,boost::is_any_of(","));
-      
+
     // compose final regex
     int count = 0;
     for (auto& cu : cus)
@@ -311,7 +312,7 @@ get_cus(const char* xml_data, size_t xml_size, bool)
       }
     }
   }
-  
+
   std::sort(cus.begin(), cus.end());
   return cus;
 }
@@ -590,9 +591,9 @@ get_ert_slotsize(const char* xml_data, size_t xml_size)
   //  - minimum 16 slots
   //  - maximum 128 slots
   auto num_cus = get_cus(xml_data, xml_size).size();
-  auto slots = std::min(128ul, std::max(16ul, (num_cus * 2) + 1));
+  auto slots = std::min(128ull, std::max(16ull, (num_cus * 2) + 1));
 
-  // Required slot size bounded by max of 
+  // Required slot size bounded by max of
   //  - number of slots needed
   //  - max cu_size per xclbin
   auto size = std::max(cq_size / slots, get_max_cu_size(xml_data, xml_size));
