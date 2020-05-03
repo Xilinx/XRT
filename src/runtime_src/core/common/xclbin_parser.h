@@ -25,7 +25,7 @@
 namespace xrt_core { namespace xclbin {
 
 /**
- * struct kernel_argument - 
+ * struct kernel_argument -
  */
 struct kernel_argument
 {
