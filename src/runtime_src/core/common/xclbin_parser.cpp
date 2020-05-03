@@ -591,7 +591,8 @@ get_ert_slotsize(const char* xml_data, size_t xml_size)
   //  - minimum 16 slots
   //  - maximum 128 slots
   auto num_cus = get_cus(xml_data, xml_size).size();
-  auto slots = std::min(128ull, std::max(16ull, (num_cus * 2) + 1));
+  using mtype = decltype(num_cus);
+  auto slots = std::min<mtype>(128, std::max<mtype>(16, (num_cus * 2) + 1));
 
   // Required slot size bounded by max of
   //  - number of slots needed
