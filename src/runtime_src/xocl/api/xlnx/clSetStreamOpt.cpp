@@ -45,7 +45,8 @@ clSetStreamOpt(cl_stream           stream,
 {
   validOrError(stream,type,val,errcode_ret);
   int ret = xocl::xocl(stream)->set_stream_opt(type, val);
-   *errcode_ret = (ret < 0) ? ret : 0;
+   //*errcode_ret = (ret < 0) ? ret : 0;
+  xocl::assign(errcode_ret, ret);
   return CL_SUCCESS;
 }
 
