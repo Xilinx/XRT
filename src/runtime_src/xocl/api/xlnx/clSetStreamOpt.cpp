@@ -33,6 +33,7 @@ validOrError(cl_stream           stream,
 	     cl_stream_opt_type  type,
 	     cl_int              val,
 	     cl_int*             errcode_ret)
+
 {
 }
 

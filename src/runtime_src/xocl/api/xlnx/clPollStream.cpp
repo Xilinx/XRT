@@ -32,6 +32,7 @@ validOrError(cl_stream                  stream,
 	cl_int*                         actual_num_completion,
 	cl_int                          timeout,
 	cl_int*                         errcode_ret)
+
 {
   if (min_num_completion < 0)
     throw error(CL_INVALID_VALUE,"minimum number of completion must be > 0");
