@@ -22,6 +22,7 @@ endif(GIT_FOUND)
 
 INCLUDE (FindBoost)
 INCLUDE (FindGTest)
+include_directories(${Boost_INCLUDE_DIRS})
 
 # --- XRT Variables ---
 set (XRT_INSTALL_DIR "xrt")
