@@ -60,16 +60,16 @@ const uint32_t maxDebugIpType = TRACE_S2MM_FULL+1;
 
 static const char* debugIpNames[maxDebugIpType] = {
   "unknown",
-  "LAPC",
-  "ILA",
-  "AIM",
+  "Light Weight AXI Protocol Checker (lapc)",
+  "Integrated Logic Analyzer (ila)",
+  "AXI Interface Monitor (aim)",
   "TraceFunnel",
   "TraceFifoLite",
-  "TraceFifoFull",
-  "AM",
-  "ASM",
-  "AxiStreamProtocolChecker",
-  "TS2MM",
+  "Trace FIFO (fifo)",
+  "Accelerator Monitor (am)",
+  "AXI Stream Monitor (asm)",
+  "AXI Stream Protocol Checker (spc)",
+  "Trace Stream to Memory (ts2mm)",
   "AxiDMA",
   "TS2MMFull"
 };
@@ -127,12 +127,16 @@ private :
   void printAIMResults(std::ostream&);
   void printAMResults(std::ostream&);
   void printASMResults(std::ostream&);
+  void printFIFOResults(std::ostream&);
+  void printTS2MMResults(std::ostream&);
   void printLAPCResults(std::ostream&);
   void printSPCResults(std::ostream&);
 
   void populateAIMResults(boost::property_tree::ptree &_pt);
   void populateAMResults(boost::property_tree::ptree &_pt);
   void populateASMResults(boost::property_tree::ptree &_pt);
+  void populateFIFOResults(boost::property_tree::ptree &_pt);
+  void populateTS2MMResults(boost::property_tree::ptree &_pt);
   void populateLAPCResults(boost::property_tree::ptree &_pt);
   void populateSPCResults(boost::property_tree::ptree &_pt);
 
@@ -194,25 +198,36 @@ DebugIpStatusCollector::printOverview(std::ostream& _output)
   if(nullptr == dbgIpLayout)
     return;
 
-  _output << "Number of IPs found :: " << dbgIpLayout->m_count << std::endl;
+  uint64_t count = 0;
   for(uint64_t i = 0; i < dbgIpLayout->m_count; i++) {
     if (dbgIpLayout->m_debug_ip_data[i].m_type > maxDebugIpType) {
       _output << "Found invalid IP in debug ip layout with type "
               << dbgIpLayout->m_debug_ip_data[i].m_type << std::endl;
       return;
     }
+    // No need to show these Debug IP types
+    if(UNDEFINED == dbgIpLayout->m_debug_ip_data[i].m_type
+        || AXI_TRACE_FUNNEL == dbgIpLayout->m_debug_ip_data[i].m_type
+        || AXI_MONITOR_FIFO_LITE == dbgIpLayout->m_debug_ip_data[i].m_type
+        || AXI_DMA == dbgIpLayout->m_debug_ip_data[i].m_type
+        || TRACE_S2MM_FULL == dbgIpLayout->m_debug_ip_data[i].m_type) {
+      continue;
+    }
+    ++count;
     ++debugIpNum[dbgIpLayout->m_debug_ip_data[i].m_type];
   }
+
+  _output << "Number of IPs found :: " << count << std::endl; // Total count with the IPs actually shown
 
   std::stringstream sstr;
   for(uint32_t i = 0; i < maxDebugIpType; i++) {
     if(0 == debugIpNum[i]) {
        continue;
     }
-    sstr << debugIpNames[i] << "(" << debugIpNum[i] << ")  ";
+    sstr << debugIpNames[i] << " : " << debugIpNum[i] << std::endl;
   }
 
-  _output << "IPs found [<ipname>(<count>)]: " << sstr.str() << std::endl;
+  _output << "IPs found [<ipname <(element filter option)>> :<count>)]: " << std::endl << sstr.str() << std::endl;
 }
 
 void 
@@ -247,6 +262,10 @@ DebugIpStatusCollector::processElementFilter(const std::vector<std::string> & _e
       debugIpOpt[LAPC] = true;
     } else if(itr == "spc") {
       debugIpOpt[AXI_STREAM_PROTOCOL_CHECKER] = true;
+    } else if(itr == "fifo") {
+      debugIpOpt[AXI_MONITOR_FIFO_FULL] = true;
+    } else if(itr == "ts2mm") {
+      debugIpOpt[TRACE_S2MM] = true;
     }
   }
 }
@@ -257,6 +276,8 @@ DebugIpStatusCollector::printAllResults(std::ostream& _output)
   printAIMResults(_output);
   printAMResults(_output);
   printASMResults(_output);
+  printFIFOResults(_output);
+  printTS2MMResults(_output);
   printLAPCResults(_output);
   printSPCResults(_output);
 }
@@ -290,6 +311,18 @@ DebugIpStatusCollector::getDebugIpData()
       {
         if(debugIpOpt[AXI_STREAM_MONITOR])
           readASMCounter(&(dbgIpLayout->m_debug_ip_data[i]));
+        break;
+      }
+      case AXI_MONITOR_FIFO_FULL :
+      {
+        if(debugIpOpt[AXI_MONITOR_FIFO_FULL])
+          ++debugIpNum[AXI_MONITOR_FIFO_FULL];
+        break;
+      }
+      case TRACE_S2MM :
+      {
+        if(debugIpOpt[TRACE_S2MM])
+          ++debugIpNum[TRACE_S2MM];
         break;
       }
       case LAPC :
@@ -707,6 +740,34 @@ DebugIpStatusCollector::printASMResults(std::ostream& _output)
 }
 
 void 
+DebugIpStatusCollector::printFIFOResults(std::ostream& _output)
+{
+  if(0 == debugIpNum[AXI_MONITOR_FIFO_FULL]) {
+    return;
+  }
+
+  _output << "\nTrace FIFO" << std::endl
+          << "FIFO on PL that stores trace events from all monitors" << std::endl
+          << "Found : " << debugIpNum[AXI_MONITOR_FIFO_FULL] << std::endl;
+  return;
+}
+
+void 
+DebugIpStatusCollector::printTS2MMResults(std::ostream& _output)
+{
+  if(0 == debugIpNum[TRACE_S2MM]) {
+    return;
+  }
+
+  _output << "\nTrace Stream to Memory" << std::endl
+          << "Offloads trace events from all monitors to a memory resource (DDR, HBM, PLRAM)" << std::endl
+          << "Found : " << debugIpNum[TRACE_S2MM] << std::endl;
+  return;
+}
+
+
+
+void 
 DebugIpStatusCollector::readLAPChecker(debug_ip_data* dbgIpInfo)
 {
   // index in results is debugIpNum
@@ -925,16 +986,26 @@ DebugIpStatusCollector::populateOverview(boost::property_tree::ptree &_pt)
   if(nullptr == dbgIpLayout)
     return;
 
-  _pt.put("total_num_debug_ips", dbgIpLayout->m_count);
-
+  uint64_t count = 0;
   for(uint64_t i = 0; i < dbgIpLayout->m_count; i++) {
     if (dbgIpLayout->m_debug_ip_data[i].m_type > maxDebugIpType) {
       std::cout << "Found invalid IP in debug ip layout with type "
                 << dbgIpLayout->m_debug_ip_data[i].m_type << std::endl;
       return;
     }
+    // No need to show these Debug IP types
+    if(UNDEFINED == dbgIpLayout->m_debug_ip_data[i].m_type
+        || AXI_TRACE_FUNNEL == dbgIpLayout->m_debug_ip_data[i].m_type
+        || AXI_MONITOR_FIFO_LITE == dbgIpLayout->m_debug_ip_data[i].m_type
+        || AXI_DMA == dbgIpLayout->m_debug_ip_data[i].m_type
+        || TRACE_S2MM_FULL == dbgIpLayout->m_debug_ip_data[i].m_type) {
+      continue;
+    }
+    ++count;
     ++debugIpNum[dbgIpLayout->m_debug_ip_data[i].m_type];
   }
+
+  _pt.put("total_num_debug_ips", count); // Total count with the IPs actually shown
 
   boost::property_tree::ptree dbg_ip_list_pt;
   for(uint8_t i = 0; i < maxDebugIpType; i++) {
@@ -956,6 +1027,8 @@ DebugIpStatusCollector::populateAllResults(boost::property_tree::ptree &_pt)
   populateAIMResults(_pt);
   populateAMResults(_pt);
   populateASMResults(_pt);
+  populateFIFOResults(_pt);
+  populateTS2MMResults(_pt);
   populateLAPCResults(_pt);
   populateSPCResults(_pt);
 }
@@ -1047,6 +1120,34 @@ DebugIpStatusCollector::populateASMResults(boost::property_tree::ptree &_pt)
   }
 
   _pt.add_child("axi_stream_monitor_counters", asm_pt);
+}
+
+void 
+DebugIpStatusCollector::populateFIFOResults(boost::property_tree::ptree &_pt)
+{
+  if(0 == debugIpNum[AXI_MONITOR_FIFO_FULL]) {
+    return;
+  }
+
+  boost::property_tree::ptree fifo_pt;
+  fifo_pt.put("description", "FIFO on PL that stores trace events from all monitors");
+  fifo_pt.put("count",debugIpNum[AXI_MONITOR_FIFO_FULL]);
+
+  _pt.add_child("Trace FIFO", fifo_pt);
+}
+
+void 
+DebugIpStatusCollector::populateTS2MMResults(boost::property_tree::ptree &_pt)
+{
+  if(0 == debugIpNum[TRACE_S2MM]) {
+    return;
+  }
+
+  boost::property_tree::ptree ts2mm_pt;
+  ts2mm_pt.put("description", "Offloads trace events from all monitors to a memory resource (DDR, HBM, PLRAM)");
+  ts2mm_pt.put("count",debugIpNum[TRACE_S2MM]);
+
+  _pt.add_child("Trace Stream to Memory", ts2mm_pt);
 }
 
 void 

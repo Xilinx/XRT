@@ -1135,7 +1135,7 @@ aim_debug_view::getstring(int aVerbose, int aJSONFormat) {
       return "[]";
     }
     else {
-      sstr << "No AIM found on the platform \n";
+      sstr << "No AXI Interface Monitors (AIM) found on the platform \n";
       return sstr.str();
     }
   }
@@ -1164,7 +1164,7 @@ aim_debug_view::getstring(int aVerbose, int aJSONFormat) {
     sstr << "]";
   }
   else {
-    sstr<< "Performance Monitor Counters\n";
+    sstr<< "AXI Interface Monitor (AIM) Counters\n";
     auto col1 = std::max(widths.first, strlen("Region or CU")) + 4;
     auto col2 = std::max(widths.second, strlen("Type or Port"));
 
@@ -1336,7 +1336,7 @@ asm_debug_view::getXGDBString(bool aVerbose) {
   auto col1 = std::max(strlen("Stream Master"), maxMasterWidth) + 4 ;
   auto col2 = std::max(strlen("Stream Slave"), maxSlaveWidth) ;
 
-  sstr << "Streaming Performance Monitor Counters\n" ;
+  sstr << "AXI Stream Monitor (ASM) Counters\n" ;
   sstr << std::left
                << std::setw(col1) << "Stream Master"
        << "  " << std::setw(col2) << "Stream Slave"
@@ -1527,7 +1527,7 @@ am_debug_view::getXGDBString(bool aVerbose) {
   });
   
 
-  sstr << "Kernel Activities\n" ;
+  sstr << "Accelerator Monitor (AM) Counters\n" ;
   sstr << std::left
        <<         std::setw(col) << "CU Name"
        << "  " << std::setw(16) << "Exec Count" 
@@ -1672,7 +1672,7 @@ lapc_debug_view::getstring(int aVerbose, int aJSONFormat) {
       return "[]";
     }
     else {
-      sstr << "No LAPC found on the platform \n";
+      sstr << "No Light Weight AXI Protocol Checker (LAPC) found on the platform \n";
       return sstr.str();
     }
   }
@@ -1722,7 +1722,7 @@ lapc_debug_view::getstring(int aVerbose, int aJSONFormat) {
     auto col1 = std::max(widths.first, strlen("CU Name")) + 4;
     auto col2 = std::max(widths.second, strlen("AXI Portname"));
 
-    sstr << "Light-weight AXI protocol checker status\n";
+    sstr << "Light-weight AXI protocol checker (LAPC) status\n";
     for (unsigned int i = 0; i<NumSlots; ++i) {
       if (!xclAXICheckerCodes::isValidAXICheckerCodes(OverallStatus[i],
                           SnapshotStatus[i], CumulativeStatus[i])) {
