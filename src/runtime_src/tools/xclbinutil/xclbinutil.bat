@@ -4,6 +4,9 @@ setlocal
 REM Working variables
 set XRT_PROG=xclbinutil
 
+REM -- Find and call the loader
+set XRT_LOADER=%~dp0unwrapped/loader.bat
+
 REM -- Examine the options
 set XRTWRAP_PROG_ARGS=
   :parseArgs
@@ -24,9 +27,6 @@ set XRTWRAP_PROG_ARGS=
     )
     goto parseArgs
   :argsParsed
-
-REM -- Find and call the loader
-set XRT_LOADER=%~dp0unwrapped/loader.bat
 
 if not exist %XRT_LOADER%  (
   echo ERROR: Could not find 64-bit loader executable.
