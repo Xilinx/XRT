@@ -272,8 +272,8 @@ struct xocl_cmd {
 	unsigned int chain_count;
 	unsigned int wait_count;
 	union {
-		struct xocl_cmd *chain[8];
-		struct drm_xocl_bo *deps[8];
+		struct xocl_cmd *chain[MAX_DEPS];
+		struct drm_xocl_bo *deps[MAX_DEPS];
 	};
 
 	bool          aborted;  // set to true if CU aborts the command
