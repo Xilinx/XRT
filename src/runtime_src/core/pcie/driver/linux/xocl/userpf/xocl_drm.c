@@ -743,7 +743,8 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 
 	if (topo == NULL) {
 		err = -ENODEV;
-		goto failed;
+		XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
+		return err;
 	}
 
 	length = topo->m_count * sizeof(struct mem_data);

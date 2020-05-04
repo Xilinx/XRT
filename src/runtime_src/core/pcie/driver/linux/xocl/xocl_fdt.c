@@ -289,6 +289,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 			NODE_AF_DATA_H2C,
 			NODE_AF_DATA_P2P,
 			NODE_AF_DATA_M2M,
+			NODE_AF_DATA_C2H,
 			NULL
 		},
 		1,
@@ -391,6 +392,17 @@ static struct xocl_subdev_map		subdev_map[] = {
 			RESNAME_MEMCALIB,
 			RESNAME_KDMA,
 			RESNAME_DDR4_RESET_GATE,
+			NULL
+		},
+		1,
+		0,
+		NULL,
+		devinfo_cb_setlevel,
+	},
+	{
+		XOCL_SUBDEV_IORES,
+		XOCL_IORES1,
+		{
 			RESNAME_PCIEMON,
 			NULL
 		},

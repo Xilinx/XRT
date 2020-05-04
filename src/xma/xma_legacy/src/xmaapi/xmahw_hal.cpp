@@ -79,13 +79,6 @@ int load_xclbin_to_device(xclDeviceHandle dev_handle, const char *buffer)
 {
     int rc;
 
-    rc = xclLockDevice(dev_handle);
-    if (rc != 0)
-    {
-        printf("Failed to lock device\n");
-        return rc;
-    }
-
     printf("load_xclbin_to_device handle = %p\n", dev_handle);
     rc = xclLoadXclBin(dev_handle, (const xclBin*)buffer);
     if (rc != 0)

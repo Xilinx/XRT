@@ -545,6 +545,7 @@ zocl_create_cu(struct drm_zocl_dev *zdev)
 		 * driver known by configure command
 		 */
 		info.cu_idx = -1;
+		info.inst_idx = i;
 
 		/* CU sub device is a virtual device, which means there is no
 		 * device tree nodes
@@ -695,19 +696,19 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 
 	write_lock(&zdev->attr_rwlock);
 
-	if (kds_mode == 0) {
-		if (sched_live_clients(zdev, NULL) || sched_is_busy(zdev)) {
-			DRM_ERROR("Current xclbin is in-use, can't change");
-			ret = -EBUSY;
-			goto out0;
-		}
-	}
-
 	/* Check unique ID */
 	if (zocl_xclbin_same_uuid(zdev, &axlf_head.m_header.uuid)) {
 		DRM_INFO("%s The XCLBIN already loaded, uuid: %pUb. "
 		     "Don't need to reload.", __func__, &axlf_head.m_header.uuid);
 		goto out0;
+	}
+
+	if (kds_mode == 0) {
+		if (sched_live_clients(zdev, NULL) || sched_is_busy(zdev)) {
+			DRM_ERROR("Current xclbin is in-use, can't change, try again.");
+			ret = -EBUSY;
+			goto out0;
+		}
 	}
 
 	/* uuid is null means first time load xclbin */

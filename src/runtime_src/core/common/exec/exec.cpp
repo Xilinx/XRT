@@ -47,7 +47,8 @@ is_sw_emulation()
 inline bool
 kds_enabled(bool forceoff=false)
 {
-  static bool enabled = !is_sw_emulation()
+  static bool iskdsemu = is_sw_emulation() ? (xrt_core::config::get_flag_kds_sw_emu() ? true : false) : true;
+  static bool enabled = iskdsemu
     &&  xrt_core::config::get_kds()
     && !xrt_core::config::get_feature_toggle("Runtime.sws")
     && !is_windows();
@@ -58,13 +59,6 @@ kds_enabled(bool forceoff=false)
   return enabled;
 }
 
-inline bool
-pts_enabled()
-{
-  static bool enabled = false; // xrt_core::config::get_feature_toggle("Runtime.pts");
-  return enabled;
-}
-
 }
 
 namespace xrt_core {  namespace exec {
@@ -72,9 +66,7 @@ namespace xrt_core {  namespace exec {
 void
 start()
 {
-  if (pts_enabled())
-    pts::start();
-  else if (kds_enabled())
+  if (kds_enabled())
     kds::start();
   else
     sws::start();
@@ -83,9 +75,7 @@ start()
 void
 stop()
 {
-  if (pts_enabled())
-    pts::stop();
-  else if (kds_enabled())
+  if (kds_enabled())
     kds::stop();
   else
     sws::stop();
@@ -97,9 +87,7 @@ stop()
 void
 schedule(command* cmd)
 {
-  if (pts_enabled())
-    pts::schedule(cmd);
-  else if (kds_enabled())
+  if (kds_enabled())
     kds::schedule(cmd);
   else
     sws::schedule(cmd);
@@ -119,8 +107,6 @@ init(xrt_core::device* device)
     started = true;
   }
 
-  if (pts_enabled())
-    pts::init(device);
   if (kds_enabled())
     kds::init(device);
   else

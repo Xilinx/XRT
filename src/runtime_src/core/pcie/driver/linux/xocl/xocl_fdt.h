@@ -44,6 +44,7 @@
 #define NODE_AF_CTRL_USER "ep_firewall_ctrl_user_00"
 #define NODE_AF_CTRL_DEBUG "ep_firewall_ctrl_debug_00"
 #define NODE_AF_DATA_H2C "ep_firewall_data_h2c_00"
+#define NODE_AF_DATA_C2H "ep_firewall_data_c2h_00"
 #define NODE_AF_DATA_P2P "ep_firewall_data_p2p_00"
 #define NODE_AF_DATA_M2M "ep_firewall_data_m2m_00"
 #define NODE_CMC_REG "ep_cmc_regmap_00"
@@ -78,7 +79,7 @@
 #define NODE_GAPPING "ep_gapping_demand_00"
 #define NODE_UCS_CONTROL_STATUS "ep_ucs_control_status_00"
 #define NODE_P2P "ep_p2p_00"
-#define NODE_DDR4_RESET_GATE "ep_ddr4_reset_gate_00"
+#define NODE_DDR4_RESET_GATE "ep_ddr_mem_srsr_gate_00"
 #define NODE_ADDR_TRANSLATOR "ep_remap_data_c2h_00"
 
 #define RESNAME_GATEPLP       NODE_GATE_PLP

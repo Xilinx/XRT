@@ -1412,13 +1412,24 @@ xclProbe()
 xclDeviceHandle
 xclOpen(unsigned deviceIndex, const char *logFileName, xclVerbosityLevel level)
 {
-  //std::cout << "xclOpen called" << std::endl;
-  ZYNQ::shim *handle = new ZYNQ::shim(deviceIndex, logFileName, level);
-  if (!ZYNQ::shim::handleCheck(handle)) {
-    delete handle;
-    handle = 0;
+  try {
+    //std::cout << "xclOpen called" << std::endl;
+    auto handle = new ZYNQ::shim(deviceIndex, logFileName, level);
+    if (!ZYNQ::shim::handleCheck(handle)) {
+      delete handle;
+      handle = XRT_NULL_HANDLE;
+    }
+    return handle;
   }
-  return (xclDeviceHandle) handle;
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+  }
+
+  return XRT_NULL_HANDLE;
+
 }
 
 void

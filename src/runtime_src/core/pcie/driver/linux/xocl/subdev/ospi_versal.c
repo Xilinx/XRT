@@ -83,6 +83,8 @@ struct ospi_versal {
 	xocl_err(&ov->ov_pdev->dev, fmt "\n", ##arg)
 #define	OV_INFO(ov, fmt, arg...)    \
 	xocl_info(&ov->ov_pdev->dev, fmt "\n", ##arg)
+#define	OV_DEBUG(ov, fmt, arg...)    \
+	xocl_dbg(&ov->ov_pdev->dev, fmt "\n", ##arg)
 
 /*
  * If return 0, we get the expected status.
@@ -147,6 +149,7 @@ static ssize_t ospi_versal_write(struct file *filp, const char __user *data,
 	u32 *pkt_data, pkt_size, tran_size;
 	u32 *base_addr = ov->ov_base;
 	struct pdi_packet pkt;
+	int next = 0;
 
 	/* We don't support program partial of the ospi flash */
 	if (*off != 0) {
@@ -172,6 +175,8 @@ static ssize_t ospi_versal_write(struct file *filp, const char __user *data,
 	pkt_size = ov->ov_data_size;
 	pkt_data = vmalloc(pkt_size);
 
+	OV_INFO(ov, "start writting data_len: %lu", data_len);
+
 	while (len < data_len) {
 		tran_size = (remain > pkt_size) ? pkt_size : remain;
 		ret = copy_from_user(pkt_data, data + len, tran_size);
@@ -195,6 +200,12 @@ static ssize_t ospi_versal_write(struct file *filp, const char __user *data,
 		len += tran_size;
 		remain -= tran_size;
 
+		if ((len / 1000000) > next) {
+			OV_DEBUG(ov, "%lu M write %lu, remain %lu",
+			    (len / 1000000), len, remain);
+			next++;
+		}
+
 		/* Give up CPU to avoid taking too much CPU cycles */
 		schedule();
 
@@ -205,6 +216,8 @@ static ssize_t ospi_versal_write(struct file *filp, const char __user *data,
 			goto done;
 		}
 	}
+
+	OV_INFO(ov, "copy file to device done");
 
 	/* wait until the ospi flash is done */
 	while (true) {

@@ -65,7 +65,7 @@ if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   else()
     include(CMake/nativeLnx.cmake)
   endif()
+  include(CMake/nativeTests.cmake)
 else()
   include(CMake/embedded_system.cmake)
 endif()
-

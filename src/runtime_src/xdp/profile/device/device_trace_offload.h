@@ -65,6 +65,8 @@ public:
     bool read_trace_init();
     XDP_EXPORT
     void read_trace_end();
+    XDP_EXPORT
+    void train_clock();
 
 public:
     void set_trbuf_alloc_sz(uint64_t sz) {
@@ -82,8 +84,9 @@ public:
     void read_trace() {
         m_read_trace();
     };
-
-    DeviceTraceLogger* getDeviceTraceLogger() { return deviceTraceLogger; }
+    DeviceTraceLogger* getDeviceTraceLogger() {
+        return deviceTraceLogger;
+    };
 
 private:
     std::mutex status_lock;
@@ -102,7 +105,6 @@ private:
     uint64_t m_trbuf_offset = 0;
     uint64_t m_trbuf_chunk_sz = 0;
 
-    void train_clock();
     void read_trace_fifo();
     void read_trace_s2mm();
     void* sync_trace_buf(uint64_t offset, uint64_t bytes);
@@ -116,6 +118,7 @@ private:
 
     bool m_trbuf_full = false;
     bool m_debug = false; /* Enable Output stream for log */
+    bool m_initialized = false;
 };
 
 }

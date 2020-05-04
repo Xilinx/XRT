@@ -244,7 +244,12 @@ static int get_xclbin_iplayout(const char *buffer, XmaXclbinInfo *xclbin_info)
                 std::istream kv_stream(&kv_streambuf);
                 std::string line;
                 while(std::getline(kv_stream, line)) {
-                    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "%s", line.c_str());
+                    uint32_t lsize = line.size();
+                    uint32_t pos = 0;
+                    while (pos < lsize) {
+                        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "%s", line.substr(pos, MAX_KERNEL_NAME).c_str());
+                        pos += MAX_KERNEL_NAME;
+                    }
                 }
             }
         } else {
