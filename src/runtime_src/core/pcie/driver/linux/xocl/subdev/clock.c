@@ -572,8 +572,6 @@ static int clock_free_axi_gate(struct clock *clock, int level)
 		msleep(10);
 		reg_wr(clock->clock_ucs_control_status +
 			XOCL_RES_OFFSET_CHANNEL2, 0x1);
-
-		err = xocl_icap_mig_calibration(xdev);
 	}
 
 done:

@@ -341,7 +341,7 @@ get_ert_cqint()
 inline unsigned int
 get_ert_slotsize()
 {
-  static unsigned int value = detail::get_uint_value("Runtime.ert_slotsize",0x1000);
+  static unsigned int value = detail::get_uint_value("Runtime.ert_slotsize",0);
   return value;
 }
 

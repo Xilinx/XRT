@@ -9,108 +9,150 @@
 
 #include "xrt_cu.h"
 
-static inline void process_sq_once(struct xrt_cu *xcu)
-{
-	struct list_head *q;
-	struct kds_command *done_xcmd;
-
-	/* This is the critical path, as less check as possible..
-	 * if rq and sq both are empty, please DO NOT call this function
-	 */
-
-	q = list_empty(&xcu->sq) ? &xcu->rq : &xcu->sq;
-
-	xrt_cu_check(xcu);
-	xrt_cu_put_credit(xcu, xcu->ready_cnt);
-	xcu->ready_cnt = 0;
-	if (!xcu->done_cnt)
-		return;
-
-	done_xcmd = list_first_entry_or_null(q, struct kds_command, list);
-	done_xcmd->cb.notify_host(done_xcmd, KDS_COMPLETED);
-	list_del(&done_xcmd->list);
-	done_xcmd->cb.free(done_xcmd);
-	--xcu->done_cnt;
-}
-
-static inline void process_rq(struct xrt_cu *xcu)
+/**
+ * process_cq() - Process completed queue
+ * @xcu: Target XRT CU
+ */
+static inline void process_cq(struct xrt_cu *xcu)
 {
 	struct kds_command *xcmd;
-	struct kds_command *last_xcmd;
 
-	/* This function would not return until rq is empty */
-	xcmd = list_first_entry_or_null(&xcu->rq, struct kds_command, list);
-	last_xcmd = list_last_entry(&xcu->rq, struct kds_command, list);
+	if (!xcu->num_cq)
+		return;
 
-	while (xcmd) {
-		if (xrt_cu_get_credit(xcu)) {
-			/* if successfully get credit, you must start cu */
-			xrt_cu_config(xcu, (u32 *)xcmd->info, xcmd->isize, 0);
-			xrt_cu_start(xcu);
-			/* xcmd should always point to next waiting
-			 * to submit command
-			 */
-			if (xcmd != last_xcmd)
-				xcmd = list_next_entry(xcmd, list);
-			else
-				xcmd = NULL;
-		} else {
-			/* Run out of credit and still have xcmd in rq.
-			 * In this case, only do wait one more command done.
-			 */
-			process_sq_once(xcu);
-		}
+	/* Notify host and free command */
+	xcmd = list_first_entry(&xcu->cq, struct kds_command, list);
+	xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
+	list_del(&xcmd->list);
+	xcmd->cb.free(xcmd);
+	--xcu->num_cq;
+}
+
+/**
+ * process_sq() - Process submitted queue
+ * @xcu: Target XRT CU
+ */
+static inline void process_sq(struct xrt_cu *xcu)
+{
+	struct kds_command *xcmd;
+
+	if (!xcu->num_sq)
+		return;
+
+	/* If no command is running on the hardware,
+	 * this would not really access hardware.
+	 */
+	xrt_cu_check(xcu);
+	/* CU is ready to accept more commands
+	 * Return credits to allow submit more commands
+	 */
+	if (xcu->ready_cnt) {
+		xrt_cu_put_credit(xcu, xcu->ready_cnt);
+		xcu->ready_cnt = 0;
 	}
 
-	/* Some commands maybe not completed
-	 * or they are completed but haven't beed processed
-	 * Do not wait, get pending command first.
-	 */
-	if (!list_empty(&xcu->rq))
-		list_splice_tail_init(&xcu->rq, &xcu->sq);
+	/* Move all of the completed commands to completed queue */
+	while (xcu->done_cnt) {
+		xcmd = list_first_entry(&xcu->sq, struct kds_command, list);
+		list_move_tail(&xcmd->list, &xcu->cq);
+		--xcu->num_sq;
+		++xcu->num_cq;
+		--xcu->done_cnt;
+	}
+}
+
+/**
+ * process_rq() - Process run queue
+ * @xcu: Target XRT CU
+ *
+ * Return: return 0 if run queue is empty or no credit
+ *	   Otherwise, return 1
+ */
+static inline int process_rq(struct xrt_cu *xcu)
+{
+	struct kds_command *xcmd;
+
+	if (!xcu->num_rq)
+		return 0;
+
+	xcmd = list_first_entry(&xcu->rq, struct kds_command, list);
+
+	if (!xrt_cu_get_credit(xcu))
+		return 0;
+
+	/* if successfully get credit, you must start cu */
+	xrt_cu_config(xcu, (u32 *)xcmd->info, xcmd->isize, 0);
+	xrt_cu_start(xcu);
+
+	/* Move xcmd to submmited queue */
+	list_move_tail(&xcmd->list, &xcu->sq);
+	--xcu->num_rq;
+	++xcu->num_sq;
+
+	return 1;
 }
 
 int xrt_cu_thread(void *data)
 {
 	struct xrt_cu *xcu = (struct xrt_cu *)data;
 	unsigned long flags;
+	int ret = 0;
 
-	while (1) {
-		// Check num_pq here
+	while (!xcu->stop) {
+		/* process run queue would return 1 if submit a command to CU
+		 * Let's try submit another command
+		 */
+		if (process_rq(xcu))
+			continue;
+		/* process completed queue before submitted queue, for two reasons
+		 * - The last submitted command may be still running
+		 * - while handling completed queue, running command might done
+		 * - process_sq will check CU status, which is thru slow bus
+		 */
+		process_cq(xcu);
+		process_sq(xcu);
+
+		/* Continue until run queue emtpy */
+		if (xcu->num_rq)
+			continue;
+
+		if (!xcu->num_sq && !xcu->num_cq)
+			if (down_interruptible(&xcu->sem))
+				ret = -ERESTARTSYS;
+
+		/* Get pending queue command number without lock.
+		 * The idea is to reduce the possibility of conflict on lock.
+		 * Need to check pending command number again after lock.
+		 */
+		if (!xcu->num_pq)
+			continue;
 		spin_lock_irqsave(&xcu->pq_lock, flags);
-		// double check
-		if (xcu->num_pq > 0) {
+		if (xcu->num_pq) {
 			list_splice_tail_init(&xcu->pq, &xcu->rq);
+			xcu->num_rq = xcu->num_pq;
 			xcu->num_pq = 0;
 		}
 		spin_unlock_irqrestore(&xcu->pq_lock, flags);
-
-		/* !!!Do not change the priority! */
-		if (!list_empty(&xcu->rq)) {
-			process_rq(xcu);
-		} else if (!list_empty(&xcu->sq)) {
-			process_sq_once(xcu);
-		} else {
-			while (down_timeout(&xcu->sem, 1000) == -ETIME) {
-				if (kthread_should_stop())
-					return 0;
-			}
-		}
 	}
 
-	return 0;
+	return ret;
 }
 
 void xrt_cu_submit(struct xrt_cu *xcu, struct kds_command *xcmd)
 {
 	unsigned long flags;
+	bool first_command;
 
+	/* Add command to pending queue
+	 * wakeup CU thread if it is the first command
+	 */
 	spin_lock_irqsave(&xcu->pq_lock, flags);
 	list_add_tail(&xcmd->list, &xcu->pq);
-	if (xcu->num_pq == 0)
-		up(&xcu->sem);
 	++xcu->num_pq;
+	first_command = (xcu->num_pq == 1);
 	spin_unlock_irqrestore(&xcu->pq_lock, flags);
+	if (first_command)
+		up(&xcu->sem);
 }
 
 int xrt_cu_init(struct xrt_cu *xcu)
@@ -120,12 +162,21 @@ int xrt_cu_init(struct xrt_cu *xcu)
 	/* Use list for driver space command queue
 	 * Should we consider ring buffer?
 	 */
+
+	/* Initialize pending queue and lock */
 	INIT_LIST_HEAD(&xcu->pq);
 	spin_lock_init(&xcu->pq_lock);
+	/* Initialize run queue */
 	INIT_LIST_HEAD(&xcu->rq);
+	/* Initialize submitted queue */
 	INIT_LIST_HEAD(&xcu->sq);
+	/* Initialize completed queue */
+	INIT_LIST_HEAD(&xcu->cq);
 	xcu->num_pq = 0;
+	xcu->num_rq = 0;
 	xcu->num_sq = 0;
+	xcu->num_cq = 0;
+
 	sema_init(&xcu->sem, 0);
 	xcu->stop = 0;
 	xcu->thread = kthread_run(xrt_cu_thread, xcu, "xrt_thread");
@@ -135,6 +186,8 @@ int xrt_cu_init(struct xrt_cu *xcu)
 
 void xrt_cu_fini(struct xrt_cu *xcu)
 {
+	xcu->stop = 1;
+	up(&xcu->sem);
 	(void) kthread_stop(xcu->thread);
 
 	return;

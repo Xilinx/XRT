@@ -35,7 +35,7 @@ namespace po = boost::program_options;
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
 SubCmdScan::SubCmdScan(bool _isHidden, bool _isDepricated, bool _isPreliminary)
-    : SubCmd("scan", 
+    : SubCmd("scan",
              "See replacement functionality in command: 'advanced'")
 {
   const std::string longDescription = "<add long description>";
@@ -90,8 +90,11 @@ SubCmdScan::execute(const SubCmdOptions& _options) const
 
   // Walk the property tree and print info
   auto devices = pt.get_child_optional("devices");
-  if (!devices || (*devices).size()==0)
-    throw xrt_core::error("No devices found");
+  if (!devices || devices->size()==0) {
+    // No devices when scanning is not an error condition
+    std::cout << "No devices found" << std::endl;
+    return;
+  }
 
   std::cout << "INFO: Found total " << (*devices).size() << " card(s), " << "TBD" << " are usable.\n";
   for (auto& device : *devices) {

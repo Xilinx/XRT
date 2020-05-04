@@ -289,6 +289,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 			NODE_AF_DATA_H2C,
 			NODE_AF_DATA_P2P,
 			NODE_AF_DATA_M2M,
+			NODE_AF_DATA_C2H,
 			NULL
 		},
 		1,

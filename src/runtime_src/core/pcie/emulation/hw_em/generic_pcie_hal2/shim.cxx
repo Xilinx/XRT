@@ -1280,17 +1280,28 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
   }
 
 
-  void HwEmShim::xclFreeDeviceBuffer(uint64_t buf)
+  void HwEmShim::xclFreeDeviceBuffer(uint64_t offset)
   {
     if (mLogStream.is_open()) {
-      mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << buf << std::endl;
+      mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << offset << std::endl;
     }
 
     for (auto i : mDDRMemoryManager) {
-      if (buf < i->start() + i->size()) {
-        i->free(buf);
+      if (offset < i->start() + i->size()) {
+        i->free(offset);
       }
     }
+    bool ack = true;
+    if(sock)
+    {
+      xclFreeDeviceBuffer_RPC_CALL(xclFreeDeviceBuffer,offset);
+    }
+    if(!ack)
+    {
+      PRINTENDFUNC;
+      return;
+    }
+
     PRINTENDFUNC;
   }
   void HwEmShim::logMessage(std::string& msg , int verbosity)
@@ -2839,6 +2850,10 @@ int HwEmShim::xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *
     mLogStream << __func__ << ", " << std::this_thread::get_id() << " , "<< max_compl <<", "<<min_compl<<" ," << *actual <<" ," << timeout << std::endl;
   }
   xclemulation::TIMEOUT_SCALE timeout_scale=xclemulation::config::getInstance()->getTimeOutScale();
+  if(timeout_scale==xclemulation::TIMEOUT_SCALE::NA) {
+      std::string dMsg = "WARNING: [HW-EMU 10] xclPollCompletion : Timeout is not enabled in emulation by default.Please use xrt.ini (key: timeout_scale=ms|sec|min) to enable";
+      logMessage(dMsg, 0); 
+  }
 
   xclemulation::ApiWatchdog watch(timeout_scale,timeout);
   watch.reset();

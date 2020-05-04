@@ -42,7 +42,9 @@ void  main_(int argc, char** argv,
   }
   // Determine the executable name for this application
   boost::filesystem::path pathAndFile(argv[0]);
-  const std::string executable = pathAndFile.filename().string();
+  std::string executable = pathAndFile.filename().string();
+  executable.pop_back();
+
   // Global options
   bool bVerbose = false;
   bool bTrace = false;

@@ -10,7 +10,7 @@ fi
 # Working variables
 XRT_PROG=xbutil
 
-# -- Examine the options 
+# -- Examine the options
 XRTWARP_PROG_ARGS_size=0
 XRTWRAP_PROG_ARGS=()
 while [ $# -gt 0 ]; do
@@ -20,7 +20,7 @@ while [ $# -gt 0 ]; do
       XRT_PROG=xbutil2
       shift
       echo "-----------------------------------------------------"
-      echo " Involking next generation of the xbutil application "
+      echo " Invoking next generation of the xbutil application "
       echo "-----------------------------------------------------"
 
       ;;
@@ -43,4 +43,3 @@ if [ ! -f "$XRT_LOADER" ]; then
 fi
 
 "${XRT_LOADER}" -exec $XRT_PROG "${XRTWRAP_PROG_ARGS[@]}"
-

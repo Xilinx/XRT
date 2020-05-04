@@ -36,10 +36,9 @@ class Options(object):
         self.index = 0
         self.cu_index = 0
         self.verbose = False
-        self.handle = xclDeviceHandle
+        self.handle = None
         self.first_mem = -1
         self.cu_base_addr = -1
-        self.ert = False
         self.xuuid = uuid.uuid4()
         self.kernels = []
 
@@ -57,7 +56,7 @@ class Options(object):
             elif o in ("--hal_logfile", "-l"):
                 self.halLogFile = arg
             elif o in ("--alignment", "-a"):
-                self.alignment = int(arg)
+                print("-a/--alignment switch is not supported")
             elif o in ("--cu_index", "-c"):
                 self.cu_index = int(arg)
             elif o in ("--device", "-d"):
@@ -67,7 +66,7 @@ class Options(object):
             elif o == "-v":
                 self.verbose = True
             elif o in ("-e", "--ert"):
-                self.ert = bool(arg)
+                print("-e/--ert switch is not supported")
             else:
                 assert False, "unhandled option"
 
@@ -82,17 +81,12 @@ class Options(object):
     def printHelp(self):
         print("usage: %s [options] -k <bitstream>")
         print("  -k <bitstream>")
-        print("  -a <alignment>")
         print("  -d <device_index>")
         print("  -c <cu_index>")
         print("  -v")
         print("  -h")
         print("")
-        print("  [--ert] enable embedded runtime (default: false)")
-        print("")
         print("* Bitstream is required")
-        print("* HAL logfile is optional but useful for capturing messages from HAL driver")
-
 
 def initXRT(opt):
     deviceInfo = xclDeviceInfo2()

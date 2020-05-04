@@ -571,7 +571,12 @@ int main(int argc, char *argv[])
     if (total == 0) {
         if (cmd == xcldev::DUMP)
             sensor_tree::json_dump( std::cout );
-        return -ENODEV;
+        // Querying a card with index 0 when it does not exist is an error
+        if (cmd == xcldev::QUERY)
+            return -ENODEV;
+        // Enumerating cards when none exist is not an error
+        if ((cmd == xcldev::SCAN) || (cmd == xcldev::LIST))
+            return 0;
     }
 
     if (cmd == xcldev::SCAN || cmd == xcldev::LIST) {

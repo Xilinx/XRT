@@ -10,7 +10,7 @@ fi
 # Working variables
 XRT_PROG=xbmgmt
 
-# -- Examine the options 
+# -- Examine the options
 XRTWARP_PROG_ARGS_size=0
 XRTWRAP_PROG_ARGS=()
 while [ $# -gt 0 ]; do
@@ -20,7 +20,7 @@ while [ $# -gt 0 ]; do
       XRT_PROG=xbmgmt2
       shift
       echo "-----------------------------------------------------"
-      echo " Involking next generation of the xbmgmt application "
+      echo " Invoking next generation of the xbmgmt application "
       echo "-----------------------------------------------------"
       ;;
     # Copy the options the remaining options
@@ -42,4 +42,3 @@ if [ ! -f "$XRT_LOADER" ]; then
 fi
 
 "${XRT_LOADER}" -exec $XRT_PROG "${XRTWRAP_PROG_ARGS[@]}"
-

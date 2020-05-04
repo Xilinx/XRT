@@ -47,13 +47,11 @@ int main( int argc, char** argv )
     // Syntax: SubCmdClass( IsHidden, IsDepricated, IsPreliminary)
     subCommands.emplace_back(std::make_shared<   SubCmdProgram  >(false, false, false));
     subCommands.emplace_back(std::make_shared<     SubCmdReset  >(false, false, false));
-    subCommands.emplace_back(std::make_shared<  SubCmdAdvanced  >(false, false,  true));
-    subCommands.emplace_back(std::make_shared<     SubCmdStatus >(false, false, false));
+    subCommands.emplace_back(std::make_shared<  SubCmdAdvanced  >(true,  false,  true));
+    subCommands.emplace_back(std::make_shared<    SubCmdStatus  >(false, false, false));
   }
 
-  // -- Determine and set the executable name for each subcommand
-  boost::filesystem::path pathAndFile(argv[0]);
-  const std::string executable = pathAndFile.stem().string();
+  const std::string executable = "xbmgmt";
 
   for (auto & subCommand : subCommands) {
     subCommand->setExecutableName(executable);
@@ -66,7 +64,7 @@ int main( int argc, char** argv )
 
   // -- Ready to execute the code
   try {
-    main_( argc, argv, description, subCommands);
+    main_(argc, argv, description, subCommands);
     return 0;
   } catch (const std::exception &e) {
     xrt_core::send_exception_message(e.what(), executable.c_str());

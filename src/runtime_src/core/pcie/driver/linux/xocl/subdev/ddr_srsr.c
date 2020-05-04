@@ -98,7 +98,8 @@ static int srsr_save_calib(struct platform_device *pdev)
 	u32 val = 0;
 	u32 cache_size_in_words = xocl_ddr_srsr->cache_size/sizeof(uint32_t);
 
-	BUG_ON(!xocl_ddr_srsr->calib_cache);
+	if(!xocl_ddr_srsr->calib_cache)
+		return err;
 
 	mutex_lock(&xocl_ddr_srsr->lock);
 	xocl_dr_reg_write32(xdev, CTRL_BIT_SREF_REQ, xocl_ddr_srsr->base+REG_CTRL_OFFSET);
@@ -130,7 +131,8 @@ static int srsr_fast_calib(struct platform_device *pdev, bool retention)
 	u32 val, write_val = CTRL_BIT_RESTORE_EN | CTRL_BIT_XSDB_SELECT;
 	u32 cache_size_in_words = xocl_ddr_srsr->cache_size/sizeof(uint32_t);
 
-	BUG_ON(!xocl_ddr_srsr->calib_cache);
+	if(!xocl_ddr_srsr->calib_cache)
+		return err;
 
 	if (retention)
 		write_val |= CTRL_BIT_MEM_INIT_SKIP;
@@ -197,7 +199,6 @@ static int srsr_calib(struct platform_device *pdev, bool retention)
 		addr1 = xocl_dr_reg_read32(xdev, xocl_ddr_srsr->base+REG_XSDB_RAM_BASE+8);
 
 		xocl_ddr_srsr->cache_size = (((addr1 << 9) | addr0)+1)*sizeof(uint32_t);
-
 		if (xocl_ddr_srsr->cache_size >= 0x4000) {
 			err = -ENOMEM;
 			goto done;
@@ -257,8 +258,6 @@ done:
 static uint32_t srsr_cache_size(struct platform_device *pdev)
 {
 	struct xocl_ddr_srsr *xocl_ddr_srsr = platform_get_drvdata(pdev);
-
-	BUG_ON(!xocl_ddr_srsr->calib_cache);
 
 	return xocl_ddr_srsr->cache_size;
 }

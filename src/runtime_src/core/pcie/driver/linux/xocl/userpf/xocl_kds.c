@@ -93,28 +93,20 @@ int xocl_create_client(struct xocl_dev *xdev, void **priv)
 	if (!client)
 		return -ENOMEM;
 
-	mutex_lock(&xdev->dev_lock);
-
-	if (!xdev->offline) {
-		client->dev = XDEV2DEV(xdev);
-		client->pid = get_pid(task_pid(current));
-		client->ctrl = XDEV(xdev)->kds.ctrl;
-		ret = kds_init_client(client);
-		if (ret) {
-			kfree(client);
-			goto out;
-		}
-		list_add_tail(&client->link, &xdev->ctx_list);
-		*priv = client;
-	} else {
-		/* Do not allow new client to come in while being offline. */
+	client->dev = XDEV2DEV(xdev);
+	client->pid = get_pid(task_pid(current));
+	client->ctrl = XDEV(xdev)->kds.ctrl;
+	ret = kds_init_client(client);
+	if (ret) {
 		kfree(client);
-		ret = -EBUSY;
+		goto out;
 	}
+	mutex_lock(&xdev->dev_lock);
+	list_add_tail(&client->link, &xdev->ctx_list);
+	mutex_unlock(&xdev->dev_lock);
+	*priv = client;
 
 out:
-	mutex_unlock(&xdev->dev_lock);
-
 	userpf_info(xdev, "created KDS client for pid(%d), ret: %d\n",
 		    pid_nr(task_tgid(current)), ret);
 	return ret;
