@@ -460,13 +460,16 @@ namespace xclhwemhal2 {
     
     //New DRC check for Versal Platforms
     if (fpgaDevice != "" && fpgaDevice.find("versal:") != std::string::npos) {
+      mVersalPlatform=true;
       if ((args.m_emuData == nullptr) && (args.m_emuDataSize <= 0)) {
         std::string dMsg = "ERROR: [HW-EMU 09] EMULATION_DATA section in XCLBIN is missing. This is mandatory section required for Versal platforms";
         logMessage(dMsg, 0);
         return -1;
       }
     }
-
+    if (xclemulation::config::getInstance()->isSharedFmodel() && !mVersalPlatform) {
+      setenv("SDX_USE_SHARED_MEMORY","true",true); 
+    }
     // iterate cores
     count = 0;
     for (auto& xml_core : xml_project.get_child("project.platform.device"))
@@ -1294,7 +1297,10 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     bool ack = true;
     if(sock)
     {
-      xclFreeDeviceBuffer_RPC_CALL(xclFreeDeviceBuffer,offset);
+      //Currently Versal platforms does not support buffer deallocation
+      if(!mVersalPlatform) {
+        xclFreeDeviceBuffer_RPC_CALL(xclFreeDeviceBuffer,offset);
+      }
     }
     if(!ack)
     {
@@ -1747,6 +1753,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     mCuBaseAddress = 0x0;
     mMessengerThreadStarted = false;
     mIsTraceHubAvailable = false;
+    mVersalPlatform=false;
   }
 
   bool HwEmShim::isMBSchedulerEnabled()
@@ -2017,9 +2024,6 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     {
       mGlobalInMemStream.open("global_in.mem");
       mGlobalOutMemStream.open("global_out.mem");
-    }
-    if (xclemulation::config::getInstance()->isSharedFmodel()) {
-      setenv("SDX_USE_SHARED_MEMORY","true",true); 
     }
   }
 
@@ -2956,12 +2960,13 @@ int HwEmShim::xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char
     return 0;
 }
 
-void HwEmShim::closemMessengerThread() {
-	if(mMessengerThreadStarted) {
-		mMessengerThread.join();
-		mMessengerThreadStarted = false;
-	}
-}
+  void HwEmShim::closemMessengerThread() {
+	  if(mMessengerThreadStarted) {
+		  mMessengerThread.join();
+		  mMessengerThreadStarted = false;
+	  }
+  }
+
 /********************************************** QDMA APIs IMPLEMENTATION END**********************************************/
 /**********************************************HAL2 API's END HERE **********************************************/
 }  // end namespace xclhwemhal2
