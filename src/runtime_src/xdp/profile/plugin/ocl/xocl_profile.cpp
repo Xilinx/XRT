@@ -281,6 +281,8 @@ get_device_max_read(key k)
     double currMaxRead = device::getMaxRead(device);
     maxRead = std::max(currMaxRead,maxRead);
   }
+  if (maxRead == 0.0)
+    maxRead = 9600.0;
   return maxRead;
 }
 
@@ -294,6 +296,8 @@ get_device_max_write(key k)
     double currMaxWrite = device::getMaxWrite(device);
     maxWrite = std::max(currMaxWrite,maxWrite);
   }
+  if (maxWrite == 0.0)
+    maxWrite = 9600.0;
   return maxWrite;
 }
 
