@@ -21,8 +21,8 @@ target_link_libraries(container_mpd_plugin
   xrt_core_static
   xrt_coreutil_static
   uuid
-  boost_filesystem
-  boost_system
+  ${Boost_FILESYSTEM_LIBRARY}
+  ${Boost_SYSTEM_LIBRARY}
   pthread
   rt
   crypto
