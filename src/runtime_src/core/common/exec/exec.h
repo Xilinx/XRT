@@ -42,9 +42,6 @@ stop();
 void
 init(xrt_core::device* device);
 
-void
-init(xrt_core::device* device, const std::vector<uint64_t>& cu_addr_map);
-
 } // sws
 
 /**
@@ -65,25 +62,6 @@ void
 init(xrt_core::device* device);
 
 } // kds
-
-/**
- * Pass-through scheduler
- */
-namespace pts {
-
-void
-schedule(command* cmd);
-
-void
-start();
-
-void
-stop();
-
-void
-init(xrt_core::device* device);
-
-} // pts
 
 namespace exec {
 /**

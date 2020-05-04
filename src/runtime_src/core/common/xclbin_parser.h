@@ -25,7 +25,7 @@
 namespace xrt_core { namespace xclbin {
 
 /**
- * struct kernel_argument - 
+ * struct kernel_argument -
  */
 struct kernel_argument
 {
@@ -94,10 +94,25 @@ int32_t
 get_first_used_mem(const axlf* top);
 
 /**
+ * get_max_cu_size() - Compute max register map size of CUs in xclbin
+ */
+XRT_CORE_COMMON_EXPORT
+size_t
+get_max_cu_size(const char* xml_data, size_t xml_size);
+
+XRT_CORE_COMMON_EXPORT
+size_t
+get_max_cu_size(const axlf* top);
+
+/**
  * get_cus() - Get sorted list of CU base addresses in xclbin.
  *
  * @encode: If true encode control protocol in lower address bit
  */
+XRT_CORE_COMMON_EXPORT
+std::vector<uint64_t>
+get_cus(const char* xml_data, size_t xml_size, bool encode=false);
+
 XRT_CORE_COMMON_EXPORT
 std::vector<uint64_t>
 get_cus(const ip_layout* ip_layout, bool encode=false);

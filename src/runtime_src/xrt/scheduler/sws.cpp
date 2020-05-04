@@ -886,25 +886,15 @@ stop()
 }
 
 void
-init(xrt::device* xdev, const std::vector<uint64_t>& cu_addr_map)
-{
-  if (!is_sw_emulation())
-    throw std::runtime_error("unexpected scheduler initialization call in non sw emulation");
-
-  std::vector<addr_type> amap(cu_addr_map.begin(),cu_addr_map.end());
-  auto slots = ERT_CQ_SIZE / xrt::config::get_ert_slotsize();
-  cu_trace_enabled = xrt::config::get_profile();
-  s_device_exec_core.erase(xdev);
-  s_device_exec_core.insert
-    (std::make_pair
-     (xdev,std::make_unique<exec_core>(xdev,&s_global_scheduler,slots,amap)));
-}
-
-void
 init(xrt::device* xdev, const axlf* top)
 {
-  // create execution core for this device
-  auto slots = ERT_CQ_SIZE / xrt::config::get_ert_slotsize();
+  // Create execution core for this device
+  // TODO: This is deprecated sws, replace with core/common/exec/sws
+  size_t slot_size = xrt_core::config::get_ert_slotsize();
+  if (!slot_size)
+    slot_size = 4096;
+  
+  auto slots = ERT_CQ_SIZE / slot_size;
   cu_trace_enabled = xrt::config::get_profile();
   auto cuaddrs = xrt_core::xclbin::get_cus(top);
   std::vector<addr_type> amap(cuaddrs.begin(),cuaddrs.end());
