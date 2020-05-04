@@ -52,7 +52,7 @@ void intr_cidx_update(struct qdma_descq *descq, unsigned int sw_cidx,
 static inline void req_submitted(struct qdma_descq *descq,
 				struct qdma_sgt_req_cb *cb)
 {
-	pr_debug("%s: req 0x%p posted.\n", descq->conf.name, cb);
+	pr_info ("%s: req 0x%p posted.\n", descq->conf.name, cb);
 
 	cb->req_state = QDMA_REQ_SUBMITTED;
 	list_del(&cb->list);
@@ -1241,6 +1241,9 @@ void qdma_sgt_req_done(struct qdma_descq *descq, struct qdma_sgt_req_cb *cb,
 		pr_info("%s, req 0x%p, cancel %d, fp_done 0x%p done, err %d.\n",
 			descq->conf.name, req, cb->cancel, req->fp_done, error);
 
+	pr_info("%s, req 0x%p, cancel %d, fp_done 0x%p done, err %d.\n",
+		descq->conf.name, req, cb->cancel, req->fp_done, error);
+
 	list_del(&cb->list);
 	if (cb->unmap_needed) {
 		qdma_request_unmap(descq->xdev->conf.pdev, req);
@@ -1263,6 +1266,8 @@ void qdma_sgt_req_done(struct qdma_descq *descq, struct qdma_sgt_req_cb *cb,
 
 		cb->status = error;
 		cb->done = 1;
+
+	pr_info("%s, req 0x%p completed.\n", descq->conf.name, req);
 
 	       	if (req->fp_done) 
 			req->fp_done(req->uld_data, cb->offset, error);

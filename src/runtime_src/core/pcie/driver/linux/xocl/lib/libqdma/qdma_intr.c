@@ -412,7 +412,7 @@ static irqreturn_t data_intr_handler(int vector_index, int irq, void *dev_id)
 	struct xlnx_dma_dev *xdev = dev_id;
 	unsigned long flags;
 
-	pr_debug("Data IRQ fired on PF#%d: index=%d, vector=%d\n",
+	pr_info ("Data IRQ fired on PF#%d: index=%d, vector=%d\n",
 		xdev->func_id, vector_index, irq);
 
 	spin_lock_irqsave(&xdev->lock, flags);

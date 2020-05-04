@@ -48,6 +48,7 @@ clPollStreams(cl_device_id              device,
 	cl_int*                         errcode_ret)
 {
   int ret;
+printf("clPollStreams: %d~%d, timeout %d.\n", min, max, timeout);
   validOrError(device,completions,min,max,actual,timeout,errcode_ret);
   ret = xocl::xocl(device)->poll_streams(completions,min,max,actual,timeout);
   *errcode_ret = (ret < 0) ? ret : 0;

@@ -248,7 +248,7 @@ static ssize_t qdma_request_submit_st_c2h(struct xlnx_dma_dev *xdev,
 		return QDMA_ERR_INVALID_QDMA_DEVICE;
 	}
 
-	pr_debug("%s: req 0x%p, %u, sgl 0x%p,%u, wait %d, %u ms.\n",
+	pr_info ("%s: req 0x%p, %u, sgl 0x%p,%u, wait %d, %u ms.\n",
 		descq->conf.name, req, req->count, req->sgl, req->sgcnt,
 		wait, req->timeout_ms);
 
@@ -1850,7 +1850,7 @@ ssize_t qdma_request_submit(unsigned long dev_hndl, unsigned long id,
 	if (!descq)
 		return -EINVAL;
 
-	pr_debug("%s, req 0x%p, data len %u, sg cnt %u, wait %d.\n",
+	pr_info ("%s, req 0x%p, data len %u, sg cnt %u, wait %d.\n",
 		descq->conf.name, req, req->count, req->sgcnt, wait);
 
 	/** Identify the direction of the transfer */

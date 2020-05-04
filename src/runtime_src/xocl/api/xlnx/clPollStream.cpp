@@ -48,7 +48,7 @@ clPollStream(cl_stream                 stream,
   validOrError(stream,completions,min,max,actual,timeout,errcode_ret);
   int ret = xocl::xocl(stream)->poll_stream(completions,min,max,actual,timeout);
   xocl::assign(errcode_ret, ret);
-  return CL_SUCCESS;
+  return ret;
 }
 
 } //xocl

@@ -1768,7 +1768,10 @@ int shim::xclPollCompletion(int min_compl, int max_compl, struct xclReqCompletio
         time.tv_nsec = (timeout % 1000) * 1000000;
         ptime = &time;
     }
+
+printf("%s: min %d, max %d, timeout %d ms...\n", __func__, min_compl, max_compl, timeout);
     num_evt = io_getevents(mAioContext, min_compl, max_compl, (struct io_event *)comps, ptime);
+printf("%s: io_getevents returns %d.\n", __func__, num_evt);
 
     *actual = num_evt;
     if (num_evt <= 0) {
@@ -1778,6 +1781,7 @@ int shim::xclPollCompletion(int min_compl, int max_compl, struct xclReqCompletio
 
     for (i = num_evt - 1; i >= 0; i--) {
         comps[i].priv_data = (void *)((struct io_event *)comps)[i].data;
+printf("%s comps %d/%d, priv_data 0x%p.\n", __func__, i, num_evt, comps[i].priv_data);
         if (((struct io_event *)comps)[i].res < 0){
             /* error returned by AIO framework */
             comps[i].nbytes = 0;
