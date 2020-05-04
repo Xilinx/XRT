@@ -71,6 +71,7 @@ endif()
 
 find_package(Boost REQUIRED COMPONENTS system filesystem )
 include_directories(${Boost_INCLUDE_DIRS})
+add_compile_options("-DBOOST_LOCALE_HIDE_AUTO_PTR")
 
 # -- Cursers ---
 INCLUDE (FindCurses)
