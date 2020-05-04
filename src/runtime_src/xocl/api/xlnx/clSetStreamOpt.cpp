@@ -33,7 +33,6 @@ validOrError(cl_stream           stream,
 	     cl_stream_opt_type  type,
 	     cl_int              val,
 	     cl_int*             errcode_ret)
-
 {
 }
 
@@ -44,7 +43,9 @@ clSetStreamOpt(cl_stream           stream,
 	       cl_int*             errcode_ret)
 {
   validOrError(stream,type,val,errcode_ret);
-  return xocl::xocl(stream)->set_stream_opt(type, val);
+  int ret = xocl::xocl(stream)->set_stream_opt(type, val);
+  xocl::assign(errcode_ret, ret);
+  return ret;
 }
 
 } //xocl
