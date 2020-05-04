@@ -3804,24 +3804,16 @@ create_client(struct platform_device *pdev, void **priv)
 	if (!client)
 		return -ENOMEM;
 
+	client->pid = get_pid(task_pid(current));
+	client->abort = false;
+	atomic_set(&client->trigger, 0);
+	atomic_set(&client->outstanding_execs, 0);
+	client->num_cus = 0;
+	client->xdev = xocl_get_xdev(pdev);
 	mutex_lock(&xdev->dev_lock);
-
-	if (!xdev->offline) {
-		client->pid = get_pid(task_pid(current));
-		client->abort = false;
-		atomic_set(&client->trigger, 0);
-		atomic_set(&client->outstanding_execs, 0);
-		client->num_cus = 0;
-		client->xdev = xocl_get_xdev(pdev);
-		list_add_tail(&client->link, &xdev->ctx_list);
-		*priv =	client;
-	} else {
-		/* Do not allow new client to come in while being offline. */
-		devm_kfree(XDEV2DEV(xdev), client);
-		ret = -EBUSY;
-	}
-
+	list_add_tail(&client->link, &xdev->ctx_list);
 	mutex_unlock(&xdev->dev_lock);
+	*priv =	client;
 
 	DRM_INFO("creating scheduler client for pid(%d), ret: %d\n",
 		 pid_nr(task_tgid(current)), ret);

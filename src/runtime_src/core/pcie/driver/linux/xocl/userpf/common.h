@@ -123,8 +123,6 @@ enum {
 struct xocl_dev	{
 	struct xocl_dev_core	core;
 
-	bool			offline;
-
 	int			p2p_bar_idx;
 	u64			p2p_bar_sz_cached;
 	resource_size_t		p2p_bar_len;
