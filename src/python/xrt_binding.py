@@ -166,7 +166,7 @@ def _valueOrError(res):
     Validate return code from XRT C library and raise an exception if necessary
     """
     # check if result is some kind of integer
-    # can't do a direct comparison with an int since some 
+    # can't do a direct comparison with an int since some
     # functions return long and Python3 dropped support for long
     if isinstance(res, Integral):
         if res < 0:
@@ -1095,9 +1095,6 @@ def xclIPName2Index(rhandle, name):
 
     The index is used in APIs like xclOpenContext(), etc.
     """
-    value = ctypes.c_int(0)
-    value_p = ctypes.pointer(value)
     libcore.xclIPName2Index.restype = ctypes.c_int
-    libcore.xclIPName2Index.argtypes = [xclDeviceHandle, ctypes.c_char_p, ctypes.POINTER(ctypes.c_int)]
-    _valueOrError(libcore.xclIPName2Index(handle, name, value_p))
-    return value_p[0]
+    libcore.xclIPName2Index.argtypes = [xclDeviceHandle, ctypes.c_char_p]
+    return _valueOrError(libcore.xclIPName2Index(handle, name))

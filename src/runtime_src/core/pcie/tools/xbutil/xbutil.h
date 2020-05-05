@@ -122,9 +122,9 @@ enum cmacommand {
     CMA_SIZE,
 };
 
-enum class cu_stat : unsigned short { 
-  usage = 0, 
-  addr, 
+enum class cu_stat : unsigned short {
+  usage = 0,
+  addr,
   stat
 };
 
@@ -1355,7 +1355,6 @@ public:
           for (auto& v : sensor_tree::get_child( "board.compute_unit" )) {
             int index = std::stoi(v.first);
             if( index >= 0 ) {
-              uint32_t cu_i;
               std::string cu_n, cu_s, cu_ba;
               for (auto& subv : v.second) {
                 if( subv.first == "name" ) {
@@ -1367,7 +1366,8 @@ public:
                   cu_s = subv.second.get_value<std::string>();
                 }
               }
-              if (xclIPName2Index(m_handle, cu_n.c_str(), &cu_i) != 0) {
+              int cu_i = xclIPName2Index(m_handle, cu_n.c_str());
+              if (cu_i < 0) {
                 ostr << "CU: ";
               } else {
                 ostr << "CU[" << std::right << std::setw(2) << cu_i << "]: ";

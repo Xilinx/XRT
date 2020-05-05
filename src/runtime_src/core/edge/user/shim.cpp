@@ -82,7 +82,7 @@ inline void* wordcopy(void *dst, const void* src, size_t bytes)
 }
 
 namespace ZYNQ {
-  
+
 shim::
 shim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity)
   : mCoreDevice(xrt_core::edge_linux::get_userpf_device(this, index))
@@ -105,7 +105,7 @@ shim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity)
 
 #ifdef XRT_ENABLE_AIE
   /* TODO is this necessary? We may want to initialize it when loading xclbin */
-  aieArray = NULL; 
+  aieArray = NULL;
 #endif
 }
 
@@ -652,8 +652,8 @@ xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint6
     // Here numSamples is the total number of reads required
     xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, ipBaseAddress + 0x1000, (buffer + i), sizeof(uint32_t));
   }
-  wordsPerSample = 2; 
-  return 0; 
+  wordsPerSample = 2;
+  return 0;
 }
 
 int
@@ -814,7 +814,7 @@ xclRegWrite(uint32_t ipIndex, uint32_t offset, uint32_t data)
 
 int
 shim::
-xclIPName2Index(const char *name, uint32_t& index)
+xclIPName2Index(const char *name)
 {
   std::string errmsg;
   std::vector<char> buf;
@@ -866,8 +866,7 @@ xclIPName2Index(const char *name, uint32_t& index)
       continue;
     if (static_cast<unsigned long>(addr) ==
         std::stoul(line.substr(pos).c_str(), 0, 16)) {
-      index = idx;
-      return 0;
+      return idx;
     }
     ++idx;
   }
@@ -1357,7 +1356,7 @@ zynqaie::Aie *
 shim::
 getAieArray()
 {
-  return aieArray; 
+  return aieArray;
 }
 
 void
@@ -2004,10 +2003,10 @@ xclRegRead(xclDeviceHandle handle, uint32_t ipIndex, uint32_t offset,
 }
 
 int
-xclIPName2Index(xclDeviceHandle handle, const char *name, uint32_t *indexp)
+xclIPName2Index(xclDeviceHandle handle, const char *name)
 {
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
-  return (drv) ? drv->xclIPName2Index(name, *indexp) : -ENODEV;
+  return (drv) ? drv->xclIPName2Index(name) : -ENODEV;
 }
 
 int
@@ -2062,5 +2061,3 @@ int xclGetSubdevPath(xclDeviceHandle handle,  const char* subdev,
 {
   return 0;
 }
-
-

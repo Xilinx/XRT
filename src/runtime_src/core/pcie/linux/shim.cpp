@@ -186,7 +186,7 @@ private:
         }
 
         return i;
-    } 
+    }
 
     int queue_up_request(xclQueueRequest *wr)
     {
@@ -200,7 +200,7 @@ private:
         /* queue up this async i/o request */
         unsigned int bytes = 0;
         for (unsigned int i = 0; i < wr->buf_num; i++) {
-             bytes += wr->bufs[i].len; 
+             bytes += wr->bufs[i].len;
              reqList.push_back({wr->flag, (uint64_t)wr->priv_data,
 				wr->bufs[i].va, wr->bufs[i].len});
         }
@@ -342,7 +342,7 @@ private:
     void queue_aio_batch_enable_check(void)
     {
         /* to enable aio batching, the stream needs to have its own context
-         * and any of the 
+         * and any of the
          */
         if (qAioEn && (byteThresh || pktThresh) && !qAioBatchEn) {
             std::lock_guard<std::mutex> lk(reqLock);
@@ -514,7 +514,7 @@ public:
                 if (rc < 0 || (size_t)rc != wr->bufs[i].len)
                     return rc;
             }
-        } 
+        }
         return rc;
     }
 
@@ -2087,7 +2087,7 @@ int shim::xclRegWrite(uint32_t ipIndex, uint32_t offset, uint32_t data)
     return xclRegRW(false, ipIndex, offset, &data);
 }
 
-int shim::xclIPName2Index(const char *name, uint32_t& index)
+int shim::xclIPName2Index(const char *name)
 {
     std::string errmsg;
     std::vector<char> buf;
@@ -2127,8 +2127,7 @@ int shim::xclIPName2Index(const char *name, uint32_t& index)
     if (itr == cus.end())
       return -ENOENT;
 
-    index = std::distance(cus.begin(),itr);
-    return 0;
+    return std::distance(cus.begin(),itr);
 }
 
 } // namespace xocl
@@ -2692,10 +2691,10 @@ int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceIn
   return drv ? drv->xclGetDebugProfileDeviceInfo(info) : -ENODEV;
 }
 
-int xclIPName2Index(xclDeviceHandle handle, const char *name, uint32_t *indexp)
+int xclIPName2Index(xclDeviceHandle handle, const char *name)
 {
   xocl::shim *drv = xocl::shim::handleCheck(handle);
-  return (drv) ? drv->xclIPName2Index(name, *indexp) : -ENODEV;
+  return (drv) ? drv->xclIPName2Index(name) : -ENODEV;
 }
 
 int xclUpdateSchedulerStat(xclDeviceHandle handle)
