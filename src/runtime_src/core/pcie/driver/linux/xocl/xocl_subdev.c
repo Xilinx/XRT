@@ -269,11 +269,11 @@ static int xocl_subdev_cdev_create(struct platform_device *pdev,
 
 	if (XOCL_GET_DRV_PRI(pdev)->cdev_name)
 		sysdev = device_create(xrt_class, &pdev->dev, cdevp->dev,
-			NULL, "%s%d.%d", XOCL_GET_DRV_PRI(pdev)->cdev_name,
+			NULL, "%s%u.%u", XOCL_GET_DRV_PRI(pdev)->cdev_name,
 			XOCL_DEV_ID(core->pdev), subdev->info.dev_idx);
 	else
 		sysdev = device_create(xrt_class, &pdev->dev, cdevp->dev,
-			NULL, "%s/%s%d.%d", XOCL_CDEV_DIR,
+			NULL, "%s/%s%u.%u", XOCL_CDEV_DIR,
 			platform_get_device_id(pdev)->name,
 			XOCL_DEV_ID(core->pdev), subdev->info.dev_idx);
 
@@ -319,19 +319,20 @@ static void __xocl_subdev_destroy(xdev_handle_t xdev_hdl,
 		cdev_del(subdev->cdev);
 		subdev->cdev = NULL;
 	}
+	ida_simple_remove(&subdev_inst_ida, subdev->inst);
 
+	xocl_unlock_xdev(xdev_hdl);
 	if (pldev) {
 		switch (state) {
-		case XOCL_SUBDEV_STATE_ACTIVE:
-		case XOCL_SUBDEV_STATE_OFFLINE:
-			device_release_driver(&pldev->dev);
-		case XOCL_SUBDEV_STATE_ADDED:
-			platform_device_del(pldev);
-		default:
-			platform_device_put(pldev);
+			case XOCL_SUBDEV_STATE_ACTIVE:
+			case XOCL_SUBDEV_STATE_OFFLINE:
+				device_release_driver(&pldev->dev);
+				platform_device_del(pldev);
+			default:
+				platform_device_put(pldev);
 		}
 	}
-	ida_simple_remove(&subdev_inst_ida, subdev->inst);
+	xocl_lock_xdev(xdev_hdl);
 }
 
 static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
@@ -346,6 +347,7 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 	int i, bar_idx, retval;
 	char devname[64];
 	uint32_t dev_idx = 0;
+	struct platform_device *pldev;
 
 	if (sdev_info->override_name)
 		snprintf(devname, sizeof(devname) - 1, "%s",
@@ -393,8 +395,8 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 			subdev->info.bar_idx = NULL;
 	}
 
-	subdev->pldev = platform_device_alloc(devname, subdev->inst);
-	if (!subdev->pldev) {
+	pldev = platform_device_alloc(devname, subdev->inst);
+	if (!pldev) {
 		xocl_xdev_err(xdev_hdl, "failed to alloc device %s",
 			devname);
 		retval = -ENOMEM;
@@ -430,7 +432,7 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 			xocl_xdev_info(xdev_hdl, "resource %pR", &res[i]);
 		}
 
-		retval = platform_device_add_resources(subdev->pldev,
+		retval = platform_device_add_resources(pldev,
 			res, sdev_info->num_res);
 		if (retval) {
 			xocl_xdev_err(xdev_hdl, "failed to add res");
@@ -456,7 +458,7 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 	}
 
 	if (priv_data) {
-		retval = platform_device_add_data(subdev->pldev, priv_data,
+		retval = platform_device_add_data(pldev, priv_data,
 			data_len);
 		vfree(priv_data);
 		if (retval) {
@@ -465,36 +467,44 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 		}
 	}
 
-	subdev->pldev->dev.parent = &core->pdev->dev;
-
-	retval = platform_device_add(subdev->pldev);
-	if (retval) {
-		xocl_xdev_err(xdev_hdl, "failed to add device");
-		goto error;
-	}
-
-	subdev->state = XOCL_SUBDEV_STATE_ADDED;
+	pldev->dev.parent = &core->pdev->dev;
 
 	xocl_xdev_info(xdev_hdl, "Created subdev %s inst %d level %d",
 			sdev_info->name, subdev->inst, sdev_info->level);
 
-	if (XOCL_GET_DRV_PRI(subdev->pldev) &&
-			XOCL_GET_DRV_PRI(subdev->pldev)->ops)
-		subdev->ops = XOCL_GET_DRV_PRI(subdev->pldev)->ops;
+	xocl_unlock_xdev(xdev_hdl);
+	retval = platform_device_add(pldev);
+	if (retval) {
+		platform_device_put(pldev);
+		xocl_xdev_err(xdev_hdl, "failed to add device");
+		xocl_lock_xdev(xdev_hdl);
+		goto error;
+	}
+
+	subdev->state = XOCL_SUBDEV_STATE_ADDED; 
 
 	/*
 	 * force probe to avoid dependence issue. if probing
 	 * failed, it could be the driver is not registered.
 	 */
-	retval = device_attach(&subdev->pldev->dev);
+	retval = device_attach(&pldev->dev);
 	if (retval != 1) {
 		/* return error without release. relies on caller to decide
 		   if this is an error or not */
 		xocl_xdev_info(xdev_hdl, "failed to probe subdev %s, ret %d",
 			devname, retval);
-		subdev->ops = NULL;
+
+		xocl_lock_xdev(xdev_hdl);
+		subdev->pldev = pldev;
 		return -EAGAIN;
 	}
+
+	xocl_lock_xdev(xdev_hdl);
+	subdev->pldev = pldev;
+	if (XOCL_GET_DRV_PRI(subdev->pldev) &&
+			XOCL_GET_DRV_PRI(subdev->pldev)->ops)
+		subdev->ops = XOCL_GET_DRV_PRI(subdev->pldev)->ops;
+
 	subdev->state = XOCL_SUBDEV_STATE_ACTIVE;
 	retval = xocl_subdev_cdev_create(subdev->pldev, subdev);
 	if (retval) {
@@ -710,9 +720,9 @@ int xocl_subdev_create_all(xdev_handle_t xdev_hdl)
 	if (subdev_info)
 		vfree(subdev_info);
 
-	(void) xocl_subdev_create_vsec_devs(xdev_hdl);
-
 	xocl_unlock_xdev(xdev_hdl);
+
+	(void) xocl_subdev_create_vsec_devs(xdev_hdl);
 
 	return 0;
 
@@ -809,6 +819,7 @@ static int __xocl_subdev_online(xdev_handle_t xdev_hdl,
 		struct xocl_subdev *subdev)
 {
 	struct xocl_subdev_funcs *subdev_funcs;
+	struct platform_device *pldev;
 	int ret = 0;
 
 	if (!subdev->pldev)
@@ -829,9 +840,14 @@ static int __xocl_subdev_online(xdev_handle_t xdev_hdl,
 			goto failed;
 		subdev->state = XOCL_SUBDEV_STATE_ACTIVE;
 	} else {
+		pldev = subdev->pldev;
+		subdev->pldev = NULL;
+		xocl_unlock_xdev(xdev_hdl);
+
 		if (subdev->state < XOCL_SUBDEV_STATE_ADDED) {
-			ret = platform_device_add(subdev->pldev);
+			ret = platform_device_add(pldev);
 			if (ret) {
+				xocl_lock_xdev(xdev_hdl);
 				xocl_xdev_err(xdev_hdl, "add device failed %d",
 						ret);
 				goto failed;
@@ -840,7 +856,7 @@ static int __xocl_subdev_online(xdev_handle_t xdev_hdl,
 		}
 
 		if (subdev->state < XOCL_SUBDEV_STATE_OFFLINE) {
-			ret = device_attach(&subdev->pldev->dev);
+			ret = device_attach(&pldev->dev);
 			if (ret != 1) {
 				xocl_xdev_info(xdev_hdl,
 					"driver is not attached at this time");
@@ -849,9 +865,14 @@ static int __xocl_subdev_online(xdev_handle_t xdev_hdl,
 				ret = 0;
 				subdev->state = XOCL_SUBDEV_STATE_ACTIVE;
 			}
-			if (ret)
+			if (ret) {
+				xocl_lock_xdev(xdev_hdl);
 				goto failed;
+			}
 		}
+
+		xocl_lock_xdev(xdev_hdl);
+		subdev->pldev = pldev;
 	}
 
 	ret = xocl_subdev_cdev_create(subdev->pldev, subdev);
@@ -1026,29 +1047,6 @@ failed:
 	xocl_unlock_xdev(xdev_hdl);
 
 	return ret;
-}
-
-int xocl_subdev_get_level(struct platform_device *pdev)
-{
-	xdev_handle_t xdev_hdl = xocl_get_xdev(pdev);
-	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
-	int level = -1, i, j;
-
-	xocl_lock_xdev(xdev_hdl);
-
-	for (i = 0; i < ARRAY_SIZE(core->subdevs); i++) {
-		for (j = 0; j < XOCL_SUBDEV_MAX_INST; j++) {
-			if (core->subdevs[i][j].pldev == pdev) {
-				level = core->subdevs[i][j].info.level;
-				goto found;
-			}
-		}
-	}
-
-found:
-	xocl_unlock_xdev(xdev_hdl);
-
-	return level;
 }
 
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev)

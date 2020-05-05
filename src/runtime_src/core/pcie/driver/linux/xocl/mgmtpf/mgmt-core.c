@@ -338,7 +338,7 @@ static int create_char(struct xclmgmt_dev *lro)
 	lro_char->sys_device = device_create(xrt_class,
 				&lro->core.pdev->dev,
 				lro_char->cdev->dev, NULL,
-				DRV_NAME "%d", lro->instance);
+				DRV_NAME "%u", lro->instance);
 
 	if (IS_ERR(lro_char->sys_device)) {
 		rc = PTR_ERR(lro_char->sys_device);

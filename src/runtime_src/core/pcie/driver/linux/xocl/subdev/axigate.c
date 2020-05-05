@@ -28,7 +28,6 @@ struct axi_gate {
 	struct platform_device	*pdev;
 	struct mutex		gate_lock;
 	void		__iomem *base;
-	int			level;
 	char			ep_name[128];
 };
 
@@ -56,8 +55,7 @@ static int axigate_freeze(struct platform_device *pdev)
 done:
 	mutex_unlock(&gate->gate_lock);
 
-	xocl_xdev_info(xdev, "freeze gate %s level %d",
-			gate->ep_name, gate->level);
+	xocl_xdev_info(xdev, "freeze gate %s", gate->ep_name);
 	return 0;
 }
 
@@ -82,8 +80,7 @@ static int axigate_free(struct platform_device *pdev)
 
 done:
 	mutex_unlock(&gate->gate_lock);
-	xocl_xdev_info(xdev, "free gate %s level %d", gate->ep_name,
-			gate->level);
+	xocl_xdev_info(xdev, "free gate %s", gate->ep_name);
 	return 0;
 }
 
@@ -97,7 +94,7 @@ static int axigate_reset(struct platform_device *pdev)
 	reg_wr(gate, 0x1, iag_wr);
 	mutex_unlock(&gate->gate_lock);
 
-	xocl_xdev_info(xdev, "ep_name %s level %d", gate->ep_name, gate->level);
+	xocl_xdev_info(xdev, "ep_name %s", gate->ep_name);
 	return 0;
 }
 
@@ -171,20 +168,10 @@ static int axigate_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
-	gate->level = xocl_subdev_get_level(pdev);
-	if (gate->level < 0) {
-		xocl_err(&pdev->dev, "did not find level");
-		ret = -EINVAL;
-		goto failed;
-	}
-
 	mutex_init(&gate->gate_lock);
 
-	/* force closing gate */
-	if (gate->level > XOCL_SUBDEV_LEVEL_BLD) {
-		xdev = xocl_get_xdev(pdev);
-		xocl_axigate_free(xdev, gate->level - 1);
-	}
+	xdev = xocl_get_xdev(pdev);
+	xocl_axigate_free_all(xdev);
 
 	return 0;
 

@@ -1318,6 +1318,14 @@ struct xocl_axigate_funcs {
 	AXIGATE_OPS(xdev, level)->get_status(AXIGATE_DEV(xdev, level), status) :\
 	-ENODEV)
 
+static inline void xocl_axigate_free_all(xdev_handle_t xdev)
+{
+	int i;
+
+	for (i = 0; i < XOCL_SUBDEV_LEVEL_MAX; i++)
+		xocl_axigate_free(xdev,i);
+}
+
 struct xocl_mailbox_versal_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	int (*set)(struct platform_device *pdev, u32 data);
@@ -1538,7 +1546,6 @@ int xocl_subdev_create_prp(xdev_handle_t xdev);
 int xocl_subdev_vsec(xdev_handle_t xdev, u32 type, int *bar_idx, u64 *offset);
 u32 xocl_subdev_vsec_read32(xdev_handle_t xdev, int bar, u64 offset);
 int xocl_subdev_create_vsec_devs(xdev_handle_t xdev);
-int xocl_subdev_get_level(struct platform_device *pdev);
 
 void xocl_subdev_register(struct platform_device *pldev, void *ops);
 void xocl_subdev_unregister(struct platform_device *pldev);
@@ -1561,14 +1568,12 @@ int xocl_wait_pci_status(struct pci_dev *pdev, u16 mask, u16 val, int timeout);
 
 static inline void xocl_lock_xdev(xdev_handle_t xdev)
 {
-	if (!mutex_is_locked(&XDEV(xdev)->lock))
-		mutex_lock(&XDEV(xdev)->lock);
+	mutex_lock(&XDEV(xdev)->lock);
 }
 
 static inline void xocl_unlock_xdev(xdev_handle_t xdev)
 {
-	if (mutex_is_locked(&XDEV(xdev)->lock))
-		mutex_unlock(&XDEV(xdev)->lock);
+	mutex_unlock(&XDEV(xdev)->lock);
 }
 
 static inline uint32_t xocl_dr_reg_read32(xdev_handle_t xdev, void __iomem *addr)
