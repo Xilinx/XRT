@@ -638,11 +638,13 @@ public:
   {
     m_hal->setBankAlloc(flag);
   }
+  
   bool
   isBankAlloc() const
   {
     return m_hal->isBankAlloc();
   }
+  
   /**
    * Read kernel control register from device
    *

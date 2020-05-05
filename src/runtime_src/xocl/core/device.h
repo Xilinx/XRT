@@ -346,6 +346,15 @@ public:
   get_cu_memidx() const;
 
   /**
+   * Get the memory index of the bank for all CUs in this device
+   *
+   * @return Memory index for DDR bank if all CUs are uniquely connected
+   *  to same DDR bank for all arguments, -1 otherwise
+   */
+  memidx_type
+  get_cu_memidx() const;
+
+  /**
    * Map buffer (clEnqueueMapBuffer) implementation
    */
   void*
