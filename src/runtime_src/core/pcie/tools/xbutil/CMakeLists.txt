@@ -18,8 +18,8 @@ target_link_libraries(xbutil
   pthread
   rt
   dl
-  boost_filesystem
-  boost_system
+  ${Boost_FILESYSTEM_LIBRARY}
+  ${Boost_SYSTEM_LIBRARY}
   uuid
   ${CURSES_LIBRARIES}
   )

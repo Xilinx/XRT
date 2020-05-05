@@ -70,11 +70,12 @@ if ((${LINUX_FLAVOR} STREQUAL Ubuntu) AND (${LINUX_VERSION} VERSION_GREATER 17.1
 endif()
 
 find_package(Boost REQUIRED COMPONENTS system filesystem )
+include_directories(${Boost_INCLUDE_DIRS})
+add_compile_options("-DBOOST_LOCALE_HIDE_AUTO_PTR")
 
 # -- Cursers ---
 INCLUDE (FindCurses)
 find_package(Curses REQUIRED)
-
 
 # --- XRT Variables ---
 set (XRT_INSTALL_DIR           "${CMAKE_INSTALL_PREFIX}/xrt")

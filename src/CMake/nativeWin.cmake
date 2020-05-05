@@ -22,6 +22,8 @@ endif(GIT_FOUND)
 
 INCLUDE (FindBoost)
 INCLUDE (FindGTest)
+include_directories(${Boost_INCLUDE_DIRS})
+add_compile_options("-DBOOST_LOCALE_HIDE_AUTO_PTR")
 
 # --- XRT Variables ---
 set (XRT_INSTALL_DIR "xrt")
