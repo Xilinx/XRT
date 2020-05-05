@@ -1283,7 +1283,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
   }
 
 
-  void HwEmShim::xclFreeDeviceBuffer(uint64_t offset)
+  void HwEmShim::xclFreeDeviceBuffer(uint64_t offset, bool sendtoxsim)
   {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << offset << std::endl;
@@ -1298,7 +1298,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     if(sock)
     {
       //Currently Versal platforms does not support buffer deallocation
-      if(!mVersalPlatform) {
+      if(!mVersalPlatform && sendtoxsim) {
         xclFreeDeviceBuffer_RPC_CALL(xclFreeDeviceBuffer,offset);
       }
     }
@@ -2416,10 +2416,15 @@ void HwEmShim::xclFreeBO(unsigned int boHandle)
     PRINTENDFUNC;
     return;
   }
+
   xclemulation::drm_xocl_bo* bo = (*it).second;;
   if(bo)
   {
-    xclFreeDeviceBuffer(bo->base);
+    bool bSendToSim = true;
+    if(bo->flags & XCL_BO_FLAGS_EXECBUF)
+      bSendToSim = false;
+    
+    xclFreeDeviceBuffer(bo->base, bSendToSim);
     mXoclObjMap.erase(it);
   }
   PRINTENDFUNC;
