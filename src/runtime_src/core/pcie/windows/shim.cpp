@@ -1418,7 +1418,7 @@ int xclExportBO(xclDeviceHandle handle, xclBufferHandle boHandle)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclExportBO() NOT IMPLEMENTED");
-  return EDOM;
+  return ENOSYS;
 }
 
 xclBufferHandle xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
