@@ -40,6 +40,7 @@ usage()
     echo "[-opt]                     Build optimized library only (default)"
     echo "[-edge]                    Build edge of x64.  Turns off opt and dbg"
     echo "[-nocmake]                 Skip CMake call"
+    echo "[-noctest]                 Skip unit tests"
     echo "[-j <n>]                   Compile parallel (default: system cores)"
     echo "[-ccache]                  Build using RDI's compile cache"
     echo "[-toolchain <file>]        Extra toolchain file to configure CMake"
@@ -69,6 +70,7 @@ opt=1
 dbg=1
 edge=0
 nocmake=0
+noctest=0
 ertfw=""
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -102,6 +104,10 @@ while [ $# -gt 0 ]; do
             ;;
         -nocmake)
             nocmake=1
+            shift
+            ;;
+        -noctest)
+            noctest=1
             shift
             ;;
         -j)
@@ -191,7 +197,9 @@ if [[ $dbg == 1 ]]; then
   fi
   echo "make -j $jcore $verbose DESTDIR=$PWD install"
   time make -j $jcore $verbose DESTDIR=$PWD install
-  time ctest --output-on-failure
+  if [[ $noctest == 0 ]]; then
+      time ctest --output-on-failure
+  fi
   cd $BUILDDIR
 fi
 
@@ -209,7 +217,9 @@ if [[ $opt == 1 ]]; then
   else
     echo "make -j $jcore $verbose DESTDIR=$PWD install"
     time make -j $jcore $verbose DESTDIR=$PWD install
-    time ctest --output-on-failure
+    if [[ $noctest == 0 ]]; then
+        time ctest --output-on-failure
+    fi
     time make package
   fi
 
