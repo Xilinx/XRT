@@ -131,6 +131,7 @@ private :
   void printTS2MMResults(std::ostream&);
   void printLAPCResults(std::ostream&);
   void printSPCResults(std::ostream&);
+  void printILAResults(std::ostream&);
 
   void populateAIMResults(boost::property_tree::ptree &_pt);
   void populateAMResults(boost::property_tree::ptree &_pt);
@@ -139,6 +140,7 @@ private :
   void populateTS2MMResults(boost::property_tree::ptree &_pt);
   void populateLAPCResults(boost::property_tree::ptree &_pt);
   void populateSPCResults(boost::property_tree::ptree &_pt);
+  void populateILAResults(boost::property_tree::ptree &_pt);
 
   void processElementFilter(const std::vector<std::string> & _elementsFilter);
 };
@@ -200,21 +202,30 @@ DebugIpStatusCollector::printOverview(std::ostream& _output)
 
   uint64_t count = 0;
   for(uint64_t i = 0; i < dbgIpLayout->m_count; i++) {
-    if (dbgIpLayout->m_debug_ip_data[i].m_type > maxDebugIpType) {
-      _output << "Found invalid IP in debug ip layout with type "
-              << dbgIpLayout->m_debug_ip_data[i].m_type << std::endl;
-      return;
+    switch(dbgIpLayout->m_debug_ip_data[i].m_type) {
+      case LAPC:
+      case ILA:
+      case AXI_MM_MONITOR:
+      case AXI_MONITOR_FIFO_FULL:
+      case ACCEL_MONITOR:
+      case AXI_STREAM_MONITOR:
+      case AXI_STREAM_PROTOCOL_CHECKER:
+      case TRACE_S2MM:
+        ++count;
+        ++debugIpNum[dbgIpLayout->m_debug_ip_data[i].m_type];
+        break;
+      case UNDEFINED:
+      case AXI_TRACE_FUNNEL:
+      case AXI_MONITOR_FIFO_LITE:
+      case AXI_DMA:
+      case TRACE_S2MM_FULL:
+        // No need to show these Debug IP types
+        continue;
+      default:
+        _output << "Found invalid IP in debug ip layout with type "
+                << dbgIpLayout->m_debug_ip_data[i].m_type << std::endl;
+        return;
     }
-    // No need to show these Debug IP types
-    if(UNDEFINED == dbgIpLayout->m_debug_ip_data[i].m_type
-        || AXI_TRACE_FUNNEL == dbgIpLayout->m_debug_ip_data[i].m_type
-        || AXI_MONITOR_FIFO_LITE == dbgIpLayout->m_debug_ip_data[i].m_type
-        || AXI_DMA == dbgIpLayout->m_debug_ip_data[i].m_type
-        || TRACE_S2MM_FULL == dbgIpLayout->m_debug_ip_data[i].m_type) {
-      continue;
-    }
-    ++count;
-    ++debugIpNum[dbgIpLayout->m_debug_ip_data[i].m_type];
   }
 
   _output << "Number of IPs found :: " << count << std::endl; // Total count with the IPs actually shown
@@ -266,6 +277,8 @@ DebugIpStatusCollector::processElementFilter(const std::vector<std::string> & _e
       debugIpOpt[AXI_MONITOR_FIFO_FULL] = true;
     } else if(itr == "ts2mm") {
       debugIpOpt[TRACE_S2MM] = true;
+    } else if(itr == "ila") {
+      debugIpOpt[ILA] = true;
     }
   }
 }
@@ -280,6 +293,7 @@ DebugIpStatusCollector::printAllResults(std::ostream& _output)
   printTS2MMResults(_output);
   printLAPCResults(_output);
   printSPCResults(_output);
+  printILAResults(_output);
 }
 
 void 
@@ -335,6 +349,12 @@ DebugIpStatusCollector::getDebugIpData()
       {
         if(debugIpOpt[AXI_STREAM_PROTOCOL_CHECKER])
           readSPChecker(&(dbgIpLayout->m_debug_ip_data[i]));
+        break;
+      }
+      case ILA :
+      {
+        if(debugIpOpt[ILA])
+          ++debugIpNum[ILA];
         break;
       }
       default: break;
@@ -766,7 +786,6 @@ DebugIpStatusCollector::printTS2MMResults(std::ostream& _output)
 }
 
 
-
 void 
 DebugIpStatusCollector::readLAPChecker(debug_ip_data* dbgIpInfo)
 {
@@ -978,6 +997,19 @@ DebugIpStatusCollector::printSPCResults(std::ostream& _output)
   }
 }
 
+void 
+DebugIpStatusCollector::printILAResults(std::ostream& _output)
+{
+  if(0 == debugIpNum[ILA]) {
+    return;
+  }
+
+  _output << "\nIntegrated Logic Analyzer" << std::endl
+          << "Enables debugging and performance monitoring of kernel running on hardware"
+          << "Found : " << debugIpNum[ILA] << std::endl;
+  return;
+}
+
 
 void 
 DebugIpStatusCollector::populateOverview(boost::property_tree::ptree &_pt)
@@ -988,21 +1020,30 @@ DebugIpStatusCollector::populateOverview(boost::property_tree::ptree &_pt)
 
   uint64_t count = 0;
   for(uint64_t i = 0; i < dbgIpLayout->m_count; i++) {
-    if (dbgIpLayout->m_debug_ip_data[i].m_type > maxDebugIpType) {
-      std::cout << "Found invalid IP in debug ip layout with type "
+    switch(dbgIpLayout->m_debug_ip_data[i].m_type) {
+      case LAPC:
+      case ILA:
+      case AXI_MM_MONITOR:
+      case AXI_MONITOR_FIFO_FULL:
+      case ACCEL_MONITOR:
+      case AXI_STREAM_MONITOR:
+      case AXI_STREAM_PROTOCOL_CHECKER:
+      case TRACE_S2MM:
+        ++count;
+        ++debugIpNum[dbgIpLayout->m_debug_ip_data[i].m_type];
+        break;
+      case UNDEFINED:
+      case AXI_TRACE_FUNNEL:
+      case AXI_MONITOR_FIFO_LITE:
+      case AXI_DMA:
+      case TRACE_S2MM_FULL:
+        // No need to show these Debug IP types
+        continue;
+      default:
+        std::cout << "Found invalid IP in debug ip layout with type "
                 << dbgIpLayout->m_debug_ip_data[i].m_type << std::endl;
-      return;
+        return;
     }
-    // No need to show these Debug IP types
-    if(UNDEFINED == dbgIpLayout->m_debug_ip_data[i].m_type
-        || AXI_TRACE_FUNNEL == dbgIpLayout->m_debug_ip_data[i].m_type
-        || AXI_MONITOR_FIFO_LITE == dbgIpLayout->m_debug_ip_data[i].m_type
-        || AXI_DMA == dbgIpLayout->m_debug_ip_data[i].m_type
-        || TRACE_S2MM_FULL == dbgIpLayout->m_debug_ip_data[i].m_type) {
-      continue;
-    }
-    ++count;
-    ++debugIpNum[dbgIpLayout->m_debug_ip_data[i].m_type];
   }
 
   _pt.put("total_num_debug_ips", count); // Total count with the IPs actually shown
@@ -1021,6 +1062,7 @@ DebugIpStatusCollector::populateOverview(boost::property_tree::ptree &_pt)
   _pt.add_child("debug_ips", dbg_ip_list_pt);
 }
 
+
 void 
 DebugIpStatusCollector::populateAllResults(boost::property_tree::ptree &_pt)
 {
@@ -1031,6 +1073,8 @@ DebugIpStatusCollector::populateAllResults(boost::property_tree::ptree &_pt)
   populateTS2MMResults(_pt);
   populateLAPCResults(_pt);
   populateSPCResults(_pt);
+  populateILAResults(_pt);
+
 }
 
 
@@ -1194,6 +1238,23 @@ DebugIpStatusCollector::populateSPCResults(boost::property_tree::ptree &_pt)
 
   _pt.add_child("axi_streaming_protocol_checkers", spc_pt);
 }
+
+
+void 
+DebugIpStatusCollector::populateILAResults(boost::property_tree::ptree &_pt)
+{
+  if(0 == debugIpNum[ILA]) {
+    return;
+  }
+
+  boost::property_tree::ptree ila_pt;
+  ila_pt.put("description", "Enables debugging and performance monitoring of kernel running on hardware");
+  ila_pt.put("count",debugIpNum[ILA]);
+
+  _pt.add_child("Integrated Logic Analyzer", ila_pt);
+
+}
+
 
 };
 
