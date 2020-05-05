@@ -59,17 +59,23 @@ execute_process(COMMAND ${UNAME} -r
 # --- Boost ---
 #set(Boost_DEBUG 1)
 
-INCLUDE (FindBoost)
-
-# On older systems libboost_system.a is not compiled with -fPIC which leads to
-# link errors when XRT shared objects try to link with it.
-
-# Static linking with Boost is enabled on Ubuntu 18.04 and later versions.
-if ((${LINUX_FLAVOR} STREQUAL Ubuntu) AND (${LINUX_VERSION} VERSION_GREATER 17.10))
-   set(Boost_USE_STATIC_LIBS  ON)
+if (DEFINED ENV{XRT_BOOST_INSTALL})
+  set(XRT_BOOST_INSTALL $ENV{XRT_BOOST_INSTALL})
+  set(Boost_USE_STATIC_LIBS ON)
+  find_package(Boost 
+    HINTS $ENV{XRT_BOOST_INSTALL}
+    REQUIRED COMPONENTS system filesystem)
+else()
+  # On older systems libboost_system.a is not compiled with -fPIC which leads to
+  # link errors when XRT shared objects try to link with it.
+  # Static linking with Boost is enabled on Ubuntu 18.04 and later versions.
+  if ((${LINUX_FLAVOR} STREQUAL Ubuntu) AND (${LINUX_VERSION} VERSION_GREATER 17.10))
+    set(Boost_USE_STATIC_LIBS  ON)
+  endif()
+  find_package(Boost 
+    REQUIRED COMPONENTS system filesystem)
 endif()
 
-find_package(Boost REQUIRED COMPONENTS system filesystem )
 include_directories(${Boost_INCLUDE_DIRS})
 add_compile_options("-DBOOST_LOCALE_HIDE_AUTO_PTR")
 
