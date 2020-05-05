@@ -1057,8 +1057,6 @@ void xocl_p2p_fini(struct xocl_dev *xdev, bool recov_bar_sz)
 	}
 	mutex_unlock(&xdev->p2p_mem_chunk_lock);
 
-	mutex_destroy(&xdev->p2p_mem_chunk_lock);
-
 	vfree(xdev->p2p_mem_chunks);
 	xdev->p2p_mem_chunk_num = 0;
 	xdev->p2p_mem_chunks = NULL;
@@ -1091,8 +1089,6 @@ int xocl_p2p_init(struct xocl_dev *xdev)
 
 	xocl_info(&pdev->dev, "Initializing P2P, bar %d, len %lld",
 			xdev->p2p_bar_idx, xdev->p2p_bar_len);
-
-	mutex_init(&xdev->p2p_mem_chunk_lock);
 
 	if (xdev->p2p_bar_idx < 0 ||
 		xdev->p2p_bar_len <= XOCL_P2P_CHUNK_SIZE ||
@@ -1318,6 +1314,7 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 	if (xdev->ulp_blob)
 		vfree(xdev->ulp_blob);
 	mutex_destroy(&xdev->dev_lock);
+	mutex_destroy(&xdev->p2p_mem_chunk_lock);
 
 	pci_set_drvdata(pdev, NULL);
 	xocl_drvinst_free(hdl);
@@ -1356,6 +1353,7 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	pci_set_drvdata(pdev, xdev);
 
 	mutex_init(&xdev->dev_lock);
+	mutex_init(&xdev->p2p_mem_chunk_lock);
 	atomic64_set(&xdev->total_execs, 0);
 	atomic_set(&xdev->outstanding_execs, 0);
 	INIT_LIST_HEAD(&xdev->ctx_list);

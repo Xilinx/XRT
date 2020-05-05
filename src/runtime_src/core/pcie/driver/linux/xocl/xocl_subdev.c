@@ -478,6 +478,7 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 	retval = platform_device_add(subdev->pldev);
 	if (retval) {
 		xocl_lock_xdev(xdev_hdl);
+		subdev->hold = false;
 		xocl_xdev_err(xdev_hdl, "failed to add device");
 		goto error;
 	}
@@ -498,6 +499,7 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 	retval = device_attach(&subdev->pldev->dev);
 	if (retval != 1) {
 		xocl_lock_xdev(xdev_hdl);
+		subdev->hold = false;
 		/* return error without release. relies on caller to decide
 		   if this is an error or not */
 		xocl_xdev_info(xdev_hdl, "failed to probe subdev %s, ret %d",
