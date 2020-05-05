@@ -834,13 +834,14 @@ static int __xocl_subdev_online(xdev_handle_t xdev_hdl,
 	struct xocl_subdev_funcs *subdev_funcs;
 	int ret = 0;
 
+	/* pldev is NULL means subdev does not exist. exist without error in this case */
 	if (!subdev->pldev)
-		goto failed;
+		return 0;
 
 	if (subdev->state > XOCL_SUBDEV_STATE_OFFLINE) {
 		xocl_xdev_info(xdev_hdl, "%s, already online",
 			subdev->info.name);
-		goto failed;
+		return 0;
 	}
 
 	xocl_xdev_info(xdev_hdl, "online subdev %s, cdev %p\n",
@@ -886,7 +887,7 @@ static int __xocl_subdev_online(xdev_handle_t xdev_hdl,
 	ret = xocl_subdev_cdev_create(subdev->pldev, subdev);
 	if (ret) {
 		xocl_xdev_err(xdev_hdl, "create cdev failed %d", ret);
-		goto failed;
+		return ret;
 	}
 
 	if (XOCL_GET_DRV_PRI(subdev->pldev))
