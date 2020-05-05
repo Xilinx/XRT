@@ -432,6 +432,30 @@ static struct xocl_subdev_map		subdev_map[] = {
 		.devinfo_cb = NULL,
 	},
 	{
+		.id = XOCL_SUBDEV_MAILBOX_VERSAL,
+		.dev_name = XOCL_MAILBOX_VERSAL,
+		.res_names = {
+			NODE_MAILBOX_XRT,
+			NULL
+		},
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = NULL,
+		.devinfo_cb = NULL,
+	},
+	{
+		.id = XOCL_SUBDEV_OSPI_VERSAL,
+		.dev_name = XOCL_OSPI_VERSAL,
+		.res_names = {
+			NODE_OSPI_CACHE,
+			NULL
+		},
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = NULL,
+		.devinfo_cb = NULL,
+	},
+	{
 		XOCL_SUBDEV_ICAP,
 		XOCL_ICAP,
 		{
