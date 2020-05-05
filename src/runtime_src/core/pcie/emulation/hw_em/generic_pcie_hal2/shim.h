@@ -328,7 +328,7 @@ using addr_type = uint64_t;
       FeatureRomHeader mFeatureRom;
       std::set<unsigned int > mImportedBOs;
       uint64_t mCuBaseAddress;
-
+      bool     mVersalPlatform;
       //For Emulation specific messages on host from Device
       std::thread mMessengerThread;
       bool mMessengerThreadStarted;
