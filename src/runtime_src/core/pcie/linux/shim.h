@@ -160,7 +160,7 @@ public:
     int xclPollQueue(uint64_t q_hdl, int min_compl, int max_compl, xclReqCompletion *comps, int * actual, int timeout /*ms*/);
     int xclSetQueueOpt(uint64_t q_hdl, int type, uint32_t val);
     int xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int * actual, int timeout /*ms*/);
-    int xclIPName2Index(const char *name, uint32_t& index);
+    int xclIPName2Index(const char *name);
 
 private:
     std::shared_ptr<xrt_core::device> mCoreDevice;

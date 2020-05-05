@@ -460,13 +460,16 @@ namespace xclhwemhal2 {
     
     //New DRC check for Versal Platforms
     if (fpgaDevice != "" && fpgaDevice.find("versal:") != std::string::npos) {
+      mVersalPlatform=true;
       if ((args.m_emuData == nullptr) && (args.m_emuDataSize <= 0)) {
         std::string dMsg = "ERROR: [HW-EMU 09] EMULATION_DATA section in XCLBIN is missing. This is mandatory section required for Versal platforms";
         logMessage(dMsg, 0);
         return -1;
       }
     }
-
+    if (xclemulation::config::getInstance()->isSharedFmodel() && !mVersalPlatform) {
+      setenv("SDX_USE_SHARED_MEMORY","true",true); 
+    }
     // iterate cores
     count = 0;
     for (auto& xml_core : xml_project.get_child("project.platform.device"))
@@ -1280,17 +1283,31 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
   }
 
 
-  void HwEmShim::xclFreeDeviceBuffer(uint64_t buf)
+  void HwEmShim::xclFreeDeviceBuffer(uint64_t offset, bool sendtoxsim)
   {
     if (mLogStream.is_open()) {
-      mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << buf << std::endl;
+      mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << offset << std::endl;
     }
 
     for (auto i : mDDRMemoryManager) {
-      if (buf < i->start() + i->size()) {
-        i->free(buf);
+      if (offset < i->start() + i->size()) {
+        i->free(offset);
       }
     }
+    bool ack = true;
+    if(sock)
+    {
+      //Currently Versal platforms does not support buffer deallocation
+      if(!mVersalPlatform && sendtoxsim) {
+        xclFreeDeviceBuffer_RPC_CALL(xclFreeDeviceBuffer,offset);
+      }
+    }
+    if(!ack)
+    {
+      PRINTENDFUNC;
+      return;
+    }
+
     PRINTENDFUNC;
   }
   void HwEmShim::logMessage(std::string& msg , int verbosity)
@@ -1736,6 +1753,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     mCuBaseAddress = 0x0;
     mMessengerThreadStarted = false;
     mIsTraceHubAvailable = false;
+    mVersalPlatform=false;
   }
 
   bool HwEmShim::isMBSchedulerEnabled()
@@ -2006,9 +2024,6 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     {
       mGlobalInMemStream.open("global_in.mem");
       mGlobalOutMemStream.open("global_out.mem");
-    }
-    if (xclemulation::config::getInstance()->isSharedFmodel()) {
-      setenv("SDX_USE_SHARED_MEMORY","true",true); 
     }
   }
 
@@ -2401,10 +2416,15 @@ void HwEmShim::xclFreeBO(unsigned int boHandle)
     PRINTENDFUNC;
     return;
   }
+
   xclemulation::drm_xocl_bo* bo = (*it).second;;
   if(bo)
   {
-    xclFreeDeviceBuffer(bo->base);
+    bool bSendToSim = true;
+    if(bo->flags & XCL_BO_FLAGS_EXECBUF)
+      bSendToSim = false;
+    
+    xclFreeDeviceBuffer(bo->base, bSendToSim);
     mXoclObjMap.erase(it);
   }
   PRINTENDFUNC;
@@ -2838,16 +2858,14 @@ int HwEmShim::xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << " , "<< max_compl <<", "<<min_compl<<" ," << *actual <<" ," << timeout << std::endl;
   }
-//  struct timespec time, *ptime = NULL;
-//
-//  if (timeout > 0) 
-//  {
-//    memset(&time, 0, sizeof(time));
-//    time.tv_sec = timeout / 1000;
-//    time.tv_nsec = (timeout % 1000) * 1000000;
-//    ptime = &time;
-//  }
+  xclemulation::TIMEOUT_SCALE timeout_scale=xclemulation::config::getInstance()->getTimeOutScale();
+  if(timeout_scale==xclemulation::TIMEOUT_SCALE::NA) {
+      std::string dMsg = "WARNING: [HW-EMU 10] xclPollCompletion : Timeout is not enabled in emulation by default.Please use xrt.ini (key: timeout_scale=ms|sec|min) to enable";
+      logMessage(dMsg, 0); 
+  }
 
+  xclemulation::ApiWatchdog watch(timeout_scale,timeout);
+  watch.reset();
   *actual = 0;
   while(*actual < min_compl)
   {
@@ -2870,6 +2888,11 @@ int HwEmShim::xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *
       {
         it++;
       }
+      if(watch.isTimeout()) {
+    	 PRINTENDFUNC;
+    	 return -1;
+     }
+
     }
   }
   PRINTENDFUNC;
@@ -2942,12 +2965,13 @@ int HwEmShim::xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char
     return 0;
 }
 
-void HwEmShim::closemMessengerThread() {
-	if(mMessengerThreadStarted) {
-		mMessengerThread.join();
-		mMessengerThreadStarted = false;
-	}
-}
+  void HwEmShim::closemMessengerThread() {
+	  if(mMessengerThreadStarted) {
+		  mMessengerThread.join();
+		  mMessengerThreadStarted = false;
+	  }
+  }
+
 /********************************************** QDMA APIs IMPLEMENTATION END**********************************************/
 /**********************************************HAL2 API's END HERE **********************************************/
 }  // end namespace xclhwemhal2

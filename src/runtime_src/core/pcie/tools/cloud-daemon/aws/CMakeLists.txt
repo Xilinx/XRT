@@ -33,11 +33,11 @@ add_compile_options("-fPIC")
 if(${INTERNAL_TESTING_FOR_AWS})
   add_definitions(-DINTERNAL_TESTING_FOR_AWS)
   target_link_libraries(aws_mpd_plugin
-	xrt_core_static
-	xrt_coreutil_static
+    xrt_core_static
+    xrt_coreutil_static
     uuid
-    boost_filesystem
-    boost_system
+    ${Boost_FILESYSTEM_LIBRARY}
+    ${Boost_SYSTEM_LIBRARY}
     pthread
     rt
     dl
@@ -47,11 +47,11 @@ else()
   set(AWS_FPGA_MGMT_LIB_DIR ${AWS_FPGA_REPO_DIR}/sdk/userspace/lib)
 
   target_link_libraries(aws_mpd_plugin
-	xrt_core_static
-	xrt_coreutil_static
+    xrt_core_static
+    xrt_coreutil_static
     uuid
-    boost_filesystem
-    boost_system
+    ${Boost_FILESYSTEM_LIBRARY}
+    ${Boost_SYSTEM_LIBRARY}
     pthread
     rt
     dl

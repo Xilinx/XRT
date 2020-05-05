@@ -289,6 +289,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 			NODE_AF_DATA_H2C,
 			NODE_AF_DATA_P2P,
 			NODE_AF_DATA_M2M,
+			NODE_AF_DATA_C2H,
 			NULL
 		},
 		1,
@@ -391,6 +392,17 @@ static struct xocl_subdev_map		subdev_map[] = {
 			RESNAME_MEMCALIB,
 			RESNAME_KDMA,
 			RESNAME_DDR4_RESET_GATE,
+			NULL
+		},
+		1,
+		0,
+		NULL,
+		devinfo_cb_setlevel,
+	},
+	{
+		XOCL_SUBDEV_IORES,
+		XOCL_IORES1,
+		{
 			RESNAME_PCIEMON,
 			NULL
 		},
@@ -412,6 +424,30 @@ static struct xocl_subdev_map		subdev_map[] = {
 			RESNAME_CLKFREQ_K2,
 			RESNAME_CLKSHUTDOWN,
 			RESNAME_UCS_CONTROL_STATUS,
+			NULL
+		},
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = NULL,
+		.devinfo_cb = NULL,
+	},
+	{
+		.id = XOCL_SUBDEV_MAILBOX_VERSAL,
+		.dev_name = XOCL_MAILBOX_VERSAL,
+		.res_names = {
+			NODE_MAILBOX_XRT,
+			NULL
+		},
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = NULL,
+		.devinfo_cb = NULL,
+	},
+	{
+		.id = XOCL_SUBDEV_OSPI_VERSAL,
+		.dev_name = XOCL_OSPI_VERSAL,
+		.res_names = {
+			NODE_OSPI_CACHE,
 			NULL
 		},
 		.required_ip = 1,

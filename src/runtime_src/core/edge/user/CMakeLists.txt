@@ -45,8 +45,8 @@ if (DEFINED XRT_AIE_BUILD)
     rt
     dl
     uuid
-    boost_filesystem
-    boost_system
+    ${Boost_FILESYSTEM_LIBRARY}
+    ${Boost_SYSTEM_LIBRARY}
     metal
     xaiengine
     )
@@ -57,8 +57,8 @@ else()
     rt
     dl
     uuid
-    boost_filesystem
-    boost_system
+    ${Boost_FILESYSTEM_LIBRARY}
+    ${Boost_SYSTEM_LIBRARY}
     )
 endif()
 

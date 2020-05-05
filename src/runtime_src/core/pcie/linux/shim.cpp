@@ -186,7 +186,7 @@ private:
         }
 
         return i;
-    } 
+    }
 
     int queue_up_request(xclQueueRequest *wr)
     {
@@ -200,7 +200,7 @@ private:
         /* queue up this async i/o request */
         unsigned int bytes = 0;
         for (unsigned int i = 0; i < wr->buf_num; i++) {
-             bytes += wr->bufs[i].len; 
+             bytes += wr->bufs[i].len;
              reqList.push_back({wr->flag, (uint64_t)wr->priv_data,
 				wr->bufs[i].va, wr->bufs[i].len});
         }
@@ -342,7 +342,7 @@ private:
     void queue_aio_batch_enable_check(void)
     {
         /* to enable aio batching, the stream needs to have its own context
-         * and any of the 
+         * and any of the
          */
         if (qAioEn && (byteThresh || pktThresh) && !qAioBatchEn) {
             std::lock_guard<std::mutex> lk(reqLock);
@@ -514,7 +514,7 @@ public:
                 if (rc < 0 || (size_t)rc != wr->bufs[i].len)
                     return rc;
             }
-        } 
+        }
         return rc;
     }
 
@@ -1759,7 +1759,7 @@ int shim::xclPollCompletion(int min_compl, int max_compl, struct xclReqCompletio
     *actual = 0;
     if (!mAioEnabled) {
         xrt_logmsg(XRT_ERROR, "%s: async io is not enabled", __func__);
-        return -EINVAL;
+        throw std::runtime_error("sync io is not enabled");
     }
 
     if (timeout > 0) {
@@ -1771,9 +1771,9 @@ int shim::xclPollCompletion(int min_compl, int max_compl, struct xclReqCompletio
     num_evt = io_getevents(mAioContext, min_compl, max_compl, (struct io_event *)comps, ptime);
 
     *actual = num_evt;
-    if (num_evt == 0) {
-        xrt_logmsg(XRT_ERROR, "%s: failed to poll Queue Completions", __func__);
-        return -EINVAL;
+    if (num_evt <= 0) {
+        xrt_logmsg(XRT_DEBUG, "%s: failed to poll Queue Completions", __func__);
+        return -ETIMEDOUT;
     }
 
     for (i = num_evt - 1; i >= 0; i--) {
@@ -2087,7 +2087,7 @@ int shim::xclRegWrite(uint32_t ipIndex, uint32_t offset, uint32_t data)
     return xclRegRW(false, ipIndex, offset, &data);
 }
 
-int shim::xclIPName2Index(const char *name, uint32_t& index)
+int shim::xclIPName2Index(const char *name)
 {
     std::string errmsg;
     std::vector<char> buf;
@@ -2127,8 +2127,7 @@ int shim::xclIPName2Index(const char *name, uint32_t& index)
     if (itr == cus.end())
       return -ENOENT;
 
-    index = std::distance(cus.begin(),itr);
-    return 0;
+    return std::distance(cus.begin(),itr);
 }
 
 } // namespace xocl
@@ -2148,9 +2147,11 @@ unsigned xclProbe()
 xclDeviceHandle
 xclOpen(unsigned int deviceIndex, const char*, xclVerbosityLevel)
 {
+  try {
     if(pcidev::get_dev_total() <= deviceIndex) {
-        printf("Cannot find index %u \n", deviceIndex);
-        return nullptr;
+      xrt_core::message::send(xrt_core::message::severity_level::XRT_INFO, "XRT",
+                       std::string("Cannot find index " + std::to_string(deviceIndex) + " \n"));
+      return nullptr;
     }
 #ifdef ENABLE_HAL_PROFILING
   OPEN_CB;
@@ -2159,6 +2160,15 @@ xclOpen(unsigned int deviceIndex, const char*, xclVerbosityLevel)
     xocl::shim *handle = new xocl::shim(deviceIndex);
 
     return static_cast<xclDeviceHandle>(handle);
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+  }
+
+  return nullptr;
 }
 
 void xclClose(xclDeviceHandle handle)
@@ -2175,6 +2185,7 @@ void xclClose(xclDeviceHandle handle)
 
 int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 {
+  try {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
 
 #ifdef DISABLE_DOWNLOAD_XCLBIN
@@ -2196,12 +2207,21 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 #endif
     }
     if (!ret && xrt_core::config::get_ert() &&
-      (xclbin::get_axlf_section(buffer, PDI) ||
-      xclbin::get_axlf_section(buffer, BITSTREAM_PARTIAL_PDI))) {
-        ret = xrt_core::scheduler::loadXclbinToPS(handle, buffer,
-          xrt_core::config::get_pdi_load());
+        (xclbin::get_axlf_section(buffer, PDI) ||
+         xclbin::get_axlf_section(buffer, BITSTREAM_PARTIAL_PDI))) {
+      ret = xrt_core::scheduler::
+        loadXclbinToPS(handle, buffer,xrt_core::config::get_pdi_load());
     }
     return ret;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get_code();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -EINVAL;
+  }
 }
 
 int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, const char* format, ...)
@@ -2671,10 +2691,10 @@ int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceIn
   return drv ? drv->xclGetDebugProfileDeviceInfo(info) : -ENODEV;
 }
 
-int xclIPName2Index(xclDeviceHandle handle, const char *name, uint32_t *indexp)
+int xclIPName2Index(xclDeviceHandle handle, const char *name)
 {
   xocl::shim *drv = xocl::shim::handleCheck(handle);
-  return (drv) ? drv->xclIPName2Index(name, *indexp) : -ENODEV;
+  return (drv) ? drv->xclIPName2Index(name) : -ENODEV;
 }
 
 int xclUpdateSchedulerStat(xclDeviceHandle handle)

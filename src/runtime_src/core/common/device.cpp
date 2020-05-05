@@ -19,8 +19,10 @@
 #include "error.h"
 #include "utils.h"
 #include "query_requests.h"
+#include "xclbin_parser.h"
 #include "core/include/xrt.h"
 #include "core/include/xclbin.h"
+#include "core/include/ert.h"
 #include <boost/format.hpp>
 #include <string>
 #include <iostream>
@@ -63,7 +65,7 @@ register_axlf(const axlf* top)
   uuid_copy(m_xclbin_uuid, top->m_header.uuid);
   axlf_section_kind kinds[] = {EMBEDDED_METADATA, AIE_METADATA, IP_LAYOUT};
   for (auto kind : kinds) {
-    auto hdr = xclbin::get_axlf_section(top, kind);
+    auto hdr = ::xclbin::get_axlf_section(top, kind);
     if (!hdr)
       continue;
     auto section_data = reinterpret_cast<const char*>(top) + hdr->m_sectionOffset;
@@ -89,6 +91,56 @@ get_axlf_section(axlf_section_kind section, const xuid_t xclbin_id) const
   if (uuid_compare(xclbin_id, m_xclbin_uuid))
     throw std::runtime_error("xclbin id mismatch");
   return get_axlf_section(section);
+}
+
+std::pair<size_t, size_t>
+device::
+get_ert_slots(const char* xml_data, size_t xml_size) const
+{
+  const size_t max_slots = 128;  // TODO: get from device driver
+  const size_t min_slots = 16;   // TODO: get from device driver
+  size_t cq_size = ERT_CQ_SIZE;  // TODO: get from device driver
+  
+  // xrt.ini overrides all (defaults to 0)
+  if (auto size = config::get_ert_slotsize()) {
+    // 128 slots max (4 status registers)
+    if ((cq_size / size) > max_slots)
+      throw std::runtime_error("invalid slot size '" + std::to_string(size) + "' in xrt.ini");
+    return std::make_pair(cq_size/size, size);
+  }
+
+  // Determine number of slots needed, bounded by
+  //  - minimum 2 concurrently scheduled CUs, plus 1 reserved slot
+  //  - minimum min_slots
+  //  - maximum max_slots
+  auto num_cus = xrt_core::xclbin::get_cus(xml_data, xml_size).size();
+  auto slots = std::min(max_slots, std::max(min_slots, (num_cus * 2) + 1));
+
+  // Required slot size bounded by max of
+  //  - number of slots needed
+  //  - max cu_size per xclbin
+  auto size = std::max(cq_size / slots, xrt_core::xclbin::get_max_cu_size(xml_data, xml_size));
+  slots = cq_size / size;
+
+  // Round desired slots to minimum 32, 64, 96, 128 (status register boundary)
+  if (slots > 16) {
+    auto idx = ((slots - 1) / 32); // 32 bit status register idx to handle slots
+    slots = (idx + 1) * 32;        // round up
+  }
+
+  return std::make_pair(slots, cq_size/slots);
+}
+
+std::pair<size_t, size_t>
+device::
+get_ert_slots(const axlf* top) const
+{
+  auto xml_hdr = ::xclbin::get_axlf_section(top, EMBEDDED_METADATA);
+  if (!xml_hdr)
+    throw std::runtime_error("No xml metadata in xclbin");
+  auto xml_data = reinterpret_cast<const char*>(top) + xml_hdr->m_sectionOffset;
+  auto xml_size = xml_hdr->m_sectionSize;
+  return get_ert_slots(xml_data, xml_size);
 }
 
 std::string

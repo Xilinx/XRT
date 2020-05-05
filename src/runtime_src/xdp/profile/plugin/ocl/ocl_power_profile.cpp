@@ -74,8 +74,25 @@ void OclPowerProfile::poll_power() {
     };
 
     std::vector<std::string> paths;
-    for(auto& e : entries) {
-        paths.push_back (target_device->getSysfsPath(subdev, e).get());
+    bool valid_paths_found = false;
+    for (auto& e : entries) {
+        try {
+            // If return value is null then there will be exception
+            std::string p = target_device->getSysfsPath(subdev, e).get();
+            // Check if at least one file exists
+            if (std::ifstream(p).good())
+                valid_paths_found = true;
+            paths.push_back(p);
+        } catch (...) {
+            valid_paths_found = false;
+            break;
+        }
+    }
+
+    if (!valid_paths_found) {
+        xrt::message::send(xrt::message::severity_level::XRT_WARNING,
+            "Power Profiling is unsupported on " + target_unique_name);
+        return;
     }
 
     while (should_continue()) {

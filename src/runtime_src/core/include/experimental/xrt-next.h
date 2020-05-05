@@ -142,8 +142,8 @@ struct ProfileResults
  *    profile counters on device) using XRT APIs (no OpenCL API)
  *
  * @xclDeviceHandle : Device handle
- * @ProfileResults  : Double pointer to hold the pointer to buffer created 
- *                    to store profiling results (on success). This argument 
+ * @ProfileResults  : Double pointer to hold the pointer to buffer created
+ *                    to store profiling results (on success). This argument
  *                    remains unchanged if xclCreateProfileResults fails.
  */
 XCL_DRIVER_DLLESPEC
@@ -162,7 +162,7 @@ xclCreateProfileResults(xclDeviceHandle, struct ProfileResults**);
  *
  * @xclDeviceHandle : Device handle
  * @ProfileResults* : Pointer to buffer to store profiling results.
- *                    This buffer should be created using previous 
+ *                    This buffer should be created using previous
  *                    call to "xclCreateProfileResults"
  */
 XCL_DRIVER_DLLESPEC
@@ -234,13 +234,15 @@ xclRegWrite(xclDeviceHandle handle, uint32_t ipIndex, uint32_t offset, uint32_t 
  *
  * @handle:        Device handle
  * @ipName:        IP name. usually "<kernel name>:<instance name>"
- * @ipIndex:       Pointer to IP index
- * Return:         0 or appropriate error number
+ * Return:         IP index or appropriate error number
+ *
+ * xclIPName2Index() should be used to obtain unique index of IP as understood by other XRT APIs
+ * like xclOpenContext().
  *
  */
 XCL_DRIVER_DLLESPEC
 int
-xclIPName2Index(xclDeviceHandle handle, const char *ipName, uint32_t *ipIndex);
+xclIPName2Index(xclDeviceHandle handle, const char *ipName);
 
 /**
  * xclOpenIPInterruptNotify() - Open a fd for IP interrupt notify

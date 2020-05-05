@@ -65,7 +65,8 @@ typedef enum XmaEncoderType
     XMA_VP9_ENCODER_TYPE, /**< 3 */
     XMA_AV1_ENCODER_TYPE, /**< 4 */
     XMA_COPY_ENCODER_TYPE, /**< 5 */
-    XMA_MULTI_ENCODER_TYPE, /**< 6 */
+    XMA_JPG_ENCODER_TYPE, /**< 6 */
+    XMA_MULTI_ENCODER_TYPE
 } XmaEncoderType;
 
 /**

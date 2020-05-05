@@ -43,11 +43,11 @@ set_target_properties(xrt_core PROPERTIES
 
 target_link_libraries(xrt_core
   xrt_coreutil
+  ${Boost_FILESYSTEM_LIBRARY}
+  ${Boost_SYSTEM_LIBRARY}
   pthread
   rt
   dl
-  boost_filesystem
-  boost_system
   uuid
   )
 

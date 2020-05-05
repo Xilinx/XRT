@@ -351,6 +351,8 @@ static const struct axlf_section_header *get_axlf_section_hdr(
 	struct icap *icap, const struct axlf *top, enum axlf_section_kind kind);
 static void icap_refresh_addrs(struct platform_device *pdev);
 static inline int icap_calibrate_mig(struct platform_device *pdev);
+static void icap_probe_urpdev(struct platform_device *pdev, struct axlf *xclbin,
+	int *num_urpdev, struct xocl_subdev **urpdevs);
 
 static int icap_xclbin_wr_lock(struct icap *icap)
 {
@@ -1759,6 +1761,8 @@ static int icap_create_cu(struct platform_device *pdev)
 		if (ip->m_base_address == 0xFFFFFFFF)
 			continue;
 
+		/* NOTE: Only support 64 instences in subdev framework */
+
 		/* TODO: use HLS CU as default.
 		 * don't know how to distinguish plram CU and normal CU
 		 */
@@ -1767,9 +1771,10 @@ static int icap_create_cu(struct platform_device *pdev)
 
 		/* TODO: Consider where should we determine CU index in
 		 * the driver.. Right now, user space determine it and let
-		 * driver known by configure command
+		 * driver known by configure command.
 		 */
 		info.cu_idx = -1;
+		info.inst_idx = i;
 		info.addr = ip->m_base_address;
 		info.intr_enable = ip->properties & IP_INT_ENABLE_MASK;
 		info.protocol = (ip->properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT;
@@ -1779,6 +1784,7 @@ static int icap_create_cu(struct platform_device *pdev)
 		subdev_info.res[0].end += ip->m_base_address;
 		subdev_info.priv_data = &info;
 		subdev_info.data_len = sizeof(info);
+		subdev_info.override_idx = info.inst_idx;
 		err = xocl_subdev_create(xdev, &subdev_info);
 		if (err) {
 			//ICAP_ERR(icap, "can't create CU subdev");
@@ -2220,6 +2226,8 @@ static void icap_save_calib(struct icap *icap)
 		return;
 
 	for (; i < mem_topo->m_count; ++i) {
+		if (!mem_topo->m_mem_data[i].m_used)
+			continue;
 		err = xocl_srsr_save_calib(xdev, i);
 		if (err)
 			ICAP_DBG(icap, "Not able to save mem %d calibration data.", i);
@@ -2238,6 +2246,8 @@ static void icap_calib(struct icap *icap, bool retain)
 	err = xocl_calib_storage_restore(xdev);
 
 	for (; i < mem_topo->m_count; ++i) {
+		if (!mem_topo->m_mem_data[i].m_used)
+			continue;
 		err = xocl_srsr_calib(xdev, i, retain);
 		if (err)
 			ICAP_DBG(icap, "Not able to calibrate mem %d.", i);
@@ -2285,10 +2295,13 @@ static int icap_calibrate_mig(struct platform_device *pdev)
 static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 {
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
-	int err = 0;
+	int i = 0, err = 0, num_dev = 0;
 	bool retention = (icap->data_retention & 0x1) == 0x1;
+	struct xocl_subdev *subdevs = NULL;
+	bool has_ulp_clock = false;
 
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
+	icap_probe_urpdev(icap->icap_pdev, xclbin, &num_dev, &subdevs);
 
 	if (xclbin->m_signature_length != -1) {
 		int siglen = xclbin->m_signature_length;
@@ -2340,10 +2353,34 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 	}
 
 	/* calibrate hbm and ddr should be performed when resources are ready */
-
 	err = icap_create_post_download_subdevs(icap->icap_pdev, xclbin);
 	if (err)
 		goto out;
+
+	/* For 2RP, the majority of ULP IP can only be touched after ucs control bit set to 0x1
+	 * which is done in icap_refresh_clock_freq. Move so logics(create clock devices and set ucs control bit)
+	 * to xclbin download function as workaround to solve interleaving issue.
+	 * DDR SRSR IP and MIG need to wait until ucs control bit set to 0x1, 
+	 * and icap mig calibration needs to wait until DDR SRSR calibration finish
+	 */
+	if (num_dev > 0) {
+		/* if has clock, create clock subdev first */
+		for (i = 0; i < num_dev; i++) {
+			if (subdevs[i].info.id != XOCL_SUBDEV_CLOCK)
+				continue;
+			err = xocl_subdev_create(xdev, &subdevs[i].info);
+			if (err)
+				goto out;
+
+			has_ulp_clock = true;
+			break;
+		}
+
+		icap_refresh_addrs(icap->icap_pdev);
+		err = icap_refresh_clock_freq(icap, xclbin);
+		if (err)
+			goto out;
+	}
 
 	icap_calib(icap, retention);
 
@@ -2355,13 +2392,22 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 			ICAP_ERR(icap, "not able to release ddr gate pin");
 	}
 
-	/* Wait for mig recalibration */
-	if ((xocl_is_unified(xdev) || XOCL_DSA_XPR_ON(xdev)))
-		err = calibrate_mig(icap);
+	err = icap_calibrate_mig(icap->icap_pdev);
+	if (err)
+		goto out;
+	/* create the reset of subdevs for both mgmt and user pf */
+	if (num_dev > 0) {
+		for (i = 0; i < num_dev; i++)
+			(void) xocl_subdev_create(xdev, &subdevs[i].info);
+
+		xocl_subdev_create_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
+	}
 
 out:
-	if (err)
+	if (err && retention)
 		icap_release_ddr_gate_pin(icap);
+	if (subdevs)
+		vfree(subdevs);
 	ICAP_INFO(icap, "ret: %d", (int)err);
 	return err;
 }
@@ -2414,10 +2460,8 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 	struct axlf *xclbin)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
-	int err = 0, num_dev = -1, i;
+	int err = 0;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	struct xocl_subdev *subdevs = NULL;
-	bool has_ulp_clock = false;
 
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
@@ -2434,38 +2478,12 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 	xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 	icap_refresh_addrs(pdev);
 
-	icap_probe_urpdev(pdev, xclbin, &num_dev, &subdevs);
-
 	if (ICAP_PRIVILEGED(icap)) {
 
 		icap_parse_bitstream_axlf_section(pdev, xclbin, MEM_TOPOLOGY);
 		icap_parse_bitstream_axlf_section(pdev, xclbin, IP_LAYOUT);
 
 		err = __icap_xclbin_download(icap, xclbin);
-		if (err)
-			goto done;
-
-		if (num_dev > 0) {
-			/* if has clock, create clock subdev first */
-			for (i = 0; i < num_dev; i++) {
-				if (subdevs[i].info.id != XOCL_SUBDEV_CLOCK)
-					continue;
-				err = xocl_subdev_create(xdev, &subdevs[i].info);
-				if (err)
-					goto done;
-
-				has_ulp_clock = true;
-				break;
-			}
-
-			icap_refresh_addrs(pdev);
-			err = icap_refresh_clock_freq(icap, xclbin);
-			if (err)
-				goto done;
-		}
-
-		if (!has_ulp_clock)
-			err = icap_calibrate_mig(pdev);
 		if (err)
 			goto done;
 
@@ -2507,14 +2525,6 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 
 	}
 
-	/* create the reset of subdevs for both mgmt and user pf */
-	if (num_dev > 0) {
-		for (i = 0; i < num_dev; i++)
-			(void) xocl_subdev_create(xdev, &subdevs[i].info);
-
-		xocl_subdev_create_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
-	}
-
 	/* Only when everything has been successfully setup, then enable xmc */
 	if (!err)
 		err = icap_xmc_free(icap);
@@ -2526,10 +2536,6 @@ done:
 		/* Remember "this" bitstream, so avoid redownload next time. */
 		uuid_copy(&icap->icap_bitstream_uuid, &xclbin->m_header.uuid);
 	}
-
-	if (subdevs)
-		vfree(subdevs);
-
 	return err;
 }
 

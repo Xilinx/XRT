@@ -73,8 +73,6 @@
 #define	XMC_CAGE_TEMP1_REG		0x17C
 #define	XMC_CAGE_TEMP2_REG		0x188
 #define	XMC_CAGE_TEMP3_REG		0x194
-#define	XMC_SNSR_CHKSUM_REG		0x1A4
-#define	XMC_SNSR_FLAGS_REG		0x1A8
 #define	XMC_HBM_TEMP_REG		0x260
 #define	XMC_VCC3V3_REG			0x26C
 #define	XMC_3V3_PEX_I_REG		0x278
@@ -1283,8 +1281,6 @@ REG_SYSFS_NODE(sensor, XMC_SENSOR_REG, "0x%04x\n");
 REG_SYSFS_NODE(id, XMC_MAGIC_REG, "0x%x\n");
 REG_SYSFS_NODE(error, XMC_ERROR_REG, "0x%x\n");
 REG_SYSFS_NODE(capability, XMC_FEATURE_REG, "0x%x\n");
-REG_SYSFS_NODE(power_checksum, XMC_SNSR_CHKSUM_REG, "%d\n");
-REG_SYSFS_NODE(power_flag, XMC_SNSR_FLAGS_REG, "%d\n");
 REG_SYSFS_NODE(host_msg_offset, XMC_HOST_MSG_OFFSET_REG, "%d\n");
 REG_SYSFS_NODE(host_msg_error, XMC_HOST_MSG_ERROR_REG, "0x%x\n");
 REG_SYSFS_NODE(host_msg_header, XMC_HOST_MSG_HEADER_REG, "0x%x\n");
@@ -1293,8 +1289,6 @@ REG_SYSFS_NODE(host_msg_header, XMC_HOST_MSG_HEADER_REG, "0x%x\n");
 	&dev_attr_id.attr,						\
 	&dev_attr_error.attr,						\
 	&dev_attr_capability.attr,					\
-	&dev_attr_power_checksum.attr,					\
-	&dev_attr_power_flag.attr,					\
 	&dev_attr_host_msg_offset.attr,					\
 	&dev_attr_host_msg_error.attr,					\
 	&dev_attr_host_msg_header.attr
@@ -1732,14 +1726,7 @@ static ssize_t scaling_enabled_show(struct device *dev,
 	if (!cs_en)
 		return sprintf(buf, "%d\n", val);
 
-	mutex_lock(&xmc->xmc_lock);
-	val = READ_RUNTIME_CS(xmc, XMC_CLOCK_CONTROL_REG);
-	if (val & XMC_CLOCK_SCALING_EN)
-		val = 1;
-	else
-		val = 0;
-
-	mutex_unlock(&xmc->xmc_lock);
+	val =  xmc->runtime_cs_enabled;
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RW(scaling_enabled);
@@ -3177,7 +3164,11 @@ static int xmc_probe(struct platform_device *pdev)
 			goto failed;
 		}
 
-		if (!XOCL_DSA_IS_VERSAL(xdev) && !xmc->base_addrs[IO_GPIO]) {
+		if (XOCL_DSA_IS_VERSAL(xdev)) {
+			xmc->enabled = true;
+			xmc->state = XMC_STATE_ENABLED;
+			xmc_enable_mailbox(xmc);
+		} else if (!xmc->base_addrs[IO_GPIO]) {
 			xocl_info(&pdev->dev, "minimum mode for SC upgrade");
 			/* CMC is always enabled on golden image. */
 			xmc->enabled = true;

@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import sys
 import uuid
 from xrt_binding import * # found in PYTHONPATH

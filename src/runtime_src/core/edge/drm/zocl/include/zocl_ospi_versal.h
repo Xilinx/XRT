@@ -3,7 +3,7 @@
  * A GEM style (optionally CMA backed) device manager for ZynQ based
  * OpenCL accelerators.
  *
- * Copyright (C) 2019 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2019-2020 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Larry Liu <yliu@xilinx.com>
@@ -30,6 +30,7 @@ struct zocl_ov_pkt_node {
  * @size:	PDI packet area size
  * @pdi_ready:	flag to indicate PDI image is ready
  * @pdi_done:	flag to indicate PDI flashing is done
+ * @pdev: 	platform_device
  * @head:	head node of PDI packet linked list
  */
 struct zocl_ov_dev {
@@ -39,6 +40,7 @@ struct zocl_ov_dev {
 	u8			pdi_ready;
 	u8			pdi_done;
 	rwlock_t		att_rwlock;
+	struct platform_device  *pdev;
 	struct zocl_ov_pkt_node	*head;
 };
 

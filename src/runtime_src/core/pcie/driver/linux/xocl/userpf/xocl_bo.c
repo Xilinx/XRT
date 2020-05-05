@@ -413,8 +413,11 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 
 	return xobj;
 failed:
-	mutex_unlock(&drm_p->mm_lock);
-	kfree(xobj->mm_node);
+	if (xobj->mm_node) {
+		mutex_unlock(&drm_p->mm_lock);
+		kfree(xobj->mm_node);
+	}
+
 	if (xobj_inited)
 		drm_gem_object_release(&xobj->base);
 	kfree(xobj);
@@ -768,11 +771,6 @@ int xocl_sync_bo_ioctl(struct drm_device *dev,
 	if (paddr == 0xffffffffffffffffull)
 		return -EINVAL;
 
-	/* If device is offline (due to error), reject all DMA requests */
-	if (xdev->offline)
-		return -ENODEV;
-
-
 	if ((args->offset + args->size) > gem_obj->size) {
 		ret = -EINVAL;
 		goto out;
@@ -1053,13 +1051,6 @@ int xocl_copy_import_bo(struct drm_device *dev, struct drm_file *filp,
 		DRM_ERROR("invalid src or dst BO type, copy_bo aborted");
 		DRM_ERROR("expecting one local and one imported BO");
 		ret = -EINVAL;
-		goto out;
-	}
-
-	/* If device is offline (due to error), reject all DMA requests */
-	if (xdev->offline) {
-		DRM_ERROR("DMA engine is offline, copy_bo aborted");
-		ret = -ENODEV;
 		goto out;
 	}
 

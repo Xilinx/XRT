@@ -19,6 +19,7 @@
 import os
 import errno
 import ctypes
+from numbers import Integral
 
 from xclbin_binding import *
 from ert_binding import *
@@ -164,9 +165,15 @@ def _valueOrError(res):
     """
     Validate return code from XRT C library and raise an exception if necessary
     """
-    if (res < 0):
-        res = -res
-        raise OSError(res, os.strerror(res))
+    # check if result is some kind of integer
+    # can't do a direct comparison with an int since some
+    # functions return long and Python3 dropped support for long
+    if isinstance(res, Integral):
+        if res < 0:
+            raise OSError(abs(res), os.strerror(abs(res)))
+    # check if result type is a pointer. Python3 doesn't support pointer and int comparison
+    elif isinstance(res.contents, ctypes.c_void_p) and res is None:
+        raise OSError(errno.ENODEV, os.strerror(errno.ENODEV))
     return res
 
 
@@ -1076,7 +1083,7 @@ def xrtRunClose(rhandle):
     res = libcoreutil.xrtRunClose(rhandle)
     if (res):
         res = errno.EINVAL
-    return _valueOrError(-res);
+    return _valueOrError(-res)
 
 
 def xclIPName2Index(rhandle, name):
@@ -1088,9 +1095,6 @@ def xclIPName2Index(rhandle, name):
 
     The index is used in APIs like xclOpenContext(), etc.
     """
-    value = ctypes.c_int(0)
-    value_p = ctypes.pointer(value)
     libcore.xclIPName2Index.restype = ctypes.c_int
-    libcore.xclIPName2Index.argtypes = [xclDeviceHandle, ctypes.c_char_p, ctypes.POINTER(ctypes.c_int)]
-    _valueOrError(libcore.xclIPName2Index(handle, name, value_p))
-    return value_p[0]
+    libcore.xclIPName2Index.argtypes = [xclDeviceHandle, ctypes.c_char_p]
+    return _valueOrError(libcore.xclIPName2Index(handle, name))

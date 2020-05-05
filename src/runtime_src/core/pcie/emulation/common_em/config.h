@@ -24,6 +24,7 @@
 #include "xclhal2.h"
 #include "xclfeatures.h"
 #include "xclbin.h"
+#include <chrono>
 
 namespace xclemulation{
 
@@ -91,6 +92,49 @@ namespace xclemulation{
     public:
       uint64_t ddrSize;
       DDRBank();
+  };
+  enum TIMEOUT_SCALE {
+	NA,
+	MS,
+	SEC,
+	MIN
+  };
+  class ApiWatchdog {
+  private:
+	  TIMEOUT_SCALE timeout_scale;
+	  std::chrono::time_point<std::chrono::high_resolution_clock> start_time;
+	  std::chrono::time_point<std::chrono::high_resolution_clock> end_time;
+	  bool disabled;
+	  unsigned long timeout_period;
+  public:
+	ApiWatchdog(TIMEOUT_SCALE scale,unsigned long timeout) {
+		  timeout_period=timeout;
+		  timeout_scale=scale;
+		  if (timeout_scale==TIMEOUT_SCALE::MIN) {
+			  timeout_period=timeout*60;
+		  } else if (TIMEOUT_SCALE::MS) {
+			  timeout_period=timeout/1000;
+		  }
+		  if (timeout_scale==TIMEOUT_SCALE::NA) {
+			  disabled=true;
+		  } else {
+			  disabled=false;
+		  }
+	}
+	bool isTimeout() {
+		end_time=std::chrono::high_resolution_clock::now();
+		if (!disabled && (std::chrono::duration<double>(end_time - start_time).count() > timeout_period)){
+			return true;
+		} else {
+			return false;
+		}
+	}
+	void reset() {
+		start_time=std::chrono::high_resolution_clock::now();
+	}
+	bool isDisabled() {
+		return disabled;
+	}
   };
 
   enum DEBUG_MODE {
@@ -163,6 +207,7 @@ namespace xclemulation{
       inline ERTMODE getLegacyErt() const         { return mLegacyErt;              }
       inline long long getCuBaseAddrForce() const         { return mCuBaseAddrForce;              }
       inline bool isSharedFmodel() const         {return mIsSharedFmodel; } 
+      inline TIMEOUT_SCALE getTimeOutScale() const    {return mTimeOutScale;}
       void populateEnvironmentSetup(std::map<std::string,std::string>& mEnvironmentNameValueMap);
 
     private:
@@ -193,6 +238,7 @@ namespace xclemulation{
       ERTMODE mLegacyErt;
       long long mCuBaseAddrForce;
       bool      mIsSharedFmodel;
+      TIMEOUT_SCALE mTimeOutScale;
       config();
       ~config() { };//empty destructor
   };

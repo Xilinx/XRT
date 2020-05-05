@@ -11,20 +11,6 @@
 
 extern int kds_echo;
 
-static void cu_hls_wait(void *core)
-{
-	struct xrt_cu_hls *cu_hls = core;
-
-	down_interruptible(&cu_hls->sem);
-}
-
-static void cu_hls_up(void *core)
-{
-	struct xrt_cu_hls *cu_hls = core;
-
-	up(&cu_hls->sem);
-}
-
 static int cu_hls_get_credit(void *core)
 {
 	struct xrt_cu_hls *cu_hls = core;
@@ -112,8 +98,6 @@ static struct xcu_funcs xrt_cu_hls_funcs = {
 	.configure	= cu_hls_configure,
 	.start		= cu_hls_start,
 	.check		= cu_hls_check,
-	.wait		= cu_hls_wait,
-	.up		= cu_hls_up,
 };
 
 int xrt_cu_hls_init(struct xrt_cu *xcu)
@@ -145,7 +129,6 @@ int xrt_cu_hls_init(struct xrt_cu *xcu)
 
 	core->max_credits = 1;
 	core->credits = core->max_credits;
-	sema_init(&core->sem, core->max_credits);
 
 	xcu->core = core;
 	xcu->funcs = &xrt_cu_hls_funcs;

@@ -74,19 +74,22 @@ ReportPlatform::getPropertyTree20201( const xrt_core::device * _pDevice,
   _pDevice->get_xmc_info(on_board_xmc_info);
   _pDevice->get_info(on_board_dev_info);
 
-  //create information tree for a device
-  _pt.put("platform.bdf", on_board_dev_info.get<std::string>("bdf"));
-  _pt.put("platform.flash_type", on_board_platform_info.get<std::string>("flash_type", "N/A"));
-  //Flashable partition running on FPGA
-  _pt.put("platform.current_shell.vbnv", on_board_rom_info.get<std::string>("vbnv", "N/A"));
-  _pt.put("platform.current_shell.sc_version", on_board_xmc_info.get<std::string>("sc_version", "N/A"));
-  _pt.put("platform.current_shell.id", on_board_rom_info.get<std::string>("id", "N/A"));
-
   Flasher f(_pDevice->get_device_id());
   std::vector<DSAInfo> availableDSAs = f.getInstalledDSA();
 
   BoardInfo info;
   f.getBoardInfo(info);
+  //create information tree for a device
+  _pt.put("platform.bdf", on_board_dev_info.get<std::string>("bdf"));
+  _pt.put("platform.flash_type", on_board_platform_info.get<std::string>("flash_type", "N/A"));
+  _pt.put("platform.hardware.serial_num", info.mSerialNum);
+  //Flashable partition running on FPGA
+  _pt.put("platform.current_shell.vbnv", on_board_rom_info.get<std::string>("vbnv", "N/A"));
+  std::string _scVer = on_board_xmc_info.get<std::string>("sc_version", "N/A");
+  if(_scVer.empty())
+    _scVer = info.mBMCVer;
+  _pt.put("platform.current_shell.sc_version", _scVer);
+  _pt.put("platform.current_shell.id", on_board_rom_info.get<std::string>("id", "N/A"));
 
   //Flashable partitions installed in system
   boost::property_tree::ptree _ptAvailableShells;
@@ -130,7 +133,7 @@ ReportPlatform::writeReport( const xrt_core::device * _pDevice,
   _output << std::endl;
   _output << "Flash properties\n";
   _output << boost::format("  %-20s : %s\n") % "Type" % _pt.get<std::string>("platform.flash_type", "N/A");
-
+  _output << boost::format("  %-20s : %s\n") % "Serial Number" % _pt.get<std::string>("platform.hardware.serial_num", "N/A");
   _output << std::endl;
   _output << "Flashable partition running on FPGA\n";
   _output << boost::format("  %-20s : %s\n") % "Platform" % _pt.get<std::string>("platform.current_shell.vbnv", "N/A");

@@ -1576,6 +1576,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_ICAP_USER,				\
 			XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_AF_USER,				\
+			XOCL_DEVINFO_CU_CTRL,				\
 		})
 
 #define	XOCL_BOARD_USER_QDMA						\
@@ -1591,6 +1592,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_XDMA,				\
 			XOCL_DEVINFO_SCHEDULER_51,			\
 			XOCL_DEVINFO_ICAP_USER,				\
+			XOCL_DEVINFO_CU_CTRL,				\
 		})
 
 #define	USER_RES_XDMA							\
@@ -1614,6 +1616,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_PF_MAILBOX_USER_VERSAL,		\
 			XOCL_DEVINFO_MAILBOX_USER_VERSAL,		\
 		 	XOCL_DEVINFO_ICAP_USER,				\
+			XOCL_DEVINFO_CU_CTRL,				\
 		})
 
 #define USER_RES_AWS							\
@@ -1623,6 +1626,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_SCHEDULER_51,			\
 			XOCL_DEVINFO_MAILBOX_USER_SOFTWARE,		\
 			XOCL_DEVINFO_ICAP_USER,				\
+			XOCL_DEVINFO_CU_CTRL,				\
 		})
 
 #define	USER_RES_DSA52							\
@@ -1658,6 +1662,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_ICAP_USER,				\
 			XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_MAILBOX_USER_QDMA,			\
+			XOCL_DEVINFO_CU_CTRL,				\
 		})
 
 
@@ -2259,6 +2264,7 @@ struct xocl_subdev_map {
 	((struct xocl_subdev_info []) {					\
 	 	XOCL_DEVINFO_FEATURE_ROM_MGMT_DYN,			\
 		XOCL_DEVINFO_FMGR,					\
+		XOCL_DEVINFO_CALIB_STORAGE,				\
 	 })
 
 #define RES_USER_VSEC							\
@@ -2268,6 +2274,16 @@ struct xocl_subdev_map {
 		XOCL_DEVINFO_ICAP_USER,					\
 		XOCL_DEVINFO_XMC_USER,					\
 		XOCL_DEVINFO_AF_USER,					\
+		XOCL_DEVINFO_CU_CTRL,					\
+	 })
+
+/* need static scheduler for a little while, and no AF user for now */
+#define RES_USER_VERSAL_VSEC						\
+	((struct xocl_subdev_info []) {					\
+		XOCL_DEVINFO_FEATURE_ROM_USER_DYN,			\
+		XOCL_DEVINFO_SCHEDULER_VERSAL,				\
+		XOCL_DEVINFO_ICAP_USER,					\
+		XOCL_DEVINFO_XMC_USER,					\
 	 })
 
 #define	XOCL_BOARD_U50_USER_RAPTOR2					\
@@ -2382,6 +2398,27 @@ struct xocl_subdev_map {
 		.sched_bin = "xilinx/sched_v20.bin",			\
 		.board_name = "u250"					\
 	}
+
+#define	XOCL_BOARD_VERSAL_USER_RAPTOR2					\
+	(struct xocl_board_private){					\
+		.flags = XOCL_DSAFLAG_DYNAMIC_IP |			\
+			XOCL_DSAFLAG_VERSAL,				\
+		.subdev_info = RES_USER_VERSAL_VSEC,			\
+		.subdev_num = ARRAY_SIZE(RES_USER_VERSAL_VSEC),		\
+		.board_name = "vck5000"					\
+	}
+
+#define	XOCL_BOARD_VERSAL_MGMT_RAPTOR2					\
+	(struct xocl_board_private){					\
+		.flags = XOCL_DSAFLAG_VERSAL |				\
+			XOCL_DSAFLAG_FIXED_INTR |			\
+			XOCL_DSAFLAG_DYNAMIC_IP,	 		\
+		.subdev_info = RES_MGMT_VSEC,				\
+		.subdev_num = ARRAY_SIZE(RES_MGMT_VSEC),		\
+		.flash_type = FLASH_TYPE_OSPI_VERSAL,			\
+		.board_name = "vck5000"					\
+	}
+
 
 #define XOCL_RES_XMC_MFG				\
 	((struct resource []) {				\
@@ -2617,6 +2654,7 @@ struct xocl_subdev_map {
 		 	XOCL_DEVINFO_ICAP_USER,				\
 		 	XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_AF_USER,				\
+			XOCL_DEVINFO_CU_CTRL,				\
 		})
 
 #define	XOCL_BOARD_U200_USER_EA						\
@@ -2767,6 +2805,7 @@ struct xocl_subdev_map {
 		 	XOCL_DEVINFO_ICAP_USER,				\
 		 	XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_AF_USER,				\
+			XOCL_DEVINFO_CU_CTRL,				\
 		})
 
 #define	XOCL_BOARD_USER_U25						\
@@ -2950,7 +2989,13 @@ struct xocl_subdev_map {
 	{ 0x10EE, 0x5021, PCI_ANY_ID,					\
 		.vbnv = "xilinx_u50",		\
 		.priv_data = &XOCL_BOARD_U50_USER_RAPTOR2,		\
+		.type = XOCL_DSAMAP_RAPTOR2 },				\
+	{ 0x10EE, 0x5044, PCI_ANY_ID,					\
+		.vbnv = "xilinx_u50",					\
+		.priv_data = &XOCL_BOARD_VERSAL_MGMT_RAPTOR2,		\
+		.type = XOCL_DSAMAP_RAPTOR2 },				\
+	{ 0x10EE, 0x5045, PCI_ANY_ID,					\
+		.vbnv = "xilinx_u50",					\
+		.priv_data = &XOCL_BOARD_VERSAL_USER_RAPTOR2,		\
 		.type = XOCL_DSAMAP_RAPTOR2 }
-
-
 #endif

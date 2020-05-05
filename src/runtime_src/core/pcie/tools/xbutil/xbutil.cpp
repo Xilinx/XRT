@@ -571,7 +571,12 @@ int main(int argc, char *argv[])
     if (total == 0) {
         if (cmd == xcldev::DUMP)
             sensor_tree::json_dump( std::cout );
-        return -ENODEV;
+        // Querying a card with index 0 when it does not exist is an error
+        if (cmd == xcldev::QUERY)
+            return -ENODEV;
+        // Enumerating cards when none exist is not an error
+        if ((cmd == xcldev::SCAN) || (cmd == xcldev::LIST))
+            return 0;
     }
 
     if (cmd == xcldev::SCAN || cmd == xcldev::LIST) {
@@ -1128,6 +1133,11 @@ int xcldev::device::runTestCase(const std::string& py,
     xclbinPath += xclbin;
 
     if (stat(xrtTestCasePath.c_str(), &st) != 0 || stat(xclbinPath.c_str(), &st) != 0) {
+        //if bandwidth xclbin isn't present, skip the test
+        if(xclbin.compare("bandwidth.xclbin") == 0) {
+            output += "Bandwidth xclbin not available. Skipping validation.";
+            return -EOPNOTSUPP;
+        }
         output += "ERROR: Failed to find ";
         output += py;
         output += " or ";
@@ -1183,8 +1193,14 @@ int xcldev::device::bandwidthKernelTest(void)
         return -EOPNOTSUPP;
     }
 
-    int ret = runTestCase(std::string("23_bandwidth.py"),
-        std::string("bandwidth.xclbin"), output);
+    //versal bandwidth kernel is different, hence it needs to run a custom testcase
+    std::string errmsg, vbnv;
+    pcidev::get_dev(m_idx)->sysfs_get("rom", "VBNV", errmsg, vbnv);
+
+    std::string testcase = (vbnv.find("vck5000") != std::string::npos) 
+        ? "versal_23_bandwidth.py" : "23_bandwidth.py";
+    
+    int ret = runTestCase(testcase, std::string("bandwidth.xclbin"), output);
 
     if (ret != 0) {
         std::cout << output << std::endl;

@@ -201,7 +201,7 @@ public:
 
   /**
    * get_axlf_section() - Get section from currently loaded axlf
-   * 
+   *
    * xclbin_id:  Check that xclbin_id matches currently cached
    *
    * Same behavior as other get_axlf_section()
@@ -209,25 +209,55 @@ public:
   std::pair<const char*, size_t>
   get_axlf_section(axlf_section_kind section, const xuid_t xclbin_id) const;
 
+  /**
+   * get_ert_slots() - Get number of ERT CQ slots
+   *
+   * Returns: Pair of number of slots and size of each slot
+   */
+  std::pair<size_t, size_t>
+  get_ert_slots(const char* xml, size_t xml_size) const;
+
+  std::pair<size_t, size_t>
+  get_ert_slots(const axlf* top) const;
+
   // Move all these 'pt' functions out the class interface
   virtual void get_info(boost::property_tree::ptree&) const {}
   virtual void read_dma_stats(boost::property_tree::ptree&) const {}
 
+  XRT_CORE_COMMON_EXPORT
   void get_rom_info(boost::property_tree::ptree & pt) const;
+
+  XRT_CORE_COMMON_EXPORT
   void get_xmc_info(boost::property_tree::ptree & pt) const;
+
+  XRT_CORE_COMMON_EXPORT
   void get_platform_info(boost::property_tree::ptree & pt) const;
+
+  XRT_CORE_COMMON_EXPORT
   void read_thermal_pcb(boost::property_tree::ptree &pt) const;
+
+  XRT_CORE_COMMON_EXPORT
   void read_thermal_fpga(boost::property_tree::ptree &pt) const;
+
+  XRT_CORE_COMMON_EXPORT
   void read_fan_info(boost::property_tree::ptree &pt) const;
+
+  XRT_CORE_COMMON_EXPORT
   void read_thermal_cage(boost::property_tree::ptree &pt) const;
+
+  XRT_CORE_COMMON_EXPORT
   void read_electrical(boost::property_tree::ptree &pt) const;
+
+  XRT_CORE_COMMON_EXPORT
   void read_power(boost::property_tree::ptree &pt) const;
+
+  XRT_CORE_COMMON_EXPORT
   void read_firewall(boost::property_tree::ptree &pt) const;
 
   /**
    * read() - maps pcie bar and copy bytes word (32bit) by word
    * THIS FUNCTION DOES NOT BELONG HERE
-   */ 
+   */
   virtual void read(uint64_t, void*, uint64_t) const {}
   /**
    * write() - maps pcie bar and copy bytes word (32bit) by word
