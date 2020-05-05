@@ -324,12 +324,13 @@ static void __xocl_subdev_destroy(xdev_handle_t xdev_hdl,
 	xocl_unlock_xdev(xdev_hdl);
 	if (pldev) {
 		switch (state) {
-			case XOCL_SUBDEV_STATE_ACTIVE:
-			case XOCL_SUBDEV_STATE_OFFLINE:
-				device_release_driver(&pldev->dev);
-				platform_device_del(pldev);
-			default:
-				platform_device_put(pldev);
+		case XOCL_SUBDEV_STATE_ACTIVE:
+		case XOCL_SUBDEV_STATE_OFFLINE:
+			device_release_driver(&pldev->dev);
+		case XOCL_SUBDEV_STATE_ADDED:
+			platform_device_del(pldev);
+		default:
+			platform_device_put(pldev);
 		}
 	}
 	xocl_lock_xdev(xdev_hdl);
