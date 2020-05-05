@@ -286,6 +286,7 @@ struct xocl_subdev {
 	int				inst;
 	int				pf;
 	struct cdev			*cdev;
+	bool				hold;
 
 	struct resource		res[XOCL_SUBDEV_MAX_RES];
 	char	res_name[XOCL_SUBDEV_MAX_RES][XOCL_SUBDEV_RES_NAME_LEN];
@@ -1562,14 +1563,12 @@ int xocl_wait_pci_status(struct pci_dev *pdev, u16 mask, u16 val, int timeout);
 
 static inline void xocl_lock_xdev(xdev_handle_t xdev)
 {
-	if (!mutex_is_locked(&XDEV(xdev)->lock))
-		mutex_lock(&XDEV(xdev)->lock);
+	mutex_lock(&XDEV(xdev)->lock);
 }
 
 static inline void xocl_unlock_xdev(xdev_handle_t xdev)
 {
-	if (mutex_is_locked(&XDEV(xdev)->lock))
-		mutex_unlock(&XDEV(xdev)->lock);
+	mutex_unlock(&XDEV(xdev)->lock);
 }
 
 static inline uint32_t xocl_dr_reg_read32(xdev_handle_t xdev, void __iomem *addr)
