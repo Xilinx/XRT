@@ -858,39 +858,44 @@ struct xocl_subdev_map {
 		0,					\
 	}
 
+#define __RES_XMC			\
+	{				\
+	.start	= 0x120000,		\
+	.end 	= 0x121FFF,		\
+	.flags  = IORESOURCE_MEM,	\
+	},				\
+	{				\
+	.start	= 0x131000,		\
+	.end 	= 0x131FFF,		\
+	.flags  = IORESOURCE_MEM,	\
+	},				\
+	{				\
+	.start	= 0x140000,		\
+	.end 	= 0x15FFFF,		\
+	.flags  = IORESOURCE_MEM,	\
+	},				\
+	{				\
+	.start	= 0x160000,		\
+	.end 	= 0x17FFFF,		\
+	.flags  = IORESOURCE_MEM,	\
+	},				\
+	{				\
+	.start	= 0x190000,		\
+	.end 	= 0x19FFFF,		\
+	.flags  = IORESOURCE_MEM,	\
+	}				\
+
+#define __RES_XMC_SCALING		\
+/* RUNTIME CLOCK SCALING FEATURE BASE */\
+	{				\
+	.start	= 0x053000,		\
+	.end	= 0x053fff,		\
+	.flags	= IORESOURCE_MEM,	\
+	}				\
+
 #define	XOCL_RES_XMC					\
 		((struct resource []) {			\
-			{				\
-			.start	= 0x120000,		\
-			.end 	= 0x121FFF,		\
-			.flags  = IORESOURCE_MEM,	\
-			},				\
-			{				\
-			.start	= 0x131000,		\
-			.end 	= 0x131FFF,		\
-			.flags  = IORESOURCE_MEM,	\
-			},				\
-			{				\
-			.start	= 0x140000,		\
-			.end 	= 0x15FFFF,		\
-			.flags  = IORESOURCE_MEM,	\
-			},				\
-			{				\
-			.start	= 0x160000,		\
-			.end 	= 0x17FFFF,		\
-			.flags  = IORESOURCE_MEM,	\
-			},				\
-			{				\
-			.start	= 0x190000,		\
-			.end 	= 0x19FFFF,		\
-			.flags  = IORESOURCE_MEM,	\
-			},				\
-			/* RUNTIME CLOCK SCALING FEATURE BASE */	\
-			{				\
-			.start	= 0x053000,		\
-			.end	= 0x053fff,		\
-			.flags	= IORESOURCE_MEM,	\
-			},				\
+			__RES_XMC,			\
 		})
 
 #define	XOCL_DEVINFO_XMC				\
@@ -899,6 +904,20 @@ struct xocl_subdev_map {
 		XOCL_XMC,				\
 		XOCL_RES_XMC,				\
 		ARRAY_SIZE(XOCL_RES_XMC),		\
+	}
+
+#define	XOCL_RES_XMC_SCALING				\
+		((struct resource []) {			\
+			__RES_XMC,			\
+			__RES_XMC_SCALING,		\
+		})
+
+#define	XOCL_DEVINFO_XMC_SCALING			\
+	{						\
+		XOCL_SUBDEV_MB,				\
+		XOCL_XMC,				\
+		XOCL_RES_XMC_SCALING,				\
+		ARRAY_SIZE(XOCL_RES_XMC_SCALING),		\
 	}
 
 #define	XOCL_DEVINFO_XMC_USER			\
@@ -1361,7 +1380,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_MAILBOX_MGMT,			\
 			XOCL_DEVINFO_ICAP_MGMT,				\
 			XOCL_DEVINFO_FMGR,				\
-			XOCL_DEVINFO_XMC,				\
+			XOCL_DEVINFO_XMC_SCALING,			\
 			XOCL_DEVINFO_FLASH,				\
 		})
 
@@ -1583,6 +1602,29 @@ struct xocl_subdev_map {
 		.flags		= 0,					\
 		.subdev_info	= MGMT_RES_XBB_DSA52,			\
 		.subdev_num = ARRAY_SIZE(MGMT_RES_XBB_DSA52),		\
+		.flash_type = FLASH_TYPE_SPI,				\
+	}
+
+#define	MGMT_RES_XBB_DSA52_U200						\
+		((struct xocl_subdev_info []) {				\
+			XOCL_DEVINFO_FEATURE_ROM,			\
+			XOCL_DEVINFO_PRP_IORES_MGMT,			\
+			XOCL_DEVINFO_CLOCK_LEGACY,			\
+			XOCL_DEVINFO_AF_DSA52,				\
+			XOCL_DEVINFO_XMC_SCALING,			\
+			XOCL_DEVINFO_XVC_PRI,				\
+			XOCL_DEVINFO_NIFD_PRI,				\
+			XOCL_DEVINFO_MAILBOX_MGMT,			\
+			XOCL_DEVINFO_ICAP_MGMT,				\
+			XOCL_DEVINFO_FMGR,				\
+			XOCL_DEVINFO_FLASH,				\
+		})
+
+#define	XOCL_BOARD_MGMT_XBB_DSA52_U200					\
+	(struct xocl_board_private){					\
+		.flags		= 0,					\
+		.subdev_info	= MGMT_RES_XBB_DSA52_U200,		\
+		.subdev_num = ARRAY_SIZE(MGMT_RES_XBB_DSA52_U200),	\
 		.flash_type = FLASH_TYPE_SPI,				\
 	}
 
@@ -2300,7 +2342,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0x788F, 0x4352, MGMT_XBB_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x798F, 0x4352, MGMT_XBB_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6A8F, 0x4353, MGMT_6A8F_DSA52) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x5000, PCI_ANY_ID, MGMT_XBB_DSA52) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x5000, PCI_ANY_ID, MGMT_XBB_DSA52_U200) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5004, PCI_ANY_ID, MGMT_XBB_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5008, PCI_ANY_ID, MGMT_XBB_DSA52_U280) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0x500C, PCI_ANY_ID, MGMT_XBB_DSA52_U280) },\
