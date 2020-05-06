@@ -313,9 +313,8 @@ private:
 // specific argument value retrieval using va_arg.  Typed encasulated
 // classes supports retrieval of scalar, global, and null arguments
 // (essentially ignored arguments). The scalar values can be of any
-// type and size and can compensate for va_arg specific required type
-// e.g. double, to retrieve specific host type e.g. float even when these
-// two types have different size.
+// type and size even when the va_arg required type is different, for
+// example double to retrieve float host type.
 //
 // The arguments are constructed from xclbin meta data, where the
 // scalar type is used to construct argument typed enscapsulated
@@ -330,15 +329,13 @@ class argument
     get_value(std::va_list*) const = 0;
   };
 
-  template <typename VaArgType>
+  template <typename HostType, typename VaArgType>
   struct scalar_type : iarg
   {
-    size_t size;   // size of VaArgType (in words 4 bytes)
-    size_t offset; // offset when arg size < sizeof VaArgType (in words)
+    size_t size;  // size of argument per xclbin (in words 4 bytes)
 
     scalar_type(size_t bytes)
-      : size(sizeof(VaArgType) / sizeof(uint32_t))
-      , offset((sizeof(VaArgType) - bytes) / sizeof(uint32_t))
+      : size(bytes / sizeof(uint32_t))
     {
       // assert(bytes <= sizeof(VaArgType)
     }
@@ -346,8 +343,8 @@ class argument
     virtual std::vector<uint32_t>
     get_value(std::va_list* args) const
     {
-      auto value = va_arg(*args, VaArgType);
-      return { reinterpret_cast<uint32_t*>(&value) + offset, reinterpret_cast<uint32_t*>(&value) + size };
+      HostType value = va_arg(*args, VaArgType);
+      return { reinterpret_cast<uint32_t*>(&value), reinterpret_cast<uint32_t*>(&value) + size };
     }
   };
 
@@ -409,18 +406,22 @@ public:
     switch (arg.type) {
     case xarg::argtype::scalar : {
       if (arg.hosttype == "int")
-        content = std::make_unique<scalar_type<int>>(arg.size);
+        content = std::make_unique<scalar_type<int,int>>(arg.size);
       else if (arg.hosttype == "uint")
-        content = std::make_unique<scalar_type<unsigned int>>(arg.size);
+        content = std::make_unique<scalar_type<unsigned int,unsigned int>>(arg.size);
       else if (arg.hosttype == "float")
         // use of double here is intentional (per va_arg)
-        content = std::make_unique<scalar_type<double>>(arg.size);
+        content = std::make_unique<scalar_type<float,double>>(arg.size);
       else if (arg.hosttype == "double")
-        content = std::make_unique<scalar_type<double>>(arg.size);
+        content = std::make_unique<scalar_type<double,double>>(arg.size);
+      else if (arg.size == 4)
+        content = std::make_unique<scalar_type<uint32_t,uint32_t>>(arg.size);
+      else if (arg.size == 8)
+        content = std::make_unique<scalar_type<uint64_t,uint64_t>>(arg.size);
       else
         // throw xrt_core::error(-EINVAL, "Unknown scalar argument type '" + arg.hosttype + "'");
         // arg.hosttype is free formed, default to size_t until clarified
-        content = std::make_unique<scalar_type<size_t>>(arg.size);
+        content = std::make_unique<scalar_type<size_t,size_t>>(arg.size);
       break;
     }
     case xarg::argtype::global : 
