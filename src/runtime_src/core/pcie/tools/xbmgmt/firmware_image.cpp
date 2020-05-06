@@ -441,6 +441,7 @@ std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()
                 }
 		else
                 {
+                    iter.no_push(false);
                     closedir(dp);
                 }
                 ++iter;
