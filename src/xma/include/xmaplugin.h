@@ -242,6 +242,18 @@ int32_t xma_plg_add_buffer_to_data_buffer(XmaDataBuffer *data, XmaBufferObj *dev
 int32_t xma_plg_add_buffer_to_frame(XmaFrame *frame, XmaBufferObj **dev_buf_list, uint32_t num_dev_buf);
 int32_t xma_plg_add_ref_cnt(XmaBufferObj *b_obj, int32_t num);//Returns new value after adding
 
+/**
+ * xma_plg_get_dev_handle() -
+ * NOTE: This function will be removed in future
+ * 
+ * @s_handle: The session handle associated with this plugin instance
+ *
+ * RETURN:    Device handle or NULL
+ *
+ */
+void* xma_plg_get_dev_handle(XmaSession s_handle);
+
+
 #ifdef __cplusplus
 }
 #endif

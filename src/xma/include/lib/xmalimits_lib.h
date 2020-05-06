@@ -28,17 +28,23 @@
 //#define MAX_KERNEL_CHANS        64
 #define MAX_KERNEL_FREQS         2
 //#define MAX_IMAGE_CONFIGS       16
-#define MAX_FUNCTION_NAME       256
+//#define MAX_FUNCTION_NAME       256
 #define MAX_KERNEL_NAME         256
-#define MAX_DSA_NAME            256
-#define MAX_PLUGINS             32//32 encoders+32 decoders+...
+//#define MAX_DSA_NAME            256
+//#define MAX_PLUGINS             32//32 encoders+32 decoders+...
 
-#define XMA_LIB_MAIN_VER        2019
-#define XMA_LIB_SUB_VER         2
+#define XMA_LIB_MAIN_VER        2020
+#define XMA_LIB_SUB_VER         1
 
-#define XMA_NUM_EXECBO_DEFAULT  1 //ERT has out of order execution bug (Mar 2020); So keep it one
-#define XMA_NUM_EXECBO_MODE1    64 //Bulk mode; out of order execution
-#define XMA_NUM_EXECBO_MODE2    2  //out of order inside ERT; So can not be used with shared CUs
+#define XMA_NUM_EXECBO_DEFAULT  4//KDS fixed for wait_count check
+#define XMA_NUM_EXECBO_MODE2    1
+#define XMA_NUM_EXECBO_MODE3    8
+#define XMA_NUM_EXECBO_MODE4    64
+
+#define XMA_CPU_MODE1           1  //Low cpu load + high performance 
+#define XMA_CPU_MODE2           2  //High cpu load + high performance
+#define XMA_CPU_MODE3           3  //Same as legacy
+#define XMA_CPU_MODE4           4  //Low cpu load
 
 #define INVALID_M1             -1
 #define STATS_WINDOW            4096.0f
