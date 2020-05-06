@@ -295,7 +295,6 @@ namespace xclhwemhal2 {
 
   int HwEmShim::xclLoadBitstreamWorker(bitStreamArg args)
   {
-    bool is_prep_target = xrt_core::config::get_is_enable_prep_target();
     bool is_enable_debug = xrt_core::config::get_is_enable_debug();
     std::string aie_sim_options = xrt_core::config::get_aie_sim_options();
 
@@ -375,26 +374,6 @@ namespace xclhwemhal2 {
       fwrite(args.m_pdi, args.m_pdiSize, 1, fp2);
       fflush(fp2);
       fclose(fp2);
-    }
-
-    //Having this until all the tests are migrated to prep_target flow
-    if (!is_prep_target) {
-      std::unique_ptr<char[]> emuDataFileName(new char[1024]);
-#ifndef _WINDOWS
-      // TODO: Windows build support
-      // getpid is defined in unistd.h
-      std::sprintf(emuDataFileName.get(), "%s/emuDataFile_%d", binaryDirectory.c_str(), binaryCounter);
-#endif
-
-      if ((args.m_emuData != nullptr) && (args.m_emuDataSize > 1))
-      {
-        std::ofstream os(emuDataFileName.get());
-        os.write(args.m_emuData, args.m_emuDataSize);
-        os.close();
-
-        std::string emuDataFilePath(emuDataFileName.get());
-        systemUtil::makeSystemCall(emuDataFilePath, systemUtil::systemOperation::UNZIP, binaryDirectory);
-      }
     }
 
     readDebugIpLayout(debugFileName);
@@ -544,39 +523,6 @@ namespace xclhwemhal2 {
       mMessengerThread = std::thread(xclhwemhal2::messagesThread,this);
       mMessengerThreadStarted = true;
     }
-
-    //Creating the Kernel Directory and dumping the emulation data into Kernel Dir
-    //For timebeing having this under is_prep_target condition, will remove this
-    //condition once this flow is obsorbed by the Sprite and Canary Verification
-    std::string xclbinName("xclbin");
-    if(kernels.size() > 0) {
-      xclbinName = kernels.at(0);
-    }
-
-    if (is_prep_target) {
-      std::stringstream ks;
-      ks << binaryDirectory << "/" << xclbinName;
-      std::string kernelDir = ks.str();
-      systemUtil::makeSystemCall(kernelDir, systemUtil::systemOperation::CREATE);
-
-      std::unique_ptr<char[]> emuDataFileName(new char[1024]);
-#ifndef _WINDOWS
-      // TODO: Windows build support
-      // getpid is defined in unistd.h
-      std::sprintf(emuDataFileName.get(), "%s/emuDataFile_%d", kernelDir.c_str(), binaryCounter);
-#endif
-
-      if ((args.m_emuData != nullptr) && (args.m_emuDataSize > 1))
-      {
-        std::ofstream os(emuDataFileName.get());
-        os.write(args.m_emuData, args.m_emuDataSize);
-        os.close();
-
-        std::string emuDataFilePath(emuDataFileName.get());
-        systemUtil::makeSystemCall(emuDataFilePath, systemUtil::systemOperation::UNZIP, kernelDir);
-      }
-    }
-    //End of the Kernel Dir creation
 
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
     std::string launcherArgs = xclemulation::config::getInstance()->getLauncherArgs();
@@ -757,9 +703,8 @@ namespace xclhwemhal2 {
       mBinaryDirectories[sim_path] = wdbFileName;
     }
 
-    //launch simulation
-    if (!sim_path.empty()) {      
-		
+    //launch simulation    
+    if (boost::filesystem::exists(sim_path) == true) {
 #ifndef _WINDOWS
       // TODO: Windows build support
       //   pid_t, fork, chdir, execl is defined in unistd.h
@@ -789,58 +734,44 @@ namespace xclhwemhal2 {
 
         const char* simMode = NULL;
         if (args.m_emuData) {
-          //So far assuming that we will have only one AIE Kernel, need to 
+          //Assuming that we will have only one AIE Kernel, need to 
           //update this logic when we have suport for multiple AIE Kernels
+          
+          extractEmuData(sim_path, binaryDirectory, binaryCounter, args);
+          
+          launcherArgs += " -emuData " + sim_path + "/emulation_data/libsdf/cfg/aie.sim.config.txt";
+          launcherArgs += " -aie-sim-config " + sim_path + "/emulation_data/libsdf/cfg/aie.sim.config.txt";
+          launcherArgs += " -boot-bh " + sim_path + "/emulation_data/BOOT_bh.bin";
+          launcherArgs += " -ospi-image " + sim_path + "/emulation_data/qemu_ospi.bin";
+          launcherArgs += " -qemu-args-file " + sim_path + "/emulation_data/qemu_args.txt";
 
-          //For timebeing having this under is_prep_target condition, will remove this
-          //condition once this flow is obsorbed by the Sprite and Canary Verification
-          if (is_prep_target) {
-            launcherArgs += " -emuData " + binaryDirectory + "/" + xclbinName + "/emulation_data/libsdf/cfg/aie.sim.config.txt";
-            launcherArgs += " -aie-sim-config " + binaryDirectory + "/" + xclbinName + "/emulation_data/libsdf/cfg/aie.sim.config.txt";
-            launcherArgs += " -boot-bh " + binaryDirectory + "/" + xclbinName + "/emulation_data/BOOT_bh.bin";
-            launcherArgs += " -ospi-image " + binaryDirectory + "/" + xclbinName + "/emulation_data/qemu_ospi.bin";
-            launcherArgs += " -qemu-args-file " + binaryDirectory + "/" + xclbinName + "/emulation_data/qemu_args.txt";
-
-            if (boost::filesystem::exists(binaryDirectory + "/" + xclbinName + "/emulation_data/pmc_args.txt")) {
-              launcherArgs += " -pmc-args-file " + binaryDirectory + "/" + xclbinName + "/emulation_data/pmc_args.txt";
-            }
-            else if (boost::filesystem::exists(binaryDirectory + "/" + xclbinName + "/emulation_data/pmu_args.txt")) {
-              launcherArgs += " -pmc-args-file " + binaryDirectory + "/" + xclbinName + "/emulation_data/pmu_args.txt";
-            }
-            else {
-              std::cout << "ERROR: [HW-EMU] Unable to find either PMU/PMC args which are required to launch the emulation." << std::endl;
-            }
-
-            if (is_enable_debug) {
-              launcherArgs += " -enable-debug ";
-            }
-
-            if (aie_sim_options != "") {
-              launcherArgs += " -aie-sim-options " + aie_sim_options;
-            }
-            
-            std::string userSpecifiedPreSimScript = xclemulation::config::getInstance()->getUserPreSimScript();
-            std::string userSpecifiedPostSimScript = xclemulation::config::getInstance()->getUserPostSimScript();
-
-            if (userSpecifiedPreSimScript != "") {
-              launcherArgs += " -user-pre-sim-script " + userSpecifiedPreSimScript;
-            }
-
-            if (userSpecifiedPostSimScript != "") {
-              launcherArgs += " -user-post-sim-script " + userSpecifiedPostSimScript;
-            }
+          if (boost::filesystem::exists(sim_path + "/emulation_data/pmc_args.txt")) {
+            launcherArgs += " -pmc-args-file " + sim_path + "/emulation_data/pmc_args.txt";
+          }
+          else if (boost::filesystem::exists(sim_path + "/emulation_data/pmu_args.txt")) {
+            launcherArgs += " -pmc-args-file " + sim_path + "/emulation_data/pmu_args.txt";
           }
           else {
-            // Added to be compatible for older flows, will remove this once the prep_target aka pack flow is stabilized and obsorbed by the DSV
-            launcherArgs += " -emuData " + binaryDirectory + "/" + xclbinName + "/aieshim_solution.aiesol";
-            launcherArgs += " -emu-data " + binaryDirectory + "/" + xclbinName + "/aieshim_solution.aiesol";
-            launcherArgs += " -bootBH " + binaryDirectory + "/" + xclbinName + "/boot_bh.bin";
-            launcherArgs += " -boot-bh " + binaryDirectory + "/" + xclbinName + "/boot_bh.bin";
-            launcherArgs += " -image " + binaryDirectory + "/" + xclbinName + "/qemu_qspi.bin";
+            std::cout << "ERROR: [HW-EMU] Unable to find either PMU/PMC args which are required to launch the emulation." << std::endl;
+          }
 
-            if (is_enable_debug) {
-              launcherArgs += " -enable-debug ";
-            }
+          if (is_enable_debug) {
+            launcherArgs += " -enable-debug ";
+          }
+
+          if (aie_sim_options != "") {
+            launcherArgs += " -aie-sim-options " + aie_sim_options;
+          }
+          
+          std::string userSpecifiedPreSimScript = xclemulation::config::getInstance()->getUserPreSimScript();
+          std::string userSpecifiedPostSimScript = xclemulation::config::getInstance()->getUserPostSimScript();
+
+          if (userSpecifiedPreSimScript != "") {
+            launcherArgs += " -user-pre-sim-script " + userSpecifiedPreSimScript;
+          }
+
+          if (userSpecifiedPostSimScript != "") {
+            launcherArgs += " -user-post-sim-script " + userSpecifiedPostSimScript;
           }
         }
 
@@ -874,6 +805,26 @@ namespace xclhwemhal2 {
     }
 
     return 0;
+  }
+  
+  void HwEmShim::extractEmuData(const std::string& simPath, const std::string& binaryDirectory, int binaryCounter, bitStreamArg args) {
+
+    std::unique_ptr<char[]> emuDataFileName(new char[1024]);
+#ifndef _WINDOWS
+    // TODO: Windows build support
+    // getpid is defined in unistd.h
+    std::sprintf(emuDataFileName.get(), "%s/emuDataFile_%d", binaryDirectory.c_str(), binaryCounter);
+#endif
+
+    if ((args.m_emuData != nullptr) && (args.m_emuDataSize > 1))
+    {
+      std::ofstream os(emuDataFileName.get());
+      os.write(args.m_emuData, args.m_emuDataSize);
+      os.close();
+
+      std::string emuDataFilePath(emuDataFileName.get());
+      systemUtil::makeSystemCall(emuDataFilePath, systemUtil::systemOperation::UNZIP, simPath);
+    }
   }
 
    size_t HwEmShim::xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size) {
