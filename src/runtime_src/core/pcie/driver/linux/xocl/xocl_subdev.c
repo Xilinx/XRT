@@ -269,11 +269,11 @@ static int xocl_subdev_cdev_create(struct platform_device *pdev,
 
 	if (XOCL_GET_DRV_PRI(pdev)->cdev_name)
 		sysdev = device_create(xrt_class, &pdev->dev, cdevp->dev,
-			NULL, "%s%d.%d", XOCL_GET_DRV_PRI(pdev)->cdev_name,
+			NULL, "%s%u.%u", XOCL_GET_DRV_PRI(pdev)->cdev_name,
 			XOCL_DEV_ID(core->pdev), subdev->info.dev_idx);
 	else
 		sysdev = device_create(xrt_class, &pdev->dev, cdevp->dev,
-			NULL, "%s/%s%d.%d", XOCL_CDEV_DIR,
+			NULL, "%s/%s%u.%u", XOCL_CDEV_DIR,
 			platform_get_device_id(pdev)->name,
 			XOCL_DEV_ID(core->pdev), subdev->info.dev_idx);
 
@@ -310,7 +310,6 @@ static void __xocl_subdev_destroy(xdev_handle_t xdev_hdl,
 	state = subdev->state;
 	subdev->pldev = NULL;
 	subdev->ops = NULL;
-	subdev->state = XOCL_SUBDEV_STATE_UNINIT;
 
 	xocl_xdev_info(xdev_hdl, "Destroy subdev %s, cdev %p\n",
 			subdev->info.name, subdev->cdev);
@@ -321,6 +320,8 @@ static void __xocl_subdev_destroy(xdev_handle_t xdev_hdl,
 	}
 
 	if (pldev) {
+		subdev->hold = true;
+		xocl_unlock_xdev(xdev_hdl);
 		switch (state) {
 		case XOCL_SUBDEV_STATE_ACTIVE:
 		case XOCL_SUBDEV_STATE_OFFLINE:
@@ -330,8 +331,11 @@ static void __xocl_subdev_destroy(xdev_handle_t xdev_hdl,
 		default:
 			platform_device_put(pldev);
 		}
+		xocl_lock_xdev(xdev_hdl);
+		subdev->hold = false;
 	}
 	ida_simple_remove(&subdev_inst_ida, subdev->inst);
+	subdev->state = XOCL_SUBDEV_STATE_UNINIT;
 }
 
 static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
@@ -467,8 +471,14 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 
 	subdev->pldev->dev.parent = &core->pdev->dev;
 
+	/* lock dev, no offline, no destroy */
+	subdev->hold = true;
+	xocl_unlock_xdev(xdev_hdl);
+
 	retval = platform_device_add(subdev->pldev);
 	if (retval) {
+		xocl_lock_xdev(xdev_hdl);
+		subdev->hold = false;
 		xocl_xdev_err(xdev_hdl, "failed to add device");
 		goto error;
 	}
@@ -488,6 +498,8 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 	 */
 	retval = device_attach(&subdev->pldev->dev);
 	if (retval != 1) {
+		xocl_lock_xdev(xdev_hdl);
+		subdev->hold = false;
 		/* return error without release. relies on caller to decide
 		   if this is an error or not */
 		xocl_xdev_info(xdev_hdl, "failed to probe subdev %s, ret %d",
@@ -495,6 +507,8 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 		subdev->ops = NULL;
 		return -EAGAIN;
 	}
+	xocl_lock_xdev(xdev_hdl);
+	subdev->hold = false;
 	subdev->state = XOCL_SUBDEV_STATE_ACTIVE;
 	retval = xocl_subdev_cdev_create(subdev->pldev, subdev);
 	if (retval) {
@@ -710,9 +724,9 @@ int xocl_subdev_create_all(xdev_handle_t xdev_hdl)
 	if (subdev_info)
 		vfree(subdev_info);
 
-	(void) xocl_subdev_create_vsec_devs(xdev_hdl);
-
 	xocl_unlock_xdev(xdev_hdl);
+
+	(void) xocl_subdev_create_vsec_devs(xdev_hdl);
 
 	return 0;
 
@@ -777,6 +791,12 @@ static int __xocl_subdev_offline(xdev_handle_t xdev_hdl,
 			subdev->info.name);
 		goto done;
 	}
+
+	if (subdev->hold) {
+		xocl_xdev_err(xdev_hdl, "%s is on hold", subdev->info.name);
+		goto done;
+	}
+
 	xocl_drvinst_set_offline(platform_get_drvdata(subdev->pldev), true);
 
 	xocl_xdev_info(xdev_hdl, "offline subdev %s, cdev %p\n",
@@ -787,6 +807,9 @@ static int __xocl_subdev_offline(xdev_handle_t xdev_hdl,
 		subdev->cdev = NULL;
 	}
 	subdev_funcs = subdev->ops;
+
+	subdev->hold = true;
+	xocl_unlock_xdev(xdev_hdl);
 	if (subdev_funcs && subdev_funcs->offline) {
 		ret = subdev_funcs->offline(subdev->pldev);
 		if (!ret)
@@ -799,6 +822,8 @@ static int __xocl_subdev_offline(xdev_handle_t xdev_hdl,
 		subdev->ops = NULL;
 		subdev->state = XOCL_SUBDEV_STATE_INIT;
 	}
+	xocl_lock_xdev(xdev_hdl);
+	subdev->hold = false;
 
 done:
 
@@ -811,18 +836,23 @@ static int __xocl_subdev_online(xdev_handle_t xdev_hdl,
 	struct xocl_subdev_funcs *subdev_funcs;
 	int ret = 0;
 
+	/* pldev is NULL means subdev does not exist. exist without error in this case */
 	if (!subdev->pldev)
-		goto failed;
+		return 0;
 
 	if (subdev->state > XOCL_SUBDEV_STATE_OFFLINE) {
 		xocl_xdev_info(xdev_hdl, "%s, already online",
 			subdev->info.name);
-		goto failed;
+		return 0;
 	}
 
 	xocl_xdev_info(xdev_hdl, "online subdev %s, cdev %p\n",
 			subdev->info.name, subdev->cdev);
 	subdev_funcs = subdev->ops;
+
+	subdev->hold = true;
+	xocl_unlock_xdev(xdev_hdl);
+
 	if (subdev_funcs && subdev_funcs->online) {
 		ret = subdev_funcs->online(subdev->pldev);
 		if (ret)
@@ -853,18 +883,24 @@ static int __xocl_subdev_online(xdev_handle_t xdev_hdl,
 				goto failed;
 		}
 	}
+	xocl_lock_xdev(xdev_hdl);
+	subdev->hold = false;
 
 	ret = xocl_subdev_cdev_create(subdev->pldev, subdev);
 	if (ret) {
 		xocl_xdev_err(xdev_hdl, "create cdev failed %d", ret);
-		goto failed;
+		return ret;
 	}
 
 	if (XOCL_GET_DRV_PRI(subdev->pldev))
 		subdev->ops = XOCL_GET_DRV_PRI(subdev->pldev)->ops;
 	xocl_drvinst_set_offline(platform_get_drvdata(subdev->pldev), false);
 
+	return 0;
+
 failed:
+	xocl_lock_xdev(xdev_hdl);
+	subdev->hold = false;
 	return ret;
 }
 
@@ -1224,7 +1260,6 @@ bool xocl_subdev_is_vsec(xdev_handle_t xdev)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev;
 	struct pci_dev *pdev = core->pdev;
-	int cap;
 
 	return pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_VNDR) != 0;
 }
