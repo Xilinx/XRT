@@ -698,29 +698,14 @@ reportKernels( std::ostream & _ostream,
     }
   }
 
-  // All or nothing
-  if (!(memTopology.empty() && connectivity.empty() && ipLayout.empty())) {
-    if (memTopology.empty()) {
-      std::string errMsg = "ERROR: Missing MEM_TOPOLOGY section.  This usually is an indication of a malformed xclbin archive.";
-      throw std::runtime_error(errMsg);
-    }
-
-//    if (connectivity.empty()) {
-//      std::string errMsg = "ERROR: Missing CONNECTIVITY section.  This usually is an indication of a malformed xclbin archive.";
-//      throw std::runtime_error(errMsg);
-//    }
-
-    if (ipLayout.empty()) {
-      std::string errMsg = "ERROR: Missing IP_LAYOUT section.  This usually is an indication of a malformed xclbin archive.";
-      throw std::runtime_error(errMsg);
-    }
-  }
-
   boost::property_tree::ptree &ptXclBin = _ptMetaData.get_child("xclbin");
   std::vector<boost::property_tree::ptree> userRegions = as_vector<boost::property_tree::ptree>(ptXclBin,"user_regions");
   for (auto & userRegion : userRegions) {
     std::vector<boost::property_tree::ptree> kernels = as_vector<boost::property_tree::ptree>(userRegion,"kernels");
-    for (auto & ptKernel : kernels) {
+    if (kernels.size() == 0) 
+      _ostream << "Kernel(s): <None Found>" << std::endl;
+
+    for (auto &ptKernel : kernels) {
       XUtil::TRACE_PrintTree("Kernel", ptKernel);
 
       std::string sKernel = ptKernel.get<std::string>("name");
