@@ -585,6 +585,12 @@ uint32_t ert_base_addr = 0;
 #define ERT_INTC_MER_ADDR                 (ERT_INTC_ADDR + 0x1C) /* master enable */
 
 /*
+* Used in driver and user space code
+* Upper limit on number of dependencies in execBuf waitlist
+*/
+#define MAX_DEPS        8
+
+/*
  * Helper functions to hide details of ert_start_copybo_cmd
  */
 static inline void
