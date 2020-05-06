@@ -626,10 +626,12 @@ static void xocl_cma_mem_free(struct xocl_drm *drm_p, uint32_t idx)
 		dma_unmap_sg(drm_p->ddev->dev, sgt->sgl, sgt->orig_nents, DMA_FROM_DEVICE);
 		sg_free_table(sgt);
 		vfree(sgt);
+		cma_mem->sgt = NULL;
 	}
 
 	if (cma_mem->vaddr) {
 		dma_free_coherent(&drm_p->ddev->pdev->dev, cma_mem->size, cma_mem->vaddr, cma_mem->paddr);
+		cma_mem->vaddr = NULL;
 	} else if (cma_mem->pages) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0)
 		release_pages(cma_mem->pages, cma_mem->size >> PAGE_SHIFT);
@@ -638,8 +640,10 @@ static void xocl_cma_mem_free(struct xocl_drm *drm_p, uint32_t idx)
 #endif
 	}
 
-	if (cma_mem->pages)
+	if (cma_mem->pages) {
 		vfree(cma_mem->pages);
+		cma_mem->pages = NULL;
+	}
 }
 
 static void xocl_cma_mem_free_all(struct xocl_drm *drm_p)
