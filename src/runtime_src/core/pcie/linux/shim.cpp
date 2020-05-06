@@ -76,10 +76,6 @@
 
 #define SHIM_QDMA_AIO_EVT_MAX   1024 * 64
 
-//#include "core/pcie/driver/linux/xocl/userpf/common.h"
-//MAX_DEPs copied from above include file.
-#define MAX_DEPS        8
-
 // Profiling
 #define AXI_FIFO_RDFD_AXI_FULL          0x1000
 #define MAX_TRACE_NUMBER_SAMPLES                        16384
