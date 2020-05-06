@@ -1062,6 +1062,7 @@ int searchXsaAndDsa(int index, std::string xsaPath, std::string
                 }
                 else
                 {
+                    iter.no_push(false);
                     closedir(dp);
                 }
 
