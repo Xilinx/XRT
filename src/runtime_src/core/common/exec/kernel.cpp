@@ -392,6 +392,8 @@ class argument
   std::unique_ptr<iarg> content;
 
 public:
+  static constexpr size_t no_index = xarg::no_index;
+  
   argument()
     : content(nullptr)
   {}
@@ -448,6 +450,12 @@ public:
   offset() const
   {
     return arg.offset;
+  }
+
+  size_t
+  size() const
+  {
+    return arg.size;
   }
 };
 
@@ -568,6 +576,8 @@ struct run_type
   set_arg_at_index(size_t index, std::va_list* args)
   {
     auto& arg = kernel->args.at(index);
+    if (arg.index() == argument::no_index)
+      throw std::runtime_error("Bad argument index '" + std::to_string(index) + "'");
     set_arg(arg, args);
   }
 
@@ -575,7 +585,9 @@ struct run_type
   set_all_args(std::va_list* args)
   {
     for (auto& arg : kernel->args) {
-      XRT_DEBUGF("arg name(%s) index(%d) offset(0x%x) size(%d)", arg.name.c_str(), arg.index, arg.offset, arg.size);
+      if (arg.index() == argument::no_index)
+        break;
+      XRT_DEBUGF("arg name(%s) index(%d) offset(0x%x) size(%d)", arg.name.c_str(), arg.index(), arg.offset(), arg.size());
       set_arg(arg, args);
     }
   }
@@ -650,6 +662,8 @@ public:
     reset_cmd();
 
     auto& arg = kernel->args.at(index);
+    if (arg.index() == argument::no_index)
+      throw std::runtime_error("Bad argument index '" + std::to_string(index) + "'");
 
     auto value = arg.get_value(args);
     auto kcmd = cmd.get_ert_cmd<ert_start_kernel_cmd*>();
