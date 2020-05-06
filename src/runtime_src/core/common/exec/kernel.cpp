@@ -654,8 +654,13 @@ public:
     auto value = arg.get_value(args);
     auto kcmd = cmd.get_ert_cmd<ert_start_kernel_cmd*>();
     auto idx = kcmd->count - data_offset;
-    std::copy(value.begin(), value.end(), kcmd->data + idx);
-    kcmd->count += value.size();
+    auto offset = arg.offset();
+    for (auto v : value) {
+      kcmd->data[idx++] = offset;
+      kcmd->data[idx++] = v;
+      offset += 4;
+    }      
+    kcmd->count += value.size() * 2;
 
     // make the updated arg sticky in current run
     run->set_arg_value(arg, value);
