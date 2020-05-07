@@ -82,7 +82,7 @@
 #define NODE_DDR4_RESET_GATE "ep_ddr_mem_srsr_gate_00"
 #define NODE_ADDR_TRANSLATOR "ep_remap_data_c2h_00"
 #define NODE_MAILBOX_XRT "ep_mailbox_xrt_00"
-#define NODE_OSPI_CACHE "ep_ospi_cache_00"
+#define NODE_OSPI_CACHE "ep_xfer_cache_00"
 
 #define RESNAME_GATEPLP       NODE_GATE_PLP
 #define RESNAME_PCIEMON       NODE_PCIE_MON
