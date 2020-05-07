@@ -482,7 +482,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     XBU::report_available_devices();
     return;
   }
-  
+
   // Collect all of the devices of interest
   std::set<std::string> deviceNames;
   xrt_core::device_collection deviceCollection;
@@ -509,6 +509,8 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     //we support only 2 flash images atm
     if(image.size() > 2)
       throw xrt_core::error("Please specify either 1 or 2 flash images");
+    if(!XBU::can_proceed())
+      return;
     update_shell(deviceCollection.front()->get_device_id(), flashType, image.front(), (image.size() == 2 ? image[1]: ""));
     return;
   }
