@@ -20,6 +20,7 @@
 #include <boost/property_tree/xml_parser.hpp>
 #include <errno.h>
 #include <unistd.h>
+#include <boost/lexical_cast.hpp>
 
 #include "xcl_perfmon_parameters.h"
 
@@ -52,6 +53,7 @@ namespace xclhwemhal2 {
   const unsigned HwEmShim::CONTROL_AP_DONE  = 2;
   const unsigned HwEmShim::CONTROL_AP_IDLE  = 4;
   const unsigned HwEmShim::CONTROL_AP_CONTINUE  = 0x10;
+  const unsigned HwEmShim::REG_BUFF_SIZE = 0x4;
   void messagesThread(xclhwemhal2::HwEmShim* inst);
   Event::Event()
   {
@@ -301,7 +303,7 @@ namespace xclhwemhal2 {
     if (mLogStream.is_open()) {
       //    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << args.m_zipFile << std::endl;
     }
-
+    mCuIndx = 0;
     //TBD the file read may slowdown things...whenever xclLoadBitStream hal API implementation changes, we also need to make changes.
     std::unique_ptr<char[]> fileName(new char[1024]);
 #ifndef _WINDOWS
@@ -495,6 +497,8 @@ namespace xclhwemhal2 {
               continue;
             uint64_t base = convert(xml_remap.second.get<std::string>("<xmlattr>.base"));
             mCuBaseAddress = base & 0xFFFFFFFF00000000;
+            mCuIndxVsBaseAddrMap[mCuIndx++] = base;
+
             std::string vbnv  = mDeviceInfo.mName;
             //BAD Worharound for vck5000 need to remove once SIM_QDMA supports PCIE bar 
             if(xclemulation::config::getInstance()->getCuBaseAddrForce()!=-1) {
@@ -2923,6 +2927,59 @@ int HwEmShim::xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char
 	  }
   }
 
+//CU register space for xclRegRead/Write()
+int HwEmShim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap)
+{
+  if (mLogStream.is_open()) {
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << "CU Idx : " << cu_index << " Offset : " << offset << " Datap : " << (*datap) << std::endl;
+  }
+
+  std::string strCuidx = boost::lexical_cast<std::string>(cu_index);
+  if (cu_index >= mCuIndxVsBaseAddrMap.size()) {
+    std::string strMsg = "ERROR: [HW-EM 20] xclRegRW - invalid CU index: " + strCuidx;
+    logMessage(strMsg);
+    return -EINVAL;
+  }
+  if (offset >= mCuMapSize || (offset & (sizeof(uint32_t) - 1)) != 0) {
+    std::string strOffset = boost::lexical_cast<std::string>(offset);
+    std::string strMsg = "ERROR: [HW-EM 21] xclRegRW - invalid CU offset: " + strOffset;
+    logMessage(strMsg);   
+    return -EINVAL;
+  }
+  char *buff = new char[REG_BUFF_SIZE];
+  std::memset(buff, 0, sizeof(char)*REG_BUFF_SIZE);
+
+  uint64_t baseAddr = mCuIndxVsBaseAddrMap[cu_index] + offset;
+    if (rd) {
+      if (xclRead(XCL_ADDR_KERNEL_CTRL, baseAddr, buff, REG_BUFF_SIZE) != REG_BUFF_SIZE) {
+        std::string strMsg = "ERROR: [HW-EM 22] xclRegRW - xclRead failed for CU: " + strCuidx;
+        logMessage(strMsg);
+        return -EINVAL;
+      }  
+      uint32_t * tmp_buff = (uint32_t *) buff;
+      *datap = tmp_buff[0];
+    }
+    else {
+      uint32_t * tmp_buff = (uint32_t *)buff;
+      tmp_buff[0] = *datap;
+      if (xclWrite(XCL_ADDR_KERNEL_CTRL, baseAddr, tmp_buff, REG_BUFF_SIZE) != REG_BUFF_SIZE) {
+        std::string strMsg = "ERROR: [HW-EM 23] xclRegRW - xclWrite failed for CU: " + strCuidx;
+        logMessage(strMsg);
+        return -EINVAL;
+      }
+    } 
+  return 0;
+}
+
+int HwEmShim::xclRegRead(uint32_t cu_index, uint32_t offset, uint32_t *datap)
+{
+  return xclRegRW(true, cu_index, offset, datap);
+}
+
+int HwEmShim::xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data)
+{
+  return xclRegRW(false, cu_index, offset, &data);
+}
 /********************************************** QDMA APIs IMPLEMENTATION END**********************************************/
 /**********************************************HAL2 API's END HERE **********************************************/
 }  // end namespace xclhwemhal2
