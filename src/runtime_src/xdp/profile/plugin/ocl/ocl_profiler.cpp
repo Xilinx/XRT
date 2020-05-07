@@ -538,7 +538,13 @@ namespace xdp {
       timelineFile = "timeline_trace";
       ProfileMgr->turnOnFile(xdp::RTUtil::FILE_TIMELINE_TRACE);
       mTraceThreadEn = xrt::config::get_continuous_trace();
-      mTraceReadIntMs = xrt::config::get_continuous_trace_interval_ms();
+      if (mTraceThreadEn) {
+        mTraceReadIntMs = xrt::config::get_continuous_trace_interval_ms();
+      } else {
+        // Faster clock training causes problems with long designs
+        // 500ms is good enough for continous clock training
+        mTraceReadIntMs = 500;
+      }
     }
     xdp::CSVTraceWriter* csvTraceWriter = new xdp::CSVTraceWriter(timelineFile, "Xilinx", Plugin.get());
     TraceWriters.push_back(csvTraceWriter);
