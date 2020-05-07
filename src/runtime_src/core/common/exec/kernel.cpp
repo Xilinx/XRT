@@ -458,6 +458,12 @@ public:
   {
     return arg.size;
   }
+
+  std::string
+  name() const
+  {
+    return arg.name;
+  }
 };
 
 // struct kernel_type - The internals of an xrtKernelHandle
@@ -588,7 +594,7 @@ struct run_type
     for (auto& arg : kernel->args) {
       if (arg.index() == argument::no_index)
         break;
-      XRT_DEBUGF("arg name(%s) index(%d) offset(0x%x) size(%d)", arg.name.c_str(), arg.index(), arg.offset(), arg.size());
+      XRT_DEBUGF("arg name(%s) index(%d) offset(0x%x) size(%d)", arg.name().c_str(), arg.index(), arg.offset(), arg.size());
       set_arg(arg, args);
     }
   }
