@@ -307,6 +307,159 @@ private:
   std::unique_ptr<callback_list> m_callbacks;
 };
 
+// class argument - get argument value from va_arg
+//
+// This argument class employs type erasure trick to faciliate type
+// specific argument value retrieval using va_arg.  Typed encasulated
+// classes supports retrieval of scalar, global, and null arguments
+// (essentially ignored arguments). The scalar values can be of any
+// type and size even when the va_arg required type is different, for
+// example double to retrieve float host type.
+//
+// The arguments are constructed from xclbin meta data, where the
+// scalar type is used to construct argument typed enscapsulated
+// scalar class.  Unfortunately the type of an argument is a free
+// formed string in the xclbin (need schema to support all types).
+class argument
+{
+  struct iarg
+  {
+    virtual ~iarg() {}
+    virtual std::vector<uint32_t>
+    get_value(std::va_list*) const = 0;
+  };
+
+  template <typename HostType, typename VaArgType>
+  struct scalar_type : iarg
+  {
+    size_t size;  // size of argument per xclbin (in words 4 bytes)
+
+    scalar_type(size_t bytes)
+      : size(bytes / sizeof(uint32_t))
+    {
+      // assert(bytes <= sizeof(VaArgType)
+    }
+
+    virtual std::vector<uint32_t>
+    get_value(std::va_list* args) const
+    {
+      HostType value = va_arg(*args, VaArgType);
+      return { reinterpret_cast<uint32_t*>(&value), reinterpret_cast<uint32_t*>(&value) + size };
+    }
+  };
+
+  struct global_type : iarg
+  {
+    xrt_core::device* core_device;
+    size_t size;   // size of argument in words (4 bytes)
+
+    global_type(xrt_core::device* dev, size_t bytes)
+      : core_device(dev)
+      , size(bytes / sizeof(uint32_t))
+    {
+      // assert(bytes == 8)
+    }
+
+    virtual std::vector<uint32_t>
+    get_value(std::va_list* args) const
+    {
+      auto bo = va_arg(*args, xrtBufferHandle);
+      xclBOProperties prop;
+      core_device->get_bo_properties(bo, &prop);
+      auto value = prop.paddr;
+
+      // 2 words for 64 bit address
+      return { reinterpret_cast<uint32_t*>(&value), reinterpret_cast<uint32_t*>(&value) + 2 };
+    }
+  };
+
+  struct null_type : iarg
+  {
+    virtual std::vector<uint32_t>
+    get_value(std::va_list* args) const
+    {
+      (void) va_arg(*args, void*); // swallow unsettable argument
+      return std::vector<uint32_t>(); // empty
+    }
+  };
+
+  using xarg = xrt_core::xclbin::kernel_argument;
+  xarg arg;
+
+  std::unique_ptr<iarg> content;
+
+public:
+  static constexpr size_t no_index = xarg::no_index;
+  
+  argument()
+    : content(nullptr)
+  {}
+
+  argument(argument&& rhs)
+    : arg(std::move(rhs.arg)), content(std::move(rhs.content))
+  {}
+
+  argument(xrt_core::device* dev, xarg&& karg)
+    : arg(std::move(karg))
+  {
+    // Determine type
+    switch (arg.type) {
+    case xarg::argtype::scalar : {
+      if (arg.hosttype == "int")
+        content = std::make_unique<scalar_type<int,int>>(arg.size);
+      else if (arg.hosttype == "uint")
+        content = std::make_unique<scalar_type<unsigned int,unsigned int>>(arg.size);
+      else if (arg.hosttype == "float")
+        // use of double here is intentional (per va_arg)
+        content = std::make_unique<scalar_type<float,double>>(arg.size);
+      else if (arg.hosttype == "double")
+        content = std::make_unique<scalar_type<double,double>>(arg.size);
+      else if (arg.size == 4)
+        content = std::make_unique<scalar_type<uint32_t,uint32_t>>(arg.size);
+      else if (arg.size == 8)
+        content = std::make_unique<scalar_type<uint64_t,uint64_t>>(arg.size);
+      else
+        // throw xrt_core::error(-EINVAL, "Unknown scalar argument type '" + arg.hosttype + "'");
+        // arg.hosttype is free formed, default to size_t until clarified
+        content = std::make_unique<scalar_type<size_t,size_t>>(arg.size);
+      break;
+    }
+    case xarg::argtype::global : 
+      content = std::make_unique<global_type>(dev, arg.size);
+      break;
+    case xarg::argtype::stream :
+      content = std::make_unique<null_type>();
+      break;
+    default:
+      throw std::runtime_error("Unexpected error");
+    }
+  }
+  
+  std::vector<uint32_t>
+  get_value(std::va_list* args) const
+  {
+    return content->get_value(args);
+  }
+
+  size_t
+  index() const
+  {
+    return arg.index;
+  }
+
+  size_t
+  offset() const
+  {
+    return arg.offset;
+  }
+
+  size_t
+  size() const
+  {
+    return arg.size;
+  }
+};
+
 // struct kernel_type - The internals of an xrtKernelHandle
 //
 // An single object of kernel_type can be shared with multiple
@@ -314,16 +467,15 @@ private:
 // meta data used to create a launch a run object (command)
 struct kernel_type
 {
-  using argument = xrt_core::xclbin::kernel_argument;
   using ipctx = std::shared_ptr<ip_context>;
 
-  std::shared_ptr<device_type> device;   // shared ownership
-  std::string name;                      // kernel name
-  std::vector<argument> args;            // kernel args sorted by argument index
-  std::vector<ipctx> ipctxs;             // CU context locks
-  std::bitset<128> cumask;               // cumask for command execution
-  size_t regmap_size = 0;                // CU register map size
-  size_t num_cumasks = 1;                // Required number of command cu masks TODO: compute
+  std::shared_ptr<device_type> device; // shared ownership
+  std::string name;                    // kernel name
+  std::vector<argument> args;          // kernel args sorted by argument index
+  std::vector<ipctx> ipctxs;           // CU context locks
+  std::bitset<128> cumask;             // cumask for command execution
+  size_t regmap_size = 0;              // CU register map size
+  size_t num_cumasks = 1;              // Required number of command cu masks TODO: compute
 
   // kernel_type - constructor
   //
@@ -346,8 +498,12 @@ struct kernel_type
     if (!xml_section.first) 
       throw std::runtime_error("No xml metadata available to construct kernel, make sure xclbin is loaded");
 
-    // get kernel arguments
-    args = xrt_core::xclbin::get_kernel_arguments(xml_section.first, xml_section.second, name);
+    // get kernel arguments from xml parser
+    // compute regmap size, convert to typed argument
+    for (auto& arg : xrt_core::xclbin::get_kernel_arguments(xml_section.first, xml_section.second, name)) {
+      regmap_size = std::max(regmap_size, (arg.offset + arg.size) / 4);
+      args.emplace_back(device->get_core_device(), std::move(arg));
+    }
    
     // Compare the matching CUs against the CU sort order to create cumask
     auto ips = xrt_core::xclbin::get_cus(ip_layout, nm);
@@ -363,10 +519,6 @@ struct kernel_type
       ipctxs.emplace_back(ip_context::open(device->get_core_device(), xclbin_id, idx, am));
       cumask.set(idx);
     }
-
-    // Compute register map size for a kernel invocation
-    for (auto& arg : args)
-      regmap_size = std::max(regmap_size, (arg.offset + arg.size) / 4);
   }
 };
 
@@ -406,76 +558,38 @@ struct run_type
     kcmd->cu_mask = kernel->cumask.to_ulong();  // TODO: fix for > 32 CUs
   }
 
-  // set_global_arg() - set a global argument
   void
-  set_global_arg(size_t index, xrtBufferHandle bo)
+  set_arg_value(const argument& arg, const std::vector<uint32_t>& value)
   {
-    xclBOProperties prop;
-    core_device->get_bo_properties(bo, &prop);
-    auto addr = prop.paddr;
-
-    // Populate cmd payload with argument
     auto kcmd = cmd.get_ert_cmd<ert_start_kernel_cmd*>();
-    const auto& arg = kernel->args[index];
-    auto cmdidx = arg.offset / 4;
-    kcmd->data[cmdidx] =  addr;
-    kcmd->data[++cmdidx] = (addr >> 32) & 0xFFFFFFFF;
+    auto cmdidx = arg.offset() / 4;
+    std::copy(value.begin(), value.end(), kcmd->data + cmdidx);
   }
 
-  // set_scalar_arg() - set a scalar argument
-  template <typename ScalarType>
   void
-  set_scalar_arg(size_t index, ScalarType scalar)
+  set_arg(const argument& arg, std::va_list* args)
   {
-    static_assert(std::is_scalar<ScalarType>::value,"Invalid ScalarType");
-    // Populate cmd payload with argument
-    auto kcmd = cmd.get_ert_cmd<ert_start_kernel_cmd*>();
-    const auto& arg = kernel->args[index];
-    auto cmdidx = arg.offset / 4;
-    kcmd->data[cmdidx] =  scalar;
+    auto value = arg.get_value(args);
+    set_arg_value(arg, value);
   }
 
   void
   set_arg_at_index(size_t index, std::va_list* args)
   {
-    auto& arg = kernel->args[index];
-    if (arg.index == kernel_type::argument::no_index)
+    auto& arg = kernel->args.at(index);
+    if (arg.index() == argument::no_index)
       throw std::runtime_error("Bad argument index '" + std::to_string(index) + "'");
-
-    switch (arg.type) {
-    case kernel_type::argument::argtype::scalar : {
-      auto val = va_arg(*args, size_t); // TODO: handle double, and more get type from meta data
-      XRT_DEBUGF("scalar: index(%d) val(%d)\n", index, val);
-      set_scalar_arg(arg.index, val);
-      break;
-    }
-    case kernel_type::argument::argtype::global : {
-      auto val = va_arg(*args, xrtBufferHandle);
-      XRT_DEBUGF("global: index(%d) bo(%d)\n", index, val);
-      set_global_arg(arg.index, val);
-      break;
-    }
-    case kernel_type::argument::argtype::stream : {
-      (void) va_arg(*args, void*); // swallow unsettable argument
-      XRT_DEBUGF("global: index(%d) void()\n", index);
-      break;
-    }
-    default:
-      throw std::runtime_error("Unexpected error argument type ("
-               + std::to_string(std::underlying_type<kernel_type::argument::argtype>::type(arg.type))
-               + ") for kernel '" + kernel->name + "' at index ("
-               + std::to_string(index) + ")");
-    }
+    set_arg(arg, args);
   }
 
   void
   set_all_args(std::va_list* args)
   {
     for (auto& arg : kernel->args) {
-      if (arg.index == kernel_type::argument::no_index)
+      if (arg.index() == argument::no_index)
         break;
-      XRT_DEBUGF("arg name(%s) index(%d) offset(0x%x) size(%d)", arg.name.c_str(), arg.index, arg.offset, arg.size);
-      set_arg_at_index(arg.index, args);
+      XRT_DEBUGF("arg name(%s) index(%d) offset(0x%x) size(%d)", arg.name.c_str(), arg.index(), arg.offset(), arg.size());
+      set_arg(arg, args);
     }
   }
 
@@ -529,44 +643,6 @@ class run_update_type
     kcmd->count = data_offset;  // reset payload size
   }
 
-  void
-  update_global_arg(size_t index, xrtBufferHandle bo)
-  {
-    xclBOProperties prop;
-    run->core_device->get_bo_properties(bo, &prop);
-    auto addr = prop.paddr;
-
-    // Populate cmd payload with argument
-    auto kcmd = cmd.get_ert_cmd<ert_init_kernel_cmd*>();
-    const auto& arg = kernel->args[index];
-    auto idx = kcmd->count - data_offset;
-    kcmd->data[idx++] = arg.offset;
-    kcmd->data[idx++] = addr;
-    kcmd->data[idx++] = arg.offset + 4;
-    kcmd->data[idx++] = (addr >> 32) & 0xFFFFFFFF;
-    kcmd->count += idx;
-
-    // make the updated arg sticky in current run
-    run->set_global_arg(index, bo);
-  }
-
-  template <typename ScalarType>
-  void
-  update_scalar_arg(size_t index, ScalarType scalar)
-  {
-    static_assert(std::is_scalar<ScalarType>::value,"Invalid ScalarType");
-    // Populate cmd payload with argument
-    auto kcmd = cmd.get_ert_cmd<ert_init_kernel_cmd*>();
-    const auto& arg = kernel->args[index];
-    auto idx = kcmd->count - data_offset;
-    kcmd->data[idx++] = arg.offset;
-    kcmd->data[idx++] = scalar;
-    kcmd->count += idx;
-
-    // make the updated arg sticky in current run
-    run->set_scalar_arg(index, scalar);
-  }
-  
 public:
   run_update_type(run_type* r)
     : run(r)
@@ -587,31 +663,22 @@ public:
     reset_cmd();
 
     auto& arg = kernel->args.at(index);
-    if (arg.index == kernel_type::argument::no_index)
+    if (arg.index() == argument::no_index)
       throw std::runtime_error("Bad argument index '" + std::to_string(index) + "'");
 
-    switch (arg.type) {
-    case kernel_type::argument::argtype::scalar : {
-      auto val = va_arg(*args, size_t); // TODO: handle double, and more get type from meta data
-      update_scalar_arg(arg.index, val);
-      break;
-    }
-    case kernel_type::argument::argtype::global : {
-      auto val = va_arg(*args, xrtBufferHandle);
-      update_global_arg(arg.index, val);
-      break;
-    }
-    case kernel_type::argument::argtype::stream : {
-      (void) va_arg(*args, void*); // swallow unsettable argument
-      break;
-    }
-    default:
-      throw std::runtime_error("Unexpected error argument type ("
-               + std::to_string(std::underlying_type<kernel_type::argument::argtype>::type(arg.type))
-               + ") for kernel '" + kernel->name + "' at index ("
-               + std::to_string(index) + ")");
+    auto value = arg.get_value(args);
+    auto kcmd = cmd.get_ert_cmd<ert_start_kernel_cmd*>();
+    auto idx = kcmd->count - data_offset;
+    auto offset = arg.offset();
+    for (auto v : value) {
+      kcmd->data[idx++] = offset;
+      kcmd->data[idx++] = v;
+      offset += 4;
+    }      
+    kcmd->count += value.size() * 2;
 
-    }
+    // make the updated arg sticky in current run
+    run->set_arg_value(arg, value);
 
     auto pkt = cmd.get_ert_packet();
     pkt->state = ERT_CMD_STATE_NEW;

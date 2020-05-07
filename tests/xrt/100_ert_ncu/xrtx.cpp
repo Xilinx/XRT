@@ -275,8 +275,6 @@ int run(int argc, char** argv)
     throw std::runtime_error("Bad device index '" + std::to_string(device_index) + "'");
 
   auto device = xclOpen(device_index, nullptr, XCL_QUIET);
-  if (xclLockDevice(device))
-    throw std::runtime_error("Cannot lock device");
 
   auto header = load_xclbin(device, xclbin_fnm);
   auto top = reinterpret_cast<const axlf*>(header.data());
