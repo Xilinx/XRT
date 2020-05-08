@@ -3,10 +3,19 @@
 namespace systemUtil {
 
   inline void printErrorMessage(std::string command, int status)
-  {
-    if(!status)// no error
-      return;
-    std::cout << "ERROR: [EMU 60-600] " << command << " failed with the error code " << status << ". PLEASE CHECK YOUR PERMISSIONS " << std::endl;
+  {      
+    try { 
+      if (status) { 
+        throw status; 
+      } else {
+        return;
+      }
+    } 
+    catch (int status) { 
+      std::cout << "ERROR: [EMU 60-600] " << command.c_str() << " Exception Caught - Failed with the error code " << status << ". PLEASE CHECK YOUR PERMISSIONS " << std::endl;
+    } catch (...) {
+      std::cout << "ERROR: [EMU 60-600] " << command.c_str() << " Exception Caught - Failed with the error code " << status << ". PLEASE CHECK YOUR PERMISSIONS " << std::endl;
+    }
   }
   
   void makeSystemCall (std::string &operand1, systemOperation operation, std::string operand2 )
