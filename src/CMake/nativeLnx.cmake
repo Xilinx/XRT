@@ -75,6 +75,7 @@ else()
   find_package(Boost 
     REQUIRED COMPONENTS system filesystem)
 endif()
+set(Boost_USE_MULTITHREADED ON)             # Multi-threaded libraries
 
 include_directories(${Boost_INCLUDE_DIRS})
 add_compile_options("-DBOOST_LOCALE_HIDE_AUTO_PTR")
