@@ -35,6 +35,7 @@ extern "C" {
 */
 
 /**
+ * Deprecated API
  *  xma_initialize() - the system according to the layout specified in the
  *  YAML configuration file.
  *
@@ -74,7 +75,7 @@ extern "C" {
  * 
  * XMA_ERROR for all other errors.
 */
-int32_t xma_initialize(char *cfgfile);
+int32_t xma_initialize(char *cfgfile) __attribute__ ((deprecated));
 
 #ifdef __cplusplus
 }
