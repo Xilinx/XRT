@@ -89,6 +89,37 @@ static int str2index(const char *arg, unsigned& index)
     return 0;
 }
 
+static bool
+is_supported_kernel_version()
+{
+    std::vector<std::string> ubuntu_kernel_versions =
+        { "4.4.0", "4.13.0", "4.15.0", "4.18.0", "5.0.0", "5.3.0" };
+    std::vector<std::string> centos_rh_kernel_versions =
+        { "3.10.0-693", "3.10.0-862", "3.10.0-957", "3.10.0-1062" };
+
+    bool ret = false;
+    const std::string os = sensor_tree::get<std::string>("system.linux", "N/A");
+    const std::string release = sensor_tree::get<std::string>("system.release");
+
+    if(os.find("Ubuntu") != std::string::npos) {
+        for (const auto& ver : ubuntu_kernel_versions) {
+            if (release.find(ver) != std::string::npos) {
+                ret = true;
+                break;
+            }
+        }
+    }
+    else if(os.find("Red Hat") != std::string::npos || os.find("CentOS") != std::string::npos) {
+        for (const auto& ver : centos_rh_kernel_versions) {
+            if (release.find(ver) != std::string::npos) {
+                ret = true;
+                break;
+            }
+        }
+    }
+    return ret;
+}
+
 
 static void print_pci_info(std::ostream &ostr)
 {
@@ -110,6 +141,8 @@ static void print_pci_info(std::ostream &ostr)
     if (pcidev::get_dev_total() != pcidev::get_dev_ready()) {
         ostr << "WARNING: card(s) marked by '*' are not ready." << std::endl;
     }
+    if (!is_supported_kernel_version())
+        ostr << "WARNING: Kernel version not supported." << std::endl;
 }
 
 static int xrt_xbutil_version_cmp()
