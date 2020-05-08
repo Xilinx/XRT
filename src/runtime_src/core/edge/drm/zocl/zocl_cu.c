@@ -100,6 +100,9 @@ zocl_cu_status_print(struct zocl_cu *cu)
 {
 	struct zcu_core *cu_core = cu->core;
 
+	if (!cu_core)
+		return;
+
 	DRM_INFO("addr 0x%llx, status 0x%x",
 	    (u64)cu_core->paddr, ioread32(cu_core->vaddr));
 }
