@@ -143,28 +143,6 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 		size += count;
 	}
 
-	for (i = 0; i < 1; i++) {
-		struct drm_xocl_mm_stat cma_stat = {0};
-		struct xocl_drm *drm_p = xdev->core.drm;
-		size_t cma_bank_sz = drm_p->cma_bank ? drm_p->cma_bank->entry_sz * drm_p->cma_bank->entry_num : 0;
-
-		xocl_cma_mm_get_usage_stat(XOCL_DRM(xdev), &cma_stat);
-
-		if (raw) {
-			memory_usage = 0;
-			bo_count = 0;
-			memory_usage = cma_stat.memory_usage;
-			bo_count = cma_stat.bo_count;
-
-			count = sprintf(buf, raw_fmt,
-				memory_usage,
-				bo_count, cma_bank_sz);
-		}
-		buf += count;
-		size += count;
-	}
-
-
 done:
 	XOCL_PUT_MEM_TOPOLOGY(xdev);
 	mutex_unlock(&xdev->dev_lock);
