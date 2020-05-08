@@ -42,6 +42,8 @@
 #include <mutex>
 #include <condition_variable>
 
+#include <boost/detail/endian.hpp>
+
 #ifdef _WIN32
 # pragma warning( disable : 4244 4267)
 #endif
@@ -343,6 +345,8 @@ class argument
     virtual std::vector<uint32_t>
     get_value(std::va_list* args) const
     {
+      static_assert(BOOST_BYTE_ORDER==1234,"Big endian detected");
+
       HostType value = va_arg(*args, VaArgType);
       return { reinterpret_cast<uint32_t*>(&value), reinterpret_cast<uint32_t*>(&value) + size };
     }
@@ -363,6 +367,8 @@ class argument
     virtual std::vector<uint32_t>
     get_value(std::va_list* args) const
     {
+      static_assert(BOOST_BYTE_ORDER==1234,"Big endian detected");
+
       auto bo = va_arg(*args, xrtBufferHandle);
       xclBOProperties prop;
       core_device->get_bo_properties(bo, &prop);
