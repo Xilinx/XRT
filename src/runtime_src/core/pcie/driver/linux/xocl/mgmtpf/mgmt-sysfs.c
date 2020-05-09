@@ -263,7 +263,7 @@ static ssize_t rp_program_show(struct device *dev,
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
 
-	return sprintf(buf, "%d\n", lro->rp_program);
+	return sprintf(buf, "%d\n", atomic_read(&lro->rp_program));
 }
 
 static ssize_t rp_program_store(struct device *dev, struct device_attribute *da,
@@ -276,11 +276,11 @@ static ssize_t rp_program_store(struct device *dev, struct device_attribute *da,
 	if (kstrtou32(buf, 10, &val) == -EINVAL)
 		return -EINVAL;
 	else if (val == 1) {
-		lro->rp_program = XOCL_RP_PROGRAM_REQ;
+		if (atomic_read(&lro->rp_program) != 0)
+			return -EBUSY;
+		atomic_set(&lro->rp_program, XOCL_RP_PROGRAM_REQ);
 		ret = xocl_icap_download_rp(lro, XOCL_SUBDEV_LEVEL_PRP,
 				RP_DOWNLOAD_NORMAL);
-		if (ret)
-			lro->rp_program = 0;
 	} else if (val == 2) {
 		ret = xclmgmt_program_shell(lro);
 		(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv,

@@ -149,7 +149,7 @@ struct xclmgmt_dev {
 	u32 saved_config[8][16];
 
 	/* programming shell flag */
-	u32 rp_program;
+	atomic_t rp_program;
 };
 
 extern int health_check;

@@ -708,7 +708,11 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 		offset += resp->size;
 	} while (resp->rtncode == XOCL_MSG_SUBDEV_RTN_PARTIAL);
 
-	if (resp->rtncode == XOCL_MSG_SUBDEV_RTN_UNCHANGED &&
+	if (resp->rtncode == XOCL_MSG_SUBDEV_RTN_PENDINGPLP) {
+		(void) xocl_program_shell(xdev, true);
+		ret = -EAGAIN;
+		goto failed;
+	} else if (resp->rtncode == XOCL_MSG_SUBDEV_RTN_UNCHANGED &&
 			xdev->core.fdt_blob)
 		goto failed;
 
