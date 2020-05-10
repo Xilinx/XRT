@@ -592,7 +592,7 @@ static void xclmgmt_subdev_get_data(struct xclmgmt_dev *lro, size_t offset,
 
 	mgmt_info(lro, "userpf requests subdev information");
 
-	if (atomic_read(&lro->rp_program) == XOCL_RP_PROGRAM_REQ) {
+	if (lro->rp_program == XOCL_RP_PROGRAM_REQ) {
 		/* previous request is missed */
 		data_sz = sizeof(*hdr);
 		rtn_code = XOCL_MSG_SUBDEV_RTN_PENDINGPLP;
@@ -859,8 +859,8 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			break;
 		}
 
-		if (atomic_read(&lro->rp_program) == XOCL_RP_PROGRAM)
-			atomic_set(&lro->rp_program, 0);
+		if (lro->rp_program == XOCL_RP_PROGRAM)
+			lro->rp_program = 0;
 
 		resp = vzalloc(sizeof(*resp));
 		if (!resp)
@@ -880,7 +880,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		break;
 	}
 	case XCL_MAILBOX_REQ_PROGRAM_SHELL: {
-		atomic_set(&lro->rp_program, XOCL_RP_PROGRAM);
+		lro->rp_program = XOCL_RP_PROGRAM;
 		(void) xocl_peer_response(lro, req->req, msgid, &ret,
 				sizeof(ret));
 		ret = xocl_queue_work(lro, XOCL_WORK_PROGRAM_SHELL, 0);
