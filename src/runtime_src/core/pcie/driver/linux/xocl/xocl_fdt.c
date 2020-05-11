@@ -325,10 +325,10 @@ static struct xocl_subdev_map		subdev_map[] = {
 			// 0x53000 runtime clk scaling
 			NULL
 		},
-		3,
-		0,
-		NULL,
-		NULL,
+		.required_ip = 1, /* for MPSOC, we only have the 1st resource */
+		.flags = 0,
+		.build_priv_data = NULL,
+		.devinfo_cb = NULL,
 	},
 	{
 		XOCL_SUBDEV_MAILBOX,

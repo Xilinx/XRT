@@ -272,10 +272,12 @@ static int ospi_versal_remove(struct platform_device *pdev)
 {
 	struct ospi_versal *ov = platform_get_drvdata(pdev);
 	void *hdl;
+	int ret = 0;
 
 	if (!ov) {
 		xocl_err(&pdev->dev, "driver data is NULL");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto done;
 	}
 
 	xocl_drvinst_release(ov, &hdl);
@@ -285,14 +287,16 @@ static int ospi_versal_remove(struct platform_device *pdev)
 	platform_set_drvdata(pdev, NULL);
 	xocl_drvinst_free(hdl);
 
-	return 0;
+done:
+	OV_INFO(ov, "return: %d", ret);
+	return ret;
 }
 
 static int ospi_versal_probe(struct platform_device *pdev)
 {
 	struct ospi_versal *ov = NULL;
 	struct resource *res;
-	int ret;
+	int ret = 0;
 
 	ov = xocl_drvinst_alloc(&pdev->dev, sizeof(struct ospi_versal));
 	if (!ov)
@@ -318,6 +322,7 @@ static int ospi_versal_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
+	OV_INFO(ov, "return: %d", ret);
 	return 0;
 
 failed:
@@ -327,6 +332,7 @@ failed:
 	}
 	ospi_versal_remove(pdev);
 
+	OV_INFO(ov, "return: %d", ret);
 	return ret;
 }
 
