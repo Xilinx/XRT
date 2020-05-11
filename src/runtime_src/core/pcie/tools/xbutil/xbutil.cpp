@@ -89,6 +89,38 @@ static int str2index(const char *arg, unsigned& index)
     return 0;
 }
 
+static bool
+check_os_release(const std::vector<std::string> kernel_versions, std::ostream &ostr)
+{
+    bool ret = false;
+    const std::string release = sensor_tree::get<std::string>("system.release");
+    for (const auto& ver : kernel_versions) {
+        if (release.find(ver) != std::string::npos) {
+            ret = true;
+            break;
+        }
+    }
+    ostr << "ERROR: Kernel verison " << release << " is not supported. " 
+        << kernel_versions.back() << " is the latest supported version" << std::endl;
+    return ret;
+}
+
+static bool
+is_supported_kernel_version(std::ostream &ostr)
+{
+    std::vector<std::string> ubuntu_kernel_versions =
+        { "4.4.0", "4.13.0", "4.15.0", "4.18.0", "5.0.0", "5.3.0" };
+    std::vector<std::string> centos_rh_kernel_versions =
+        { "3.10.0-693", "3.10.0-862", "3.10.0-957", "3.10.0-1062" };
+    const std::string os = sensor_tree::get<std::string>("system.linux", "N/A");
+
+    if(os.find("Ubuntu") != std::string::npos)
+        return check_os_release(ubuntu_kernel_versions, ostr);
+    else if(os.find("Red Hat") != std::string::npos || os.find("CentOS") != std::string::npos)
+        return check_os_release(centos_rh_kernel_versions, ostr);
+    
+    return true;
+}
 
 static void print_pci_info(std::ostream &ostr)
 {
@@ -110,6 +142,8 @@ static void print_pci_info(std::ostream &ostr)
     if (pcidev::get_dev_total() != pcidev::get_dev_ready()) {
         ostr << "WARNING: card(s) marked by '*' are not ready." << std::endl;
     }
+
+    is_supported_kernel_version(ostr);
 }
 
 static int xrt_xbutil_version_cmp()
@@ -1352,6 +1386,19 @@ int xcldev::device::getXclbinuuid(uuid_t &uuid) {
 
     return 0;
 }
+
+int xcldev::device::kernelVersionTest(void) 
+{
+    if (getenv_or_null("INTERNAL_BUILD")) {
+        std::cout << "Developer's build. Skipping validation" << std::endl;
+        return -EOPNOTSUPP;
+    }
+    if (!is_supported_kernel_version(std::cout)) {
+        return  -ENODEV;
+    }
+    return 0;
+}
+
 /*
  * validate
  */
@@ -1359,6 +1406,12 @@ int xcldev::device::validate(bool quick, bool hidden)
 {
     bool withWarning = false;
     int retVal = 0;
+
+    retVal = runOneTest("Kernel version check",
+            std::bind(&xcldev::device::kernelVersionTest, this));
+    withWarning = withWarning || (retVal == 1);
+    if (retVal < 0)
+        return retVal;
 
     retVal = runOneTest("AUX power connector check",
             std::bind(&xcldev::device::auxConnectionTest, this));

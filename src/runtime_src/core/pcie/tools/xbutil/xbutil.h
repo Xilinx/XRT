@@ -1723,6 +1723,7 @@ private:
     int auxConnectionTest(void);
     int verifyKernelTest(void);
     int bandwidthKernelTest(void);
+    int kernelVersionTest(void);
     // testFunc must return 0 for success, 1 for warning, and < 0 for error
     int runOneTest(std::string testName, std::function<int(void)> testFunc);
 
