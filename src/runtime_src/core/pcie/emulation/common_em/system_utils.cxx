@@ -2,7 +2,7 @@
 
 namespace systemUtil {
 
-  inline void printErrorMessage(std::string command, int status)
+  inline void printErrorMessage(const std::string &command, int status)
   {      
     try { 
       if (status) { 
@@ -12,8 +12,6 @@ namespace systemUtil {
       }
     } 
     catch (int status) { 
-      std::cout << "ERROR: [EMU 60-600] " << command.c_str() << " Exception Caught - Failed with the error code " << status << ". PLEASE CHECK YOUR PERMISSIONS " << std::endl;
-    } catch (...) {
       std::cout << "ERROR: [EMU 60-600] " << command.c_str() << " Exception Caught - Failed with the error code " << status << ". PLEASE CHECK YOUR PERMISSIONS " << std::endl;
     }
   }
