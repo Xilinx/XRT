@@ -238,12 +238,6 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 
 	xocl_thread_stop(lro);
 
-	/* request XMC/ERT to stop */
-	xocl_mb_stop(lro);
-
-	/* If the PCIe board has PS */
-	xocl_ps_sys_reset(lro);
-
 	/*
 	 * lock pci config space access from userspace,
 	 * save state and issue PCIe secondary bus reset
@@ -254,11 +248,19 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_ICAP);
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_MAILBOX);
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_AF);
+		/* request XMC/ERT to stop */
+		xocl_mb_stop(lro);
+		/* If the PCIe board has PS */
+		xocl_ps_sys_reset(lro);
 #if defined(__PPC64__)
 		pci_fundamental_reset(lro);
 #else
 		xclmgmt_reset_pci(lro);
 #endif
+		/* restart XMC/ERT */
+		xocl_mb_reset(lro);
+		/* If the PCIe board has PS. This could take 50 seconds */
+		xocl_ps_wait(lro);
 		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_AF);
 		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_MAILBOX);
 		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_ICAP);
@@ -291,14 +293,9 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 	if (dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
 		platform_axilite_flush(lro);
 
-	/* restart XMC/ERT */
-	xocl_mb_reset(lro);
-
 	lro->reset_requested = false;
 	xocl_thread_start(lro);
 
-	/* If the PCIe board has PS. This could take 50 seconds */
-	xocl_ps_wait(lro);
 	xocl_set_master_on(lro);
 
 done:
