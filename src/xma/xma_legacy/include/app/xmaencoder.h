@@ -257,6 +257,8 @@ typedef struct XmaEncoderProperties
     int32_t         force_param;
     /** Rate Control Mode for Custom Rate Control **/
     int32_t        rc_mode;
+    /** Look Ahead Depth  needed to count number of Custom RC Params **/
+    int32_t        la_depth;
     /** array of kernel-specific custom initialization parameters */
     XmaParameter    *params;
     /** count of custom parameters for port */
