@@ -146,11 +146,11 @@ fi
 
 if [ -z $VERSION ] ; then
     echo "Installing pyopencl..."
-    #need to force install numpy version 1.8 for centos
-    if [ $FLAVOR = "centos" ] || [ $FLAVOR = "rhel" ] ; then
-        pip install --upgrade setuptools
-        pip install --ignore-installed numpy==1.8
-    fi
+    #after newer verison of pyopencl was released, newer version of numpy
+    #is needed which can only be installed with newer pip
+    pip install --upgrade pip
+    pip install --upgrade setuptools
+    pip install numpy
     pip install pyopencl
 # if older version of pyopencl and import fails prompt user to upgarde pyopencl
 elif [ $VERSION -lt 2019 ] && [ $(python -c "import pyopencl") ]; then
