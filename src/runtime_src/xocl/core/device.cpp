@@ -712,29 +712,6 @@ get_cu_memidx() const
   return m_cu_memidx;
 }
 
-device::memidx_bitmask_type
-device::
-get_cu_memidx(kernel* kernel, int argidx) const
-{
-  bool set = false;
-  memidx_bitmask_type memidx;
-  memidx.set();
-  auto sid = kernel->get_symbol_uid();
-
-  // iterate CUs
-  for (auto& cu : get_cus()) {
-    if (cu->get_symbol_uid()!=sid)
-      continue;
-    memidx &= cu->get_memidx(argidx);
-    set = true;
-  }
-
-  if (!set)
-    memidx.reset();
-
-  return memidx;
-}
-
 device::memidx_type
 device::
 get_mem_groupidx(int cuidx, int argidx) const
