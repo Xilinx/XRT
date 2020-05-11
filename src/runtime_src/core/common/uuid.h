@@ -72,7 +72,32 @@ struct uuid
     return str;
   }
 
-  bool operator < (const uuid& rhs) const
+  bool
+  operator == (const xuid_t& xuid) const
+  {
+    return uuid_compare(m_uuid, xuid) == 0;
+  }
+
+  bool
+  operator != (const xuid_t& xuid) const
+  {
+    return uuid_compare(m_uuid, xuid) != 0;
+  }
+
+  bool
+  operator == (const uuid& rhs) const
+  {
+    return uuid_compare(m_uuid, rhs.m_uuid) == 0;
+  }
+
+  bool
+  operator != (const uuid& rhs) const
+  {
+    return uuid_compare(m_uuid, rhs.m_uuid) != 0;
+  }
+
+  bool
+  operator < (const uuid& rhs) const
   {
     return uuid_compare(m_uuid, rhs.m_uuid) < 0;
   }

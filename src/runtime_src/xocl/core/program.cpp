@@ -171,6 +171,14 @@ get_xclbin(const device* d) const
   return m_binaries.begin()->second;
 }
 
+xrt_core::uuid
+program::
+get_xclbin_uuid(const device* d) const
+{
+  auto xclbin = get_xclbin(d);
+  return xclbin.uuid();
+}
+
 std::pair<const char*, const char*>
 program::
 get_xclbin_binary(const device* d) const
