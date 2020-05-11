@@ -213,7 +213,7 @@ int main(int argc, char *argv[])
         return xcldev::xclReset(argc, argv);
     } else if( std::strcmp( argv[1], "p2p" ) == 0 ) {
         return xcldev::xclP2p(argc, argv);
-    } else if( std::strcmp( argv[1], "host" ) == 0 ) {
+    } else if( std::strcmp( argv[1], "host_mem" ) == 0 ) {
         return xcldev::xclCma(argc, argv);
     }
     optind--;
@@ -717,8 +717,8 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  flash   [-d card] -a <all | shell> [-t timestamp]\n";
     std::cout << "  flash   [-d card] -p msp432_firmware\n";
     std::cout << "  flash   scan [-v]\n";
-    std::cout << "  host   [-d card] --enable --[size sz M|G]\n";
-    std::cout << "  host   [-d card] --disable\n";
+    std::cout << "  host_mem   [-d card] --enable --[size sz M|G]\n";
+    std::cout << "  host_mem   [-d card] --disable\n";
     std::cout << "\nNOTE: card for -d option can either be id or bdf\n";
     std::cout << "\nExamples:\n";
     std::cout << "Print JSON file to stdout\n";
@@ -1945,7 +1945,7 @@ int xcldev::xclCma(int argc, char *argv[])
         std::cout << "ERROR: HOST MEM already enabled"
             << std::endl;
     } else if (!ret) {
-        std::cout << "xbutil host done successfully" << std::endl;
+        std::cout << "xbutil host_mem done successfully" << std::endl;
     } else if (ret) {
         std::cout << "ERROR: " << strerror(std::abs(ret)) << std::endl;
     }
