@@ -521,28 +521,6 @@ void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u32 ddr,
 	drm_p->mm_usage_stat[ddr]->bo_count += count;
 }
 
-void xocl_cma_mm_get_usage_stat(struct xocl_drm *drm_p,
-	struct drm_xocl_mm_stat *pstat)
-{
-	if(!drm_p->cma_bank)
-		return;
-
-	pstat->memory_usage = drm_p->cma_bank->mm_inited ?
-		drm_p->cma_bank->mm_usage_stat.memory_usage : 0;
-	pstat->bo_count = drm_p->cma_bank->mm_inited ?
-		drm_p->cma_bank->mm_usage_stat.bo_count : 0;
-}
-
-void xocl_cma_mm_update_usage_stat(struct xocl_drm *drm_p,
-	u64 size, int count)
-{
-	if(!drm_p->cma_bank->mm_inited)
-		return;
-
-	drm_p->cma_bank->mm_usage_stat.memory_usage += (count > 0) ? size : -size;
-	drm_p->cma_bank->mm_usage_stat.bo_count += count;
-}
-
 int xocl_mm_insert_node(struct xocl_drm *drm_p, u32 ddr,
 			struct drm_mm_node *node, u64 size)
 {
@@ -616,12 +594,22 @@ uint32_t xocl_get_shared_ddr(struct xocl_drm *drm_p, struct mem_data *m_data)
 static void xocl_cma_mem_free(struct xocl_drm *drm_p, uint32_t idx)
 {
 	struct xocl_cma_memory *cma_mem = &drm_p->cma_bank->cma_mem[idx];
+	struct sg_table *sgt = NULL;
 
 	if (!cma_mem)
 		return;
 
+	sgt = cma_mem->sgt;
+	if (sgt) {
+		dma_unmap_sg(drm_p->ddev->dev, sgt->sgl, sgt->orig_nents, DMA_FROM_DEVICE);
+		sg_free_table(sgt);
+		vfree(sgt);
+		cma_mem->sgt = NULL;
+	}
+
 	if (cma_mem->vaddr) {
-		dma_free_coherent(&drm_p->ddev->pdev->dev, cma_mem->size, cma_mem->vaddr, cma_mem->dma_addr);
+		dma_free_coherent(&drm_p->ddev->pdev->dev, cma_mem->size, cma_mem->vaddr, cma_mem->paddr);
+		cma_mem->vaddr = NULL;
 	} else if (cma_mem->pages) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0)
 		release_pages(cma_mem->pages, cma_mem->size >> PAGE_SHIFT);
@@ -630,8 +618,10 @@ static void xocl_cma_mem_free(struct xocl_drm *drm_p, uint32_t idx)
 #endif
 	}
 
-	if (cma_mem->pages)
+	if (cma_mem->pages) {
 		vfree(cma_mem->pages);
+		cma_mem->pages = NULL;
+	}
 }
 
 static void xocl_cma_mem_free_all(struct xocl_drm *drm_p)
@@ -682,6 +672,9 @@ int xocl_cleanup_mem(struct xocl_drm *drm_p)
 			if (XOCL_IS_STREAM(topology, i))
 				continue;
 
+			if (!strncmp(topology->m_mem_data[i].m_tag, "HOST[0]", 7))
+				xocl_addr_translator_disable_remap(drm_p->xdev);
+
 			xocl_info(drm_p->ddev->dev, "Taking down DDR : %d", i);
 			addr = topology->m_mem_data[i].m_base_address;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
@@ -712,6 +705,21 @@ done:
 
 	mutex_unlock(&drm_p->mm_lock);
 	return 0;
+}
+
+int xocl_set_cma_bank(struct xocl_drm *drm_p, uint64_t base_addr, size_t ddr_bank_size)
+{
+	uint64_t host_reserve_size = xocl_addr_translator_get_range(drm_p->xdev);
+	int ret = 0;
+
+	if (ddr_bank_size > host_reserve_size) {
+		ret = -E2BIG;
+		goto done;
+	}
+	ret = xocl_addr_translator_enable_remap(drm_p->xdev, base_addr);
+
+done:
+	return ret;
 }
 
 int xocl_init_mem(struct xocl_drm *drm_p)
@@ -834,6 +842,11 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 		drm_mm_init(drm_p->mm[i], mem_data->m_base_address,
 				ddr_bank_size - reserved1 - reserved2);
 
+		if (!strncmp(mem_data->m_tag, "HOST[0]", 7)) {
+			err = xocl_set_cma_bank(drm_p, mem_data->m_base_address, ddr_bank_size);
+			if (err)
+				goto failed;
+		}
 		xocl_info(drm_p->ddev->dev, "drm_mm_init called");
 	}
 	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
@@ -860,32 +873,28 @@ failed:
 	return err;
 }
 
-static int is_chunk_cma(struct page **pages, uint64_t page_count)
+bool is_cma_bank(struct xocl_drm *drm_p, uint32_t memidx)
 {
+	struct mem_topology *topo = NULL;
 	int err = 0;
-	struct sg_table *sgt = NULL;
-	uint64_t sz = page_count << PAGE_SHIFT;
+	bool ret = false;
 
-	sgt = kmalloc(sizeof(struct sg_table), GFP_KERNEL);
-	if (!sgt) {
-		err = -ENOMEM;
-		goto out;
-	}
+	err = XOCL_GET_MEM_TOPOLOGY(drm_p->xdev, topo);
+	if (err)
+		return ret;
 
-	err = sg_alloc_table_from_pages(sgt, pages, page_count, 0, sz, GFP_KERNEL);
-	if (err) {
-		err = -ENOMEM;
-		goto out;
-	}
+	if (topo == NULL)
+		goto done;
 
-	if (sgt->orig_nents != 1) {
-		err = -EINVAL;
-		goto out;
-	}
+	if (!topo->m_mem_data[memidx].m_used)
+		goto done;
 
-out:
-	kfree(sgt);
-	return err;
+	if (!strncmp(topo->m_mem_data[memidx].m_tag, "HOST[0]", 7))
+		ret = true;
+
+done:
+	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
+	return ret;
 }
 
 static int xocl_cma_mem_alloc_huge_page_by_idx(struct xocl_drm *drm_p, uint32_t idx, uint64_t user_addr, uint64_t page_sz)
@@ -894,6 +903,7 @@ static int xocl_cma_mem_alloc_huge_page_by_idx(struct xocl_drm *drm_p, uint32_t 
 	struct device *dev = drm_p->ddev->dev;
 	int ret = 0;
 	struct xocl_cma_memory *cma_mem = &drm_p->cma_bank->cma_mem[idx];
+	struct sg_table *sgt = NULL;
 
 	if (!(XOCL_ACCESS_OK(VERIFY_WRITE, user_addr, page_sz))) {
 		xocl_err(dev, "Invalid huge page user pointer\n");
@@ -915,18 +925,47 @@ static int xocl_cma_mem_alloc_huge_page_by_idx(struct xocl_drm *drm_p, uint32_t 
 		goto done;
 	}
 
-	ret = is_chunk_cma(cma_mem->pages, page_count);
-	if (ret) {
-		xocl_err(dev, "not a cma chunk\n");
+	sgt = vzalloc(sizeof(struct sg_table));
+	if (!sgt) {
+		ret = -ENOMEM;
 		goto done;
 	}
 
+	ret = sg_alloc_table_from_pages(sgt, cma_mem->pages, page_count, 0, page_sz, GFP_KERNEL);
+	if (ret) {
+		ret = -ENOMEM;
+		goto done;
+	}
+
+	if (sgt->orig_nents != 1) {
+		xocl_err(dev, "Host mem is not physically contiguous\n");
+		ret = -EINVAL;
+		goto done;
+	}
+
+	if (!dma_map_sg(dev, sgt->sgl, sgt->orig_nents, DMA_FROM_DEVICE)) {
+		ret =-ENOMEM;
+		goto done;
+	}
+
+	if (sgt->orig_nents != sgt->nents) {
+		ret =-ENOMEM;
+		goto done;		
+	}
+
 	cma_mem->size = page_sz;
-	cma_mem->paddr = page_to_phys(cma_mem->pages[0]);
+	cma_mem->paddr = sg_dma_address(sgt->sgl);
+	cma_mem->sgt = sgt;
+
 done:
 	if (ret) {
 		vfree(cma_mem->pages);
 		cma_mem->pages = NULL;
+		if (sgt) {
+			dma_unmap_sg(dev, sgt->sgl, sgt->orig_nents, DMA_FROM_DEVICE);
+			sg_free_table(sgt);
+			vfree(sgt);
+		}
 	}
 
 	return ret;
@@ -1017,17 +1056,11 @@ static int xocl_cma_mem_alloc_huge_page(struct xocl_drm *drm_p, struct drm_xocl_
 	if (ret)
 		goto done;
 
-	drm_p->cma_bank->start_addr = ADDR_TRANSLATOR_OFFSET;
 	/* Remember how many cma mem we allocate*/
 	drm_p->cma_bank->entry_num = rounddown_num;
 	drm_p->cma_bank->entry_sz = page_sz;
 
-	drm_mm_init(&drm_p->cma_bank->mm, ADDR_TRANSLATOR_OFFSET, page_sz*rounddown_num);
-
-	drm_p->cma_bank->mm_inited = true;
-
-	ret = xocl_addr_translator_set_page_table(xdev, phys_addrs, drm_p->cma_bank->start_addr,
-							page_sz, rounddown_num);
+	ret = xocl_addr_translator_set_page_table(xdev, phys_addrs, page_sz, rounddown_num);
 done:
 	vfree(user_addr);
 	vfree(phys_addrs);
@@ -1084,9 +1117,8 @@ static int xocl_cma_mem_alloc_by_idx(struct xocl_drm *drm_p, uint64_t size, uint
 	}
 
 	cma_mem->pages = pages;
-	cma_mem->paddr = page_to_phys(pages[0]);
+	cma_mem->paddr = dma_addr;
 	cma_mem->size = size;
-	cma_mem->dma_addr = dma_addr;
 
 done:
 	if (ret)
@@ -1101,8 +1133,7 @@ static void __xocl_cma_bank_free(struct xocl_drm *drm_p)
 		return;
 
 	xocl_cma_mem_free_all(drm_p);
-	if (drm_p->cma_bank->mm_inited)
-		drm_mm_takedown(&drm_p->cma_bank->mm);
+	xocl_addr_translator_clean(drm_p->xdev);
 	vfree(drm_p->cma_bank);
 	drm_p->cma_bank = NULL;
 }
@@ -1170,16 +1201,10 @@ static int xocl_cma_mem_alloc(struct xocl_drm *drm_p, uint64_t size)
 	if (ret)
 		goto done;
 
-	drm_p->cma_bank->start_addr = ADDR_TRANSLATOR_OFFSET;
 	drm_p->cma_bank->entry_num = page_num;
 	drm_p->cma_bank->entry_sz = page_sz;
 
-	drm_mm_init(&drm_p->cma_bank->mm, ADDR_TRANSLATOR_OFFSET, page_sz*page_num);
-
-	drm_p->cma_bank->mm_inited = true;
-
-	ret = xocl_addr_translator_set_page_table(xdev, phys_addrs, drm_p->cma_bank->start_addr,
-							page_sz, page_num);
+	ret = xocl_addr_translator_set_page_table(xdev, phys_addrs, page_sz, page_num);
 done:	
 	vfree(phys_addrs);
 	return ret;
@@ -1202,14 +1227,21 @@ int xocl_cma_bank_alloc(struct xocl_drm *drm_p, struct drm_xocl_alloc_cma_info *
 
 	if (!num) {
 		err = -EINVAL;
-		DRM_ERROR("Doesn't support CMA feature");
-		goto done;
+		DRM_ERROR("Doesn't support HOST MEM feature");
+		goto unlock;
 	}
 
 	if (drm_p->cma_bank) {
-		err = -EINVAL;
-		DRM_ERROR("CMA BANK already allocated");
-		goto done;
+		uint64_t allocated_size = drm_p->cma_bank->entry_num * drm_p->cma_bank->entry_sz;
+		if (allocated_size == cma_info->total_size) {
+			DRM_INFO("HOST MEM already allocated, skip");
+			goto unlock;
+		} else {
+			DRM_ERROR("HOST MEM already allocated, size 0x%llx", allocated_size);
+			DRM_ERROR("Please run xbutil host disable first");
+			err = -EBUSY;
+			goto unlock;
+		}
 	}
 
 	drm_p->cma_bank = vzalloc(sizeof(struct xocl_cma_bank)+num*sizeof(struct xocl_cma_memory));
@@ -1231,7 +1263,7 @@ int xocl_cma_bank_alloc(struct xocl_drm *drm_p, struct drm_xocl_alloc_cma_info *
 done:
 	if (err)
 		__xocl_cma_bank_free(drm_p);
-
+unlock:
 	mutex_unlock(&drm_p->mm_lock);
 	DRM_INFO("%s, %d", __func__, err);
 	return err;

@@ -6,7 +6,7 @@ namespace systemUtil {
   {
     if(!status)// no error
       return;
-    std::cout<<"ERROR: [SDx 60-600] "<< command <<" failed with the error code "<< status<< ". PLEASE CHECK YOUR PERMISSIONS "<<std::endl;
+    std::cout << "ERROR: [EMU 60-600] " << command << " failed with the error code " << status << ". PLEASE CHECK YOUR PERMISSIONS " << std::endl;
   }
   
   void makeSystemCall (std::string &operand1, systemOperation operation, std::string operand2 )

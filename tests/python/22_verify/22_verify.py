@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 """
  Copyright (C) 2019-2020 Xilinx, Inc

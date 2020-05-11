@@ -82,6 +82,8 @@ void TraceS2MM::reset()
     write32(TS2MM_RST, 0x0);
 
     mPacketFirstTs = 0;
+    mPartialTs = 0;
+    mModulus = 0;
     mclockTrainingdone = false;
 }
 
@@ -131,7 +133,7 @@ void TraceS2MM::showStatus()
 
 inline void TraceS2MM::parsePacketClockTrain(uint64_t packet, uint64_t firstTimestamp, uint32_t mod, xclTraceResults &result)
 {
-    if(out_stream)
+    if (out_stream)
         (*out_stream) << " TraceS2MM::parsePacketClockTrain " << std::endl;
 
     uint64_t tsmask = 0x1FFFFFFFFFFF;
@@ -141,16 +143,20 @@ inline void TraceS2MM::parsePacketClockTrain(uint64_t packet, uint64_t firstTime
         result.Timestamp = timestamp - firstTimestamp;
       else
         result.Timestamp = timestamp + (tsmask - firstTimestamp);
-      //result.isClockTrain = true;
       result.isClockTrain = 1 ;
     }
-    uint64_t partial = (((packet >> 45) & 0xFFFF) << (16 * mod));
-    result.HostTimestamp = result.HostTimestamp | partial;
 
-    if (mod == 3 && out_stream) {
-      (*out_stream) << std::hex
-      << "Clock Training sample : " << result.HostTimestamp << " " << result.Timestamp
-      << std::dec << std::endl;
+    mPartialTs = mPartialTs | (((packet >> 45) & 0xFFFF) << (16 * mod));
+
+    if (mod == 3) {
+      result.HostTimestamp = mPartialTs;
+      mPartialTs = 0;
+
+      if (out_stream) {
+        (*out_stream) << std::hex << "Clock Training sample : "
+        << result.HostTimestamp << " " << result.Timestamp
+        << std::dec << std::endl;
+      }
     }
 }
 
@@ -215,7 +221,6 @@ void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector& t
       count = MAX_TRACE_NUMBER_SAMPLES;
     }
     auto pos = static_cast<uint64_t*>(buf);
-    uint32_t mod = 0;
 
     /*
     * Seek until we find 8 clock training packets
@@ -244,9 +249,9 @@ void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector& t
       }
 
       if (isClockTrain) {
-        parsePacketClockTrain(currentPacket, mPacketFirstTs, mod, traceVector.mArray[tvindex]);
-        tvindex = (mod == 3) ? tvindex + 1 : tvindex;
-        mod     = (mod == 3) ? 0 : mod + 1;
+        parsePacketClockTrain(currentPacket, mPacketFirstTs, mModulus, traceVector.mArray[tvindex]);
+        tvindex  = (mModulus == 3) ? tvindex + 1 : tvindex;
+        mModulus = (mModulus == 3) ? 0 : mModulus+ 1;
       }
       else {
         parsePacket(currentPacket, mPacketFirstTs, traceVector.mArray[tvindex++]);

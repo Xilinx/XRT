@@ -286,6 +286,7 @@ struct xocl_subdev {
 	int				inst;
 	int				pf;
 	struct cdev			*cdev;
+	bool				hold;
 
 	struct resource		res[XOCL_SUBDEV_MAX_RES];
 	char	res_name[XOCL_SUBDEV_MAX_RES][XOCL_SUBDEV_RES_NAME_LEN];
@@ -835,15 +836,25 @@ struct xocl_dna_funcs {
 	(ADDR_TRANSLATOR_DEV(xdev) && ADDR_TRANSLATOR_OPS(xdev) && ADDR_TRANSLATOR_OPS(xdev)->cb)
 #define	xocl_addr_translator_get_entries_num(xdev)			\
 	(ADDR_TRANSLATOR_CB(xdev, get_entries_num) ? ADDR_TRANSLATOR_OPS(xdev)->get_entries_num(ADDR_TRANSLATOR_DEV(xdev)) : 0)
-#define	xocl_addr_translator_set_page_table(xdev, addrs, base_addr, sz, num)			\
-	(ADDR_TRANSLATOR_CB(xdev, get_entries_num) ? ADDR_TRANSLATOR_OPS(xdev)->set_page_table(ADDR_TRANSLATOR_DEV(xdev), addrs, base_addr, sz, num) : -ENODEV)
-
-#define ADDR_TRANSLATOR_OFFSET		0x10000000000
+#define	xocl_addr_translator_set_page_table(xdev, addrs, sz, num)			\
+	(ADDR_TRANSLATOR_CB(xdev, set_page_table) ? ADDR_TRANSLATOR_OPS(xdev)->set_page_table(ADDR_TRANSLATOR_DEV(xdev), addrs, sz, num) : -ENODEV)
+#define	xocl_addr_translator_get_range(xdev)			\
+	(ADDR_TRANSLATOR_CB(xdev, get_range) ? ADDR_TRANSLATOR_OPS(xdev)->get_range(ADDR_TRANSLATOR_DEV(xdev)) : 0)
+#define	xocl_addr_translator_enable_remap(xdev, base_addr)			\
+	(ADDR_TRANSLATOR_CB(xdev, enable_remap) ? ADDR_TRANSLATOR_OPS(xdev)->enable_remap(ADDR_TRANSLATOR_DEV(xdev), base_addr) : -ENODEV)
+#define	xocl_addr_translator_disable_remap(xdev)			\
+	(ADDR_TRANSLATOR_CB(xdev, disable_remap) ? ADDR_TRANSLATOR_OPS(xdev)->disable_remap(ADDR_TRANSLATOR_DEV(xdev)) : -ENODEV)
+#define	xocl_addr_translator_clean(xdev)			\
+	(ADDR_TRANSLATOR_CB(xdev, clean) ? ADDR_TRANSLATOR_OPS(xdev)->clean(ADDR_TRANSLATOR_DEV(xdev)) : -ENODEV)
 
 struct xocl_addr_translator_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	u32 (*get_entries_num)(struct platform_device *pdev);
-	int (*set_page_table)(struct platform_device *pdev, uint64_t *phys_addrs, uint64_t base_addr, uint64_t entry_sz, uint32_t num);
+	u64 (*get_range)(struct platform_device *pdev);
+	int (*set_page_table)(struct platform_device *pdev, uint64_t *phys_addrs, uint64_t entry_sz, uint32_t num);
+	int (*enable_remap)(struct platform_device *pdev, uint64_t base_addr);
+	int (*disable_remap)(struct platform_device *pdev);
+	int (*clean)(struct platform_device *pdev);
 };
 
 /**
@@ -1562,14 +1573,12 @@ int xocl_wait_pci_status(struct pci_dev *pdev, u16 mask, u16 val, int timeout);
 
 static inline void xocl_lock_xdev(xdev_handle_t xdev)
 {
-	if (!mutex_is_locked(&XDEV(xdev)->lock))
-		mutex_lock(&XDEV(xdev)->lock);
+	mutex_lock(&XDEV(xdev)->lock);
 }
 
 static inline void xocl_unlock_xdev(xdev_handle_t xdev)
 {
-	if (mutex_is_locked(&XDEV(xdev)->lock))
-		mutex_unlock(&XDEV(xdev)->lock);
+	mutex_unlock(&XDEV(xdev)->lock);
 }
 
 static inline uint32_t xocl_dr_reg_read32(xdev_handle_t xdev, void __iomem *addr)

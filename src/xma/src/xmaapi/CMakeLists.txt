@@ -37,7 +37,8 @@ target_link_libraries(xma2api
   gcc_s
   stdc++
   xml2
-  boost_filesystem
+  ${Boost_FILESYSTEM_LIBRARY}
+  ${Boost_SYSTEM_LIBRARY}
   )
   #yaml
 

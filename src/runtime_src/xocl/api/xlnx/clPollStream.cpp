@@ -34,6 +34,8 @@ validOrError(cl_stream                  stream,
 	cl_int*                         errcode_ret)
 
 {
+  if (min_num_completion <= 0)
+    throw error(CL_INVALID_VALUE,"minimum number of completion must be > 0");
 }
 
 static cl_int
@@ -46,12 +48,9 @@ clPollStream(cl_stream                 stream,
 	cl_int*                         errcode_ret)
 {
   validOrError(stream,completions,min,max,actual,timeout,errcode_ret);
-
-  printf("clPollStream() -> xocl(stream)->poll_stream.\n");
-
-  xocl::xocl(stream)->poll_stream(completions,min,max,actual,timeout);
-  xocl::assign(errcode_ret,CL_SUCCESS);
-  return CL_SUCCESS;
+  int ret = xocl::xocl(stream)->poll_stream(completions,min,max,actual,timeout);
+  xocl::assign(errcode_ret, ret);
+  return ret;
 }
 
 } //xocl

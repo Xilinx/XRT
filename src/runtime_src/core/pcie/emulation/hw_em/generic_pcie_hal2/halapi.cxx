@@ -506,5 +506,16 @@ int xclGetSubdevPath(xclDeviceHandle handle,  const char* subdev,
 {
   return 0;
 }
+//Mapped CU register space for xclRegRead/Write()  
+int xclRegWrite(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset, uint32_t data)
+{
+  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
+  return drv ? drv->xclRegWrite(cu_index, offset, data) : -ENODEV;
+}
 
+int xclRegRead(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset, uint32_t *datap)
+{
+  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
+  return drv ? drv->xclRegRead(cu_index, offset, datap) : -ENODEV;
+}
 

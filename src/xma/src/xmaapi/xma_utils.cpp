@@ -390,19 +390,19 @@ void get_session_cmd_load() {
     //static const std::string logger =  xrt_core::config::get_logging();
     //std::cout << "XMA-Log-Info: To: " << logger << std::endl;
     xma_logmsg(level, "XMA-Session-Stats", "=== Session CU Command Relative Loads: ===");
-    for (auto& itr1: g_xma_singleton->all_sessions) {
+    for (auto& itr1: g_xma_singleton->all_sessions_vec) {
         xma_logmsg(level, "XMA-Session-Stats", "--------");
-        XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) itr1.second.hw_session.private_do_not_use;
+        XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) itr1.hw_session.private_do_not_use;
         float avg_cmds = 0;
         if (priv1->num_cu_cmds_avg != 0) {
             avg_cmds = priv1->num_cu_cmds_avg / STATS_WINDOW;
         } else if (priv1->num_samples > 0) {
             avg_cmds = priv1->num_cu_cmds_avg_tmp / ((float)priv1->num_samples);
         }
-        xma_logmsg(level, "XMA-Session-Stats", "Session id: %d, type: %s, avg cu cmds: %.2f, busy vs idle: %d vs %d", itr1.first, 
-            xma_core::get_session_name(itr1.second.session_type).c_str(), avg_cmds, (uint32_t)priv1->cmd_busy, (uint32_t)priv1->cmd_idle);
+        xma_logmsg(level, "XMA-Session-Stats", "Session id: %d, type: %s, avg cu cmds: %.2f, busy vs idle: %d vs %d", itr1.session_id, 
+            xma_core::get_session_name(itr1.session_type).c_str(), avg_cmds, (uint32_t)priv1->cmd_busy, (uint32_t)priv1->cmd_idle);
 
-        xma_logmsg(level, "XMA-Session-Stats", "Session id: %d, max busy vs idle ticks: %d vs %d, relative cu load: %d", itr1.first, (uint32_t)priv1->cmd_busy_ticks, (uint32_t)priv1->cmd_idle_ticks, (uint32_t)priv1->kernel_complete_total);
+        xma_logmsg(level, "XMA-Session-Stats", "Session id: %d, max busy vs idle ticks: %d vs %d, relative cu load: %d", itr1.session_id, (uint32_t)priv1->cmd_busy_ticks, (uint32_t)priv1->cmd_idle_ticks, (uint32_t)priv1->kernel_complete_total);
         XmaHwKernel* kernel_info = priv1->kernel_info;
         if (kernel_info == NULL) {
             continue;
@@ -415,7 +415,7 @@ void get_session_cmd_load() {
         } else if (kernel_info->num_samples > 0) {
             avg_cmds = kernel_info->num_cu_cmds_avg_tmp / ((float)kernel_info->num_samples);
         }
-        xma_logmsg(level, "XMA-Session-Stats", "Session id: %d, cu: %s, avg cmds: %.2f, busy vs idle: %d vs %d", itr1.first, kernel_info->name, avg_cmds, (uint32_t)kernel_info->cu_busy, (uint32_t)kernel_info->cu_idle);
+        xma_logmsg(level, "XMA-Session-Stats", "Session id: %d, cu: %s, avg cmds: %.2f, busy vs idle: %d vs %d", itr1.session_id, kernel_info->name, avg_cmds, (uint32_t)kernel_info->cu_busy, (uint32_t)kernel_info->cu_idle);
     }
     xma_logmsg(level, "XMA-Session-Stats", "--------");
     xma_logmsg(level, "XMA-Session-Stats", "Num of Decoders: %d", (uint32_t)g_xma_singleton->num_decoders);
@@ -505,78 +505,92 @@ int32_t get_default_ddr_index(int32_t dev_index, int32_t cu_index) {
     }
 }
 
-void xma_enable_mode1(void) {
-    if (xrt_core::config::get_xma_mode2()) {
-        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "xma_enable_mode1: Mode2 is selected. Use either mode1 or mode2");
-        return;
-    }
-    if (g_xma_singleton->num_execbos != XMA_NUM_EXECBO_DEFAULT) {
-        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "xma_enable_mode1: Mode already changed. No action taken");
-        return;
-    }
-    g_xma_singleton->num_execbos = XMA_NUM_EXECBO_MODE1;
-    xma_logmsg(XMA_INFO_LOG, XMAUTILS_MOD, "xma_enable_mode1: Enabling bulk submission of cu commands");
-}
-
-void xma_enable_mode2(void) {
-    if (g_xma_singleton->num_execbos != XMA_NUM_EXECBO_DEFAULT) {
-        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "xma_enable_mode2: Mode already changed");
-        return;
-    }
-    g_xma_singleton->num_execbos = XMA_NUM_EXECBO_MODE2;
-    xma_logmsg(XMA_INFO_LOG, XMAUTILS_MOD, "xma_enable_mode2: Enabling atmost two cu command submission per xma_session at a time");
-}
-
-
 int32_t check_all_execbo(XmaSession s_handle) {
     //NOTE: execbo lock must be already obtained
-    //Check only for commands in this sessions else too much checking will waste CPU cycles
+    //Check only for commands in-progress in this sessions else too much checking will waste CPU cycles
 
     XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
-    //XmaHwDevice *dev_tmp1 = priv1->device;
 
-    if (!priv1->CU_cmds.empty()) {
-        for (auto itr_tmp1 = priv1->CU_cmds.begin(); itr_tmp1 != priv1->CU_cmds.end(); /* NOTHING */) {
-            //XmaHwExecBO* execbo_tmp1 = &dev_tmp1->kernel_execbos[itr_tmp1->second.execbo_id];
-            XmaHwExecBO* execbo_tmp1 = &priv1->kernel_execbos[itr_tmp1->second.execbo_id];
-
-            if (execbo_tmp1->session_id != s_handle.session_id)
-            {
-                xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "xma_plg_check_all_execbo: Unexpected error-1. Please report this to sarabjee@xilinx.com\n");
-                return XMA_ERROR;
-            }
-            if (itr_tmp1->first != execbo_tmp1->cu_cmd_id1) {
-                xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "xma_plg_check_all_execbo: Unexpected error-2. Please report this to sarabjee@xilinx.com\n");
-                return XMA_ERROR;
-            }
-            if (itr_tmp1->second.cmd_id2 != execbo_tmp1->cu_cmd_id2) {
-                xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "xma_plg_check_all_execbo: Unexpected error-2. Please report this to sarabjee@xilinx.com\n");
-                return XMA_ERROR;
-            }
-            if (itr_tmp1->second.cu_id != execbo_tmp1->cu_index) {
-                xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "xma_plg_check_all_execbo: Unexpected error-3. Please report this to sarabjee@xilinx.com\n");
-                return XMA_ERROR;
-            }
-
-            if (execbo_tmp1->in_use) {
-                ert_start_kernel_cmd *cu_cmd = 
-                    (ert_start_kernel_cmd*)execbo_tmp1->data;
-                if (cu_cmd->state == ERT_CMD_STATE_COMPLETED)
-                {
-                    if (s_handle.session_type < XMA_ADMIN) {
-                        priv1->kernel_complete_count++;
-                        priv1->kernel_complete_total++;
+    if (g_xma_singleton->cpu_mode == XMA_CPU_MODE2) {
+        bool notify_execbo_is_free = false;
+        if (priv1->num_cu_cmds != 0) {
+            int32_t i;
+            int32_t num_execbo = priv1->num_execbo_allocated;
+            for (i = 0; i < num_execbo; i++) {
+                auto& ebo = priv1->kernel_execbos[i];
+                if (ebo.in_use) {
+                    ert_start_kernel_cmd *cu_cmd = 
+                        (ert_start_kernel_cmd*)ebo.data;
+                    if (cu_cmd->state == ERT_CMD_STATE_COMPLETED) {
+                        if (s_handle.session_type < XMA_ADMIN) {
+                            priv1->kernel_complete_count++;
+                            priv1->kernel_complete_total++;
+                        }
+                        notify_execbo_is_free = true;
+                        ebo.in_use = false;
+                        cu_cmd->state = ERT_CMD_STATE_MAX;
+                        priv1->CU_cmds.erase(ebo.cu_cmd_id1);
+                        priv1->num_cu_cmds--;
                     }
-                    execbo_tmp1->in_use = false;
-
-                  itr_tmp1 = priv1->CU_cmds.erase(itr_tmp1);
-                  priv1->num_cu_cmds--;
-                } else {
-                ++itr_tmp1;
                 }
-            } else {
-              ++itr_tmp1;
             }
+        } else {
+            notify_execbo_is_free = true;
+        }
+        //In this mode schedule_work_item still waits for this
+        if (notify_execbo_is_free) {
+            priv1->execbo_is_free.notify_all();
+        }
+    } else {
+        if (priv1->num_cu_cmds != 0) {
+            bool notify_work_item_done_1plus = false;
+            bool notify_execbo_is_free = false;
+
+            for (auto ebo_it = priv1->execbo_to_check.begin(); ebo_it != priv1->execbo_to_check.end(); /*incr inside*/) {
+                int32_t val = *ebo_it;
+                auto& ebo = priv1->kernel_execbos[val];
+                if (ebo.in_use) {
+                    ert_start_kernel_cmd *cu_cmd = 
+                        (ert_start_kernel_cmd*)ebo.data;
+                    if (cu_cmd->state == ERT_CMD_STATE_COMPLETED) {
+                        if (s_handle.session_type < XMA_ADMIN) {
+                            priv1->kernel_complete_count++;
+                            priv1->kernel_complete_total++;
+                        }
+                        ebo.in_use = false;
+                        cu_cmd->state = ERT_CMD_STATE_MAX;
+                        notify_work_item_done_1plus = true;
+                        notify_execbo_is_free = true;
+                        priv1->CU_cmds.erase(ebo.cu_cmd_id1);
+                        priv1->num_cu_cmds--;
+                        //priv1->execbo_lru.emplace_back(val);Let's not reuse execbo immediately after completion
+                        ebo_it = priv1->execbo_to_check.erase(ebo_it);
+                    } else {
+                        ebo_it++;
+                    }
+                } else {
+                    notify_execbo_is_free = true;
+                    ebo_it++;
+                }
+            }
+
+            if (notify_execbo_is_free) {
+                priv1->execbo_is_free.notify_all();
+            }
+            if (notify_work_item_done_1plus) {
+                priv1->work_item_done_1plus.notify_all();
+                if (priv1->slowest_element) {
+                    std::this_thread::yield();
+                }
+            } else if (priv1->kernel_complete_count != 0) {
+                priv1->work_item_done_1plus.notify_all();
+                if (priv1->slowest_element) {
+                    std::this_thread::yield();
+                }
+            }
+        } else {
+            priv1->kernel_done_or_free.notify_all();
+            priv1->execbo_is_free.notify_all();
         }
     }
 

@@ -554,12 +554,11 @@ get_kernel_arguments(const char* xml_data, size_t xml_size, const std::string& k
         continue;
 
       std::string id = xml_arg.second.get<std::string>("<xmlattr>.id");
-      size_t index = id.empty()
-        ? std::numeric_limits<size_t>::max()
-        : convert(id);
+      size_t index = id.empty() ? kernel_argument::no_index : convert(id);
 
       args.emplace_back(kernel_argument{
           xml_arg.second.get<std::string>("<xmlattr>.name")
+         ,xml_arg.second.get<std::string>("<xmlattr>.type")
          ,index
          ,convert(xml_arg.second.get<std::string>("<xmlattr>.offset"))
          ,convert(xml_arg.second.get<std::string>("<xmlattr>.size"))
