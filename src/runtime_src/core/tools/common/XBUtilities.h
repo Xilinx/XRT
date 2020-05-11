@@ -79,6 +79,7 @@ namespace XBUtilities {
   void collect_devices( const std::set<std::string>  &_deviceBDFs,
                         bool _inUserDomain,
                         xrt_core::device_collection &_deviceCollection);
+  void report_available_devices();
 };
 
 #endif

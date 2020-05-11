@@ -66,7 +66,7 @@ namespace {
  * Update shell on the board for auto flash
  */
 static void 
-update_shell(unsigned int  index, const std::string& primary, const std::string& secondary)
+update_shell(unsigned int index, const std::string& primary, const std::string& secondary)
 {
   Flasher flasher(index);
   if(!flasher.isValid())
@@ -76,17 +76,20 @@ update_shell(unsigned int  index, const std::string& primary, const std::string&
     throw xrt_core::error("Shell not specified");
 
   auto pri = std::make_unique<firmwareImage>(primary.c_str(), MCS_FIRMWARE_PRIMARY);
-  std::unique_ptr<firmwareImage> sec;
   if (pri->fail())
     throw xrt_core::error(boost::str(boost::format("Failed to read %s") % primary));
+
+  std::unique_ptr<firmwareImage> sec;
   if (!secondary.empty()) {
     sec = std::make_unique<firmwareImage>(secondary.c_str(),
       MCS_FIRMWARE_SECONDARY);
     if (sec->fail())
       sec = nullptr;
   }
-
-  flasher.upgradeFirmware("", pri.get(), sec.get());
+  
+  if (flasher.upgradeFirmware("", pri.get(), sec.get()) != 0)
+    throw xrt_core::error("Failed to update shell");
+  
   std::cout << boost::format("%-8s : %s \n") % "INFO" % "Shell is updated successfully.";
 }
 
@@ -110,16 +113,19 @@ update_shell(unsigned int index, const std::string& flashType,
     throw xrt_core::error("Shell not specified");
 
   auto pri = std::make_unique<firmwareImage>(primary.c_str(), MCS_FIRMWARE_PRIMARY);
-  std::unique_ptr<firmwareImage> sec;
   if (pri->fail())
     throw xrt_core::error(boost::str(boost::format("Failed to read %s") % primary));
+
+  std::unique_ptr<firmwareImage> sec;
   if (!secondary.empty()) {
     sec = std::make_unique<firmwareImage>(secondary.c_str(), MCS_FIRMWARE_SECONDARY);
     if (sec->fail())
-      sec = nullptr;
+      throw xrt_core::error(boost::str(boost::format("Failed to read %s") % secondary));
   }
 
-  flasher.upgradeFirmware(flashType, pri.get(), sec.get());
+  if (flasher.upgradeFirmware(flashType, pri.get(), sec.get()) != 0)
+    throw xrt_core::error("Failed to update shell");
+  
   std::cout << boost::format("%-8s : %s \n") % "INFO" % "Shell is updated successfully.";
   std::cout << "****************************************************\n";
   std::cout << "Cold reboot machine to load the new image on card.\n";
@@ -141,7 +147,8 @@ update_SC(unsigned int  index, const std::string& file)
   if (bmc->fail())
     throw xrt_core::error(boost::str(boost::format("Failed to read %s") % file));
 
-  flasher.upgradeBMCFirmware(bmc.get());
+  if (flasher.upgradeBMCFirmware(bmc.get()) != 0)
+    throw xrt_core::error("Failed to update SC");
 }
 
 /* 
@@ -287,25 +294,13 @@ updateShellAndSC(unsigned int  boardIdx, DSAInfo& candidate, bool& reboot)
   if (!same_bmc) {
     std::cout << "Updating SC firmware on card[" << flasher.sGetDBDF() <<
       "]" << std::endl;
-    auto ret = 0;
     update_SC(boardIdx, candidate.file);
-    if (ret != 0) {
-      std::cout << "WARNING: Failed to update SC firmware on card ["
-        << flasher.sGetDBDF() << "]" << std::endl;
-    }
   }
 
   if (!same_dsa) {
     std::cout << boost::format("[%s] : Updating shell\n") % flasher.sGetDBDF();
-
-    auto ret = 0;
     update_shell(boardIdx, candidate.file, candidate.file);
-    if (ret != 0) {
-      std::cout << "ERROR: Failed to update shell on card ["
-        << flasher.sGetDBDF() << "]" << std::endl;
-    } else {
-      reboot = true;
-    }
+    reboot = true;
   }
 
   if (!same_dsa && !reboot)
@@ -359,9 +354,12 @@ auto_flash(xrt_core::device_collection& deviceCollection, bool force)
     for (auto& p : boardsToUpdate) {
       bool reboot;
       std::cout << std::endl;
-      if (updateShellAndSC(p.first, p.second, reboot) == 0) {
+      try {
+        updateShellAndSC(p.first, p.second, reboot);
         report_status << boost::format("  [%s] : Successfully flashed\n") % getBDF(p.first);
         success++;
+      } catch (const xrt_core::error& e) {
+        std::cerr << boost::format("ERROR: %s\n") % e.what();
       }
       needreboot |= reboot;
     }
@@ -436,7 +434,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   po::options_description queryDesc("Options");  // Note: Boost will add the colon.
   queryDesc.add_options()
-    ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' (default) indicates that every found device should be examined.")
+    ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' indicates that every found device should be examined.")
     ("plp", boost::program_options::value<decltype(plp)>(&plp), "The partition to be loaded.  Valid values:\n"
                                                                 "  Name (and path) of the partiaion.\n"
                                                                 "  Parition's UUID")
@@ -478,13 +476,12 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   XBU::verbose(boost::str(boost::format("  Update: %s") % update));
 
   // -- process "device" option -----------------------------------------------
-  // enforce device specification
+  //enforce device specification
   if(device.empty()) {
     std::cout << "\nERROR: Device not specified.\n";
-    printHelp(queryDesc);
+    XBU::report_available_devices();
     return;
   }
-
 
   // Collect all of the devices of interest
   std::set<std::string> deviceNames;
@@ -512,6 +509,8 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     //we support only 2 flash images atm
     if(image.size() > 2)
       throw xrt_core::error("Please specify either 1 or 2 flash images");
+    if(!XBU::can_proceed())
+      return;
     update_shell(deviceCollection.front()->get_device_id(), flashType, image.front(), (image.size() == 2 ? image[1]: ""));
     return;
   }

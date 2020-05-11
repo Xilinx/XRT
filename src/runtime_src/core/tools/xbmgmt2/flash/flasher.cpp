@@ -115,40 +115,16 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
         }
         break;
     }
-    // case BPI:
-    // {
-    //     BPI_Flasher bpi(m_device);
-    //     if (primary == nullptr)
-    //     {
-    //         std::cout << "ERROR: BPI mode does not support reverting to MFG." << std::endl;
-    //     }
-    //     else if(secondary != nullptr)
-    //     {
-    //         std::cout << "ERROR: BPI mode does not support two mcs files." << std::endl;
-    //     }
-    //     else
-    //     {
-    //         retVal = bpi.xclUpgradeFirmware(*primary);
-    //     }
-    //     break;
-    // }
-    // case QSPIPS:
-    // {
-    //     XQSPIPS_Flasher xqspi_ps(m_device);
-    //     if (primary == nullptr)
-    //     {
-    //         std::cout << "ERROR: QSPIPS mode does not support reverting to MFG." << std::endl;
-    //     }
-    //     else if(secondary != nullptr)
-    //     {
-    //         std::cout << "ERROR: QSPIPS mode does not support two mcs files." << std::endl;
-    //     }
-    //     else
-    //     {
-    //         retVal = xqspi_ps.xclUpgradeFirmware(*primary);
-    //     }
-    //     break;
-    // }
+    case BPI:
+    {
+        std::cout << "ERROR: BPI mode is no longer supported." << std::endl;
+        break;
+    }
+    case QSPIPS:
+    {
+        std::cout << "ERROR: QSPIPS mode is no longer supported." << std::endl;
+        break;
+    }
     case OSPIVERSAL:
     {
         XOSPIVER_Flasher xospi_versal(m_device);
