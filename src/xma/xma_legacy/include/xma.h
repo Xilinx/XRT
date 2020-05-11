@@ -26,16 +26,27 @@
 #include "app/xmafilter.h"
 #include "app/xmakernel.h"
 
+#ifdef __GNUC__
+# define XMA_DEPRECATED __attribute__ ((deprecated))
+#else
+# define XMA_DEPRECATED
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 /**
  * DOC: XMA Application Interface
  * The interface used by stand-alone XMA applications or plugins
+ * XMA_legacy is deprecated
+ * See https://github.com/Xilinx/xma-samples/tree/master/copy-encoder
+ * example to use new XMA2 APIs
 */
 
 /**
  * Deprecated API
+ * See https://github.com/Xilinx/xma-samples/tree/master/copy-encoder
+ * example to use new XMA2 APIs
  *  xma_initialize() - the system according to the layout specified in the
  *  YAML configuration file.
  *
@@ -75,7 +86,8 @@ extern "C" {
  * 
  * XMA_ERROR for all other errors.
 */
-int32_t xma_initialize(char *cfgfile) __attribute__ ((deprecated));
+XMA_DEPRECATED
+int32_t xma_initialize(char *cfgfile);
 
 #ifdef __cplusplus
 }
