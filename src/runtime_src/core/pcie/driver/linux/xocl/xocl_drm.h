@@ -42,14 +42,9 @@ struct xocl_cma_memory {
 };
 
 struct xocl_cma_bank {
-	uint64_t		start_addr;
 	uint64_t		entry_sz;
 	uint64_t		entry_num;
-	struct drm_mm		mm;
-	struct drm_xocl_mm_stat	mm_usage_stat;
-	bool			mm_inited;
 	struct xocl_cma_memory	cma_mem[1];
-
 };
 
 struct xocl_drm {
@@ -82,8 +77,6 @@ struct drm_xocl_bo {
 	unsigned              dma_nsg;
 	unsigned              flags;
 	unsigned              mem_idx;
-	void                 *cma_addr;
-	struct drm_mm_node    *cma_mm_node;
 };
 
 struct drm_xocl_unmgd {
@@ -102,10 +95,6 @@ void xocl_mm_get_usage_stat(struct xocl_drm *drm_p, u32 ddr,
         struct drm_xocl_mm_stat *pstat);
 void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u32 ddr,
         u64 size, int count);
-void xocl_cma_mm_get_usage_stat(struct xocl_drm *drm_p,
-        struct drm_xocl_mm_stat *pstat);
-void xocl_cma_mm_update_usage_stat(struct xocl_drm *drm_p,
-        u64 size, int count);
 
 int xocl_mm_insert_node(struct xocl_drm *drm_p, u32 ddr,
                 struct drm_mm_node *node, u64 size);
@@ -115,6 +104,7 @@ uint32_t xocl_get_shared_ddr(struct xocl_drm *drm_p, struct mem_data *m_data);
 int xocl_init_mem(struct xocl_drm *drm_p);
 int xocl_cleanup_mem(struct xocl_drm *drm_p);
 
+bool is_cma_bank(struct xocl_drm *drm_p, uint32_t memidx);
 int xocl_cma_bank_alloc(struct xocl_drm *drm_p, struct drm_xocl_alloc_cma_info *cma_info);
 void xocl_cma_bank_free(struct xocl_drm *drm_p);
 

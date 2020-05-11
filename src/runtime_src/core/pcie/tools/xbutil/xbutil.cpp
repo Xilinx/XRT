@@ -247,7 +247,7 @@ int main(int argc, char *argv[])
         return xcldev::xclReset(argc, argv);
     } else if( std::strcmp( argv[1], "p2p" ) == 0 ) {
         return xcldev::xclP2p(argc, argv);
-    } else if( std::strcmp( argv[1], "cma" ) == 0 ) {
+    } else if( std::strcmp( argv[1], "host_mem" ) == 0 ) {
         return xcldev::xclCma(argc, argv);
     }
     optind--;
@@ -751,6 +751,8 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  flash   [-d card] -a <all | shell> [-t timestamp]\n";
     std::cout << "  flash   [-d card] -p msp432_firmware\n";
     std::cout << "  flash   scan [-v]\n";
+    std::cout << "  host_mem   [-d card] --enable --[size sz M|G]\n";
+    std::cout << "  host_mem   [-d card] --disable\n";
     std::cout << "\nNOTE: card for -d option can either be id or bdf\n";
     std::cout << "\nExamples:\n";
     std::cout << "Print JSON file to stdout\n";
@@ -1982,18 +1984,21 @@ int xcldev::xclCma(int argc, char *argv[])
      */
     ret = d->setCma(cma_enable, total_size);
     if (ret == -ENOMEM) {
-        std::cout << "ERROR: No enough CMA." << std::endl;
+        std::cout << "ERROR: No enough HOST MEM." << std::endl;
         std::cout << "Please check grub settings" << std::endl;
     } else if (ret == -EINVAL) {
-        std::cout << "ERROR: Invalid cma size." << std::endl;
+        std::cout << "ERROR: Invalid HOST MEM size." << std::endl;
     } else if (ret == -ENXIO) {
         std::cout << "ERROR: Huge page is not supported on this platform"
             << std::endl;
     } else if (ret == -ENODEV) {
-        std::cout << "ERROR: Does not support CMA feature"
+        std::cout << "ERROR: Does not support HOST MEM feature"
+            << std::endl; 
+    } else if (ret == -EBUSY) {
+        std::cout << "ERROR: HOST MEM already enabled"
             << std::endl;
     } else if (!ret) {
-        std::cout << "xbutil cma done successfully" << std::endl;
+        std::cout << "xbutil host_mem done successfully" << std::endl;
     } else if (ret) {
         std::cout << "ERROR: " << strerror(std::abs(ret)) << std::endl;
     }
