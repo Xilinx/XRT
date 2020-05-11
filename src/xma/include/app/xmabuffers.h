@@ -98,6 +98,7 @@ typedef enum XmaFrameSideDataType
 {
     XMA_FRAME_SIDE_DATA_START,
     XMA_FRAME_QP_MAP = XMA_FRAME_SIDE_DATA_START,
+    XMA_FRAME_RC_FSFA,
     XMA_FRAME_SIDE_DATA_MAX_COUNT
 } XmaFrameSideDataType;
 
