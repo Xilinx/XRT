@@ -368,7 +368,12 @@ private:
         for (auto& xml_remap : xml_inst.second) {
           if (xml_remap.first != "addrRemap")
             continue;
-          instance.base = convert(xml_remap.second.get<std::string>("<xmlattr>.base"));
+          auto base = xml_remap.second.get<std::string>("<xmlattr>.base");
+          // Free running CUs have empty base address, give them max address
+          // in order not to conflict true 0 base address (convert returns 0)
+          instance.base = base.empty()
+            ? std::numeric_limits<size_t>::max()
+            : convert(base);
         }
         m_symbol.instances.emplace_back(std::move(instance));
       }

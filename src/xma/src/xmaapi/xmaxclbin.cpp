@@ -96,7 +96,7 @@ static int get_xclbin_iplayout(const char *buffer, XmaXclbinInfo *xclbin_info)
         xclbin_info->number_of_kernels = 0;
         xclbin_info->number_of_hardware_kernels = 0;
         std::string kernel_channels_info = xrt_core::config::get_kernel_channel_info();
-        std::vector<uint64_t> cu_addrs = xrt_core::xclbin::get_cus(ipl, false);
+        xclbin_info->cu_addrs_sorted = xrt_core::xclbin::get_cus(ipl, false);
         bool has_cuisr = xrt_core::xclbin::get_cuisr(xclbin);
         if (!has_cuisr) {
             xma_logmsg(XMA_WARNING_LOG, XMAAPI_MOD, "One or more CUs do not support interrupt. Use RTL Wizard or Vitis for xclbin creation ");
@@ -181,6 +181,10 @@ static int get_xclbin_iplayout(const char *buffer, XmaXclbinInfo *xclbin_info)
         }
 
         xclbin_info->number_of_hardware_kernels = xma_ip_layout.size();
+        if (xclbin_info->number_of_hardware_kernels != xclbin_info->cu_addrs_sorted.size()) {
+            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Num of hardware kernels on this device = %d. But num of sorted kernels = %d", xclbin_info->number_of_hardware_kernels, xclbin_info->cu_addrs_sorted.size());
+            throw std::runtime_error("Unable to get sorted kernel list");
+        }
         xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "Num of hardware kernels on this device = %d ", xclbin_info->number_of_hardware_kernels);
         uint32_t num_soft_kernels = 0;
         //Handle soft kernels just like another hardware IP_Layout kernel

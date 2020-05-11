@@ -76,7 +76,6 @@
 
 #define SHIM_QDMA_AIO_EVT_MAX   1024 * 64
 
-
 // Profiling
 #define AXI_FIFO_RDFD_AXI_FULL          0x1000
 #define MAX_TRACE_NUMBER_SAMPLES                        16384
@@ -1557,6 +1556,12 @@ int shim::xclExecBuf(unsigned int cmdBO, size_t num_bo_in_wait_list, unsigned in
 {
     xrt_logmsg(XRT_INFO, "%s, cmdBO: %d, num_bo_in_wait_list: %d, bo_wait_list: %d",
             __func__, cmdBO, num_bo_in_wait_list, bo_wait_list);
+
+    if (num_bo_in_wait_list > MAX_DEPS) {
+        xrt_logmsg(XRT_ERROR, "%s, Incorrect argument. Max num of BOs in wait_list: %d",
+            __func__, MAX_DEPS);
+        return -EINVAL;
+    }
     int ret;
     unsigned int bwl[8] = {0};
     std::memcpy(bwl,bo_wait_list,num_bo_in_wait_list*sizeof(unsigned int));

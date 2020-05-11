@@ -1824,6 +1824,9 @@ static int icap_create_subdev(struct platform_device *pdev)
 		if (ip->m_type == IP_DDR4_CONTROLLER || ip->m_type == IP_MEM_DDR4) {
 			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_MIG;
 
+			if (!strncasecmp(ip->m_name, "SRSR", 4))
+				continue;
+
 			memidx = icap_get_memidx(mem_topo, ip->m_type, ip->properties);
 
 			if (memidx == INVALID_MEM_IDX) {
@@ -2456,6 +2459,32 @@ static inline int icap_xmc_free(struct icap *icap)
 	return err == -ENODEV ? 0 : err;
 }
 
+static void check_mem_topo_and_data_retention(struct icap *icap,
+	struct axlf *xclbin)
+{
+	struct mem_topology *mem_topo = icap->mem_topo;
+	const struct axlf_section_header *hdr = get_axlf_section_hdr(icap, xclbin, MEM_TOPOLOGY);
+	uint64_t size = 0, offset = 0;
+
+	if (!hdr || !mem_topo || !icap->data_retention)
+		return;
+
+	size = hdr->m_sectionSize;
+	offset = hdr->m_sectionOffset;
+
+	/* Data retention feature ONLY works if the xclbins have identical mem_topology 
+	 * or it will lead to hardware failure.
+	 * If the incoming xclbin has different mem_topology, disable data retention feature
+	 */
+
+	if ((size != sizeof_sect(mem_topo, m_mem_data)) ||
+		    memcmp(((char *)xclbin)+offset, mem_topo, size)) {
+		ICAP_WARN(icap, "Incoming mem_topology doesn't match, disable data retention");
+		icap->data_retention = false;
+	}
+
+	return;
+}
 static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 	struct axlf *xclbin)
 {
@@ -2479,6 +2508,9 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 	icap_refresh_addrs(pdev);
 
 	if (ICAP_PRIVILEGED(icap)) {
+
+		/* Check the incoming mem topoloy with the current one before overwrite */
+		check_mem_topo_and_data_retention(icap, xclbin);
 
 		icap_parse_bitstream_axlf_section(pdev, xclbin, MEM_TOPOLOGY);
 		icap_parse_bitstream_axlf_section(pdev, xclbin, IP_LAYOUT);

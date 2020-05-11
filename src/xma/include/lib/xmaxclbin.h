@@ -57,6 +57,7 @@ typedef struct XmaXclbinInfo
     std::string         xclbin_name;
     uint16_t            freq_list[MAX_KERNEL_FREQS];
     std::vector<XmaIpLayout> ip_layout;
+    std::vector<uint64_t> cu_addrs_sorted;//Addrs sorted to determine cu masks
     std::vector<XmaMemTopology> mem_topology;
     std::vector<XmaAXLFConnectivity> connectivity;
     uint32_t            number_of_hardware_kernels;

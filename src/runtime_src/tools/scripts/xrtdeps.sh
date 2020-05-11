@@ -158,8 +158,6 @@ ub_package_list()
      opencl-headers \
      ocl-icd-opencl-dev \
      perl \
-     python \
-     python-pip \
      pciutils \
      pkg-config \
      protobuf-compiler \
@@ -177,6 +175,12 @@ ub_package_list()
 
     if [[ $docker == 0 ]]; then
         UB_LIST+=(linux-headers-$(uname -r))
+    fi
+
+    if [[ $VERSION == 20.04 ]]; then
+        UB_LIST+=(python3 python3-pip)
+    else
+        UB_LIST+=(python python-pip)
     fi
 
     #dmidecode is only applicable for x86_64

@@ -62,7 +62,7 @@
 #define MAX_CUS		128
 #define MAX_U32_SLOT_MASKS (((MAX_SLOTS-1)>>5) + 1)
 #define MAX_U32_CU_MASKS (((MAX_CUS-1)>>5) + 1)
-#define MAX_DEPS        8
+//#define MAX_DEPS        8 moved to ert.h; as needed in user space code as well
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
 #define XOCL_DRM_FREE_MALLOC

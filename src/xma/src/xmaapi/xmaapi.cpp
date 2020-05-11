@@ -40,47 +40,34 @@ static XmaSingleton xma_singleton_internal;
 
 XmaSingleton *g_xma_singleton = &xma_singleton_internal;
 
-void xma_enable_mode1(void) {
-    bool expected = false;
-    bool desired = true;
-    while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        expected = false;
-    }
-    //Singleton lock acquired
-
-    xma_core::utils::xma_enable_mode1();
-
-    //Release singleton lock
-    g_xma_singleton->locked = false;
-}
-
 int32_t xma_get_default_ddr_index(int32_t dev_index, int32_t cu_index, char* cu_name) {
     if (!g_xma_singleton->xma_initialized) {
         xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD,
                    "ddr_index can be obtained only after xma_initialization\n");
         return -1;
     }
-
+/*
     bool expected = false;
     bool desired = true;
     while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
         expected = false;
     }
+*/
+    std::lock_guard<std::mutex> guard1(g_xma_singleton->m_mutex);
     //Singleton lock acquired
 
     if (cu_index < 0) {
         cu_index = xma_core::utils::get_cu_index(dev_index, cu_name);
         if (cu_index < 0) {
             //Release singleton lock
-            g_xma_singleton->locked = false;
+            //g_xma_singleton->locked = false;
             return -1;
         }
     }
     int32_t ddr_index = xma_core::utils::get_default_ddr_index(dev_index, cu_index);
     //Release singleton lock
-    g_xma_singleton->locked = false;
+    //g_xma_singleton->locked = false;
 
     return ddr_index;
 }
@@ -116,16 +103,18 @@ void xma_thread1() {
             uint32_t num_cmds = 0;
             //bool expected = false;
             //bool desired = true;
-            for (auto& itr1: g_xma_singleton->all_sessions) {
+            XmaHwSessionPrivate *slowest_session = nullptr;
+            uint32_t sessioin_cmd_busiest_val = 0;
+            for (auto& itr1: g_xma_singleton->all_sessions_vec) {
                 if (g_xma_singleton->xma_exit) {
                     break;
                 }
-                XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) itr1.second.hw_session.private_do_not_use;
+                XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) itr1.hw_session.private_do_not_use;
                 if (priv1 == NULL) {
                     xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA thread1 failed-1. XMASession is corrupted\n");
                     continue;
                 }
-                if (itr1.second.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
+                if (itr1.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
                     xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA thread1 failed-2. XMASession is corrupted\n");
                     continue;
                 }
@@ -135,23 +124,13 @@ void xma_thread1() {
                     xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA thread1 failed-3. Session XMA private pointer is NULL\n");
                     continue;
                 }
-                /*
-                while (!(*(dev_tmp1->execbo_locked)).compare_exchange_weak(expected, desired)) {
-                    expected = false;
+                if (priv1->kernel_complete_total > 127) {
+                    if (priv1->cmd_busy > sessioin_cmd_busiest_val) {
+                        sessioin_cmd_busiest_val = priv1->cmd_busy;
+                        slowest_session = priv1;
+                    }
                 }
-                //execbo lock acquired
-
-                if (xma_core::utils::check_all_execbo(itr1.second) != XMA_SUCCESS) {
-                    xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA thread1 failed-4. Unexpected error\n");
-                    //Release execbo lock
-                    *(dev_tmp1->execbo_locked) = false;
-                    continue;
-                }
-                //priv1->cmd_load += priv1->CU_cmds.size(); See below
-
-                //Release execbo lock
-                *(dev_tmp1->execbo_locked) = false;
-                */
+                priv1->slowest_element = false;
                 if (priv1->num_samples > STATS_WINDOW_1) {
                     //xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "stats div: %d, %d, %d\n", (uint32_t)priv1->cmd_busy, (uint32_t)priv1->cmd_idle, (uint32_t)priv1->num_cu_cmds_avg);
                     priv1->cmd_busy = priv1->cmd_busy >> 1;
@@ -163,7 +142,7 @@ void xma_thread1() {
                     priv1->num_samples = 0;
                     priv1->kernel_complete_total = priv1->kernel_complete_total >> 1;//Even though it is not atomic operation
                 } else if (priv1->num_cu_cmds_avg == 0 && priv1->num_samples == 128) {
-                    xma_logmsg(XMA_INFO_LOG, "XMA-Session-Stats-Startup", "Session id: %d, type: %s, avg cmds: %.2f, busy vs idle: %d vs %d", itr1.first, xma_core::get_session_name(itr1.second.session_type).c_str(), priv1->num_cu_cmds_avg_tmp / 128.0, (uint32_t)priv1->cmd_busy, (uint32_t)priv1->cmd_idle);
+                    xma_logmsg(XMA_INFO_LOG, "XMA-Session-Stats-Startup", "Session id: %d, type: %s, avg cmds: %.2f, busy vs idle: %d vs %d", itr1.session_id, xma_core::get_session_name(itr1.session_type).c_str(), priv1->num_cu_cmds_avg_tmp / 128.0, (uint32_t)priv1->cmd_busy, (uint32_t)priv1->cmd_idle);
                 }
                 num_cmds = priv1->num_cu_cmds;
                 priv1->num_cu_cmds_avg_tmp += num_cmds;
@@ -218,26 +197,33 @@ void xma_thread1() {
                     kernel_info->num_cu_cmds_avg_tmp = 0;
                     kernel_info->num_samples = 0;
                 } else if (kernel_info->num_cu_cmds_avg == 0 && kernel_info->num_samples == 128) {
-                    xma_logmsg(XMA_INFO_LOG, "XMA-Session-Stats-Startup", "Session id: %d, type: %s, cu: %s, avg cmds: %.2f, busy vs idle: %d vs %d", itr1.first, xma_core::get_session_name(itr1.second.session_type).c_str(), kernel_info->name, kernel_info->num_cu_cmds_avg_tmp / 128.0, (uint32_t)kernel_info->cu_busy, (uint32_t)kernel_info->cu_idle);
+                    xma_logmsg(XMA_INFO_LOG, "XMA-Session-Stats-Startup", "Session id: %d, type: %s, cu: %s, avg cmds: %.2f, busy vs idle: %d vs %d", itr1.session_id, xma_core::get_session_name(itr1.session_type).c_str(), kernel_info->name, kernel_info->num_cu_cmds_avg_tmp / 128.0, (uint32_t)kernel_info->cu_busy, (uint32_t)kernel_info->cu_idle);
                 }
+            }
+            if (slowest_session) {
+                slowest_session->slowest_element = true;
             }
         }
     }
     //Print all stats here
     xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "=== Session CU Command Relative Stats: ===");
-    for (auto& itr1: g_xma_singleton->all_sessions) {
+    for (auto& itr1: g_xma_singleton->all_sessions_vec) {
         xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "--------");
-        XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) itr1.second.hw_session.private_do_not_use;
+        XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) itr1.hw_session.private_do_not_use;
+        if (priv1->kernel_complete_count != 0 && !priv1->using_cu_cmd_status) {
+            xclLogMsg(NULL, XRT_WARNING, "XMA-Session-Stats", "Session id: %d, type: %s still has unused completd cu cmds", itr1.session_id, 
+                xma_core::get_session_name(itr1.session_type).c_str());
+        }
         float avg_cmds = 0;
         if (priv1->num_cu_cmds_avg != 0) {
             avg_cmds = priv1->num_cu_cmds_avg / STATS_WINDOW;
         } else if (priv1->num_samples > 0) {
             avg_cmds = priv1->num_cu_cmds_avg_tmp / ((float)priv1->num_samples);
         }
-        xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Session id: %d, type: %s, avg cu cmds: %.2f, busy vs idle: %d vs %d", itr1.first, 
-            xma_core::get_session_name(itr1.second.session_type).c_str(), avg_cmds, (uint32_t)priv1->cmd_busy, (uint32_t)priv1->cmd_idle);
+        xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Session id: %d, type: %s, avg cu cmds: %.2f, busy vs idle: %d vs %d", itr1.session_id, 
+            xma_core::get_session_name(itr1.session_type).c_str(), avg_cmds, (uint32_t)priv1->cmd_busy, (uint32_t)priv1->cmd_idle);
 
-        xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Session id: %d, max busy vs idle ticks: %d vs %d, relative cu load: %d", itr1.first, (uint32_t)priv1->cmd_busy_ticks, (uint32_t)priv1->cmd_idle_ticks, (uint32_t)priv1->kernel_complete_total);
+        xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Session id: %d, max busy vs idle ticks: %d vs %d, relative cu load: %d", itr1.session_id, (uint32_t)priv1->cmd_busy_ticks, (uint32_t)priv1->cmd_idle_ticks, (uint32_t)priv1->kernel_complete_total);
         XmaHwKernel* kernel_info = priv1->kernel_info;
         if (kernel_info == NULL) {
             continue;
@@ -250,7 +236,7 @@ void xma_thread1() {
         } else if (kernel_info->num_samples > 0) {
             avg_cmds = kernel_info->num_cu_cmds_avg_tmp / ((float)kernel_info->num_samples);
         }
-        xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Session id: %d, cu: %s, avg cmds: %.2f, busy vs idle: %d vs %d", itr1.first, kernel_info->name, avg_cmds, (uint32_t)kernel_info->cu_busy, (uint32_t)kernel_info->cu_idle);
+        xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Session id: %d, cu: %s, avg cmds: %.2f, busy vs idle: %d vs %d", itr1.session_id, kernel_info->name, avg_cmds, (uint32_t)kernel_info->cu_busy, (uint32_t)kernel_info->cu_idle);
     }
     xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "--------");
     xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Num of Decoders: %d", (uint32_t)g_xma_singleton->num_decoders);
@@ -265,60 +251,51 @@ void xma_thread1() {
 void xma_thread2() {
     bool expected = false;
     bool desired = true;
-    int32_t ret = 0;
+    int32_t session_index = 0;
+    int32_t num_sessions = -1;
     while (!g_xma_singleton->xma_exit) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(30));
-        for (auto& itr1: g_xma_singleton->all_sessions) {
+        num_sessions = g_xma_singleton->all_sessions_vec.size();
+        if (num_sessions == 0) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(30));
+            continue;
+        }
+        if (session_index >= num_sessions) {
+            session_index = 0;
+        }
+        XmaHwSessionPrivate *priv2 = (XmaHwSessionPrivate*) g_xma_singleton->all_sessions_vec[session_index].hw_session.private_do_not_use;
+        if (g_xma_singleton->cpu_mode == XMA_CPU_MODE2) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(3));
+        } else {
+            xclExecWait(priv2->dev_handle, 100);
+        }
+        session_index++;
+
+        for (auto& itr1: g_xma_singleton->all_sessions_vec) {
             if (g_xma_singleton->xma_exit) {
                 break;
             }
-            XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) itr1.second.hw_session.private_do_not_use;
-            if (priv1 == NULL) {
-                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA thread2 failed-1. XMASession is corrupted\n");
-                continue;
-            }
-            if (itr1.second.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
-                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA thread2 failed-2. XMASession is corrupted\n");
-                continue;
-            }
-
-            XmaHwDevice *dev_tmp1 = priv1->device;
-            if (dev_tmp1 == NULL) {
-                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA thread2 failed-3. Session XMA private pointer is NULL\n");
-                continue;
-            }
-
-            if (priv1->num_cu_cmds == 0) {
-                continue;
-            }
-
+            XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) itr1.hw_session.private_do_not_use;
             expected = false;
-            if (!priv1->execwait_locked.compare_exchange_weak(expected, desired)) {
-                continue;
-            }
-            ret = xclExecWait(priv1->dev_handle, 30);
-            if (ret <= 0) {
-                priv1->execwait_locked = false;
-                continue;
-            }
-            expected = false;
+/*
             while (!priv1->execbo_locked.compare_exchange_weak(expected, desired)) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                std::this_thread::yield();
                 expected = false;
+            }
+*/
+            if (!priv1->execbo_locked.compare_exchange_weak(expected, desired)) {
+                continue;
             }
             //execbo lock acquired
 
-            if (xma_core::utils::check_all_execbo(itr1.second) != XMA_SUCCESS) {
+            if (xma_core::utils::check_all_execbo(itr1) != XMA_SUCCESS) {
                 xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA thread2 failed-4. Unexpected error\n");
                 //Release execbo lock
                 priv1->execbo_locked = false;
-                priv1->execwait_locked = false;
                 continue;
             }
 
             //Release execbo lock
             priv1->execbo_locked = false;
-            priv1->execwait_locked = false;
         }
     }
 }
@@ -341,20 +318,12 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
         return XMA_ERROR;
     }
 
-    //Sarab: TODO initialize all elements of singleton
-    bool expected = false;
-    bool desired = true;
-    while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        expected = false;
-    }
+    std::lock_guard<std::mutex> guard1(g_xma_singleton->m_mutex);
     //Singleton lock acquired
 
     if (g_xma_singleton->xma_initialized) {
         std::cout << "XMA FATAL: XMA is already initialized" << std::endl;
 
-        //Release singleton lock
-        g_xma_singleton->locked = false;
         return XMA_ERROR;
     }
 
@@ -362,9 +331,6 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
     switch(xrtlib) {
         case XMA_ERROR:
           std::cout << "XMA FATAL: Unable to load XRT library" << std::endl;
-
-          //Release singleton lock
-          g_xma_singleton->locked = false;
           return XMA_ERROR;
           break;
         case 1:
@@ -387,45 +353,15 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
           break;
         default:
           std::cout << "XMA FATAL: Unexpected error. Unable to load XRT library" << std::endl;
-
-          //Release singleton lock
-          g_xma_singleton->locked = false;
           return XMA_ERROR;
           break;
     }
 
-    //g_xma_singleton->encoders.reserve(32);
-    //g_xma_singleton->encoders.emplace_back(XmaEncoderPlugin{});
     g_xma_singleton->hwcfg.devices.reserve(MAX_XILINX_DEVICES);
-
-    /*Sarab: Remove yaml cfg stuff
-    ret = xma_cfg_parse(cfgfile, &g_xma_singleton->systemcfg);
-    if (ret != XMA_SUCCESS) {
-        printf("XMA ERROR: yaml cfg parsing failed\n");
-        return ret;
-    }
-    */
-
-    /*Sarab: Remove xma_res stuff
-    ret = xma_logger_init(&g_xma_singleton->logger);
-    if (ret != XMA_SUCCESS) {
-        return ret;
-        printf("XMA ERROR: logger init failed\n");
-    }
-
-    xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD,
-               "Creating resource shared mem database\n");
-    g_xma_singleton->shm_res_cfg = xma_res_shm_map(&g_xma_singleton->systemcfg);
-
-    if (!g_xma_singleton->shm_res_cfg)
-        return XMA_ERROR;
-    */
    
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Probing hardware\n");
     ret = xma_hw_probe(&g_xma_singleton->hwcfg);
     if (ret != XMA_SUCCESS) {
-        //Release singleton lock
-        g_xma_singleton->locked = false;
         for (XmaHwDevice& hw_device: g_xma_singleton->hwcfg.devices) {
             hw_device.kernels.clear();
         }
@@ -435,18 +371,8 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
         return ret;
     }
 
-    /*Sarab: Remove yaml cfg stuff
-    xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Checking hardware compatibility\n");
-    rc = xma_hw_is_compatible(&g_xma_singleton->hwcfg,
-                              &g_xma_singleton->systemcfg);
-    if (!rc)
-        return XMA_ERROR_INVALID;
-    */
-
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Configure hardware\n");
     if (!xma_hw_configure(&g_xma_singleton->hwcfg, devXclbins, num_parms)) {
-        //Release singleton lock
-        g_xma_singleton->locked = false;
         for (XmaHwDevice& hw_device: g_xma_singleton->hwcfg.devices) {
             hw_device.kernels.clear();
         }
@@ -456,56 +382,37 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
         return XMA_ERROR;
     }
 
-    if (xrt_core::config::get_xma_mode2()) {
-        xma_core::utils::xma_enable_mode2();
+    int32_t exec_mode = xrt_core::config::get_xma_exec_mode();
+    switch (exec_mode) {
+        case 1:
+            g_xma_singleton->num_execbos = XMA_NUM_EXECBO_DEFAULT;
+            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "XMA Exec Mode-1: Max of %d cu cmd per session", XMA_NUM_EXECBO_DEFAULT);
+            break;
+        case 2:
+            g_xma_singleton->num_execbos = XMA_NUM_EXECBO_MODE2;
+            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "XMA Exec Mode-2: Max of %d cu cmd per session", XMA_NUM_EXECBO_MODE2);
+            break;
+        case 3:
+            g_xma_singleton->num_execbos = XMA_NUM_EXECBO_MODE3;
+            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "XMA Exec Mode-3: Max of %d cu cmd per session", XMA_NUM_EXECBO_MODE3);
+            break;
+        case 4:
+            g_xma_singleton->num_execbos = XMA_NUM_EXECBO_MODE4;
+            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "XMA Exec Mode-4: Max of %d cu cmd per session", XMA_NUM_EXECBO_MODE4);
+            break;
+        default:
+            g_xma_singleton->num_execbos = XMA_NUM_EXECBO_DEFAULT;
+            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "XMA Exec Mode-1: Max of %d cu cmd per session", XMA_NUM_EXECBO_DEFAULT);
+            break;
     }
 
-    /*Sarab: Move plugin loading to session_create
-    xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Load scaler plugins\n");
-    ret = xma_scaler_plugins_load(&g_xma_singleton->systemcfg,
-                                  g_xma_singleton->scalercfg);
-
-    if (ret != XMA_SUCCESS)
-        goto error;
-
-    xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Load encoder plugins\n");
-    ret = xma_enc_plugins_load(&g_xma_singleton->systemcfg,
-                               g_xma_singleton->encodercfg);
-
-    if (ret != XMA_SUCCESS)
-        goto error;
-
-    xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Load decoder plugins\n");
-    ret = xma_dec_plugins_load(&g_xma_singleton->systemcfg,
-                               g_xma_singleton->decodercfg);
-
-    if (ret != XMA_SUCCESS)
-        goto error;
-
-    xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Load filter plugins\n");
-    ret = xma_filter_plugins_load(&g_xma_singleton->systemcfg,
-                                 g_xma_singleton->filtercfg);
-
-    if (ret != XMA_SUCCESS)
-        goto error;
-
-    xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Load kernel plugins\n");
-    ret = xma_kernel_plugins_load(&g_xma_singleton->systemcfg,
-                                 g_xma_singleton->kernelcfg);
-
-    if (ret != XMA_SUCCESS)
-        goto error;
-    */
+    g_xma_singleton->cpu_mode = xrt_core::config::get_xma_cpu_mode();
+    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "XMA CPU Mode is: %d", g_xma_singleton->cpu_mode);
 
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Init signal and exit handlers\n");
     ret = std::atexit(xma_exit);
     if (ret) {
         xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Error initalizing XMA\n");
-        //Sarab: Remove xmares stuff
-        //xma_res_shm_unmap(g_xma_singleton->shm_res_cfg);
-
-        //Release singleton lock
-        g_xma_singleton->locked = false;
         for (XmaHwDevice& hw_device: g_xma_singleton->hwcfg.devices) {
             hw_device.kernels.clear();
         }
@@ -515,18 +422,14 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
         return XMA_ERROR;
     }
 
-    //std::thread threadObjSystem(xma_thread1);
     g_xma_singleton->xma_thread1 = std::thread(xma_thread1);
     g_xma_singleton->xma_thread2 = std::thread(xma_thread2);
     //Detach threads to let them run independently
-    //threadObjSystem.detach();
     g_xma_singleton->xma_thread1.detach();
     g_xma_singleton->xma_thread2.detach();
 
     xma_init_sighandlers();
-    //xma_res_mark_xma_ready(g_xma_singleton->shm_res_cfg);
 
-    g_xma_singleton->locked = false;
     g_xma_singleton->xma_initialized = true;
     return XMA_SUCCESS;
 }

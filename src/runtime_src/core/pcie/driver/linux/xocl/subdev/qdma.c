@@ -1788,10 +1788,13 @@ static int qdma_probe(struct platform_device *pdev)
 		}
 	}
 
-	if (dma_bar == -1 || stm_base == -1 || stm_bar == -1) {
+	if (dma_bar == -1) {
 		xocl_err(&pdev->dev, "missing resource");
 		return -EINVAL;
 	}
+
+	if (stm_base == -1 || stm_bar == -1)
+		xocl_warn(&pdev->dev, "STM is not found");
 
 	conf = &qdma->dev_conf;
 	memset(conf, 0, sizeof(*conf));

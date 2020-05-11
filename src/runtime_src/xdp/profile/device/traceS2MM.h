@@ -81,6 +81,8 @@ private:
     uint64_t mPacketFirstTs = 0;
     bool mclockTrainingdone = false;
     uint32_t mTraceFormat = 0;
+    uint32_t mModulus = 0;
+    uint64_t mPartialTs = 0;
 
     void write32(uint64_t offset, uint32_t val);
     void parsePacketClockTrain(uint64_t packet, uint64_t firstTimestamp, uint32_t mod, xclTraceResults &result);

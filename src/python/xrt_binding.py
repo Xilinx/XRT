@@ -134,10 +134,6 @@ class xclVerbosityLevel:
     XCL_WARN  = 2
     XCL_ERROR = 3
 
-class xclResetKind:
-    XCL_RESET_KERNEL = 0
-    XCL_RESET_FULL   = 1
-    XCL_USER_RESET   = 2
 
 class xclDeviceUsage (ctypes.Structure):
     _fields_ = [
@@ -215,16 +211,6 @@ def xclClose(handle):
     libcore.xclClose.argtype = xclDeviceHandle
     libcore.xclClose(handle)
 
-def xclResetDevice(handle, kind):
-    """
-    xclResetDevice() - Reset a device or its CL
-    :param handle: Device handle
-    :param kind: Reset kind
-    :return: 0 on success or appropriate error number
-    """
-    libcore.xclResetDevice.restype = ctypes.c_int
-    libcore.xclResetDevice.argtypes = [xclDeviceHandle, ctypes.c_int]
-    libcore.xclResetDevice(handle, kind)
 
 def xclGetDeviceInfo2 (handle, info):
     """
@@ -356,59 +342,6 @@ def xclCloseContext(handle, xclbinId, ipIndex):
     libcore.xclCloseContext.argtypes = [xclDeviceHandle, ctypes.c_char_p, ctypes.c_uint]
     return _valueOrError(libcore.xclCloseContext(handle, xclbinId.bytes, ipIndex))
 
-
-def xclUpgradeFirmware(handle, fileName):
-    """
-    Update the device BPI PROM with new image
-    :param handle: Device handle
-    :param fileName:
-    :return: 0 on success or appropriate error number
-    """
-    libcore.xclUpgradeFirmware.restype = ctypes.c_int
-    libcore.xclUpgradeFirmware.argtypes = [xclDeviceHandle, ctypes.c_void_p]
-    return libcore.xclUpgradeFirmware(handle, fileName)
-
-def xclUpgradeFirmware2(handle, file1, file2):
-    """
-    Update the device BPI PROM with new image with clearing bitstream
-    :param handle: Device handle
-    :param fileName:
-    :return: 0 on success or appropriate error number
-    """
-    libcore.xclUpgradeFirmware2.restype = ctypes.c_int
-    libcore.xclUpgradeFirmware2.argtypes = [xclDeviceHandle, ctypes.c_void_p, ctypes.c_void_p]
-    return libcore.xclUpgradeFirmware2(handle, file1, file2)
-
-def xclUpgradeFirmwareXSpi (handle, fileName, index):
-    """
-    Update the device SPI PROM with new image
-    :param handle:
-    :param fileName:
-    :param index:
-    :return:
-    """
-    libcore.xclUpgradeFirmwareXSpi.restype = ctypes.c_int
-    libcore.xclUpgradeFirmwareXSpi.argtypes = [xclDeviceHandle, ctypes.c_void_p, ctypes.c_int]
-    return libcore.xclUpgradeFirmwareXSpi(handle, fileName, index)
-
-def xclBootFPGA(handle):
-    """
-    Boot the FPGA from PROM
-    :param handle: Device handle
-    :return: 0 on success or appropriate error number
-    """
-    libcore.xclBootFPGA.restype = ctypes.c_int
-    libcore.xclBootFPGA.argtype = xclDeviceHandle
-    return libcore.xclBootFPGA(handle)
-
-def xclRemoveAndScanFPGA():
-    """
-    Write to /sys/bus/pci/devices/<deviceHandle>/remove and initiate a pci rescan by
-    writing to /sys/bus/pci/rescan.
-    :return:
-    """
-    libcore.xclRemoveAndScanFPGA.restype = ctypes.c_int
-    return libcore.xclRemoveAndScanFPGA()
 
 def xclLogMsg(handle, level, tag, format, *args):
     """
@@ -727,21 +660,6 @@ def xclExecWait(handle, timeoutMilliSec):
     libcore.xclExecWait.argtypes = [xclDeviceHandle, ctypes.c_int]
     return libcore.xclExecWait(handle, timeoutMilliSec)
 
-def xclRegisterInterruptNotify(handle, userInterrupt, fd):
-    """
-    register *eventfdfile handle for a MSIX interrupt
-    :param handle: Device handle
-    :param userInterrupt: MSIX interrupt number
-    :param fd: Eventfd handle
-    :return: 0 on success or standard errno
-
-    Support for non managed interrupts (interrupts from custom IPs). fd should be obtained from
-    eventfd system call. Caller should use standard poll/read eventfd framework in order to wait for
-    interrupts. The handles are automatically unregistered on process exit.
-    """
-    libcore.xclRegisterInterruptNotify.restype = ctypes.c_int
-    libcore.xclRegisterInterruptNotify.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_int]
-    return _valueOrError(libcore.xclRegisterInterruptNotify(handle, userInterrupt, fd))
 
 class xclStreamContextFlags:
     XRT_QUEUE_FLAG_POLLING = (1 << 2)

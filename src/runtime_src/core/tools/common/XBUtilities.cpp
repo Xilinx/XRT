@@ -345,3 +345,19 @@ XBUtilities::can_proceed()
     std::cout << "Action canceled." << std::endl;
   return proceed;
 }
+
+void 
+XBUtilities::report_available_devices() 
+{
+  std::cout << "\nList of available devices:" <<std::endl;
+  xrt_core::device_collection deviceCollection;
+  collect_devices(std::set<std::string> {"all"}, false, deviceCollection);
+  for (const auto & device : deviceCollection) {
+    boost::property_tree::ptree on_board_rom_info;
+    boost::property_tree::ptree on_board_dev_info;
+    device->get_rom_info(on_board_rom_info);
+    device->get_info(on_board_dev_info);
+    std::cout << boost::format("[%s] : %s\n") % on_board_dev_info.get<std::string>("bdf", "N/A") % on_board_rom_info.get<std::string>("vbnv", "N/A");
+  }
+  std::cout << std::endl;
+}

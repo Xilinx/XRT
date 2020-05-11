@@ -18,15 +18,13 @@
 #define _XMA_API_
 
 #include "xmaplugin.h"
-//#include "lib/xmacfg.h"
-//#include "lib/xmaconnect.h"
 #include "lib/xmahw_lib.h"
-//#include "lib/xmares.h"
 #include "lib/xmalogger.h"
 #include <atomic>
 #include <list>
 #include <unordered_map>
 #include <thread>
+#include <mutex>
 
 typedef struct XmaLogMsg
 {
@@ -40,18 +38,10 @@ typedef struct XmaLogMsg
 
 typedef struct XmaSingleton
 {
-    //XmaSystemCfg      systemcfg;
     XmaHwCfg          hwcfg;
     bool              xma_initialized;
-    //XmaConnect        connections[MAX_CONNECTION_ENTRIES];
-    //Sarab: Remove logger stuff
-    //XmaLogger         logger;
-    //XmaDecoderPlugin  decodercfg[MAX_PLUGINS];
-    //XmaEncoderPlugin  encodercfg[MAX_PLUGINS];
-    //XmaScalerPlugin   scalercfg[MAX_PLUGINS];
-    //XmaFilterPlugin   filtercfg[MAX_PLUGINS];
-    //XmaKernelPlugin   kernelcfg[MAX_PLUGINS];
-    std::atomic<bool> locked;
+    uint32_t          cpu_mode;
+    std::mutex            m_mutex;
     std::atomic<uint32_t> num_decoders;
     std::atomic<uint32_t> num_encoders;
     std::atomic<uint32_t> num_scalers;
@@ -59,7 +49,7 @@ typedef struct XmaSingleton
     std::atomic<uint32_t> num_kernels;
     std::atomic<uint32_t> num_admins;
     std::atomic<uint32_t> num_of_sessions;
-    std::unordered_map<uint32_t, XmaSession> all_sessions;// XMASessions
+    std::vector<XmaSession> all_sessions_vec;// XMASessions
     std::list<XmaLogMsg>   log_msg_list;
     std::atomic<bool> log_msg_list_locked;
     std::atomic<uint32_t> num_execbos;
@@ -71,7 +61,6 @@ typedef struct XmaSingleton
     uint32_t          reserved[4];
 
   XmaSingleton() {
-    locked = false;
     xma_initialized = false;
     num_decoders = 0;
     num_encoders = 0;
@@ -83,6 +72,7 @@ typedef struct XmaSingleton
     num_of_sessions = 0;
     log_msg_list_locked = false;
     xma_exit = false;
+    cpu_mode = 0;
   }
 } XmaSingleton;
 
