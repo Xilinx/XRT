@@ -92,17 +92,14 @@ static int str2index(const char *arg, unsigned& index)
 static bool
 check_os_release(const std::vector<std::string> kernel_versions, std::ostream &ostr)
 {
-    bool ret = false;
     const std::string release = sensor_tree::get<std::string>("system.release");
     for (const auto& ver : kernel_versions) {
-        if (release.find(ver) != std::string::npos) {
-            ret = true;
-            break;
-        }
+        if (release.find(ver) != std::string::npos)
+            return true;
     }
     ostr << "ERROR: Kernel verison " << release << " is not supported. " 
         << kernel_versions.back() << " is the latest supported version" << std::endl;
-    return ret;
+    return false;
 }
 
 static bool
