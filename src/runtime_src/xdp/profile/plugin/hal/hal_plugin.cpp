@@ -160,7 +160,7 @@ namespace xdp {
     devInterface->configureDataflow(dataflowConfig);
     delete [] dataflowConfig;
 
-    devInterface->startTrace(3); // check this
+    devInterface->startTrace(2); /* data_transfer_trace=fine, by default */
     devInterface->clockTraining();
 
     bool init_done = true;
