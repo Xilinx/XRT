@@ -508,7 +508,7 @@ int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
 	int ret;
 	struct FeatureRomHeader	rom_header;
 	int offset;
-	int *version;
+	const int *version;
 
 	if (!lro->core.fdt_blob)
 		return 0;
@@ -567,7 +567,7 @@ int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
 	offset = xocl_fdt_path_offset(lro, lro->userpf_blob,
 					"/" NODE_ENDPOINTS "/" NODE_ERT_SCHED);
 	if (offset < 0) {
-		mgmt_err(lro, "get ert firmware node failed %d", offset);
+		mgmt_err(lro, "get ert sched node failed %d", offset);
 	}
 	(void) xocl_fdt_setprop(lro, lro->userpf_blob, offset, PROP_VERSION_MAJOR,
 				version, sizeof(int));

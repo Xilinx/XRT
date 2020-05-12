@@ -1651,7 +1651,7 @@ const struct axlf_section_header *xocl_axlf_section_header(
 	enum axlf_section_kind kind);
 int xocl_fdt_path_offset(xdev_handle_t xdev_hdl, void *blob, const char *path);
 int xocl_fdt_setprop(xdev_handle_t xdev_hdl, void *blob, int off,
-		     char *name, void *val, int size);
+		     const char *name, const void *val, int size);
 const void *xocl_fdt_getprop(xdev_handle_t xdev_hdl, void *blob, int off,
 			     char *name, int *lenp);
 

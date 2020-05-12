@@ -66,7 +66,7 @@ static void *ert_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
         struct xocl_dev_core *core = XDEV(xdev_hdl);
 	void *blob;
         int node;
-	u32 *major;
+	const u32 *major;
 	struct xocl_ert_sched_privdata *priv_data;
 
         blob = core->fdt_blob;
@@ -1053,7 +1053,7 @@ int xocl_fdt_add_pair(xdev_handle_t xdev_hdl, void *blob, char *name,
 }
 
 int xocl_fdt_setprop(xdev_handle_t xdev_hdl, void *blob, int off,
-		     char *name, void *val, int size)
+		     const char *name, const void *val, int size)
 {
 	return fdt_setprop(blob, off, name, val, size);
 }
