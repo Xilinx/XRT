@@ -31,6 +31,42 @@ static int cu_submit(struct platform_device *pdev, struct kds_command *xcmd)
 	return 0;
 }
 
+static ssize_t debug_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+#if 0
+	struct platform_device *pdev = to_platform_device(dev);
+	struct xocl_cu *cu = platform_get_drvdata(pdev);
+	struct xrt_cu *xcu = &cu->base;
+#endif
+	/* Place holder for now. */
+	return 0;
+}
+
+static ssize_t debug_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+#if 0
+	struct platform_device *pdev = to_platform_device(dev);
+	struct xocl_cu *cu = platform_get_drvdata(pdev);
+	struct xrt_cu *xcu = &cu->base;
+#endif
+
+	/* Place holder for now. */
+	return count;
+}
+
+static DEVICE_ATTR_RW(debug);
+
+static struct attribute *cu_attrs[] = {
+	&dev_attr_debug.attr,
+	NULL,
+};
+
+static const struct attribute_group cu_attrgroup = {
+	.attrs = cu_attrs,
+};
+
 static int cu_probe(struct platform_device *pdev)
 {
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
@@ -88,6 +124,9 @@ static int cu_probe(struct platform_device *pdev)
 		goto err2;
 	}
 
+	if (sysfs_create_group(&pdev->dev.kobj, &cu_attrgroup))
+		XCU_ERR(xcu, "Not able to create CU sysfs group");
+
 	platform_set_drvdata(pdev, xcu);
 
 	return 0;
@@ -112,6 +151,8 @@ static int cu_remove(struct platform_device *pdev)
 	xcu = platform_get_drvdata(pdev);
 	if (!xcu)
 		return -EINVAL;
+
+	(void) sysfs_remove_group(&pdev->dev.kobj, &cu_attrgroup);
 
 	info = &xcu->base.info;
 	switch (info->model) {
