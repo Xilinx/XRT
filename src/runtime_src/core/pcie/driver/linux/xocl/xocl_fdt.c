@@ -86,7 +86,8 @@ static void *ert_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
         }
 
 	major = fdt_getprop(blob, node, PROP_VERSION_MAJOR, NULL);
-	priv_data->major = be32_to_cpu(*major);
+	if (major)
+		priv_data->major = be32_to_cpu(*major);
 
 	priv_data->dsa = 1;
 	*len = sizeof(*priv_data);
