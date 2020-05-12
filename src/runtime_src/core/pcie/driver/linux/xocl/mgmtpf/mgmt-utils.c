@@ -507,6 +507,8 @@ int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
 	int len, userpf_idx;
 	int ret;
 	struct FeatureRomHeader	rom_header;
+	int offset;
+	const int *version;
 
 	if (!lro->core.fdt_blob)
 		return 0;
@@ -551,6 +553,24 @@ int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
 		mgmt_err(lro, "add vrom failed %d", ret);
 		goto failed;
 	}
+
+	/* Get ERT firmware major version from mgmtpf blob */
+	offset = xocl_fdt_path_offset(lro, lro->core.fdt_blob,
+					"/" NODE_ENDPOINTS "/" NODE_ERT_FW_MEM
+					"/" NODE_FIRMWARE);
+	if (offset < 0) {
+		mgmt_err(lro, "get ert firmware node failed %d", offset);
+	}
+	version = xocl_fdt_getprop(lro, lro->core.fdt_blob, offset, PROP_VERSION_MAJOR, NULL);
+
+	/* Add ERT firmware major version to userpf blob */
+	offset = xocl_fdt_path_offset(lro, lro->userpf_blob,
+					"/" NODE_ENDPOINTS "/" NODE_ERT_SCHED);
+	if (offset < 0) {
+		mgmt_err(lro, "get ert sched node failed %d", offset);
+	}
+	(void) xocl_fdt_setprop(lro, lro->userpf_blob, offset, PROP_VERSION_MAJOR,
+				version, sizeof(int));
 
 	fdt_pack(lro->userpf_blob);
 	lro->userpf_blob_updated = true;

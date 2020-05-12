@@ -1748,7 +1748,7 @@ struct exec_core {
 
 	u32			   intr_base;
 	u32			   intr_num;
-	char			   ert_cfg_priv;
+	struct xocl_ert_sched_privdata ert_cfg_priv;
 	bool			   needs_reset;
 
 	wait_queue_head_t	   poll_wait_queue;
@@ -1926,7 +1926,8 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 {
 	struct xocl_dev *xdev = exec_get_xdev(exec);
 	uint32_t *cdma = xocl_rom_cdma_addr(xdev);
-	unsigned int dsa = exec->ert_cfg_priv;
+	unsigned int dsa = exec->ert_cfg_priv.dsa;
+	unsigned int major = exec->ert_cfg_priv.major;
 	struct ert_configure_cmd *cfg = xcmd->ert_cfg;
 	bool ert = XOCL_DSA_IS_VERSAL(xdev) ? 1 : xocl_mb_sched_on(xdev);
 	bool ert_full = (ert && cfg->ert && !cfg->dataflow);
@@ -1938,6 +1939,12 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	if (exec->configured) {
 		DRM_INFO("command scheduler is already configured for this device\n");
 		return 1;
+	}
+
+	if (major > 2) {
+		DRM_INFO("Unknown ERT major version, fallback to KDS mode\n");
+		ert_full = 0;
+		ert_poll = 0;
 	}
 
 	userpf_info(xdev, "ert per feature rom = %d", ert);
@@ -2246,16 +2253,19 @@ exec_create(struct platform_device *pdev, struct xocl_scheduler *xs)
 	struct resource *res;
 	static unsigned int count;
 	unsigned int i;
+	struct xocl_ert_sched_privdata *priv;
 
 	if (!exec)
 		return NULL;
 
 	mutex_init(&exec->exec_lock);
 	exec->base = xdev->core.bar_addr;
-	if (XOCL_GET_SUBDEV_PRIV(&pdev->dev))
-		exec->ert_cfg_priv = *(char *)XOCL_GET_SUBDEV_PRIV(&pdev->dev);
-	else
-		xocl_info(&pdev->dev, "did not get private data");
+	if (XOCL_GET_SUBDEV_PRIV(&pdev->dev)) {
+		priv = XOCL_GET_SUBDEV_PRIV(&pdev->dev);
+		memcpy(&exec->ert_cfg_priv, priv, sizeof(*priv));
+	} else {
+		xocl_err(&pdev->dev, "did not get private data");
+	}
 
 	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 	if (res) {
@@ -2293,8 +2303,10 @@ exec_create(struct platform_device *pdev, struct xocl_scheduler *xs)
 	}
 
 	exec->pdev = pdev;
-	if (XOCL_GET_SUBDEV_PRIV(&pdev->dev))
-		exec->ert_cfg_priv = *(char *)XOCL_GET_SUBDEV_PRIV(&pdev->dev);
+	if (XOCL_GET_SUBDEV_PRIV(&pdev->dev)) {
+		priv = XOCL_GET_SUBDEV_PRIV(&pdev->dev);
+		memcpy(&exec->ert_cfg_priv, priv, sizeof(*priv));
+	}
 
 	init_waitqueue_head(&exec->poll_wait_queue);
 	exec->scheduler = xs;
