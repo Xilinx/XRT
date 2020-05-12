@@ -326,6 +326,7 @@ namespace xclhwemhal2 {
     std::string binaryDirectory = ss.str();
 
     systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::CREATE);
+    systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777");
 
     mRunDeviceBinDir = binaryDirectory;
 
@@ -698,7 +699,6 @@ namespace xclhwemhal2 {
     if (deviceDirectory.empty() == false)
       setenv("EMULATION_RUN_DIR", deviceDirectory.c_str(), true);
 
-
     // Create waveform config file
     // NOTE: see corresponding wdb file in saveWaveDataBase
     if (wdbFileName.empty() == false)
@@ -717,6 +717,7 @@ namespace xclhwemhal2 {
       pid_t pid = fork();
       assert(pid >= 0);
       if (pid == 0) { //I am child
+      
         //Redirecting the XSIM log to a file
         FILE* nP = freopen("/dev/null", "w", stdout);
         if (!nP) { std::cerr << "FATAR ERROR : Unable to redirect simulation output " << std::endl; exit(1); }
@@ -741,7 +742,7 @@ namespace xclhwemhal2 {
           //Assuming that we will have only one AIE Kernel, need to 
           //update this logic when we have suport for multiple AIE Kernels
           
-          extractEmuData(sim_path, binaryDirectory, binaryCounter, args);
+          extractEmuData(sim_path, binaryCounter, args);
           
           launcherArgs += " -emuData " + sim_path + "/emulation_data/libsdf/cfg/aie.sim.config.txt";
           launcherArgs += " -aie-sim-config " + sim_path + "/emulation_data/libsdf/cfg/aie.sim.config.txt";
@@ -784,6 +785,7 @@ namespace xclhwemhal2 {
 
         if (!file_exists(sim_file))
           sim_file = "simulate.sh";
+        
         int r = execl(sim_file.c_str(), sim_file.c_str(), simMode, NULL);
         fclose(stdout);
         if (r == -1){ std::cerr << "FATAL ERROR : Simulation process did not launch" << std::endl; exit(1); }
@@ -811,13 +813,13 @@ namespace xclhwemhal2 {
     return 0;
   }
   
-  void HwEmShim::extractEmuData(const std::string& simPath, const std::string& binaryDirectory, int binaryCounter, bitStreamArg args) {
+  void HwEmShim::extractEmuData(const std::string& simPath, int binaryCounter, bitStreamArg args) {
 
     std::unique_ptr<char[]> emuDataFileName(new char[1024]);
 #ifndef _WINDOWS
     // TODO: Windows build support
     // getpid is defined in unistd.h
-    std::sprintf(emuDataFileName.get(), "%s/emuDataFile_%d", binaryDirectory.c_str(), binaryCounter);
+    std::sprintf(emuDataFileName.get(), "%s/emuDataFile_%d", mRunDeviceBinDir.c_str(), binaryCounter);
 #endif
 
     if ((args.m_emuData != nullptr) && (args.m_emuDataSize > 1))
@@ -828,6 +830,7 @@ namespace xclhwemhal2 {
 
       std::string emuDataFilePath(emuDataFileName.get());
       systemUtil::makeSystemCall(emuDataFilePath, systemUtil::systemOperation::UNZIP, simPath);
+      systemUtil::makeSystemCall(mRunDeviceBinDir, systemUtil::systemOperation::PERMISSIONS, "777");
     }
   }
 
@@ -1420,7 +1423,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
     
-     for (auto& it: mFdToFileNameMap)
+    for (auto& it: mFdToFileNameMap)
     {
       int fd=it.first;
       int sSize = std::get<1>(it.second);
@@ -1662,6 +1665,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
     deviceName = "device"+std::to_string(deviceIndex);
     deviceDirectory = xclemulation::getRunDirectory() +"/" + std::to_string(getpid())+"/hw_em/"+deviceName;
+    
+    systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::CREATE);
+    systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::PERMISSIONS, "777");
 
     std::memset(&mDeviceInfo, 0, sizeof(xclDeviceInfo2));
     fillDeviceInfo(&mDeviceInfo,&info);

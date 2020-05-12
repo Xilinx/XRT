@@ -185,7 +185,7 @@ using addr_type = uint64_t;
       bool get_simulator_started() {return simulator_started;}
       void fillDeviceInfo(xclDeviceInfo2* dest, xclDeviceInfo2* src);
       void saveWaveDataBase();
-      void extractEmuData(const std::string& simPath, const std::string& binaryDirectory, int binaryCounter, bitStreamArg args);
+      void extractEmuData(const std::string& simPath, int binaryCounter, bitStreamArg args);
 
       // Sanity checks
       static HwEmShim *handleCheck(void *handle);
