@@ -101,6 +101,7 @@ namespace xclhwemhal2 {
     idx = 0;
     base = 0;
     dataflow = false;
+    ap_check = 0;
     addr = 0;
     polladdr = 0;
     ctrlreg = 0;
@@ -113,6 +114,7 @@ namespace xclhwemhal2 {
     idx = 0;
     base = 0;
     dataflow = false;
+    ap_check = 0;
     addr = 0;
     polladdr = 0;
     ctrlreg = 0;
@@ -137,7 +139,7 @@ namespace xclhwemhal2 {
   void MBScheduler::cu_poll(struct xocl_cu *xcu)
   {
     mParent->xclRead(XCL_ADDR_KERNEL_CTRL,xcu->base + xcu->addr,(void*)&(xcu->ctrlreg),4);
-    if (xcu->run_cnt && (xcu->ctrlreg & (HwEmShim::CONTROL_AP_DONE | HwEmShim::CONTROL_AP_IDLE)))
+    if (xcu->run_cnt && (xcu->ctrlreg & xcu->ap_check))
     {
       ++xcu->done_cnt;
       --xcu->run_cnt;
@@ -271,7 +273,8 @@ namespace xclhwemhal2 {
   {
     xcu->idx = idx;
     xcu->base = base;
-    xcu->dataflow = (addr & 0xFF) == AP_CTRL_CHAIN;
+    xcu->dataflow = (addr & 0x7) == AP_CTRL_CHAIN;
+    xcu->ap_check = (xcu->dataflow) ? (HwEmShim::CONTROL_AP_DONE ) : (HwEmShim::CONTROL_AP_DONE | HwEmShim::CONTROL_AP_IDLE);
     xcu->addr = addr & ~(0xFF); // clear encoded handshake
     xcu->polladdr = polladdr;
     xcu->ctrlreg = 0;
