@@ -51,6 +51,8 @@ enum class key_type
   pcie_express_lane_width,
   pcie_bdf,
 
+  edge_vendor,
+
   dma_threads_raw,
 
   rom_vbnv,
@@ -307,6 +309,22 @@ struct pcie_bdf : request
     return boost::str
       (boost::format("%04x:%02x:%02x.%01x") % 0 % std::get<0>(value)
        % std::get<1>(value) % std::get<2>(value));
+  }
+};
+
+struct edge_vendor : request
+{
+  using result_type = uint16_t;
+  static const key_type key = key_type::edge_vendor;
+  static const char* name() { return "vendor"; }
+
+  virtual boost::any
+    get(const device*) const = 0;
+
+  static std::string
+    to_string(result_type val)
+  {
+    return boost::str(boost::format("0x%x") % val);
   }
 };
 
