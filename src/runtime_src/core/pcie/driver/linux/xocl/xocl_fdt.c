@@ -61,6 +61,39 @@ static void *msix_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
         return msix_priv;
 }
 
+static void *mailbox_versal_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
+{
+	struct xocl_dev_core *core = XDEV(xdev_hdl);
+	void *blob;
+	int node;
+	struct resource *mbv_priv;
+	const char *start, *end;
+
+	blob = core->fdt_blob;
+	if (!blob)
+		return NULL;
+
+	node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_MAILBOX_XRT);
+	if (node < 0) {
+		xocl_xdev_err(xdev_hdl, "did not find %s in %s", NODE_MAILBOX_XRT, NODE_ENDPOINTS);
+		return NULL;
+	}
+
+	mbv_priv = vzalloc(sizeof(*mbv_priv));
+	if (!mbv_priv)
+		return NULL;
+
+	start = fdt_getprop(blob, node, "msix_interrupt_start_index", NULL);
+	end = fdt_getprop(blob, node, "msix_interrupt_end_index", NULL);
+
+	mbv_priv->start = start ? *start : 0;
+	mbv_priv->end = end ? *end : 0;
+	mbv_priv->name = NODE_MAILBOX_XRT;
+
+	*len = sizeof(*mbv_priv);
+	return mbv_priv;
+}
+
 static void *ert_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 {
         struct xocl_dev_core *core = XDEV(xdev_hdl);
@@ -262,7 +295,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 			NODE_ERT_CQ_USER,
 			NULL
 		},
-		2,
+		1,
 		XOCL_SUBDEV_MAP_USERPF_ONLY,
 		ert_build_priv,
 		NULL,
@@ -457,7 +490,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 		},
 		.required_ip = 1,
 		.flags = 0,
-		.build_priv_data = NULL,
+		.build_priv_data = mailbox_versal_build_priv,
 		.devinfo_cb = NULL,
 	},
 	{

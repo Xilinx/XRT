@@ -227,6 +227,7 @@ enum subdev_id {
 	XOCL_SUBDEV_DMA,
 	XOCL_SUBDEV_IORES,
 	XOCL_SUBDEV_FLASH,
+	XOCL_SUBDEV_MAILBOX_VERSAL,
 	XOCL_SUBDEV_MB_SCHEDULER,
 	XOCL_SUBDEV_XVC_PUB,
 	XOCL_SUBDEV_XVC_PRI,
@@ -242,7 +243,6 @@ enum subdev_id {
 	XOCL_SUBDEV_DNA,
 	XOCL_SUBDEV_FMGR,
 	XOCL_SUBDEV_MIG_HBM,
-	XOCL_SUBDEV_MAILBOX_VERSAL,
 	XOCL_SUBDEV_OSPI_VERSAL,
 	XOCL_SUBDEV_CLOCK,
 	XOCL_SUBDEV_AIM,
@@ -2292,11 +2292,11 @@ struct xocl_subdev_map {
 		XOCL_DEVINFO_CU_CTRL,					\
 	 })
 
-/* need static scheduler for a little while, and no AF user for now */
+/* versal has not been enabled of AF and CU_CTRL yet */
 #define RES_USER_VERSAL_VSEC						\
 	((struct xocl_subdev_info []) {					\
 		XOCL_DEVINFO_FEATURE_ROM_USER_DYN,			\
-		XOCL_DEVINFO_SCHEDULER_VERSAL,				\
+		XOCL_DEVINFO_SCHEDULER_DYN,				\
 		XOCL_DEVINFO_ICAP_USER,					\
 		XOCL_DEVINFO_XMC_USER,					\
 	 })

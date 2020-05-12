@@ -1336,6 +1336,7 @@ struct xocl_mailbox_versal_funcs {
 	int (*enable_intr)(struct platform_device *pdev);
 	int (*disable_intr)(struct platform_device *pdev);
 	int (*handle_intr)(struct platform_device *pdev);
+	int (*intr_res)(struct platform_device *pdev, struct resource **res);
 };
 #define	MAILBOX_VERSAL_DEV(xdev)	\
 	SUBDEV(xdev, XOCL_SUBDEV_MAILBOX_VERSAL).pldev
@@ -1362,6 +1363,9 @@ struct xocl_mailbox_versal_funcs {
 #define	xocl_mailbox_versal_handle_intr(xdev)	\
 	(MAILBOX_VERSAL_READY(xdev, handle_intr)	\
 	? MAILBOX_VERSAL_OPS(xdev)->handle_intr(MAILBOX_VERSAL_DEV(xdev)) : -ENODEV)
+#define	xocl_mailbox_versal_intr_res(xdev, res)	\
+	(MAILBOX_VERSAL_READY(xdev, intr_res)	\
+	? MAILBOX_VERSAL_OPS(xdev)->intr_res(MAILBOX_VERSAL_DEV(xdev), res) : -ENODEV)
 
 /* srsr callbacks */
 struct xocl_srsr_funcs {

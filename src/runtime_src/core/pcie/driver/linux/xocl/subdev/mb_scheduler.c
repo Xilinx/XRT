@@ -2243,6 +2243,77 @@ exec_isr(int irq, void *arg)
 	return IRQ_HANDLED;
 }
 
+static int exec_config_csr(struct platform_device *pdev, struct exec_core *exec,
+	struct resource *res)
+{
+	if (!res) {
+		xocl_info(&pdev->dev, "did not get CSR resource");
+	} else if (!exec->csr_base) {
+		xocl_info(&pdev->dev, "IO start: 0x%llx, end: 0x%llx, name: %s",
+			res->start, res->end, res->name);
+		exec->csr_base = ioremap_nocache(res->start,
+			res->end - res->start + 1);
+		if (!exec->csr_base) {
+			xocl_err(&pdev->dev, "map CSR resource failed");
+			return -EINVAL;
+		}
+		return 0;
+	}
+	return -ENOENT;
+}
+
+static int exec_config_cq(struct platform_device *pdev, struct exec_core *exec,
+	struct resource *res)
+{
+	if (!res) {
+		xocl_info(&pdev->dev, "did not get CQ resource");
+	} else if (!exec->cq_base) {
+		xocl_info(&pdev->dev, "IO start: 0x%llx, end: 0x%llx, name: %s",
+			res->start, res->end, res->name);
+		exec->cq_size = res->end - res->start + 1;
+		exec->cq_size = min(exec->cq_size, (unsigned int)ERT_CQ_SIZE);
+		exec->cq_base = ioremap_nocache(res->start, exec->cq_size);
+		if (!exec->cq_base) {
+			xocl_err(&pdev->dev, "map CQ resource failed");
+			return -EINVAL;
+		}
+		xocl_info(&pdev->dev, "CQ size is %d\n", exec->cq_size);
+		return 0;
+	}
+	return -ENOENT;
+}
+
+static int exec_config_by_name(struct platform_device *pdev, struct exec_core *exec,
+	struct resource *res)
+{
+	if (!res || !res->name)
+		return -ENOENT;
+
+	if (strncmp(res->name, NODE_ERT_SCHED, strlen(NODE_ERT_SCHED)) == 0)
+		return exec_config_csr(pdev, exec, res);
+
+	if (strncmp(res->name, NODE_ERT_CQ_USER, strlen(NODE_ERT_CQ_USER)) == 0)
+		return exec_config_cq(pdev, exec, res);
+
+	return -ENOENT;
+}
+
+/* Once there is one resource data-driven, we mark mb as data-driven */
+static int mb_is_data_driven(struct platform_device *pdev, struct exec_core *exec)
+{
+	int i, ret = 0;
+	struct resource *res;
+
+	for (i = 0; i < 2; i++) {
+		res = platform_get_resource(pdev, IORESOURCE_MEM, i);
+		if (exec_config_by_name(pdev, exec, res) == 0) {
+			ret = 1;
+		}
+	}
+
+	return ret;
+}
+
 /*
  */
 struct exec_core *
@@ -2250,7 +2321,7 @@ exec_create(struct platform_device *pdev, struct xocl_scheduler *xs)
 {
 	struct exec_core *exec = devm_kzalloc(&pdev->dev, sizeof(struct exec_core), GFP_KERNEL);
 	struct xocl_dev *xdev = xocl_get_xdev(pdev);
-	struct resource *res;
+	struct resource *res = NULL;
 	static unsigned int count;
 	unsigned int i;
 	struct xocl_ert_sched_privdata *priv;
@@ -2267,39 +2338,35 @@ exec_create(struct platform_device *pdev, struct xocl_scheduler *xs)
 		xocl_err(&pdev->dev, "did not get private data");
 	}
 
-	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
+	/* versal is using mailbox to keep the intr resource */
+	if (XOCL_DSA_IS_VERSAL(xdev))
+		xocl_mailbox_versal_intr_res(xdev, &res);
+	else
+		res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
+
 	if (res) {
+		xocl_info(&pdev->dev, "IO start: 0x%llx, end: 0x%llx, name: %s",
+			res->start, res->end, res->name);
 		exec->intr_base = res->start;
 		exec->intr_num = res->end - res->start + 1;
 	} else
 		xocl_info(&pdev->dev, "did not get IRQ resource");
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res) {
-		xocl_info(&pdev->dev, "did not get CSR resource");
-	} else {
-		exec->csr_base = ioremap_nocache(res->start,
-			res->end - res->start + 1);
-		if (!exec->csr_base) {
-			xocl_err(&pdev->dev, "map CSR resource failed");
-			return NULL;
-		}
-	}
+	/*
+	 * Try to use res->name to match resources for repator 2.0.
+	 * If didn't find any resources, we have to swtich back to legacy mode.
+	 */
+	if (!mb_is_data_driven(pdev, exec)) {
+		res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+		exec_config_csr(pdev, exec, res);
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	if (!res) {
-		xocl_info(&pdev->dev, "did not get CQ resource");
-	} else {
-		exec->cq_size = res->end - res->start + 1;
-		exec->cq_size = min(exec->cq_size, (unsigned int)ERT_CQ_SIZE);
-		exec->cq_base = ioremap_nocache(res->start, exec->cq_size);
-		if (!exec->cq_base) {
+		res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+		if (exec_config_cq(pdev, exec, res) == -EINVAL) {
+			/* CQ config failed will be bailed out */
 			if (exec->csr_base)
 				iounmap(exec->csr_base);
-			xocl_err(&pdev->dev, "map CQ resource failed");
 			return NULL;
 		}
-		xocl_info(&pdev->dev, "CQ size is %d\n", exec->cq_size);
 	}
 
 	exec->pdev = pdev;

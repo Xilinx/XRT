@@ -48,6 +48,7 @@ struct mailbox_reg {
 struct mailbox_versal {
 	struct platform_device	*mbv_pdev;
 	struct mailbox_reg	*mbv_regs;
+	struct resource		*mbv_intr_res;
 
 	struct mutex		mbv_lock;
 };
@@ -133,12 +134,22 @@ static int mailbox_versal_handle_intr(struct platform_device *pdev)
 	return 0;
 }
 
+static int mailbox_versal_intr_res(struct platform_device *pdev, struct resource **res)
+{
+	struct mailbox_versal *mbv = platform_get_drvdata(pdev);
+
+	*res = mbv->mbv_intr_res;
+
+	return 0;
+}
+
 static struct xocl_mailbox_versal_funcs mailbox_versal_ops = {
 	.set		= mailbox_versal_set,
 	.get		= mailbox_versal_get,
 	.enable_intr 	= mailbox_versal_enable_intr,
 	.disable_intr 	= mailbox_versal_disable_intr,
 	.handle_intr 	= mailbox_versal_handle_intr,
+	.intr_res 	= mailbox_versal_intr_res,
 };
 
 static int mailbox_versal_remove(struct platform_device *pdev)
@@ -150,13 +161,14 @@ static int mailbox_versal_remove(struct platform_device *pdev)
 	platform_set_drvdata(pdev, NULL);
 	xocl_drvinst_release(mbv, NULL);
 
+	MBV_INFO(mbv, "ret: 0");
 	return 0;
 }
 
 static int mailbox_versal_probe(struct platform_device *pdev)
 {
 	struct mailbox_versal *mbv = NULL;
-	struct resource *res;
+	struct resource *res = NULL;
 	int ret;
 
 	mbv = xocl_drvinst_alloc(&pdev->dev, sizeof(struct mailbox_versal));
@@ -167,6 +179,21 @@ static int mailbox_versal_probe(struct platform_device *pdev)
 
 	mutex_init(&mbv->mbv_lock);
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res) {
+		MBV_ERR(mbv, "no resources");
+		ret = -EIO;
+		goto failed;
+	} else {
+		MBV_INFO(mbv, "IO start: 0x%llx, end: 0x%llx, name: %s",
+			res->start, res->end, res->name);
+	}
+
+	mbv->mbv_intr_res = (struct resource *)XOCL_GET_SUBDEV_PRIV(&pdev->dev);
+	if (mbv->mbv_intr_res) {
+		MBV_INFO(mbv, "IO start: 0x%llx, end: 0x%llx, name: %s",
+			mbv->mbv_intr_res->start, mbv->mbv_intr_res->end,
+			mbv->mbv_intr_res->name);
+	}
 
 	mbv->mbv_regs = ioremap_nocache(res->start, res->end - res->start + 1);
 	if (!mbv->mbv_regs) {
@@ -178,12 +205,15 @@ static int mailbox_versal_probe(struct platform_device *pdev)
 	/* Reset both RX channel and RX channel */
 	mailbox_versal_reg_wr(mbv, &mbv->mbv_regs->mbr_ctrl, 0x3);
 
+	/* Enable mailbox interrupt */
 	mailbox_versal_enable_intr(pdev);
 
+	MBV_INFO(mbv, "ret: 0");
 	return 0;
 
 failed:
 	mailbox_versal_remove(pdev);
+	MBV_INFO(mbv, "ret: %d", ret);
 	return ret;
 }
 
