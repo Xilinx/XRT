@@ -47,6 +47,9 @@ extern "C" {
 typedef uint32_t  XmaBufferHandle;
 
 /**
+ * Deprecated API
+ * See https://github.com/Xilinx/xma-samples/tree/master/copy-encoder
+ * example to use new XMA2 APIs
  *  xma_plg_buffer_alloc)() - Allocate device memory
  *  This function allocates memory on the FPGA DDR and
  *  provides a handle to the memory that can be used for
@@ -67,9 +70,11 @@ typedef uint32_t  XmaBufferHandle;
  *  RETURN:    Non-zero buffer handle on success
  *
  */
+XMA_DEPRECATED
 XmaBufferHandle xma_plg_buffer_alloc(XmaHwSession s_handle, size_t size);
 
 /**
+ * Deprecated API
  *  xma_plg_buffer_free() - Free a device buffer
  *  This function frees a previous allocated buffer that was obtained
  *  using the @ref xma_plg_buffer_alloc() function.
@@ -79,9 +84,11 @@ XmaBufferHandle xma_plg_buffer_alloc(XmaHwSession s_handle, size_t size);
  *                   @ref xma_plg_buffer_alloc()
  *
  */
+XMA_DEPRECATED
 void xma_plg_buffer_free(XmaHwSession s_handle, XmaBufferHandle b_handle);
 
 /**
+ * Deprecated API
  *  xma_plg_buffer_free() - Get a physical address for a buffer handle
  *  This function returns the physical address of DDR memory on the FPGA
  *  used by a specific session
@@ -92,9 +99,11 @@ void xma_plg_buffer_free(XmaHwSession s_handle, XmaBufferHandle b_handle);
  *  RETURN:          Physical address of DDR on the FPGA
  *
  */
+XMA_DEPRECATED
 uint64_t xma_plg_get_paddr(XmaHwSession s_handle, XmaBufferHandle b_handle);
 
 /**
+ * Deprecated API
  *  xma_plg_get_paddr() - Write data from host to device buffer
  *  This function copies data from host to memory to device memory.
  *
@@ -109,6 +118,7 @@ uint64_t xma_plg_get_paddr(XmaHwSession s_handle, XmaBufferHandle b_handle);
  * XMA_ERROR on failure
  *
  */
+XMA_DEPRECATED
 int32_t xma_plg_buffer_write(XmaHwSession     s_handle,
                              XmaBufferHandle  b_handle,
                              const void      *src,
@@ -116,6 +126,7 @@ int32_t xma_plg_buffer_write(XmaHwSession     s_handle,
                              size_t           offset);
 
 /**
+ * Deprecated API
  *  xma_plg_buffer_read() - Read data from device memory and copy to host memory
  *  This function copies data from device memory and stores the result in
  *  the requested host memory
@@ -131,6 +142,7 @@ int32_t xma_plg_buffer_write(XmaHwSession     s_handle,
  * XMA_ERROR on failure
  *
  */
+XMA_DEPRECATED
 int32_t xma_plg_buffer_read(XmaHwSession     s_handle,
                             XmaBufferHandle  b_handle,
                             void            *dst,
@@ -138,7 +150,9 @@ int32_t xma_plg_buffer_read(XmaHwSession     s_handle,
                             size_t           offset);
 
 /**
- *
+ * Deprecated API
+ * See https://github.com/Xilinx/xma-samples/tree/master/copy-encoder
+ * example to use new XMA2 APIs
  * xma_plg_register_write() - Write kernel register(s)
  *
  *  This function writes the data provided and sets the specified AXI_Lite
@@ -158,12 +172,14 @@ int32_t xma_plg_buffer_read(XmaHwSession     s_handle,
  *               <0 on failure
  *
  */
+XMA_DEPRECATED
 int32_t xma_plg_register_prep_write(XmaHwSession     s_handle,
                                     void            *dst,
                                     size_t           size,
                                     size_t           offset);
 
 /**
+ * Deprecated API
  * xma_plg_schedule_work_item() - This function schedules a request to the XRT
  * scheduler for execution of a kernel based on the saved state of the kernel registers
  * supplied by the xma_plg_register_prep_write() function call.  The prep_write() keeps a
@@ -179,9 +195,13 @@ int32_t xma_plg_register_prep_write(XmaHwSession     s_handle,
  * XMA_ERROR on failure
  *
  */
+XMA_DEPRECATED
 int32_t xma_plg_schedule_work_item(XmaHwSession s_handle);
 
 /**
+ * Deprecated API
+ * See https://github.com/Xilinx/xma-samples/tree/master/copy-encoder
+ * example to use new XMA2 APIs
  * xma_plg_is_work_item_done() - This function checks if at least one work item
  * previously submitted via xma_plg_schedule_work_item() has completed.  If the
  * supplied timeout expires before a work item has completed, this function
@@ -195,12 +215,16 @@ int32_t xma_plg_schedule_work_item(XmaHwSession s_handle);
  * XMA_ERROR on timeout
  *
  */
+XMA_DEPRECATED
 int32_t xma_plg_is_work_item_done(XmaHwSession s_handle, int32_t timeout_in_ms);
 
 void xma_plg_kernel_lock(XmaHwSession s_handle);
 void xma_plg_kernel_unlock(XmaHwSession s_handle);
 
 /**
+ * Deprecated API
+ * See https://github.com/Xilinx/xma-samples/tree/master/copy-encoder
+ * example to use new XMA2 APIs
  *  xma_plg_register_prep_write() - This function writes the data provided and sets
  * the specified AXI_Lite register(s) exposed by a kernel. The base offset of 0
  * is the beginning of the kernels AXI_Lite memory map as this function adds the required
@@ -217,6 +241,7 @@ void xma_plg_kernel_unlock(XmaHwSession s_handle);
  * <0 on failure
  *
  */
+XMA_DEPRECATED
 int32_t xma_plg_register_prep_write(XmaHwSession     s_handle,
                                     void            *dst,
                                     size_t           size,
@@ -231,6 +256,8 @@ int32_t xma_plg_kernel_exec(XmaHwSession s_handle, bool wait_on_kernel_finish);
 
 /*
  * Deprecated API
+ * See https://github.com/Xilinx/xma-samples/tree/master/copy-encoder
+ * example to use new XMA2 APIs
  *  xma_plg_register_write() - This function writes the data provided and sets the
  * specified AXI_Lite register(s) exposed by a kernel. The base offset of 0 is the
  * beginning of the kernels AXI_Lite memory map as this function adds the required
@@ -247,13 +274,16 @@ int32_t xma_plg_kernel_exec(XmaHwSession s_handle, bool wait_on_kernel_finish);
  * <0 on failure
  *
  */
+XMA_DEPRECATED
 int32_t xma_plg_register_write(XmaHwSession     s_handle,
                                void            *dst,
                                size_t           size,
-                               size_t           offset) __attribute__ ((deprecated));
+                               size_t           offset);
 
 /*
  * Deprecated API
+ * See https://github.com/Xilinx/xma-samples/tree/master/copy-encoder
+ * example to use new XMA2 APIs
  * xma_plg_register_read() - Read kernel registers
  *
  *  This function reads the register(s) exposed by the kernel. The base offset
@@ -271,13 +301,16 @@ int32_t xma_plg_register_write(XmaHwSession     s_handle,
  * <0 on failure
  *
  */
+XMA_DEPRECATED
 int32_t xma_plg_register_read(XmaHwSession     s_handle,
                               void            *dst,
                               size_t           size,
-                              size_t           offset) __attribute__ ((deprecated));
+                              size_t           offset);
 
 /**
- *
+ * Deprecated API
+ * See https://github.com/Xilinx/xma-samples/tree/master/copy-encoder
+ * example to use new XMA2 APIs
  * xma_plg_register_dump() - Dump kernel registers
  *
  *  This function dumps the registers for a kernel up to the number of words
@@ -287,6 +320,7 @@ int32_t xma_plg_register_read(XmaHwSession     s_handle,
  *  @num_words: Number of 32-bit words to dump
  *
  */
+XMA_DEPRECATED
 void xma_plg_register_dump(XmaHwSession     s_handle,
                            int32_t          num_words);
 
