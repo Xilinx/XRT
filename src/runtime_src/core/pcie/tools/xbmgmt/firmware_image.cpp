@@ -38,14 +38,10 @@ using namespace boost::filesystem;
 const std::string DSAInfo::UNKNOWN = "UNKNOWN";
 const std::string DSAInfo::INACTIVE = "INACTIVE";
 
-/*
- * Helper to parse DSA name string and retrieve all tokens
- * The DSA name string is passed in by value since it'll be modified inside.
- */
-std::vector<std::string> DSANameParser(std::string name)
+
+std::vector<std::string> DSANameTokenPaser(std::string name, std::string delimiter)
 {
     std::vector<std::string> tokens;
-    std::string delimiter = "_";
 
     size_t pos = 0;
     std::string token;
@@ -57,6 +53,32 @@ std::vector<std::string> DSANameParser(std::string name)
     }
     tokens.push_back(name);
     return tokens;
+
+}
+
+/*
+ * Helper to parse DSA name string and retrieve all tokens
+ * The DSA name string is passed in by value since it'll be modified inside.
+ */
+std::vector<std::string> DSANameParser(std::string name)
+{
+    return DSANameTokenPaser(name, "_");
+}
+
+std::vector<std::string> DSANameVBNVParser(std::string name)
+{
+    return DSANameTokenPaser(name, ":");
+}
+
+void getVendorBoardFromVBNVName(std::string& dsa, std::string& vendor, std::string& board)
+{
+    std::vector<std::string> tokens = DSANameVBNVParser(dsa);
+
+    // At least, we need vendor.board
+    if (tokens.size() < 2)
+        return;
+    vendor = tokens[0];
+    board = tokens[1];
 }
 
 void getVendorBoardFromDSAName(std::string& dsa, std::string& vendor, std::string& board)
@@ -168,10 +190,8 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
                 if (dsa.uuids.size() > 0 && id.compare(dsa.uuids[0]) == 0)
                 {
                     name = dsa.name;
-                    if (!name.empty())
-                    {
-                        getVendorBoardFromDSAName(name, vendor, board);
-                    }
+                    vendor = dsa.vendor;
+                    board = dsa.board;
                     vendor_id = dsa.vendor_id;
                     device_id = dsa.device_id;
                     subsystem_id = dsa.subsystem_id;
@@ -247,10 +267,11 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
         {
             name.assign(reinterpret_cast<const char *>(ap->m_header.m_platformVBNV));
         }
+
+        getVendorBoardFromVBNVName(name, vendor, board);
         // Normalize DSA name: v:b:n:a.b -> v_b_n_a_b
         std::replace_if(name.begin(), name.end(),
             [](const char &a){ return a == ':' || a == '.'; }, '_');
-        getVendorBoardFromDSAName(name, vendor, board);
         parseDSAFilename(filename, vendor_id, device_id, subsystem_id, timestamp);
         
         // Assume there is only 1 interface UUID is provided for BLP,
