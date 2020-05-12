@@ -588,20 +588,28 @@ static void xclmgmt_subdev_get_data(struct xclmgmt_dev *lro, size_t offset,
 {
 	struct xcl_subdev	*hdr;
 	size_t			data_sz, fdt_sz;
+	int			rtn_code = 0;
 
 	mgmt_info(lro, "userpf requests subdev information");
 
-	data_sz = sizeof(*hdr);
-	fdt_sz = lro->userpf_blob ? fdt_totalsize(lro->userpf_blob) : 0;
-	data_sz += fdt_sz > offset ? (fdt_sz - offset) : 0;
+	if (lro->rp_program == XOCL_RP_PROGRAM_REQ) {
+		/* previous request is missed */
+		data_sz = sizeof(*hdr);
+		rtn_code = XOCL_MSG_SUBDEV_RTN_PENDINGPLP;
+	} else {
+		fdt_sz = lro->userpf_blob ? fdt_totalsize(lro->userpf_blob) : 0;
+		data_sz = fdt_sz > offset ? (fdt_sz - offset) : 0;
+		if (data_sz + offset < fdt_sz)
+			rtn_code = XOCL_MSG_SUBDEV_RTN_PARTIAL;
+		else if (!lro->userpf_blob_updated)
+			rtn_code = XOCL_MSG_SUBDEV_RTN_UNCHANGED;
+		else
+			rtn_code = XOCL_MSG_SUBDEV_RTN_COMPLETE;
+
+		data_sz += sizeof(*hdr);
+	}
 
 	*actual_sz = min_t(size_t, buf_sz, data_sz);
-
-	*resp = vzalloc(*actual_sz);
-	if (!*resp) {
-		mgmt_err(lro, "allocate resp failed");
-		return;
-	}
 
 	/* if it is invalid req, do nothing */
 	if (*actual_sz < sizeof(*hdr)) {
@@ -609,20 +617,20 @@ static void xclmgmt_subdev_get_data(struct xclmgmt_dev *lro, size_t offset,
 		return;
 	}
 
+	*resp = vzalloc(*actual_sz);
+	if (!*resp) {
+		mgmt_err(lro, "allocate resp failed");
+		return;
+	}
+
 	hdr = *resp;
 	hdr->ver = XOCL_MSG_SUBDEV_VER;
 	hdr->size = *actual_sz - sizeof(*hdr);
 	hdr->offset = offset;
+	hdr->rtncode = rtn_code;
 	//hdr->checksum = csum_partial(hdr->data, hdr->size, 0);
 	if (hdr->size > 0)
 		memcpy(hdr->data, (char *)lro->userpf_blob + offset, hdr->size);
-
-	if (hdr->size + offset < fdt_sz)
-		hdr->rtncode = XOCL_MSG_SUBDEV_RTN_PARTIAL;
-	else if (!lro->userpf_blob_updated)
-		hdr->rtncode = XOCL_MSG_SUBDEV_RTN_UNCHANGED;
-	else
-		hdr->rtncode = XOCL_MSG_SUBDEV_RTN_COMPLETE;
 
 	lro->userpf_blob_updated = false;
 }

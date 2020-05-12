@@ -162,12 +162,22 @@ static int xocl_match_slot_and_wait(struct device *dev, void *data)
 {
 	struct xclmgmt_dev *lro = data;
 	struct pci_dev *pdev;
+	int userpf= -1;
 	int ret = 0;
 
 	pdev = to_pci_dev(dev);
 
+	if (lro->core.fdt_blob) {
+		userpf = xocl_fdt_get_userpf(lro, lro->core.fdt_blob);
+		if (userpf < 0) {
+			mgmt_err(lro, "can not find userpf");
+			return -EINVAL;
+		}
+	}
+
 	if (pdev != lro->core.pdev &&
-		(XOCL_DEV_ID(pdev) >> 3) == (XOCL_DEV_ID(lro->pci_dev) >> 3))
+		(XOCL_DEV_ID(pdev) >> 3) == (XOCL_DEV_ID(lro->pci_dev) >> 3) &&
+		(userpf < 0 || PCI_FUNC(pdev->devfn) == userpf))
 		ret = xocl_wait_pci_status(pdev, PCI_COMMAND_MASTER, 0, 60);
 
 	return ret;
@@ -183,12 +193,22 @@ static int xocl_match_slot_set_master(struct device *dev, void *data)
 	struct xclmgmt_dev *lro = data;
 	struct pci_dev *pdev;
 	u16 pci_cmd;
+	int userpf = -1;
 	int ret = 0;
 
 	pdev = to_pci_dev(dev);
 
+	if (lro->core.fdt_blob) {
+		userpf = xocl_fdt_get_userpf(lro, lro->core.fdt_blob);
+		if (userpf < 0) {
+			mgmt_err(lro, "can not find userpf");
+			return -EINVAL;
+		}
+	}
+
 	if (pdev != lro->core.pdev &&
-		(XOCL_DEV_ID(pdev) >> 3) == (XOCL_DEV_ID(lro->pci_dev) >> 3)) {
+		(XOCL_DEV_ID(pdev) >> 3) == (XOCL_DEV_ID(lro->pci_dev) >> 3) &&
+		(userpf < 0 || PCI_FUNC(pdev->devfn) == userpf)) {
 		pci_read_config_word(pdev, PCI_COMMAND, &pci_cmd);
 		if (!(pci_cmd & PCI_COMMAND_MASTER)) {
 			pci_cmd |= PCI_COMMAND_MASTER;
