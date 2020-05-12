@@ -53,6 +53,7 @@ namespace xclhwemhal2 {
       uint32_t           addr;
       uint32_t           polladdr;
       uint32_t           ctrlreg;
+      uint32_t           ap_check;
       unsigned int       done_cnt;
       unsigned int       run_cnt;
       std::queue<xocl_cmd*>         running_queue;
