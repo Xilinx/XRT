@@ -28,11 +28,13 @@
 #define PROP_PARTITION_INFO_BLP "blp_info"
 #define PROP_PARTITION_INFO_PLP "plp_info"
 #define PROP_PARTITION_LEVEL "partition_level"
+#define PROP_VERSION_MAJOR "firmware_version_major"
 
 #define NODE_ENDPOINTS "addressable_endpoints"
 #define INTERFACES_PATH "/interfaces"
 
 #define NODE_PROPERTIES "partition_info"
+#define NODE_FIRMWARE "firmware"
 
 #define NODE_FLASH "ep_card_flash_program_00"
 #define NODE_XVC_PUB "ep_debug_bscan_user_00"
