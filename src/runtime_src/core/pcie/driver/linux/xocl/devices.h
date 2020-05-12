@@ -2990,11 +2990,11 @@ struct xocl_subdev_map {
 		.priv_data = &XOCL_BOARD_U50_USER_RAPTOR2,		\
 		.type = XOCL_DSAMAP_RAPTOR2 },				\
 	{ 0x10EE, 0x5044, PCI_ANY_ID,					\
-		.vbnv = "xilinx_u50",					\
+		.vbnv = "xilinx_vck5000",				\
 		.priv_data = &XOCL_BOARD_VERSAL_MGMT_RAPTOR2,		\
 		.type = XOCL_DSAMAP_RAPTOR2 },				\
 	{ 0x10EE, 0x5045, PCI_ANY_ID,					\
-		.vbnv = "xilinx_u50",					\
+		.vbnv = "xilinx_vck5000",				\
 		.priv_data = &XOCL_BOARD_VERSAL_USER_RAPTOR2,		\
 		.type = XOCL_DSAMAP_RAPTOR2 }
 #endif
