@@ -39,15 +39,23 @@ struct kds_client {
 	struct list_head	  link;
 	struct device	         *dev;
 	struct pid	         *pid;
-	struct kds_controller   **ctrl;
-	wait_queue_head_t	  waitq;
-	atomic_t		  event;
 #if PRE_ALLOC
 	u32			  max_xcmd;
 	u32			  xcmd_idx;
 	void			 *xcmds;
 	void			 *infos;
 #endif
+	/*
+	 * "ctrl" is used in thread that is submitting CU cmds.
+	 * "waitq" and "event" are modified in thread that is completing them.
+	 * In order to prevent false sharing, they need to be in different
+	 * cache lines. Hence we add a "padding" in between (assuming 128-byte
+	 * is big enough for most CPU architectures).
+	 */
+	struct kds_controller   **ctrl;
+	u64			  padding[16];
+	wait_queue_head_t	  waitq;
+	atomic_t		  event;
 };
 #define	CLIENT_NUM_CU(client) (0)
 

@@ -104,7 +104,8 @@ int xrt_cu_thread(void *data)
 		 */
 		if (process_rq(xcu))
 			continue;
-		/* process completed queue before submitted queue, for two reasons
+		/* process completed queue before submitted queue, for
+		 * two reasons:
 		 * - The last submitted command may be still running
 		 * - while handling completed queue, running command might done
 		 * - process_sq will check CU status, which is thru slow bus
@@ -141,7 +142,7 @@ int xrt_cu_thread(void *data)
 void xrt_cu_submit(struct xrt_cu *xcu, struct kds_command *xcmd)
 {
 	unsigned long flags;
-	bool first_command;
+	bool first_command = false;
 
 	/* Add command to pending queue
 	 * wakeup CU thread if it is the first command
@@ -172,13 +173,8 @@ int xrt_cu_init(struct xrt_cu *xcu)
 	INIT_LIST_HEAD(&xcu->sq);
 	/* Initialize completed queue */
 	INIT_LIST_HEAD(&xcu->cq);
-	xcu->num_pq = 0;
-	xcu->num_rq = 0;
-	xcu->num_sq = 0;
-	xcu->num_cq = 0;
 
 	sema_init(&xcu->sem, 0);
-	xcu->stop = 0;
 	xcu->thread = kthread_run(xrt_cu_thread, xcu, "xrt_thread");
 
 	return err;

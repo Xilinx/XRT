@@ -152,6 +152,14 @@ struct xrt_cu {
 	struct list_head	  pq;
 	spinlock_t		  pq_lock;
 	u32			  num_pq;
+	/*
+	 * Pending Q is used in thread that is submitting CU cmds.
+	 * Other Qs are used in thread that is completing them.
+	 * In order to prevent false sharing, they need to be in different
+	 * cache lines. Hence we add a "padding" in between (assuming 128-byte
+	 * is big enough for most CPU architectures).
+	 */
+	u64			  padding[16];
 	/* run queue */
 	struct list_head	  rq;
 	u32			  num_rq;
