@@ -572,9 +572,12 @@ done:
 uint32_t xocl_get_shared_ddr(struct xocl_drm *drm_p, struct mem_data *m_data)
 {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
-	struct xocl_mm_wrapper *wrapper;
+	struct xocl_mm_wrapper *wrapper = NULL;
 	uint64_t start_addr = m_data->m_base_address;
 	uint64_t sz = m_data->m_size*1024;
+
+	BUG_ON(!drm_p->mm_range);
+	BUG_ON(!m_data);
 
 	hash_for_each_possible(drm_p->mm_range, wrapper, node, start_addr) {
 		if (!wrapper)
@@ -601,7 +604,7 @@ static void xocl_cma_mem_free(struct xocl_drm *drm_p, uint32_t idx)
 
 	sgt = cma_mem->sgt;
 	if (sgt) {
-		dma_unmap_sg(drm_p->ddev->dev, sgt->sgl, sgt->orig_nents, DMA_FROM_DEVICE);
+		dma_unmap_sg(drm_p->ddev->dev, sgt->sgl, sgt->orig_nents, DMA_BIDIRECTIONAL);
 		sg_free_table(sgt);
 		vfree(sgt);
 		cma_mem->sgt = NULL;
@@ -661,7 +664,7 @@ int xocl_cleanup_mem(struct xocl_drm *drm_p)
 
 	err = XOCL_GET_MEM_TOPOLOGY(drm_p->xdev, topology);
 	if (err)
-		goto done;	
+		goto done;
 
 	if (topology) {
 		ddr = topology->m_count;
@@ -943,7 +946,7 @@ static int xocl_cma_mem_alloc_huge_page_by_idx(struct xocl_drm *drm_p, uint32_t 
 		goto done;
 	}
 
-	if (!dma_map_sg(dev, sgt->sgl, sgt->orig_nents, DMA_FROM_DEVICE)) {
+	if (!dma_map_sg(dev, sgt->sgl, sgt->orig_nents, DMA_BIDIRECTIONAL)) {
 		ret =-ENOMEM;
 		goto done;
 	}
@@ -962,7 +965,7 @@ done:
 		vfree(cma_mem->pages);
 		cma_mem->pages = NULL;
 		if (sgt) {
-			dma_unmap_sg(dev, sgt->sgl, sgt->orig_nents, DMA_FROM_DEVICE);
+			dma_unmap_sg(dev, sgt->sgl, sgt->orig_nents, DMA_BIDIRECTIONAL);
 			sg_free_table(sgt);
 			vfree(sgt);
 		}
