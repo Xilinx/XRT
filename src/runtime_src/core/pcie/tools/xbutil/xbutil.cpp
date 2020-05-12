@@ -97,7 +97,7 @@ check_os_release(const std::vector<std::string> kernel_versions, std::ostream &o
         if (release.find(ver) != std::string::npos)
             return true;
     }
-    ostr << "ERROR: Kernel verison " << release << " is not supported. " 
+    ostr << "WARNING: Kernel verison " << release << " is not officially supported. " 
         << kernel_versions.back() << " is the latest supported version" << std::endl;
     return false;
 }
@@ -1393,7 +1393,7 @@ int xcldev::device::kernelVersionTest(void)
         return -EOPNOTSUPP;
     }
     if (!is_supported_kernel_version(std::cout)) {
-        return  -ENODEV;
+        return  1;
     }
     return 0;
 }
