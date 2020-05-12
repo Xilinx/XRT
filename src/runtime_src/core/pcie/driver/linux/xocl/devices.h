@@ -177,6 +177,7 @@ enum {
 #define	XOCL_IORES3		"iores3"
 #define	XOCL_XDMA		"dma.xdma"
 #define	XOCL_QDMA		"dma.qdma"
+#define	XOCL_QDMA4		"dma.qdma4"
 #define	XOCL_MB_SCHEDULER	"mb_scheduler"
 #define	XOCL_XVC_PUB		"xvc_pub"
 #define	XOCL_XVC_PRI		"xvc_pri"
