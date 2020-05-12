@@ -8,7 +8,7 @@ namespace systemUtil {
       return;      
       
     std::cerr << "ERROR: [EMU 60-600] " << command.c_str() << " Exception Caught - Failed with the error code " << status << ". PLEASE CHECK YOUR PERMISSIONS " << std::endl;
-    exit(0);
+    exit(1);
   }
   
   void makeSystemCall (std::string &operand1, systemOperation operation, std::string operand2 )
@@ -80,7 +80,7 @@ namespace systemUtil {
       }
     } catch (...) {
       std::cerr << "ERROR: [EMU 60-601] " << " Exception Caught - Failed with the command " << operationStr.c_str() << " operation" << std::endl;
-      exit(0);
+      exit(1);
     }
   }
 }
