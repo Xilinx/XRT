@@ -26,7 +26,8 @@
 #include "detail/context.h"
 #include "detail/device.h"
 
-#include "xclbin.h"
+#include "core/include/xclbin.h"
+#include "core/include/experimental/xclbin_util.h"
 
 #include <exception>
 #include <string>
@@ -86,13 +87,35 @@ validOrError(cl_context                      context ,
   // for any device. binary_status will return specific status for
   // each device.
 
+
   // CL_OUT_OF_RESOURCES if there is a failure to allocate resources
   // required by the OpenCL implementation on the device.
-  // xlnx: if a device is already programmed then it's unavailable
-  if (std::any_of(device_list,device_list+num_devices,
-                  [](const cl_device_id dev){return xocl(dev)->is_active();})
-      && !std::getenv("XCL_CONFORMANCE"))
-    throw xocl::error(CL_OUT_OF_RESOURCES,"some device is already programmed");
+  // xlnx: if a device is already programmed with different xclbin
+  // then it's unavailable
+
+  // If any one device is already programmed, then all should be
+  // programmed and the binaries must match the ones passed here.
+  // Or none of current devices are programmed.
+  auto program = xocl(device_list[0])->get_program();
+  for (unsigned int idx = 0; idx < num_devices; ++idx) {
+    auto device = xocl(device_list[idx]);
+    
+    if (idx > 0 && device->get_program() != program)
+      throw xocl::error(CL_INVALID_VALUE,"Device '" + device->get_bdf() + "' is already programmed");
+
+    if (!program)
+      continue;
+    
+    // Compare program uuid against this binary, must match
+    auto uuid = program->get_xclbin_uuid(device);
+    auto binary = binaries[idx];   // guaranteed not nullptr 
+    xuid_t xuuid;
+    xclbin_uuid(binary, xuuid);
+
+    if (uuid != xuuid)
+      throw xocl::error(CL_OUT_OF_RESOURCES,
+                        "device '" + device->get_bdf() +"' programmed with different xclbin");
+  }
 
   // CL_OUT_OF_HOST_MEMORY if there is a failure to allocate resources
   // required by the OpenCL implementation on the host.
@@ -116,6 +139,16 @@ clCreateProgramWithBinary(cl_context                      context ,
                           cl_int *                        errcode_ret )
 {
   validOrError(context,num_devices,device_list,lengths,binaries,binary_status,errcode_ret);
+
+  // validOrError guarantees that if any one device is already programmed
+  // then all are programmed and with the same program object. Further
+  // every device is guaranteed to be programmed with the binary passed
+  // to this function.  Alas, just return the program.
+  if (auto program = xocl(device_list[0])->get_program()) {
+    program->retain();
+    xocl::assign(errcode_ret,CL_SUCCESS);
+    return program;
+  }
 
   // Flushing device trace (not done on first call to program with binary)
   static bool once = false;

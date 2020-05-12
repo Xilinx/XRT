@@ -146,6 +146,13 @@ public:
   get_xclbin(const device* d) const;
 
   /**
+   * @return
+   *   The uuid of xclbin for argument device
+   */
+  xrt_core::uuid
+  get_xclbin_uuid(const device* d) const;
+
+  /**
    * Return the xclbin binary for argument device
    *
    * @param d
