@@ -15,6 +15,7 @@
  */
 
 #include "command.h"
+#include "scheduler.h"
 
 #include <map>
 #include <vector>
@@ -85,6 +86,16 @@ purge_command_freelist()
   s_purged = true;
 }
 
+// Purge command list for specific device
+// This function is called when the device is closed
+void
+purge_device_command_freelist(xrt::device* device)
+{
+  auto itr = sx.freelist.find(device);
+  if (itr != sx.freelist.end())
+    (*itr).second.clear();
+}
+
 command::
 command(xrt::device* device, ert_cmd_opcode opcode)
   : m_device(device)
@@ -123,6 +134,19 @@ command::
     m_device->unmap(m_exec_bo);
     free_buffer(m_device,m_exec_bo);
   }
+}
+
+void
+command::
+execute()
+{
+  // command objects can be reused outside constructor
+  // reset state
+  auto epacket = get_ert_cmd<ert_packet*>();
+  epacket->state = ERT_CMD_STATE_NEW;
+
+  m_done=false;
+  xrt::scheduler::schedule(get_ptr());
 }
 
 } // xrt

@@ -17,6 +17,7 @@
 #ifndef xocl_api_detail_command_queue_h_
 #define xocl_api_detail_command_queue_h_
 
+#include "xocl/config.h"
 #include "CL/cl.h"
 
 namespace xocl { namespace detail {
@@ -34,5 +35,3 @@ validOrError(const cl_device_id, cl_command_queue_properties properties);
 }} // detail,xocl
 
 #endif
-
-

@@ -35,12 +35,12 @@ public:
   platform();
   virtual ~platform();
 
-  void 
+  void
   add_device(device* d);
 
-  bool 
-  has_device(device* d) const 
-  { 
+  bool
+  has_device(device* d) const
+  {
     return std::find(m_devices.begin(),m_devices.end(),d)!=m_devices.end();
   }
 
@@ -99,19 +99,20 @@ get_global_platform();
  * The global platform is constructed if necessary.
  *
  * @return
- *  Shared pointer to global platform object. 
+ *  Shared pointer to global platform object.
  */
+XRT_XOCL_EXPORT
 std::shared_ptr<platform>
 get_shared_platform();
 
 /**
  * Get number of platforms
- * 
+ *
  * @return
- *  Number of platform objects.  This is either 1 or 0 
+ *  Number of platform objects.  This is either 1 or 0
  *  depending on whether or not the global platform has
  *  been constructed
- *  
+ *
  */
 unsigned int
 get_num_platforms();
@@ -135,8 +136,8 @@ get_xilinx_sdx();
  *   The install root (same as xilinx_opencl)
  */
 inline std::string
-get_install_root() 
-{ 
+get_install_root()
+{
   return get_xilinx_opencl();
 }
 
@@ -150,5 +151,3 @@ conformance_get_xclbin(const std::string& hash);
 } // xocl
 
 #endif
-
-
