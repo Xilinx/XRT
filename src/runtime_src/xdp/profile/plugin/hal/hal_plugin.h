@@ -35,6 +35,8 @@ namespace xdp {
     std::map<uint64_t, DeviceTraceLogger*>  deviceTraceLoggers;
     std::map<uint64_t, DeviceTraceOffload*> deviceTraceOffloaders;
 
+    std::map<void*, uint64_t> devHandleIdMap;
+
     void flushDevices() ;
     void continuousOffload() ;
     void resetDevice(uint64_t deviceId);

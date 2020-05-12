@@ -119,11 +119,19 @@ namespace xdp {
 
   uint64_t HALPlugin::getDeviceId(void* handle)
   {
+    if(devHandleIdMap.find(handle) != devHandleIdMap.end()) {
+      return devHandleIdMap[handle];
+    }
+
     char pathBuf[MAX_PATH_SZ];
     xclGetDebugIPlayoutPath(handle, pathBuf, MAX_PATH_SZ);
 
     std::string sysfsPath(pathBuf);
-    return db->addDevice(sysfsPath);
+    uint64_t uniqDevId = db->addDevice(sysfsPath);
+
+    // save to improve performance, as xclGetDebugIPlayoutPath is time consuming
+    devHandleIdMap[handle] = uniqDevId;
+    return uniqDevId;
   }
 
   void HALPlugin::updateDevice(void* handle, const void* binary)
