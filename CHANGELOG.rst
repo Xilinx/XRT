@@ -20,6 +20,12 @@ Removed
 * ``xclBootFPGA()``, ``xclRemoveAndScanFPGA()`` and ``xclRegisterInterruptNotify()`` have been marked as deprecated in this release and will be removed in a future release. These functionalities are no longer supported.
 * ``xclLockDevice()`` and ``xclUnlockDevice()`` have been marked as deprecated in this release and will be removed in a future release. These functionalities are no longer supported.
 
+Known Issues
+............
+
+* On CentOS the ``xrtdeps.sh`` script used to install required dependencies for building XRT is trying to install no longer supported ``devtoolset-6``.  In order to build XRT on CentOS or RHEL, a later devtoolset version should be installed, for example ``devtoolset-9``.
+
+  
 2.4.0 (202010.2.4)
 ~~~~~~~~~~~~~~~~~~
 
