@@ -58,8 +58,10 @@ namespace xdp {
 					     creationTime,
 					     xrtVersion,
                          toolVersion)) ;
-    (db->getStaticInfo()).addOpenedFile("hal_host_trace.csv", "VP_TRACE") ;
-    writers.push_back(new HALSummaryWriter("hal_summary.csv")) ;
+    (db->getStaticInfo()).addOpenedFile("hal_host_trace.csv", "VP_TRACE");
+#ifdef HAL_SUMMARY
+    writers.push_back(new HALSummaryWriter("hal_summary.csv"));
+#endif
 
     // There should be both a writer for each device.
     unsigned int index = 0 ;
@@ -82,7 +84,7 @@ namespace xdp {
 						 creationTime,
 						 xrtVersion,
                          toolVersion));
-      (db->getStaticInfo()).addOpenedFile(fileName.c_str(), "VP_TRACE") ;
+      (db->getStaticInfo()).addOpenedFile(fileName.c_str(), "VP_TRACE");
       ++index;
       handle = xclOpen(index, "/dev/null", XCL_INFO) ;			
     }
