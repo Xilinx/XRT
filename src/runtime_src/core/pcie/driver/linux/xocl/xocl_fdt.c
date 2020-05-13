@@ -196,7 +196,7 @@ static void devinfo_cb_plp_gate(void *dev_hdl, void *subdevs, int num)
 {
 	struct xocl_subdev *subdev = subdevs;
 
-	subdev->info.level = XOCL_SUBDEV_LEVEL_BLD;
+	subdev->info.level = XOCL_SUBDEV_LEVEL_PRP;
 	subdev->info.override_idx = subdev->info.level;
 }
 
