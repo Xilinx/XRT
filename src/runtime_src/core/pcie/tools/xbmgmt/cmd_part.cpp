@@ -42,9 +42,11 @@ using namespace boost::filesystem;
 
 const char *subCmdPartDesc = "Show and download partition onto the device";
 const char *subCmdPartUsage =
-    "--program --name name [--id interface-uuid] [--card bdf] [--force]\n"
-    "--program --path xclbin [--card bdf] [--force]\n"
-    "--scan [--verbose]";
+    "--program --name name [--id interface-uuid] [--card bdf]\n"
+    "--scan [--verbose]\n";
+const char *subCmdPartExpUsage =
+    "Experts only:\n"
+    "--program --path xclbin [--card bdf] [--force]\n";
 
 #define indent(level)	std::string((level) * 4, ' ')
 int program_prp(unsigned index, const std::string& xclbin, bool force)

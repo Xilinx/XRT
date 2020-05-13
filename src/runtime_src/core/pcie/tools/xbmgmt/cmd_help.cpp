@@ -31,7 +31,11 @@ int helpHandler(int argc, char *argv[])
         printHelp(true);
         return 0;
     }
-
-    printSubCmdHelp(subCmd);
+    bool show_expert = false;
+    for (int i = 1; i < argc; ++i) {
+        if(std::string(argv[i]).compare("--expert") == 0)
+            show_expert = true;
+    }
+    printSubCmdHelp(subCmd, show_expert);
     return 0;
 }
