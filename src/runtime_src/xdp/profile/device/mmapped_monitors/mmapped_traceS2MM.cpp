@@ -77,6 +77,7 @@ int MMappedTraceS2MM::write(uint64_t offset, size_t size, void* data)
     return 0;
   }
   if(size == sizeof(uint32_t)) {
+    // Special case for 4 bytes write to improve performance
     memcpy(mapped_device + offset, (uint32_t*)data, sizeof(uint32_t));
     return size;
   }
