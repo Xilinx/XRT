@@ -120,6 +120,7 @@ namespace xdp {
       xclClose(itr.second);
     }
     deviceHandles.clear();
+    devHandleIdMap.clear();
   }
 
   uint64_t HALPlugin::getDeviceId(void* handle)
