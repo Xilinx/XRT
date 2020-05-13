@@ -600,7 +600,11 @@ static void tiTxtStreamToBin(std::istream& tiTxtStream,
         switch (line[0]) {
         case '@':
             // Address line
-            currentAddr = std::stoi(line.substr(1), NULL , 16);
+            try {
+                currentAddr = std::stoi(line.substr(1), NULL, 16);
+            } catch (...){
+                return;
+            }
             break;
         case 'q':
         case 'Q':
@@ -617,8 +621,15 @@ static void tiTxtStreamToBin(std::istream& tiTxtStream,
             // Data line
             std::stringstream ss(line);
             std::string token;
-            while (std::getline(ss, token, ' '))
-                buf.push_back(std::stoi(token, NULL, 16));
+            unsigned char int_token;
+            while (std::getline(ss, token, ' ')) {
+                try {
+                    int_token = std::stoi(token, NULL, 16);
+                } catch (...) {
+                    return;
+                }
+                buf.push_back(int_token);
+            }
             break;
         }
     }
