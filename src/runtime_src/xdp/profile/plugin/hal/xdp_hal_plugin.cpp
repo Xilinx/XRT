@@ -226,10 +226,9 @@ namespace xdp {
     log_function_start(&(pLoad->basePayload), "UnmgdRead") ;
     
 #ifdef HAL_SUMMARY
-
-    VPDatabase* db = halPluginInstance.getDatabase() ;
     // Also log the amount of data transferred
     uint64_t deviceId = halPluginInstance.getDeviceId(pLoad->basePayload.deviceHandle);
+    VPDatabase* db = halPluginInstance.getDatabase() ;
     (db->getStats()).logMemoryTransfer(deviceId,
 				       DeviceMemoryStatistics::UNMANAGED_READ, 
 				       pLoad->count) ;
@@ -248,10 +247,9 @@ namespace xdp {
     log_function_start(&(pLoad->basePayload), "UnmgdWrite") ;
 
 #ifdef HAL_SUMMARY
-
-    VPDatabase* db = halPluginInstance.getDatabase() ;
     // Also log the amount of data transferred
     uint64_t deviceId = halPluginInstance.getDeviceId(pLoad->basePayload.deviceHandle);
+    VPDatabase* db = halPluginInstance.getDatabase() ;
     (db->getStats()).logMemoryTransfer(deviceId,
 				       DeviceMemoryStatistics::UNMANAGED_WRITE,
 				       pLoad->count) ;
@@ -269,10 +267,9 @@ namespace xdp {
     log_function_start(&(pLoad->basePayload), "xclRead") ;
 
 #ifdef HAL_SUMMARY
-
-    VPDatabase* db = halPluginInstance.getDatabase() ;
     // Also log the amount of data transferred
     uint64_t deviceId = halPluginInstance.getDeviceId(pLoad->basePayload.deviceHandle);
+    VPDatabase* db = halPluginInstance.getDatabase() ;
     (db->getStats()).logMemoryTransfer(deviceId,
 				                DeviceMemoryStatistics::XCLREAD, pLoad->size) ;
 #endif
@@ -286,11 +283,10 @@ namespace xdp {
     ReadWriteCBPayload* pLoad = reinterpret_cast<ReadWriteCBPayload*>(payload);
     log_function_start(&(pLoad->basePayload), "xclWrite") ;
 
-//    VPDatabase* db = halPluginInstance.getDatabase() ;
-
 #ifdef HAL_SUMMARY
     // Also log the amount of data transferred
     uint64_t deviceId = halPluginInstance.getDeviceId(pLoad->basePayload.deviceHandle);
+    VPDatabase* db = halPluginInstance.getDatabase() ;
     (db->getStats()).logMemoryTransfer(deviceId,
 				       DeviceMemoryStatistics::XCLWRITE, 
 				       pLoad->size) ;
