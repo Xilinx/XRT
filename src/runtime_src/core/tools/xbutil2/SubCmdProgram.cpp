@@ -61,23 +61,29 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   std::string xclbin;
   bool help = false;
 
-  po::options_description programDesc("program options");
-  programDesc.add_options()
+  po::options_description commonOptions("Common Options");
+  commonOptions.add_options()
     ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
     (",d", boost::program_options::value<unsigned int>(&card), "Card to be examined")
     (",r", boost::program_options::value<uint64_t>(&region), "Card region")
     (",p", boost::program_options::value<std::string>(&xclbin), "The xclbin image to load")
   ;
 
+  po::options_description hiddenOptions("Hidden Options");
+
+  po::options_description allOptions("All Options");  
+  allOptions.add(commonOptions);
+  allOptions.add(hiddenOptions);
+
   // Parse sub-command ...
   po::variables_map vm;
 
   try {
-    po::store(po::command_line_parser(_options).options(programDesc).run(), vm);
+    po::store(po::command_line_parser(_options).options(allOptions).run(), vm);
     po::notify(vm); // Can throw
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
-    printHelp(programDesc);
+    printHelp(commonOptions, hiddenOptions);
 
     // Re-throw exception
     throw;
@@ -85,7 +91,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   // Check to see if help was requested or no command was found
   if (help == true)  {
-    printHelp(programDesc);
+    printHelp(commonOptions, hiddenOptions);
     return;
   }
 
@@ -122,5 +128,5 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     return;
   }
   std::cout << "\nERROR: Missing program operation. No action taken.\n\n";
-  printHelp(programDesc);
+  printHelp(commonOptions, hiddenOptions);
 }

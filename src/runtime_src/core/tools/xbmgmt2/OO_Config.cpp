@@ -117,8 +117,8 @@ memory_retention(std::shared_ptr<xrt_core::device>& dev,
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
-OO_Config::OO_Config( const std::string &_longName)
-    : OptionOptions(_longName, "<Add description>")
+OO_Config::OO_Config( const std::string &_longName, bool _isHidden)
+    : OptionOptions(_longName, _isHidden, "<Add description>")
     , m_device({})
     , m_help(false)
     , m_daemon(false)
@@ -135,17 +135,20 @@ OO_Config::OO_Config( const std::string &_longName)
 {
   m_optionsDescription.add_options()
     ("device,d", boost::program_options::value<decltype(m_device)>(&m_device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
+    ("enable_retention", boost::program_options::bool_switch(&m_enable_retention), "<add description>")
+    ("disable_retention", boost::program_options::bool_switch(&m_disable_retention), "<add description>")
+    ("help,h", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+  ;
+
+  m_optionsHidden.add_options()
     ("daemon", boost::program_options::bool_switch(&m_daemon), "<add description>")
     ("host", boost::program_options::value<decltype(m_host)>(&m_host), "ip or hostname for peer")
     ("security", boost::program_options::value<decltype(m_security)>(&m_security), "<add description>")
     ("runtime_clk_scale", boost::program_options::value<decltype(m_clk_scale)>(&m_clk_scale), "<add description>")
     ("cs_threshold_power_override", boost::program_options::value<decltype(m_power_override)>(&m_power_override), "<add description>")
     ("show", boost::program_options::bool_switch(&m_show), "<add description>")
-    ("enable_retention", boost::program_options::bool_switch(&m_enable_retention), "<add description>")
-    ("disable_retention", boost::program_options::bool_switch(&m_disable_retention), "<add description>")
     ("ddr", boost::program_options::bool_switch(&m_ddr), "<add description>")
     ("hbm", boost::program_options::bool_switch(&m_hbm), "<add description>")
-    ("help,h", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 }
 

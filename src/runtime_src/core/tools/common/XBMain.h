@@ -18,12 +18,14 @@
 #define __XBMgmtMain_h_
 
 // Include files
+
 // Please keep these to the bare minimum
 #include "XBHelpMenus.h"
 #include <string>
     
 // ---------------------- F U N C T I O N S ----------------------------------
 void main_(int argc, char** argv, 
+           const std::string & _executable,
            const std::string & _description,
            const SubCmdsCollection & _SubCmds);
 #endif

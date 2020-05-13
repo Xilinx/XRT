@@ -26,8 +26,8 @@ namespace XBU = XBUtilities;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
-OO_P2P::OO_P2P( const std::string &_longName )
-    : OptionOptions(_longName, "Controls P2P functionality")
+OO_P2P::OO_P2P( const std::string &_longName, bool _isHidden )
+    : OptionOptions(_longName, _isHidden, "Controls P2P functionality")
     , m_device("")
     , m_action("")
     , m_help(false)

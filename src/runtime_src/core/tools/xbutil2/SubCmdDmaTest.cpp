@@ -120,22 +120,28 @@ SubCmdDmaTest::execute(const SubCmdOptions& _options) const
   std::string sBlockSizeKB;
   bool help = false;
 
-  po::options_description dmaTestDesc("dmatest options");
-  dmaTestDesc.add_options()
+  po::options_description commonOptions("Common Options");
+  commonOptions.add_options()
     ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
     (",d", boost::program_options::value<decltype(card)>(&card), "Card to be examined")
     (",b", boost::program_options::value<std::string>(&sBlockSizeKB), "Block Size KB")
   ;
 
+  po::options_description hiddenOptions("Hidden Options");
+
+  po::options_description allOptions("All Options");  
+  allOptions.add(commonOptions);
+  allOptions.add(hiddenOptions);
+
   // Parse sub-command ...
   po::variables_map vm;
 
   try {
-    po::store(po::command_line_parser(_options).options(dmaTestDesc).run(), vm);
+    po::store(po::command_line_parser(_options).options(allOptions).run(), vm);
     po::notify(vm); // Can throw
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
-    printHelp(dmaTestDesc);
+    printHelp(commonOptions, hiddenOptions);
 
     // Re-throw exception
     throw;
@@ -143,7 +149,7 @@ SubCmdDmaTest::execute(const SubCmdOptions& _options) const
 
   // Check to see if help was requested or no command was found
   if (help == true)  {
-    printHelp(dmaTestDesc);
+    printHelp(commonOptions, hiddenOptions);
     return;
   }
 

@@ -26,8 +26,8 @@ namespace XBU = XBUtilities;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
-OO_NIFD::OO_NIFD( const std::string &_longName)
-    : OptionOptions(_longName, "<add description>")
+OO_NIFD::OO_NIFD( const std::string &_longName, bool _isHidden)
+    : OptionOptions(_longName, _isHidden, "<add description>")
     , m_device("")
     , m_help(false)
 {

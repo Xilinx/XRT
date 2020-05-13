@@ -77,7 +77,7 @@ int main( int argc, char** argv )
 
   // -- Ready to execute the code
   try {
-    main_( argc, argv, description, subCommands);
+    main_( argc, argv, executable, description, subCommands);
     return 0;
   } catch (const std::exception &e) {
     xrt_core::send_exception_message(e.what(), executable.c_str());
