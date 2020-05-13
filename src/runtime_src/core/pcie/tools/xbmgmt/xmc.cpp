@@ -603,6 +603,7 @@ static void tiTxtStreamToBin(std::istream& tiTxtStream,
             try {
                 currentAddr = std::stoi(line.substr(1), NULL, 16);
             } catch (...){
+                std::cout << "ERROR: Invalid address " << line.substr(1) << ". No action taken" << std::endl;
                 return;
             }
             break;
@@ -626,6 +627,7 @@ static void tiTxtStreamToBin(std::istream& tiTxtStream,
                 try {
                     int_token = std::stoi(token, NULL, 16);
                 } catch (...) {
+                    std::cout << "ERROR: Invalid address " << token << ". No action taken" << std::endl;
                     return;
                 }
                 buf.push_back(int_token);
