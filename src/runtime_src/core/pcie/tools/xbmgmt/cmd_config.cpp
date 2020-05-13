@@ -34,7 +34,7 @@ const char *subCmdConfigUsage =
 const char *subCmdConfigExpUsage =
     "Experts only:\n"
     "--daemon --host ip-or-hostname-for-peer\n"
-    "--device [--card bdf] [--runtime_clk_scale en(dis)able] [--security level] [--cs_threshold_power_override val] [--cs_reset val]\n"
+    "--device [--card bdf] [--security level] [--cs_threshold_power_override val] [--cs_reset val]\n"
     "--show [--daemon | --device [--card bdf]\n";
 
 static struct config {
