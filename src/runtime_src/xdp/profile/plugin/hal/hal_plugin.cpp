@@ -23,6 +23,8 @@
 #include "xdp/profile/writer/hal/hal_device_trace_writer.h"
 #include "xdp/profile/writer/hal/hal_summary_writer.h"
 
+#include "xdp/profile/writer/vp_base/vp_run_summary.h"
+
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/device_trace_offload.h"
@@ -56,7 +58,10 @@ namespace xdp {
 					     creationTime,
 					     xrtVersion,
                          toolVersion)) ;
-    writers.push_back(new HALSummaryWriter("hal_summary.csv")) ;
+    (db->getStaticInfo()).addOpenedFile("hal_host_trace.csv", "VP_TRACE");
+#ifdef HAL_SUMMARY
+    writers.push_back(new HALSummaryWriter("hal_summary.csv"));
+#endif
 
     // There should be both a writer for each device.
     unsigned int index = 0 ;
@@ -79,9 +84,11 @@ namespace xdp {
 						 creationTime,
 						 xrtVersion,
                          toolVersion));
+      (db->getStaticInfo()).addOpenedFile(fileName.c_str(), "VP_TRACE");
       ++index;
       handle = xclOpen(index, "/dev/null", XCL_INFO) ;			
     }
+    writers.push_back(new VPRunSummaryWriter("hal.run_summary"));
   }
 
   HALPlugin::~HALPlugin()
@@ -115,15 +122,24 @@ namespace xdp {
       xclClose(itr.second);
     }
     deviceHandles.clear();
+    devHandleIdMap.clear();
   }
 
   uint64_t HALPlugin::getDeviceId(void* handle)
   {
+    if(devHandleIdMap.find(handle) != devHandleIdMap.end()) {
+      return devHandleIdMap[handle];
+    }
+
     char pathBuf[MAX_PATH_SZ];
     xclGetDebugIPlayoutPath(handle, pathBuf, MAX_PATH_SZ);
 
     std::string sysfsPath(pathBuf);
-    return db->addDevice(sysfsPath);
+    uint64_t uniqDevId = db->addDevice(sysfsPath);
+
+    // save to improve performance, as xclGetDebugIPlayoutPath is time consuming
+    devHandleIdMap[handle] = uniqDevId;
+    return uniqDevId;
   }
 
   void HALPlugin::updateDevice(void* handle, const void* binary)
@@ -160,7 +176,7 @@ namespace xdp {
     devInterface->configureDataflow(dataflowConfig);
     delete [] dataflowConfig;
 
-    devInterface->startTrace(3); // check this
+    devInterface->startTrace(2); /* data_transfer_trace=fine, by default */
     devInterface->clockTraining();
 
     bool init_done = true;
