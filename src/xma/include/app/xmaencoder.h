@@ -118,6 +118,10 @@ typedef struct XmaEncoderProperties
     /** aq_mode  */
     int32_t         aq_mode;
     int32_t         minQP;
+    /** Rate Control Mode for Custom Rate Control **/
+    int32_t 	    rc_mode;
+    /** Look Ahead Depth  needed to count number of Custom RC Params **/
+    int32_t        la_depth;
     /** force property values to be accepted by encoder plugin */
     int32_t         force_param;
     /** array of kernel-specific custom initialization parameters */
