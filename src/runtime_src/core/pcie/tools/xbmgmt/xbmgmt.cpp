@@ -33,26 +33,27 @@ struct subCmd {
     std::function<int(int, char **)> handler;
     const char *description;
     const char *usage;
+    const char *expert_usage;
 };
 
 static const std::map<std::string, struct subCmd> subCmdList = {
-    { "help", {helpHandler, subCmdHelpDesc, subCmdHelpUsage} },
-    { "version", {versionHandler, subCmdVersionDesc, subCmdVersionUsage} },
-    { "--version", {versionHandler, subCmdVersionDesc, subCmdVersionUsage} },
-    { "scan", {scanHandler, subCmdScanDesc, subCmdScanUsage} },
-    { "flash", {flashHandler, subCmdFlashDesc, subCmdFlashUsage} },
+    { "help", {helpHandler, subCmdHelpDesc, subCmdHelpUsage, nullptr} },
+    { "version", {versionHandler, subCmdVersionDesc, subCmdVersionUsage, nullptr} },
+    { "--version", {versionHandler, subCmdVersionDesc, subCmdVersionUsage, nullptr} },
+    { "scan", {scanHandler, subCmdScanDesc, subCmdScanUsage, nullptr} },
+    { "flash", {flashHandler, subCmdFlashDesc, subCmdFlashUsage, subCmdFlashExpUsage} },
     // for xbutil flash
-    { "-lash", {flashXbutilFlashHandler, subCmdXbutilFlashDesc, subCmdXbutilFlashUsage} },
-    { "reset", {resetHandler, subCmdResetDesc, subCmdResetUsage} },
-    { "clock", {clockHandler, subCmdClockDesc, subCmdClockUsage} },
-    { "partition", {partHandler, subCmdPartDesc, subCmdPartUsage} },
-    { "config", {configHandler, subCmdConfigDesc, subCmdConfigUsage} },
-    { "nifd", {nifdHandler, subCmdNifdDesc, subCmdNifdUsage} },
-    { "hotplug", {hotplugHandler, subCmdHotplugDesc, subCmdHotplugUsage} },
+    { "-lash", {flashXbutilFlashHandler, subCmdXbutilFlashDesc, subCmdXbutilFlashUsage, nullptr} },
+    { "reset", {resetHandler, subCmdResetDesc, subCmdResetUsage, nullptr} },
+    { "clock", {clockHandler, subCmdClockDesc, subCmdClockUsage, nullptr} },
+    { "partition", {partHandler, subCmdPartDesc, subCmdPartUsage, subCmdPartExpUsage} },
+    { "config", {configHandler, subCmdConfigDesc, subCmdConfigUsage, subCmdConfigExpUsage} },
+    { "nifd", {nifdHandler, subCmdNifdDesc, subCmdNifdUsage, nullptr} },
+    { "hotplug", {hotplugHandler, subCmdHotplugDesc, subCmdHotplugUsage, nullptr} },
 };
 
 const static std::vector<std::string> basic_subCmd =
-    { "flash", "help", "scan", "version" };
+    { "flash", "help", "scan", "version", "config", "partition" };
 
 void sudoOrDie()
 {
@@ -147,7 +148,7 @@ void printHelp(bool printExpHelp)
         std::endl;
 }
 
-void printSubCmdHelp(const std::string& subCmd)
+void printSubCmdHelp(const std::string& subCmd, bool show_expert)
 {
     auto cmd = subCmdList.find(subCmd);
 
@@ -160,6 +161,8 @@ void printSubCmdHelp(const std::string& subCmd)
         if (!isHiddenSubcmd(subCmd))
             std::cout << "'" << subCmd << "' sub-command usage:" << std::endl;
         std::cout << cmd->second.usage << std::endl;
+        if(show_expert)
+            std::cout << cmd->second.expert_usage << std::endl;
     }
 }
 
@@ -209,7 +212,7 @@ int main(int argc, char *argv[])
     ++argv;
     int ret = cmd->second.handler(argc, argv);
     if (ret == -EINVAL)
-        printSubCmdHelp(subCmd);
+        printSubCmdHelp(subCmd, false);
 
     return ret;
 }

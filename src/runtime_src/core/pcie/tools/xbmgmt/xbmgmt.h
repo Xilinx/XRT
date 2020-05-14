@@ -23,7 +23,7 @@
 // Helper functions that can be used by all command handlers
 //
 void printHelp(bool printExpHelp);
-void printSubCmdHelp(const std::string& subCmd);
+void printSubCmdHelp(const std::string& subCmd, bool show_expert);
 bool canProceed(void);
 void sudoOrDie(void);
 unsigned int bdf2index(const std::string& bdfStr);
@@ -51,6 +51,7 @@ extern const char *subCmdXbutilFlashUsage;
 int flashHandler(int argc, char *argv[]);
 extern const char *subCmdFlashDesc;
 extern const char *subCmdFlashUsage;
+extern const char *subCmdFlashExpUsage;
 
 int resetHandler(int argc, char *argv[]);
 extern const char *subCmdResetDesc;
@@ -63,10 +64,12 @@ extern const char *subCmdClockUsage;
 int partHandler(int argc, char *argv[]);
 extern const char *subCmdPartDesc;
 extern const char *subCmdPartUsage;
+extern const char *subCmdPartExpUsage;
 
 int configHandler(int argc, char *argv[]);
 extern const char *subCmdConfigDesc;
 extern const char *subCmdConfigUsage;
+extern const char *subCmdConfigExpUsage;
 
 int nifdHandler(int argc, char *argv[]);
 extern const char *subCmdNifdDesc;
