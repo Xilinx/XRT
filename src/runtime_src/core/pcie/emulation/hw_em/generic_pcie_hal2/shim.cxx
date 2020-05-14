@@ -504,7 +504,7 @@ namespace xclhwemhal2 {
             //BAD Worharound for vck5000 need to remove once SIM_QDMA supports PCIE bar 
             if(xclemulation::config::getInstance()->getCuBaseAddrForce()!=-1) {
               mCuBaseAddress = xclemulation::config::getInstance()->getCuBaseAddrForce();
-            } else if(!vbnv.empty() && (  vbnv.find("vck5000-es1_g3x16_202010_1") != std::string::npos)) {
+            } else if(mVersalPlatform) {
               mCuBaseAddress = 0x20200000000;
             }
             mKernelOffsetArgsInfoMap[base] = kernelArgInfo;
