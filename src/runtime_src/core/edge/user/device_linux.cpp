@@ -61,12 +61,12 @@ struct devInfo
     case key_type::clock_freqs:
       {
         std::vector<std::string> clk_freqs;
-        for(int i = 0; i < 3; i++)
+        for(int i = 0; i < sizeof(deviceInfo.mOCLFrequency)/sizeof(deviceInfo.mOCLFrequency[0]); i++)
           clk_freqs.push_back(std::to_string(deviceInfo.mOCLFrequency[i]));
         return clk_freqs;
       }
     default:
-      return std::string("NA");
+      throw query::no_such_key(key);
     }
   }
 };
@@ -127,7 +127,7 @@ struct sysfs_getter : QueryRequestType
 
   sysfs_getter(const char* e)
     : entry(e)
-  {}
+  { /* empty */ }
 
   boost::any
     get(const xrt_core::device* device) const

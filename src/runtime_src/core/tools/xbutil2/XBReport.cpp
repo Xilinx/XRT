@@ -34,7 +34,7 @@ using namespace XBReport;
 void
 report_driver_version(boost::property_tree::ptree _pt, std::string pt_var, std::string msg_var)
 {
-  if (_pt.get<std::string>(pt_var, "NA") != std::string("NA")) { 
+  if (_pt.get<std::string>(pt_var, "N/A") != std::string("N/A")) { 
     XBU::message(boost::str(boost::format("%-14s: %s") % msg_var % _pt.get<std::string>(pt_var)));
   }
   return;
