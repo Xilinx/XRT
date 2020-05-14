@@ -719,8 +719,9 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 	if (!offset && !xdev->core.fdt_blob)
 		goto failed;
 
-	if (resp->rtncode != XOCL_MSG_SUBDEV_RTN_COMPLETE) {
-		userpf_err(xdev, "Unexpected return code");
+	if (resp->rtncode != XOCL_MSG_SUBDEV_RTN_COMPLETE &&
+		resp->rtncode != XOCL_MSG_SUBDEV_RTN_UNCHANGED) {
+		userpf_err(xdev, "Unexpected return code %d", resp->rtncode);
 		ret = -EINVAL;
 		goto failed;
 	}
