@@ -26,10 +26,12 @@ namespace XBU = XBUtilities;
 namespace po = boost::program_options;
 
 OptionOptions::OptionOptions( const std::string & _longName,
+                              bool _isHidden,
                               const std::string & _description)
   : m_executable("<unknown>")
   , m_command("<unknown>")
   , m_longName(_longName)
+  , m_isHidden(_isHidden)
   , m_description(_description)
   , m_extendedHelp("")
 {
@@ -39,6 +41,9 @@ OptionOptions::OptionOptions( const std::string & _longName,
 void 
 OptionOptions::printHelp() const
 {
-  XBU::report_subcommand_help(m_executable, m_command + " --" + m_longName, m_description, m_extendedHelp, m_optionsDescription, m_positionalOptions);
+  XBU::report_subcommand_help( m_executable, 
+                               m_command + " --" + m_longName, 
+                               m_description, m_extendedHelp, 
+                               m_optionsDescription, m_optionsHidden, m_positionalOptions);
 }
 

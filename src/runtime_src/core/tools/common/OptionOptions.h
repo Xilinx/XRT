@@ -32,6 +32,8 @@ class OptionOptions {
   const std::string &longName() const { return m_longName; };
   const std::string &description() const {return m_description; };
   const std::string &extendedHelp() const { return m_extendedHelp; };
+  bool isHidden() const { return m_isHidden; };
+
   void setExecutable( const std::string &_executable) {m_executable = _executable; };
   void setCommand( const std::string & _command) {m_command = _command; };
 
@@ -45,7 +47,7 @@ class OptionOptions {
 
  // Child class Helper methods
  protected:
-  OptionOptions(const std::string & _longName, const std::string & _description);
+  OptionOptions(const std::string & _longName, bool _isHidden, const std::string & _description);
   void setExtendedHelp(const std::string &_extendedHelp) { m_extendedHelp = _extendedHelp; };
   void printHelp() const;
 
@@ -55,12 +57,14 @@ class OptionOptions {
  // Variables
  protected:
   boost::program_options::options_description m_optionsDescription;
+  boost::program_options::options_description m_optionsHidden;
   boost::program_options::positional_options_description m_positionalOptions;
 
  private:
   std::string m_executable;
   std::string m_command;
   std::string m_longName;
+  bool m_isHidden;
   std::string m_description;
   std::string m_extendedHelp;
 };

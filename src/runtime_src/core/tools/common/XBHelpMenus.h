@@ -35,6 +35,7 @@ namespace XBUtilities {
     report_commands_help( const std::string &_executable, 
                           const std::string &_description,
                           const boost::program_options::options_description& _optionDescription,
+                          const boost::program_options::options_description& _optionHidden,
                           const SubCmdsCollection &_subCmds );
   void 
     report_subcommand_help( const std::string &_executableName,
@@ -42,6 +43,7 @@ namespace XBUtilities {
                             const std::string &_description, 
                             const std::string &_extendedHelp,
                             const boost::program_options::options_description & _optionDescription,
+                            const boost::program_options::options_description &_optionHidden,
                             const boost::program_options::positional_options_description & _positionalDescription );
 
   void 
@@ -50,6 +52,7 @@ namespace XBUtilities {
                             const std::string &_description, 
                             const std::string &_extendedHelp,
                             const boost::program_options::options_description &_optionDescription,
+                            const boost::program_options::options_description &_optionHidden,
                             const SubCmd::SubOptionOptions & _subOptionOptions);
 
   void 

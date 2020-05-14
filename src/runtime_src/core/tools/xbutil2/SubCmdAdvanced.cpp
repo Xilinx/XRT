@@ -63,17 +63,15 @@ SubCmdAdvanced::execute(const SubCmdOptions& _options) const
 {
   XBU::verbose("SubCommand: advanced");
 
-  // ============= Define all of the options =================================
-  po::options_description allDesc;
-
   // -- Common top level options ---
   bool help = false;
 
-  po::options_description commonTopDesc("Common Options"); 
-  commonTopDesc.add_options()
+  po::options_description commonOptions("Common Options"); 
+  commonOptions.add_options()
     ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
-  allDesc.add(commonTopDesc);
+
+  po::options_description hiddenOptions("Hidden Options"); 
 
   // -- Define the supporting option options ----
   SubOptionOptions subOptionOptions;
@@ -83,17 +81,24 @@ SubCmdAdvanced::execute(const SubCmdOptions& _options) const
   subOptionOptions.emplace_back(std::make_shared<OO_P2P>("p2p"));
 
   for (auto & subOO : subOptionOptions) {
-    allDesc.add_options()(subOO->longName().c_str(), subOO->description().c_str());
+    if (subOO->isHidden()) 
+      hiddenOptions.add_options()(subOO->longName().c_str(), subOO->description().c_str());
+    else
+      commonOptions.add_options()(subOO->longName().c_str(), subOO->description().c_str());
     subOO->setExecutable(getExecutableName());
     subOO->setCommand(getName());
   }
+
+  po::options_description allOptions("All Options");
+  allOptions.add(commonOptions);
+  allOptions.add(hiddenOptions);
 
   // =========== Process the options ========================================
 
   // 1) Process the common top level options 
   po::parsed_options parsedCommonTop = 
     po::command_line_parser(_options).
-    options(allDesc).          
+    options(allOptions).          
     allow_unregistered().           // Allow for unregistered options
     run();                          // Parse the options
 
@@ -111,7 +116,7 @@ SubCmdAdvanced::execute(const SubCmdOptions& _options) const
     }
   } catch (const std::exception & e) {
     std::cerr << "ERROR: " << e.what() << std::endl;
-    printHelp(allDesc, subOptionOptions);
+    printHelp(commonOptions, hiddenOptions, subOptionOptions);
     return;
   }
 
@@ -126,7 +131,7 @@ SubCmdAdvanced::execute(const SubCmdOptions& _options) const
 
   // No suboption print help
   if (!optionOption) {
-    printHelp(allDesc, subOptionOptions);
+    printHelp(commonOptions, hiddenOptions, subOptionOptions);
     return;
   }
 
@@ -137,11 +142,4 @@ SubCmdAdvanced::execute(const SubCmdOptions& _options) const
   }
 
   optionOption->execute(topOptions);
-
-  // Process the commands
-  // 2) Look for mutually exclusive options.  Error if found.
-  // 3) Look for sub-options and process them.  Process them, if none-found error.
-
-  // -- Now process the subcommand --------------------------------------------
-  // Is valid BDF value valid
 }

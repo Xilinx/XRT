@@ -24,7 +24,7 @@ class OO_Clock : public OptionOptions {
   virtual void execute( const SubCmdOptions &_options ) const;
 
  public:
-  OO_Clock(const std::string &_longName);
+  OO_Clock(const std::string &_longName, bool _isHidden = false);
 
  private:
   std::string m_device;

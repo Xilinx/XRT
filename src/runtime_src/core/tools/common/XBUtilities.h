@@ -47,6 +47,10 @@ namespace XBUtilities {
    */
   void setVerbose(bool _bVerbose);
   void setTrace(bool _bVerbose);
+
+  void setShowHidden(bool _bShowHidden);
+  bool getShowHidden();
+
   void disable_escape_codes( bool _disable );
   bool is_esc_enabled();  
 

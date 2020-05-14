@@ -85,8 +85,8 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   bool bHelp = false;
 
   // -- Retrieve and parse the subcommand options -----------------------------
-  po::options_description queryDesc("Options");  // Note: Boost will add the colon.
-  queryDesc.add_options()
+  po::options_description commonOptions("Common Options");  
+  commonOptions.add_options()
     ("device,d", boost::program_options::value<decltype(devices)>(&devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' (default) indicates that every found device should be examined.")
     ("report,r", boost::program_options::value<decltype(reportNames)>(&reportNames)->multitoken(), (std::string("The type of report to be produced. Reports currently available are:\n") + reportOptionValues).c_str() )
     ("format,f", boost::program_options::value<decltype(sFormat)>(&sFormat), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
@@ -95,21 +95,27 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     ("help,h", boost::program_options::bool_switch(&bHelp), "Help to use this sub-command")
   ;
 
+  po::options_description hiddenOptions("Hidden Options");  
+
+  po::options_description allOptions("All Options");  
+  allOptions.add(commonOptions);
+  allOptions.add(hiddenOptions);
+
   // Parse sub-command ...
   po::variables_map vm;
 
   try {
-    po::store(po::command_line_parser(_options).options(queryDesc).run(), vm);
+    po::store(po::command_line_parser(_options).options(allOptions).run(), vm);
     po::notify(vm); // Can throw
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
-    printHelp(queryDesc);
+    printHelp(commonOptions, hiddenOptions);
     throw; // Re-throw exception
   }
 
   // Check to see if help was requested 
   if (bHelp == true)  {
-    printHelp(queryDesc);
+    printHelp(commonOptions, hiddenOptions);
     return;
   }
 
@@ -154,7 +160,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   } catch (const xrt_core::error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
-    printHelp(queryDesc);
+    printHelp(commonOptions, hiddenOptions);
     return;
   }
 

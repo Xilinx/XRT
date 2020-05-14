@@ -218,6 +218,7 @@ void
 XBUtilities::report_commands_help( const std::string &_executable, 
                                    const std::string &_description,
                                    const boost::program_options::options_description& _optionDescription,
+                                   const boost::program_options::options_description& _optionHidden,
                                    const SubCmdsCollection &_subCmds)
 { 
   // Formatting color parameters
@@ -231,6 +232,7 @@ XBUtilities::report_commands_help( const std::string &_executable,
 
   // Helper variable
   std::string formattedString;
+  static std::string sHidden = "(Hidden)";
 
   // -- Command description
   XBU::wrap_paragraphs(_description, 13, m_maxColumnWidth, false, formattedString);
@@ -252,7 +254,7 @@ XBUtilities::report_commands_help( const std::string &_executable,
 
   for (auto& subCmdEntry : _subCmds) {
     // Filter out hidden subcommand
-    if (subCmdEntry->isHidden()) 
+    if (!XBU::getShowHidden() && subCmdEntry->isHidden()) 
       continue;
 
     // Depricated sub-command
@@ -282,10 +284,12 @@ XBUtilities::report_commands_help( const std::string &_executable,
   boost::format fmtSubCmdHdr(fgc_header + "\n%s COMMANDS:\n" + fgc_reset);  
   boost::format fmtSubCmd(fgc_subCmd + "  %-10s " + fgc_subCmdBody + "- %s\n" + fgc_reset); 
   unsigned int subCmdDescTab = 15;
+
   if (!subCmdsReleased.empty()) {
     std::cout << fmtSubCmdHdr % "AVAILABLE";
     for (auto & subCmdEntry : subCmdsReleased) {
-      XBU::wrap_paragraphs(subCmdEntry->getShortDescription(), subCmdDescTab, m_maxColumnWidth, false, formattedString);
+      std::string sPreAppend = subCmdEntry->isHidden() ? sHidden + " " : "";
+      XBU::wrap_paragraphs(sPreAppend + subCmdEntry->getShortDescription(), subCmdDescTab, m_maxColumnWidth, false, formattedString);
       std::cout << fmtSubCmd % subCmdEntry->getName() % formattedString;
     }
   }
@@ -293,7 +297,8 @@ XBUtilities::report_commands_help( const std::string &_executable,
   if (!subCmdsPreliminary.empty()) {
     std::cout << fmtSubCmdHdr % "PRELIMINARY";
     for (auto & subCmdEntry : subCmdsPreliminary) {
-      XBU::wrap_paragraphs(subCmdEntry->getShortDescription(), subCmdDescTab, m_maxColumnWidth, false, formattedString);
+      std::string sPreAppend = subCmdEntry->isHidden() ? sHidden + " " : "";
+      XBU::wrap_paragraphs(sPreAppend + subCmdEntry->getShortDescription(), subCmdDescTab, m_maxColumnWidth, false, formattedString);
       std::cout << fmtSubCmd % subCmdEntry->getName() % formattedString;
     }
   }
@@ -301,12 +306,16 @@ XBUtilities::report_commands_help( const std::string &_executable,
   if (!subCmdsDepricated.empty()) {
     std::cout << fmtSubCmdHdr % "DEPRECATED";
     for (auto & subCmdEntry : subCmdsDepricated) {
-      XBU::wrap_paragraphs(subCmdEntry->getShortDescription(), subCmdDescTab, m_maxColumnWidth, false, formattedString);
+      std::string sPreAppend = subCmdEntry->isHidden() ? sHidden + " " : "";
+      XBU::wrap_paragraphs(sPreAppend + subCmdEntry->getShortDescription(), subCmdDescTab, m_maxColumnWidth, false, formattedString);
       std::cout << fmtSubCmd % subCmdEntry->getName() % formattedString;
     }
   }
 
   report_option_help("OPTIONS", _optionDescription, emptyPOD);
+
+  if (XBU::getShowHidden()) 
+    report_option_help(std::string("OPTIONS ") + sHidden, _optionHidden, emptyPOD);
 }
 
 static std::string 
@@ -382,6 +391,7 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
                                      const std::string &_description, 
                                      const std::string &_extendedHelp,
                                      const boost::program_options::options_description &_optionDescription,
+                                     const boost::program_options::options_description &_optionHidden,
                                      const boost::program_options::positional_options_description & _positionalDescription)
 {
   // Formatting color parameters
@@ -428,6 +438,9 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
   // -- Options
   report_option_help("OPTIONS", _optionDescription, _positionalDescription, false);
 
+  if (XBU::getShowHidden()) 
+    report_option_help("OPTIONS (Hidden)", _optionHidden, _positionalDescription, false);
+
   // Extended help
   boost::format fmtExtHelp(fgc_extendedBody + "\n  %s\n" +fgc_reset);
   XBU::wrap_paragraph(_extendedHelp, 2, m_maxColumnWidth, false, formattedString);
@@ -441,6 +454,7 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
                                      const std::string &_description, 
                                      const std::string &_extendedHelp,
                                      const boost::program_options::options_description &_optionDescription,
+                                     const boost::program_options::options_description &_optionHidden,
                                      const SubCmd::SubOptionOptions & _subOptionOptions)
 {
   // Formatting color parameters
@@ -472,15 +486,25 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
     std::cout << fmtHeader % formattedString;
 
   // -- Usage
-  auto pipeFold = [](std::string a, auto &b) { return std::move(a)+ " | " + b->longName(); };
-  std::string usageSubCmds = std::accumulate( std::next(_subOptionOptions.begin()), _subOptionOptions.end(),
-                                              _subOptionOptions[0]->longName(), pipeFold);
+  std::string usageSubCmds;
+  for (const auto & subCmd : _subOptionOptions) {
+    if (subCmd->isHidden()) 
+      continue;
+
+    if (!usageSubCmds.empty()) 
+      usageSubCmds.append(" | ");
+
+    usageSubCmds.append(subCmd->longName());
+  }
 
   std::cout << boost::format(fgc_header + "\nUSAGE: " + fgc_usageBody + "%s %s [-h] --[ %s ] [commandArgs]\n" + fgc_reset) % _executableName % _subCommand % usageSubCmds;
 
   // -- Options
   boost::program_options::positional_options_description emptyPOD;
   report_option_help("OPTIONS", _optionDescription, emptyPOD, false);
+
+  if (XBU::getShowHidden()) 
+    report_option_help("OPTIONS (Hidden)", _optionHidden, emptyPOD, false);
 
   // Extended help
   boost::format fmtExtHelp(fgc_extendedBody + "\n  %s\n" +fgc_reset);

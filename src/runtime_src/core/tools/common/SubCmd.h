@@ -57,8 +57,10 @@ public:
   void setIsPreliminary(bool _isPreliminary) { m_isPreliminary = _isPreliminary; };
   void setLongDescription(const std::string &_longDescription) {m_longDescription = _longDescription; };
   void setExampleSyntax(const std::string &_exampleSyntax) {m_exampleSyntax = _exampleSyntax; };
-  void printHelp(const boost::program_options::options_description & _optionDescription) const;
   void printHelp(const boost::program_options::options_description & _optionDescription,
+                 const boost::program_options::options_description & _optionHidden) const;
+  void printHelp( const boost::program_options::options_description & _optionDescription,
+                  const boost::program_options::options_description & _optionHidden,
                   const SubOptionOptions & _subOptionOptions) const;
   void conflictingOptions( const boost::program_options::variables_map& _vm, 
                            const std::string &_opt1, const std::string &_opt2) const;
