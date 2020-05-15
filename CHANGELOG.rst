@@ -13,6 +13,7 @@ Added
 * Support for U30 video acceleration offload device has been added.
 * Early access versions of next generation utilities, *xbutil* and *xbmgmt* are available. They can be invoked via *--new* switch as ``xbutil --new``.
 * Utilties xbutil and xbmgmt now give a warning when they detect an unsupported Linux distribution version and kernel version.
+* Error code paths for clPollStreams() API has been improved.
 
 
 Removed
@@ -30,7 +31,7 @@ Known Issues
 
 * On CentOS the ``xrtdeps.sh`` script used to install required dependencies for building XRT is trying to install no longer supported ``devtoolset-6``.  In order to build XRT on CentOS or RHEL, a later devtoolset version should be installed, for example ``devtoolset-9``.
 
-  
+
 2.4.0 (202010.2.4)
 ~~~~~~~~~~~~~~~~~~
 
