@@ -90,6 +90,6 @@ Component             License
 ====================  =========================
 Linux xocl driver     GPLv2
 Linux xclmgmt driver  GPLv2
-Linux zocl            Dual GPLv2 and Apache 2.0
+Linux zocl driver     Dual GPLv2 and Apache 2.0
 User space            Apache 2.0
 ====================  =========================
