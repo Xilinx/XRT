@@ -276,8 +276,7 @@ static int ospi_versal_remove(struct platform_device *pdev)
 
 	if (!ov) {
 		xocl_err(&pdev->dev, "driver data is NULL");
-		ret = -EINVAL;
-		goto done;
+		return -EINVAL;
 	}
 
 	xocl_drvinst_release(ov, &hdl);
@@ -287,7 +286,6 @@ static int ospi_versal_remove(struct platform_device *pdev)
 	platform_set_drvdata(pdev, NULL);
 	xocl_drvinst_free(hdl);
 
-done:
 	OV_INFO(ov, "return: %d", ret);
 	return ret;
 }
