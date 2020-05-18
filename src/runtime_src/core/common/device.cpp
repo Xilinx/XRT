@@ -237,7 +237,7 @@ device::
 get_rom_info(boost::property_tree::ptree& pt) const
 {
   ptree_updater<query::rom_vbnv>::query_and_put(this, pt);
-  ptree_updater<query::rom_ddr_bank_size>::query_and_put(this, pt);
+  ptree_updater<query::rom_ddr_bank_size_gb>::query_and_put(this, pt);
   ptree_updater<query::rom_ddr_bank_count_max>::query_and_put(this, pt);
   ptree_updater<query::rom_fpga_name>::query_and_put(this, pt);
   ptree_updater<query::rom_time_since_epoch>::query_and_put(this, pt);
@@ -259,7 +259,7 @@ device::
 get_platform_info(boost::property_tree::ptree& pt) const
 {
   ptree_updater<query::dna_serial_num>::query_and_put(this, pt);
-  ptree_updater<query::clock_freqs>::query_and_put(this, pt);
+  ptree_updater<query::clock_freqs_mhz>::query_and_put(this, pt);
   ptree_updater<query::idcode>::query_and_put(this, pt);
   ptree_updater<query::status_mig_calibrated>::query_and_put(this, pt);
   ptree_updater<query::status_p2p_enabled>::query_and_put(this, pt);

@@ -54,11 +54,14 @@ struct devInfo
       return deviceInfo.mVendorId;
     case key_type::rom_vbnv:
       return std::string(deviceInfo.mName);
-    case key_type::rom_ddr_bank_size:
-      return (deviceInfo.mDDRSize >> 30);
+    case key_type::rom_ddr_bank_size_gb:
+      {
+	static const uint32_t BYTES_TO_GBYTES = 30;
+      	return (deviceInfo.mDDRSize >> BYTES_TO_GBYTES);
+      }
     case key_type::rom_ddr_bank_count_max:
       return static_cast<uint64_t>(deviceInfo.mDDRBankCount);
-    case key_type::clock_freqs:
+    case key_type::clock_freqs_mhz:
       {
         std::vector<std::string> clk_freqs;
         for(int i = 0; i < sizeof(deviceInfo.mOCLFrequency)/sizeof(deviceInfo.mOCLFrequency[0]); i++)
@@ -171,10 +174,10 @@ initialize_query_table()
 
   emplace_func0_request<query::rom_vbnv, devInfo>();
   emplace_func0_request<query::rom_fpga_name, devInfo>();
-  emplace_func0_request<query::rom_ddr_bank_size, devInfo>();
+  emplace_func0_request<query::rom_ddr_bank_size_gb, devInfo>();
   emplace_func0_request<query::rom_ddr_bank_count_max, devInfo>();
 
-  emplace_func0_request<query::clock_freqs, devInfo>();
+  emplace_func0_request<query::clock_freqs_mhz, devInfo>();
  
   emplace_sysfs_request<query::xclbin_uuid>               ("xclbinid");
   emplace_sysfs_request<query::mem_topology_raw>          ("mem_topology");

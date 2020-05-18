@@ -56,7 +56,7 @@ enum class key_type
   dma_threads_raw,
 
   rom_vbnv,
-  rom_ddr_bank_size,
+  rom_ddr_bank_size_gb,
   rom_ddr_bank_count_max,
   rom_fpga_name,
   rom_raw,
@@ -75,7 +75,7 @@ enum class key_type
   xmc_reg_base,
 
   dna_serial_num,
-  clock_freqs,
+  clock_freqs_mhz,
   idcode,
 
   status_mig_calibrated,
@@ -361,10 +361,10 @@ struct rom_vbnv : request
   }
 };
 
-struct rom_ddr_bank_size : request
+struct rom_ddr_bank_size_gb : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::rom_ddr_bank_size;
+  static const key_type key = key_type::rom_ddr_bank_size_gb;
   static const char* name() { return "ddr_size_bytes"; }
 
   virtual boost::any
@@ -575,10 +575,10 @@ struct dna_serial_num : request
   }
 };
 
-struct clock_freqs : request
+struct clock_freqs_mhz : request
 {
   using result_type = std::vector<std::string> ;
-  static const key_type key = key_type::clock_freqs;
+  static const key_type key = key_type::clock_freqs_mhz;
   static const char* name() { return "clocks"; }
 
   virtual boost::any
