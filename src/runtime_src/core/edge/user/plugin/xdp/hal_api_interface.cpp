@@ -103,7 +103,7 @@ namespace xdphalinterface {
   {
 #ifdef XRT_LOAD_XDP_HAL_PLUGIN
     static xdputil::XDPLoader
-      xdp_hal_interface_loader("hal_api_interface_plugin",
+      xdp_hal_interface_loader("xdp_hal_api_interface_plugin",
 			       register_hal_interface_callbacks,
 			       nullptr, // warning function
 			       error_hal_interface_callbacks) ;

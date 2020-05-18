@@ -98,7 +98,7 @@ namespace xdphalinterface {
   void load_xdp_hal_interface_plugin_library(HalPluginConfig* )
   {
     static xdputil::XDPLoader 
-      xdp_hal_interface_loader("hal_api_interface_plugin",
+      xdp_hal_interface_loader("xdp_hal_api_interface_plugin",
 			       register_hal_interface_callbacks,
 			       nullptr, // warining function
 			       error_hal_interface_callbacks) ;
