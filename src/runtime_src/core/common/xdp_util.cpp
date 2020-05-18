@@ -16,6 +16,8 @@
 
 #include <boost/filesystem/operations.hpp>
 
+#define XRT_CORE_COMMON_SOURCE
+
 #include "xdp_util.h"
 #include "core/common/dlfcn.h"
 
