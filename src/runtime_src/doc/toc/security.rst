@@ -38,8 +38,8 @@ are trusted while those shaded violet are not. Alveo shells use a specialized IP
 for PF1 to PF1 AXI network. It is responsible for the necessary isolation between PF0 and PF1.
 
 Trusted peripherals includes ICAP for bitstream download (DFX), CMC for sensors and thermal
-management, CLocks for clock scaling, QSPI Ctrl for PROM accesss (shell upgrades), DFX Isolation
-and Firewall controls.
+management, Clock Wizards for clock scaling, QSPI Ctrl for PROM accesss (shell upgrades), DFX
+Isolation and Firewall controls.
 
 All peripherals in the shell except XDMA/QDMA are slaves from PCIe point of view and cannot
 initiate PCIe transactions. Alveo shells have one of XDMA or QDMA PCIe DMA engine. Both
