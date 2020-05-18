@@ -209,7 +209,7 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 		return 0;
 	//From "mem_topology" or "feature rom" depending on
 	//unified or non-unified dsa
-	ddr_count = XOCL_DDR_COUNT(xdev);
+	ddr_count = XOCL_GROUP_COUNT(xdev);
 
 	if (ddr_count == 0)
 		return -EINVAL;
@@ -334,7 +334,7 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 
 	mutex_lock(&drm_p->mm_lock);
 	/* Attempt to allocate buffer on the requested DDR */
-	xocl_xdev_dbg(xdev, "alloc bo from bank%u", memidx);
+	xocl_xdev_dbg(xdev, "alloc bo from group%u", memidx);
 
 	/* Check the mem index to see if it's MEM_HOST */
 	if ((xobj->flags & XOCL_CMA_MEM) && !is_cma_bank(drm_p, memidx)) {
@@ -342,13 +342,14 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 		goto failed;
 	}
 
-	err = xocl_mm_insert_node(drm_p, memidx, xobj->mm_node,
+	err = xocl_mm_insert_node_range(drm_p, memidx, xobj->mm_node,
 		xobj->base.size);
-	BO_DEBUG("insert mm_node:%p, start:%llx size: %llx",
-		xobj->mm_node, xobj->mm_node->start,
-		xobj->mm_node->size);
 	if (err)
 		goto failed;
+	
+        BO_DEBUG("insert mm_node:%p, start:%llx size: %llx",
+		xobj->mm_node, xobj->mm_node->start,
+		xobj->mm_node->size);
 
 	xocl_mm_update_usage_stat(drm_p, memidx, xobj->base.size, 1);
 	mutex_unlock(&drm_p->mm_lock);

@@ -92,13 +92,41 @@ static ssize_t kdsstat_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(kdsstat);
 
+static ssize_t mem_group_info_show(struct device *dev,
+                struct device_attribute *attr, char *buf)
+{
+        struct xocl_dev *xdev = dev_get_drvdata(dev);
+        struct xocl_drm *drm_p = XOCL_DRM(xdev);
+        struct xocl_mem_conn *mem_conn = NULL;
+        struct xocl_mem_conn_map *m_conn = NULL;
+        ssize_t size = 0;
+        int i;
+
+        if (!drm_p || !drm_p->m_connect)
+                return 0;
+
+        mem_conn = drm_p->m_connect->mem_conn;
+        if (!mem_conn)
+                return 0;
+
+        for (i = 0; i < mem_conn->m_count; i++) {
+                m_conn = mem_conn->m_conn[i];
+                memcpy((void *)buf, (void *)m_conn, sizeof(*m_conn));
+                buf += sizeof(*m_conn);
+                size += sizeof(*m_conn);
+        }
+
+        return size;
+}
+static DEVICE_ATTR_RO(mem_group_info);
+
 static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 {
-	int i, err;
-	ssize_t count = 0;
-	ssize_t size = 0;
-	size_t memory_usage = 0;
-	unsigned int bo_count = 0;
+        int i, err;
+        ssize_t count = 0;
+        ssize_t size = 0;
+        size_t memory_usage = 0;
+        unsigned int bo_count = 0;
 	const char *txt_fmt = "[%s] %s@0x%012llx (%lluMB): %lluKB %dBOs\n";
 	const char *raw_fmt = "%llu %d %llu\n";
 	struct mem_topology *topo = NULL;
@@ -521,6 +549,7 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_userbar.attr,
 	&dev_attr_kdsstat.attr,
 	&dev_attr_memstat.attr,
+	&dev_attr_mem_group_info.attr,
 	&dev_attr_memstat_raw.attr,
 	&dev_attr_p2p_enable.attr,
 	&dev_attr_dev_offline.attr,

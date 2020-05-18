@@ -1237,8 +1237,18 @@ static inline u32 xocl_ddr_count_unified(xdev_handle_t xdev_hdl)
 	return ret;
 }
 
+static inline u32 xocl_group_count_unified(xdev_handle_t xdev_hdl)
+{
+        /* SAIF TODO */
+        return 0;
+}
+
+
+drm_p->m_connect->mem_group->g_count
 #define	XOCL_DDR_COUNT(xdev)			\
 	(xocl_is_unified(xdev) ? xocl_ddr_count_unified(xdev) :	\
+#define	XOCL_GROUP_COUNT(xdev)			\
+	(xocl_is_unified(xdev) ? xocl_group_count_unified(xdev) :	\
 	xocl_get_ddr_channel_count(xdev))
 #define XOCL_IS_STREAM(topo, idx)					\
 	(topo->m_mem_data[idx].m_type == MEM_STREAMING || \
