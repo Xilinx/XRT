@@ -17,7 +17,7 @@
 #include "core/include/xclbin.h"
 #include "core/common/dlfcn.h"
 #include "plugin/xdp/debug.h"
-#include "plugin/xdp/xdp_util.h"
+#include "core/common/xdp_util.h"
 
 namespace xocl {
 namespace debug {

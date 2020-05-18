@@ -21,8 +21,8 @@
  */
 #include "xocl/core/event.h"
 #include "core/common/dlfcn.h"
+#include "core/common/xdp_util.h"
 #include "plugin/xdp/appdebug.h"
-#include "plugin/xdp/xdp_util.h"
 
 namespace xocl {
 namespace appdebug {

@@ -14,17 +14,21 @@
  * under the License.
  */
 
+#ifndef XDP_UTIL_DOT_H
+#define XDP_UTIL_DOT_H
+
 // This file contains the loader class used for all XDP plugin modules
 //  that are loaded from OpenCL applications.
 
 #include <boost/filesystem/path.hpp>
 #include <functional>
+#include <string>
 
 namespace xdputil {
 
   // This class is responsible for loading the XDP plugin from
   //  the module directory.  Each plugin will have a function that
-  //  will instantiate a single static instance of this struct to handle
+  //  will instantiate a single static instance of this class to handle
   //  the loading once in a thread safe manner.
   class XDPLoader
   {
@@ -41,8 +45,12 @@ namespace xdputil {
 
     XDPLoader(const char* pluginName, 
 	      std::function<void (void*)> registrationFunction,
-	      std::function<void ()> warningFunction) ;
+	      std::function<void ()> warningFunction,
+	      std::function<int ()> errorFunction = nullptr) ;
     ~XDPLoader() ;
   } ;
   
 } // end namespace xdputil
+
+#endif
+

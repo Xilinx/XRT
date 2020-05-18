@@ -17,7 +17,7 @@
 #ifndef _WIN32
 
 #include "lop.h"
-#include "xdp_util.h"
+#include "core/common/xdp_util.h"
 #include "core/common/dlfcn.h"
 
 namespace xdplop {

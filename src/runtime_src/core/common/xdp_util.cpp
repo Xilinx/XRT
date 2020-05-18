@@ -74,8 +74,17 @@ namespace xdputil {
 
   XDPLoader::XDPLoader(const char* pluginName,
 		       std::function<void (void*)> registerFunction,
-		       std::function<void ()> warningFunction)
+		       std::function<void ()> warningFunction,
+		       std::function<int ()> errorFunction)
   {
+    if (errorFunction) 
+    {
+      // Check prerequirements for this particular plugin.  If they are not
+      //  met, then return before we do any linking
+      if (errorFunction()) 
+	return ;
+    }
+
     // Check XILINX_XRT existence
     boost::filesystem::path xrt(emptyOrValue(getenv("XILINX_XRT"))) ;
     if (xrt.empty()) 
