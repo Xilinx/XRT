@@ -16,7 +16,7 @@ namespace xdphal {
   std::atomic<unsigned> global_idcode(0);  
 
   static bool cb_valid() {
-    return cb == nullptr ;
+    return cb != nullptr ;
   }
 
 CallLogger::CallLogger(unsigned id)
