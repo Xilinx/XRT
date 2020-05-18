@@ -1249,6 +1249,8 @@ static inline u32 xocl_group_count_unified(xdev_handle_t xdev_hdl)
 
 #define	XOCL_DDR_COUNT(xdev)			\
 	(xocl_is_unified(xdev) ? xocl_ddr_count_unified(xdev) :	\
+#define	XOCL_GROUP_COUNT(xdev)			\
+	(xocl_is_unified(xdev) ? xocl_group_count_unified(xdev) :	\
 	xocl_get_ddr_channel_count(xdev))
 #define	XOCL_GROUP_COUNT(xdev)			\
 	xocl_group_count_unified(xdev)	
