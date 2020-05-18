@@ -12,7 +12,7 @@ std::function<void(unsigned, void*)> cb ;
 std::atomic<uint64_t> global_idcode(0);
 
 static bool cb_valid() {
-  return cb == nullptr ;
+  return cb != nullptr ;
 }
 
 CallLogger::CallLogger(uint64_t id)
