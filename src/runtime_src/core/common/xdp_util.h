@@ -24,6 +24,8 @@
 #include <functional>
 #include <string>
 
+#include "core/common/config.h"
+
 namespace xdputil {
 
   // This class is responsible for loading the XDP plugin from
@@ -43,10 +45,13 @@ namespace xdputil {
     
   public:
 
+    XRT_CORE_COMMON_EXPORT
     XDPLoader(const char* pluginName, 
 	      std::function<void (void*)> registrationFunction,
 	      std::function<void ()> warningFunction,
 	      std::function<int ()> errorFunction = nullptr) ;
+
+    XRT_CORE_COMMON_EXPORT
     ~XDPLoader() ;
   } ;
   
