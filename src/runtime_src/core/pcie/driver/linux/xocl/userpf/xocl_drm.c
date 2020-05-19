@@ -863,8 +863,10 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 
 		if (!strncmp(mem_data->m_tag, "HOST[0]", 7)) {
 			err = xocl_set_cma_bank(drm_p, mem_data->m_base_address, ddr_bank_size);
-			if (err)
+			if (err) {
+				xocl_err(drm_p->ddev->dev, "Run host_mem to setup host memory access, request 0x%lx bytes", ddr_bank_size);
 				goto done;
+			}
 		}
 		xocl_info(drm_p->ddev->dev, "drm_mm_init called");
 	}
@@ -987,6 +989,8 @@ static int xocl_cma_mem_alloc_huge_page(struct xocl_drm *drm_p, struct drm_xocl_
 
 	BUG_ON(!mutex_is_locked(&drm_p->mm_lock));
 
+	if (!num)
+		return -ENODEV;
 	/* Limited by hardware, the entry number can only be power of 2
 	 * rounddown_pow_of_two 255=>>128 63=>>32
 	 */
@@ -1153,7 +1157,7 @@ static int xocl_cma_mem_alloc(struct xocl_drm *drm_p, uint64_t size)
 
 	if (!page_num) {
 		DRM_ERROR("Doesn't support CMA BANK feature");
-		return -EINVAL;		
+		return -ENODEV;		
 	}
 
 	page_sz = size/page_num;
