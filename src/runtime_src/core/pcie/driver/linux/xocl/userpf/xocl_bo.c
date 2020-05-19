@@ -23,10 +23,6 @@
 #include <linux/dma-buf.h>
 #include <linux/pagemap.h>
 #include <linux/version.h>
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(3, 0, 0)
-#include <drm/drm_backport.h>
-#endif
-#include <drm/drmP.h>
 #include "common.h"
 
 #ifdef _XOCL_BO_DEBUG

@@ -19,12 +19,6 @@
 
 #include <linux/version.h>
 #include <linux/eventfd.h>
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(3,0,0)
-#include <drm/drm_backport.h>
-#endif
-#include <drm/drmP.h>
-#include <drm/drm_gem.h>
-#include <drm/drm_mm.h>
 #include "../xocl_drv.h"
 #include "../xocl_drm.h"
 #include "../lib/libxdma_api.h"

@@ -24,6 +24,7 @@
  * @brief This file contains the declarations for QDMA PCIe device
  *
  */
+#include <linux/version.h>
 #include <linux/types.h>
 #include <linux/dma-mapping.h>
 #include <linux/interrupt.h>
@@ -33,6 +34,10 @@
 #include "qdma_qconf_mgr.h"
 #ifdef DEBUGFS
 #include "qdma_debugfs.h"
+#endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+#define ioremap_nocache         ioremap
 #endif
 
 /**
