@@ -1189,7 +1189,7 @@ xocl_subdev_vsec_read32(xdev_handle_t xdev, int bar, u64 offset)
  */
 int
 xocl_subdev_vsec(xdev_handle_t xdev, u32 type,
-	int *bar_idx, u64 *offset)
+	int *bar_idx, u64 *offset, u32 *verType)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev;
 	struct pci_dev *pdev = core->pdev;
@@ -1247,6 +1247,8 @@ xocl_subdev_vsec(xdev_handle_t xdev, u32 type,
 			*bar_idx = (off_low >> 13) & 0x7;
 		if (offset)
 			*offset = off;
+		if (verType)
+			*verType = ioread32(bar_addr + i + 8) & 0xff;
 	}
 
 	/* unmap bar_addr */
@@ -1268,8 +1270,10 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 {
 	u64 offset;
 	int bar, ret;
+	u32 vtype;
 
-	ret = xocl_subdev_vsec(xdev, XOCL_VSEC_FLASH_CONTROLER, &bar, &offset);
+	ret = xocl_subdev_vsec(xdev, XOCL_VSEC_FLASH_CONTROLER, &bar, &offset,
+		&vtype);
 	if (!ret) {
 		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_FLASH_VSEC;
 
@@ -1279,13 +1283,17 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 		subdev_info.res[0].start = offset;
 		subdev_info.res[0].end = offset + 0xfff;
 		subdev_info.bar_idx[0] = bar;
+		if (vtype == 0x2)
+                        memcpy(((struct xocl_flash_privdata *)
+				(subdev_info.priv_data))->flash_type,
+				FLASH_TYPE_QSPIPS, strlen(FLASH_TYPE_QSPIPS));
 
 		ret = xocl_subdev_create(xdev, &subdev_info);
 		if (ret)
 			return ret;
 	}
 
-	ret = xocl_subdev_vsec(xdev, XOCL_VSEC_MAILBOX, &bar, &offset);
+	ret = xocl_subdev_vsec(xdev, XOCL_VSEC_MAILBOX, &bar, &offset, NULL);
 	if (!ret) {
 		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_MAILBOX_VSEC;
 
@@ -1325,7 +1333,7 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 
 	/* vendor specific has platform_info */
 	ret = xocl_subdev_vsec(xdev_hdl, XOCL_VSEC_PLATFORM_INFO,
-			&bar, &offset);
+			&bar, &offset, NULL);
 	if (!ret) {
 		ptype = xocl_subdev_vsec_read32(xdev_hdl, bar, offset);
 		xocl_xdev_info(xdev_hdl, "found vsec cap, platform type %d",

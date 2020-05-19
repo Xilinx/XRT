@@ -674,7 +674,8 @@ static bool xocl_subdev_vsec_is_golden(xdev_handle_t xdev_hdl)
 	int bar;
 	u64 offset;
 
-	if (xocl_subdev_vsec(xdev_hdl, XOCL_VSEC_PLATFORM_INFO, &bar, &offset))
+	if (xocl_subdev_vsec(xdev_hdl, XOCL_VSEC_PLATFORM_INFO, &bar, &offset,
+		NULL))
 		return false;
 
 	return xocl_subdev_vsec_read32(xdev_hdl, bar, offset) ==
