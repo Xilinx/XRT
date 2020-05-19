@@ -1221,6 +1221,8 @@ int shim::cmaEnable(bool enable, uint64_t size)
 
     } else {
         ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_FREE_CMA);
+        if (ret)
+                ret = -errno;
     }
 
     return ret;
