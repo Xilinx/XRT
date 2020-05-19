@@ -1547,7 +1547,8 @@ int xocl_subdev_destroy_by_name(xdev_handle_t xdev_hdl, char *name);
 int xocl_subdev_destroy_prp(xdev_handle_t xdev);
 int xocl_subdev_create_prp(xdev_handle_t xdev);
 
-int xocl_subdev_vsec(xdev_handle_t xdev, u32 type, int *bar_idx, u64 *offset);
+int xocl_subdev_vsec(xdev_handle_t xdev, u32 type, int *bar_idx, u64 *offset,
+	u32 *verType);
 u32 xocl_subdev_vsec_read32(xdev_handle_t xdev, int bar, u64 offset);
 int xocl_subdev_create_vsec_devs(xdev_handle_t xdev);
 bool xocl_subdev_is_vsec(xdev_handle_t xdev);
