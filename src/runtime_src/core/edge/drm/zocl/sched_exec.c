@@ -837,7 +837,8 @@ configure(struct sched_cmd *cmd)
 	exec->num_cus         = cfg->num_cus;
 	exec->cu_shift_offset = cfg->cu_shift;
 	exec->cu_base_addr    = cfg->cu_base_addr;
-	exec->num_cu_masks    = ((exec->num_cus - 1)>>5) + 1;
+	exec->num_cu_masks    = exec->num_cus == 0 ? 0 :
+	    ((exec->num_cus - 1)>>5) + 1;
 
 	write_unlock(&zdev->attr_rwlock);
 
@@ -860,6 +861,9 @@ configure(struct sched_cmd *cmd)
 	/* TODO: let's consider how to support reconfigurable KDS/ERT later.
 	 * At that time, ERT should be able to change back to CQ polling mode.
 	 */
+
+	if (exec->num_cus == 0)
+		goto print_and_out;
 
 	exec->zcu = vzalloc(sizeof(struct zocl_cu) * exec->num_cus);
 	if (!exec->zcu) {
