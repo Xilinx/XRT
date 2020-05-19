@@ -27,9 +27,6 @@
 #include <linux/log2.h>
 #include <linux/mmzone.h>
 
-#include <drm/drmP.h>
-#include <drm/drm_gem.h>
-#include <drm/drm_mm.h>
 #include "version.h"
 #include "../lib/libxdma_api.h"
 #include "common.h"

@@ -21,9 +21,24 @@
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(3, 0, 0)
 #include <drm/drm_backport.h>
 #endif
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 5, 0)
 #include <drm/drmP.h>
+#else
+#include <drm/drm_device.h>
+#include <drm/drm_file.h>
+#include <drm/drm_ioctl.h>
+#include <drm/drm_drv.h>
+#endif
 #include <drm/drm_gem.h>
 #include <drm/drm_mm.h>
+#include <linux/interrupt.h>
+#include <linux/poll.h>
+#include <linux/platform_device.h>
+#include <linux/pci.h>
+#include <linux/delay.h>
+#include <linux/types.h>
+#include <linux/moduleparam.h>
+#include <linux/cdev.h>
 #include "xclbin.h"
 #include "xrt_mem.h"
 #include "devices.h"
@@ -35,6 +50,10 @@
 #include <linux/firmware.h>
 #include "kds_core.h"
 #include "xrt_cu.h"
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+#define ioremap_nocache		ioremap
+#endif
 
 #ifndef mmiowb
 #define mmiowb()		do { } while (0)

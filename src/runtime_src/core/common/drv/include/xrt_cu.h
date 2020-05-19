@@ -10,6 +10,7 @@
 #ifndef _XRT_CU_H
 #define _XRT_CU_H
 
+#include <linux/version.h>
 #include <linux/device.h>
 #include <linux/slab.h>
 #include <linux/semaphore.h>
@@ -17,6 +18,10 @@
 #include <linux/io.h>
 #include <linux/kthread.h>
 #include "kds_command.h"
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+#define ioremap_nocache         ioremap
+#endif
 
 #define MAX_CUS 128
 

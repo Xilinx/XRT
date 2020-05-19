@@ -1489,7 +1489,6 @@ static pci_ers_result_t user_pci_slot_reset(struct pci_dev *pdev)
 static void user_pci_error_resume(struct pci_dev *pdev)
 {
 	xocl_info(&pdev->dev, "PCI error resume");
-	pci_cleanup_aer_uncorrect_error_status(pdev);
 }
 
 static const struct pci_error_handlers xocl_err_handler = {

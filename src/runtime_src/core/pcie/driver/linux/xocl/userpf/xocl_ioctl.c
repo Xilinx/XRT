@@ -16,12 +16,6 @@
  */
 
 #include <linux/version.h>
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(3, 0, 0)
-#include <drm/drm_backport.h>
-#endif
-#include <drm/drmP.h>
-#include <drm/drm_gem.h>
-#include <drm/drm_mm.h>
 #include <linux/eventfd.h>
 #include <linux/uuid.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
