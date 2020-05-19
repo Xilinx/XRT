@@ -464,8 +464,11 @@ zocl_update_apertures(struct drm_zocl_dev *zdev)
 	if (zdev->debug_ip)
 		total += zdev->debug_ip->m_count;
 
+	if (total == 0)
+		return 0;
+
 	/* If this happened, the xclbin is super bad */
-	if (total <= 0) {
+	if (total < 0) {
 		DRM_ERROR("Invalid number of apertures\n");
 		return -EINVAL;
 	}
@@ -1079,16 +1082,20 @@ zocl_xclbin_accel_adapter(int kds_mask)
 bool
 zocl_xclbin_legacy_intr(struct drm_zocl_dev *zdev)
 {
-	u32 prop = zdev->apertures[0].prop;
+	u32 prop;
 	int i, count = 0;
 
 	/* if all of the interrupt id is 0, this xclbin is legacy */
 	for (i = 0; i < zdev->num_apts; i++) {
+		prop = zdev->apertures[i].prop;
 		if ((prop & IP_INTERRUPT_ID_MASK) == 0)
 			count++;
 	}
 
-	WARN_ON(count < zdev->num_apts && count > 1);
+	if (count < zdev->num_apts && count > 1) {
+		DRM_WARN("%d non-zero interrupt-id CUs out of %d CUs",
+		    count, zdev->num_apts);
+	}
 
 	return (count == zdev->num_apts);
 }
