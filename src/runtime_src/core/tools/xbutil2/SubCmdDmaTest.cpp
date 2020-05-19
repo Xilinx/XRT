@@ -43,10 +43,10 @@ dmatest(const std::shared_ptr<xrt_core::device>& device, size_t block_size, bool
   if (block_size == 0)
       block_size = 256 * 1024 * 1024; // Default block size
 
-  auto ddr_mem_size = xrt_core::device_query<xrt_core::query::rom_ddr_bank_size>(device);
+  auto ddr_mem_size = xrt_core::device_query<xrt_core::query::rom_ddr_bank_size_gb>(device);
 
   if (verbose)
-    std::cout << "Total DDR size: " << ddr_mem_size << " MB\n";
+    std::cout << "Total DDR size: " << ddr_mem_size << " GB\n";
 
   // get DDR bank count from mem_topology if possible
   auto membuf = xrt_core::device_query<xrt_core::query::mem_topology_raw>(device);

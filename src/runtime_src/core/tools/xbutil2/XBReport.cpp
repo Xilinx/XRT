@@ -32,6 +32,15 @@ using namespace XBReport;
 
 // ------ F U N C T I O N S ---------------------------------------------------
 void
+report_driver_version(boost::property_tree::ptree _pt, std::string pt_var, std::string msg_var)
+{
+  if (_pt.get<std::string>(pt_var, "N/A") != std::string("N/A")) { 
+    XBU::message(boost::str(boost::format("%-14s: %s") % msg_var % _pt.get<std::string>(pt_var)));
+  }
+  return;
+}
+
+void
 XBReport::report_system_config()
 {
   // -- Get the property tree
@@ -64,6 +73,9 @@ XBReport::report_xrt_info()
   XBU::message(boost::str(boost::format("%-14s: %s") % "Git Hash" %   pt.get<std::string>("build.hash", "N/A")));
   XBU::message(boost::str(boost::format("%-14s: %s") % "Git Branch" % pt.get<std::string>("build.branch", "N/A")));
   XBU::message(boost::str(boost::format("%-14s: %s") % "Build Date" % pt.get<std::string>("build.date", "N/A")));
-  XBU::message(boost::str(boost::format("%-14s: %s") % "XOCL" %       pt.get<std::string>("xocl", "N/A")));
-  XBU::message(boost::str(boost::format("%-14s: %s") % "XCLMGMT" %    pt.get<std::string>("xclmgmt", "N/A")));
+
+  report_driver_version(pt, std::string("xocl"), std::string("XOCL"));
+  report_driver_version(pt, std::string("xclmgmt"), std::string("XCLMGMT"));
+  report_driver_version(pt, std::string("zocl"), std::string("ZOCL"));
+
 }

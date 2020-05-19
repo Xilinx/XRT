@@ -445,8 +445,8 @@ struct icap
     const xcl_hwicap& info = (*it).second;
 
     switch (key) {
-    case key_type::clock_freqs:
-      return query::clock_freqs::result_type {
+    case key_type::clock_freqs_mhz:
+      return query::clock_freqs_mhz::result_type {
         std::to_string(info.freq_0),
         std::to_string(info.freq_1),
         std::to_string(info.freq_2),
@@ -680,8 +680,8 @@ struct rom
     switch (key) {
     case key_type::rom_vbnv:
       return std::string(reinterpret_cast<const char*>(hdr.VBNVName));
-    case key_type::rom_ddr_bank_size:
-      return static_cast<query::rom_ddr_bank_size::result_type>(hdr.DDRChannelSize);
+    case key_type::rom_ddr_bank_size_gb:
+      return static_cast<query::rom_ddr_bank_size_gb::result_type>(hdr.DDRChannelSize);
     case key_type::rom_ddr_bank_count_max:
       return static_cast<query::rom_ddr_bank_count_max::result_type>(hdr.DDRChannelCount);
     case key_type::rom_fpga_name:
@@ -784,7 +784,7 @@ initialize_query_table()
   emplace_function0_getter<query::pcie_subsystem_id,         info>();
   emplace_function0_getter<query::pcie_bdf,                  bdf>();
   emplace_function0_getter<query::rom_vbnv,                  rom>();
-  emplace_function0_getter<query::rom_ddr_bank_size,         rom>();
+  emplace_function0_getter<query::rom_ddr_bank_size_gb,      rom>();
   emplace_function0_getter<query::rom_ddr_bank_count_max,    rom>();
   emplace_function0_getter<query::rom_fpga_name,             rom>();
   //emplace_function0_getter<query::rom_raw,                 rom>();
@@ -792,7 +792,7 @@ initialize_query_table()
   emplace_function0_getter<query::rom_time_since_epoch,      rom>();
   emplace_function0_getter<query::mem_topology_raw,          xclbin>();
   emplace_function0_getter<query::ip_layout_raw,             xclbin>();
-  emplace_function0_getter<query::clock_freqs,               icap>();
+  emplace_function0_getter<query::clock_freqs_mhz,           icap>();
   emplace_function0_getter<query::idcode,                    icap>();
   emplace_function0_getter<query::status_mig_calibrated,     icap>();
   emplace_function0_getter<query::xclbin_uuid,               icap>();
