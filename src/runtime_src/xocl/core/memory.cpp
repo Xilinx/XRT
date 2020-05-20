@@ -289,6 +289,51 @@ update_memidx_nolock(const device* device, const buffer_object_handle& boh)
 // private
 memory::memidx_type
 memory::
+get_grpidx_nolock(const device* dev) const
+{
+  int cuidx = -1;
+  int argidx = -1;
+
+  // already initialized
+  if (m_memidx>=0)
+    return m_memidx;
+
+  if (m_karg.empty())
+    return -1;
+
+  /* TODO : Find a better way to get the cu index */
+  for (auto& karg : m_karg) {
+    auto kernel = karg.first;
+    auto arg = karg.second;
+    if (kernel) {
+      argidx = arg;
+      cuidx = kernel->get_uid();
+      break;
+    }
+  }
+
+  if ((cuidx == -1) || (argidx == -1))
+    return -1;
+
+  //auto xdevice = dev->get_xrt_device();
+  auto device = xrt_core::get_userpf_device(dev->get_handle());
+  //xdevice->get_handle();
+//  device::id_type id = 0;
+  //auto device = xrt_core::get_userpf_device(xdevice);
+  /*
+  auto hdl = device->get_device_handle();
+  if (auto err = xclLoadXclBin(hdl,reinterpret_cast<const axlf*>(raw.data())))
+          throw xrt_core::error(err,"Could not program device" + std::to_string(card));
+  */
+  //m_memidx =  xrt_core::device::get_groupIndex(cuidx, argidx);
+  m_memidx = device->get_groupIndex(cuidx, argidx);
+
+  return m_memidx;
+}
+
+
+memory::memidx_type
+memory::
 get_memidx_nolock(const device* dev) const
 {
   // already initialized

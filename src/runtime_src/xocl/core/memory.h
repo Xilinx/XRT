@@ -25,6 +25,7 @@
 
 #include "core/common/memalign.h"
 #include "core/common/unistd.h"
+#include "core/common/system.h"
 
 #include <map>
 
@@ -465,6 +466,9 @@ public:
   register_destructor_callbacks(memory_callback_type&& aCallback);
 
 private:
+  memidx_type
+  get_grpidx_nolock(const device* d) const;
+
   memidx_type
   get_memidx_nolock(const device* d) const;
 

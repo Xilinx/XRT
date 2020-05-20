@@ -50,6 +50,19 @@ enum xclDDRFlags {
     XCL_DEVICE_RAM_BANK3 = 0x00000008,
 };
 
+/****   MEMORY GROUP SECTION ****/
+struct xcl_mem_group_info {
+    uint32_t cu_id;
+    uint32_t arg_id;
+    uint32_t grp_id;
+};
+
+#define XCL_MEM_GROUP_MAX 128 
+struct xcl_mem_group {
+    int32_t m_count;
+    struct xcl_mem_group_info m_group[XCL_MEM_GROUP_MAX];
+};
+
 #ifdef __cplusplus
 }
 #endif
