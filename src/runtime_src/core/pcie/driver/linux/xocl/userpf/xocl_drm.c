@@ -57,6 +57,7 @@
 extern int kds_mode;
 
 static char driver_date[9];
+int xocl_cleanup_connectivity(struct xocl_drm *drm_p);
 
 static void xocl_free_object(struct drm_gem_object *obj)
 {
@@ -524,11 +525,11 @@ void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u32 ddr,
 int xocl_mm_insert_node_range(struct xocl_drm *drm_p, u32 mem_id,
 			struct drm_mm_node *node, u64 size)
 {
-        struct xocl_mem_range *xocl_mem = NULL;
+        struct xocl_mem_group_info *xocl_mem = NULL;
 
         BUG_ON(!mutex_is_locked(&drm_p->mm_lock));
 
-        xocl_mem = drm_p->m_connect->mem_group->m_range[mem_id];
+        xocl_mem = drm_p->m_connect->mem_group->m_group[mem_id];
         if (drm_p->mm == NULL || xocl_mem == NULL)
                 return -EINVAL;
 
@@ -545,10 +546,10 @@ int xocl_mm_insert_node(struct xocl_drm *drm_p, u32 ddr,
 			struct drm_mm_node *node, u64 size)
 {
 	BUG_ON(!mutex_is_locked(&drm_p->mm_lock));
-	if (drm_p->mm == NULL || drm_p->mm[ddr] == NULL)
+	if (drm_p->mm == NULL)
 		return -EINVAL;
 
-	return drm_mm_insert_node_generic(drm_p->mm[ddr], node, size, PAGE_SIZE,
+	return drm_mm_insert_node_generic(drm_p->mm, node, size, PAGE_SIZE,
 #if defined(XOCL_DRM_FREE_MALLOC)
 		0, 0);
 #else
@@ -765,8 +766,8 @@ int xocl_cleanup_mem(struct xocl_drm *drm_p)
 	return ret;
 }
 
-static int init_mem_group(int ip_cnt, int arg_idx, struct mem_topology *topo, 
-                struct xocl_mem_group_info *m_group)
+static int init_mem_group(struct xocl_drm *drm_p, int ip_cnt, int arg_idx, 
+                struct mem_topology *topo, struct xocl_mem_group_info *m_group)
 {
         int i = 0;
         int err = 0;
@@ -783,7 +784,7 @@ static int init_mem_group(int ip_cnt, int arg_idx, struct mem_topology *topo,
                 return -ENODEV;
         }
 
-        m_group->l_bank_idx = MAX_MEM_BANK_VALUE;
+        m_group->l_bank_idx = DRM_XOCL_MEM_GROUP_MAX;
         m_group->h_bank_idx = 0;
 
         for (i = 0; i < connect->m_count; i++) {
@@ -828,7 +829,7 @@ static int get_mem_group(struct xocl_mem_connectivity *m_connect, struct xocl_me
 {
         int grp_id = 0;
         struct xocl_mem_group *xocl_grp = NULL; 
-        struct xocl_mem_group_info *m_range = NULL;
+        struct xocl_mem_group_info *m_group = NULL;
 
         if (m_connect->mem_group == NULL)
         {
@@ -838,13 +839,13 @@ static int get_mem_group(struct xocl_mem_connectivity *m_connect, struct xocl_me
                         return -ENOMEM;
 
                 grp_id = 0;
-                xocl_grp->m_range[grp_id] = vzalloc(sizeof(struct xocl_mem_group_info));
-                if (xocl_grp->m_range[grp_id] == NULL) {
+                xocl_grp->m_group[grp_id] = vzalloc(sizeof(struct xocl_mem_group_info));
+                if (xocl_grp->m_group[grp_id] == NULL) {
                         vfree(xocl_grp);
                         return -ENOMEM;
                 }
 
-                xocl_grp->m_range[grp_id] = mem_range;
+                xocl_grp->m_group[grp_id] = mem_range;
                 xocl_grp->g_count = 1; /* First Entry */
                 m_connect->mem_group = xocl_grp;
 
@@ -852,9 +853,9 @@ static int get_mem_group(struct xocl_mem_connectivity *m_connect, struct xocl_me
         }
         else {
                 for (grp_id = 0; grp_id < m_connect->mem_group->g_count; grp_id++) {
-                        m_range = m_connect->mem_group->m_range[grp_id];
-                        if ((m_range->l_bank_idx == mem_range->l_bank_idx) &&
-                                        (m_range->h_bank_idx == mem_range->h_bank_idx)) {
+                        m_group = m_connect->mem_group->m_group[grp_id];
+                        if ((m_group->l_bank_idx == mem_range->l_bank_idx) &&
+                                        (m_group->h_bank_idx == mem_range->h_bank_idx)) {
                                 /* Duplicate Entry */
                                 return grp_id;
                         }
@@ -862,11 +863,11 @@ static int get_mem_group(struct xocl_mem_connectivity *m_connect, struct xocl_me
 
                 /* New Group found */
                 xocl_grp = m_connect->mem_group;
-                xocl_grp->m_range[grp_id] = vzalloc(sizeof(struct xocl_mem_group_info));
-                if (xocl_grp->m_range[grp_id] == NULL)
+                xocl_grp->m_group[grp_id] = vzalloc(sizeof(struct xocl_mem_group_info));
+                if (xocl_grp->m_group[grp_id] == NULL)
                         return -ENOMEM;
 
-                xocl_grp->m_range[grp_id] = mem_range;
+                xocl_grp->m_group[grp_id] = mem_range;
                 xocl_grp->g_count++;
 
                 return grp_id;
@@ -892,8 +893,8 @@ int xocl_cleanup_connectivity(struct xocl_drm *drm_p)
         /* Cleanup memory usage stats for all the groups */
         xocl_grp = drm_p->m_connect->mem_group;
         for (i = 0; i < xocl_grp->g_count; i++) 
-                if (xocl_grp->m_range[i])
-                        vfree(xocl_grp->m_range[i]);
+                if (xocl_grp->m_group[i])
+                        vfree(xocl_grp->m_group[i]);
 
         if (drm_p->m_connect->mem_group)
                 vfree(drm_p->m_connect->mem_group);
@@ -949,7 +950,7 @@ int xocl_init_connectivity(struct xocl_drm *drm_p, struct mem_topology *topo)
                         goto failed;
                 }
 
-                if (init_mem_group(ip_cnt, arg_cnt, topo, m_group)) {
+                if (init_mem_group(drm_p, ip_cnt, arg_cnt, topo, m_group)) {
                         arg_cnt = 0;
                         ip_cnt++;
                         continue;

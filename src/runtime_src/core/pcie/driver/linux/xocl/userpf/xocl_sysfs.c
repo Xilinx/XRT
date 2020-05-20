@@ -98,7 +98,7 @@ static ssize_t mem_group_info_show(struct device *dev,
         struct xocl_dev *xdev = dev_get_drvdata(dev);
         struct xocl_drm *drm_p = XOCL_DRM(xdev);
         struct xocl_mem_conn *mem_conn = NULL;
-        struct xocl_mem_conn_map *m_conn = NULL;
+        struct xocl_mem_conn_info *m_conn = NULL;
         ssize_t size = 0;
         int i;
 

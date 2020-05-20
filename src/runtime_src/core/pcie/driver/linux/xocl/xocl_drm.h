@@ -58,7 +58,7 @@ struct xocl_mem_group_info {
 
 struct xocl_mem_group {
         uint32_t g_count;
-        struct xocl_mem_info *m_group[DRM_XOCL_MEM_GROUP_MAX];
+        struct xocl_mem_group_info *m_group[DRM_XOCL_MEM_GROUP_MAX];
 };
 
 struct xocl_mem_conn_info {
@@ -127,8 +127,8 @@ void xocl_mm_get_usage_stat(struct xocl_drm *drm_p, u32 ddr,
 void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u32 ddr,
         u64 size, int count);
 
-int xocl_mm_insert_node_range(struct xocl_drm *drm_p, unsigned user_flags,
-                    struct drm_mm_node *node, u64 size, u32 *grp_id);
+int xocl_mm_insert_node_range(struct xocl_drm *drm_p, u32 mem_id,
+                    struct drm_mm_node *node, u64 size);
 int xocl_mm_insert_node(struct xocl_drm *drm_p, u32 ddr,
                 struct drm_mm_node *node, u64 size);
 void *xocl_drm_init(xdev_handle_t xdev);
