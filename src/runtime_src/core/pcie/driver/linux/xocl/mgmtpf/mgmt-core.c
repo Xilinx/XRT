@@ -544,7 +544,7 @@ struct xocl_pci_funcs xclmgmt_pci_ops = {
 	.reset = xclmgmt_reset,
 };
 
-static void xclmgmt_icap_get_data_impl(struct xclmgmt_dev *lro, void *buf)
+static int xclmgmt_icap_get_data_impl(struct xclmgmt_dev *lro, void *buf)
 {
 	struct xcl_pr_region *hwicap = NULL;
 	int err = 0;
@@ -552,7 +552,7 @@ static void xclmgmt_icap_get_data_impl(struct xclmgmt_dev *lro, void *buf)
 
 	err = XOCL_GET_XCLBIN_ID(lro, xclbin_id);
 	if (err)
-		return;
+		return err;
 
 	hwicap = (struct xcl_pr_region *)buf;
 	hwicap->idcode = xocl_icap_get_data(lro, IDCODE);
@@ -585,7 +585,7 @@ static void xclmgmt_clock_get_data_impl(struct xclmgmt_dev *lro, void *buf)
 
 static void xclmgmt_icap_get_data(struct xclmgmt_dev *lro, void *buf)
 {
-	return xocl_has_icap(lro) ? xclmgmt_icap_get_data_impl(lro, buf) :
+	if (xclmgmt_icap_get_data_impl(lro, buf) == -ENODEV)
 		xclmgmt_clock_get_data_impl(lro, buf);
 }
 

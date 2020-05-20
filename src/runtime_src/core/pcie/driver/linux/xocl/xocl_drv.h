@@ -1140,8 +1140,6 @@ enum {
 	((struct xocl_icap_funcs *)SUBDEV(xdev, XOCL_SUBDEV_ICAP).ops)
 #define ICAP_CB(xdev, cb)						\
 	(ICAP_DEV(xdev) && ICAP_OPS(xdev) && ICAP_OPS(xdev)->cb)
-#define xocl_has_icap(xdev)						\
-	(ICAP_DEV(xdev) && ICAP_OPS(xdev) ? true : false)
 #define	xocl_icap_reset_axi_gate(xdev)					\
 	(ICAP_CB(xdev, reset_axi_gate) ?				\
 	ICAP_OPS(xdev)->reset_axi_gate(ICAP_DEV(xdev)) :		\
@@ -1192,7 +1190,7 @@ enum {
 #define	xocl_icap_get_xclbin_metadata(xdev, kind, buf)			\
 	(ICAP_CB(xdev, get_xclbin_metadata) ?				\
 	ICAP_OPS(xdev)->get_xclbin_metadata(ICAP_DEV(xdev), kind, buf) :	\
-	0)
+	-ENODEV)
 #define	xocl_icap_put_xclbin_metadata(xdev)			\
 	(ICAP_CB(xdev, put_xclbin_metadata) ?			\
 	ICAP_OPS(xdev)->put_xclbin_metadata(ICAP_DEV(xdev)) : 	\
