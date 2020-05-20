@@ -9,7 +9,12 @@ Added
 
 * XRT native APIs for PL kernel have been added. These APIs are defined in new header file ``xrt_kernel.h``. Please see ``tests/xrt/22_verify/main.cpp`` and ``tests/xrt/02_simple/main.cpp`` for examples. The APIs are also accessible from python. Please see ``tests/python/22_verify/22_verify.py`` and ``tests/python/02_simple/main.py`` for examples.
 * Support for data-driven platforms have been added. XRT uses PCIe VSEC to identify data-driven platforms. For these class of platforms XRT uses device tree to discover IPs in the shell and then initialize them.
-* Experimental APIs have been added for AIE control for edge platforms. The APIs are defined in header file ``xrt_aie.h``
+* Experimental APIs have been added for AIE control for edge platforms. The APIs are defined in header file ``xrt_aie.h``.
+* Support for U30 video acceleration offload device has been added.
+* Early access versions of next generation utilities, *xbutil* and *xbmgmt* are available. They can be invoked via *--new* switch as ``xbutil --new``.
+* Utilties xbutil and xbmgmt now give a warning when they detect an unsupported Linux distribution version and kernel version.
+* Error code paths for clPollStreams() API has been improved.
+
 
 Removed
 .......
@@ -19,13 +24,14 @@ Removed
 * ``xclUpgradeFirmware()``, ``xclUpgradeFirmware2()`` and ``xclUpgradeFirmwareXSpi()`` have been marked as deprecated in this release and will be removed in a future release. Please use xbmgmt utility to flash device.
 * ``xclBootFPGA()``, ``xclRemoveAndScanFPGA()`` and ``xclRegisterInterruptNotify()`` have been marked as deprecated in this release and will be removed in a future release. These functionalities are no longer supported.
 * ``xclLockDevice()`` and ``xclUnlockDevice()`` have been marked as deprecated in this release and will be removed in a future release. These functionalities are no longer supported.
+* This is the last release of XMA legacy APIs. Please port your application to XMA2 APIs.
 
 Known Issues
 ............
 
 * On CentOS the ``xrtdeps.sh`` script used to install required dependencies for building XRT is trying to install no longer supported ``devtoolset-6``.  In order to build XRT on CentOS or RHEL, a later devtoolset version should be installed, for example ``devtoolset-9``.
 
-  
+
 2.4.0 (202010.2.4)
 ~~~~~~~~~~~~~~~~~~
 

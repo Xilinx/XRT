@@ -10,9 +10,10 @@ Security is built into Alveo platform hardware and software architecture. The pl
 is made up of two fixed physical partitions: an immutable Shell and user compiled DFX partition.
 This design allows end users to perform Dynamic Function eXchange (Partial Reconfiguration
 in classic FPGA terminology) in the well defined DFX partition while the static Shell
-provides key infrastructure services. The following features reinforce security of the platform:
+provides key infrastructure services. Alveo shells assume PCIe host (with access to PF0) is
+part of *Root-of-Trust*. The following features reinforce security of the platform:
 
-1. 2 physical function shell design
+1. Two physical function shell design
 2. Trusted vs untrusted peripherals
 3. Signing of xclbins
 4. AXI Firewall
@@ -21,7 +22,7 @@ provides key infrastructure services. The following features reinforce security 
 Shell
 =====
 
-The Shell provides core infrastructure to the Alveo platform. It includes hardened PCIe
+The Shell provides core infrastructure to the Alveo platform. It includes *hardened* PCIe
 block which provides physical connectivity to the host PCIe bus via two physical functions
 as described in :ref:`platforms.rst`.
 The Shell is *trusted* partition of the Alveo platform and for all practical purposes
@@ -31,22 +32,26 @@ Once loaded, the Shell cannot be changed.
 In the figure above, the Shell peripherals shaded blue can only be accessed from physical
 function 0 (PF0) while those shaded violet can be accessed from physical
 function 1 (PF1). From PCIe topology point of view PF0 *owns* the device and performs
-supervisory actions on the device. Peripherals shaded blue are trusted while those
-shaded violet are not. A malicious actor with root privileges who has direct access to blue
-shaded peripherals can potentially crash both the device and PCIe bus. However, a malicious
-actor with root privileges who has direct access to only violet shaded peripherals cannot
-crash the PCIe bus. This is particularly significant in pass-through virtualization deployment
-as discussed later. Ordinary users without root privileges can never crash the PCIe bus.
+supervisory actions on the device. It is part of *Root-of-Trust*. Peripherals shaded blue
+are trusted while those shaded violet are not. Alveo shells use a specialized IP called
+**PCIe Demux** which routes PCIe traffic destined for PF0 to PF0 AXI network and those destined
+for PF1 to PF1 AXI network. It is responsible for the necessary isolation between PF0 and PF1.
 
-All peripherals in the shell except XDMA are slaves from PCIe point of view and cannot
-initiate PCIe transactions. `XDMA <https://www.xilinx.com/support/documentation/ip_documentation/xdma/v4_1/pg195-pcie-dma.pdf>`_
-is a regular PCIe scatter gather DMA engine with a well defined programming model.
+Trusted peripherals includes ICAP for bitstream download (DFX), CMC for sensors and thermal
+management, Clock Wizards for clock scaling, QSPI Ctrl for PROM accesss (shell upgrades), DFX
+Isolation and Firewall controls.
+
+All peripherals in the shell except XDMA/QDMA are slaves from PCIe point of view and cannot
+initiate PCIe transactions. Alveo shells have one of XDMA or QDMA PCIe DMA engine. Both
+`XDMA <https://www.xilinx.com/support/documentation/ip_documentation/xdma/v4_1/pg195-pcie-dma.pdf>`_ and
+`QDMA <https://www.xilinx.com/support/documentation/ip_documentation/qdma/v3_0/pg302-qdma.pdf>`_
+are regular PCIe scatter-gather DMA engine with a well defined programming model.
 
 The Shell provides a *control* path and a *data*
 path to the user compiled image loaded on DFX partition. The Firewalls in control and data
 paths protect the Shell from un-trusted DFX partition. For example if a slave in DFX has a
 bug or is malicious the appropriate firewall will step in and protect the Shell from the
-failing slave as soon as a non compiant AXI transaction is placed on AXI bus..
+failing slave as soon as a non compiant AXI transaction is placed on AXI bus.
 
 For shell update see `Shell Update`_ section below.
 
@@ -61,8 +66,7 @@ the Shell. The image load is itself effected by xclmgmt driver which binds to PF
 xclmgmt driver downloads the bitstream packaged in the bitstream section of xclbin by
 programming the ICAP peripheral. The management driver also discovers the target frequency
 of the DFX partition by reading the xclbin clock section and then programs the clocks
-which are also part of the Shell. These operations are exposed as one atomic ioctl by
-xclmgmt driver.
+which are controlled from Shell. DFX is exposed as one atomic ioctl by xclmgmt driver.
 
 xclbin is a container which packs FPGA bitstream for the DFX partition and host of related
 metadata like clock frequencies, information about instantiated compute units, etc. The
@@ -104,18 +108,24 @@ Firewall
 ========
 
 Alveo hardware design uses standard AXI bus. As shown in the figure the control path uses AXI-Lite
-and data path uses AXI4 full. Specialized hardware element called AXI Firewall monitors all transactions
+and data path uses AXI4 full. Specialized hardware element called
+`AXI Protocol Firewall <https://www.xilinx.com/support/documentation/ip_documentation/axi_firewall/v1_0/pg293-axi-firewall.pdf>`_
+monitors all transactions
 going across the bus into the un-trusted DFX partition. It is possible that one or more AXI slave in the DFX
 partition is not fully AXI-compliant or deadlocks/stalls/hangs during operation. When an AXI slave in DFX
-partition fails AXI Firewall *trips* -- it starts completing AXI transactions on behalf of the slave so the
+partition fails, AXI Firewall *trips* -- it starts completing AXI transactions on behalf of the slave so the
 master and the specific AXI bus is not impacted -- to protect the Shell. The AXI Firewall starts completing
 all transactions on behalf of misbehaving slave while also notifying the mgmt driver about the trip. The
 xclmgmt driver then starts taking recovery action. xclmgmt posts a message to xocl using MailBox to inform
-the peer about FireWall trip. xocl can suggest a reset by sending a reset command to xclmgmt on MailBox.
+the peer about FireWall trip. xocl can suggest a reset by sending a reset command to xclmgmt on MailBox. Note
+that even if no reset is performed the AXI Protocol Firewall will continue to protect the host PCIe bus. DFX
+partition will be unavailable till device is reset. **A reboot of host is not required to reset the device.**
 
 
 Deployment Models
 =================
+
+In all deployment models PCIe host with access to PF0 is considered part of *Root-of-Trust*.
 
 Baremetal
 ---------
@@ -196,8 +206,8 @@ can reset a device by using XRT **xbutil** utility. This utility talks to xocl d
 message as defined in :ref:`mailbox.main.rst`
 
 Currently Alveo boards are reset by using PCIe bus *hot reset* mechanism. This resets the board peripherals
-and also the PCIe link. The drivers reset their platform devices and kill all the clients which have opened
-the device node by sending them a SIGBUS.
+and also the PCIe link. As part of reset, drivers kill all the clients which have opened the device node by
+sending them a SIGBUS.
 
 Shell Update
 ============
