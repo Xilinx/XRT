@@ -416,12 +416,16 @@ static struct xocl_subdev_map		subdev_map[] = {
 		0,
 		NULL,
 		devinfo_cb_setlevel,
+		.min_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		XOCL_SUBDEV_IORES,
 		XOCL_IORES1,
 		{
 			RESNAME_PCIEMON,
+			RESNAME_MEMCALIB,
+			RESNAME_KDMA,
+			RESNAME_DDR4_RESET_GATE,
 			NULL
 		},
 		1,
