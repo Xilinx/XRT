@@ -57,6 +57,14 @@ void TraceS2MM::init(uint64_t bo_size, int64_t bufaddr)
     uint64_t word_count = bo_size / TRACE_PACKET_SIZE;
     write32(TS2MM_COUNT_LOW, static_cast<uint32_t>(word_count));
     write32(TS2MM_COUNT_HIGH, static_cast<uint32_t>(word_count >> 32));
+
+    uint32_t regValue = 0;
+    read(0x44, 4, &regValue);
+    std::cout << "initial continuous value : " << regValue << std::endl;
+    write32(0x44, 0x1);
+    read(0x44, 4, &regValue);
+    std::cout << "updated continuous value : " << regValue << std::endl;
+
     // Start Data Mover
     write32(TS2MM_AP_CTRL, TS2MM_AP_START);
 }

@@ -17,8 +17,6 @@
 #define XDP_SOURCE
 
 #include "xdp/profile/device/device_trace_offload.h"
-
-#include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/device/device_trace_logger.h"
 
 namespace xdp {
@@ -27,8 +25,10 @@ DeviceTraceOffload::DeviceTraceOffload(DeviceIntf* dInt,
                                    DeviceTraceLogger* dTraceLogger,
                                    uint64_t sleep_interval_ms,
                                    uint64_t trbuf_sz,
-                                   bool start_thread)
+                                   bool start_thread,
+                                   bool circular_buffer)
                    : sleep_interval_ms(sleep_interval_ms),
+                     circular_buffer(circular_buffer),
                      m_trbuf_alloc_sz(trbuf_sz),
                      dev_intf(dInt),
                      deviceTraceLogger(dTraceLogger)
@@ -39,6 +39,8 @@ DeviceTraceOffload::DeviceTraceOffload(DeviceIntf* dInt,
   } else {
     m_read_trace = std::bind(&DeviceTraceOffload::read_trace_s2mm, this);
   }
+
+  previous_clock_training_time = std::chrono::system_clock::now();
 
   if (start_thread) {
     start_offload(OffloadThreadType::TRACE);
@@ -103,10 +105,19 @@ void DeviceTraceOffload::stop_offload()
 
 void DeviceTraceOffload::train_clock()
 {
-  static bool force = true;
-  dev_intf->clockTraining(force);
+  auto now = std::chrono::system_clock::now();
+  auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(now - previous_clock_training_time).count();
+  bool enough_time_passed = milliseconds >= 500 ? true: false;
+
+  if (enough_time_passed || force_clock_training) {
+    dev_intf->clockTraining(force_clock_training);
+    previous_clock_training_time = now;
+    debug_stream
+      << "INFO Enough Time Passed.. Call Clock Training";
+  }
+
   // Don't force continuous training for old IP
-  force = false;
+  force_clock_training = false;
 }
 
 void DeviceTraceOffload::read_trace_fifo()
@@ -171,8 +182,8 @@ void DeviceTraceOffload::read_trace_s2mm()
     << "DeviceTraceOffload::read_trace_s2mm " << std::endl;
 
   // No circular buffer support for now
-  if (m_trbuf_full)
-    return;
+  //if (m_trbuf_full)
+  //  return;
 
   config_s2mm_reader(dev_intf->getWordCountTs2mm());
   while (1) {
@@ -220,17 +231,45 @@ uint64_t DeviceTraceOffload::read_trace_s2mm_partial()
 
 void DeviceTraceOffload::config_s2mm_reader(uint64_t wordCount)
 {
-  // Start from previous offset
+  auto bytes_written = wordCount * TRACE_PACKET_SIZE;
+  auto bytes_read = m_rollover_count*m_trbuf_alloc_sz + m_trbuf_sz;
+
+  // Offload cannot keep up with the DMA
+  if (bytes_written >= bytes_read + m_trbuf_alloc_sz) {
+    // Don't read any data
+    m_trbuf_offset = m_trbuf_sz;
+    debug_stream
+      << "ERROR: Circular buffer overwrite detected "
+      << " bytes written : " << bytes_written << " bytes_read : " << bytes_read
+      << std::endl;
+    stop_offload();
+    return;
+  }
+
+  // Start Offload from previous offset
   m_trbuf_offset = m_trbuf_sz;
-  m_trbuf_sz = wordCount * TRACE_PACKET_SIZE;
-  m_trbuf_sz = (m_trbuf_sz > TS2MM_MAX_BUF_SIZE) ? TS2MM_MAX_BUF_SIZE : m_trbuf_sz;
-  m_trbuf_chunk_sz = MAX_TRACE_NUMBER_SAMPLES * TRACE_PACKET_SIZE;
+  if (m_trbuf_offset == m_trbuf_alloc_sz) {
+    if (circular_buffer == false) {
+      stop_offload();
+      return;
+    }
+    m_rollover_count++;
+    m_trbuf_offset = 0;
+  }
+
+  // End Offload at this offset
+  m_trbuf_sz = bytes_written - m_rollover_count*m_trbuf_alloc_sz;
+  if (m_trbuf_sz > m_trbuf_alloc_sz) {
+    m_trbuf_sz = m_trbuf_alloc_sz;
+  }
 
   debug_stream
     << "DeviceTraceOffload::config_s2mm_reader "
     << "Reading from 0x"
-    << std::hex << m_trbuf_offset << " to 0x" << m_trbuf_sz
-    << std::dec << std::endl;
+    << std::hex << m_trbuf_offset << " to 0x" << m_trbuf_sz << std::dec
+    << " Written : " << wordCount * 8
+    << " rollover count : " << m_rollover_count
+    << std::endl;
 }
 
 bool DeviceTraceOffload::init_s2mm()

@@ -27,6 +27,7 @@
 #include "xdp/config.h"
 #include "core/include/xclperf.h"
 #include "xdp/profile/device/device_intf.h"
+#include "xdp/profile/device/tracedefs.h"
 
 namespace xdp {
 
@@ -52,7 +53,7 @@ public:
     XDP_EXPORT
     DeviceTraceOffload(DeviceIntf* dInt, DeviceTraceLogger* dTraceLogger,
                      uint64_t offload_sleep_ms, uint64_t trbuf_sz,
-                     bool start_thread = true);
+                     bool start_thread = true, bool circular_buffer = true);
     XDP_EXPORT
     ~DeviceTraceOffload();
     XDP_EXPORT
@@ -94,6 +95,7 @@ private:
     std::thread offload_thread;
 
     uint64_t sleep_interval_ms;
+    bool circular_buffer;
     uint64_t m_trbuf_alloc_sz;
     DeviceIntf* dev_intf;
     DeviceTraceLogger* deviceTraceLogger;
@@ -103,7 +105,6 @@ private:
     size_t m_trbuf = 0;
     uint64_t m_trbuf_sz = 0;
     uint64_t m_trbuf_offset = 0;
-    uint64_t m_trbuf_chunk_sz = 0;
 
     void read_trace_fifo();
     void read_trace_s2mm();
@@ -117,8 +118,17 @@ private:
     void offload_device_continuous();
 
     bool m_trbuf_full = false;
-    bool m_debug = false; /* Enable Output stream for log */
+    bool m_debug = true; /* Enable Output stream for log */
     bool m_initialized = false;
+
+    // Clock Training Params
+    bool force_clock_training = true;
+    std::chrono::time_point<std::chrono::system_clock> previous_clock_training_time;
+
+    // Default dma chunk size
+    uint64_t m_trbuf_chunk_sz = MAX_TRACE_NUMBER_SAMPLES * TRACE_PACKET_SIZE;
+    //Circular Buffer Tracking
+    uint32_t m_rollover_count = 0;
 };
 
 }

@@ -113,7 +113,7 @@ uint64_t GetTS2MMBufSize()
     xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", TS2MM_WARN_MSG_BUFSIZE_BIG);
   }
   if (bytes < TS2MM_MIN_BUF_SIZE) {
-    bytes = TS2MM_MIN_BUF_SIZE;
+    //bytes = TS2MM_MIN_BUF_SIZE;
     xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", TS2MM_WARN_MSG_BUFSIZE_SMALL);
   }
   return bytes;
