@@ -1,0 +1,28 @@
+===========================
+OPEN SOURCE SOFTWARE NOTICE
+===========================
+
+
+XRT userspace code includes software developed and copyrighted by the following:
+
+* Samsung Semiconductor, Inc
+* Michael Preston <mipres@microsoft.com>
+* Jeff Baxter <jeffb@microsoft.com>
+* The Khronos Group Inc
+* OSR Open Systems Resources, Inc
+
+XRT xocl and xclmgmt Linux kernel drivers include software developed and copyrigthed by the following:
+
+* Peter Korsgaard <jacmet@sunsite.dk>
+* Secret Lab Technologies Ltd
+* Intel Corporation
+* David Gibson, IBM Corporation.
+* embedded brains GmbH
+* Kim Phillips, Freescale Semiconductor.
+* Free Electrons
+* NextThing Co.
+* Jan Stephan <j.stephan@hzdr.de>
+
+
+XRT xclmgmt Linux kernel driver includes software developed and copyrigthed by the following:
+* Jan Stephan <j.stephan@hzdr.de>
