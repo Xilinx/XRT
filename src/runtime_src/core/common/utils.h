@@ -75,7 +75,7 @@ unit_convert(size_t size);
  */
 XRT_CORE_COMMON_EXPORT
 uint16_t
-bdf2index(const std::string& bdf);
+bdf2index(const std::string& bdf, bool _inUserDomain);
 
 }} // utils, xrt_core
 

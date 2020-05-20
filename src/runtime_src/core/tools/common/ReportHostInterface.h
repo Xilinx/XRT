@@ -22,7 +22,7 @@
 
 class ReportHostInterface: public Report {
  public:
-  ReportHostInterface() : Report("host-inteface", "Host interface status/info", true /*deviceRequired*/) { /*empty*/ };
+  ReportHostInterface() : Report("host-interface", "Host interface status/info", true /*deviceRequired*/) { /*empty*/ };
 
  // Child methods that need to be implemented
  public:
