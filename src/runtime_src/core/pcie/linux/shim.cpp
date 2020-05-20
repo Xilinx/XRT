@@ -1373,6 +1373,32 @@ unsigned int shim::xclImportBO(int fd, unsigned flags)
 }
 
 /*
+ * xclPopulateMemGroupInfo()
+ */
+int shim::xclPopulateMemGroupInfo(struct xcl_mem_group *grpInfo)
+{
+    std::string errmsg;
+    struct xcl_mem_group_info *m_ptr = NULL;
+
+    std::vector<char> memGroupInfo;
+    mDev->sysfs_get("", "mem_group_info", errmsg, memGroupInfo);
+
+    if (memGroupInfo.empty()) 
+        return -EINVAL;
+        
+    char* memblock = memGroupInfo.data();
+    uint32_t info_size = sizeof(struct xcl_mem_group_info);
+    for (unsigned count = 0; count < memGroupInfo.size(); count += info_size) {
+        m_ptr = &grpInfo->m_group[count];
+        memcpy((void *)m_ptr, memblock, info_size);
+        memblock += info_size;
+        grpInfo->m_count++;
+    }
+
+    return 0;
+}
+
+/*
  * xclGetBOProperties()
  */
 int shim::xclGetBOProperties(unsigned int boHandle, xclBOProperties *properties)
@@ -2205,8 +2231,16 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     LOAD_XCLBIN_CB ;
 #endif
     if (!ret) {
+      struct xcl_mem_group grpInfo;
       auto core_device = xrt_core::get_userpf_device(drv);
       core_device->register_axlf(buffer);
+
+      /* Populate memory group info from sysfs */
+      drv->xclPopulateMemGroupInfo(&grpInfo);
+      
+      /* Store the retrive info in device class */
+      core_device->set_mem_group_info(&grpInfo);
+
 #ifndef DISABLE_DOWNLOAD_XCLBIN
       ret = xrt_core::scheduler::init(handle, buffer);
       START_DEVICE_PROFILING_CB(handle);
@@ -2467,6 +2501,12 @@ ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf, size_t 
 #endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclUnmgdPread(flags, buf, count, offset) : -ENODEV;
+}
+
+int xclGetBOGroup(xclDeviceHandle handle, unsigned int cuidx, unsigned int argidx)
+{
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
+    return drv ? drv->xclGetBOGroup(cuidx, argidx) : -ENODEV;
 }
 
 int xclGetBOProperties(xclDeviceHandle handle, unsigned int boHandle, xclBOProperties *properties)

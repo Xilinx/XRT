@@ -142,6 +142,50 @@ get_ert_slots(const axlf* top) const
   auto xml_size = xml_hdr->m_sectionSize;
   return get_ert_slots(xml_data, xml_size);
 }
+int
+device::
+get_groupIndex(const int cu_id, const int arg_id) const  
+{
+  std::cout << __FUNCTION__ << " : I am inside this function. " << std::endl;
+
+  // Just skeeping now
+  return 0;
+
+
+  auto itr = m_grp_map.find(std::make_pair(cu_id, arg_id));
+  return itr != m_grp_map.end()
+              ? (*itr).second : -EINVAL;
+}
+ 
+void
+device::
+set_mem_group_info(struct xcl_mem_group *grpInfoMap)  
+{
+  struct xcl_mem_group_info *mInfo = NULL;
+
+  // Just skeeping now
+  return;
+
+  std::cout << __FUNCTION__ << " : I am inside this function. " << std::endl;
+  if (!grpInfoMap) {
+    std::cout << __FUNCTION__ << " : ERROR : Failed to get memory group information" << std::endl;
+    throw std::runtime_error("Failed to get memory group information");
+  }
+
+  std::cout << __FUNCTION__ << " :  m count : " << grpInfoMap->m_count << std::endl;
+  for (int i = 0; i < grpInfoMap->m_count; i++)
+  {
+    mInfo = &grpInfoMap->m_group[i];
+    std::cout << __FUNCTION__ << " : iterate : " << i << " Info : " << mInfo << std::endl;
+    if(!mInfo)
+      throw std::runtime_error("Failed to get memory group information");
+    
+    std::cout << " i : " << i << " , cu : " << mInfo->cu_id << " , arg : " << mInfo->arg_id << " , grp : " << mInfo->grp_id << std::endl;  
+    m_grp_map.emplace((std::make_pair(mInfo->cu_id, mInfo->arg_id)), mInfo->grp_id);
+  }
+
+  std::cout << __FUNCTION__ << " : Group Population is done" << std::endl;
+}
 
 std::string
 device::
