@@ -527,7 +527,6 @@ int xocl_mm_insert_node_range(struct xocl_drm *drm_p, u32 mem_id,
         BUG_ON(!mutex_is_locked(&drm_p->mm_lock));
 
         xocl_mem = drm_p->m_connect->mem_group->m_group[mem_id];
-
         if (drm_p->mm == NULL || xocl_mem == NULL)
                 return -EINVAL;
 
