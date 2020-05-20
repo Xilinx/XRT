@@ -2007,12 +2007,17 @@ ert_configure_cu(struct sched_cmd *cmd, int cu_idx)
 	u32 size = regmap_size(cmd);
 	struct ert_start_kernel_cmd *sk;
 	struct zocl_cu *cu = &cmd->exec->zcu[cu_idx];
-	int type = CONSECUTIVE;
+	int type;
 
 	SCHED_DEBUG("-> %s cu_idx=%d, regmap_size=%d\n",
 	    __func__, cu_idx, size);
 
 	sk = (struct ert_start_kernel_cmd *)cmd->packet;
+
+	if (opcode(cmd) == ERT_EXEC_WRITE)
+		type = PAIRS;
+	else
+		type = CONSECUTIVE;
 
 	zocl_cu_configure(cu, sk->data + sk->extra_cu_masks, size, type);
 
