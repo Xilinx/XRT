@@ -2,6 +2,7 @@
 
 FLAVOR=`grep '^ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
 VERSION=`grep '^VERSION_ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
+MAJOR=${VERSION%.*}
 ARCH=`uname -m`
 
 usage()
@@ -92,7 +93,7 @@ rh_package_list()
     )
 
     # Centos8
-    if [ $VERSION == 8 ]; then
+    if [ $MAJOR == 8 ]; then
 
         RH_LIST+=(\
          systemd-devel \
@@ -263,7 +264,7 @@ prep_centos()
     echo "Installing cmake3 from EPEL repository..."
     yum install -y cmake3
 
-    if [ $VERSION == 8 ]; then
+    if [ $MAJOR == 8 ]; then
         prep_centos8
     else
         prep_centos7
@@ -279,7 +280,7 @@ prep_rhel()
 	yum check-update
     fi
 
-    if [ $VERSION == 8 ]; then
+    if [ $MAJOR == 8 ]; then
         echo "RHEL8 not implemented yet"
         exit 1;
     else
@@ -308,7 +309,7 @@ install()
         yum install -y "${RH_LIST[@]}"
 	if [ $ARCH == "ppc64le" ]; then
             yum install -y devtoolset-7
-	elif [ $VERSION -lt "8" ]; then
+	elif [ $MAJOR -lt "8" ]; then
             yum install -y devtoolset-6
 	fi
     fi
