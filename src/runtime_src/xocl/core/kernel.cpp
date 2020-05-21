@@ -431,13 +431,6 @@ size_t
 kernel::
 validate_cus(const device* device, unsigned long argidx, int memidx) const
 {
-#if defined(__arm__)
-  // embedded platforms can have different HP ports connected to same memory bank
-  auto name = device->get_name();
-  if (name.find("_xdma_") == std::string::npos && name.find("_qdma_") == std::string::npos)
-    return m_cus.size();
-#endif
-
   XOCL_DEBUG(std::cout,"xocl::kernel::validate_cus(",argidx,",",memidx,")\n");
   xclbin::memidx_bitmask_type connections;
   connections.set(memidx);
