@@ -2,13 +2,13 @@
 
 set -e
 
-OSDIST=`lsb_release -i |awk -F: '{print tolower($2)}' | tr -d ' \t'`
+OSDIST=`grep '^ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
 BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 CORE=`grep -c ^processor /proc/cpuinfo`
 CMAKE=cmake
 CPU=`uname -m`
 
-if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "amazon" ]]; then
+if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "amazon" ]] || [[ $OSDIST == "rhel" ]]; then
     CMAKE=cmake3
     if [[ ! -x "$(command -v $CMAKE)" ]]; then
         echo "$CMAKE is not installed, please run xrtdeps.sh"
