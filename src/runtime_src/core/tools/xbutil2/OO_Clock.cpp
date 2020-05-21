@@ -26,8 +26,8 @@ namespace XBU = XBUtilities;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
-OO_Clock::OO_Clock( const std::string &_longName)
-    : OptionOptions(_longName, "Set the frequency on the named clock")
+OO_Clock::OO_Clock( const std::string &_longName, bool _isHidden)
+    : OptionOptions(_longName, _isHidden, "Set the frequency on the named clock")
     , m_device("")
     , m_clockName("")
     , m_clockFreq("")

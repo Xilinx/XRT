@@ -719,8 +719,9 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 	if (!offset && !xdev->core.fdt_blob)
 		goto failed;
 
-	if (resp->rtncode != XOCL_MSG_SUBDEV_RTN_COMPLETE) {
-		userpf_err(xdev, "Unexpected return code");
+	if (resp->rtncode != XOCL_MSG_SUBDEV_RTN_COMPLETE &&
+		resp->rtncode != XOCL_MSG_SUBDEV_RTN_UNCHANGED) {
+		userpf_err(xdev, "Unexpected return code %d", resp->rtncode);
 		ret = -EINVAL;
 		goto failed;
 	}
@@ -1488,7 +1489,6 @@ static pci_ers_result_t user_pci_slot_reset(struct pci_dev *pdev)
 static void user_pci_error_resume(struct pci_dev *pdev)
 {
 	xocl_info(&pdev->dev, "PCI error resume");
-	pci_cleanup_aer_uncorrect_error_status(pdev);
 }
 
 static const struct pci_error_handlers xocl_err_handler = {

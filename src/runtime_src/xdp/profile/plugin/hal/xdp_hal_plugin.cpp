@@ -99,12 +99,15 @@ namespace xdp {
 
     BOTransferCBPayload* pLoad = reinterpret_cast<BOTransferCBPayload*>(payload);
 
+    VPDatabase* db = halPluginInstance.getDatabase() ;
+
+#ifdef HAL_SUMMARY
     // Also log the amount of data transferred
     uint64_t deviceId = halPluginInstance.getDeviceId(pLoad->basePayload.deviceHandle);
-    VPDatabase* db = halPluginInstance.getDatabase() ;
     (db->getStats()).logMemoryTransfer(deviceId,
 				       DeviceMemoryStatistics::BUFFER_WRITE,
 				       pLoad->size) ;
+#endif
 
     // Add trace event for start of Buffer Transfer
     double timestamp = xrt_core::time_ns();
@@ -132,12 +135,15 @@ namespace xdp {
 
     BOTransferCBPayload* pLoad = reinterpret_cast<BOTransferCBPayload*>(payload);
 
+    VPDatabase* db = halPluginInstance.getDatabase() ;
+
+#ifdef HAL_SUMMARY
     // Also log the amount of data transferred
     uint64_t deviceId = halPluginInstance.getDeviceId(pLoad->basePayload.deviceHandle);
-    VPDatabase* db = halPluginInstance.getDatabase() ;
     (db->getStats()).logMemoryTransfer(deviceId,
 				       DeviceMemoryStatistics::BUFFER_READ,
 				       pLoad->size) ;
+#endif
 
     // Add trace event for start of Buffer Transfer
     double timestamp = xrt_core::time_ns();
@@ -173,12 +179,15 @@ namespace xdp {
 
     SyncBOCBPayload* pLoad = reinterpret_cast<SyncBOCBPayload*>(payload);
 
+    VPDatabase* db = halPluginInstance.getDatabase() ;
+
+#ifdef HAL_SUMMARY
     // Also log the amount of data transferred
     uint64_t deviceId = halPluginInstance.getDeviceId(pLoad->basePayload.deviceHandle);
-    VPDatabase* db = halPluginInstance.getDatabase() ;
     (db->getStats()).logMemoryTransfer(deviceId,
                        (pLoad->isWriteToDevice ? DeviceMemoryStatistics::BUFFER_WRITE : DeviceMemoryStatistics::BUFFER_READ),
 				       pLoad->size) ;
+#endif
 
     // Add trace event for start of Buffer Transfer
     double timestamp = xrt_core::time_ns();
@@ -216,12 +225,14 @@ namespace xdp {
       reinterpret_cast<UnmgdPreadPwriteCBPayload*>(payload);
     log_function_start(&(pLoad->basePayload), "UnmgdRead") ;
     
+#ifdef HAL_SUMMARY
     // Also log the amount of data transferred
     uint64_t deviceId = halPluginInstance.getDeviceId(pLoad->basePayload.deviceHandle);
     VPDatabase* db = halPluginInstance.getDatabase() ;
     (db->getStats()).logMemoryTransfer(deviceId,
 				       DeviceMemoryStatistics::UNMANAGED_READ, 
 				       pLoad->count) ;
+#endif
   }
 
   static void unmgd_read_end(void* payload) {
@@ -235,12 +246,14 @@ namespace xdp {
       reinterpret_cast<UnmgdPreadPwriteCBPayload*>(payload);
     log_function_start(&(pLoad->basePayload), "UnmgdWrite") ;
 
+#ifdef HAL_SUMMARY
     // Also log the amount of data transferred
     uint64_t deviceId = halPluginInstance.getDeviceId(pLoad->basePayload.deviceHandle);
     VPDatabase* db = halPluginInstance.getDatabase() ;
     (db->getStats()).logMemoryTransfer(deviceId,
 				       DeviceMemoryStatistics::UNMANAGED_WRITE,
 				       pLoad->count) ;
+#endif
   }
 
   static void unmgd_write_end(void* payload) {
@@ -253,11 +266,13 @@ namespace xdp {
     ReadWriteCBPayload* pLoad = reinterpret_cast<ReadWriteCBPayload*>(payload);
     log_function_start(&(pLoad->basePayload), "xclRead") ;
 
+#ifdef HAL_SUMMARY
     // Also log the amount of data transferred
     uint64_t deviceId = halPluginInstance.getDeviceId(pLoad->basePayload.deviceHandle);
     VPDatabase* db = halPluginInstance.getDatabase() ;
     (db->getStats()).logMemoryTransfer(deviceId,
 				                DeviceMemoryStatistics::XCLREAD, pLoad->size) ;
+#endif
   }
 
   static void read_end(void* payload) {  
@@ -268,12 +283,14 @@ namespace xdp {
     ReadWriteCBPayload* pLoad = reinterpret_cast<ReadWriteCBPayload*>(payload);
     log_function_start(&(pLoad->basePayload), "xclWrite") ;
 
+#ifdef HAL_SUMMARY
     // Also log the amount of data transferred
     uint64_t deviceId = halPluginInstance.getDeviceId(pLoad->basePayload.deviceHandle);
     VPDatabase* db = halPluginInstance.getDatabase() ;
     (db->getStats()).logMemoryTransfer(deviceId,
 				       DeviceMemoryStatistics::XCLWRITE, 
 				       pLoad->size) ;
+#endif
   }
 
   static void write_end(void* payload) {

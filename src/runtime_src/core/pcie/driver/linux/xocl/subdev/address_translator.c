@@ -59,6 +59,7 @@ struct addr_translator {
 	struct device		*dev;
 	struct mutex		lock;
 	uint32_t		range;
+	uint32_t		slot_num;
 };
 
 static uint32_t addr_translator_get_entries_num(struct platform_device *pdev)
@@ -82,7 +83,7 @@ static uint64_t addr_translator_get_range(struct platform_device *pdev)
 	u64 range = 0, num = 0, log = 0;
 
 	mutex_lock(&addr_translator->lock);
-	num = xocl_dr_reg_read32(xdev, &regs->entry_num);
+	num = addr_translator->slot_num;
 	if (num) {
 		log = xocl_dr_reg_read32(xdev, &regs->addr_range);
 		range = (1ULL)<<log;
@@ -98,11 +99,11 @@ static uint64_t addr_translator_get_base_addr(struct platform_device *pdev)
 	xdev_handle_t xdev = ADDR_TRANSLATOR_DEV2XDEV(pdev);
 	u64 hi = 0, lo = 0;
 
-	BUG_ON(!mutex_is_locked(&addr_translator->lock));
+	mutex_lock(&addr_translator->lock);
 
 	lo = xocl_dr_reg_read32(xdev, &regs->base_addr.lo);
 	hi = xocl_dr_reg_read32(xdev, &regs->base_addr.hi);
-
+	mutex_unlock(&addr_translator->lock);
 	return (hi<<32)+lo;
 }
 
@@ -146,13 +147,9 @@ static int addr_translator_set_page_table(struct platform_device *pdev, uint64_t
 
 	range_in_log = ilog2(range);
 	xocl_dr_reg_write32(xdev, range_in_log, &regs->addr_range);
-	/* Clean up base address, let set_address() do the rest */
-	xocl_dr_reg_write32(xdev, 0, &regs->base_addr.lo);
-	xocl_dr_reg_write32(xdev, 0, &regs->base_addr.hi);
 
-	/* Once everything set, reinitiate remapper */
-	xocl_dr_reg_write32(xdev, num, &regs->entry_num);
-
+	/* Save the reserve number for enable_remap*/
+	addr_translator->slot_num = num;
 done:
 	mutex_unlock(&addr_translator->lock);
 	return ret;
@@ -170,7 +167,7 @@ static int addr_translator_set_address(struct platform_device *pdev, uint64_t ba
 	 * Program the base address or 0 to regs->base_addr
 	 * Write the num back to enable new remap setting
 	 */
-	num = xocl_dr_reg_read32(xdev, &regs->entry_num);
+	num = addr_translator->slot_num;
 	/* disable remapper first */
 	xocl_dr_reg_write32(xdev, 0, &regs->entry_num);
 	xocl_dr_reg_write32(xdev, base_addr & 0xFFFFFFFF, &regs->base_addr.lo);
@@ -194,11 +191,14 @@ static int addr_translator_enable_remap(struct platform_device *pdev, uint64_t b
 
 static int addr_translator_disable_remap(struct platform_device *pdev)
 {
-	int ret = 0;
 	struct addr_translator *addr_translator = platform_get_drvdata(pdev);
+	xdev_handle_t xdev = ADDR_TRANSLATOR_DEV2XDEV(pdev);
+	struct trans_regs *regs = (struct trans_regs *)addr_translator->base;
 
 	mutex_lock(&addr_translator->lock);
-	ret = addr_translator_set_address(pdev, 0);
+	xocl_dr_reg_write32(xdev, 0, &regs->entry_num);
+	xocl_dr_reg_write32(xdev, 0, &regs->base_addr.lo);
+	xocl_dr_reg_write32(xdev, 0, &regs->base_addr.hi);
 	mutex_unlock(&addr_translator->lock);
 	return 0;
 }
@@ -212,6 +212,7 @@ static int addr_translator_clean(struct platform_device *pdev)
 	 * Simply write 0 to all write-able registers
 	 */
 	memset(addr_translator->base, 0, addr_translator->range);
+	addr_translator->slot_num = 0;
 	mutex_unlock(&addr_translator->lock);
 	return 0;
 }
@@ -223,6 +224,7 @@ static struct xocl_addr_translator_funcs addr_translator_ops = {
 	.enable_remap = addr_translator_enable_remap,
 	.disable_remap = addr_translator_disable_remap,
 	.clean = addr_translator_clean,
+	.get_base_addr = addr_translator_get_base_addr,
 };
 
 static ssize_t num_show(struct device *dev, struct device_attribute *attr,
@@ -249,20 +251,38 @@ static ssize_t base_address_show(struct device *dev, struct device_attribute *at
 	char *buf)
 {
 	struct platform_device *pdev = to_platform_device(dev);
-	struct addr_translator *addr_translator = platform_get_drvdata(pdev);
 	u64 addr;
 
-	mutex_lock(&addr_translator->lock);
 	addr = addr_translator_get_base_addr(pdev);
-	mutex_unlock(&addr_translator->lock);
 	return sprintf(buf, "0x%llx\n", addr);
 }
 static DEVICE_ATTR_RO(base_address);
+
+static ssize_t enabled_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct addr_translator *addr_translator = platform_get_drvdata(pdev);
+	xdev_handle_t xdev = ADDR_TRANSLATOR_DEV2XDEV(pdev);
+	struct trans_regs *regs = (struct trans_regs *)addr_translator->base;
+	u32 num;
+	bool enable = false;
+
+	mutex_lock(&addr_translator->lock);
+
+	num = xocl_dr_reg_read32(xdev, &regs->entry_num);
+	if (num)
+		enable = true;
+	mutex_unlock(&addr_translator->lock);
+	return sprintf(buf, "%x\n", enable);
+}
+static DEVICE_ATTR_RO(enabled);
 
 static struct attribute *addr_translator_attributes[] = {
 	&dev_attr_num.attr,
 	&dev_attr_base_address.attr,
 	&dev_attr_addr_range.attr,
+	&dev_attr_enabled.attr,
 	NULL
 };
 

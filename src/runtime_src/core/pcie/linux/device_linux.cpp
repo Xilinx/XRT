@@ -161,7 +161,7 @@ initialize_query_table()
   emplace_sysfs_request<query::pcie_express_lane_width>   ("", "link_width");
   emplace_sysfs_request<query::dma_threads_raw>           ("dma", "channel_stat_raw");
   emplace_sysfs_request<query::rom_vbnv>                  ("rom", "VBNV");
-  emplace_sysfs_request<query::rom_ddr_bank_size>         ("rom", "ddr_bank_size");
+  emplace_sysfs_request<query::rom_ddr_bank_size_gb>      ("rom", "ddr_bank_size");
   emplace_sysfs_request<query::rom_ddr_bank_count_max>    ("rom", "ddr_bank_count_max");
   emplace_sysfs_request<query::rom_fpga_name>             ("rom", "FPGA");
   emplace_sysfs_request<query::rom_raw>                   ("rom", "raw");
@@ -170,7 +170,7 @@ initialize_query_table()
   emplace_sysfs_request<query::xclbin_uuid>               ("", "xclbinuuid");
   emplace_sysfs_request<query::mem_topology_raw>          ("icap", "mem_topology");
   emplace_sysfs_request<query::ip_layout_raw>             ("icap", "ip_layout");
-  emplace_sysfs_request<query::clock_freqs>               ("icap", "clock_freqs");
+  emplace_sysfs_request<query::clock_freqs_mhz>           ("icap", "clock_freqs");
   emplace_sysfs_request<query::idcode>                    ("icap", "idcode");
   emplace_sysfs_request<query::status_mig_calibrated>     ("", "mig_calibration");
   emplace_sysfs_request<query::xmc_version>               ("xmc", "version");

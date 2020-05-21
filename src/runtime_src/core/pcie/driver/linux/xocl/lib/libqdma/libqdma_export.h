@@ -270,8 +270,6 @@ struct qdma_dev_conf {
  * qdma_device_open() - read the pci bars and configure the fpga
  * This API should be called from probe()
  *
- * User interrupt will not be enabled until qdma_user_isr_enable() is called
- *
  * @param[in]	mod_name:	the module name, used for request_irq
  * @param[in]	conf:		device configuration
  * @param[out]	dev_hndl:	an opaque handle

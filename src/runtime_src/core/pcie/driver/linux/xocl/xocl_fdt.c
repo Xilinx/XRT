@@ -63,16 +63,34 @@ static void *msix_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 
 static void *ert_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 {
-	char *priv_data;
+        struct xocl_dev_core *core = XDEV(xdev_hdl);
+	void *blob;
+        int node;
+	const u32 *major;
+	struct xocl_ert_sched_privdata *priv_data;
 
-	priv_data = vzalloc(1);
+        blob = core->fdt_blob;
+        if (!blob)
+                return NULL;
+
+	priv_data = vzalloc(sizeof(*priv_data));
 	if (!priv_data) {
 		*len = 0;
 		return NULL;
 	}
 
-	*priv_data = 1;
-	*len = 1;
+        node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_ERT_SCHED);
+        if (node < 0) {
+                xocl_xdev_err(xdev_hdl, "did not find ert sched node in %s", NODE_ENDPOINTS);
+                return NULL;
+        }
+
+	major = fdt_getprop(blob, node, PROP_VERSION_MAJOR, NULL);
+	if (major)
+		priv_data->major = be32_to_cpu(*major);
+
+	priv_data->dsa = 1;
+	*len = sizeof(*priv_data);
 
 	return priv_data;
 }
@@ -138,7 +156,7 @@ static void *flash_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 
 	if (!fdt_node_check_compatible(blob, node, "axi_quad_spi"))
 		flash_type = FLASH_TYPE_SPI;
-	else if (!fdt_node_check_compatible(blob, node, "axi_quad_qspi_x4_single"))
+	else if (!fdt_node_check_compatible(blob, node, "qspi_ps_x4_single"))
 		flash_type = FLASH_TYPE_QSPIPS_X4_SINGLE;
 	else {
 		xocl_xdev_err(xdev_hdl, "UNKNOWN flash type");
@@ -398,12 +416,16 @@ static struct xocl_subdev_map		subdev_map[] = {
 		0,
 		NULL,
 		devinfo_cb_setlevel,
+		.min_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		XOCL_SUBDEV_IORES,
 		XOCL_IORES1,
 		{
 			RESNAME_PCIEMON,
+			RESNAME_MEMCALIB,
+			RESNAME_KDMA,
+			RESNAME_DDR4_RESET_GATE,
 			NULL
 		},
 		1,
@@ -1035,6 +1057,18 @@ int xocl_fdt_add_pair(xdev_handle_t xdev_hdl, void *blob, char *name,
 	return ret;
 }
 
+int xocl_fdt_setprop(xdev_handle_t xdev_hdl, void *blob, int off,
+		     const char *name, const void *val, int size)
+{
+	return fdt_setprop(blob, off, name, val, size);
+}
+
+const void *xocl_fdt_getprop(xdev_handle_t xdev_hdl, void *blob, int off,
+			     char *name, int *lenp)
+{
+	return fdt_getprop(blob, off, name, lenp);
+}
+
 int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
 		int part_level, char *vbnv)
 {
@@ -1173,6 +1207,11 @@ int xocl_fdt_get_p2pbar(xdev_handle_t xdev_hdl, void *blob)
 		return -EINVAL;
 
 	return ntohl(*p2p_bar);
+}
+
+int xocl_fdt_path_offset(xdev_handle_t xdev_hdl, void *blob, const char *path)
+{
+	return fdt_path_offset(blob, path);
 }
 
 int xocl_fdt_build_priv_data(xdev_handle_t xdev_hdl, struct xocl_subdev *subdev,

@@ -38,6 +38,7 @@ using namespace XBUtilities;
 static bool m_bVerbose = false;
 static bool m_bTrace = false;
 static bool m_disableEscapeCodes = false;
+static bool m_bShowHidden = false;
 
 
 // ------ F U N C T I O N S ---------------------------------------------------
@@ -46,27 +47,42 @@ XBUtilities::setVerbose(bool _bVerbose)
 {
   bool prevVerbose = m_bVerbose;
 
-  if ((prevVerbose == true) && (_bVerbose == false)) {
+  if ((prevVerbose == true) && (_bVerbose == false)) 
     verbose("Disabling Verbosity");
-  }
 
   m_bVerbose = _bVerbose;
 
-  if ((prevVerbose == false) && (_bVerbose == true)) {
+  if ((prevVerbose == false) && (_bVerbose == true)) 
     verbose("Enabling Verbosity");
-  }
 }
 
 void 
 XBUtilities::setTrace(bool _bTrace)
 {
-  if (_bTrace) {
+  if (_bTrace) 
     trace("Enabling Tracing");
-  } else {
+  else 
     trace("Disabling Tracing");
-  }
 
   m_bTrace = _bTrace;
+}
+
+
+void 
+XBUtilities::setShowHidden(bool _bShowHidden)
+{
+  if (_bShowHidden) 
+    trace("Hidden commands and options will be shown.");
+  else 
+    trace("Hidden commands and options will be hidden");
+
+  m_bShowHidden = _bShowHidden;
+}
+
+bool
+XBUtilities::getShowHidden()
+{
+  return m_bShowHidden;
 }
 
 void 

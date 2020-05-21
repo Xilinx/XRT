@@ -31,9 +31,12 @@ namespace xdp {
   protected:
     virtual void switchFiles() ;
   public:
+    XDP_EXPORT
     VPRunSummaryWriter(const char* filename) ;
+    XDP_EXPORT
     ~VPRunSummaryWriter() ;
 
+    XDP_EXPORT
     virtual void write(bool openNewFile) ;
   } ;
 

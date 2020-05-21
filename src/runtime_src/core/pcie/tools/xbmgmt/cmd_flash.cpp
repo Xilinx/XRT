@@ -38,7 +38,8 @@ const char *subCmdFlashDesc = "Update SC firmware or shell on the device";
 const char *subCmdFlashUsage =
     "--scan [--verbose|--json]\n"
     "--update [--shell name [--id id]] [--card bdf] [--force]\n"
-    "--factory_reset [--card bdf] [--force]\n\n"
+    "--factory_reset [--card bdf] [--force]\n";
+const char *subCmdFlashExpUsage =
     "Experts only:\n"
     "--shell --primary primary_file [--secondary secondary_file] --card bdf [--flash_type flash_type]\n"
     "--sc_firmware --path file --card bdf";
@@ -138,7 +139,6 @@ static int scanDevices(bool verbose, bool json)
 static int writeSCImage(Flasher &flasher, const char *file)
 {
     int ret = 0;
-
     std::shared_ptr<firmwareImage> bmc =
        std::make_shared<firmwareImage>(file, BMC_FIRMWARE);
     if (bmc->fail()) {
@@ -160,22 +160,18 @@ static int updateSC(unsigned index, const char *file)
     bool is_mfg = false;
     std::string errmsg;
     auto mgmt_dev = pcidev::get_dev(index, false);
-
     mgmt_dev->sysfs_get<bool>("", "mfg", errmsg, is_mfg, false);
     if (is_mfg) {
         return writeSCImage(flasher, file);
     }
 
     auto dev = mgmt_dev->lookup_peer_dev();
-
     ret = pcidev::shutdown(mgmt_dev);
     if (ret) {
         std::cout << "Only proceed with SC update if all user applications for the target card(s) are stopped." << std::endl;
         return ret;
     }
-
     ret = writeSCImage(flasher, file);
-
     dev->sysfs_put("", "shutdown", errmsg, "0\n");
     if (!errmsg.empty()) {
         std::cout << "ERROR: online userpf failed. Please warm reboot." << std::endl;

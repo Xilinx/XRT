@@ -278,12 +278,11 @@ private:
         auto end = reqList.end();
         for (auto it = reqList.begin(); it != end && cb_cnt < cb_max;
              ++it, cb_cnt++) {
-            auto qio = (*it);
 
-            qio.header.flags = qio.flags;
-            prepare_io(&qio.cb, qio.iov, &qio.header, qio.buf_va, qio.len,
-			qio.priv_data);
-            cbpp[cb_cnt] = &qio.cb;
+            it->header.flags = it->flags;
+            prepare_io(&it->cb, it->iov, &it->header, it->buf_va, it->len,
+			it->priv_data);
+            cbpp[cb_cnt] = &it->cb;
         }
 
         int submitted = io_submit(qAioCtx, cb_cnt, cbpp.data());
@@ -1221,6 +1220,8 @@ int shim::cmaEnable(bool enable, uint64_t size)
 
     } else {
         ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_FREE_CMA);
+        if (ret)
+                ret = -errno;
     }
 
     return ret;

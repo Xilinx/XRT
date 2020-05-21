@@ -169,21 +169,27 @@ SubCmdQuery::execute(const SubCmdOptions& _options) const
   xrt_core::device::id_type card = 0;
   bool help = false;
 
-  po::options_description queryDesc("query options");
-  queryDesc.add_options()
+  po::options_description commonOptions("Common options");
+  commonOptions.add_options()
     ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
     (",d", boost::program_options::value<decltype(card)>(&card), "Card to be examined.")
   ;
+
+  po::options_description hiddenOptions("Hidden options");
+
+  po::options_description allOptions("All options");
+  allOptions.add(commonOptions);
+  allOptions.add(hiddenOptions);
 
   // Parse sub-command ...
   po::variables_map vm;
 
   try {
-    po::store(po::command_line_parser(_options).options(queryDesc).run(), vm);
+    po::store(po::command_line_parser(_options).options(allOptions).run(), vm);
     po::notify(vm); // Can throw
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
-    printHelp(queryDesc);
+    printHelp(commonOptions, hiddenOptions);
 
     // Re-throw exception
     throw;
@@ -191,7 +197,7 @@ SubCmdQuery::execute(const SubCmdOptions& _options) const
 
   // Check to see if help was requested or no command was found
   if (help == true)  {
-    printHelp(queryDesc);
+    printHelp(commonOptions, hiddenOptions);
     return;
   }
 

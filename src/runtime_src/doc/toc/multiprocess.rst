@@ -3,7 +3,7 @@
 Multi-Process Support
 *********************
 
-Support for Multi-Process kernel execution is default in 2019.1 release
+Support for Multi-Process kernel execution is default in 2019.1 release.
 
 Requirements
 ============
@@ -22,15 +22,8 @@ will acquire the kernel's compute units per the ``xocl`` kernel driver
 compute unit scheduler, which is first-come first-serve.  All
 processes have the same priority in XRT.
 
-To disable multi-process support, add the following entry to :ref:`xrt_ini.rst`
-in the same directory as each executable trying to use the device::
-
-  [Runtime]
-  multiprocess=false
-
-
-Known problems
-==============
+Known Issues
+============
 
 Debug and Profile will only be enable for the first process when multi-process
 has been enabled. Emulation flow does not have support for multi-process yet.

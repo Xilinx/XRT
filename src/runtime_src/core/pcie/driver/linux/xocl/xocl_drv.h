@@ -21,9 +21,24 @@
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(3, 0, 0)
 #include <drm/drm_backport.h>
 #endif
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 5, 0)
 #include <drm/drmP.h>
+#else
+#include <drm/drm_device.h>
+#include <drm/drm_file.h>
+#include <drm/drm_ioctl.h>
+#include <drm/drm_drv.h>
+#endif
 #include <drm/drm_gem.h>
 #include <drm/drm_mm.h>
+#include <linux/interrupt.h>
+#include <linux/poll.h>
+#include <linux/platform_device.h>
+#include <linux/pci.h>
+#include <linux/delay.h>
+#include <linux/types.h>
+#include <linux/moduleparam.h>
+#include <linux/cdev.h>
 #include "xclbin.h"
 #include "xrt_mem.h"
 #include "devices.h"
@@ -35,6 +50,10 @@
 #include <linux/firmware.h>
 #include "kds_core.h"
 #include "xrt_cu.h"
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+#define ioremap_nocache		ioremap
+#endif
 
 #ifndef mmiowb
 #define mmiowb()		do { } while (0)
@@ -846,6 +865,8 @@ struct xocl_dna_funcs {
 	(ADDR_TRANSLATOR_CB(xdev, disable_remap) ? ADDR_TRANSLATOR_OPS(xdev)->disable_remap(ADDR_TRANSLATOR_DEV(xdev)) : -ENODEV)
 #define	xocl_addr_translator_clean(xdev)			\
 	(ADDR_TRANSLATOR_CB(xdev, clean) ? ADDR_TRANSLATOR_OPS(xdev)->clean(ADDR_TRANSLATOR_DEV(xdev)) : -ENODEV)
+#define	xocl_addr_translator_get_base_addr(xdev)			\
+	(ADDR_TRANSLATOR_CB(xdev, get_base_addr) ? ADDR_TRANSLATOR_OPS(xdev)->get_base_addr(ADDR_TRANSLATOR_DEV(xdev)) : 0)
 
 struct xocl_addr_translator_funcs {
 	struct xocl_subdev_funcs common_funcs;
@@ -855,6 +876,7 @@ struct xocl_addr_translator_funcs {
 	int (*enable_remap)(struct platform_device *pdev, uint64_t base_addr);
 	int (*disable_remap)(struct platform_device *pdev);
 	int (*clean)(struct platform_device *pdev);
+	u64 (*get_base_addr)(struct platform_device *pdev);
 };
 
 /**
@@ -1003,6 +1025,7 @@ struct xocl_clock_funcs {
 	int (*update_freq)(struct platform_device *pdev,
 		unsigned short *freqs, int num_freqs, int verify);
 	int (*clock_status)(struct platform_device *pdev, bool *latched);
+	uint64_t (*get_data)(struct platform_device *pdev, enum data_kind kind);
 };
 #define CLOCK_DEV_INFO(xdev, idx)					\
 	SUBDEV_MULTI(xdev, XOCL_SUBDEV_CLOCK, idx).info
@@ -1047,31 +1070,38 @@ static inline int xocl_clock_ops_level(xdev_handle_t xdev)
 #define	xocl_clock_get_freq_by_id(xdev, region, freq, id)		\
 ({ \
 	int __idx = xocl_clock_ops_level(xdev);				\
-	(CLOCK_CB(xdev, __idx, get_freq_by_id) ?				\
+	(CLOCK_CB(xdev, __idx, get_freq_by_id) ?			\
 	CLOCK_OPS(xdev, __idx)->get_freq_by_id(CLOCK_DEV(xdev, __idx), region, freq, id) : \
 	-ENODEV); \
 })
 #define	xocl_clock_get_freq_counter_khz(xdev, value, id)		\
 ({ \
 	int __idx = xocl_clock_ops_level(xdev);				\
-	(CLOCK_CB(xdev, __idx, get_freq_counter_khz) ?				\
+	(CLOCK_CB(xdev, __idx, get_freq_counter_khz) ?			\
 	CLOCK_OPS(xdev, __idx)->get_freq_counter_khz(CLOCK_DEV(xdev, __idx), value, id) : \
 	-ENODEV); \
 })
 #define	xocl_clock_update_freq(xdev, freqs, num_freqs, verify) \
 ({ \
 	int __idx = xocl_clock_ops_level(xdev);				\
-	(CLOCK_CB(xdev, __idx, update_freq) ?					\
+	(CLOCK_CB(xdev, __idx, update_freq) ?				\
 	CLOCK_OPS(xdev, __idx)->update_freq(CLOCK_DEV(xdev, __idx), freqs, num_freqs, verify) : \
 	-ENODEV); \
 })
 #define	xocl_clock_status(xdev, latched)				\
 ({ \
 	int __idx = xocl_clock_ops_level(xdev);				\
-	(CLOCK_CB(xdev, __idx, clock_status) ?					\
+	(CLOCK_CB(xdev, __idx, clock_status) ?				\
 	CLOCK_OPS(xdev, __idx)->clock_status(CLOCK_DEV(xdev, __idx), latched) : 	\
 	-ENODEV); \
 })
+#define	xocl_clock_get_data(xdev, kind)					\
+({ \
+	int __idx = xocl_clock_ops_level(xdev);				\
+	(CLOCK_CB(xdev, __idx, get_data) ?				\
+	CLOCK_OPS(xdev, __idx)->get_data(CLOCK_DEV(xdev, __idx), kind) : 0); 	\
+})
+
 
 struct xocl_icap_funcs {
 	struct xocl_subdev_funcs common_funcs;
@@ -1097,6 +1127,7 @@ struct xocl_icap_funcs {
 		enum data_kind kind, void **buf);
 	void (*put_xclbin_metadata)(struct platform_device *pdev);
 	int (*mig_calibration)(struct platform_device *pdev);
+	void (*clean_bitstream)(struct platform_device *pdev);
 };
 enum {
 	RP_DOWNLOAD_NORMAL,
@@ -1159,7 +1190,7 @@ enum {
 #define	xocl_icap_get_xclbin_metadata(xdev, kind, buf)			\
 	(ICAP_CB(xdev, get_xclbin_metadata) ?				\
 	ICAP_OPS(xdev)->get_xclbin_metadata(ICAP_DEV(xdev), kind, buf) :	\
-	0)
+	-ENODEV)
 #define	xocl_icap_put_xclbin_metadata(xdev)			\
 	(ICAP_CB(xdev, put_xclbin_metadata) ?			\
 	ICAP_OPS(xdev)->put_xclbin_metadata(ICAP_DEV(xdev)) : 	\
@@ -1167,6 +1198,10 @@ enum {
 #define	xocl_icap_mig_calibration(xdev)				\
 	(ICAP_CB(xdev, mig_calibration) ?			\
 	ICAP_OPS(xdev)->mig_calibration(ICAP_DEV(xdev)) : 	\
+	-ENODEV)
+#define	xocl_icap_clean_bitstream(xdev)				\
+	(ICAP_CB(xdev, clean_bitstream) ?			\
+	ICAP_OPS(xdev)->clean_bitstream(ICAP_DEV(xdev)) : 	\
 	-ENODEV)
 
 #define XOCL_GET_MEM_TOPOLOGY(xdev, mem_topo)						\
@@ -1547,7 +1582,8 @@ int xocl_subdev_destroy_by_name(xdev_handle_t xdev_hdl, char *name);
 int xocl_subdev_destroy_prp(xdev_handle_t xdev);
 int xocl_subdev_create_prp(xdev_handle_t xdev);
 
-int xocl_subdev_vsec(xdev_handle_t xdev, u32 type, int *bar_idx, u64 *offset);
+int xocl_subdev_vsec(xdev_handle_t xdev, u32 type, int *bar_idx, u64 *offset,
+	u32 *verType);
 u32 xocl_subdev_vsec_read32(xdev_handle_t xdev, int bar, u64 offset);
 int xocl_subdev_create_vsec_devs(xdev_handle_t xdev);
 bool xocl_subdev_is_vsec(xdev_handle_t xdev);
@@ -1649,6 +1685,11 @@ int xocl_fdt_parse_blob(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
 const struct axlf_section_header *xocl_axlf_section_header(
 	xdev_handle_t xdev_hdl, const struct axlf *top,
 	enum axlf_section_kind kind);
+int xocl_fdt_path_offset(xdev_handle_t xdev_hdl, void *blob, const char *path);
+int xocl_fdt_setprop(xdev_handle_t xdev_hdl, void *blob, int off,
+		     const char *name, const void *val, int size);
+const void *xocl_fdt_getprop(xdev_handle_t xdev_hdl, void *blob, int off,
+			     char *name, int *lenp);
 
 
 /* init functions */

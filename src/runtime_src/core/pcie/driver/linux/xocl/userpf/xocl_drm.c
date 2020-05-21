@@ -27,9 +27,6 @@
 #include <linux/log2.h>
 #include <linux/mmzone.h>
 
-#include <drm/drmP.h>
-#include <drm/drm_gem.h>
-#include <drm/drm_mm.h>
 #include "version.h"
 #include "../lib/libxdma_api.h"
 #include "common.h"
@@ -549,6 +546,9 @@ static int xocl_check_topology(struct xocl_drm *drm_p)
 	if (topology == NULL)
 		goto done;
 
+	if (!drm_p->mm_usage_stat)
+		goto done;
+
 	for (i = 0; i < topology->m_count; i++) {
 		if (!topology->m_mem_data[i].m_used)
 			continue;
@@ -556,6 +556,8 @@ static int xocl_check_topology(struct xocl_drm *drm_p)
 		if (XOCL_IS_STREAM(topology, i))
 			continue;
 
+		if (!drm_p->mm_usage_stat[i])
+			continue;
 		if (drm_p->mm_usage_stat[i]->bo_count != 0) {
 			err = -EPERM;
 			xocl_err(drm_p->ddev->dev,
@@ -572,9 +574,12 @@ done:
 uint32_t xocl_get_shared_ddr(struct xocl_drm *drm_p, struct mem_data *m_data)
 {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
-	struct xocl_mm_wrapper *wrapper;
+	struct xocl_mm_wrapper *wrapper = NULL;
 	uint64_t start_addr = m_data->m_base_address;
 	uint64_t sz = m_data->m_size*1024;
+
+	BUG_ON(!drm_p->mm_range);
+	BUG_ON(!m_data);
 
 	hash_for_each_possible(drm_p->mm_range, wrapper, node, start_addr) {
 		if (!wrapper)
@@ -601,7 +606,7 @@ static void xocl_cma_mem_free(struct xocl_drm *drm_p, uint32_t idx)
 
 	sgt = cma_mem->sgt;
 	if (sgt) {
-		dma_unmap_sg(drm_p->ddev->dev, sgt->sgl, sgt->orig_nents, DMA_FROM_DEVICE);
+		dma_unmap_sg(drm_p->ddev->dev, sgt->sgl, sgt->orig_nents, DMA_BIDIRECTIONAL);
 		sg_free_table(sgt);
 		vfree(sgt);
 		cma_mem->sgt = NULL;
@@ -640,7 +645,7 @@ static void xocl_cma_mem_free_all(struct xocl_drm *drm_p)
 	xocl_info(drm_p->ddev->dev, "%s done", __func__);
 }
 
-int xocl_cleanup_mem(struct xocl_drm *drm_p)
+int xocl_cleanup_mem_nolock(struct xocl_drm *drm_p)
 {
 	int err;
 	struct mem_topology *topology = NULL;
@@ -651,17 +656,15 @@ int xocl_cleanup_mem(struct xocl_drm *drm_p)
 	struct hlist_node *tmp;
 #endif
 
-	mutex_lock(&drm_p->mm_lock);
+	BUG_ON(!mutex_is_locked(&drm_p->mm_lock));
 
 	err = xocl_check_topology(drm_p);
-	if (err) {
-		mutex_unlock(&drm_p->mm_lock);
+	if (err)
 		return err;
-	}
 
 	err = XOCL_GET_MEM_TOPOLOGY(drm_p->xdev, topology);
 	if (err)
-		goto done;	
+		goto done;
 
 	if (topology) {
 		ddr = topology->m_count;
@@ -684,13 +687,18 @@ int xocl_cleanup_mem(struct xocl_drm *drm_p)
 					continue;
 				hash_del(&wrapper->node);
 				vfree(wrapper);
-				drm_mm_takedown(drm_p->mm[i]);
-				vfree(drm_p->mm[i]);
-				vfree(drm_p->mm_usage_stat[i]);
+
+				if (drm_p->mm && drm_p->mm[i]) {
+					drm_mm_takedown(drm_p->mm[i]);
+					vfree(drm_p->mm[i]);
+					drm_p->mm[i] = NULL;
+				}
+				if (drm_p->mm_usage_stat && drm_p->mm_usage_stat[i]) {
+					vfree(drm_p->mm_usage_stat[i]);
+					drm_p->mm_usage_stat[i] = NULL;
+				}
 			}
 #endif
-			drm_p->mm[i] = NULL;
-			drm_p->mm_usage_stat[i] = NULL;
 		}
 	}
 	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
@@ -703,7 +711,6 @@ done:
 	vfree(drm_p->mm_p2p_off);
 	drm_p->mm_p2p_off = NULL;
 
-	mutex_unlock(&drm_p->mm_lock);
 	return 0;
 }
 
@@ -719,6 +726,15 @@ int xocl_set_cma_bank(struct xocl_drm *drm_p, uint64_t base_addr, size_t ddr_ban
 	ret = xocl_addr_translator_enable_remap(drm_p->xdev, base_addr);
 
 done:
+	return ret;
+}
+
+int xocl_cleanup_mem(struct xocl_drm *drm_p)
+{
+	int ret;
+	mutex_lock(&drm_p->mm_lock);
+	ret = xocl_cleanup_mem_nolock(drm_p);
+	mutex_unlock(&drm_p->mm_lock);
 	return ret;
 }
 
@@ -770,7 +786,7 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	drm_p->mm_p2p_off = vzalloc((topo->m_count + 1) * sizeof(u64));
 	if (!drm_p->mm || !drm_p->mm_usage_stat || !drm_p->mm_p2p_off) {
 		err = -ENOMEM;
-		goto failed;
+		goto done;
 	}
 
 	for (i = 0; i < topo->m_count; i++) {
@@ -827,7 +843,7 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 
 		if (!drm_p->mm[i] || !drm_p->mm_usage_stat[i] || !wrapper) {
 			err = -ENOMEM;
-			goto failed;
+			goto done;
 		}
 
 		wrapper->start_addr = mem_data->m_base_address;
@@ -844,32 +860,20 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 
 		if (!strncmp(mem_data->m_tag, "HOST[0]", 7)) {
 			err = xocl_set_cma_bank(drm_p, mem_data->m_base_address, ddr_bank_size);
-			if (err)
-				goto failed;
+			if (err) {
+				xocl_err(drm_p->ddev->dev, "Run host_mem to setup host memory access, request 0x%lx bytes", ddr_bank_size);
+				goto done;
+			}
 		}
 		xocl_info(drm_p->ddev->dev, "drm_mm_init called");
 	}
-	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
-	mutex_unlock(&drm_p->mm_lock);
-	return 0;
 
-failed:
-	vfree(wrapper);
-	if (drm_p->mm) {
-		for (; i >= 0; i--) {
-			drm_mm_takedown(drm_p->mm[i]);
-			vfree(drm_p->mm[i]);
-			vfree(drm_p->mm_usage_stat[i]);
-		}
-		vfree(drm_p->mm);
-		drm_p->mm = NULL;
-	}
-	vfree(drm_p->mm_usage_stat);
-	drm_p->mm_usage_stat = NULL;
-	vfree(drm_p->mm_p2p_off);
-	drm_p->mm_p2p_off = NULL;
+done:
+	if (err)
+		xocl_cleanup_mem_nolock(drm_p);
 	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
 	mutex_unlock(&drm_p->mm_lock);
+	xocl_info(drm_p->ddev->dev, "ret %d", err);
 	return err;
 }
 
@@ -943,7 +947,7 @@ static int xocl_cma_mem_alloc_huge_page_by_idx(struct xocl_drm *drm_p, uint32_t 
 		goto done;
 	}
 
-	if (!dma_map_sg(dev, sgt->sgl, sgt->orig_nents, DMA_FROM_DEVICE)) {
+	if (!dma_map_sg(dev, sgt->sgl, sgt->orig_nents, DMA_BIDIRECTIONAL)) {
 		ret =-ENOMEM;
 		goto done;
 	}
@@ -962,7 +966,7 @@ done:
 		vfree(cma_mem->pages);
 		cma_mem->pages = NULL;
 		if (sgt) {
-			dma_unmap_sg(dev, sgt->sgl, sgt->orig_nents, DMA_FROM_DEVICE);
+			dma_unmap_sg(dev, sgt->sgl, sgt->orig_nents, DMA_BIDIRECTIONAL);
 			sg_free_table(sgt);
 			vfree(sgt);
 		}
@@ -982,6 +986,8 @@ static int xocl_cma_mem_alloc_huge_page(struct xocl_drm *drm_p, struct drm_xocl_
 
 	BUG_ON(!mutex_is_locked(&drm_p->mm_lock));
 
+	if (!num)
+		return -ENODEV;
 	/* Limited by hardware, the entry number can only be power of 2
 	 * rounddown_pow_of_two 255=>>128 63=>>32
 	 */
@@ -1148,7 +1154,7 @@ static int xocl_cma_mem_alloc(struct xocl_drm *drm_p, uint64_t size)
 
 	if (!page_num) {
 		DRM_ERROR("Doesn't support CMA BANK feature");
-		return -EINVAL;		
+		return -ENODEV;		
 	}
 
 	page_sz = size/page_num;
@@ -1214,6 +1220,7 @@ void xocl_cma_bank_free(struct xocl_drm *drm_p)
 {
 	mutex_lock(&drm_p->mm_lock);
 	__xocl_cma_bank_free(drm_p);
+	xocl_cleanup_mem_nolock(drm_p);
 	mutex_unlock(&drm_p->mm_lock);
 }
 

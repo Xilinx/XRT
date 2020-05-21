@@ -26,8 +26,8 @@ namespace XBU = XBUtilities;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
-OO_MemWrite::OO_MemWrite( const std::string &_longName)
-    : OptionOptions(_longName, "Write to a given memory address")
+OO_MemWrite::OO_MemWrite( const std::string &_longName, bool _isHidden)
+    : OptionOptions(_longName, _isHidden, "Write to a given memory address")
     , m_device("")
     , m_baseAddress("")
     , m_sizeBytes("")

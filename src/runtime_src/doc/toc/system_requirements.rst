@@ -26,7 +26,9 @@ The stack has been tested on the following OS distributions
 4. Ubuntu 16.04.4 LTS
 5. Ubuntu 18.04.1 LTS 
 
-CentOS/RHEL 7.4, 7.5, 7.6 require additional steps to install C++14 tool set and a few dependent libraries. Please use the provided script ``src/runtime_src/tools/scripts/xrtdeps.sh`` to install the dependencies for both CentOS/RHEL and Ubuntu distributions. Additional information for RHEL/CentOS is below.
+   CentOS/RHEL 7.4, 7.5, 7.6 require additional steps to install C++14 tool set and a few dependent libraries. Please use the provided script ``src/runtime_src/tools/scripts/xrtdeps.sh`` to install the dependencies for both CentOS/RHEL and Ubuntu distributions. Additional information for RHEL/CentOS is below.
+   
+.. warning:: If ``xrtdeps.sh`` fails when installing devtoolset-6, then please manually install a later devtoolset, for example ``devtoolset-9``.  
 
 To deploy XRT, simply install
 the proper RPM or DEB package obtained from Xilinx.

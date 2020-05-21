@@ -26,8 +26,8 @@ namespace XBU = XBUtilities;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
-OO_MemRead::OO_MemRead( const std::string &_longName )
-    : OptionOptions(_longName,  "Read from the given memory address" )
+OO_MemRead::OO_MemRead( const std::string &_longName, bool _isHidden )
+    : OptionOptions(_longName, _isHidden, "Read from the given memory address" )
     , m_device("")
     , m_baseAddress("")
     , m_sizeBytes("")

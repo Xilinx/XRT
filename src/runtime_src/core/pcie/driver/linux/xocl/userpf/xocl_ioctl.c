@@ -16,12 +16,6 @@
  */
 
 #include <linux/version.h>
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(3, 0, 0)
-#include <drm/drm_backport.h>
-#endif
-#include <drm/drmP.h>
-#include <drm/drm_gem.h>
-#include <drm/drm_mm.h>
 #include <linux/eventfd.h>
 #include <linux/uuid.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
@@ -294,10 +288,11 @@ static bool xclbin_downloaded(struct xocl_dev *xdev, xuid_t *xclbin_id)
 	return ret;
 }
 
-static int xocl_preserve_mem(struct xocl_dev *xdev, struct mem_topology *new_topology, size_t size)
+static int xocl_preserve_mem(struct xocl_drm *drm_p, struct mem_topology *new_topology, size_t size)
 {
 	int ret = 0;
 	struct mem_topology *topology = NULL;
+	struct xocl_dev *xdev = drm_p->xdev;
 
 	ret = XOCL_GET_MEM_TOPOLOGY(xdev, topology);
 	if (ret)
@@ -307,7 +302,7 @@ static int xocl_preserve_mem(struct xocl_dev *xdev, struct mem_topology *new_top
 	 * Compare MEM_TOPOLOGY previous vs new.
 	 * Ignore this and keep disable preserve_mem if not for aws.
 	 */
-	if (xocl_icap_get_data(xdev, DATA_RETAIN) && (topology != NULL)) {
+	if (xocl_icap_get_data(xdev, DATA_RETAIN) && (topology != NULL) && drm_p->mm) {
 		if ((size == sizeof_sect(topology, m_mem_data)) &&
 		    !memcmp(new_topology, topology, size)) {
 			userpf_info(xdev, "preserving mem_topology.");
@@ -446,7 +441,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		goto done;
 	}
 
-	preserve_mem = xocl_preserve_mem(xdev, new_topology, size);
+	preserve_mem = xocl_preserve_mem(drm_p, new_topology, size);
 
 	/* Switching the xclbin, make sure none of the buffers are used. */
 	if (!preserve_mem) {
@@ -487,8 +482,10 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 done:
 	if (size < 0)
 		err = size;
-	if (err)
+	if (err){
+		xocl_icap_clean_bitstream(xdev);
 		userpf_err(xdev, "Failed to download xclbin, err: %ld\n", err);
+	}
 	else
 		userpf_info(xdev, "Loaded xclbin %pUb", &bin_obj.m_header.uuid);
 
@@ -558,10 +555,14 @@ int xocl_free_cma_ioctl(struct drm_device *dev, void *data,
 {
 	struct xocl_drm *drm_p = dev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
+	int err = 0;
 
 	mutex_lock(&xdev->dev_lock);
-	xocl_cma_bank_free(drm_p);
+	if (xocl_addr_translator_get_base_addr(xdev))
+		err = -EBUSY;
+	else
+		xocl_cma_bank_free(drm_p);
 	mutex_unlock(&xdev->dev_lock);
 
-	return 0;
+	return err;
 }

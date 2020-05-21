@@ -24,7 +24,7 @@ class OO_MemWrite : public OptionOptions {
   virtual void execute( const SubCmdOptions &_options ) const;
 
  public:
-  OO_MemWrite( const std::string &_longName);
+  OO_MemWrite( const std::string &_longName, bool _isHidden = false);
 
  private:
   std::string m_device;

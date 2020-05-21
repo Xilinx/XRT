@@ -75,7 +75,19 @@ int MMappedTraceFunnel::write(uint64_t offset, size_t size, void* data)
   if(!isMMapped()) {
     return 0;
   }
-  memcpy(mapped_device + offset, (char*)data, size);
+  if(size == sizeof(uint32_t)) {
+    // Special case for 4 bytes write to improve performance
+    memcpy(mapped_device + offset, (uint32_t*)data, sizeof(uint32_t));
+    return size;
+  }
+  size_t numWords = size / sizeof(uint32_t);
+  size_t remBytes = size % sizeof(uint32_t);
+  for(size_t i = 0; i < numWords ; i++) {
+    memcpy(((uint32_t*)(mapped_device + offset))+i, ((uint32_t*)data) + i, sizeof(uint32_t));
+  }
+  if(remBytes) {
+    memcpy(((uint32_t*)(mapped_device + offset))+numWords, ((uint32_t*)data) + numWords, remBytes);
+  }
   return size;
 }
 

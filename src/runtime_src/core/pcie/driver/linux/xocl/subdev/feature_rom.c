@@ -649,7 +649,7 @@ static int get_header_from_vsec(struct feature_rom *rom)
 	u64 offset;
 	int ret;
 
-	ret = xocl_subdev_vsec(xdev, XOCL_VSEC_UUID_ROM, &bar, &offset);
+	ret = xocl_subdev_vsec(xdev, XOCL_VSEC_UUID_ROM, &bar, &offset, NULL);
 	if (ret) {
 		xocl_xdev_info(xdev, "Does not get UUID ROM");
 		return -ENODEV;

@@ -837,7 +837,8 @@ configure(struct sched_cmd *cmd)
 	exec->num_cus         = cfg->num_cus;
 	exec->cu_shift_offset = cfg->cu_shift;
 	exec->cu_base_addr    = cfg->cu_base_addr;
-	exec->num_cu_masks    = ((exec->num_cus - 1)>>5) + 1;
+	exec->num_cu_masks    = exec->num_cus == 0 ? 0 :
+	    ((exec->num_cus - 1)>>5) + 1;
 
 	write_unlock(&zdev->attr_rwlock);
 
@@ -860,6 +861,9 @@ configure(struct sched_cmd *cmd)
 	/* TODO: let's consider how to support reconfigurable KDS/ERT later.
 	 * At that time, ERT should be able to change back to CQ polling mode.
 	 */
+
+	if (exec->num_cus == 0)
+		goto print_and_out;
 
 	exec->zcu = vzalloc(sizeof(struct zocl_cu) * exec->num_cus);
 	if (!exec->zcu) {
@@ -2003,12 +2007,17 @@ ert_configure_cu(struct sched_cmd *cmd, int cu_idx)
 	u32 size = regmap_size(cmd);
 	struct ert_start_kernel_cmd *sk;
 	struct zocl_cu *cu = &cmd->exec->zcu[cu_idx];
-	int type = CONSECUTIVE;
+	int type;
 
 	SCHED_DEBUG("-> %s cu_idx=%d, regmap_size=%d\n",
 	    __func__, cu_idx, size);
 
 	sk = (struct ert_start_kernel_cmd *)cmd->packet;
+
+	if (opcode(cmd) == ERT_EXEC_WRITE)
+		type = PAIRS;
+	else
+		type = CONSECUTIVE;
 
 	zocl_cu_configure(cu, sk->data + sk->extra_cu_masks, size, type);
 

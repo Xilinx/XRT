@@ -39,17 +39,19 @@ SubCmd::SubCmd(const std::string & _name,
 }
 
 void
-SubCmd::printHelp( const boost::program_options::options_description & _optionDescription) const
+SubCmd::printHelp( const boost::program_options::options_description & _optionDescription,
+                   const boost::program_options::options_description & _optionHidden) const
 {
   boost::program_options::positional_options_description emptyPOD;
-  XBUtilities::report_subcommand_help(m_executableName, m_subCmdName, m_longDescription,  m_exampleSyntax, _optionDescription, emptyPOD);
+  XBUtilities::report_subcommand_help(m_executableName, m_subCmdName, m_longDescription,  m_exampleSyntax, _optionDescription, _optionHidden, emptyPOD);
 }
 
 void
 SubCmd::printHelp( const boost::program_options::options_description & _optionDescription,
+                   const boost::program_options::options_description & _optionHidden,
                    const SubOptionOptions & _subOptionOptions) const
 {
- XBUtilities::report_subcommand_help(m_executableName, m_subCmdName, m_longDescription,  m_exampleSyntax, _optionDescription, _subOptionOptions);
+ XBUtilities::report_subcommand_help(m_executableName, m_subCmdName, m_longDescription,  m_exampleSyntax, _optionDescription, _optionHidden, _subOptionOptions);
 }
 
 

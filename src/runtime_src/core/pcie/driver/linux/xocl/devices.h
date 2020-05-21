@@ -111,6 +111,11 @@ struct xocl_msix_privdata {
 	u32			total;
 };
 
+struct xocl_ert_sched_privdata {
+	char			dsa;
+	int			major;
+};
+
 #ifdef __KERNEL__
 #define XOCL_PCI_DEVID(ven, dev, subsysid, priv)	\
 	 .vendor = ven, .device=dev, .subvendor = PCI_ANY_ID, \
@@ -1426,6 +1431,11 @@ struct xocl_subdev_map {
 			}				\
 		})
 
+#define XOCL_RES_SCHEDULER_PRIV				\
+	((struct xocl_ert_sched_privdata) {		\
+		1,					\
+		1,					\
+	 })
 
 #define	XOCL_DEVINFO_SCHEDULER				\
 	{						\
@@ -1433,8 +1443,8 @@ struct xocl_subdev_map {
 		XOCL_MB_SCHEDULER,			\
 		XOCL_RES_SCHEDULER,			\
 		ARRAY_SIZE(XOCL_RES_SCHEDULER),		\
-		&(char []){1},				\
-		1,					\
+		&XOCL_RES_SCHEDULER_PRIV,		\
+		sizeof(struct xocl_ert_sched_privdata),	\
 		.override_idx = -1,			\
 	}
 
@@ -1458,17 +1468,22 @@ struct xocl_subdev_map {
 			}				\
 		})
 
-
 #define	XOCL_DEVINFO_SCHEDULER_QDMA			\
 	{						\
 		XOCL_SUBDEV_MB_SCHEDULER,		\
 		XOCL_MB_SCHEDULER,			\
 		XOCL_RES_SCHEDULER_QDMA,		\
 		ARRAY_SIZE(XOCL_RES_SCHEDULER_QDMA),	\
-		&(char []){1},				\
-		1,					\
+		&XOCL_RES_SCHEDULER_PRIV,		\
+		sizeof(struct xocl_ert_sched_privdata),	\
 		.override_idx = -1,			\
 	}
+
+#define XOCL_RES_SCHEDULER_PRIV_51			\
+	((struct xocl_ert_sched_privdata) {		\
+		0,					\
+		1,					\
+	 })
 
 #define	XOCL_DEVINFO_SCHEDULER_51			\
 	{						\
@@ -1476,8 +1491,8 @@ struct xocl_subdev_map {
 		XOCL_MB_SCHEDULER,			\
 		XOCL_RES_SCHEDULER,			\
 		ARRAY_SIZE(XOCL_RES_SCHEDULER),		\
-		&(char []){0},				\
-		1,					\
+		&XOCL_RES_SCHEDULER_PRIV_51,		\
+		sizeof(struct xocl_ert_sched_privdata),	\
 		.override_idx = -1,			\
 	}
 
@@ -1514,8 +1529,8 @@ struct xocl_subdev_map {
 		XOCL_MB_SCHEDULER,			\
 		XOCL_RES_SCHEDULER_VERSAL,		\
 		ARRAY_SIZE(XOCL_RES_SCHEDULER_VERSAL),	\
-		&(char []){0},		\
-		1,					\
+		&XOCL_RES_SCHEDULER_PRIV_51,		\
+		sizeof(struct xocl_ert_sched_privdata),	\
 		.bar_idx = (char []){ 2, 2 },		\
 		.override_idx = -1,			\
 	}
@@ -2286,6 +2301,24 @@ struct xocl_subdev_map {
 		XOCL_DEVINFO_XMC_USER,					\
 	 })
 
+#define XOCL_BOARD_U25_USER_RAPTOR2                                     \
+	(struct xocl_board_private){                                    \
+		.flags = XOCL_DSAFLAG_DYNAMIC_IP |                      \
+		        XOCL_DSAFLAG_MB_SCHE_OFF,          		\
+		.board_name = "u25",                                    \
+		.subdev_info    = RES_USER_VSEC,                        \
+		.subdev_num = ARRAY_SIZE(RES_USER_VSEC),                \
+	}
+
+#define XOCL_BOARD_U25_MGMT_RAPTOR2                                     \
+	(struct xocl_board_private){                                    \
+		.flags = XOCL_DSAFLAG_DYNAMIC_IP,                       \
+		.subdev_info    = RES_MGMT_VSEC,                        \
+		.subdev_num = ARRAY_SIZE(RES_MGMT_VSEC),                \
+		.flash_type = FLASH_TYPE_QSPIPS_X4_SINGLE,              \
+		.board_name = "u25"                                     \
+	}
+
 #define	XOCL_BOARD_U50_USER_RAPTOR2					\
 	(struct xocl_board_private){					\
 		.flags = XOCL_DSAFLAG_DYNAMIC_IP,			\
@@ -2640,8 +2673,8 @@ struct xocl_subdev_map {
 		XOCL_MB_SCHEDULER,			\
 		NULL,					\
 		0,					\
-		&(char []){1},				\
-		1,					\
+		&XOCL_RES_SCHEDULER_PRIV,		\
+		sizeof(struct xocl_ert_sched_privdata),	\
 		.override_idx = -1,			\
 	}
 
@@ -2996,5 +3029,14 @@ struct xocl_subdev_map {
 	{ 0x10EE, 0x5045, PCI_ANY_ID,					\
 		.vbnv = "xilinx_vck5000",				\
 		.priv_data = &XOCL_BOARD_VERSAL_USER_RAPTOR2,		\
+		.type = XOCL_DSAMAP_RAPTOR2 },				\
+	{ 0x10EE, 0x5050, PCI_ANY_ID,                                   \
+		.vbnv = "xilinx_u25",					\
+		.priv_data = &XOCL_BOARD_U25_MGMT_RAPTOR2,              \
+		.type = XOCL_DSAMAP_RAPTOR2 },                          \
+	{ 0x10EE, 0x5051, PCI_ANY_ID,                                   \
+		.vbnv = "xilinx_u25",					\
+		.priv_data = &XOCL_BOARD_U25_USER_RAPTOR2,              \
 		.type = XOCL_DSAMAP_RAPTOR2 }
+	
 #endif

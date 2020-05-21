@@ -48,6 +48,46 @@
 # pragma warning( disable : 4244 4267)
 #endif
 
+////////////////////////////////////////////////////////////////
+// Exposed for Cardano as extensions to xrt_kernel.h
+// Revisit post 2020.1
+////////////////////////////////////////////////////////////////
+/**
+ * xrtRunSetArgV() - Set a specific kernel argument for this run
+ *
+ * @runHandle:  Handle to the run object to modify
+ * @index:      Index of kernel argument to set
+ * @value:      The value to set for argument.
+ * @size:       The size of value in bytes.
+ * Return:      0 on success, -1 on error
+ *
+ * Use this API to explicitly set specific kernel arguments prior
+ * to starting kernel execution.  After setting all arguments, the
+ * kernel execution can be start with xrtRunStart()
+ */
+XCL_DRIVER_DLLESPEC
+int
+xrtRunSetArgV(xrtRunHandle runHandle, int index, const void* value, size_t bytes);
+
+/**
+ * xrtRunUpdateArgV() - Asynchronous update of kernel argument
+ *
+ * @runHandle:  Handle to the run object to modify
+ * @index:      Index of kernel argument to update
+ * @value:      The value to set for argument.
+ * @size:       The size of value in bytes.
+ * Return:      0 on success, -1 on error
+ *
+ * Use this API to asynchronously update a specific kernel
+ * argument of an existing run.  
+ *
+ * This API is only supported on Edge.
+ */  
+XCL_DRIVER_DLLESPEC
+int
+xrtRunUpdateArgV(xrtRunHandle rhdl, int index, const void* value, size_t bytes);
+////////////////////////////////////////////////////////////////
+
 namespace {
 
 // struct device_type - Extends xrt_core::device
@@ -595,6 +635,17 @@ struct run_type
   }
 
   void
+  set_arg_at_index(size_t index, const void* value, size_t bytes)
+  {
+    auto& arg = kernel->args.at(index);
+    if (arg.index() == argument::no_index)
+      throw std::runtime_error("Bad argument index '" + std::to_string(index) + "'");
+    bytes = std::max(sizeof(uint32_t), bytes);
+    auto uval = reinterpret_cast<const uint32_t*>(value);
+    set_arg_value(arg, {uval, uval + bytes / sizeof(uint32_t)});
+  }
+
+  void
   set_all_args(std::va_list* args)
   {
     for (auto& arg : kernel->args) {
@@ -670,15 +721,10 @@ public:
   }
 
   void
-  update_arg_at_index(size_t index, std::va_list* args)
+  update_arg_value(const argument& arg, const std::vector<uint32_t>& value)
   {
     reset_cmd();
 
-    auto& arg = kernel->args.at(index);
-    if (arg.index() == argument::no_index)
-      throw std::runtime_error("Bad argument index '" + std::to_string(index) + "'");
-
-    auto value = arg.get_value(args);
     auto kcmd = cmd.get_ert_cmd<ert_start_kernel_cmd*>();
     auto idx = kcmd->count - data_offset;
     auto offset = arg.offset();
@@ -696,6 +742,28 @@ public:
     pkt->state = ERT_CMD_STATE_NEW;
     cmd.run();
     cmd.wait();
+  }
+
+  void
+  update_arg_at_index(size_t index, std::va_list* args)
+  {
+    auto& arg = kernel->args.at(index);
+    if (arg.index() == argument::no_index)
+      throw std::runtime_error("Bad argument index '" + std::to_string(index) + "'");
+
+    auto value = arg.get_value(args);
+    update_arg_value(arg, value);
+  }
+
+  void
+  update_arg_at_index(size_t index, const void* value, size_t bytes)
+  {
+    auto& arg = kernel->args.at(index);
+    if (arg.index() == argument::no_index)
+      throw std::runtime_error("Bad argument index '" + std::to_string(index) + "'");
+    bytes = std::max(sizeof(uint32_t), bytes);
+    auto uval = reinterpret_cast<const uint32_t*>(value);
+    update_arg_value(arg, {uval, uval + bytes / sizeof(uint32_t)});
   }
 };
 
@@ -1048,6 +1116,24 @@ xrtRunUpdateArg(xrtRunHandle rhdl, int index, ...)
 }
 
 int
+xrtRunUpdateArgV(xrtRunHandle rhdl, int index, const void* value, size_t bytes)
+{
+  try {
+    auto upd = get_run_update(rhdl);
+    upd->update_arg_at_index(index, value, bytes);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return -1;
+  }
+}
+
+int
 xrtRunSetArg(xrtRunHandle rhdl, int index, ...)
 {
   try {
@@ -1058,6 +1144,24 @@ xrtRunSetArg(xrtRunHandle rhdl, int index, ...)
     run->set_arg_at_index(index, &args);
     va_end(args);
 
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return -1;
+  }
+}
+
+int
+xrtRunSetArgV(xrtRunHandle rhdl, int index, const void* value, size_t bytes)
+{
+  try {
+    auto run = get_run(rhdl);
+    run->set_arg_at_index(index, value, bytes);
     return 0;
   }
   catch (const xrt_core::error& ex) {

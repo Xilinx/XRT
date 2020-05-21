@@ -1992,7 +1992,7 @@ int xcldev::xclCma(int argc, char *argv[])
         std::cout << "ERROR: Does not support HOST MEM feature"
             << std::endl; 
     } else if (ret == -EBUSY) {
-        std::cout << "ERROR: HOST MEM already enabled"
+        std::cout << "ERROR: HOST MEM already enabled or in-use"
             << std::endl;
     } else if (!ret) {
         std::cout << "xbutil host_mem done successfully" << std::endl;
