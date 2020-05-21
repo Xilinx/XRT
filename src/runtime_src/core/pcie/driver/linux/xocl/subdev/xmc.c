@@ -2977,17 +2977,38 @@ static int xmc_offline(struct platform_device *pdev)
 	if (!xmc)
 		return 0;
 
+	if (xmc->sysfs_created) {
+		mgmt_sysfs_destroy_xmc(pdev);
+		xmc->sysfs_created = false;
+	}
+
 	xmc->bdinfo_loaded = false;
 
 	return xmc_access(pdev, XOCL_XMC_FREEZE);
 }
 static int xmc_online(struct platform_device *pdev)
 {
+	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
 	int ret;
 
+	BUG_ON(!xmc);
+
+	if (!xmc->sysfs_created) {
+		ret = mgmt_sysfs_create_xmc(xmc->pdev);
+		if (ret) {
+			xocl_err(&xmc->pdev->dev, "Create sysfs failed, err %d", ret);
+			return ret;
+		}
+
+		xmc->sysfs_created = true;
+	}
+
 	ret = xmc_access(pdev, XOCL_XMC_FREE);
-	if (ret && ret != -ENODEV)
+	if (ret && ret != -ENODEV) {
+		mgmt_sysfs_destroy_xmc(pdev);
+		xmc->sysfs_created = false;
 		return ret;
+	}
 
 	return 0;
 }
