@@ -627,9 +627,7 @@ static void zocl_client_release(struct drm_device *dev, struct drm_file *filp)
 	 * contexts. Give up contexts and release xclbin.
 	 */
 	client->num_cus = 0;
-	mutex_lock(&zdev->zdev_xclbin_lock);
-	(void) zocl_xclbin_release(zdev);
-	mutex_unlock(&zdev->zdev_xclbin_lock);
+	(void) zocl_unlock_bitstream(zdev, &uuid_null);
 done:
 	zocl_untrack_ctx(dev, client);
 	kfree(client);
@@ -928,6 +926,9 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	if (kds_mode == 1) {
 		ret = cu_ctrl_init(zdev);
 		if (ret)
+			goto err_cu_ctrl;
+		ret = kds_init_sched(&zdev->kds);
+		if (ret)
 			goto err_sched;
 	} else {
 		ret = sched_init_exec(drm);
@@ -939,6 +940,8 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 
 /* error out in exact reverse order of init */
 err_sched:
+	cu_ctrl_fini(zdev);
+err_cu_ctrl:
 	zocl_fini_sysfs(drm->dev);
 err_sysfs:
 	zocl_xclbin_fini(zdev);
@@ -968,9 +971,10 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 	if (zdev->fpga_mgr)
 		fpga_mgr_put(zdev->fpga_mgr);
 
-	if (kds_mode == 1)
+	if (kds_mode == 1) {
+		kds_fini_sched(&zdev->kds);
 		cu_ctrl_fini(zdev);
-	else
+	} else
 		sched_fini_exec(drm);
 
 	zocl_clear_mem(zdev);

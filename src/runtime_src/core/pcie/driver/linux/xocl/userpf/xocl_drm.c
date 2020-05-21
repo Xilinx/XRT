@@ -312,7 +312,7 @@ static uint xocl_poll(struct file *filp, poll_table *wait)
 
 	DRM_ENTER("");
 	if (kds_mode == 1)
-		return xocl_poll_client(drm_p->xdev, filp, wait, priv->driver_priv);
+		return xocl_poll_client(filp, wait, priv->driver_priv);
 	else
 		return xocl_exec_poll_client(drm_p->xdev, filp, wait, priv->driver_priv);
 }

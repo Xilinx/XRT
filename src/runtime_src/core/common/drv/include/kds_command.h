@@ -10,15 +10,11 @@
 #ifndef _KDS_COMMAND_H
 #define _KDS_COMMAND_H
 
+/* Userspace command format */
 #include "ert.h"
 
 #define REGMAP 0
 #define KEY_VAL 1
-
-enum kds_type {
-	KDS_CU		= 0,
-	KDS_MAX_TYPE, // always the last one
-};
 
 enum kds_opcode {
 	OP_CONFIG_CTRL	= 0,
