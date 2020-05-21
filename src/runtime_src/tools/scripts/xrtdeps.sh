@@ -279,6 +279,8 @@ prep_rhel()
 	yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
 	yum check-update
     fi
+    echo "Installing cmake3 from EPEL repository..."
+    yum install -y cmake3
 
     if [ $MAJOR == 8 ]; then
         echo "RHEL8 not implemented yet"
