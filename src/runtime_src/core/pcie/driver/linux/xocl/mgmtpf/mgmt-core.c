@@ -544,7 +544,7 @@ struct xocl_pci_funcs xclmgmt_pci_ops = {
 	.reset = xclmgmt_reset,
 };
 
-static void xclmgmt_icap_get_data(struct xclmgmt_dev *lro, void *buf)
+static int xclmgmt_icap_get_data_impl(struct xclmgmt_dev *lro, void *buf)
 {
 	struct xcl_pr_region *hwicap = NULL;
 	int err = 0;
@@ -552,7 +552,7 @@ static void xclmgmt_icap_get_data(struct xclmgmt_dev *lro, void *buf)
 
 	err = XOCL_GET_XCLBIN_ID(lro, xclbin_id);
 	if (err)
-		return;
+		return err;
 
 	hwicap = (struct xcl_pr_region *)buf;
 	hwicap->idcode = xocl_icap_get_data(lro, IDCODE);
@@ -568,6 +568,25 @@ static void xclmgmt_icap_get_data(struct xclmgmt_dev *lro, void *buf)
 	hwicap->data_retention = xocl_icap_get_data(lro, DATA_RETAIN);
 
 	XOCL_PUT_XCLBIN_ID(lro);
+}
+
+static void xclmgmt_clock_get_data_impl(struct xclmgmt_dev *lro, void *buf)
+{
+	struct xcl_pr_region *hwicap = NULL;
+
+	hwicap = (struct xcl_pr_region *)buf;
+	hwicap->freq_0 = xocl_clock_get_data(lro, CLOCK_FREQ_0);
+	hwicap->freq_1 = xocl_clock_get_data(lro, CLOCK_FREQ_1);
+	hwicap->freq_2 = xocl_clock_get_data(lro, CLOCK_FREQ_2);
+	hwicap->freq_cntr_0 = xocl_clock_get_data(lro, FREQ_COUNTER_0);
+	hwicap->freq_cntr_1 = xocl_clock_get_data(lro, FREQ_COUNTER_1);
+	hwicap->freq_cntr_2 = xocl_clock_get_data(lro, FREQ_COUNTER_2);
+}
+
+static void xclmgmt_icap_get_data(struct xclmgmt_dev *lro, void *buf)
+{
+	if (xclmgmt_icap_get_data_impl(lro, buf) == -ENODEV)
+		xclmgmt_clock_get_data_impl(lro, buf);
 }
 
 static void xclmgmt_mig_get_data(struct xclmgmt_dev *lro, void *mig_ecc, size_t entry_sz)
@@ -638,7 +657,7 @@ static void xclmgmt_subdev_get_data(struct xclmgmt_dev *lro, size_t offset,
 
 static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void **resp, size_t *sz)
 {
-	size_t resp_sz = 0, current_sz;
+	size_t resp_sz = 0, current_sz = 0;
 	struct xcl_mailbox_subdev_peer *subdev_req = (struct xcl_mailbox_subdev_peer *)data_ptr;
 
 	BUG_ON(!lro);
@@ -822,7 +841,12 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			mgmt_err(lro, "peer request dropped, wrong size\n");
 			break;
 		}
+
 		ret = xocl_icap_ocl_update_clock_freq_topology(lro, clk);
+		if (ret == -ENODEV)
+		    ret = xocl_clock_update_freq(lro, clk->ocl_target_freq,
+		        ARRAY_SIZE(clk->ocl_target_freq), 1);
+
 		(void) xocl_peer_response(lro, req->req, msgid, &ret,
 			sizeof(ret));
 		break;

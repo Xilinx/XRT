@@ -1025,6 +1025,7 @@ struct xocl_clock_funcs {
 	int (*update_freq)(struct platform_device *pdev,
 		unsigned short *freqs, int num_freqs, int verify);
 	int (*clock_status)(struct platform_device *pdev, bool *latched);
+	uint64_t (*get_data)(struct platform_device *pdev, enum data_kind kind);
 };
 #define CLOCK_DEV_INFO(xdev, idx)					\
 	SUBDEV_MULTI(xdev, XOCL_SUBDEV_CLOCK, idx).info
@@ -1069,31 +1070,38 @@ static inline int xocl_clock_ops_level(xdev_handle_t xdev)
 #define	xocl_clock_get_freq_by_id(xdev, region, freq, id)		\
 ({ \
 	int __idx = xocl_clock_ops_level(xdev);				\
-	(CLOCK_CB(xdev, __idx, get_freq_by_id) ?				\
+	(CLOCK_CB(xdev, __idx, get_freq_by_id) ?			\
 	CLOCK_OPS(xdev, __idx)->get_freq_by_id(CLOCK_DEV(xdev, __idx), region, freq, id) : \
 	-ENODEV); \
 })
 #define	xocl_clock_get_freq_counter_khz(xdev, value, id)		\
 ({ \
 	int __idx = xocl_clock_ops_level(xdev);				\
-	(CLOCK_CB(xdev, __idx, get_freq_counter_khz) ?				\
+	(CLOCK_CB(xdev, __idx, get_freq_counter_khz) ?			\
 	CLOCK_OPS(xdev, __idx)->get_freq_counter_khz(CLOCK_DEV(xdev, __idx), value, id) : \
 	-ENODEV); \
 })
 #define	xocl_clock_update_freq(xdev, freqs, num_freqs, verify) \
 ({ \
 	int __idx = xocl_clock_ops_level(xdev);				\
-	(CLOCK_CB(xdev, __idx, update_freq) ?					\
+	(CLOCK_CB(xdev, __idx, update_freq) ?				\
 	CLOCK_OPS(xdev, __idx)->update_freq(CLOCK_DEV(xdev, __idx), freqs, num_freqs, verify) : \
 	-ENODEV); \
 })
 #define	xocl_clock_status(xdev, latched)				\
 ({ \
 	int __idx = xocl_clock_ops_level(xdev);				\
-	(CLOCK_CB(xdev, __idx, clock_status) ?					\
+	(CLOCK_CB(xdev, __idx, clock_status) ?				\
 	CLOCK_OPS(xdev, __idx)->clock_status(CLOCK_DEV(xdev, __idx), latched) : 	\
 	-ENODEV); \
 })
+#define	xocl_clock_get_data(xdev, kind)					\
+({ \
+	int __idx = xocl_clock_ops_level(xdev);				\
+	(CLOCK_CB(xdev, __idx, get_data) ?				\
+	CLOCK_OPS(xdev, __idx)->get_data(CLOCK_DEV(xdev, __idx), kind) : 0); 	\
+})
+
 
 struct xocl_icap_funcs {
 	struct xocl_subdev_funcs common_funcs;
@@ -1182,7 +1190,7 @@ enum {
 #define	xocl_icap_get_xclbin_metadata(xdev, kind, buf)			\
 	(ICAP_CB(xdev, get_xclbin_metadata) ?				\
 	ICAP_OPS(xdev)->get_xclbin_metadata(ICAP_DEV(xdev), kind, buf) :	\
-	0)
+	-ENODEV)
 #define	xocl_icap_put_xclbin_metadata(xdev)			\
 	(ICAP_CB(xdev, put_xclbin_metadata) ?			\
 	ICAP_OPS(xdev)->put_xclbin_metadata(ICAP_DEV(xdev)) : 	\

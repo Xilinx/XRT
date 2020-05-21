@@ -903,6 +903,51 @@ static int clock_post_refresh_addrs(struct clock *clock)
 	return err;
 }
 
+static uint64_t clock_get_data_nolock(struct platform_device *pdev,
+	enum data_kind kind)
+{
+	struct clock *clock = platform_get_drvdata(pdev);
+	uint64_t target = 0;
+
+	switch (kind) {
+	case CLOCK_FREQ_0:
+		target = clock_get_freq_impl(clock, 0);
+		break;
+	case CLOCK_FREQ_1:
+		target = clock_get_freq_impl(clock, 1);
+		break;
+	case CLOCK_FREQ_2:
+		target = clock_get_freq_impl(clock, 2);
+		break;
+	case FREQ_COUNTER_0:
+		target = clock_get_freq_counter_khz_impl(clock, 0);
+		break;
+	case FREQ_COUNTER_1:
+		target = clock_get_freq_counter_khz_impl(clock, 1);
+		break;
+	case FREQ_COUNTER_2:
+		target = clock_get_freq_counter_khz_impl(clock, 2);
+		break;
+	default:
+		break;
+	}
+
+	return target;
+}
+
+static uint64_t clock_get_data(struct platform_device *pdev,
+	enum data_kind kind)
+{
+	struct clock *clock = platform_get_drvdata(pdev);
+	uint64_t target = 0;
+
+	mutex_lock(&clock->clock_lock);
+	target = clock_get_data_nolock(pdev, kind);
+	mutex_unlock(&clock->clock_lock);
+
+	return target;
+}
+
 static ssize_t clock_freqs_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -948,6 +993,7 @@ static struct xocl_clock_funcs clock_ops = {
 	.get_freq = clock_get_freq,
 	.update_freq = clock_update_freq,
 	.clock_status = clock_status_check,
+	.get_data = clock_get_data,
 };
 
 static int clock_remove(struct platform_device *pdev)
