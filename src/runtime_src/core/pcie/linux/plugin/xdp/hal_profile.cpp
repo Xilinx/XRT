@@ -1,5 +1,5 @@
 #include "plugin/xdp/hal_profile.h"
-#include "core/common/xdp_util.h"
+#include "core/common/module_loader.h"
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
 #include "core/common/dlfcn.h"
@@ -372,9 +372,9 @@ LoadXclbinCallLogger::~LoadXclbinCallLogger()
 
 void load_xdp_plugin_library(HalPluginConfig* )
 {
-  static xdputil::XDPLoader xdp_hal_loader("xdp_hal_plugin",
-					   register_hal_callbacks,
-					   warning_hal_callbacks) ;
+  static xrt_core::module_loader xdp_hal_loader("xdp_hal_plugin",
+						register_hal_callbacks,
+						warning_hal_callbacks) ;
 }
 
 }

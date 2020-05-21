@@ -24,7 +24,7 @@ file(GLOB XRT_CORE_COMMON_LIB_FILES
   "thread.cpp"
   "xrt_xclbin.cpp"
   "exec/*.cpp"
-  "xdp_util.cpp"
+  "module_loader.cpp"
   )
 
 # Files to include in object list

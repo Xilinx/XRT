@@ -2,7 +2,7 @@
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
 #include "core/common/dlfcn.h"
-#include "core/common/xdp_util.h"
+#include "core/common/module_loader.h"
 
 namespace bfs = boost::filesystem;
 
@@ -102,7 +102,7 @@ namespace xdphalinterface {
   void load_xdp_hal_interface_plugin_library(HalPluginConfig* )
   {
 #ifdef XRT_LOAD_XDP_HAL_PLUGIN
-    static xdputil::XDPLoader
+    static xrt_core::module_loader
       xdp_hal_interface_loader("xdp_hal_api_interface_plugin",
 			       register_hal_interface_callbacks,
 			       nullptr, // warning function

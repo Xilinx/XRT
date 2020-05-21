@@ -18,7 +18,7 @@
 
 #define XRT_CORE_COMMON_SOURCE
 
-#include "xdp_util.h"
+#include "core/common/module_loader.h"
 #include "core/common/dlfcn.h"
 
 #ifdef _WIN32
@@ -26,16 +26,16 @@
 /* Disable warning for use of getenv */
 #endif
 
-namespace xdputil {
+namespace xrt_core {
 
   const char* 
-  XDPLoader::emptyOrValue(const char* cstr)
+  module_loader::emptyOrValue(const char* cstr)
   {
     return cstr ? cstr : "" ;
   }
 
   boost::filesystem::path& 
-  XDPLoader::dllExt()
+  module_loader::dllExt()
   {
 #ifdef _WIN32
     static boost::filesystem::path sDllExt(".dll") ;
@@ -46,7 +46,7 @@ namespace xdputil {
   }
 
   bool 
-  XDPLoader::isDLL(const boost::filesystem::path& path)
+  module_loader::isDLL(const boost::filesystem::path& path)
   {
     return (boost::filesystem::exists(path)          &&
 	    boost::filesystem::is_regular_file(path) &&
@@ -54,7 +54,7 @@ namespace xdputil {
   }
 
   boost::filesystem::path 
-  XDPLoader::modulePath(const boost::filesystem::path& root,
+  module_loader::modulePath(const boost::filesystem::path& root,
 			const std::string& libname)
   {
 #ifdef _WIN32
@@ -65,7 +65,7 @@ namespace xdputil {
   }
 
   boost::filesystem::path 
-  XDPLoader::moduleDir(const boost::filesystem::path& root)
+  module_loader::moduleDir(const boost::filesystem::path& root)
   {
 #ifdef _WIN32
     return root / "bin" ;
@@ -74,10 +74,10 @@ namespace xdputil {
 #endif
   }
 
-  XDPLoader::XDPLoader(const char* pluginName,
-		       std::function<void (void*)> registerFunction,
-		       std::function<void ()> warningFunction,
-		       std::function<int ()> errorFunction)
+  module_loader::module_loader(const char* pluginName,
+			       std::function<void (void*)> registerFunction,
+			       std::function<void ()> warningFunction,
+			       std::function<int ()> errorFunction)
   {
     if (errorFunction) 
     {
@@ -118,7 +118,7 @@ namespace xdputil {
     //  symbols to remain open and linked through the rest of the execution
   }
 
-  XDPLoader::~XDPLoader()
+  module_loader::~module_loader()
   {
   }
 

@@ -21,7 +21,7 @@
  */
 #include "xocl/core/event.h"
 #include "core/common/dlfcn.h"
-#include "core/common/xdp_util.h"
+#include "core/common/module_loader.h"
 #include "plugin/xdp/appdebug.h"
 
 namespace xocl {
@@ -29,9 +29,9 @@ namespace appdebug {
 
   void load_xdp_app_debug()
   {
-    static xdputil::XDPLoader app_debug_loader("xdp_appdebug_plugin",
-					       register_appdebug_functions,
-					       nullptr) ;
+    static xrt_core::module_loader app_debug_loader("xdp_appdebug_plugin",
+						    register_appdebug_functions,
+						    nullptr) ;
   }
 
   void register_appdebug_functions(void* handle)

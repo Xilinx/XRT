@@ -6,7 +6,7 @@
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
 #include "core/common/dlfcn.h"
-#include "core/common/xdp_util.h"
+#include "core/common/module_loader.h"
 
 namespace bfs = boost::filesystem;
 
@@ -204,9 +204,9 @@ WriteCallLogger::~WriteCallLogger() {
 void load_xdp_plugin_library(HalPluginConfig* )
 {
 #ifdef XRT_LOAD_XDP_HAL_PLUGIN
-  static xdputil::XDPLoader xdp_hal_loader("xdp_hal_plugin",
-					   register_hal_callbacks,
-					   warning_hal_callbacks) ;
+  static xrt_core::module_loader xdp_hal_loader("xdp_hal_plugin",
+						register_hal_callbacks,
+						warning_hal_callbacks) ;
 #endif
 }
 
