@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008-2019 The Khronos Group Inc.
+ * Copyright (c) 2008-2015 The Khronos Group Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and/or associated documentation files (the
@@ -27,7 +27,7 @@
  ******************************************************************************/
 
 /*
- * Copyright (C) 2018-2019, Xilinx Inc - All rights reserved
+ * Copyright (C) 2018-2020, Xilinx Inc - All rights reserved
  */
 
 #ifndef __CL_EXT_XILINX_H
