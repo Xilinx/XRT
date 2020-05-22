@@ -27,7 +27,7 @@
  ******************************************************************************/
 
 /*
- * Copyright (C) 2018, Xilinx Inc - All rights reserved
+ * Copyright (C) 2018-2020, Xilinx Inc - All rights reserved
  */
 
 #ifndef __CL_EXT_XILINX_H
@@ -516,7 +516,7 @@ xclGetComputeUnitInfo(cl_kernel             kernel,
  *
  * @CL_DEVICE_HANDLE
  * @type: void*
- * Return: The underlying device handle for use with low 
+ * Return: The underlying device handle for use with low
  * level XRT APIs (xrt.h)
  */
 #define CL_DEVICE_PCIE_BDF              0x1120  // BUS/DEVICE/FUNCTION
