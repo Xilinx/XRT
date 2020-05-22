@@ -718,7 +718,7 @@ public:
     {
         // board info
         std::string vendor, device, subsystem, subvendor, xmc_ver, xmc_oem_id,
-            ser_num, bmc_ver, idcode, fpga, dna, errmsg, max_power;
+            ser_num, bmc_ver, idcode, fpga, dna, errmsg, max_power, cpu_affinity;
         int ddr_size = 0, ddr_count = 0, pcie_speed = 0, pcie_width = 0, p2p_enabled = 0;
         std::vector<std::string> clock_freqs;
         std::vector<std::string> dma_threads;
@@ -751,6 +751,7 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get( "icap", "idcode",                 errmsg, idcode );
         pcidev::get_dev(m_idx)->sysfs_get( "dna", "dna",                     errmsg, dna );
         pcidev::get_dev(m_idx)->sysfs_get<int>("", "p2p_enable",             errmsg, p2p_enabled, 0 );
+        pcidev::get_dev(m_idx)->sysfs_get("", "local_cpulist",               errmsg, cpu_affinity);
         sensor_tree::put( "board.info.dsa_name",       name() );
         sensor_tree::put( "board.info.vendor",         vendor );
         sensor_tree::put( "board.info.device",         device );
@@ -774,6 +775,7 @@ public:
         sensor_tree::put( "board.info.fpga_name",      fpga );
         sensor_tree::put( "board.info.dna",            dna );
         sensor_tree::put( "board.info.p2p_enabled",    p2p_enabled );
+        sensor_tree::put( "board.info.cpu_affinity",   cpu_affinity );
 
         for (uint32_t i = 0; i < mac_addrs.size(); ++i) {
             std::string entry_name = "board.info.mac_addr."+std::to_string(i);
@@ -1088,8 +1090,10 @@ public:
             }
             ostr << std::endl;
         }
-        ostr << "DNA" << std::endl;
-        ostr << sensor_tree::get<std::string>( "board.info.dna", "N/A" ) << std::endl;
+        ostr << std::setw(32) << "DNA"
+             << std::setw(16) << "CPU_AFFINITY" << std::endl;
+        ostr << std::setw(32) << sensor_tree::get<std::string>( "board.info.dna", "N/A" )
+             << std::setw(16) << sensor_tree::get<std::string>( "board.info.cpu_affinity", "N/A" ) << std::endl;
 
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
