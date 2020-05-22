@@ -108,7 +108,6 @@ zocl_del_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 	}
 
 	mutex_lock(&client->lock);
-
 	uuid = client->xclbin_id;
 	/* xclCloseContext() would send xclbin_id and cu_idx.
 	 * Be more cautious while delete. Do sanity check

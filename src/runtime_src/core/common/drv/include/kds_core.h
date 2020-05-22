@@ -107,7 +107,6 @@ struct kds_client {
 	wait_queue_head_t	  waitq;
 	atomic_t		  event;
 };
-#define	CLIENT_NUM_CU(client) (0)
 
 /**
  * struct kds_sched: KDS scheduler manage controllers and client list.

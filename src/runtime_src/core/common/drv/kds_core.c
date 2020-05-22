@@ -260,7 +260,7 @@ u32 kds_live_clients(struct kds_sched *kds, pid_t **plist)
 	/* Find out number of active client */
 	list_for_each(ptr, &kds->clients) {
 		client = list_entry(ptr, struct kds_client, link);
-		if (CLIENT_NUM_CU(client) > 0)
+		if (client->num_ctx > 0)
 			count++;
 	}
 	if (count == 0 || plist == NULL)
@@ -273,7 +273,7 @@ u32 kds_live_clients(struct kds_sched *kds, pid_t **plist)
 
 	list_for_each(ptr, &kds->clients) {
 		client = list_entry(ptr, struct kds_client, link);
-		if (CLIENT_NUM_CU(client) > 0) {
+		if (client->num_ctx > 0) {
 			pl[i] = pid_nr(client->pid);
 			i++;
 		}
@@ -299,6 +299,7 @@ void notify_execbuf(struct kds_command *xcmd, int status)
 	wake_up_interruptible(&client->waitq);
 }
 
+/* User space execbuf command related functions below */
 void cfg_ecmd2xcmd(struct ert_configure_cmd *ecmd,
 		   struct kds_command *xcmd)
 {
@@ -339,3 +340,10 @@ void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	memcpy(xcmd->info, &ecmd->data[4], xcmd->isize);
 }
 
+inline int cu_mask_to_cu_idx(struct kds_command *xcmd)
+{
+	/* TODO: balance the CU usage if multiple bits are set */
+
+	/* assume there is alwasy one CU */
+	return 0;
+}
