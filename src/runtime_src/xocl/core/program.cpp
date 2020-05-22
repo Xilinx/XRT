@@ -22,7 +22,6 @@
 #include "error.h"
 
 #include "xocl/api/plugin/xdp/profile.h"
-#include "xrt/util/memory.h"
 
 #include <boost/filesystem/operations.hpp>
 #include <vector>
@@ -30,23 +29,11 @@
 #include <fstream>
 #include <memory>
 
+#ifdef _WIN32
+#pragma warning ( disable : 4996 )
+#endif
+
 namespace {
-
-static std::vector<char>
-read_file(const std::string& filename)
-{
-  std::ifstream istr(filename,std::ios::binary|std::ios::ate);
-  if (!istr)
-    throw xocl::error(CL_BUILD_PROGRAM_FAILURE,"Cannot not open '" + filename + "' for reading");
-
-  auto pos = istr.tellg();
-  istr.seekg(0,std::ios::beg);
-
-  std::vector<char> buffer(pos);
-  istr.read (&buffer[0],pos);
-
-  return buffer;
-}
 
 // Current list of live program objects.
 // Required for conformance (clCreateProgramWithSource)
@@ -103,7 +90,7 @@ program(context* ctx,cl_uint num_devices, const cl_device_id* devices,
 {
   for (cl_uint i=0; i<num_devices; ++i) {
     m_devices.push_back(xocl::xocl(devices[i]));
-    m_binaries.emplace(xocl::xocl(devices[i]),std::vector<char>(binaries[i],binaries[i]+lengths[i]));
+    m_binaries.emplace(xocl::xocl(devices[i]),xclbin(binaries[i],lengths[i]));
   }
 
   // Verify that each binary contains the same kernels
@@ -115,15 +102,18 @@ program::
 {
   XOCL_DEBUG(std::cout,"xocl::program::~program(",m_uid,")\n");
 
-  // Before deleting program, do a final read of counters
-  // and force flush of trace buffers
-  xocl::profile::end_device_profiling();
+  try {
+    // Before deleting program, do a final read of counters
+    // and force flush of trace buffers
+    xocl::profile::end_device_profiling();
 
-  for(auto d : get_device_range())
-    d->unload_program(this);
+    for(auto d : get_device_range())
+      d->unload_program(this);
 
-  m_context->remove_program(this);
-  global::remove(this);
+    m_context->remove_program(this);
+    global::remove(this);
+  }
+  catch (...) {}
 }
 
 void
@@ -131,17 +121,6 @@ program::
 add_device(device* d)
 {
   m_devices.push_back(d);
-}
-
-xclbin::binary_type
-program::
-get_binary(const device* d) const
-{
-  auto itr = m_binaries.find(d);
-  if (itr==m_binaries.end())
-    throw xocl::error(CL_INVALID_DEVICE,"No binary for device");
-
-  return (*itr).second.binary();
 }
 
 program::target_type
@@ -178,7 +157,7 @@ program::
 get_xclbin(const device* d) const
 {
   // switch to parent device if any
-  d = d->get_root_device();
+  d = d ? d->get_root_device() : nullptr;
   if (d) {
     auto itr = m_binaries.find(d);
     if (itr==m_binaries.end())
@@ -192,6 +171,26 @@ get_xclbin(const device* d) const
   return m_binaries.begin()->second;
 }
 
+xrt_core::uuid
+program::
+get_xclbin_uuid(const device* d) const
+{
+  auto xclbin = get_xclbin(d);
+  return xclbin.uuid();
+}
+
+std::pair<const char*, const char*>
+program::
+get_xclbin_binary(const device* d) const
+{
+  auto itr = m_binaries.find(d);
+  if (itr==m_binaries.end())
+    throw xocl::error(CL_INVALID_DEVICE,"No binary for device");
+
+  return (*itr).second.binary();
+}
+  
+
 std::vector<size_t>
 program::
 get_binary_sizes() const
@@ -201,10 +200,19 @@ get_binary_sizes() const
   // because clGetProgramInfo relies on binary sizes to match the
   // binaries returned by iterating device range
   for (auto& device : m_devices) {
-    auto xclbin = get_binary(device.get());
-    sizes.push_back(xclbin.size());
+    auto xclbin = get_xclbin_binary(device.get());
+    sizes.push_back(xclbin.second - xclbin.first);
   }
   return sizes;
+}
+
+bool
+program::
+has_kernel(const std::string& kname) const
+{
+  auto name = kernel_utils::normalize_kernel_name(kname);
+  auto kernels = get_kernel_names();
+  return range_find(kernels,[&name](const std::string& s){return s==name;})!=kernels.end();
 }
 
 std::unique_ptr<kernel,std::function<void(kernel*)>>
@@ -216,16 +224,18 @@ create_kernel(const std::string& kernel_name)
   // If kernel_name is empty, then assert conformance mode and create
   // a 'fake' kernel
   if (kernel_name.empty() && std::getenv("XCL_CONFORMANCE")) {
-    auto k = xrt::make_unique<kernel>(this);
+    auto k = std::make_unique<kernel>(this);
     return std::unique_ptr<kernel,decltype(deleter)>(k.release(),deleter);
   }
 
   // Look up kernel symbol from arbitrary (first) xclbin
   if (m_binaries.empty())
     throw xocl::error(CL_INVALID_PROGRAM_EXECUTABLE,"No binary for program");
+
+  auto symbol_name = kernel_utils::normalize_kernel_name(kernel_name);
   auto& xclbin = m_binaries.begin()->second;
-  auto& symbol = xclbin.lookup_kernel(kernel_name);
-  auto k = xrt::make_unique<kernel>(this,kernel_name,symbol);
+  auto& symbol = xclbin.lookup_kernel(symbol_name);
+  auto k = std::make_unique<kernel>(this,kernel_name,symbol);
   return std::unique_ptr<kernel,decltype(deleter)>(k.release(),deleter);
 }
 
@@ -250,51 +260,7 @@ build(const std::vector<device*>& devices,const std::string& options)
   if (!conformance)
     throw std::runtime_error("internal error program::build");
 
-  // Copied from xcl_device_sim.cpp
-  std::ofstream buffer("_temp.cl");
-  buffer << get_source();
-  buffer.close();
-
-  std::string command = xocl::get_install_root();
-  command.append("/bin/xocc");
-
-  if (!boost::filesystem::exists(command))
-    throw xocl::error(CL_COMPILER_NOT_AVAILABLE,"No such command '" + command + "'");
-
-  command
-    .append(" ")
-    .append(options)
-    .append(" -t hw_emu --xdevice xilinx:adm-pcie-7v3:1ddr:1.0")
-    .append(" -o xcl_verif.xclbin ")
-    .append(" -s ") // CR 844247
-    .append("_temp.cl");
-
-  if (std::system(command.c_str()))
-    throw xocl::error(CL_BUILD_PROGRAM_FAILURE,"command '" + command + "' failed");
-  if (std::remove("_temp.cl"))
-    throw xocl::error(CL_BUILD_PROGRAM_FAILURE,"could not delete temporary file");
-
-  auto xclbin = read_file("xcl_verif.xclbin");
-  auto data = &xclbin[0]; // char*
-  auto size = xclbin.size();
-
-  for (auto device : devices) {
-    int status[1]={0}, err=0;
-    cl_device_id dev = device;
-    auto new_program = clCreateProgramWithBinary(get_context(), 1, &dev,
-                                                 &size, (const unsigned char **)&data, status, &err);
-    if (!new_program)
-      throw xocl::error(CL_BUILD_PROGRAM_FAILURE,"Failed to create program with binary");
-
-    m_options[device] = options;
-    m_logs.erase(device);   // logs are saved only on error
-
-    // move data from new_program to this program
-    m_binaries.emplace(std::make_pair(device,xocl::xocl(new_program)->get_xclbin(device)));
-    assert(has_device(device));
-
-    clReleaseProgram(new_program);
-  }
+  throw std::runtime_error("build program is not safe and no longer supported");
 }
 
 range_lock<program_iterator_type>

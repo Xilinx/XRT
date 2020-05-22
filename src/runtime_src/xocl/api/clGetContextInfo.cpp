@@ -25,22 +25,26 @@
 
 #include "xocl/config.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
+#ifdef _WIN32
+# pragma warning ( disable : 4267 )
+#endif
 
-namespace xocl 
+namespace xocl
 {
 
 static void
-validOrError(const cl_context context) 
+validOrError(const cl_context context)
 {
   if(!config::api_checks())
    return;
 
  //older runtime checks against a global list.
  if(!context)
-   throw error(CL_INVALID_CONTEXT); 
+   throw error(CL_INVALID_CONTEXT);
 }
- 
+
 static cl_int
 clGetContextInfo(cl_context         context,
                  cl_context_info    param_name,
@@ -73,7 +77,6 @@ clGetContextInfo(cl_context         context,
     break;
   default:
     return CL_INVALID_VALUE;
-    break;
   }
 
   return CL_SUCCESS;
@@ -81,15 +84,16 @@ clGetContextInfo(cl_context         context,
 
 } //xocl
 
-cl_int 
+cl_int
 clGetContextInfo(cl_context         context,
                  cl_context_info    param_name,
                  size_t             param_value_size,
                  void *             param_value,
-                 size_t *           param_value_size_ret) 
+                 size_t *           param_value_size_ret)
 {
   try {
-    PROFILE_LOG_FUNCTION_CALL
+    PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::
       clGetContextInfo
       (context,param_name,param_value_size,param_value,param_value_size_ret);
@@ -102,8 +106,4 @@ clGetContextInfo(cl_context         context,
     xocl::send_exception_message(ex.what());
     return CL_OUT_OF_HOST_MEMORY;
   }
-  return CL_SUCCESS;
 }
-
-
-

@@ -1,7 +1,0 @@
-add_subdirectory(include)
-add_subdirectory(xclng)
-if (${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL x86_64)
-  add_subdirectory(common_em)
-  add_subdirectory(cpu_em)
-  add_subdirectory(hw_em)
-endif()
