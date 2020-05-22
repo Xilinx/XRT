@@ -73,8 +73,6 @@ static int axigate_free(struct platform_device *pdev)
 	if (freeze)
 		goto done; /* Already free */
 
-	reg_wr(gate, 0x1, iag_wr);
-	ndelay(500);
 	reg_wr(gate, 0x2, iag_wr);
 	ndelay(500);
 	(void) reg_rd(gate, iag_rd);
