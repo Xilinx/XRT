@@ -1117,6 +1117,7 @@ struct xocl_icap_funcs {
 	int (*ocl_get_freq)(struct platform_device *pdev,
 		unsigned int region, unsigned short *freqs, int num_freqs);
 	int (*ocl_update_clock_freq_topology)(struct platform_device *pdev, struct xclmgmt_ioc_freqscaling *freqs);
+	int (*xclbin_validate_clock_req)(struct platform_device *pdev, struct drm_xocl_reclock_info *freqs);
 	int (*ocl_lock_bitstream)(struct platform_device *pdev,
 		const xuid_t *uuid);
 	int (*ocl_unlock_bitstream)(struct platform_device *pdev,
@@ -1171,6 +1172,10 @@ enum {
 #define	xocl_icap_ocl_update_clock_freq_topology(xdev, freqs)		\
 	(ICAP_CB(xdev, ocl_update_clock_freq_topology) ?		\
 	ICAP_OPS(xdev)->ocl_update_clock_freq_topology(ICAP_DEV(xdev), freqs) :\
+	-ENODEV)
+#define	xocl_icap_xclbin_validate_clock_req(xdev, freqs)		\
+	(ICAP_CB(xdev, xclbin_validate_clock_req) ?			\
+	ICAP_OPS(xdev)->xclbin_validate_clock_req(ICAP_DEV(xdev), freqs) :\
 	-ENODEV)
 #define	xocl_icap_lock_bitstream(xdev, uuid)				\
 	(ICAP_CB(xdev, ocl_lock_bitstream) ?				\

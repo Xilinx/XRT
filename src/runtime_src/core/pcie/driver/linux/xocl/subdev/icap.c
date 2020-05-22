@@ -666,25 +666,19 @@ static int ulp_clock_update(struct icap *icap, unsigned short *freqs,
 	return err;
 }
 
-static int icap_ocl_update_clock_freq_topology(struct platform_device *pdev,
-	struct xclmgmt_ioc_freqscaling *freq_obj)
+static int icap_xclbin_validate_clock_req_impl(struct platform_device *pdev,
+	struct drm_xocl_reclock_info *freq_obj)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
-	int i = 0;
-	int err = 0;
 	unsigned short freq_max, freq_min;
+	int i;
 
-	err = icap_xclbin_rd_lock(icap);
-	if (err)
-		return err;
-
-	mutex_lock(&icap->icap_lock);
+	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
 	if (uuid_is_null(&icap->icap_bitstream_uuid)) {
 		ICAP_ERR(icap, "ERROR: There isn't a hardware accelerator loaded in the dynamic region."
 			" Validation of accelerator frequencies cannot be determine");
-		err = -EDOM;
-		goto done;
+		return -EDOM;
 	}
 
 	for (i = 0; i < ARRAY_SIZE(freq_obj->ocl_target_freq); i++) {
@@ -704,13 +698,45 @@ static int icap_ocl_update_clock_freq_topology(struct platform_device *pdev,
 				"Requested frequency: %d",
 				freq_max, freq_min,
 				freq_obj->ocl_target_freq[i]);
-			err = -EDOM;
-			goto done;
+			return -EDOM;
 		}
 	}
 
+	return 0;
+}
+
+static int icap_xclbin_validate_clock_req(struct platform_device *pdev,
+	struct drm_xocl_reclock_info *freq_obj)
+{
+	struct icap *icap = platform_get_drvdata(pdev);
+	int err;
+
+	mutex_lock(&icap->icap_lock);
+	err = icap_xclbin_validate_clock_req_impl(pdev, freq_obj);
+	mutex_unlock(&icap->icap_lock);
+
+	return err;
+}
+
+static int icap_ocl_update_clock_freq_topology(struct platform_device *pdev,
+	struct xclmgmt_ioc_freqscaling *freq_obj)
+{
+	struct icap *icap = platform_get_drvdata(pdev);
+	int err = 0;
+
+	err = icap_xclbin_rd_lock(icap);
+	if (err)
+		return err;
+
+	mutex_lock(&icap->icap_lock);
+
+	err = icap_xclbin_validate_clock_req_impl(pdev,
+	    (struct drm_xocl_reclock_info *)freq_obj);
+	if (err)
+		goto done;
+
 	err = ulp_clock_update(icap, freq_obj->ocl_target_freq,
-		ARRAY_SIZE(freq_obj->ocl_target_freq), 1);
+	    ARRAY_SIZE(freq_obj->ocl_target_freq), 1);
 	if (err)
 		goto done;
 
@@ -3039,6 +3065,7 @@ static struct xocl_icap_funcs icap_ops = {
 	.post_download_rp = icap_post_download_rp,
 	.ocl_get_freq = icap_ocl_get_freqscaling,
 	.ocl_update_clock_freq_topology = icap_ocl_update_clock_freq_topology,
+	.xclbin_validate_clock_req = icap_xclbin_validate_clock_req,
 	.ocl_lock_bitstream = icap_lock_bitstream,
 	.ocl_unlock_bitstream = icap_unlock_bitstream,
 	.get_data = icap_get_data,
