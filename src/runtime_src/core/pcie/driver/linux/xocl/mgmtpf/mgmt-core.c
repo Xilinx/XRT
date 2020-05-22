@@ -568,6 +568,8 @@ static int xclmgmt_icap_get_data_impl(struct xclmgmt_dev *lro, void *buf)
 	hwicap->data_retention = xocl_icap_get_data(lro, DATA_RETAIN);
 
 	XOCL_PUT_XCLBIN_ID(lro);
+
+	return 0;
 }
 
 static void xclmgmt_clock_get_data_impl(struct xclmgmt_dev *lro, void *buf)
