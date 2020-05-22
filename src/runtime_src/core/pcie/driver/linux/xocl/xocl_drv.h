@@ -117,6 +117,12 @@
 /* access_ok lost its first parameter with Linux 5.0. */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0)
 	#define XOCL_ACCESS_OK(TYPE, ADDR, SIZE) access_ok(ADDR, SIZE)
+#elif defined(RHEL_RELEASE_CODE)
+        #if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8,1)
+                #define XOCL_ACCESS_OK(TYPE, ADDR, SIZE) access_ok(ADDR, SIZE)
+        #else
+                #define XOCL_ACCESS_OK(TYPE, ADDR, SIZE) access_ok(TYPE, ADDR, SIZE)
+        #endif
 #else
 	#define XOCL_ACCESS_OK(TYPE, ADDR, SIZE) access_ok(TYPE, ADDR, SIZE)
 #endif
