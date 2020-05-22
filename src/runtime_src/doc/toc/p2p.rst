@@ -33,7 +33,7 @@ Warning
 
 Mother board vendors have different implementations of large PCIe BAR support in BIOS. If the host system does not support large IO memory well or if host Linux kernel does not support this feature, the host could stop responding after P2P is enabled. Please note that in some cases a warm reboot may not recover the system. Power cycle is required to recover the system in this scenario. As previosuly noted Alveo PCIe platforms turn off P2P after a power cycle.
 
-Some Mother board BIOS setup allows administrator to set IO Memory base address and some do not. Having high or low IO Memory base could possibly cause memory address collision between P2P memory and host RAM. For example setting IO memory base set to 56T in BIOS will cause Linux to crash after a warm reboot. This is because mapped virtual address of P2P PCIe BAR collides with virtual address of other subsystems in Linux. Recent versions of Linux (4.19+) dont have this issue as they detect this during P2P BAR mapping stage itself and refuse to map the BAR. Setting IO memory base to 1T in BIOS is recommended.
+Some Mother board BIOS setup allows administrator to set IO Memory base address and some do not. Having large IO Memory base could possibly cause OS kernel crash during warm reboot. Warm reboot crash been observed on Ubuntu running with kernel 4.15 plus IO memory base been set to 56T in BIOS. To avoid this crash, setting IO memory base to 12T in BIOS is recommended. Per our test, the highest P2P BAR physical address has to be less than 32T. And not all linux kernels have this issue.
 
 Enable/Disable P2P
 ~~~~~~~~~~~~~~~~~~
