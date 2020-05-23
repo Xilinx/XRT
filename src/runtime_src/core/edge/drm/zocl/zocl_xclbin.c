@@ -575,9 +575,13 @@ zocl_xclbin_same_uuid(struct drm_zocl_dev *zdev, xuid_t *uuid)
 }
 
 /*
- * This is only called from softkernel and context has been protected
- * by xocl driver. The data has been remapped into kernel memory, no
- * copy_from_user needed
+ * This function takes an XCLBIN in kernel buffer and extracts
+ * BITSTREAM_PDI section (or PDI section). Then load the extracted
+ * section through fpga manager.
+ *
+ * Note: this is only used under ert mode so that we do not need to
+ * check context or cache XCLBIN metadata, which are done by host
+ * XRT driver. Only if the same XCLBIN has been loaded, we skip loading.
  */
 int
 zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data)
@@ -591,17 +595,17 @@ zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data)
 	uint64_t size = 0;
 	int ret = 0;
 
-	BUG_ON(!mutex_is_locked(&zdev->zdev_xclbin_lock));
-
 	if (memcmp(axlf_head->m_magic, "xclbin2", 8)) {
 		DRM_INFO("Invalid xclbin magic string");
 		return -EINVAL;
 	}
 
+	mutex_lock(&zdev->zdev_xclbin_lock);
 	/* Check unique ID */
 	if (zocl_xclbin_same_uuid(zdev, &axlf_head->m_header.uuid)) {
 		DRM_INFO("%s The XCLBIN already loaded, uuid: %pUb",
 			 __func__, &axlf_head->m_header.uuid);
+		mutex_unlock(&zdev->zdev_xclbin_lock);
 		return ret;
 	}
 
@@ -630,9 +634,13 @@ zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data)
 	/* preserve uuid, avoid double download */
 	zocl_xclbin_set_uuid(zdev, &axlf_head->m_header.uuid);
 
+	/* reset scheduler */
+	sched_reset_scheduler(zdev->ddev);
+
 out:
 	write_unlock(&zdev->attr_rwlock);
 	DRM_INFO("%s %pUb ret: %d", __func__, zocl_xclbin_get_uuid(zdev), ret);
+	mutex_unlock(&zdev->zdev_xclbin_lock);
 	return ret;
 }
 

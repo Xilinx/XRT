@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2018-2020 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *
@@ -466,10 +466,10 @@ static struct xocl_subdev_map		subdev_map[] = {
 		.devinfo_cb = NULL,
 	},
 	{
-		.id = XOCL_SUBDEV_OSPI_VERSAL,
-		.dev_name = XOCL_OSPI_VERSAL,
+		.id = XOCL_SUBDEV_XFER_VERSAL,
+		.dev_name = XOCL_XFER_VERSAL,
 		.res_names = {
-			NODE_OSPI_CACHE,
+			NODE_XFER_CACHE,
 			NULL
 		},
 		.required_ip = 1,

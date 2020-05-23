@@ -805,6 +805,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		uint64_t xclbin_len = 0;
 		struct xcl_mailbox_bitstream_kaddr *mb_kaddr =
 			(struct xcl_mailbox_bitstream_kaddr *)req->data;
+
 		if (payload_len < sizeof(*mb_kaddr)) {
 			mgmt_err(lro, "peer request dropped, wrong size\n");
 			break;
@@ -820,7 +821,10 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			ret = -ENOMEM;
 		} else {
 			memcpy(buf, xclbin, xclbin_len);
-			ret = xocl_icap_download_axlf(lro, buf);
+			if (XOCL_DSA_IS_VERSAL(lro))
+				ret = xocl_xfer_versal_download_axlf(lro, buf);
+			else
+				ret = xocl_icap_download_axlf(lro, buf);
 			vfree(buf);
 		}
 		(void) xocl_peer_response(lro, req->req, msgid, &ret,
@@ -1396,7 +1400,7 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_xmc,
 	xocl_init_dna,
 	xocl_init_fmgr,
-	xocl_init_ospi_versal,
+	xocl_init_xfer_versal,
 	xocl_init_srsr,
 	xocl_init_mem_hbm,
 	xocl_init_ulite,
@@ -1424,7 +1428,7 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_xmc,
 	xocl_fini_dna,
 	xocl_fini_fmgr,
-	xocl_fini_ospi_versal,
+	xocl_fini_xfer_versal,
 	xocl_fini_srsr,
 	xocl_fini_mem_hbm,
 	xocl_fini_ulite,

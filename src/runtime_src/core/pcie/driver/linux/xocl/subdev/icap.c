@@ -2186,12 +2186,6 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin)
 		memcpy(mb_req->data, xclbin, xclbin->m_header.m_length);
 	}
 
-	/* Set timeout to be 1s per 2MB for downloading xclbin.
-	 * plus toggling axigate time 5s
-	 * plus #MIG * 0.5s
-     * In Azure cloud, there is special requirement for xclbin download
-     * that the minumum timeout should be 50s.
-	 */
 	if (mem_topo) {
 		for (i = 0; i < mem_topo->m_count; i++) {
 			if (XOCL_IS_STREAM(mem_topo, i))
@@ -2202,6 +2196,12 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin)
 		}
 	}
 
+	/* Set timeout to be 1s per 2MB for downloading xclbin.
+	 * plus toggling axigate time 5s
+	 * plus #MIG * 0.5s
+	 * In Azure cloud, there is special requirement for xclbin download
+	 * that the minumum timeout should be 50s.
+	 */
 	(void) xocl_peer_request(xdev, mb_req, data_len,
 		&msgerr, &resplen, NULL, NULL,
 		max(((size_t)xclbin->m_header.m_length) / (2048 * 1024) +
@@ -2552,6 +2552,8 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 	icap_probe_urpdev(pdev, xclbin, &num_dev, &subdevs);
 
 	if (ICAP_PRIVILEGED(icap)) {
+		if (XOCL_DSA_IS_VERSAL(xdev))
+			return 0;
 
 		/* Check the incoming mem topoloy with the current one before overwrite */
 		check_mem_topo_and_data_retention(icap, xclbin);
@@ -2574,8 +2576,7 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 		 */
 		icap_parse_bitstream_axlf_section(pdev, xclbin, MEM_TOPOLOGY);
 
-		if (!XOCL_DSA_IS_VERSAL(xdev))
-			err = __icap_peer_xclbin_download(icap, xclbin);
+		err = __icap_peer_xclbin_download(icap, xclbin);
 
 		/* TODO: Remove this after new KDS replace the legacy one */
 		/*

@@ -16,11 +16,11 @@
  */
 
 /*
- * This subdriver is used to transfer Firmware Image from host memory
- * to device memory through a dedicated BRAM. This BRAM is mapped to
- * mgmt function and both drivers running on host and device can access
- * this BRAM. The first 4 Bytes of the BRAM is the packet header and
- * others are data payload.
+ * This subdriver is used to transfer data, e.g. firmware image, XCLBIN
+ * from host memory to device memory through a dedicated BRAM. This BRAM
+ * is mapped to mgmt function and both drivers running on host and device
+ * can access this BRAM. The first 4 Bytes of the BRAM is the packet
+ * header and others are data payload.
  *
  *                      ------------------
  *                     |    pkt_status    |
@@ -36,6 +36,17 @@
  *                     |      ...         |
  *                      ------------------
  *
+ *
+ * Layout of packet header
+ * 31 - 16   15 - 14   13 - 12   11 - 9    8    7 - 0
+ * -----------------------------------------------------
+ * |    |    |    |    |    |    |    |    |    |----| pkt_status
+ * |    |    |    |    |    |    |    |    |---------- pkt_flags: last packet
+ * |    |    |    |    |    |    |----|--------------- pkt_flags: pkt type
+ * |    |    |    |    |----|------------------------- pkt_flags: version
+ * |    |    |----|----------------------------------- pkt_flags: reserved
+ * |----|--------------------------------------------- pkt_size
+ *
  * The pkt_status fields are used to communication between host and
  * device driver.
  * 1) The status will be set to IDLE initially
@@ -44,73 +55,79 @@
  * 3) The device driver will read the data payload and set the status to
  *    IDEL after data has been read so that host driver can write next
  *    data...
- * 4) Once the last packet is sent, host will wait for program done
- *    status or program fail status, setting by device driver according
- *    to the result of ospi flash.
- * 5) Host driver will clear the status to IDLE for next ospi flash
+ * 4) Once the last packet is sent, host will wait for the done
+ *    status or fail status, setting by device driver according
+ *    to the result of whole package handling, where PDI image will
+ *    be handled by ospi_flash daemon; XCLBIN image will be handled
+ *    by zocl driver xclbin service.
+ * 5) Host driver will clear the status to IDLE for next data transfer
  *
  * The pkt_flags fields are used to indicate the packet attributes.
- * Currently, only one flag is used which will indicate this is the
- * last packet of the Firmware Image.
+ *	last packet flag : set if the last packet of the Data Image.
+ *	type flag        : we currently support load PDI and XCLBIN
+ *	version flag     : set by zocl to indicate the protocol version.
+ *	                   the current version is set to 1. we need this
+ *	                   field to support old shell (including golden
+ *	                   image) where there is no version field and thus
+ *	                   these fields were set to 0.
  *
  * The pkt_size fields are used to indicate the data payload size
  * in bytes.
  *
- * The pkt_data is the actual Firmware image data. The Firmware
- * image data will be split to fragments into pkt_data to fit
- * the size of BRAM.
+ * The pkt_data is the actual data image. The data image will be split
+ * to fragments into pkt_data to fit the size of BRAM.
  */
 
 #include "../xocl_drv.h"
 #include "xrt_drv.h"
 
-#define	OSPI_VERSAL_DEV_NAME "ospi_versal" SUBDEV_SUFFIX
+#define	XFER_VERSAL_DEV_NAME "xfer_versal" SUBDEV_SUFFIX
 
 /* Timer interval of checking OSPI done */
-#define OSPI_VERSAL_TIMER_INTERVAL	(1000)
+#define XFER_VERSAL_TIMER_INTERVAL	(1000)
 
-struct ospi_versal {
-	struct platform_device	*ov_pdev;
-	void __iomem		*ov_base;
-	size_t			ov_size;
-	size_t			ov_data_size;
-	bool			ov_inuse;
+struct xfer_versal {
+	struct platform_device	*xv_pdev;
+	void __iomem		*xv_base;
+	size_t			xv_size;
+	size_t			xv_data_size;
+	bool			xv_inuse;
 
-	struct mutex		ov_lock;
+	struct mutex		xv_lock;
 };
 
-#define	OV_ERR(ov, fmt, arg...)    \
-	xocl_err(&ov->ov_pdev->dev, fmt "\n", ##arg)
-#define	OV_INFO(ov, fmt, arg...)    \
-	xocl_info(&ov->ov_pdev->dev, fmt "\n", ##arg)
-#define	OV_DEBUG(ov, fmt, arg...)    \
-	xocl_dbg(&ov->ov_pdev->dev, fmt "\n", ##arg)
+#define	XV_ERR(xv, fmt, arg...)    \
+	xocl_err(&xv->xv_pdev->dev, fmt "\n", ##arg)
+#define	XV_INFO(xv, fmt, arg...)    \
+	xocl_info(&xv->xv_pdev->dev, fmt "\n", ##arg)
+#define	XV_DEBUG(xv, fmt, arg...)    \
+	xocl_dbg(&xv->xv_pdev->dev, fmt "\n", ##arg)
 
 /*
  * If return 0, we get the expected status.
  * If return -1, the status is set to FAIL.
  */
-static inline int wait_for_status(struct ospi_versal *ov, u8 status)
+static inline int wait_for_status(struct xfer_versal *xv, u8 status)
 {
 	struct pdi_packet *pkt;
 	u32 header;
 
 	pkt = (struct pdi_packet *)&header;
 	for (;;) {
-		header = ioread32(ov->ov_base);
+		header = ioread32(xv->xv_base);
 		if (pkt->pkt_status == status)
 			return 0;
-		if (pkt->pkt_status == XRT_PDI_PKT_STATUS_FAIL)
+		if (pkt->pkt_status == XRT_XFR_PKT_STATUS_FAIL)
 			return -1;
 	}
 }
 
-static inline void set_status(struct ospi_versal *ov, u8 status)
+static inline void set_status(struct xfer_versal *xv, u8 status)
 {
 	struct pdi_packet pkt;
 
 	pkt.pkt_status = status;
-	iowrite32(pkt.header, ov->ov_base);
+	iowrite32(pkt.header, xv->xv_base);
 }
 
 /*
@@ -118,18 +135,28 @@ static inline void set_status(struct ospi_versal *ov, u8 status)
  * If return 1, current status is not FAIL and 'status'
  * If return -1, the status is set to FAIL.
  */
-static inline int check_for_status(struct ospi_versal *ov, u8 status)
+static inline int check_for_status(struct xfer_versal *xv, u8 status)
 {
 	struct pdi_packet *pkt;
 	u32 header;
 
 	pkt = (struct pdi_packet *)&header;
-	header = ioread32(ov->ov_base);
+	header = ioread32(xv->xv_base);
 	if (pkt->pkt_status == status)
 		return 0;
-	if (pkt->pkt_status == XRT_PDI_PKT_STATUS_FAIL)
+	if (pkt->pkt_status == XRT_XFR_PKT_STATUS_FAIL)
 		return -1;
 	return 1;
+}
+
+static inline u8 get_pkt_flags(struct xfer_versal *xv)
+{
+	struct pdi_packet *pkt;
+	u32 header;
+
+	pkt = (struct pdi_packet *)&header;
+	header = ioread32(xv->xv_base);
+	return pkt->pkt_flags;
 }
 
 static inline void write_data(u32 *addr, u32 *data, size_t sz)
@@ -140,57 +167,42 @@ static inline void write_data(u32 *addr, u32 *data, size_t sz)
 		iowrite32(data[i], addr + i);
 }
 
-static ssize_t ospi_versal_write(struct file *filp, const char __user *data,
-	size_t data_len, loff_t *off)
+static ssize_t xfer_versal_transfer(struct xfer_versal *xv, const char *data,
+		size_t data_len, u8 flags)
 {
-	struct ospi_versal *ov = filp->private_data;
 	ssize_t len = 0, ret;
 	ssize_t remain = data_len;
 	u32 *pkt_data, pkt_size, tran_size;
-	u32 *base_addr = ov->ov_base;
+	u32 *base_addr = xv->xv_base;
 	struct pdi_packet pkt;
+	int mod;
 	int next = 0;
 
-	/* We don't support program partial of the ospi flash */
-	if (*off != 0) {
-		OV_ERR(ov, "OSPI offset is not 0: %lld", *off);
-		return -EINVAL;
-	}
+	pkt_size = xv->xv_data_size;
 
-	mutex_lock(&ov->ov_lock);
-	if (ov->ov_inuse) {
-		mutex_unlock(&ov->ov_lock);
-		OV_ERR(ov, "OSPI device is busy");
-		return -EBUSY;
-	}
-
-	ov->ov_inuse = true;
-	mutex_unlock(&ov->ov_lock);
-
-	if (wait_for_status(ov, XRT_PDI_PKT_STATUS_IDLE)) {
-		OV_ERR(ov, "OSPI device is not in proper state");
-		return -EIO;
-	}
-
-	pkt_size = ov->ov_data_size;
-	pkt_data = vmalloc(pkt_size);
-
-	OV_INFO(ov, "start writting data_len: %lu", data_len);
+	XV_INFO(xv, "start writting data_len: %lu", data_len);
 
 	while (len < data_len) {
 		tran_size = (remain > pkt_size) ? pkt_size : remain;
-		ret = copy_from_user(pkt_data, data + len, tran_size);
-		if (ret) {
-			OV_ERR(ov, "copy data failed %ld", ret);
-			goto done;
+		pkt_data = (u32 *)(data + len);
+		mod = tran_size % 4;
+
+		if (mod == 0) {
+			write_data(base_addr + (sizeof(struct pdi_packet)) / 4,
+			    pkt_data, tran_size / 4);
+		} else {
+			u32 resid;
+
+			write_data(base_addr + (sizeof(struct pdi_packet)) / 4,
+			    pkt_data, (tran_size - mod) / 4);
+			memcpy(&resid, data + data_len - mod, mod);
+			write_data(base_addr + (sizeof(struct pdi_packet)) / 4 +
+			    (tran_size / 4), &resid, 1);
 		}
 
-		write_data(base_addr + (sizeof(struct pdi_packet)) / 4,
-		    pkt_data, pkt_size / 4);
-
-		pkt.pkt_status = XRT_PDI_PKT_STATUS_NEW;
-		pkt.pkt_flags = tran_size < pkt_size ?
-		    XRT_PDI_PKT_FLAGS_LAST : 0;
+		pkt.pkt_status = XRT_XFR_PKT_STATUS_NEW;
+		pkt.pkt_flags = (tran_size < pkt_size ?
+		    XRT_XFR_PKT_FLAGS_LAST : 0) | flags;
 		pkt.pkt_size = tran_size;
 
 		/* Write data on 4 bytes base */
@@ -201,7 +213,7 @@ static ssize_t ospi_versal_write(struct file *filp, const char __user *data,
 		remain -= tran_size;
 
 		if ((len / 1000000) > next) {
-			OV_DEBUG(ov, "%lu M write %lu, remain %lu",
+			XV_INFO(xv, "%lu M write %lu, remain %lu",
 			    (len / 1000000), len, remain);
 			next++;
 		}
@@ -210,21 +222,22 @@ static ssize_t ospi_versal_write(struct file *filp, const char __user *data,
 		schedule();
 
 		/* wait until the data is fetched by device side */
-		if (wait_for_status(ov, XRT_PDI_PKT_STATUS_IDLE)) {
+		if (wait_for_status(xv, XRT_XFR_PKT_STATUS_IDLE)) {
 			ret = -EIO;
-			OV_ERR(ov, "OSPI program error");
+			XV_ERR(xv, "Data transfer error");
 			goto done;
 		}
 	}
 
-	OV_INFO(ov, "copy file to device done");
+	XV_INFO(xv, "copy file to device done");
 
-	/* wait until the ospi flash is done */
+	/* wait until the data is done */
 	while (true) {
 		int status;
-		status = check_for_status(ov, XRT_PDI_PKT_STATUS_DONE);
+
+		status = check_for_status(xv, XRT_XFR_PKT_STATUS_DONE);
 		if (status == -1) {
-			OV_ERR(ov, "OSPI program error");
+			XV_ERR(xv, "Data handle error");
 			ret = -EIO;
 			goto done;
 		}
@@ -232,147 +245,245 @@ static ssize_t ospi_versal_write(struct file *filp, const char __user *data,
 		if (status == 0)
 			break;
 
-		msleep(OSPI_VERSAL_TIMER_INTERVAL);
+		msleep(XFER_VERSAL_TIMER_INTERVAL);
 	}
 
-	OV_INFO(ov, "OSPI program is completed");
+	XV_INFO(xv, "Data transfer is completed");
 	ret = len;
-done:
-	set_status(ov, XRT_PDI_PKT_STATUS_IDLE);
 
-	vfree(pkt_data);
-	mutex_lock(&ov->ov_lock);
-	ov->ov_inuse = false;
-	mutex_unlock(&ov->ov_lock);
+done:
+	set_status(xv, XRT_XFR_PKT_STATUS_IDLE);
 
 	return ret;
 }
 
-static int ospi_versal_open(struct inode *inode, struct file *file)
+static ssize_t xfer_versal_write(struct file *filp, const char __user *udata,
+	size_t data_len, loff_t *off)
 {
-	struct ospi_versal *ov = NULL;
+	struct xfer_versal *xv = filp->private_data;
+	ssize_t ret;
+	char *kdata;
 
-	ov = xocl_drvinst_open(inode->i_cdev);
-	if (!ov)
+	/* We don't support program partial of the ospi flash */
+	if (*off != 0) {
+		XV_ERR(xv, "OSPI offset is not 0: %lld", *off);
+		return -EINVAL;
+	}
+
+	mutex_lock(&xv->xv_lock);
+	if (xv->xv_inuse) {
+		mutex_unlock(&xv->xv_lock);
+		XV_ERR(xv, "OSPI device is busy");
+		return -EBUSY;
+	}
+
+	xv->xv_inuse = true;
+	mutex_unlock(&xv->xv_lock);
+
+	if (wait_for_status(xv, XRT_XFR_PKT_STATUS_IDLE)) {
+		XV_ERR(xv, "OSPI device is not in proper state");
+		ret = -EIO;
+		goto done;
+	}
+
+	kdata = vmalloc(data_len);
+	if (!kdata) {
+		XV_ERR(xv, "Can't create xfer buffer");
+		ret = -ENOMEM;
+		goto done;
+	}
+
+	ret = copy_from_user(kdata, udata, data_len);
+	if (ret) {
+		XV_ERR(xv, "copy data failed %ld", ret);
+		goto done;
+	}
+
+	ret = xfer_versal_transfer(xv, kdata, data_len, XRT_XFR_PKT_FLAGS_PDI);
+
+done:
+	mutex_lock(&xv->xv_lock);
+	xv->xv_inuse = false;
+	mutex_unlock(&xv->xv_lock);
+	vfree(kdata);
+
+	return ret;
+}
+
+static int xfer_versal_download_axlf(struct platform_device *pdev,
+		const void *u_xclbin)
+{
+	struct xfer_versal *xv = platform_get_drvdata(pdev);
+	struct axlf *xclbin = (struct axlf *)u_xclbin;
+	uint64_t xclbin_len = xclbin->m_header.m_length;
+	u8 pkt_flags, pkt_ver;
+	int ret;
+
+	mutex_lock(&xv->xv_lock);
+	if (xv->xv_inuse) {
+		mutex_unlock(&xv->xv_lock);
+		XV_ERR(xv, "XFER device is busy");
+		return -EBUSY;
+	}
+
+	xv->xv_inuse = true;
+	mutex_unlock(&xv->xv_lock);
+
+	pkt_flags = get_pkt_flags(xv);
+	pkt_ver = pkt_flags >> XRT_XFR_PKT_VER_SHIFT & XRT_XFR_PKT_VER_MASK;
+	if (pkt_ver != XRT_XFR_VER) {
+		XV_ERR(xv, "Platform does not support load xclbin");
+		ret = -ENOTSUPP;
+		goto done;
+	}
+
+	ret = xfer_versal_transfer(xv, u_xclbin, xclbin_len,
+	    XRT_XFR_PKT_FLAGS_XCLBIN);
+	ret = ret == xclbin_len ? 0 : -EIO;
+
+done:
+	mutex_lock(&xv->xv_lock);
+	xv->xv_inuse = false;
+	mutex_unlock(&xv->xv_lock);
+
+	return ret;
+}
+
+/* Kernel APIs exported from this sub-device driver */
+static struct xocl_xfer_versal_funcs xfer_versal_ops = {
+	.download_axlf = xfer_versal_download_axlf,
+};
+
+static int xfer_versal_open(struct inode *inode, struct file *file)
+{
+	struct xfer_versal *xv = NULL;
+
+	xv = xocl_drvinst_open(inode->i_cdev);
+	if (!xv)
 		return -ENXIO;
 
-	file->private_data = ov;
+	file->private_data = xv;
 	return 0;
 }
 
-static int ospi_versal_close(struct inode *inode, struct file *file)
+static int xfer_versal_close(struct inode *inode, struct file *file)
 {
-	struct ospi_versal *ov = file->private_data;
+	struct xfer_versal *xv = file->private_data;
 
-	xocl_drvinst_close(ov);
+	xocl_drvinst_close(xv);
 	return 0;
 }
 
-static int ospi_versal_remove(struct platform_device *pdev)
+static int xfer_versal_remove(struct platform_device *pdev)
 {
-	struct ospi_versal *ov = platform_get_drvdata(pdev);
+	struct xfer_versal *xv = platform_get_drvdata(pdev);
 	void *hdl;
 	int ret = 0;
 
-	if (!ov) {
+	if (!xv) {
 		xocl_err(&pdev->dev, "driver data is NULL");
 		return -EINVAL;
 	}
 
-	xocl_drvinst_release(ov, &hdl);
-	if (ov->ov_base)
-		iounmap(ov->ov_base);
+	xocl_drvinst_release(xv, &hdl);
+	if (xv->xv_base)
+		iounmap(xv->xv_base);
 
 	platform_set_drvdata(pdev, NULL);
 	xocl_drvinst_free(hdl);
 
-	OV_INFO(ov, "return: %d", ret);
+	XV_INFO(xv, "return: %d", ret);
 	return ret;
 }
 
-static int ospi_versal_probe(struct platform_device *pdev)
+static int xfer_versal_probe(struct platform_device *pdev)
 {
-	struct ospi_versal *ov = NULL;
+	struct xfer_versal *xv = NULL;
 	struct resource *res;
 	int ret = 0;
 
-	ov = xocl_drvinst_alloc(&pdev->dev, sizeof(struct ospi_versal));
-	if (!ov)
+	xv = xocl_drvinst_alloc(&pdev->dev, sizeof(struct xfer_versal));
+	if (!xv)
 		return -ENOMEM;
-	platform_set_drvdata(pdev, ov);
-	ov->ov_pdev = pdev;
+	platform_set_drvdata(pdev, xv);
+	xv->xv_pdev = pdev;
 
-	mutex_init(&ov->ov_lock);
+	mutex_init(&xv->xv_lock);
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res) {
+		XV_ERR(xv, "failed to get resource");
+		return ret;
+	}
 
-	ov->ov_base = ioremap_nocache(res->start, res->end - res->start + 1);
-	if (!ov->ov_base) {
-		OV_ERR(ov, "failed to map in BRAM");
+	xv->xv_base = ioremap_nocache(res->start, res->end - res->start + 1);
+	if (!xv->xv_base) {
+		XV_ERR(xv, "failed to map in BRAM");
 		ret = -EIO;
 		goto failed;
 	}
-	ov->ov_size = res->end - res->start + 1;
-	ov->ov_data_size = ov->ov_size - sizeof(struct pdi_packet);
-	if (ov->ov_size % 4 || ov->ov_data_size % 4) {
-		OV_ERR(ov, "BRAM size is not 4 Bytes aligned");
+	xv->xv_size = res->end - res->start + 1;
+	xv->xv_data_size = xv->xv_size - sizeof(struct pdi_packet);
+	if (xv->xv_size % 4 || xv->xv_data_size % 4) {
+		XV_ERR(xv, "BRAM size is not 4 Bytes aligned");
 		ret = -EINVAL;
 		goto failed;
 	}
 
-	OV_INFO(ov, "return: %d", ret);
+	XV_INFO(xv, "return: %d", ret);
 	return 0;
 
 failed:
-	if (ov->ov_base) {
-		iounmap(ov->ov_base);
-		ov->ov_base = NULL;
+	if (xv->xv_base) {
+		iounmap(xv->xv_base);
+		xv->xv_base = NULL;
 	}
-	ospi_versal_remove(pdev);
+	xfer_versal_remove(pdev);
 
-	OV_INFO(ov, "return: %d", ret);
+	XV_INFO(xv, "return: %d", ret);
 	return ret;
 }
 
-static const struct file_operations ospi_versal_fops = {
+static const struct file_operations xfer_versal_fops = {
 	.owner = THIS_MODULE,
-	.open = ospi_versal_open,
-	.release = ospi_versal_close,
-	.write = ospi_versal_write,
+	.open = xfer_versal_open,
+	.release = xfer_versal_close,
+	.write = xfer_versal_write,
 };
 
-struct xocl_drv_private ospi_versal_priv = {
-	.fops = &ospi_versal_fops,
+struct xocl_drv_private xfer_versal_priv = {
+	.ops = &xfer_versal_ops,
+	.fops = &xfer_versal_fops,
 	.dev = -1,
 };
 
-struct platform_device_id ospi_versal_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_OSPI_VERSAL),
-	    (kernel_ulong_t)&ospi_versal_priv },
+struct platform_device_id xfer_versal_id_table[] = {
+	{ XOCL_DEVNAME(XOCL_XFER_VERSAL),
+	    (kernel_ulong_t)&xfer_versal_priv },
 	{ },
 };
 
-static struct platform_driver	ospi_versal_driver = {
-	.probe		= ospi_versal_probe,
-	.remove		= ospi_versal_remove,
+static struct platform_driver	xfer_versal_driver = {
+	.probe		= xfer_versal_probe,
+	.remove		= xfer_versal_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME(XOCL_OSPI_VERSAL),
+		.name = XOCL_DEVNAME(XOCL_XFER_VERSAL),
 	},
-	.id_table = ospi_versal_id_table,
+	.id_table = xfer_versal_id_table,
 };
 
-int __init xocl_init_ospi_versal(void)
+int __init xocl_init_xfer_versal(void)
 {
 	int err = 0;
 
-	err = alloc_chrdev_region(&ospi_versal_priv.dev, 0, XOCL_MAX_DEVICES,
-	    OSPI_VERSAL_DEV_NAME);
+	err = alloc_chrdev_region(&xfer_versal_priv.dev, 0, XOCL_MAX_DEVICES,
+	    XFER_VERSAL_DEV_NAME);
 	if (err < 0)
 		return err;
 
-	err = platform_driver_register(&ospi_versal_driver);
+	err = platform_driver_register(&xfer_versal_driver);
 	if (err) {
-		unregister_chrdev_region(ospi_versal_priv.dev,
+		unregister_chrdev_region(xfer_versal_priv.dev,
 		    XOCL_MAX_DEVICES);
 		return err;
 	}
@@ -380,8 +491,8 @@ int __init xocl_init_ospi_versal(void)
 	return 0;
 }
 
-void xocl_fini_ospi_versal(void)
+void xocl_fini_xfer_versal(void)
 {
-	unregister_chrdev_region(ospi_versal_priv.dev, XOCL_MAX_DEVICES);
-	platform_driver_unregister(&ospi_versal_driver);
+	unregister_chrdev_region(xfer_versal_priv.dev, XOCL_MAX_DEVICES);
+	platform_driver_unregister(&xfer_versal_driver);
 }

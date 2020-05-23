@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2019 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -416,13 +416,6 @@ inline std::string
 get_sw_em_driver()
 {
   static std::string value = detail::get_string_value("Runtime.sw_em_driver","null");
-  return value;
-}
-
-inline bool
-get_pdi_load()
-{
-  static bool value = detail::get_bool_value("Runtime.pdi_load",true);
   return value;
 }
 
