@@ -62,15 +62,10 @@ Runtime Group
 |                     |                              |                                           |
 |                     |                              |Example: cpu_affinity = {4,5,6}            |
 +---------------------+------------------------------+-------------------------------------------+
-| polling_throttle    | [N]                          |Specify the time interval in microseconds  |
-|                     |                              |that the runtime library polls the device. |
-|                     |                              |                                           |
-|                     |                              |Default: 0                                 |
-+---------------------+------------------------------+-------------------------------------------+
-| verbosity           | [0|1|2|3]                    |verbosity level of log messages. Higher    |
+| verbosity           | [0|1|2|3|4|5|6|7]            |verbosity level of log messages. Higher    |
 |                     |                              |number implies more verbosity              |
 |                     |                              |                                           |
-|                     |                              |Default: 0                                 |
+|                     |                              |Default: 4                                 |
 +---------------------+------------------------------+-------------------------------------------+
 |exclusive_cu_context | [false|true]                 |When setting true OpenCL process holds     |
 |                     |                              |exclusive access of the Compute Units      |
