@@ -2763,7 +2763,7 @@ exec_ert_query_mailbox(struct exec_core *exec, struct xocl_cmd *xcmd)
 			continue;
 		}
 
-		mask = 1 << (slots[i] % sizeof (u32));
+		mask = 1 << (slots[i] % 32);
 		mask_idx = slots[i] >> 5;
 
 		exec->ops->process_mask(exec, mask, mask_idx);
