@@ -89,6 +89,40 @@ struct board_name
   }
 };
 
+struct logic_uuids
+{
+  using result_type = std::vector<std::string>;
+
+  static result_type
+  user(const xrt_core::device* device, key_type key)
+  {
+    return std::vector<std::string>{"TO-DO"};
+  }
+
+  static result_type
+  mgmt(const xrt_core::device* device, key_type key)
+  {
+    return std::vector<std::string>{"TO-DO"};
+  }
+};
+
+struct interface_uuids
+{
+  using result_type = std::vector<std::string>;
+
+  static result_type
+  user(const xrt_core::device* device, key_type key)
+  {
+    return std::vector<std::string>{"TO-DO"};
+  }
+
+  static result_type
+  mgmt(const xrt_core::device* device, key_type key)
+  {
+    return std::vector<std::string>{"TO-DO"};
+  }
+};
+
 struct firewall
 {
   using result_type = boost::any;
