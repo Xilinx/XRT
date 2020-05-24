@@ -221,17 +221,23 @@ public:
   get_ert_slots(const axlf* top) const;
 
   /** 
+   * Get the low and high index of a group
+   */
+  std::pair<int, int>
+  get_groupRange(const int grp_id) const;
+
+  /** 
    * Get the group id for the given cu & argument index
    */
   int
   get_groupIndex(const int cu_id, const int arg_id) const;
 
   /**
-   * set_mem_group_info() - Store the memory group information
+   * store_mem_group_info() - Store the memory group information
    *
    */
   void
-  set_mem_group_info(struct xcl_mem_group *grpInfoMap);
+  store_mem_group_info(struct xcl_mem_group_map *grpInfoMap);
 
   // Move all these 'pt' functions out the class interface
   virtual void get_info(boost::property_tree::ptree&) const {}
@@ -306,8 +312,11 @@ public:
   xuid_t m_xclbin_uuid;
   std::map<axlf_section_kind, std::vector<char>> m_axlf_sections;
   
-  // Store memory group mapping information <<cuIdx, argIdx>, grpIdx>
+  // Store memory mapping information <<cuIdx, argIdx>, grpIdx>
   std::map<std::pair<uint32_t, uint32_t>, uint32_t> m_grp_map;
+ 
+  // Store memory group information <grpIdx, <lowBankIdx, highBankIdx>>
+  std::map<uint32_t, std::pair<uint32_t, uint32_t>> m_grp_info;
 };
 
 /**

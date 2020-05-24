@@ -57,23 +57,23 @@ struct xocl_mem_group_info {
 };
 
 struct xocl_mem_group {
-        uint32_t g_count;
+        int32_t g_count;
         struct xocl_mem_group_info *m_group[DRM_XOCL_MEM_GROUP_MAX];
 };
 
-struct xocl_mem_conn_info {
+struct xocl_mem_map_info {
         uint32_t cu_id;
         uint32_t arg_id;
         uint32_t grp_id;
 };
 
-struct xocl_mem_conn {
-        uint32_t m_count;
-        struct xocl_mem_conn_info *m_conn[DRM_XOCL_MEM_GROUP_MAX];
+struct xocl_mem_map {
+        int32_t m_count;
+        struct xocl_mem_map_info *m_map[DRM_XOCL_MEM_GROUP_MAX];
 };
 
 struct xocl_mem_connectivity {
-        struct xocl_mem_conn    *mem_conn;
+        struct xocl_mem_map     *mem_map;
         struct xocl_mem_group   *mem_group;
 };
 

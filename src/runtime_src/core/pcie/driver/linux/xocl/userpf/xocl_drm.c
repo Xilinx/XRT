@@ -708,28 +708,19 @@ int xocl_cleanup_mem_nolock(struct xocl_drm *drm_p)
 					continue;
 				hash_del(&wrapper->node);
 				vfree(wrapper);
-
-#if 0
-				if (drm_p->mm && drm_p->mm[i]) {
-					drm_mm_takedown(drm_p->mm[i]);
-					vfree(drm_p->mm[i]);
-					drm_p->mm[i] = NULL;
-				}
-				if (drm_p->mm_usage_stat && drm_p->mm_usage_stat[i]) {
-					vfree(drm_p->mm_usage_stat[i]);
-					drm_p->mm_usage_stat[i] = NULL;
-				}
-#endif
 			}
 #endif
 		}
 	}
-	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
 
+        XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
         xocl_cleanup_connectivity(drm_p);
 
 done:
-	vfree(drm_p->mm);
+        if (drm_p->mm) {
+                drm_mm_takedown(drm_p->mm);
+                vfree(drm_p->mm);
+        }
 	drm_p->mm = NULL;
 	vfree(drm_p->mm_usage_stat);
 	drm_p->mm_usage_stat = NULL;
@@ -763,23 +754,13 @@ int xocl_cleanup_mem(struct xocl_drm *drm_p)
 	return ret;
 }
 
-static int init_mem_group(struct xocl_drm *drm_p, int ip_cnt, int arg_idx, 
+static int init_mem_group(struct connectivity *connect, int ip_cnt, int arg_idx, 
                 struct mem_topology *topo, struct xocl_mem_group_info *m_group)
 {
         int i = 0;
         int err = 0;
         struct connection *conn = NULL;
         struct mem_data *mem_data = NULL;
-        struct connectivity *connect = NULL;
-
-        err = XOCL_GET_CONNECTIVITY(drm_p->xdev, connect);
-        if (err)
-                return err;
-
-        if (connect == NULL) { 
-                XOCL_PUT_CONNECTIVITY(drm_p->xdev);
-                return -ENODEV;
-        }
 
         m_group->l_bank_idx = DRM_XOCL_MEM_GROUP_MAX;
         m_group->h_bank_idx = 0;
@@ -818,7 +799,6 @@ static int init_mem_group(struct xocl_drm *drm_p, int ip_cnt, int arg_idx,
         m_group->h_end_addr = mem_data->m_base_address + mem_data->m_size * 1024;
 
 done:
-        XOCL_PUT_CONNECTIVITY(drm_p->xdev);
         return err;
 }
 
@@ -875,34 +855,37 @@ static int get_mem_group(struct xocl_mem_connectivity *m_connect, struct xocl_me
 
 int xocl_cleanup_connectivity(struct xocl_drm *drm_p)
 {
-        struct xocl_mem_conn        *mem_conn = NULL;
+        struct xocl_mem_map        *mem_map = NULL;
         struct xocl_mem_group       *xocl_grp = NULL; 
         int i = 0;
 
         if (!drm_p->m_connect)
                 return 0;
 
-        /* Cleanup memory usage stats for all the groups */
-        for (i = 0; i < drm_p->m_connect->mem_group->g_count; i++) 
-                if (drm_p->mm_usage_stat[i])
-                        vfree(drm_p->mm_usage_stat[i]);
+        if (drm_p->m_connect->mem_group) {
+                xocl_grp = drm_p->m_connect->mem_group;
+                /* Cleanup memory usage stats and group info for all the groups */
+                for (i = 0; i < xocl_grp->g_count; i++) {
+                        if (drm_p->mm_usage_stat && drm_p->mm_usage_stat[i]) 
+                                vfree(drm_p->mm_usage_stat[i]);
 
-        /* Cleanup memory usage stats for all the groups */
-        xocl_grp = drm_p->m_connect->mem_group;
-        for (i = 0; i < xocl_grp->g_count; i++) 
-                if (xocl_grp->m_group[i])
-                        vfree(xocl_grp->m_group[i]);
+                        if (xocl_grp->m_group[i])
+                                vfree(xocl_grp->m_group[i]);
 
-        if (drm_p->m_connect->mem_group)
-                vfree(drm_p->m_connect->mem_group);
+                        vfree(drm_p->m_connect->mem_group);
+                }
+        }
 
-        mem_conn = drm_p->m_connect->mem_conn;
-        for (i = 0; i < mem_conn->m_count; i++) 
-                if (mem_conn->m_conn[i])
-                        vfree(mem_conn->m_conn[i]);
+        /* Cleanup memory connection info */
+        if (drm_p->m_connect->mem_map) {
+                mem_map = drm_p->m_connect->mem_map;
+                for (i = 0; i < mem_map->m_count; i++) 
+                        if (mem_map->m_map[i])
+                                vfree(mem_map->m_map[i]);
 
-        vfree(drm_p->m_connect->mem_group);
-        vfree(drm_p->m_connect->mem_conn);
+                vfree(drm_p->m_connect->mem_map);
+        }
+
         vfree(drm_p->m_connect);
 
         return 0;
@@ -910,7 +893,8 @@ int xocl_cleanup_connectivity(struct xocl_drm *drm_p)
 
 int xocl_init_connectivity(struct xocl_drm *drm_p, struct mem_topology *topo)
 {
-        struct xocl_mem_conn *mem_conn = NULL;
+        struct connectivity *connect = NULL;
+        struct xocl_mem_map *mem_map = NULL;
         struct xocl_mem_group_info *m_group = NULL;
         struct ip_layout *layout = NULL;
         int group_id = -1;
@@ -928,18 +912,29 @@ int xocl_init_connectivity(struct xocl_drm *drm_p, struct mem_topology *topo)
                 return -EINVAL;
         }
 
+        err = XOCL_GET_CONNECTIVITY(drm_p->xdev, connect);
+        if (err)
+                return err;
+
+        if (connect == NULL) { 
+                XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
+                XOCL_PUT_CONNECTIVITY(drm_p->xdev);
+                return -ENODEV;
+        }
+
         drm_p->m_connect = vzalloc(sizeof(struct xocl_mem_connectivity));
         if (drm_p->m_connect == NULL) {
                 err = -ENOMEM;
                 goto failed;
         }
 
-        drm_p->m_connect->mem_conn = vzalloc(sizeof(struct xocl_mem_conn));
-        if (drm_p->m_connect->mem_conn == NULL) {
+        drm_p->m_connect->mem_map = vzalloc(sizeof(struct xocl_mem_map));
+        if (drm_p->m_connect->mem_map == NULL) {
                 err = -ENOMEM;
                 goto failed;
         }
 
+        /* Create groups for range of Banks */
         for (ip_cnt = 0; ip_cnt < layout->m_count;) {
                 m_group = vzalloc(sizeof(struct xocl_mem_group_info));
                 if (m_group == NULL) {
@@ -947,48 +942,50 @@ int xocl_init_connectivity(struct xocl_drm *drm_p, struct mem_topology *topo)
                         goto failed;
                 }
 
-                if (init_mem_group(drm_p, ip_cnt, arg_cnt, topo, m_group)) {
+                if (init_mem_group(connect, ip_cnt, arg_cnt, topo, m_group)) {
                         arg_cnt = 0;
                         ip_cnt++;
                         continue;
                 }
            
                 /* Update Memory connection mapping */ 
-                mem_conn = drm_p->m_connect->mem_conn;
-                mem_conn->m_conn[mem_conn->m_count] = vzalloc(sizeof(struct xocl_mem_conn_info));
-                if (mem_conn->m_conn[mem_conn->m_count] == NULL) {
+                mem_map = drm_p->m_connect->mem_map;
+                mem_map->m_map[mem_map->m_count] = vzalloc(sizeof(struct xocl_mem_map_info));
+                if (mem_map->m_map[mem_map->m_count] == NULL) {
                         err = -ENOMEM;
                         goto failed;
                 }
                 
-                mem_conn->m_conn[mem_conn->m_count]->cu_id = ip_cnt;
-                mem_conn->m_conn[mem_conn->m_count]->arg_id = arg_cnt;
+                mem_map->m_map[mem_map->m_count]->cu_id = ip_cnt;
+                mem_map->m_map[mem_map->m_count]->arg_id = arg_cnt;
                 group_id = get_mem_group(drm_p->m_connect, m_group);
                 if (group_id < 0) {
                         err = -EINVAL;
                         goto failed;
                 }
-                mem_conn->m_conn[mem_conn->m_count]->grp_id = group_id;
-                mem_conn->m_count++;
+                mem_map->m_map[mem_map->m_count]->grp_id = group_id;
+                mem_map->m_count++;
                 arg_cnt++;
         }
 
         XOCL_PUT_IP_LAYOUT(drm_p->xdev);
+        XOCL_PUT_CONNECTIVITY(drm_p->xdev);
 
         return 0;
 
 failed:
-        for (i = 0; i < drm_p->m_connect->mem_conn->m_count; i++) 
-                if (drm_p->m_connect->mem_conn->m_conn[i])
-                        vfree(drm_p->m_connect->mem_conn->m_conn[i]);
+        for (i = 0; i < drm_p->m_connect->mem_map->m_count; i++) 
+                if (drm_p->m_connect->mem_map->m_map[i])
+                        vfree(drm_p->m_connect->mem_map->m_map[i]);
 
-        if (drm_p->m_connect->mem_conn)
-                vfree(drm_p->m_connect->mem_conn);
+        if (drm_p->m_connect->mem_map)
+                vfree(drm_p->m_connect->mem_map);
 
         if (drm_p->m_connect)
                 vfree(drm_p->m_connect);
 
         XOCL_PUT_IP_LAYOUT(drm_p->xdev);
+        XOCL_PUT_CONNECTIVITY(drm_p->xdev);
 
         return err;
 }
@@ -1035,17 +1032,14 @@ int xocl_init_mem(struct xocl_drm *drm_p)
         }
 
         length = topo->m_count * sizeof(struct mem_data);
-        size = topo->m_count * sizeof(void *);
         wrapper_size = sizeof(struct xocl_mm_wrapper);
-        mm_stat_size = sizeof(struct drm_xocl_mm_stat);
         xocl_info(drm_p->ddev->dev, "Topology count = %d, data_length = %ld",
                         topo->m_count, length);
 
         mutex_lock(&drm_p->mm_lock);
 
-        drm_p->mm_usage_stat = vzalloc(size);
         drm_p->mm_p2p_off = vzalloc((topo->m_count + 1) * sizeof(u64));
-        if (!drm_p->mm_usage_stat || !drm_p->mm_p2p_off) {
+        if (!drm_p->mm_p2p_off) {
                 err = -ENOMEM;
                 goto done;
         }
@@ -1060,6 +1054,22 @@ int xocl_init_mem(struct xocl_drm *drm_p)
                 xocl_info(drm_p->ddev->dev, "  Size:0x%lx", ddr_bank_size);
                 xocl_info(drm_p->ddev->dev, "  Type:%d", mem_data->m_type);
                 xocl_info(drm_p->ddev->dev, "  Used:%d", mem_data->m_used);
+        }
+
+        /* Initialize memory usage stats for all the groups */
+        mm_stat_size = sizeof(struct drm_xocl_mm_stat);
+        size = drm_p->m_connect->mem_group->g_count * sizeof(void *);
+        drm_p->mm_usage_stat = vzalloc(size);
+        if (!drm_p->mm_usage_stat) {
+                err = -ENOMEM;
+                goto done;
+        }
+        for (i = 0; i < drm_p->m_connect->mem_group->g_count; i++) { 
+                drm_p->mm_usage_stat[i] = vzalloc(mm_stat_size);
+                if (!drm_p->mm_usage_stat[i]) {
+                        err = -ENOMEM;
+                        goto done;
+                }
         }
 
         /* Initialize the used banks and their sizes */
@@ -1093,25 +1103,18 @@ int xocl_init_mem(struct xocl_drm *drm_p)
                 shared = xocl_get_shared_ddr(drm_p, mem_data);
                 if (shared != 0xffffffff) {
                         xocl_info(drm_p->ddev->dev, "Found duplicated memory region!");
-                        drm_p->mm_usage_stat[i] = drm_p->mm_usage_stat[shared];
                         continue;
                 }
 
                 xocl_info(drm_p->ddev->dev, "Found a new memory region");
                 wrapper = vzalloc(wrapper_size);
-                drm_p->mm_usage_stat[i] = vzalloc(mm_stat_size);
-
-                if ( !drm_p->mm_usage_stat[i] || !wrapper) {
+                if (!wrapper) {
                         err = -ENOMEM;
                         goto done;
                 }
 
                 wrapper->start_addr = mem_data->m_base_address;
                 wrapper->size = mem_data->m_size*1024;
-#if 0
-                /* SAIF TODO : Now stats should maintain for groupwise not bank. Need to fix this */
-                wrapper->mm_usage_stat = drm_p->mm_usage_stat[i];
-#endif
                 wrapper->ddr = i;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
                 hash_add(drm_p->mm_range, &wrapper->node, wrapper->start_addr);
