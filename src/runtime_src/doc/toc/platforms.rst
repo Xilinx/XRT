@@ -92,12 +92,12 @@ Zynq Ultrascale+ MPSoC Based Embedded Platforms
 .. image:: XRT-Architecture-Edge.svg
    :align: center
 
-XRT supports following embedded platforms:
+XRT supports following evaluation boards with various embedded platforms:
 
-1. ZCU19
+1. ZC706
 2. ZCU102
 3. ZCU104
-4. ZCU106
+
 
 MPSoC based platforms are supported with PetaLinux base stack. XRT Linux kernel
 driver *zocl* does the heavy lifting for the embedded platform. It handles the
