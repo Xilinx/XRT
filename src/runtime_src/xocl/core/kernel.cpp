@@ -440,7 +440,12 @@ validate_cus(const device* device, unsigned long argidx, int memidx) const
 
   XOCL_DEBUG(std::cout,"xocl::kernel::validate_cus(",argidx,",",memidx,")\n");
   xclbin::memidx_bitmask_type connections;
-  connections.set(memidx);
+  auto dev = xrt_core::get_userpf_device(device->get_handle());
+  int fst = dev->get_groupRange(memidx).first;
+  int end = dev->get_groupRange(memidx).second;
+  for (int i = fst; i<end; i++)
+        connections.set(i);
+
   auto end = m_cus.end();
   for (auto itr=m_cus.begin(); itr!=end; ) {
     auto cu = (*itr);

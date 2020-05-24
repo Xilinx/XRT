@@ -82,7 +82,7 @@ public:
 
     int xclExportBO(unsigned int boHandle);
     unsigned int xclImportBO(int fd, unsigned flags);
-    int xclPopulateMemGroupInfo(struct xcl_mem_group *grpInfo);
+    int xclPopulateMemGroupInfo(struct xcl_mem_group_map *grpMapInfo);
     int xclGetBOProperties(unsigned int boHandle, xclBOProperties *properties);
 
     // Bitstream/bin download

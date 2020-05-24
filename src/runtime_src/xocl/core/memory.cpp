@@ -172,7 +172,7 @@ get_buffer_object(device* device)
 
   // Get memory bank index if assigned, -1 if not assigned, which will trigger
   // allocation error when default allocation is disabled
-  get_memidx_nolock(device); // computes m_memidx
+  get_grpidx_nolock(device); // computes m_memidx
   auto boh = (m_bomap[device] = device->allocate_buffer_object(this,m_memidx));
 
   // To be deleted when strict bank rules are enforced
@@ -295,13 +295,12 @@ get_grpidx_nolock(const device* dev) const
   int argidx = -1;
 
   // already initialized
-  if (m_memidx>=0)
+  if (m_memidx>=0) 
     return m_memidx;
 
   if (m_karg.empty())
     return -1;
 
-  /* TODO : Find a better way to get the cu index */
   for (auto& karg : m_karg) {
     auto kernel = karg.first;
     auto arg = karg.second;
@@ -315,22 +314,13 @@ get_grpidx_nolock(const device* dev) const
   if ((cuidx == -1) || (argidx == -1))
     return -1;
 
-  //auto xdevice = dev->get_xrt_device();
   auto device = xrt_core::get_userpf_device(dev->get_handle());
-  //xdevice->get_handle();
-//  device::id_type id = 0;
-  //auto device = xrt_core::get_userpf_device(xdevice);
-  /*
-  auto hdl = device->get_device_handle();
-  if (auto err = xclLoadXclBin(hdl,reinterpret_cast<const axlf*>(raw.data())))
-          throw xrt_core::error(err,"Could not program device" + std::to_string(card));
-  */
-  //m_memidx =  xrt_core::device::get_groupIndex(cuidx, argidx);
   m_memidx = device->get_groupIndex(cuidx, argidx);
+  if (m_memidx < 0)
+    return -1;
 
   return m_memidx;
 }
-
 
 memory::memidx_type
 memory::

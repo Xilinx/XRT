@@ -142,49 +142,61 @@ get_ert_slots(const axlf* top) const
   auto xml_size = xml_hdr->m_sectionSize;
   return get_ert_slots(xml_data, xml_size);
 }
+
+std::pair<int, int>
+device::
+get_groupRange(const int grp_id) const  
+{
+  auto itr = m_grp_info.find(grp_id);
+
+  return itr != m_grp_info.end()
+          ? std::make_pair((int)(*itr).second.first, (int)(*itr).second.second) 
+          : std::make_pair(-EINVAL, -EINVAL);
+}
+
 int
 device::
 get_groupIndex(const int cu_id, const int arg_id) const  
 {
-  std::cout << __FUNCTION__ << " : I am inside this function. " << std::endl;
-
-  // Just skeeping now
-  return 0;
-
-
   auto itr = m_grp_map.find(std::make_pair(cu_id, arg_id));
+
   return itr != m_grp_map.end()
               ? (*itr).second : -EINVAL;
 }
- 
+
 void
 device::
-set_mem_group_info(struct xcl_mem_group *grpInfoMap)  
+store_mem_group_info(struct xcl_mem_group_map *grpInfoMap)  
 {
-  struct xcl_mem_group_info *mInfo = NULL;
+  struct xcl_mem_group_info *g_info = NULL;
+  struct xcl_mem_map_info *m_map = NULL;
 
-  // Just skeeping now
-  return;
+  if (!grpInfoMap) 
+    throw std::runtime_error("Failed to get memory information");
 
-  std::cout << __FUNCTION__ << " : I am inside this function. " << std::endl;
-  if (!grpInfoMap) {
-    std::cout << __FUNCTION__ << " : ERROR : Failed to get memory group information" << std::endl;
-    throw std::runtime_error("Failed to get memory group information");
-  }
-
-  std::cout << __FUNCTION__ << " :  m count : " << grpInfoMap->m_count << std::endl;
-  for (int i = 0; i < grpInfoMap->m_count; i++)
+  if (!grpInfoMap->mMap) 
+    throw std::runtime_error("Failed to get memory mapping information");
+  
+  for (int i = 0; i < grpInfoMap->mMap->m_count; i++)
   {
-    mInfo = &grpInfoMap->m_group[i];
-    std::cout << __FUNCTION__ << " : iterate : " << i << " Info : " << mInfo << std::endl;
-    if(!mInfo)
-      throw std::runtime_error("Failed to get memory group information");
+    m_map = &grpInfoMap->mMap->m_map[i];
+    if(!m_map)
+      throw std::runtime_error("Failed to get memory mapping information");
     
-    std::cout << " i : " << i << " , cu : " << mInfo->cu_id << " , arg : " << mInfo->arg_id << " , grp : " << mInfo->grp_id << std::endl;  
-    m_grp_map.emplace((std::make_pair(mInfo->cu_id, mInfo->arg_id)), mInfo->grp_id);
+    m_grp_map.emplace(std::make_pair(m_map->cu_id, m_map->arg_id), m_map->grp_id);
   }
 
-  std::cout << __FUNCTION__ << " : Group Population is done" << std::endl;
+  if (!grpInfoMap->mGroup) 
+    throw std::runtime_error("Failed to get memory group information");
+  
+  for (int i = 0; i < grpInfoMap->mGroup->g_count; i++)
+  {
+    g_info = &grpInfoMap->mGroup->m_group[i];
+    if(!g_info)
+      throw std::runtime_error("Failed to get memory mapping information");
+    
+    m_grp_info.emplace(i, std::make_pair(g_info->l_bank_idx, g_info->h_bank_idx));
+  }
 }
 
 std::string

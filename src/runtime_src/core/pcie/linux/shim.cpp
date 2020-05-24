@@ -1376,26 +1376,54 @@ unsigned int shim::xclImportBO(int fd, unsigned flags)
 /*
  * xclPopulateMemGroupInfo()
  */
-int shim::xclPopulateMemGroupInfo(struct xcl_mem_group *grpInfo)
+int shim::xclPopulateMemGroupInfo(struct xcl_mem_group_map *grpMapInfo)
 {
     std::string errmsg;
-    struct xcl_mem_group_info *m_ptr = NULL;
+    uint32_t info_size;
+    char* memblock = NULL;
+    struct xcl_mem_map mMap;
+    struct xcl_mem_map_info *mMap_ptr = NULL;
+    struct xcl_mem_group mGrp;
+    struct xcl_mem_group_info *mGrp_ptr = NULL;
+
+    std::vector<char> memMapInfo;
+    mDev->sysfs_get("", "mem_mapping_info", errmsg, memMapInfo);
+
+    if (memMapInfo.empty()) 
+        return -EINVAL;
+   
+    memset((void *)&mMap, 0, sizeof(struct xcl_mem_map));    
+    memblock = memMapInfo.data();
+
+    /* Populate Memory Mapping information */
+    info_size = sizeof(struct xcl_mem_map_info);
+    for (unsigned count = 0; count < memMapInfo.size(); count += info_size) {
+        mMap_ptr = &mMap.m_map[mMap.m_count];
+        memcpy((void *)mMap_ptr, memblock, info_size);
+        memblock += info_size;
+        mMap.m_count++;
+    }
+    grpMapInfo->mMap = &mMap;
 
     std::vector<char> memGroupInfo;
     mDev->sysfs_get("", "mem_group_info", errmsg, memGroupInfo);
 
     if (memGroupInfo.empty()) 
         return -EINVAL;
-        
-    char* memblock = memGroupInfo.data();
-    uint32_t info_size = sizeof(struct xcl_mem_group_info);
-    for (unsigned count = 0; count < memGroupInfo.size(); count += info_size) {
-        m_ptr = &grpInfo->m_group[count];
-        memcpy((void *)m_ptr, memblock, info_size);
-        memblock += info_size;
-        grpInfo->m_count++;
-    }
+   
+    memset((void *)&mGrp, 0, sizeof(struct xcl_mem_group));    
+    memblock = memGroupInfo.data();
 
+    /* Populate Memory Group information */
+    info_size = sizeof(struct xcl_mem_group_info);
+    for (unsigned count = 0; count < memGroupInfo.size(); count += info_size) {
+        mGrp_ptr = &mGrp.m_group[mGrp.g_count];
+        memcpy((void *)mGrp_ptr, memblock, info_size);
+        memblock += info_size;
+        mGrp.g_count++;
+    }
+    grpMapInfo->mGroup = &mGrp;
+    
     return 0;
 }
 
@@ -2232,15 +2260,15 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     LOAD_XCLBIN_CB ;
 #endif
     if (!ret) {
-      struct xcl_mem_group grpInfo;
+      struct xcl_mem_group_map grpMapInfo;
       auto core_device = xrt_core::get_userpf_device(drv);
       core_device->register_axlf(buffer);
 
-      /* Populate memory group info from sysfs */
-      drv->xclPopulateMemGroupInfo(&grpInfo);
+      /* Populate memory group mapping info from sysfs */
+      drv->xclPopulateMemGroupInfo(&grpMapInfo);
       
       /* Store the retrive info in device class */
-      core_device->set_mem_group_info(&grpInfo);
+      core_device->store_mem_group_info(&grpMapInfo);
 
 #ifndef DISABLE_DOWNLOAD_XCLBIN
       ret = xrt_core::scheduler::init(handle, buffer);
@@ -2502,12 +2530,6 @@ ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf, size_t 
 #endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclUnmgdPread(flags, buf, count, offset) : -ENODEV;
-}
-
-int xclGetBOGroup(xclDeviceHandle handle, unsigned int cuidx, unsigned int argidx)
-{
-    xocl::shim *drv = xocl::shim::handleCheck(handle);
-    return drv ? drv->xclGetBOGroup(cuidx, argidx) : -ENODEV;
 }
 
 int xclGetBOProperties(xclDeviceHandle handle, unsigned int boHandle, xclBOProperties *properties)

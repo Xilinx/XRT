@@ -92,28 +92,56 @@ static ssize_t kdsstat_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(kdsstat);
 
-static ssize_t mem_group_info_show(struct device *dev,
+static ssize_t mem_mapping_info_show(struct device *dev,
                 struct device_attribute *attr, char *buf)
 {
-        struct xocl_dev *xdev = dev_get_drvdata(dev);
-        struct xocl_drm *drm_p = XOCL_DRM(xdev);
-        struct xocl_mem_conn *mem_conn = NULL;
-        struct xocl_mem_conn_info *m_conn = NULL;
+        struct xocl_dev 		*xdev = dev_get_drvdata(dev);
+        struct xocl_drm 		*drm_p = XOCL_DRM(xdev);
+        struct xocl_mem_map 		*mem_map = NULL;
+        struct xocl_mem_map_info 	*m_map = NULL;
         ssize_t size = 0;
         int i;
 
         if (!drm_p || !drm_p->m_connect)
                 return 0;
 
-        mem_conn = drm_p->m_connect->mem_conn;
-        if (!mem_conn)
+        mem_map = drm_p->m_connect->mem_map;
+        if (!mem_map)
                 return 0;
 
-        for (i = 0; i < mem_conn->m_count; i++) {
-                m_conn = mem_conn->m_conn[i];
-                memcpy((void *)buf, (void *)m_conn, sizeof(*m_conn));
-                buf += sizeof(*m_conn);
-                size += sizeof(*m_conn);
+        for (i = 0; i < mem_map->m_count; i++) {
+                m_map = mem_map->m_map[i];
+                memcpy((void *)buf, (void *)m_map, sizeof(*m_map));
+                buf += sizeof(*m_map);
+                size += sizeof(*m_map);
+        }
+
+        return size;
+}
+static DEVICE_ATTR_RO(mem_mapping_info);
+
+static ssize_t mem_group_info_show(struct device *dev,
+                struct device_attribute *attr, char *buf)
+{
+        struct xocl_dev 		*xdev = dev_get_drvdata(dev);
+        struct xocl_drm 		*drm_p = XOCL_DRM(xdev);
+        struct xocl_mem_group 		*mem_group = NULL;
+        struct xocl_mem_group_info 	*m_grp = NULL;
+        ssize_t size = 0;
+        int i;
+
+        if (!drm_p || !drm_p->m_connect)
+                return 0;
+
+       	mem_group = drm_p->m_connect->mem_group;
+        if (!mem_group)
+                return 0;
+
+        for (i = 0; i < mem_group->g_count; i++) {
+                m_grp = mem_group->m_group[i];
+                memcpy((void *)buf, (void *)m_grp, sizeof(*m_grp));
+                buf += sizeof(*m_grp);
+                size += sizeof(*m_grp);
         }
 
         return size;
@@ -550,6 +578,7 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_kdsstat.attr,
 	&dev_attr_memstat.attr,
 	&dev_attr_mem_group_info.attr,
+	&dev_attr_mem_mapping_info.attr,
 	&dev_attr_memstat_raw.attr,
 	&dev_attr_p2p_enable.attr,
 	&dev_attr_dev_offline.attr,
