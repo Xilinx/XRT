@@ -676,7 +676,12 @@ static int clock_ocl_freqscaling_acap(struct clock *clock, bool force,
 	BUG_ON(!mutex_is_locked(&clock->clock_lock));
 
 	for (i = 0; i < CLOCK_MAX_NUM_CLOCKS; ++i) {
-		/* A value of zero means skip scaling for this clock index */
+		/*
+		 * A value of zero means skip scaling for this clock index.
+		 * Note: for ULP clock, we will reset old value again, thus
+		 *       we save old value into the request, and then
+		 *       continue the setting for every non zero request.
+		 */
 		if (!clock->clock_ocl_frequency[i])
 			continue;
 
@@ -774,10 +779,8 @@ static int clock_ocl_freqscaling_acap(struct clock *clock, bool force,
 		/* init the freq change */
 		reg_wr(clock->clock_bases[i] + OCL_CLKWIZ_INIT_CONFIG, 0x3);
 		err = clock_wiz_busy(clock, i, 100, 100);
-		if (err) {
-			/* ??? should we restore back if fail */
+		if (err)
 			break;
-		}
 	}
 
 	CLOCK_INFO(clock, "returns %d", err);
