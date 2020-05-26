@@ -49,9 +49,10 @@ struct X
   X() { singleton_instance(); }
 } x;
 
-static std::string
+static boost::property_tree::ptree
 driver_version(const std::string& driver)
 {
+  boost::property_tree::ptree _pt;
   std::string line("unknown");
   std::string path("/sys/module/");
   path += driver;
@@ -61,7 +62,18 @@ driver_version(const std::string& driver)
     getline(ver, line);
   }
 
-  return line;
+  _pt.put("name", driver);
+  _pt.put("version", line);
+  return _pt;
+}
+
+static boost::property_tree::ptree
+glibc_info()
+{
+  boost::property_tree::ptree _pt;
+  _pt.put("name", "glibc");
+  _pt.put("version", gnu_get_libc_version());
+  return _pt;
 }
 
 static std::vector<std::weak_ptr<xrt_core::device_linux>> mgmtpf_devices(16); // fix size
@@ -77,8 +89,10 @@ void
 system_linux::
 get_xrt_info(boost::property_tree::ptree &pt)
 {
-  pt.put("xocl",      driver_version("xocl"));
-  pt.put("xclmgmt",   driver_version("xclmgmt"));
+  boost::property_tree::ptree _ptDriverInfo;
+  _ptDriverInfo.push_back( std::make_pair("", driver_version("xocl") ));
+  _ptDriverInfo.push_back( std::make_pair("", driver_version("xclmgmt") ));
+  pt.put_child("drivers", _ptDriverInfo);
 }
 
 
@@ -93,8 +107,9 @@ get_os_info(boost::property_tree::ptree &pt)
     pt.put("version",   sysinfo.version);
     pt.put("machine",   sysinfo.machine);
   }
-
-  pt.put("glibc", gnu_get_libc_version());
+  boost::property_tree::ptree _ptLibInfo;
+  _ptLibInfo.push_back( std::make_pair("", glibc_info() ));
+  pt.put_child("libraries", _ptLibInfo);
 
   // The file is a requirement as per latest Linux standards
   // https://www.freedesktop.org/software/systemd/man/os-release.html
