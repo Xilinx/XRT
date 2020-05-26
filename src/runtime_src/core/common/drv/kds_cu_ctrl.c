@@ -9,6 +9,14 @@
 
 #include "kds_cu_ctrl.h"
 
+/**
+ * get_cu_by_addr -Get CU index by address
+ *
+ * @kcuc: KDS CU controller
+ * @addr: The address of the target CU
+ *
+ * Returns CU index if found. Returns an out of range number if not found.
+ */
 static int
 get_cu_by_addr(struct kds_cu_ctrl *kcuc, u32 addr)
 {
@@ -243,10 +251,10 @@ int add_cu(struct kds_cu_ctrl *kcuc, struct xrt_cu *xcu)
 
 		kcuc->xcus[i] = xcu;
 		++kcuc->num_cus;
-		break;
+		return 0;
 	}
 
-	return i;
+	return -ENOSPC;
 }
 
 int remove_cu(struct kds_cu_ctrl *kcuc, struct xrt_cu *xcu)
@@ -265,10 +273,10 @@ int remove_cu(struct kds_cu_ctrl *kcuc, struct xrt_cu *xcu)
 
 		kcuc->xcus[i] = NULL;
 		--kcuc->num_cus;
-		break;
+		return 0;
 	}
 
-	return i;
+	return -ENODEV;
 }
 
 ssize_t show_cu_ctx(struct kds_cu_ctrl *kcuc, char *buf)

@@ -64,7 +64,7 @@ static void cu_ctrl_dispatch(struct xocl_cu_ctrl *xcuc, struct kds_command *xcmd
 	//xcmd->cb.free(xcmd);
 	//return;
 
-	/* In here we needs to know the CU subdevice instance id,
+	/* In here we need to know the CU subdevice instance id,
 	 * which is determined at load xclbin.
 	 * It is different from the CU index defined by config command.
 	 */
@@ -97,12 +97,9 @@ static int cu_ctrl_add_cu(struct platform_device *pdev, struct xrt_cu *xcu)
 	int ret;
 
 	ret = add_cu(TO_CU_CTRL(platform_get_drvdata(pdev)), xcu);
-	if (ret < 0)
+	if (ret < 0) {
+		XCUC_ERR(xcuc, "Could not find a slot for CU, ret %d", ret);
 		return ret;
-
-	if (ret == MAX_CUS) {
-		XCUC_ERR(xcuc, "Could not find a slot for CU %p", xcu);
-		return -ENOSPC;
 	}
 
 	return 0;
@@ -114,15 +111,12 @@ static int cu_ctrl_remove_cu(struct platform_device *pdev, struct xrt_cu *xcu)
 	int ret;
 
 	ret = remove_cu(TO_CU_CTRL(platform_get_drvdata(pdev)), xcu);
-	if (ret < 0)
+	if (ret < 0) {
+		XCUC_ERR(xcuc, "Could not find CU, ret %d", ret);
 		return ret;
-
-	if (ret == MAX_CUS) {
-		XCUC_ERR(xcuc, "Could not find CU %p", xcu);
-		return -EINVAL;
 	}
 
-	return ret;
+	return 0;
 }
 
 static int cu_ctrl_remove(struct platform_device *pdev)

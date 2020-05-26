@@ -130,6 +130,7 @@ static int xocl_context_ioctl(struct xocl_dev *xdev, void *data,
 		break;
 	default:
 		ret = -EINVAL;
+		break;
 	}
 
 	return ret;

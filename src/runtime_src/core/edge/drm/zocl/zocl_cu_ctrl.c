@@ -75,7 +75,7 @@ cu_ctrl_dispatch(struct zocl_cu_ctrl *zcuc, struct kds_command *xcmd)
 	return;
 #endif
 
-	/* In here we needs to know the CU subdevice instance id,
+	/* In here we need to know the CU subdevice instance id,
 	 * which is determined at load xclbin.
 	 * It is different from the CU index defined by config command.
 	 */
@@ -108,12 +108,9 @@ int cu_ctrl_add_cu(struct drm_zocl_dev *zdev, struct xrt_cu *xcu)
 	int ret;
 
 	ret = add_cu(TO_CU_CTRL(zocl_kds_getctrl(zdev, KDS_CU)), xcu);
-	if (ret < 0)
+	if (ret < 0) {
+		DRM_ERROR("Could not find a slot for CU, ret %d\n", ret);
 		return ret;
-
-	if (ret == MAX_CUS) {
-		DRM_ERROR("Could not find a slot for CU %px\n", xcu);
-		return -ENOSPC;
 	}
 
 	return 0;
@@ -124,12 +121,9 @@ int cu_ctrl_remove_cu(struct drm_zocl_dev *zdev, struct xrt_cu *xcu)
 	int ret;
 
 	ret = remove_cu(TO_CU_CTRL(zocl_kds_getctrl(zdev, KDS_CU)), xcu);
-	if (ret < 0)
+	if (ret < 0) {
+		DRM_ERROR("Could not find CU, ret %d\n", ret);
 		return ret;
-
-	if (ret == MAX_CUS) {
-		DRM_ERROR("Could not find CU %px\n", xcu);
-		return -EINVAL;
 	}
 
 	return 0;

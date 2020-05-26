@@ -278,9 +278,9 @@ u32 kds_live_clients(struct kds_sched *kds, pid_t **plist)
 			i++;
 		}
 	}
-	mutex_unlock(&kds->lock);
 
 out:
+	mutex_unlock(&kds->lock);
 	return count;
 }
 

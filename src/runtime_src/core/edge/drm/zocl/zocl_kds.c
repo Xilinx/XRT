@@ -54,8 +54,10 @@ zocl_add_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 		return -ENOMEM;
 
 	ret = copy_from_user(id, uuid_ptr, sizeof(uuid_t));
-	if (ret)
-		goto out;
+	if (ret) {
+		vfree(id);
+		return ret;
+	}
 
 	mutex_lock(&client->lock);
 	if (!client->num_ctx) {
@@ -82,8 +84,8 @@ out:
 		client->xclbin_id = NULL;
 		(void) zocl_unlock_bitstream(zdev, id);
 	}
-	vfree(id);
 	mutex_unlock(&client->lock);
+	vfree(id);
 	return ret;
 }
 
@@ -137,8 +139,8 @@ zocl_del_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 	}
 
 out:
-	vfree(id);
 	mutex_unlock(&client->lock);
+	vfree(id);
 	return ret;
 }
 
@@ -158,6 +160,7 @@ int zocl_context_ioctl(struct drm_zocl_dev *zdev, void *data,
 		break;
 	default:
 		ret = -EINVAL;
+		break;
 	}
 
 	return ret;
