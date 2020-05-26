@@ -57,6 +57,7 @@ ReportHost::writeReport(const xrt_core::device * _pDevice,
                         std::iostream & _output) const
 {
   boost::property_tree::ptree _pt;
+  boost::property_tree::ptree empty_ptree;
   getPropertyTreeInternal(_pDevice, _pt);
 
   _output << "System Configuration\n";
@@ -64,7 +65,7 @@ ReportHost::writeReport(const xrt_core::device * _pDevice,
   _output << boost::format("  %-20s : %s\n") % "Release" % _pt.get<std::string>("host.os.release", "N/A");
   _output << boost::format("  %-20s : %s\n") % "Version" % _pt.get<std::string>("host.os.version", "N/A");
   _output << boost::format("  %-20s : %s\n") % "Machine" % _pt.get<std::string>("host.os.machine", "N/A");
-  boost::property_tree::ptree& available_libraries = _pt.get_child("host.os.libraries");
+  boost::property_tree::ptree& available_libraries = _pt.get_child("host.os.libraries", empty_ptree);
   for(auto& kl : available_libraries) {
     boost::property_tree::ptree& lib = kl.second;
     std::string lib_name = lib.get<std::string>("name", "N/A");
@@ -80,7 +81,7 @@ ReportHost::writeReport(const xrt_core::device * _pDevice,
   _output << boost::format("  %-20s : %s\n") % "Branch" % _pt.get<std::string>("host.xrt.branch", "N/A");
   _output << boost::format("  %-20s : %s\n") % "Hash" % _pt.get<std::string>("host.xrt.hash", "N/A");
   _output << boost::format("  %-20s : %s\n") % "Hash Date" % _pt.get<std::string>("host.xrt.build_date", "N/A");
-  boost::property_tree::ptree& available_drivers = _pt.get_child("host.xrt.drivers");
+  boost::property_tree::ptree& available_drivers = _pt.get_child("host.xrt.drivers", empty_ptree);
   for(auto& drv : available_drivers) {
     boost::property_tree::ptree& driver = drv.second;
     std::string drv_name = driver.get<std::string>("name", "N/A");
