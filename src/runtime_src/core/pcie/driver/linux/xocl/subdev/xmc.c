@@ -411,6 +411,7 @@ static int xmc_access(struct platform_device *pdev, enum xocl_xmc_flags flags);
 static bool scaling_condition_check(struct xocl_xmc *xmc, struct device *dev);
 static const struct file_operations xmc_fops;
 static bool is_sc_fixed(struct xocl_xmc *xmc);
+static bool stable_connection_to_sc(struct xocl_xmc *xmc);
 
 static void set_sensors_data(struct xocl_xmc *xmc, struct xcl_sensor *sensors)
 {
@@ -2771,10 +2772,11 @@ static int load_xmc(struct xocl_xmc *xmc)
 		READ_REG32(xmc, XMC_VERSION_REG),
 		READ_REG32(xmc, XMC_STATUS_REG),
 		READ_REG32(xmc, XMC_MAGIC_REG));
-	xocl_info(&xmc->pdev->dev,
-		"Wait for 5 seconds to stable the connection with SC");
-	ssleep(5);
-	xmc->state = XMC_STATE_ENABLED;
+
+	ret = stable_connection_to_sc(xmc);
+
+	/* Note: if xmc->state is not enabled, board info won't be shown */
+	xmc->state = ret ? XMC_STATE_ERROR : XMC_STATE_ENABLED;
 
 	if (XMC_PRIVILEGED(xmc) && xocl_clk_scale_on(xdev_hdl))
 		xmc_clk_scale_config(xmc->pdev);
@@ -3447,6 +3449,53 @@ static bool is_sc_fixed(struct xocl_xmc *xmc)
 		return true;
 
 	return false;
+}
+
+static bool is_stablized_sc(struct xocl_xmc *xmc)
+{
+	struct xmc_status *status;
+	u32 val;
+
+	val = READ_REG32(xmc, XMC_STATUS_REG);
+	status = (struct xmc_status *)&val;
+
+	return !status->invalid_sc &&
+	    status->init_done == 1 &&
+	    status->sc_mode > 0 &&
+	    status->sc_comm_ver > 0;
+}
+
+static bool stable_connection_to_sc(struct xocl_xmc *xmc)
+{
+	u32 xmc_core_version;
+
+	xmc_core_version = READ_REG32(xmc, XMC_CORE_VERSION_REG);
+	xocl_info(&xmc->pdev->dev, "CMC Core Version 0x%x offset 0x%x",
+	    xmc_core_version, XMC_CORE_VERSION_REG);
+
+	if (xmc_core_version >= XMC_CORE_SUPPORT_NOTUPGRADABLE) {
+		int i;
+		mdelay(1000);
+
+		for (i = 0; !is_stablized_sc(xmc) && i < 5; i++) {
+			mdelay(1000);
+		}
+
+		if (!is_stablized_sc(xmc)) {
+			xocl_warn(&xmc->pdev->dev,
+			    "Wait %d seconds, but no stable connection to SC.", i);
+			return false;
+		} else {
+			xocl_info(&xmc->pdev->dev,
+			    "Wait %d seconds, SC connection is stable.", i);
+			return true;
+		}
+	}
+
+	xocl_info(&xmc->pdev->dev,
+	    "Wait for 5 seconds to stablize SC connection.");
+	ssleep(5);
+	return true;
 }
 
 static int smartnic_cmc_access(struct platform_device *pdev,
