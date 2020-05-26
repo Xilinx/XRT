@@ -252,12 +252,27 @@ prep_centos7()
 
 prep_rhel7()
 {
+    echo "Enabling EPEL repository..."
+    rpm -q --quiet epel-release
+    if [ $? != 0 ]; then
+    	 yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+	 yum check-update
+    fi
+    
     echo "Enabling RHEL SCL repository..."
     yum-config-manager --enable rhel-server-rhscl-7-rpms
+    
 }
 
 prep_rhel8()
 {
+    echo "Enabling EPEL repository..."
+    rpm -q --quiet epel-release
+    if [ $? != 0 ]; then
+    	 yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+	 yum check-update
+    fi
+    
     echo "Enabling CodeReady-Builder repository..."
     subscription-manager repos --enable "codeready-builder-for-rhel-8-x86_64-rpms"
 }
@@ -286,24 +301,14 @@ prep_centos()
 
 prep_rhel()
 {
-    echo "Enabling EPEL repository..."
-    rpm -q --quiet epel-release
-    if [ $? != 0 ]; then
-	if [ $MAJOR -lt "8" ]; then
-	    yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-	else
-	    yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
-	fi
-	yum check-update
-    fi
-    echo "Installing cmake3 from EPEL repository..."
-    yum install -y cmake3
-
-    if [ $MAJOR == 8 ]; then
+   if [ $MAJOR == 8 ]; then
         prep_rhel8
     else
         prep_rhel7
     fi
+    
+    echo "Installing cmake3 from EPEL repository..."
+    yum install -y cmake3
 }
 
 install()
