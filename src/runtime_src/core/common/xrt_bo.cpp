@@ -29,6 +29,10 @@
 #include <map>
 #include <set>
 
+#ifdef _WIN32
+# pragma warning( disable : 4244 )
+#endif
+
 namespace {
 
 inline size_t
@@ -98,7 +102,7 @@ public:
     std::memcpy(hbuf, src, sz);
   }
 
-  void    
+  void
   read(void* dst, size_t sz, size_t skip)
   {
     if (sz + skip > size)
@@ -189,7 +193,7 @@ public:
 
 // class buffer_sub - Sub buffer
 //
-// Sub-buffer created from parent buffer  
+// Sub-buffer created from parent buffer
 class buffer_sub : public bo_impl
 {
   std::shared_ptr<bo_impl> parent;  // participate in ownership of parent
@@ -268,7 +272,7 @@ send_exception_message(const char* msg)
   xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR, "XRT", msg);
 }
 
-// driver allocates host buffer  
+// driver allocates host buffer
 static std::shared_ptr<xrt::bo_impl>
 alloc_kbuf(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
@@ -283,7 +287,7 @@ alloc_ubuf(xclDeviceHandle dhdl, void* userptr, size_t sz, xrtBufferFlags flags,
   // error if userptr is not aligned properly
   if (!is_aligned_ptr(userptr))
     throw xrt_core::error(-EINVAL, "userptr is not aligned");
-  
+
   auto handle = alloc_bo(dhdl, userptr, sz, flags, grp);
   auto boh = std::make_shared<xrt::buffer_ubuf>(dhdl, handle, sz, userptr);
   return boh;
@@ -303,7 +307,7 @@ alloc(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
   auto type = flags & ~XRT_BO_FLAGS_MEMIDX_MASK;
   switch (type) {
   case 0:
-    return alloc_hbuf(dhdl, xrt_core::aligned_alloc(getpagesize(), sz), sz, flags, grp);
+    return alloc_hbuf(dhdl, xrt_core::aligned_alloc(get_alignment(), sz), sz, flags, grp);
   case XCL_BO_FLAGS_CACHEABLE:
   case XCL_BO_FLAGS_SVM:
   case XCL_BO_FLAGS_DEV_ONLY:
@@ -321,7 +325,7 @@ alloc(xclDeviceHandle dhdl, void* userptr, size_t sz, xrtBufferFlags flags, xrtM
 {
   return alloc_ubuf(dhdl, userptr, sz, flags, grp);
 }
-  
+
 
 static std::shared_ptr<xrt::bo_impl>
 sub_buffer(const std::shared_ptr<xrt::bo_impl>& parent, size_t size, size_t offset)
@@ -349,10 +353,10 @@ address(xrtBufferHandle handle)
   auto boh = get_boh(handle);
   return boh->address();
 }
-    
+
 }} // namespace bo, xrt_core
 
-  
+
 ////////////////////////////////////////////////////////////////
 // xrt_bo C++ API implmentations (xrt_bo.h)
 ////////////////////////////////////////////////////////////////
@@ -398,7 +402,7 @@ unmap()
   // nothing to do
 }
 
-void 
+void
 bo::
 write(const void* src, size_t size, size_t seek)
 {
@@ -411,7 +415,7 @@ read(void* dst, size_t size, size_t skip)
 {
   handle->read(dst, size, skip);
 }
-  
+
 } // xrt
 
 ////////////////////////////////////////////////////////////////
@@ -530,7 +534,7 @@ xrtBOMap(xrtBufferHandle bhdl)
 }
 
 int
-xrtBOUnmap(xrtBufferHandle bhdl)
+xrtBOUnmap(xrtBufferHandle)
 {
   try {
     return 0; // nothing to do
@@ -580,4 +584,3 @@ xrtBORead(xrtBufferHandle bhdl, void* dst, size_t size, size_t skip)
     return errno = 0;
   }
 }
-
