@@ -859,9 +859,8 @@ static int clock_ocl_freqscaling_ultrascale(struct clock *clock, bool force,
 
 		err = clock_wiz_busy(clock, i, 100, 100);
 		if (err) {
-			CLOCK_ERR(clock, "clockwiz MMCM/PLL did not lock after %d"
-				"ms, restoring the original configuration",
-				100 * 100);
+			CLOCK_ERR(clock, "clockwiz MMCM/PLL did not lock, "
+				"restoring the original configuration");
 			/* restore the original clock configuration */
 			reg_wr(clock->clock_bases[i] +
 				OCL_CLKWIZ_CONFIG_OFFSET(23), 0x00000004);
