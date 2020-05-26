@@ -27,6 +27,16 @@
 #define	OCL_CLK_FREQ_V5_CLK0_ENABLED	0x10000
 #define	CLOCK_DEFAULT_EXPIRE_SECS	1
 
+/* REGs for ACAP Versal */
+#define	OCL_CLKWIZ_INIT_CONFIG		0x14
+#define	OCL_CLKWIZ_DIVCLK		0x380
+#define	OCL_CLKWIZ_DIVCLK_TS		0x384
+#define	OCL_CLKWIZ_CLKFBOUT		0x330
+#define	OCL_CLKWIZ_CLKFBOUT_TS		0x334
+#define	OCL_CLKWIZ_CLKFBOUT_FRACT	0x3fc
+#define	OCL_CLKWIZ_CLKOUT0		0x338
+#define	OCL_CLKWIZ_CLKOUT0_TS		0x33c
+
 #define	CLK_MAX_VALUE		6400
 #define	CLK_SHUTDOWN_BIT	0x1
 #define	DEBUG_CLK_SHUTDOWN_BIT	0x2
@@ -47,6 +57,65 @@ struct ucs_control_status_ch1 {
 	unsigned int reserved1:15;
 	unsigned int clock_throttling_average:14;
 	unsigned int reserved2:2;
+};
+
+/* spec definition of ACAP Versal */
+struct acap_clkfbout {
+	u32 clkfbout_dt		:8;
+	u32 clkfbout_edge	:1;
+	u32 clkfbout_en		:1;
+	u32 clkfbout_mx		:2;
+	u32 clkfbout_prediv2	:1;
+	u32 reserved		:19;
+};
+
+struct acap_clkfbout_ts {
+	u32 clkfbout_lt		:8;
+	u32 clkfbout_ht		:8;
+	u32 reserved		:16;
+};
+
+struct acap_clkout0 {
+	u32 clkout0_dt		:8;
+	u32 clkout0_edge	:1;
+	u32 clkout0_mx		:2;
+	u32 clkout0_prediv2	:1;
+	u32 clkout0_used	:1;
+	u32 clkout0_p5en	:1;
+	u32 clkout0_start_h	:1;
+	u32 clkout0_p5_edge	:1;
+	u32 reserved		:16;
+};
+
+struct acap_clkout0_ts {
+	u32 clkout0_lt		:8;
+	u32 clkout0_ht		:8;
+	u32 reserved		:16;
+};
+
+struct acap_divclk {
+	u32 deskew_dly_2nd	:6;
+	u32 deskew_dly_en_2nd	:1;
+	u32 deskew_dly_path_2nd	:1;
+	u32 deskew_en_2nd	:1;
+	u32 direct_path_cntrl	:1;
+	u32 divclk_edge		:1;
+	u32 reserved		:21;
+};
+
+struct acap_divclk_ts {
+	u32 divclk_lt		:8;
+	u32 divclk_ht		:8;
+	u32 reserved		:16;
+};
+
+struct acap_clkfbout_fract {
+	u32 clkfbout_fract_alg	:1;
+	u32 clkfbout_fract_en	:1;
+	u32 clkfbout_fract_order:1;
+	u32 clkfbout_fract_seed	:2;
+	u32 skew_sel		:6;
+	u32 reserved		:21;
 };
 
 struct xocl_iores_map clock_res_map[] = {
@@ -241,38 +310,197 @@ const static struct xclmgmt_ocl_clockwiz {
 	{/*1462.500*/   650.000,        0x02710E01,     0x0000FA02}
 };
 
-static unsigned find_matching_freq_config(unsigned freq)
+/*
+ * Due to float caculation is needed, the following table is generated
+ * by this python script.
+ *    #!/usr/bin/python
+ *
+ *    import re
+ *    # import numpy as np
+ *
+ *    maxFreq = 650.0
+ *    minFreq = 10.0
+ *    step = 5.0
+ *
+ *    table = {}
+ *
+ *    for freq_req in range(int(minFreq), int(maxFreq + 1.0), int(step)):
+ *        freq_req = float(freq_req)
+ *        # floor the number
+ *        O = int(4320 / freq_req)
+ *        M = int((O * freq_req) / 33.333)
+ *        table[int(freq_req)] = [int(M), int(O), int(freq_req)]
+ *
+ *    print "================"
+ *    for freq,v in sorted(table.items()):
+ *        print ("\t{%u,\t%d,\t%d}," %(v[2], v[0], v[1]))
+ */
+const static struct xclmgmt_ocl_clockwiz acap_frequency_table[] = {
+        {10,    129,    432},
+        {15,    129,    288},
+        {20,    129,    216},
+        {25,    129,    172},
+        {30,    129,    144},
+        {35,    129,    123},
+        {40,    129,    108},
+        {45,    129,    96},
+        {50,    129,    86},
+        {55,    128,    78},
+        {60,    129,    72},
+        {65,    128,    66},
+        {70,    128,    61},
+        {75,    128,    57},
+        {80,    129,    54},
+        {85,    127,    50},
+        {90,    129,    48},
+        {95,    128,    45},
+        {100,   129,    43},
+        {105,   129,    41},
+        {110,   128,    39},
+        {115,   127,    37},
+        {120,   129,    36},
+        {125,   127,    34},
+        {130,   128,    33},
+        {135,   129,    32},
+        {140,   126,    30},
+        {145,   126,    29},
+        {150,   126,    28},
+        {155,   125,    27},
+        {160,   129,    27},
+        {165,   128,    26},
+        {170,   127,    25},
+        {175,   126,    24},
+        {180,   129,    24},
+        {185,   127,    23},
+        {190,   125,    22},
+        {195,   128,    22},
+        {200,   126,    21},
+        {205,   129,    21},
+        {210,   126,    20},
+        {215,   129,    20},
+        {220,   125,    19},
+        {225,   128,    19},
+        {230,   124,    18},
+        {235,   126,    18},
+        {240,   129,    18},
+        {245,   124,    17},
+        {250,   127,    17},
+        {255,   122,    16},
+        {260,   124,    16},
+        {265,   127,    16},
+        {270,   129,    16},
+        {275,   123,    15},
+        {280,   126,    15},
+        {285,   128,    15},
+        {290,   121,    14},
+        {295,   123,    14},
+        {300,   126,    14},
+        {305,   128,    14},
+        {310,   120,    13},
+        {315,   122,    13},
+        {320,   124,    13},
+        {325,   126,    13},
+        {330,   128,    13},
+        {335,   120,    12},
+        {340,   122,    12},
+        {345,   124,    12},
+        {350,   126,    12},
+        {355,   127,    12},
+        {360,   129,    12},
+        {365,   120,    11},
+        {370,   122,    11},
+        {375,   123,    11},
+        {380,   125,    11},
+        {385,   127,    11},
+        {390,   128,    11},
+        {395,   118,    10},
+        {400,   120,    10},
+        {405,   121,    10},
+        {410,   123,    10},
+        {415,   124,    10},
+        {420,   126,    10},
+        {425,   127,    10},
+        {430,   129,    10},
+        {435,   117,    9},
+        {440,   118,    9},
+        {445,   120,    9},
+        {450,   121,    9},
+        {455,   122,    9},
+        {460,   124,    9},
+        {465,   125,    9},
+        {470,   126,    9},
+        {475,   128,    9},
+        {480,   129,    9},
+        {485,   116,    8},
+        {490,   117,    8},
+        {495,   118,    8},
+        {500,   120,    8},
+        {505,   121,    8},
+        {510,   122,    8},
+        {515,   123,    8},
+        {520,   124,    8},
+        {525,   126,    8},
+        {530,   127,    8},
+        {535,   128,    8},
+        {540,   129,    8},
+        {545,   114,    7},
+        {550,   115,    7},
+        {555,   116,    7},
+        {560,   117,    7},
+        {565,   118,    7},
+        {570,   119,    7},
+        {575,   120,    7},
+        {580,   121,    7},
+        {585,   122,    7},
+        {590,   123,    7},
+        {595,   124,    7},
+        {600,   126,    7},
+        {605,   127,    7},
+        {610,   128,    7},
+        {615,   129,    7},
+        {620,   111,    6},
+        {625,   112,    6},
+        {630,   113,    6},
+        {635,   114,    6},
+        {640,   115,    6},
+        {645,   116,    6},
+        {650,   117,    6},
+};
+
+static unsigned find_matching_freq_config(unsigned freq,
+	const struct xclmgmt_ocl_clockwiz *table, int size)
 {
 	unsigned start = 0;
-	unsigned end = ARRAY_SIZE(frequency_table) - 1;
-	unsigned idx = ARRAY_SIZE(frequency_table) - 1;
+	unsigned end = size - 1;
+	unsigned idx = size - 1;
 
-	if (freq < frequency_table[0].ocl)
+	if (freq < table[0].ocl)
 		return 0;
 
-	if (freq > frequency_table[ARRAY_SIZE(frequency_table) - 1].ocl)
-		return ARRAY_SIZE(frequency_table) - 1;
+	if (freq > table[size - 1].ocl)
+		return size - 1;
 
 	while (start < end) {
-		if (freq == frequency_table[idx].ocl)
+		if (freq == table[idx].ocl)
 			break;
-		if (freq < frequency_table[idx].ocl)
+		if (freq < table[idx].ocl)
 			end = idx;
 		else
 			start = idx + 1;
 		idx = start + (end - start) / 2;
 	}
-	if (freq < frequency_table[idx].ocl)
+	if (freq < table[idx].ocl)
 		idx--;
 
 	return idx;
 }
 
-static unsigned find_matching_freq(unsigned freq)
+static unsigned find_matching_freq(unsigned freq,
+	const struct xclmgmt_ocl_clockwiz *freq_table, int freq_table_size)
 {
-	int idx = find_matching_freq_config(freq);
+	int idx = find_matching_freq_config(freq, freq_table, freq_table_size);
 
-	return frequency_table[idx].ocl;
+	return freq_table[idx].ocl;
 }
 
 static unsigned int clock_get_freq_counter_khz_impl(struct clock *clock, int idx)
@@ -322,7 +550,19 @@ static unsigned int clock_get_freq_counter_khz_impl(struct clock *clock, int idx
 	return freq;
 }
 
-static unsigned short clock_get_freq_impl(struct clock *clock, int idx)
+/* For ACAP Versal, we read from freq counter directly */
+static unsigned short clock_get_freq_acap(struct clock *clock, int idx)
+{
+	u32 freq_counter = 0;
+	if (clock->clock_freq_counters[idx]) {
+		freq_counter = clock_get_freq_counter_khz_impl(clock, idx);
+		freq_counter /= 1000; /* KHZ */
+	}
+
+	return freq_counter;
+}
+
+static unsigned short clock_get_freq_ultrascale(struct clock *clock, int idx)
 {
 #define XCL_INPUT_FREQ 100
 	const u64 input = XCL_INPUT_FREQ;
@@ -385,6 +625,168 @@ static unsigned short clock_get_freq_impl(struct clock *clock, int idx)
 	return freq;
 }
 
+static unsigned short clock_get_freq_impl(struct clock *clock, int idx)
+{
+	xdev_handle_t xdev = xocl_get_xdev(clock->clock_pdev);
+
+	return XOCL_DSA_IS_VERSAL(xdev) ?
+	    clock_get_freq_acap(clock, idx) :
+	    clock_get_freq_ultrascale(clock, idx);
+}
+
+static inline int clock_wiz_busy(struct clock *clock, int idx, int cycle,
+	int interval)
+{
+	u32 val = 0;
+	int count;
+
+	val = reg_rd(clock->clock_bases[idx] + OCL_CLKWIZ_STATUS_OFFSET);
+	for (count = 0; val != 1 && count < cycle; count++) {
+		mdelay(interval);
+		val = reg_rd(clock->clock_bases[idx] + OCL_CLKWIZ_STATUS_OFFSET);
+	}
+	if (val != 1) {
+		CLOCK_ERR(clock, "clockwiz(%d) is (%u) busy after %d ms",
+		    idx, val, cycle * interval);
+		return -ETIMEDOUT;
+	}
+
+	return 0;
+}
+
+/*
+ * Based on Clocking Wizard Versal ACAP, section Dynamic Reconfiguration
+ * through AXI4-Lite
+ */
+static int clock_ocl_freqscaling_acap(struct clock *clock, bool force,
+	u32 *curr_freq, int level)
+{
+	int i, err;
+	u32 val;
+	unsigned idx;
+	struct acap_divclk 		*divclk;
+	struct acap_divclk_ts 		*divclk_ts;
+	struct acap_clkfbout_fract 	*fract;
+	struct acap_clkfbout 		*clkfbout;
+	struct acap_clkfbout_ts 	*clkfbout_ts;
+	struct acap_clkout0 		*clkout0;
+	struct acap_clkout0_ts 		*clkout0_ts;
+	int M, O;
+
+	BUG_ON(!mutex_is_locked(&clock->clock_lock));
+
+	for (i = 0; i < CLOCK_MAX_NUM_CLOCKS; ++i) {
+		/*
+		 * A value of zero means skip scaling for this clock index.
+		 * Note: for ULP clock, we will reset old value again, thus
+		 *       we save old value into the request, and then
+		 *       continue the setting for every non zero request.
+		 */
+		if (!clock->clock_ocl_frequency[i])
+			continue;
+
+		/* skip if the io does not exist */
+		if (!clock->clock_bases[i])
+			continue;
+
+		idx = find_matching_freq_config(clock->clock_ocl_frequency[i],
+		    acap_frequency_table, ARRAY_SIZE(acap_frequency_table));
+
+		CLOCK_INFO(clock,
+		    "Clock: %d, Current: %d MHz, New: %d Mhz,  Force: %d",
+		    i, curr_freq[i], clock->clock_ocl_frequency[i], force);
+
+		/*
+		 * If current frequency is in the same step as the
+		 * requested frequency then nothing to do.
+		 */
+		if (!force && (find_matching_freq_config(curr_freq[i],
+		    acap_frequency_table, ARRAY_SIZE(acap_frequency_table)) == idx)) {
+			CLOCK_INFO(clock, "current freq and new freq are the "
+			    "same, skip updating.");
+			continue;
+		}
+
+		err = clock_wiz_busy(clock, i, 20, 50);
+		if (err)
+			break;
+		/*
+		 * Simplified formula for ACAP clock wizard.
+		 * 1) Set DIVCLK_EDGE, DIVCLK_LT and DIVCLK_HT to 0;
+		 * 2) Set CLKFBOUT_FRACT_EN to 0;
+		 * 3) O = floor(4320/freq_req), M = floor((O*freq_req)/33.333);
+		 * 4) CLKFBOUT_EDGE = if M%2 write 0x17, else write 0x16
+		 * 5) CLKFBOUT_LT_HT = (M-M%2)/2_(M-M%2)/2
+		 * 6) check CLKOUT0_PREDIV2, CLKOUT0_P5EN == 0
+		 * 7) CLKOUT0_EDGE O%2 write 0x13, else write 0x12
+		 * 8) CLKOUT0_LT_HT = (O-(O%2))/2
+		 */
+		/* Step 1) */
+		val = reg_rd(clock->clock_bases[i] + OCL_CLKWIZ_DIVCLK);
+		divclk = (struct acap_divclk *)&val;
+		divclk->divclk_edge = 0;
+		reg_wr(clock->clock_bases[i] + OCL_CLKWIZ_DIVCLK, val);
+
+		val = reg_rd(clock->clock_bases[i] + OCL_CLKWIZ_DIVCLK_TS);
+		divclk_ts = (struct acap_divclk_ts *)&val;
+		divclk_ts->divclk_lt = 0;
+		divclk_ts->divclk_ht = 0;
+		reg_wr(clock->clock_bases[i] + OCL_CLKWIZ_DIVCLK_TS, val);
+
+		/* Step 2) */
+		val = reg_rd(clock->clock_bases[i] + OCL_CLKWIZ_CLKFBOUT_FRACT);
+		fract = (struct acap_clkfbout_fract *)&val;
+		fract->clkfbout_fract_en = 0;
+		reg_wr(clock->clock_bases[i] + OCL_CLKWIZ_CLKFBOUT_FRACT, val);
+
+		/* Step 3) */
+		M = acap_frequency_table[idx].config0;
+		O = acap_frequency_table[idx].config2;
+
+		/* Step 4) */
+		val = reg_rd(clock->clock_bases[i] + OCL_CLKWIZ_CLKFBOUT);
+		clkfbout = (struct acap_clkfbout *)&val;
+		clkfbout->clkfbout_edge = (M % 2) ? 1 : 0;
+		clkfbout->clkfbout_en = 1;
+		clkfbout->clkfbout_mx = 1;
+		clkfbout->clkfbout_prediv2 = 1;
+		reg_wr(clock->clock_bases[i] + OCL_CLKWIZ_CLKFBOUT, val);
+
+		/* Step 5) */
+		val = 0;
+		clkfbout_ts = (struct acap_clkfbout_ts *)&val;
+		clkfbout_ts->clkfbout_lt = (M - (M % 2)) / 2;
+		clkfbout_ts->clkfbout_ht = (M - (M % 2)) / 2;
+		reg_wr(clock->clock_bases[i] + OCL_CLKWIZ_CLKFBOUT_TS, val);
+
+		/* Step 6, 7) */
+		val = reg_rd(clock->clock_bases[i] + OCL_CLKWIZ_CLKOUT0);
+		clkout0 = (struct acap_clkout0 *)&val;
+		clkout0->clkout0_edge = (O % 2) ? 1 : 0;
+		clkout0->clkout0_mx = 1;
+		clkout0->clkout0_used = 1;
+		clkout0->clkout0_prediv2 = 0;
+		clkout0->clkout0_p5en = 0;
+		reg_wr(clock->clock_bases[i] + OCL_CLKWIZ_CLKOUT0, val);
+
+		/* Step 8) */
+		val = 0;
+		clkout0_ts = (struct acap_clkout0_ts *)&val;
+		clkout0_ts->clkout0_lt = (O - (O % 2)) / 2;
+		clkout0_ts->clkout0_ht = (O - (O % 2)) / 2;
+		reg_wr(clock->clock_bases[i] + OCL_CLKWIZ_CLKOUT0_TS, val);
+
+		/* init the freq change */
+		reg_wr(clock->clock_bases[i] + OCL_CLKWIZ_INIT_CONFIG, 0x3);
+		err = clock_wiz_busy(clock, i, 100, 100);
+		if (err)
+			break;
+	}
+
+	CLOCK_INFO(clock, "returns %d", err);
+	return err;
+}
+
 /*
  * Based on Clocking Wizard v5.1, section Dynamic Reconfiguration
  * through AXI4-Lite
@@ -393,12 +795,11 @@ static unsigned short clock_get_freq_impl(struct clock *clock, int idx)
  *       based on Linux doc of timers, mdelay may not be exactly accurate
  *       on non-PC devices.
  */
-static int clock_ocl_freqscaling_impl(struct clock *clock, bool force,
+static int clock_ocl_freqscaling_ultrascale(struct clock *clock, bool force,
 	u32 *curr_freq, int level)
 {
 	u32 config;
 	int i;
-	int j = 0;
 	u32 val = 0;
 	unsigned idx = 0;
 	long err = 0;
@@ -410,7 +811,6 @@ static int clock_ocl_freqscaling_impl(struct clock *clock, bool force,
 		force = true;
 
 	for (i = 0; i < CLOCK_MAX_NUM_CLOCKS; ++i) {
-		int count;
 
 		/* A value of zero means skip scaling for this clock index */
 		if (!clock->clock_ocl_frequency[i])
@@ -420,7 +820,8 @@ static int clock_ocl_freqscaling_impl(struct clock *clock, bool force,
 		if (!clock->clock_bases[i])
 			continue;
 
-		idx = find_matching_freq_config(clock->clock_ocl_frequency[i]);
+		idx = find_matching_freq_config(clock->clock_ocl_frequency[i],
+		    frequency_table, ARRAY_SIZE(frequency_table));
 
 		CLOCK_INFO(clock,
 		    "Clock: %d, Current: %d MHz, New: %d Mhz,  Force: %d",
@@ -430,22 +831,17 @@ static int clock_ocl_freqscaling_impl(struct clock *clock, bool force,
 		 * If current frequency is in the same step as the
 		 * requested frequency then nothing to do.
 		 */
-		if (!force && (find_matching_freq_config(curr_freq[i]) == idx)) {
+		if (!force && (find_matching_freq_config(curr_freq[i],
+		    frequency_table, ARRAY_SIZE(frequency_table)) == idx)) {
 			CLOCK_INFO(clock, "current freq and new freq are the "
 			    "same, skip updating.");
 			continue;
 		}
 
-		val = reg_rd(clock->clock_bases[i] + OCL_CLKWIZ_STATUS_OFFSET);
-		for (count = 0; val != 1 && count < 20; count++) {
-			mdelay(50);
-			val = reg_rd(clock->clock_bases[i] + OCL_CLKWIZ_STATUS_OFFSET);
-		}
-		if (val != 1) {
-			CLOCK_ERR(clock, "clockwiz(%d) is (%u) busy", i, val);
-			err = -EBUSY;
+		err = clock_wiz_busy(clock, i, 20, 50);
+		if (err)
 			break;
-		}
+
 		config = frequency_table[idx].config0;
 		reg_wr(clock->clock_bases[i] + OCL_CLKWIZ_CONFIG_OFFSET(0),
 			config);
@@ -460,19 +856,11 @@ static int clock_ocl_freqscaling_impl(struct clock *clock, bool force,
 			0x00000002);
 
 		CLOCK_INFO(clock, "clockwiz waiting for locked signal");
-		mdelay(100);
-		for (j = 0; j < 100; j++) {
-			val = reg_rd(clock->clock_bases[i] +
-				OCL_CLKWIZ_STATUS_OFFSET);
-			if (val != 1) {
-				mdelay(100);
-				continue;
-			}
-		}
-		if (val != 1) {
-			CLOCK_ERR(clock, "clockwiz MMCM/PLL did not lock after %d"
-				"ms, restoring the original configuration",
-				100 * 100);
+
+		err = clock_wiz_busy(clock, i, 100, 100);
+		if (err) {
+			CLOCK_ERR(clock, "clockwiz MMCM/PLL did not lock, "
+				"restoring the original configuration");
 			/* restore the original clock configuration */
 			reg_wr(clock->clock_bases[i] +
 				OCL_CLKWIZ_CONFIG_OFFSET(23), 0x00000004);
@@ -492,6 +880,16 @@ static int clock_ocl_freqscaling_impl(struct clock *clock, bool force,
 
 	CLOCK_INFO(clock, "returns %ld", err);
 	return err;
+}
+
+static int clock_ocl_freqscaling_impl(struct clock *clock, bool force,
+	u32 *curr_freq, int level)
+{
+	xdev_handle_t xdev = xocl_get_xdev(clock->clock_pdev);
+
+	return XOCL_DSA_IS_VERSAL(xdev) ?
+	    clock_ocl_freqscaling_acap(clock, force, curr_freq, level) :
+	    clock_ocl_freqscaling_ultrascale(clock, force, curr_freq, level);
 }
 
 static int clock_update_freqs_request(struct clock *clock, unsigned short *freqs,
@@ -543,7 +941,7 @@ static int clock_freeze_axi_gate(struct clock *clock, int level)
 	BUG_ON(!mutex_is_locked(&clock->clock_lock));
 
 	if (level <= XOCL_SUBDEV_LEVEL_PRP)
-		err = xocl_axigate_freeze(xdev, XOCL_SUBDEV_LEVEL_PRP);
+		err = xocl_axigate_freeze(xdev, level);
 	else
 		err = xocl_axigate_reset(xdev, XOCL_SUBDEV_LEVEL_PRP);
 
@@ -559,7 +957,7 @@ static int clock_free_axi_gate(struct clock *clock, int level)
 	BUG_ON(!mutex_is_locked(&clock->clock_lock));
 
 	if (level <= XOCL_SUBDEV_LEVEL_PRP) {
-		xocl_axigate_free(xdev, XOCL_SUBDEV_LEVEL_PRP);
+		xocl_axigate_free(xdev, level);
 	} else {
 		if (!clock->clock_ucs_control_status) {
 			CLOCK_ERR(clock, "URP clock has no %s\n",
@@ -645,7 +1043,8 @@ static int set_and_verify_freqs(struct clock *clock, unsigned short *freqs,
 		if (!freqs[i])
 			continue;
 
-		lookup_freq = find_matching_freq(freqs[i]);
+		lookup_freq = find_matching_freq(freqs[i], frequency_table,
+		    ARRAY_SIZE(frequency_table));
 		clock_freq_counter = clock_get_freq_counter_khz_impl(clock, i);
 		request_in_khz = lookup_freq*1000;
 		tolerance = lookup_freq*50;

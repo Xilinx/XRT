@@ -524,6 +524,17 @@ int xocl_reclock(struct xocl_dev *xdev, void *data)
 	struct drm_xocl_reclock_info *freqs = (struct drm_xocl_reclock_info *)data;
 	struct xcl_mailbox_clock_freqscaling mb_freqs = {0};
 
+	/*
+	 * We should proactively check if the request is validate prior to send
+	 * request via mailbox. When icap refactor work done, we should have
+	 * dedicated module to parse xclbin and keep info. For example: the
+	 * dedicated mouldes can be icap for ultrascale(+) board, or ospi for
+	 * versal ACAP board.
+	 */
+	err = xocl_icap_xclbin_validate_clock_req(xdev, freqs);
+	if (err)
+		return err;
+
 	mb_freqs.region = freqs->region;
 	for (i = 0; i < 4; ++i)
 		mb_freqs.target_freqs[i] = freqs->ocl_target_freq[i];
