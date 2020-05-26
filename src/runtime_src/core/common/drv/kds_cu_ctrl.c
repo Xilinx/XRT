@@ -7,6 +7,7 @@
  * Authors: min.ma@xilinx.com
  */
 
+#include <linux/vmalloc.h>
 #include "kds_cu_ctrl.h"
 
 /**
@@ -182,24 +183,65 @@ error:
 	return -EINVAL;
 }
 
+/**
+ * acquire_cu_inst_idx - Get CU subdevice instance index
+ *
+ * @xcmd: Command
+ * @cus:  CU index list
+ *
+ * Returns: Negative value for error. 0 or positive value for index
+ *
+ */
 int acquire_cu_inst_idx(struct kds_cu_ctrl *kcuc, struct kds_command *xcmd)
 {
 	struct kds_client *client = xcmd->client;
 	struct client_cu_priv *cu_priv;
-	int cu_idx;
+	/* User marked CUs */
+	int user_cus[MAX_CUS];
+	int num_marked;
+	/* After validation */
+	int valid_cus[MAX_CUS];
+	int num_valid = 0;
+	int index;
+	int i;
 
-	/* Select CU */
-	cu_idx = cu_mask_to_cu_idx(xcmd);
-
-	/* Check if selected CU is in the context */
-	cu_priv = client->ctrl_priv[KDS_CU];
-	if (!test_bit(cu_idx, cu_priv->cu_bitmap)) {
-		xcmd->cb.notify_host(xcmd, KDS_ERROR);
-		xcmd->cb.free(xcmd);
+	num_marked = cu_mask_to_cu_idx(xcmd, user_cus);
+	if (unlikely(num_marked > kcuc->num_cus)) {
+		kds_err(client, "Too many CUs in CU mask");
 		return -EINVAL;
 	}
 
-	return kcuc->xcus[cu_idx]->info.inst_idx;
+	/* Check if CU is added in the context */
+	cu_priv = client->ctrl_priv[KDS_CU];
+	for (i = 0; i < num_marked; ++i) {
+		if (test_bit(user_cus[i], cu_priv->cu_bitmap)) {
+			valid_cus[num_valid] = user_cus[i];
+			++num_valid;
+		}
+	}
+
+	if (num_valid == 1) {
+		index = valid_cus[0];
+		mutex_lock(&kcuc->lock);
+		goto out;
+	} else if (num_valid == 0) {
+		kds_err(client, "All CUs in mask are out of context");
+		return -EINVAL;
+	}
+
+	/* There are more than one valid candidate
+	 * TODO: test if the lock impact the performance on multi processes
+	 */
+	mutex_lock(&kcuc->lock);
+	for (i = 1, index = valid_cus[0]; i < num_valid; ++i) {
+		if (kcuc->cu_usage[valid_cus[i]] < kcuc->cu_usage[index])
+			index = valid_cus[i];
+	}
+
+out:
+	++kcuc->cu_usage[index];
+	mutex_unlock(&kcuc->lock);
+	return kcuc->xcus[index]->info.inst_idx;
 }
 
 int control_ctx(struct kds_cu_ctrl *kcuc, struct kds_client *client,
@@ -284,6 +326,7 @@ int remove_cu(struct kds_cu_ctrl *kcuc, struct xrt_cu *xcu)
 			continue;
 
 		kcuc->xcus[i] = NULL;
+		kcuc->cu_usage[i] = 0;
 		--kcuc->num_cus;
 		return 0;
 	}
@@ -306,6 +349,35 @@ ssize_t show_cu_ctx(struct kds_cu_ctrl *kcuc, char *buf)
 			      i, shared, ref);
 	}
 	mutex_unlock(&kcuc->lock);
+
+	if (sz)
+		buf[sz++] = 0;
+
+	return sz;
+}
+
+ssize_t show_cu_ctrl_stat(struct kds_cu_ctrl *kcuc, char *buf)
+{
+	ssize_t sz = 0;
+	int configured;
+	int num_cus;
+	u64 cu_usage[MAX_CUS];
+	int i;
+
+	mutex_lock(&kcuc->lock);
+	configured = kcuc->configured;
+	num_cus = kcuc->num_cus;
+	for (i = 0; i < num_cus; ++i) {
+		cu_usage[i] = kcuc->cu_usage[i];
+	}
+	mutex_unlock(&kcuc->lock);
+
+	sz += sprintf(buf+sz, "CU controller statistic:\n");
+	sz += sprintf(buf+sz, "Configured: %s\n", configured? "Yes" : "No");
+	sz += sprintf(buf+sz, "Number of CUs: %d\n", num_cus);
+	for (i = 0; i < num_cus; ++i) {
+		sz += sprintf(buf+sz, " CU[%d] usage %llu\n", i, cu_usage[i]);
+	}
 
 	if (sz)
 		buf[sz++] = 0;

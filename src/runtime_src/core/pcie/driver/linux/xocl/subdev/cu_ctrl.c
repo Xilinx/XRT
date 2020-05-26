@@ -36,8 +36,19 @@ cu_ctx_show(struct device *dev, struct device_attribute *attr, char *buf)
 }
 static DEVICE_ATTR_RO(cu_ctx);
 
+static ssize_t
+cu_ctrl_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct xocl_cu_ctrl *xcuc = platform_get_drvdata(pdev);
+
+	return show_cu_ctrl_stat(TO_CU_CTRL(xcuc), buf);
+}
+static DEVICE_ATTR_RO(cu_ctrl_stat);
+
 static struct attribute *cu_ctrl_attrs[] = {
 	&dev_attr_cu_ctx.attr,
+	&dev_attr_cu_ctrl_stat.attr,
 	NULL,
 };
 
@@ -71,6 +82,10 @@ static void cu_ctrl_dispatch(struct xocl_cu_ctrl *xcuc, struct kds_command *xcmd
 	inst_idx = acquire_cu_inst_idx(TO_CU_CTRL(xcuc), xcmd);
 	if (inst_idx >= 0)
 		(void) xocl_cu_submit_xcmd(xdev, inst_idx, xcmd);
+	else {
+		xcmd->cb.notify_host(xcmd, KDS_ERROR);
+		xcmd->cb.free(xcmd);
+	}
 }
 
 static void cu_ctrl_submit(struct kds_ctrl *ctrl, struct kds_command *xcmd)

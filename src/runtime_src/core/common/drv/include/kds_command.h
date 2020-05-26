@@ -65,6 +65,6 @@ void cfg_ecmd2xcmd(struct ert_configure_cmd *ecmd,
 		   struct kds_command *xcmd);
 void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 			  struct kds_command *xcmd);
-int cu_mask_to_cu_idx(struct kds_command *xcmd);
+int cu_mask_to_cu_idx(struct kds_command *xcmd, int *cus);
 
 #endif
