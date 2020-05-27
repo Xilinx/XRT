@@ -77,7 +77,7 @@ ReportHost::writeReport(const xrt_core::device * _pDevice,
     //distribution is only available on linux
     if(_pt.get<std::string>("host.os.sysname").compare("Linux") == 0)
       _output << boost::format("  %-20s : %s\n") % "Distribution" % _pt.get<std::string>("host.os.distribution");
-    _output << boost::format("  %-20s : %s\n") % "Creation Timestamp" % _pt.get<std::string>("host.os.now");
+    _output << boost::format("  %-20s : %s\n") % "Creation Timestamp" % _pt.get<std::string>("host.os.creation_ts");
     _output << std::endl;
     _output << "XRT\n";
     _output << boost::format("  %-20s : %s\n") % "Version" % _pt.get<std::string>("host.xrt.version", "N/A");

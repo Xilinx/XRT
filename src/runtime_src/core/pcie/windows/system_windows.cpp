@@ -106,7 +106,7 @@ get_os_info(boost::property_tree::ptree &pt)
   pt.put("version", value);
 
   pt.put("machine", getmachinename());
-  pt.put("now", xrt_core::timestamp());
+  pt.put("creation_ts", xrt_core::timestamp());
 }
 
 std::pair<device::id_type, device::id_type>
