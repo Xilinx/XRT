@@ -1214,7 +1214,7 @@ static int icap_download_hw(struct icap *icap, const struct axlf *axlf)
 	uint64_t primaryFirmwareLength = 0;
 	const struct axlf_section_header *primaryHeader = 0;
 	uint64_t length;
-	int err = 0;
+	int err = -EINVAL;
 	char *buffer = (char *)axlf;
 
 	if (!axlf) {
