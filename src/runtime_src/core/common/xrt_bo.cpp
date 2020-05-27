@@ -397,13 +397,6 @@ map()
 
 void
 bo::
-unmap()
-{
-  // nothing to do
-}
-
-void
-bo::
 write(const void* src, size_t size, size_t seek)
 {
   handle->write(src, size, seek);
@@ -531,22 +524,6 @@ xrtBOMap(xrtBufferHandle bhdl)
     errno = 0;
   }
   return nullptr;
-}
-
-int
-xrtBOUnmap(xrtBufferHandle)
-{
-  try {
-    return 0; // nothing to do
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return errno = ex.get();
-  }
-  catch (const std::exception& ex) {
-    send_exception_message(ex.what());
-    return errno = 0;
-  }
 }
 
 int

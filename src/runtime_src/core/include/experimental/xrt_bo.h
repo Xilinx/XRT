@@ -146,18 +146,23 @@ public:
    * Return: Memory mapped buffer
    *
    * Map the contents of the buffer object into host memory
-   * To unmap the buffer call unmap().
    */
   XCL_DRIVER_DLLESPEC
   void*
   map();
 
   /**
-   * unmap() - Unmap a BO that was previously mapped with map()
+   * map() - Map the host side buffer info application
+   *
+   * @MapType: Type of mapped data
+   * Return: Memory mapped buffer
    */
-  XCL_DRIVER_DLLESPEC
-  void
-  unmap();
+  template<typename MapType>
+  MapType
+  map()
+  {
+    return reinterpret_cast<MapType>(map());
+  }
 
   /**
    * write() - Copy-in user data to host backing storage of BO
@@ -283,16 +288,6 @@ xrtBOSync(xrtBufferHandle handle, xclBOSyncDirection dir, size_t size, size_t of
 XCL_DRIVER_DLLESPEC
 void*
 xrtBOMap(xrtBufferHandle handle);
-
-/**
- * xrtBOUnmap() - Unmap a BO that was previously mapped with xclMapBO
- *
- * @handle:      Buffer handle
- * Return:       0 on success or standard errno
- */
-XCL_DRIVER_DLLESPEC
-int
-xrtBOUnmap(xrtBufferHandle handle);
 
 /**
  * xrtBOWrite() - Copy-in user data to host backing storage of BO
