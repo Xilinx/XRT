@@ -332,9 +332,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	/*
 	 * Coupling scheduler(context, exec BOs) at this place is a bad idea.
 	 *
-	 * Ideally, after successfully loaded xclbin, it should be locked.
-	 * But since there is no API to undo load xclbin. So we are not able to
-	 * lock xclbin here.
+	 * The load xclbin and lock xclbin operation are separated.
 	 * The xclbin was locked until a context was opened and unlocked until
 	 * all of the contexts were closed.
 	 * If some processes are downloading the same xclbin. Only the first

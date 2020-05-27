@@ -32,13 +32,21 @@ enum kds_type {
 	KDS_MAX_TYPE, // always the last one
 };
 
+/* Context properties */
+#define	CU_CTX_PROP_MASK	0x0F
 #define	CU_CTX_SHARED		0x00
 #define	CU_CTX_EXCLUSIVE	0x01
+
+/* Context operation bits indicated that what operation to perform */
 #define	CU_CTX_OP_MASK		0xF0
 #define	CU_CTX_OP_INIT		0x10
 #define	CU_CTX_OP_FINI		0x20
 #define	CU_CTX_OP_ADD		0x30
 #define	CU_CTX_OP_DEL		0x40
+/* Virtual CU index
+ * This is useful when there is no need to open a context on hardware CU,
+ * but still need to lockdown the xclbin.
+ */
 #define	CU_CTX_VIRT_CU		0xffffffff
 struct kds_ctx_info {
 	u32		  cu_idx;

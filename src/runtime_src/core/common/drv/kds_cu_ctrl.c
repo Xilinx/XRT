@@ -37,8 +37,14 @@ add_ctx(struct kds_cu_ctrl *kcuc, struct kds_client *client,
 {
 	struct client_cu_priv *cu_priv;
 	int cu_idx = info->cu_idx;
+	u32 prop;
 	bool shared;
 	int ret = 0;
+
+	/* cu_bitmap is per client. The client should already be locked.
+	 * control_ctx() check the client lock. No check here.
+	 */
+	WARN_ON(!mutex_is_locked(&client->lock));
 
 	if (cu_idx >= kcuc->num_cus) {
 		kds_err(client, "CU(%d) not found", cu_idx);
@@ -51,10 +57,10 @@ add_ctx(struct kds_cu_ctrl *kcuc, struct kds_client *client,
 		return -EINVAL;
 	}
 
-	/* Remove OPs from flag */
-	info->flags &= ~CU_CTX_OP_MASK;
-	shared = (info->flags != CU_CTX_EXCLUSIVE);
+	prop = info->flags & CU_CTX_PROP_MASK;
+	shared = (prop != CU_CTX_EXCLUSIVE);
 
+	/* kcuc->cu_refs is the critical section of multiple clients */
 	mutex_lock(&kcuc->lock);
 	/* Must check exclusive bit is set first */
 	if (kcuc->cu_refs[cu_idx] & CU_EXCLU_MASK) {
@@ -91,6 +97,11 @@ del_ctx(struct kds_cu_ctrl *kcuc, struct kds_client *client,
 	struct client_cu_priv *cu_priv;
 	int cu_idx = info->cu_idx;
 
+	/* cu_bitmap is per client. The client should already be locked.
+	 * control_ctx() check the client lock. No check here.
+	 */
+	WARN_ON(!mutex_is_locked(&client->lock));
+
 	if (cu_idx >= kcuc->num_cus) {
 		kds_err(client, "CU(%d) not found", cu_idx);
 		return -EINVAL;
@@ -102,6 +113,7 @@ del_ctx(struct kds_cu_ctrl *kcuc, struct kds_client *client,
 		return -EINVAL;
 	}
 
+	/* kcuc->cu_refs is the critical section of multiple clients */
 	mutex_lock(&kcuc->lock);
 	if (kcuc->cu_refs[cu_idx] & CU_EXCLU_MASK)
 		kcuc->cu_refs[cu_idx] = 0;
