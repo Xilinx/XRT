@@ -76,7 +76,7 @@ static void update_counters(struct xocl_am *am)
 	uint64_t low = 0, high = 0, sample_interval = 0;
 
 	// Read sample interval register
-    // NOTE: this also latches the sampled metric counters
+	// NOTE: this also latches the sampled metric counters
 	sample_interval = XOCL_READ_REG32(am->base + XAM_SAMPLE_OFFSET);
 
 	low = XOCL_READ_REG32(am->base + XAM_ACCEL_EXECUTION_COUNT_OFFSET);
@@ -112,35 +112,35 @@ static void update_counters(struct xocl_am *am)
 }
 
 static ssize_t counters_show(struct device *dev,
-               struct device_attribute *attr, char *buf)
+			   struct device_attribute *attr, char *buf)
 {
-    struct xocl_am *am = platform_get_drvdata(to_platform_device(dev));
-    mutex_lock(&am->lock);
+	struct xocl_am *am = platform_get_drvdata(to_platform_device(dev));
+	mutex_lock(&am->lock);
 	update_counters(am);
-    mutex_unlock(&am->lock);
-    return sprintf(buf, "%llu\n%llu\n%llu\n%llu\n%llu\n%llu\n%llu\n%llu\n%llu\n%llu\n",
-						am->counters.end_count,
-						am->counters.start_count,
-						am->counters.exec_cycles,
-						am->counters.stall_int_cycles,
-						am->counters.stall_str_cycles,
-						am->counters.stall_ext_cycles,
-						am->counters.busy_cycles,
-						am->counters.max_parallel_iterations,
-						am->counters.max_exec_cycles,
-						am->counters.min_exec_cycles
-					);
+	mutex_unlock(&am->lock);
+	return sprintf(buf, "%llu\n%llu\n%llu\n%llu\n%llu\n%llu\n%llu\n%llu\n%llu\n%llu\n",
+		am->counters.end_count,
+		am->counters.start_count,
+		am->counters.exec_cycles,
+		am->counters.stall_int_cycles,
+		am->counters.stall_str_cycles,
+		am->counters.stall_ext_cycles,
+		am->counters.busy_cycles,
+		am->counters.max_parallel_iterations,
+		am->counters.max_exec_cycles,
+		am->counters.min_exec_cycles
+		);
 }
 
 static DEVICE_ATTR_RO(counters);
 
 static struct attribute *am_attrs[] = {
-               &dev_attr_counters.attr,
-               NULL,
+			   &dev_attr_counters.attr,
+			   NULL,
 };
 
 static struct attribute_group am_attr_group = {
-               .attrs = am_attrs,
+			   .attrs = am_attrs,
 };
 
 static int am_remove(struct platform_device *pdev)
@@ -203,7 +203,6 @@ static int am_probe(struct platform_device *pdev)
 	am->start_paddr = res->start;
 	am->range = res->end - res->start + 1;
 
-	xocl_info(&pdev->dev, "WARNING: creating sysfs group");
 	err = sysfs_create_group(&pdev->dev.kobj, &am_attr_group);
 	if (err) {
 		xocl_err(&pdev->dev, "create am sysfs attrs failed: %d", err);
