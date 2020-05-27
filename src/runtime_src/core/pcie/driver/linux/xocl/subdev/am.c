@@ -75,10 +75,9 @@ static void update_counters(struct xocl_am *am)
 {
 	uint64_t low = 0, high = 0, sample_interval = 0;
 
-	// Read sample interval register
-	// NOTE: this also latches the sampled metric counters
+	// This latches the sampled metric counters
 	sample_interval = XOCL_READ_REG32(am->base + XAM_SAMPLE_OFFSET);
-
+	// Read the sampled metric counters
 	low = XOCL_READ_REG32(am->base + XAM_ACCEL_EXECUTION_COUNT_OFFSET);
 	high = XOCL_READ_REG32(am->base + XAM_ACCEL_EXECUTION_COUNT_UPPER_OFFSET);
 	am->counters.end_count =  (high << 32) | low;

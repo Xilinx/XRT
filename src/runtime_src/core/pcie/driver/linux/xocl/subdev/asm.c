@@ -17,12 +17,84 @@
 
 #include "../xocl_drv.h"
 
+/************************** AXI Stream Monitor (ASM, earlier SSPM) *********************/
+
+#define XASM_CONTROL_OFFSET           0x0
+#define XASM_SAMPLE_OFFSET            0x20
+#define XASM_NUM_TRANX_OFFSET         0x80
+#define XASM_DATA_BYTES_OFFSET        0x88
+#define XASM_BUSY_CYCLES_OFFSET       0x90
+#define XASM_STALL_CYCLES_OFFSET      0x98
+#define XASM_STARVE_CYCLES_OFFSET     0xA0
+
+/* SSPM Control Mask */
+#define XASM_COUNTER_RESET_MASK       0x00000001
+
+struct asm_counters {
+	uint64_t num_tranx;
+	uint64_t data_bytes;
+	uint64_t busy_cycles;
+	uint64_t stall_cycles;
+	uint64_t starve_cycles;
+};
+
 struct xocl_asm {
 	void __iomem		*base;
 	struct device		*dev;
 	uint64_t		start_paddr;
 	uint64_t		range;
 	struct mutex 		lock;
+	struct asm_counters counters;
+};
+
+static void update_counters(struct xocl_asm *sspm)
+{
+	uint64_t low = 0, high = 0, sample_interval = 0;
+	// This latches the sampled metric counters
+	sample_interval = XOCL_READ_REG32(sspm->base + XASM_SAMPLE_OFFSET);
+	// Read the sampled metric counters
+	low = XOCL_READ_REG32(sspm->base + XASM_NUM_TRANX_OFFSET);
+	high = XOCL_READ_REG32(sspm->base + XASM_NUM_TRANX_OFFSET + 0x4);
+	sspm->counters.num_tranx =  (high << 32) | low;
+	low = XOCL_READ_REG32(sspm->base + XASM_DATA_BYTES_OFFSET);
+	high = XOCL_READ_REG32(sspm->base + XASM_DATA_BYTES_OFFSET + 0x4);
+	sspm->counters.data_bytes =  (high << 32) | low;
+	low = XOCL_READ_REG32(sspm->base + XASM_BUSY_CYCLES_OFFSET);
+	high = XOCL_READ_REG32(sspm->base + XASM_BUSY_CYCLES_OFFSET + 0x4);
+	sspm->counters.busy_cycles =  (high << 32) | low;
+	low = XOCL_READ_REG32(sspm->base + XASM_STALL_CYCLES_OFFSET);
+	high = XOCL_READ_REG32(sspm->base + XASM_STALL_CYCLES_OFFSET + 0x4);
+	sspm->counters.stall_cycles =  (high << 32) | low;
+	low = XOCL_READ_REG32(sspm->base + XASM_STARVE_CYCLES_OFFSET);
+	high = XOCL_READ_REG32(sspm->base + XASM_STARVE_CYCLES_OFFSET + 0x4);
+	sspm->counters.starve_cycles =  (high << 32) | low;
+}
+
+static ssize_t counters_show(struct device *dev,
+			   struct device_attribute *attr, char *buf)
+{
+	struct xocl_asm *sspm = platform_get_drvdata(to_platform_device(dev));
+	mutex_lock(&sspm->lock);
+	update_counters(sspm);
+	mutex_unlock(&sspm->lock);
+	return sprintf(buf, "%llu\n%llu\n%llu\n%llu\n%llu\n",
+		sspm->counters.num_tranx,
+		sspm->counters.data_bytes,
+		sspm->counters.busy_cycles,
+		sspm->counters.stall_cycles,
+		sspm->counters.starve_cycles
+		);
+}
+
+static DEVICE_ATTR_RO(counters);
+
+static struct attribute *asm_attrs[] = {
+			   &dev_attr_counters.attr,
+			   NULL,
+};
+
+static struct attribute_group asm_attr_group = {
+			   .attrs = asm_attrs,
 };
 
 static int asm_remove(struct platform_device *pdev)
@@ -35,6 +107,8 @@ static int asm_remove(struct platform_device *pdev)
 		xocl_err(&pdev->dev, "driver data is NULL");
 		return -EINVAL;
 	}
+
+	sysfs_remove_group(&pdev->dev.kobj, &asm_attr_group);
 
 	xocl_drvinst_release(xocl_asm, &hdl);
 
@@ -82,6 +156,11 @@ static int asm_probe(struct platform_device *pdev)
 
 	xocl_asm->start_paddr = res->start;
 	xocl_asm->range = res->end - res->start + 1;
+
+	err = sysfs_create_group(&pdev->dev.kobj, &asm_attr_group);
+	if (err) {
+		xocl_err(&pdev->dev, "create asm sysfs attrs failed: %d", err);
+	}
 
 done:
 	if (err) {
