@@ -661,7 +661,8 @@ static inline int clock_wiz_busy(struct clock *clock, int idx, int cycle,
 static int clock_ocl_freqscaling_acap(struct clock *clock, bool force,
 	u32 *curr_freq, int level)
 {
-	int i, err;
+	int i;
+	int err = 0;
 	u32 val;
 	unsigned idx;
 	struct acap_divclk 		*divclk;
