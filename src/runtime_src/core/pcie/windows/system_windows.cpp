@@ -124,6 +124,8 @@ get_os_info(boost::property_tree::ptree &pt)
   pt.put("version", value);
 
   pt.put("machine", getmachinename());
+
+  BufferSize = sizeof value;
   RegGetValueA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "ProductName", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
   pt.put("distribution", value);
 }
