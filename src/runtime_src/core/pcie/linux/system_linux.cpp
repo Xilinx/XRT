@@ -123,7 +123,7 @@ get_os_info(boost::property_tree::ptree &pt)
               val.erase(0, 1);
               val.erase(val.size()-1);
           }
-          pt.put("linux", val);
+          pt.put("distribution", val);
       }
       ifs.close();
   }

@@ -61,35 +61,43 @@ ReportHost::writeReport(const xrt_core::device * _pDevice,
   getPropertyTreeInternal(_pDevice, _pt);
 
   _output << "System Configuration\n";
-  _output << boost::format("  %-20s : %s\n") % "OS Name" % _pt.get<std::string>("host.os.sysname", "N/A");
-  _output << boost::format("  %-20s : %s\n") % "Release" % _pt.get<std::string>("host.os.release", "N/A");
-  _output << boost::format("  %-20s : %s\n") % "Version" % _pt.get<std::string>("host.os.version", "N/A");
-  _output << boost::format("  %-20s : %s\n") % "Machine" % _pt.get<std::string>("host.os.machine", "N/A");
-  boost::property_tree::ptree& available_libraries = _pt.get_child("host.os.libraries", empty_ptree);
-  for(auto& kl : available_libraries) {
-    boost::property_tree::ptree& lib = kl.second;
-    std::string lib_name = lib.get<std::string>("name", "N/A");
-    boost::algorithm::to_upper(lib_name);
-    _output << boost::format("  %-20s : %s\n") % lib_name 
-        % lib.get<std::string>("version", "N/A");
+  try {
+    _output << boost::format("  %-20s : %s\n") % "OS Name" % _pt.get<std::string>("host.os.sysname");
+    _output << boost::format("  %-20s : %s\n") % "Release" % _pt.get<std::string>("host.os.release");
+    _output << boost::format("  %-20s : %s\n") % "Version" % _pt.get<std::string>("host.os.version");
+    _output << boost::format("  %-20s : %s\n") % "Machine" % _pt.get<std::string>("host.os.machine");
+    boost::property_tree::ptree& available_libraries = _pt.get_child("host.os.libraries", empty_ptree);
+    for(auto& kl : available_libraries) {
+      boost::property_tree::ptree& lib = kl.second;
+      std::string lib_name = lib.get<std::string>("name", "N/A");
+      boost::algorithm::to_upper(lib_name);
+      _output << boost::format("  %-20s : %s\n") % lib_name 
+          % lib.get<std::string>("version", "N/A");
+    }
+    //distribution is only available on linux
+    if(_pt.get<std::string>("host.os.sysname").compare("Linux") == 0)
+      _output << boost::format("  %-20s : %s\n") % "Distribution" % _pt.get<std::string>("host.os.distribution");
+    _output << boost::format("  %-20s : %s\n") % "Creation Timestamp" % _pt.get<std::string>("host.os.now");
+    _output << std::endl;
+    _output << "XRT\n";
+    _output << boost::format("  %-20s : %s\n") % "Version" % _pt.get<std::string>("host.xrt.version", "N/A");
+    _output << boost::format("  %-20s : %s\n") % "Branch" % _pt.get<std::string>("host.xrt.branch", "N/A");
+    _output << boost::format("  %-20s : %s\n") % "Hash" % _pt.get<std::string>("host.xrt.hash", "N/A");
+    _output << boost::format("  %-20s : %s\n") % "Hash Date" % _pt.get<std::string>("host.xrt.build_date", "N/A");
+    boost::property_tree::ptree& available_drivers = _pt.get_child("host.xrt.drivers", empty_ptree);
+    for(auto& drv : available_drivers) {
+      boost::property_tree::ptree& driver = drv.second;
+      std::string drv_name = driver.get<std::string>("name", "N/A");
+      boost::algorithm::to_upper(drv_name);
+      _output << boost::format("  %-20s : %s\n") % drv_name 
+          % driver.get<std::string>("version", "N/A");
+    }
+    _output << std::endl;
   }
-  _output << boost::format("  %-20s : %s\n") % "Distribution" % _pt.get<std::string>("host.os.linux", "N/A");
-  _output << boost::format("  %-20s : %s\n") % "Now" % _pt.get<std::string>("host.os.now", "N/A");
-  _output << std::endl;
-  _output << "XRT\n";
-  _output << boost::format("  %-20s : %s\n") % "Version" % _pt.get<std::string>("host.xrt.version", "N/A");
-  _output << boost::format("  %-20s : %s\n") % "Branch" % _pt.get<std::string>("host.xrt.branch", "N/A");
-  _output << boost::format("  %-20s : %s\n") % "Hash" % _pt.get<std::string>("host.xrt.hash", "N/A");
-  _output << boost::format("  %-20s : %s\n") % "Hash Date" % _pt.get<std::string>("host.xrt.build_date", "N/A");
-  boost::property_tree::ptree& available_drivers = _pt.get_child("host.xrt.drivers", empty_ptree);
-  for(auto& drv : available_drivers) {
-    boost::property_tree::ptree& driver = drv.second;
-    std::string drv_name = driver.get<std::string>("name", "N/A");
-    boost::algorithm::to_upper(drv_name);
-    _output << boost::format("  %-20s : %s\n") % drv_name 
-        % driver.get<std::string>("version", "N/A");
+  catch (const boost::property_tree::ptree_error &ex) {
+    throw xrt_core::error(boost::str(boost::format("%s. Please contact your Xilinx representative to fix the issue")
+         % ex.what()));
   }
-  _output << std::endl;
 
 }
 
