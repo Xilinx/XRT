@@ -169,7 +169,6 @@ ub_package_list()
      unzip \
      uuid-dev \
      libcurl4-openssl-dev \
-     libssl-dev \
      libudev-dev \
      libsystemd-dev \
     )
