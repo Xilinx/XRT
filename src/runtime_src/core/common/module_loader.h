@@ -20,7 +20,6 @@
 // This file contains a loader utility class for plugin modules
 //  that are loaded from either OpenCL or XRT level applications.
 
-#include <boost/filesystem/path.hpp>
 #include <functional>
 #include <string>
 
@@ -41,15 +40,6 @@ namespace xrt_core {
 
   class module_loader
   {
-  private:
-    // Useful functions
-    const char* emptyOrValue(const char* cstr) ;
-    boost::filesystem::path& dllExt() ;
-    bool isDLL(const boost::filesystem::path& path) ;
-    boost::filesystem::path modulePath(const boost::filesystem::path& root,
-				       const std::string& libname);
-    boost::filesystem::path moduleDir(const boost::filesystem::path& root) ;
-    
   public:
 
     /*

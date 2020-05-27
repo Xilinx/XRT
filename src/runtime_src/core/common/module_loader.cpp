@@ -15,6 +15,7 @@
  */
 
 #include <boost/filesystem/operations.hpp>
+#include <boost/filesystem/path.hpp>
 
 #define XRT_CORE_COMMON_SOURCE
 
@@ -26,16 +27,14 @@
 /* Disable warning for use of getenv */
 #endif
 
-namespace xrt_core {
+namespace {
 
-  const char* 
-  module_loader::emptyOrValue(const char* cstr)
+  static const char* emptyOrValue(const char* cstr)
   {
     return cstr ? cstr : "" ;
   }
 
-  boost::filesystem::path& 
-  module_loader::dllExt()
+  static boost::filesystem::path& dllExt()
   {
 #ifdef _WIN32
     static boost::filesystem::path sDllExt(".dll") ;
@@ -45,17 +44,15 @@ namespace xrt_core {
     return sDllExt ;
   }
 
-  bool 
-  module_loader::isDLL(const boost::filesystem::path& path)
+  static bool isDLL(const boost::filesystem::path& path)
   {
     return (boost::filesystem::exists(path)          &&
 	    boost::filesystem::is_regular_file(path) &&
 	    path.extension() == dllExt()) ;
   }
 
-  boost::filesystem::path 
-  module_loader::modulePath(const boost::filesystem::path& root,
-			const std::string& libname)
+  static boost::filesystem::path modulePath(const boost::filesystem::path& root,
+					    const std::string& libname)
   {
 #ifdef _WIN32
     return root / "bin" / (libname + ".dll") ;
@@ -64,8 +61,7 @@ namespace xrt_core {
 #endif
   }
 
-  boost::filesystem::path 
-  module_loader::moduleDir(const boost::filesystem::path& root)
+  static boost::filesystem::path moduleDir(const boost::filesystem::path& root)
   {
 #ifdef _WIN32
     return root / "bin" ;
@@ -73,6 +69,10 @@ namespace xrt_core {
     return root / "lib" / "xrt" / "module" ;
 #endif
   }
+
+} // end anonymous namespace
+
+namespace xrt_core {
 
   module_loader::module_loader(const char* pluginName,
 			       std::function<void (void*)> registerFunction,
@@ -106,7 +106,7 @@ namespace xrt_core {
     void* handle = xrt_core::dlopen(libpath.string().c_str(), 
 				    RTLD_NOW | RTLD_GLOBAL) ;
     if (!handle)
-      throw std::runtime_error("Failed to open XDP library '" + 
+      throw std::runtime_error("Failed to open plugin library '" + 
 			       libpath.string() + "'\n"       + 
 			       xrt_core::dlerror()) ;
 
