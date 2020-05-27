@@ -717,7 +717,6 @@ xclExportBO(xclDeviceHandle handle, xclBufferHandle boHandle);
  * Import a BO exported by another device.     *
  * This operation is backed by Linux DMA-BUF framework
  */
-
 XCL_DRIVER_DLLESPEC
 xclBufferHandle
 xclImportBO(xclDeviceHandle handle, int fd, unsigned int flags);

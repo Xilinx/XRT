@@ -104,7 +104,6 @@ endif
 ifeq ($(SYMBOL),1)
 ccflags-y += -g
 endif
-ccflags-y += -g
 
 all:
 	@echo $(PWD)
