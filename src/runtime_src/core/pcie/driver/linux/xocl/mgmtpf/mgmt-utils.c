@@ -488,10 +488,10 @@ static void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 	pci_bctl |= PCI_BRIDGE_CTL_BUS_RESET;
 	pci_write_config_byte(bus->self, PCI_BRIDGE_CONTROL, pci_bctl);
 
-	msleep(100);
+	mdelay(100);
 	pci_bctl &= ~PCI_BRIDGE_CTL_BUS_RESET;
 	pci_write_config_byte(bus->self, PCI_BRIDGE_CONTROL, pci_bctl);
-	ssleep(1);
+	mdelay(1000);
 
 	pci_enable_device(pdev);
 
