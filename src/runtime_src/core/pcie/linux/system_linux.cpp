@@ -18,7 +18,6 @@
 #include "device_linux.h"
 #include "gen/version.h"
 #include "scan.h"
-#include "core/common/time.h"
 
 #include <boost/property_tree/ini_parser.hpp>
 
@@ -53,17 +52,24 @@ static boost::property_tree::ptree
 driver_version(const std::string& driver)
 {
   boost::property_tree::ptree _pt;
-  std::string line("unknown");
+  std::string ver("unknown");
+  std::string hash("unknown");
   std::string path("/sys/module/");
   path += driver;
   path += "/version";
-  std::ifstream ver(path);
-  if (ver.is_open()) {
-    getline(ver, line);
+
+  std::ifstream stream(path);
+  if (stream.is_open()) {
+    std::string line;
+    getline(stream, line);
+    std::stringstream ss(line);
+    getline(ss, ver, ',');
+    getline(ss, hash, ',');
   }
 
   _pt.put("name", driver);
-  _pt.put("version", line);
+  _pt.put("version", ver);
+  _pt.put("hash", hash);
   return _pt;
 }
 
@@ -107,9 +113,6 @@ get_os_info(boost::property_tree::ptree &pt)
     pt.put("version",   sysinfo.version);
     pt.put("machine",   sysinfo.machine);
   }
-  boost::property_tree::ptree _ptLibInfo;
-  _ptLibInfo.push_back( std::make_pair("", glibc_info() ));
-  pt.put_child("libraries", _ptLibInfo);
 
   // The file is a requirement as per latest Linux standards
   // https://www.freedesktop.org/software/systemd/man/os-release.html
@@ -127,8 +130,9 @@ get_os_info(boost::property_tree::ptree &pt)
       }
       ifs.close();
   }
-
-  pt.put("creation_ts", xrt_core::timestamp());
+  boost::property_tree::ptree _ptLibInfo;
+  _ptLibInfo.push_back( std::make_pair("", glibc_info() ));
+  pt.put_child("libraries", _ptLibInfo);
 }
 
 std::pair<device::id_type, device::id_type>
