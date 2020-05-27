@@ -147,11 +147,11 @@ static DEVICE_ATTR_RO(mem_group_info);
 
 static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 {
-        int i, err;
-        ssize_t count = 0;
-        ssize_t size = 0;
-        size_t memory_usage = 0;
-        unsigned int bo_count = 0;
+	int i, err;
+	ssize_t count = 0;
+	ssize_t size = 0;
+	size_t memory_usage = 0;
+	unsigned int bo_count = 0;
 	const char *txt_fmt = "[%s] %s@0x%012llx (%lluMB): %lluKB %dBOs\n";
 	const char *raw_fmt = "%llu %d %llu\n";
 	struct mem_topology *topo = NULL;

@@ -195,11 +195,11 @@ void xocl_drm_free_bo(struct drm_gem_object *obj)
 }
 
 static inline int check_bo_user_reqs(const struct drm_device *dev,
-	unsigned flags, unsigned type)
+				     unsigned flags, unsigned type)
 {
 	struct xocl_drm *drm_p = dev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
-        struct xocl_mem_group *mem_grp = NULL;
+	struct xocl_mem_group *mem_grp = NULL;
 	u16 ddr_count;
 	unsigned ddr;
 	struct mem_topology *topo = NULL;
@@ -210,9 +210,9 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 		return 0;
 	//From "mem_topology" or "feature rom" depending on
 	//unified or non-unified dsa
-        mem_grp = drm_p->m_connect->mem_group;
-        if (!mem_grp)
-                return -EINVAL;
+	mem_grp = drm_p->m_connect->mem_group;
+	if (!mem_grp)
+		return -EINVAL;
 
 	ddr_count = mem_grp->g_count;
 
@@ -235,7 +235,7 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 		}
 		if (!XOCL_IS_DDR_USED(topo, ddr)) {
 			userpf_err(xdev,
-				"Bank %d is marked as unused in axlf", ddr);
+				   "Bank %d is marked as unused in axlf", ddr);
 			err = -EINVAL;
 			goto done;
 		}
@@ -464,45 +464,45 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 		 */
 		if (xdev->p2p_mem_chunk_num == 0) {
 			xocl_xdev_err(xdev,
-				"No P2P mem region, Can't create p2p BO");
+				      "No P2P mem region, Can't create p2p BO");
 			ret = -EINVAL;
 			goto out_free;
 		}
 		ret = XOCL_GET_MEM_TOPOLOGY(xdev, topo);
-                if (ret)
-                        goto out_free;
+		if (ret)
+			goto out_free;
 
-                if (topo) {
-                        xocl_mem = drm_p->m_connect->mem_group->m_group[mem_id];
-                        if (xocl_mem == NULL) {
-                                ret = -EINVAL;
-                                goto out_free;
-                        }
+		if (topo) {
+			xocl_mem = drm_p->m_connect->mem_group->m_group[mem_id];
+			if (xocl_mem == NULL) {
+				ret = -EINVAL;
+				goto out_free;
+			}
 
-                        xobj->p2p_bar_offset = drm_p->mm_p2p_off[xocl_mem->l_bank_idx] +
-                                xobj->mm_node->start -
-                                topo->m_mem_data[xocl_mem->l_bank_idx].m_base_address;
+			xobj->p2p_bar_offset = drm_p->mm_p2p_off[xocl_mem->l_bank_idx] +
+				xobj->mm_node->start -
+				topo->m_mem_data[xocl_mem->l_bank_idx].m_base_address;
 
-                        ret = xocl_p2p_reserve_release_range(xdev,
-                                        xobj->p2p_bar_offset,
-                                        xobj->base.size, true);
-                }
+			ret = xocl_p2p_reserve_release_range(xdev,
+							     xobj->p2p_bar_offset,
+							     xobj->base.size, true);
+		}
 
-                XOCL_PUT_MEM_TOPOLOGY(xdev);
-                if (ret)
-                        goto out_free;
-        }
+		XOCL_PUT_MEM_TOPOLOGY(xdev);
+		if (ret)
+			goto out_free;
+	}
 
-        if (xobj->flags & XOCL_PAGE_ALLOC) {
-                if (xobj->flags & XOCL_P2P_MEM)
-                        xobj->pages = xocl_p2p_get_pages(xdev,
-                                        xobj->p2p_bar_offset, xobj->base.size);
-                else if (xobj->flags & XOCL_DRM_SHMEM)
-                        xobj->pages = drm_gem_get_pages(&xobj->base);
-                else if (xobj->flags & XOCL_CMA_MEM){
-                        uint64_t start_addr = drm_p->mm->head_node.start + drm_p->mm->head_node.size;
-                        xobj->pages = xocl_cma_collect_pages(drm_p, start_addr, xobj->mm_node->start, xobj->base.size);
-                }
+	if (xobj->flags & XOCL_PAGE_ALLOC) {
+		if (xobj->flags & XOCL_P2P_MEM)
+			xobj->pages = xocl_p2p_get_pages(xdev,
+							 xobj->p2p_bar_offset, xobj->base.size);
+		else if (xobj->flags & XOCL_DRM_SHMEM)
+			xobj->pages = drm_gem_get_pages(&xobj->base);
+		else if (xobj->flags & XOCL_CMA_MEM){
+			uint64_t start_addr = drm_p->mm->head_node.start + drm_p->mm->head_node.size;
+			xobj->pages = xocl_cma_collect_pages(drm_p, start_addr, xobj->mm_node->start, xobj->base.size);
+		}
 
 		if (IS_ERR(xobj->pages)) {
 			ret = PTR_ERR(xobj->pages);

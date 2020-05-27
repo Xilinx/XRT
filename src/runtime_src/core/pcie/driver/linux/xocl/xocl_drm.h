@@ -90,8 +90,8 @@ struct xocl_drm {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 	DECLARE_HASHTABLE(mm_range, 6);
 #endif
-        struct xocl_cma_bank  *cma_bank;
-        struct xocl_mem_connectivity *m_connect;
+	struct xocl_cma_bank  *cma_bank;
+	struct xocl_mem_connectivity *m_connect;
 };
 
 struct drm_xocl_bo {
