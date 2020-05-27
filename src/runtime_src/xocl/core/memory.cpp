@@ -172,7 +172,7 @@ get_buffer_object(device* device)
 
   // Get memory bank index if assigned, -1 if not assigned, which will trigger
   // allocation error when default allocation is disabled
-  get_grpidx_nolock(device); // computes m_memidx
+  get_memidx_nolock(device); // computes m_memidx
   auto boh = (m_bomap[device] = device->allocate_buffer_object(this,m_memidx));
 
   // To be deleted when strict bank rules are enforced
@@ -294,10 +294,6 @@ get_grpidx_nolock(const device* dev) const
   int cuidx = -1;
   int argidx = -1;
 
-  // already initialized
-  if (m_memidx>=0) 
-    return m_memidx;
-
   if (m_karg.empty())
     return -1;
 
@@ -315,11 +311,8 @@ get_grpidx_nolock(const device* dev) const
     return -1;
 
   auto device = xrt_core::get_userpf_device(dev->get_handle());
-  m_memidx = device->get_groupIndex(cuidx, argidx);
-  if (m_memidx < 0)
-    return -1;
 
-  return m_memidx;
+  return device->get_groupIndex(cuidx, argidx);
 }
 
 memory::memidx_type
@@ -339,6 +332,11 @@ get_memidx_nolock(const device* dev) const
     if (m_memidx>=0)
       return m_memidx;
   }
+
+  // memory group info available
+  m_memidx = get_grpidx_nolock(dev);
+  if (m_memidx>=0)
+    return m_memidx;
 
   // ext assigned
   m_memidx = get_ext_memidx_nolock(dev->get_xclbin());

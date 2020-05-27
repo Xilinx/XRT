@@ -1,0 +1,60 @@
+/**
+ * Copyright (C) 2016-2017 Xilinx, Inc
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may
+ * not use this file except in compliance with the License. A copy of the
+ * License is located at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ */
+
+#ifndef _XRT_CORE_MEMORY_H_
+#define _XRT_CORE_MEMORY_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/****   MEMORY GROUP SECTION ****/
+#define XCL_MEM_GROUP_MAX 128 
+struct xcl_mem_map_info {
+    uint32_t cu_id;
+    uint32_t arg_id;
+    uint32_t grp_id;
+};
+
+struct xcl_mem_map {
+    int32_t m_count;
+    struct xcl_mem_map_info m_map[XCL_MEM_GROUP_MAX];
+};
+
+struct xcl_mem_group_info {
+    uint32_t l_bank_idx;
+    uint64_t l_start_addr;
+    uint32_t h_bank_idx;
+    uint64_t h_end_addr;
+};
+
+struct xcl_mem_group {
+    int32_t g_count;
+    struct xcl_mem_group_info m_group[XCL_MEM_GROUP_MAX];
+};
+
+struct xcl_mem_group_map {
+    struct xcl_mem_map *mMap;
+    struct xcl_mem_group *mGroup;
+};
+
+#ifdef __cplusplus
+}
+#endif
+
+
+
+#endif

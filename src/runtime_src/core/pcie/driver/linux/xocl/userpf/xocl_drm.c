@@ -722,9 +722,13 @@ done:
                 vfree(drm_p->mm);
         }
 	drm_p->mm = NULL;
-	vfree(drm_p->mm_usage_stat);
+	
+        if (drm_p->mm_usage_stat)
+                vfree(drm_p->mm_usage_stat);
 	drm_p->mm_usage_stat = NULL;
-	vfree(drm_p->mm_p2p_off);
+	
+        if (drm_p->mm_p2p_off)
+                vfree(drm_p->mm_p2p_off);
 	drm_p->mm_p2p_off = NULL;
 
 	return 0;
@@ -855,8 +859,8 @@ static int get_mem_group(struct xocl_mem_connectivity *m_connect, struct xocl_me
 
 int xocl_cleanup_connectivity(struct xocl_drm *drm_p)
 {
-        struct xocl_mem_map        *mem_map = NULL;
-        struct xocl_mem_group       *xocl_grp = NULL; 
+        struct xocl_mem_map     *mem_map = NULL;
+        struct xocl_mem_group   *xocl_grp = NULL; 
         int i = 0;
 
         if (!drm_p->m_connect)
@@ -871,9 +875,9 @@ int xocl_cleanup_connectivity(struct xocl_drm *drm_p)
 
                         if (xocl_grp->m_group[i])
                                 vfree(xocl_grp->m_group[i]);
-
-                        vfree(drm_p->m_connect->mem_group);
                 }
+                
+                vfree(drm_p->m_connect->mem_group);
         }
 
         /* Cleanup memory connection info */
@@ -887,6 +891,7 @@ int xocl_cleanup_connectivity(struct xocl_drm *drm_p)
         }
 
         vfree(drm_p->m_connect);
+        drm_p->m_connect = NULL;
 
         return 0;
 }

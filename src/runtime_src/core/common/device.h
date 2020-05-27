@@ -23,6 +23,7 @@
 #include "ishim.h"
 #include "scope_guard.h"
 #include "xrt.h"
+#include "mem_group.h"
 
 // Please keep eternal include file dependencies to a minimum
 #include <cstdint>
@@ -237,7 +238,7 @@ public:
    *
    */
   void
-  store_mem_group_info(struct xcl_mem_group_map *grpInfoMap);
+  store_mem_group_info(char *infoBuff);
 
   // Move all these 'pt' functions out the class interface
   virtual void get_info(boost::property_tree::ptree&) const {}

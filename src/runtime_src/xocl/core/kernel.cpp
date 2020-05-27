@@ -436,7 +436,7 @@ validate_cus(const device* device, unsigned long argidx, int memidx) const
   auto dev = xrt_core::get_userpf_device(device->get_handle());
   int l_idx = dev->get_groupRange(memidx).first;
   int h_idx = dev->get_groupRange(memidx).second;
-  for (int i = l_idx; i<h_idx; i++)
+  for (int i = l_idx; i<=h_idx; i++)
         connections.set(i);
 
   auto end = m_cus.end();

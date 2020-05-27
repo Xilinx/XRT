@@ -1373,57 +1373,20 @@ unsigned int shim::xclImportBO(int fd, unsigned flags)
 }
 
 /*
- * xclPopulateMemGroupInfo()
+ * xclGetMemGroupInfo()
  */
-int shim::xclPopulateMemGroupInfo(struct xcl_mem_group_map *grpMapInfo)
+int shim::xclGetMemGroupInfo(char *grpMapInfo)
 {
     std::string errmsg;
-    uint32_t info_size;
-    char* memblock = NULL;
-    struct xcl_mem_map mMap;
-    struct xcl_mem_map_info *mMap_ptr = NULL;
-    struct xcl_mem_group mGrp;
-    struct xcl_mem_group_info *mGrp_ptr = NULL;
-
-    std::vector<char> memMapInfo;
-    mDev->sysfs_get("", "mem_mapping_info", errmsg, memMapInfo);
-
-    if (memMapInfo.empty()) 
-        return -EINVAL;
-   
-    memset((void *)&mMap, 0, sizeof(struct xcl_mem_map));    
-    memblock = memMapInfo.data();
-
-    /* Populate Memory Mapping information */
-    info_size = sizeof(struct xcl_mem_map_info);
-    for (unsigned count = 0; count < memMapInfo.size(); count += info_size) {
-        mMap_ptr = &mMap.m_map[mMap.m_count];
-        memcpy((void *)mMap_ptr, memblock, info_size);
-        memblock += info_size;
-        mMap.m_count++;
-    }
-    grpMapInfo->mMap = &mMap;
-
     std::vector<char> memGroupInfo;
+   
     mDev->sysfs_get("", "mem_group_info", errmsg, memGroupInfo);
-
     if (memGroupInfo.empty()) 
         return -EINVAL;
    
-    memset((void *)&mGrp, 0, sizeof(struct xcl_mem_group));    
-    memblock = memGroupInfo.data();
-
-    /* Populate Memory Group information */
-    info_size = sizeof(struct xcl_mem_group_info);
-    for (unsigned count = 0; count < memGroupInfo.size(); count += info_size) {
-        mGrp_ptr = &mGrp.m_group[mGrp.g_count];
-        memcpy((void *)mGrp_ptr, memblock, info_size);
-        memblock += info_size;
-        mGrp.g_count++;
-    }
-    grpMapInfo->mGroup = &mGrp;
-    
-    return 0;
+    memcpy((void *)grpMapInfo, memGroupInfo.data(), memGroupInfo.size());
+     
+    return memGroupInfo.size();
 }
 
 /*
@@ -2259,16 +2222,19 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     LOAD_XCLBIN_CB ;
 #endif
     if (!ret) {
-      struct xcl_mem_group_map grpMapInfo;
+      char Buff[1024] = {0};
+      char *pGrpInfo = (char *)&Buff;
+      int grp_info_size = 0;
+
       auto core_device = xrt_core::get_userpf_device(drv);
       core_device->register_axlf(buffer);
 
       /* Populate memory group mapping info from sysfs */
-      drv->xclPopulateMemGroupInfo(&grpMapInfo);
-      
-      /* Store the retrive info in device class */
-      core_device->store_mem_group_info(&grpMapInfo);
-
+      grp_info_size = drv->xclGetMemGroupInfo(pGrpInfo);
+      if (grp_info_size > 0) {
+          /* Store the retrive info in device class */
+          core_device->store_mem_group_info(pGrpInfo);
+      }
 #ifndef DISABLE_DOWNLOAD_XCLBIN
       ret = xrt_core::scheduler::init(handle, buffer);
       START_DEVICE_PROFILING_CB(handle);
