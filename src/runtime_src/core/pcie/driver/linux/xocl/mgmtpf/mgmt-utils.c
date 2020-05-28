@@ -249,7 +249,7 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 		lro->instance, ep_name,
 		PCI_SLOT(pdev->devfn), PCI_FUNC(pdev->devfn));
 
-	if (!force) {
+	if (!force && xrt_reset_syncup) {
 		mgmt_info(lro, "wait for master off for all functions");
 		err = xocl_wait_master_off(lro);
 		if (err)
@@ -316,7 +316,10 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 	lro->reset_requested = false;
 	xocl_thread_start(lro);
 
-	xocl_set_master_on(lro);
+	if (xrt_reset_syncup)
+		xocl_set_master_on(lro);
+	else if (!force)
+		xclmgmt_connect_notify(lro, true);
 
 done:
 	return err;
