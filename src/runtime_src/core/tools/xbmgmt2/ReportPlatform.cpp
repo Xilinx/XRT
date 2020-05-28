@@ -18,6 +18,7 @@
 // Local - Include Files
 #include "ReportPlatform.h"
 #include "flash/flasher.h"
+#include "core/common/query_requests.h"
 
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
@@ -64,7 +65,6 @@ ReportPlatform::getPropertyTree20201( const xrt_core::device * _pDevice,
 
   // There can only be 1 root node
   _pt.add_child("platform", pt);
-
   boost::property_tree::ptree on_board_rom_info;
   boost::property_tree::ptree on_board_platform_info;
   boost::property_tree::ptree on_board_xmc_info;
@@ -84,12 +84,32 @@ ReportPlatform::getPropertyTree20201( const xrt_core::device * _pDevice,
   _pt.put("platform.flash_type", on_board_platform_info.get<std::string>("flash_type", "N/A"));
   _pt.put("platform.hardware.serial_num", info.mSerialNum);
   //Flashable partition running on FPGA
-  _pt.put("platform.current_shell.vbnv", on_board_rom_info.get<std::string>("vbnv", "N/A"));
-  std::string _scVer = on_board_xmc_info.get<std::string>("sc_version", "N/A");
+  std::vector<std::string> logic_uuids, interface_uuids;
+  try {
+    logic_uuids = xrt_core::device_query<xrt_core::query::logic_uuids>(_pDevice);
+    } catch (...) {}
+  try {
+    interface_uuids = xrt_core::device_query<xrt_core::query::interface_uuids>(_pDevice);
+    } catch (...) {}
+  
+  //check if 2RP
+  if(!logic_uuids.empty() && !interface_uuids.empty()) {
+    for(unsigned int i = 0; i < logic_uuids.size(); i++) {
+      DSAInfo part("", NULL_TIMESTAMP, logic_uuids[i], ""); 
+      _pt.put("platform.current_shell.vbnv", part.name);
+      _pt.put("platform.current_shell.logic-uuid", logic_uuids[i]);
+      _pt.put("platform.current_shell.interface-uuid", interface_uuids[i]);
+      _pt.put("platform.current_shell.id", (boost::format("0x%x") % part.timestamp));
+    }
+  } else { //1RP
+    _pt.put("platform.current_shell.vbnv", on_board_rom_info.get<std::string>("vbnv", "N/A"));
+    _pt.put("platform.current_shell.id", on_board_rom_info.get<std::string>("id", "N/A"));
+  }
+
+  std::string _scVer = on_board_xmc_info.get<std::string>("sc_version");
   if(_scVer.empty())
     _scVer = info.mBMCVer;
   _pt.put("platform.current_shell.sc_version", _scVer);
-  _pt.put("platform.current_shell.id", on_board_rom_info.get<std::string>("id", "N/A"));
 
   //Flashable partitions installed in system
   boost::property_tree::ptree _ptAvailableShells;
@@ -100,9 +120,9 @@ ReportPlatform::getPropertyTree20201( const xrt_core::device * _pDevice,
     _ptAvailableShell.put("sc_version", installedDSA.bmcVer);
     _ptAvailableShell.put("id", (boost::format("0x%x") % installedDSA.timestamp));
     _ptAvailableShell.put("file", installedDSA.file);
-    _pt.put("platform.status.shell", same_shell( on_board_rom_info.get<std::string>("vbnv", ""), 
-              on_board_rom_info.get<std::string>("id", ""), installedDSA));
-    _pt.put("platform.status.sc", same_sc( on_board_xmc_info.get<std::string>("sc_version", ""), 
+    _pt.put("platform.status.shell", same_shell( _pt.get<std::string>("platform.current_shell.vbnv", ""), 
+              _pt.get<std::string>("platform.current_shell.id", ""), installedDSA));
+    _pt.put("platform.status.sc", same_sc( _pt.get<std::string>("platform.current_shell.sc_version", ""), 
              installedDSA));
      _ptAvailableShells.push_back( std::make_pair("", _ptAvailableShell) );
   }
@@ -148,7 +168,7 @@ ReportPlatform::writeReport( const xrt_core::device * _pDevice,
     boost::property_tree::ptree& available_shell = kv.second;
     _output << boost::format("  %-20s : %s\n") % "Platform" % available_shell.get<std::string>("vbnv", "N/A");
     _output << boost::format("  %-20s : %s\n") % "SC Version" % available_shell.get<std::string>("sc_version", "N/A");
-    _output << boost::format("  %-20s : 0x%x\n") % "Platform ID" % available_shell.get<std::string>("id", "N/A") << "\n";
+    _output << boost::format("  %-20s : %x\n") % "Platform ID" % available_shell.get<std::string>("id", "N/A") << "\n";
   }
 
 
