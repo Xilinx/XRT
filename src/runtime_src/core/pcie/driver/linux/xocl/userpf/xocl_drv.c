@@ -1332,6 +1332,8 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 
 	unmap_bar(xdev);
 
+	kds_fini_sched(&XDEV(xdev)->kds);
+
 	xocl_subdev_fini(xdev);
 	if (xdev->ulp_blob)
 		vfree(xdev->ulp_blob);
@@ -1386,6 +1388,8 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 		xocl_err(&pdev->dev, "failed to failed to init subdev");
 		goto failed;
 	}
+
+	(void) kds_init_sched(&XDEV(xdev)->kds);
 
 	ret = xocl_config_pci(xdev);
 	if (ret)

@@ -401,10 +401,6 @@ struct xocl_work {
 	int			op;
 };
 
-struct kds_sched {
-	struct kds_controller *ctrl[KDS_MAX_TYPE];
-};
-
 struct xocl_dev_core {
 	struct pci_dev		*pdev;
 	int			dev_minor;
@@ -1647,7 +1643,7 @@ static inline void xocl_dr_reg_write32(xdev_handle_t xdev, u32 value, void __iom
 	read_unlock(&XDEV(xdev)->rwlock);
 }
 
-static inline void xocl_kds_setctrl(xdev_handle_t xdev, int type, struct kds_controller *ctrl)
+static inline void xocl_kds_setctrl(xdev_handle_t xdev, int type, struct kds_ctrl *ctrl)
 {
 	XDEV(xdev)->kds.ctrl[type] = ctrl;
 }

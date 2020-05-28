@@ -18,6 +18,11 @@
 #include "zocl_generic_cu.h"
 
 extern int kds_mode;
+
+/* TODO: remove this once new KDS is ready */
+int zocl_xclbin_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
+		    struct sched_client_ctx *client);
+
 /*
  * read_axlf and ctx should be protected by zdev_xclbin_lock exclusively.
  */
@@ -57,7 +62,7 @@ zocl_ctx_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 	int ret = 0;
 
 	if (kds_mode == 1) {
-		return ret;
+		return zocl_context_ioctl(zdev, data, filp);
 	}
 
 	if (args->op == ZOCL_CTX_OP_OPEN_GCU_FD) {
