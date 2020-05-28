@@ -23,6 +23,7 @@ struct xocl_aim {
 	uint64_t		start_paddr;
 	uint64_t		range;
 	struct mutex 		lock;
+	struct debug_ip_data	data;
 };
 
 static int aim_remove(struct platform_device *pdev)
@@ -59,6 +60,8 @@ static int aim_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	aim->dev = &pdev->dev;
+
+	memcpy(&aim->data, XOCL_GET_SUBDEV_PRIV(&pdev->dev), sizeof(struct debug_ip_data));
 
 	platform_set_drvdata(pdev, aim);
 	mutex_init(&aim->lock);
