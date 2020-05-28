@@ -320,6 +320,31 @@ done:
 	return ret;
 }
 
+static int p2p_rbar_len(struct p2p *p2p, ulong *rbar_sz)
+{
+	struct pci_dev *pcidev = XOCL_PL_TO_PCI_DEV(p2p->pdev);
+	int pos;
+	u32 ctrl, cap;
+
+	pos = pci_find_ext_capability(pcidev, PCI_EXT_CAP_ID_REBAR);
+	if (!pos) {
+		p2p_info(p2p, "rebar cap does not exist");
+		return -ENOTSUPP,
+	}
+
+	if (!rbar_sz)
+		return 0;
+
+	pos += REBAR_FIRST_CAP;
+	pos += PCI_REBAR_CTRL * p2p->p2p_bar_idx;
+
+	pci_read_config_dword(pcidev, pos, &cap);
+	pci_read_config_dword(pcidev, pos + 4, &ctrl);
+
+	*rbar_sz = P2P_RBAR_TO_BYTES((ctrl & PCI_REBAR_CTRL_BAR_SIZE) >>
+		PCI_REBAR_CTRL_BAR_SHIFT);
+}
+
 static ssize_t config_store(struct device *dev, struct device_attribute *da,
 		const char *buf, size_t count)
 {
@@ -339,31 +364,6 @@ static ssize_t config_store(struct device *dev, struct device_attribute *da,
 	return count;
 }
 
-static int p2p_get_rbar_len(struct p2p *p2p, ulong *rbar_sz)
-{
-	struct pci_dev *pcidev = XOCL_PL_TO_PCI_DEV(p2p->pdev);
-	int pos;
-	u32 ctrl, cap;
-
-	pos = pci_find_ext_capability(pcidev, PCI_EXT_CAP_ID_REBAR);
-	if (!pos) {
-		p2p_info(p2p, "rebar cap does not exist");
-		return -ENOTSUPP,
-	}
-
-	if (!rbar_sz)
-		return 0;
-
-	pos += REBAR_FIRST_CAP;
-	pos += 8 * p2p->p2p_bar_idx;
-
-	pci_read_config_dword(pcidev, pos, &cap);
-	pci_read_config_dword(pcidev, pos + 4, &ctrl);
-
-	*rbar_sz = P2P_RBAR_TO_BYTES((ctrl & PCI_REBAR_CTRL_BAR_SIZE) >>
-		PCI_REBAR_CTRL_BAR_SHIFT);
-}
-
 static ssize_t config_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -374,7 +374,7 @@ static ssize_t config_show(struct device *dev,
 
 	count = sprintf(buf, "bar:%ld\n", p2p->p2p_bar_len);
 
-	ret = p2p_get_rbar_len(p2p, &rbar_len);
+	ret = p2p_rbar_len(p2p, &rbar_len);
 	if (!ret)
 		count += sprintf(buf + count, "rbar:%ld\n", rbar_len);
 
@@ -501,7 +501,7 @@ static int p2p_mem_init(struct p2p *p2p)
 	struct p2p_mem_chunk *chunks;
 	int i;
 
-	p2p->p2p_bar_len = pci_resource_len(pcidev, ret);
+	p2p->p2p_bar_len = pci_resource_len(pcidev, p2p->bar_idx);
 	if (p2p->p2p_bar_len < XOCL_P2P_CHUNK_SIZE) {
 		p2p_info(p2p, "p2p bar is too small");
 		return 0;
@@ -524,9 +524,6 @@ static int p2p_mem_init(struct p2p *p2p)
 		chunk[i].xpmc_size = XOCL_P2P_CHUNK_SIZE;
 		init_completion(&chunk[i].xpmc_comp);
 	}
-
-	/* refresh rbar register anyway */
-	p2p_rbar_resize(p2p, p2p->p2p_bar_len);
 
 	pci_request_selected_regions(pcidev, 1 << p2p->p2p_bar_idx,
 			NODE_P2P);
@@ -557,6 +554,56 @@ static int p2p_mem_init(struct p2p *p2p)
 	(void) p2p_read_addr_mgmtpf(p2p);
 
 	return 0;
+}
+
+static int p2p_configure(struct p2p *p2p, ulong range)
+{
+	struct pci_dev *pcidev = XOCL_PL_TO_PCI_DEV(p2p->pdev);
+	struct resource *res = pcidev->resource + p2p->p2p_bar_idx;
+	int pos, ret = 0;
+	u16 cmd;
+	ulong rbar_sz, flags;
+	u32 ctrl, cap;
+
+	pos = pci_find_ext_capability(pcidev, PCI_EXT_CAP_ID_REBAR);
+	if (!pos) {
+		p2p_info(p2p, "rebar cap does not exist");
+		return -ENOTSUPP,
+	}
+
+	pos += p2p->p2p_bar_idx * PCI_REBAR_CTRL;
+	pci_read_config_dword(dev, pos + PCI_REBAR_CTRL, &ctrl);
+
+	rbar_sz = P2P_RBAR_TO_BYTES((ctrl & PCI_REBAR_CTRL_BAR_SIZE) >>
+		PCI_REBAR_CTRL_BAR_SHIFT);
+
+	pci_release_selected_regions(pcidev, (1 << p2p->p2p_bar_idx));
+	pci_read_config_word(pcidev, PCI_COMMAND, &cmd);
+	pci_write_config_word(pcidev, PCI_COMMAND, cmd & ~PCI_COMMAND_MEMORY);
+	ctrl &= ~PCI_REBAR_CTRL_BAR_SIZE;
+	ctrl |= P2P_BYTES_TO_RBAR(range) << PCI_REBAR_CTRL_BAR_SHIFT;
+	pci_write_config_dword(pcidev, pos + PCI_REBAR_CTRL, ctrl);
+
+	if (range == rbar_sz)
+		goto done;
+
+	flags = res->flags;
+	if (res->parent)
+		release_resource(res);
+
+	res->start = 0;
+	res->end = range - 1;
+
+	pci_assign_unassigned_bus_resources(pcidev->bus);
+
+	res->flags = flags;
+
+done:
+	pci_write_config_word(pcidev, PCI_COMMAND, cmd | PCI_COMMAND_MEMORY);
+	pci_request_selected_regions(pcidev, (1 << p2p->p2p_bar_idx),
+			NODE_P2P);
+
+	return ret;
 }
 
 static void p2p_remove(struct platform_device *pdev)
@@ -611,7 +658,9 @@ static int p2p_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
-	ret = p2p_mem_init(p2p);
+	p2p->p2p_bar_len = pci_resource_len(pcidev, p2p->p2p_bar_idx);
+
+	ret = p2p_configure(p2p);
 	if (ret)
 		goto failed;
 
