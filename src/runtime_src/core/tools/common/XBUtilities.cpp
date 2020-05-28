@@ -332,7 +332,7 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
 
   // -- Collect the devices by name
   for (const auto & deviceBDF : _deviceBDFs) {
-  	auto index = xrt_core::utils::bdf2index(deviceBDF);         // Can throw
+  	auto index = xrt_core::utils::bdf2index(deviceBDF, _inUserDomain);         // Can throw
     if(_inUserDomain)
         _deviceCollection.push_back( xrt_core::get_userpf_device(index) );
       else 

@@ -17,6 +17,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "Report.h"
+#include "core/common/time.h"
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <sstream>
