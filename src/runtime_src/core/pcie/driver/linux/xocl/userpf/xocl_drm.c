@@ -1000,12 +1000,13 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	size_t length = 0;
 	size_t mm_stat_size = 0;
 	size_t size = 0, wrapper_size = 0;
-	size_t total_mem_size = 0;
 	size_t ddr_bank_size;
 	struct mem_topology *topo = NULL;
 	struct mem_data *mem_data;
 	uint32_t shared;
 	struct xocl_mm_wrapper *wrapper = NULL;
+	uint64_t mm_start_addr = 0; 
+	uint64_t mm_end_addr = 0; 
 	uint64_t reserved1 = 0;
 	uint64_t reserved2 = 0;
 	uint64_t reserved_start;
@@ -1077,6 +1078,9 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 		}
 	}
 
+	/* Initialize with max and min possible value */
+	mm_start_addr = 0xffffFFFFffffFFFF;
+	mm_end_addr = 0;
 	/* Initialize the used banks and their sizes */
 	/* Currently only fixed sizes are supported */
 	for (i = 0; i < topo->m_count; i++) {
@@ -1084,7 +1088,6 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 
 		ddr_bank_size = XOCL_IS_STREAM(topo, i) ? 0 :
 			mem_data->m_size * 1024;
-		total_mem_size += (ddr_bank_size - reserved1 - reserved2);
 
 		drm_p->mm_p2p_off[i + 1] = drm_p->mm_p2p_off[i] + ddr_bank_size;
 
@@ -1097,6 +1100,12 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 		xocl_info(drm_p->ddev->dev, "Allocating Memory Bank: %s", mem_data->m_tag);
 		xocl_info(drm_p->ddev->dev, "  base_addr:0x%llx, total size:0x%lx",
 			  mem_data->m_base_address, ddr_bank_size);
+
+		/* Update the start and end address for the memory manager */
+		if (mem_data->m_base_address < mm_start_addr)
+			mm_start_addr = mem_data->m_base_address;
+		if ((mem_data->m_base_address + ddr_bank_size) > mm_end_addr)
+			mm_end_addr = mem_data->m_base_address + ddr_bank_size;
 
 		if (XOCL_DSA_IS_MPSOC(drm_p->xdev)) {
 			reserved_end = mem_data->m_base_address + ddr_bank_size;
@@ -1141,8 +1150,8 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 		goto done;
 	}
 
-	drm_mm_init(drm_p->mm, topo->m_mem_data[0].m_base_address,
-		    total_mem_size);
+	drm_mm_init(drm_p->mm, mm_start_addr,
+		    (mm_end_addr - mm_start_addr));
 
 	xocl_info(drm_p->ddev->dev, "drm_mm_init called");
 
