@@ -47,11 +47,34 @@
 #define p2p_info(p2p, fmt, arg...)		\
 	xocl_info(&(p2p)->pdev->dev, fmt "\n", ##arg)
 
+#ifndef PCI_EXT_CAP_ID_REBAR
+#define PCI_EXT_CAP_ID_REBAR 0x15
+#endif
+
+#ifndef PCI_REBAR_CTRL
+#define PCI_REBAR_CTRL		8
+#endif
+
+#ifndef PCI_REBAR_CTRL_BAR_SIZE
+#define  PCI_REBAR_CTRL_BAR_SIZE	0x00001F00
+#endif
+
+#ifndef PCI_REBAR_CTRL_BAR_SHIFT
+#define  PCI_REBAR_CTRL_BAR_SHIFT		8
+#endif
+
+#define REBAR_FIRST_CAP		4
+
+
+#define P2P_ADDR_HI(addr)		((addr >> 32) & 0xffffffff)
+#define P2P_ADDR_LO(addr)		(addr & 0xffffffff)
+
 struct remapper_regs {
 	u32	ver;
 	u32	cap;
-	u32	entry_num;
-	u64	base_addr;
+	u32	slot_num;
+	u32	base_addr_lo;
+	u32	base_addr_hi;
 	u32	log_range;
 } __attribute__((packed));
 
@@ -61,17 +84,26 @@ struct p2p {
 	struct platform_device	*pdev;
 	void		__iomem	*remapper;
 	struct mutex		p2p_lock;
-	ulong			bank_sz;
-	uint			bank_num;
+
 	int			p2p_bar_idx;
 	ulong			p2p_bar_len;
 
 	ulong			p2p_mem_chunk_num;
 	void			*p2p_mem_chunks;
+
+	ulong			remap_slot_num;
+	ulong			remap_slot_sz;
+	ulong			remap_range;
+	void			*p2p_remap_slots;
+};
+
+struct p2p_remap_slot {
+	ulong			mem_pa;
+	int			ref;
+	struct list_head	blocks;
 };
 
 struct p2p_mem_chunk {
-	struct p2p		*p2p;
 	void			*xpmc_res_grp;
 	void __iomem		*xpmc_va;
 	resource_size_t		xpmc_pa;
@@ -93,16 +125,11 @@ struct p2p_mem_chunk {
 #define remap_entry(g, e)				\
 	(g->remapper + ENTRY_OFFSET + ((ulong)e << 3))
 
-static int p2p_enable(struct platform_device *pdev, ulong bank_sz, uint bank_num)
-{
-	struct p2p *p2p = platform_get_drvdata(pdev);
-	xdev_handle_t xdev = xocl_get_xdev(pdev);
+#define remap_get_max_slot_sz(p2p)			\
+	(1UL << (remap_reg_rd(p2p, cap) & 0xff))
+#define remap_get_max_slot_num(p2p)			\
+	((remap_reg_rd(p2p, cap) >> 16) & 0xff)
 
-	p2p->bank_sz = bank_sz;
-	p2p->bank_num = bank_num;
-
-	return 0;
-}
 
 static void p2p_percpu_ref_release(struct percpu_ref *ref)
 {
@@ -151,9 +178,8 @@ static void p2p_percpu_ref_exit(void *data)
 	wait_for_completion(&chk->xpmc_comp);
 	percpu_ref_exit(ref);
 }
-static void p2p_mem_chunk_release(struct p2p_mem_chunk *chk)
+static void p2p_mem_chunk_release(struct p2p *p2p, struct p2p_mem_chunk *chk)
 {
-	struct p2p *p2p = chk->p2p;
 	struct pci_dev *pdev = XOCL_PL_TO_PCI_DEV(p2p->pdev);
 
 	BUG_ON(!mutex_is_locked(&p2p->p2p_lock));
@@ -183,7 +209,7 @@ static void p2p_mem_chunk_release(struct p2p_mem_chunk *chk)
 		chk->xpmc_pa, chk->xpmc_pa + chk->xpmc_size, chk->xpmc_ref);
 }
 
-static int p2p_mem_chunk_reserve(struct p2p_mem_chunk *chk)
+static int p2p_mem_chunk_reserve(struct p2p *p2p, struct p2p_mem_chunk *chk)
 {
 	struct p2p *p2p = chk->p2p;
 	struct pci_dev *pdev = XOCL_PL_TO_PCI_DEV(p2p->pdev);
@@ -294,6 +320,106 @@ done:
 	return ret;
 }
 
+static ssize_t config_store(struct device *dev, struct device_attribute *da,
+		const char *buf, size_t count)
+{
+	struct p2p *p2p = platform_get_drvdata(to_platform_device(dev));
+	ulong range;
+	int ret;
+
+	if (kstrtoul(buf, 10, &range) == -EINVAL) {
+		p2p_err(p2p, "invalid input");
+		return -EINVAL;
+	}
+
+	ret = p2p_configure(p2p, range);
+	if (ret)
+		return ret;
+
+	return count;
+}
+
+static int p2p_get_rbar_len(struct p2p *p2p, ulong *rbar_sz)
+{
+	struct pci_dev *pcidev = XOCL_PL_TO_PCI_DEV(p2p->pdev);
+	int pos;
+	u32 ctrl, cap;
+
+	pos = pci_find_ext_capability(pcidev, PCI_EXT_CAP_ID_REBAR);
+	if (!pos) {
+		p2p_info(p2p, "rebar cap does not exist");
+		return -ENOTSUPP,
+	}
+
+	if (!rbar_sz)
+		return 0;
+
+	pos += REBAR_FIRST_CAP;
+	pos += 8 * p2p->p2p_bar_idx;
+
+	pci_read_config_dword(pcidev, pos, &cap);
+	pci_read_config_dword(pcidev, pos + 4, &ctrl);
+
+	*rbar_sz = P2P_RBAR_TO_BYTES((ctrl & PCI_REBAR_CTRL_BAR_SIZE) >>
+		PCI_REBAR_CTRL_BAR_SHIFT);
+}
+
+static ssize_t config_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct p2p *p2p = platform_get_drvdata(to_platform_device(dev));
+	ulong rbar_len;
+	int ret;
+	ssize_t count;
+
+	count = sprintf(buf, "bar:%ld\n", p2p->p2p_bar_len);
+
+	ret = p2p_get_rbar_len(p2p, &rbar_len);
+	if (!ret)
+		count += sprintf(buf + count, "rbar:%ld\n", rbar_len);
+
+	if (p2p->remapper)
+		count += sprintf(buf + count, "remap:%ld\n", p2p->remap_range);
+
+	return count;
+}
+
+static struct attribute *p2p_attrs[] = {
+	&dev_attr_config.attr,
+	NULL,
+};
+
+static struct attribute_group p2p_attr_group = {
+	.attrs = p2p_attrs,
+};
+
+static void p2p_sysfs_destroy(struct platform_device *pdev)
+{
+	if (!p2p->sysfs_created)
+		return;
+
+	sysfs_remove_group(&pdev->dev.kobj, &p2p_attr_group);
+	p2p->sysfs_created = false;
+}
+
+static int p2p_sysfs_create(struct platform_device *pdev)
+{
+	struct p2p *p2p = platform_get_drvdata(pdev);
+	int ret;
+
+	if (p2p->sysfs_created)
+		return 0;
+
+	ret = sysfs_create_group(&pdev->dev.kobj, &p2p_attr_group);
+	if (ret) {
+		p2p_err(p2p, "create ert attrs failed: 0x%x", ret);
+		return ret;
+	}
+	p2p->sysfs_created = true;
+
+	return 0;
+}
+
 static void p2p_read_addr_mgmtpf(struct p2p *p2p)
 {
 	xdev_handle_t xdev = xocl_get_xdev(p2p->pdev);
@@ -318,7 +444,8 @@ static void p2p_read_addr_mgmtpf(struct p2p *p2p)
 
 	if (!iommu_present(&pci_bus_type)){
 		mb_p2p->p2p_bar_len = pci_resource_len(pcidev, p2p->p2p_bar_idx);
-		mb_p2p->p2p_bar_addr = pci_resource_start(pcidev, p2p->p2p_bar_idx);
+		mb_p2p->p2p_bar_addr = pci_resource_start(pcidev,
+				p2p->p2p_bar_idx);
 	} else {
 		mb_p2p->p2p_bar_len = 0;
 		mb_p2p->p2p_bar_addr = 0;
@@ -336,23 +463,106 @@ static void p2p_read_addr_mgmtpf(struct p2p *p2p)
 	}
 }
 
-void p2p_mem_chunk_init(struct p2p *p2p, struct p2p_mem_chunk *chk,
-		resource_size_t off, resource_size_t sz)
+
+static int p2p_mem_fini(struct p2p *p2p)
 {
-	chk->p2p = p2p;
-	chk->xpmc_pa = off;
-	chk->xpmc_size = sz;
-	init_completion(&chk->xpmc_comp);
+	struct pci_dev *pcidev = XOCL_PL_TO_PCI_DEV(p2p->pdev);
+	struct p2p_mem_chuck *chunks;
+	int i;
+
+	if (p2p->remapper)
+		remap_reg_wr(p2p, 0, slot_num);
+
+	pci_release_selected_regions(pcidev, 1 << p2p->p2p_bar_idx);
+
+	chunks = p2p->p2p_mem_chunks;
+	for (i = 0; i < p2p->p2p_mem_chunk_num; i++) {
+		if (chunks[i].xpmc_ref > 0) {
+			p2p_err(p2p, "still %d ref for P2P chunk[%d]",
+				chunks[i].xpmc_ref, i);
+			chunks[i].xpmc_ref = 1;
+			p2p_mem_chunk_release(p2p, &chunks[i]);
+		}
+	}
+
+	if (p2p->p2p_mem_chunks)
+		vfree(p2p->p2p_mem_chunks);
+	p2p->p2p_mem_chunk_num = 0;
+	p2p->p2p_mem_chunks = NULL;
+
+	/* Reset Virtualization registers */
+	(void) p2p_read_addr_mgmtpf(p2p);
+}
+
+static int p2p_mem_init(struct p2p *p2p)
+{
+	struct pci_dev *pcidev = XOCL_PL_TO_PCI_DEV(p2p->pdev);
+	resource_size_t pa;
+	struct p2p_mem_chunk *chunks;
+	int i;
+
+	p2p->p2p_bar_len = pci_resource_len(pcidev, ret);
+	if (p2p->p2p_bar_len < XOCL_P2P_CHUNK_SIZE) {
+		p2p_info(p2p, "p2p bar is too small");
+		return 0;
+	}
+
+	/* init chunk table */
+	p2p_info(p2p, "Init chunks. BAR len %ld, chunk sz %lld",
+			p2p->p2p_bar_len, XOCL_P2P_CHUNK_SIZE);
+	p2p->p2p_mem_chunk_num = p2p->p2p_bar_len / XOCL_P2P_CHUNK_SIZE;
+	p2p->p2p_mem_chunks = vzalloc(sizeof(struct p2p_mem_chunk) *
+			xdev->p2p_mem_chunk_num);
+	if (!p2p->p2p_mem_chunks)
+		return -ENOMEM;
+	chunks = p2p->p2p_mem_chunks;
+
+	pa = pci_resource_start(pcidev, p2p->p2p_bar_idx);
+	for (i = 0; i < p2p->p2p_mem_chunk_num; i++) {
+		chunk[i].xpmc_pa = pa; 
+		pa += XOCL_P2P_CHUNK_SIZE;
+		chunk[i].xpmc_size = XOCL_P2P_CHUNK_SIZE;
+		init_completion(&chunk[i].xpmc_comp);
+	}
+
+	/* refresh rbar register anyway */
+	p2p_rbar_resize(p2p, p2p->p2p_bar_len);
+
+	pci_request_selected_regions(pcidev, 1 << p2p->p2p_bar_idx,
+			NODE_P2P);
+	/* init remapper */
+	if (!p2p->remapper)
+		return 0;
+
+	p2p->remap_range = remap_get_max_slot_sz(p2p) *
+		remap_get_max_slot_num(p2p);
+	if (p2p->remap_range > p2p->p2p_bar_len)
+		p2p->remap_range = p2p->p2p_bar_len;
+
+	p2p->remap_slot_sz = p2p->remap_range / remap_get_max_slot_num(p2p);
+	if (p2p->remap_slot_sz < XOCL_P2P_CHUNK_SIZE)
+		p2p->remap_slot_sz = XOCL_P2P_CHUNK_SIZE;
+
+	p2p->remap_slot_num = p2p->remap_range / p2p->remap_slot_sz;
+
+	remap_reg_wr(p2p, p2p->remap_slot_num, slot_num);
+	remap_reg_wr(p2p, P2P_ADDR_LO(pa), base_addr_lo);
+	remap_reg_wr(p2p, P2P_ADDR_HI(pa), base_addr_hi);
+	remap_reg_wr(p2p, fls64(p2p->remap_slot_num) - 1, log_range);
+
+	p2p_info(p2p, "Init remapper. range %ld, slot size %ld, num %ld",
+		p2p->remap_range, p2p->remap_slot_sz, p2p->remap_slot_num);
+
+	/* Pass P2P bar address and len to mgmtpf */
+	(void) p2p_read_addr_mgmtpf(p2p);
+
+	return 0;
 }
 
 static void p2p_remove(struct platform_device *pdev)
 {
 	struct p2p *p2p;
-	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	struct pci_dev *pcidev = XOCL_PL_TO_PCI_DEV(p2p->pdev);
-	struct p2p_mem_chunk *chunks;
 	void *hdl;
-	int i;
 
 	p2p = platform_get_drvdata(pdev);
 	if (!p2p) {
@@ -361,23 +571,7 @@ static void p2p_remove(struct platform_device *pdev)
 	}
 	xocl_drvinst_release(p2p, &hdl);
 
-	mutex_lock(&p2p->p2p_lock);
-	chunks = p2p->p2p_mem_chunks;
-	for (i = 0; i < p2p->p2p_mem_chunk_num; i++) {
-		if (chunks[i].xpmc_ref > 0) {
-			xocl_err(&pdev->dev, "still %d ref for P2P chunk[%d]",
-				chunks[i].xpmc_ref, i);
-			chunks[i].xpmc_ref = 1;
-			p2p_mem_chunk_release(&chunks[i]);
-		}
-	}
-	mutex_unlock(&p2p->p2p_lock);
-
-	if (p2p->p2p_mem_chunks)
-		vfree(p2p->p2p_mem_chunks);
-
-	if (p2p->p2p_bar_len >= 0)
-		pci_release_selected_regions(pcidev, 1 << p2p->p2p_bar_idx);
+	p2p_mem_fini(p2p);
 
 	if (p2p->remapper)
 		iounmap(p2p->remapper);
@@ -392,10 +586,7 @@ static int p2p_probe(struct platform_device *pdev)
 	struct p2p *p2p;
 	struct resource *res;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	struct pci_dev *pcidev = XOCL_PL_TO_PCI_DEV(p2p->pdev);
-	struct p2p_mem_chunk *chunks;
-	resource_size_t pa;
-	int ret, i = 0;
+	int ret;
 
 	p2p = xocl_drvinst_alloc(&pdev->dev, sizeof(*p2p));
 	if (!p2p)
@@ -407,55 +598,54 @@ static int p2p_probe(struct platform_device *pdev)
 
 	for (res = platform_get_resource(pdev, IORESOURCE_MEM, i); res;
 	    res = platform_get_resource(pdev, IORESOURCE_MEM, ++i)) {
-		if (strncmp(res->name, NODE_REMAP_P2P, strlen(NODE_REMAP_P2P))) {
+		if (!strncmp(res->name, NODE_REMAP_P2P, strlen(NODE_REMAP_P2P))) {
 			p2p->remapper = ioremap_nocache(res->start,
 					res->end - res->start + 1);
 		}
 	}
-	if (!p2p->remapper) {
-		xocl_err(&pdev->dev, "did not find remapper");
-		ret = -EFAULT;
-		goto failed;
-	}
-		
+
 	p2p->p2p_bar_idx = xocl_fdt_get_p2pbar(xdev, XDEV(xdev)->fdt_blob);
 	if (p2p->p2p_bar_idx < 0) {
 		xocl_err(&pdev->dev, "can not find p2p bar in metadata");
 		ret = -ENOTSUPP;
 		goto failed;
 	}
-	pci_request_selected_regions(pcidev, 1 << p2p->p2p_bar_idx,
-			NODE_P2P);
 
-	p2p->p2p_bar_len = pci_resource_len(pcidev, ret);
-	if (!p2p->p2p_bar_len || p2p->p2p_bar_len % XOCL_P2P_CHUNK_SIZE) {
-		xocl_err(&pdev->dev, "invalid bar len %ld", p2p->p2p_bar_len);
-		ret = -EINVAL;
+	ret = p2p_mem_init(p2p);
+	if (ret)
 		goto failed;
-	}
-
-	p2p->p2p_mem_chunk_num = p2p->p2p_bar_len / XOCL_P2P_CHUNK_SIZE;
-	p2p->p2p_mem_chunks = vzalloc(sizeof(struct p2p_mem_chunk) *
-			p2p->p2p_mem_chunk_num);
-	if (p2p->p2p_mem_chunks == NULL) {
-		ret = -ENOMEM;
-		goto failed;
-	}
-
-	pa = pci_resource_start(pcidev, p2p->p2p_bar_idx);
-	chunks = p2p->p2p_mem_chunks;
-	for (i = 0; i < p2p->p2p_mem_chunk_num; i++) {
-		p2p_mem_chunk_init(p2p, &chunks[i],
-			pa + ((resource_size_t)i) * XOCL_P2P_CHUNK_SIZE,
-			XOCL_P2P_CHUNK_SIZE);
-	}
-
-	/* Pass P2P bar address and len to mgmtpf */
-	(void) p2p_read_addr_mgmtpf(p2p);
 
 	return 0;
 
 failed:
 	p2p_remove(pdev);
 	return ret;
+}
+
+struct xocl_drv_private p2p_priv = {
+	.ops = &p2p_ops,
+};
+
+struct platform_device_id p2p_id_table[] = {
+	{ XOCL_DEVNAME(XOCL_P2P), (kernel_ulong_t)&p2p_priv },
+	{ },
+};
+
+static struct platform_driver	p2p_driver = {
+	.probe		= p2p_probe,
+	.remove		= p2p_remove,
+	.driver		= {
+		.name = XOCL_DEVNAME(XOCL_P2P),
+	},
+	.id_table = p2p_id_table,
+
+
+int __init xocl_init_p2p(void)
+{
+	return platform_driver_register(&p2p_driver);
+}
+
+void xocl_fini_p2p(void)
+{
+	platform_driver_unregister(&p2p_driver);
 }

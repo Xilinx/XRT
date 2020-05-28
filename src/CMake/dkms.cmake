@@ -159,6 +159,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/subdev/address_translator.c
   xocl/subdev/cu_ctrl.c
   xocl/subdev/cu.c
+  xocl/subdev/p2p.c
   xocl/Makefile
   )
 
