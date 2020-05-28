@@ -2447,14 +2447,6 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 	err = icap_calibrate_mig(icap->icap_pdev);
 	if (err)
 		goto out;
-	/* create the reset of subdevs for both mgmt and user pf */
-	if (num_dev > 0) {
-		for (i = 0; i < num_dev; i++)
-			(void) xocl_subdev_create(xdev, &subdevs[i].info);
-
-		xocl_subdev_create_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
-	}
-
 out:
 	if (err && retention)
 		icap_release_ddr_gate_pin(icap);
@@ -2538,8 +2530,9 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 	struct axlf *xclbin)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
-	int err = 0;
+	int err = 0, i = 0, num_dev = 0;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	struct xocl_subdev *subdevs = NULL;
 
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
@@ -2555,6 +2548,8 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 
 	xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 	icap_refresh_addrs(pdev);
+
+	icap_probe_urpdev(pdev, xclbin, &num_dev, &subdevs);
 
 	if (ICAP_PRIVILEGED(icap)) {
 
@@ -2606,6 +2601,13 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 			(void) icap_verify_bitstream_axlf(pdev, xclbin);
 		}
 
+	}
+	/* create the rest of subdevs for both mgmt and user pf */
+	if (num_dev > 0) {
+		for (i = 0; i < num_dev; i++)
+			(void) xocl_subdev_create(xdev, &subdevs[i].info);
+
+		xocl_subdev_create_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 	}
 
 	/* Only when everything has been successfully setup, then enable xmc */
