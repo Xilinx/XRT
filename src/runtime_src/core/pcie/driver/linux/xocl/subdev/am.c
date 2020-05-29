@@ -68,6 +68,7 @@ struct xocl_am {
 	uint64_t		start_paddr;
 	uint64_t		range;
 	struct mutex 		lock;
+	struct debug_ip_data	data;
 	struct am_counters counters;
 };
 
@@ -133,8 +134,18 @@ static ssize_t counters_show(struct device *dev,
 
 static DEVICE_ATTR_RO(counters);
 
+static ssize_t name_show(struct device *dev,
+			   struct device_attribute *attr, char *buf)
+{
+	struct xocl_am *am = platform_get_drvdata(to_platform_device(dev));
+	return sprintf(buf, "accel_mon_%llu\n",am->data.m_base_address);
+}
+
+static DEVICE_ATTR_RO(name);
+
 static struct attribute *am_attrs[] = {
 			   &dev_attr_counters.attr,
+			   &dev_attr_name.attr,
 			   NULL,
 };
 
@@ -178,6 +189,8 @@ static int am_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	am->dev = &pdev->dev;
+
+	memcpy(&am->data, XOCL_GET_SUBDEV_PRIV(&pdev->dev), sizeof(struct debug_ip_data));
 
 	platform_set_drvdata(pdev, am);
 	mutex_init(&am->lock);

@@ -139,8 +139,18 @@ static ssize_t counters_show(struct device *dev,
 
 static DEVICE_ATTR_RO(counters);
 
+static ssize_t name_show(struct device *dev,
+			   struct device_attribute *attr, char *buf)
+{
+	struct xocl_aim *aim = platform_get_drvdata(to_platform_device(dev));
+	return sprintf(buf, "aximm_mon_%llu\n",aim->data.m_base_address);
+}
+
+static DEVICE_ATTR_RO(name);
+
 static struct attribute *aim_attrs[] = {
 			   &dev_attr_counters.attr,
+			   &dev_attr_name.attr,
 			   NULL,
 };
 

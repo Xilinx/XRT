@@ -44,7 +44,8 @@ struct xocl_asm {
 	uint64_t		start_paddr;
 	uint64_t		range;
 	struct mutex 		lock;
-	struct asm_counters counters;
+	struct debug_ip_data	data;
+	struct asm_counters	counters;
 };
 
 static void update_counters(struct xocl_asm *sspm)
@@ -88,8 +89,18 @@ static ssize_t counters_show(struct device *dev,
 
 static DEVICE_ATTR_RO(counters);
 
+static ssize_t name_show(struct device *dev,
+			   struct device_attribute *attr, char *buf)
+{
+	struct xocl_asm *sspm = platform_get_drvdata(to_platform_device(dev));
+	return sprintf(buf, "axis_mon_%llu\n",sspm->data.m_base_address);
+}
+
+static DEVICE_ATTR_RO(name);
+
 static struct attribute *asm_attrs[] = {
 			   &dev_attr_counters.attr,
+			   &dev_attr_name.attr,
 			   NULL,
 };
 
@@ -133,6 +144,8 @@ static int asm_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	xocl_asm->dev = &pdev->dev;
+
+	memcpy(&xocl_asm->data, XOCL_GET_SUBDEV_PRIV(&pdev->dev), sizeof(struct debug_ip_data));
 
 	platform_set_drvdata(pdev, xocl_asm);
 	mutex_init(&xocl_asm->lock);
