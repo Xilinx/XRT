@@ -2631,7 +2631,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	struct axlf *xclbin = (struct axlf *)u_xclbin;
 	int err = 0;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	const struct axlf_section_header *dtbHeader = NULL;
+	const struct axlf_section_header *header = NULL;
 
 	err = icap_xclbin_wr_lock(icap);
 	if (err)
@@ -2646,8 +2646,8 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		goto done;
 	}
 
-	dtbHeader = get_axlf_section_hdr(icap, xclbin, PARTITION_METADATA);
-	if (dtbHeader) {
+	header = get_axlf_section_hdr(icap, xclbin, PARTITION_METADATA);
+	if (header) {
 		ICAP_INFO(icap, "check interface uuid");
 		if (!XDEV(xdev)->fdt_blob) {
 			ICAP_ERR(icap, "did not find platform dtb");
@@ -2657,12 +2657,23 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		err = xocl_fdt_check_uuids(xdev,
 				(const void *)XDEV(xdev)->fdt_blob,
 				(const void *)((char *)xclbin +
-				dtbHeader->m_sectionOffset));
+				header->m_sectionOffset));
 		if (err) {
 			ICAP_ERR(icap, "interface uuids do not match");
 			err = -EINVAL;
 			goto done;
 		}
+	}
+
+	/*
+	 * If the previous frequency was very high and we load an incompatible
+	 * bitstream it may damage the hardware!
+	 * If no clock freq, must return without touching the hardware.
+	 */
+	header = get_axlf_section_hdr(icap, xclbin, CLOCK_FREQ_TOPOLOGY);
+	if (!header) {
+		err = -EINVAL;
+		goto done;
 	}
 
 	if (xocl_xrt_version_check(xdev, xclbin, true)) {
