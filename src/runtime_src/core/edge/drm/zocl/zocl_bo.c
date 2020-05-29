@@ -901,6 +901,9 @@ void zocl_init_mem(struct drm_zocl_dev *zdev, struct mem_topology *mtopo)
 	struct zocl_mem *memp;
 	int i;
 
+	if (!mtopo)
+		return;
+
 	zdev->num_mem = mtopo->m_count;
 	zdev->mem = vzalloc(zdev->num_mem * sizeof(struct zocl_mem));
 

@@ -143,7 +143,7 @@ get_ert_slots(const axlf* top) const
 {
   auto xml_hdr = ::xclbin::get_axlf_section(top, EMBEDDED_METADATA);
   if (!xml_hdr)
-    throw std::runtime_error("No xml metadata in xclbin");
+    return std::make_pair(0, 0);
   auto xml_data = reinterpret_cast<const char*>(top) + xml_hdr->m_sectionOffset;
   auto xml_size = xml_hdr->m_sectionSize;
   return get_ert_slots(xml_data, xml_size);
