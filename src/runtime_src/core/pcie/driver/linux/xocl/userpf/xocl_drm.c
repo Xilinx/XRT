@@ -786,6 +786,18 @@ static int init_mem_group(struct connectivity *connect, int ip_cnt, int arg_idx,
 		goto done;
 	}
 
+	/* Check whether the group range is contigious. */
+	for (i = m_group->l_bank_idx; i <= m_group->h_bank_idx; i++)
+	{
+		if (!topo->m_mem_data[i].m_used) {
+			xocl_err(drm_p->ddev->dev, "Group range is not
+				 contigious ");
+			err = -EINVAL;
+			goto done;
+
+		}
+	}
+
 	/* Update group's start address */
 	mem_data = &topo->m_mem_data[m_group->l_bank_idx];
 	if (!mem_data) {
@@ -952,6 +964,7 @@ int xocl_init_connectivity(struct xocl_drm *drm_p, struct mem_topology *topo)
 		if (init_mem_group(connect, ip_cnt, arg_cnt, topo, m_group)) {
 			arg_cnt = 0;
 			ip_cnt++;
+			vfree(m_group);
 			continue;
 		}
 
@@ -981,7 +994,11 @@ int xocl_init_connectivity(struct xocl_drm *drm_p, struct mem_topology *topo)
 	return 0;
 
 failed:
-	for (i = 0; i < drm_p->m_connect->mem_map->m_count; i++) 
+	for (i = 0; i < drm_p->m_connect->mem_group->g_count; i++)
+	       if (drm_p->m_connect->mem_group->m_group[i])
+		       vfree(drm_p->m_connect->mem_group->m_group[i]);
+ 
+	for (i = 0; i < drm_p->m_connect->mem_map->m_count; i++)
 		if (drm_p->m_connect->mem_map->m_map[i])
 			vfree(drm_p->m_connect->mem_map->m_map[i]);
 
