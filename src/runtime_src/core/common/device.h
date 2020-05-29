@@ -225,20 +225,20 @@ public:
    * Get the low and high index of a group
    */
   std::pair<int, int>
-  get_groupRange(const int grp_id) const;
+  get_group_range(int grp_id) const;
 
   /** 
    * Get the group id for the given cu & argument index
    */
   int
-  get_groupIndex(const int cu_id, const int arg_id) const;
+  get_group_index(int cu_id, int arg_id) const;
 
   /**
-   * store_mem_group_info() - Store the memory group information
+   * populate_mem_group_info() - Store the memory group information
    *
    */
   void
-  store_mem_group_info(char *infoBuff);
+  populate_mem_group_info(const char *infoBuff);
 
   // Move all these 'pt' functions out the class interface
   virtual void get_info(boost::property_tree::ptree&) const {}

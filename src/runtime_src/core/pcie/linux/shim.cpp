@@ -1383,7 +1383,12 @@ int shim::xclGetMemGroupInfo(char *grpMapInfo)
     mDev->sysfs_get("", "mem_group_info", errmsg, memGroupInfo);
     if (memGroupInfo.empty()) 
         return -EINVAL;
-   
+  
+    /* Allocate memory for grpMapInfo */
+    grpMapInfo =  (char *)calloc(memGroupInfo.size(), sizeof(char));
+    if (!grpMapInfo)
+	return -ENOMEM; 
+
     memcpy((void *)grpMapInfo, memGroupInfo.data(), memGroupInfo.size());
      
     return memGroupInfo.size();
@@ -2222,8 +2227,7 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     LOAD_XCLBIN_CB ;
 #endif
     if (!ret) {
-      char Buff[1024] = {0};
-      char *pGrpInfo = (char *)&Buff;
+      char *pGrpInfo = NULL;
       int grp_info_size = 0;
 
       auto core_device = xrt_core::get_userpf_device(drv);
@@ -2232,8 +2236,12 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
       /* Populate memory group mapping info from sysfs */
       grp_info_size = drv->xclGetMemGroupInfo(pGrpInfo);
       if (grp_info_size > 0) {
-          /* Store the retrive info in device class */
-          core_device->store_mem_group_info(pGrpInfo);
+          /* Populate the retrive info into device class */
+          core_device->populate_mem_group_info(pGrpInfo);
+	  
+	  /* Free the allocated memory */
+	  if (pGrpInfo)
+              free(pGrpInfo); 	
       }
 #ifndef DISABLE_DOWNLOAD_XCLBIN
       ret = xrt_core::scheduler::init(handle, buffer);

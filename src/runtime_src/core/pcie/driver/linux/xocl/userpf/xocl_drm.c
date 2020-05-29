@@ -913,16 +913,18 @@ int xocl_init_connectivity(struct xocl_drm *drm_p, struct mem_topology *topo)
 		return err;
 
 	if (!layout) {
-		XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
+		XOCL_PUT_IP_TOPOLOGY(drm_p->xdev);
 		return -EINVAL;
 	}
 
 	err = XOCL_GET_CONNECTIVITY(drm_p->xdev, connect);
-	if (err)
+	if (err) {
+		XOCL_PUT_IP_TOPOLOGY(drm_p->xdev);
 		return err;
+	}
 
 	if (connect == NULL) { 
-		XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
+		XOCL_PUT_IP_TOPOLOGY(drm_p->xdev);
 		XOCL_PUT_CONNECTIVITY(drm_p->xdev);
 		return -ENODEV;
 	}

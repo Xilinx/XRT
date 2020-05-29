@@ -312,7 +312,7 @@ get_grpidx_nolock(const device* dev) const
 
   auto device = xrt_core::get_userpf_device(dev->get_handle());
 
-  return device->get_groupIndex(cuidx, argidx);
+  return device->get_group_index(cuidx, argidx);
 }
 
 memory::memidx_type

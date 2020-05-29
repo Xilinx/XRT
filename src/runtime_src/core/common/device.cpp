@@ -145,7 +145,7 @@ get_ert_slots(const axlf* top) const
 
 std::pair<int, int>
 device::
-get_groupRange(const int grp_id) const  
+get_group_range(int grp_id) const  
 {
   auto itr = m_grp_info.find(grp_id);
 
@@ -157,7 +157,7 @@ get_groupRange(const int grp_id) const
 
 int
 device::
-get_groupIndex(const int cu_id, const int arg_id) const  
+get_group_index(int cu_id, int arg_id) const  
 {
   auto itr = m_grp_map.find(std::make_pair(cu_id, arg_id));
 
@@ -167,7 +167,7 @@ get_groupIndex(const int cu_id, const int arg_id) const
 
 void
 device::
-store_mem_group_info(char *infoBuff)  
+populate_mem_group_info(const char *infoBuff)  
 {
   struct xcl_mem_group_map      grpInfoMap;
   struct xcl_mem_group_info     *m_grp = NULL;

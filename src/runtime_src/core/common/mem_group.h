@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,8 +14,8 @@
  * under the License.
  */
 
-#ifndef _XRT_CORE_MEMORY_H_
-#define _XRT_CORE_MEMORY_H_
+#ifndef XRT_CORE_MEM_GROUP_H
+#define XRT_CORE_MEM_GROUP_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -23,6 +23,8 @@ extern "C" {
 
 /****   MEMORY GROUP SECTION ****/
 #define XCL_MEM_GROUP_MAX 128 
+
+/* memory mapping information for groups */
 struct xcl_mem_map_info {
     uint32_t cu_id;
     uint32_t arg_id;
@@ -34,10 +36,11 @@ struct xcl_mem_map {
     struct xcl_mem_map_info m_map[XCL_MEM_GROUP_MAX];
 };
 
+/* Stores each groups information */
 struct xcl_mem_group_info {
-    uint32_t l_bank_idx;
+    uint32_t l_bank_idx;	/* Low memory Bank index */
     uint64_t l_start_addr;
-    uint32_t h_bank_idx;
+    uint32_t h_bank_idx;	/* High memory Bank index */
     uint64_t h_end_addr;
 };
 
