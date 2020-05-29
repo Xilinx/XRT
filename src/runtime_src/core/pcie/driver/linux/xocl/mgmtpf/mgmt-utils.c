@@ -485,6 +485,17 @@ static void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 
 	/* Reset secondary bus. */
 	bus = pdev->bus;
+
+	/*
+	 * When flipping the SBR bit, device can fall off the bus. This is usually
+	 * no problem at all so long as drivers are working properly after SBR.
+	 * However, some systems complain bitterly when the device falls off the bus.
+	 * Such as a Dell Servers, The iDRAC is totally independent from the
+	 * operating system; it will still reboot the machine even if the operating
+	 * system ignores the error.
+	 * The quick solution is to temporarily disable the SERR reporting of
+	 * switch port during SBR.
+	 */
 	pci_read_config_word(bus->self, PCI_COMMAND, &pci_cmd);
 	pci_write_config_word(bus->self, PCI_COMMAND, (pci_cmd & ~PCI_COMMAND_SERR));
 	pcie_capability_read_word(bus->self, PCI_EXP_DEVCTL, &devctl);
