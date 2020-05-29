@@ -17,6 +17,7 @@
 // driver includes
 #include "xrt.h"
 #include "experimental/xrt_kernel.h"
+#include "experimental/xrt_bo.h"
 #include "experimental/xrt_xclbin.h"
 #include "xclbin.h"
 
@@ -26,6 +27,7 @@
 #include <atomic>
 #include <iostream>
 #include <vector>
+#include <cstdlib>
 
 static std::vector<char>
 load_xclbin(xclDeviceHandle device, const std::string& fnm)
@@ -88,7 +90,7 @@ static std::atomic<bool> stop{true};
 // Forward declaration of event callback function for event of last
 // copy stage of a job.
 static void
-kernel_done(xrtRunHandle, ert_cmd_state, void*);
+kernel_done(const xrt::run& run, ert_cmd_state state, void* data);
 
 // Data for a single job
 struct job_type
@@ -98,31 +100,33 @@ struct job_type
   bool running = false;
 
   // Device and kernel are not managed by this job
-  xclDeviceHandle d      = XRT_NULL_HANDLE;
-  xrtKernelHandle k      = XRT_NULL_HANDLE;
+  xrt::kernel k;
 
   // Kernel arguments and run handle are managed by this job
-  xclBufferHandle a      = XRT_NULL_BO;
+  xrt::bo a;
   void* am               = nullptr;
-  xclBufferHandle b      = XRT_NULL_BO;
+  xrt::bo b;
   void* bm               = nullptr;
-  xrtRunHandle r         = XRT_NULL_HANDLE;
+  xrt::run r;
 
-  job_type(xrtDeviceHandle device, xrtKernelHandle kernel, unsigned int first_used_mem)
-    : d(device), k(kernel)
+  job_type(xrtDeviceHandle device, const xrt::kernel& kernel)
+    : k(kernel)
   {
     static size_t count=0;
     id = count++;
 
+    auto grpid0 = kernel.group_id(0);
+    auto grpid1 = kernel.group_id(1);
+
     const size_t data_size = ELEMENTS * ARRAY_SIZE;
-    a = xclAllocBO(d, data_size*sizeof(unsigned long), 0, first_used_mem);
-    am = xclMapBO(d, a, true);
+    a = xrt::bo(device, data_size*sizeof(unsigned long), 0, grpid0);
+    am = a.map();
     auto adata = reinterpret_cast<unsigned long*>(am);
     for (size_t i=0;i<data_size;++i)
       adata[i] = i;
 
-    b = xclAllocBO(d, data_size*sizeof(unsigned long), 0, first_used_mem);
-    bm = xclMapBO(d, b, true);
+    b = xrt::bo(device, data_size*sizeof(unsigned long), 0, grpid1);
+    bm = b.map();
     auto bdata = reinterpret_cast<unsigned long*>(bm);
      for (size_t j=0;j<data_size;++j)
        bdata[j] = id;
@@ -132,46 +136,36 @@ struct job_type
     : id(rhs.id)
     , runs(rhs.runs)
     , running(rhs.running)
-    , d(rhs.d)
-    , k(rhs.k)
-    , a(rhs.a)
+    , k(std::move(rhs.k))
+    , a(std::move(rhs.a))
     , am(rhs.am)
-    , b(rhs.b)
+    , b(std::move(rhs.b))
     , bm(rhs.bm)
-    , r(rhs.r)
+    , r(std::move(rhs.r))
   {
-    a=b=XRT_NULL_BO;
     am=bm=nullptr;
-    d=k=r=XRT_NULL_HANDLE;
   }
 
   ~job_type()
   {
-    if (am) {
-      xclUnmapBO(d, a, am);
-      xclFreeBO(d,a);
-    }
+    if (am)
+      a.unmap();
 
-    if (bm) {
-      xclUnmapBO(d, b, bm);
-      xclFreeBO(d,b);
-    }
-
-    if (r != XRT_NULL_HANDLE)
-      xrtRunClose(r);
+    if (bm)
+      b.unmap();
   }
 
   void
   run()
   {
     ++runs;
-    if (r == XRT_NULL_HANDLE) {
+    if (!r) {
       running = true;
-      r = xrtKernelRun(k, a, b, ELEMENTS);
-      xrtRunSetCallback(r, ERT_CMD_STATE_COMPLETED, kernel_done, this);
+      r = k(a, b, ELEMENTS);
+      r.add_callback(ERT_CMD_STATE_COMPLETED, kernel_done, this);
     }
     else if (!stop)
-      xrtRunStart(r);
+      r.start();
   }
 
   bool
@@ -191,23 +185,23 @@ struct job_type
   {
     // Must wait for callback to complete
     while (running)
-      xrtRunWait(r);
+      r.wait();
   }
 };
 
 static void
-kernel_done(xrtRunHandle rhdl, ert_cmd_state state, void* data)
+kernel_done(const xrt::run& run, ert_cmd_state state, void* data)
 {
   reinterpret_cast<job_type*>(data)->done();
 }
 
 static int
-run(xrtDeviceHandle device, xrtKernelHandle kernel, size_t num_jobs, size_t seconds, int first_used_mem)
+run(xrtDeviceHandle device, const xrt::kernel& kernel, size_t num_jobs, size_t seconds)
 {
   std::vector<job_type> jobs;
   jobs.reserve(num_jobs);
   for (int i=0; i<num_jobs; ++i)
-    jobs.emplace_back(device, kernel, first_used_mem);
+    jobs.emplace_back(device, kernel);
 
   stop = (seconds == 0) ? true : false;
   std::for_each(jobs.begin(),jobs.end(),[](job_type& j){j.run();});
@@ -276,37 +270,19 @@ int run(int argc, char** argv)
 
   auto device = xclOpen(device_index, nullptr, XCL_QUIET);
 
+  {
+
   auto header = load_xclbin(device, xclbin_fnm);
   auto top = reinterpret_cast<const axlf*>(header.data());
-  auto topo = xclbin::get_axlf_section(top, MEM_TOPOLOGY);
-  auto topology = reinterpret_cast<mem_topology*>(header.data() + topo->m_sectionOffset);
-
-  {
-    // Demo xrt_xclbin API retrieving uuid from kernel if applicable
-    uuid_t xclbin_id;
-    uuid_copy(xclbin_id, top->m_header.uuid);
-
-    uuid_t xid;
-    xrtXclbinUUID(device, xid);
-    if (uuid_compare(xclbin_id, xid) != 0)
-      throw std::runtime_error("xid mismatch");
-  }
-
-  int first_used_mem = 0;
-  for (int i=0; i<topology->m_count; ++i) {
-    if (topology->m_mem_data[i].m_used) {
-      first_used_mem = i;
-      break;
-    }
-  }
 
   compute_units = cus = std::min(cus, compute_units);
   std::string kname = get_kernel_name(cus);
-  auto kernel = xrtPLKernelOpen(device, top->m_header.uuid, kname.c_str());
+  auto kernel = xrt::kernel(device, top->m_header.uuid, kname);
 
-  run(device,kernel,jobs,secs,first_used_mem);
+  run(device,kernel,jobs,secs);
 
-  xrtKernelClose(kernel);
+  }
+
   xclClose(device);
 
   return 0;
@@ -316,6 +292,7 @@ int
 main(int argc, char* argv[])
 {
   try {
+    ::setenv("Runtime.xrt_bo","true",1);
     run(argc,argv);
     return 0;
   }

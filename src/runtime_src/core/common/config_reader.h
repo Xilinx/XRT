@@ -377,6 +377,18 @@ get_multiprocess()
   return value;
 }
 
+/**
+ * Set to true if host code uses post 2020.1 XRT BO APIs.
+ * This affects how the kernel APIs treat C-style variadic args for 
+ * global memory arguments.
+ */
+inline bool
+get_xrt_bo()
+{
+  static bool value = detail::get_bool_value("Runtime.xrt_bo", false);
+  return value;
+}
+
 inline bool
 get_feature_toggle(const std::string& feature)
 {
