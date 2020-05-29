@@ -117,6 +117,12 @@
 /* access_ok lost its first parameter with Linux 5.0. */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0)
 	#define XOCL_ACCESS_OK(TYPE, ADDR, SIZE) access_ok(ADDR, SIZE)
+#elif defined(RHEL_RELEASE_CODE)
+        #if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8,1)
+                #define XOCL_ACCESS_OK(TYPE, ADDR, SIZE) access_ok(ADDR, SIZE)
+        #else
+                #define XOCL_ACCESS_OK(TYPE, ADDR, SIZE) access_ok(TYPE, ADDR, SIZE)
+        #endif
 #else
 	#define XOCL_ACCESS_OK(TYPE, ADDR, SIZE) access_ok(TYPE, ADDR, SIZE)
 #endif
@@ -393,10 +399,6 @@ enum {
 struct xocl_work {
 	struct delayed_work	work;
 	int			op;
-};
-
-struct kds_sched {
-	struct kds_controller *ctrl[KDS_MAX_TYPE];
 };
 
 struct xocl_dev_core {
@@ -1025,6 +1027,7 @@ struct xocl_clock_funcs {
 	int (*update_freq)(struct platform_device *pdev,
 		unsigned short *freqs, int num_freqs, int verify);
 	int (*clock_status)(struct platform_device *pdev, bool *latched);
+	uint64_t (*get_data)(struct platform_device *pdev, enum data_kind kind);
 };
 #define CLOCK_DEV_INFO(xdev, idx)					\
 	SUBDEV_MULTI(xdev, XOCL_SUBDEV_CLOCK, idx).info
@@ -1069,31 +1072,38 @@ static inline int xocl_clock_ops_level(xdev_handle_t xdev)
 #define	xocl_clock_get_freq_by_id(xdev, region, freq, id)		\
 ({ \
 	int __idx = xocl_clock_ops_level(xdev);				\
-	(CLOCK_CB(xdev, __idx, get_freq_by_id) ?				\
+	(CLOCK_CB(xdev, __idx, get_freq_by_id) ?			\
 	CLOCK_OPS(xdev, __idx)->get_freq_by_id(CLOCK_DEV(xdev, __idx), region, freq, id) : \
 	-ENODEV); \
 })
 #define	xocl_clock_get_freq_counter_khz(xdev, value, id)		\
 ({ \
 	int __idx = xocl_clock_ops_level(xdev);				\
-	(CLOCK_CB(xdev, __idx, get_freq_counter_khz) ?				\
+	(CLOCK_CB(xdev, __idx, get_freq_counter_khz) ?			\
 	CLOCK_OPS(xdev, __idx)->get_freq_counter_khz(CLOCK_DEV(xdev, __idx), value, id) : \
 	-ENODEV); \
 })
 #define	xocl_clock_update_freq(xdev, freqs, num_freqs, verify) \
 ({ \
 	int __idx = xocl_clock_ops_level(xdev);				\
-	(CLOCK_CB(xdev, __idx, update_freq) ?					\
+	(CLOCK_CB(xdev, __idx, update_freq) ?				\
 	CLOCK_OPS(xdev, __idx)->update_freq(CLOCK_DEV(xdev, __idx), freqs, num_freqs, verify) : \
 	-ENODEV); \
 })
 #define	xocl_clock_status(xdev, latched)				\
 ({ \
 	int __idx = xocl_clock_ops_level(xdev);				\
-	(CLOCK_CB(xdev, __idx, clock_status) ?					\
+	(CLOCK_CB(xdev, __idx, clock_status) ?				\
 	CLOCK_OPS(xdev, __idx)->clock_status(CLOCK_DEV(xdev, __idx), latched) : 	\
 	-ENODEV); \
 })
+#define	xocl_clock_get_data(xdev, kind)					\
+({ \
+	int __idx = xocl_clock_ops_level(xdev);				\
+	(CLOCK_CB(xdev, __idx, get_data) ?				\
+	CLOCK_OPS(xdev, __idx)->get_data(CLOCK_DEV(xdev, __idx), kind) : 0); 	\
+})
+
 
 struct xocl_icap_funcs {
 	struct xocl_subdev_funcs common_funcs;
@@ -1109,6 +1119,7 @@ struct xocl_icap_funcs {
 	int (*ocl_get_freq)(struct platform_device *pdev,
 		unsigned int region, unsigned short *freqs, int num_freqs);
 	int (*ocl_update_clock_freq_topology)(struct platform_device *pdev, struct xclmgmt_ioc_freqscaling *freqs);
+	int (*xclbin_validate_clock_req)(struct platform_device *pdev, struct drm_xocl_reclock_info *freqs);
 	int (*ocl_lock_bitstream)(struct platform_device *pdev,
 		const xuid_t *uuid);
 	int (*ocl_unlock_bitstream)(struct platform_device *pdev,
@@ -1164,6 +1175,10 @@ enum {
 	(ICAP_CB(xdev, ocl_update_clock_freq_topology) ?		\
 	ICAP_OPS(xdev)->ocl_update_clock_freq_topology(ICAP_DEV(xdev), freqs) :\
 	-ENODEV)
+#define	xocl_icap_xclbin_validate_clock_req(xdev, freqs)		\
+	(ICAP_CB(xdev, xclbin_validate_clock_req) ?			\
+	ICAP_OPS(xdev)->xclbin_validate_clock_req(ICAP_DEV(xdev), freqs) :\
+	-ENODEV)
 #define	xocl_icap_lock_bitstream(xdev, uuid)				\
 	(ICAP_CB(xdev, ocl_lock_bitstream) ?				\
 	ICAP_OPS(xdev)->ocl_lock_bitstream(ICAP_DEV(xdev), uuid) :	\
@@ -1182,7 +1197,7 @@ enum {
 #define	xocl_icap_get_xclbin_metadata(xdev, kind, buf)			\
 	(ICAP_CB(xdev, get_xclbin_metadata) ?				\
 	ICAP_OPS(xdev)->get_xclbin_metadata(ICAP_DEV(xdev), kind, buf) :	\
-	0)
+	-ENODEV)
 #define	xocl_icap_put_xclbin_metadata(xdev)			\
 	(ICAP_CB(xdev, put_xclbin_metadata) ?			\
 	ICAP_OPS(xdev)->put_xclbin_metadata(ICAP_DEV(xdev)) : 	\
@@ -1628,7 +1643,7 @@ static inline void xocl_dr_reg_write32(xdev_handle_t xdev, u32 value, void __iom
 	read_unlock(&XDEV(xdev)->rwlock);
 }
 
-static inline void xocl_kds_setctrl(xdev_handle_t xdev, int type, struct kds_controller *ctrl)
+static inline void xocl_kds_setctrl(xdev_handle_t xdev, int type, struct kds_ctrl *ctrl)
 {
 	XDEV(xdev)->kds.ctrl[type] = ctrl;
 }

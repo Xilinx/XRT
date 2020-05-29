@@ -10,15 +10,11 @@
 #ifndef _KDS_COMMAND_H
 #define _KDS_COMMAND_H
 
+/* Userspace command format */
 #include "ert.h"
 
 #define REGMAP 0
 #define KEY_VAL 1
-
-enum kds_type {
-	KDS_CU		= 0,
-	KDS_MAX_TYPE, // always the last one
-};
 
 enum kds_opcode {
 	OP_CONFIG_CTRL	= 0,
@@ -64,10 +60,11 @@ struct kds_command {
 	u32			*execbuf;
 };
 
-/* command convert */
+/* execbuf command related funtions */
 void cfg_ecmd2xcmd(struct ert_configure_cmd *ecmd,
 		   struct kds_command *xcmd);
 void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 			  struct kds_command *xcmd);
+int cu_mask_to_cu_idx(struct kds_command *xcmd);
 
 #endif

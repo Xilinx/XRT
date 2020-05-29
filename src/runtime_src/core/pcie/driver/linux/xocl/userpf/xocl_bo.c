@@ -290,7 +290,6 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	struct xocl_drm *drm_p = dev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
 	unsigned memidx = xocl_bo_ddr_idx(user_flags);
-	u16 ddr_count = 0;
 	bool xobj_inited = false;
 	int err = 0;
 
@@ -332,8 +331,6 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 		err = -ENOMEM;
 		goto failed;
 	}
-
-	ddr_count = XOCL_DDR_COUNT(xdev);
 
 	mutex_lock(&drm_p->mm_lock);
 	/* Attempt to allocate buffer on the requested DDR */

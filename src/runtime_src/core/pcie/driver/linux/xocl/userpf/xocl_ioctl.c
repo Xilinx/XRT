@@ -201,54 +201,29 @@ static uint live_clients(struct xocl_dev *xdev, pid_t **plist)
 	uint count = 0;
 	uint i = 0;
 	pid_t *pl = NULL;
+	const struct client_ctx *entry;
 
 	BUG_ON(!mutex_is_locked(&xdev->dev_lock));
 
-	if (kds_mode) {
-		const struct kds_client *entry;
-		/* Find out number of active client */
-		list_for_each(ptr, &xdev->ctx_list) {
-			entry = list_entry(ptr, struct kds_client, link);
-			if (CLIENT_NUM_CU(entry) > 0)
-				count++;
-		}
-		if (count == 0 || plist == NULL)
-			goto out;
+	/* Find out number of active client */
+	list_for_each(ptr, &xdev->ctx_list) {
+		entry = list_entry(ptr, struct client_ctx, link);
+		if (CLIENT_NUM_CU_CTX(entry) > 0)
+			count++;
+	}
+	if (count == 0 || plist == NULL)
+		goto out;
 
-		/* Collect list of PIDs of active client */
-		pl = (pid_t *)vmalloc(sizeof(pid_t) * count);
-		if (pl == NULL)
-			goto out;
+	/* Collect list of PIDs of active client */
+	pl = (pid_t *)vmalloc(sizeof(pid_t) * count);
+	if (pl == NULL)
+		goto out;
 
-		list_for_each(ptr, &xdev->ctx_list) {
-			entry = list_entry(ptr, struct kds_client, link);
-			if (CLIENT_NUM_CU(entry) > 0) {
-				pl[i] = pid_nr(entry->pid);
-				i++;
-			}
-		}
-	} else {
-		const struct client_ctx *entry;
-		/* Find out number of active client */
-		list_for_each(ptr, &xdev->ctx_list) {
-			entry = list_entry(ptr, struct client_ctx, link);
-			if (CLIENT_NUM_CU_CTX(entry) > 0)
-				count++;
-		}
-		if (count == 0 || plist == NULL)
-			goto out;
-
-		/* Collect list of PIDs of active client */
-		pl = (pid_t *)vmalloc(sizeof(pid_t) * count);
-		if (pl == NULL)
-			goto out;
-
-		list_for_each(ptr, &xdev->ctx_list) {
-			entry = list_entry(ptr, struct client_ctx, link);
-			if (CLIENT_NUM_CU_CTX(entry) > 0) {
-				pl[i] = pid_nr(entry->pid);
-				i++;
-			}
+	list_for_each(ptr, &xdev->ctx_list) {
+		entry = list_entry(ptr, struct client_ctx, link);
+		if (CLIENT_NUM_CU_CTX(entry) > 0) {
+			pl[i] = pid_nr(entry->pid);
+			i++;
 		}
 	}
 
@@ -258,13 +233,18 @@ out:
 	return count;
 }
 
+/* TODO: Move to xocl_kds.c, when start to create sysfs nodes for new kds. */
 u32 get_live_clients(struct xocl_dev *xdev, pid_t **plist)
 {
 	u32 c;
 
-	mutex_lock(&xdev->dev_lock);
-	c = live_clients(xdev, plist);
-	mutex_unlock(&xdev->dev_lock);
+	if (kds_mode) {
+		c = xocl_kds_live_clients(xdev, plist);
+	} else {
+		mutex_lock(&xdev->dev_lock);
+		c = live_clients(xdev, plist);
+		mutex_unlock(&xdev->dev_lock);
+	}
 
 	return c;
 }
@@ -350,6 +330,37 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		goto done;
 
 	/*
+	 * Coupling scheduler(context, exec BOs) at this place is a bad idea.
+	 *
+	 * The load xclbin and lock xclbin operation are separated.
+	 * The xclbin was locked until a context was opened and unlocked until
+	 * all of the contexts were closed.
+	 * If some processes are downloading the same xclbin. Only the first
+	 * one could reach below lines.
+	 * If some processes are downloading different xclbins. The second one
+	 * got dev_lock could go here.  Let's see if ICAP could protect the
+	 * sequence of download xclbin and open context on downloaded xclbin.
+	 *
+	 * If open context locked bitstream, xocl_icap_download_axlf() would
+	 * failed later on, since the bitstream is busy.
+	 * If xocl_icap_download_axlf() successed, open context on prev xclbin
+	 * would fail. This is the same as current implementation. This is the
+	 * cost that we have to pay if we are not able to lock xclbin after
+	 * loaded it.
+	 *
+	 * After all, ICAP subdevice does everything to protect xclbin. If
+	 * scheduler is ready to work on a new xclbin, like all of contexts are
+	 * closed, it should only notice ICAP not here.
+	 *
+	 * "Note that icap subdevice also maintains xclbin ref count, which is
+	 * used to lock down xclbin on mgmt pf side."
+	 * I found this statement is not correct anymore. The ref count is using
+	 * on user pf side.
+	 */
+	if (!kds_mode)
+		goto skip1;
+
+	/*
 	 * Support for multiple processes
 	 * 1. We lock &xdev->dev_lock so no new contexts can be opened and no
 	 *    live contexts can be closed
@@ -367,6 +378,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		goto done;
 	}
 
+skip1:
 	/* Really need to download, sanity check xclbin, first. */
 	if (xocl_xrt_version_check(xdev, &bin_obj, true)) {
 		userpf_err(xdev, "Xclbin isn't supported by current XRT\n");
@@ -452,6 +464,8 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 
 	err = xocl_icap_download_axlf(xdev, axlf);
 	if (err) {
+		/* TODO: remove this. Coupling scheduler is a bad idea.
+		 */
 		/*
 		 * We have to clear uuid cached in scheduler here if
 		 * download xclbin failed

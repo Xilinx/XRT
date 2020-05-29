@@ -32,7 +32,7 @@ void zocl_describe(const struct drm_zocl_bo *obj)
 	size_t size_in_kb = obj->cma_base.base.size / 1024;
 	size_t physical_addr = obj->cma_base.paddr;
 
-	DRM_DEBUG("%p: H[0x%zxKB] D[0x%zx]\n",
+	DRM_DEBUG("%px: H[0x%zxKB] D[0x%zx]\n",
 			obj,
 			size_in_kb,
 			physical_addr);
@@ -834,7 +834,7 @@ void zocl_free_host_bo(struct drm_gem_object *gem_obj)
 {
 	struct drm_zocl_bo *zocl_bo = to_zocl_bo(gem_obj);
 
-	DRM_INFO("%s: obj 0x%p", __func__, zocl_bo);
+	DRM_DEBUG("%s: obj 0x%px", __func__, zocl_bo);
 
 	memunmap(zocl_bo->cma_base.vaddr);
 

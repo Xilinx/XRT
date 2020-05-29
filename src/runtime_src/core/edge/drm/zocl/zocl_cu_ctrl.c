@@ -10,103 +10,84 @@
  */
 
 #include "zocl_drv.h"
-#include "kds_core.h"
+#include "kds_cu_ctrl.h"
 #include "xrt_cu.h"
 
-struct zocl_cu_ctrl {
-	struct kds_controller    core;
-	struct drm_zocl_dev	*zdev;
-	struct xrt_cu		*xcus[MAX_CUS];
-	int			 num_cus;
+#define TO_ZOCL_CU_CTRL(c) ((struct zocl_cu_ctrl *)(c))
 
+struct zocl_cu_ctrl {
+	struct kds_cu_ctrl	 core;
+	struct drm_zocl_dev	*zdev;
 };
 
-static int get_cu_by_addr(struct zocl_cu_ctrl *zcuc, u32 addr)
+/* sysfs nods */
+static ssize_t
+cu_ctx_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	int i;
+	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
 
-	/* Do not use this search in critical path */
-	for (i = 0; i < zcuc->num_cus; ++i) {
-		if (zcuc->xcus[i]->info.addr == addr)
-			break;
-	}
-
-	return i;
+	return show_cu_ctx(TO_CU_CTRL(zocl_kds_getctrl(zdev, KDS_CU)), buf);
 }
+static DEVICE_ATTR_RO(cu_ctx);
 
-static inline int cu_mask_to_cu_idx(struct kds_command *xcmd)
-{
-	/* TODO: balance the CU usage if multiple bits are set */
+static struct attribute *cu_ctrl_attrs[] = {
+	&dev_attr_cu_ctx.attr,
+	NULL,
+};
 
-	/* assume there is alwasy one CU */
-	return 0;
-}
+static struct attribute_group cu_ctrl_attr_group = {
+	.attrs = cu_ctrl_attrs,
+};
+/* sysfs nods end */
 
 static void
 cu_ctrl_config(struct zocl_cu_ctrl *zcuc, struct kds_command *xcmd)
 {
 	u32 *cus_addr = (u32 *)xcmd->info;
 	size_t num_cus = xcmd->isize / sizeof(u32);
-	struct xrt_cu *tmp;
-	int i, j;
 	int apt_idx;
+	int i;
 
-	/* I don't care if the configure command claim less number of cus */
-	if (num_cus > zcuc->num_cus)
-		goto error;
+	if (config_ctrl(TO_CU_CTRL(zcuc), xcmd))
+		return;
 
-	/* Now we need to make CU index right */
+	/* TODO: replace aperture list.
+	 * Before that, keep this to make aperture work.
+	 */
 	for (i = 0; i < num_cus; i++) {
-		j = get_cu_by_addr(zcuc, cus_addr[i]);
-		if (j == zcuc->num_cus)
-			goto error;
-
-		/* Ordering CU index */
-		if (j != i) {
-			tmp = zcuc->xcus[i];
-			zcuc->xcus[i] = zcuc->xcus[j];
-			zcuc->xcus[j] = tmp;
-		}
-		zcuc->xcus[i]->info.cu_idx = i;
-
-		/* TODO: replace aperture list. Before that, keep this to make
-		 * aperture work.
-		 */
 		apt_idx = get_apt_index_by_addr(zcuc->zdev, cus_addr[i]);
-		if (apt_idx < 0) {
-			DRM_ERROR("CU address %x is not found in XCLBIN\n",
-				  cus_addr[i]);
-			goto error;
-		}
+		WARN_ON(apt_idx < 0);
 		update_cu_idx_in_apt(zcuc->zdev, apt_idx, i);
 	}
+}
 
-	/* TODO: Does it need a queue for configure commands? */
+static inline void
+cu_ctrl_dispatch(struct zocl_cu_ctrl *zcuc, struct kds_command *xcmd)
+{
+	int inst_idx;
+
+	/* This is call echo type 1.
+	 * The echo type 2 could be enabled by module param 'kds_echo=1'
+	 */
+#if 0
 	xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
 	xcmd->cb.free(xcmd);
 	return;
+#endif
 
-error:
-	xcmd->cb.notify_host(xcmd, KDS_ERROR);
-	xcmd->cb.free(xcmd);
+	/* In here we need to know the CU subdevice instance id,
+	 * which is determined at load xclbin.
+	 * It is different from the CU index defined by config command.
+	 */
+	inst_idx = acquire_cu_inst_idx(TO_CU_CTRL(zcuc), xcmd);
+	if (inst_idx >= 0)
+		(void) zocl_cu_submit_xcmd(zcuc->zdev, inst_idx, xcmd);
 }
 
 static void
-cu_ctrl_dispatch(struct zocl_cu_ctrl *zcuc, struct kds_command *xcmd)
+cu_ctrl_submit(struct kds_ctrl *ctrl, struct kds_command *xcmd)
 {
-	int cu_idx;
-	int inst_idx;
-
-	/* Select CU */
-	cu_idx = cu_mask_to_cu_idx(xcmd);
-	inst_idx = zcuc->xcus[cu_idx]->info.inst_idx;
-	(void) zocl_cu_submit_xcmd(zcuc->zdev, inst_idx, xcmd);
-}
-
-static void
-cu_ctrl_submit(struct kds_controller *ctrl, struct kds_command *xcmd)
-{
-	struct zocl_cu_ctrl *zcuc = (struct zocl_cu_ctrl *)ctrl;
+	struct zocl_cu_ctrl *zcuc = TO_ZOCL_CU_CTRL(ctrl);
 
 	/* Priority from hight to low */
 	if (xcmd->opcode != OP_CONFIG_CTRL)
@@ -115,30 +96,21 @@ cu_ctrl_submit(struct kds_controller *ctrl, struct kds_command *xcmd)
 		cu_ctrl_config(zcuc, xcmd);
 }
 
+static int
+cu_ctrl_control_ctx(struct kds_ctrl *ctrl, struct kds_client *client,
+		    struct kds_ctx_info *info)
+{
+	return control_ctx(TO_CU_CTRL(ctrl), client, info);
+}
+
 int cu_ctrl_add_cu(struct drm_zocl_dev *zdev, struct xrt_cu *xcu)
 {
-	struct zocl_cu_ctrl *zcuc;
-	int i;
+	int ret;
 
-	zcuc = (struct zocl_cu_ctrl *)zocl_kds_getctrl(zdev, KDS_CU);
-	if (!zcuc)
-		return -EINVAL;
-
-	if (zcuc->num_cus >= MAX_CUS)
-		return -ENOMEM;
-
-	for (i = 0; i < MAX_CUS; i++) {
-		if (zcuc->xcus[i] != NULL)
-			continue;
-
-		zcuc->xcus[i] = xcu;
-		++zcuc->num_cus;
-		break;
-	}
-
-	if (i == MAX_CUS) {
-		DRM_ERROR("Could not find a slot for CU %p\n", xcu);
-		return -ENOSPC;
+	ret = add_cu(TO_CU_CTRL(zocl_kds_getctrl(zdev, KDS_CU)), xcu);
+	if (ret < 0) {
+		DRM_ERROR("Could not find a slot for CU, ret %d\n", ret);
+		return ret;
 	}
 
 	return 0;
@@ -146,28 +118,12 @@ int cu_ctrl_add_cu(struct drm_zocl_dev *zdev, struct xrt_cu *xcu)
 
 int cu_ctrl_remove_cu(struct drm_zocl_dev *zdev, struct xrt_cu *xcu)
 {
-	struct zocl_cu_ctrl *zcuc;
-	int i;
+	int ret;
 
-	zcuc = (struct zocl_cu_ctrl *)zocl_kds_getctrl(zdev, KDS_CU);
-	if (!zcuc)
-		return -EINVAL;
-
-	if (zcuc->num_cus == 0)
-		return -EINVAL;
-
-	for (i = 0; i < MAX_CUS; i++) {
-		if (zcuc->xcus[i] != xcu)
-			continue;
-
-		zcuc->xcus[i] = NULL;
-		--zcuc->num_cus;
-		break;
-	}
-
-	if (i == MAX_CUS) {
-		DRM_ERROR("Could not find CU %p\n", xcu);
-		return -EINVAL;
+	ret = remove_cu(TO_CU_CTRL(zocl_kds_getctrl(zdev, KDS_CU)), xcu);
+	if (ret < 0) {
+		DRM_ERROR("Could not find CU, ret %d\n", ret);
+		return ret;
 	}
 
 	return 0;
@@ -176,18 +132,32 @@ int cu_ctrl_remove_cu(struct drm_zocl_dev *zdev, struct xrt_cu *xcu)
 int cu_ctrl_init(struct drm_zocl_dev *zdev)
 {
 	struct zocl_cu_ctrl *zcuc;
+	struct kds_ctrl *core;
+	int ret = 0;
 
 	zcuc = kzalloc(sizeof(*zcuc), GFP_KERNEL);
 	if (!zcuc)
 		return -ENOMEM;
 
+	mutex_init(&zcuc->core.lock);
 	zcuc->zdev = zdev;
 
-	zcuc->core.submit = cu_ctrl_submit;
+	core = TO_KDS_CTRL(&zcuc->core);
+	core->control_ctx = cu_ctrl_control_ctx;
+	core->submit = cu_ctrl_submit;
 
-	zocl_kds_setctrl(zdev, KDS_CU, (struct kds_controller *)zcuc);
+	ret = sysfs_create_group(&zdev->ddev->dev->kobj, &cu_ctrl_attr_group);
+	if (ret) {
+		DRM_ERROR("create cu_ctrl attrs failed: 0x%x", ret);
+		goto err;
+	}
 
+	zocl_kds_setctrl(zdev, KDS_CU, core);
 	return 0;
+
+err:
+	kfree(zcuc);
+	return ret;
 }
 
 void cu_ctrl_fini(struct drm_zocl_dev *zdev)
@@ -195,10 +165,12 @@ void cu_ctrl_fini(struct drm_zocl_dev *zdev)
 	struct zocl_cu_ctrl *zcuc;
 
 	zcuc = (struct zocl_cu_ctrl *)zocl_kds_getctrl(zdev, KDS_CU);
-	if (!zcuc)
-		return;
+	BUG_ON(zcuc == NULL);
 
+	mutex_destroy(&zcuc->core.lock);
 	kfree(zcuc);
 
 	zocl_kds_setctrl(zdev, KDS_CU, NULL);
+
+	sysfs_remove_group(&zdev->ddev->dev->kobj, &cu_ctrl_attr_group);
 }

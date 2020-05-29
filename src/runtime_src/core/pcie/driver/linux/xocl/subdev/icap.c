@@ -30,6 +30,12 @@
 #include "../xocl_drm.h"
 #include "mgmt-ioctl.h"
 
+#if PF == MGMTPF
+int kds_mode = 0;
+#else
+extern int kds_mode;
+#endif
+
 #if defined(XOCL_UUID)
 static xuid_t uuid_null = NULL_UUID_LE;
 #endif
@@ -666,25 +672,19 @@ static int ulp_clock_update(struct icap *icap, unsigned short *freqs,
 	return err;
 }
 
-static int icap_ocl_update_clock_freq_topology(struct platform_device *pdev,
-	struct xclmgmt_ioc_freqscaling *freq_obj)
+static int icap_xclbin_validate_clock_req_impl(struct platform_device *pdev,
+	struct drm_xocl_reclock_info *freq_obj)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
-	int i = 0;
-	int err = 0;
 	unsigned short freq_max, freq_min;
+	int i;
 
-	err = icap_xclbin_rd_lock(icap);
-	if (err)
-		return err;
-
-	mutex_lock(&icap->icap_lock);
+	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
 	if (uuid_is_null(&icap->icap_bitstream_uuid)) {
 		ICAP_ERR(icap, "ERROR: There isn't a hardware accelerator loaded in the dynamic region."
 			" Validation of accelerator frequencies cannot be determine");
-		err = -EDOM;
-		goto done;
+		return -EDOM;
 	}
 
 	for (i = 0; i < ARRAY_SIZE(freq_obj->ocl_target_freq); i++) {
@@ -704,13 +704,45 @@ static int icap_ocl_update_clock_freq_topology(struct platform_device *pdev,
 				"Requested frequency: %d",
 				freq_max, freq_min,
 				freq_obj->ocl_target_freq[i]);
-			err = -EDOM;
-			goto done;
+			return -EDOM;
 		}
 	}
 
+	return 0;
+}
+
+static int icap_xclbin_validate_clock_req(struct platform_device *pdev,
+	struct drm_xocl_reclock_info *freq_obj)
+{
+	struct icap *icap = platform_get_drvdata(pdev);
+	int err;
+
+	mutex_lock(&icap->icap_lock);
+	err = icap_xclbin_validate_clock_req_impl(pdev, freq_obj);
+	mutex_unlock(&icap->icap_lock);
+
+	return err;
+}
+
+static int icap_ocl_update_clock_freq_topology(struct platform_device *pdev,
+	struct xclmgmt_ioc_freqscaling *freq_obj)
+{
+	struct icap *icap = platform_get_drvdata(pdev);
+	int err = 0;
+
+	err = icap_xclbin_rd_lock(icap);
+	if (err)
+		return err;
+
+	mutex_lock(&icap->icap_lock);
+
+	err = icap_xclbin_validate_clock_req_impl(pdev,
+	    (struct drm_xocl_reclock_info *)freq_obj);
+	if (err)
+		goto done;
+
 	err = ulp_clock_update(icap, freq_obj->ocl_target_freq,
-		ARRAY_SIZE(freq_obj->ocl_target_freq), 1);
+	    ARRAY_SIZE(freq_obj->ocl_target_freq), 1);
 	if (err)
 		goto done;
 
@@ -1188,7 +1220,7 @@ static int icap_download_hw(struct icap *icap, const struct axlf *axlf)
 	uint64_t primaryFirmwareLength = 0;
 	const struct axlf_section_header *primaryHeader = 0;
 	uint64_t length;
-	int err = 0;
+	int err = -EINVAL;
 	char *buffer = (char *)axlf;
 
 	if (!axlf) {
@@ -1678,6 +1710,8 @@ static int icap_create_subdev_debugip(struct platform_device *pdev)
 
 			subdev_info.res[0].start += ip->m_base_address;
 			subdev_info.res[0].end += ip->m_base_address;
+			subdev_info.priv_data = ip;
+			subdev_info.data_len = sizeof(struct debug_ip_data);
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create AXI_MM_MONITOR subdev");
@@ -1688,6 +1722,8 @@ static int icap_create_subdev_debugip(struct platform_device *pdev)
 
 			subdev_info.res[0].start += ip->m_base_address;
 			subdev_info.res[0].end += ip->m_base_address;
+			subdev_info.priv_data = ip;
+			subdev_info.data_len = sizeof(struct debug_ip_data);
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create ACCEL_MONITOR subdev");
@@ -1698,6 +1734,8 @@ static int icap_create_subdev_debugip(struct platform_device *pdev)
 
 			subdev_info.res[0].start += ip->m_base_address;
 			subdev_info.res[0].end += ip->m_base_address;
+			subdev_info.priv_data = ip;
+			subdev_info.data_len = sizeof(struct debug_ip_data);
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create AXI_STREAM_MONITOR subdev");
@@ -1708,6 +1746,8 @@ static int icap_create_subdev_debugip(struct platform_device *pdev)
 
 			subdev_info.res[0].start += ip->m_base_address;
 			subdev_info.res[0].end += ip->m_base_address;
+			subdev_info.priv_data = ip;
+			subdev_info.data_len = sizeof(struct debug_ip_data);
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create AXI_MONITOR_FIFO_LITE subdev");
@@ -1715,7 +1755,8 @@ static int icap_create_subdev_debugip(struct platform_device *pdev)
 			}
 		} else if (ip->m_type == AXI_MONITOR_FIFO_FULL) {
 			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_TRACE_FIFO_FULL;
-
+			subdev_info.priv_data = ip;
+			subdev_info.data_len = sizeof(struct debug_ip_data);
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create AXI_MONITOR_FIFO_FULL subdev");
@@ -1726,6 +1767,8 @@ static int icap_create_subdev_debugip(struct platform_device *pdev)
 
 			subdev_info.res[0].start += ip->m_base_address;
 			subdev_info.res[0].end += ip->m_base_address;
+			subdev_info.priv_data = ip;
+			subdev_info.data_len = sizeof(struct debug_ip_data);
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create AXI_MONITOR_TRACE_FUNNEL subdev");
@@ -1736,6 +1779,8 @@ static int icap_create_subdev_debugip(struct platform_device *pdev)
 
 			subdev_info.res[0].start += ip->m_base_address;
 			subdev_info.res[0].end += ip->m_base_address;
+			subdev_info.priv_data = ip;
+			subdev_info.data_len = sizeof(struct debug_ip_data);
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create AXI_MONITOR_TRACE_S2MM subdev");
@@ -2537,11 +2582,13 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 		if (!XOCL_DSA_IS_VERSAL(xdev))
 			err = __icap_peer_xclbin_download(icap, xclbin);
 
+		/* TODO: Remove this after new KDS replace the legacy one */
 		/*
 		 * xclbin download changes PR region, make sure next
 		 * ERT configure cmd will go through
 		 */
-		(void) xocl_exec_reconfig(xdev);
+		if (!kds_mode)
+			(void) xocl_exec_reconfig(xdev);
 		if (err)
 			goto done;
 
@@ -2733,7 +2780,8 @@ static int icap_lock_bitstream(struct platform_device *pdev, const xuid_t *id)
 	ICAP_INFO(icap, "bitstream %pUb locked, ref=%d", id,
 		icap->icap_bitstream_ref);
 
-	if (ref == 0) {
+	/* TODO: Remove this after new KDS replace the legacy one */
+	if (!kds_mode && ref == 0) {
 		/* reset on first reference */
 		xocl_exec_reset(xocl_get_xdev(pdev), id);
 	}
@@ -2779,7 +2827,8 @@ static int icap_unlock_bitstream(struct platform_device *pdev, const xuid_t *id)
 		goto done;
 	}
 
-	if (icap->icap_bitstream_ref == 0 && !ICAP_PRIVILEGED(icap))
+	/* TODO: Remove this after new KDS replace the legacy one */
+	if (!kds_mode && icap->icap_bitstream_ref == 0 && !ICAP_PRIVILEGED(icap))
 		(void) xocl_exec_stop(xocl_get_xdev(pdev));
 
 done:
@@ -3039,6 +3088,7 @@ static struct xocl_icap_funcs icap_ops = {
 	.post_download_rp = icap_post_download_rp,
 	.ocl_get_freq = icap_ocl_get_freqscaling,
 	.ocl_update_clock_freq_topology = icap_ocl_update_clock_freq_topology,
+	.xclbin_validate_clock_req = icap_xclbin_validate_clock_req,
 	.ocl_lock_bitstream = icap_lock_bitstream,
 	.ocl_unlock_bitstream = icap_unlock_bitstream,
 	.get_data = icap_get_data,

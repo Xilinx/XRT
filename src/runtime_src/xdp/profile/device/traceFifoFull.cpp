@@ -88,7 +88,7 @@ uint32_t TraceFifoFull::readTrace(xclTraceResultsVector& traceVector, uint32_t n
     uint32_t wordsPerSample = 1;
     getDevice()->readTraceData(traceBuf, traceBufSz, numSamples/* use numSamples */, getBaseAddress(), wordsPerSample);
 
-    processTraceData(traceVector, numSamples, traceBuf, wordsPerSample); 
+    processTraceData(traceVector, traceSamples, traceBuf, wordsPerSample); 
 
     delete [] traceBuf;
     return 0;
