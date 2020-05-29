@@ -55,7 +55,7 @@ if (${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian)")
     STRING(APPEND CPACK_DEBIAN_XRT_PACKAGE_DEPENDS ", python3, python3-pip")
   endif()
 
-elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS|Amazon)")
+elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS|Amazon|Fedora)")
   execute_process(
     COMMAND uname -m
     OUTPUT_VARIABLE CPACK_ARCH
