@@ -65,6 +65,15 @@
 #define XAIM_HOST_PROPERTY_MASK                  0x4
 #define XAIM_64BIT_PROPERTY_MASK                 0x8
 
+enum AIM_COMMANDS
+{
+	AIM_RESET = 0,
+	AIM_START_COUNTERS = 1,
+	AIM_READ_COUNTERS = 2,
+	AIM_STOP_COUNTERS = 3,
+	AIM_START_TRACE = 4
+};
+
 struct aim_counters {
 	uint64_t wr_bytes;
 	uint64_t wr_tranx;
@@ -85,6 +94,83 @@ struct xocl_aim {
 	struct debug_ip_data	data;
 	struct aim_counters counters;
 };
+
+/**
+ * helper functions
+ */
+static void update_counters(struct xocl_aim *aim);
+/**
+ * ioctl functions
+ */
+static long reset_counters(struct xocl_aim *aim);
+static long start_counters(struct xocl_aim *aim);
+static long read_counters(struct xocl_aim *aim, void __user *arg);
+static long stop_counters(struct xocl_aim *aim);
+static long start_trace(struct xocl_aim *aim, void __user *arg);
+
+static long reset_counters(struct xocl_aim *aim)
+{
+	uint32_t regValue = 0;
+	// Original Value
+	regValue = XOCL_READ_REG32(aim->base + XAIM_CONTROL_OFFSET);
+	// Start Reset
+	regValue = regValue | XAIM_CR_COUNTER_RESET_MASK;
+	XOCL_WRITE_REG32(regValue, aim->base + XAIM_CONTROL_OFFSET);
+	// End Reset
+	regValue = regValue & ~(XAIM_CR_COUNTER_RESET_MASK);
+	XOCL_WRITE_REG32(regValue, aim->base + XAIM_CONTROL_OFFSET);
+
+	return 0;
+}
+
+static long start_counters(struct xocl_aim *aim)
+{
+	uint32_t regValue = 0;
+	// Original Value
+	regValue = XOCL_READ_REG32(aim->base + XAIM_CONTROL_OFFSET);
+	// Start AXI-MM monitor metric counters
+	regValue = regValue | XAIM_CR_COUNTER_ENABLE_MASK;
+	XOCL_WRITE_REG32(regValue, aim->base + XAIM_CONTROL_OFFSET);
+	// Read from sample register to ensure total time is read again at end
+	XOCL_READ_REG32(aim->base + XAIM_SAMPLE_OFFSET);
+
+	return 0;
+}
+
+static long read_counters(struct xocl_aim *aim, void __user *arg)
+{
+	update_counters(aim);
+	if (copy_to_user(arg, &aim->counters, sizeof(struct aim_counters)))
+	{
+		return -EFAULT;
+	}
+	return 0;
+}
+
+static long stop_counters(struct xocl_aim *aim)
+{
+	uint32_t regValue = 0;
+	// Original Value
+	regValue = XOCL_READ_REG32(aim->base + XAIM_CONTROL_OFFSET);
+	// Start AXI-MM monitor metric counters
+	regValue = regValue | ~(XAIM_CR_COUNTER_ENABLE_MASK);
+	XOCL_WRITE_REG32(regValue, aim->base + XAIM_CONTROL_OFFSET);
+
+	return 0;
+}
+
+static long start_trace(struct xocl_aim *aim, void __user *arg)
+{
+	unsigned int options = 0;
+	uint32_t regValue = 0;
+    if (copy_from_user(&options, arg, sizeof(unsigned int)))
+    {
+        return -EFAULT;
+    }
+	regValue = options & XAIM_TRACE_CTRL_MASK;
+	XOCL_WRITE_REG32(regValue, aim->base + XAIM_TRACE_CTRL_OFFSET);
+	return 0;
+}
 
 static void update_counters(struct xocl_aim *aim)
 {
@@ -255,15 +341,34 @@ static int aim_close(struct inode *inode, struct file *file)
 long aim_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct xocl_aim *aim;
+	void __user *data;
 	long result = 0;
 
 	aim = (struct xocl_aim *)filp->private_data;
+	data = (void __user *)(arg);
 
 	mutex_lock(&aim->lock);
 
 	switch (cmd) {
-	case 1:
-		xocl_err(aim->dev, "ioctl 1, do nothing");
+	case AIM_RESET:
+		result = reset_counters(aim);
+		xocl_err(aim->dev, "ioctl 0, do reset");
+		break;
+	case AIM_START_COUNTERS:
+		result = start_counters(aim);
+		xocl_err(aim->dev, "ioctl 1, start ctrs");
+		break;
+	case AIM_READ_COUNTERS:
+		result = read_counters(aim, data);
+		xocl_err(aim->dev, "ioctl 2, read ctrs");
+		break;
+	case AIM_STOP_COUNTERS:
+		result = stop_counters(aim);
+		xocl_err(aim->dev, "ioctl 3, stop ctrs");
+		break;
+	case AIM_START_TRACE:
+		result = start_trace(aim, data);
+		xocl_err(aim->dev, "ioctl 4, start trace");
 		break;
 	default:
 		result = -ENOTTY;
