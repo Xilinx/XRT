@@ -1556,6 +1556,30 @@ enum {
 	XOCL_MSG_SUBDEV_RTN_PENDINGPLP,
 };
 
+struct xocl_p2p_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	int (*mem_map)(struct platform_device *pdev, ulong bank_addr,
+			ulong bank_size, ulong offset, ulong len,
+			ulong *bar_off);
+	int (*mem_unmap)(struct platform_device *pdev, ulong bar_off);
+};
+#define	P2P_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_P2P).pldev
+#define	P2P_OPS(xdev)				\
+	((struct xocl_p2p_funcs *)SUBDEV(xdev, XOCL_SUBDEV_P2P).ops)
+#define	P2P_CB(xdev)	(P2P_DEV(xdev) && P2P_OPS(xdev))
+#define	xocl_p2p_mem_map(xdev, ba, bs, off, len, bar_off)	\
+	(P2P_CB(xdev) ?			\
+	P2P_OPS(xdev)->mem_map(P2P_DEV(xdev), ba, bs, off, len, bar_off) : \
+	-ENODEV)
+#define xocl_p2p_mem_unmap(xdev, bar_off)				\
+	(P2P_CB(xdev) ?							\
+	 P2P_OPS(xdev)->mem_unmap(P2P_DEV(xdev), bar_off) : -ENODEV)	\
+
+/* Each P2P chunk we set up must be at least 256MB */
+#define XOCL_P2P_CHUNK_SHIFT		28
+#define XOCL_P2P_CHUNK_SIZE		(1UL << XOCL_P2P_CHUNK_SHIFT)
+
+
 /* subdev functions */
 int xocl_subdev_init(xdev_handle_t xdev_hdl, struct pci_dev *pdev,
 	struct xocl_pci_funcs *pci_ops);
@@ -1815,4 +1839,7 @@ void xocl_fini_cu(void);
 
 int __init xocl_init_addr_translator(void);
 void xocl_fini_addr_translator(void);
+
+int __init xocl_init_p2p(void);
+void xocl_fini_p2p(void);
 #endif

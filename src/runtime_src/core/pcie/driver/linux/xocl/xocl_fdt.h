@@ -81,6 +81,7 @@
 #define NODE_GAPPING "ep_gapping_demand_00"
 #define NODE_UCS_CONTROL_STATUS "ep_ucs_control_status_00"
 #define NODE_P2P "ep_p2p_00"
+#define NODE_REMAP_P2P "ep_remap_p2p_00"
 #define NODE_DDR4_RESET_GATE "ep_ddr_mem_srsr_gate_00"
 #define NODE_ADDR_TRANSLATOR "ep_remap_data_c2h_00"
 #define NODE_MAILBOX_XRT "ep_mailbox_xrt_00"

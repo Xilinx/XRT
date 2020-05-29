@@ -510,6 +510,15 @@ static struct xocl_subdev_map		subdev_map[] = {
 		NULL,
 		NULL,
 	},
+	{
+		XOCL_SUBDEV_P2P,
+		XOCL_P2P,
+		{ NODE_REMAP_P2P, NULL },
+		1,
+		0,
+		NULL,
+		NULL,
+	},
 };
 
 /*

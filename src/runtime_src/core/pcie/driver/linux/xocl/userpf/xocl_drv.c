@@ -1057,6 +1057,9 @@ void xocl_p2p_fini(struct xocl_dev *xdev, bool recov_bar_sz)
 	int p2p_bar = -1;
 	int i;
 
+	if (P2P_DEV(xdev))
+		return 0;
+
 	mutex_lock(&xdev->p2p_mem_chunk_lock);
 	for (i = 0; i < xdev->p2p_mem_chunk_num; i++) {
 		if (xdev->p2p_mem_chunks[i].xpmc_ref > 0) {
@@ -1097,6 +1100,9 @@ int xocl_p2p_init(struct xocl_dev *xdev)
 	struct pci_dev *pdev = xdev->core.pdev;
 	int i;
 	resource_size_t pa;
+
+	if (P2P_DEV(xdev))
+		return 0;
 
 	xocl_info(&pdev->dev, "Initializing P2P, bar %d, len %lld",
 			xdev->p2p_bar_idx, xdev->p2p_bar_len);

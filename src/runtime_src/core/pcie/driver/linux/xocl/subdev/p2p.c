@@ -69,6 +69,9 @@
 #define P2P_ADDR_HI(addr)		((addr >> 32) & 0xffffffff)
 #define P2P_ADDR_LO(addr)		(addr & 0xffffffff)
 
+#define P2P_RBAR_TO_BYTES(rbar_sz)	(1UL << ((rbar_sz) + 20))
+#define P2P_BYTES_TO_RBAR(bytes)	(fls64((bytes) + 1) - 21)
+
 struct remapper_regs {
 	u32	ver;
 	u32	cap;
@@ -95,6 +98,8 @@ struct p2p {
 	ulong			remap_slot_sz;
 	ulong			remap_range;
 	void			*p2p_remap_slots;
+
+	bool			sysfs_created;
 };
 
 struct p2p_remap_slot {
@@ -211,7 +216,6 @@ static void p2p_mem_chunk_release(struct p2p *p2p, struct p2p_mem_chunk *chk)
 
 static int p2p_mem_chunk_reserve(struct p2p *p2p, struct p2p_mem_chunk *chk)
 {
-	struct p2p *p2p = chk->p2p;
 	struct pci_dev *pdev = XOCL_PL_TO_PCI_DEV(p2p->pdev);
 	struct device *dev = &pdev->dev;
 	struct resource res;
@@ -308,7 +312,7 @@ static int p2p_mem_chunk_reserve(struct p2p *p2p, struct p2p_mem_chunk *chk)
 			chk->xpmc_va = NULL;
 		}
 		p2p_err(p2p, "reserve p2p chunk failed, releasing");
-		p2p_mem_chunk_release(chk);
+		p2p_mem_chunk_release(p2p, chk);
 		ret = ret ? ret : -ENOMEM;
 	}
 
@@ -329,7 +333,7 @@ static int p2p_rbar_len(struct p2p *p2p, ulong *rbar_sz)
 	pos = pci_find_ext_capability(pcidev, PCI_EXT_CAP_ID_REBAR);
 	if (!pos) {
 		p2p_info(p2p, "rebar cap does not exist");
-		return -ENOTSUPP,
+		return -ENOTSUPP;
 	}
 
 	if (!rbar_sz)
@@ -343,79 +347,6 @@ static int p2p_rbar_len(struct p2p *p2p, ulong *rbar_sz)
 
 	*rbar_sz = P2P_RBAR_TO_BYTES((ctrl & PCI_REBAR_CTRL_BAR_SIZE) >>
 		PCI_REBAR_CTRL_BAR_SHIFT);
-}
-
-static ssize_t config_store(struct device *dev, struct device_attribute *da,
-		const char *buf, size_t count)
-{
-	struct p2p *p2p = platform_get_drvdata(to_platform_device(dev));
-	ulong range;
-	int ret;
-
-	if (kstrtoul(buf, 10, &range) == -EINVAL) {
-		p2p_err(p2p, "invalid input");
-		return -EINVAL;
-	}
-
-	ret = p2p_configure(p2p, range);
-	if (ret)
-		return ret;
-
-	return count;
-}
-
-static ssize_t config_show(struct device *dev,
-	struct device_attribute *attr, char *buf)
-{
-	struct p2p *p2p = platform_get_drvdata(to_platform_device(dev));
-	ulong rbar_len;
-	int ret;
-	ssize_t count;
-
-	count = sprintf(buf, "bar:%ld\n", p2p->p2p_bar_len);
-
-	ret = p2p_rbar_len(p2p, &rbar_len);
-	if (!ret)
-		count += sprintf(buf + count, "rbar:%ld\n", rbar_len);
-
-	if (p2p->remapper)
-		count += sprintf(buf + count, "remap:%ld\n", p2p->remap_range);
-
-	return count;
-}
-
-static struct attribute *p2p_attrs[] = {
-	&dev_attr_config.attr,
-	NULL,
-};
-
-static struct attribute_group p2p_attr_group = {
-	.attrs = p2p_attrs,
-};
-
-static void p2p_sysfs_destroy(struct platform_device *pdev)
-{
-	if (!p2p->sysfs_created)
-		return;
-
-	sysfs_remove_group(&pdev->dev.kobj, &p2p_attr_group);
-	p2p->sysfs_created = false;
-}
-
-static int p2p_sysfs_create(struct platform_device *pdev)
-{
-	struct p2p *p2p = platform_get_drvdata(pdev);
-	int ret;
-
-	if (p2p->sysfs_created)
-		return 0;
-
-	ret = sysfs_create_group(&pdev->dev.kobj, &p2p_attr_group);
-	if (ret) {
-		p2p_err(p2p, "create ert attrs failed: 0x%x", ret);
-		return ret;
-	}
-	p2p->sysfs_created = true;
 
 	return 0;
 }
@@ -467,7 +398,7 @@ static void p2p_read_addr_mgmtpf(struct p2p *p2p)
 static int p2p_mem_fini(struct p2p *p2p)
 {
 	struct pci_dev *pcidev = XOCL_PL_TO_PCI_DEV(p2p->pdev);
-	struct p2p_mem_chuck *chunks;
+	struct p2p_mem_chunk *chunks;
 	int i;
 
 	if (p2p->remapper)
@@ -492,6 +423,8 @@ static int p2p_mem_fini(struct p2p *p2p)
 
 	/* Reset Virtualization registers */
 	(void) p2p_read_addr_mgmtpf(p2p);
+
+	return 0;
 }
 
 static int p2p_mem_init(struct p2p *p2p)
@@ -501,28 +434,28 @@ static int p2p_mem_init(struct p2p *p2p)
 	struct p2p_mem_chunk *chunks;
 	int i;
 
-	p2p->p2p_bar_len = pci_resource_len(pcidev, p2p->bar_idx);
+	p2p->p2p_bar_len = pci_resource_len(pcidev, p2p->p2p_bar_idx);
 	if (p2p->p2p_bar_len < XOCL_P2P_CHUNK_SIZE) {
 		p2p_info(p2p, "p2p bar is too small");
 		return 0;
 	}
 
 	/* init chunk table */
-	p2p_info(p2p, "Init chunks. BAR len %ld, chunk sz %lld",
+	p2p_info(p2p, "Init chunks. BAR len %ld, chunk sz %ld",
 			p2p->p2p_bar_len, XOCL_P2P_CHUNK_SIZE);
 	p2p->p2p_mem_chunk_num = p2p->p2p_bar_len / XOCL_P2P_CHUNK_SIZE;
 	p2p->p2p_mem_chunks = vzalloc(sizeof(struct p2p_mem_chunk) *
-			xdev->p2p_mem_chunk_num);
+			p2p->p2p_mem_chunk_num);
 	if (!p2p->p2p_mem_chunks)
 		return -ENOMEM;
 	chunks = p2p->p2p_mem_chunks;
 
 	pa = pci_resource_start(pcidev, p2p->p2p_bar_idx);
 	for (i = 0; i < p2p->p2p_mem_chunk_num; i++) {
-		chunk[i].xpmc_pa = pa; 
+		chunks[i].xpmc_pa = pa; 
 		pa += XOCL_P2P_CHUNK_SIZE;
-		chunk[i].xpmc_size = XOCL_P2P_CHUNK_SIZE;
-		init_completion(&chunk[i].xpmc_comp);
+		chunks[i].xpmc_size = XOCL_P2P_CHUNK_SIZE;
+		init_completion(&chunks[i].xpmc_comp);
 	}
 
 	pci_request_selected_regions(pcidev, 1 << p2p->p2p_bar_idx,
@@ -563,16 +496,16 @@ static int p2p_configure(struct p2p *p2p, ulong range)
 	int pos, ret = 0;
 	u16 cmd;
 	ulong rbar_sz, flags;
-	u32 ctrl, cap;
+	u32 ctrl;
 
 	pos = pci_find_ext_capability(pcidev, PCI_EXT_CAP_ID_REBAR);
 	if (!pos) {
 		p2p_info(p2p, "rebar cap does not exist");
-		return -ENOTSUPP,
+		return -ENOTSUPP;
 	}
 
 	pos += p2p->p2p_bar_idx * PCI_REBAR_CTRL;
-	pci_read_config_dword(dev, pos + PCI_REBAR_CTRL, &ctrl);
+	pci_read_config_dword(pcidev, pos + PCI_REBAR_CTRL, &ctrl);
 
 	rbar_sz = P2P_RBAR_TO_BYTES((ctrl & PCI_REBAR_CTRL_BAR_SIZE) >>
 		PCI_REBAR_CTRL_BAR_SHIFT);
@@ -598,6 +531,9 @@ static int p2p_configure(struct p2p *p2p, ulong range)
 
 	res->flags = flags;
 
+	p2p_mem_fini(p2p);
+	p2p_mem_init(p2p);
+
 done:
 	pci_write_config_word(pcidev, PCI_COMMAND, cmd | PCI_COMMAND_MEMORY);
 	pci_request_selected_regions(pcidev, (1 << p2p->p2p_bar_idx),
@@ -606,7 +542,99 @@ done:
 	return ret;
 }
 
-static void p2p_remove(struct platform_device *pdev)
+int p2p_mem_map(struct platform_device *pdev, ulong bank_addr, ulong bank_size,
+		ulong offset, ulong len, ulong *bar_addr)
+{
+	return 0;
+}
+
+int p2p_mem_unmap(struct platform_device *pdev, ulong bar_addr)
+{
+	return 0;
+}
+
+struct xocl_p2p_funcs p2p_ops = {
+	.mem_map = p2p_mem_map,
+	.mem_unmap = p2p_mem_unmap,
+};
+
+static ssize_t config_store(struct device *dev, struct device_attribute *da,
+		const char *buf, size_t count)
+{
+	struct p2p *p2p = platform_get_drvdata(to_platform_device(dev));
+	ulong range;
+	int ret;
+
+	if (kstrtoul(buf, 10, &range) == -EINVAL) {
+		p2p_err(p2p, "invalid input");
+		return -EINVAL;
+	}
+
+	ret = p2p_configure(p2p, range);
+	if (ret)
+		return ret;
+
+	return count;
+}
+
+static ssize_t config_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct p2p *p2p = platform_get_drvdata(to_platform_device(dev));
+	ulong rbar_len;
+	int ret;
+	ssize_t count;
+
+	count = sprintf(buf, "bar:%ld\n", p2p->p2p_bar_len);
+
+	ret = p2p_rbar_len(p2p, &rbar_len);
+	if (!ret)
+		count += sprintf(buf + count, "rbar:%ld\n", rbar_len);
+
+	if (p2p->remapper)
+		count += sprintf(buf + count, "remap:%ld\n", p2p->remap_range);
+
+	return count;
+}
+
+static DEVICE_ATTR_RW(config);
+
+static struct attribute *p2p_attrs[] = {
+	&dev_attr_config.attr,
+	NULL,
+};
+
+static struct attribute_group p2p_attr_group = {
+	.attrs = p2p_attrs,
+};
+
+static void p2p_sysfs_destroy(struct p2p *p2p)
+{
+	if (!p2p->sysfs_created)
+		return;
+
+	sysfs_remove_group(&p2p->pdev->dev.kobj, &p2p_attr_group);
+	p2p->sysfs_created = false;
+}
+
+static int p2p_sysfs_create(struct p2p *p2p)
+{
+	int ret;
+
+	if (p2p->sysfs_created)
+		return 0;
+
+	ret = sysfs_create_group(&p2p->pdev->dev.kobj, &p2p_attr_group);
+	if (ret) {
+		p2p_err(p2p, "create ert attrs failed: 0x%x", ret);
+		return ret;
+	}
+	p2p->sysfs_created = true;
+
+	return 0;
+}
+
+static int p2p_remove(struct platform_device *pdev)
 {
 	struct p2p *p2p;
 	void *hdl;
@@ -614,10 +642,11 @@ static void p2p_remove(struct platform_device *pdev)
 	p2p = platform_get_drvdata(pdev);
 	if (!p2p) {
 		xocl_err(&pdev->dev, "driver data is NULL");
-		return;
+		return -EINVAL;
 	}
 	xocl_drvinst_release(p2p, &hdl);
 
+	p2p_sysfs_destroy(p2p);
 	p2p_mem_fini(p2p);
 
 	if (p2p->remapper)
@@ -626,14 +655,18 @@ static void p2p_remove(struct platform_device *pdev)
 	mutex_destroy(&p2p->p2p_lock);
 	platform_set_drvdata(pdev, NULL);
 	xocl_drvinst_free(hdl);
+
+	return 0;
 }
 
 static int p2p_probe(struct platform_device *pdev)
 {
 	struct p2p *p2p;
 	struct resource *res;
+	struct pci_dev *pcidev;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	int ret;
+	ulong bar_len;
+	int ret, i = 0;
 
 	p2p = xocl_drvinst_alloc(&pdev->dev, sizeof(*p2p));
 	if (!p2p)
@@ -645,7 +678,8 @@ static int p2p_probe(struct platform_device *pdev)
 
 	for (res = platform_get_resource(pdev, IORESOURCE_MEM, i); res;
 	    res = platform_get_resource(pdev, IORESOURCE_MEM, ++i)) {
-		if (!strncmp(res->name, NODE_REMAP_P2P, strlen(NODE_REMAP_P2P))) {
+		if (!strncmp(res->name, NODE_REMAP_P2P,
+		    strlen(NODE_REMAP_P2P))) {
 			p2p->remapper = ioremap_nocache(res->start,
 					res->end - res->start + 1);
 		}
@@ -658,9 +692,14 @@ static int p2p_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
-	p2p->p2p_bar_len = pci_resource_len(pcidev, p2p->p2p_bar_idx);
+	pcidev = XOCL_PL_TO_PCI_DEV(p2p->pdev);
+	bar_len = (ulong) pci_resource_len(pcidev, p2p->p2p_bar_idx);
 
-	ret = p2p_configure(p2p);
+	ret = p2p_configure(p2p, bar_len);
+	if (ret)
+		goto failed;
+
+	ret = p2p_sysfs_create(p2p);
 	if (ret)
 		goto failed;
 
@@ -687,7 +726,7 @@ static struct platform_driver	p2p_driver = {
 		.name = XOCL_DEVNAME(XOCL_P2P),
 	},
 	.id_table = p2p_id_table,
-
+};
 
 int __init xocl_init_p2p(void)
 {

@@ -95,10 +95,6 @@
 
 #endif
 
-/* Each P2P chunk we set up must be at least 256MB */
-#define XOCL_P2P_CHUNK_SHIFT		28
-#define XOCL_P2P_CHUNK_SIZE		(1ULL << XOCL_P2P_CHUNK_SHIFT)
-
 struct xocl_p2p_mem_chunk {
 	struct xocl_dev		*xpmc_xdev;
 	void			*xpmc_res_grp;
