@@ -340,10 +340,39 @@ void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	memcpy(xcmd->info, &ecmd->data[4], xcmd->isize);
 }
 
-inline int cu_mask_to_cu_idx(struct kds_command *xcmd)
+/**
+ * cu_mask_to_cu_idx - Convert CU mask to CU index list
+ *
+ * @xcmd: Command
+ * @cus:  CU index list
+ *
+ * Returns: Number of CUs
+ *
+ */
+inline int
+cu_mask_to_cu_idx(struct kds_command *xcmd, int *cus)
 {
-	/* TODO: balance the CU usage if multiple bits are set */
+	int num_cu = 0;
+	u32 mask;
+	/* i for iterate masks, j for iterate bits */
+	int i, j;
 
-	/* assume there is alwasy one CU */
-	return 0;
+	for (i = 0; i < xcmd->num_mask; ++i) {
+		if (xcmd->cu_mask[i] == 0)
+			continue;
+
+		mask = xcmd->cu_mask[i];
+		for (j = 0; mask > 0; ++j) {
+			if (!(mask & 0x1)) {
+				mask >>= 1;
+				continue;
+			}
+
+			cus[num_cu] = i * 32 + j;
+			num_cu++;
+			mask >>= 1;
+		}
+	}
+
+	return num_cu;
 }

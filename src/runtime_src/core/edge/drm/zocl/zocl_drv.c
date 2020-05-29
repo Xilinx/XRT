@@ -971,10 +971,7 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 	if (zdev->fpga_mgr)
 		fpga_mgr_put(zdev->fpga_mgr);
 
-	if (kds_mode == 1) {
-		kds_fini_sched(&zdev->kds);
-		cu_ctrl_fini(zdev);
-	} else
+	if (kds_mode == 0)
 		sched_fini_exec(drm);
 
 	zocl_clear_mem(zdev);
@@ -983,6 +980,11 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 	zocl_xclbin_fini(zdev);
 	mutex_destroy(&zdev->zdev_xclbin_lock);
 	zocl_fini_sysfs(drm->dev);
+
+	if (kds_mode == 1) {
+		kds_fini_sched(&zdev->kds);
+		cu_ctrl_fini(zdev);
+	}
 
 	kfree(zdev->apertures);
 

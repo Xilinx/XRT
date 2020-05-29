@@ -20,6 +20,7 @@ struct kds_cu_ctrl {
 	struct xrt_cu		 *xcus[MAX_CUS];
 	struct mutex		  lock;
 	u32			  cu_refs[MAX_CUS];
+	u64			  cu_usage[MAX_CUS];
 	int			  num_cus;
 	int			  num_clients;
 	int			  configured;
@@ -39,5 +40,6 @@ int add_cu(struct kds_cu_ctrl *kcuc, struct xrt_cu *xcu);
 int remove_cu(struct kds_cu_ctrl *kcuc, struct xrt_cu *xcu);
 
 ssize_t show_cu_ctx(struct kds_cu_ctrl *kcuc, char *buf);
+ssize_t show_cu_ctrl_stat(struct kds_cu_ctrl *kcuc, char *buf);
 
 #endif
