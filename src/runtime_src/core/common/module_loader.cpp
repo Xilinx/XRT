@@ -15,8 +15,11 @@
  */
 
 #include <boost/filesystem/operations.hpp>
+#include <boost/filesystem/path.hpp>
 
-#include "xdp_util.h"
+#define XRT_CORE_COMMON_SOURCE
+
+#include "core/common/module_loader.h"
 #include "core/common/dlfcn.h"
 
 #ifdef _WIN32
@@ -24,16 +27,14 @@
 /* Disable warning for use of getenv */
 #endif
 
-namespace xdputil {
+namespace {
 
-  const char* 
-  XDPLoader::emptyOrValue(const char* cstr)
+  static const char* emptyOrValue(const char* cstr)
   {
     return cstr ? cstr : "" ;
   }
 
-  boost::filesystem::path& 
-  XDPLoader::dllExt()
+  static boost::filesystem::path& dllExt()
   {
 #ifdef _WIN32
     static boost::filesystem::path sDllExt(".dll") ;
@@ -43,17 +44,15 @@ namespace xdputil {
     return sDllExt ;
   }
 
-  bool 
-  XDPLoader::isDLL(const boost::filesystem::path& path)
+  static bool isDLL(const boost::filesystem::path& path)
   {
     return (boost::filesystem::exists(path)          &&
 	    boost::filesystem::is_regular_file(path) &&
 	    path.extension() == dllExt()) ;
   }
 
-  boost::filesystem::path 
-  XDPLoader::modulePath(const boost::filesystem::path& root,
-			const std::string& libname)
+  static boost::filesystem::path modulePath(const boost::filesystem::path& root,
+					    const std::string& libname)
   {
 #ifdef _WIN32
     return root / "bin" / (libname + ".dll") ;
@@ -62,8 +61,7 @@ namespace xdputil {
 #endif
   }
 
-  boost::filesystem::path 
-  XDPLoader::moduleDir(const boost::filesystem::path& root)
+  static boost::filesystem::path moduleDir(const boost::filesystem::path& root)
   {
 #ifdef _WIN32
     return root / "bin" ;
@@ -72,10 +70,23 @@ namespace xdputil {
 #endif
   }
 
-  XDPLoader::XDPLoader(const char* pluginName,
-		       std::function<void (void*)> registerFunction,
-		       std::function<void ()> warningFunction)
+} // end anonymous namespace
+
+namespace xrt_core {
+
+  module_loader::module_loader(const char* pluginName,
+			       std::function<void (void*)> registerFunction,
+			       std::function<void ()> warningFunction,
+			       std::function<int ()> errorFunction)
   {
+    if (errorFunction) 
+    {
+      // Check prerequirements for this particular plugin.  If they are not
+      //  met, then return before we do any linking
+      if (errorFunction()) 
+	return ;
+    }
+
     // Check XILINX_XRT existence
     boost::filesystem::path xrt(emptyOrValue(getenv("XILINX_XRT"))) ;
     if (xrt.empty()) 
@@ -95,7 +106,7 @@ namespace xdputil {
     void* handle = xrt_core::dlopen(libpath.string().c_str(), 
 				    RTLD_NOW | RTLD_GLOBAL) ;
     if (!handle)
-      throw std::runtime_error("Failed to open XDP library '" + 
+      throw std::runtime_error("Failed to open plugin library '" + 
 			       libpath.string() + "'\n"       + 
 			       xrt_core::dlerror()) ;
 
@@ -107,7 +118,7 @@ namespace xdputil {
     //  symbols to remain open and linked through the rest of the execution
   }
 
-  XDPLoader::~XDPLoader()
+  module_loader::~module_loader()
   {
   }
 

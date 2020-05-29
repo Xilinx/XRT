@@ -1,4 +1,5 @@
 #include "plugin/xdp/hal_profile.h"
+#include "core/common/module_loader.h"
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
 #include "core/common/dlfcn.h"
@@ -7,56 +8,20 @@ namespace bfs = boost::filesystem;
 
 namespace xdphal {
 
-cb_func_type cb;
-
-static bool loaded = false;
+std::function<void(unsigned, void*)> cb ;
 std::atomic<uint64_t> global_idcode(0);
-std::mutex lock;
 
 static bool cb_valid() {
-  return loaded && cb;
+  return cb != nullptr ;
 }
-
-static boost::filesystem::path& dllExt() {
-#ifdef _WIN32
-  static boost::filesystem::path sDllExt(".dll");
-#else
-  static boost::filesystem::path sDllExt(".so");
-#endif
-  return sDllExt;
-}
-
-inline bool isDLL(const bfs::path& path) {
-  return (bfs::exists(path)
-          && bfs::is_regular_file(path)
-          && path.extension()==dllExt());
-}
-
-boost::filesystem::path
-modulepath(const boost::filesystem::path& root, const std::string& libnm)
-{
-#ifdef _WIN32
-  return root / "bin" / (libnm + ".dll");
-#else
-  return root / "lib" / "xrt" / "module" / ("lib" + libnm + ".so");
-#endif
-}
-
-static void directoryOrError(const bfs::path& path) {
-  if (!bfs::is_directory(path)) {
-    throw std::runtime_error("No such directory '" + path.string() + "'");
-  }
-}
-
-static const char* emptyOrValue(const char* cstr) {
-  return cstr ? cstr : "";
-}
-
 
 CallLogger::CallLogger(uint64_t id)
            : m_local_idcode(id)
 {
-  load_xdp_plugin_library(nullptr);
+  if (xrt_core::config::get_xrt_profile())
+  {
+    load_xdp_plugin_library(nullptr) ;
+  }
 }
 
 CallLogger::~CallLogger()
@@ -385,19 +350,17 @@ LoadXclbinCallLogger::~LoadXclbinCallLogger()
   cb(HalCallbackType::LOAD_XCLBIN_END, &payload) ;
 }
 
+  // The registration function
+  void register_hal_callbacks(void* handle)
+  {
+    typedef void(*ftype)(unsigned, void*) ;
+    cb = (ftype)(xrt_core::dlsym(handle, "hal_level_xdp_cb_func")) ;
+    if (xrt_core::dlerror() != NULL) cb = nullptr ;
+  }
 
-void load_xdp_plugin_library(HalPluginConfig* )
-{
-    std::lock_guard<std::mutex> loader_guard(lock);
-    if(loaded) {
-      return;
-    }
-
-    if(!xrt_core::config::get_xrt_profile()) {
-      loaded = true ;
-      return;
-    }
-
+  // The warning function
+  void warning_hal_callbacks()
+  {
     if(xrt_core::config::get_profile()) {
       // "profile=true" is also set. This enables OpenCL based flow for profiling. 
       // Currently, mix of OpenCL and HAL based profiling is not supported.
@@ -405,27 +368,13 @@ void load_xdp_plugin_library(HalPluginConfig* )
                 std::string("Both profile=true and xrt_profile=true set in xrt.ini config. Currently, these flows are not supported to work together."));
       return;
     }
+  }
 
-    bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
-    if (xrt.empty()) {
-      throw std::runtime_error("Library xdp_hal_plugin not found! XILINX_XRT not set");
-    }
-    bfs::path xrtlib(xrt / "lib" / "xrt" / "module");
-    directoryOrError(xrtlib);
-    auto libname = modulepath(xrt, "xdp_hal_plugin");
-    if (!isDLL(libname)) {
-      throw std::runtime_error("Library " + libname.string() + " not found!");
-    }
-    auto handle = xrt_core::dlopen(libname.string().c_str(), RTLD_NOW | RTLD_GLOBAL);
-    if (!handle)
-      throw std::runtime_error("Failed to open XDP HAL Profile library '" + libname.string() + "'\n" + xrt_core::dlerror());
-
-    const std::string cb_func_name = "hal_level_xdp_cb_func";
-    cb = cb_func_type(reinterpret_cast<cb_load_func_type>(xrt_core::dlsym(handle, cb_func_name.c_str())));
-    if(!cb) {
-      throw std::runtime_error("Failed to find callback function symbol in XDP HAL Profile library '" + libname.string() + "'\n" + xrt_core::dlerror());
-    }
-    loaded = true;
+void load_xdp_plugin_library(HalPluginConfig* )
+{
+  static xrt_core::module_loader xdp_hal_loader("xdp_hal_plugin",
+						register_hal_callbacks,
+						warning_hal_callbacks) ;
 }
 
 }

@@ -25,6 +25,7 @@ file(GLOB XRT_CORE_COMMON_LIB_FILES
   "xrt_xclbin.cpp"
   "xrt_bo.cpp"
   "exec/*.cpp"
+  "module_loader.cpp"
   )
 
 # Files to include in object list
@@ -46,7 +47,7 @@ target_link_libraries(xrt_coreutil
   )
 
 if (NOT WIN32)
-target_link_libraries(xrt_coreutil uuid pthread)
+target_link_libraries(xrt_coreutil uuid pthread dl)
 install(TARGETS xrt_coreutil
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR})
 else()
