@@ -61,6 +61,12 @@ elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS|Amazon|Fedora)")
     OUTPUT_VARIABLE CPACK_ARCH
     OUTPUT_STRIP_TRAILING_WHITESPACE
   )
+
+  if (${CPACK_ARCH} MATCHES "^mips64")
+    SET(CPACK_ARCH "mips64el")
+    set(CPACK_RPM_PACKAGE_ARCHITECTURE "mips64el")
+  endif()
+
   SET(CPACK_GENERATOR "RPM;TGZ")
   SET(PACKAGE_KIND "RPM")
   # Modify the package name for the xrt component
