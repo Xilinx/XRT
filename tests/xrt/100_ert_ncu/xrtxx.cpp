@@ -146,15 +146,6 @@ struct job_type
     am=bm=nullptr;
   }
 
-  ~job_type()
-  {
-    if (am)
-      a.unmap();
-
-    if (bm)
-      b.unmap();
-  }
-
   void
   run()
   {

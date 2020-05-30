@@ -114,12 +114,6 @@ public:
   {}
 
   /**
-   * ~bo() - Destructor
-   */
-  XCL_DRIVER_DLLESPEC
-  ~bo();
-
-  /**
    * operator= () - Move assignment
    */
   bo&
