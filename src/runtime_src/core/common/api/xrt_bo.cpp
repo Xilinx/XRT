@@ -19,8 +19,9 @@
 // core/include/experimental/xrt_bo.h
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_bo.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
-#include "xrt_bo.h"
+#include "core/include/experimental/xrt_bo.h"
 
+#include "bo.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
 #include "core/common/memalign.h"
@@ -375,10 +376,6 @@ bo(xclDeviceHandle dhdl, size_t size, buffer_flags flags, memory_group grp)
 bo::
 bo(const bo& parent, size_t size, size_t offset)
   : handle(sub_buffer(parent.handle, size, offset))
-{}
-
-bo::
-~bo()
 {}
 
 void

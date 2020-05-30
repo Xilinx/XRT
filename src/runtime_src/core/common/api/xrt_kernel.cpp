@@ -23,11 +23,11 @@
 
 #include "command.h"
 #include "exec.h"
+#include "bo.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
 #include "core/common/xclbin_parser.h"
 #include "core/common/config_reader.h"
-#include "core/common/xrt_bo.h"
 #include "core/common/bo_cache.h"
 #include "core/common/message.h"
 #include "core/common/error.h"

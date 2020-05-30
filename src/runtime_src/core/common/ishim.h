@@ -57,6 +57,7 @@ struct ishim
 
   virtual void
   get_bo_properties(xclBufferHandle boh, struct xclBOProperties *properties) const = 0;
+
 #if 0
   virtual void
   reg_read(uint32_t ipidx, uint32_t offset, uint32_t* data) const = 0;
@@ -76,6 +77,9 @@ struct ishim
 
   virtual int
   exec_wait(int timeout_ms) const = 0;
+
+  virtual void
+  load_xclbin(const struct axlf*) = 0;
 };
 
 template <typename DeviceType>
@@ -199,6 +203,13 @@ struct shim : public DeviceType
   exec_wait(int timeout_ms) const
   {
     return xclExecWait(DeviceType::get_device_handle(), timeout_ms);
+  }
+
+  virtual void
+  load_xclbin(const struct axlf* buffer)
+  {
+    if (auto ret = xclLoadXclBin(DeviceType::get_device_handle(), buffer))
+      throw error(ret, "failed to load xclbin");
   }
 };
 
