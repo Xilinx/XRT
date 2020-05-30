@@ -1544,6 +1544,7 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_cu_ctrl,
 	xocl_init_cu,
 	xocl_init_addr_translator,
+	xocl_init_p2p,
 };
 
 static void (*xocl_drv_unreg_funcs[])(void) = {
@@ -1571,7 +1572,8 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_mem_hbm,
 	xocl_fini_cu_ctrl,
 	xocl_fini_cu,
-	xocl_fini_addr_translator
+	xocl_fini_addr_translator,
+	xocl_fini_p2p,
 };
 
 static int __init xocl_init(void)

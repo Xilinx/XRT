@@ -99,6 +99,8 @@ struct p2p {
 	ulong			remap_range;
 	void			*p2p_remap_slots;
 
+	uint			first_free_slot;
+
 	bool			sysfs_created;
 };
 
@@ -397,14 +399,14 @@ static void p2p_read_addr_mgmtpf(struct p2p *p2p)
 
 static int p2p_mem_fini(struct p2p *p2p)
 {
-	struct pci_dev *pcidev = XOCL_PL_TO_PCI_DEV(p2p->pdev);
 	struct p2p_mem_chunk *chunks;
 	int i;
 
 	if (p2p->remapper)
 		remap_reg_wr(p2p, 0, slot_num);
 
-	pci_release_selected_regions(pcidev, 1 << p2p->p2p_bar_idx);
+	if (!p2p->p2p_mem_chunks)
+		return 0;
 
 	chunks = p2p->p2p_mem_chunks;
 	for (i = 0; i < p2p->p2p_mem_chunk_num; i++) {
@@ -434,15 +436,14 @@ static int p2p_mem_init(struct p2p *p2p)
 	struct p2p_mem_chunk *chunks;
 	int i;
 
-	p2p->p2p_bar_len = pci_resource_len(pcidev, p2p->p2p_bar_idx);
-	if (p2p->p2p_bar_len < XOCL_P2P_CHUNK_SIZE) {
-		p2p_info(p2p, "p2p bar is too small");
-		return 0;
-	}
+	BUG_ON(p2p->p2p_mem_chunks);
 
 	/* init chunk table */
 	p2p_info(p2p, "Init chunks. BAR len %ld, chunk sz %ld",
 			p2p->p2p_bar_len, XOCL_P2P_CHUNK_SIZE);
+	if (!p2p->p2p_bar_len)
+		return 0;
+
 	p2p->p2p_mem_chunk_num = p2p->p2p_bar_len / XOCL_P2P_CHUNK_SIZE;
 	p2p->p2p_mem_chunks = vzalloc(sizeof(struct p2p_mem_chunk) *
 			p2p->p2p_mem_chunk_num);
@@ -458,8 +459,6 @@ static int p2p_mem_init(struct p2p *p2p)
 		init_completion(&chunks[i].xpmc_comp);
 	}
 
-	pci_request_selected_regions(pcidev, 1 << p2p->p2p_bar_idx,
-			NODE_P2P);
 	/* init remapper */
 	if (!p2p->remapper)
 		return 0;
@@ -474,6 +473,7 @@ static int p2p_mem_init(struct p2p *p2p)
 		p2p->remap_slot_sz = XOCL_P2P_CHUNK_SIZE;
 
 	p2p->remap_slot_num = p2p->remap_range / p2p->remap_slot_sz;
+	p2p->first_free_slot = 0;
 
 	remap_reg_wr(p2p, p2p->remap_slot_num, slot_num);
 	remap_reg_wr(p2p, P2P_ADDR_LO(pa), base_addr_lo);
@@ -498,10 +498,23 @@ static int p2p_configure(struct p2p *p2p, ulong range)
 	ulong rbar_sz, flags;
 	u32 ctrl;
 
+	p2p_info(p2p, "Configuring p2p, range %ld", range);
+	if (range < XOCL_P2P_CHUNK_SIZE) {
+		p2p_info(p2p, "p2p bar is too small");
+		return -ENOTSUPP;
+	}
+
 	pos = pci_find_ext_capability(pcidev, PCI_EXT_CAP_ID_REBAR);
 	if (!pos) {
 		p2p_info(p2p, "rebar cap does not exist");
-		return -ENOTSUPP;
+		if (p2p->p2p_bar_len < range) {
+			p2p_info(p2p, "bar size less than requested range");
+			return -ENOTSUPP;
+		}
+
+		p2p_mem_fini(p2p);
+		ret = p2p_mem_init(p2p);
+		return ret;
 	}
 
 	pos += p2p->p2p_bar_idx * PCI_REBAR_CTRL;
@@ -510,14 +523,16 @@ static int p2p_configure(struct p2p *p2p, ulong range)
 	rbar_sz = P2P_RBAR_TO_BYTES((ctrl & PCI_REBAR_CTRL_BAR_SIZE) >>
 		PCI_REBAR_CTRL_BAR_SHIFT);
 
-	pci_release_selected_regions(pcidev, (1 << p2p->p2p_bar_idx));
+	if (p2p->p2p_bar_len)
+		pci_release_selected_regions(pcidev, (1 << p2p->p2p_bar_idx));
+
 	pci_read_config_word(pcidev, PCI_COMMAND, &cmd);
 	pci_write_config_word(pcidev, PCI_COMMAND, cmd & ~PCI_COMMAND_MEMORY);
 	ctrl &= ~PCI_REBAR_CTRL_BAR_SIZE;
 	ctrl |= P2P_BYTES_TO_RBAR(range) << PCI_REBAR_CTRL_BAR_SHIFT;
 	pci_write_config_dword(pcidev, pos + PCI_REBAR_CTRL, ctrl);
 
-	if (range == rbar_sz)
+	if (range == p2p->p2p_bar_len)
 		goto done;
 
 	flags = res->flags;
@@ -531,26 +546,58 @@ static int p2p_configure(struct p2p *p2p, ulong range)
 
 	res->flags = flags;
 
-	p2p_mem_fini(p2p);
-	p2p_mem_init(p2p);
-
 done:
 	pci_write_config_word(pcidev, PCI_COMMAND, cmd | PCI_COMMAND_MEMORY);
-	pci_request_selected_regions(pcidev, (1 << p2p->p2p_bar_idx),
+	p2p->p2p_bar_len = (ulong) pci_resource_len(pcidev, p2p->p2p_bar_idx);
+	if (p2p->p2p_bar_len) {
+		pci_request_selected_regions(pcidev, (1 << p2p->p2p_bar_idx),
 			NODE_P2P);
+	} else {
+		p2p_err(p2p, "Not enough IO space, please warm reboot");
+	}
+
+
+	p2p_mem_fini(p2p);
+	ret = p2p_mem_init(p2p);
 
 	return ret;
 }
 
-int p2p_mem_map(struct platform_device *pdev, ulong bank_addr, ulong bank_size,
-		ulong offset, ulong len, ulong *bar_addr)
+static int p2p_reserve_release(struct p2p *p2p, ulong off, ulong sz,
+	       bool reserve)
+{
+}
+
+int p2p_mem_unmap(struct platform_device *pdev, ulong bar_off)
 {
 	return 0;
 }
 
-int p2p_mem_unmap(struct platform_device *pdev, ulong bar_addr)
+int p2p_mem_map(struct platform_device *pdev, ulong bank_addr, ulong bank_size,
+		ulong offset, ulong len, ulong *bar_off)
 {
-	return 0;
+	struct p2p *p2p = platform_get_drvdata(pdev);
+	long bank_off;
+	int ret;
+
+	if (!p2p->remapper)
+		return -ENOTSUPP;
+
+	bank_off = p2p_bar_map(bank_addr, bank_size);
+	if (bank_off < 0) {
+		p2p_err(p2p, "alloc remap slot failed");
+		return -ENOENT;
+	}
+
+	ret = p2p_reserve_release(p2p, bank_off + offset, len, true);
+	if (ret) {
+		p2p_err(p2p, "reserve p2p chunks failed ret = %d", ret);
+		p2p_bar_unmap(bank_off);
+	}
+
+	*bar_off = bank_off + offset;
+
+	return ret;
 }
 
 struct xocl_p2p_funcs p2p_ops = {
@@ -565,7 +612,7 @@ static ssize_t config_store(struct device *dev, struct device_attribute *da,
 	ulong range;
 	int ret;
 
-	if (kstrtoul(buf, 10, &range) == -EINVAL) {
+	if (kstrtoul(buf, 10, &range)) {
 		p2p_err(p2p, "invalid input");
 		return -EINVAL;
 	}
@@ -637,6 +684,7 @@ static int p2p_sysfs_create(struct p2p *p2p)
 static int p2p_remove(struct platform_device *pdev)
 {
 	struct p2p *p2p;
+	struct pci_dev *pcidev;
 	void *hdl;
 
 	p2p = platform_get_drvdata(pdev);
@@ -652,6 +700,10 @@ static int p2p_remove(struct platform_device *pdev)
 	if (p2p->remapper)
 		iounmap(p2p->remapper);
 
+	pcidev = XOCL_PL_TO_PCI_DEV(p2p->pdev);
+	if (p2p->p2p_bar_len)
+		pci_release_selected_regions(pcidev, (1 << p2p->p2p_bar_idx));
+
 	mutex_destroy(&p2p->p2p_lock);
 	platform_set_drvdata(pdev, NULL);
 	xocl_drvinst_free(hdl);
@@ -665,12 +717,13 @@ static int p2p_probe(struct platform_device *pdev)
 	struct resource *res;
 	struct pci_dev *pcidev;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	ulong bar_len;
 	int ret, i = 0;
 
 	p2p = xocl_drvinst_alloc(&pdev->dev, sizeof(*p2p));
-	if (!p2p)
+	if (!p2p) {
+		xocl_err(&pdev->dev, "failed to alloc data");
 		return -ENOMEM;
+	}
 
 	platform_set_drvdata(pdev, p2p);
 	p2p->pdev = pdev;
@@ -693,9 +746,13 @@ static int p2p_probe(struct platform_device *pdev)
 	}
 
 	pcidev = XOCL_PL_TO_PCI_DEV(p2p->pdev);
-	bar_len = (ulong) pci_resource_len(pcidev, p2p->p2p_bar_idx);
+	p2p->p2p_bar_len = (ulong) pci_resource_len(pcidev, p2p->p2p_bar_idx);
+	if (p2p->p2p_bar_len) {
+		pci_request_selected_regions(pcidev, (1 << p2p->p2p_bar_idx),
+			NODE_P2P);
+	}
 
-	ret = p2p_configure(p2p, bar_len);
+	ret = p2p_configure(p2p, p2p->p2p_bar_len);
 	if (ret)
 		goto failed;
 
