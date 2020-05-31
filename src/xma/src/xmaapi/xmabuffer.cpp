@@ -46,6 +46,8 @@ xma_frame_planes_get(XmaFrameProperties *frame_props)
         {XMA_YUV444_FMT_TYPE,  3},
         {XMA_RGB888_FMT_TYPE,  1},
         {XMA_RGBP_FMT_TYPE,    3},
+        {XMA_VCU_NV12_FMT_TYPE,2}
+
     };
 
     return frame_format_desc[frame_props->format].num_planes;
