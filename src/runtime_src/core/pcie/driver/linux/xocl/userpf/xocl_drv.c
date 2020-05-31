@@ -1058,7 +1058,7 @@ void xocl_p2p_fini(struct xocl_dev *xdev, bool recov_bar_sz)
 	int i;
 
 	if (P2P_DEV(xdev))
-		return 0;
+		return;
 
 	mutex_lock(&xdev->p2p_mem_chunk_lock);
 	for (i = 0; i < xdev->p2p_mem_chunk_num; i++) {
