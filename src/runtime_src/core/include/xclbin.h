@@ -1,5 +1,5 @@
 /**
- *  Copyright (C) 2015-2018, Xilinx Inc
+ *  Copyright (C) 2015-2020, Xilinx Inc
  *
  *  This file is dual licensed.  It may be redistributed and/or modified
  *  under the terms of the Apache 2.0 License OR version 2 of the GNU
@@ -192,6 +192,10 @@ extern "C" {
         IP_MEM_HBM
     };
 
+    enum ACTION_MASK {
+      AM_LOAD_AIE = 0x1                     /* Indicates to the driver to load the AIE PID section */
+    };
+
     struct axlf_section_header {
         uint32_t m_sectionKind;             /* Section type */
         char m_sectionName[16];             /* Examples: "stage2", "clear1", "clear2", "ocl1", "ocl2, "ublaze", "sched" */
@@ -207,7 +211,8 @@ extern "C" {
         uint16_t m_versionPatch;            /* Patch Version */
         uint8_t m_versionMajor;             /* Major Version - Version: 2.1.0*/
         uint8_t m_versionMinor;             /* Minor Version */
-        uint32_t m_mode;                    /* XCLBIN_MODE */
+        uint16_t m_mode;                    /* XCLBIN_MODE */
+        uint16_t m_actionMask;              /* Bit Mask */
 	union {
 	    struct {
 		uint64_t m_platformId;      /* 64 bit platform ID: vendor-device-subvendor-subdev */

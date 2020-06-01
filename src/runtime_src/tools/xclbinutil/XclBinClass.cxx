@@ -1387,6 +1387,21 @@ XclBin::setKeyValue(const std::string & _keyValue)
       return; // Key processed 
     }
 
+    if (sKey == "action_mask") {
+      std::vector<std::string> masks;
+      boost::split(masks, sValue, boost::is_any_of("|"));
+      m_xclBinHeader.m_header.m_actionMask = 0;
+      for (const auto & mask : masks) {
+        if (mask == "LOAD_AIE") {
+          m_xclBinHeader.m_header.m_actionMask |= AM_LOAD_AIE;
+        } else {
+          std::string errMsg = XUtil::format("ERROR: Unknown bit mask '%s' for the key '%s'. Key-value pair: '%s'.", mask.c_str(), sKey.c_str(), _keyValue.c_str());
+          throw std::runtime_error(errMsg);
+        }
+      }
+      return; // Key processed
+    }
+
     if (sKey == "FeatureRomTimestamp") {
       m_xclBinHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(sValue);
       return; // Key processed 
