@@ -89,17 +89,26 @@ get_devices(boost::property_tree::ptree& pt)
 std::shared_ptr<device>
 get_userpf_device(device::id_type id)
 {
-  auto device = userpf_devices[id].lock();
-  if (!device) {
-    device = instance().get_userpf_device(id);
-    userpf_devices[id] = device;
-  }
-  return device;
+  // Construct device by calling xclOpen, the returned
+  // device is cached and unmanaged
+  auto device = instance().get_userpf_device(id);
+
+  if (!device)
+    throw std::runtime_error("Could not open device");
+
+  // Repackage raw ptr in new shared ptr with deleter that calls xclClose,
+  // but leaves device object alone. The returned device is managed in that
+  // it calls xclClose when going out of scope.
+  auto close = [] (auto d) { d->close_device(); };
+  return {device.get(), close};
 }
 
 std::shared_ptr<device>
 get_userpf_device(device::handle_type handle)
 {
+  // Look up core device from low level shim handle
+  // The handle is inserted into map as part of
+  // calling xclOpen
   auto itr = userpf_device_map.find(handle);
   if (itr != userpf_device_map.end())
     return (*itr).second.lock();
@@ -109,16 +118,16 @@ get_userpf_device(device::handle_type handle)
 std::shared_ptr<device>
 get_userpf_device(device::handle_type handle, device::id_type id)
 {
-  // check device map cache
+  // Check device map cache
   if (auto device = get_userpf_device(handle)) {
     if (device->get_device_id() != id)
         throw std::runtime_error("get_userpf_device: id mismatch");
     return device;
   }
 
+  // Construct a new device object and insert in map.
   auto device = instance().get_userpf_device(handle,id);
   std::lock_guard<std::mutex> lk(mutex);
-  userpf_devices[id] = device;
   userpf_device_map[handle] = device;  // create or replace
   return device;
 }
@@ -126,7 +135,7 @@ get_userpf_device(device::handle_type handle, device::id_type id)
 std::shared_ptr<device>
 get_mgmtpf_device(device::id_type id)
 {
-  // check cache
+  // Check cache
   auto device = mgmtpf_devices[id].lock();
   if (!device) {
     device = instance().get_mgmtpf_device(id);

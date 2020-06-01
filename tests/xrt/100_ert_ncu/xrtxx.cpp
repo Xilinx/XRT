@@ -18,7 +18,7 @@
 #include "xrt.h"
 #include "experimental/xrt_kernel.h"
 #include "experimental/xrt_bo.h"
-#include "experimental/xrt_xclbin.h"
+#include "experimental/xrt_device.h"
 #include "xclbin.h"
 
 #include <fstream>
@@ -28,28 +28,6 @@
 #include <iostream>
 #include <vector>
 #include <cstdlib>
-
-static std::vector<char>
-load_xclbin(xclDeviceHandle device, const std::string& fnm)
-{
-  if (fnm.empty())
-    throw std::runtime_error("No xclbin speified");
-
-  // load bit stream
-  std::ifstream stream(fnm);
-  stream.seekg(0,stream.end);
-  size_t size = stream.tellg();
-  stream.seekg(0,stream.beg);
-
-  std::vector<char> header(size);
-  stream.read(header.data(),size);
-
-  auto top = reinterpret_cast<const axlf*>(header.data());
-  if (xclLoadXclBin(device, top))
-    throw std::runtime_error("Bitstream download failed");
-
-  return header;
-}
 
 const size_t ELEMENTS = 16;
 const size_t ARRAY_SIZE = 8;
@@ -259,22 +237,14 @@ int run(int argc, char** argv)
   if (probe < device_index)
     throw std::runtime_error("Bad device index '" + std::to_string(device_index) + "'");
 
-  auto device = xclOpen(device_index, nullptr, XCL_QUIET);
-
-  {
-
-  auto header = load_xclbin(device, xclbin_fnm);
-  auto top = reinterpret_cast<const axlf*>(header.data());
+  auto device = xrt::device(device_index);
+  auto uuid = device.load_xclbin(xclbin_fnm);
 
   compute_units = cus = std::min(cus, compute_units);
   std::string kname = get_kernel_name(cus);
-  auto kernel = xrt::kernel(device, top->m_header.uuid, kname);
+  auto kernel = xrt::kernel(device, uuid.get(), kname);
 
   run(device,kernel,jobs,secs);
-
-  }
-
-  xclClose(device);
 
   return 0;
 }

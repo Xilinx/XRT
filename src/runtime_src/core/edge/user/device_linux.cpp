@@ -204,16 +204,8 @@ lookup_query(query::key_type query_key) const
 }
 
 device_linux::
-device_linux(id_type device_id, bool user)
-  : shim<device_edge>(device_id, user)
-{
-  handle = get_device_handle();
-  xclGetDeviceInfo2(handle, &deviceInfo);
-}
-
-device_linux::
-device_linux(handle_type device_handle, id_type device_id)
-  : shim<device_edge>(device_handle, device_id)
+device_linux(handle_type device_handle, id_type device_id, bool user)
+  : shim<device_edge>(device_handle, device_id, user)
 {
 }
 
