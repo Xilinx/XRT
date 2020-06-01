@@ -541,7 +541,9 @@ xrtSyncBOAIE(xrtGraphHandle ghdl, unsigned int bo, const char *dmaID, enum xclBO
 void
 xrtResetAieArray(xclDeviceHandle handle)
 {
-  auto device = xrt_core::get_userpf_device(handle);
+  /* Do a handle check */
+  xrt_core::get_userpf_device(handle);
+
   XAieLib_NpiAieArrayReset(XAIE_RESETENABLE);
   XAieLib_NpiAieArrayReset(XAIE_RESETDISABLE);
 }
