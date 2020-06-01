@@ -1069,8 +1069,6 @@ size_t
 xclDebugReadIPStatus(xclDeviceHandle handle, enum xclDebugReadType type,
                      void* debugResults);
 
-#endif
-
 #ifdef __cplusplus
 }
 #endif
