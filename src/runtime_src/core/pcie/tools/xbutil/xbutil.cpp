@@ -1755,7 +1755,8 @@ int xcldev::device::testP2p()
 {
     std::string errmsg, vbnv;
     std::vector<char> buf;
-    int ret = 0, p2p_enabled = 0;
+    int ret = 0;
+    bool p2p_enabled;
     xclbin_lock xclbin_lock(m_handle, m_idx);
     auto dev = pcidev::get_dev(m_idx);
 
@@ -1763,8 +1764,8 @@ int xcldev::device::testP2p()
         return -EINVAL;
 
     dev->sysfs_get("rom", "VBNV", errmsg, vbnv);
-    dev->sysfs_get<int>("", "p2p_enable", errmsg, p2p_enabled, 0);
-    if (p2p_enabled != 1) {
+    p2p_enabled = pcidev::is_p2p_enabled(dev, errmsg);
+    if (!p2p_enabled) {
         std::cout << "P2P BAR is not enabled. Skipping validation" << std::endl;
         return -EOPNOTSUPP;
     }

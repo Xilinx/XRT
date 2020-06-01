@@ -387,13 +387,20 @@ static struct page **xocl_p2p_get_pages(struct xocl_dev *xdev,
 	u64 bar_off, u64 size)
 {
 	struct page *p, **pages;
-	int i;
+	int i, ret;
 	uint64_t offset;
 	uint64_t npages = size >> PAGE_SHIFT;
 
 	pages = drm_malloc_ab(npages, sizeof(struct page *));
 	if (pages == NULL)
 		return ERR_PTR(-ENOMEM);
+
+	ret = xocl_p2p_mem_get_pages(xdev,(ulong)bar_off, (ulong)size,
+			pages, npages);
+	if (!ret)
+		return pages;
+	else if (ret != -ENODEV)
+		goto fail;
 
 	for (i = 0, offset = bar_off; i < npages; i++, offset += PAGE_SIZE) {
 		int idx = offset >> XOCL_P2P_CHUNK_SHIFT;
@@ -462,12 +469,6 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 		 * DRM allocate contiguous pages, shift the vmapping with
 		 * bar address offset
 		 */
-		if (xdev->p2p_mem_chunk_num == 0) {
-			xocl_xdev_err(xdev,
-				"No P2P mem region, Can't create p2p BO");
-			ret = -EINVAL;
-			goto out_free;
-		}
 		ret = XOCL_GET_MEM_TOPOLOGY(xdev, topo);
 		if (ret)
 			goto out_free;
@@ -481,7 +482,16 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 				topo->m_mem_data[ddr].m_size * 1024,
 				xobj->mm_node->start, xobj->base.size,
 				&bar_off);
-			if (ret == -ENODEV) {
+			if (!ret)
+				xobj->p2p_bar_offset = bar_off;
+			else if (ret != -ENODEV) {
+				xocl_xdev_err(xdev, "map P2P failed,ret = %d",
+						ret);
+			} else if (xdev->p2p_mem_chunk_num == 0) {
+				xocl_xdev_err(xdev,
+				    "No P2P mem region, Can't create p2p BO");
+				ret = -EINVAL;
+			} else {
 				xobj->p2p_bar_offset = drm_p->mm_p2p_off[ddr] +
 					xobj->mm_node->start -
 					topo->m_mem_data[ddr].m_base_address;
@@ -489,8 +499,7 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 				ret = xocl_p2p_reserve_release_range(xdev,
 					xobj->p2p_bar_offset,
 					xobj->base.size, true);
-			} else
-				xobj->p2p_bar_offset = bar_off;
+			}
 		}
 
 		XOCL_PUT_MEM_TOPOLOGY(xdev);

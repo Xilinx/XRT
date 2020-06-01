@@ -193,7 +193,7 @@ static void p2p_mem_chunk_release(struct p2p *p2p, struct p2p_mem_chunk *chk)
 {
 	struct pci_dev *pdev = XOCL_PL_TO_PCI_DEV(p2p->pdev);
 
-	BUG_ON(!mutex_is_locked(&p2p->p2p_lock));
+	//BUG_ON(!mutex_is_locked(&p2p->p2p_lock));
 
 	/*
 	 * When reseration fails, error handling could bring us here with
@@ -228,7 +228,7 @@ static int p2p_mem_chunk_reserve(struct p2p *p2p, struct p2p_mem_chunk *chk)
 	struct percpu_ref *pref = &chk->xpmc_percpu_ref;
 	int ret;
 
-	BUG_ON(!mutex_is_locked(&p2p->p2p_lock));
+	//BUG_ON(!mutex_is_locked(&p2p->p2p_lock));
 	BUG_ON(chk->xpmc_ref < 0);
 
 	if (chk->xpmc_ref > 0) {
@@ -715,9 +715,33 @@ static int p2p_mem_map(struct platform_device *pdev,
 	return ret;
 }
 
+static int p2p_mem_get_pages(struct platform_device *pdev,
+	ulong bar_off, ulong size, struct page **pages, ulong npages)
+{
+	struct p2p *p2p = platform_get_drvdata(pdev);
+	struct p2p_mem_chunk *chunk = p2p->p2p_mem_chunks;
+	ulong i;
+	ulong offset;
+
+	for (i = 0, offset = bar_off; i < npages; i++, offset += PAGE_SIZE) {
+		int idx = offset >> XOCL_P2P_CHUNK_SHIFT;
+		void *addr = chunk[idx].xpmc_va;
+
+		addr += offset & (XOCL_P2P_CHUNK_SIZE - 1);
+		pages[i] = virt_to_page(addr);
+		if (IS_ERR(pages[i])) {
+			p2p_err(p2p, "get p2p pages failed");
+			return ERR_CAST(pages[i]);
+		}
+	}
+
+	return 0;
+}
+
 struct xocl_p2p_funcs p2p_ops = {
 	.mem_map = p2p_mem_map,
 	.mem_unmap = p2p_mem_unmap,
+	.mem_get_pages = p2p_mem_get_pages,
 };
 
 static ssize_t config_store(struct device *dev, struct device_attribute *da,

@@ -1020,3 +1020,51 @@ int pcidev::shutdown(std::shared_ptr<pcidev::pci_device> mgmt_dev, bool remove_u
     return -ETIMEDOUT;
 }
 
+bool pcidev::is_p2p_enabled(std::shared_ptr<pcidev::pci_device> dev, std::string &err)
+{
+    std::string errmsg;
+    if (dev->is_mgmt) {
+        return -EINVAL;
+    }
+    err.clear();
+
+    std::vector<std::string> p2p_cfg;
+    dev->sysfs_get("p2p", "config", errmsg, p2p_cfg);
+    if (errmsg.empty()) {
+        long long bar = -1;
+	long long rbar = -1;
+	long long remap = -1;
+
+        for (unsigned int i = 0; i < p2p_cfg.size(); i++)
+        {
+            const char *str = p2p_cfg[i].c_str();
+            std::sscanf(str, "bar:%lld", &bar);
+            std::sscanf(str, "rbar:%lld", &bar);
+            std::sscanf(str, "remap:%lld", &bar);
+        }
+        if (bar == -1)
+        {
+            err = "ERROR: P2P is not supported. Cann't find P2P BAR.";
+        }
+        if (rbar != -1 && rbar != bar)
+        {
+            err = "ERROR: P2P BAR is resized. Please warm reboot";
+        }
+        if (remap != -1 && remap != bar)
+        {
+            throw std::runtime_error("ERROR: P2P remapper is not set correctly");
+        }
+
+	return err.empty() ? true : false;
+    }
+
+    int p2p_enabled = 0;
+    dev->sysfs_get<int>("", "p2p_enable", errmsg, p2p_enabled, 0);
+    if (p2p_enabled != 1)
+    {
+        err = "ERROR: P2P is not enabled";
+        return false;
+    }
+
+    return true;
+}
