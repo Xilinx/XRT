@@ -523,7 +523,7 @@ XclBin::readXclBinHeader(const boost::property_tree::ptree& _ptHeader,
                            _axlfHeader.m_header.m_versionMinor, 
                            _axlfHeader.m_header.m_versionPatch);
 
-  _axlfHeader.m_header.m_mode = _ptHeader.get<uint32_t>("Mode");
+  _axlfHeader.m_header.m_mode = _ptHeader.get<uint16_t>("Mode");
 
   std::string sFeatureRomUUID = _ptHeader.get<std::string>("FeatureRomUUID");
   XUtil::hexStringToBinaryBuffer(sFeatureRomUUID, (unsigned char*)&_axlfHeader.m_header.rom_uuid, sizeof(axlf_header::rom_uuid));
