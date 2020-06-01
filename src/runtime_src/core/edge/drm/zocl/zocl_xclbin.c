@@ -229,7 +229,7 @@ zocl_fpga_mgr_load(struct drm_zocl_dev *zdev, const char *data, int size)
 	  * On PR platform, the fpga_mgr should be alive.
 	  */
 	if (!zdev->fpga_mgr) {
-		DRM_ERROR("FPGA manager is not found.\n");
+		DRM_ERROR("FPGA manager is not found\n");
 		return -ENXIO;
 	}
 
@@ -243,7 +243,7 @@ zocl_fpga_mgr_load(struct drm_zocl_dev *zdev, const char *data, int size)
 
 	err = fpga_mgr_load(fpga_mgr, info);
 	if (err == 0)
-		DRM_INFO("FPGA Manager load DONE.");
+		DRM_INFO("FPGA Manager load DONE");
 	else
 		DRM_ERROR("FPGA Manager load FAILED: %d", err);
 
@@ -593,14 +593,14 @@ zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data)
 	BUG_ON(!mutex_is_locked(&zdev->zdev_xclbin_lock));
 
 	if (memcmp(axlf_head->m_magic, "xclbin2", 8)) {
-		DRM_INFO("Invalid xclbin magic string.");
+		DRM_INFO("Invalid xclbin magic string");
 		return -EINVAL;
 	}
 
 	/* Check unique ID */
 	if (zocl_xclbin_same_uuid(zdev, &axlf_head->m_header.uuid)) {
-		DRM_INFO("%s The XCLBIN already loaded, uuid: %pUb. "
-		    "Don't need to reload.", __func__, &axlf_head->m_header.uuid);
+		DRM_INFO("%s The XCLBIN already loaded, uuid: %pUb",
+			 __func__, &axlf_head->m_header.uuid);
 		return ret;
 	}
 
@@ -631,7 +631,7 @@ zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data)
 
 out:
 	write_unlock(&zdev->attr_rwlock);
-	DRM_INFO("%s %pUb ret: %d.", __func__, zocl_xclbin_get_uuid(zdev), ret);
+	DRM_INFO("%s %pUb ret: %d", __func__, zocl_xclbin_get_uuid(zdev), ret);
 	return ret;
 }
 
@@ -701,14 +701,13 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 
 	/* Check unique ID */
 	if (zocl_xclbin_same_uuid(zdev, &axlf_head.m_header.uuid)) {
-		DRM_INFO("%s The XCLBIN already loaded, uuid: %pUb. "
-		     "Don't need to reload.", __func__, &axlf_head.m_header.uuid);
+		DRM_INFO("%s The XCLBIN already loaded", __func__);
 		goto out0;
 	}
 
 	if (kds_mode == 0) {
 		if (sched_live_clients(zdev, NULL) || sched_is_busy(zdev)) {
-			DRM_ERROR("Current xclbin is in-use, can't change, try again.");
+			DRM_ERROR("Current xclbin is in-use, can't change");
 			ret = -EBUSY;
 			goto out0;
 		}
@@ -759,7 +758,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 
 		if (axlf_obj->za_flags != DRM_ZOCL_PLATFORM_PR) {
 			DRM_INFO("disable partial bitstream download, "
-			    "axlf flags is %d.", axlf_obj->za_flags);
+			    "axlf flags is %d", axlf_obj->za_flags);
 		} else {
 			ret = zocl_load_sect(zdev, axlf, xclbin, BITSTREAM);
 			if (ret)
@@ -837,14 +836,12 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 	zdev->zdev_xclbin->zx_refcnt = 0;
 	zocl_xclbin_set_uuid(zdev, &axlf_head.m_header.uuid);
 
-	DRM_INFO("Download new XCLBIN %pUB done.", zocl_xclbin_get_uuid(zdev));
-
 out0:
 	write_unlock(&zdev->attr_rwlock);
 	if (size < 0)
 		ret = size;
 	vfree(axlf);
-	DRM_INFO("%s %pUb ret: %d.", __func__, zocl_xclbin_get_uuid(zdev), ret);
+	DRM_INFO("%s %pUb ret: %d", __func__, zocl_xclbin_get_uuid(zdev), ret);
 	return ret;
 }
 
@@ -857,53 +854,72 @@ zocl_xclbin_get_uuid(struct drm_zocl_dev *zdev)
 }
 
 static int
-zocl_xclbin_hold(struct drm_zocl_dev *zdev, const xuid_t *xclbin_uuid)
+zocl_xclbin_hold(struct drm_zocl_dev *zdev, const xuid_t *id)
 {
 	xuid_t *xclbin_id = (xuid_t *)zocl_xclbin_get_uuid(zdev);
 
-	BUG_ON(uuid_is_null(xclbin_uuid));
+	WARN_ON(uuid_is_null(id));
 	BUG_ON(!mutex_is_locked(&zdev->zdev_xclbin_lock));
 
-	DRM_INFO("-> Hold xclbin %pUB, from ref=%d",
-	    xclbin_uuid, zdev->zdev_xclbin->zx_refcnt);
-
-	if (!uuid_equal(xclbin_uuid, xclbin_id)) {
+	if (!uuid_equal(id, xclbin_id)) {
 		DRM_ERROR("lock bitstream %pUb failed, on zdev: %pUb",
-		    xclbin_uuid, xclbin_id);
+		    id, xclbin_id);
 		return -EBUSY;
 	}
 
 	zdev->zdev_xclbin->zx_refcnt++;
-	DRM_INFO("<- Hold xclbin %pUB, to ref=%d",
-	    xclbin_uuid, zdev->zdev_xclbin->zx_refcnt);
+	DRM_INFO("bitstream %pUb locked, ref=%d",
+		 id, zdev->zdev_xclbin->zx_refcnt);
 
 	return 0;
 }
 
-int
-zocl_xclbin_release(struct drm_zocl_dev *zdev)
+int zocl_lock_bitstream(struct drm_zocl_dev *zdev, const uuid_t *id)
+{
+	int ret;
+
+	mutex_lock(&zdev->zdev_xclbin_lock);
+	ret = zocl_xclbin_hold(zdev, id);
+	mutex_unlock(&zdev->zdev_xclbin_lock);
+
+	return ret;
+}
+
+static int
+zocl_xclbin_release(struct drm_zocl_dev *zdev, const xuid_t *id)
 {
 	xuid_t *xclbin_uuid = (xuid_t *)zocl_xclbin_get_uuid(zdev);
 
 	BUG_ON(!mutex_is_locked(&zdev->zdev_xclbin_lock));
 
-	DRM_INFO("-> Release xclbin %pUB, from ref=%d",
-	    xclbin_uuid, zdev->zdev_xclbin->zx_refcnt);
-
-	if (uuid_is_null(xclbin_uuid))
+	if (uuid_is_null(id)) /* force unlock all */
 		zdev->zdev_xclbin->zx_refcnt = 0;
-	else
+	else if (uuid_equal(xclbin_uuid, id))
 		--zdev->zdev_xclbin->zx_refcnt;
+	else {
+		DRM_WARN("unlock bitstream %pUb failed, on device: %pUb",
+			 id, xclbin_uuid);
+		return -EINVAL;
+	}
 
-	if (zdev->zdev_xclbin->zx_refcnt == 0)
-		DRM_INFO("now xclbin can be changed");
-
-	DRM_INFO("<- Release xclbin %pUB, to ref=%d",
-	    xclbin_uuid, zdev->zdev_xclbin->zx_refcnt);
+	DRM_INFO("bitstream %pUb unlocked, ref=%d",
+		 xclbin_uuid, zdev->zdev_xclbin->zx_refcnt);
 
 	return 0;
 }
 
+int zocl_unlock_bitstream(struct drm_zocl_dev *zdev, const uuid_t *id)
+{
+	int ret;
+
+	mutex_lock(&zdev->zdev_xclbin_lock);
+	ret = zocl_xclbin_release(zdev, id);
+	mutex_unlock(&zdev->zdev_xclbin_lock);
+
+	return ret;
+}
+
+/* TODO: remove this once new KDS is ready */
 int
 zocl_xclbin_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
 	struct sched_client_ctx *client)
@@ -984,7 +1000,7 @@ zocl_xclbin_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
 
 		--client->num_cus;
 		if (CLIENT_NUM_CU_CTX(client) == 0)
-			ret = zocl_xclbin_release(zdev);
+			ret = zocl_xclbin_release(zdev, ctx_xuid);
 		goto out;
 	}
 

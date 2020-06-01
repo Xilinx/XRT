@@ -71,7 +71,6 @@ XMC_Flasher::XMC_Flasher(unsigned int device_index)
     } catch (...) {}
     if (mRegBase == 0)
         mRegBase = XMC_REG_BASE;
-    mRegBase = XMC_REG_BASE;
 
     val = readReg(XMC_REG_OFF_MAGIC);
     if (val != XMC_MAGIC_NUM) {

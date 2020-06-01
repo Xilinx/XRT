@@ -17,16 +17,17 @@
 #include "core/include/xclbin.h"
 #include "core/common/dlfcn.h"
 #include "plugin/xdp/debug.h"
-#include "plugin/xdp/xdp_util.h"
+#include "core/common/module_loader.h"
 
 namespace xocl {
 namespace debug {
 
   void load_xdp_kernel_debug()
   {
-    static xdputil::XDPLoader xdp_kernel_debug_loader("xdp_debug_plugin",
-						      register_kdbg_functions,
-						      nullptr) ;
+    static xrt_core::module_loader 
+      xdp_kernel_debug_loader("xdp_debug_plugin",
+			      register_kdbg_functions,
+			      nullptr) ;
   }
 
   void register_kdbg_functions(void* handle)

@@ -145,7 +145,10 @@ enum class key_type
   is_mfg,
   f_flash_type,
   flash_type,
-  board_name
+  board_name,
+  interface_uuids,
+  logic_uuids
+
 };
 
 class no_such_key : public std::exception
@@ -447,6 +450,40 @@ struct rom_time_since_epoch : request
   to_string(const result_type& value)
   {
     return boost::str(boost::format("0x%x") % value);
+  }
+};
+
+struct interface_uuids : request
+{
+  using result_type = std::vector<std::string>;
+  static const key_type key = key_type::interface_uuids;
+  static const char* name() { return "interface_uuids"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  // formatting of individual items for the vector
+  static std::string
+  to_string(const std::string& value)
+  {
+    return value;
+  }
+};
+
+struct logic_uuids : request
+{
+  using result_type = std::vector<std::string>;
+  static const key_type key = key_type::logic_uuids;
+  static const char* name() { return "logic_uuids"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  // formatting of individual items for the vector
+  static std::string
+  to_string(const std::string& value)
+  {
+    return value;
   }
 };
 

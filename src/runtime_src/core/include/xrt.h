@@ -43,12 +43,6 @@
 #include "windows/types.h"
 #endif
 
-#ifdef __GNUC__
-# define XRT_DEPRECATED __attribute__ ((deprecated))
-#else
-# define XRT_DEPRECATED
-#endif
-
 #include "xclbin.h"
 #include "xclperf.h"
 #include "xcl_app_debug.h"
@@ -288,26 +282,6 @@ void
 xclClose(xclDeviceHandle handle);
 
 /**
- * xclResetDevice() - Reset a device, deprecated
- *
- * @handle:        Device handle
- * @kind:          Reset kind
-*  Return:         0 on success or appropriate error number
- *
- * Reset the device. All running kernels will be killed and buffers in DDR will be
- * purged. A device may be reset if a user's application dies without waiting for
- * running kernel(s) to finish.
- * NOTE: Only implemeted Reset kind through user pf is XCL_USER_RESET
- *
- * This API is deprecated and will be removed in future release.
- * New clients should use xbutil utility to reset device instead
- */
-XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
-int
-xclResetDevice(xclDeviceHandle handle, enum xclResetKind kind);
-
-/**
  * xclGetDeviceInfo2() - Obtain various bits of information from the device
  *
  * @handle:        Device handle
@@ -389,37 +363,6 @@ xclReClock2(xclDeviceHandle handle, unsigned short region,
             const unsigned short *targetFreqMHz);
 
 /**
- * xclLockDevice() - Get exclusive ownership of the device, deprecated
- *
- * @handle:        Device handle
- * Return:         0 on success or appropriate error number
- *
- * The lock is necessary before performing buffer migration, register
- * access or bitstream downloads.
- *
- * This API is deprecated and will be removed in future release.
- * This functionality is no longer supported.
- */
-XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
-int
-xclLockDevice(xclDeviceHandle handle);
-
-/**
- * xclUnlockDevice() - Release exclusive ownership of the device, deprecated
- *
- * @handle:        Device handle
- * Return:         0 on success or appropriate error number
- *
- * This API is deprecated and will be removed in future release.
- * This functionality is no longer supported.
- */
-XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
-int
-xclUnlockDevice(xclDeviceHandle handle);
-
-/**
  * xclOpenContext() - Create shared/exclusive context on compute units
  *
  * @handle:        Device handle
@@ -453,67 +396,6 @@ xclOpenContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int ipIndex,
 XCL_DRIVER_DLLESPEC
 int
 xclCloseContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int ipIndex);
-
-/*
- * Update the device BPI PROM with new image, deprecated
- *
- * This API is deprecated and will be removed in future release.
- * New clients should use xbmgmt utility to flash device instead
- */
-XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
-int
-xclUpgradeFirmware(xclDeviceHandle handle, const char *fileName);
-
-/*
- * Update the device PROM with new image with clearing bitstream, deprecated
- *
- * This API is deprecated and will be removed in future release.
- * New clients should use xbmgmt utility to flash device instead
- */
-XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
-int
-xclUpgradeFirmware2(xclDeviceHandle handle, const char *file1, const char* file2);
-
-/*
- * Update the device SPI PROM with new image, deprecated
- *
- * This API is deprecated and will be removed in future release.
- * New clients should use xbmgmt utility to flash device instead
- */
-XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
-int
-xclUpgradeFirmwareXSpi(xclDeviceHandle handle, const char *fileName, int index);
-
-/**
- * xclBootFPGA() - Boot the FPGA from PROM, deprecated
- *
- * @handle:        Device handle
- * Return:         0 on success or appropriate error number
- *
- * This should only be called when there are no other clients. It will cause PCIe bus re-enumeration
- *
- * This API is deprecated and will be removed in future release.
- * This functionality is no longer supported.
- */
-XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
-int
-xclBootFPGA(xclDeviceHandle handle);
-
-/*
- * Write to /sys/bus/pci/devices/<deviceHandle>/remove and initiate a pci rescan by
- * writing to /sys/bus/pci/rescan, deprecated
- *
- * This API is deprecated and will be removed in future release.
- * This functionality is no longer supported.
- */
-XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
-int
-xclRemoveAndScanFPGA();
 
 /*
  * Get the version number. 1 => Hal1 ; 2 => Hal2
@@ -736,42 +618,6 @@ int
 xclGetBOProperties(xclDeviceHandle handle, xclBufferHandle boHandle,
                    struct xclBOProperties *properties);
 
-/*
- * xclGetBOSize() - Retrieve size of a BO, deprecated
- *
- * @handle:        Device handle
- * @boHandle:      BO handle
- * Return          size_t size of the BO on success
- *
- * This API is deprecated and will be removed in future release.
- * New clients should use xclGetBOProperties() instead
- */
-XRT_DEPRECATED
-static inline size_t
-xclGetBOSize(xclDeviceHandle handle, xclBufferHandle boHandle)
-{
-    struct xclBOProperties p;
-    return !xclGetBOProperties(handle, boHandle, &p) ? (size_t)p.size : (size_t)-1;
-}
-
-/*
- * Get the physical address on the device, deprecated
- *
- * This API is deprecated and will be removed in future release.
- * New clients should use xclGetBOProperties() instead.
- *
- * @handle:        Device handle
- * @boHandle:      BO handle
- * @return         uint64_t address of the BO on success
- */
-XRT_DEPRECATED
-static inline uint64_t
-xclGetDeviceAddr(xclDeviceHandle handle, xclBufferHandle boHandle)
-{
-    struct xclBOProperties p;
-    return !xclGetBOProperties(handle, boHandle, &p) ? p.paddr : (uint64_t)-1;
-}
-
 /* End XRT Buffer Management APIs */
 
 /**
@@ -840,48 +686,6 @@ xclUnmgdPwrite(xclDeviceHandle handle, unsigned int flags, const void *buf,
  * requests.  OpenCL runtime does **not** use these APIs but instead
  * uses execution management APIs defined below.
  */
-
-/**
- * xclWrite() - Perform register write operation, deprecated
- *
- * @handle:        Device handle
- * @space:         Address space
- * @offset:        Offset in the address space
- * @hostBuf:       Source data pointer
- * @size:          Size of data to copy
- * Return:         size of bytes written or appropriate error number
- *
- * This API may be used to write to device registers exposed on PCIe
- * BAR. Offset is relative to the the address space. A device may have
- * many address spaces.
- * *This API is deprecated. Please use xclRegWrite(), instead.*
- */
-XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
-size_t
-xclWrite(xclDeviceHandle handle, enum xclAddressSpace space, uint64_t offset,
-         const void *hostBuf, size_t size);
-
-/**
- * xclRead() - Perform register read operation, deprecated
- *
- * @handle:        Device handle
- * @space:         Address space
- * @offset:        Offset in the address space
- * @hostbuf:       Destination data pointer
- * @size:          Size of data to copy
- * Return:         size of bytes written or appropriate error number
- *
- * This API may be used to read from device registers exposed on PCIe
- * BAR. Offset is relative to the the address space. A device may have
- * many address spaces.
- * *This API is deprecated. Please use xclRegRead(), instead.*
- */
-XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
-size_t
-xclRead(xclDeviceHandle handle, enum xclAddressSpace space, uint64_t offset,
-        void *hostbuf, size_t size);
 
 /* XRT Register read/write APIs */
 
@@ -956,29 +760,6 @@ xclExecBufWithWaitList(xclDeviceHandle handle, xclBufferHandle cmdBO,
 XCL_DRIVER_DLLESPEC
 int
 xclExecWait(xclDeviceHandle handle, int timeoutMilliSec);
-
-/**
- * xclRegisterInterruptNotify() - register *eventfd* file handle for a MSIX interrupt, deprecated
- *
- * @handle:        Device handle
- * @userInterrupt: MSIX interrupt number
- * @fd:            Eventfd handle
- * Return:         0 on success or standard errno
- *
- * Support for non managed interrupts (interrupts from custom IPs). fd
- * should be obtained from eventfd system call. Caller should use
- * standard poll/read eventfd framework in order to wait for
- * interrupts. The handles are automatically unregistered on process
- * exit.
- *
- * This API is deprecated and will be removed in future release.
- * This functionality is no longer supported.
- */
-XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
-int
-xclRegisterInterruptNotify(xclDeviceHandle handle, unsigned int userInterrupt,
-                           int fd);
 
 /* XRT Compute Unit Execution Management APIs */
 
@@ -1291,5 +1072,7 @@ xclDebugReadIPStatus(xclDeviceHandle handle, enum xclDebugReadType type,
 #ifdef __cplusplus
 }
 #endif
+
+#include "deprecated/xrt.h"
 
 #endif

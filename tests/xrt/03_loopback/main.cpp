@@ -148,96 +148,65 @@ int main(int argc, char** argv)
 
     try
     {
-        xclDeviceHandle handle;
-        int first_mem = -1;
+      // load bit stream
+      std::ifstream stream(bitstreamFile);
+      stream.seekg(0,stream.end);
+      size_t size = stream.tellg();
+      stream.seekg(0,stream.beg);
+      std::vector<char> header(size);
+      stream.read(header.data(),size);
+      auto top = reinterpret_cast<const axlf*>(header.data());
 
-        // load bit stream
-        std::ifstream stream(bitstreamFile);
-        stream.seekg(0,stream.end);
-        size_t size = stream.tellg();
-        stream.seekg(0,stream.beg);
+      auto devices = xclProbe();
+      if (devices <= 0)
+        throw std::runtime_error("No devices found");
 
-        std::vector<char> header(size);
-        stream.read(header.data(),size);
+      // The scope of the device handle must be controlled such
+      // that the device is the last to close after automatic
+      // objects have destructed
+      auto handle = xclOpen(index, nullptr, XCL_INFO);
 
+      if (xclLoadXclBin(handle,top))
+        throw std::runtime_error("Bitstream download failed");
+      else 
+        std::cout<<"\n Bitstream downloaded sucessfully";
 
-        handle = xclOpen(index, nullptr, XCL_INFO);
+      { // begin of automatic objcts
 
+      auto loopback = xrt::kernel(handle, top->m_header.uuid, "loopback");
+      auto bo0 = xrt::bo(handle, DATA_SIZE, XCL_BO_FLAGS_NONE, loopback.group_id(0));  // handle 1
+      auto bo1 = xrt::bo(handle, DATA_SIZE, XCL_BO_FLAGS_NONE, loopback.group_id(1));  // handle 2
 
-        if (xclLockDevice(handle))
-           throw std::runtime_error("Cannot lock device");
-        else 
-           std::cout<<"\n Locked the device sucessfully";
+      auto bo1_map = bo1.map<char*>();
+      std::fill(bo1_map, bo1_map + DATA_SIZE, 0);
+      std::string testVector =  "hello\nthis is Xilinx OpenCL memory read write test\n:-)\n";
+      std::strcpy(bo1_map, testVector.c_str());
+      bo1.sync(XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE, 0);
 
-        auto top = reinterpret_cast<const axlf*>(header.data());
+      std::cout << "\nStarting kernel..." << std::endl;
+      auto run = loopback(bo0, bo1, DATA_SIZE);
+      run.wait();
 
-        if (xclLoadXclBin(handle,top))
-           throw std::runtime_error("Bitstream download failed");
-        else 
-           std::cout<<"\n Bitstream downloaded sucessfully";
+      //Get the output;
+      bo0.sync(XCL_BO_SYNC_BO_FROM_DEVICE, DATA_SIZE, 0);
+      auto bo0_map = bo0.map<char*>();
 
+      if (std::memcmp(bo1_map, bo0_map, DATA_SIZE)) {
+        std::cout << "FAILED TEST\n";
+        std::cout << "Value read back does not match value written\n";
+        return 1;
+      }
 
-       // Detecting the first used memory
-       auto topo = xclbin::get_axlf_section(top, MEM_TOPOLOGY);
-       auto topology = reinterpret_cast<mem_topology*>(header.data() + topo->m_sectionOffset);
+      } // end of automatic objects
 
-       for (int i=0; i<topology->m_count; ++i) {
-          if (topology->m_mem_data[i].m_used) {
-             first_mem = i;
-             break;
-          }
-       }
-
-       if (first_mem < 0)
-           return 1;
-
-       std::string kname = "loopback";
-       auto kernel = xrtPLKernelOpen(handle, top->m_header.uuid, kname.c_str());
-
-       auto boHandle2 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, first_mem);
-       char* bo2 = (char*)xclMapBO(handle, boHandle2, true);
-       memset(bo2, 0, DATA_SIZE);
-       std::string testVector =  "hello\nthis is Xilinx OpenCL memory read write test\n:-)\n";
-       std::strcpy(bo2, testVector.c_str());
-
-       if(xclSyncBO(handle, boHandle2, XCL_BO_SYNC_BO_TO_DEVICE , DATA_SIZE,0))
-           return 1;
-
-       auto boHandle1 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, first_mem);
-
-
-       std::cout << "\nStarting kernel..." << std::endl;
-
-       xrtRunHandle r = xrtKernelRun(kernel, boHandle1, boHandle2,  DATA_SIZE); // kernel, output, input, parameter
-       xrtRunWait(r);
-       xrtRunClose(r);
-
-       //Get the output;
-       if(xclSyncBO(handle, boHandle1, XCL_BO_SYNC_BO_FROM_DEVICE , DATA_SIZE, 0))
-           return 1;
-       char* bo1 = (char*)xclMapBO(handle, boHandle1, false);
-
-       if (std::memcmp(bo2, bo1, DATA_SIZE)) {
-            std::cout << "FAILED TEST\n";
-            std::cout << "Value read back does not match value written\n";
-            return 1;
-       }
-
-        //Clean up stuff
-        xclUnmapBO(handle, boHandle1, bo1);
-        xclUnmapBO(handle, boHandle2, bo2);
-        xclFreeBO(handle,boHandle1);
-        xclFreeBO(handle,boHandle2);
-        //xclCloseContext(handle, xclbinId, cu_index);
-
-        xrtKernelClose(kernel);
-        xclClose(handle);
+      // now safe to close decice
+      xclClose(handle);
     }
     catch (std::exception const& e)
     {
-        std::cout << "Exception: " << e.what() << "\n";
-        std::cout << "FAILED TEST\n";
-        return 1;
+      std::cout << "Exception: " << e.what() << "\n";
+      std::cout << "FAILED TEST\n";
+      return 1;
     }
 
     std::cout << "PASSED TEST\n";

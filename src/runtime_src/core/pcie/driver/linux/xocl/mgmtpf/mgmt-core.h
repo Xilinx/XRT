@@ -153,6 +153,7 @@ struct xclmgmt_dev {
 };
 
 extern int health_check;
+extern int xrt_reset_syncup;
 
 int ocl_freqscaling_ioctl(struct xclmgmt_dev *lro, const void __user *arg);
 void platform_axilite_flush(struct xclmgmt_dev *lro);

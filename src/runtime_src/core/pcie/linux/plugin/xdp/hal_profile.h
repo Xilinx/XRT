@@ -13,19 +13,6 @@
 
 namespace xdphal {
 
-/**
- * This function type definition is used for
- * dynamically loading the plugin function.
- */
-typedef void(*cb_load_func_type)(unsigned, void*);
-
-/**
- * This standard function is for storing the function
- * loaded. Using cpp standard for robustness across 
- * function calls and context sharing.
- */
-using cb_func_type = std::function<void(unsigned, void*)>;
-
 class CallLogger
 {
   public:
@@ -202,6 +189,8 @@ class CloseContextCallLogger : public CallLogger
 /** End of the loggers */
 
 void load_xdp_plugin_library(HalPluginConfig* config);
+void register_hal_callbacks(void* handle) ;
+void warning_hal_callbacks() ; 
 
 } //  xdphal
 

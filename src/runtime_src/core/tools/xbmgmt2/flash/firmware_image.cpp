@@ -161,7 +161,7 @@ void getUUIDFromDTB(void *blob, uint64_t &ts, std::vector<std::string> &uuids)
 
         sz = be32toh(GET_CELL(p));
         s = p_strings + be32toh(GET_CELL(p));
-        if (version < 16 && sz >= 8) {}
+        if (version < 16 && sz >= 8)
             p = PALIGN(p, 8);
 
         if (!strcmp(s, "logic_uuid"))
@@ -175,7 +175,7 @@ void getUUIDFromDTB(void *blob, uint64_t &ts, std::vector<std::string> &uuids)
         p = PALIGN(p + sz, 4);
     }
     if (uuids.size() > 0)
-        uuid2ts(uuids[0], ts);
+        uuid2ts(uuids[0], ts);  
 }
 
 DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id, const std::string& bmcV) :
@@ -430,8 +430,6 @@ std::vector<DSAInfo> firmwareImage::getIntalledDSAs()
 	  DSAInfo dsa(start->path().string());
 	  installedDSA.push_back(dsa);
     }
-    if (!installedDSA.empty())
-        return installedDSA;
 
     // for 2RP
     p = FORMATTED_FW_DIR;
