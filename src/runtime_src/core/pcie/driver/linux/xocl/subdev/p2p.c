@@ -66,8 +66,8 @@
 #define REBAR_FIRST_CAP		4
 
 
-#define P2P_ADDR_HI(addr)		((addr >> 32) & 0xffffffff)
-#define P2P_ADDR_LO(addr)		(addr & 0xffffffff)
+#define P2P_ADDR_HI(addr)		(((addr) >> 32) & 0xffffffff)
+#define P2P_ADDR_LO(addr)		((addr) & 0xffffffff)
 
 #define P2P_RBAR_TO_BYTES(rbar_sz)	(1UL << ((rbar_sz) + 20))
 #define P2P_BYTES_TO_RBAR(bytes)	(fls64((bytes) + 1) - 21)
@@ -76,6 +76,7 @@ struct remapper_regs {
 	u32	ver;
 	u32	cap;
 	u32	slot_num;
+	u32	rsvd1;
 	u32	base_addr_lo;
 	u32	base_addr_hi;
 	u32	log_range;
@@ -462,8 +463,7 @@ static int p2p_mem_init(struct p2p *p2p)
 
 	pa = pci_resource_start(pcidev, p2p->p2p_bar_idx);
 	for (i = 0; i < p2p->p2p_mem_chunk_num; i++) {
-		chunks[i].xpmc_pa = pa; 
-		pa += XOCL_P2P_CHUNK_SIZE;
+		chunks[i].xpmc_pa = pa + XOCL_P2P_CHUNK_SIZE * i; 
 		chunks[i].xpmc_size = XOCL_P2P_CHUNK_SIZE;
 		init_completion(&chunks[i].xpmc_comp);
 	}
@@ -698,6 +698,9 @@ static int p2p_mem_map(struct platform_device *pdev,
 	if (!p2p->remapper)
 		return -ENOTSUPP;
 
+	p2p_info(p2p, "map bank addr 0x%lx, size %ld, offset %ld, len %ld",
+			bank_addr, bank_size, offset, len);
+
 	bank_off = p2p_bar_map(p2p, bank_addr, bank_size);
 	if (bank_off < 0) {
 		p2p_err(p2p, "alloc remap slot failed");
@@ -708,9 +711,11 @@ static int p2p_mem_map(struct platform_device *pdev,
 	if (ret) {
 		p2p_err(p2p, "reserve p2p chunks failed ret = %d", ret);
 		p2p_bar_unmap(p2p, bank_off);
+		return -ENOENT;
 	}
 
 	*bar_off = bank_off + offset;
+	p2p_info(p2p, "map bar offset %ld", *bar_off);
 
 	return ret;
 }
@@ -723,6 +728,9 @@ static int p2p_mem_get_pages(struct platform_device *pdev,
 	ulong i;
 	ulong offset;
 
+	p2p_info(p2p, "bar_off: %ld, size %ld, npages %ld",
+		bar_off, size, npages);
+
 	for (i = 0, offset = bar_off; i < npages; i++, offset += PAGE_SIZE) {
 		int idx = offset >> XOCL_P2P_CHUNK_SHIFT;
 		void *addr = chunk[idx].xpmc_va;
@@ -731,7 +739,7 @@ static int p2p_mem_get_pages(struct platform_device *pdev,
 		pages[i] = virt_to_page(addr);
 		if (IS_ERR(pages[i])) {
 			p2p_err(p2p, "get p2p pages failed");
-			return ERR_CAST(pages[i]);
+			return -EINVAL;
 		}
 	}
 

@@ -395,12 +395,14 @@ static struct page **xocl_p2p_get_pages(struct xocl_dev *xdev,
 	if (pages == NULL)
 		return ERR_PTR(-ENOMEM);
 
-	ret = xocl_p2p_mem_get_pages(xdev,(ulong)bar_off, (ulong)size,
+	ret = xocl_p2p_mem_get_pages(xdev, (ulong)bar_off, (ulong)size,
 			pages, npages);
 	if (!ret)
 		return pages;
-	else if (ret != -ENODEV)
+	else if (ret != -ENODEV) {
+		p = ERR_PTR(ret);
 		goto fail;
+	}
 
 	for (i = 0, offset = bar_off; i < npages; i++, offset += PAGE_SIZE) {
 		int idx = offset >> XOCL_P2P_CHUNK_SHIFT;
@@ -480,7 +482,9 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 			ret = xocl_p2p_mem_map(xdev,
 				topo->m_mem_data[ddr].m_base_address,
 				topo->m_mem_data[ddr].m_size * 1024,
-				xobj->mm_node->start, xobj->base.size,
+				xobj->mm_node->start -
+				topo->m_mem_data[ddr].m_base_address,
+				xobj->base.size,
 				&bar_off);
 			if (!ret)
 				xobj->p2p_bar_offset = bar_off;
