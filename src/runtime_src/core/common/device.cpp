@@ -169,19 +169,19 @@ void
 device::
 populate_mem_group_info(const char *infoBuff)  
 {
-  struct xcl_mem_group_map      grpInfoMap;
+  struct xcl_mem_connectivity   grpInfoMap;
   struct xcl_mem_group_info     *m_grp = NULL;
   struct xcl_mem_map_info       *m_map = NULL;
 
   if (!infoBuff) 
     throw std::runtime_error("Failed to get memory information");
 
-  grpInfoMap.mGroup = (struct xcl_mem_group *)infoBuff;
-  if (!grpInfoMap.mGroup) 
+  grpInfoMap.mem_group = (struct xcl_mem_group *)infoBuff;
+  if (!grpInfoMap.mem_group) 
     throw std::runtime_error("Failed to get memory group information");
  
-  infoBuff += sizeof(grpInfoMap.mGroup->g_count); 
-  for (int i = 0; i < grpInfoMap.mGroup->g_count; i++)
+  infoBuff += sizeof(grpInfoMap.mem_group->g_count); 
+  for (int i = 0; i < grpInfoMap.mem_group->g_count; i++)
   {
     m_grp = (struct xcl_mem_group_info *)infoBuff;
     if(!m_grp)
@@ -191,12 +191,12 @@ populate_mem_group_info(const char *infoBuff)
     infoBuff += sizeof(*m_grp);
   }
 
-  grpInfoMap.mMap = (struct xcl_mem_map *)infoBuff;
-  if (!grpInfoMap.mMap) 
+  grpInfoMap.mem_map = (struct xcl_mem_map *)infoBuff;
+  if (!grpInfoMap.mem_map) 
     throw std::runtime_error("Failed to get memory mapping information");
  
-  infoBuff += sizeof(grpInfoMap.mMap->m_count); 
-  for (int i = 0; i < grpInfoMap.mMap->m_count; i++)
+  infoBuff += sizeof(grpInfoMap.mem_map->m_count); 
+  for (int i = 0; i < grpInfoMap.mem_map->m_count; i++)
   {
     m_map = (struct xcl_mem_map_info *)infoBuff;
     if(!m_map)

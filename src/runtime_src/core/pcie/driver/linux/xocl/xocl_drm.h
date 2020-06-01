@@ -21,8 +21,7 @@
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 #include <linux/hashtable.h>
 #endif
-
-#define DRM_XOCL_MEM_GROUP_MAX 128
+#include "mem_group.h"
 
 /**
  * struct drm_xocl_exec_metadata - Meta data for exec bo
@@ -49,34 +48,6 @@ struct xocl_cma_bank {
 	struct xocl_cma_memory	cma_mem[1];
 };
 
-struct xocl_mem_group_info {
-        uint32_t l_bank_idx;
-        uint64_t l_start_addr;
-        uint32_t h_bank_idx;
-        uint64_t h_end_addr;
-};
-
-struct xocl_mem_group {
-        int32_t g_count;
-        struct xocl_mem_group_info *m_group[DRM_XOCL_MEM_GROUP_MAX];
-};
-
-struct xocl_mem_map_info {
-        uint32_t cu_id;
-        uint32_t arg_id;
-        uint32_t grp_id;
-};
-
-struct xocl_mem_map {
-        int32_t m_count;
-        struct xocl_mem_map_info *m_map[DRM_XOCL_MEM_GROUP_MAX];
-};
-
-struct xocl_mem_connectivity {
-        struct xocl_mem_map     *mem_map;
-        struct xocl_mem_group   *mem_group;
-};
-
 struct xocl_drm {
 	xdev_handle_t		xdev;
 	/* memory management */
@@ -91,7 +62,7 @@ struct xocl_drm {
 	DECLARE_HASHTABLE(mm_range, 6);
 #endif
 	struct xocl_cma_bank  *cma_bank;
-	struct xocl_mem_connectivity *m_connect;
+	struct xcl_mem_connectivity *m_connect;
 };
 
 struct drm_xocl_bo {

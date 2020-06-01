@@ -199,7 +199,7 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 {
 	struct xocl_drm *drm_p = dev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
-	struct xocl_mem_group *mem_grp = NULL;
+	struct xcl_mem_group *mem_grp = NULL;
 	u16 ddr_count;
 	unsigned ddr;
 	struct mem_topology *topo = NULL;
@@ -448,7 +448,7 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 	unsigned mem_id = xocl_bo_ddr_idx(args->flags);
 	unsigned bo_type = xocl_bo_type(args->flags);
 	struct mem_topology *topo = NULL;
-        struct xocl_mem_group_info *xocl_mem = NULL;
+        struct xcl_mem_group_info *xocl_mem = NULL;
 
 	xobj = xocl_create_bo(dev, args->size, args->flags, bo_type);
 	if (IS_ERR(xobj)) {

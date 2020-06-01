@@ -97,10 +97,10 @@ static ssize_t mem_group_info_show(struct device *dev,
 {
         struct xocl_dev 		*xdev = dev_get_drvdata(dev);
         struct xocl_drm 		*drm_p = XOCL_DRM(xdev);
-        struct xocl_mem_group 		*mem_group = NULL;
-        struct xocl_mem_group_info 	*m_grp = NULL;
-        struct xocl_mem_map 		*mem_map = NULL;
-        struct xocl_mem_map_info 	*m_map = NULL;
+        struct xcl_mem_group 		*mem_group = NULL;
+        struct xcl_mem_group_info 	*m_grp = NULL;
+        struct xcl_mem_map 		*mem_map = NULL;
+        struct xcl_mem_map_info 	*m_map = NULL;
         ssize_t size = 0;
         int i;
 

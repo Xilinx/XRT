@@ -22,19 +22,7 @@ extern "C" {
 #endif
 
 /****   MEMORY GROUP SECTION ****/
-#define XCL_MEM_GROUP_MAX 128 
-
-/* memory mapping information for groups */
-struct xcl_mem_map_info {
-    uint32_t cu_id;
-    uint32_t arg_id;
-    uint32_t grp_id;
-};
-
-struct xcl_mem_map {
-    int32_t m_count;
-    struct xcl_mem_map_info m_map[XCL_MEM_GROUP_MAX];
-};
+#define XCL_MEM_GROUP_MAX 128
 
 /* Stores each groups information */
 struct xcl_mem_group_info {
@@ -46,18 +34,28 @@ struct xcl_mem_group_info {
 
 struct xcl_mem_group {
     int32_t g_count;
-    struct xcl_mem_group_info m_group[XCL_MEM_GROUP_MAX];
+    struct xcl_mem_group_info *m_group[XCL_MEM_GROUP_MAX];
 };
 
-struct xcl_mem_group_map {
-    struct xcl_mem_map *mMap;
-    struct xcl_mem_group *mGroup;
+/* memory mapping information for groups */
+struct xcl_mem_map_info {
+    uint32_t cu_id;
+    uint32_t arg_id;
+    uint32_t grp_id;
+};
+
+struct xcl_mem_map {
+    int32_t m_count;
+    struct xcl_mem_map_info *m_map[XCL_MEM_GROUP_MAX];
+};
+
+struct xcl_mem_connectivity {
+    struct xcl_mem_map     *mem_map;
+    struct xcl_mem_group   *mem_group;
 };
 
 #ifdef __cplusplus
 }
 #endif
-
-
 
 #endif

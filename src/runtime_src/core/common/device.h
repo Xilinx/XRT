@@ -23,7 +23,7 @@
 #include "ishim.h"
 #include "scope_guard.h"
 #include "xrt.h"
-#include "mem_group.h"
+#include "core/common/drv/include/mem_group.h"
 
 // Please keep eternal include file dependencies to a minimum
 #include <cstdint>
@@ -224,12 +224,14 @@ public:
   /** 
    * Get the low and high index of a group
    */
+  XRT_CORE_COMMON_EXPORT
   std::pair<int, int>
   get_group_range(int grp_id) const;
 
   /** 
    * Get the group id for the given cu & argument index
    */
+  XRT_CORE_COMMON_EXPORT
   int
   get_group_index(int cu_id, int arg_id) const;
 

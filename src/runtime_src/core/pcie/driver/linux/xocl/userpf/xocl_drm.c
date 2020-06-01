@@ -522,7 +522,7 @@ void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u32 ddr,
 int xocl_mm_insert_node_range(struct xocl_drm *drm_p, u32 mem_id,
 			      struct drm_mm_node *node, u64 size)
 {
-	struct xocl_mem_group_info *xocl_mem = NULL;
+	struct xcl_mem_group_info *xocl_mem = NULL;
 
 	BUG_ON(!mutex_is_locked(&drm_p->mm_lock));
 
@@ -758,15 +758,15 @@ int xocl_cleanup_mem(struct xocl_drm *drm_p)
 	return ret;
 }
 
-static int init_mem_group(struct connectivity *connect, int ip_cnt, int arg_idx, 
-			  struct mem_topology *topo, struct xocl_mem_group_info *m_group)
+static int init_mem_group(struct xocl_drm *drm_p, struct connectivity *connect, int ip_cnt, 
+			  int arg_idx, struct mem_topology *topo, struct xcl_mem_group_info *m_group)
 {
 	int i = 0;
 	int err = 0;
 	struct connection *conn = NULL;
 	struct mem_data *mem_data = NULL;
 
-	m_group->l_bank_idx = DRM_XOCL_MEM_GROUP_MAX;
+	m_group->l_bank_idx = XCL_MEM_GROUP_MAX;
 	m_group->h_bank_idx = 0;
 
 	for (i = 0; i < connect->m_count; i++) {
@@ -782,7 +782,7 @@ static int init_mem_group(struct connectivity *connect, int ip_cnt, int arg_idx,
 	}
 
 	if (m_group->l_bank_idx > m_group->h_bank_idx) {
-		err = -EINVAL;
+		err = -EAGAIN;
 		goto done;
 	}
 
@@ -790,18 +790,16 @@ static int init_mem_group(struct connectivity *connect, int ip_cnt, int arg_idx,
 	for (i = m_group->l_bank_idx; i <= m_group->h_bank_idx; i++)
 	{
 		if (!topo->m_mem_data[i].m_used) {
-			xocl_err(drm_p->ddev->dev, "Group range is not
-				 contigious ");
+			xocl_err(drm_p->ddev->dev, "Group range is not contigious");
 			err = -EINVAL;
 			goto done;
-
 		}
 	}
 
 	/* Update group's start address */
 	mem_data = &topo->m_mem_data[m_group->l_bank_idx];
 	if (!mem_data) {
-		err = -EINVAL;
+		err = -ENOMEM;
 		goto done;
 	}
 	m_group->l_start_addr = mem_data->m_base_address;
@@ -809,7 +807,7 @@ static int init_mem_group(struct connectivity *connect, int ip_cnt, int arg_idx,
 	/* Update group's end address */
 	mem_data = &topo->m_mem_data[m_group->h_bank_idx];
 	if (!mem_data) {
-		err = -EINVAL;
+		err = -ENOMEM;
 		goto done; 
 	}
 	m_group->h_end_addr = mem_data->m_base_address + mem_data->m_size * 1024;
@@ -818,21 +816,21 @@ done:
 	return err;
 }
 
-static int get_mem_group(struct xocl_mem_connectivity *m_connect, struct xocl_mem_group_info *mem_range)
+static int get_mem_group(struct xcl_mem_connectivity *m_connect, struct xcl_mem_group_info *mem_range)
 {
 	int grp_id = 0;
-	struct xocl_mem_group *xocl_grp = NULL; 
-	struct xocl_mem_group_info *m_group = NULL;
+	struct xcl_mem_group *xocl_grp = NULL; 
+	struct xcl_mem_group_info *m_group = NULL;
 
 	if (m_connect->mem_group == NULL)
 	{
 		/* First Entry */
-		xocl_grp = vzalloc(sizeof(struct xocl_mem_group));
+		xocl_grp = vzalloc(sizeof(struct xcl_mem_group));
 		if (xocl_grp == NULL)
 			return -ENOMEM;
 
 		grp_id = 0;
-		xocl_grp->m_group[grp_id] = vzalloc(sizeof(struct xocl_mem_group_info));
+		xocl_grp->m_group[grp_id] = vzalloc(sizeof(struct xcl_mem_group_info));
 		if (xocl_grp->m_group[grp_id] == NULL) {
 			vfree(xocl_grp);
 			return -ENOMEM;
@@ -856,7 +854,7 @@ static int get_mem_group(struct xocl_mem_connectivity *m_connect, struct xocl_me
 
 		/* New Group found */
 		xocl_grp = m_connect->mem_group;
-		xocl_grp->m_group[grp_id] = vzalloc(sizeof(struct xocl_mem_group_info));
+		xocl_grp->m_group[grp_id] = vzalloc(sizeof(struct xcl_mem_group_info));
 		if (xocl_grp->m_group[grp_id] == NULL)
 			return -ENOMEM;
 
@@ -871,8 +869,8 @@ static int get_mem_group(struct xocl_mem_connectivity *m_connect, struct xocl_me
 
 int xocl_cleanup_connectivity(struct xocl_drm *drm_p)
 {
-	struct xocl_mem_map     *mem_map = NULL;
-	struct xocl_mem_group   *xocl_grp = NULL; 
+	struct xcl_mem_map     *mem_map = NULL;
+	struct xcl_mem_group   *xocl_grp = NULL; 
 	int i = 0;
 
 	if (!drm_p->m_connect)
@@ -911,8 +909,8 @@ int xocl_cleanup_connectivity(struct xocl_drm *drm_p)
 int xocl_init_connectivity(struct xocl_drm *drm_p, struct mem_topology *topo)
 {
 	struct connectivity *connect = NULL;
-	struct xocl_mem_map *mem_map = NULL;
-	struct xocl_mem_group_info *m_group = NULL;
+	struct xcl_mem_map *mem_map = NULL;
+	struct xcl_mem_group_info *m_group = NULL;
 	struct ip_layout *layout = NULL;
 	int group_id = -1;
 	int ip_cnt = 0;
@@ -925,29 +923,29 @@ int xocl_init_connectivity(struct xocl_drm *drm_p, struct mem_topology *topo)
 		return err;
 
 	if (!layout) {
-		XOCL_PUT_IP_TOPOLOGY(drm_p->xdev);
+		XOCL_PUT_IP_LAYOUT(drm_p->xdev);
 		return -EINVAL;
 	}
 
 	err = XOCL_GET_CONNECTIVITY(drm_p->xdev, connect);
 	if (err) {
-		XOCL_PUT_IP_TOPOLOGY(drm_p->xdev);
+		XOCL_PUT_IP_LAYOUT(drm_p->xdev);
 		return err;
 	}
 
 	if (connect == NULL) { 
-		XOCL_PUT_IP_TOPOLOGY(drm_p->xdev);
+		XOCL_PUT_IP_LAYOUT(drm_p->xdev);
 		XOCL_PUT_CONNECTIVITY(drm_p->xdev);
 		return -ENODEV;
 	}
 
-	drm_p->m_connect = vzalloc(sizeof(struct xocl_mem_connectivity));
+	drm_p->m_connect = vzalloc(sizeof(struct xcl_mem_connectivity));
 	if (drm_p->m_connect == NULL) {
 		err = -ENOMEM;
 		goto failed;
 	}
 
-	drm_p->m_connect->mem_map = vzalloc(sizeof(struct xocl_mem_map));
+	drm_p->m_connect->mem_map = vzalloc(sizeof(struct xcl_mem_map));
 	if (drm_p->m_connect->mem_map == NULL) {
 		err = -ENOMEM;
 		goto failed;
@@ -955,22 +953,27 @@ int xocl_init_connectivity(struct xocl_drm *drm_p, struct mem_topology *topo)
 
 	/* Create groups for range of Banks */
 	for (ip_cnt = 0; ip_cnt < layout->m_count;) {
-		m_group = vzalloc(sizeof(struct xocl_mem_group_info));
+		m_group = vzalloc(sizeof(struct xcl_mem_group_info));
 		if (m_group == NULL) {
 			err = -ENOMEM;
 			goto failed;
 		}
 
-		if (init_mem_group(connect, ip_cnt, arg_cnt, topo, m_group)) {
+		err = init_mem_group(drm_p, connect, ip_cnt, arg_cnt, topo,
+				     m_group);
+		if (err) {
 			arg_cnt = 0;
 			ip_cnt++;
 			vfree(m_group);
-			continue;
+			if (err == -EAGAIN)
+				continue;
+			else
+				goto failed;
 		}
 
 		/* Update Memory connection mapping */ 
 		mem_map = drm_p->m_connect->mem_map;
-		mem_map->m_map[mem_map->m_count] = vzalloc(sizeof(struct xocl_mem_map_info));
+		mem_map->m_map[mem_map->m_count] = vzalloc(sizeof(struct xcl_mem_map_info));
 		if (mem_map->m_map[mem_map->m_count] == NULL) {
 			err = -ENOMEM;
 			goto failed;
