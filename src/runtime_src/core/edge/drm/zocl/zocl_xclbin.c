@@ -456,6 +456,7 @@ zocl_update_apertures(struct drm_zocl_dev *zdev)
 
 	/* Update aperture should only happen when loading xclbin */
 	kfree(zdev->apertures);
+	zdev->apertures = NULL;
 	zdev->num_apts = 0;
 
 	if (zdev->ip)

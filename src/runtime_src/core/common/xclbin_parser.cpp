@@ -56,7 +56,7 @@ get_xml_section(const axlf* top)
   const axlf_section_header* xml_hdr = ::xclbin::get_axlf_section(top, EMBEDDED_METADATA);
 
   if (!xml_hdr)
-    return std::make_pair(reinterpret_cast<const char*>(NULL), 0);
+    throw std::runtime_error("No xml meta data in xclbin");
 
   auto begin = reinterpret_cast<const char*>(top) + xml_hdr->m_sectionOffset;
   auto xml_data = reinterpret_cast<const char*>(begin);
@@ -511,8 +511,6 @@ get_kernel_freq(const axlf* top)
 {
   size_t kernel_clk_freq = 100; //default clock frequency is 100
   auto xml = get_xml_section(top);
-  if (xml.second == 0)
-    return 0;
 
   pt::ptree xml_project;
   std::stringstream xml_stream;
@@ -579,6 +577,13 @@ get_kernel_arguments(const axlf* top, const std::string& kname)
 {
   auto xml = get_xml_section(top);
   return get_kernel_arguments(xml.first, xml.second, kname);
+}
+
+bool
+is_pdi_only(const axlf* top)
+{
+  auto pdi = axlf_section_type<const char*>::get(top, axlf_section_kind::PDI);
+  return (top->m_header.m_numSections == 1 && pdi != nullptr);
 }
 
 }} // xclbin, xrt_core

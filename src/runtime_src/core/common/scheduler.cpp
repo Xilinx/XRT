@@ -142,10 +142,6 @@ init(xclDeviceHandle handle, const axlf* top)
   auto device = xrt_core::get_userpf_device(handle);
   ecmd->slot_size = device->get_ert_slots(top).second;
 
-  /* If there is no ert slot, skip the configuration. */
-  if (ecmd->slot_size == 0)
-    return 0;
-
   if (ecmd->slot_size != 4096)
     std::cout << "ERT slotsize computed to: " << ecmd->slot_size << "\n";
   
