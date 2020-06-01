@@ -23,7 +23,6 @@
 #include "system_windows.h"
 #include "device_windows.h"
 #include "gen/version.h"
-#include "core/common/time.h"
 #include "mgmt.h"
 #include <map>
 #include <memory>
@@ -69,6 +68,26 @@ getmachinename()
   return machine;
 }
 
+static std::string 
+osNameImpl()
+{
+    OSVERSIONINFO vi;
+    vi.dwOSVersionInfoSize = sizeof(vi);
+    if (GetVersionEx(&vi) == 0) 
+      throw xrt_core::error("Cannot get OS version information");
+    switch (vi.dwPlatformId)
+    {
+    case VER_PLATFORM_WIN32s:
+        return "Windows 3.x";
+    case VER_PLATFORM_WIN32_WINDOWS:
+        return vi.dwMinorVersion == 0 ? "Windows 95" : "Windows 98";
+    case VER_PLATFORM_WIN32_NT:
+        return "Windows NT";
+    default:
+        return "Unknown";
+    }
+}
+
 }
 
 namespace xrt_core {
@@ -95,8 +114,7 @@ get_os_info(boost::property_tree::ptree &pt)
   char value[128];
   DWORD BufferSize = sizeof value;
 
-  RegGetValueA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "ProductName", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
-  pt.put("sysname", value);
+  pt.put("sysname", osNameImpl());
   //Reassign buffer size since it get override with size of value by RegGetValueA() call
   BufferSize = sizeof value;
   RegGetValueA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "BuildLab", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
@@ -106,7 +124,10 @@ get_os_info(boost::property_tree::ptree &pt)
   pt.put("version", value);
 
   pt.put("machine", getmachinename());
-  pt.put("now", xrt_core::timestamp());
+
+  BufferSize = sizeof value;
+  RegGetValueA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "ProductName", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
+  pt.put("distribution", value);
 }
 
 std::pair<device::id_type, device::id_type>

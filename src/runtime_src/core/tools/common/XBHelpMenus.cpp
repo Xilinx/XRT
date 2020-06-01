@@ -18,6 +18,8 @@
 // Local - Include Files
 #include "XBHelpMenus.h"
 #include "XBUtilities.h"
+#include "core/common/time.h"
+
 namespace XBU = XBUtilities;
 
 
@@ -621,6 +623,7 @@ XBUtilities::produce_reports( xrt_core::device_collection _devices,
   {
     boost::property_tree::ptree ptSchemaVersion;
     ptSchemaVersion.put("schema", Report::getSchemaDescription(_schemaVersion).optionName.c_str());
+    ptSchemaVersion.put("creation_date", xrt_core::timestamp());
 
     ptRoot.add_child("schema_version", ptSchemaVersion);
   }

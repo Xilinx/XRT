@@ -681,6 +681,10 @@ static int xocl_fdt_parse_ip(xdev_handle_t xdev_hdl, char *blob,
 	/* mgmtpf driver checks pfnum. it will not create userpf subdevices */
 	if (ntohl(*pfnum) != XOCL_PCI_FUNC(xdev_hdl))
 		return 0;
+#else 
+	if (XDEV(xdev_hdl)->fdt_blob && 
+		xocl_fdt_get_userpf(xdev_hdl, XDEV(xdev_hdl)->fdt_blob) != ntohl(*pfnum))
+		return 0;
 #endif
 
 	bar_idx = fdt_getprop(blob, off, PROP_BAR_IDX, NULL);

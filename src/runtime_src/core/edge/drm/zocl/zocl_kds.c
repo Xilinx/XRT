@@ -12,6 +12,7 @@
 #include <linux/sched/signal.h>
 #include "zocl_drv.h"
 #include "zocl_util.h"
+#include "zocl_xclbin.h"
 #include "kds_core.h"
 
 int kds_mode = 0;
@@ -24,6 +25,147 @@ module_param(kds_echo, int, (S_IRUGO|S_IWUSR));
 MODULE_PARM_DESC(kds_echo,
 		 "enable KDS echo (0 = disable (default), 1 = enable)");
 
+static inline void
+zocl_ctx_to_info(struct drm_zocl_ctx *args, struct kds_ctx_info *info)
+{
+	if (args->cu_index == ZOCL_CTX_VIRT_CU_INDEX)
+		info->cu_idx = CU_CTX_VIRT_CU;
+	else
+		info->cu_idx = args->cu_index;
+
+	/* Ignore ZOCL_CTX_SHARED bit if ZOCL_CTX_EXCLUSIVE bit is set */
+	if (args->flags & ZOCL_CTX_EXCLUSIVE)
+		info->flags = CU_CTX_EXCLUSIVE;
+	else
+		info->flags = CU_CTX_SHARED;
+}
+
+static int
+zocl_add_context(struct drm_zocl_dev *zdev, struct kds_client *client,
+		 struct drm_zocl_ctx *args)
+{
+	struct kds_ctx_info info;
+	void *uuid_ptr = (void *)(uintptr_t)args->uuid_ptr;
+	uuid_t *id;
+	int ret;
+
+	id = vmalloc(sizeof(uuid_t));
+	if (!id)
+		return -ENOMEM;
+
+	ret = copy_from_user(id, uuid_ptr, sizeof(uuid_t));
+	if (ret) {
+		vfree(id);
+		return ret;
+	}
+
+	mutex_lock(&client->lock);
+	if (!client->num_ctx) {
+		ret = zocl_lock_bitstream(zdev, id);
+		if (ret)
+			goto out;
+		client->xclbin_id = vzalloc(sizeof(*id));
+		if (!client->xclbin_id) {
+			ret = -ENOMEM;
+			goto out;
+		}
+		uuid_copy(client->xclbin_id, id);
+	}
+
+	/* Bitstream is locked. No one could load a new one
+	 * until this client close all of the contexts.
+	 */
+	zocl_ctx_to_info(args, &info);
+	ret = kds_add_context(client, &info);
+
+out:
+	if (!client->num_ctx) {
+		vfree(client->xclbin_id);
+		client->xclbin_id = NULL;
+		(void) zocl_unlock_bitstream(zdev, id);
+	}
+	mutex_unlock(&client->lock);
+	vfree(id);
+	return ret;
+}
+
+static int
+zocl_del_context(struct drm_zocl_dev *zdev, struct kds_client *client,
+		 struct drm_zocl_ctx *args)
+{
+	struct kds_ctx_info info;
+	void *uuid_ptr = (void *)(uintptr_t)args->uuid_ptr;
+	uuid_t *id;
+	uuid_t *uuid;
+	int ret;
+
+	id = vmalloc(sizeof(uuid_t));
+	if (!id)
+		return -ENOMEM;
+
+	ret = copy_from_user(id, uuid_ptr, sizeof(uuid_t));
+	if (ret) {
+		vfree(id);
+		return ret;
+	}
+
+	mutex_lock(&client->lock);
+	uuid = client->xclbin_id;
+	/* xclCloseContext() would send xclbin_id and cu_idx.
+	 * Be more cautious while delete. Do sanity check
+	 */
+	if (!uuid) {
+		DRM_ERROR("No context was opened");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	/* If xclbin id looks good, unlock bitstream should not fail. */
+	if (!uuid_equal(uuid, id)) {
+		DRM_ERROR("Try to delete CTX on wrong xclbin");
+		ret = -EBUSY;
+		goto out;
+	}
+
+	zocl_ctx_to_info(args, &info);
+	ret = kds_del_context(client, &info);
+	if (ret)
+		goto out;
+
+	if (!client->num_ctx) {
+		vfree(client->xclbin_id);
+		client->xclbin_id = NULL;
+		(void) zocl_unlock_bitstream(zdev, id);
+	}
+
+out:
+	mutex_unlock(&client->lock);
+	vfree(id);
+	return ret;
+}
+
+int zocl_context_ioctl(struct drm_zocl_dev *zdev, void *data,
+		       struct drm_file *filp)
+{
+	struct drm_zocl_ctx *args = data;
+	struct kds_client *client = filp->driver_priv;
+	int ret = 0;
+
+	switch (args->op) {
+	case ZOCL_CTX_OP_ALLOC_CTX:
+		ret = zocl_add_context(zdev, client, args);
+		break;
+	case ZOCL_CTX_OP_FREE_CTX:
+		ret = zocl_del_context(zdev, client, args);
+		break;
+	default:
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
+}
+
 int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 		       struct drm_file *filp)
 {
@@ -35,6 +177,11 @@ int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 	struct ert_packet *ecmd;
 	struct kds_command *xcmd;
 	int ret = 0;
+
+	if (!client->xclbin_id) {
+		DRM_ERROR("The client has no opening context\n");
+		return -EINVAL;
+	}
 
 	gem_obj = zocl_gem_object_lookup(dev, filp, args->exec_bo_handle);
 	if (!gem_obj) {
@@ -55,7 +202,7 @@ int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 	 */
 	xcmd = kds_alloc_command(client, ecmd->count * sizeof(u32));
 	if (!xcmd) {
-		DRM_INFO("Failed to alloc xcmd\n");
+		DRM_ERROR("Failed to alloc xcmd\n");
 		ret = -ENOMEM;
 		goto out;
 	}
@@ -97,6 +244,7 @@ uint zocl_poll_client(struct file *filp, poll_table *wait)
 int zocl_create_client(struct drm_zocl_dev *zdev, void **priv)
 {
 	struct kds_client *client;
+	struct kds_sched  *kds;
 	struct drm_device *ddev;
 	int ret = 0;
 
@@ -106,15 +254,13 @@ int zocl_create_client(struct drm_zocl_dev *zdev, void **priv)
 
 	ddev = zdev->ddev;
 
-	client->dev  = ddev->dev;
-	client->pid  = get_pid(task_pid(current));
-	client->ctrl = zdev->kds.ctrl;
-	ret = kds_init_client(client);
+	kds = &zdev->kds;
+	client->dev = ddev->dev;
+	ret = kds_init_client(kds, client);
 	if (ret) {
 		kfree(client);
 		goto out;
 	}
-	list_add_tail(&client->link, &zdev->ctx_list);
 	*priv = client;
 
 out:
@@ -127,13 +273,16 @@ out:
 void zocl_destroy_client(struct drm_zocl_dev *zdev, void **priv)
 {
 	struct kds_client *client = *priv;
+	struct kds_sched  *kds;
 	struct drm_device *ddev;
 	int pid = pid_nr(client->pid);
 
 	ddev = zdev->ddev;
 
-	list_del(&client->link);
-	kds_fini_client(client);
+	kds = &zdev->kds;
+	kds_fini_client(kds, client);
+	if (client->xclbin_id)
+		vfree(client->xclbin_id);
 	kfree(client);
 	zocl_info(ddev->dev, "client exits pid(%d)\n", pid);
 }

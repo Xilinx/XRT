@@ -124,8 +124,10 @@ int xocl_drvinst_kill_proc(void *data)
 			break;
 	}
 
-	/* it must be created before */
-	BUG_ON(inst == ARRAY_SIZE(xocl_drvinst_array));
+	if (inst == ARRAY_SIZE(xocl_drvinst_array)) {
+		mutex_unlock(&xocl_drvinst_lock);
+		return 0;
+	}
 
 	if (atomic_read(&drvinstp->ref) > 1) {
 		list_for_each_entry_safe(proc, temp, &drvinstp->open_procs,
