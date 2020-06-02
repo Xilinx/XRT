@@ -18,27 +18,24 @@
 
 #include <getopt.h>
 #include <iostream>
+#include <vector>
 #include <stdexcept>
 #include <string>
 #include <cstring>
 #include <sys/mman.h>
 
-// driver includes
-#include "ert.h"
+#include "experimental/xrt_kernel.h"
+
 
 // host_src includes
 #include "xclhal2.h"
 #include "xclbin.h"
 
-// lowlevel common include
-
-#include "utils.h"
-
-#if defined(DSA64)
-#include "xloopback_hw_64.h"
-#else
-#include "xloopback_hw.h"
-#endif
+//#if defined(DSA64)
+//#include "xloopback_hw_64.h"
+//#else
+//#include "xloopback_hw.h"
+//#endif
 
 #include <fstream>
 
@@ -53,16 +50,16 @@ static const int DATA_SIZE = 1024;
 
 
 const static struct option long_options[] = {
-    {"bitstream",       required_argument, 0, 'k'},
-    {"hal_logfile",     required_argument, 0, 'l'},
-    {"alignment",       required_argument, 0, 'a'},
-    {"cu_index",        required_argument, 0, 'c'},
-    {"device",          required_argument, 0, 'd'},
-    {"verbose",         no_argument,       0, 'v'},
-    {"help",            no_argument,       0, 'h'},
-    // enable embedded runtime
-    {"ert",             no_argument,       0, '1'},
-    {0, 0, 0, 0}
+{"bitstream",       required_argument, 0, 'k'},
+{"hal_logfile",     required_argument, 0, 'l'},
+{"alignment",       required_argument, 0, 'a'},
+{"cu_index",        required_argument, 0, 'c'},
+{"device",          required_argument, 0, 'd'},
+{"verbose",         no_argument,       0, 'v'},
+{"help",            no_argument,       0, 'h'},
+// enable embedded runtime
+{"ert",             no_argument,       0, '1'},
+{0, 0, 0, 0}
 };
 
 static void printHelp()
@@ -149,133 +146,67 @@ int main(int argc, char** argv)
     std::cout << "Host buffer alignment = " << alignment << " bytes\n";
     std::cout << "Compiled kernel = " << bitstreamFile << "\n" << std::endl;
 
-    try 
+    try
     {
-	xclDeviceHandle handle;
-	uint64_t cu_base_addr = 0;
-	if(initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr))
-	    return 1;
+      // load bit stream
+      std::ifstream stream(bitstreamFile);
+      stream.seekg(0,stream.end);
+      size_t size = stream.tellg();
+      stream.seekg(0,stream.beg);
+      std::vector<char> header(size);
+      stream.read(header.data(),size);
+      auto top = reinterpret_cast<const axlf*>(header.data());
 
-	unsigned boHandle2 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, 0x0);
-	char* bo2 = (char*)xclMapBO(handle, boHandle2, true);
-	memset(bo2, 0, DATA_SIZE);
-	std::string testVector =  "hello\nthis is Xilinx OpenCL memory read write test\n:-)\n";
-	std::strcpy(bo2, testVector.c_str());
+      auto devices = xclProbe();
+      if (devices <= 0)
+        throw std::runtime_error("No devices found");
 
-	if(xclSyncBO(handle, boHandle2, XCL_BO_SYNC_BO_TO_DEVICE , DATA_SIZE,0))
-	    return 1;
+      // The scope of the device handle must be controlled such
+      // that the device is the last to close after automatic
+      // objects have destructed
+      auto handle = xclOpen(index, nullptr, XCL_INFO);
 
-	unsigned boHandle1 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, 0x0);
+      if (xclLoadXclBin(handle,top))
+        throw std::runtime_error("Bitstream download failed");
+      else 
+        std::cout<<"\n Bitstream downloaded sucessfully";
 
+      { // begin of automatic objcts
 
-	//Allocate the exec_bo
-	unsigned execHandle = xclAllocBO(handle, DATA_SIZE, xclBOKind(0), (1<<31));
-	void* execData = xclMapBO(handle, execHandle, true);
+      auto loopback = xrt::kernel(handle, top->m_header.uuid, "loopback");
+      auto bo0 = xrt::bo(handle, DATA_SIZE, XCL_BO_FLAGS_NONE, loopback.group_id(0));  // handle 1
+      auto bo1 = xrt::bo(handle, DATA_SIZE, XCL_BO_FLAGS_NONE, loopback.group_id(1));  // handle 2
 
-	//construct the exec buffer cmd to configure.
-	{
-	    auto ecmd = reinterpret_cast<ert_configure_cmd*>(execData);
+      auto bo1_map = bo1.map<char*>();
+      std::fill(bo1_map, bo1_map + DATA_SIZE, 0);
+      std::string testVector =  "hello\nthis is Xilinx OpenCL memory read write test\n:-)\n";
+      std::strcpy(bo1_map, testVector.c_str());
+      bo1.sync(XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE, 0);
 
-	    std::memset(ecmd, 0, DATA_SIZE);
-	    ecmd->state = ERT_CMD_STATE_NEW;
-	    ecmd->opcode = ERT_CONFIGURE;
+      std::cout << "\nStarting kernel..." << std::endl;
+      auto run = loopback(bo0, bo1, DATA_SIZE);
+      run.wait();
 
-	    ecmd->slot_size = 1024;
-	    ecmd->num_cus = 1;
-	    ecmd->cu_shift = 16;
-	    ecmd->cu_base_addr = cu_base_addr; 
+      //Get the output;
+      bo0.sync(XCL_BO_SYNC_BO_FROM_DEVICE, DATA_SIZE, 0);
+      auto bo0_map = bo0.map<char*>();
 
-	    ecmd->ert = ert;
-	    if (ert) {
-		ecmd->cu_dma = 1;
-		ecmd->cu_isr = 1;
-	    }
+      if (std::memcmp(bo1_map, bo0_map, DATA_SIZE)) {
+        std::cout << "FAILED TEST\n";
+        std::cout << "Value read back does not match value written\n";
+        return 1;
+      }
 
-            // CU -> base address mapping
-            ecmd->data[0] = cu_base_addr;
-            ecmd->count = 5 + ecmd->num_cus;
-	}
+      } // end of automatic objects
 
-	//Send the command.
-	if(xclExecBuf(handle, execHandle)) {
-	    std::cout << "Unable to issue xclExecBuf" << std::endl;
-	    return 1;
-	}
-
-        //Wait on the command finish	
-	while (xclExecWait(handle,1000) == 0);
-
-	xclBOProperties p;
-	uint64_t bo2devAddr = !xclGetBOProperties(handle, boHandle2, &p) ? p.paddr : -1;
-	uint64_t bo1devAddr = !xclGetBOProperties(handle, boHandle1, &p) ? p.paddr : -1;
-
-	if( (bo2devAddr == (uint64_t)(-1)) || (bo1devAddr == (uint64_t)(-1)))
-	    return 1;
-
-	//--
-	//construct the exec buffer cmd to start the kernel.
-	{
-	    auto ecmd = reinterpret_cast<ert_start_kernel_cmd*>(execData);
-	    auto rsz = (XLOOPBACK_CONTROL_ADDR_LENGTH_R_DATA/4+1) + 1; // regmap array size
-	    std::memset(ecmd,0,(sizeof *ecmd) + rsz*4);
-	    ecmd->state = ERT_CMD_STATE_NEW;
-	    ecmd->opcode = ERT_START_CU;
-	    ecmd->count = 1 + rsz;
-	    ecmd->cu_mask = 0x1;
-
-	    ecmd->data[XLOOPBACK_CONTROL_ADDR_AP_CTRL] = 0x0; // ap_start
-#if defined(DSA64)
-	    ecmd->data[XLOOPBACK_CONTROL_ADDR_S1_DATA/4] = bo1devAddr & 0xFFFFFFFF; // s1
-	    ecmd->data[XLOOPBACK_CONTROL_ADDR_S1_DATA/4 + 1] = (bo1devAddr >> 32) & 0xFFFFFFFF; // s1
-	    ecmd->data[XLOOPBACK_CONTROL_ADDR_S2_DATA/4] = bo2devAddr & 0xFFFFFFFF; // s2
-	    ecmd->data[XLOOPBACK_CONTROL_ADDR_S2_DATA/4 + 1] = (bo2devAddr >> 32) & 0xFFFFFFFF; // s2
-	    ecmd->data[XLOOPBACK_CONTROL_ADDR_LENGTH_R_DATA/4] = DATA_SIZE; // length
-#else
-	    ecmd->data[XLOOPBACK_CONTROL_ADDR_S1_DATA/4] = bo1devAddr; // s1
-	    ecmd->data[XLOOPBACK_CONTROL_ADDR_S2_DATA/4] = bo2devAddr; // s2
-	    ecmd->data[XLOOPBACK_CONTROL_ADDR_LENGTH_R_DATA/4] = DATA_SIZE; // length
-#endif
-	}
-
-        std::cout << "Starting kernel..." << std::endl;
-
-	//Send the "start kernel" command.
-	if(xclExecBuf(handle, execHandle)) {
-	    std::cout << "Unable to issue xclExecBuf : start_kernel" << std::endl;
-            std::cout << "FAILED TEST\n";
-            std::cout << "Write failed\n";
-	    return 1;
-	}
-
-        //Wait on the command finish	
-	while (xclExecWait(handle,1000) == 0) {
-	    std::cout << "reentering wait...\n";
-	};
-
-	//Get the output;
-	if(xclSyncBO(handle, boHandle1, XCL_BO_SYNC_BO_FROM_DEVICE , DATA_SIZE, 0))
-	    return 1;
-	char* bo1 = (char*)xclMapBO(handle, boHandle1, false);
-
-        if (std::memcmp(bo2, bo1, DATA_SIZE)) {
-            std::cout << "FAILED TEST\n";
-            std::cout << "Value read back does not match value written\n";
-            return 1;
-        }
-
-	//Clean up stuff
-	munmap(bo1, DATA_SIZE);
-	munmap(bo2, DATA_SIZE);
-	xclFreeBO(handle,boHandle1);
-	xclFreeBO(handle,boHandle2);
-	xclFreeBO(handle,execHandle);
-
+      // now safe to close decice
+      xclClose(handle);
     }
     catch (std::exception const& e)
     {
-        std::cout << "Exception: " << e.what() << "\n";
-        std::cout << "FAILED TEST\n";
-        return 1;
+      std::cout << "Exception: " << e.what() << "\n";
+      std::cout << "FAILED TEST\n";
+      return 1;
     }
 
     std::cout << "PASSED TEST\n";

@@ -21,6 +21,7 @@
 #include "detail/program.h"
 
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 
 namespace xocl {
 
@@ -49,7 +50,8 @@ cl_int
 clReleaseProgram(cl_program program)
 {
   try {
-    PROFILE_LOG_FUNCTION_CALL
+    PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clReleaseProgram(program);
   }
   catch (const xocl::error& ex) {
