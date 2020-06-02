@@ -3520,13 +3520,19 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 	uint32_t bd_info_sz = 0;
 	uint32_t *bdinfo_raw;
 	xdev_handle_t xdev = xocl_get_xdev(xmc->pdev);
-	char *tmp_str;
+	char *tmp_str = NULL;
 
 	BUG_ON(!mutex_is_locked(&xmc->mbx_lock));
 	if (xmc->bdinfo_loaded)
 		return 0;
 
 	if (XMC_PRIVILEGED(xmc)) {
+
+		tmp_str = (char *)xocl_icap_get_data(xdev, EXP_BMC_VER);
+		if (tmp_str) {
+			strncpy(xmc->exp_bmc_ver, tmp_str,
+				XMC_BDINFO_ENTRY_LEN_MAX - 1);
+		}
 
 		if ((!is_xmc_ready(xmc) || !is_sc_ready(xmc, false)))
 			return -EINVAL;
@@ -3573,11 +3579,6 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 		xmc_set_board_info(bdinfo_raw, bd_info_sz,
 			BDINFO_CONFIG_MODE, (char *)&xmc->config_mode);
 
-		tmp_str = (char *)xocl_icap_get_data(xdev, EXP_BMC_VER);
-		if (tmp_str) {
-			strncpy(xmc->exp_bmc_ver, tmp_str,
-				XMC_BDINFO_ENTRY_LEN_MAX - 1);
-		}
 		if (bd_info_valid(xmc->serial_num) &&
 			!strcmp(xmc->bmc_ver, xmc->exp_bmc_ver)) {
 			xmc->bdinfo_loaded = true;
