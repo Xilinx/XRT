@@ -197,6 +197,7 @@ int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 
 	ecmd = (struct ert_packet *)zocl_bo->cma_base.vaddr;
 
+	ecmd->state = ERT_CMD_STATE_NEW;
 	/* only the user command knows the real size of the payload.
 	 * count is more than enough!
 	 */
