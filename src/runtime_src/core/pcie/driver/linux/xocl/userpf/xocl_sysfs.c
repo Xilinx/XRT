@@ -176,12 +176,12 @@ static ssize_t p2p_enable_show(struct device *dev,
 
 	if (xdev->p2p_mem_chunk_num)
 		return sprintf(buf, "1\n");
-	else if (xocl_get_p2p_bar(xdev, &size) >= 0 &&
-		size > XOCL_P2P_CHUNK_SIZE)
-		return sprintf(buf, "%d\n", EBUSY);
 	else if (xdev->p2p_bar_idx < 0 || (xocl_get_p2p_bar(xdev, &size) < 0 &&
 		xdev->p2p_bar_len <= XOCL_P2P_CHUNK_SIZE))
 		return sprintf(buf, "%d\n", ENXIO);
+	else if (xocl_get_p2p_bar(xdev, &size) >= 0 &&
+		size > XOCL_P2P_CHUNK_SIZE)
+		return sprintf(buf, "%d\n", EBUSY);
 
 	return sprintf(buf, "0\n");
 }

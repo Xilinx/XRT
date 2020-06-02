@@ -154,13 +154,13 @@ static void p2p_percpu_ref_kill(void *data)
 {
 	struct percpu_ref *ref = data;
 #if defined(RHEL_RELEASE_CODE)
-	#if (RHEL_RELEASE_CODE == RHEL_RELEASE_VERSION(7, 7))
+	#if (RHEL_RELEASE_CODE == RHEL_RELEASE_VERSION(7, 7)) || (RHEL_RELEASE_CODE == RHEL_RELEASE_VERSION(7, 6))
 	unsigned long __percpu *percpu_count = (unsigned long __percpu *)
 		(ref->percpu_count_ptr & ~__PERCPU_REF_ATOMIC_DEAD);
 	unsigned long count = 0;
 	int cpu;
 
-	/* Nasty hack for CentOS7.7 only
+	/* Nasty hack for CentOS7.7 & CentOS7.6
 	 * percpu_ref->count have to substract the percpu counters
 	 * to guarantee the percpu_ref->count will drop to 0
 	 */
@@ -192,7 +192,8 @@ static void p2p_percpu_ref_exit(void *data)
 }
 static void p2p_mem_chunk_release(struct p2p *p2p, struct p2p_mem_chunk *chk)
 {
-	struct pci_dev *pdev = XOCL_PL_TO_PCI_DEV(p2p->pdev);
+//	struct pci_dev *pdev = XOCL_PL_TO_PCI_DEV(p2p->pdev);
+	struct platform_device  *pdev = p2p->pdev;
 
 	/*
 	 * When reseration fails, error handling could bring us here with
@@ -219,7 +220,8 @@ static void p2p_mem_chunk_release(struct p2p *p2p, struct p2p_mem_chunk *chk)
 
 static int p2p_mem_chunk_reserve(struct p2p *p2p, struct p2p_mem_chunk *chk)
 {
-	struct pci_dev *pdev = XOCL_PL_TO_PCI_DEV(p2p->pdev);
+//	struct pci_dev *pdev = XOCL_PL_TO_PCI_DEV(p2p->pdev);
+	struct platform_device  *pdev = p2p->pdev;
 	struct device *dev = &pdev->dev;
 	struct resource res;
 	struct percpu_ref *pref = &chk->xpmc_percpu_ref;
@@ -680,6 +682,11 @@ static int p2p_mem_unmap(struct platform_device *pdev, ulong bar_off,
 {
 	struct p2p *p2p = platform_get_drvdata(pdev);
 
+	if (p2p->p2p_bar_idx < 0) {
+		p2p_err(p2p, "can not find p2p bar");
+		return -EINVAL;
+	}
+
 	mutex_lock(&p2p->p2p_lock);
 
 	p2p_reserve_release(p2p, bar_off, len, false);
@@ -697,6 +704,11 @@ static int p2p_mem_map(struct platform_device *pdev,
 	struct p2p *p2p = platform_get_drvdata(pdev);
 	long bank_off;
 	int ret;
+
+	if (p2p->p2p_bar_idx < 0) {
+		p2p_err(p2p, "can not find p2p bar");
+		return -EINVAL;
+	}
 
 	if (!p2p->remapper)
 		return -ENOTSUPP;
@@ -736,6 +748,11 @@ static int p2p_mem_get_pages(struct platform_device *pdev,
 	ulong i;
 	ulong offset;
 	int ret = 0;
+
+	if (p2p->p2p_bar_idx < 0) {
+		p2p_err(p2p, "can not find p2p bar");
+		return -EINVAL;
+	}
 
 	p2p_info(p2p, "bar_off: %ld, size %ld, npages %ld",
 		bar_off, size, npages);
@@ -777,6 +794,11 @@ static ssize_t config_store(struct device *dev, struct device_attribute *da,
 		return -EINVAL;
 	}
 
+	if (p2p->p2p_bar_idx < 0) {
+		p2p_err(p2p, "can not find p2p bar");
+		return -EINVAL;
+	}
+
 	if (range == 0 && XDEV(xdev)->priv.p2p_bar_sz > 0) {
 		/*  used hardcoded range */
 		range = XDEV(xdev)->priv.p2p_bar_sz << 30;
@@ -800,19 +822,31 @@ static ssize_t config_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct p2p *p2p = platform_get_drvdata(to_platform_device(dev));
+	xdev_handle_t xdev = xocl_get_xdev(p2p->pdev);
 	ulong rbar_len;
 	int ret;
-	ssize_t count;
+	ssize_t count = 0;
 
 	mutex_lock(&p2p->p2p_lock);
-	count = sprintf(buf, "bar:%ld\n", p2p->p2p_bar_len);
+	if (p2p->p2p_bar_idx >= 0) {
+			count += sprintf(buf, "bar:%ld\n", p2p->p2p_bar_len);
+	}
 
 	ret = p2p_rbar_len(p2p, &rbar_len);
 	if (!ret)
 		count += sprintf(buf + count, "rbar:%ld\n", rbar_len);
 
-	if (p2p->remapper)
-		count += sprintf(buf + count, "remap:%ld\n", p2p->remap_range);
+	if (p2p->remapper) {
+		/* if a hardcoded expecting bar size is defined,
+		 * mark disable
+		 */
+		if  (XDEV(xdev)->priv.p2p_bar_sz == 0 ||
+		    (XDEV(xdev)->priv.p2p_bar_sz << 30) == p2p->p2p_bar_len)
+			count += sprintf(buf + count, "remap:%ld\n",
+					p2p->remap_range);
+		else
+			count += sprintf(buf + count, "remap:%d\n", 0);
+	}
 	mutex_unlock(&p2p->p2p_lock);
 
 	return count;
@@ -914,9 +948,8 @@ static int p2p_probe(struct platform_device *pdev)
 
 	p2p->p2p_bar_idx = xocl_fdt_get_p2pbar(xdev, XDEV(xdev)->fdt_blob);
 	if (p2p->p2p_bar_idx < 0) {
-		xocl_err(&pdev->dev, "can not find p2p bar in metadata");
-		ret = -ENOTSUPP;
-		goto failed;
+		xocl_info(&pdev->dev, "can not find p2p bar in metadata");
+		return 0;
 	}
 
 	pcidev = XOCL_PL_TO_PCI_DEV(p2p->pdev);
