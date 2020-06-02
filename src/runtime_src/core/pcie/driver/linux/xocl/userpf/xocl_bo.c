@@ -233,12 +233,6 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 			err = -EINVAL;
 			goto done;
 		}
-		if (!XOCL_IS_DDR_USED(topo, ddr)) {
-			userpf_err(xdev,
-				   "Bank %d is marked as unused in axlf", ddr);
-			err = -EINVAL;
-			goto done;
-		}
 	}
 done:	
 	XOCL_PUT_MEM_TOPOLOGY(xdev);

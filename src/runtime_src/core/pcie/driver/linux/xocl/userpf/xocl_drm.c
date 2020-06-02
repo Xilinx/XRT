@@ -535,7 +535,7 @@ int xocl_mm_insert_node_range(struct xocl_drm *drm_p, u32 mem_id,
 					   xocl_mem->l_start_addr, xocl_mem->h_end_addr, 0);
 #else
 	return drm_mm_insert_node_in_range(drm_p->mm, node, size, PAGE_SIZE,
-					   xocl_mem->l_start_addr, xocl_mem->h_end_addr);
+					   xocl_mem->l_start_addr, xocl_mem->h_end_addr, 0);
 #endif
 }
 
