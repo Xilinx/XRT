@@ -17,6 +17,8 @@
 #ifndef xrt_uuid_h_
 #define xrt_uuid_h_
 
+#include <string>
+
 #ifdef _WIN32
 # include "windows/uuid.h"
 #else
