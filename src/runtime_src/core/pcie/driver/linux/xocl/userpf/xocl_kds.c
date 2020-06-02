@@ -168,6 +168,7 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 
 	ecmd = (struct ert_packet *)xobj->vmapping;
 
+	ecmd->state = ERT_CMD_STATE_NEW;
 	/* only the user command knows the real size of the payload.
 	 * count is more than enough!
 	 */
