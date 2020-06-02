@@ -444,8 +444,7 @@ public:
               if (!enabled || !size)
                 continue;
 
-              float percentage = (float)mem_usage * 100 /
-                    (size << 10);
+              float percentage = (float)mem_usage * 100 / size;
               int nums_fiftieth = (int)percentage / 2;
               std::string str = std::to_string(percentage).substr(0, 4) + "%";
 
