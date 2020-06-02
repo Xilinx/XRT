@@ -227,6 +227,42 @@ WriteCallLogger::~WriteCallLogger()
     cb(HalCallbackType::WRITE_END, &payload);
 }
 
+
+RegReadCallLogger::RegReadCallLogger(xclDeviceHandle handle, uint32_t ipIndex, uint32_t offset) 
+    : CallLogger(global_idcode)
+{
+    if (!cb_valid()) return;
+    global_idcode++;    // increment only if valid calllback
+    ReadWriteCBPayload payload = {{m_local_idcode, handle}, 0};
+    cb(HalCallbackType::REG_READ_START, &payload);
+}
+
+RegReadCallLogger::~RegReadCallLogger()
+{
+    if (!cb_valid()) return;
+
+    CBPayload payload = {m_local_idcode, 0};
+    cb(HalCallbackType::REG_READ_END, &payload);
+}
+
+RegWriteCallLogger::RegWriteCallLogger(xclDeviceHandle handle, uint32_t ipIndex, uint32_t offset) 
+    : CallLogger(global_idcode)
+{
+    if (!cb_valid()) return;
+    global_idcode++;    // increment only if valid calllback
+    ReadWriteCBPayload payload = { {m_local_idcode, handle}, 0};
+    cb(HalCallbackType::REG_WRITE_START, (void*)(&payload));
+}
+
+RegWriteCallLogger::~RegWriteCallLogger()
+{
+    if (!cb_valid()) return;
+
+    CBPayload payload = {m_local_idcode, 0};
+    cb(HalCallbackType::REG_WRITE_END, &payload);
+}
+
+
 ProbeCallLogger::ProbeCallLogger() 
     : CallLogger(global_idcode)
 {

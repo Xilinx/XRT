@@ -50,6 +50,10 @@ public:
   ~FreeBOCallLogger();
 };
 
+/**
+ * WriteBOCallLogger logs two events : 1 for the API call and 1 for the buffer transfer.
+ * So, in addition to CallLogger:m_local_idcode, it needs another unique identifier for buffer transfer.
+ */
 class WriteBOCallLogger : public CallLogger
 {
   uint64_t m_buffer_transfer_id;
@@ -58,6 +62,10 @@ public:
   ~WriteBOCallLogger();
 };
 
+/**
+ * ReadBOCallLogger logs two events : 1 for the API call and 1 for the buffer transfer.
+ * So, in addition to CallLogger:m_local_idcode, it needs another unique identifier for buffer transfer.
+ */
 class ReadBOCallLogger : public CallLogger
 {
   uint64_t m_buffer_transfer_id;
@@ -104,10 +112,6 @@ public:
   ~UnmgdPreadCallLogger();
 };
 
-/**
- * ReadCallLogger logs two events : 1 for the API call and 1 for the buffer transfer.
- * So, in addition to CallLogger:m_local_idcode, it needs another unique identifier for buffer transfer.
- */
 class ReadCallLogger : public CallLogger
 {
 public:
@@ -115,15 +119,25 @@ public:
   ~ReadCallLogger();
 };
 
-/**
- * WriteCallLogger logs two events : 1 for the API call and 1 for the buffer transfer.
- * So, in addition to CallLogger:m_local_idcode, it needs another unique identifier for buffer transfer.
- */
 class WriteCallLogger : public CallLogger
 {
 public:
   WriteCallLogger(xclDeviceHandle handle, size_t size /*, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size*/);
   ~WriteCallLogger();
+};
+
+class RegReadCallLogger : public CallLogger
+{
+public:
+  RegReadCallLogger(xclDeviceHandle handle,  uint32_t ipIndex, uint32_t offset);
+  ~RegReadCallLogger();
+};
+
+class RegWriteCallLogger : public CallLogger
+{
+public:
+  RegWriteCallLogger(xclDeviceHandle handle,  uint32_t ipIndex, uint32_t offset);
+  ~RegWriteCallLogger();
 };
 
 class ProbeCallLogger : public CallLogger
@@ -210,6 +224,8 @@ void warning_hal_callbacks() ;
 #define UNMGD_PREAD_CB  xdphal::UnmgdPreadCallLogger  unnmgd_pread_call_logger(handle, flags, buf, count, offset);
 #define WRITE_CB xdphal::WriteCallLogger write_call_logger(handle, size /*, space, offset, hostBuf */);
 #define READ_CB  xdphal::ReadCallLogger  read_call_logger(handle, size /*, space, offset, hostBuf*/);
+#define REG_WRITE_CB xdphal::RegWriteCallLogger reg_write_call_logger(handle, ipIndex, offset);
+#define REG_READ_CB  xdphal::RegReadCallLogger  reg_read_call_logger(handle, ipIndex, offset);
 #define PROBE_CB xdphal::ProbeCallLogger probe_call_logger();
 #define LOCK_DEVICE_CB   xdphal::LockDeviceCallLogger   lock_device_call_logger(handle);
 #define UNLOCK_DEVICE_CB xdphal::UnLockDeviceCallLogger unlock_device_call_logger(handle);
