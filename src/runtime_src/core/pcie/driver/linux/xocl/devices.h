@@ -2421,7 +2421,8 @@ struct xocl_subdev_map {
 		.flags = XOCL_DSAFLAG_DYNAMIC_IP, 			\
 		.subdev_info	= RES_USER_VSEC,			\
 		.subdev_num = ARRAY_SIZE(RES_USER_VSEC),		\
-		.board_name = "u250"					\
+		.board_name = "u250",					\
+		.p2p_bar_sz = 64,					\
 	}
 
 #define	XOCL_BOARD_U250_MGMT_RAPTOR2					\

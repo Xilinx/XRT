@@ -1020,9 +1020,11 @@ int pcidev::shutdown(std::shared_ptr<pcidev::pci_device> mgmt_dev, bool remove_u
     return -ETIMEDOUT;
 }
 
-bool pcidev::is_p2p_enabled(std::shared_ptr<pcidev::pci_device> dev, std::string &err)
+int pcidev::check_p2p_config(std::shared_ptr<pcidev::pci_device> dev, std::string &err)
 {
     std::string errmsg;
+    int ret = P2P_CONFIG_DISABLED;
+
     if (dev->is_mgmt) {
         return -EINVAL;
     }
@@ -1039,32 +1041,49 @@ bool pcidev::is_p2p_enabled(std::shared_ptr<pcidev::pci_device> dev, std::string
         {
             const char *str = p2p_cfg[i].c_str();
             std::sscanf(str, "bar:%lld", &bar);
-            std::sscanf(str, "rbar:%lld", &bar);
-            std::sscanf(str, "remap:%lld", &bar);
+            std::sscanf(str, "rbar:%lld", &rbar);
+            std::sscanf(str, "remap:%lld", &remap);
         }
         if (bar == -1)
         {
+            ret = P2P_CONFIG_NOT_SUPP;
             err = "ERROR: P2P is not supported. Cann't find P2P BAR.";
         }
-        if (rbar != -1 && rbar != bar)
+	else if (rbar != -1 && rbar > bar)
         {
-            err = "ERROR: P2P BAR is resized. Please warm reboot";
+            ret = P2P_CONFIG_REBOOT;
+            err = "Please WARM reboot to enable p2p now.";
+	}
+       	else if (remap > 0 && remap != bar)
+        {
+            ret = P2P_CONFIG_ERROR;
+            err = "ERROR: P2P remapper is not set correctly";
         }
-        if (remap != -1 && remap != bar)
+        else if (remap != 0)
         {
-            throw std::runtime_error("ERROR: P2P remapper is not set correctly");
+            ret = P2P_CONFIG_ENABLED;
         }
 
-	return err.empty() ? true : false;
+        return ret;
     }
 
     int p2p_enabled = 0;
     dev->sysfs_get<int>("", "p2p_enable", errmsg, p2p_enabled, 0);
-    if (p2p_enabled != 1)
-    {
-        err = "ERROR: P2P is not enabled";
-        return false;
+    if (p2p_enabled == ENOSPC) {
+        ret = P2P_CONFIG_ERROR;
+        err = "ERROR: Not enough iomem space. Please check BIOS settings";
+    } else if (p2p_enabled == EBUSY) {
+        ret = P2P_CONFIG_REBOOT;
+        err = "Please WARM reboot to enable p2p now.";
+    } else if (p2p_enabled == ENXIO) {
+        ret = P2P_CONFIG_NOT_SUPP;
+        err = "ERROR: P2P is not supported on this platform";
+    } else if (p2p_enabled == 1) {
+        ret = P2P_CONFIG_ENABLED;
+    } else if (p2p_enabled != 0) {
+        ret = P2P_CONFIG_ERROR;
+        err = "ERROR: " + std::string(strerror(std::abs(p2p_enabled)));
     }
 
-    return true;
+    return ret;
 }

@@ -1129,11 +1129,25 @@ int shim::p2pEnable(bool enable, bool force)
 {
     const std::string input = "1\n";
     std::string err;
+    std::vector<std::string> p2p_cfg;
 
-    if (enable)
-        mDev->sysfs_put("", "p2p_enable", err, "1");
-    else
-        mDev->sysfs_put("", "p2p_enable", err, "0");
+    if (mDev == nullptr)
+        return -EINVAL;
+
+    mDev->sysfs_get("p2p", "config", err, p2p_cfg);
+    if (err.empty()) {
+        /* write 0 to config for default bar size */
+        if (enable)
+            mDev->sysfs_put("p2p", "config", err, "0");
+        else
+            mDev->sysfs_put("p2p", "config", err, "-1");
+    } else {
+        if (enable)
+            mDev->sysfs_put("", "p2p_enable", err, "1");
+        else
+            mDev->sysfs_put("", "p2p_enable", err, "0");
+    }
+
 
     if (force) {
         dev_fini();
@@ -1151,10 +1165,12 @@ int shim::p2pEnable(bool enable, bool force)
         dev_init();
     }
 
-    int p2p_enable = EINVAL;
-    mDev->sysfs_get<int>("", "p2p_enable", err, p2p_enable, EINVAL);
+    check_p2p_config(mDev, err);
+    if (!err.empty()) {
+        throw std::runtime_error(err);
+    }
 
-    return p2p_enable;
+    return 0;
 }
 
 int shim::cmaEnable(bool enable, uint64_t size)

@@ -194,8 +194,6 @@ static void p2p_mem_chunk_release(struct p2p *p2p, struct p2p_mem_chunk *chk)
 {
 	struct pci_dev *pdev = XOCL_PL_TO_PCI_DEV(p2p->pdev);
 
-	//BUG_ON(!mutex_is_locked(&p2p->p2p_lock));
-
 	/*
 	 * When reseration fails, error handling could bring us here with
 	 * ref == 0. Since we've already cleaned up during reservation error
@@ -206,10 +204,8 @@ static void p2p_mem_chunk_release(struct p2p *p2p, struct p2p_mem_chunk *chk)
 
 	chk->xpmc_ref--;
 	if (chk->xpmc_ref == 0) {
-		if (chk->xpmc_va)
+		if (chk->xpmc_res_grp)
 			devres_release_group(&pdev->dev, chk->xpmc_res_grp);
-		else if (chk->xpmc_res_grp)
-			devres_remove_group(&pdev->dev, chk->xpmc_res_grp);
 		else
 			BUG_ON(1);
 
@@ -229,7 +225,6 @@ static int p2p_mem_chunk_reserve(struct p2p *p2p, struct p2p_mem_chunk *chk)
 	struct percpu_ref *pref = &chk->xpmc_percpu_ref;
 	int ret;
 
-	//BUG_ON(!mutex_is_locked(&p2p->p2p_lock));
 	BUG_ON(chk->xpmc_ref < 0);
 
 	if (chk->xpmc_ref > 0) {
@@ -432,6 +427,7 @@ static int p2p_mem_fini(struct p2p *p2p)
 		vfree(p2p->p2p_remap_slots);
 	p2p->remap_slot_num = 0;
 	p2p->p2p_remap_slots = NULL;
+	p2p->remap_range = 0;
 
 	/* Reset Virtualization registers */
 	(void) p2p_read_addr_mgmtpf(p2p);
@@ -469,8 +465,11 @@ static int p2p_mem_init(struct p2p *p2p)
 	}
 
 	/* init remapper */
-	if (!p2p->remapper)
+	if (!p2p->remapper) {
+		/* assume remap the entired bar */
+		p2p->remap_range = p2p->p2p_bar_len;
 		goto done;
+	}
 
 	p2p->remap_range = remap_get_max_slot_sz(p2p) *
 		remap_get_max_slot_num(p2p);
@@ -582,11 +581,11 @@ done:
 static int p2p_reserve_release(struct p2p *p2p, ulong off, ulong sz,
 	       bool reserve)
 {
-	int start_index = off / XOCL_P2P_CHUNK_SIZE;
-	int num_chunks = ALIGN((off % XOCL_P2P_CHUNK_SIZE) + sz,
+	ulong start_index = off / XOCL_P2P_CHUNK_SIZE;
+	ulong num_chunks = ALIGN((off % XOCL_P2P_CHUNK_SIZE) + sz,
 			XOCL_P2P_CHUNK_SIZE) / XOCL_P2P_CHUNK_SIZE;
 	struct p2p_mem_chunk *chk = p2p->p2p_mem_chunks;
-	int i, ret = 0;
+	long i, ret = 0;
 
 	/* Make sure P2P is init'ed before we do anything. */
 	if (p2p->p2p_mem_chunk_num == 0)
@@ -594,13 +593,12 @@ static int p2p_reserve_release(struct p2p *p2p, ulong off, ulong sz,
 
 	for (i = start_index; i < start_index + num_chunks; i++) {
 		if (reserve)
-			ret = p2p_mem_chunk_reserve(p2p, chk);
+			ret = p2p_mem_chunk_reserve(p2p, &chk[i]);
 		else
-			p2p_mem_chunk_release(p2p, chk);
+			p2p_mem_chunk_release(p2p, &chk[i]);
 
 		if (ret)
 			break;
-		chk++;
 	}
 
 	/* Undo reserve, if failed. */
@@ -616,10 +614,12 @@ static void p2p_bar_unmap(struct p2p *p2p, ulong bar_off)
 {
 	struct p2p_remap_slot *slot;
 	ulong idx = bar_off / p2p->remap_slot_sz;
+	ulong num;
 	int i;
 
 	slot = p2p->p2p_remap_slots;
-	for (i = slot[idx].head_slot; i < slot[idx].slot_num; i++) {
+	num = slot[idx].slot_num;
+	for (i = slot[idx].head_slot; i < num; i++) {
 		slot[i].ref--;
 		slot[i].head_slot = 0;
 		slot[i].slot_num = 0;
@@ -680,9 +680,12 @@ static int p2p_mem_unmap(struct platform_device *pdev, ulong bar_off,
 {
 	struct p2p *p2p = platform_get_drvdata(pdev);
 
-	p2p_reserve_release(p2p, bar_off, len, false);
+	mutex_lock(&p2p->p2p_lock);
 
+	p2p_reserve_release(p2p, bar_off, len, false);
 	p2p_bar_unmap(p2p, bar_off);
+
+	mutex_unlock(&p2p->p2p_lock);
 
 	return 0;
 }
@@ -701,22 +704,27 @@ static int p2p_mem_map(struct platform_device *pdev,
 	p2p_info(p2p, "map bank addr 0x%lx, size %ld, offset %ld, len %ld",
 			bank_addr, bank_size, offset, len);
 
+	mutex_lock(&p2p->p2p_lock);
 	bank_off = p2p_bar_map(p2p, bank_addr, bank_size);
 	if (bank_off < 0) {
 		p2p_err(p2p, "alloc remap slot failed");
-		return -ENOENT;
+		ret = -ENOENT;
+		goto failed;
 	}
 
 	ret = p2p_reserve_release(p2p, bank_off + offset, len, true);
 	if (ret) {
 		p2p_err(p2p, "reserve p2p chunks failed ret = %d", ret);
 		p2p_bar_unmap(p2p, bank_off);
-		return -ENOENT;
+		goto failed;
 	}
 
 	*bar_off = bank_off + offset;
+
 	p2p_info(p2p, "map bar offset %ld", *bar_off);
 
+failed:
+	mutex_unlock(&p2p->p2p_lock);
 	return ret;
 }
 
@@ -727,10 +735,12 @@ static int p2p_mem_get_pages(struct platform_device *pdev,
 	struct p2p_mem_chunk *chunk = p2p->p2p_mem_chunks;
 	ulong i;
 	ulong offset;
+	int ret = 0;
 
 	p2p_info(p2p, "bar_off: %ld, size %ld, npages %ld",
 		bar_off, size, npages);
 
+	mutex_lock(&p2p->p2p_lock);
 	for (i = 0, offset = bar_off; i < npages; i++, offset += PAGE_SIZE) {
 		int idx = offset >> XOCL_P2P_CHUNK_SHIFT;
 		void *addr = chunk[idx].xpmc_va;
@@ -739,11 +749,13 @@ static int p2p_mem_get_pages(struct platform_device *pdev,
 		pages[i] = virt_to_page(addr);
 		if (IS_ERR(pages[i])) {
 			p2p_err(p2p, "get p2p pages failed");
-			return -EINVAL;
+			ret = -EINVAL;
+			break;
 		}
 	}
+	mutex_unlock(&p2p->p2p_lock);
 
-	return 0;
+	return ret;
 }
 
 struct xocl_p2p_funcs p2p_ops = {
@@ -756,15 +768,28 @@ static ssize_t config_store(struct device *dev, struct device_attribute *da,
 		const char *buf, size_t count)
 {
 	struct p2p *p2p = platform_get_drvdata(to_platform_device(dev));
-	ulong range;
+	xdev_handle_t xdev = xocl_get_xdev(p2p->pdev);
+	long range;
 	int ret;
 
-	if (kstrtoul(buf, 10, &range)) {
+	if (kstrtol(buf, 10, &range)) {
 		p2p_err(p2p, "invalid input");
 		return -EINVAL;
 	}
 
+	if (range == 0 && XDEV(xdev)->priv.p2p_bar_sz > 0) {
+		/*  used hardcoded range */
+		range = XDEV(xdev)->priv.p2p_bar_sz << 30;
+	} else if (range == -1) {
+		mutex_lock(&p2p->p2p_lock);
+		p2p_mem_fini(p2p);
+		mutex_unlock(&p2p->p2p_lock);
+		return count;
+	} 
+
+	mutex_lock(&p2p->p2p_lock);
 	ret = p2p_configure(p2p, range);
+	mutex_unlock(&p2p->p2p_lock);
 	if (ret)
 		return ret;
 
@@ -779,6 +804,7 @@ static ssize_t config_show(struct device *dev,
 	int ret;
 	ssize_t count;
 
+	mutex_lock(&p2p->p2p_lock);
 	count = sprintf(buf, "bar:%ld\n", p2p->p2p_bar_len);
 
 	ret = p2p_rbar_len(p2p, &rbar_len);
@@ -787,6 +813,7 @@ static ssize_t config_show(struct device *dev,
 
 	if (p2p->remapper)
 		count += sprintf(buf + count, "remap:%ld\n", p2p->remap_range);
+	mutex_unlock(&p2p->p2p_lock);
 
 	return count;
 }
