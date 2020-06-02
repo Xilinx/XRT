@@ -16,6 +16,7 @@
  */
 
 #include "../xocl_drv.h"
+#include "profile_ioctl.h"
 
 /************************ Accelerator Monitor (AM, earlier SAM) ************************/
 
@@ -47,20 +48,6 @@
 #define XAM_TRACE_STALL_SELECT_MASK    0x0000001c
 #define XAM_COUNTER_RESET_MASK         0x00000002
 #define XAM_DATAFLOW_EN_MASK           0x00000008
-
-struct am_counters {
-	/* execution count is end count*/
-	uint64_t end_count;
-	uint64_t start_count;
-	uint64_t exec_cycles;
-	uint64_t stall_int_cycles;
-	uint64_t stall_str_cycles;
-	uint64_t stall_ext_cycles;
-	uint64_t busy_cycles;
-	uint64_t max_parallel_iterations;
-	uint64_t max_exec_cycles;
-	uint64_t min_exec_cycles;
-};
 
 struct xocl_am {
 	void __iomem		*base;

@@ -16,6 +16,7 @@
  */
 
 #include "../xocl_drv.h"
+#include "profile_ioctl.h"
 
 /************************ AXI Interface Monitor (AIM, earlier SPM) ***********************/
 
@@ -64,26 +65,6 @@
 /* Debug IP layout properties mask bits */
 #define XAIM_HOST_PROPERTY_MASK                  0x4
 #define XAIM_64BIT_PROPERTY_MASK                 0x8
-
-enum AIM_COMMANDS
-{
-	AIM_RESET = 0,
-	AIM_START_COUNTERS = 1,
-	AIM_READ_COUNTERS = 2,
-	AIM_STOP_COUNTERS = 3,
-	AIM_START_TRACE = 4
-};
-
-struct aim_counters {
-	uint64_t wr_bytes;
-	uint64_t wr_tranx;
-	uint64_t wr_latency;
-	uint64_t wr_busy_cycles;
-	uint64_t rd_bytes;
-	uint64_t rd_tranx;
-	uint64_t rd_latency;
-	uint64_t rd_busy_cycles;
-};
 
 struct xocl_aim {
 	void __iomem		*base;
@@ -161,12 +142,12 @@ static long stop_counters(struct xocl_aim *aim)
 
 static long start_trace(struct xocl_aim *aim, void __user *arg)
 {
-	unsigned int options = 0;
+	uint32_t options = 0;
 	uint32_t regValue = 0;
-    if (copy_from_user(&options, arg, sizeof(unsigned int)))
-    {
-        return -EFAULT;
-    }
+	if (copy_from_user(&options, arg, sizeof(uint32_t)))
+	{
+		return -EFAULT;
+	}
 	regValue = options & XAIM_TRACE_CTRL_MASK;
 	XOCL_WRITE_REG32(regValue, aim->base + XAIM_TRACE_CTRL_OFFSET);
 	return 0;
@@ -348,25 +329,26 @@ long aim_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	data = (void __user *)(arg);
 
 	mutex_lock(&aim->lock);
+	xocl_err(aim->dev, "requested cmd %d",cmd);
 
 	switch (cmd) {
-	case AIM_RESET:
+	case AIM_IOC_RESET:
 		result = reset_counters(aim);
 		xocl_err(aim->dev, "ioctl 0, do reset");
 		break;
-	case AIM_START_COUNTERS:
+	case AIM_IOC_STARTCNT:
 		result = start_counters(aim);
 		xocl_err(aim->dev, "ioctl 1, start ctrs");
 		break;
-	case AIM_READ_COUNTERS:
+	case AIM_IOC_READCNT:
 		result = read_counters(aim, data);
 		xocl_err(aim->dev, "ioctl 2, read ctrs");
 		break;
-	case AIM_STOP_COUNTERS:
+	case AIM_IOC_STOPCNT:
 		result = stop_counters(aim);
 		xocl_err(aim->dev, "ioctl 3, stop ctrs");
 		break;
-	case AIM_START_TRACE:
+	case AIM_IOC_STARTTRACE:
 		result = start_trace(aim, data);
 		xocl_err(aim->dev, "ioctl 4, start trace");
 		break;

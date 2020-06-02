@@ -16,6 +16,7 @@
  */
 
 #include "../xocl_drv.h"
+#include "profile_ioctl.h"
 
 /************************** AXI Stream Monitor (ASM, earlier SSPM) *********************/
 
@@ -29,14 +30,6 @@
 
 /* SSPM Control Mask */
 #define XASM_COUNTER_RESET_MASK       0x00000001
-
-struct asm_counters {
-	uint64_t num_tranx;
-	uint64_t data_bytes;
-	uint64_t busy_cycles;
-	uint64_t stall_cycles;
-	uint64_t starve_cycles;
-};
 
 struct xocl_asm {
 	void __iomem		*base;
