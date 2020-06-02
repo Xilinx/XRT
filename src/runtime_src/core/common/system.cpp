@@ -39,7 +39,7 @@ namespace xrt_core {
 // Singleton is initialized when libxrt_core is loaded
 // A concrete system object is constructed during static
 // global initialization.  Lifetime is until core library
-// is unloaded. 
+// is unloaded.
 system* singleton = nullptr;
 
 system::
@@ -99,7 +99,7 @@ get_userpf_device(device::id_type id)
   // Repackage raw ptr in new shared ptr with deleter that calls xclClose,
   // but leaves device object alone. The returned device is managed in that
   // it calls xclClose when going out of scope.
-  auto close = [] (auto d) { d->close_device(); };
+  auto close = [] (xrt_core::device* d) { d->close_device(); };
   return {device.get(), close};
 }
 
@@ -131,7 +131,7 @@ get_userpf_device(device::handle_type handle, device::id_type id)
   userpf_device_map[handle] = device;  // create or replace
   return device;
 }
-  
+
 std::shared_ptr<device>
 get_mgmtpf_device(device::id_type id)
 {
