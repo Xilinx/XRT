@@ -109,7 +109,9 @@
 
 #define	SELF_JUMP(ins)			(((ins) & 0xfc00ffff) == 0xb8000000)
 #define	XMC_PRIVILEGED(xmc)		((xmc)->base_addrs[0] != NULL)
-
+#define	VALID_MAGIC(val) 		(val == VALID_ID)
+#define	VALID_CMC_VERSION(val) 		((val & 0xff000000) == 0x0c000000)
+#define	VALID_CORE_VERSION(val) 	((val & 0xff000000) == 0x0c000000)
 #define	XMC_DEFAULT_EXPIRE_SECS	1
 
 //Clock scaling registers
@@ -3459,19 +3461,29 @@ static bool is_stablized_sc(struct xocl_xmc *xmc)
 	val = READ_REG32(xmc, XMC_STATUS_REG);
 	status = (struct xmc_status *)&val;
 
-	return !status->invalid_sc &&
-	    status->init_done == 1 &&
-	    status->sc_mode > 0 &&
-	    status->sc_comm_ver > 0;
+	return (!status->invalid_sc) &&
+	    (status->init_done == 1) &&
+	    (status->sc_mode > 0) &&
+	    (status->sc_comm_ver > 0);
 }
 
 static bool stable_connection_to_sc(struct xocl_xmc *xmc)
 {
-	u32 xmc_core_version;
+	u32 xmc_core_version = 0;
 
-	xmc_core_version = READ_REG32(xmc, XMC_CORE_VERSION_REG);
-	xocl_info(&xmc->pdev->dev, "CMC Core Version 0x%x offset 0x%x",
-	    xmc_core_version, XMC_CORE_VERSION_REG);
+	/*
+	 * How to define a cmc_core_version:
+	 *   XMC_MAGIC_REG is magjc number 0x74736574
+	 *   XMC_VERSION_REG start from 0x0c000000
+	 *   XMC_CORE_VERSION_REG starr from 0x0c000000
+	 */
+	if (VALID_MAGIC(READ_REG32(xmc, XMC_MAGIC_REG)) &&
+	    VALID_CMC_VERSION(READ_REG32(xmc, XMC_CORE_VERSION_REG)) &&
+	    VALID_CORE_VERSION(READ_REG32(xmc, XMC_CORE_VERSION_REG))) {
+		xmc_core_version = READ_REG32(xmc, XMC_CORE_VERSION_REG);
+	}
+
+	xocl_info(&xmc->pdev->dev, "CMC Core Version 0x%x", xmc_core_version);
 
 	if (xmc_core_version >= XMC_CORE_SUPPORT_NOTUPGRADABLE) {
 		int i;
