@@ -162,6 +162,7 @@ DebugIpStatusCollector::DebugIpStatusCollector(xclDeviceHandle h)
   // By default, enable status collection for all Debug IP types
   std::fill(debugIpOpt, debugIpOpt + maxDebugIpType, true);
 
+#ifdef _WIN32
   size_t sz1 = 0, sectionSz = 0;
   // Get the size of full debug_ip_layout
   xclGetDebugIpLayout(handle, nullptr, sz1, &sectionSz);
@@ -174,6 +175,36 @@ DebugIpStatusCollector::DebugIpStatusCollector(xclDeviceHandle h)
   // Allocate buffer to retrieve debug_ip_layout information from loaded xclbin
   map.resize(sectionSz);
   xclGetDebugIpLayout(handle, map.data(), sectionSz, &sz1);
+#else
+  std::vector<char> layoutPath;
+  layoutPath.resize(512);
+  xclGetDebugIPlayoutPath(handle, layoutPath.data(), 512);
+  std::string path(layoutPath.data());
+
+  if(path.empty()) {
+    // error ? : for HW_emu this will be empty for now ; but as of current status should not have been called 
+    std::cout << "INFO: Failed to find path to Debug IP Layout. "
+              << "Ensure that a valid bitstream with debug IPs (AIM, LAPC) is successfully downloaded. \n"
+              << std::endl;
+    return;
+  }
+
+  std::ifstream ifs(path.c_str(), std::ifstream::binary);
+  if(!ifs) {
+    return;
+  }
+
+  // debug_ip_layout max size is 65536
+  map.resize(65536);
+  ifs.read(map.data(), 65536);
+
+  if (ifs.gcount() <= 0) {
+    std::cout << "INFO: Failed to find any Debug IP Layout section in the bitstream loaded on device. "
+              << "Ensure that a valid bitstream with debug IPs (AIM, LAPC) is successfully downloaded. \n"
+              << std::endl;
+  }
+
+#endif
 }
 
 
