@@ -1135,10 +1135,17 @@ int shim::p2pEnable(bool enable, bool force)
         return -EINVAL;
 
     /* write 0 to config for default bar size */
-    if (enable)
+    if (enable) {
         mDev->sysfs_put("p2p", "config", err, "0");
-    else
+        if (!err.empty()) { 
+            throw std::runtime_error("P2P is not supported");
+        }
+     } else {
         mDev->sysfs_put("p2p", "config", err, "-1");
+        if (!err.empty()) { 
+            throw std::runtime_error("P2P is not supported");
+        }
+     }
 
 
     if (force) {
