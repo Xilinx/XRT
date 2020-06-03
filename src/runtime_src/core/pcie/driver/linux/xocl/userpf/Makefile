@@ -41,6 +41,7 @@ endif
 endif
 
 drv_common-y   := $(common_dir)/kds_core.o \
+		  $(common_dir)/kds_cu_ctrl.o \
 		  $(common_dir)/xrt_cu.o \
 		  $(common_dir)/cu_hls.o \
 		  $(common_dir)/cu_plram.o

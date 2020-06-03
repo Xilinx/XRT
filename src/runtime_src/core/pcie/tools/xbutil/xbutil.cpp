@@ -1268,7 +1268,7 @@ int xcldev::device::scVersionTest(void)
 
     pcidev::get_dev(m_idx)->sysfs_get("xmc", "bmc_ver", errmsg, sc_ver);
     pcidev::get_dev(m_idx)->sysfs_get("xmc", "exp_bmc_ver", errmsg, exp_sc_ver);
-    if (!exp_sc_ver.empty() && sc_ver.compare(exp_sc_ver) != 0)
+    if (!exp_sc_ver.empty() && (sc_ver.compare(exp_sc_ver) != 0 || sc_ver.empty()))
     {
         std::cout << "SC FIRMWARE MISMATCH, ATTENTION" << std::endl;
         std::cout << "SC firmware running on board: " << sc_ver << ". Expected SC firmware from installed Shell: " << exp_sc_ver << std::endl;
@@ -2236,34 +2236,20 @@ iops_alloc_init_bo(xclDeviceHandle handle, int bank, exec_struct* info)
 
 static void
 execute_cmds(xclDeviceHandle handle, std::vector<std::shared_ptr<exec_struct>>& cmds,
-    unsigned int num_execs, double& duration)
+    double& duration)
 {
-    unsigned int num_issued = 0;
-    unsigned int num_completed = 0;
     auto start = std::chrono::high_resolution_clock::now();
     for (auto& c : cmds) {
         if(xclExecBuf(handle, c->exec_bo_handle))
             throw std::runtime_error("Unable to issue exec buf");
-        num_issued++;
     }
-    while (num_completed < num_execs) {
-        for (auto& c : cmds) {
-            // c->wait();
-            while (c->exec_bo_ptr->state < ERT_CMD_STATE_COMPLETED) {
-                while (xclExecWait(handle, -1) == 0);
-            }
-            if(c->exec_bo_ptr->state != ERT_CMD_STATE_COMPLETED)
-                throw std::runtime_error("CU execution failed");
-                //wait end
-            num_completed++;
-            if (num_completed >= num_execs)
-                break;
-            if (num_issued < num_execs) {
-                if(xclExecBuf(handle, c->exec_bo_handle))
-                    throw std::runtime_error("Unable to issue exec buf");
-                num_issued++;
-            }
+    for (auto& c : cmds) {
+        // c->wait();
+        while (c->exec_bo_ptr->state < ERT_CMD_STATE_COMPLETED) {
+            while (xclExecWait(handle, -1) == 0);
         }
+        if(c->exec_bo_ptr->state != ERT_CMD_STATE_COMPLETED)
+            throw std::runtime_error("CU execution failed");
     }
     auto end = std::chrono::high_resolution_clock::now();
     duration = (std::chrono::duration_cast<std::chrono::microseconds>
@@ -2272,9 +2258,10 @@ execute_cmds(xclDeviceHandle handle, std::vector<std::shared_ptr<exec_struct>>& 
 
 static void
 run_iops_test(xclDeviceHandle handle, std::vector<std::shared_ptr<exec_struct>>& cmds,
-    std::vector<double>& iops_list, int first_used_mem, unsigned int cmd_per_batch, unsigned int num_execs)
+    std::vector<double>& iops_list, int first_used_mem, unsigned int cmd_per_batch)
 {
     double duration = 0;
+    double total = 0;
     for (unsigned int i = 0; i < cmd_per_batch; i++) {
         exec_struct info = {0};
         iops_alloc_init_bo(handle, first_used_mem, &info);
@@ -2282,8 +2269,12 @@ run_iops_test(xclDeviceHandle handle, std::vector<std::shared_ptr<exec_struct>>&
         cmds.push_back(p);
     }
 
-    // Execute the cmds
-    execute_cmds(handle, cmds, num_execs, duration);
+    // Execute the cmds 5 times and get average duration
+    for (int i = 0; i < 5; i++) {
+        execute_cmds(handle, cmds, duration);
+        total += duration;
+    }
+    duration = total / 5.0;
 
     //verify
     for(auto& c : cmds) {
@@ -2292,8 +2283,8 @@ run_iops_test(xclDeviceHandle handle, std::vector<std::shared_ptr<exec_struct>>&
         if (strncmp(c->output_bo_ptr, "Hello World", 11))
             throw std::runtime_error("Bad output result after CU execution");
     }
-    iops_list.push_back(num_execs * 1000 * 1000 / duration);
-    // std::cout << "Combos: b: " << b << " t: " << t << " iops: " << (t * 1000 * 1000 / duration) << std::endl;
+    iops_list.push_back(cmds.size() * 1000 * 1000 / duration);
+    std::cout << "Commands: " << cmds.size() << " iops: " << (cmds.size() * 1000 * 1000 / duration) << std::endl;
 }
 
 int
@@ -2307,8 +2298,7 @@ xcldev::device::iopsTest()
         return -EINVAL;
 
     std::vector<std::shared_ptr<exec_struct>> cmds;
-    std::vector<unsigned int> cmd_per_batch = { 8,16,32,64,128,256,1024,2048 }; //b
-    std::vector<unsigned int> num_execs = { 8,16,32,64,128,256,1024,2048 }; //t
+    std::vector<unsigned int> cmd_per_batch = { 10,40,50,900,1000,2000,3000,4000,5000,10000 }; //b
     std::vector<double> iops_list;
 
     if(xclOpenContext(m_handle, xclbin_lock.m_uuid, 0, true))
@@ -2316,13 +2306,8 @@ xcldev::device::iopsTest()
 
     //run different combinations
     for(const auto& b : cmd_per_batch) {
-        for(const auto& t : num_execs) {
-            run_iops_test(m_handle, cmds, iops_list, first_used_mem, b, t);
-        }
-        std::cout << "." << std::flush;
+        run_iops_test(m_handle, cmds, iops_list, first_used_mem, b);
     }
-
-    std::cout << "\nIOPS: " << static_cast<int>(*max_element(iops_list.begin(), iops_list.end())) << std::endl;
 
     // release all BOs
     for(auto& c : cmds) {

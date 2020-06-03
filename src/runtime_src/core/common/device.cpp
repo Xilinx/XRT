@@ -18,6 +18,7 @@
 #include "device.h"
 #include "error.h"
 #include "utils.h"
+#include "debug.h"
 #include "query_requests.h"
 #include "xclbin_parser.h"
 #include "core/include/xrt.h"
@@ -34,12 +35,14 @@ device::
 device(id_type device_id)
   : m_device_id(device_id)
 {
+  XRT_DEBUGF("xrt_core::device::device(0x%x) idx(%d)\n", this, device_id);
 }
 
 device::
 ~device()
 {
   // virtual must be declared and defined
+  XRT_DEBUGF("xrt_core::device::~device(0x%x) idx(%d)\n", this, m_device_id);
 }
 
 std::string
@@ -63,7 +66,7 @@ device::
 register_axlf(const axlf* top)
 {
   uuid_copy(m_xclbin_uuid, top->m_header.uuid);
-  axlf_section_kind kinds[] = {EMBEDDED_METADATA, AIE_METADATA, IP_LAYOUT};
+  axlf_section_kind kinds[] = {EMBEDDED_METADATA, AIE_METADATA, IP_LAYOUT, CONNECTIVITY, MEM_TOPOLOGY};
   for (auto kind : kinds) {
     auto hdr = ::xclbin::get_axlf_section(top, kind);
     if (!hdr)
@@ -72,6 +75,9 @@ register_axlf(const axlf* top)
     std::vector<char> data{section_data, section_data + hdr->m_sectionSize};
     m_axlf_sections.emplace(kind , std::move(data));
   }
+
+  // Build modified CONNECTIVITY and MEM_TOPOLOGY section based on memory group ids
+  // Base groups off data from driver
 }
 
 std::pair<const char*, size_t>

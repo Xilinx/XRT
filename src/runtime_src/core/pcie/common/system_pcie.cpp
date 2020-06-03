@@ -36,7 +36,7 @@ get_devices(boost::property_tree::ptree& pt) const
     pt_device.put("device_id", std::to_string(device_id));
 
     // Key: pcie
-    auto device = get_userpf_device(device_id);
+    auto device = xrt_core::get_userpf_device(device_id);
     boost::property_tree::ptree pt_pcie;
     device->get_info(pt_pcie);
     pt_device.add_child("pcie", pt_pcie);

@@ -1372,6 +1372,11 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     }
     mFdToFileNameMap.clear();
 
+    // Shim object is not deleted as part of closing device.
+    // The core device must correspond to open and close, so
+    // reset here rather than in destructor
+    mCoreDevice.reset();
+
     if (!sock) 
     {
       if( xclemulation::config::getInstance()->isKeepRunDirEnabled() == false)
@@ -1641,8 +1646,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
   }
 
   HwEmShim::HwEmShim( unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool _unified, bool _xpr, FeatureRomHeader &fRomHeader)
-    :mCoreDevice(xrt_core::hwemu::get_userpf_device(this, deviceIndex))
-    ,mRAMSize(info.mDDRSize)
+    :mRAMSize(info.mDDRSize)
     ,mCoalesceThreshold(4)
     ,mDSAMajorVersion(DSA_MAJOR_VERSION)
     ,mDSAMinorVersion(DSA_MINOR_VERSION)
@@ -1986,6 +1990,11 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       mGlobalInMemStream.open("global_in.mem");
       mGlobalOutMemStream.open("global_out.mem");
     }
+
+    // Shim object creation doesn't follow xclOpen/xclClose.
+    // The core device must correspond to open and close, so
+    // create here rather than in constructor
+    mCoreDevice = xrt_core::hwemu::get_userpf_device(this, mDeviceIndex);
   }
 
 /**********************************************HAL2 API's START HERE **********************************************/

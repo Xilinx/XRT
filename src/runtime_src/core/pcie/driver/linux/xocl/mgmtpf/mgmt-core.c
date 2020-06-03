@@ -53,6 +53,15 @@ module_param(minimum_initialization, int, (S_IRUGO|S_IWUSR));
 MODULE_PARM_DESC(minimum_initialization,
 	"Enable minimum_initialization to force driver to load without vailid firmware or DSA. Thus xbsak flash is able to upgrade firmware. (0 = normal initialization, 1 = minimum initialization)");
 
+#if defined(__PPC64__)
+int xrt_reset_syncup = 1;
+#else
+int xrt_reset_syncup;
+#endif
+module_param(xrt_reset_syncup, int, (S_IRUGO|S_IWUSR));
+MODULE_PARM_DESC(xrt_reset_syncup,
+        "Enable config space syncup for pci hot reset");
+
 #define	HI_TEMP			88
 #define	LOW_MILLVOLT		500
 #define	HI_MILLVOLT		2500
@@ -568,6 +577,8 @@ static int xclmgmt_icap_get_data_impl(struct xclmgmt_dev *lro, void *buf)
 	hwicap->data_retention = xocl_icap_get_data(lro, DATA_RETAIN);
 
 	XOCL_PUT_XCLBIN_ID(lro);
+
+	return 0;
 }
 
 static void xclmgmt_clock_get_data_impl(struct xclmgmt_dev *lro, void *buf)

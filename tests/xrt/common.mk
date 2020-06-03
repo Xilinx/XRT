@@ -1,12 +1,12 @@
 #lowlevel suite common makefile definitions
 
 ifdef XILINX_SDACCEL
- XILINX_SDX := $(XILINX_SDACCEL)
+ XILINX_VITIS := $(XILINX_SDACCEL)
 endif
 
-ifndef XILINX_SDX
+ifndef XILINX_VITIS
  ifneq ($(MAKECMDGOALS),exe)
-  $(error Environment variable XILINX_SDX should point to SDAccel install area)
+  $(error Environment variable XILINX_VITIS should point to Vitis install area)
  endif
 endif
 
@@ -27,7 +27,7 @@ COMMON_DIR := host_src
 
 AR := ar
 CPP := g++
-XOCC := $(XOCCWRAP) $(XILINX_SDX)/bin/xocc
+VPP := $(VPPWRAP) $(XILINX_VITIS)/bin/v++
 
 CXXFLAGS := -Wall -Werror -std=c++14
 # For DSAs with 64bit addressing
@@ -78,11 +78,11 @@ $(OBJS): $(ODIR)/%.o : %.$(CXX_EXT)
 
 $(CL_OBJS): $(ODIR)/%.xo : %.$(CL_EXT)
 	mkdir -p $(ODIR)
-	cd $(ODIR); $(XOCC) $(CLFLAGS) $(MYCLFLAGS) $(MYCLCFLAGS) -c -o $@ $(CURDIR)/$<
+	cd $(ODIR); $(VPP) $(CLFLAGS) $(MYCLFLAGS) $(MYCLCFLAGS) -c -o $@ $(CURDIR)/$<
 
 $(CL_XCLBIN): $(CL_OBJS)
 	mkdir -p $(ODIR)
-	cd $(ODIR); $(XOCC) $(CLFLAGS) $(MYCLFLAGS) $(MYCLLFLAGS) -l -o $@ $<
+	cd $(ODIR); $(VPP) $(CLFLAGS) $(MYCLFLAGS) $(MYCLLFLAGS) -l -o $@ $<
 
 ifdef LIBNAME
 
@@ -104,7 +104,7 @@ xclbin : $(CL_XCLBIN)
 exe : $(ODIR)/$(EXENAME)
 
 $(ODIR)/$(EXENAME): $(OBJS)
-	$(CXX) $(LDFLAGS) $(MYLDFLAGS) -o $@ $(OBJS)  -I${XILINX_XRT}/include  -L${XILINX_XRT}/lib -Wl,-rpath-link,${XILINX_XRT}/lib -lxrt_core -lxrt_coreutil -ldl -luuid -pthread
+	$(CXX) $(LDFLAGS) $(MYLDFLAGS) -o $@ $(OBJS)  -I${XILINX_XRT}/include  -L${XILINX_XRT}/lib -Wl,-rpath-link,${XILINX_XRT}/lib -lxrt_hwemu -lxrt_coreutil -ldl -luuid -pthread
 
 endif
 

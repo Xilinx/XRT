@@ -89,10 +89,6 @@ struct zdev_data {
 	char fpga_driver_name[64];
 };
 
-struct kds_sched {
-	struct kds_controller *ctrl[KDS_MAX_TYPE];
-};
-
 struct drm_zocl_dev {
 	struct drm_device       *ddev;
 	struct fpga_manager     *fpga_mgr;

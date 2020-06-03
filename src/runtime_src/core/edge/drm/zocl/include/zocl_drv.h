@@ -162,12 +162,12 @@ zocl_bo_execbuf(const struct drm_zocl_bo *bo)
 
 static inline void
 zocl_kds_setctrl(struct drm_zocl_dev *zdev, int type,
-		 struct kds_controller *ctrl)
+		 struct kds_ctrl *ctrl)
 {
 	zdev->kds.ctrl[type] = ctrl;
 }
 
-static inline struct kds_controller *
+static inline struct kds_ctrl *
 zocl_kds_getctrl(struct drm_zocl_dev *zdev, int type)
 {
 	return zdev->kds.ctrl[type];
@@ -200,6 +200,8 @@ int zocl_create_client(struct drm_zocl_dev *zdev, void **priv);
 void zocl_destroy_client(struct drm_zocl_dev *zdev, void **priv);
 uint zocl_poll_client(struct file *filp, poll_table *wait);
 int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
+		       struct drm_file *filp);
+int zocl_context_ioctl(struct drm_zocl_dev *zdev, void *data,
 		       struct drm_file *filp);
 
 /* CU controller */

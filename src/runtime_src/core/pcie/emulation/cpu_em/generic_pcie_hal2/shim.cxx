@@ -38,7 +38,6 @@ namespace xclcpuemhal2 {
  
   CpuemShim::CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool _unified, bool _xpr, FeatureRomHeader& fRomHeader)
     :mTag(TAG)
-    ,mCoreDevice(xrt_core::swemu::get_userpf_device(this, deviceIndex))
     ,mRAMSize(info.mDDRSize)
     ,mCoalesceThreshold(4)
     ,mDSAMajorVersion(DSA_MAJOR_VERSION)
@@ -929,6 +928,11 @@ namespace xclcpuemhal2 {
       mLogStream << "FUNCTION, THREAD ID, ARG..."  << std::endl;
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
+
+    // Shim object creation doesn't follow xclOpen/xclClose.
+    // The core device must correspond to open and close, so
+    // create here rather than in constructor
+    mCoreDevice = xrt_core::swemu::get_userpf_device(this, mDeviceIndex);
   }
 
   void CpuemShim::fillDeviceInfo(xclDeviceInfo2* dest, xclDeviceInfo2* src)
@@ -1013,6 +1017,12 @@ namespace xclcpuemhal2 {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
+
+    // Shim object is not deleted as part of closing device.
+    // The core device must correspond to open and close, so
+    // reset here rather than in destructor
+    mCoreDevice.reset();
+    
     if(!sock)
     {
       if( xclemulation::config::getInstance()->isKeepRunDirEnabled() == false)

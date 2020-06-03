@@ -53,14 +53,8 @@ lookup_query(query::key_type query_key) const
 }
 
 device::
-device(id_type device_id, bool user)
-  : shim<device_pcie>(device_id, user)
-{
-}
-
-device::
-device(handle_type device_handle, id_type device_id)
-  : shim<device_pcie>(device_handle, device_id)
+device(handle_type device_handle, id_type device_id, bool user)
+  : shim<device_pcie>(device_handle, device_id, user)
 {
 }
 

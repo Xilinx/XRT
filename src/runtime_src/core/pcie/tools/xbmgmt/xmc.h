@@ -121,6 +121,8 @@ private:
     unsigned long long mRegBase = 0;
     struct xmcPkt mPkt;
     std::stringstream mProbingErrMsg;
+    std::map<int, std::string> scStatusMap;
+    std::map<int, std::string> cmcStatusMap;
     int program(std::istream& tiTxtStream, const ELARecord& record);
     int erase();
     int sendPkt(bool print_dot);
@@ -131,6 +133,8 @@ private:
     bool isXMCReady();
     bool isBMCReady();
     bool hasSC();
+    void initSCStatusMap();
+    void initCMCStatusMap();
 
     // Upgrade SC firmware via driver.
     std::FILE *mXmcDev = nullptr;

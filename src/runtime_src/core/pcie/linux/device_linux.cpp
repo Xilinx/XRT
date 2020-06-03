@@ -242,6 +242,9 @@ initialize_query_table()
   emplace_sysfs_request<query::f_flash_type>              ("flash", "flash_type");
   emplace_sysfs_request<query::flash_type>                ("", "flash_type");
   emplace_sysfs_request<query::board_name>                ("", "board_name");
+  emplace_sysfs_request<query::logic_uuids>               ("", "logic_uuids");
+  emplace_sysfs_request<query::interface_uuids>           ("", "interface_uuids");
+
   emplace_func0_request<query::pcie_bdf,                  bdf>();
 }
 
@@ -265,14 +268,8 @@ lookup_query(query::key_type query_key) const
 }
 
 device_linux::
-device_linux(id_type device_id, bool user)
-  : shim<device_pcie>(device_id, user)
-{
-}
-
-device_linux::
-device_linux(handle_type device_handle, id_type device_id)
-  : shim<device_pcie>(device_handle, device_id)
+device_linux(handle_type device_handle, id_type device_id, bool user)
+  : shim<device_pcie>(device_handle, device_id, user)
 {
 }
 

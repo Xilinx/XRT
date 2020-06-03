@@ -79,11 +79,6 @@ static int initXRT( const char*bit,
     if (!bit || !std::strlen(bit))
         return 0;
 
-    if(xclLockDevice(handle)) {
-        throw std::runtime_error("Cannot lock device");
-        return -1;
-    }
-
     char tempFileName[1024];
     std::strcpy(tempFileName, bit);
     std::ifstream stream(bit);

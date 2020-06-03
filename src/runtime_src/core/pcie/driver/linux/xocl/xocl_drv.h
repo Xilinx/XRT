@@ -117,6 +117,12 @@
 /* access_ok lost its first parameter with Linux 5.0. */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0)
 	#define XOCL_ACCESS_OK(TYPE, ADDR, SIZE) access_ok(ADDR, SIZE)
+#elif defined(RHEL_RELEASE_CODE)
+        #if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8,1)
+                #define XOCL_ACCESS_OK(TYPE, ADDR, SIZE) access_ok(ADDR, SIZE)
+        #else
+                #define XOCL_ACCESS_OK(TYPE, ADDR, SIZE) access_ok(TYPE, ADDR, SIZE)
+        #endif
 #else
 	#define XOCL_ACCESS_OK(TYPE, ADDR, SIZE) access_ok(TYPE, ADDR, SIZE)
 #endif
@@ -393,10 +399,6 @@ enum {
 struct xocl_work {
 	struct delayed_work	work;
 	int			op;
-};
-
-struct kds_sched {
-	struct kds_controller *ctrl[KDS_MAX_TYPE];
 };
 
 struct xocl_dev_core {
@@ -1117,6 +1119,7 @@ struct xocl_icap_funcs {
 	int (*ocl_get_freq)(struct platform_device *pdev,
 		unsigned int region, unsigned short *freqs, int num_freqs);
 	int (*ocl_update_clock_freq_topology)(struct platform_device *pdev, struct xclmgmt_ioc_freqscaling *freqs);
+	int (*xclbin_validate_clock_req)(struct platform_device *pdev, struct drm_xocl_reclock_info *freqs);
 	int (*ocl_lock_bitstream)(struct platform_device *pdev,
 		const xuid_t *uuid);
 	int (*ocl_unlock_bitstream)(struct platform_device *pdev,
@@ -1171,6 +1174,10 @@ enum {
 #define	xocl_icap_ocl_update_clock_freq_topology(xdev, freqs)		\
 	(ICAP_CB(xdev, ocl_update_clock_freq_topology) ?		\
 	ICAP_OPS(xdev)->ocl_update_clock_freq_topology(ICAP_DEV(xdev), freqs) :\
+	-ENODEV)
+#define	xocl_icap_xclbin_validate_clock_req(xdev, freqs)		\
+	(ICAP_CB(xdev, xclbin_validate_clock_req) ?			\
+	ICAP_OPS(xdev)->xclbin_validate_clock_req(ICAP_DEV(xdev), freqs) :\
 	-ENODEV)
 #define	xocl_icap_lock_bitstream(xdev, uuid)				\
 	(ICAP_CB(xdev, ocl_lock_bitstream) ?				\
@@ -1668,7 +1675,7 @@ static inline void xocl_dr_reg_write32(xdev_handle_t xdev, u32 value, void __iom
 	read_unlock(&XDEV(xdev)->rwlock);
 }
 
-static inline void xocl_kds_setctrl(xdev_handle_t xdev, int type, struct kds_controller *ctrl)
+static inline void xocl_kds_setctrl(xdev_handle_t xdev, int type, struct kds_ctrl *ctrl)
 {
 	XDEV(xdev)->kds.ctrl[type] = ctrl;
 }
