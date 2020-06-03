@@ -218,7 +218,7 @@ enum {
 #define	XOCL_ADDR_TRANSLATOR	"address_translator"
 #define	XOCL_CU_CTRL		"cu_ctrl"
 #define	XOCL_CU			"cu"
-#define XOCL_P2P		"p2p"
+#define	XOCL_P2P		"p2p"
 
 #define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
 

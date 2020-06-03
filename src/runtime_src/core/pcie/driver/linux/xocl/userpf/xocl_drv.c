@@ -870,9 +870,9 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 	if (xdev->core.drm)
 		xocl_drm_fini(xdev->core.drm);
 
+	xocl_p2p_fini(xdev);
 	xocl_fini_persist_sysfs(xdev);
 	xocl_fini_sysfs(xdev);
-	xocl_p2p_fini(xdev);
 
 	xocl_subdev_destroy_all(xdev);
 
