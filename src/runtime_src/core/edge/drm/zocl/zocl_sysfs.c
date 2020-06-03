@@ -30,44 +30,6 @@ static ssize_t xclbinid_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(xclbinid);
 
-extern int kds_mode; /* This could be removed with old kds */
-extern int kds_echo;
-
-static ssize_t
-kds_echo_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", kds_echo);
-}
-
-static ssize_t
-kds_echo_store(struct device *dev, struct device_attribute *da,
-	       const char *buf, size_t count)
-{
-	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
-	u32 enable;
-	u32 clients;
-
-	if (kds_mode)
-		clients = kds_live_clients(&zdev->kds, NULL);
-	else
-		clients = sched_live_clients(zdev, NULL);
-
-	/* Ideally, KDS should be locked to reject new client.
-	 * But, this node is hidden for internal test purpose.
-	 * Let's refine it after new KDS is the default and
-	 * user is allow to configure it through xbutil.
-	 */
-	if (clients > 0)
-		return -EBUSY;
-
-	if (kstrtou32(buf, 10, &enable) == -EINVAL || enable > 1)
-		return -EINVAL;
-
-	kds_echo = enable;
-	return count;
-}
-static DEVICE_ATTR(kds_echo, 0644, kds_echo_show, kds_echo_store);
-
 static ssize_t kds_numcus_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -187,7 +149,6 @@ static DEVICE_ATTR_RO(memstat_raw);
 
 static struct attribute *zocl_attrs[] = {
 	&dev_attr_xclbinid.attr,
-	&dev_attr_kds_echo.attr,
 	&dev_attr_kds_numcus.attr,
 	&dev_attr_kds_custat.attr,
 	&dev_attr_memstat.attr,

@@ -196,6 +196,9 @@ void zocl_update_mem_stat(struct drm_zocl_dev *zdev, u64 size,
 void zocl_init_mem(struct drm_zocl_dev *zdev, struct mem_topology *mtopo);
 void zocl_clear_mem(struct drm_zocl_dev *zdev);
 
+/* zocl_kds.c */
+int zocl_init_sched(struct drm_zocl_dev *zdev);
+void zocl_fini_sched(struct drm_zocl_dev *zdev);
 int zocl_create_client(struct drm_zocl_dev *zdev, void **priv);
 void zocl_destroy_client(struct drm_zocl_dev *zdev, void **priv);
 uint zocl_poll_client(struct file *filp, poll_table *wait);

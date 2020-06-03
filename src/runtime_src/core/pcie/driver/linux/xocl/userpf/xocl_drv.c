@@ -1362,7 +1362,7 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 
 	unmap_bar(xdev);
 
-	kds_fini_sched(&XDEV(xdev)->kds);
+	xocl_fini_sched(xdev);
 
 	xocl_subdev_fini(xdev);
 	if (xdev->ulp_blob)
@@ -1419,7 +1419,7 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 		goto failed;
 	}
 
-	(void) kds_init_sched(&XDEV(xdev)->kds);
+	(void) xocl_init_sched(xdev);
 
 	ret = xocl_config_pci(xdev);
 	if (ret)
