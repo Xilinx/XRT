@@ -952,7 +952,11 @@ def xrtPLKernelOpen(handle, xclbinId, name):
     """
     libcoreutil.xrtPLKernelOpen.restype = ctypes.POINTER(xrtKernelHandle)
     libcoreutil.xrtPLKernelOpen.argtypes = [xclDeviceHandle, ctypes.c_char_p, ctypes.c_char_p]
-    return _valueOrError(libcoreutil.xrtPLKernelOpen(handle, xclbinId.bytes, name))
+    if isinstance(name, str):
+        nm = str.encode(name)
+    else:
+        nm = name
+    return _valueOrError(libcoreutil.xrtPLKernelOpen(handle, xclbinId.bytes, nm))
 
 
 def xrtKernelClose(khandle):

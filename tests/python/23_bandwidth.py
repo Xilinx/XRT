@@ -46,13 +46,13 @@ def getThreshold(devHandle):
     threshold = 40000
     deviceInfo = xclDeviceInfo2()
     xclGetDeviceInfo2(devHandle, ctypes.byref(deviceInfo))
-    if "qdma" in deviceInfo.mName or "qep" in deviceInfo.mName:
+    if b"qdma" in deviceInfo.mName or b"qep" in deviceInfo.mName:
         threshold = 30000
-    if "u2x4" in deviceInfo.mName or "U2x4" in deviceInfo.mName:
+    if b"u2x4" in deviceInfo.mName or b"U2x4" in deviceInfo.mName:
         threshold = 10000
-    if "gen3x4" in deviceInfo.mName:
+    if b"gen3x4" in deviceInfo.mName:
         threshold = 20000
-    if "_u25_" in deviceInfo.mName: # so that it doesn't set theshold for u250
+    if b"_u25_" in deviceInfo.mName: # so that it doesn't set theshold for u250
         threshold = 9000
     return threshold
 
@@ -90,7 +90,7 @@ def runKernel(opt):
 
     typesize = 512
     threshold = getThreshold(opt.handle)
-    globalbuffersizeinbeats = globalbuffersize/(typesize/8)
+    globalbuffersizeinbeats = globalbuffersize/(typesize>>3)
     tests= int(math.log(globalbuffersizeinbeats, 2.0))+1
     beats = 16
 
@@ -126,7 +126,7 @@ def runKernel(opt):
 
             usduration = end-start
 
-            limit = beats*(typesize/8)
+            limit = beats*(typesize>>3)
             xrtBOSync(output_bo1, xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, limit, 0)
             xrtBOSync(output_bo2, xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, limit, 0)
             if libc.memcmp(input_buf1, output_buf1, limit) or libc.memcmp(input_buf2, output_buf2, limit):
@@ -140,7 +140,7 @@ def runKernel(opt):
 
         dnsduration.append(usduration)
         dsduration.append(dnsduration[test]/1000000)
-        dbytes.append(reps*beats*(typesize/8))
+        dbytes.append(reps*beats*(typesize>>3))
         dmbytes.append(dbytes[test]/(1024 * 1024))
         bpersec.append(2*dbytes[test]/dsduration[test])
         mbpersec.append(2*bpersec[test]/(1024 * 1024))
