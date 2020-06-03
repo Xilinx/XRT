@@ -37,7 +37,7 @@ namespace {
 namespace api {
 
 void
-xrtXclbinUUID(xrtDeviceHandle dhdl, xuid_t out)
+xrtXclbinUUID(xclDeviceHandle dhdl, xuid_t out)
 {
   auto device = xrt_core::get_userpf_device(dhdl);
   auto uuid_str = device->get_xclbin_uuid();
@@ -58,7 +58,7 @@ send_exception_message(const char* msg)
 // xrt_xclbin API implmentations (xrt_xclbin.h)
 ////////////////////////////////////////////////////////////////
 int
-xrtXclbinUUID(xrtDeviceHandle dhdl, xuid_t out)
+xrtXclbinUUID(xclDeviceHandle dhdl, xuid_t out)
 {
   try {
    api::xrtXclbinUUID(dhdl, out);

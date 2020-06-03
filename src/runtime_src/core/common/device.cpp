@@ -18,6 +18,7 @@
 #include "device.h"
 #include "error.h"
 #include "utils.h"
+#include "debug.h"
 #include "query_requests.h"
 #include "xclbin_parser.h"
 #include "core/include/xrt.h"
@@ -34,12 +35,14 @@ device::
 device(id_type device_id)
   : m_device_id(device_id)
 {
+  XRT_DEBUGF("xrt_core::device::device(0x%x) idx(%d)\n", this, device_id);
 }
 
 device::
 ~device()
 {
   // virtual must be declared and defined
+  XRT_DEBUGF("xrt_core::device::~device(0x%x) idx(%d)\n", this, m_device_id);
 }
 
 std::string

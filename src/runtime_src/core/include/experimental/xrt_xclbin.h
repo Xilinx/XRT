@@ -25,13 +25,6 @@ extern "C" {
 #endif
 
 /**
- * typedef xrtDeviceHandle - opaque device handle
- *
- * Typedef alias from xrt.h
- */
-typedef xclDeviceHandle xrtDeviceHandle;
-
-/**
  * xrtGetXclbinUUID() - Get UUID of xclbin image running on device
  *
  * @handle: Device handle
@@ -40,7 +33,7 @@ typedef xclDeviceHandle xrtDeviceHandle;
  */
 XCL_DRIVER_DLLESPEC
 int
-xrtXclbinUUID(xrtDeviceHandle handle, xuid_t out);
+xrtXclbinUUID(xclDeviceHandle handle, xuid_t out);
 
 #ifdef __cplusplus
 }

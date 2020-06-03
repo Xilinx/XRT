@@ -53,8 +53,7 @@ std::shared_ptr<xrt_core::device>
 system::
 get_userpf_device(device::id_type id) const
 {
-  // deliberately not using std::make_shared (used with weak_ptr)
-  return std::shared_ptr<xrt_core::hwemu::device>(new xrt_core::hwemu::device(id,true));
+  return xrt_core::get_userpf_device(xclOpen(id, nullptr, XCL_QUIET));
 }
 
 std::shared_ptr<xrt_core::device>
@@ -62,7 +61,7 @@ system::
 get_userpf_device(device::handle_type handle, device::id_type id) const
 {
   // deliberately not using std::make_shared (used with weak_ptr)
-  return std::shared_ptr<xrt_core::hwemu::device>(new xrt_core::hwemu::device(handle, id));
+  return std::shared_ptr<xrt_core::hwemu::device>(new xrt_core::hwemu::device(handle, id, true));
 }
 
 std::shared_ptr<xrt_core::device>
@@ -70,7 +69,7 @@ system::
 get_mgmtpf_device(device::id_type id) const
 {
   // deliberately not using std::make_shared (used with weak_ptr)
-  return std::shared_ptr<xrt_core::hwemu::device>(new xrt_core::hwemu::device(id,false));
+  return std::shared_ptr<xrt_core::hwemu::device>(new xrt_core::hwemu::device(nullptr, id, false));
 }
 
 std::shared_ptr<xrt_core::device>

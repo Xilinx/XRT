@@ -155,8 +155,7 @@ std::shared_ptr<device>
 system_linux::
 get_userpf_device(device::id_type id) const
 {
-  // deliberately not using std::make_shared (used with weak_ptr)
-  return std::shared_ptr<device_linux>(new device_linux(id,true));
+  return xrt_core::get_userpf_device(xclOpen(id, nullptr, XCL_QUIET));
 }
 
 std::shared_ptr<device>
@@ -164,7 +163,7 @@ system_linux::
 get_userpf_device(device::handle_type handle, device::id_type id) const
 {
   // deliberately not using std::make_shared (used with weak_ptr)
-  return std::shared_ptr<device_linux>(new device_linux(handle, id));
+  return std::shared_ptr<device_linux>(new device_linux(handle, id, true));
 }
 
 std::shared_ptr<device>
@@ -172,7 +171,7 @@ system_linux::
 get_mgmtpf_device(device::id_type id) const
 {
   // deliberately not using std::make_shared (used with weak_ptr)
-  return std::shared_ptr<device_linux>(new device_linux(id,false));
+  return std::shared_ptr<device_linux>(new device_linux(nullptr, id, false));
 }
 
 namespace pcie_linux {

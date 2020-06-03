@@ -23,24 +23,9 @@
 namespace xrt_core {
 
 device_edge::
-device_edge(id_type device_id, bool user)
-  : device(device_id), m_userpf(user), m_managed(true)
+device_edge(handle_type device_handle, id_type device_id, bool user)
+  : device(device_id), m_handle(device_handle), m_userpf(user)
 {
-  if (m_userpf)
-    m_handle = xclOpen(device_id, nullptr, XCL_QUIET);
-}
-
-device_edge::
-device_edge(handle_type device_handle, id_type device_id)
-  : device(device_id), m_handle(device_handle), m_userpf(true), m_managed(false)
-{
-}
-
-device_edge::
-~device_edge()
-{
-  if (m_userpf && m_handle && m_managed)
-    xclClose(m_handle);
 }
 
 xclDeviceHandle

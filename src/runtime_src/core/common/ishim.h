@@ -32,6 +32,9 @@ namespace xrt_core {
 struct ishim
 {
   virtual void
+  close_device() = 0;
+  
+  virtual void
   open_context(xuid_t xclbin_uuid, unsigned int ip_index, bool shared) = 0;
 
   virtual void
@@ -89,6 +92,12 @@ struct shim : public DeviceType
   shim(Args&&... args)
     : DeviceType(std::forward<Args>(args)...)
   {}
+
+  virtual void
+  close_device()
+  {
+    xclClose(DeviceType::get_device_handle());
+  }
 
   virtual void
   open_context(xuid_t xclbin_uuid , unsigned int ip_index, bool shared)

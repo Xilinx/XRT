@@ -522,12 +522,7 @@ public:
         std::vector<char> buffer(length);
         stream.read(buffer.data(), length);
         const xclBin *header = (const xclBin *)buffer.data();
-        int result = xclLockDevice(m_handle);
-        if (result == 0)
-            result = xclLoadXclBin(m_handle, header);
-        (void) xclUnlockDevice(m_handle);
-
-        return result;
+        return xclLoadXclBin(m_handle, header);
     }
 
     int boot() { std::cout << "Unsupported API " << std::endl; return -1; }
