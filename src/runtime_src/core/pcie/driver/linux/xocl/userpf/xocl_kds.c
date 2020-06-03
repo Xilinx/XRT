@@ -15,10 +15,10 @@ module_param(kds_mode, int, (S_IRUGO|S_IWUSR));
 MODULE_PARM_DESC(kds_mode,
 		 "enable new KDS (0 = disable (default), 1 = enable)");
 
+/* kds_echo also impact mb_scheduler.c, keep this as global.
+ * Let's move it to struct kds_sched in the future.
+ */
 int kds_echo = 0;
-module_param(kds_echo, int, (S_IRUGO|S_IWUSR));
-MODULE_PARM_DESC(kds_echo,
-		 "enable KDS echo (0 = disable (default), 1 = enable)");
 
 static inline void
 xocl_ctx_to_info(struct drm_xocl_ctx *args, struct kds_ctx_info *info)
