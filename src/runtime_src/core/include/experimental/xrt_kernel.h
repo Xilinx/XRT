@@ -396,8 +396,7 @@ xrtKernelClose(xrtKernelHandle kernelHandle);
  *
  * @kernelHandle: Handle to kernel previously opened with xrtKernelOpen
  * @argno:        Index of kernel argument
- * @errcode:      Return errcode if any.  Ignored if nullptr.
- * Return:        Group id or negativ error code on error
+ * Return:        Group id or negative error code on error
  *
  * A valid group id is a non-negative integer.  The group id is required
  * when constructing a buffer object.
@@ -408,7 +407,7 @@ xrtKernelClose(xrtKernelHandle kernelHandle);
  */
 XCL_DRIVER_DLLESPEC
 int
-xrtKernelArgGroupId(xrtKernelHandle kernelHandle, int argno, int* errcode);
+xrtKernelArgGroupId(xrtKernelHandle kernelHandle, int argno);
 
 /**
  * xrtKernelRun() - Start a kernel execution
