@@ -701,8 +701,6 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 	}
 	xocl_fini_sysfs(xdev);
 
-	xocl_p2p_fini(xdev);
-
 	xocl_subdev_offline_all(xdev);
 	xocl_subdev_destroy_all(xdev);
 	ret = xocl_subdev_create_all(xdev);
@@ -711,12 +709,6 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 		goto failed;
 	}
 	(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
-
-	ret = xocl_p2p_init(xdev);
-	if (ret) {
-		userpf_err(xdev, "Unable to init p2p  %d", ret);
-		goto failed;
-	}
 
 	ret = xocl_init_sysfs(xdev);
 	if (ret) {
@@ -762,7 +754,7 @@ void user_pci_reset_done(struct pci_dev *pdev)
 void xocl_p2p_fini(struct xocl_dev *xdev)
 {
 	if (xocl_subdev_is_vsec(xdev))
-		return 0;
+		return;
 
 	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_P2P);
 }
@@ -839,6 +831,7 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 
 	xocl_fini_persist_sysfs(xdev);
 	xocl_fini_sysfs(xdev);
+	xocl_p2p_fini(xdev);
 
 	xocl_subdev_destroy_all(xdev);
 
@@ -925,6 +918,12 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	ret = xocl_subdev_create_all(xdev);
 	if (ret) {
 		xocl_err(&pdev->dev, "failed to register subdevs");
+		goto failed;
+	}
+
+	ret = xocl_p2p_init(xdev);
+	if (ret) {
+		xocl_err(&pdev->dev, "failed to init p2p memory");
 		goto failed;
 	}
 

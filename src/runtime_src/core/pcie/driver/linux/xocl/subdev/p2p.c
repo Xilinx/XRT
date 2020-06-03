@@ -306,7 +306,7 @@ static int p2p_mem_chunk_reserve(struct p2p *p2p, struct p2p_mem_chunk *chk)
 		ret = devm_add_action_or_reset(dev,
 			p2p_percpu_ref_kill, pref);
 		if (ret != 0) {
-			p2p_err(dev, "add kill action failed");
+			p2p_err(p2p, "add kill action failed");
 			percpu_ref_kill(pref);
 		}
 	}
@@ -749,7 +749,7 @@ static int p2p_mem_map(struct platform_device *pdev,
 		ulong offset, ulong len, ulong *bar_off)
 {
 	struct p2p *p2p = platform_get_drvdata(pdev);
-	long bank_off;
+	long bank_off = 0;
 	int ret;
 
 	if (p2p->p2p_bar_idx < 0) {
@@ -852,7 +852,7 @@ static ssize_t config_store(struct device *dev, struct device_attribute *da,
 {
 	struct p2p *p2p = platform_get_drvdata(to_platform_device(dev));
 	long range;
-	int ret;
+	int ret = 0;
 
 	if (kstrtol(buf, 10, &range)) {
 		p2p_err(p2p, "invalid input");
@@ -870,9 +870,11 @@ static ssize_t config_store(struct device *dev, struct device_attribute *da,
 	} else if (range == -1) {
 		/* disable p2p */
 		mutex_lock(&p2p->p2p_lock);
-		if (p2p->p2p_exp_bar_sz > XOCL_P2P_CHUNK_SIZE)
-			p2p_configure(p2p, XOCL_P2P_CHUNK_SIZE);
-		p2p_mem_fini(p2p);
+		if (p2p->p2p_exp_bar_sz > XOCL_P2P_CHUNK_SIZE) {
+			ret = p2p_configure(p2p, XOCL_P2P_CHUNK_SIZE);
+		}
+		if (ret)
+			p2p_mem_fini(p2p);
 		mutex_unlock(&p2p->p2p_lock);
 		return count;
 	} 
@@ -890,7 +892,7 @@ static ssize_t config_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct p2p *p2p = platform_get_drvdata(to_platform_device(dev));
-	ulong rbar_len;
+	ulong rbar_len = 0;
 	int ret;
 	ssize_t count = 0;
 
@@ -1005,7 +1007,7 @@ static int p2p_probe(struct platform_device *pdev)
 	struct resource *res;
 	struct pci_dev *pcidev;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	int ret, i = 0;
+	int ret = 0, i = 0;
 
 	p2p = xocl_drvinst_alloc(&pdev->dev, sizeof(*p2p));
 	if (!p2p) {
@@ -1044,15 +1046,16 @@ static int p2p_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
-	if (XDEV(xdev)->priv.p2p_bar_sz > 0)
+	if (XDEV(xdev)->priv.p2p_bar_sz > 0) {
 		p2p->p2p_exp_bar_sz = XDEV(xdev)->priv.p2p_bar_sz;
-	else if (p2p_rbar_len(p2p, NULL))
+		p2p->p2p_exp_bar_sz <<= 30;
+	} else if (p2p_rbar_len(p2p, NULL))
 		p2p->p2p_exp_bar_sz = p2p->p2p_bar_len;
 	else {
 		p2p->p2p_exp_bar_sz = xocl_get_ddr_channel_size(xdev) *
 		       	xocl_get_ddr_channel_count(xdev); /* GB */
+		p2p->p2p_exp_bar_sz <<= 30;
 	}
-	p2p->p2p_exp_bar_sz <<= 30;
 
 	pci_request_selected_regions(pcidev, (1 << p2p->p2p_bar_idx),
 		NODE_P2P);
