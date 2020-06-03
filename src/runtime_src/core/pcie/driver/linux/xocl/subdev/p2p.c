@@ -164,9 +164,10 @@ static int legacy_identify_p2p_bar(struct p2p *p2p)
 
 static bool p2p_is_enabled(struct p2p *p2p)
 {
-	if (!p2p->p2p_mem_chunks)
+	if (!p2p->p2p_mem_chunks) {
+		p2p_info(p2p, "no mem chunks");
 		return false;
-	else if (p2p->p2p_exp_bar_sz != 0 && p2p->p2p_exp_bar_sz != p2p->p2p_bar_len)
+	} else if (p2p->p2p_exp_bar_sz != 0 && p2p->p2p_exp_bar_sz != p2p->p2p_bar_len)
 		return false;
 
 	return true;
@@ -880,10 +881,8 @@ static ssize_t config_store(struct device *dev, struct device_attribute *da,
 	} 
 
 	mutex_lock(&p2p->p2p_lock);
-	ret = p2p_configure(p2p, range);
+	p2p_configure(p2p, range);
 	mutex_unlock(&p2p->p2p_lock);
-	if (ret)
-		return ret;
 
 	return count;
 }
@@ -1060,7 +1059,7 @@ static int p2p_probe(struct platform_device *pdev)
 	pci_request_selected_regions(pcidev, (1 << p2p->p2p_bar_idx),
 		NODE_P2P);
 
-	ret = p2p_configure(p2p, p2p->p2p_bar_len);
+	ret = p2p_mem_init(p2p);;
 	if (ret)
 		goto failed;
 
