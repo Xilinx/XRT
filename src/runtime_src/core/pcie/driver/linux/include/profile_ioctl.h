@@ -21,12 +21,12 @@
 /*
  * Magic Number Definitions
  */
-#define	AIM_IOC_MAGIC	0x28
-#define	ASM_IOC_MAGIC	0x29
-#define	AM_IOC_MAGIC	0x2a
-#define TRACE_FIFO_LITE	0x2b
-#define TRACE_FUNNEL	0x2c
-#define	TRACE_S2MM		0x2d
+#define	AIM_IOC_MAGIC		0x28
+#define	ASM_IOC_MAGIC		0x29
+#define	AM_IOC_MAGIC		0x2a
+#define TR_FIFO_MAGIC		0x2b
+#define TR_FUNNEL_MAGIC		0x2c
+#define	TR_S2MM_MAGIC		0x2d
 
 /*
  * Axi Interface Monitor (AIM)
@@ -122,5 +122,55 @@ enum ASM_COMMANDS
 		struct asm_counters)
 #define	ASM_IOC_STOPCNT		_IO(ASM_IOC_MAGIC, ASM_STOP_COUNTERS)
 #define	ASM_IOC_STARTTRACE	_IOW(ASM_IOC_MAGIC, ASM_START_TRACE, uint32_t)
+
+/*
+ * Trace FIFO
+ */
+
+enum TR_FIFO_COMMANDS
+{
+	TR_FIFO_RESET = 0,
+	TR_FIFO_GET_NUMBYTES = 1
+};
+
+#define	TR_FIFO_IOC_RESET			_IO(TR_FIFO_MAGIC, TR_FIFO_RESET)
+#define	TR_FIFO_IOC_GET_NUMBYTES	_IOR(TR_FIFO_MAGIC, TR_FIFO_GET_NUMBYTES,\
+		uint32_t)
+
+/*
+ * Trace Funnel
+ */
+
+enum TR_FUNNEL_COMMANDS
+{
+	TR_FUNNEL_RESET = 0,
+	TR_FUNNEL_TRAINCLK = 1
+};
+
+#define	TR_FUNNEL_IOC_RESET		_IO(TR_FUNNEL_MAGIC, TR_FUNNEL_RESET)
+#define	TR_FUNNEL_IOC_TRAINCLK	_IOW(TR_FUNNEL_MAGIC, TR_FUNNEL_TRAINCLK, uint64_t)
+
+/*
+ * Trace S2MM
+ */
+
+struct ts2mm_config {
+	uint64_t buf_size;
+	uint64_t buf_addr;
+	bool circular_buffer;
+};
+
+enum TR_S2MM_COMMANDS
+{
+	TR_S2MM_RESET = 0,
+	TR_S2MM_START = 1,
+	TR_S2MM_GET_WORDCNT = 2
+};
+
+#define	TR_S2MM_IOC_RESET		_IO(TR_S2MM_MAGIC, TR_S2MM_RESET)
+#define	TR_S2MM_IOC_START		_IOW(TR_S2MM_MAGIC, TR_S2MM_START,\
+		struct ts2mm_config)
+#define	TR_S2MM_IOC_GET_WORDCNT	_IOR(TR_S2MM_MAGIC, TR_S2MM_GET_WORDCNT,\
+		uint64_t)
 
 #endif

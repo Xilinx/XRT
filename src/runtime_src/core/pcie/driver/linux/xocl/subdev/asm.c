@@ -41,6 +41,62 @@ struct xocl_asm {
 	struct asm_counters	counters;
 };
 
+/**
+ * helper functions
+ */
+static void update_counters(struct xocl_asm *sspm);
+/**
+ * ioctl functions
+ */
+static long reset_counters(struct xocl_asm *sspm);
+static long start_counters(struct xocl_asm *sspm);
+static long read_counters(struct xocl_asm *sspm, void __user *arg);
+static long stop_counters(struct xocl_asm *sspm);
+static long start_trace(struct xocl_asm *sspm, void __user *arg);
+
+static long reset_counters(struct xocl_asm *sspm)
+{
+	uint32_t regValue = 0;
+	regValue = XOCL_READ_REG32(sspm->base + XASM_CONTROL_OFFSET);
+	// Start Reset
+	regValue = regValue | XASM_COUNTER_RESET_MASK;
+	XOCL_WRITE_REG32(regValue, sspm->base + XASM_CONTROL_OFFSET);
+	// End Reset
+	regValue = regValue & ~(XASM_COUNTER_RESET_MASK);
+	XOCL_WRITE_REG32(regValue, sspm->base + XASM_CONTROL_OFFSET);
+
+	return 0;
+}
+
+static long start_counters(struct xocl_asm *sspm)
+{
+	// Read sample register
+	// Needs hw implementation
+	return 0;
+}
+
+static long read_counters(struct xocl_asm *sspm, void __user *arg)
+{
+	update_counters(sspm);
+	if (copy_to_user(arg, &sspm->counters, sizeof(struct asm_counters)))
+	{
+		return -EFAULT;
+	}
+	return 0;
+}
+
+static long stop_counters(struct xocl_asm *sspm)
+{
+	// Needs hw implementation
+	return 0;
+}
+
+static long start_trace(struct xocl_asm *sspm, void __user *arg)
+{
+	// Needs hw implementation
+	return 0;
+}
+
 static void update_counters(struct xocl_asm *sspm)
 {
 	uint64_t low = 0, high = 0, sample_interval = 0;
@@ -148,7 +204,7 @@ static int asm_probe(struct platform_device *pdev)
 		err = -ENOMEM;
 		goto done;
 	}
-		
+
 
 	xocl_info(&pdev->dev, "IO start: 0x%llx, end: 0x%llx",
 		res->start, res->end);
@@ -198,15 +254,29 @@ static int asm_close(struct inode *inode, struct file *file)
 long asm_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct xocl_asm *xocl_asm;
+	void __user *data;
 	long result = 0;
 
 	xocl_asm = (struct xocl_asm *)filp->private_data;
+	data = (void __user *)(arg);
 
 	mutex_lock(&xocl_asm->lock);
 
 	switch (cmd) {
-	case 1:
-		xocl_err(xocl_asm->dev, "ioctl 1, do nothing");
+	case ASM_IOC_RESET:
+		result = reset_counters(xocl_asm);
+		break;
+	case ASM_IOC_STARTCNT:
+		result = start_counters(xocl_asm);
+		break;
+	case ASM_IOC_READCNT:
+		result = read_counters(xocl_asm, data);
+		break;
+	case ASM_IOC_STOPCNT:
+		result = stop_counters(xocl_asm);
+		break;
+	case ASM_IOC_STARTTRACE:
+		result = start_trace(xocl_asm, data);
 		break;
 	default:
 		result = -ENOTTY;

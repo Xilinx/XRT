@@ -59,6 +59,88 @@ struct xocl_am {
 	struct am_counters counters;
 };
 
+/**
+ * helper functions
+ */
+static void update_counters(struct xocl_am *am);
+/**
+ * ioctl functions
+ */
+static long reset_counters(struct xocl_am *am);
+static long start_counters(struct xocl_am *am);
+static long read_counters(struct xocl_am *am, void __user *arg);
+static long stop_counters(struct xocl_am *am);
+static long start_trace(struct xocl_am *am, void __user *arg);
+static long config_dataflow(struct xocl_am *am, void __user *arg);
+
+static long reset_counters(struct xocl_am *am)
+{
+	uint32_t regValue = 0;
+	regValue = XOCL_READ_REG32(am->base + XAM_CONTROL_OFFSET);
+	// Start Reset
+	regValue = regValue | XAM_COUNTER_RESET_MASK;
+	XOCL_WRITE_REG32(regValue, am->base + XAM_CONTROL_OFFSET);
+	// End Reset
+	regValue = regValue & ~(XAM_COUNTER_RESET_MASK);
+	XOCL_WRITE_REG32(regValue, am->base + XAM_CONTROL_OFFSET);
+	return 0;
+}
+
+static long start_counters(struct xocl_am *am)
+{
+	// Needs hw implementation
+	return 0;
+}
+
+static long read_counters(struct xocl_am *am, void __user *arg)
+{
+	update_counters(am);
+	if (copy_to_user(arg, &am->counters, sizeof(struct am_counters)))
+	{
+		return -EFAULT;
+	}
+	return 0;
+}
+
+static long stop_counters(struct xocl_am *am)
+{
+	// Needs hw implementation
+	return 0;
+}
+
+static long start_trace(struct xocl_am *am, void __user *arg)
+{
+	uint32_t options = 0;
+	uint32_t regValue = 0;
+	if (copy_from_user(&options, arg, sizeof(uint32_t)))
+	{
+		return -EFAULT;
+	}
+	// Set Stall trace control register bits
+	// Bit 1 : CU (Always ON)  Bit 2 : INT  Bit 3 : STR  Bit 4 : Ext
+	regValue = ((options & XAM_TRACE_STALL_SELECT_MASK) >> 1) | 0x1;
+	XOCL_WRITE_REG32(regValue, am->base + XAM_TRACE_CTRL_OFFSET);
+	return 0;
+}
+
+static long config_dataflow(struct xocl_am *am, void __user *arg)
+{
+	uint32_t options = 0;
+	uint32_t regValue = 0;
+	if (copy_from_user(&options, arg, sizeof(uint32_t)))
+	{
+		return -EFAULT;
+	}
+	if (options == 0)
+	{
+		return 0;
+	}
+	regValue = XOCL_READ_REG32(am->base + XAM_CONTROL_OFFSET);
+	regValue = regValue | XAM_DATAFLOW_EN_MASK;
+	XOCL_WRITE_REG32(regValue, am->base + XAM_CONTROL_OFFSET);
+	return 0;
+}
+
 static void update_counters(struct xocl_am *am)
 {
 	uint64_t low = 0, high = 0, sample_interval = 0;
@@ -187,7 +269,7 @@ static int am_probe(struct platform_device *pdev)
 		err = -ENOMEM;
 		goto done;
 	}
-		
+
 
 	xocl_info(&pdev->dev, "IO start: 0x%llx, end: 0x%llx",
 		res->start, res->end);
@@ -237,15 +319,32 @@ static int am_close(struct inode *inode, struct file *file)
 long am_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct xocl_am *am;
+	void __user *data;
 	long result = 0;
 
 	am = (struct xocl_am *)filp->private_data;
+	data = (void __user *)(arg);
 
 	mutex_lock(&am->lock);
 
 	switch (cmd) {
-	case 1:
-		xocl_err(am->dev, "ioctl 1, do nothing");
+	case AM_IOC_RESET:
+		result = reset_counters(am);
+		break;
+	case AM_IOC_STARTCNT:
+		result = start_counters(am);
+		break;
+	case AM_IOC_READCNT:
+		result = read_counters(am, data);
+		break;
+	case AM_IOC_STOPCNT:
+		result = stop_counters(am);
+		break;
+	case AM_IOC_STARTTRACE:
+		result = start_trace(am, data);
+		break;
+	case AM_IOC_CONFIGDFLOW:
+		result = config_dataflow(am, data);
 		break;
 	default:
 		result = -ENOTTY;
