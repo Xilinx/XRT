@@ -1036,11 +1036,13 @@ int pcidev::check_p2p_config(std::shared_ptr<pcidev::pci_device> dev, std::strin
         long long bar = -1;
 	long long rbar = -1;
 	long long remap = -1;
+	long long exp_bar = -1;
 
         for (unsigned int i = 0; i < p2p_cfg.size(); i++)
         {
             const char *str = p2p_cfg[i].c_str();
             std::sscanf(str, "bar:%lld", &bar);
+            std::sscanf(str, "exp_bar:%lld", &exp_bar);
             std::sscanf(str, "rbar:%lld", &rbar);
             std::sscanf(str, "remap:%lld", &remap);
         }
@@ -1059,7 +1061,7 @@ int pcidev::check_p2p_config(std::shared_ptr<pcidev::pci_device> dev, std::strin
             ret = P2P_CONFIG_ERROR;
             err = "ERROR: P2P remapper is not set correctly";
         }
-        else if (remap != 0)
+        else if (bar == exp_bar)
         {
             ret = P2P_CONFIG_ENABLED;
         }
@@ -1067,23 +1069,5 @@ int pcidev::check_p2p_config(std::shared_ptr<pcidev::pci_device> dev, std::strin
         return ret;
     }
 
-    int p2p_enabled = 0;
-    dev->sysfs_get<int>("", "p2p_enable", errmsg, p2p_enabled, 0);
-    if (p2p_enabled == ENOSPC) {
-        ret = P2P_CONFIG_ERROR;
-        err = "ERROR: Not enough iomem space. Please check BIOS settings";
-    } else if (p2p_enabled == EBUSY) {
-        ret = P2P_CONFIG_REBOOT;
-        err = "Please WARM reboot to enable p2p now.";
-    } else if (p2p_enabled == ENXIO) {
-        ret = P2P_CONFIG_NOT_SUPP;
-        err = "ERROR: P2P is not supported on this platform";
-    } else if (p2p_enabled == 1) {
-        ret = P2P_CONFIG_ENABLED;
-    } else if (p2p_enabled != 0) {
-        ret = P2P_CONFIG_ERROR;
-        err = "ERROR: " + std::string(strerror(std::abs(p2p_enabled)));
-    }
-
-    return ret;
+    return P2P_CONFIG_NOT_SUPP;
 }

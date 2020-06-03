@@ -1387,6 +1387,13 @@ struct xocl_subdev_map {
 		.override_idx = -1,			\
 	}
 
+#define	XOCL_DEVINFO_P2P				\
+	{						\
+		.id = XOCL_SUBDEV_P2P,			\
+		.name = XOCL_P2P,			\
+		.override_idx = -1,			\
+	}
+
 #define	XOCL_RES_UARTLITE				\
 	((struct resource []) {				\
 		{					\

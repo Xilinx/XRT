@@ -1134,19 +1134,11 @@ int shim::p2pEnable(bool enable, bool force)
     if (mDev == nullptr)
         return -EINVAL;
 
-    mDev->sysfs_get("p2p", "config", err, p2p_cfg);
-    if (err.empty()) {
-        /* write 0 to config for default bar size */
-        if (enable)
-            mDev->sysfs_put("p2p", "config", err, "0");
-        else
-            mDev->sysfs_put("p2p", "config", err, "-1");
-    } else {
-        if (enable)
-            mDev->sysfs_put("", "p2p_enable", err, "1");
-        else
-            mDev->sysfs_put("", "p2p_enable", err, "0");
-    }
+    /* write 0 to config for default bar size */
+    if (enable)
+        mDev->sysfs_put("p2p", "config", err, "0");
+    else
+        mDev->sysfs_put("p2p", "config", err, "-1");
 
 
     if (force) {
@@ -1165,9 +1157,14 @@ int shim::p2pEnable(bool enable, bool force)
         dev_init();
     }
 
-    check_p2p_config(mDev, err);
+    int ret;
+    ret = check_p2p_config(mDev, err);
     if (!err.empty()) {
         throw std::runtime_error(err);
+    } else if (ret == P2P_CONFIG_DISABLED && enable) {
+        throw std::runtime_error("Can not enable P2P");
+    } else if (ret == P2P_CONFIG_ENABLED && !enable) {
+        throw std::runtime_error("Can not disable P2P");
     }
 
     return 0;
