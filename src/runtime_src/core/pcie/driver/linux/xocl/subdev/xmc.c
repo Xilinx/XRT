@@ -2778,7 +2778,7 @@ static int load_xmc(struct xocl_xmc *xmc)
 	ret = stable_connection_to_sc(xmc);
 
 	/* Note: if xmc->state is not enabled, board info won't be shown */
-	xmc->state = ret ? XMC_STATE_ERROR : XMC_STATE_ENABLED;
+	xmc->state = ret ? XMC_STATE_ENABLED : XMC_STATE_ERROR;
 
 	if (XMC_PRIVILEGED(xmc) && xocl_clk_scale_on(xdev_hdl))
 		xmc_clk_scale_config(xmc->pdev);
