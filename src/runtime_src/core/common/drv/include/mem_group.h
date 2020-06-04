@@ -21,6 +21,12 @@
 extern "C" {
 #endif
 
+/*
+ * WARNING: This structure has been shared between userspace and driver.
+ * Any modification to this will affect both parties. Please update
+ * with extra caution.
+ */
+
 /****   MEMORY GROUP SECTION ****/
 #define XCL_MEM_GROUP_MAX 128
 
