@@ -141,7 +141,7 @@ struct p2p_mem_chunk {
 #define remap_get_max_slot_sz(p2p)			\
 	(1UL << (remap_reg_rd(p2p, cap) & 0xff))
 #define remap_get_max_slot_num(p2p)			\
-	((remap_reg_rd(p2p, cap) >> 16) & 0xff)
+	((remap_reg_rd(p2p, cap) >> 16) & 0x1ff)
 
 /* for legacy platforms only */
 static int legacy_identify_p2p_bar(struct p2p *p2p)
@@ -505,6 +505,11 @@ static int p2p_mem_init(struct p2p *p2p)
 
 	p2p->remap_range = remap_get_max_slot_sz(p2p) *
 		remap_get_max_slot_num(p2p);
+	if (!p2p->remap_range) {
+		p2p_err(p2p, "Invalid range max slot size %ld, max slot num %d", remap_get_max_slot_sz(p2p), remap_get_max_slot_num(p2p));
+		return -EINVAL;
+	}
+
 	if (p2p->remap_range > p2p->p2p_bar_len)
 		p2p->remap_range = p2p->p2p_bar_len;
 
