@@ -685,8 +685,7 @@ zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf,
 static bool
 is_aie_only(struct axlf *axlf)
 {
-	/* TODO will need a field in xclbin to decide this. */
-	return true;
+	return (axlf->m_header.m_actionMask & AM_LOAD_AIE);
 }
 
 int
