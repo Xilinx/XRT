@@ -21,9 +21,35 @@ MODULE_PARM_DESC(kds_mode,
 		 "enable new KDS (0 = disable (default), 1 = enable)");
 
 int kds_echo = 0;
-module_param(kds_echo, int, (S_IRUGO|S_IWUSR));
-MODULE_PARM_DESC(kds_echo,
-		 "enable KDS echo (0 = disable (default), 1 = enable)");
+
+/* -KDS sysfs-- */
+static ssize_t
+kds_echo_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", kds_echo);
+}
+
+static ssize_t
+kds_echo_store(struct device *dev, struct device_attribute *da,
+	       const char *buf, size_t count)
+{
+	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
+
+	/* TODO: this should be as simple as */
+	/* return stroe_kds_echo(&zdev->kds, buf, count); */
+	return store_kds_echo(&zdev->kds, buf, count,
+			      kds_mode, 0, &kds_echo);
+}
+static DEVICE_ATTR(kds_echo, 0644, kds_echo_show, kds_echo_store);
+
+static struct attribute *kds_attrs[] = {
+	&dev_attr_kds_echo.attr,
+	NULL,
+};
+
+static struct attribute_group zocl_kds_group = {
+	.attrs = kds_attrs,
+};
 
 static inline void
 zocl_ctx_to_info(struct drm_zocl_ctx *args, struct kds_ctx_info *info)
@@ -286,5 +312,25 @@ void zocl_destroy_client(struct drm_zocl_dev *zdev, void **priv)
 		vfree(client->xclbin_id);
 	kfree(client);
 	zocl_info(ddev->dev, "client exits pid(%d)\n", pid);
+}
+
+int zocl_init_sched(struct drm_zocl_dev *zdev)
+{
+	struct device *dev = zdev->ddev->dev;
+	int ret;
+
+	ret = sysfs_create_group(&dev->kobj, &zocl_kds_group);
+	if (ret)
+		zocl_err(dev, "create kds attrs failed: %d", ret);
+
+	return kds_init_sched(&zdev->kds);
+}
+
+void zocl_fini_sched(struct drm_zocl_dev *zdev)
+{
+	struct device *dev = zdev->ddev->dev;
+
+	sysfs_remove_group(&dev->kobj, &zocl_kds_group);
+	kds_fini_sched(&zdev->kds);
 }
 

@@ -927,7 +927,7 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 		ret = cu_ctrl_init(zdev);
 		if (ret)
 			goto err_cu_ctrl;
-		ret = kds_init_sched(&zdev->kds);
+		ret = zocl_init_sched(zdev);
 		if (ret)
 			goto err_sched;
 	} else {
@@ -982,7 +982,7 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 	zocl_fini_sysfs(drm->dev);
 
 	if (kds_mode == 1) {
-		kds_fini_sched(&zdev->kds);
+		zocl_fini_sched(zdev);
 		cu_ctrl_fini(zdev);
 	}
 

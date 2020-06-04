@@ -92,6 +92,7 @@ static ssize_t kdsstat_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(kdsstat);
 
+/* -live memory usage-- */
 static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 {
 	int i, err;
@@ -149,7 +150,6 @@ done:
 	return size;
 }
 
-/* -live memory usage-- */
 static ssize_t memstat_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {

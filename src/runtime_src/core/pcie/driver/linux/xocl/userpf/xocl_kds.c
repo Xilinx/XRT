@@ -15,10 +15,44 @@ module_param(kds_mode, int, (S_IRUGO|S_IWUSR));
 MODULE_PARM_DESC(kds_mode,
 		 "enable new KDS (0 = disable (default), 1 = enable)");
 
+/* kds_echo also impact mb_scheduler.c, keep this as global.
+ * Let's move it to struct kds_sched in the future.
+ */
 int kds_echo = 0;
-module_param(kds_echo, int, (S_IRUGO|S_IWUSR));
-MODULE_PARM_DESC(kds_echo,
-		 "enable KDS echo (0 = disable (default), 1 = enable)");
+
+/* -KDS sysfs-- */
+static ssize_t
+kds_echo_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", kds_echo);
+}
+
+static ssize_t
+kds_echo_store(struct device *dev, struct device_attribute *da,
+	       const char *buf, size_t count)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	u32 clients = 0;
+
+	/* TODO: this should be as simple as */
+	/* return stroe_kds_echo(&XDEV(xdev)->kds, buf, count); */
+
+	if (!kds_mode)
+		clients = get_live_clients(xdev, NULL);
+
+	return store_kds_echo(&XDEV(xdev)->kds, buf, count,
+			      kds_mode, clients, &kds_echo);
+}
+static DEVICE_ATTR(kds_echo, 0644, kds_echo_show, kds_echo_store);
+
+static struct attribute *kds_attrs[] = {
+	&dev_attr_kds_echo.attr,
+	NULL,
+};
+
+static struct attribute_group xocl_kds_group = {
+	.attrs = kds_attrs,
+};
 
 static inline void
 xocl_ctx_to_info(struct drm_xocl_ctx *args, struct kds_ctx_info *info)
@@ -273,6 +307,26 @@ int xocl_client_ioctl(struct xocl_dev *xdev, int op, void *data,
 	}
 
 	return ret;
+}
+
+int xocl_init_sched(struct xocl_dev *xdev)
+{
+	struct device *dev = &xdev->core.pdev->dev;
+	int ret;
+
+	ret = sysfs_create_group(&dev->kobj, &xocl_kds_group);
+	if (ret)
+		userpf_err(dev, "create kds attrs failed: %d", ret);
+
+	return kds_init_sched(&XDEV(xdev)->kds);
+}
+
+void xocl_fini_sched(struct xocl_dev *xdev)
+{
+	struct device *dev = &xdev->core.pdev->dev;
+
+	sysfs_remove_group(&dev->kobj, &xocl_kds_group);
+	kds_fini_sched(&XDEV(xdev)->kds);
 }
 
 int xocl_kds_stop(struct xocl_dev *xdev)

@@ -257,6 +257,8 @@ static inline u64 xocl_pci_rebar_size_to_bytes(int size)
 }
 
 /* KDS functions */
+int xocl_init_sched(struct xocl_dev *xdev);
+void xocl_fini_sched(struct xocl_dev *xdev);
 int xocl_create_client(struct xocl_dev *xdev, void **priv);
 void xocl_destroy_client(struct xocl_dev *xdev, void **priv);
 int xocl_client_ioctl(struct xocl_dev *xdev, int op, void *data,
