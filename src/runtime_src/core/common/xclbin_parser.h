@@ -233,6 +233,13 @@ XRT_CORE_COMMON_EXPORT
 std::vector<kernel_argument>
 get_kernel_arguments(const axlf* top, const std::string& kname);
 
+/**
+ * is_pdi_only() - If the xclbin has only one section and is PDI
+ */
+XRT_CORE_COMMON_EXPORT
+bool
+is_pdi_only(const axlf* top);
+
 }} // xclbin, xrt_core
 
 #endif

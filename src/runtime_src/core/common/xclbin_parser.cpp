@@ -579,4 +579,11 @@ get_kernel_arguments(const axlf* top, const std::string& kname)
   return get_kernel_arguments(xml.first, xml.second, kname);
 }
 
+bool
+is_pdi_only(const axlf* top)
+{
+  auto pdi = axlf_section_type<const char*>::get(top, axlf_section_kind::PDI);
+  return (top->m_header.m_numSections == 1 && pdi != nullptr);
+}
+
 }} // xclbin, xrt_core
