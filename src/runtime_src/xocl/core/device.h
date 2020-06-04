@@ -541,6 +541,24 @@ public:
   get_axlf() const;
 
   /**
+   * @return
+   *   axlf section, or nullptr if not present
+   */
+  std::pair<const char*, size_t>
+  get_axlf_section(axlf_section_kind kind) const;
+
+  /**
+   * @return 
+   *   axlf section, or nullptr if not present
+   */
+  template <typename SectionType>
+  SectionType
+  get_axlf_section(axlf_section_kind kind) const
+  {
+    return reinterpret_cast<SectionType>(get_axlf_section(kind).first);
+  }
+
+  /**
    * Check if this device is active, meaning it is programmed
    */
   bool
@@ -739,7 +757,7 @@ private:
 
   unsigned int m_uid = 0;
   program* m_active = nullptr;   // program loaded on to this device
-  xclbin m_xclbin;               // cache xclbin that came from program
+  xclbin m_metadata;             // cache xclbin that came from program
   unsigned int m_locks = 0;      // number of locks on this device
 
   platform* m_platform = nullptr;
