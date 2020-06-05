@@ -1472,7 +1472,7 @@ public:
         xclbin_lock xclbin_lock(m_handle, m_idx);
 
         if (blockSize == 0)
-            blockSize = 256 * 1024 * 1024; // Default block size
+            blockSize = 16 * 1024 * 1024; // Default block size 16MB
 
         int ddr_mem_size = get_ddr_mem_size();
         if (ddr_mem_size == -EINVAL)
