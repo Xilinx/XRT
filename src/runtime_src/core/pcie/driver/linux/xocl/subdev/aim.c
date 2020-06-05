@@ -180,6 +180,23 @@ static void update_counters(struct xocl_aim *aim)
 	low = XOCL_READ_REG32(aim->base + XAIM_SAMPLE_READ_BUSY_CYCLES_OFFSET);
 	high = XOCL_READ_REG32(aim->base + XAIM_SAMPLE_READ_BUSY_CYCLES_UPPER_OFFSET);
 	aim->counters.rd_busy_cycles =  (high << 32) | low;
+
+	// Debug Registers
+	low = XOCL_READ_REG32(aim->base + XAIM_SAMPLE_OUTSTANDING_COUNTS_OFFSET);
+	high = XOCL_READ_REG32(aim->base + XAIM_SAMPLE_OUTSTANDING_COUNTS_UPPER_OFFSET);
+	aim->counters.outstanding_cnt =  (high << 32) | low;
+	low = XOCL_READ_REG32(aim->base + XAIM_SAMPLE_LAST_WRITE_ADDRESS_OFFSET);
+	high = XOCL_READ_REG32(aim->base + XAIM_SAMPLE_LAST_WRITE_ADDRESS_UPPER_OFFSET);
+	aim->counters.wr_last_address =  (high << 32) | low;
+	low = XOCL_READ_REG32(aim->base + XAIM_SAMPLE_LAST_WRITE_DATA_OFFSET);
+	high = XOCL_READ_REG32(aim->base + XAIM_SAMPLE_LAST_WRITE_DATA_UPPER_OFFSET);
+	aim->counters.wr_last_data =  (high << 32) | low;
+	low = XOCL_READ_REG32(aim->base + XAIM_SAMPLE_LAST_READ_ADDRESS_OFFSET);
+	high = XOCL_READ_REG32(aim->base + XAIM_SAMPLE_LAST_READ_ADDRESS_UPPER_OFFSET);
+	aim->counters.rd_last_address =  (high << 32) | low;
+	low = XOCL_READ_REG32(aim->base + XAIM_SAMPLE_LAST_READ_DATA_OFFSET);
+	high = XOCL_READ_REG32(aim->base + XAIM_SAMPLE_LAST_READ_DATA_UPPER_OFFSET);
+	aim->counters.rd_last_data =  (high << 32) | low;
 }
 
 static ssize_t counters_show(struct device *dev,
@@ -189,7 +206,7 @@ static ssize_t counters_show(struct device *dev,
 	mutex_lock(&aim->lock);
 	update_counters(aim);
 	mutex_unlock(&aim->lock);
-	return sprintf(buf, "%llu\n%llu\n%llu\n%llu\n%llu\n%llu\n%llu\n%llu\n",
+	return sprintf(buf, "%llu\n%llu\n%llu\n%llu\n%llu\n%llu\n%llu\n%llu\n%llu\n%llu\n%llu\n%llu\n%llu\n",
 		aim->counters.wr_bytes,
 		aim->counters.wr_tranx,
 		aim->counters.wr_latency,
@@ -197,7 +214,12 @@ static ssize_t counters_show(struct device *dev,
 		aim->counters.rd_bytes,
 		aim->counters.rd_tranx,
 		aim->counters.rd_latency,
-		aim->counters.rd_busy_cycles
+		aim->counters.rd_busy_cycles,
+		aim->counters.outstanding_cnt,
+		aim->counters.wr_last_address,
+		aim->counters.wr_last_data,
+		aim->counters.rd_last_address,
+		aim->counters.rd_last_data
 		);
 }
 

@@ -1,9 +1,9 @@
 /*
- * A GEM style device manager for PCIe nifd_based OpenCL accelerators.
+ * A GEM style device manager for Xilinx Profiling IP
  *
- * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
  *
- * Authors:
+ * Authors:	Anurag Dubey <hackwad@xilinx.com>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -41,6 +41,11 @@ struct aim_counters {
 	uint64_t rd_tranx;
 	uint64_t rd_latency;
 	uint64_t rd_busy_cycles;
+	uint64_t outstanding_cnt;
+	uint64_t wr_last_address;
+	uint64_t wr_last_data;
+	uint64_t rd_last_address;
+	uint64_t rd_last_data;
 };
 
 enum AIM_COMMANDS
