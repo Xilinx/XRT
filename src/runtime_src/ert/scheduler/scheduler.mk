@@ -10,11 +10,17 @@ BIN := $(BLDDIR)/sched.bin
 BSP := $(BLDDIR)/bsp
 RTS := $(SRCDIR)/../..
 
-MYCFLAGS := -I$(BSP)/include -I$(RTS)
-MYLFLAGS :=  -Wl,-T,$(SRCDIR)/lscript.ld
+ifndef SCHED_VERSION
+ export SCHED_VERSION := 0x$(shell git rev-list -1 HEAD $(SRC) | cut -c1-8)
+endif
 
-$(OBJ): $(SRC) $(BSP).extracted $(RTS)/driver/include/ert.h
-	$(CPP) $(MYCFLAGS) $<
+MYCFLAGS := -ffunction-sections -fdata-sections -fno-exceptions -fno-rtti
+MYCFLAGS += -I$(BSP)/include -I$(RTS) $(DEFINES) -DERT_VERSION=$(SCHED_VERSION) -DERT_SVERSION=\"$(SCHED_VERSION)\"
+MYLFLAGS := -Wl,--defsym=_HEAP_SIZE=0x0 -Wl,--gc-sections
+MYLFLAGS += -Wl,-T,$(BLDDIR)/lscript.ld
+
+$(OBJ): $(SRC) $(BSP).extracted $(RTS)/core/include/ert.h
+	$(CPP) $(MYCFLAGS) -c -o $@ $<
 
 $(ELF): $(OBJ)
 	$(LINK) $(MYLFLAGS) -o $@ $< -L$(BSP)/lib -lxil
