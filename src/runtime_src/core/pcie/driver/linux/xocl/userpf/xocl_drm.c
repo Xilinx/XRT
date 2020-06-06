@@ -667,6 +667,7 @@ int xocl_cleanup_mem_nolock(struct xocl_drm *drm_p)
 		goto done;
 
 	if (topology) {
+		xocl_p2p_mem_cleanup(drm_p->xdev);
 		ddr = topology->m_count;
 		for (i = 0; i < ddr; i++) {
 			if (!topology->m_mem_data[i].m_used)
@@ -789,6 +790,13 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 		goto done;
 	}
 
+	err = xocl_p2p_mem_init(drm_p->xdev);
+	if (err && err != -ENODEV) {
+		xocl_err(drm_p->ddev->dev,
+			"init p2p mem failed, err %d", err);
+		goto done;
+	}
+
 	for (i = 0; i < topo->m_count; i++) {
 		mem_data = &topo->m_mem_data[i];
 		ddr_bank_size = mem_data->m_size * 1024;
@@ -806,10 +814,17 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	for (i = 0; i < topo->m_count; i++) {
 		mem_data = &topo->m_mem_data[i];
 
-		ddr_bank_size = XOCL_IS_STREAM(topo, i) ? 0 :
-			mem_data->m_size * 1024;
-
-		drm_p->mm_p2p_off[i + 1] = drm_p->mm_p2p_off[i] + ddr_bank_size;
+		if (XOCL_IS_P2P_MEM(topo, i)) {
+			ddr_bank_size = mem_data->m_size * 1024;
+			if (mem_data->m_used) {
+				xocl_p2p_mem_map(drm_p->xdev,
+				    mem_data->m_base_address,
+				    ddr_bank_size, 0, 0, &drm_p->mm_p2p_off[i]);
+			} else {
+				xocl_p2p_mem_map(drm_p->xdev, ~0UL,
+				     ddr_bank_size, 0, 0, &drm_p->mm_p2p_off[i]);
+			}
+		}
 
 		if (!mem_data->m_used)
 			continue;

@@ -1250,6 +1250,11 @@ static inline u32 xocl_ddr_count_unified(xdev_handle_t xdev_hdl)
 #define XOCL_IS_STREAM(topo, idx)					\
 	(topo->m_mem_data[idx].m_type == MEM_STREAMING || \
 	 topo->m_mem_data[idx].m_type == MEM_STREAMING_CONNECTION)
+#define XOCL_IS_P2P_MEM(topo, idx)					\
+	(topo->m_mem_data[idx].m_type == MEM_DDR3 ||			\
+	 topo->m_mem_data[idx].m_type == MEM_DDR4 ||			\
+	 topo->m_mem_data[idx].m_type == MEM_DRAM ||			\
+	 topo->m_mem_data[idx].m_type == MEM_HBM)
 
 struct xocl_mig_label {
 	unsigned char		tag[16];
@@ -1570,6 +1575,8 @@ struct xocl_p2p_funcs {
 			ulong *bar_off);
 	int (*mem_unmap)(struct platform_device *pdev, ulong bar_off,
 			ulong len);
+	int (*mem_init)(struct platform_device *pdev);
+	int (*mem_cleanup)(struct platform_device *pdev);
 	int (*mem_get_pages)(struct platform_device *pdev,
 			ulong bar_off, ulong size,
 			struct page **pages, ulong npages);
@@ -1585,6 +1592,12 @@ struct xocl_p2p_funcs {
 #define xocl_p2p_mem_unmap(xdev, bar_off, len)				\
 	(P2P_CB(xdev) ?							\
 	 P2P_OPS(xdev)->mem_unmap(P2P_DEV(xdev), bar_off, len) : -ENODEV)
+#define xocl_p2p_mem_init(xdev)						\
+	(P2P_CB(xdev) ?							\
+	 P2P_OPS(xdev)->mem_init(P2P_DEV(xdev)) : -ENODEV)
+#define xocl_p2p_mem_cleanup(xdev)						\
+	(P2P_CB(xdev) ?							\
+	 P2P_OPS(xdev)->mem_cleanup(P2P_DEV(xdev)) : -ENODEV)
 #define xocl_p2p_mem_get_pages(xdev, bar_off, len, pages, npages)	\
 	(P2P_CB(xdev) ?							\
 	 P2P_OPS(xdev)->mem_get_pages(P2P_DEV(xdev), bar_off, len,	\
