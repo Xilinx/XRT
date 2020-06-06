@@ -782,22 +782,23 @@ static int p2p_mem_map(struct platform_device *pdev,
 		ret = -ENOENT;
 		goto failed;
 	}
-	*bar_off = bank_off + offset;
 
 	if (!len) {
 		ret = 0;
 		goto failed;
 	}
 
-	ret = p2p_reserve_release(p2p, *bar_off, len, true);
+	ret = p2p_reserve_release(p2p, bank_off + offset, len, true);
 	if (ret) {
 		p2p_err(p2p, "reserve p2p chunks failed ret = %d", ret);
 		p2p_bar_unmap(p2p, bank_off);
 		goto failed;
 	}
 
-	p2p_info(p2p, "map bar offset %ld", *bar_off);
+	p2p_info(p2p, "map bar offset %ld", bank_off + offset);
 
+	if (bar_off)
+		*bar_off = bank_off + offset;
 failed:
 	mutex_unlock(&p2p->p2p_lock);
 	return ret;

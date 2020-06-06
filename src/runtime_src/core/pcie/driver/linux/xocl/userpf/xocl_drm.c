@@ -709,8 +709,6 @@ done:
 	drm_p->mm = NULL;
 	vfree(drm_p->mm_usage_stat);
 	drm_p->mm_usage_stat = NULL;
-	vfree(drm_p->mm_p2p_off);
-	drm_p->mm_p2p_off = NULL;
 
 	return 0;
 }
@@ -784,8 +782,7 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 
 	drm_p->mm = vzalloc(size);
 	drm_p->mm_usage_stat = vzalloc(size);
-	drm_p->mm_p2p_off = vzalloc((topo->m_count + 1) * sizeof(u64));
-	if (!drm_p->mm || !drm_p->mm_usage_stat || !drm_p->mm_p2p_off) {
+	if (!drm_p->mm || !drm_p->mm_usage_stat) {
 		err = -ENOMEM;
 		goto done;
 	}
@@ -819,10 +816,10 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 			if (mem_data->m_used) {
 				xocl_p2p_mem_map(drm_p->xdev,
 				    mem_data->m_base_address,
-				    ddr_bank_size, 0, 0, &drm_p->mm_p2p_off[i]);
+				    ddr_bank_size, 0, 0, NULL);
 			} else {
 				xocl_p2p_mem_map(drm_p->xdev, ~0UL,
-				     ddr_bank_size, 0, 0, &drm_p->mm_p2p_off[i]);
+				     ddr_bank_size, 0, 0, NULL);
 			}
 		}
 

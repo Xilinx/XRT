@@ -459,8 +459,6 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 			int ret;
 			ulong bar_off;
 
-			bar_off = drm_p->mm_p2p_off[ddr] + xobj->mm_node->start -
-				topo->m_mem_data[ddr].m_base_address;
 			ret = xocl_p2p_mem_map(xdev,
 				topo->m_mem_data[ddr].m_base_address,
 				topo->m_mem_data[ddr].m_size * 1024,
