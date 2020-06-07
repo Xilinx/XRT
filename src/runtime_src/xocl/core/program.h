@@ -298,13 +298,13 @@ public:
   // Conformance helpers
   ////////////////////////////////////////////////////////////////
   unsigned int
-  conformance_rename_kernel(const std::string& hash)
+  conformance_rename_kernel(const std::string&)
   {
     throw std::runtime_error("XCL_CONFORMANCE no longer supported");
   }
 
   void
-  set_source(const std::string& source)
+  set_source(const std::string&)
   {
     throw std::runtime_error("XCL_CONFORMANCE no longer supported");
   }

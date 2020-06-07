@@ -226,6 +226,7 @@ public:
    *
    * Returns: Pair of number of slots and size of each slot
    */
+  XRT_CORE_COMMON_EXPORT
   std::pair<size_t, size_t>
   get_ert_slots(const char* xml, size_t xml_size) const;
 
