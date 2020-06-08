@@ -25,6 +25,8 @@
 #include "xrt/util/task.h"
 #include "ert.h"
 #include "xclbin.h"
+#include "core/common/system.h"
+#include "core/common/device.h"
 #include "core/common/thread.h"
 #include "core/common/xclbin_parser.h"
 #include "command.h"
@@ -886,18 +888,33 @@ stop()
 }
 
 void
-init(xrt::device* xdev, const axlf* top)
+init(xrt::device* xdev)
 {
-  // Create execution core for this device
-  // TODO: This is deprecated sws, replace with core/common/exec/sws
-  size_t slot_size = xrt_core::config::get_ert_slotsize();
-  if (!slot_size)
-    slot_size = 4096;
-  
-  auto slots = ERT_CQ_SIZE / slot_size;
-  cu_trace_enabled = xrt::config::get_profile();
-  auto cuaddrs = xrt_core::xclbin::get_cus(top);
+  auto cdev = xrt_core::get_userpf_device(xdev->get_handle());
+
+  auto ip_section = cdev->get_axlf_section(IP_LAYOUT);
+  auto ip_layout = reinterpret_cast<const ::ip_layout*>(ip_section.first);
+  if (!is_sw_emulation() && !ip_layout)
+    throw std::runtime_error("No ip layout available to initialize sws, make sure xclbin is loaded");
+
+  // XML meta data needed to get ert slot size
+  auto xml_section = cdev->get_axlf_section(EMBEDDED_METADATA);
+  auto xml_data = xml_section.first;
+  auto xml_size = xml_section.second;
+  if (!xml_data)
+    throw std::runtime_error("No xml metadata available to initialize sws, make sure xclbin is loaded");
+
+  // CU base addresses from IP_LAYOUT except in SW EMU where xml is parsed
+  auto cuaddrs = is_sw_emulation()
+    ? xrt_core::xclbin::get_cus(xml_data, xml_size)
+    : xrt_core::xclbin::get_cus(ip_layout);
   std::vector<addr_type> amap(cuaddrs.begin(),cuaddrs.end());
+
+  // Slots are computed by device, its a function of device properties
+  auto slots = cdev->get_ert_slots(xml_data, xml_size).first;
+
+  cu_trace_enabled = xrt::config::get_profile();
+
   s_device_exec_core.erase(xdev);
   s_device_exec_core.insert
     (std::make_pair

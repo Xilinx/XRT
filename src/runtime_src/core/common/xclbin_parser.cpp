@@ -157,9 +157,8 @@ kernel_max_ctx(const ip_data& ip)
 namespace xrt_core { namespace xclbin {
 
 std::string
-memidx_to_name(const axlf* top,  int32_t midx)
+memidx_to_name(const mem_topology* mem_topology,  int32_t midx)
 {
-  auto mem_topology = axlf_section_type<const ::mem_topology*>::get(top,axlf_section_kind::MEM_TOPOLOGY);
   if (!mem_topology)
     return std::to_string(midx);
   if (midx >= mem_topology->m_count)
@@ -209,13 +208,6 @@ get_max_cu_size(const char* xml_data, size_t xml_size)
     }
   }
   return maxsz;
-}
-
-size_t
-get_max_cu_size(const axlf* top)
-{
-  auto xml = get_xml_section(top);
-  return get_max_cu_size(xml.first, xml.second);
 }
 
 std::vector<uint64_t>
@@ -395,14 +387,14 @@ get_debug_ips(const axlf* top)
 }
 
 uint32_t
-get_cu_control(const axlf* top, uint64_t cuaddr)
+get_cu_control(const ip_layout* ip_layout, uint64_t cuaddr)
 {
-  if (is_sw_emulation())
+  if (!ip_layout && is_sw_emulation())
     return AP_CTRL_HS;
 
-  auto ip_layout = axlf_section_type<const ::ip_layout*>::get(top,axlf_section_kind::IP_LAYOUT);
   if (!ip_layout)
     throw std::runtime_error("No such CU at address: " + std::to_string(cuaddr));
+
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
     const auto& ip_data = ip_layout->m_ip_data[count];
     size_t ip_base_addr  = (ip_data.m_base_address == static_cast<size_t>(-1)) ?
@@ -414,12 +406,13 @@ get_cu_control(const axlf* top, uint64_t cuaddr)
 }
 
 uint64_t
-get_cu_base_offset(const axlf* top)
+get_cu_base_offset(const ip_layout* ip_layout)
 {
-  std::vector<uint64_t> cus;
-  auto ip_layout = axlf_section_type<const ::ip_layout*>::get(top,axlf_section_kind::IP_LAYOUT);
-  if (!ip_layout)
+  if (!ip_layout && is_sw_emulation())
     return 0;
+
+  if (!ip_layout)
+    throw std::runtime_error("Missing IP_LAYOUT");
 
   size_t base = std::numeric_limits<uint32_t>::max();
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
@@ -430,12 +423,21 @@ get_cu_base_offset(const axlf* top)
   return base;
 }
 
-bool
-get_cuisr(const axlf* top)
+uint64_t
+get_cu_base_offset(const axlf* top)
 {
   auto ip_layout = axlf_section_type<const ::ip_layout*>::get(top,axlf_section_kind::IP_LAYOUT);
-  if (!ip_layout)
+  return get_cu_base_offset(ip_layout);
+}
+
+bool
+get_cuisr(const ip_layout* ip_layout)
+{
+  if (!ip_layout && is_sw_emulation())
     return false;
+
+  if (!ip_layout)
+    throw std::runtime_error("Missing IP_LAYOUT");
 
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
     const auto& ip_data = ip_layout->m_ip_data[count];
@@ -446,11 +448,20 @@ get_cuisr(const axlf* top)
 }
 
 bool
-get_dataflow(const axlf* top)
+get_cuisr(const axlf* top)
 {
   auto ip_layout = axlf_section_type<const ::ip_layout*>::get(top,axlf_section_kind::IP_LAYOUT);
-  if (!ip_layout)
+  return get_cuisr(ip_layout);
+}
+
+bool
+get_dataflow(const ip_layout* ip_layout)
+{
+  if (!ip_layout && is_sw_emulation())
     return false;
+
+  if (!ip_layout)
+    throw std::runtime_error("Missing IP_LAYOUT");
 
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
     const auto& ip_data = ip_layout->m_ip_data[count];
@@ -459,6 +470,13 @@ get_dataflow(const axlf* top)
         return true;
   }
   return false;
+}
+
+bool
+get_dataflow(const axlf* top)
+{
+  auto ip_layout = axlf_section_type<const ::ip_layout*>::get(top,axlf_section_kind::IP_LAYOUT);
+  return get_dataflow(ip_layout);
 }
 
 std::vector<std::pair<uint64_t, size_t>>

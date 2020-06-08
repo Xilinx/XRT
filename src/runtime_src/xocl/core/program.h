@@ -205,13 +205,7 @@ public:
    * the program would not be wellformed.
    */
   unsigned int
-  get_num_kernels() const
-  {
-    auto itr = m_binaries.begin();
-    return itr!=m_binaries.end()
-      ? (*itr).second.num_kernels()
-      : 0;
-  }
+  get_num_kernels() const;
 
   /**
    * Get list of names of kernels in this program.
@@ -220,15 +214,7 @@ public:
    * the program would not be wellformed.
    */
   std::vector<std::string>
-  get_kernel_names() const
-  {
-    auto itr = m_binaries.begin();
-    if (itr != m_binaries.end())
-      return (*itr).second.kernel_names();
-
-    std::vector<std::string> names;
-    return names;
-  }
+  get_kernel_names() const;
 
   bool
   has_kernel(const std::string& kname) const;
@@ -312,21 +298,15 @@ public:
   // Conformance helpers
   ////////////////////////////////////////////////////////////////
   unsigned int
-  conformance_rename_kernel(const std::string& hash)
+  conformance_rename_kernel(const std::string&)
   {
-    assert(std::getenv("XCL_CONFORMANCE"));
-    unsigned int retval = 0;
-    for (auto& e : m_binaries)
-      retval += e.second.conformance_rename_kernel(hash);
-    //assert(retval==1);
-    return retval;
+    throw std::runtime_error("XCL_CONFORMANCE no longer supported");
   }
 
   void
-  set_source(const std::string& source)
+  set_source(const std::string&)
   {
-    assert(std::getenv("XCL_CONFORMANCE"));
-    m_source = source;
+    throw std::runtime_error("XCL_CONFORMANCE no longer supported");
   }
 
   void
@@ -338,7 +318,7 @@ private:
   ptr<context> m_context;
   device_vector_type m_devices;
 
-  std::map<const device*,xclbin> m_binaries;
+  std::map<const device*,std::vector<char>> m_binaries;
   std::map<const device*,std::string> m_options;
   std::map<const device*,std::string> m_logs;    // build *error* logs
 

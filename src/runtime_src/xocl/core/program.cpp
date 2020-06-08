@@ -89,8 +89,9 @@ program(context* ctx,cl_uint num_devices, const cl_device_id* devices,
   : program(ctx,"")
 {
   for (cl_uint i=0; i<num_devices; ++i) {
-    m_devices.push_back(xocl::xocl(devices[i]));
-    m_binaries.emplace(xocl::xocl(devices[i]),xclbin(binaries[i],lengths[i]));
+    auto device = xocl::xocl(devices[i]);
+    m_devices.push_back(device);
+    m_binaries.emplace(device,std::vector<char>{binaries[i], binaries[i] + lengths[i]});
   }
 
   // Verify that each binary contains the same kernels
@@ -127,29 +128,28 @@ program::target_type
 program::
 get_target() const
 {
-  auto itr = m_binaries.begin();
-  return itr==m_binaries.end()
-    ? xclbin::target_type::invalid
-    : (*itr).second.target();
+  if (auto metadata = get_xclbin(nullptr))
+    return metadata.target();
+  return xclbin::target_type::invalid;
 }
 
 std::vector<std::string>
 program::
 get_progvar_names() const
 {
-  std::vector<std::string> progvars;
-  auto itr = m_binaries.begin();
-  if (itr==m_binaries.end())
+  for (auto& device : m_devices) {
+    std::vector<std::string> progvars;
+    auto metadata = device->get_xclbin();
+    for (auto& name : get_kernel_names()) {
+      auto& symbol = metadata.lookup_kernel(name);
+      for (auto& arg : symbol.arguments)
+        if (arg.atype == xclbin::symbol::arg::argtype::progvar)
+          progvars.push_back(arg.name);
+    }
     return progvars;
-
-  auto& xclbin = (*itr).second;
-  for (auto& name : get_kernel_names()) {
-    auto& symbol = xclbin.lookup_kernel(name);
-    for (auto& arg : symbol.arguments)
-      if (arg.atype == xclbin::symbol::arg::argtype::progvar)
-        progvars.push_back(arg.name);
   }
-  return progvars;
+
+  return {};
 }
 
 xclbin
@@ -163,33 +163,39 @@ get_xclbin(const device* d) const
     if (itr==m_binaries.end())
       throw xocl::error(CL_INVALID_DEVICE,"No binary for device");
 
-    return (*itr).second;
+    return d->get_xclbin();
   }
 
-  if (m_binaries.empty())
-    throw xocl::error(CL_INVALID_PROGRAM_EXECUTABLE,"No binary for program");
-  return m_binaries.begin()->second;
+  for (auto& device : m_devices)
+    return device->get_xclbin();
+
+  throw xocl::error(CL_INVALID_PROGRAM_EXECUTABLE,"No binary for program");
 }
 
 xrt_core::uuid
 program::
 get_xclbin_uuid(const device* d) const
 {
-  auto xclbin = get_xclbin(d);
-  return xclbin.uuid();
+  auto itr = m_binaries.find(d);
+  if (itr == m_binaries.end())
+    return {};
+  
+  auto top = reinterpret_cast<const axlf*>((*itr).second.data());
+  return top->m_header.uuid;
 }
 
 std::pair<const char*, const char*>
 program::
 get_xclbin_binary(const device* d) const
 {
+  // switch to parent device if necessary
+  d = d->get_root_device();
   auto itr = m_binaries.find(d);
   if (itr==m_binaries.end())
     throw xocl::error(CL_INVALID_DEVICE,"No binary for device");
 
-  return (*itr).second.binary();
+  return {(*itr).second.data(), (*itr).second.data() + (*itr).second.size()};
 }
-  
 
 std::vector<size_t>
 program::
@@ -204,6 +210,24 @@ get_binary_sizes() const
     sizes.push_back(xclbin.second - xclbin.first);
   }
   return sizes;
+}
+
+unsigned int
+program::
+get_num_kernels() const
+{
+  if (auto metadata = get_xclbin(nullptr))
+    return metadata.num_kernels();
+  return 0;
+}
+  
+std::vector<std::string>
+program::
+get_kernel_names() const
+{
+  if (auto metadata = get_xclbin(nullptr))
+    return metadata.kernel_names();
+  return {};
 }
 
 bool
@@ -233,8 +257,8 @@ create_kernel(const std::string& kernel_name)
     throw xocl::error(CL_INVALID_PROGRAM_EXECUTABLE,"No binary for program");
 
   auto symbol_name = kernel_utils::normalize_kernel_name(kernel_name);
-  auto& xclbin = m_binaries.begin()->second;
-  auto& symbol = xclbin.lookup_kernel(symbol_name);
+  auto metadata = get_xclbin(nullptr);
+  auto& symbol = metadata.lookup_kernel(symbol_name);
   auto k = std::make_unique<kernel>(this,kernel_name,symbol);
   return std::unique_ptr<kernel,decltype(deleter)>(k.release(),deleter);
 }
