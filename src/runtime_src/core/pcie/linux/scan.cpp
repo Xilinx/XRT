@@ -1056,7 +1056,7 @@ int pcidev::check_p2p_config(std::shared_ptr<pcidev::pci_device> dev, std::strin
             ret = P2P_CONFIG_REBOOT;
             err = "Please WARM reboot to enable p2p now.";
         }
-       	else if (remap > 0 && remap != bar)
+        else if (remap > 0 && remap != bar)
         {
             ret = P2P_CONFIG_ERROR;
             err = "ERROR: P2P remapper is not set correctly";
