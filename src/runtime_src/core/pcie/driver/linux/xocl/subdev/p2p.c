@@ -399,6 +399,9 @@ static void p2p_read_addr_mgmtpf(struct p2p *p2p)
 	int ret = 0;
 	size_t resplen = sizeof(ret);
 
+	if (!p2p_is_enabled(p2p))
+		return;
+
 	mb_p2p_len = sizeof(struct xcl_mailbox_p2p_bar_addr);
 	reqlen = sizeof(struct xcl_mailbox_req) + mb_p2p_len;
 	mb_req = vzalloc(reqlen);
