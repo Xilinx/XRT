@@ -793,6 +793,7 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 			"init p2p mem failed, err %d", err);
 		goto done;
 	}
+	err = 0;
 
 	for (i = 0; i < topo->m_count; i++) {
 		mem_data = &topo->m_mem_data[i];
