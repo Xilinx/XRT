@@ -234,6 +234,20 @@ public:
   std::pair<size_t, size_t>
   get_ert_slots() const;
 
+  /** 
+   * Get the group id for the given cu & argument index
+   */
+  XRT_CORE_COMMON_EXPORT
+  int
+  get_group_index(int cu_id, int arg_id) const;
+
+  /**
+   * populate_mem_group_info() - Store the memory group information
+   *
+   */
+  void
+  populate_mem_group_info(const char *infoBuff);
+
   // Move all these 'pt' functions out the class interface
   virtual void get_info(boost::property_tree::ptree&) const {}
   virtual void read_dma_stats(boost::property_tree::ptree&) const {}
@@ -306,6 +320,9 @@ public:
   // cache xclbin meta data loaded by this process
   uuid m_xclbin_uuid;
   std::map<axlf_section_kind, std::vector<char>> m_axlf_sections;
+  
+  // Store memory mapping information <<cuIdx, argIdx>, grpIdx>
+  std::map<std::pair<uint32_t, uint32_t>, uint32_t> m_grp_map;
 };
 
 /**
