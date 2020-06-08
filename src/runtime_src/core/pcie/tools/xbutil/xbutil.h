@@ -751,7 +751,7 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get( "dna", "dna",                     errmsg, dna );
         pcidev::get_dev(m_idx)->sysfs_get("", "local_cpulist",               errmsg, cpu_affinity);
 
-	p2p_enabled = pcidev::check_p2p_config(pcidev::get_dev(m_idx), errmsg);
+        p2p_enabled = pcidev::check_p2p_config(pcidev::get_dev(m_idx), errmsg);
 
         sensor_tree::put( "board.info.dsa_name",       name() );
         sensor_tree::put( "board.info.vendor",         vendor );

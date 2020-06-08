@@ -1034,9 +1034,9 @@ int pcidev::check_p2p_config(std::shared_ptr<pcidev::pci_device> dev, std::strin
     dev->sysfs_get("p2p", "config", errmsg, p2p_cfg);
     if (errmsg.empty()) {
         long long bar = -1;
-	long long rbar = -1;
-	long long remap = -1;
-	long long exp_bar = -1;
+        long long rbar = -1;
+        long long remap = -1;
+        long long exp_bar = -1;
 
         for (unsigned int i = 0; i < p2p_cfg.size(); i++)
         {
@@ -1051,12 +1051,12 @@ int pcidev::check_p2p_config(std::shared_ptr<pcidev::pci_device> dev, std::strin
             ret = P2P_CONFIG_NOT_SUPP;
             err = "ERROR: P2P is not supported. Cann't find P2P BAR.";
         }
-	else if (rbar != -1 && rbar > bar)
+        else if (rbar != -1 && rbar > bar)
         {
             ret = P2P_CONFIG_REBOOT;
             err = "Please WARM reboot to enable p2p now.";
-	}
-       	else if (remap > 0 && remap != bar)
+        }
+        else if (remap > 0 && remap != bar)
         {
             ret = P2P_CONFIG_ERROR;
             err = "ERROR: P2P remapper is not set correctly";
