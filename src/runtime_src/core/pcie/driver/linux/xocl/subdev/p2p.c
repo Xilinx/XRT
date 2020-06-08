@@ -688,6 +688,8 @@ static long p2p_bar_map(struct p2p *p2p, ulong bank_addr, ulong bank_size)
 	ep_addr = rounddown(bank_addr, XOCL_P2P_CHUNK_SIZE);
 	ep_size = roundup(bank_size, XOCL_P2P_CHUNK_SIZE);
 	num = ep_size / XOCL_P2P_CHUNK_SIZE;
+	if (num > p2p->p2p_mem_chunk_num)
+		return -ENOENT;
 
 	for (i = 0; i <= p2p->p2p_mem_chunk_num - num; i++) {
 		if (chunk[i].ep_addr != ~0UL && chunk[i].ep_addr != ep_addr)
