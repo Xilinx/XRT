@@ -157,10 +157,10 @@ long trace_funnel_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	mutex_lock(&trace_funnel->lock);
 
 	switch (cmd) {
-	case TR_FUNNEL_RESET:
+	case TR_FUNNEL_IOC_RESET:
 		result = reset_funnel(trace_funnel);
 		break;
-	case TR_FUNNEL_TRAINCLK:
+	case TR_FUNNEL_IOC_TRAINCLK:
 		result = train_clock(trace_funnel, data);
 		break;
 	default:

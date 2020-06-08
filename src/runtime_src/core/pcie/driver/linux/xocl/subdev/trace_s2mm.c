@@ -89,8 +89,6 @@ static long start_dma(struct xocl_trace_s2mm *trace_s2mm, void __user *arg)
 	XOCL_WRITE_REG32(reg, trace_s2mm->base + TS2MM_WRITE_OFFSET_LOW);
 	reg = (uint32_t) (cfg.buf_addr >> 32);
 	XOCL_WRITE_REG32(reg, trace_s2mm->base + TS2MM_WRITE_OFFSET_HIGH);
-	reg = (uint32_t) cfg.buf_addr;
-	XOCL_WRITE_REG32(reg, trace_s2mm->base + TS2MM_WRITE_OFFSET_HIGH);
 
 	// Configure Number of trace words
 	wordcount = cfg.buf_size / TS2MM_PACKET_SIZE;
