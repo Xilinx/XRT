@@ -728,6 +728,10 @@ done:
 		vfree(drm_p->mm_usage_stat);
 	drm_p->mm_usage_stat = NULL;
 
+	if (drm_p->mm_p2p_off)
+		vfree(drm_p->mm_p2p_off);
+	drm_p->mm_p2p_off = NULL;
+
 	return 0;
 }
 
