@@ -188,9 +188,20 @@ if [[ -z ${XILINX_VITIS:+x} ]]; then
     export XILINX_VITIS=/proj/xbuilds/2019.2_released/installs/lin64/Vitis/2019.2
 fi
 
+# save package info that is required to upload packages to the package managers
+get_pckg_info() {
+  arch=`uname -m`
+  echo "ARCH=${arch}" > pckg.info
+  codeName=`cat /etc/os-release |grep UBUNTU_CODENAME`
+  if [ $? -eq 0 ] ; then
+    echo "${codeName}" >> pckg.info
+  fi
+}
+
 if [[ $dbg == 1 ]]; then
   mkdir -p $debug_dir
   cd $debug_dir
+  get_pckg_info
   if [[ $nocmake == 0 ]]; then
 	echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain ../../src"
 	time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain ../../src
@@ -206,6 +217,7 @@ fi
 if [[ $opt == 1 ]]; then
   mkdir -p $release_dir
   cd $release_dir
+  get_pckg_info
   if [[ $nocmake == 0 ]]; then
 	echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain ../../src"
 	time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain ../../src
