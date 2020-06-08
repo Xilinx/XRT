@@ -19,6 +19,8 @@
  */
 
 #include "shim.h"
+#include "system_aws.h"
+#include "device_aws.h"
 #include "core/common/scheduler.h"
 #include <errno.h>
 /*
@@ -1316,8 +1318,11 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 {
     awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
     auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
-    if (!ret)
+    if (!ret) {
+      auto core_device = xrt_core::get_userpf_device(drv);
+      core_device->register_axlf(buffer);
       ret = xrt_core::scheduler::init(handle, buffer);
+    }
     return ret;
 }
 
