@@ -314,7 +314,7 @@ public:
   // cache xclbin meta data loaded by this process
   uuid m_xclbin_uuid;
   std::map<axlf_section_kind, std::vector<char>> m_axlf_sections;
-  
+
   // Store memory mapping information <<cuIdx, argIdx>, grpIdx>
   std::map<std::pair<uint32_t, uint32_t>, uint32_t> m_grp_map;
 
