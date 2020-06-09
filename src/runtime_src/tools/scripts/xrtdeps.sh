@@ -169,14 +169,11 @@ ub_package_list()
      pciutils \
      pkg-config \
      protobuf-compiler \
-     python3-sphinx \
-     python3-sphinx-rtd-theme \
      sphinx-common \
      strace \
      unzip \
      uuid-dev \
      libcurl4-openssl-dev \
-     libssl-dev \
      libudev-dev \
      libsystemd-dev \
     )
@@ -186,9 +183,9 @@ ub_package_list()
     fi
 
     if [[ $VERSION == 20.04 ]]; then
-        UB_LIST+=(python3 python3-pip)
+        UB_LIST+=(python3 python3-pip python3-sphinx python3-sphinx-rtd-theme)
     else
-        UB_LIST+=(python python-pip)
+        UB_LIST+=(python python-pip python-sphinx python-sphinx-rtd-theme)
     fi
 
     #dmidecode is only applicable for x86_64
