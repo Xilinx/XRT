@@ -41,7 +41,7 @@ stop();
 
 XRT_EXPORT
 void
-init(xrt::device* device, const axlf* top);
+init(xrt::device* device);
 
 } // sws
 
@@ -60,7 +60,7 @@ void
 stop();
 
 void
-init(xrt::device* device, const axlf* top);
+init(xrt::device* device);
 
 } // kds
 
@@ -82,7 +82,7 @@ stop();
 
 XRT_EXPORT
 void
-init(xrt::device* device, const axlf* top);
+init(xrt::device* device);
 
 } // scheduler
 

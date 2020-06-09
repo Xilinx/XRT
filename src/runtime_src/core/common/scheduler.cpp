@@ -141,7 +141,7 @@ init(xclDeviceHandle handle, const axlf* top)
   ecmd->type = ERT_CTRL;
 
   auto device = xrt_core::get_userpf_device(handle);
-  ecmd->slot_size = device->get_ert_slots(top).second;
+  ecmd->slot_size = device->get_ert_slots().second;
 
   if (ecmd->slot_size != 4096)
     std::cout << "ERT slotsize computed to: " << ecmd->slot_size << "\n";

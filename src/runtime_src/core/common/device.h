@@ -22,7 +22,8 @@
 #include "error.h"
 #include "ishim.h"
 #include "scope_guard.h"
-#include "xrt.h"
+#include "uuid.h"
+#include "core/include/xrt.h"
 
 // Please keep eternal include file dependencies to a minimum
 #include <cstdint>
@@ -181,44 +182,57 @@ public:
   /**
    * get_xclbin_uuid() - Get uuid of currently loaded xclbin
    */
-  std::string
+  uuid
   get_xclbin_uuid() const;
 
   /**
    * get_axlf_section() - Get section from currently loaded axlf
    *
-   * Return: pair of section data and size in bytes
+   * xclbin_id:  Check that xclbin_id matches currently cached
+   * Return:     Pair of section data and size in bytes
    *
-   * This function is to provide access to meta data sections that are
-   * not cached by the driver.  The returned section is from when the
+   * This function provides access to meta data sections that are
+   * from currently loaded xclbin.  The returned section is from when the
    * xclbin was loaded by this process.  The function cannot be used
    * unless this process loaded the xclbin.
    *
    * The function returns {nullptr, 0} if section is not cached.
-   */
-  std::pair<const char*, size_t>
-  get_axlf_section(axlf_section_kind section) const;
-
-  /**
-   * get_axlf_section() - Get section from currently loaded axlf
-   *
-   * xclbin_id:  Check that xclbin_id matches currently cached
    *
    * Same behavior as other get_axlf_section()
    */
+  XRT_CORE_COMMON_EXPORT
   std::pair<const char*, size_t>
-  get_axlf_section(axlf_section_kind section, const xuid_t xclbin_id) const;
+  get_axlf_section(axlf_section_kind section, const uuid& xclbin_id = uuid()) const;
+
+  std::pair<const char*, size_t>
+  get_axlf_section_or_error(axlf_section_kind section, const uuid& xclbin_id = uuid()) const;
+
+  template<typename SectionType>
+  SectionType
+  get_axlf_section(axlf_section_kind section, const uuid& xclbin_id = uuid()) const
+  {
+    return reinterpret_cast<SectionType>(get_axlf_section(section, xclbin_id));
+  }
+
+  template<typename SectionType>
+  SectionType
+  get_axlf_section_or_error(axlf_section_kind section, const uuid& xclbin_id = uuid()) const
+  {
+    return reinterpret_cast<SectionType>(get_axlf_section_or_error(section, xclbin_id));
+  }
 
   /**
    * get_ert_slots() - Get number of ERT CQ slots
    *
    * Returns: Pair of number of slots and size of each slot
    */
+  XRT_CORE_COMMON_EXPORT
   std::pair<size_t, size_t>
   get_ert_slots(const char* xml, size_t xml_size) const;
 
+  XRT_CORE_COMMON_EXPORT
   std::pair<size_t, size_t>
-  get_ert_slots(const axlf* top) const;
+  get_ert_slots() const;
 
   // Move all these 'pt' functions out the class interface
   virtual void get_info(boost::property_tree::ptree&) const {}
@@ -290,7 +304,7 @@ public:
   id_type m_device_id;
 
   // cache xclbin meta data loaded by this process
-  xuid_t m_xclbin_uuid;
+  uuid m_xclbin_uuid;
   std::map<axlf_section_kind, std::vector<char>> m_axlf_sections;
 };
 

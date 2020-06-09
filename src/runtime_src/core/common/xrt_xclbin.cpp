@@ -40,8 +40,8 @@ void
 xrtXclbinUUID(xclDeviceHandle dhdl, xuid_t out)
 {
   auto device = xrt_core::get_userpf_device(dhdl);
-  auto uuid_str = device->get_xclbin_uuid();
-  uuid_parse(uuid_str.c_str(), out);
+  auto uuid = device->get_xclbin_uuid();
+  uuid_copy(out, uuid.get());
 }
 
 } // api

@@ -98,7 +98,7 @@ device::
 load_xclbin(const struct axlf* top)
 {
   handle->load_xclbin(top);
-  return top->m_header.uuid;
+  return uuid(top->m_header.uuid);
 }
 
 uuid
@@ -114,10 +114,7 @@ uuid
 device::
 get_xclbin_uuid() const
 {
-  auto uuid_str = handle->get_xclbin_uuid();
-  xuid_t out;
-  uuid_parse(uuid_str.c_str(), out);
-  return out;
+  return handle->get_xclbin_uuid();
 }
   
 device::
@@ -209,8 +206,8 @@ xrtDeviceGetXclbinUUID(xrtDeviceHandle dhdl, xuid_t out)
 {
   try {
     auto device = get_device(dhdl);
-    auto uuid_str = device->get_xclbin_uuid();
-    uuid_parse(uuid_str.c_str(), out);
+    auto uuid = device->get_xclbin_uuid();
+    uuid_copy(out, uuid.get());
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());

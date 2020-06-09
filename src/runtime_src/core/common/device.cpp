@@ -45,27 +45,27 @@ device::
   XRT_DEBUGF("xrt_core::device::~device(0x%x) idx(%d)\n", this, m_device_id);
 }
 
-std::string
+uuid
 device::
 get_xclbin_uuid() const
 {
   try {
-    return device_query<query::xclbin_uuid>(this);
+    auto uuid_str =  device_query<query::xclbin_uuid>(this);
+    return uuid(uuid_str);
   }
   catch (const query::no_such_key&) {
   }
 
   // Emulation mode likely
-  char uuid_str[64] = { 0 };
-  uuid_unparse_lower(m_xclbin_uuid, uuid_str);
-  return uuid_str;
+  return uuid();
 }
 
 void
 device::
 register_axlf(const axlf* top)
 {
-  uuid_copy(m_xclbin_uuid, top->m_header.uuid);
+  m_axlf_sections.clear();
+  m_xclbin_uuid = uuid(top->m_header.uuid);
   axlf_section_kind kinds[] = {EMBEDDED_METADATA, AIE_METADATA, IP_LAYOUT, CONNECTIVITY, MEM_TOPOLOGY};
   for (auto kind : kinds) {
     auto hdr = ::xclbin::get_axlf_section(top, kind);
@@ -82,8 +82,10 @@ register_axlf(const axlf* top)
 
 std::pair<const char*, size_t>
 device::
-get_axlf_section(axlf_section_kind section) const
+get_axlf_section(axlf_section_kind section, const uuid& xclbin_id) const
 {
+  if (xclbin_id && xclbin_id != m_xclbin_uuid)
+    throw std::runtime_error("xclbin id mismatch");
   auto itr = m_axlf_sections.find(section);
   return itr != m_axlf_sections.end()
     ? std::make_pair((*itr).second.data(), (*itr).second.size())
@@ -92,11 +94,12 @@ get_axlf_section(axlf_section_kind section) const
 
 std::pair<const char*, size_t>
 device::
-get_axlf_section(axlf_section_kind section, const xuid_t xclbin_id) const
+get_axlf_section_or_error(axlf_section_kind section, const uuid& xclbin_id) const
 {
-  if (uuid_compare(xclbin_id, m_xclbin_uuid))
-    throw std::runtime_error("xclbin id mismatch");
-  return get_axlf_section(section);
+  auto ret = get_axlf_section(section, xclbin_id);
+  if (ret.first != nullptr)
+    return ret;
+  throw std::runtime_error("no such xclbin section");
 }
 
 std::pair<size_t, size_t>
@@ -139,14 +142,12 @@ get_ert_slots(const char* xml_data, size_t xml_size) const
 
 std::pair<size_t, size_t>
 device::
-get_ert_slots(const axlf* top) const
+get_ert_slots() const
 {
-  auto xml_hdr = ::xclbin::get_axlf_section(top, EMBEDDED_METADATA);
-  if (!xml_hdr)
+  auto xml =  get_axlf_section(EMBEDDED_METADATA);
+  if (!xml.first)
     throw std::runtime_error("No xml metadata in xclbin");
-  auto xml_data = reinterpret_cast<const char*>(top) + xml_hdr->m_sectionOffset;
-  auto xml_size = xml_hdr->m_sectionSize;
-  return get_ert_slots(xml_data, xml_size);
+  return get_ert_slots(xml.first, xml.second);
 }
 
 std::string

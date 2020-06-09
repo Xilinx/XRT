@@ -73,43 +73,10 @@ is_hw_emulation()
   return hwem;
 }
 
-static std::vector<char>
-read_file(const std::string& filename)
-{
-  std::ifstream istr(filename,std::ios::binary|std::ios::ate);
-  if (!istr)
-    throw xocl::error(CL_BUILD_PROGRAM_FAILURE,"Cannot not open '" + filename + "' for reading");
-
-  auto pos = istr.tellg();
-  istr.seekg(0,std::ios::beg);
-
-  std::vector<char> buffer(pos);
-  istr.read (&buffer[0],pos);
-
-  return buffer;
-}
-
 static void
 init_conformance()
 {
-  if (!std::getenv("XCL_CONFORMANCE"))
-    return ;
-
-  // iterate each xclbin in current directory
-  namespace bfs = boost::filesystem;
-  bfs::directory_iterator end;
-  for (bfs::directory_iterator itr(".");itr!=end;++itr) {
-    bfs::path file(itr->path());
-
-    if (bfs::exists(file) && bfs::is_regular_file(file) && file.extension()==".xclbin") {
-      auto file_data = read_file(file.string());
-      auto xclbin = xocl::xclbin(file_data.data(), file_data.size());
-      for (auto hash : xclbin.conformance_kernel_hashes())  {
-        XOCL_DEBUG(std::cout,"(hash,file)=(",hash,",",file.string(),")\n");
-        global_conformance_xclbin_map.emplace(hash,file.string());
-      }
-    }
-  }
+  return; //throw std::runtime_error("XCL_CONFORMANCE no longer supported");
 }
 
 } // namespace
