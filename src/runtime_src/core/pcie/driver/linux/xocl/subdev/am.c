@@ -71,18 +71,19 @@ static long start_counters(struct xocl_am *am);
 static long read_counters(struct xocl_am *am, void __user *arg);
 static long stop_counters(struct xocl_am *am);
 static long start_trace(struct xocl_am *am, void __user *arg);
+static long stop_trace(struct xocl_am *am);
 static long config_dataflow(struct xocl_am *am, void __user *arg);
 
 static long reset_counters(struct xocl_am *am)
 {
-	uint32_t regValue = 0;
-	regValue = XOCL_READ_REG32(am->base + XAM_CONTROL_OFFSET);
+	uint32_t reg = 0;
+	reg = XOCL_READ_REG32(am->base + XAM_CONTROL_OFFSET);
 	// Start Reset
-	regValue = regValue | XAM_COUNTER_RESET_MASK;
-	XOCL_WRITE_REG32(regValue, am->base + XAM_CONTROL_OFFSET);
+	reg = reg | XAM_COUNTER_RESET_MASK;
+	XOCL_WRITE_REG32(reg, am->base + XAM_CONTROL_OFFSET);
 	// End Reset
-	regValue = regValue & ~(XAM_COUNTER_RESET_MASK);
-	XOCL_WRITE_REG32(regValue, am->base + XAM_CONTROL_OFFSET);
+	reg = reg & ~(XAM_COUNTER_RESET_MASK);
+	XOCL_WRITE_REG32(reg, am->base + XAM_CONTROL_OFFSET);
 	return 0;
 }
 
@@ -111,22 +112,29 @@ static long stop_counters(struct xocl_am *am)
 static long start_trace(struct xocl_am *am, void __user *arg)
 {
 	uint32_t options = 0;
-	uint32_t regValue = 0;
+	uint32_t reg = 0;
 	if (copy_from_user(&options, arg, sizeof(uint32_t)))
 	{
 		return -EFAULT;
 	}
 	// Set Stall trace control register bits
 	// Bit 1 : CU (Always ON)  Bit 2 : INT  Bit 3 : STR  Bit 4 : Ext
-	regValue = ((options & XAM_TRACE_STALL_SELECT_MASK) >> 1) | 0x1;
-	XOCL_WRITE_REG32(regValue, am->base + XAM_TRACE_CTRL_OFFSET);
+	reg = ((options & XAM_TRACE_STALL_SELECT_MASK) >> 1) | 0x1;
+	XOCL_WRITE_REG32(reg, am->base + XAM_TRACE_CTRL_OFFSET);
+	return 0;
+}
+
+static long stop_trace(struct xocl_am *am)
+{
+	uint32_t reg = 0;
+	XOCL_WRITE_REG32(reg, am->base + XAM_TRACE_CTRL_OFFSET);
 	return 0;
 }
 
 static long config_dataflow(struct xocl_am *am, void __user *arg)
 {
 	uint32_t options = 0;
-	uint32_t regValue = 0;
+	uint32_t reg = 0;
 	if (copy_from_user(&options, arg, sizeof(uint32_t)))
 	{
 		return -EFAULT;
@@ -135,9 +143,9 @@ static long config_dataflow(struct xocl_am *am, void __user *arg)
 	{
 		return 0;
 	}
-	regValue = XOCL_READ_REG32(am->base + XAM_CONTROL_OFFSET);
-	regValue = regValue | XAM_DATAFLOW_EN_MASK;
-	XOCL_WRITE_REG32(regValue, am->base + XAM_CONTROL_OFFSET);
+	reg = XOCL_READ_REG32(am->base + XAM_CONTROL_OFFSET);
+	reg = reg | XAM_DATAFLOW_EN_MASK;
+	XOCL_WRITE_REG32(reg, am->base + XAM_CONTROL_OFFSET);
 	return 0;
 }
 
@@ -342,6 +350,9 @@ long am_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		break;
 	case AM_IOC_STARTTRACE:
 		result = start_trace(am, data);
+		break;
+	case AM_IOC_STOPTRACE:
+		result = stop_trace(am);
 		break;
 	case AM_IOC_CONFIGDFLOW:
 		result = config_dataflow(am, data);

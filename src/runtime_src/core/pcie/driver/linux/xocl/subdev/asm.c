@@ -18,7 +18,7 @@
 #include "../xocl_drv.h"
 #include "profile_ioctl.h"
 
-/************************** AXI Stream Monitor (ASM, earlier SSPM) *********************/
+/************************** AXI Stream Monitor (ASM) *********************/
 
 #define XASM_CONTROL_OFFSET           0x0
 #define XASM_SAMPLE_OFFSET            0x20
@@ -28,7 +28,7 @@
 #define XASM_STALL_CYCLES_OFFSET      0x98
 #define XASM_STARVE_CYCLES_OFFSET     0xA0
 
-/* SSPM Control Mask */
+/* Control Mask */
 #define XASM_COUNTER_RESET_MASK       0x00000001
 
 struct xocl_asm {
@@ -44,95 +44,95 @@ struct xocl_asm {
 /**
  * helper functions
  */
-static void update_counters(struct xocl_asm *sspm);
+static void update_counters(struct xocl_asm *xocl_asm);
 /**
  * ioctl functions
  */
-static long reset_counters(struct xocl_asm *sspm);
-static long start_counters(struct xocl_asm *sspm);
-static long read_counters(struct xocl_asm *sspm, void __user *arg);
-static long stop_counters(struct xocl_asm *sspm);
-static long start_trace(struct xocl_asm *sspm, void __user *arg);
+static long reset_counters(struct xocl_asm *xocl_asm);
+static long start_counters(struct xocl_asm *xocl_asm);
+static long read_counters(struct xocl_asm *xocl_asm, void __user *arg);
+static long stop_counters(struct xocl_asm *xocl_asm);
+static long start_trace(struct xocl_asm *xocl_asm, void __user *arg);
 
-static long reset_counters(struct xocl_asm *sspm)
+static long reset_counters(struct xocl_asm *xocl_asm)
 {
-	uint32_t regValue = 0;
-	regValue = XOCL_READ_REG32(sspm->base + XASM_CONTROL_OFFSET);
+	uint32_t reg = 0;
+	reg = XOCL_READ_REG32(xocl_asm->base + XASM_CONTROL_OFFSET);
 	// Start Reset
-	regValue = regValue | XASM_COUNTER_RESET_MASK;
-	XOCL_WRITE_REG32(regValue, sspm->base + XASM_CONTROL_OFFSET);
+	reg = reg | XASM_COUNTER_RESET_MASK;
+	XOCL_WRITE_REG32(reg, xocl_asm->base + XASM_CONTROL_OFFSET);
 	// End Reset
-	regValue = regValue & ~(XASM_COUNTER_RESET_MASK);
-	XOCL_WRITE_REG32(regValue, sspm->base + XASM_CONTROL_OFFSET);
+	reg = reg & ~(XASM_COUNTER_RESET_MASK);
+	XOCL_WRITE_REG32(reg, xocl_asm->base + XASM_CONTROL_OFFSET);
 
 	return 0;
 }
 
-static long start_counters(struct xocl_asm *sspm)
+static long start_counters(struct xocl_asm *xocl_asm)
 {
 	// Read sample register
 	// Needs hw implementation
 	return 0;
 }
 
-static long read_counters(struct xocl_asm *sspm, void __user *arg)
+static long read_counters(struct xocl_asm *xocl_asm, void __user *arg)
 {
-	update_counters(sspm);
-	if (copy_to_user(arg, &sspm->counters, sizeof(struct asm_counters)))
+	update_counters(xocl_asm);
+	if (copy_to_user(arg, &xocl_asm->counters, sizeof(struct asm_counters)))
 	{
 		return -EFAULT;
 	}
 	return 0;
 }
 
-static long stop_counters(struct xocl_asm *sspm)
+static long stop_counters(struct xocl_asm *xocl_asm)
 {
 	// Needs hw implementation
 	return 0;
 }
 
-static long start_trace(struct xocl_asm *sspm, void __user *arg)
+static long start_trace(struct xocl_asm *xocl_asm, void __user *arg)
 {
 	// Needs hw implementation
 	return 0;
 }
 
-static void update_counters(struct xocl_asm *sspm)
+static void update_counters(struct xocl_asm *xocl_asm)
 {
 	uint64_t low = 0, high = 0, sample_interval = 0;
 	// This latches the sampled metric counters
-	sample_interval = XOCL_READ_REG32(sspm->base + XASM_SAMPLE_OFFSET);
+	sample_interval = XOCL_READ_REG32(xocl_asm->base + XASM_SAMPLE_OFFSET);
 	// Read the sampled metric counters
-	low = XOCL_READ_REG32(sspm->base + XASM_NUM_TRANX_OFFSET);
-	high = XOCL_READ_REG32(sspm->base + XASM_NUM_TRANX_OFFSET + 0x4);
-	sspm->counters.num_tranx =  (high << 32) | low;
-	low = XOCL_READ_REG32(sspm->base + XASM_DATA_BYTES_OFFSET);
-	high = XOCL_READ_REG32(sspm->base + XASM_DATA_BYTES_OFFSET + 0x4);
-	sspm->counters.data_bytes =  (high << 32) | low;
-	low = XOCL_READ_REG32(sspm->base + XASM_BUSY_CYCLES_OFFSET);
-	high = XOCL_READ_REG32(sspm->base + XASM_BUSY_CYCLES_OFFSET + 0x4);
-	sspm->counters.busy_cycles =  (high << 32) | low;
-	low = XOCL_READ_REG32(sspm->base + XASM_STALL_CYCLES_OFFSET);
-	high = XOCL_READ_REG32(sspm->base + XASM_STALL_CYCLES_OFFSET + 0x4);
-	sspm->counters.stall_cycles =  (high << 32) | low;
-	low = XOCL_READ_REG32(sspm->base + XASM_STARVE_CYCLES_OFFSET);
-	high = XOCL_READ_REG32(sspm->base + XASM_STARVE_CYCLES_OFFSET + 0x4);
-	sspm->counters.starve_cycles =  (high << 32) | low;
+	low = XOCL_READ_REG32(xocl_asm->base + XASM_NUM_TRANX_OFFSET);
+	high = XOCL_READ_REG32(xocl_asm->base + XASM_NUM_TRANX_OFFSET + 0x4);
+	xocl_asm->counters.num_tranx =  (high << 32) | low;
+	low = XOCL_READ_REG32(xocl_asm->base + XASM_DATA_BYTES_OFFSET);
+	high = XOCL_READ_REG32(xocl_asm->base + XASM_DATA_BYTES_OFFSET + 0x4);
+	xocl_asm->counters.data_bytes =  (high << 32) | low;
+	low = XOCL_READ_REG32(xocl_asm->base + XASM_BUSY_CYCLES_OFFSET);
+	high = XOCL_READ_REG32(xocl_asm->base + XASM_BUSY_CYCLES_OFFSET + 0x4);
+	xocl_asm->counters.busy_cycles =  (high << 32) | low;
+	low = XOCL_READ_REG32(xocl_asm->base + XASM_STALL_CYCLES_OFFSET);
+	high = XOCL_READ_REG32(xocl_asm->base + XASM_STALL_CYCLES_OFFSET + 0x4);
+	xocl_asm->counters.stall_cycles =  (high << 32) | low;
+	low = XOCL_READ_REG32(xocl_asm->base + XASM_STARVE_CYCLES_OFFSET);
+	high = XOCL_READ_REG32(xocl_asm->base + XASM_STARVE_CYCLES_OFFSET + 0x4);
+	xocl_asm->counters.starve_cycles =  (high << 32) | low;
 }
 
 static ssize_t counters_show(struct device *dev,
 			   struct device_attribute *attr, char *buf)
 {
-	struct xocl_asm *sspm = platform_get_drvdata(to_platform_device(dev));
-	mutex_lock(&sspm->lock);
-	update_counters(sspm);
-	mutex_unlock(&sspm->lock);
+	struct xocl_asm *xocl_asm = platform_get_drvdata(to_platform_device(dev));
+	mutex_lock(&xocl_asm->lock);
+	update_counters(xocl_asm);
+	mutex_unlock(&xocl_asm->lock);
 	return sprintf(buf, "%llu\n%llu\n%llu\n%llu\n%llu\n",
-		sspm->counters.num_tranx,
-		sspm->counters.data_bytes,
-		sspm->counters.busy_cycles,
-		sspm->counters.stall_cycles,
-		sspm->counters.starve_cycles
+		xocl_asm->counters.num_tranx,
+		xocl_asm->counters.data_bytes,
+		xocl_asm->counters.busy_cycles,
+		xocl_asm->counters.stall_cycles,
+		xocl_asm->counters.starve_cycles
 		);
 }
 
@@ -141,8 +141,8 @@ static DEVICE_ATTR_RO(counters);
 static ssize_t name_show(struct device *dev,
 			   struct device_attribute *attr, char *buf)
 {
-	struct xocl_asm *sspm = platform_get_drvdata(to_platform_device(dev));
-	return sprintf(buf, "axis_mon_%llu\n",sspm->data.m_base_address);
+	struct xocl_asm *xocl_asm = platform_get_drvdata(to_platform_device(dev));
+	return sprintf(buf, "axis_mon_%llu\n",xocl_asm->data.m_base_address);
 }
 
 static DEVICE_ATTR_RO(name);

@@ -91,26 +91,26 @@ static long start_trace(struct xocl_aim *aim, void __user *arg);
 
 static long reset_counters(struct xocl_aim *aim)
 {
-	uint32_t regValue = 0;
+	uint32_t reg = 0;
 	// Original Value
-	regValue = XOCL_READ_REG32(aim->base + XAIM_CONTROL_OFFSET);
+	reg = XOCL_READ_REG32(aim->base + XAIM_CONTROL_OFFSET);
 	// Start Reset
-	regValue = regValue | XAIM_CR_COUNTER_RESET_MASK;
-	XOCL_WRITE_REG32(regValue, aim->base + XAIM_CONTROL_OFFSET);
+	reg = reg | XAIM_CR_COUNTER_RESET_MASK;
+	XOCL_WRITE_REG32(reg, aim->base + XAIM_CONTROL_OFFSET);
 	// End Reset
-	regValue = regValue & ~(XAIM_CR_COUNTER_RESET_MASK);
-	XOCL_WRITE_REG32(regValue, aim->base + XAIM_CONTROL_OFFSET);
+	reg = reg & ~(XAIM_CR_COUNTER_RESET_MASK);
+	XOCL_WRITE_REG32(reg, aim->base + XAIM_CONTROL_OFFSET);
 	return 0;
 }
 
 static long start_counters(struct xocl_aim *aim)
 {
-	uint32_t regValue = 0;
+	uint32_t reg = 0;
 	// Original Value
-	regValue = XOCL_READ_REG32(aim->base + XAIM_CONTROL_OFFSET);
+	reg = XOCL_READ_REG32(aim->base + XAIM_CONTROL_OFFSET);
 	// Start AXI-MM monitor metric counters
-	regValue = regValue | XAIM_CR_COUNTER_ENABLE_MASK;
-	XOCL_WRITE_REG32(regValue, aim->base + XAIM_CONTROL_OFFSET);
+	reg = reg | XAIM_CR_COUNTER_ENABLE_MASK;
+	XOCL_WRITE_REG32(reg, aim->base + XAIM_CONTROL_OFFSET);
 	// Read from sample register to ensure total time is read again at end
 	XOCL_READ_REG32(aim->base + XAIM_SAMPLE_OFFSET);
 	return 0;
@@ -128,25 +128,25 @@ static long read_counters(struct xocl_aim *aim, void __user *arg)
 
 static long stop_counters(struct xocl_aim *aim)
 {
-	uint32_t regValue = 0;
+	uint32_t reg = 0;
 	// Original Value
-	regValue = XOCL_READ_REG32(aim->base + XAIM_CONTROL_OFFSET);
+	reg = XOCL_READ_REG32(aim->base + XAIM_CONTROL_OFFSET);
 	// Start AXI-MM monitor metric counters
-	regValue = regValue | ~(XAIM_CR_COUNTER_ENABLE_MASK);
-	XOCL_WRITE_REG32(regValue, aim->base + XAIM_CONTROL_OFFSET);
+	reg = reg | ~(XAIM_CR_COUNTER_ENABLE_MASK);
+	XOCL_WRITE_REG32(reg, aim->base + XAIM_CONTROL_OFFSET);
 	return 0;
 }
 
 static long start_trace(struct xocl_aim *aim, void __user *arg)
 {
 	uint32_t options = 0;
-	uint32_t regValue = 0;
+	uint32_t reg = 0;
 	if (copy_from_user(&options, arg, sizeof(uint32_t)))
 	{
 		return -EFAULT;
 	}
-	regValue = options & XAIM_TRACE_CTRL_MASK;
-	XOCL_WRITE_REG32(regValue, aim->base + XAIM_TRACE_CTRL_OFFSET);
+	reg = options & XAIM_TRACE_CTRL_MASK;
+	XOCL_WRITE_REG32(reg, aim->base + XAIM_TRACE_CTRL_OFFSET);
 	return 0;
 }
 
