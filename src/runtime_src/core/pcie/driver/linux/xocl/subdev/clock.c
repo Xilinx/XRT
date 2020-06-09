@@ -504,7 +504,7 @@ static inline unsigned int floor_acap_o(int freq)
 
 /*
  * Kernel compiler even has disabled SSE(floating caculation) for preprocessor,
- * we need a simple match to count floor without losing too much accuracy.
+ * we need a simple math to count floor without losing too much accuracy.
  * formula: (O * freq / 33.333)
  */
 static inline unsigned int floor_acap_m(int freq)
