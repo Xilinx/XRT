@@ -78,6 +78,18 @@ register_axlf(const axlf* top)
 
   // Build modified CONNECTIVITY and MEM_TOPOLOGY section based on memory group ids
   // Base groups off data from driver
+  auto itr = m_axlf_sections.find(CONNECTIVITY);
+  if (itr != m_axlf_sections.end()) {
+    auto m_con = reinterpret_cast<::connectivity*>((*itr).second.data());
+    for (int32_t i=0; i<m_con->m_count; ++i) {
+      auto& con = m_con->m_connection[i];
+      auto itr = m_grp_map.find(std::make_pair(con.m_ip_layout_index,
+                                              con.arg_index));
+      if (itr != m_grp_map.end()) {
+        con.mem_data_index = (*itr).second;
+      }
+    }
+  }
 }
 
 std::pair<const char*, size_t>

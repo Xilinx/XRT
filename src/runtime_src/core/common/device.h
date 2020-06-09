@@ -24,6 +24,7 @@
 #include "scope_guard.h"
 #include "uuid.h"
 #include "core/include/xrt.h"
+#include "core/common/drv/include/mem_group.h"
 
 // Please keep eternal include file dependencies to a minimum
 #include <cstdint>
@@ -323,6 +324,9 @@ public:
   
   // Store memory mapping information <<cuIdx, argIdx>, grpIdx>
   std::map<std::pair<uint32_t, uint32_t>, uint32_t> m_grp_map;
+
+  // Store memory group information <grpIdx, <lowBankIdx, highBankIdx>>
+  std::map<uint32_t, std::pair<uint32_t, uint32_t>> m_grp_info;
 };
 
 /**
