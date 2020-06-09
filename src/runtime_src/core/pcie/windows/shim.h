@@ -24,6 +24,7 @@
 
 struct FeatureRomHeader;
 
+// Windows kernel return status values. The values is equal to definitions in <ntstatus.h>
 #define NTSTATUS_REVISION_MISMATCH   0xC0000059
 #define NTSTATUS_STATUS_SUCCESS      0x00000000
 
