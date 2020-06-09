@@ -509,7 +509,7 @@ static inline unsigned int floor_acap_o(int freq)
  */
 static inline unsigned int floor_acap_m(int freq)
 {
-	return (floor_acap_o(freq) * freq * 10000/333333);
+	return (floor_acap_o(freq) * freq * 1000/33333);
 }
 
 /*
