@@ -56,13 +56,9 @@ double runTest(xclDeviceHandle handle, std::vector<std::shared_ptr<task_info>>& 
 
     while (completed < total) {
         /* assume commands to the same CU finished in order */
-#if 0
-        while (cmd->ecmd->state < ERT_CMD_STATE_COMPLETED) {
+        while (cmds[i]->ecmd->state < ERT_CMD_STATE_COMPLETED) {
             while (xclExecWait(handle, -1) == 0);
         }
-#else
-        while (cmds[i]->ecmd->state < ERT_CMD_STATE_COMPLETED);
-#endif
         if (cmds[i]->ecmd->state != ERT_CMD_STATE_COMPLETED)
             throw std::runtime_error("CU execution failed");
         

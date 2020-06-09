@@ -51,8 +51,6 @@ double runTest(xrtKernelHandle handle, std::vector<std::shared_ptr<task_info>>& 
 
     for (auto& cmd : cmds) {
         xrtRunStart(cmd->rhandle);
-        //The document doesn't explain if xrtKernelRun() would failed.
-        //throw std::runtime_error("Unable to run");
         if (++issued == total)
             break;
     }
