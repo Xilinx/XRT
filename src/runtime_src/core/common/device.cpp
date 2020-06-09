@@ -212,7 +212,6 @@ populate_mem_group_info(const char *infoBuff)
     m_grp_map.emplace(std::make_pair(m_map->cu_id, m_map->arg_id), m_map->grp_id);
     infoBuff += sizeof(*m_map);
   }
->>>>>>> Taking Userspcae changes
 }
 
 std::string
