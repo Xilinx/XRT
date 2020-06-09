@@ -24,6 +24,9 @@
 
 struct FeatureRomHeader;
 
+#define NTSTATUS_REVISION_MISMATCH   0xC0000059
+#define NTSTATUS_STATUS_SUCCESS      0x00000000
+
 namespace userpf {
 
 XRT_CORE_PCIE_WINDOWS_EXPORT
