@@ -72,49 +72,6 @@
 #endif
 #endif
 
-/*
- * P2P Linux kernel API has gone through changes over the time. We are trying
- * to maintain our driver compabile w/ all kernels we support here.
- */
-#if KERNEL_VERSION(4, 5, 0) > LINUX_VERSION_CODE && \
-	(LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
-#define P2P_API_V0
-#elif KERNEL_VERSION(4, 16, 0) > LINUX_VERSION_CODE && \
-	(LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0))
-#define P2P_API_V1
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0)
-#define P2P_API_V2
-#elif defined(RHEL_RELEASE_VERSION) /* CentOS/RedHat specific check */
-
-#if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(7, 3) && \
-	RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(7, 6)
-#define P2P_API_V1
-#elif RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 6)
-#define P2P_API_V2
-#endif
-
-#endif
-
-/* Each P2P chunk we set up must be at least 256MB */
-#define XOCL_P2P_CHUNK_SHIFT		28
-#define XOCL_P2P_CHUNK_SIZE		(1ULL << XOCL_P2P_CHUNK_SHIFT)
-
-struct xocl_p2p_mem_chunk {
-	struct xocl_dev		*xpmc_xdev;
-	void			*xpmc_res_grp;
-	void __iomem		*xpmc_va;
-	resource_size_t		xpmc_pa;
-	resource_size_t		xpmc_size;
-	int			xpmc_ref;
-
-	/* Used by kernel API */
-	struct percpu_ref	xpmc_percpu_ref;
-	struct completion	xpmc_comp;
-#ifdef	P2P_API_V2
-	struct dev_pagemap	xpmc_pgmap;
-#endif
-};
-
 enum {
 	XOCL_FLAGS_SYSFS_INITIALIZED = (1 << 0),
 	XOCL_FLAGS_PERSIST_SYSFS_INITIALIZED = (1 << 1),
@@ -122,13 +79,6 @@ enum {
 
 struct xocl_dev	{
 	struct xocl_dev_core	core;
-
-	int			p2p_bar_idx;
-	u64			p2p_bar_sz_cached;
-	resource_size_t		p2p_bar_len;
-	struct mutex		p2p_mem_chunk_lock;
-	int			p2p_mem_chunk_num;
-	struct xocl_p2p_mem_chunk *p2p_mem_chunks;
 
 	struct list_head	ctx_list;
 	struct workqueue_struct	*wq;
@@ -224,13 +174,8 @@ enum {
 	XOCL_RESET_SHUTDOWN = 2,
 };
 int xocl_hot_reset(struct xocl_dev *xdev, u32 flag);
-void xocl_p2p_fini(struct xocl_dev *xdev, bool recov_bar_sz);
+void xocl_p2p_fini(struct xocl_dev *xdev);
 int xocl_p2p_init(struct xocl_dev *xdev);
-int xocl_p2p_reserve_release_range(struct xocl_dev *xdev,
-	resource_size_t off, resource_size_t sz, bool reserve);
-int xocl_get_p2p_bar(struct xocl_dev *xdev, u64 *bar_size);
-int xocl_pci_resize_resource(struct pci_dev *dev, int resno, int size);
-int xocl_pci_rbar_refresh(struct pci_dev *dev, int resno);
 void xocl_reset_notify(struct pci_dev *pdev, bool prepare);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
 void user_pci_reset_prepare(struct pci_dev *pdev);

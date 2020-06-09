@@ -1250,6 +1250,11 @@ static inline u32 xocl_ddr_count_unified(xdev_handle_t xdev_hdl)
 #define XOCL_IS_STREAM(topo, idx)					\
 	(topo->m_mem_data[idx].m_type == MEM_STREAMING || \
 	 topo->m_mem_data[idx].m_type == MEM_STREAMING_CONNECTION)
+#define XOCL_IS_P2P_MEM(topo, idx)					\
+	(topo->m_mem_data[idx].m_type == MEM_DDR3 ||			\
+	 topo->m_mem_data[idx].m_type == MEM_DDR4 ||			\
+	 topo->m_mem_data[idx].m_type == MEM_DRAM ||			\
+	 topo->m_mem_data[idx].m_type == MEM_HBM)
 
 struct xocl_mig_label {
 	unsigned char		tag[16];
@@ -1563,6 +1568,46 @@ enum {
 	XOCL_MSG_SUBDEV_RTN_PENDINGPLP,
 };
 
+struct xocl_p2p_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	int (*mem_map)(struct platform_device *pdev, ulong bank_addr,
+			ulong bank_size, ulong offset, ulong len,
+			ulong *bar_off);
+	int (*mem_unmap)(struct platform_device *pdev, ulong bar_off,
+			ulong len);
+	int (*mem_init)(struct platform_device *pdev);
+	int (*mem_cleanup)(struct platform_device *pdev);
+	int (*mem_get_pages)(struct platform_device *pdev,
+			ulong bar_off, ulong size,
+			struct page **pages, ulong npages);
+};
+#define	P2P_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_P2P).pldev
+#define	P2P_OPS(xdev)				\
+	((struct xocl_p2p_funcs *)SUBDEV(xdev, XOCL_SUBDEV_P2P).ops)
+#define	P2P_CB(xdev)	(P2P_DEV(xdev) && P2P_OPS(xdev))
+#define	xocl_p2p_mem_map(xdev, ba, bs, off, len, bar_off)	\
+	(P2P_CB(xdev) ?			\
+	P2P_OPS(xdev)->mem_map(P2P_DEV(xdev), ba, bs, off, len, bar_off) : \
+	-ENODEV)
+#define xocl_p2p_mem_unmap(xdev, bar_off, len)				\
+	(P2P_CB(xdev) ?							\
+	 P2P_OPS(xdev)->mem_unmap(P2P_DEV(xdev), bar_off, len) : -ENODEV)
+#define xocl_p2p_mem_init(xdev)						\
+	(P2P_CB(xdev) ?							\
+	 P2P_OPS(xdev)->mem_init(P2P_DEV(xdev)) : -ENODEV)
+#define xocl_p2p_mem_cleanup(xdev)						\
+	(P2P_CB(xdev) ?							\
+	 P2P_OPS(xdev)->mem_cleanup(P2P_DEV(xdev)) : -ENODEV)
+#define xocl_p2p_mem_get_pages(xdev, bar_off, len, pages, npages)	\
+	(P2P_CB(xdev) ?							\
+	 P2P_OPS(xdev)->mem_get_pages(P2P_DEV(xdev), bar_off, len,	\
+	 pages, npages) : -ENODEV)
+
+/* Each P2P chunk we set up must be at least 256MB */
+#define XOCL_P2P_CHUNK_SHIFT		28
+#define XOCL_P2P_CHUNK_SIZE		(1UL << XOCL_P2P_CHUNK_SHIFT)
+
+
 /* subdev functions */
 int xocl_subdev_init(xdev_handle_t xdev_hdl, struct pci_dev *pdev,
 	struct xocl_pci_funcs *pci_ops);
@@ -1822,4 +1867,7 @@ void xocl_fini_cu(void);
 
 int __init xocl_init_addr_translator(void);
 void xocl_fini_addr_translator(void);
+
+int __init xocl_init_p2p(void);
+void xocl_fini_p2p(void);
 #endif

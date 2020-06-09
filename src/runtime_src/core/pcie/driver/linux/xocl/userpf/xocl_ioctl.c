@@ -479,13 +479,6 @@ skip1:
 		 * since we have cleaned it up before download.
 		 */
 	}
-	/* work around vivado issue. Resize p2p bar after xclbin download */
-	if (xdev->core.priv.p2p_bar_sz > 0 && xdev->p2p_bar_idx >= 0 &&
-	    xdev->p2p_bar_len > (1 << XOCL_P2P_CHUNK_SHIFT) &&
-	    xocl_get_p2p_bar(xdev, NULL) >= 0) {
-		(void) xocl_pci_rbar_refresh(xdev->core.pdev,
-				xdev->p2p_bar_idx);
-	}
 
 	if (!preserve_mem) {
 		rc = xocl_init_mem(drm_p);

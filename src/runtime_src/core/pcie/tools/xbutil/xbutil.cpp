@@ -1749,7 +1749,8 @@ int xcldev::device::testP2p()
 {
     std::string errmsg, vbnv;
     std::vector<char> buf;
-    int ret = 0, p2p_enabled = 0;
+    int ret = 0;
+    int p2p_enabled;
     xclbin_lock xclbin_lock(m_handle, m_idx);
     auto dev = pcidev::get_dev(m_idx);
 
@@ -1757,7 +1758,7 @@ int xcldev::device::testP2p()
         return -EINVAL;
 
     dev->sysfs_get("rom", "VBNV", errmsg, vbnv);
-    dev->sysfs_get<int>("", "p2p_enable", errmsg, p2p_enabled, 0);
+    p2p_enabled = pcidev::check_p2p_config(dev, errmsg);
     if (p2p_enabled != 1) {
         std::cout << "P2P BAR is not enabled. Skipping validation" << std::endl;
         return -EOPNOTSUPP;
@@ -1868,22 +1869,14 @@ int xcldev::xclP2p(int argc, char *argv[])
     }
 
     ret = d->setP2p(p2p_enable, force);
-    if (ret == ENOSPC) {
-        std::cout << "ERROR: Not enough iomem space." << std::endl;
-        std::cout << "Please check BIOS settings" << std::endl;
-    } else if (ret == EBUSY) {
-        std::cout << "Please WARM reboot to enable p2p now." << std::endl;
-    } else if (ret == ENXIO) {
-        std::cout << "ERROR: P2P is not supported on this platform"
-            << std::endl;
-    } else if (ret == 1) {
+    if (ret)
+        std::cout << "Config P2P failed" << std::endl;
+    else if (p2p_enable)
         std::cout << "P2P is enabled" << std::endl;
-    } else if (ret == 0) {
+    else
         std::cout << "P2P is disabled" << std::endl;
-    } else if (ret)
-        std::cout << "ERROR: " << strerror(std::abs(ret)) << std::endl;
 
-    return ret;
+    return 0;
 }
 
 int xcldev::device::setCma(bool enable, uint64_t total_size)

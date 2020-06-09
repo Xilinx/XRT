@@ -218,6 +218,7 @@ enum {
 #define	XOCL_ADDR_TRANSLATOR	"address_translator"
 #define	XOCL_CU_CTRL		"cu_ctrl"
 #define	XOCL_CU			"cu"
+#define	XOCL_P2P		"p2p"
 
 #define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
 
@@ -258,6 +259,7 @@ enum subdev_id {
 	XOCL_SUBDEV_ADDR_TRANSLATOR,
 	XOCL_SUBDEV_CU_CTRL,
 	XOCL_SUBDEV_CU,
+	XOCL_SUBDEV_P2P,
 	XOCL_SUBDEV_NUM
 };
 
@@ -1385,6 +1387,13 @@ struct xocl_subdev_map {
 		.override_idx = -1,			\
 	}
 
+#define	XOCL_DEVINFO_P2P				\
+	{						\
+		.id = XOCL_SUBDEV_P2P,			\
+		.name = XOCL_P2P,			\
+		.override_idx = -1,			\
+	}
+
 #define	XOCL_RES_UARTLITE				\
 	((struct resource []) {				\
 		{					\
@@ -2419,7 +2428,8 @@ struct xocl_subdev_map {
 		.flags = XOCL_DSAFLAG_DYNAMIC_IP, 			\
 		.subdev_info	= RES_USER_VSEC,			\
 		.subdev_num = ARRAY_SIZE(RES_USER_VSEC),		\
-		.board_name = "u250"					\
+		.board_name = "u250",					\
+		.p2p_bar_sz = 64,					\
 	}
 
 #define	XOCL_BOARD_U250_MGMT_RAPTOR2					\

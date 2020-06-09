@@ -1129,11 +1129,24 @@ int shim::p2pEnable(bool enable, bool force)
 {
     const std::string input = "1\n";
     std::string err;
+    std::vector<std::string> p2p_cfg;
 
-    if (enable)
-        mDev->sysfs_put("", "p2p_enable", err, "1");
-    else
-        mDev->sysfs_put("", "p2p_enable", err, "0");
+    if (mDev == nullptr)
+        return -EINVAL;
+
+    /* write 0 to config for default bar size */
+    if (enable) {
+        mDev->sysfs_put("p2p", "config", err, "0");
+        if (!err.empty()) { 
+            throw std::runtime_error("P2P is not supported");
+        }
+     } else {
+        mDev->sysfs_put("p2p", "config", err, "-1");
+        if (!err.empty()) { 
+            throw std::runtime_error("P2P is not supported");
+        }
+     }
+
 
     if (force) {
         dev_fini();
@@ -1151,10 +1164,17 @@ int shim::p2pEnable(bool enable, bool force)
         dev_init();
     }
 
-    int p2p_enable = EINVAL;
-    mDev->sysfs_get<int>("", "p2p_enable", err, p2p_enable, EINVAL);
+    int ret;
+    ret = check_p2p_config(mDev, err);
+    if (!err.empty()) {
+        throw std::runtime_error(err);
+    } else if (ret == P2P_CONFIG_DISABLED && enable) {
+        throw std::runtime_error("Can not enable P2P");
+    } else if (ret == P2P_CONFIG_ENABLED && !enable) {
+        throw std::runtime_error("Can not disable P2P");
+    }
 
-    return p2p_enable;
+    return 0;
 }
 
 int shim::cmaEnable(bool enable, uint64_t size)
