@@ -1557,6 +1557,20 @@ struct xocl_flash_funcs {
 	(FLASH_CB(xdev) ?			\
 	FLASH_OPS(xdev)->get_size(FLASH_DEV(xdev), size) : -ENODEV)
 
+struct xocl_xfer_versal_funcs {
+	int (*download_axlf)(struct platform_device *pdev,
+		const void __user *arg);
+};
+
+#define	XFER_VERSAL_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_XFER_VERSAL).pldev
+#define	XFER_VERSAL_OPS(xdev)					\
+	((struct xocl_xfer_versal_funcs *)SUBDEV(xdev, XOCL_SUBDEV_XFER_VERSAL).ops)
+#define	XFER_VERSAL_CB(xdev)	(XFER_VERSAL_DEV(xdev) && XFER_VERSAL_OPS(xdev))
+#define	xocl_xfer_versal_download_axlf(xdev, xclbin)	\
+	(XFER_VERSAL_CB(xdev) ?					\
+	XFER_VERSAL_OPS(xdev)->download_axlf(XFER_VERSAL_DEV(xdev), xclbin) : -ENODEV)
+
+
 /* subdev mbx messages */
 #define XOCL_MSG_SUBDEV_VER	1
 #define XOCL_MSG_SUBDEV_DATA_LEN	(512 * 1024)
@@ -1820,8 +1834,8 @@ void xocl_fini_iores(void);
 int __init xocl_init_mailbox_versal(void);
 void xocl_fini_mailbox_versal(void);
 
-int __init xocl_init_ospi_versal(void);
-void xocl_fini_ospi_versal(void);
+int __init xocl_init_xfer_versal(void);
+void xocl_fini_xfer_versal(void);
 
 int __init xocl_init_aim(void);
 void xocl_fini_aim(void);

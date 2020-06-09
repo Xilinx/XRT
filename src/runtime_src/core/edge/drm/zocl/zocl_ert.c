@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
 /*
- * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
  *
  * Author(s):
  *        Min Ma <min.ma@xilinx.com>
@@ -102,7 +102,7 @@ ert_mpsoc_next(struct zocl_ert_dev *ert, struct ert_packet *pkg, int *idx_ret)
 	} else {
 		/* ERT mode is only for 64 bits system */
 		slot_info = ((u64)pkg - (u64)ert->cq_ioremap);
-		do_div(slot_info,slot_sz);
+		do_div(slot_info, slot_sz);
 		slot_idx = slot_info;
 	}
 
@@ -205,18 +205,6 @@ update_cmd(struct zocl_ert_dev *ert, int idx, void *data, int sz)
 	memcpy_toio(pkg->data, data, sz);
 }
 
-static int
-ert_mpsoc_xclbin(void)
-{
-	return 1;
-}
-
-static int
-ert_versal_xclbin(void)
-{
-	return 0;
-}
-
 static struct zocl_ert_ops mpsoc_ops = {
 	.init         = ert_mpsoc_init,
 	.fini         = ert_mpsoc_fini,
@@ -224,7 +212,6 @@ static struct zocl_ert_ops mpsoc_ops = {
 	.get_next_cmd = ert_mpsoc_next,
 	.notify_host  = ert_mpsoc_notify_host,
 	.update_cmd   = update_cmd,
-	.static_xclbin	= ert_mpsoc_xclbin,
 };
 
 static struct zocl_ert_ops versal_ops = {
@@ -234,7 +221,6 @@ static struct zocl_ert_ops versal_ops = {
 	.get_next_cmd = ert_versal_next,
 	.notify_host  = ert_versal_notify_host,
 	.update_cmd   = update_cmd,
-	.static_xclbin	= ert_versal_xclbin,
 };
 
 static const struct zocl_ert_info mpsoc_ert_info = {

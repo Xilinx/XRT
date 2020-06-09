@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -173,23 +173,6 @@ init(xclDeviceHandle handle, const axlf* top)
   while (ecmd->state < ERT_CMD_STATE_COMPLETED)
     while (xclExecWait(handle,1000)==0) ;
 
-  /*
-   * We ignore any error here and continue to finish. But if we have 2+
-   * applications calling init simultaneously, the second init would fail due
-   * to the ERT_CONFIGURE cmd won't be processed during exec->active,
-   * (configure is in progress before exec->configured is set), status.
-   *
-   * should we need this?
-   * if (ecmd->state != ERT_CMD_STATE_COMPLETED)
-   *    throw std::runtime_error("xclExecBuf incompleted with state: %d", ecmd->state);
-   *
-   * Note: this would not be an issue for other boards which do have icap.
-   *       because the softkernel is not being protected by the lock.
-   * i.e. for u200, (acquire lock -> reset scheduler -> download xclbin > release lock) -> configure
-   *      for u30,  (acquire lock ->reset scheduler -> download xclbin -> release lock) ->configure
-   *      for versal, (acquire lock -> download xclbin > release lock) -> configure -> softkenrel(download pdi)
-   */
-
   auto sks = xclbin::get_softkernels(top);
 
   if (!sks.empty()) {
@@ -231,53 +214,6 @@ init(xclDeviceHandle handle, const axlf* top)
   }
 
   xclCloseContext(handle,uuid,std::numeric_limits<unsigned int>::max());
-
-  return 0;
-}
-
-/**
- * loadXclbinToPS() - Load the whole xclbin to PS
- *
- * Load the whole XCLBIN to PS memory by ERT_SK_CONFIG
- * command.
- */
-int
-loadXclbinToPS(xclDeviceHandle handle, const axlf* top, bool pdi_load)
-{
-  xuid_t uuid;
-  auto execbo = create_exec_bo(handle,0x1000);
-  auto ecmd = reinterpret_cast<ert_configure_sk_cmd*>(execbo->data);
-  ecmd->state = ERT_CMD_STATE_NEW;
-  ecmd->opcode = ERT_SK_CONFIG;
-  ecmd->type = ERT_CTRL;
-  ecmd->count = 13;
-  ecmd->start_cuidx = 0;
-  ecmd->sk_type = pdi_load ? SOFTKERNEL_TYPE_XCLBIN_DYNAMIC : SOFTKERNEL_TYPE_XCLBIN_STATIC;
-  ecmd->num_cus = 0;
-
-  auto flags = xclbin::get_first_used_mem(top);
-  if (flags < 0)
-    throw std::runtime_error("unable to get available memory bank");
-
-  auto skbo = create_data_bo(handle, top->m_header.m_length, flags);
-  ecmd->sk_addr = skbo->prop.paddr;
-  ecmd->sk_size = skbo->prop.size;
-  std::memcpy(skbo->data, top, skbo->size);
-  if (xclSyncBO(handle, skbo->bo, XCL_BO_SYNC_BO_TO_DEVICE, skbo->size, 0))
-	throw std::runtime_error("unable to synch BO to device");
-
-  uuid_copy(uuid, top->m_header.uuid);
-  if (xclOpenContext(handle,uuid,-1,true))
-    throw std::runtime_error("unable to reserve virtual CU");
-
-  if (xclExecBuf(handle,execbo->bo))
-    throw std::runtime_error("unable to issue xclExecBuf");
-
-  // wait for command to complete
-  while (ecmd->state < ERT_CMD_STATE_COMPLETED)
-    while (xclExecWait(handle,1000)==0) ;
-
-  (void) xclCloseContext(handle,uuid,-1);
 
   return 0;
 }

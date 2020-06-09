@@ -96,27 +96,6 @@ match_name(struct device *dev, void *data)
 }
 
 /**
- * find_pdev - Find platform device by name
- *
- * @name: device name
- *
- * Returns a platform device. Returns NULL if not found.
- */
-static struct platform_device *find_pdev(char *name)
-{
-	struct device *dev;
-	struct platform_device *pdev;
-
-	dev = bus_find_device(&platform_bus_type, NULL, (void *)name,
-	    match_name);
-	if (!dev)
-		return NULL;
-
-	pdev = container_of(dev, struct platform_device, dev);
-	return pdev;
-}
-
-/**
  * get_reserved_mem_region - Get reserved memory region
  *
  * @dev: device struct
@@ -139,6 +118,27 @@ static int get_reserved_mem_region(struct device *dev, struct resource *res)
 		return -EINVAL;
 
 	return 0;
+}
+
+/**
+ * zocl_find_pdev - Find platform device by name
+ *
+ * @name: device name
+ *
+ * Returns a platform device. Returns NULL if not found.
+ */
+struct platform_device *zocl_find_pdev(char *name)
+{
+	struct device *dev;
+	struct platform_device *pdev;
+
+	dev = bus_find_device(&platform_bus_type, NULL, (void *)name,
+	    match_name);
+	if (!dev)
+		return NULL;
+
+	pdev = container_of(dev, struct platform_device, dev);
+	return pdev;
 }
 
 /**
@@ -837,7 +837,7 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	}
 	mutex_init(&zdev->mm_lock);
 
-	subdev = find_pdev("ert_hw");
+	subdev = zocl_find_pdev("ert_hw");
 	if (subdev) {
 		DRM_INFO("ert_hw found: 0x%llx\n", (uint64_t)(uintptr_t)subdev);
 		/* Trust device tree for now, but a better place should be

@@ -203,7 +203,7 @@ enum {
 #define	XOCL_DMA_MSIX		"dma_msix"
 #define	XOCL_MAILBOX_VERSAL	"mailbox_versal"
 #define	XOCL_ERT		"ert"
-#define	XOCL_OSPI_VERSAL	"ospi_versal"
+#define	XOCL_XFER_VERSAL	"xfer_versal"
 #define	XOCL_AIM		"aximm_mon"
 #define	XOCL_AM			"accel_mon"
 #define	XOCL_ASM		"axistream_mon"
@@ -244,7 +244,7 @@ enum subdev_id {
 	XOCL_SUBDEV_FMGR,
 	XOCL_SUBDEV_MIG_HBM,
 	XOCL_SUBDEV_MAILBOX_VERSAL,
-	XOCL_SUBDEV_OSPI_VERSAL,
+	XOCL_SUBDEV_XFER_VERSAL,
 	XOCL_SUBDEV_CLOCK,
 	XOCL_SUBDEV_AIM,
 	XOCL_SUBDEV_AM,
@@ -1553,7 +1553,7 @@ struct xocl_subdev_map {
 		.override_idx = -1,			\
 	}
 
-#define	XOCL_RES_OSPI_VERSAL				\
+#define	XOCL_RES_XFER_MGMT_VERSAL				\
 		((struct resource []) {			\
 			{				\
 			.start	= 0x3008000,		\
@@ -1562,12 +1562,12 @@ struct xocl_subdev_map {
 			}				\
 		})
 
-#define	XOCL_DEVINFO_OSPI_VERSAL			\
+#define	XOCL_DEVINFO_XFER_MGMT_VERSAL			\
 	{						\
-		XOCL_SUBDEV_OSPI_VERSAL,		\
-		XOCL_OSPI_VERSAL,			\
-		XOCL_RES_OSPI_VERSAL,			\
-		ARRAY_SIZE(XOCL_RES_OSPI_VERSAL),	\
+		XOCL_SUBDEV_XFER_VERSAL,		\
+		XOCL_XFER_VERSAL,			\
+		XOCL_RES_XFER_MGMT_VERSAL,			\
+		ARRAY_SIZE(XOCL_RES_XFER_MGMT_VERSAL),	\
 		.override_idx = -1,			\
 	}
 
@@ -1784,7 +1784,7 @@ struct xocl_subdev_map {
 		 	XOCL_DEVINFO_FEATURE_ROM_VERSAL,		\
 			XOCL_DEVINFO_MAILBOX_MGMT_VERSAL,		\
 		 	XOCL_DEVINFO_XMC_VERSAL,			\
-		 	XOCL_DEVINFO_OSPI_VERSAL,			\
+		 	XOCL_DEVINFO_XFER_MGMT_VERSAL,			\
 		 	XOCL_DEVINFO_UARTLITE,				\
 		})
 

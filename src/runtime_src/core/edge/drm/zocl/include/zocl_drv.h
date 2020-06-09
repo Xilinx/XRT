@@ -206,6 +206,7 @@ int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 		       struct drm_file *filp);
 int zocl_context_ioctl(struct drm_zocl_dev *zdev, void *data,
 		       struct drm_file *filp);
+struct platform_device *zocl_find_pdev(char *name);
 
 /* CU controller */
 int cu_ctrl_init(struct drm_zocl_dev *zdev);
