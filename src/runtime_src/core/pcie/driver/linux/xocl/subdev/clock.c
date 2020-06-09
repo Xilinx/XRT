@@ -42,6 +42,11 @@
 #define	DEBUG_CLK_SHUTDOWN_BIT	0x2
 #define	VALID_CLKSHUTDOWN_BITS	(CLK_SHUTDOWN_BIT|DEBUG_CLK_SHUTDOWN_BIT)
 
+#define	CLK_ACAP_MAX_VALUE_FOR_O	4320
+#define	CLK_ACAP_INPUT_FREQ		33.333
+/* no float number in kernel, x/33.333 will be converted to x * 1000 / 33333) */
+#define	CLK_ACAP_INPUT_FREQ_X_1000	33333
+
 #define	CLOCK_ERR(clock, fmt, arg...)	\
 	xocl_err(&(clock)->clock_pdev->dev, fmt "\n", ##arg)
 #define	CLOCK_WARN(clock, fmt, arg...)	\
@@ -499,7 +504,7 @@ static inline int clock_wiz_busy(struct clock *clock, int idx, int cycle,
 
 static inline unsigned int floor_acap_o(int freq)
 {
-	return (4320 / freq);
+	return (CLK_ACAP_MAX_VALUE_FOR_O / freq);
 }
 
 /*
@@ -509,7 +514,7 @@ static inline unsigned int floor_acap_o(int freq)
  */
 static inline unsigned int floor_acap_m(int freq)
 {
-	return (floor_acap_o(freq) * freq * 1000/33333);
+	return (floor_acap_o(freq) * freq * 1000 / CLK_ACAP_INPUT_FREQ_X_1000);
 }
 
 /*
