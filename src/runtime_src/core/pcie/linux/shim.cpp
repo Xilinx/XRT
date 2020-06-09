@@ -2253,7 +2253,8 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
       char *pGrpInfo = NULL;
       int grp_info_size = 0;
       auto core_device = xrt_core::get_userpf_device(drv);
-      /* Populate memory group mapping info from sysfs */
+      
+      /* Get memory group mapping info from sysfs */
       grp_info_size = drv->xclGetMemGroupInfo(&pGrpInfo);
       if (grp_info_size > 0) {
           /* Populate the retrive info into device class */
@@ -2263,17 +2264,9 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 	  if (pGrpInfo)
               free(pGrpInfo); 	
       }
+
       core_device->register_axlf(buffer);
-      /* Populate memory group mapping info from sysfs */
-      grp_info_size = drv->xclGetMemGroupInfo(&pGrpInfo);
-      if (grp_info_size > 0) {
-          /* Populate the retrive info into device class */
-          core_device->populate_mem_group_info(pGrpInfo);
-	  
-	  /* Free the allocated memory */
-	  if (pGrpInfo)
-              free(pGrpInfo); 	
-      }
+
 #ifndef DISABLE_DOWNLOAD_XCLBIN
       ret = xrt_core::scheduler::init(handle, buffer);
       START_DEVICE_PROFILING_CB(handle);
