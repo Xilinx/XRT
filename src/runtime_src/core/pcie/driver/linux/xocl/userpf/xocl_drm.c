@@ -723,15 +723,9 @@ done:
 		vfree(drm_p->mm);
 	}
 	drm_p->mm = NULL;
-
 	if (drm_p->mm_usage_stat)
 		vfree(drm_p->mm_usage_stat);
 	drm_p->mm_usage_stat = NULL;
-
-	if (drm_p->mm_p2p_off)
-		vfree(drm_p->mm_p2p_off);
-	drm_p->mm_p2p_off = NULL;
-
 	return 0;
 }
 
@@ -1060,12 +1054,6 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 		  topo->m_count, length);
 
 	mutex_lock(&drm_p->mm_lock);
-
-	drm_p->mm_p2p_off = vzalloc((topo->m_count + 1) * sizeof(u64));
-	if (!drm_p->mm_p2p_off) {
-		err = -ENOMEM;
-		goto done;
-	}
 
 	err = xocl_p2p_mem_init(drm_p->xdev);
 	if (err && err != -ENODEV) {
