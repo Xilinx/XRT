@@ -246,6 +246,8 @@ int main(int argc, char *argv[])
         return xcldev::xclP2p(argc, argv);
     } else if( std::strcmp( argv[1], "host_mem" ) == 0 ) {
         return xcldev::xclCma(argc, argv);
+    } else if( std::strcmp( argv[1], "scheduler" ) == 0 ) {
+        return xcldev::xclScheduler(argc, argv);
     }
     optind--;
 
@@ -2310,5 +2312,60 @@ xcldev::device::iopsTest()
     }
 
     xclCloseContext(m_handle, xclbin_lock.m_uuid, 0);
+    return 0;
+}
+
+int xcldev::xclScheduler(int argc, char *argv[])
+{
+    bool root = ((getuid() == 0) || (geteuid() == 0));
+    static struct option long_opts[] = {
+        {"echo", required_argument, 0, 0},
+        {0, 0, 0, 0}
+    };
+    const char* short_opts = "d:e:";
+    int c, opt_idx;
+    std::string errmsg;
+    unsigned index = 0;
+    int kds_echo = -1;
+
+    if (!root) {
+        std::cout << "ERROR: root privileges required." << std::endl;
+        return -EPERM;
+    }
+
+    while ((c = getopt_long(argc, argv, short_opts, long_opts, &opt_idx)) != -1) {
+        switch (c) {
+        case 'd': {
+            int ret = str2index(optarg, index);
+            if (ret != 0)
+                return ret;
+            if (index >= pcidev::get_dev_total()) {
+                std::cout << "ERROR: index " << index << " out of range"
+                    << std::endl;
+                return -EINVAL;
+            }
+            break;
+        }
+        case 'e':
+            kds_echo = std::atoi(optarg);
+            break;
+        default:
+            /* This is hidden command, silently exit */
+            return -EINVAL;
+        }
+    }
+
+    if (kds_echo != -1) {
+        std::string val = (kds_echo == 0)? "0" : "1";
+        pcidev::get_dev(index)->sysfs_put( "", "kds_echo", errmsg, val);
+        if (!errmsg.empty()) {
+            std::cout << errmsg << std::endl;
+            return -EINVAL;
+        }
+        std::string kds_echo;
+        pcidev::get_dev(index)->sysfs_get( "", "kds_echo", errmsg, kds_echo);
+        std::cout << "Device[" << index << "] kds_echo: " << kds_echo << std::endl;
+    }
+    
     return 0;
 }
