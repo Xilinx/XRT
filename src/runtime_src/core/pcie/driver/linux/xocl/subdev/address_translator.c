@@ -183,13 +183,23 @@ static int addr_translator_set_address(struct platform_device *pdev, uint64_t ba
 	num = addr_translator->slot_num;
 	entry_sz = addr_translator->slot_sz;
 	host_mem_size = num*entry_sz;
+	if (!host_mem_size)
+		return ret;
 
 	range = min(host_mem_size, range);
 	range_in_log = ilog2(range);
-	xocl_dr_reg_write32(xdev, range_in_log, &regs->addr_range);
+
+	/* Calculate how many entries we have to program
+	 * For example: host_mem_size 16G, slot_sz 1G, range 4G
+	 * We only need 4 slots to cover 4G
+	 */
+	num = range/entry_sz;
+	if (!is_power_of_2(num))
+		return -EINVAL;
 
 	/* disable remapper first */
 	xocl_dr_reg_write32(xdev, 0, &regs->entry_num);
+	xocl_dr_reg_write32(xdev, range_in_log, &regs->addr_range);
 	xocl_dr_reg_write32(xdev, base_addr & 0xFFFFFFFF, &regs->base_addr.lo);
 	xocl_dr_reg_write32(xdev, (base_addr>>32) & 0xFFFFFFFF, &regs->base_addr.hi);
 	/* reinitiate remapper */

@@ -51,6 +51,8 @@
 #define DRM_DBG(fmt, args...)
 #endif
 
+#define IS_HOST_MEM(m_tag)	(!strncmp(m_tag, "HOST[0]", 7))
+
 extern int kds_mode;
 
 static char driver_date[9];
@@ -522,7 +524,7 @@ uint64_t xocl_mm_get_mem_range(struct xocl_drm *drm_p, size_t size, const char* 
 {
 	uint64_t sz = xocl_addr_translator_get_range(drm_p->xdev);
 
-	if (!strncmp(m_tag, "HOST[0]", 7))
+	if (IS_HOST_MEM(m_tag))
 		return sz;
 	else
 		return size;
@@ -686,7 +688,7 @@ int xocl_cleanup_mem_nolock(struct xocl_drm *drm_p)
 			if (XOCL_IS_STREAM(topology, i))
 				continue;
 
-			if (!strncmp(topology->m_mem_data[i].m_tag, "HOST[0]", 7))
+			if (IS_HOST_MEM(topology->m_mem_data[i].m_tag))
 				xocl_addr_translator_disable_remap(drm_p->xdev);
 
 			xocl_info(drm_p->ddev->dev, "Taking down DDR : %d", i);
@@ -868,10 +870,10 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 		hash_add(drm_p->mm_range, &wrapper->node, wrapper->start_addr);
 #endif
 
-		if (!strncmp(mem_data->m_tag, "HOST[0]", 7)) {
+		if (IS_HOST_MEM(mem_data->m_tag)) {
 			host_reserve_size = xocl_addr_translator_get_host_mem_size(drm_p->xdev);
 
-			ddr_bank_size = min(ddr_bank_size, (size_t)host_reserve_size);			
+			ddr_bank_size = min(ddr_bank_size, (size_t)host_reserve_size);
 			err = xocl_set_cma_bank(drm_p, mem_data->m_base_address, ddr_bank_size);
 			if (err) {
 				xocl_err(drm_p->ddev->dev, "Run host_mem to setup host memory access, request 0x%lx bytes", ddr_bank_size);
@@ -910,7 +912,7 @@ bool is_cma_bank(struct xocl_drm *drm_p, uint32_t memidx)
 	if (!topo->m_mem_data[memidx].m_used)
 		goto done;
 
-	if (!strncmp(topo->m_mem_data[memidx].m_tag, "HOST[0]", 7))
+	if (IS_HOST_MEM(topo->m_mem_data[memidx].m_tag))
 		ret = true;
 
 done:
