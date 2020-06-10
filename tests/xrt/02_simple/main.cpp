@@ -23,13 +23,9 @@
 
 // XRT includes
 #include "xrt.h"
-#include "ert.h"
+#include "experimental/xrt_device.h"
 #include "experimental/xrt_kernel.h"
-#include "experimental/xrt_xclbin.h"
-#include "xclbin.h"
-
-// lowlevel common include
-#include "utils.h"
+#include "experimental/xrt_bo.h"
 
 // This value is shared with worgroup size in kernel.cl
 static const int COUNT = 1024;
@@ -52,61 +48,46 @@ static void printHelp()
     std::cout << "* Bitstream is required\n";
 }
 
-static int runKernel(xclDeviceHandle handle, bool verbose, int first_mem, const uuid_t xclbinId)
+static int runKernel(xrt::device& device, bool verbose, const uuid_t xclbinId)
 {
-    xrtKernelHandle khandle = xrtPLKernelOpen(handle, xclbinId, "simple");
+  const size_t DATA_SIZE = COUNT * sizeof(int);
 
-    const size_t DATA_SIZE = COUNT * sizeof(int);
+  auto simple = xrt::kernel(device, xclbinId, "simple");
+  auto bo0 = xrt::bo(device, DATA_SIZE, XCL_BO_FLAGS_NONE, simple.group_id(0));
+  auto bo1 = xrt::bo(device, DATA_SIZE, XCL_BO_FLAGS_NONE, simple.group_id(1));
+  auto bo0_map = bo0.map<int*>();
+  auto bo1_map = bo1.map<int*>();
+  std::fill(bo0_map, bo0_map + COUNT, 0);
+  std::fill(bo1_map, bo1_map + COUNT, 0);
 
-    unsigned boHandle1 = xclAllocBO(handle, DATA_SIZE, 0, first_mem); //output s1
-    validHandleOrError(boHandle1);
-    int *bo1 = (int*)xclMapBO(handle, boHandle1, true);
+  // Fill our data sets with pattern
+  int foo = 0x10;
+  int bufReference[COUNT];
+  for (int i = 0; i < COUNT; ++i) {
+    bo0_map[i] = 0;
+    bo1_map[i] = i;
+    bufReference[i] = i + i * foo;
+  }
 
-    unsigned boHandle2 = xclAllocBO(handle, DATA_SIZE, 0, first_mem); // input s2
-    validHandleOrError(boHandle2);
-    int *bo2 = (int*)xclMapBO(handle, boHandle2, true);
+  bo0.sync(XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE, 0);
+  bo1.sync(XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE, 0);
 
-    int bufReference[COUNT];
+  auto run = simple(bo0, bo1, 0x10);
+  run.wait();
 
-    memset(bo2, 0, DATA_SIZE);
-    memset(bo1, 0, DATA_SIZE);
+  //Get the output;
+  std::cout << "Get the output data from the device" << std::endl;
+  bo0.sync(XCL_BO_SYNC_BO_FROM_DEVICE, DATA_SIZE, 0);
 
-    // Fill our data sets with pattern
-    int foo = 0x10;
-    for (int i = 0; i < COUNT; i++) {
-        bo2[i] = i;
-        bufReference[i] = bo2[i] + i * foo;
-    }
+  // Validate our results
+  if (std::memcmp(bo0_map, bufReference, DATA_SIZE))
+    throw std::runtime_error("Value read back does not match reference");
 
-    validOrError(xclSyncBO(handle, boHandle2, XCL_BO_SYNC_BO_TO_DEVICE , COUNT * sizeof(int), 0), "xclSyncBO");
-    validOrError(xclSyncBO(handle, boHandle1, XCL_BO_SYNC_BO_TO_DEVICE , COUNT * sizeof(int), 0), "xclSyncBO");
-
-    xrtRunHandle runh = xrtKernelRun(khandle, boHandle1, boHandle2, 0x10);
-
-    ert_cmd_state state = xrtRunWait(runh);
-
-    //Get the output;
-    std::cout << "Get the output data from the device" << std::endl;
-    validOrError(xclSyncBO(handle, boHandle1, XCL_BO_SYNC_BO_FROM_DEVICE, DATA_SIZE, 0), "xclSyncBO");
-
-    // Validate our results
-    //
-    if (std::memcmp(bo1, bufReference, DATA_SIZE))
-        throw std::runtime_error("Value read back does not match reference");
-
-    xrtRunClose(runh);
-    xrtKernelClose(khandle);
-
-    // Clean up stuff
-    xclUnmapBO(handle, boHandle1, bo1);
-    xclUnmapBO(handle, boHandle2, bo2);
-    xclFreeBO(handle, boHandle1);
-    xclFreeBO(handle, boHandle2);
-    return 0;
+  return 0;
 }
 
-
-int main(int argc, char** argv)
+int
+run(int argc, char** argv)
 {
     std::string sharedLibrary;
     std::string bitstreamFile;
@@ -114,9 +95,7 @@ int main(int argc, char** argv)
     size_t alignment = 128;
     int option_index = 0;
     unsigned index = 0;
-    unsigned cu_index = 0;
     bool verbose = false;
-    bool ert = false;
     int c;
 
     while ((c = getopt_long(argc, argv, "k:d:vh", long_options, &option_index)) != -1)
@@ -146,43 +125,38 @@ int main(int argc, char** argv)
 
     (void)verbose;
 
-    if (bitstreamFile.size() == 0) {
-        std::cout << "FAILED TEST\n";
-        std::cout << "No bitstream specified\n";
-        return -1;
-    }
+    if (bitstreamFile.size() == 0)
+      throw std::runtime_error("FAILED_TEST\nNo bitstream specified");
 
-    if (halLogfile.size()) {
-        std::cout << "Using " << halLogfile << " as HAL driver logfile\n";
-    }
+    if (halLogfile.size())
+      std::cout << "Using " << halLogfile << " as HAL driver logfile\n";
 
     std::cout << "HAL driver = " << sharedLibrary << "\n";
     std::cout << "Host buffer alignment = " << alignment << " bytes\n";
     std::cout << "Compiled kernel = " << bitstreamFile << "\n";
 
+    if (index >= xclProbe())
+      throw std::runtime_error("Cannot find device index specified");
 
-    try {
-        xclDeviceHandle handle;
-        uint64_t cu_base_addr = 0;
-        int first_mem = -1;
-        uuid_t xclbinId;
-
-        if (initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr, first_mem, xclbinId))
-            return 1;
-
-        if (first_mem < 0)
-            return 1;
-
-        runKernel(handle, verbose, first_mem, xclbinId);
-        xclClose(handle);
-    }
-    catch (std::exception const& e)
-    {
-        std::cout << "Exception: " << e.what() << "\n";
-        std::cout << "FAILED TEST\n";
-        return 1;
-    }
-
-    std::cout << "PASSED TEST\n";
+    auto device = xrt::device(index);
+    auto uuid = device.load_xclbin(bitstreamFile);
+    runKernel(device, verbose, uuid.get());
     return 0;
+}
+
+int main(int argc, char** argv)
+{
+  try {
+    auto ret = run(argc, argv);
+    std::cout << "PASSED TEST\n";
+    return ret;
+  }
+  catch (std::exception const& e) {
+    std::cout << "Exception: " << e.what() << "\n";
+    std::cout << "FAILED TEST\n";
+    return 1;
+  }
+
+  std::cout << "PASSED TEST\n";
+  return 0;
 }

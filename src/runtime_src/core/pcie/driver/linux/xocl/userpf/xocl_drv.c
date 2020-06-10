@@ -61,6 +61,16 @@ struct class *xrt_class;
 
 MODULE_DEVICE_TABLE(pci, pciidlist);
 
+#if defined(__PPC64__)
+int xrt_reset_syncup = 1;
+#else
+int xrt_reset_syncup;
+#endif
+module_param(xrt_reset_syncup, int, (S_IRUGO|S_IWUSR));
+MODULE_PARM_DESC(xrt_reset_syncup,
+	"Enable config space syncup for pci hot reset");
+
+
 static void xocl_mb_connect(struct xocl_dev *xdev);
 static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	u64 msgid, int err, bool sw_ch);
@@ -226,6 +236,8 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 		xocl_fini_sysfs(xdev);
 		xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 		xocl_subdev_offline_all(xdev);
+		if (!xrt_reset_syncup)
+			xocl_subdev_online_by_id(xdev, XOCL_SUBDEV_MAILBOX);
 	} else {
 		(void) xocl_config_pci(xdev);
 
@@ -233,6 +245,9 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 			(void) xocl_pci_resize_resource(xdev->core.pdev,
 				xdev->p2p_bar_idx, xdev->p2p_bar_sz_cached);
 		}
+
+		if (!xrt_reset_syncup)
+			xocl_subdev_offline_by_id(xdev, XOCL_SUBDEV_MAILBOX);
 
 		ret = xocl_subdev_online_all(xdev);
 		if (ret)
@@ -357,10 +372,26 @@ int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 	if (flag & XOCL_RESET_FORCE)
 		xocl_drvinst_kill_proc(xdev->core.drm);
 
+	/* On powerpc, it does not have secondary level bus reset.
+	 * Instead, it uses fundemantal reset which does not allow mailbox polling
+	 * xrt_reset_syncup might have to be true on power pc.
+	 */
+
+	if (!xrt_reset_syncup) {
+		xocl_reset_notify(xdev->core.pdev, true);
+
+		xocl_peer_request(xdev, &mbreq, sizeof(struct xcl_mailbox_req),
+			&ret, &resplen, NULL, NULL, 0);
+		/* userpf will back online till receiving mgmtpf notification */
+
+		return 0;
+	}
+
 	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct xcl_mailbox_req),
 		&ret, &resplen, NULL, NULL, 0);
 
 	xocl_reset_notify(xdev->core.pdev, true);
+
 	/*
 	 * return value indicates how mgmtpf side handles hot reset request
 	 * 0 indicates response from XRT mgmtpf driver, which supports
@@ -387,7 +418,6 @@ int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 	pci_read_config_word(pdev, PCI_COMMAND, &pci_cmd);
 	pci_cmd &= ~PCI_COMMAND_MASTER;
 	pci_write_config_word(pdev, PCI_COMMAND, pci_cmd);
-
 	/*
 	 * Wait mgmtpf driver complete reset and set master.
 	 * The reset will take 50 seconds on some platform.
@@ -403,14 +433,6 @@ int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 	pci_read_config_word(pdev, PCI_COMMAND, &pci_cmd);
 	pci_cmd |= PCI_COMMAND_MASTER;
 	pci_write_config_word(pdev, PCI_COMMAND, pci_cmd);
-
-#if defined(__PPC64__)
-	/* During reset we can't poll mailbox registers to get notified when
-	 * peer finishes reset. Just do a timer based wait for 20 seconds,
-	 * which is long enough for reset to be done.
-	 */
-	msleep(20 * 1000);
-#endif
 
 failed_notify:
 
@@ -664,7 +686,15 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 	u32 blob_len;
 	uint64_t checksum;
 	size_t offset = 0;
+	bool offline = false;
 	int ret = 0;
+
+	ret = xocl_drvinst_get_offline(xdev->core.drm, &offline);
+	if (ret == -ENODEV || offline) {
+		userpf_info(xdev, "online current devices");
+	        xocl_reset_notify(xdev->core.pdev, false);
+		xocl_drvinst_set_offline(xdev->core.drm, false);
+	}
 
 	userpf_info(xdev, "get fdt from peer");
 	mb_req = vzalloc(reqlen);
@@ -837,13 +867,13 @@ static void xocl_p2p_percpu_ref_kill(void *data)
 {
 	struct percpu_ref *ref = data;
 #if defined(RHEL_RELEASE_CODE)
-	#if (RHEL_RELEASE_CODE == RHEL_RELEASE_VERSION(7, 7))
+	#if (RHEL_RELEASE_CODE == RHEL_RELEASE_VERSION(7, 7)) || (RHEL_RELEASE_CODE == RHEL_RELEASE_VERSION(7, 6))
 	unsigned long __percpu *percpu_count = (unsigned long __percpu *)
 		(ref->percpu_count_ptr & ~__PERCPU_REF_ATOMIC_DEAD);
 	unsigned long count = 0;
 	int cpu;
 
-/* Nasty hack for CentOS7.7 only
+/* Nasty hack for CentOS7.7 & CentOS7.6
  * percpu_ref->count have to substract the percpu counters
  * to guarantee the percpu_ref->count will drop to 0
  */
@@ -1332,7 +1362,7 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 
 	unmap_bar(xdev);
 
-	kds_fini_sched(&XDEV(xdev)->kds);
+	xocl_fini_sched(xdev);
 
 	xocl_subdev_fini(xdev);
 	if (xdev->ulp_blob)
@@ -1389,7 +1419,7 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 		goto failed;
 	}
 
-	(void) kds_init_sched(&XDEV(xdev)->kds);
+	(void) xocl_init_sched(xdev);
 
 	ret = xocl_config_pci(xdev);
 	if (ret)

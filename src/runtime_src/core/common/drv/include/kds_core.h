@@ -144,4 +144,7 @@ int kds_del_context(struct kds_client *client, struct kds_ctx_info *info);
 int kds_add_command(struct kds_command *xcmd);
 void kds_free_command(struct kds_command *xcmd);
 
+/* sysfs */
+int store_kds_echo(struct kds_sched *kds, const char *buf, size_t count,
+		   int kds_mode, u32 clients, int *echo);
 #endif

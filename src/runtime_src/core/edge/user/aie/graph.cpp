@@ -538,6 +538,16 @@ xrtSyncBOAIE(xrtGraphHandle ghdl, unsigned int bo, const char *dmaID, enum xclBO
   graph->sync_bo(bo, dmaID, dir, size, offset);
 }
 
+void
+xrtResetAieArray(xclDeviceHandle handle)
+{
+  /* Do a handle check */
+  xrt_core::get_userpf_device(handle);
+
+  XAieLib_NpiAieArrayReset(XAIE_RESETENABLE);
+  XAieLib_NpiAieArrayReset(XAIE_RESETDISABLE);
+}
+
 } // api
   
 
@@ -731,4 +741,17 @@ xrtSyncBOAIE(xrtGraphHandle ghdl, unsigned int bo, const char *dmaID, enum xclBO
     xrt_core::send_exception_message(ex.what());
     return -1;
   }  
+}
+
+int
+xrtResetAIEArray(xclDeviceHandle handle)
+{
+  try {
+    api::xrtResetAieArray(handle);
+    return 0;
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -1;
+  }
 }

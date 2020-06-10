@@ -53,8 +53,9 @@ def runKernel(opt):
     xclSyncBO(opt.handle, boHandle1, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE, 0)
     xclSyncBO(opt.handle, boHandle2, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE, 0)
 
-    print("Issue kernel start requests using xrtKernelRun()")
-    rhandle1 = xrtKernelRun(khandle, boHandle1, boHandle2, 0x10)
+    print("Issue kernel start requests")
+    kfunc = xrtKernelGetFunc(ctypes.c_int, ctypes.c_int, ctypes.c_int)
+    rhandle1 = kfunc(khandle, boHandle1, boHandle2, 0x10)
 
     print("Now wait for the kernels to finish using xrtRunWait()")
     xrtRunWait(rhandle1)

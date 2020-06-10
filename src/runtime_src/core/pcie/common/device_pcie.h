@@ -25,23 +25,9 @@ class device_pcie : public device
 {
 public:
   /**
-   * device_pcie() - Construct and open a device
-   */
-  device_pcie(id_type device_id, bool user);
-
-  /**
    * device_pcie() - Construct from a device_handle
-   *
-   * Bypasses call to xclOpen
    */
-  device_pcie(handle_type device_handle, id_type device_id);
-
-  /**
-   * Dtor - 
-   *
-   * Closes the device if and only if the device is managed
-   */
-  ~device_pcie();
+  device_pcie(handle_type device_handle, id_type device_id, bool user);
 
   virtual void
   get_info(boost::property_tree::ptree& pt) const;
@@ -66,7 +52,6 @@ public:
 private:
   xclDeviceHandle m_handle = XRT_NULL_HANDLE;
   bool m_userpf;
-  bool m_managed;
 };
 
 } // xrt_core

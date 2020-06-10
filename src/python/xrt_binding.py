@@ -31,6 +31,9 @@ xclDeviceHandle = ctypes.c_void_p
 xrtKernelHandle = ctypes.c_void_p
 xrtRunHandle = ctypes.c_void_p
 xrtKernelRunHandle = ctypes.c_void_p
+xrtBufferHandle = ctypes.c_void_p
+xrtBufferFlags = ctypes.c_ulonglong
+xrtMemoryGroup = ctypes.c_uint
 
 class xclDeviceInfo2(ctypes.Structure):
     # "_fields_" is a required keyword
@@ -909,7 +912,7 @@ def xclRegRead(handle, cu_index, offset, datap):
     :return: 0 or appropriate error number
     """
     libcore.xclRegRead.restype = ctypes.c_int
-    libcore.xclRegRead.argtypes = [xclDeviceHandle, ctypes.uint32_t, ctypes.uint32_t, ctypes.POINTER(ctypes.c_uint32_t)]
+    libcore.xclRegRead.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_uint, ctypes.POINTER(ctypes.c_uint)]
     return _valueOrError(libcore.xclRegRead(handle, cu_index, offset, datap))
 
 
@@ -923,8 +926,8 @@ def xclRegWrite(handle, cu_index, offset, data):
     :return: 0 or appropriate error number
     """
     libcore.xclRegRead.restype = ctypes.c_int
-    libcore.xclRegRead.argtypes = [xclDeviceHandle, ctypes.uint32_t, ctypes.uint32_t, ctypes.c_uint32_t]
-    return _valueOrError(libcore.xclRegRead(handle, cu_index, offset, data))
+    libcore.xclRegRead.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_uint, ctypes.c_uint]
+    return _valueOrError(libcore.xclRegWrite(handle, cu_index, offset, data))
 
 
 def xclDebugReadIPStatus(handle, type, debugResults):
@@ -949,7 +952,11 @@ def xrtPLKernelOpen(handle, xclbinId, name):
     """
     libcoreutil.xrtPLKernelOpen.restype = ctypes.POINTER(xrtKernelHandle)
     libcoreutil.xrtPLKernelOpen.argtypes = [xclDeviceHandle, ctypes.c_char_p, ctypes.c_char_p]
-    return _valueOrError(libcoreutil.xrtPLKernelOpen(handle, xclbinId.bytes, name))
+    if isinstance(name, str):
+        nm = str.encode(name)
+    else:
+        nm = name
+    return _valueOrError(libcoreutil.xrtPLKernelOpen(handle, xclbinId.bytes, nm))
 
 
 def xrtKernelClose(khandle):
@@ -966,17 +973,26 @@ def xrtKernelClose(khandle):
     return _valueOrError(-res);
 
 
-def xrtKernelRun(khandle, *args):
+def xrtKernelGetFunc(*args):
     """
-    Start a kernel execution
-    :param khandle: kernel handle obtained in xrtPLKernelOpen()
-    :param args: variable number of kernel arguments
-    :return: Run handle which must be closed with xrtRunClose()
+    Obtain the callback function as defined below to start a kernel execution:
+        First argument is kernel handle obtained in xrtPLKernelOpen()
+        Followed by variable number of kernel arguments
+        Returns run handle which must be closed with xrtRunClose()
+    After obtain the callback function, it can be called as:
+        func(kernel_handle, arg0, arg1, ...)
+
+    :param args: variable number of kernel argument ctypes for this kernel
+                 (kernel handle is not included)
+    :return: python function that can be called with specific kernel arguments
+             to start the kernel specified by the kernel handle
     """
-    libcoreutil.xrtKernelRun.restype = ctypes.POINTER(xrtKernelRunHandle)
-    # TODO: Figure out how do we pass hint for tuple/varargs for ctypes
-    # libcoreutil.xrtKerneRun.argtypes = [xrtKernelHandle]
-    return libcoreutil.xrtKernelRun(khandle, *args)
+    types = [xrtKernelHandle]
+    for argtype in args:
+        types.append(argtype)
+    proto = ctypes.CFUNCTYPE(xrtKernelRunHandle, *types)
+    func = proto(("xrtKernelRun", libcoreutil))
+    return func
 
 
 def xrtRunWait(rhandle):
@@ -1004,7 +1020,7 @@ def xrtRunClose(rhandle):
     return _valueOrError(-res)
 
 
-def xclIPName2Index(rhandle, name):
+def xclIPName2Index(handle, name):
     """
     Obtain index of a kernel given its name.
     :param handle: Device handle
@@ -1016,3 +1032,143 @@ def xclIPName2Index(rhandle, name):
     libcore.xclIPName2Index.restype = ctypes.c_int
     libcore.xclIPName2Index.argtypes = [xclDeviceHandle, ctypes.c_char_p]
     return _valueOrError(libcore.xclIPName2Index(handle, name))
+
+
+def xrtBOAllocUserPtr(handle, userptr, size, flags, grp):
+    """
+    Allocate a BO using userptr provided by the user.
+    :param handle: Device handle
+    :param userptr: Pointer to 4K aligned user memory
+    :param size: Size of buffer
+    :param flags: Specify bank information, etc
+    :param grp: Specify memory bank group ID
+    :return: xrtBufferHandle on success or NULL
+    """
+    libcoreutil.xrtBOAllocUserPtr.restype = xrtBufferHandle
+    libcoreutil.xrtBOAllocUserPtr.argtypes = [xclDeviceHandle, ctypes.c_void_p, ctypes.c_size_t, xrtBufferFlags, xrtMemoryGroup]
+    return libcoreutil.xrtBOAllocUserPtr(handle, userptr, size, flags, grp)
+
+
+def xrtBOAlloc(handle, size, flags, grp):
+    """
+    Allocate a BO of requested size with appropriate flags.
+    :param handle: Device handle
+    :param size: Size of buffer
+    :param flags: Specify bank information, etc
+    :param grp: Specify memory bank group ID
+    :return: xrtBufferHandle on success or NULL
+    """
+    libcoreutil.xrtBOAlloc.restype = xrtBufferHandle
+    libcoreutil.xrtBOAlloc.argtypes = [xclDeviceHandle, ctypes.c_size_t, xrtBufferFlags, xrtMemoryGroup]
+    return libcoreutil.xrtBOAlloc(handle, size, flags, grp)
+
+
+def xrtBOSubAlloc(parent, size, offset):
+    """
+    Allocate a sub buffer from a parent buffer
+    :param parent: Parent buffer handle
+    :param size: Size of sub buffer
+    :param offset: Offset into parent buffer
+    :return: xrtBufferHandle on success or NULL
+    """
+    libcoreutil.xrtBOSubAlloc.restype = xrtBufferHandle
+    libcoreutil.xrtBOSubAlloc.argtypes = [xclDeviceHandle, ctypes.c_size_t, ctypes.c_size_t]
+    return libcoreutil.xrtBOSubAlloc(parent, size, offset)
+
+
+def xrtBOFree(bufhandle):
+    """
+    Free a previously allocated BO
+    :param bufhandle: Buffer handle
+    :return: 0 on success, or err code on error
+    """
+    libcoreutil.xrtBOFree.restype = ctypes.c_int
+    libcoreutil.xrtBOFree.argtypes = [xrtBufferHandle]
+    return _valueOrError(libcoreutil.xrtBOFree(bufhandle))
+
+
+def xrtBOSync(bufhandle, direction, size, offset):
+    """
+    Synchronize buffer contents in requested direction
+    :param bufhandle: Buffer handle
+    :param direction: To device or from device
+    :param size: Size of data to synchronize
+    :param offset: Offset within the BO
+    :return: 0 on success, or err code on error
+
+    Synchronize the buffer contents between host and device. Depending
+    on the memory model this may require DMA to/from device or CPU
+    cache flushing/invalidation.
+    """
+    libcoreutil.xrtBOSync.restype = ctypes.c_int
+    libcoreutil.xrtBOSync.argtypes = [xrtBufferHandle, ctypes.c_int, ctypes.c_size_t, ctypes.c_size_t]
+    return _valueOrError(libcoreutil.xrtBOSync(bufhandle, direction, size, offset))
+
+
+def xrtBOMap(bufhandle):
+    """
+    Memory map BO into user's address space
+    :param bufhandle: Buffer handle
+    :return: Memory mapped buffer, or NULL on error
+
+    Map the contents of the buffer object into host memory
+    To unmap the buffer call xclUnmapBO().
+    """
+    libcoreutil.xrtBOMap.restype = ctypes.c_void_p
+    libcoreutil.xrtBOMap.argtypes = [xrtBufferHandle]
+    return libcoreutil.xrtBOMap(bufhandle)
+
+
+def xrtBOWrite(bufhandle, src, size, seek):
+    """
+    Copy-in user data to host backing storage of BO
+    :param bufhandle: Buffer handle
+    :param src: Source data pointer
+    :param size: Size of data to copy
+    :param seek: Offset within the BO
+    :return: 0 on success, or err code on error
+
+    Copy host buffer contents to previously allocated device
+    memory. ``seek`` specifies how many bytes to skip at the beginning
+    of the BO before copying-in ``size`` bytes of host buffer.
+    """
+    libcoreutil.xrtBOWrite.restype = ctypes.c_int
+    libcoreutil.xrtBOWrite.argtypes = [xrtBufferHandle, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_size_t]
+    return _valueOrError(libcoreutil.xrtBOWrite(bufhandle, src, size, seek))
+
+
+def xrtBORead(bufhandle, dst, size, skip):
+    """
+    Copy-out user data from host backing storage of BO
+    :param bufhandle: Buffer handle
+    :param src: Destination data pointer
+    :param size: Size of data to copy
+    :param skip: Offset within the BO
+    :return: 0 on success, or err code on error
+
+    Copy contents of previously allocated device memory to host buffer.
+    ``skip`` specifies how many bytes to skip from the beginning of the BO
+    before copying-out ``size`` bytes of device buffer.
+    """
+    libcoreutil.xrtBOWrite.restype = ctypes.c_int
+    libcoreutil.xrtBOWrite.argtypes = [xrtBufferHandle, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_size_t]
+    return _valueOrError(libcoreutil.xrtBORead(bufhandle, dst, size, skip))
+
+
+def xrtKernelArgGroupId(khandle, argno):
+    """
+    Acquire bank group id for kernel argument
+    :param khandle: Handle to kernel previously opened with xrtKernelOpen
+    :param argno: Index of kernel argument
+    :Return: Group id or negative error code on error
+
+    A valid group id is a non-negative integer.  The group id is required
+    when constructing a buffer object.
+
+    The kernel argument group id is ambigious if kernel has multiple kernel
+    with different connectivity for specified argument.  In this case the
+    API returns error.
+    """
+    libcoreutil.xrtKernelArgGroupId.restype = ctypes.c_int
+    libcoreutil.xrtKernelArgGroupId.argtypes = [xrtKernelHandle, ctypes.c_int]
+    return _valueOrError(libcoreutil.xrtKernelArgGroupId(khandle, argno))

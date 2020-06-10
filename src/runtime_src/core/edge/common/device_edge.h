@@ -25,18 +25,9 @@ class device_edge : public device
 {
 public:
   /**
-   * device_edge() - Construct and open a device
+   * device_edge() - Construct from a device_handle, device_id
    */
-  device_edge(id_type device_id, bool user);
-
-  /**
-   * device_edge() - Construct from a device_handle
-   *
-   * Bypasses call to xclOpen
-   */
-  device_edge(handle_type device_handle, id_type device_id);
-
-  ~device_edge();
+  device_edge(handle_type device_handle, id_type device_id, bool user);
 
   virtual void
   get_info(boost::property_tree::ptree& pt) const;
@@ -52,7 +43,6 @@ public:
 private:
   xclDeviceHandle m_handle = XRT_NULL_HANDLE;
   bool m_userpf;
-  bool m_managed;
 };
 
 } // xrt_core

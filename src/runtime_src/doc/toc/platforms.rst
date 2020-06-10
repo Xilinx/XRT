@@ -86,18 +86,24 @@ in DFX partition. xocl driver is organized into subdevices and handles the follo
 
 PCIe platform security and robustness is described in section :ref:`security.rst`.
 
-Zynq Ultrascale+ MPSoC Based Embedded Platforms
-===============================================
+Zynq-7000 and ZYNQ Ultrascale+ MPSoC Based Embedded Platforms
+=============================================================
 
 .. image:: XRT-Architecture-Edge.svg
    :align: center
 
-XRT supports following embedded platforms:
+XRT supports ZYNQ-7000 and ZYNQ Ultrascale+ MPSoC. User can create their own embedded platforms
+ and enable XRT with the steps described :ref:`yocto.rst`. 
 
-1. ZCU19
+`Source code <https://github.com/Xilinx/Vitis_Embedded_Platform_Source>`_ and 
+`pre-built <https://www.xilinx.com/support/download/index.html/content/xilinx/en/downloadNav/embedded-platforms.html>`_ 
+embedded platforms for the following Xilinx evaluation boards are provided:
+
+1. ZC706
 2. ZCU102
 3. ZCU104
-4. ZCU106
+
+File /etc/xocl.txt needs to be in the root file system so that XRT can know which platform it is running on.
 
 MPSoC based platforms are supported with PetaLinux base stack. XRT Linux kernel
 driver *zocl* does the heavy lifting for the embedded platform. It handles the

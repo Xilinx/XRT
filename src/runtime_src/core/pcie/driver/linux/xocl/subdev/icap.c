@@ -1710,6 +1710,8 @@ static int icap_create_subdev_debugip(struct platform_device *pdev)
 
 			subdev_info.res[0].start += ip->m_base_address;
 			subdev_info.res[0].end += ip->m_base_address;
+			subdev_info.priv_data = ip;
+			subdev_info.data_len = sizeof(struct debug_ip_data);
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create AXI_MM_MONITOR subdev");
@@ -1720,6 +1722,8 @@ static int icap_create_subdev_debugip(struct platform_device *pdev)
 
 			subdev_info.res[0].start += ip->m_base_address;
 			subdev_info.res[0].end += ip->m_base_address;
+			subdev_info.priv_data = ip;
+			subdev_info.data_len = sizeof(struct debug_ip_data);
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create ACCEL_MONITOR subdev");
@@ -1730,6 +1734,8 @@ static int icap_create_subdev_debugip(struct platform_device *pdev)
 
 			subdev_info.res[0].start += ip->m_base_address;
 			subdev_info.res[0].end += ip->m_base_address;
+			subdev_info.priv_data = ip;
+			subdev_info.data_len = sizeof(struct debug_ip_data);
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create AXI_STREAM_MONITOR subdev");
@@ -1740,6 +1746,8 @@ static int icap_create_subdev_debugip(struct platform_device *pdev)
 
 			subdev_info.res[0].start += ip->m_base_address;
 			subdev_info.res[0].end += ip->m_base_address;
+			subdev_info.priv_data = ip;
+			subdev_info.data_len = sizeof(struct debug_ip_data);
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create AXI_MONITOR_FIFO_LITE subdev");
@@ -1747,7 +1755,8 @@ static int icap_create_subdev_debugip(struct platform_device *pdev)
 			}
 		} else if (ip->m_type == AXI_MONITOR_FIFO_FULL) {
 			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_TRACE_FIFO_FULL;
-
+			subdev_info.priv_data = ip;
+			subdev_info.data_len = sizeof(struct debug_ip_data);
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create AXI_MONITOR_FIFO_FULL subdev");
@@ -1758,6 +1767,8 @@ static int icap_create_subdev_debugip(struct platform_device *pdev)
 
 			subdev_info.res[0].start += ip->m_base_address;
 			subdev_info.res[0].end += ip->m_base_address;
+			subdev_info.priv_data = ip;
+			subdev_info.data_len = sizeof(struct debug_ip_data);
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create AXI_MONITOR_TRACE_FUNNEL subdev");
@@ -1768,6 +1779,8 @@ static int icap_create_subdev_debugip(struct platform_device *pdev)
 
 			subdev_info.res[0].start += ip->m_base_address;
 			subdev_info.res[0].end += ip->m_base_address;
+			subdev_info.priv_data = ip;
+			subdev_info.data_len = sizeof(struct debug_ip_data);
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create AXI_MONITOR_TRACE_S2MM subdev");
@@ -2434,14 +2447,6 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 	err = icap_calibrate_mig(icap->icap_pdev);
 	if (err)
 		goto out;
-	/* create the reset of subdevs for both mgmt and user pf */
-	if (num_dev > 0) {
-		for (i = 0; i < num_dev; i++)
-			(void) xocl_subdev_create(xdev, &subdevs[i].info);
-
-		xocl_subdev_create_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
-	}
-
 out:
 	if (err && retention)
 		icap_release_ddr_gate_pin(icap);
@@ -2525,8 +2530,9 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 	struct axlf *xclbin)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
-	int err = 0;
+	int err = 0, i = 0, num_dev = 0;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	struct xocl_subdev *subdevs = NULL;
 
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
@@ -2542,6 +2548,8 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 
 	xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 	icap_refresh_addrs(pdev);
+
+	icap_probe_urpdev(pdev, xclbin, &num_dev, &subdevs);
 
 	if (ICAP_PRIVILEGED(icap)) {
 
@@ -2594,6 +2602,13 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 		}
 
 	}
+	/* create the rest of subdevs for both mgmt and user pf */
+	if (num_dev > 0) {
+		for (i = 0; i < num_dev; i++)
+			(void) xocl_subdev_create(xdev, &subdevs[i].info);
+
+		xocl_subdev_create_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
+	}
 
 	/* Only when everything has been successfully setup, then enable xmc */
 	if (!err)
@@ -2616,7 +2631,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	struct axlf *xclbin = (struct axlf *)u_xclbin;
 	int err = 0;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	const struct axlf_section_header *dtbHeader = NULL;
+	const struct axlf_section_header *header = NULL;
 
 	err = icap_xclbin_wr_lock(icap);
 	if (err)
@@ -2631,8 +2646,8 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		goto done;
 	}
 
-	dtbHeader = get_axlf_section_hdr(icap, xclbin, PARTITION_METADATA);
-	if (dtbHeader) {
+	header = get_axlf_section_hdr(icap, xclbin, PARTITION_METADATA);
+	if (header) {
 		ICAP_INFO(icap, "check interface uuid");
 		if (!XDEV(xdev)->fdt_blob) {
 			ICAP_ERR(icap, "did not find platform dtb");
@@ -2642,12 +2657,23 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		err = xocl_fdt_check_uuids(xdev,
 				(const void *)XDEV(xdev)->fdt_blob,
 				(const void *)((char *)xclbin +
-				dtbHeader->m_sectionOffset));
+				header->m_sectionOffset));
 		if (err) {
 			ICAP_ERR(icap, "interface uuids do not match");
 			err = -EINVAL;
 			goto done;
 		}
+	}
+
+	/*
+	 * If the previous frequency was very high and we load an incompatible
+	 * bitstream it may damage the hardware!
+	 * If no clock freq, must return without touching the hardware.
+	 */
+	header = get_axlf_section_hdr(icap, xclbin, CLOCK_FREQ_TOPOLOGY);
+	if (!header) {
+		err = -EINVAL;
+		goto done;
 	}
 
 	if (xocl_xrt_version_check(xdev, xclbin, true)) {

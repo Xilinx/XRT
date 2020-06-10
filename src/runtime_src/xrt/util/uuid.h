@@ -14,16 +14,9 @@
  * under the License.
  */
 
-#ifndef xrt_uuid_h_
-#define xrt_uuid_h_
+#ifndef xrtx_uuid_h_
+#define xrtx_uuid_h_
 
-#include "core/common/uuid.h"
-
-namespace xrt {
-
-using uuid = xrt_core::uuid;
-
-} // xrt
-
+#include "core/include/experimental/xrt_uuid.h"
 
 #endif

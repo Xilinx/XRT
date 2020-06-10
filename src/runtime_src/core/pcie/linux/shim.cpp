@@ -2272,12 +2272,18 @@ size_t xclRead(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, v
 
 int xclRegWrite(xclDeviceHandle handle, uint32_t ipIndex, uint32_t offset, uint32_t data)
 {
+#ifdef ENABLE_HAL_PROFILING
+  REG_WRITE_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclRegWrite(ipIndex, offset, data) : -ENODEV;
 }
 
 int xclRegRead(xclDeviceHandle handle, uint32_t ipIndex, uint32_t offset, uint32_t *datap)
 {
+#ifdef ENABLE_HAL_PROFILING
+  REG_READ_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclRegRead(ipIndex, offset, datap) : -ENODEV;
 }

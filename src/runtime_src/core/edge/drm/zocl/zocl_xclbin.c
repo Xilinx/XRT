@@ -456,6 +456,7 @@ zocl_update_apertures(struct drm_zocl_dev *zdev)
 
 	/* Update aperture should only happen when loading xclbin */
 	kfree(zdev->apertures);
+	zdev->apertures = NULL;
 	zdev->num_apts = 0;
 
 	if (zdev->ip)
@@ -636,6 +637,24 @@ out:
 }
 
 static int
+zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct axlf *axlf,
+			char __user *xclbin)
+{
+	uint64_t size;
+	char *pdi_buf = NULL;
+	int ret;
+
+	size = zocl_read_sect(PDI, &pdi_buf, axlf, xclbin);
+	if (size == 0)
+		return 0;
+
+	ret = zocl_fpga_mgr_load(zdev, pdi_buf, size);
+	vfree(pdi_buf);
+
+	return ret;
+}
+
+static int
 zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf,
 	char __user *xclbin, enum axlf_section_kind kind)
 {
@@ -661,6 +680,12 @@ zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf,
 	vfree(section_buffer);
 
 	return ret;
+}
+
+static bool
+is_aie_only(struct axlf *axlf)
+{
+	return (axlf->m_header.m_actionMask & AM_LOAD_AIE);
 }
 
 int
@@ -696,12 +721,41 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 		return -EINVAL;
 	}
 
+	/* Get full axlf header */
+	size_of_header = sizeof(struct axlf_section_header);
+	num_of_sections = axlf_head.m_header.m_numSections - 1;
+	axlf_size = sizeof(struct axlf) + size_of_header * num_of_sections;
+	axlf = vmalloc(axlf_size);
+	if (!axlf) {
+		DRM_WARN("read xclbin fails: no memory");
+		return -ENOMEM;
+	}
+
+	if (copy_from_user(axlf, axlf_obj->za_xclbin_ptr, axlf_size)) {
+		DRM_WARN("read xclbin: fail copy from user memory");
+		vfree(axlf);
+		return -EFAULT;
+	}
+
+	xclbin = (char __user *)axlf_obj->za_xclbin_ptr;
+	ret = !ZOCL_ACCESS_OK(VERIFY_READ, xclbin, axlf_head.m_header.m_length);
+	if (ret) {
+		DRM_WARN("read xclbin: fail the access check");
+		vfree(axlf);
+		return -EFAULT;
+	}
 
 	write_lock(&zdev->attr_rwlock);
 
 	/* Check unique ID */
 	if (zocl_xclbin_same_uuid(zdev, &axlf_head.m_header.uuid)) {
-		DRM_INFO("%s The XCLBIN already loaded", __func__);
+		if (is_aie_only(axlf)) {
+			ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin);
+			if (ret)
+				DRM_WARN("read xclbin: fail to load AIE");
+		} else {
+			DRM_INFO("%s The XCLBIN already loaded", __func__);
+		}
 		goto out0;
 	}
 
@@ -725,31 +779,11 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 
 	zocl_free_sections(zdev);
 
-	/* Get full axlf header */
-	size_of_header = sizeof(struct axlf_section_header);
-	num_of_sections = axlf_head.m_header.m_numSections-1;
-	axlf_size = sizeof(struct axlf) + size_of_header * num_of_sections;
-	axlf = vmalloc(axlf_size);
-	if (!axlf) {
-		ret = -ENOMEM;
-		goto out0;
-	}
-
-	if (copy_from_user(axlf, axlf_obj->za_xclbin_ptr, axlf_size)) {
-		ret = -EFAULT;
-		goto out0;
-	}
-
-	xclbin = (char __user *)axlf_obj->za_xclbin_ptr;
-	ret = !ZOCL_ACCESS_OK(VERIFY_READ, xclbin, axlf_head.m_header.m_length);
-	if (ret) {
-		ret = -EFAULT;
-		goto out0;
-	}
-
 	/* For PR support platform, device-tree has configured addr */
 	if (zdev->pr_isolation_addr) {
-		if (axlf_head.m_header.m_mode != XCLBIN_PR && axlf_head.m_header.m_mode != XCLBIN_HW_EMU && axlf_head.m_header.m_mode != XCLBIN_HW_EMU_PR) {
+		if (axlf_head.m_header.m_mode != XCLBIN_PR &&
+		    axlf_head.m_header.m_mode != XCLBIN_HW_EMU &&
+		    axlf_head.m_header.m_mode != XCLBIN_HW_EMU_PR) {
 			DRM_ERROR("xclbin m_mod %d is not a PR mode",
 			    axlf_head.m_header.m_mode);
 			ret = -EINVAL;
@@ -760,11 +794,11 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 			DRM_INFO("disable partial bitstream download, "
 			    "axlf flags is %d", axlf_obj->za_flags);
 		} else {
+			/*
+			 * Make sure we load PL bitstream first,
+			 * if there is one, before loading AIE PDI.
+			 */
 			ret = zocl_load_sect(zdev, axlf, xclbin, BITSTREAM);
-			if (ret)
-				goto out0;
-
-			ret = zocl_load_sect(zdev, axlf, xclbin, PDI);
 			if (ret)
 				goto out0;
 
@@ -772,7 +806,15 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 			    BITSTREAM_PARTIAL_PDI);
 			if (ret)
 				goto out0;
+
+			ret = zocl_load_sect(zdev, axlf, xclbin, PDI);
+			if (ret)
+				goto out0;
 		}
+	} else if (is_aie_only(axlf)) {
+		ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin);
+		if (ret)
+			goto out0;
 	}
 
 	/* Populating IP_LAYOUT sections */

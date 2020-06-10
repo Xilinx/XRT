@@ -523,7 +523,7 @@ XclBin::readXclBinHeader(const boost::property_tree::ptree& _ptHeader,
                            _axlfHeader.m_header.m_versionMinor, 
                            _axlfHeader.m_header.m_versionPatch);
 
-  _axlfHeader.m_header.m_mode = _ptHeader.get<uint32_t>("Mode");
+  _axlfHeader.m_header.m_mode = _ptHeader.get<uint16_t>("Mode");
 
   std::string sFeatureRomUUID = _ptHeader.get<std::string>("FeatureRomUUID");
   XUtil::hexStringToBinaryBuffer(sFeatureRomUUID, (unsigned char*)&_axlfHeader.m_header.rom_uuid, sizeof(axlf_header::rom_uuid));
@@ -1385,6 +1385,21 @@ XclBin::setKeyValue(const std::string & _keyValue)
         throw std::runtime_error(errMsg);
       }
       return; // Key processed 
+    }
+
+    if (sKey == "action_mask") {
+      std::vector<std::string> masks;
+      boost::split(masks, sValue, boost::is_any_of("|"));
+      m_xclBinHeader.m_header.m_actionMask = 0;
+      for (const auto & mask : masks) {
+        if (mask == "LOAD_AIE") {
+          m_xclBinHeader.m_header.m_actionMask |= AM_LOAD_AIE;
+        } else {
+          std::string errMsg = XUtil::format("ERROR: Unknown bit mask '%s' for the key '%s'. Key-value pair: '%s'.", mask.c_str(), sKey.c_str(), _keyValue.c_str());
+          throw std::runtime_error(errMsg);
+        }
+      }
+      return; // Key processed
     }
 
     if (sKey == "FeatureRomTimestamp") {

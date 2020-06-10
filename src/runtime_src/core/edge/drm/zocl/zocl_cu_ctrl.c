@@ -25,13 +25,25 @@ static ssize_t
 cu_ctx_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
+	struct kds_ctrl *ctrl = zocl_kds_getctrl(zdev, KDS_CU);
 
-	return show_cu_ctx(TO_CU_CTRL(zocl_kds_getctrl(zdev, KDS_CU)), buf);
+	return show_cu_ctx(TO_CU_CTRL(ctrl), buf);
 }
 static DEVICE_ATTR_RO(cu_ctx);
 
+static ssize_t
+cu_ctrl_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
+	struct kds_ctrl *ctrl = zocl_kds_getctrl(zdev, KDS_CU);
+
+	return show_cu_ctrl_stat(TO_CU_CTRL(ctrl), buf);
+}
+static DEVICE_ATTR_RO(cu_ctrl_stat);
+
 static struct attribute *cu_ctrl_attrs[] = {
 	&dev_attr_cu_ctx.attr,
+	&dev_attr_cu_ctrl_stat.attr,
 	NULL,
 };
 
@@ -82,6 +94,10 @@ cu_ctrl_dispatch(struct zocl_cu_ctrl *zcuc, struct kds_command *xcmd)
 	inst_idx = acquire_cu_inst_idx(TO_CU_CTRL(zcuc), xcmd);
 	if (inst_idx >= 0)
 		(void) zocl_cu_submit_xcmd(zcuc->zdev, inst_idx, xcmd);
+	else {
+		xcmd->cb.notify_host(xcmd, KDS_ERROR);
+		xcmd->cb.free(xcmd);
+	}
 }
 
 static void

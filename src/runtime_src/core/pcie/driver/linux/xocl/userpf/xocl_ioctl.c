@@ -357,7 +357,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	 * I found this statement is not correct anymore. The ref count is using
 	 * on user pf side.
 	 */
-	if (!kds_mode)
+	if (kds_mode)
 		goto skip1;
 
 	/*

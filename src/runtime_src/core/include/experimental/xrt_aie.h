@@ -26,8 +26,8 @@ typedef void *xrtGraphHandle;
 /**
  * xrtGraphOpen() - Open a graph and obtain its handle.
  *
- * @deviceHandle: Handle to the device with the graph.
- * @xclbUUID:     UUID of the xclbin with the specified graph.
+ * @handle:       Handle to the device with the graph.
+ * @xclbinUUID:   UUID of the xclbin with the specified graph.
  * @graphNmae:    The name of graph to be open.
  * Return:        Handle to representing the graph. NULL for error.
  *
@@ -166,4 +166,14 @@ xrtGraphUpdateRTP(xrtGraphHandle gh, const char *hierPathPort, const char *buffe
 int
 xrtSyncBOAIE(xrtGraphHandle gh, unsigned int bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset);
 
+/**
+ * xrtResetAIEArray() - Reset the AIE array
+ *
+ * @handle:         Handle to the device.
+ *
+ * Return:          0 on success, -1 on error.
+ */
+
+int
+xrtResetAIEArray(xclDeviceHandle handle);
 #endif

@@ -98,13 +98,13 @@ struct job_type
   bool running = false;
 
   // Device and kernel are not managed by this job
-  xrtDeviceHandle d      = XRT_NULL_HANDLE;
+  xclDeviceHandle d      = XRT_NULL_HANDLE;
   xrtKernelHandle k      = XRT_NULL_HANDLE;
 
   // Kernel arguments and run handle are managed by this job
-  xrtBufferHandle a      = XRT_NULL_BO;
+  xclBufferHandle a      = XRT_NULL_BO;
   void* am               = nullptr;
-  xrtBufferHandle b      = XRT_NULL_BO;
+  xclBufferHandle b      = XRT_NULL_BO;
   void* bm               = nullptr;
   xrtRunHandle r         = XRT_NULL_HANDLE;
 
