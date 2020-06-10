@@ -749,8 +749,10 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get( "rom", "FPGA",                    errmsg, fpga );
         pcidev::get_dev(m_idx)->sysfs_get( "icap", "idcode",                 errmsg, idcode );
         pcidev::get_dev(m_idx)->sysfs_get( "dna", "dna",                     errmsg, dna );
-        pcidev::get_dev(m_idx)->sysfs_get<int>("", "p2p_enable",             errmsg, p2p_enabled, 0 );
         pcidev::get_dev(m_idx)->sysfs_get("", "local_cpulist",               errmsg, cpu_affinity);
+
+        p2p_enabled = pcidev::check_p2p_config(pcidev::get_dev(m_idx), errmsg);
+
         sensor_tree::put( "board.info.dsa_name",       name() );
         sensor_tree::put( "board.info.vendor",         vendor );
         sensor_tree::put( "board.info.device",         device );
@@ -1050,17 +1052,20 @@ public:
              << sensor_tree::get( "board.info.pcie_width", -1 ) << std::setw(16) << sensor_tree::get( "board.info.dma_threads", -1 )
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.mig_calibrated", "N/A" );
              switch(sensor_tree::get( "board.info.p2p_enabled", -1)) {
-             case ENXIO:
+             case P2P_CONFIG_NOT_SUPP:
                       ostr << std::setw(16) << "N/A";
                   break;
-             case 0:
+             case P2P_CONFIG_DISABLED:
                       ostr << std::setw(16) << "false";
                   break;
-             case 1:
+             case P2P_CONFIG_ENABLED:
                       ostr << std::setw(16) << "true";
                   break;
-             case EBUSY:
+             case P2P_CONFIG_REBOOT:
                       ostr << std::setw(16) << "no iomem";
+                  break;
+             case P2P_CONFIG_ERROR:
+                      ostr << std::setw(16) << "error";
                   break;
              }
         ostr << std::setw(16) << sensor_tree::get<std::string>( "board.info.xmc_oem_id" , "N/A") << std::endl;

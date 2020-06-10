@@ -25,6 +25,8 @@
 #include "xrt/scheduler/scheduler.h"
 #include "xrt/util/config_reader.h"
 
+#include "core/common/system.h"
+#include "core/common/device.h"
 #include "core/common/xclbin_parser.h"
 
 #include <iostream>
@@ -189,9 +191,15 @@ is_sw_emulation()
 }
 
 static std::vector<uint64_t>
-get_xclbin_cus(const xocl::device* device)
+get_xclbin_cus(const xocl::device* d)
 {
-  return xrt_core::xclbin::get_cus(device->get_axlf());
+  if (is_sw_emulation()) {
+    auto xml = d->get_axlf_section(EMBEDDED_METADATA);
+    return xml.first ? xrt_core::xclbin::get_cus(xml.first, xml.second) : std::vector<uint64_t>{};
+  }
+
+  auto ip_layout = d->get_axlf_section<const ::ip_layout*>(axlf_section_kind::IP_LAYOUT);
+  return ip_layout ? xrt_core::xclbin::get_cus(ip_layout) : std::vector<uint64_t>{};
 }
 
 XOCL_UNUSED static bool
@@ -209,7 +217,7 @@ init_scheduler(xocl::device* device)
   if (!program)
     throw xocl::error(CL_INVALID_PROGRAM,"Cannot initialize MBS before program is loadded");
 
-  xrt::scheduler::init(device->get_xrt_device(), device->get_axlf());
+  xrt::scheduler::init(device->get_xrt_device());
 }
 
 }
@@ -266,7 +274,7 @@ device::
 clear_connection(connidx_type conn)
 {
   assert(conn!=-1);
-  m_xclbin.clear_connection(conn);
+  m_metadata.clear_connection(conn);
 }
 
 xrt::device::BufferObjectHandle
@@ -358,8 +366,8 @@ get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs,
     auto kernel = xocl::xocl(ext->kernel);
 
     auto& kernel_name = kernel->get_name_from_constructor();
-    auto memidx = m_xclbin.get_memidx_from_arg(kernel_name,ext->flags,conn);
-    auto mems = m_xclbin.get_mem_topology();
+    auto memidx = m_metadata.get_memidx_from_arg(kernel_name,ext->flags,conn);
+    auto mems = m_metadata.get_mem_topology();
 
     if (!mems)
       throw xocl::error(CL_INVALID_OPERATION,"Mem topology section does not exist");
@@ -478,7 +486,7 @@ device::
 device(device* parent, const compute_unit_vector_type& cus)
   : m_uid(uid_count++)
   , m_active(parent->m_active)
-  , m_xclbin(parent->m_xclbin)
+  , m_metadata(parent->m_metadata)
   , m_platform(parent->m_platform)
   , m_xdevice(parent->m_xdevice)
   , m_parent(parent)
@@ -663,7 +671,7 @@ device::
 get_boh_memidx(const xrt::device::BufferObjectHandle& boh) const
 {
   auto addr = get_boh_addr(boh);
-  auto bset = m_xclbin.mem_address_to_memidx(addr);
+  auto bset = m_metadata.mem_address_to_memidx(addr);
   if (bset.none() && is_sw_emulation())
     bset.set(0); // default bank in sw_emu
 
@@ -675,10 +683,10 @@ device::
 get_boh_banktag(const xrt::device::BufferObjectHandle& boh) const
 {
   auto addr = get_boh_addr(boh);
-  auto memidx = m_xclbin.mem_address_to_first_memidx(addr);
+  auto memidx = m_metadata.mem_address_to_first_memidx(addr);
   if (memidx == -1)
     return "Unknown";
-  return m_xclbin.memidx_to_banktag(memidx);
+  return m_metadata.memidx_to_banktag(memidx);
 }
 
 device::memidx_type
@@ -1082,12 +1090,17 @@ load_program(program* program)
   if (m_active && !std::getenv("XCL_CONFORMANCE"))
     throw xocl::error(CL_OUT_OF_RESOURCES,"program already loaded on device");
 
-  m_xclbin = program->get_xclbin(this);
+  auto binary_data = program->get_xclbin_binary(this);
+  auto binary_size = binary_data.second - binary_data.first;
+  if (binary_size == 0)
+    return;
+
+  auto top = reinterpret_cast<const axlf*>(binary_data.first);
 
   // Kernel debug is enabled based on if there is debug_data in the
   // binary it does not have an xrt.ini attribute. If there is
   // debug_data then make sure xdp kernel debug is loaded
-  if (m_xclbin.get_xclbin_section(axlf_section_kind::DEBUG_DATA).first)
+  if (::xclbin::get_axlf_section(top, axlf_section_kind::DEBUG_DATA))
   {
 #ifdef _WIN32
     // Kernel debug not supported on Windows
@@ -1096,18 +1109,12 @@ load_program(program* program)
 #endif
   }
 
-  xocl::debug::reset(get_axlf());
-  xocl::profile::reset(get_axlf());
-
-  auto binary_data = m_xclbin.binary();
-  auto binary_size = binary_data.second - binary_data.first;
-  if (binary_size == 0)
-    return;
+  xocl::debug::reset(top);
+  xocl::profile::reset(top);
 
   // programmming
   if (xrt::config::get_xclbin_programing()) {
-    auto header = reinterpret_cast<const xclBin *>(binary_data.first);
-    auto xbrv = m_xdevice->loadXclBin(header);
+    auto xbrv = m_xdevice->loadXclBin(top);
     if (xbrv.valid() && xbrv.get()){
       if(xbrv.get() == -EACCES)
         throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Invalid DNA");
@@ -1126,6 +1133,11 @@ load_program(program* program)
     }
   }
 
+  // Initialize meta data based on sections cached in core device
+  // These sections were cached when the xclbin was loaded onto the device
+  auto core_device = xrt_core::get_userpf_device(get_handle());
+  m_metadata = xclbin(core_device.get(), program->get_xclbin_uuid(this));
+
   // Add compute units for each kernel in the program.
   // Note, that conformance mode renames the kernels in the xclbin
   // so iterating kernel names and looking up symbols from kernels
@@ -1133,7 +1145,7 @@ load_program(program* program)
   clear_cus();
   m_cu_memidx = -2;
   auto cu2addr = get_xclbin_cus(this);
-  for (auto symbol : m_xclbin.kernel_symbols()) {
+  for (auto symbol : m_metadata.kernel_symbols()) {
     for (auto& inst : symbol->instances) {
       if (auto cu = compute_unit::create(symbol,inst,this,cu2addr))
         add_cu(std::move(cu));
@@ -1171,14 +1183,13 @@ acquire_context(const compute_unit* cu) const
   if (cu->m_context_type != compute_unit::context_type::none)
     return true;
 
-  if (auto program = m_active) {
-    auto xclbin = program->get_xclbin(this);
-    m_xdevice->acquire_cu_context(xclbin.uuid(),cu->get_index(),shared);
-    XOCL_DEBUG(std::cout,"acquired ",shared?"shared":"exclusive"," context for cu(",cu->get_uid(),")\n");
-    cu->set_context_type(shared);
-    return true;
-  }
-  return false;
+  if (!m_metadata)
+    return false;
+
+  m_xdevice->acquire_cu_context(m_metadata.uuid(),cu->get_index(),shared);
+  XOCL_DEBUG(std::cout,"acquired ",shared?"shared":"exclusive"," context for cu(",cu->get_uid(),")\n");
+  cu->set_context_type(shared);
+  return true;
 }
 
 bool
@@ -1188,15 +1199,13 @@ release_context(const compute_unit* cu) const
   if (cu->get_context_type() == compute_unit::context_type::none)
     return true;
 
-  if (auto program = m_active) {
-    auto xclbin = program->get_xclbin(this);
-    m_xdevice->release_cu_context(xclbin.uuid(),cu->get_index());
-    XOCL_DEBUG(std::cout,"released context for cu(",cu->get_uid(),")\n");
-    cu->reset_context_type();
-    return true;
-  }
+  if (!m_metadata)
+    return false;
 
-  return false;
+  m_xdevice->release_cu_context(m_metadata.uuid(),cu->get_index());
+  XOCL_DEBUG(std::cout,"released context for cu(",cu->get_uid(),")\n");
+  cu->reset_context_type();
+  return true;
 }
 
 size_t
@@ -1210,17 +1219,27 @@ xclbin
 device::
 get_xclbin() const
 {
-  assert(!m_active || m_active->get_xclbin(this)==m_xclbin);
-  return m_xclbin;
+  return m_metadata;
 }
 
 const axlf*
 device::
 get_axlf() const
 {
-  assert(!m_active || m_active->get_xclbin(this)==m_xclbin);
-  auto binary = m_xclbin.binary();
+  if (!m_active)
+    return nullptr;
+
+  auto binary = m_active->get_xclbin_binary(this);
   return reinterpret_cast<const axlf*>(binary.first);
+}
+
+std::pair<const char*, size_t>
+device::
+get_axlf_section(axlf_section_kind kind) const
+{
+  if (auto core_device = xrt_core::get_userpf_device(get_handle()))
+    return core_device->get_axlf_section(kind);
+  return {nullptr, 0};
 }
 
 unsigned short

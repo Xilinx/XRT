@@ -203,7 +203,7 @@ enum {
 #define	XOCL_DMA_MSIX		"dma_msix"
 #define	XOCL_MAILBOX_VERSAL	"mailbox_versal"
 #define	XOCL_ERT		"ert"
-#define	XOCL_OSPI_VERSAL	"ospi_versal"
+#define	XOCL_XFER_VERSAL	"xfer_versal"
 #define	XOCL_AIM		"aximm_mon"
 #define	XOCL_AM			"accel_mon"
 #define	XOCL_ASM		"axistream_mon"
@@ -218,6 +218,7 @@ enum {
 #define	XOCL_ADDR_TRANSLATOR	"address_translator"
 #define	XOCL_CU_CTRL		"cu_ctrl"
 #define	XOCL_CU			"cu"
+#define	XOCL_P2P		"p2p"
 
 #define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
 
@@ -243,7 +244,7 @@ enum subdev_id {
 	XOCL_SUBDEV_FMGR,
 	XOCL_SUBDEV_MIG_HBM,
 	XOCL_SUBDEV_MAILBOX_VERSAL,
-	XOCL_SUBDEV_OSPI_VERSAL,
+	XOCL_SUBDEV_XFER_VERSAL,
 	XOCL_SUBDEV_CLOCK,
 	XOCL_SUBDEV_AIM,
 	XOCL_SUBDEV_AM,
@@ -258,6 +259,7 @@ enum subdev_id {
 	XOCL_SUBDEV_ADDR_TRANSLATOR,
 	XOCL_SUBDEV_CU_CTRL,
 	XOCL_SUBDEV_CU,
+	XOCL_SUBDEV_P2P,
 	XOCL_SUBDEV_NUM
 };
 
@@ -1385,6 +1387,13 @@ struct xocl_subdev_map {
 		.override_idx = -1,			\
 	}
 
+#define	XOCL_DEVINFO_P2P				\
+	{						\
+		.id = XOCL_SUBDEV_P2P,			\
+		.name = XOCL_P2P,			\
+		.override_idx = -1,			\
+	}
+
 #define	XOCL_RES_UARTLITE				\
 	((struct resource []) {				\
 		{					\
@@ -1544,7 +1553,7 @@ struct xocl_subdev_map {
 		.override_idx = -1,			\
 	}
 
-#define	XOCL_RES_OSPI_VERSAL				\
+#define	XOCL_RES_XFER_MGMT_VERSAL				\
 		((struct resource []) {			\
 			{				\
 			.start	= 0x3008000,		\
@@ -1553,12 +1562,12 @@ struct xocl_subdev_map {
 			}				\
 		})
 
-#define	XOCL_DEVINFO_OSPI_VERSAL			\
+#define	XOCL_DEVINFO_XFER_MGMT_VERSAL			\
 	{						\
-		XOCL_SUBDEV_OSPI_VERSAL,		\
-		XOCL_OSPI_VERSAL,			\
-		XOCL_RES_OSPI_VERSAL,			\
-		ARRAY_SIZE(XOCL_RES_OSPI_VERSAL),	\
+		XOCL_SUBDEV_XFER_VERSAL,		\
+		XOCL_XFER_VERSAL,			\
+		XOCL_RES_XFER_MGMT_VERSAL,			\
+		ARRAY_SIZE(XOCL_RES_XFER_MGMT_VERSAL),	\
 		.override_idx = -1,			\
 	}
 
@@ -1775,7 +1784,7 @@ struct xocl_subdev_map {
 		 	XOCL_DEVINFO_FEATURE_ROM_VERSAL,		\
 			XOCL_DEVINFO_MAILBOX_MGMT_VERSAL,		\
 		 	XOCL_DEVINFO_XMC_VERSAL,			\
-		 	XOCL_DEVINFO_OSPI_VERSAL,			\
+		 	XOCL_DEVINFO_XFER_MGMT_VERSAL,			\
 		 	XOCL_DEVINFO_UARTLITE,				\
 		})
 
@@ -2419,7 +2428,8 @@ struct xocl_subdev_map {
 		.flags = XOCL_DSAFLAG_DYNAMIC_IP, 			\
 		.subdev_info	= RES_USER_VSEC,			\
 		.subdev_num = ARRAY_SIZE(RES_USER_VSEC),		\
-		.board_name = "u250"					\
+		.board_name = "u250",					\
+		.p2p_bar_sz = 64,					\
 	}
 
 #define	XOCL_BOARD_U250_MGMT_RAPTOR2					\

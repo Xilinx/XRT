@@ -32,7 +32,7 @@
 
 namespace {
 
-using command_queue_type = std::list<xrt_core::command*>;
+using command_queue_type = std::vector<xrt_core::command*>;
 
 ////////////////////////////////////////////////////////////////
 // Command notification is threaded through task queue
@@ -41,7 +41,10 @@ using command_queue_type = std::list<xrt_core::command*>;
 ////////////////////////////////////////////////////////////////
 static xrt_core::task::queue notify_queue;
 static std::thread notifier;
-static bool threaded_notification = true;
+
+// Turn off threaded notification because of overhead
+// Not good for simple notification for XRT native kernel APIs
+static bool threaded_notification = false;
 
 ////////////////////////////////////////////////////////////////
 // Main command monitor interfacing to embedded MB scheduler
@@ -61,17 +64,21 @@ get_command_state(xrt_core::command* cmd)
   return static_cast<ert_cmd_state>(epacket->state);
 }
 
-static bool
-check(xrt_core::command* cmd)
+inline bool 
+completed(xrt_core::command* cmd)
+{
+  return (get_command_state(cmd) >= ERT_CMD_STATE_COMPLETED);
+}
+
+static void
+notify_host(xrt_core::command* cmd)
 {
   auto state = get_command_state(cmd);
-  if (state < ERT_CMD_STATE_COMPLETED)
-    return false;
 
   XRT_DEBUG(std::cout,"xrt_core::kds::command(",cmd->get_uid(),") [running->done]\n");
   if (!threaded_notification) {
     cmd->notify(state);
-    return true;
+    return;
   }
 
   auto notify = [state](xrt_core::command* c) {
@@ -79,7 +86,6 @@ check(xrt_core::command* cmd)
   };
 
   xrt_core::task::createF(notify_queue,notify,cmd);
-  return true;
 }
 
 static void
@@ -96,7 +102,7 @@ launch(xrt_core::command* cmd)
   // done prior to exec_buf as exec_wait can otherwise be missed.
   {
     std::lock_guard<std::mutex> lk(s_mutex);
-    pos = submitted_cmds.insert(submitted_cmds.end(),cmd);
+    submitted_cmds.push_back(cmd);
     s_work.notify_all();
   }
 
@@ -108,7 +114,7 @@ launch(xrt_core::command* cmd)
     // Remove the pending command
     std::lock_guard<std::mutex> lk(s_mutex);
     assert(get_command_state(cmd)==ERT_CMD_STATE_NEW);
-    submitted_cmds.erase(pos);
+    submitted_cmds.pop_back();
     throw;
   }
 }
@@ -121,6 +127,7 @@ monitor_loop(const xrt_core::device* device)
 
   // thread safe access, since guaranteed to be inserted in init
   auto& submitted_cmds = s_device_cmds[device];
+  std::vector<xrt_core::command*> completed_cmds;
 
   while (1) {
     ++loops;
@@ -140,20 +147,29 @@ monitor_loop(const xrt_core::device* device)
         return;
 
       // Finer wait
-      while (device->exec_wait(1000)==0) ;
+      while (device->exec_wait(1000)==0) {}
 
-      std::lock_guard<std::mutex> lk(s_mutex);
-      auto end = submitted_cmds.end();
-      for (auto itr=submitted_cmds.begin(); itr!=end; ) {
-        auto cmd = (*itr);
-        if (check(cmd)) {
-          itr = submitted_cmds.erase(itr);
-          end = submitted_cmds.end();
-        }
-        else {
-          ++itr;
+      {
+        std::lock_guard<std::mutex> lk(s_mutex);
+        auto size = submitted_cmds.size();
+        for (size_t idx=0; idx<size; ++idx) {
+          auto cmd = submitted_cmds[idx];
+          if (!completed(cmd))
+            continue;
+
+          completed_cmds.push_back(cmd);
+          auto last = submitted_cmds.back();
+          if (last != cmd)
+            submitted_cmds[idx--] = last;
+          submitted_cmds.pop_back();
+          --size;
         }
       }
+
+      // Notify host outside lock
+      for (auto cmd : completed_cmds)
+        notify_host(cmd);
+      completed_cmds.clear();
     }
   }
 }

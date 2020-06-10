@@ -137,8 +137,8 @@ add_subdirectory(python)
 set(PY_TEST_SRC
   ../tests/python/22_verify/22_verify.py
   ../tests/python/utils_binding.py
-  ../tests/pyopencl/23_bandwidth.py
-  ../tests/pyopencl/versal_23_bandwidth.py)
+  ../tests/python/23_bandwidth/23_bandwidth.py
+  ../tests/python/23_bandwidth/versal_23_bandwidth.py)
 install (FILES ${PY_TEST_SRC}
   PERMISSIONS OWNER_READ OWNER_EXECUTE OWNER_WRITE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
   DESTINATION ${XRT_INSTALL_DIR}/test)

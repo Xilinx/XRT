@@ -27,7 +27,7 @@ from xrt_binding import *
 from ert_binding import *
 
 # utils_binding.py
-sys.path.append('./')
+sys.path.append('../')
 from utils_binding import *
 
 # Define libc helpers
@@ -139,11 +139,11 @@ def runKernel(opt):
                 reps = reps*2
 
         dnsduration.append(usduration)
-        dsduration.append(dnsduration[test]/1000000)
+        dsduration.append(dnsduration[test]/1000000.0)
         dbytes.append(reps*beats*(typesize>>3))
         dmbytes.append(dbytes[test]/(1024 * 1024))
-        bpersec.append(2*dbytes[test]/dsduration[test])
-        mbpersec.append(2*bpersec[test]/(1024 * 1024))
+        bpersec.append(2.0*dbytes[test]/dsduration[test])
+        mbpersec.append(2.0*bpersec[test]/(1024 * 1024))
         throughput.append(mbpersec[test])
         print("Test %d, Throughput: %d MB/s" %(test, throughput[test]))
         beats = beats*4

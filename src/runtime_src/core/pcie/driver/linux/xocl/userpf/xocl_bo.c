@@ -121,8 +121,8 @@ static void xocl_free_bo(struct drm_gem_object *obj)
 	BO_ENTER("xobj %p pages %p", xobj, xobj->pages);
 
 	if (xocl_bo_p2p(xobj)) {
-		xocl_p2p_reserve_release_range(xdev,
-			xobj->p2p_bar_offset, obj->size, false);
+		xocl_p2p_mem_unmap(xdev, xobj->p2p_bar_offset,
+				obj->size);
 	}
 
 	if (xobj->vmapping)
@@ -381,23 +381,18 @@ static struct page **xocl_p2p_get_pages(struct xocl_dev *xdev,
 	u64 bar_off, u64 size)
 {
 	struct page *p, **pages;
-	int i;
-	uint64_t offset;
+	int ret;
 	uint64_t npages = size >> PAGE_SHIFT;
 
 	pages = drm_malloc_ab(npages, sizeof(struct page *));
 	if (pages == NULL)
 		return ERR_PTR(-ENOMEM);
 
-	for (i = 0, offset = bar_off; i < npages; i++, offset += PAGE_SIZE) {
-		int idx = offset >> XOCL_P2P_CHUNK_SHIFT;
-		void *addr = xdev->p2p_mem_chunks[idx].xpmc_va;
-
-		addr += offset & (XOCL_P2P_CHUNK_SIZE - 1);
-		p = virt_to_page(addr);
-		pages[i] = p;
-		if (IS_ERR(p))
-			goto fail;
+	ret = xocl_p2p_mem_get_pages(xdev, (ulong)bar_off, (ulong)size,
+			pages, npages);
+	if (ret) {
+		p = ERR_PTR(ret);
+		goto fail;
 	}
 
 	return pages;
@@ -456,24 +451,26 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 		 * DRM allocate contiguous pages, shift the vmapping with
 		 * bar address offset
 		 */
-		if (xdev->p2p_mem_chunk_num == 0) {
-			xocl_xdev_err(xdev,
-				"No P2P mem region, Can't create p2p BO");
-			ret = -EINVAL;
-			goto out_free;
-		}
 		ret = XOCL_GET_MEM_TOPOLOGY(xdev, topo);
 		if (ret)
 			goto out_free;
 
 		if (topo) {
-			xobj->p2p_bar_offset = drm_p->mm_p2p_off[ddr] +
-				xobj->mm_node->start -
-				topo->m_mem_data[ddr].m_base_address;
+			int ret;
+			ulong bar_off;
 
-			ret = xocl_p2p_reserve_release_range(xdev,
-				xobj->p2p_bar_offset,
-				xobj->base.size, true);
+			ret = xocl_p2p_mem_map(xdev,
+				topo->m_mem_data[ddr].m_base_address,
+				topo->m_mem_data[ddr].m_size * 1024,
+				xobj->mm_node->start -
+				topo->m_mem_data[ddr].m_base_address,
+				xobj->base.size,
+				&bar_off);
+			if (ret) {
+				xocl_xdev_err(xdev, "map P2P failed,ret = %d",
+						ret);
+			} else
+				xobj->p2p_bar_offset = bar_off;
 		}
 
 		XOCL_PUT_MEM_TOPOLOGY(xdev);

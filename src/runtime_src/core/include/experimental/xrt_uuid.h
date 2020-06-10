@@ -46,6 +46,11 @@ public:
     uuid_copy(m_uuid,val);
   }
 
+  explicit uuid(const std::string& uuid_str)
+  {
+    uuid_parse(uuid_str.c_str(), m_uuid);
+  }
+
   uuid(const uuid& rhs)
   {
     uuid_copy(m_uuid,rhs.m_uuid);
@@ -72,6 +77,11 @@ public:
     char str[40] = {0};
     uuid_unparse_lower(m_uuid,str);
     return str;
+  }
+
+  operator bool() const
+  {
+    return uuid_is_null(m_uuid) == false;
   }
 
   bool

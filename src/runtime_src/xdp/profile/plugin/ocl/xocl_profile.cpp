@@ -839,10 +839,7 @@ isAPCtrlChain(key k, const std::string& cu)
     if (xcu->get_name().compare(cu) == 0)
       base_addr = xcu->get_base_addr();
   }
-  auto xclbin = device->get_xclbin();
-  auto binary_data = xclbin.binary();
-  auto header = reinterpret_cast<const xclBin *>(binary_data.first);
-  auto ip_layout = getAxlfSection<const ::ip_layout>(header, axlf_section_kind::IP_LAYOUT);
+  auto ip_layout = device->get_axlf_section<const ::ip_layout*>(axlf_section_kind::IP_LAYOUT);
   if (!ip_layout)
     return false;
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
@@ -865,10 +862,7 @@ getMemSizeBytes(key k, int idx)
   auto device = k;
   if (!device)
     return false;
-  auto xclbin = device->get_xclbin();
-  auto binary_data = xclbin.binary();
-  auto header = reinterpret_cast<const xclBin *>(binary_data.first);
-  auto mem_topology = getAxlfSection<const ::mem_topology>(header, axlf_section_kind::MEM_TOPOLOGY);
+  auto mem_topology = device->get_axlf_section<const ::mem_topology*>(axlf_section_kind::MEM_TOPOLOGY);
   if (mem_topology && idx < mem_topology->m_count) {
     return mem_topology->m_mem_data[idx].m_size * 1024;
   }
@@ -879,17 +873,10 @@ uint64_t
 getPlramSizeBytes(key k)
 {
   auto device = k;
-  const mem_topology* mem_tp;
   if (!device)
     return 0;
-  try {
-    auto xclbin = device->get_xclbin();
-    auto binary_data = xclbin.binary();
-    auto header = reinterpret_cast<const xclBin *>(binary_data.first);
-    mem_tp = getAxlfSection<const ::mem_topology>(header, axlf_section_kind::MEM_TOPOLOGY);
-  } catch (...) {
-    return 0;
-  }
+
+  auto mem_tp = device->get_axlf_section<const ::mem_topology*>(axlf_section_kind::MEM_TOPOLOGY);
   if(!mem_tp)
     return 0;
 
@@ -909,17 +896,10 @@ void
 getMemUsageStats(key k, std::map<std::string, uint64_t>& stats)
 {
   auto device = k;
-  const mem_topology* mem_tp;
   if (!device)
     return;
-  try {
-    auto xclbin = device->get_xclbin();
-    auto binary_data = xclbin.binary();
-    auto header = reinterpret_cast<const xclBin *>(binary_data.first);
-    mem_tp = getAxlfSection<const ::mem_topology>(header, axlf_section_kind::MEM_TOPOLOGY);
-  } catch (...) {
-    return;
-  }
+
+  auto mem_tp = device->get_axlf_section<const ::mem_topology*>(axlf_section_kind::MEM_TOPOLOGY);
   if(!mem_tp)
     return;
 

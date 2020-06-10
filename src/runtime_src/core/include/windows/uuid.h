@@ -44,6 +44,15 @@ uuid_compare(const xuid_t uuid1, const xuid_t uuid2)
   return memcmp(uuid1, uuid2, sizeof(xuid_t));
 }
 
+inline int
+uuid_is_null(const xuid_t uuid)
+{
+  for (int i=0; i<sizeof(xuid_t) ;++i)
+    if (uuid[i])
+      return 0;
+  return 1;
+}
+
 inline void
 uuid_unparse_lower(const xuid_t uuid, char* str)
 {
