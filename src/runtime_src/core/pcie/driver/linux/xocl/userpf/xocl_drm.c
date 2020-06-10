@@ -51,8 +51,6 @@
 #define DRM_DBG(fmt, args...)
 #endif
 
-#define IS_HOST_MEM(m_tag)	(!strncmp(m_tag, "HOST[0]", 7))
-
 extern int kds_mode;
 
 static char driver_date[9];
@@ -518,16 +516,6 @@ void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u32 ddr,
 
 	drm_p->mm_usage_stat[ddr]->memory_usage += (count > 0) ? size : -size;
 	drm_p->mm_usage_stat[ddr]->bo_count += count;
-}
-
-uint64_t xocl_mm_get_mem_range(struct xocl_drm *drm_p, size_t size, const char* m_tag)
-{
-	uint64_t sz = xocl_addr_translator_get_range(drm_p->xdev);
-
-	if (IS_HOST_MEM(m_tag))
-		return sz;
-	else
-		return size;
 }
 
 int xocl_mm_insert_node(struct xocl_drm *drm_p, u32 ddr,

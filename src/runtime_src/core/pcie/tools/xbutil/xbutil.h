@@ -498,7 +498,7 @@ public:
         std::string errmsg;
         std::vector<char> buf, temp_buf;
         std::vector<std::string> mm_buf, stream_stat;
-        uint64_t memoryUsage, boCount, memorySize;
+        uint64_t memoryUsage, boCount;
         auto dev = pcidev::get_dev(m_idx);
 
         dev->sysfs_get("icap", "mem_topology", errmsg, buf);
@@ -582,14 +582,14 @@ public:
                 }
             }
             std::stringstream ss(mm_buf[i]);
-            ss >> memoryUsage >> boCount >> memorySize;
+            ss >> memoryUsage >> boCount;
 
             ptMem.put( "type",      str );
             ptMem.put( "temp",      temp_buf.empty() ? XCL_NO_SENSOR_DEV : temp[i]);
             ptMem.put( "tag",       map->m_mem_data[i].m_tag );
             ptMem.put( "enabled",   map->m_mem_data[i].m_used ? true : false );
-            ptMem.put( "size",      xrt_core::utils::unit_convert(memorySize) );
-            ptMem.put( "size_raw",  memorySize );
+            ptMem.put( "size",      xrt_core::utils::unit_convert(map->m_mem_data[i].m_size << 10) );
+            ptMem.put( "size_raw",  map->m_mem_data[i].m_size << 10 );
             ptMem.put( "mem_usage", xrt_core::utils::unit_convert(memoryUsage));
             ptMem.put( "mem_usage_raw", memoryUsage);
             ptMem.put( "bo_count",  boCount);

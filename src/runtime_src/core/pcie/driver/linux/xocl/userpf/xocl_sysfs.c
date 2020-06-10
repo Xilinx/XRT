@@ -98,7 +98,7 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	int i, err;
 	ssize_t count = 0;
 	ssize_t size = 0;
-	size_t memory_usage = 0, mem_size = 0;
+	size_t memory_usage = 0;
 	unsigned int bo_count = 0;
 	const char *txt_fmt = "[%s] %s@0x%012llx (%lluMB): %lluKB %dBOs\n";
 	const char *raw_fmt = "%llu %d %llu\n";
@@ -122,8 +122,6 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 		xocl_mm_get_usage_stat(XOCL_DRM(xdev), i, &stat);
 
 		if (raw) {
-			mem_size = xocl_mm_get_mem_range(XOCL_DRM(xdev), topo->m_mem_data[i].m_size<<10,
-								topo->m_mem_data[i].m_tag);
 			memory_usage = 0;
 			bo_count = 0;
 			memory_usage = stat.memory_usage;
@@ -131,7 +129,7 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 
 			count = sprintf(buf, raw_fmt,
 				memory_usage,
-				bo_count, mem_size);
+				bo_count, 0);
 		} else {
 			count = sprintf(buf, txt_fmt,
 				topo->m_mem_data[i].m_used ?

@@ -3570,12 +3570,13 @@ static struct bin_attribute connectivity_attr = {
 static ssize_t icap_read_mem_topology(struct file *filp, struct kobject *kobj,
 	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
 {
-	struct icap *icap;
+	struct icap *icap = (struct icap *)dev_get_drvdata(container_of(kobj, struct device, kobj));
 	u32 nread = 0;
 	size_t size = 0;
-	int err = 0;
-
-	icap = (struct icap *)dev_get_drvdata(container_of(kobj, struct device, kobj));
+	uint64_t range = 0;
+	int err = 0, i;
+	struct mem_topology *mem_topo = NULL;
+	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 
 	if (!icap || !icap->mem_topo)
 		return nread;
@@ -3588,14 +3589,28 @@ static ssize_t icap_read_mem_topology(struct file *filp, struct kobject *kobj,
 	if (offset >= size)
 		goto unlock;
 
+	mem_topo = vzalloc(size);
+	if (!mem_topo)
+		goto unlock;
+
+	memcpy(mem_topo, icap->mem_topo, size);
+	range = xocl_addr_translator_get_range(xdev);	
+	for ( i=0; i< mem_topo->m_count; ++i) {
+		if (IS_HOST_MEM(mem_topo->m_mem_data[i].m_tag)){
+			mem_topo->m_mem_data[i].m_size = range;
+		} else
+			continue;
+	}
+
 	if (count < size - offset)
 		nread = count;
 	else
 		nread = size - offset;
 
-	memcpy(buffer, ((char *)icap->mem_topo) + offset, nread);
+	memcpy(buffer, ((char *)mem_topo) + offset, nread);
 unlock:
 	icap_xclbin_rd_unlock(icap);
+	vfree(mem_topo);
 	return nread;
 }
 

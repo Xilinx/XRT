@@ -22,6 +22,8 @@
 #include <linux/hashtable.h>
 #endif
 
+
+#define IS_HOST_MEM(m_tag)	(!strncmp(m_tag, "HOST[0]", 7))
 /**
  * struct drm_xocl_exec_metadata - Meta data for exec bo
  *
@@ -94,8 +96,6 @@ void xocl_mm_get_usage_stat(struct xocl_drm *drm_p, u32 ddr,
         struct drm_xocl_mm_stat *pstat);
 void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u32 ddr,
         u64 size, int count);
-uint64_t xocl_mm_get_mem_range(struct xocl_drm *drm_p, size_t size,
-        const char* m_tag);
 
 int xocl_mm_insert_node(struct xocl_drm *drm_p, u32 ddr,
                 struct drm_mm_node *node, u64 size);
