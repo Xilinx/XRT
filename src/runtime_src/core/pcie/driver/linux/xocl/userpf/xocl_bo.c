@@ -442,7 +442,7 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 
 	BO_ENTER("xobj %p, mm_node %p", xobj, xobj->mm_node);
 	if (IS_ERR(xobj)) {
-		DRM_ERROR("object creation failed\n");
+		DRM_ERROR("object creation failed idx %d, size 0x%llx\n", ddr, args->size);
 		return PTR_ERR(xobj);
 	}
 
@@ -556,7 +556,7 @@ int xocl_userptr_bo_ioctl(
 	BO_ENTER("xobj %p", xobj);
 
 	if (IS_ERR(xobj)) {
-		DRM_ERROR("object creation failed\n");
+		DRM_ERROR("object creation failed user_flags %d, size 0x%llx\n", user_flags, args->size);
 		return PTR_ERR(xobj);
 	}
 

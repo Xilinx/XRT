@@ -1323,6 +1323,9 @@ int shim::xclLoadXclBin(const xclBin *buffer)
       else if (ret == -EKEYREJECTED) {
         xrt_logmsg(XRT_ERROR, "Xclbin isn't signed properly");
       }
+      else if (ret == -E2BIG) {
+        xrt_logmsg(XRT_ERROR, "Not enough host_mem for xclbin");
+      }
       else if (ret == -ETIMEDOUT) {
         xrt_logmsg(XRT_ERROR,
                    "Can't reach out to mgmt for xclbin downloading");
