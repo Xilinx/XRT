@@ -379,7 +379,7 @@ void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
  *
  */
 inline int
-cu_mask_to_cu_idx(struct kds_command *xcmd, int *cus)
+cu_mask_to_cu_idx(struct kds_command *xcmd, uint8_t *cus)
 {
 	int num_cu = 0;
 	u32 mask;

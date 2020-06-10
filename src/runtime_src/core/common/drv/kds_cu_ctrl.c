@@ -197,12 +197,12 @@ int acquire_cu_inst_idx(struct kds_cu_ctrl *kcuc, struct kds_command *xcmd)
 	struct kds_client *client = xcmd->client;
 	struct client_cu_priv *cu_priv;
 	/* User marked CUs */
-	int user_cus[MAX_CUS];
+	uint8_t user_cus[MAX_CUS];
 	int num_marked;
 	/* After validation */
-	int valid_cus[MAX_CUS];
+	uint8_t valid_cus[MAX_CUS];
 	int num_valid = 0;
-	int index;
+	uint8_t index;
 	int i;
 
 	num_marked = cu_mask_to_cu_idx(xcmd, user_cus);
@@ -361,8 +361,10 @@ ssize_t show_cu_ctrl_stat(struct kds_cu_ctrl *kcuc, char *buf)
 	ssize_t sz = 0;
 	int configured;
 	int num_cus;
-	u64 cu_usage[MAX_CUS];
+	u64 *cu_usage;
 	int i;
+
+	cu_usage = vzalloc(sizeof(u64) * MAX_CUS);
 
 	mutex_lock(&kcuc->lock);
 	configured = kcuc->configured;
@@ -381,6 +383,8 @@ ssize_t show_cu_ctrl_stat(struct kds_cu_ctrl *kcuc, char *buf)
 
 	if (sz)
 		buf[sz++] = 0;
+
+	vfree(cu_usage);
 
 	return sz;
 }
