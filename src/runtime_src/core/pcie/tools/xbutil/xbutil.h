@@ -1745,6 +1745,7 @@ int xclValidate(int argc, char *argv[]);
 std::unique_ptr<xcldev::device> xclGetDevice(unsigned index);
 int xclP2p(int argc, char *argv[]);
 int xclCma(int argc, char *argv[]);
+int xclScheduler(int argc, char *argv[]);
 } // end namespace xcldev
 
 #endif /* XBUTIL_H */
