@@ -18,7 +18,6 @@
 // Local - Include Files
 #include "SubCmdValidate.h"
 #include "SubCmdDmaTest.h"
-#include "tools/common/ReportValidate.h"
 #include "tools/common/ReportHost.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/XBHelpMenus.h"
@@ -40,6 +39,13 @@ namespace po = boost::program_options;
 #include <iostream>
 #include <thread>
 #include <regex>
+
+#ifdef _WIN32
+#pragma warning (disable : 4996)
+/* Disable warning for use of getenv */
+#pragma warning (disable : 4996 4100 4505)
+/* disable unrefenced params and local functions - Remove these warnings asap*/
+#endif
 
 // =============================================================================
 
@@ -101,7 +107,9 @@ setShellPathEnv(const std::string& var_name, const std::string& trailing_path)
   std::string new_path(getenv_or_empty(var_name.c_str()));
   xrt_path += trailing_path + ":";
   new_path = xrt_path + new_path;
+#ifdef __GNUC__
   setenv(var_name.c_str(), new_path.c_str(), 1);
+#endif
 }
 
 static void 
@@ -121,6 +129,7 @@ testCaseProgressReporter(std::shared_ptr<XBU::ProgressBar> run_test, bool& is_do
 void
 runShellCmd(const std::string& cmd, boost::property_tree::ptree& _ptTest)
 {
+#ifdef __GNUC__
   // Fix environment variables before running test case
   setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
   setShellPathEnv("PYTHONPATH", "/python");
@@ -197,6 +206,7 @@ runShellCmd(const std::string& cmd, boost::property_tree::ptree& _ptTest)
     size_t end = output.find("\n", st);
     _ptTest.put("info", output.substr(st, end - st));
   }
+#endif
 }
 
 /*
@@ -232,6 +242,7 @@ searchSSV2Xclbin(const std::shared_ptr<xrt_core::device>& _dev, const std::strin
 
       std::regex_match(name, cm, e);
       if (cm.size() > 0) {
+#ifdef __GNUC__
         auto dtbbuf = _dev->get_axlf_section(name, PARTITION_METADATA);
         if (!dtbbuf.first || !dtbbuf.second) {
           ++iter;
@@ -244,6 +255,7 @@ searchSSV2Xclbin(const std::shared_ptr<xrt_core::device>& _dev, const std::strin
         else if (uuids[0].compare(logic_uuid) == 0) {
           return cm.str(1) + "test/" + xclbin;
         }
+#endif
       }
       else if (iter.level() > 4) {
         iter.pop();
@@ -676,12 +688,12 @@ run_test_suite_device(const std::shared_ptr<xrt_core::device>& device, boost::pr
   boost::property_tree::ptree _ptDeviceTestSuite;
   boost::property_tree::ptree _ptDeviceInfo;
   test_status status = test_status::passed;
-  unsigned int _test_suite_size = quick ? 5 : testSuite.size();
+  int _test_suite_size = quick ? 5 : static_cast<int>(testSuite.size());
 
   get_platform_info(device, _ptDeviceInfo, json);
   initTests();
   
-  for(unsigned int i = 0; i < _test_suite_size; i++) {
+  for(int i = 0; i < _test_suite_size; i++) {
     if(!json)
       pretty_print_test_desc(ptInfo[i], _test_suite_size);
     testSuite[i](device, ptInfo[i]);
@@ -782,8 +794,8 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   if(!json)
     std::cout << boost::format("Starting validation for %d devices\n\n") % deviceCollection.size();
 
-  for(auto const& device : deviceCollection) {
-    run_test_suite_device(device, _ptDevCollectionTestSuite, json, quick);
+  for(auto const& dev : deviceCollection) {
+    run_test_suite_device(dev, _ptDevCollectionTestSuite, json, quick);
   }
   _ptValidate.put_child("logical_devices", _ptDevCollectionTestSuite);
   

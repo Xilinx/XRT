@@ -17,22 +17,6 @@
 #ifndef XRT_CORE_DEVICE_H
 #define XRT_CORE_DEVICE_H
 
-#ifdef _WIN32
-# pragma warning( disable : 4189 )
-#define be32toh ntohl
-#define PALIGN(p, a) (const char*)NULL
-#endif
-
-#define FDT_BEGIN_NODE  0x1
-#define FDT_PROP        0x3
-#define FDT_END         0x9
-
-#ifdef __GNUC__
-#define ALIGN(x, a)     (((x) + ((a) - 1)) & ~((a) - 1))
-#define PALIGN(p, a)    ((char *)(ALIGN((unsigned long)(p), (a))))
-#endif
-#define GET_CELL(p)     (p += 4, *((const uint32_t *)(p-4)))
-
 #include "config.h"
 #include "query.h"
 #include "error.h"
