@@ -202,12 +202,79 @@ ub_package_list()
 
 }
 
+fd_package_list()
+{
+    FD_LIST=(\
+     boost-devel \
+     boost-filesystem \
+     boost-program-options \
+     boost-static \
+     cmake \
+     cppcheck \
+     curl \
+     dkms \
+     gcc \
+     gcc-c++ \
+     gdb \
+     git \
+     glibc-static \
+     gnuplot \
+     gnutls-devel \
+     gtest-devel \
+     json-glib-devel \
+     libdrm-devel \
+     libjpeg-turbo-devel \
+     libstdc++-static \
+     libtiff-devel \
+     libuuid-devel \
+     libxml2-devel \
+     libyaml-devel \
+     lm_sensors \
+     make \
+     ncurses-devel \
+     ocl-icd \
+     ocl-icd-devel \
+     opencl-headers \
+     opencv \
+     openssl-devel \
+     pciutils \
+     perl \
+     pkgconfig \
+     protobuf-devel \
+     protobuf-compiler \
+     redhat-lsb \
+     rpm-build \
+     strace \
+     unzip \
+     zlib-static \
+     libcurl-devel \
+     openssl-devel \
+     systemd-devel \
+     python3 \
+     python3-pip \
+     systemd-devel \
+     libpng12-devel \
+     libudev-devel \
+     kernel-devel-$(uname -r) \
+     kernel-headers-$(uname -r) \
+     openssl-static \
+     protobuf-static \
+     python \
+     python-pip \
+     #docs need
+     python2-sphinx \
+     dmidecode \
+    )
+}
+
 update_package_list()
 {
     if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
         ub_package_list
     elif [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ]; then
         rh_package_list
+    elif [ $FLAVOR == "fedora" ]; then
+        fd_package_list
     else
         echo "unknown OS flavor $FLAVOR"
         exit 1
@@ -332,6 +399,11 @@ install()
 	elif [ $MAJOR -lt "8" ]; then
             yum install -y devtoolset-6
 	fi
+    fi
+
+    if [ $FLAVOR == "fedora" ]; then
+        echo "Installing Fedora packages..."
+        yum install -y "${FD_LIST[@]}"
     fi
 }
 
