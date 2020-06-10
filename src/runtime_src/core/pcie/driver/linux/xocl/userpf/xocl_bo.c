@@ -455,25 +455,19 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 			goto out_free;
 
 		if (topo) {
-			xocl_mem = drm_p->m_connect->mem_group->m_group[mem_id];
-			if (xocl_mem == NULL) {
-				ret = -EINVAL;
-				goto out_free;
-			}
-			xobj->p2p_bar_offset = drm_p->mm_p2p_off[xocl_mem->l_bank_idx] +
-				xobj->mm_node->start -
-				topo->m_mem_data[xocl_mem->l_bank_idx].m_base_address;
+			int ret;
+			ulong bar_off;
 
 			ret = xocl_p2p_mem_map(xdev,
-				topo->m_mem_data[xocl_mem->l_bank_idx].m_base_address,
-				topo->m_mem_data[xocl_mem->l_bank_idx].m_size * 1024,
-				xobj->mm_node->start -
-				topo->m_mem_data[xocl_mem->l_bank_idx].m_base_address,
-				xobj->base.size,
-				&bar_off);
+			       topo->m_mem_data[xocl_mem->l_bank_idx].m_base_address,
+			       topo->m_mem_data[xocl_mem->l_bank_idx].m_size * 1024,
+			       xobj->mm_node->start -
+			       topo->m_mem_data[xocl_mem->l_bank_idx].m_base_address,
+			       xobj->base.size,
+			       &bar_off);
 			if (ret) {
 				xocl_xdev_err(xdev, "map P2P failed,ret = %d",
-						ret);
+					      ret);
 			} else
 				xobj->p2p_bar_offset = bar_off;
 		}
