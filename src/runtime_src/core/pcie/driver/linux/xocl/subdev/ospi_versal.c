@@ -262,7 +262,7 @@ static ssize_t xfer_versal_write(struct file *filp, const char __user *udata,
 {
 	struct xfer_versal *xv = filp->private_data;
 	ssize_t ret;
-	char *kdata;
+	char *kdata = NULL;
 
 	/* We don't support program partial of the ospi flash */
 	if (*off != 0) {
