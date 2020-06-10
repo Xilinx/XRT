@@ -17,6 +17,22 @@
 #ifndef XRT_CORE_DEVICE_H
 #define XRT_CORE_DEVICE_H
 
+#ifdef _WIN32
+# pragma warning( disable : 4189 )
+#define be32toh ntohl
+#define PALIGN(p, a) (const char*)NULL
+#endif
+
+#define FDT_BEGIN_NODE  0x1
+#define FDT_PROP        0x3
+#define FDT_END         0x9
+
+#ifdef __GNUC__
+#define ALIGN(x, a)     (((x) + ((a) - 1)) & ~((a) - 1))
+#define PALIGN(p, a)    ((char *)(ALIGN((unsigned long)(p), (a))))
+#endif
+#define GET_CELL(p)     (p += 4, *((const uint32_t *)(p-4)))
+
 #include "config.h"
 #include "query.h"
 #include "error.h"
@@ -210,6 +226,26 @@ public:
   get_axlf_section(axlf_section_kind section, const xuid_t xclbin_id) const;
 
   /**
+   * get_axlf_section() - Get section from the file passed in
+   *
+   * filename: file containing the axlf section
+   *
+   * Return: pair of section data and size in bytes
+   */
+  std::pair<const char*, size_t>
+  get_axlf_section(const std::string& filename, axlf_section_kind section) const;
+
+  /**
+   * get_uuids() - Get UUIDs from the axlf section
+   *
+   * dtbuf: axlf section to be parsed
+   *
+   * Return: list of UUIDs
+   */
+  std::vector<std::string>
+  get_uuids(const void *dtbuf) const;
+
+  /**
    * get_ert_slots() - Get number of ERT CQ slots
    *
    * Returns: Pair of number of slots and size of each slot
@@ -292,6 +328,19 @@ public:
   // cache xclbin meta data loaded by this process
   xuid_t m_xclbin_uuid;
   std::map<axlf_section_kind, std::vector<char>> m_axlf_sections;
+
+  struct fdt_header {
+  uint32_t magic;
+  uint32_t totalsize;
+  uint32_t off_dt_struct;
+  uint32_t off_dt_strings;
+  uint32_t off_mem_rsvmap;
+  uint32_t version;
+  uint32_t last_comp_version;
+  uint32_t boot_cpuid_phys;
+  uint32_t size_dt_strings;
+  uint32_t size_dt_struct;
+  };
 };
 
 /**

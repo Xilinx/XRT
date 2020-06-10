@@ -38,6 +38,8 @@ namespace po = boost::program_options;
 
 // System - Include Files
 #include <iostream>
+#include <thread>
+#include <regex>
 
 // =============================================================================
 
@@ -93,7 +95,7 @@ getenv_or_empty(const char* path)
 }
 
 static void 
-set_shell_path_env(const std::string& var_name, const std::string& trailing_path)
+setShellPathEnv(const std::string& var_name, const std::string& trailing_path)
 {
   std::string xrt_path(getenv_or_empty("XILINX_XRT"));
   std::string new_path(getenv_or_empty(var_name.c_str()));
@@ -102,17 +104,28 @@ set_shell_path_env(const std::string& var_name, const std::string& trailing_path
   setenv(var_name.c_str(), new_path.c_str(), 1);
 }
 
+static void 
+testCaseProgressReporter(std::shared_ptr<XBU::ProgressBar> run_test, bool& is_done)
+{
+  int counter = 0;
+  while(counter < 60 && !is_done) {
+    run_test.get()->update(counter);
+    counter++;
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+  }
+}
+
 /*
  * run standalone testcases in a fork
  */
 void
-run_shell_cmd(const std::string& cmd, boost::property_tree::ptree& _ptTest)
+runShellCmd(const std::string& cmd, boost::property_tree::ptree& _ptTest)
 {
   // Fix environment variables before running test case
   setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
-  set_shell_path_env("PYTHONPATH", "/python");
-  set_shell_path_env("LD_LIBRARY_PATH", "/lib");
-  set_shell_path_env("PATH", "/bin");
+  setShellPathEnv("PYTHONPATH", "/python");
+  setShellPathEnv("LD_LIBRARY_PATH", "/lib");
+  setShellPathEnv("PATH", "/bin");
   unsetenv("XCL_EMULATION_MODE");
 
   int stderr_fds[2];
@@ -129,6 +142,12 @@ run_shell_cmd(const std::string& cmd, boost::property_tree::ptree& _ptTest)
     _ptTest.put("status", "failed");
     return;
   }
+
+  // Kick off progress reporter
+  bool is_done = false;
+  //bandwidth testcase takes up-to a min to run
+  auto run_test = std::make_shared<XBU::ProgressBar>("Running Test", 60, XBU::is_esc_enabled(), std::cout); 
+  std::thread t(testCaseProgressReporter, run_test, std::ref(is_done));
 
   // Close existing stderr and set it to be the write end of the pipe.
   // After fork below, our child process's stderr will point to the same fd.
@@ -159,29 +178,86 @@ run_shell_cmd(const std::string& cmd, boost::property_tree::ptree& _ptTest)
       output += buf;
     }
   }
-  //verify output. If fail then put information in info
-  _ptTest.put("error_msg", output);
+  is_done = true;
+  if (output.find("PASS") == std::string::npos) {
+    run_test.get()->finish(false, "");
+    _ptTest.put("error_msg", output);
+    _ptTest.put("status", "failed");
+  } 
+  else {
+    run_test.get()->finish(true, "");
+    _ptTest.put("status", "passed");
+  }
+  std::cout << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().clear_line();
+  t.join();
 
-  // XBU::ProgressBar run_test("Running Test", 5, XBU::is_esc_enabled(), std::cout);
-  // int counter = 0;
-  // while(counter < 6) {
-  //   run_test.update(counter);
-  //   ++counter;
-  //   sleep(1);
-  // }
-  // run_test.finish(true, ""); //if set then set status as passed
-  _ptTest.put("status", "passed");
-  // std::cout << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().clear_line();
-
+  // Get out max thruput for bandwidth testcase
+  size_t st = output.find("Maximum");
+  if (st != std::string::npos) {
+    size_t end = output.find("\n", st);
+    _ptTest.put("info", output.substr(st, end - st));
+  }
 }
 
 /*
  * search for xclbin for an SSV2 platform
  */
 std::string
-searchSSV2Xclbin(const std::string& logic_uuid, const std::string& xclbin, boost::property_tree::ptree& _ptTest)
+searchSSV2Xclbin(const std::shared_ptr<xrt_core::device>& _dev, const std::string& logic_uuid, 
+                  const std::string& xclbin, boost::property_tree::ptree& _ptTest)
 {
-  //stub
+  std::string formatted_fw_path("/opt/xilinx/firmware/");
+  boost::filesystem::path fw_dir(formatted_fw_path);
+  if(!boost::filesystem::is_directory(fw_dir)) {
+    _ptTest.put("error_msg", boost::str(boost::format("Failed to find %s") % fw_dir));
+    _ptTest.put("info", "Please check if the platform package is installed correctly");
+    _ptTest.put("status", "failed");
+    return "";
+  }
+
+  std::vector<std::string> suffix = { "dsabin", "xsabin" };
+
+  for(std::string t : suffix) {
+    std::regex e("(^" + formatted_fw_path + "/[^/]+/[^/]+/[^/]+/).+\\." + t);
+    for(boost::filesystem::recursive_directory_iterator iter(fw_dir, 
+          boost::filesystem::symlink_option::recurse), end; iter != end;) {
+      std::string name = iter->path().string();
+      std::smatch cm;
+
+      if (!boost::filesystem::is_directory(boost::filesystem::path(name.c_str()))) {
+        iter.no_push();
+      } 
+      else {
+        iter.no_push(false);
+      }
+
+      std::regex_match(name, cm, e);
+      if (cm.size() > 0) {
+        auto dtbbuf = _dev->get_axlf_section(name, PARTITION_METADATA);
+        if (!dtbbuf.first || !dtbbuf.second) {
+          ++iter;
+          continue;
+        }
+        std::vector<std::string> uuids = _dev->get_uuids(dtbbuf.first);
+        if (!uuids.size()) {
+          ++iter;
+		    }
+        else if (uuids[0].compare(logic_uuid) == 0)
+        {
+            formatted_fw_path = cm.str(1) + "test/";
+            return formatted_fw_path;
+        }
+      }
+      else if (iter.level() > 4) {
+        iter.pop();
+        continue;
+      }
+		  ++iter;
+    }
+  }
+  _ptTest.put("error_msg", boost::str(boost::format("Failed to find xclbin in %s") % fw_dir));
+  _ptTest.put("info", "Please check if the platform package is installed correctly");
+  _ptTest.put("status", "failed");
   return "";
 }
 
@@ -215,7 +291,7 @@ searchLegacyXclbin(const std::string& dev_name, const std::string& xclbin, boost
  * helper funtion for kernel and bandwidth test cases
  */
 void 
-run_test_case(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py, const std::string& xclbin, 
+runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py, const std::string& xclbin, 
             boost::property_tree::ptree& _ptTest)
 {
     std::string name;
@@ -235,7 +311,7 @@ run_test_case(const std::shared_ptr<xrt_core::device>& _dev, const std::string& 
 
     std::string xclbinPath;
     if(!logic_uuid.empty()) {
-      xclbinPath = searchSSV2Xclbin(logic_uuid.front(), xclbin, _ptTest); //TO-DO
+      xclbinPath = searchSSV2Xclbin(_dev, logic_uuid.front(), xclbin, _ptTest); //TO-DO
     } else {
       xclbinPath = searchLegacyXclbin(name, xclbin, _ptTest);
     }
@@ -266,15 +342,17 @@ run_test_case(const std::shared_ptr<xrt_core::device>& _dev, const std::string& 
       return;
     
     //run testcase in a fork
-    std::string cmd = "/usr/bin/python " + xrtTestCasePath + " -k " + xclbinPath + " -d " + std::to_string(_dev.get()->get_device_id());
-    run_shell_cmd(cmd, _ptTest);
+    std::string cmd = "/usr/bin/python " + xrtTestCasePath + " -k " + xclbinPath + " -d " + 
+                        std::to_string(_dev.get()->get_device_id());
+    runShellCmd(cmd, _ptTest);
 }
 
 /*
  * helper function for kernelVersionTest
  */
 static void
-check_os_release(const std::vector<std::string> kernel_versions, const std::string& release, boost::property_tree::ptree& _ptTest)
+checkOSRelease(const std::vector<std::string> kernel_versions, const std::string& release, 
+                boost::property_tree::ptree& _ptTest)
 {
   for (const auto& ver : kernel_versions) {
     if (release.find(ver) != std::string::npos) {
@@ -303,10 +381,10 @@ kernelVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property
   const std::string release = _pt_host.get<std::string>("host.os.release");
 
   if(os.find("Ubuntu") != std::string::npos) {
-    check_os_release(ubuntu_kernel_versions, release, _ptTest);
+    checkOSRelease(ubuntu_kernel_versions, release, _ptTest);
   }
   else if(os.find("Red Hat") != std::string::npos || os.find("CentOS") != std::string::npos) {
-    check_os_release(centos_rh_kernel_versions, release, _ptTest);
+    checkOSRelease(centos_rh_kernel_versions, release, _ptTest);
   }
   else {
     _ptTest.put("status", "failed");
@@ -400,7 +478,7 @@ scVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tre
 void
 verifyKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest) 
 {
-  run_test_case(_dev, std::string("22_verify.py"), std::string("verify.xclbin"), _ptTest);
+  runTestCase(_dev, std::string("22_verify.py"), std::string("verify.xclbin"), _ptTest);
 }
 
 /*
@@ -419,8 +497,16 @@ dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
 void
 bandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest) 
 {
-  // run_test_case(_dev, std::string("23_bandwidth.py"), std::string("bandwidth.xclbin"), _ptTest);
-  _ptTest.put("status", "skipped");
+  std::string name;
+  try {
+    name = xrt_core::device_query<xrt_core::query::rom_vbnv>(_dev);
+  } catch(...) {
+    _ptTest.put("error_msg", "Unable to find device VBNV");
+    _ptTest.put("status", "failed");
+    return;
+  }
+  std::string testcase = (name.find("vck5000") != std::string::npos) ? "versal_23_bandwidth.py" : "23_bandwidth.py";
+  runTestCase(_dev, testcase, std::string("bandwidth.xclbin"), _ptTest);
 }
 
 /*
@@ -537,12 +623,18 @@ pretty_print_test_run(const boost::property_tree::ptree& test, test_status& stat
   catch(...) {}
 
   std::string _status = test.get<std::string>("status");
-  if(_status.find("warning") != std::string::npos)
+  auto color = EscapeCodes::FGC_PASS;
+  if(_status.find("warning") != std::string::npos) {
+    color = EscapeCodes::FGC_WARN;
     status = test_status::warning;
-  else if (_status.compare("failed") == 0)
+  }
+  else if (_status.compare("failed") == 0) {
+    color = EscapeCodes::FGC_FAIL;
     status = test_status::failed;
+  }
   boost::to_upper(_status);
-  std::cout << boost::format("    [%s]\n") % _status;
+  std::cout << EscapeCodes::fgcolor(color).string() << boost::format("    [%s]\n") % _status
+            << EscapeCodes::fgcolor::reset();
   std::cout << "------------------------------------------------------------------" << std::endl;    
 }
 
@@ -560,33 +652,56 @@ print_status(test_status status)
     std::cout << ", but with warnings" << std::endl;
 }
 
+/*
+ * Get basic information about the platform running on the device
+ */
+
+static void
+get_platform_info(const std::shared_ptr<xrt_core::device>& device, boost::property_tree::ptree& _ptTree, bool json)
+{
+  auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
+  _ptTree.put("device_id", xrt_core::query::pcie_bdf::to_string(bdf));
+  _ptTree.put("platform", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
+  _ptTree.put("sc_version", xrt_core::device_query<xrt_core::query::xmc_bmc_version>(device));
+  _ptTree.put("platform_id", (boost::format("0x%x") % xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
+  if(!json) {
+    std::cout << boost::format("Validate device[%s]\n") % _ptTree.get<std::string>("device_id");
+    std::cout << boost::format("%-20s: %s\n") % "Platform" % _ptTree.get<std::string>("platform");
+    std::cout << boost::format("%-20s: %s\n") % "SC Version" % _ptTree.get<std::string>("sc_version");
+    std::cout << boost::format("%-20s: %s\n\n") % "Platform ID" % _ptTree.get<std::string>("platform_id");
+  }
+}
+
 void
-run_test_suite_device(const std::shared_ptr<xrt_core::device>& device, boost::property_tree::ptree& _ptDevCollectionTestSuite, bool json)
+run_test_suite_device(const std::shared_ptr<xrt_core::device>& device, boost::property_tree::ptree& _ptDevCollectionTestSuite, 
+                        bool json, bool quick)
 {
   boost::property_tree::ptree _ptDeviceTestSuite;
-    boost::property_tree::ptree _ptDeviceInfo;
-    test_status status = test_status::passed;
-    auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
-    _ptDeviceInfo.put("device_id", xrt_core::query::pcie_bdf::to_string(bdf));
-    initTests();
-    
-    for(unsigned int i = 0; i < testSuite.size(); i++) {
-      if(!json)
-        pretty_print_test_desc(ptInfo[i], testSuite.size());
-      testSuite[i](device, ptInfo[i]);
-      _ptDeviceTestSuite.push_back( std::make_pair("", ptInfo[i]) );
-      if(!json)
-        pretty_print_test_run(ptInfo[i], status);
-      //if a test fails, exit immideately 
-      if(status == test_status::failed) {
-        break;
-      }
-    }
-    if(!json)
-      print_status(status);
+  boost::property_tree::ptree _ptDeviceInfo;
+  test_status status = test_status::passed;
+  unsigned int _test_suite_size = quick ? 5 : testSuite.size();
 
-    _ptDeviceInfo.put_child("tests", _ptDeviceTestSuite);
-    _ptDevCollectionTestSuite.push_back( std::make_pair("", _ptDeviceInfo) );
+  get_platform_info(device, _ptDeviceInfo, json);
+  initTests();
+  
+  for(unsigned int i = 0; i < _test_suite_size; i++) {
+    if(!json)
+      pretty_print_test_desc(ptInfo[i], _test_suite_size);
+    testSuite[i](device, ptInfo[i]);
+    _ptDeviceTestSuite.push_back( std::make_pair("", ptInfo[i]) );
+    if(!json)
+      pretty_print_test_run(ptInfo[i], status);
+    //if a test fails, exit immideately 
+    if(status == test_status::failed) {
+      break;
+    }
+  }
+
+  if(!json)
+    print_status(status);
+
+  _ptDeviceInfo.put_child("tests", _ptDeviceTestSuite);
+  _ptDevCollectionTestSuite.push_back( std::make_pair("", _ptDeviceInfo) );
 }
 
 }
@@ -616,14 +731,16 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   std::vector<std::string> device  = {"all"};
   bool help = false;
   bool json = false;
+  bool quick = false;
 
   po::options_description commonOptions("Commmon Options");
   commonOptions.add_options()
     ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The device of interest. This is specified as follows:\n"
                                                                            "  <BDF> - Bus:Device.Function (e.g., 0000:d8:00.0)\n"
                                                                            "  all   - Examines all known devices (default)")
-    ("json", boost::program_options::bool_switch(&json), "Print in json format")
-    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
+    ("json,j", boost::program_options::bool_switch(&json), "Print in json format")
+    ("quick,q", boost::program_options::bool_switch(&quick), "Run a subset of teh test suite")
+    ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
 
   po::options_description hiddenOptions("Hidden Options");
@@ -665,12 +782,15 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   //validate all devices
   boost::property_tree::ptree _ptValidate;
   boost::property_tree::ptree _ptDevCollectionTestSuite;
+  if(!json)
+    std::cout << boost::format("Starting validation for %d devices\n\n") % deviceCollection.size();
+
   for(auto const& device : deviceCollection) {
-    run_test_suite_device(device, _ptDevCollectionTestSuite, json);
+    run_test_suite_device(device, _ptDevCollectionTestSuite, json, quick);
   }
   _ptValidate.put_child("logical_devices", _ptDevCollectionTestSuite);
   
-  if(json){
+  if(json) {
     std::stringstream ss;
     boost::property_tree::json_parser::write_json(ss, _ptValidate);
     std::cout << ss.str() << std::endl;
