@@ -22,6 +22,8 @@
 #include "tools/common/ReportHost.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/XBHelpMenus.h"
+#include "core/tools/common/ProgressBar.h"
+#include "core/tools/common/EscapeCodes.h"
 #include "core/common/query_requests.h"
 namespace XBU = XBUtilities;
 
@@ -29,6 +31,7 @@ namespace XBU = XBUtilities;
 #include <boost/program_options.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/range/iterator_range.hpp>
+#include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <boost/any.hpp>
 namespace po = boost::program_options;
@@ -42,32 +45,254 @@ namespace po = boost::program_options;
 
 namespace {
 
+enum class test_status
+{
+  passed,
+  warning,
+  failed
+};
+
+/*
+ * progarm an xclbin
+ */
+void
+programXclbin(const std::shared_ptr<xrt_core::device>& _dev, const std::string& xclbin, boost::property_tree::ptree& _ptTest)
+{
+  std::ifstream stream(xclbin, std::ios::binary);
+  if (!stream) {
+    _ptTest.put("error_msg", boost::str(boost::format("Could not open %s for reading") % xclbin));
+    _ptTest.put("status", "failed");
+    return;
+  }
+
+  stream.seekg(0,stream.end);
+  size_t size = stream.tellg();
+  stream.seekg(0,stream.beg);
+  std::vector<char> raw(size);
+  stream.read(raw.data(),size);
+
+  std::string ver(raw.data(),raw.data()+7);
+  if (ver != "xclbin2") {
+    _ptTest.put("error_msg", boost::str(boost::format("Bad binary version '%s' for xclbin") % ver));
+    _ptTest.put("status", "failed");
+    return;
+  }
+
+  auto hdl = _dev->get_device_handle();
+  if (xclLoadXclBin(hdl,reinterpret_cast<const axlf*>(raw.data()))) {
+    _ptTest.put("error_msg", "Could not load xclbin");
+    _ptTest.put("status", "failed");
+    return;
+  }
+}
+
+inline const char* 
+getenv_or_empty(const char* path)
+{
+  return getenv(path) ? getenv(path) : "";
+}
+
+static void 
+set_shell_path_env(const std::string& var_name, const std::string& trailing_path)
+{
+  std::string xrt_path(getenv_or_empty("XILINX_XRT"));
+  std::string new_path(getenv_or_empty(var_name.c_str()));
+  xrt_path += trailing_path + ":";
+  new_path = xrt_path + new_path;
+  setenv(var_name.c_str(), new_path.c_str(), 1);
+}
+
+/*
+ * run standalone testcases in a fork
+ */
+void
+run_shell_cmd(const std::string& cmd, boost::property_tree::ptree& _ptTest)
+{
+  // Fix environment variables before running test case
+  setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
+  set_shell_path_env("PYTHONPATH", "/python");
+  set_shell_path_env("LD_LIBRARY_PATH", "/lib");
+  set_shell_path_env("PATH", "/bin");
+  unsetenv("XCL_EMULATION_MODE");
+
+  int stderr_fds[2];
+  if (pipe(stderr_fds)== -1) {
+    _ptTest.put("error_msg", "Unable to create pipe");
+    _ptTest.put("status", "failed");
+    return;
+  }
+
+  // Save stderr
+  int stderr_save = dup(STDERR_FILENO);
+  if (stderr_save == -1) {
+    _ptTest.put("error_msg", "Unable to duplicate stderr");
+    _ptTest.put("status", "failed");
+    return;
+  }
+
+  // Close existing stderr and set it to be the write end of the pipe.
+  // After fork below, our child process's stderr will point to the same fd.
+  dup2(stderr_fds[1], STDERR_FILENO);
+  close(stderr_fds[1]);
+  std::shared_ptr<FILE> stderr_child(fdopen(stderr_fds[0], "r"), fclose);
+  std::shared_ptr<FILE> stdout_child(popen(cmd.c_str(), "r"), pclose);
+  // Restore our normal stderr
+  dup2(stderr_save, STDERR_FILENO);
+  close(stderr_save);
+
+  if (stdout_child == nullptr) {
+    _ptTest.put("error_msg", boost::str(boost::format("Failed to run %s") % cmd));
+    _ptTest.put("status", "failed");
+    return;
+  }
+
+  std::string output = "\n\n";
+  // Read child's stdout and stderr without parsing the content
+  char buf[1024];
+  while (!feof(stdout_child.get())) {
+    if (fgets(buf, sizeof (buf), stdout_child.get()) != nullptr) {
+      output += buf;
+    }
+  }
+  while (stderr_child && !feof(stderr_child.get())) {
+    if (fgets(buf, sizeof (buf), stderr_child.get()) != nullptr) {
+      output += buf;
+    }
+  }
+  //verify output. If fail then put information in info
+  _ptTest.put("error_msg", output);
+
+  // XBU::ProgressBar run_test("Running Test", 5, XBU::is_esc_enabled(), std::cout);
+  // int counter = 0;
+  // while(counter < 6) {
+  //   run_test.update(counter);
+  //   ++counter;
+  //   sleep(1);
+  // }
+  // run_test.finish(true, ""); //if set then set status as passed
+  _ptTest.put("status", "passed");
+  // std::cout << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().clear_line();
+
+}
+
+/*
+ * search for xclbin for an SSV2 platform
+ */
+std::string
+searchSSV2Xclbin(const std::string& logic_uuid, const std::string& xclbin, boost::property_tree::ptree& _ptTest)
+{
+  //stub
+  return "";
+}
+
+/*
+ * search for xclbin for a legacy platform
+ */
+std::string
+searchLegacyXclbin(const std::string& dev_name, const std::string& xclbin, boost::property_tree::ptree& _ptTest)
+{
+  const std::string dsapath("/opt/xilinx/dsa/");
+  const std::string xsapath("/opt/xilinx/xsa/");
+  //create possible xclbin paths
+  std::string xsaXclbinPath = xsapath + dev_name + "/test/" + xclbin;
+  std::string dsaXclbinPath = dsapath + dev_name + "/test/" + xclbin;
+  boost::filesystem::path xsa_xclbin(xsaXclbinPath);
+  boost::filesystem::path dsa_xclbin(dsaXclbinPath);
+  if (boost::filesystem::exists(xsa_xclbin)) {
+    return xsaXclbinPath;
+  } 
+  else if (boost::filesystem::exists(dsa_xclbin)) {
+    return dsaXclbinPath;
+  }
+
+  _ptTest.put("error_msg", boost::str(boost::format("Failed to find %s or %s") % xsaXclbinPath % dsaXclbinPath));
+  _ptTest.put("info", "Please check if the platform package is installed correctly");
+  _ptTest.put("status", "failed");
+  return "";
+}
+
+/* 
+ * helper funtion for kernel and bandwidth test cases
+ */
+void 
+run_test_case(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py, const std::string& xclbin, 
+            boost::property_tree::ptree& _ptTest)
+{
+    std::string name;
+    try{
+      name = xrt_core::device_query<xrt_core::query::rom_vbnv>(_dev);
+    } catch(...) {
+      _ptTest.put("error_msg", "Unable to find device VBNV");
+      _ptTest.put("status", "failed");
+      return;
+    }
+
+    //check if a 2RP platform
+    std::vector<std::string> logic_uuid;
+    try{
+      logic_uuid = xrt_core::device_query<xrt_core::query::logic_uuids>(_dev);
+    } catch(...) { }
+
+    std::string xclbinPath;
+    if(!logic_uuid.empty()) {
+      xclbinPath = searchSSV2Xclbin(logic_uuid.front(), xclbin, _ptTest); //TO-DO
+    } else {
+      xclbinPath = searchLegacyXclbin(name, xclbin, _ptTest);
+    }
+
+    //check if xclbin is present
+    if(xclbinPath.empty()) {
+      if(xclbin.compare("bandwidth.xclbin") == 0) {
+        //if bandwidth xclbin isn't present, skip the test
+        _ptTest.put("info", "Bandwidth xclbin not available. Skipping validation.");
+        _ptTest.put("status", "skipped");
+      }
+      return;
+    }
+
+    //check if testcase is present
+    std::string xrtTestCasePath = "/opt/xilinx/xrt/test/" + py;
+    boost::filesystem::path xrt_path(xrtTestCasePath);
+    if (!boost::filesystem::exists(xrt_path)) {
+      _ptTest.put("error_msg", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
+      _ptTest.put("info", "Please check if the platform package is installed correctly");
+      _ptTest.put("status", "failed");
+      return;
+    }
+
+    // Program xclbin first.
+    programXclbin(_dev, xclbinPath, _ptTest);
+    if (_ptTest.get<std::string>("status", "N/A").compare("failed") == 0) 
+      return;
+    
+    //run testcase in a fork
+    std::string cmd = "/usr/bin/python " + xrtTestCasePath + " -k " + xclbinPath + " -d " + std::to_string(_dev.get()->get_device_id());
+    run_shell_cmd(cmd, _ptTest);
+}
+
 /*
  * helper function for kernelVersionTest
  */
 static void
-check_os_release(const std::vector<std::string> kernel_versions, const std::string& release, boost::property_tree::ptree& _ptDevice)
+check_os_release(const std::vector<std::string> kernel_versions, const std::string& release, boost::property_tree::ptree& _ptTest)
 {
   for (const auto& ver : kernel_versions) {
-        if (release.find(ver) != std::string::npos) {
-          _ptDevice.put("status", "passed");
-          return;
-        }
+    if (release.find(ver) != std::string::npos) {
+      _ptTest.put("status", "passed");
+      return;
     }
-    _ptDevice.put("status", "passed with warning");
-    _ptDevice.put("warning_msg", boost::str(boost::format("Kernel verison %s is not officially supported. %s is the latest supported version") 
-      % release % kernel_versions.back()));
+  }
+  _ptTest.put("status", "passed with warning");
+  _ptTest.put("warning_msg", boost::str(boost::format("Kernel verison %s is not officially supported. %s is the latest supported version") 
+    % release % kernel_versions.back()));
 }
 
 /*
  * TEST #1
  */
 void
-kernelVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptDevice) 
+kernelVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest) 
 {
-  _ptDevice.put("name", "Kernel version");
-  _ptDevice.put("description", "Check if kernel version is supported by XRT");
-
   //please append the new supported versions
   const std::vector<std::string> ubuntu_kernel_versions = { "4.4.0", "4.13.0", "4.15.0", "4.18.0", "5.0.0", "5.3.0" };
   const std::vector<std::string> centos_rh_kernel_versions = { "3.10.0-693", "3.10.0-862", "3.10.0-957", "3.10.0-1062" };
@@ -78,13 +303,13 @@ kernelVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property
   const std::string release = _pt_host.get<std::string>("host.os.release");
 
   if(os.find("Ubuntu") != std::string::npos) {
-    check_os_release(ubuntu_kernel_versions, release, _ptDevice);
+    check_os_release(ubuntu_kernel_versions, release, _ptTest);
   }
   else if(os.find("Red Hat") != std::string::npos || os.find("CentOS") != std::string::npos) {
-    check_os_release(centos_rh_kernel_versions, release, _ptDevice);
+    check_os_release(centos_rh_kernel_versions, release, _ptTest);
   }
   else {
-    _ptDevice.put("status", "failed");
+    _ptTest.put("status", "failed");
   }
 }
 
@@ -92,16 +317,12 @@ kernelVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property
  * TEST #2
  */
 void
-auxConnectionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptDevice) 
+auxConnectionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest) 
 {
-  _ptDevice.put("name", "Aux connection");
-  _ptDevice.put("description", "Check if auxiliary power is connected");
-
   const std::vector<std::string> auxPwrRequiredDevice = { "VCU1525", "U200", "U250", "U280" };
   
-  uint16_t max_power = 0;
   auto name = xrt_core::device_query<xrt_core::query::xmc_board_name>(_dev);
-  max_power = xrt_core::device_query<xrt_core::query::xmc_max_power>(_dev);
+  auto max_power = xrt_core::device_query<xrt_core::query::xmc_max_power>(_dev);
 
   //check if device has aux power connector
   bool auxDevice = false;
@@ -113,19 +334,19 @@ auxConnectionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property
   }
 
   if (!auxDevice) {
-      _ptDevice.put("info", "Aux power connector is not available on this board");
-      _ptDevice.put("status", "skipped");
+      _ptTest.put("info", "Aux power connector is not available on this board");
+      _ptTest.put("status", "skipped");
       return;
   }
 
   //check aux cable if board u200, u250, u280
   if(max_power == 0) {
-    _ptDevice.put("warning_msg", "Aux power is not connected");
-    _ptDevice.put("info", "Device is not stable for heavy acceleration tasks");
-    _ptDevice.put("status", "passed with warning");
+    _ptTest.put("warning_msg", "Aux power is not connected");
+    _ptTest.put("info", "Device is not stable for heavy acceleration tasks");
+    _ptTest.put("status", "passed with warning");
   } 
   else {
-    _ptDevice.put("status", "passed");
+    _ptTest.put("status", "passed");
   }
 }
 
@@ -133,22 +354,20 @@ auxConnectionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property
  * TEST #3
  */
 void
-pcieLinkTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptDevice) 
+pcieLinkTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest) 
 {
-  _ptDevice.put("name", "PCIE link");
-  _ptDevice.put("description", "Check if PCIE link is active");
   auto speed     = xrt_core::device_query<xrt_core::query::pcie_link_speed>(_dev);
   auto max_speed = xrt_core::device_query<xrt_core::query::pcie_link_speed_max>(_dev);
   auto width     = xrt_core::device_query<xrt_core::query::pcie_express_lane_width>(_dev);
   auto max_width = xrt_core::device_query<xrt_core::query::pcie_express_lane_width_max>(_dev);
   if (speed != max_speed || width != max_width) {
-    _ptDevice.put("warning_msg", "Link is active");
-    _ptDevice.put("info", boost::format("Please make sure that the device is plugged into Gen %dx%d, instead of Gen %dx%d. %s.")
+    _ptTest.put("warning_msg", "Link is active");
+    _ptTest.put("info", boost::format("Please make sure that the device is plugged into Gen %dx%d, instead of Gen %dx%d. %s.")
                                           % max_speed % max_width % speed % width % "Lower performance maybe experienced");
-    _ptDevice.put("status", "passed with warning");
+    _ptTest.put("status", "passed with warning");
   }
   else {
-    _ptDevice.put("status", "passed");
+    _ptTest.put("status", "passed");
   }
 }
 
@@ -156,25 +375,22 @@ pcieLinkTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree
  * TEST #4
  */
 void
-scVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptDevice) 
+scVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest) 
 {
-  _ptDevice.put("name", "SC version");
-  _ptDevice.put("description", "Check if SC firmware is up-to-date");
-
-  auto sc_ver     = xrt_core::device_query<xrt_core::query::xmc_bmc_version>(_dev);
+  auto sc_ver = xrt_core::device_query<xrt_core::query::xmc_bmc_version>(_dev);
   std::string exp_sc_ver = "";
   try{
     exp_sc_ver = xrt_core::device_query<xrt_core::query::expected_bmc_version>(_dev);
   } catch(...) {}
 
   if (!exp_sc_ver.empty() && sc_ver.compare(exp_sc_ver) != 0) {
-    _ptDevice.put("warning_msg", "SC firmware misatch");
-    _ptDevice.put("info", boost::format("SC firmware version %s is running on the board, but SC firmware version %s is expected from the installed shell. %s.") 
+    _ptTest.put("warning_msg", "SC firmware misatch");
+    _ptTest.put("info", boost::format("SC firmware version %s is running on the board, but SC firmware version %s is expected from the installed shell. %s.") 
                                           % sc_ver % exp_sc_ver % "Please use xbmgmt --new status to check the installed shell");
-    _ptDevice.put("status", "passed with warning");
+    _ptTest.put("status", "passed with warning");
   }
   else {
-    _ptDevice.put("status", "passed");
+    _ptTest.put("status", "passed");
   }
 }
 
@@ -182,22 +398,18 @@ scVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tre
  * TEST #5
  */
 void
-verifyKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptDevice) 
+verifyKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest) 
 {
-  _ptDevice.put("name", "Verify kernel");
-  _ptDevice.put("description", "Run 'Hello World' kernel test");
-  _ptDevice.put("status", "skipped");
+  run_test_case(_dev, std::string("22_verify.py"), std::string("verify.xclbin"), _ptTest);
 }
 
 /*
  * TEST #6
  */
 void
-dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptDevice) 
+dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest) 
 {
-  _ptDevice.put("name", "DMA");
-  _ptDevice.put("description", "Run dma test ");
-  _ptDevice.put("status", "skipped");
+  _ptTest.put("status", "skipped");
   // std::make_shared<SubCmdDmaTest>(true,true,true)->execute(std::vector<std::string>{"-d", std::to_string(_dev.get()->get_device_id())});
 }
 
@@ -205,33 +417,28 @@ dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
  * TEST #7
  */
 void
-bandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptDevice) 
+bandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest) 
 {
-  _ptDevice.put("name", "Bandwidth kernel");
-  _ptDevice.put("description", "Check if auxiliary power is connected");
-  _ptDevice.put("status", "skipped");
+  // run_test_case(_dev, std::string("23_bandwidth.py"), std::string("bandwidth.xclbin"), _ptTest);
+  _ptTest.put("status", "skipped");
 }
 
 /*
  * TEST #8
  */
 void
-p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptDevice) 
+p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest) 
 {
-  _ptDevice.put("name", "Peer to peer bar");
-  _ptDevice.put("description", "Check if auxiliary power is connected");
-  _ptDevice.put("status", "skipped");
+  _ptTest.put("status", "skipped");
 }
 
 /*
  * TEST #9
  */
 void
-m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptDevice) 
+m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest) 
 {
-  _ptDevice.put("name", "Memory to memory DMA");
-  _ptDevice.put("description", "Check if auxiliary power is connected");
-  _ptDevice.put("status", "skipped");
+  _ptTest.put("status", "skipped");
 }
 
 // list of tests
@@ -270,74 +477,116 @@ static std::vector<boost::property_tree::ptree> ptInfo = {
   _ptm2mTest,
 };
 
-
 /*
- * helper function for pretty_print_tests
- */
-static void print_status(int passed, int total, bool warning)
-{
-  std::cout << (passed*100)/total << "% tests passed";
-  if(warning)
-    std::cout << ", but with warnings";
-  std::cout << std::endl << std::endl;;
-}
-
-/*
- * helper function: print one validated device in user friendly format
- */
-static void
-pretty_print_dev_validate(const boost::property_tree::ptree& _ptDeviceInfo) 
-{
-  std::cout << boost::format("Validate device[%s]") % _ptDeviceInfo.get<std::string>("device_id") << std::endl;
-  boost::property_tree::ptree tests = _ptDeviceInfo.get_child("tests");
-  int passed = 0;
-  bool warning = false;
-  for(auto& kv : tests) {
-    boost::property_tree::ptree& test = kv.second;
-    std::cout << boost::format("%d/%d Test #%-10d: %s\n") % test.get<int>("id") % testSuite.size() 
-                    % test.get<int>("id") % test.get<std::string>("name");
-    std::cout << boost::format("    %-16s: %s\n") % "Description" % test.get<std::string>("description");
-    try{
-      std::cout << boost::format("    %-16s: %s\n") % "Warning" % test.get<std::string>("warning_msg");
-    }
-    catch(...) {}
-    try{
-      std::cout << boost::format("    %-16s: %s\n") % "Error" % test.get<std::string>("error_msg");
-    }
-    catch(...) {}
-    try{
-      std::string formatted_output;
-      XBU::wrap_paragraph(test.get<std::string>("info"), 22, 70, false, formatted_output);
-      std::cout << boost::format("    %-16s: %s\n") % "Details" % formatted_output;
-    }
-    catch(...) {}
-    std::string status = test.get<std::string>("status");
-    if(status.find("warning") != std::string::npos)
-      warning = true;
-    boost::to_upper(status);
-    std::cout << boost::format("    [%s]\n") % status;
-    std::cout << "------------------------------------------------------------------" << std::endl;
-
-    //a test is considered success if it passes or is skipped
-    if(test.get<std::string>("status").find("passed") != std::string::npos || 
-        test.get<std::string>("status").compare("skipped") == 0)  
-      passed++;
-  }
-  print_status(passed, testSuite.size(), warning);
-}
-
-/*
- * print all validated devices in user friendly format
+ * helper function to initialize test info
  */
 static void 
-pretty_print_tests(const boost::property_tree::ptree& _ptInfo)
+initTest(boost::property_tree::ptree& _ptDevice, int id, const std::string& name, const std::string& desc)
 {
-  boost::property_tree::ptree _ptDevices = _ptInfo.get_child("logical_devices");
-  std::cout << boost::format("Starting validation for %d devices\n") % _ptDevices.size() << std::endl;
-  for(auto& kv : _ptDevices) {
-    boost::property_tree::ptree& _ptDeviceInfo = kv.second;
-    pretty_print_dev_validate(_ptDeviceInfo);
+  _ptDevice.put("id", id);
+  _ptDevice.put("name", name);
+  _ptDevice.put("description", desc);
+}
+
+/* 
+ * intialize test information before running the test suite
+ */
+static void 
+initTests(){
+  initTest(ptInfo[0], 1, "Kernel version", "Check if kernel version is supported by XRT");
+  initTest(ptInfo[1], 2, "Aux connection", "Check if auxiliary power is connected");
+  initTest(ptInfo[2], 3, "PCIE link", "Check if PCIE link is active");
+  initTest(ptInfo[3], 4, "SC version", "Check if SC firmware is up-to-date");
+  initTest(ptInfo[4], 5, "Verify kernel", "Run 'Hello World' kernel test");
+  initTest(ptInfo[5], 6, "DMA", "Run dma test ");
+  initTest(ptInfo[6], 7, "Bandwidth kernel", "Run 'bandwidth kernel' and check the throughput");
+  initTest(ptInfo[7], 8, "Peer to peer bar", "Run P2P test");
+  initTest(ptInfo[8], 9, "Memory to memory DMA", "Run M2M test");
+}
+
+/* 
+ * print basic information about a test
+ */
+static void
+pretty_print_test_desc(const boost::property_tree::ptree& test, int testSuiiteSize)
+{
+  std::cout << boost::format("%d/%d Test #%-10d: %s\n") % test.get<int>("id") % testSuiiteSize 
+                    % test.get<int>("id") % test.get<std::string>("name");
+  std::cout << boost::format("    %-16s: %s\n") % "Description" % test.get<std::string>("description");
+}
+
+/* 
+ * print test run
+ */
+static void
+pretty_print_test_run(const boost::property_tree::ptree& test, test_status& status)
+{
+  try{
+    std::cout << boost::format("    %-16s: %s\n") % "Warning" % test.get<std::string>("warning_msg");
   }
+  catch(...) {}
+  try{
+    std::cout << boost::format("    %-16s: %s\n") % "Error" % test.get<std::string>("error_msg");
+  }
+  catch(...) {}
+  try{
+    std::string formatted_output;
+    XBU::wrap_paragraph(test.get<std::string>("info"), 22, 70, false, formatted_output);
+    std::cout << boost::format("    %-16s: %s\n") % "Details" % formatted_output;
+  }
+  catch(...) {}
+
+  std::string _status = test.get<std::string>("status");
+  if(_status.find("warning") != std::string::npos)
+    status = test_status::warning;
+  else if (_status.compare("failed") == 0)
+    status = test_status::failed;
+  boost::to_upper(_status);
+  std::cout << boost::format("    [%s]\n") % _status;
+  std::cout << "------------------------------------------------------------------" << std::endl;    
+}
+
+/*
+ * print final status of the card
+ */
+static void
+print_status(test_status status)
+{
+  if (status == test_status::failed)
+    std::cout << "Validation failed" << std::endl;
+  else
+    std::cout << "Validation completed";
+  if (status == test_status::warning)
+    std::cout << ", but with warnings" << std::endl;
+}
+
+void
+run_test_suite_device(const std::shared_ptr<xrt_core::device>& device, boost::property_tree::ptree& _ptDevCollectionTestSuite, bool json)
+{
+  boost::property_tree::ptree _ptDeviceTestSuite;
+    boost::property_tree::ptree _ptDeviceInfo;
+    test_status status = test_status::passed;
+    auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
+    _ptDeviceInfo.put("device_id", xrt_core::query::pcie_bdf::to_string(bdf));
+    initTests();
+    
+    for(unsigned int i = 0; i < testSuite.size(); i++) {
+      if(!json)
+        pretty_print_test_desc(ptInfo[i], testSuite.size());
+      testSuite[i](device, ptInfo[i]);
+      _ptDeviceTestSuite.push_back( std::make_pair("", ptInfo[i]) );
+      if(!json)
+        pretty_print_test_run(ptInfo[i], status);
+      //if a test fails, exit immideately 
+      if(status == test_status::failed) {
+        break;
+      }
+    }
+    if(!json)
+      print_status(status);
+
+    _ptDeviceInfo.put_child("tests", _ptDeviceTestSuite);
+    _ptDevCollectionTestSuite.push_back( std::make_pair("", _ptDeviceInfo) );
 }
 
 }
@@ -366,13 +615,14 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   // -- Retrieve and parse the subcommand options -----------------------------
   std::vector<std::string> device  = {"all"};
   bool help = false;
+  bool json = false;
 
   po::options_description commonOptions("Commmon Options");
   commonOptions.add_options()
     ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The device of interest. This is specified as follows:\n"
                                                                            "  <BDF> - Bus:Device.Function (e.g., 0000:d8:00.0)\n"
                                                                            "  all   - Examines all known devices (default)")
-
+    ("json", boost::program_options::bool_switch(&json), "Print in json format")
     ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
 
@@ -411,36 +661,20 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
 
   XBU::collect_devices(deviceNames, true /*inUserDomain*/, deviceCollection);
-
+  
+  //validate all devices
   boost::property_tree::ptree _ptValidate;
   boost::property_tree::ptree _ptDevCollectionTestSuite;
   for(auto const& device : deviceCollection) {
-    boost::property_tree::ptree _ptDeviceTestSuite;
-    boost::property_tree::ptree _ptDeviceInfo;
-    auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
-    _ptDeviceInfo.put("device_id", xrt_core::query::pcie_bdf::to_string(bdf));
-    
-    for(unsigned int i = 0; i < testSuite.size(); i++) {
-      ptInfo[i].put("id", i+1);
-      testSuite[i](device, ptInfo[i]);
-      _ptDeviceTestSuite.push_back( std::make_pair("", ptInfo[i]) );
-      //if a test fails, exit immideately 
-      if(ptInfo[i].get<std::string>("status").compare("failed") == 0)
-        break;
-    }
-    _ptDeviceInfo.put_child("tests", _ptDeviceTestSuite);
-    _ptDevCollectionTestSuite.push_back( std::make_pair("", _ptDeviceInfo) );
+    run_test_suite_device(device, _ptDevCollectionTestSuite, json);
   }
   _ptValidate.put_child("logical_devices", _ptDevCollectionTestSuite);
   
+  if(json){
+    std::stringstream ss;
+    boost::property_tree::json_parser::write_json(ss, _ptValidate);
+    std::cout << ss.str() << std::endl;
+  }
   
-
-  
-  //DEBUG:
-  std::stringstream ss;
-  boost::property_tree::json_parser::write_json(ss, _ptValidate);
-  std::cout << ss.str() << std::endl;
-
-  pretty_print_tests(_ptValidate); //pass in ostr
 }
 
