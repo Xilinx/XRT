@@ -436,7 +436,7 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 	unsigned mem_id = xocl_bo_ddr_idx(args->flags);
 	unsigned bo_type = xocl_bo_type(args->flags);
 	struct mem_topology *topo = NULL;
-    struct xcl_mem_group_info *xocl_mem = NULL;
+	struct xcl_mem_group_info *xocl_mem = NULL;
 
 	xobj = xocl_create_bo(dev, args->size, args->flags, bo_type);
 
@@ -458,6 +458,11 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 		if (topo) {
 			int ret;
 			ulong bar_off;
+                        xocl_mem = drm_p->m_connect->mem_group->m_group[mem_id];
+                        if (xocl_mem == NULL) {
+                                ret = -EINVAL;
+                                goto out_free;
+                        }
 
 			ret = xocl_p2p_mem_map(xdev,
 			       topo->m_mem_data[xocl_mem->l_bank_idx].m_base_address,
