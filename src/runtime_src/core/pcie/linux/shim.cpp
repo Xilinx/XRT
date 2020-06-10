@@ -2264,7 +2264,7 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 	  if (pGrpInfo)
               free(pGrpInfo); 	
       }
-
+      
       core_device->register_axlf(buffer);
 
 #ifndef DISABLE_DOWNLOAD_XCLBIN
