@@ -218,12 +218,11 @@ searchSSV2Xclbin(const std::shared_ptr<xrt_core::device>& _dev, const std::strin
   std::vector<std::string> suffix = { "dsabin", "xsabin" };
 
   for(std::string t : suffix) {
-    std::regex e("(^" + formatted_fw_path + "/[^/]+/[^/]+/[^/]+/).+\\." + t);
+    std::regex e("(^" + formatted_fw_path + "[^/]+/[^/]+/[^/]+/).+\\." + t);
     for(boost::filesystem::recursive_directory_iterator iter(fw_dir, 
           boost::filesystem::symlink_option::recurse), end; iter != end;) {
       std::string name = iter->path().string();
       std::smatch cm;
-
       if (!boost::filesystem::is_directory(boost::filesystem::path(name.c_str()))) {
         iter.no_push();
       } 
@@ -242,10 +241,8 @@ searchSSV2Xclbin(const std::shared_ptr<xrt_core::device>& _dev, const std::strin
         if (!uuids.size()) {
           ++iter;
 		    }
-        else if (uuids[0].compare(logic_uuid) == 0)
-        {
-            formatted_fw_path = cm.str(1) + "test/";
-            return formatted_fw_path;
+        else if (uuids[0].compare(logic_uuid) == 0) {
+          return cm.str(1) + "test/" + xclbin;
         }
       }
       else if (iter.level() > 4) {
@@ -311,7 +308,7 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
 
     std::string xclbinPath;
     if(!logic_uuid.empty()) {
-      xclbinPath = searchSSV2Xclbin(_dev, logic_uuid.front(), xclbin, _ptTest); //TO-DO
+      xclbinPath = searchSSV2Xclbin(_dev, logic_uuid.front(), xclbin, _ptTest);
     } else {
       xclbinPath = searchLegacyXclbin(name, xclbin, _ptTest);
     }
