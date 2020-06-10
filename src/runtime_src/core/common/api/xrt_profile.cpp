@@ -30,7 +30,7 @@
 
 namespace xrt {
 
-  uint64_t user_range::globalID = 0 ;
+  uint32_t user_range::globalID = 0 ;
   std::mutex user_range::idLock ;
   std::mutex user_event::eventLock ;
 
@@ -77,14 +77,6 @@ namespace xrt {
   }
 
   user_event::user_event()
-  {
-  }
-
-  user_event::user_event(const user_event& rhs)
-  {
-  }
-
-  user_event::user_event(user_event&& rhs)
   {
   }
 

@@ -29,9 +29,9 @@ namespace xrt {
   class user_range
   {
   private:
-    static uint64_t globalID ;
+    static uint32_t globalID ;
     static std::mutex idLock ;
-    uint64_t id ;
+    uint32_t id ;
     bool active ;
   public:
     /**
@@ -120,22 +120,6 @@ namespace xrt {
      */
     XCL_DRIVER_DLLESPEC
     user_event() ;
-
-    /**
-     * user_event() - Copy constructor
-     *
-     * Create an object, but do not mark any particular time
-     */
-    XCL_DRIVER_DLLESPEC
-    user_event(const user_event& rhs) ;
-
-    /**
-     * user_event() - Move constructor
-     *
-     * Move object, but do not mark any particular time
-     */
-    XCL_DRIVER_DLLESPEC
-    user_event(user_event&& rhs) ;
 
     /**
      * ~user_event() - Destructor
