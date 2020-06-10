@@ -78,10 +78,11 @@ register_axlf(const axlf* top)
 
   // Build modified CONNECTIVITY and MEM_TOPOLOGY section based on memory group ids
   // Base groups off data from driver
+
   auto itr = m_axlf_sections.find(CONNECTIVITY);
   if (itr != m_axlf_sections.end()) {
     auto m_con = reinterpret_cast<::connectivity*>((*itr).second.data());
-    for (int32_t i=0; i<m_con->m_count; ++i) {
+    for (int i=0; i<m_con->m_count; ++i) {
       auto& con = m_con->m_connection[i];
       auto itr = m_grp_map.find(std::make_pair(con.m_ip_layout_index,
                                               con.arg_index));
@@ -89,6 +90,25 @@ register_axlf(const axlf* top)
         con.mem_data_index = (*itr).second;
       }
     }
+  }
+
+  itr = m_axlf_sections.find(MEM_TOPOLOGY);
+  if (itr != m_axlf_sections.end()) {
+    auto m_mem = reinterpret_cast<::mem_topology*>((*itr).second.data());
+    for (uint32_t i=0; i<m_grp_info.size(); ++i) {
+      auto& mem = m_mem->m_mem_data[i];
+      auto itr = m_grp_info.find(i);
+      if (itr != m_grp_info.end()) {
+        mem.m_base_address = (*itr).second.first;
+	mem.m_size = (*itr).second.second;
+      }
+    }
+    // Update remaing entries as un-used
+    for (int i=m_grp_info.size(); i<m_mem->m_count; ++i) {
+      auto& mem = m_mem->m_mem_data[i];
+      mem.m_used = 0;
+    }
+    m_mem->m_count = m_grp_info.size();
   }
 }
 
@@ -184,7 +204,8 @@ populate_mem_group_info(const char *infoBuff)
     if(!m_grp)
       throw std::runtime_error("Failed to get memory mapping information");
 
-    m_grp_info.emplace(i, std::make_pair(m_grp->l_bank_idx, m_grp->h_bank_idx));
+    size_t size = m_grp->h_end_addr - m_grp->l_start_addr;
+    m_grp_info.emplace(i, std::make_pair(m_grp->l_start_addr, size));
     infoBuff += sizeof(*m_grp);
   }
 

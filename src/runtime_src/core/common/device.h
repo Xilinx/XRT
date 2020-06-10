@@ -318,8 +318,8 @@ public:
   // Store memory mapping information <<cuIdx, argIdx>, grpIdx>
   std::map<std::pair<uint32_t, uint32_t>, uint32_t> m_grp_map;
 
-  // Store memory group information <grpIdx, <lowBankIdx, highBankIdx>>
-  std::map<uint32_t, std::pair<uint32_t, uint32_t>> m_grp_info;
+  // Store memory group information <grpIdx, <startAddr, size>>
+  std::map<uint32_t, std::pair<uint64_t, uint64_t>> m_grp_info;
 };
 
 /**
