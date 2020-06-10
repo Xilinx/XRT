@@ -147,7 +147,7 @@ monitor_loop(const xrt_core::device* device)
         return;
 
       // Finer wait
-      while (device->exec_wait(1000)==0) ;
+      while (device->exec_wait(1000)==0) {}
 
       {
         std::lock_guard<std::mutex> lk(s_mutex);
