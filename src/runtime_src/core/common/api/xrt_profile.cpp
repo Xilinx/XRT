@@ -35,8 +35,7 @@ namespace xrt {
   std::mutex user_event::eventLock ;
 
   user_range::user_range(const std::string& label,
-					 const std::string& tooltip) :
-    active(true)
+			 const std::string& tooltip) : active(true)
   {
     std::lock_guard<std::mutex> constructorLock(idLock) ;
     id = globalID++ ;
@@ -51,16 +50,17 @@ namespace xrt {
   user_range::~user_range()
   {
     if (active)
-      xrtUREnd(id) ;
-  }
-
-  void user_range::start(const std::string& label, 
-				 const std::string& tooltip)
-  {
-    if (active)
     {
       xrtUREnd(id) ;
     }
+  }
+
+  void user_range::start(const std::string& label, 
+			 const std::string& tooltip)
+  {
+    // Handle case where start is called while started
+    if (active) xrtUREnd(id) ;
+
     std::lock_guard<std::mutex> restartLock(idLock) ;
     id = globalID++ ;
     xrtURStart(id, label.c_str(), tooltip.c_str()) ;
@@ -69,6 +69,7 @@ namespace xrt {
 
   void user_range::end()
   {
+    // Handle case when end when not tracking time
     if (!active) return ;
 
     xrtUREnd(id) ;
@@ -133,7 +134,7 @@ namespace xrt {
 extern "C"
 {
   void xrtURStart(unsigned int id, const char* label,
-			     const char* tooltip) 
+		  const char* tooltip) 
   {
     try {
       xrt::load_user_profiling_plugin() ;
