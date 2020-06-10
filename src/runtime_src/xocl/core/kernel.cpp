@@ -438,8 +438,12 @@ validate_cus(const device* device, unsigned long argidx, int memidx) const
   for (auto itr=m_cus.begin(); itr!=end; ) {
     auto cu = (*itr);
     auto cuconn = cu->get_memidx(argidx);
+    std::cout << " cu : " << cu->get_name()<< " : argidx : " << argidx << 
+	    " : cuconn : " << cuconn << std::endl;
     if ((cuconn & connections).none()) {
+      std::cout << __FILE__ << " : " << __func__ << " : " << __LINE__ << std::endl;
       auto mem = device->get_axlf_section<const mem_topology*>(MEM_TOPOLOGY);
+      std::cout << "mem : " << mem << std::endl;
       xrt::message::send
         (xrt::message::severity_level::XRT_WARNING
          , "Argument '" + std::to_string(argidx)

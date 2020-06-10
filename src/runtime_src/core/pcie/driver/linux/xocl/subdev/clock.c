@@ -1349,10 +1349,12 @@ static struct platform_driver	clock_driver = {
 
 int __init xocl_init_clock(void)
 {
-	return platform_driver_register(&clock_driver);
+	return 0;
+	//return platform_driver_register(&clock_driver);
 }
 
 void xocl_fini_clock(void)
 {
-	platform_driver_unregister(&clock_driver);
+	return;
+	//platform_driver_unregister(&clock_driver);
 }

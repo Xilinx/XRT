@@ -34,6 +34,7 @@ logf(const char* format,...);
 
 } // xocl
 
+#define XOCL_VERBOSE
 #ifdef XOCL_VERBOSE
 # define XOCL_DEBUG(...) xrt_core::debug(__VA_ARGS__)
 # define XOCL_DEBUGF(format,...) xrt_core::debugf(format, ##__VA_ARGS__)
