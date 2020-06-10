@@ -3414,7 +3414,7 @@ static bool is_xmc_ready(struct xocl_xmc *xmc)
 
 static bool is_sc_ready(struct xocl_xmc *xmc, bool quiet)
 {
-	u32 val;
+	struct xmc_status status;
 
 	if (autonomous_xmc(xmc->pdev))
 		return true;
@@ -3422,13 +3422,14 @@ static bool is_sc_ready(struct xocl_xmc *xmc, bool quiet)
 	if (nosc_xmc(xmc->pdev))
 		return false;
 
-	safe_read32(xmc, XMC_STATUS_REG, &val);
-	val >>= 28;
-	if (val == 0x1)
+	safe_read32(xmc, XMC_STATUS_REG, (u32 *)&status);
+	if (status.sc_mode == XMC_SC_NORMAL)
 		return true;
 
-	if (!quiet)
-		xocl_err(&xmc->pdev->dev, "SC is not ready, state=%d\n", val);
+	if (!quiet) {
+		xocl_err(&xmc->pdev->dev, "SC is not ready, state=%d\n",
+			status.sc_mode);
+	}
 	return false;
 }
 
@@ -3701,6 +3702,7 @@ xmc_boot_sc(struct xocl_xmc *xmc, u32 jump_addr)
 		msleep(RETRY_INTERVAL);
 	if (!is_sc_ready(xmc, false))
 		ret = -ETIMEDOUT;
+
 	return ret;
 }
 
