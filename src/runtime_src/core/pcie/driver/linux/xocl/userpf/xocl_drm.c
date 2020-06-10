@@ -999,7 +999,7 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	size_t length = 0;
 	size_t mm_stat_size = 0;
 	size_t size = 0, wrapper_size = 0;
-	size_t ddr_bank_size;
+	size_t ddr_bank_size = 0;
 	struct mem_topology *topo = NULL;
 	struct mem_data *mem_data;
 	uint32_t shared;
