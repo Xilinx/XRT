@@ -253,7 +253,7 @@ static void *_xocl_drvinst_open(void *file_dev, u32 max_count)
 		return NULL;
 	}
 
-	if (atomic_read(&drvinstp->ref) - 1 > max_count) {
+	if (atomic_read(&drvinstp->ref) + 1 > max_count) {
 		mutex_unlock(&xocl_drvinst_lock);
 		return NULL;
 	}
