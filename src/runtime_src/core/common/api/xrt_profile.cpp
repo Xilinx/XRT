@@ -19,6 +19,7 @@
 // core/include/experimental/xrt_profile.h
 
 #include <functional>
+#include <mutex>
 
 #define XCL_DRIVER_DLL_EXPORT 
 #define XRT_CORE_COMMON_SOURCE
@@ -28,11 +29,10 @@
 #include "core/common/dlfcn.h"
 #include "core/common/message.h"
 
-namespace xrt {
+namespace xrt { namespace profile {
 
   uint32_t user_range::globalID = 0 ;
-  std::mutex user_range::idLock ;
-  std::mutex user_event::eventLock ;
+  static std::mutex idLock ;
 
   user_range::user_range(const std::string& label,
 			 const std::string& tooltip) : active(true)
@@ -49,10 +49,7 @@ namespace xrt {
 
   user_range::~user_range()
   {
-    if (active)
-    {
-      xrtUREnd(id) ;
-    }
+    if (active) xrtUREnd(id) ;
   }
 
   void user_range::start(const std::string& label, 
@@ -86,20 +83,20 @@ namespace xrt {
 
   void user_event::mark(const char* label)
   {
-    std::lock_guard<std::mutex> markLock(eventLock) ;
     xrtUEMark(label) ;
   }
-  
-} // end namespace xrt
 
-// Dynamic loading and connection portion
-namespace xrt {
+}} // end namespaces profile and xrt
+
+
+// Anonymous namespace for dynamic loading and connection
+namespace {
   
   std::function<void (unsigned int, const char*, const char*)> user_range_start_cb ;
   std::function<void (unsigned int)> user_range_end_cb ;
   std::function<void (const char*)> user_event_cb ;
 
-  void register_user_functions(void* handle)
+  static void register_user_functions(void* handle)
   {
     typedef void (*dtype)(unsigned int, const char*, const char*) ;
     user_range_start_cb = (dtype)(xrt_core::dlsym(handle, "user_event_start_cb"));
@@ -121,17 +118,16 @@ namespace xrt {
 						     nullptr) ;
   }
 
-} // end namespace xrt
+} // end anonymous
 
 extern "C"
 {
-  void xrtURStart(unsigned int id, const char* label,
-		  const char* tooltip) 
+  void xrtURStart(unsigned int id, const char* label, const char* tooltip) 
   {
     try {
-      xrt::load_user_profiling_plugin() ;
-      if (xrt::user_range_start_cb != nullptr) 
-	xrt::user_range_start_cb(id, label, tooltip) ;
+      load_user_profiling_plugin() ;
+      if (user_range_start_cb != nullptr) 
+	user_range_start_cb(id, label, tooltip) ;
     }
     catch(const std::exception& ex)
     {
@@ -144,9 +140,9 @@ extern "C"
   void xrtUREnd(unsigned int id)
   {
     try {
-      xrt::load_user_profiling_plugin() ;
-      if (xrt::user_range_end_cb != nullptr) 
-	xrt::user_range_end_cb(id);
+      load_user_profiling_plugin() ;
+      if (user_range_end_cb != nullptr) 
+	user_range_end_cb(id);
     }
     catch(const std::exception& ex)
     {
@@ -159,9 +155,9 @@ extern "C"
   void xrtUEMark(const char* label)
   {
     try {
-      xrt::load_user_profiling_plugin() ;
-      if (xrt::user_event_cb != nullptr) 
-	xrt::user_event_cb(label) ;
+      load_user_profiling_plugin() ;
+      if (user_event_cb != nullptr) 
+	user_event_cb(label) ;
     }
     catch(const std::exception& ex)
     {

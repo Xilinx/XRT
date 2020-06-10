@@ -21,16 +21,14 @@
 #include "xrt.h"
 
 #ifdef __cplusplus
-#include <mutex>
 #include <string>
 
-namespace xrt {
+namespace xrt { namespace profile {
 
   class user_range
   {
   private:
     static uint32_t globalID ;
-    static std::mutex idLock ;
     uint32_t id ;
     bool active ;
   public:
@@ -110,8 +108,6 @@ namespace xrt {
 
   class user_event
   {
-  private:
-    static std::mutex eventLock ;
   public:
     /**
      * user_event() - Constructor
@@ -136,6 +132,7 @@ namespace xrt {
     void mark(const char* label = nullptr) ;
   } ;
 
+} // end namespace profile
 } // end namespace xrt
 
 extern "C" {
@@ -151,8 +148,7 @@ extern "C" {
  *
  */
 XCL_DRIVER_DLLESPEC
-void xrtURStart(unsigned int id, const char* label,
-			   const char* tooltip) ;
+void xrtURStart(unsigned int id, const char* label, const char* tooltip) ;
 
 /**
  * xrtUREnd() - Mark the end time in the user code of a range
