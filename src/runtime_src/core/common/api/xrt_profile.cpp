@@ -29,16 +29,31 @@
 #include "core/common/dlfcn.h"
 #include "core/common/message.h"
 
-namespace xrt { namespace profile {
+namespace {
+  struct user_id
+  {
+  public:
+    static uint32_t globalID ;
+    static std::mutex idLock ;
+  public:
+    static uint32_t issueID() 
+    {
+      std::lock_guard<std::mutex> lock(idLock) ;
+      return globalID++ ;
+    }
+  } ;
 
-  uint32_t user_range::globalID = 0 ;
-  static std::mutex idLock ;
+  uint32_t user_id::globalID = 0 ;
+  std::mutex user_id::idLock ;
+
+} // end anonymous namespace
+
+namespace xrt { namespace profile {
 
   user_range::user_range(const std::string& label,
 			 const std::string& tooltip) : active(true)
   {
-    std::lock_guard<std::mutex> constructorLock(idLock) ;
-    id = globalID++ ;
+    id = user_id::issueID() ;
 
     xrtURStart(id, label.c_str(), tooltip.c_str()) ;
   }
@@ -58,8 +73,7 @@ namespace xrt { namespace profile {
     // Handle case where start is called while started
     if (active) xrtUREnd(id) ;
 
-    std::lock_guard<std::mutex> restartLock(idLock) ;
-    id = globalID++ ;
+    id = user_id::issueID() ;
     xrtURStart(id, label.c_str(), tooltip.c_str()) ;
     active = true ;
   }

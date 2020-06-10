@@ -28,7 +28,6 @@ namespace xrt { namespace profile {
   class user_range
   {
   private:
-    static uint32_t globalID ;
     uint32_t id ;
     bool active ;
   public:
