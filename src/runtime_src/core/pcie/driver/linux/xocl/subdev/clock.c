@@ -801,7 +801,7 @@ static int clock_freeze_axi_gate(struct clock *clock, int level)
 	BUG_ON(!mutex_is_locked(&clock->clock_lock));
 
 	if (level <= XOCL_SUBDEV_LEVEL_PRP)
-		err = xocl_axigate_freeze(xdev, level);
+		err = xocl_axigate_freeze(xdev, XOCL_SUBDEV_LEVEL_PRP);
 	else
 		err = xocl_axigate_reset(xdev, XOCL_SUBDEV_LEVEL_PRP);
 
@@ -817,7 +817,7 @@ static int clock_free_axi_gate(struct clock *clock, int level)
 	BUG_ON(!mutex_is_locked(&clock->clock_lock));
 
 	if (level <= XOCL_SUBDEV_LEVEL_PRP) {
-		xocl_axigate_free(xdev, level);
+		xocl_axigate_free(xdev, XOCL_SUBDEV_LEVEL_PRP);
 	} else {
 		if (!clock->clock_ucs_control_status) {
 			CLOCK_ERR(clock, "URP clock has no %s\n",
