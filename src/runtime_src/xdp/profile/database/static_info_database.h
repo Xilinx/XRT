@@ -161,8 +161,8 @@ namespace xdp {
 
     // Helper functions that fill in device information
     bool setXclbinUUID(DeviceInfo*, const void* binary);
-    bool initializeComputeUnits(DeviceInfo*, const void* binary);
-    bool initializeProfileMonitors(DeviceInfo*, const void* binary);
+    bool initializeComputeUnits(DeviceInfo*, void* );
+    bool initializeProfileMonitors(DeviceInfo*, void* );
 
   public:
     VPStaticDatabase() ;
@@ -307,7 +307,7 @@ namespace xdp {
     }
 
     // Reseting device information whenever a new xclbin is added
-    XDP_EXPORT void updateDevice(uint64_t deviceId, const void* binary) ;
+    XDP_EXPORT void updateDevice(uint64_t deviceId, void* devHandle, const void* binary) ;
 
     // Functions that add information to the database
     XDP_EXPORT void addCommandQueueAddress(uint64_t a) ;

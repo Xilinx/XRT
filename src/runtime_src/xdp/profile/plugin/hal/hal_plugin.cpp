@@ -150,7 +150,7 @@ namespace xdp {
 
     if(deviceHandles.find(deviceId) == deviceHandles.end()) return;
 
-    (db->getStaticInfo()).updateDevice(deviceId, binary);
+    (db->getStaticInfo()).updateDevice(deviceId, handle, binary);
 
     {
       struct xclDeviceInfo2* info = new xclDeviceInfo2;

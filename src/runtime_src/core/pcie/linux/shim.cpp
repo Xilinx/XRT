@@ -2223,13 +2223,12 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
 #endif
 
-#ifdef ENABLE_HAL_PROFILING
-    if (ret != 0) return ret ;
-    LOAD_XCLBIN_CB ;
-#endif
     if (!ret) {
       auto core_device = xrt_core::get_userpf_device(drv);
       core_device->register_axlf(buffer);
+#ifdef ENABLE_HAL_PROFILING
+    LOAD_XCLBIN_CB ;
+#endif
 #ifndef DISABLE_DOWNLOAD_XCLBIN
       ret = xrt_core::scheduler::init(handle, buffer);
       START_DEVICE_PROFILING_CB(handle);
