@@ -94,6 +94,13 @@ public:
     return range<device_const_iterator_type>(m_devices.begin(),m_devices.end());
   }
 
+  device*
+  get_first_device() const
+  {
+    auto itr = range_find(m_devices,[](auto& d) { return d.get() != nullptr; });
+    return (itr != m_devices.end()) ? (*itr).get() : nullptr;
+  }
+
   context*
   get_context() const
   {

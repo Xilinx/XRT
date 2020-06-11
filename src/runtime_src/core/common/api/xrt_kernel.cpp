@@ -460,7 +460,7 @@ public:
   static constexpr size_t no_index = xarg::no_index;
   
   argument()
-    : content(nullptr)
+    : grpid(std::numeric_limits<int32_t>::max()), content(nullptr)
   {}
 
   argument(argument&& rhs)
