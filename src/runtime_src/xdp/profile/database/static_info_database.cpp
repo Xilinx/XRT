@@ -29,7 +29,6 @@
 #include "xdp/profile/database/static_info_database.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #include "core/include/xclbin.h"
-#include "core/common/system.h"
 
 #define XAM_STALL_PROPERTY_MASK        0x4
 
@@ -92,11 +91,9 @@ namespace xdp {
   // This function is called whenever a device is loaded with an 
   //  xclbin.  It has to clear out any previous device information and
   //  reload our information.
-  void VPStaticDatabase::updateDevice(uint64_t deviceId, void* devHandle, const void* binary)
+  void VPStaticDatabase::updateDevice(uint64_t deviceId, void* devHandle)
   {  
     resetDeviceInfo(deviceId);
-
-    if (binary == nullptr) return ;
 
     DeviceInfo *devInfo = new DeviceInfo();
     devInfo->clockRateMHz = 300;
@@ -104,9 +101,11 @@ namespace xdp {
 
     deviceInfo[deviceId] = devInfo;
 
-    if (!setXclbinUUID(devInfo, devHandle)) return;
-    if (!initializeComputeUnits(devInfo, devHandle)) return ;
-    if (!initializeProfileMonitors(devInfo, devHandle)) return ;
+    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(devHandle);
+
+    if (!setXclbinUUID(devInfo, device)) return;
+    if (!initializeComputeUnits(devInfo, device)) return ;
+    if (!initializeProfileMonitors(devInfo, device)) return ;
   }
 
   void VPStaticDatabase::resetDeviceInfo(uint64_t deviceId)
@@ -120,10 +119,8 @@ namespace xdp {
     }
   }
 
-  bool VPStaticDatabase::setXclbinUUID(DeviceInfo* devInfo, void* devHandle)
+  bool VPStaticDatabase::setXclbinUUID(DeviceInfo* devInfo, std::shared_ptr<xrt_core::device> device)
   {
-    auto device = xrt_core::get_userpf_device(devHandle);
-
     auto xclbinUUID = device->get_xclbin_uuid();
     (void)xclbinUUID;
 
@@ -147,10 +144,8 @@ namespace xdp {
     return true;
   }
 
-  bool VPStaticDatabase::initializeComputeUnits(DeviceInfo* devInfo, void* devHandle)
+  bool VPStaticDatabase::initializeComputeUnits(DeviceInfo* devInfo, std::shared_ptr<xrt_core::device> device)
   {
-    auto device = xrt_core::get_userpf_device(devHandle);
-
     // Get IP_LAYOUT section 
     const ip_layout* ipLayoutSection = device->get_axlf_section<const ip_layout*>(IP_LAYOUT);
     if(ipLayoutSection == nullptr) return false;
@@ -213,11 +208,9 @@ namespace xdp {
     return true;
   }
 
-  bool VPStaticDatabase::initializeProfileMonitors(DeviceInfo* devInfo, void* devHandle)
+  bool VPStaticDatabase::initializeProfileMonitors(DeviceInfo* devInfo, std::shared_ptr<xrt_core::device> device)
   {
     // Look into the debug_ip_layout section and load information about Profile Monitors
-    auto device = xrt_core::get_userpf_device(devHandle);
-
     // Get DEBUG_IP_LAYOUT section 
     const debug_ip_layout* debugIpLayoutSection = device->get_axlf_section<const debug_ip_layout*>(DEBUG_IP_LAYOUT);
     if(debugIpLayoutSection == nullptr) return false;
