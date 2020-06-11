@@ -227,7 +227,7 @@ searchSSV2Xclbin(const std::shared_ptr<xrt_core::device>& _dev, const std::strin
 
   std::vector<std::string> suffix = { "dsabin", "xsabin" };
 
-  for(std::string t : suffix) {
+  for(const std::string& t : suffix) {
     std::regex e("(^" + formatted_fw_path + "[^/]+/[^/]+/[^/]+/).+\\." + t);
     for(boost::filesystem::recursive_directory_iterator iter(fw_dir, 
           boost::filesystem::symlink_option::recurse), end; iter != end;) {
@@ -243,12 +243,12 @@ searchSSV2Xclbin(const std::shared_ptr<xrt_core::device>& _dev, const std::strin
       std::regex_match(name, cm, e);
       if (cm.size() > 0) {
 #ifdef __GNUC__
-        auto dtbbuf = _dev->get_axlf_section(name, PARTITION_METADATA);
+        auto dtbbuf = XBUtilities::get_axlf_section(name, PARTITION_METADATA);
         if (!dtbbuf.first || !dtbbuf.second) {
           ++iter;
           continue;
         }
-        std::vector<std::string> uuids = _dev->get_uuids(dtbbuf.first);
+        std::vector<std::string> uuids = XBUtilities::get_uuids(dtbbuf.first);
         if (!uuids.size()) {
           ++iter;
 		    }

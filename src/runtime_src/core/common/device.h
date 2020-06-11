@@ -221,25 +221,25 @@ public:
     return reinterpret_cast<SectionType>(get_axlf_section_or_error(section, xclbin_id));
   }
 
-  /**
-   * get_axlf_section() - Get section from the file passed in
-   *
-   * filename: file containing the axlf section
-   *
-   * Return: pair of section data and size in bytes
-   */
-  std::pair<const char*, size_t>
-  get_axlf_section(const std::string& filename, axlf_section_kind section) const;
+  // /**
+  //  * get_axlf_section() - Get section from the file passed in
+  //  *
+  //  * filename: file containing the axlf section
+  //  *
+  //  * Return: pair of section data and size in bytes
+  //  */
+  // std::pair<const char*, size_t>
+  // get_axlf_section(const std::string& filename, axlf_section_kind section) const;
 
-  /**
-   * get_uuids() - Get UUIDs from the axlf section
-   *
-   * dtbuf: axlf section to be parsed
-   *
-   * Return: list of UUIDs
-   */
-  std::vector<std::string>
-  get_uuids(const void *dtbuf) const;
+  // /**
+  //  * get_uuids() - Get UUIDs from the axlf section
+  //  *
+  //  * dtbuf: axlf section to be parsed
+  //  *
+  //  * Return: list of UUIDs
+  //  */
+  // std::vector<std::string>
+  // get_uuids(const void *dtbuf) const;
 
   /**
    * get_ert_slots() - Get number of ERT CQ slots
@@ -326,19 +326,6 @@ public:
   // cache xclbin meta data loaded by this process
   uuid m_xclbin_uuid;
   std::map<axlf_section_kind, std::vector<char>> m_axlf_sections;
-
-  struct fdt_header {
-  uint32_t magic;
-  uint32_t totalsize;
-  uint32_t off_dt_struct;
-  uint32_t off_dt_strings;
-  uint32_t off_mem_rsvmap;
-  uint32_t version;
-  uint32_t last_comp_version;
-  uint32_t boot_cpuid_phys;
-  uint32_t size_dt_strings;
-  uint32_t size_dt_struct;
-  };
 };
 
 /**

@@ -29,23 +29,6 @@
 #include <iostream>
 #include <fstream>
 
-#ifdef _WIN32
-#pragma comment(lib, "Ws2_32.lib")
-#pragma warning( disable : 4189 )
-#define be32toh ntohl
-#define PALIGN(p, a) (const char*)NULL
-#endif
-
-#define FDT_BEGIN_NODE  0x1
-#define FDT_PROP        0x3
-#define FDT_END         0x9
-
-#ifdef __GNUC__
-#define ALIGN(x, a)     (((x) + ((a) - 1)) & ~((a) - 1))
-#define PALIGN(p, a)    ((char *)(ALIGN((unsigned long)(p), (a))))
-#endif
-#define GET_CELL(p)     (p += 4, *((const uint32_t *)(p-4)))
-
 namespace xrt_core {
 
 device::
@@ -117,89 +100,6 @@ get_axlf_section_or_error(axlf_section_kind section, const uuid& xclbin_id) cons
   if (ret.first != nullptr)
     return ret;
   throw std::runtime_error("no such xclbin section");
-}
-
-std::pair<const char*, size_t>
-device::
-get_axlf_section(const std::string& filename, axlf_section_kind kind) const
-{
-  std::ifstream in(filename);
-  if (!in.is_open())
-    throw std::runtime_error(boost::str(boost::format("Can't open %s") % filename));
-
-  // Read axlf from dsabin file to find out number of sections in total.
-  axlf a;
-  size_t sz = sizeof (axlf);
-  in.read(reinterpret_cast<char *>(&a), sz);
-  if (!in.good())
-    throw std::runtime_error(boost::str(boost::format("Can't read axlf from %s") % filename));
-
-  // Reread axlf from dsabin file, including all sections headers.
-  // Sanity check for number of sections coming from user input file
-  if (a.m_header.m_numSections > 10000)
-    throw std::runtime_error("Incorrect file passed in");
-
-  sz = sizeof (axlf) + sizeof (axlf_section_header) * (a.m_header.m_numSections - 1);
-
-  std::vector<char> top(sz);
-  in.seekg(0);
-  in.read(top.data(), sz);
-  if (!in.good())
-    throw std::runtime_error(boost::str(boost::format("Can't read axlf and section headers from %s") % filename));
-
-  const axlf *ap = reinterpret_cast<const axlf *>(top.data());
-  auto section = ::xclbin::get_axlf_section(ap, kind);
-  if (!section)
-    throw std::runtime_error("Section not found");
-
-  auto buf = new char[section->m_sectionSize];
-  in.seekg(section->m_sectionOffset);
-  in.read(buf, section->m_sectionSize);
-
-  return std::make_pair(buf, section->m_sectionSize);
-}
-
-std::vector<std::string>
-device::
-get_uuids(const void *dtbuf) const
-{
-  std::vector<std::string> uuids;
-  struct fdt_header *bph = (struct fdt_header *)dtbuf;
-  uint32_t version = be32toh(bph->version);
-  uint32_t off_dt = be32toh(bph->off_dt_struct);
-  const char *p_struct = (const char *)dtbuf + off_dt;
-  uint32_t off_str = be32toh(bph->off_dt_strings);
-  const char *p_strings = (const char *)dtbuf + off_str;
-  const char *p, *s;
-  uint32_t tag;
-  int sz;
-
-  p = p_struct;
-  uuids.clear();
-  while ((tag = be32toh(GET_CELL(p))) != FDT_END) {
-    if (tag == FDT_BEGIN_NODE) {
-      s = p;
-      p = PALIGN(p + strlen(s) + 1, 4);
-      continue;
-    }
-    if (tag != FDT_PROP)
-      continue;
-
-    sz = be32toh(GET_CELL(p));
-    s = p_strings + be32toh(GET_CELL(p));
-    if (version < 16 && sz >= 8)
-      p = PALIGN(p, 8);
-
-    if (!strcmp(s, "logic_uuid")) {
-      uuids.insert(uuids.begin(), std::string(p));
-    }
-    else if (!strcmp(s, "interface_uuid")) {
-      uuids.push_back(std::string(p));
-    }
-    
-    p = PALIGN(p + sz, 4);
-  }
-  return uuids;  
 }
 
 std::pair<size_t, size_t>

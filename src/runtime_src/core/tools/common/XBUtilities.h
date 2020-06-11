@@ -84,6 +84,25 @@ namespace XBUtilities {
                         bool _inUserDomain,
                         xrt_core::device_collection &_deviceCollection);
   void report_available_devices();
+  
+   /**
+   * get_axlf_section() - Get section from the file passed in
+   *
+   * filename: file containing the axlf section
+   *
+   * Return: pair of section data and size in bytes
+   */
+  std::pair<const char*, size_t>
+  get_axlf_section(const std::string& filename, axlf_section_kind section);
+
+  /**
+   * get_uuids() - Get UUIDs from the axlf section
+   *
+   * dtbuf: axlf section to be parsed
+   *
+   * Return: list of UUIDs
+   */
+  std::vector<std::string> get_uuids(const void *dtbuf);
 };
 
 #endif
