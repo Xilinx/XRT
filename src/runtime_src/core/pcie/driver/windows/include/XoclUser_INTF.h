@@ -35,6 +35,10 @@ DEFINE_GUID(GUID_DEVINTERFACE_XOCL_USER,
 #define XOCL_USER_DEVICE_BUFFER_OBJECT_NAMESPACE L"\\Buffer"
 #define XOCL_USER_DEVICE_DEVICE_NAMESPACE        L"\\Device"
 
+// Windows kernel return status values. The values is equal to definitions in <ntstatus.h>
+#define NTSTATUS_REVISION_MISMATCH   0xC0000059
+#define NTSTATUS_STATUS_SUCCESS      0x00000000
+
 //
 // IOCTL Codes and structures supported by XoclUser
 // 
