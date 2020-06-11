@@ -160,7 +160,7 @@ namespace xdp {
     void resetDeviceInfo(uint64_t deviceId) ;
 
     // Helper functions that fill in device information
-    bool setXclbinUUID(DeviceInfo*, const void* binary);
+    bool setXclbinUUID(DeviceInfo*, void* );
     bool initializeComputeUnits(DeviceInfo*, void* );
     bool initializeProfileMonitors(DeviceInfo*, void* );
 

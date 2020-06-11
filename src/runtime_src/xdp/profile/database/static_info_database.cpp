@@ -104,10 +104,7 @@ namespace xdp {
 
     deviceInfo[deviceId] = devInfo;
 
-    // Currently, we are going through the xclbin using the low level
-    //  AXLF structure.  Would sysfs be a better solution?  Does
-    //  that work with emulation?
-    if (!setXclbinUUID(devInfo, binary)) return;
+    if (!setXclbinUUID(devInfo, devHandle)) return;
     if (!initializeComputeUnits(devInfo, devHandle)) return ;
     if (!initializeProfileMonitors(devInfo, devHandle)) return ;
   }
@@ -123,12 +120,17 @@ namespace xdp {
     }
   }
 
-  bool VPStaticDatabase::setXclbinUUID(DeviceInfo* devInfo, const void* binary)
+  bool VPStaticDatabase::setXclbinUUID(DeviceInfo* devInfo, void* devHandle)
   {
+    auto device = xrt_core::get_userpf_device(devHandle);
+
+    auto xclbinUUID = device->get_xclbin_uuid();
+
+    std::cout << " uuid " << xclbinUUID << std::endl;
+    #if 0
     const axlf* xbin = static_cast<const struct axlf*>(binary) ;
     (void)xbin;
     (void)devInfo;
-    #if 0
     long double id = *((long double*)xbin->m_header.uuid);
     std::cout << " the uid " << id << std::endl;
     devInfo->loadedXclbin = std::to_string(*(long double*)(xbin->m_header.uuid));
