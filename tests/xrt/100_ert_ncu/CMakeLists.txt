@@ -1,4 +1,4 @@
-set(EXECNAME "100_ert_ncu")
+set(TESTNAME "100_ert_ncu")
 
 add_executable(xrt.exe xrt.cpp)
 target_link_libraries(xrt.exe PRIVATE ${xrt_core_LIBRARY})
@@ -20,7 +20,7 @@ if (NOT WIN32)
 endif(NOT WIN32)
 
 install(TARGETS xrt.exe xrtx.exe xrtxx.exe ocl.exe
-  RUNTIME DESTINATION ${INSTALL_DIR}/${EXECNAME})
+  RUNTIME DESTINATION ${INSTALL_DIR}/${TESTNAME})
 
 add_custom_command(
   OUTPUT kernel.xclbin
