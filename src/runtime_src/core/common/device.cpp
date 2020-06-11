@@ -93,9 +93,10 @@ register_axlf(const axlf* top)
   }
 
   itr = m_axlf_sections.find(MEM_TOPOLOGY);
+  int g_count = (int)m_grp_info.size();
   if (itr != m_axlf_sections.end()) {
     auto m_mem = reinterpret_cast<::mem_topology*>((*itr).second.data());
-    for (uint32_t i=0; i<m_grp_info.size(); ++i) {
+    for (auto i=0; i<g_count; ++i) {
       auto& mem = m_mem->m_mem_data[i];
       auto it = m_grp_info.find(i);
       if (it != m_grp_info.end()) {
@@ -104,11 +105,11 @@ register_axlf(const axlf* top)
       }
     }
     // Update remaing entries as un-used
-    for (int i=m_grp_info.size(); i<m_mem->m_count; ++i) {
+    for (auto i=g_count; i<m_mem->m_count; ++i) {
       auto& mem = m_mem->m_mem_data[i];
       mem.m_used = 0;
     }
-    m_mem->m_count = m_grp_info.size();
+    m_mem->m_count = g_count;
   }
 }
 
