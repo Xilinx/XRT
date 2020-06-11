@@ -125,9 +125,10 @@ namespace xdp {
     auto device = xrt_core::get_userpf_device(devHandle);
 
     auto xclbinUUID = device->get_xclbin_uuid();
+    (void)xclbinUUID;
 
-    std::cout << " uuid " << xclbinUUID << std::endl;
     #if 0
+    std::cout << " uuid " << xclbinUUID << std::endl;
     const axlf* xbin = static_cast<const struct axlf*>(binary) ;
     (void)xbin;
     (void)devInfo;
@@ -142,6 +143,7 @@ namespace xdp {
     std::cout << "sizeof unsigned long long " << sizeof(unsigned long long) << std::endl;
     std::cout << "sizeof long double " << sizeof(long double) << std::endl;
     #endif
+
     return true;
   }
 
