@@ -16,7 +16,7 @@
 
 #ifndef xocl_core_program_h_
 #define xocl_core_program_h_
-
+#include "xocl/config.h"
 #include "xocl/core/object.h"
 #include "xocl/core/refcount.h"
 #include "xocl/core/range.h"
@@ -25,6 +25,12 @@
 #include <vector>
 #include <map>
 #include <functional>
+
+#ifdef _WIN32
+# pragma warning( push )
+# pragma warning ( disable : 4996 )
+#endif
+
 
 namespace xocl {
 
@@ -135,8 +141,16 @@ public:
    * @return
    *   The xclbin associated with the device
    */
+  XRT_XOCL_EXPORT
   xclbin
   get_xclbin(const device* d) const;
+
+  /**
+   * @return
+   *   The uuid of xclbin for argument device
+   */
+  xrt_core::uuid
+  get_xclbin_uuid(const device* d) const;
 
   /**
    * Return the xclbin binary for argument device
@@ -146,8 +160,8 @@ public:
    * @return
    *   The xclbin binary object associated with the device
    */
-  xclbin::binary_type
-  get_binary(const device* d) const;
+  std::pair<const char*, const char*>
+  get_xclbin_binary(const device* d) const;
 
   /**
    * Return the target type for this program
@@ -191,13 +205,7 @@ public:
    * the program would not be wellformed.
    */
   unsigned int
-  get_num_kernels() const
-  {
-    auto itr = m_binaries.begin();
-    return itr!=m_binaries.end()
-      ? (*itr).second.num_kernels()
-      : 0;
-  }
+  get_num_kernels() const;
 
   /**
    * Get list of names of kernels in this program.
@@ -206,23 +214,10 @@ public:
    * the program would not be wellformed.
    */
   std::vector<std::string>
-  get_kernel_names() const
-  {
-    auto itr = m_binaries.begin();
-    if (itr != m_binaries.end())
-      return (*itr).second.kernel_names();
-
-    std::vector<std::string> names;
-    return names;
-  }
+  get_kernel_names() const;
 
   bool
-  has_kernel(const std::string& kname) const
-  {
-    auto kernels = get_kernel_names();
-    return range_find(kernels,[&kname](const std::string& s){return s==kname;})!=kernels.end();
-
-  }
+  has_kernel(const std::string& kname) const;
 
   /**
    * Create a kernel.
@@ -303,21 +298,15 @@ public:
   // Conformance helpers
   ////////////////////////////////////////////////////////////////
   unsigned int
-  conformance_rename_kernel(const std::string& hash)
+  conformance_rename_kernel(const std::string&)
   {
-    assert(std::getenv("XCL_CONFORMANCE"));
-    unsigned int retval = 0;
-    for (auto& e : m_binaries)
-      retval += e.second.conformance_rename_kernel(hash);
-    //assert(retval==1);
-    return retval;
+    throw std::runtime_error("XCL_CONFORMANCE no longer supported");
   }
 
   void
-  set_source(const std::string& source)
+  set_source(const std::string&)
   {
-    assert(std::getenv("XCL_CONFORMANCE"));
-    m_source = source;
+    throw std::runtime_error("XCL_CONFORMANCE no longer supported");
   }
 
   void
@@ -329,7 +318,7 @@ private:
   ptr<context> m_context;
   device_vector_type m_devices;
 
-  std::map<const device*,xclbin> m_binaries;
+  std::map<const device*,std::vector<char>> m_binaries;
   std::map<const device*,std::string> m_options;
   std::map<const device*,std::string> m_logs;    // build *error* logs
 
@@ -354,5 +343,9 @@ range_lock<program_iterator_type>
 get_global_programs();
 
 } // xocl
+
+#ifdef _WIN32
+# pragma warning( pop )
+#endif
 
 #endif
