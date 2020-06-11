@@ -15,4 +15,4 @@ jobs:
     steps:
     - uses: actions/checkout@master
     - name: Check License Lines
-      uses: zanj-1/license_checker@master
+      uses: zanj-1/license-checker@master
