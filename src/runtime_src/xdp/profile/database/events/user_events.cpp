@@ -24,8 +24,8 @@ namespace xdp {
   // User event definitions
   // **************************
 
-  UserMarker::UserMarker(uint64_t s_id, double ts) : 
-    VTFEvent(s_id, ts, USER_MARKER)
+  UserMarker::UserMarker(uint64_t s_id, double ts, uint64_t l) : 
+    VTFEvent(s_id, ts, USER_MARKER), label(l)
   {
   }
 
@@ -33,13 +33,32 @@ namespace xdp {
   {
   }
 
-  UserRange::UserRange(uint64_t s_id, double ts) :
-    VTFEvent(s_id, ts, USER_RANGE)
+  void UserMarker::dump(std::ofstream& fout, uint32_t bucket)
+  {
+    VTFEvent::dump(fout, bucket) ;
+    if (label != 0) fout << "," << label ;
+    fout << std::endl ;
+  }
+
+  UserRange::UserRange(uint64_t s_id, double ts, bool s, 
+		       uint64_t l, uint64_t tt) :
+    VTFEvent(s_id, ts, USER_RANGE), isStart(s), label(l), tooltip(tt)
   {
   }
 
   UserRange::~UserRange()
   {
   }  
+
+  void UserRange::dump(std::ofstream& fout, uint32_t bucket)
+  {
+    VTFEvent::dump(fout, bucket) ;
+    if (isStart) 
+    {
+      fout << "," << label << "," << tooltip ;
+    }
+
+    fout << std::endl ;
+  }
 
 } // end namespace xdp
