@@ -31,7 +31,7 @@
 #include "../lib/libxdma_api.h"
 #include "common.h"
 
-#if defined(__PPC64__)
+#if defined(__PPC64__) || defined(__mips__)
 #define XOCL_FILE_PAGE_OFFSET	0x10000
 #else
 #define XOCL_FILE_PAGE_OFFSET	0x100000
