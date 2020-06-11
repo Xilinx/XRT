@@ -2224,6 +2224,7 @@ static void icap_save_calib(struct icap *icap)
 {
 	struct mem_topology *mem_topo = icap->mem_topo;
 	int err = 0, i = 0;
+	int32_t num = 0;
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 
 	if (!mem_topo)
@@ -2232,7 +2233,9 @@ static void icap_save_calib(struct icap *icap)
 	if (!ICAP_PRIVILEGED(icap))
 		return;
 
-	for (; i < mem_topo->m_count; ++i) {
+	num = min(mem_topo->m_count, (int32_t)XOCL_SUBDEV_MAX_INST);
+
+	for (; i < num; ++i) {
 		if (!mem_topo->m_mem_data[i].m_used)
 			continue;
 		err = xocl_srsr_save_calib(xdev, i);
@@ -2247,12 +2250,15 @@ static void icap_calib(struct icap *icap, bool retain)
 	int err = 0, i = 0;
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 	struct mem_topology *mem_topo = icap->mem_topo;
+	int32_t num = 0;
 
 	BUG_ON(!mem_topo);
 
 	err = xocl_calib_storage_restore(xdev);
 
-	for (; i < mem_topo->m_count; ++i) {
+
+	num = min(mem_topo->m_count, (int32_t)XOCL_SUBDEV_MAX_INST);
+	for (; i < num; ++i) {
 		if (!mem_topo->m_mem_data[i].m_used)
 			continue;
 		err = xocl_srsr_calib(xdev, i, retain);
