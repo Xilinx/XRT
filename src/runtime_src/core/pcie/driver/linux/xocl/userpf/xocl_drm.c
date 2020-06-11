@@ -676,7 +676,7 @@ int xocl_cleanup_mem_nolock(struct xocl_drm *drm_p)
 			if (XOCL_IS_STREAM(topology, i))
 				continue;
 
-			if (!strncmp(topology->m_mem_data[i].m_tag, "HOST[0]", 7))
+			if (IS_HOST_MEM(topology->m_mem_data[i].m_tag))
 				xocl_addr_translator_disable_remap(drm_p->xdev);
 
 			xocl_info(drm_p->ddev->dev, "Taking down DDR : %d", i);
@@ -715,17 +715,7 @@ done:
 
 int xocl_set_cma_bank(struct xocl_drm *drm_p, uint64_t base_addr, size_t ddr_bank_size)
 {
-	uint64_t host_reserve_size = xocl_addr_translator_get_range(drm_p->xdev);
-	int ret = 0;
-
-	if (ddr_bank_size > host_reserve_size) {
-		ret = -E2BIG;
-		goto done;
-	}
-	ret = xocl_addr_translator_enable_remap(drm_p->xdev, base_addr);
-
-done:
-	return ret;
+	return xocl_addr_translator_enable_remap(drm_p->xdev, base_addr, ddr_bank_size);
 }
 
 int xocl_cleanup_mem(struct xocl_drm *drm_p)
@@ -750,7 +740,7 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	uint64_t reserved1 = 0;
 	uint64_t reserved2 = 0;
 	uint64_t reserved_start;
-	uint64_t reserved_end;
+	uint64_t reserved_end, host_reserve_size;
 	int err = 0;
 	int i = -1;
 
@@ -868,16 +858,20 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 		hash_add(drm_p->mm_range, &wrapper->node, wrapper->start_addr);
 #endif
 
-		drm_mm_init(drm_p->mm[i], mem_data->m_base_address,
-				ddr_bank_size - reserved1 - reserved2);
+		if (IS_HOST_MEM(mem_data->m_tag)) {
+			host_reserve_size = xocl_addr_translator_get_host_mem_size(drm_p->xdev);
 
-		if (!strncmp(mem_data->m_tag, "HOST[0]", 7)) {
+			ddr_bank_size = min(ddr_bank_size, (size_t)host_reserve_size);
 			err = xocl_set_cma_bank(drm_p, mem_data->m_base_address, ddr_bank_size);
 			if (err) {
 				xocl_err(drm_p->ddev->dev, "Run host_mem to setup host memory access, request 0x%lx bytes", ddr_bank_size);
 				goto done;
 			}
 		}
+
+		drm_mm_init(drm_p->mm[i], mem_data->m_base_address,
+				ddr_bank_size - reserved1 - reserved2);
+
 		xocl_info(drm_p->ddev->dev, "drm_mm_init called");
 	}
 
@@ -906,7 +900,7 @@ bool is_cma_bank(struct xocl_drm *drm_p, uint32_t memidx)
 	if (!topo->m_mem_data[memidx].m_used)
 		goto done;
 
-	if (!strncmp(topo->m_mem_data[memidx].m_tag, "HOST[0]", 7))
+	if (IS_HOST_MEM(topo->m_mem_data[memidx].m_tag))
 		ret = true;
 
 done:

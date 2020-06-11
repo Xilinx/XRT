@@ -861,8 +861,10 @@ struct xocl_dna_funcs {
 	(ADDR_TRANSLATOR_CB(xdev, set_page_table) ? ADDR_TRANSLATOR_OPS(xdev)->set_page_table(ADDR_TRANSLATOR_DEV(xdev), addrs, sz, num) : -ENODEV)
 #define	xocl_addr_translator_get_range(xdev)			\
 	(ADDR_TRANSLATOR_CB(xdev, get_range) ? ADDR_TRANSLATOR_OPS(xdev)->get_range(ADDR_TRANSLATOR_DEV(xdev)) : 0)
-#define	xocl_addr_translator_enable_remap(xdev, base_addr)			\
-	(ADDR_TRANSLATOR_CB(xdev, enable_remap) ? ADDR_TRANSLATOR_OPS(xdev)->enable_remap(ADDR_TRANSLATOR_DEV(xdev), base_addr) : -ENODEV)
+#define	xocl_addr_translator_get_host_mem_size(xdev)			\
+	(ADDR_TRANSLATOR_CB(xdev, get_host_mem_size) ? ADDR_TRANSLATOR_OPS(xdev)->get_host_mem_size(ADDR_TRANSLATOR_DEV(xdev)) : 0)
+#define	xocl_addr_translator_enable_remap(xdev, base_addr, range)			\
+	(ADDR_TRANSLATOR_CB(xdev, enable_remap) ? ADDR_TRANSLATOR_OPS(xdev)->enable_remap(ADDR_TRANSLATOR_DEV(xdev), base_addr, range) : -ENODEV)
 #define	xocl_addr_translator_disable_remap(xdev)			\
 	(ADDR_TRANSLATOR_CB(xdev, disable_remap) ? ADDR_TRANSLATOR_OPS(xdev)->disable_remap(ADDR_TRANSLATOR_DEV(xdev)) : -ENODEV)
 #define	xocl_addr_translator_clean(xdev)			\
@@ -874,8 +876,9 @@ struct xocl_addr_translator_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	u32 (*get_entries_num)(struct platform_device *pdev);
 	u64 (*get_range)(struct platform_device *pdev);
+	u64 (*get_host_mem_size)(struct platform_device *pdev);
 	int (*set_page_table)(struct platform_device *pdev, uint64_t *phys_addrs, uint64_t entry_sz, uint32_t num);
-	int (*enable_remap)(struct platform_device *pdev, uint64_t base_addr);
+	int (*enable_remap)(struct platform_device *pdev, uint64_t base_addr, uint64_t range);
 	int (*disable_remap)(struct platform_device *pdev);
 	int (*clean)(struct platform_device *pdev);
 	u64 (*get_base_addr)(struct platform_device *pdev);

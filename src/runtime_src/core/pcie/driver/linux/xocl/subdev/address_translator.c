@@ -60,6 +60,7 @@ struct addr_translator {
 	struct mutex		lock;
 	uint32_t		range;
 	uint32_t		slot_num;
+	uint64_t		slot_sz;
 };
 
 static uint32_t addr_translator_get_entries_num(struct platform_device *pdev)
@@ -73,6 +74,18 @@ static uint32_t addr_translator_get_entries_num(struct platform_device *pdev)
 	num = (xocl_dr_reg_read32(xdev, &regs->cap)>>16 & 0x1ff);
 	mutex_unlock(&addr_translator->lock);
 	return num;
+}
+
+static uint64_t addr_translator_get_host_mem_size(struct platform_device *pdev)
+{
+	struct addr_translator *addr_translator = platform_get_drvdata(pdev);
+	u64 num = 0, entry_sz = 0;
+
+	mutex_lock(&addr_translator->lock);
+	num = addr_translator->slot_num;
+	entry_sz = addr_translator->slot_sz;
+	mutex_unlock(&addr_translator->lock);
+	return num*entry_sz;
 }
 
 static uint64_t addr_translator_get_range(struct platform_device *pdev)
@@ -100,7 +113,6 @@ static uint64_t addr_translator_get_base_addr(struct platform_device *pdev)
 	u64 hi = 0, lo = 0;
 
 	mutex_lock(&addr_translator->lock);
-
 	lo = xocl_dr_reg_read32(xdev, &regs->base_addr.lo);
 	hi = xocl_dr_reg_read32(xdev, &regs->base_addr.hi);
 	mutex_unlock(&addr_translator->lock);
@@ -150,26 +162,44 @@ static int addr_translator_set_page_table(struct platform_device *pdev, uint64_t
 
 	/* Save the reserve number for enable_remap*/
 	addr_translator->slot_num = num;
+	addr_translator->slot_sz = entry_sz;
 done:
 	mutex_unlock(&addr_translator->lock);
 	return ret;
 }
-static int addr_translator_set_address(struct platform_device *pdev, uint64_t base_addr)
+static int addr_translator_set_address(struct platform_device *pdev, uint64_t base_addr, uint64_t range)
 {
 	int ret = 0;
-	uint32_t num;
+	uint32_t num, range_in_log;
+	uint64_t entry_sz, host_mem_size;
 	xdev_handle_t xdev = ADDR_TRANSLATOR_DEV2XDEV(pdev);
 	struct addr_translator *addr_translator = platform_get_drvdata(pdev);
 	struct trans_regs *regs = (struct trans_regs *)addr_translator->base;
-
 
 	/* First, set regs->entry_num as 0 to initiate anddress translator 
 	 * Program the base address or 0 to regs->base_addr
 	 * Write the num back to enable new remap setting
 	 */
 	num = addr_translator->slot_num;
+	entry_sz = addr_translator->slot_sz;
+	host_mem_size = num*entry_sz;
+	if (!host_mem_size)
+		return ret;
+
+	range = min(host_mem_size, range);
+	range_in_log = ilog2(range);
+
+	/* Calculate how many entries we have to program
+	 * For example: host_mem_size 16G, slot_sz 1G, range 4G
+	 * We only need 4 slots to cover 4G
+	 */
+	num = range/entry_sz;
+	if (!is_power_of_2(num))
+		return -EINVAL;
+
 	/* disable remapper first */
 	xocl_dr_reg_write32(xdev, 0, &regs->entry_num);
+	xocl_dr_reg_write32(xdev, range_in_log, &regs->addr_range);
 	xocl_dr_reg_write32(xdev, base_addr & 0xFFFFFFFF, &regs->base_addr.lo);
 	xocl_dr_reg_write32(xdev, (base_addr>>32) & 0xFFFFFFFF, &regs->base_addr.hi);
 	/* reinitiate remapper */
@@ -178,13 +208,13 @@ static int addr_translator_set_address(struct platform_device *pdev, uint64_t ba
 	return ret;
 }
 
-static int addr_translator_enable_remap(struct platform_device *pdev, uint64_t base_addr)
+static int addr_translator_enable_remap(struct platform_device *pdev, uint64_t base_addr, uint64_t range)
 {
 	int ret = 0;
 	struct addr_translator *addr_translator = platform_get_drvdata(pdev);
 
 	mutex_lock(&addr_translator->lock);
-	ret = addr_translator_set_address(pdev, base_addr);
+	ret = addr_translator_set_address(pdev, base_addr, range);
 	mutex_unlock(&addr_translator->lock);
 	return ret;
 }
@@ -213,6 +243,7 @@ static int addr_translator_clean(struct platform_device *pdev)
 	 */
 	memset(addr_translator->base, 0, addr_translator->range);
 	addr_translator->slot_num = 0;
+	addr_translator->slot_sz = 0;
 	mutex_unlock(&addr_translator->lock);
 	return 0;
 }
@@ -221,6 +252,7 @@ static struct xocl_addr_translator_funcs addr_translator_ops = {
 	.get_entries_num = addr_translator_get_entries_num,
 	.set_page_table = addr_translator_set_page_table,
 	.get_range = addr_translator_get_range,
+	.get_host_mem_size = addr_translator_get_host_mem_size,
 	.enable_remap = addr_translator_enable_remap,
 	.disable_remap = addr_translator_disable_remap,
 	.clean = addr_translator_clean,
@@ -246,6 +278,15 @@ static ssize_t addr_range_show(struct device *dev, struct device_attribute *attr
 	return sprintf(buf, "%lld\n", range);
 }
 static DEVICE_ATTR_RO(addr_range);
+
+static ssize_t host_mem_size_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	u64 range = addr_translator_get_host_mem_size(to_platform_device(dev));
+
+	return sprintf(buf, "%lld\n", range);
+}
+static DEVICE_ATTR_RO(host_mem_size);
 
 static ssize_t base_address_show(struct device *dev, struct device_attribute *attr,
 	char *buf)
@@ -282,6 +323,7 @@ static struct attribute *addr_translator_attributes[] = {
 	&dev_attr_num.attr,
 	&dev_attr_base_address.attr,
 	&dev_attr_addr_range.attr,
+	&dev_attr_host_mem_size.attr,
 	&dev_attr_enabled.attr,
 	NULL
 };

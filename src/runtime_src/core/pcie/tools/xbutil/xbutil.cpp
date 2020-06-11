@@ -2101,7 +2101,7 @@ int xcldev::device::testM2m()
     }
 
     dev->sysfs_get("icap", "mem_topology", errmsg, buf);
-    const mem_topology *map = (mem_topology *)buf.data();
+    mem_topology *map = (mem_topology *)buf.data();
 
     if(buf.empty() || map->m_count == 0) {
         std::cout << "WARNING: 'mem_topology' invalid, "
@@ -2112,8 +2112,11 @@ int xcldev::device::testM2m()
 
     for(int32_t i = 0; i < map->m_count; i++) {
         if(map->m_mem_data[i].m_used &&
-            map->m_mem_data[i].m_size * 1024 >= m2mBoSize)
+            map->m_mem_data[i].m_size * 1024 >= m2mBoSize) {
+            /* use u8 m_type field to as bank index */
+            map->m_mem_data[i].m_type = i;
             usedBanks.insert(usedBanks.end(), map->m_mem_data[i]);
+        }
     }
 
     if (usedBanks.size() <= 1) {
@@ -2125,7 +2128,10 @@ int xcldev::device::testM2m()
         for(uint j = i+1; j < usedBanks.size(); j++) {
             std::cout << usedBanks[i].m_tag << " -> "
                 << usedBanks[j].m_tag << " M2M bandwidth: ";
-            ret = m2mtest_bank(m_handle, i, j);
+            if (!usedBanks[i].m_size || !usedBanks[j].m_size)
+                continue;
+
+            ret = m2mtest_bank(m_handle, usedBanks[i].m_type, usedBanks[j].m_type);
             if(ret != 0)
                 return ret;
         }
