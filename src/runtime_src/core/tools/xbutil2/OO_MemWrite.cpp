@@ -52,9 +52,8 @@ OO_MemWrite::OO_MemWrite( const std::string &_longName, bool _isHidden)
 }
 
 void
-OO_MemWrite::execute(const SubCmdOptions& _options) const
+OO_MemWrite::execute(const SubCmdOptions& /*_options*/) const
 {
-  _options.size();
   printHelp();
 }
 

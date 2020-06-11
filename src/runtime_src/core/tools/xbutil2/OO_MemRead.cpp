@@ -49,9 +49,8 @@ OO_MemRead::OO_MemRead( const std::string &_longName, bool _isHidden )
 }
 
 void
-OO_MemRead::execute(const SubCmdOptions& _options) const
+OO_MemRead::execute(const SubCmdOptions& /*_options*/) const
 {
-  _options.size();
   printHelp();
 }
 

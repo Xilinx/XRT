@@ -47,9 +47,8 @@ OO_NIFD::OO_NIFD( const std::string &_longName, bool _isHidden)
 }
 
 void
-OO_NIFD::execute(const SubCmdOptions& _options) const
+OO_NIFD::execute(const SubCmdOptions& /*_options*/) const
 {
-  _options.size();
   printHelp();
 }
 
