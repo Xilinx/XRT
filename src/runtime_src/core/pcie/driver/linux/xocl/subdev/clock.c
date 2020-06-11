@@ -477,6 +477,8 @@ static unsigned short clock_get_freq_impl(struct clock *clock, int idx)
 {
 	xdev_handle_t xdev = xocl_get_xdev(clock->clock_pdev);
 
+	BUG_ON(!mutex_is_locked(&clock->clock_lock));
+
 	return XOCL_DSA_IS_VERSAL(xdev) ?
 	    clock_get_freq_acap(clock, idx) :
 	    clock_get_freq_ultrascale(clock, idx);
