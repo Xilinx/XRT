@@ -398,13 +398,13 @@ static unsigned int clock_get_freq_counter_khz_impl(struct clock *clock, int idx
 	return freq;
 }
 
-/* For ACAP Versal, we read from freq counter directly */
+/* For ACAP Versal, we read from freq counter directly in KHZ */
 static unsigned short clock_get_freq_acap(struct clock *clock, int idx)
 {
 	u32 freq_counter = 0;
 	if (clock->clock_freq_counters[idx]) {
 		freq_counter = clock_get_freq_counter_khz_impl(clock, idx);
-		freq_counter /= 1000; /* KHZ */
+		freq_counter = DIV_ROUND_CLOSEST(freq_counter, 1000);
 	}
 
 	return freq_counter;
@@ -891,6 +891,7 @@ static int set_freqs(struct clock *clock, unsigned short *freqs, int num_freqs)
 static int set_and_verify_freqs(struct clock *clock, unsigned short *freqs,
 	int num_freqs)
 {
+	xdev_handle_t xdev = xocl_get_xdev(clock->clock_pdev);
 	int i;
 	int err;
 	u32 clock_freq_counter, request_in_khz, tolerance, lookup_freq;
@@ -905,8 +906,13 @@ static int set_and_verify_freqs(struct clock *clock, unsigned short *freqs,
 		if (!freqs[i])
 			continue;
 
-		lookup_freq = find_matching_freq(freqs[i], frequency_table,
-		    ARRAY_SIZE(frequency_table));
+		if (XOCL_DSA_IS_VERSAL(xdev)) {
+			lookup_freq = freqs[i];
+		} else {
+			lookup_freq = find_matching_freq(freqs[i],
+			    frequency_table, ARRAY_SIZE(frequency_table));
+		}
+
 		clock_freq_counter = clock_get_freq_counter_khz_impl(clock, i);
 		request_in_khz = lookup_freq*1000;
 		tolerance = lookup_freq*50;
