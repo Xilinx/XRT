@@ -328,6 +328,10 @@ void zocl_free_bo(struct drm_gem_object *obj)
 				drm_mm_remove_node(zocl_obj->mm_node);
 				mutex_unlock(&zdev->mm_lock);
 				kfree(zocl_obj->mm_node);
+				if (zocl_obj->vmapping) {
+					memunmap(zocl_obj->vmapping);
+					zocl_obj->vmapping = NULL;
+				}
 				zocl_update_mem_stat(zdev, obj->size, -1,
 				    zocl_obj->bank);
 			}
