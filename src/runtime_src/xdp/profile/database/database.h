@@ -78,6 +78,11 @@ namespace xdp {
 
     XDP_EXPORT uint64_t addDevice(std::string&);
     XDP_EXPORT uint64_t getDeviceId(std::string&);
+
+    // Functions that provide arbitration between multiple plugins
+    //  for resources that should only exist once regardless of 
+    //  the number of plugins
+    bool claimRunSummaryOwnership() ;
   } ;
 }
 

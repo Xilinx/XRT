@@ -137,7 +137,7 @@ std::vector<std::string>
 program::
 get_progvar_names() const
 {
-  for (auto& device : m_devices) {
+  if (auto device = get_first_device()) {
     std::vector<std::string> progvars;
     auto metadata = device->get_xclbin();
     for (auto& name : get_kernel_names()) {
@@ -166,7 +166,7 @@ get_xclbin(const device* d) const
     return d->get_xclbin();
   }
 
-  for (auto& device : m_devices)
+  if (auto device = get_first_device())
     return device->get_xclbin();
 
   throw xocl::error(CL_INVALID_PROGRAM_EXECUTABLE,"No binary for program");

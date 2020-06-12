@@ -138,7 +138,8 @@ struct shim : public DeviceType
   virtual void
   sync_bo(xclBufferHandle bo, xclBOSyncDirection dir, size_t size, size_t offset)
   {
-    xclSyncBO(DeviceType::get_device_handle(), bo, dir, size, offset);
+    if (auto err = xclSyncBO(DeviceType::get_device_handle(), bo, dir, size, offset))
+      throw std::runtime_error("unable to sync BO");
   }
 
   virtual void*

@@ -24,6 +24,7 @@
 #include <string>
 
 #include "xdp/config.h"
+#include "core/common/system.h"
 
 namespace xdp {
 
@@ -160,9 +161,9 @@ namespace xdp {
     void resetDeviceInfo(uint64_t deviceId) ;
 
     // Helper functions that fill in device information
-    bool setXclbinUUID(DeviceInfo*, const void* binary);
-    bool initializeComputeUnits(DeviceInfo*, const void* binary);
-    bool initializeProfileMonitors(DeviceInfo*, const void* binary);
+    bool setXclbinUUID(DeviceInfo*, std::shared_ptr<xrt_core::device> device);
+    bool initializeComputeUnits(DeviceInfo*, std::shared_ptr<xrt_core::device>);
+    bool initializeProfileMonitors(DeviceInfo*, std::shared_ptr<xrt_core::device>);
 
   public:
     VPStaticDatabase() ;
@@ -307,7 +308,7 @@ namespace xdp {
     }
 
     // Reseting device information whenever a new xclbin is added
-    XDP_EXPORT void updateDevice(uint64_t deviceId, const void* binary) ;
+    XDP_EXPORT void updateDevice(uint64_t deviceId, void* devHandle) ;
 
     // Functions that add information to the database
     XDP_EXPORT void addCommandQueueAddress(uint64_t a) ;

@@ -129,7 +129,11 @@ namespace xdp {
   {
     db->registerPlugin(this) ;
     writers.push_back(new LowOverheadTraceWriter("lop_trace.csv")) ;
-    writers.push_back(new VPRunSummaryWriter("xclbin.run_summary")) ;
+
+    if (db->claimRunSummaryOwnership())
+    {
+      writers.push_back(new VPRunSummaryWriter("xclbin.run_summary")) ;
+    }
 
     emulationSetup() ;
 

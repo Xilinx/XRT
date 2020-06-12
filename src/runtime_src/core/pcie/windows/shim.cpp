@@ -32,6 +32,7 @@
 #include <setupapi.h>
 #include <strsafe.h>
 
+
 // To be simplified
 #include "core/pcie/driver/windows/include/XoclUser_INTF.h"
 
@@ -547,15 +548,17 @@ done:
   bool SendIoctlReadAxlf(PUCHAR ImageBuffer, DWORD BuffSize)
   {
     HANDLE deviceHandle = m_dev;
-    DWORD error;
+    DWORD error = 0;
     DWORD bytesWritten;
+    ULONG return_status = 0;
+	
 
     if (!DeviceIoControl(deviceHandle,
                          IOCTL_XOCL_READ_AXLF,
                          ImageBuffer,
                          BuffSize,
-                         0,
-                         0,
+                         &return_status,
+                         sizeof(ULONG),
                          &bytesWritten,
                          nullptr)) {
 
@@ -563,14 +566,33 @@ done:
 
       xrt_core::message::
         send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl failed with error %d", error);
-
+      
       goto out;
+    
+    }
+    if (return_status != NTSTATUS_STATUS_SUCCESS)
+    {
+
+        error = return_status;
+
+        if (return_status == NTSTATUS_REVISION_MISMATCH)
+        {
+            xrt_core::message::
+                send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "Xclbin does not match Shell on card. Use 'xbmgmt flash' to update Shell.");
+
+        }
+        else {
+        
+            xrt_core::message::
+                send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl failed with NTSTATUS %x", return_status);
+        
+        }
+
     }
 
-    error = 0;
-
+ 
   out:
-
+ 
     return error ? false : true;
 
   }
