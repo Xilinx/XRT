@@ -19,13 +19,13 @@ if (WIN32)
     HINTS "${OCL_ROOT}/lib")
 
   target_include_directories(ocl PUBLIC ${OpenCL_INCLUDE_DIR})
-  target_compile_options(ocl PUBLIC
-    "-DCL_TARGET_OPENCL_VERSION=120"
-    "-DCL_HPP_MINIMUM_OPENCL_VERSION=120"
-    "-DCL_HPP_TARGET_OPENCL_VERSION=120"
-    "-DCL_USE_DEPRECATED_OPENCL_1_2_APIS"
-    )
 endif (WIN32)
+target_compile_options(ocl PUBLIC
+  "-DCL_TARGET_OPENCL_VERSION=120"
+  "-DCL_HPP_MINIMUM_OPENCL_VERSION=120"
+  "-DCL_HPP_TARGET_OPENCL_VERSION=120"
+  "-DCL_USE_DEPRECATED_OPENCL_1_2_APIS"
+  )
 
 if (NOT WIN32)
   target_link_libraries(xrt PRIVATE ${uuid_LIBRARY} pthread)
