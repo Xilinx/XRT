@@ -142,7 +142,7 @@ static ssize_t name_show(struct device *dev,
 			   struct device_attribute *attr, char *buf)
 {
 	struct xocl_asm *xocl_asm = platform_get_drvdata(to_platform_device(dev));
-	return sprintf(buf, "axis_mon_%llu\n",xocl_asm->data.m_base_address);
+	return sprintf(buf, "axistream_mon_%llu\n",xocl_asm->data.m_base_address);
 }
 
 static DEVICE_ATTR_RO(name);
