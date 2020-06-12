@@ -66,7 +66,7 @@ register_axlf(const axlf* top)
 {
   m_axlf_sections.clear();
   m_xclbin_uuid = uuid(top->m_header.uuid);
-  axlf_section_kind kinds[] = {EMBEDDED_METADATA, AIE_METADATA, IP_LAYOUT, CONNECTIVITY, MEM_TOPOLOGY};
+  axlf_section_kind kinds[] = {EMBEDDED_METADATA, AIE_METADATA, IP_LAYOUT, CONNECTIVITY, MEM_TOPOLOGY, DEBUG_IP_LAYOUT};
   for (auto kind : kinds) {
     auto hdr = ::xclbin::get_axlf_section(top, kind);
     if (!hdr)

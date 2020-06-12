@@ -142,7 +142,7 @@ namespace xdp {
     return uniqDevId;
   }
 
-  void HALPlugin::updateDevice(void* handle, const void* binary)
+  void HALPlugin::updateDevice(void* handle, const void* /*binary*/)
   {
     if(handle == nullptr)  return;
 
@@ -150,7 +150,7 @@ namespace xdp {
 
     if(deviceHandles.find(deviceId) == deviceHandles.end()) return;
 
-    (db->getStaticInfo()).updateDevice(deviceId, binary);
+    (db->getStaticInfo()).updateDevice(deviceId, handle);
 
     {
       struct xclDeviceInfo2* info = new xclDeviceInfo2;
