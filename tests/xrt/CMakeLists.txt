@@ -29,10 +29,11 @@ find_library(xrt_xilinxopencl_LIBRARY
   HINTS "${XILINX_XRT}/lib")
 message("xrt_xilinxopencl_LIBRARY=${xrt_xilinxopencl_LIBRARY}")
 
+if (NOT WIN32)
 find_library(uuid_LIBRARY
   NAMES uuid)
-
 message("uuid_LIBRARY=${uuid_LIBRARY}")
+endif (NOT WIN32)
 
 include_directories(${XILINX_XRT}/include)
 

@@ -46,7 +46,7 @@ int run(int argc, char** argv)
 
   std::string xclbin_fnm;
   bool verbose = false;
-  int device_index = 0;
+  unsigned int device_index = 0;
 
   std::vector<std::string> args(argv+1,argv+argc);
   std::string cur;
@@ -78,9 +78,6 @@ int run(int argc, char** argv)
 
   if (device_index >= xclProbe())
     throw std::runtime_error("Cannot find device index (" + std::to_string(device_index) + ") specified");
-
-  if (device_index >= xclProbe())
-    throw std::runtime_error("Cannot find device index specified");
 
   auto device = xrt::device(device_index);
   auto uuid = device.load_xclbin(xclbin_fnm);
@@ -151,4 +148,3 @@ int main(int argc, char** argv)
   std::cout << "PASSED TEST\n";
   return 0;
 }
-
