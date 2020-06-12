@@ -1640,7 +1640,11 @@ static void icap_clean_bitstream_axlf(struct platform_device *pdev)
 
 static uint32_t convert_mem_type(const char *name)
 {
-	/* Use MEM_DDR3 as a invalid memory type. */
+	/* Don't trust m_type in xclbin, convert name to m_type instead.
+	 * m_tag[i] = "HBM[0]" -> m_type = MEM_HBM
+	 * m_tag[i] = "DDR[1]" -> m_type = MEM_DRAM
+	 *
+	 * Use MEM_DDR3 as a invalid memory type. */
 	enum MEM_TYPE mem_type = MEM_DDR3;
 
 	if (!strncasecmp(name, "DDR", 3))
@@ -1675,10 +1679,6 @@ static uint16_t icap_get_memidx(struct mem_topology *mem_topo, enum IP_TYPE ecc_
 		goto done;
 
 	for (i = 0; i < mem_topo->m_count; ++i) {
-		/* Don't trust m_type in xclbin, convert name to m_type instead.
-		 * m_tag[i] = "HBM[0]" -> m_type = MEM_HBM
-		 * m_tag[i] = "DDR[1]" -> m_type = MEM_DRAM
-		 */
 		m_type = convert_mem_type(mem_topo->m_mem_data[i].m_tag);
 		if (m_type == target_m_type) {
 			if (idx == mem_idx)
@@ -2268,7 +2268,7 @@ static int icap_refresh_clock_freq(struct icap *icap, struct axlf *xclbin)
 static void icap_save_calib(struct icap *icap)
 {
 	struct mem_topology *mem_topo = icap->mem_topo;
-	int err = 0, i = 0;
+	int err = 0, i = 0, ddr_idx = 0;
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 
 	if (!mem_topo)
@@ -2280,16 +2280,21 @@ static void icap_save_calib(struct icap *icap)
 	for (; i < mem_topo->m_count; ++i) {
 		if (!mem_topo->m_mem_data[i].m_used)
 			continue;
-		err = xocl_srsr_save_calib(xdev, i);
+		if (convert_mem_type(mem_topo->m_mem_data[i].m_tag) != MEM_DRAM)
+			continue;
+
+		err = xocl_srsr_save_calib(xdev, ddr_idx);
 		if (err)
 			ICAP_DBG(icap, "Not able to save mem %d calibration data.", i);
+
+		ddr_idx++;
 	}
 	err = xocl_calib_storage_save(xdev);
 }
 
 static void icap_calib(struct icap *icap, bool retain)
 {
-	int err = 0, i = 0;
+	int err = 0, i = 0, ddr_idx = 0;
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 	struct mem_topology *mem_topo = icap->mem_topo;
 
@@ -2300,9 +2305,14 @@ static void icap_calib(struct icap *icap, bool retain)
 	for (; i < mem_topo->m_count; ++i) {
 		if (!mem_topo->m_mem_data[i].m_used)
 			continue;
-		err = xocl_srsr_calib(xdev, i, retain);
+		if (convert_mem_type(mem_topo->m_mem_data[i].m_tag) != MEM_DRAM)
+			continue;
+
+		err = xocl_srsr_calib(xdev, ddr_idx, retain);
 		if (err)
 			ICAP_DBG(icap, "Not able to calibrate mem %d.", i);
+
+		ddr_idx++;
 	}
 
 }

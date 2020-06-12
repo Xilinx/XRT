@@ -43,22 +43,22 @@
  *                        is a int32_t containing the error code. Some responses
  *                        are more complicated and require a data structure,
  *                        which is also defined below in this file.
- * @MAILBOX_REQ_UNKNOWN: invalid OP code
- * @MAILBOX_REQ_TEST_READY: test msg is ready (post only, internal test only)
- * @MAILBOX_REQ_TEST_READ: fetch test msg from peer (internal test only)
- * @MAILBOX_REQ_LOCK_BITSTREAM: lock down xclbin on mgmt pf (not implemented)
- * @MAILBOX_REQ_UNLOCK_BITSTREAM: unlock xclbin on mgmt pf (not implemented)
- * @MAILBOX_REQ_HOT_RESET: request mgmt pf driver to reset the board
- * @MAILBOX_REQ_FIREWALL: firewall trip detected on mgmt pf (post only)
- * @MAILBOX_REQ_LOAD_XCLBIN_KADDR: download xclbin (pointed to by a pointer)
- * @MAILBOX_REQ_LOAD_XCLBIN: download xclbin (bitstream is in payload)
- * @MAILBOX_REQ_RECLOCK: set clock frequency
- * @MAILBOX_REQ_PEER_DATA: read specified data from peer
- * @MAILBOX_REQ_USER_PROBE: for user pf to probe the peer mgmt pf
- * @MAILBOX_REQ_MGMT_STATE: for mgmt pf to notify user pf of its state change
+ * @XCL_MAILBOX_REQ_UNKNOWN: invalid OP code
+ * @XCL_MAILBOX_REQ_TEST_READY: test msg is ready (post only, internal test only)
+ * @XCL_MAILBOX_REQ_TEST_READ: fetch test msg from peer (internal test only)
+ * @XCL_MAILBOX_REQ_LOCK_BITSTREAM: lock down xclbin on mgmt pf (not implemented)
+ * @XCL_MAILBOX_REQ_UNLOCK_BITSTREAM: unlock xclbin on mgmt pf (not implemented)
+ * @XCL_MAILBOX_REQ_HOT_RESET: request mgmt pf driver to reset the board
+ * @XCL_MAILBOX_REQ_FIREWALL: firewall trip detected on mgmt pf (post only)
+ * @XCL_MAILBOX_REQ_LOAD_XCLBIN_KADDR: download xclbin (pointed to by a pointer)
+ * @XCL_MAILBOX_REQ_LOAD_XCLBIN: download xclbin (bitstream is in payload)
+ * @XCL_MAILBOX_REQ_RECLOCK: set clock frequency
+ * @XCL_MAILBOX_REQ_PEER_DATA: read specified data from peer
+ * @XCL_MAILBOX_REQ_USER_PROBE: for user pf to probe the peer mgmt pf
+ * @XCL_MAILBOX_REQ_MGMT_STATE: for mgmt pf to notify user pf of its state change
  *                          (post only)
- * @MAILBOX_REQ_CHG_SHELL: shell change is required on mgmt pf (post only)
- * @MAILBOX_REQ_PROGRAM_SHELL: request mgmt pf driver to reprogram shell
+ * @XCL_MAILBOX_REQ_CHG_SHELL: shell change is required on mgmt pf (post only)
+ * @XCL_MAILBOX_REQ_PROGRAM_SHELL: request mgmt pf driver to reprogram shell
  */
 enum xcl_mailbox_request {
 	XCL_MAILBOX_REQ_UNKNOWN =		0,
