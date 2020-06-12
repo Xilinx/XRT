@@ -34,6 +34,8 @@
 #define hex_digit "[0-9a-fA-F]+"
 
 const size_t m2mBoSize = 256L * 1024 * 1024;
+const size_t hostMemSize = 256L * 1024 * 1024;
+
 
 static int bdf2index(std::string& bdfStr, unsigned& index)
 {
@@ -1252,7 +1254,7 @@ int xcldev::device::bandwidthKernelTest(void)
     return 0;
 }
 
-int xcldev::device::hostBandwidthKernelTest(void)
+int xcldev::device::hostMemBandwidthKernelTest(void)
 {
     std::string output;
 
@@ -1263,22 +1265,14 @@ int xcldev::device::hostBandwidthKernelTest(void)
         return -EOPNOTSUPP;
     }
 
-    //Kick start hostBandwidthKernelTest only if enabled
+    //Kick start hostMemBandwidthKernelTest only if enabled
     std::string errmsg;
-    uint32_t enable = 0;
-
-    pcidev::get_dev(m_idx)->sysfs_get<uint32_t>("address_translator", "enabled", errmsg, enable, 0);
-    if (!enable) {
-        std::cout << "Host_mem is not available. Skipping validation" << std::endl;
-        return -EOPNOTSUPP;        
-    }
-
     uint64_t host_mem_size = 0;
     pcidev::get_dev(m_idx)->sysfs_get<uint64_t>("address_translator", "host_mem_size",  errmsg, host_mem_size, 0);
 
     if (!host_mem_size) {
-        std::cout << "Not Enough host_mem for testing" << std::endl;
-        return -EINVAL;        
+        std::cout << "Host_mem is not available. Skipping validation" << std::endl;
+        return -EOPNOTSUPP;        
     }
 
     std::string testcase = "host_mem_23_bandwidth.py";
@@ -1530,7 +1524,7 @@ int xcldev::device::validate(bool quick, bool hidden)
         return retVal;
 
     retVal = runOneTest("host memory bandwidth test",
-            std::bind(&xcldev::device::hostBandwidthKernelTest, this));
+            std::bind(&xcldev::device::hostMemBandwidthKernelTest, this));
     withWarning = withWarning || (retVal == 1);
     if (retVal < 0)
         return retVal;

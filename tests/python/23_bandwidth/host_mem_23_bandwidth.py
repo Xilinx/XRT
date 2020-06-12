@@ -1,7 +1,7 @@
 """
- Copyright (C) 2018-2020 Xilinx, Inc
+ Copyright (C) 2020 Xilinx, Inc
 
- Python OpenCL based bandwidth testcase used with every platform as part of
+ Ctypes based based bandwidth testcase used with every platform as part of
  xbutil validate
 
  Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -17,127 +17,79 @@
  under the License.
 """
 
-import pyopencl as cl
 import numpy as np
 import sys
-from optparse import OptionParser
 import time
 import math
 
+# Following found in PYTHONPATH setup by XRT
+from xrt_binding import *
+from ert_binding import *
+
+# utils_binding.py
+sys.path.append('../')
+from utils_binding import *
+
+# Define libc helpers
+libc_name = ctypes.util.find_library("c")
+libc = ctypes.CDLL(libc_name)
+libc.memcmp.argtypes = (ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t)
+libc.memcmp.restype = (ctypes.c_int)
+libc.memcpy.argtypes = (ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t)
+libc.memcpy.restype = (ctypes.c_void_p)
+
 current_micro_time = lambda: int(round(time.time() * 1000000))
 
-def main():
-    platform_ID = None
-    xclbin = None
-    globalbuffersize = 1024*1024*16    #16 MB
-    typesize = 512
+globalbuffersize = 1024*1024*16    #16 MB
+
+def getThreshold(devHandle):
     threshold = 30000
-    expected = np.array([[300,240,450,250,250,250],       # 32 bits
-                         [600,500,1000,500,500,500],      # 64 bits
-                         [1100,900,1500,1100,1100,1100],  #128 bits
-                         [1500,1500,1900,2200,2200,2200], #256 bits
-                         [1900,2000,2300,3800,3800,3800]  #512 bits
-                     ])
+    deviceInfo = xclDeviceInfo2()
+    xclGetDeviceInfo2(devHandle, ctypes.byref(deviceInfo))
+    if b"qdma" in deviceInfo.mName or b"qep" in deviceInfo.mName:
+        threshold = 30000
+    if b"u2x4" in deviceInfo.mName or b"U2x4" in deviceInfo.mName:
+        threshold = 10000
+    if b"gen3x4" in deviceInfo.mName:
+        threshold = 20000
+    if b"_u25_" in deviceInfo.mName: # so that it doesn't set theshold for u250
+        threshold = 9000
+    return threshold
 
-    # Process cmd line args
-    parser = OptionParser()
-    parser.add_option("-k", "--kernel", help="xclbin path")
-    parser.add_option("-d", "--device", help="device index")
-
-    (options, args) = parser.parse_args()
-    xclbin = options.kernel
-    index = options.device
-
-    if xclbin is None:
-       print("No xclbin specified\nUsage: -k <path to xclbin>")
-       sys.exit(1)
-
-    if index is None:
-       index = 0 #get default device
-
-    platforms = cl.get_platforms()
-    # get Xilinx platform
-    for i in platforms:
-       if i.name == "Xilinx":
-          platform_ID = platforms.index(i)
-          print("\nPlatform Information:")
-          print("Platform name:       %s" %platforms[platform_ID].name)
-          print("Platform version:    %s" %platforms[platform_ID].version)
-          print("Platform profile:    %s" %platforms[platform_ID].profile)
-          print("Platform extensions: %s" %platforms[platform_ID].extensions)
-          break
-
-    if platform_ID is None:
-       #make sure xrt is sourced
-       #run clinfo to make sure Xilinx platform is discoverable
-       print("ERROR: Plaform not found")
-       sys.exit(1)
-
-    # choose device
-    devices = platforms[platform_ID].get_devices()
-    if int(index) > len(devices)-1:
-       print("\nERROR: Index out of range. %d devices were found" %len(devices))
-       sys.exit(1)
+def getInputOutputBuffer(devhdl, krnlhdl, argno, isInput):
+    if isInput:
+        lst = [i%256 for i in range(globalbuffersize)]
     else:
-       dev = devices[int(index)]
-    if "qdma" in str(dev) or "qep" in str(dev):
-       threshold = 30000
+        lst = [0 for i in range(globalbuffersize)]
+    hostbuf = np.array(lst).astype(np.uint8)
+    assert hostbuf.size == globalbuffersize
 
-    if "u2x4" in str(dev) or "U2x4" in str(dev):
-       threshold = 10000
+    grpid = xrtKernelArgGroupId(krnlhdl, argno)
+    if grpid < 0:
+        raise RuntimeError("failed to find BO group ID: %d" % grpid)
+    bo = xrtBOAlloc(devhdl, globalbuffersize, 0, grpid)
+    if bo == 0:
+        raise RuntimeError("failed to alloc buffer")
 
-    if "gen3x4" in str(dev):
-       threshold = 20000
+    bobuf = xrtBOMap(bo)
+    if bobuf == 0:
+        raise RuntimeError("failed to map buffer")
+    libc.memcpy(bobuf, hostbuf.ctypes.data, globalbuffersize)
+    xrtBOSync(bo, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, globalbuffersize, 0)
+    return bo, bobuf
 
-    if "_u25_" in str(dev): # so that it doesn't set theshold for u250
-       threshold = 9000
+def runKernel(opt):
+    khandle3 = xrtPLKernelOpen(opt.handle, opt.xuuid, "bandwidth3")
+    kfunc = xrtKernelGetFunc(xrtBufferHandle, xrtBufferHandle, ctypes.c_int, ctypes.c_int)
 
-    ctx = cl.Context(devices = [dev])
-    if not ctx:
-       print("ERROR: Failed to create context")
-       sys.exit(1)
+    output_bo3, output_buf3 = getInputOutputBuffer(opt.handle, khandle3, 0, False)
+    input_bo3, input_buf3 = getInputOutputBuffer(opt.handle, khandle3, 1, True)
 
-    commands = cl.CommandQueue(ctx, dev, properties=cl.command_queue_properties.OUT_OF_ORDER_EXEC_MODE_ENABLE)
-
-    if not commands:
-       print("ERROR: Failed to create command queue")
-       sys.exit(1)
-
-    print("Loading xclbin")
-    with open(xclbin, "rb") as f:
-       src = f.read()
-    prg = cl.Program(ctx, [dev], [src])
-
-    try:
-       prg.build()
-    except:
-       print("ERROR:")
-       print(prg.get_build_info(ctx, cl.program_build_info.LOG))
-       raise
-
-    knl3 = prg.bandwidth3
-
-    #input host and buffer
-    lst = [i%256 for i in range(globalbuffersize)]
-    input_host3 = np.array(lst).astype(np.uint8)
-
-    input_buf3 = cl.Buffer(ctx, cl.mem_flags.READ_WRITE | cl.mem_flags.COPY_HOST_PTR, hostbuf = input_host3)
-
-    if input_buf3.int_ptr is None:
-       print("ERROR: Failed to allocate source buffer")
-       sys.exit(1)
-
-    #output host and buffer
-    output_host3 = np.empty_like(input_host3, dtype=np.uint8)
-    output_buf3 = cl.Buffer(ctx, cl.mem_flags.READ_WRITE, output_host3.nbytes)
-
-    if output_buf3.int_ptr is None:
-       print("ERROR: Failed to allocate destination buffer")
-       sys.exit(1)
-
-    #copy dataset to OpenCL buffer
-    globalbuffersizeinbeats = globalbuffersize/(typesize/8)
+    typesize = 512
+    threshold = getThreshold(opt.handle)
+    globalbuffersizeinbeats = globalbuffersize/(typesize>>3)
     tests= int(math.log(globalbuffersizeinbeats, 2.0))+1
+    beats = 16
 
     #lists
     dnsduration = []
@@ -150,42 +102,38 @@ def main():
     #run tests with burst length 1 beat to globalbuffersize
     #double burst length each test
     test=0
-    beats = 16
     throughput = []
-    while beats <= 1024:
+    failed = False
+    while beats <= 1024 and not failed:
         print("LOOP PIPELINE %d beats" %beats)
 
         usduration = 0
         fiveseconds = 5*1000000
         reps = 64
         while usduration < fiveseconds:
-
             start = current_micro_time()
-            knl3(commands, (1, ), (1, ), output_buf3, input_buf3, np.uint32(beats), np.uint32(reps))
-            commands.finish()
+            rhandle3 = kfunc(khandle3, output_bo3, input_bo3, beats, reps)
+            xrtRunWait(rhandle3)
             end = current_micro_time()
+
+            xrtRunClose(rhandle3)
 
             usduration = end-start
 
-            cl.enqueue_copy(commands, output_host3, output_buf3).wait()
-
-            # need to check, currently fails
-            limit = int(beats*(typesize/8))
-            if not np.array_equal(output_host3[:limit], input_host3[:limit]):
-               print("ERROR: Failed to copy entries")
-               input_buf3.release()
-               output_buf3.release()
-               sys.exit(1)
+            limit = beats*(typesize>>3)
+            xrtBOSync(output_bo3, xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, limit, 0)
+            if libc.memcmp(input_buf3, output_buf3, limit):
+               failed = True
+               break
 
             # print("Reps = %d, Beats = %d, Duration = %lf us" %(reps, beats, usduration)) # for debug
 
             if usduration < fiveseconds:
                 reps = reps*2
 
-
         dnsduration.append(usduration)
         dsduration.append(dnsduration[test]/1000000.0)
-        dbytes.append(reps*beats*(typesize/8))
+        dbytes.append(reps*beats*(typesize>>3))
         dmbytes.append(dbytes[test]/(1024 * 1024))
         bpersec.append(2.0*dbytes[test]/dsduration[test])
         mbpersec.append(2.0*bpersec[test]/(1024 * 1024))
@@ -195,17 +143,44 @@ def main():
         test+=1
 
     #cleanup
-    input_buf3.release()
-    output_buf3.release()
-    del ctx
+    xrtBOFree(input_bo3)
+    xrtBOFree(output_bo3)
+    xrtKernelClose(khandle3)
 
+    if failed:
+        raise RuntimeError("ERROR: Failed to copy entries")
+    
     print("TTTT: %d" %throughput[0])
     print("Maximum throughput: %d MB/s" %max(throughput))
     if max(throughput) < threshold:
-        print("ERROR: Throughput is less than expected value of %d GB/sec" %(threshold/1000))
-        sys.exit(1)
+        raise RuntimeError("ERROR: Throughput is less than expected value of %d GB/sec" %(threshold/1000))
 
-    print("PASSED")
+def main(args):
+    os.environ["Runtime.xrt_bo"] = "true"
+    opt = Options()
+    Options.getOptions(opt, args)
+
+    try:
+        initXRT(opt)
+        assert (opt.first_mem >= 0), "Incorrect memory configuration"
+
+        runKernel(opt)
+        print("PASSED TEST")
+
+    except OSError as o:
+        print(o)
+        print("FAILED TEST")
+        sys.exit(o.errno)
+    except AssertionError as a:
+        print(a)
+        print("FAILED TEST")
+        sys.exit(1)
+    except Exception as e:
+        print(e)
+        print("FAILED TEST")
+        sys.exit(1)
+    finally:
+        xclClose(opt.handle)
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv)
