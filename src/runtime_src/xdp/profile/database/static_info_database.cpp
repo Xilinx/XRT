@@ -122,6 +122,7 @@ namespace xdp {
   bool VPStaticDatabase::setXclbinUUID(DeviceInfo* devInfo, std::shared_ptr<xrt_core::device> device)
   {
     auto xclbinUUID = device->get_xclbin_uuid();
+    (void)devInfo;
     (void)xclbinUUID;
 
     #if 0

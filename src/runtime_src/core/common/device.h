@@ -182,6 +182,7 @@ public:
   /**
    * get_xclbin_uuid() - Get uuid of currently loaded xclbin
    */
+  XRT_CORE_COMMON_EXPORT
   uuid
   get_xclbin_uuid() const;
 
