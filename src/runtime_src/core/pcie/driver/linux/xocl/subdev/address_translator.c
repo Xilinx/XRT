@@ -299,32 +299,11 @@ static ssize_t base_address_show(struct device *dev, struct device_attribute *at
 }
 static DEVICE_ATTR_RO(base_address);
 
-static ssize_t enabled_show(struct device *dev, struct device_attribute *attr,
-	char *buf)
-{
-	struct platform_device *pdev = to_platform_device(dev);
-	struct addr_translator *addr_translator = platform_get_drvdata(pdev);
-	xdev_handle_t xdev = ADDR_TRANSLATOR_DEV2XDEV(pdev);
-	struct trans_regs *regs = (struct trans_regs *)addr_translator->base;
-	u32 num;
-	bool enable = false;
-
-	mutex_lock(&addr_translator->lock);
-
-	num = xocl_dr_reg_read32(xdev, &regs->entry_num);
-	if (num)
-		enable = true;
-	mutex_unlock(&addr_translator->lock);
-	return sprintf(buf, "%x\n", enable);
-}
-static DEVICE_ATTR_RO(enabled);
-
 static struct attribute *addr_translator_attributes[] = {
 	&dev_attr_num.attr,
 	&dev_attr_base_address.attr,
 	&dev_attr_addr_range.attr,
 	&dev_attr_host_mem_size.attr,
-	&dev_attr_enabled.attr,
 	NULL
 };
 

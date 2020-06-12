@@ -138,6 +138,7 @@ set(PY_TEST_SRC
   ../tests/python/22_verify/22_verify.py
   ../tests/python/utils_binding.py
   ../tests/python/23_bandwidth/23_bandwidth.py
+  ../tests/python/23_bandwidth/host_mem_23_bandwidth.py
   ../tests/python/23_bandwidth/versal_23_bandwidth.py)
 install (FILES ${PY_TEST_SRC}
   PERMISSIONS OWNER_READ OWNER_EXECUTE OWNER_WRITE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE

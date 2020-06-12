@@ -34,6 +34,8 @@
 #define hex_digit "[0-9a-fA-F]+"
 
 const size_t m2mBoSize = 256L * 1024 * 1024;
+const size_t hostMemSize = 256L * 1024 * 1024;
+
 
 static int bdf2index(std::string& bdfStr, unsigned& index)
 {
@@ -1216,19 +1218,50 @@ int xcldev::device::bandwidthKernelTest(void)
 {
     std::string output;
 
-    if ((sensor_tree::get<std::string>("system.linux", "N/A").find("Red Hat") != std::string::npos)
-            && (sensor_tree::get<std::string>("system.machine", "N/A").find("ppc64le") != std::string::npos)) {
-        std::cout << "Testcase not supported on Red Hat and PowerPC. Skipping validation"
-                  << std::endl;
-        return -EOPNOTSUPP;
-    }
-
     //versal bandwidth kernel is different, hence it needs to run a custom testcase
     std::string errmsg, vbnv;
     pcidev::get_dev(m_idx)->sysfs_get("rom", "VBNV", errmsg, vbnv);
 
-    std::string testcase = (vbnv.find("vck5000") != std::string::npos) 
+    std::string testcase = (vbnv.find("vck5000") != std::string::npos)
         ? "versal_23_bandwidth.py" : "23_bandwidth.py";
+    
+    int ret = runTestCase(testcase, std::string("bandwidth.xclbin"), output);
+
+    if (ret != 0) {
+        std::cout << output << std::endl;
+        return ret;
+    }
+
+    if (output.find("PASS") == std::string::npos) {
+        std::cout << output << std::endl;
+        return -EINVAL;
+    }
+
+    // Print out max thruput
+    size_t st = output.find("Maximum");
+    if (st != std::string::npos) {
+        size_t end = output.find("\n", st);
+        std::cout << std::endl << output.substr(st, end - st) << std::endl;
+    }
+
+    return 0;
+}
+
+int xcldev::device::hostMemBandwidthKernelTest(void)
+{
+    std::string output;
+
+    //Kick start hostMemBandwidthKernelTest only if enabled
+    std::string errmsg;
+    uint64_t host_mem_size = 0;
+    pcidev::get_dev(m_idx)->sysfs_get<uint64_t>("address_translator", "host_mem_size",  errmsg, host_mem_size, 0);
+
+    if (!host_mem_size) {
+        std::cout << "Host_mem is not available. Skipping validation" << std::endl;
+        return -EOPNOTSUPP;        
+    }
+
+    std::string testcase = "host_mem_23_bandwidth.py";
     
     int ret = runTestCase(testcase, std::string("bandwidth.xclbin"), output);
 
@@ -1472,6 +1505,12 @@ int xcldev::device::validate(bool quick, bool hidden)
     //Perform M2M test
     retVal = runOneTest("memory-to-memory DMA test",
             std::bind(&xcldev::device::testM2m, this));
+    withWarning = withWarning || (retVal == 1);
+    if (retVal < 0)
+        return retVal;
+
+    retVal = runOneTest("host memory bandwidth test",
+            std::bind(&xcldev::device::hostMemBandwidthKernelTest, this));
     withWarning = withWarning || (retVal == 1);
     if (retVal < 0)
         return retVal;
