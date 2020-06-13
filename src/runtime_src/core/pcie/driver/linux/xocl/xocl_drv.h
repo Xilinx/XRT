@@ -49,7 +49,6 @@
 #include "lib/libfdt/libfdt.h"
 #include <linux/firmware.h>
 #include "kds_core.h"
-#include "xrt_cu.h"
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
 #define ioremap_nocache		ioremap
@@ -1471,25 +1470,6 @@ struct calib_storage_funcs {
 	CALIB_STORAGE_OPS(xdev)->restore(CALIB_STORAGE_DEV(xdev)) : \
 	-ENODEV)
 
-/* CU controller callback */
-struct xocl_kds_ctrl_funcs {
-	struct xocl_subdev_funcs common_funcs;
-	int (* add_cu)(struct platform_device *pdev, struct xrt_cu *xcu);
-	int (* remove_cu)(struct platform_device *pdev, struct xrt_cu *xcu);
-};
-#define CU_CTRL_DEV(xdev) \
-	SUBDEV(xdev, XOCL_SUBDEV_CU_CTRL).pldev
-#define CU_CTRL_OPS(xdev) \
-	((struct xocl_kds_ctrl_funcs *)SUBDEV(xdev, XOCL_SUBDEV_CU_CTRL).ops)
-#define CU_CTRL_CB(xdev, cb) \
-	(CU_CTRL_DEV(xdev) && CU_CTRL_OPS(xdev) && CU_CTRL_OPS(xdev)->cb)
-#define xocl_cu_ctrl_add_cu(xdev, xcu) \
-	(CU_CTRL_CB(xdev, add_cu)? \
-	 CU_CTRL_OPS(xdev)->add_cu(CU_CTRL_DEV(xdev), xcu) : -ENXIO)
-#define xocl_cu_ctrl_remove_cu(xdev, xcu) \
-	(CU_CTRL_CB(xdev, remove_cu)? \
-	 CU_CTRL_OPS(xdev)->remove_cu(CU_CTRL_DEV(xdev), xcu) : 0)
-
 /* CU callback */
 struct xocl_cu_funcs {
 	struct xocl_subdev_funcs common_funcs;
@@ -1501,9 +1481,6 @@ struct xocl_cu_funcs {
 	((struct xocl_cu_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_CU, idx).ops)
 #define CU_CB(xdev, idx, cb) \
 	(CU_DEV(xdev, idx) && CU_OPS(xdev, idx) && CU_OPS(xdev, idx)->cb)
-#define xocl_cu_submit_xcmd(xdev, idx, xcmd) \
-	(CU_CB(xdev, idx, submit)? \
-	 CU_OPS(xdev, idx)->submit(CU_DEV(xdev, idx), xcmd) : -ENXIO)
 
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
@@ -1704,9 +1681,15 @@ static inline void xocl_dr_reg_write32(xdev_handle_t xdev, u32 value, void __iom
 	read_unlock(&XDEV(xdev)->rwlock);
 }
 
-static inline void xocl_kds_setctrl(xdev_handle_t xdev, int type, struct kds_ctrl *ctrl)
+/* Unify KDS wrappers */
+static inline int xocl_kds_add_cu(xdev_handle_t xdev, struct xrt_cu *xcu)
 {
-	XDEV(xdev)->kds.ctrl[type] = ctrl;
+	return kds_add_cu(&XDEV(xdev)->kds, xcu);
+}
+
+static inline int xocl_kds_del_cu(xdev_handle_t xdev, struct xrt_cu *xcu)
+{
+	return kds_del_cu(&XDEV(xdev)->kds, xcu);
 }
 
 /* context helpers */
@@ -1874,9 +1857,6 @@ void xocl_fini_calib_storage(void);
 
 int __init xocl_init_kds(void);
 void xocl_fini_kds(void);
-
-int __init xocl_init_cu_ctrl(void);
-void xocl_fini_cu_ctrl(void);
 
 int __init xocl_init_cu(void);
 void xocl_fini_cu(void);

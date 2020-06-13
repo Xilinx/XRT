@@ -17,23 +17,6 @@ struct zocl_cu {
 	struct platform_device	*pdev;
 };
 
-static int cu_submit(struct platform_device *pdev, struct kds_command *xcmd)
-{
-	struct zocl_cu *xcu = platform_get_drvdata(pdev);
-
-	xrt_cu_submit(&xcu->base, xcmd);
-
-	return 0;
-}
-
-static struct zocl_cu_ops cu_ops = {
-	.submit = &cu_submit,
-};
-
-static struct zocl_drv_private cu_priv = {
-	.ops = &cu_ops,
-};
-
 static int cu_probe(struct platform_device *pdev)
 {
 	struct zocl_cu *zcu;
@@ -69,9 +52,9 @@ static int cu_probe(struct platform_device *pdev)
 	zcu->base.res = res;
 
 	zdev = platform_get_drvdata(to_platform_device(pdev->dev.parent));
-	err = cu_ctrl_add_cu(zdev, &zcu->base);
+	err = zocl_kds_add_cu(zdev, &zcu->base);
 	if (err) {
-		DRM_ERROR("Not able to add CU %p to controller", zcu);
+		DRM_ERROR("Not able to add CU %p to KDS", zcu);
 		goto err1;
 	}
 
@@ -91,7 +74,7 @@ static int cu_probe(struct platform_device *pdev)
 
 	return 0;
 err2:
-	cu_ctrl_remove_cu(zdev, &zcu->base);
+	zocl_kds_del_cu(zdev, &zcu->base);
 err1:
 	vfree(res);
 err:
@@ -117,7 +100,7 @@ static int cu_remove(struct platform_device *pdev)
 	}
 
 	zdev = platform_get_drvdata(to_platform_device(pdev->dev.parent));
-	cu_ctrl_remove_cu(zdev, &zcu->base);
+	zocl_kds_del_cu(zdev, &zcu->base);
 
 	if (zcu->base.res)
 		vfree(zcu->base.res);
@@ -128,7 +111,7 @@ static int cu_remove(struct platform_device *pdev)
 }
 
 static struct platform_device_id cu_id_table[] = {
-	{"CU", (kernel_ulong_t)&cu_priv},
+	{"CU", 0 },
 	{ },
 };
 

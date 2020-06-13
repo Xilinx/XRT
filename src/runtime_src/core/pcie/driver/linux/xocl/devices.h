@@ -216,7 +216,6 @@ enum {
 #define	XOCL_UARTLITE		"ulite"
 #define	XOCL_CALIB_STORAGE	"calib_storage"
 #define	XOCL_ADDR_TRANSLATOR	"address_translator"
-#define	XOCL_CU_CTRL		"cu_ctrl"
 #define	XOCL_CU			"cu"
 #define	XOCL_P2P		"p2p"
 
@@ -257,7 +256,6 @@ enum subdev_id {
 	XOCL_SUBDEV_UARTLITE,
 	XOCL_SUBDEV_CALIB_STORAGE,
 	XOCL_SUBDEV_ADDR_TRANSLATOR,
-	XOCL_SUBDEV_CU_CTRL,
 	XOCL_SUBDEV_CU,
 	XOCL_SUBDEV_P2P,
 	XOCL_SUBDEV_NUM
@@ -700,24 +698,6 @@ struct xocl_subdev_map {
 		.multi_inst = true,			\
 		.override_idx = -1,			\
 		.bar_idx = (char []){ 0, 4 },		\
-	}
-
-#define XOCL_RES_CU_CTRL				\
-	((struct resource []) {				\
-		{					\
-			.start	= 0,			\
-			.end	= 3,			\
-			.flags	= IORESOURCE_IRQ,	\
-		}					\
-	})
-
-#define XOCL_DEVINFO_CU_CTRL				\
-	{						\
-		XOCL_SUBDEV_CU_CTRL,			\
-		XOCL_CU_CTRL,				\
-		XOCL_RES_CU_CTRL,			\
-		ARRAY_SIZE(XOCL_RES_CU_CTRL),		\
-		.override_idx = -1,			\
 	}
 
 #define	XOCL_RES_TRACE_FUNNEL			\
@@ -1600,7 +1580,6 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_ICAP_USER,				\
 			XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_AF_USER,				\
-			XOCL_DEVINFO_CU_CTRL,				\
 		})
 
 #define	XOCL_BOARD_USER_QDMA						\
@@ -1616,7 +1595,6 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_XDMA,				\
 			XOCL_DEVINFO_SCHEDULER_51,			\
 			XOCL_DEVINFO_ICAP_USER,				\
-			XOCL_DEVINFO_CU_CTRL,				\
 		})
 
 #define	USER_RES_XDMA							\
@@ -1628,7 +1606,6 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_ICAP_USER,				\
 			XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_AF_USER,				\
-			XOCL_DEVINFO_CU_CTRL,				\
 		})
 
 #define	USER_RES_XDMA_VERSAL						\
@@ -1640,7 +1617,6 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_PF_MAILBOX_USER_VERSAL,		\
 			XOCL_DEVINFO_MAILBOX_USER_VERSAL,		\
 		 	XOCL_DEVINFO_ICAP_USER,				\
-			XOCL_DEVINFO_CU_CTRL,				\
 		})
 
 #define USER_RES_AWS							\
@@ -1650,7 +1626,6 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_SCHEDULER_51,			\
 			XOCL_DEVINFO_MAILBOX_USER_SOFTWARE,		\
 			XOCL_DEVINFO_ICAP_USER,				\
-			XOCL_DEVINFO_CU_CTRL,				\
 		})
 
 #define	USER_RES_DSA52							\
@@ -1663,7 +1638,6 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_ICAP_USER,				\
 			XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_AF_USER,				\
-			XOCL_DEVINFO_CU_CTRL,				\
 		})
 
 #define	USER_RES_DSA52_U2						\
@@ -1676,7 +1650,6 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_ICAP_USER,				\
 			XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_AF_USER,				\
-			XOCL_DEVINFO_CU_CTRL,				\
 		})
 
 #define USER_RES_SMARTN							\
@@ -1686,7 +1659,6 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_ICAP_USER,				\
 			XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_MAILBOX_USER_QDMA,			\
-			XOCL_DEVINFO_CU_CTRL,				\
 		})
 
 
@@ -2298,7 +2270,6 @@ struct xocl_subdev_map {
 		XOCL_DEVINFO_ICAP_USER,					\
 		XOCL_DEVINFO_XMC_USER,					\
 		XOCL_DEVINFO_AF_USER,					\
-		XOCL_DEVINFO_CU_CTRL,					\
 	 })
 
 /* need static scheduler for a little while, and no AF user for now */
@@ -2696,7 +2667,6 @@ struct xocl_subdev_map {
 		 	XOCL_DEVINFO_ICAP_USER,				\
 		 	XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_AF_USER,				\
-			XOCL_DEVINFO_CU_CTRL,				\
 		})
 
 #define	XOCL_BOARD_U200_USER_EA						\
@@ -2847,7 +2817,6 @@ struct xocl_subdev_map {
 		 	XOCL_DEVINFO_ICAP_USER,				\
 		 	XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_AF_USER,				\
-			XOCL_DEVINFO_CU_CTRL,				\
 		})
 
 #define	XOCL_BOARD_USER_U25						\
