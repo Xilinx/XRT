@@ -72,20 +72,22 @@ protected:
   std::shared_ptr<xrt_core::device> device;
   xclBufferHandle handle;  // driver handle
   size_t size;             // size of buffer
+  bool free_bo;            // should dtor free bo
 
 public:
   bo_impl(xclDeviceHandle dhdl, xclBufferHandle bhdl, size_t sz)
-    : device(xrt_core::get_userpf_device(dhdl)), handle(bhdl), size(sz)
+    : device(xrt_core::get_userpf_device(dhdl)), handle(bhdl), size(sz), free_bo(true)
   {}
 
   bo_impl(const bo_impl* parent, size_t sz)
-    : device(parent->device), handle(parent->handle), size(sz)
+    : device(parent->device), handle(parent->handle), size(sz), free_bo(false)
   {}
 
   virtual
   ~bo_impl()
   {
-    device->free_bo(handle);
+    if (free_bo)
+      device->free_bo(handle);
   }
 
   void
@@ -112,7 +114,7 @@ public:
     std::memcpy(dst, hbuf, sz);
   }
 
-  uint64_t
+  virtual uint64_t
   address() const
   {
     xclBOProperties prop;
@@ -198,12 +200,14 @@ public:
 class buffer_sub : public bo_impl
 {
   std::shared_ptr<bo_impl> parent;  // participate in ownership of parent
+  size_t offset;
   void* hbuf;
 
 public:
-  buffer_sub(std::shared_ptr<bo_impl> par, size_t size, size_t offset)
+  buffer_sub(std::shared_ptr<bo_impl> par, size_t size, size_t off)
     : bo_impl(par.get(), size)
     , parent(std::move(par))
+    , offset(off)
     , hbuf(static_cast<char*>(parent->get_hbuf()) + offset)
   {
     if (size + offset > parent->get_size())
@@ -220,6 +224,12 @@ public:
   is_sub_buffer() const
   {
     return true;
+  }
+
+  virtual uint64_t
+  address() const
+  {
+    return bo_impl::address() + offset;
   }
 };
 

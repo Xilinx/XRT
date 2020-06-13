@@ -27,6 +27,10 @@
 #include <iostream>
 #include <vector>
 
+#ifdef _WIN32
+# pragma warning ( disable : 4267 )
+#endif
+
 static std::vector<char>
 load_xclbin(xclDeviceHandle device, const std::string& fnm)
 {
@@ -72,7 +76,7 @@ static void usage()
 }
 
 static std::string
-get_kernel_name(int cus)
+get_kernel_name(size_t cus)
 {
   std::string k("addone:{");
   for (int i=1; i<cus; ++i)
@@ -118,13 +122,13 @@ struct job_type
     a = xclAllocBO(d, data_size*sizeof(unsigned long), 0, first_used_mem);
     am = xclMapBO(d, a, true);
     auto adata = reinterpret_cast<unsigned long*>(am);
-    for (size_t i=0;i<data_size;++i)
+    for (unsigned int i=0;i<data_size;++i)
       adata[i] = i;
 
     b = xclAllocBO(d, data_size*sizeof(unsigned long), 0, first_used_mem);
     bm = xclMapBO(d, b, true);
     auto bdata = reinterpret_cast<unsigned long*>(bm);
-     for (size_t j=0;j<data_size;++j)
+     for (unsigned int j=0;j<data_size;++j)
        bdata[j] = id;
   }
 
@@ -239,11 +243,11 @@ int run(int argc, char** argv)
   std::vector<std::string> args(argv+1,argv+argc);
 
   std::string xclbin_fnm;
-  size_t device_index = 0;
+  unsigned int device_index = 0;
   size_t secs = 0;
   size_t jobs = 1;
   size_t cus  = 1;
-  
+
   std::string cur;
   for (auto& arg : args) {
     if (arg == "-h") {
@@ -283,10 +287,10 @@ int run(int argc, char** argv)
 
   {
     // Demo xrt_xclbin API retrieving uuid from kernel if applicable
-    uuid_t xclbin_id;
+    xuid_t xclbin_id;
     uuid_copy(xclbin_id, top->m_header.uuid);
 
-    uuid_t xid;
+    xuid_t xid;
     xrtXclbinUUID(device, xid);
     if (uuid_compare(xclbin_id, xid) != 0)
       throw std::runtime_error("xid mismatch");
@@ -300,7 +304,7 @@ int run(int argc, char** argv)
     }
   }
 
-  compute_units = cus = std::min(cus, compute_units);
+  compute_units = cus = std::min<size_t>(cus, compute_units);
   std::string kname = get_kernel_name(cus);
   auto kernel = xrtPLKernelOpen(device, top->m_header.uuid, kname.c_str());
 
