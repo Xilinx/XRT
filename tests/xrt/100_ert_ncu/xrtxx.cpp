@@ -29,6 +29,10 @@
 #include <vector>
 #include <cstdlib>
 
+#ifdef _WIN32
+# pragma warning ( disable : 4267 )
+#endif
+
 const size_t ELEMENTS = 16;
 const size_t ARRAY_SIZE = 8;
 const size_t MAXCUS = 8;
@@ -52,7 +56,7 @@ static void usage()
 }
 
 static std::string
-get_kernel_name(int cus)
+get_kernel_name(size_t cus)
 {
   std::string k("addone:{");
   for (int i=1; i<cus; ++i)
@@ -100,13 +104,13 @@ struct job_type
     a = xrt::bo(device, data_size*sizeof(unsigned long), 0, grpid0);
     am = a.map();
     auto adata = reinterpret_cast<unsigned long*>(am);
-    for (size_t i=0;i<data_size;++i)
+    for (unsigned int i=0;i<data_size;++i)
       adata[i] = i;
 
     b = xrt::bo(device, data_size*sizeof(unsigned long), 0, grpid1);
     bm = b.map();
     auto bdata = reinterpret_cast<unsigned long*>(bm);
-     for (size_t j=0;j<data_size;++j)
+     for (unsigned int j=0;j<data_size;++j)
        bdata[j] = id;
   }
 
@@ -202,11 +206,11 @@ int run(int argc, char** argv)
   std::vector<std::string> args(argv+1,argv+argc);
 
   std::string xclbin_fnm;
-  size_t device_index = 0;
+  unsigned int device_index = 0;
   size_t secs = 0;
   size_t jobs = 1;
   size_t cus  = 1;
-  
+
   std::string cur;
   for (auto& arg : args) {
     if (arg == "-h") {
@@ -253,7 +257,6 @@ int
 main(int argc, char* argv[])
 {
   try {
-    ::setenv("Runtime.xrt_bo","true",1);
     run(argc,argv);
     return 0;
   }

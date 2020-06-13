@@ -14,15 +14,12 @@
  * under the License.
  */
 
-#include <getopt.h>
 #include <iostream>
 #include <stdexcept>
 #include <string>
 #include <cstring>
-#include <sys/mman.h>
 
 // XRT includes
-#include "xrt.h"
 #include "experimental/xrt_device.h"
 #include "experimental/xrt_kernel.h"
 #include "experimental/xrt_bo.h"
@@ -30,25 +27,17 @@
 // This value is shared with worgroup size in kernel.cl
 static const int COUNT = 1024;
 
-const static struct option long_options[] = {
-{"bitstream",       required_argument, 0, 'k'},
-{"device",          required_argument, 0, 'd'},
-{"verbose",         no_argument,       0, 'v'},
-{"help",            no_argument,       0, 'h'},
-{0, 0, 0, 0}
-};
-
-static void printHelp()
+static void usage()
 {
     std::cout << "usage: %s [options] -k <bitstream>\n\n";
     std::cout << "  -k <bitstream>\n";
-    std::cout << "  -d <index>\n";
-    std::cout << "  -v\n";
-    std::cout << "  -h\n\n";
+    std::cout << "  [-d <index>]       (default: 0)\n";
+    std::cout << "  [-v]\n";
+    std::cout << "  [-h]\n\n";
     std::cout << "* Bitstream is required\n";
 }
 
-static int runKernel(xrt::device& device, bool verbose, const uuid_t xclbinId)
+static int runKernel(xrt::device& device, bool verbose, const xuid_t xclbinId)
 {
   const size_t DATA_SIZE = COUNT * sizeof(int);
 
@@ -89,59 +78,50 @@ static int runKernel(xrt::device& device, bool verbose, const uuid_t xclbinId)
 int
 run(int argc, char** argv)
 {
-    std::string sharedLibrary;
-    std::string bitstreamFile;
-    std::string halLogfile;
-    size_t alignment = 128;
-    int option_index = 0;
-    unsigned index = 0;
-    bool verbose = false;
-    int c;
+  if (argc < 3) {
+    usage();
+    return 1;
+  }
 
-    while ((c = getopt_long(argc, argv, "k:d:vh", long_options, &option_index)) != -1)
-    {
-        switch (c)
-        {
-        case 0:
-            if (long_options[option_index].flag != 0)
-                break;
-        case 'k':
-            bitstreamFile = optarg;
-            break;
-        case 'd':
-            index = std::atoi(optarg);
-            break;
-        case 'h':
-            printHelp();
-            return 0;
-        case 'v':
-            verbose = true;
-            break;
-        default:
-            printHelp();
-            return 1;
-        }
+  std::string xclbin_fnm;
+  bool verbose = false;
+  unsigned int device_index = 0;
+
+  std::vector<std::string> args(argv+1,argv+argc);
+  std::string cur;
+  for (auto& arg : args) {
+    if (arg == "-h") {
+      usage();
+      return 1;
+    }
+    else if (arg == "-v") {
+      verbose = true;
+      continue;
     }
 
-    (void)verbose;
+    if (arg[0] == '-') {
+      cur = arg;
+      continue;
+    }
 
-    if (bitstreamFile.size() == 0)
-      throw std::runtime_error("FAILED_TEST\nNo bitstream specified");
+    if (cur == "-k")
+      xclbin_fnm = arg;
+    else if (cur == "-d")
+      device_index = std::stoi(arg);
+    else
+      throw std::runtime_error("Unknown option value " + cur + " " + arg);
+  }
 
-    if (halLogfile.size())
-      std::cout << "Using " << halLogfile << " as HAL driver logfile\n";
+  if (xclbin_fnm.empty())
+    throw std::runtime_error("FAILED_TEST\nNo xclbin specified");
 
-    std::cout << "HAL driver = " << sharedLibrary << "\n";
-    std::cout << "Host buffer alignment = " << alignment << " bytes\n";
-    std::cout << "Compiled kernel = " << bitstreamFile << "\n";
+  if (device_index >= xclProbe())
+    throw std::runtime_error("Cannot find device index (" + std::to_string(device_index) + ") specified");
 
-    if (index >= xclProbe())
-      throw std::runtime_error("Cannot find device index specified");
-
-    auto device = xrt::device(index);
-    auto uuid = device.load_xclbin(bitstreamFile);
-    runKernel(device, verbose, uuid.get());
-    return 0;
+  auto device = xrt::device(device_index);
+  auto uuid = device.load_xclbin(xclbin_fnm);
+  runKernel(device, verbose, uuid.get());
+  return 0;
 }
 
 int main(int argc, char** argv)
