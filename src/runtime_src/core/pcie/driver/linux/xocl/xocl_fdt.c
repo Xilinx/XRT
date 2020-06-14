@@ -248,6 +248,15 @@ static struct xocl_subdev_map		subdev_map[] = {
 	},
 	{
 		XOCL_SUBDEV_DMA,
+		XOCL_QDMA4,
+		{ NODE_QDMA4, NODE_STM4, NULL },
+		1,
+		0,
+		NULL,
+		NULL,
+       	},
+	{
+		XOCL_SUBDEV_DMA,
 		XOCL_QDMA,
 		{ NODE_QDMA, NODE_STM, NULL },
 		1,
