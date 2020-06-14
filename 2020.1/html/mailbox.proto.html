@@ -220,35 +220,36 @@ enum <code class="descname">xcl_mailbox_request</code><a class="headerlink" href
 <p><strong>Constants</strong></p>
 <dl class="docutils">
 <dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_UNKNOWN</span></code></dt>
-<dd><em>undescribed</em></dd>
+<dd>invalid OP code</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_TEST_READY</span></code></dt>
-<dd><em>undescribed</em></dd>
+<dd>test msg is ready (post only, internal test only)</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_TEST_READ</span></code></dt>
-<dd><em>undescribed</em></dd>
+<dd>fetch test msg from peer (internal test only)</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_LOCK_BITSTREAM</span></code></dt>
-<dd><em>undescribed</em></dd>
+<dd>lock down xclbin on mgmt pf (not implemented)</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_UNLOCK_BITSTREAM</span></code></dt>
-<dd><em>undescribed</em></dd>
+<dd>unlock xclbin on mgmt pf (not implemented)</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_HOT_RESET</span></code></dt>
-<dd><em>undescribed</em></dd>
+<dd>request mgmt pf driver to reset the board</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_FIREWALL</span></code></dt>
-<dd><em>undescribed</em></dd>
+<dd>firewall trip detected on mgmt pf (post only)</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_LOAD_XCLBIN_KADDR</span></code></dt>
-<dd><em>undescribed</em></dd>
+<dd>download xclbin (pointed to by a pointer)</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_LOAD_XCLBIN</span></code></dt>
-<dd><em>undescribed</em></dd>
+<dd>download xclbin (bitstream is in payload)</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_RECLOCK</span></code></dt>
-<dd><em>undescribed</em></dd>
+<dd>set clock frequency</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_PEER_DATA</span></code></dt>
-<dd><em>undescribed</em></dd>
+<dd>read specified data from peer</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_USER_PROBE</span></code></dt>
-<dd><em>undescribed</em></dd>
+<dd>for user pf to probe the peer mgmt pf</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_MGMT_STATE</span></code></dt>
-<dd><em>undescribed</em></dd>
+<dd>for mgmt pf to notify user pf of its state change
+(post only)</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_CHG_SHELL</span></code></dt>
-<dd><em>undescribed</em></dd>
+<dd>shell change is required on mgmt pf (post only)</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_PROGRAM_SHELL</span></code></dt>
-<dd><em>undescribed</em></dd>
+<dd>request mgmt pf driver to reprogram shell</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR</span></code></dt>
 <dd><em>undescribed</em></dd>
 </dl>

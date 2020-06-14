@@ -94,7 +94,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#user-pf-pf1">USER PF (PF1)</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#zynq-ultrascale-mpsoc-based-embedded-platforms">Zynq Ultrascale+ MPSoC Based Embedded Platforms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#zynq-7000-and-zynq-ultrascale-mpsoc-based-embedded-platforms">Zynq-7000 and ZYNQ Ultrascale+ MPSoC Based Embedded Platforms</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
@@ -292,16 +292,22 @@ in DFX partition. xocl driver is organized into subdevices and handles the follo
 <p>PCIe platform security and robustness is described in section <a class="reference internal" href="security.html#security-rst"><span class="std std-ref">Security of Alveo Platform</span></a>.</p>
 </div>
 </div>
-<div class="section" id="zynq-ultrascale-mpsoc-based-embedded-platforms">
-<h2>Zynq Ultrascale+ MPSoC Based Embedded Platforms<a class="headerlink" href="#zynq-ultrascale-mpsoc-based-embedded-platforms" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="zynq-7000-and-zynq-ultrascale-mpsoc-based-embedded-platforms">
+<h2>Zynq-7000 and ZYNQ Ultrascale+ MPSoC Based Embedded Platforms<a class="headerlink" href="#zynq-7000-and-zynq-ultrascale-mpsoc-based-embedded-platforms" title="Permalink to this headline">¶</a></h2>
 <div align="center" class="align-center"><img alt="_images/XRT-Architecture-Edge.svg" src="_images/XRT-Architecture-Edge.svg" /></div>
-<p>XRT supports following embedded platforms:</p>
+<dl class="docutils">
+<dt>XRT supports ZYNQ-7000 and ZYNQ Ultrascale+ MPSoC. User can create their own embedded platforms</dt>
+<dd>and enable XRT with the steps described <a class="reference internal" href="yocto.html#yocto-rst"><span class="std std-ref">Yocto Recipes For Embedded Flow</span></a>.</dd>
+</dl>
+<p><a class="reference external" href="https://github.com/Xilinx/Vitis_Embedded_Platform_Source">Source code</a> and
+<a class="reference external" href="https://www.xilinx.com/support/download/index.html/content/xilinx/en/downloadNav/embedded-platforms.html">pre-built</a>
+embedded platforms for the following Xilinx evaluation boards are provided:</p>
 <ol class="arabic simple">
-<li>ZCU19</li>
+<li>ZC706</li>
 <li>ZCU102</li>
 <li>ZCU104</li>
-<li>ZCU106</li>
 </ol>
+<p>File /etc/xocl.txt needs to be in the root file system so that XRT can know which platform it is running on.</p>
 <p>MPSoC based platforms are supported with PetaLinux base stack. XRT Linux kernel
 driver <em>zocl</em> does the heavy lifting for the embedded platform. It handles the
 following functionality</p>

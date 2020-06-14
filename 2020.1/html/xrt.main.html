@@ -265,28 +265,6 @@ XCL_DRIVER_DLLESPEC void <code class="descname">xclClose</code><span class="sig-
 <dd>Device handle</dd>
 </dl>
 <dl class="function">
-<dt id="c.xclResetDevice">
-XRT_DEPRECATED XCL_DRIVER_DLLESPEC int <code class="descname">xclResetDevice</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, enum xclResetKind<em>&nbsp;kind</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclResetDevice" title="Permalink to this definition">¶</a></dt>
-<dd><p>Reset a device, deprecated</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
-<dd>Device handle</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">enum</span> <span class="pre">xclResetKind</span> <span class="pre">kind</span></code></dt>
-<dd>Reset kind</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>0 on success or appropriate error number</p>
-<p>Reset the device. All running kernels will be killed and buffers in DDR will be
-purged. A device may be reset if a user’s application dies without waiting for
-running kernel(s) to finish.</p>
-<p><strong>NOTE</strong></p>
-<p>Only implemeted Reset kind through user pf is XCL_USER_RESET</p>
-<p>This API is deprecated and will be removed in future release.
-New clients should use xbutil utility to reset device instead</p>
-<dl class="function">
 <dt id="c.xclGetDeviceInfo2">
 XCL_DRIVER_DLLESPEC int <code class="descname">xclGetDeviceInfo2</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, struct xclDeviceInfo2 *<em>&nbsp;info</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclGetDeviceInfo2" title="Permalink to this definition">¶</a></dt>
 <dd><p>Obtain various bits of information from the device</p>
@@ -392,38 +370,6 @@ the PR region</dd>
 <p><strong>Return</strong></p>
 <p>0 on success or appropriate error number</p>
 <dl class="function">
-<dt id="c.xclLockDevice">
-XRT_DEPRECATED XCL_DRIVER_DLLESPEC int <code class="descname">xclLockDevice</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclLockDevice" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get exclusive ownership of the device, deprecated</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
-<dd>Device handle</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>0 on success or appropriate error number</p>
-<p>The lock is necessary before performing buffer migration, register
-access or bitstream downloads.</p>
-<p>This API is deprecated and will be removed in future release.
-This functionality is no longer supported.</p>
-<dl class="function">
-<dt id="c.xclUnlockDevice">
-XRT_DEPRECATED XCL_DRIVER_DLLESPEC int <code class="descname">xclUnlockDevice</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclUnlockDevice" title="Permalink to this definition">¶</a></dt>
-<dd><p>Release exclusive ownership of the device, deprecated</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
-<dd>Device handle</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>0 on success or appropriate error number</p>
-<p>This API is deprecated and will be removed in future release.
-This functionality is no longer supported.</p>
-<dl class="function">
 <dt id="c.xclOpenContext">
 XCL_DRIVER_DLLESPEC int <code class="descname">xclOpenContext</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, xuid_t<em>&nbsp;xclbinId</em>, unsigned int<em>&nbsp;ipIndex</em>, bool<em>&nbsp;shared</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclOpenContext" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create shared/exclusive context on compute units</p>
@@ -466,22 +412,6 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclCloseContext</code><span class
 <p><strong>Return</strong></p>
 <p>0 on success or appropriate error number</p>
 <p>Close a previously allocated shared/exclusive context for a hardware IP.</p>
-<dl class="function">
-<dt id="c.xclBootFPGA">
-XRT_DEPRECATED XCL_DRIVER_DLLESPEC int <code class="descname">xclBootFPGA</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclBootFPGA" title="Permalink to this definition">¶</a></dt>
-<dd><p>Boot the FPGA from PROM, deprecated</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
-<dd>Device handle</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>0 on success or appropriate error number</p>
-<p>This should only be called when there are no other clients. It will cause PCIe bus re-enumeration</p>
-<p>This API is deprecated and will be removed in future release.
-This functionality is no longer supported.</p>
 <dl class="function">
 <dt id="c.xclLogMsg">
 XCL_DRIVER_DLLESPEC int <code class="descname">xclLogMsg</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, enum xrtLogMsgLevel<em>&nbsp;level</em>, const char *<em>&nbsp;tag</em>, const char *<em>&nbsp;format</em>, ...<span class="sig-paren">)</span><a class="headerlink" href="#c.xclLogMsg" title="Permalink to this definition">¶</a></dt>
@@ -805,56 +735,6 @@ XCL_DRIVER_DLLESPEC ssize_t <code class="descname">xclUnmgdPwrite</code><span cl
 location specified. Users may use this if they want to perform
 their own device memory management – not using the buffer object
 (BO) framework defined before.</p>
-<dl class="function">
-<dt id="c.xclWrite">
-XRT_DEPRECATED XCL_DRIVER_DLLESPEC size_t <code class="descname">xclWrite</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, enum xclAddressSpace<em>&nbsp;space</em>, uint64_t<em>&nbsp;offset</em>, const void *<em>&nbsp;hostBuf</em>, size_t<em>&nbsp;size</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclWrite" title="Permalink to this definition">¶</a></dt>
-<dd><p>Perform register write operation, deprecated</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
-<dd>Device handle</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">enum</span> <span class="pre">xclAddressSpace</span> <span class="pre">space</span></code></dt>
-<dd>Address space</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">uint64_t</span> <span class="pre">offset</span></code></dt>
-<dd>Offset in the address space</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">void</span> <span class="pre">*</span> <span class="pre">hostBuf</span></code></dt>
-<dd>Source data pointer</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">size</span></code></dt>
-<dd>Size of data to copy</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>size of bytes written or appropriate error number</p>
-<p>This API may be used to write to device registers exposed on PCIe
-BAR. Offset is relative to the the address space. A device may have
-many address spaces.
-<em>This API is deprecated. Please use :c:func:`xclRegWrite()`, instead.</em></p>
-<dl class="function">
-<dt id="c.xclRead">
-XRT_DEPRECATED XCL_DRIVER_DLLESPEC size_t <code class="descname">xclRead</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, enum xclAddressSpace<em>&nbsp;space</em>, uint64_t<em>&nbsp;offset</em>, void *<em>&nbsp;hostbuf</em>, size_t<em>&nbsp;size</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclRead" title="Permalink to this definition">¶</a></dt>
-<dd><p>Perform register read operation, deprecated</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
-<dd>Device handle</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">enum</span> <span class="pre">xclAddressSpace</span> <span class="pre">space</span></code></dt>
-<dd>Address space</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">uint64_t</span> <span class="pre">offset</span></code></dt>
-<dd>Offset in the address space</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">hostbuf</span></code></dt>
-<dd>Destination data pointer</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">size</span></code></dt>
-<dd>Size of data to copy</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>size of bytes written or appropriate error number</p>
-<p>This API may be used to read from device registers exposed on PCIe
-BAR. Offset is relative to the the address space. A device may have
-many address spaces.
-<em>This API is deprecated. Please use :c:func:`xclRegRead()`, instead.</em></p>
 <p><strong>XRT Compute Unit Execution Management APIs</strong></p>
 <p>These APIs are under development. These functions will be used to
 start compute units and wait for them to finish.</p>
@@ -921,30 +801,6 @@ value has same semantics as poll system call.  If return value is &gt;
 that if you perform wait for the same handle from multiple threads,
 you may lose wakeup for some of them. So, use different handle in
 different threads.</p>
-<dl class="function">
-<dt id="c.xclRegisterInterruptNotify">
-XRT_DEPRECATED XCL_DRIVER_DLLESPEC int <code class="descname">xclRegisterInterruptNotify</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, unsigned int<em>&nbsp;userInterrupt</em>, int<em>&nbsp;fd</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclRegisterInterruptNotify" title="Permalink to this definition">¶</a></dt>
-<dd><p>register <em>eventfd</em> file handle for a MSIX interrupt, deprecated</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
-<dd>Device handle</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">userInterrupt</span></code></dt>
-<dd>MSIX interrupt number</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">fd</span></code></dt>
-<dd>Eventfd handle</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>0 on success or standard errno</p>
-<p>Support for non managed interrupts (interrupts from custom IPs). fd
-should be obtained from eventfd system call. Caller should use
-standard poll/read eventfd framework in order to wait for
-interrupts. The handles are automatically unregistered on process
-exit.</p>
-<p>This API is deprecated and will be removed in future release.
-This functionality is no longer supported.</p>
 <p><strong>XRT Stream Queue APIs</strong></p>
 <p>These functions are used for next generation DMA Engine, QDMA. QDMA
 provides not only memory mapped DMA which moves data between host

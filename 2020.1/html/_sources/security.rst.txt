@@ -5,7 +5,6 @@ Security of Alveo Platform
 
 .. image:: XSA-shell.svg
    :align: center
-   :name: Alveo Shell Architecture
 
 Security is built into Alveo platform hardware and software architecture. The platform
 is made up of two fixed physical partitions: an immutable Shell and user compiled DFX partition.
