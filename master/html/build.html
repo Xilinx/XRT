@@ -254,6 +254,10 @@ running <code class="docutils literal notranslate"><span class="pre">build.sh</s
 </div>
 <div class="section" id="build-rpm-package-on-rhel-centos-or-deb-package-on-ubuntu">
 <h3>Build RPM package on RHEL/CentOS or DEB package on Ubuntu<a class="headerlink" href="#build-rpm-package-on-rhel-centos-or-deb-package-on-ubuntu" title="Permalink to this headline">¶</a></h3>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">XRT includes source code for ERT firmware, which must compiled using the MicroBlaze GCC compiler available with Xilinx Vitis.  Before building XRT locally, it is recommended that Xilinx Vitis is installed and that XILINX_VITIS environment variable is set accordingly.</p>
+</div>
 <p>The package is automatically built for the <code class="docutils literal notranslate"><span class="pre">Release</span></code>
 version but not for the <code class="docutils literal notranslate"><span class="pre">Debug</span></code> version:</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>cd build/Release
@@ -267,12 +271,12 @@ make package
 <h3>Install the XRT RPM package<a class="headerlink" href="#install-the-xrt-rpm-package" title="Permalink to this headline">¶</a></h3>
 <div class="admonition warning">
 <p class="first admonition-title">Warning</p>
-<p class="last">Before installing a locally built RPM for XRT, please copy aside <code class="docutils literal notranslate"><span class="pre">/lib/firmware/xilinx/sched*.bin</span></code>, which contain the ERT firmware for MicroBlaze. If XRT is built without access to the MicroBlaze GCC compiler, then <code class="docutils literal notranslate"><span class="pre">sched.bin</span></code> and <code class="docutils literal notranslate"><span class="pre">sched_u50.bin</span></code> will be missing from the RPM.  After installing a local build of XRT, you must manually copy the firmware files back to <code class="docutils literal notranslate"><span class="pre">/lib/firmware/xilinx</span></code>.</p>
+<p class="last">Before installing a locally built RPM for XRT, please make sure the ERT firmware was built by checking that <code class="docutils literal notranslate"><span class="pre">build/Release/opt/xilinx/xrt/share/fw/sched*.bin</span></code> exists under the build tree.  If <code class="docutils literal notranslate"><span class="pre">sched.bin</span></code> files are missing, please download and install Xilinx Vitis, set XILINX_VITIS, and build XRT again.  If you do not plan to install the RPM package then existing firmware under <code class="docutils literal notranslate"><span class="pre">/lib/firmware/xilinx</span></code> will continue to be used.</p>
 </div>
 <p>Install by providing a full path to the RPM package, for example, from
 inside either the <code class="docutils literal notranslate"><span class="pre">Release</span></code> or <code class="docutils literal notranslate"><span class="pre">Debug</span></code> directory according to
 purpose with (the actual package name might differ)</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>sudo yum reinstall ./XRT-2.1.0-Linux.rpm
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>sudo yum reinstall ./xrt_202020.2.7.0_7.4.1708-x86_64-xrt.rpm
 </pre></div>
 </div>
 </div>
@@ -280,12 +284,12 @@ purpose with (the actual package name might differ)</p>
 <h3>Install the XRT DEB package<a class="headerlink" href="#install-the-xrt-deb-package" title="Permalink to this headline">¶</a></h3>
 <div class="admonition warning">
 <p class="first admonition-title">Warning</p>
-<p class="last">Before installing a locally built DEB for XRT, please copy aside <code class="docutils literal notranslate"><span class="pre">/lib/firmware/xilinx/sched*.bin</span></code>, which contain the ERT firmware for MicroBlaze. If XRT is built without access to the MicroBlaze GCC compiler, then <code class="docutils literal notranslate"><span class="pre">sched.bin</span></code> and <code class="docutils literal notranslate"><span class="pre">sched_u50.bin</span></code> will be missing from the DEB.  After installing a local build of XRT, you must manually copy the firmware files back to <code class="docutils literal notranslate"><span class="pre">/lib/firmware/xilinx</span></code>.</p>
+<p class="last">Before installing a locally built DEB for XRT, please make sure the ERT firmware was built by checking that <code class="docutils literal notranslate"><span class="pre">build/Release/opt/xilinx/xrt/share/fw/sched*.bin</span></code> exists under the build tree.  If <code class="docutils literal notranslate"><span class="pre">sched.bin</span></code> files are missing, please download and install Xilinx Vitis, set XILINX_VITIS, and build XRT again.  If you do not plan to install the DEB package then existing firmware under <code class="docutils literal notranslate"><span class="pre">/lib/firmware/xilinx</span></code> will continue to be used.</p>
 </div>
 <p>Install by providing a full path to the DEB package, for example, from
 inside either the <code class="docutils literal notranslate"><span class="pre">Release</span></code> or <code class="docutils literal notranslate"><span class="pre">Debug</span></code> directory according to
 purpose with (the actual package name might differ)</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>sudo apt install --reinstall ./xrt_201830.2.1.0_18.10.deb
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>sudo apt install --reinstall ./xrt_202020.2.7.0_18.04-amd64-xrt.deb
 </pre></div>
 </div>
 </div>

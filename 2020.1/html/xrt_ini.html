@@ -247,9 +247,9 @@
 <h3>Runtime Group<a class="headerlink" href="#runtime-group" title="Permalink to this headline">¶</a></h3>
 <table border="1" class="docutils">
 <colgroup>
-<col width="19%" />
-<col width="33%" />
-<col width="48%" />
+<col width="22%" />
+<col width="32%" />
+<col width="46%" />
 </colgroup>
 <thead valign="bottom">
 <tr class="row-odd"><th class="head">Key</th>
@@ -292,18 +292,18 @@ Example, runtime_log=my_run.log</li>
 <p class="last">Example: cpu_affinity = {4,5,6}</p>
 </td>
 </tr>
-<tr class="row-odd"><td>polling_throttle</td>
-<td>[N]</td>
-<td><p class="first">Specify the time interval in microseconds
-that the runtime library polls the device.</p>
-<p class="last">Default: 0</p>
-</td>
-</tr>
-<tr class="row-even"><td>verbosity</td>
-<td>[0|1|2|3]</td>
+<tr class="row-odd"><td>verbosity</td>
+<td>[0|1|2|3|4|5|6|7]</td>
 <td><p class="first">verbosity level of log messages. Higher
 number implies more verbosity</p>
-<p class="last">Default: 0</p>
+<p class="last">Default: 4</p>
+</td>
+</tr>
+<tr class="row-even"><td>exclusive_cu_context</td>
+<td>[false|true]</td>
+<td><p class="first">When setting true OpenCL process holds
+exclusive access of the Compute Units</p>
+<p class="last">Default: false</p>
 </td>
 </tr>
 </tbody>
@@ -394,6 +394,44 @@ data:</p>
 </div></blockquote>
 <p>Example: trace_buffer_size=100M</p>
 <p class="last">Default: 1M</p>
+</td>
+</tr>
+<tr class="row-even"><td>lop_trace</td>
+<td>[false|true]</td>
+<td><p class="first">Enables or disables low overhead profiling.</p>
+<blockquote>
+<div><ul class="simple">
+<li>false: Disable low overhead profiling</li>
+<li>true : Enable low overhead profiling</li>
+</ul>
+</div></blockquote>
+<p class="last">Default: false</p>
+</td>
+</tr>
+<tr class="row-odd"><td>continuous_trace</td>
+<td>[false|true]</td>
+<td><p class="first">Enables the continuous offload of the device data
+while the application is running. In the event of a
+crash/hang a trace file will be available to help
+debugging.</p>
+<blockquote class="last">
+<div><blockquote>
+<div><ul class="simple">
+<li>false: Disable continous trance</li>
+<li>true : Enable continuous trace</li>
+</ul>
+</div></blockquote>
+<p>Default: false</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="row-even"><td>continuous_trace_inte-
+rval_ms</td>
+<td>[N]</td>
+<td><p class="first">Specifies the interval in millisecond to offload
+the device data in continous trace mode (see above)</p>
+<blockquote class="last">
+<div>Default: 10</div></blockquote>
 </td>
 </tr>
 </tbody>
@@ -491,6 +529,15 @@ wdb file</li>
 <div>Note: The kernel needs to be compiled with debug
 enabled for the waveform to be saved and
 displayed in the simulator GUI.</div></blockquote>
+</td>
+</tr>
+<tr class="row-odd"><td>timeout_scale</td>
+<td>[na|ms|sec|min]</td>
+<td><p class="first">Specify the time scaling unit of timeout specified
+clPollStreams command, otherwise Emulation does not
+support timeout specified in clPollStreams command</p>
+<blockquote class="last">
+<div>Default:na (not applicable)</div></blockquote>
 </td>
 </tr>
 </tbody>
