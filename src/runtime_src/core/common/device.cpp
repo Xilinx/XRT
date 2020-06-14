@@ -78,39 +78,29 @@ register_axlf(const axlf* top)
 
   // Build modified CONNECTIVITY and MEM_TOPOLOGY section based on memory group ids
   // Base groups off data from driver
-  
   auto m_itr = m_axlf_sections.find(MEM_TOPOLOGY);
-  if (m_itr != m_axlf_sections.end()) {
+  int g_count = (int)m_grp_info.size();
+  if (g_count && (m_itr != m_axlf_sections.end())) {
     auto m_mem = reinterpret_cast<::mem_topology*>((*m_itr).second.data());
+    
     /* Store the original memory topology before modify */
     size_t size = (*m_itr).second.size();
     char *buf = new char[size];
     memcpy(buf, m_mem, size);
     
     auto m_topo = reinterpret_cast<::mem_topology*>(buf);
-    int g_count = (int)m_grp_info.size();
-    for (auto i=0; i<m_topo->m_count; ++i) {
-      auto& mem = m_topo->m_mem_data[i];
-      std::cout << i << std::hex << " -> Before base addr : " << mem.m_base_address << " size : " << mem.m_size*1024 <<
-        std::dec << " tag : " << mem.m_tag << " type  : " << mem.m_type << std::endl;
-    }
-
     for (auto i=0; i<g_count; ++i) {
       auto& mem = m_mem->m_mem_data[i];
       auto it = m_grp_info.find(i);
       if (it != m_grp_info.end()) {
         auto l_idx = (*it).second.first;
         auto h_idx = (*it).second.second;
-        std::cout << i << std::hex << " -> Before Updating base addr : " << mem.m_base_address << " size : " << mem.m_size << std::endl;
-        std::cout << i << std::hex << " -> tag : " << mem.m_tag << " type  : " << mem.m_type << std::endl;
 	mem.m_base_address = m_topo->m_mem_data[l_idx].m_base_address;
         mem.m_size = (m_topo->m_mem_data[h_idx].m_base_address + m_topo->m_mem_data[h_idx].m_size) -
 			m_topo->m_mem_data[l_idx].m_base_address;
         mem.m_type = m_topo->m_mem_data[l_idx].m_type;
         memcpy(&mem.m_tag, m_topo->m_mem_data[l_idx].m_tag, sizeof(m_topo->m_mem_data[l_idx].m_tag));
         mem.m_used = 1;
-        std::cout << i << std::hex << " -> After Updating base addr : " << mem.m_base_address << " size : " << mem.m_size << std::endl;
-        std::cout << i << std::hex << " -> tag : " << mem.m_tag << " type  : " << mem.m_type << std::endl;
       }
     }
     // Update remaing entries as un-used
@@ -118,14 +108,8 @@ register_axlf(const axlf* top)
 	    auto& mem = m_mem->m_mem_data[i];
 	    mem.m_used = 0;
     }
-
-    for (auto i=0; i<m_mem->m_count; ++i) {
-	    auto& mem = m_mem->m_mem_data[i];
-	    std::cout << i << std::hex << " -> After base addr : " << mem.m_base_address << " size : " << mem.m_size << std::endl;
-	    std::cout << i << std::hex << " -> tag : " << mem.m_tag << " type  : " << mem.m_type << std::endl;
-    }
+    // Update the new memory topology count 
     m_mem->m_count = g_count;
-    std::cout << std::dec << " count : " << g_count << std::endl;
     delete []buf;
   }
 
@@ -136,15 +120,11 @@ register_axlf(const axlf* top)
       auto& con = m_con->m_connection[i];
       auto it = m_grp_map.find(std::make_pair(con.m_ip_layout_index,
                                               con.arg_index));
-      std::cout << i << " Before -> cu : " << con.m_ip_layout_index << " arg : " << con.arg_index << " bank : " << con.mem_data_index << std::endl; 
       if (it != m_grp_map.end()) {
         con.mem_data_index = (*it).second;
       }
-      std::cout << i << " After  -> cu : " << con.m_ip_layout_index << " arg : " << con.arg_index << " grp  : " << con.mem_data_index << std::endl; 
     }
   }
-
-  std::cout << "Returning >>>>>>>>>>>>>>>>>> " << std::endl;
 }
 
 std::pair<const char*, size_t>
@@ -241,7 +221,6 @@ populate_mem_group_info(const char *infoBuff)
 
     m_grp_info.emplace(i, std::make_pair(m_grp->l_bank_idx, m_grp->h_bank_idx));
     infoBuff += sizeof(*m_grp);
-    std::cout << i << " -> l_bank_idx : " << m_grp->l_bank_idx << " h idx : " << m_grp->h_bank_idx << std::endl; 
   }
 
   grpInfoMap.mem_map = (struct xcl_mem_map *)infoBuff;
@@ -257,7 +236,6 @@ populate_mem_group_info(const char *infoBuff)
     
     m_grp_map.emplace(std::make_pair(m_map->cu_id, m_map->arg_id), m_map->grp_id);
     infoBuff += sizeof(*m_map);
-    std::cout << i << " -> cu : " << m_map->cu_id << " arg : " << m_map->arg_id << " grp : " << m_map->grp_id << std::endl; 
   }
 }
 
