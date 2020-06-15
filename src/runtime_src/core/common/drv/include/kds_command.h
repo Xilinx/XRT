@@ -17,9 +17,8 @@
 #define KEY_VAL 1
 
 enum kds_opcode {
-	OP_CONFIG_CTRL	= 0,
+	OP_CONFIG = 0,
 	OP_START,
-	OP_ECHO, /* Reserved for performance test purpose */
 };
 
 enum kds_status {

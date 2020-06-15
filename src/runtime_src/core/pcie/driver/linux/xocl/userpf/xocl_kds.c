@@ -45,8 +45,18 @@ kds_echo_store(struct device *dev, struct device_attribute *da,
 }
 static DEVICE_ATTR(kds_echo, 0644, kds_echo_show, kds_echo_store);
 
+static ssize_t
+kds_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+
+	return show_kds_stat(&XDEV(xdev)->kds, buf);
+}
+static DEVICE_ATTR_RO(kds_stat);
+
 static struct attribute *kds_attrs[] = {
 	&dev_attr_kds_echo.attr,
+	&dev_attr_kds_stat.attr,
 	NULL,
 };
 
@@ -71,7 +81,7 @@ xocl_ctx_to_info(struct drm_xocl_ctx *args, struct kds_ctx_info *info)
 static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 			    struct drm_xocl_ctx *args)
 {
-	struct kds_ctx_info info;
+	struct kds_ctx_info	 info;
 	xuid_t *uuid;
 	int ret;
 
@@ -94,7 +104,7 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 	 * until this client close all of the contexts.
 	 */
 	xocl_ctx_to_info(args, &info);
-	ret = kds_add_context(client, &info);
+	ret = kds_add_context(&XDEV(xdev)->kds, client, &info);
 
 out:
 	if (!client->num_ctx) {
@@ -109,7 +119,7 @@ out:
 static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 			    struct drm_xocl_ctx *args)
 {
-	struct kds_ctx_info info;
+	struct kds_ctx_info	 info;
 	xuid_t *uuid;
 	int ret = 0;
 
@@ -132,7 +142,7 @@ static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 	}
 
 	xocl_ctx_to_info(args, &info);
-	ret = kds_del_context(client, &info);
+	ret = kds_del_context(&XDEV(xdev)->kds, client, &info);
 	if (ret)
 		goto out;
 
@@ -223,7 +233,7 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 		start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 
 	/* Now, we could forget execbuf */
-	ret = kds_add_command(xcmd);
+	ret = kds_add_command(&XDEV(xdev)->kds, xcmd);
 	if (ret)
 		kds_free_command(xcmd);
 

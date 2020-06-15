@@ -17,6 +17,7 @@
 #include <linux/uuid.h>
 
 #include "kds_command.h"
+#include "xrt_cu.h"
 
 #define kds_info(client, fmt, args...)			\
 	dev_info(client->dev, " %llx %s: "fmt, (u64)client->dev, __func__, ##args)
@@ -37,12 +38,6 @@ enum kds_type {
 #define	CU_CTX_SHARED		0x00
 #define	CU_CTX_EXCLUSIVE	0x01
 
-/* Context operation bits indicated that what operation to perform */
-#define	CU_CTX_OP_MASK		0xF0
-#define	CU_CTX_OP_INIT		0x10
-#define	CU_CTX_OP_FINI		0x20
-#define	CU_CTX_OP_ADD		0x30
-#define	CU_CTX_OP_DEL		0x40
 /* Virtual CU index
  * This is useful when there is no need to open a context on hardware CU,
  * but still need to lockdown the xclbin.
@@ -51,23 +46,6 @@ enum kds_type {
 struct kds_ctx_info {
 	u32		  cu_idx;
 	u32		  flags;
-};
-
-#define TO_KDS_CTRL(core) ((struct kds_ctrl *)(core))
-
-/**
- * struct kds_ctrl: KDS controller core.
- * This is the basic controller that KDS should understand.
- * This should be the first member of a controller implementation.
- * Any members added here should be shared by all controllers.
- *
- * @control_ctx: Delete context from a client
- * @submit: Submit command to controller
- */
-struct kds_ctrl {
-	int (* control_ctx)(struct kds_ctrl *ctrl, struct kds_client *client,
-			    struct kds_ctx_info *info);
-	void (* submit)(struct kds_ctrl *ctrl, struct kds_command *xcmd);
 };
 
 /**
@@ -80,11 +58,10 @@ struct kds_ctrl {
  * @dev:  Device
  * @pid:  Client process ID
  * @lock: Mutex to protext context related members
- * @ctrl_priv: Private data of controller
  * @xclbin_id: UUID of xclbin cache
  * @num_ctx: Number of context that opened
  * @virt_cu_ref: Reference count of virtual CU
- * @ctrl: Pointer to controllers array
+ * @cu_bitmap: bitmap of opening CU
  * @waitq: Wait queue for poll client
  * @event: Events to notify user client
  */
@@ -93,10 +70,10 @@ struct kds_client {
 	struct device	         *dev;
 	struct pid	         *pid;
 	struct mutex		  lock;
-	void			 *ctrl_priv[KDS_MAX_TYPE];
 	void			 *xclbin_id;
 	int			  num_ctx;
 	int			  virt_cu_ref;
+	DECLARE_BITMAP(cu_bitmap, MAX_CUS);
 #if PRE_ALLOC
 	u32			  max_xcmd;
 	u32			  xcmd_idx;
@@ -104,47 +81,62 @@ struct kds_client {
 	void			 *infos;
 #endif
 	/*
-	 * "ctrl" is used in thread that is submitting CU cmds.
 	 * "waitq" and "event" are modified in thread that is completing them.
 	 * In order to prevent false sharing, they need to be in different
 	 * cache lines. Hence we add a "padding" in between (assuming 128-byte
 	 * is big enough for most CPU architectures).
 	 */
-	struct kds_ctrl		**ctrl;
 	u64			  padding[16];
 	wait_queue_head_t	  waitq;
 	atomic_t		  event;
 };
 
+/* the MSB of cu_refs is used for exclusive flag */
+#define CU_EXCLU_MASK		0x80000000
+struct kds_cu_mgmt {
+	struct xrt_cu		 *xcus[MAX_CUS];
+	struct mutex		  lock;
+	int			  num_cus;
+	u32			  cu_refs[MAX_CUS];
+	u64			  cu_usage[MAX_CUS];
+	int			  configured;
+};
+
 /**
- * struct kds_sched: KDS scheduler manage controllers and client list.
- *		     There should be only one KDS on a device.
+ * struct kds_sched: KDS scheduler manage CUs and client list.
+ *		     There should be only one KDS per device.
  *
- * @ctrl: Controllers array only one per KDS
  * @list_head: Client list
  * @num_client: Number of clients
  * @lock: Mutex to protect client list
+ * @cu_mgmt: hardware CUs management data structure
  */
 struct kds_sched {
-	struct kds_ctrl	       *ctrl[KDS_MAX_TYPE];
 	struct list_head	clients;
 	int			num_client;
 	struct mutex		lock;
+	struct kds_cu_mgmt	cu_mgmt;
 };
 
 int kds_init_sched(struct kds_sched *kds);
-void kds_fini_sched(struct kds_sched *kds);
 int kds_init_client(struct kds_sched *kds, struct kds_client *client);
+void kds_fini_sched(struct kds_sched *kds);
 void kds_fini_client(struct kds_sched *kds, struct kds_client *client);
 u32 kds_live_clients(struct kds_sched *kds, pid_t **plist);
-struct kds_command *kds_alloc_command(struct kds_client *client, u32 size);
-int kds_add_context(struct kds_client *client, struct kds_ctx_info *info);
-int kds_del_context(struct kds_client *client, struct kds_ctx_info *info);
+int kds_add_cu(struct kds_sched *kds, struct xrt_cu *xcu);
+int kds_del_cu(struct kds_sched *kds, struct xrt_cu *xcu);
+int kds_add_context(struct kds_sched *kds, struct kds_client *client,
+		    struct kds_ctx_info *info);
+int kds_del_context(struct kds_sched *kds, struct kds_client *client,
+		    struct kds_ctx_info *info);
+int kds_add_command(struct kds_sched *kds, struct kds_command *xcmd);
 
-int kds_add_command(struct kds_command *xcmd);
+struct kds_command *kds_alloc_command(struct kds_client *client, u32 size);
+
 void kds_free_command(struct kds_command *xcmd);
 
 /* sysfs */
 int store_kds_echo(struct kds_sched *kds, const char *buf, size_t count,
 		   int kds_mode, u32 clients, int *echo);
+ssize_t show_kds_stat(struct kds_sched *kds, char *buf);
 #endif

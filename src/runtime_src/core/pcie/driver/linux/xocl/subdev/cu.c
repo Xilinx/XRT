@@ -22,15 +22,6 @@ struct xocl_cu {
 	struct platform_device	*pdev;
 };
 
-static int cu_submit(struct platform_device *pdev, struct kds_command *xcmd)
-{
-	struct xocl_cu *xcu = platform_get_drvdata(pdev);
-
-	xrt_cu_submit(&xcu->base, xcmd);
-
-	return 0;
-}
-
 static ssize_t debug_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -102,10 +93,10 @@ static int cu_probe(struct platform_device *pdev)
 	}
 	xcu->base.res = res;
 
-	err = xocl_cu_ctrl_add_cu(xdev, &xcu->base);
+	err = xocl_kds_add_cu(xdev, &xcu->base);
 	if (err) {
-		err = 0; //Ignore this error until all platforms support CU controller
-		//XCU_ERR(xcu, "Not able to add CU %p to controller", xcu);
+		err = 0; //Ignore this error now
+		//XCU_ERR(xcu, "Not able to add CU %p to KDS", xcu);
 		goto err1;
 	}
 
@@ -132,7 +123,7 @@ static int cu_probe(struct platform_device *pdev)
 	return 0;
 
 err2:
-	xocl_cu_ctrl_remove_cu(xdev, &xcu->base);
+	(void) xocl_kds_del_cu(xdev, &xcu->base);
 err1:
 	vfree(res);
 err:
@@ -164,7 +155,7 @@ static int cu_remove(struct platform_device *pdev)
 		break;
 	}
 
-	(void) xocl_cu_ctrl_remove_cu(xdev, &xcu->base);
+	(void) xocl_kds_del_cu(xdev, &xcu->base);
 
 	if (xcu->base.res)
 		vfree(xcu->base.res);
@@ -177,16 +168,8 @@ static int cu_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static struct xocl_cu_funcs cu_ops = {
-	.submit	= cu_submit,
-};
-
-static struct xocl_drv_private cu_priv = {
-	.ops = &cu_ops,
-};
-
 static struct platform_device_id cu_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_CU), (kernel_ulong_t)&cu_priv },
+	{ XOCL_DEVNAME(XOCL_CU), 0 },
 	{ },
 };
 

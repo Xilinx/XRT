@@ -928,9 +928,6 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 
 	/* Now initial kds */
 	if (kds_mode == 1) {
-		ret = cu_ctrl_init(zdev);
-		if (ret)
-			goto err_cu_ctrl;
 		ret = zocl_init_sched(zdev);
 		if (ret)
 			goto err_sched;
@@ -944,8 +941,6 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 
 /* error out in exact reverse order of init */
 err_sched:
-	cu_ctrl_fini(zdev);
-err_cu_ctrl:
 	zocl_fini_sysfs(drm->dev);
 err_sysfs:
 	zocl_xclbin_fini(zdev);
@@ -985,10 +980,8 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 	mutex_destroy(&zdev->zdev_xclbin_lock);
 	zocl_fini_sysfs(drm->dev);
 
-	if (kds_mode == 1) {
+	if (kds_mode == 1)
 		zocl_fini_sched(zdev);
-		cu_ctrl_fini(zdev);
-	}
 
 	kfree(zdev->apertures);
 
