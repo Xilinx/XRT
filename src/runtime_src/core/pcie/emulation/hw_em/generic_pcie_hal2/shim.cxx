@@ -91,7 +91,7 @@ namespace xclhwemhal2 {
       if(!handle)
         continue;
       handle->saveWaveDataBase();
-      systemUtil::makeSystemCall(handle->deviceDirectory, systemUtil::systemOperation::REMOVE);
+      systemUtil::makeSystemCall(handle->deviceDirectory, systemUtil::systemOperation::REMOVE, "", boost::lexical_cast<std::string>(__LINE__));
     }
 
   }
@@ -311,22 +311,25 @@ namespace xclhwemhal2 {
     //    getpid is defined in unistd.h
     std::sprintf(fileName.get(), "%s/tempFile_%d", deviceDirectory.c_str(), binaryCounter);
 #endif
+    systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::PERMISSIONS, "777", boost::lexical_cast<std::string>(__LINE__));
 
     if (mMemModel)
     {
       delete mMemModel;
       mMemModel = NULL;
     }
+
     if (sock)
     {
       resetProgram();
     }
+
     std::stringstream ss;
     ss << deviceDirectory << "/binary_" << binaryCounter;
     std::string binaryDirectory = ss.str();
 
-    systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::CREATE);
-    systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777");
+    systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::CREATE, "", boost::lexical_cast<std::string>(__LINE__));
+    systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777", boost::lexical_cast<std::string>(__LINE__));
 
     mRunDeviceBinDir = binaryDirectory;
 
@@ -550,8 +553,16 @@ namespace xclhwemhal2 {
       if (userSpecifiedSimPath.empty())
       {
         std::string _sFilePath(fileName.get());
-        systemUtil::makeSystemCall(_sFilePath, systemUtil::systemOperation::UNZIP, binaryDirectory);
-        systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777");
+        systemUtil::makeSystemCall(_sFilePath, systemUtil::systemOperation::UNZIP, binaryDirectory, boost::lexical_cast<std::string>(__LINE__));
+        systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777", boost::lexical_cast<std::string>(__LINE__));
+
+        std::string sim_path1 = binaryDirectory + "/behav_waveform/xsim";
+        std::string sim_path2 = binaryDirectory + "/behav_gdb/xsim";
+
+        if (!boost::filesystem::exists(sim_path1) && !boost::filesystem::exists(sim_path2)) {
+          std::string dMsg = "ERROR: [HW-EMU 11] UNZIP operation failed. Not to able to get the required simulation binaries from xclbin";
+          logMessage(dMsg, 0);
+        }
       }
 
       if (lWaveform == xclemulation::DEBUG_MODE::GUI)
@@ -829,8 +840,8 @@ namespace xclhwemhal2 {
       os.close();
 
       std::string emuDataFilePath(emuDataFileName.get());
-      systemUtil::makeSystemCall(emuDataFilePath, systemUtil::systemOperation::UNZIP, simPath);
-      systemUtil::makeSystemCall(mRunDeviceBinDir, systemUtil::systemOperation::PERMISSIONS, "777");
+      systemUtil::makeSystemCall(emuDataFilePath, systemUtil::systemOperation::UNZIP, simPath, boost::lexical_cast<std::string>(__LINE__));
+      systemUtil::makeSystemCall(mRunDeviceBinDir, systemUtil::systemOperation::PERMISSIONS, "777", boost::lexical_cast<std::string>(__LINE__));
     }
   }
 
@@ -1308,23 +1319,23 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
         }
         std::string wdbFileName = binaryDirectory + "/" + fileName + "."+extension;
         std::string destPath = "'" + std::string(path) + "/" + fileName +"." + extension + "'";
-        systemUtil::makeSystemCall(wdbFileName, systemUtil::systemOperation::COPY,destPath);
+        systemUtil::makeSystemCall(wdbFileName, systemUtil::systemOperation::COPY,destPath, boost::lexical_cast<std::string>(__LINE__));
 
         // Copy waveform config
         std::string wcfgFilePath= binaryDirectory + "/" + bdName + "_behav.wcfg";
         std::string destPath2 = "'" + std::string(path) + "/" + fileName + ".wcfg'";
-        systemUtil::makeSystemCall(wcfgFilePath, systemUtil::systemOperation::COPY, destPath2);
+        systemUtil::makeSystemCall(wcfgFilePath, systemUtil::systemOperation::COPY, destPath2, boost::lexical_cast<std::string>(__LINE__));
 
         // Append to detailed kernel trace data mining results file
         std::string logFilePath= binaryDirectory + "/profile_kernels.csv";
         std::string destPath3 = "'" + std::string(path) + "/profile_kernels.csv'";
-        systemUtil::makeSystemCall(logFilePath, systemUtil::systemOperation::APPEND, destPath3);
+        systemUtil::makeSystemCall(logFilePath, systemUtil::systemOperation::APPEND, destPath3, boost::lexical_cast<std::string>(__LINE__));
         xclemulation::copyLogsFromOneFileToAnother(logFilePath, mDebugLogStream);
 
         // Append to detailed kernel trace "timeline" file
         std::string traceFilePath = binaryDirectory + "/timeline_kernels.csv";
         std::string destPath4 = "'" + std::string(path) + "/timeline_kernels.csv'";
-        systemUtil::makeSystemCall(traceFilePath, systemUtil::systemOperation::APPEND, destPath4);
+        systemUtil::makeSystemCall(traceFilePath, systemUtil::systemOperation::APPEND, destPath4, boost::lexical_cast<std::string>(__LINE__));
 
         if (mLogStream.is_open())
           mLogStream << "appended " << logFilePath << " to " << destPath3 << std::endl;
@@ -1332,22 +1343,22 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
         // Copy Simulation Log file
         std::string simulationLogFilePath= binaryDirectory + "/" + "simulate.log";
         std::string destPath5 = "'" + std::string(path) + "/" + fileName + "_simulate.log'";
-        systemUtil::makeSystemCall(simulationLogFilePath, systemUtil::systemOperation::COPY, destPath5);
+        systemUtil::makeSystemCall(simulationLogFilePath, systemUtil::systemOperation::COPY, destPath5, boost::lexical_cast<std::string>(__LINE__));
 
         // Copy proto inst file
         std::string protoFilePath= binaryDirectory + "/" + bdName + "_behav.protoinst";
         std::string destPath6 = "'" + std::string(path) + "/" + fileName + ".protoinst'";
-        systemUtil::makeSystemCall(protoFilePath, systemUtil::systemOperation::COPY, destPath6);
+        systemUtil::makeSystemCall(protoFilePath, systemUtil::systemOperation::COPY, destPath6, boost::lexical_cast<std::string>(__LINE__));
         
         // Copy Simulation Log file
         std::string sdxEmulatorLogFilePath= binaryDirectory + "/" + "sdx_emulator.log";
         std::string destPath7 = "'" + std::string(path) + "/" + fileName + "_sdx_emulator.log'";
-        systemUtil::makeSystemCall(sdxEmulatorLogFilePath, systemUtil::systemOperation::COPY, destPath7);
+        systemUtil::makeSystemCall(sdxEmulatorLogFilePath, systemUtil::systemOperation::COPY, destPath7, boost::lexical_cast<std::string>(__LINE__));
         
         // Copy xsc_report Log file
         std::string xscReportLogFilePath= binaryDirectory + "/" + "xsc_report.log";
         std::string destPath8 = "'" + std::string(path) + "/" + fileName + "_xsc_report.log'";
-        systemUtil::makeSystemCall(xscReportLogFilePath, systemUtil::systemOperation::COPY, destPath8);
+        systemUtil::makeSystemCall(xscReportLogFilePath, systemUtil::systemOperation::COPY, destPath8, boost::lexical_cast<std::string>(__LINE__));
 
       }
       i++;
@@ -1379,8 +1390,10 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
     if (!sock) 
     {
-      if( xclemulation::config::getInstance()->isKeepRunDirEnabled() == false)
-        systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::REMOVE);
+      if (xclemulation::config::getInstance()->isKeepRunDirEnabled() == false) {
+        systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::REMOVE, "", boost::lexical_cast<std::string>(__LINE__));
+      }
+
       if(mMBSch && mCore)
       {
         mMBSch->fini_scheduler_thread();
@@ -1390,6 +1403,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
         mMBSch = NULL;
       }
       PRINTENDFUNC;
+      mLogStream.close();
       return;
     }
 
@@ -1417,9 +1431,10 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
     saveWaveDataBase();
     if( xclemulation::config::getInstance()->isKeepRunDirEnabled() == false)
-      systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::REMOVE);
+      systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::REMOVE, "", boost::lexical_cast<std::string>(__LINE__));
     google::protobuf::ShutdownProtobufLibrary();
     PRINTENDFUNC;
+    mLogStream.close();
   }
 
   int HwEmShim::resetProgram(bool saveWdb)
@@ -1511,7 +1526,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 #endif
       closemMessengerThread();
       //clean up directories which are created inside the driver
-      systemUtil::makeSystemCall(socketName, systemUtil::systemOperation::REMOVE);
+      systemUtil::makeSystemCall(socketName, systemUtil::systemOperation::REMOVE, "", boost::lexical_cast<std::string>(__LINE__));
     }
 
     if(saveWdb)
@@ -1670,8 +1685,8 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     deviceName = "device"+std::to_string(deviceIndex);
     deviceDirectory = xclemulation::getRunDirectory() +"/" + std::to_string(getpid())+"/hw_em/"+deviceName;
     
-    systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::CREATE);
-    systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::PERMISSIONS, "777");
+    systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::CREATE, "", boost::lexical_cast<std::string>(__LINE__));
+    systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::PERMISSIONS, "777", boost::lexical_cast<std::string>(__LINE__));
 
     std::memset(&mDeviceInfo, 0, sizeof(xclDeviceInfo2));
     fillDeviceInfo(&mDeviceInfo,&info);
@@ -1696,9 +1711,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       if(pPath)
       {
         std::string sdxProfileKernelFile = std::string(path) + "/profile_kernels.csv";
-        systemUtil::makeSystemCall(sdxProfileKernelFile, systemUtil::systemOperation::REMOVE);
+        systemUtil::makeSystemCall(sdxProfileKernelFile, systemUtil::systemOperation::REMOVE, "", boost::lexical_cast<std::string>(__LINE__));
         std::string sdxTraceKernelFile = std::string(path) + "/timeline_kernels.csv";
-        systemUtil::makeSystemCall(sdxTraceKernelFile, systemUtil::systemOperation::REMOVE);
+        systemUtil::makeSystemCall(sdxTraceKernelFile, systemUtil::systemOperation::REMOVE, "", boost::lexical_cast<std::string>(__LINE__));
       }
     }
     bUnified = _unified;
@@ -1974,9 +1989,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     if(pPath)
     {
       std::string sdxProfileKernelFile = std::string(path) + "/profile_kernels.csv";
-      systemUtil::makeSystemCall(sdxProfileKernelFile, systemUtil::systemOperation::REMOVE);
+      systemUtil::makeSystemCall(sdxProfileKernelFile, systemUtil::systemOperation::REMOVE, "", boost::lexical_cast<std::string>(__LINE__));
       std::string sdxTraceKernelFile = std::string(path) + "/timeline_kernels.csv";
-      systemUtil::makeSystemCall(sdxTraceKernelFile, systemUtil::systemOperation::REMOVE);
+      systemUtil::makeSystemCall(sdxTraceKernelFile, systemUtil::systemOperation::REMOVE, "", boost::lexical_cast<std::string>(__LINE__));
     }
     if ( logfileName && (logfileName[0] != '\0'))
     {
