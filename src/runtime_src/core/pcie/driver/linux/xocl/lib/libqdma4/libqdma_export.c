@@ -2422,6 +2422,86 @@ ssize_t qdma4_batch_request_submit(unsigned long dev_hndl, unsigned long id,
 	return 0;
 }
 
+void qdma4_request_cancel_done(struct qdma_descq *descq,
+				struct qdma_request *req)
+{
+	struct qdma_sgt_req_cb *cb = qdma_req_cb_get(req);
+	/* caller should hold the descq lock */
+	list_del(&cb->list);
+
+	pr_info("%s, %s, req 0x%p cancelled.\n",
+		descq->xdev->conf.name, descq->conf.name, req);
+
+	cb->canceled = 1;
+	cb->status = -ECANCELED;
+	cb->done = 1;
+
+	if (cb->unmap_needed) {
+		sgl_unmap(descq->xdev->conf.pdev, req->sgl, req->sgcnt,
+			  (descq->conf.q_type == Q_C2H) ?
+				 DMA_FROM_DEVICE : DMA_TO_DEVICE);
+		cb->unmap_needed = 0;
+	}
+
+	if (req->fp_done)
+		req->fp_done(req, cb->offset, -ECANCELED);
+	else
+		qdma_waitq_wakeup(&cb->wq);
+}
+
+int qdma4_request_cancel(unsigned long dev_hndl, unsigned long id,
+                        struct qdma_request *req, unsigned int count)
+{
+	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
+	struct qdma_descq *descq;
+        int i;
+        unsigned long flags;
+
+	/** make sure that the dev_hndl passed is Valid */
+	if (!xdev) {
+		pr_err("dev_hndl is NULL");
+		return -EINVAL;
+	}
+
+	if (qdma4_xdev_check_hndl(__func__, xdev->conf.pdev, dev_hndl) < 0) {
+		pr_err("Invalid dev_hndl passed");
+		return -EINVAL;
+	}
+
+	if (!req) {
+		pr_err("req is NULL");
+		return -EINVAL;
+	}
+
+	descq = qdma4_device_get_descq_by_id(xdev, id, NULL, 0, 0);
+	if (!descq) {
+		pr_err("Invalid qid(%ld)", id);
+		return -EINVAL;
+	}
+
+	if (descq->conf.q_type == Q_CMPT) {
+		pr_err("Error : Transfer initiated on completion queue\n");
+		return -EINVAL;
+	}
+
+	spin_lock_irqsave(&descq->lock, flags);
+	for (i = 0; i < count; i++, req++) {
+		struct qdma_sgt_req_cb *cb = qdma_req_cb_get(req);
+
+		pr_info("%s, %s, cancel req 0x%p, 0x%x.\n",
+			xdev->conf.name, descq->conf.name, req, req->count);
+
+		//qdma4_request_dump(descq->conf.name, req, 1);
+		cb->cancel = 1;
+		//descq->cancel_cnt++;
+	}
+	spin_unlock_irqrestore(&descq->lock, flags);
+
+	schedule_work(&descq->work);
+
+	return 0;
+}
+
 /*****************************************************************************/
 /**
  * libqdma_init()       initialize the QDMA core library

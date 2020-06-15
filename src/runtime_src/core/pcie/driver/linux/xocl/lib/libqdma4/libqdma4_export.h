@@ -1402,6 +1402,10 @@ int qdma4_request_cancel(unsigned long dev_hndl, unsigned long qhndl,
 ssize_t qdma4_batch_request_submit(unsigned long dev_hndl, unsigned long id,
 			  unsigned long count, struct qdma_request *reqv);
 
+int qdma4_request_cancel(unsigned long dev_hndl, unsigned long qhndl,
+                        struct qdma_request *reqv, unsigned int count);
+
+
 /*****************************************************************************/
 /**
  * qdma_queue_c2h_peek() - peek a receive (c2h) queue
