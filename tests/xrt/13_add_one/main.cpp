@@ -17,6 +17,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <numeric>
 #include <cstring>
 
 #include "experimental/xrt_device.h"
@@ -42,13 +43,13 @@ static void usage()
 }
 
 static void
-run(xrt::device& device, const xrt::uuid& uuid, size_t n_elements, bool random, bool verbose)
+run(xrt::device& device, const xrt::uuid& uuid, size_t n_elements)
 {
   auto addone = xrt::kernel(device, uuid.get(), "addone");
 
   using data_type = unsigned long;
   const size_t size = n_elements * ARRAY_SIZE;
-  const size_t bytes = sizeof(data_type) * size;  
+  const size_t bytes = sizeof(data_type) * size;
 
   auto a = xrt::bo(device, bytes, 0, addone.group_id(0));
   auto a_data = a.map<unsigned long*>();
@@ -121,7 +122,7 @@ int run(int argc, char** argv)
   auto device = xrt::device(device_index);
   auto uuid = device.load_xclbin(xclbin_fnm);
 
-  run(device, uuid, num_elements, random, verbose);
+  run(device, uuid, num_elements);
 
   return 0;
 }
@@ -142,4 +143,3 @@ int main(int argc, char** argv)
   std::cout << "PASSED TEST\n";
   return 0;
 }
-

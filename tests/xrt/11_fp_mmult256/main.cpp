@@ -18,15 +18,19 @@
 #include <stdexcept>
 #include <string>
 #include <cstring>
-#include <time.h>
+#include <ctime>
 #include <chrono>
 
 #include "experimental/xrt_device.h"
 #include "experimental/xrt_kernel.h"
 #include "experimental/xrt_bo.h"
 
-static const int SIZE = 256;
-int DATA_SIZE = SIZE*SIZE;
+#ifdef _WIN32
+# pragma warning ( disable : 4244 )
+#endif
+
+static const int size = 256;
+int data_size = size*size;
 
 /**
  * Runs an OpenCL kernel which writes known 16 integers into a 64 byte
@@ -51,38 +55,38 @@ run(xrt::device& device, const xrt::uuid& uuid, bool random, bool verbose)
 {
   auto mmult = xrt::kernel(device, uuid.get(), "mmult");
 
-  auto a = xrt::bo(device, 2*DATA_SIZE*sizeof(float), 0, mmult.group_id(0));
-  auto output = xrt::bo(device, DATA_SIZE*sizeof(float), 0, mmult.group_id(1));
+  auto a = xrt::bo(device, 2*data_size*sizeof(float), 0, mmult.group_id(0));
+  auto output = xrt::bo(device, data_size*sizeof(float), 0, mmult.group_id(1));
 
   auto a_mapped = a.map<float*>();
 
   std::cout << "Populate the input and reference vectors.\n";
-        
+
   const int MY_MAX = 4096;
-  float A[SIZE][SIZE], B[SIZE][SIZE], C[SIZE*SIZE];
+  float A[size][size], B[size][size], C[size*size];
   std::srand(std::time(0));
-  for (int i = 0; i < SIZE; ++i) {
-    for (int j = 0; j < SIZE; ++j) {
+  for (int i = 0; i < size; ++i) {
+    for (int j = 0; j < size; ++j) {
       A[i][j] = random ?  static_cast<float>(std::rand()) / (static_cast<float>(RAND_MAX/MY_MAX)):(float)(i+j);
       B[i][j] = random ?  static_cast<float>(std::rand()) / (static_cast<float>(RAND_MAX/MY_MAX)):(float)(i+j);
     }
   }
-        
-  for (int i = 0; i < SIZE; ++i) {
-    for (int j = 0; j < SIZE; ++j) {
-      C[i*SIZE+j] = 0.0;
-      for (int k = 0; k < SIZE; ++k) {
-        C[i*SIZE+j] += A[i][k] * B[k][j];
+
+  for (int i = 0; i < size; ++i) {
+    for (int j = 0; j < size; ++j) {
+      C[i*size+j] = 0.0;
+      for (int k = 0; k < size; ++k) {
+        C[i*size+j] += A[i][k] * B[k][j];
       }
     }
   }
-        
-  std::memcpy(a_mapped, A, DATA_SIZE*sizeof(float));
-  std::memcpy(a_mapped + DATA_SIZE, B, DATA_SIZE*sizeof(float));
+
+  std::memcpy(a_mapped, A, data_size*sizeof(float));
+  std::memcpy(a_mapped + data_size, B, data_size*sizeof(float));
 
   // Send the input data to the device memory
   std::cout << "Send the input data to the device memory.\n";
-  a.sync(XCL_BO_SYNC_BO_TO_DEVICE , 2*DATA_SIZE*sizeof(float), 0);
+  a.sync(XCL_BO_SYNC_BO_TO_DEVICE , 2*data_size*sizeof(float), 0);
 
   // Run kernel
   auto run = mmult(a, output, 1);
@@ -90,12 +94,12 @@ run(xrt::device& device, const xrt::uuid& uuid, bool random, bool verbose)
 
   //Get the output;
   std::cout << "Get the output data from the device" << std::endl;
-  output.sync(XCL_BO_SYNC_BO_FROM_DEVICE, DATA_SIZE*sizeof(float), 0);
+  output.sync(XCL_BO_SYNC_BO_FROM_DEVICE, data_size*sizeof(float), 0);
   auto output_mapped = output.map<float*>();
 
   // Validate FPGA results
   int err = 0;
-  for (int i = 0; i < SIZE * SIZE; i++) {
+  for (int i = 0; i < size * size; i++) {
     bool bShow = verbose;
     if (C[i] != output_mapped[i]) {
       bShow = true; // always show errors
