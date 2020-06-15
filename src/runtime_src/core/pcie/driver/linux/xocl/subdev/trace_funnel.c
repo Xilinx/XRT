@@ -16,6 +16,11 @@
  */
 
 #include "../xocl_drv.h"
+#include "profile_ioctl.h"
+
+#define TRACE_FUNNEL_SW_TRACE    0x0
+#define TRACE_FUNNEL_SW_RESET    0xc
+#define TRACE_FUNNEL_RESET_VAL   0x1
 
 struct trace_funnel {
 	void __iomem		*base;
@@ -24,6 +29,36 @@ struct trace_funnel {
 	uint64_t		range;
 	struct mutex 		lock;
 };
+
+/**
+ * ioctl functions
+ */
+static long reset_funnel(struct trace_funnel *trace_funnel);
+static long train_clock(struct trace_funnel *trace_funnel, void __user *arg);
+
+static long reset_funnel(struct trace_funnel *trace_funnel)
+{
+	uint32_t reg = TRACE_FUNNEL_RESET_VAL;
+	XOCL_WRITE_REG32(reg, trace_funnel->base + TRACE_FUNNEL_SW_RESET);
+}
+
+static long train_clock(struct trace_funnel *trace_funnel, void __user *arg)
+{
+	uint64_t ts = 0;
+	uint32_t reg = 0;
+	if (copy_from_user(&ts, arg, sizeof(uint64_t)))
+	{
+		return -EFAULT;
+	}
+	reg = (uint32_t) (ts & 0xFFFF);
+	XOCL_WRITE_REG32(reg, trace_funnel->base + TRACE_FUNNEL_SW_TRACE);
+	reg = (uint32_t) (ts >> 16 & 0xFFFF);
+	XOCL_WRITE_REG32(reg, trace_funnel->base + TRACE_FUNNEL_SW_TRACE);
+	reg = (uint32_t) (ts >> 32 & 0xFFFF);
+	XOCL_WRITE_REG32(reg, trace_funnel->base + TRACE_FUNNEL_SW_TRACE);
+	reg = (uint32_t) (ts >> 48 & 0xFFFF);
+	XOCL_WRITE_REG32(reg, trace_funnel->base + TRACE_FUNNEL_SW_TRACE);
+}
 
 static int trace_funnel_remove(struct platform_device *pdev)
 {
@@ -68,7 +103,7 @@ static int trace_funnel_probe(struct platform_device *pdev)
 		err = -ENOMEM;
 		goto done;
 	}
-		
+
 
 	xocl_info(&pdev->dev, "IO start: 0x%llx, end: 0x%llx",
 		res->start, res->end);
@@ -113,15 +148,20 @@ static int trace_funnel_close(struct inode *inode, struct file *file)
 long trace_funnel_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct trace_funnel *trace_funnel;
+	void __user *data;
 	long result = 0;
 
 	trace_funnel = (struct trace_funnel *)filp->private_data;
+	data = (void __user *)(arg);
 
 	mutex_lock(&trace_funnel->lock);
 
 	switch (cmd) {
-	case 1:
-		xocl_err(trace_funnel->dev, "ioctl 1, do nothing");
+	case TR_FUNNEL_IOC_RESET:
+		result = reset_funnel(trace_funnel);
+		break;
+	case TR_FUNNEL_IOC_TRAINCLK:
+		result = train_clock(trace_funnel, data);
 		break;
 	default:
 		result = -ENOTTY;

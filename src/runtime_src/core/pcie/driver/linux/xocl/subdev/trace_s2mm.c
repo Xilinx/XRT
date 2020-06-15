@@ -16,6 +16,23 @@
  */
 
 #include "../xocl_drv.h"
+#include "profile_ioctl.h"
+
+// Offsets
+#define TS2MM_COUNT_LOW         0x10
+#define TS2MM_COUNT_HIGH        0x14
+#define TS2MM_RST               0x1c
+#define TS2MM_WRITE_OFFSET_LOW  0x2c
+#define TS2MM_WRITE_OFFSET_HIGH 0x30
+#define TS2MM_WRITTEN_LOW       0x38
+#define TS2MM_WRITTEN_HIGH      0x3c
+#define TS2MM_AP_CTRL           0x0
+
+// Commands
+#define TS2MM_AP_START          0x1
+
+// HW Param
+#define TS2MM_PACKET_SIZE        8
 
 struct xocl_trace_s2mm {
 	void __iomem		*base;
@@ -24,6 +41,82 @@ struct xocl_trace_s2mm {
 	uint64_t		range;
 	struct mutex 		lock;
 };
+
+/**
+ * helper functions
+ */
+bool dma_is_active(struct xocl_trace_s2mm *trace_s2mm);
+
+/**
+ * ioctl functions
+ */
+static long reset_dma(struct xocl_trace_s2mm *trace_s2mm);
+static long start_dma(struct xocl_trace_s2mm *trace_s2mm, void __user *arg);
+static long get_wordcount(struct xocl_trace_s2mm *trace_s2mm, void __user *arg);
+
+bool dma_is_active(struct xocl_trace_s2mm *trace_s2mm)
+{
+	uint32_t reg = 0;
+	reg = XOCL_READ_REG32(trace_s2mm->base + TS2MM_AP_CTRL);
+	return reg & TS2MM_AP_START;
+}
+
+static long reset_dma(struct xocl_trace_s2mm *trace_s2mm)
+{
+	XOCL_WRITE_REG32(0x1, trace_s2mm->base + TS2MM_RST);
+	XOCL_WRITE_REG32(0x0, trace_s2mm->base + TS2MM_RST);
+	return 0;
+}
+
+static long start_dma(struct xocl_trace_s2mm *trace_s2mm, void __user *arg)
+{
+	struct ts2mm_config cfg;
+	uint32_t reg = 0;
+	uint64_t wordcount = 0;
+
+	if (copy_from_user(&cfg, arg, sizeof(struct ts2mm_config)))
+	{
+		return -EFAULT;
+	}
+
+	if (dma_is_active)
+	{
+		reset_dma(trace_s2mm);
+	}
+
+	// Configure DDR Offset
+	reg = (uint32_t) cfg.buf_addr;
+	XOCL_WRITE_REG32(reg, trace_s2mm->base + TS2MM_WRITE_OFFSET_LOW);
+	reg = (uint32_t) (cfg.buf_addr >> 32);
+	XOCL_WRITE_REG32(reg, trace_s2mm->base + TS2MM_WRITE_OFFSET_HIGH);
+
+	// Configure Number of trace words
+	wordcount = cfg.buf_size / TS2MM_PACKET_SIZE;
+	reg = (uint32_t) wordcount;
+	XOCL_WRITE_REG32(reg, trace_s2mm->base + TS2MM_COUNT_LOW);
+	reg = (uint32_t) (wordcount >> 32);
+	XOCL_WRITE_REG32(reg, trace_s2mm->base + TS2MM_COUNT_HIGH);
+
+	// Start Data Mover
+	reg = TS2MM_AP_START;
+	XOCL_WRITE_REG32(reg, trace_s2mm->base + TS2MM_AP_CTRL);
+	return 0;
+}
+
+static long get_wordcount(struct xocl_trace_s2mm *trace_s2mm, void __user *arg)
+{
+	uint64_t wordcount = 0;
+	uint32_t reg = 0;
+	reg = XOCL_READ_REG32(trace_s2mm->base + TS2MM_WRITTEN_LOW);
+	wordcount = (uint64_t) reg;
+	reg = XOCL_READ_REG32(trace_s2mm->base + TS2MM_WRITTEN_HIGH);
+	wordcount |= ((uint64_t) reg) << 32;
+	if (copy_to_user(arg, &wordcount, sizeof(uint64_t)))
+	{
+		return -EFAULT;
+	}
+	return 0;
+}
 
 static int trace_s2mm_remove(struct platform_device *pdev)
 {
@@ -68,7 +161,7 @@ static int trace_s2mm_probe(struct platform_device *pdev)
 		err = -ENOMEM;
 		goto done;
 	}
-		
+
 
 	xocl_info(&pdev->dev, "IO start: 0x%llx, end: 0x%llx",
 		res->start, res->end);
@@ -113,15 +206,23 @@ static int trace_s2mm_close(struct inode *inode, struct file *file)
 long trace_s2mm_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct xocl_trace_s2mm *trace_s2mm;
+	void __user *data;
 	long result = 0;
 
 	trace_s2mm = (struct xocl_trace_s2mm *)filp->private_data;
+	data = (void __user *)(arg);
 
 	mutex_lock(&trace_s2mm->lock);
 
 	switch (cmd) {
-	case 1:
-		xocl_err(trace_s2mm->dev, "ioctl 1, do nothing");
+	case TR_S2MM_IOC_RESET:
+		result = reset_dma(trace_s2mm);
+		break;
+	case TR_S2MM_IOC_START:
+		result = start_dma(trace_s2mm, data);
+		break;
+	case TR_S2MM_IOC_GET_WORDCNT:
+		result = get_wordcount(trace_s2mm, data);
 		break;
 	default:
 		result = -ENOTTY;

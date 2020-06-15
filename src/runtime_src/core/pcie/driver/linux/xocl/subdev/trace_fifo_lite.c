@@ -16,6 +16,12 @@
  */
 
 #include "../xocl_drv.h"
+#include "profile_ioctl.h"
+
+#define AXI_FIFO_RLR                    0x24
+#define AXI_FIFO_RESET_VALUE            0xA5
+#define AXI_FIFO_SRR                    0x28
+#define AXI_FIFO_RDFR                   0x18
 
 struct trace_fifo_lite {
 	void __iomem		*base;
@@ -24,6 +30,36 @@ struct trace_fifo_lite {
 	uint64_t		range;
 	struct mutex 		lock;
 };
+
+/**
+ * ioctl functions
+ */
+static long reset_fifo(struct trace_fifo_lite *fifo);
+static long get_numbytes(struct trace_fifo_lite *fifo, void __user *arg);
+
+static long reset_fifo(struct trace_fifo_lite *fifo)
+{
+	uint32_t regValue = AXI_FIFO_RESET_VALUE;
+	XOCL_WRITE_REG32(regValue, fifo->base + AXI_FIFO_SRR );
+	XOCL_WRITE_REG32(regValue, fifo->base + AXI_FIFO_RDFR);
+	return 0;
+}
+
+static long get_numbytes(struct trace_fifo_lite *fifo, void __user *arg)
+{
+	uint32_t fifoCount = 0;
+	uint32_t numBytes = 0;
+
+	fifoCount = XOCL_READ_REG32(fifo->base + AXI_FIFO_RLR);
+	// Read bits 22:0 per AXI-Stream FIFO product guide (PG080, 10/1/14)
+	numBytes = fifoCount & 0x7FFFFF;
+
+	if (copy_to_user(arg, &numBytes, sizeof(uint32_t)))
+	{
+		return -EFAULT;
+	}
+	return 0;
+}
 
 static int trace_fifo_lite_remove(struct platform_device *pdev)
 {
@@ -68,7 +104,7 @@ static int trace_fifo_lite_probe(struct platform_device *pdev)
 		err = -ENOMEM;
 		goto done;
 	}
-		
+
 
 	xocl_info(&pdev->dev, "IO start: 0x%llx, end: 0x%llx",
 		res->start, res->end);
@@ -113,15 +149,20 @@ static int trace_fifo_lite_close(struct inode *inode, struct file *file)
 long trace_fifo_lite_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct trace_fifo_lite *trace_fifo_lite;
+	void __user *data;
 	long result = 0;
 
 	trace_fifo_lite = (struct trace_fifo_lite *)filp->private_data;
+	data = (void __user *)(arg);
 
 	mutex_lock(&trace_fifo_lite->lock);
 
 	switch (cmd) {
-	case 1:
-		xocl_err(trace_fifo_lite->dev, "ioctl 1, do nothing");
+	case TR_FIFO_IOC_RESET:
+		result = reset_fifo(trace_fifo_lite);
+		break;
+	case TR_FIFO_IOC_GET_NUMBYTES:
+		result = get_numbytes(trace_fifo_lite, data);
 		break;
 	default:
 		result = -ENOTTY;

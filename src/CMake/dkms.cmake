@@ -169,6 +169,7 @@ SET (XRT_DKMS_DRIVER_INCLUDES
   include/mgmt-reg.h
   include/mgmt-ioctl.h
   include/qdma_ioctl.h
+  include/profile_ioctl.h
   include/mailbox_proto.h
   include/flash_xrt_data.h
   )
