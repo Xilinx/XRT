@@ -40,6 +40,8 @@ static long reset_funnel(struct trace_funnel *trace_funnel)
 {
 	uint32_t reg = TRACE_FUNNEL_RESET_VAL;
 	XOCL_WRITE_REG32(reg, trace_funnel->base + TRACE_FUNNEL_SW_RESET);
+
+	return 0;
 }
 
 static long train_clock(struct trace_funnel *trace_funnel, void __user *arg)
@@ -58,6 +60,8 @@ static long train_clock(struct trace_funnel *trace_funnel, void __user *arg)
 	XOCL_WRITE_REG32(reg, trace_funnel->base + TRACE_FUNNEL_SW_TRACE);
 	reg = (uint32_t) (ts >> 48 & 0xFFFF);
 	XOCL_WRITE_REG32(reg, trace_funnel->base + TRACE_FUNNEL_SW_TRACE);
+
+	return 0;
 }
 
 static int trace_funnel_remove(struct platform_device *pdev)

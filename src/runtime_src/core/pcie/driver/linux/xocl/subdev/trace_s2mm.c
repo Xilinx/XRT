@@ -79,7 +79,7 @@ static long start_dma(struct xocl_trace_s2mm *trace_s2mm, void __user *arg)
 		return -EFAULT;
 	}
 
-	if (dma_is_active)
+	if (dma_is_active(trace_s2mm))
 	{
 		reset_dma(trace_s2mm);
 	}
