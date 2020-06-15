@@ -1240,7 +1240,7 @@ int xocl_cma_bank_alloc(struct xocl_drm *drm_p, struct drm_xocl_alloc_cma_info *
 	mutex_lock(&drm_p->mm_lock);
 
 	if (!num) {
-		err = -EINVAL;
+		err = -ENODEV;
 		DRM_ERROR("Doesn't support HOST MEM feature");
 		goto unlock;
 	}
