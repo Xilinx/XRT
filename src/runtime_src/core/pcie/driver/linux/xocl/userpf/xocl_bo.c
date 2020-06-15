@@ -441,7 +441,7 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 	xobj = xocl_create_bo(dev, args->size, args->flags, bo_type);
 
 	if (IS_ERR(xobj)) {
-		DRM_ERROR("object creation failed idx %d, size 0x%llx\n", ddr, args->size);
+		DRM_ERROR("object creation failed idx %d, size 0x%llx\n", mem_id, args->size);
 		return PTR_ERR(xobj);
 	}
 
