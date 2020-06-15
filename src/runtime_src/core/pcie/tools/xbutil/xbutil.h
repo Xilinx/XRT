@@ -719,6 +719,7 @@ public:
         std::string vendor, device, subsystem, subvendor, xmc_ver, xmc_oem_id,
             ser_num, bmc_ver, idcode, fpga, dna, errmsg, max_power, cpu_affinity;
         int ddr_size = 0, ddr_count = 0, pcie_speed = 0, pcie_width = 0, p2p_enabled = 0;
+        uint64_t host_mem_size = 0, max_host_mem_aperture = 0;
         std::vector<std::string> clock_freqs;
         std::vector<std::string> dma_threads;
         std::vector<std::string> mac_addrs;
@@ -750,6 +751,10 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get( "icap", "idcode",                 errmsg, idcode );
         pcidev::get_dev(m_idx)->sysfs_get( "dna", "dna",                     errmsg, dna );
         pcidev::get_dev(m_idx)->sysfs_get("", "local_cpulist",               errmsg, cpu_affinity);
+        pcidev::get_dev(m_idx)->sysfs_get<uint64_t>("address_translator", "host_mem_size",  
+                                                                             errmsg, host_mem_size, 0);
+        pcidev::get_dev(m_idx)->sysfs_get<uint64_t>("icap", "max_host_mem_aperture",  
+                                                                             errmsg, max_host_mem_aperture, 0);
 
         p2p_enabled = pcidev::check_p2p_config(pcidev::get_dev(m_idx), errmsg);
 
@@ -777,6 +782,8 @@ public:
         sensor_tree::put( "board.info.dna",            dna );
         sensor_tree::put( "board.info.p2p_enabled",    p2p_enabled );
         sensor_tree::put( "board.info.cpu_affinity",   cpu_affinity );
+        sensor_tree::put( "board.info.host_mem_size",   xrt_core::utils::unit_convert(host_mem_size) );
+        sensor_tree::put( "board.info.max_host_mem_aperture",   xrt_core::utils::unit_convert(max_host_mem_aperture) );
 
         for (uint32_t i = 0; i < mac_addrs.size(); ++i) {
             std::string entry_name = "board.info.mac_addr."+std::to_string(i);
@@ -1095,9 +1102,14 @@ public:
             ostr << std::endl;
         }
         ostr << std::setw(32) << "DNA"
-             << std::setw(16) << "CPU_AFFINITY" << std::endl;
+             << std::setw(16) << "CPU_AFFINITY"
+             << std::setw(16) << "HOST_MEM size"
+             << std::setw(16) << "Max HOST_MEM" << std::endl;
         ostr << std::setw(32) << sensor_tree::get<std::string>( "board.info.dna", "N/A" )
-             << std::setw(16) << sensor_tree::get<std::string>( "board.info.cpu_affinity", "N/A" ) << std::endl;
+             << std::setw(16) << sensor_tree::get<std::string>( "board.info.cpu_affinity", "N/A" )
+             << std::setw(16) << sensor_tree::get<std::string>( "board.info.host_mem_size", "N/A" )
+             << std::setw(16) << sensor_tree::get<std::string>( "board.info.max_host_mem_aperture", "N/A" )
+             << std::endl;
 
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
