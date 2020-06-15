@@ -22,10 +22,10 @@
 #include <linux/kernel.h>
 #include <linux/string.h>
 #include <linux/errno.h>
+#include <linux/sched.h>
 
 #include "xdev.h"
 #include "qdma_mbox.h"
-#include <linux/sched.h>
 
 #ifdef __QDMA_VF__
 int xdev_sriov_vf_offline(struct xlnx_dma_dev *xdev, u8 func_id)

@@ -19,9 +19,8 @@
 
 #define pr_fmt(fmt)	KBUILD_MODNAME ":%s: " fmt, __func__
 
-#include "thread.h"
-
 #include <linux/kernel.h>
+#include "thread.h"
 
 /*
  * kernel thread function wrappers

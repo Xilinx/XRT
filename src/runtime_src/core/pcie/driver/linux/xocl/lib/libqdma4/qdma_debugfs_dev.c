@@ -20,15 +20,15 @@
 #ifdef DEBUGFS
 #define pr_fmt(fmt) KBUILD_MODNAME ":%s: " fmt, __func__
 
+#include <linux/fs.h>
+#include <linux/uaccess.h>
+#include <linux/mutex.h>
 #include "qdma_debugfs_dev.h"
 #include "qdma_reg_dump.h"
 #include "qdma_access_common.h"
 #include "qdma_context.h"
 #include "libqdma4_export.h"
 #include "qdma_intr.h"
-#include <linux/fs.h>
-#include <linux/uaccess.h>
-#include <linux/mutex.h>
 
 
 enum dbgfs_dev_dbg_file_type {

@@ -16,11 +16,11 @@
  * The full GNU General Public License is included in this distribution in
  * the file called "COPYING".
  */
+#include <linux/errno.h>
+#include <linux/delay.h>
 #include "qdma_platform.h"
 #include "qdma_regs.h"
 #include "qdma_access_errors.h"
-#include <linux/errno.h>
-#include <linux/delay.h>
 
 struct err_code_map error_code_map_list[] = {
 	{QDMA_SUCCESS,				0},

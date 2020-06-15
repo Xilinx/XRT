@@ -20,13 +20,13 @@
 
 #define pr_fmt(fmt) KBUILD_MODNAME ":%s: " fmt, __func__
 
+#include <linux/uaccess.h>
 #include "qdma_debugfs_queue.h"
 #include "libqdma4_export.h"
 #include "qdma_regs.h"
 #include "qdma_context.h"
 #include "qdma_descq.h"
 #include "qdma_regs.h"
-#include <linux/uaccess.h>
 
 #ifdef DEBUGFS
 #define DEBUGFS_QUEUE_DESC_SZ	(100)

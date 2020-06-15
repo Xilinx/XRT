@@ -19,11 +19,10 @@
 
 #define pr_fmt(fmt)     KBUILD_MODNAME ":%s: " fmt, __func__
 
-#include "qdma_descq.h"
-
 #include <linux/kernel.h>
 #include <linux/delay.h>
 
+#include "qdma_descq.h"
 #include "qdma_device.h"
 #include "qdma_intr.h"
 #include "qdma_regs.h"

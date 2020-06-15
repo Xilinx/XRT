@@ -19,10 +19,9 @@
 
 #define pr_fmt(fmt)	KBUILD_MODNAME ":%s: " fmt, __func__
 
-#include "qdma_thread.h"
-
 #include <linux/kernel.h>
 
+#include "qdma_thread.h"
 #include "qdma_descq.h"
 #include "thread.h"
 #include "xdev.h"
