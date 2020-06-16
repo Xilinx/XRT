@@ -211,6 +211,8 @@ enum {
 #define	XOCL_TRACE_FIFO_FULL	"trace_fifo_full"
 #define	XOCL_TRACE_FUNNEL	"trace_funnel"
 #define	XOCL_TRACE_S2MM		"trace_s2mm"
+#define	XOCL_LAPC		"lapc"
+#define	XOCL_SPC		"spc"
 #define	XOCL_MIG_HBM		"mig.hbm"
 #define	XOCL_SRSR		"srsr"
 #define	XOCL_UARTLITE		"ulite"
@@ -258,6 +260,8 @@ enum subdev_id {
 	XOCL_SUBDEV_ADDR_TRANSLATOR,
 	XOCL_SUBDEV_CU,
 	XOCL_SUBDEV_P2P,
+	XOCL_SUBDEV_LAPC,
+	XOCL_SUBDEV_SPC,
 	XOCL_SUBDEV_NUM
 };
 
@@ -737,6 +741,48 @@ struct xocl_subdev_map {
 		XOCL_TRACE_S2MM,				\
 		XOCL_RES_TRACE_S2MM,			\
 		ARRAY_SIZE(XOCL_RES_TRACE_S2MM),		\
+		.level = XOCL_SUBDEV_LEVEL_URP,		\
+		.multi_inst = true,			\
+		.override_idx = -1,			\
+	}
+
+#define	XOCL_RES_LAPC			\
+	((struct resource []) {				\
+		{					\
+			.name   = "LAPC",	\
+			.start	= 0x0,			\
+			.end	= 0xFFF,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+	})
+
+#define	XOCL_DEVINFO_LAPC				\
+	{						\
+		XOCL_SUBDEV_LAPC,			\
+		XOCL_LAPC,				\
+		XOCL_RES_LAPC,			\
+		ARRAY_SIZE(XOCL_RES_LAPC),		\
+		.level = XOCL_SUBDEV_LEVEL_URP,		\
+		.multi_inst = true,			\
+		.override_idx = -1,			\
+	}
+
+#define	XOCL_RES_SPC			\
+	((struct resource []) {				\
+		{					\
+			.name   = "SPC",	\
+			.start	= 0x0,			\
+			.end	= 0xFFF,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+	})
+
+#define	XOCL_DEVINFO_SPC				\
+	{						\
+		XOCL_SUBDEV_SPC,			\
+		XOCL_SPC,				\
+		XOCL_RES_SPC,			\
+		ARRAY_SIZE(XOCL_RES_SPC),		\
 		.level = XOCL_SUBDEV_LEVEL_URP,		\
 		.multi_inst = true,			\
 		.override_idx = -1,			\
