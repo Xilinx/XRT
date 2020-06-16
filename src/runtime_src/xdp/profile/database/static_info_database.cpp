@@ -106,7 +106,8 @@ namespace xdp {
 
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(devHandle);
 
-    if (!setXclbinUUIDnName(devInfo, device)) return;
+//    if (!setXclbinUUID(devInfo, device)) return;
+    if (!setXclbinName(devInfo, device)) return;
     if (!initializeComputeUnits(devInfo, device)) return ;
     if (!initializeProfileMonitors(devInfo, device)) return ;
   }
@@ -122,10 +123,16 @@ namespace xdp {
     }
   }
 
-  bool VPStaticDatabase::setXclbinUUIDnName(DeviceInfo* devInfo, std::shared_ptr<xrt_core::device> device)
+#if 0
+  bool VPStaticDatabase::setXclbinUUID(DeviceInfo* devInfo, std::shared_ptr<xrt_core::device> device)
   {
-    //devInfo->loadedXclbinUUID = device->get_xclbin_uuid();
+    devInfo->loadedXclbinUUID = device->get_xclbin_uuid();
+    return true;
+  }
+#endif
 
+  bool VPStaticDatabase::setXclbinName(DeviceInfo* devInfo, std::shared_ptr<xrt_core::device> device)
+  {
     // Get SYSTEM_METADATA section
     std::pair<const char*, size_t> systemMetadata = device->get_axlf_section(SYSTEM_METADATA);
     const char* systemMetadataSection = systemMetadata.first;

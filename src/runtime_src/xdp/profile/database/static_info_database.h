@@ -162,7 +162,8 @@ namespace xdp {
     void resetDeviceInfo(uint64_t deviceId) ;
 
     // Helper functions that fill in device information
-    bool setXclbinUUIDnName(DeviceInfo*, std::shared_ptr<xrt_core::device> device);
+    //bool setXclbinUUID(DeviceInfo*, std::shared_ptr<xrt_core::device> device);
+    bool setXclbinName(DeviceInfo*, std::shared_ptr<xrt_core::device> device);
     bool initializeComputeUnits(DeviceInfo*, std::shared_ptr<xrt_core::device>);
     bool initializeProfileMonitors(DeviceInfo*, std::shared_ptr<xrt_core::device>);
 
