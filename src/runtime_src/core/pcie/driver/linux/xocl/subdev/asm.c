@@ -16,6 +16,20 @@
  */
 
 #include "../xocl_drv.h"
+#include "profile_ioctl.h"
+
+/************************** AXI Stream Monitor (ASM) *********************/
+
+#define XASM_CONTROL_OFFSET           0x0
+#define XASM_SAMPLE_OFFSET            0x20
+#define XASM_NUM_TRANX_OFFSET         0x80
+#define XASM_DATA_BYTES_OFFSET        0x88
+#define XASM_BUSY_CYCLES_OFFSET       0x90
+#define XASM_STALL_CYCLES_OFFSET      0x98
+#define XASM_STARVE_CYCLES_OFFSET     0xA0
+
+/* Control Mask */
+#define XASM_COUNTER_RESET_MASK       0x00000001
 
 struct xocl_asm {
 	void __iomem		*base;
@@ -23,6 +37,124 @@ struct xocl_asm {
 	uint64_t		start_paddr;
 	uint64_t		range;
 	struct mutex 		lock;
+	struct debug_ip_data	data;
+	struct asm_counters	counters;
+};
+
+/**
+ * helper functions
+ */
+static void update_counters(struct xocl_asm *xocl_asm);
+/**
+ * ioctl functions
+ */
+static long reset_counters(struct xocl_asm *xocl_asm);
+static long start_counters(struct xocl_asm *xocl_asm);
+static long read_counters(struct xocl_asm *xocl_asm, void __user *arg);
+static long stop_counters(struct xocl_asm *xocl_asm);
+static long start_trace(struct xocl_asm *xocl_asm, void __user *arg);
+
+static long reset_counters(struct xocl_asm *xocl_asm)
+{
+	uint32_t reg = 0;
+	reg = XOCL_READ_REG32(xocl_asm->base + XASM_CONTROL_OFFSET);
+	// Start Reset
+	reg = reg | XASM_COUNTER_RESET_MASK;
+	XOCL_WRITE_REG32(reg, xocl_asm->base + XASM_CONTROL_OFFSET);
+	// End Reset
+	reg = reg & ~(XASM_COUNTER_RESET_MASK);
+	XOCL_WRITE_REG32(reg, xocl_asm->base + XASM_CONTROL_OFFSET);
+
+	return 0;
+}
+
+static long start_counters(struct xocl_asm *xocl_asm)
+{
+	// Read sample register
+	// Needs hw implementation
+	return 0;
+}
+
+static long read_counters(struct xocl_asm *xocl_asm, void __user *arg)
+{
+	update_counters(xocl_asm);
+	if (copy_to_user(arg, &xocl_asm->counters, sizeof(struct asm_counters)))
+	{
+		return -EFAULT;
+	}
+	return 0;
+}
+
+static long stop_counters(struct xocl_asm *xocl_asm)
+{
+	// Needs hw implementation
+	return 0;
+}
+
+static long start_trace(struct xocl_asm *xocl_asm, void __user *arg)
+{
+	// Needs hw implementation
+	return 0;
+}
+
+static void update_counters(struct xocl_asm *xocl_asm)
+{
+	uint64_t low = 0, high = 0, sample_interval = 0;
+	// This latches the sampled metric counters
+	sample_interval = XOCL_READ_REG32(xocl_asm->base + XASM_SAMPLE_OFFSET);
+	// Read the sampled metric counters
+	low = XOCL_READ_REG32(xocl_asm->base + XASM_NUM_TRANX_OFFSET);
+	high = XOCL_READ_REG32(xocl_asm->base + XASM_NUM_TRANX_OFFSET + 0x4);
+	xocl_asm->counters.num_tranx =  (high << 32) | low;
+	low = XOCL_READ_REG32(xocl_asm->base + XASM_DATA_BYTES_OFFSET);
+	high = XOCL_READ_REG32(xocl_asm->base + XASM_DATA_BYTES_OFFSET + 0x4);
+	xocl_asm->counters.data_bytes =  (high << 32) | low;
+	low = XOCL_READ_REG32(xocl_asm->base + XASM_BUSY_CYCLES_OFFSET);
+	high = XOCL_READ_REG32(xocl_asm->base + XASM_BUSY_CYCLES_OFFSET + 0x4);
+	xocl_asm->counters.busy_cycles =  (high << 32) | low;
+	low = XOCL_READ_REG32(xocl_asm->base + XASM_STALL_CYCLES_OFFSET);
+	high = XOCL_READ_REG32(xocl_asm->base + XASM_STALL_CYCLES_OFFSET + 0x4);
+	xocl_asm->counters.stall_cycles =  (high << 32) | low;
+	low = XOCL_READ_REG32(xocl_asm->base + XASM_STARVE_CYCLES_OFFSET);
+	high = XOCL_READ_REG32(xocl_asm->base + XASM_STARVE_CYCLES_OFFSET + 0x4);
+	xocl_asm->counters.starve_cycles =  (high << 32) | low;
+}
+
+static ssize_t counters_show(struct device *dev,
+			   struct device_attribute *attr, char *buf)
+{
+	struct xocl_asm *xocl_asm = platform_get_drvdata(to_platform_device(dev));
+	mutex_lock(&xocl_asm->lock);
+	update_counters(xocl_asm);
+	mutex_unlock(&xocl_asm->lock);
+	return sprintf(buf, "%llu\n%llu\n%llu\n%llu\n%llu\n",
+		xocl_asm->counters.num_tranx,
+		xocl_asm->counters.data_bytes,
+		xocl_asm->counters.busy_cycles,
+		xocl_asm->counters.stall_cycles,
+		xocl_asm->counters.starve_cycles
+		);
+}
+
+static DEVICE_ATTR_RO(counters);
+
+static ssize_t name_show(struct device *dev,
+			   struct device_attribute *attr, char *buf)
+{
+	struct xocl_asm *xocl_asm = platform_get_drvdata(to_platform_device(dev));
+	return sprintf(buf, "axistream_mon_%llu\n",xocl_asm->data.m_base_address);
+}
+
+static DEVICE_ATTR_RO(name);
+
+static struct attribute *asm_attrs[] = {
+			   &dev_attr_counters.attr,
+			   &dev_attr_name.attr,
+			   NULL,
+};
+
+static struct attribute_group asm_attr_group = {
+			   .attrs = asm_attrs,
 };
 
 static int asm_remove(struct platform_device *pdev)
@@ -35,6 +167,8 @@ static int asm_remove(struct platform_device *pdev)
 		xocl_err(&pdev->dev, "driver data is NULL");
 		return -EINVAL;
 	}
+
+	sysfs_remove_group(&pdev->dev.kobj, &asm_attr_group);
 
 	xocl_drvinst_release(xocl_asm, &hdl);
 
@@ -60,6 +194,8 @@ static int asm_probe(struct platform_device *pdev)
 
 	xocl_asm->dev = &pdev->dev;
 
+	memcpy(&xocl_asm->data, XOCL_GET_SUBDEV_PRIV(&pdev->dev), sizeof(struct debug_ip_data));
+
 	platform_set_drvdata(pdev, xocl_asm);
 	mutex_init(&xocl_asm->lock);
 
@@ -68,7 +204,7 @@ static int asm_probe(struct platform_device *pdev)
 		err = -ENOMEM;
 		goto done;
 	}
-		
+
 
 	xocl_info(&pdev->dev, "IO start: 0x%llx, end: 0x%llx",
 		res->start, res->end);
@@ -82,6 +218,11 @@ static int asm_probe(struct platform_device *pdev)
 
 	xocl_asm->start_paddr = res->start;
 	xocl_asm->range = res->end - res->start + 1;
+
+	err = sysfs_create_group(&pdev->dev.kobj, &asm_attr_group);
+	if (err) {
+		xocl_err(&pdev->dev, "create asm sysfs attrs failed: %d", err);
+	}
 
 done:
 	if (err) {
@@ -113,15 +254,29 @@ static int asm_close(struct inode *inode, struct file *file)
 long asm_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct xocl_asm *xocl_asm;
+	void __user *data;
 	long result = 0;
 
 	xocl_asm = (struct xocl_asm *)filp->private_data;
+	data = (void __user *)(arg);
 
 	mutex_lock(&xocl_asm->lock);
 
 	switch (cmd) {
-	case 1:
-		xocl_err(xocl_asm->dev, "ioctl 1, do nothing");
+	case ASM_IOC_RESET:
+		result = reset_counters(xocl_asm);
+		break;
+	case ASM_IOC_STARTCNT:
+		result = start_counters(xocl_asm);
+		break;
+	case ASM_IOC_READCNT:
+		result = read_counters(xocl_asm, data);
+		break;
+	case ASM_IOC_STOPCNT:
+		result = stop_counters(xocl_asm);
+		break;
+	case ASM_IOC_STARTTRACE:
+		result = start_trace(xocl_asm, data);
 		break;
 	default:
 		result = -ENOTTY;

@@ -821,10 +821,20 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			ret = -ENOMEM;
 		} else {
 			memcpy(buf, xclbin, xclbin_len);
-			if (XOCL_DSA_IS_VERSAL(lro))
+			if (XOCL_DSA_IS_VERSAL(lro)) {
+				xocl_subdev_destroy_by_id(lro, XOCL_SUBDEV_CLOCK);
 				ret = xocl_xfer_versal_download_axlf(lro, buf);
-			else
+				/*
+				 *Note: this is a workaround for enabling ULP
+				 * level clock after xclbin download. We will
+				 * have new-code to replace this api. For fast
+				 * fix, just enable it temporarily.
+				 */
+				xocl_subdev_create_by_id(lro, XOCL_SUBDEV_CLOCK);
+
+			} else {
 				ret = xocl_icap_download_axlf(lro, buf);
+			}
 			vfree(buf);
 		}
 		(void) xocl_peer_response(lro, req->req, msgid, &ret,
