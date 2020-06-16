@@ -19,6 +19,14 @@
 #include "device_intf.h"
 
 #ifndef _WIN32
+#include "ioctl_monitors/ioctl_aim.h"
+#include "ioctl_monitors/ioctl_am.h"
+#include "ioctl_monitors/ioctl_asm.h"
+#include "ioctl_monitors/ioctl_traceFifoLite.h"
+#include "ioctl_monitors/ioctl_traceFifoFull.h"
+#include "ioctl_monitors/ioctl_traceFunnel.h"
+#include "ioctl_monitors/ioctl_traceS2MM.h"
+#if 0
 #include "mmapped_monitors/mmapped_aim.h"
 #include "mmapped_monitors/mmapped_am.h"
 #include "mmapped_monitors/mmapped_asm.h"
@@ -26,6 +34,7 @@
 #include "mmapped_monitors/mmapped_traceFifoFull.h"
 #include "mmapped_monitors/mmapped_traceFunnel.h"
 #include "mmapped_monitors/mmapped_traceS2MM.h"
+#endif
 #endif
 
 #include "xclperf.h"
@@ -586,6 +595,7 @@ DeviceIntf::~DeviceIntf()
       else if(xrt_core::system::monitor_access_type::mmap == accessType) {
         for(uint64_t i = 0; i < map->m_count; i++ ) {
           switch(map->m_debug_ip_data[i].m_type) {
+#if 0
             case AXI_MM_MONITOR :
             {
               MMappedAIM* pMon = new MMappedAIM(mDevice, i, aimList.size(), &(map->m_debug_ip_data[i]));
@@ -653,6 +663,90 @@ DeviceIntf::~DeviceIntf()
                 delete traceDMA;
                 traceDMA = nullptr;
               }
+              break;
+            }
+#endif
+            case AXI_MM_MONITOR :
+            {
+              IOCtlAIM* pMon = new IOCtlAIM(mDevice, i, aimList.size(), &(map->m_debug_ip_data[i]));
+                aimList.push_back(pMon);
+#if 0
+              if(pMon->isMMapped()) {
+              } else {
+                delete pMon;
+                pMon = nullptr;
+              }
+#endif
+              break;
+            }
+            case ACCEL_MONITOR  :
+            {
+              IOCtlAM* pMon = new IOCtlAM(mDevice, i, amList.size(), &(map->m_debug_ip_data[i]));
+                amList.push_back(pMon);
+#if 0
+              if(pMon->isMMapped()) {
+              } else {
+                delete pMon;
+                pMon = nullptr;
+              }
+#endif
+              break;
+            }
+            case AXI_STREAM_MONITOR :
+            {
+              IOCtlASM* pMon = new IOCtlASM(mDevice, i, asmList.size(), &(map->m_debug_ip_data[i]));
+                asmList.push_back(pMon);
+#if 0
+              if(pMon->isMMapped()) {
+              } else {
+                delete pMon;
+                pMon = nullptr;
+              }
+#endif
+              break;
+            }
+            case AXI_MONITOR_FIFO_LITE :
+            {
+              fifoCtrl = new IOCtlTraceFifoLite(mDevice, i, &(map->m_debug_ip_data[i]));
+#if 0
+              if(!fifoCtrl->isMMapped()) {
+                delete fifoCtrl;
+                fifoCtrl = nullptr;
+              }
+#endif
+              break;
+            }
+            case AXI_MONITOR_FIFO_FULL :
+            {
+              fifoRead = new IOCtlTraceFifoFull(mDevice, i, &(map->m_debug_ip_data[i]));
+#if 0
+              if(!fifoRead->isMMapped()) {
+                delete fifoRead;
+                fifoRead = nullptr;
+              }
+#endif
+              break;
+            }
+            case AXI_TRACE_FUNNEL :
+            {
+              traceFunnel = new IOCtlTraceFunnel(mDevice, i, &(map->m_debug_ip_data[i]));
+#if 0
+              if(!traceFunnel->isMMapped()) {
+                delete traceFunnel;
+                traceFunnel = nullptr;
+              }
+#endif
+              break;
+            }
+            case TRACE_S2MM :
+            {
+              traceDMA = new IOCtlTraceS2MM(mDevice, i, 0, &(map->m_debug_ip_data[i]));
+#if 0
+              if(!traceDMA->isMMapped()) {
+                delete traceDMA;
+                traceDMA = nullptr;
+              }
+#endif
               break;
             }
             default : break;

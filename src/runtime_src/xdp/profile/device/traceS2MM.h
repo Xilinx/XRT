@@ -58,16 +58,16 @@ public:
     virtual ~TraceS2MM()
     {}
 
-    void init(uint64_t bo_size, int64_t bufaddr);
-    bool isActive();
-    void reset();
+    virtual void init(uint64_t bo_size, int64_t bufaddr);
+    virtual bool isActive();	// ??
+    virtual void reset();
     /** 
      * One word is 64 bit with current implementation
      * IP should support word packing if we want to support 512 bit words
      */
-    uint64_t getWordCount();
+    virtual uint64_t getWordCount();
     uint8_t getMemIndex();
-    void showStatus();
+    virtual void showStatus();	// ??
     virtual void showProperties();
     virtual uint32_t getProperties() { return properties; }
     void parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector& traceVector);
@@ -78,16 +78,20 @@ private:
     uint8_t properties;
     uint8_t major_version;
     uint8_t minor_version;
-    uint64_t mPacketFirstTs = 0;
-    bool mclockTrainingdone = false;
     uint32_t mTraceFormat = 0;
-    uint32_t mModulus = 0;
-    uint64_t mPartialTs = 0;
 
     void write32(uint64_t offset, uint32_t val);
+
+protected:
     void parsePacketClockTrain(uint64_t packet, uint64_t firstTimestamp, uint32_t mod, xclTraceResults &result);
     void parsePacket(uint64_t packet, uint64_t firstTimestamp, xclTraceResults &result);
     uint64_t seekClockTraining(uint64_t* arr, uint64_t count);
+
+protected:
+    uint64_t mPacketFirstTs = 0;
+    bool mclockTrainingdone = false;
+    uint32_t mModulus = 0;
+    uint64_t mPartialTs = 0;
 };
 
 } //  xdp

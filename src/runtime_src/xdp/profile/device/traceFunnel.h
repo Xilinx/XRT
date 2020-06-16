@@ -60,9 +60,9 @@ public:
     virtual ~TraceFunnel()
     {}
 
-    size_t initiateClockTraining();
+    virtual size_t initiateClockTraining();
+    virtual void reset();
     signed int compareVersion(unsigned major2, unsigned minor2) const;
-    void reset();
 
     virtual void showProperties();
     virtual uint32_t getProperties() { return properties; }
