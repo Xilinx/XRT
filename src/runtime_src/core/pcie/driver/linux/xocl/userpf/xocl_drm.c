@@ -494,7 +494,6 @@ void xocl_drm_fini(struct xocl_drm *drm_p)
 	xocl_drvinst_release(drm_p, &hdl);
 
 	xocl_cleanup_mem(drm_p);
-	xocl_cma_bank_free(drm_p);
 	drm_put_dev(drm_p->ddev);
 	mutex_destroy(&drm_p->mm_lock);
 
