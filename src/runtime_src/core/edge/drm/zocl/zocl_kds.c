@@ -42,8 +42,18 @@ kds_echo_store(struct device *dev, struct device_attribute *da,
 }
 static DEVICE_ATTR(kds_echo, 0644, kds_echo_show, kds_echo_store);
 
+static ssize_t
+kds_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
+
+	return show_kds_stat(&zdev->kds, buf);
+}
+static DEVICE_ATTR_RO(kds_stat);
+
 static struct attribute *kds_attrs[] = {
 	&dev_attr_kds_echo.attr,
+	&dev_attr_kds_stat.attr,
 	NULL,
 };
 
@@ -102,7 +112,7 @@ zocl_add_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 	 * until this client close all of the contexts.
 	 */
 	zocl_ctx_to_info(args, &info);
-	ret = kds_add_context(client, &info);
+	ret = kds_add_context(&zdev->kds, client, &info);
 
 out:
 	if (!client->num_ctx) {
@@ -154,7 +164,7 @@ zocl_del_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 	}
 
 	zocl_ctx_to_info(args, &info);
-	ret = kds_del_context(client, &info);
+	ret = kds_del_context(&zdev->kds, client, &info);
 	if (ret)
 		goto out;
 
@@ -244,7 +254,7 @@ int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 		start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 
 	/* Now, we could forget execbuf */
-	ret = kds_add_command(xcmd);
+	ret = kds_add_command(&zdev->kds, xcmd);
 	if (ret)
 		kds_free_command(xcmd);
 

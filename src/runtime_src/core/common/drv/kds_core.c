@@ -40,12 +40,285 @@ int store_kds_echo(struct kds_sched *kds, const char *buf, size_t count,
 
 	return count;
 }
+
+ssize_t show_kds_stat(struct kds_sched *kds, char *buf)
+{
+	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
+	ssize_t sz = 0;
+	bool shared;
+	int ref;
+	int i;
+
+	mutex_lock(&cu_mgmt->lock);
+	sz += sprintf(buf+sz, "Kernel Driver Scheduler(KDS)\n");
+	sz += sprintf(buf+sz, "Configured: %d\n", cu_mgmt->configured);
+	sz += sprintf(buf+sz, "Number of CUs: %d\n", cu_mgmt->num_cus);
+	for (i = 0; i < cu_mgmt->num_cus; ++i) {
+		shared = !(cu_mgmt->cu_refs[i] & CU_EXCLU_MASK);
+		ref = cu_mgmt->cu_refs[i] & ~CU_EXCLU_MASK;
+		sz += sprintf(buf+sz, "  CU[%d] usage(%llu) shared(%d) ref(%d)\n",
+			      i, cu_mgmt->cu_usage[i], shared, ref);
+	}
+	mutex_unlock(&cu_mgmt->lock);
+
+	if (sz)
+		buf[sz++] = 0;
+
+	return sz;
+}
 /* sysfs end */
+
+/**
+ * get_cu_by_addr -Get CU index by address
+ *
+ * @cu_mgmt: KDS CU management struct
+ * @addr: The address of the target CU
+ *
+ * Returns CU index if found. Returns an out of range number if not found.
+ */
+static int
+get_cu_by_addr(struct kds_cu_mgmt *cu_mgmt, u32 addr)
+{
+	int i;
+
+	/* Do not use this search in critical path */
+	for (i = 0; i < cu_mgmt->num_cus; ++i) {
+		if (cu_mgmt->xcus[i]->info.addr == addr)
+			break;
+	}
+
+	return i;
+}
+
+static void
+kds_cu_config(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
+{
+	struct kds_client *client = xcmd->client;
+	u32 *cus_addr = (u32 *)xcmd->info;
+	size_t num_cus = xcmd->isize / sizeof(u32);
+	struct xrt_cu *tmp;
+	int i, j;
+
+	mutex_lock(&cu_mgmt->lock);
+	/* I don't care if the configure command claim less number of cus */
+	if (unlikely(num_cus > cu_mgmt->num_cus))
+		goto error;
+
+	/* If the configure command is sent by xclLoadXclbin(), the command
+	 * content should be the same and it is okay to let it go through.
+	 *
+	 * But it still has chance that user would manually construct a config
+	 * command, which could be wrong.
+	 *
+	 * So, do not allow reconfigure. This is still not totally safe, since
+	 * configure command and load xclbin are not atomic.
+	 *
+	 * The configured flag would be reset once the last one client finished.
+	 */
+	if (cu_mgmt->configured) {
+		kds_info(client, "CU already configured in KDS\n");
+		goto done;
+	}
+
+	/* Now we need to make CU index right */
+	for (i = 0; i < num_cus; i++) {
+		j = get_cu_by_addr(cu_mgmt, cus_addr[i]);
+		if (j == cu_mgmt->num_cus)
+			goto error;
+
+		/* Ordering CU index */
+		if (j != i) {
+			tmp = cu_mgmt->xcus[i];
+			cu_mgmt->xcus[i] = cu_mgmt->xcus[j];
+			cu_mgmt->xcus[j] = tmp;
+		}
+		cu_mgmt->xcus[i]->info.cu_idx = i;
+	}
+	cu_mgmt->configured = 1;
+
+done:
+	mutex_unlock(&cu_mgmt->lock);
+	xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
+	xcmd->cb.free(xcmd);
+	return;
+
+error:
+	mutex_unlock(&cu_mgmt->lock);
+	xcmd->cb.notify_host(xcmd, KDS_ERROR);
+	xcmd->cb.free(xcmd);
+}
+
+/**
+ * acquire_cu_idx - Get ready CU index
+ *
+ * @xcmd: Command
+ *
+ * Returns: Negative value for error. 0 or positive value for index
+ *
+ */
+static int
+acquire_cu_idx(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
+{
+	struct kds_client *client = xcmd->client;
+	/* User marked CUs */
+	uint8_t user_cus[MAX_CUS];
+	int num_marked;
+	/* After validation */
+	uint8_t valid_cus[MAX_CUS];
+	int num_valid = 0;
+	uint8_t index;
+	int i;
+
+	num_marked = cu_mask_to_cu_idx(xcmd, user_cus);
+	if (unlikely(num_marked > cu_mgmt->num_cus)) {
+		kds_err(client, "Too many CUs in CU mask");
+		return -EINVAL;
+	}
+
+	/* Check if CU is added in the context */
+	for (i = 0; i < num_marked; ++i) {
+		if (test_bit(user_cus[i], client->cu_bitmap)) {
+			valid_cus[num_valid] = user_cus[i];
+			++num_valid;
+		}
+	}
+
+	if (num_valid == 1) {
+		index = valid_cus[0];
+		mutex_lock(&cu_mgmt->lock);
+		goto out;
+	} else if (num_valid == 0) {
+		kds_err(client, "All CUs in mask are out of context");
+		return -EINVAL;
+	}
+
+	/* There are more than one valid candidate
+	 * TODO: test if the lock impact the performance on multi processes
+	 */
+	mutex_lock(&cu_mgmt->lock);
+	for (i = 1, index = valid_cus[0]; i < num_valid; ++i) {
+		if (cu_mgmt->cu_usage[valid_cus[i]] < cu_mgmt->cu_usage[index])
+			index = valid_cus[i];
+	}
+
+out:
+	++cu_mgmt->cu_usage[index];
+	mutex_unlock(&cu_mgmt->lock);
+	return cu_mgmt->xcus[index]->info.inst_idx;
+}
+
+static void
+kds_cu_dispatch(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
+{
+	int cu_idx;
+
+	cu_idx = acquire_cu_idx(cu_mgmt, xcmd);
+	if (cu_idx < 0) {
+		xcmd->cb.notify_host(xcmd, KDS_ERROR);
+		xcmd->cb.free(xcmd);
+		return;
+	}
+
+	xrt_cu_submit(cu_mgmt->xcus[cu_idx], xcmd);
+}
+
+static int
+kds_submit_cu(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
+{
+	if (xcmd->opcode != OP_CONFIG)
+		kds_cu_dispatch(cu_mgmt, xcmd);
+	else
+		kds_cu_config(cu_mgmt, xcmd);
+
+	return 0;
+}
+
+static int
+kds_add_cu_context(struct kds_sched *kds, struct kds_client *client,
+		   struct kds_ctx_info *info)
+{
+	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
+	int cu_idx = info->cu_idx;
+	u32 prop;
+	bool shared;
+	int ret = 0;
+
+	if (cu_idx >= cu_mgmt->num_cus) {
+		kds_err(client, "CU(%d) not found", cu_idx);
+		return -EINVAL;
+	}
+
+	if (test_and_set_bit(cu_idx, client->cu_bitmap)) {
+		kds_err(client, "CU(%d) has been added", cu_idx);
+		return -EINVAL;
+	}
+
+	prop = info->flags & CU_CTX_PROP_MASK;
+	shared = (prop != CU_CTX_EXCLUSIVE);
+
+	/* cu_mgmt->cu_refs is the critical section of multiple clients */
+	mutex_lock(&cu_mgmt->lock);
+	/* Must check exclusive bit is set first */
+	if (cu_mgmt->cu_refs[cu_idx] & CU_EXCLU_MASK) {
+		kds_err(client, "CU(%d) has been exclusively reserved", cu_idx);
+		ret = -EBUSY;
+		goto err;
+	}
+
+	/* Not allow exclusively reserved if CU is shared */
+	if (!shared && cu_mgmt->cu_refs[cu_idx]) {
+		kds_err(client, "CU(%d) has been shared", cu_idx);
+		ret = -EBUSY;
+		goto err;
+	}
+
+	/* CU is not shared and not exclusively reserved */
+	if (!shared)
+		cu_mgmt->cu_refs[cu_idx] |= CU_EXCLU_MASK;
+	else
+		++cu_mgmt->cu_refs[cu_idx];
+	mutex_unlock(&cu_mgmt->lock);
+
+	return 0;
+err:
+	mutex_unlock(&cu_mgmt->lock);
+	clear_bit(cu_idx, client->cu_bitmap);
+	return ret;
+}
+
+static int
+kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
+		   struct kds_ctx_info *info)
+{
+	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
+	int cu_idx = info->cu_idx;
+
+	if (cu_idx >= cu_mgmt->num_cus) {
+		kds_err(client, "CU(%d) not found", cu_idx);
+		return -EINVAL;
+	}
+
+	if (!test_and_clear_bit(cu_idx, client->cu_bitmap)) {
+		kds_err(client, "CU(%d) has never been reserved", cu_idx);
+		return -EINVAL;
+	}
+
+	/* cu_mgmt->cu_refs is the critical section of multiple clients */
+	mutex_lock(&cu_mgmt->lock);
+	if (cu_mgmt->cu_refs[cu_idx] & CU_EXCLU_MASK)
+		cu_mgmt->cu_refs[cu_idx] = 0;
+	else
+		--cu_mgmt->cu_refs[cu_idx];
+	mutex_unlock(&cu_mgmt->lock);
+
+	return 0;
+}
 
 int kds_init_sched(struct kds_sched *kds)
 {
 	INIT_LIST_HEAD(&kds->clients);
 	mutex_init(&kds->lock);
+	mutex_init(&kds->cu_mgmt.lock);
 	kds->num_client = 0;
 
 	return 0;
@@ -54,6 +327,7 @@ int kds_init_sched(struct kds_sched *kds)
 void kds_fini_sched(struct kds_sched *kds)
 {
 	mutex_destroy(&kds->lock);
+	mutex_destroy(&kds->cu_mgmt.lock);
 }
 
 struct kds_command *kds_alloc_command(struct kds_client *client, u32 size)
@@ -105,26 +379,7 @@ void kds_free_command(struct kds_command *xcmd)
 #endif
 }
 
-int kds_submit_cu(struct kds_command *xcmd)
-{
-	struct kds_client *client = xcmd->client;
-	struct kds_ctrl *ctrl = client->ctrl[KDS_CU];
-
-	if (ctrl) {
-		/* NOTE: If still has errors, the controller
-		 * should mark command as ERROR and notify host
-		 */
-		ctrl->submit(ctrl, xcmd);
-		return 0;
-	}
-
-	kds_err(client, "No CU controller to handle xcmd");
-	xcmd->cb.notify_host(xcmd, KDS_ERROR);
-	xcmd->cb.free(xcmd);
-	return -ENXIO;
-}
-
-int kds_add_command(struct kds_command *xcmd)
+int kds_add_command(struct kds_sched *kds, struct kds_command *xcmd)
 {
 	struct kds_client *client = xcmd->client;
 	int err = 0;
@@ -139,7 +394,7 @@ int kds_add_command(struct kds_command *xcmd)
 	/* Command is good to submit */
 	switch (xcmd->type) {
 	case KDS_CU:
-		err = kds_submit_cu(xcmd);
+		err = kds_submit_cu(&kds->cu_mgmt, xcmd);
 		break;
 	default:
 		kds_err(client, "Unknown type");
@@ -153,18 +408,8 @@ int kds_add_command(struct kds_command *xcmd)
 
 int kds_init_client(struct kds_sched *kds, struct kds_client *client)
 {
-	struct kds_ctx_info info;
-	struct kds_ctrl *ctrl;
-
 	client->pid = get_pid(task_pid(current));
-	client->ctrl = kds->ctrl;
 	mutex_init(&client->lock);
-
-	/* Initial controller context private data */
-	ctrl = client->ctrl[KDS_CU];
-	info.flags = CU_CTX_OP_INIT;
-	if (ctrl)
-		ctrl->control_ctx(ctrl, client, &info);
 
 	init_waitqueue_head(&client->waitq);
 	atomic_set(&client->event, 0);
@@ -194,17 +439,10 @@ int kds_init_client(struct kds_sched *kds, struct kds_client *client)
 
 void kds_fini_client(struct kds_sched *kds, struct kds_client *client)
 {
-	struct kds_ctx_info info;
-	struct kds_ctrl *ctrl;
-
 #if PRE_ALLOC
 	vfree(client->xcmds);
 	vfree(client->infos);
 #endif
-	ctrl = client->ctrl[KDS_CU];
-	info.flags = CU_CTX_OP_FINI;
-	if (ctrl)
-		ctrl->control_ctx(ctrl, client, &info);
 
 	put_pid(client->pid);
 	mutex_destroy(&client->lock);
@@ -212,14 +450,16 @@ void kds_fini_client(struct kds_sched *kds, struct kds_client *client)
 	mutex_lock(&kds->lock);
 	list_del(&client->link);
 	kds->num_client--;
+	if (!kds->num_client)
+		kds->cu_mgmt.configured = 0;
 	mutex_unlock(&kds->lock);
 }
 
-int kds_add_context(struct kds_client *client, struct kds_ctx_info *info)
+int kds_add_context(struct kds_sched *kds, struct kds_client *client,
+		    struct kds_ctx_info *info)
 {
 	u32 cu_idx = info->cu_idx;
 	bool shared = (info->flags != CU_CTX_EXCLUSIVE);
-	struct kds_ctrl *ctrl = client->ctrl[KDS_CU];
 
 	BUG_ON(!mutex_is_locked(&client->lock));
 
@@ -235,11 +475,7 @@ int kds_add_context(struct kds_client *client, struct kds_ctx_info *info)
 		}
 		++client->virt_cu_ref;
 	} else {
-		if (!ctrl)
-			return -ENODEV;
-		info->flags &= ~CU_CTX_OP_MASK;
-		info->flags |= CU_CTX_OP_ADD;
-		if (ctrl->control_ctx(ctrl, client, info))
+		if (kds_add_cu_context(kds, client, info))
 			return -EINVAL;
 	}
 
@@ -249,10 +485,10 @@ int kds_add_context(struct kds_client *client, struct kds_ctx_info *info)
 	return 0;
 }
 
-int kds_del_context(struct kds_client *client, struct kds_ctx_info *info)
+int kds_del_context(struct kds_sched *kds, struct kds_client *client,
+		    struct kds_ctx_info *info)
 {
 	u32 cu_idx = info->cu_idx;
-	struct kds_ctrl *ctrl = client->ctrl[KDS_CU];
 
 	BUG_ON(!mutex_is_locked(&client->lock));
 
@@ -263,11 +499,7 @@ int kds_del_context(struct kds_client *client, struct kds_ctx_info *info)
 		}
 		--client->virt_cu_ref;
 	} else {
-		if (!ctrl)
-			return -ENODEV;
-		info->flags &= ~CU_CTX_OP_MASK;
-		info->flags |= CU_CTX_OP_DEL;
-		if (ctrl->control_ctx(ctrl, client, info))
+		if (kds_del_cu_context(kds, client, info))
 			return -EINVAL;
 	}
 
@@ -275,6 +507,48 @@ int kds_del_context(struct kds_client *client, struct kds_ctx_info *info)
 	kds_info(client, "Client pid(%d) del context CU(0x%x)",
 		 pid_nr(client->pid), cu_idx);
 	return 0;
+}
+
+int kds_add_cu(struct kds_sched *kds, struct xrt_cu *xcu)
+{
+	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
+	int i;
+
+	if (cu_mgmt->num_cus >= MAX_CUS)
+		return -ENOMEM;
+
+	/* Find a slot xcus[] */
+	for (i = 0; i < MAX_CUS; i++) {
+		if (cu_mgmt->xcus[i] != NULL)
+			continue;
+
+		cu_mgmt->xcus[i] = xcu;
+		++cu_mgmt->num_cus;
+		return 0;
+	}
+
+	return -ENOSPC;
+}
+
+int kds_del_cu(struct kds_sched *kds, struct xrt_cu *xcu)
+{
+	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
+	int i;
+
+	if (cu_mgmt->num_cus == 0)
+		return -EINVAL;
+
+	for (i = 0; i < MAX_CUS; i++) {
+		if (cu_mgmt->xcus[i] != xcu)
+			continue;
+
+		cu_mgmt->xcus[i] = NULL;
+		cu_mgmt->cu_usage[i] = 0;
+		--cu_mgmt->num_cus;
+		return 0;
+	}
+
+	return -ENODEV;
 }
 
 u32 kds_live_clients(struct kds_sched *kds, pid_t **plist)
@@ -335,7 +609,7 @@ void cfg_ecmd2xcmd(struct ert_configure_cmd *ecmd,
 	int i;
 
 	xcmd->type = KDS_CU;
-	xcmd->opcode = OP_CONFIG_CTRL;
+	xcmd->opcode = OP_CONFIG;
 
 	xcmd->cb.notify_host = notify_execbuf;
 	xcmd->execbuf = (u32 *)ecmd;

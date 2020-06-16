@@ -37,41 +37,47 @@ The following table lists all supported groups, keys, valid key values, and shor
 Runtime Group
 =============
 
-+-----------------+------------------------------+-------------------------------------------+
-|  Key            |  Valid Values                |             Description                   |
-+=================+==============================+===========================================+
-| api_checks      |  [true|false]                |Enable or disable OpenCL API checks:       |
-|                 |                              |                                           |
-|                 |                              |     - true: enable                        |
-|                 |                              |     - false: disable                      |
-|                 |                              |                                           |
-|                 |                              |Default: true                              |
-+-----------------+------------------------------+-------------------------------------------+
-| runtime_log     |[null|console|syslog|filename]|Specify where the runtime logs are printed:|
-|                 |                              |                                           |
-|                 |                              |     - null: Do not print any logs.        |
-|                 |                              |     - console: Print logs to stdout       |
-|                 |                              |     - syslog: Print logs to Linux syslog  |
-|                 |                              |     - filename: Print logs to the         |
-|                 |                              |       specified file.                     |
-|                 |                              |       Example, runtime_log=my_run.log     |
-|                 |                              |                                           |
-|                 |                              |Default: console                           |
-+-----------------+------------------------------+-------------------------------------------+
-| cpu_affinity    | [{N,N,...}]                  |Pin all runtime threads to specified CPUs. |
-|                 |                              |                                           |
-|                 |                              |Example: cpu_affinity = {4,5,6}            |
-+-----------------+------------------------------+-------------------------------------------+
-| polling_throttle| [N]                          |Specify the time interval in microseconds  |
-|                 |                              |that the runtime library polls the device. |
-|                 |                              |                                           |
-|                 |                              |Default: 0                                 |
-+-----------------+------------------------------+-------------------------------------------+
-| verbosity       | [0|1|2|3]                    |verbosity level of log messages. Higher    |
-|                 |                              |number implies more verbosity              |
-|                 |                              |                                           |
-|                 |                              |Default: 0                                 |
-+-----------------+------------------------------+-------------------------------------------+
++---------------------+------------------------------+-------------------------------------------+
+|  Key                |  Valid Values                |             Description                   |
++=====================+==============================+===========================================+
+| api_checks          |  [true|false]                |Enable or disable OpenCL API checks:       |
+|                     |                              |                                           |
+|                     |                              |     - true: enable                        |
+|                     |                              |     - false: disable                      |
+|                     |                              |                                           |
+|                     |                              |Default: true                              |
++---------------------+------------------------------+-------------------------------------------+
+| runtime_log         |[null|console|syslog|filename]|Specify where the runtime logs are printed:|
+|                     |                              |                                           |
+|                     |                              |     - null: Do not print any logs.        |
+|                     |                              |     - console: Print logs to stdout       |
+|                     |                              |     - syslog: Print logs to Linux syslog  |
+|                     |                              |     - filename: Print logs to the         |
+|                     |                              |       specified file.                     |
+|                     |                              |       Example, runtime_log=my_run.log     |
+|                     |                              |                                           |
+|                     |                              |Default: console                           |
++---------------------+------------------------------+-------------------------------------------+
+| cpu_affinity        | [{N,N,...}]                  |Pin all runtime threads to specified CPUs. |
+|                     |                              |                                           |
+|                     |                              |Example: cpu_affinity = {4,5,6}            |
++---------------------+------------------------------+-------------------------------------------+
+| verbosity           | [0|1|2|3|4|5|6|7]            |verbosity level of log messages. Higher    |
+|                     |                              |number implies more verbosity              |
+|                     |                              |                                           |
+|                     |                              |Default: 4                                 |
++---------------------+------------------------------+-------------------------------------------+
+|exclusive_cu_context | [false|true]                 |When setting true OpenCL process holds     |
+|                     |                              |exclusive access of the Compute Units      |
+|                     |                              |                                           |
+|                     |                              |Default: false                             |
++---------------------+------------------------------+-------------------------------------------+
+
+
+
+
+
+
 
 
 Debug Group
@@ -130,8 +136,29 @@ Debug Group
 |                      |                              |                                                      |
 |                      |                              |Default: 1M                                           |
 +----------------------+------------------------------+------------------------------------------------------+
-
-
+| lop_trace            |[false|true]                  | Enables or disables low overhead profiling.          |
+|                      |                              |                                                      |
+|                      |                              |     - false: Disable low overhead profiling          |
+|                      |                              |     - true : Enable low overhead profiling           |
+|                      |                              |                                                      |
+|                      |                              | Default: false                                       |
+|                      |                              |                                                      |
++----------------------+------------------------------+------------------------------------------------------+
+| continuous_trace     |[false|true]                  |Enables the continuous offload of the device data     |
+|                      |                              |while the application is running. In the event of a   |
+|                      |                              |crash/hang a trace file will be available to help     |
+|                      |                              |debugging.                                            |
+|                      |                              |                                                      |
+|                      |                              |     - false: Disable continous trance                |
+|                      |                              |     - true : Enable continuous trace                 |
+|                      |                              |                                                      |
+|                      |                              | Default: false                                       |
++----------------------+------------------------------+------------------------------------------------------+
+|continuous_trace_inte-|[N]                           |Specifies the interval in millisecond to offload      |
+|rval_ms               |                              |the device data in continous trace mode (see above)   |
+|                      |                              |                                                      |
+|                      |                              | Default: 10                                          |
++----------------------+------------------------------+------------------------------------------------------+
 
 Emulation Group
 ===============
@@ -192,4 +219,10 @@ Emulation Group
 |                           |                            | Note: The kernel needs to be compiled with debug  |
 |                           |                            | enabled for the waveform to be saved and          |
 |                           |                            | displayed in the simulator GUI.                   |
++---------------------------+----------------------------+---------------------------------------------------+
+|timeout_scale              |[na|ms|sec|min]             |Specify the time scaling unit of timeout specified |
+|                           |                            |clPollStreams command, otherwise Emulation does not|
+|                           |                            |support timeout specified in clPollStreams command |
+|                           |                            |                                                   |
+|                           |                            | Default:na (not applicable)                       |
 +---------------------------+----------------------------+---------------------------------------------------+

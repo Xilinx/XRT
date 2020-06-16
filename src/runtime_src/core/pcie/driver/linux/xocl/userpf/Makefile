@@ -41,7 +41,6 @@ endif
 endif
 
 drv_common-y   := $(common_dir)/kds_core.o \
-		  $(common_dir)/kds_cu_ctrl.o \
 		  $(common_dir)/xrt_cu.o \
 		  $(common_dir)/cu_hls.o \
 		  $(common_dir)/cu_plram.o
@@ -72,10 +71,11 @@ xocl-y := \
 	../subdev/trace_fifo_full.o\
 	../subdev/trace_funnel.o\
 	../subdev/trace_s2mm.o\
+	../subdev/lapc.o\
+	../subdev/spc.o\
 	../subdev/ddr_srsr.o\
 	../subdev/memory_hbm.o \
 	../subdev/address_translator.o \
-	../subdev/cu_ctrl.o \
 	../subdev/cu.o \
 	../subdev/p2p.o \
 	$(xocl_lib-y)	\

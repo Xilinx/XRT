@@ -188,3 +188,18 @@ void xrt_cu_fini(struct xrt_cu *xcu)
 
 	return;
 }
+
+ssize_t show_cu_stat(struct xrt_cu *xcu, char *buf)
+{
+	ssize_t sz = 0;
+
+	sz += sprintf(buf+sz, "CU index: %d\n", xcu->info.cu_idx);
+	sz += sprintf(buf+sz, "CU protocol code: %d\n", xcu->info.protocol);
+	sz += sprintf(buf+sz, "CU interrupt cap: %d\n", xcu->info.intr_enable);
+	sz += sprintf(buf+sz, "CU interrupt ID: %d\n", xcu->info.intr_id);
+
+	if (sz)
+		buf[sz++] = 0;
+
+	return sz;
+}

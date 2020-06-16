@@ -31,11 +31,11 @@
 #include "../lib/libxdma_api.h"
 #include "common.h"
 
-#if defined(__PPC64__)
-#define XOCL_FILE_PAGE_OFFSET	0x10000
-#else
-#define XOCL_FILE_PAGE_OFFSET	0x100000
+#ifndef SZ_4G
+#define SZ_4G	_AC(0x100000000, ULL)
 #endif
+
+#define XOCL_FILE_PAGE_OFFSET	(SZ_4G / PAGE_SIZE)
 
 #ifndef VM_RESERVED
 #define VM_RESERVED (VM_DONTEXPAND | VM_DONTDUMP)
@@ -1240,7 +1240,7 @@ int xocl_cma_bank_alloc(struct xocl_drm *drm_p, struct drm_xocl_alloc_cma_info *
 	mutex_lock(&drm_p->mm_lock);
 
 	if (!num) {
-		err = -EINVAL;
+		err = -ENODEV;
 		DRM_ERROR("Doesn't support HOST MEM feature");
 		goto unlock;
 	}

@@ -30,12 +30,12 @@ endfunction()
 #------------------------------------------------------------------------------
 function(GetBMCFWImage ALVEOGEN URL_MSP432_GEN)
 FILE(DOWNLOAD ${URL_MSP432_GEN}/BMC-MSP432.txt.filename ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN}-BMC-MSP432.txt.filename STATUS mystatus)
-  CheckStatus( ${mystatus} ${URL_MSP432_GEN})
+  CheckStatus( ${mystatus} ${URL_MSP432_GEN}/BMC-MSP432.txt.filename)
 
   FILE(STRINGS ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN}-BMC-MSP432.txt.filename ALVEOGEN_FILENAME)
 
   FILE(DOWNLOAD ${URL_MSP432_GEN}/BMC-MSP432.txt ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN}-${ALVEOGEN_FILENAME} STATUS mystatus)
-  CheckStatus( ${mystatus} ${URL_MSP432_GEN})
+  CheckStatus( ${mystatus} ${URL_MSP432_GEN}/BMC-MSP432.txt)
 
   # Add this FW image to the list of FW images to be released
   list(APPEND ALVEO_FW_FILES ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN}-${ALVEOGEN_FILENAME}) 

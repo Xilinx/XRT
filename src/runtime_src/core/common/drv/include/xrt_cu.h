@@ -138,6 +138,14 @@ struct xcu_funcs {
 	u32 (*clear_intr)(void *core);
 };
 
+enum CU_PROTOCOL {
+	CTRL_HS = 0,
+	CTRL_CHAIN = 1,
+	CTRL_NONE = 2,
+	CTRL_ME = 3,
+	CTRL_ACC = 4
+};
+
 struct xrt_cu_info {
 	u32	model;
 	int	cu_idx;
@@ -238,11 +246,15 @@ void xrt_cu_submit(struct xrt_cu *xcu, struct kds_command *xcmd);
 int  xrt_cu_init(struct xrt_cu *xcu);
 void xrt_cu_fini(struct xrt_cu *xcu);
 
+ssize_t show_cu_stat(struct xrt_cu *xcu, char *buf);
+
 /* CU Implementations */
 struct xrt_cu_hls {
 	void __iomem		*vaddr;
 	int			 max_credits;
 	int			 credits;
+	int			 run_cnts;
+	bool			 ctrl_chain;
 };
 
 int xrt_cu_hls_init(struct xrt_cu *xcu);
