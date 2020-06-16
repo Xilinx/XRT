@@ -1866,4 +1866,10 @@ void xocl_fini_addr_translator(void);
 
 int __init xocl_init_p2p(void);
 void xocl_fini_p2p(void);
+
+int __init xocl_init_spc(void);
+void xocl_fini_spc(void);
+
+int __init xocl_init_lapc(void);
+void xocl_fini_lapc(void);
 #endif

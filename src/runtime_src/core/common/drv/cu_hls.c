@@ -53,6 +53,8 @@ static void cu_hls_start(void *core)
 {
 	struct xrt_cu_hls *cu_hls = core;
 
+	cu_hls->run_cnts++;
+
 	if (kds_echo)
 		return;
 
@@ -62,7 +64,7 @@ static void cu_hls_start(void *core)
 	 * Once ths CU is ready, it will clear this bit.
 	 * So, if this bit is 1, it means the CU is running.
 	 */
-	iowrite32(0x1, cu_hls->vaddr);
+	iowrite32(CU_AP_START, cu_hls->vaddr);
 }
 
 static void cu_hls_check(void *core, struct xcu_status *status)
@@ -70,26 +72,46 @@ static void cu_hls_check(void *core, struct xcu_status *status)
 	struct xrt_cu_hls *cu_hls = core;
 	u32 ctrl_reg;
 	u32 done_reg = 0;
+	u32 ready_reg = 0;
+	u32 submitted;
 
-	if (!kds_echo) {
-		/* ioread32/iowrite32 is expensive! */
-		if (cu_hls->credits == cu_hls->max_credits)
-			goto out;
-
-		/* done is indicated by AP_DONE(2) alone or by AP_DONE(2) | AP_IDLE(4)
-		 * but not by AP_IDLE itself.  Since 0x10 | (0x10 | 0x100) = 0x110
-		 * checking for 0x10 is sufficient.
-		 */
-		ctrl_reg  = ioread32(cu_hls->vaddr);
-
-		if (!(ctrl_reg & CU_AP_DONE))
-			goto out;
+	if (kds_echo) {
+		done_reg = 1;
+		ready_reg = 1;
+		cu_hls->run_cnts--;
+		goto out;
 	}
 
-	done_reg = 1;
+	submitted = cu_hls->max_credits - cu_hls->credits;
+
+	/* ioread32/iowrite32 is expensive! */
+	if (!submitted && !cu_hls->run_cnts)
+		goto out;
+
+	/* done is indicated by AP_DONE(2) alone or by AP_DONE(2) | AP_IDLE(4)
+	 * but not by AP_IDLE itself.  Since b10 | (b10 | b100) = b110
+	 * checking for b10 is sufficient.
+	 */
+	ctrl_reg  = ioread32(cu_hls->vaddr);
+
+	/* if there is submitted tasks, then check if ap_start bit is clear
+	 * See comments in cu_hls_start().
+	 */
+	if (submitted && !(ctrl_reg & CU_AP_START))
+		ready_reg = 1;
+
+	/* For AP_CTRL_HS, ap_ready and ap_done would assert at the same cycle.
+	 * For AP_CTRL_CHAIN, ap_done and ap_ready have NO dependency.
+	 */
+	if (ctrl_reg & CU_AP_DONE) {
+		done_reg = 1;
+		if (cu_hls->ctrl_chain)
+			iowrite32(CU_AP_CONTINUE, cu_hls->vaddr);
+	}
+
 out:
 	status->num_done = done_reg;
-	status->num_ready = done_reg;
+	status->num_ready = ready_reg;
 }
 
 static struct xcu_funcs xrt_cu_hls_funcs = {
@@ -129,6 +151,8 @@ int xrt_cu_hls_init(struct xrt_cu *xcu)
 
 	core->max_credits = 1;
 	core->credits = core->max_credits;
+	core->run_cnts = 0;
+	core->ctrl_chain = (xcu->info.protocol == CTRL_CHAIN)? true : false;
 
 	xcu->core = core;
 	xcu->funcs = &xrt_cu_hls_funcs;

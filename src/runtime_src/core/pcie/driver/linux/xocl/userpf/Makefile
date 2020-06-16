@@ -71,6 +71,8 @@ xocl-y := \
 	../subdev/trace_fifo_full.o\
 	../subdev/trace_funnel.o\
 	../subdev/trace_s2mm.o\
+	../subdev/lapc.o\
+	../subdev/spc.o\
 	../subdev/ddr_srsr.o\
 	../subdev/memory_hbm.o \
 	../subdev/address_translator.o \
