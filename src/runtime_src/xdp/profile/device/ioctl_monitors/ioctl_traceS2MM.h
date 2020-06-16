@@ -36,14 +36,14 @@ public:
   virtual ~IOCtlTraceS2MM();
 
   virtual void init(uint64_t bo_size, int64_t bufaddr);
-//    virtual bool isActive(); ??
+//    virtual bool isActive();
   virtual void reset();
   /**
    * One word is 64 bit with current implementation
    * IP should support word packing if we want to support 512 bit words
    */
   virtual uint64_t getWordCount();
-//    void showStatus(); ??
+  virtual void showStatus() {}
 
   virtual int read(uint64_t offset, size_t size, void* data);
   virtual int write(uint64_t offset, size_t size, void* data);

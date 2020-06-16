@@ -69,20 +69,6 @@ void IOCtlTraceS2MM::init(uint64_t bo_size, int64_t bufaddr)
   ioctl(driver_FD, TR_S2MM_IOC_START, &cfg);
 }
 
-#if 0
-bool IOCtlTraceS2MM::isActive()
-{
-    if(out_stream)
-        (*out_stream) << " TraceS2MM::isActive " << std::endl;
-
-    uint32_t regValue = 0;
-    read(TS2MM_AP_CTRL, 4, &regValue);
-    return regValue & TS2MM_AP_START;
-}
-
-// showStatus ??
-#endif
-
 void IOCtlTraceS2MM::reset()
 {
   if(!isOpened()) {
