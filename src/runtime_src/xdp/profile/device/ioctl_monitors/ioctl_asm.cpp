@@ -48,9 +48,17 @@ IOCtlASM::~IOCtlASM()
   close(driver_FD);
 }
 
-size_t IOCtlASM::startCounter()
+bool IOCtlASM::isOpened()
 {
   if(-1 == driver_FD) {
+    return false;
+  }
+  return true;
+}
+
+size_t IOCtlASM::startCounter()
+{
+  if(!isOpened()) {
     return 0;
   }
  
@@ -64,7 +72,7 @@ size_t IOCtlASM::startCounter()
 
 size_t IOCtlASM::stopCounter()
 {
-  if(-1 == driver_FD) {
+  if(!isOpened()) {
     return 0;
   }
  
@@ -77,7 +85,7 @@ size_t IOCtlASM::stopCounter()
 
 size_t IOCtlASM::readCounter(xclCounterResults& counterResults, uint32_t s)
 {
-  if(-1 == driver_FD) {
+  if(!isOpened()) {
     return 0;
   }
  
@@ -112,7 +120,7 @@ size_t IOCtlASM::readCounter(xclCounterResults& counterResults, uint32_t s)
 
 size_t IOCtlASM::triggerTrace(uint32_t traceOption /* starttrigger*/)
 {
-  if(-1 == driver_FD) {
+  if(!isOpened()) {
     return 0;
   }
  

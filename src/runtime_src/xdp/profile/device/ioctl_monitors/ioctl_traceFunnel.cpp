@@ -50,9 +50,17 @@ IOCtlTraceFunnel::~IOCtlTraceFunnel()
   close(driver_FD);
 }
 
-size_t IOCtlTraceFunnel::initiateClockTraining()
+bool IOCtlTraceFunnel::isOpened()
 {
   if(-1 == driver_FD) {
+    return false;
+  }
+  return true;
+}
+
+size_t IOCtlTraceFunnel::initiateClockTraining()
+{
+  if(!isOpened()) {
     return 0;
   }
  
@@ -69,7 +77,7 @@ size_t IOCtlTraceFunnel::initiateClockTraining()
 
 void IOCtlTraceFunnel::reset()
 {
-  if(-1 == driver_FD) {
+  if(!isOpened()) {
     return;
   }
  

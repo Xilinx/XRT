@@ -47,9 +47,17 @@ IOCtlTraceFifoLite::~IOCtlTraceFifoLite()
   close(driver_FD);
 }
 
-size_t IOCtlTraceFifoLite::reset()
+bool IOCtlTraceFifoLite::isOpened()
 {
   if(-1 == driver_FD) {
+    return false;
+  }
+  return true;
+}
+
+size_t IOCtlTraceFifoLite::reset()
+{
+  if(!isOpened()) {
     return 0;
   }
  
@@ -63,7 +71,7 @@ size_t IOCtlTraceFifoLite::reset()
 
 uint32_t IOCtlTraceFifoLite::getNumTraceSamples()
 {
-  if(-1 == driver_FD) {
+  if(!isOpened()) {
     return 0;
   }
  

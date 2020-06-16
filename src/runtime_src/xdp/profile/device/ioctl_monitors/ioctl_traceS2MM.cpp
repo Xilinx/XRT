@@ -48,9 +48,17 @@ IOCtlTraceS2MM::~IOCtlTraceS2MM()
   close(driver_FD);
 }
 
-void IOCtlTraceS2MM::init(uint64_t bo_size, int64_t bufaddr)
+bool IOCtlTraceS2MM::isOpened()
 {
   if(-1 == driver_FD) {
+    return false;
+  }
+  return true;
+}
+
+void IOCtlTraceS2MM::init(uint64_t bo_size, int64_t bufaddr)
+{
+  if(!isOpened()) {
     return;
   }
  
@@ -77,7 +85,7 @@ bool IOCtlTraceS2MM::isActive()
 
 void IOCtlTraceS2MM::reset()
 {
-  if(-1 == driver_FD) {
+  if(!isOpened()) {
     return;
   }
  
@@ -94,7 +102,7 @@ void IOCtlTraceS2MM::reset()
 
 uint64_t IOCtlTraceS2MM::getWordCount()
 {
-  if(-1 == driver_FD) {
+  if(!isOpened()) {
     return 0;
   }
  

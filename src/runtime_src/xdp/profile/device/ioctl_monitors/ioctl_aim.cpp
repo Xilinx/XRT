@@ -48,9 +48,17 @@ IOCtlAIM::~IOCtlAIM()
   close(driver_FD);
 }
 
-size_t IOCtlAIM::startCounter()
+bool IOCtlAIM::isOpened()
 {
   if(-1 == driver_FD) {
+    return false;
+  }
+  return true;
+}
+
+size_t IOCtlAIM::startCounter()
+{
+  if(!isOpened()) {
     return 0;
   }
  
@@ -64,7 +72,7 @@ size_t IOCtlAIM::startCounter()
 
 size_t IOCtlAIM::stopCounter()
 {
-  if(-1 == driver_FD) {
+  if(!isOpened()) {
     return 0;
   }
  
@@ -77,7 +85,7 @@ size_t IOCtlAIM::stopCounter()
 
 size_t IOCtlAIM::readCounter(xclCounterResults& counterResults, uint32_t s)
 {
-  if(-1 == driver_FD) {
+  if(!isOpened()) {
     return 0;
   }
  
@@ -106,7 +114,7 @@ size_t IOCtlAIM::readCounter(xclCounterResults& counterResults, uint32_t s)
 
 size_t IOCtlAIM::triggerTrace(uint32_t traceOption /* starttrigger*/)
 {
-  if(-1 == driver_FD) {
+  if(!isOpened()) {
     return 0;
   }
  

@@ -59,6 +59,11 @@ IOCtlTraceFifoFull::~IOCtlTraceFifoFull()
 #endif
 }
 
+bool IOCtlTraceFifoFull::isOpened()
+{
+  return true;
+}
+
 int IOCtlTraceFifoFull::read(uint64_t /*offset*/, size_t size, void* /*data*/)
 {
   // do nothing

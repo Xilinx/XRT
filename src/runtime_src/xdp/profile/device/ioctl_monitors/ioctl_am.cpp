@@ -48,9 +48,17 @@ IOCtlAM::~IOCtlAM()
   close(driver_FD);
 }
 
-size_t IOCtlAM::startCounter()
+bool IOCtlAM::isOpened()
 {
   if(-1 == driver_FD) {
+    return false;
+  }
+  return true;
+}
+
+size_t IOCtlAM::startCounter()
+{
+  if(!isOpened()) {
     return 0;
   }
  
@@ -64,7 +72,7 @@ size_t IOCtlAM::startCounter()
 
 size_t IOCtlAM::stopCounter()
 {
-  if(-1 == driver_FD) {
+  if(!isOpened()) {
     return 0;
   }
  
@@ -77,7 +85,7 @@ size_t IOCtlAM::stopCounter()
 
 size_t IOCtlAM::readCounter(xclCounterResults& counterResults, uint32_t s)
 {
-  if(-1 == driver_FD) {
+  if(!isOpened()) {
     return 0;
   }
 
@@ -165,7 +173,7 @@ void IOCtlAM::configureDataflow(bool cuHasApCtrlChain)
 
 size_t IOCtlAM::triggerTrace(uint32_t traceOption /* starttrigger*/)
 {
-  if(-1 == driver_FD) {
+  if(!isOpened()) {
     return 0;
   }
  

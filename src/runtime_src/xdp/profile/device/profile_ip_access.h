@@ -136,6 +136,7 @@ public:
     virtual uint32_t getProperties()  { return 0; }
 
     virtual bool isMMapped() { return false; }
+    virtual bool isOpened()  { return false; }
 
     uint64_t    getBaseAddress() { return ip_base_address; }
     std::string getName() { return ip_name; }
