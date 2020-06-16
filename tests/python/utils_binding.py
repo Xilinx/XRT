@@ -153,7 +153,7 @@ def initXRT(opt):
             print("[%d] %s @0x%x" % (i, ctypes.cast(mem[i].m_tag, ctypes.c_char_p).value, mem[i].mem_u2.m_base_address))
             if (mem[i].m_used == 0):
                 continue
-            opt.first_mem = i
+            opt.first_mem = 0
             break
 
     return 0

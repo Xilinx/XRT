@@ -92,18 +92,66 @@ static ssize_t kdsstat_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(kdsstat);
 
-/* -live memory usage-- */
-static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
+static ssize_t mem_group_info_show(struct device *dev,
+                struct device_attribute *attr, char *buf)
+{
+        struct xocl_dev 		*xdev = dev_get_drvdata(dev);
+        struct xocl_drm 		*drm_p = XOCL_DRM(xdev);
+        struct xcl_mem_group 		*mem_group = NULL;
+        struct xcl_mem_group_info 	*m_grp = NULL;
+        struct xcl_mem_map 		*mem_map = NULL;
+        struct xcl_mem_map_info 	*m_map = NULL;
+        ssize_t size = 0;
+        int i;
+
+        if (!drm_p || !drm_p->m_connect)
+                return 0;
+
+	 mem_group = drm_p->m_connect->mem_group;
+        if (!mem_group)
+                return 0;
+
+        /* Copy the group info size first */
+        memcpy((void *)buf, (void *)&mem_group->g_count, sizeof(mem_group->g_count));
+        buf += sizeof(mem_group->g_count);
+        size += sizeof(mem_group->g_count);
+
+        /* Copy Group Information */
+        for (i = 0; i < mem_group->g_count; i++) {
+                m_grp = mem_group->m_group[i];
+                memcpy((void *)buf, (void *)m_grp, sizeof(*m_grp));
+                buf += sizeof(*m_grp);
+                size += sizeof(*m_grp);
+        }
+
+        mem_map = drm_p->m_connect->mem_map;
+        if (!mem_map)
+                return 0;
+
+        /* Copy group mapping size  */
+        memcpy((void *)buf, (void *)&mem_map->m_count, sizeof(mem_map->m_count));
+        buf += sizeof(mem_map->m_count);
+        size += sizeof(mem_map->m_count);
+
+        /* Copy group mapping information  */
+        for (i = 0; i < mem_map->m_count; i++) {
+                m_map = mem_map->m_map[i];
+                memcpy((void *)buf, (void *)m_map, sizeof(*m_map));
+                buf += sizeof(*m_map);
+                size += sizeof(*m_map);
+        }
+
+        return size;
+}
+static DEVICE_ATTR_RO(mem_group_info);
+
+static ssize_t xocl_mm_info(struct xocl_dev *xdev, char *buf)
 {
 	int i, err;
 	ssize_t count = 0;
 	ssize_t size = 0;
-	size_t memory_usage = 0;
-	unsigned int bo_count = 0;
-	const char *txt_fmt = "[%s] %s@0x%012llx (%lluMB): %lluKB %dBOs\n";
-	const char *raw_fmt = "%llu %d %llu\n";
+	const char *txt_fmt = "[%s] %s@0x%012llx (%lluMB)\n";
 	struct mem_topology *topo = NULL;
-	struct drm_xocl_mm_stat stat;
 
 	mutex_lock(&xdev->dev_lock);
 
@@ -119,6 +167,44 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	}
 
 	for (i = 0; i < topo->m_count; i++) {
+		count = sprintf(buf, txt_fmt,
+				topo->m_mem_data[i].m_used ?
+				"IN-USE" : "UNUSED",
+				topo->m_mem_data[i].m_tag,
+				topo->m_mem_data[i].m_base_address,
+				topo->m_mem_data[i].m_size / 1024);
+		buf += count;
+		size += count;
+	}
+
+done:
+	XOCL_PUT_MEM_TOPOLOGY(xdev);
+	mutex_unlock(&xdev->dev_lock);
+	return size;
+}
+
+static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
+{
+	int i;
+	ssize_t count = 0;
+	ssize_t size = 0;
+	size_t memory_usage = 0;
+	unsigned int bo_count = 0;
+	const char *txt_fmt = "[GROUP-%d] : %lluKB %dBOs\n";
+	const char *raw_fmt = "%llu %d %llu\n";
+	struct drm_xocl_mm_stat stat;
+        struct xcl_mem_group *mem_group = NULL;
+        struct xocl_drm *drm_p = XOCL_DRM(xdev);
+
+
+        if (!drm_p || !drm_p->m_connect)
+                return 0;
+
+        mem_group = drm_p->m_connect->mem_group;
+        if (!mem_group)
+                return 0;
+
+        for (i = 0; i < mem_group->g_count; i++) {
 		xocl_mm_get_usage_stat(XOCL_DRM(xdev), i, &stat);
 
 		if (raw) {
@@ -131,12 +217,7 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 				memory_usage,
 				bo_count, 0);
 		} else {
-			count = sprintf(buf, txt_fmt,
-				topo->m_mem_data[i].m_used ?
-				"IN-USE" : "UNUSED",
-				topo->m_mem_data[i].m_tag,
-				topo->m_mem_data[i].m_base_address,
-				topo->m_mem_data[i].m_size / 1024,
+			count = sprintf(buf, txt_fmt, i,
 				stat.memory_usage / 1024,
 				stat.bo_count);
 		}
@@ -144,11 +225,17 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 		size += count;
 	}
 
-done:
-	XOCL_PUT_MEM_TOPOLOGY(xdev);
-	mutex_unlock(&xdev->dev_lock);
 	return size;
 }
+
+static ssize_t mem_info_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+
+	return xocl_mm_info(xdev, buf);
+}
+static DEVICE_ATTR_RO(mem_info);
 
 static ssize_t memstat_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -429,6 +516,8 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_userbar.attr,
 	&dev_attr_kdsstat.attr,
 	&dev_attr_memstat.attr,
+	&dev_attr_mem_info.attr,
+	&dev_attr_mem_group_info.attr,
 	&dev_attr_memstat_raw.attr,
 	&dev_attr_dev_offline.attr,
 	&dev_attr_mig_calibration.attr,
