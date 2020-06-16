@@ -1786,6 +1786,30 @@ static int icap_create_subdev_debugip(struct platform_device *pdev)
 				ICAP_ERR(icap, "can't create AXI_MONITOR_TRACE_S2MM subdev");
 				break;
 			}
+		} else if (ip->m_type == LAPC) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_LAPC;
+
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
+			subdev_info.priv_data = ip;
+			subdev_info.data_len = sizeof(struct debug_ip_data);
+			err = xocl_subdev_create(xdev, &subdev_info);
+			if (err) {
+				ICAP_ERR(icap, "can't create LAPC subdev");
+				break;
+			}
+		} else if (ip->m_type == AXI_STREAM_PROTOCOL_CHECKER) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_SPC;
+
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
+			subdev_info.priv_data = ip;
+			subdev_info.data_len = sizeof(struct debug_ip_data);
+			err = xocl_subdev_create(xdev, &subdev_info);
+			if (err) {
+				ICAP_ERR(icap, "can't create SPC subdev");
+				break;
+			}
 		}
 	}
 	return err;
@@ -1978,20 +2002,6 @@ done:
 	return err;
 }
 
-static inline void xocl_dyn_subdevs_destory(xdev_handle_t xdev)
-{
-	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_DNA);
-	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_MIG);
-	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_AIM);
-	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_AM);
-	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_ASM);
-	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_TRACE_FIFO_LITE);
-	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_TRACE_FIFO_FULL);
-	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_TRACE_FUNNEL);
-	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_TRACE_S2MM);
-	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_CU);
-}
-
 static int icap_create_post_download_subdevs(struct platform_device *pdev, struct axlf *xclbin)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
@@ -2065,8 +2075,6 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 	uint64_t section_size = 0;
 	u32 capability;
 
-	/* Destroy all dynamically add sub-devices*/
-	xocl_dyn_subdevs_destory(xdev);
 	/*
 	 * Add sub device dynamically.
 	 * restrict any dynamically added sub-device and 1 base address,
@@ -2111,7 +2119,7 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 
 			/* We keep dna sub device if IP_DNASC presents */
 			ICAP_ERR(icap, "Can't get certificate section");
-			goto dna_cert_fail;
+			goto done;
 		}
 
 		ICAP_INFO(icap, "DNA Certificate Size 0x%llx", section_size);
@@ -2128,14 +2136,11 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 			err = 0; /* xclbin is valid */
 		else {
 			ICAP_ERR(icap, "DNA inside xclbin is invalid");
-			goto dna_cert_fail;
+			goto done;
 		}
 	}
 
 done:
-	if (err)
-		xocl_dyn_subdevs_destory(xdev);
-dna_cert_fail:
 	return err;
 }
 
