@@ -501,22 +501,22 @@ void xocl_drm_fini(struct xocl_drm *drm_p)
 	xocl_drvinst_free(hdl);
 }
 
-void xocl_mm_get_usage_stat(struct xocl_drm *drm_p, u32 ddr,
+void xocl_mm_get_usage_stat(struct xocl_drm *drm_p, u32 memidx,
 	struct drm_xocl_mm_stat *pstat)
 {
-	pstat->memory_usage = drm_p->mm_usage_stat[ddr] ?
-		drm_p->mm_usage_stat[ddr]->memory_usage : 0;
-	pstat->bo_count = drm_p->mm_usage_stat[ddr] ?
-		drm_p->mm_usage_stat[ddr]->bo_count : 0;
+	pstat->memory_usage = drm_p->mm_usage_stat[memidx] ?
+		drm_p->mm_usage_stat[memidx]->memory_usage : 0;
+	pstat->bo_count = drm_p->mm_usage_stat[memidx] ?
+		drm_p->mm_usage_stat[memidx]->bo_count : 0;
 }
 
-void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u32 ddr,
+void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u32 memidx,
 	u64 size, int count)
 {
-	BUG_ON(!drm_p->mm_usage_stat[ddr]);
+	BUG_ON(!drm_p->mm_usage_stat[memidx]);
 
-	drm_p->mm_usage_stat[ddr]->memory_usage += (count > 0) ? size : -size;
-	drm_p->mm_usage_stat[ddr]->bo_count += count;
+	drm_p->mm_usage_stat[memidx]->memory_usage += (count > 0) ? size : -size;
+	drm_p->mm_usage_stat[memidx]->bo_count += count;
 }
 
 int xocl_mm_insert_node_range(struct xocl_drm *drm_p, u32 mem_id,
