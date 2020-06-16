@@ -24,6 +24,9 @@
 #include <unistd.h>
 #endif
 
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
+
 #define XDP_SOURCE
 
 #include "xdp/profile/database/static_info_database.h"
@@ -103,7 +106,7 @@ namespace xdp {
 
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(devHandle);
 
-    if (!setXclbinUUID(devInfo, device)) return;
+    if (!setXclbinUUIDnName(devInfo, device)) return;
     if (!initializeComputeUnits(devInfo, device)) return ;
     if (!initializeProfileMonitors(devInfo, device)) return ;
   }
@@ -119,29 +122,31 @@ namespace xdp {
     }
   }
 
-  bool VPStaticDatabase::setXclbinUUID(DeviceInfo* devInfo, std::shared_ptr<xrt_core::device> device)
+  bool VPStaticDatabase::setXclbinUUIDnName(DeviceInfo* devInfo, std::shared_ptr<xrt_core::device> device)
   {
-    auto xclbinUUID = device->get_xclbin_uuid();
-    (void)devInfo;
-    (void)xclbinUUID;
+    //devInfo->loadedXclbinUUID = device->get_xclbin_uuid();
 
-    #if 0
-    std::cout << " uuid " << xclbinUUID << std::endl;
-    const axlf* xbin = static_cast<const struct axlf*>(binary) ;
-    (void)xbin;
-    (void)devInfo;
-    long double id = *((long double*)xbin->m_header.uuid);
-    std::cout << " the uid " << id << std::endl;
-    devInfo->loadedXclbin = std::to_string(*(long double*)(xbin->m_header.uuid));
-    
-    std::stringstream ss;
-    ss << xbin->m_header.uuid;
-    devInfo->loadedXclbin = ss.str();
-    std::cout << "sizeof xuid_t " << sizeof(xuid_t) << std::endl;
-    std::cout << "sizeof unsigned long long " << sizeof(unsigned long long) << std::endl;
-    std::cout << "sizeof long double " << sizeof(long double) << std::endl;
-    #endif
+    // Get SYSTEM_METADATA section
+    std::pair<const char*, size_t> systemMetadata = device->get_axlf_section(SYSTEM_METADATA);
+    const char* systemMetadataSection = systemMetadata.first;
+    size_t      systemMetadataSz      = systemMetadata.second;
+    if(systemMetadataSection == nullptr) return false;
 
+    try {
+      std::stringstream ss;
+      ss.write(systemMetadataSection, systemMetadataSz);
+
+      // Create a property tree and determine if the variables are all default values
+      boost::property_tree::ptree pt;
+      boost::property_tree::read_json(ss, pt);
+
+      devInfo->loadedXclbin = pt.get<std::string>("system_diagram_metadata.xclbin.generated_by.xclbin_name", "");
+      if(!devInfo->loadedXclbin.empty()) {
+        devInfo->loadedXclbin += ".xclbin";
+      }
+    } catch(...) {
+      // keep default value in "devInfo->loadedXclbin" i.e. empty string
+    }
     return true;
   }
 
