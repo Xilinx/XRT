@@ -89,6 +89,40 @@ struct board_name
   }
 };
 
+struct logic_uuids
+{
+  using result_type = std::vector<std::string>;
+
+  static result_type
+  user(const xrt_core::device* device, key_type key)
+  {
+    return std::vector<std::string>{"TO-DO"};
+  }
+
+  static result_type
+  mgmt(const xrt_core::device* device, key_type key)
+  {
+    return std::vector<std::string>{"TO-DO"};
+  }
+};
+
+struct interface_uuids
+{
+  using result_type = std::vector<std::string>;
+
+  static result_type
+  user(const xrt_core::device* device, key_type key)
+  {
+    return std::vector<std::string>{"TO-DO"};
+  }
+
+  static result_type
+  mgmt(const xrt_core::device* device, key_type key)
+  {
+    return std::vector<std::string>{"TO-DO"};
+  }
+};
+
 struct firewall
 {
   using result_type = boost::any;
@@ -876,20 +910,10 @@ lookup_query(query::key_type query_key) const
 }
 
 device_windows::
-device_windows(id_type device_id, bool user)
-  : shim<device_pcie>(device_id, user)
-{
-  if (user)
-    return;
-
-  m_mgmthdl = mgmtpf::open(device_id);
-}
-
-device_windows::
-device_windows(handle_type device_handle, id_type device_id)
-  : shim<device_pcie>(device_handle, device_id)
-{
-}
+device_windows(handle_type device_handle, id_type device_id, bool user)
+  : shim<device_pcie>(user ? device_handle : nullptr, device_id, user)
+  , m_mgmthdl(user ? nullptr : device_handle)
+{}
 
 device_windows::
 ~device_windows()

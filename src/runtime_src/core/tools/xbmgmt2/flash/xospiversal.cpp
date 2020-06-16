@@ -37,7 +37,7 @@ int XOSPIVER_Flasher::xclUpgradeFirmware(std::istream& binStream)
     
     xrt_core::scope_value_guard<int, std::function<void()>> fd { 0, nullptr };
     try {
-        fd = m_device->file_open("ospi_versal", O_RDWR); 
+        fd = m_device->file_open("xfer_versal", O_RDWR); 
     } catch (const std::exception& e) {
         xrt_core::send_exception_message(e.what(), "XBMGMT");
     }

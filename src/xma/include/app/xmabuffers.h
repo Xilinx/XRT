@@ -119,6 +119,9 @@ typedef enum XmaFormatType
     XMA_RGB888_FMT_TYPE, /**< 4 */
     XMA_RGBP_FMT_TYPE,   /**< 5 */
     XMA_VCU_NV12_FMT_TYPE, /**< 6 */
+    XMA_VCU_NV16_FMT_TYPE,
+    XMA_VCU_NV12_10LE32_FMT_TYPE,
+    XMA_VCU_NV16_10LE32_FMT_TYPE,
 } XmaFormatType;
 
 /**

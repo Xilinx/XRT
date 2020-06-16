@@ -18,6 +18,7 @@
 #include "device.h"
 #include "error.h"
 #include "utils.h"
+#include "debug.h"
 #include "query_requests.h"
 #include "xclbin_parser.h"
 #include "core/include/xrt.h"
@@ -34,36 +35,38 @@ device::
 device(id_type device_id)
   : m_device_id(device_id)
 {
+  XRT_DEBUGF("xrt_core::device::device(0x%x) idx(%d)\n", this, device_id);
 }
 
 device::
 ~device()
 {
   // virtual must be declared and defined
+  XRT_DEBUGF("xrt_core::device::~device(0x%x) idx(%d)\n", this, m_device_id);
 }
 
-std::string
+uuid
 device::
 get_xclbin_uuid() const
 {
   try {
-    return device_query<query::xclbin_uuid>(this);
+    auto uuid_str =  device_query<query::xclbin_uuid>(this);
+    return uuid(uuid_str);
   }
   catch (const query::no_such_key&) {
   }
 
   // Emulation mode likely
-  char uuid_str[64] = { 0 };
-  uuid_unparse_lower(m_xclbin_uuid, uuid_str);
-  return uuid_str;
+  return uuid();
 }
 
 void
 device::
 register_axlf(const axlf* top)
 {
-  uuid_copy(m_xclbin_uuid, top->m_header.uuid);
-  axlf_section_kind kinds[] = {EMBEDDED_METADATA, AIE_METADATA, IP_LAYOUT};
+  m_axlf_sections.clear();
+  m_xclbin_uuid = uuid(top->m_header.uuid);
+  axlf_section_kind kinds[] = {EMBEDDED_METADATA, AIE_METADATA, IP_LAYOUT, CONNECTIVITY, MEM_TOPOLOGY, DEBUG_IP_LAYOUT};
   for (auto kind : kinds) {
     auto hdr = ::xclbin::get_axlf_section(top, kind);
     if (!hdr)
@@ -72,12 +75,17 @@ register_axlf(const axlf* top)
     std::vector<char> data{section_data, section_data + hdr->m_sectionSize};
     m_axlf_sections.emplace(kind , std::move(data));
   }
+
+  // Build modified CONNECTIVITY and MEM_TOPOLOGY section based on memory group ids
+  // Base groups off data from driver
 }
 
 std::pair<const char*, size_t>
 device::
-get_axlf_section(axlf_section_kind section) const
+get_axlf_section(axlf_section_kind section, const uuid& xclbin_id) const
 {
+  if (xclbin_id && xclbin_id != m_xclbin_uuid)
+    throw std::runtime_error("xclbin id mismatch");
   auto itr = m_axlf_sections.find(section);
   return itr != m_axlf_sections.end()
     ? std::make_pair((*itr).second.data(), (*itr).second.size())
@@ -86,11 +94,12 @@ get_axlf_section(axlf_section_kind section) const
 
 std::pair<const char*, size_t>
 device::
-get_axlf_section(axlf_section_kind section, const xuid_t xclbin_id) const
+get_axlf_section_or_error(axlf_section_kind section, const uuid& xclbin_id) const
 {
-  if (uuid_compare(xclbin_id, m_xclbin_uuid))
-    throw std::runtime_error("xclbin id mismatch");
-  return get_axlf_section(section);
+  auto ret = get_axlf_section(section, xclbin_id);
+  if (ret.first != nullptr)
+    return ret;
+  throw std::runtime_error("no such xclbin section");
 }
 
 std::pair<size_t, size_t>
@@ -133,78 +142,12 @@ get_ert_slots(const char* xml_data, size_t xml_size) const
 
 std::pair<size_t, size_t>
 device::
-get_ert_slots(const axlf* top) const
+get_ert_slots() const
 {
-  auto xml_hdr = ::xclbin::get_axlf_section(top, EMBEDDED_METADATA);
-  if (!xml_hdr)
+  auto xml =  get_axlf_section(EMBEDDED_METADATA);
+  if (!xml.first)
     throw std::runtime_error("No xml metadata in xclbin");
-  auto xml_data = reinterpret_cast<const char*>(top) + xml_hdr->m_sectionOffset;
-  auto xml_size = xml_hdr->m_sectionSize;
-  return get_ert_slots(xml_data, xml_size);
-}
-
-std::pair<int, int>
-device::
-get_group_range(int grp_id) const  
-{
-  auto itr = m_grp_info.find(grp_id);
-
-  return itr != m_grp_info.end()
-          ? std::make_pair((int)(*itr).second.first, (int)(*itr).second.second) 
-          : std::make_pair(grp_id, grp_id); //if no such entry available then return 
-                                            // the grp_id itself for backward compatibility
-}
-
-int
-device::
-get_group_index(int cu_id, int arg_id) const  
-{
-  auto itr = m_grp_map.find(std::make_pair(cu_id, arg_id));
-
-  return itr != m_grp_map.end()
-              ? (*itr).second : -EINVAL;
-}
-
-void
-device::
-populate_mem_group_info(const char *infoBuff)  
-{
-  struct xcl_mem_connectivity   grpInfoMap;
-  struct xcl_mem_group_info     *m_grp = NULL;
-  struct xcl_mem_map_info       *m_map = NULL;
-
-  if (!infoBuff) 
-    throw std::runtime_error("Failed to get memory information");
-
-  grpInfoMap.mem_group = (struct xcl_mem_group *)infoBuff;
-  if (!grpInfoMap.mem_group) 
-    throw std::runtime_error("Failed to get memory group information");
- 
-  infoBuff += sizeof(grpInfoMap.mem_group->g_count); 
-  for (int i = 0; i < grpInfoMap.mem_group->g_count; i++)
-  {
-    m_grp = (struct xcl_mem_group_info *)infoBuff;
-    if(!m_grp)
-      throw std::runtime_error("Failed to get memory mapping information");
-
-    m_grp_info.emplace(i, std::make_pair(m_grp->l_bank_idx, m_grp->h_bank_idx));
-    infoBuff += sizeof(*m_grp);
-  }
-
-  grpInfoMap.mem_map = (struct xcl_mem_map *)infoBuff;
-  if (!grpInfoMap.mem_map) 
-    throw std::runtime_error("Failed to get memory mapping information");
- 
-  infoBuff += sizeof(grpInfoMap.mem_map->m_count); 
-  for (int i = 0; i < grpInfoMap.mem_map->m_count; i++)
-  {
-    m_map = (struct xcl_mem_map_info *)infoBuff;
-    if(!m_map)
-      throw std::runtime_error("Failed to get memory mapping information");
-    
-    m_grp_map.emplace(std::make_pair(m_map->cu_id, m_map->arg_id), m_map->grp_id);
-    infoBuff += sizeof(*m_map);
-  }
+  return get_ert_slots(xml.first, xml.second);
 }
 
 std::string

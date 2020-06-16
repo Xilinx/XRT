@@ -249,7 +249,7 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 		lro->instance, ep_name,
 		PCI_SLOT(pdev->devfn), PCI_FUNC(pdev->devfn));
 
-	if (!force) {
+	if (!force && xrt_reset_syncup) {
 		mgmt_info(lro, "wait for master off for all functions");
 		err = xocl_wait_master_off(lro);
 		if (err)
@@ -316,7 +316,10 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 	lro->reset_requested = false;
 	xocl_thread_start(lro);
 
-	xocl_set_master_on(lro);
+	if (xrt_reset_syncup)
+		xocl_set_master_on(lro);
+	else if (!force)
+		xclmgmt_connect_notify(lro, true);
 
 done:
 	return err;
@@ -474,6 +477,7 @@ static void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 	struct pci_dev *pdev = lro->pci_dev;
 	struct pci_bus *bus;
 	u8 pci_bctl;
+	u16 pci_cmd, devctl;
 
 	mgmt_info(lro, "Reset PCI");
 
@@ -484,6 +488,23 @@ static void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 
 	/* Reset secondary bus. */
 	bus = pdev->bus;
+
+	/*
+	 * When flipping the SBR bit, device can fall off the bus. This is usually
+	 * no problem at all so long as drivers are working properly after SBR.
+	 * However, some systems complain bitterly when the device falls off the bus.
+	 * Such as a Dell Servers, The iDRAC is totally independent from the
+	 * operating system; it will still reboot the machine even if the operating
+	 * system ignores the error.
+	 * The quick solution is to temporarily disable the SERR reporting of
+	 * switch port during SBR.
+	 */
+	pci_read_config_word(bus->self, PCI_COMMAND, &pci_cmd);
+	pci_write_config_word(bus->self, PCI_COMMAND, (pci_cmd & ~PCI_COMMAND_SERR));
+	pcie_capability_read_word(bus->self, PCI_EXP_DEVCTL, &devctl);
+	pcie_capability_write_word(bus->self, PCI_EXP_DEVCTL,
+					   (devctl & ~PCI_EXP_DEVCTL_FERE));
+
 	pci_read_config_byte(bus->self, PCI_BRIDGE_CONTROL, &pci_bctl);
 	pci_bctl |= PCI_BRIDGE_CTL_BUS_RESET;
 	pci_write_config_byte(bus->self, PCI_BRIDGE_CONTROL, pci_bctl);
@@ -492,6 +513,9 @@ static void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 	pci_bctl &= ~PCI_BRIDGE_CTL_BUS_RESET;
 	pci_write_config_byte(bus->self, PCI_BRIDGE_CONTROL, pci_bctl);
 	ssleep(1);
+
+	pcie_capability_write_word(bus->self, PCI_EXP_DEVCTL, devctl);
+	pci_write_config_word(bus->self, PCI_COMMAND, pci_cmd);
 
 	pci_enable_device(pdev);
 

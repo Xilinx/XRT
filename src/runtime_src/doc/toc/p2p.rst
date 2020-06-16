@@ -20,7 +20,7 @@ BIOS Setup
 
 1. Before turning on P2P, please make sure 64-bit IO is enabled and the maximium host supported IO memory space is greater than total size of DDRs on Alveo PCIe platform in host BIOS setup.
 
-2. Enable large BAR support in BIOS. This is sometimes called "Above 4G decoding" and may be found under PCIe configuration or Boot configuration.
+2. Enable large BAR support in BIOS. This is variously called as *Above 4G decoding*, *PCI 64-bit resource handing above 4G* or *Memory mapped I/O above 4GB* and may be found under PCIe configuration or Boot configuration.
 
 
 Note
@@ -33,7 +33,7 @@ Warning
 
 Mother board vendors have different implementations of large PCIe BAR support in BIOS. If the host system does not support large IO memory well or if host Linux kernel does not support this feature, the host could stop responding after P2P is enabled. Please note that in some cases a warm reboot may not recover the system. Power cycle is required to recover the system in this scenario. As previosuly noted Alveo PCIe platforms turn off P2P after a power cycle.
 
-Some Mother board BIOS setup allows administrator to set IO Memory base address and some do not. Having large IO Memory base could possibly cause OS kernel crash during warm reboot. Warm reboot crash been observed on Ubuntu running with kernel 4.15 plus IO memory base been set to 56T in BIOS. To avoid this crash, setting IO memory base to 12T in BIOS is recommended. Per our test, the highest P2P BAR physical address has to be less than 32T. And not all linux kernels have this issue.
+Some Mother board BIOS setup allows administrator to set IO Memory base address and some do not. Having large IO Memory base could possibly cause OS kernel crash during warm reboot. Warm reboot crash has been observed on Ubuntu running with kernel 4.15 plus IO memory base been set to 56T in BIOS. To avoid this crash, setting IO memory base to 12T in BIOS is recommended. Per our test, the highest P2P BAR physical address has to be less than 32T. And not all Linux kernels have this issue.
 
 Enable/Disable P2P
 ~~~~~~~~~~~~~~~~~~

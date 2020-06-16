@@ -245,7 +245,7 @@ stop()
 }
 
 void
-init(xrt::device* device, const axlf*)
+init(xrt::device* device)
 {
   // create a submitted command queue for this device if necessary,
   // create a command monitor thread for this device if necessary

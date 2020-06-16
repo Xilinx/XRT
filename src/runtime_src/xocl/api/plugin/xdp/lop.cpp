@@ -17,7 +17,7 @@
 #ifndef _WIN32
 
 #include "lop.h"
-#include "xdp_util.h"
+#include "core/common/module_loader.h"
 #include "core/common/dlfcn.h"
 
 namespace xdplop {
@@ -29,9 +29,9 @@ namespace xdplop {
   void load_xdp_lop()
   {
     // Thread safe per C++-11
-    static xdputil::XDPLoader xdp_lop_loader("xdp_lop_plugin",
-					     register_lop_functions,
-					     lop_warning_function) ;
+    static xrt_core::module_loader xdp_lop_loader("xdp_lop_plugin",
+						  register_lop_functions,
+						  lop_warning_function) ;
   }
 
   // All of the function pointers that will be dynamically linked from

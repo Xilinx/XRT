@@ -806,8 +806,9 @@ configure_mb(size_type slot_idx)
   cq_status_enabled = (features & 0x10)!=0;
   cdma_enabled = (features & 0x20)!=0;
   dataflow_enabled = (features & 0x40)!=0;
+#ifndef ERT_HW_EMU
   cu_dma_52 = (features & 0x80000000)!=0;
-#ifdef ERT_HW_EMU
+#else
   //Force new mechanism for latest emulation platforms
   cu_dma_52 = 1;
 #endif

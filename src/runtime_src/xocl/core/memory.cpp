@@ -289,34 +289,6 @@ update_memidx_nolock(const device* device, const buffer_object_handle& boh)
 // private
 memory::memidx_type
 memory::
-get_grpidx_nolock(const device* dev) const
-{
-  int cuidx = -1;
-  int argidx = -1;
-
-  if (m_karg.empty())
-    return -1;
-
-  for (auto& karg : m_karg) {
-    auto kernel = karg.first;
-    auto arg = karg.second;
-    if (kernel) {
-      argidx = arg;
-      cuidx = kernel->get_uid();
-      break;
-    }
-  }
-
-  if ((cuidx == -1) || (argidx == -1))
-    return -1;
-
-  auto device = xrt_core::get_userpf_device(dev->get_handle());
-
-  return device->get_group_index(cuidx, argidx);
-}
-
-memory::memidx_type
-memory::
 get_memidx_nolock(const device* dev) const
 {
   // already initialized
@@ -332,11 +304,6 @@ get_memidx_nolock(const device* dev) const
     if (m_memidx>=0)
       return m_memidx;
   }
-
-  // memory group info available
-  m_memidx = get_grpidx_nolock(dev);
-  if (m_memidx>=0)
-    return m_memidx;
 
   // ext assigned
   m_memidx = get_ext_memidx_nolock(dev->get_xclbin());

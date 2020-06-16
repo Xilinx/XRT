@@ -37,6 +37,10 @@ std::vector<char> xma_xclbin_file_open(const std::string& xclbin_name)
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Loading %s ", xclbin_name.c_str());
 
     std::ifstream infile(xclbin_name, std::ios::binary | std::ios::ate);
+    if (!infile) {
+        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Failed to open xclbin file");
+        throw std::runtime_error("Failed to open xclbin file");
+    }
     std::streamsize xclbin_size = infile.tellg();
     infile.seekg(0, std::ios::beg);
 

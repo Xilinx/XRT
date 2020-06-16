@@ -19,6 +19,7 @@
 
 #include "xocl/config.h"
 #include "core/include/xclbin.h" // definition of binary structs
+#include "core/common/device.h"
 #include "core/common/uuid.h"
 
 #include <map>
@@ -104,40 +105,19 @@ public:
   xclbin();
 
   /**
-   * xclbin() - construct from xclbin raw data
+   * xclbin() - construct xclbin meta data
    */
-  xclbin(const void* buffer, size_t sz);
+  xclbin(const xrt_core::device* core_device, const xrt_core::uuid& uuid);
 
   bool
   operator==(const xclbin& rhs) const
   {
     return m_impl == rhs.m_impl;
   }
-
-  /**
-   * Access the raw binary xclbin
-   *
-   * Return: data range of binary
-   */
-  XRT_XOCL_EXPORT
-  std::pair<const char*, const char*>
-  binary() const;
-
-  /**
-   * Access specific section
-   *
-   * Return: data range of binary section
-   */
-  std::pair<const char*, const char*>
-  get_xclbin_section(axlf_section_kind kind) const
+ 
+  operator bool() const
   {
-    auto raw = binary().first;
-    auto top = reinterpret_cast<const ::axlf*>(raw);
-    if (auto hdr = ::xclbin::get_axlf_section(top, kind)) {
-      auto begin = raw + hdr->m_sectionOffset;
-      return std::make_pair(begin, begin + hdr->m_sectionSize);
-    }
-    return std::make_pair(nullptr, nullptr);
+    return m_impl != nullptr;
   }
 
   /**

@@ -91,11 +91,9 @@ namespace xdp {
   // This function is called whenever a device is loaded with an 
   //  xclbin.  It has to clear out any previous device information and
   //  reload our information.
-  void VPStaticDatabase::updateDevice(uint64_t deviceId, const void* binary)
+  void VPStaticDatabase::updateDevice(uint64_t deviceId, void* devHandle)
   {  
     resetDeviceInfo(deviceId);
-
-    if (binary == nullptr) return ;
 
     DeviceInfo *devInfo = new DeviceInfo();
     devInfo->clockRateMHz = 300;
@@ -103,12 +101,11 @@ namespace xdp {
 
     deviceInfo[deviceId] = devInfo;
 
-    // Currently, we are going through the xclbin using the low level
-    //  AXLF structure.  Would sysfs be a better solution?  Does
-    //  that work with emulation?
-    if (!setXclbinUUID(devInfo, binary)) return;
-    if (!initializeComputeUnits(devInfo, binary)) return ;
-    if (!initializeProfileMonitors(devInfo, binary)) return ;
+    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(devHandle);
+
+    if (!setXclbinUUID(devInfo, device)) return;
+    if (!initializeComputeUnits(devInfo, device)) return ;
+    if (!initializeProfileMonitors(devInfo, device)) return ;
   }
 
   void VPStaticDatabase::resetDeviceInfo(uint64_t deviceId)
@@ -122,12 +119,17 @@ namespace xdp {
     }
   }
 
-  bool VPStaticDatabase::setXclbinUUID(DeviceInfo* devInfo, const void* binary)
+  bool VPStaticDatabase::setXclbinUUID(DeviceInfo* devInfo, std::shared_ptr<xrt_core::device> device)
   {
+    auto xclbinUUID = device->get_xclbin_uuid();
+    (void)devInfo;
+    (void)xclbinUUID;
+
+    #if 0
+    std::cout << " uuid " << xclbinUUID << std::endl;
     const axlf* xbin = static_cast<const struct axlf*>(binary) ;
     (void)xbin;
     (void)devInfo;
-    #if 0
     long double id = *((long double*)xbin->m_header.uuid);
     std::cout << " the uid " << id << std::endl;
     devInfo->loadedXclbin = std::to_string(*(long double*)(xbin->m_header.uuid));
@@ -139,18 +141,16 @@ namespace xdp {
     std::cout << "sizeof unsigned long long " << sizeof(unsigned long long) << std::endl;
     std::cout << "sizeof long double " << sizeof(long double) << std::endl;
     #endif
+
     return true;
   }
 
-  bool VPStaticDatabase::initializeComputeUnits(DeviceInfo* devInfo, const void* binary)
+  bool VPStaticDatabase::initializeComputeUnits(DeviceInfo* devInfo, std::shared_ptr<xrt_core::device> device)
   {
-    const axlf* xbin     = static_cast<const struct axlf*>(binary);
-    const char* chBinary = static_cast<const char*>(binary);
-
     // Get IP_LAYOUT section 
-    const axlf_section_header* ipLayoutHeader = xclbin::get_axlf_section(xbin, IP_LAYOUT);
-    if(ipLayoutHeader == nullptr) return false;
-    const ip_layout* ipLayoutSection = reinterpret_cast<const ip_layout*>(chBinary + ipLayoutHeader->m_sectionOffset) ;
+    const ip_layout* ipLayoutSection = device->get_axlf_section<const ip_layout*>(IP_LAYOUT);
+    if(ipLayoutSection == nullptr) return false;
+
     ComputeUnitInstance* cu = nullptr;
     for(int32_t i = 0; i < ipLayoutSection->m_count; i++) {
       const struct ip_data* ipData = &(ipLayoutSection->m_ip_data[i]);
@@ -165,9 +165,9 @@ namespace xdp {
     }
 
     // Get MEM_TOPOLOGY section 
-    const axlf_section_header* memTopologyHeader = xclbin::get_axlf_section(xbin, MEM_TOPOLOGY);
-    if(memTopologyHeader == nullptr) return false;
-    const mem_topology* memTopologySection = reinterpret_cast<const mem_topology*>(chBinary + memTopologyHeader->m_sectionOffset);
+    const mem_topology* memTopologySection = device->get_axlf_section<const mem_topology*>(MEM_TOPOLOGY);
+    if(memTopologySection == nullptr) return false;
+
     for(int32_t i = 0; i < memTopologySection->m_count; i++) {
       const struct mem_data* memData = &(memTopologySection->m_mem_data[i]);
       devInfo->memoryInfo[i] = new Memory(memData->m_type, i, memData->m_base_address, memData->m_size,
@@ -176,9 +176,9 @@ namespace xdp {
 
     // Look into the connectivity section and load information about Compute Units and their Memory connections
     // Get CONNECTIVITY section
-    const axlf_section_header* connectivityHeader = xclbin::get_axlf_section(xbin, CONNECTIVITY);
-    if(connectivityHeader == nullptr) return true;
-    const connectivity* connectivitySection = reinterpret_cast<const connectivity*>(chBinary + connectivityHeader->m_sectionOffset) ;
+    const connectivity* connectivitySection = device->get_axlf_section<const connectivity*>(CONNECTIVITY);    
+    if(connectivitySection == nullptr) return true;
+
     // Now make the connections
     cu = nullptr;
     for(int32_t i = 0; i < connectivitySection->m_count; i++) {
@@ -209,16 +209,12 @@ namespace xdp {
     return true;
   }
 
-  bool VPStaticDatabase::initializeProfileMonitors(DeviceInfo* devInfo, const void* binary)
+  bool VPStaticDatabase::initializeProfileMonitors(DeviceInfo* devInfo, std::shared_ptr<xrt_core::device> device)
   {
     // Look into the debug_ip_layout section and load information about Profile Monitors
-    const axlf* xbin     = static_cast<const struct axlf*>(binary);
-    const char* chBinary = static_cast<const char*>(binary);
-
-    // Get CONNECTIVITY section
-    const axlf_section_header* debugIpLayoutHeader = xclbin::get_axlf_section(xbin, DEBUG_IP_LAYOUT);
-    if(debugIpLayoutHeader == nullptr) return false;
-    const debug_ip_layout* debugIpLayoutSection = reinterpret_cast<const debug_ip_layout*>(chBinary + debugIpLayoutHeader->m_sectionOffset) ;
+    // Get DEBUG_IP_LAYOUT section 
+    const debug_ip_layout* debugIpLayoutSection = device->get_axlf_section<const debug_ip_layout*>(DEBUG_IP_LAYOUT);
+    if(debugIpLayoutSection == nullptr) return false;
 
     for(uint16_t i = 0; i < debugIpLayoutSection->m_count; i++) {
       const struct debug_ip_data* debugIpData = &(debugIpLayoutSection->m_debug_ip_data[i]);

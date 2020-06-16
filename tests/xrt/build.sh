@@ -38,12 +38,14 @@ usage()
     echo
     echo "[-help]                    List this help"
     echo "[-nocmake]                 Skip CMake call"
+    echo "[-em <hw_emu | sw_emu>]    Link for emulation mode"
     echo "[clean|-clean]             Remove build directories"
     exit 1
 }
 
 clean=0
 nocmake=0
+em=""
 while [ $# -gt 0 ]; do
     case "$1" in
         -help)
@@ -51,6 +53,12 @@ while [ $# -gt 0 ]; do
             ;;
         -nocmake)
             nocmake=1
+            shift
+            ;;
+        -em)
+            shift
+            echo "x=$1"
+            em=$1
             shift
             ;;
         clean|-clean)
@@ -69,6 +77,14 @@ if [[ $clean == 1 ]]; then
     echo "/bin/rm -rf $BUILDDIR"
     /bin/rm -rf $BUILDDIR
     exit 0
+fi
+
+if [[ "X$em" != "X" ]]; then
+    echo "Building for $em emulation mode"
+    export XCL_EMULATION_MODE=$em
+    CMAKEDIR+="/$em"
+else
+    CMAKEDIR+="/hw"
 fi
 
 here=$PWD

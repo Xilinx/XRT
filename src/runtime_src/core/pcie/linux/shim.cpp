@@ -1129,11 +1129,24 @@ int shim::p2pEnable(bool enable, bool force)
 {
     const std::string input = "1\n";
     std::string err;
+    std::vector<std::string> p2p_cfg;
 
-    if (enable)
-        mDev->sysfs_put("", "p2p_enable", err, "1");
-    else
-        mDev->sysfs_put("", "p2p_enable", err, "0");
+    if (mDev == nullptr)
+        return -EINVAL;
+
+    /* write 0 to config for default bar size */
+    if (enable) {
+        mDev->sysfs_put("p2p", "config", err, "0");
+        if (!err.empty()) { 
+            throw std::runtime_error("P2P is not supported");
+        }
+     } else {
+        mDev->sysfs_put("p2p", "config", err, "-1");
+        if (!err.empty()) { 
+            throw std::runtime_error("P2P is not supported");
+        }
+     }
+
 
     if (force) {
         dev_fini();
@@ -1151,10 +1164,17 @@ int shim::p2pEnable(bool enable, bool force)
         dev_init();
     }
 
-    int p2p_enable = EINVAL;
-    mDev->sysfs_get<int>("", "p2p_enable", err, p2p_enable, EINVAL);
+    int ret;
+    ret = check_p2p_config(mDev, err);
+    if (!err.empty()) {
+        throw std::runtime_error(err);
+    } else if (ret == P2P_CONFIG_DISABLED && enable) {
+        throw std::runtime_error("Can not enable P2P");
+    } else if (ret == P2P_CONFIG_ENABLED && !enable) {
+        throw std::runtime_error("Can not disable P2P");
+    }
 
-    return p2p_enable;
+    return 0;
 }
 
 int shim::cmaEnable(bool enable, uint64_t size)
@@ -1303,6 +1323,9 @@ int shim::xclLoadXclBin(const xclBin *buffer)
       else if (ret == -EKEYREJECTED) {
         xrt_logmsg(XRT_ERROR, "Xclbin isn't signed properly");
       }
+      else if (ret == -E2BIG) {
+        xrt_logmsg(XRT_ERROR, "Not enough host_mem for xclbin");
+      }
       else if (ret == -ETIMEDOUT) {
         xrt_logmsg(XRT_ERROR,
                    "Can't reach out to mgmt for xclbin downloading");
@@ -1370,31 +1393,6 @@ unsigned int shim::xclImportBO(int fd, unsigned flags)
         xrt_logmsg(XRT_ERROR, "%s: FD to handle IOCTL failed", __func__);
     }
     return !result ? info.handle : mNullBO;
-}
-
-/*
- * xclGetMemGroupInfo()
- */
-int shim::xclGetMemGroupInfo(char **grpMapInfo)
-{
-    std::string errmsg;
-    size_t size = 0;
-    std::vector<char> memGroupInfo;
-
-    mDev->sysfs_get("", "mem_group_info", errmsg, memGroupInfo);
-    if (memGroupInfo.empty()) 
-        return -EINVAL;
- 
-    size = memGroupInfo.size() * sizeof(char); 
-    /* Allocate memory for *grpMapInfo */
-    *grpMapInfo =  (char *)malloc(size);
-    if (!*grpMapInfo)
-	return -ENOMEM; 
-
-    memset((void *)*grpMapInfo, 0, size);
-    memcpy((void *)*grpMapInfo, memGroupInfo.data(), size);
-     
-    return size;
 }
 
 /*
@@ -2225,37 +2223,16 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
 #endif
 
-#ifdef ENABLE_HAL_PROFILING
-    if (ret != 0) return ret ;
-    LOAD_XCLBIN_CB ;
-#endif
     if (!ret) {
-      char *pGrpInfo = NULL;
-      int grp_info_size = 0;
-
       auto core_device = xrt_core::get_userpf_device(drv);
       core_device->register_axlf(buffer);
- 
-      /* Populate memory group mapping info from sysfs */
-      grp_info_size = drv->xclGetMemGroupInfo(&pGrpInfo);
-      if (grp_info_size > 0) {
-          /* Populate the retrive info into device class */
-          core_device->populate_mem_group_info(pGrpInfo);
-	  
-	  /* Free the allocated memory */
-	  if (pGrpInfo)
-              free(pGrpInfo); 	
-      }
+#ifdef ENABLE_HAL_PROFILING
+    LOAD_XCLBIN_CB ;
+#endif
 #ifndef DISABLE_DOWNLOAD_XCLBIN
       ret = xrt_core::scheduler::init(handle, buffer);
       START_DEVICE_PROFILING_CB(handle);
 #endif
-    }
-    if (!ret && xrt_core::config::get_ert() &&
-        (xclbin::get_axlf_section(buffer, PDI) ||
-         xclbin::get_axlf_section(buffer, BITSTREAM_PARTIAL_PDI))) {
-      ret = xrt_core::scheduler::
-        loadXclbinToPS(handle, buffer,xrt_core::config::get_pdi_load());
     }
     return ret;
   }
@@ -2311,12 +2288,18 @@ size_t xclRead(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, v
 
 int xclRegWrite(xclDeviceHandle handle, uint32_t ipIndex, uint32_t offset, uint32_t data)
 {
+#ifdef ENABLE_HAL_PROFILING
+  REG_WRITE_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclRegWrite(ipIndex, offset, data) : -ENODEV;
 }
 
 int xclRegRead(xclDeviceHandle handle, uint32_t ipIndex, uint32_t offset, uint32_t *datap)
 {
+#ifdef ENABLE_HAL_PROFILING
+  REG_READ_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclRegRead(ipIndex, offset, datap) : -ENODEV;
 }

@@ -2,7 +2,7 @@
 /*
  * Compute unit structures.
  *
- * Copyright (C) 2019 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2019-2020 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Min Ma <min.ma@xilinx.com>
@@ -43,9 +43,7 @@ struct zocl_cu;
 /* Supported CU models */
 enum zcu_model {
 	MODEL_ACC,
-	MODEL_HLS_SOFT,
-	MODEL_HLS_HARD,
-	MODEL_HLS_FULL,
+	MODEL_HLS,
 };
 
 enum zcu_configure_type {

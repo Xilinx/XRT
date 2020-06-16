@@ -71,11 +71,13 @@ xocl-y := \
 	../subdev/trace_fifo_full.o\
 	../subdev/trace_funnel.o\
 	../subdev/trace_s2mm.o\
+	../subdev/lapc.o\
+	../subdev/spc.o\
 	../subdev/ddr_srsr.o\
 	../subdev/memory_hbm.o \
 	../subdev/address_translator.o \
-	../subdev/cu_ctrl.o \
 	../subdev/cu.o \
+	../subdev/p2p.o \
 	$(xocl_lib-y)	\
 	$(drv_common-y) \
 	xocl_drv.o	\

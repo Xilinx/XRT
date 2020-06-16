@@ -2009,7 +2009,7 @@ static ssize_t read_temp_by_mem_topology(struct file *filp,
 	struct mem_topology *memtopo = NULL;
 	struct xocl_xmc *xmc =
 		dev_get_drvdata(container_of(kobj, struct device, kobj));
-	uint32_t temp[MAX_M_COUNT] = {0};
+	uint32_t *temp = NULL;
 	xdev_handle_t xdev = xocl_get_xdev(xmc->pdev);
 
 	err = xocl_icap_get_xclbin_metadata(xdev, MEMTOPO_AXLF,
@@ -2024,6 +2024,11 @@ static ssize_t read_temp_by_mem_topology(struct file *filp,
 
 	if (offset >= size)
 		goto done;
+
+	temp = vzalloc(size);
+	if (!temp)
+		goto done;
+
 	for (i = 0; i < memtopo->m_count; ++i)
 		*(temp+i) = get_temp_by_m_tag(xmc, memtopo->m_mem_data[i].m_tag);
 
@@ -2035,6 +2040,7 @@ static ssize_t read_temp_by_mem_topology(struct file *filp,
 	memcpy(buffer, temp, nread);
 done:
 	xocl_icap_put_xclbin_metadata(xdev);
+	vfree(temp);
 	/* xocl_icap_unlock_bitstream */
 	return nread;
 }
@@ -3414,7 +3420,7 @@ static bool is_xmc_ready(struct xocl_xmc *xmc)
 
 static bool is_sc_ready(struct xocl_xmc *xmc, bool quiet)
 {
-	u32 val;
+	struct xmc_status status;
 
 	if (autonomous_xmc(xmc->pdev))
 		return true;
@@ -3422,13 +3428,14 @@ static bool is_sc_ready(struct xocl_xmc *xmc, bool quiet)
 	if (nosc_xmc(xmc->pdev))
 		return false;
 
-	safe_read32(xmc, XMC_STATUS_REG, &val);
-	val >>= 28;
-	if (val == 0x1)
+	safe_read32(xmc, XMC_STATUS_REG, (u32 *)&status);
+	if (status.sc_mode == XMC_SC_NORMAL)
 		return true;
 
-	if (!quiet)
-		xocl_err(&xmc->pdev->dev, "SC is not ready, state=%d\n", val);
+	if (!quiet) {
+		xocl_err(&xmc->pdev->dev, "SC is not ready, state=%d\n",
+			status.sc_mode);
+	}
 	return false;
 }
 
@@ -3520,13 +3527,19 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 	uint32_t bd_info_sz = 0;
 	uint32_t *bdinfo_raw;
 	xdev_handle_t xdev = xocl_get_xdev(xmc->pdev);
-	char *tmp_str;
+	char *tmp_str = NULL;
 
 	BUG_ON(!mutex_is_locked(&xmc->mbx_lock));
 	if (xmc->bdinfo_loaded)
 		return 0;
 
 	if (XMC_PRIVILEGED(xmc)) {
+
+		tmp_str = (char *)xocl_icap_get_data(xdev, EXP_BMC_VER);
+		if (tmp_str) {
+			strncpy(xmc->exp_bmc_ver, tmp_str,
+				XMC_BDINFO_ENTRY_LEN_MAX - 1);
+		}
 
 		if ((!is_xmc_ready(xmc) || !is_sc_ready(xmc, false)))
 			return -EINVAL;
@@ -3573,11 +3586,6 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 		xmc_set_board_info(bdinfo_raw, bd_info_sz,
 			BDINFO_CONFIG_MODE, (char *)&xmc->config_mode);
 
-		tmp_str = (char *)xocl_icap_get_data(xdev, EXP_BMC_VER);
-		if (tmp_str) {
-			strncpy(xmc->exp_bmc_ver, tmp_str,
-				XMC_BDINFO_ENTRY_LEN_MAX - 1);
-		}
 		if (bd_info_valid(xmc->serial_num) &&
 			!strcmp(xmc->bmc_ver, xmc->exp_bmc_ver)) {
 			xmc->bdinfo_loaded = true;
@@ -3700,6 +3708,7 @@ xmc_boot_sc(struct xocl_xmc *xmc, u32 jump_addr)
 		msleep(RETRY_INTERVAL);
 	if (!is_sc_ready(xmc, false))
 		ret = -ETIMEDOUT;
+
 	return ret;
 }
 

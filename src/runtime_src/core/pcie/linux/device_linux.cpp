@@ -180,7 +180,7 @@ initialize_query_table()
   emplace_sysfs_request<query::xmc_status>                ("xmc", "status");
   emplace_sysfs_request<query::xmc_reg_base>              ("xmc", "reg_base");
   emplace_sysfs_request<query::dna_serial_num>            ("dna", "dna");
-  emplace_sysfs_request<query::status_p2p_enabled>        ("", "p2p_enable");
+  emplace_sysfs_request<query::status_p2p_enabled>        ("p2p", "p2p_enable");
   emplace_sysfs_request<query::temp_card_top_front>       ("xmc", "xmc_se98_temp0");
   emplace_sysfs_request<query::temp_card_top_rear>        ("xmc", "xmc_se98_temp1");
   emplace_sysfs_request<query::temp_card_bottom_front>    ("xmc", "xmc_se98_temp2");
@@ -242,6 +242,9 @@ initialize_query_table()
   emplace_sysfs_request<query::f_flash_type>              ("flash", "flash_type");
   emplace_sysfs_request<query::flash_type>                ("", "flash_type");
   emplace_sysfs_request<query::board_name>                ("", "board_name");
+  emplace_sysfs_request<query::logic_uuids>               ("", "logic_uuids");
+  emplace_sysfs_request<query::interface_uuids>           ("", "interface_uuids");
+
   emplace_func0_request<query::pcie_bdf,                  bdf>();
 }
 
@@ -265,14 +268,8 @@ lookup_query(query::key_type query_key) const
 }
 
 device_linux::
-device_linux(id_type device_id, bool user)
-  : shim<device_pcie>(device_id, user)
-{
-}
-
-device_linux::
-device_linux(handle_type device_handle, id_type device_id)
-  : shim<device_pcie>(device_handle, device_id)
+device_linux(handle_type device_handle, id_type device_id, bool user)
+  : shim<device_pcie>(device_handle, device_id, user)
 {
 }
 

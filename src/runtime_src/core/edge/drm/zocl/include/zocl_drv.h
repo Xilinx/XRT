@@ -160,17 +160,16 @@ zocl_bo_execbuf(const struct drm_zocl_bo *bo)
 	return (bo->flags & ZOCL_BO_FLAGS_EXECBUF);
 }
 
-static inline void
-zocl_kds_setctrl(struct drm_zocl_dev *zdev, int type,
-		 struct kds_controller *ctrl)
+static inline int
+zocl_kds_add_cu(struct drm_zocl_dev *zdev, struct xrt_cu *xcu)
 {
-	zdev->kds.ctrl[type] = ctrl;
+	return kds_add_cu(&zdev->kds, xcu);
 }
 
-static inline struct kds_controller *
-zocl_kds_getctrl(struct drm_zocl_dev *zdev, int type)
+static inline int
+zocl_kds_del_cu(struct drm_zocl_dev *zdev, struct xrt_cu *xcu)
 {
-	return zdev->kds.ctrl[type];
+	return kds_del_cu(&zdev->kds, xcu);
 }
 
 int zocl_copy_bo_async(struct drm_device *dev, struct drm_file *fipl,
@@ -196,17 +195,17 @@ void zocl_update_mem_stat(struct drm_zocl_dev *zdev, u64 size,
 void zocl_init_mem(struct drm_zocl_dev *zdev, struct mem_topology *mtopo);
 void zocl_clear_mem(struct drm_zocl_dev *zdev);
 
+/* zocl_kds.c */
+int zocl_init_sched(struct drm_zocl_dev *zdev);
+void zocl_fini_sched(struct drm_zocl_dev *zdev);
 int zocl_create_client(struct drm_zocl_dev *zdev, void **priv);
 void zocl_destroy_client(struct drm_zocl_dev *zdev, void **priv);
 uint zocl_poll_client(struct file *filp, poll_table *wait);
 int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 		       struct drm_file *filp);
-
-/* CU controller */
-int cu_ctrl_init(struct drm_zocl_dev *zdev);
-void cu_ctrl_fini(struct drm_zocl_dev *zdev);
-int cu_ctrl_add_cu(struct drm_zocl_dev *zdev, struct xrt_cu *xcu);
-int cu_ctrl_remove_cu(struct drm_zocl_dev *zdev, struct xrt_cu *xcu);
+int zocl_context_ioctl(struct drm_zocl_dev *zdev, void *data,
+		       struct drm_file *filp);
+struct platform_device *zocl_find_pdev(char *name);
 
 int get_apt_index_by_addr(struct drm_zocl_dev *zdev, phys_addr_t addr);
 int get_apt_index_by_cu_idx(struct drm_zocl_dev *zdev, int cu_idx);

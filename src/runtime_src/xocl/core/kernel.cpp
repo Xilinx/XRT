@@ -433,23 +433,18 @@ validate_cus(const device* device, unsigned long argidx, int memidx) const
 {
   XOCL_DEBUG(std::cout,"xocl::kernel::validate_cus(",argidx,",",memidx,")\n");
   xclbin::memidx_bitmask_type connections;
-  auto dev = xrt_core::get_userpf_device(device->get_handle());
-  int l_idx = dev->get_group_range(memidx).first;
-  int h_idx = dev->get_group_range(memidx).second;
-  for (int i = l_idx; i<=h_idx; i++)
-        connections.set(i);
-
+  connections.set(memidx);
   auto end = m_cus.end();
   for (auto itr=m_cus.begin(); itr!=end; ) {
     auto cu = (*itr);
     auto cuconn = cu->get_memidx(argidx);
     if ((cuconn & connections).none()) {
-      auto axlf = device->get_axlf();
+      auto mem = device->get_axlf_section<const mem_topology*>(MEM_TOPOLOGY);
       xrt::message::send
         (xrt::message::severity_level::XRT_WARNING
          , "Argument '" + std::to_string(argidx)
          + "' of kernel '" + get_name()
-         + "' is allocated in memory bank '" + xrt_core::xclbin::memidx_to_name(axlf,memidx)
+         + "' is allocated in memory bank '" + xrt_core::xclbin::memidx_to_name(mem,memidx)
          + "'; compute unit '" + cu->get_name()
          + "' cannot be used with this argument and is ignored.");
       XOCL_DEBUG(std::cout,"xocl::kernel::validate_cus removing cu(",cu->get_uid(),") ",cu->get_name(),"\n");

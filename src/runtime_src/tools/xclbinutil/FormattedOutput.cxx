@@ -331,6 +331,18 @@ reportXclbinInfo( std::ostream & _ostream,
     _ostream << XUtil::format("   %-23s %s", "Signature:", sSignatureState.c_str()).c_str() << std::endl;
   }
 
+  // Action Masks
+  {
+    // Are there any masks set
+    if (_xclBinHeader.m_header.m_actionMask) {
+      _ostream << XUtil::format("   %-23s ", "Action Mask(s):");
+      if (_xclBinHeader.m_header.m_actionMask & AM_LOAD_AIE) {
+        _ostream << "LOAD_AIE ";
+      }
+      _ostream << std::endl;
+    }
+  }
+
   // Content
   {
     std::string sContent;

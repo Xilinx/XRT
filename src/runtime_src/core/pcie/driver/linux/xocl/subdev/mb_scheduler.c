@@ -1965,7 +1965,7 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	cfg->type = ERT_CTRL;
 
 	SCHED_DEBUGF("configuring scheduler cq_size(%d)\n", exec->cq_size);
-	if (exec->cq_size == 0 || cfg->slot_size == 0) {
+	if (ert && (exec->cq_size == 0 || cfg->slot_size == 0)) {
 		userpf_err(xdev, "should not have zeroed value of cq_size=%d, slot_size=%d",
 		    exec->cq_size, cfg->slot_size);
 		return 1;
@@ -2763,7 +2763,7 @@ exec_ert_query_mailbox(struct exec_core *exec, struct xocl_cmd *xcmd)
 			continue;
 		}
 
-		mask = 1 << (slots[i] % sizeof (u32));
+		mask = 1 << (slots[i] % 32);
 		mask_idx = slots[i] >> 5;
 
 		exec->ops->process_mask(exec, mask, mask_idx);

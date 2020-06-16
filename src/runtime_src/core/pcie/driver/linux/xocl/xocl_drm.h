@@ -21,8 +21,9 @@
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 #include <linux/hashtable.h>
 #endif
-#include "mem_group.h"
 
+
+#define IS_HOST_MEM(m_tag)	(!strncmp(m_tag, "HOST[0]", 7))
 /**
  * struct drm_xocl_exec_metadata - Meta data for exec bo
  *
@@ -52,17 +53,15 @@ struct xocl_drm {
 	xdev_handle_t		xdev;
 	/* memory management */
 	struct drm_device       *ddev;
-	/* Memory manager for whole memory range */
-	struct drm_mm           *mm;
+	/* Memory manager array, one per DDR channel, protected by mm_lock */
+	struct drm_mm           **mm;
 	struct mutex            mm_lock;
 	struct drm_xocl_mm_stat **mm_usage_stat;
-	u64                     *mm_p2p_off;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 	DECLARE_HASHTABLE(mm_range, 6);
 #endif
 	struct xocl_cma_bank  *cma_bank;
-	struct xcl_mem_connectivity *m_connect;
 };
 
 struct drm_xocl_bo {
@@ -98,8 +97,6 @@ void xocl_mm_get_usage_stat(struct xocl_drm *drm_p, u32 ddr,
 void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u32 ddr,
         u64 size, int count);
 
-int xocl_mm_insert_node_range(struct xocl_drm *drm_p, u32 mem_id,
-                    struct drm_mm_node *node, u64 size);
 int xocl_mm_insert_node(struct xocl_drm *drm_p, u32 ddr,
                 struct drm_mm_node *node, u64 size);
 void *xocl_drm_init(xdev_handle_t xdev);

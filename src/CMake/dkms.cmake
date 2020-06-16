@@ -152,13 +152,15 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/subdev/trace_fifo_full.c
   xocl/subdev/trace_funnel.c
   xocl/subdev/trace_s2mm.c
+  xocl/subdev/spc.c
+  xocl/subdev/lapc.c
   xocl/subdev/memory_hbm.c
   xocl/subdev/ddr_srsr.c
   xocl/subdev/ulite.c
   xocl/subdev/calib_storage.c
   xocl/subdev/address_translator.c
-  xocl/subdev/cu_ctrl.c
   xocl/subdev/cu.c
+  xocl/subdev/p2p.c
   xocl/Makefile
   )
 
@@ -168,6 +170,7 @@ SET (XRT_DKMS_DRIVER_INCLUDES
   include/mgmt-reg.h
   include/mgmt-ioctl.h
   include/qdma_ioctl.h
+  include/profile_ioctl.h
   include/mailbox_proto.h
   include/flash_xrt_data.h
   )
@@ -193,7 +196,6 @@ SET (XRT_DKMS_COMMON_XRT_DRV_INCLUDES
   common/drv/include/kds_core.h
   common/drv/include/kds_command.h
   common/drv/include/xrt_cu.h
-  common/drv/include/mem_group.h
   )
 
 SET (XRT_DKMS_ABS_SRCS)

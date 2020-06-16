@@ -23,7 +23,8 @@ file(GLOB XRT_CORE_COMMON_LIB_FILES
   "utils.*"
   "thread.cpp"
   "xrt_xclbin.cpp"
-  "exec/*.cpp"
+  "module_loader.cpp"
+  "api/*.cpp"
   )
 
 # Files to include in object list
@@ -45,12 +46,14 @@ target_link_libraries(xrt_coreutil
   )
 
 if (NOT WIN32)
-target_link_libraries(xrt_coreutil uuid pthread)
+target_link_libraries(xrt_coreutil uuid pthread dl)
 install(TARGETS xrt_coreutil
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR})
 else()
 # No external linking with coreutil so release only runtime
 install(TARGETS xrt_coreutil
+  ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR}
+  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}
   RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
 endif (NOT WIN32)
 

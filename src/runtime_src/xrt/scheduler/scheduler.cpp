@@ -126,14 +126,14 @@ schedule(const command_type& cmd)
 }
 
 void
-init(xrt::device* device, const axlf* top)
+init(xrt::device* device)
 {
   emu_50_disable_kds(device);
 
   if (kds_enabled())
-    kds::init(device,top);
+    kds::init(device);
   else
-    sws::init(device,top);
+    sws::init(device);
 }
 
 }} // scheduler,xrt

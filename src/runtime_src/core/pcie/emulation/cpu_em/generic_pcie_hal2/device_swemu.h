@@ -27,10 +27,7 @@ namespace xrt_core { namespace swemu {
 class device : public shim<device_pcie>
 {
 public:
-  device(id_type device_id, bool user);
-
-  // Open an unmanged device.  This ctor is called by xclOpen
-  device(handle_type device_handle, id_type device_id);
+  device(handle_type device_handle, id_type device_id, bool user);
 
 private:
   // Private look up function for concrete query::request

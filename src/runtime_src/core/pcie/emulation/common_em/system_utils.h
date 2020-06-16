@@ -23,7 +23,7 @@ namespace systemUtil {
     PERMISSIONS = 5
   };
 
-  void makeSystemCall(std::string &operand1, systemOperation operation, std::string operand2 = "");
+  void makeSystemCall(std::string &operand1, systemOperation operation, std::string operand2 = "", std::string LineNo = "");
 
 }
 #endif
