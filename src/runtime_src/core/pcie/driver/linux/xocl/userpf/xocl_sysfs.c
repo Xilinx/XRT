@@ -168,98 +168,6 @@ static ssize_t memstat_raw_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(memstat_raw);
 
-static ssize_t p2p_enable_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	u64 size;
-
-	if (xdev->p2p_mem_chunk_num)
-		return sprintf(buf, "1\n");
-	else if (xocl_get_p2p_bar(xdev, &size) >= 0 &&
-		size > XOCL_P2P_CHUNK_SIZE)
-		return sprintf(buf, "%d\n", EBUSY);
-	else if (xdev->p2p_bar_idx < 0 || (xocl_get_p2p_bar(xdev, &size) < 0 &&
-		xdev->p2p_bar_len <= XOCL_P2P_CHUNK_SIZE))
-		return sprintf(buf, "%d\n", ENXIO);
-
-	return sprintf(buf, "0\n");
-}
-
-static ssize_t p2p_enable_store(struct device *dev,
-		struct device_attribute *da, const char *buf, size_t count)
-{
-	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	struct pci_dev *pdev = xdev->core.pdev;
-	int ret, p2p_bar;
-	u32 enable;
-	u64 size, curr_size;
-
-	if (kstrtou32(buf, 10, &enable) == -EINVAL || enable > 1)
-		return -EINVAL;
-
-	if (xdev->p2p_bar_idx < 0) {
-		xocl_err(&pdev->dev, "p2p bar is not identified");
-		return -ENXIO;
-	}
-
-	p2p_bar = xocl_get_p2p_bar(xdev, &curr_size);
-	if (p2p_bar < 0) {
-		xocl_err(&pdev->dev, "p2p bar is not configurable");
-		return -ENXIO;
-	}
-
-	if (xdev->core.priv.p2p_bar_sz > 0)
-		size = xdev->core.priv.p2p_bar_sz;
-	else {
-		size = xocl_get_ddr_channel_size(xdev) *
-			xocl_get_ddr_channel_count(xdev); /* GB */
-	}
-
-	size = (ffs(size) == fls(size)) ? (fls(size) - 1) : fls(size);
-	size = enable ? (size + 10) : (XOCL_P2P_CHUNK_SHIFT - 20);
-	if (xocl_pci_rebar_size_to_bytes(size) == curr_size) {
-		if (enable) {
-			xocl_info(&pdev->dev, "p2p is enabled, bar size %d M",
-				(1 << size));
-		} else {
-			xocl_info(&pdev->dev, "p2p is disabled, bar size %dM",
-				(1 << size));
-		}
-		return count;
-	}
-
-	xocl_info(&pdev->dev, "Resize p2p bar %d to %d M ", p2p_bar,
-			(1 << size));
-	xocl_p2p_fini(xdev, false);
-
-	ret = xocl_pci_resize_resource(pdev, p2p_bar, size);
-	if (ret) {
-		xocl_err(&pdev->dev, "Failed to resize p2p BAR %d", ret);
-		goto failed;
-	}
-
-	xdev->p2p_bar_idx = p2p_bar;
-	xdev->p2p_bar_sz_cached = size;
-	xdev->p2p_bar_len = pci_resource_len(pdev, p2p_bar);
-
-	if (enable) {
-		ret = xocl_p2p_init(xdev);
-		if (ret) {
-			xocl_err(&pdev->dev, "Failed to reserve p2p memory %d",
-					ret);
-		}
-	}
-
-	return count;
-
-failed:
-	return ret;
-
-}
-
-static DEVICE_ATTR(p2p_enable, 0644, p2p_enable_show, p2p_enable_store);
-
 static ssize_t dev_offline_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -522,7 +430,6 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_kdsstat.attr,
 	&dev_attr_memstat.attr,
 	&dev_attr_memstat_raw.attr,
-	&dev_attr_p2p_enable.attr,
 	&dev_attr_dev_offline.attr,
 	&dev_attr_mig_calibration.attr,
 	&dev_attr_link_width.attr,

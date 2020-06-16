@@ -86,7 +86,7 @@ struct axlf_section_type<SectionType*>
  */
 XRT_CORE_COMMON_EXPORT
 std::string
-memidx_to_name(const axlf* top, int32_t midx);
+memidx_to_name(const mem_topology* mem, int32_t midx);
 
 /**
  * get_first_used_mem() - Get the first used memory bank index
@@ -100,10 +100,6 @@ get_first_used_mem(const axlf* top);
 XRT_CORE_COMMON_EXPORT
 size_t
 get_max_cu_size(const char* xml_data, size_t xml_size);
-
-XRT_CORE_COMMON_EXPORT
-size_t
-get_max_cu_size(const axlf* top);
 
 /**
  * get_cus() - Get sorted list of CU base addresses in xclbin.
@@ -134,10 +130,6 @@ XRT_CORE_COMMON_EXPORT
 std::vector<const ip_data*>
 get_cus(const ip_layout* ip_layout, const std::string& kname);
 
-XRT_CORE_COMMON_EXPORT
-std::vector<const ip_data*>
-get_cus(const axlf* top, const std::string& kname);
-
 /**
  * get_ip_name() - Get name of IP with specified base addr
  *
@@ -162,11 +154,15 @@ get_debug_ips(const axlf* top);
  */
 XRT_CORE_COMMON_EXPORT
 uint32_t
-get_cu_control(const axlf* top, uint64_t cuaddr);
+get_cu_control(const ip_layout* ip_layout, uint64_t cuaddr);
 
 /**
  * get_cu_base_offset() - Get minimum base offset of all IP_KERNEL objects
  */
+XRT_CORE_COMMON_EXPORT
+uint64_t
+get_cu_base_offset(const ip_layout* ip_layout);
+
 XRT_CORE_COMMON_EXPORT
 uint64_t
 get_cu_base_offset(const axlf* top);
@@ -176,11 +172,19 @@ get_cu_base_offset(const axlf* top);
  */
 XRT_CORE_COMMON_EXPORT
 bool
+get_cuisr(const ip_layout* ip_layout);
+
+XRT_CORE_COMMON_EXPORT
+bool
 get_cuisr(const axlf* top);
 
 /**
  * get_dataflow() - Check if any kernel in xclbin is a dataflow kernel
  */
+XRT_CORE_COMMON_EXPORT
+bool
+get_dataflow(const ip_layout* ip_layout);
+
 XRT_CORE_COMMON_EXPORT
 bool
 get_dataflow(const axlf* top);

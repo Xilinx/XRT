@@ -31,21 +31,35 @@ namespace xdp {
   {
   private:
     UserMarker() = delete ;
+    
+    uint64_t label ;
+
   public:
     virtual bool isUserEvent() { return true ; } 
-    XDP_EXPORT UserMarker(uint64_t s_id, double ts) ;
+    XDP_EXPORT UserMarker(uint64_t s_id, double ts, uint64_t l = 0) ;
     XDP_EXPORT ~UserMarker() ;
+
+    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   } ;
 
   class UserRange : public VTFEvent
   {
   private:
     UserRange() = delete ;
+
+    bool isStart ;
+
+    // The user will be able to specify what goes in the event
+    uint64_t label ;
+    uint64_t tooltip ;
   public:
     virtual bool isUserEvent() { return true ; } 
 
-    XDP_EXPORT UserRange(uint64_t s_id, double ts) ;
+    XDP_EXPORT UserRange(uint64_t s_id, double ts, bool s, 
+			 uint64_t l = 0, uint64_t tt = 0) ;
     XDP_EXPORT ~UserRange() ;
+
+    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   } ;
 
 } // end namespace xdp

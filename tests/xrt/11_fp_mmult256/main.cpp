@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2018 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,320 +14,175 @@
  * under the License.
  */
 
-#include <getopt.h>
 #include <iostream>
 #include <stdexcept>
 #include <string>
 #include <cstring>
-#include <sys/mman.h>
-#include <time.h>
+#include <ctime>
 #include <chrono>
-#include <thread>
 
-// driver includes
-#include "ert.h"
+#include "experimental/xrt_device.h"
+#include "experimental/xrt_kernel.h"
+#include "experimental/xrt_bo.h"
 
-// host_src includes
-#include "xclhal2.h"
-#include "xclbin.h"
-
-// lowlevel common include
-#include "utils.h"
-
-#if defined(DSA64)
-#include "xmmult_hw_64.h"      
-#else
-#include "xmmult_hw.h"
+#ifdef _WIN32
+# pragma warning ( disable : 4244 )
 #endif
 
-static const int SIZE = 256;
-int DATA_SIZE = SIZE*SIZE;
+static const int size = 256;
+int data_size = size*size;
 
 /**
- * Runs an OpenCL kernel which writes known 16 integers into a 64 byte buffer. Does not use OpenCL
- * runtime but directly exercises the HAL driver API.
+ * Runs an OpenCL kernel which writes known 16 integers into a 64 byte
+ * buffer. Does not use OpenCL runtime but directly exercises the HAL
+ * driver API.
  */
 
-
-const static struct option long_options[] = {
-{"hal_driver",      required_argument, 0, 's'},
-{"bitstream",       required_argument, 0, 'k'},
-{"hal_logfile",     required_argument, 0, 'l'},
-{"device",          required_argument, 0, 'd'},
-{"random",          no_argument,       0, 'r'},
-{"verbose",         no_argument,       0, 'v'},
-{"help",            no_argument,       0, 'h'},
-// enable embedded runtime
-{"ert",             no_argument,       0, '1'},
-{0, 0, 0, 0}
-};
-
-static void printHelp()
+static void usage()
 {
     std::cout << "usage: %s [options] -k <bitstream>\n\n";
     std::cout << "  -s <hal_driver>\n";
     std::cout << "  -k <bitstream>\n";
-    std::cout << "  -l <hal_logfile>\n";
     std::cout << "  -d <index>\n";
     std::cout << "  -r Random input data.\n";
     std::cout << "  -v\n";
     std::cout << "  -h\n\n";
-    std::cout << "* If HAL driver is not specified, application will try to find the HAL driver\n";
-    std::cout << "  using XILINX_OPENCL and XCL_PLATFORM environment variables\n";
     std::cout << "* Bitstream is required\n";
-    std::cout << "* HAL logfile is optional but useful for capturing messages from HAL driver\n";
 }
 
-static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alignment, bool ert, bool verbose, bool bRandom, int first_mem, unsigned cu_index, uuid_t xclbinId)
+static void
+run(xrt::device& device, const xrt::uuid& uuid, bool random, bool verbose)
 {
-    try {
-        if(xclOpenContext(handle, xclbinId, cu_index, true))
-            throw std::runtime_error("Cannot create context");
+  auto mmult = xrt::kernel(device, uuid.get(), "mmult");
 
-        // Allocate the device memory
-        unsigned boHandle1 = xclAllocBO(handle, 2*DATA_SIZE*sizeof(float), 0, first_mem); // input a and b
-        unsigned boHandle2 = xclAllocBO(handle, DATA_SIZE*sizeof(float), 0, first_mem);   // output
+  auto a = xrt::bo(device, 2*data_size*sizeof(float), 0, mmult.group_id(0));
+  auto output = xrt::bo(device, data_size*sizeof(float), 0, mmult.group_id(1));
 
-        // Create the mapping to the host memory
-        float *bo1 = (float*)xclMapBO(handle, boHandle1, true);
+  auto a_mapped = a.map<float*>();
 
-        int i, j, k;
-        std::cout << "Populate the input and reference vectors.\n";
-        
-        const int MY_MAX = 4096;
-        
-        float A[SIZE][SIZE], B[SIZE][SIZE], C[SIZE*SIZE];
-        std::srand(std::time(0));
-        for (i = 0; i < SIZE; ++i) {
-            for (j = 0; j < SIZE; ++j) {
-                A[i][j] = bRandom ?  static_cast <float> (std::rand()) / (static_cast <float> (RAND_MAX/MY_MAX)):(float)(i+j);
-                B[i][j] = bRandom ?  static_cast <float> (std::rand()) / (static_cast <float> (RAND_MAX/MY_MAX)):(float)(i+j);
-            }
-        }
-        
-        for (i = 0; i < SIZE; ++i) {
-            for (j = 0; j < SIZE; ++j) {
-                C[i*SIZE+j] = 0.0;
-                for (k = 0; k < SIZE; ++k) {
-                    C[i*SIZE+j] += A[i][k] * B[k][j];
-                }
-            }
-        }
-        
-        std::memcpy(bo1, A, DATA_SIZE*sizeof(float));
-        std::memcpy(bo1 + DATA_SIZE, B, DATA_SIZE*sizeof(float));
-        //for (i = 0; i < 2*DATA_SIZE ; ++i) { printf("======i: %d, bo1: %0.4f\n",i,bo1[i]); }
+  std::cout << "Populate the input and reference vectors.\n";
 
-
-        // Send the input data to the device memory
-        std::cout << "Send the input data to the device memory.\n";
-        if(xclSyncBO(handle, boHandle1, XCL_BO_SYNC_BO_TO_DEVICE , 2*DATA_SIZE*sizeof(float), 0)) {
-            return 1;
-        }
-
-        // Get & check the device memory address
-        xclBOProperties p;
-        uint64_t bo1devAddr = !xclGetBOProperties(handle, boHandle1, &p) ? p.paddr : -1;
-        uint64_t bo2devAddr = !xclGetBOProperties(handle, boHandle2, &p) ? p.paddr : -1;
-        
-        if( (bo2devAddr == (uint64_t)(-1)) || (bo1devAddr == (uint64_t)(-1))) {
-            return 1;
-        }
-
-        // Create an execution buffer to configure the FPGA (ERT)
-        unsigned execHandle = xclAllocBO(handle, DATA_SIZE*sizeof(float), 0, (1<<31));
-        void* execData = xclMapBO(handle, execHandle, true);
-        
-        std::cout << "Construct the exec command to run the kernel on FPGA" << std::endl;
-
-        //construct the exec buffer cmd to start the kernel.
-        {
-            auto ecmd = reinterpret_cast<ert_start_kernel_cmd*>(execData);
-
-            // Clear the command in case it was recycled
-            size_t regmap_size = XMMULT_CONTROL_ADDR_REPEAT_R_DATA/4 + 1; // regmap
-            std::memset(ecmd,0,(sizeof *ecmd) + regmap_size);
-
-            // Program the command packet header
-            ecmd->state = ERT_CMD_STATE_NEW;
-            ecmd->opcode = ERT_START_CU;
-            ecmd->count = 1 + regmap_size;  // cu_mask + regmap
-
-            // Program the CU mask. One CU at index 0
-            ecmd->cu_mask = 0x1;
-
-            // Program the register map
-            ecmd->data[XMMULT_CONTROL_ADDR_AP_CTRL] = 0x0; // ap_start
-            //ecmd->data[0x00] = 0x0; // ap_start
-
-
-#if defined(DSA64)
-            ecmd->data[XMMULT_CONTROL_ADDR_A_DATA/4] = bo1devAddr & 0xFFFFFFFF; // a input
-            ecmd->data[XMMULT_CONTROL_ADDR_A_DATA/4 + 1] = (bo1devAddr >> 32) & 0xFFFFFFFF; // a input
-            ecmd->data[XMMULT_CONTROL_ADDR_OUTPUT_R_DATA/4] = bo2devAddr & 0xFFFFFFFF; // output
-            ecmd->data[XMMULT_CONTROL_ADDR_OUTPUT_R_DATA/4 + 1] = (bo2devAddr >> 32) & 0xFFFFFFFF; // output
-#else
-            ecmd->data[XMMULT_CONTROL_ADDR_A_DATA/4] = bo1devAddr; // a input
-            ecmd->data[XMMULT_CONTROL_ADDR_OUTPUT_R_DATA/4] = bo2devAddr; // output
-#endif
-            ecmd->data[XMMULT_CONTROL_ADDR_REPEAT_R_DATA/4] = 1;
-        }
-
-        //Send the "start kernel" command.
-        if(xclExecBuf(handle, execHandle)) {
-            std::cout << "Unable to issue xclExecBuf : start_kernel" << std::endl;
-            std::cout << "FAILED TEST\n";
-            std::cout << "Write failed\n";
-            return 1;
-        }
-        else {
-            std::cout << "Kernel start command issued through xclExecBuf : start_kernel" << std::endl;
-            std::cout << "Now wait until the kernel finish" << std::endl;
-        }
-
-        //Wait on the command finish
-        while (xclExecWait(handle,1000) == 0) {
-            std::cout << "reentering wait...\n";
-        };
-
-        //Get the output;
-        std::cout << "Get the output data from the device" << std::endl;
-        if(xclSyncBO(handle, boHandle2, XCL_BO_SYNC_BO_FROM_DEVICE, DATA_SIZE*sizeof(float), 0)) {
-            return 1;
-        }
-        float *bo2 = (float*)xclMapBO(handle, boHandle2, false);
-
-
-        // Validate FPGA results
-        int err = 0;
-        for (i = 0; i < SIZE * SIZE; i++) {
-            bool bShow = verbose;
-            if (C[i] != bo2[i]) {
-                bShow = true;
-                err++;
-            }
-            if (bShow) {
-                std::cout<<std::hex<<i<<" : "<<std::fixed<<C[i]<< " vs "<<bo2[i]<<std::endl;
-            }
-        }
-
-        if (err) {
-            std::cout<<std::dec<<"FAILED TEST. mismatch count = "<<err<<std::endl;
-            return 1;
-        }
-
-        munmap(bo1, DATA_SIZE*sizeof(float));
-        munmap(bo2, DATA_SIZE*sizeof(float));
-        munmap(execData, DATA_SIZE*sizeof(float));
-        xclFreeBO(handle,boHandle1);
-        xclFreeBO(handle,boHandle2);
-        xclFreeBO(handle,execHandle);
+  const int MY_MAX = 4096;
+  float A[size][size], B[size][size], C[size*size];
+  std::srand(std::time(0));
+  for (int i = 0; i < size; ++i) {
+    for (int j = 0; j < size; ++j) {
+      A[i][j] = random ?  static_cast<float>(std::rand()) / (static_cast<float>(RAND_MAX/MY_MAX)):(float)(i+j);
+      B[i][j] = random ?  static_cast<float>(std::rand()) / (static_cast<float>(RAND_MAX/MY_MAX)):(float)(i+j);
     }
-    catch (std::exception const& e)
-    {
-        std::cout << "Exception: " << e.what() << "\n";
-        std::cout << "FAILED TEST\n";
-        return 1;
+  }
+
+  for (int i = 0; i < size; ++i) {
+    for (int j = 0; j < size; ++j) {
+      C[i*size+j] = 0.0;
+      for (int k = 0; k < size; ++k) {
+        C[i*size+j] += A[i][k] * B[k][j];
+      }
     }
+  }
 
-    xclCloseContext(handle, xclbinId, cu_index);
+  std::memcpy(a_mapped, A, data_size*sizeof(float));
+  std::memcpy(a_mapped + data_size, B, data_size*sizeof(float));
 
-    std::cout << "PASSED TEST\n";
-    return 0;
+  // Send the input data to the device memory
+  std::cout << "Send the input data to the device memory.\n";
+  a.sync(XCL_BO_SYNC_BO_TO_DEVICE , 2*data_size*sizeof(float), 0);
+
+  // Run kernel
+  auto run = mmult(a, output, 1);
+  run.wait();
+
+  //Get the output;
+  std::cout << "Get the output data from the device" << std::endl;
+  output.sync(XCL_BO_SYNC_BO_FROM_DEVICE, data_size*sizeof(float), 0);
+  auto output_mapped = output.map<float*>();
+
+  // Validate FPGA results
+  int err = 0;
+  for (int i = 0; i < size * size; i++) {
+    bool bShow = verbose;
+    if (C[i] != output_mapped[i]) {
+      bShow = true; // always show errors
+      err++;
+    }
+    if (bShow)
+      std::cout<< std::hex << i << " : " << std::fixed << C[i] << " vs " << output_mapped[i] << "\n";
+  }
+
+  if (err)
+    throw std::runtime_error("mismatch count = " + std::to_string(err));
 }
 
+
+int
+run(int argc, char** argv)
+{
+  if (argc < 3) {
+    usage();
+    return 1;
+  }
+
+  std::string xclbin_fnm;
+  bool verbose = false;
+  unsigned int device_index = 0;
+  bool random = false;
+
+  std::vector<std::string> args(argv+1,argv+argc);
+  std::string cur;
+  for (auto& arg : args) {
+    if (arg == "-h") {
+      usage();
+      return 1;
+    }
+    else if (arg == "-v") {
+      verbose = true;
+      continue;
+    }
+    else if (cur == "-r") {
+      random = true;
+      continue;
+    }
+
+    if (arg[0] == '-') {
+      cur = arg;
+      continue;
+    }
+
+    if (cur == "-k")
+      xclbin_fnm = arg;
+    else if (cur == "-d")
+      device_index = std::stoi(arg);
+    else
+      throw std::runtime_error("Unknown option value " + cur + " " + arg);
+  }
+
+  if (xclbin_fnm.empty())
+    throw std::runtime_error("FAILED_TEST\nNo xclbin specified");
+
+  if (device_index >= xclProbe())
+    throw std::runtime_error("Cannot find device index (" + std::to_string(device_index) + ") specified");
+
+  auto device = xrt::device(device_index);
+  auto uuid = device.load_xclbin(xclbin_fnm);
+
+  run(device, uuid, random, verbose);
+
+  return 0;
+}
 
 int main(int argc, char** argv)
 {
-    std::string sharedLibrary;
-    std::string bitstreamFile;
-    std::string halLogfile;
-    unsigned index = 0;
-    size_t alignment = 128;
-    int option_index = 0;
-    bool verbose = false;
-    bool bRandom = false;
-    int c;
-    unsigned cu_index = 0;
-    bool ert = false;
-
-    //findSharedLibrary(sharedLibrary);
-    while ((c = getopt_long(argc, argv, "s:k:l:d:vhr", long_options, &option_index)) != -1)
-    {
-        switch (c)
-        {
-        case 0:
-            if (long_options[option_index].flag != 0)
-                break;
-        case 1:
-            ert = true;
-            break;
-        case 's':
-            sharedLibrary = optarg;
-            break;
-        case 'k':
-            bitstreamFile = optarg;
-            break;
-        case 'l':
-            halLogfile = optarg;
-            break;
-        case 'd':
-            index = std::atoi(optarg);
-            break;
-        case 'h':
-            printHelp();
-            return 0;
-        case 'r':
-            bRandom = true;
-            break;
-        case 'v':
-            verbose = true;
-            break;
-        default:
-            printHelp();
-            return 1;
-        }
-    }
-
-    (void)verbose;
-
-    if (bitstreamFile.size() == 0) {
-        std::cout << "FAILED TEST\n";
-        std::cout << "No bitstream specified\n";
-        return -1;
-    }
-
-    if (halLogfile.size()) {
-        std::cout << "Using " << halLogfile << " as HAL driver logfile\n";
-    }
-
-    std::cout << "HAL driver = " << sharedLibrary << "\n";
-    std::cout << "Host buffer alignment = " << alignment << " bytes\n";
-    std::cout << "Compiled kernel = " << bitstreamFile << "\n";
-
-
-    try {
-        xclDeviceHandle handle;
-        uint64_t cu_base_addr = 0;
-        int first_mem = -1;
-        uuid_t xclbinId;
-
-        if (initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr, first_mem, xclbinId))
-            return 1;
-
-        if (first_mem < 0)
-            return 1;
-        
-        if (runKernel(handle, cu_base_addr, alignment, ert, verbose, bRandom, first_mem, cu_index, xclbinId))
-            return 1;
-    }
-    catch (std::exception const& e)
-    {
-        std::cout << "Exception: " << e.what() << "\n";
-        std::cout << "FAILED TEST\n";
-        return 1;
-    }
-
+  try {
+    auto ret = run(argc, argv);
     std::cout << "PASSED TEST\n";
-    return 0;
+    return ret;
+  }
+  catch (std::exception const& e) {
+    std::cout << "Exception: " << e.what() << "\n";
+    std::cout << "FAILED TEST\n";
+    return 1;
+  }
+
+  std::cout << "PASSED TEST\n";
+  return 0;
 }

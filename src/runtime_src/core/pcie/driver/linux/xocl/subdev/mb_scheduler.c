@@ -1965,7 +1965,7 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	cfg->type = ERT_CTRL;
 
 	SCHED_DEBUGF("configuring scheduler cq_size(%d)\n", exec->cq_size);
-	if (exec->cq_size == 0 || cfg->slot_size == 0) {
+	if (ert && (exec->cq_size == 0 || cfg->slot_size == 0)) {
 		userpf_err(xdev, "should not have zeroed value of cq_size=%d, slot_size=%d",
 		    exec->cq_size, cfg->slot_size);
 		return 1;

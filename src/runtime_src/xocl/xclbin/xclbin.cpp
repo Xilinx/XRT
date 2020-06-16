@@ -534,19 +534,12 @@ private:
   pt::ptree xml_project;
 
 public:
-  explicit
-  metadata(const char* raw)
+  metadata(const xrt_core::device* core_device, const xrt_core::uuid& uuid)
   {
+    auto xml_data = core_device->get_axlf_section(EMBEDDED_METADATA, uuid);
     try {
-      auto top = reinterpret_cast<const ::axlf*>(raw);
-      auto hdr = xclbin::get_axlf_section(top, EMBEDDED_METADATA);
-      if (!hdr)
-        throw std::runtime_error("No EMBEDDED_METADATA");
-
-      auto section_data = raw + hdr->m_sectionOffset;
-
       std::stringstream xml_stream;
-      xml_stream.write(section_data, hdr->m_sectionSize);
+      xml_stream.write(xml_data.first, xml_data.second);
       pt::read_xml(xml_stream,xml_project);
     }
     catch ( const std::exception& ex) {
@@ -668,7 +661,6 @@ public:
 
 class xclbin_data_sections
 {
-  const ::axlf* m_top                  = nullptr;
   const ::connectivity* m_con          = nullptr;
   const ::mem_topology* m_mem          = nullptr;
   const ::ip_layout* m_ip              = nullptr;
@@ -689,20 +681,17 @@ class xclbin_data_sections
 
   template <typename SectionType>
   SectionType
-  get_xclbin_section(const char* raw, axlf_section_kind kind)
+  get_xclbin_section(const xrt_core::device* device, axlf_section_kind kind, const xrt_core::uuid& uuid)
   {
-    auto top = reinterpret_cast<const ::axlf*>(raw);
-    auto hdr = ::xclbin::get_axlf_section(top, kind);
-    return hdr ? reinterpret_cast<SectionType>(raw + hdr->m_sectionOffset) : nullptr;
+    auto raw = device->get_axlf_section(kind, uuid);
+    return raw.first ? reinterpret_cast<SectionType>(raw.first) : nullptr;
   }
 
 public:
-  explicit
-  xclbin_data_sections(const char* raw)
-    : m_top(reinterpret_cast<const ::axlf*>(raw))
-    , m_con(get_xclbin_section<const ::connectivity*>(raw, CONNECTIVITY))
-    , m_mem(get_xclbin_section<const ::mem_topology*>(raw, MEM_TOPOLOGY))
-    , m_ip (get_xclbin_section<const ::ip_layout*>(raw, IP_LAYOUT))
+  xclbin_data_sections(const xrt_core::device* device, const xrt_core::uuid& uuid)
+    : m_con(get_xclbin_section<const ::connectivity*>(device, CONNECTIVITY, uuid))
+    , m_mem(get_xclbin_section<const ::mem_topology*>(device, MEM_TOPOLOGY, uuid))
+    , m_ip (get_xclbin_section<const ::ip_layout*>(device, IP_LAYOUT, uuid))
   {
     // populate mem bank
     if (m_mem) {
@@ -912,12 +901,6 @@ public:
         return mb.grpidx;
     return -1;
   }
-
-  xrt_core::uuid
-  uuid() const
-  {
-    return m_top->m_header.uuid;
-  }
 };
 
 } // namespace
@@ -929,37 +912,33 @@ namespace xocl {
 // should be extracted from xclbin::binary
 struct xclbin::impl
 {
-  std::vector<char> m_binary;
   metadata m_xml;
   xclbin_data_sections m_sections;
+  xrt_core::uuid m_uuid;
 
-  impl(const char* begin, const char* end)
-    : m_binary(begin, end)
-    , m_xml(m_binary.data())
-    , m_sections(m_binary.data())
+  impl(const xrt_core::device* device, const xrt_core::uuid& uuid)
+    : m_xml(device, uuid)
+    , m_sections(device, uuid)
+    , m_uuid(uuid)
   {}
 
   static std::shared_ptr<impl>
-  get_impl(const void* buffer, size_t sz)
+  get_impl(const xrt_core::device* device, const xrt_core::uuid& uuid)
   {
+#if 0
     static std::mutex mutex;
     static std::map<xrt_core::uuid, std::weak_ptr<impl>> xclbins;  
 
-    const axlf* top = reinterpret_cast<const axlf*>(buffer);
-    if (strncmp(top->m_magic,"xclbin2",7))
-      throw xocl::error(CL_INVALID_BINARY, "bad magic header in xclbin");
-
-    auto uu = xrt_core::uuid(top->m_header.uuid);
-
     std::lock_guard<std::mutex> lk(mutex);
-    auto xbin = xclbins[uu].lock();
+    auto xbin = xclbins[uuid].lock();
     if (!xbin) {
-      auto raw = reinterpret_cast<const char*>(buffer);
-      xbin = std::shared_ptr<impl>(new impl(raw, raw+sz));
-      xclbins[uu] = xbin;
+      xbin = std::shared_ptr<impl>(new impl(device, uuid));
+      xclbins[uuid] = xbin;
     }
 
     return xbin;
+#endif
+    return std::make_shared<impl>(device, uuid);
   }
 };
 
@@ -968,8 +947,8 @@ xclbin()
 {}
 
 xclbin::
-xclbin(const void* buffer, size_t sz)
-  : m_impl(impl::get_impl(buffer, sz))
+xclbin(const xrt_core::device* device, const xrt_core::uuid& uuid)
+  : m_impl(impl::get_impl(device,uuid))
 {}
 
 xclbin::impl*
@@ -981,19 +960,11 @@ impl_or_error() const
   throw std::runtime_error("xclbin has not been loaded");
 }
 
-std::pair<const char*, const char*>
-xclbin::
-binary() const
-{
-  auto& binary = impl_or_error()->m_binary;
-  return std::make_pair(binary.data(), binary.data() + binary.size());
-}
-
 xrt_core::uuid
 xclbin::
 uuid() const
 {
-  return impl_or_error()->m_sections.uuid();
+  return impl_or_error()->m_uuid;
 }
 
 std::string

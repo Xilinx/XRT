@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2020 Xilinx, Inc
  * Author: Larry Liu
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -43,7 +43,7 @@ int XOSPIVER_Flasher::xclUpgradeFirmware(std::istream& binStream)
     binStream.seekg(0, binStream.beg);
 
     std::cout << "INFO: ***PDI has " << total_size << " bytes" << std::endl;
-    int fd = mDev->open("ospi_versal", O_RDWR);
+    int fd = mDev->open("xfer_versal", O_RDWR);
 
     if (fd == -1) {
         std::cout << "ERROR Cannot open ospi_versal for writing " << std::endl;

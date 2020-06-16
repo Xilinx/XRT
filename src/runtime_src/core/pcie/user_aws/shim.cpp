@@ -29,7 +29,7 @@
                      + __GNUC_MINOR__ * 100 \
                      + __GNUC_PATCHLEVEL__)
 
-#if ((GCC_VERSION >= 40800) && !defined(__PPC64__) && !defined(__aarch64__))
+#if ((GCC_VERSION >= 40800) && !defined(__PPC64__) && !defined(__aarch64__) && !defined(__mips__))
 #define SUPPORT_ALIGNAS
 #endif
 

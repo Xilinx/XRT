@@ -22,6 +22,8 @@
 #include <linux/hashtable.h>
 #endif
 
+
+#define IS_HOST_MEM(m_tag)	(!strncmp(m_tag, "HOST[0]", 7))
 /**
  * struct drm_xocl_exec_metadata - Meta data for exec bo
  *
@@ -55,7 +57,6 @@ struct xocl_drm {
 	struct drm_mm           **mm;
 	struct mutex            mm_lock;
 	struct drm_xocl_mm_stat **mm_usage_stat;
-	u64                     *mm_p2p_off;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 	DECLARE_HASHTABLE(mm_range, 6);

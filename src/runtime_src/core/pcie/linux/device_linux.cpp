@@ -180,7 +180,7 @@ initialize_query_table()
   emplace_sysfs_request<query::xmc_status>                ("xmc", "status");
   emplace_sysfs_request<query::xmc_reg_base>              ("xmc", "reg_base");
   emplace_sysfs_request<query::dna_serial_num>            ("dna", "dna");
-  emplace_sysfs_request<query::status_p2p_enabled>        ("", "p2p_enable");
+  emplace_sysfs_request<query::status_p2p_enabled>        ("p2p", "p2p_enable");
   emplace_sysfs_request<query::temp_card_top_front>       ("xmc", "xmc_se98_temp0");
   emplace_sysfs_request<query::temp_card_top_rear>        ("xmc", "xmc_se98_temp1");
   emplace_sysfs_request<query::temp_card_bottom_front>    ("xmc", "xmc_se98_temp2");

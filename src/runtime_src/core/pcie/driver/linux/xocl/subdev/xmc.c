@@ -109,9 +109,7 @@
 
 #define	SELF_JUMP(ins)			(((ins) & 0xfc00ffff) == 0xb8000000)
 #define	XMC_PRIVILEGED(xmc)		((xmc)->base_addrs[0] != NULL)
-#define	VALID_MAGIC(val) 		(val == VALID_ID)
-#define	VALID_CMC_VERSION(val) 		((val & 0xff000000) == 0x0c000000)
-#define	VALID_CORE_VERSION(val) 	((val & 0xff000000) == 0x0c000000)
+
 #define	XMC_DEFAULT_EXPIRE_SECS	1
 
 //Clock scaling registers
@@ -413,7 +411,6 @@ static int xmc_access(struct platform_device *pdev, enum xocl_xmc_flags flags);
 static bool scaling_condition_check(struct xocl_xmc *xmc, struct device *dev);
 static const struct file_operations xmc_fops;
 static bool is_sc_fixed(struct xocl_xmc *xmc);
-static bool stable_connection_to_sc(struct xocl_xmc *xmc);
 
 static void set_sensors_data(struct xocl_xmc *xmc, struct xcl_sensor *sensors)
 {
@@ -2012,7 +2009,7 @@ static ssize_t read_temp_by_mem_topology(struct file *filp,
 	struct mem_topology *memtopo = NULL;
 	struct xocl_xmc *xmc =
 		dev_get_drvdata(container_of(kobj, struct device, kobj));
-	uint32_t temp[MAX_M_COUNT] = {0};
+	uint32_t *temp = NULL;
 	xdev_handle_t xdev = xocl_get_xdev(xmc->pdev);
 
 	err = xocl_icap_get_xclbin_metadata(xdev, MEMTOPO_AXLF,
@@ -2027,6 +2024,11 @@ static ssize_t read_temp_by_mem_topology(struct file *filp,
 
 	if (offset >= size)
 		goto done;
+
+	temp = vzalloc(size);
+	if (!temp)
+		goto done;
+
 	for (i = 0; i < memtopo->m_count; ++i)
 		*(temp+i) = get_temp_by_m_tag(xmc, memtopo->m_mem_data[i].m_tag);
 
@@ -2038,6 +2040,7 @@ static ssize_t read_temp_by_mem_topology(struct file *filp,
 	memcpy(buffer, temp, nread);
 done:
 	xocl_icap_put_xclbin_metadata(xdev);
+	vfree(temp);
 	/* xocl_icap_unlock_bitstream */
 	return nread;
 }
@@ -2774,11 +2777,10 @@ static int load_xmc(struct xocl_xmc *xmc)
 		READ_REG32(xmc, XMC_VERSION_REG),
 		READ_REG32(xmc, XMC_STATUS_REG),
 		READ_REG32(xmc, XMC_MAGIC_REG));
-
-	ret = stable_connection_to_sc(xmc);
-
-	/* Note: if xmc->state is not enabled, board info won't be shown */
-	xmc->state = ret ? XMC_STATE_ENABLED : XMC_STATE_ERROR;
+	xocl_info(&xmc->pdev->dev,
+		"Wait for 5 seconds to stable the connection with SC");
+	ssleep(5);
+	xmc->state = XMC_STATE_ENABLED;
 
 	if (XMC_PRIVILEGED(xmc) && xocl_clk_scale_on(xdev_hdl))
 		xmc_clk_scale_config(xmc->pdev);
@@ -3418,7 +3420,7 @@ static bool is_xmc_ready(struct xocl_xmc *xmc)
 
 static bool is_sc_ready(struct xocl_xmc *xmc, bool quiet)
 {
-	u32 val;
+	struct xmc_status status;
 
 	if (autonomous_xmc(xmc->pdev))
 		return true;
@@ -3426,13 +3428,14 @@ static bool is_sc_ready(struct xocl_xmc *xmc, bool quiet)
 	if (nosc_xmc(xmc->pdev))
 		return false;
 
-	safe_read32(xmc, XMC_STATUS_REG, &val);
-	val >>= 28;
-	if (val == 0x1)
+	safe_read32(xmc, XMC_STATUS_REG, (u32 *)&status);
+	if (status.sc_mode == XMC_SC_NORMAL)
 		return true;
 
-	if (!quiet)
-		xocl_err(&xmc->pdev->dev, "SC is not ready, state=%d\n", val);
+	if (!quiet) {
+		xocl_err(&xmc->pdev->dev, "SC is not ready, state=%d\n",
+			status.sc_mode);
+	}
 	return false;
 }
 
@@ -3451,63 +3454,6 @@ static bool is_sc_fixed(struct xocl_xmc *xmc)
 		return true;
 
 	return false;
-}
-
-static bool is_stablized_sc(struct xocl_xmc *xmc)
-{
-	struct xmc_status *status;
-	u32 val;
-
-	val = READ_REG32(xmc, XMC_STATUS_REG);
-	status = (struct xmc_status *)&val;
-
-	return (!status->invalid_sc) &&
-	    (status->init_done == 1) &&
-	    (status->sc_mode > 0) &&
-	    (status->sc_comm_ver > 0);
-}
-
-static bool stable_connection_to_sc(struct xocl_xmc *xmc)
-{
-	u32 xmc_core_version = 0;
-
-	/*
-	 * How to define a cmc_core_version:
-	 *   XMC_MAGIC_REG is magjc number 0x74736574
-	 *   XMC_VERSION_REG start from 0x0c000000
-	 *   XMC_CORE_VERSION_REG starr from 0x0c000000
-	 */
-	if (VALID_MAGIC(READ_REG32(xmc, XMC_MAGIC_REG)) &&
-	    VALID_CMC_VERSION(READ_REG32(xmc, XMC_CORE_VERSION_REG)) &&
-	    VALID_CORE_VERSION(READ_REG32(xmc, XMC_CORE_VERSION_REG))) {
-		xmc_core_version = READ_REG32(xmc, XMC_CORE_VERSION_REG);
-	}
-
-	xocl_info(&xmc->pdev->dev, "CMC Core Version 0x%x", xmc_core_version);
-
-	if (xmc_core_version >= XMC_CORE_SUPPORT_NOTUPGRADABLE) {
-		int i;
-		mdelay(1000);
-
-		for (i = 0; !is_stablized_sc(xmc) && i < 5; i++) {
-			mdelay(1000);
-		}
-
-		if (!is_stablized_sc(xmc)) {
-			xocl_warn(&xmc->pdev->dev,
-			    "Wait %d seconds, but no stable connection to SC.", i);
-			return false;
-		} else {
-			xocl_info(&xmc->pdev->dev,
-			    "Wait %d seconds, SC connection is stable.", i);
-			return true;
-		}
-	}
-
-	xocl_info(&xmc->pdev->dev,
-	    "Wait for 5 seconds to stablize SC connection.");
-	ssleep(5);
-	return true;
 }
 
 static int smartnic_cmc_access(struct platform_device *pdev,
@@ -3762,6 +3708,7 @@ xmc_boot_sc(struct xocl_xmc *xmc, u32 jump_addr)
 		msleep(RETRY_INTERVAL);
 	if (!is_sc_ready(xmc, false))
 		ret = -ETIMEDOUT;
+
 	return ret;
 }
 

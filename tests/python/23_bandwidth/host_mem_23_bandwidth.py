@@ -27,7 +27,7 @@ from xrt_binding import *
 from ert_binding import *
 
 # utils_binding.py
-sys.path.append('./')
+sys.path.append('../')
 from utils_binding import *
 
 # Define libc helpers
@@ -43,7 +43,7 @@ current_micro_time = lambda: int(round(time.time() * 1000000))
 globalbuffersize = 1024*1024*16    #16 MB
 
 def getThreshold(devHandle):
-    threshold = 40000
+    threshold = 30000
     deviceInfo = xclDeviceInfo2()
     xclGetDeviceInfo2(devHandle, ctypes.byref(deviceInfo))
     if b"qdma" in deviceInfo.mName or b"qep" in deviceInfo.mName:
@@ -79,14 +79,11 @@ def getInputOutputBuffer(devhdl, krnlhdl, argno, isInput):
     return bo, bobuf
 
 def runKernel(opt):
-    khandle1 = xrtPLKernelOpen(opt.handle, opt.xuuid, "bandwidth1")
-    khandle2 = xrtPLKernelOpen(opt.handle, opt.xuuid, "bandwidth2")
+    khandle3 = xrtPLKernelOpen(opt.handle, opt.xuuid, "bandwidth3")
     kfunc = xrtKernelGetFunc(xrtBufferHandle, xrtBufferHandle, ctypes.c_int, ctypes.c_int)
 
-    output_bo1, output_buf1 = getInputOutputBuffer(opt.handle, khandle1, 0, False)
-    output_bo2, output_buf2 = getInputOutputBuffer(opt.handle, khandle2, 0, False)
-    input_bo1, input_buf1 = getInputOutputBuffer(opt.handle, khandle1, 1, True)
-    input_bo2, input_buf2 = getInputOutputBuffer(opt.handle, khandle2, 1, True)
+    output_bo3, output_buf3 = getInputOutputBuffer(opt.handle, khandle3, 0, False)
+    input_bo3, input_buf3 = getInputOutputBuffer(opt.handle, khandle3, 1, True)
 
     typesize = 512
     threshold = getThreshold(opt.handle)
@@ -115,21 +112,17 @@ def runKernel(opt):
         reps = 64
         while usduration < fiveseconds:
             start = current_micro_time()
-            rhandle1 = kfunc(khandle1, output_bo1, input_bo1, beats, reps)
-            rhandle2 = kfunc(khandle2, output_bo2, input_bo2, beats, reps)
-            xrtRunWait(rhandle1)
-            xrtRunWait(rhandle2)
+            rhandle3 = kfunc(khandle3, output_bo3, input_bo3, beats, reps)
+            xrtRunWait(rhandle3)
             end = current_micro_time()
 
-            xrtRunClose(rhandle1)
-            xrtRunClose(rhandle2)
+            xrtRunClose(rhandle3)
 
             usduration = end-start
 
             limit = beats*(typesize>>3)
-            xrtBOSync(output_bo1, xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, limit, 0)
-            xrtBOSync(output_bo2, xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, limit, 0)
-            if libc.memcmp(input_buf1, output_buf1, limit) or libc.memcmp(input_buf2, output_buf2, limit):
+            xrtBOSync(output_bo3, xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, limit, 0)
+            if libc.memcmp(input_buf3, output_buf3, limit):
                failed = True
                break
 
@@ -139,23 +132,20 @@ def runKernel(opt):
                 reps = reps*2
 
         dnsduration.append(usduration)
-        dsduration.append(dnsduration[test]/1000000)
+        dsduration.append(dnsduration[test]/1000000.0)
         dbytes.append(reps*beats*(typesize>>3))
         dmbytes.append(dbytes[test]/(1024 * 1024))
-        bpersec.append(2*dbytes[test]/dsduration[test])
-        mbpersec.append(2*bpersec[test]/(1024 * 1024))
+        bpersec.append(2.0*dbytes[test]/dsduration[test])
+        mbpersec.append(2.0*bpersec[test]/(1024 * 1024))
         throughput.append(mbpersec[test])
         print("Test %d, Throughput: %d MB/s" %(test, throughput[test]))
         beats = beats*4
         test+=1
 
     #cleanup
-    xrtBOFree(input_bo1)
-    xrtBOFree(input_bo2)
-    xrtBOFree(output_bo1)
-    xrtBOFree(output_bo2)
-    xrtKernelClose(khandle1)
-    xrtKernelClose(khandle2)
+    xrtBOFree(input_bo3)
+    xrtBOFree(output_bo3)
+    xrtKernelClose(khandle3)
 
     if failed:
         raise RuntimeError("ERROR: Failed to copy entries")

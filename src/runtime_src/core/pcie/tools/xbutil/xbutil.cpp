@@ -34,6 +34,8 @@
 #define hex_digit "[0-9a-fA-F]+"
 
 const size_t m2mBoSize = 256L * 1024 * 1024;
+const size_t hostMemSize = 256L * 1024 * 1024;
+
 
 static int bdf2index(std::string& bdfStr, unsigned& index)
 {
@@ -246,6 +248,8 @@ int main(int argc, char *argv[])
         return xcldev::xclP2p(argc, argv);
     } else if( std::strcmp( argv[1], "host_mem" ) == 0 ) {
         return xcldev::xclCma(argc, argv);
+    } else if( std::strcmp( argv[1], "scheduler" ) == 0 ) {
+        return xcldev::xclScheduler(argc, argv);
     }
     optind--;
 
@@ -1188,13 +1192,7 @@ int xcldev::device::runTestCase(const std::string& py,
         return -EINVAL;
     }
 
-    // python3 is just for ppc+ubuntu setup for now. In postinst we install pyopencl with python2.7
-    // so can't default to python3 if it's available. Need to revisit this when 2.7 is deprecated (Jan 1, 2020)
-    #if _ARCH_PPC
-        std::string cmd = "/usr/bin/python3 " + xrtTestCasePath + " -k " + xclbinPath + " -d " + std::to_string(m_idx);
-    #else
-        std::string cmd = "/usr/bin/python " + xrtTestCasePath + " -k " + xclbinPath + " -d " + std::to_string(m_idx);
-    #endif
+    std::string cmd = "/usr/bin/python " + xrtTestCasePath + " -k " + xclbinPath + " -d " + std::to_string(m_idx);
     return runShellCmd(cmd, output);
 }
 
@@ -1220,19 +1218,50 @@ int xcldev::device::bandwidthKernelTest(void)
 {
     std::string output;
 
-    if ((sensor_tree::get<std::string>("system.linux", "N/A").find("Red Hat") != std::string::npos)
-            && (sensor_tree::get<std::string>("system.machine", "N/A").find("ppc64le") != std::string::npos)) {
-        std::cout << "Testcase not supported on Red Hat and PowerPC. Skipping validation"
-                  << std::endl;
-        return -EOPNOTSUPP;
-    }
-
     //versal bandwidth kernel is different, hence it needs to run a custom testcase
     std::string errmsg, vbnv;
     pcidev::get_dev(m_idx)->sysfs_get("rom", "VBNV", errmsg, vbnv);
 
-    std::string testcase = (vbnv.find("vck5000") != std::string::npos) 
+    std::string testcase = (vbnv.find("vck5000") != std::string::npos)
         ? "versal_23_bandwidth.py" : "23_bandwidth.py";
+    
+    int ret = runTestCase(testcase, std::string("bandwidth.xclbin"), output);
+
+    if (ret != 0) {
+        std::cout << output << std::endl;
+        return ret;
+    }
+
+    if (output.find("PASS") == std::string::npos) {
+        std::cout << output << std::endl;
+        return -EINVAL;
+    }
+
+    // Print out max thruput
+    size_t st = output.find("Maximum");
+    if (st != std::string::npos) {
+        size_t end = output.find("\n", st);
+        std::cout << std::endl << output.substr(st, end - st) << std::endl;
+    }
+
+    return 0;
+}
+
+int xcldev::device::hostMemBandwidthKernelTest(void)
+{
+    std::string output;
+
+    //Kick start hostMemBandwidthKernelTest only if enabled
+    std::string errmsg;
+    uint64_t host_mem_size = 0;
+    pcidev::get_dev(m_idx)->sysfs_get<uint64_t>("address_translator", "host_mem_size",  errmsg, host_mem_size, 0);
+
+    if (!host_mem_size) {
+        std::cout << "Host_mem is not available. Skipping validation" << std::endl;
+        return -EOPNOTSUPP;        
+    }
+
+    std::string testcase = "host_mem_23_bandwidth.py";
     
     int ret = runTestCase(testcase, std::string("bandwidth.xclbin"), output);
 
@@ -1476,6 +1505,12 @@ int xcldev::device::validate(bool quick, bool hidden)
     //Perform M2M test
     retVal = runOneTest("memory-to-memory DMA test",
             std::bind(&xcldev::device::testM2m, this));
+    withWarning = withWarning || (retVal == 1);
+    if (retVal < 0)
+        return retVal;
+
+    retVal = runOneTest("host memory bandwidth test",
+            std::bind(&xcldev::device::hostMemBandwidthKernelTest, this));
     withWarning = withWarning || (retVal == 1);
     if (retVal < 0)
         return retVal;
@@ -1755,7 +1790,8 @@ int xcldev::device::testP2p()
 {
     std::string errmsg, vbnv;
     std::vector<char> buf;
-    int ret = 0, p2p_enabled = 0;
+    int ret = 0;
+    int p2p_enabled;
     xclbin_lock xclbin_lock(m_handle, m_idx);
     auto dev = pcidev::get_dev(m_idx);
 
@@ -1763,7 +1799,7 @@ int xcldev::device::testP2p()
         return -EINVAL;
 
     dev->sysfs_get("rom", "VBNV", errmsg, vbnv);
-    dev->sysfs_get<int>("", "p2p_enable", errmsg, p2p_enabled, 0);
+    p2p_enabled = pcidev::check_p2p_config(dev, errmsg);
     if (p2p_enabled != 1) {
         std::cout << "P2P BAR is not enabled. Skipping validation" << std::endl;
         return -EOPNOTSUPP;
@@ -1874,22 +1910,14 @@ int xcldev::xclP2p(int argc, char *argv[])
     }
 
     ret = d->setP2p(p2p_enable, force);
-    if (ret == ENOSPC) {
-        std::cout << "ERROR: Not enough iomem space." << std::endl;
-        std::cout << "Please check BIOS settings" << std::endl;
-    } else if (ret == EBUSY) {
-        std::cout << "Please WARM reboot to enable p2p now." << std::endl;
-    } else if (ret == ENXIO) {
-        std::cout << "ERROR: P2P is not supported on this platform"
-            << std::endl;
-    } else if (ret == 1) {
+    if (ret)
+        std::cout << "Config P2P failed" << std::endl;
+    else if (p2p_enable)
         std::cout << "P2P is enabled" << std::endl;
-    } else if (ret == 0) {
+    else
         std::cout << "P2P is disabled" << std::endl;
-    } else if (ret)
-        std::cout << "ERROR: " << strerror(std::abs(ret)) << std::endl;
 
-    return ret;
+    return 0;
 }
 
 int xcldev::device::setCma(bool enable, uint64_t total_size)
@@ -2112,7 +2140,7 @@ int xcldev::device::testM2m()
     }
 
     dev->sysfs_get("icap", "mem_topology", errmsg, buf);
-    const mem_topology *map = (mem_topology *)buf.data();
+    mem_topology *map = (mem_topology *)buf.data();
 
     if(buf.empty() || map->m_count == 0) {
         std::cout << "WARNING: 'mem_topology' invalid, "
@@ -2123,8 +2151,11 @@ int xcldev::device::testM2m()
 
     for(int32_t i = 0; i < map->m_count; i++) {
         if(map->m_mem_data[i].m_used &&
-            map->m_mem_data[i].m_size * 1024 >= m2mBoSize)
+            map->m_mem_data[i].m_size * 1024 >= m2mBoSize) {
+            /* use u8 m_type field to as bank index */
+            map->m_mem_data[i].m_type = i;
             usedBanks.insert(usedBanks.end(), map->m_mem_data[i]);
+        }
     }
 
     if (usedBanks.size() <= 1) {
@@ -2136,7 +2167,10 @@ int xcldev::device::testM2m()
         for(uint j = i+1; j < usedBanks.size(); j++) {
             std::cout << usedBanks[i].m_tag << " -> "
                 << usedBanks[j].m_tag << " M2M bandwidth: ";
-            ret = m2mtest_bank(m_handle, i, j);
+            if (!usedBanks[i].m_size || !usedBanks[j].m_size)
+                continue;
+
+            ret = m2mtest_bank(m_handle, usedBanks[i].m_type, usedBanks[j].m_type);
             if(ret != 0)
                 return ret;
         }
@@ -2323,5 +2357,60 @@ xcldev::device::iopsTest()
     }
 
     xclCloseContext(m_handle, xclbin_lock.m_uuid, 0);
+    return 0;
+}
+
+int xcldev::xclScheduler(int argc, char *argv[])
+{
+    bool root = ((getuid() == 0) || (geteuid() == 0));
+    static struct option long_opts[] = {
+        {"echo", required_argument, 0, 0},
+        {0, 0, 0, 0}
+    };
+    const char* short_opts = "d:e:";
+    int c, opt_idx;
+    std::string errmsg;
+    unsigned index = 0;
+    int kds_echo = -1;
+
+    if (!root) {
+        std::cout << "ERROR: root privileges required." << std::endl;
+        return -EPERM;
+    }
+
+    while ((c = getopt_long(argc, argv, short_opts, long_opts, &opt_idx)) != -1) {
+        switch (c) {
+        case 'd': {
+            int ret = str2index(optarg, index);
+            if (ret != 0)
+                return ret;
+            if (index >= pcidev::get_dev_total()) {
+                std::cout << "ERROR: index " << index << " out of range"
+                    << std::endl;
+                return -EINVAL;
+            }
+            break;
+        }
+        case 'e':
+            kds_echo = std::atoi(optarg);
+            break;
+        default:
+            /* This is hidden command, silently exit */
+            return -EINVAL;
+        }
+    }
+
+    if (kds_echo != -1) {
+        std::string val = (kds_echo == 0)? "0" : "1";
+        pcidev::get_dev(index)->sysfs_put( "", "kds_echo", errmsg, val);
+        if (!errmsg.empty()) {
+            std::cout << errmsg << std::endl;
+            return -EINVAL;
+        }
+        std::string kds_echo;
+        pcidev::get_dev(index)->sysfs_get( "", "kds_echo", errmsg, kds_echo);
+        std::cout << "Device[" << index << "] kds_echo: " << kds_echo << std::endl;
+    }
+    
     return 0;
 }

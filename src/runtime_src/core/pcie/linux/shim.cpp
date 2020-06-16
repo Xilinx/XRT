@@ -1129,11 +1129,24 @@ int shim::p2pEnable(bool enable, bool force)
 {
     const std::string input = "1\n";
     std::string err;
+    std::vector<std::string> p2p_cfg;
 
-    if (enable)
-        mDev->sysfs_put("", "p2p_enable", err, "1");
-    else
-        mDev->sysfs_put("", "p2p_enable", err, "0");
+    if (mDev == nullptr)
+        return -EINVAL;
+
+    /* write 0 to config for default bar size */
+    if (enable) {
+        mDev->sysfs_put("p2p", "config", err, "0");
+        if (!err.empty()) { 
+            throw std::runtime_error("P2P is not supported");
+        }
+     } else {
+        mDev->sysfs_put("p2p", "config", err, "-1");
+        if (!err.empty()) { 
+            throw std::runtime_error("P2P is not supported");
+        }
+     }
+
 
     if (force) {
         dev_fini();
@@ -1151,10 +1164,17 @@ int shim::p2pEnable(bool enable, bool force)
         dev_init();
     }
 
-    int p2p_enable = EINVAL;
-    mDev->sysfs_get<int>("", "p2p_enable", err, p2p_enable, EINVAL);
+    int ret;
+    ret = check_p2p_config(mDev, err);
+    if (!err.empty()) {
+        throw std::runtime_error(err);
+    } else if (ret == P2P_CONFIG_DISABLED && enable) {
+        throw std::runtime_error("Can not enable P2P");
+    } else if (ret == P2P_CONFIG_ENABLED && !enable) {
+        throw std::runtime_error("Can not disable P2P");
+    }
 
-    return p2p_enable;
+    return 0;
 }
 
 int shim::cmaEnable(bool enable, uint64_t size)
@@ -1302,6 +1322,9 @@ int shim::xclLoadXclBin(const xclBin *buffer)
       }
       else if (ret == -EKEYREJECTED) {
         xrt_logmsg(XRT_ERROR, "Xclbin isn't signed properly");
+      }
+      else if (ret == -E2BIG) {
+        xrt_logmsg(XRT_ERROR, "Not enough host_mem for xclbin");
       }
       else if (ret == -ETIMEDOUT) {
         xrt_logmsg(XRT_ERROR,
@@ -2200,23 +2223,16 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
 #endif
 
-#ifdef ENABLE_HAL_PROFILING
-    if (ret != 0) return ret ;
-    LOAD_XCLBIN_CB ;
-#endif
     if (!ret) {
       auto core_device = xrt_core::get_userpf_device(drv);
       core_device->register_axlf(buffer);
+#ifdef ENABLE_HAL_PROFILING
+    LOAD_XCLBIN_CB ;
+#endif
 #ifndef DISABLE_DOWNLOAD_XCLBIN
       ret = xrt_core::scheduler::init(handle, buffer);
       START_DEVICE_PROFILING_CB(handle);
 #endif
-    }
-    if (!ret && xrt_core::config::get_ert() &&
-        (xclbin::get_axlf_section(buffer, PDI) ||
-         xclbin::get_axlf_section(buffer, BITSTREAM_PARTIAL_PDI))) {
-      ret = xrt_core::scheduler::
-        loadXclbinToPS(handle, buffer,xrt_core::config::get_pdi_load());
     }
     return ret;
   }
