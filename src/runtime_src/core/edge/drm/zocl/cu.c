@@ -17,6 +17,52 @@ struct zocl_cu {
 	struct platform_device	*pdev;
 };
 
+static ssize_t debug_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+#if 0
+	struct platform_device *pdev = to_platform_device(dev);
+	struct zocl_cu *cu = platform_get_drvdata(pdev);
+	struct xrt_cu *xcu = &cu->base;
+#endif
+	/* Place holder for now. */
+	return 0;
+}
+
+static ssize_t debug_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+#if 0
+	struct platform_device *pdev = to_platform_device(dev);
+	struct zocl_cu *cu = platform_get_drvdata(pdev);
+	struct xrt_cu *xcu = &cu->base;
+#endif
+
+	/* Place holder for now. */
+	return count;
+}
+static DEVICE_ATTR_RW(debug);
+
+static ssize_t
+cu_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct zocl_cu *cu = platform_get_drvdata(pdev);
+
+	return show_cu_stat(&cu->base, buf);
+}
+static DEVICE_ATTR_RO(cu_stat);
+
+static struct attribute *cu_attrs[] = {
+	&dev_attr_debug.attr,
+	&dev_attr_cu_stat.attr,
+	NULL,
+};
+
+static const struct attribute_group cu_attrgroup = {
+	.attrs = cu_attrs,
+};
+
 static int cu_probe(struct platform_device *pdev)
 {
 	struct zocl_cu *zcu;
@@ -72,6 +118,10 @@ static int cu_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, zcu);
 
+	err = sysfs_create_group(&pdev->dev.kobj, &cu_attrgroup);
+	if (err)
+		zocl_err(&pdev->dev, "create CU attrs failed: %d", err);
+
 	return 0;
 err2:
 	zocl_kds_del_cu(zdev, &zcu->base);
@@ -104,6 +154,8 @@ static int cu_remove(struct platform_device *pdev)
 
 	if (zcu->base.res)
 		vfree(zcu->base.res);
+
+	sysfs_remove_group(&pdev->dev.kobj, &cu_attrgroup);
 
 	kfree(zcu);
 
