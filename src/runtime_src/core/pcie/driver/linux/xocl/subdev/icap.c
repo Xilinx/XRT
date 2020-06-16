@@ -154,6 +154,7 @@ struct icap {
 	struct ip_layout	*ip_layout;
 	struct debug_ip_layout	*debug_layout;
 	struct connectivity	*connectivity;
+	uint64_t		max_host_mem_aperture;
 	void			*partition_metadata;
 
 	void			*rp_bit;
@@ -2541,6 +2542,27 @@ static void check_mem_topo_and_data_retention(struct icap *icap,
 
 	return;
 }
+
+static void icap_get_max_host_mem_aperture(struct icap *icap)
+{
+	int i = 0;
+	struct mem_topology *mem_topo = icap->mem_topo;
+
+	icap->max_host_mem_aperture = 0;
+
+	if (!mem_topo)
+		return;
+
+	for ( i=0; i< mem_topo->m_count; ++i) {
+		if (!mem_topo->m_mem_data[i].m_used)
+			continue;
+		if (IS_HOST_MEM(mem_topo->m_mem_data[i].m_tag))
+			icap->max_host_mem_aperture = mem_topo->m_mem_data[i].m_size << 10;
+	}
+
+	return;
+}
+
 static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 	struct axlf *xclbin)
 {
@@ -2616,6 +2638,8 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 			 */
 			(void) icap_verify_bitstream_axlf(pdev, xclbin);
 		}
+
+		icap_get_max_host_mem_aperture(icap);
 
 	}
 	/* create the rest of subdevs for both mgmt and user pf */
@@ -3436,6 +3460,22 @@ done:
 }
 static DEVICE_ATTR_RW(data_retention);
 
+static ssize_t max_host_mem_aperture_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct icap *icap = platform_get_drvdata(to_platform_device(dev));
+	u64 val = 0;
+
+	mutex_lock(&icap->icap_lock);
+
+	val = icap->max_host_mem_aperture;
+
+	mutex_unlock(&icap->icap_lock);
+
+	return sprintf(buf, "%llu\n", val);
+}
+static DEVICE_ATTR_RO(max_host_mem_aperture);
+
 static struct attribute *icap_attrs[] = {
 	&dev_attr_clock_freqs.attr,
 	&dev_attr_idcode.attr,
@@ -3445,6 +3485,7 @@ static struct attribute *icap_attrs[] = {
 	&dev_attr_clock_freqs_min.attr,
 	&dev_attr_reader_cnt.attr,
 	&dev_attr_data_retention.attr,
+	&dev_attr_max_host_mem_aperture.attr,
 	NULL,
 };
 
