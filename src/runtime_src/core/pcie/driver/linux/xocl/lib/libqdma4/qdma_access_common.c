@@ -1664,6 +1664,16 @@ static int qdma_mm_channel_conf(void *dev_hndl, uint8_t channel, uint8_t is_c2h,
 		qdma_reg_write(dev_hndl,
 				reg_addr + (channel * QDMA_MM_CONTROL_STEP),
 				enable);
+
+		/* xocl: enable MM error code */
+		if (is_c2h)
+			qdma_reg_write(dev_hndl,
+					QDMA_OFFSET_C2H_MM_ERR_CODE_EN_MASK,
+					0x70000003);
+		else
+			qdma_reg_write(dev_hndl,
+					QDMA_OFFSET_H2C_MM_ERR_CODE_EN_MASK,
+					0x3041013E);
 	}
 
 	return QDMA_SUCCESS;

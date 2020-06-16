@@ -3173,6 +3173,9 @@ int qdma_hw_error_process(void *dev_hndl)
 	if (!glbl_err_stat)
 		return QDMA_HW_ERR_NOT_DETECTED;
 
+	qdma_log_error("%s: QDMA_OFFSET_GLBL_ERR_STAT -> 0x%x.\n",
+			__func__, glbl_err_stat);
+
 	for (i = 0; i < TOTAL_LEAF_ERROR_AGGREGATORS; i++) {
 		bit = hw_err_position[i];
 

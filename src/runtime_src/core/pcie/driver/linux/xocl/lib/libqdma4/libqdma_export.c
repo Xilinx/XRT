@@ -1607,6 +1607,12 @@ int qdma4_queue_start(unsigned long dev_hndl, unsigned long id,
 
 	qdma4_thread_add_work(descq);
 
+	/* xocl: update the queue name to include h2c/c2h */
+	rv = sprintf(descq->conf.name, "qdma%05x-%s-%s-%u",
+		descq->xdev->conf.bdf, descq->conf.st ? "ST" : "MM",
+		q_type_list[descq->conf.q_type].name, descq->conf.qidx);
+	descq->conf.name[rv] = '\0';
+
 	snprintf(buf, buflen, "queue %s, idx %u started\n",
 			descq->conf.name, descq->conf.qidx);
 	pr_info("started %s, %s, qidx %u.\n",

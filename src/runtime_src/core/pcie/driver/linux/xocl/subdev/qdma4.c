@@ -58,12 +58,13 @@
 #define	STREAM_DEFAULT_C2H_RINGSZ_IDX		0
 #define	STREAM_DEFAULT_WRB_RINGSZ_IDX		0
 
-#define	QUEUE_POST_TIMEOUT	10000
 #define QDMA_MAX_INTR		16
 #define QDMA_USER_INTR_MASK	0xff
 
 #define QDMA_QSETS_MAX		256
 #define QDMA_QSETS_BASE		0
+
+#define QDMA_REQ_TIMEOUT_MS	3600	
 
 /* Module Parameters */
 unsigned int qdma4_max_channel = 16;
@@ -553,6 +554,7 @@ static ssize_t qdma_migrate_bo(struct platform_device *pdev,
 	req->write = write;
 	req->count = len;
 	req->ep_addr = paddr;
+	req->timeout_ms = QDMA_REQ_TIMEOUT_MS;
 
 	req->dma_mapped = 1;
 	req->sgl = (struct qdma_sw_sg *)(req + 1);
@@ -563,14 +565,15 @@ static ssize_t qdma_migrate_bo(struct platform_device *pdev,
 	if (ret >= 0) {
 		chan->total_trans_bytes += ret;
 	} else  {
-		xocl_err(&pdev->dev, "DMA failed, Dumping SG Page Table");
+		xocl_err(&pdev->dev, "DMA failed %d, Dumping SG Page Table",
+			ret);
 		dump_sgtable(&pdev->dev, sgt);
 	}
 
 	pci_unmap_sg(XDEV(xdev)->pdev, sgt->sgl, nents, dir);
 	kfree(req);
 
-	return len;
+	return ret;
 }
 
 static void release_channel(struct platform_device *pdev, u32 dir, u32 channel)
@@ -716,7 +719,8 @@ static int set_max_chan(struct xocl_qdma *qdma, u32 count)
 		qconf->st = 0; /* memory mapped */
 		qconf->q_type = write ? Q_H2C : Q_C2H;
 		qconf->qidx = qidx;
-		qconf->irq_en = 1;
+		qconf->irq_en = (qdma->dev_conf.qdma_drv_mode == POLL_MODE) ?
+					0 : 1;
 
 		ret = qdma4_queue_add(qdma->dma_hndl, qconf, &chan->queue,
 					ebuf, MM_EBUF_LEN);
@@ -1846,12 +1850,12 @@ static int qdma4_probe(struct platform_device *pdev)
 	}
 
 	if (dma_bar == -1 || stm_base == -1 || stm_bar == -1) {
-		xocl_err(&pdev->dev, "missing resource, dma_bar %d, stm_bar %d, stm_base 0x%lx.",
+		xocl_err(&pdev->dev,
+			"missing resource, dma_bar %d, stm_bar %d, stm_base 0x%lx.",
 			dma_bar, stm_bar, (unsigned long)stm_base);
 		//return -EINVAL;
 	}
 
-pr_info("=====> qdma4_probe ....\n");
 	pr_info("%s: dma_bar %d, stm_bar %d, stm_base 0x%lx.\n", __func__, dma_bar, stm_bar, (unsigned long)stm_base);
 
 
@@ -1864,8 +1868,11 @@ pr_info("=====> qdma4_probe ....\n");
 	//conf->intr_rngsz = QDMA_INTR_COAL_RING_SIZE;
 	//conf->master_pf = XOCL_DSA_IS_SMARTN(xdev) ? 0 : 1;
 	conf->master_pf = 1;
+	conf->qsets_base = QDMA_QSETS_BASE;
 	conf->qsets_max = QDMA_QSETS_MAX;
 	conf->bar_num_config = dma_bar;
+	conf->bar_num_user = -1;
+	conf->bar_num_bypass = -1;
 	conf->qdma_drv_mode = POLL_MODE;
 
 	conf->fp_user_isr_handler = qdma_isr;

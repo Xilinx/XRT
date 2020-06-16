@@ -1500,18 +1500,25 @@ handle_truncation:
 int qdma4_descq_dump(struct qdma_descq *descq, char *buf, int buflen, int detail)
 {
 	char *cur = buf;
-	char *const end = buf + buflen;
+	char *end = buf + buflen;
+	char buffer[512];	/* xocl: allow dump w/o provided buffer */
+	int start, stop;
 
 	if (!buf || !buflen) {
 		pr_info("%s:%s 0x%x/0x%x, desc sz %u/%u, pidx %u, cidx %u\n",
 			descq->conf.name, descq->err ? "ERR" : "",
 			descq->conf.qidx, descq->qidx_hw, descq->conf.rngsz,
 			descq->avail, descq->pidx, descq->cidx);
-		return 0;
+		cur = buffer;
+		end = buffer + 512;
 	}
 
 	cur += qdma4_descq_dump_state(descq, cur, end - cur);
-	if (cur >= end)
+	if (!buf || !buflen) {
+		pr_info("%s", buffer);
+		cur = buffer;
+		end = buffer + 512;
+	} else if (cur >= end)
 		goto handle_truncation;
 
 	if (descq->q_state == Q_STATE_DISABLED)
@@ -1534,8 +1541,19 @@ int qdma4_descq_dump(struct qdma_descq *descq, char *buf, int buflen, int detail
 			goto handle_truncation;
 	}
 
+	if (!buf || !buflen) {
+		pr_info("%s", buffer);
+		cur = buffer;
+		end = buffer + 512;
+	}
+
 	if (!detail)
 		return cur - buf;
+
+	/* xocl: dump the recent descriptors */
+	stop = descq->pidx;
+	start = stop > 8 ? stop - 8 : 0;
+	cur += qdma4_descq_dump_desc(descq, start, stop, cur, end - cur);
 
 	if (descq->desc_cmpl_status) {
 		u8 *cs = descq->desc_cmpl_status;
@@ -1554,12 +1572,18 @@ int qdma4_descq_dump(struct qdma_descq *descq, char *buf, int buflen, int detail
 					  16, 4, cur, end - cur, 0);
 		cur += strlen(cur);
 #endif
-		if (cur >= end)
-			goto handle_truncation;
+		if (!buf || !buflen) {
+			pr_info("%s\n", buffer);
+			cur = buffer;
+			end = buffer + 512;
+		} else {
+			if (cur >= end)
+				goto handle_truncation;
 
-		cur += snprintf(cur, end - cur, "\n");
-		if (cur >= end)
-			goto handle_truncation;
+			cur += snprintf(cur, end - cur, "\n");
+			if (cur >= end)
+				goto handle_truncation;
+		}
 	}
 	if (descq->desc_cmpt_cmpl_status) {
 		u8 *cs = descq->desc_cmpt_cmpl_status;
@@ -1579,12 +1603,18 @@ int qdma4_descq_dump(struct qdma_descq *descq, char *buf, int buflen, int detail
 					  16, 4, cur, end - cur, 0);
 		cur += strlen(cur);
 #endif
-		if (cur >= end)
-			goto handle_truncation;
+		if (!buf || !buflen) {
+			pr_info("%s\n", buffer);
+			cur = buffer;
+			end = buffer + 512;
+		} else {
+			if (cur >= end)
+				goto handle_truncation;
 
-		cur += snprintf(cur, end - cur, "\n");
-		if (cur >= end)
-			goto handle_truncation;
+			cur += snprintf(cur, end - cur, "\n");
+			if (cur >= end)
+				goto handle_truncation;
+		}
 	}
 
 	return cur - buf;
