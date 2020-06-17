@@ -24,6 +24,7 @@
 #include "core/tools/common/ProgressBar.h"
 #include "core/tools/common/EscapeCodes.h"
 #include "core/common/query_requests.h"
+#include "core/pcie/common/dmatest.h"
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
@@ -505,8 +506,33 @@ verifyKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_
 void
 dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest) 
 {
-  _ptTest.put("status", "skipped");
-  // std::make_shared<SubCmdDmaTest>(true,true,true)->execute(std::vector<std::string>{"-d", std::to_string(_dev.get()->get_device_id())});
+  // get DDR bank count from mem_topology if possible
+  auto membuf = xrt_core::device_query<xrt_core::query::mem_topology_raw>(_dev);
+  auto mem_topo = reinterpret_cast<const mem_topology*>(membuf.data());
+
+  for (auto& mem : boost::make_iterator_range(mem_topo->m_mem_data, mem_topo->m_mem_data + mem_topo->m_count)) {
+    auto midx = std::distance(mem_topo->m_mem_data, &mem);
+    if (mem.m_type == MEM_STREAMING)
+      continue;
+
+    if (!mem.m_used)
+      continue;
+
+    std::stringstream run_details;
+    size_t block_size = 16 * 1024 * 1024; // Default block size 16MB
+    xcldev::DMARunner runner(_dev->get_device_handle(), block_size, static_cast<unsigned int>(midx));
+    try {
+      runner.run(run_details);
+      _ptTest.put("status", "passed");
+      std::string line;
+      while(std::getline(run_details, line))
+        logger(_ptTest, "Details", line);
+    } 
+    catch (xrt_core::error& ex) {
+      _ptTest.put("status", "failed");
+      _ptTest.put("error_msg", ex.what());
+    }
+  }
 }
 
 /*
