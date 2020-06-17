@@ -770,9 +770,6 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
                 return cmd_obj_error;
             }
             kernel_tmp1->in_use = true;
-
-	    //Release singleton lock
-            guard1.unlock();
         }
         xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_cu_cmd: Using admin session with CU %s", kernel_tmp1->name);
     }
