@@ -1730,8 +1730,22 @@ static ssize_t scaling_enabled_show(struct device *dev,
 	struct device_attribute *da, char *buf)
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	bool cs_ptfm;
+	bool runtime_cs_enabled = false;
 
-	return sprintf(buf, "%d\n", scaling_condition_check(xmc, dev));
+	cs_ptfm = scaling_condition_check(xmc, dev);
+	if (!cs_ptfm)
+		return sprintf(buf, "%d\n", runtime_cs_enabled);
+
+	u32 reg = READ_RUNTIME_CS(xmc, XMC_CLOCK_CONTROL_REG);
+	if (reg & XMC_CLOCK_SCALING_EN)
+		runtime_cs_enabled = true;
+
+	reg = READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1);
+	if (reg & XMC_HOST_NEW_FEATURE_REG1_FEATURE_ENABLE)
+		runtime_cs_enabled = true;
+
+	return sprintf(buf, "%d\n", runtime_cs_enabled);
 }
 static DEVICE_ATTR_RW(scaling_enabled);
 
