@@ -33,6 +33,7 @@ namespace XBU = XBUtilities;
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <boost/any.hpp>
+// #include <boost/optional.hpp>
 namespace po = boost::program_options;
 
 // System - Include Files
@@ -61,6 +62,22 @@ enum class test_status
 };
 
 /*
+ * mini logger to log errors, warnings and details produced by the test cases
+ */
+void logger(boost::property_tree::ptree& _ptTest, const std::string& tag, const std::string& msg)
+{
+  boost::property_tree::ptree _ptLog;
+  boost::property_tree::ptree _ptExistingLog;
+  boost::optional<boost::property_tree::ptree&> _ptChild = _ptTest.get_child_optional("log");
+  if(_ptChild)
+    _ptExistingLog = _ptChild.get();
+
+  _ptLog.put(tag, msg);
+  _ptExistingLog.push_back(std::make_pair("", _ptLog));
+  _ptTest.put_child("log", _ptExistingLog);
+}
+
+/*
  * progarm an xclbin
  */
 void
@@ -68,7 +85,7 @@ programXclbin(const std::shared_ptr<xrt_core::device>& _dev, const std::string& 
 {
   std::ifstream stream(xclbin, std::ios::binary);
   if (!stream) {
-    _ptTest.put("error_msg", boost::str(boost::format("Could not open %s for reading") % xclbin));
+    logger(_ptTest, "Error", boost::str(boost::format("Could not open %s for reading") % xclbin));
     _ptTest.put("status", "failed");
     return;
   }
@@ -81,14 +98,14 @@ programXclbin(const std::shared_ptr<xrt_core::device>& _dev, const std::string& 
 
   std::string ver(raw.data(),raw.data()+7);
   if (ver != "xclbin2") {
-    _ptTest.put("error_msg", boost::str(boost::format("Bad binary version '%s' for xclbin") % ver));
+    logger(_ptTest, "Error", boost::str(boost::format("Bad binary version '%s' for xclbin") % ver));
     _ptTest.put("status", "failed");
     return;
   }
 
   auto hdl = _dev->get_device_handle();
   if (xclLoadXclBin(hdl,reinterpret_cast<const axlf*>(raw.data()))) {
-    _ptTest.put("error_msg", "Could not load xclbin");
+    logger(_ptTest, "Error", "Could not load xclbin");
     _ptTest.put("status", "failed");
     return;
   }
@@ -139,7 +156,7 @@ runShellCmd(const std::string& cmd, boost::property_tree::ptree& _ptTest)
 
   int stderr_fds[2];
   if (pipe(stderr_fds)== -1) {
-    _ptTest.put("error_msg", "Unable to create pipe");
+    logger(_ptTest, "Error", "Unable to create pipe");
     _ptTest.put("status", "failed");
     return;
   }
@@ -147,7 +164,7 @@ runShellCmd(const std::string& cmd, boost::property_tree::ptree& _ptTest)
   // Save stderr
   int stderr_save = dup(STDERR_FILENO);
   if (stderr_save == -1) {
-    _ptTest.put("error_msg", "Unable to duplicate stderr");
+    logger(_ptTest, "Error", "Unable to duplicate stderr");
     _ptTest.put("status", "failed");
     return;
   }
@@ -169,7 +186,7 @@ runShellCmd(const std::string& cmd, boost::property_tree::ptree& _ptTest)
   close(stderr_save);
 
   if (stdout_child == nullptr) {
-    _ptTest.put("error_msg", boost::str(boost::format("Failed to run %s") % cmd));
+    logger(_ptTest, "Error", boost::str(boost::format("Failed to run %s") % cmd));
     _ptTest.put("status", "failed");
     return;
   }
@@ -190,7 +207,7 @@ runShellCmd(const std::string& cmd, boost::property_tree::ptree& _ptTest)
   is_done = true;
   if (output.find("PASS") == std::string::npos) {
     run_test.get()->finish(false, "");
-    _ptTest.put("error_msg", output);
+    logger(_ptTest, "Error", output);
     _ptTest.put("status", "failed");
   } 
   else {
@@ -219,8 +236,8 @@ searchSSV2Xclbin(const std::shared_ptr<xrt_core::device>& _dev, const std::strin
   std::string formatted_fw_path("/opt/xilinx/firmware/");
   boost::filesystem::path fw_dir(formatted_fw_path);
   if(!boost::filesystem::is_directory(fw_dir)) {
-    _ptTest.put("error_msg", boost::str(boost::format("Failed to find %s") % fw_dir));
-    _ptTest.put("info", "Please check if the platform package is installed correctly");
+    logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % fw_dir));
+    logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
     _ptTest.put("status", "failed");
     return "";
   }
@@ -264,8 +281,8 @@ searchSSV2Xclbin(const std::shared_ptr<xrt_core::device>& _dev, const std::strin
 		  ++iter;
     }
   }
-  _ptTest.put("error_msg", boost::str(boost::format("Failed to find xclbin in %s") % fw_dir));
-  _ptTest.put("info", "Please check if the platform package is installed correctly");
+  logger(_ptTest, "Error", boost::str(boost::format("Failed to find xclbin in %s") % fw_dir));
+  logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
   _ptTest.put("status", "failed");
   return "";
 }
@@ -290,7 +307,8 @@ searchLegacyXclbin(const std::string& dev_name, const std::string& xclbin, boost
     return dsaXclbinPath;
   }
 
-  _ptTest.put("error_msg", boost::str(boost::format("Failed to find %s or %s") % xsaXclbinPath % dsaXclbinPath));
+  logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s or %s") % xsaXclbinPath % dsaXclbinPath));
+
   _ptTest.put("info", "Please check if the platform package is installed correctly");
   _ptTest.put("status", "failed");
   return "";
@@ -307,7 +325,8 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
     try{
       name = xrt_core::device_query<xrt_core::query::rom_vbnv>(_dev);
     } catch(...) {
-      _ptTest.put("error_msg", "Unable to find device VBNV");
+      logger(_ptTest, "Error", "Unable to find device VBNV");
+
       _ptTest.put("status", "failed");
       return;
     }
@@ -339,8 +358,8 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
     std::string xrtTestCasePath = "/opt/xilinx/xrt/test/" + py;
     boost::filesystem::path xrt_path(xrtTestCasePath);
     if (!boost::filesystem::exists(xrt_path)) {
-      _ptTest.put("error_msg", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
-      _ptTest.put("info", "Please check if the platform package is installed correctly");
+      logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
+      logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
       _ptTest.put("status", "failed");
       return;
     }
@@ -369,9 +388,9 @@ checkOSRelease(const std::vector<std::string> kernel_versions, const std::string
       return;
     }
   }
-  _ptTest.put("status", "passed with warning");
-  _ptTest.put("warning_msg", boost::str(boost::format("Kernel verison %s is not officially supported. %s is the latest supported version") 
-    % release % kernel_versions.back()));
+  _ptTest.put("status", "passed");
+  logger(_ptTest, "Warning", boost::str(boost::format("Kernel verison %s is not officially supported. %s is the latest supported version")
+                            % release % kernel_versions.back()));
 }
 
 /*
@@ -408,8 +427,8 @@ auxConnectionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property
 {
   const std::vector<std::string> auxPwrRequiredDevice = { "VCU1525", "U200", "U250", "U280" };
   
-  auto name = xrt_core::device_query<xrt_core::query::xmc_board_name>(_dev);
-  auto max_power = xrt_core::device_query<xrt_core::query::xmc_max_power>(_dev);
+  std::string name = xrt_core::device_query<xrt_core::query::xmc_board_name>(_dev);
+  uint64_t max_power = xrt_core::device_query<xrt_core::query::xmc_max_power>(_dev);
 
   //check if device has aux power connector
   bool auxDevice = false;
@@ -428,13 +447,10 @@ auxConnectionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property
 
   //check aux cable if board u200, u250, u280
   if(max_power == 0) {
-    _ptTest.put("warning_msg", "Aux power is not connected");
-    _ptTest.put("info", "Device is not stable for heavy acceleration tasks");
-    _ptTest.put("status", "passed with warning");
+    logger(_ptTest, "Warning", "Aux power is not connected");
+    logger(_ptTest, "Warning", "Device is not stable for heavy acceleration tasks");
   } 
-  else {
-    _ptTest.put("status", "passed");
-  }
+  _ptTest.put("status", "passed");
 }
 
 /*
@@ -443,19 +459,16 @@ auxConnectionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property
 void
 pcieLinkTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest) 
 {
-  auto speed     = xrt_core::device_query<xrt_core::query::pcie_link_speed>(_dev);
-  auto max_speed = xrt_core::device_query<xrt_core::query::pcie_link_speed_max>(_dev);
-  auto width     = xrt_core::device_query<xrt_core::query::pcie_express_lane_width>(_dev);
-  auto max_width = xrt_core::device_query<xrt_core::query::pcie_express_lane_width_max>(_dev);
+  uint64_t speed     = xrt_core::device_query<xrt_core::query::pcie_link_speed>(_dev);
+  uint64_t max_speed = xrt_core::device_query<xrt_core::query::pcie_link_speed_max>(_dev);
+  uint64_t width     = xrt_core::device_query<xrt_core::query::pcie_express_lane_width>(_dev);
+  uint64_t max_width = xrt_core::device_query<xrt_core::query::pcie_express_lane_width_max>(_dev);
   if (speed != max_speed || width != max_width) {
-    _ptTest.put("warning_msg", "Link is active");
-    _ptTest.put("info", boost::format("Please make sure that the device is plugged into Gen %dx%d, instead of Gen %dx%d. %s.")
-                                          % max_speed % max_width % speed % width % "Lower performance maybe experienced");
-    _ptTest.put("status", "passed with warning");
+    logger(_ptTest, "Warning", "Link is active");
+    logger(_ptTest, "Warning", boost::str(boost::format("Please make sure that the device is plugged into Gen %dx%d, instead of Gen %dx%d. %s.")
+                                          % max_speed % max_width % speed % width % "Lower performance maybe experienced"));
   }
-  else {
-    _ptTest.put("status", "passed");
-  }
+  _ptTest.put("status", "passed");
 }
 
 /*
@@ -471,14 +484,11 @@ scVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tre
   } catch(...) {}
 
   if (!exp_sc_ver.empty() && sc_ver.compare(exp_sc_ver) != 0) {
-    _ptTest.put("warning_msg", "SC firmware misatch");
-    _ptTest.put("info", boost::format("SC firmware version %s is running on the board, but SC firmware version %s is expected from the installed shell. %s.") 
-                                          % sc_ver % exp_sc_ver % "Please use xbmgmt --new status to check the installed shell");
-    _ptTest.put("status", "passed with warning");
+    logger(_ptTest, "Warning", "SC firmware misatch");
+    logger(_ptTest, "Warning", boost::str(boost::format("SC firmware version %s is running on the board, but SC firmware version %s is expected from the installed shell. %s.") 
+                                          % sc_ver % exp_sc_ver % "Please use xbmgmt --new status to check the installed shell"));
   }
-  else {
-    _ptTest.put("status", "passed");
-  }
+  _ptTest.put("status", "passed");
 }
 
 /*
@@ -510,7 +520,7 @@ bandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::proper
   try {
     name = xrt_core::device_query<xrt_core::query::rom_vbnv>(_dev);
   } catch(...) {
-    _ptTest.put("error_msg", "Unable to find device VBNV");
+    logger(_ptTest, "Error", "Unable to find device VBNV");
     _ptTest.put("status", "failed");
     return;
   }
@@ -616,31 +626,34 @@ pretty_print_test_desc(const boost::property_tree::ptree& test, int testSuiiteSi
 static void
 pretty_print_test_run(const boost::property_tree::ptree& test, test_status& status)
 {
-  try{
-    std::cout << boost::format("    %-16s: %s\n") % "Warning" % test.get<std::string>("warning_msg");
-  }
-  catch(...) {}
-  try{
-    std::cout << boost::format("    %-16s: %s\n") % "Error" % test.get<std::string>("error_msg");
-  }
-  catch(...) {}
-  try{
-    std::string formatted_output;
-    XBU::wrap_paragraph(test.get<std::string>("info"), 22, 70, false, formatted_output);
-    std::cout << boost::format("    %-16s: %s\n") % "Details" % formatted_output;
+  std::string _status = test.get<std::string>("status");
+  auto color = EscapeCodes::FGC_PASS;
+  bool warn = false;
+  bool error = false;
+
+  try {
+    for (const auto& dict : test.get_child("log")) {
+      for (const auto& kv : dict.second) {
+        std::cout << boost::format("    %-16s: %s\n") % kv.first % kv.second.get_value<std::string>();
+        if (boost::iequals(kv.first, "warning"))
+          warn = true;
+        else if (boost::iequals(kv.first, "error"))
+          error = true;
+      }    
+    }
   }
   catch(...) {}
 
-  std::string _status = test.get<std::string>("status");
-  auto color = EscapeCodes::FGC_PASS;
-  if(_status.find("warning") != std::string::npos) {
-    color = EscapeCodes::FGC_WARN;
-    status = test_status::warning;
-  }
-  else if (_status.compare("failed") == 0) {
+  if(error) {
     color = EscapeCodes::FGC_FAIL;
     status = test_status::failed;
   }
+  else if(warn) {
+    _status.append(" with warnings");
+    color = EscapeCodes::FGC_WARN;
+    status = test_status::warning;
+  }
+
   boost::to_upper(_status);
   std::cout << EscapeCodes::fgcolor(color).string() << boost::format("    [%s]\n") % _status
             << EscapeCodes::fgcolor::reset();
@@ -748,7 +761,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
                                                                            "  <BDF> - Bus:Device.Function (e.g., 0000:d8:00.0)\n"
                                                                            "  all   - Examines all known devices (default)")
     ("json,j", boost::program_options::bool_switch(&json), "Print in json format")
-    ("quick,q", boost::program_options::bool_switch(&quick), "Run a subset of teh test suite")
+    ("quick,q", boost::program_options::bool_switch(&quick), "Run a subset of the test suite")
     ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
 
