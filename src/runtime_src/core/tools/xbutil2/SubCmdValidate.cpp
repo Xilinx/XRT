@@ -33,7 +33,6 @@ namespace XBU = XBUtilities;
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <boost/any.hpp>
-// #include <boost/optional.hpp>
 namespace po = boost::program_options;
 
 // System - Include Files
