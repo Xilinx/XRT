@@ -3057,14 +3057,6 @@ struct xocl_subdev_map {
 		.vbnv = "xilinx_vck5000",				\
 		.priv_data = &XOCL_BOARD_VERSAL_USER_RAPTOR2,		\
 		.type = XOCL_DSAMAP_RAPTOR2 },				\
-	{ 0x10EE, 0x5048, PCI_ANY_ID,					\
-		.vbnv = "xilinx_vck5000",				\
-		.priv_data = &XOCL_BOARD_VERSAL_MGMT_RAPTOR2,		\
-		.type = XOCL_DSAMAP_RAPTOR2 },				\
-	{ 0x10EE, 0x5049, PCI_ANY_ID,					\
-		.vbnv = "xilinx_vck5000",				\
-		.priv_data = &XOCL_BOARD_VERSAL_USER_RAPTOR2,		\
-		.type = XOCL_DSAMAP_RAPTOR2 },				\
 	{ 0x10EE, 0x5050, PCI_ANY_ID,                                   \
 		.vbnv = "xilinx_u25",					\
 		.priv_data = &XOCL_BOARD_U25_MGMT_RAPTOR2,              \
