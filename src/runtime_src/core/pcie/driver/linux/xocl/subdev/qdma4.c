@@ -64,7 +64,7 @@
 #define QDMA_QSETS_MAX		256
 #define QDMA_QSETS_BASE		0
 
-#define QDMA_REQ_TIMEOUT_MS	3600	
+#define QDMA_REQ_TIMEOUT_MS	10000
 
 /* Module Parameters */
 unsigned int qdma4_max_channel = 16;
@@ -565,7 +565,7 @@ static ssize_t qdma_migrate_bo(struct platform_device *pdev,
 	if (ret >= 0) {
 		chan->total_trans_bytes += ret;
 	} else  {
-		xocl_err(&pdev->dev, "DMA failed %d, Dumping SG Page Table",
+		xocl_err(&pdev->dev, "DMA failed %ld, Dumping SG Page Table",
 			ret);
 		dump_sgtable(&pdev->dev, sgt);
 	}

@@ -3186,12 +3186,16 @@ int qdma_hw_error_process(void *dev_hndl)
 
 		err_stat = qdma_reg_read(dev_hndl,
 				qdma_err_info[bit].stat_reg_addr);
-		if (err_stat)
-			qdma_reg_write(dev_hndl,
-				qdma_err_info[bit].stat_reg_addr,
-				err_stat);
-		else
+		if (!err_stat)
 			continue;
+
+		qdma_log_error("%s: 0x%x -> 0x%x.\n", __func__,
+				qdma_err_info[bit].stat_reg_addr, err_stat);
+		
+		qdma_reg_write(dev_hndl,
+			qdma_err_info[bit].stat_reg_addr,
+			err_stat);
+
 		for (idx = bit; idx < all_hw_errs[i]; idx++) {
 			/* call the platform specific handler */
 			if (err_stat & qdma_err_info[idx].leaf_err_mask)

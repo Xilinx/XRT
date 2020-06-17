@@ -4084,8 +4084,8 @@ int eqdma_hw_error_process(void *dev_hndl)
 	if (!glbl_err_stat)
 		return QDMA_HW_ERR_NOT_DETECTED;
 
-	qdma_log_error("%s: QDMA_OFFSET_GLBL_ERR_STAT -> 0x%x.\n",
-			__func__, glbl_err_stat);
+	qdma_log_error("%s: QDMA_OFFSET_GLBL_ERR_STAT 0x%x -> 0x%x.\n",
+			__func__, QDMA_OFFSET_GLBL_ERR_STAT, glbl_err_stat);
 
 	for (i = 0; i < EQDMA_TOTAL_LEAF_ERROR_AGGREGATORS; i++) {
 		bit = hw_err_position[i];
@@ -4097,12 +4097,15 @@ int eqdma_hw_error_process(void *dev_hndl)
 
 		err_stat = qdma_reg_read(dev_hndl,
 				eqdma_err_info[bit].stat_reg_addr);
-		if (err_stat)
-			qdma_reg_write(dev_hndl,
-					eqdma_err_info[bit].stat_reg_addr,
-					err_stat);
-		else
+		if (!err_stat)
 			continue;
+
+		qdma_log_error("%s: err stat 0x%x -> 0x%x.\n", __func__,
++                                eqdma_err_info[bit].stat_reg_addr, err_stat);
+
+		qdma_reg_write(dev_hndl,
+				eqdma_err_info[bit].stat_reg_addr,
+				err_stat);
 		for (idx = bit; idx < all_eqdma_hw_errs[i]; idx++) {
 			/* call the platform specific handler */
 			if (err_stat & eqdma_err_info[idx].leaf_err_mask)

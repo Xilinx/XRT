@@ -1515,9 +1515,11 @@ int qdma4_descq_dump(struct qdma_descq *descq, char *buf, int buflen, int detail
 
 	cur += qdma4_descq_dump_state(descq, cur, end - cur);
 	if (!buf || !buflen) {
+		*cur = '\0';
 		pr_info("%s", buffer);
 		cur = buffer;
 		end = buffer + 512;
+		*cur = '\0';
 	} else if (cur >= end)
 		goto handle_truncation;
 
@@ -1542,71 +1544,51 @@ int qdma4_descq_dump(struct qdma_descq *descq, char *buf, int buflen, int detail
 	}
 
 	if (!buf || !buflen) {
+		*cur = '\0';
 		pr_info("%s", buffer);
 		cur = buffer;
 		end = buffer + 512;
+		*cur = '\0';
 	}
 
 	if (!detail)
-		return cur - buf;
+		return (!buf || !buflen) ? 0 : cur - buf;
 
 	/* xocl: dump the recent descriptors */
 	stop = descq->pidx;
-	start = stop > 8 ? stop - 8 : 0;
+	start = stop > 4 ? stop - 4 : 0;
+	cur += snprintf(cur, end - cur, "\tdesc %u ~ %u:\n", start, stop);
+	*cur = '\0';
 	cur += qdma4_descq_dump_desc(descq, start, stop, cur, end - cur);
+	if (!buf || !buflen) {
+		*cur = '\0';
+		pr_info("%s", buffer);
+		cur = buffer;
+		end = buffer + 512;
+		*cur = '\0';
+	} else if (cur >= end)
+		goto handle_truncation;
 
-	if (descq->desc_cmpl_status) {
-		u8 *cs = descq->desc_cmpl_status;
-
-		cur += snprintf(cur, end - cur, "\n\tcmpl status: 0x%p, ", cs);
-		if (cur >= end)
-			goto handle_truncation;
-
-		dma_rmb();
-#if KERNEL_VERSION(4, 0, 0) <= LINUX_VERSION_CODE
-		cur += hex_dump_to_buffer(cs,
-					  sizeof(struct qdma_desc_cmpl_status),
-					  16, 4, cur, end - cur, 0);
-#else
-		hex_dump_to_buffer(cs, sizeof(struct qdma_desc_cmpl_status),
-					  16, 4, cur, end - cur, 0);
-		cur += strlen(cur);
-#endif
-		if (!buf || !buflen) {
-			pr_info("%s\n", buffer);
-			cur = buffer;
-			end = buffer + 512;
-		} else {
-			if (cur >= end)
-				goto handle_truncation;
-
-			cur += snprintf(cur, end - cur, "\n");
-			if (cur >= end)
-				goto handle_truncation;
-		}
-	}
 	if (descq->desc_cmpt_cmpl_status) {
 		u8 *cs = descq->desc_cmpt_cmpl_status;
 
 		cur += snprintf(cur, end - cur, "\tCMPT CMPL STATUS: 0x%p, ",
 				cs);
-		if (cur >= end)
+		if (!buf || !buflen)
+			*cur = '\0';
+		else if (cur >= end)
 			goto handle_truncation;
 
 		dma_rmb();
-#if KERNEL_VERSION(4, 0, 0) <= LINUX_VERSION_CODE
-		cur += hex_dump_to_buffer(cs,
-				sizeof(struct qdma_c2h_cmpt_cmpl_status),
-				16, 4, cur, end - cur, 0);
-#else
 		hex_dump_to_buffer(cs, sizeof(struct qdma_c2h_cmpt_cmpl_status),
 					  16, 4, cur, end - cur, 0);
 		cur += strlen(cur);
-#endif
+		*cur = '\0';
 		if (!buf || !buflen) {
 			pr_info("%s\n", buffer);
 			cur = buffer;
 			end = buffer + 512;
+			*cur = '\0';
 		} else {
 			if (cur >= end)
 				goto handle_truncation;

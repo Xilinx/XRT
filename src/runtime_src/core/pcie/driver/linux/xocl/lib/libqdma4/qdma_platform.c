@@ -116,7 +116,8 @@ void qdma_hw_error_handler(void *dev_hndl, enum qdma_error_idx err_idx)
 {
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
 
-	pr_err("%s detected", xdev->hw.qdma_hw_get_error_name(err_idx));
+	pr_err("%s: %s detected", xdev->conf.name,
+		xdev->hw.qdma_hw_get_error_name(err_idx));
 }
 
 void qdma_get_device_attr(void *dev_hndl, struct qdma_dev_attributes **dev_cap)
