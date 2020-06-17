@@ -45,9 +45,9 @@ struct xcl_mem_group {
 
 /* memory mapping information for groups */
 struct xcl_mem_map_info {
-    uint32_t cu_id;
-    uint32_t arg_id;
-    uint32_t grp_id;
+    int32_t cu_id;
+    int32_t arg_id;
+    int32_t grp_id;
 };
 
 struct xcl_mem_map {

@@ -2257,13 +2257,12 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
       grp_info_size = drv->xclGetMemGroupInfo(&pGrpInfo);
       if (grp_info_size > 0) {
           /* Populate the retrive info into device class */
-          core_device->populate_mem_group_info(pGrpInfo);
+          core_device->register_axlf(buffer, pGrpInfo);
 	  
 	  /* Free the allocated memory */
 	  if (pGrpInfo)
               free(pGrpInfo); 	
       }
-      core_device->register_axlf(buffer);
 #ifdef ENABLE_HAL_PROFILING
     LOAD_XCLBIN_CB ;
 #endif

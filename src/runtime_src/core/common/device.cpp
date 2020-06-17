@@ -24,6 +24,7 @@
 #include "core/include/xrt.h"
 #include "core/include/xclbin.h"
 #include "core/include/ert.h"
+#include "core/common/drv/include/mem_group.h"
 #include <boost/format.hpp>
 #include <string>
 #include <iostream>
@@ -62,7 +63,91 @@ get_xclbin_uuid() const
 
 void
 device::
-register_axlf(const axlf* top)
+populate_mem_group_info(const char *info_buff)  
+{
+  struct xcl_mem_connectivity   grpinfomap;
+  struct xcl_mem_group_info     *m_grp = nullptr;
+  struct xcl_mem_map_info       *m_map = nullptr;
+
+  if (!info_buff) 
+    return;
+
+  grpinfomap.mem_group = (struct xcl_mem_group *)info_buff;
+  if (!grpinfomap.mem_group) 
+    throw std::runtime_error("failed to get memory group information");
+
+  int g_count = grpinfomap.mem_group->g_count; 
+  info_buff += sizeof(grpinfomap.mem_group->g_count); 
+
+  /* update memory topology section */
+  auto m_itr =  get_axlf_section(MEM_TOPOLOGY);
+  if (m_itr.first) {
+    auto m_mem = reinterpret_cast<::mem_topology*>(const_cast<char*>(m_itr.first));
+    
+    /* store the original memory topology before modify */
+    size_t size = m_itr.second;
+    std::vector<char> buf(m_itr.first, m_itr.first + size);
+    auto m_topo = reinterpret_cast<::mem_topology*>(buf.data());
+    
+    for (int i = 0; i < g_count; i++)
+    {
+      /* get the group info */
+      m_grp = (struct xcl_mem_group_info *)info_buff;
+      auto l_idx = m_grp->l_bank_idx;
+      auto h_idx = m_grp->h_bank_idx;
+
+      auto& mem = m_mem->m_mem_data[i];
+      /* update the mem_topology based on group info */
+      mem.m_base_address = m_topo->m_mem_data[l_idx].m_base_address;
+      mem.m_size = (m_topo->m_mem_data[h_idx].m_base_address + m_topo->m_mem_data[h_idx].m_size) -
+        m_topo->m_mem_data[l_idx].m_base_address;
+      mem.m_type = m_topo->m_mem_data[l_idx].m_type;
+      memcpy(&mem.m_tag, m_topo->m_mem_data[l_idx].m_tag, sizeof(m_topo->m_mem_data[l_idx].m_tag));
+      mem.m_used = 1;
+      info_buff += sizeof(*m_grp);
+    }
+  
+    /* update remaing entries as un-used */
+    for (auto i=g_count; i<m_mem->m_count; ++i) {
+	    auto& mem = m_mem->m_mem_data[i];
+	    mem.m_used = 0;
+    }
+    /* update the new memory topology count */ 
+    m_mem->m_count = g_count;
+  }
+
+  /* update connectivity section */
+  grpinfomap.mem_map = (struct xcl_mem_map *)info_buff;
+  if (!grpinfomap.mem_map) 
+    throw std::runtime_error("failed to get memory mapping information");
+
+  int m_count = grpinfomap.mem_map->m_count; 
+  info_buff += sizeof(grpinfomap.mem_map->m_count); 
+
+  auto c_itr = get_axlf_section(CONNECTIVITY);
+  if (c_itr.first) {
+    auto m_con = reinterpret_cast<::connectivity*>(const_cast<char*>(c_itr.first));
+  
+    for (int i = 0; i < m_count; i++)
+    {
+      m_map = (struct xcl_mem_map_info *)info_buff;
+      if(!m_map)
+        throw std::runtime_error("failed to get memory mapping information");
+
+      auto& con = m_con->m_connection[i];
+      con.m_ip_layout_index   = m_map->cu_id;
+      con.arg_index           = m_map->arg_id;
+      con.mem_data_index      = m_map->grp_id;
+      info_buff += sizeof(*m_map);
+    }
+    /* update the new connectivity count */ 
+    m_con->m_count = m_count;
+  }
+}
+
+void
+device::
+register_axlf(const axlf* top, const char *info_buff)
 {
   m_axlf_sections.clear();
   m_xclbin_uuid = uuid(top->m_header.uuid);
@@ -78,53 +163,7 @@ register_axlf(const axlf* top)
 
   // Build modified CONNECTIVITY and MEM_TOPOLOGY section based on memory group ids
   // Base groups off data from driver
-  auto m_itr = m_axlf_sections.find(MEM_TOPOLOGY);
-  int g_count = (int)m_grp_info.size();
-  if (g_count && (m_itr != m_axlf_sections.end())) {
-    auto m_mem = reinterpret_cast<::mem_topology*>((*m_itr).second.data());
-    
-    /* Store the original memory topology before modify */
-    size_t size = (*m_itr).second.size();
-    char *buf = new char[size];
-    memcpy(buf, m_mem, size);
-    
-    auto m_topo = reinterpret_cast<::mem_topology*>(buf);
-    for (auto i=0; i<g_count; ++i) {
-      auto& mem = m_mem->m_mem_data[i];
-      auto it = m_grp_info.find(i);
-      if (it != m_grp_info.end()) {
-        auto l_idx = (*it).second.first;
-        auto h_idx = (*it).second.second;
-	mem.m_base_address = m_topo->m_mem_data[l_idx].m_base_address;
-        mem.m_size = (m_topo->m_mem_data[h_idx].m_base_address + m_topo->m_mem_data[h_idx].m_size) -
-			m_topo->m_mem_data[l_idx].m_base_address;
-        mem.m_type = m_topo->m_mem_data[l_idx].m_type;
-        memcpy(&mem.m_tag, m_topo->m_mem_data[l_idx].m_tag, sizeof(m_topo->m_mem_data[l_idx].m_tag));
-        mem.m_used = 1;
-      }
-    }
-    // Update remaing entries as un-used
-    for (auto i=g_count; i<m_mem->m_count; ++i) {
-	    auto& mem = m_mem->m_mem_data[i];
-	    mem.m_used = 0;
-    }
-    // Update the new memory topology count 
-    m_mem->m_count = g_count;
-    delete []buf;
-  }
-
-  auto c_itr = m_axlf_sections.find(CONNECTIVITY);
-  if (c_itr != m_axlf_sections.end()) {
-    auto m_con = reinterpret_cast<::connectivity*>((*c_itr).second.data());
-    for (auto i=0; i<m_con->m_count; ++i) {
-      auto& con = m_con->m_connection[i];
-      auto it = m_grp_map.find(std::make_pair(con.m_ip_layout_index,
-                                              con.arg_index));
-      if (it != m_grp_map.end()) {
-        con.mem_data_index = (*it).second;
-      }
-    }
-  }
+  populate_mem_group_info(info_buff);  
 }
 
 std::pair<const char*, size_t>
@@ -195,48 +234,6 @@ get_ert_slots() const
   if (!xml.first)
     throw std::runtime_error("No xml metadata in xclbin");
   return get_ert_slots(xml.first, xml.second);
-}
-
-void
-device::
-populate_mem_group_info(const char *infoBuff)  
-{
-  struct xcl_mem_connectivity   grpInfoMap;
-  struct xcl_mem_group_info     *m_grp = NULL;
-  struct xcl_mem_map_info       *m_map = NULL;
-
-  if (!infoBuff) 
-    throw std::runtime_error("Failed to get memory information");
-
-  grpInfoMap.mem_group = (struct xcl_mem_group *)infoBuff;
-  if (!grpInfoMap.mem_group) 
-    throw std::runtime_error("Failed to get memory group information");
- 
-  infoBuff += sizeof(grpInfoMap.mem_group->g_count); 
-  for (int i = 0; i < grpInfoMap.mem_group->g_count; i++)
-  {
-    m_grp = (struct xcl_mem_group_info *)infoBuff;
-    if(!m_grp)
-      throw std::runtime_error("Failed to get memory mapping information");
-
-    m_grp_info.emplace(i, std::make_pair(m_grp->l_bank_idx, m_grp->h_bank_idx));
-    infoBuff += sizeof(*m_grp);
-  }
-
-  grpInfoMap.mem_map = (struct xcl_mem_map *)infoBuff;
-  if (!grpInfoMap.mem_map) 
-    throw std::runtime_error("Failed to get memory mapping information");
- 
-  infoBuff += sizeof(grpInfoMap.mem_map->m_count); 
-  for (int i = 0; i < grpInfoMap.mem_map->m_count; i++)
-  {
-    m_map = (struct xcl_mem_map_info *)infoBuff;
-    if(!m_map)
-      throw std::runtime_error("Failed to get memory mapping information");
-    
-    m_grp_map.emplace(std::make_pair(m_map->cu_id, m_map->arg_id), m_map->grp_id);
-    infoBuff += sizeof(*m_map);
-  }
 }
 
 std::string
