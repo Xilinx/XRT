@@ -24,7 +24,6 @@
 #include "scope_guard.h"
 #include "uuid.h"
 #include "core/include/xrt.h"
-#include "core/common/drv/include/mem_group.h"
 
 // Please keep eternal include file dependencies to a minimum
 #include <cstdint>
@@ -178,7 +177,7 @@ public:
    */
   XRT_CORE_COMMON_EXPORT
   void
-  register_axlf(const axlf*);
+  register_axlf(const axlf*, const char *info_buff = nullptr);
 
   /**
    * get_xclbin_uuid() - Get uuid of currently loaded xclbin
@@ -315,12 +314,6 @@ public:
   // cache xclbin meta data loaded by this process
   uuid m_xclbin_uuid;
   std::map<axlf_section_kind, std::vector<char>> m_axlf_sections;
-
-  // Store memory mapping information <<cuIdx, argIdx>, grpIdx>
-  std::map<std::pair<uint32_t, uint32_t>, uint32_t> m_grp_map;
-
-  // Store memory group information <grpIdx, <startAddr, size>>
-  std::map<uint32_t, std::pair<uint64_t, uint64_t>> m_grp_info;
 };
 
 /**
