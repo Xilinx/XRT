@@ -2461,8 +2461,7 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 	}
 
 	err = icap_calibrate_mig(icap->icap_pdev);
-	if (err)
-		goto out;
+
 out:
 	if (err && retention)
 		icap_release_ddr_gate_pin(icap);
