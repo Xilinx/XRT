@@ -37,11 +37,11 @@ static void usage()
     std::cout << "* Bitstream is required\n";
 }
 
-static int runKernel(xrt::device& device, bool verbose, const xuid_t xclbinId)
+static int run(const xrt::device& device, const xrt::uuid& uuid, bool verbose)
 {
   const size_t DATA_SIZE = COUNT * sizeof(int);
 
-  auto simple = xrt::kernel(device, xclbinId, "simple");
+  auto simple = xrt::kernel(device, uuid.get(), "simple");
   auto bo0 = xrt::bo(device, DATA_SIZE, XCL_BO_FLAGS_NONE, simple.group_id(0));
   auto bo1 = xrt::bo(device, DATA_SIZE, XCL_BO_FLAGS_NONE, simple.group_id(1));
   auto bo0_map = bo0.map<int*>();
@@ -120,7 +120,7 @@ run(int argc, char** argv)
 
   auto device = xrt::device(device_index);
   auto uuid = device.load_xclbin(xclbin_fnm);
-  runKernel(device, verbose, uuid.get());
+  run(device, uuid, verbose);
   return 0;
 }
 

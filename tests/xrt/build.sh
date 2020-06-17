@@ -1,5 +1,19 @@
 #!/bin/bash
 
+################################################################
+# Use this script to build XRT low level tests using CMake
+# The script can be used on both Linux and Windows WSL in bash
+#
+# Make sure to set XILINX_XRT prior to running the script
+#
+# % <path-to-this-directory>/build.sh -help
+#
+# The test executables are installed under
+# build/{Linux,Windows}/Debug/{hw,hw_emu,sw_emu}/<testname>/
+################################################################
+
+
+
 OSDIST=`lsb_release -i |awk -F: '{print tolower($2)}' | tr -d ' \t'`
 SRCDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 BUILDDIR=$SRCDIR/build
@@ -40,6 +54,9 @@ usage()
     echo "[-nocmake]                 Skip CMake call"
     echo "[-em <hw_emu | sw_emu>]    Link for emulation mode"
     echo "[clean|-clean]             Remove build directories"
+    echo ""
+    echo "The test executables are installed under"
+    echo "build/{Linux,Windows}/Debug/{hw,hw_emu,sw_emu}/<testname>/"
     exit 1
 }
 

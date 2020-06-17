@@ -8,7 +8,7 @@ user:
   host_args: {all: -k kernel.xclbin --jobs 1024 --seconds 1 --cus 8 --ert}
   host_cflags: ' -DDSA64 -ldl -luuid -Wl,-rpath-link,${XILINX_XRT}/lib -lxrt_core -lxrt_coreutil  -I${HOST_SRC_PATH} '
   host_exe: host.exe
-  host_src: main.cpp
+  host_src: xrt.cpp
   kernels:
   - {cflags: {add: ' -I.'}, file: addone.xo, ksrc: kernel.cl, name: addone, type: C}
   name: 100_ert_ncu
