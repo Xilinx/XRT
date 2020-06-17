@@ -3631,10 +3631,12 @@ static ssize_t icap_read_mem_topology(struct file *filp, struct kobject *kobj,
 	uint64_t range = 0;
 	int err = 0, i;
 	struct mem_topology *mem_topo = NULL;
-	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
+	xdev_handle_t xdev;
 
 	if (!icap || !icap->mem_topo)
 		return nread;
+
+	xdev = xocl_get_xdev(icap->icap_pdev);
 
 	err = icap_xclbin_rd_lock(icap);
 	if (err)
