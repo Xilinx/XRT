@@ -221,7 +221,7 @@ runShellCmd(const std::string& cmd, boost::property_tree::ptree& _ptTest)
   size_t st = output.find("Maximum");
   if (st != std::string::npos) {
     size_t end = output.find("\n", st);
-    _ptTest.put("info", output.substr(st, end - st));
+    logger(_ptTest, "Details", output.substr(st, end - st));
   }
 #endif
 }
@@ -308,8 +308,8 @@ searchLegacyXclbin(const std::string& dev_name, const std::string& xclbin, boost
   }
 
   logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s or %s") % xsaXclbinPath % dsaXclbinPath));
+  logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
 
-  _ptTest.put("info", "Please check if the platform package is installed correctly");
   _ptTest.put("status", "failed");
   return "";
 }
@@ -348,7 +348,7 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
     if(xclbinPath.empty()) {
       if(xclbin.compare("bandwidth.xclbin") == 0) {
         //if bandwidth xclbin isn't present, skip the test
-        _ptTest.put("info", "Bandwidth xclbin not available. Skipping validation.");
+        logger(_ptTest, "Details", "Bandwidth xclbin not available. Skipping validation.");
         _ptTest.put("status", "skipped");
       }
       return;
@@ -440,7 +440,7 @@ auxConnectionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property
   }
 
   if (!auxDevice) {
-      _ptTest.put("info", "Aux power connector is not available on this board");
+      logger(_ptTest, "Details", "Aux power connector is not available on this board");
       _ptTest.put("status", "skipped");
       return;
   }
