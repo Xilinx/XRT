@@ -1455,6 +1455,7 @@ static int get_temp_by_m_tag(struct xocl_xmc *xmc, char *m_tag)
 /* Runtime clock scaling sysfs node */
 static bool scaling_condition_check(struct xocl_xmc *xmc, struct device *dev)
 {
+	void *xdev_hdl = xocl_get_xdev(xmc->pdev);
 	u32 reg;
 	bool cs_on_ptfm = false;
 	bool runtime_cs_enabled = false;
