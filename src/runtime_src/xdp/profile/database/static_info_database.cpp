@@ -124,14 +124,14 @@ namespace xdp {
   }
 
 #if 0
-  bool VPStaticDatabase::setXclbinUUID(DeviceInfo* devInfo, std::shared_ptr<xrt_core::device> device)
+  bool VPStaticDatabase::setXclbinUUID(DeviceInfo* devInfo, const std::shared_ptr<xrt_core::device>& device)
   {
     devInfo->loadedXclbinUUID = device->get_xclbin_uuid();
     return true;
   }
 #endif
 
-  bool VPStaticDatabase::setXclbinName(DeviceInfo* devInfo, std::shared_ptr<xrt_core::device> device)
+  bool VPStaticDatabase::setXclbinName(DeviceInfo* devInfo, const std::shared_ptr<xrt_core::device>& device)
   {
     // Get SYSTEM_METADATA section
     std::pair<const char*, size_t> systemMetadata = device->get_axlf_section(SYSTEM_METADATA);
@@ -157,7 +157,7 @@ namespace xdp {
     return true;
   }
 
-  bool VPStaticDatabase::initializeComputeUnits(DeviceInfo* devInfo, std::shared_ptr<xrt_core::device> device)
+  bool VPStaticDatabase::initializeComputeUnits(DeviceInfo* devInfo, const std::shared_ptr<xrt_core::device>& device)
   {
     // Get IP_LAYOUT section 
     const ip_layout* ipLayoutSection = device->get_axlf_section<const ip_layout*>(IP_LAYOUT);
@@ -221,7 +221,7 @@ namespace xdp {
     return true;
   }
 
-  bool VPStaticDatabase::initializeProfileMonitors(DeviceInfo* devInfo, std::shared_ptr<xrt_core::device> device)
+  bool VPStaticDatabase::initializeProfileMonitors(DeviceInfo* devInfo, const std::shared_ptr<xrt_core::device>& device)
   {
     // Look into the debug_ip_layout section and load information about Profile Monitors
     // Get DEBUG_IP_LAYOUT section 
