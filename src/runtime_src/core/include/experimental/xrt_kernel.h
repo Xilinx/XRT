@@ -94,13 +94,16 @@ class run
   /**
    * wait() - Wait for a run to complete execution
    *
-   * The current thread will block until the run completes
-   * execution. Completion does not guarantee success, the run status
+   * @timeout_ms:  Timeout for wait.
+   * Return:       Command state upon return of wait
+   *
+   * The current thread will block until the run completes or timeout
+   * expires. Completion does not guarantee success, the run status
    * should be checked by using @state.
    */
   XCL_DRIVER_DLLESPEC
-  void
-  wait() const;
+  ert_cmd_state
+  wait(unsigned int timeout_ms=0) const;
 
   /**
    * state() - Check the current state of a run object
@@ -497,6 +500,20 @@ xrtRunStart(xrtRunHandle runHandle);
 XCL_DRIVER_DLLESPEC
 ert_cmd_state
 xrtRunWait(xrtRunHandle runHandle);
+
+/**
+ * xrtRunWait() - Wait for a run to complete
+ *
+ * @runHandle:  Handle to the run object to start
+ * timeout_ms:  Timeout in millisecond
+ * Return:      Run command state for completed run, or
+ *              current status if timeout.
+ *
+ * Blocks current thread until job has completed
+ */
+XCL_DRIVER_DLLESPEC
+ert_cmd_state
+xrtRunWaitFor(xrtRunHandle runHandle, unsigned int timeout_ms);
 
 /**
  * xrtRunState() - Check the current state of a run

@@ -119,12 +119,35 @@ public:
   uuid
   get_xclbin_uuid() const;
 
+  /**
+   * get_xclbin_section() - Retrieve specified xclbin section
+   *
+   * @section: The section to retrieve
+   * @uuid:    Xclbin uuid of the xclbin with the section to retrieve
+   *
+   * Get the xclbin section of the xclbin currently loaded on the 
+   * device.  The function throws on error
+   *
+   * Note, this API may be replaced with more generic query request access
+   */
+  template <typename SectionType>
+  SectionType
+  get_xclbin_section(axlf_section_kind section, const uuid& uuid) const
+  {
+    return reinterpret_cast<SectionType>(get_xclbin_section(section, uuid).first);
+  }
+
 public:
   /**
    * Undocumented temporary interface during porting
    */
   XCL_DRIVER_DLLESPEC
   operator xclDeviceHandle () const;
+
+private:
+  XCL_DRIVER_DLLESPEC
+  std::pair<const char*, size_t>
+  get_xclbin_section(axlf_section_kind section, const uuid& uuid) const;
 
 private:
   std::shared_ptr<xrt_core::device> handle;
