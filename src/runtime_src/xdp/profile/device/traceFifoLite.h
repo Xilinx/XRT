@@ -60,7 +60,7 @@ public:
     virtual ~TraceFifoLite()
     {}
 
-    uint32_t getNumTraceSamples(/* need type ?*/);
+    virtual uint32_t getNumTraceSamples(/* need type ?*/);
     uint32_t getMaxNumTraceSamples(/* need type ?*/);
     size_t reset();
 

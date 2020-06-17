@@ -58,13 +58,13 @@ public:
     virtual ~AM()
     {}
 
-    size_t startCounter();
-    size_t stopCounter();
-    size_t readCounter(xclCounterResults& counterResult, uint32_t index);
+    virtual size_t startCounter();
+    virtual size_t stopCounter();
+    virtual size_t readCounter(xclCounterResults& counterResult, uint32_t index);
 
     // Used to explicitly disable the monitor when kernel channels are used
-    void disable();
-    void configureDataflow(bool cuHasApCtrlChain);
+    virtual void disable();
+    virtual void configureDataflow(bool cuHasApCtrlChain);
 
     bool has64bit() const;
     bool hasDataflow() const;
@@ -73,7 +73,7 @@ public:
 
     signed compareVersion(unsigned major2, unsigned minor2) const;
 
-    size_t triggerTrace(uint32_t traceOption /*startTrigger*/);
+    virtual size_t triggerTrace(uint32_t traceOption /*startTrigger*/);
 
     virtual void showProperties();
     virtual uint32_t getProperties() { return properties; }
@@ -82,6 +82,8 @@ private:
     uint8_t properties;
     uint8_t major_version;
     uint8_t minor_version;
+
+protected:
     bool m_enabled = true;
 };
 

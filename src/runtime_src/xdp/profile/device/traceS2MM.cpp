@@ -90,7 +90,7 @@ void TraceS2MM::reset()
 uint64_t TraceS2MM::getWordCount()
 {
     if(out_stream)
-        (*out_stream) << " TraceS2MM::wordsWritten " << std::endl;
+        (*out_stream) << " TraceS2MM::getWordCount " << std::endl;
 
     uint32_t regValue = 0;
     read(TS2MM_WRITTEN_LOW, 4, &regValue);
@@ -102,6 +102,9 @@ uint64_t TraceS2MM::getWordCount()
 
 uint8_t TraceS2MM::getMemIndex()
 {
+    if(out_stream)
+        (*out_stream) << " TraceS2MM::getMemIndex " << std::endl;
+
     return (properties >> 1);
 }
 
@@ -160,8 +163,11 @@ inline void TraceS2MM::parsePacketClockTrain(uint64_t packet, uint64_t firstTime
     }
 }
 
-inline void TraceS2MM::parsePacket(uint64_t packet, uint64_t firstTimestamp, xclTraceResults &result)
+void TraceS2MM::parsePacket(uint64_t packet, uint64_t firstTimestamp, xclTraceResults &result)
 {
+    if(out_stream)
+        (*out_stream) << " TraceS2MM::parsePacket " << std::endl;
+
     result.Timestamp = (packet & 0x1FFFFFFFFFFF) - firstTimestamp;
     result.EventType = ((packet >> 45) & 0xF) ? XCL_PERF_MON_END_EVENT :
         XCL_PERF_MON_START_EVENT;
@@ -192,6 +198,9 @@ inline void TraceS2MM::parsePacket(uint64_t packet, uint64_t firstTimestamp, xcl
 
 uint64_t TraceS2MM::seekClockTraining(uint64_t* arr, uint64_t count)
 {
+  if(out_stream)
+      (*out_stream) << " TraceS2MM::seekClockTraining " << std::endl;
+
   uint64_t n = 8;
   if (mTraceFormat < 1  || mclockTrainingdone)
     return 0;
@@ -212,6 +221,9 @@ uint64_t TraceS2MM::seekClockTraining(uint64_t* arr, uint64_t count)
 
 void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector& traceVector)
 {
+    if(out_stream)
+        (*out_stream) << " TraceS2MM::parseTraceBuf " << std::endl;
+
     uint32_t packetSizeBytes = 8;
     uint32_t tvindex = 0;
     traceVector.mLength = 0;
