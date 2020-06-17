@@ -223,9 +223,14 @@ static int addr_translator_enable_remap(struct platform_device *pdev, uint64_t b
 static int addr_translator_disable_remap(struct platform_device *pdev)
 {
 	struct addr_translator *addr_translator = platform_get_drvdata(pdev);
+	xdev_handle_t xdev = ADDR_TRANSLATOR_DEV2XDEV(pdev);
+	struct trans_regs *regs = (struct trans_regs *)addr_translator->base;
 
 	mutex_lock(&addr_translator->lock);
-	memset(addr_translator->base, 0, addr_translator->range);
+	xocl_dr_reg_write32(xdev, 0, &regs->addr_range);
+	xocl_dr_reg_write32(xdev, 0, &regs->base_addr.lo);
+	xocl_dr_reg_write32(xdev, 0, &regs->base_addr.hi);
+	xocl_dr_reg_write32(xdev, 0, &regs->entry_num);
 	mutex_unlock(&addr_translator->lock);
 	return 0;
 }
@@ -233,12 +238,14 @@ static int addr_translator_disable_remap(struct platform_device *pdev)
 static int addr_translator_clean(struct platform_device *pdev)
 {
 	struct addr_translator *addr_translator = platform_get_drvdata(pdev);
+	xdev_handle_t xdev = ADDR_TRANSLATOR_DEV2XDEV(pdev);
+	struct trans_regs *regs = (struct trans_regs *)addr_translator->base;
 
 	mutex_lock(&addr_translator->lock);
-	/* Shouldn't leave anything once disable called 
-	 * Simply write 0 to all write-able registers
-	 */
-	memset(addr_translator->base, 0, addr_translator->range);
+	xocl_dr_reg_write32(xdev, 0, &regs->addr_range);
+	xocl_dr_reg_write32(xdev, 0, &regs->base_addr.lo);
+	xocl_dr_reg_write32(xdev, 0, &regs->base_addr.hi);
+	xocl_dr_reg_write32(xdev, 0, &regs->entry_num);
 	addr_translator->slot_num = 0;
 	addr_translator->slot_sz = 0;
 	memset(addr_translator->phys_addrs, 0, sizeof(uint64_t)*addr_translator->num_max);
