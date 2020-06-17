@@ -424,6 +424,7 @@ public:
             if( index >= 0 ) {
               uint64_t size = 0, mem_usage = 0;
               std::string tag, type, temp;
+              bool enabled = false;
 
               for (auto& subv : v.second) {
                   if( subv.first == "tag" ) {
@@ -432,8 +433,12 @@ public:
                       mem_usage = subv.second.get_value<uint64_t>();
                   } else if( subv.first == "size_raw" ) {
                       size = subv.second.get_value<uint64_t>();
+                  } else if( subv.first == "enabled" ) {
+                      enabled = subv.second.get_value<bool>();
                   }
               }
+              if (!enabled || !size)
+                  continue;
 
               float percentage = (float)mem_usage * 100 / size;
               int nums_fiftieth = (int)percentage / 2;
@@ -499,7 +504,7 @@ public:
         const mem_topology *map = (mem_topology *)buf.data();
         const uint32_t *temp = (uint32_t *)temp_buf.data();
 
-	if(buf.empty())
+	    if(buf.empty())
             return;
 
         int j = 0; // stream index
@@ -583,49 +588,69 @@ public:
             m++;
         }
 
-        if (!grp_buf.empty() && !mm_buf.empty()) {
-            struct xcl_mem_connectivity	grpInfoMap;
-            struct xcl_mem_group_info   *m_grp = NULL;
-            const char					*infoBuff = (const char*)grp_buf.data();
+        if (!mm_buf.empty()) {
+	        auto count = 0;
+            const char *infoBuff = NULL;
+            bool is_group = false;
 
-            grpInfoMap.mem_group = (struct xcl_mem_group *)infoBuff;
+            if (!grp_buf.empty()) {
+            	struct xcl_mem_connectivity grpInfoMap;
+            	infoBuff = (const char*)grp_buf.data();
+                grpInfoMap.mem_group = (struct xcl_mem_group *)infoBuff;
+		        count = grpInfoMap.mem_group->g_count;
+                infoBuff += sizeof(grpInfoMap.mem_group->g_count);
+                is_group = true;
+            }
+            else {
+                count = map->m_count; 
+            }
 
-            infoBuff += sizeof(grpInfoMap.mem_group->g_count);
-            for (auto i = 0; i < grpInfoMap.mem_group->g_count; i++)
+            for (auto i = 0; i < count; i++)
             {
                 uint64_t memoryUsage, boCount;
                 boost::property_tree::ptree ptGrp;
+                std::stringstream ss_bank_map;
+                std::stringstream g_tag;
+                size_t size = 0;
+                bool   is_enabled = false;
+            
+                if (is_group) {
+                    struct xcl_mem_group_info *m_grp = (struct xcl_mem_group_info *)infoBuff;
+                    if(!m_grp)
+                        return;
 
-                m_grp = (struct xcl_mem_group_info *)infoBuff;
-                if(!m_grp)
-                    return;
+                    int l_idx = m_grp->l_bank_idx;
+                    int h_idx = m_grp->h_bank_idx;
 
-                int l_idx = m_grp->l_bank_idx;
-                int h_idx = m_grp->h_bank_idx;
+                    ss_bank_map << std::left << std::setw(8) << map->m_mem_data[l_idx].m_tag << "- " <<
+                        std::setw(8) << map->m_mem_data[h_idx].m_tag;
+                    size = ((map->m_mem_data[h_idx].m_base_address +
+                                (map->m_mem_data[h_idx].m_size << 10))) -
+                                map->m_mem_data[l_idx].m_base_address;
+                    is_enabled = true;
+                    infoBuff += sizeof(*m_grp);
+                }
+                else {
+                    ss_bank_map << std::left << std::setw(8) << map->m_mem_data[i].m_tag << "- " <<
+                        std::setw(8) << map->m_mem_data[i].m_tag;
+                    size = map->m_mem_data[i].m_size << 10;
+                    is_enabled = map->m_mem_data[i].m_used ? true : false;
+                }
+                    
+                g_tag << "Group-" << i;
 
                 std::stringstream ss(mm_buf[i]);
                 ss >> memoryUsage >> boCount;
 
-                std::stringstream g_tag;
-                g_tag << "Group-" << i;
-
-                std::stringstream ss_bank_map;
-                ss_bank_map << std::left << std::setw(8) << map->m_mem_data[l_idx].m_tag << "- " <<
-                    std::setw(8) << map->m_mem_data[h_idx].m_tag;
-
-                auto size = ((map->m_mem_data[h_idx].m_base_address +
-                            map->m_mem_data[h_idx].m_size)) -
-                    map->m_mem_data[l_idx].m_base_address;
-
-                ptGrp.put( "tag",		g_tag.str());
+                ptGrp.put( "tag",		    g_tag.str());
                 ptGrp.put( "bank_mapping",	ss_bank_map.str());
-                ptGrp.put( "size",              xrt_core::utils::unit_convert(size) );
+                ptGrp.put( "enabled",       is_enabled);
+                ptGrp.put( "size",          xrt_core::utils::unit_convert(size));
                 ptGrp.put( "size_raw",		size);
                 ptGrp.put( "mem_usage",		xrt_core::utils::unit_convert(memoryUsage));
                 ptGrp.put( "mem_usage_raw",	memoryUsage);
                 ptGrp.put( "bo_count",		boCount);
                 sensor_tree::add_child( std::string("board.memory.grp." + std::to_string(i)), ptGrp);
-                infoBuff += sizeof(*m_grp);
             }
         }
     }
@@ -645,6 +670,8 @@ public:
                 if( index >= 0 ) {
                     std::string mem_usage, bank_mapping, size, tag;
                     unsigned bo_count = 0;
+                    bool enabled = false;
+
                     for (auto& subv : v.second) {
                         if( subv.first == "bank_mapping" ) {
                             bank_mapping = subv.second.get_value<std::string>();
@@ -656,8 +683,13 @@ public:
                             bo_count = subv.second.get_value<unsigned>();
                         } else if( subv.first == "mem_usage" ) {
                             mem_usage = subv.second.get_value<std::string>();
+                        } else if( subv.first == "enabled" ) {
+                            enabled = subv.second.get_value<bool>();
                         }
                     }
+                    if (!enabled)
+                        continue;
+
                     ss << std::left
                         << "[" << std::right << std::setw(2) << index << "] " << std::left
                         << std::setw(12) << tag 
@@ -1332,19 +1364,25 @@ public:
             if( index >= 0 ) {
               std::string mem_usage, bank_mapping, size, tag;
               unsigned bo_count = 0;
+              bool enabled = false;
               for (auto& subv : v.second) {
                   if( subv.first == "bank_mapping" ) {
                       bank_mapping = subv.second.get_value<std::string>();
-		  } else if( subv.first == "tag" ) {
+                  } else if( subv.first == "tag" ) {
                       tag = subv.second.get_value<std::string>();
-		  } else if( subv.first == "size" ) {
+                  } else if( subv.first == "size" ) {
                       size = subv.second.get_value<std::string>();
-		  } else if( subv.first == "bo_count" ) {
+                  } else if( subv.first == "bo_count" ) {
                       bo_count = subv.second.get_value<unsigned>();
                   } else if( subv.first == "mem_usage" ) {
                       mem_usage = subv.second.get_value<std::string>();
+                  } else if( subv.first == "enabled" ) {
+                      enabled = subv.second.get_value<bool>();
                   }
               }
+              if (!enabled)
+                  continue;
+
               ostr << std::left
                    << "[" << std::right << std::setw(2) << index << "] " << std::left
                    << std::setw(12) << tag 
