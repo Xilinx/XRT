@@ -96,6 +96,7 @@
 #define	XMC_HOST_NEW_FEATURE_REG1	0xB20
 #define	XMC_CORE_VERSION_REG		0xC4C
 #define	XMC_OEM_ID_REG                  0xC50
+#define	XMC_HOST_NEW_FEATURE_REG1_SC_NO_CS (1 << 30)
 #define	XMC_HOST_NEW_FEATURE_REG1_FEATURE_PRESENT (1 << 29)
 #define	XMC_HOST_NEW_FEATURE_REG1_FEATURE_ENABLE (1 << 28)
 #define	XMC_CLK_THROTTLING_PWR_MGMT_REG		 0xB24
@@ -374,6 +375,8 @@ struct xocl_xmc {
 	u32			sc_presence;
 	/* Runtime clock scaling support on platform */
 	bool			cs_on_ptfm;
+	/* Indicates the currently loaded SC firmware does not support clock throttling.*/
+	bool			sc_no_cs;
 
 	/* XMC mailbox support. */
 	struct mutex		mbx_lock;
@@ -1469,8 +1472,11 @@ static bool scaling_condition_check(struct xocl_xmc *xmc, struct device *dev)
 		xmc->cs_on_ptfm = false;
 		xmc->runtime_cs_enabled = false;
 		reg = READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1);
-		if (reg & XMC_HOST_NEW_FEATURE_REG1_FEATURE_PRESENT) {
-			xmc->cs_on_ptfm = true;
+		if (reg & XMC_HOST_NEW_FEATURE_REG1_SC_NO_CS) {
+			xmc->sc_no_cs = true;
+		} else {
+			if (reg & XMC_HOST_NEW_FEATURE_REG1_FEATURE_PRESENT)
+				xmc->cs_on_ptfm = true;
 			if (reg & XMC_HOST_NEW_FEATURE_REG1_FEATURE_ENABLE)
 				xmc->runtime_cs_enabled = true;
 		}
@@ -1479,6 +1485,9 @@ static bool scaling_condition_check(struct xocl_xmc *xmc, struct device *dev)
 	if (!xmc->runtime_cs_enabled) {
 		if (!XMC_PRIVILEGED(xmc)) {
 			xocl_dbg(dev, "runtime clock scaling is not supported in non privileged mode\n");
+		} else if (xmc->sc_no_cs) {
+			xocl_dbg(dev, "currently loaded SC firmware does not support runtime clock scalling\n");
+			return false;
 		} else if (xmc->cs_on_ptfm) {
 			xocl_dbg(dev, "runtime clock scaling is not enabled\n");
 			return true;
@@ -3242,12 +3251,18 @@ static int xmc_probe(struct platform_device *pdev)
 			}
 		} else {
 			u32 reg = READ_REG32(xmc, XMC_HOST_NEW_FEATURE_REG1);
-			if (reg & XMC_HOST_NEW_FEATURE_REG1_FEATURE_ENABLE)
-				xmc->runtime_cs_enabled = true;
-			if (reg & XMC_HOST_NEW_FEATURE_REG1_FEATURE_PRESENT)
-				xmc->cs_on_ptfm = true;
+			if (reg & XMC_HOST_NEW_FEATURE_REG1_SC_NO_CS) {
+				xmc->sc_no_cs = true;
+			} else {
+				if (reg & XMC_HOST_NEW_FEATURE_REG1_FEATURE_PRESENT)
+					xmc->cs_on_ptfm = true;
+				if (reg & XMC_HOST_NEW_FEATURE_REG1_FEATURE_ENABLE)
+					xmc->runtime_cs_enabled = true;
+			}
 		}
-		if (xmc->cs_on_ptfm)
+		if (xmc->sc_no_cs)
+			xocl_info(&pdev->dev, "Loaded SC firmware does not support Runtime clock scaling.\n");
+		else if (xmc->cs_on_ptfm)
 			xocl_info(&pdev->dev, "Runtime clock scaling is supported.\n");
 	}
 
