@@ -4,11 +4,6 @@ set SRCDIR=%~dp0
 set BUILDDIR=%SRCDIR%\build
 set CMAKEDIR=%BUILDDIR%\cmake\windows
 
-if "%OCL_ROOT%" == "" (
-  echo Please set OCL_ROOT [source xrt setup.bat]
-  GOTO:EOF
-)
-
 if "%XILINX_XRT%" == "" (
   echo Please set XILINX_XRT [source xrt setup.bat]
   GOTO:EOF
