@@ -52,6 +52,7 @@ xocl-y := \
 	../xocl_fdt.o \
 	../subdev/xdma.o \
 	../subdev/qdma.o \
+	../subdev/qdma4.o \
 	../subdev/feature_rom.o \
 	../subdev/mb_scheduler.o \
 	../subdev/mailbox.o \
@@ -122,7 +123,9 @@ install: all
 clean:
 	rm -rf *.o *.o.d *~ core .depend .*.cmd *.ko *.ko.unsigned *.mod.c \
 	../subdev/*.o ../subdev/.*.o.cmd ../lib/*.o ../lib/.*.o.cmd	\
-	../lib/*.o.ur-safe ../lib/libqdma/*.o ../lib/libqdma/.*.o.cmd \
-	../lib/libqdma/*.o.ur-safe ../subdev/*.o.ur-safe ./.cache.mk	\
+	../lib/*.o.ur-safe ../lib/libqdma*/*.o ../lib/libqdma*/.*.o.cmd \
+	../lib/libqdma*/*/*.o ../lib/libqdma*/*/.*.o.cmd \
+	../lib/libqdma*/*.o.ur-safe ../lib/libqdma*/*/*.o.ur-safe \
+	../subdev/*.o.ur-safe ./.cache.mk	\
 	$(common_dir)/*.o $(common_dir)/.*.o.cmd \
 	.tmp_versions *.symvers modules.order
