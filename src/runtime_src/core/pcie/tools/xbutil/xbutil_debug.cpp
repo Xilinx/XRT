@@ -135,6 +135,11 @@ int xcldev::device::readAIMCounters() {
     std::vector<std::string> slotNames;
     std::vector< std::pair<std::string, std::string> > cuNameportNames;
     unsigned int numSlots = getIPCountAddrNames (AXI_MM_MONITOR, &baseAddress, &slotNames);
+
+    if(-EINVAL == static_cast<int>(numSlots)) {
+      return 0;  // error msg already printed to std::cout
+    }
+
     if (numSlots == 0) {
         std::cout << "ERROR: AXI Interface Monitor IP does not exist on the platform" << std::endl;
         return 0;
@@ -242,6 +247,10 @@ int xcldev::device::readAMCounters() {
     std::vector<std::string> slotNames;
 
     unsigned int numSlots = getIPCountAddrNames (ACCEL_MONITOR, &baseAddress, &slotNames);
+
+    if(-EINVAL == static_cast<int>(numSlots)) {
+      return 0;  // error msg already printed to std::cout
+    }
     if (numSlots == 0) {
         std::cout << "ERROR: Accelerator Monitor IP does not exist on the platform" << std::endl;
         return 0;
@@ -344,6 +353,10 @@ int xcldev::device::readASMCounters() {
     std::vector<std::string> slotNames;
     std::vector< std::pair<std::string, std::string> > cuNameportNames;
     unsigned int numSlots = getIPCountAddrNames (AXI_STREAM_MONITOR, &baseAddress, &slotNames);
+
+    if(-EINVAL == static_cast<int>(numSlots)) {
+      return 0;  // error msg already printed to std::cout
+    }
     if (numSlots == 0) {
         std::cout << "ERROR: AXI Stream Monitor IP does not exist on the platform" << std::endl;
         return 0;
@@ -438,6 +451,10 @@ int xcldev::device::readLAPCheckers(int aVerbose) {
     std::vector<std::string> lapcSlotNames;
     std::vector< std::pair<std::string, std::string> > cuNameportNames;
     unsigned int numSlots = getIPCountAddrNames (LAPC, nullptr, &lapcSlotNames);
+
+    if(-EINVAL == static_cast<int>(numSlots)) {
+      return 0;  // error msg already printed to std::cout
+    }
     if (numSlots == 0) {
         std::cout << "ERROR: LAPC IP does not exist on the platform" << std::endl;
         return 0;
@@ -524,6 +541,10 @@ int xcldev::device::readStreamingCheckers(int aVerbose) {
   unsigned int numCheckers = getIPCountAddrNames(AXI_STREAM_PROTOCOL_CHECKER,
 						 nullptr,
 						 &streamingCheckerSlotNames);
+
+  if(-EINVAL == static_cast<int>(numCheckers)) {
+    return 0;  // error msg already printed to std::cout
+  }
   if (numCheckers == 0) {
     std::cout << "ERROR: AXI Streaming Protocol Checkers do not exist on the platform" << std::endl ;
     return 0 ;
