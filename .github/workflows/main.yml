@@ -1,6 +1,6 @@
 # This is a basic workflow to help you get started with Actions
 
-name: License Scanner
+name: Check License Lines
 
 # Controls when the action will run. Triggers the workflow on push or pull request
 # events but only for the master branch
@@ -13,7 +13,6 @@ jobs:
   check-license-lines:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout Repo
-    - uses: actions/checkout@v2
-    - name: Start License Scanner
+    - uses: actions/checkout@master
+    - name: Check License Lines
       uses: zanj-1/license-checker@master
