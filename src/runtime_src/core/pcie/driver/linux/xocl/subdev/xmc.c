@@ -2578,6 +2578,7 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 	void *xdev_hdl;
 	u32 magic = 0;
 	int ret;
+	bool skip_xmc = false;
 
 	xmc = platform_get_drvdata(pdev);
 	if (!xmc)
@@ -2600,7 +2601,7 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 
 	reg_val = READ_GPIO(xmc, 0);
 
-	bool skip_xmc = xmc_in_bitfile(xmc->pdev);
+	skip_xmc = xmc_in_bitfile(xmc->pdev);
 	if (skip_xmc)
 		xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x (ert), 0x%x (xmc)", reg_val,
 			  READ_XMC_GPIO(xmc, 0));
@@ -2711,6 +2712,7 @@ static int load_xmc(struct xocl_xmc *xmc)
 	u32 reg_val = 0, reg_map_ready;
 	int ret = 0;
 	void *xdev_hdl;
+	bool skip_xmc = false;
 
 	if (!xmc->enabled)
 		return -ENODEV;
@@ -2729,7 +2731,7 @@ static int load_xmc(struct xocl_xmc *xmc)
 	reg_val = READ_GPIO(xmc, 0);
 
 	xdev_hdl = xocl_get_xdev(xmc->pdev);
-	bool skip_xmc = xmc_in_bitfile(xmc->pdev);
+	skip_xmc = xmc_in_bitfile(xmc->pdev);
 	if (skip_xmc) {
 		xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x (ert), 0x%x (xmc)", reg_val,
 			  READ_XMC_GPIO(xmc, 0));

@@ -16,11 +16,36 @@
 obj-m	+= xclmgmt.o
 include $(PWD)/../lib/Makefile.in
 
+# Base on Linux Documentation/kbuild/modules.txt.
+# $(src) provides the absolute path by pointing to the directory
+# where the currently executing kbuild file is located.
+ifneq ($(src),)
+# building modules
+ifneq ($(wildcard $(src)/../../common),)
+# dpms dir
+common_dir = ../../common
+else
+# build from source code
+common_dir = ../../../../../common/drv
+endif
+
+else
+# clean
+common_dir = ../../../../../common/drv
+ifeq ($(wildcard ../../../../../common/drv),)
+common_dir = ../../common
+endif
+
+endif
+
+drv_common-y   := $(common_dir)/xrt_xclbin.o
+
 xclmgmt-y := \
 	../xocl_subdev.o \
 	../xocl_ctx.o \
 	../xocl_thread.o \
 	../xocl_fdt.o \
+	../xocl_xclbin.o \
 	../subdev/sysmon.o \
 	../subdev/feature_rom.o \
 	../subdev/microblaze.o \
@@ -47,6 +72,7 @@ xclmgmt-y := \
 	../subdev/ulite.o \
 	../subdev/calib_storage.o \
 	../subdev/pmc.o \
+	$(drv_common-y) \
 	mgmt-core.o \
 	mgmt-cw.o \
 	mgmt-utils.o \
