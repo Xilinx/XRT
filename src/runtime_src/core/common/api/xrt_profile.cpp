@@ -58,7 +58,7 @@ namespace xrt { namespace profile {
     xrtURStart(id, label.c_str(), tooltip.c_str()) ;
   }
 
-  user_range::user_range() : active(false)
+  user_range::user_range() : id(0), active(false)
   {
   }
 
