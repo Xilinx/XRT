@@ -1396,31 +1396,6 @@ unsigned int shim::xclImportBO(int fd, unsigned flags)
 }
 
 /*
- * xclGetMemGroupInfo()
- */
-int shim::xclGetMemGroupInfo(char **grpMapInfo)
-{
-    std::string errmsg;
-    size_t size = 0;
-    std::vector<char> memGroupInfo;
-
-    mDev->sysfs_get("", "mem_group_info", errmsg, memGroupInfo);
-    if (memGroupInfo.empty()) 
-        return -EINVAL;
- 
-    size = memGroupInfo.size() * sizeof(char); 
-    /* Allocate memory for *grpMapInfo */
-    *grpMapInfo =  (char *)malloc(size);
-    if (!*grpMapInfo)
-	return -ENOMEM; 
-
-    memset((void *)*grpMapInfo, 0, size);
-    memcpy((void *)*grpMapInfo, memGroupInfo.data(), size);
-     
-    return size;
-}
-
-/*
  * xclGetBOProperties()
  */
 int shim::xclGetBOProperties(unsigned int boHandle, xclBOProperties *properties)
@@ -2249,20 +2224,8 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 #endif
 
     if (!ret) {
-      char *pGrpInfo = NULL;
-      int grp_info_size = 0;
       auto core_device = xrt_core::get_userpf_device(drv);
-      
-      /* Get memory group mapping info from sysfs */
-      grp_info_size = drv->xclGetMemGroupInfo(&pGrpInfo);
-      if (grp_info_size > 0) {
-          /* Populate the retrive info into device class */
-          core_device->register_axlf(buffer, pGrpInfo);
-	  
-	  /* Free the allocated memory */
-	  if (pGrpInfo)
-              free(pGrpInfo); 	
-      }
+      core_device->register_axlf(buffer);
 #ifdef ENABLE_HAL_PROFILING
     LOAD_XCLBIN_CB ;
 #endif

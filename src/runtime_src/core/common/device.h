@@ -177,7 +177,7 @@ public:
    */
   XRT_CORE_COMMON_EXPORT
   void
-  register_axlf(const axlf*, const char *info_buff = nullptr);
+  register_axlf(const axlf*);
 
   /**
    * get_xclbin_uuid() - Get uuid of currently loaded xclbin
@@ -234,13 +234,6 @@ public:
   XRT_CORE_COMMON_EXPORT
   std::pair<size_t, size_t>
   get_ert_slots() const;
-
-  /**
-   * populate_mem_group_info() - Store the memory group information
-   *
-   */
-  void
-  populate_mem_group_info(const char *infoBuff);
 
   // Move all these 'pt' functions out the class interface
   virtual void get_info(boost::property_tree::ptree&) const {}
