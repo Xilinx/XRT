@@ -867,8 +867,10 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 	 * need to shutdown drm and sysfs before destroy subdevices
 	 * drm and sysfs could access subdevices
 	 */
-	if (xdev->core.drm)
+	if (xdev->core.drm) {
+		xocl_cma_bank_free(xdev->core.drm);
 		xocl_drm_fini(xdev->core.drm);
+	}
 
 	xocl_p2p_fini(xdev);
 	xocl_fini_persist_sysfs(xdev);
