@@ -3654,7 +3654,8 @@ static ssize_t icap_read_mem_topology(struct file *filp, struct kobject *kobj,
 	range = xocl_addr_translator_get_range(xdev);	
 	for ( i=0; i< mem_topo->m_count; ++i) {
 		if (IS_HOST_MEM(mem_topo->m_mem_data[i].m_tag)){
-			mem_topo->m_mem_data[i].m_size = range;
+			/* m_size in KB, convert Byte to KB */
+			mem_topo->m_mem_data[i].m_size = (range>>10);
 		} else
 			continue;
 	}
