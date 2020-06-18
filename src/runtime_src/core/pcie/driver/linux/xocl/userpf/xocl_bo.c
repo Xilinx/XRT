@@ -199,7 +199,6 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 {
 	struct xocl_drm *drm_p = dev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
-	struct xcl_mem_group *mem_grp = NULL;
 	u16 ddr_count;
 	unsigned ddr;
 	struct mem_topology *topo = NULL;
@@ -210,11 +209,7 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 		return 0;
 	//From "mem_topology" or "feature rom" depending on
 	//unified or non-unified dsa
-	mem_grp = drm_p->m_connect->mem_group;
-	if (!mem_grp)
-		return -EINVAL;
-
-	ddr_count = mem_grp->g_count;
+	ddr_count = XOCL_DDR_COUNT(xdev);
 
 	if (ddr_count == 0)
 		return -EINVAL;
@@ -230,6 +225,12 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 	if (topo) {
 		if (XOCL_IS_STREAM(topo, ddr)) {
 			userpf_err(xdev, "Bank %d is Stream", ddr);
+			err = -EINVAL;
+			goto done;
+		}
+		if (!XOCL_IS_DDR_USED(topo, ddr)) {
+			userpf_err(xdev,
+				"Bank %d is marked as unused in axlf", ddr);
 			err = -EINVAL;
 			goto done;
 		}
@@ -333,7 +334,7 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 
 	mutex_lock(&drm_p->mm_lock);
 	/* Attempt to allocate buffer on the requested DDR */
-	xocl_xdev_dbg(xdev, "alloc bo from group%u", memidx);
+	xocl_xdev_dbg(xdev, "alloc bo from bank%u", memidx);
 
 	/* Check the mem index to see if it's MEM_HOST */
 	if ((xobj->flags & XOCL_CMA_MEM) && !is_cma_bank(drm_p, memidx)) {
@@ -341,13 +342,13 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 		goto failed;
 	}
 
-	err = xocl_mm_insert_node_range(drm_p, memidx, xobj->mm_node,
+	err = xocl_mm_insert_node(drm_p, memidx, xobj->mm_node,
 		xobj->base.size);
-	if (err)
-		goto failed;
 	BO_DEBUG("insert mm_node:%p, start:%llx size: %llx",
 		xobj->mm_node, xobj->mm_node->start,
 		xobj->mm_node->size);
+	if (err)
+		goto failed;
 
 	xocl_mm_update_usage_stat(drm_p, memidx, xobj->base.size, 1);
 	mutex_unlock(&drm_p->mm_lock);
@@ -433,19 +434,18 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 	struct xocl_drm *drm_p = dev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
 	struct drm_xocl_create_bo *args = data;
-	unsigned mem_id = xocl_bo_ddr_idx(args->flags);
+	unsigned ddr = xocl_bo_ddr_idx(args->flags);
 	unsigned bo_type = xocl_bo_type(args->flags);
 	struct mem_topology *topo = NULL;
-	struct xcl_mem_group_info *xocl_mem = NULL;
 
 	xobj = xocl_create_bo(dev, args->size, args->flags, bo_type);
 
+	BO_ENTER("xobj %p, mm_node %p", xobj, xobj->mm_node);
 	if (IS_ERR(xobj)) {
-		DRM_ERROR("object creation failed idx %d, size 0x%llx\n", mem_id, args->size);
+		DRM_ERROR("object creation failed idx %d, size 0x%llx\n", ddr, args->size);
 		return PTR_ERR(xobj);
 	}
 
-	BO_ENTER("xobj %p, mm_node %p", xobj, xobj->mm_node);
 	if (xobj->flags == XOCL_BO_P2P) {
 		/*
 		 * DRM allocate contiguous pages, shift the vmapping with
@@ -458,17 +458,12 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 		if (topo) {
 			int ret;
 			ulong bar_off;
-                        xocl_mem = drm_p->m_connect->mem_group->m_group[mem_id];
-                        if (xocl_mem == NULL) {
-                                ret = -EINVAL;
-                                goto out_free;
-                        }
 
 			ret = xocl_p2p_mem_map(xdev,
-			       topo->m_mem_data[xocl_mem->l_bank_idx].m_base_address,
-			       topo->m_mem_data[xocl_mem->l_bank_idx].m_size * 1024,
+				topo->m_mem_data[ddr].m_base_address,
+				topo->m_mem_data[ddr].m_size * 1024,
 				xobj->mm_node->start -
-			       topo->m_mem_data[xocl_mem->l_bank_idx].m_base_address,
+				topo->m_mem_data[ddr].m_base_address,
 				xobj->base.size,
 				&bar_off);
 			if (ret) {
@@ -488,7 +483,7 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 		else if (xobj->flags & XOCL_DRM_SHMEM)
 			xobj->pages = drm_gem_get_pages(&xobj->base);
 		else if (xobj->flags & XOCL_CMA_MEM){
-			uint64_t start_addr = drm_p->mm->head_node.start + drm_p->mm->head_node.size;
+			uint64_t start_addr = drm_p->mm[ddr]->head_node.start + drm_p->mm[ddr]->head_node.size;
 
 			xobj->pages = xocl_cma_collect_pages(drm_p, start_addr, xobj->mm_node->start, xobj->base.size);
 		}
