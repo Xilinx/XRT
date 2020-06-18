@@ -551,6 +551,12 @@ int kds_del_cu(struct kds_sched *kds, struct xrt_cu *xcu)
 	return -ENODEV;
 }
 
+/*
+ * Return number of client with open ("live") contexts on CUs.
+ * If this number > 0, xclbin is locked down.
+ * If plist is non-NULL, the list of PIDs of live clients will also be returned.
+ * Note that plist should be freed by caller.
+ */
 u32 kds_live_clients(struct kds_sched *kds, pid_t **plist)
 {
 	const struct list_head *ptr;
@@ -582,6 +588,7 @@ u32 kds_live_clients(struct kds_sched *kds, pid_t **plist)
 		}
 	}
 
+	*plist = pl;
 out:
 	mutex_unlock(&kds->lock);
 	return count;

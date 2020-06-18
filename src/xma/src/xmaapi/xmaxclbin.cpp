@@ -213,7 +213,7 @@ static int get_xclbin_iplayout(const char *buffer, XmaXclbinInfo *xclbin_info)
                 temp_ip_layout.base_addr = 0;
                 temp_ip_layout.arg_start = -1;
                 temp_ip_layout.regmap_size = -1;
-                xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index = %d, soft kernel name = %s ", xma_ip_layout.size(), temp_ip_layout.kernel_name.c_str());
+                xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index = %lu, soft kernel name = %s ", xma_ip_layout.size(), temp_ip_layout.kernel_name.c_str());
 
                 xma_ip_layout.emplace_back(std::move(temp_ip_layout));
                 num_soft_kernels++;

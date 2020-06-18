@@ -43,6 +43,8 @@
 #include <utility>
 #include <mutex>
 #include <condition_variable>
+#include <chrono>
+using namespace std::chrono_literals;
 
 #include <boost/detail/endian.hpp>
 
@@ -316,6 +318,17 @@ public:
     std::unique_lock<std::mutex> lk(m_mutex);
     while (!m_done)
       m_exec_done.wait(lk);
+
+    auto pkt = get_ert_packet();
+    return static_cast<ert_cmd_state>(pkt->state);
+  }
+
+  ert_cmd_state
+  wait(unsigned int timeout_ms) const
+  {
+    std::unique_lock<std::mutex> lk(m_mutex);
+    while (!m_done)
+      m_exec_done.wait_for(lk, timeout_ms * 1ms);
 
     auto pkt = get_ert_packet();
     return static_cast<ert_cmd_state>(pkt->state);
@@ -813,9 +826,9 @@ public:
 
   // wait() - wait for execution to complete
   ert_cmd_state
-  wait() const
+  wait(unsigned int timeout_ms) const
   {
-    return cmd.wait();
+    return timeout_ms ? cmd.wait(timeout_ms) : cmd.wait();
   }
 
   // state() - get current execution state
@@ -1076,10 +1089,10 @@ xrtRunState(xrtRunHandle rhdl)
 }
 
 ert_cmd_state
-xrtRunWait(xrtRunHandle rhdl)
+xrtRunWait(xrtRunHandle rhdl, unsigned int timeout_ms)
 {
   auto run = get_run(rhdl);
-  return run->wait();
+  return run->wait(timeout_ms);
 }
 
 void
@@ -1128,11 +1141,11 @@ start()
   handle->start();
 }
 
-void
+ert_cmd_state
 run::
-wait() const
+wait(unsigned int timeout_ms) const
 {
-  handle->wait();
+  return handle->wait(timeout_ms);
 }
 
 ert_cmd_state
@@ -1327,7 +1340,19 @@ ert_cmd_state
 xrtRunWait(xrtRunHandle rhdl)
 {
   try {
-    return api::xrtRunWait(rhdl);
+    return api::xrtRunWait(rhdl, 0);
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return ERT_CMD_STATE_ABORT;
+  }
+}
+
+ert_cmd_state
+xrtRunWaitFor(xrtRunHandle rhdl, unsigned int timeout_ms)
+{
+  try {
+    return api::xrtRunWait(rhdl, timeout_ms);
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());

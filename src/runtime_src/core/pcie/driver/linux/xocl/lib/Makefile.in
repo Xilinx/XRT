@@ -33,6 +33,32 @@ xocl_lib-y	+=  \
 		../lib/libqdma/thread.o	\
 		../lib/libqdma/xdev.o
 
+xocl_lib-y	+=  \
+		../lib/libqdma4/libqdma_config.o	\
+		../lib/libqdma4/libqdma_export.o	\
+		../lib/libqdma4/qdma_context.o	\
+		../lib/libqdma4/qdma_debugfs.o	\
+		../lib/libqdma4/qdma_debugfs_dev.o	\
+		../lib/libqdma4/qdma_debugfs_queue.o	\
+		../lib/libqdma4/qdma_descq.o	\
+		../lib/libqdma4/qdma_device.o	\
+		../lib/libqdma4/qdma_intr.o	\
+		../lib/libqdma4/qdma_mbox.o	\
+		../lib/libqdma4/qdma_platform.o	\
+		../lib/libqdma4/qdma_regs.o	\
+		../lib/libqdma4/qdma_sriov.o	\
+		../lib/libqdma4/qdma_st_c2h.o	\
+		../lib/libqdma4/qdma_thread.o	\
+		../lib/libqdma4/thread.o	\
+		../lib/libqdma4/xdev.o	\
+		../lib/libqdma4/qdma_access_common.o	\
+		../lib/libqdma4/qdma_list.o	\
+		../lib/libqdma4/qdma_mbox_protocol.o	\
+		../lib/libqdma4/qdma_resource_mgmt.o	\
+		../lib/libqdma4/qdma_s80_hard_access.o	\
+		../lib/libqdma4/qdma_soft_access.o	\
+		../lib/libqdma4/eqdma_soft_access.o
+
 libfdt-y	:= ../lib/libfdt/fdt.o		\
 		../lib/libfdt/fdt_addresses.o	\
 		../lib/libfdt/fdt_empty_tree.o	\
