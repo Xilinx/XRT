@@ -1214,7 +1214,8 @@ enum {
 
 #define XOCL_GET_MEM_TOPOLOGY(xdev, mem_topo)						\
 	(xocl_icap_get_xclbin_metadata(xdev, MEMTOPO_AXLF, (void **)&mem_topo))
-
+#define XOCL_GET_CONNECTIVITY(xdev, connectivity)                                       \
+        (xocl_icap_get_xclbin_metadata(xdev, CONNECTIVITY_AXLF, (void **)&connectivity))
 #define XOCL_GET_IP_LAYOUT(xdev, ip_layout)						\
 	(xocl_icap_get_xclbin_metadata(xdev, IPLAYOUT_AXLF, (void **)&ip_layout))
 #define XOCL_GET_XCLBIN_ID(xdev, xclbin_id)						\
@@ -1222,6 +1223,8 @@ enum {
 
 
 #define XOCL_PUT_MEM_TOPOLOGY(xdev)						\
+	xocl_icap_put_xclbin_metadata(xdev)
+#define XOCL_PUT_CONNECTIVITY(xdev)                                             \
 	xocl_icap_put_xclbin_metadata(xdev)
 #define XOCL_PUT_IP_LAYOUT(xdev)						\
 	xocl_icap_put_xclbin_metadata(xdev)
