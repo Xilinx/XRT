@@ -479,8 +479,6 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 		}
 
 		XOCL_PUT_MEM_TOPOLOGY(xdev);
-		if (ret)
-			goto out_free;
 	}
 
 	if (xobj->flags & XOCL_PAGE_ALLOC) {

@@ -1943,7 +1943,7 @@ int xcldev::xclCma(int argc, char *argv[])
     int long_index, ret;
     const char* short_options = "d:"; //don't add numbers
     const char* exe = argv[ 0 ];
-    std::string optarg_s;
+    std::string optarg_s, unit_str;
     const char *unit = NULL;
     size_t end = 0;
 
@@ -1970,7 +1970,9 @@ int xcldev::xclCma(int argc, char *argv[])
                 std::cout << "ERROR: Value supplied to --size option is invalid\n";
                 return -1;
             }
-            unit = optarg_s.substr(end).c_str();
+            unit_str = optarg_s.substr(end);
+            unit = unit_str.c_str();
+
             if (std::tolower(unit[0]) == 'm')
                 unit_sz = 1024*1024;
             else if (std::tolower(unit[0]) == 'g')
