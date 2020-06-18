@@ -134,9 +134,9 @@ int xcldev::device::readAIMCounters() {
     std::vector<uint64_t> baseAddress;
     std::vector<std::string> slotNames;
     std::vector< std::pair<std::string, std::string> > cuNameportNames;
-    unsigned int numSlots = getIPCountAddrNames (AXI_MM_MONITOR, &baseAddress, &slotNames);
+    uint32_t numSlots = getIPCountAddrNames (AXI_MM_MONITOR, &baseAddress, &slotNames);
 
-    if(-EINVAL == static_cast<int>(numSlots)) {
+    if(-EINVAL == static_cast<int32_t>(numSlots)) {
       return 0;  // error msg already printed to std::cout
     }
 
@@ -147,7 +147,7 @@ int xcldev::device::readAIMCounters() {
     std::pair<size_t, size_t> widths = getCUNamePortName(slotNames, cuNameportNames);
 //    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_AIM, &debugResults);
 
-    for(unsigned int i = 0 ; i < numSlots; i++) {
+    for(uint32_t i = 0 ; i < numSlots; i++) {
       std::string aimName("aximm_mon_");
       aimName = aimName + std::to_string(baseAddress[i]);
       std::string namePath = pcidev::get_dev(m_idx)->get_sysfs_path(aimName.c_str(), "name");
@@ -246,9 +246,9 @@ int xcldev::device::readAMCounters() {
     std::vector<uint64_t> baseAddress;
     std::vector<std::string> slotNames;
 
-    unsigned int numSlots = getIPCountAddrNames (ACCEL_MONITOR, &baseAddress, &slotNames);
+    uint32_t numSlots = getIPCountAddrNames (ACCEL_MONITOR, &baseAddress, &slotNames);
 
-    if(-EINVAL == static_cast<int>(numSlots)) {
+    if(-EINVAL == static_cast<int32_t>(numSlots)) {
       return 0;  // error msg already printed to std::cout
     }
     if (numSlots == 0) {
@@ -257,7 +257,7 @@ int xcldev::device::readAMCounters() {
     }
 //    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_AM, &debugResults);
 
-    for(unsigned int i = 0 ; i < numSlots; i++) {
+    for(uint32_t i = 0 ; i < numSlots; i++) {
       std::string amName("accel_mon_");
       amName = amName + std::to_string(baseAddress[i]);
       std::string namePath = pcidev::get_dev(m_idx)->get_sysfs_path(amName.c_str(), "name");
@@ -352,9 +352,9 @@ int xcldev::device::readASMCounters() {
     std::vector<uint64_t> baseAddress;
     std::vector<std::string> slotNames;
     std::vector< std::pair<std::string, std::string> > cuNameportNames;
-    unsigned int numSlots = getIPCountAddrNames (AXI_STREAM_MONITOR, &baseAddress, &slotNames);
+    uint32_t numSlots = getIPCountAddrNames (AXI_STREAM_MONITOR, &baseAddress, &slotNames);
 
-    if(-EINVAL == static_cast<int>(numSlots)) {
+    if(-EINVAL == static_cast<int32_t>(numSlots)) {
       return 0;  // error msg already printed to std::cout
     }
     if (numSlots == 0) {
@@ -365,7 +365,7 @@ int xcldev::device::readASMCounters() {
 //    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_ASM, &debugResults);
 
 
-    for(unsigned int i = 0 ; i < numSlots; i++) {
+    for(uint32_t i = 0 ; i < numSlots; i++) {
       std::string asmName("axistream_mon_");
       asmName = asmName + std::to_string(baseAddress[i]);
       std::string namePath = pcidev::get_dev(m_idx)->get_sysfs_path(asmName.c_str(), "name");
@@ -450,9 +450,9 @@ int xcldev::device::readLAPCheckers(int aVerbose) {
     //}
     std::vector<std::string> lapcSlotNames;
     std::vector< std::pair<std::string, std::string> > cuNameportNames;
-    unsigned int numSlots = getIPCountAddrNames (LAPC, nullptr, &lapcSlotNames);
+    uint32_t numSlots = getIPCountAddrNames (LAPC, nullptr, &lapcSlotNames);
 
-    if(-EINVAL == static_cast<int>(numSlots)) {
+    if(-EINVAL == static_cast<int32_t>(numSlots)) {
       return 0;  // error msg already printed to std::cout
     }
     if (numSlots == 0) {
@@ -538,11 +538,11 @@ int xcldev::device::readLAPCheckers(int aVerbose) {
 int xcldev::device::readStreamingCheckers(int aVerbose) {
 
   std::vector<std::string> streamingCheckerSlotNames ;
-  unsigned int numCheckers = getIPCountAddrNames(AXI_STREAM_PROTOCOL_CHECKER,
+  uint32_t numCheckers = getIPCountAddrNames(AXI_STREAM_PROTOCOL_CHECKER,
 						 nullptr,
 						 &streamingCheckerSlotNames);
 
-  if(-EINVAL == static_cast<int>(numCheckers)) {
+  if(-EINVAL == static_cast<int32_t>(numCheckers)) {
     return 0;  // error msg already printed to std::cout
   }
   if (numCheckers == 0) {
