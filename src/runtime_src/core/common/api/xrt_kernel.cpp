@@ -884,7 +884,7 @@ public:
   {
     reset_cmd();
 
-    auto kcmd = cmd.get_ert_cmd<ert_start_kernel_cmd*>();
+    auto kcmd = cmd.get_ert_cmd<ert_init_kernel_cmd*>();
     auto idx = kcmd->count - data_offset;
     auto offset = arg.offset();
     for (auto v : value) {
