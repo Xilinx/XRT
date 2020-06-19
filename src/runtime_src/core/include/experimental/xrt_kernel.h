@@ -330,6 +330,38 @@ public:
   int
   group_id(int argno) const;
 
+  /**
+   * write() - Write to the address range of a kernel
+   *
+   * @offset:   Offset in register space to write to
+   * @data:     Data to write
+   *
+   * Throws std::out_or_range if offset is outside the
+   * kernel address space
+   *
+   * The kernel must be associated with exactly one kernel instance 
+   * (compute unit), which must be opened for exclusive access.
+   */
+  XCL_DRIVER_DLLESPEC
+  void
+  write_register(uint32_t offset, uint32_t data);
+
+  /**
+   * read() - Read data from kernel address range
+   *
+   * @offset:  Offset in register space to read from
+   * Return:   Value read from offset
+   *
+   * Throws std::out_or_range if offset is outside the
+   * kernel address space
+   *
+   * The kernel must be associated with exactly one kernel instance 
+   * (compute unit), which must be opened for exclusive access.
+   */
+  XCL_DRIVER_DLLESPEC
+  uint32_t
+  read_register(uint32_t offset) const;
+
 public:
   std::shared_ptr<kernel_impl>
   get_handle() const
@@ -411,6 +443,34 @@ xrtKernelClose(xrtKernelHandle kernelHandle);
 XCL_DRIVER_DLLESPEC
 int
 xrtKernelArgGroupId(xrtKernelHandle kernelHandle, int argno);
+
+/**
+ * xrtKernelReadRegister() - Read data from kernel address range
+ *
+ * @offset:  Offset in register space to read from
+ * @datap:   Pointer to location where to write data
+ * Return:   0 on success, errcode otherwise
+ *
+ * The kernel must be associated with exactly one kernel instance 
+ * (compute unit), which must be opened for exclusive access.
+ */
+XCL_DRIVER_DLLESPEC
+int
+xrtKernelReadRegister(xrtKernelHandle, uint32_t offset, uint32_t* datap);
+
+/**
+ * xrtKernelWriteRegister() - Write to the address range of a kernel
+ *
+ * @offset:   Offset in register space to write to
+ * @data:     Data to write
+ * Return:    0 on success, errcode otherwise
+ *
+ * The kernel must be associated with exactly one kernel instance 
+ * (compute unit), which must be opened for exclusive access.
+ */
+XCL_DRIVER_DLLESPEC
+int
+xrtKernelWriteRegister(xrtKernelHandle, uint32_t offset, uint32_t data);
 
 /**
  * xrtKernelRun() - Start a kernel execution
