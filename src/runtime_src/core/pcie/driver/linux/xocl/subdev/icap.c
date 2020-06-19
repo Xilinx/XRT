@@ -2294,7 +2294,7 @@ static void icap_save_calib(struct icap *icap)
 		err = xocl_srsr_save_calib(xdev, ddr_idx);
 		if (err)
 			ICAP_DBG(icap, "Not able to save mem %d calibration data.", i);
-
+		ddr_idx++;
 	}
 	err = xocl_calib_storage_save(xdev);
 }
@@ -2320,7 +2320,7 @@ static void icap_calib(struct icap *icap, bool retain)
 		err = xocl_srsr_calib(xdev, ddr_idx, retain);
 		if (err)
 			ICAP_DBG(icap, "Not able to calibrate mem %d.", i);
-
+		ddr_idx++;
 	}
 
 }
