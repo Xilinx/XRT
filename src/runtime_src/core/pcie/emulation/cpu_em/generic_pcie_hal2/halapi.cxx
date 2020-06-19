@@ -588,12 +588,12 @@ int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
 // Restricted read/write on IP register space
 int xclRegWrite(xclDeviceHandle, uint32_t, uint32_t, uint32_t)
 {
-  throw std::runtime_error("xclRegWrite not implemented for cpu emulation");
+  return 1;
 }
 
 int xclRegRead(xclDeviceHandle, uint32_t, uint32_t, uint32_t*)
 {
-  throw std::runtime_error("xclRegRead not implemented for cpu emulation");
+  return 1;
 }
 
 int xclCreateProfileResults(xclDeviceHandle handle, ProfileResults** results)
@@ -624,5 +624,3 @@ int xclGetSubdevPath(xclDeviceHandle handle,  const char* subdev,
 {
   return 0;
 }
-
-
