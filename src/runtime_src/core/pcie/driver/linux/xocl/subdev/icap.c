@@ -2274,7 +2274,7 @@ static int icap_refresh_clock_freq(struct icap *icap, struct axlf *xclbin)
 static void icap_save_calib(struct icap *icap)
 {
 	struct mem_topology *mem_topo = icap->mem_topo;
-	int err = 0, i = 0, ddr_idx = -1;
+	int err = 0, i = 0, ddr_idx = 0;
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 
 	if (!mem_topo)
@@ -2286,12 +2286,11 @@ static void icap_save_calib(struct icap *icap)
 	for (; i < mem_topo->m_count; ++i) {
 		if (convert_mem_type(mem_topo->m_mem_data[i].m_tag) != MEM_DRAM)
 			continue;
-		else
+
+		if (!mem_topo->m_mem_data[i].m_used) {
 			ddr_idx++;
-
-		if (!mem_topo->m_mem_data[i].m_used)
 			continue;
-
+		}
 		err = xocl_srsr_save_calib(xdev, ddr_idx);
 		if (err)
 			ICAP_DBG(icap, "Not able to save mem %d calibration data.", i);
@@ -2302,7 +2301,7 @@ static void icap_save_calib(struct icap *icap)
 
 static void icap_calib(struct icap *icap, bool retain)
 {
-	int err = 0, i = 0, ddr_idx = -1;
+	int err = 0, i = 0, ddr_idx = 0;
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 	struct mem_topology *mem_topo = icap->mem_topo;
 
@@ -2313,12 +2312,11 @@ static void icap_calib(struct icap *icap, bool retain)
 	for (; i < mem_topo->m_count; ++i) {
 		if (convert_mem_type(mem_topo->m_mem_data[i].m_tag) != MEM_DRAM)
 			continue;
-		else
+
+		if (!mem_topo->m_mem_data[i].m_used) {
 			ddr_idx++;
-
-		if (!mem_topo->m_mem_data[i].m_used)
 			continue;
-
+		}
 		err = xocl_srsr_calib(xdev, ddr_idx, retain);
 		if (err)
 			ICAP_DBG(icap, "Not able to calibrate mem %d.", i);
