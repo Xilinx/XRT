@@ -987,7 +987,7 @@ int qdma4_queue_list(unsigned long dev_hndl, char *buf, int buflen)
 	struct qdma_descq *descq = NULL;
 	char *cur = buf;
 	char * const end = buf + buflen;
-	uint32_t h2c_qcnt = 0, c2h_qcnt = 0, cmpt_qcnt = 0;
+	int h2c_qcnt = 0, c2h_qcnt = 0, cmpt_qcnt = 0;
 	int i;
 
 	/** make sure that input buffer is not empty, else return error */
@@ -1034,7 +1034,7 @@ int qdma4_queue_list(unsigned long dev_hndl, char *buf, int buflen)
 #else
 	qdma_dev_get_active_qcnt(xdev, &h2c_qcnt, &c2h_qcnt, &cmpt_qcnt);
 #endif
-	cur += snprintf(cur, end - cur, "H2C Q: %u, C2H Q: %u, CMPT Q %u.\n",
+	cur += snprintf(cur, end - cur, "H2C Q: %d, C2H Q: %d, CMPT Q %d.\n",
 				h2c_qcnt, c2h_qcnt, cmpt_qcnt);
 	if (cur >= end)
 		goto handle_truncation;
@@ -1042,7 +1042,7 @@ int qdma4_queue_list(unsigned long dev_hndl, char *buf, int buflen)
 	/** traverse through the h2c and c2h queue list
 	 *  and dump the descriptors
 	 */
-	if (h2c_qcnt) {
+	if (h2c_qcnt > 0) {
 		descq = qdev->h2c_descq;
 		for (i = 0; i < h2c_qcnt; i++, descq++) {
 			lock_descq(descq);
@@ -1056,7 +1056,7 @@ int qdma4_queue_list(unsigned long dev_hndl, char *buf, int buflen)
 		}
 	}
 
-	if (c2h_qcnt) {
+	if (c2h_qcnt > 0) {
 		descq = qdev->c2h_descq;
 		for (i = 0; i < c2h_qcnt; i++, descq++) {
 			lock_descq(descq);
@@ -1070,7 +1070,7 @@ int qdma4_queue_list(unsigned long dev_hndl, char *buf, int buflen)
 		}
 	}
 
-	if (cmpt_qcnt) {
+	if (cmpt_qcnt > 0) {
 		descq = qdev->cmpt_descq;
 		for (i = 0; i < cmpt_qcnt; i++, descq++) {
 			lock_descq(descq);

@@ -693,7 +693,7 @@ int qdma4_device_open(const char *mod_name, struct qdma_dev_conf *conf,
 	int rv = 0;
 #ifndef __QDMA_VF__
 	int qbase = QDMA_QBASE;
-	int qmax = QDMA_TOTAL_Q;
+	unsigned int qmax = QDMA_TOTAL_Q;
 #endif
 
 	*dev_hndl = 0UL;
@@ -827,9 +827,10 @@ int qdma4_device_open(const char *mod_name, struct qdma_dev_conf *conf,
 		goto unmap_bars;
 	}
 
+	qmax = xdev->conf.qsets_max;
 	rv = qdma_dev_qinfo_get(xdev->dma_device_index, xdev->func_id,
-				&xdev->conf.qsets_base,
-				(uint32_t *) &xdev->conf.qsets_max);
+				&xdev->conf.qsets_base, &qmax);
+	xdev->conf.qsets_max = qmax;
 	if (rv < 0) {
 		rv = qdma_dev_entry_create(xdev->dma_device_index,
 				xdev->func_id);
