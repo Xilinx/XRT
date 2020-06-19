@@ -998,8 +998,6 @@ void xocl_mem_info(struct xocl_drm *drm_p, struct mem_topology *topo)
 	struct mem_data                 *mem_data = NULL;                               
 	struct xcl_mem_group            *mem_group = NULL;                              
 	struct xcl_mem_group_info       *m_grp = NULL;                                  
-	struct xcl_mem_map              *mem_map = NULL;                                
-	struct xcl_mem_map_info         *m_map = NULL;                                  
 
 	xocl_info(drm_p->ddev->dev, "\nMemory Bank Information");                       
 	for (i = 0; i < topo->m_count; i++) {                                           
@@ -1016,7 +1014,7 @@ void xocl_mem_info(struct xocl_drm *drm_p, struct mem_topology *topo)
 
 	mem_group = drm_p->m_connect->mem_group;                                        
 	if (!mem_group)                                                                 
-		return 0;                                                               
+		return;                                                               
 
 	xocl_info(drm_p->ddev->dev, "\nMemory Group Information");                      
 	for (i = 0; i < mem_group->g_count; i++) {                                      
