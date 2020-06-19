@@ -1749,8 +1749,8 @@ static void eqdma_fill_intr_ctxt(struct qdma_indirect_intr_ctxt *intr_ctxt)
 	eqdma_ind_intr_ctxt_entries[7].value = intr_ctxt->pidx;
 	eqdma_ind_intr_ctxt_entries[8].value = intr_ctxt->at;
 	eqdma_ind_intr_ctxt_entries[9].value = intr_ctxt->host_id;
-	eqdma_ind_intr_ctxt_entries[9].value = intr_ctxt->pasid;
-	eqdma_ind_intr_ctxt_entries[9].value = intr_ctxt->pasid_en;
+	eqdma_ind_intr_ctxt_entries[10].value = intr_ctxt->pasid;
+	eqdma_ind_intr_ctxt_entries[11].value = intr_ctxt->pasid_en;
 }
 
 /*

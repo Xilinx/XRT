@@ -261,8 +261,6 @@ static void data_intr_direct(struct xlnx_dma_dev *xdev, int vidx, int irq,
 			  flags);
 	list_for_each_safe(entry, tmp, descq_list) {
 		descq = container_of(entry, struct qdma_descq, intr_list);
-		if (!descq)
-			continue;
 
 		if (descq->conf.ping_pong_en &&
 				descq->conf.q_type == Q_C2H && descq->conf.st)
@@ -902,7 +900,8 @@ int qdma4_intr_ring_setup(struct xlnx_dma_dev *xdev)
 	return 0;
 
 err_out:
-	while (--counter >= 0) {
+	while (counter > 0) {
+		counter--;
 		intr_coal_list_entry = (intr_coal_list + counter);
 		intr_ring_free(xdev, intr_coal_list_entry->intr_rng_num_entries,
 				sizeof(union qdma_intr_ring),

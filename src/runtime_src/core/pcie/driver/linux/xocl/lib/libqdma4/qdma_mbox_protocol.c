@@ -1327,7 +1327,7 @@ int qmda_mbox_compose_vf_online(uint16_t func_id,
 		return -QDMA_ERR_INV_PARAM;
 	}
 
-	qdma_mbox_memset(raw_data, 0, sizeof(union qdma_mbox_txrx));
+	qdma_mbox_memset(raw_data, 0, MBOX_MSG_REG_MAX*sizeof(u32));
 	msg->hdr.op = MBOX_OP_HELLO;
 	msg->hdr.src_func_id = func_id;
 	msg->fmap.qbase = (uint32_t)*qbase;
@@ -1348,7 +1348,7 @@ int qdma_mbox_compose_vf_offline(uint16_t func_id,
 		return -QDMA_ERR_INV_PARAM;
 	}
 
-	qdma_mbox_memset(raw_data, 0, sizeof(union qdma_mbox_txrx));
+	qdma_mbox_memset(raw_data, 0, MBOX_MSG_REG_MAX*sizeof(u32));
 	msg->hdr.op = MBOX_OP_BYE;
 	msg->hdr.src_func_id = func_id;
 
@@ -1367,7 +1367,7 @@ int qdma_mbox_compose_vf_qreq(uint16_t func_id,
 		return -QDMA_ERR_INV_PARAM;
 	}
 
-	qdma_mbox_memset(raw_data, 0, sizeof(union qdma_mbox_txrx));
+	qdma_mbox_memset(raw_data, 0, MBOX_MSG_REG_MAX*sizeof(u32));
 	msg->hdr.op = MBOX_OP_QREQ;
 	msg->hdr.src_func_id = func_id;
 	msg->fmap.qbase = qbase;
@@ -1390,7 +1390,7 @@ int qdma_mbox_compose_vf_notify_qadd(uint16_t func_id,
 		return -QDMA_ERR_INV_PARAM;
 	}
 
-	qdma_mbox_memset(raw_data, 0, sizeof(union qdma_mbox_txrx));
+	qdma_mbox_memset(raw_data, 0, MBOX_MSG_REG_MAX*sizeof(u32));
 	msg->hdr.op = MBOX_OP_QNOTIFY_ADD;
 	msg->hdr.src_func_id = func_id;
 	msg->q_notify.qid_hw = qid_hw;
@@ -1411,7 +1411,7 @@ int qdma_mbox_compose_vf_get_device_active_qcnt(uint16_t func_id,
 		return -QDMA_ERR_INV_PARAM;
 	}
 
-	qdma_mbox_memset(raw_data, 0, sizeof(union qdma_mbox_txrx));
+	qdma_mbox_memset(raw_data, 0, MBOX_MSG_REG_MAX*sizeof(u32));
 	msg->hdr.op = MBOX_OP_GET_QACTIVE_CNT;
 	msg->hdr.src_func_id = func_id;
 
@@ -1432,7 +1432,7 @@ int qdma_mbox_compose_vf_notify_qdel(uint16_t func_id,
 		return -QDMA_ERR_INV_PARAM;
 	}
 
-	qdma_mbox_memset(raw_data, 0, sizeof(union qdma_mbox_txrx));
+	qdma_mbox_memset(raw_data, 0, MBOX_MSG_REG_MAX*sizeof(u32));
 	msg->hdr.op = MBOX_OP_QNOTIFY_DEL;
 	msg->hdr.src_func_id = func_id;
 	msg->q_notify.qid_hw = qid_hw;
@@ -1454,7 +1454,7 @@ int qdma_mbox_compose_vf_fmap_prog(uint16_t func_id,
 		return -QDMA_ERR_INV_PARAM;
 	}
 
-	qdma_mbox_memset(raw_data, 0, sizeof(union qdma_mbox_txrx));
+	qdma_mbox_memset(raw_data, 0, MBOX_MSG_REG_MAX*sizeof(u32));
 	msg->hdr.op = MBOX_OP_FMAP;
 	msg->hdr.src_func_id = func_id;
 	msg->fmap.qbase = (uint32_t)qbase;
@@ -1478,7 +1478,7 @@ int qdma_mbox_compose_vf_qctxt_write(uint16_t func_id,
 		return -QDMA_ERR_INV_PARAM;
 	}
 
-	qdma_mbox_memset(raw_data, 0, sizeof(union qdma_mbox_txrx));
+	qdma_mbox_memset(raw_data, 0, MBOX_MSG_REG_MAX*sizeof(u32));
 	msg->hdr.op = MBOX_OP_QCTXT_WRT;
 	msg->hdr.src_func_id = func_id;
 	msg->qctxt.qid_hw = qid_hw;
@@ -1506,7 +1506,7 @@ int qdma_mbox_compose_vf_qctxt_read(uint16_t func_id,
 		return -QDMA_ERR_INV_PARAM;
 	}
 
-	qdma_mbox_memset(raw_data, 0, sizeof(union qdma_mbox_txrx));
+	qdma_mbox_memset(raw_data, 0, MBOX_MSG_REG_MAX*sizeof(u32));
 	msg->hdr.op = MBOX_OP_QCTXT_RD;
 	msg->hdr.src_func_id = func_id;
 	msg->qctxt.qid_hw = qid_hw;
@@ -1531,7 +1531,7 @@ int qdma_mbox_compose_vf_qctxt_invalidate(uint16_t func_id,
 		return -QDMA_ERR_INV_PARAM;
 	}
 
-	qdma_mbox_memset(raw_data, 0, sizeof(union qdma_mbox_txrx));
+	qdma_mbox_memset(raw_data, 0, MBOX_MSG_REG_MAX*sizeof(u32));
 	msg->hdr.op = MBOX_OP_QCTXT_INV;
 	msg->hdr.src_func_id = func_id;
 	msg->qctxt.qid_hw = qid_hw;
@@ -1556,7 +1556,7 @@ int qdma_mbox_compose_vf_qctxt_clear(uint16_t func_id,
 		return -QDMA_ERR_INV_PARAM;
 	}
 
-	qdma_mbox_memset(raw_data, 0, sizeof(union qdma_mbox_txrx));
+	qdma_mbox_memset(raw_data, 0, MBOX_MSG_REG_MAX*sizeof(u32));
 	msg->hdr.op = MBOX_OP_QCTXT_CLR;
 	msg->hdr.src_func_id = func_id;
 	msg->qctxt.qid_hw = qid_hw;
@@ -1579,7 +1579,7 @@ int qdma_mbox_compose_csr_read(uint16_t func_id,
 		return -QDMA_ERR_INV_PARAM;
 	}
 
-	qdma_mbox_memset(raw_data, 0, sizeof(union qdma_mbox_txrx));
+	qdma_mbox_memset(raw_data, 0, MBOX_MSG_REG_MAX*sizeof(u32));
 	msg->hdr.op = MBOX_OP_CSR;
 	msg->hdr.src_func_id = func_id;
 
@@ -1599,7 +1599,7 @@ int qdma_mbox_compose_vf_intr_ctxt_write(uint16_t func_id,
 		return -QDMA_ERR_INV_PARAM;
 	}
 
-	qdma_mbox_memset(raw_data, 0, sizeof(union qdma_mbox_txrx));
+	qdma_mbox_memset(raw_data, 0, MBOX_MSG_REG_MAX*sizeof(u32));
 	msg->hdr.op = MBOX_OP_INTR_CTXT_WRT;
 	msg->hdr.src_func_id = func_id;
 	qdma_mbox_memcpy(&msg->intr_ctxt.ctxt, intr_ctxt,
@@ -1621,7 +1621,7 @@ int qdma_mbox_compose_vf_intr_ctxt_read(uint16_t func_id,
 		return -QDMA_ERR_INV_PARAM;
 	}
 
-	qdma_mbox_memset(raw_data, 0, sizeof(union qdma_mbox_txrx));
+	qdma_mbox_memset(raw_data, 0, MBOX_MSG_REG_MAX*sizeof(u32));
 	msg->hdr.op = MBOX_OP_INTR_CTXT_RD;
 	msg->hdr.src_func_id = func_id;
 	qdma_mbox_memcpy(&msg->intr_ctxt.ctxt, intr_ctxt,
@@ -1643,7 +1643,7 @@ int qdma_mbox_compose_vf_intr_ctxt_clear(uint16_t func_id,
 		return -QDMA_ERR_INV_PARAM;
 	}
 
-	qdma_mbox_memset(raw_data, 0, sizeof(union qdma_mbox_txrx));
+	qdma_mbox_memset(raw_data, 0, MBOX_MSG_REG_MAX*sizeof(u32));
 	msg->hdr.op = MBOX_OP_INTR_CTXT_CLR;
 	msg->hdr.src_func_id = func_id;
 	qdma_mbox_memcpy(&msg->intr_ctxt.ctxt, intr_ctxt,
@@ -1665,7 +1665,7 @@ int qdma_mbox_compose_vf_intr_ctxt_invalidate(uint16_t func_id,
 		return -QDMA_ERR_INV_PARAM;
 	}
 
-	qdma_mbox_memset(raw_data, 0, sizeof(union qdma_mbox_txrx));
+	qdma_mbox_memset(raw_data, 0, MBOX_MSG_REG_MAX*sizeof(u32));
 	msg->hdr.op = MBOX_OP_INTR_CTXT_INV;
 	msg->hdr.src_func_id = func_id;
 	qdma_mbox_memcpy(&msg->intr_ctxt.ctxt, intr_ctxt,
@@ -1918,7 +1918,7 @@ int qdma_mbox_compose_vf_reset_message(uint32_t *raw_data, uint8_t src_funcid,
 	if (!raw_data)
 		return -QDMA_ERR_INV_PARAM;
 
-	qdma_mbox_memset(raw_data, 0, sizeof(union qdma_mbox_txrx));
+	qdma_mbox_memset(raw_data, 0, MBOX_MSG_REG_MAX*sizeof(u32));
 	msg->hdr.op = MBOX_OP_RESET_PREPARE;
 	msg->hdr.src_func_id = src_funcid;
 	msg->hdr.dst_func_id = dest_funcid;
@@ -1933,7 +1933,7 @@ int qdma_mbox_compose_pf_reset_done_message(uint32_t *raw_data,
 	if (!raw_data)
 		return -QDMA_ERR_INV_PARAM;
 
-	qdma_mbox_memset(raw_data, 0, sizeof(union qdma_mbox_txrx));
+	qdma_mbox_memset(raw_data, 0, MBOX_MSG_REG_MAX*sizeof(u32));
 	msg->hdr.op = MBOX_OP_RESET_DONE;
 	msg->hdr.src_func_id = src_funcid;
 	msg->hdr.dst_func_id = dest_funcid;
@@ -1948,7 +1948,7 @@ int qdma_mbox_compose_pf_offline(uint32_t *raw_data, uint8_t src_funcid,
 	if (!raw_data)
 		return -QDMA_ERR_INV_PARAM;
 
-	qdma_mbox_memset(raw_data, 0, sizeof(union qdma_mbox_txrx));
+	qdma_mbox_memset(raw_data, 0, MBOX_MSG_REG_MAX*sizeof(u32));
 	msg->hdr.op = MBOX_OP_PF_BYE;
 	msg->hdr.src_func_id = src_funcid;
 	msg->hdr.dst_func_id = dest_funcid;
