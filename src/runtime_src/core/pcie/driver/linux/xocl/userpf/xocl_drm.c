@@ -918,9 +918,9 @@ int xocl_init_connectivity(struct xocl_drm *drm_p, struct mem_topology *topo)
 	struct xcl_mem_map *mem_map = NULL;
 	struct xcl_mem_group_info m_group;
 	struct ip_layout *layout = NULL;
+	struct connection *conn = NULL;
 	int group_id = -1;
-	int ip_cnt = 0;
-	int arg_cnt = 0;
+	int i = 0;
 	int err = 0;
 
 	err = XOCL_GET_IP_LAYOUT(drm_p->xdev, layout);
@@ -951,13 +951,12 @@ int xocl_init_connectivity(struct xocl_drm *drm_p, struct mem_topology *topo)
 	}
 
 	/* Create groups for range of Banks */
-	for (ip_cnt = 0; ip_cnt < layout->m_count;) {
+	for (i = 0; i < connect->m_count; i++) {
+		conn = &connect->m_connection[i];
 		memset((void *)&m_group, 0, sizeof(struct xcl_mem_group_info));
-		err = init_mem_group(drm_p, connect, ip_cnt, arg_cnt, topo,
-				     &m_group);
+		err = init_mem_group(drm_p, connect, conn->m_ip_layout_index,
+				     conn->arg_index, topo, &m_group);
 		if (err) {
-			arg_cnt = 0;
-			ip_cnt++;
 			if (err == -EAGAIN)
 				continue;
 			else
@@ -966,8 +965,8 @@ int xocl_init_connectivity(struct xocl_drm *drm_p, struct mem_topology *topo)
 
 		/* Update Memory connection mapping */
 		mem_map = drm_p->m_connect->mem_map;
-		mem_map->m_map[mem_map->m_count]->cu_id = ip_cnt;
-		mem_map->m_map[mem_map->m_count]->arg_id = arg_cnt;
+		mem_map->m_map[mem_map->m_count]->cu_id = conn->m_ip_layout_index;
+		mem_map->m_map[mem_map->m_count]->arg_id = conn->arg_index;
 		group_id = get_mem_group(drm_p->m_connect, &m_group);
 		if (group_id < 0) {
 			err = -EINVAL;
@@ -976,7 +975,6 @@ int xocl_init_connectivity(struct xocl_drm *drm_p, struct mem_topology *topo)
 
 		mem_map->m_map[mem_map->m_count]->grp_id = group_id;
 		mem_map->m_count++;
-		arg_cnt++;
 	}
 
 	XOCL_PUT_IP_LAYOUT(drm_p->xdev);
@@ -993,6 +991,48 @@ failed:
 
 	return err;
 }
+
+void xocl_mem_info(struct xocl_drm *drm_p, struct mem_topology *topo)
+{                                                                                       
+	int i;                                                                          
+	size_t ddr_bank_size = 0;                                                       
+	struct mem_data                 *mem_data = NULL;                               
+	struct xcl_mem_group            *mem_group = NULL;                              
+	struct xcl_mem_group_info       *m_grp = NULL;                                  
+	struct xcl_mem_map              *mem_map = NULL;                                
+	struct xcl_mem_map_info         *m_map = NULL;                                  
+
+	xocl_info(drm_p->ddev->dev, "\nMemory Bank Information");                       
+	for (i = 0; i < topo->m_count; i++) {                                           
+		mem_data = &topo->m_mem_data[i];                                        
+		ddr_bank_size = mem_data->m_size * 1024;                                
+
+		xocl_info(drm_p->ddev->dev, "  Memory Bank: %s", mem_data->m_tag);      
+		xocl_info(drm_p->ddev->dev, "  Base Address:0x%llx",                    
+			  mem_data->m_base_address);                                    
+		xocl_info(drm_p->ddev->dev, "  Size:0x%lx", ddr_bank_size);             
+		xocl_info(drm_p->ddev->dev, "  Type:%d", mem_data->m_type);             
+		xocl_info(drm_p->ddev->dev, "  Used:%d", mem_data->m_used);             
+	}                                                                               
+
+	mem_group = drm_p->m_connect->mem_group;                                        
+	if (!mem_group)                                                                 
+		return 0;                                                               
+
+	xocl_info(drm_p->ddev->dev, "\nMemory Group Information");                      
+	for (i = 0; i < mem_group->g_count; i++) {                                      
+		m_grp = mem_group->m_group[i];                                          
+		xocl_info(drm_p->ddev->dev, "  Memory Group: %d", i);                   
+		xocl_info(drm_p->ddev->dev, "   Low Bank Index: %d",                    
+			  m_grp->l_bank_idx);                                           
+		xocl_info(drm_p->ddev->dev, "   High Bank Index: %d",                   
+			  m_grp->h_bank_idx);                                           
+		xocl_info(drm_p->ddev->dev, "   Base Address:0x%llx",                   
+			  m_grp->l_start_addr);                                         
+		xocl_info(drm_p->ddev->dev, "   Base Address:0x%llx",                   
+			  m_grp->h_end_addr);                                           
+	}                                                                               
+}                                                                                       
 
 int xocl_init_mem(struct xocl_drm *drm_p)
 {
@@ -1050,18 +1090,6 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	}
 	err = 0;
 
-	for (i = 0; i < topo->m_count; i++) {
-		mem_data = &topo->m_mem_data[i];
-		ddr_bank_size = mem_data->m_size * 1024;
-
-		xocl_info(drm_p->ddev->dev, "  Memory Bank: %s", mem_data->m_tag);
-		xocl_info(drm_p->ddev->dev, "  Base Address:0x%llx",
-			mem_data->m_base_address);
-		xocl_info(drm_p->ddev->dev, "  Size:0x%lx", ddr_bank_size);
-		xocl_info(drm_p->ddev->dev, "  Type:%d", mem_data->m_type);
-		xocl_info(drm_p->ddev->dev, "  Used:%d", mem_data->m_used);
-	}
-
 	mm_stat_size = sizeof(struct drm_xocl_mm_stat);
 	size = drm_p->m_connect->mem_group->g_count * sizeof(void *);
 	drm_p->mm_usage_stat = vzalloc(size);
@@ -1076,6 +1104,8 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 			goto done;
 		}
 	}
+
+	xocl_mem_info(drm_p, topo);
 
 	/* Initialize with max and min possible value */
 	mm_start_addr = 0xffffFFFFffffFFFF;
