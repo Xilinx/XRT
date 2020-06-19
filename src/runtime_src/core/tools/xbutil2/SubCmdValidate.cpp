@@ -571,68 +571,36 @@ m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
   _ptTest.put("status", "skipped");
 }
 
-// list of tests
-using TestCollection = std::vector<std::function<void(const std::shared_ptr<xrt_core::device>&, boost::property_tree::ptree&)>>;
-static const TestCollection testSuite = {
-  kernelVersionTest,
-  auxConnectionTest,
-  pcieLinkTest,
-  scVersionTest,
-  verifyKernelTest,
-  dmaTest,
-  bandwidthKernelTest,
-  p2pTest,
-  m2mTest
-};
+/*
+* helper function to initialize test info
+*/
+static boost::property_tree::ptree
+create_init_test(const std::string& name, const std::string& desc) {
+  boost::property_tree::ptree _ptTest;
+  _ptTest.put("name", name);
+  _ptTest.put("description", desc);
+  return _ptTest;
+}
 
-// list of ptrees for each test outputs
-boost::property_tree::ptree _ptKernelVersion;
-boost::property_tree::ptree _ptAuxConnection;
-boost::property_tree::ptree _ptpcieLinkTest;
-boost::property_tree::ptree _ptscVersionTest;
-boost::property_tree::ptree _ptverifyKernelTest;
-boost::property_tree::ptree _ptdmaTest;
-boost::property_tree::ptree _ptbandwidthKernelTest;
-boost::property_tree::ptree _ptp2pTest;
-boost::property_tree::ptree _ptm2mTest;
-static std::vector<boost::property_tree::ptree> ptInfo = { 
-  _ptKernelVersion, 
-  _ptAuxConnection,
-  _ptpcieLinkTest,
-  _ptscVersionTest,
-  _ptverifyKernelTest,
-  _ptdmaTest,
-  _ptbandwidthKernelTest,
-  _ptp2pTest,
-  _ptm2mTest,
+struct TestCollection {
+  boost::property_tree::ptree ptTest;
+  std::function<void(const std::shared_ptr<xrt_core::device>&, boost::property_tree::ptree&)> testHandle;
 };
 
 /*
- * helper function to initialize test info
- */
-static void 
-initTest(boost::property_tree::ptree& _ptDevice, int id, const std::string& name, const std::string& desc)
-{
-  _ptDevice.put("id", id);
-  _ptDevice.put("name", name);
-  _ptDevice.put("description", desc);
-}
-
-/* 
- * intialize test information before running the test suite
- */
-static void 
-initTests(){
-  initTest(ptInfo[0], 1, "Kernel version", "Check if kernel version is supported by XRT");
-  initTest(ptInfo[1], 2, "Aux connection", "Check if auxiliary power is connected");
-  initTest(ptInfo[2], 3, "PCIE link", "Check if PCIE link is active");
-  initTest(ptInfo[3], 4, "SC version", "Check if SC firmware is up-to-date");
-  initTest(ptInfo[4], 5, "Verify kernel", "Run 'Hello World' kernel test");
-  initTest(ptInfo[5], 6, "DMA", "Run dma test ");
-  initTest(ptInfo[6], 7, "Bandwidth kernel", "Run 'bandwidth kernel' and check the throughput");
-  initTest(ptInfo[7], 8, "Peer to peer bar", "Run P2P test");
-  initTest(ptInfo[8], 9, "Memory to memory DMA", "Run M2M test");
-}
+* create test suite
+*/
+static std::vector<TestCollection> testSuite = {
+  { create_init_test("Kernel version", "Check if kernel version is supported by XRT"), kernelVersionTest },
+  { create_init_test("Aux connection", "Check if auxiliary power is connected"), auxConnectionTest }, 
+  { create_init_test("PCIE link", "Check if PCIE link is active"), pcieLinkTest },
+  { create_init_test("SC version", "Check if SC firmware is up-to-date"), scVersionTest },
+  { create_init_test("Verify kernel", "Run 'Hello World' kernel test"), verifyKernelTest },
+  { create_init_test("DMA", "Run dma test "), dmaTest },
+  { create_init_test("Bandwidth kernel", "Run 'bandwidth kernel' and check the throughput"), bandwidthKernelTest },
+  { create_init_test("Peer to peer bar", "Run P2P test"), p2pTest },
+  { create_init_test("Memory to memory DMA", "Run M2M test"), m2mTest }
+};
 
 /* 
  * print basic information about a test
@@ -729,15 +697,15 @@ run_test_suite_device(const std::shared_ptr<xrt_core::device>& device, boost::pr
   int _test_suite_size = quick ? 5 : static_cast<int>(testSuite.size());
 
   get_platform_info(device, _ptDeviceInfo, json);
-  initTests();
   
   for(int i = 0; i < _test_suite_size; i++) {
+    testSuite[i].ptTest.put("id", i+1);
     if(!json)
-      pretty_print_test_desc(ptInfo[i], _test_suite_size);
-    testSuite[i](device, ptInfo[i]);
-    _ptDeviceTestSuite.push_back( std::make_pair("", ptInfo[i]) );
+      pretty_print_test_desc(testSuite[i].ptTest, _test_suite_size);
+    testSuite[i].testHandle(device, testSuite[i].ptTest);
+    _ptDeviceTestSuite.push_back( std::make_pair("", testSuite[i].ptTest) );
     if(!json)
-      pretty_print_test_run(ptInfo[i], status);
+      pretty_print_test_run(testSuite[i].ptTest, status);
     //if a test fails, exit immideately 
     if(status == test_status::failed) {
       break;
