@@ -92,6 +92,8 @@ int
 xrtRunUpdateArgV(xrtRunHandle rhdl, int index, const void* value, size_t bytes);
 ////////////////////////////////////////////////////////////////
 
+constexpr size_t operator"" _kb(unsigned long long v)  { return 1024u * v; }
+
 namespace {
 
 inline std::vector<uint32_t>
@@ -157,19 +159,19 @@ public:
   enum class access_mode : bool { exclusive = false, shared = true };
 
   static std::shared_ptr<ip_context>
-  open(xrt_core::device* device, const xuid_t xclbin_id, unsigned int ipidx, access_mode am)
+  open(xrt_core::device* device, const xuid_t xclbin_id, const ip_data* ip, unsigned int ipidx, access_mode am)
   {
     static std::vector<std::weak_ptr<ip_context>> ips(128);
-    auto ip = ips[ipidx].lock();
-    if (!ip) {
-      ip = std::shared_ptr<ip_context>(new ip_context(device, xclbin_id, ipidx, am));
-      ips[ipidx] = ip;
+    auto ipctx = ips[ipidx].lock();
+    if (!ipctx) {
+      ipctx = std::shared_ptr<ip_context>(new ip_context(device, xclbin_id, ip, ipidx, am));
+      ips[ipidx] = ipctx;
     }
 
-    if (ip->access != am)
+    if (ipctx->access != am)
       throw std::runtime_error("Conflicting access mode for IP(" + std::to_string(ipidx) + ")");
 
-    return ip;
+    return ipctx;
   }
 
   // For symmetry
@@ -177,23 +179,50 @@ public:
   close()
   {}
 
+  access_mode
+  get_access_mode() const
+  {
+    return access;
+  }
+
+  size_t
+  get_size() const
+  {
+    return size;
+  }
+
+  uint64_t
+  get_addrees() const
+  {
+    return address;
+  }
+
+  unsigned int
+  get_index() const
+  {
+    return idx;
+  }
+
   ~ip_context()
   {
     device->close_context(xid, idx);
   }
 
 private:
-  ip_context(xrt_core::device* dev, const xuid_t xclbin_id, unsigned int ipidx, access_mode am)
-    : device(dev), idx(ipidx), access(am)
+  ip_context(xrt_core::device* dev, const xuid_t xclbin_id, const ip_data* ip, 
+             unsigned int ipidx, access_mode am)
+    : device(dev), idx(ipidx), address(ip->m_base_address), size(64_kb), access(am)
   {
     uuid_copy(xid, xclbin_id);
     device->open_context(xid, idx, std::underlying_type<access_mode>::type(am));
   }
 
   xrt_core::device* device;
-  unsigned int idx;
-  access_mode access;
   xuid_t xid;
+  unsigned int idx;
+  uint64_t address;
+  size_t size;
+  access_mode access;
 };
 
 // class kernel_command - Immplements command API expected by schedulers
@@ -609,6 +638,22 @@ class kernel_impl
     return grpidx;
   }
 
+  unsigned int
+  get_ipidx_or_error(size_t offset) const
+  {
+    if (ipctxs.size() != 1)
+      throw std::runtime_error("Cannot read or write kernel with multiple compute units");
+    auto& ipctx = ipctxs.back();
+    auto mode = ipctx->get_access_mode();
+    if (mode != ip_context::access_mode::exclusive)
+      throw std::runtime_error("Cannot read or write kernel with shared access");
+
+    if ((offset + sizeof(uint32_t)) > ipctx->get_size())
+        throw std::out_of_range("Cannot read or write outside kernel register space");
+
+    return ipctx->get_index();
+  }
+
 public:
   // kernel_type - constructor
   //
@@ -648,7 +693,7 @@ public:
       if (itr == cus.end())
         throw std::runtime_error("unexpected error");
       auto idx = std::distance(cus.begin(), itr);
-      ipctxs.emplace_back(ip_context::open(device->get_core_device(), xclbin_id, idx, am));
+      ipctxs.emplace_back(ip_context::open(device->get_core_device(), xclbin_id, cu, idx, am));
       cumask.set(idx);
     }
 
@@ -672,6 +717,22 @@ public:
   group_id(int argno)
   {
     return args.at(argno).group_id();
+  }
+
+  uint32_t
+  read_register(uint32_t offset) const
+  {
+    auto idx = get_ipidx_or_error(offset);
+    uint32_t value = 0;
+    device->core_device->reg_read(idx, offset, &value);
+    return value;
+  }
+
+  void
+  write_register(uint32_t offset, uint32_t data)
+  {
+    auto idx = get_ipidx_or_error(offset);
+    device->core_device->reg_write(idx, offset, data);
   }
 
   device_type*
@@ -1203,6 +1264,21 @@ kernel(xclDeviceHandle dhdl, const xuid_t xclbin_id, const std::string& name, bo
       exclusive ? ip_context::access_mode::exclusive : ip_context::access_mode::shared))
 {}
 
+uint32_t
+kernel::
+read_register(uint32_t offset) const
+{
+  return handle->read_register(offset);
+}
+
+void
+kernel::
+write_register(uint32_t offset, uint32_t data)
+{
+  handle->write_register(offset, data);
+}
+
+
 int
 kernel::
 group_id(int argno) const
@@ -1274,6 +1350,43 @@ xrtKernelArgGroupId(xrtKernelHandle khdl, int argno)
   try {
     auto kernel = get_kernel(khdl);
     return kernel->group_id(argno);
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return -1;
+  }
+}
+
+int
+xrtKernelReadRegister(xrtKernelHandle khdl, uint32_t offset, uint32_t* datap)
+{
+  try {
+    auto kernel = get_kernel(khdl);
+    *datap = kernel->read_register(offset);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return -1;
+  }
+  
+}
+
+int
+xrtKernelWriteRegister(xrtKernelHandle khdl, uint32_t offset, uint32_t data)
+{
+  try {
+    auto kernel = get_kernel(khdl);
+    kernel->write_register(offset, data);
+    return 0;
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
