@@ -41,7 +41,7 @@ inline void TraceS2MM::write32(uint64_t offset, uint32_t val)
     write(offset, 4, &val);
 }
 
-void TraceS2MM::init(uint64_t bo_size, int64_t bufaddr)
+void TraceS2MM::init(uint64_t bo_size, int64_t bufaddr, bool circular)
 {
     if(out_stream)
         (*out_stream) << " TraceS2MM::init " << std::endl;
@@ -57,13 +57,11 @@ void TraceS2MM::init(uint64_t bo_size, int64_t bufaddr)
     uint64_t word_count = bo_size / TRACE_PACKET_SIZE;
     write32(TS2MM_COUNT_LOW, static_cast<uint32_t>(word_count));
     write32(TS2MM_COUNT_HIGH, static_cast<uint32_t>(word_count >> 32));
-
-    uint32_t regValue = 0;
-    read(0x44, 4, &regValue);
-    std::cout << "initial continuous value : " << regValue << std::endl;
-    write32(0x44, 0x1);
-    read(0x44, 4, &regValue);
-    std::cout << "updated continuous value : " << regValue << std::endl;
+    // Enable use of circular buffer
+    if (supportsCircBuf()) {
+      uint32_t regValue = circular ? 1 : 0;
+      write32(TS2MM_CIRCULAR_BUF, regValue);
+    }
 
     // Start Data Mover
     write32(TS2MM_AP_CTRL, TS2MM_AP_START);

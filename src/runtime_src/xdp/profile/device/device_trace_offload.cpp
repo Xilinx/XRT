@@ -25,10 +25,8 @@ DeviceTraceOffload::DeviceTraceOffload(DeviceIntf* dInt,
                                    DeviceTraceLogger* dTraceLogger,
                                    uint64_t sleep_interval_ms,
                                    uint64_t trbuf_sz,
-                                   bool start_thread,
-                                   bool circular_buffer)
+                                   bool start_thread)
                    : sleep_interval_ms(sleep_interval_ms),
-                     circular_buffer(circular_buffer),
                      m_trbuf_alloc_sz(trbuf_sz),
                      dev_intf(dInt),
                      deviceTraceLogger(dTraceLogger)
@@ -40,7 +38,7 @@ DeviceTraceOffload::DeviceTraceOffload(DeviceIntf* dInt,
     m_read_trace = std::bind(&DeviceTraceOffload::read_trace_s2mm, this);
   }
 
-  previous_clock_training_time = std::chrono::system_clock::now();
+  m_prev_clk_train_time = std::chrono::system_clock::now();
 
   if (start_thread) {
     start_offload(OffloadThreadType::TRACE);
@@ -89,6 +87,14 @@ void DeviceTraceOffload::start_offload(OffloadThreadType type)
 {
   if (status == OffloadThreadStatus::RUNNING)
     return;
+
+  // If using trace offload thread then enable
+  // circular buffer by default
+  if (dev_intf->hasTs2mm()) {
+    auto tdma = dev_intf->getTs2mm();
+    m_use_circ_buf = tdma->supportsCircBuf();
+  }
+
   std::lock_guard<std::mutex> lock(status_lock);
   status = OffloadThreadStatus::RUNNING;
   if (type == OffloadThreadType::TRACE)
@@ -106,18 +112,22 @@ void DeviceTraceOffload::stop_offload()
 void DeviceTraceOffload::train_clock()
 {
   auto now = std::chrono::system_clock::now();
-  auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(now - previous_clock_training_time).count();
+  auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(now - m_prev_clk_train_time).count();
+
+  // Clock training data is accurate upto 3 seconds
+  // 500 ms is a reasonable time
+  // No need of making it user configurable
   bool enough_time_passed = milliseconds >= 500 ? true: false;
 
-  if (enough_time_passed || force_clock_training) {
-    dev_intf->clockTraining(force_clock_training);
-    previous_clock_training_time = now;
+  if (enough_time_passed || m_force_clk_train) {
+    dev_intf->clockTraining(m_force_clk_train);
+    m_prev_clk_train_time = now;
     debug_stream
       << "INFO Enough Time Passed.. Call Clock Training";
   }
 
   // Don't force continuous training for old IP
-  force_clock_training = false;
+  m_force_clk_train = false;
 }
 
 void DeviceTraceOffload::read_trace_fifo()
@@ -249,7 +259,7 @@ void DeviceTraceOffload::config_s2mm_reader(uint64_t wordCount)
   // Start Offload from previous offset
   m_trbuf_offset = m_trbuf_sz;
   if (m_trbuf_offset == m_trbuf_alloc_sz) {
-    if (circular_buffer == false) {
+    if (!m_use_circ_buf) {
       stop_offload();
       return;
     }
@@ -294,7 +304,7 @@ bool DeviceTraceOffload::init_s2mm()
 
   // Data Mover will write input stream to this address
   uint64_t bufAddr = dev_intf->getDeviceAddr(m_trbuf);
-  dev_intf->initTS2MM(m_trbuf_alloc_sz, bufAddr);
+  dev_intf->initTS2MM(m_trbuf_alloc_sz, bufAddr, m_use_circ_buf);
   return true;
 }
 

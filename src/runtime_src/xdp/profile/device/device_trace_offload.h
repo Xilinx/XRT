@@ -53,7 +53,7 @@ public:
     XDP_EXPORT
     DeviceTraceOffload(DeviceIntf* dInt, DeviceTraceLogger* dTraceLogger,
                      uint64_t offload_sleep_ms, uint64_t trbuf_sz,
-                     bool start_thread = true, bool circular_buffer = true);
+                     bool start_thread = true);
     XDP_EXPORT
     ~DeviceTraceOffload();
     XDP_EXPORT
@@ -95,7 +95,6 @@ private:
     std::thread offload_thread;
 
     uint64_t sleep_interval_ms;
-    bool circular_buffer;
     uint64_t m_trbuf_alloc_sz;
     DeviceIntf* dev_intf;
     DeviceTraceLogger* deviceTraceLogger;
@@ -122,12 +121,13 @@ private:
     bool m_initialized = false;
 
     // Clock Training Params
-    bool force_clock_training = true;
-    std::chrono::time_point<std::chrono::system_clock> previous_clock_training_time;
+    bool m_force_clk_train = true;
+    std::chrono::time_point<std::chrono::system_clock> m_prev_clk_train_time;
 
     // Default dma chunk size
     uint64_t m_trbuf_chunk_sz = MAX_TRACE_NUMBER_SAMPLES * TRACE_PACKET_SIZE;
     //Circular Buffer Tracking
+    bool m_use_circ_buf;
     uint32_t m_rollover_count = 0;
 };
 

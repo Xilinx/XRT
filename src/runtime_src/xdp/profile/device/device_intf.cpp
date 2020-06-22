@@ -838,10 +838,10 @@ DeviceIntf::~DeviceIntf()
     return mDevice->getDeviceAddr(bufHandle);
   }
 
-  void DeviceIntf::initTS2MM(uint64_t bufSz, uint64_t bufAddr)
+  void DeviceIntf::initTS2MM(uint64_t bufSz, uint64_t bufAddr, bool circular)
   {
     if (traceDMA)
-      traceDMA->init(bufSz, bufAddr);
+      traceDMA->init(bufSz, bufAddr, circular);
   }
 
   uint64_t DeviceIntf::getWordCountTs2mm()

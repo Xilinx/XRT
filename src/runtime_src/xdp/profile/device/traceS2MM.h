@@ -58,7 +58,7 @@ public:
     virtual ~TraceS2MM()
     {}
 
-    virtual void init(uint64_t bo_size, int64_t bufaddr);
+    virtual void init(uint64_t bo_size, int64_t bufaddr, bool circular);
     virtual bool isActive();	// ??
     virtual void reset();
     /** 
@@ -73,6 +73,7 @@ public:
     void parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector& traceVector);
 
     void setTraceFormat(uint32_t tf) { mTraceFormat = tf; }
+    bool supportsCircBuf() { return major_version >= 1 && minor_version > 0;}
 
 private:
     uint8_t properties;
