@@ -532,7 +532,7 @@ int xocl_mm_insert_node(struct xocl_drm *drm_p, u32 ddr,
 #endif
 }
 
-static int xocl_check_topology(struct xocl_drm *drm_p)
+int xocl_check_topology(struct xocl_drm *drm_p)
 {
 	struct mem_topology    *topology = NULL;
 	u16	i;

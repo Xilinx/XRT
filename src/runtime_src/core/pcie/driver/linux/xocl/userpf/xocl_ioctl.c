@@ -565,7 +565,7 @@ int xocl_free_cma_ioctl(struct drm_device *dev, void *data,
 	int err = 0;
 
 	mutex_lock(&xdev->dev_lock);
-	if (xocl_addr_translator_get_base_addr(xdev))
+	if (xocl_check_topology(drm_p))
 		err = -EBUSY;
 	else
 		xocl_cma_bank_free(drm_p);
