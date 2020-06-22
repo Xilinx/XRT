@@ -137,6 +137,8 @@ enum class key_type
   firewall_status,
   firewall_time_sec,
   power_microwatts,
+  host_mem_size, 
+  kds_numcdmas,
 
   mig_ecc_enabled,
   mig_ecc_status,
@@ -1411,6 +1413,38 @@ struct power_microwatts : request
   to_string(result_type value)
   {
     return format::format_base10_shiftdown6(value);
+  }
+};
+
+struct host_mem_size : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::host_mem_size;
+  static const char* name() { return "host_mem_size"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type val)
+  {
+    return std::to_string(val);
+  }
+};
+
+struct kds_numcdmas : request
+{
+  using result_type = uint32_t;
+  static const key_type key = key_type::kds_numcdmas;
+  static const char* name() { return "kds_numcdmas"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type val)
+  {
+    return std::to_string(val);
   }
 };
 

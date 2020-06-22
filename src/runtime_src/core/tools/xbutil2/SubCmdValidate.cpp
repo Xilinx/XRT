@@ -393,6 +393,102 @@ checkOSRelease(const std::vector<std::string> kernel_versions, const std::string
                             % release % kernel_versions.back()));
 }
 
+/* 
+ * helper function for M2M test
+ */ 
+static void 
+m2m_free_unmap_bo(xclDeviceHandle handle, unsigned boh, void * boptr, size_t bo_size)
+{
+  if(boptr != nullptr)
+    munmap(boptr, bo_size);
+  if(boh != NULLBO)
+    xclFreeBO(handle, boh);
+}
+
+/* 
+ * helper function for M2M test
+ */ 
+static int 
+m2m_alloc_init_bo(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, unsigned &boh,
+                   char * &boptr, size_t bo_size, int bank, char pattern)
+{
+  boh = xclAllocBO(handle, bo_size, 0, bank);
+  if (boh == NULLBO) {
+    _ptTest.put("status", "failed");
+    logger(_ptTest, "Error", "Couldn't allocate BO");
+    return 1;
+  }
+  boptr = (char*) xclMapBO(handle, boh, true);
+  if (boptr == nullptr) {
+    _ptTest.put("status", "failed");
+    logger(_ptTest, "Error", "Couldn't map BO");
+    m2m_free_unmap_bo(handle, boh, boptr, bo_size);
+    return 1;
+  }
+  memset(boptr, pattern, bo_size);
+  if(xclSyncBO(handle, boh, XCL_BO_SYNC_BO_TO_DEVICE, bo_size, 0)) {
+    _ptTest.put("status", "failed");
+    logger(_ptTest, "Error", "Couldn't sync BO");
+    m2m_free_unmap_bo(handle, boh, boptr, bo_size);
+    return 1;
+  }
+  return 0;
+}
+
+/* 
+ * helper function for M2M test
+ */ 
+static int 
+m2mtest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, int bank_a, int bank_b, size_t bo_size)
+{
+  unsigned bo_src = NULLBO;
+  unsigned bo_tgt = NULLBO;
+  char *bo_src_ptr = nullptr;
+  char *bo_tgt_ptr = nullptr;
+  int bandwidth = 0;
+
+  //Allocate and init bo_src
+  if(m2m_alloc_init_bo(handle, _ptTest, bo_src, bo_src_ptr, bo_size, bank_a, 'A'))
+    return bandwidth;
+
+  //Allocate and init bo_tgt
+  if(m2m_alloc_init_bo(handle, _ptTest, bo_tgt, bo_tgt_ptr, bo_size, bank_b, 'B')) {
+    m2m_free_unmap_bo(handle, bo_src, bo_src_ptr, bo_size);
+    return bandwidth;
+  }
+
+  XBU::Timer timer;
+  if (xclCopyBO(handle, bo_tgt, bo_src, bo_size, 0, 0))
+    return bandwidth;
+  double timer_stop = timer.stop().count();
+
+  if(xclSyncBO(handle, bo_tgt, XCL_BO_SYNC_BO_FROM_DEVICE, bo_size, 0)) {
+    m2m_free_unmap_bo(handle, bo_src, bo_src_ptr, bo_size);
+    m2m_free_unmap_bo(handle, bo_tgt, bo_tgt_ptr, bo_size);
+    _ptTest.put("status", "failed");
+    logger(_ptTest, "Error", "Unable to sync target BO");
+    return bandwidth;
+  }
+
+  bool match = (memcmp(bo_src_ptr, bo_tgt_ptr, bo_size) == 0);
+
+  // Clean up
+  m2m_free_unmap_bo(handle, bo_src, bo_src_ptr, bo_size);
+  m2m_free_unmap_bo(handle, bo_tgt, bo_tgt_ptr, bo_size);
+
+  if (!match) {
+    _ptTest.put("status", "failed");
+    logger(_ptTest, "Error", "Memory comparison failed");
+    return bandwidth;
+  }
+
+  //bandwidth
+  double total = bo_size;
+  total *= 1000000; // convert us to s
+  total /= (1024 * 1024); //convert to MB
+  return total / timer_stop;
+}
+
 /*
  * TEST #1
  */
@@ -497,7 +593,7 @@ scVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tre
 void
 verifyKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest) 
 {
-  runTestCase(_dev, std::string("22_verify.py"), std::string("verify.xclbin"), _ptTest);
+  runTestCase(_dev, "22_verify.py", "verify.xclbin", _ptTest);
 }
 
 /*
@@ -530,7 +626,7 @@ dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
     } 
     catch (xrt_core::error& ex) {
       _ptTest.put("status", "failed");
-      _ptTest.put("error_msg", ex.what());
+      logger(_ptTest, "Error", ex.what());
     }
   }
 }
@@ -550,7 +646,7 @@ bandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::proper
     return;
   }
   std::string testcase = (name.find("vck5000") != std::string::npos) ? "versal_23_bandwidth.py" : "23_bandwidth.py";
-  runTestCase(_dev, testcase, std::string("bandwidth.xclbin"), _ptTest);
+  runTestCase(_dev, testcase, "bandwidth.xclbin", _ptTest);
 }
 
 /*
@@ -568,7 +664,66 @@ p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
 void
 m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest) 
 {
-  _ptTest.put("status", "skipped");
+  uint32_t m2m_enabled = xrt_core::device_query<xrt_core::query::kds_numcdmas>(_dev);
+  std::string name = xrt_core::device_query<xrt_core::query::rom_vbnv>(_dev);
+
+  // Workaround:
+  // u250_xdma_201830_1 falsely shows that m2m is available
+  // which causes a hang. Skip m2mtest if this platform is installed
+  if (m2m_enabled == 0 || name.find("_u250_xdma_201830_1") != std::string::npos) {
+    logger(_ptTest, "Details", "M2M is not available");
+    _ptTest.put("status", "skipped");
+    return;
+  }
+
+  std::vector<mem_data> used_banks;
+  const size_t bo_size = 256L * 1024 * 1024;
+  auto membuf = xrt_core::device_query<xrt_core::query::mem_topology_raw>(_dev);
+  auto mem_topo = reinterpret_cast<const mem_topology*>(membuf.data());
+
+  for (auto mem : boost::make_iterator_range(mem_topo->m_mem_data, mem_topo->m_mem_data + mem_topo->m_count)) {
+    if(mem.m_used && mem.m_size * 1024 >= bo_size)
+      used_banks.push_back(mem);
+  }
+
+  for(uint i = 0; i < used_banks.size()-1; i++) {
+    for(uint j = i+1; j < used_banks.size(); j++) {
+      std::cout << used_banks[i].m_tag << " -> " << used_banks[j].m_tag << " M2M bandwidth: ";
+      if(!used_banks[i].m_size || !used_banks[j].m_size)
+        continue;
+      
+      double m2m_bandwidth = m2mtest_bank(_dev->get_device_handle(), _ptTest, i, j, bo_size);
+      logger(_ptTest, "Details", boost::str(boost::format("%s -> %s M2M bandwidth: %f MB/s") % used_banks[i].m_tag 
+                  %used_banks[j].m_tag % m2m_bandwidth));
+      
+      if(m2m_bandwidth == 0) //test failed, exit
+        return;
+    }
+  }
+  _ptTest.put("status", "passed");
+}
+
+/*
+ * TEST #10
+ */
+void
+hostMemBandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest) 
+{
+  uint64_t host_mem_size = 0;
+  try {
+    host_mem_size = xrt_core::device_query<xrt_core::query::host_mem_size>(_dev);
+  } catch(...) {
+    logger(_ptTest, "Details", "Address translator IP is not available");
+    _ptTest.put("status", "skipped");
+    return;
+  }
+
+  if (!host_mem_size) {
+      logger(_ptTest, "Details", "Host memory is not enabled");
+      _ptTest.put("status", "skipped");
+      return;
+  }
+  runTestCase(_dev, "host_mem_23_bandwidth.py", "bandwidth.xclbin", _ptTest);
 }
 
 /*
@@ -599,7 +754,8 @@ static std::vector<TestCollection> testSuite = {
   { create_init_test("DMA", "Run dma test "), dmaTest },
   { create_init_test("Bandwidth kernel", "Run 'bandwidth kernel' and check the throughput"), bandwidthKernelTest },
   { create_init_test("Peer to peer bar", "Run P2P test"), p2pTest },
-  { create_init_test("Memory to memory DMA", "Run M2M test"), m2mTest }
+  { create_init_test("Memory to memory DMA", "Run M2M test"), m2mTest },
+  { create_init_test("Host memory bandwidth test", "Run 'bandwidth kernel' when slave bridge is enabled"), hostMemBandwidthKernelTest }
 };
 
 /* 
