@@ -41,6 +41,7 @@
 #include <cstdarg>
 #include <type_traits>
 #include <utility>
+#include <algorithm>
 #include <mutex>
 #include <condition_variable>
 #include <chrono>
@@ -627,7 +628,7 @@ class kernel_impl
   std::vector<ipctx> ipctxs;           // CU context locks
   std::bitset<128> cumask;             // cumask for command execution
   size_t regmap_size = 0;              // CU register map size
-  size_t num_cumasks = 1;              // Required number of command cu masks TODO: compute
+  size_t num_cumasks = 1;              // Required number of command cu masks
 
   // Traverse xclbin connectivity section and find
   int32_t
@@ -714,6 +715,7 @@ public:
       auto idx = std::distance(cus.begin(), itr);
       ipctxs.emplace_back(ip_context::open(device->get_core_device(), xclbin_id, cu, idx, am));
       cumask.set(idx);
+      num_cumasks = std::max<size_t>(num_cumasks, (idx / 32) + 1);
     }
 
     // Collect ip_layout index of the selected CUs so that xclbin
@@ -817,6 +819,20 @@ class run_impl
   xrt_core::device* core_device;          // convenience, in scope of kernel
   kernel_command cmd;                     // underlying command object
 
+  void
+  encode_compute_units(const std::bitset<128>& cus)
+  {
+    auto ecmd = cmd.get_ert_cmd<ert_packet*>();
+ 
+    for (size_t cu_idx = 0; cu_idx < 128; ++cu_idx) {
+      if (!cus.test(cu_idx))
+        continue;
+      auto mask_idx = cu_idx / 32;
+      auto idx_in_mask = cu_idx - mask_idx * 32;
+      ecmd->data[mask_idx] |= (1 << idx_in_mask);
+    }
+  }
+
 public:
   void
   add_callback(callback_function_type fcn)
@@ -834,16 +850,24 @@ public:
   {
     // TODO: consider if execbuf is cleared on return from cache
     auto kcmd = cmd.get_ert_cmd<ert_start_kernel_cmd*>();
+    kcmd->extra_cu_masks = kernel->get_num_cumasks() - 1;
     kcmd->count = kernel->get_num_cumasks() + kernel->get_regmap_size();
     kcmd->opcode = ERT_START_CU;
     kcmd->type = ERT_CU;
-    kcmd->cu_mask = kernel->get_cumask().to_ulong();  // TODO: fix for > 32 CUs
+    encode_compute_units(kernel->get_cumask());
   }
 
   kernel_impl*
   get_kernel() const
   {
     return kernel.get();
+  }
+
+  template <typename ERT_COMMAND_TYPE>
+  ERT_COMMAND_TYPE
+  get_ert_cmd()
+  {
+    return cmd.get_ert_cmd<ERT_COMMAND_TYPE>();
   }
 
   void
@@ -948,7 +972,7 @@ class run_update_type
   reset_cmd()
   {
     auto kcmd = cmd.get_ert_cmd<ert_init_kernel_cmd*>();
-    kcmd->count = data_offset;  // reset payload size
+    kcmd->count = data_offset + kcmd->extra_cu_masks;  // reset payload size
   }
 
 public:
@@ -958,10 +982,13 @@ public:
     , cmd(kernel->get_device())
   {
     auto kcmd = cmd.get_ert_cmd<ert_init_kernel_cmd*>();
+    auto rcmd = run->get_ert_cmd<ert_start_kernel_cmd*>();
     kcmd->opcode = ERT_INIT_CU;
     kcmd->type = ERT_CU;
     kcmd->update_rtp = 1;
-    kcmd->cu_mask = kernel->get_cumask().to_ulong();  // TODO: fix for > 32 CUs
+    kcmd->extra_cu_masks = rcmd->extra_cu_masks;
+    kcmd->cu_mask = rcmd->cu_mask;
+    std::copy(rcmd->data, rcmd->data + rcmd->extra_cu_masks, kcmd->data);
     reset_cmd();
   }
 
