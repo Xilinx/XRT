@@ -123,6 +123,19 @@ struct acap_clkfbout_fract {
 	u32 reserved		:21;
 };
 
+enum {
+	CLOCK_IORES_CLKWIZKERNEL1 = 0,
+	CLOCK_IORES_CLKWIZKERNEL2,
+	CLOCK_IORES_CLKWIZKERNEL3,
+	CLOCK_IORES_CLKFREQ_K1_K2,
+	CLOCK_IORES_CLKFREQ_HBM,
+	CLOCK_IORES_CLKFREQ_K1,
+	CLOCK_IORES_CLKFREQ_K2,
+	CLOCK_IORES_CLKSHUTDOWN,
+	CLOCK_IORES_UCS_CONTROL_STATUS,
+	CLOCK_IORES_MAX,
+};
+
 struct xocl_iores_map clock_res_map[] = {
 	{ RESNAME_CLKWIZKERNEL1, CLOCK_IORES_CLKWIZKERNEL1 },
 	{ RESNAME_CLKWIZKERNEL2, CLOCK_IORES_CLKWIZKERNEL2 },
@@ -1351,7 +1364,7 @@ struct platform_device_id clock_id_table[] = {
 	{ },
 };
 
-static struct platform_driver	clock_driver = {
+static struct platform_driver clock_driver = {
 	.probe		= clock_probe,
 	.remove		= clock_remove,
 	.driver		= {

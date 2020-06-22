@@ -221,6 +221,7 @@ enum {
 #define	XOCL_ADDR_TRANSLATOR	"address_translator"
 #define	XOCL_CU			"cu"
 #define	XOCL_P2P		"p2p"
+#define	XOCL_PMC		"pmc"
 
 #define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
 
@@ -263,6 +264,7 @@ enum subdev_id {
 	XOCL_SUBDEV_P2P,
 	XOCL_SUBDEV_LAPC,
 	XOCL_SUBDEV_SPC,
+	XOCL_SUBDEV_PMC,
 	XOCL_SUBDEV_NUM
 };
 

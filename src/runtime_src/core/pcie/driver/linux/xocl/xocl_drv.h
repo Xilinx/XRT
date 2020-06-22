@@ -1542,7 +1542,6 @@ struct xocl_xfer_versal_funcs {
 	int (*xclbin_load_axlf)(struct platform_device *pdev,
 		const void __user *arg);
 };
-
 #define	XFER_VERSAL_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_XFER_VERSAL).pldev
 #define	XFER_VERSAL_OPS(xdev)					\
 	((struct xocl_xfer_versal_funcs *)SUBDEV(xdev, XOCL_SUBDEV_XFER_VERSAL).ops)
@@ -1554,6 +1553,16 @@ struct xocl_xfer_versal_funcs {
 #define	xocl_xclbin_load_axlf(xdev, xclbin)	\
 	(XFER_VERSAL_CB(xdev) ?					\
 	XFER_VERSAL_OPS(xdev)->xclbin_load_axlf(XFER_VERSAL_DEV(xdev), xclbin) : -ENODEV)
+
+struct xocl_pmc_funcs {
+	int (*enable_reset)(struct platform_device *pdev);
+};
+#define	PMC_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_PMC).pldev
+#define	PMC_OPS(xdev) \
+	((struct xocl_pmc_funcs *)SUBDEV(xdev, XOCL_SUBDEV_PMC).ops)
+#define	PMC_CB(xdev)	(PMC_DEV(xdev) && PMC_OPS(xdev))
+#define	xocl_pmc_enable_reset(xdev) \
+	(PMC_CB(xdev) ? PMC_OPS(xdev)->enable_reset(PMC_DEV(xdev)) : -ENODEV)
 
 /* subdev mbx messages */
 #define XOCL_MSG_SUBDEV_VER	1
@@ -1880,4 +1889,7 @@ void xocl_fini_spc(void);
 
 int __init xocl_init_lapc(void);
 void xocl_fini_lapc(void);
+
+int __init xocl_init_pmc(void);
+void xocl_fini_pmc(void);
 #endif
