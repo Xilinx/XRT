@@ -86,7 +86,6 @@ def runKernel(opt):
     input_bo3, input_buf3 = getInputOutputBuffer(opt.handle, khandle3, 1, True)
 
     typesize = 512
-    threshold = getThreshold(opt.handle)
     globalbuffersizeinbeats = globalbuffersize/(typesize>>3)
     tests= int(math.log(globalbuffersizeinbeats, 2.0))+1
     beats = 16
@@ -152,8 +151,7 @@ def runKernel(opt):
     
     print("TTTT: %d" %throughput[0])
     print("Maximum throughput: %d MB/s" %max(throughput))
-    if max(throughput) < threshold:
-        raise RuntimeError("ERROR: Throughput is less than expected value of %d GB/sec" %(threshold/1000))
+
 
 def main(args):
     os.environ["Runtime.xrt_bo"] = "true"
