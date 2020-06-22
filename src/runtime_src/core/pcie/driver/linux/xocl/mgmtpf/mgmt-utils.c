@@ -525,9 +525,7 @@ static void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 
 	xclmgmt_config_pci(lro);
 
-	if (xocl_pmc_enable_reset(lro) == -ENODEV) {
-		mgmt_info(lro, "no support for pmc pcie reset.\n");
-	}
+	xocl_pmc_enable_reset(lro);
 }
 
 int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)

@@ -1272,9 +1272,7 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	(void) xocl_subdev_create_by_level(lro, XOCL_SUBDEV_LEVEL_BLD);
 	(void) xocl_subdev_create_vsec_devs(lro);
 
-	if (xocl_pmc_enable_reset(lro) == -ENODEV) {
-		xocl_info(&pdev->dev, "no support for pmc pcie reset.\n");
-	}
+	xocl_pmc_enable_reset(lro);
 
 	return 0;
 
