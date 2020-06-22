@@ -51,7 +51,6 @@ OO_Clock::OO_Clock( const std::string &_longName, bool _isHidden)
 void
 OO_Clock::execute(const SubCmdOptions& _options) const
 {
-  _options.size();
   printHelp();
 }
 
