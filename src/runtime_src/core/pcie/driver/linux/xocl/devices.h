@@ -53,6 +53,7 @@ enum {
 	XOCL_DSAFLAG_VERSAL			= (1 << 11),
 	XOCL_DSAFLAG_MPSOC			= (1 << 12),
 	XOCL_DSAFLAG_NOSC			= (1 << 13),
+	XOCL_DSAFLAG_OT_OVERRIDE		= (1 << 14),
 };
 
 #define	FLASH_TYPE_SPI	"spi"
@@ -1904,7 +1905,8 @@ struct xocl_subdev_map {
 
 #define	XOCL_BOARD_MGMT_U2						\
 	(struct xocl_board_private){					\
-		.flags		= XOCL_DSAFLAG_NOSC,			\
+		.flags		= XOCL_DSAFLAG_NOSC |			\
+			XOCL_DSAFLAG_OT_OVERRIDE,			\
 		.subdev_info	= MGMT_RES_U2,				\
 		.subdev_num = ARRAY_SIZE(MGMT_RES_U2),			\
 		.flash_type = FLASH_TYPE_SPI,				\
