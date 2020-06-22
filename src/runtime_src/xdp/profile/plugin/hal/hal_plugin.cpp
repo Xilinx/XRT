@@ -23,8 +23,6 @@
 #include "xdp/profile/writer/hal/hal_device_trace_writer.h"
 #include "xdp/profile/writer/hal/hal_summary_writer.h"
 
-#include "xdp/profile/writer/vp_base/vp_run_summary.h"
-
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/device_trace_offload.h"
@@ -87,9 +85,6 @@ namespace xdp {
       (db->getStaticInfo()).addOpenedFile(fileName.c_str(), "VP_TRACE");
       ++index;
       handle = xclOpen(index, "/dev/null", XCL_INFO) ;			
-    }
-    if (db->claimRunSummaryOwnership()) {
-      writers.push_back(new VPRunSummaryWriter("hal.run_summary"));
     }
   }
 
