@@ -143,9 +143,6 @@ init(xclDeviceHandle handle, const axlf* top)
   auto device = xrt_core::get_userpf_device(handle);
   ecmd->slot_size = device->get_ert_slots().second;
 
-  if (ecmd->slot_size != 4096)
-    std::cout << "ERT slotsize computed to: " << ecmd->slot_size << "\n";
-  
   auto cus = xclbin::get_cus(top, true);
   ecmd->num_cus = cus.size();
   ecmd->cu_shift = 16;
