@@ -2274,7 +2274,7 @@ static int icap_refresh_clock_freq(struct icap *icap, struct axlf *xclbin)
 static void icap_save_calib(struct icap *icap)
 {
 	struct mem_topology *mem_topo = icap->mem_topo;
-	int err = 0, i = 0, ddr_idx = 0;
+	int err = 0, i = 0, ddr_idx = -1;
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 
 	if (!mem_topo)
@@ -2284,23 +2284,25 @@ static void icap_save_calib(struct icap *icap)
 		return;
 
 	for (; i < mem_topo->m_count; ++i) {
-		if (!mem_topo->m_mem_data[i].m_used)
-			continue;
 		if (convert_mem_type(mem_topo->m_mem_data[i].m_tag) != MEM_DRAM)
+			continue;
+		else
+			ddr_idx++;
+
+		if (!mem_topo->m_mem_data[i].m_used)
 			continue;
 
 		err = xocl_srsr_save_calib(xdev, ddr_idx);
 		if (err)
 			ICAP_DBG(icap, "Not able to save mem %d calibration data.", i);
 
-		ddr_idx++;
 	}
 	err = xocl_calib_storage_save(xdev);
 }
 
 static void icap_calib(struct icap *icap, bool retain)
 {
-	int err = 0, i = 0, ddr_idx = 0;
+	int err = 0, i = 0, ddr_idx = -1;
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 	struct mem_topology *mem_topo = icap->mem_topo;
 
@@ -2309,16 +2311,18 @@ static void icap_calib(struct icap *icap, bool retain)
 	err = xocl_calib_storage_restore(xdev);
 
 	for (; i < mem_topo->m_count; ++i) {
-		if (!mem_topo->m_mem_data[i].m_used)
-			continue;
 		if (convert_mem_type(mem_topo->m_mem_data[i].m_tag) != MEM_DRAM)
+			continue;
+		else
+			ddr_idx++;
+
+		if (!mem_topo->m_mem_data[i].m_used)
 			continue;
 
 		err = xocl_srsr_calib(xdev, ddr_idx, retain);
 		if (err)
 			ICAP_DBG(icap, "Not able to calibrate mem %d.", i);
 
-		ddr_idx++;
 	}
 
 }
@@ -2360,11 +2364,11 @@ static int icap_calibrate_mig(struct platform_device *pdev)
 	return err;
 }
 
-static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
+static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin, bool sref)
 {
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 	int i = 0, err = 0, num_dev = 0;
-	bool retention = (icap->data_retention & 0x1) == 0x1;
+	bool retention = ((icap->data_retention & 0x1) == 0x1) && sref;
 	struct xocl_subdev *subdevs = NULL;
 	bool has_ulp_clock = false;
 
@@ -2461,8 +2465,7 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 	}
 
 	err = icap_calibrate_mig(icap->icap_pdev);
-	if (err)
-		goto out;
+
 out:
 	if (err && retention)
 		icap_release_ddr_gate_pin(icap);
@@ -2516,7 +2519,7 @@ static inline int icap_xmc_free(struct icap *icap)
 	return err == -ENODEV ? 0 : err;
 }
 
-static void check_mem_topo_and_data_retention(struct icap *icap,
+static bool check_mem_topo_and_data_retention(struct icap *icap,
 	struct axlf *xclbin)
 {
 	struct mem_topology *mem_topo = icap->mem_topo;
@@ -2524,7 +2527,7 @@ static void check_mem_topo_and_data_retention(struct icap *icap,
 	uint64_t size = 0, offset = 0;
 
 	if (!hdr || !mem_topo || !icap->data_retention)
-		return;
+		return false;
 
 	size = hdr->m_sectionSize;
 	offset = hdr->m_sectionOffset;
@@ -2537,9 +2540,10 @@ static void check_mem_topo_and_data_retention(struct icap *icap,
 	if ((size != sizeof_sect(mem_topo, m_mem_data)) ||
 		    memcmp(((char *)xclbin)+offset, mem_topo, size)) {
 		ICAP_WARN(icap, "Incoming mem_topology doesn't match, disable data retention");
+		return false;
 	}
 
-	return;
+	return true;
 }
 
 static void icap_get_max_host_mem_aperture(struct icap *icap)
@@ -2569,6 +2573,7 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 	int err = 0, i = 0, num_dev = 0;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct xocl_subdev *subdevs = NULL;
+	bool sref = false;
 
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
@@ -2592,12 +2597,12 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 			return 0;
 
 		/* Check the incoming mem topoloy with the current one before overwrite */
-		check_mem_topo_and_data_retention(icap, xclbin);
+		sref = check_mem_topo_and_data_retention(icap, xclbin);
 
 		icap_parse_bitstream_axlf_section(pdev, xclbin, MEM_TOPOLOGY);
 		icap_parse_bitstream_axlf_section(pdev, xclbin, IP_LAYOUT);
 
-		err = __icap_xclbin_download(icap, xclbin);
+		err = __icap_xclbin_download(icap, xclbin, sref);
 		if (err)
 			goto done;
 

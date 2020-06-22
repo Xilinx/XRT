@@ -1169,6 +1169,8 @@ int qdma4_descq_config_complete(struct qdma_descq *descq)
 	if ((qconf->st && (qconf->q_type == Q_C2H)) ||
 			(!qconf->st && (qconf->q_type == Q_CMPT))) {
 		int i;
+		unsigned char idx_hi = descq->sorted_c2h_cntr_idx; 
+		unsigned char idx_lo = descq->sorted_c2h_cntr_idx; 
 
 		descq->cmpt_entry_len = 8 << qconf->cmpl_desc_sz;
 
@@ -1184,11 +1186,17 @@ int qdma4_descq_config_complete(struct qdma_descq *descq)
 				break;
 			}
 		}
-		i = xdev->sorted_c2h_cntr_idx[descq->sorted_c2h_cntr_idx + 1];
+
+		if (idx_hi < (QDMA_GLOBAL_CSR_ARRAY_SZ - 1))
+			idx_hi++;
+		if (idx_lo)
+			idx_lo--;
+
+		i = xdev->sorted_c2h_cntr_idx[idx_hi];
 		descq->c2h_pend_pkt_avg_thr_hi =
 				(descq->c2h_pend_pkt_moving_avg +
 				csr_info->c2h_cnt_th[i]);
-		i = xdev->sorted_c2h_cntr_idx[descq->sorted_c2h_cntr_idx - 1];
+		i = xdev->sorted_c2h_cntr_idx[idx_lo];
 		descq->c2h_pend_pkt_avg_thr_lo =
 				(descq->c2h_pend_pkt_moving_avg +
 				csr_info->c2h_cnt_th[i]);

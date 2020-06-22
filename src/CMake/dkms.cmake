@@ -256,7 +256,6 @@ SET (XRT_DKMS_COMMON_XRT_DRV_INCLUDES
   common/drv/include/kds_core.h
   common/drv/include/kds_command.h
   common/drv/include/xrt_cu.h
-  common/drv/include/mem_group.h
   )
 
 SET (XRT_DKMS_ABS_SRCS)

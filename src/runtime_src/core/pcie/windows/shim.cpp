@@ -551,7 +551,7 @@ done:
     DWORD error = 0;
     DWORD bytesWritten;
     ULONG return_status = 0;
-	
+
 
     if (!DeviceIoControl(deviceHandle,
                          IOCTL_XOCL_READ_AXLF,
@@ -566,9 +566,9 @@ done:
 
       xrt_core::message::
         send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl failed with error %d", error);
-      
+
       goto out;
-    
+
     }
     if (return_status != NTSTATUS_STATUS_SUCCESS)
     {
@@ -582,17 +582,17 @@ done:
 
         }
         else {
-        
+
             xrt_core::message::
                 send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl failed with NTSTATUS %x", return_status);
-        
+
         }
 
     }
 
- 
+
   out:
- 
+
     return error ? false : true;
 
   }
@@ -1589,6 +1589,19 @@ xclRead(xclDeviceHandle handle, enum xclAddressSpace space,
   return shim->read(space,offset,hostbuf,size) ? 0 : size;
 }
 
+// Restricted read/write on IP register space
+int
+xclRegWrite(xclDeviceHandle handle, uint32_t ipidx, uint32_t offset, uint32_t data)
+{
+  return 1;
+}
+
+int
+xclRegRead(xclDeviceHandle handle, uint32_t ipidx, uint32_t offset, uint32_t* datap)
+{
+  return 1;
+}
+
 int
 xclGetTraceBufferInfo(xclDeviceHandle handle, uint32_t nSamples,
                       uint32_t& traceSamples, uint32_t& traceBufSz)
@@ -1668,5 +1681,3 @@ int xclGetSubdevPath(xclDeviceHandle handle,  const char* subdev,
 {
   return 0;
 }
-
-

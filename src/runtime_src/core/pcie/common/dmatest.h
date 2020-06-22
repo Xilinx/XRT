@@ -30,6 +30,8 @@
 #include "core/common/unistd.h"
 #include "core/common/error.h"
 
+#include <boost/format.hpp>
+
 namespace xcldev {
     class Timer {
         std::chrono::high_resolution_clock::time_point mTimeStart;
@@ -66,7 +68,7 @@ namespace xcldev {
             while (b < e) {
                 result = xclSyncBO(mHandle, b->first, dir, mSize, 0);
                 if (result != 0) {
-                    std::cout << "DMA failed with Error = " << result << "\n";
+                    throw xrt_core::error(result, "DMA failed");
                     break;
                 }
                 ++b;
@@ -137,7 +139,7 @@ namespace xcldev {
             std::for_each(mBOList.begin(), mBOList.end(), [&](auto &bo) {xclFreeBO(mHandle, bo.first); });
         }
 
-        int run() const {
+        int run(std::ostream& ostr = std::cout) const {
             xclDeviceInfo2 info;
             int rc = xclGetDeviceInfo2(mHandle, &info);
             if (rc)
@@ -157,7 +159,7 @@ namespace xcldev {
             rate /= 0x100000; // MB
             rate /= timer_stop;
             rate *= 1000000; // s
-            std::cout << "Host -> PCIe -> FPGA write bandwidth = " << rate << " MB/s\n";
+            ostr << boost::str(boost::format("Host -> PCIe -> FPGA write bandwidth = %f MB/s\n") % rate);
 
             timer.reset();
             result = runSync(XCL_BO_SYNC_BO_FROM_DEVICE, info.mDMAThreads);
@@ -169,7 +171,7 @@ namespace xcldev {
             rate /= 0x100000; // MB
             rate /= timer_stop;
             rate *= 1000000; //
-            std::cout << "Host <- PCIe <- FPGA read bandwidth = " << rate << " MB/s\n";
+            ostr << boost::str(boost::format("Host <- PCIe <- FPGA read bandwidth = %f MB/s") % rate);
 
             // data integrity check: compare with initialized pattern
             return validate();
