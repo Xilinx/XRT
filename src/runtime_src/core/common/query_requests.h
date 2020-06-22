@@ -48,7 +48,9 @@ enum class key_type
   pcie_subsystem_vendor,
   pcie_subsystem_id,
   pcie_link_speed,
+  pcie_link_speed_max,
   pcie_express_lane_width,
+  pcie_express_lane_width_max,
   pcie_bdf,
 
   edge_vendor,
@@ -68,11 +70,13 @@ enum class key_type
   ip_layout_raw,
 
   xmc_version,
+  xmc_board_name,
   xmc_serial_num,
   xmc_max_power,
   xmc_bmc_version,
   xmc_status,
   xmc_reg_base,
+  expected_bmc_version,
 
   dna_serial_num,
   clock_freqs_mhz,
@@ -145,7 +149,10 @@ enum class key_type
   is_mfg,
   f_flash_type,
   flash_type,
-  board_name
+  board_name,
+  interface_uuids,
+  logic_uuids
+
 };
 
 class no_such_key : public std::exception
@@ -278,11 +285,43 @@ struct pcie_link_speed : request
   }
 };
 
+struct pcie_link_speed_max : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::pcie_link_speed_max;
+  static const char* name() { return "link_speed_max"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type val)
+  {
+    return std::to_string(val);
+  }
+};
+
 struct pcie_express_lane_width : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::pcie_express_lane_width;
   static const char* name() { return "width"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type val)
+  {
+    return std::to_string(val);
+  }
+};
+
+struct pcie_express_lane_width_max : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::pcie_express_lane_width_max;
+  static const char* name() { return "width_max"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -450,6 +489,40 @@ struct rom_time_since_epoch : request
   }
 };
 
+struct interface_uuids : request
+{
+  using result_type = std::vector<std::string>;
+  static const key_type key = key_type::interface_uuids;
+  static const char* name() { return "interface_uuids"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  // formatting of individual items for the vector
+  static std::string
+  to_string(const std::string& value)
+  {
+    return value;
+  }
+};
+
+struct logic_uuids : request
+{
+  using result_type = std::vector<std::string>;
+  static const key_type key = key_type::logic_uuids;
+  static const char* name() { return "logic_uuids"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  // formatting of individual items for the vector
+  static std::string
+  to_string(const std::string& value)
+  {
+    return value;
+  }
+};
+
 struct xclbin_uuid : request
 {
   using result_type = std::string;
@@ -482,6 +555,22 @@ struct xmc_version : request
   using result_type = std::string;
   static const key_type key = key_type::xmc_version;
   static const char* name() { return "xmc_version"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static result_type
+  to_string(const result_type& value)
+  {
+    return value;
+  }
+};
+
+struct xmc_board_name : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::xmc_board_name;
+  static const char* name() { return "xmc_board_name"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -530,6 +619,22 @@ struct xmc_bmc_version : request
   using result_type = std::string;
   static const key_type key = key_type::xmc_bmc_version;
   static const char* name() { return "sc_version"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(const result_type& value)
+  {
+    return value;
+  }
+};
+
+struct expected_bmc_version : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::expected_bmc_version;
+  static const char* name() { return "expected_sc_version"; }
 
   virtual boost::any
   get(const device*) const = 0;

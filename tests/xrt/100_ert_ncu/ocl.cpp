@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#include <CL/cl_ext_xilinx.h>
 #include <CL/cl.h>
 
 #include <algorithm>
@@ -57,7 +56,7 @@ throw_if_error(cl_int errcode, const std::string& msg)
 }
 
 static std::string
-get_kernel_name(int cus)
+get_kernel_name(size_t cus)
 {
   std::string k("addone:{");
   for (int i=1; i<cus; ++i)
@@ -125,8 +124,8 @@ struct job_type
     // set kernel arguments
     throw_if_error(clSetKernelArg(kernel,0,sizeof(cl_mem),&a), "failed to set kernel arg a");
     throw_if_error(clSetKernelArg(kernel,1,sizeof(cl_mem),&b), "failed to set kernel arg b");
-    uint elements = ELEMENTS;
-    throw_if_error(clSetKernelArg(kernel,2,sizeof(uint),&elements), "failed to set kernel arg b");
+    unsigned int elements = ELEMENTS;
+    throw_if_error(clSetKernelArg(kernel,2,sizeof(unsigned int),&elements), "failed to set kernel arg b");
 
     // Migrate all memory objects to device
     cl_mem args[2] = {a, b};
@@ -154,7 +153,7 @@ struct job_type
 
     static size_t global[3] = {1,0,0};
     static size_t local[3] = {1,0,0};
-    
+
     err = clEnqueueNDRangeKernel(queue, kernel, 1, nullptr, global, local, 0, nullptr, &kevent);
     if (err) throw_if_error(err,"failed to execute job " + std::to_string(id));
     clSetEventCallback(kevent,CL_COMPLETE,&kernel_done,this);
@@ -204,6 +203,7 @@ run(cl_context context, cl_command_queue queue, cl_kernel kernel, size_t num_job
             << seconds << " "
             << total << "\n";
 
+  return 0;
 }
 
 static int
@@ -261,7 +261,7 @@ int run(int argc, char** argv)
   size_t device_index = 0;
   size_t secs = 0;
   size_t jobs = 1;
-  
+
   std::string cur;
   for (auto& arg : args) {
     if (arg == "-h") {

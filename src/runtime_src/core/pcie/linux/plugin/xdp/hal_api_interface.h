@@ -6,7 +6,6 @@
 #include <iostream>
 #include <atomic>
 #include <mutex>
-#include <dlfcn.h>
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
 #include "core/include/xclperf.h"
@@ -55,14 +54,16 @@ namespace xdphalinterface {
     ~DestroyProfileResultsCls();
   };
 
-  struct APIInterfaceLibraryHandler
+  class APIInterfaceLoader
   {
-    void* handle ;
-    APIInterfaceLibraryHandler() ;
-    ~APIInterfaceLibraryHandler() ;
+  public:
+    APIInterfaceLoader() ;
+    ~APIInterfaceLoader() ;
   } ;
   
   void load_xdp_hal_interface_plugin_library(HalPluginConfig* config);
+  void register_hal_interface_callbacks(void* handle) ;
+  int error_hal_interface_callbacks() ;
 
 } //  xdphalinterface
 

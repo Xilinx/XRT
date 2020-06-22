@@ -319,32 +319,12 @@ static struct zcu_funcs hls_adapter_ops = {
 };
 
 static int
-zocl_hls_cu_init_hard(struct zocl_cu *cu)
+zocl_hls_cu_init(struct zocl_cu *cu, phys_addr_t paddr)
 {
-	struct zcu_core *core = cu->core;
+	struct zcu_core *core;
 	u32 ctrl_reg;
 	u32 version;
 	u32 max_cap;
-
-	ctrl_reg = ioread32(core->vaddr);
-	version = (ctrl_reg & CU_VERSION_MASK) >> 8;
-	max_cap = (ctrl_reg & CU_MAX_CAP_MASK) >> 12;
-	switch (version) {
-	case 1:
-		core->max_credits = 1 << max_cap;
-		break;
-	default:
-		core->max_credits = 1;
-	}
-	core->credits = core->max_credits;
-
-	return 0;
-}
-
-static int
-zocl_hls_cu_init_soft(struct zocl_cu *cu, phys_addr_t paddr)
-{
-	struct zcu_core *core;
 
 	core = vzalloc(sizeof(struct zcu_core));
 	if (!core) {
@@ -363,9 +343,16 @@ zocl_hls_cu_init_soft(struct zocl_cu *cu, phys_addr_t paddr)
 	}
 
 	DRM_DEBUG("CU 0x%llx map to 0x%p\n", (u64)core->paddr, core->vaddr);
-
-	/* max_credits will be updated by init_hard */
-	core->max_credits = 1;
+	ctrl_reg = ioread32(core->vaddr);
+	version = (ctrl_reg & CU_VERSION_MASK) >> 8;
+	max_cap = (ctrl_reg & CU_MAX_CAP_MASK) >> 12;
+	switch (version) {
+	case 1:
+		core->max_credits = 1 << max_cap;
+		break;
+	default:
+		core->max_credits = 1;
+	}
 	core->credits = core->max_credits;
 
 	core->intr_type = CU_INTR_DONE | CU_INTR_READY;
@@ -380,12 +367,6 @@ zocl_hls_cu_init_soft(struct zocl_cu *cu, phys_addr_t paddr)
 	INIT_LIST_HEAD(&cu->running_queue);
 
 	return 0;
-}
-
-static int
-zocl_hls_cu_init_full(struct zocl_cu *cu, phys_addr_t paddr)
-{
-	return zocl_hls_cu_init_soft(cu, paddr) && zocl_hls_cu_init_hard(cu);
 }
 
 static int
@@ -527,12 +508,8 @@ int zocl_cu_init(struct zocl_cu *cu, enum zcu_model m, phys_addr_t paddr)
 {
 	cu->model = m;
 	switch (cu->model) {
-	case MODEL_HLS_SOFT:
-		return zocl_hls_cu_init_soft(cu, paddr);
-	case MODEL_HLS_HARD:
-		return zocl_hls_cu_init_hard(cu);
-	case MODEL_HLS_FULL:
-		return zocl_hls_cu_init_full(cu, paddr);
+	case MODEL_HLS:
+		return zocl_hls_cu_init(cu, paddr);
 	case MODEL_ACC:
 		return zocl_acc_cu_init(cu, paddr);
 	default:
@@ -547,9 +524,7 @@ int zocl_cu_fini(struct zocl_cu *cu)
 		return 0;
 
 	switch (cu->model) {
-	case MODEL_HLS_SOFT:
-	case MODEL_HLS_HARD:
-	case MODEL_HLS_FULL:
+	case MODEL_HLS:
 		return zocl_hls_cu_fini(cu);
 	case MODEL_ACC:
 		return zocl_acc_cu_fini(cu);

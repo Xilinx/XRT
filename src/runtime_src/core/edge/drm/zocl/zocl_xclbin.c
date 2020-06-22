@@ -229,7 +229,7 @@ zocl_fpga_mgr_load(struct drm_zocl_dev *zdev, const char *data, int size)
 	  * On PR platform, the fpga_mgr should be alive.
 	  */
 	if (!zdev->fpga_mgr) {
-		DRM_ERROR("FPGA manager is not found.\n");
+		DRM_ERROR("FPGA manager is not found\n");
 		return -ENXIO;
 	}
 
@@ -243,7 +243,7 @@ zocl_fpga_mgr_load(struct drm_zocl_dev *zdev, const char *data, int size)
 
 	err = fpga_mgr_load(fpga_mgr, info);
 	if (err == 0)
-		DRM_INFO("FPGA Manager load DONE.");
+		DRM_INFO("FPGA Manager load DONE");
 	else
 		DRM_ERROR("FPGA Manager load FAILED: %d", err);
 
@@ -456,6 +456,7 @@ zocl_update_apertures(struct drm_zocl_dev *zdev)
 
 	/* Update aperture should only happen when loading xclbin */
 	kfree(zdev->apertures);
+	zdev->apertures = NULL;
 	zdev->num_apts = 0;
 
 	if (zdev->ip)
@@ -574,9 +575,13 @@ zocl_xclbin_same_uuid(struct drm_zocl_dev *zdev, xuid_t *uuid)
 }
 
 /*
- * This is only called from softkernel and context has been protected
- * by xocl driver. The data has been remapped into kernel memory, no
- * copy_from_user needed
+ * This function takes an XCLBIN in kernel buffer and extracts
+ * BITSTREAM_PDI section (or PDI section). Then load the extracted
+ * section through fpga manager.
+ *
+ * Note: this is only used under ert mode so that we do not need to
+ * check context or cache XCLBIN metadata, which are done by host
+ * XRT driver. Only if the same XCLBIN has been loaded, we skip loading.
  */
 int
 zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data)
@@ -590,17 +595,17 @@ zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data)
 	uint64_t size = 0;
 	int ret = 0;
 
-	BUG_ON(!mutex_is_locked(&zdev->zdev_xclbin_lock));
-
 	if (memcmp(axlf_head->m_magic, "xclbin2", 8)) {
-		DRM_INFO("Invalid xclbin magic string.");
+		DRM_INFO("Invalid xclbin magic string");
 		return -EINVAL;
 	}
 
+	mutex_lock(&zdev->zdev_xclbin_lock);
 	/* Check unique ID */
 	if (zocl_xclbin_same_uuid(zdev, &axlf_head->m_header.uuid)) {
-		DRM_INFO("%s The XCLBIN already loaded, uuid: %pUb. "
-		    "Don't need to reload.", __func__, &axlf_head->m_header.uuid);
+		DRM_INFO("%s The XCLBIN already loaded, uuid: %pUb",
+			 __func__, &axlf_head->m_header.uuid);
+		mutex_unlock(&zdev->zdev_xclbin_lock);
 		return ret;
 	}
 
@@ -629,9 +634,31 @@ zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data)
 	/* preserve uuid, avoid double download */
 	zocl_xclbin_set_uuid(zdev, &axlf_head->m_header.uuid);
 
+	/* reset scheduler */
+	sched_reset_scheduler(zdev->ddev);
+
 out:
 	write_unlock(&zdev->attr_rwlock);
-	DRM_INFO("%s %pUb ret: %d.", __func__, zocl_xclbin_get_uuid(zdev), ret);
+	DRM_INFO("%s %pUb ret: %d", __func__, zocl_xclbin_get_uuid(zdev), ret);
+	mutex_unlock(&zdev->zdev_xclbin_lock);
+	return ret;
+}
+
+static int
+zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct axlf *axlf,
+			char __user *xclbin)
+{
+	uint64_t size;
+	char *pdi_buf = NULL;
+	int ret;
+
+	size = zocl_read_sect(PDI, &pdi_buf, axlf, xclbin);
+	if (size == 0)
+		return 0;
+
+	ret = zocl_fpga_mgr_load(zdev, pdi_buf, size);
+	vfree(pdi_buf);
+
 	return ret;
 }
 
@@ -661,6 +688,12 @@ zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf,
 	vfree(section_buffer);
 
 	return ret;
+}
+
+static bool
+is_aie_only(struct axlf *axlf)
+{
+	return (axlf->m_header.m_actionMask & AM_LOAD_AIE);
 }
 
 int
@@ -696,19 +729,47 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 		return -EINVAL;
 	}
 
+	/* Get full axlf header */
+	size_of_header = sizeof(struct axlf_section_header);
+	num_of_sections = axlf_head.m_header.m_numSections - 1;
+	axlf_size = sizeof(struct axlf) + size_of_header * num_of_sections;
+	axlf = vmalloc(axlf_size);
+	if (!axlf) {
+		DRM_WARN("read xclbin fails: no memory");
+		return -ENOMEM;
+	}
+
+	if (copy_from_user(axlf, axlf_obj->za_xclbin_ptr, axlf_size)) {
+		DRM_WARN("read xclbin: fail copy from user memory");
+		vfree(axlf);
+		return -EFAULT;
+	}
+
+	xclbin = (char __user *)axlf_obj->za_xclbin_ptr;
+	ret = !ZOCL_ACCESS_OK(VERIFY_READ, xclbin, axlf_head.m_header.m_length);
+	if (ret) {
+		DRM_WARN("read xclbin: fail the access check");
+		vfree(axlf);
+		return -EFAULT;
+	}
 
 	write_lock(&zdev->attr_rwlock);
 
 	/* Check unique ID */
 	if (zocl_xclbin_same_uuid(zdev, &axlf_head.m_header.uuid)) {
-		DRM_INFO("%s The XCLBIN already loaded, uuid: %pUb. "
-		     "Don't need to reload.", __func__, &axlf_head.m_header.uuid);
+		if (is_aie_only(axlf)) {
+			ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin);
+			if (ret)
+				DRM_WARN("read xclbin: fail to load AIE");
+		} else {
+			DRM_INFO("%s The XCLBIN already loaded", __func__);
+		}
 		goto out0;
 	}
 
 	if (kds_mode == 0) {
 		if (sched_live_clients(zdev, NULL) || sched_is_busy(zdev)) {
-			DRM_ERROR("Current xclbin is in-use, can't change, try again.");
+			DRM_ERROR("Current xclbin is in-use, can't change");
 			ret = -EBUSY;
 			goto out0;
 		}
@@ -726,31 +787,11 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 
 	zocl_free_sections(zdev);
 
-	/* Get full axlf header */
-	size_of_header = sizeof(struct axlf_section_header);
-	num_of_sections = axlf_head.m_header.m_numSections-1;
-	axlf_size = sizeof(struct axlf) + size_of_header * num_of_sections;
-	axlf = vmalloc(axlf_size);
-	if (!axlf) {
-		ret = -ENOMEM;
-		goto out0;
-	}
-
-	if (copy_from_user(axlf, axlf_obj->za_xclbin_ptr, axlf_size)) {
-		ret = -EFAULT;
-		goto out0;
-	}
-
-	xclbin = (char __user *)axlf_obj->za_xclbin_ptr;
-	ret = !ZOCL_ACCESS_OK(VERIFY_READ, xclbin, axlf_head.m_header.m_length);
-	if (ret) {
-		ret = -EFAULT;
-		goto out0;
-	}
-
 	/* For PR support platform, device-tree has configured addr */
 	if (zdev->pr_isolation_addr) {
-		if (axlf_head.m_header.m_mode != XCLBIN_PR && axlf_head.m_header.m_mode != XCLBIN_HW_EMU && axlf_head.m_header.m_mode != XCLBIN_HW_EMU_PR) {
+		if (axlf_head.m_header.m_mode != XCLBIN_PR &&
+		    axlf_head.m_header.m_mode != XCLBIN_HW_EMU &&
+		    axlf_head.m_header.m_mode != XCLBIN_HW_EMU_PR) {
 			DRM_ERROR("xclbin m_mod %d is not a PR mode",
 			    axlf_head.m_header.m_mode);
 			ret = -EINVAL;
@@ -759,13 +800,13 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 
 		if (axlf_obj->za_flags != DRM_ZOCL_PLATFORM_PR) {
 			DRM_INFO("disable partial bitstream download, "
-			    "axlf flags is %d.", axlf_obj->za_flags);
+			    "axlf flags is %d", axlf_obj->za_flags);
 		} else {
+			/*
+			 * Make sure we load PL bitstream first,
+			 * if there is one, before loading AIE PDI.
+			 */
 			ret = zocl_load_sect(zdev, axlf, xclbin, BITSTREAM);
-			if (ret)
-				goto out0;
-
-			ret = zocl_load_sect(zdev, axlf, xclbin, PDI);
 			if (ret)
 				goto out0;
 
@@ -773,7 +814,15 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 			    BITSTREAM_PARTIAL_PDI);
 			if (ret)
 				goto out0;
+
+			ret = zocl_load_sect(zdev, axlf, xclbin, PDI);
+			if (ret)
+				goto out0;
 		}
+	} else if (is_aie_only(axlf)) {
+		ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin);
+		if (ret)
+			goto out0;
 	}
 
 	/* Populating IP_LAYOUT sections */
@@ -837,14 +886,12 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 	zdev->zdev_xclbin->zx_refcnt = 0;
 	zocl_xclbin_set_uuid(zdev, &axlf_head.m_header.uuid);
 
-	DRM_INFO("Download new XCLBIN %pUB done.", zocl_xclbin_get_uuid(zdev));
-
 out0:
 	write_unlock(&zdev->attr_rwlock);
 	if (size < 0)
 		ret = size;
 	vfree(axlf);
-	DRM_INFO("%s %pUb ret: %d.", __func__, zocl_xclbin_get_uuid(zdev), ret);
+	DRM_INFO("%s %pUb ret: %d", __func__, zocl_xclbin_get_uuid(zdev), ret);
 	return ret;
 }
 
@@ -857,53 +904,72 @@ zocl_xclbin_get_uuid(struct drm_zocl_dev *zdev)
 }
 
 static int
-zocl_xclbin_hold(struct drm_zocl_dev *zdev, const xuid_t *xclbin_uuid)
+zocl_xclbin_hold(struct drm_zocl_dev *zdev, const xuid_t *id)
 {
 	xuid_t *xclbin_id = (xuid_t *)zocl_xclbin_get_uuid(zdev);
 
-	BUG_ON(uuid_is_null(xclbin_uuid));
+	WARN_ON(uuid_is_null(id));
 	BUG_ON(!mutex_is_locked(&zdev->zdev_xclbin_lock));
 
-	DRM_INFO("-> Hold xclbin %pUB, from ref=%d",
-	    xclbin_uuid, zdev->zdev_xclbin->zx_refcnt);
-
-	if (!uuid_equal(xclbin_uuid, xclbin_id)) {
+	if (!uuid_equal(id, xclbin_id)) {
 		DRM_ERROR("lock bitstream %pUb failed, on zdev: %pUb",
-		    xclbin_uuid, xclbin_id);
+		    id, xclbin_id);
 		return -EBUSY;
 	}
 
 	zdev->zdev_xclbin->zx_refcnt++;
-	DRM_INFO("<- Hold xclbin %pUB, to ref=%d",
-	    xclbin_uuid, zdev->zdev_xclbin->zx_refcnt);
+	DRM_INFO("bitstream %pUb locked, ref=%d",
+		 id, zdev->zdev_xclbin->zx_refcnt);
 
 	return 0;
 }
 
-int
-zocl_xclbin_release(struct drm_zocl_dev *zdev)
+int zocl_lock_bitstream(struct drm_zocl_dev *zdev, const uuid_t *id)
+{
+	int ret;
+
+	mutex_lock(&zdev->zdev_xclbin_lock);
+	ret = zocl_xclbin_hold(zdev, id);
+	mutex_unlock(&zdev->zdev_xclbin_lock);
+
+	return ret;
+}
+
+static int
+zocl_xclbin_release(struct drm_zocl_dev *zdev, const xuid_t *id)
 {
 	xuid_t *xclbin_uuid = (xuid_t *)zocl_xclbin_get_uuid(zdev);
 
 	BUG_ON(!mutex_is_locked(&zdev->zdev_xclbin_lock));
 
-	DRM_INFO("-> Release xclbin %pUB, from ref=%d",
-	    xclbin_uuid, zdev->zdev_xclbin->zx_refcnt);
-
-	if (uuid_is_null(xclbin_uuid))
+	if (uuid_is_null(id)) /* force unlock all */
 		zdev->zdev_xclbin->zx_refcnt = 0;
-	else
+	else if (uuid_equal(xclbin_uuid, id))
 		--zdev->zdev_xclbin->zx_refcnt;
+	else {
+		DRM_WARN("unlock bitstream %pUb failed, on device: %pUb",
+			 id, xclbin_uuid);
+		return -EINVAL;
+	}
 
-	if (zdev->zdev_xclbin->zx_refcnt == 0)
-		DRM_INFO("now xclbin can be changed");
-
-	DRM_INFO("<- Release xclbin %pUB, to ref=%d",
-	    xclbin_uuid, zdev->zdev_xclbin->zx_refcnt);
+	DRM_INFO("bitstream %pUb unlocked, ref=%d",
+		 xclbin_uuid, zdev->zdev_xclbin->zx_refcnt);
 
 	return 0;
 }
 
+int zocl_unlock_bitstream(struct drm_zocl_dev *zdev, const uuid_t *id)
+{
+	int ret;
+
+	mutex_lock(&zdev->zdev_xclbin_lock);
+	ret = zocl_xclbin_release(zdev, id);
+	mutex_unlock(&zdev->zdev_xclbin_lock);
+
+	return ret;
+}
+
+/* TODO: remove this once new KDS is ready */
 int
 zocl_xclbin_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
 	struct sched_client_ctx *client)
@@ -984,7 +1050,7 @@ zocl_xclbin_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
 
 		--client->num_cus;
 		if (CLIENT_NUM_CU_CTX(client) == 0)
-			ret = zocl_xclbin_release(zdev);
+			ret = zocl_xclbin_release(zdev, ctx_xuid);
 		goto out;
 	}
 

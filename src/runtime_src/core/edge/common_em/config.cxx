@@ -168,7 +168,7 @@ namespace xclemulation{
         setKeepRunDir(getBoolValue(value,false));
       }
       else if (name == "enable_prep_target" || name == "enable_debug" || name == "aie_sim_options") {
-        //Do nothing: Added to bypass the WARNING that is issued below stating "invalid sdaccel.ini option" 
+        //Do nothing: Added to bypass the WARNING that is issued below stating "invalid xrt.ini option" 
       } 
       else if(name == "sim_dir")
       {
@@ -250,7 +250,7 @@ namespace xclemulation{
       }
       else if(name.find("Debug.") == std::string::npos)
       {
-        std::cout<<"WARNING: [HW-EM 08] Invalid option '"<<name<<"` specified in sdaccel.ini"<<std::endl;
+        std::cout<<"WARNING: [HW-EM 08] Invalid option '"<<name<<"` specified in xrt.ini"<<std::endl;
       }
     }
     //this code has to be removed once gui generates ini file by adding launch_waveform property

@@ -31,11 +31,11 @@
 #include "../lib/libxdma_api.h"
 #include "common.h"
 
-#if defined(__PPC64__)
-#define XOCL_FILE_PAGE_OFFSET	0x10000
-#else
-#define XOCL_FILE_PAGE_OFFSET	0x100000
+#ifndef SZ_4G
+#define SZ_4G	_AC(0x100000000, ULL)
 #endif
+
+#define XOCL_FILE_PAGE_OFFSET	(SZ_4G / PAGE_SIZE)
 
 #ifndef VM_RESERVED
 #define VM_RESERVED (VM_DONTEXPAND | VM_DONTDUMP)
@@ -312,7 +312,7 @@ static uint xocl_poll(struct file *filp, poll_table *wait)
 
 	DRM_ENTER("");
 	if (kds_mode == 1)
-		return xocl_poll_client(drm_p->xdev, filp, wait, priv->driver_priv);
+		return xocl_poll_client(filp, wait, priv->driver_priv);
 	else
 		return xocl_exec_poll_client(drm_p->xdev, filp, wait, priv->driver_priv);
 }
@@ -493,7 +493,6 @@ void xocl_drm_fini(struct xocl_drm *drm_p)
 	xocl_drvinst_release(drm_p, &hdl);
 
 	xocl_cleanup_mem(drm_p);
-	xocl_cma_bank_free(drm_p);
 	drm_put_dev(drm_p->ddev);
 	mutex_destroy(&drm_p->mm_lock);
 
@@ -667,6 +666,7 @@ int xocl_cleanup_mem_nolock(struct xocl_drm *drm_p)
 		goto done;
 
 	if (topology) {
+		xocl_p2p_mem_cleanup(drm_p->xdev);
 		ddr = topology->m_count;
 		for (i = 0; i < ddr; i++) {
 			if (!topology->m_mem_data[i].m_used)
@@ -675,7 +675,7 @@ int xocl_cleanup_mem_nolock(struct xocl_drm *drm_p)
 			if (XOCL_IS_STREAM(topology, i))
 				continue;
 
-			if (!strncmp(topology->m_mem_data[i].m_tag, "HOST[0]", 7))
+			if (IS_HOST_MEM(topology->m_mem_data[i].m_tag))
 				xocl_addr_translator_disable_remap(drm_p->xdev);
 
 			xocl_info(drm_p->ddev->dev, "Taking down DDR : %d", i);
@@ -708,25 +708,13 @@ done:
 	drm_p->mm = NULL;
 	vfree(drm_p->mm_usage_stat);
 	drm_p->mm_usage_stat = NULL;
-	vfree(drm_p->mm_p2p_off);
-	drm_p->mm_p2p_off = NULL;
 
 	return 0;
 }
 
 int xocl_set_cma_bank(struct xocl_drm *drm_p, uint64_t base_addr, size_t ddr_bank_size)
 {
-	uint64_t host_reserve_size = xocl_addr_translator_get_range(drm_p->xdev);
-	int ret = 0;
-
-	if (ddr_bank_size > host_reserve_size) {
-		ret = -E2BIG;
-		goto done;
-	}
-	ret = xocl_addr_translator_enable_remap(drm_p->xdev, base_addr);
-
-done:
-	return ret;
+	return xocl_addr_translator_enable_remap(drm_p->xdev, base_addr, ddr_bank_size);
 }
 
 int xocl_cleanup_mem(struct xocl_drm *drm_p)
@@ -751,7 +739,7 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	uint64_t reserved1 = 0;
 	uint64_t reserved2 = 0;
 	uint64_t reserved_start;
-	uint64_t reserved_end;
+	uint64_t reserved_end, host_reserve_size;
 	int err = 0;
 	int i = -1;
 
@@ -783,11 +771,18 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 
 	drm_p->mm = vzalloc(size);
 	drm_p->mm_usage_stat = vzalloc(size);
-	drm_p->mm_p2p_off = vzalloc((topo->m_count + 1) * sizeof(u64));
-	if (!drm_p->mm || !drm_p->mm_usage_stat || !drm_p->mm_p2p_off) {
+	if (!drm_p->mm || !drm_p->mm_usage_stat) {
 		err = -ENOMEM;
 		goto done;
 	}
+
+	err = xocl_p2p_mem_init(drm_p->xdev);
+	if (err && err != -ENODEV) {
+		xocl_err(drm_p->ddev->dev,
+			"init p2p mem failed, err %d", err);
+		goto done;
+	}
+	err = 0;
 
 	for (i = 0; i < topo->m_count; i++) {
 		mem_data = &topo->m_mem_data[i];
@@ -806,10 +801,17 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	for (i = 0; i < topo->m_count; i++) {
 		mem_data = &topo->m_mem_data[i];
 
-		ddr_bank_size = XOCL_IS_STREAM(topo, i) ? 0 :
-			mem_data->m_size * 1024;
-
-		drm_p->mm_p2p_off[i + 1] = drm_p->mm_p2p_off[i] + ddr_bank_size;
+		if (XOCL_IS_P2P_MEM(topo, i)) {
+			ddr_bank_size = mem_data->m_size * 1024;
+			if (mem_data->m_used) {
+				xocl_p2p_mem_map(drm_p->xdev,
+				    mem_data->m_base_address,
+				    ddr_bank_size, 0, 0, NULL);
+			} else {
+				xocl_p2p_mem_map(drm_p->xdev, ~0UL,
+				     ddr_bank_size, 0, 0, NULL);
+			}
+		}
 
 		if (!mem_data->m_used)
 			continue;
@@ -855,16 +857,20 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 		hash_add(drm_p->mm_range, &wrapper->node, wrapper->start_addr);
 #endif
 
-		drm_mm_init(drm_p->mm[i], mem_data->m_base_address,
-				ddr_bank_size - reserved1 - reserved2);
+		if (IS_HOST_MEM(mem_data->m_tag)) {
+			host_reserve_size = xocl_addr_translator_get_host_mem_size(drm_p->xdev);
 
-		if (!strncmp(mem_data->m_tag, "HOST[0]", 7)) {
+			ddr_bank_size = min(ddr_bank_size, (size_t)host_reserve_size);
 			err = xocl_set_cma_bank(drm_p, mem_data->m_base_address, ddr_bank_size);
 			if (err) {
 				xocl_err(drm_p->ddev->dev, "Run host_mem to setup host memory access, request 0x%lx bytes", ddr_bank_size);
 				goto done;
 			}
 		}
+
+		drm_mm_init(drm_p->mm[i], mem_data->m_base_address,
+				ddr_bank_size - reserved1 - reserved2);
+
 		xocl_info(drm_p->ddev->dev, "drm_mm_init called");
 	}
 
@@ -893,7 +899,7 @@ bool is_cma_bank(struct xocl_drm *drm_p, uint32_t memidx)
 	if (!topo->m_mem_data[memidx].m_used)
 		goto done;
 
-	if (!strncmp(topo->m_mem_data[memidx].m_tag, "HOST[0]", 7))
+	if (IS_HOST_MEM(topo->m_mem_data[memidx].m_tag))
 		ret = true;
 
 done:
@@ -1233,7 +1239,7 @@ int xocl_cma_bank_alloc(struct xocl_drm *drm_p, struct drm_xocl_alloc_cma_info *
 	mutex_lock(&drm_p->mm_lock);
 
 	if (!num) {
-		err = -EINVAL;
+		err = -ENODEV;
 		DRM_ERROR("Doesn't support HOST MEM feature");
 		goto unlock;
 	}

@@ -32,6 +32,9 @@ namespace xrt_core {
 struct ishim
 {
   virtual void
+  close_device() = 0;
+  
+  virtual void
   open_context(xuid_t xclbin_uuid, unsigned int ip_index, bool shared) = 0;
 
   virtual void
@@ -40,8 +43,14 @@ struct ishim
   virtual xclBufferHandle
   alloc_bo(size_t size, unsigned int flags) = 0;
 
+  virtual xclBufferHandle
+  alloc_bo(void* userptr, size_t size, unsigned int flags) = 0;
+
   virtual void
   free_bo(xclBufferHandle boh) = 0;
+
+  virtual void
+  sync_bo(xclBufferHandle bo, xclBOSyncDirection dir, size_t size, size_t offset) = 0;
 
   virtual void*
   map_bo(xclBufferHandle boh, bool write) = 0;
@@ -51,13 +60,12 @@ struct ishim
 
   virtual void
   get_bo_properties(xclBufferHandle boh, struct xclBOProperties *properties) const = 0;
-#if 0
+
   virtual void
   reg_read(uint32_t ipidx, uint32_t offset, uint32_t* data) const = 0;
 
   virtual void
   reg_write(uint32_t ipidx, uint32_t offset, uint32_t data) = 0;
-#endif
 
   virtual void
   xread(uint64_t offset, void* buffer, size_t size) const = 0;
@@ -70,6 +78,9 @@ struct ishim
 
   virtual int
   exec_wait(int timeout_ms) const = 0;
+
+  virtual void
+  load_xclbin(const struct axlf*) = 0;
 };
 
 template <typename DeviceType>
@@ -79,6 +90,12 @@ struct shim : public DeviceType
   shim(Args&&... args)
     : DeviceType(std::forward<Args>(args)...)
   {}
+
+  virtual void
+  close_device()
+  {
+    xclClose(DeviceType::get_device_handle());
+  }
 
   virtual void
   open_context(xuid_t xclbin_uuid , unsigned int ip_index, bool shared)
@@ -102,10 +119,25 @@ struct shim : public DeviceType
     throw std::bad_alloc();
   }
 
+  virtual xclBufferHandle
+  alloc_bo(void* userptr, size_t size, unsigned int flags)
+  {
+    if (auto bo = xclAllocUserPtrBO(DeviceType::get_device_handle(), userptr, size, flags))
+      return bo;
+    throw std::bad_alloc();
+  }
+
   virtual void
   free_bo(xclBufferHandle bo)
   {
     xclFreeBO(DeviceType::get_device_handle(), bo);
+  }
+
+  virtual void
+  sync_bo(xclBufferHandle bo, xclBOSyncDirection dir, size_t size, size_t offset)
+  {
+    if (auto err = xclSyncBO(DeviceType::get_device_handle(), bo, dir, size, offset))
+      throw std::runtime_error("unable to sync BO");
   }
 
   virtual void*
@@ -130,7 +162,6 @@ struct shim : public DeviceType
       throw error(ret, "failed to get BO properties");
   }
 
-#if 0
   virtual void
   reg_read(uint32_t ipidx, uint32_t offset, uint32_t* data) const
   {
@@ -144,7 +175,6 @@ struct shim : public DeviceType
     if (auto ret = xclRegWrite(DeviceType::get_device_handle(), ipidx, offset, data))
       throw error(ret, "failed to write ip(" + std::to_string(ipidx) + ")");
   }
-#endif
 
 #ifdef __GNUC__
 # pragma GCC diagnostic push
@@ -179,6 +209,13 @@ struct shim : public DeviceType
   exec_wait(int timeout_ms) const
   {
     return xclExecWait(DeviceType::get_device_handle(), timeout_ms);
+  }
+
+  virtual void
+  load_xclbin(const struct axlf* buffer)
+  {
+    if (auto ret = xclLoadXclBin(DeviceType::get_device_handle(), buffer))
+      throw error(ret, "failed to load xclbin");
   }
 };
 

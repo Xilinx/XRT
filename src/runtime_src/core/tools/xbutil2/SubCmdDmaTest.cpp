@@ -41,7 +41,7 @@ static void
 dmatest(const std::shared_ptr<xrt_core::device>& device, size_t block_size, bool verbose)
 {
   if (block_size == 0)
-      block_size = 256 * 1024 * 1024; // Default block size
+      block_size = 16 * 1024 * 1024; // Default block size 16MB
 
   auto ddr_mem_size = xrt_core::device_query<xrt_core::query::rom_ddr_bank_size_gb>(device);
 

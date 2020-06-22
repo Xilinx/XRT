@@ -12,6 +12,8 @@
 #ifndef _ZOCL_XCLBIN_H_
 #define _ZOCL_XCLBIN_H_
 
+#include <linux/uuid.h>
+
 struct zocl_xclbin {
 	int		zx_refcnt;
 	void		*zx_uuid;
@@ -22,9 +24,8 @@ void zocl_xclbin_fini(struct drm_zocl_dev *zdev);
 
 int zocl_xclbin_set_uuid(struct drm_zocl_dev *zdev, void *uuid);
 void *zocl_xclbin_get_uuid(struct drm_zocl_dev *zdev);
-int zocl_xclbin_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
-	struct sched_client_ctx *client);
-int zocl_xclbin_release(struct drm_zocl_dev *zdev);
+int zocl_lock_bitstream(struct drm_zocl_dev *zdev, const uuid_t *id);
+int zocl_unlock_bitstream(struct drm_zocl_dev *zdev, const uuid_t *id);
 
 int zocl_xclbin_refcount(struct drm_zocl_dev *zdev);
 int zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev,

@@ -32,7 +32,7 @@ void zocl_describe(const struct drm_zocl_bo *obj)
 	size_t size_in_kb = obj->cma_base.base.size / 1024;
 	size_t physical_addr = obj->cma_base.paddr;
 
-	DRM_DEBUG("%p: H[0x%zxKB] D[0x%zx]\n",
+	DRM_DEBUG("%px: H[0x%zxKB] D[0x%zx]\n",
 			obj,
 			size_in_kb,
 			physical_addr);
@@ -195,6 +195,14 @@ zocl_create_bo(struct drm_device *dev, uint64_t unaligned_size, u32 user_flags)
 			return ERR_PTR(-ENOMEM);
 		}
 		mutex_unlock(&zdev->mm_lock);
+
+		/*
+		 * Set up a kernel mapping for direct BO access.
+		 * We don't have to fail BO allocation if we can
+		 * not establish the kernel mapping. We just can not
+		 * access BO directly from kernel.
+		 */
+		bo->vmapping = memremap(bo->mm_node->start, size, MEMREMAP_WC);
 
 		err = drm_gem_create_mmap_offset(&bo->gem_base);
 		if (err) {
@@ -668,13 +676,14 @@ int zocl_info_bo_ioctl(struct drm_device *dev,
 	return 0;
 }
 
-int zocl_pwrite_bo_ioctl(struct drm_device *dev, void *data,
-		struct drm_file *filp)
+static int zocl_bo_rdwr_ioctl(struct drm_device *dev, void *data,
+		struct drm_file *filp, bool is_read)
 {
 	const struct drm_zocl_pwrite_bo *args = data;
 	struct drm_gem_object *gem_obj = zocl_gem_object_lookup(dev, filp,
 			args->handle);
 	char __user *user_data = to_user_ptr(args->data_ptr);
+	struct drm_zocl_bo *bo;
 	int ret = 0;
 	void *kaddr;
 
@@ -698,56 +707,41 @@ int zocl_pwrite_bo_ioctl(struct drm_device *dev, void *data,
 		goto out;
 	}
 
-	kaddr = drm_gem_cma_prime_vmap(gem_obj);
+	bo = to_zocl_bo(gem_obj);
+	if (bo->flags & ZOCL_BO_FLAGS_CMA)
+		kaddr = drm_gem_cma_prime_vmap(gem_obj);
+	else
+		kaddr = bo->vmapping;
+	if (!kaddr) {
+		DRM_ERROR("Fail to map BO %d\n", args->handle);
+		ret = -EFAULT;
+		goto out;
+	}
+
 	kaddr += args->offset;
 
-	ret = copy_from_user(kaddr, user_data, args->size);
+	if (is_read)
+		ret = copy_to_user(user_data, kaddr, args->size);
+	else
+		ret = copy_from_user(kaddr, user_data, args->size);
+
 out:
 	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
 
 	return ret;
+
+}
+
+int zocl_pwrite_bo_ioctl(struct drm_device *dev, void *data,
+		struct drm_file *filp)
+{
+	return (zocl_bo_rdwr_ioctl(dev, data, filp, false));
 }
 
 int zocl_pread_bo_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *filp)
 {
-	const struct drm_zocl_pread_bo *args = data;
-	struct drm_gem_object *gem_obj = zocl_gem_object_lookup(dev, filp,
-			args->handle);
-	char __user *user_data = to_user_ptr(args->data_ptr);
-	int ret = 0;
-	void *kaddr;
-
-	if (!gem_obj) {
-		DRM_ERROR("Failed to look up GEM BO %d\n", args->handle);
-		return -EINVAL;
-	}
-
-	if ((args->offset > gem_obj->size) || (args->size > gem_obj->size)
-			|| ((args->offset + args->size) > gem_obj->size)) {
-		ret = -EINVAL;
-		goto out;
-	}
-
-	if (args->size == 0) {
-		ret = 0;
-		goto out;
-	}
-
-	if (!ZOCL_ACCESS_OK(VERIFY_WRITE, user_data, args->size)) {
-		ret = EFAULT;
-		goto out;
-	}
-
-	kaddr = drm_gem_cma_prime_vmap(gem_obj);
-	kaddr += args->offset;
-
-	ret = copy_to_user(user_data, kaddr, args->size);
-
-out:
-	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
-
-	return ret;
+	return (zocl_bo_rdwr_ioctl(dev, data, filp, true));
 }
 
 static struct drm_gem_cma_object *
@@ -834,7 +828,7 @@ void zocl_free_host_bo(struct drm_gem_object *gem_obj)
 {
 	struct drm_zocl_bo *zocl_bo = to_zocl_bo(gem_obj);
 
-	DRM_INFO("%s: obj 0x%p", __func__, zocl_bo);
+	DRM_DEBUG("%s: obj 0x%px", __func__, zocl_bo);
 
 	memunmap(zocl_bo->cma_base.vaddr);
 
@@ -900,6 +894,9 @@ void zocl_init_mem(struct drm_zocl_dev *zdev, struct mem_topology *mtopo)
 {
 	struct zocl_mem *memp;
 	int i;
+
+	if (!mtopo)
+		return;
 
 	zdev->num_mem = mtopo->m_count;
 	zdev->mem = vzalloc(zdev->num_mem * sizeof(struct zocl_mem));

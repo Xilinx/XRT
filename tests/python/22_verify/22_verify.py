@@ -49,9 +49,10 @@ def runKernel(opt):
     print("Original string = [%s]" % bo1[:64].decode("utf-8"))
     print("Original string = [%s]" % bo2[:64].decode("utf-8"))
 
-    print("Issue kernel start requests using xrtKernelRun()")
-    rhandle1 = xrtKernelRun(khandle, boHandle1)
-    rhandle2 = xrtKernelRun(khandle, boHandle2)
+    print("Issue kernel start requests")
+    kfunc = xrtKernelGetFunc(ctypes.c_int)
+    rhandle1 = kfunc(khandle, boHandle1)
+    rhandle2 = kfunc(khandle, boHandle2)
 
     print("Now wait for the kernels to finish using xrtRunWait()")
     xrtRunWait(rhandle1)

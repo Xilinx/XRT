@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2018-2020 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *
@@ -248,6 +248,15 @@ static struct xocl_subdev_map		subdev_map[] = {
 	},
 	{
 		XOCL_SUBDEV_DMA,
+		XOCL_QDMA4,
+		{ NODE_QDMA4, NODE_STM4, NULL },
+		1,
+		0,
+		NULL,
+		NULL,
+       	},
+	{
+		XOCL_SUBDEV_DMA,
 		XOCL_QDMA,
 		{ NODE_QDMA, NODE_STM, NULL },
 		1,
@@ -416,12 +425,16 @@ static struct xocl_subdev_map		subdev_map[] = {
 		0,
 		NULL,
 		devinfo_cb_setlevel,
+		.min_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
 		XOCL_SUBDEV_IORES,
 		XOCL_IORES1,
 		{
 			RESNAME_PCIEMON,
+			RESNAME_MEMCALIB,
+			RESNAME_KDMA,
+			RESNAME_DDR4_RESET_GATE,
 			NULL
 		},
 		1,
@@ -462,10 +475,10 @@ static struct xocl_subdev_map		subdev_map[] = {
 		.devinfo_cb = NULL,
 	},
 	{
-		.id = XOCL_SUBDEV_OSPI_VERSAL,
-		.dev_name = XOCL_OSPI_VERSAL,
+		.id = XOCL_SUBDEV_XFER_VERSAL,
+		.dev_name = XOCL_XFER_VERSAL,
 		.res_names = {
-			NODE_OSPI_CACHE,
+			NODE_XFER_CACHE,
 			NULL
 		},
 		.required_ip = 1,
@@ -501,6 +514,15 @@ static struct xocl_subdev_map		subdev_map[] = {
 		XOCL_SUBDEV_ADDR_TRANSLATOR,
 		XOCL_ADDR_TRANSLATOR,
 		{ NODE_ADDR_TRANSLATOR, NULL },
+		1,
+		0,
+		NULL,
+		NULL,
+	},
+	{
+		XOCL_SUBDEV_P2P,
+		XOCL_P2P,
+		{ NODE_REMAP_P2P, NULL },
 		1,
 		0,
 		NULL,
@@ -676,6 +698,10 @@ static int xocl_fdt_parse_ip(xdev_handle_t xdev_hdl, char *blob,
 #if PF == MGMTPF
 	/* mgmtpf driver checks pfnum. it will not create userpf subdevices */
 	if (ntohl(*pfnum) != XOCL_PCI_FUNC(xdev_hdl))
+		return 0;
+#else 
+	if (XDEV(xdev_hdl)->fdt_blob && 
+		xocl_fdt_get_userpf(xdev_hdl, XDEV(xdev_hdl)->fdt_blob) != ntohl(*pfnum))
 		return 0;
 #endif
 

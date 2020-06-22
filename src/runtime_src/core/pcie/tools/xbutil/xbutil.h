@@ -444,8 +444,7 @@ public:
               if (!enabled || !size)
                 continue;
 
-              float percentage = (float)mem_usage * 100 /
-                    (size << 10);
+              float percentage = (float)mem_usage * 100 / size;
               int nums_fiftieth = (int)percentage / 2;
               std::string str = std::to_string(percentage).substr(0, 4) + "%";
 
@@ -718,8 +717,9 @@ public:
     {
         // board info
         std::string vendor, device, subsystem, subvendor, xmc_ver, xmc_oem_id,
-            ser_num, bmc_ver, idcode, fpga, dna, errmsg, max_power;
+            ser_num, bmc_ver, idcode, fpga, dna, errmsg, max_power, cpu_affinity;
         int ddr_size = 0, ddr_count = 0, pcie_speed = 0, pcie_width = 0, p2p_enabled = 0;
+        uint64_t host_mem_size = 0, max_host_mem_aperture = 0;
         std::vector<std::string> clock_freqs;
         std::vector<std::string> dma_threads;
         std::vector<std::string> mac_addrs;
@@ -750,7 +750,14 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get( "rom", "FPGA",                    errmsg, fpga );
         pcidev::get_dev(m_idx)->sysfs_get( "icap", "idcode",                 errmsg, idcode );
         pcidev::get_dev(m_idx)->sysfs_get( "dna", "dna",                     errmsg, dna );
-        pcidev::get_dev(m_idx)->sysfs_get<int>("", "p2p_enable",             errmsg, p2p_enabled, 0 );
+        pcidev::get_dev(m_idx)->sysfs_get("", "local_cpulist",               errmsg, cpu_affinity);
+        pcidev::get_dev(m_idx)->sysfs_get<uint64_t>("address_translator", "host_mem_size",  
+                                                                             errmsg, host_mem_size, 0);
+        pcidev::get_dev(m_idx)->sysfs_get<uint64_t>("icap", "max_host_mem_aperture",  
+                                                                             errmsg, max_host_mem_aperture, 0);
+
+        p2p_enabled = pcidev::check_p2p_config(pcidev::get_dev(m_idx), errmsg);
+
         sensor_tree::put( "board.info.dsa_name",       name() );
         sensor_tree::put( "board.info.vendor",         vendor );
         sensor_tree::put( "board.info.device",         device );
@@ -774,6 +781,9 @@ public:
         sensor_tree::put( "board.info.fpga_name",      fpga );
         sensor_tree::put( "board.info.dna",            dna );
         sensor_tree::put( "board.info.p2p_enabled",    p2p_enabled );
+        sensor_tree::put( "board.info.cpu_affinity",   cpu_affinity );
+        sensor_tree::put( "board.info.host_mem_size",   xrt_core::utils::unit_convert(host_mem_size) );
+        sensor_tree::put( "board.info.max_host_mem_aperture",   xrt_core::utils::unit_convert(max_host_mem_aperture) );
 
         for (uint32_t i = 0; i < mac_addrs.size(); ++i) {
             std::string entry_name = "board.info.mac_addr."+std::to_string(i);
@@ -1049,17 +1059,20 @@ public:
              << sensor_tree::get( "board.info.pcie_width", -1 ) << std::setw(16) << sensor_tree::get( "board.info.dma_threads", -1 )
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.mig_calibrated", "N/A" );
              switch(sensor_tree::get( "board.info.p2p_enabled", -1)) {
-             case ENXIO:
+             case P2P_CONFIG_NOT_SUPP:
                       ostr << std::setw(16) << "N/A";
                   break;
-             case 0:
+             case P2P_CONFIG_DISABLED:
                       ostr << std::setw(16) << "false";
                   break;
-             case 1:
+             case P2P_CONFIG_ENABLED:
                       ostr << std::setw(16) << "true";
                   break;
-             case EBUSY:
+             case P2P_CONFIG_REBOOT:
                       ostr << std::setw(16) << "no iomem";
+                  break;
+             case P2P_CONFIG_ERROR:
+                      ostr << std::setw(16) << "error";
                   break;
              }
         ostr << std::setw(16) << sensor_tree::get<std::string>( "board.info.xmc_oem_id" , "N/A") << std::endl;
@@ -1088,8 +1101,15 @@ public:
             }
             ostr << std::endl;
         }
-        ostr << "DNA" << std::endl;
-        ostr << sensor_tree::get<std::string>( "board.info.dna", "N/A" ) << std::endl;
+        ostr << std::setw(32) << "DNA"
+             << std::setw(16) << "CPU_AFFINITY"
+             << std::setw(16) << "HOST_MEM size"
+             << std::setw(16) << "Max HOST_MEM" << std::endl;
+        ostr << std::setw(32) << sensor_tree::get<std::string>( "board.info.dna", "N/A" )
+             << std::setw(16) << sensor_tree::get<std::string>( "board.info.cpu_affinity", "N/A" )
+             << std::setw(16) << sensor_tree::get<std::string>( "board.info.host_mem_size", "N/A" )
+             << std::setw(16) << sensor_tree::get<std::string>( "board.info.max_host_mem_aperture", "N/A" )
+             << std::endl;
 
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
@@ -1469,7 +1489,7 @@ public:
         xclbin_lock xclbin_lock(m_handle, m_idx);
 
         if (blockSize == 0)
-            blockSize = 256 * 1024 * 1024; // Default block size
+            blockSize = 16 * 1024 * 1024; // Default block size 16MB
 
         int ddr_mem_size = get_ddr_mem_size();
         if (ddr_mem_size == -EINVAL)
@@ -1724,6 +1744,7 @@ private:
     int verifyKernelTest(void);
     int bandwidthKernelTest(void);
     int kernelVersionTest(void);
+    int hostMemBandwidthKernelTest(void);
     // testFunc must return 0 for success, 1 for warning, and < 0 for error
     int runOneTest(std::string testName, std::function<int(void)> testFunc);
 
@@ -1737,6 +1758,7 @@ int xclValidate(int argc, char *argv[]);
 std::unique_ptr<xcldev::device> xclGetDevice(unsigned index);
 int xclP2p(int argc, char *argv[]);
 int xclCma(int argc, char *argv[]);
+int xclScheduler(int argc, char *argv[]);
 } // end namespace xcldev
 
 #endif /* XBUTIL_H */

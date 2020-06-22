@@ -163,6 +163,14 @@ isEmulationMode()
   return val;
 }
 
+static bool
+is_sw_emulation()
+{
+  static auto xem = std::getenv("XCL_EMULATION_MODE");
+  static bool swem = xem ? (std::strcmp(xem,"sw_emu")==0) : false;
+  return swem;
+}
+
 int32_t
 load_libxrt()
 {
@@ -222,26 +230,9 @@ load_libxrt()
 
         std::cout << "XMA FATAL: Failed to load XRT library" << std::endl;
         return XMA_ERROR;
-    } else {
-        auto hw_em_driver = xrt_core::config::get_hw_em_driver();
-
-        if (hw_em_driver != "null") {
-            if (isDLL(hw_em_driver)) {
-                void* xrthandle = dlopen(hw_em_driver.c_str(), RTLD_NOW | RTLD_GLOBAL);
-                if (!xrthandle)
-                {
-                    std::cout << "XMA FATAL: Failed to load XRT HWEM library: " << hw_em_driver << std::endl;
-                    std::cout << "XMA FATAL: DLL open error: " << std::string(dlerror()) << std::endl;
-                    return XMA_ERROR;
-                }
-
-                return 3;
-            }
-            std::cout << "XMA FATAL: Failed to load XRT HWEM library: " << hw_em_driver << std::endl;
-            return XMA_ERROR;
-        }
-
-
+    }
+   
+    if (is_sw_emulation()) {
         auto sw_em_driver = xrt_core::config::get_sw_em_driver();
         if (sw_em_driver != "null") {
             if (isDLL(sw_em_driver)) {
@@ -259,21 +250,6 @@ load_libxrt()
             return XMA_ERROR;
         }
 
-        bfs::path p1(xrt / "lib/libxrt_hwemu.so");
-        hw_em_driver = p1.string();
-
-        if (isDLL(hw_em_driver)) {
-            void* xrthandle = dlopen(hw_em_driver.c_str(), RTLD_NOW | RTLD_GLOBAL);
-            if (!xrthandle)
-            {
-                std::cout << "XMA FATAL: Failed to load XRT HWEM library: " << hw_em_driver << std::endl;
-                std::cout << "XMA FATAL: DLL open error: " << std::string(dlerror()) << std::endl;
-                return XMA_ERROR;
-            }
-
-            return 5;
-        }
-
         bfs::path p2(xrt / "lib/libxrt_swemu.so");
         sw_em_driver = p2.string();
 
@@ -288,11 +264,44 @@ load_libxrt()
 
             return 6;
         }
-
-        std::cout << "XMA FATAL: Failed to load XRT emulation library" << std::endl;
+        std::cout << "XMA FATAL: Failed to load XRT SWEM library: libxrt_swemu.so" << std::endl;
         return XMA_ERROR;
     }
 
+    auto hw_em_driver = xrt_core::config::get_hw_em_driver();
+    if (hw_em_driver != "null") {
+        if (isDLL(hw_em_driver)) {
+            void* xrthandle = dlopen(hw_em_driver.c_str(), RTLD_NOW | RTLD_GLOBAL);
+            if (!xrthandle)
+            {
+                std::cout << "XMA FATAL: Failed to load XRT HWEM library: " << hw_em_driver << std::endl;
+                std::cout << "XMA FATAL: DLL open error: " << std::string(dlerror()) << std::endl;
+                return XMA_ERROR;
+            }
+
+            return 3;
+        }
+        std::cout << "XMA FATAL: Failed to load XRT HWEM library: " << hw_em_driver << std::endl;
+        return XMA_ERROR;
+    }
+
+    bfs::path p1(xrt / "lib/libxrt_hwemu.so");
+    hw_em_driver = p1.string();
+
+    if (isDLL(hw_em_driver)) {
+        void* xrthandle = dlopen(hw_em_driver.c_str(), RTLD_NOW | RTLD_GLOBAL);
+        if (!xrthandle)
+        {
+            std::cout << "XMA FATAL: Failed to load XRT HWEM library: " << hw_em_driver << std::endl;
+            std::cout << "XMA FATAL: DLL open error: " << std::string(dlerror()) << std::endl;
+            return XMA_ERROR;
+        }
+
+        return 5;
+    }
+
+    std::cout << "XMA FATAL: Failed to load XRT HWEM library: libxrt_hwemu.so" << std::endl;
+    return XMA_ERROR;
 }
 
 void get_system_info() {

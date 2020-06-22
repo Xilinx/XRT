@@ -472,7 +472,7 @@ xclLoadXclBin(const xclBin *buffer)
   auto top = reinterpret_cast<const axlf*>(buffer);
   auto ret = xclLoadAxlf(top);
 
-  if (!ret)
+  if (!ret && !xrt_core::xclbin::is_pdi_only(top))
     mKernelClockFreq = xrt_core::xclbin::get_kernel_freq(top);
 
   xclLog(XRT_INFO, "XRT", "%s: return %d", __func__, ret);
@@ -1579,6 +1579,11 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
       return ret;
     }
     auto core_device = xrt_core::get_userpf_device(handle);
+
+    /* If PDI is the only section, return here */
+    if (xrt_core::xclbin::is_pdi_only(buffer))
+        return 0;
+
     core_device->register_axlf(buffer);
     ret = xrt_core::scheduler::init(handle, buffer);
     if (ret) {

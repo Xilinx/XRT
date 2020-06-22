@@ -18,7 +18,6 @@
 #include "device_linux.h"
 #include "gen/version.h"
 #include "scan.h"
-#include "core/common/time.h"
 
 #include <boost/property_tree/ini_parser.hpp>
 
@@ -49,19 +48,38 @@ struct X
   X() { singleton_instance(); }
 } x;
 
-static std::string
+static boost::property_tree::ptree
 driver_version(const std::string& driver)
 {
-  std::string line("unknown");
+  boost::property_tree::ptree _pt;
+  std::string ver("unknown");
+  std::string hash("unknown");
   std::string path("/sys/module/");
   path += driver;
   path += "/version";
-  std::ifstream ver(path);
-  if (ver.is_open()) {
-    getline(ver, line);
+
+  std::ifstream stream(path);
+  if (stream.is_open()) {
+    std::string line;
+    getline(stream, line);
+    std::stringstream ss(line);
+    getline(ss, ver, ',');
+    getline(ss, hash, ',');
   }
 
-  return line;
+  _pt.put("name", driver);
+  _pt.put("version", ver);
+  _pt.put("hash", hash);
+  return _pt;
+}
+
+static boost::property_tree::ptree
+glibc_info()
+{
+  boost::property_tree::ptree _pt;
+  _pt.put("name", "glibc");
+  _pt.put("version", gnu_get_libc_version());
+  return _pt;
 }
 
 static std::vector<std::weak_ptr<xrt_core::device_linux>> mgmtpf_devices(16); // fix size
@@ -77,8 +95,10 @@ void
 system_linux::
 get_xrt_info(boost::property_tree::ptree &pt)
 {
-  pt.put("xocl",      driver_version("xocl"));
-  pt.put("xclmgmt",   driver_version("xclmgmt"));
+  boost::property_tree::ptree _ptDriverInfo;
+  _ptDriverInfo.push_back( std::make_pair("", driver_version("xocl") ));
+  _ptDriverInfo.push_back( std::make_pair("", driver_version("xclmgmt") ));
+  pt.put_child("drivers", _ptDriverInfo);
 }
 
 
@@ -94,8 +114,6 @@ get_os_info(boost::property_tree::ptree &pt)
     pt.put("machine",   sysinfo.machine);
   }
 
-  pt.put("glibc", gnu_get_libc_version());
-
   // The file is a requirement as per latest Linux standards
   // https://www.freedesktop.org/software/systemd/man/os-release.html
   std::ifstream ifs("/etc/os-release");
@@ -108,12 +126,13 @@ get_os_info(boost::property_tree::ptree &pt)
               val.erase(0, 1);
               val.erase(val.size()-1);
           }
-          pt.put("linux", val);
+          pt.put("distribution", val);
       }
       ifs.close();
   }
-
-  pt.put("now", xrt_core::timestamp());
+  boost::property_tree::ptree _ptLibInfo;
+  _ptLibInfo.push_back( std::make_pair("", glibc_info() ));
+  pt.put_child("libraries", _ptLibInfo);
 }
 
 std::pair<device::id_type, device::id_type>
@@ -136,8 +155,7 @@ std::shared_ptr<device>
 system_linux::
 get_userpf_device(device::id_type id) const
 {
-  // deliberately not using std::make_shared (used with weak_ptr)
-  return std::shared_ptr<device_linux>(new device_linux(id,true));
+  return xrt_core::get_userpf_device(xclOpen(id, nullptr, XCL_QUIET));
 }
 
 std::shared_ptr<device>
@@ -145,7 +163,7 @@ system_linux::
 get_userpf_device(device::handle_type handle, device::id_type id) const
 {
   // deliberately not using std::make_shared (used with weak_ptr)
-  return std::shared_ptr<device_linux>(new device_linux(handle, id));
+  return std::shared_ptr<device_linux>(new device_linux(handle, id, true));
 }
 
 std::shared_ptr<device>
@@ -153,7 +171,7 @@ system_linux::
 get_mgmtpf_device(device::id_type id) const
 {
   // deliberately not using std::make_shared (used with weak_ptr)
-  return std::shared_ptr<device_linux>(new device_linux(id,false));
+  return std::shared_ptr<device_linux>(new device_linux(nullptr, id, false));
 }
 
 namespace pcie_linux {

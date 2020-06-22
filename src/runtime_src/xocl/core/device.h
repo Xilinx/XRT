@@ -541,6 +541,25 @@ public:
   get_axlf() const;
 
   /**
+   * @return
+   *   axlf section, or nullptr if not present
+   */
+  XRT_XOCL_EXPORT
+  std::pair<const char*, size_t>
+  get_axlf_section(axlf_section_kind kind) const;
+
+  /**
+   * @return
+   *   axlf section, or nullptr if not present
+   */
+  template <typename SectionType>
+  SectionType
+  get_axlf_section(axlf_section_kind kind) const
+  {
+    return reinterpret_cast<SectionType>(get_axlf_section(kind).first);
+  }
+
+  /**
    * Check if this device is active, meaning it is programmed
    */
   bool
@@ -553,7 +572,7 @@ public:
    * lock count is incremented and returned.
    *
    * If the device is not currently locked, then this function
-   * queries hardware to check if the device is free in which 
+   * queries hardware to check if the device is free in which
    * case it is opened and locked.
    *
    * May throw cl error code if device could not be locked by probing
@@ -589,7 +608,7 @@ public:
    * Return a scoped lock guard managing a lock on the device.
    *
    * When the scope goes out of scope, the aquired lock is released
-   * automatically. 
+   * automatically.
    */
   xrt_core::scope_guard<std::function<void()>>
   lock_guard()
@@ -739,7 +758,7 @@ private:
 
   unsigned int m_uid = 0;
   program* m_active = nullptr;   // program loaded on to this device
-  xclbin m_xclbin;               // cache xclbin that came from program
+  xclbin m_metadata;             // cache xclbin that came from program
   unsigned int m_locks = 0;      // number of locks on this device
 
   platform* m_platform = nullptr;

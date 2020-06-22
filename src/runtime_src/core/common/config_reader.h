@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2019 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -377,6 +377,18 @@ get_multiprocess()
   return value;
 }
 
+/**
+ * Set to true if host code uses post 2020.1 XRT BO APIs.
+ * This affects how the kernel APIs treat C-style variadic args for 
+ * global memory arguments.
+ */
+inline bool
+get_xrt_bo()
+{
+  static bool value = detail::get_bool_value("Runtime.xrt_bo", false);
+  return value;
+}
+
 inline bool
 get_feature_toggle(const std::string& feature)
 {
@@ -404,13 +416,6 @@ inline std::string
 get_sw_em_driver()
 {
   static std::string value = detail::get_string_value("Runtime.sw_em_driver","null");
-  return value;
-}
-
-inline bool
-get_pdi_load()
-{
-  static bool value = detail::get_bool_value("Runtime.pdi_load",true);
   return value;
 }
 

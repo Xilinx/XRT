@@ -25,7 +25,6 @@ zocl-y := \
 	zocl_xclbin.o \
 	zocl_sk.o \
 	zocl_kds.o \
-	zocl_cu_ctrl.o \
 	cu.o \
 	zocl_generic_cu.o
 

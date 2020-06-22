@@ -17,93 +17,13 @@
 #ifndef xrt_core_uuid_h_
 #define xrt_core_uuid_h_
 
-#ifdef _WIN32
-# include "core/include/windows/uuid.h"
-#else
-# include <uuid/uuid.h>
-using xuid_t = uuid_t;
-#endif
+#include "core/include/experimental/xrt_uuid.h"
 
 namespace xrt_core {
 
-/**
- * uuid wrapper to treat uuid_t as a value type
- * supports copying
- */
-struct uuid
-{
-  xuid_t m_uuid;
+using uuid = xrt::uuid;
 
-  uuid()
-  {
-    uuid_clear(m_uuid);
-  }
-
-  uuid(const xuid_t val)
-  {
-    uuid_copy(m_uuid,val);
-  }
-
-  uuid(const uuid& rhs)
-  {
-    uuid_copy(m_uuid,rhs.m_uuid);
-  }
-
-  uuid(uuid&&) = default;
-  uuid& operator=(uuid&&) = default;
-
-  uuid& operator=(const uuid& rhs)
-  {
-    uuid source(rhs);
-    std::swap(*this,source);
-    return *this;
-  }
-
-  const xuid_t& get() const
-  {
-    return m_uuid;
-  }
-
-  std::string
-  to_string() const
-  {
-    char str[40] = {0};
-    uuid_unparse_lower(m_uuid,str);
-    return str;
-  }
-
-  bool
-  operator == (const xuid_t& xuid) const
-  {
-    return uuid_compare(m_uuid, xuid) == 0;
-  }
-
-  bool
-  operator != (const xuid_t& xuid) const
-  {
-    return uuid_compare(m_uuid, xuid) != 0;
-  }
-
-  bool
-  operator == (const uuid& rhs) const
-  {
-    return uuid_compare(m_uuid, rhs.m_uuid) == 0;
-  }
-
-  bool
-  operator != (const uuid& rhs) const
-  {
-    return uuid_compare(m_uuid, rhs.m_uuid) != 0;
-  }
-
-  bool
-  operator < (const uuid& rhs) const
-  {
-    return uuid_compare(m_uuid, rhs.m_uuid) < 0;
-  }
-};
-
-} // xrt
+} // xrt_core
 
 
 #endif

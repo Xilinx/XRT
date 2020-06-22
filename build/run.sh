@@ -36,6 +36,7 @@ usage()
     echo "[-vitis <path>]            Specify Vitis install (default: $vitis)"
     echo "[-xrt <path>]              Path to XRT install (default: $XRTBUILD/opt/xilinx/xrt)"
     echo "[-ldp <path>]              Prepend path to LD_LIBRARY_PATH"
+    echo "[--]                       End option parsing for this script invocation"
 
     exit 1
 }
@@ -78,6 +79,11 @@ while [ $# -gt 0 ]; do
             shift
             ldp=$1
             shift
+            ;;
+        --)
+            shift
+            cmd="$cmd $*"
+            break
             ;;
         *)
             cmd="$cmd $1"

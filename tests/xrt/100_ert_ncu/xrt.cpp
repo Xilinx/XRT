@@ -28,6 +28,10 @@
 #include <iostream>
 #include <vector>
 
+#ifdef _WIN32
+# pragma warning ( disable : 4244 4267 )
+#endif
+
 namespace {
 
 static std::vector<char>
@@ -51,7 +55,7 @@ load_xclbin(xclDeviceHandle device, const std::string& fnm)
 
   return header;
 }
-  
+
 }
 
 const size_t ELEMENTS = 16;
@@ -105,13 +109,13 @@ struct job_type
     a = xclAllocBO(d, data_size*sizeof(unsigned long), 0, first_used_mem);
     a_data = xclMapBO(d, a, true);
     auto adata = reinterpret_cast<unsigned long*>(a_data);
-    for (size_t i=0;i<data_size;++i)
+    for (unsigned long i=0;i<data_size;++i)
       adata[i] = i;
 
     b = xclAllocBO(d, data_size*sizeof(unsigned long), 0, first_used_mem);
     b_data = xclMapBO(d, b, true);
     auto bdata = reinterpret_cast<unsigned long*>(b_data);
-     for (size_t j=0;j<data_size;++j)
+     for (unsigned long j=0;j<data_size;++j)
        bdata[j] = id;
 
     xclBOProperties p;
@@ -194,7 +198,7 @@ struct job_type
     }
     return false;
   }
-    
+
 };
 
 // Launcher is a separate thread that adds jobs to launch queue when
@@ -274,11 +278,11 @@ int run(int argc, char** argv)
   std::vector<std::string> args(argv+1,argv+argc);
 
   std::string xclbin_fnm;
-  size_t device_index = 0;
+  unsigned int device_index = 0;
   size_t secs = 0;
   size_t jobs = 1;
   size_t cus  = 1;
-  
+
   std::string cur;
   for (auto& arg : args) {
     if (arg == "-h") {
@@ -318,9 +322,9 @@ int run(int argc, char** argv)
   auto topo = xclbin::get_axlf_section(top, MEM_TOPOLOGY);
   auto topology = reinterpret_cast<mem_topology*>(header.data() + topo->m_sectionOffset);
 
-  uuid_t xclbin_id;
+  xuid_t xclbin_id;
   uuid_copy(xclbin_id, top->m_header.uuid);
-  
+
   int first_used_mem = 0;
   size_t maxcus = 0;
   std::for_each(layout->m_ip_data,layout->m_ip_data+layout->m_count,

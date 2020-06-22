@@ -1,7 +1,7 @@
 /*
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
- * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *
@@ -71,7 +71,9 @@
 #define NODE_XDMA "ep_xdma_00"
 #define NODE_MSIX "ep_msix_00"
 #define NODE_QDMA "ep_qdma_00"
+#define NODE_QDMA4 "ep_qdma4_00"
 #define NODE_STM "ep_stream_traffic_manager_00"
+#define NODE_STM4 "ep_stream_traffic_manager4_00"
 #define NODE_CLK_SHUTDOWN "ep_aclk_shutdown_00"
 #define NODE_ERT_BASE "ep_ert_base_address_00"
 #define NODE_ERT_RESET "ep_ert_reset_00"
@@ -81,10 +83,11 @@
 #define NODE_GAPPING "ep_gapping_demand_00"
 #define NODE_UCS_CONTROL_STATUS "ep_ucs_control_status_00"
 #define NODE_P2P "ep_p2p_00"
+#define NODE_REMAP_P2P "ep_remap_p2p_00"
 #define NODE_DDR4_RESET_GATE "ep_ddr_mem_srsr_gate_00"
 #define NODE_ADDR_TRANSLATOR "ep_remap_data_c2h_00"
 #define NODE_MAILBOX_XRT "ep_mailbox_xrt_00"
-#define NODE_OSPI_CACHE "ep_xfer_cache_00"
+#define NODE_XFER_CACHE "ep_xfer_cache_00"
 
 #define RESNAME_GATEPLP       NODE_GATE_PLP
 #define RESNAME_PCIEMON       NODE_PCIE_MON

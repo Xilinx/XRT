@@ -934,30 +934,42 @@ int pcidev::shutdown(std::shared_ptr<pcidev::pci_device> mgmt_dev, bool remove_u
     }
 
     std::cout << "Stopping user function..." << std::endl;
+    // This will trigger hot reset on device.
     udev->sysfs_put("", "shutdown", errmsg, "1\n");
     if (!errmsg.empty()) {
         std::cout << "ERROR: Shutdown user function failed." << std::endl;
         return -EINVAL;
     }
 
-    /* Poll till shutdown is done */
-    int shutdownStatus = 0;
+    // Poll till shutdown is done.
+    int userShutdownStatus = 0;
+    int mgmtOfflineStatus = 1;
     for (int wait = 0; wait < DEV_TIMEOUT; wait++) {
-        udev->sysfs_get<int>("", "shutdown", errmsg, shutdownStatus, EINVAL);
+        sleep(1);
+
+        udev->sysfs_get<int>("", "shutdown", errmsg, userShutdownStatus, EINVAL);
         if (!errmsg.empty()) {
-            // shutdow will trigger pci hot reset. sysfs nodes will be removed
-            // during hot reset.
+            // Ignore the error since sysfs nodes will be removed during hot reset.
             continue;
         }
+        if (userShutdownStatus != 1)
+            continue;
 
-        if (shutdownStatus == 1){
-            /* Shutdown is done successfully. Returning from here */
+        /*
+         * User shutdown is done successfully. Now needs to wait for mgmt
+         * to finish reset. By the time we got here mgmt pf should be offline.
+         * We just need to wait for it to be online again.
+         */
+        mgmt_dev->sysfs_get<int>("", "dev_offline", errmsg, mgmtOfflineStatus, EINVAL);
+        if (!errmsg.empty()) {
+            std::cout << "ERROR: Can't read mgmt dev_offline: " << errmsg << std::endl;
             break;
         }
-        sleep(1);
+        if (mgmtOfflineStatus == 0)
+            break; // Shutdown is completed
     }
 
-    if (!shutdownStatus) {
+    if (userShutdownStatus != 1 || mgmtOfflineStatus != 0) {
         std::cout << "ERROR: Shutdown user function timeout." << std::endl;
         return -ETIMEDOUT;
     }
@@ -1020,3 +1032,54 @@ int pcidev::shutdown(std::shared_ptr<pcidev::pci_device> mgmt_dev, bool remove_u
     return -ETIMEDOUT;
 }
 
+int pcidev::check_p2p_config(std::shared_ptr<pcidev::pci_device> dev, std::string &err)
+{
+    std::string errmsg;
+    int ret = P2P_CONFIG_DISABLED;
+
+    if (dev->is_mgmt) {
+        return -EINVAL;
+    }
+    err.clear();
+
+    std::vector<std::string> p2p_cfg;
+    dev->sysfs_get("p2p", "config", errmsg, p2p_cfg);
+    if (errmsg.empty()) {
+        long long bar = -1;
+        long long rbar = -1;
+        long long remap = -1;
+        long long exp_bar = -1;
+
+        for (unsigned int i = 0; i < p2p_cfg.size(); i++)
+        {
+            const char *str = p2p_cfg[i].c_str();
+            std::sscanf(str, "bar:%lld", &bar);
+            std::sscanf(str, "exp_bar:%lld", &exp_bar);
+            std::sscanf(str, "rbar:%lld", &rbar);
+            std::sscanf(str, "remap:%lld", &remap);
+        }
+        if (bar == -1)
+        {
+            ret = P2P_CONFIG_NOT_SUPP;
+            err = "ERROR: P2P is not supported. Cann't find P2P BAR.";
+        }
+        else if (rbar != -1 && rbar > bar)
+        {
+            ret = P2P_CONFIG_REBOOT;
+            err = "Please WARM reboot to enable p2p now.";
+        }
+        else if (remap > 0 && remap != bar)
+        {
+            ret = P2P_CONFIG_ERROR;
+            err = "ERROR: P2P remapper is not set correctly";
+        }
+        else if (bar == exp_bar)
+        {
+            ret = P2P_CONFIG_ENABLED;
+        }
+
+        return ret;
+    }
+
+    return P2P_CONFIG_NOT_SUPP;
+}

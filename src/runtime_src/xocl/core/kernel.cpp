@@ -431,13 +431,6 @@ size_t
 kernel::
 validate_cus(const device* device, unsigned long argidx, int memidx) const
 {
-#if defined(__arm__)
-  // embedded platforms can have different HP ports connected to same memory bank
-  auto name = device->get_name();
-  if (name.find("_xdma_") == std::string::npos && name.find("_qdma_") == std::string::npos)
-    return m_cus.size();
-#endif
-
   XOCL_DEBUG(std::cout,"xocl::kernel::validate_cus(",argidx,",",memidx,")\n");
   xclbin::memidx_bitmask_type connections;
   connections.set(memidx);
@@ -446,12 +439,12 @@ validate_cus(const device* device, unsigned long argidx, int memidx) const
     auto cu = (*itr);
     auto cuconn = cu->get_memidx(argidx);
     if ((cuconn & connections).none()) {
-      auto axlf = device->get_axlf();
+      auto mem = device->get_axlf_section<const mem_topology*>(MEM_TOPOLOGY);
       xrt::message::send
         (xrt::message::severity_level::XRT_WARNING
          , "Argument '" + std::to_string(argidx)
          + "' of kernel '" + get_name()
-         + "' is allocated in memory bank '" + xrt_core::xclbin::memidx_to_name(axlf,memidx)
+         + "' is allocated in memory bank '" + xrt_core::xclbin::memidx_to_name(mem,memidx)
          + "'; compute unit '" + cu->get_name()
          + "' cannot be used with this argument and is ignored.");
       XOCL_DEBUG(std::cout,"xocl::kernel::validate_cus removing cu(",cu->get_uid(),") ",cu->get_name(),"\n");
