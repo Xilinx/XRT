@@ -88,7 +88,9 @@ namespace xdp {
       ++index;
       handle = xclOpen(index, "/dev/null", XCL_INFO) ;			
     }
-    writers.push_back(new VPRunSummaryWriter("hal.run_summary"));
+    if (db->claimRunSummaryOwnership()) {
+      writers.push_back(new VPRunSummaryWriter("hal.run_summary"));
+    }
   }
 
   HALPlugin::~HALPlugin()
