@@ -19,7 +19,7 @@
 #include <cstdlib>
 
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
-#include "xdp/profile/device/device_intf.h"
+#include "xdp/profile/writer/vp_base/vp_run_summary.h"
 
 #ifdef _WIN32
 #pragma warning(disable : 4996)
@@ -30,8 +30,11 @@ namespace xdp {
 
   XDPPlugin::XDPPlugin() : db(VPDatabase::Instance())
   {
-    // The base class should not add any devices as different plugins
-    //  should not clash with respect to the accessing the hardware.
+    // Every combination of plugins should generate a single run summary file
+    if (db->claimRunSummaryOwnership())
+    {
+      writers.push_back(new VPRunSummaryWriter("xclbin.run_summary")) ;
+    }
   }
 
   XDPPlugin::~XDPPlugin()
@@ -58,10 +61,6 @@ namespace xdp {
     }
   }
 
-  void XDPPlugin::updateDevice(void* /*device*/, const void* /*binary*/)
-  {
-  }
-
   void XDPPlugin::writeAll(bool openNewFiles)
   {
     // Base functionality is just to have all writers write.  Derived
@@ -70,12 +69,6 @@ namespace xdp {
     {
       w->write(openNewFiles) ;
     }
-  }
-
-  void XDPPlugin::readDeviceInfo(void* /*device*/)
-  {
-    // Since we can have multiple plugins, the default behavior should 
-    //  be that the plugin doesn't read any device information
   }
 
 }
