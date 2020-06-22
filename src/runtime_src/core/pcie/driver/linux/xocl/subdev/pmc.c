@@ -27,10 +27,10 @@
 #define	PMC_ERR1_STATUS_MASK	(1 << 24)
 #define	PMC_ERR_OUT1_EN_MASK	(1 << 24)
 #define	PMC_POR1_EN_MASK	(1 << 24)
-#define	PMC_ERR_OUT1_MASK	0x20
-#define	PMC_ERR_OUT1_EN		0x24
-#define	PMC_POR1_MASK		0x40
-#define	PMC_POR1_EN		0x44
+#define	PMC_REG_ERR_OUT1_MASK	0x20
+#define	PMC_REG_ERR_OUT1_EN	0x24
+#define	PMC_REG_POR1_MASK	0x40
+#define	PMC_REG_POR1_EN		0x44
 
 #define	PL_TO_PMC_ERROR_SIGNAL_PATH_MASK	(1 << 0)
 
@@ -71,21 +71,21 @@ static int pmc_enable_reset(struct platform_device *pdev)
 			XOCL_WRITE_REG32(val, pmc_intr); 
 		}
 
-		XOCL_WRITE_REG32(PMC_ERR_OUT1_EN_MASK, pmc_intr + PMC_ERR_OUT1_EN);
-		val = XOCL_READ_REG32(pmc_intr + PMC_ERR_OUT1_MASK);
+		XOCL_WRITE_REG32(PMC_ERR_OUT1_EN_MASK, pmc_intr + PMC_REG_ERR_OUT1_EN);
+		val = XOCL_READ_REG32(pmc_intr + PMC_REG_ERR_OUT1_MASK);
 		if (val & PMC_ERR_OUT1_EN_MASK) {
-			PMC_ERR(pmc, "mask 0x%x for PMC_ERR_OUT1_MASK 0x%x "
+			PMC_ERR(pmc, "mask 0x%x for PMC_REG_ERR_OUT1_MASK 0x%x "
 			    "should be 0.\n", PMC_ERR_OUT1_EN_MASK, val);
-			rc = -EINVAL;
+			rc = -EIO;
 			goto done;
 		}
 
-		XOCL_WRITE_REG32(PMC_POR1_EN_MASK, pmc_intr + PMC_POR1_EN);
-		val = XOCL_READ_REG32(pmc_intr + PMC_POR1_MASK);
+		XOCL_WRITE_REG32(PMC_POR1_EN_MASK, pmc_intr + PMC_REG_POR1_EN);
+		val = XOCL_READ_REG32(pmc_intr + PMC_REG_POR1_MASK);
 		if (val & PMC_POR1_EN_MASK) {
-			PMC_ERR(pmc, "mask 0x%x for PMC_POR1_MASK 0x%x "
+			PMC_ERR(pmc, "mask 0x%x for PMC_REG_POR1_MASK 0x%x "
 			    "should be 0.\n", PMC_POR1_EN_MASK, val);
-			rc = -EINVAL;
+			rc = -EIO;
 			goto done;
 		}
 	}
