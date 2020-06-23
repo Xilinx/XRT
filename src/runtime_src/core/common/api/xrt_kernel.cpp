@@ -820,10 +820,11 @@ class run_impl
   kernel_command cmd;                     // underlying command object
 
   void
-  encode_compute_units(const std::bitset<128>& cus)
+  encode_compute_units(const std::bitset<128>& cus, size_t num_cumasks)
   {
     auto ecmd = cmd.get_ert_cmd<ert_packet*>();
- 
+    std::fill(ecmd->data, ecmd->data + num_cumasks, 0);
+    
     for (size_t cu_idx = 0; cu_idx < 128; ++cu_idx) {
       if (!cus.test(cu_idx))
         continue;
@@ -854,7 +855,7 @@ public:
     kcmd->count = kernel->get_num_cumasks() + kernel->get_regmap_size();
     kcmd->opcode = ERT_START_CU;
     kcmd->type = ERT_CU;
-    encode_compute_units(kernel->get_cumask());
+    encode_compute_units(kernel->get_cumask(), kernel->get_num_cumasks());
   }
 
   kernel_impl*
