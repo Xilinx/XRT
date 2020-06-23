@@ -1539,6 +1539,8 @@ struct xocl_flash_funcs {
 struct xocl_xfer_versal_funcs {
 	int (*download_axlf)(struct platform_device *pdev,
 		const void __user *arg);
+	int (*xclbin_load_axlf)(struct platform_device *pdev,
+		const void __user *arg);
 };
 
 #define	XFER_VERSAL_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_XFER_VERSAL).pldev
@@ -1548,7 +1550,10 @@ struct xocl_xfer_versal_funcs {
 #define	xocl_xfer_versal_download_axlf(xdev, xclbin)	\
 	(XFER_VERSAL_CB(xdev) ?					\
 	XFER_VERSAL_OPS(xdev)->download_axlf(XFER_VERSAL_DEV(xdev), xclbin) : -ENODEV)
-
+/* Note: this API is a workaround, will be relocated into xclbin lib */
+#define	xocl_xclbin_load_axlf(xdev, xclbin)	\
+	(XFER_VERSAL_CB(xdev) ?					\
+	XFER_VERSAL_OPS(xdev)->xclbin_load_axlf(XFER_VERSAL_DEV(xdev), xclbin) : -ENODEV)
 
 /* subdev mbx messages */
 #define XOCL_MSG_SUBDEV_VER	1
