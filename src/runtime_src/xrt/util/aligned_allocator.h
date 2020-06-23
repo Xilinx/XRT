@@ -21,6 +21,8 @@
 #include <cstdlib>
 #include <new>
 
+#include "core/common/memalign.h"
+
 namespace xrt {
 
 /**
@@ -49,7 +51,7 @@ struct aligned_allocator
   T* allocate(std::size_t num)
   {
     void* ptr = nullptr;
-    if (posix_memalign(&ptr,Align,num*sizeof(T)))
+    if (xrt_core::posix_memalign(&ptr,Align,num*sizeof(T)))
       throw std::bad_alloc();
     return reinterpret_cast<T*>(ptr);
   }

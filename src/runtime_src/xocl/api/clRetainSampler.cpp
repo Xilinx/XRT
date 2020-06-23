@@ -15,12 +15,12 @@
  */
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/sampler.h"
 #include "detail/sampler.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
+#include <CL/opencl.h>
 
 namespace xocl {
 
@@ -48,6 +48,7 @@ clRetainSampler(cl_sampler sampler)
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clRetainSampler(sampler);
   }
   catch (const xrt::error& ex) {
@@ -59,5 +60,3 @@ clRetainSampler(cl_sampler sampler)
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

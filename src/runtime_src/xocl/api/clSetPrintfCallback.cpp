@@ -15,20 +15,19 @@
  */
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/error.h"
-
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
+#include <CL/opencl.h>
 
 namespace xocl {
 
 static void
 validOrError(cl_context           context ,
-             void (CL_CALLBACK *  pfn_notify )(cl_context  program , 
-                                               cl_uint printf_data_len , 
-                                               char *  printf_data_ptr , 
+             void (CL_CALLBACK *  pfn_notify )(cl_context  program ,
+                                               cl_uint printf_data_len ,
+                                               char *  printf_data_ptr ,
                                                void *  user_data ),
              void *               user_data )
 {
@@ -38,9 +37,9 @@ validOrError(cl_context           context ,
 
 static cl_int
 clSetPrintfCallback(cl_context           context ,
-                    void (CL_CALLBACK *  pfn_notify )(cl_context  program , 
-                                                      cl_uint printf_data_len , 
-                                                      char *  printf_data_ptr , 
+                    void (CL_CALLBACK *  pfn_notify )(cl_context  program ,
+                                                      cl_uint printf_data_len ,
+                                                      char *  printf_data_ptr ,
                                                       void *  user_data ),
                     void *               user_data )
 {
@@ -52,14 +51,15 @@ clSetPrintfCallback(cl_context           context ,
 
 cl_int
 clSetPrintfCallback(cl_context           context ,
-                    void (CL_CALLBACK *  pfn_notify )(cl_context  program , 
-                                                      cl_uint printf_data_len , 
-                                                      char *  printf_data_ptr , 
+                    void (CL_CALLBACK *  pfn_notify )(cl_context  program ,
+                                                      cl_uint printf_data_len ,
+                                                      char *  printf_data_ptr ,
                                                       void *  user_data ),
                     void *               user_data )
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clSetPrintfCallback(context,pfn_notify,user_data);
   }
   catch (const xocl::error& ex) {
@@ -71,5 +71,3 @@ clSetPrintfCallback(cl_context           context ,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
 #include "device.h"
 #include "xocl/core/device.h"
 #include "xocl/core/context.h"
@@ -25,7 +24,7 @@ namespace xocl { namespace detail {
 
 namespace device {
 
-void 
+void
 validOrError(cl_device_id device)
 {
   if (!device)
@@ -38,7 +37,7 @@ validOrError(const cl_device_type device_type)
   auto valid = CL_DEVICE_TYPE_ALL | CL_DEVICE_TYPE_DEFAULT
     | CL_DEVICE_TYPE_CPU| CL_DEVICE_TYPE_GPU | CL_DEVICE_TYPE_ACCELERATOR
     | CL_DEVICE_TYPE_CUSTOM;
-  if (! (device_type & valid) ) 
+  if (! (device_type & valid) )
     throw error(CL_INVALID_DEVICE_TYPE);
 }
 
@@ -96,7 +95,7 @@ validOrError(cl_platform_id platform, cl_uint num_devices, const cl_device_id* d
     // Skip platform check for subdevices.
     if (xocl(device)->is_sub_device())
       continue;
-    
+
     if (platform && !xocl(platform)->has_device(xocl(device)))
       throw error(CL_INVALID_DEVICE,"device not in platform");
   }
@@ -105,6 +104,3 @@ validOrError(cl_platform_id platform, cl_uint num_devices, const cl_device_id* d
 } // device
 
 }} // detail,xocl
-
-
-
