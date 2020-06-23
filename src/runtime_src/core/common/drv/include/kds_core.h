@@ -74,6 +74,7 @@ struct kds_client {
 	int			  num_ctx;
 	int			  virt_cu_ref;
 	DECLARE_BITMAP(cu_bitmap, MAX_CUS);
+	int			  abort;
 #if PRE_ALLOC
 	u32			  max_xcmd;
 	u32			  xcmd_idx;
@@ -89,6 +90,7 @@ struct kds_client {
 	u64			  padding[16];
 	wait_queue_head_t	  waitq;
 	atomic_t		  event;
+	atomic_t		  outstanding_cmds;
 };
 
 /* the MSB of cu_refs is used for exclusive flag */
@@ -115,6 +117,7 @@ struct kds_sched {
 	struct list_head	clients;
 	int			num_client;
 	struct mutex		lock;
+	bool			bad_state;
 	struct kds_cu_mgmt	cu_mgmt;
 };
 
@@ -122,6 +125,8 @@ int kds_init_sched(struct kds_sched *kds);
 int kds_init_client(struct kds_sched *kds, struct kds_client *client);
 void kds_fini_sched(struct kds_sched *kds);
 void kds_fini_client(struct kds_sched *kds, struct kds_client *client);
+void kds_reset(struct kds_sched *kds);
+int is_bad_state(struct kds_sched *kds);
 u32 kds_live_clients(struct kds_sched *kds, pid_t **plist);
 int kds_add_cu(struct kds_sched *kds, struct xrt_cu *xcu);
 int kds_del_cu(struct kds_sched *kds, struct xrt_cu *xcu);

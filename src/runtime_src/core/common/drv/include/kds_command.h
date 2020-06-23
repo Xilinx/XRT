@@ -24,6 +24,8 @@ enum kds_opcode {
 enum kds_status {
 	KDS_COMPLETED	= 0,
 	KDS_ERROR	= 1,
+	KDS_ABORT,
+	KDS_TIMEOUT,
 };
 
 struct kds_command;
@@ -31,6 +33,7 @@ struct kds_command;
 struct kds_cmd_ops {
 	void (*notify_host)(struct kds_command *xcmd, int status);
 	void (*free)(struct kds_command *xcmd);
+	int (*is_abort)(struct kds_command *xcmd);
 };
 
 /**
@@ -52,11 +55,13 @@ struct kds_command {
 	u32			 cu_mask[4];
 	u32			 num_mask;
 	u32			 payload_type;
+	u64			 start;
 	struct kds_cmd_ops	 cb;
 	/* execbuf is used to update the header
 	 * of execbuf when notifying host
 	 */
 	u32			*execbuf;
+	void			*gem_obj;
 };
 
 /* execbuf command related funtions */
