@@ -355,13 +355,16 @@ static unsigned int clock_get_freq_counter_khz_impl(struct clock *clock, int idx
 {
 	u32 freq = 0, status;
 	int times = 10;
+	xdev_handle_t xdev = xocl_get_xdev(clock->clock_pdev);
 
 	BUG_ON(idx > CLOCK_MAX_NUM_CLOCKS);
 	BUG_ON(!mutex_is_locked(&clock->clock_lock));
 
 	if (clock->clock_freq_counter && idx < 2) {
-		reg_wr(clock->clock_freq_counter,
-			OCL_CLKWIZ_STATUS_MEASURE_START);
+		/* Versal ACAP doesn't support write */
+		if (!XOCL_DSA_IS_VERSAL(xdev))
+			reg_wr(clock->clock_freq_counter, OCL_CLKWIZ_STATUS_MEASURE_START);
+
 		while (times != 0) {
 			status = reg_rd(clock->clock_freq_counter);
 			if ((status & OCL_CLKWIZ_STATUS_MASK) ==
@@ -377,8 +380,10 @@ static unsigned int clock_get_freq_counter_khz_impl(struct clock *clock, int idx
 	}
 
 	if (clock->clock_freq_counters[idx]) {
-		reg_wr(clock->clock_freq_counters[idx],
-			OCL_CLKWIZ_STATUS_MEASURE_START);
+		/* Versal ACAP doesn't support write */
+		if (!XOCL_DSA_IS_VERSAL(xdev))
+			reg_wr(clock->clock_freq_counters[idx], OCL_CLKWIZ_STATUS_MEASURE_START);
+
 		while (times != 0) {
 			status =
 			    reg_rd(clock->clock_freq_counters[idx]);
@@ -802,7 +807,7 @@ static int clock_freeze_axi_gate(struct clock *clock, int level)
 
 	BUG_ON(!mutex_is_locked(&clock->clock_lock));
 
-	if (level <= XOCL_SUBDEV_LEVEL_PRP)
+	if (level <= XOCL_SUBDEV_LEVEL_PRP || XOCL_DSA_IS_VERSAL(xdev))
 		err = xocl_axigate_freeze(xdev, XOCL_SUBDEV_LEVEL_PRP);
 	else
 		err = xocl_axigate_reset(xdev, XOCL_SUBDEV_LEVEL_PRP);
@@ -818,7 +823,7 @@ static int clock_free_axi_gate(struct clock *clock, int level)
 
 	BUG_ON(!mutex_is_locked(&clock->clock_lock));
 
-	if (level <= XOCL_SUBDEV_LEVEL_PRP) {
+	if (level <= XOCL_SUBDEV_LEVEL_PRP || XOCL_DSA_IS_VERSAL(xdev)) {
 		xocl_axigate_free(xdev, XOCL_SUBDEV_LEVEL_PRP);
 	} else {
 		if (!clock->clock_ucs_control_status) {

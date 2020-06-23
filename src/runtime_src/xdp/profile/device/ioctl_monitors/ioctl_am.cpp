@@ -161,8 +161,7 @@ void IOCtlAM::configureDataflow(bool cuHasApCtrlChain)
   if(!cuHasApCtrlChain)
     return;
 
-  // option is actually not required here, can check cuHasApCtrlChain before ioctl call
-  uint32_t option = (cuHasApCtrlChain) ? 1 : 0;
+  uint32_t option = 1 ; // cuHasApCtrlChain == true here
   ioctl(driver_FD, AM_IOC_CONFIGDFLOW, &option);
 
   if(out_stream) {

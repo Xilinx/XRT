@@ -16,7 +16,6 @@
 
 #include "xdp/profile/plugin/user/user_plugin.h"
 #include "xdp/profile/writer/user/user_events_trace_writer.h"
-#include "xdp/profile/writer/vp_base/vp_run_summary.h"
 
 namespace xdp {
 
@@ -26,11 +25,6 @@ namespace xdp {
 
     writers.push_back(new UserEventsTraceWriter("user_events.csv")) ;
     (db->getStaticInfo()).addOpenedFile("user_events.csv", "VP_TRACE") ;
-    
-    if (db->claimRunSummaryOwnership())
-    {
-      writers.push_back(new VPRunSummaryWriter("xclbin.run_summary")) ;
-    }
   }
 
   UserEventsPlugin::~UserEventsPlugin()

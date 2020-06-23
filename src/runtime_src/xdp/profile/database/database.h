@@ -82,7 +82,7 @@ namespace xdp {
     // Functions that provide arbitration between multiple plugins
     //  for resources that should only exist once regardless of 
     //  the number of plugins
-    bool claimRunSummaryOwnership() ;
+    XDP_EXPORT bool claimRunSummaryOwnership() ;
   } ;
 }
 
