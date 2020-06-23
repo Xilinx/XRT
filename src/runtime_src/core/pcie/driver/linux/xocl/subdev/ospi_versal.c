@@ -421,15 +421,19 @@ static int xclbin_load_axlf(struct platform_device *pdev, const void *buf)
 	}
 	xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 
+	xocl_axigate_freeze(xdev, XOCL_SUBDEV_LEVEL_PRP);
+
 	/* download bitstream */
 	ret = xfer_versal_download_axlf(pdev, buf);
+
+	xocl_axigate_free(xdev, XOCL_SUBDEV_LEVEL_PRP);
 
 	if (num_dev) {
 		for (i = 0; i < num_dev; i++)
 			(void) xocl_subdev_create(xdev, &urpdevs[i].info);
 		xocl_subdev_create_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 	}
-
+done:
 	return ret;
 }
 
