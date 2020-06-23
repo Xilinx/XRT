@@ -103,7 +103,7 @@ static int get_xclbin_iplayout(const char *buffer, XmaXclbinInfo *xclbin_info)
         xclbin_info->cu_addrs_sorted = xrt_core::xclbin::get_cus(ipl, false);
         bool has_cuisr = xrt_core::xclbin::get_cuisr(xclbin);
         if (!has_cuisr) {
-            xma_logmsg(XMA_WARNING_LOG, XMAAPI_MOD, "One or more CUs do not support interrupt. Use RTL Wizard or Vitis for xclbin creation ");
+            xma_logmsg(XMA_WARNING_LOG, XMAAPI_MOD, "One or more CUs do not support interrupt. Use RTL Wizard or Vitis for xclbi;n creation ");
         }
         auto& xma_ip_layout = xclbin_info->ip_layout;
         for (int i = 0; i < ipl->m_count; i++) {
@@ -144,7 +144,7 @@ static int get_xclbin_iplayout(const char *buffer, XmaXclbinInfo *xclbin_info)
                 }
             }
             temp_ip_layout.kernel_channels = false;
-            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index = %d, kernel name = %s, base_addr = %lx ",
+            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index = %zu, kernel name = %s, base_addr = %lx ",
                     xma_ip_layout.size(), temp_ip_layout.kernel_name.c_str(), temp_ip_layout.base_addr);
             if (temp_ip_layout.regmap_size > MAX_KERNEL_REGMAP_SIZE) {
                 xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "kernel %s register map size exceeds max limit. regmap_size: %d, max regmap_size: %d . Will use only max regmap_size", temp_ip_layout.kernel_name.c_str(), temp_ip_layout.regmap_size, MAX_KERNEL_REGMAP_SIZE);
