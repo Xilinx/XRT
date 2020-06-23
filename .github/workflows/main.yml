@@ -16,6 +16,5 @@ jobs:
     - uses: actions/checkout@v2
       with:
         fetch-depth: 0
-    - run: git fetch origin +refs/tags/*:refs/tags/*
     - name: Start License Scanner
       uses: zanj-1/license-checker@master
