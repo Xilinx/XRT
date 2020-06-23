@@ -342,8 +342,8 @@ static int sysmon_probe(struct platform_device *pdev)
 	}
 
 	if (ot_override(pdev)) {
-		xocl_info(&pdev->dev, "Over temperature threshold override is enabled");
-		WRITE_REG32(sysmon, (ADC_CODE_TEMP_110 << 1) |
+		xocl_info(&pdev->dev, "Over temperature threshold override is set");
+		WRITE_REG32(sysmon, (ADC_CODE_TEMP_110 << 4) |
 			OT_UPPER_ALARM_REG_OVERRIDE, OT_UPPER_ALARM_REG);
 	}
 
