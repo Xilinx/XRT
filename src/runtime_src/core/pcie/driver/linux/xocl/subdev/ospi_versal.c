@@ -421,12 +421,11 @@ static int xclbin_load_axlf(struct platform_device *pdev, const void *buf)
 	}
 	xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 
-	ret = xocl_axigate_freeze(xdev, XOCL_SUBDEV_LEVEL_PRP);
-	if (ret)
-		goto done;
+	xocl_axigate_freeze(xdev, XOCL_SUBDEV_LEVEL_PRP);
 
 	/* download bitstream */
 	ret = xfer_versal_download_axlf(pdev, buf);
+
 	xocl_axigate_free(xdev, XOCL_SUBDEV_LEVEL_PRP);
 
 	if (num_dev) {
