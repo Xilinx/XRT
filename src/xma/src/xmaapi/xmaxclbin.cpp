@@ -103,7 +103,7 @@ static int get_xclbin_iplayout(const char *buffer, XmaXclbinInfo *xclbin_info)
         xclbin_info->cu_addrs_sorted = xrt_core::xclbin::get_cus(ipl, false);
         bool has_cuisr = xrt_core::xclbin::get_cuisr(xclbin);
         if (!has_cuisr) {
-            xma_logmsg(XMA_WARNING_LOG, XMAAPI_MOD, "One or more CUs do not support interrupt. Use RTL Wizard or Vitis for xclbi;n creation ");
+            xma_logmsg(XMA_WARNING_LOG, XMAAPI_MOD, "One or more CUs do not support interrupt. Use RTL Wizard or Vitis for xclbin creation ");
         }
         auto& xma_ip_layout = xclbin_info->ip_layout;
         for (int i = 0; i < ipl->m_count; i++) {
