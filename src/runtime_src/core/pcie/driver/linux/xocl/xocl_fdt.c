@@ -487,6 +487,19 @@ static struct xocl_subdev_map		subdev_map[] = {
 		.devinfo_cb = NULL,
 	},
 	{
+		.id = XOCL_SUBDEV_PMC,
+		.dev_name = XOCL_PMC,
+		.res_names = {
+			RESNAME_PMC_MUX,
+			RESNAME_PMC_INTR,
+			NULL
+		},
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = NULL,
+		.devinfo_cb = NULL,
+	},
+	{
 		XOCL_SUBDEV_ICAP,
 		XOCL_ICAP,
 		{

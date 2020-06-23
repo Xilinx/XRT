@@ -524,6 +524,8 @@ static void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 	xocl_pci_restore_config_all(lro);
 
 	xclmgmt_config_pci(lro);
+
+	xocl_pmc_enable_reset(lro);
 }
 
 int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)

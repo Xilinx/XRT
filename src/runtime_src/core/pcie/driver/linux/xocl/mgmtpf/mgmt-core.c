@@ -1272,6 +1272,8 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	(void) xocl_subdev_create_by_level(lro, XOCL_SUBDEV_LEVEL_BLD);
 	(void) xocl_subdev_create_vsec_devs(lro);
 
+	xocl_pmc_enable_reset(lro);
+
 	return 0;
 
 err_init_sysfs:
@@ -1408,6 +1410,7 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_mem_hbm,
 	xocl_init_ulite,
 	xocl_init_calib_storage,
+	xocl_init_pmc,
 };
 
 static void (*drv_unreg_funcs[])(void) = {
@@ -1436,6 +1439,7 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_mem_hbm,
 	xocl_fini_ulite,
 	xocl_fini_calib_storage,
+	xocl_fini_pmc,
 };
 
 static int __init xclmgmt_init(void)
