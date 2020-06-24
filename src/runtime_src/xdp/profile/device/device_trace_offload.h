@@ -63,7 +63,7 @@ public:
 
 public:
     XDP_EXPORT
-    bool read_trace_init(bool circ_buf);
+    bool read_trace_init(bool circ_buf = false);
     XDP_EXPORT
     void read_trace_end();
     XDP_EXPORT
