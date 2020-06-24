@@ -39,7 +39,7 @@ clCreateImage3D(cl_context              context,
                 void *                  host_ptr,
                 cl_int *                errcode_ret)
 {
-  throw error(CL_XILINX_UNIMPLEMENTED);
+  throw error(CL_XILINX_UNIMPLEMENTED,"Not implemented");
 }
 
 } //xocl

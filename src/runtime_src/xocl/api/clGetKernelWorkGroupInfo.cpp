@@ -55,7 +55,7 @@ validOrError(cl_kernel                 kernel,
      (device && getDeviceType(device)!=CL_DEVICE_TYPE_CUSTOM) &&
      (!xocl(kernel)->is_built_in())
     )
-    throw error(CL_INVALID_VALUE);
+    throw error(CL_INVALID_VALUE, "CL_KERNEL_GLOBAL_WORK_SIZE is not valid for device and kernel");
 
 }
 
@@ -73,7 +73,7 @@ clGetKernelWorkGroupInfo(cl_kernel                 kernel,
 
   switch(param_name) {
   case CL_KERNEL_GLOBAL_WORK_SIZE:
-    throw error(-20,"Not implemented");
+    throw error(CL_XILINX_UNIMPLEMENTED,"Not implemented");
     break;
   case CL_KERNEL_WORK_GROUP_SIZE:
     buffer.as<size_t>() = xocl::xocl(kernel)->get_wg_size();
@@ -85,13 +85,13 @@ clGetKernelWorkGroupInfo(cl_kernel                 kernel,
     buffer.as<cl_ulong>() = 0;
     break;
   case CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE:
-    throw error(-20,"Not implemented");
+    throw error(CL_XILINX_UNIMPLEMENTED,"Not implemented");
     break;
   case CL_KERNEL_PRIVATE_MEM_SIZE:
     buffer.as<cl_ulong>() = 0;
     break;
   default:
-    throw error(CL_INVALID_VALUE);
+    throw error(CL_INVALID_VALUE, "Invalid param_name");
     break;
   }
 
