@@ -1267,6 +1267,13 @@ struct xocl_subdev_map {
 	.flags	= IORESOURCE_MEM,	\
 	}				\
 
+#define __RES_VERSION_CTRL		\
+	{				\
+	.start	= 0x0330000,		\
+	.end	= 0x03300ff,		\
+	.flags	= IORESOURCE_MEM,	\
+	}				\
+
 #define	XOCL_RES_XMC					\
 		((struct resource []) {			\
 			__RES_XMC,			\
@@ -1285,6 +1292,7 @@ struct xocl_subdev_map {
 		((struct resource []) {			\
 			__RES_XMC,			\
 			__RES_XMC_SCALING,		\
+			__RES_VERSION_CTRL,		\
 		})
 
 #define	XOCL_DEVINFO_XMC_SCALING			\

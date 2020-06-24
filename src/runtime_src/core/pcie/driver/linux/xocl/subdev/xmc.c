@@ -135,6 +135,10 @@
 #define	XMC_CLOCK_SCALING_POWER_THRESHOLD_POS	8
 #define	XMC_CLOCK_SCALING_POWER_THRESHOLD_MASK	0xFF
 
+//Version control registers
+#define VERSION_CTRL_MISC_REG                  0xC
+#define VERSION_CTRL_MISC_REG_XMC_IN_BITFILE   0x2
+
 enum ctl_mask {
 	CTL_MASK_CLEAR_POW		= 0x1,
 	CTL_MASK_CLEAR_ERR		= 0x2,
@@ -167,6 +171,7 @@ enum {
 	IO_IMAGE_SCHED,
 	IO_CQ,
 	IO_CLK_SCALING,
+	IO_VERSION_CTRL,
 	IO_MUTEX,
 	NUM_IOADDR
 };
@@ -253,6 +258,9 @@ enum sc_mode {
 #define	READ_SENSOR(xmc, off, valp, val_kind)	\
 	safe_read32(xmc, off + sizeof(u32) * val_kind, valp);
 
+#define	READ_VERSION_CTRL_REG32(xmc, off)			\
+	(xmc->base_addrs[IO_VERSION_CTRL] ?		\
+	XOCL_READ_REG32(xmc->base_addrs[IO_VERSION_CTRL] + off) : 0)
 
 #define	XMC_CTRL_ERR_CLR			(1 << 1)
 
@@ -2574,29 +2582,33 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 			READ_REG32(xmc, XMC_VERSION_REG),
 			READ_REG32(xmc, XMC_STATUS_REG), magic);
 
-		reg_val = READ_REG32(xmc, XMC_STATUS_REG);
-		if (!(reg_val & STATUS_MASK_STOPPED)) {
-			xocl_info(&xmc->pdev->dev, "Stopping XMC...");
-			WRITE_REG32(xmc, CTL_MASK_STOP, XMC_CONTROL_REG);
-			WRITE_REG32(xmc, 1, XMC_STOP_CONFIRM_REG);
+		u32 misc = READ_VERSION_CTRL_REG32(xmc, VERSION_CTRL_MISC_REG);
+		bool xmc_in_bitfile = misc & VERSION_CTRL_MISC_REG_XMC_IN_BITFILE;
+		if (!xmc_in_bitfile) {
+			reg_val = READ_REG32(xmc, XMC_STATUS_REG);
+			if (!(reg_val & STATUS_MASK_STOPPED)) {
+				xocl_info(&xmc->pdev->dev, "Stopping XMC...");
+				WRITE_REG32(xmc, CTL_MASK_STOP, XMC_CONTROL_REG);
+				WRITE_REG32(xmc, 1, XMC_STOP_CONFIRM_REG);
+			}
+			retry = 0;
+			while (retry++ < MAX_XMC_RETRY &&
+				   !(READ_REG32(xmc, XMC_STATUS_REG) & STATUS_MASK_STOPPED))
+				msleep(RETRY_INTERVAL);
+
+			/* Wait for XMC to stop and then check that ERT
+			 * has also finished */
+			if (retry >= MAX_XMC_RETRY) {
+				xocl_err(&xmc->pdev->dev, "Failed to stop XMC, Error Reg 0x%x",
+						 READ_REG32(xmc, XMC_ERROR_REG));
+				xmc->state = XMC_STATE_ERROR;
+				return -ETIMEDOUT;
+			}
+			xocl_info(&xmc->pdev->dev, "XMC Stopped, retry %d",	retry);
+		} else {
+			xocl_info(&xmc->pdev->dev, "Skip XMC stop");
 		}
-
-		retry = 0;
-		while (retry++ < MAX_XMC_RETRY &&
-			!(READ_REG32(xmc, XMC_STATUS_REG) &
-			STATUS_MASK_STOPPED))
-			msleep(RETRY_INTERVAL);
-
-		/* Wait for XMC to stop and then check that ERT
-		 * has also finished */
-		if (retry >= MAX_XMC_RETRY) {
-			xocl_err(&xmc->pdev->dev, "Failed to stop XMC");
-			xocl_err(&xmc->pdev->dev, "XMC Error Reg 0x%x",
-				READ_REG32(xmc, XMC_ERROR_REG));
-			xmc->state = XMC_STATE_ERROR;
-			return -ETIMEDOUT;
-		} else if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0)) &&
-			 SCHED_EXIST(xmc)) {
+		if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0)) && SCHED_EXIST(xmc)) {
 			xocl_info(&xmc->pdev->dev, "Stopping scheduler...");
 			/* We try to stop ERT, but based on existing HW design
 			 * this can't be done reliably. We will ignore the
@@ -2604,10 +2616,8 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 			 * cold rebooted to recover from the HW failure.
 			 */
 			(void) stop_ert_nolock(pdev);
+			xocl_info(&xmc->pdev->dev, "Scheduler Stopped");
 		}
-
-		xocl_info(&xmc->pdev->dev, "XMC/sched Stopped, retry %d",
-			retry);
 	}
 
 	/* Hold XMC in reset now that its safely stopped */
@@ -2700,7 +2710,10 @@ static int load_xmc(struct xocl_xmc *xmc)
 	xdev_hdl = xocl_get_xdev(xmc->pdev);
 
 	/* Load XMC and ERT Image */
-	if (xocl_mb_mgmt_on(xdev_hdl) && xmc->mgmt_binary_length) {
+	u32 misc = READ_VERSION_CTRL_REG32(xmc, VERSION_CTRL_MISC_REG);
+	bool xmc_in_bitfile = misc & VERSION_CTRL_MISC_REG_XMC_IN_BITFILE;
+
+	if (!xmc_in_bitfile && xocl_mb_mgmt_on(xdev_hdl) && xmc->mgmt_binary_length) {
 		if (xmc->mgmt_binary_length > xmc->range[IO_IMAGE_MGMT]) {
 			xocl_err(&xmc->pdev->dev, "XMC image too long %d",
 				xmc->mgmt_binary_length);
@@ -2710,6 +2723,8 @@ static int load_xmc(struct xocl_xmc *xmc)
 				xmc->mgmt_binary_length);
 			COPY_MGMT(xmc, xmc->mgmt_binary, xmc->mgmt_binary_length);
 		}
+	} else {
+		xocl_info(&xmc->pdev->dev, "Skip copying XMC image");
 	}
 
 	if (xocl_mb_sched_on(xdev_hdl) && xmc->sche_binary_length) {
@@ -2861,6 +2876,7 @@ static int load_mgmt_image(struct platform_device *pdev, const char *image,
 
 	if (binary)
 		vfree(binary);
+	xocl_info(&xmc->pdev->dev, "%s: load mgmt image len %d", __func__, len);
 	memcpy(xmc->mgmt_binary, image, len);
 	xmc->mgmt_binary_length = len;
 
