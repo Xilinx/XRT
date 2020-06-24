@@ -314,7 +314,7 @@ int pcidev::pci_device::open(const std::string& subdev, uint32_t idx, int flag)
     std::string file("/dev/xfpga/");
     file += subdev;
     file += is_mgmt ? ".m" : ".u";
-    file += std::to_string((domain<<16) + (bus<<8) + (dev<<3) + func);
+    file += std::to_string((uint32_t)(domain<<16) + (bus<<8) + (dev<<3) + func);
     file += "." + std::to_string(idx);
     return ::open(file.c_str(), flag);
 }
