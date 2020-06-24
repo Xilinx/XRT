@@ -1230,6 +1230,7 @@ void xocl_cma_bank_free(struct xocl_drm *drm_p)
 	mutex_lock(&drm_p->mm_lock);
 	__xocl_cma_bank_free(drm_p);
 	xocl_cleanup_mem_nolock(drm_p);
+	xocl_icap_clean_bitstream(drm_p->xdev);
 	mutex_unlock(&drm_p->mm_lock);
 }
 
