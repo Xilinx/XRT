@@ -55,7 +55,7 @@ DeviceTraceOffload::~DeviceTraceOffload()
 
 void DeviceTraceOffload::offload_device_continuous()
 {
-  if (!m_initialized && !read_trace_init())
+  if (!m_initialized && !read_trace_init(true))
     return;
 
   while (should_continue()) {
@@ -88,15 +88,9 @@ void DeviceTraceOffload::start_offload(OffloadThreadType type)
   if (status == OffloadThreadStatus::RUNNING)
     return;
 
-  // If using trace offload thread then enable
-  // circular buffer by default
-  if (dev_intf->hasTs2mm()) {
-    auto tdma = dev_intf->getTs2mm();
-    m_use_circ_buf = tdma->supportsCircBuf();
-  }
-
   std::lock_guard<std::mutex> lock(status_lock);
   status = OffloadThreadStatus::RUNNING;
+
   if (type == OffloadThreadType::TRACE)
     offload_thread = std::thread(&DeviceTraceOffload::offload_device_continuous, this);
   else if (type == OffloadThreadType::CLOCK_TRAIN)
@@ -123,7 +117,7 @@ void DeviceTraceOffload::train_clock()
     dev_intf->clockTraining(m_force_clk_train);
     m_prev_clk_train_time = now;
     debug_stream
-      << "INFO Enough Time Passed.. Call Clock Training";
+      << "INFO Enough Time Passed.. Call Clock Training" << std::endl;
   }
 
   // Don't force continuous training for old IP
@@ -159,13 +153,14 @@ void DeviceTraceOffload::read_trace_fifo()
   }
 }
 
-bool DeviceTraceOffload::read_trace_init()
+bool DeviceTraceOffload::read_trace_init(bool circ_buf)
 {
   // reset flags
+  std::cout << "WARNING init trace" << std::endl;
   m_trbuf_full = false;
 
   if (has_ts2mm()) {
-    m_initialized = init_s2mm();
+    m_initialized = init_s2mm(circ_buf);
   } else if (has_fifo()) {
     m_initialized = true;
   } else {
@@ -282,7 +277,7 @@ void DeviceTraceOffload::config_s2mm_reader(uint64_t wordCount)
     << std::endl;
 }
 
-bool DeviceTraceOffload::init_s2mm()
+bool DeviceTraceOffload::init_s2mm(bool circ_buf)
 {
   debug_stream
     << "DeviceTraceOffload::init_s2mm with size : " << m_trbuf_alloc_sz
@@ -300,6 +295,16 @@ bool DeviceTraceOffload::init_s2mm()
   m_trbuf = dev_intf->allocTraceBuf(m_trbuf_alloc_sz, dev_intf->getTS2MmMemIndex());
   if (!m_trbuf) {
     return false;
+  }
+
+  // Check if allocated buffer and sleep interval can keep up with offload
+  if (dev_intf->hasTs2mm()) {
+    auto tdma = dev_intf->getTs2mm();
+    if (tdma->supportsCircBuf() && circ_buf) {
+      m_circ_buf_cur_rate = m_trbuf_alloc_sz * (1000 / sleep_interval_ms);
+      if (m_circ_buf_cur_rate >= m_circ_buf_min_rate)
+      m_use_circ_buf = true;
+    }
   }
 
   // Data Mover will write input stream to this address

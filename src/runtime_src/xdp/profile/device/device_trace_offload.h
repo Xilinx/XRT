@@ -63,7 +63,7 @@ public:
 
 public:
     XDP_EXPORT
-    bool read_trace_init();
+    bool read_trace_init(bool circ_buf);
     XDP_EXPORT
     void read_trace_end();
     XDP_EXPORT
@@ -88,6 +88,12 @@ public:
     DeviceTraceLogger* getDeviceTraceLogger() {
         return deviceTraceLogger;
     };
+    bool using_circular_buffer( uint64_t& min_offload_rate,
+                                uint64_t& requested_offload_rate) {
+        min_offload_rate = m_circ_buf_min_rate;
+        requested_offload_rate = m_circ_buf_cur_rate;
+        return m_use_circ_buf;
+    };
 
 private:
     std::mutex status_lock;
@@ -110,7 +116,7 @@ private:
     void* sync_trace_buf(uint64_t offset, uint64_t bytes);
     uint64_t read_trace_s2mm_partial();
     void config_s2mm_reader(uint64_t wordCount);
-    bool init_s2mm();
+    bool init_s2mm(bool circ_buf);
     void reset_s2mm();
     bool should_continue();
     void train_clock_continuous();
@@ -126,9 +132,13 @@ private:
 
     // Default dma chunk size
     uint64_t m_trbuf_chunk_sz = MAX_TRACE_NUMBER_SAMPLES * TRACE_PACKET_SIZE;
+
     //Circular Buffer Tracking
-    bool m_use_circ_buf;
+    bool m_use_circ_buf = false;
     uint32_t m_rollover_count = 0;
+    // 100 mb of trace per second
+    uint64_t m_circ_buf_min_rate = TS2MM_DEF_BUF_SIZE * 100;
+    uint64_t m_circ_buf_cur_rate = 0;
 };
 
 }
