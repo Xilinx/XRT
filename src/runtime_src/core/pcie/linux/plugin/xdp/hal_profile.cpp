@@ -15,9 +15,14 @@ static bool cb_valid() {
   return cb != nullptr ;
 }
 
+static bool hal_plugins_loaded = false ;
+
 CallLogger::CallLogger(uint64_t id)
            : m_local_idcode(id)
 {
+  if (hal_plugins_loaded) return ;
+  hal_plugins_loaded = true ;
+  
   if (xrt_core::config::get_xrt_profile())
   {
     load_xdp_plugin_library(nullptr) ;
