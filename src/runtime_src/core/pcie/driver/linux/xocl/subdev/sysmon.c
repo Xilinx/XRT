@@ -53,14 +53,8 @@
 struct xocl_sysmon {
 	void __iomem		*base;
 	struct device		*hwmon_dev;
+	struct xocl_sysmon_privdata *priv_data;
 };
-
-static bool ot_override(struct platform_device *pdev)
-{
-	struct xocl_dev_core *core = xocl_get_xdev(pdev);
-
-	return core->priv.flags & XOCL_DSAFLAG_OT_OVERRIDE;
-}
 
 static int get_prop(struct platform_device *pdev, u32 prop, void *val)
 {
@@ -334,6 +328,8 @@ static int sysmon_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
+	sysmon->priv_data = XOCL_GET_SUBDEV_PRIV(&pdev->dev);
+
 	platform_set_drvdata(pdev, sysmon);
 
 	err = mgmt_sysfs_create_sysmon(pdev);
@@ -341,7 +337,8 @@ static int sysmon_probe(struct platform_device *pdev)
 		goto create_sysmon_failed;
 	}
 
-	if (ot_override(pdev)) {
+	if (sysmon->priv_data &&
+		sysmon->priv_data->flags & XOCL_SYSMON_OT_OVERRIDE) {
 		xocl_info(&pdev->dev, "Over temperature threshold override is set");
 		WRITE_REG32(sysmon, (ADC_CODE_TEMP_110 << 4) |
 			OT_UPPER_ALARM_REG_OVERRIDE, OT_UPPER_ALARM_REG);
