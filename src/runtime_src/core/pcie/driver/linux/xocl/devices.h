@@ -55,6 +55,11 @@ enum {
 	XOCL_DSAFLAG_NOSC			= (1 << 13),
 };
 
+/* sysmon flags */
+enum {
+	XOCL_SYSMON_OT_OVERRIDE		= (1 << 0),
+};
+
 #define	FLASH_TYPE_SPI	"spi"
 #define	FLASH_TYPE_QSPIPS	"qspi_ps"
 #define	FLASH_TYPE_QSPIPS_X2_SINGLE	"qspi_ps_x2_single"
@@ -114,6 +119,10 @@ struct xocl_msix_privdata {
 struct xocl_ert_sched_privdata {
 	char			dsa;
 	int			major;
+};
+
+struct xocl_sysmon_privdata {
+	uint16_t		flags;
 };
 
 #ifdef __KERNEL__
@@ -353,6 +362,22 @@ struct xocl_subdev_map {
 		XOCL_RES_SYSMON,			\
 		ARRAY_SIZE(XOCL_RES_SYSMON),		\
 		.override_idx = -1,			\
+	}
+
+#define XOCL_PRIV_SYSMON_U2				\
+	((struct xocl_sysmon_privdata){			\
+		XOCL_SYSMON_OT_OVERRIDE,		\
+	 })
+
+#define	XOCL_DEVINFO_SYSMON_U2		\
+	{						\
+		XOCL_SUBDEV_SYSMON,			\
+		XOCL_SYSMON,				\
+		XOCL_RES_SYSMON,			\
+		ARRAY_SIZE(XOCL_RES_SYSMON),		\
+		.override_idx = -1,			\
+		.priv_data = &XOCL_PRIV_SYSMON_U2,	\
+		.data_len = sizeof(struct xocl_sysmon_privdata), \
 	}
 
 /* Will be populated dynamically */
@@ -1875,9 +1900,9 @@ struct xocl_subdev_map {
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
 			XOCL_DEVINFO_PRP_IORES_MGMT,			\
-		 	XOCL_DEVINFO_AXIGATE_ULP,			\
+			XOCL_DEVINFO_AXIGATE_ULP,			\
 			XOCL_DEVINFO_CLOCK_LEGACY,			\
-			XOCL_DEVINFO_SYSMON,				\
+			XOCL_DEVINFO_SYSMON_U2,			\
 			XOCL_DEVINFO_AF,				\
 			XOCL_DEVINFO_XVC_PUB,				\
 			XOCL_DEVINFO_XIIC,				\
