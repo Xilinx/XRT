@@ -167,7 +167,9 @@ extern "C" {
         SYSTEM_METADATA       = 22,
         SOFT_KERNEL           = 23,
         ASK_FLASH             = 24,
-        AIE_METADATA          = 25
+        AIE_METADATA          = 25,
+        ASK_GROUP_TOPOLOGY    = 26,
+        ASK_GROUP_CONNECTIVITY = 27
     };
 
     enum MEM_TYPE {
