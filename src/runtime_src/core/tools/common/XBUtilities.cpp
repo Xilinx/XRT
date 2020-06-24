@@ -508,6 +508,5 @@ XBUtilities::str_to_enum_reset(const std::string& str)
   auto it = reset_map.find(str);
   if (it != reset_map.end())
     return it->second;
-  else
-    throw xrt_core::error("Please specify a valid reset type");
+  throw xrt_core::error(str + " is invalid. Please specify a valid reset type");
 }

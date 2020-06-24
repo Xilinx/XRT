@@ -75,7 +75,7 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
   XBU::verbose("SubCommand: reset");
   // -- Retrieve and parse the subcommand options -----------------------------
   std::vector<std::string> devices = {"all"};
-  std::string resetType = "hot";
+  std::string resetType = "hot"; //default val
   bool help = false;
 
   po::options_description commonOptions("Common Options");
