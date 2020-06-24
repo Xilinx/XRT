@@ -156,7 +156,6 @@ void DeviceTraceOffload::read_trace_fifo()
 bool DeviceTraceOffload::read_trace_init(bool circ_buf)
 {
   // reset flags
-  std::cout << "WARNING init trace" << std::endl;
   m_trbuf_full = false;
 
   if (has_ts2mm()) {
@@ -186,17 +185,13 @@ void DeviceTraceOffload::read_trace_s2mm()
   debug_stream
     << "DeviceTraceOffload::read_trace_s2mm " << std::endl;
 
-  // No circular buffer support for now
-  //if (m_trbuf_full)
-  //  return;
-
   config_s2mm_reader(dev_intf->getWordCountTs2mm());
   while (1) {
     auto bytes = read_trace_s2mm_partial();
     deviceTraceLogger->processTraceData(m_trace_vector);
     m_trace_vector = {};
 
-    if (m_trbuf_sz == m_trbuf_alloc_sz)
+    if (m_trbuf_sz == m_trbuf_alloc_sz && m_use_circ_buf == false)
       m_trbuf_full = true;
 
     if (bytes != m_trbuf_chunk_sz)
@@ -240,7 +235,7 @@ void DeviceTraceOffload::config_s2mm_reader(uint64_t wordCount)
   auto bytes_read = m_rollover_count*m_trbuf_alloc_sz + m_trbuf_sz;
 
   // Offload cannot keep up with the DMA
-  if (bytes_written >= bytes_read + m_trbuf_alloc_sz) {
+  if (bytes_written > bytes_read + m_trbuf_alloc_sz) {
     // Don't read any data
     m_trbuf_offset = m_trbuf_sz;
     debug_stream
@@ -303,7 +298,7 @@ bool DeviceTraceOffload::init_s2mm(bool circ_buf)
     if (tdma->supportsCircBuf() && circ_buf) {
       m_circ_buf_cur_rate = m_trbuf_alloc_sz * (1000 / sleep_interval_ms);
       if (m_circ_buf_cur_rate >= m_circ_buf_min_rate)
-      m_use_circ_buf = true;
+        m_use_circ_buf = true;
     }
   }
 

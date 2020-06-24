@@ -123,7 +123,7 @@ private:
     void offload_device_continuous();
 
     bool m_trbuf_full = false;
-    bool m_debug = true; /* Enable Output stream for log */
+    bool m_debug = false; /* Enable Output stream for log */
     bool m_initialized = false;
 
     // Clock Training Params
