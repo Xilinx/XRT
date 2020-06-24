@@ -502,6 +502,9 @@ void xocl_drm_fini(struct xocl_drm *drm_p)
 void xocl_mm_get_usage_stat(struct xocl_drm *drm_p, u32 ddr,
 	struct drm_xocl_mm_stat *pstat)
 {
+	if (!drm_p->mm_usage_stat)
+		return;
+
 	pstat->memory_usage = drm_p->mm_usage_stat[ddr] ?
 		drm_p->mm_usage_stat[ddr]->memory_usage : 0;
 	pstat->bo_count = drm_p->mm_usage_stat[ddr] ?
