@@ -296,9 +296,13 @@ bool DeviceTraceOffload::init_s2mm(bool circ_buf)
   if (dev_intf->hasTs2mm()) {
     auto tdma = dev_intf->getTs2mm();
     if (tdma->supportsCircBuf() && circ_buf) {
-      m_circ_buf_cur_rate = m_trbuf_alloc_sz * (1000 / sleep_interval_ms);
-      if (m_circ_buf_cur_rate >= m_circ_buf_min_rate)
+      if (sleep_interval_ms != 0) {
+        m_circ_buf_cur_rate = m_trbuf_alloc_sz * (1000 / sleep_interval_ms);
+        if (m_circ_buf_cur_rate >= m_circ_buf_min_rate)
+          m_use_circ_buf = true;
+      } else {
         m_use_circ_buf = true;
+      }
     }
   }
 
