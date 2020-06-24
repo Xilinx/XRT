@@ -161,8 +161,8 @@ namespace xdp {
     }
 
     uint64_t deviceId = sysfsPathToDeviceId[path] ;
-    void* handle = deviceIdToHandle[deviceId] ;
-
+    void* ownedHandle = deviceIdToHandle[deviceId] ;
+    
     if (offloaders.find(deviceId) != offloaders.end())
     {
       // Clean up the old offloader.  It has already been flushed.
@@ -171,13 +171,14 @@ namespace xdp {
     
     // Update the static database with all the information that
     //  will be needed later
-    (db->getStaticInfo()).updateDevice(deviceId, handle) ;
+    (db->getStaticInfo()).updateDevice(deviceId, userHandle) ;
+    //(db->getStaticInfo()).setDeviceName(deviceId, handle->name()) ;
 
     // For the HAL level, we must create a device interface using 
     //  the xdp::HalDevice to communicate with the physical device
     DeviceIntf* devInterface = new DeviceIntf() ;
     try {
-      devInterface->setDevice(new HalDevice(handle)) ;
+      devInterface->setDevice(new HalDevice(ownedHandle)) ;
       devInterface->readDebugIPlayout() ;
     }
     catch(std::exception& e)
