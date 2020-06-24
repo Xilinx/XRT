@@ -98,12 +98,9 @@ static long start_dma(struct xocl_trace_s2mm *trace_s2mm, void __user *arg)
 	reg = (uint32_t) (wordcount >> 32);
 	XOCL_WRITE_REG32(reg, trace_s2mm->base + TS2MM_COUNT_HIGH);
 
-	// Check if circular buffer needs to be enabled
-	if (cfg.circular_buffer)
-	{
-		reg = 0x1;
-		XOCL_WRITE_REG32(reg, trace_s2mm->base + TS2MM_CIRCULAR_BUF);
-	}
+	// Enable circular buffer
+	reg = cfg.circular_buffer ? 0x1 : 0x0;
+	XOCL_WRITE_REG32(reg, trace_s2mm->base + TS2MM_CIRCULAR_BUF);
 
 	// Start Data Mover
 	reg = TS2MM_AP_START;
