@@ -144,7 +144,7 @@ static int get_xclbin_iplayout(const char *buffer, XmaXclbinInfo *xclbin_info)
                 }
             }
             temp_ip_layout.kernel_channels = false;
-            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index = %zu, kernel name = %s, base_addr = %lx ",
+            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index = %lu, kernel name = %s, base_addr = %lx ",
                     xma_ip_layout.size(), temp_ip_layout.kernel_name.c_str(), temp_ip_layout.base_addr);
             if (temp_ip_layout.regmap_size > MAX_KERNEL_REGMAP_SIZE) {
                 xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "kernel %s register map size exceeds max limit. regmap_size: %d, max regmap_size: %d . Will use only max regmap_size", temp_ip_layout.kernel_name.c_str(), temp_ip_layout.regmap_size, MAX_KERNEL_REGMAP_SIZE);
@@ -186,10 +186,10 @@ static int get_xclbin_iplayout(const char *buffer, XmaXclbinInfo *xclbin_info)
 
         xclbin_info->number_of_hardware_kernels = xma_ip_layout.size();
         if (xclbin_info->number_of_hardware_kernels != xclbin_info->cu_addrs_sorted.size()) {
-            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Num of hardware kernels on this device = %d. But num of sorted kernels = %d", xclbin_info->number_of_hardware_kernels, xclbin_info->cu_addrs_sorted.size());
+            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Num of hardware kernels on this device = %ud. But num of sorted kernels = %lu", xclbin_info->number_of_hardware_kernels, xclbin_info->cu_addrs_sorted.size());
             throw std::runtime_error("Unable to get sorted kernel list");
         }
-        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "Num of hardware kernels on this device = %d ", xclbin_info->number_of_hardware_kernels);
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "Num of hardware kernels on this device = %ud ", xclbin_info->number_of_hardware_kernels);
         uint32_t num_soft_kernels = 0;
         //Handle soft kernels just like another hardware IP_Layout kernel
         //soft kernels to follow hardware kernels. so soft kenrel index will start after hardware kernels
@@ -219,10 +219,10 @@ static int get_xclbin_iplayout(const char *buffer, XmaXclbinInfo *xclbin_info)
                 num_soft_kernels++;
             }
         }
-        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "Num of soft kernels on this device = %d ", num_soft_kernels);
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "Num of soft kernels on this device = %ud ", num_soft_kernels);
 
         xclbin_info->number_of_kernels = xma_ip_layout.size();
-        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "Num of total kernels on this device = %d ", xclbin_info->number_of_kernels);
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "Num of total kernels on this device = %ud ", xclbin_info->number_of_kernels);
 
         xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "  ");
         const axlf_section_header *xml_hdr = xclbin::get_axlf_section(xclbin, EMBEDDED_METADATA);
@@ -288,7 +288,7 @@ static int get_xclbin_mem_topology(const char *buffer, XmaXclbinInfo *xclbin_inf
         auto& xma_mem_topology = xclbin_info->mem_topology;
 
         xclbin_info->number_of_mem_banks = mem_topo->m_count;
-        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "MEM TOPOLOGY - %d banks ",xclbin_info->number_of_mem_banks);
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "MEM TOPOLOGY - %ud banks ",xclbin_info->number_of_mem_banks);
         if (xclbin_info->number_of_mem_banks > MAX_DDR_MAP) {
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA supports max of only %d mem banks ", MAX_DDR_MAP);
             throw std::runtime_error("XMA supports max of only " + std::to_string(MAX_DDR_MAP) + " mem banks");
@@ -302,7 +302,7 @@ static int get_xclbin_mem_topology(const char *buffer, XmaXclbinInfo *xclbin_inf
             temp_mem_topology.m_base_address = mem_topo->m_mem_data[i].m_base_address;
             //m_tag is 16 chars
             temp_mem_topology.m_tag = std::string((char*)mem_topo->m_mem_data[i].m_tag);
-            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index=%d, tag=%s, type = %d, used = %d, size = %lx, base = %lx ",
+            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index=%d, tag=%s, type = %ud, used = %ud, size = %lx, base = %lx ",
                    i,temp_mem_topology.m_tag.c_str(), temp_mem_topology.m_type, temp_mem_topology.m_used,
                    temp_mem_topology.m_size, temp_mem_topology.m_base_address);
             xma_mem_topology.emplace_back(std::move(temp_mem_topology));
