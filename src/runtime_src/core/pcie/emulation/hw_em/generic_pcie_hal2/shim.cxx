@@ -447,7 +447,7 @@ namespace xclhwemhal2 {
     if (fpgaDevice != "" && fpgaDevice.find("versal:") != std::string::npos) {
       mVersalPlatform=true;
       if ((args.m_emuData == nullptr) && (args.m_emuDataSize <= 0)) {
-        std::string dMsg = "ERROR: [HW-EMU 09] EMULATION_DATA section is missing in XCLBIN. This is mandatory section required for Versal platforms. Please ensure if the design is build with 'v++ -package' step, EMULATION_DATA section gets added to the XCLBIN by the 'v++ -package' step.";
+        std::string dMsg = "ERROR: [HW-EMU 09] EMULATION_DATA section is missing in XCLBIN. This is a mandatory section required for Versal platforms. Please ensure the design is built with 'v++ -package' step, which inserts EMULATION_DATA into the XCLBIN.";
         logMessage(dMsg, 0);
         return -1;
       }
