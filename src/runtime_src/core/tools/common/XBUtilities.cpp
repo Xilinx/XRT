@@ -249,7 +249,7 @@ XBUtilities::wrap_paragraph( const std::string & _unformattedString,
 
   unsigned int linesProcessed = 0;
 
-  while (lineBeginIter < paragraphEndIter)  
+  while (lineBeginIter != paragraphEndIter)  
   {
     // Remove leading spaces
     if ((linesProcessed > 0) && 

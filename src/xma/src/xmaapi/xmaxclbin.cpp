@@ -144,7 +144,7 @@ static int get_xclbin_iplayout(const char *buffer, XmaXclbinInfo *xclbin_info)
                 }
             }
             temp_ip_layout.kernel_channels = false;
-            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index = %d, kernel name = %s, base_addr = %lx ",
+            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index = %zu, kernel name = %s, base_addr = %lx ",
                     xma_ip_layout.size(), temp_ip_layout.kernel_name.c_str(), temp_ip_layout.base_addr);
             if (temp_ip_layout.regmap_size > MAX_KERNEL_REGMAP_SIZE) {
                 xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "kernel %s register map size exceeds max limit. regmap_size: %d, max regmap_size: %d . Will use only max regmap_size", temp_ip_layout.kernel_name.c_str(), temp_ip_layout.regmap_size, MAX_KERNEL_REGMAP_SIZE);
