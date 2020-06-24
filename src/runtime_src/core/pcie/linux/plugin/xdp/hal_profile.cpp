@@ -163,6 +163,21 @@ CopyBOCallLogger::~CopyBOCallLogger() {
     cb(HalCallbackType::COPY_BO_END, &payload);
 }
 
+ExecBufCallLogger::ExecBufCallLogger(xclDeviceHandle handle)
+    : CallLogger(global_idcode)
+{
+    if (!cb_valid()) return;
+    global_idcode++;    // increment only if valid calllback
+    CBPayload payload = {m_local_idcode, handle};
+    cb(HalCallbackType::EXEC_BUF_START, &payload);
+}
+
+ExecBufCallLogger::~ExecBufCallLogger() {
+    if (!cb_valid()) return;
+    CBPayload payload = {m_local_idcode, 0};
+    cb(HalCallbackType::EXEC_BUF_END, &payload);
+}
+
 UnmgdPwriteCallLogger::UnmgdPwriteCallLogger(xclDeviceHandle handle, unsigned flags, const void *buf, size_t count, uint64_t offset) 
     : CallLogger(global_idcode)
 {

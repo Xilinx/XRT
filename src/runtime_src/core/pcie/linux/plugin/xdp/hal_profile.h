@@ -98,6 +98,13 @@ public:
   ~CopyBOCallLogger();
 };
 
+class ExecBufCallLogger : public CallLogger
+{
+public:
+  ExecBufCallLogger(xclDeviceHandle handle);
+  ~ExecBufCallLogger();
+};
+
 class UnmgdPwriteCallLogger : public CallLogger
 {
 public:
@@ -220,6 +227,7 @@ void warning_hal_callbacks() ;
 #define MAP_BO_CB   xdphal::MapBOCallLogger   map_bo_call_logger(handle /*, boHandle, write*/);
 #define SYNC_BO_CB  xdphal::SyncBOCallLogger  sync_bo_call_logger(handle, size, dir /*, boHandle, offset*/); 
 #define COPY_BO_CB  xdphal::CopyBOCallLogger  copy_bo_call_logger(handle /*, dst_boHandle, src_boHandle, size, dst_offset, src_offset*/);
+#define EXEC_BUF_CB  xdphal::ExecBufCallLogger  exec_buf_call_logger(handle);
 #define UNMGD_PWRITE_CB xdphal::UnmgdPwriteCallLogger unmgd_pwrite_call_logger(handle, flags, buf, count, offset);
 #define UNMGD_PREAD_CB  xdphal::UnmgdPreadCallLogger  unnmgd_pread_call_logger(handle, flags, buf, count, offset);
 #define WRITE_CB xdphal::WriteCallLogger write_call_logger(handle, size /*, space, offset, hostBuf */);

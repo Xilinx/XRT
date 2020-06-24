@@ -220,6 +220,14 @@ namespace xdp {
     log_function_end(payload, "CopyBO") ;
   }
 
+  static void exec_buf_start(void* payload) {
+    log_function_start(payload, "ExecBuf") ;
+  }
+
+  static void exec_buf_end(void* payload) {
+    log_function_end(payload, "ExecBuf") ;
+  }
+
   static void unmgd_read_start(void* payload) {
     UnmgdPreadPwriteCBPayload* pLoad = 
       reinterpret_cast<UnmgdPreadPwriteCBPayload*>(payload);
@@ -431,6 +439,12 @@ void hal_level_xdp_cb_func(HalCallbackType cb_type, void* payload)
       break;
     case HalCallbackType::COPY_BO_END:
       xdp::copy_bo_end(payload);
+      break;
+    case HalCallbackType::EXEC_BUF_START:
+      xdp::exec_buf_start(payload);
+      break;
+    case HalCallbackType::EXEC_BUF_END:
+      xdp::exec_buf_end(payload);
       break;
     case HalCallbackType::UNMGD_READ_START:
       xdp::unmgd_read_start(payload);

@@ -2512,6 +2512,9 @@ int xclGetSectionInfo(xclDeviceHandle handle, void* section_info, size_t * secti
 
 int xclExecBuf(xclDeviceHandle handle, unsigned int cmdBO)
 {
+#ifdef ENABLE_HAL_PROFILING
+  EXEC_BUF_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclExecBuf(cmdBO) : -ENODEV;
 }
