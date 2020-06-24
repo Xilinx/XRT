@@ -84,6 +84,7 @@ enum class key_type
 
   status_mig_calibrated,
   status_p2p_enabled,
+  p2p_config,
 
   temp_card_top_front,
   temp_card_top_rear,
@@ -744,6 +745,23 @@ struct status_p2p_enabled : request
   to_string(result_type value)
   {
     return value ? "true" : "false";
+  }
+};
+
+struct p2p_config : request
+{
+  using result_type = std::vector<std::string>;
+  static const key_type key = key_type::p2p_config;
+  static const char* name() { return "p2p_config"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  // formatting of individual items for the vector
+  static std::string
+  to_string(const std::string& value)
+  {
+    return value;
   }
 };
 

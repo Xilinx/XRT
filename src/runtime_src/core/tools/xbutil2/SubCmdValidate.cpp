@@ -655,7 +655,47 @@ bandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::proper
 void
 p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest) 
 {
-  _ptTest.put("status", "skipped");
+  std::vector<char> buf;
+  std::string msg;
+  // xclbin_lock xclbin_lock(_dev->get_device_handle(), _dev->get_device_id()); //to-do
+  XBU::check_p2p_config(_dev, msg);
+  
+  if(msg.find("Error") == 0) {
+    logger(_ptTest, "Error", msg.substr(msg.find(':')+1));
+    _ptTest.put("status", "error");
+    return;
+  }
+  else if(msg.find("Warning") == 0) {
+    logger(_ptTest, "Warning", msg.substr(msg.find(':')+1));
+    _ptTest.put("status", "skipped");
+    return;
+  }
+  else if (!msg.empty()) {
+    logger(_ptTest, "Details", msg);
+    _ptTest.put("status", "skipped");
+    return;
+  }
+
+  auto membuf = xrt_core::device_query<xrt_core::query::mem_topology_raw>(_dev);
+  auto mem_topo = reinterpret_cast<const mem_topology*>(membuf.data());
+  std::string name = xrt_core::device_query<xrt_core::query::rom_vbnv>(_dev);
+
+  for (auto& mem : boost::make_iterator_range(mem_topo->m_mem_data, mem_topo->m_mem_data + mem_topo->m_count)) {
+    // auto midx = std::distance(mem_topo->m_mem_data, &mem);
+    std::vector<std::string> sup_list = { "HBM", "bank", "DDR" };
+    //p2p is not supported for DDR on u280
+    if(name.find("_u280_") != std::string::npos)
+      sup_list.pop_back();
+
+    const std::string mem_tag(reinterpret_cast<const char *>(mem.m_tag));
+    for(const auto& x : sup_list) {
+      if(mem_tag.find(x) != std::string::npos && mem.m_used) {
+        logger(_ptTest, "Details", boost::str(boost::format("P2P test on %s") % mem.m_tag));
+        //ret = p2ptest_bank(_dev->get_device_handle(), midx, mem.m_base_address, mem.m_size << 10);
+      }
+    }
+  }
+  _ptTest.put("status", "passed"); //to-do: remove
 }
 
 /*
@@ -664,6 +704,7 @@ p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
 void
 m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest) 
 {
+  // xclbin_lock xclbin_lock(_dev->get_device_handle(), _dev->get_device_id());
   uint32_t m2m_enabled = xrt_core::device_query<xrt_core::query::kds_numcdmas>(_dev);
   std::string name = xrt_core::device_query<xrt_core::query::rom_vbnv>(_dev);
 
@@ -681,7 +722,7 @@ m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
   auto membuf = xrt_core::device_query<xrt_core::query::mem_topology_raw>(_dev);
   auto mem_topo = reinterpret_cast<const mem_topology*>(membuf.data());
 
-  for (auto mem : boost::make_iterator_range(mem_topo->m_mem_data, mem_topo->m_mem_data + mem_topo->m_count)) {
+  for (auto& mem : boost::make_iterator_range(mem_topo->m_mem_data, mem_topo->m_mem_data + mem_topo->m_count)) {
     if(mem.m_used && mem.m_size * 1024 >= bo_size)
       used_banks.push_back(mem);
   }
@@ -806,7 +847,7 @@ pretty_print_test_run(const boost::property_tree::ptree& test, test_status& stat
   boost::to_upper(_status);
   std::cout << EscapeCodes::fgcolor(color).string() << boost::format("    [%s]\n") % _status
             << EscapeCodes::fgcolor::reset();
-  std::cout << "------------------------------------------------------------------" << std::endl;    
+  std::cout << "-------------------------------------------------------------------------------" << std::endl;    
 }
 
 /*

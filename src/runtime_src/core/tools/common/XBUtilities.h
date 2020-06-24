@@ -103,6 +103,8 @@ namespace XBUtilities {
    * Return: list of UUIDs
    */
   std::vector<std::string> get_uuids(const void *dtbuf);
+
+  int check_p2p_config(const std::shared_ptr<xrt_core::device>& _dev, std::string &err);
 };
 
 #endif
