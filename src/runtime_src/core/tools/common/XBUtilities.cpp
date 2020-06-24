@@ -493,3 +493,21 @@ XBUtilities::get_uuids(const void *dtbuf)
   }
   return uuids;  
 }
+
+static const std::map<std::string, reset_type> reset_map = {
+    { "hot", reset_type::hot },
+    { "kernel", reset_type::kernel },
+    { "ert", reset_type::ert },
+    { "ecc", reset_type::ecc },
+    { "soft_kernel", reset_type::soft_kernel }
+  };
+
+XBUtilities::reset_type
+XBUtilities::str_to_enum_reset(const std::string& str)
+{
+  auto it = reset_map.find(str);
+  if (it != reset_map.end())
+    return it->second;
+  else
+    throw xrt_core::error("Please specify a valid reset type");
+}
