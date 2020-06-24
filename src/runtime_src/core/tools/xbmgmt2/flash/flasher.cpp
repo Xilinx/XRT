@@ -172,7 +172,7 @@ std::string charVec2String(std::vector<char>& v)
 
 std::string int2PowerString(unsigned int lvl)
 {
-    std::vector<std::string> powers{ "75W", "150W", "225W" };
+    std::vector<std::string> powers{ "75W", "150W", "225W", "300W" };
 
     if (lvl < powers.size())
         return powers[lvl];
