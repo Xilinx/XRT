@@ -83,6 +83,7 @@ namespace xdp {
     //  for resources that should only exist once regardless of 
     //  the number of plugins
     XDP_EXPORT bool claimRunSummaryOwnership() ;
+    XDP_EXPORT bool claimDeviceOffloadOwnership() ;
   } ;
 }
 

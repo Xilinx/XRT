@@ -86,4 +86,20 @@ namespace xdp {
     return true ;
   }
 
+  // This function should return true the first time any plugin calls it.
+  //  The plugin that has ownership is the only one that should be responsible
+  //  for offloading information from the devices.  This is necessary for
+  //  hardware OpenCL flows which will end up loading two offload plugins
+  bool VPDatabase::claimDeviceOffloadOwnership()
+  {
+    static std::mutex deviceOffloadLock ;
+    static bool claimed = false ;
+
+    std::lock_guard<std::mutex> lock(deviceOffloadLock) ;
+    if (claimed) return false ;
+
+    claimed = true ;
+    return true ;
+  }
+
 } // end namespace xdp
