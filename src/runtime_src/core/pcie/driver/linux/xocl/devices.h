@@ -279,8 +279,8 @@ enum subdev_id {
 
 #define	XOCL_SUBDEV_MAP_USERPF_ONLY		0x1
 struct xocl_subdev_res {
-	const char *res_name;
-	const char *platform_name;
+	const char *res_name; 		/* resource ep name, e.g. ep_xdma_00 */
+	const char *regmap_name;	/* compatible ip, e.g. axi_hwicap */
 };
 
 struct xocl_subdev_map {

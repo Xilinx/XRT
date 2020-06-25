@@ -22,7 +22,7 @@
 
 struct ip_node {
 	const char *name;
-	const char *platform_name;
+	const char *regmap_name;
 	int level;
 	int inst;
 	u16 major;
@@ -523,7 +523,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.id = XOCL_SUBDEV_XFER_VERSAL,
 		.dev_name = XOCL_XFER_VERSAL,
 		.res_array = (struct xocl_subdev_res[]) {
-			{.res_name = NODE_FPGA_CONFIG, .platform_name = PROP_PDI_CONFIG},
+			{.res_name = NODE_FPGA_CONFIG, .regmap_name = PROP_PDI_CONFIG},
 			{NULL},
 		},
 		.required_ip = 1,
@@ -536,7 +536,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.id = XOCL_SUBDEV_ICAP,
 		.dev_name = XOCL_ICAP,
 		.res_array = (struct xocl_subdev_res[]) {
-			{.res_name = NODE_FPGA_CONFIG, .platform_name = PROP_HWICAP},
+			{.res_name = NODE_FPGA_CONFIG, .regmap_name = PROP_HWICAP},
 			{NULL},
 		},
 		.required_ip = 1,
@@ -852,7 +852,7 @@ found:
 
 		/* Get platform */
 		if (prop && cplen > strlen(prop) + 1) {
-			ip->platform_name = prop + strlen(prop) + 1;
+			ip->regmap_name = prop + strlen(prop) + 1;
 		}
 		ip->off = node;
 	}
@@ -862,7 +862,7 @@ found:
 
 static int xocl_fdt_res_lookup(xdev_handle_t xdev_hdl, char *blob,
 	const char *ipname, u32 min_level, struct xocl_subdev *subdev,
-	struct ip_node *ip, int ip_num, const char *platform_name)
+	struct ip_node *ip, int ip_num, const char *regmap_name)
 {
 	int i, ret;
 
@@ -875,9 +875,9 @@ static int xocl_fdt_res_lookup(xdev_handle_t xdev_hdl, char *blob,
 		if (ip->name && strlen(ipname) > 0 && !ip->used &&
 		    ip->level >= min_level &&
 		    !strncmp(ip->name, ipname, strlen(ipname))) {
-			if (platform_name && ip->platform_name &&
-			    strncmp(ip->platform_name, platform_name,
-			    strlen(platform_name)))
+			if (regmap_name && ip->regmap_name &&
+			    strncmp(ip->regmap_name, regmap_name,
+			    strlen(regmap_name)))
 				continue;
 			else
 				break;
@@ -934,7 +934,7 @@ static int xocl_fdt_get_devinfo(xdev_handle_t xdev_hdl, char *blob,
 	    res = &map_p->res_array[++i]) {
 
 		ret = xocl_fdt_res_lookup(xdev_hdl, blob, res->res_name,
-		    map_p->min_level, subdev, ip, ip_num, res->platform_name);
+		    map_p->min_level, subdev, ip, ip_num, res->regmap_name);
 
 		if (ret) {
 			xocl_xdev_err(xdev_hdl, "lookup dev %s, ip %s failed",
