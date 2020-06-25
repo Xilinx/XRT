@@ -499,8 +499,7 @@ skip1:
 done:
 	if (size < 0)
 		err = size;
-	if (err){
-		xocl_icap_clean_bitstream(xdev);
+	if (err) {
 		userpf_err(xdev, "Failed to download xclbin, err: %ld\n", err);
 	}
 	else
