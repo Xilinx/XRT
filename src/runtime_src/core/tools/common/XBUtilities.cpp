@@ -445,11 +445,11 @@ XBUtilities::get_axlf_section(const std::string& filename, axlf_section_kind kin
   if (!section)
     throw std::runtime_error("Section not found");
 
-  auto buf = new char[section->m_sectionSize];
+  std::unique_ptr<char> buf(new char[section->m_sectionSize]);
   in.seekg(section->m_sectionOffset);
-  in.read(buf, section->m_sectionSize);
+  in.read(buf.get(), section->m_sectionSize);
 
-  return std::make_pair(buf, section->m_sectionSize);
+  return std::make_pair(buf.get(), section->m_sectionSize);
 }
 
 std::vector<std::string>
