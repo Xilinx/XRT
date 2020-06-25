@@ -90,7 +90,6 @@ struct kds_client {
 	u64			  padding[16];
 	wait_queue_head_t	  waitq;
 	atomic_t		  event;
-	atomic_t		  outstanding_cmds;
 };
 
 /* the MSB of cu_refs is used for exclusive flag */

@@ -60,6 +60,7 @@ static inline void process_sq(struct xrt_cu *xcu)
 	if (!xcu->done_cnt && xcu->num_sq) {
 		xcmd = list_first_entry(&xcu->sq, struct kds_command, list);
 		if (!xcu->old_cmd || xcu->old_cmd != xcmd) {
+			xcmd->start = ktime_get_raw_fast_ns();
 			xcu->old_cmd = xcmd;
 			return;
 		}
@@ -114,8 +115,14 @@ static inline int process_rq(struct xrt_cu *xcu)
 	xrt_cu_config(xcu, (u32 *)xcmd->info, xcmd->isize, 0);
 	xrt_cu_start(xcu);
 
+	/* ktime_get_* is still heavy. This impact ~20% of IOPS on echo mode.
+	 * For some sort of CU, which usually has a relative long execute time,
+	 * we could hide this overhead and provide timestamp for each command.
+	 * But this implementation is used for general purpose. Please create CU
+	 * specific thread if needed.
+	 */
+	//xcmd->start = ktime_get_raw_fast_ns();
 	/* Move xcmd to submmited queue */
-	xcmd->start = ktime_get_raw_fast_ns();
 	list_move_tail(&xcmd->list, &xcu->sq);
 	--xcu->num_rq;
 	++xcu->num_sq;

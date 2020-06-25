@@ -195,7 +195,6 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
 	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(xcmd->gem_obj);
 
 	atomic_inc(&client->event);
-	atomic_dec(&client->outstanding_cmds);
 	wake_up_interruptible(&client->waitq);
 }
 

@@ -226,8 +226,6 @@ kds_cu_dispatch(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 static int
 kds_submit_cu(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 {
-	atomic_inc(&xcmd->client->outstanding_cmds);
-
 	if (xcmd->opcode != OP_CONFIG)
 		kds_cu_dispatch(cu_mgmt, xcmd);
 	else
@@ -429,7 +427,6 @@ int kds_init_client(struct kds_sched *kds, struct kds_client *client)
 
 	init_waitqueue_head(&client->waitq);
 	atomic_set(&client->event, 0);
-	atomic_set(&client->outstanding_cmds, 0);
 
 	mutex_lock(&kds->lock);
 	list_add_tail(&client->link, &kds->clients);
@@ -459,22 +456,23 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client)
 {
 	struct kds_ctx_info info;
 	u32 bit;
-	u32 outstanding;
 
-	outstanding = atomic_read(&client->outstanding_cmds);
-	if (outstanding)
-		client->abort = 1;
+	client->abort = 1;
 
-	/* If CU hangs for some reason, the CU subdevice should still be able to
-	 * finished all commands, instead of hanging user application.
-	 * For above reason, no timeout here.
+	/* If the client was destroyed after all commands finished, set client
+	 * as abort and sleep doesn't impact anything.
+	 *
+	 * But if client was destroyed unexpected.
+	 * After set client as abort, CU subdevice should finished all unsubmitted
+	 * commands. The submitted command would finished as usual.
+	 * Sleep for 500ms is enought to wait all commands finished.
+	 *
+	 * Only when CU hang, the CU subdevice would be able to detect it and go
+	 * to bad status.
+	 * This client would know if CU is in bad status when close the
+	 * context.
 	 */
-	while (outstanding) {
-		kds_info(client, "Client pid(%d) waits %d outstanding commands",
-			 pid_nr(client->pid), outstanding);
-		msleep(500);
-		outstanding = atomic_read(&client->outstanding_cmds);
-	}
+	msleep(500);
 
 	kds_info(client, "Client pid(%d) has %d opening context",
 		 pid_nr(client->pid), client->num_ctx);
