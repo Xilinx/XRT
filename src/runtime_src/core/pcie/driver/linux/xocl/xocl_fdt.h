@@ -90,7 +90,7 @@
 #define NODE_PMC_INTR	"ep_pmc_intr_00"
 #define NODE_PMC_MUX	"ep_pmc_mux_00"
 
-#define PROP_HWICAP "hwicap"
+#define PROP_HWICAP "axi_hwicap"
 #define PROP_PDI_CONFIG "pdi_config_mem"
 
 #define RESNAME_GATEPLP		NODE_GATE_PLP
