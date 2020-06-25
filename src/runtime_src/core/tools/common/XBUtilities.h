@@ -101,7 +101,7 @@ namespace XBUtilities {
    *
    * Return: pair of section data and size in bytes
    */
-  std::pair<const char*, size_t>
+  std::pair<std::vector<char>, size_t>
   get_axlf_section(const std::string& filename, axlf_section_kind section);
 
   /**
