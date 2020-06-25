@@ -249,7 +249,7 @@ XBUtilities::wrap_paragraph( const std::string & _unformattedString,
 
   unsigned int linesProcessed = 0;
 
-  while (lineBeginIter < paragraphEndIter)  
+  while (lineBeginIter != paragraphEndIter)  
   {
     // Remove leading spaces
     if ((linesProcessed > 0) && 
@@ -492,4 +492,21 @@ XBUtilities::get_uuids(const void *dtbuf)
     p = PALIGN(p + sz, 4);
   }
   return uuids;  
+}
+
+static const std::map<std::string, reset_type> reset_map = {
+    { "hot", reset_type::hot },
+    { "kernel", reset_type::kernel },
+    { "ert", reset_type::ert },
+    { "ecc", reset_type::ecc },
+    { "soft_kernel", reset_type::soft_kernel }
+  };
+
+XBUtilities::reset_type
+XBUtilities::str_to_enum_reset(const std::string& str)
+{
+  auto it = reset_map.find(str);
+  if (it != reset_map.end())
+    return it->second;
+  throw xrt_core::error(str + " is invalid. Please specify a valid reset type");
 }

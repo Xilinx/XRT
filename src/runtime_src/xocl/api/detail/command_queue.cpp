@@ -35,7 +35,7 @@ void
 validOrError(const cl_command_queue command_queue)
 {
   if (!command_queue)
-    throw error(CL_INVALID_COMMAND_QUEUE);
+    throw error(CL_INVALID_COMMAND_QUEUE, "Invalid NULL command queue");
   context::validOrError(xocl(command_queue)->get_context());
 }
 
@@ -44,7 +44,7 @@ validOrError(cl_command_queue_properties properties)
 {
   cl_bitfield valid = CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE | CL_QUEUE_PROFILING_ENABLE;
   if(properties & (~valid))
-    throw error(CL_INVALID_VALUE);
+    throw error(CL_INVALID_VALUE, "Invalid command queue property");
 }
 
 void
@@ -55,7 +55,7 @@ validOrError(const cl_device_id device, cl_command_queue_properties properties)
   cl_command_queue_properties supported = 0;
   api::clGetDeviceInfo(device,CL_DEVICE_QUEUE_PROPERTIES,sizeof(cl_command_queue_properties),&supported,nullptr);
   if(properties & (~supported))
-    throw error(CL_INVALID_QUEUE_PROPERTIES);
+    throw error(CL_INVALID_QUEUE_PROPERTIES, "Invalid command queue property");
 }
 
 }

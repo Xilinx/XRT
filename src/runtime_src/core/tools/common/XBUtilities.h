@@ -23,6 +23,7 @@
 
 #include <string>
 #include <memory>
+#include <map>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
@@ -38,6 +39,14 @@ namespace XBUtilities {
     MT_TRACE,
     MT_UNKNOWN, 
   } MessageType;
+
+  enum class reset_type {
+    hot,
+    kernel,
+    ert,
+    ecc,
+    soft_kernel
+  };
 
   /**
    * Enables / Disables verbosity
@@ -103,6 +112,8 @@ namespace XBUtilities {
    * Return: list of UUIDs
    */
   std::vector<std::string> get_uuids(const void *dtbuf);
+
+  reset_type str_to_enum_reset(const std::string& str);
 };
 
 #endif

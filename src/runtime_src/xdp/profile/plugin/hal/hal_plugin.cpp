@@ -90,14 +90,18 @@ namespace xdp {
 
   HALPlugin::~HALPlugin()
   {
-    if (VPDatabase::alive())
-    {
+    if (VPDatabase::alive()) {
       // We were destroyed before the database, so flush our events to the 
       //  database, write the writers, and unregister ourselves from
       //  the database.
-      writeAll(false) ;
+      try {
+        writeAll(false);
+      }
+      catch (...) {
+      }
       db->unregisterPlugin(this) ;
     }
+
     // If the database is dead, then we must have already forced a 
     //  write at the database destructor so we can just move on
 

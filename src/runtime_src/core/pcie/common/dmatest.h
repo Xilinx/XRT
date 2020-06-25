@@ -171,7 +171,7 @@ namespace xcldev {
             rate /= 0x100000; // MB
             rate /= timer_stop;
             rate *= 1000000; //
-            ostr << boost::str(boost::format("Host <- PCIe <- FPGA read bandwidth = %f MB/s") % rate);
+            ostr << boost::str(boost::format("Host <- PCIe <- FPGA read bandwidth = %f MB/s\n") % rate);
 
             // data integrity check: compare with initialized pattern
             return validate();
