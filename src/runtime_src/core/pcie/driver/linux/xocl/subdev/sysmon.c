@@ -1,7 +1,7 @@
 /*
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
- * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *
@@ -20,10 +20,10 @@
 #include "../xocl_drv.h"
 #include "mgmt-ioctl.h"
 
-#define TEMP 		0x400 		// TEMPOERATURE REGISTER ADDRESS
-#define VCCINT		0x404 		// VCCINT REGISTER OFFSET
-#define VCCAUX		0x408 		// VCCAUX REGISTER OFFSET
-#define VCCBRAM		0x418 		// VCCBRAM REGISTER OFFSET
+#define	TEMP		0x400		// TEMPERATURE REGISTER ADDRESS
+#define	VCCINT		0x404		// VCCINT REGISTER OFFSET
+#define	VCCAUX		0x408		// VCCAUX REGISTER OFFSET
+#define	VCCBRAM		0x418		// VCCBRAM REGISTER OFFSET
 #define	TEMP_MAX	0x480
 #define	VCCINT_MAX	0x484
 #define	VCCAUX_MAX	0x488
@@ -32,6 +32,13 @@
 #define	VCCINT_MIN	0x494
 #define	VCCAUX_MIN	0x498
 #define	VCCBRAM_MIN	0x49c
+#define	OT_UPPER_ALARM_REG          0x54c // Over Temperature upper alarm register
+#define	OT_UPPER_ALARM_REG_OVERRIDE 0x3
+/*
+ * Measured 12bit ADC code for temperature of 110 degree celcius using
+ * equation 4-2 from UG580 document
+ */
+#define	ADC_CODE_TEMP_110           0xC36
 
 #define	SYSMON_TO_MILLDEGREE(val)		\
 	(((int64_t)(val) * 501374 >> 16) - 273678)
@@ -46,6 +53,7 @@
 struct xocl_sysmon {
 	void __iomem		*base;
 	struct device		*hwmon_dev;
+	struct xocl_sysmon_privdata *priv_data;
 };
 
 static int get_prop(struct platform_device *pdev, u32 prop, void *val)
@@ -320,11 +328,20 @@ static int sysmon_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
+	sysmon->priv_data = XOCL_GET_SUBDEV_PRIV(&pdev->dev);
+
 	platform_set_drvdata(pdev, sysmon);
 
 	err = mgmt_sysfs_create_sysmon(pdev);
 	if (err) {
 		goto create_sysmon_failed;
+	}
+
+	if (sysmon->priv_data &&
+		sysmon->priv_data->flags & XOCL_SYSMON_OT_OVERRIDE) {
+		xocl_info(&pdev->dev, "Over temperature threshold override is set");
+		WRITE_REG32(sysmon, (ADC_CODE_TEMP_110 << 4) |
+			OT_UPPER_ALARM_REG_OVERRIDE, OT_UPPER_ALARM_REG);
 	}
 
 	return 0;
