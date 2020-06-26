@@ -63,7 +63,7 @@ namespace xdp {
 
       // Now, keep track of the device ID for this device so we can use
       //  our own handle
-      deviceIdToHandle[sysfsPathToDeviceId[path]] = handle ;
+      deviceIdToHandle[db->addDevice(path)] = handle ;
 
       // Move on to the next device
       ++index ;
@@ -123,14 +123,8 @@ namespace xdp {
     xclGetDebugIPlayoutPath(handle, pathBuf, 512) ;
 
     std::string path(pathBuf) ;
-
-    if (sysfsPathToDeviceId.find(path) == sysfsPathToDeviceId.end())
-    {
-      // Error!
-      return ;
-    }
     
-    uint64_t deviceId = sysfsPathToDeviceId[path] ;
+    uint64_t deviceId = db->addDevice(path) ;
 
     if (offloaders.find(deviceId) != offloaders.end())
     {
@@ -151,16 +145,8 @@ namespace xdp {
     xclGetDebugIPlayoutPath(userHandle, pathBuf, 512) ;
 
     std::string path(pathBuf) ;
-    
-    if (sysfsPathToDeviceId.find(path) == sysfsPathToDeviceId.end())
-    {
-      // Error!  We should have gone through all the devices in the
-      //  beginning!
 
-      return ;
-    }
-
-    uint64_t deviceId = sysfsPathToDeviceId[path] ;
+    uint64_t deviceId = db->addDevice(path) ;
     void* ownedHandle = deviceIdToHandle[deviceId] ;
     
     if (offloaders.find(deviceId) != offloaders.end())

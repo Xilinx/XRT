@@ -61,7 +61,16 @@ namespace xdp {
     return VPDatabase::live ;
   }
 
-  uint64_t VPDatabase::addDevice(std::string& sysfsPath)
+  uint64_t VPDatabase::getDeviceId(const std::string& sysfsPath)
+  {
+    if (devices.find(sysfsPath) == devices.end())
+    {
+      throw std::runtime_error("Device not registered in database");
+    }
+    return devices[sysfsPath] ;
+  }
+
+  uint64_t VPDatabase::addDevice(const std::string& sysfsPath)
   {
     if(devices.find(sysfsPath) == devices.end()) {
       devices[sysfsPath] = numDevices++;

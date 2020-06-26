@@ -99,14 +99,8 @@ namespace xdp {
     xrt::device* device = static_cast<xrt::device*>(d) ;
 
     std::string path = device->getDebugIPlayoutPath().get() ;
-    
-    if (sysfsPathToDeviceId.find(path) == sysfsPathToDeviceId.end())
-    {
-      // Error!
-      return ;
-    }
-  
-    uint64_t deviceId = sysfsPathToDeviceId[path] ;
+
+    uint64_t deviceId = db->addDevice(path) ;
     
     if (offloaders.find(deviceId) != offloaders.end())
     {
@@ -126,13 +120,17 @@ namespace xdp {
     //  is used as a unique identifier of the physical device
     std::string path = device->getDebugIPlayoutPath().get() ;
 
-    if (sysfsPathToDeviceId.find(path) == sysfsPathToDeviceId.end())
+    uint64_t deviceId = 0;
+    try {
+      deviceId = db->getDeviceId(path) ;
+    }
+    catch(std::exception& e)
     {
       // This is the first time we encountered this particular device
       addDevice(path) ;
     }
 
-    uint64_t deviceId = sysfsPathToDeviceId[path] ;
+    deviceId = db->addDevice(path) ;
 
     if (offloaders.find(deviceId) != offloaders.end())
     {

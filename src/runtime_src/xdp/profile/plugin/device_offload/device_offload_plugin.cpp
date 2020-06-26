@@ -29,7 +29,7 @@
 
 namespace xdp {
 
-  DeviceOffloadPlugin::DeviceOffloadPlugin() : XDPPlugin(), globalDeviceId(0)
+  DeviceOffloadPlugin::DeviceOffloadPlugin() : XDPPlugin()
   {
     active = db->claimDeviceOffloadOwnership() ;
     if (!active) return ; 
@@ -54,12 +54,8 @@ namespace xdp {
   void DeviceOffloadPlugin::addDevice(const std::string& sysfsPath)
   {
     if (!active) return ;
-    
-    uint32_t deviceId = globalDeviceId ;
-    ++globalDeviceId ;
 
-    // First, add the mappings and information
-    sysfsPathToDeviceId[sysfsPath] = deviceId ;
+    uint64_t deviceId = db->addDevice(sysfsPath) ;
 
     // When adding a device, also add a writer to dump the information
     std::string version = "1.0" ;

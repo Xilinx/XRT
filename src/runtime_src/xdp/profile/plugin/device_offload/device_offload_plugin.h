@@ -51,10 +51,8 @@ namespace xdp {
     bool active ;
 
     // Each device offload plugin is responsible for offloading
-    //  information from all devices.  This information keeps track
-    //  of all the different devices that exist.
-    uint32_t globalDeviceId ;
-    std::map<std::string, uint32_t> sysfsPathToDeviceId ;
+    //  information from all devices.  This holds all the objects
+    //  responsible for offloading data from all devices.
     std::map<uint32_t, DeviceTraceOffload*> offloaders ;
 
     XDP_EXPORT void addDevice(const std::string& sysfsPath) ;
