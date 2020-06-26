@@ -35,7 +35,7 @@ public:
 
   virtual ~IOCtlTraceS2MM();
 
-  virtual void init(uint64_t bo_size, int64_t bufaddr);
+  virtual void init(uint64_t bo_size, int64_t bufaddr, bool circular);
 //    virtual bool isActive();
   virtual void reset();
   /**
