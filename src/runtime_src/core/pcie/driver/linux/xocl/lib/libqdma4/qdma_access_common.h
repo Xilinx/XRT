@@ -1,5 +1,17 @@
 /*
- * Copyright(c) 2019 Xilinx, Inc. All rights reserved.
+ * Copyright(c) 2019-2020 Xilinx, Inc. All rights reserved.
+ *
+ * This source code is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * The full GNU General Public License is included in this distribution in
+ * the file called "COPYING".
  */
 
 #ifndef QDMA4_ACCESS_COMMON_H_
@@ -148,6 +160,8 @@ struct qdma_descq_sw_ctxt {
 	uint8_t is_mm;
 	/** @intr_aggr - interrupt aggregation enable */
 	uint8_t intr_aggr;
+	/** @pasid_en - PASID Enable */
+	uint8_t pasid_en;
 	/** @dis_intr_on_vf - Disbale interrupt with VF */
 	uint8_t dis_intr_on_vf;
 	/** @virtio_en - Queue is in Virtio Mode */
@@ -160,8 +174,6 @@ struct qdma_descq_sw_ctxt {
 	uint8_t host_id;
 	/** @pasid - PASID */
 	uint32_t pasid;
-	/** @pasid_en - PASID Enable */
-	uint8_t pasid_en;
 	/** @virtio_dsc_base - Virtio Desc Base Address */
 	uint64_t virtio_dsc_base;
 };
@@ -317,6 +329,8 @@ struct qdma_indirect_intr_ctxt {
 	uint32_t pasid;
 	/** @pasid_en - PASID Enable */
 	uint8_t pasid_en;
+	/** @func_id - Function ID */
+	uint16_t func_id;
 };
 
 struct qdma_hw_version_info {
@@ -413,6 +427,19 @@ struct qdma_csr_info {
 	uint8_t wb_intvl;
 };
 
+#define QDMA_MAX_REGISTER_DUMP	14
+
+/**
+ * struct qdma_reg_data - Structure to
+ * hold address value and pair
+ */
+struct qdma_reg_data {
+	/** @reg_addr: register address */
+	uint32_t reg_addr;
+	/** @reg_val: register value */
+	uint32_t reg_val;
+};
+
 /**
  * enum qdma_hw_access_type - To hold hw access type
  */
@@ -443,6 +470,35 @@ enum status_type {
 	ENABLE = 1,
 };
 
+/**
+ * enum qdma_reg_read_type - Indicates reg read type
+ */
+enum qdma_reg_read_type {
+	/** @QDMA_REG_READ_PF_ONLY: Read the register for PFs only */
+	QDMA_REG_READ_PF_ONLY,
+	/** @QDMA_REG_READ_VF_ONLY: Read the register for VFs only */
+	QDMA_REG_READ_VF_ONLY,
+	/** @QDMA_REG_READ_PF_VF: Read the register for both PF and VF */
+	QDMA_REG_READ_PF_VF,
+	/** @QDMA_REG_READ_MAX: Reg read enum max */
+	QDMA_REG_READ_MAX
+};
+
+/**
+ * enum qdma_reg_read_groups - Indicates reg read groups
+ */
+enum qdma_reg_read_groups {
+	/** @QDMA_REG_READ_GROUP_1: Read the register from  0x000 to 0x288 */
+	QDMA_REG_READ_GROUP_1,
+	/** @QDMA_REG_READ_GROUP_2: Read the register from 0x400 to 0xAFC */
+	QDMA_REG_READ_GROUP_2,
+	/** @QDMA_REG_READ_GROUP_3: Read the register from 0xB00 to 0xE28 */
+	QDMA_REG_READ_GROUP_3,
+	/** @QDMA_REG_READ_GROUP_4: Read the register Mailbox Registers */
+	QDMA_REG_READ_GROUP_4,
+	/** @QDMA_REG_READ_GROUP_MAX: Reg read max groups */
+	QDMA_REG_READ_GROUP_MAX
+};
 
 void qdma_write_csr_values(void *dev_hndl, uint32_t reg_offst,
 		uint32_t idx, uint32_t cnt, const uint32_t *values);
@@ -450,15 +506,22 @@ void qdma_write_csr_values(void *dev_hndl, uint32_t reg_offst,
 void qdma_read_csr_values(void *dev_hndl, uint32_t reg_offst,
 		uint32_t idx, uint32_t cnt, uint32_t *values);
 
-int dump_reg(char *buf, int buf_sz, unsigned int raddr,
-		const char *rname, unsigned int rval);
+int dump_reg(char *buf, int buf_sz, uint32_t raddr,
+		const char *rname, uint32_t rval);
 
-int qdma4_hw_monitor_reg(void *dev_hndl, unsigned int reg, uint32_t mask,
-		uint32_t val, unsigned int interval_us, unsigned int timeout_us);
+int qdma4_hw_monitor_reg(void *dev_hndl, uint32_t reg, uint32_t mask,
+		uint32_t val, uint32_t interval_us,
+		uint32_t timeout_us);
 
 void qdma_memset(void *to, uint8_t val, uint32_t size);
 
-int qdma_reg_dump_buf_len(void *dev_hndl, uint8_t is_vf, uint32_t *buflen);
+int qdma_acc_reg_dump_buf_len(void *dev_hndl,
+		enum qdma_ip_type ip_type, int *buflen);
+
+
+int qdma_acc_context_buf_len(void *dev_hndl,
+		enum qdma_ip_type ip_type, uint8_t st,
+		enum qdma_dev_q_type q_type, uint32_t *buflen);
 
 /*
  * struct qdma_hw_access - Structure to hold HW access function pointers
@@ -520,7 +583,7 @@ struct qdma_hw_access {
 				struct qdma_hw_version_info *version_info);
 	int (*qdma_get_device_attributes)(void *dev_hndl,
 					struct qdma_dev_attributes *dev_info);
-	int (*qdma_hw_error_qdma4_intr_setup)(void *dev_hndl, uint16_t func_id,
+	int (*qdma_hw_error_intr_setup)(void *dev_hndl, uint16_t func_id,
 					uint8_t err_intr_index);
 	int (*qdma_hw_error_intr_rearm)(void *dev_hndl);
 	int (*qdma_hw_error_enable)(void *dev_hndl,
@@ -529,12 +592,12 @@ struct qdma_hw_access {
 	int (*qdma_hw_error_process)(void *dev_hndl);
 	int (*qdma_dump_config_regs)(void *dev_hndl, uint8_t is_vf, char *buf,
 					uint32_t buflen);
-	int (*qdma_dump_queue_context)(void *dev_hndl, uint8_t is_vf,
+	int (*qdma_dump_queue_context)(void *dev_hndl,
 			uint8_t st,
 			enum qdma_dev_q_type q_type,
 			struct qdma_descq_context *ctxt_data,
 			char *buf, uint32_t buflen);
-	int (*qdma_read_dump_queue_context)(void *dev_hndl, uint8_t is_vf,
+	int (*qdma_read_dump_queue_context)(void *dev_hndl,
 			uint16_t qid_hw,
 			uint8_t st,
 			enum qdma_dev_q_type q_type,
@@ -549,6 +612,14 @@ struct qdma_hw_access {
 	int (*qdma_initiate_flr)(void *dev_hndl, uint8_t is_vf);
 	int (*qdma_is_flr_done)(void *dev_hndl, uint8_t is_vf, uint8_t *done);
 	int (*qdma_get_error_code)(int acc_err_code);
+	int (*qdma_read_reg_list)(void *dev_hndl, uint8_t is_vf,
+			uint16_t reg_rd_group,
+			uint16_t *total_regs,
+			struct qdma_reg_data *reg_list);
+	int (*qdma_dump_config_reg_list)(void *dev_hndl,
+			uint32_t num_regs,
+			struct qdma_reg_data *reg_list,
+			char *buf, uint32_t buflen);
 	uint32_t mbox_base_pf;
 	uint32_t mbox_base_vf;
 };
@@ -574,33 +645,39 @@ int qdma_hw_access_init(void *dev_hndl, uint8_t is_vf,
 
 /*****************************************************************************/
 /**
- * qdma_dump_config_regs() - Function to get qdma config register dump in a
+ * qdma_acc_dump_config_regs() - Function to get qdma config register dump in a
  * buffer
  *
  * @dev_hndl:   device handle
  * @is_vf:      Whether PF or VF
+ * @ip_type:	QDMA IP Type
  * @buf :       pointer to buffer to be filled
  * @buflen :    Length of the buffer
  *
  * Return:	Length up-till the buffer is filled -success and < 0 - failure
  *****************************************************************************/
-int qdma_dump_config_regs(void *dev_hndl, uint8_t is_vf,
-	char *buf, uint32_t buflen);
+int qdma_acc_dump_config_regs(void *dev_hndl, uint8_t is_vf,
+		enum qdma_ip_type ip_type,
+		char *buf, uint32_t buflen);
 
 /*****************************************************************************/
 /**
- * qdma_dump_queue_context() - Function to dump qdma queue context data in a
+ * qdma_acc_dump_queue_context() - Function to dump qdma queue context data in a
  * buffer where context information is already available in 'ctxt_data'
  * structure pointer buffer
  *
  * @dev_hndl:   device handle
- * @hw_qid:     queue id
+ * @ip_type:	QDMA IP Type
+ * @st:		ST or MM
+ * @q_type:	Queue Type
+ * @ctxt_data:	Context Data
  * @buf :       pointer to buffer to be filled
  * @buflen :    Length of the buffer
  *
  * Return:	Length up-till the buffer is filled -success and < 0 - failure
  *****************************************************************************/
-int qdma_dump_queue_context(void *dev_hndl, uint8_t is_vf,
+int qdma_acc_dump_queue_context(void *dev_hndl,
+		enum qdma_ip_type ip_type,
 		uint8_t st,
 		enum qdma_dev_q_type q_type,
 		struct qdma_descq_context *ctxt_data,
@@ -608,21 +685,45 @@ int qdma_dump_queue_context(void *dev_hndl, uint8_t is_vf,
 
 /*****************************************************************************/
 /**
- * qdma_read_dump_queue_context() - Function to read and dump the queue context
- * in a buffer
+ * qdma_acc_read_dump_queue_context() - Function to read and dump the queue
+ * context in a buffer
  *
  * @dev_hndl:   device handle
- * @hw_qid:     queue id
+ * @ip_type:	QDMA IP Type
+ * @qid_hw:     queue id
+ * @st:		ST or MM
+ * @q_type:	Queue Type
  * @buf :       pointer to buffer to be filled
  * @buflen :    Length of the buffer
  *
  * Return:	Length up-till the buffer is filled -success and < 0 - failure
  *****************************************************************************/
-int qdma_read_dump_queue_context(void *dev_hndl, uint8_t is_vf,
+int qdma_acc_read_dump_queue_context(void *dev_hndl,
+				enum qdma_ip_type ip_type,
 				uint16_t qid_hw,
 				uint8_t st,
 				enum qdma_dev_q_type q_type,
 				char *buf, uint32_t buflen);
+
+
+/*****************************************************************************/
+/**
+ * qdma_acc_dump_config_reg_list() - Dump the registers
+ *
+ * @dev_hndl:		device handle
+ * @ip_type:		QDMA IP Type
+ * @total_regs :	Max registers to read
+ * @reg_list :		array of reg addr and reg values
+ * @buf :		pointer to buffer to be filled
+ * @buflen :		Length of the buffer
+ *
+ * Return: returns the platform specific error code
+ *****************************************************************************/
+int qdma_acc_dump_config_reg_list(void *dev_hndl,
+		enum qdma_ip_type ip_type,
+		uint32_t num_regs,
+		struct qdma_reg_data *reg_list,
+		char *buf, uint32_t buflen);
 
 /*****************************************************************************/
 /**
@@ -648,6 +749,7 @@ int qdma_get_error_code(int acc_err_code);
  *****************************************************************************/
 void qdma_fetch_version_details(uint8_t is_vf, uint32_t version_reg_val,
 		struct qdma_hw_version_info *version_info);
+
 
 #ifdef __cplusplus
 }
