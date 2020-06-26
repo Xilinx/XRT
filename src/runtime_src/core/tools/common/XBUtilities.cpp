@@ -413,7 +413,7 @@ XBUtilities::report_available_devices()
   std::cout << std::endl;
 }
 
-std::pair<const char*, size_t>
+std::vector<char>
 XBUtilities::get_axlf_section(const std::string& filename, axlf_section_kind kind)
 {
   std::ifstream in(filename);
@@ -445,11 +445,11 @@ XBUtilities::get_axlf_section(const std::string& filename, axlf_section_kind kin
   if (!section)
     throw std::runtime_error("Section not found");
 
-  auto buf = new char[section->m_sectionSize];
+  std::vector<char> buf(section->m_sectionSize);
   in.seekg(section->m_sectionOffset);
-  in.read(buf, section->m_sectionSize);
+  in.read(buf.data(), section->m_sectionSize);
 
-  return std::make_pair(buf, section->m_sectionSize);
+  return buf;
 }
 
 std::vector<std::string>
