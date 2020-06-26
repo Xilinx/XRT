@@ -296,6 +296,17 @@ static int xocl_preserve_mem(struct xocl_drm *drm_p, struct mem_topology *new_to
 	return ret;
 }
 
+static bool xocl_xclbin_in_use(struct xocl_dev *xdev)
+{
+	BUG_ON(!xdev);
+
+	if (live_clients(xdev, NULL) || atomic_read(&xdev->outstanding_execs)) {
+		userpf_err(xdev, " Current xclbin is in-use, can't change\n");
+		return true;
+	}
+	return false;
+}
+
 static int
 xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 {
@@ -372,8 +383,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	 * Note that icap subdevice also maintains xclbin ref count, which is
 	 * used to lock down xclbin on mgmt pf side.
 	 */
-	if (live_clients(xdev, NULL) || atomic_read(&xdev->outstanding_execs)) {
-		userpf_err(xdev, " Current xclbin is in-use, can't change\n");
+	if (xocl_xclbin_in_use(xdev)) {
 		err = -EBUSY;
 		goto done;
 	}
@@ -489,8 +499,7 @@ skip1:
 done:
 	if (size < 0)
 		err = size;
-	if (err){
-		xocl_icap_clean_bitstream(xdev);
+	if (err) {
 		userpf_err(xdev, "Failed to download xclbin, err: %ld\n", err);
 	}
 	else
@@ -552,7 +561,14 @@ int xocl_alloc_cma_ioctl(struct drm_device *dev, void *data,
 	int err = 0;
 
 	mutex_lock(&xdev->dev_lock);
+
+	if (xocl_xclbin_in_use(xdev)) {
+		err = -EBUSY;
+		goto done;
+	}
+
 	err = xocl_cma_bank_alloc(drm_p, cma_info);
+done:
 	mutex_unlock(&xdev->dev_lock);
 	return err;
 }
@@ -565,7 +581,9 @@ int xocl_free_cma_ioctl(struct drm_device *dev, void *data,
 	int err = 0;
 
 	mutex_lock(&xdev->dev_lock);
-	if (xocl_check_topology(drm_p))
+
+
+	if (xocl_xclbin_in_use(xdev) || xocl_check_topology(drm_p))
 		err = -EBUSY;
 	else
 		xocl_cma_bank_free(drm_p);
