@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -153,7 +153,9 @@ public:
    * @param level
    *   Verbosity level for logging
    * @returns
-   *   If open succeeds then true, false otherwise
+   *   If open was opened then true, false if device was already open
+   *
+   * Throws if device could not be opened
    */
   bool
   open()
