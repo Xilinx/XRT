@@ -1,11 +1,27 @@
 /*
- * Copyright(c) 2019 Xilinx, Inc. All rights reserved.
+ * Copyright(c) 2019-2020 Xilinx, Inc. All rights reserved.
+ *
+ * This source code is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * The full GNU General Public License is included in this distribution in
+ * the file called "COPYING".
  */
 
 #include "qdma_resource_mgmt.h"
 #include "qdma_platform.h"
 #include "qdma_list.h"
 #include "qdma_access_errors.h"
+
+#ifdef ENABLE_WPP_TRACING
+#include "qdma_resource_mgmt.tmh"
+#endif
 
 struct qdma_resource_entry {
 	int qbase;
@@ -45,6 +61,28 @@ struct qdma_resource_master {
 };
 
 static QDMA_LIST_HEAD(master_resource_list);
+
+static struct qdma_resource_master *qdma_find_master_resource_entry(
+		uint32_t bus_start, uint32_t bus_end)
+{
+	struct qdma_list_head *entry, *tmp;
+
+	qdma_resource_lock_take();
+	qdma_list_for_each_safe(entry, tmp, &master_resource_list) {
+		struct qdma_resource_master *q_resource =
+			(struct qdma_resource_master *)
+			QDMA_LIST_GET_DATA(entry);
+
+		if (q_resource->pci_bus_start == bus_start &&
+			q_resource->pci_bus_end == bus_end) {
+			qdma_resource_lock_give();
+			return q_resource;
+		}
+	}
+	qdma_resource_lock_give();
+
+	return NULL;
+}
 
 static struct qdma_resource_master *qdma_get_master_resource_entry(
 		uint32_t dma_device_index)
@@ -342,23 +380,19 @@ int qdma_master_resource_create(uint32_t bus_start, uint32_t bus_end,
 	struct qdma_resource_entry *free_entry;
 	static int index;
 
-q_resource_alloc:
-	*dma_device_index = index;
-	q_resource = qdma_get_master_resource_entry(index);
-	if (!q_resource)
-		q_resource = (struct qdma_resource_master *)qdma_calloc(1,
-					 sizeof(struct qdma_resource_master));
-	else {
-		if ((q_resource->pci_bus_start != bus_start) &&
-				(q_resource->pci_bus_end != bus_end)) {
-			index++;
-			goto q_resource_alloc;
-		}
+	q_resource = qdma_find_master_resource_entry(bus_start, bus_end);
+	if (q_resource) {
+		*dma_device_index = q_resource->dma_device_index;
 		qdma_log_debug("%s: Resource already created", __func__);
-		qdma_log_debug("for this device(%d)\n", index);
+		qdma_log_debug("for this device(%d)\n",
+				q_resource->dma_device_index);
 		return -QDMA_ERR_RM_RES_EXISTS;
 	}
 
+	*dma_device_index = index;
+
+	q_resource = (struct qdma_resource_master *)qdma_calloc(1,
+		sizeof(struct qdma_resource_master));
 	if (!q_resource) {
 		qdma_log_error("%s: no memory for q_resource, err:%d\n",
 					__func__,
@@ -366,7 +400,6 @@ q_resource_alloc:
 		return -QDMA_ERR_NO_MEM;
 	}
 
-	qdma_resource_lock_take();
 	free_entry = (struct qdma_resource_entry *)
 		qdma_calloc(1, sizeof(struct qdma_resource_entry));
 	if (!free_entry) {
@@ -377,6 +410,7 @@ q_resource_alloc:
 		return -QDMA_ERR_NO_MEM;
 	}
 
+	qdma_resource_lock_take();
 	q_resource->dma_device_index = index;
 	q_resource->pci_bus_start = bus_start;
 	q_resource->pci_bus_end = bus_end;
@@ -394,6 +428,10 @@ q_resource_alloc:
 	QDMA_LIST_SET_DATA(&free_entry->node, free_entry);
 	qdma_list_add_tail(&free_entry->node, &q_resource->free_list);
 	qdma_resource_lock_give();
+
+	qdma_log_debug("%s: New master resource created at %d",
+		__func__, index);
+	++index;
 
 	return QDMA_SUCCESS;
 }
@@ -610,7 +648,7 @@ int qdma_dev_increment_active_queue(uint32_t dma_device_index, uint16_t func_id,
 			qdma_get_master_resource_entry(dma_device_index);
 	struct qdma_dev_entry *dev_entry;
 	int rv = QDMA_SUCCESS;
-	unsigned int *active_qcnt = NULL;
+	uint32_t *active_qcnt = NULL;
 
 	if (!q_resource) {
 		qdma_log_error("%s: Queue resource not found, err: %d\n",

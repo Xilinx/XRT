@@ -1,13 +1,41 @@
 /*
- * Copyright(c) 2019 Xilinx, Inc. All rights reserved.
+ * Copyright(c) 2019-2020 Xilinx, Inc. All rights reserved.
+ *
+ * This source code is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * The full GNU General Public License is included in this distribution in
+ * the file called "COPYING".
+ *
+ * This source code is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * The full GNU General Public License is included in this distribution in
+ * the file called "COPYING".
  */
 
+#include "qdma_access_common.h"
 #include "qdma_s80_hard_access.h"
 #include "qdma_soft_reg.h"
 #include "qdma_s80_hard_reg.h"
 #include "qdma_platform.h"
 #include "qdma_reg_dump.h"
 
+#ifdef ENABLE_WPP_TRACING
+#include "qdma_s80_hard_access.tmh"
+#endif
 
 /** QDMA S80 Hard Context array size */
 #define QDMA_S80_HARD_SW_CONTEXT_NUM_WORDS              4
@@ -19,6 +47,11 @@
 #define QDMA_S80_HARD_PFETCH_CONTEXT_NUM_WORDS          2
 
 #define QDMA_S80_HARD_VF_USER_BAR_ID   2
+
+#define QDMA_S80_REG_GROUP_1_START_ADDR	0x000
+#define QDMA_S80_REG_GROUP_2_START_ADDR	0x400
+#define QDMA_S80_REG_GROUP_3_START_ADDR	0xB00
+#define QDMA_S80_REG_GROUP_4_START_ADDR	0x1014
 
 union qdma_s80_hard_ind_ctxt_cmd {
 	uint32_t word;
@@ -38,186 +71,314 @@ struct qdma_s80_hard_indirect_ctxt_regs {
 };
 
 
-struct xreg_info qdma_s80_hard_config_regs[] = {
+static struct xreg_info qdma_s80_hard_config_regs[] = {
 
 	/* QDMA_TRQ_SEL_GLBL1 (0x00000) */
-	{"CFG_BLOCK_ID", 0x00, 1, 0, 0, 0, QDMA_MM_ST_MODE },
-	{"CFG_BUSDEV", 0x04, 1, 0, 0, 0, QDMA_MM_ST_MODE },
-	{"CFG_PCIE_MAX_PL_SZ", 0x08, 1, 0, 0, 0, QDMA_MM_ST_MODE },
-	{"CFG_PCIE_MAX_RDRQ_SZ", 0x0C, 1, 0, 0, 0, QDMA_MM_ST_MODE },
-	{"CFG_SYS_ID", 0x10, 1, 0, 0, 0, QDMA_MM_ST_MODE },
-	{"CFG_MSI_EN", 0x14, 1, 0, 0, 0, QDMA_MM_ST_MODE },
-	{"CFG_PCIE_DATA_WIDTH", 0x18, 1, 0, 0, 0, QDMA_MM_ST_MODE },
-	{"CFG_PCIE_CTRL", 0x1C, 1, 0, 0, 0, QDMA_MM_ST_MODE },
-	{"CFG_AXI_USR_MAX_PL_SZ", 0x40, 1, 0, 0, 0, QDMA_MM_ST_MODE },
+	{"CFG_BLOCK_ID",
+		0x00, 1, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"CFG_BUSDEV",
+		0x04, 1, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"CFG_PCIE_MAX_PL_SZ",
+		0x08, 1, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"CFG_PCIE_MAX_RDRQ_SZ",
+		0x0C, 1, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"CFG_SYS_ID",
+		0x10, 1, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"CFG_MSI_EN",
+		0x14, 1, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"CFG_PCIE_DATA_WIDTH",
+		0x18, 1, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"CFG_PCIE_CTRL",
+		0x1C, 1, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"CFG_AXI_USR_MAX_PL_SZ",
+		0x40, 1, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
 	{"CFG_AXI_USR_MAX_RDRQ_SZ",
-			0x44, 1, 0, 0, 0, QDMA_MM_ST_MODE },
-	{"CFG_MISC_CTRL", 0x4C, 1, 0, 0, 0, QDMA_MM_ST_MODE },
-	{"CFG_SCRATCH_REG", 0x80, 8, 0, 0, 0, QDMA_MM_ST_MODE },
-	{"QDMA_RAM_SBE_MSK_A", 0xF0, 1, 0, 0, 0, QDMA_MM_ST_MODE },
-	{"QDMA_RAM_SBE_STS_A", 0xF4, 1, 0, 0, 0, QDMA_MM_ST_MODE },
-	{"QDMA_RAM_DBE_MSK_A", 0xF8, 1, 0, 0, 0, QDMA_MM_ST_MODE },
-	{"QDMA_RAM_DBE_STS_A", 0xFC, 1, 0, 0, 0, QDMA_MM_ST_MODE },
+		0x44, 1, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"CFG_MISC_CTRL",
+		0x4C, 1, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"CFG_SCRATCH_REG",
+		0x80, 8, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"QDMA_RAM_SBE_MSK_A",
+		0xF0, 1, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"QDMA_RAM_SBE_STS_A",
+		0xF4, 1, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"QDMA_RAM_DBE_MSK_A",
+		0xF8, 1, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"QDMA_RAM_DBE_STS_A",
+		0xFC, 1, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
 
 	/* QDMA_TRQ_SEL_GLBL2 (0x00100) */
-	{"GLBL2_ID", 0x100, 1, 0, 0, 0, QDMA_MM_ST_MODE },
-	{"GLBL2_PF_BL_INT", 0x104, 1, 0, 0, 0, QDMA_MM_ST_MODE },
-	{"GLBL2_PF_VF_BL_INT", 0x108, 1, 0, 0, 0, QDMA_MM_ST_MODE },
-	{"GLBL2_PF_BL_EXT", 0x10C, 1, 0, 0, 0, QDMA_MM_ST_MODE },
-	{"GLBL2_PF_VF_BL_EXT", 0x110, 1, 0, 0, 0, QDMA_MM_ST_MODE },
-	{"GLBL2_CHNL_INST", 0x114, 1, 0, 0, 0, QDMA_MM_ST_MODE },
-	{"GLBL2_CHNL_QDMA", 0x118, 1, 0, 0, 0, QDMA_MM_ST_MODE },
-	{"GLBL2_CHNL_STRM", 0x11C, 1, 0, 0, 0, QDMA_MM_ST_MODE },
-	{"GLBL2_QDMA_CAP", 0x120, 1, 0, 0, 0, QDMA_MM_ST_MODE },
-	{"GLBL2_PASID_CAP", 0x128, 1, 0, 0, 0, QDMA_MM_ST_MODE },
-	{"GLBL2_FUNC_RET", 0x12C, 1, 0, 0, 0, QDMA_MM_ST_MODE },
-	{"GLBL2_SYS_ID", 0x130, 1, 0, 0, 0, QDMA_MM_ST_MODE },
-	{"GLBL2_MISC_CAP", 0x134, 1, 0, 0, 0, QDMA_MM_ST_MODE },
-	{"GLBL2_DBG_PCIE_RQ", 0x1B8, 2, 0, 0, 0, QDMA_MM_ST_MODE },
-	{"GLBL2_DBG_AXIMM_WR", 0x1C0, 2, 0, 0, 0, QDMA_MM_ST_MODE },
-	{"GLBL2_DBG_AXIMM_RD", 0x1C8, 2, 0, 0, 0, QDMA_MM_ST_MODE },
+	{"GLBL2_ID",
+		0x100, 1, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"GLBL2_PF_BL_INT",
+		0x104, 1, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"GLBL2_PF_VF_BL_INT",
+		0x108, 1, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"GLBL2_PF_BL_EXT",
+		0x10C, 1, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"GLBL2_PF_VF_BL_EXT",
+		0x110, 1, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"GLBL2_CHNL_INST",
+		0x114, 1, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"GLBL2_CHNL_QDMA",
+		0x118, 1, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"GLBL2_CHNL_STRM",
+		0x11C, 1, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"GLBL2_QDMA_CAP",
+		0x120, 1, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"GLBL2_PASID_CAP",
+		0x128, 1, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"GLBL2_FUNC_RET",
+		0x12C, 1, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"GLBL2_SYS_ID",
+		0x130, 1, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"GLBL2_MISC_CAP",
+		0x134, 1, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"GLBL2_DBG_PCIE_RQ",
+		0x1B8, 2, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"GLBL2_DBG_AXIMM_WR",
+		0x1C0, 2, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"GLBL2_DBG_AXIMM_RD",
+		0x1C8, 2, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
 
 	/* QDMA_TRQ_SEL_GLBL (0x00200) */
-	{"GLBL_RNGSZ", 0x204, 16, 0, 0, 0, QDMA_MM_ST_MODE },
-	{"GLBL_ERR_STAT", 0x248, 1,  0, 0, 0, QDMA_MM_ST_MODE },
-	{"GLBL_ERR_MASK", 0x24C, 1,  0, 0, 0, QDMA_MM_ST_MODE },
-	{"GLBL_DSC_CFG", 0x250, 1, 0, 0, 0, QDMA_MM_ST_MODE },
-	{"GLBL_DSC_ERR_STS", 0x254, 1,  0, 0, 0, QDMA_MM_ST_MODE },
-	{"GLBL_DSC_ERR_MSK", 0x258, 1,  0, 0, 0, QDMA_MM_ST_MODE },
-	{"GLBL_DSC_ERR_LOG", 0x25C, 2,  0, 0, 0, QDMA_MM_ST_MODE },
-	{"GLBL_TRQ_ERR_STS", 0x264, 1,  0, 0, 0, QDMA_MM_ST_MODE },
-	{"GLBL_TRQ_ERR_MSK", 0x268, 1,  0, 0, 0, QDMA_MM_ST_MODE },
-	{"GLBL_TRQ_ERR_LOG", 0x26C, 1,  0, 0, 0, QDMA_MM_ST_MODE },
-	{"GLBL_DSC_DBG_DAT", 0x270, 2,  0, 0, 0, QDMA_MM_ST_MODE },
+	{"GLBL_RNGSZ",
+		0x204, 16, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_VF},
+	{"GLBL_ERR_STAT",
+		0x248, 1,  0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_VF},
+	{"GLBL_ERR_MASK",
+		0x24C, 1,  0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_VF},
+	{"GLBL_DSC_CFG",
+		0x250, 1, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_VF},
+	{"GLBL_DSC_ERR_STS",
+		0x254, 1,  0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_VF},
+	{"GLBL_DSC_ERR_MSK",
+		0x258, 1,  0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_VF},
+	{"GLBL_DSC_ERR_LOG",
+		0x25C, 2,  0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_VF},
+	{"GLBL_TRQ_ERR_STS",
+		0x264, 1,  0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_VF},
+	{"GLBL_TRQ_ERR_MSK",
+		0x268, 1,  0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_VF},
+	{"GLBL_TRQ_ERR_LOG",
+		0x26C, 1,  0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_VF},
+	{"GLBL_DSC_DBG_DAT",
+		0x270, 2,  0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_VF},
 
 	/* QDMA_TRQ_SEL_FMAP (0x00400 - 0x7FC) */
 	/* TODO: max 256, display 4 for now */
-	{"TRQ_SEL_FMAP", 0x400, 4, 0, 0, 0, QDMA_MM_ST_MODE },
+	{"TRQ_SEL_FMAP",
+		0x400, 4, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
 
 	/* QDMA_TRQ_SEL_IND (0x00800) */
-	{"IND_CTXT_DATA", 0x804, 4, 0, 0, 0, QDMA_MM_ST_MODE },
-	{"IND_CTXT_MASK", 0x814, 4, 0, 0, 0, QDMA_MM_ST_MODE },
-	{"IND_CTXT_CMD", 0x824, 1, 0, 0, 0, QDMA_MM_ST_MODE },
+	{"IND_CTXT_DATA",
+		0x804, 4, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"IND_CTXT_MASK",
+		0x814, 4, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"IND_CTXT_CMD",
+		0x824, 1, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
 
 	/* QDMA_TRQ_SEL_C2H (0x00A00) */
-	{"C2H_TIMER_CNT", 0xA00, 16, 0, 0, 0, QDMA_COMPLETION_MODE },
-	{"C2H_CNT_THRESH", 0xA40, 16, 0, 0, 0, QDMA_COMPLETION_MODE },
-	{"QDMA_C2H_QID2VEC_MAP_QID", 0xA80, 1,
-			0, 0, 0, QDMA_MM_ST_MODE },
-	{"QDMA_C2H_QID2VEC_MAP", 0xA84, 1,
-			0, 0, 0, QDMA_MM_ST_MODE },
-	{"C2H_STAT_S_AXIS_C2H_ACCEPTED", 0xA88, 1, 0, 0, 0, QDMA_ST_MODE },
+	{"C2H_TIMER_CNT",
+	0xA00, 16, 0, 0, 0, QDMA_COMPLETION_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_CNT_THRESH",
+	0xA40, 16, 0, 0, 0, QDMA_COMPLETION_MODE, QDMA_REG_READ_PF_ONLY },
+	{"QDMA_C2H_QID2VEC_MAP_QID",
+		0xA80, 1, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"QDMA_C2H_QID2VEC_MAP",
+		0xA84, 1, 0, 0, 0, QDMA_MM_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_STAT_S_AXIS_C2H_ACCEPTED",
+		0xA88, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_VF},
 	{"C2H_STAT_S_AXIS_CMPT_ACCEPTED",
-			0xA8C, 1, 0, 0, 0, QDMA_ST_MODE },
+		0xA8C, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_VF},
 	{"C2H_STAT_DESC_RSP_PKT_ACCEPTED",
-			0xA90, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_STAT_AXIS_PKG_CMP", 0xA94, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_STAT_DESC_RSP_ACCEPTED", 0xA98, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_STAT_DESC_RSP_CMP", 0xA9C, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_STAT_WRQ_OUT", 0xAA0, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_STAT_WPL_REN_ACCEPTED", 0xAA4, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_STAT_TOTAL_WRQ_LEN", 0xAA8, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_STAT_TOTAL_WPL_LEN", 0xAAC, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_BUF_SZ", 0xAB0, 16, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_ERR_STAT", 0xAF0, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_ERR_MASK", 0xAF4, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_FATAL_ERR_STAT", 0xAF8, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_FATAL_ERR_MASK", 0xAFC, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_FATAL_ERR_ENABLE", 0xB00, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"GLBL_ERR_INT", 0xB04, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_PFCH_CFG", 0xB08, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_INT_TIMER_TICK", 0xB0C, 1, 0, 0, 0, QDMA_ST_MODE },
+		0xA90, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_VF},
+	{"C2H_STAT_AXIS_PKG_CMP",
+		0xA94, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_VF},
+	{"C2H_STAT_DESC_RSP_ACCEPTED",
+		0xA98, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_STAT_DESC_RSP_CMP",
+		0xA9C, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_STAT_WRQ_OUT",
+		0xAA0, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_STAT_WPL_REN_ACCEPTED",
+		0xAA4, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_STAT_TOTAL_WRQ_LEN",
+		0xAA8, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_STAT_TOTAL_WPL_LEN",
+		0xAAC, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_BUF_SZ",
+		0xAB0, 16, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_ERR_STAT",
+		0xAF0, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_VF},
+	{"C2H_ERR_MASK",
+		0xAF4, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_VF},
+	{"C2H_FATAL_ERR_STAT",
+		0xAF8, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_VF},
+	{"C2H_FATAL_ERR_MASK",
+		0xAFC, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_VF},
+	{"C2H_FATAL_ERR_ENABLE",
+		0xB00, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_VF},
+	{"GLBL_ERR_INT",
+		0xB04, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_VF},
+	{"C2H_PFCH_CFG",
+		0xB08, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_INT_TIMER_TICK",
+		0xB0C, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
 	{"C2H_STAT_DESC_RSP_DROP_ACCEPTED",
-			0xB10, 1, 0, 0, 0, QDMA_ST_MODE },
+		0xB10, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_VF},
 	{"C2H_STAT_DESC_RSP_ERR_ACCEPTED",
-			0xB14, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_STAT_DESC_REQ", 0xB18, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_STAT_DEBUG_DMA_ENG", 0xB1C, 4, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_DBG_PFCH_ERR_CTXT", 0xB2C, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_FIRST_ERR_QID", 0xB30, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"STAT_NUM_CMPT_IN", 0xB34, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"STAT_NUM_CMPT_OUT", 0xB38, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"STAT_NUM_CMPT_DRP", 0xB3C, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"STAT_NUM_STAT_DESC_OUT", 0xB40, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"STAT_NUM_DSC_CRDT_SENT", 0xB44, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"STAT_NUM_FCH_DSC_RCVD", 0xB48, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"STAT_NUM_BYP_DSC_RCVD", 0xB4C, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_CMPT_COAL_CFG", 0xB50, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_INTR_H2C_REQ", 0xB54, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_INTR_C2H_MM_REQ", 0xB58, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_INTR_ERR_INT_REQ", 0xB5C, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_INTR_C2H_ST_REQ", 0xB60, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_INTR_H2C_ERR_MM_MSIX_ACK", 0xB64, 1, 0, 0, 0, QDMA_ST_MODE },
+		0xB14, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_VF},
+	{"C2H_STAT_DESC_REQ",
+		0xB18, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_STAT_DEBUG_DMA_ENG",
+		0xB1C, 4, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_DBG_PFCH_ERR_CTXT",
+		0xB2C, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_FIRST_ERR_QID",
+		0xB30, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_VF},
+	{"STAT_NUM_CMPT_IN",
+		0xB34, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"STAT_NUM_CMPT_OUT",
+		0xB38, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"STAT_NUM_CMPT_DRP",
+		0xB3C, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"STAT_NUM_STAT_DESC_OUT",
+		0xB40, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"STAT_NUM_DSC_CRDT_SENT",
+		0xB44, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"STAT_NUM_FCH_DSC_RCVD",
+		0xB48, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"STAT_NUM_BYP_DSC_RCVD",
+		0xB4C, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_CMPT_COAL_CFG",
+		0xB50, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_INTR_H2C_REQ",
+		0xB54, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_VF},
+	{"C2H_INTR_C2H_MM_REQ",
+		0xB58, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_VF},
+	{"C2H_INTR_ERR_INT_REQ",
+		0xB5C, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_VF},
+	{"C2H_INTR_C2H_ST_REQ",
+		0xB60, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_VF},
+	{"C2H_INTR_H2C_ERR_MM_MSIX_ACK",
+		0xB64, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
 	{"C2H_INTR_H2C_ERR_MM_MSIX_FAIL",
-			0xB68, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_INTR_H2C_ERR_MM_NO_MSIX", 0xB6C, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_INTR_H2C_ERR_MM_CTXT_INVAL", 0xB70,
-			1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_INTR_C2H_ST_MSIX_ACK", 0xB74, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_INTR_C2H_ST_MSIX_FAIL", 0xB78, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_INTR_C2H_ST_NO_MSIX", 0xB7C, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_INTR_C2H_ST_CTXT_INVAL", 0xB80, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_STAT_WR_CMP", 0xB84, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_STAT_DEBUG_DMA_ENG_4", 0xB88, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_STAT_DEBUG_DMA_ENG_5", 0xB8C, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_DBG_PFCH_QID", 0xB90, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_DBG_PFCH", 0xB94, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_INT_DEBUG", 0xB98, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_STAT_IMM_ACCEPTED", 0xB9C, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"C2H_STAT_MARKER_ACCEPTED", 0xBA0, 1, 0, 0, 0, QDMA_ST_MODE },
+		0xB68, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_INTR_H2C_ERR_MM_NO_MSIX",
+		0xB6C, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_INTR_H2C_ERR_MM_CTXT_INVAL",
+		0xB70, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_INTR_C2H_ST_MSIX_ACK",
+		0xB74, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_VF},
+	{"C2H_INTR_C2H_ST_MSIX_FAIL",
+		0xB78, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_VF},
+	{"C2H_INTR_C2H_ST_NO_MSIX",
+		0xB7C, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_INTR_C2H_ST_CTXT_INVAL",
+		0xB80, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_STAT_WR_CMP",
+		0xB84, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_STAT_DEBUG_DMA_ENG_4",
+		0xB88, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_STAT_DEBUG_DMA_ENG_5",
+		0xB8C, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_DBG_PFCH_QID",
+		0xB90, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_DBG_PFCH",
+		0xB94, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_INT_DEBUG",
+		0xB98, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_STAT_IMM_ACCEPTED",
+		0xB9C, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_STAT_MARKER_ACCEPTED",
+		0xBA0, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
 	{"C2H_STAT_DISABLE_CMP_ACCEPTED",
-			0xBA4, 1, 0, 0, 0, QDMA_ST_MODE },
+		0xBA4, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
 	{"C2H_C2H_PAYLOAD_FIFO_CRDT_CNT",
-			0xBA8, 1, 0, 0, 0, QDMA_ST_MODE },
+		0xBA8, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
 
 	/* QDMA_TRQ_SEL_H2C(0x00E00) Register Space*/
-	{"H2C_ERR_STAT", 0xE00, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"H2C_ERR_MASK", 0xE04, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"H2C_FIRST_ERR_QID", 0xE08, 1, 0, 0, 0, QDMA_ST_MODE },
-	{"H2C_DBG_REG", 0xE0C, 5, 0, 0, 0, QDMA_ST_MODE },
-	{"H2C_FATAL_ERR_EN", 0xE20, 1, 0, 0, 0, QDMA_ST_MODE },
+	{"H2C_ERR_STAT",
+		0xE00, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_VF},
+	{"H2C_ERR_MASK",
+		0xE04, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_VF},
+	{"H2C_FIRST_ERR_QID",
+		0xE08, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_VF},
+	{"H2C_DBG_REG",
+		0xE0C, 5, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_ONLY},
+	{"H2C_FATAL_ERR_EN",
+		0xE20, 1, 0, 0, 0, QDMA_ST_MODE, QDMA_REG_READ_PF_VF},
 
 	/* QDMA_TRQ_SEL_C2H_MM (0x1000) */
-	{"C2H_MM_CONTROL", 0x1004, 3, 0, 0, 0, QDMA_MM_MODE },
-	{"C2H_MM_STATUS", 0x1040, 2, 0, 0, 0, QDMA_MM_MODE },
-	{"C2H_MM_CMPL_DSC_CNT", 0x1048, 1, 0, 0, 0, QDMA_MM_MODE },
-	{"C2H_MM_ERR_CODE_EN_MASK", 0x1054, 1, 0, 0, 0, QDMA_MM_MODE },
-	{"C2H_MM_ERR_CODE", 0x1058, 1, 0, 0, 0, QDMA_MM_MODE },
-	{"C2H_MM_ERR_INFO", 0x105C, 1, 0, 0, 0, QDMA_MM_MODE },
-	{"C2H_MM_PERF_MON_CTRL", 0x10C0, 1, 0, 0, 0, QDMA_MM_MODE },
-	{"C2H_MM_PERF_MON_CY_CNT", 0x10C4, 2, 0, 0, 0, QDMA_MM_MODE },
-	{"C2H_MM_PERF_MON_DATA_CNT", 0x10CC, 2, 0, 0, 0, QDMA_MM_MODE },
-	{"C2H_MM_DBG_INFO", 0x10E8, 2, 0, 0, 0, QDMA_MM_MODE },
+	{"C2H_MM_CONTROL",
+		0x1004, 3, 0, 0, 0, QDMA_MM_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_MM_STATUS",
+		0x1040, 2, 0, 0, 0, QDMA_MM_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_MM_CMPL_DSC_CNT",
+		0x1048, 1, 0, 0, 0, QDMA_MM_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_MM_ERR_CODE_EN_MASK",
+		0x1054, 1, 0, 0, 0, QDMA_MM_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_MM_ERR_CODE",
+		0x1058, 1, 0, 0, 0, QDMA_MM_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_MM_ERR_INFO",
+		0x105C, 1, 0, 0, 0, QDMA_MM_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_MM_PERF_MON_CTRL",
+		0x10C0, 1, 0, 0, 0, QDMA_MM_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_MM_PERF_MON_CY_CNT",
+		0x10C4, 2, 0, 0, 0, QDMA_MM_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_MM_PERF_MON_DATA_CNT",
+		0x10CC, 2, 0, 0, 0, QDMA_MM_MODE, QDMA_REG_READ_PF_ONLY},
+	{"C2H_MM_DBG_INFO",
+		0x10E8, 2, 0, 0, 0, QDMA_MM_MODE, QDMA_REG_READ_PF_ONLY},
 
 	/* QDMA_TRQ_SEL_H2C_MM (0x1200)*/
-	{"H2C_MM_CONTROL", 0x1204, 3, 0, 0, 0, QDMA_MM_MODE },
-	{"H2C_MM_STATUS", 0x1240, 1, 0, 0, 0, QDMA_MM_MODE },
-	{"H2C_MM_CMPL_DSC_CNT", 0x1248, 1, 0, 0, 0, QDMA_MM_MODE },
-	{"H2C_MM_ERR_CODE_EN_MASK", 0x1254, 1, 0, 0, 0, QDMA_MM_MODE },
-	{"H2C_MM_ERR_CODE", 0x1258, 1, 0, 0, 0, QDMA_MM_MODE },
-	{"H2C_MM_ERR_INFO", 0x125C, 1, 0, 0, 0, QDMA_MM_MODE },
-	{"H2C_MM_PERF_MON_CTRL", 0x12C0, 1, 0, 0, 0, QDMA_MM_MODE },
-	{"H2C_MM_PERF_MON_CY_CNT", 0x12C4, 2, 0, 0, 0, QDMA_MM_MODE },
-	{"H2C_MM_PERF_MON_DATA_CNT", 0x12CC, 2, 0, 0, 0, QDMA_MM_MODE },
-	{"H2C_MM_DBG_INFO", 0x12E8, 1, 0, 0, 0, QDMA_MM_MODE },
+	{"H2C_MM_CONTROL",
+		0x1204, 3, 0, 0, 0, QDMA_MM_MODE, QDMA_REG_READ_PF_ONLY},
+	{"H2C_MM_STATUS",
+		0x1240, 1, 0, 0, 0, QDMA_MM_MODE, QDMA_REG_READ_PF_ONLY},
+	{"H2C_MM_CMPL_DSC_CNT",
+		0x1248, 1, 0, 0, 0, QDMA_MM_MODE, QDMA_REG_READ_PF_ONLY},
+	{"H2C_MM_ERR_CODE_EN_MASK",
+		0x1254, 1, 0, 0, 0, QDMA_MM_MODE, QDMA_REG_READ_PF_ONLY},
+	{"H2C_MM_ERR_CODE",
+		0x1258, 1, 0, 0, 0, QDMA_MM_MODE, QDMA_REG_READ_PF_ONLY},
+	{"H2C_MM_ERR_INFO",
+		0x125C, 1, 0, 0, 0, QDMA_MM_MODE, QDMA_REG_READ_PF_ONLY},
+	{"H2C_MM_PERF_MON_CTRL",
+		0x12C0, 1, 0, 0, 0, QDMA_MM_MODE, QDMA_REG_READ_PF_ONLY},
+	{"H2C_MM_PERF_MON_CY_CNT",
+		0x12C4, 2, 0, 0, 0, QDMA_MM_MODE, QDMA_REG_READ_PF_ONLY},
+	{"H2C_MM_PERF_MON_DATA_CNT",
+		0x12CC, 2, 0, 0, 0, QDMA_MM_MODE, QDMA_REG_READ_PF_ONLY},
+	{"H2C_MM_DBG_INFO",
+		0x12E8, 1, 0, 0, 0, QDMA_MM_MODE, QDMA_REG_READ_PF_ONLY},
 
 	/* QDMA_PF_MAILBOX (0x2400) */
-	{"FUNC_STATUS", 0x2400, 1, 0, 0, 0, QDMA_MAILBOX },
-	{"FUNC_CMD",  0x2404, 1, 0, 0, 0, QDMA_MAILBOX },
-	{"FUNC_INTR_VEC",  0x2408, 1, 0, 0, 0, QDMA_MAILBOX },
-	{"TARGET_FUNC",  0x240C, 1, 0, 0, 0, QDMA_MAILBOX },
-	{"INTR_CTRL",  0x2410, 1, 0, 0, 0, QDMA_MAILBOX },
-	{"PF_ACK",  0x2420, 8, 0, 0, 0, QDMA_MAILBOX },
-	{"FLR_CTRL_STATUS",  0x2500, 1, 0, 0, 0, QDMA_MAILBOX },
-	{"MSG_IN",  0x2800, 32, 0, 0, 0, QDMA_MAILBOX },
-	{"MSG_OUT",  0x2C00, 32, 0, 0, 0, QDMA_MAILBOX },
+	{"FUNC_STATUS",
+		0x2400, 1, 0, 0, 0, QDMA_MAILBOX, QDMA_REG_READ_PF_ONLY},
+	{"FUNC_CMD",
+		 0x2404, 1, 0, 0, 0, QDMA_MAILBOX, QDMA_REG_READ_PF_ONLY},
+	{"FUNC_INTR_VEC",
+		 0x2408, 1, 0, 0, 0, QDMA_MAILBOX, QDMA_REG_READ_PF_ONLY},
+	{"TARGET_FUNC",
+		 0x240C, 1, 0, 0, 0, QDMA_MAILBOX, QDMA_REG_READ_PF_ONLY},
+	{"INTR_CTRL",
+		 0x2410, 1, 0, 0, 0, QDMA_MAILBOX, QDMA_REG_READ_PF_ONLY},
+	{"PF_ACK",
+		 0x2420, 8, 0, 0, 0, QDMA_MAILBOX, QDMA_REG_READ_PF_ONLY},
+	{"FLR_CTRL_STATUS",
+		 0x2500, 1, 0, 0, 0, QDMA_MAILBOX, QDMA_REG_READ_PF_ONLY},
+	{"MSG_IN",
+		 0x2800, 32, 0, 0, 0, QDMA_MAILBOX, QDMA_REG_READ_PF_ONLY},
+	{"MSG_OUT",
+		 0x2C00, 32, 0, 0, 0, QDMA_MAILBOX, QDMA_REG_READ_PF_ONLY},
 
-	{"", 0, 0, 0, 0, 0, 0 }
+	{"", 0, 0, 0, 0, 0, 0, 0 }
 };
 
 
-
-struct qctx_entry qdma_s80_hard_sw_ctxt_entries[] = {
+static struct qctx_entry qdma_s80_hard_sw_ctxt_entries[] = {
 	{"PIDX", 0},
 	{"IRQ Arm", 0},
 	{"Queue Enable", 0},
@@ -242,7 +403,7 @@ struct qctx_entry qdma_s80_hard_sw_ctxt_entries[] = {
 	{"Descriptor Ring Base Addr (High)", 0},
 };
 
-struct qctx_entry qdma_s80_hard_hw_ctxt_entries[] = {
+static struct qctx_entry qdma_s80_hard_hw_ctxt_entries[] = {
 	{"CIDX", 0},
 	{"Credits Consumed", 0},
 	{"Descriptors Pending", 0},
@@ -251,11 +412,11 @@ struct qctx_entry qdma_s80_hard_hw_ctxt_entries[] = {
 	{"Fetch Pending", 0},
 };
 
-struct qctx_entry qdma_s80_hard_credit_ctxt_entries[] = {
+static struct qctx_entry qdma_s80_hard_credit_ctxt_entries[] = {
 	{"Credit", 0},
 };
 
-struct qctx_entry qdma_s80_hard_cmpt_ctxt_entries[] = {
+static struct qctx_entry qdma_s80_hard_cmpt_ctxt_entries[] = {
 	{"Enable Status Desc Update", 0},
 	{"Enable Interrupt", 0},
 	{"Trigger Mode", 0},
@@ -277,7 +438,7 @@ struct qctx_entry qdma_s80_hard_cmpt_ctxt_entries[] = {
 	{"Full Update", 0},
 };
 
-struct qctx_entry qdma_s80_hard_c2h_pftch_ctxt_entries[] = {
+static struct qctx_entry qdma_s80_hard_c2h_pftch_ctxt_entries[] = {
 	{"Bypass", 0},
 	{"Buffer Size Index", 0},
 	{"Port Id", 0},
@@ -288,14 +449,14 @@ struct qctx_entry qdma_s80_hard_c2h_pftch_ctxt_entries[] = {
 	{"Valid", 0},
 };
 
-struct qctx_entry qdma_s80_hard_qid2vec_ctxt_entries[] = {
+static struct qctx_entry qdma_s80_hard_qid2vec_ctxt_entries[] = {
 	{"c2h_vector", 0},
 	{"c2h_en_coal", 0},
 	{"h2c_vector", 0},
 	{"h2c_en_coal", 0},
 };
 
-struct qctx_entry qdma_s80_hard_ind_intr_ctxt_entries[] = {
+static struct qctx_entry qdma_s80_hard_ind_intr_ctxt_entries[] = {
 	{"valid", 0},
 	{"vec", 0},
 	{"int_st", 0},
@@ -325,10 +486,11 @@ uint32_t qdma_s80_hard_reg_dump_buf_len(void)
 	return length;
 }
 
-uint32_t qdma_s80_hard_context_buf_len(uint8_t st,
-		enum qdma_dev_q_type q_type)
+int qdma_s80_hard_context_buf_len(uint8_t st,
+		enum qdma_dev_q_type q_type, uint32_t *req_buflen)
 {
 	uint32_t len = 0;
+	int rv = 0;
 
 	if (q_type == QDMA_DEV_Q_TYPE_CMPT) {
 		len += (((sizeof(qdma_s80_hard_cmpt_ctxt_entries) /
@@ -358,12 +520,13 @@ uint32_t qdma_s80_hard_context_buf_len(uint8_t st,
 		}
 	}
 
-	return len;
+	*req_buflen = len;
+	return rv;
 }
 
-static unsigned int qdma_s80_hard_intr_context_buf_len(void)
+static uint32_t qdma_s80_hard_intr_context_buf_len(void)
 {
-	int len = 0;
+	uint32_t len = 0;
 
 	len += (((sizeof(qdma_s80_hard_ind_intr_ctxt_entries) /
 			sizeof(qdma_s80_hard_ind_intr_ctxt_entries[0])) + 1) *
@@ -501,7 +664,7 @@ static void qdma_s80_hard_fill_intr_ctxt(
 }
 
 /*
- * dump_context() - Helper function to dump queue context into string
+ * dump_s80_hard_context() - Helper function to dump queue context into string
  *
  * return len - length of the string copied into buffer
  */
@@ -1088,7 +1251,7 @@ static int qdma_s80_hard_indirect_reg_invalidate(void *dev_hndl,
 			QDMA_REG_POLL_DFLT_INTERVAL_US,
 			QDMA_REG_POLL_DFLT_TIMEOUT_US)) {
 		qdma_reg_access_release(dev_hndl);
-		qdma_log_error("%s: qdma4_hw_monitor_reg failed, err:%d\n",
+		qdma_log_error("%s: hw_monitor_reg failed, err:%d\n",
 					__func__,
 					-QDMA_ERR_HWACC_BUSY_TIMEOUT);
 		return -QDMA_ERR_HWACC_BUSY_TIMEOUT;
@@ -1127,7 +1290,7 @@ static int qdma_s80_hard_indirect_reg_clear(void *dev_hndl,
 			QDMA_REG_POLL_DFLT_INTERVAL_US,
 			QDMA_REG_POLL_DFLT_TIMEOUT_US)) {
 		qdma_reg_access_release(dev_hndl);
-		qdma_log_error("%s: qdma4_hw_monitor_reg failed, err:%d\n",
+		qdma_log_error("%s: hw_monitor_reg failed, err:%d\n",
 					__func__,
 					-QDMA_ERR_HWACC_BUSY_TIMEOUT);
 		return -QDMA_ERR_HWACC_BUSY_TIMEOUT;
@@ -1167,7 +1330,7 @@ static int qdma_s80_hard_indirect_reg_read(void *dev_hndl,
 			QDMA_REG_POLL_DFLT_INTERVAL_US,
 			QDMA_REG_POLL_DFLT_TIMEOUT_US)) {
 		qdma_reg_access_release(dev_hndl);
-		qdma_log_error("%s: qdma4_hw_monitor_reg failed, err:%d\n",
+		qdma_log_error("%s: hw_monitor_reg failed, err:%d\n",
 					__func__,
 					-QDMA_ERR_HWACC_BUSY_TIMEOUT);
 		return -QDMA_ERR_HWACC_BUSY_TIMEOUT;
@@ -1225,7 +1388,7 @@ static int qdma_s80_hard_indirect_reg_write(void *dev_hndl,
 			QDMA_REG_POLL_DFLT_INTERVAL_US,
 			QDMA_REG_POLL_DFLT_TIMEOUT_US)) {
 		qdma_reg_access_release(dev_hndl);
-		qdma_log_error("%s: qdma4_hw_monitor_reg failed, err:%d\n",
+		qdma_log_error("%s: hw_monitor_reg failed, err:%d\n",
 						__func__,
 					   -QDMA_ERR_HWACC_BUSY_TIMEOUT);
 		return -QDMA_ERR_HWACC_BUSY_TIMEOUT;
@@ -2666,8 +2829,9 @@ int qdma_s80_hard_set_default_global_csr(void *dev_hndl)
 				8193, 12289, 16385};
 	uint32_t tmr_cnt[QDMA_NUM_C2H_TIMERS] = {1, 2, 4, 5, 8, 10, 15, 20, 25,
 				30, 50, 75, 100, 125, 150, 200};
-	uint32_t cnt_th[QDMA_NUM_C2H_COUNTERS] = {64, 2, 4, 8, 16, 24,
-				32, 48, 80, 96, 112, 128, 144, 160, 176, 192};
+	uint32_t cnt_th[QDMA_NUM_C2H_COUNTERS] = {2, 4, 8, 16, 24,
+				32, 48, 64, 80, 96, 112, 128, 144,
+				160, 176, 192};
 	uint32_t buf_sz[QDMA_NUM_C2H_BUFFER_SIZES] = {4096, 256, 512, 1024,
 				2048, 3968, 4096, 4096, 4096, 4096, 4096, 4096,
 				4096, 8192, 9018, 16384};
@@ -3172,7 +3336,7 @@ int qdma_s80_hard_credit_ctx_conf(void *dev_hndl, uint8_t c2h, uint16_t hw_qid,
 int qdma_s80_hard_dump_config_regs(void *dev_hndl, uint8_t is_vf,
 		char *buf, uint32_t buflen)
 {
-	unsigned int i = 0, j = 0;
+	uint32_t i = 0, j = 0;
 	struct xreg_info *reg_info;
 	uint32_t num_regs =
 	    sizeof(qdma_s80_hard_config_regs) /
@@ -3193,9 +3357,9 @@ int qdma_s80_hard_dump_config_regs(void *dev_hndl, uint8_t is_vf,
 					   -QDMA_ERR_NO_MEM);
 		return -QDMA_ERR_NO_MEM;
 	}
-	/*TODO : VF register space to be added later.*/
+
 	if (is_vf) {
-		qdma_log_error("%s: Not supported for VF, err:%d\n",
+		qdma_log_error("%s: Wrong API used for VF, err:%d\n",
 				__func__,
 				-QDMA_ERR_HWACC_FEATURE_NOT_SUPPORTED);
 		return -QDMA_ERR_HWACC_FEATURE_NOT_SUPPORTED;
@@ -3261,7 +3425,7 @@ int qdma_s80_hard_dump_queue_context(void *dev_hndl,
 		char *buf, uint32_t buflen)
 {
 	int rv = 0;
-	unsigned int req_buflen = 0;
+	uint32_t req_buflen = 0;
 
 	if (!dev_hndl) {
 		qdma_log_error("%s: dev_handle is NULL, err:%d\n",
@@ -3270,7 +3434,30 @@ int qdma_s80_hard_dump_queue_context(void *dev_hndl,
 		return -QDMA_ERR_INV_PARAM;
 	}
 
-	req_buflen = qdma_s80_hard_context_buf_len(st, q_type);
+	if (!ctxt_data) {
+		qdma_log_error("%s: ctxt_data is NULL, err:%d\n",
+			__func__, -QDMA_ERR_INV_PARAM);
+
+		return -QDMA_ERR_INV_PARAM;
+	}
+
+	if (!buf) {
+		qdma_log_error("%s: buf is NULL, err:%d\n",
+			__func__, -QDMA_ERR_INV_PARAM);
+
+		return -QDMA_ERR_INV_PARAM;
+	}
+	if (q_type >= QDMA_DEV_Q_TYPE_MAX) {
+		qdma_log_error("%s: invalid q_type, err:%d\n",
+			__func__, -QDMA_ERR_INV_PARAM);
+
+		return -QDMA_ERR_INV_PARAM;
+	}
+
+	rv = qdma_s80_hard_context_buf_len(st, q_type, &req_buflen);
+	if (rv != QDMA_SUCCESS)
+		return rv;
+
 	if (buflen < req_buflen) {
 		qdma_log_error("%s: Too small buffer(%d), reqd(%d), err:%d\n",
 			__func__, buflen, req_buflen, -QDMA_ERR_NO_MEM);
@@ -3301,7 +3488,7 @@ int qdma_s80_hard_dump_intr_context(void *dev_hndl,
 		char *buf, uint32_t buflen)
 {
 	int rv = 0;
-	unsigned int req_buflen = 0;
+	uint32_t req_buflen = 0;
 
 	if (!dev_hndl) {
 		qdma_log_error("%s: dev_handle is NULL, err:%d\n",
@@ -3343,7 +3530,6 @@ int qdma_s80_hard_dump_intr_context(void *dev_hndl,
  * @hw_qid:     queue id
  * @st:			Queue Mode(ST or MM)
  * @q_type:		Queue type(H2C/C2H/CMPT)
- * @context:	Queue Context
  * @buf :       pointer to buffer to be filled
  * @buflen :    Length of the buffer
  *
@@ -3353,11 +3539,25 @@ int qdma_s80_hard_read_dump_queue_context(void *dev_hndl,
 		uint16_t qid_hw,
 		uint8_t st,
 		enum qdma_dev_q_type q_type,
-		struct qdma_descq_context *context,
 		char *buf, uint32_t buflen)
 {
 	int rv = QDMA_SUCCESS;
-	unsigned int req_buflen = 0;
+	uint32_t req_buflen = 0;
+	struct qdma_descq_context context;
+
+	if (!dev_hndl) {
+		qdma_log_error("%s: dev_handle is NULL, err:%d\n",
+			__func__, -QDMA_ERR_INV_PARAM);
+
+		return -QDMA_ERR_INV_PARAM;
+	}
+
+	if (!buf) {
+		qdma_log_error("%s: buf is NULL, err:%d\n",
+			__func__, -QDMA_ERR_INV_PARAM);
+
+		return -QDMA_ERR_INV_PARAM;
+	}
 
 	if (q_type >= QDMA_DEV_Q_TYPE_CMPT) {
 		qdma_log_error("%s: Not supported for q_type, err = %d\n",
@@ -3366,9 +3566,22 @@ int qdma_s80_hard_read_dump_queue_context(void *dev_hndl,
 		return -QDMA_ERR_INV_PARAM;
 	}
 
+	rv = qdma_s80_hard_context_buf_len(st, q_type, &req_buflen);
+
+	if (rv != QDMA_SUCCESS)
+		return rv;
+
+	if (buflen < req_buflen) {
+		qdma_log_error("%s: Too small buffer(%d), reqd(%d), err:%d\n",
+			__func__, buflen, req_buflen, -QDMA_ERR_NO_MEM);
+		return -QDMA_ERR_NO_MEM;
+	}
+
+	qdma_memset(&context, 0, sizeof(struct qdma_descq_context));
+
 	if (q_type != QDMA_DEV_Q_TYPE_CMPT) {
 		rv = qdma_s80_hard_sw_ctx_conf(dev_hndl, (uint8_t)q_type,
-				qid_hw, &(context->sw_ctxt),
+				qid_hw, &(context.sw_ctxt),
 				QDMA_HW_ACCESS_READ);
 		if (rv < 0) {
 			qdma_log_error(
@@ -3378,7 +3591,7 @@ int qdma_s80_hard_read_dump_queue_context(void *dev_hndl,
 		}
 
 		rv = qdma_s80_hard_hw_ctx_conf(dev_hndl, (uint8_t)q_type,
-				qid_hw, &(context->hw_ctxt),
+				qid_hw, &(context.hw_ctxt),
 				QDMA_HW_ACCESS_READ);
 		if (rv < 0) {
 			qdma_log_error(
@@ -3388,7 +3601,7 @@ int qdma_s80_hard_read_dump_queue_context(void *dev_hndl,
 		}
 
 		rv = qdma_s80_hard_qid2vec_conf(dev_hndl, (uint8_t)q_type,
-				qid_hw, &(context->qid2vec),
+				qid_hw, &(context.qid2vec),
 				QDMA_HW_ACCESS_READ);
 		if (rv < 0) {
 			qdma_log_error(
@@ -3398,7 +3611,7 @@ int qdma_s80_hard_read_dump_queue_context(void *dev_hndl,
 		}
 
 		rv = qdma_s80_hard_credit_ctx_conf(dev_hndl, (uint8_t)q_type,
-				qid_hw, &(context->cr_ctxt),
+				qid_hw, &(context.cr_ctxt),
 				QDMA_HW_ACCESS_READ);
 		if (rv < 0) {
 			qdma_log_error(
@@ -3410,7 +3623,7 @@ int qdma_s80_hard_read_dump_queue_context(void *dev_hndl,
 		if (st && (q_type == QDMA_DEV_Q_TYPE_C2H)) {
 			rv = qdma_s80_hard_pfetch_ctx_conf(dev_hndl,
 					qid_hw,
-					&(context->pfetch_ctxt),
+					&(context.pfetch_ctxt),
 					QDMA_HW_ACCESS_READ);
 			if (rv < 0) {
 				qdma_log_error(
@@ -3424,7 +3637,7 @@ int qdma_s80_hard_read_dump_queue_context(void *dev_hndl,
 	if ((st && (q_type == QDMA_DEV_Q_TYPE_C2H)) ||
 			(!st && (q_type == QDMA_DEV_Q_TYPE_CMPT))) {
 		rv = qdma_s80_hard_cmpt_ctx_conf(dev_hndl, qid_hw,
-						&(context->cmpt_ctxt),
+						&(context.cmpt_ctxt),
 						 QDMA_HW_ACCESS_READ);
 		if (rv < 0) {
 			qdma_log_error(
@@ -3434,14 +3647,9 @@ int qdma_s80_hard_read_dump_queue_context(void *dev_hndl,
 		}
 	}
 
-	req_buflen = qdma_s80_hard_context_buf_len(st, q_type);
-	if (buflen < req_buflen) {
-		qdma_log_error("%s: Too small buffer(%d), reqd(%d), err:%d\n",
-			__func__, buflen, req_buflen, -QDMA_ERR_NO_MEM);
-		return -QDMA_ERR_NO_MEM;
-	}
 
-	rv = dump_s80_hard_context(context, st, q_type,
+
+	rv = dump_s80_hard_context(&context, st, q_type,
 				buf, buflen);
 
 	return rv;
@@ -3510,3 +3718,213 @@ int qdma_s80_hard_init_ctxt_memory(void *dev_hndl)
 #endif
 	return 0;
 }
+
+static int get_reg_entry(uint32_t reg_addr, int *reg_entry)
+{
+	uint32_t i = 0;
+	struct xreg_info *reg_info;
+	uint32_t num_regs =
+		sizeof(qdma_s80_hard_config_regs)/
+		sizeof((qdma_s80_hard_config_regs)[0]);
+
+	reg_info = qdma_s80_hard_config_regs;
+
+	for (i = 0; (i < num_regs - 1); i++) {
+		if (reg_info[i].addr == reg_addr) {
+			*reg_entry = i;
+			break;
+		}
+	}
+
+	if (i >= num_regs - 1) {
+		qdma_log_error("%s: 0x%08x is missing register list, err:%d\n",
+					__func__,
+					reg_addr,
+					-QDMA_ERR_INV_PARAM);
+		*reg_entry = -1;
+		return -QDMA_ERR_INV_PARAM;
+	}
+
+	return 0;
+}
+
+/*****************************************************************************/
+/**
+ * qdma_s80_hard_dump_config_reg_list() - Dump the registers
+ *
+ * @dev_hndl:		device handle
+ * @total_regs :	Max registers to read
+ * @reg_list :		array of reg addr and reg values
+ * @buf :		pointer to buffer to be filled
+ * @buflen :		Length of the buffer
+ *
+ * Return: returns the platform specific error code
+ *****************************************************************************/
+int qdma_s80_hard_dump_config_reg_list(void *dev_hndl, uint32_t total_regs,
+		struct qdma_reg_data *reg_list, char *buf, uint32_t buflen)
+{
+	uint32_t j = 0, len = 0;
+	uint32_t reg_count = 0;
+	int reg_data_entry;
+	int rv = 0;
+	char name[DEBGFS_GEN_NAME_SZ] = "";
+	struct xreg_info *reg_info = qdma_s80_hard_config_regs;
+
+	if (!dev_hndl) {
+		qdma_log_error("%s: dev_handle is NULL, err:%d\n",
+				__func__, -QDMA_ERR_INV_PARAM);
+		return -QDMA_ERR_INV_PARAM;
+	}
+
+	if (!buf) {
+		qdma_log_error("%s: buf is NULL, err:%d\n",
+				__func__, -QDMA_ERR_INV_PARAM);
+		return -QDMA_ERR_INV_PARAM;
+	}
+
+	for (reg_count = 0;
+			(reg_count < total_regs);) {
+
+		rv = get_reg_entry(reg_list[reg_count].reg_addr,
+					&reg_data_entry);
+		if (rv < 0) {
+			qdma_log_error("%s: register missing in list, err:%d\n",
+						   __func__,
+						   -QDMA_ERR_INV_PARAM);
+			return rv;
+		}
+
+		for (j = 0; j < reg_info[reg_data_entry].repeat; j++) {
+			rv = QDMA_SNPRINTF_S(name, DEBGFS_GEN_NAME_SZ,
+					DEBGFS_GEN_NAME_SZ,
+					"%s_%d",
+					reg_info[reg_data_entry].name, j);
+			if (rv < 0) {
+				qdma_log_error(
+					"%d:%s snprintf failed, err:%d\n",
+					__LINE__, __func__,
+					rv);
+				return -QDMA_ERR_NO_MEM;
+			}
+			rv = dump_reg(buf + len, buflen - len,
+				(reg_info[reg_data_entry].addr + (j * 4)),
+					name,
+					reg_list[reg_count + j].reg_val);
+			if (rv < 0) {
+				qdma_log_error(
+				"%s Buff too small, err:%d\n",
+				__func__,
+				-QDMA_ERR_NO_MEM);
+				return -QDMA_ERR_NO_MEM;
+			}
+			len += rv;
+		}
+		reg_count += j;
+	}
+
+	return len;
+
+}
+
+
+/*****************************************************************************/
+/**
+ * qdma_read_reg_list() - read the register values
+ *
+ * @dev_hndl:		device handle
+ * @is_vf:		Whether PF or VF
+ * @total_regs :	Max registers to read
+ * @reg_list :		array of reg addr and reg values
+ *
+ * Return: returns the platform specific error code
+ *****************************************************************************/
+int qdma_s80_hard_read_reg_list(void *dev_hndl, uint8_t is_vf,
+		uint16_t reg_rd_slot,
+		uint16_t *total_regs,
+		struct qdma_reg_data *reg_list)
+{
+	uint16_t reg_count = 0, i = 0, j = 0;
+	struct xreg_info *reg_info;
+	uint32_t num_regs =
+		sizeof(qdma_s80_hard_config_regs)/
+		sizeof((qdma_s80_hard_config_regs)[0]);
+	struct qdma_dev_attributes *dev_cap;
+	uint32_t reg_start_addr = 0;
+	int reg_index = 0;
+	int rv = 0;
+
+	if (!is_vf) {
+		qdma_log_error("%s: not supported for PF, err:%d\n",
+				__func__,
+				-QDMA_ERR_HWACC_FEATURE_NOT_SUPPORTED);
+		return -QDMA_ERR_HWACC_FEATURE_NOT_SUPPORTED;
+	}
+
+	if (!dev_hndl) {
+		qdma_log_error("%s: dev_handle is NULL, err:%d\n",
+					   __func__, -QDMA_ERR_INV_PARAM);
+		return -QDMA_ERR_INV_PARAM;
+	}
+
+	if (!reg_list) {
+		qdma_log_error("%s: reg_list is NULL, err:%d\n",
+					   __func__, -QDMA_ERR_INV_PARAM);
+		return -QDMA_ERR_INV_PARAM;
+	}
+
+	qdma_get_device_attr(dev_hndl, &dev_cap);
+
+	switch (reg_rd_slot) {
+	case QDMA_REG_READ_GROUP_1:
+			reg_start_addr = QDMA_S80_REG_GROUP_1_START_ADDR;
+			break;
+	case QDMA_REG_READ_GROUP_2:
+			reg_start_addr = QDMA_S80_REG_GROUP_2_START_ADDR;
+			break;
+	case QDMA_REG_READ_GROUP_3:
+			reg_start_addr = QDMA_S80_REG_GROUP_3_START_ADDR;
+			break;
+	case QDMA_REG_READ_GROUP_4:
+			reg_start_addr = QDMA_S80_REG_GROUP_4_START_ADDR;
+			break;
+	default:
+		qdma_log_error("%s: Invalid slot received\n",
+			   __func__);
+		return -QDMA_ERR_INV_PARAM;
+	}
+
+	rv = get_reg_entry(reg_start_addr, &reg_index);
+	if (rv < 0) {
+		qdma_log_error("%s: register missing in list, err:%d\n",
+					   __func__,
+					   -QDMA_ERR_INV_PARAM);
+		return rv;
+	}
+	reg_info = &qdma_s80_hard_config_regs[reg_index];
+
+	for (i = 0, reg_count = 0;
+			((i < num_regs - 1 - reg_index) &&
+			(reg_count < QDMA_MAX_REGISTER_DUMP)); i++) {
+
+		if (((GET_CAPABILITY_MASK(dev_cap->mm_en, dev_cap->st_en,
+				dev_cap->mm_cmpt_en, dev_cap->mailbox_en)
+				& reg_info[i].mode) == 0) ||
+			(reg_info[i].read_type == QDMA_REG_READ_PF_ONLY))
+			continue;
+
+		for (j = 0; j < reg_info[i].repeat &&
+				(reg_count < QDMA_MAX_REGISTER_DUMP);
+				j++) {
+			reg_list[reg_count].reg_addr =
+					(reg_info[i].addr + (j * 4));
+			reg_list[reg_count].reg_val =
+				qdma_reg_read(dev_hndl,
+					reg_list[reg_count].reg_addr);
+			reg_count++;
+		}
+	}
+
+	*total_regs = reg_count;
+	return rv;
+}
+

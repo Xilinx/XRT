@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-2019,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -131,9 +131,11 @@ static int dbgfs_dump_qdma_regs(unsigned long dev_hndl, char *dev_name,
 		return -EINVAL;
 
 #ifndef __QDMA_VF__
-	rv = qdma_reg_dump_buf_len((void *)dev_hndl, 0, &buflen);
+	rv = qdma_acc_reg_dump_buf_len((void *)dev_hndl,
+				xdev->version.info.ip_type, &buflen);
 #else
-	rv = qdma_reg_dump_buf_len((void *)dev_hndl, 1, &buflen);
+	rv = qdma_acc_reg_dump_buf_len((void *)dev_hndl,
+				xdev->version.info.ip_type, &buflen);
 #endif
 	if (rv < 0) {
 		pr_err("Failed to get reg dump buffer length\n");
@@ -155,13 +157,8 @@ static int dbgfs_dump_qdma_regs(unsigned long dev_hndl, char *dev_name,
 		return len;
 	}
 	len += rv;
-#ifndef __QDMA_VF__
-	rv = xdev->hw.qdma_dump_config_regs((void *)dev_hndl, 0,
-			buf + len, buflen - len);
-#else
-	rv = xdev->hw.qdma_dump_config_regs((void *)dev_hndl, 1,
-			buf + len, buflen - len);
-#endif
+
+	rv = qdma_config_reg_dump(dev_hndl, buf + len, buflen - len);
 	if (rv < 0) {
 		pr_warn("Not able to dump Config Bar register values, err = %d\n",
 					rv);

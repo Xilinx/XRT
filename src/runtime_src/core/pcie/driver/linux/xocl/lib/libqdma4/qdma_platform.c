@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-2019,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
 #include "qdma_regs.h"
 #include "qdma_access_errors.h"
 
-struct err_code_map error_code_map_list[] = {
+static struct err_code_map error_code_map_list[] = {
 	{QDMA_SUCCESS,				0},
 	{QDMA_ERR_INV_PARAM,			EINVAL},
 	{QDMA_ERR_NO_MEM,			ENOMEM},
@@ -46,7 +46,8 @@ struct err_code_map error_code_map_list[] = {
 	{QDMA_ERR_MBOX_INV_TMR_TH,		EINVAL},
 	{QDMA_ERR_MBOX_INV_MSG,			EINVAL},
 	{QDMA_ERR_MBOX_SEND_BUSY,		EBUSY},
-	{QDMA_ERR_MOBX_NO_MSG_IN,		EINVAL},
+	{QDMA_ERR_MBOX_NO_MSG_IN,		EINVAL},
+	{QDMA_ERR_MBOX_REG_READ_FAILED,		EIO},
 	{QDMA_ERR_MBOX_ALL_ZERO_MSG,		EINVAL},
 };
 

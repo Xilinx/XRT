@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-2019,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -56,7 +56,7 @@ static int dump_qdma_regs(struct xlnx_dma_dev *xdev)
 		return -EINVAL;
 	}
 
-	rv = qdma_reg_dump_buf_len(xdev, 0, &buflen);
+	rv = qdma_reg_dump_buf_len(xdev, xdev->version_info.ip_type, &buflen);
 	if (rv < 0) {
 		pr_err("Failed to get reg dump buffer length\n");
 		return rv;
@@ -261,6 +261,9 @@ static void data_intr_direct(struct xlnx_dma_dev *xdev, int vidx, int irq,
 			  flags);
 	list_for_each_safe(entry, tmp, descq_list) {
 		descq = container_of(entry, struct qdma_descq, intr_list);
+
+		if (!descq)
+			continue;
 
 		if (descq->conf.ping_pong_en &&
 				descq->conf.q_type == Q_C2H && descq->conf.st)
@@ -971,7 +974,7 @@ int qdma4_err_qdma4_intr_setup(struct xlnx_dma_dev *xdev)
 
 	err_intr_index = get_intr_vec_index(xdev, INTR_TYPE_ERROR);
 
-	rv = xdev->hw.qdma_hw_error_qdma4_intr_setup(xdev, xdev->func_id,
+	rv = xdev->hw.qdma_hw_error_intr_setup(xdev, xdev->func_id,
 					    err_intr_index);
 	if (rv < 0) {
 		pr_err("Failed to setup error interrupt, err = %d", rv);

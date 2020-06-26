@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-2019,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -49,7 +49,7 @@ struct q_state_name {
 
 extern struct q_state_name q_state_list[];
 
-#define QDMA_FLQ_SIZE 120
+#define QDMA_FLQ_SIZE 80
 
 /**
  * @struct - qdma_descq
@@ -128,6 +128,7 @@ struct qdma_descq {
 	u8 *desc_cmpl_status;
 
 	/* ST C2H */
+	/* pending work */
 	struct work_struct req_work;
 	/** programming order of the data in ST c2h mode*/
 	unsigned char fl_pg_order;
@@ -283,16 +284,6 @@ int qdma4_descq_alloc_resource(struct qdma_descq *descq);
  * @return	none
  *****************************************************************************/
 void qdma4_descq_free_resource(struct qdma_descq *descq);
-
-/*****************************************************************************/
-/**
- * qdma_descq_free_page_resource() - free up the pages assigned to a request
- *
- * @param[in]	descq:		pointer to qdma_descq
- *
- * @return	none
- ****************************************************************************/
-void descq_flq_free_page_resource(struct qdma_descq *descq);
 
 /*****************************************************************************/
 /**
@@ -538,17 +529,5 @@ void cmpt_next(struct qdma_descq *descq);
 #endif
 
 u64 rdtsc_gettime(void);
-
-
-static inline unsigned int get_next_powof2(unsigned int value)
-{
-	unsigned int num_bits, mask, f_value;
-
-	num_bits = fls(value) - 1;
-	mask = (1 << num_bits) - 1;
-	f_value = ((value + mask) >> num_bits) << num_bits;
-
-	return f_value;
-}
 
 #endif /* ifndef __QDMA_DESCQ_H__ */
