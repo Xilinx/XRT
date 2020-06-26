@@ -223,7 +223,7 @@ int shim::xclLoadXclBin(const xclBin *header)
 shim::~shim() {
   //Tell the Pllauncher to close
   if (ZYNQ_HW_EM::isRemotePortMapped) {
-    PLLAUNCHER::OclCommand *cmd = new PLLAUNCHER::OclCommand();
+    auto cmd = std::make_unique<PLLAUNCHER::OclCommand>();
     cmd->setCommand(PLLAUNCHER::PL_OCL_XRESET_ID);
     uint32_t iLength;
     memcpy((char*) (ZYNQ_HW_EM::remotePortMappedPointer), (char*) cmd->generateBuffer(&iLength),
@@ -232,7 +232,6 @@ shim::~shim() {
     //Send the end of packet
     char cPacketEndChar = PL_OCL_PACKET_END_MARKER;
     memcpy((char*) (ZYNQ_HW_EM::remotePortMappedPointer), &cPacketEndChar, 1);
-    delete cmd;
   }
   if (mKernelFD > 0) {
     close(mKernelFD);
