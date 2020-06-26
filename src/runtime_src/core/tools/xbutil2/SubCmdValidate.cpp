@@ -17,7 +17,6 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SubCmdValidate.h"
-#include "SubCmdDmaTest.h"
 #include "tools/common/ReportHost.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/XBHelpMenus.h"
@@ -33,7 +32,6 @@ namespace XBU = XBUtilities;
 #include <boost/range/iterator_range.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
-#include <boost/any.hpp>
 namespace po = boost::program_options;
 
 // System - Include Files
@@ -394,15 +392,104 @@ checkOSRelease(const std::vector<std::string> kernel_versions, const std::string
 }
 
 /* 
- * helper function for M2M test
+ * helper function for M2M and P2P test
  */ 
 static void 
-m2m_free_unmap_bo(xclDeviceHandle handle, unsigned boh, void * boptr, size_t bo_size)
+free_unmap_bo(xclDeviceHandle handle, unsigned boh, void * boptr, size_t bo_size)
 {
   if(boptr != nullptr)
     munmap(boptr, bo_size);
   if(boh != NULLBO)
     xclFreeBO(handle, boh);
+}
+
+/* 
+ * helper function for P2P test
+ */
+static bool 
+p2ptest_set_or_cmp(char *boptr, size_t size, char pattern, bool set)
+{
+  int stride = getpagesize();
+
+  assert((size % stride) == 0);
+  for (size_t i = 0; i < size; i += stride) {
+    if (set) {
+      boptr[i] = pattern;
+    } 
+    else if (boptr[i] != pattern) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/* 
+ * helper function for P2P test
+ */
+static bool 
+p2ptest_chunk(xclDeviceHandle handle, char *boptr, uint64_t dev_addr, uint64_t size)
+{
+  char *buf = nullptr;
+
+  if (xrt_core::posix_memalign(reinterpret_cast<void **>(&buf), getpagesize(), size))
+    return false;
+
+  p2ptest_set_or_cmp(buf, size, 'A', true);
+  if (xclUnmgdPwrite(handle, 0, buf, size, dev_addr) < 0)
+    return false;
+  if (!p2ptest_set_or_cmp(boptr, size, 'A', false))
+    return false;
+
+  p2ptest_set_or_cmp(boptr, size, 'B', true);
+  if (xclUnmgdPread(handle, 0, buf, size, dev_addr) < 0)
+    return false;
+  if (!p2ptest_set_or_cmp(buf, size, 'B', false))
+    return false;
+  
+  free(buf);
+  return true;
+}
+
+/* 
+ * helper function for P2P test
+ */ 
+static bool 
+p2ptest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, std::string m_tag, int mem_idx, uint64_t addr, uint64_t bo_size)
+{
+  const size_t chunk_size = 16 * 1024 * 1024; //16 MB
+
+  unsigned int boh = xclAllocBO(handle, bo_size, 0, XCL_BO_FLAGS_P2P | mem_idx);
+  if (boh == NULLBO) {
+    _ptTest.put("status", "failed");
+    logger(_ptTest, "Error", "Couldn't allocate BO");
+    return false;
+  }
+  char *boptr = (char *)xclMapBO(handle, boh, true);
+  if (boptr == nullptr) {
+    _ptTest.put("status", "failed");
+    logger(_ptTest, "Error", "Couldn't map BO");
+    free_unmap_bo(handle, boh, boptr, bo_size);
+    return false;
+  }
+
+  int counter = 0;
+  XBU::ProgressBar run_test("Running Test on " + m_tag, 1024, XBU::is_esc_enabled(), std::cout);
+  for(uint64_t c = 0; c < bo_size; c += chunk_size) {
+    if(!p2ptest_chunk(handle, boptr + c, addr + c, chunk_size)) {
+      _ptTest.put("status", "failed");
+      logger(_ptTest, "Error", boost::str(boost::format("P2P failed at offset 0x%x, on memory index %d") % c % mem_idx));
+      free_unmap_bo(handle, boh, boptr, bo_size);
+      run_test.finish(false, "");
+      std::cout << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().clear_line();
+      return false;
+    }
+    run_test.update(++counter);
+  }
+  free_unmap_bo(handle, boh, boptr, bo_size);
+  run_test.finish(true, "");
+  std::cout << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().clear_line();
+  _ptTest.put("status", "passed");
+  return true;
 }
 
 /* 
@@ -422,14 +509,14 @@ m2m_alloc_init_bo(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, 
   if (boptr == nullptr) {
     _ptTest.put("status", "failed");
     logger(_ptTest, "Error", "Couldn't map BO");
-    m2m_free_unmap_bo(handle, boh, boptr, bo_size);
+    free_unmap_bo(handle, boh, boptr, bo_size);
     return 1;
   }
   memset(boptr, pattern, bo_size);
   if(xclSyncBO(handle, boh, XCL_BO_SYNC_BO_TO_DEVICE, bo_size, 0)) {
     _ptTest.put("status", "failed");
     logger(_ptTest, "Error", "Couldn't sync BO");
-    m2m_free_unmap_bo(handle, boh, boptr, bo_size);
+    free_unmap_bo(handle, boh, boptr, bo_size);
     return 1;
   }
   return 0;
@@ -453,7 +540,7 @@ m2mtest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, int b
 
   //Allocate and init bo_tgt
   if(m2m_alloc_init_bo(handle, _ptTest, bo_tgt, bo_tgt_ptr, bo_size, bank_b, 'B')) {
-    m2m_free_unmap_bo(handle, bo_src, bo_src_ptr, bo_size);
+    free_unmap_bo(handle, bo_src, bo_src_ptr, bo_size);
     return bandwidth;
   }
 
@@ -463,8 +550,8 @@ m2mtest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, int b
   double timer_stop = timer.stop().count();
 
   if(xclSyncBO(handle, bo_tgt, XCL_BO_SYNC_BO_FROM_DEVICE, bo_size, 0)) {
-    m2m_free_unmap_bo(handle, bo_src, bo_src_ptr, bo_size);
-    m2m_free_unmap_bo(handle, bo_tgt, bo_tgt_ptr, bo_size);
+    free_unmap_bo(handle, bo_src, bo_src_ptr, bo_size);
+    free_unmap_bo(handle, bo_tgt, bo_tgt_ptr, bo_size);
     _ptTest.put("status", "failed");
     logger(_ptTest, "Error", "Unable to sync target BO");
     return bandwidth;
@@ -473,8 +560,8 @@ m2mtest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, int b
   bool match = (memcmp(bo_src_ptr, bo_tgt_ptr, bo_size) == 0);
 
   // Clean up
-  m2m_free_unmap_bo(handle, bo_src, bo_src_ptr, bo_size);
-  m2m_free_unmap_bo(handle, bo_tgt, bo_tgt_ptr, bo_size);
+  free_unmap_bo(handle, bo_src, bo_src_ptr, bo_size);
+  free_unmap_bo(handle, bo_tgt, bo_tgt_ptr, bo_size);
 
   if (!match) {
     _ptTest.put("status", "failed");
@@ -655,7 +742,6 @@ bandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::proper
 void
 p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest) 
 {
-  std::vector<char> buf;
   std::string msg;
   // xclbin_lock xclbin_lock(_dev->get_device_handle(), _dev->get_device_id()); //to-do
   XBU::check_p2p_config(_dev, msg);
@@ -681,7 +767,7 @@ p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
   std::string name = xrt_core::device_query<xrt_core::query::rom_vbnv>(_dev);
 
   for (auto& mem : boost::make_iterator_range(mem_topo->m_mem_data, mem_topo->m_mem_data + mem_topo->m_count)) {
-    // auto midx = std::distance(mem_topo->m_mem_data, &mem);
+    auto midx = std::distance(mem_topo->m_mem_data, &mem);
     std::vector<std::string> sup_list = { "HBM", "bank", "DDR" };
     //p2p is not supported for DDR on u280
     if(name.find("_u280_") != std::string::npos)
@@ -690,12 +776,12 @@ p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
     const std::string mem_tag(reinterpret_cast<const char *>(mem.m_tag));
     for(const auto& x : sup_list) {
       if(mem_tag.find(x) != std::string::npos && mem.m_used) {
-        logger(_ptTest, "Details", boost::str(boost::format("P2P test on %s") % mem.m_tag));
-        //ret = p2ptest_bank(_dev->get_device_handle(), midx, mem.m_base_address, mem.m_size << 10);
+        logger(_ptTest, "Details", "All banks validated");
+        if(!p2ptest_bank(_dev->get_device_handle(), _ptTest, mem_tag, midx, mem.m_base_address, mem.m_size << 10))
+          break;
       }
     }
   }
-  _ptTest.put("status", "passed"); //to-do: remove
 }
 
 /*
@@ -857,11 +943,12 @@ static void
 print_status(test_status status)
 {
   if (status == test_status::failed)
-    std::cout << "Validation failed" << std::endl;
+    std::cout << "Validation failed";
   else
     std::cout << "Validation completed";
   if (status == test_status::warning)
-    std::cout << ", but with warnings" << std::endl;
+    std::cout << ", but with warnings";
+  std::cout << std::endl;
 }
 
 /*
