@@ -14,29 +14,17 @@
  * under the License.
  */
 
-#ifndef UTILITY_DOT_H
-#define UTILITY_DOT_H
+#ifndef DEVICE_OFFLOAD_CB_DOT_H
+#define DEVICE_OFFLOAD_CB_DOT_H
 
-#include <string>
-#include "xdp/config.h"
+// These are the functions that are visible when the plugin is dynamically
+//  loaded.  They should be linked to callbacks in XRT via dlsym and then
+//  called directly.
 
-// Functions that can be used in the database, the plugins, and the writers
+extern "C" 
+void updateDeviceHAL(void* handle) ;
 
-namespace xdp {
-
-  XDP_EXPORT std::string getCurrentDateTime() ;
-  XDP_EXPORT const char* getToolVersion() ;
-  XDP_EXPORT const char* getXRTVersion() ;
-
-  enum Flow {
-    SW_EMU  = 0,
-    HW_EMU  = 1,
-    HW      = 2,
-    UNKNOWN = 3
-  } ;
-
-  XDP_EXPORT Flow getFlowMode() ;
-
-} // end namespace xdp
+extern "C"
+void flushDeviceHAL(void* handle) ;
 
 #endif
