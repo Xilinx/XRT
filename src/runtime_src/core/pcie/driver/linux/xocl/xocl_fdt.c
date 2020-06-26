@@ -22,6 +22,7 @@
 
 struct ip_node {
 	const char *name;
+	const char *regmap_name;
 	int level;
 	int inst;
 	u16 major;
@@ -217,140 +218,165 @@ static void devinfo_cb_xdma(void *dev_hdl, void *subdevs, int num)
 	subdev->info.num_res = 0; 
 }
 
-/* missing clk freq counter ip */
-static struct xocl_subdev_map		subdev_map[] = {
+static struct xocl_subdev_map subdev_map[] = {
 	{
-		XOCL_SUBDEV_FEATURE_ROM,
-		XOCL_FEATURE_ROM,
-		{ "", NULL },
-		1,
-		0,
-		rom_build_priv,
-		NULL,
-       	},
-	{
-		XOCL_SUBDEV_DMA,
-		XOCL_XDMA,
-		{ NODE_XDMA, NULL },
-		1,
-		0,
-		NULL,
-		devinfo_cb_xdma,
-	},
-	{
-		XOCL_SUBDEV_DMA,
-		XOCL_DMA_MSIX,
-		{ NODE_MSIX, NULL },
-		1,
-		0,
-		msix_build_priv,
-		NULL,
-	},
-	{
-		XOCL_SUBDEV_DMA,
-		XOCL_QDMA4,
-		{ NODE_QDMA4, NODE_STM4, NULL },
-		1,
-		0,
-		NULL,
-		NULL,
-       	},
-	{
-		XOCL_SUBDEV_DMA,
-		XOCL_QDMA,
-		{ NODE_QDMA, NODE_STM, NULL },
-		1,
-		0,
-		NULL,
-		NULL,
-       	},
-	{
-		XOCL_SUBDEV_MB_SCHEDULER,
-		XOCL_MB_SCHEDULER,
-		{
-			NODE_ERT_SCHED,
-			NODE_ERT_CQ_USER,
-			NULL
+		.id = XOCL_SUBDEV_FEATURE_ROM,
+		.dev_name = XOCL_FEATURE_ROM,
+		.res_array = (struct xocl_subdev_res []) {
+			{.res_name = ""},
+			{NULL},
 		},
-		2,
-		XOCL_SUBDEV_MAP_USERPF_ONLY,
-		ert_build_priv,
-		NULL,
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = rom_build_priv,
+		.devinfo_cb = NULL,
        	},
 	{
-		XOCL_SUBDEV_XVC_PUB,
-		XOCL_XVC_PUB,
-		{ NODE_XVC_PUB, NULL },
-		1,
-		0,
-	       	NULL,
-		NULL,
-       	},
-	{
-		XOCL_SUBDEV_XVC_PRI,
-		XOCL_XVC_PRI,
-		{ NODE_XVC_PRI, NULL },
-		1,
-		0,
-	       	NULL,
-		NULL,
-       	},
-	{
-		XOCL_SUBDEV_SYSMON,
-		XOCL_SYSMON,
-		{ NODE_SYSMON, NULL },
-		1,
-		0,
-		NULL,
-		NULL,
-       	},
-	{
-		XOCL_SUBDEV_AF,
-		XOCL_FIREWALL,
-		{
-			NODE_AF_BLP_CTRL_MGMT,
-			NODE_AF_BLP_CTRL_USER,
-			NODE_AF_CTRL_MGMT,
-			NODE_AF_CTRL_USER,
-			NODE_AF_CTRL_DEBUG,
-			NODE_AF_DATA_H2C,
-			NODE_AF_DATA_P2P,
-			NODE_AF_DATA_M2M,
-			NODE_AF_DATA_C2H,
-			NULL
+		.id = XOCL_SUBDEV_DMA,
+		.dev_name = XOCL_XDMA,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_XDMA},
+			{NULL},
 		},
-		1,
-		0,
-		NULL,
-		NULL,
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = NULL,
+		.devinfo_cb =devinfo_cb_xdma,
 	},
 	{
-		XOCL_SUBDEV_MB,
-		XOCL_ERT,
-		{
-			NODE_ERT_RESET,
-			NODE_ERT_FW_MEM,
-			NODE_ERT_CQ_MGMT,
+		.id = XOCL_SUBDEV_DMA,
+		.dev_name = XOCL_DMA_MSIX,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_MSIX},
+			{NULL},
+		},
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = msix_build_priv,
+		.devinfo_cb = NULL,
+	},
+	{
+		.id = XOCL_SUBDEV_DMA,
+		.dev_name = XOCL_QDMA4,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_QDMA4},
+			{.res_name = NODE_STM4},
+			{NULL},
+		},
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = NULL,
+		.devinfo_cb = NULL,
+       	},
+	{
+		.id = XOCL_SUBDEV_DMA,
+		.dev_name = XOCL_QDMA,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_QDMA},
+			{.res_name = NODE_STM},
+			{NULL},
+		},
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = NULL,
+		.devinfo_cb = NULL,
+       	},
+	{
+		.id = XOCL_SUBDEV_MB_SCHEDULER,
+		.dev_name = XOCL_MB_SCHEDULER,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_ERT_SCHED},
+			{.res_name = NODE_ERT_CQ_USER},
+			{NULL},
+		},
+		.required_ip = 2,
+		.flags = XOCL_SUBDEV_MAP_USERPF_ONLY,
+		.build_priv_data = ert_build_priv,
+		.devinfo_cb = NULL,
+       	},
+	{
+		.id = XOCL_SUBDEV_XVC_PUB,
+		.dev_name = XOCL_XVC_PUB,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_XVC_PUB},
+			{NULL},
+		},
+		.required_ip = 1,
+		.flags = 0,
+	       	.build_priv_data = NULL,
+		.devinfo_cb = NULL,
+       	},
+	{
+		.id = XOCL_SUBDEV_XVC_PRI,
+		.dev_name = XOCL_XVC_PRI,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_XVC_PUB},
+			{NULL},
+		},
+		.required_ip = 1,
+		.flags = 0,
+	       	.build_priv_data = NULL,
+		.devinfo_cb = NULL,
+       	},
+	{
+		.id = XOCL_SUBDEV_SYSMON,
+		.dev_name = XOCL_SYSMON,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_XVC_PUB},
+			{NULL},
+		},
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = NULL,
+		.devinfo_cb = NULL,
+       	},
+	{
+		.id = XOCL_SUBDEV_AF,
+		.dev_name =XOCL_FIREWALL,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_AF_BLP_CTRL_MGMT},
+			{.res_name = NODE_AF_BLP_CTRL_USER},
+			{.res_name = NODE_AF_CTRL_MGMT},
+			{.res_name = NODE_AF_CTRL_USER},
+			{.res_name = NODE_AF_CTRL_DEBUG},
+			{.res_name = NODE_AF_DATA_H2C},
+			{.res_name = NODE_AF_DATA_P2P},
+			{.res_name = NODE_AF_DATA_M2M},
+			{.res_name = NODE_AF_DATA_C2H},
+			{NULL},
+		},
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = NULL,
+		.devinfo_cb = NULL,
+	},
+	{
+		.id = XOCL_SUBDEV_MB,
+		.dev_name = XOCL_ERT,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_ERT_RESET},
+			{.res_name = NODE_ERT_FW_MEM},
+			{.res_name = NODE_ERT_CQ_MGMT},
 			// 0x53000 runtime clk scaling
-			NULL
+			{NULL},
 		},
-		3,
-		0,
-		NULL,
-		ert_cb_set_inst,
+		.required_ip = 3,
+		.flags = 0,
+		.build_priv_data = NULL,
+		.devinfo_cb = ert_cb_set_inst,
 	},
 	{
-		XOCL_SUBDEV_MB,
-		XOCL_XMC,
-		{
-			NODE_CMC_REG,
-			NODE_CMC_RESET,
-			NODE_CMC_FW_MEM,
-			NODE_ERT_FW_MEM,
-			NODE_ERT_CQ_MGMT,
-			NODE_CMC_MUTEX,
+		.id = XOCL_SUBDEV_MB,
+		.dev_name = XOCL_XMC,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_CMC_REG},
+			{.res_name = NODE_CMC_RESET},
+			{.res_name = NODE_CMC_FW_MEM},
+			{.res_name = NODE_ERT_FW_MEM},
+			{.res_name = NODE_ERT_CQ_MGMT},
+			{.res_name = NODE_CMC_MUTEX},
 			// 0x53000 runtime clk scaling
-			NULL
+			{NULL},
 		},
 		.required_ip = 1, /* for MPSOC, we only have the 1st resource */
 		.flags = 0,
@@ -358,104 +384,110 @@ static struct xocl_subdev_map		subdev_map[] = {
 		.devinfo_cb = NULL,
 	},
 	{
-		XOCL_SUBDEV_MAILBOX,
-		XOCL_MAILBOX,
-		{ NODE_MAILBOX_MGMT, NULL },
-		1,
-		0,
-		NULL,
-		NULL,
-	},
-	{
-		XOCL_SUBDEV_MAILBOX,
-		XOCL_MAILBOX,
-		{ NODE_MAILBOX_USER, NULL },
-		1,
-		0,
-		NULL,
-		NULL,
-	},
-	{
-		XOCL_SUBDEV_AXIGATE,
-		XOCL_AXIGATE,
-		{
-			NODE_GATE_PLP,
-			NULL,
+		.id = XOCL_SUBDEV_MAILBOX,
+		.dev_name = XOCL_MAILBOX,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_MAILBOX_MGMT},
+			{NULL},
 		},
-		1,
-		0,
-		NULL,
-		devinfo_cb_plp_gate,
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = NULL,
+		.devinfo_cb = NULL,
 	},
 	{
-		XOCL_SUBDEV_AXIGATE,
-		XOCL_AXIGATE,
-		{
-			NODE_GATE_ULP,
-			NULL,
+		.id = XOCL_SUBDEV_MAILBOX,
+		.dev_name = XOCL_MAILBOX,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_MAILBOX_USER},
+			{NULL},
 		},
-		1,
-		0,
-		NULL,
-		devinfo_cb_ulp_gate,
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = NULL,
+		.devinfo_cb = NULL,
 	},
 	{
-		XOCL_SUBDEV_IORES,
-		XOCL_IORES3,
-		{
-			RESNAME_GAPPING,
-			NULL
+		.id = XOCL_SUBDEV_AXIGATE,
+		.dev_name = XOCL_AXIGATE,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_GATE_PLP},
+			{NULL},
 		},
-		1,
-		0,
-		NULL,
-		devinfo_cb_setlevel,
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = NULL,
+		.devinfo_cb = devinfo_cb_plp_gate,
+	},
+	{
+		.id = XOCL_SUBDEV_AXIGATE,
+		.dev_name = XOCL_AXIGATE,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_GATE_ULP},
+			{NULL},
+		},
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = NULL,
+		.devinfo_cb = devinfo_cb_ulp_gate,
+	},
+	{
+		.id = XOCL_SUBDEV_IORES,
+		.dev_name = XOCL_IORES3,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = RESNAME_GAPPING},
+			{NULL},
+		},
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = NULL,
+		.devinfo_cb = devinfo_cb_setlevel,
 		.min_level = XOCL_SUBDEV_LEVEL_URP,
 	},
 	{
-		XOCL_SUBDEV_IORES,
-		XOCL_IORES2,
-		{
-			RESNAME_MEMCALIB,
-			RESNAME_KDMA,
-			RESNAME_DDR4_RESET_GATE,
-			NULL
+		.id = XOCL_SUBDEV_IORES,
+		.dev_name = XOCL_IORES2,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = RESNAME_MEMCALIB},
+			{.res_name = RESNAME_KDMA},
+			{.res_name = RESNAME_DDR4_RESET_GATE},
+			{NULL},
 		},
-		1,
-		0,
-		NULL,
-		devinfo_cb_setlevel,
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = NULL,
+		.devinfo_cb = devinfo_cb_setlevel,
 		.min_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
-		XOCL_SUBDEV_IORES,
-		XOCL_IORES1,
-		{
-			RESNAME_PCIEMON,
-			RESNAME_MEMCALIB,
-			RESNAME_KDMA,
-			RESNAME_DDR4_RESET_GATE,
-			NULL
+		.id = XOCL_SUBDEV_IORES,
+		.dev_name = XOCL_IORES1,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = RESNAME_PCIEMON},
+			{.res_name = RESNAME_MEMCALIB},
+			{.res_name = RESNAME_KDMA},
+			{.res_name = RESNAME_DDR4_RESET_GATE},
+			{NULL},
 		},
-		1,
-		0,
-		NULL,
-		devinfo_cb_setlevel,
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = NULL,
+		.devinfo_cb = devinfo_cb_setlevel,
 	},
 	{
 		.id = XOCL_SUBDEV_CLOCK,
 		.dev_name = XOCL_CLOCK,
-		.res_names = {
-			RESNAME_CLKWIZKERNEL1,
-			RESNAME_CLKWIZKERNEL2,
-			RESNAME_CLKWIZKERNEL3,
-			RESNAME_CLKFREQ_K1_K2,
-			RESNAME_CLKFREQ_HBM,
-			RESNAME_CLKFREQ_K1,
-			RESNAME_CLKFREQ_K2,
-			RESNAME_CLKSHUTDOWN,
-			RESNAME_UCS_CONTROL_STATUS,
-			NULL
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = RESNAME_CLKWIZKERNEL1},
+			{.res_name = RESNAME_CLKWIZKERNEL2},
+			{.res_name = RESNAME_CLKWIZKERNEL3},
+			{.res_name = RESNAME_CLKFREQ_K1_K2},
+			{.res_name = RESNAME_CLKFREQ_HBM},
+			{.res_name = RESNAME_CLKFREQ_K1},
+			{.res_name = RESNAME_CLKFREQ_K2},
+			{.res_name = RESNAME_CLKSHUTDOWN},
+			{.res_name = RESNAME_UCS_CONTROL_STATUS},
+			{NULL},
 		},
 		.required_ip = 1,
 		.flags = 0,
@@ -465,21 +497,9 @@ static struct xocl_subdev_map		subdev_map[] = {
 	{
 		.id = XOCL_SUBDEV_MAILBOX_VERSAL,
 		.dev_name = XOCL_MAILBOX_VERSAL,
-		.res_names = {
-			NODE_MAILBOX_XRT,
-			NULL
-		},
-		.required_ip = 1,
-		.flags = 0,
-		.build_priv_data = NULL,
-		.devinfo_cb = NULL,
-	},
-	{
-		.id = XOCL_SUBDEV_XFER_VERSAL,
-		.dev_name = XOCL_XFER_VERSAL,
-		.res_names = {
-			NODE_XFER_CACHE,
-			NULL
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_MAILBOX_XRT},
+			{NULL},
 		},
 		.required_ip = 1,
 		.flags = 0,
@@ -489,10 +509,10 @@ static struct xocl_subdev_map		subdev_map[] = {
 	{
 		.id = XOCL_SUBDEV_PMC,
 		.dev_name = XOCL_PMC,
-		.res_names = {
-			RESNAME_PMC_MUX,
-			RESNAME_PMC_INTR,
-			NULL
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = RESNAME_PMC_MUX},
+			{.res_name = RESNAME_PMC_INTR},
+			{NULL},
 		},
 		.required_ip = 1,
 		.flags = 0,
@@ -500,46 +520,65 @@ static struct xocl_subdev_map		subdev_map[] = {
 		.devinfo_cb = NULL,
 	},
 	{
-		XOCL_SUBDEV_ICAP,
-		XOCL_ICAP,
-		{
-			NODE_ICAP,
-			NULL
+		.id = XOCL_SUBDEV_XFER_VERSAL,
+		.dev_name = XOCL_XFER_VERSAL,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_FPGA_CONFIG, .regmap_name = PROP_PDI_CONFIG},
+			{NULL},
 		},
-		1,
-		0,
-		NULL,
-		NULL,
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = NULL,
+		.devinfo_cb = NULL,
 	},
+
 	{
-		XOCL_SUBDEV_FLASH,
-		XOCL_FLASH,
-		{
-			NODE_FLASH,
-			NULL
+		.id = XOCL_SUBDEV_ICAP,
+		.dev_name = XOCL_ICAP,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_FPGA_CONFIG, .regmap_name = PROP_HWICAP},
+			{NULL},
 		},
-		1,
-		0,
-		flash_build_priv,
-		NULL,
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = NULL,
+		.devinfo_cb = NULL,
 	},
 	{
-		XOCL_SUBDEV_ADDR_TRANSLATOR,
-		XOCL_ADDR_TRANSLATOR,
-		{ NODE_ADDR_TRANSLATOR, NULL },
-		1,
-		0,
-		NULL,
-		NULL,
+		.id = XOCL_SUBDEV_FLASH,
+		.dev_name = XOCL_FLASH,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_FLASH},
+			{NULL},
+		},
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = flash_build_priv,
+		.devinfo_cb = NULL,
 	},
 	{
-		XOCL_SUBDEV_P2P,
-		XOCL_P2P,
-		{ NODE_REMAP_P2P, NULL },
-		1,
-		0,
-		NULL,
-		NULL,
+		.id = XOCL_SUBDEV_ADDR_TRANSLATOR,
+		.dev_name = XOCL_ADDR_TRANSLATOR,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_ADDR_TRANSLATOR},
+			{NULL},
+		},
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = NULL,
+		.devinfo_cb = NULL,
+	},
+	{
+		.id = XOCL_SUBDEV_P2P,
+		.dev_name = XOCL_P2P,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_REMAP_P2P},
+			{NULL},
+		},
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = NULL,
+		.devinfo_cb = NULL,
 	},
 };
 
@@ -771,7 +810,7 @@ static int xocl_fdt_next_ip(xdev_handle_t xdev_hdl, char *blob,
 		int off, struct ip_node *ip)
 {
 	int node, offset;
-	const char *comp, *p;
+	const char *comp, *p, *prop;
 	const u32 *level;
 
 	for (node = fdt_next_node(blob, off, NULL);
@@ -798,14 +837,22 @@ static int xocl_fdt_next_ip(xdev_handle_t xdev_hdl, char *blob,
 
 found:
 	if (ip) {
+		int cplen;
+
 		ip->name = fdt_get_name(blob, node, NULL);
 
 		/* Get Version */
-		comp = fdt_getprop(blob, node, PROP_COMPATIBLE, NULL);
-		if (comp) {
+		prop = fdt_getprop(blob, node, PROP_COMPATIBLE, &cplen);
+		if (prop) {
+			comp = prop;
 			for (p = comp; p != NULL; p = strstr(comp, "-"))
 				comp = p + 1;
 			sscanf(comp, "%hd.%hd", &ip->major, &ip->minor);
+		}
+
+		/* Get platform */
+		if (prop && cplen > strlen(prop) + 1) {
+			ip->regmap_name = prop + strlen(prop) + 1;
 		}
 		ip->off = node;
 	}
@@ -814,16 +861,27 @@ found:
 }
 
 static int xocl_fdt_res_lookup(xdev_handle_t xdev_hdl, char *blob,
-		const char *ipname, u32 min_level, struct xocl_subdev *subdev,
-		struct ip_node *ip, int ip_num)
+	const char *ipname, u32 min_level, struct xocl_subdev *subdev,
+	struct ip_node *ip, int ip_num, const char *regmap_name)
 {
 	int i, ret;
 
+	/*
+	 * looking for both name and platform are the same;
+	 *  if platform is NULL, just use name to compare;
+	 *  if platform is available, use name + platform to compare;
+	 */
 	for (i = 0; i < ip_num; i++) {
 		if (ip->name && strlen(ipname) > 0 && !ip->used &&
-				ip->level >= min_level &&
-				!strncmp(ip->name, ipname, strlen(ipname)))
-			break;
+		    ip->level >= min_level &&
+		    !strncmp(ip->name, ipname, strlen(ipname))) {
+			if (regmap_name && ip->regmap_name &&
+			    strncmp(ip->regmap_name, regmap_name,
+			    strlen(regmap_name)))
+				continue;
+			else
+				break;
+		}
 		ip++;
 	}
 	if (i == ip_num)
@@ -860,7 +918,7 @@ static int xocl_fdt_get_devinfo(xdev_handle_t xdev_hdl, char *blob,
 		struct xocl_subdev *rtn_subdevs)
 {
 	struct xocl_subdev *subdev;
-	char *res_name;
+	struct xocl_subdev_res *res;
 	int num = 0, i = 0, ret;
 
 	if (rtn_subdevs) {
@@ -872,13 +930,15 @@ static int xocl_fdt_get_devinfo(xdev_handle_t xdev_hdl, char *blob,
 			return -ENOMEM;
 	}
 
-	for (res_name = map_p->res_names[0]; res_name;
-			res_name = map_p->res_names[++i]) {
-		ret = xocl_fdt_res_lookup(xdev_hdl, blob, res_name,
-				map_p->min_level, subdev, ip, ip_num);
+	for (res = &map_p->res_array[0]; res && res->res_name != NULL;
+	    res = &map_p->res_array[++i]) {
+
+		ret = xocl_fdt_res_lookup(xdev_hdl, blob, res->res_name,
+		    map_p->min_level, subdev, ip, ip_num, res->regmap_name);
+
 		if (ret) {
 			xocl_xdev_err(xdev_hdl, "lookup dev %s, ip %s failed",
-					map_p->dev_name, res_name);
+			    map_p->dev_name, res->res_name);
 			num = ret;
 			goto failed;
 		}
@@ -891,7 +951,7 @@ static int xocl_fdt_get_devinfo(xdev_handle_t xdev_hdl, char *blob,
 
 #if PF == MGMTPF
 	if ((map_p->flags & XOCL_SUBDEV_MAP_USERPF_ONLY) &&
-			subdev->pf != xocl_fdt_get_userpf(xdev_hdl, blob))
+	    subdev->pf != xocl_fdt_get_userpf(xdev_hdl, blob))
 		goto failed;
 #endif
 

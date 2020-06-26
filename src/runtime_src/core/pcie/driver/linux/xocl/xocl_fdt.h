@@ -66,7 +66,7 @@
 #define NODE_CLK_KERNEL2 "ep_aclk_kernel_01"
 #define NODE_CLK_KERNEL3 "ep_aclk_hbm_00"
 #define NODE_KDMA_CTRL "ep_kdma_ctrl_00"
-#define NODE_ICAP "ep_fpga_configuration_00"
+#define NODE_FPGA_CONFIG "ep_fpga_configuration_00"
 #define NODE_ERT_SCHED "ep_ert_sched_00"
 #define NODE_XDMA "ep_xdma_00"
 #define NODE_MSIX "ep_msix_00"
@@ -86,10 +86,12 @@
 #define NODE_REMAP_P2P "ep_remap_p2p_00"
 #define NODE_DDR4_RESET_GATE "ep_ddr_mem_srsr_gate_00"
 #define NODE_ADDR_TRANSLATOR "ep_remap_data_c2h_00"
-#define NODE_MAILBOX_XRT "ep_mailbox_xrt_00"
-#define NODE_XFER_CACHE "ep_xfer_cache_00"
+#define NODE_MAILBOX_XRT "ep_mailbox_user_to_ert_00"
 #define NODE_PMC_INTR	"ep_pmc_intr_00"
 #define NODE_PMC_MUX	"ep_pmc_mux_00"
+
+#define PROP_HWICAP "axi_hwicap"
+#define PROP_PDI_CONFIG "pdi_config_mem"
 
 #define RESNAME_GATEPLP		NODE_GATE_PLP
 #define RESNAME_PCIEMON		NODE_PCIE_MON

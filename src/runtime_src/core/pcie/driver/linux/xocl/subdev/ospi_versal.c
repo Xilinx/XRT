@@ -433,7 +433,7 @@ static int xclbin_load_axlf(struct platform_device *pdev, const void *buf)
 			(void) xocl_subdev_create(xdev, &urpdevs[i].info);
 		xocl_subdev_create_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 	}
-done:
+
 	return ret;
 }
 

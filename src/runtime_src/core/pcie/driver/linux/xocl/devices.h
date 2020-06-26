@@ -278,10 +278,15 @@ enum subdev_id {
 };
 
 #define	XOCL_SUBDEV_MAP_USERPF_ONLY		0x1
+struct xocl_subdev_res {
+	const char *res_name; 		/* resource ep name, e.g. ep_xdma_00 */
+	const char *regmap_name;	/* compatible ip, e.g. axi_hwicap */
+};
+
 struct xocl_subdev_map {
 	int	id;
 	const char *dev_name;
-	char	*res_names[XOCL_SUBDEV_MAX_RES];
+	struct xocl_subdev_res *res_array;
 	u32	required_ip;
 	u32	flags;
 	void	*(*build_priv_data)(void *dev_hdl, void *subdev, size_t *len);
