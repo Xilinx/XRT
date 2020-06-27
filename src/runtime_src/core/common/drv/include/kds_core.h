@@ -74,7 +74,6 @@ struct kds_client {
 	int			  num_ctx;
 	int			  virt_cu_ref;
 	DECLARE_BITMAP(cu_bitmap, MAX_CUS);
-	int			  abort;
 #if PRE_ALLOC
 	u32			  max_xcmd;
 	u32			  xcmd_idx;

@@ -293,6 +293,7 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 {
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
 	int cu_idx = info->cu_idx;
+	int state;
 
 	if (cu_idx >= cu_mgmt->num_cus) {
 		kds_err(client, "CU(%d) not found", cu_idx);
@@ -304,16 +305,25 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 		return -EINVAL;
 	}
 
-	/* Before the client leave, still need to check if CU is bad state
-	 * If it is, the client should set KDS as bad state.
+	/* Before close, make sure no remain commands in CU's queue.
+	 * There is no reason to sleep 500ms :)
 	 */
-	if (xrt_cu_status(cu_mgmt->xcus[cu_idx]) < 0) {
-		kds_info(client, "CU(%d) is in bad state", cu_idx);
+	while (xrt_cu_abort(cu_mgmt->xcus[cu_idx], client) == -EAGAIN)
+		msleep(500);
+
+	do {
+		msleep(100);
+		state = xrt_cu_abort_done(cu_mgmt->xcus[cu_idx]);
+	} while (!state);
+
+	if (state == CU_STATE_BAD) {
+		kds_info(client, "CU(%d) hangs, please reset device", cu_idx);
 		/* No lock to protect bad_state.
 		 * If a new client doesn't get the updated status and send commands,
 		 * those commands would failed with TIMEOUT state.
 		 */
 		kds->bad_state = 1;
+		xrt_cu_set_bad_state(cu_mgmt->xcus[cu_idx]);
 	}
 
 	/* cu_mgmt->cu_refs is the critical section of multiple clients */
@@ -457,23 +467,6 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client)
 	struct kds_ctx_info info;
 	u32 bit;
 
-	client->abort = 1;
-
-	/* If the client was destroyed after all commands finished, set client
-	 * as abort and sleep doesn't impact anything.
-	 *
-	 * But if client was destroyed unexpected.
-	 * After set client as abort, CU subdevice should finished all unsubmitted
-	 * commands. The submitted command would finished as usual.
-	 * Sleep for 500ms is enought to wait all commands finished.
-	 *
-	 * Only when CU hang, the CU subdevice would be able to detect it and go
-	 * to bad status.
-	 * This client would know if CU is in bad status when close the
-	 * context.
-	 */
-	msleep(500);
-
 	kds_info(client, "Client pid(%d) has %d opening context",
 		 pid_nr(client->pid), client->num_ctx);
 
@@ -503,9 +496,8 @@ void kds_fini_client(struct kds_sched *kds, struct kds_client *client)
 #endif
 
 	/* Release client's resources */
-	if (client->num_ctx) {
+	if (client->num_ctx)
 		_kds_fini_client(kds, client);
-	}
 
 	put_pid(client->pid);
 	mutex_destroy(&client->lock);
@@ -667,11 +659,6 @@ out:
 	return count;
 }
 
-int kds_client_abort(struct kds_command *xcmd)
-{
-	return xcmd->client->abort;
-}
-
 /* User space execbuf command related functions below */
 void cfg_ecmd2xcmd(struct ert_configure_cmd *ecmd,
 		   struct kds_command *xcmd)
@@ -681,7 +668,6 @@ void cfg_ecmd2xcmd(struct ert_configure_cmd *ecmd,
 	xcmd->type = KDS_CU;
 	xcmd->opcode = OP_CONFIG;
 
-	xcmd->cb.is_abort = kds_client_abort;
 	xcmd->execbuf = (u32 *)ecmd;
 
 	xcmd->isize = ecmd->num_cus * sizeof(u32);
@@ -701,7 +687,6 @@ void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	xcmd->type = KDS_CU;
 	xcmd->opcode = OP_START;
 
-	xcmd->cb.is_abort = kds_client_abort;
 	xcmd->execbuf = (u32 *)ecmd;
 
 	xcmd->cu_mask[0] = ecmd->cu_mask;

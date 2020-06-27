@@ -213,6 +213,8 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
 		ecmd->state = ERT_CMD_STATE_ERROR;
 	else if (status == KDS_TIMEOUT)
 		ecmd->state = ERT_CMD_STATE_TIMEOUT;
+	else if (status == KDS_ABORT)
+		ecmd->state = ERT_CMD_STATE_ABORT;
 
 	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(xcmd->gem_obj);
 

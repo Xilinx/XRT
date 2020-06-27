@@ -33,7 +33,6 @@ struct kds_command;
 struct kds_cmd_ops {
 	void (*notify_host)(struct kds_command *xcmd, int status);
 	void (*free)(struct kds_command *xcmd);
-	int (*is_abort)(struct kds_command *xcmd);
 };
 
 /**
