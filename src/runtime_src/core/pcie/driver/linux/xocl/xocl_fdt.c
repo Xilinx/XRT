@@ -519,6 +519,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
 	},
+	/* temporary disable dynamic probe, this should be probed from VSEC in the future
 	{
 		.id = XOCL_SUBDEV_XFER_VERSAL,
 		.dev_name = XOCL_XFER_VERSAL,
@@ -531,7 +532,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
 	},
-
+	*/
 	{
 		.id = XOCL_SUBDEV_ICAP,
 		.dev_name = XOCL_ICAP,
