@@ -771,9 +771,9 @@ static int xocl_fdt_parse_ip(xdev_handle_t xdev_hdl, char *blob,
 		subdev->res[idx].flags = IORESOURCE_MEM;
 		snprintf(subdev->res_name[idx],
 			XOCL_SUBDEV_RES_NAME_LEN,
-			"%s %d %d %d",
+			"%s %d %d %d %s",
 			ip->name, ip->major, ip->minor,
-			ip->level);
+			ip->level, ip->regmap_name ? ip->regmap_name : "");
 		subdev->res[idx].name = subdev->res_name[idx];
 
 		subdev->bar_idx[idx] = bar_idx ? ntohl(*bar_idx) : 0;
@@ -791,9 +791,9 @@ static int xocl_fdt_parse_ip(xdev_handle_t xdev_hdl, char *blob,
 		subdev->res[idx].flags = IORESOURCE_IRQ;
 		snprintf(subdev->res_name[idx],
 			XOCL_SUBDEV_RES_NAME_LEN,
-			"%s %d %d %d",
+			"%s %d %d %d %s",
 			ip->name, ip->major, ip->minor,
-			ip->level);
+			ip->level, ip->regmap_name ? ip->regmap_name : "");
 		subdev->res[idx].name = subdev->res_name[idx];
 		subdev->info.num_res++;
 		sz -= sizeof(*irq_off) * 2;
