@@ -1275,7 +1275,7 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	if (XOCL_DSA_IS_VERSAL(lro)) {
 		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_XFER_MGMT_VERSAL;
 		xocl_info(&pdev->dev,
-			"Should be in VSEC, but now probe static Start 0x%llx",
+			"probe xfer_versal Start 0x%llx",
 			subdev_info.res[0].start);
 		rc = xocl_subdev_create(lro, &subdev_info);
 		if (rc)
