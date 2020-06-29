@@ -395,12 +395,24 @@ checkOSRelease(const std::vector<std::string> kernel_versions, const std::string
  * helper function for M2M and P2P test
  */ 
 static void 
-free_unmap_bo(xclDeviceHandle handle, unsigned boh, void * boptr, size_t bo_size)
+free_unmap_bo(xclDeviceHandle handle, xclBufferHandle boh, void * boptr, size_t bo_size)
 {
+#ifdef __GNUC__
   if(boptr != nullptr)
     munmap(boptr, bo_size);
-  if(boh != NULLBO)
+  if (boh)
     xclFreeBO(handle, boh);
+#endif
+
+/* 1. windows doesn't have munmap
+ * FreeUserPhysicalPages might be the windows equivalent
+ */
+#ifdef _WIN32
+  if (boh)
+    xclFreeBO(handle, boh);
+  boptr = boptr;
+  bo_size = bo_size;
+#endif
 }
 
 /* 
@@ -409,7 +421,7 @@ free_unmap_bo(xclDeviceHandle handle, unsigned boh, void * boptr, size_t bo_size
 static bool 
 p2ptest_set_or_cmp(char *boptr, size_t size, char pattern, bool set)
 {
-  int stride = getpagesize();
+  int stride = xrt_core::getpagesize();
 
   assert((size % stride) == 0);
   for (size_t i = 0; i < size; i += stride) {
@@ -431,7 +443,7 @@ p2ptest_chunk(xclDeviceHandle handle, char *boptr, uint64_t dev_addr, uint64_t s
 {
   char *buf = nullptr;
 
-  if (xrt_core::posix_memalign(reinterpret_cast<void **>(&buf), getpagesize(), size))
+  if (xrt_core::posix_memalign(reinterpret_cast<void **>(&buf), xrt_core::getpagesize(), size))
     return false;
 
   p2ptest_set_or_cmp(buf, size, 'A', true);
@@ -454,11 +466,11 @@ p2ptest_chunk(xclDeviceHandle handle, char *boptr, uint64_t dev_addr, uint64_t s
  * helper function for P2P test
  */ 
 static bool 
-p2ptest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, std::string m_tag, int mem_idx, uint64_t addr, uint64_t bo_size)
+p2ptest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, std::string m_tag, unsigned int mem_idx, uint64_t addr, uint64_t bo_size)
 {
   const size_t chunk_size = 16 * 1024 * 1024; //16 MB
 
-  unsigned int boh = xclAllocBO(handle, bo_size, 0, XCL_BO_FLAGS_P2P | mem_idx);
+  xclBufferHandle boh = xclAllocBO(handle, bo_size, 0, XCL_BO_FLAGS_P2P | mem_idx);
   if (boh == NULLBO) {
     _ptTest.put("status", "failed");
     logger(_ptTest, "Error", "Couldn't allocate BO");
@@ -496,7 +508,7 @@ p2ptest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, std::
  * helper function for M2M test
  */ 
 static int 
-m2m_alloc_init_bo(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, unsigned &boh,
+m2m_alloc_init_bo(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, xclBufferHandle &boh,
                    char * &boptr, size_t bo_size, int bank, char pattern)
 {
   boh = xclAllocBO(handle, bo_size, 0, bank);
@@ -528,8 +540,8 @@ m2m_alloc_init_bo(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, 
 static int 
 m2mtest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, int bank_a, int bank_b, size_t bo_size)
 {
-  unsigned bo_src = NULLBO;
-  unsigned bo_tgt = NULLBO;
+  xclBufferHandle bo_src = NULLBO;
+  xclBufferHandle bo_tgt = NULLBO;
   char *bo_src_ptr = nullptr;
   char *bo_tgt_ptr = nullptr;
   int bandwidth = 0;
@@ -570,10 +582,10 @@ m2mtest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, int b
   }
 
   //bandwidth
-  double total = bo_size;
+  size_t total = bo_size;
   total *= 1000000; // convert us to s
   total /= (1024 * 1024); //convert to MB
-  return total / timer_stop;
+  return static_cast<int>(total / timer_stop);
 }
 
 /*
@@ -777,7 +789,7 @@ p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
     for(const auto& x : sup_list) {
       if(mem_tag.find(x) != std::string::npos && mem.m_used) {
         logger(_ptTest, "Details", "All banks validated");
-        if(!p2ptest_bank(_dev->get_device_handle(), _ptTest, mem_tag, midx, mem.m_base_address, mem.m_size << 10))
+        if(!p2ptest_bank(_dev->get_device_handle(), _ptTest, mem_tag, static_cast<unsigned int>(midx), mem.m_base_address, mem.m_size << 10))
           break;
       }
     }
@@ -813,8 +825,8 @@ m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
       used_banks.push_back(mem);
   }
 
-  for(uint i = 0; i < used_banks.size()-1; i++) {
-    for(uint j = i+1; j < used_banks.size(); j++) {
+  for(unsigned int i = 0; i < used_banks.size()-1; i++) {
+    for(unsigned int j = i+1; j < used_banks.size(); j++) {
       std::cout << used_banks[i].m_tag << " -> " << used_banks[j].m_tag << " M2M bandwidth: ";
       if(!used_banks[i].m_size || !used_banks[j].m_size)
         continue;
