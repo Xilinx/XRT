@@ -180,4 +180,31 @@ enum TR_S2MM_COMMANDS
 #define	TR_S2MM_IOC_GET_WORDCNT	_IOR(TR_S2MM_MAGIC, TR_S2MM_GET_WORDCNT,\
 		uint64_t)
 
+/*
+ * LAPC
+ */
+
+struct lapc_status {
+	uint32_t overall_status;
+	uint32_t cumulative_status_0;
+	uint32_t cumulative_status_1;
+	uint32_t cumulative_status_2;
+	uint32_t cumulative_status_3;
+	uint32_t snapshot_status_0;
+	uint32_t snapshot_status_1;
+	uint32_t snapshot_status_2;
+	uint32_t snapshot_status_3;
+};
+
+/*
+ * SPC
+ */
+
+struct spc_status {
+	uint32_t pc_asserted;
+	uint32_t current_pc;
+	uint32_t snapshot_pc;
+};
+
+
 #endif
