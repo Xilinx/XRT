@@ -60,6 +60,33 @@ enum class test_status
 };
 
 /*
+ * xclbin locking
+ */
+struct xclbin_lock
+{
+  xclDeviceHandle m_handle;
+  xuid_t m_uuid;
+
+  xclbin_lock(std::shared_ptr<xrt_core::device> _dev) 
+    : m_handle(_dev->get_device_handle()) 
+  {
+    auto xclbinid = xrt_core::device_query<xrt_core::query::xclbin_uuid>(_dev);
+  
+    uuid_parse(xclbinid.c_str(), m_uuid);
+
+    if (uuid_is_null(m_uuid))
+      throw std::runtime_error("'uuid' invalid, please re-program xclbin.");
+
+    if (xclOpenContext(m_handle, m_uuid, std::numeric_limits<unsigned int>::max(), true))
+      throw std::runtime_error("'Failed to lock down xclbin");
+  }
+  
+  ~xclbin_lock(){
+    xclCloseContext(m_handle, m_uuid, std::numeric_limits<unsigned int>::max());
+  }
+};
+
+/*
  * mini logger to log errors, warnings and details produced by the test cases
  */
 void logger(boost::property_tree::ptree& _ptTest, const std::string& tag, const std::string& msg)
@@ -400,19 +427,17 @@ free_unmap_bo(xclDeviceHandle handle, xclBufferHandle boh, void * boptr, size_t 
 #ifdef __GNUC__
   if(boptr != nullptr)
     munmap(boptr, bo_size);
-  if (boh)
-    xclFreeBO(handle, boh);
 #endif
-
-/* 1. windows doesn't have munmap
+/* windows doesn't have munmap
  * FreeUserPhysicalPages might be the windows equivalent
  */
 #ifdef _WIN32
-  if (boh)
-    xclFreeBO(handle, boh);
   boptr = boptr;
   bo_size = bo_size;
 #endif
+
+  if (boh)
+    xclFreeBO(handle, boh);
 }
 
 /* 
@@ -755,7 +780,7 @@ void
 p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest) 
 {
   std::string msg;
-  // xclbin_lock xclbin_lock(_dev->get_device_handle(), _dev->get_device_id()); //to-do
+  xclbin_lock xclbin_lock(_dev);
   XBU::check_p2p_config(_dev, msg);
   
   if(msg.find("Error") == 0) {
@@ -788,9 +813,9 @@ p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
     const std::string mem_tag(reinterpret_cast<const char *>(mem.m_tag));
     for(const auto& x : sup_list) {
       if(mem_tag.find(x) != std::string::npos && mem.m_used) {
-        logger(_ptTest, "Details", "All banks validated");
         if(!p2ptest_bank(_dev->get_device_handle(), _ptTest, mem_tag, static_cast<unsigned int>(midx), mem.m_base_address, mem.m_size << 10))
           break;
+        logger(_ptTest, "Details", mem_tag +  " validated");
       }
     }
   }
@@ -802,7 +827,7 @@ p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
 void
 m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest) 
 {
-  // xclbin_lock xclbin_lock(_dev->get_device_handle(), _dev->get_device_id());
+  xclbin_lock xclbin_lock(_dev);
   uint32_t m2m_enabled = xrt_core::device_query<xrt_core::query::kds_numcdmas>(_dev);
   std::string name = xrt_core::device_query<xrt_core::query::rom_vbnv>(_dev);
 
