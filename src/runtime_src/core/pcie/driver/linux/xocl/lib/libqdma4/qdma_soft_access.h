@@ -1,12 +1,36 @@
 /*
- * Copyright(c) 2019 Xilinx, Inc. All rights reserved.
+ * Copyright(c) 2019-2020 Xilinx, Inc. All rights reserved.
+ *
+ * This source code is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * The full GNU General Public License is included in this distribution in
+ * the file called "COPYING".
+ *
+ * This source code is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * The full GNU General Public License is included in this distribution in
+ * the file called "COPYING".
  */
 
-#ifndef QDMA4_ACCESS_H_
-#define QDMA4_ACCESS_H_
+#ifndef QDMA_ACCESS_H_
+#define QDMA_ACCESS_H_
 
-#include "qdma_platform_env.h"
 #include "qdma_access_export.h"
+#include "qdma_platform_env.h"
 #include "qdma_access_errors.h"
 #ifdef __cplusplus
 extern "C" {
@@ -86,8 +110,23 @@ int qdma_dump_intr_context(void *dev_hndl,
 
 uint32_t qdma_soft_reg_dump_buf_len(void);
 
-int qdma_dump_config_regs(void *dev_hndl, uint8_t is_vf,
+int qdma_soft_context_buf_len(uint8_t st,
+		enum qdma_dev_q_type q_type, uint32_t *buflen);
+
+int qdma_soft_dump_config_regs(void *dev_hndl, uint8_t is_vf,
 		char *buf, uint32_t buflen);
+
+int qdma_soft_dump_queue_context(void *dev_hndl,
+		uint8_t st,
+		enum qdma_dev_q_type q_type,
+		struct qdma_descq_context *ctxt_data,
+		char *buf, uint32_t buflen);
+
+int qdma_soft_read_dump_queue_context(void *dev_hndl,
+				uint16_t qid_hw,
+				uint8_t st,
+				enum qdma_dev_q_type q_type,
+				char *buf, uint32_t buflen);
 
 int qdma_hw_error_process(void *dev_hndl);
 
@@ -100,6 +139,16 @@ int qdma_get_device_attributes(void *dev_hndl,
 
 int qdma_get_user_bar(void *dev_hndl, uint8_t is_vf,
 		uint8_t func_id, uint8_t *user_bar);
+
+int qdma_soft_dump_config_reg_list(void *dev_hndl,
+		uint32_t num_regs,
+		struct qdma_reg_data *reg_list,
+		char *buf, uint32_t buflen);
+
+int qdma_read_reg_list(void *dev_hndl, uint8_t is_vf,
+		uint16_t reg_rd_group,
+		uint16_t *total_regs,
+		struct qdma_reg_data *reg_list);
 
 
 #ifdef __cplusplus

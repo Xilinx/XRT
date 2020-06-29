@@ -59,7 +59,7 @@ class param_buffer
         return nullptr;
 
       if (b.m_buffer && b.m_size < sz * sizeof(T))
-        throw error(CL_INVALID_VALUE);
+        throw error(CL_INVALID_VALUE, "Insufficient param value size");
       auto buffer = static_cast<T*>(b.m_buffer);
       b.m_buffer = (buffer + sz);
       b.m_size -= sz * sizeof(T);

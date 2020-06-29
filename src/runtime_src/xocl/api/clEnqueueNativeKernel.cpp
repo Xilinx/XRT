@@ -104,7 +104,7 @@ clEnqueueNativeKernel(cl_command_queue   command_queue ,
 {
   validOrError(command_queue,user_func,args,cb_args,num_mem_objects,mem_list,args_mem_loc,
                num_events_in_wait_list,event_wait_list,event);
-  throw error(CL_XILINX_UNIMPLEMENTED);
+  throw error(CL_XILINX_UNIMPLEMENTED, "Not implemented");
 }
 
 } // xocl

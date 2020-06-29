@@ -1,5 +1,17 @@
 /*
- * Copyright(c) 2019 Xilinx, Inc. All rights reserved.
+ * Copyright(c) 2019-2020 Xilinx, Inc. All rights reserved.
+ *
+ * This source code is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * The full GNU General Public License is included in this distribution in
+ * the file called "COPYING".
  */
 
 #ifndef QDMA4_ACCESS_ERRORS_H_
@@ -45,8 +57,9 @@ enum qdma_access_error_codes {
 	QDMA_ERR_MBOX_INV_TMR_TH,
 	QDMA_ERR_MBOX_INV_MSG,
 	QDMA_ERR_MBOX_SEND_BUSY,
-	QDMA_ERR_MOBX_NO_MSG_IN,
-	QDMA_ERR_MBOX_ALL_ZERO_MSG,			/* 24 */
+	QDMA_ERR_MBOX_NO_MSG_IN,
+	QDMA_ERR_MBOX_REG_READ_FAILED,
+	QDMA_ERR_MBOX_ALL_ZERO_MSG,			/* 25 */
 };
 
 #endif /* QDMA_ACCESS_H_ */

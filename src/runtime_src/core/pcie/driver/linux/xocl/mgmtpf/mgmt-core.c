@@ -821,20 +821,13 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			ret = -ENOMEM;
 		} else {
 			memcpy(buf, xclbin, xclbin_len);
-			if (XOCL_DSA_IS_VERSAL(lro)) {
-				xocl_subdev_destroy_by_id(lro, XOCL_SUBDEV_CLOCK);
-				ret = xocl_xfer_versal_download_axlf(lro, buf);
-				/*
-				 *Note: this is a workaround for enabling ULP
-				 * level clock after xclbin download. We will
-				 * have new-code to replace this api. For fast
-				 * fix, just enable it temporarily.
-				 */
-				xocl_subdev_create_by_id(lro, XOCL_SUBDEV_CLOCK);
 
-			} else {
+			/* Note: future xclbin library to load axlf */
+			if (XOCL_DSA_IS_VERSAL(lro))
+				ret = xocl_xclbin_load_axlf(lro, buf);
+			else
 				ret = xocl_icap_download_axlf(lro, buf);
-			}
+
 			vfree(buf);
 		}
 		(void) xocl_peer_response(lro, req->req, msgid, &ret,
@@ -1279,6 +1272,18 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	(void) xocl_subdev_create_by_level(lro, XOCL_SUBDEV_LEVEL_BLD);
 	(void) xocl_subdev_create_vsec_devs(lro);
 
+	if (XOCL_DSA_IS_VERSAL(lro)) {
+		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_XFER_MGMT_VERSAL;
+		xocl_info(&pdev->dev,
+			"probe xfer_versal Start 0x%llx",
+			subdev_info.res[0].start);
+		rc = xocl_subdev_create(lro, &subdev_info);
+		if (rc)
+			goto err_init_sysfs;
+	}
+
+	xocl_pmc_enable_reset(lro);
+
 	return 0;
 
 err_init_sysfs:
@@ -1415,6 +1420,7 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_mem_hbm,
 	xocl_init_ulite,
 	xocl_init_calib_storage,
+	xocl_init_pmc,
 };
 
 static void (*drv_unreg_funcs[])(void) = {
@@ -1443,6 +1449,7 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_mem_hbm,
 	xocl_fini_ulite,
 	xocl_fini_calib_storage,
+	xocl_fini_pmc,
 };
 
 static int __init xclmgmt_init(void)

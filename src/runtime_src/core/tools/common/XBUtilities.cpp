@@ -258,7 +258,7 @@ XBUtilities::wrap_paragraph( const std::string & _unformattedString,
 
   unsigned int linesProcessed = 0;
 
-  while (lineBeginIter < paragraphEndIter)  
+  while (lineBeginIter != paragraphEndIter)  
   {
     // Remove leading spaces
     if ((linesProcessed > 0) && 
@@ -422,7 +422,7 @@ XBUtilities::report_available_devices()
   std::cout << std::endl;
 }
 
-std::pair<const char*, size_t>
+std::vector<char>
 XBUtilities::get_axlf_section(const std::string& filename, axlf_section_kind kind)
 {
   std::ifstream in(filename);
@@ -454,11 +454,11 @@ XBUtilities::get_axlf_section(const std::string& filename, axlf_section_kind kin
   if (!section)
     throw std::runtime_error("Section not found");
 
-  auto buf = new char[section->m_sectionSize];
+  std::vector<char> buf(section->m_sectionSize);
   in.seekg(section->m_sectionOffset);
-  in.read(buf, section->m_sectionSize);
+  in.read(buf.data(), section->m_sectionSize);
 
-  return std::make_pair(buf, section->m_sectionSize);
+  return buf;
 }
 
 std::vector<std::string>
@@ -543,4 +543,21 @@ XBUtilities::check_p2p_config(const std::shared_ptr<xrt_core::device>& _dev, std
   }
   msg = "P2P bar is not enabled";
   return static_cast<int>(p2p_config::disabled);
+}
+
+static const std::map<std::string, reset_type> reset_map = {
+    { "hot", reset_type::hot },
+    { "kernel", reset_type::kernel },
+    { "ert", reset_type::ert },
+    { "ecc", reset_type::ecc },
+    { "soft_kernel", reset_type::soft_kernel }
+  };
+
+XBUtilities::reset_type
+XBUtilities::str_to_enum_reset(const std::string& str)
+{
+  auto it = reset_map.find(str);
+  if (it != reset_map.end())
+    return it->second;
+  throw xrt_core::error(str + " is invalid. Please specify a valid reset type");
 }

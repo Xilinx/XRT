@@ -23,6 +23,7 @@
 
 #include <string>
 #include <memory>
+#include <map>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
@@ -38,6 +39,14 @@ namespace XBUtilities {
     MT_TRACE,
     MT_UNKNOWN, 
   } MessageType;
+
+  enum class reset_type {
+    hot,
+    kernel,
+    ert,
+    ecc,
+    soft_kernel
+  };
 
   /**
    * Enables / Disables verbosity
@@ -92,7 +101,7 @@ namespace XBUtilities {
    *
    * Return: pair of section data and size in bytes
    */
-  std::pair<const char*, size_t>
+  std::vector<char>
   get_axlf_section(const std::string& filename, axlf_section_kind section);
 
   /**
@@ -105,6 +114,8 @@ namespace XBUtilities {
   std::vector<std::string> get_uuids(const void *dtbuf);
 
   int check_p2p_config(const std::shared_ptr<xrt_core::device>& _dev, std::string &err);
+
+  reset_type str_to_enum_reset(const std::string& str);
 };
 
 #endif

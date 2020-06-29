@@ -56,8 +56,8 @@ namespace xdp {
     //  to build up the structure of the file we are generating
     
     std::string deviceName = (db->getStaticInfo()).getDeviceName(deviceId) ;
-//    std::string xclbinName = (db->getStaticInfo()).getXclbinUUID(deviceId) ;
-    std::string xclbinName = "xclbin";
+    std::string xclbinName = (db->getStaticInfo()).getXclbinName(deviceId) ;
+//    std::string xclbinName = "xclbin";
     
     fout << "Group_Start," << deviceName << std::endl ;
     fout << "Group_Start," << xclbinName << std::endl ;

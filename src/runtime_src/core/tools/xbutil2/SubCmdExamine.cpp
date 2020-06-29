@@ -78,7 +78,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
 
   // Option Variables
   std::vector<std::string> devices = {"all"};
-  std::vector<std::string> reportNames = {"scan"};
+  std::vector<std::string> reportNames = {"host"};
   std::vector<std::string> elementsFilter;
   std::string sFormat = "text";
   std::string sOutput = "";

@@ -494,7 +494,8 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 
 	/*
 	 * force probe to avoid dependence issue. if probing
-	 * failed, it could be the driver is not registered.
+	 * failed, it could be the driver is not registered by
+	 * mgmt or user driver init.
 	 */
 	retval = device_attach(&subdev->pldev->dev);
 	if (retval != 1) {
