@@ -519,6 +519,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
 	},
+#if 0
 	{
 		.id = XOCL_SUBDEV_XFER_VERSAL,
 		.dev_name = XOCL_XFER_VERSAL,
@@ -531,7 +532,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
 	},
-
+#endif
 	{
 		.id = XOCL_SUBDEV_ICAP,
 		.dev_name = XOCL_ICAP,

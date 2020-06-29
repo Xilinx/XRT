@@ -1272,6 +1272,16 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	(void) xocl_subdev_create_by_level(lro, XOCL_SUBDEV_LEVEL_BLD);
 	(void) xocl_subdev_create_vsec_devs(lro);
 
+	if (XOCL_DSA_IS_VERSAL(lro)) {
+		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_XFER_MGMT_VERSAL;
+		xocl_info(&pdev->dev,
+			"probe xfer_versal Start 0x%llx",
+			subdev_info.res[0].start);
+		rc = xocl_subdev_create(lro, &subdev_info);
+		if (rc)
+			goto err_init_sysfs;
+	}
+
 	xocl_pmc_enable_reset(lro);
 
 	return 0;
