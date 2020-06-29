@@ -29,7 +29,7 @@
 
 namespace xdp {
 
-  DeviceOffloadPlugin::DeviceOffloadPlugin() : XDPPlugin()
+  DeviceOffloadPlugin::DeviceOffloadPlugin() : XDPPlugin(), trace_buffer_size(0)
   {
     active = db->claimDeviceOffloadOwnership() ;
     if (!active) return ; 
@@ -42,7 +42,7 @@ namespace xdp {
     convert << tb_size ;
     convert >> trace_buffer_size ;
     
-    continuous_trace = xrt_core::config::get_continuous_trace ;
+    continuous_trace = xrt_core::config::get_continuous_trace() ;
     continuous_trace_interval_ms = 
       xrt_core::config::get_continuous_trace_interval_ms() ;
   }
