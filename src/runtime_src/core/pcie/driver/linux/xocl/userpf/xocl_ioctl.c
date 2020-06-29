@@ -343,7 +343,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 			goto done;
 		}
 	} else {
-		if (atomic_read(&xdev->outstanding_execs)) {
+		if (list_is_singular(&xdev->ctx_list) && atomic_read(&xdev->outstanding_execs)) {
 			err = -EDEADLK;
 			goto done;
 		}
