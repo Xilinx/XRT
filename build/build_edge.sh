@@ -135,7 +135,9 @@ if [[ $clean == 1 ]]; then
 fi
 
 # we pick Petalinux BSP
-source $SETTINGS_FILE
+if [ -f $SETTINGS_FILE ]; then
+    source $SETTINGS_FILE
+fi
 source $PETALINUX/settings.sh 
 
 if [[ $AARCH = $aarch64_dir ]]; then
