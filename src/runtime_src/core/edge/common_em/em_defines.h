@@ -25,11 +25,10 @@
 #ifndef __EM_DEFINES_H__
 #define __EM_DEFINES_H__
 
-#include "xrt_mem.h"
 #include <cstdlib>
 #include <cstdint>
 #include <iostream>
-
+#include "xrt_mem.h"
 #define GCC_VERSION (__GNUC__ * 10000 \
                      + __GNUC_MINOR__ * 100 \
                      + __GNUC_PATCHLEVEL__)

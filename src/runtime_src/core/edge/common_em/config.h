@@ -24,6 +24,7 @@
 #include "xclhal2.h"
 #include "xclfeatures.h"
 #include "xclbin.h"
+#include <chrono>
 
 namespace xclemulation{
 
@@ -92,11 +93,55 @@ namespace xclemulation{
       uint64_t ddrSize;
       DDRBank();
   };
+  enum TIMEOUT_SCALE {
+	NA,
+	MS,
+	SEC,
+	MIN
+  };
+  class ApiWatchdog {
+  private:
+	  TIMEOUT_SCALE timeout_scale;
+	  std::chrono::time_point<std::chrono::high_resolution_clock> start_time;
+	  std::chrono::time_point<std::chrono::high_resolution_clock> end_time;
+	  bool disabled;
+	  unsigned long timeout_period;
+  public:
+	ApiWatchdog(TIMEOUT_SCALE scale,unsigned long timeout) {
+		  timeout_period=timeout;
+		  timeout_scale=scale;
+		  if (timeout_scale==TIMEOUT_SCALE::MIN) {
+			  timeout_period=timeout*60;
+		  } else if (TIMEOUT_SCALE::MS) {
+			  timeout_period=timeout/1000;
+		  }
+		  if (timeout_scale==TIMEOUT_SCALE::NA) {
+			  disabled=true;
+		  } else {
+			  disabled=false;
+		  }
+	}
+	bool isTimeout() {
+		end_time=std::chrono::high_resolution_clock::now();
+		if (!disabled && (std::chrono::duration<double>(end_time - start_time).count() > timeout_period)){
+			return true;
+		} else {
+			return false;
+		}
+	}
+	void reset() {
+		start_time=std::chrono::high_resolution_clock::now();
+	}
+	bool isDisabled() {
+		return disabled;
+	}
+  };
 
-  enum LAUNCHWAVEFORM {
+  enum DEBUG_MODE {
     OFF,
     BATCH,
-    GUI
+    GUI,
+    GDB
   };
   
   enum ERTMODE {
@@ -120,7 +165,9 @@ namespace xclemulation{
       inline void setMaxTraceCount( unsigned int maxTraceCount) { mMaxTraceCount    = maxTraceCount; }
       inline void setPaddingFactor( unsigned int paddingFactor) { mPaddingFactor    = paddingFactor; }
       inline void setSimDir( std::string& simDir)               { mSimDir           = simDir;        }
-      inline void setLaunchWaveform( LAUNCHWAVEFORM lWaveform)  { mLaunchWaveform   = lWaveform;     }
+      inline void setUserPreSimScript( std::string& userPreSimScript) {mUserPreSimScript = userPreSimScript; }
+	    inline void setUserPostSimScript( std::string& userPostSimScript) {mUserPostSimScript = userPostSimScript; }
+      inline void setLaunchWaveform( DEBUG_MODE lWaveform)  { mLaunchWaveform   = lWaveform;     }
       inline void suppressInfo( bool suppress)                  { mSuppressInfo     = suppress;      }
       inline void suppressWarnings( bool suppress)              { mSuppressWarnings = suppress;      }
       inline void suppressErrors( bool suppress)                { mSuppressErrors   = suppress;      }
@@ -143,7 +190,9 @@ namespace xclemulation{
       inline unsigned int getMaxTraceCount()    const { return mMaxTraceCount;  }
       inline unsigned int getPaddingFactor()    const { if(!mOOBChecks) return 0; return mPaddingFactor;  }
       inline std::string getSimDir()            const { return mSimDir;         }
-      inline LAUNCHWAVEFORM getLaunchWaveform() const { return mLaunchWaveform; }
+      inline std::string getUserPreSimScript()  const { return mUserPreSimScript;}
+  	  inline std::string getUserPostSimScript()  const { return mUserPostSimScript;}
+      inline DEBUG_MODE getLaunchWaveform() const { return mLaunchWaveform; }
       inline bool isInfoSuppressed()            const { return mSuppressInfo;    }
       inline bool isWarningsuppressed()         const { return mSuppressWarnings;}
       inline bool isErrorsSuppressed()          const { return mSuppressErrors;  }
@@ -157,7 +206,8 @@ namespace xclemulation{
       inline bool isSystemDPAEnabled() const     { return mSystemDPA;              }
       inline ERTMODE getLegacyErt() const         { return mLegacyErt;              }
       inline long long getCuBaseAddrForce() const         { return mCuBaseAddrForce;              }
-      
+      inline bool isSharedFmodel() const         {return mIsSharedFmodel; } 
+      inline TIMEOUT_SCALE getTimeOutScale() const    {return mTimeOutScale;}
       void populateEnvironmentSetup(std::map<std::string,std::string>& mEnvironmentNameValueMap);
 
     private:
@@ -167,8 +217,10 @@ namespace xclemulation{
       bool mOOBChecks;
       bool mMemLogs;
       bool mDontRun;
-      LAUNCHWAVEFORM mLaunchWaveform;
+      DEBUG_MODE mLaunchWaveform;
       std::string mSimDir;
+      std::string mUserPreSimScript;
+	    std::string mUserPostSimScript;
       unsigned int mPacketSize;
       unsigned int mMaxTraceCount;
       unsigned int mPaddingFactor;
@@ -185,8 +237,8 @@ namespace xclemulation{
       bool mSystemDPA;
       ERTMODE mLegacyErt;
       long long mCuBaseAddrForce;
-      
-     
+      bool      mIsSharedFmodel;
+      TIMEOUT_SCALE mTimeOutScale;
       config();
       ~config() { };//empty destructor
   };
