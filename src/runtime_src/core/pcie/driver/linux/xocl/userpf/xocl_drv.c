@@ -22,6 +22,7 @@
 #include <linux/crc32c.h>
 #include <linux/random.h>
 #include <linux/iommu.h>
+#include <linux/pagemap.h>
 #include "../xocl_drv.h"
 #include "common.h"
 #include "version.h"
@@ -259,11 +260,17 @@ int xocl_program_shell(struct xocl_dev *xdev, bool force)
 	if (force)
 		xocl_drvinst_kill_proc(xdev->core.drm);
 
+	/* free cma bank*/
+	mutex_lock(&xdev->dev_lock);
+	xocl_cma_bank_free(xdev);
+	mutex_unlock(&xdev->dev_lock);
+
 	/* cleanup drm */
 	if (xdev->core.drm) {
 		xocl_drm_fini(xdev->core.drm);
 		xdev->core.drm = NULL;
 	}
+
 	xocl_fini_sysfs(xdev);
 
 	ret = xocl_subdev_offline_all(xdev);
@@ -867,11 +874,10 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 	 * need to shutdown drm and sysfs before destroy subdevices
 	 * drm and sysfs could access subdevices
 	 */
-	if (xdev->core.drm) {
-		xocl_cma_bank_free(xdev->core.drm);
+	if (xdev->core.drm)
 		xocl_drm_fini(xdev->core.drm);
-	}
 
+	xocl_cma_bank_free(xdev);
 	xocl_p2p_fini(xdev);
 	xocl_fini_persist_sysfs(xdev);
 	xocl_fini_sysfs(xdev);
@@ -910,6 +916,425 @@ failed:
 	return ret;
 
 }
+static void xocl_cma_mem_free(struct xocl_dev *xdev, uint32_t idx)
+{
+	struct xocl_cma_memory *cma_mem = &xdev->cma_bank->cma_mem[idx];
+	struct sg_table *sgt = NULL;
+
+	if (!cma_mem)
+		return;
+
+	sgt = cma_mem->sgt;
+	if (sgt) {
+		dma_unmap_sg(&xdev->core.pdev->dev, sgt->sgl, sgt->orig_nents, DMA_BIDIRECTIONAL);
+		sg_free_table(sgt);
+		vfree(sgt);
+		cma_mem->sgt = NULL;
+	}
+
+	if (cma_mem->vaddr) {
+		dma_free_coherent(&xdev->core.pdev->dev, cma_mem->size, cma_mem->vaddr, cma_mem->paddr);
+		cma_mem->vaddr = NULL;
+	} else if (cma_mem->pages) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0)
+		release_pages(cma_mem->pages, cma_mem->size >> PAGE_SHIFT);
+#else
+		release_pages(cma_mem->pages, cma_mem->size >> PAGE_SHIFT, 0);
+#endif
+	}
+
+	if (cma_mem->pages) {
+		vfree(cma_mem->pages);
+		cma_mem->pages = NULL;
+	}
+}
+
+static void xocl_cma_mem_free_all(struct xocl_dev *xdev)
+{
+	int i = 0;
+	uint64_t num = 0;
+
+	if (!xdev->cma_bank)
+		return;
+
+	num = xdev->cma_bank->entry_num;
+
+	for (i = 0; i < num; ++i)
+		xocl_cma_mem_free(xdev, i);
+
+	xocl_info(&xdev->core.pdev->dev, "%s done", __func__);
+}
+
+static int xocl_cma_mem_alloc_huge_page_by_idx(struct xocl_dev *xdev, uint32_t idx, uint64_t user_addr, uint64_t page_sz)
+{
+	uint64_t page_count = 0, nr = 0;
+	struct device *dev = &xdev->core.pdev->dev;
+	int ret = 0;
+	struct xocl_cma_memory *cma_mem = &xdev->cma_bank->cma_mem[idx];
+	struct sg_table *sgt = NULL;
+
+	if (!(XOCL_ACCESS_OK(VERIFY_WRITE, user_addr, page_sz))) {
+		xocl_err(dev, "Invalid huge page user pointer\n");
+		ret = -ENOMEM;
+		goto done;
+	}
+
+	page_count = (page_sz) >> PAGE_SHIFT;
+	cma_mem->pages = vzalloc(page_count*sizeof(struct page *));
+	if (!cma_mem->pages) {
+		ret = -ENOMEM;
+		goto done;
+	}
+
+	nr = get_user_pages_fast(user_addr, page_count, 1, cma_mem->pages);
+	if (nr != page_count) {
+		xocl_err(dev, "Can't pin down enough page_nr %llx\n", nr);
+		ret = -EINVAL;
+		goto done;
+	}
+
+	sgt = vzalloc(sizeof(struct sg_table));
+	if (!sgt) {
+		ret = -ENOMEM;
+		goto done;
+	}
+
+	ret = sg_alloc_table_from_pages(sgt, cma_mem->pages, page_count, 0, page_sz, GFP_KERNEL);
+	if (ret) {
+		ret = -ENOMEM;
+		goto done;
+	}
+
+	if (sgt->orig_nents != 1) {
+		xocl_err(dev, "Host mem is not physically contiguous\n");
+		ret = -EINVAL;
+		goto done;
+	}
+
+	if (!dma_map_sg(dev, sgt->sgl, sgt->orig_nents, DMA_BIDIRECTIONAL)) {
+		ret =-ENOMEM;
+		goto done;
+	}
+
+	if (sgt->orig_nents != sgt->nents) {
+		ret =-ENOMEM;
+		goto done;		
+	}
+
+	cma_mem->size = page_sz;
+	cma_mem->paddr = sg_dma_address(sgt->sgl);
+	cma_mem->sgt = sgt;
+
+done:
+	if (ret) {
+		vfree(cma_mem->pages);
+		cma_mem->pages = NULL;
+		if (sgt) {
+			dma_unmap_sg(dev, sgt->sgl, sgt->orig_nents, DMA_BIDIRECTIONAL);
+			sg_free_table(sgt);
+			vfree(sgt);
+		}
+	}
+
+	return ret;
+}
+
+static int xocl_cma_mem_alloc_huge_page(struct xocl_dev *xdev, struct drm_xocl_alloc_cma_info *cma_info)
+{
+	int ret = 0;
+	size_t page_sz = cma_info->total_size/cma_info->entry_num;
+	uint32_t i, j, num = xocl_addr_translator_get_entries_num(xdev);
+	uint64_t *user_addr = NULL, *phys_addrs = NULL, cma_mem_size = 0;
+	uint64_t rounddown_num = rounddown_pow_of_two(cma_info->entry_num);
+
+	BUG_ON(!mutex_is_locked(&xdev->dev_lock));
+
+	if (!num)
+		return -ENODEV;
+	/* Limited by hardware, the entry number can only be power of 2
+	 * rounddown_pow_of_two 255=>>128 63=>>32
+	 */
+	if (rounddown_num != cma_info->entry_num) {
+		DRM_ERROR("Request %lld, round down to power of 2 %lld\n", 
+				cma_info->entry_num, rounddown_num);
+		return -EINVAL;
+	}
+
+	if (rounddown_num > num)
+		return -EINVAL;
+
+	user_addr = vzalloc(sizeof(uint64_t)*rounddown_num);
+	if (!user_addr)
+		return -ENOMEM;
+
+	ret = copy_from_user(user_addr, cma_info->user_addr, sizeof(uint64_t)*rounddown_num);
+	if (ret) {
+		ret = -EFAULT;
+		goto done;
+	}
+
+	for (i = 0; i < rounddown_num-1; ++i) {
+		for (j = i+1; j < rounddown_num; ++j) {
+			if (user_addr[i] == user_addr[j]) {
+				ret = -EINVAL;
+				DRM_ERROR("duplicated Huge Page");
+				goto done;
+			}
+		}
+	}
+
+	for (i = 0; i < rounddown_num; ++i) {
+		if (user_addr[i] & (page_sz - 1)) {
+			DRM_ERROR("Invalid Huge Page");
+			ret = -EINVAL;
+			goto done;
+		}
+
+		ret = xocl_cma_mem_alloc_huge_page_by_idx(xdev, i, user_addr[i], page_sz);
+		if (ret)
+			goto done;
+	}
+
+	phys_addrs = vzalloc(rounddown_num*sizeof(uint64_t));
+	if (!phys_addrs) {
+		ret = -ENOMEM;
+		goto done;		
+	}
+
+	for (i = 0; i < rounddown_num; ++i) {
+		struct xocl_cma_memory *cma_mem = &xdev->cma_bank->cma_mem[i];
+
+		if (!cma_mem) {
+			ret = -ENOMEM;
+			break;
+		}
+
+		/* All the cma mem should have the same size,
+		 * find the black sheep
+		 */
+		if (cma_mem_size && cma_mem_size != cma_mem->size) {
+			DRM_ERROR("CMA memory mixmatch");
+			ret = -EINVAL;
+			break;
+		}
+
+		phys_addrs[i] = cma_mem->paddr;
+		cma_mem_size = cma_mem->size;
+	}
+
+	if (ret)
+		goto done;
+
+	/* Remember how many cma mem we allocate*/
+	xdev->cma_bank->entry_num = rounddown_num;
+	xdev->cma_bank->entry_sz = page_sz;
+
+	ret = xocl_addr_translator_set_page_table(xdev, phys_addrs, page_sz, rounddown_num);
+done:
+	vfree(user_addr);
+	vfree(phys_addrs);
+	return ret;
+}
+
+static struct page **xocl_virt_addr_get_pages(void *vaddr, int npages)
+
+{
+	struct page *p, **pages;
+	int i;
+	uint64_t offset = 0;
+
+	pages = vzalloc(npages*sizeof(struct page *));
+	if (pages == NULL)
+		return ERR_PTR(-ENOMEM);
+
+	for (i = 0; i < npages; i++) {
+		p = virt_to_page(vaddr + offset);
+		pages[i] = p;
+		if (IS_ERR(p))
+			goto fail;
+		offset += PAGE_SIZE;
+	}
+
+	return pages;
+fail:
+	vfree(pages);
+	return ERR_CAST(p);
+}
+
+static int xocl_cma_mem_alloc_by_idx(struct xocl_dev *xdev, uint64_t size, uint32_t idx)
+{
+	int ret = 0;
+	uint64_t page_count;
+	struct xocl_cma_memory *cma_mem = &xdev->cma_bank->cma_mem[idx];
+	struct page **pages = NULL;
+	dma_addr_t dma_addr;
+
+	page_count = (size) >> PAGE_SHIFT;
+
+	cma_mem->vaddr = dma_alloc_coherent(&xdev->core.pdev->dev, size, &dma_addr, GFP_KERNEL);
+
+	if (!cma_mem->vaddr) {
+		DRM_ERROR("Unable to alloc %llx bytes CMA buffer", size);
+		ret = -ENOMEM;
+		goto done;
+	}
+
+	pages = xocl_virt_addr_get_pages(cma_mem->vaddr, size >> PAGE_SHIFT);
+	if (IS_ERR(pages)) {
+		ret = PTR_ERR(pages);
+		goto done;
+	}
+
+	cma_mem->pages = pages;
+	cma_mem->paddr = dma_addr;
+	cma_mem->size = size;
+
+done:
+	if (ret)
+		xocl_cma_mem_free(xdev, idx);
+
+	return ret;
+}
+
+static void __xocl_cma_bank_free(struct xocl_dev *xdev)
+{
+	if (!xdev->cma_bank)
+		return;
+
+	xocl_cma_mem_free_all(xdev);
+	xocl_addr_translator_clean(xdev);
+	vfree(xdev->cma_bank);
+	xdev->cma_bank = NULL;
+}
+
+static int xocl_cma_mem_alloc(struct xocl_dev *xdev, uint64_t size)
+{
+	int ret = 0;
+	uint64_t i = 0, page_sz;
+	uint64_t page_num = xocl_addr_translator_get_entries_num(xdev);
+	uint64_t *phys_addrs = NULL, cma_mem_size = 0;
+
+	if (!page_num) {
+		DRM_ERROR("Doesn't support CMA BANK feature");
+		return -ENODEV;		
+	}
+
+	page_sz = size/page_num;
+
+	if (page_sz < PAGE_SIZE || !is_power_of_2(page_sz)) {
+		DRM_ERROR("Invalid CMA bank size");
+		return -EINVAL;
+	}
+
+	if (page_sz > (PAGE_SIZE << (MAX_ORDER-1))) {
+		DRM_WARN("Unable to allocate with page size 0x%llx", page_sz);
+		return -EINVAL;
+	}
+
+	for (; i < page_num; ++i) {
+		ret = xocl_cma_mem_alloc_by_idx(xdev, page_sz, i);
+		if (ret) {
+			ret = -ENOMEM;
+			goto done;
+		}
+	}
+
+	phys_addrs = vzalloc(page_num*sizeof(uint64_t));
+	if (!phys_addrs) {
+		ret = -ENOMEM;
+		goto done;		
+	}
+
+	for (i = 0; i < page_num; ++i) {
+		struct xocl_cma_memory *cma_mem = &xdev->cma_bank->cma_mem[i];
+
+		if (!cma_mem) {
+			ret = -ENOMEM;
+			break;
+		}
+
+		/* All the cma mem should have the same size,
+		 * find the black sheep
+		 */
+		if (cma_mem_size && cma_mem_size != cma_mem->size) {
+			DRM_ERROR("CMA memory mixmatch");
+			ret = -EINVAL;
+			break;
+		}
+
+		phys_addrs[i] = cma_mem->paddr;
+		cma_mem_size = cma_mem->size;
+	}
+
+	if (ret)
+		goto done;
+
+	xdev->cma_bank->entry_num = page_num;
+	xdev->cma_bank->entry_sz = page_sz;
+
+	ret = xocl_addr_translator_set_page_table(xdev, phys_addrs, page_sz, page_num);
+done:	
+	vfree(phys_addrs);
+	return ret;
+}
+
+void xocl_cma_bank_free(struct xocl_dev	*xdev)
+{
+	__xocl_cma_bank_free(xdev);
+	xocl_cleanup_mem(xdev->core.drm);
+	xocl_icap_clean_bitstream(xdev);
+}
+
+int xocl_cma_bank_alloc(struct xocl_dev	*xdev, struct drm_xocl_alloc_cma_info *cma_info)
+{
+	int err = 0;
+	int num = xocl_addr_translator_get_entries_num(xdev);
+
+	if (!num) {
+		DRM_ERROR("Doesn't support HOST MEM feature");
+		return -ENODEV;
+	}
+
+	xocl_cleanup_mem(xdev->core.drm);
+	xocl_icap_clean_bitstream(xdev);
+
+	if (xdev->cma_bank) {
+		uint64_t allocated_size = xdev->cma_bank->entry_num * xdev->cma_bank->entry_sz;
+		if (allocated_size == cma_info->total_size) {
+			DRM_INFO("HOST MEM already allocated, skip");
+			goto unlock;
+		} else {
+			DRM_ERROR("HOST MEM already allocated, size 0x%llx", allocated_size);
+			DRM_ERROR("Please run xbutil host disable first");
+			err = -EBUSY;
+			goto unlock;
+		}
+	}
+
+	xdev->cma_bank = vzalloc(sizeof(struct xocl_cma_bank)+num*sizeof(struct xocl_cma_memory));
+	if (!xdev->cma_bank) {
+		err = -ENOMEM;
+		goto done;
+	}
+
+	if (cma_info->entry_num)
+		err = xocl_cma_mem_alloc_huge_page(xdev, cma_info);
+	else {
+		/* Cast all err as E2BIG */
+		err = xocl_cma_mem_alloc(xdev, cma_info->total_size);
+		if (err) {
+			err = -E2BIG;
+			goto done;
+		}
+	}
+done:
+	if (err)
+		__xocl_cma_bank_free(xdev);
+unlock:
+	DRM_INFO("%s, %d", __func__, err);
+	return err;
+}
+
 
 int xocl_userpf_probe(struct pci_dev *pdev,
 		const struct pci_device_id *ent)
