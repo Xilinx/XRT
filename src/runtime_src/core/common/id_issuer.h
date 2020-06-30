@@ -20,35 +20,16 @@
 // This file contains a utility that will issue unique ids to any XRT resource
 //  that requests one.  Currently, this is used by all the XDP plugins.
 
-#include <mutex>
-
 #include "core/common/config.h"
 
 namespace xrt_core {
 
-  /*
-   * class: id_issuer
-   * 
-   * This class is responsible for issuing unique uint64_t values to 
-   * all callers in a thread safe fashion.  The class should not be 
-   * instantiated, instead each call to the static function issueID()
-   * will return a unique number.
-   */
-  class id_issuer 
-  {
-  private:
-    static uint64_t globalID ;
-    static std::mutex idLock ;
-  public:
-    /*
-     * issueID()
-     * 
-     * Returns a unique uint64_t number starting from 0 for every call that
-     * can be used as unique identifiers.
-     */
+  namespace id_issuer {
+
     XRT_CORE_COMMON_EXPORT
-    static uint64_t issueID() ;
-  } ;
+    uint64_t issue_id() ;
+
+  } // end namespace id_issuer
 
 } // end namespace xrt_core
 

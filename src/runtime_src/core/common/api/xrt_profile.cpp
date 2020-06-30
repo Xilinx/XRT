@@ -35,7 +35,7 @@ namespace xrt { namespace profile {
   user_range::user_range(const std::string& label,
 			 const std::string& tooltip) : active(true)
   {
-    id = xrt_core::id_issuer::issueID() ;
+    id = static_cast<uint32_t>(xrt_core::id_issuer::issue_id()) ;
 
     xrtURStart(id, label.c_str(), tooltip.c_str()) ;
   }
@@ -55,7 +55,7 @@ namespace xrt { namespace profile {
     // Handle case where start is called while started
     if (active) xrtUREnd(id) ;
 
-    id = xrt_core::id_issuer::issueID() ;
+    id = static_cast<uint32_t>(xrt_core::id_issuer::issue_id()) ;
     xrtURStart(id, label.c_str(), tooltip.c_str()) ;
     active = true ;
   }

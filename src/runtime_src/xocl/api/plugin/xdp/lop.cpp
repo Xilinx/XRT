@@ -92,7 +92,7 @@ namespace xdplop {
     }
 
     // Log the stats for this function
-    m_funcid = xrt_core::id_issuer::issueID() ;
+    m_funcid = xrt_core::id_issuer::issue_id() ;
     if (function_start_cb)
       function_start_cb(m_name, m_address, m_funcid) ;
   }

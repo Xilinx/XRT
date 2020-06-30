@@ -16,17 +16,26 @@
 
 #define XRT_CORE_COMMON_SOURCE
 
+#include <mutex>
+
 #include "core/common/id_issuer.h"
 
-namespace xrt_core {
-  
-  uint64_t id_issuer::globalID = 0 ;
-  std::mutex id_issuer::idLock ;
+namespace {
 
-  uint64_t id_issuer::issueID()
-  {
-    std::lock_guard<std::mutex> lock(idLock) ;
-    return globalID++ ;
-  }
+  static uint64_t globalID = 0 ;
+  static std::mutex idLock ;
+
+} // end anonymous namespace
+
+namespace xrt_core {
+  namespace id_issuer {
+
+    uint64_t issue_id() 
+    {
+      std::lock_guard<std::mutex> lock(idLock) ;
+      return globalID++ ;
+    }
+
+  } // end namespace id_issuer
 
 } // end namespace xrt_core

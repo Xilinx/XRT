@@ -33,7 +33,7 @@ CallLogger::~CallLogger()
 {}
 
 AllocBOCallLogger::AllocBOCallLogger(xclDeviceHandle handle /*, size_t size, int unused, unsigned flags*/) 
-    : CallLogger(xrt_core::id_issuer::issueID())
+    : CallLogger(xrt_core::id_issuer::issue_id())
 {
     if (!cb_valid()) return;
 
@@ -48,7 +48,7 @@ AllocBOCallLogger::~AllocBOCallLogger() {
 }
 
 AllocUserPtrBOCallLogger::AllocUserPtrBOCallLogger(xclDeviceHandle handle /*, void *userptr, size_t size, unsigned flags*/)
-    : CallLogger(xrt_core::id_issuer::issueID())
+    : CallLogger(xrt_core::id_issuer::issue_id())
 {
     if (!cb_valid()) return;
 
@@ -63,7 +63,7 @@ AllocUserPtrBOCallLogger::~AllocUserPtrBOCallLogger() {
 }
 
 FreeBOCallLogger::FreeBOCallLogger(xclDeviceHandle handle /*, unsigned int boHandle*/) 
-    : CallLogger(xrt_core::id_issuer::issueID())
+    : CallLogger(xrt_core::id_issuer::issue_id())
 {
     if (!cb_valid()) return;
 
@@ -78,12 +78,12 @@ FreeBOCallLogger::~FreeBOCallLogger() {
 }
 
 WriteBOCallLogger::WriteBOCallLogger(xclDeviceHandle handle, size_t size /*, unsigned int boHandle, const void *src, size_t seek*/) 
-    : CallLogger(xrt_core::id_issuer::issueID())
+    : CallLogger(xrt_core::id_issuer::issue_id())
       ,m_buffer_transfer_id(0)
 {
     if (!cb_valid()) return;
 
-    m_buffer_transfer_id = xrt_core::id_issuer::issueID();
+    m_buffer_transfer_id = xrt_core::id_issuer::issue_id();
 
     BOTransferCBPayload payload = {{m_local_idcode, handle}, m_buffer_transfer_id, size} ;
     cb(HalCallbackType::WRITE_BO_START, &payload);
@@ -97,12 +97,12 @@ WriteBOCallLogger::~WriteBOCallLogger() {
 }
 
 ReadBOCallLogger::ReadBOCallLogger(xclDeviceHandle handle, size_t size /*, unsigned int boHandle, void *dst, size_t skip*/) 
-    : CallLogger(xrt_core::id_issuer::issueID())
+    : CallLogger(xrt_core::id_issuer::issue_id())
       ,m_buffer_transfer_id(0)
 {
     if (!cb_valid()) return;
 
-    m_buffer_transfer_id = xrt_core::id_issuer::issueID() ;
+    m_buffer_transfer_id = xrt_core::id_issuer::issue_id() ;
     
     BOTransferCBPayload payload = {{m_local_idcode, handle}, m_buffer_transfer_id, size} ;
     cb(HalCallbackType::READ_BO_START, &payload);
@@ -116,7 +116,7 @@ ReadBOCallLogger::~ReadBOCallLogger() {
 }  
 
 MapBOCallLogger::MapBOCallLogger(xclDeviceHandle handle /*, unsigned int boHandle, bool write*/) 
-    : CallLogger(xrt_core::id_issuer::issueID())
+    : CallLogger(xrt_core::id_issuer::issue_id())
 {
     if (!cb_valid()) return;
 
@@ -131,13 +131,13 @@ MapBOCallLogger::~MapBOCallLogger() {
 }
 
 SyncBOCallLogger::SyncBOCallLogger(xclDeviceHandle handle, size_t size, xclBOSyncDirection dir /*, unsigned int boHandle, size_t offset*/) 
-    : CallLogger(xrt_core::id_issuer::issueID())
+    : CallLogger(xrt_core::id_issuer::issue_id())
       ,m_buffer_transfer_id(0)
       ,m_is_write_to_device((XCL_BO_SYNC_BO_TO_DEVICE == dir) ? true : false)
 {
     if (!cb_valid()) return;
 
-    m_buffer_transfer_id = xrt_core::id_issuer::issueID() ;
+    m_buffer_transfer_id = xrt_core::id_issuer::issue_id() ;
 
     SyncBOCBPayload payload = {{m_local_idcode, handle}, m_buffer_transfer_id, size, m_is_write_to_device};
     cb(HalCallbackType::SYNC_BO_START, &payload);
@@ -151,7 +151,7 @@ SyncBOCallLogger::~SyncBOCallLogger() {
 
 CopyBOCallLogger::CopyBOCallLogger(xclDeviceHandle handle /*, unsigned int dst_boHandle,
                                    unsigned int src_bohandle, size_t size, size_t dst_offset, size_t src_offset*/) 
-    : CallLogger(xrt_core::id_issuer::issueID())
+    : CallLogger(xrt_core::id_issuer::issue_id())
 {
     if (!cb_valid()) return;
 
@@ -166,7 +166,7 @@ CopyBOCallLogger::~CopyBOCallLogger() {
 }
 
 UnmgdPwriteCallLogger::UnmgdPwriteCallLogger(xclDeviceHandle handle, unsigned flags, const void *buf, size_t count, uint64_t offset) 
-    : CallLogger(xrt_core::id_issuer::issueID())
+    : CallLogger(xrt_core::id_issuer::issue_id())
 {
     if (!cb_valid()) return;
 
@@ -181,7 +181,7 @@ UnmgdPwriteCallLogger::~UnmgdPwriteCallLogger() {
 }
 
 UnmgdPreadCallLogger::UnmgdPreadCallLogger(xclDeviceHandle handle, unsigned flags, void *buf, size_t count, uint64_t offset) 
-    : CallLogger(xrt_core::id_issuer::issueID())
+    : CallLogger(xrt_core::id_issuer::issue_id())
 {
     if (!cb_valid()) return;
 
@@ -196,7 +196,7 @@ UnmgdPreadCallLogger::~UnmgdPreadCallLogger() {
 }
 
 ReadCallLogger::ReadCallLogger(xclDeviceHandle handle, size_t size /*, xclAddressSpace space, uint64_t offset, void *hostBuf */) 
-    : CallLogger(xrt_core::id_issuer::issueID())
+    : CallLogger(xrt_core::id_issuer::issue_id())
 {
     if (!cb_valid()) return;
 
@@ -213,7 +213,7 @@ ReadCallLogger::~ReadCallLogger()
 }
 
 WriteCallLogger::WriteCallLogger(xclDeviceHandle handle, size_t size /*, xclAddressSpace space, uint64_t offset, const void *hostBuf */) 
-    : CallLogger(xrt_core::id_issuer::issueID())
+    : CallLogger(xrt_core::id_issuer::issue_id())
 {
     if (!cb_valid()) return;
 
@@ -231,7 +231,7 @@ WriteCallLogger::~WriteCallLogger()
 
 
 RegReadCallLogger::RegReadCallLogger(xclDeviceHandle handle, uint32_t ipIndex, uint32_t offset) 
-    : CallLogger(xrt_core::id_issuer::issueID())
+    : CallLogger(xrt_core::id_issuer::issue_id())
 {
     if (!cb_valid()) return;
 
@@ -248,7 +248,7 @@ RegReadCallLogger::~RegReadCallLogger()
 }
 
 RegWriteCallLogger::RegWriteCallLogger(xclDeviceHandle handle, uint32_t ipIndex, uint32_t offset) 
-    : CallLogger(xrt_core::id_issuer::issueID())
+    : CallLogger(xrt_core::id_issuer::issue_id())
 {
     if (!cb_valid()) return;
 
@@ -266,7 +266,7 @@ RegWriteCallLogger::~RegWriteCallLogger()
 
 
 ProbeCallLogger::ProbeCallLogger() 
-    : CallLogger(xrt_core::id_issuer::issueID())
+    : CallLogger(xrt_core::id_issuer::issue_id())
 {
     if (!cb_valid()) return;
 
@@ -282,7 +282,7 @@ ProbeCallLogger::~ProbeCallLogger()
 }
 
 LockDeviceCallLogger::LockDeviceCallLogger(xclDeviceHandle handle) 
-    : CallLogger(xrt_core::id_issuer::issueID())
+    : CallLogger(xrt_core::id_issuer::issue_id())
 {
     if (!cb_valid()) return;
 
@@ -297,7 +297,7 @@ LockDeviceCallLogger::~LockDeviceCallLogger() {
 }
 
 UnLockDeviceCallLogger::UnLockDeviceCallLogger(xclDeviceHandle handle) 
-    : CallLogger(xrt_core::id_issuer::issueID())
+    : CallLogger(xrt_core::id_issuer::issue_id())
 {
     if (!cb_valid()) return;
 
@@ -312,7 +312,7 @@ UnLockDeviceCallLogger::~UnLockDeviceCallLogger() {
 }
 
 OpenCallLogger::OpenCallLogger(/*unsigned deviceIndex*/)
-    : CallLogger(xrt_core::id_issuer::issueID())
+    : CallLogger(xrt_core::id_issuer::issue_id())
 {
     if (!cb_valid()) return;
 
@@ -327,7 +327,7 @@ OpenCallLogger::~OpenCallLogger() {
 }
 
 CloseCallLogger::CloseCallLogger(xclDeviceHandle handle) 
-    : CallLogger(xrt_core::id_issuer::issueID())
+    : CallLogger(xrt_core::id_issuer::issue_id())
 {
     if (!cb_valid()) return;
 
@@ -342,7 +342,7 @@ CloseCallLogger::~CloseCallLogger() {
 }
 
 OpenContextCallLogger::OpenContextCallLogger(/*unsigned deviceIndex*/)
-    : CallLogger(xrt_core::id_issuer::issueID())
+    : CallLogger(xrt_core::id_issuer::issue_id())
 {
     if (!cb_valid()) return;
 
@@ -357,7 +357,7 @@ OpenContextCallLogger::~OpenContextCallLogger() {
 }
 
 CloseContextCallLogger::CloseContextCallLogger(xclDeviceHandle handle) 
-    : CallLogger(xrt_core::id_issuer::issueID())
+    : CallLogger(xrt_core::id_issuer::issue_id())
 {
     if (!cb_valid()) return;
 
@@ -372,7 +372,7 @@ CloseContextCallLogger::~CloseContextCallLogger() {
 }
 
 LoadXclbinCallLogger::LoadXclbinCallLogger(xclDeviceHandle handle, const void* buffer) 
-                    : CallLogger(xrt_core::id_issuer::issueID()), 
+                    : CallLogger(xrt_core::id_issuer::issue_id()), 
                       h(handle), mBuffer(buffer)
 {
   if (!cb_valid()) return ;
