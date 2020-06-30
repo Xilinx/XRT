@@ -18,7 +18,7 @@
 
 #include "lop.h"
 #include "core/common/module_loader.h"
-#include "core/common/id_issuer.h"
+#include "core/common/utils.h"
 #include "core/common/dlfcn.h"
 
 namespace xdplop {
@@ -92,7 +92,7 @@ namespace xdplop {
     }
 
     // Log the stats for this function
-    m_funcid = xrt_core::id_issuer::issue_id() ;
+    m_funcid = xrt_core::utils::issue_id() ;
     if (function_start_cb)
       function_start_cb(m_name, m_address, m_funcid) ;
   }
