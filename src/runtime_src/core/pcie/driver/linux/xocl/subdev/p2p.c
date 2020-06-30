@@ -321,11 +321,13 @@ static int p2p_mem_chunk_reserve(struct p2p *p2p, struct p2p_mem_chunk *chk)
 		p2p_err(p2p, "add exit action failed");
 		percpu_ref_exit(pref);
 	} else {
-		chk->xpmc_pgmap.ref = pref;
 		chk->xpmc_pgmap.res = res;
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 3, 0)
+		chk->xpmc_pgmap.ref = pref;
 		chk->xpmc_pgmap.altmap_valid = false;
+#else
+		chk->xpmc_pgmap.type = MEMORY_DEVICE_PCI_P2PDMA;
 #endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 2) && \
