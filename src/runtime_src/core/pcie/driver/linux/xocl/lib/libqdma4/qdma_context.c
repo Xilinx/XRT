@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-2019,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -53,7 +53,8 @@ static int make_intr_context(struct xlnx_dma_dev *xdev,
 		ctxt[i].vec = entry->vec_id;
 		ctxt[i].baddr_4k = entry->intr_ring_bus;
 		ctxt[i].color = entry->color;
-		ctxt[i].page_size = QDMA_INDIRECT_INTR_RING_SIZE_4KB;
+		ctxt[i].page_size = xdev->conf.intr_rngsz;
+		ctxt[i].func_id = xdev->func_id;
 	}
 
 	return 0;
@@ -505,8 +506,8 @@ int qdma_descq_context_dump(struct qdma_descq *descq, char *buf, int buflen)
 	}
 
 	rv = descq->xdev->hw.qdma_dump_queue_context(descq->xdev,
-				1, descq->conf.st,
-				descq->conf.q_type,
+				descq->conf.st,
+				(enum qdma_dev_q_type)descq->conf.q_type,
 				&queue_context,
 				buf, buflen);
 	if (rv < 0) {
@@ -891,7 +892,7 @@ int qdma_descq_context_dump(struct qdma_descq *descq, char *buf, int buflen)
 	struct qdma_indirect_intr_ctxt intr_ctxt;
 
 	rv = descq->xdev->hw.qdma_read_dump_queue_context(descq->xdev,
-				0, descq->qidx_hw,
+				descq->qidx_hw,
 				descq->conf.st, descq->conf.q_type,
 				buf, buflen);
 	if (rv < 0) {

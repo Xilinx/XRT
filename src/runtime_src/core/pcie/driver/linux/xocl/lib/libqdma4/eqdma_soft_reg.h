@@ -1,5 +1,29 @@
 /*
- * Copyright(c) 2019 Xilinx, Inc. All rights reserved.
+ * Copyright(c) 2019-2020 Xilinx, Inc. All rights reserved.
+ *
+ * This source code is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * The full GNU General Public License is included in this distribution in
+ * the file called "COPYING".
+ *
+ * This source code is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * The full GNU General Public License is included in this distribution in
+ * the file called "COPYING".
  */
 
 #ifndef EQDMA_SOFT_REG_H_
@@ -9,6 +33,12 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/* H2C Throttle settings */
+#define EQDMA_H2C_THROT_DATA_THRESH       0x5000
+#define EQDMA_THROT_EN_DATA               1
+#define EQDMA_THROT_EN_REQ                0
+#define EQDMA_H2C_THROT_REQ_THRESH        0xC0
 
 /** Software Context */
 #define EQDMA_SW_CTXT_VIRTIO_DSC_BASE_GET_H_MASK    GENMASK_ULL(63, 53)
@@ -52,6 +82,7 @@ extern "C" {
 #define EQDMA_INTR_CTXT_PASID_GET_H_MASK            GENMASK(21, 9)
 #define EQDMA_INTR_CTXT_PASID_GET_L_MASK            GENMASK(8, 0)
 
+#define EQDMA_INTR_CTXT_W3_FUNC_ID_MASK             GENMASK(29, 18)
 #define EQDMA_INTR_CTXT_W3_PASID_EN_MASK            BIT(13)
 #define EQDMA_INTR_CTXT_W3_PASID_H_MASK             GENMASK(12, 0)
 #define EQDMA_INTR_CTXT_W2_PASID_L_MASK             GENMASK(31, 23)

@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-2019,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -44,6 +44,23 @@ int xdev_sriov_vf_offline(struct xlnx_dma_dev *xdev, u8 func_id)
 	if (rv < 0)
 		pr_info("%s, send bye failed %d.\n", xdev->conf.name, rv);
 
+	return rv;
+}
+
+int xdev_sriov_vf_reset_offline(struct xlnx_dma_dev *xdev)
+{
+	int rv;
+	struct mbox_msg *m = qdma_mbox_msg_alloc();
+
+	if (!m)
+		return -ENOMEM;
+
+	qdma_mbox_compose_vf_reset_offline(xdev->func_id, m->raw);
+	rv = qdma_mbox_msg_send(xdev, m, 1, QDMA_MBOX_MSG_TIMEOUT_MS);
+	if (rv < 0)
+		pr_err("%s, send reset bye failed %d.\n", xdev->conf.name, rv);
+
+	qdma_mbox_msg_free(m);
 	return rv;
 }
 
@@ -235,6 +252,7 @@ int xdev_sriov_vf_online(struct xlnx_dma_dev *xdev, u8 func_id)
 		}
 		pr_info("%s, func 0x%x, NO free slot.\n", xdev->conf.name,
 				func_id);
+		qdma_waitq_wakeup(&xdev->wq);
 		return -EINVAL;
 	} else
 		return 0;

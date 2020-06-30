@@ -137,8 +137,9 @@ class DeviceIntf {
     /** Trace S2MM Management
      */
     bool hasTs2mm() {return (traceDMA != nullptr);};
+    TraceS2MM* getTs2mm() {return traceDMA;};
     XDP_EXPORT
-    void initTS2MM(uint64_t bufferSz, uint64_t bufferAddr);
+    void initTS2MM(uint64_t bufferSz, uint64_t bufferAddr, bool circular);
     XDP_EXPORT
     void resetTS2MM();
     XDP_EXPORT

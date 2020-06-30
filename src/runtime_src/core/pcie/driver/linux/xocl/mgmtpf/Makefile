@@ -46,6 +46,7 @@ xclmgmt-y := \
 	../subdev/memory_hbm.o \
 	../subdev/ulite.o \
 	../subdev/calib_storage.o \
+	../subdev/pmc.o \
 	mgmt-core.o \
 	mgmt-cw.o \
 	mgmt-utils.o \

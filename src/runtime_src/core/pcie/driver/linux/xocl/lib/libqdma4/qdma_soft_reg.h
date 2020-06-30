@@ -1,9 +1,33 @@
 /*
- * Copyright(c) 2019 Xilinx, Inc. All rights reserved.
+ * Copyright(c) 2019-2020 Xilinx, Inc. All rights reserved.
+ *
+ * This source code is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * The full GNU General Public License is included in this distribution in
+ * the file called "COPYING".
+ *
+ * This source code is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * The full GNU General Public License is included in this distribution in
+ * the file called "COPYING".
  */
 
-#ifndef QDMA4_SOFT_REG_H__
-#define QDMA4_SOFT_REG_H__
+#ifndef QDMA_SOFT_REG_H__
+#define QDMA_SOFT_REG_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -105,10 +129,10 @@ static inline uint32_t get_trailing_zeros(uint64_t value)
 #define	QDMA_REG_POLL_DFLT_TIMEOUT_US	(500*1000)	/* 500ms */
 
 
-#define DEFAULT_H2C_THROT_DATA_THRESH       0x4000
-#define DEFAULT_THROT_EN_DATA               1
-#define DEFAULT_THROT_EN_REQ                0
-#define DEFAULT_H2C_THROT_REQ_THRESH        0x60
+#define QDMA_H2C_THROT_DATA_THRESH       0x4000
+#define QDMA_THROT_EN_DATA               1
+#define QDMA_THROT_EN_REQ                0
+#define QDMA_H2C_THROT_REQ_THRESH        0x60
 
 /*
  * Q Context programming (indirect)

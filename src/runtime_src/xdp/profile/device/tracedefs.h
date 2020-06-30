@@ -32,6 +32,7 @@
 #define TS2MM_WRITE_OFFSET_HIGH 0x30
 #define TS2MM_WRITTEN_LOW       0x38
 #define TS2MM_WRITTEN_HIGH      0x3c
+#define TS2MM_CIRCULAR_BUF      0x44
 #define TS2MM_AP_CTRL           0x0
 
 // Commands
@@ -39,6 +40,8 @@
 
 // little less than 4GB
 #define TS2MM_MAX_BUF_SIZE      0xffffefff
+// 1 MB
+#define TS2MM_DEF_BUF_SIZE      0x100000
 //8KB
 #define TS2MM_MIN_BUF_SIZE      0x2000
 
@@ -56,5 +59,8 @@ Recommended settings are : 'coarse' option for data transfer trace and no stall 
 #define TS2MM_WARN_MSG_BUFSIZE_DEF    "Trace Buffer size could not be parsed. The default size of 1M will be used."
 #define TS2MM_WARN_MSG_ALLOC_FAIL     "Trace Buffer could not be allocated on device. Device trace will be missing."
 #define TS2MM_WARN_MSG_BUF_FULL       "Trace Buffer is full. Device trace could be incomplete."
+
+#define TS2MM_WARN_MSG_CIRC_BUF       "Unable to use circular buffer for continuous trace offload. Please increase trace \
+buffer size and/or reduce continuous trace interval."
 
 #endif

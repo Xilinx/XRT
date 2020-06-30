@@ -1929,7 +1929,8 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	unsigned int dsa = exec->ert_cfg_priv.dsa;
 	unsigned int major = exec->ert_cfg_priv.major;
 	struct ert_configure_cmd *cfg = xcmd->ert_cfg;
-	bool ert = XOCL_DSA_IS_VERSAL(xdev) ? 1 : xocl_mb_sched_on(xdev);
+	bool ert = (XOCL_DSA_IS_VERSAL(xdev) || XOCL_DSA_IS_MPSOC(xdev)) ? 1 :
+	    xocl_mb_sched_on(xdev);
 	bool ert_full = (ert && cfg->ert && !cfg->dataflow);
 	bool ert_poll = (ert && cfg->ert && cfg->dataflow);
 	unsigned int ert_num_slots = 0;
@@ -1950,11 +1951,10 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	userpf_info(xdev, "ert per feature rom = %d", ert);
 	userpf_info(xdev, "dsa52 = %d", dsa);
 
-	if (XOCL_DSA_IS_VERSAL(xdev)) {
-		userpf_info(xdev, "versal polling mode %d", cfg->polling);
+	if (XOCL_DSA_IS_VERSAL(xdev) || XOCL_DSA_IS_MPSOC(xdev)) {
+		userpf_info(xdev, "MPSoC polling mode %d", cfg->polling);
 
-
-		// For versal device, we will use ert_full if we are
+		// For MPSoC device, we will use ert_full if we are
 		// configured as ert mode even dataflow is configured.
 		// And we do not support ert_poll.
 		ert_full = cfg->ert;

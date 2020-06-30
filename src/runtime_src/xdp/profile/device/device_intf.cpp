@@ -98,7 +98,7 @@ uint64_t GetTS2MMBufSize()
   std::string size_str = xrt_core::config::get_trace_buffer_size();
   std::smatch pieces_match;
   // Default is 1M
-  uint64_t bytes = 1048576;
+  uint64_t bytes = TS2MM_DEF_BUF_SIZE;
   // Regex can parse values like : "1024M" "1G" "8192k"
   const std::regex size_regex("\\s*([0-9]+)\\s*(K|k|M|m|G|g|)\\s*");
   if (std::regex_match(size_str, pieces_match, size_regex)) {
@@ -838,10 +838,10 @@ DeviceIntf::~DeviceIntf()
     return mDevice->getDeviceAddr(bufHandle);
   }
 
-  void DeviceIntf::initTS2MM(uint64_t bufSz, uint64_t bufAddr)
+  void DeviceIntf::initTS2MM(uint64_t bufSz, uint64_t bufAddr, bool circular)
   {
     if (traceDMA)
-      traceDMA->init(bufSz, bufAddr);
+      traceDMA->init(bufSz, bufAddr, circular);
   }
 
   uint64_t DeviceIntf::getWordCountTs2mm()

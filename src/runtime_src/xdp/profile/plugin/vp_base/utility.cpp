@@ -18,12 +18,13 @@
 
 #include <chrono>
 #include <ctime>
+#include <cstring>
 
 #include "xdp/profile/plugin/vp_base/utility.h"
 
 #ifdef _WIN32
 #pragma warning(disable : 4996)
-/* Disable warning for use of "localtime" */
+/* Disable warning for use of "localtime" and "getenv" */
 #endif
 
 namespace xdp {
@@ -50,6 +51,23 @@ namespace xdp {
   const char* getXRTVersion()
   {
     return "2.6.0" ;	// To Do
+  }
+
+  Flow getFlowMode()
+  {
+    static Flow mode = UNKNOWN ;
+    static bool initialized = false ;
+
+    if (initialized) return mode ;
+
+    initialized = true ;
+    const char* envVar = std::getenv("XCL_EMULATION_MODE") ;
+
+    if (!envVar)                                 mode = HW ;
+    else if (std::strcmp(envVar, "sw_emu") == 0) mode = SW_EMU ;
+    else if (std::strcmp(envVar, "hw_emu") == 0) mode = HW_EMU ;
+
+    return mode ;
   }
 
 } // end namespace xdp

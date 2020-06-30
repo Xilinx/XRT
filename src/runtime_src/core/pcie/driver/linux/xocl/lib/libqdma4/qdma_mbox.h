@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-2019,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -22,6 +22,7 @@
 
 #include "qdma_compat.h"
 #include "qdma_device.h"
+#include "qdma_access_common.h"
 #include "qdma_mbox_protocol.h"
 
 /**
@@ -109,6 +110,7 @@ int qdma_mbox_init(struct xlnx_dma_dev *xdev);
  * qdma_mbox_cleanup()	- cleanup resources of qdma mailbox
  * qdma_mbox_stop()	- stop mailbox processing
  * qdma_mbox_start()	- start mailbox processing
+ * qdma_mbox_poll_start()	- start mailbox processing in poll mode
  *
  * @param	xdev:	pointer to xlnx_dma_dev
  *
@@ -117,6 +119,7 @@ int qdma_mbox_init(struct xlnx_dma_dev *xdev);
 void qdma_mbox_cleanup(struct xlnx_dma_dev *xdev);
 void qdma_mbox_stop(struct xlnx_dma_dev *xdev);
 void qdma_mbox_start(struct xlnx_dma_dev *xdev);
+void qdma_mbox_poll_start(struct xlnx_dma_dev *xdev);
 
 /*****************************************************************************/
 /**

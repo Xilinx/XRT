@@ -56,7 +56,7 @@ bool IOCtlTraceS2MM::isOpened()
   return true;
 }
 
-void IOCtlTraceS2MM::init(uint64_t bo_size, int64_t bufaddr)
+void IOCtlTraceS2MM::init(uint64_t bo_size, int64_t bufaddr, bool circular)
 {
   if(!isOpened()) {
     return;
@@ -65,7 +65,7 @@ void IOCtlTraceS2MM::init(uint64_t bo_size, int64_t bufaddr)
   if(out_stream)
     (*out_stream) << " IOCtlTraceS2MM::init " << std::endl;
 
-  struct ts2mm_config cfg = { bo_size, static_cast<uint64_t>(bufaddr), false };
+  struct ts2mm_config cfg = { bo_size, static_cast<uint64_t>(bufaddr), circular };
   ioctl(driver_FD, TR_S2MM_IOC_START, &cfg);
 }
 
