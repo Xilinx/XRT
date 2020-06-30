@@ -2519,6 +2519,34 @@ static inline int icap_xmc_free(struct icap *icap)
 	return err == -ENODEV ? 0 : err;
 }
 
+static bool check_group_topo_and_connectivity(struct icap *icap,
+	struct axlf *xclbin)
+{
+    struct connectivity *group_conn = icap->connectivity;
+	struct mem_topology *group_topo = icap->mem_topo;
+	const struct axlf_section_header *hdr = get_axlf_section_hdr(icap, xclbin, ASK_GROUP_TOPOLOGY);
+
+	if (!hdr || !group_topo)
+		return false;
+
+    /* If group_topology section presents, overwrite mem_topology with it */
+    memcpy(group_topo, ((const char *)xclbin) + hdr->m_sectionOffset,
+            hdr->m_sectionSize);
+	ICAP_INFO(icap, "Updating mem_topology by overwriting with group_topology");
+
+    hdr = get_axlf_section_hdr(icap, xclbin, ASK_GROUP_CONNECTIVITY);
+
+	if (!hdr || !group_conn)
+		return false;
+
+    /* If group_connectivity section presents, overwrite connectivity with it */
+    memcpy(group_conn, ((const char *)xclbin) + hdr->m_sectionOffset,
+            hdr->m_sectionSize);
+	ICAP_INFO(icap, "Updating connectivity by overwriting with group_connectivity");
+
+	return true;
+}
+
 static bool check_mem_topo_and_data_retention(struct icap *icap,
 	struct axlf *xclbin)
 {
@@ -2653,6 +2681,9 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 
 		xocl_subdev_create_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 	}
+
+    /* We can ignore the return status of this call */
+    (void) check_group_topo_and_connectivity(icap, xclbin);
 
 	/* Only when everything has been successfully setup, then enable xmc */
 	if (!err)
