@@ -245,6 +245,7 @@ using addr_type = uint64_t;
 
       void fetchAndPrintMessages();
       std::mutex mPrintMessagesLock;
+      double get_sim_xdma_version() { return sim_xdma_version; }
       // Restricted read/write on IP register space
       int xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data);
       int xclRegRead(uint32_t cu_index, uint32_t offset, uint32_t *datap);
@@ -339,13 +340,16 @@ using addr_type = uint64_t;
       bool     mVersalPlatform;
       //For Emulation specific messages on host from Device
       std::thread mMessengerThread;
+      std::thread mHostMemAccessThread;
       bool mMessengerThreadStarted;
+      bool mHostMemAccessThreadStarted;
       void closemMessengerThread();
       bool mIsTraceHubAvailable;
       //CU register space for xclRegRead/Write()
       std::map<uint32_t, uint64_t> mCuIndxVsBaseAddrMap;
       uint32_t mCuIndx;
       const size_t mCuMapSize = 64 * 1024;
+      double sim_xdma_version;
   };
 
   extern std::map<unsigned int, HwEmShim*> devices;

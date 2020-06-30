@@ -23,6 +23,48 @@
 #include <boost/lexical_cast.hpp>
 
 #include "xcl_perfmon_parameters.h"
+#define SEND_RESP2QDMA() \
+    { \
+        auto raw_response_header    = std::make_unique<char[]>(ri_len); \
+        auto raw_response_payload   = std::make_unique<char[]>(r_len);\
+        response_header->set_size(r_len);\
+        response_header->SerializeToArray((void*)raw_response_header.get(),ri_len);\
+        response_payload.SerializeToArray((void*)raw_response_payload.get(),r_len);\
+        Q2h_sock->sk_write((void*)raw_response_header.get(),ri_len);\
+        Q2h_sock->sk_write((void*)raw_response_payload.get(),r_len);\
+    }
+
+#define PROCESS_PAYLOAD()\
+    if (header->xcl_api() == xclQdma2HostReadMem_n) { \
+    	xclSlaveReadReq_call payload; \
+        xclSlaveReadReq_response response_payload; \
+    	payload.ParseFromArray((void*)raw_payload.get(), r); \
+        auto data = std::make_unique<char[]>(payload.size()); \
+        bool resp = (*m_q2h_slave_rd_transaction)(false, 0,(unsigned long int)payload.addr(),(void* const)data.get(),(unsigned long int)payload.size()); \
+        response_payload.set_valid(resp); \
+        response_payload.set_data((void*)data.get(),payload.size()); \
+        int r_len = response_payload.ByteSize(); \
+        SEND_RESP2QDMA() \
+    } \
+    if (header->xcl_api() == xclQdma2HostWriteMem_n) { \
+    	xclSlaveWriteReq_call payload; \
+        xclSlaveWriteReq_response response_payload; \
+    	payload.ParseFromArray((void*)raw_payload.get(), r); \
+        bool resp = (*m_q2h_slave_wr_transaction)(false, 1,(unsigned long int)payload.addr(),(void const*)payload.data().c_str(),(unsigned long int)payload.size()); \
+        response_payload.set_valid(resp); \
+        int r_len = response_payload.ByteSize(); \
+        SEND_RESP2QDMA() \
+    } \
+    if (header->xcl_api() == xclQdma2HostInterrupt_n) { \
+    	xclInterruptOccured_call payload; \
+        xclInterruptOccured_response response_payload; \
+    	payload.ParseFromArray((void*)raw_payload.get(), r); \
+        uint32_t interrupt_line = payload.interrupt_line(); \
+        bool resp = (*m_q2h_slave_irq_transaction)(true, 1,0,interrupt_line,4); \
+        response_payload.set_valid(resp); \
+        int r_len = response_payload.ByteSize(); \
+        SEND_RESP2QDMA() \
+    }
 
 namespace {
 
@@ -36,6 +78,32 @@ file_exists(const std::string& fnm)
 }
 
 namespace xclhwemhal2 {
+    //Thread for which pooling for transaction from SIM_QDMA
+    void hostMemAccessThread(xclhwemhal2::HwEmShim* inst);
+
+    /**
+      * helper class for transactions from SIM_QDMA to XRT
+      *
+      */
+    class Q2H_helper {
+        private:
+        std::unique_ptr<call_packet_info> header;
+        std::unique_ptr<response_packet_info> response_header;
+	    size_t  i_len;
+	    size_t  ri_len;
+        std::unique_ptr<unix_socket> Q2h_sock;
+        bool (*m_q2h_slave_rd_transaction)(bool intr, int rdwr, unsigned long int, void* const,unsigned long int);
+        bool (*m_q2h_slave_wr_transaction)(bool intr, int rdwr, unsigned long int, void const*,unsigned long int);
+        bool (*m_q2h_slave_irq_transaction)(bool intr, int rdwr, unsigned long int, uint32_t,unsigned long int);
+
+        public:
+        Q2H_helper();
+        ~Q2H_helper(); 
+        int  poolingon_Qdma(); 
+        void register_q2h_slave_rd_transaction(bool (*q2h_slave_rd_transaction)(bool intr, int rdwr, unsigned long int, void* const,unsigned long int));
+        void register_q2h_slave_wr_transaction(bool (*q2h_slave_wr_transaction)(bool intr, int rdwr, unsigned long int, void const*,unsigned long int));
+        void register_q2h_slave_irq_transaction(bool (*q2h_slave_irq_transaction)(bool intr, int rdwr, unsigned long int, uint32_t,unsigned long int));
+    };
 
   namespace pt = boost::property_tree;
   std::map<unsigned int, HwEmShim*> devices;
@@ -532,6 +600,11 @@ namespace xclhwemhal2 {
       mMessengerThreadStarted = true;
     }
 
+    if(mHostMemAccessThreadStarted == false) {
+	  mHostMemAccessThread =
+	  std::thread(xclhwemhal2::hostMemAccessThread,this);
+	  mHostMemAccessThreadStarted = true;
+   }
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
     std::string launcherArgs = xclemulation::config::getInstance()->getLauncherArgs();
     std::string wdbFileName("");
@@ -1667,6 +1740,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     ,mDSAMinorVersion(DSA_MINOR_VERSION)
     ,mDeviceIndex(deviceIndex)
     ,mCuIndx(0)
+    ,sim_xdma_version(1.0)
   {
     simulator_started = false;
     tracecount_calls = 0;
@@ -1735,6 +1809,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     mMessengerThreadStarted = false;
     mIsTraceHubAvailable = false;
     mVersalPlatform=false;
+    mHostMemAccessThreadStarted = false;
   }
 
   bool HwEmShim::isMBSchedulerEnabled()
@@ -2956,6 +3031,7 @@ int HwEmShim::xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char
 		  mMessengerThread.join();
 		  mMessengerThreadStarted = false;
 	  }
+	  mHostMemAccessThreadStarted = false;
   }
 
 //CU register space for xclRegRead/Write()
@@ -3013,4 +3089,94 @@ int HwEmShim::xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data)
 }
 /********************************************** QDMA APIs IMPLEMENTATION END**********************************************/
 /**********************************************HAL2 API's END HERE **********************************************/
+/********************************************** Q2H_helper class implementation starts **********************************************/
+bool device2xrt_rd_trans_cb(bool, int, unsigned long int addr, void* const data_ptr,unsigned long int size) {
+    uint32_t d = 0xf;
+    char* const data = (char* const)data_ptr;
+    for(unsigned long int i=0;i<size; i++) {
+       data[i] = i+d;
+    }
+     
+    return true;
+}
+bool device2xrt_wr_trans_cb(bool intr, int rd_wr, unsigned long int addr, void const* data_ptr,unsigned long int size) {
+    //const char *data = (const char*)data_ptr;
+    return true;
+}
+bool device2xrt_irq_trans_cb(bool, int, unsigned long int, uint32_t,unsigned long int) {
+    return true;
+}
+Q2H_helper :: Q2H_helper() {
+    header          = std::make_unique<call_packet_info>();
+    response_header = std::make_unique<response_packet_info>();
+	std::cout << " Before xcl_sock_K2H\n";
+    Q2h_sock        = std::make_unique<unix_socket>("xcl_sock_K2H2");
+	std::cout << " After xcl_sock_K2H\n";
+    header->set_size(0);
+    header->set_xcl_api(0);
+    response_header->set_size(0);
+    response_header->set_xcl_api(0);
+    i_len           = header->ByteSize();
+    ri_len          = response_header->ByteSize();
+}
+Q2H_helper::~Q2H_helper() {
+}
+
+/**
+ * Pooling on socket for any memory or interrupt requests from SIM_QDMA
+ *
+ */
+int Q2H_helper::poolingon_Qdma() {
+    //Getting incoming header packet from sim_qdma
+    auto raw_header = std::make_unique<char[]>(i_len);
+    int r = Q2h_sock->sk_read((void*)raw_header.get(), i_len);
+    if (r <= 0) {
+    	return r;
+    }
+    assert(i_len == (uint32_t)r);
+    //deserializing protobuf message
+    header->ParseFromArray((void*)raw_header.get(), i_len);
+    if (header->xcl_api() == xclClose_n) {
+        return -1;
+    }
+    //Getting incoming header packet from sim_qdma
+    auto raw_payload = std::make_unique<char[]>(header->size());
+    r = Q2h_sock->sk_read((void*)raw_payload.get(), header->size());
+    assert((uint32_t)r == header->size());
+    //processing payload and sending the response message back to sim_qdma
+    PROCESS_PAYLOAD()
+    return 1;
+}
+void Q2H_helper::register_q2h_slave_rd_transaction(bool (*q2h_slave_rd_transaction)(bool, int, unsigned long int, void* const,unsigned long int)) {
+    m_q2h_slave_rd_transaction = q2h_slave_rd_transaction;
+}
+void Q2H_helper::register_q2h_slave_wr_transaction(bool (*q2h_slave_wr_transaction)(bool, int, unsigned long int, void const *,unsigned long int)) {
+    m_q2h_slave_wr_transaction = q2h_slave_wr_transaction;
+}
+void Q2H_helper::register_q2h_slave_irq_transaction(bool (*q2h_slave_irq_transaction)(bool, int, unsigned long int, uint32_t,unsigned long int)) {
+    m_q2h_slave_irq_transaction = q2h_slave_irq_transaction;
+}
+
+void hostMemAccessThread(xclhwemhal2::HwEmShim* inst) {
+    if(inst->get_sim_xdma_version() > 1.0) {
+        auto mq2h_helper_ptr = std::make_unique<Q2H_helper>();
+        mq2h_helper_ptr->register_q2h_slave_rd_transaction(device2xrt_rd_trans_cb);
+        mq2h_helper_ptr->register_q2h_slave_wr_transaction(device2xrt_wr_trans_cb);
+        mq2h_helper_ptr->register_q2h_slave_irq_transaction(device2xrt_irq_trans_cb);
+        //sleep(10000);
+        while(1){
+            int r =0;
+            try {
+                if (!inst->get_simulator_started())
+                    return;
+                r = mq2h_helper_ptr->poolingon_Qdma();
+            } catch(int e) {
+                std::cout << " Exception during socket communitication between SIM_QDMA ---> HE_EMU driver.." << std::endl;
+            }
+            if(r < 0)
+                break;
+        }
+    }
+}
+/********************************************** Q2H_helper class implementation Ends **********************************************/
 }  // end namespace xclhwemhal2

@@ -31,13 +31,13 @@
 class unix_socket {
   private:
     int fd;
-    void start_server(const std::string sk_desc);
+    void start_server(const std::string& sk_desc);
     std::string name;
 public:
     bool server_started;
-    void set_name(std::string &sock_name) { name = sock_name;}
+    void set_name(const std::string &sock_name) { name = sock_name;}
     std::string get_name() { return name;}
-    unix_socket();
+    unix_socket(const std::string& sock_id="xcl_sock");
     ~unix_socket()
     {
        server_started = false;
