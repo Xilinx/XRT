@@ -11,6 +11,7 @@
 #include <linux/sched.h>
 #include <linux/vmalloc.h>
 #include <linux/device.h>
+#include <linux/delay.h>
 #include "kds_core.h"
 
 /* for sysfs */
@@ -204,7 +205,7 @@ acquire_cu_idx(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 out:
 	++cu_mgmt->cu_usage[index];
 	mutex_unlock(&cu_mgmt->lock);
-	return cu_mgmt->xcus[index]->info.inst_idx;
+	return index;
 }
 
 static void
@@ -292,6 +293,7 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 {
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
 	int cu_idx = info->cu_idx;
+	int state;
 
 	if (cu_idx >= cu_mgmt->num_cus) {
 		kds_err(client, "CU(%d) not found", cu_idx);
@@ -301,6 +303,27 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 	if (!test_and_clear_bit(cu_idx, client->cu_bitmap)) {
 		kds_err(client, "CU(%d) has never been reserved", cu_idx);
 		return -EINVAL;
+	}
+
+	/* Before close, make sure no remain commands in CU's queue.
+	 * There is no reason to sleep 500ms :)
+	 */
+	while (xrt_cu_abort(cu_mgmt->xcus[cu_idx], client) == -EAGAIN)
+		msleep(500);
+
+	do {
+		msleep(100);
+		state = xrt_cu_abort_done(cu_mgmt->xcus[cu_idx]);
+	} while (!state);
+
+	if (state == CU_STATE_BAD) {
+		kds_info(client, "CU(%d) hangs, please reset device", cu_idx);
+		/* No lock to protect bad_state.
+		 * If a new client doesn't get the updated status and send commands,
+		 * those commands would failed with TIMEOUT state.
+		 */
+		kds->bad_state = 1;
+		xrt_cu_set_bad_state(cu_mgmt->xcus[cu_idx]);
 	}
 
 	/* cu_mgmt->cu_refs is the critical section of multiple clients */
@@ -320,6 +343,7 @@ int kds_init_sched(struct kds_sched *kds)
 	mutex_init(&kds->lock);
 	mutex_init(&kds->cu_mgmt.lock);
 	kds->num_client = 0;
+	kds->bad_state = 0;
 
 	return 0;
 }
@@ -437,12 +461,43 @@ int kds_init_client(struct kds_sched *kds, struct kds_client *client)
 	return 0;
 }
 
+static inline void
+_kds_fini_client(struct kds_sched *kds, struct kds_client *client)
+{
+	struct kds_ctx_info info;
+	u32 bit;
+
+	kds_info(client, "Client pid(%d) has %d opening context",
+		 pid_nr(client->pid), client->num_ctx);
+
+	mutex_lock(&client->lock);
+	while (client->virt_cu_ref) {
+		info.cu_idx = CU_CTX_VIRT_CU;
+		kds_del_context(kds, client, &info);
+	}
+
+	bit = find_first_bit(client->cu_bitmap, MAX_CUS);
+	while (bit < MAX_CUS) {
+		info.cu_idx = bit;
+		kds_del_context(kds, client, &info);
+		bit = find_next_bit(client->cu_bitmap, MAX_CUS, bit + 1);
+	};
+	bitmap_zero(client->cu_bitmap, MAX_CUS);
+	mutex_unlock(&client->lock);
+
+	WARN_ON(client->num_ctx);
+}
+
 void kds_fini_client(struct kds_sched *kds, struct kds_client *client)
 {
 #if PRE_ALLOC
 	vfree(client->xcmds);
 	vfree(client->infos);
 #endif
+
+	/* Release client's resources */
+	if (client->num_ctx)
+		_kds_fini_client(kds, client);
 
 	put_pid(client->pid);
 	mutex_destroy(&client->lock);
@@ -551,6 +606,16 @@ int kds_del_cu(struct kds_sched *kds, struct xrt_cu *xcu)
 	return -ENODEV;
 }
 
+void kds_reset(struct kds_sched *kds)
+{
+	kds->bad_state = 0;
+}
+
+int is_bad_state(struct kds_sched *kds)
+{
+	return kds->bad_state;
+}
+
 /*
  * Return number of client with open ("live") contexts on CUs.
  * If this number > 0, xclbin is locked down.
@@ -594,21 +659,6 @@ out:
 	return count;
 }
 
-/* General notify client function */
-void notify_execbuf(struct kds_command *xcmd, int status)
-{
-	struct kds_client *client = xcmd->client;
-	struct ert_packet *ecmd = (struct ert_packet *)xcmd->execbuf;
-
-	if (status == KDS_COMPLETED)
-		ecmd->state = ERT_CMD_STATE_COMPLETED;
-	else if (status == KDS_ERROR)
-		ecmd->state = ERT_CMD_STATE_ERROR;
-
-	atomic_inc(&client->event);
-	wake_up_interruptible(&client->waitq);
-}
-
 /* User space execbuf command related functions below */
 void cfg_ecmd2xcmd(struct ert_configure_cmd *ecmd,
 		   struct kds_command *xcmd)
@@ -618,7 +668,6 @@ void cfg_ecmd2xcmd(struct ert_configure_cmd *ecmd,
 	xcmd->type = KDS_CU;
 	xcmd->opcode = OP_CONFIG;
 
-	xcmd->cb.notify_host = notify_execbuf;
 	xcmd->execbuf = (u32 *)ecmd;
 
 	xcmd->isize = ecmd->num_cus * sizeof(u32);
@@ -638,7 +687,6 @@ void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	xcmd->type = KDS_CU;
 	xcmd->opcode = OP_START;
 
-	xcmd->cb.notify_host = notify_execbuf;
 	xcmd->execbuf = (u32 *)ecmd;
 
 	xcmd->cu_mask[0] = ecmd->cu_mask;

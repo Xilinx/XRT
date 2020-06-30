@@ -337,6 +337,18 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		return -EINVAL;
 	}
 
+	if (kds_mode) {
+		if (is_bad_state(&XDEV(xdev)->kds)) {
+			err = -EDEADLK;
+			goto done;
+		}
+	} else {
+		if (list_is_singular(&xdev->ctx_list) && atomic_read(&xdev->outstanding_execs)) {
+			err = -EDEADLK;
+			goto done;
+		}
+	}
+
 	if (xclbin_downloaded(xdev, &bin_obj.m_header.uuid))
 		goto done;
 
