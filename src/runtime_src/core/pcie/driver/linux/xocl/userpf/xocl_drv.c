@@ -22,6 +22,7 @@
 #include <linux/crc32c.h>
 #include <linux/random.h>
 #include <linux/iommu.h>
+#include <linux/pagemap.h>
 #include "../xocl_drv.h"
 #include "common.h"
 #include "version.h"
