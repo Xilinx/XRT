@@ -18,6 +18,7 @@
 #include "core/common/dlfcn.h"
 #include "plugin/xdp/debug.h"
 #include "core/common/module_loader.h"
+#include <stdexcept>
 
 namespace xocl {
 namespace debug {

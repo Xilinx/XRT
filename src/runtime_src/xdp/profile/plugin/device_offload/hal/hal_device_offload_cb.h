@@ -1,7 +1,5 @@
 /**
- * Copyright (C) 2017-2018 Xilinx, Inc
- * Author: Sonal Santan, Ryan Radjabi
- * Simple command line utility to inetract with SDX PCIe devices
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,17 +14,17 @@
  * under the License.
  */
 
-#include "core/pcie/user_aws/awssak.h"
+#ifndef DEVICE_OFFLOAD_CB_DOT_H
+#define DEVICE_OFFLOAD_CB_DOT_H
 
-int main(int argc, char *argv[])
-{
-    try {
-      return xcldev::xclAwssak(argc, argv);
-    } catch (const std::exception& ex) {
-      std::cout << ex.what() << std::endl;
-    } catch(...) {
-      std::cout << "Unknown exception caught from xcldev::xclAwssak()" << std::endl;
-    }
+// These are the functions that are visible when the plugin is dynamically
+//  loaded.  They should be linked to callbacks in XRT via dlsym and then
+//  called directly.
 
-    return 1;
-}
+extern "C" 
+void updateDeviceHAL(void* handle) ;
+
+extern "C"
+void flushDeviceHAL(void* handle) ;
+
+#endif

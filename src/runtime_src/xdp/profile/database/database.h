@@ -76,13 +76,14 @@ namespace xdp {
     inline void registerPlugin(XDPPlugin* p)   { plugins.push_back(p) ; }
     inline void unregisterPlugin(XDPPlugin* p) { plugins.remove(p) ; }
 
-    XDP_EXPORT uint64_t addDevice(std::string&);
-    XDP_EXPORT uint64_t getDeviceId(std::string&);
+    XDP_EXPORT uint64_t addDevice(const std::string&);
+    XDP_EXPORT uint64_t getDeviceId(const std::string&);
 
     // Functions that provide arbitration between multiple plugins
     //  for resources that should only exist once regardless of 
     //  the number of plugins
     XDP_EXPORT bool claimRunSummaryOwnership() ;
+    XDP_EXPORT bool claimDeviceOffloadOwnership() ;
   } ;
 }
 

@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-2019,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -58,13 +58,6 @@
 #endif
 
 /**
- * This flag needs to be uncommented when HW fix for MBOX communication
- * failure after FLR of PF is resolved.
- */
-
-/*#define QDMA_FLR_ENABLE*/
-
-/**
  * qdma device management
  * maintains a list of the qdma devices
  */
@@ -85,25 +78,237 @@ struct qdma_resource_lock {
 	struct mutex lock;
 };
 
+/*****************************************************************************/
+/**
+ * pci_dma_mask_set() - check the pci capability of the dma device
+ *
+ * @param[in]	pdev:	pointer to struct pci_dev
+ *
+ *
+ * @return	0: on success
+ * @return	<0: on failure
+ *****************************************************************************/
+static int pci_dma_mask_set(struct pci_dev *pdev)
+{
+	/** 64-bit addressing capability for XDMA? */
+	if (!pci_set_dma_mask(pdev, DMA_BIT_MASK(64))) {
+		/** use 64-bit DMA for descriptors */
+		pci_set_consistent_dma_mask(pdev, DMA_BIT_MASK(64));
+		/** use 64-bit DMA, 32-bit for consistent */
+	} else if (!pci_set_dma_mask(pdev, DMA_BIT_MASK(32))) {
+		pci_set_consistent_dma_mask(pdev, DMA_BIT_MASK(32));
+		/** use 32-bit DMA */
+		dev_info(&pdev->dev, "Using a 32-bit DMA mask.\n");
+	} else {
+		/** use 32-bit DMA */
+		dev_info(&pdev->dev, "No suitable DMA possible.\n");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+#if KERNEL_VERSION(3, 5, 0) <= LINUX_VERSION_CODE
+static void pci_enable_relaxed_ordering(struct pci_dev *pdev)
+{
+	pcie_capability_set_word(pdev, PCI_EXP_DEVCTL, PCI_EXP_DEVCTL_RELAX_EN);
+}
+
+static void pci_disable_relaxed_ordering(struct pci_dev *pdev)
+{
+	pcie_capability_clear_word(pdev, PCI_EXP_DEVCTL,
+			PCI_EXP_DEVCTL_RELAX_EN);
+}
+
+static void pci_enable_extended_tag(struct pci_dev *pdev)
+{
+	pcie_capability_set_word(pdev, PCI_EXP_DEVCTL, PCI_EXP_DEVCTL_EXT_TAG);
+}
+
+static void pci_disable_extended_tag(struct pci_dev *pdev)
+{
+	pcie_capability_clear_word(pdev, PCI_EXP_DEVCTL,
+			PCI_EXP_DEVCTL_EXT_TAG);
+}
+
+#else
+static void pci_enable_relaxed_ordering(struct pci_dev *pdev)
+{
+	u16 v;
+	int pos;
+
+	pos = pci_pcie_cap(pdev);
+	if (pos > 0) {
+		pci_read_config_word(pdev, pos + PCI_EXP_DEVCTL, &v);
+		v |= PCI_EXP_DEVCTL_RELAX_EN;
+		pci_write_config_word(pdev, pos + PCI_EXP_DEVCTL, v);
+	}
+}
+
+static void pci_disable_relaxed_ordering(struct pci_dev *pdev)
+{
+	u16 v;
+	int pos;
+
+	pos = pci_pcie_cap(pdev);
+	if (pos > 0) {
+		pci_read_config_word(pdev, pos + PCI_EXP_DEVCTL, &v);
+		v &= ~(PCI_EXP_DEVCTL_RELAX_EN);
+		pci_write_config_word(pdev, pos + PCI_EXP_DEVCTL, v);
+	}
+}
+
+static void pci_enable_extended_tag(struct pci_dev *pdev)
+{
+	u16 v;
+	int pos;
+
+	pos = pci_pcie_cap(pdev);
+	if (pos > 0) {
+		pci_read_config_word(pdev, pos + PCI_EXP_DEVCTL, &v);
+		v |= PCI_EXP_DEVCTL_EXT_TAG;
+		pci_write_config_word(pdev, pos + PCI_EXP_DEVCTL, v);
+	}
+}
+
+static void pci_disable_extended_tag(struct pci_dev *pdev)
+{
+	u16 v;
+	int pos;
+
+	pos = pci_pcie_cap(pdev);
+	if (pos > 0) {
+		pci_read_config_word(pdev, pos + PCI_EXP_DEVCTL, &v);
+		v &= ~(PCI_EXP_DEVCTL_EXT_TAG);
+		pci_write_config_word(pdev, pos + PCI_EXP_DEVCTL, v);
+	}
+}
+#endif
+
+
 #if defined(__QDMA_VF__)
 static void xdev_reset_work(struct work_struct *work)
 {
 	struct xlnx_dma_dev *xdev = container_of(work, struct xlnx_dma_dev,
 								reset_work);
 	struct pci_dev *pdev = xdev->conf.pdev;
+	int rv = 0;
 
 	if (xdev->reset_state == RESET_STATE_RECV_PF_RESET_REQ) {
-		pci_reset_function(pdev);
+
+		qdma_device_offline(pdev, (unsigned long)xdev, XDEV_FLR_ACTIVE);
+		pci_disable_extended_tag(pdev);
+		pci_disable_relaxed_ordering(pdev);
+		pci_release_regions(pdev);
+		pci_disable_device(pdev);
+
+		rv = pci_request_regions(pdev, "qdma-vf");
+		if (rv) {
+			pr_err("cannot obtain PCI resources\n");
+			return;
+		}
+
+		rv = pci_enable_device(pdev);
+		if (rv) {
+			pr_err("cannot enable PCI device\n");
+			pci_release_regions(pdev);
+			return;
+		}
+
+		/* enable relaxed ordering */
+		pci_enable_relaxed_ordering(pdev);
+
+		/* enable extended tag */
+		pci_enable_extended_tag(pdev);
+
+		/* enable bus master capability */
+		pci_set_master(pdev);
+
+		pci_dma_mask_set(pdev);
+
+		pcie_set_readrq(pdev, 512);
+
+		qdma4_device_online(pdev, (unsigned long)xdev, XDEV_FLR_ACTIVE);
+
 		if (xdev->reset_state == RESET_STATE_RECV_PF_RESET_DONE)
 			xdev->reset_state = RESET_STATE_IDLE;
 	}  else if (xdev->reset_state == RESET_STATE_RECV_PF_OFFLINE_REQ) {
-		qdma4_device_offline(pdev, (unsigned long)xdev,
+		qdma_device_offline(pdev, (unsigned long)xdev,
 							XDEV_FLR_INACTIVE);
 	}
 
 }
 #endif
 
+#if 0
+/*****************************************************************************/
+/**
+ * xdev_list_first() - handler to return the first xdev entry from the list
+ *
+ * @return	pointer to first xlnx_dma_dev on success
+ * @return	NULL on failure
+ *****************************************************************************/
+struct xlnx_dma_dev *xdev_list_first(void)
+{
+	struct xlnx_dma_dev *xdev;
+
+	mutex_lock(&xdev_mutex);
+	xdev = list_first_entry(&xdev_list, struct xlnx_dma_dev, list_head);
+	mutex_unlock(&xdev_mutex);
+
+	return xdev;
+}
+
+/*****************************************************************************/
+/**
+ * xdev_list_next() - handler to return the next xdev entry from the list
+ *
+ * @param[in]	xdev:	pointer to current xdev
+ *
+ * @return	pointer to next xlnx_dma_dev on success
+ * @return	NULL on failure
+ *****************************************************************************/
+struct xlnx_dma_dev *xdev_list_next(struct xlnx_dma_dev *xdev)
+{
+	struct xlnx_dma_dev *next;
+
+	mutex_lock(&xdev_mutex);
+	next = list_next_entry(xdev, list_head);
+	mutex_unlock(&xdev_mutex);
+
+	return next;
+}
+
+/*****************************************************************************/
+/**
+ * xdev_list_dump() - list the dma device details
+ *
+ * @param[in]	buflen:		length of the input buffer
+ * @param[out]	buf:		message buffer
+ *
+ * @return	pointer to next xlnx_dma_dev on success
+ * @return	NULL on failure
+ *****************************************************************************/
+int xdev_list_dump(char *buf, int buflen)
+{
+	struct xlnx_dma_dev *xdev, *tmp;
+	int len = 0;
+
+	mutex_lock(&xdev_mutex);
+	list_for_each_entry_safe(xdev, tmp, &xdev_list, list_head) {
+		len += sprintf(buf + len, "qdma%05x\t%02x:%02x.%02x\n",
+				xdev->conf.bdf, xdev->conf.pdev->bus->number,
+				PCI_SLOT(xdev->conf.pdev->devfn),
+				PCI_FUNC(xdev->conf.pdev->devfn));
+		if (len >= buflen)
+			break;
+	}
+	mutex_unlock(&xdev_mutex);
+
+	buf[len] = '\0';
+	return len;
+}
+#endif
 
 /*****************************************************************************/
 /**
@@ -195,6 +400,32 @@ static struct xlnx_dma_dev *xdev_find_by_pdev(struct pci_dev *pdev)
 	return NULL;
 }
 
+#if 0
+/*****************************************************************************/
+/**
+ * xdev_find_by_idx() - find the xdev using the index value
+ *
+ * @param[in]	idx:	index value in the xdev list
+ *
+ * @return	pointer to xlnx_dma_dev on success
+ * @return	NULL on failure
+ *****************************************************************************/
+struct xlnx_dma_dev *qdma4_xdev_find_by_idx(int idx)
+{
+	struct xlnx_dma_dev *xdev, *tmp;
+
+	mutex_lock(&xdev_mutex);
+	list_for_each_entry_safe(xdev, tmp, &xdev_list, list_head) {
+		if (xdev->conf.bdf == idx) {
+			mutex_unlock(&xdev_mutex);
+			return xdev;
+		}
+	}
+	mutex_unlock(&xdev_mutex);
+	return NULL;
+}
+#endif
+
 /*****************************************************************************/
 /**
  * qdma4_xdev_check_hndl() - helper function to validate the device handle
@@ -205,7 +436,8 @@ static struct xlnx_dma_dev *xdev_find_by_pdev(struct pci_dev *pdev)
  * @return	0: success
  * @return	<0: on failure
  *****************************************************************************/
-int qdma4_xdev_check_hndl(const char *fname, struct pci_dev *pdev, unsigned long hndl)
+int qdma4_xdev_check_hndl(const char *fname, struct pci_dev *pdev,
+			unsigned long hndl)
 {
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)hndl;
 
@@ -285,6 +517,82 @@ static int xdev_map_bars(struct xlnx_dma_dev *xdev, struct pci_dev *pdev)
 	return 0;
 }
 
+#if 0
+/*****************************************************************************/
+/**
+ * xdev_identify_bars() - identifies the user bar and bypass bar
+ *
+ * @param[in]	xdev:	pointer to current xdev
+ * @param[in]	pdev:	pointer to struct pci_dev\
+ *
+ * @return	0 on success, -ve on failure
+ *****************************************************************************/
+static int xdev_identify_bars(struct xlnx_dma_dev *xdev, struct pci_dev *pdev)
+{
+	int bar_idx = 0;
+	u8 num_bars_present = 0;
+	int bar_id_list[QDMA_BAR_NUM];
+	int bar_id_idx = 0;
+
+	/* Find out the number of bars present in the design */
+	for (bar_idx = 0; bar_idx < QDMA_BAR_NUM; bar_idx++) {
+		int map_len = 0;
+
+		map_len = pci_resource_len(pdev, bar_idx);
+		if (!map_len)
+			continue;
+
+		bar_id_list[bar_id_idx] = bar_idx;
+		bar_id_idx++;
+		num_bars_present++;
+	}
+
+	if (num_bars_present > 1) {
+		int rv = 0;
+
+		/* USER BAR IDENTIFICATION */
+		if (xdev->version_info.ip_type == QDMA_VERSAL_HARD_IP)
+			xdev->conf.bar_num_user = DEFAULT_USER_BAR;
+		else {
+#ifndef __QDMA_VF__
+			rv = xdev->hw.qdma_get_user_bar(xdev, 0,
+					xdev->func_id,
+					(uint8_t *)&xdev->conf.bar_num_user);
+#else
+			rv = xdev->hw.qdma_get_user_bar(xdev, 1,
+					xdev->func_id_parent,
+					(uint8_t *)&xdev->conf.bar_num_user);
+#endif
+		}
+
+		if (rv < 0) {
+			pr_err("get user bar failed with error = %d", rv);
+			return xdev->hw.qdma_get_error_code(rv);
+		}
+
+		pr_info("User BAR %d.\n", xdev->conf.bar_num_user);
+
+		/* BYPASS BAR IDENTIFICATION */
+		if (num_bars_present > 2) {
+			for (bar_idx = 0; bar_idx < num_bars_present;
+								bar_idx++) {
+				if ((bar_id_list[bar_idx] !=
+						xdev->conf.bar_num_user) &&
+						(bar_id_list[bar_idx] !=
+						xdev->conf.bar_num_config)) {
+					xdev->conf.bar_num_bypass =
+						bar_id_list[bar_idx];
+					pr_info("Bypass BAR %d.\n",
+						xdev->conf.bar_num_bypass);
+					break;
+				}
+			}
+		}
+	}
+	return 0;
+}
+#endif
+
 /*****************************************************************************/
 /**
  * xdev_map_bars() - allocate the dma device
@@ -321,36 +629,6 @@ static struct xlnx_dma_dev *xdev_alloc(struct qdma_dev_conf *conf)
 	return xdev;
 }
 
-/*****************************************************************************/
-/**
- * pci_dma_mask_set() - check the pci capability of the dma device
- *
- * @param[in]	pdev:	pointer to struct pci_dev
- *
- *
- * @return	0: on success
- * @return	<0: on failure
- *****************************************************************************/
-static int pci_dma_mask_set(struct pci_dev *pdev)
-{
-	/** 64-bit addressing capability for XDMA? */
-	if (!pci_set_dma_mask(pdev, DMA_BIT_MASK(64))) {
-		/** use 64-bit DMA for descriptors */
-		pci_set_consistent_dma_mask(pdev, DMA_BIT_MASK(64));
-		/** use 64-bit DMA, 32-bit for consistent */
-	} else if (!pci_set_dma_mask(pdev, DMA_BIT_MASK(32))) {
-		pci_set_consistent_dma_mask(pdev, DMA_BIT_MASK(32));
-		/** use 32-bit DMA */
-		dev_info(&pdev->dev, "Using a 32-bit DMA mask.\n");
-	} else {
-		/** use 32-bit DMA */
-		dev_info(&pdev->dev, "No suitable DMA possible.\n");
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
 #ifndef __QDMA_VF__
 static void qdma_err_mon(struct work_struct *work)
 {
@@ -373,47 +651,11 @@ static void qdma_err_mon(struct work_struct *work)
 }
 #endif
 
-#if KERNEL_VERSION(3, 5, 0) <= LINUX_VERSION_CODE
-static void pci_enable_relaxed_ordering(struct pci_dev *pdev)
-{
-	pcie_capability_set_word(pdev, PCI_EXP_DEVCTL, PCI_EXP_DEVCTL_RELAX_EN);
-}
 
-static void pci_enable_extended_tag(struct pci_dev *pdev)
-{
-	pcie_capability_set_word(pdev, PCI_EXP_DEVCTL, PCI_EXP_DEVCTL_EXT_TAG);
-}
-#else
-static void pci_enable_relaxed_ordering(struct pci_dev *pdev)
-{
-	u16 v;
-	int pos;
-
-	pos = pci_pcie_cap(pdev);
-	if (pos > 0) {
-		pci_read_config_word(pdev, pos + PCI_EXP_DEVCTL, &v);
-		v |= PCI_EXP_DEVCTL_RELAX_EN;
-		pci_write_config_word(pdev, pos + PCI_EXP_DEVCTL, v);
-	}
-}
-
-static void pci_enable_extended_tag(struct pci_dev *pdev)
-{
-	u16 v;
-	int pos;
-
-	pos = pci_pcie_cap(pdev);
-	if (pos > 0) {
-		pci_read_config_word(pdev, pos + PCI_EXP_DEVCTL, &v);
-		v |= PCI_EXP_DEVCTL_EXT_TAG;
-		pci_write_config_word(pdev, pos + PCI_EXP_DEVCTL, v);
-	}
-}
-#endif
 
 /*****************************************************************************/
 /**
- * qdma_device_offline() - set the dma device in offline mode
+ * qdma4_device_offline() - set the dma device in offline mode
  *
  * @param[in]	pdev:		pointer to struct pci_dev
  * @param[in]	dev_hndl:	device handle
@@ -487,29 +729,44 @@ int qdma4_device_offline(struct pci_dev *pdev, unsigned long dev_hndl,
 
 	qdma4_device_cleanup(xdev);
 	qdma_device_interrupt_cleanup(xdev);
+	qdma_mbox_stop(xdev);
+	qdma4_intr_teardown(xdev);
+	xdev->flags &= ~(XDEV_FLAG_IRQ);
 
+	/*
+	 * When the FLR is done to parent PF , it's associated VFs
+	 * and it's resources are no more active. The
+	 * interrupt state of the VF goes bad. That's why switching
+	 * from mbox's interrupt mode to poll mode
+	 */
+	qdma_mbox_poll_start(xdev);
 #ifdef __QDMA_VF__
-	xdev_sriov_vf_offline(xdev, 0); /* should be last message */
+	if (reset) {
+		if (xdev->reset_state == RESET_STATE_RECV_PF_RESET_REQ) {
 
-	if (xdev->reset_state == RESET_STATE_RECV_PF_RESET_REQ) {
-		/** Wait for the PF to send the PF Reset Done*/
-#ifdef QDMA_FLR_ENABLE
-		/**
-		 * Due to hardware issue, Reset Done message from PF does
-		 * not reach VF, so waiting for the RESET_DONE message
-		 * only slows down VF reset.
-		 */
-		qdma_waitq_wait_event_timeout(xdev->wq,
-			(xdev->reset_state == RESET_STATE_RECV_PF_RESET_DONE),
-			QDMA_MBOX_MSG_TIMEOUT_MS);
-#endif
-		if (xdev->reset_state != RESET_STATE_RECV_PF_RESET_DONE)
-			xdev->reset_state = RESET_STATE_INVALID;
-	}  else if (xdev->reset_state == RESET_STATE_RECV_PF_OFFLINE_REQ)
-		xdev->reset_state = RESET_STATE_PF_OFFLINE_REQ_PROCESSING;
-	else if (!reset) {
-		destroy_workqueue(xdev->workq);
-		xdev->workq = NULL;
+			xdev_sriov_vf_reset_offline(xdev);
+
+			/** Wait for the PF to send the PF Reset Done*/
+			qdma_waitq_wait_event_timeout(xdev->wq,
+				(xdev->reset_state ==
+				 RESET_STATE_RECV_PF_RESET_DONE),
+				10 * QDMA_MBOX_MSG_TIMEOUT_MS);
+
+			if (xdev->reset_state != RESET_STATE_RECV_PF_RESET_DONE)
+				xdev->reset_state = RESET_STATE_INVALID;
+		} else
+			xdev_sriov_vf_offline(xdev, 0);
+
+	} else {
+		if (xdev->reset_state == RESET_STATE_RECV_PF_OFFLINE_REQ) {
+			xdev_sriov_vf_offline(xdev, 0);
+			xdev->reset_state =
+				RESET_STATE_PF_OFFLINE_REQ_PROCESSING;
+		} else {
+			xdev_sriov_vf_offline(xdev, 0);
+			destroy_workqueue(xdev->workq);
+			xdev->workq = NULL;
+		}
 	}
 	qdma_mbox_stop(xdev);
 #elif defined(CONFIG_PCI_IOV)
@@ -522,10 +779,18 @@ int qdma4_device_offline(struct pci_dev *pdev, unsigned long dev_hndl,
 	}
 
 #endif
+
+	if (reset) {
+		/* Free the allocated resources if FLR process running*/
+		if (xdev->conf.fp_flr_free_resource)
+			xdev->conf.fp_flr_free_resource((unsigned long)xdev);
+	}
+
+	if (xdev->conf.qdma_drv_mode != POLL_MODE)
+		xdev->mbox.rx_poll = 0;
+
 	xdev_flag_set(xdev, XDEV_FLAG_OFFLINE);
-	qdma4_intr_teardown(xdev);
-	xdev->flags &= ~(XDEV_FLAG_IRQ);
-	if (xdev->dev_cap.mailbox_en && !xdev->conf.no_mbox)
+	if (xdev->dev_cap.mailbox_en && !xdev->conf.no_mailbox)
 		qdma_mbox_cleanup(xdev);
 
 	return 0;
@@ -533,7 +798,7 @@ int qdma4_device_offline(struct pci_dev *pdev, unsigned long dev_hndl,
 
 /*****************************************************************************/
 /**
- * qdma_device_online() - set the dma device in online mode
+ * qdma4_device_online() - set the dma device in online mode
  *
  * @param[in]	pdev:		pointer to struct pci_dev
  * @param[in]	dev_hndl:	device handle
@@ -546,19 +811,14 @@ int qdma4_device_online(struct pci_dev *pdev, unsigned long dev_hndl, int reset)
 {
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
 	int rv;
-
+#if !defined(__QDMA_VF__)
+	struct qdma_vf_info *vf;
+#endif
 	if (!xdev) {
 		pr_err("Invalid device handle received");
 		return -EINVAL;
 	}
-#if !defined(__QDMA_VF__) && defined(QDMA_FLR_ENABLE)
-	struct qdma_vf_info *vf = (struct qdma_vf_info *)xdev->vf_info;
 
-	if (!vf) {
-		pr_err("Invalid vf handle received");
-		return -EINVAL;
-	}
-#endif
 
 	if (qdma4_xdev_check_hndl(__func__, pdev, dev_hndl) < 0) {
 		pr_err("Invalid device");
@@ -570,9 +830,12 @@ int qdma4_device_online(struct pci_dev *pdev, unsigned long dev_hndl, int reset)
 			(unsigned long)xdev->conf.pdev, (unsigned long)pdev);
 	}
 
-#if defined(__QDMA_VF__) && !defined(QDMA_FLR_ENABLE)
-	if (reset && xdev->reset_state == RESET_STATE_INVALID)
+#if defined(__QDMA_VF__)
+	pr_info("reset_state = %d", xdev->reset_state);
+	if (reset && xdev->reset_state == RESET_STATE_INVALID) {
+		pr_info("returning");
 		return -EINVAL;
+	}
 #endif
 
 	if (xdev->conf.qdma_drv_mode != POLL_MODE &&
@@ -590,17 +853,9 @@ int qdma4_device_online(struct pci_dev *pdev, unsigned long dev_hndl, int reset)
 	}
 
 #ifndef __QDMA_VF__
-	if (xdev->vf_count && xdev->conf.no_mbox) {
-		pr_info("%s: mailbox disabled, reset # of VF %u to 0.\n",
-			dev_name(&pdev->dev), xdev->vf_count);
-		xdev->vf_count = 0;
-	}
-
-	if (xdev->dev_cap.mailbox_en && !xdev->conf.no_mbox)
+	if (xdev->dev_cap.mailbox_en && !xdev->conf.no_mailbox)
 		qdma_mbox_init(xdev);
 #else
-	/* always enable mailbox on VF */
-	xdev->conf.no_mbox = 1;
 	qdma_mbox_init(xdev);
 	if (!reset) {
 		qdma_waitq_init(&xdev->wq);
@@ -644,17 +899,24 @@ int qdma4_device_online(struct pci_dev *pdev, unsigned long dev_hndl, int reset)
 		schedule_delayed_work(&xdev->err_mon,
 				      msecs_to_jiffies(1000));
 	}
-#ifdef QDMA_FLR_ENABLE
+
 	/**
-	 * Due to hardware issue, Reset Done message from PF does not reach
-	 * VF.
+	 * Send the RESET_DONE message to VF
 	 */
 	if (reset && xdev->vf_count != 0) {
 		int i = 0;
 
+		vf = (struct qdma_vf_info *)xdev->vf_info;
+
+		if (!vf) {
+			pr_err("Invalid vf handle received");
+			return -EINVAL;
+		}
+
 		qdma_mbox_start(xdev);
 		for (i = 0; i < xdev->vf_count; i++) {
 			struct mbox_msg *m = NULL;
+			u8 vf_count_online = xdev->vf_count_online;
 
 			m = qdma_mbox_msg_alloc();
 			if (!m) {
@@ -665,9 +927,14 @@ int qdma4_device_online(struct pci_dev *pdev, unsigned long dev_hndl, int reset)
 						xdev->func_id, vf[i].func_id);
 			qdma_mbox_msg_send(xdev, m, 1,
 						QDMA_MBOX_MSG_TIMEOUT_MS);
+
+			qdma_waitq_wait_event_timeout(xdev->wq,
+				(xdev->vf_count_online ==
+				(vf_count_online + 1)),
+				QDMA_MBOX_MSG_TIMEOUT_MS);
 		}
 	}
-#endif
+
 #endif
 
 	return 0;
@@ -675,7 +942,7 @@ int qdma4_device_online(struct pci_dev *pdev, unsigned long dev_hndl, int reset)
 
 /*****************************************************************************/
 /**
- * qdma_device_open() - open the dma device
+ * qdma4_device_open() - open the dma device
  *
  * @param[in]	mod_name:	name of the dma device
  * @param[in]	conf:		device configuration
@@ -729,6 +996,15 @@ int qdma4_device_open(const char *mod_name, struct qdma_dev_conf *conf,
 			mod_name, dev_name(&pdev->dev));
 		return -EINVAL;
 	}
+
+#if 0
+	rv = pci_request_regions(pdev, mod_name);
+	if (rv) {
+		/* Just info, some other driver may have claimed the device. */
+		dev_info(&pdev->dev, "cannot obtain PCI resources\n");
+		return rv;
+	}
+#endif
 
 	rv = pci_enable_device(pdev);
 	if (rv) {
@@ -880,6 +1156,14 @@ int qdma4_device_open(const char *mod_name, struct qdma_dev_conf *conf,
 		goto cleanup_qdma;
 	}
 
+#if 0
+	rv = xdev_identify_bars(xdev, pdev);
+	if (rv) {
+		pr_err("Failed to identify bars, err %d", rv);
+		goto unmap_bars;
+	}
+#endif
+
 	pr_info("%s, %05x, pdev 0x%p, xdev 0x%p, ch %u, q %u, vf %u.\n",
 		dev_name(&pdev->dev), xdev->conf.bdf, pdev, xdev,
 		xdev->dev_cap.mm_channel_max, conf->qsets_max, conf->vf_max);
@@ -902,14 +1186,21 @@ unmap_bars:
 	kfree(xdev);
 
 disable_device:
+	pci_disable_extended_tag(pdev);
+	pci_disable_relaxed_ordering(pdev);
 	pci_disable_device(pdev);
+
+#if 0
+release_regions:
+	pci_release_regions(pdev);
+#endif
 
 	return rv;
 }
 
 /*****************************************************************************/
 /**
- * qdma_device_close() - close the dma device
+ * qdma4_device_close() - close the dma device
  *
  * @param[in]	pdev:		pointer to struct pci_dev
  * @param[in]	dev_hndl:	device handle
@@ -950,6 +1241,9 @@ int qdma4_device_close(struct pci_dev *pdev, unsigned long dev_hndl)
 
 	xdev_unmap_bars(xdev, pdev);
 
+	pci_disable_relaxed_ordering(pdev);
+	pci_disable_extended_tag(pdev);
+//	pci_release_regions(pdev);
 	pci_disable_device(pdev);
 
 	xdev_list_remove(xdev);
@@ -961,7 +1255,7 @@ int qdma4_device_close(struct pci_dev *pdev, unsigned long dev_hndl)
 
 /*****************************************************************************/
 /**
- * qdma_device_get_config() - get the device configuration
+ * qdma4_device_get_config() - get the device configuration
  *
  * @param[in]	dev_hndl:	device handle
  * @param[out]	conf:		dma device configuration
@@ -1187,7 +1481,7 @@ int qdma_device_get_ping_pong_tot_lat(unsigned long dev_hndl,
 }
 /*****************************************************************************/
 /**
- * qdma_device_set_config() - set the device configuration
+ * qdma4_device_set_config() - set the device configuration
  *
  * @param[in]	dev_hndl:	device handle
  * @param[in]	conf:		dma device configuration to set

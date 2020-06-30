@@ -505,16 +505,18 @@ static void fill_qdma_request_sgl(struct qdma_request *req, struct sg_table *sgt
 	int i;
 	struct scatterlist *sg;
 	struct qdma_sw_sg *sgl = req->sgl;
+	unsigned int sgcnt = sgt->nents;
 
-	req->sgcnt = sgt->nents;
-	for_each_sg(sgt->sgl, sg, sgt->nents, i) {
+	req->sgcnt = sgcnt;
+	for_each_sg(sgt->sgl, sg, sgcnt, i) {
 		sgl->next = sgl + 1;	
 		sgl->pg = sg_page(sg);
 		sgl->offset = sg->offset;
 		sgl->len = sg_dma_len(sg);
 		sgl->dma_addr = sg_dma_address(sg);
+		sgl++;
 	}
-	sgl->next = NULL;
+	req->sgl[sgcnt - 1].next = NULL;
 }
 
 static ssize_t qdma_migrate_bo(struct platform_device *pdev,

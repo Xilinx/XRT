@@ -197,7 +197,7 @@ namespace xdp {
 
     DeviceTraceLogger*  deviceTraceLogger    = new TraceLoggerCreatingDeviceEvents(deviceId);
     DeviceTraceOffload* deviceTraceOffloader = new DeviceTraceOffload(devInterface, deviceTraceLogger, 10, traceBufSz, false);
-    init_done = deviceTraceOffloader->read_trace_init();
+    init_done = deviceTraceOffloader->read_trace_init(false);
     if (init_done) {
       deviceTraceLoggers[deviceId]    = deviceTraceLogger;
       deviceTraceOffloaders[deviceId] = deviceTraceOffloader;
