@@ -132,6 +132,13 @@ get_profile()
 }
 
 inline bool
+get_container()
+{
+  static bool value = detail::get_bool_value("Debug.container",false);
+  return value;
+}
+
+inline bool
 get_device_profile()
 {
   static bool value = get_profile() && detail::get_bool_value("Debug.device_profile",false);
