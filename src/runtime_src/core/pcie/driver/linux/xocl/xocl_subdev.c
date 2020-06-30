@@ -501,6 +501,8 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 
 	retval = platform_device_add(subdev->pldev);
 	if (retval) {
+		platform_device_put(subdev->pldev);
+		subdev->pldev = NULL;
 		xocl_lock_xdev(xdev_hdl);
 		subdev->hold = false;
 		xocl_xdev_err(xdev_hdl, "failed to add device");
