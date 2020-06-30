@@ -38,7 +38,9 @@ namespace po = boost::program_options;
 #include <iostream>
 #include <thread>
 #include <regex>
-
+#ifdef _GNUC_
+#include <sys/mman.h> //munmap
+#endif
 #ifdef _WIN32
 #pragma warning (disable : 4996)
 /* Disable warning for use of getenv */
