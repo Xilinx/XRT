@@ -56,9 +56,10 @@ namespace xclemulation{
     mUMRChecks = false;
     mOOBChecks = false;
     mMemLogs = false;
-    mLaunchWaveform = LAUNCHWAVEFORM::BATCH;
+    mLaunchWaveform = DEBUG_MODE::OFF;
     mDontRun = false;
     mSimDir = "";
+    mUserPreSimScript = "";
     mPacketSize = 0x800000;
     mMaxTraceCount = 1;
     mPaddingFactor = 1;
@@ -75,6 +76,8 @@ namespace xclemulation{
     mSystemDPA = true;
     mLegacyErt = ERTMODE::NONE;
     mCuBaseAddrForce=-1;
+    mIsSharedFmodel=true;
+    mTimeOutScale=TIMEOUT_SCALE::NA;
   }
 
   static bool getBoolValue(std::string& value,bool defaultValue)
@@ -145,6 +148,30 @@ namespace xclemulation{
       {
         setDontRun(getBoolValue(value,false));
       }
+      else if (name == "user_pre_sim_script") {
+        setUserPreSimScript(value);
+        setenv("USER_PRE_SIM_SCRIPT", value.c_str(), true);
+      }
+      else if (name == "user_post_sim_script") {
+        setUserPostSimScript(value);
+        setenv("USER_POST_SIM_SCRIPT", value.c_str(), true);
+      } 
+      else if (name == "xtlm_aximm_log") {
+        bool val = getBoolValue(value, true);
+        if (val) {
+          setenv("ENABLE_XTLM_AXIMM_LOG", "1", true);
+        } else {
+          setenv("ENABLE_XTLM_AXIMM_LOG", "0", true);
+        }
+      }
+      else if (name == "xtlm_axis_log") {
+        bool val = getBoolValue(value, true);
+        if (val) {
+          setenv("ENABLE_XTLM_AXIS_LOG", "1", true);
+        } else {
+          setenv("ENABLE_XTLM_AXIS_LOG", "0", true);
+        }
+      }
       else if (name == "ENABLE_GMEM_LATENCY" || name == "enable_gmem_latency") {
         //This is then new INI option that sets the ENV HW_EM_DISABLE_LATENCY to appropriate value before 
         //launching simulation
@@ -157,11 +184,7 @@ namespace xclemulation{
       }
       else if(name == "enable_shared_memory")
       {
-        //this is temporary solution to use legacy DDR model in emulation. We should remove this switch Once all issues in latest model is fixed
-        if(!getBoolValue(value,true))
-        {
-         setenv("SDX_USE_LEGACY_FMODEL","true",true);
-        }
+        mIsSharedFmodel=getBoolValue(value,true);
       }
       else if(name == "keep_run_dir")
       {
@@ -202,23 +225,29 @@ namespace xclemulation{
       {
         setLauncherArgs(value);
       }
-      else if(name == "launch_waveform")
+      else if(name == "launch_waveform" || name == "debug_mode" )
       {
+        if (name == "launch_waveform")
+          std::cout << "WARNING: [HW-EMU 09] INI option 'launch_waveform' is deprecated and replaced with the new switch 'debug_mode'." << std::endl;
         if (boost::iequals(value,"gui" ))
         {
-          setLaunchWaveform(LAUNCHWAVEFORM::GUI);
+          setLaunchWaveform(DEBUG_MODE::GUI);
         }
         else if (boost::iequals(value,"batch" ))
         {
-          setLaunchWaveform(LAUNCHWAVEFORM::BATCH);
+          setLaunchWaveform(DEBUG_MODE::BATCH);
         }
         else if (boost::iequals(value,"off" ))
         {
-          setLaunchWaveform(LAUNCHWAVEFORM::OFF);
+          setLaunchWaveform(DEBUG_MODE::OFF);
+        }
+        else if (boost::iequals(value,"gdb" ))
+        {
+          setLaunchWaveform(DEBUG_MODE::GDB);
         }
         else
         {
-          setLaunchWaveform(LAUNCHWAVEFORM::BATCH);
+          setLaunchWaveform(DEBUG_MODE::OFF);
         }
       }
       else if(name == "Debug.sdx_server_port")
@@ -247,6 +276,16 @@ namespace xclemulation{
           setLegacyErt(ERTMODE::LEGACY);
       } else if (name=="cu_base_addr_force") {
           mCuBaseAddrForce= strtoll(value.c_str(),NULL,0);
+      } else if (name == "timeout_scale") {
+      	  if (boost::iequals(value,"ms")) {
+      		mTimeOutScale=TIMEOUT_SCALE::MS;
+      	  } else if (boost::iequals(value,"sec")) {
+    		  mTimeOutScale=TIMEOUT_SCALE::SEC;
+    	  } else if (boost::iequals(value,"min")) {
+    		  mTimeOutScale=TIMEOUT_SCALE::MIN;
+    	  } else {
+    		  mTimeOutScale=TIMEOUT_SCALE::NA;
+    	  }
       }
       else if(name.find("Debug.") == std::string::npos)
       {
@@ -260,19 +299,21 @@ namespace xclemulation{
       std::string simulationMode = simMode;
       if (boost::iequals(simulationMode,"gui" ))
       {
-        setLaunchWaveform(LAUNCHWAVEFORM::GUI);
+        setLaunchWaveform(DEBUG_MODE::GUI);
       }
       else if (boost::iequals(simulationMode,"batch" ))
       {
-        setLaunchWaveform(LAUNCHWAVEFORM::BATCH);
+        setLaunchWaveform(DEBUG_MODE::BATCH);
       }
       else if (boost::iequals(simulationMode,"off" ))
       {
-        setLaunchWaveform(LAUNCHWAVEFORM::OFF);
+        setLaunchWaveform(DEBUG_MODE::OFF);
       }
-
+      else if (boost::iequals(simulationMode,"gdb" ))
+      {
+        setLaunchWaveform(DEBUG_MODE::GDB);
     }
-
+    }
   }
 
 
@@ -336,7 +377,14 @@ namespace xclemulation{
   bool is_sw_emulation()
   {    
     static auto xem = std::getenv("XCL_EMULATION_MODE");  
-    return xem ? (!std::strcmp(xem, "sw_emu") ?  true : false): false;
+    if (xem)
+    {
+      if (std::strcmp(xem, "sw_emu") == 0)
+      {
+        return true;
+      }
+    }
+    return false;
   }
 
   std::string getEmDebugLogFile()

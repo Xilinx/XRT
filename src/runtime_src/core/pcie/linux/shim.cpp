@@ -1332,6 +1332,10 @@ int shim::xclLoadXclBin(const xclBin *buffer)
         xrt_logmsg(XRT_ERROR,
                    "Is xclmgmt driver loaded? Or is MSD/MPD running?");
       }
+      else if (ret == -EDEADLK) {
+        xrt_logmsg(XRT_ERROR, "CU was deadlocked? Hardware is not stable");
+        xrt_logmsg(XRT_ERROR, "Please reset device with 'xbutil reset'");
+      }
       xrt_logmsg(XRT_ERROR, "See dmesg log for details. err=%d", ret);
     }
 

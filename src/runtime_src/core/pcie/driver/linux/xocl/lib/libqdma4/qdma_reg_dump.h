@@ -1,5 +1,17 @@
 /*
- * Copyright(c) 2019 Xilinx, Inc. All rights reserved.
+ * Copyright(c) 2019-2020 Xilinx, Inc. All rights reserved.
+ *
+ * This source code is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * The full GNU General Public License is included in this distribution in
+ * the file called "COPYING".
  */
 
 #ifndef __QDMA4_REG_DUMP_H__
@@ -46,15 +58,11 @@ struct xreg_info {
 	uint8_t shift;
 	uint8_t len;
 	uint8_t mode;
+	uint8_t read_type;
 };
 
 extern struct xreg_info qdma_config_regs[MAX_QDMA_CFG_REGS];
 extern struct xreg_info qdma_cpm_config_regs[MAX_QDMA_CFG_REGS];
 
-extern int qdma_reg_dump_buf_len(void *dev_hndl, uint8_t is_vf,
-	uint32_t *buflen);
-
-extern int qdma_context_buf_len(void *dev_hndl, uint8_t is_vf,
-	uint8_t st, enum qdma_dev_q_type q_type, uint32_t *buflen);
 
 #endif

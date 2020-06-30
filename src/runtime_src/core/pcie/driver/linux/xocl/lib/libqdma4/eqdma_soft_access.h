@@ -1,5 +1,29 @@
 /*
- * Copyright(c) 2019 Xilinx, Inc. All rights reserved.
+ * Copyright(c) 2019-2020 Xilinx, Inc. All rights reserved.
+ *
+ * This source code is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * The full GNU General Public License is included in this distribution in
+ * the file called "COPYING".
+ *
+ * This source code is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * The full GNU General Public License is included in this distribution in
+ * the file called "COPYING".
  */
 
 #ifndef EQDMA_ACCESS_H_
@@ -227,8 +251,8 @@ int eqdma_dump_queue_context(void *dev_hndl,
 
 uint32_t eqdma_reg_dump_buf_len(void);
 
-unsigned int eqdma_context_buf_len(uint8_t st,
-		enum qdma_dev_q_type q_type);
+int eqdma_context_buf_len(uint8_t st,
+		enum qdma_dev_q_type q_type, uint32_t *buflen);
 
 int eqdma_hw_error_process(void *dev_hndl);
 const char *eqdma_hw_get_error_name(enum qdma_error_idx err_idx);
@@ -237,7 +261,6 @@ int eqdma_read_dump_queue_context(void *dev_hndl,
 		uint16_t qid_hw,
 		uint8_t st,
 		enum qdma_dev_q_type q_type,
-		struct qdma_descq_context *context,
 		char *buf, uint32_t buflen);
 
 int eqdma_get_device_attributes(void *dev_hndl,
@@ -245,6 +268,18 @@ int eqdma_get_device_attributes(void *dev_hndl,
 
 int eqdma_get_user_bar(void *dev_hndl, uint8_t is_vf,
 		uint8_t func_id, uint8_t *user_bar);
+
+int eqdma_dump_config_reg_list(void *dev_hndl,
+		uint32_t num_regs,
+		struct qdma_reg_data *reg_list,
+		char *buf, uint32_t buflen);
+
+int eqdma_read_reg_list(void *dev_hndl, uint8_t is_vf,
+		uint16_t reg_rd_slot,
+		uint16_t *total_regs,
+		struct qdma_reg_data *reg_list);
+
+int eqdma_set_default_global_csr(void *dev_hndl);
 
 #ifdef __cplusplus
 }

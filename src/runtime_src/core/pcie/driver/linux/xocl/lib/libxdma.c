@@ -1242,6 +1242,7 @@ static int xdma_request_desc_init(struct xdma_engine *engine,
 		if (req == NULL) {
 			if (desc_set_offset || req_submit) {
 				dbg_tfr("going to submit for pidx = %d", pidx);
+				spin_lock(&engine->desc_lock);
 				goto submit_req;
 			}
 			return 0;

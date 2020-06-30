@@ -19,6 +19,8 @@
  */
 
 #include "shim.h"
+#include "core/common/system.h"
+#include "core/common/device.h"
  
 xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbosityLevel level)
 {
@@ -118,8 +120,8 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     return -1;
   auto ret = drv->xclLoadXclBin(buffer);
   if (!ret) {
-    //auto device = xrt_core::get_userpf_device(drv);
-    //device->register_axlf(buffer);
+    auto device = xrt_core::get_userpf_device(drv);
+    device->register_axlf(buffer);
     if (xclemulation::is_sw_emulation() && xrt_core::config::get_flag_kds_sw_emu())
       ret = xrt_core::scheduler::init(handle, buffer);
   }
@@ -602,6 +604,17 @@ int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
   return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -ENODEV;
 }
 
+// Restricted read/write on IP register space
+int xclRegWrite(xclDeviceHandle, uint32_t, uint32_t, uint32_t)
+{
+  return 1;
+}
+
+int xclRegRead(xclDeviceHandle, uint32_t, uint32_t, uint32_t*)
+{
+  return 1;
+}
+
 int xclCreateProfileResults(xclDeviceHandle handle, ProfileResults** results)
 {
   return 0;
@@ -620,5 +633,13 @@ int xclDestroyProfileResults(xclDeviceHandle handle, ProfileResults* results)
 void
 xclGetDebugIpLayout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret)
 {
+  if(size_ret)
+    *size_ret = 0;
   return;
+}
+
+int xclGetSubdevPath(xclDeviceHandle handle,  const char* subdev,
+                        uint32_t idx, char* path, size_t size)
+{
+  return 0;
 }

@@ -502,6 +502,9 @@ void xocl_drm_fini(struct xocl_drm *drm_p)
 void xocl_mm_get_usage_stat(struct xocl_drm *drm_p, u32 ddr,
 	struct drm_xocl_mm_stat *pstat)
 {
+	if (!drm_p->mm_usage_stat)
+		return;
+
 	pstat->memory_usage = drm_p->mm_usage_stat[ddr] ?
 		drm_p->mm_usage_stat[ddr]->memory_usage : 0;
 	pstat->bo_count = drm_p->mm_usage_stat[ddr] ?
@@ -532,7 +535,7 @@ int xocl_mm_insert_node(struct xocl_drm *drm_p, u32 ddr,
 #endif
 }
 
-static int xocl_check_topology(struct xocl_drm *drm_p)
+int xocl_check_topology(struct xocl_drm *drm_p)
 {
 	struct mem_topology    *topology = NULL;
 	u16	i;
@@ -1227,6 +1230,7 @@ void xocl_cma_bank_free(struct xocl_drm *drm_p)
 	mutex_lock(&drm_p->mm_lock);
 	__xocl_cma_bank_free(drm_p);
 	xocl_cleanup_mem_nolock(drm_p);
+	xocl_icap_clean_bitstream(drm_p->xdev);
 	mutex_unlock(&drm_p->mm_lock);
 }
 
@@ -1236,13 +1240,15 @@ int xocl_cma_bank_alloc(struct xocl_drm *drm_p, struct drm_xocl_alloc_cma_info *
 	xdev_handle_t xdev = drm_p->xdev;
 	int num = xocl_addr_translator_get_entries_num(xdev);
 
+	if (!num) {
+		DRM_ERROR("Doesn't support HOST MEM feature");
+		return -ENODEV;
+	}
+
 	mutex_lock(&drm_p->mm_lock);
 
-	if (!num) {
-		err = -ENODEV;
-		DRM_ERROR("Doesn't support HOST MEM feature");
-		goto unlock;
-	}
+	xocl_cleanup_mem_nolock(drm_p);
+	xocl_icap_clean_bitstream(drm_p->xdev);
 
 	if (drm_p->cma_bank) {
 		uint64_t allocated_size = drm_p->cma_bank->entry_num * drm_p->cma_bank->entry_sz;

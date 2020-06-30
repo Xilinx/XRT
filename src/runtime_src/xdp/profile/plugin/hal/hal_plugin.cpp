@@ -23,8 +23,6 @@
 #include "xdp/profile/writer/hal/hal_device_trace_writer.h"
 #include "xdp/profile/writer/hal/hal_summary_writer.h"
 
-#include "xdp/profile/writer/vp_base/vp_run_summary.h"
-
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/device_trace_offload.h"
@@ -88,19 +86,22 @@ namespace xdp {
       ++index;
       handle = xclOpen(index, "/dev/null", XCL_INFO) ;			
     }
-    writers.push_back(new VPRunSummaryWriter("hal.run_summary"));
   }
 
   HALPlugin::~HALPlugin()
   {
-    if (VPDatabase::alive())
-    {
+    if (VPDatabase::alive()) {
       // We were destroyed before the database, so flush our events to the 
       //  database, write the writers, and unregister ourselves from
       //  the database.
-      writeAll(false) ;
+      try {
+        writeAll(false);
+      }
+      catch (...) {
+      }
       db->unregisterPlugin(this) ;
     }
+
     // If the database is dead, then we must have already forced a 
     //  write at the database destructor so we can just move on
 
@@ -196,7 +197,7 @@ namespace xdp {
 
     DeviceTraceLogger*  deviceTraceLogger    = new TraceLoggerCreatingDeviceEvents(deviceId);
     DeviceTraceOffload* deviceTraceOffloader = new DeviceTraceOffload(devInterface, deviceTraceLogger, 10, traceBufSz, false);
-    init_done = deviceTraceOffloader->read_trace_init();
+    init_done = deviceTraceOffloader->read_trace_init(false);
     if (init_done) {
       deviceTraceLoggers[deviceId]    = deviceTraceLogger;
       deviceTraceOffloaders[deviceId] = deviceTraceOffloader;

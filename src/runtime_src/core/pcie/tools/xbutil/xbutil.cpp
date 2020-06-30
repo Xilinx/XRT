@@ -1290,19 +1290,28 @@ int xcldev::device::scVersionTest(void)
     std::string sc_ver, exp_sc_ver;
     std::string errmsg;
 
+    pcidev::get_dev(m_idx)->sysfs_get("xmc", "bmc_ver", errmsg, sc_ver);
     if (!errmsg.empty()) {
         std::cout << errmsg << std::endl;
         return -EINVAL;
     }
 
-    pcidev::get_dev(m_idx)->sysfs_get("xmc", "bmc_ver", errmsg, sc_ver);
     pcidev::get_dev(m_idx)->sysfs_get("xmc", "exp_bmc_ver", errmsg, exp_sc_ver);
-    if (!exp_sc_ver.empty() && (sc_ver.compare(exp_sc_ver) != 0 || sc_ver.empty()))
-    {
+    if (!errmsg.empty()) {
+        std::cout << errmsg << std::endl;
+        return -EINVAL;
+    }
+
+    if (!exp_sc_ver.empty() && (sc_ver.compare(exp_sc_ver) != 0 || sc_ver.empty())) {
         std::cout << "SC FIRMWARE MISMATCH, ATTENTION" << std::endl;
-        std::cout << "SC firmware running on board: " << sc_ver << ". Expected SC firmware from installed Shell: " << exp_sc_ver << std::endl;
-	std::cout << "Please use \"xbmgmt flash --scan\" to check installed Shell." << std::endl;
-	return 1;
+        if (sc_ver.empty())
+            std::cout << "Can't determine SC firmware running on board.";
+        else if (sc_ver.compare(exp_sc_ver) != 0)
+            std::cout << "SC firmware running on board: " << sc_ver; 
+        std::cout << ". Expected SC firmware from installed Shell: " << exp_sc_ver << std::endl;
+
+        std::cout << "Please use \"xbmgmt flash --scan\" to check installed Shell." << std::endl;
+        return 1;
     }
 
     return 0;

@@ -158,6 +158,10 @@ clCreateBuffer(cl_context   context,
     xocl::send_exception_message(ex.what());
     xocl::assign(errcode_ret,ex.get_code());
   }
+  catch (const std::bad_alloc& ex) {
+    xocl::send_exception_message(ex.what());
+    xocl::assign(errcode_ret,CL_OUT_OF_RESOURCES);
+  }
   catch (const std::exception& ex) {
     xocl::send_exception_message(ex.what());
     xocl::assign(errcode_ret,CL_OUT_OF_HOST_MEMORY);

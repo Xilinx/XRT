@@ -16,6 +16,18 @@
  */
 
 #include "../xocl_drv.h"
+#include "profile_ioctl.h"
+
+#define LAPC_OVERALL_STATUS_OFFSET        0x0
+#define LAPC_CUMULATIVE_STATUS_0_OFFSET   0x100
+#define LAPC_CUMULATIVE_STATUS_1_OFFSET   0x104
+#define LAPC_CUMULATIVE_STATUS_2_OFFSET   0x108
+#define LAPC_CUMULATIVE_STATUS_3_OFFSET   0x10c
+
+#define LAPC_SNAPSHOT_STATUS_0_OFFSET     0x200
+#define LAPC_SNAPSHOT_STATUS_1_OFFSET     0x204
+#define LAPC_SNAPSHOT_STATUS_2_OFFSET     0x208
+#define LAPC_SNAPSHOT_STATUS_3_OFFSET     0x20c
 
 struct xocl_lapc {
 	void __iomem		*base;
@@ -24,6 +36,61 @@ struct xocl_lapc {
 	uint64_t		range;
 	struct mutex 		lock;
 	struct debug_ip_data	data;
+	struct lapc_status status;
+};
+
+static void update_status(struct xocl_lapc *lapc)
+{
+	lapc->status.overall_status = XOCL_READ_REG32(lapc->base + LAPC_OVERALL_STATUS_OFFSET);
+	lapc->status.cumulative_status_0 = XOCL_READ_REG32(lapc->base + LAPC_CUMULATIVE_STATUS_0_OFFSET);
+	lapc->status.cumulative_status_1 = XOCL_READ_REG32(lapc->base + LAPC_CUMULATIVE_STATUS_1_OFFSET);
+	lapc->status.cumulative_status_2 = XOCL_READ_REG32(lapc->base + LAPC_CUMULATIVE_STATUS_2_OFFSET);
+	lapc->status.cumulative_status_3 = XOCL_READ_REG32(lapc->base + LAPC_CUMULATIVE_STATUS_3_OFFSET);
+	lapc->status.snapshot_status_0 = XOCL_READ_REG32(lapc->base + LAPC_SNAPSHOT_STATUS_0_OFFSET);
+	lapc->status.snapshot_status_1 = XOCL_READ_REG32(lapc->base + LAPC_SNAPSHOT_STATUS_1_OFFSET);
+	lapc->status.snapshot_status_2 = XOCL_READ_REG32(lapc->base + LAPC_SNAPSHOT_STATUS_2_OFFSET);
+	lapc->status.snapshot_status_3 = XOCL_READ_REG32(lapc->base + LAPC_SNAPSHOT_STATUS_3_OFFSET);
+}
+
+static ssize_t status_show(struct device *dev,
+			   struct device_attribute *attr, char *buf)
+{
+	struct xocl_lapc *lapc = platform_get_drvdata(to_platform_device(dev));
+	mutex_lock(&lapc->lock);
+	update_status(lapc);
+	mutex_unlock(&lapc->lock);
+	return sprintf(buf, "%u\n%u\n%u\n%u\n%u\n%u\n%u\n%u\n%u\n",
+		lapc->status.overall_status,
+		lapc->status.cumulative_status_0,
+		lapc->status.cumulative_status_1,
+		lapc->status.cumulative_status_2,
+		lapc->status.cumulative_status_3,
+		lapc->status.snapshot_status_0,
+		lapc->status.snapshot_status_1,
+		lapc->status.snapshot_status_2,
+		lapc->status.snapshot_status_3
+		);
+}
+
+static DEVICE_ATTR_RO(status);
+
+static ssize_t name_show(struct device *dev,
+			   struct device_attribute *attr, char *buf)
+{
+	struct xocl_lapc *lapc = platform_get_drvdata(to_platform_device(dev));
+	return sprintf(buf, "lapc_%llu\n",lapc->data.m_base_address);
+}
+
+static DEVICE_ATTR_RO(name);
+
+static struct attribute *lapc_attrs[] = {
+			   &dev_attr_status.attr,
+			   &dev_attr_name.attr,
+			   NULL,
+};
+
+static struct attribute_group lapc_attr_group = {
+			   .attrs = lapc_attrs,
 };
 
 static int lapc_remove(struct platform_device *pdev)
@@ -36,6 +103,8 @@ static int lapc_remove(struct platform_device *pdev)
 		xocl_err(&pdev->dev, "driver data is NULL");
 		return -EINVAL;
 	}
+
+	sysfs_remove_group(&pdev->dev.kobj, &lapc_attr_group);
 
 	xocl_drvinst_release(lapc, &hdl);
 
@@ -85,6 +154,11 @@ static int lapc_probe(struct platform_device *pdev)
 
 	lapc->start_paddr = res->start;
 	lapc->range = res->end - res->start + 1;
+
+	err = sysfs_create_group(&pdev->dev.kobj, &lapc_attr_group);
+	if (err) {
+		xocl_err(&pdev->dev, "create lapc sysfs attrs failed: %d", err);
+	}
 
 done:
 	if (err) {

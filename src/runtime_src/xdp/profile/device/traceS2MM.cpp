@@ -41,7 +41,7 @@ inline void TraceS2MM::write32(uint64_t offset, uint32_t val)
     write(offset, 4, &val);
 }
 
-void TraceS2MM::init(uint64_t bo_size, int64_t bufaddr)
+void TraceS2MM::init(uint64_t bo_size, int64_t bufaddr, bool circular)
 {
     if(out_stream)
         (*out_stream) << " TraceS2MM::init " << std::endl;
@@ -57,6 +57,13 @@ void TraceS2MM::init(uint64_t bo_size, int64_t bufaddr)
     uint64_t word_count = bo_size / TRACE_PACKET_SIZE;
     write32(TS2MM_COUNT_LOW, static_cast<uint32_t>(word_count));
     write32(TS2MM_COUNT_HIGH, static_cast<uint32_t>(word_count >> 32));
+
+    // Enable use of circular buffer
+    if (supportsCircBuf()) {
+      uint32_t reg = circular ? 0x1 : 0x0;
+      write32(TS2MM_CIRCULAR_BUF, reg);
+    }
+
     // Start Data Mover
     write32(TS2MM_AP_CTRL, TS2MM_AP_START);
 }
@@ -132,6 +139,8 @@ void TraceS2MM::showStatus()
     (*outputStream) << "INFO Trace written low : " << reg_read << std::endl;
     read(TS2MM_WRITTEN_HIGH, 4, &reg_read);
     (*outputStream) << "INFO Trace written high: " << reg_read << std::dec << std::endl;
+    read(TS2MM_CIRCULAR_BUF, 4, &reg_read);
+    (*outputStream) << "INFO circular buf: " << reg_read << std::dec << std::endl;
 }
 
 inline void TraceS2MM::parsePacketClockTrain(uint64_t packet, uint64_t firstTimestamp, uint32_t mod, xclTraceResults &result)

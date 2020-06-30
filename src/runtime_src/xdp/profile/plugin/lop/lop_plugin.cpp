@@ -16,7 +16,6 @@
 
 #include "xdp/profile/plugin/lop/lop_plugin.h"
 #include "xdp/profile/writer/lop/low_overhead_trace_writer.h"
-#include "xdp/profile/writer/vp_base/vp_run_summary.h"
 
 namespace xdp {
 
@@ -129,11 +128,6 @@ namespace xdp {
   {
     db->registerPlugin(this) ;
     writers.push_back(new LowOverheadTraceWriter("lop_trace.csv")) ;
-
-    if (db->claimRunSummaryOwnership())
-    {
-      writers.push_back(new VPRunSummaryWriter("xclbin.run_summary")) ;
-    }
 
     emulationSetup() ;
 
