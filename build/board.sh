@@ -11,10 +11,6 @@ XRTBUILD=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 ################################################################
 xrt=$XRTBUILD/Release/opt/xilinx/xrt
 
-
-#xrt=/scratch/home/hemn/XRT/XRT/build/Release/opt/xilinx/xrt
-sdx=/proj/xbuilds/2018.2_daily_latest/installs/lin64/SDx/2018.2
-
 board=vcu1525
 keep=1
 sync=0
@@ -23,6 +19,8 @@ run=1
 tests=
 csv=
 select="PASS"
+rel=2019.1
+sdxp="Scout"
 
 usage()
 {
@@ -31,6 +29,7 @@ usage()
     echo
     echo "[-help]                        List this help"
     echo "[-board <kcu1500|vcu1525|...>] Board to use"
+    echo "[-rel <2018.2|2018.3|...>      Select branch to havest xclbins from (default: $rel)"
     echo "[-select <regex>]              Pattern to grep for in csv to pick test (default: PASS)"
     echo "[-sync]                        Sync from sprite"
     echo "[-norun]                       Don't run, just rsync all tests"
@@ -43,24 +42,28 @@ usage()
     echo ""
     echo "With no optional options, this script runs all previously synced tests in"
     echo "current directory. "
-    echo "% board.sh -board vcu1525"
+    echo "% board.sh -board u200_xdma_201830_1"
     echo ""
-    echo "Use -sync to sync all UNIT_HW tests from latest sprite run into working directory."
-    echo "% board.sh -board vcu1525 -sync "
+    echo "Use -sync to sync all $rel UNIT_HW tests from latest sprite run into working directory."
+    echo "% board.sh -board u200_xdma_201830_1 -sync"
+    echo ""
+    echo "Use -rel <release> to sync sprite tests from specified release"
+    echo "% board.sh -board ... -rel 2019.1 -sync "
     echo ""
     echo "Use -tests <file> (without -sync) to run a subset of curently synced tests.  "
     echo "The specified file should have one tests per line"
-    echo "% board.sh -board vcu1525 -tests ~/tmp/files.txt"
+    echo "% board.sh -board u200 -tests ~/tmp/files.txt"
     echo ""
-    echo "Use -csv (with -sync) to explicity specify an older csv file to parse for PASSed"
-    echo "tests.  It's possible latest sprite had hickups and had no PASSed tests."
+    echo "Use -csv (with -sync) to explicity specify a csv file to parse for tests to sync."
+    echo "The board script supports any csv file for any suite.  By default the board script"
+    echo "syncs the UNIT_HW test suite, so use -csv option to sync a different suite."
     echo "The path to the csv file must be a absolute path to sprite generated file."
-    echo "% board.sh -board vcu1525 -sync -csv /proj/fisdata2/results/sdx_2018.2/SDX_UNIT_HWBRD/sdx_u_hw_20180611_232013_lnx64.csv"
+    echo "% board.sh -board ... -sync -csv /proj/fisdata2/results/sdx_${rel}/SDX_UNIT_HWBRD/sdx_u_hw_20190411_232013_lnx64.csv"
+    echo "% board.sh -board ... -sync -csv /proj/fisdata2/results/sdx_2019.1/SDX_CRS_HWBRD/sdx_crs_hw_20190510_223210_lnx64.csv"
     echo ""
     echo "When selecting tests from csv file, only PASS tests are selected by default."
     echo "Use the -select option to pick any tests that matches the regular expression."
-    echo "% board.sh -board u200 -sync -select 'PASS|INTR' -csv <csv>"
-
+    echo "% board.sh -board ... -sync -select 'PASS|INTR' -csv <csv>"
     exit 1
 }
 
@@ -72,6 +75,11 @@ while [ $# -gt 0 ]; do
         -board)
             shift
             board=$1
+            shift
+            ;;
+        -rel)
+            shift
+            rel=$1
             shift
             ;;
         -rm)
@@ -123,12 +131,18 @@ while [ $# -gt 0 ]; do
     esac
 done
 
+sdx=/proj/xbuilds/${rel}_daily_latest/installs/lin64/Scout/${rel}
+if [[ $rel < 2019.2 ]]; then
+    sdx=/proj/xbuilds/${rel}_daily_latest/installs/lin64/SDx/${rel}
+fi
+
 ################################################################
 # Environment
 ################################################################
-if [ "X$ini" != "X" ] ; then
- echo "SDACCEL_INI_PATH=$ini"
+if [[ "X$ini" != "X" ]] ; then
+ echo "XRT_INI_PATH=$ini"
  export SDACCEL_INI_PATH=$ini
+ export XRT_INI_PATH=$ini
 fi
 
 
@@ -136,16 +150,21 @@ if [[ "X$xrt" != "X" && -d "$xrt" ]] ; then
  export XILINX_XRT=${XILINX_XRT:=$xrt}
  export LD_LIBRARY_PATH=$XILINX_XRT/lib
  export PATH=$XILINX_XRT/bin:${PATH}
+ echo "echo $XILINX_XRT/lib/libxilinxopencl.so > /etc/OpenCL/vendors/xilinx.icd"
+ echo "$XILINX_XRT/lib/libxilinxopencl.so" | sudo tee /etc/OpenCL/vendors/xilinx.icd > /dev/null
 fi
 
 if [[ "X$sdx" != "X" && -d "$sdx" ]] ; then
  export XILINX_SDX=${XILINX_SDX:=$sdx}
  export XILINX_OPENCL=$XILINX_SDX
- export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:$XILINX_SDX/lib/lnx64${ext}/Default:$XILINX_SDX/lib/lnx64${ext}:$XILINX_SDX/runtime/lib/x86_64
+ export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:$XILINX_SDX/lib/lnx64.o/Default:$XILINX_SDX/lib/lnx64.o:$XILINX_SDX/runtime/lib/x86_64
 fi
+
+export DSA=`${XILINX_XRT}/bin/xbutil scan | grep '\[0\]' | cut -d':' -f5 | cut -d'(' -f1`
 
 echo "XILINX_XRT      = $XILINX_XRT"
 echo "XILINX_SDX      = $XILINX_SDX"
+echo "XILINX_SCOUT    = $XILINX_SDX"
 echo "XILINX_OPENCL   = $XILINX_OPENCL"
 echo "LD_LIBRARY_PATH = $LD_LIBRARY_PATH"
 
@@ -153,11 +172,18 @@ echo "LD_LIBRARY_PATH = $LD_LIBRARY_PATH"
 ################################################################
 # Test extraction
 ################################################################
+if [[ "X$csv" == "X" ]]; then
+ #default ot SDX_UNIT_HWBRD suite
+ csvdir=/proj/fisdata2/results/sdx_${rel}/SDX_UNIT_HWBRD
+else
+ csvdir=$(dirname $csv)
+fi
+
 if [[ $sync == 0 && "X$tests" == "X" ]]; then
  # use existing already rsynced tests
  tests=(`find . -maxdepth 1 -mindepth 1 -type d`)
 elif [ $sync == 1 ] ; then
- base=/proj/fisdata2/results/sdx_2018.2/SDX_UNIT_HWBRD
+ base=$csvdir
 
  # latests csv
  csvs=(`find $base -mindepth 1 -maxdepth 1 -type f -name \*.csv`)
@@ -165,6 +191,7 @@ elif [ $sync == 1 ] ; then
  if [ "X$csv" == "X" ]; then
    csv=${csvs[-1]}
  fi
+
  suffix=$(basename $csv)
  suffix=${suffix%%.*}
  rundir=TEST_WORK_${suffix}
@@ -182,7 +209,6 @@ for f in ${tests[*]}; do
  echo $f
 done
 
-
 ################################################################
 # Test driver
 ################################################################
@@ -191,7 +217,8 @@ for f in ${tests[*]}; do
  cd $here
  if [ $sync == 1 ]; then
   # sync from sprite
-  rsync -avz -f '- /*/*/' $base/$f/${rundir} $f/
+  echo $base/$f/${rundir}
+  rsync -avz -f '- /*/_x*/' -f '- /*/.Xil/' -f '- /*/reports/' -f '- /*/xocc_log/' -f '- /*/xbinst/' $base/$f/${rundir} $f/
  fi
 
  if [ $run -eq 0 ]; then
@@ -211,11 +238,24 @@ for f in ${tests[*]}; do
   echo "XILINX_SDX      = $XILINX_SDX"
   echo "XILINX_OPENCL   = $XILINX_OPENCL"
   echo "LD_LIBRARY_PATH = $LD_LIBRARY_PATH"
+  echo "DSA		= $DSA"
   echo "================================================================"
-  cmd=`grep '\.exe' board_lsf.sh |grep  -v echo | grep -v '/bin/cp' | /bin/sed -e 's/2>&1 | tee output.log//g'| awk '{printf("./host.exe "); for(i=5;i<=NF;++i) printf("%s ",$i)}'`
+
+  cmd=`grep 'host.exe' board_lsf.sh |grep  -v echo | grep -v '/bin/cp' | /bin/sed -e 's/2>&1 | tee output.log//g'| awk '{printf("./host.exe "); for(i=5;i<=NF;++i) printf("%s ",$i)}'`
+
+  # this is required for dsv.onbrd suite
+  if [ "X$cmd" == "X" ]; then
+      cmd=`grep -e 'args.*:' sdainfo.yml | awk -F: '{print $2}'`
+      cmd=`echo $cmd | sed 's/${DSA}/__DSA__/g' | sed "s/__DSA__/${DSA}/g"`
+  fi
+
   echo "Running $cmd"
+  sudo dmesg -C
   $cmd | tee run.log
   rc=${PIPESTATUS[0]}
+  if [ $rc != 0 ]; then
+      dmesg |& tee run.log
+  fi
   cd $here
   if [ $rc != 0 ]; then
    echo "FAIL: $f $cmd" | tee -a results.all

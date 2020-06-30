@@ -16,12 +16,13 @@
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
 
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/command_queue.h"
 #include "detail/command_queue.h"
-
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
+
+#include <CL/opencl.h>
 
 namespace xocl {
 
@@ -49,6 +50,7 @@ clRetainCommandQueue(cl_command_queue command_queue)
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clRetainCommandQueue(command_queue);
   }
   catch (const xrt::error& ex) {
@@ -60,5 +62,3 @@ clRetainCommandQueue(cl_command_queue command_queue)
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

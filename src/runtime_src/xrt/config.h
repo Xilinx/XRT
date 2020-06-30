@@ -17,16 +17,33 @@
 #ifndef xrt_config_h_
 #define xrt_config_h_
 
-#include "xrt/util/debug.h"
 #include "xrt/util/config_reader.h"
+
+#ifdef _WIN32
+# ifdef XRT_SOURCE
+#  define XRT_EXPORT __declspec(dllexport)
+# else
+#  define XRT_EXPORT __declspec(dllimport)
+# endif
+#endif
+#ifdef __GNUC__
+# ifdef XRT_SOURCE
+#  define XRT_EXPORT __attribute__ ((visibility("default")))
+# else
+#  define XRT_EXPORT
+# endif
+#endif
+
+#ifndef XRT_EXPORT
+# define XRT_EXPORT
+#endif
 
 #ifdef __GNUC__
 # define XRT_UNUSED __attribute__((unused))
 #endif
 
-// Various configurations for xrt consolidated here to
-// for appropriate recompiles
-
+#ifdef _WIN32
+# define XRT_UNUSED
 #endif
 
-
+#endif
