@@ -129,9 +129,6 @@ set(XMA_SOVERSION ${XRT_SOVERSION})
 add_subdirectory(xma)
 #XMA settings END
 
-#XBTest
-add_subdirectory(xbtest)
-
 # --- Python bindings ---
 set(PY_INSTALL_DIR "${XRT_INSTALL_DIR}/python")
 add_subdirectory(python)
