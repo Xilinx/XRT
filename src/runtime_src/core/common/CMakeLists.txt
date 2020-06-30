@@ -24,6 +24,7 @@ file(GLOB XRT_CORE_COMMON_LIB_FILES
   "thread.cpp"
   "xrt_xclbin.cpp"
   "module_loader.cpp"
+  "id_issuer.cpp"
   "api/*.cpp"
   )
 
