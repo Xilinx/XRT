@@ -195,13 +195,12 @@ void xocl_drm_free_bo(struct drm_gem_object *obj)
 }
 
 static inline int check_bo_user_reqs(const struct drm_device *dev,
-	unsigned flags, unsigned type)
+	struct mem_topology *topo, unsigned flags, unsigned type)
 {
 	struct xocl_drm *drm_p = dev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
 	u16 ddr_count;
 	unsigned ddr;
-	struct mem_topology *topo = NULL;
 	int err = 0;
 
 	if (type == XOCL_BO_EXECBUF || type == XOCL_BO_IMPORT || 
@@ -218,10 +217,6 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 	if (ddr >= ddr_count)
 		return -EINVAL;
 
-	err = XOCL_GET_MEM_TOPOLOGY(xdev, topo);
-	if (err)
-		return err;
-
 	if (topo) {
 		if (XOCL_IS_STREAM(topo, ddr)) {
 			userpf_err(xdev, "Bank %d is Stream", ddr);
@@ -236,7 +231,6 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 		}
 	}
 done:	
-	XOCL_PUT_MEM_TOPOLOGY(xdev);
 	return err;
 }
 
@@ -286,6 +280,7 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 					  unsigned user_flags,
 					  unsigned bo_type)
 {
+	struct mem_topology *topo = NULL;
 	size_t size = PAGE_ALIGN(unaligned_size);
 	struct drm_xocl_bo *xobj;
 	struct xocl_drm *drm_p = dev->dev_private;
@@ -298,14 +293,22 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	if (!size)
 		return ERR_PTR(-EINVAL);
 
+    err = XOCL_GET_MEM_TOPOLOGY(xdev, topo);
+	if (err)
+		return err;
+
 	/* Either none or only one DDR should be specified */
 	/* Check the bo_type */
-	if (check_bo_user_reqs(dev, user_flags, bo_type))
-		return ERR_PTR(-EINVAL);
+    if (check_bo_user_reqs(dev, topo, user_flags, bo_type)) {
+        err = -EINVAL;
+        goto failed;
+    }
 
 	xobj = kzalloc(sizeof(*xobj), GFP_KERNEL);
-	if (!xobj)
-		return ERR_PTR(-ENOMEM);
+	if (!xobj) {
+		err = -ENOMEM;
+		goto failed;
+    }
 
 	BO_ENTER("xobj %p", xobj);
 
@@ -343,21 +346,23 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 		goto failed;
 	}
 
-	err = xocl_mm_insert_node(drm_p, memidx, xobj->mm_node,
-		xobj->base.size);
-	BO_DEBUG("insert mm_node:%p, start:%llx size: %llx",
-		xobj->mm_node, xobj->mm_node->start,
-		xobj->mm_node->size);
+    err = xocl_mm_insert_node_range(drm_p, topo, memidx, xobj->mm_node,
+            xobj->base.size);
 	if (err)
 		goto failed;
 
+	BO_DEBUG("insert mm_node:%p, start:%llx size: %llx",
+		xobj->mm_node, xobj->mm_node->start,
+		xobj->mm_node->size);
 	xocl_mm_update_usage_stat(drm_p, memidx, xobj->base.size, 1);
 	mutex_unlock(&drm_p->mm_lock);
 	/* Record the DDR we allocated the buffer on */
 	xobj->mem_idx = memidx;
 
+	XOCL_PUT_MEM_TOPOLOGY(xdev);
 	return xobj;
 failed:
+	XOCL_PUT_MEM_TOPOLOGY(xdev);
 	if (xobj->mm_node) {
 		mutex_unlock(&drm_p->mm_lock);
 		kfree(xobj->mm_node);
@@ -441,11 +446,11 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 
 	xobj = xocl_create_bo(dev, args->size, args->flags, bo_type);
 
-	BO_ENTER("xobj %p, mm_node %p", xobj, xobj->mm_node);
 	if (IS_ERR(xobj)) {
 		DRM_ERROR("object creation failed idx %d, size 0x%llx\n", ddr, args->size);
 		return PTR_ERR(xobj);
 	}
+	BO_ENTER("xobj %p, mm_node %p", xobj, xobj->mm_node);
 
 	if (xobj->flags == XOCL_BO_P2P) {
 		/*
@@ -484,7 +489,9 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 		else if (xobj->flags & XOCL_DRM_SHMEM)
 			xobj->pages = drm_gem_get_pages(&xobj->base);
 		else if (xobj->flags & XOCL_CMA_MEM){
-			uint64_t start_addr = drm_p->mm[ddr]->head_node.start + drm_p->mm[ddr]->head_node.size;
+            /* SAIF TODO : Need to rechaek this */
+			//uint64_t start_addr = drm_p->mm[ddr]->head_node.start + drm_p->mm[ddr]->head_node.size;
+			uint64_t start_addr = drm_p->mm->head_node.start + drm_p->mm->head_node.size;
 
 			xobj->pages = xocl_cma_collect_pages(drm_p, start_addr, xobj->mm_node->start, xobj->base.size);
 		}

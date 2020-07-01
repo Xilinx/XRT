@@ -520,9 +520,33 @@ void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u32 ddr,
 	drm_p->mm_usage_stat[ddr]->bo_count += count;
 }
 
+int xocl_mm_insert_node_range(struct xocl_drm *drm_p, struct mem_topology *topo, 
+        u32 mem_id, struct drm_mm_node *node, u64 size)
+{
+    uint64_t start_addr = 0;
+    uint64_t end_addr = 0;
+
+    BUG_ON(!mutex_is_locked(&drm_p->mm_lock));
+
+    if (drm_p->mm == NULL || topo == NULL)
+        return -EINVAL;
+
+    start_addr = topo->m_mem_data[mem_id].m_base_address;
+    end_addr = start_addr + (topo->m_mem_data[mem_id].m_size * 1024);
+#if defined(XOCL_DRM_FREE_MALLOC)
+    return drm_mm_insert_node_in_range(drm_p->mm, node, size, PAGE_SIZE, 0,
+            start_addr, end_addr, 0);
+#else
+    return drm_mm_insert_node_in_range(drm_p->mm, node, size, PAGE_SIZE,
+            start_addr, end_addr, 0);
+#endif
+}
+
+#if 0
 int xocl_mm_insert_node(struct xocl_drm *drm_p, u32 ddr,
 			struct drm_mm_node *node, u64 size)
 {
+    /* SAIF TODO : This function need to dicard */
 	BUG_ON(!mutex_is_locked(&drm_p->mm_lock));
 	if (drm_p->mm == NULL || drm_p->mm[ddr] == NULL)
 		return -EINVAL;
@@ -534,6 +558,7 @@ int xocl_mm_insert_node(struct xocl_drm *drm_p, u32 ddr,
 		0, 0, 0);
 #endif
 }
+#endif
 
 int xocl_check_topology(struct xocl_drm *drm_p)
 {
@@ -642,11 +667,6 @@ int xocl_cleanup_mem_nolock(struct xocl_drm *drm_p)
 				hash_del(&wrapper->node);
 				vfree(wrapper);
 
-				if (drm_p->mm && drm_p->mm[i]) {
-					drm_mm_takedown(drm_p->mm[i]);
-					vfree(drm_p->mm[i]);
-					drm_p->mm[i] = NULL;
-				}
 				if (drm_p->mm_usage_stat && drm_p->mm_usage_stat[i]) {
 					vfree(drm_p->mm_usage_stat[i]);
 					drm_p->mm_usage_stat[i] = NULL;
@@ -658,8 +678,11 @@ int xocl_cleanup_mem_nolock(struct xocl_drm *drm_p)
 	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
 
 done:
-	vfree(drm_p->mm);
-	drm_p->mm = NULL;
+    if (drm_p->mm) {
+        drm_mm_takedown(drm_p->mm);
+        vfree(drm_p->mm);
+        drm_p->mm = NULL;
+    }
 	vfree(drm_p->mm_usage_stat);
 	drm_p->mm_usage_stat = NULL;
 
@@ -689,8 +712,10 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	struct mem_topology *topo = NULL;
 	struct mem_data *mem_data;
 	uint32_t shared;
-	struct xocl_mm_wrapper *wrapper = NULL;
-	uint64_t reserved1 = 0;
+    struct xocl_mm_wrapper *wrapper = NULL;
+    uint64_t mm_start_addr = 0;
+    uint64_t mm_end_addr = 0;
+    uint64_t reserved1 = 0;
 	uint64_t reserved2 = 0;
 	uint64_t reserved_start;
 	uint64_t reserved_end, host_reserve_size;
@@ -723,9 +748,8 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 
 	mutex_lock(&drm_p->mm_lock);
 
-	drm_p->mm = vzalloc(size);
 	drm_p->mm_usage_stat = vzalloc(size);
-	if (!drm_p->mm || !drm_p->mm_usage_stat) {
+	if (!drm_p->mm_usage_stat) {
 		err = -ENOMEM;
 		goto done;
 	}
@@ -750,6 +774,10 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 		xocl_info(drm_p->ddev->dev, "  Used:%d", mem_data->m_used);
 	}
 
+    /* Initialize with max and min possible value */
+    mm_start_addr = 0xffffFFFFffffFFFF;
+    mm_end_addr = 0;
+
 	/* Initialize the used banks and their sizes */
 	/* Currently only fixed sizes are supported */
 	for (i = 0; i < topo->m_count; i++) {
@@ -773,6 +801,12 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 		if (XOCL_IS_STREAM(topo, i))
 			continue;
 
+        /* Update the start and end address for the memory manager */
+        if (mem_data->m_base_address < mm_start_addr)
+            mm_start_addr = mem_data->m_base_address;
+        if ((mem_data->m_base_address + ddr_bank_size) > mm_end_addr)
+            mm_end_addr = mem_data->m_base_address + ddr_bank_size;
+
 		xocl_info(drm_p->ddev->dev, "Allocating Memory Bank: %s", mem_data->m_tag);
 		xocl_info(drm_p->ddev->dev, "  base_addr:0x%llx, total size:0x%lx",
 			mem_data->m_base_address, ddr_bank_size);
@@ -787,24 +821,21 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 		shared = xocl_get_shared_ddr(drm_p, mem_data);
 		if (shared != 0xffffffff) {
 			xocl_info(drm_p->ddev->dev, "Found duplicated memory region!");
-			drm_p->mm[i] = drm_p->mm[shared];
 			drm_p->mm_usage_stat[i] = drm_p->mm_usage_stat[shared];
 			continue;
 		}
 
 		xocl_info(drm_p->ddev->dev, "Found a new memory region");
 		wrapper = vzalloc(wrapper_size);
-		drm_p->mm[i] = vzalloc(mm_size);
 		drm_p->mm_usage_stat[i] = vzalloc(mm_stat_size);
 
-		if (!drm_p->mm[i] || !drm_p->mm_usage_stat[i] || !wrapper) {
+		if (!drm_p->mm_usage_stat[i] || !wrapper) {
 			err = -ENOMEM;
 			goto done;
 		}
 
 		wrapper->start_addr = mem_data->m_base_address;
 		wrapper->size = mem_data->m_size*1024;
-		wrapper->mm = drm_p->mm[i];
 		wrapper->mm_usage_stat = drm_p->mm_usage_stat[i];
 		wrapper->ddr = i;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
@@ -821,12 +852,16 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 				goto done;
 			}
 		}
-
-		drm_mm_init(drm_p->mm[i], mem_data->m_base_address,
-				ddr_bank_size - reserved1 - reserved2);
-
-		xocl_info(drm_p->ddev->dev, "drm_mm_init called");
 	}
+
+    drm_p->mm = vzalloc(sizeof(struct drm_mm));
+	if (!drm_p->mm) {
+		err = -ENOMEM;
+		goto done;
+	}
+
+    drm_mm_init(drm_p->mm, mm_start_addr, (mm_end_addr - mm_start_addr));
+    xocl_info(drm_p->ddev->dev, "drm_mm_init called for the available memory range");
 
 done:
 	if (err)
