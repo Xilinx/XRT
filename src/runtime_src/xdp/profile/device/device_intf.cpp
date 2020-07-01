@@ -559,10 +559,8 @@ DeviceIntf::~DeviceIntf()
       xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
       /* Currently, only PCIeLinux Device flow uses open+mmap and hence specialized monitors are instantiated.
        * All other flows(including PCIe Windows) use the older mechanism and should use old monitor abstraction.
-       * Also, user space cannot access profiling subdvices while running inside containers, so use xclRead/Write
-       * based flow.
        */
-      if(xrt_core::system::monitor_access_type::bar == accessType || true == xrt_core::config::get_container()) {
+      if(xrt_core::system::monitor_access_type::bar == accessType) {
         for(uint64_t i = 0; i < map->m_count; i++ ) {
           switch(map->m_debug_ip_data[i].m_type) {
             case AXI_MM_MONITOR :        aimList.push_back(new AIM(mDevice, i, &(map->m_debug_ip_data[i])));
