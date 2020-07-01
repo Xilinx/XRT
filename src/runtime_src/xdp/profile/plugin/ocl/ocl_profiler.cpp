@@ -349,41 +349,47 @@ namespace xdp {
       if (stallTrace & xdp::RTUtil::STALL_TRACE_EXT)    traceOption   |= (0x1 << 4);
       XOCL_DEBUGF("Starting trace with option = 0x%x\n", traceOption);
 
-      if(dInt) {
-        // Configure monitor IP and FIFO if present
-        dInt->startTrace(traceOption);
-        std::string  binaryName = device->get_xclbin().project_name();
-        uint64_t traceBufSz = 0;
-        if (dInt->hasTs2mm()) {
-          traceBufSz = getDeviceDDRBufferSize(dInt, device);
-          trace_memory = "TS2MM";
-        }
-        // Continuous trace isn't safe to use with stall setting
-        if (dInt->hasFIFO() && mTraceThreadEn && stallTrace!= xdp::RTUtil::STALL_TRACE_OFF) {
-          xrt::message::send(xrt::message::severity_level::XRT_WARNING, CONTINUOUS_OFFLOAD_WARN_MSG_STALLS);
-        }
+      if (dInt) {
+        // Do for both PL and AIE trace (if available)
+        for (int i=0; i < 2; i++) { 
+          bool isAIETrace = (i == 1);
 
-        DeviceTraceLogger* deviceTraceLogger = new TraceLoggerUsingProfileMngr(getProfileManager(), device->get_unique_name(), binaryName);
-        auto offloader = std::make_unique<DeviceTraceOffload>(dInt, deviceTraceLogger,
+          // Configure monitor IP and FIFO if present
+          dInt->startTrace(traceOption);
+          std::string  binaryName = device->get_xclbin().project_name();
+          uint64_t traceBufSz = 0;
+          if (dInt->hasTs2mm(isAIETrace)) {
+            traceBufSz = getDeviceDDRBufferSize(dInt, device, isAIETrace);
+            trace_memory = "TS2MM";
+          }
+          
+          // Continuous trace isn't safe to use with stall setting
+          if (dInt->hasFIFO() && mTraceThreadEn && stallTrace!= xdp::RTUtil::STALL_TRACE_OFF) {
+            xrt::message::send(xrt::message::severity_level::XRT_WARNING, CONTINUOUS_OFFLOAD_WARN_MSG_STALLS);
+          }
+
+          DeviceTraceLogger* deviceTraceLogger = new TraceLoggerUsingProfileMngr(getProfileManager(), device->get_unique_name(), binaryName);
+          auto offloader = std::make_unique<DeviceTraceOffload>(dInt, deviceTraceLogger,
                                                          mTraceReadIntMs, traceBufSz, false);
-        bool init_done = offloader->read_trace_init();
-        if (init_done) {
-          offloader->train_clock();
-          /* Trace FIFO is usually very small (8k,16k etc)
-           *  Hence enable Continuous clock training by default
-           *  ONLY for Trace Offload to DDR Memory
-           */
-          if (mTraceThreadEn)
-            offloader->start_offload(OffloadThreadType::TRACE);
-          else if (dInt->hasTs2mm())
-            offloader->start_offload(OffloadThreadType::CLOCK_TRAIN);
+          bool init_done = offloader->read_trace_init();
+          if (init_done) {
+            offloader->train_clock();
+            /* Trace FIFO is usually very small (8k,16k etc)
+             *  Hence enable Continuous clock training by default
+             *  ONLY for Trace Offload to DDR Memory
+             */
+            if (mTraceThreadEn)
+              offloader->start_offload(OffloadThreadType::TRACE);
+            else if (dInt->hasTs2mm())
+              offloader->start_offload(OffloadThreadType::CLOCK_TRAIN);
 
-          DeviceTraceLoggers.push_back(deviceTraceLogger);
-          DeviceTraceOffloadList.push_back(std::move(offloader));
-        } else {
-          delete deviceTraceLogger;
-          if (dInt->hasTs2mm())
-            xrt::message::send(xrt::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_ALLOC_FAIL);
+            DeviceTraceLoggers.push_back(deviceTraceLogger);
+            DeviceTraceOffloadList.push_back(std::move(offloader));
+          } else {
+            delete deviceTraceLogger;
+            if (dInt->hasTs2mm())
+              xrt::message::send(xrt::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_ALLOC_FAIL);
+          }
         }
       } else {
         xdevice->startTrace(XCL_PERF_MON_MEMORY, traceOption);
@@ -740,10 +746,10 @@ namespace xdp {
     return 0;
   }
 
-  uint64_t OCLProfiler::getDeviceDDRBufferSize(DeviceIntf* dInt, xocl::device* device)
+  uint64_t OCLProfiler::getDeviceDDRBufferSize(DeviceIntf* dInt, xocl::device* device, bool isAIETrace)
   {
     uint64_t sz = 0;
-    sz = GetTS2MMBufSize();
+    sz = GetTS2MMBufSize(isAIETrace);
     auto memorySz = xdp::xoclp::platform::device::getMemSizeBytes(device, dInt->getTS2MmMemIndex());
     if (memorySz > 0 && sz > memorySz) {
       sz = memorySz;

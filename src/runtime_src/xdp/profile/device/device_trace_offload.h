@@ -51,8 +51,8 @@ class DeviceTraceOffload {
 public:
     XDP_EXPORT
     DeviceTraceOffload(DeviceIntf* dInt, DeviceTraceLogger* dTraceLogger,
-                     uint64_t offload_sleep_ms, uint64_t trbuf_sz,
-                     bool start_thread = true);
+                       uint64_t offload_sleep_ms, uint64_t trbuf_sz,
+                       bool start_thread = true, bool is_aie_trace = false);
     XDP_EXPORT
     ~DeviceTraceOffload();
     XDP_EXPORT
@@ -70,19 +70,20 @@ public:
 
 public:
     void set_trbuf_alloc_sz(uint64_t sz) {
-        m_trbuf_alloc_sz = sz;
+      m_trbuf_alloc_sz = sz;
     };
     bool trace_buffer_full() {
-        return m_trbuf_full;
+      return m_trbuf_full;
     };
     bool has_fifo() {
-        return dev_intf->hasFIFO();
+      return dev_intf->hasFIFO();
     };
     bool has_ts2mm() {
-        return dev_intf->hasTs2mm();
+      return dev_intf->hasTs2mm(m_aie_trace);
     };
+    bool is_aie_trace() {return m_aie_trace;}
     void read_trace() {
-        m_read_trace();
+      m_read_trace();
     };
     DeviceTraceLogger* getDeviceTraceLogger() {
         return deviceTraceLogger;
@@ -119,6 +120,7 @@ private:
     bool m_trbuf_full = false;
     bool m_debug = false; /* Enable Output stream for log */
     bool m_initialized = false;
+    bool m_aie_trace;
 };
 
 }

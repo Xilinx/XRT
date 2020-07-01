@@ -180,16 +180,19 @@ namespace xdp {
     devInterface->clockTraining();
 
     bool init_done = true;
-
     uint64_t traceBufSz = 0;
-    if(devInterface->hasTs2mm()) {
+
+    // PL Trace
+    // NOTE: This assumes a single data mover
+    if (devInterface->hasTs2mm(false)) {
       // Get Trace Buffer Size in bytes
-      traceBufSz = GetTS2MMBufSize();
+      traceBufSz = GetTS2MMBufSize(false);
+      
       uint64_t memorySz = (db->getStaticInfo().getMemory(deviceId, devInterface->getTS2MmMemIndex())->size) * 1024;
       if (memorySz > 0 && traceBufSz > memorySz) {
         traceBufSz = memorySz;
-        std::string msg = "Trace Buffer size is too big for Memory Resource. Using " + std::to_string(memorySz)
-                          + " Bytes instead.";
+        std::string msg = "PL trace buffer size is too big for memory resources. " 
+                          + "Using " + std::to_string(memorySz) + " bytes instead.";
         xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg);
       }
     }
@@ -201,11 +204,43 @@ namespace xdp {
       deviceTraceLoggers[deviceId]    = deviceTraceLogger;
       deviceTraceOffloaders[deviceId] = deviceTraceOffloader;
     } else {
-      if (devInterface->hasTs2mm()) {
-        xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", TS2MM_WARN_MSG_ALLOC_FAIL);
-      }
+      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", TS2MM_WARN_MSG_ALLOC_FAIL);
       delete deviceTraceLogger;
       delete deviceTraceOffloader;
+    }
+
+    // Do not continue if no AIE trace
+    if (!devInterface->hasTs2mm(true))
+      return;
+
+    // AIE Trace 
+    // NOTE: this supports multiple data movers
+    auto numTS2MM = devInterface->getNumberTS2MM(true);
+    for (int i=0; i < numTS2MM; i++) {
+      // Get Trace Buffer Size in bytes
+      // NOTE: For now, every trace buffer is the same fraction 
+      //       of the total size.
+      traceBufSz = GetTS2MMBufSize(false) / numTS2MM;
+
+      uint64_t memorySz = (db->getStaticInfo().getMemory(deviceId, devInterface->getTS2MmMemIndex())->size) * 1024;
+      if (memorySz > 0 && traceBufSz > memorySz) {
+        traceBufSz = memorySz;
+        std::string msg = "AIE trace buffer size is too big for memory resources. "
+                          + "Using " + std::to_string(memorySz) + " bytes instead.";
+        xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg);
+      }
+
+      DeviceTraceLogger*  deviceTraceLogger    = new TraceLoggerCreatingDeviceEvents(deviceId);
+      DeviceTraceOffload* deviceTraceOffloader = new DeviceTraceOffload(devInterface, deviceTraceLogger, 10, traceBufSz, false);
+      init_done = deviceTraceOffloader->read_trace_init();
+      if (init_done) {
+        deviceTraceLoggers[deviceId]    = deviceTraceLogger;
+        deviceTraceOffloaders[deviceId] = deviceTraceOffloader;
+      } else {
+        xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", TS2MM_WARN_MSG_ALLOC_FAIL);
+        delete deviceTraceLogger;
+        delete deviceTraceOffloader;
+      } 
     }
   }
 

@@ -448,9 +448,12 @@ is_ap_ctrl_chain(key k, const std::string& deviceName, const std::string& cu)
   return false;
 }
 
-uint64_t get_ts2mm_buf_size() {
-  std::string size_str = xrt::config::get_trace_buffer_size();
+uint64_t get_ts2mm_buf_size(bool isAIETrace) {
+  std::string size_str = isAIETrace ?
+      xrt::config::get_aie_trace_buffer_size() : 
+      xrt::config::get_trace_buffer_size();
   std::smatch pieces_match;
+  
   // Default is 1M
   uint64_t bytes = 1048576;
   // Regex can parse values like : "1024M" "1G" "8192k"
