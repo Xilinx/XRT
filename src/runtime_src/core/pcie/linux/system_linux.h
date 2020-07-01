@@ -48,7 +48,12 @@ public:
   monitor_access_type
   get_monitor_access_type() const
   {
-    return monitor_access_type::mmap;
+    /* User space cannot access profiling subdevices while running inside container.
+     * So, revert to access to profiling IPs via PCIe bar (using xclRead/Write) 
+     * for PCIe Linux flow.
+     */
+    return monitor_access_type::bar;
+//    return monitor_access_type::mmap;
   }
 };
 
