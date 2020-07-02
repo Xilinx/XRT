@@ -623,7 +623,7 @@ int xcldev::xclReset(int argc, char* argv[])
     }
 
     if(is_kind_set) {
-        std::unique_ptr<device> d = std::make_unique<xcldev::device>(index,nullptr); //xclGetDevice(index);
+        std::unique_ptr<device> d = std::make_unique<xcldev::device>(index,nullptr);
         if (!d)
             return -EINVAL;
         int err = d->reset(kind);

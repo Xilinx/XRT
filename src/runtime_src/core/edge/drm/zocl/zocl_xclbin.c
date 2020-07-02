@@ -73,7 +73,7 @@ kind_to_string(enum axlf_section_kind kind)
 	case 20: return "DTC";
 	case 21: return "EMULATION_DATA";
 	case 22: return "SYSTEM_METADATA";
-        case 25: return "AIE_METADATA";
+	case 25: return "AIE_METADATA";
 	default: return "UNKNOWN";
 	}
 }
