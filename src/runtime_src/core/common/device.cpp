@@ -60,24 +60,237 @@ get_xclbin_uuid() const
   return uuid();
 }
 
+void hexDump (const char * desc, const void * addr, const int len) {
+    int i;
+    unsigned char buff[17];
+    const unsigned char * pc = (const unsigned char *)addr;
+
+    // Output description if given.
+
+    if (desc != NULL)
+        printf ("%s:\n", desc);
+
+    // Length checks.
+
+    if (len == 0) {
+        printf("  ZERO LENGTH\n");
+        return;
+    }
+    else if (len < 0) {
+        printf("  NEGATIVE LENGTH: %d\n", len);
+        return;
+    }
+
+    // Process every byte in the data.
+
+    for (i = 0; i < len; i++) {
+        // Multiple of 16 means new line (with line offset).
+
+        if ((i % 16) == 0) {
+            // Don't print ASCII buffer for the "zeroth" line.
+
+            if (i != 0)
+                printf ("  %s\n", buff);
+
+            // Output the offset.
+
+            printf ("  %04x ", i);
+        }
+
+        // Now the hex code for the specific character.
+        printf (" %02x", pc[i]);
+
+        // And buffer a printable ASCII character for later.
+
+        if ((pc[i] < 0x20) || (pc[i] > 0x7e)) // isprint() may be better.
+            buff[i % 16] = '.';
+        else
+            buff[i % 16] = pc[i];
+        buff[(i % 16) + 1] = '\0';
+    }
+
+    // Pad out last line if not exactly 16 characters.
+
+    while ((i % 16) != 0) {
+        printf ("   ");
+        i++;
+    }
+
+    // And print the final ASCII buffer.
+
+    printf ("  %s\n", buff);
+}
+
+#define sizeof_sect(sect, data) \
+    ({ \
+     size_t ret; \
+     size_t data_size; \
+     data_size = (sect) ? sect->m_count * sizeof(typeof(sect->data)) : 0; \
+     ret = (sect) ? offsetof(typeof(*sect), data) + data_size : 0; \
+     (ret); \
+     })
+
+
 void
 device::
-register_axlf(const axlf* top)
+update_topo_connectivity(const char *info_buff)
+{
+  size_t                    size = 0;
+  struct connectivity       *mem_conn = nullptr;
+  struct mem_topology       *mem_topo = nullptr;
+
+  std::cout << __func__ << " ->> Entering : " << __LINE__ << std::endl;
+  if (!info_buff)
+    return;
+
+  std::cout << __func__ << " ->> I am here : " << __LINE__ << std::endl;
+  /* update memory topology section */
+  mem_topo = (struct mem_topology *)info_buff;
+  if (!mem_topo)
+    throw std::runtime_error("failed to get memory topology information");
+
+  auto s  = sizeof_sect(mem_topo, m_mem_data);
+  std::cout << __func__ << " ->> I am here : s "  << s << " " << __LINE__ << std::endl;
+  size = sizeof(mem_topo->m_count) + 
+            (mem_topo->m_count * sizeof(struct mem_data));
+  std::cout << __func__ << " ->> I am here : new topo size : " << size << " Entry : " << mem_topo->m_count << " "  << __LINE__ << std::endl;
+  auto m_itr =  get_axlf_section(MEM_TOPOLOGY);
+  if (m_itr.first) {
+    auto m_mem = reinterpret_cast<::mem_topology*>(const_cast<char*>(m_itr.first));
+    std::cout << __func__ << " ->> I am here : Old size : " << m_itr.second << " "  << __LINE__ << std::endl;
+    memcpy(m_mem, mem_topo, size);
+    m_itr.second = size;
+    std::cout << __func__ << " ->> I am here : updated size : " << m_itr.second << " "  << __LINE__ << std::endl;
+  }
+
+  auto m_itr1 =  get_axlf_section(MEM_TOPOLOGY);
+  auto mem_topo1 = reinterpret_cast<::mem_topology*>(const_cast<char*>(m_itr1.first));
+  hexDump("topo Dump",  mem_topo1, m_itr1.second);
+
+  std::cout << __func__ << " ->> I am here : " << __LINE__ << std::endl;
+  /* update connectivity section */
+  mem_conn = (struct connectivity *)(info_buff + size);
+  if (mem_conn)
+    throw std::runtime_error("failed to get connectivity information");
+
+  std::cout << __func__ << " ->> I am here : " << __LINE__ << std::endl;
+  size = sizeof(mem_conn->m_count) + 
+            (mem_conn->m_count * sizeof(struct connection));
+
+  std::cout << __func__ << " ->> I am here : " << __LINE__ << std::endl;
+  auto c_itr = get_axlf_section(CONNECTIVITY);
+  if (c_itr.first) {
+    auto m_con = reinterpret_cast<::connectivity*>(const_cast<char*>(c_itr.first));
+    std::cout << __func__ << " ->> I am here : Old size : " << m_itr.second << " "  << __LINE__ << std::endl;
+    memcpy(m_con, mem_conn, size);
+    std::cout << __func__ << " ->> I am here : updated size : " << m_itr.second << " "  << __LINE__ << std::endl;
+    m_itr.second = size;
+  }
+  auto m_itr2 =  get_axlf_section(CONNECTIVITY);
+  auto mem_conn1 = reinterpret_cast<::connectivity*>(const_cast<char*>(m_itr2.first));
+  hexDump("conn Dump",  mem_conn1, m_itr2.second);
+
+  std::cout << __func__ << " ->> Returning : " << __LINE__ << std::endl;
+}
+
+void
+device::
+get_section_info(const char *buff, axlf_section_kind kind, 
+        const char *&sect_info, size_t *sect_size)
+{
+  struct connectivity       *mem_conn = nullptr;
+  struct mem_topology       *mem_topo = nullptr;
+
+  std::cout << __func__ << " ->> Entering : " << __LINE__ << std::endl;
+  if (!buff)
+    return;
+
+  /* Typically input buff contains information regading mem_topology and 
+   * connectivity with the following order :-
+   * buff:
+   *   1. mem_topology
+   *   2. connectivity 
+   *
+   * Hence, extract information should be in the same order. 
+   */
+  printf("Buff %p\n", (void *)buff);
+  std::cout << __func__ << " ->> I am here : " << __LINE__ << std::endl;
+  mem_topo = (struct mem_topology *)buff;
+  if (!mem_topo)
+    throw std::runtime_error("failed to get memory topology information");
+
+  auto mem_data_size = mem_topo->m_count * sizeof(typeof(mem_topo->m_mem_data));
+  auto mem_topo_size = offsetof(typeof(*mem_topo), m_mem_data) + mem_data_size; 
+  hexDump("topo Dump", buff, mem_topo_size);
+  buff += mem_topo_size; 
+  printf("Buff %p\n", (void *)buff);
+  std::cout << __func__ << " ->> I am here : " << __LINE__ <<  " mem_topo_size : " << mem_topo_size << std::endl;
+  mem_conn = (struct connectivity *)buff;
+  if (!mem_conn)
+    throw std::runtime_error("failed to get connectivity information");
+
+  auto conn_data_size = mem_conn->m_count * sizeof(typeof(mem_conn->m_connection));
+  auto mem_conn_size = offsetof(typeof(*mem_conn), m_connection) + conn_data_size; 
+
+  hexDump("conn Dump", buff, mem_conn_size);
+  std::cout << __func__ << " ->> I am here : " << __LINE__ << std::endl;
+  if (kind == MEM_TOPOLOGY) {
+    sect_info = (const char *)mem_topo;
+    *sect_size = mem_topo_size;
+  }
+  else if (kind == CONNECTIVITY) {
+    sect_info = (const char *)mem_conn;
+    *sect_size =  mem_conn_size;
+  }
+  std::cout << __func__ << " ->> I am here : " << __LINE__ << std::endl;
+}
+
+void
+device::
+register_axlf(const axlf* top, const char *info_buff)
 {
   m_axlf_sections.clear();
   m_xclbin_uuid = uuid(top->m_header.uuid);
   axlf_section_kind kinds[] = {EMBEDDED_METADATA, AIE_METADATA, IP_LAYOUT, CONNECTIVITY, MEM_TOPOLOGY, DEBUG_IP_LAYOUT, SYSTEM_METADATA};
   for (auto kind : kinds) {
-    auto hdr = ::xclbin::get_axlf_section(top, kind);
-    if (!hdr)
-      continue;
-    auto section_data = reinterpret_cast<const char*>(top) + hdr->m_sectionOffset;
-    std::vector<char> data{section_data, section_data + hdr->m_sectionSize};
-    m_axlf_sections.emplace(kind , std::move(data));
+    if ((kind == MEM_TOPOLOGY) && (info_buff != nullptr)) {
+      const char *mem_topo = nullptr; 
+      size_t sect_size = 0;
+      get_section_info(info_buff, MEM_TOPOLOGY, mem_topo, &sect_size);
+      std::cout << __func__ << " ->> I am here : " << __LINE__ << std::endl;
+      std::vector<char> data{mem_topo, mem_topo + sect_size};
+      m_axlf_sections.emplace(kind , std::move(data));
+      std::cout << __func__ << " ->> I am here : " << __LINE__ << std::endl;
+    }
+    else if ((kind == CONNECTIVITY) && (info_buff != nullptr)) {
+      const char *mem_conn = nullptr; 
+      size_t sect_size = 0;
+      printf("mem_conn %p\n", (void *)mem_conn);
+      std::cout << __func__ << " ->> I am here : " << __LINE__ << std::endl;
+      get_section_info(info_buff, CONNECTIVITY, mem_conn, &sect_size);
+      std::cout << __func__ << " ->> I am here : " << __LINE__ << " sect_size :" << sect_size << std::endl;
+      printf("mem_conn %p\n", (void *)mem_conn);
+      hexDump("conn Dump", mem_conn, sect_size);
+      std::vector<char> data{mem_conn, mem_conn + sect_size};
+      m_axlf_sections.emplace(kind , std::move(data));
+      std::cout << __func__ << " ->> I am here : " << __LINE__ << std::endl;
+    }
+    else {
+      auto hdr = ::xclbin::get_axlf_section(top, kind);
+      if (!hdr)
+        continue;
+      auto section_data = reinterpret_cast<const char*>(top) + hdr->m_sectionOffset;
+      std::vector<char> data{section_data, section_data + hdr->m_sectionSize};
+      m_axlf_sections.emplace(kind , std::move(data));
+      std::cout << __func__ << " ->> I am here : " << __LINE__ << " Kind : " << kind << std::endl;
+    }
   }
 
+  std::cout << __func__ << " ->> I am here : " << __LINE__ << std::endl;
   // Build modified CONNECTIVITY and MEM_TOPOLOGY section based on memory group ids
   // Base groups off data from driver
+  // update_topo_connectivity(info_buff);
+  std::cout << __func__ << " ->> I am here : " << __LINE__ << std::endl;
 }
 
 std::pair<const char*, size_t>

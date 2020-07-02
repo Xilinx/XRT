@@ -2501,12 +2501,15 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	const struct axlf_section_header *header = NULL;
 
+    printk("%s : %d\n", __func__, __LINE__);
 	err = icap_xclbin_wr_lock(icap);
 	if (err)
 		return err;
 
+    printk("%s : %d\n", __func__, __LINE__);
 	mutex_lock(&icap->icap_lock);
 
+    printk("%s : %d\n", __func__, __LINE__);
 	/* Sanity check xclbin. */
 	if (memcmp(xclbin->m_magic, ICAP_XCLBIN_V2, sizeof(ICAP_XCLBIN_V2))) {
 		ICAP_ERR(icap, "invalid xclbin magic string");
@@ -2533,6 +2536,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		}
 	}
 
+    printk("%s : %d\n", __func__, __LINE__);
 	/*
 	 * If the previous frequency was very high and we load an incompatible
 	 * bitstream it may damage the hardware!
@@ -2544,27 +2548,33 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		goto done;
 	}
 
+    printk("%s : %d\n", __func__, __LINE__);
 	if (xocl_xrt_version_check(xdev, xclbin, true)) {
 		ICAP_ERR(icap, "xclbin isn't supported by current XRT");
 		err = -EINVAL;
 		goto done;
 	}
+    printk("%s : %d\n", __func__, __LINE__);
 	if (!xocl_verify_timestamp(xdev,
 		xclbin->m_header.m_featureRomTimeStamp)) {
 		ICAP_ERR(icap, "TimeStamp of ROM did not match Xclbin");
 		err = -EOPNOTSUPP;
 		goto done;
 	}
+    printk("%s : %d\n", __func__, __LINE__);
 	if (icap_bitstream_in_use(icap)) {
 		ICAP_ERR(icap, "bitstream is in-use, can't change");
 		err = -EBUSY;
 		goto done;
 	}
 
+    printk("%s : %d\n", __func__, __LINE__);
 	err = __icap_download_bitstream_axlf(pdev, xclbin);
+    printk("%s : %d\n", __func__, __LINE__);
 
 done:
 	mutex_unlock(&icap->icap_lock);
+    printk("%s : %d\n", __func__, __LINE__);
 	icap_xclbin_wr_unlock(icap);
 	ICAP_INFO(icap, "%s err: %d", __func__, err);
 	return err;
@@ -3477,6 +3487,7 @@ static ssize_t icap_read_mem_topology(struct file *filp, struct kobject *kobj,
 	if (offset >= size)
 		goto unlock;
 
+    printk("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ Size of Memo topology : %d\n", size);
 	mem_topo = vzalloc(size);
 	if (!mem_topo)
 		goto unlock;
@@ -3496,6 +3507,7 @@ static ssize_t icap_read_mem_topology(struct file *filp, struct kobject *kobj,
 	else
 		nread = size - offset;
 
+    printk("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ Cpoy Size of Memo topology : %d\n", nread);
 	memcpy(buffer, ((char *)mem_topo) + offset, nread);
 unlock:
 	icap_xclbin_rd_unlock(icap);

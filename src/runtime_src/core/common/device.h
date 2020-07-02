@@ -171,13 +171,23 @@ public:
   }
 
   /**
+   * update_topo_connectivity() - Update the memory topology and 
+   * connectivity information
+   *
+   */
+  void
+  update_topo_connectivity(const char *info_buff);
+  void 
+  get_section_info(const char *buff, axlf_section_kind kind,
+                const char *&sect_info, size_t *sect_size);
+  /**
    * register_axlf() - Callback from shim after AXLF has been loaded.
    *
    * This function extracts meta data sections as needed.
    */
   XRT_CORE_COMMON_EXPORT
   void
-  register_axlf(const axlf*);
+  register_axlf(const axlf*, const char *info_buff = nullptr);
 
   /**
    * get_xclbin_uuid() - Get uuid of currently loaded xclbin
