@@ -934,7 +934,7 @@ public:
         // memory
         xclDeviceUsage devstat = { 0 };
         (void) xclGetUsageInfo(m_handle, &devstat);
-        for (unsigned i = 0; i < 2; i++) {
+        for (unsigned i = 0; i < dma_threads.size(); i++) {
             boost::property_tree::ptree pt_dma;
             pt_dma.put( "h2c", xrt_core::utils::unit_convert(devstat.h2c[i]) );
             pt_dma.put( "c2h", xrt_core::utils::unit_convert(devstat.c2h[i]) );
