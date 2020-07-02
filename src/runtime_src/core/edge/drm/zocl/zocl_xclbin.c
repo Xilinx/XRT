@@ -73,6 +73,7 @@ kind_to_string(enum axlf_section_kind kind)
 	case 20: return "DTC";
 	case 21: return "EMULATION_DATA";
 	case 22: return "SYSTEM_METADATA";
+        case 25: return "AIE_METADATA";
 	default: return "UNKNOWN";
 	}
 }
@@ -856,6 +857,13 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 		if (ret)
 			goto out0;
 	}
+
+	size = zocl_read_sect(AIE_METADATA, &zdev->aie_data.data, axlf, xclbin);
+	if (size <= 0) {
+		if (size != 0)
+			goto out0;
+	}
+	zdev->aie_data.size = size;
 
 	/* Populating CONNECTIVITY sections */
 	size = zocl_read_sect(CONNECTIVITY, &zdev->connectivity, axlf, xclbin);

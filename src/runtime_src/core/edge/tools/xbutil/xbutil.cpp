@@ -586,8 +586,54 @@ int xcldev::xclTop(int argc, char* argv[])
 
 int xcldev::xclReset(int argc, char* argv[])
 {
-  std::cout << "Unsupported API" << std::endl ;
-  return -1 ;
+    int c;
+    unsigned index = -1;
+    xclResetKind kind;
+    int long_index;
+    bool is_kind_set = false;
+    const std::string usage("Options: [--aie -d index]");
+    static struct option long_options[] = {
+        {"aie", no_argument, 0, 'a'},
+        {0,0,0,0}
+    };       
+    while ((c = getopt_long(argc, argv, "d:",long_options, &long_index)) != -1) {
+        switch (c) {
+        case 'd': {
+            index = atoi(optarg);
+            if (index >= 1) {
+                std::cout << "ERROR: index " << index << " out of range"
+                    << std::endl;
+                return -EINVAL;
+            }    
+            break;
+        }
+        case 'a': {
+            kind = XCL_RESET_AIE;
+            is_kind_set = true;
+            break;
+        }    
+        default:
+            std::cerr << usage << std::endl;
+            return -EINVAL;
+        }    
+    }    
+    if (optind != argc) {
+        std::cerr << usage << std::endl;
+        return -EINVAL;
+    }
+
+    if(is_kind_set) {
+        std::unique_ptr<device> d = std::make_unique<xcldev::device>(index,nullptr); //xclGetDevice(index);
+        if (!d)
+            return -EINVAL;
+        int err = d->reset(kind);
+        if (err)
+            std::cout << "ERROR: " << strerror(std::abs(err)) << std::endl;
+        return err;
+    } else {
+        std::cerr << usage << std::endl;
+        return -EINVAL;
+    }
 }
 
 int xcldev::xclValidate(int argc, char* argv[])

@@ -17,6 +17,7 @@ target_link_libraries(xbutil
   ${Boost_SYSTEM_LIBRARY}
   pthread
   rt
+  xaiengine
   uuid
   ${CURSES_LIBRARIES}
   )

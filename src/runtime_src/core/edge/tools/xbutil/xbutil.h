@@ -29,6 +29,7 @@
 #include <sys/ioctl.h>
 #include "xrt.h"
 #include "experimental/xrt-next.h"
+#include "experimental/xrt_aie.h"
 #include "xclperf.h"
 #include "core/common/utils.h"
 #include "core/common/sensor.h"
@@ -38,6 +39,7 @@
 #include <version.h>
 #include <fcntl.h>
 #include <chrono>
+#include <boost/property_tree/json_parser.hpp>
 using Clock = std::chrono::high_resolution_clock;
 
 #define TO_STRING(x) #x
@@ -293,6 +295,21 @@ public:
         }
     }
 
+    void getAieMetadata() const {
+        std::string errmsg;
+        std::vector<char> buf, temp_buf;
+        std::vector<std::string> aie_buf, stream_stat;
+        
+        zynq_device::get_dev()->sysfs_get("aie_metadata", errmsg, aie_buf);
+        if(aie_buf.empty())
+            return ;
+
+        std::stringstream ss(aie_buf[0]);
+        boost::property_tree::ptree pt;
+        boost::property_tree::read_json(ss, pt);
+        sensor_tree::add_child( std::string("aie_metadata"), pt.get_child("aie_metadata"));
+    }
+
     int readSensors( void ) const
     {
         // info
@@ -326,6 +343,7 @@ public:
         }
         parseComputeUnits( computeUnits );
 
+        getAieMetadata();
        /** End of debug and profile device information */
 
         return 0;
@@ -487,6 +505,95 @@ public:
             // eat the exception, probably bad path
         }
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        ostr << "AIE GRAPH Status\n";
+        try {
+            for (auto& graph : sensor_tree::get_child("aie_metadata.graphs")) {
+                std::string name,col,row,memcol,memrow,id,memaddr;
+                name = graph.second.get<std::string>("name");
+                id = graph.second.get<std::string>("id");
+                ostr << "GRAPH[" << std::right << std::setw(2) << id << "]: ";
+                ostr << std::left << std::setw(2) << name << std::endl;
+                ostr << std::dec;
+                ostr << "SNo." << std::setw(20) << "  Core [C:R]"
+                     << std::setw(30)  << "Iteration_Memory [C:R]"  
+                     << std::setw(30) << "Iteration_Memory_Addresses" 
+                     << std::endl; 
+                int count = 0;
+                auto row_it = graph.second.get_child("core_rows").begin();
+                auto memcol_it = graph.second.get_child("iteration_memory_columns").begin();
+                auto memrow_it = graph.second.get_child("iteration_memory_rows").begin();
+                auto memaddr_it = graph.second.get_child("iteration_memory_addresses").begin();
+                for (auto& node : graph.second.get_child("core_columns")) {
+                    col = node.second.data();
+                    row = row_it->second.data();
+                    memcol = memcol_it->second.data();
+                    memrow = memrow_it->second.data();
+                    memaddr = memaddr_it->second.data();
+                    ostr << "[" << std::right << std::setw(2) << count << "]   " << std::left
+                         << std::setw(20) << col+":"+ row << std::setw(30) <<  memcol+":"+memrow << std::setw(30) << memaddr << "\n";
+                    row_it++;memcol_it++;memrow_it++;memaddr_it++;count++;
+                }
+                ostr << std::endl;
+
+                ostr << std::setw(15) <<"Pl Kernel Instances in Graph:" << std::endl; 
+                count = 0;
+                std::string plname;
+                for (auto& node : graph.second.get_child("pl_kernel_instance_names")) {
+                    plname = node.second.data();
+                    ostr << "  " << std::left
+                         << std::setw(15) << plname << std::endl;
+                    count++;
+                }
+                ostr << std::endl;
+            }
+ 
+            ostr << std::setw(15) <<"RTPs" << std::endl; 
+            int count = 0;
+            for (auto& rtp_node : sensor_tree::get_child("aie_metadata.RTPs")) {
+                ostr << "[" << std::right << std::setw(2) << count << "] " << std::left << std::endl;
+                ostr << std::setw(25) << "  name:" << rtp_node.second.get<std::string>("port_name") << std::endl;
+                ostr << std::setw(25) << "  selector_row:" << rtp_node.second.get<uint16_t>("selector_row")<< std::endl;
+
+                ostr << std::setw(25) << "  selector_col:" << rtp_node.second.get<uint16_t>("selector_column") << std::endl;
+                ostr << std::setw(25) << "  selector_lock_id:" << rtp_node.second.get<uint16_t>("selector_lock_id") << std::endl;
+                ostr << std::setw(25) << "  selector_addr:" << rtp_node.second.get<uint64_t>("selector_address") << std::endl;
+
+                ostr << std::setw(25) << "  ping_row:" << rtp_node.second.get<uint16_t>("ping_buffer_row") << std::endl;
+                ostr << std::setw(25) << "  ping_col:" << rtp_node.second.get<uint16_t>("ping_buffer_column") << std::endl;
+                ostr << std::setw(25) << "  ping_lock_id:" << rtp_node.second.get<uint16_t>("ping_buffer_lock_id") << std::endl;
+                ostr << std::setw(25) << "  ping_addr:" << rtp_node.second.get<uint64_t>("ping_buffer_address") << std::endl;
+
+                ostr << std::setw(25) << "  pong_row:" << rtp_node.second.get<uint16_t>("pong_buffer_row") << std::endl;
+                ostr << std::setw(25) << "  pong_col:" << rtp_node.second.get<uint16_t>("pong_buffer_column") << std::endl;
+                ostr << std::setw(25) << "  pong_lock_id:" << rtp_node.second.get<uint16_t>("pong_buffer_lock_id") << std::endl;
+                ostr << std::setw(25) << "  pong_addr:" << rtp_node.second.get<uint64_t>("pong_buffer_address") << std::endl;
+
+                ostr << std::setw(25) << "  is_plrtp:" << rtp_node.second.get<bool>("is_PL_RTP") << std::endl;
+                ostr << std::setw(25) << "  is_input:" << rtp_node.second.get<bool>("is_input") << std::endl;
+                ostr << std::setw(25) << "  is_async:" << rtp_node.second.get<bool>("is_asynchronous") << std::endl;
+                ostr << std::setw(25) << "  is_connected:" << rtp_node.second.get<bool>("is_connected") << std::endl;
+                ostr << std::setw(25) << "  require_lock:" << rtp_node.second.get<bool>("requires_lock") << std::endl;
+                count++;
+                ostr << std::endl;
+            }
+            ostr << std::endl;
+
+            ostr << std::setw(15) <<"GMIOs" << std::endl; 
+            count = 0;
+            for (auto& gmio_node : sensor_tree::get_child("aie_metadata.GMIOs")) {
+                ostr << "[" << std::right << std::setw(2) << count << "] " << std::left << std::endl;
+                ostr << std::setw(25) << "id:" << gmio_node.second.get<std::string>("id") << std::endl;
+                ostr << std::setw(25) << "name:" << gmio_node.second.get<std::string>("name") << std::endl;
+                ostr << std::setw(25) << "type:" << gmio_node.second.get<uint16_t>("type") << std::endl;
+                ostr << std::setw(25) << "shim_col:" << gmio_node.second.get<uint16_t>("shim_column") << std::endl;
+                ostr << std::setw(25) << "burst_len:" << gmio_node.second.get<uint16_t>("burst_length_in_16byte") << std::endl;
+                count++;
+                ostr << std::endl;
+            }
+            ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        } catch(std::exception const& e) {
+            // eat the exception, probably bad path
+        }
         return 0;
     }
 
@@ -533,7 +640,18 @@ public:
     int memwrite(unsigned long long aStartAddr, unsigned long long aSize, unsigned int aPattern = 'J') { std::cout << "Unsupported API " << std::endl; return -1; }
     //int do_dd(dd::ddArgs_t args ) { std::cout << "Unsupported API " << std::endl; return -1; }
     int validate(bool quick) { std::cout << "Unsupported API " << std::endl; return -1; }
-    int reset(xclResetKind kind) { std::cout << "Unsupported API " << std::endl; return -1; }
+
+    int reset(xclResetKind kind) {
+        if(kind == XCL_RESET_AIE) {
+            std::cout << "Reseting aie..." << std::endl ;
+            xrtResetAIEArray(m_handle);
+            return 0;
+        } else {
+            std::cout << "Unsupported API " << std::endl;
+            return -1;
+        }
+    }
+
     int printStreamInfo(std::ostream& ostr) const { std::cout << "Unsupported API " << std::endl; return -1; }
 
     // Debug related functionality

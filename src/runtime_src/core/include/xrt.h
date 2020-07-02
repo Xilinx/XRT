@@ -220,7 +220,8 @@ enum xclVerbosityLevel {
 enum xclResetKind {
     XCL_RESET_KERNEL, // not implemented through xocl user pf
     XCL_RESET_FULL,   // not implemented through xocl user pf
-    XCL_USER_RESET
+    XCL_USER_RESET,
+    XCL_RESET_AIE
 };
 
 #define XCL_DEVICE_USAGE_COUNT 8
