@@ -29,7 +29,6 @@
 #include <sys/ioctl.h>
 #include "xrt.h"
 #include "experimental/xrt-next.h"
-#include "experimental/xrt_aie.h"
 #include "xclperf.h"
 #include "core/common/utils.h"
 #include "core/common/sensor.h"
@@ -39,7 +38,11 @@
 #include <version.h>
 #include <fcntl.h>
 #include <chrono>
+
+#ifdef XRT_AIE_BUILD
+#include "experimental/xrt_aie.h"
 #include <boost/property_tree/json_parser.hpp>
+#endif
 using Clock = std::chrono::high_resolution_clock;
 
 #define TO_STRING(x) #x
@@ -295,6 +298,7 @@ public:
         }
     }
 
+#ifdef XRT_AIE_BUILD
     void getAieMetadata() const {
         std::string errmsg;
         std::vector<char> buf, temp_buf;
@@ -309,6 +313,7 @@ public:
         boost::property_tree::read_json(ss, pt);
         sensor_tree::add_child( std::string("aie_metadata"), pt.get_child("aie_metadata"));
     }
+#endif
 
     int readSensors( void ) const
     {
@@ -343,7 +348,9 @@ public:
         }
         parseComputeUnits( computeUnits );
 
+#ifdef XRT_AIE_BUILD
         getAieMetadata();
+#endif
        /** End of debug and profile device information */
 
         return 0;
@@ -504,6 +511,7 @@ public:
         catch(std::exception const& e) {
             // eat the exception, probably bad path
         }
+#ifdef XRT_AIE_BUILD
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "AIE GRAPH Status\n";
         try {
@@ -594,6 +602,7 @@ public:
         } catch(std::exception const& e) {
             // eat the exception, probably bad path
         }
+#endif
         return 0;
     }
 
@@ -642,11 +651,14 @@ public:
     int validate(bool quick) { std::cout << "Unsupported API " << std::endl; return -1; }
 
     int reset(xclResetKind kind) {
+    #ifdef XRT_AIE_BUILD
         if(kind == XCL_RESET_AIE) {
             std::cout << "Reseting aie..." << std::endl ;
             xrtResetAIEArray(m_handle);
             return 0;
-        } else {
+        } else
+    #endif
+        {
             std::cout << "Unsupported API " << std::endl;
             return -1;
         }
