@@ -171,15 +171,14 @@ public:
   }
 
   /**
-   * update_topo_connectivity() - Update the memory topology and 
-   * connectivity information
+   * get_section_info() - Get the section info from the input buffer  
+   * received from Driver
    *
    */
-  void
-  update_topo_connectivity(const char *info_buff);
   void 
   get_section_info(const char *buff, axlf_section_kind kind,
                 const char *&sect_info, size_t *sect_size);
+
   /**
    * register_axlf() - Callback from shim after AXLF has been loaded.
    *
