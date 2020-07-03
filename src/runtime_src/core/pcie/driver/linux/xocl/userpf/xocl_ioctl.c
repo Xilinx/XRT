@@ -484,10 +484,8 @@ skip1:
 			goto done;
 	}
 
-    printk("%s : %d\n", __func__, __LINE__);
 	err = xocl_icap_download_axlf(xdev, axlf);
 	if (err) {
-        printk("ERR %s : %d\n", __func__, __LINE__);
 		/* TODO: remove this. Coupling scheduler is a bad idea.
 		 */
 		/*
@@ -503,14 +501,12 @@ skip1:
 		 * since we have cleaned it up before download.
 		 */
 	}
-    printk("%s : %d\n", __func__, __LINE__);
 
 	if (!preserve_mem) {
 		rc = xocl_init_mem(drm_p);
 		if (err == 0)
 			err = rc;
 	}
-    printk("%s : %d\n", __func__, __LINE__);
 
 done:
 	if (size < 0)

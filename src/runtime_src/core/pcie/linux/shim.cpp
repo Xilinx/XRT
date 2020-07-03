@@ -1312,7 +1312,6 @@ bool shim::zeroOutDDR()
 int shim::xclLoadXclBin(const xclBin *buffer)
 {
     auto top = reinterpret_cast<const axlf*>(buffer);
-    std::cout << __func__ << " ->> I am here : " << __LINE__ << std::endl;
     auto ret = xclLoadAxlf(top);
     if (ret != 0) {
       if (ret == -EOPNOTSUPP) {
@@ -1351,7 +1350,6 @@ int shim::xclLoadAxlf(const axlf *buffer)
 {
     xrt_logmsg(XRT_INFO, "%s, buffer: %s", __func__, buffer);
 
-    std::cout << __func__ << " ->> I am here : " << __LINE__ << std::endl;
     drm_xocl_axlf axlf_obj = {const_cast<axlf *>(buffer)};
     int ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
     if(ret)
@@ -1416,67 +1414,6 @@ int shim::xclGetBOProperties(unsigned int boHandle, xclBOProperties *properties)
     return result ? -errno : result;
 }
 
-void hexDump (const char * desc, const void * addr, const int len) {
-    int i;
-    unsigned char buff[17];
-    const unsigned char * pc = (const unsigned char *)addr;
-
-    // Output description if given.
-
-    if (desc != NULL)
-        printf ("%s:\n", desc);
-
-    // Length checks.
-
-    if (len == 0) {
-        printf("  ZERO LENGTH\n");
-        return;
-    }
-    else if (len < 0) {
-        printf("  NEGATIVE LENGTH: %d\n", len);
-        return;
-    }
-
-    // Process every byte in the data.
-
-    for (i = 0; i < len; i++) {
-        // Multiple of 16 means new line (with line offset).
-
-        if ((i % 16) == 0) {
-            // Don't print ASCII buffer for the "zeroth" line.
-
-            if (i != 0)
-                printf ("  %s\n", buff);
-
-            // Output the offset.
-
-            printf ("  %04x ", i);
-        }
-
-        // Now the hex code for the specific character.
-        printf (" %02x", pc[i]);
-
-        // And buffer a printable ASCII character for later.
-
-        if ((pc[i] < 0x20) || (pc[i] > 0x7e)) // isprint() may be better.
-            buff[i % 16] = '.';
-        else
-            buff[i % 16] = pc[i];
-        buff[(i % 16) + 1] = '\0';
-    }
-
-    // Pad out last line if not exactly 16 characters.
-
-    while ((i % 16) != 0) {
-        printf ("   ");
-        i++;
-    }
-
-    // And print the final ASCII buffer.
-
-    printf ("  %s\n", buff);
-}
-
 /*
  * xclGetMemInfo()
  */
@@ -1487,7 +1424,6 @@ int shim::xclGetMemInfo(char **MemInfo)
     std::vector<char> membuf;
     std::vector<char> connbuf;
 
-    std::cout << __func__ << " ->> I am here : " << __LINE__ << std::endl;
     /* Get the memory topology Information */
     mDev->sysfs_get("icap", "mem_topology", errmsg, membuf);
     if (!errmsg.empty()) {
@@ -1495,7 +1431,6 @@ int shim::xclGetMemInfo(char **MemInfo)
         return -EINVAL;
     }
 
-    std::cout << __func__ << " ->> I am here : " << __LINE__ << std::endl;
     /* Get the memory connectivity Information */
     mDev->sysfs_get("icap", "connectivity", errmsg, connbuf);
     if (!errmsg.empty()) {
@@ -1503,24 +1438,17 @@ int shim::xclGetMemInfo(char **MemInfo)
         return -EINVAL;
     }
 
-    std::cout << __func__ << " ->> I am here : topo size " << membuf.size() << " conn size " << connbuf.size() << " " << __LINE__ << std::endl;
     size = membuf.size() + connbuf.size();
 
-    std::cout << __func__ << " ->> I am here : " << __LINE__ << std::endl;
     /* Allocate memory for *MemInfo */
     *MemInfo =  (char *)malloc(size);
     if (!*MemInfo)
         return -ENOMEM;
 
-    std::cout << __func__ << " ->> I am here : " << __LINE__ << " Size " << size << std::endl;
     memset((void *)*MemInfo, 0, size);
-    std::cout << __func__ << " ->> I am here : " << __LINE__ << std::endl;
     memcpy((void *)*MemInfo, membuf.data(), membuf.size());
-    std::cout << __func__ << " ->> I am here : " << __LINE__ << std::endl;
     memcpy((void *)(*MemInfo + membuf.size()), connbuf.data(), connbuf.size());
 
-    hexDump("Dump" , *MemInfo, size);
-    std::cout << __func__ << " ->> I am here : " << __LINE__ << std::endl;
     return size;
 }
 
@@ -2338,25 +2266,21 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     xdphal::flush_device(handle) ;
 #endif  
 
-    std::cout << __func__ << " ->> I am here : " << __LINE__ << std::endl;
 #ifdef DISABLE_DOWNLOAD_XCLBIN
     int ret = 0;
 #else
     auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
 #endif
 
-    std::cout << __func__ << " ->> I am here : " << __LINE__ << std::endl;
     if (!ret) {
       char *pMemInfo = NULL;
       auto core_device = xrt_core::get_userpf_device(drv);
-      std::cout << __func__ << " ->> I am here : " << __LINE__ << std::endl;
+      
       /* Get memory topology info from driver through sysfs */
       drv->xclGetMemInfo(&pMemInfo);
-      std::cout << __func__ << " ->> I am here : " << __LINE__ << std::endl;
       /* Populate the retrive info into device class */
       core_device->register_axlf(buffer, pMemInfo);
 
-      std::cout << __func__ << " ->> I am here : " << __LINE__ << std::endl;
       /* Free the allocated memory */
       if (pMemInfo)
           free(pMemInfo);
