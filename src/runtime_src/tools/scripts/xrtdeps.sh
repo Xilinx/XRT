@@ -244,6 +244,14 @@ prep_ubuntu()
 
 prep_centos7()
 {
+    echo "Enabling EPEL repository..."
+    rpm -q --quiet epel-release
+    if [ $? != 0 ]; then
+    	 yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+	     yum check-update
+    fi
+    echo "Installing cmake3 from EPEL repository..."
+    yum install -y cmake3
     if [ $docker == 0 ]; then 
         echo "Enabling CentOS SCL repository..."
         yum --enablerepo=extras install -y centos-release-scl
@@ -279,6 +287,14 @@ prep_rhel8()
 
 prep_centos8()
 {
+    echo "Enabling EPEL repository..."
+    rpm -q --quiet epel-release
+    if [ $? != 0 ]; then
+    	 yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+	     yum check-update
+    fi
+    echo "Installing cmake3 from EPEL repository..."
+    yum install -y cmake3
     echo "Enabling PowerTools repo for CentOS8 ..."
     yum install -y dnf-plugins-core
     yum config-manager --set-enabled PowerTools
@@ -287,11 +303,6 @@ prep_centos8()
 
 prep_centos()
 {
-    echo "Enabling EPEL repository..."
-    yum install -y epel-release
-    echo "Installing cmake3 from EPEL repository..."
-    yum install -y cmake3
-
     if [ $MAJOR == 8 ]; then
         prep_centos8
     else
