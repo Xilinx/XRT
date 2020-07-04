@@ -104,7 +104,7 @@ xclbin : $(CL_XCLBIN)
 exe : $(ODIR)/$(EXENAME)
 
 $(ODIR)/$(EXENAME): $(OBJS)
-	$(CXX) $(LDFLAGS) $(MYLDFLAGS) -o $@ $(OBJS)  -I${XILINX_XRT}/include  -L${XILINX_XRT}/lib -Wl,-rpath-link,${XILINX_XRT}/lib -lxrt_core -lxrt_coreutil -ldl -luuid -pthread
+	$(CXX) $(LDFLAGS) $(MYLDFLAGS) -o $@ $(OBJS)  -I${XILINX_XRT}/include  -L${XILINX_XRT}/lib -Wl,-rpath-link,${XILINX_XRT}/lib -lxrt_hwemu -lxrt_coreutil -ldl -luuid -pthread
 
 endif
 

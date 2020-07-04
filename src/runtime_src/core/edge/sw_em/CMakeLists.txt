@@ -1,9 +1,11 @@
 set(EM_SRC_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/generic_pcie_hal2")
 set(COMMON_EM_SRC_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/../common_em")
 set(COMMON_EM_GEN_DIR  "${CMAKE_CURRENT_BINARY_DIR}/../common_em")
+set(COMMON_SRC_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/..")
 
 include_directories(
   ${EM_SRC_DIR}
+  ${COMMON_SRC_DIR}
   ${COMMON_EM_SRC_DIR}
   ${COMMON_EM_GEN_DIR}
   ${BOOST_FILESYSTEM_INCLUDE_DIRS}
@@ -14,6 +16,8 @@ include_directories(
 file(GLOB EM_SRC_FILES
   "${EM_SRC_DIR}/*.h"
   "${EM_SRC_DIR}/*.cxx"
+  "${COMMON_SRC_DIR}/common/*.h"
+  "${COMMON_SRC_DIR}/common/*.cpp"
   )
 
 add_definitions(-DXCLHAL_MAJOR_VER=1 -DXCLHAL_MINOR_VER=0)

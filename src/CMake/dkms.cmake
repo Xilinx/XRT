@@ -107,6 +107,65 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/lib/libqdma/version.h
   xocl/lib/libqdma/xdev.h
   xocl/lib/libqdma/xdev.c
+  xocl/lib/libqdma4/libqdma4_export.h
+  xocl/lib/libqdma4/libqdma_config.c
+  xocl/lib/libqdma4/libqdma_config.h
+  xocl/lib/libqdma4/libqdma_export.c
+  xocl/lib/libqdma4/qdma_compat.h
+  xocl/lib/libqdma4/qdma_context.c
+  xocl/lib/libqdma4/qdma_context.h
+  xocl/lib/libqdma4/qdma_debugfs.c
+  xocl/lib/libqdma4/qdma_debugfs_dev.c
+  xocl/lib/libqdma4/qdma_debugfs_dev.h
+  xocl/lib/libqdma4/qdma_debugfs.h
+  xocl/lib/libqdma4/qdma_debugfs_queue.c
+  xocl/lib/libqdma4/qdma_debugfs_queue.h
+  xocl/lib/libqdma4/qdma_descq.c
+  xocl/lib/libqdma4/qdma_descq.h
+  xocl/lib/libqdma4/qdma_device.c
+  xocl/lib/libqdma4/qdma_device.h
+  xocl/lib/libqdma4/qdma_intr.c
+  xocl/lib/libqdma4/qdma_intr.h
+  xocl/lib/libqdma4/qdma_sriov.c
+  xocl/lib/libqdma4/qdma_license.h
+  xocl/lib/libqdma4/qdma_list.c
+  xocl/lib/libqdma4/qdma_list.h
+  xocl/lib/libqdma4/qdma_mbox.c
+  xocl/lib/libqdma4/qdma_mbox.h
+  xocl/lib/libqdma4/qdma_mbox_protocol.c
+  xocl/lib/libqdma4/qdma_mbox_protocol.h
+  xocl/lib/libqdma4/qdma_reg_dump.h
+  xocl/lib/libqdma4/qdma_regs.c
+  xocl/lib/libqdma4/qdma_regs.h
+  xocl/lib/libqdma4/qdma_resource_mgmt.c
+  xocl/lib/libqdma4/qdma_resource_mgmt.h
+  xocl/lib/libqdma4/qdma_st_c2h.c
+  xocl/lib/libqdma4/qdma_st_c2h.h
+  xocl/lib/libqdma4/qdma_thread.c
+  xocl/lib/libqdma4/qdma_thread.h
+  xocl/lib/libqdma4/qdma_ul_ext.h
+  xocl/lib/libqdma4/thread.c
+  xocl/lib/libqdma4/thread.h
+  xocl/lib/libqdma4/version.h
+  xocl/lib/libqdma4/xdev.c
+  xocl/lib/libqdma4/xdev.h
+  xocl/lib/libqdma4/qdma_access_common.c
+  xocl/lib/libqdma4/qdma_access_common.h
+  xocl/lib/libqdma4/qdma_access_errors.h
+  xocl/lib/libqdma4/qdma_access_export.h
+  xocl/lib/libqdma4/qdma_access_version.h
+  xocl/lib/libqdma4/qdma_platform.c
+  xocl/lib/libqdma4/qdma_platform_env.h
+  xocl/lib/libqdma4/qdma_platform.h
+  xocl/lib/libqdma4/qdma_s80_hard_access.c
+  xocl/lib/libqdma4/qdma_s80_hard_access.h
+  xocl/lib/libqdma4/qdma_s80_hard_reg.h
+  xocl/lib/libqdma4/qdma_soft_access.c
+  xocl/lib/libqdma4/qdma_soft_access.h
+  xocl/lib/libqdma4/qdma_soft_reg.h
+  xocl/lib/libqdma4/eqdma_soft_access.c
+  xocl/lib/libqdma4/eqdma_soft_access.h
+  xocl/lib/libqdma4/eqdma_soft_reg.h
   xocl/lib/libfdt/fdt.c
   xocl/lib/libfdt/fdt.h
   xocl/lib/libfdt/fdt_addresses.c
@@ -122,6 +181,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/lib/libfdt/libfdt_internal.h
   xocl/subdev/xdma.c
   xocl/subdev/qdma.c
+  xocl/subdev/qdma4.c
   xocl/subdev/feature_rom.c
   xocl/subdev/mb_scheduler.c
   xocl/subdev/xvc.c
@@ -152,13 +212,16 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/subdev/trace_fifo_full.c
   xocl/subdev/trace_funnel.c
   xocl/subdev/trace_s2mm.c
+  xocl/subdev/spc.c
+  xocl/subdev/lapc.c
   xocl/subdev/memory_hbm.c
   xocl/subdev/ddr_srsr.c
   xocl/subdev/ulite.c
   xocl/subdev/calib_storage.c
   xocl/subdev/address_translator.c
-  xocl/subdev/cu_ctrl.c
   xocl/subdev/cu.c
+  xocl/subdev/p2p.c
+  xocl/subdev/pmc.c
   xocl/Makefile
   )
 
@@ -168,6 +231,7 @@ SET (XRT_DKMS_DRIVER_INCLUDES
   include/mgmt-reg.h
   include/mgmt-ioctl.h
   include/qdma_ioctl.h
+  include/profile_ioctl.h
   include/mailbox_proto.h
   include/flash_xrt_data.h
   )
@@ -183,7 +247,6 @@ SET (XRT_DKMS_CORE_INCLUDES
 
 SET (XRT_DKMS_COMMON_XRT_DRV
   common/drv/kds_core.c
-  common/drv/kds_cu_ctrl.c
   common/drv/xrt_cu.c
   common/drv/cu_hls.c
   common/drv/cu_plram.c
@@ -192,7 +255,6 @@ SET (XRT_DKMS_COMMON_XRT_DRV
 SET (XRT_DKMS_COMMON_XRT_DRV_INCLUDES
   common/drv/include/xrt_drv.h
   common/drv/include/kds_core.h
-  common/drv/include/kds_cu_ctrl.h
   common/drv/include/kds_command.h
   common/drv/include/xrt_cu.h
   )

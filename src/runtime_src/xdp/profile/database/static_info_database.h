@@ -24,6 +24,7 @@
 #include <string>
 
 #include "xdp/config.h"
+#include "core/common/system.h"
 
 namespace xdp {
 
@@ -123,6 +124,7 @@ namespace xdp {
     struct PlatformInfo platformInfo;
     std::string loadedXclbin;
     std::map<int32_t, ComputeUnitInstance*> cus;
+    //uuid        loadedXclbinUUID;
     std::map<int32_t, Memory*>   memoryInfo;
     std::vector<Monitor*> aimList;
     std::vector<Monitor*> amList;
@@ -160,9 +162,10 @@ namespace xdp {
     void resetDeviceInfo(uint64_t deviceId) ;
 
     // Helper functions that fill in device information
-    bool setXclbinUUID(DeviceInfo*, const void* binary);
-    bool initializeComputeUnits(DeviceInfo*, const void* binary);
-    bool initializeProfileMonitors(DeviceInfo*, const void* binary);
+    //bool setXclbinUUID(DeviceInfo*, const std::shared_ptr<xrt_core::device>& device);
+    bool setXclbinName(DeviceInfo*, const std::shared_ptr<xrt_core::device>& device);
+    bool initializeComputeUnits(DeviceInfo*, const std::shared_ptr<xrt_core::device>&);
+    bool initializeProfileMonitors(DeviceInfo*, const std::shared_ptr<xrt_core::device>&);
 
   public:
     VPStaticDatabase() ;
@@ -214,8 +217,15 @@ namespace xdp {
         return 0;
       return deviceInfo[deviceId]->platformInfo.kdmaCount; 
     }
+#if 0
+    uuid getXclbinUUID(uint64_t deviceId) { 
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return 0;
+      return deviceInfo[deviceId]->loadedXclbinUUID; 
+    }
+#endif
 
-    std::string getXclbinUUID(uint64_t deviceId) { 
+    std::string getXclbinName(uint64_t deviceId) { 
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return std::string(""); 
       return deviceInfo[deviceId]->loadedXclbin; 
@@ -307,7 +317,7 @@ namespace xdp {
     }
 
     // Reseting device information whenever a new xclbin is added
-    XDP_EXPORT void updateDevice(uint64_t deviceId, const void* binary) ;
+    XDP_EXPORT void updateDevice(uint64_t deviceId, void* devHandle) ;
 
     // Functions that add information to the database
     XDP_EXPORT void addCommandQueueAddress(uint64_t a) ;

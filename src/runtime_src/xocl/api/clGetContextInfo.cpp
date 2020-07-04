@@ -42,7 +42,7 @@ validOrError(const cl_context context)
 
  //older runtime checks against a global list.
  if(!context)
-   throw error(CL_INVALID_CONTEXT);
+   throw error(CL_INVALID_CONTEXT, "Invalid NULL context");
 }
 
 static cl_int

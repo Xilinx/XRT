@@ -41,13 +41,17 @@
 #include <cstdarg>
 #include <type_traits>
 #include <utility>
+#include <algorithm>
 #include <mutex>
 #include <condition_variable>
+#include <chrono>
+#include <cstdlib>
+using namespace std::chrono_literals;
 
 #include <boost/detail/endian.hpp>
 
 #ifdef _WIN32
-# pragma warning( disable : 4244 4267)
+# pragma warning( disable : 4244 4267 4996)
 #endif
 
 ////////////////////////////////////////////////////////////////
@@ -81,10 +85,10 @@ xrtRunSetArgV(xrtRunHandle runHandle, int index, const void* value, size_t bytes
  * Return:      0 on success, -1 on error
  *
  * Use this API to asynchronously update a specific kernel
- * argument of an existing run.  
+ * argument of an existing run.
  *
  * This API is only supported on Edge.
- */  
+ */
 XCL_DRIVER_DLLESPEC
 int
 xrtRunUpdateArgV(xrtRunHandle rhdl, int index, const void* value, size_t bytes);
@@ -92,21 +96,40 @@ xrtRunUpdateArgV(xrtRunHandle rhdl, int index, const void* value, size_t bytes);
 
 namespace {
 
-inline std::vector<uint32_t>
-value_to_uint32_vector(const void* value, size_t size)
+constexpr size_t operator"" _kb(unsigned long long v)  { return 1024u * v; }
+
+inline bool
+is_sw_emulation()
 {
-  size = std::max(size, sizeof(uint32_t));
+  static auto xem = std::getenv("XCL_EMULATION_MODE");
+  static bool swem = xem ? std::strcmp(xem,"sw_emu")==0 : false;
+  return swem;
+}
+
+inline bool
+has_reg_read_write()
+{
+#ifdef _WIN32
+  return false;
+#else
+  return !is_sw_emulation();
+#endif
+}
+
+inline std::vector<uint32_t>
+value_to_uint32_vector(const void* value, size_t bytes)
+{
+  bytes = std::max(bytes, sizeof(uint32_t));
   auto uval = reinterpret_cast<const uint32_t*>(value);
-  return { uval, uval + size / sizeof(uint32_t)};
+  return { uval, uval + bytes / sizeof(uint32_t)};
 }
 
 template <typename ValueType>
 inline std::vector<uint32_t>
 value_to_uint32_vector(ValueType value)
 {
-  return value_to_uint32_vector(static_cast<void*>(&value), sizeof(value));
+  return value_to_uint32_vector(&value, sizeof(value));
 }
-
 
 // struct device_type - Extends xrt_core::device
 //
@@ -155,19 +178,19 @@ public:
   enum class access_mode : bool { exclusive = false, shared = true };
 
   static std::shared_ptr<ip_context>
-  open(xrt_core::device* device, const xuid_t xclbin_id, unsigned int ipidx, access_mode am)
+  open(xrt_core::device* device, const xuid_t xclbin_id, const ip_data* ip, unsigned int ipidx, access_mode am)
   {
     static std::vector<std::weak_ptr<ip_context>> ips(128);
-    auto ip = ips[ipidx].lock();
-    if (!ip) {
-      ip = std::shared_ptr<ip_context>(new ip_context(device, xclbin_id, ipidx, am));
-      ips[ipidx] = ip;
+    auto ipctx = ips[ipidx].lock();
+    if (!ipctx) {
+      ipctx = std::shared_ptr<ip_context>(new ip_context(device, xclbin_id, ip, ipidx, am));
+      ips[ipidx] = ipctx;
     }
 
-    if (ip->access != am)
+    if (ipctx->access != am)
       throw std::runtime_error("Conflicting access mode for IP(" + std::to_string(ipidx) + ")");
 
-    return ip;
+    return ipctx;
   }
 
   // For symmetry
@@ -175,23 +198,50 @@ public:
   close()
   {}
 
+  access_mode
+  get_access_mode() const
+  {
+    return access;
+  }
+
+  size_t
+  get_size() const
+  {
+    return size;
+  }
+
+  uint64_t
+  get_address() const
+  {
+    return address;
+  }
+
+  unsigned int
+  get_index() const
+  {
+    return idx;
+  }
+
   ~ip_context()
   {
     device->close_context(xid, idx);
   }
 
 private:
-  ip_context(xrt_core::device* dev, const xuid_t xclbin_id, unsigned int ipidx, access_mode am)
-    : device(dev), idx(ipidx), access(am)
+  ip_context(xrt_core::device* dev, const xuid_t xclbin_id, const ip_data* ip,
+             unsigned int ipidx, access_mode am)
+    : device(dev), idx(ipidx), address(ip->m_base_address), size(64_kb), access(am)
   {
     uuid_copy(xid, xclbin_id);
     device->open_context(xid, idx, std::underlying_type<access_mode>::type(am));
   }
 
   xrt_core::device* device;
-  unsigned int idx;
-  access_mode access;
   xuid_t xid;
+  unsigned int idx;
+  uint64_t address;
+  size_t size;
+  access_mode access;
 };
 
 // class kernel_command - Immplements command API expected by schedulers
@@ -321,6 +371,17 @@ public:
     return static_cast<ert_cmd_state>(pkt->state);
   }
 
+  ert_cmd_state
+  wait(unsigned int timeout_ms) const
+  {
+    std::unique_lock<std::mutex> lk(m_mutex);
+    while (!m_done)
+      m_exec_done.wait_for(lk, timeout_ms * 1ms);
+
+    auto pkt = get_ert_packet();
+    return static_cast<ert_cmd_state>(pkt->state);
+  }
+
   ////////////////////////////////////////////////////////////////
   // Implement xrt_core::command API
   ////////////////////////////////////////////////////////////////
@@ -410,6 +471,27 @@ class argument
     }
   };
 
+  template <typename HostType, typename VaArgType>
+  struct scalar_type<HostType*, VaArgType*> : iarg
+  {
+    size_t size;  // size in bytes of argument per xclbin
+
+    scalar_type(size_t bytes)
+      : size(bytes)
+    {
+      // assert(bytes <= sizeof(VaArgType)
+    }
+
+    virtual std::vector<uint32_t>
+    get_value(std::va_list* args) const
+    {
+      static_assert(BOOST_BYTE_ORDER==1234,"Big endian detected");
+
+      HostType* value = va_arg(*args, VaArgType*);
+      return value_to_uint32_vector(value, size);
+    }
+  };
+
   struct global_type : iarg
   {
     xrt_core::device* core_device;
@@ -458,9 +540,9 @@ class argument
 
 public:
   static constexpr size_t no_index = xarg::no_index;
-  
+
   argument()
-    : content(nullptr)
+    : grpid(std::numeric_limits<int32_t>::max()), content(nullptr)
   {}
 
   argument(argument&& rhs)
@@ -482,6 +564,12 @@ public:
         content = std::make_unique<scalar_type<float,double>>(arg.size);
       else if (arg.hosttype == "double")
         content = std::make_unique<scalar_type<double,double>>(arg.size);
+      else if (arg.hosttype == "int*")
+        content = std::make_unique<scalar_type<int*,int*>>(arg.size);
+      else if (arg.hosttype == "uint*")
+        content = std::make_unique<scalar_type<unsigned int*,unsigned int*>>(arg.size);
+      else if (arg.hosttype == "float*")
+        throw std::runtime_error("float* kernel argument not supported");
       else if (arg.size == 4)
         content = std::make_unique<scalar_type<uint32_t,uint32_t>>(arg.size);
       else if (arg.size == 8)
@@ -492,7 +580,7 @@ public:
         content = std::make_unique<scalar_type<size_t,size_t>>(arg.size);
       break;
     }
-    case xarg::argtype::global : 
+    case xarg::argtype::global :
       content = std::make_unique<global_type>(dev, arg.size);
       break;
     case xarg::argtype::stream :
@@ -502,7 +590,7 @@ public:
       throw std::runtime_error("Unexpected error");
     }
   }
-  
+
   void
   valid_or_error() const
   {
@@ -566,9 +654,9 @@ class kernel_impl
   std::vector<ipctx> ipctxs;           // CU context locks
   std::bitset<128> cumask;             // cumask for command execution
   size_t regmap_size = 0;              // CU register map size
-  size_t num_cumasks = 1;              // Required number of command cu masks TODO: compute
+  size_t num_cumasks = 1;              // Required number of command cu masks
 
-  // Traverse xclbin connectivity section and find  
+  // Traverse xclbin connectivity section and find
   int32_t
   get_arg_grpid(const connectivity* cons, int32_t argidx, int32_t ipidx)
   {
@@ -596,6 +684,22 @@ class kernel_impl
     return grpidx;
   }
 
+  unsigned int
+  get_ipidx_or_error(size_t offset) const
+  {
+    if (ipctxs.size() != 1)
+      throw std::runtime_error("Cannot read or write kernel with multiple compute units");
+    auto& ipctx = ipctxs.back();
+    auto mode = ipctx->get_access_mode();
+    if (mode != ip_context::access_mode::exclusive)
+      throw std::runtime_error("Cannot read or write kernel with shared access");
+
+    if ((offset + sizeof(uint32_t)) > ipctx->get_size())
+        throw std::out_of_range("Cannot read or write outside kernel register space");
+
+    return ipctx->get_index();
+  }
+
 public:
   // kernel_type - constructor
   //
@@ -621,7 +725,7 @@ public:
 
     // xml section for kernel arguments
     auto xml_section = device->core_device->get_axlf_section(EMBEDDED_METADATA, xclbin_id);
-    if (!xml_section.first) 
+    if (!xml_section.first)
       throw std::runtime_error("No xml metadata available to construct kernel, make sure xclbin is loaded");
 
     // Compare the matching CUs against the CU sort order to create cumask
@@ -635,8 +739,9 @@ public:
       if (itr == cus.end())
         throw std::runtime_error("unexpected error");
       auto idx = std::distance(cus.begin(), itr);
-      ipctxs.emplace_back(ip_context::open(device->get_core_device(), xclbin_id, idx, am));
+      ipctxs.emplace_back(ip_context::open(device->get_core_device(), xclbin_id, cu, idx, am));
       cumask.set(idx);
+      num_cumasks = std::max<size_t>(num_cumasks, (idx / 32) + 1);
     }
 
     // Collect ip_layout index of the selected CUs so that xclbin
@@ -652,13 +757,35 @@ public:
       regmap_size = std::max(regmap_size, (arg.offset + arg.size) / 4);
       args.emplace_back(device->get_core_device(), std::move(arg), get_arg_grpid(connectivity, arg.index, ip2idx));
     }
-    
+
   }
 
   int
   group_id(int argno)
   {
     return args.at(argno).group_id();
+  }
+
+  uint32_t
+  read_register(uint32_t offset) const
+  {
+    auto idx = get_ipidx_or_error(offset);
+    uint32_t value = 0;
+    if (has_reg_read_write())
+      device->core_device->reg_read(idx, offset, &value);
+    else
+      device->core_device->xread(ipctxs.back()->get_address() + offset, &value, 4);
+    return value;
+  }
+
+  void
+  write_register(uint32_t offset, uint32_t data)
+  {
+    auto idx = get_ipidx_or_error(offset);
+    if (has_reg_read_write())
+      device->core_device->reg_write(idx, offset, data);
+    else
+      device->core_device->xwrite(ipctxs.back()->get_address() + offset, &data, 4);
   }
 
   device_type*
@@ -718,6 +845,21 @@ class run_impl
   xrt_core::device* core_device;          // convenience, in scope of kernel
   kernel_command cmd;                     // underlying command object
 
+  void
+  encode_compute_units(const std::bitset<128>& cus, size_t num_cumasks)
+  {
+    auto ecmd = cmd.get_ert_cmd<ert_packet*>();
+    std::fill(ecmd->data, ecmd->data + num_cumasks, 0);
+    
+    for (size_t cu_idx = 0; cu_idx < 128; ++cu_idx) {
+      if (!cus.test(cu_idx))
+        continue;
+      auto mask_idx = cu_idx / 32;
+      auto idx_in_mask = cu_idx - mask_idx * 32;
+      ecmd->data[mask_idx] |= (1 << idx_in_mask);
+    }
+  }
+
 public:
   void
   add_callback(callback_function_type fcn)
@@ -735,16 +877,24 @@ public:
   {
     // TODO: consider if execbuf is cleared on return from cache
     auto kcmd = cmd.get_ert_cmd<ert_start_kernel_cmd*>();
+    kcmd->extra_cu_masks = kernel->get_num_cumasks() - 1;
     kcmd->count = kernel->get_num_cumasks() + kernel->get_regmap_size();
     kcmd->opcode = ERT_START_CU;
     kcmd->type = ERT_CU;
-    kcmd->cu_mask = kernel->get_cumask().to_ulong();  // TODO: fix for > 32 CUs
+    encode_compute_units(kernel->get_cumask(), kernel->get_num_cumasks());
   }
 
   kernel_impl*
   get_kernel() const
   {
     return kernel.get();
+  }
+
+  template <typename ERT_COMMAND_TYPE>
+  ERT_COMMAND_TYPE
+  get_ert_cmd()
+  {
+    return cmd.get_ert_cmd<ERT_COMMAND_TYPE>();
   }
 
   void
@@ -813,9 +963,9 @@ public:
 
   // wait() - wait for execution to complete
   ert_cmd_state
-  wait() const
+  wait(unsigned int timeout_ms) const
   {
-    return cmd.wait();
+    return timeout_ms ? cmd.wait(timeout_ms) : cmd.wait();
   }
 
   // state() - get current execution state
@@ -849,7 +999,7 @@ class run_update_type
   reset_cmd()
   {
     auto kcmd = cmd.get_ert_cmd<ert_init_kernel_cmd*>();
-    kcmd->count = data_offset;  // reset payload size
+    kcmd->count = data_offset + kcmd->extra_cu_masks;  // reset payload size
   }
 
 public:
@@ -859,10 +1009,13 @@ public:
     , cmd(kernel->get_device())
   {
     auto kcmd = cmd.get_ert_cmd<ert_init_kernel_cmd*>();
+    auto rcmd = run->get_ert_cmd<ert_start_kernel_cmd*>();
     kcmd->opcode = ERT_INIT_CU;
     kcmd->type = ERT_CU;
     kcmd->update_rtp = 1;
-    kcmd->cu_mask = kernel->get_cumask().to_ulong();  // TODO: fix for > 32 CUs
+    kcmd->extra_cu_masks = rcmd->extra_cu_masks;
+    kcmd->cu_mask = rcmd->cu_mask;
+    std::copy(rcmd->data, rcmd->data + rcmd->extra_cu_masks, kcmd->data);
     reset_cmd();
   }
 
@@ -871,14 +1024,14 @@ public:
   {
     reset_cmd();
 
-    auto kcmd = cmd.get_ert_cmd<ert_start_kernel_cmd*>();
+    auto kcmd = cmd.get_ert_cmd<ert_init_kernel_cmd*>();
     auto idx = kcmd->count - data_offset;
     auto offset = arg.offset();
     for (auto v : value) {
       kcmd->data[idx++] = offset;
       kcmd->data[idx++] = v;
       offset += 4;
-    }      
+    }
     kcmd->count += value.size() * 2;
 
     // make the updated arg sticky in current run
@@ -1076,10 +1229,10 @@ xrtRunState(xrtRunHandle rhdl)
 }
 
 ert_cmd_state
-xrtRunWait(xrtRunHandle rhdl)
+xrtRunWait(xrtRunHandle rhdl, unsigned int timeout_ms)
 {
   auto run = get_run(rhdl);
-  return run->wait();
+  return run->wait(timeout_ms);
 }
 
 void
@@ -1128,11 +1281,11 @@ start()
   handle->start();
 }
 
-void
+ert_cmd_state
 run::
-wait() const
+wait(unsigned int timeout_ms) const
 {
-  handle->wait();
+  return handle->wait(timeout_ms);
 }
 
 ert_cmd_state
@@ -1189,6 +1342,21 @@ kernel(xclDeviceHandle dhdl, const xuid_t xclbin_id, const std::string& name, bo
      (get_device(dhdl), xclbin_id, name,
       exclusive ? ip_context::access_mode::exclusive : ip_context::access_mode::shared))
 {}
+
+uint32_t
+kernel::
+read_register(uint32_t offset) const
+{
+  return handle->read_register(offset);
+}
+
+void
+kernel::
+write_register(uint32_t offset, uint32_t data)
+{
+  handle->write_register(offset, data);
+}
+
 
 int
 kernel::
@@ -1272,6 +1440,43 @@ xrtKernelArgGroupId(xrtKernelHandle khdl, int argno)
   }
 }
 
+int
+xrtKernelReadRegister(xrtKernelHandle khdl, uint32_t offset, uint32_t* datap)
+{
+  try {
+    auto kernel = get_kernel(khdl);
+    *datap = kernel->read_register(offset);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return -1;
+  }
+
+}
+
+int
+xrtKernelWriteRegister(xrtKernelHandle khdl, uint32_t offset, uint32_t data)
+{
+  try {
+    auto kernel = get_kernel(khdl);
+    kernel->write_register(offset, data);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return -1;
+  }
+}
+
 xrtRunHandle
 xrtKernelRun(xrtKernelHandle khdl, ...)
 {
@@ -1327,7 +1532,19 @@ ert_cmd_state
 xrtRunWait(xrtRunHandle rhdl)
 {
   try {
-    return api::xrtRunWait(rhdl);
+    return api::xrtRunWait(rhdl, 0);
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return ERT_CMD_STATE_ABORT;
+  }
+}
+
+ert_cmd_state
+xrtRunWaitFor(xrtRunHandle rhdl, unsigned int timeout_ms)
+{
+  try {
+    return api::xrtRunWait(rhdl, timeout_ms);
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
@@ -1376,7 +1593,7 @@ xrtRunUpdateArg(xrtRunHandle rhdl, int index, ...)
 {
   try {
     auto upd = get_run_update(rhdl);
-    
+
     std::va_list args;
     va_start(args, index);
     upd->update_arg_at_index(index, &args);
@@ -1451,4 +1668,3 @@ xrtRunSetArgV(xrtRunHandle rhdl, int index, const void* value, size_t bytes)
     return -1;
   }
 }
-

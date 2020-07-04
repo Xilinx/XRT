@@ -19,6 +19,7 @@
 #define _XRT_DEVICE_H_
 
 #include "xrt.h"
+#include "experimental/xrt_uuid.h"
 
 #ifdef __cplusplus
 # include <memory>
@@ -52,8 +53,8 @@ public:
    * @didx:     Device index
    */
   XCL_DRIVER_DLLESPEC
+  explicit
   device(unsigned int didx);
-
 
   /**
    * device() - Copy ctor
@@ -83,26 +84,70 @@ public:
    * load_xclbin() - Load an xclbin 
    *
    * @xclbin:     Pointer to xclbin in memory image
+   * Return:      UUID of argument xclbin
    *
    * The xclbin image can safely be deleted after calling
    * this funciton.
    */
   XCL_DRIVER_DLLESPEC
-  void
+  uuid
   load_xclbin(const struct axlf* xclbin);
 
   /**
    * load_xclbin() - Read and load an xclbin file
    *
    * @xclbin_fnm:  Full path to xclbin file
+   * Return:       UUID of argument xclbin
    *
    * This function read the file from disk and loads
    * the xclbin.   Using this function allows one time
    * allocation of data that needs to be kept in memory.
    */
   XCL_DRIVER_DLLESPEC
-  void
+  uuid
   load_xclbin(const std::string& xclbin_filename);
+
+  /**
+   * get_xclbin_uuid() - Get UUID of xclbin image loaded on device
+   *
+   * Return:       UUID of currently loaded xclbin
+   *
+   * Note that current UUID can be different from the UUID of 
+   * the xclbin loaded by this process using @load_xclbin()
+   */
+  XCL_DRIVER_DLLESPEC
+  uuid
+  get_xclbin_uuid() const;
+
+  /**
+   * get_xclbin_section() - Retrieve specified xclbin section
+   *
+   * @section: The section to retrieve
+   * @uuid:    Xclbin uuid of the xclbin with the section to retrieve
+   *
+   * Get the xclbin section of the xclbin currently loaded on the 
+   * device.  The function throws on error
+   *
+   * Note, this API may be replaced with more generic query request access
+   */
+  template <typename SectionType>
+  SectionType
+  get_xclbin_section(axlf_section_kind section, const uuid& uuid) const
+  {
+    return reinterpret_cast<SectionType>(get_xclbin_section(section, uuid).first);
+  }
+
+public:
+  /**
+   * Undocumented temporary interface during porting
+   */
+  XCL_DRIVER_DLLESPEC
+  operator xclDeviceHandle () const;
+
+private:
+  XCL_DRIVER_DLLESPEC
+  std::pair<const char*, size_t>
+  get_xclbin_section(axlf_section_kind section, const uuid& uuid) const;
 
 private:
   std::shared_ptr<xrt_core::device> handle;
@@ -159,6 +204,20 @@ xrtDeviceLoadXclbin(xrtDeviceHandle dhdl, const struct axlf* xclbin);
 XCL_DRIVER_DLLESPEC
 int
 xrtDeviceLoadXclbinFile(xrtDeviceHandle dhdl, const char* xclbin_filename);
+
+/**
+ * xrtDeviceGetXclbinUUID() - Get UUID of xclbin image loaded on device
+ *
+ * @handle: Device handle
+ * @out:    Return xclbin id in this uuid_t struct
+ * Return:  0 on success or appropriate error number
+ *
+ * Note that current UUID can be different from the UUID of 
+ * the xclbin loaded by this process using @load_xclbin()
+ */
+XCL_DRIVER_DLLESPEC
+void
+xrtDeviceGetXclbinUUID(xrtDeviceHandle dhld, xuid_t out);
 
 #ifdef __cplusplus
 }

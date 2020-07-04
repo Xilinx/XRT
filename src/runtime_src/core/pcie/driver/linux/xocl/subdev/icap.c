@@ -154,6 +154,7 @@ struct icap {
 	struct ip_layout	*ip_layout;
 	struct debug_ip_layout	*debug_layout;
 	struct connectivity	*connectivity;
+	uint64_t		max_host_mem_aperture;
 	void			*partition_metadata;
 
 	void			*rp_bit;
@@ -1640,7 +1641,11 @@ static void icap_clean_bitstream_axlf(struct platform_device *pdev)
 
 static uint32_t convert_mem_type(const char *name)
 {
-	/* Use MEM_DDR3 as a invalid memory type. */
+	/* Don't trust m_type in xclbin, convert name to m_type instead.
+	 * m_tag[i] = "HBM[0]" -> m_type = MEM_HBM
+	 * m_tag[i] = "DDR[1]" -> m_type = MEM_DRAM
+	 *
+	 * Use MEM_DDR3 as a invalid memory type. */
 	enum MEM_TYPE mem_type = MEM_DDR3;
 
 	if (!strncasecmp(name, "DDR", 3))
@@ -1675,10 +1680,6 @@ static uint16_t icap_get_memidx(struct mem_topology *mem_topo, enum IP_TYPE ecc_
 		goto done;
 
 	for (i = 0; i < mem_topo->m_count; ++i) {
-		/* Don't trust m_type in xclbin, convert name to m_type instead.
-		 * m_tag[i] = "HBM[0]" -> m_type = MEM_HBM
-		 * m_tag[i] = "DDR[1]" -> m_type = MEM_DRAM
-		 */
 		m_type = convert_mem_type(mem_topo->m_mem_data[i].m_tag);
 		if (m_type == target_m_type) {
 			if (idx == mem_idx)
@@ -1784,6 +1785,30 @@ static int icap_create_subdev_debugip(struct platform_device *pdev)
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create AXI_MONITOR_TRACE_S2MM subdev");
+				break;
+			}
+		} else if (ip->m_type == LAPC) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_LAPC;
+
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
+			subdev_info.priv_data = ip;
+			subdev_info.data_len = sizeof(struct debug_ip_data);
+			err = xocl_subdev_create(xdev, &subdev_info);
+			if (err) {
+				ICAP_ERR(icap, "can't create LAPC subdev");
+				break;
+			}
+		} else if (ip->m_type == AXI_STREAM_PROTOCOL_CHECKER) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_SPC;
+
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
+			subdev_info.priv_data = ip;
+			subdev_info.data_len = sizeof(struct debug_ip_data);
+			err = xocl_subdev_create(xdev, &subdev_info);
+			if (err) {
+				ICAP_ERR(icap, "can't create SPC subdev");
 				break;
 			}
 		}
@@ -1978,20 +2003,6 @@ done:
 	return err;
 }
 
-static inline void xocl_dyn_subdevs_destory(xdev_handle_t xdev)
-{
-	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_DNA);
-	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_MIG);
-	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_AIM);
-	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_AM);
-	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_ASM);
-	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_TRACE_FIFO_LITE);
-	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_TRACE_FIFO_FULL);
-	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_TRACE_FUNNEL);
-	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_TRACE_S2MM);
-	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_CU);
-}
-
 static int icap_create_post_download_subdevs(struct platform_device *pdev, struct axlf *xclbin)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
@@ -2065,8 +2076,6 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 	uint64_t section_size = 0;
 	u32 capability;
 
-	/* Destroy all dynamically add sub-devices*/
-	xocl_dyn_subdevs_destory(xdev);
 	/*
 	 * Add sub device dynamically.
 	 * restrict any dynamically added sub-device and 1 base address,
@@ -2111,7 +2120,7 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 
 			/* We keep dna sub device if IP_DNASC presents */
 			ICAP_ERR(icap, "Can't get certificate section");
-			goto dna_cert_fail;
+			goto done;
 		}
 
 		ICAP_INFO(icap, "DNA Certificate Size 0x%llx", section_size);
@@ -2128,14 +2137,11 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 			err = 0; /* xclbin is valid */
 		else {
 			ICAP_ERR(icap, "DNA inside xclbin is invalid");
-			goto dna_cert_fail;
+			goto done;
 		}
 	}
 
 done:
-	if (err)
-		xocl_dyn_subdevs_destory(xdev);
-dna_cert_fail:
 	return err;
 }
 
@@ -2186,12 +2192,6 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin)
 		memcpy(mb_req->data, xclbin, xclbin->m_header.m_length);
 	}
 
-	/* Set timeout to be 1s per 2MB for downloading xclbin.
-	 * plus toggling axigate time 5s
-	 * plus #MIG * 0.5s
-     * In Azure cloud, there is special requirement for xclbin download
-     * that the minumum timeout should be 50s.
-	 */
 	if (mem_topo) {
 		for (i = 0; i < mem_topo->m_count; i++) {
 			if (XOCL_IS_STREAM(mem_topo, i))
@@ -2202,6 +2202,12 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin)
 		}
 	}
 
+	/* Set timeout to be 1s per 2MB for downloading xclbin.
+	 * plus toggling axigate time 5s
+	 * plus #MIG * 0.5s
+	 * In Azure cloud, there is special requirement for xclbin download
+	 * that the minumum timeout should be 50s.
+	 */
 	(void) xocl_peer_request(xdev, mb_req, data_len,
 		&msgerr, &resplen, NULL, NULL,
 		max(((size_t)xclbin->m_header.m_length) / (2048 * 1024) +
@@ -2268,7 +2274,7 @@ static int icap_refresh_clock_freq(struct icap *icap, struct axlf *xclbin)
 static void icap_save_calib(struct icap *icap)
 {
 	struct mem_topology *mem_topo = icap->mem_topo;
-	int err = 0, i = 0;
+	int err = 0, i = 0, ddr_idx = -1;
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 
 	if (!mem_topo)
@@ -2278,18 +2284,25 @@ static void icap_save_calib(struct icap *icap)
 		return;
 
 	for (; i < mem_topo->m_count; ++i) {
+		if (convert_mem_type(mem_topo->m_mem_data[i].m_tag) != MEM_DRAM)
+			continue;
+		else
+			ddr_idx++;
+
 		if (!mem_topo->m_mem_data[i].m_used)
 			continue;
-		err = xocl_srsr_save_calib(xdev, i);
+
+		err = xocl_srsr_save_calib(xdev, ddr_idx);
 		if (err)
 			ICAP_DBG(icap, "Not able to save mem %d calibration data.", i);
+
 	}
 	err = xocl_calib_storage_save(xdev);
 }
 
 static void icap_calib(struct icap *icap, bool retain)
 {
-	int err = 0, i = 0;
+	int err = 0, i = 0, ddr_idx = -1;
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 	struct mem_topology *mem_topo = icap->mem_topo;
 
@@ -2298,11 +2311,18 @@ static void icap_calib(struct icap *icap, bool retain)
 	err = xocl_calib_storage_restore(xdev);
 
 	for (; i < mem_topo->m_count; ++i) {
+		if (convert_mem_type(mem_topo->m_mem_data[i].m_tag) != MEM_DRAM)
+			continue;
+		else
+			ddr_idx++;
+
 		if (!mem_topo->m_mem_data[i].m_used)
 			continue;
-		err = xocl_srsr_calib(xdev, i, retain);
+
+		err = xocl_srsr_calib(xdev, ddr_idx, retain);
 		if (err)
 			ICAP_DBG(icap, "Not able to calibrate mem %d.", i);
+
 	}
 
 }
@@ -2344,11 +2364,11 @@ static int icap_calibrate_mig(struct platform_device *pdev)
 	return err;
 }
 
-static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
+static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin, bool sref)
 {
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 	int i = 0, err = 0, num_dev = 0;
-	bool retention = (icap->data_retention & 0x1) == 0x1;
+	bool retention = ((icap->data_retention & 0x1) == 0x1) && sref;
 	struct xocl_subdev *subdevs = NULL;
 	bool has_ulp_clock = false;
 
@@ -2445,8 +2465,7 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 	}
 
 	err = icap_calibrate_mig(icap->icap_pdev);
-	if (err)
-		goto out;
+
 out:
 	if (err && retention)
 		icap_release_ddr_gate_pin(icap);
@@ -2500,7 +2519,7 @@ static inline int icap_xmc_free(struct icap *icap)
 	return err == -ENODEV ? 0 : err;
 }
 
-static void check_mem_topo_and_data_retention(struct icap *icap,
+static bool check_mem_topo_and_data_retention(struct icap *icap,
 	struct axlf *xclbin)
 {
 	struct mem_topology *mem_topo = icap->mem_topo;
@@ -2508,7 +2527,7 @@ static void check_mem_topo_and_data_retention(struct icap *icap,
 	uint64_t size = 0, offset = 0;
 
 	if (!hdr || !mem_topo || !icap->data_retention)
-		return;
+		return false;
 
 	size = hdr->m_sectionSize;
 	offset = hdr->m_sectionOffset;
@@ -2521,11 +2540,32 @@ static void check_mem_topo_and_data_retention(struct icap *icap,
 	if ((size != sizeof_sect(mem_topo, m_mem_data)) ||
 		    memcmp(((char *)xclbin)+offset, mem_topo, size)) {
 		ICAP_WARN(icap, "Incoming mem_topology doesn't match, disable data retention");
-		icap->data_retention = false;
+		return false;
+	}
+
+	return true;
+}
+
+static void icap_get_max_host_mem_aperture(struct icap *icap)
+{
+	int i = 0;
+	struct mem_topology *mem_topo = icap->mem_topo;
+
+	icap->max_host_mem_aperture = 0;
+
+	if (!mem_topo)
+		return;
+
+	for ( i=0; i< mem_topo->m_count; ++i) {
+		if (!mem_topo->m_mem_data[i].m_used)
+			continue;
+		if (IS_HOST_MEM(mem_topo->m_mem_data[i].m_tag))
+			icap->max_host_mem_aperture = mem_topo->m_mem_data[i].m_size << 10;
 	}
 
 	return;
 }
+
 static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 	struct axlf *xclbin)
 {
@@ -2533,6 +2573,7 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 	int err = 0, i = 0, num_dev = 0;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct xocl_subdev *subdevs = NULL;
+	bool sref = false;
 
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
@@ -2552,14 +2593,16 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 	icap_probe_urpdev(pdev, xclbin, &num_dev, &subdevs);
 
 	if (ICAP_PRIVILEGED(icap)) {
+		if (XOCL_DSA_IS_VERSAL(xdev))
+			return 0;
 
 		/* Check the incoming mem topoloy with the current one before overwrite */
-		check_mem_topo_and_data_retention(icap, xclbin);
+		sref = check_mem_topo_and_data_retention(icap, xclbin);
 
 		icap_parse_bitstream_axlf_section(pdev, xclbin, MEM_TOPOLOGY);
 		icap_parse_bitstream_axlf_section(pdev, xclbin, IP_LAYOUT);
 
-		err = __icap_xclbin_download(icap, xclbin);
+		err = __icap_xclbin_download(icap, xclbin, sref);
 		if (err)
 			goto done;
 
@@ -2574,8 +2617,7 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 		 */
 		icap_parse_bitstream_axlf_section(pdev, xclbin, MEM_TOPOLOGY);
 
-		if (!XOCL_DSA_IS_VERSAL(xdev))
-			err = __icap_peer_xclbin_download(icap, xclbin);
+		err = __icap_peer_xclbin_download(icap, xclbin);
 
 		/* TODO: Remove this after new KDS replace the legacy one */
 		/*
@@ -2600,6 +2642,8 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 			 */
 			(void) icap_verify_bitstream_axlf(pdev, xclbin);
 		}
+
+		icap_get_max_host_mem_aperture(icap);
 
 	}
 	/* create the rest of subdevs for both mgmt and user pf */
@@ -3420,6 +3464,22 @@ done:
 }
 static DEVICE_ATTR_RW(data_retention);
 
+static ssize_t max_host_mem_aperture_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct icap *icap = platform_get_drvdata(to_platform_device(dev));
+	u64 val = 0;
+
+	mutex_lock(&icap->icap_lock);
+
+	val = icap->max_host_mem_aperture;
+
+	mutex_unlock(&icap->icap_lock);
+
+	return sprintf(buf, "%llu\n", val);
+}
+static DEVICE_ATTR_RO(max_host_mem_aperture);
+
 static struct attribute *icap_attrs[] = {
 	&dev_attr_clock_freqs.attr,
 	&dev_attr_idcode.attr,
@@ -3429,6 +3489,7 @@ static struct attribute *icap_attrs[] = {
 	&dev_attr_clock_freqs_min.attr,
 	&dev_attr_reader_cnt.attr,
 	&dev_attr_data_retention.attr,
+	&dev_attr_max_host_mem_aperture.attr,
 	NULL,
 };
 
@@ -3569,15 +3630,18 @@ static struct bin_attribute connectivity_attr = {
 static ssize_t icap_read_mem_topology(struct file *filp, struct kobject *kobj,
 	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
 {
-	struct icap *icap;
+	struct icap *icap = (struct icap *)dev_get_drvdata(container_of(kobj, struct device, kobj));
 	u32 nread = 0;
 	size_t size = 0;
-	int err = 0;
-
-	icap = (struct icap *)dev_get_drvdata(container_of(kobj, struct device, kobj));
+	uint64_t range = 0;
+	int err = 0, i;
+	struct mem_topology *mem_topo = NULL;
+	xdev_handle_t xdev;
 
 	if (!icap || !icap->mem_topo)
 		return nread;
+
+	xdev = xocl_get_xdev(icap->icap_pdev);
 
 	err = icap_xclbin_rd_lock(icap);
 	if (err)
@@ -3587,14 +3651,29 @@ static ssize_t icap_read_mem_topology(struct file *filp, struct kobject *kobj,
 	if (offset >= size)
 		goto unlock;
 
+	mem_topo = vzalloc(size);
+	if (!mem_topo)
+		goto unlock;
+
+	memcpy(mem_topo, icap->mem_topo, size);
+	range = xocl_addr_translator_get_range(xdev);	
+	for ( i=0; i< mem_topo->m_count; ++i) {
+		if (IS_HOST_MEM(mem_topo->m_mem_data[i].m_tag)){
+			/* m_size in KB, convert Byte to KB */
+			mem_topo->m_mem_data[i].m_size = (range>>10);
+		} else
+			continue;
+	}
+
 	if (count < size - offset)
 		nread = count;
 	else
 		nread = size - offset;
 
-	memcpy(buffer, ((char *)icap->mem_topo) + offset, nread);
+	memcpy(buffer, ((char *)mem_topo) + offset, nread);
 unlock:
 	icap_xclbin_rd_unlock(icap);
+	vfree(mem_topo);
 	return nread;
 }
 

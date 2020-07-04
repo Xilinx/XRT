@@ -15,10 +15,54 @@ module_param(kds_mode, int, (S_IRUGO|S_IWUSR));
 MODULE_PARM_DESC(kds_mode,
 		 "enable new KDS (0 = disable (default), 1 = enable)");
 
+/* kds_echo also impact mb_scheduler.c, keep this as global.
+ * Let's move it to struct kds_sched in the future.
+ */
 int kds_echo = 0;
-module_param(kds_echo, int, (S_IRUGO|S_IWUSR));
-MODULE_PARM_DESC(kds_echo,
-		 "enable KDS echo (0 = disable (default), 1 = enable)");
+
+/* -KDS sysfs-- */
+static ssize_t
+kds_echo_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", kds_echo);
+}
+
+static ssize_t
+kds_echo_store(struct device *dev, struct device_attribute *da,
+	       const char *buf, size_t count)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	u32 clients = 0;
+
+	/* TODO: this should be as simple as */
+	/* return stroe_kds_echo(&XDEV(xdev)->kds, buf, count); */
+
+	if (!kds_mode)
+		clients = get_live_clients(xdev, NULL);
+
+	return store_kds_echo(&XDEV(xdev)->kds, buf, count,
+			      kds_mode, clients, &kds_echo);
+}
+static DEVICE_ATTR(kds_echo, 0644, kds_echo_show, kds_echo_store);
+
+static ssize_t
+kds_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+
+	return show_kds_stat(&XDEV(xdev)->kds, buf);
+}
+static DEVICE_ATTR_RO(kds_stat);
+
+static struct attribute *kds_attrs[] = {
+	&dev_attr_kds_echo.attr,
+	&dev_attr_kds_stat.attr,
+	NULL,
+};
+
+static struct attribute_group xocl_kds_group = {
+	.attrs = kds_attrs,
+};
 
 static inline void
 xocl_ctx_to_info(struct drm_xocl_ctx *args, struct kds_ctx_info *info)
@@ -37,7 +81,7 @@ xocl_ctx_to_info(struct drm_xocl_ctx *args, struct kds_ctx_info *info)
 static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 			    struct drm_xocl_ctx *args)
 {
-	struct kds_ctx_info info;
+	struct kds_ctx_info	 info;
 	xuid_t *uuid;
 	int ret;
 
@@ -60,7 +104,7 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 	 * until this client close all of the contexts.
 	 */
 	xocl_ctx_to_info(args, &info);
-	ret = kds_add_context(client, &info);
+	ret = kds_add_context(&XDEV(xdev)->kds, client, &info);
 
 out:
 	if (!client->num_ctx) {
@@ -75,7 +119,7 @@ out:
 static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 			    struct drm_xocl_ctx *args)
 {
-	struct kds_ctx_info info;
+	struct kds_ctx_info	 info;
 	xuid_t *uuid;
 	int ret = 0;
 
@@ -98,7 +142,7 @@ static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 	}
 
 	xocl_ctx_to_info(args, &info);
-	ret = kds_del_context(client, &info);
+	ret = kds_del_context(&XDEV(xdev)->kds, client, &info);
 	if (ret)
 		goto out;
 
@@ -136,6 +180,26 @@ static int xocl_context_ioctl(struct xocl_dev *xdev, void *data,
 	return ret;
 }
 
+static void notify_execbuf(struct kds_command *xcmd, int status)
+{
+	struct kds_client *client = xcmd->client;
+	struct ert_packet *ecmd = (struct ert_packet *)xcmd->execbuf;
+
+	if (status == KDS_COMPLETED)
+		ecmd->state = ERT_CMD_STATE_COMPLETED;
+	else if (status == KDS_ERROR)
+		ecmd->state = ERT_CMD_STATE_ERROR;
+	else if (status == KDS_TIMEOUT)
+		ecmd->state = ERT_CMD_STATE_TIMEOUT;
+	else if (status == KDS_ABORT)
+		ecmd->state = ERT_CMD_STATE_ABORT;
+
+	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(xcmd->gem_obj);
+
+	atomic_inc(&client->event);
+	wake_up_interruptible(&client->waitq);
+}
+
 static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 			      struct drm_file *filp)
 {
@@ -149,8 +213,13 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	int ret = 0;
 
 	if (!client->xclbin_id) {
-		DRM_ERROR("The client has no opening context\n");
+		userpf_err(xdev, "The client has no opening context\n");
 		return -EINVAL;
+	}
+
+	if (XDEV(xdev)->kds.bad_state) {
+		userpf_err(xdev, "KDS is in bad state\n");
+		return -EDEADLK;
 	}
 
 	obj = xocl_gem_object_lookup(ddev, filp, args->exec_bo_handle);
@@ -187,15 +256,15 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 		cfg_ecmd2xcmd(to_cfg_pkg(ecmd), xcmd);
 	} else if (ecmd->opcode == ERT_START_CU)
 		start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+	xcmd->cb.notify_host = notify_execbuf;
+	xcmd->gem_obj = obj;
 
 	/* Now, we could forget execbuf */
-	ret = kds_add_command(xcmd);
+	ret = kds_add_command(&XDEV(xdev)->kds, xcmd);
 	if (ret)
 		kds_free_command(xcmd);
 
 out:
-	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&xobj->base);
-
 	return ret;
 }
 
@@ -233,8 +302,10 @@ void xocl_destroy_client(struct xocl_dev *xdev, void **priv)
 
 	kds = &XDEV(xdev)->kds;
 	kds_fini_client(kds, client);
-	if (client->xclbin_id)
+	if (client->xclbin_id) {
+		(void) xocl_icap_unlock_bitstream(xdev, client->xclbin_id);
 		vfree(client->xclbin_id);
+	}
 	kfree(client);
 	userpf_info(xdev, "client exits pid(%d)\n", pid);
 }
@@ -275,6 +346,26 @@ int xocl_client_ioctl(struct xocl_dev *xdev, int op, void *data,
 	return ret;
 }
 
+int xocl_init_sched(struct xocl_dev *xdev)
+{
+	struct device *dev = &xdev->core.pdev->dev;
+	int ret;
+
+	ret = sysfs_create_group(&dev->kobj, &xocl_kds_group);
+	if (ret)
+		userpf_err(xdev, "create kds attrs failed: %d", ret);
+
+	return kds_init_sched(&XDEV(xdev)->kds);
+}
+
+void xocl_fini_sched(struct xocl_dev *xdev)
+{
+	struct device *dev = &xdev->core.pdev->dev;
+
+	sysfs_remove_group(&dev->kobj, &xocl_kds_group);
+	kds_fini_sched(&XDEV(xdev)->kds);
+}
+
 int xocl_kds_stop(struct xocl_dev *xdev)
 {
 	/* plact holder */
@@ -283,7 +374,7 @@ int xocl_kds_stop(struct xocl_dev *xdev)
 
 int xocl_kds_reset(struct xocl_dev *xdev, const xuid_t *xclbin_id)
 {
-	/* plact holder */
+	kds_reset(&XDEV(xdev)->kds);
 	return 0;
 }
 

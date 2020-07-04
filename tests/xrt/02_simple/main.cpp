@@ -14,51 +14,36 @@
  * under the License.
  */
 
-#include <getopt.h>
 #include <iostream>
 #include <stdexcept>
 #include <string>
 #include <cstring>
-#include <sys/mman.h>
 
 // XRT includes
-#include "xrt.h"
-#include "ert.h"
+#include "experimental/xrt_device.h"
 #include "experimental/xrt_kernel.h"
-#include "experimental/xrt_xclbin.h"
-#include "xclbin.h"
-
-// lowlevel common include
-#include "utils.h"
+#include "experimental/xrt_bo.h"
 
 // This value is shared with worgroup size in kernel.cl
 static const int COUNT = 1024;
 
-const static struct option long_options[] = {
-{"bitstream",       required_argument, 0, 'k'},
-{"device",          required_argument, 0, 'd'},
-{"verbose",         no_argument,       0, 'v'},
-{"help",            no_argument,       0, 'h'},
-{0, 0, 0, 0}
-};
-
-static void printHelp()
+static void usage()
 {
     std::cout << "usage: %s [options] -k <bitstream>\n\n";
     std::cout << "  -k <bitstream>\n";
-    std::cout << "  -d <index>\n";
-    std::cout << "  -v\n";
-    std::cout << "  -h\n\n";
+    std::cout << "  [-d <index>]       (default: 0)\n";
+    std::cout << "  [-v]\n";
+    std::cout << "  [-h]\n\n";
     std::cout << "* Bitstream is required\n";
 }
 
-static int runKernel(xclDeviceHandle handle, bool verbose, int first_mem, const uuid_t xclbinId)
+static int run(const xrt::device& device, const xrt::uuid& uuid, bool verbose)
 {
   const size_t DATA_SIZE = COUNT * sizeof(int);
 
-  auto simple = xrt::kernel(handle, xclbinId, "simple");
-  auto bo0 = xrt::bo(handle, DATA_SIZE, XCL_BO_FLAGS_NONE, simple.group_id(0));
-  auto bo1 = xrt::bo(handle, DATA_SIZE, XCL_BO_FLAGS_NONE, simple.group_id(1));
+  auto simple = xrt::kernel(device, uuid.get(), "simple");
+  auto bo0 = xrt::bo(device, DATA_SIZE, XCL_BO_FLAGS_NONE, simple.group_id(0));
+  auto bo1 = xrt::bo(device, DATA_SIZE, XCL_BO_FLAGS_NONE, simple.group_id(1));
   auto bo0_map = bo0.map<int*>();
   auto bo1_map = bo1.map<int*>();
   std::fill(bo0_map, bo0_map + COUNT, 0);
@@ -90,83 +75,68 @@ static int runKernel(xclDeviceHandle handle, bool verbose, int first_mem, const 
   return 0;
 }
 
+int
+run(int argc, char** argv)
+{
+  if (argc < 3) {
+    usage();
+    return 1;
+  }
+
+  std::string xclbin_fnm;
+  bool verbose = false;
+  unsigned int device_index = 0;
+
+  std::vector<std::string> args(argv+1,argv+argc);
+  std::string cur;
+  for (auto& arg : args) {
+    if (arg == "-h") {
+      usage();
+      return 1;
+    }
+    else if (arg == "-v") {
+      verbose = true;
+      continue;
+    }
+
+    if (arg[0] == '-') {
+      cur = arg;
+      continue;
+    }
+
+    if (cur == "-k")
+      xclbin_fnm = arg;
+    else if (cur == "-d")
+      device_index = std::stoi(arg);
+    else
+      throw std::runtime_error("Unknown option value " + cur + " " + arg);
+  }
+
+  if (xclbin_fnm.empty())
+    throw std::runtime_error("FAILED_TEST\nNo xclbin specified");
+
+  if (device_index >= xclProbe())
+    throw std::runtime_error("Cannot find device index (" + std::to_string(device_index) + ") specified");
+
+  auto device = xrt::device(device_index);
+  auto uuid = device.load_xclbin(xclbin_fnm);
+  run(device, uuid, verbose);
+  return 0;
+}
+
 int main(int argc, char** argv)
 {
-    std::string sharedLibrary;
-    std::string bitstreamFile;
-    std::string halLogfile;
-    size_t alignment = 128;
-    int option_index = 0;
-    unsigned index = 0;
-    unsigned cu_index = 0;
-    bool verbose = false;
-    bool ert = false;
-    int c;
-
-    while ((c = getopt_long(argc, argv, "k:d:vh", long_options, &option_index)) != -1)
-    {
-        switch (c)
-        {
-        case 0:
-            if (long_options[option_index].flag != 0)
-                break;
-        case 'k':
-            bitstreamFile = optarg;
-            break;
-        case 'd':
-            index = std::atoi(optarg);
-            break;
-        case 'h':
-            printHelp();
-            return 0;
-        case 'v':
-            verbose = true;
-            break;
-        default:
-            printHelp();
-            return 1;
-        }
-    }
-
-    (void)verbose;
-
-    if (bitstreamFile.size() == 0) {
-        std::cout << "FAILED TEST\n";
-        std::cout << "No bitstream specified\n";
-        return -1;
-    }
-
-    if (halLogfile.size()) {
-        std::cout << "Using " << halLogfile << " as HAL driver logfile\n";
-    }
-
-    std::cout << "HAL driver = " << sharedLibrary << "\n";
-    std::cout << "Host buffer alignment = " << alignment << " bytes\n";
-    std::cout << "Compiled kernel = " << bitstreamFile << "\n";
-
-
-    try {
-        xclDeviceHandle handle;
-        uint64_t cu_base_addr = 0;
-        int first_mem = -1;
-        uuid_t xclbinId;
-
-        if (initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr, first_mem, xclbinId))
-            return 1;
-
-        if (first_mem < 0)
-            return 1;
-
-        runKernel(handle, verbose, first_mem, xclbinId);
-        xclClose(handle);
-    }
-    catch (std::exception const& e)
-    {
-        std::cout << "Exception: " << e.what() << "\n";
-        std::cout << "FAILED TEST\n";
-        return 1;
-    }
-
+  try {
+    auto ret = run(argc, argv);
     std::cout << "PASSED TEST\n";
-    return 0;
+    return ret;
+  }
+  catch (std::exception const& e) {
+    std::cout << "Exception: " << e.what() << "\n";
+    std::cout << "FAILED TEST\n";
+    return 1;
+  }
+
+  std::cout << "PASSED TEST\n";
+  return 0;
 }

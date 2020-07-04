@@ -52,6 +52,8 @@ install(TARGETS xrt_coreutil
 else()
 # No external linking with coreutil so release only runtime
 install(TARGETS xrt_coreutil
+  ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR}
+  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}
   RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
 endif (NOT WIN32)
 

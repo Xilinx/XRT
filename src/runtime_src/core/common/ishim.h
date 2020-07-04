@@ -32,6 +32,9 @@ namespace xrt_core {
 struct ishim
 {
   virtual void
+  close_device() = 0;
+  
+  virtual void
   open_context(xuid_t xclbin_uuid, unsigned int ip_index, bool shared) = 0;
 
   virtual void
@@ -58,13 +61,11 @@ struct ishim
   virtual void
   get_bo_properties(xclBufferHandle boh, struct xclBOProperties *properties) const = 0;
 
-#if 0
   virtual void
   reg_read(uint32_t ipidx, uint32_t offset, uint32_t* data) const = 0;
 
   virtual void
   reg_write(uint32_t ipidx, uint32_t offset, uint32_t data) = 0;
-#endif
 
   virtual void
   xread(uint64_t offset, void* buffer, size_t size) const = 0;
@@ -89,6 +90,12 @@ struct shim : public DeviceType
   shim(Args&&... args)
     : DeviceType(std::forward<Args>(args)...)
   {}
+
+  virtual void
+  close_device()
+  {
+    xclClose(DeviceType::get_device_handle());
+  }
 
   virtual void
   open_context(xuid_t xclbin_uuid , unsigned int ip_index, bool shared)
@@ -129,7 +136,8 @@ struct shim : public DeviceType
   virtual void
   sync_bo(xclBufferHandle bo, xclBOSyncDirection dir, size_t size, size_t offset)
   {
-    xclSyncBO(DeviceType::get_device_handle(), bo, dir, size, offset);
+    if (auto err = xclSyncBO(DeviceType::get_device_handle(), bo, dir, size, offset))
+      throw std::runtime_error("unable to sync BO");
   }
 
   virtual void*
@@ -154,7 +162,6 @@ struct shim : public DeviceType
       throw error(ret, "failed to get BO properties");
   }
 
-#if 0
   virtual void
   reg_read(uint32_t ipidx, uint32_t offset, uint32_t* data) const
   {
@@ -168,7 +175,6 @@ struct shim : public DeviceType
     if (auto ret = xclRegWrite(DeviceType::get_device_handle(), ipidx, offset, data))
       throw error(ret, "failed to write ip(" + std::to_string(ipidx) + ")");
   }
-#endif
 
 #ifdef __GNUC__
 # pragma GCC diagnostic push

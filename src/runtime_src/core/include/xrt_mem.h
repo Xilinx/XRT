@@ -32,12 +32,12 @@ extern "C" {
 
 #define XRT_BO_FLAGS_MEMIDX_MASK	(0xFFFFFFUL)
 #define	XCL_BO_FLAGS_NONE		(0)
-#define	XCL_BO_FLAGS_CACHEABLE		(1 << 24)
-#define	XCL_BO_FLAGS_SVM		(1 << 27)
-#define	XCL_BO_FLAGS_DEV_ONLY		(1 << 28)
-#define	XCL_BO_FLAGS_HOST_ONLY		(1 << 29)
-#define	XCL_BO_FLAGS_P2P		(1 << 30)
-#define	XCL_BO_FLAGS_EXECBUF		(1 << 31)
+#define	XCL_BO_FLAGS_CACHEABLE		(1U << 24)
+#define	XCL_BO_FLAGS_SVM		(1U << 27)
+#define	XCL_BO_FLAGS_DEV_ONLY		(1U << 28)
+#define	XCL_BO_FLAGS_HOST_ONLY		(1U << 29)
+#define	XCL_BO_FLAGS_P2P		(1U << 30)
+#define	XCL_BO_FLAGS_EXECBUF		(1U << 31)
 
 /**
  * This is the legacy usage of XCL DDR Flags.

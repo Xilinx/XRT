@@ -472,7 +472,7 @@ xclLoadXclBin(const xclBin *buffer)
   auto top = reinterpret_cast<const axlf*>(buffer);
   auto ret = xclLoadAxlf(top);
 
-  if (!ret)
+  if (!ret && !xrt_core::xclbin::is_pdi_only(top))
     mKernelClockFreq = xrt_core::xclbin::get_kernel_freq(top);
 
   xclLog(XRT_INFO, "XRT", "%s: return %d", __func__, ret);
@@ -594,6 +594,8 @@ xclExecBuf(unsigned int cmdBO)
   drm_zocl_execbuf exec = {0, cmdBO};
   int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_EXECBUF, &exec);
   xclLog(XRT_DEBUG, "XRT", "%s: cmdBO handle %d, ioctl return %d", __func__, cmdBO, result);
+  if (result == -EDEADLK)
+      xclLog(XRT_ERROR, "XRT", "CU might hang, please reset device");
   return result;
 }
 
@@ -1579,6 +1581,11 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
       return ret;
     }
     auto core_device = xrt_core::get_userpf_device(handle);
+
+    /* If PDI is the only section, return here */
+    if (xrt_core::xclbin::is_pdi_only(buffer))
+        return 0;
+
     core_device->register_axlf(buffer);
     ret = xrt_core::scheduler::init(handle, buffer);
     if (ret) {

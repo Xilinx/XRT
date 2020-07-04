@@ -28,6 +28,15 @@ namespace xdp {
   XDP_EXPORT const char* getToolVersion() ;
   XDP_EXPORT const char* getXRTVersion() ;
 
+  enum Flow {
+    SW_EMU  = 0,
+    HW_EMU  = 1,
+    HW      = 2,
+    UNKNOWN = 3
+  } ;
+
+  XDP_EXPORT Flow getFlowMode() ;
+
 } // end namespace xdp
 
 #endif

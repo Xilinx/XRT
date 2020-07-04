@@ -21,9 +21,45 @@ MODULE_PARM_DESC(kds_mode,
 		 "enable new KDS (0 = disable (default), 1 = enable)");
 
 int kds_echo = 0;
-module_param(kds_echo, int, (S_IRUGO|S_IWUSR));
-MODULE_PARM_DESC(kds_echo,
-		 "enable KDS echo (0 = disable (default), 1 = enable)");
+
+/* -KDS sysfs-- */
+static ssize_t
+kds_echo_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", kds_echo);
+}
+
+static ssize_t
+kds_echo_store(struct device *dev, struct device_attribute *da,
+	       const char *buf, size_t count)
+{
+	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
+
+	/* TODO: this should be as simple as */
+	/* return stroe_kds_echo(&zdev->kds, buf, count); */
+	return store_kds_echo(&zdev->kds, buf, count,
+			      kds_mode, 0, &kds_echo);
+}
+static DEVICE_ATTR(kds_echo, 0644, kds_echo_show, kds_echo_store);
+
+static ssize_t
+kds_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
+
+	return show_kds_stat(&zdev->kds, buf);
+}
+static DEVICE_ATTR_RO(kds_stat);
+
+static struct attribute *kds_attrs[] = {
+	&dev_attr_kds_echo.attr,
+	&dev_attr_kds_stat.attr,
+	NULL,
+};
+
+static struct attribute_group zocl_kds_group = {
+	.attrs = kds_attrs,
+};
 
 static inline void
 zocl_ctx_to_info(struct drm_zocl_ctx *args, struct kds_ctx_info *info)
@@ -76,7 +112,7 @@ zocl_add_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 	 * until this client close all of the contexts.
 	 */
 	zocl_ctx_to_info(args, &info);
-	ret = kds_add_context(client, &info);
+	ret = kds_add_context(&zdev->kds, client, &info);
 
 out:
 	if (!client->num_ctx) {
@@ -128,7 +164,7 @@ zocl_del_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 	}
 
 	zocl_ctx_to_info(args, &info);
-	ret = kds_del_context(client, &info);
+	ret = kds_del_context(&zdev->kds, client, &info);
 	if (ret)
 		goto out;
 
@@ -166,6 +202,26 @@ int zocl_context_ioctl(struct drm_zocl_dev *zdev, void *data,
 	return ret;
 }
 
+static void notify_execbuf(struct kds_command *xcmd, int status)
+{
+	struct kds_client *client = xcmd->client;
+	struct ert_packet *ecmd = (struct ert_packet *)xcmd->execbuf;
+
+	if (status == KDS_COMPLETED)
+		ecmd->state = ERT_CMD_STATE_COMPLETED;
+	else if (status == KDS_ERROR)
+		ecmd->state = ERT_CMD_STATE_ERROR;
+	else if (status == KDS_TIMEOUT)
+		ecmd->state = ERT_CMD_STATE_TIMEOUT;
+	else if (status == KDS_ABORT)
+		ecmd->state = ERT_CMD_STATE_ABORT;
+
+	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(xcmd->gem_obj);
+
+	atomic_inc(&client->event);
+	wake_up_interruptible(&client->waitq);
+}
+
 int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 		       struct drm_file *filp)
 {
@@ -181,6 +237,11 @@ int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 	if (!client->xclbin_id) {
 		DRM_ERROR("The client has no opening context\n");
 		return -EINVAL;
+	}
+
+	if (zdev->kds.bad_state) {
+		DRM_ERROR("KDS is in bad state\n");
+		return -EDEADLK;
 	}
 
 	gem_obj = zocl_gem_object_lookup(dev, filp, args->exec_bo_handle);
@@ -216,14 +277,15 @@ int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 		cfg_ecmd2xcmd(to_cfg_pkg(ecmd), xcmd);
 	else if (ecmd->opcode == ERT_START_CU)
 		start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+	xcmd->cb.notify_host = notify_execbuf;
+	xcmd->gem_obj = gem_obj;
 
 	/* Now, we could forget execbuf */
-	ret = kds_add_command(xcmd);
+	ret = kds_add_command(&zdev->kds, xcmd);
 	if (ret)
 		kds_free_command(xcmd);
 
 out:
-	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&zocl_bo->cma_base.base);
 	return ret;
 }
 
@@ -281,10 +343,37 @@ void zocl_destroy_client(struct drm_zocl_dev *zdev, void **priv)
 	ddev = zdev->ddev;
 
 	kds = &zdev->kds;
+	/* kds_fini_client should released resources hold by the client.
+	 * release xclbin_id and unlock bitstream if needed.
+	 */
 	kds_fini_client(kds, client);
-	if (client->xclbin_id)
+	if (client->xclbin_id) {
+		(void) zocl_unlock_bitstream(zdev, client->xclbin_id);
 		vfree(client->xclbin_id);
+	}
+
+	/* Make sure all resources of the client are released */
 	kfree(client);
 	zocl_info(ddev->dev, "client exits pid(%d)\n", pid);
+}
+
+int zocl_init_sched(struct drm_zocl_dev *zdev)
+{
+	struct device *dev = zdev->ddev->dev;
+	int ret;
+
+	ret = sysfs_create_group(&dev->kobj, &zocl_kds_group);
+	if (ret)
+		zocl_err(dev, "create kds attrs failed: %d", ret);
+
+	return kds_init_sched(&zdev->kds);
+}
+
+void zocl_fini_sched(struct drm_zocl_dev *zdev)
+{
+	struct device *dev = zdev->ddev->dev;
+
+	sysfs_remove_group(&dev->kobj, &zocl_kds_group);
+	kds_fini_sched(&zdev->kds);
 }
 

@@ -121,8 +121,8 @@ static void xocl_free_bo(struct drm_gem_object *obj)
 	BO_ENTER("xobj %p pages %p", xobj, xobj->pages);
 
 	if (xocl_bo_p2p(xobj)) {
-		xocl_p2p_reserve_release_range(xdev,
-			xobj->p2p_bar_offset, obj->size, false);
+		xocl_p2p_mem_unmap(xdev, xobj->p2p_bar_offset,
+				obj->size);
 	}
 
 	if (xobj->vmapping)
@@ -242,7 +242,8 @@ done:
 
 static struct page **xocl_cma_collect_pages(struct xocl_drm *drm_p, uint64_t base_addr, uint64_t start, uint64_t size)
 {
-	uint64_t entry_sz = drm_p->cma_bank->entry_sz;
+	struct xocl_dev *xdev = drm_p->xdev;
+	uint64_t entry_sz = xdev->cma_bank->entry_sz;
 	uint64_t chunk_offset, page_copied = 0, page_offset_start, page_offset_end;
 	int64_t addr_offset = 0;
 	struct page **pages = NULL;
@@ -268,7 +269,7 @@ static struct page **xocl_cma_collect_pages(struct xocl_drm *drm_p, uint64_t bas
 		chunk_offset = page_offset_start / pages_per_chunk;
 		DRM_DEBUG("chunk_offset %lld start 0x%llx, end 0x%llx\n", chunk_offset, page_offset_start, page_offset_end);
 
-		memcpy(pages+page_copied, drm_p->cma_bank->cma_mem[chunk_offset].pages+(page_offset_start%pages_per_chunk), nr*sizeof(struct page*));
+		memcpy(pages+page_copied, xdev->cma_bank->cma_mem[chunk_offset].pages+(page_offset_start%pages_per_chunk), nr*sizeof(struct page*));
 		page_offset_start += nr;
 		page_copied += nr;
 	}
@@ -381,23 +382,18 @@ static struct page **xocl_p2p_get_pages(struct xocl_dev *xdev,
 	u64 bar_off, u64 size)
 {
 	struct page *p, **pages;
-	int i;
-	uint64_t offset;
+	int ret;
 	uint64_t npages = size >> PAGE_SHIFT;
 
 	pages = drm_malloc_ab(npages, sizeof(struct page *));
 	if (pages == NULL)
 		return ERR_PTR(-ENOMEM);
 
-	for (i = 0, offset = bar_off; i < npages; i++, offset += PAGE_SIZE) {
-		int idx = offset >> XOCL_P2P_CHUNK_SHIFT;
-		void *addr = xdev->p2p_mem_chunks[idx].xpmc_va;
-
-		addr += offset & (XOCL_P2P_CHUNK_SIZE - 1);
-		p = virt_to_page(addr);
-		pages[i] = p;
-		if (IS_ERR(p))
-			goto fail;
+	ret = xocl_p2p_mem_get_pages(xdev, (ulong)bar_off, (ulong)size,
+			pages, npages);
+	if (ret) {
+		p = ERR_PTR(ret);
+		goto fail;
 	}
 
 	return pages;
@@ -447,7 +443,7 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 
 	BO_ENTER("xobj %p, mm_node %p", xobj, xobj->mm_node);
 	if (IS_ERR(xobj)) {
-		DRM_ERROR("object creation failed\n");
+		DRM_ERROR("object creation failed idx %d, size 0x%llx\n", ddr, args->size);
 		return PTR_ERR(xobj);
 	}
 
@@ -456,29 +452,29 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 		 * DRM allocate contiguous pages, shift the vmapping with
 		 * bar address offset
 		 */
-		if (xdev->p2p_mem_chunk_num == 0) {
-			xocl_xdev_err(xdev,
-				"No P2P mem region, Can't create p2p BO");
-			ret = -EINVAL;
-			goto out_free;
-		}
 		ret = XOCL_GET_MEM_TOPOLOGY(xdev, topo);
 		if (ret)
 			goto out_free;
 
 		if (topo) {
-			xobj->p2p_bar_offset = drm_p->mm_p2p_off[ddr] +
-				xobj->mm_node->start -
-				topo->m_mem_data[ddr].m_base_address;
+			int ret;
+			ulong bar_off;
 
-			ret = xocl_p2p_reserve_release_range(xdev,
-				xobj->p2p_bar_offset,
-				xobj->base.size, true);
+			ret = xocl_p2p_mem_map(xdev,
+				topo->m_mem_data[ddr].m_base_address,
+				topo->m_mem_data[ddr].m_size * 1024,
+				xobj->mm_node->start -
+				topo->m_mem_data[ddr].m_base_address,
+				xobj->base.size,
+				&bar_off);
+			if (ret) {
+				xocl_xdev_err(xdev, "map P2P failed,ret = %d",
+						ret);
+			} else
+				xobj->p2p_bar_offset = bar_off;
 		}
 
 		XOCL_PUT_MEM_TOPOLOGY(xdev);
-		if (ret)
-			goto out_free;
 	}
 
 	if (xobj->flags & XOCL_PAGE_ALLOC) {
@@ -559,7 +555,7 @@ int xocl_userptr_bo_ioctl(
 	BO_ENTER("xobj %p", xobj);
 
 	if (IS_ERR(xobj)) {
-		DRM_ERROR("object creation failed\n");
+		DRM_ERROR("object creation failed user_flags %d, size 0x%llx\n", user_flags, args->size);
 		return PTR_ERR(xobj);
 	}
 

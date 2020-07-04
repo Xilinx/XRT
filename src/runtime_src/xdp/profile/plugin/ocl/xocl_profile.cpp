@@ -448,42 +448,6 @@ is_ap_ctrl_chain(key k, const std::string& deviceName, const std::string& cu)
   return false;
 }
 
-uint64_t get_ts2mm_buf_size() {
-  std::string size_str = xrt::config::get_trace_buffer_size();
-  std::smatch pieces_match;
-  // Default is 1M
-  uint64_t bytes = 1048576;
-  // Regex can parse values like : "1024M" "1G" "8192k"
-  const std::regex size_regex("\\s*([0-9]+)\\s*(K|k|M|m|G|g|)\\s*");
-  if (std::regex_match(size_str, pieces_match, size_regex)) {
-    try {
-      if (pieces_match[2] == "K" || pieces_match[2] == "k") {
-        bytes = std::stoull(pieces_match[1]) * 1024;
-      } else if (pieces_match[2] == "M" || pieces_match[2] == "m") {
-        bytes = std::stoull(pieces_match[1]) * 1024 * 1024;
-      } else if (pieces_match[2] == "G" || pieces_match[2] == "g") {
-        bytes = std::stoull(pieces_match[1]) * 1024 * 1024 * 1024;
-      } else {
-        bytes = std::stoull(pieces_match[1]);
-      }
-    } catch (const std::exception& ) {
-      // User specified number cannot be parsed
-      xrt::message::send(xrt::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_BUFSIZE_DEF);
-    }
-  } else {
-    xrt::message::send(xrt::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_BUFSIZE_DEF);
-  }
-  if (bytes > TS2MM_MAX_BUF_SIZE) {
-    bytes = TS2MM_MAX_BUF_SIZE;
-    xrt::message::send(xrt::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_BUFSIZE_BIG);
-  }
-  if (bytes < TS2MM_MIN_BUF_SIZE) {
-    bytes = TS2MM_MIN_BUF_SIZE;
-    xrt::message::send(xrt::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_BUFSIZE_SMALL);
-  }
-  return bytes;
-}
-
 ////////////////////////////////////////////////////////////////
 // Device
 ////////////////////////////////////////////////////////////////
@@ -839,10 +803,7 @@ isAPCtrlChain(key k, const std::string& cu)
     if (xcu->get_name().compare(cu) == 0)
       base_addr = xcu->get_base_addr();
   }
-  auto xclbin = device->get_xclbin();
-  auto binary_data = xclbin.binary();
-  auto header = reinterpret_cast<const xclBin *>(binary_data.first);
-  auto ip_layout = getAxlfSection<const ::ip_layout>(header, axlf_section_kind::IP_LAYOUT);
+  auto ip_layout = device->get_axlf_section<const ::ip_layout*>(axlf_section_kind::IP_LAYOUT);
   if (!ip_layout)
     return false;
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
@@ -865,10 +826,7 @@ getMemSizeBytes(key k, int idx)
   auto device = k;
   if (!device)
     return false;
-  auto xclbin = device->get_xclbin();
-  auto binary_data = xclbin.binary();
-  auto header = reinterpret_cast<const xclBin *>(binary_data.first);
-  auto mem_topology = getAxlfSection<const ::mem_topology>(header, axlf_section_kind::MEM_TOPOLOGY);
+  auto mem_topology = device->get_axlf_section<const ::mem_topology*>(axlf_section_kind::MEM_TOPOLOGY);
   if (mem_topology && idx < mem_topology->m_count) {
     return mem_topology->m_mem_data[idx].m_size * 1024;
   }
@@ -879,17 +837,10 @@ uint64_t
 getPlramSizeBytes(key k)
 {
   auto device = k;
-  const mem_topology* mem_tp;
   if (!device)
     return 0;
-  try {
-    auto xclbin = device->get_xclbin();
-    auto binary_data = xclbin.binary();
-    auto header = reinterpret_cast<const xclBin *>(binary_data.first);
-    mem_tp = getAxlfSection<const ::mem_topology>(header, axlf_section_kind::MEM_TOPOLOGY);
-  } catch (...) {
-    return 0;
-  }
+
+  auto mem_tp = device->get_axlf_section<const ::mem_topology*>(axlf_section_kind::MEM_TOPOLOGY);
   if(!mem_tp)
     return 0;
 
@@ -909,17 +860,10 @@ void
 getMemUsageStats(key k, std::map<std::string, uint64_t>& stats)
 {
   auto device = k;
-  const mem_topology* mem_tp;
   if (!device)
     return;
-  try {
-    auto xclbin = device->get_xclbin();
-    auto binary_data = xclbin.binary();
-    auto header = reinterpret_cast<const xclBin *>(binary_data.first);
-    mem_tp = getAxlfSection<const ::mem_topology>(header, axlf_section_kind::MEM_TOPOLOGY);
-  } catch (...) {
-    return;
-  }
+
+  auto mem_tp = device->get_axlf_section<const ::mem_topology*>(axlf_section_kind::MEM_TOPOLOGY);
   if(!mem_tp)
     return;
 

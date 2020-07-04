@@ -18,7 +18,7 @@
 #include "xrt.h"
 #include "experimental/xrt_kernel.h"
 #include "experimental/xrt_bo.h"
-#include "experimental/xrt_xclbin.h"
+#include "experimental/xrt_device.h"
 #include "xclbin.h"
 
 #include <fstream>
@@ -29,27 +29,9 @@
 #include <vector>
 #include <cstdlib>
 
-static std::vector<char>
-load_xclbin(xclDeviceHandle device, const std::string& fnm)
-{
-  if (fnm.empty())
-    throw std::runtime_error("No xclbin speified");
-
-  // load bit stream
-  std::ifstream stream(fnm);
-  stream.seekg(0,stream.end);
-  size_t size = stream.tellg();
-  stream.seekg(0,stream.beg);
-
-  std::vector<char> header(size);
-  stream.read(header.data(),size);
-
-  auto top = reinterpret_cast<const axlf*>(header.data());
-  if (xclLoadXclBin(device, top))
-    throw std::runtime_error("Bitstream download failed");
-
-  return header;
-}
+#ifdef _WIN32
+# pragma warning ( disable : 4267 )
+#endif
 
 const size_t ELEMENTS = 16;
 const size_t ARRAY_SIZE = 8;
@@ -74,7 +56,7 @@ static void usage()
 }
 
 static std::string
-get_kernel_name(int cus)
+get_kernel_name(size_t cus)
 {
   std::string k("addone:{");
   for (int i=1; i<cus; ++i)
@@ -122,13 +104,13 @@ struct job_type
     a = xrt::bo(device, data_size*sizeof(unsigned long), 0, grpid0);
     am = a.map();
     auto adata = reinterpret_cast<unsigned long*>(am);
-    for (size_t i=0;i<data_size;++i)
+    for (unsigned int i=0;i<data_size;++i)
       adata[i] = i;
 
     b = xrt::bo(device, data_size*sizeof(unsigned long), 0, grpid1);
     bm = b.map();
     auto bdata = reinterpret_cast<unsigned long*>(bm);
-     for (size_t j=0;j<data_size;++j)
+     for (unsigned int j=0;j<data_size;++j)
        bdata[j] = id;
   }
 
@@ -224,11 +206,11 @@ int run(int argc, char** argv)
   std::vector<std::string> args(argv+1,argv+argc);
 
   std::string xclbin_fnm;
-  size_t device_index = 0;
+  unsigned int device_index = 0;
   size_t secs = 0;
   size_t jobs = 1;
   size_t cus  = 1;
-  
+
   std::string cur;
   for (auto& arg : args) {
     if (arg == "-h") {
@@ -259,22 +241,14 @@ int run(int argc, char** argv)
   if (probe < device_index)
     throw std::runtime_error("Bad device index '" + std::to_string(device_index) + "'");
 
-  auto device = xclOpen(device_index, nullptr, XCL_QUIET);
-
-  {
-
-  auto header = load_xclbin(device, xclbin_fnm);
-  auto top = reinterpret_cast<const axlf*>(header.data());
+  auto device = xrt::device(device_index);
+  auto uuid = device.load_xclbin(xclbin_fnm);
 
   compute_units = cus = std::min(cus, compute_units);
   std::string kname = get_kernel_name(cus);
-  auto kernel = xrt::kernel(device, top->m_header.uuid, kname);
+  auto kernel = xrt::kernel(device, uuid.get(), kname);
 
   run(device,kernel,jobs,secs);
-
-  }
-
-  xclClose(device);
 
   return 0;
 }
@@ -283,7 +257,6 @@ int
 main(int argc, char* argv[])
 {
   try {
-    ::setenv("Runtime.xrt_bo","true",1);
     run(argc,argv);
     return 0;
   }

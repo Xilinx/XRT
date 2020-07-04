@@ -89,6 +89,8 @@ rh_package_list()
      unzip \
      zlib-static \
      libcurl-devel \
+     python3 \
+     python3-pip \
     )
 
     # Centos8
@@ -96,8 +98,6 @@ rh_package_list()
 
         RH_LIST+=(\
          systemd-devel \
-         python3 \
-         python3-pip \
         )
 
 	if [ $FLAVOR == "rhel" ]; then
@@ -118,8 +118,6 @@ rh_package_list()
          kernel-headers-$(uname -r) \
          openssl-static \
          protobuf-static \
-         python \
-         python-pip \
         )
 
     fi
@@ -169,26 +167,21 @@ ub_package_list()
      pciutils \
      pkg-config \
      protobuf-compiler \
-     python3-sphinx \
-     python3-sphinx-rtd-theme \
      sphinx-common \
      strace \
      unzip \
      uuid-dev \
      libcurl4-openssl-dev \
-     libssl-dev \
      libudev-dev \
      libsystemd-dev \
+     python3 \
+     python3-pip \
+     python3-sphinx \
+     python3-sphinx-rtd-theme \
     )
 
     if [[ $docker == 0 ]]; then
         UB_LIST+=(linux-headers-$(uname -r))
-    fi
-
-    if [[ $VERSION == 20.04 ]]; then
-        UB_LIST+=(python3 python3-pip)
-    else
-        UB_LIST+=(python python-pip)
     fi
 
     #dmidecode is only applicable for x86_64
@@ -205,12 +198,79 @@ ub_package_list()
 
 }
 
+fd_package_list()
+{
+    FD_LIST=(\
+     boost-devel \
+     boost-filesystem \
+     boost-program-options \
+     boost-static \
+     cmake \
+     cppcheck \
+     curl \
+     dkms \
+     gcc \
+     gcc-c++ \
+     gdb \
+     git \
+     glibc-static \
+     gnuplot \
+     gnutls-devel \
+     gtest-devel \
+     json-glib-devel \
+     libdrm-devel \
+     libjpeg-turbo-devel \
+     libstdc++-static \
+     libtiff-devel \
+     libuuid-devel \
+     libxml2-devel \
+     libyaml-devel \
+     lm_sensors \
+     make \
+     ncurses-devel \
+     ocl-icd \
+     ocl-icd-devel \
+     opencl-headers \
+     opencv \
+     openssl-devel \
+     pciutils \
+     perl \
+     pkgconfig \
+     protobuf-devel \
+     protobuf-compiler \
+     redhat-lsb \
+     rpm-build \
+     strace \
+     unzip \
+     zlib-static \
+     libcurl-devel \
+     openssl-devel \
+     systemd-devel \
+     python3 \
+     python3-pip \
+     systemd-devel \
+     libpng12-devel \
+     libudev-devel \
+     kernel-devel-$(uname -r) \
+     kernel-headers-$(uname -r) \
+     openssl-static \
+     protobuf-static \
+     python \
+     python-pip \
+     #docs need
+     python2-sphinx \
+     dmidecode \
+    )
+}
+
 update_package_list()
 {
     if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
         ub_package_list
     elif [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ]; then
         rh_package_list
+    elif [ $FLAVOR == "fedora" ]; then
+        fd_package_list
     else
         echo "unknown OS flavor $FLAVOR"
         exit 1
@@ -335,6 +395,11 @@ install()
 	elif [ $MAJOR -lt "8" ]; then
             yum install -y devtoolset-6
 	fi
+    fi
+
+    if [ $FLAVOR == "fedora" ]; then
+        echo "Installing Fedora packages..."
+        yum install -y "${FD_LIST[@]}"
     fi
 }
 

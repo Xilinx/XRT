@@ -93,19 +93,41 @@ device(unsigned int index)
   : handle(xrt_core::get_userpf_device(index))
 {}
 
-void
+uuid
 device::
-load_xclbin(const struct axlf* xclbin)
+load_xclbin(const struct axlf* top)
 {
-  handle->load_xclbin(xclbin);
+  handle->load_xclbin(top);
+  return uuid(top->m_header.uuid);
 }
 
-void
+uuid
 device::
 load_xclbin(const std::string& fnm)
 {
   auto xclbin = read_xclbin(fnm);
-  load_xclbin(reinterpret_cast<const axlf*>(xclbin.data()));
+  auto top = reinterpret_cast<const axlf*>(xclbin.data());
+  return load_xclbin(top);
+}
+
+uuid
+device::
+get_xclbin_uuid() const
+{
+  return handle->get_xclbin_uuid();
+}
+  
+device::
+operator xclDeviceHandle() const
+{
+  return handle->get_device_handle();
+}
+
+std::pair<const char*, size_t>
+device::
+get_xclbin_section(axlf_section_kind section, const uuid& uuid) const
+{
+  return handle->get_axlf_section_or_error(section, uuid);
 }
 
 } // xrt
@@ -184,4 +206,23 @@ xrtDeviceLoadXclbinFile(xrtDeviceHandle dhdl, const char* fnm)
     send_exception_message(ex.what());
     return (errno = 0);
   }
+}
+
+void
+xrtDeviceGetXclbinUUID(xrtDeviceHandle dhdl, xuid_t out)
+{
+  try {
+    auto device = get_device(dhdl);
+    auto uuid = device->get_xclbin_uuid();
+    uuid_copy(out, uuid.get());
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    errno = 0;
+  }
+  
 }

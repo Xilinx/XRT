@@ -33,7 +33,7 @@ validOrError(cl_mem pipe)
     return;
 
   if(!pipe)
-    throw error(CL_INVALID_MEM_OBJECT); 
+    throw error(CL_INVALID_MEM_OBJECT, "Invalid NULL pipe"); 
 }
 
 static cl_int

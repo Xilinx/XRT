@@ -760,6 +760,10 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
         kernel_tmp1 = &priv1->device->kernels[cu_index];
     
         if (!kernel_tmp1->soft_kernel && !kernel_tmp1->in_use && !kernel_tmp1->context_opened) {
+	    //Obtain lock only for a) singleton changes & b) kernel_info changes
+            std::unique_lock<std::mutex> guard1(g_xma_singleton->m_mutex);
+            //Singleton lock acquired
+
             if (xclOpenContext(dev_tmp1->handle, dev_tmp1->uuid, kernel_tmp1->cu_index_ert, true) != 0) {
                 xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Failed to open context to CU %s for this session", kernel_tmp1->name);
                 if (return_code) *return_code = XMA_ERROR;
