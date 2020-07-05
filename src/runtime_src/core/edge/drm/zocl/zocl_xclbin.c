@@ -94,7 +94,8 @@ zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length)
 	char temp;
 
 	memset(&bit_header, 0, sizeof(bit_header));
-	if (xrt_xclbin_parse_header(buffer, BITFILE_BUFFER_SIZE, &bit_header)) {
+	if (xrt_xclbin_parse_header(buffer, DMA_HWICAP_BITFILE_BUFFER_SIZE,
+	    &bit_header)) {
 		DRM_ERROR("bitstream header parse failed");
 		return -EINVAL;
 	}
