@@ -250,6 +250,7 @@ SET (XRT_DKMS_COMMON_XRT_DRV
   common/drv/xrt_cu.c
   common/drv/cu_hls.c
   common/drv/cu_plram.c
+  common/drv/xrt_xclbin.c
   )
 
 SET (XRT_DKMS_COMMON_XRT_DRV_INCLUDES
@@ -257,6 +258,7 @@ SET (XRT_DKMS_COMMON_XRT_DRV_INCLUDES
   common/drv/include/kds_core.h
   common/drv/include/kds_command.h
   common/drv/include/xrt_cu.h
+  common/drv/include/xrt_xclbin.h
   )
 
 SET (XRT_DKMS_ABS_SRCS)
