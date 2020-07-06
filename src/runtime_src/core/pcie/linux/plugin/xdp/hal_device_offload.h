@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,28 +14,22 @@
  * under the License.
  */
 
-#ifndef HAL_PLUGIN_DOT_H
-#define HAL_PLUGIN_DOT_H
+#ifndef HAL_DEVICE_OFFLOAD_DOT_H
+#define HAL_DEVICE_OFFLOAD_DOT_H
 
-#include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
+namespace xdphaldeviceoffload {
 
-namespace xdp {
+  void load_xdp_hal_device_offload() ;
+  void register_hal_device_offload_functions(void* handle) ;
+  void hal_device_offload_warning_function() ;
 
-  class HALPlugin : public XDPPlugin
-  {
-  private:
+} // end xdphaldeviceoffload
 
-  public:
-    XDP_EXPORT
-    HALPlugin() ;
+namespace xdphal {
 
-    XDP_EXPORT
-    ~HALPlugin() ;
+  void flush_device(void* handle) ;
+  void update_device(void* handle) ;
 
-    XDP_EXPORT
-    virtual void writeAll(bool openNewFiles) ;
-  } ;
-
-}
+} // end namespace xdphal
 
 #endif

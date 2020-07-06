@@ -100,6 +100,15 @@ namespace xdp {
     virtual bool isOpenCLAPI()   { return false ; } 
     virtual bool isHALAPI()      { return false ; }
     virtual bool isHostEvent()   { return false ; }
+    virtual bool isOpenCLHostEvent()
+      { return type == READ_BUFFER  || type == READ_BUFFER_P2P  ||
+               type == WRITE_BUFFER || type == WRITE_BUFFER_P2P ||
+	       type == KERNEL_ENQUEUE ; }
+    virtual bool isLOPHostEvent() { return false ; }
+    virtual bool isHALHostEvent()
+      { return type == READ_BUFFER  ||
+               type == WRITE_BUFFER ||
+	       type == KERNEL_ENQUEUE ; }
     virtual bool isDeviceEvent() { return false ; }
     virtual bool isReadBuffer()  { return type == READ_BUFFER || 
 	                                  type == READ_BUFFER_P2P ||

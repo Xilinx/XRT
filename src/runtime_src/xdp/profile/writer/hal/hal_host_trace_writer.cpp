@@ -80,8 +80,9 @@ namespace xdp {
     std::vector<VTFEvent*> HALAPIEvents = 
       (db->getDynamicInfo()).filterEvents( [](VTFEvent* e)
 					   {
-//               return e->isHALAPI() ;
-					     return e->isHostEvent() ;
+					     return e->isHostEvent()  &&
+					            !e->isOpenCLAPI() &&
+					            !e->isLOPHostEvent() ;
 					   }
 					 ) ;
     for (auto e : HALAPIEvents)

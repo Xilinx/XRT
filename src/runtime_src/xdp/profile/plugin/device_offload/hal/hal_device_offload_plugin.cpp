@@ -158,7 +158,14 @@ namespace xdp {
     // Update the static database with all the information that
     //  will be needed later
     (db->getStaticInfo()).updateDevice(deviceId, userHandle) ;
-    //(db->getStaticInfo()).setDeviceName(deviceId, handle->name()) ;
+    {
+      struct xclDeviceInfo2 info ;
+      if (xclGetDeviceInfo2(userHandle, &info) == 0)
+      {
+	(db->getStaticInfo()).setDeviceName(deviceId, std::string(info.mName));
+      }
+    }
+    //(db->getStaticInfo()).setDeviceName(deviceId, userHandle) ;
 
     // For the HAL level, we must create a device interface using 
     //  the xdp::HalDevice to communicate with the physical device
