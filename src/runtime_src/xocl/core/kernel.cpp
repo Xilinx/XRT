@@ -366,44 +366,6 @@ kernel(program* prog, const std::string& name, const xclbin::symbol& symbol)
     throw std::runtime_error("No kernel compute units matching '" + name + "'");
 }
 
-// TODO: remove and fix compilation of unit tests
-static const xclbin::symbol&
-temp_get_symbol(program* prog, std::string name)
-{
-  if (!prog || name.empty()) {
-    // unit test
-    static xclbin::symbol s;
-    // set workgroup size to CL_DEVICE_MAX_WORK_GROUP_SIZE
-    // this is a carry over from clCreateKernel where conformance
-    // mode is faking a kernel.  need to better understand that
-    // part of the code and find another way
-    s.workgroupsize = 4096;
-    return s;
-  }
-
-  static std::string prefix("__xlnx_cl_");
-  if (name.find(prefix)==0) {
-    name = name.substr(prefix.length());
-    throw std::runtime_error("name contains __xlnx_cl_");
-  }
-
-  auto xclbin = prog->get_xclbin(nullptr);
-  return xclbin.lookup_kernel(name);
-}
-
-
-// TODO: remove and fix compilation of unit tests
-kernel::
-kernel(program* prog, const std::string& name)
-  : kernel(prog,name,temp_get_symbol(prog,name))
-{
-}
-
-kernel::
-kernel(program* prog)
-  : kernel(prog,"")
-{}
-
 kernel::
 ~kernel()
 {
