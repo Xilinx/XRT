@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -35,9 +35,6 @@ namespace {
 
 static xocl::platform* g_platform = nullptr;
 
-// conformance kernel hash -> xclbin file name
-static std::map<std::string, std::string> global_conformance_xclbin_map;
-
 static const char*
 value_or_empty(const char* value)
 {
@@ -71,12 +68,6 @@ is_hw_emulation()
   static auto xem = std::getenv("XCL_EMULATION_MODE");
   static bool hwem = xem ? (std::strcmp(xem,"hw_emu")==0) : false;
   return hwem;
-}
-
-static void
-init_conformance()
-{
-  return; //throw std::runtime_error("XCL_CONFORMANCE no longer supported");
 }
 
 } // namespace
@@ -229,8 +220,6 @@ platform()
   catch(const std::exception&) {
     throw error(CL_OUT_OF_HOST_MEMORY,"failed to allocate platform event_scheduler");
   }
-
-  init_conformance();
 }
 
 platform::
@@ -304,15 +293,6 @@ get_xilinx_sdx()
 {
   static std::string xilinx_sdx = get_env("XILINX_SDX");
   return xilinx_sdx;
-}
-
-std::string
-conformance_get_xclbin(const std::string& hash)
-{
-  auto itr = global_conformance_xclbin_map.find(hash);
-  return itr==global_conformance_xclbin_map.end()
-    ? ""
-    : (*itr).second;
 }
 
 } // xocl

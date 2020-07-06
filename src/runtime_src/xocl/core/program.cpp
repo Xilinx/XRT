@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -35,36 +35,6 @@
 
 namespace {
 
-// Current list of live program objects.
-// Required for conformance (clCreateProgramWithSource)
-namespace global {
-
-static std::mutex mutex;
-static std::vector<xocl::program*> programs;
-
-xocl::range_lock<xocl::program_iterator_type>
-get()
-{
-  std::unique_lock<std::mutex> lk(mutex);
-  return xocl::range_lock<xocl::program_iterator_type>(programs.begin(),programs.end(),std::move(lk));
-}
-
-void
-add(xocl::program* p)
-{
-  std::lock_guard<std::mutex> lk(mutex);
-  programs.push_back(p);
-}
-
-void
-remove(xocl::program* p)
-{
-  std::lock_guard<std::mutex> lk(mutex);
-  programs.erase(xocl::range_find(programs,p));
-}
-
-} // global
-
 } // namespace
 
 namespace xocl {
@@ -78,7 +48,6 @@ program(context* ctx, const std::string& source)
 
   XOCL_DEBUG(std::cout,"xocl::program::program(",m_uid,")\n");
   m_context->add_program(this);
-  global::add(this);
   // Reset profiling flag
   xocl::profile::reset_device_profiling();
 }
@@ -112,7 +81,6 @@ program::
       d->unload_program(this);
 
     m_context->remove_program(this);
-    global::remove(this);
   }
   catch (...) {}
 }
@@ -245,13 +213,6 @@ create_kernel(const std::string& kernel_name)
 {
   auto deleter = [](kernel* k) { k->release(); };
 
-  // If kernel_name is empty, then assert conformance mode and create
-  // a 'fake' kernel
-  if (kernel_name.empty() && std::getenv("XCL_CONFORMANCE")) {
-    auto k = std::make_unique<kernel>(this);
-    return std::unique_ptr<kernel,decltype(deleter)>(k.release(),deleter);
-  }
-
   // Look up kernel symbol from arbitrary (first) xclbin
   if (m_binaries.empty())
     throw xocl::error(CL_INVALID_PROGRAM_EXECUTABLE,"No binary for program");
@@ -267,8 +228,7 @@ program::creation_type
 program::
 get_creation_type() const
 {
-  static bool conformance = std::getenv("XCL_CONFORMANCE") ? true : false;
-  if (!m_source.empty() && !conformance)
+  if (!m_source.empty())
     return creation_type::source;
   else if (m_options.empty() && m_logs.empty() && !m_binaries.empty())
     return creation_type::binary;
@@ -278,19 +238,9 @@ get_creation_type() const
 
 void
 program::
-build(const std::vector<device*>& devices,const std::string& options)
+build(const std::vector<device*>&,const std::string&)
 {
-  static bool conformance = std::getenv("XCL_CONFORMANCECOLLECT") ? true : false;
-  if (!conformance)
-    throw std::runtime_error("internal error program::build");
-
   throw std::runtime_error("build program is not safe and no longer supported");
-}
-
-range_lock<program_iterator_type>
-get_global_programs()
-{
-  return global::get();
 }
 
 } // xocl

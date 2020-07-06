@@ -1082,7 +1082,7 @@ load_program(program* program)
 
   std::lock_guard<std::mutex> lock(m_mutex);
 
-  if (m_active && !std::getenv("XCL_CONFORMANCE"))
+  if (m_active)
     throw xocl::error(CL_OUT_OF_RESOURCES,"program already loaded on device");
 
   auto binary_data = program->get_xclbin_binary(this);
@@ -1136,7 +1136,7 @@ load_program(program* program)
   // Add compute units for each kernel in the program.
   // Note, that conformance mode renames the kernels in the xclbin
   // so iterating kernel names and looking up symbols from kernels
-  // isn't possible, we *must* iterator symbols explicitly
+  // isn't possible, we *must* iterate symbols explicitly
   clear_cus();
   m_cu_memidx = -2;
   auto cu2addr = get_xclbin_cus(this);
