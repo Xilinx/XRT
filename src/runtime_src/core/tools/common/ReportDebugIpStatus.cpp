@@ -29,6 +29,7 @@ namespace XBU = XBUtilities;
 #include "core/common/xrt_profiling.h"
 #include "core/include/xcl_perfmon_parameters.h"
 #include "core/include/xcl_axi_checker_codes.h"
+#include "core/include/experimental/xrt-next.h"
 
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
@@ -470,6 +471,7 @@ DebugIpStatusCollector::readAIMCounter(debug_ip_data* dbgIpInfo)
   ++debugIpNum[AXI_MM_MONITOR];
   aimResults.NumSlots = (unsigned int)debugIpNum[AXI_MM_MONITOR];
 
+#ifndef _WIN32
   // read counter values
   xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
   if(xrt_core::system::monitor_access_type::ioctl == accessType) {
@@ -523,6 +525,7 @@ DebugIpStatusCollector::readAIMCounter(debug_ip_data* dbgIpInfo)
 
     return;
   }
+#endif
 
   // read counter values
   static const uint64_t aim_offsets[] = {
@@ -646,6 +649,7 @@ DebugIpStatusCollector::readAMCounter(debug_ip_data* dbgIpInfo)
   ++debugIpNum[ACCEL_MONITOR];
   amResults.NumSlots = (unsigned int)debugIpNum[ACCEL_MONITOR];
 
+#ifndef _WIN32
   // read counter values
   xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
   if(xrt_core::system::monitor_access_type::ioctl == accessType) {
@@ -701,6 +705,7 @@ DebugIpStatusCollector::readAMCounter(debug_ip_data* dbgIpInfo)
     ifs.close();
     return; 
   } 
+#endif
 
  // read counter values
   static const uint64_t am_offsets[] = {
@@ -844,6 +849,7 @@ DebugIpStatusCollector::readASMCounter(debug_ip_data* dbgIpInfo)
   ++debugIpNum[AXI_STREAM_MONITOR];
   asmResults.NumSlots = (unsigned int)debugIpNum[AXI_STREAM_MONITOR];
 
+#ifndef _WIN32
   // read counter values
   xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
   if(xrt_core::system::monitor_access_type::ioctl == accessType) {
@@ -892,6 +898,7 @@ DebugIpStatusCollector::readASMCounter(debug_ip_data* dbgIpInfo)
     ifs.close();
     return;
   }
+#endif
 
   // Fill up the portions of the return struct that are known by the runtime
 
@@ -1003,6 +1010,7 @@ DebugIpStatusCollector::readLAPChecker(debug_ip_data* dbgIpInfo)
   ++debugIpNum[LAPC];
   lapcResults.NumSlots = (unsigned int)debugIpNum[LAPC];
 
+#ifndef _WIN32
   xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
   if(xrt_core::system::monitor_access_type::ioctl == accessType) {
     std::string lapcName("lapc_");
@@ -1056,6 +1064,7 @@ DebugIpStatusCollector::readLAPChecker(debug_ip_data* dbgIpInfo)
     ifs.close();
     return;
   }
+#endif
 
   static const uint64_t statusRegisters[] = {
     LAPC_OVERALL_STATUS_OFFSET,
@@ -1167,6 +1176,7 @@ DebugIpStatusCollector::readSPChecker(debug_ip_data* dbgIpInfo)
   ++debugIpNum[AXI_STREAM_PROTOCOL_CHECKER];
   spcResults.NumSlots = (unsigned int)debugIpNum[AXI_STREAM_PROTOCOL_CHECKER];
 
+#ifndef _WIN32
   xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
   if(xrt_core::system::monitor_access_type::ioctl == accessType) {
     std::string spcName("spc_");
@@ -1212,6 +1222,7 @@ DebugIpStatusCollector::readSPChecker(debug_ip_data* dbgIpInfo)
     ifs.close();
     return;
   }
+#endif
 
   uint32_t pc_asserted ;
   uint32_t current_pc ;
