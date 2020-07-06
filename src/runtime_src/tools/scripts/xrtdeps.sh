@@ -98,16 +98,9 @@ rh_package_list()
          systemd-devel \
          python3 \
          python3-pip \
+         kernel-devel-$(uname -r) \
+         kernel-headers-$(uname -r) \
         )
-
-	if [ $FLAVOR == "rhel" ]; then
-  
-            RH_LIST+=(\
-             kernel-devel-$(uname -r) \
-             kernel-headers-$(uname -r) \
-            )
-  
-        fi
 
     else
 
