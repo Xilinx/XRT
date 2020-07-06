@@ -188,13 +188,13 @@ static void p2p_percpu_ref_kill(void *data)
 {
 	struct percpu_ref *ref = data;
 #if defined(RHEL_RELEASE_CODE)
-	#if (RHEL_RELEASE_CODE == RHEL_RELEASE_VERSION(7, 7)) || (RHEL_RELEASE_CODE == RHEL_RELEASE_VERSION(7, 6))
+	#if (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 6))
 	unsigned long __percpu *percpu_count = (unsigned long __percpu *)
 		(ref->percpu_count_ptr & ~__PERCPU_REF_ATOMIC_DEAD);
 	unsigned long count = 0;
 	int cpu;
 
-	/* Nasty hack for CentOS7.7 & CentOS7.6
+	/* Nasty hack for CentOS 7.6 and above versions (7.7, 7.8 etc.)
 	 * percpu_ref->count have to substract the percpu counters
 	 * to guarantee the percpu_ref->count will drop to 0
 	 */
