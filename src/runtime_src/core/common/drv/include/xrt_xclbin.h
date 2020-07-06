@@ -1,18 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
- * A GEM style device manager for PCIe based OpenCL accelerators.
+ * Xilinx Kernel Driver XCLBIN parser
  *
- * Copyright (C) 2019-2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2020 Xilinx, Inc.
  *
  * Authors: David Zhang <davidzha@xilinx.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
  */
 
 #ifndef _XRT_XCLBIN_H
