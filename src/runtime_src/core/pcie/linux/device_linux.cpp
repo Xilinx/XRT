@@ -220,6 +220,7 @@ initialize_query_table()
   emplace_sysfs_request<query::mgt_vtt_millivolts>        ("xmc", "xmc_mgtavtt");
   emplace_sysfs_request<query::int_vcc_millivolts>        ("xmc", "xmc_vccint_vol");
   emplace_sysfs_request<query::int_vcc_milliamps>         ("xmc", "xmc_vccint_curr");
+  emplace_sysfs_request<query::int_vcc_temp>              ("xmc", "xmc_vccint_temp");
 
   emplace_sysfs_request<query::v3v3_pex_milliamps>        ("xmc", "xmc_3v3_pex_curr");
   emplace_sysfs_request<query::v0v85_milliamps>           ("xmc", "xmc_0v85_curr");

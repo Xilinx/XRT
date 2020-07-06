@@ -127,6 +127,7 @@ enum class key_type
   mgt_vtt_millivolts,
   int_vcc_millivolts,
   int_vcc_milliamps,
+  int_vcc_temp,
   v3v3_pex_milliamps,
   v0v85_milliamps,
   v3v3_vcc_millivolts,
@@ -749,7 +750,7 @@ struct temp_card_top_front : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::temp_card_top_front;
-  static const char* name() { return "temp_top_front_C"; }
+  static const char* name() { return "PCB_top_front_C"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -765,7 +766,7 @@ struct temp_card_top_rear : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::temp_card_top_rear;
-  static const char* name() { return "temp_top_rear_C"; }
+  static const char* name() { return "PCB_top_rear_C"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -781,7 +782,7 @@ struct temp_card_bottom_front : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::temp_card_bottom_front;
-  static const char* name() { return "temp_bottom_front_C"; }
+  static const char* name() { return "PCB_bottom_front_C"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -797,7 +798,7 @@ struct temp_fpga : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::temp_fpga;
-  static const char* name() { return "temp_C"; }
+  static const char* name() { return "Fpga_C"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -813,7 +814,7 @@ struct fan_trigger_critical_temp : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::fan_trigger_critical_temp;
-  static const char* name() { return "temp_trigger_critical_C"; }
+  static const char* name() { return "Fan_trigger_critical_C"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -827,9 +828,9 @@ struct fan_trigger_critical_temp : request
 
 struct fan_fan_presence : request
 {
-  using result_type = bool;
+  using result_type = std::string;
   static const key_type key = key_type::fan_fan_presence;
-  static const char* name() { return "fan_presence"; }
+  static const char* name() { return "Fan_presence"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -837,7 +838,7 @@ struct fan_fan_presence : request
   static std::string
   to_string(result_type value)
   {
-    return value ? "true" : "false";
+    return value.compare("A") == 0 ? "true" : "false";
   }
 };
 
@@ -845,7 +846,7 @@ struct fan_speed_rpm : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::fan_speed_rpm;
-  static const char* name() { return "fan_speed_rpm"; }
+  static const char* name() { return "Fan_speed_rpm"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -897,16 +898,23 @@ struct hbm_temp : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::hbm_temp;
+  static const char* name() { return "HBM_C"; }
 
   virtual boost::any
   get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return std::to_string(value);
+  }
 };
 
 struct cage_temp_0 : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::cage_temp_0;
-  static const char* name() { return "temp0_C"; }
+  static const char* name() { return "Cage_0_C"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -922,7 +930,7 @@ struct cage_temp_1 : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::cage_temp_1;
-  static const char* name() { return "temp1_C"; }
+  static const char* name() { return "Cage_1_C"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -938,7 +946,7 @@ struct cage_temp_2 : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::cage_temp_2;
-  static const char* name() { return "temp2_C"; }
+  static const char* name() { return "Cage_2_C"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -954,7 +962,7 @@ struct cage_temp_3 : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::cage_temp_3;
-  static const char* name() { return "temp3_C"; }
+  static const char* name() { return "Cage_3_C"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -970,7 +978,7 @@ struct v12v_pex_millivolts : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::v12v_pex_millivolts;
-  static const char* name() { return "12v_pex.voltage"; }
+  static const char* name() { return "voltage_mV"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -986,7 +994,7 @@ struct v12v_pex_milliamps : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::v12v_pex_milliamps;
-  static const char* name() { return "12v_pex.current"; }
+  static const char* name() { return "current_mA"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1002,7 +1010,7 @@ struct v12v_aux_millivolts : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::v12v_aux_millivolts;
-  static const char* name() { return "12v_aux.voltage"; }
+  static const char* name() { return "voltage_mV"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1018,7 +1026,7 @@ struct v12v_aux_milliamps : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::v12v_aux_milliamps;
-  static const char* name() { return "12v_aux.current"; }
+  static const char* name() { return "current_mA"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1251,6 +1259,22 @@ struct int_vcc_milliamps : request
   to_string(result_type value)
   {
     return format::format_base10_shiftdown3(value);
+  }
+};
+
+struct int_vcc_temp : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::int_vcc_temp;
+  static const char* name() { return "Int_vcc_C"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return std::to_string(value);
   }
 };
 
