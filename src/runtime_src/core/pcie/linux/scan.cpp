@@ -670,14 +670,14 @@ int
 pci_device::
 get_partinfo(std::vector<std::string>& info, void *blob)
 {
+  std::vector<char> buf;
   if (!blob) {
-    std::vector<char> buf;
     std::string err;
     sysfs_get("", "fdt_blob", err, buf);
     if (!buf.size())
       return -ENOENT;
 
-    blob = &buf[0];
+    blob = buf.data();
   }
 
   struct fdt_header *bph = (struct fdt_header *)blob;
