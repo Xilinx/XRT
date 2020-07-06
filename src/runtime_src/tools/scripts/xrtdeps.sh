@@ -89,7 +89,6 @@ rh_package_list()
      unzip \
      zlib-static \
      libcurl-devel \
-     openssl-devel \
     )
 
     # Centos8
@@ -99,8 +98,16 @@ rh_package_list()
          systemd-devel \
          python3 \
          python3-pip \
-         systemd-devel \
         )
+
+	if [ $FLAVOR == "rhel" ]; then
+  
+            RH_LIST+=(\
+             kernel-devel-$(uname -r) \
+             kernel-headers-$(uname -r) \
+            )
+  
+        fi
 
     else
 
@@ -237,6 +244,14 @@ prep_ubuntu()
 
 prep_centos7()
 {
+    echo "Enabling EPEL repository..."
+    rpm -q --quiet epel-release
+    if [ $? != 0 ]; then
+    	 yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+	     yum check-update
+    fi
+    echo "Installing cmake3 from EPEL repository..."
+    yum install -y cmake3
     if [ $docker == 0 ]; then 
         echo "Enabling CentOS SCL repository..."
         yum --enablerepo=extras install -y centos-release-scl
@@ -245,12 +260,41 @@ prep_centos7()
 
 prep_rhel7()
 {
+    echo "Enabling EPEL repository..."
+    rpm -q --quiet epel-release
+    if [ $? != 0 ]; then
+    	 yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+	 yum check-update
+    fi
+    
     echo "Enabling RHEL SCL repository..."
     yum-config-manager --enable rhel-server-rhscl-7-rpms
+    
+}
+
+prep_rhel8()
+{
+    echo "Enabling EPEL repository..."
+    rpm -q --quiet epel-release
+    if [ $? != 0 ]; then
+    	 yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+	 yum check-update
+    fi
+    
+    echo "Enabling CodeReady-Builder repository..."
+    subscription-manager repos --enable "codeready-builder-for-rhel-8-x86_64-rpms"
 }
 
 prep_centos8()
 {
+    echo "Enabling EPEL repository..."
+    rpm -q --quiet epel-release
+    if [ $? != 0 ]; then
+    	 yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+	     yum check-update
+    fi
+    echo "Installing cmake3 from EPEL repository..."
+    yum install -y cmake3
     echo "Enabling PowerTools repo for CentOS8 ..."
     yum install -y dnf-plugins-core
     yum config-manager --set-enabled PowerTools
@@ -259,11 +303,6 @@ prep_centos8()
 
 prep_centos()
 {
-    echo "Enabling EPEL repository..."
-    yum install -y epel-release
-    echo "Installing cmake3 from EPEL repository..."
-    yum install -y cmake3
-
     if [ $MAJOR == 8 ]; then
         prep_centos8
     else
@@ -273,21 +312,14 @@ prep_centos()
 
 prep_rhel()
 {
-    echo "Enabling EPEL repository..."
-    rpm -q --quiet epel-release
-    if [ $? != 0 ]; then
-	yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-	yum check-update
-    fi
-    echo "Installing cmake3 from EPEL repository..."
-    yum install -y cmake3
-
-    if [ $MAJOR == 8 ]; then
-        echo "RHEL8 not implemented yet"
-        exit 1;
+   if [ $MAJOR == 8 ]; then
+        prep_rhel8
     else
         prep_rhel7
     fi
+    
+    echo "Installing cmake3 from EPEL repository..."
+    yum install -y cmake3
 }
 
 install()
