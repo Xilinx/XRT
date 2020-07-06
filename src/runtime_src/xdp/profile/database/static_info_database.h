@@ -28,6 +28,9 @@
 
 namespace xdp {
 
+  // Forward declarations
+  class VPDatabase ;
+
   struct Monitor {
     uint8_t     type;
     uint64_t    index;
@@ -134,6 +137,9 @@ namespace xdp {
   class VPStaticDatabase
   {
   private:
+    VPDatabase* db ;
+
+  private:
     // ********* Information specific to each host execution **********
     int pid ;
     
@@ -168,7 +174,7 @@ namespace xdp {
     bool initializeProfileMonitors(DeviceInfo*, const std::shared_ptr<xrt_core::device>&);
 
   public:
-    VPStaticDatabase() ;
+    VPStaticDatabase(VPDatabase* d) ;
     ~VPStaticDatabase() ;
 
     // Getters and setters

@@ -20,6 +20,7 @@
 
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 #include "xdp/profile/writer/vp_base/vp_run_summary.h"
+#include "xdp/profile/database/database.h"
 
 #ifdef _WIN32
 #pragma warning(disable : 4996)
@@ -68,6 +69,24 @@ namespace xdp {
     for (auto w : writers)
     {
       w->write(openNewFiles) ;
+    }
+  }
+
+  void XDPPlugin::broadcast(VPDatabase::MessageType msg, void* /*blob*/)
+  {
+    switch(msg)
+    {
+    case VPDatabase::DUMP_RUN_SUMMARY:
+      for (auto w : writers)
+      {
+	if (w->isRunSummaryWriter())
+	{
+	  w->write(false) ;
+	}
+      }
+      break ;
+    default:
+      break ;
     }
   }
 

@@ -38,6 +38,8 @@ namespace xdp {
 
     XDP_EXPORT
     virtual void write(bool openNewFile) ;
+
+    virtual bool isRunSummaryWriter() { return true ; }
   } ;
 
 } // end namespace xdp

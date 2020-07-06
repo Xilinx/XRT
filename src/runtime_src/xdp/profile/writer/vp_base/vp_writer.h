@@ -36,6 +36,9 @@ namespace xdp {
     // The base name of all files created by this writer
     std::string basename ;
 
+    // The current name of the open file
+    std::string currentFileName ;
+
     // The number of files created by this writer (in continuous offload)
     uint32_t fileNum ;
 
@@ -50,10 +53,12 @@ namespace xdp {
 
     inline const char* getRawBasename() { return basename.c_str() ; } 
     XDP_EXPORT virtual void switchFiles() ;
+    XDP_EXPORT virtual void refreshFile() ;
   public:
     XDP_EXPORT VPWriter(const char* filename) ;
     XDP_EXPORT virtual ~VPWriter() ;
 
+    virtual bool isRunSummaryWriter() { return false ; }
     virtual void write(bool openNewFile = true) = 0 ;
     virtual bool isDeviceWriter() { return false ; } 
     virtual DeviceIntf* device() { return nullptr ; } 

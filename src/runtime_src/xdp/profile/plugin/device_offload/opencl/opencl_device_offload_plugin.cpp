@@ -31,6 +31,7 @@
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/xrt_device/xdp_xrt_device.h"
+#include "xdp/profile/writer/vp_base/vp_writer.h"
 
 namespace xdp {
 
