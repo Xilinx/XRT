@@ -23,4 +23,4 @@ jobs:
       with:
         text: 'any string'
       env:
-        SLACK_WEBHOOK_URL: https://hooks.slack.com/services/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 # required
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }} # required
