@@ -660,7 +660,7 @@ class kernel_impl
   int32_t
   get_arg_grpid(const connectivity* cons, int32_t argidx, int32_t ipidx)
   {
-    for (int32_t count=0; count <cons->m_count; ++count) {
+    for (int32_t count=0; cons && count <cons->m_count; ++count) {
       auto& con = cons->m_connection[count];
       if (con.m_ip_layout_index != ipidx)
         continue;
@@ -717,10 +717,8 @@ public:
       throw std::runtime_error("No ip layout available to construct kernel, make sure xclbin is loaded");
     auto ip_layout = reinterpret_cast<const ::ip_layout*>(ip_section.first);
 
-    // connectivity section for CU memory connectivity
+    // connectivity section for CU memory connectivity, permissible for section to not exist
     auto connectivity_section = device->core_device->get_axlf_section(CONNECTIVITY, xclbin_id);
-    if (!connectivity_section.first)
-      throw std::runtime_error("No connectivity available to construct kernel, make sure xclbin is loaded");
     auto connectivity = reinterpret_cast<const ::connectivity*>(connectivity_section.first);
 
     // xml section for kernel arguments
