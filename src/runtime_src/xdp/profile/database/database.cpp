@@ -80,23 +80,6 @@ namespace xdp {
 
   // This function should return true the first time any plugin calls it.
   //  The plugin that has ownership is the only one that should be responsible
-  //  for writing the run summary.
-  bool VPDatabase::claimRunSummaryOwnership()
-  {
-    static std::mutex runSummaryLock ;
-    static bool claimed = false ;
-
-    std::lock_guard<std::mutex> lock(runSummaryLock) ;
-    if (claimed)
-    {
-      return false ;
-    }
-    claimed = true ;
-    return true ;
-  }
-
-  // This function should return true the first time any plugin calls it.
-  //  The plugin that has ownership is the only one that should be responsible
   //  for offloading information from the devices.  This is necessary for
   //  hardware OpenCL flows which will end up loading two offload plugins
   bool VPDatabase::claimDeviceOffloadOwnership()
