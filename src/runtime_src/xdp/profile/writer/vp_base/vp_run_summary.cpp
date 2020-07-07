@@ -46,6 +46,10 @@ namespace xdp {
   {
     // Ignore openNewFile
     
+    // We could be called to write multiple times, so refresh before
+    //  we dump
+    refreshFile() ;
+
     // There might be more than one run summary writer if multiple
     //  plugins are instantitated.  In that case, only one will
     //  be able to write.

@@ -25,8 +25,8 @@ namespace xdp {
 
   bool VPDatabase::live ;
 
-  VPDatabase::VPDatabase()
-            : numDevices(0)
+  VPDatabase::VPDatabase() :
+    stats(this), staticdb(this), dyndb(this), numDevices(0)
   {
     VPDatabase::live = true ;
   }
@@ -111,4 +111,11 @@ namespace xdp {
     return true ;
   }
 
+  void VPDatabase::broadcast(MessageType msg, void* blob)
+  {
+    for (auto p : plugins)
+    {
+      p->broadcast(msg, blob) ;
+    }
+  }
 } // end namespace xdp
