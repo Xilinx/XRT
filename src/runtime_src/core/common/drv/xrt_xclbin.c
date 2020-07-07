@@ -159,35 +159,35 @@ char *
 xrt_xclbin_kind_to_string(enum axlf_section_kind kind)
 {
 	switch (kind) {
-	case 0:  return "BITSTREAM";
-	case 1:  return "CLEARING_BITSTREAM";
-	case 2:  return "EMBEDDED_METADATA";
-	case 3:  return "FIRMWARE";
-	case 4:  return "DEBUG_DATA";
-	case 5:  return "SCHED_FIRMWARE";
-	case 6:  return "MEM_TOPOLOGY";
-	case 7:  return "CONNECTIVITY";
-	case 8:  return "IP_LAYOUT";
-	case 9:  return "DEBUG_IP_LAYOUT";
-	case 10: return "DESIGN_CHECK_POINT";
-	case 11: return "CLOCK_FREQ_TOPOLOGY";
-	case 12: return "MCS";
-	case 13: return "BMC";
-	case 14: return "BUILD_METADATA";
-	case 15: return "KEYVALUE_METADATA";
-	case 16: return "USER_METADATA";
-	case 17: return "DNA_CERTIFICATE";
-	case 18: return "PDI";
-	case 19: return "BITSTREAM_PARTIAL_PDI";
-	case 20: return "DTC";
-	case 21: return "EMULATION_DATA";
-	case 22: return "SYSTEM_METADATA";
-	case 23: return "SOFT_KERNEL";
-	case 24: return "ASK_FLASH";
-	case 25: return "AIE_METADATA";
-	case 26: return "ASK_GROUP_TOPOLOGY";
-	case 27: return "ASK_GROUP_CONNECTIVITY";
-	default: return "UNKNOWN";
+	case BITSTREAM:  		return "BITSTREAM";
+	case CLEARING_BITSTREAM:  	return "CLEARING_BITSTREAM";
+	case EMBEDDED_METADATA:  	return "EMBEDDED_METADATA";
+	case FIRMWARE:  		return "FIRMWARE";
+	case DEBUG_DATA:  		return "DEBUG_DATA";
+	case SCHED_FIRMWARE:  		return "SCHED_FIRMWARE";
+	case MEM_TOPOLOGY:  		return "MEM_TOPOLOGY";
+	case CONNECTIVITY:  		return "CONNECTIVITY";
+	case IP_LAYOUT:  		return "IP_LAYOUT";
+	case DEBUG_IP_LAYOUT:  		return "DEBUG_IP_LAYOUT";
+	case DESIGN_CHECK_POINT: 	return "DESIGN_CHECK_POINT";
+	case CLOCK_FREQ_TOPOLOGY: 	return "CLOCK_FREQ_TOPOLOGY";
+	case MCS: 			return "MCS";
+	case BMC: 			return "BMC";
+	case BUILD_METADATA: 		return "BUILD_METADATA";
+	case KEYVALUE_METADATA: 	return "KEYVALUE_METADATA";
+	case USER_METADATA: 		return "USER_METADATA";
+	case DNA_CERTIFICATE: 		return "DNA_CERTIFICATE";
+	case PDI: 			return "PDI";
+	case BITSTREAM_PARTIAL_PDI: 	return "BITSTREAM_PARTIAL_PDI";
+	case PARTITION_METADATA: 	return "PARTITION_METADATA";
+	case EMULATION_DATA: 		return "EMULATION_DATA";
+	case SYSTEM_METADATA: 		return "SYSTEM_METADATA";
+	case SOFT_KERNEL: 		return "SOFT_KERNEL";
+	case ASK_FLASH: 		return "ASK_FLASH";
+	case AIE_METADATA: 		return "AIE_METADATA";
+	case ASK_GROUP_TOPOLOGY: 	return "ASK_GROUP_TOPOLOGY";
+	case ASK_GROUP_CONNECTIVITY: 	return "ASK_GROUP_CONNECTIVITY";
+	default: 			return "UNKNOWN";
 	}
 }
 
