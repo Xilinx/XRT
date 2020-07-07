@@ -149,6 +149,7 @@ enum class key_type
   is_mfg,
   f_flash_type,
   flash_type,
+  flash_address,
   board_name,
   interface_uuids,
   logic_uuids
@@ -1515,6 +1516,15 @@ struct board_name : request
 {
   using result_type = std::string;
   static const key_type key = key_type::board_name;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct flash_address : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::flash_address;
 
   virtual boost::any
   get(const device*) const = 0;
