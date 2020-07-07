@@ -54,9 +54,34 @@ kds_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
 }
 static DEVICE_ATTR_RO(kds_stat);
 
+static ssize_t
+ert_disable_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d\n", XDEV(xdev)->kds.ert_disable);
+}
+
+static ssize_t
+ert_disable_store(struct device *dev, struct device_attribute *da,
+	       const char *buf, size_t count)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	u32 disable;
+
+	if (kstrtou32(buf, 10, &disable) == -EINVAL || disable > 1)
+		return -EINVAL;
+
+	XDEV(xdev)->kds.ert_disable = disable;
+
+	return count;
+}
+static DEVICE_ATTR(ert_disable, 0644, ert_disable_show, ert_disable_store);
+
 static struct attribute *kds_attrs[] = {
 	&dev_attr_kds_echo.attr,
 	&dev_attr_kds_stat.attr,
+	&dev_attr_ert_disable.attr,
 	NULL,
 };
 
@@ -256,6 +281,12 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 		cfg_ecmd2xcmd(to_cfg_pkg(ecmd), xcmd);
 	} else if (ecmd->opcode == ERT_START_CU)
 		start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+
+	if (XDEV(xdev)->kds.ert_disable)
+		xcmd->type = KDS_CU;
+	else
+		xcmd->type = KDS_ERT;
+
 	xcmd->cb.notify_host = notify_execbuf;
 	xcmd->gem_obj = obj;
 
