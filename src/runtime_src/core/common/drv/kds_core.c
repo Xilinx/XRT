@@ -687,13 +687,24 @@ int is_bad_state(struct kds_sched *kds)
 	return kds->bad_state;
 }
 
+u32 kds_live_clients(struct kds_sched *kds, pid_t **plist)
+{
+	u32 count = 0;
+
+	mutex_lock(&kds->lock);
+	count = kds_live_clients_nolock(kds, plist);
+	mutex_unlock(&kds->lock);
+
+	return count;
+}
+
 /*
  * Return number of client with open ("live") contexts on CUs.
  * If this number > 0, xclbin is locked down.
  * If plist is non-NULL, the list of PIDs of live clients will also be returned.
  * Note that plist should be freed by caller.
  */
-u32 kds_live_clients(struct kds_sched *kds, pid_t **plist)
+u32 kds_live_clients_nolock(struct kds_sched *kds, pid_t **plist)
 {
 	const struct list_head *ptr;
 	struct kds_client *client;
@@ -701,7 +712,6 @@ u32 kds_live_clients(struct kds_sched *kds, pid_t **plist)
 	u32 count = 0;
 	u32 i = 0;
 
-	mutex_lock(&kds->lock);
 	/* Find out number of active client */
 	list_for_each(ptr, &kds->clients) {
 		client = list_entry(ptr, struct kds_client, link);
@@ -726,7 +736,6 @@ u32 kds_live_clients(struct kds_sched *kds, pid_t **plist)
 
 	*plist = pl;
 out:
-	mutex_unlock(&kds->lock);
 	return count;
 }
 
