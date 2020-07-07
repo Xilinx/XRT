@@ -319,6 +319,7 @@ read_electrical(boost::property_tree::ptree& pt) const
 
   ptree_updater<query::v3v3_pex_millivolts>::query_and_put(this, pt);
   ptree_updater<query::v3v3_aux_millivolts>::query_and_put(this, pt);
+  ptree_updater<query::v3v3_aux_milliamps>::query_and_put(this, pt);
   ptree_updater<query::ddr_vpp_bottom_millivolts>::query_and_put(this, pt);
   ptree_updater<query::ddr_vpp_top_millivolts>::query_and_put(this, pt);
 
