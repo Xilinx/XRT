@@ -262,7 +262,14 @@ prep_rhel7()
     
     echo "Enabling RHEL SCL repository..."
     yum-config-manager --enable rhel-server-rhscl-7-rpms
-    
+
+    MINOR=`echo ${VERSION} | awk -F. '{print $2}'`
+    if [ "$MINOR" != "" ] && [ $MINOR -gt 6 ]; then
+      echo "Enabling repository 'rhel-7-server-optional-rpms'"
+      subscription-manager repos --enable "rhel-7-server-optional-rpms"
+      echo "Enabling repository 'rhel-7-server-e4s-optional-rpms"
+      subscription-manager repos --enable "rhel-7-server-e4s-optional-rpms"
+    fi
 }
 
 prep_rhel8()
