@@ -909,6 +909,7 @@ enum data_kind {
 	FAN_RPM,
 	VOL_3V3_PEX,
 	VOL_3V3_AUX,
+	CUR_3V3_AUX,
 	VPP_BTM,
 	VPP_TOP,
 	VOL_5V5_SYS,

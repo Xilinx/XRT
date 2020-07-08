@@ -849,13 +849,14 @@ public:
                      m0v85, mgt0v9avcc, m12v_sw, mgtavtt, vccint_vol, vccint_curr, m3v3_pex_curr, m0v85_curr, m3v3_vcc_vol,
                      hbm_1v2_vol, vpp2v5_vol, vccint_bram_vol, m12v_pex_vol, m12v_aux_curr, m12v_pex_curr, m12v_aux_vol,
                      vol_12v_aux1, vol_vcc1v2_i, vol_v12_in_i, vol_v12_in_aux0_i, vol_v12_in_aux1_i, vol_vccaux,
-                     vol_vccaux_pmc, vol_vccram;
+                     vol_vccaux_pmc, vol_vccram, m3v3_aux_cur;
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_pex_vol",    m12v_pex_vol);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_pex_curr",   m12v_pex_curr);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_aux_vol",    m12v_aux_vol);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_aux_curr",   m12v_aux_curr);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_3v3_pex_vol",    m3v3_pex_vol);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_3v3_aux_vol",    m3v3_aux_vol);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_3v3_aux_cur",    m3v3_aux_cur);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_ddr_vpp_btm",    ddr_vpp_btm);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_ddr_vpp_top",    ddr_vpp_top);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_sys_5v5",        sys_5v5);
@@ -888,6 +889,7 @@ public:
         sensor_tree::put( "board.physical.electrical.12v_aux.current",         m12v_aux_curr );
         sensor_tree::put( "board.physical.electrical.3v3_pex.voltage",         m3v3_pex_vol );
         sensor_tree::put( "board.physical.electrical.3v3_aux.voltage",         m3v3_aux_vol );
+        sensor_tree::put( "board.physical.electrical.3v3_aux.current",         m3v3_aux_cur );
         sensor_tree::put( "board.physical.electrical.ddr_vpp_bottom.voltage",  ddr_vpp_btm );
         sensor_tree::put( "board.physical.electrical.ddr_vpp_top.voltage",     ddr_vpp_top );
         sensor_tree::put( "board.physical.electrical.sys_5v5.voltage",         sys_5v5 );
@@ -1179,6 +1181,9 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccaux.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccaux_pmc.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccram.voltage"  ) << std::endl;
+        ostr << std::setw(16) << "3V3 AUX CURR" << std::setw(16) << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.3v3_aux.current" )
+             <<  std::endl;
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Card Power(W)\n";
