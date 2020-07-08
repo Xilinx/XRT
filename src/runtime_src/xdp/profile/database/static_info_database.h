@@ -30,6 +30,7 @@ namespace xdp {
 
   // Forward declarations
   class VPDatabase ;
+  class VPWriter ;
 
   struct Monitor {
     uint8_t     type;
@@ -137,7 +138,10 @@ namespace xdp {
   class VPStaticDatabase
   {
   private:
+    // Parent pointer to database so we can issue broadcasts
     VPDatabase* db ;
+    // The static database handles the single instance of the run summary
+    VPWriter* runSummary ;
 
   private:
     // ********* Information specific to each host execution **********

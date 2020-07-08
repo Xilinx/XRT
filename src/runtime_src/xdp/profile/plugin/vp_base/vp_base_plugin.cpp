@@ -31,11 +31,6 @@ namespace xdp {
 
   XDPPlugin::XDPPlugin() : db(VPDatabase::Instance())
   {
-    // Every combination of plugins should generate a single run summary file
-    if (db->claimRunSummaryOwnership())
-    {
-      writers.push_back(new VPRunSummaryWriter("xclbin.run_summary")) ;
-    }
   }
 
   XDPPlugin::~XDPPlugin()
@@ -72,22 +67,15 @@ namespace xdp {
     }
   }
 
-  void XDPPlugin::broadcast(VPDatabase::MessageType msg, void* /*blob*/)
+  void XDPPlugin::broadcast(VPDatabase::MessageType /*msg*/, void* /*blob*/)
   {
+    /*
     switch(msg)
     {
-    case VPDatabase::DUMP_RUN_SUMMARY:
-      for (auto w : writers)
-      {
-	if (w->isRunSummaryWriter())
-	{
-	  w->write(false) ;
-	}
-      }
-      break ;
     default:
       break ;
     }
+    */
   }
 
 }
