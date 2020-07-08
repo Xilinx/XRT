@@ -30,6 +30,7 @@
 
 enum kds_type {
 	KDS_CU		= 0,
+	KDS_ERT,
 	KDS_MAX_TYPE, // always the last one
 };
 
@@ -102,6 +103,11 @@ struct kds_cu_mgmt {
 	int			  configured;
 };
 
+/* ERT core */
+struct kds_ert {
+	int (* submit)(struct kds_command *xcmd);
+};
+
 /**
  * struct kds_sched: KDS scheduler manage CUs and client list.
  *		     There should be only one KDS per device.
@@ -117,15 +123,20 @@ struct kds_sched {
 	struct mutex		lock;
 	bool			bad_state;
 	struct kds_cu_mgmt	cu_mgmt;
+	struct kds_ert	       *ert;
+	bool			ert_disable;
 };
 
 int kds_init_sched(struct kds_sched *kds);
+int kds_init_ert(struct kds_sched *kds, struct kds_ert *ert);
 int kds_init_client(struct kds_sched *kds, struct kds_client *client);
 void kds_fini_sched(struct kds_sched *kds);
+int kds_fini_ert(struct kds_sched *kds);
 void kds_fini_client(struct kds_sched *kds, struct kds_client *client);
 void kds_reset(struct kds_sched *kds);
 int is_bad_state(struct kds_sched *kds);
 u32 kds_live_clients(struct kds_sched *kds, pid_t **plist);
+u32 kds_live_clients_nolock(struct kds_sched *kds, pid_t **plist);
 int kds_add_cu(struct kds_sched *kds, struct xrt_cu *xcu);
 int kds_del_cu(struct kds_sched *kds, struct xrt_cu *xcu);
 int kds_add_context(struct kds_sched *kds, struct kds_client *client,

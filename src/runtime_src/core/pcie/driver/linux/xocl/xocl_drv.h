@@ -1704,6 +1704,16 @@ static inline int xocl_kds_del_cu(xdev_handle_t xdev, struct xrt_cu *xcu)
 	return kds_del_cu(&XDEV(xdev)->kds, xcu);
 }
 
+static inline int xocl_kds_init_ert(xdev_handle_t xdev, struct kds_ert *ert)
+{
+	return kds_init_ert(&XDEV(xdev)->kds, ert);
+}
+
+static inline int xocl_kds_fini_ert(xdev_handle_t xdev)
+{
+	return kds_fini_ert(&XDEV(xdev)->kds);
+}
+
 /* context helpers */
 extern struct mutex xocl_drvinst_mutex;
 extern struct xocl_drvinst *xocl_drvinst_array[XOCL_MAX_DEVICES * 10];

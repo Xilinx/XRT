@@ -2378,11 +2378,12 @@ int xcldev::xclScheduler(int argc, char *argv[])
         {"echo", required_argument, 0, 0},
         {0, 0, 0, 0}
     };
-    const char* short_opts = "d:e:";
+    const char* short_opts = "d:e:k:";
     int c, opt_idx;
     std::string errmsg;
     unsigned index = 0;
     int kds_echo = -1;
+    int ert_disable = -1;
 
     if (!root) {
         std::cout << "ERROR: root privileges required." << std::endl;
@@ -2405,6 +2406,9 @@ int xcldev::xclScheduler(int argc, char *argv[])
         case 'e':
             kds_echo = std::atoi(optarg);
             break;
+        case 'k':
+            ert_disable = std::atoi(optarg);
+            break;
         default:
             /* This is hidden command, silently exit */
             return -EINVAL;
@@ -2422,6 +2426,18 @@ int xcldev::xclScheduler(int argc, char *argv[])
         pcidev::get_dev(index)->sysfs_get( "", "kds_echo", errmsg, kds_echo);
         std::cout << "Device[" << index << "] kds_echo: " << kds_echo << std::endl;
     }
-    
+
+    if (ert_disable != -1) {
+        std::string val = (ert_disable == 0)? "0" : "1";
+        pcidev::get_dev(index)->sysfs_put( "", "ert_disable", errmsg, val);
+        if (!errmsg.empty()) {
+            std::cout << errmsg << std::endl;
+            return -EINVAL;
+        }
+        std::string ert_disable;
+        pcidev::get_dev(index)->sysfs_get( "", "ert_disable", errmsg, ert_disable);
+        std::cout << "Device[" << index << "] ert_disable: " << ert_disable << std::endl;
+    }
+
     return 0;
 }
