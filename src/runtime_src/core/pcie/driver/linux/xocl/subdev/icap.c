@@ -2742,8 +2742,9 @@ done:
 			vfree(*target);
 			*target = NULL;
 		}
-	}
-	ICAP_INFO(icap, "kind %d, err: %ld", kind, err);
+		ICAP_INFO(icap, "skip kind %d, return code %ld", kind, err);
+	} else
+		ICAP_INFO(icap, "found kind %d", kind);
 	return err;
 }
 
