@@ -360,7 +360,8 @@ extern "C" {
         AXI_STREAM_PROTOCOL_CHECKER,
         TRACE_S2MM,
         AXI_DMA,
-        TRACE_S2MM_FULL
+        TRACE_S2MM_FULL,
+        AXI_NOC
     };
 
     struct debug_ip_data {
