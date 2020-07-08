@@ -40,6 +40,7 @@
 #include <linux/moduleparam.h>
 #include <linux/cdev.h>
 #include "xclbin.h"
+#include "xrt_xclbin.h"
 #include "xrt_mem.h"
 #include "devices.h"
 #include "xocl_ioctl.h"
@@ -444,6 +445,8 @@ struct xocl_dev_core {
 	spinlock_t		api_lock;
 	struct completion	api_comp;
 	int			api_call_cnt;
+
+	struct xocl_xclbin 	*xdev_xclbin;
 };
 
 #define XOCL_DRM(xdev_hdl)					\
@@ -1540,8 +1543,6 @@ struct xocl_flash_funcs {
 struct xocl_xfer_versal_funcs {
 	int (*download_axlf)(struct platform_device *pdev,
 		const void __user *arg);
-	int (*xclbin_load_axlf)(struct platform_device *pdev,
-		const void __user *arg);
 };
 #define	XFER_VERSAL_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_XFER_VERSAL).pldev
 #define	XFER_VERSAL_OPS(xdev)					\
@@ -1550,10 +1551,6 @@ struct xocl_xfer_versal_funcs {
 #define	xocl_xfer_versal_download_axlf(xdev, xclbin)	\
 	(XFER_VERSAL_CB(xdev) ?					\
 	XFER_VERSAL_OPS(xdev)->download_axlf(XFER_VERSAL_DEV(xdev), xclbin) : -ENODEV)
-/* Note: this API is a workaround, will be relocated into xclbin lib */
-#define	xocl_xclbin_load_axlf(xdev, xclbin)	\
-	(XFER_VERSAL_CB(xdev) ?					\
-	XFER_VERSAL_OPS(xdev)->xclbin_load_axlf(XFER_VERSAL_DEV(xdev), xclbin) : -ENODEV)
 
 struct xocl_pmc_funcs {
 	int (*enable_reset)(struct platform_device *pdev);

@@ -30,6 +30,7 @@
 #include "../xocl_drv.h"
 #include "version.h"
 #include "xclbin.h"
+#include "../xocl_xclbin.h"
 
 static const struct pci_device_id pci_ids[] = {
 	XOCL_MGMT_PCI_IDS,
@@ -822,11 +823,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		} else {
 			memcpy(buf, xclbin, xclbin_len);
 
-			/* Note: future xclbin library to load axlf */
-			if (XOCL_DSA_IS_VERSAL(lro))
-				ret = xocl_xclbin_load_axlf(lro, buf);
-			else
-				ret = xocl_icap_download_axlf(lro, buf);
+			ret = xocl_xclbin_download(lro, buf);
 
 			vfree(buf);
 		}
