@@ -172,7 +172,7 @@ namespace xdp {
     DeviceIntf* devInterface = new DeviceIntf() ;
     try {
       devInterface->setDevice(new HalDevice(ownedHandle)) ;
-      devInterface->readDebugIPlayout() ;
+      devInterface->readDebugIPlayout() ;      
     }
     catch(std::exception& e)
     {
@@ -180,6 +180,7 @@ namespace xdp {
       delete devInterface ;
     }
 
+    configureDataflow(deviceId, devInterface) ;
     addOffloader(deviceId, devInterface) ;
     configureTraceIP(devInterface) ;
     devInterface->clockTraining() ;

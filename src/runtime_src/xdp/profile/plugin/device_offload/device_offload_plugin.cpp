@@ -76,6 +76,16 @@ namespace xdp {
     (db->getStaticInfo()).addOpenedFile(filename.c_str(), "VP_TRACE") ;
   }
 
+  void DeviceOffloadPlugin::configureDataflow(uint64_t deviceId,
+					      DeviceIntf* devInterface)
+  {
+    uint32_t numAM = devInterface->getNumMonitors(XCL_PERF_MON_ACCEL) ;
+    bool* dataflowConfig = new bool[numAM] ;
+    (db->getStaticInfo()).getDataflowConfiguration(deviceId, dataflowConfig, numAM) ;
+
+    delete [] dataflowConfig ;
+  }
+
   // It is the responsibility of the child class to instantiate the appropriate
   //  device interface based on the level (OpenCL or HAL)
   void DeviceOffloadPlugin::addOffloader(uint64_t deviceId,
@@ -90,7 +100,7 @@ namespace xdp {
       new DeviceTraceOffload(devInterface,
 			     logger,
 			     continuous_trace_interval_ms, // offload_sleep_ms,
-			     trace_buffer_size,            // trbuf_size,
+			     GetTS2MMBufSize(),            // trbuf_size,
 			     continuous_trace) ;           // start_thread
 
      offloader->read_trace_init() ;

@@ -157,6 +157,7 @@ namespace xdp {
       return ;
     }
 
+    configureDataflow(deviceId, devInterface) ;
     addOffloader(deviceId, devInterface) ;
 
     configureTraceIP(devInterface) ; 
