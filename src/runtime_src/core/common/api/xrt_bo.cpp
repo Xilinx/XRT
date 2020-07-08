@@ -34,6 +34,31 @@
 # pragma warning( disable : 4244 )
 #endif
 
+////////////////////////////////////////////////////////////////
+// Exposed for Cardano as extensions to xrt_bo.h
+// Revisit post 2020.1
+////////////////////////////////////////////////////////////////
+/**
+ * xrtBOAddress() - Get the address of device side of buffer
+ *
+ * @bo:      Buffer object
+ * Return:   Address of device side buffer
+ */
+XCL_DRIVER_DLLESPEC
+uint64_t
+xrtBOAddress(const xrt::bo& bo);
+
+/**
+ * xrtBOAddress() - Get the address of device side of buffer
+ *
+ * @handle:  Buffer handle
+ * Return:   Address of device side buffer
+ */
+XCL_DRIVER_DLLESPEC
+uint64_t
+xrtBOAddress(xrtBufferHandle bhdl);
+///////////////////////////////////////////////////////////////
+
 namespace {
 
 inline size_t
@@ -567,4 +592,26 @@ xrtBORead(xrtBufferHandle bhdl, void* dst, size_t size, size_t skip)
     send_exception_message(ex.what());
     return errno = 0;
   }
+}
+
+uint64_t
+xrtBOAddress(xrtBufferHandle bhdl)
+{
+  try {
+    return xrt_core::bo::address(bhdl);
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return errno = 0;
+  }
+}
+
+uint64_t
+xrtBOAddress(const xrt::bo& bo)
+{
+  return xrt_core::bo::address(bo);
 }
