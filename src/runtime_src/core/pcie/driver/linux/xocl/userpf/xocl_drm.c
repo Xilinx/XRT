@@ -754,9 +754,9 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	/* Currently only fixed sizes are supported */
 	for (i = 0; i < topo->m_count; i++) {
 		mem_data = &topo->m_mem_data[i];
+		ddr_bank_size = mem_data->m_size * 1024;
 
 		if (XOCL_IS_P2P_MEM(topo, i)) {
-			ddr_bank_size = mem_data->m_size * 1024;
 			if (mem_data->m_used) {
 				xocl_p2p_mem_map(drm_p->xdev,
 				    mem_data->m_base_address,

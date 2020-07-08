@@ -326,6 +326,7 @@ static void __xocl_subdev_destroy(xdev_handle_t xdev_hdl,
 		case XOCL_SUBDEV_STATE_ACTIVE:
 		case XOCL_SUBDEV_STATE_OFFLINE:
 			device_release_driver(&pldev->dev);
+			__attribute__ ((fallthrough));
 		case XOCL_SUBDEV_STATE_ADDED:
 		default:
 			platform_device_unregister(pldev);
@@ -968,7 +969,7 @@ int xocl_subdev_online_by_id(xdev_handle_t xdev_hdl, uint32_t subdev_id)
 
 	xocl_lock_xdev(xdev_hdl);
 	for (i = 0; i < XOCL_SUBDEV_MAX_INST; i++) {
-		if (!core->subdevs[subdev_id][i].pldev)
+		if (core->subdevs[subdev_id][i].state <= XOCL_SUBDEV_STATE_UNINIT)
 			continue;
 		ret = __xocl_subdev_online(xdev_hdl,
 				&core->subdevs[subdev_id][i]);
