@@ -93,7 +93,7 @@ namespace xdp {
   {
     if (runSummary != nullptr)
     {
-      runSummary->write() ;
+      runSummary->write(false) ;
       delete runSummary ;
     }
   }
@@ -333,6 +333,7 @@ namespace xdp {
     {
       runSummary = new VPRunSummaryWriter("xclbin.run_summary") ;
     }
+    runSummary->write(false) ;
   }
 
 }

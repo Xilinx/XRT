@@ -50,9 +50,6 @@ namespace xdp {
     //  we dump
     refreshFile() ;
 
-    // There might be more than one run summary writer if multiple
-    //  plugins are instantitated.  In that case, only one will
-    //  be able to write.
     if (!fout) return ;
 
     // Collect all the files that have been created in this host execution
