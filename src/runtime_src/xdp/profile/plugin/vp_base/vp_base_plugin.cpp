@@ -67,13 +67,15 @@ namespace xdp {
     }
   }
 
-  void XDPPlugin::broadcast(VPDatabase::MessageType msg, void* /*blob*/)
+  void XDPPlugin::broadcast(VPDatabase::MessageType /*msg*/, void* /*blob*/)
   {
+    /*
     switch(msg)
     {
     default:
       break ;
     }
+    */
   }
 
 }
