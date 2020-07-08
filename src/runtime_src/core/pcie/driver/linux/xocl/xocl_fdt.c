@@ -1368,7 +1368,7 @@ const struct axlf_section_header *xocl_axlf_section_header(
 				"header offset: %llu, size: %llu",
 				hdr->m_sectionOffset, hdr->m_sectionSize);
 	} else
-		xocl_xdev_info(xdev_hdl, "could not find section header %d",
+		xocl_xdev_info(xdev_hdl, "skip section header %d",
 				kind);
 
 	return hdr;
