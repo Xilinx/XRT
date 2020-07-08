@@ -869,15 +869,19 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 	xocl_drvinst_release(xdev, &hdl);
 
 	xocl_queue_destroy(xdev);
+	
+	/* Free pinned pages before call xocl_drm_fini */
+	xocl_cma_bank_free(xdev);
 
 	/*
 	 * need to shutdown drm and sysfs before destroy subdevices
 	 * drm and sysfs could access subdevices
 	 */
-	if (xdev->core.drm)
+	if (xdev->core.drm) {
 		xocl_drm_fini(xdev->core.drm);
+		xdev->core.drm = NULL;
+	}
 
-	xocl_cma_bank_free(xdev);
 	xocl_p2p_fini(xdev);
 	xocl_fini_persist_sysfs(xdev);
 	xocl_fini_sysfs(xdev);
