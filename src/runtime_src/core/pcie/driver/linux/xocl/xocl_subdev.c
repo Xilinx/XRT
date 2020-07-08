@@ -969,8 +969,6 @@ int xocl_subdev_online_by_id(xdev_handle_t xdev_hdl, uint32_t subdev_id)
 
 	xocl_lock_xdev(xdev_hdl);
 	for (i = 0; i < XOCL_SUBDEV_MAX_INST; i++) {
-		if (core->subdevs[subdev_id][i].state <= XOCL_SUBDEV_STATE_UNINIT)
-			continue;
 		ret = __xocl_subdev_online(xdev_hdl,
 				&core->subdevs[subdev_id][i]);
 		if (ret && ret != -EAGAIN)
@@ -993,14 +991,9 @@ int xocl_subdev_online_by_id_and_inst(xdev_handle_t xdev_hdl, uint32_t subdev_id
 
 	xocl_lock_xdev(xdev_hdl);
 
-	if (!core->subdevs[subdev_id][inst_id].pldev)
-		goto done;
 	ret = __xocl_subdev_online(xdev_hdl,
 			&core->subdevs[subdev_id][inst_id]);
-	if (ret && ret != -EAGAIN)
-		goto done;
 
-done:
 	xocl_unlock_xdev(xdev_hdl);
 
 	return (ret && ret != -EAGAIN) ? ret : 0;
