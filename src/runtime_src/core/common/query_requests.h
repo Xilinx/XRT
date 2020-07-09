@@ -1701,7 +1701,7 @@ struct noop : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown6(value);
+    return format::format_base10_shiftdown3(value);
   }
 
 };
