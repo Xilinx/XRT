@@ -222,12 +222,22 @@ initialize_query_table()
   emplace_sysfs_request<query::int_vcc_milliamps>         ("xmc", "xmc_vccint_curr");
   emplace_sysfs_request<query::int_vcc_temp>              ("xmc", "xmc_vccint_temp");
 
+  emplace_sysfs_request<query::_12v_aux1_millivolts>      ("xmc", "xmc_12v_aux1");
+  emplace_sysfs_request<query::vcc1v2_i_milliamps>        ("xmc", "xmc_vcc1v2_i");
+  emplace_sysfs_request<query::v12_in_i_milliamps>        ("xmc", "xmc_v12_in_i");
+  emplace_sysfs_request<query::v12_in_aux0_i_milliamps>   ("xmc", "xmc_v12_in_aux0_i");
+  emplace_sysfs_request<query::v12_in_aux1_i_milliamps>   ("xmc", "xmc_v12_in_aux1_i");
+  emplace_sysfs_request<query::vcc_aux_millivolts>        ("xmc", "xmc_vccaux");
+  emplace_sysfs_request<query::vcc_aux_pmc_millivolts>    ("xmc", "xmc_vccaux_pmc");
+  emplace_sysfs_request<query::vcc_ram_millivolts>        ("xmc", "xmc_vccram");
+
   emplace_sysfs_request<query::v3v3_pex_milliamps>        ("xmc", "xmc_3v3_pex_curr");
-  emplace_sysfs_request<query::v0v85_milliamps>           ("xmc", "xmc_0v85_curr");
+  emplace_sysfs_request<query::v3v3_aux_milliamps>        ("xmc", "xmc_3v3_aux_cur");
+  emplace_sysfs_request<query::int_vcc_io_milliamps>      ("xmc", "xmc_0v85_curr");
   emplace_sysfs_request<query::v3v3_vcc_millivolts>       ("xmc", "xmc_3v3_vcc_vol");
   emplace_sysfs_request<query::hbm_1v2_millivolts>        ("xmc", "xmc_hbm_1v2_vol");
   emplace_sysfs_request<query::v2v5_vpp_millivolts>       ("xmc", "xmc_vpp2v5_vol");
-  emplace_sysfs_request<query::int_bram_vcc_millivolts>   ("xmc", "xmc_vccint_bram_vol");
+  emplace_sysfs_request<query::int_vcc_io_millivolts>     ("xmc", "xmc_vccint_bram_vol");
 
   emplace_sysfs_request<query::firewall_detect_level>     ("firewall", "detected_level");
   emplace_sysfs_request<query::firewall_status>           ("firewall", "detected_status");
@@ -251,6 +261,16 @@ initialize_query_table()
   emplace_sysfs_request<query::interface_uuids>           ("", "interface_uuids");
 
   emplace_func0_request<query::pcie_bdf,                  bdf>();
+
+
+  // pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_12v_aux1",        vol_12v_aux1);
+  // pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_vcc1v2_i",        vol_vcc1v2_i);
+  // pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_v12_in_i",        vol_v12_in_i);
+  // pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_v12_in_aux0_i",   vol_v12_in_aux0_i);
+  // pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_v12_in_aux1_i",   vol_v12_in_aux1_i);
+  // pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_vccaux",          vol_vccaux);
+  // pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_vccaux_pmc",      vol_vccaux_pmc);
+  // pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_vccram",          vol_vccram);
 }
 
 struct X { X() { initialize_query_table(); }};

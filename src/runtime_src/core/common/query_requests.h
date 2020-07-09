@@ -113,7 +113,10 @@ enum class key_type
   v12v_aux_milliamps,
 
   v3v3_pex_millivolts,
+  v3v3_pex_milliamps,
+
   v3v3_aux_millivolts,
+  v3v3_aux_milliamps,
 
   ddr_vpp_bottom_millivolts,
   ddr_vpp_top_millivolts,
@@ -128,12 +131,19 @@ enum class key_type
   int_vcc_millivolts,
   int_vcc_milliamps,
   int_vcc_temp,
-  v3v3_pex_milliamps,
-  v0v85_milliamps,
+  int_vcc_io_milliamps,
   v3v3_vcc_millivolts,
   hbm_1v2_millivolts,
   v2v5_vpp_millivolts,
-  int_bram_vcc_millivolts,
+  _12v_aux1_millivolts,
+  vcc1v2_i_milliamps,
+  v12_in_i_milliamps,
+  v12_in_aux0_i_milliamps,
+  v12_in_aux1_i_milliamps,
+  vcc_aux_millivolts,
+  vcc_aux_pmc_millivolts,
+  vcc_ram_millivolts,
+  int_vcc_io_millivolts,
   firewall_detect_level,
   firewall_status,
   firewall_time_sec,
@@ -152,7 +162,8 @@ enum class key_type
   flash_type,
   board_name,
   interface_uuids,
-  logic_uuids
+  logic_uuids,
+  noop
 
 };
 
@@ -1294,10 +1305,26 @@ struct v3v3_pex_milliamps : request
   }
 };
 
-struct v0v85_milliamps : request
+struct v3v3_aux_milliamps : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::v0v85_milliamps;
+  static const key_type key = key_type::v3v3_aux_milliamps;
+  static const char* name() { return "3v3_pex.current"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return format::format_base10_shiftdown3(value);
+  }
+};
+
+struct int_vcc_io_milliamps : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::int_vcc_io_milliamps;
   static const char* name() { return "0v85.current"; }
 
   virtual boost::any
@@ -1358,11 +1385,130 @@ struct v2v5_vpp_millivolts : request
   }
 };
 
-struct int_bram_vcc_millivolts : request
+struct _12v_aux1_millivolts : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::int_bram_vcc_millivolts;
-  static const char* name() { return "vccint_bram.voltage"; }
+  static const key_type key = key_type::_12v_aux1_millivolts;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return format::format_base10_shiftdown3(value);
+  }
+};
+
+struct vcc1v2_i_milliamps : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::vcc1v2_i_milliamps;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return format::format_base10_shiftdown3(value);
+  }
+};
+
+struct v12_in_i_milliamps : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::v12_in_i_milliamps;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return format::format_base10_shiftdown3(value);
+  }
+};
+
+struct v12_in_aux0_i_milliamps : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::v12_in_aux0_i_milliamps;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return format::format_base10_shiftdown3(value);
+  }
+};
+
+struct v12_in_aux1_i_milliamps : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::v12_in_aux1_i_milliamps;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return format::format_base10_shiftdown3(value);
+  }
+};
+
+struct vcc_aux_millivolts : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::vcc_aux_millivolts;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return format::format_base10_shiftdown3(value);
+  }
+};
+
+struct vcc_aux_pmc_millivolts : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::vcc_aux_pmc_millivolts;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return format::format_base10_shiftdown3(value);
+  }
+};
+
+struct vcc_ram_millivolts : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::vcc_ram_millivolts;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return format::format_base10_shiftdown3(value);
+  }
+};
+
+struct int_vcc_io_millivolts : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::int_vcc_io_millivolts;
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1542,6 +1688,22 @@ struct board_name : request
 
   virtual boost::any
   get(const device*) const = 0;
+};
+
+struct noop : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::noop;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return format::format_base10_shiftdown6(value);
+  }
+
 };
 
 } // query
