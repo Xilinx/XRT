@@ -19,12 +19,16 @@
 
 #include <map>
 #include <string>
+#include <tuple>
 
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 #include "xdp/profile/device/device_trace_offload.h"
 #include "xdp/profile/device/device_intf.h"
 
 namespace xdp {
+
+  // Forward declarations
+  class TraceLoggerCreatingDeviceEvents ;
 
   // This plugin should be completely agnostic of what the host code profiling
   //  plugin is.  So, this should work with HAL profiling, OpenCL profiling, 
@@ -52,7 +56,11 @@ namespace xdp {
     // Each device offload plugin is responsible for offloading
     //  information from all devices.  This holds all the objects
     //  responsible for offloading data from all devices.
-    std::map<uint32_t, DeviceTraceOffload*> offloaders ;
+    typedef std::tuple<DeviceTraceOffload*, 
+                       TraceLoggerCreatingDeviceEvents*,
+                       DeviceIntf*> DeviceData ;
+
+    std::map<uint32_t, DeviceData> offloaders ;
 
     XDP_EXPORT void addDevice(const std::string& sysfsPath) ;
     XDP_EXPORT void configureDataflow(uint64_t deviceId, DeviceIntf* devInterface) ;

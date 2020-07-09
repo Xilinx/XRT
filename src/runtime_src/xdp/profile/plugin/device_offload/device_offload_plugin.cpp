@@ -125,7 +125,7 @@ namespace xdp {
        return ;
      }
 
-     offloaders[deviceId] = offloader ;
+     offloaders[deviceId] = std::make_tuple(offloader, logger, devInterface) ;
   }
   
   void DeviceOffloadPlugin::configureTraceIP(DeviceIntf* devInterface)
@@ -166,7 +166,7 @@ namespace xdp {
     //  and write our writers.
     for (auto o : offloaders)
     {
-      (o.second)->read_trace() ;
+      (std::get<0>(o.second))->read_trace() ;
     }    
 
     for (auto w : writers)
