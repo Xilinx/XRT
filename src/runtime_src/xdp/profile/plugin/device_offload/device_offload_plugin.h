@@ -41,7 +41,6 @@ namespace xdp {
   private:
     // These are the continuous offload configuration parameters as read
     //  from xrt.ini.
-    uint64_t trace_buffer_size ;
     bool continuous_trace ;
     unsigned int continuous_trace_interval_ms ;
 
