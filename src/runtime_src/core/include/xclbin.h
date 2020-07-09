@@ -361,7 +361,8 @@ extern "C" {
         TRACE_S2MM,
         AXI_DMA,
         TRACE_S2MM_FULL,
-        AXI_NOC
+        AXI_NOC,
+        AI_ENGINE_TILE
     };
 
     struct debug_ip_data {

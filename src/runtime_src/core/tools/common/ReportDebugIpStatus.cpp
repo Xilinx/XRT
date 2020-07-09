@@ -244,6 +244,7 @@ DebugIpStatusCollector::printOverview(std::ostream& _output)
       case AXI_STREAM_PROTOCOL_CHECKER:
       case TRACE_S2MM:
       case AXI_NOC:
+      case AI_ENGINE_TILE:
         ++count;
         ++debugIpNum[dbgIpLayout->m_debug_ip_data[i].m_type];
         break;
@@ -1333,6 +1334,7 @@ DebugIpStatusCollector::populateOverview(boost::property_tree::ptree &_pt)
       case AXI_STREAM_PROTOCOL_CHECKER:
       case TRACE_S2MM:
       case AXI_NOC:
+      case AI_ENGINE_TILE:
         ++count;
         ++debugIpNum[dbgIpLayout->m_debug_ip_data[i].m_type];
         break;
