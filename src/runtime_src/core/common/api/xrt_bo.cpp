@@ -343,7 +343,9 @@ alloc(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
   auto type = flags & ~XRT_BO_FLAGS_MEMIDX_MASK;
   switch (type) {
   case 0:
+#ifndef XRT_EDGE
     return alloc_hbuf(dhdl, xrt_core::aligned_alloc(get_alignment(), sz), sz, flags, grp);
+#endif
   case XCL_BO_FLAGS_CACHEABLE:
   case XCL_BO_FLAGS_SVM:
   case XCL_BO_FLAGS_DEV_ONLY:
