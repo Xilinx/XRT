@@ -25,8 +25,7 @@
 
 namespace {
 
-static std::vector<std::weak_ptr<xrt_core::device>> mgmtpf_devices(16); // fix size
-static std::vector<std::weak_ptr<xrt_core::device>> userpf_devices(16); // fix size
+static std::map<xrt_core::device::id_type, std::weak_ptr<xrt_core::device>> mgmtpf_device_map;
 static std::map<xrt_core::device::handle_type, std::weak_ptr<xrt_core::device>> userpf_device_map;
 
 // mutex to protect insertion
@@ -136,11 +135,14 @@ std::shared_ptr<device>
 get_mgmtpf_device(device::id_type id)
 {
   // Check cache
-  auto device = mgmtpf_devices[id].lock();
-  if (!device) {
-    device = instance().get_mgmtpf_device(id);
-    mgmtpf_devices[id] = device;
-  }
+  auto itr = mgmtpf_device_map.find(id);
+  if (itr != mgmtpf_device_map.end())
+    if (auto device = (*itr).second.lock())
+      return device;
+
+  // Construct a new device object and insert in map
+  auto device = instance().get_mgmtpf_device(id);
+  mgmtpf_device_map[id] = device;
   return device;
 }
 
