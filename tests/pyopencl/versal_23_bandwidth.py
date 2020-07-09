@@ -202,11 +202,11 @@ def main():
 
 
         dnsduration.append(usduration)
-        dsduration.append(dnsduration[test]/1000000)
+        dsduration.append(dnsduration[test]/1000000.0)
         dbytes.append(reps*beats*(typesize/8))
         dmbytes.append(dbytes[test]/(1024 * 1024))
-        bpersec.append(6*dbytes[test]/dsduration[test])
-        mbpersec.append(2*bpersec[test]/(1024 * 1024))
+        bpersec.append(6.0*dbytes[test]/dsduration[test])
+        mbpersec.append(2.0*bpersec[test]/(1024 * 1024))
         throughput.append(mbpersec[test])
         print("Test %d, Throughput: %d MB/s" %(test, throughput[test]))
         beats = beats*4

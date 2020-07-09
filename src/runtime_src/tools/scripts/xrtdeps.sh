@@ -89,6 +89,8 @@ rh_package_list()
      unzip \
      zlib-static \
      libcurl-devel \
+     python3 \
+     python3-pip \
     )
 
     # Centos8
@@ -96,8 +98,6 @@ rh_package_list()
 
         RH_LIST+=(\
          systemd-devel \
-         python3 \
-         python3-pip \
          kernel-devel-$(uname -r) \
          kernel-headers-$(uname -r) \
         )
@@ -111,8 +111,6 @@ rh_package_list()
          kernel-headers-$(uname -r) \
          openssl-static \
          protobuf-static \
-         python \
-         python-pip \
         )
 
     fi
@@ -172,16 +170,14 @@ ub_package_list()
      libssl-dev \
      libudev-dev \
      libsystemd-dev \
+     python3 \
+     python3-pip \
+     python3-sphinx \
+     python3-sphinx-rtd-theme \
     )
 
     if [[ $docker == 0 ]]; then
         UB_LIST+=(linux-headers-$(uname -r))
-    fi
-
-    if [[ $VERSION == 20.04 ]]; then
-        UB_LIST+=(python3 python3-pip)
-    else
-        UB_LIST+=(python python-pip)
     fi
 
     #dmidecode is only applicable for x86_64
