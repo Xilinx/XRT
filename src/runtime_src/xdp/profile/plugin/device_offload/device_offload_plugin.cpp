@@ -82,6 +82,7 @@ namespace xdp {
     uint32_t numAM = devInterface->getNumMonitors(XCL_PERF_MON_ACCEL) ;
     bool* dataflowConfig = new bool[numAM] ;
     (db->getStaticInfo()).getDataflowConfiguration(deviceId, dataflowConfig, numAM) ;
+    devInterface->configureDataflow(dataflowConfig) ;
 
     delete [] dataflowConfig ;
   }
