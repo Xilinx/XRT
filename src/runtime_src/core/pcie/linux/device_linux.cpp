@@ -223,7 +223,7 @@ initialize_query_table()
   emplace_sysfs_request<query::int_vcc_milliamps>         ("xmc", "xmc_vccint_curr");
   emplace_sysfs_request<query::int_vcc_temp>              ("xmc", "xmc_vccint_temp");
 
-  emplace_sysfs_request<query::_12v_aux1_millivolts>      ("xmc", "xmc_12v_aux1");
+  emplace_sysfs_request<query::v12_aux1_millivolts>      ("xmc", "xmc_12v_aux1");
   emplace_sysfs_request<query::vcc1v2_i_milliamps>        ("xmc", "xmc_vcc1v2_i");
   emplace_sysfs_request<query::v12_in_i_milliamps>        ("xmc", "xmc_v12_in_i");
   emplace_sysfs_request<query::v12_in_aux0_i_milliamps>   ("xmc", "xmc_v12_in_aux0_i");

@@ -135,7 +135,7 @@ enum class key_type
   v3v3_vcc_millivolts,
   hbm_1v2_millivolts,
   v2v5_vpp_millivolts,
-  _12v_aux1_millivolts,
+  v12_aux1_millivolts,
   vcc1v2_i_milliamps,
   v12_in_i_milliamps,
   v12_in_aux0_i_milliamps,
@@ -1348,10 +1348,10 @@ struct v2v5_vpp_millivolts : request
   }
 };
 
-struct _12v_aux1_millivolts : request
+struct v12_aux1_millivolts : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::_12v_aux1_millivolts;
+  static const key_type key = key_type::v12_aux1_millivolts;
 
   virtual boost::any
   get(const device*) const = 0;
