@@ -61,6 +61,8 @@ SectionDebugIPLayout::getDebugIPTypeStr(enum DEBUG_IP_TYPE _debugIpType) const {
       return "TRACE_S2MM_FULL";
     case AXI_DMA:
       return "AXI_DMA";
+    case AXI_NOC:
+      return "AXI_NOC";
   }
 
   return XUtil::format("UNKNOWN (%d)", static_cast<unsigned int>(_debugIpType));
@@ -97,6 +99,9 @@ SectionDebugIPLayout::getDebugIPType(std::string& _sDebugIPType) const {
 
   if (_sDebugIPType == "AXI_DMA")
     return AXI_DMA;
+
+  if (_sDebugIPType == "AXI_NOC")
+    return AXI_NOC;
 
   if ( _sDebugIPType == "AXI_STREAM_MONITOR" )
     return AXI_STREAM_MONITOR;

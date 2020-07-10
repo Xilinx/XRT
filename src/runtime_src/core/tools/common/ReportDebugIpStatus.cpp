@@ -251,6 +251,7 @@ DebugIpStatusCollector::printOverview(std::ostream& _output)
       case AXI_MONITOR_FIFO_LITE:
       case AXI_DMA:
       case TRACE_S2MM_FULL:
+      case AXI_NOC:
         // No need to show these Debug IP types
         continue;
       default:
@@ -1339,6 +1340,7 @@ DebugIpStatusCollector::populateOverview(boost::property_tree::ptree &_pt)
       case AXI_MONITOR_FIFO_LITE:
       case AXI_DMA:
       case TRACE_S2MM_FULL:
+      case AXI_NOC:
         // No need to show these Debug IP types
         continue;
       default:
