@@ -22,7 +22,7 @@
 namespace qr = xrt_core::query;
 
 boost::property_tree::ptree
-populate_fan(const xrt_core::device * device, const std::string loc_id, const std::string desc)
+populate_fan(const xrt_core::device * device, const std::string& loc_id, const std::string& desc)
 {
   boost::property_tree::ptree pt;
   uint64_t temp, rpm;

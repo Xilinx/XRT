@@ -23,7 +23,7 @@ namespace qr = xrt_core::query;
 
 template <typename QueryRequestType>
 boost::property_tree::ptree
-populate_temp(const xrt_core::device * device, const std::string loc_id, const std::string desc)
+populate_temp(const xrt_core::device * device, const std::string& loc_id, const std::string& desc)
 {
   boost::property_tree::ptree pt;
   uint64_t temp;
@@ -34,7 +34,7 @@ populate_temp(const xrt_core::device * device, const std::string loc_id, const s
   }
   
   pt.put("location_id", loc_id);
-  pt.put("description",desc);
+  pt.put("description", desc);
   pt.put("temp_C", temp);
   pt.put("is_present", temp != 0 ? "true" : "false");
   

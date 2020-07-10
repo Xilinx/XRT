@@ -17,6 +17,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "ReportElectrical.h"
+#include "XBUtilities.h"
 #include "core/common/query_requests.h"
 #include "core/common/device.h"
 namespace qr = xrt_core::query;
@@ -36,7 +37,7 @@ populate_sensor(const xrt_core::device * device, const std::string loc_id, const
   } catch (const std::exception ex){
     pt.put("voltage.error_msg", ex.what());
   }
-  pt.put("voltage.volts", QRVoltage::to_string(voltage));
+  pt.put("voltage.volts", XBUtilities::format_base10_shiftdown3(voltage));
   pt.put("voltage.is_present", voltage != 0 ? "true" : "false");
 
   try {
@@ -45,7 +46,7 @@ populate_sensor(const xrt_core::device * device, const std::string loc_id, const
   } catch (const std::exception ex){
     pt.put("current.error_msg", ex.what());
   }
-  pt.put("current.amps", QRCurrent::to_string(current));
+  pt.put("current.amps", XBUtilities::format_base10_shiftdown3(current));
   pt.put("current.is_present", current != 0 ? "true" : "false");
   
   return pt;
@@ -66,7 +67,7 @@ ReportElectrical::getPropertyTree20201( const xrt_core::device * _pDevice,
 {
   boost::property_tree::ptree pt;
   
-  pt.put("power_consumption_watts", qr::power_microwatts::to_string(xrt_core::device_query<qr::power_microwatts>(_pDevice)));
+  pt.put("power_consumption_watts", XBUtilities::format_base10_shiftdown6(xrt_core::device_query<qr::power_microwatts>(_pDevice)));
   boost::property_tree::ptree sensor_array;
   sensor_array.push_back(std::make_pair("", 
     populate_sensor<qr::v12v_aux_millivolts, qr::v12v_aux_milliamps>(_pDevice, "12v_aux", "12 Volts Auxillary")));

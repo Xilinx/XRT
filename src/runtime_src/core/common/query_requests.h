@@ -193,28 +193,6 @@ public:
   }
 };
 
-struct format
-{
-  static std::string
-  precision(double value, int p)
-  {
-    std::stringstream stream;
-    stream << std::fixed << std::setprecision(p) << value;
-    return stream.str();
-  }
-
-  static std::string
-  format_base10_shiftdown3(uint64_t value)
-  {
-    return precision(static_cast<double>(value) / 1000.0, 3);
-  }
-
-  static std::string
-  format_base10_shiftdown6(uint64_t value)
-  {
-    return precision(static_cast<double>(value) / 1000000.0, 6);
-  }
-};
 
 struct pcie_vendor : request
 {
@@ -984,7 +962,7 @@ struct v12v_pex_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -999,7 +977,7 @@ struct v12v_pex_milliamps : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1014,7 +992,7 @@ struct v12v_aux_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1029,7 +1007,7 @@ struct v12v_aux_milliamps : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1044,7 +1022,7 @@ struct v3v3_pex_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1059,7 +1037,7 @@ struct v3v3_aux_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1074,7 +1052,7 @@ struct ddr_vpp_bottom_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1089,7 +1067,7 @@ struct ddr_vpp_top_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1104,7 +1082,7 @@ struct v5v5_system_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1119,7 +1097,7 @@ struct v1v2_vcc_top_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1134,7 +1112,7 @@ struct v1v2_vcc_bottom_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1149,7 +1127,7 @@ struct v1v8_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1164,7 +1142,7 @@ struct v0v85_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1179,7 +1157,7 @@ struct v0v9_vcc_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1194,7 +1172,7 @@ struct v12v_sw_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1209,7 +1187,7 @@ struct mgt_vtt_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1224,7 +1202,7 @@ struct int_vcc_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1239,7 +1217,7 @@ struct int_vcc_milliamps : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1269,7 +1247,7 @@ struct v3v3_pex_milliamps : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1284,7 +1262,7 @@ struct v3v3_aux_milliamps : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1299,7 +1277,7 @@ struct int_vcc_io_milliamps : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1314,7 +1292,7 @@ struct v3v3_vcc_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1329,7 +1307,7 @@ struct hbm_1v2_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1344,7 +1322,7 @@ struct v2v5_vpp_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1359,7 +1337,7 @@ struct v12_aux1_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1374,7 +1352,7 @@ struct vcc1v2_i_milliamps : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1389,7 +1367,7 @@ struct v12_in_i_milliamps : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1404,7 +1382,7 @@ struct v12_in_aux0_i_milliamps : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1419,7 +1397,7 @@ struct v12_in_aux1_i_milliamps : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1434,7 +1412,7 @@ struct vcc_aux_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1449,7 +1427,7 @@ struct vcc_aux_pmc_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1464,7 +1442,7 @@ struct vcc_ram_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1479,7 +1457,7 @@ struct int_vcc_io_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1542,7 +1520,7 @@ struct power_microwatts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown6(value);
+    return std::to_string(value);
   }
 };
 
@@ -1663,7 +1641,7 @@ struct noop : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 
 };
