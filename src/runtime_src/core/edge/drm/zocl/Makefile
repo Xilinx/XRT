@@ -7,7 +7,8 @@ ccflags-y := -I$(src)/include -I$(src)/../../include -I$(src)/../../../include -
 
 drv_common-y   := ../../../common/drv/kds_core.o \
 		  ../../../common/drv/cu_hls.o \
-		  ../../../common/drv/xrt_cu.o
+		  ../../../common/drv/xrt_cu.o \
+		  ../../../common/drv/xrt_xclbin.o
 
 zocl-y := \
 	$(drv_common-y) \

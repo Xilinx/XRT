@@ -77,6 +77,13 @@ struct xcu_funcs {
 	void (*put_credit)(void *core, u32 count);
 
 	/**
+	 * @is_zero_credit:
+	 *
+	 * Check if CU core has zero credit.
+	 */
+	int (*is_zero_credit)(void *core);
+
+	/**
 	 * @configure:
 	 *
 	 * Congifure CU arguments.
@@ -157,6 +164,14 @@ struct xrt_cu_info {
 	bool	intr_enable;
 };
 
+#define CU_STATE_GOOD  0x1
+#define CU_STATE_BAD   0x2
+struct xrt_cu_event {
+	struct mutex		  lock;
+	void			 *client;
+	int			  state;
+};
+
 struct xrt_cu {
 	struct device		 *dev;
 	struct xrt_cu_info	  info;
@@ -185,8 +200,12 @@ struct xrt_cu {
 	struct semaphore	  sem;
 	void                     *core;
 	u32			  stop;
+	bool			  bad_state;
 	u32			  done_cnt;
 	u32			  ready_cnt;
+	u64			  run_timeout;
+	struct kds_command	 *old_cmd;
+	struct xrt_cu_event	  ev;
 	/**
 	 * @funcs:
 	 *
@@ -231,6 +250,11 @@ static inline int xrt_cu_get_credit(struct xrt_cu *xcu)
 	return xcu->funcs->get_credit(xcu->core);
 }
 
+static inline int is_zero_credit(struct xrt_cu *xcu)
+{
+	return xcu->funcs->is_zero_credit(xcu->core);
+}
+
 static inline void xrt_cu_put_credit(struct xrt_cu *xcu, u32 count)
 {
 	xcu->funcs->put_credit(xcu->core, count);
@@ -242,6 +266,9 @@ static inline void xrt_cu_put_credit(struct xrt_cu *xcu, u32 count)
  */
 int xrt_cu_thread(void *data);
 void xrt_cu_submit(struct xrt_cu *xcu, struct kds_command *xcmd);
+int xrt_cu_abort(struct xrt_cu *xcu, void *client);
+int xrt_cu_abort_done(struct xrt_cu *xcu);
+void xrt_cu_set_bad_state(struct xrt_cu *xcu);
 
 int  xrt_cu_init(struct xrt_cu *xcu);
 void xrt_cu_fini(struct xrt_cu *xcu);

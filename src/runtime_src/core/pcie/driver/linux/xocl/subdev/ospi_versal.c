@@ -78,6 +78,7 @@
  * to fragments into pkt_data to fit the size of BRAM.
  */
 
+#include "xrt_xclbin.h"
 #include "../xocl_drv.h"
 #include "xrt_drv.h"
 
@@ -349,98 +350,9 @@ done:
 	return ret;
 }
 
-static const struct axlf_section_header *get_axlf_section_hdr(
-	struct xfer_versal *xv, const struct axlf *top, enum axlf_section_kind kind)
-{
-	int i;
-	const struct axlf_section_header *hdr = NULL;
-
-	for (i = 0; i < top->m_header.m_numSections; i++) {
-		if (top->m_sections[i].m_sectionKind == kind) {
-			hdr = &top->m_sections[i];
-			break;
-		}
-	}
-
-	if (hdr) {
-		if ((hdr->m_sectionOffset + hdr->m_sectionSize) >
-			top->m_header.m_length) {
-			XV_ERR(xv, "found section %d is invalid", kind);
-			hdr = NULL;
-		} else {
-			XV_INFO(xv, "section %d offset: %llu, size: %llu",
-				kind, hdr->m_sectionOffset, hdr->m_sectionSize);
-		}
-	} else {
-		XV_INFO(xv, "could not find section header %d", kind);
-	}
-
-	return hdr;
-}
-
-static void parse_partition_metadata(struct xfer_versal *xv,
-	const struct axlf *top, void **addr, uint64_t *size)
-{
-	void *section = NULL;
-	const struct axlf_section_header *hdr =
-		get_axlf_section_hdr(xv, top, PARTITION_METADATA);
-
-	if (hdr == NULL)
-		return;
-
-	section = vmalloc(hdr->m_sectionSize);
-	if (section == NULL)
-		return;
-
-	memcpy(section, ((const char *)top) + hdr->m_sectionOffset,
-		hdr->m_sectionSize);
-
-	*addr = section;
-	*size = hdr->m_sectionSize;
-}
-
-/* Note: this is a workaround for enabling ULP level clock after xclbin
- * download. We will have new-code to replace this api. For fast fix, just
- * enable it temporarily.
- */
-static int xclbin_load_axlf(struct platform_device *pdev, const void *buf)
-{
-	struct xfer_versal *xv = platform_get_drvdata(pdev);
-	struct axlf *xclbin = (struct axlf *)buf;
-	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	void *metadata = NULL;	
-	uint64_t size;
-	struct xocl_subdev *urpdevs;
-	int i, ret = 0, num_dev = 0;
-	
-	parse_partition_metadata(xv, xclbin, &metadata, &size);
-	if (metadata) {
-		num_dev = xocl_fdt_parse_blob(xdev, metadata,
-		    size, &urpdevs);
-		vfree(metadata);
-	}
-	xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
-
-	xocl_axigate_freeze(xdev, XOCL_SUBDEV_LEVEL_PRP);
-
-	/* download bitstream */
-	ret = xfer_versal_download_axlf(pdev, buf);
-
-	xocl_axigate_free(xdev, XOCL_SUBDEV_LEVEL_PRP);
-
-	if (num_dev) {
-		for (i = 0; i < num_dev; i++)
-			(void) xocl_subdev_create(xdev, &urpdevs[i].info);
-		xocl_subdev_create_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
-	}
-
-	return ret;
-}
-
 /* Kernel APIs exported from this sub-device driver */
 static struct xocl_xfer_versal_funcs xfer_versal_ops = {
 	.download_axlf = xfer_versal_download_axlf,
-	.xclbin_load_axlf = xclbin_load_axlf,
 };
 
 static int xfer_versal_open(struct inode *inode, struct file *file)

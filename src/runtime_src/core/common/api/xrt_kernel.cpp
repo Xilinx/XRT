@@ -117,20 +117,19 @@ has_reg_read_write()
 }
 
 inline std::vector<uint32_t>
-value_to_uint32_vector(const void* value, size_t size)
+value_to_uint32_vector(const void* value, size_t bytes)
 {
-  size = std::max(size, sizeof(uint32_t));
+  bytes = std::max(bytes, sizeof(uint32_t));
   auto uval = reinterpret_cast<const uint32_t*>(value);
-  return { uval, uval + size / sizeof(uint32_t)};
+  return { uval, uval + bytes / sizeof(uint32_t)};
 }
 
 template <typename ValueType>
 inline std::vector<uint32_t>
 value_to_uint32_vector(ValueType value)
 {
-  return value_to_uint32_vector(static_cast<void*>(&value), sizeof(value));
+  return value_to_uint32_vector(&value, sizeof(value));
 }
-
 
 // struct device_type - Extends xrt_core::device
 //
@@ -472,6 +471,27 @@ class argument
     }
   };
 
+  template <typename HostType, typename VaArgType>
+  struct scalar_type<HostType*, VaArgType*> : iarg
+  {
+    size_t size;  // size in bytes of argument per xclbin
+
+    scalar_type(size_t bytes)
+      : size(bytes)
+    {
+      // assert(bytes <= sizeof(VaArgType)
+    }
+
+    virtual std::vector<uint32_t>
+    get_value(std::va_list* args) const
+    {
+      static_assert(BOOST_BYTE_ORDER==1234,"Big endian detected");
+
+      HostType* value = va_arg(*args, VaArgType*);
+      return value_to_uint32_vector(value, size);
+    }
+  };
+
   struct global_type : iarg
   {
     xrt_core::device* core_device;
@@ -544,6 +564,12 @@ public:
         content = std::make_unique<scalar_type<float,double>>(arg.size);
       else if (arg.hosttype == "double")
         content = std::make_unique<scalar_type<double,double>>(arg.size);
+      else if (arg.hosttype == "int*")
+        content = std::make_unique<scalar_type<int*,int*>>(arg.size);
+      else if (arg.hosttype == "uint*")
+        content = std::make_unique<scalar_type<unsigned int*,unsigned int*>>(arg.size);
+      else if (arg.hosttype == "float*")
+        throw std::runtime_error("float* kernel argument not supported");
       else if (arg.size == 4)
         content = std::make_unique<scalar_type<uint32_t,uint32_t>>(arg.size);
       else if (arg.size == 8)
@@ -634,7 +660,7 @@ class kernel_impl
   int32_t
   get_arg_grpid(const connectivity* cons, int32_t argidx, int32_t ipidx)
   {
-    for (int32_t count=0; count <cons->m_count; ++count) {
+    for (int32_t count=0; cons && count <cons->m_count; ++count) {
       auto& con = cons->m_connection[count];
       if (con.m_ip_layout_index != ipidx)
         continue;
@@ -691,10 +717,8 @@ public:
       throw std::runtime_error("No ip layout available to construct kernel, make sure xclbin is loaded");
     auto ip_layout = reinterpret_cast<const ::ip_layout*>(ip_section.first);
 
-    // connectivity section for CU memory connectivity
+    // connectivity section for CU memory connectivity, permissible for section to not exist
     auto connectivity_section = device->core_device->get_axlf_section(CONNECTIVITY, xclbin_id);
-    if (!connectivity_section.first)
-      throw std::runtime_error("No connectivity available to construct kernel, make sure xclbin is loaded");
     auto connectivity = reinterpret_cast<const ::connectivity*>(connectivity_section.first);
 
     // xml section for kernel arguments

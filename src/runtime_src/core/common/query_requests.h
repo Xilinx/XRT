@@ -1063,6 +1063,22 @@ struct v3v3_aux_millivolts : request
   }
 };
 
+struct v3v3_aux_milliamps : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::v3v3_aux_milliamps;
+  static const char* name() { return "3v3_aux.current"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return format::format_base10_shiftdown3(value);
+  }
+};
+
 struct ddr_vpp_bottom_millivolts : request
 {
   using result_type = uint64_t;

@@ -30,8 +30,10 @@
 #define XDP_SOURCE
 
 #include "xdp/profile/database/static_info_database.h"
+#include "xdp/profile/database/database.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #include "core/include/xclbin.h"
+#include "xdp/profile/writer/vp_base/vp_run_summary.h"
 
 #define XAM_STALL_PROPERTY_MASK        0x4
 
@@ -78,7 +80,7 @@ namespace xdp {
     connections[argIdx].push_back(memIdx);
   }
 
-  VPStaticDatabase::VPStaticDatabase()
+  VPStaticDatabase::VPStaticDatabase(VPDatabase* d) : db(d), runSummary(nullptr)
   {
 #ifdef _WIN32
     pid = _getpid() ;
@@ -89,6 +91,11 @@ namespace xdp {
 
   VPStaticDatabase::~VPStaticDatabase()
   {
+    if (runSummary != nullptr)
+    {
+      runSummary->write(false) ;
+      delete runSummary ;
+    }
   }
 
   // This function is called whenever a device is loaded with an 
@@ -321,6 +328,12 @@ namespace xdp {
     std::lock_guard<std::mutex> lock(dbLock) ;
 
     openedFiles.push_back(std::make_pair(name, type)) ;
+
+    if (runSummary == nullptr)
+    {
+      runSummary = new VPRunSummaryWriter("xclbin.run_summary") ;
+    }
+    runSummary->write(false) ;
   }
 
 }

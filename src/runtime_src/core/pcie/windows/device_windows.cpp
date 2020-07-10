@@ -362,6 +362,8 @@ struct sensor
       return query::v3v3_pex_millivolts::result_type(info.vol_3v3_pex);
     case key_type::v3v3_aux_millivolts:
       return query::v3v3_aux_millivolts::result_type(info.vol_3v3_aux);
+    case key_type::v3v3_aux_milliamps:
+      return query::v3v3_aux_milliamps::result_type(info.cur_3v3_aux);
     case key_type::ddr_vpp_bottom_millivolts:
       return query::ddr_vpp_bottom_millivolts::result_type(info.ddr_vpp_btm);
     case key_type::ddr_vpp_top_millivolts:
@@ -836,6 +838,7 @@ initialize_query_table()
   emplace_function0_getter<query::v12v_aux_milliamps,        sensor>();
   emplace_function0_getter<query::v3v3_pex_millivolts,       sensor>();
   emplace_function0_getter<query::v3v3_aux_millivolts,       sensor>();
+  emplace_function0_getter<query::v3v3_aux_milliamps,        sensor>();
   emplace_function0_getter<query::ddr_vpp_bottom_millivolts, sensor>();
   emplace_function0_getter<query::ddr_vpp_top_millivolts,    sensor>();
   emplace_function0_getter<query::v5v5_system_millivolts,    sensor>();

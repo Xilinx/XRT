@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -394,7 +394,6 @@ public:
   friend class program; // only program constructs kernels
   kernel(program* prog, const std::string& name,const xclbin::symbol&);
   kernel(program* prog, const std::string& name);
-  explicit kernel(program* prog);
 
 public:
   virtual ~kernel();
@@ -640,14 +639,6 @@ public:
    */
   std::string
   connectivity_debug() const;
-
-  ////////////////////////////////////////////////////////////////
-  // Conformance helpers
-  ////////////////////////////////////////////////////////////////
-  const std::string& get_hash() const
-  {
-    return m_symbol.hash;
-  }
 
 private:
   // Compute units that can be used by this kernel object The list is

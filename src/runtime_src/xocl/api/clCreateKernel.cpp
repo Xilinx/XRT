@@ -93,60 +93,6 @@ clCreateKernel(cl_program      program,
 {
   validOrError(program,kernel_name,errcode_ret);
 
-  // XCL_CONFORMANCECOLLECT mode
-  // write out the kernel sources in clCreateKernel and fail quickly in clEnqueueNDRange
-  // skip build in clBuildProgram
-  bool xcl_conformancecollectmode=(std::getenv("XCL_CONFORMANCECOLLECT"));
-  bool xcl_conformancemode=(std::getenv("XCL_CONFORMANCE"));
-  if (xcl_conformancecollectmode) {
-    // Generate mykernel_0/_1/_2.cl source file name
-    // Find first index not already used by a file
-    std::string fnm;
-    for (unsigned int idx=0; idx<1000; ++idx) {
-      char ext[6]; // 6 to make gcc on ubuntu1804 happy
-      sprintf(ext,"%03u",idx);
-      auto path = bfs::path(kernel_name);
-      // path.append("_").append(ext).append(".cl");
-      // Changed to use /= since boost 1.53.0 path::append() which
-      // comes packaged with CentOS/RHEL 7.X requires two arguments
-      path /= "_";
-      path /= ext;
-      path /= "cl";
-      if (!bfs::exists(path)) {
-        fnm = path.string();
-        break;
-      }
-    }
-
-    // Replace original kernel name with new kernel name in program source
-    std::string newsrc = xocl(program)->get_source();
-    auto newknm = fnm.substr(0,fnm.length()-3); // strip ".cl"
-    auto pos = newsrc.find(kernel_name);
-    if (pos!=std::string::npos)
-      newsrc.replace(pos,strlen(kernel_name),newknm);
-    else
-      XOCL_DEBUG(std::cout,"clCreateKernel : string replace failed\n");
-    std::ofstream ostr(fnm);
-    ostr << newsrc;
-
-    //fake kernel
-    XRT_UNUSED auto platform = xocl::get_global_platform();
-    auto kernel = xocl::xocl(program)->create_kernel("");
-    assert(kernel->get_wg_size()==getDeviceMaxWorkGroupSize(platform->get_device_range()[0].get()));
-    return kernel.release();
-  }
-
-  if (xcl_conformancemode) {
-    // find program with matching hash containing kernel it may be not
-    // be the program passed to this API
-    for (auto gprogram : xocl::get_global_programs()) {
-      auto xprogram = xocl::xocl(gprogram);
-      if(xprogram->conformance_binaryhash==xocl::xocl(program)->conformance_binaryhash)
-        if (xprogram->has_kernel(kernel_name))
-          program=xprogram;
-    }
-  }
-
   auto pkernel = xocl::xocl(program)->create_kernel(kernel_name);
   xocl::assign(errcode_ret,CL_SUCCESS);
   return pkernel.release();

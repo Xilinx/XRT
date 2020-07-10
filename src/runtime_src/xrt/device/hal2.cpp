@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2019 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -19,6 +19,7 @@
 #include "core/common/device.h"
 #include "core/common/query_requests.h"
 #include "core/common/thread.h"
+#include "core/common/scope_guard.h"
 
 #include <boost/format.hpp>
 #include <cstring> // for std::memcpy
@@ -63,15 +64,45 @@ device::
     t.join();
 }
 
+bool
+device::
+open_nolock()
+{
+  if (m_handle)
+    return false;
+
+  m_handle=m_ops->mOpen(m_idx, nullptr, XCL_QUIET);
+
+  if (!m_handle)
+    throw std::runtime_error("Could not open device");
+
+  return true;
+}
+
+bool
+device::
+open()
+{
+  std::lock_guard<std::mutex> lk(m_mutex);
+  return open_nolock();
+}
+
+void
+device::
+close_nolock()
+{
+  if (m_handle) {
+    m_ops->mClose(m_handle);
+    m_handle=nullptr;
+  }
+}
+
 void
 device::
 close()
 {
   std::lock_guard<std::mutex> lk(m_mutex);
-  if (m_handle) {
-    m_ops->mClose(m_handle);
-    m_handle=nullptr;
-  }
+  close_nolock();
 }
 
 std::ostream&
@@ -80,26 +111,27 @@ printDeviceInfo(std::ostream& ostr) const
 {
   if (!m_handle)
     throw std::runtime_error("Can't print device info, device is not open");
-  ostr << "Name: " << m_devinfo.mName << "\n";
-  ostr << "HAL v" << m_devinfo.mHALMajorVersion << "." << m_devinfo.mHALMinorVersion << "\n";
-  ostr << "HAL vendor id: " << std::hex << m_devinfo.mVendorId << std::dec << "\n";
-  ostr << "HAL device id: " << std::hex << m_devinfo.mDeviceId << std::dec << "\n";
-  ostr << "HAL device v" << m_devinfo.mDeviceVersion << "\n";
-  ostr << "HAL subsystem id: " << std::hex << m_devinfo.mSubsystemId << std::dec << "\n";
-  ostr << "HAL subsystem vendor id: " << std::hex << m_devinfo.mSubsystemVendorId << std::dec << "\n";
-  ostr << "HAL DDR size: " << std::hex << m_devinfo.mDDRSize << std::dec << "\n";
-  ostr << "HAL Data alignment: " << m_devinfo.mDataAlignment << "\n";
-  ostr << "HAL DDR free size: " << std::hex << m_devinfo.mDDRFreeSize << std::dec << "\n";
-  ostr << "HAL Min transfer size: " << m_devinfo.mMinTransferSize << "\n";
-  ostr << "HAL OnChip Temp: " << m_devinfo.mOnChipTemp << "\n";
-  ostr << "HAL Fan Temp: " << m_devinfo.mFanTemp << "\n";
-  ostr << "HAL Voltage: " << m_devinfo.mVInt << "\n";
-  ostr << "HAL Current: " << m_devinfo.mCurrent << "\n";
-  ostr << "HAL DDR count: " << m_devinfo.mDDRBankCount << "\n";
-  ostr << "HAL OCL freq: " << m_devinfo.mOCLFrequency[0] << "\n";
-  ostr << "HAL PCIe width: " << m_devinfo.mPCIeLinkWidth << "\n";
-  ostr << "HAL PCIe speed: " << m_devinfo.mPCIeLinkSpeed << "\n";
-  ostr << "HAL DMA threads: " << m_devinfo.mDMAThreads << "\n";
+  auto dinfo = get_device_info();
+  ostr << "Name: " << dinfo->mName << "\n";
+  ostr << "HAL v" << dinfo->mHALMajorVersion << "." << dinfo->mHALMinorVersion << "\n";
+  ostr << "HAL vendor id: " << std::hex << dinfo->mVendorId << std::dec << "\n";
+  ostr << "HAL device id: " << std::hex << dinfo->mDeviceId << std::dec << "\n";
+  ostr << "HAL device v" << dinfo->mDeviceVersion << "\n";
+  ostr << "HAL subsystem id: " << std::hex << dinfo->mSubsystemId << std::dec << "\n";
+  ostr << "HAL subsystem vendor id: " << std::hex << dinfo->mSubsystemVendorId << std::dec << "\n";
+  ostr << "HAL DDR size: " << std::hex << dinfo->mDDRSize << std::dec << "\n";
+  ostr << "HAL Data alignment: " << dinfo->mDataAlignment << "\n";
+  ostr << "HAL DDR free size: " << std::hex << dinfo->mDDRFreeSize << std::dec << "\n";
+  ostr << "HAL Min transfer size: " << dinfo->mMinTransferSize << "\n";
+  ostr << "HAL OnChip Temp: " << dinfo->mOnChipTemp << "\n";
+  ostr << "HAL Fan Temp: " << dinfo->mFanTemp << "\n";
+  ostr << "HAL Voltage: " << dinfo->mVInt << "\n";
+  ostr << "HAL Current: " << dinfo->mCurrent << "\n";
+  ostr << "HAL DDR count: " << dinfo->mDDRBankCount << "\n";
+  ostr << "HAL OCL freq: " << dinfo->mOCLFrequency[0] << "\n";
+  ostr << "HAL PCIe width: " << dinfo->mPCIeLinkWidth << "\n";
+  ostr << "HAL PCIe speed: " << dinfo->mPCIeLinkSpeed << "\n";
+  ostr << "HAL DMA threads: " << dinfo->mDMAThreads << "\n";
   return ostr;
 }
 
@@ -111,13 +143,15 @@ setup()
   if (!m_workers.empty())
     return;
 
-  openOrError();
+  open_nolock();
+
+  auto dinfo = get_device_info_nolock();
 
   auto threads = config::get_dma_threads(); // number of bidirectional channels
   if (!threads)
-    threads = m_devinfo.mDMAThreads;
+    threads = dinfo->mDMAThreads;
   else
-    threads = std::min(static_cast<unsigned short>(threads),m_devinfo.mDMAThreads);
+    threads = std::min(static_cast<unsigned short>(threads),dinfo->mDMAThreads);
   if (!threads) // Guard against drivers who do not set m_devinfo.mDMAThreads
     threads = 2;
 
@@ -149,6 +183,38 @@ getExecBufferObject(const ExecBufferObjectHandle& boh) const
   if (bo->owner != m_handle)
     throw std::runtime_error("bad exec buffer object");
   return bo;
+}
+
+hal2::device_info*
+device::
+get_device_info_nolock() const
+{
+  hal2::device_info* dinfo = m_devinfo.get_ptr();
+  if (dinfo)
+    return dinfo;
+
+  // Gather device info, open device if necessary
+  // This is a logically const operation
+  auto dev = const_cast<device*>(this);
+  dinfo = (m_devinfo = hal2::device_info()).get_ptr();
+
+  // Scope guard for closing device again if opened
+  auto at_exit = [] (device* d, bool close) { if (close) d->close_nolock(); };
+  xrt_core::scope_guard<std::function<void()>> g(std::bind(at_exit, dev, dev->open_nolock()));
+
+  std::memset(dinfo,0,sizeof(hal2::device_info));
+  if (m_ops->mGetDeviceInfo(m_handle,dinfo))
+    throw std::runtime_error("device info not available");
+
+  return dinfo;
+}
+
+hal2::device_info*
+device::
+get_device_info() const
+{
+  std::lock_guard<std::mutex> lk(m_mutex);
+  return get_device_info_nolock();
 }
 
 std::string
@@ -186,6 +252,24 @@ release_cu_context(const uuid& uuid,size_t cuidx)
                                + std::strerror(errno)
                                + "'");
   }
+}
+
+hal::operations_result<int>
+device::
+loadXclBin(const xclBin* xclbin)
+{
+  if (!m_ops->mLoadXclBin)
+    return hal::operations_result<int>();
+
+  hal::operations_result<int> ret = m_ops->mLoadXclBin(m_handle,xclbin);
+
+  // refresh device info on successful load
+  if (!ret.get()) {
+    std::lock_guard<std::mutex> lk(m_mutex);
+    m_devinfo = boost::none;
+  }
+
+  return ret;
 }
 
 ExecBufferObjectHandle

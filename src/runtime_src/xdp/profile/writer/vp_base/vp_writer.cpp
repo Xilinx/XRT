@@ -22,7 +22,7 @@
 namespace xdp {
 
   VPWriter::VPWriter(const char* filename) : 
-    basename(filename), fileNum(1),
+    basename(filename), currentFileName(filename), fileNum(1),
     db(VPDatabase::Instance()), fout(filename)
   {
   }
@@ -39,9 +39,19 @@ namespace xdp {
     fout.clear() ;
 
     ++fileNum ;
-    std::string newFileName = std::to_string(fileNum) + std::string("-") + basename ;
+    currentFileName = std::to_string(fileNum) + std::string("-") + basename ;
 
-    fout.open(newFileName.c_str()) ;
+    fout.open(currentFileName.c_str()) ;
+  }
+
+  // If we are overwriting a file that was previously written (but not
+  //  switching files), then this function resets the output stream
+  void VPWriter::refreshFile()
+  {
+    fout.close() ;
+    fout.clear() ;
+
+    fout.open(currentFileName.c_str()) ;
   }
 
 }

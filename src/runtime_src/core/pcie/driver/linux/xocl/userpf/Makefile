@@ -43,13 +43,15 @@ endif
 drv_common-y   := $(common_dir)/kds_core.o \
 		  $(common_dir)/xrt_cu.o \
 		  $(common_dir)/cu_hls.o \
-		  $(common_dir)/cu_plram.o
+		  $(common_dir)/cu_plram.o \
+		  $(common_dir)/xrt_xclbin.o
 
 xocl-y := \
 	../xocl_subdev.o \
 	../xocl_ctx.o \
 	../xocl_thread.o \
 	../xocl_fdt.o \
+	../xocl_xclbin.o \
 	../subdev/xdma.o \
 	../subdev/qdma.o \
 	../subdev/qdma4.o \
