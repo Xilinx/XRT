@@ -338,9 +338,9 @@ install()
         echo "Installing RHEL/CentOS packages..."
         yum install -y "${RH_LIST[@]}"
         OSREL=`lsb_release -r | awk -F: '{print tolower($2)}' |tr -d ' \t' | awk -F. '{print $1*100+$2}'`
-        if [ $FLAVOR == "centos" ] && [ $OSREL -gt 706 ]; then
+        if [ $FLAVOR == "centos" ] && [ $OSREL -gt 706 ] && [ $OSREL -lt 800 ]; then
           yum install -y devtoolset-9
-	elif [ $ARCH == "ppc64le" ]; then
+        elif [ $ARCH == "ppc64le" ]  || [[ $FLAVOR == "centos" && $OSREL -eq 704 ]]; then
             yum install -y devtoolset-7
 	elif [ $MAJOR -lt "8" ]; then
             yum install -y devtoolset-6
