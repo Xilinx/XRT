@@ -1,36 +1,38 @@
-"include": {
-            "build/checkpatch/spelling.txt": ["GPLv2"],
-            "src/runtime_src/core/common/drv/Makefile": [
-                "Copyright (C) 2020 Xilinx, Inc. All rights reserved.",
-                "This software is licensed under the terms of the GNU General Public",
-                "License version 2, as published by the Free Software Foundation, and",
-                "may be copied, distributed, and modified under those terms."
-            ],
-            "LICENSE": [
-                "Copyright (C) 2016-2020 Xilinx, Inc", 
-                'Licensed under the Apache License, Version 2.0 (the "License"). You may',
-                'not use this file except in compliance with the License. A copy of the',
-                'License is located at'
-            ],
-            "src/runtime_src/ert/management/lscript.ld": [
-                "Copyright (c) 2010-2016 Xilinx, Inc.  All rights reserved."
-            ],
-            "src/runtime_src/ert/scheduler/lscript.ld": [
-                "Copyright (c) 2010-2016 Xilinx, Inc.  All rights reserved."
-            ],
-            "src/runtime_src/ert/scheduler/lscript_u50.ld": [
-                "Copyright (c) 2010-2016 Xilinx, Inc.  All rights reserved."
-            ],
-            "src/runtime_src/ert/scheduler/lscript_v20.ld": [
-                "Copyright (c) 2010-2019 Xilinx, Inc.  All rights reserved."
-            ],
-            "tests/unit_test/experimental/exec_write/xhello_hw.h": [
-                "Copyright 1986-2018 Xilinx, Inc. All Rights Reserved."
-            ],
-            "tests/xma/profiling/02_simple_xma/xsimple_hw.h": [
-                "Copyright (C) 2016 Xilinx Inc. All rights reserved."
-            ]
-        },
-        "exclude": {
-            "build/**/*": ["GPL"]
-        }
+{
+  "include": {
+    "build/checkpatch/spelling.txt": ["GPLv2"],
+    "src/runtime_src/core/common/drv/Makefile": [
+        "Copyright (C) 2020 Xilinx, Inc. All rights reserved.",
+        "This software is licensed under the terms of the GNU General Public",
+        "License version 2, as published by the Free Software Foundation, and",
+        "may be copied, distributed, and modified under those terms."
+    ],
+    "LICENSE": [
+        "Copyright (C) 2016-2020 Xilinx, Inc", 
+        "Licensed under the Apache License, Version 2.0 (the \"License\"). You may",
+        "not use this file except in compliance with the License. A copy of the",
+        "License is located at"
+    ],
+    "src/runtime_src/ert/management/lscript.ld": [
+        "Copyright (c) 2010-2016 Xilinx, Inc.  All rights reserved."
+    ],
+    "src/runtime_src/ert/scheduler/lscript.ld": [
+        "Copyright (c) 2010-2016 Xilinx, Inc.  All rights reserved."
+    ],
+    "src/runtime_src/ert/scheduler/lscript_u50.ld": [
+        "Copyright (c) 2010-2016 Xilinx, Inc.  All rights reserved."
+    ],
+    "src/runtime_src/ert/scheduler/lscript_v20.ld": [
+        "Copyright (c) 2010-2019 Xilinx, Inc.  All rights reserved."
+    ],
+    "tests/unit_test/experimental/exec_write/xhello_hw.h": [
+        "Copyright 1986-2018 Xilinx, Inc. All Rights Reserved."
+    ],
+    "tests/xma/profiling/02_simple_xma/xsimple_hw.h": [
+        "Copyright (C) 2016 Xilinx Inc. All rights reserved."
+    ]
+  },
+  "exclude": {
+    "build/**/*": ["GPL"]
+  }
+}
