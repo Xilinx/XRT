@@ -1320,6 +1320,7 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 			    (subdev_info.priv_data))->flash_type,
 			    FLASH_TYPE_QSPIPS, strlen(FLASH_TYPE_QSPIPS));
 			/* default is FLASH_TYPE_SPI, thus pass through. */
+			__attribute__ ((fallthrough));
 		case XOCL_VSEC_FLASH_TYPE_SPI_IP:
 		case XOCL_VSEC_FLASH_TYPE_SPI_REG:
 			xocl_xdev_info(xdev,
@@ -1353,6 +1354,7 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 			break;
 		default:
 			xocl_xdev_info(xdev, "Unsupport flash type 0x%x", vtype);
+			break;
 		}
 	}
 
