@@ -48,13 +48,13 @@ namespace po = boost::program_options;
 
 // Note: Please insert the reports in the order to be displayed (current alphabetical)
 static const ReportCollection fullReportCollection = {
+  std::make_shared<ReportElectrical>(),
+  std::make_shared<ReportFan>(),
   std::make_shared<ReportFirewall>(),
   std::make_shared<ReportHost>(),
   std::make_shared<ReportHostInterface>(),
-  std::make_shared<ReportDebugIpStatus>(),
-  std::make_shared<ReportElectrical>(),
-  std::make_shared<ReportFan>(),
   std::make_shared<ReportThermal>(),
+  std::make_shared<ReportDebugIpStatus>(),
   // std::make_shared<ReportPlatform>()
 };
 
