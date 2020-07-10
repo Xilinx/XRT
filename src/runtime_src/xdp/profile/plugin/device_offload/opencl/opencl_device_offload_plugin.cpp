@@ -32,6 +32,7 @@
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/xrt_device/xdp_xrt_device.h"
 #include "xdp/profile/database/events/creator/device_event_trace_logger.h"
+#include "xdp/profile/writer/vp_base/vp_writer.h"
 
 namespace xdp {
 

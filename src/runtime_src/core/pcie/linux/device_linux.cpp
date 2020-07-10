@@ -207,6 +207,7 @@ initialize_query_table()
   emplace_sysfs_request<query::v12v_aux_milliamps>          ("xmc", "xmc_12v_aux_curr");
   emplace_sysfs_request<query::v3v3_pex_millivolts>         ("xmc", "xmc_3v3_pex_vol");
   emplace_sysfs_request<query::v3v3_aux_millivolts>         ("xmc", "xmc_3v3_aux_vol");
+  emplace_sysfs_request<query::v3v3_aux_milliamps>          ("xmc", "xmc_3v3_aux_cur");
   emplace_sysfs_request<query::ddr_vpp_bottom_millivolts>   ("xmc", "xmc_ddr_vpp_btm");
   emplace_sysfs_request<query::ddr_vpp_top_millivolts>      ("xmc", "xmc_ddr_vpp_top");
 

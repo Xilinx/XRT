@@ -38,6 +38,10 @@ namespace xdp {
   //  singleton pattern.
   class VPDatabase
   {
+  public:
+    // For messages sent to specific plugins
+    enum MessageType { } ;
+
   private:
     // The information stored in the database will be separated into 
     //  three sections:
@@ -82,8 +86,10 @@ namespace xdp {
     // Functions that provide arbitration between multiple plugins
     //  for resources that should only exist once regardless of 
     //  the number of plugins
-    XDP_EXPORT bool claimRunSummaryOwnership() ;
     XDP_EXPORT bool claimDeviceOffloadOwnership() ;
+
+    // Functions that send messages to registered plugins
+    XDP_EXPORT void broadcast(MessageType msg, void* blob = nullptr);
   } ;
 }
 

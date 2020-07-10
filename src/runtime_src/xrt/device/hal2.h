@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -31,6 +31,8 @@
 #include <map>
 #include <array>
 #include <mutex>
+
+#include <boost/optional/optional.hpp>
 
 namespace xrt { namespace hal2 {
 
@@ -68,9 +70,9 @@ class device : public xrt::hal::device
   unsigned int m_idx;
 
   hal2::device_handle m_handle;
-  hal2::device_info m_devinfo;
+  mutable boost::optional<hal2::device_info> m_devinfo;
 
-  std::mutex m_mutex;
+  mutable std::mutex m_mutex;
 
   struct BufferObject : hal::buffer_object
   {
@@ -99,19 +101,17 @@ class device : public xrt::hal::device
   ExecBufferObject*
   getExecBufferObject(const ExecBufferObjectHandle& boh) const;
 
-  void
-  openOrError() const
-  {
-    if (!m_handle)
-      throw std::runtime_error("hal::device is not open");
-  }
+  hal2::device_info*
+  get_device_info() const;
 
-  int
-  getDeviceInfo(hal2::device_info *info)  const
-  {
-    std::memset(info,0,sizeof(hal2::device_info));
-    return m_ops->mGetDeviceInfo(m_handle,info);
-  }
+  bool
+  open_nolock();
+
+  void
+  close_nolock();
+
+  hal2::device_info*
+  get_device_info_nolock() const;
 
   task::queue&
   get_queue(hal::queue_type qt)
@@ -184,18 +184,15 @@ public:
   void
   setup();
 
+  /**
+   * Open the device.
+   *
+   * @return True if device was opened, false if already open
+   *
+   * Throws if device could not be opened
+   */
   virtual bool
-  open()
-  {
-    bool retval = false;
-    if (m_handle)
-      throw std::runtime_error("device is already open");
-    m_handle=m_ops->mOpen(m_idx, nullptr, XCL_QUIET);
-    if (m_handle)
-      retval = true;
-    getDeviceInfo(&m_devinfo);
-    return retval;
-  }
+  open();
 
   virtual void
   close();
@@ -230,31 +227,31 @@ public:
   virtual std::string
   getName() const
   {
-    return m_devinfo.mName;
+    return get_device_info()->mName;
   }
 
   virtual unsigned int
   getBankCount() const
   {
-    return m_devinfo.mDDRBankCount;
+    return get_device_info()->mDDRBankCount;
   }
 
   virtual size_t
   getDdrSize() const override
   {
-    return m_devinfo.mDDRSize;
+    return get_device_info()->mDDRSize;
   }
 
   virtual size_t
   getAlignment() const
   {
-    return m_devinfo.mDataAlignment;
+    return get_device_info()->mDataAlignment;
   }
 
   virtual range<const unsigned short*>
   getClockFrequencies() const
   {
-    return {m_devinfo.mOCLFrequency,m_devinfo.mOCLFrequency+4};
+    return {get_device_info()->mOCLFrequency,get_device_info()->mOCLFrequency+4};
   }
 
   virtual std::ostream&
@@ -263,7 +260,7 @@ public:
   virtual size_t
   get_cdma_count() const
   {
-    return m_devinfo.mNumCDMA;
+    return get_device_info()->mNumCDMA;
   }
 
   virtual ExecBufferObjectHandle
@@ -396,25 +393,14 @@ public:
   }
 
   virtual hal::operations_result<int>
-  loadXclBin(const xclBin* xclbin)
-  {
-    if (!m_ops->mLoadXclBin)
-      return hal::operations_result<int>();
-
-    hal::operations_result<int> ret = m_ops->mLoadXclBin(m_handle,xclbin);
-    // refresh device info on successful load
-    if (!ret.get())
-      getDeviceInfo(&m_devinfo);
-
-    return ret;
-  }
+  loadXclBin(const xclBin* xclbin);
 
   virtual bool
   hasBankAlloc() const
   {
     // PCIe DSAs have device DDRs which allow bank allocation/selection
     // Zynq PL based devices set device id to 0xffff.
-    return (m_devinfo.mDeviceId != 0xffff);
+    return (get_device_info()->mDeviceId != 0xffff);
   }
 
   virtual hal::operations_result<ssize_t>

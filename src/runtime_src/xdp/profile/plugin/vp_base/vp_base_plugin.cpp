@@ -20,6 +20,7 @@
 
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 #include "xdp/profile/writer/vp_base/vp_run_summary.h"
+#include "xdp/profile/database/database.h"
 
 #ifdef _WIN32
 #pragma warning(disable : 4996)
@@ -30,11 +31,6 @@ namespace xdp {
 
   XDPPlugin::XDPPlugin() : db(VPDatabase::Instance())
   {
-    // Every combination of plugins should generate a single run summary file
-    if (db->claimRunSummaryOwnership())
-    {
-      writers.push_back(new VPRunSummaryWriter("xclbin.run_summary")) ;
-    }
   }
 
   XDPPlugin::~XDPPlugin()
@@ -69,6 +65,17 @@ namespace xdp {
     {
       w->write(openNewFiles) ;
     }
+  }
+
+  void XDPPlugin::broadcast(VPDatabase::MessageType /*msg*/, void* /*blob*/)
+  {
+    /*
+    switch(msg)
+    {
+    default:
+      break ;
+    }
+    */
   }
 
 }

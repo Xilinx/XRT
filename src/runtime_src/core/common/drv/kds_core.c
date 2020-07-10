@@ -91,7 +91,7 @@ get_cu_by_addr(struct kds_cu_mgmt *cu_mgmt, u32 addr)
 	return i;
 }
 
-static void
+static int
 kds_cu_config(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 {
 	struct kds_client *client = xcmd->client;
@@ -99,11 +99,14 @@ kds_cu_config(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 	size_t num_cus = xcmd->isize / sizeof(u32);
 	struct xrt_cu *tmp;
 	int i, j;
+	int ret = 0;
 
 	mutex_lock(&cu_mgmt->lock);
 	/* I don't care if the configure command claim less number of cus */
-	if (unlikely(num_cus > cu_mgmt->num_cus))
-		goto error;
+	if (unlikely(num_cus > cu_mgmt->num_cus)) {
+		ret = -EINVAL;
+		goto out;
+	}
 
 	/* If the configure command is sent by xclLoadXclbin(), the command
 	 * content should be the same and it is okay to let it go through.
@@ -118,14 +121,16 @@ kds_cu_config(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 	 */
 	if (cu_mgmt->configured) {
 		kds_info(client, "CU already configured in KDS\n");
-		goto done;
+		goto out;
 	}
 
 	/* Now we need to make CU index right */
 	for (i = 0; i < num_cus; i++) {
 		j = get_cu_by_addr(cu_mgmt, cus_addr[i]);
-		if (j == cu_mgmt->num_cus)
-			goto error;
+		if (j == cu_mgmt->num_cus) {
+			ret = -EINVAL;
+			goto out;
+		}
 
 		/* Ordering CU index */
 		if (j != i) {
@@ -137,16 +142,9 @@ kds_cu_config(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 	}
 	cu_mgmt->configured = 1;
 
-done:
+out:
 	mutex_unlock(&cu_mgmt->lock);
-	xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
-	xcmd->cb.free(xcmd);
-	return;
-
-error:
-	mutex_unlock(&cu_mgmt->lock);
-	xcmd->cb.notify_host(xcmd, KDS_ERROR);
-	xcmd->cb.free(xcmd);
+	return ret;
 }
 
 /**
@@ -226,12 +224,63 @@ kds_cu_dispatch(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 static int
 kds_submit_cu(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 {
+	int ret = 0;
+	u32 status = KDS_COMPLETED;
+
 	if (xcmd->opcode != OP_CONFIG)
 		kds_cu_dispatch(cu_mgmt, xcmd);
-	else
-		kds_cu_config(cu_mgmt, xcmd);
+	else {
+		ret = kds_cu_config(cu_mgmt, xcmd);
+		if (ret)
+			status = KDS_ERROR;
 
+		xcmd->cb.notify_host(xcmd, status);
+		xcmd->cb.free(xcmd);
+	}
+
+	return ret;
+}
+
+static int
+kds_submit_ert(struct kds_sched *kds, struct kds_command *xcmd)
+{
+	struct kds_ert *ert = kds->ert;
+	int ret = 0;
+	int cu_idx;
+
+	/* BUG_ON(!ert || !ert->submit); */
+
+	if (xcmd->opcode == OP_START) {
+		/* KDS should select a CU and set it in cu_mask */
+		cu_idx = acquire_cu_idx(&kds->cu_mgmt, xcmd);
+		if (cu_idx < 0)
+			goto err;
+
+		/* write kds selected cu index in the first cumask
+		 * (first word after header of execbuf)
+		 * TODO: I dislike modify the content of the execbuf
+		 * in this place. Let's refine this later.
+		 */
+		xcmd->execbuf[1] = cu_idx;
+	} else {
+		/* Configure command define CU index */
+		ret = kds_cu_config(&kds->cu_mgmt, xcmd);
+		if (ret)
+			goto err;
+	}
+
+	/* TODO: remove */
+	xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
+	xcmd->cb.free(xcmd);
 	return 0;
+
+	ert->submit(xcmd);
+	return 0;
+
+err:
+	xcmd->cb.notify_host(xcmd, KDS_ERROR);
+	xcmd->cb.free(xcmd);
+	return ret;
 }
 
 static int
@@ -305,6 +354,10 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 		return -EINVAL;
 	}
 
+	/* TODO: finish ERT abort process later */
+	if (!kds->ert_disable)
+		goto skip;
+
 	/* Before close, make sure no remain commands in CU's queue.
 	 * There is no reason to sleep 500ms :)
 	 */
@@ -326,6 +379,7 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 		xrt_cu_set_bad_state(cu_mgmt->xcus[cu_idx]);
 	}
 
+skip:
 	/* cu_mgmt->cu_refs is the critical section of multiple clients */
 	mutex_lock(&cu_mgmt->lock);
 	if (cu_mgmt->cu_refs[cu_idx] & CU_EXCLU_MASK)
@@ -344,6 +398,7 @@ int kds_init_sched(struct kds_sched *kds)
 	mutex_init(&kds->cu_mgmt.lock);
 	kds->num_client = 0;
 	kds->bad_state = 0;
+	kds->ert_disable = 1;
 
 	return 0;
 }
@@ -419,6 +474,9 @@ int kds_add_command(struct kds_sched *kds, struct kds_command *xcmd)
 	switch (xcmd->type) {
 	case KDS_CU:
 		err = kds_submit_cu(&kds->cu_mgmt, xcmd);
+		break;
+	case KDS_ERT:
+		err = kds_submit_ert(kds, xcmd);
 		break;
 	default:
 		kds_err(client, "Unknown type");
@@ -606,6 +664,19 @@ int kds_del_cu(struct kds_sched *kds, struct xrt_cu *xcu)
 	return -ENODEV;
 }
 
+int kds_init_ert(struct kds_sched *kds, struct kds_ert *ert)
+{
+	kds->ert = ert;
+	/* Do anything necessary */
+	return 0;
+}
+
+int kds_fini_ert(struct kds_sched *kds)
+{
+	/* TODO: implement this */
+	return 0;
+}
+
 void kds_reset(struct kds_sched *kds)
 {
 	kds->bad_state = 0;
@@ -616,13 +687,24 @@ int is_bad_state(struct kds_sched *kds)
 	return kds->bad_state;
 }
 
+u32 kds_live_clients(struct kds_sched *kds, pid_t **plist)
+{
+	u32 count = 0;
+
+	mutex_lock(&kds->lock);
+	count = kds_live_clients_nolock(kds, plist);
+	mutex_unlock(&kds->lock);
+
+	return count;
+}
+
 /*
  * Return number of client with open ("live") contexts on CUs.
  * If this number > 0, xclbin is locked down.
  * If plist is non-NULL, the list of PIDs of live clients will also be returned.
  * Note that plist should be freed by caller.
  */
-u32 kds_live_clients(struct kds_sched *kds, pid_t **plist)
+u32 kds_live_clients_nolock(struct kds_sched *kds, pid_t **plist)
 {
 	const struct list_head *ptr;
 	struct kds_client *client;
@@ -630,7 +712,6 @@ u32 kds_live_clients(struct kds_sched *kds, pid_t **plist)
 	u32 count = 0;
 	u32 i = 0;
 
-	mutex_lock(&kds->lock);
 	/* Find out number of active client */
 	list_for_each(ptr, &kds->clients) {
 		client = list_entry(ptr, struct kds_client, link);
@@ -655,7 +736,6 @@ u32 kds_live_clients(struct kds_sched *kds, pid_t **plist)
 
 	*plist = pl;
 out:
-	mutex_unlock(&kds->lock);
 	return count;
 }
 
@@ -665,7 +745,6 @@ void cfg_ecmd2xcmd(struct ert_configure_cmd *ecmd,
 {
 	int i;
 
-	xcmd->type = KDS_CU;
 	xcmd->opcode = OP_CONFIG;
 
 	xcmd->execbuf = (u32 *)ecmd;
@@ -684,7 +763,6 @@ void cfg_ecmd2xcmd(struct ert_configure_cmd *ecmd,
 void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 			  struct kds_command *xcmd)
 {
-	xcmd->type = KDS_CU;
 	xcmd->opcode = OP_START;
 
 	xcmd->execbuf = (u32 *)ecmd;

@@ -8,7 +8,7 @@ CORE=`grep -c ^processor /proc/cpuinfo`
 CMAKE=cmake
 CPU=`uname -m`
 
-if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "amazon" ]] || [[ $OSDIST == "rhel" ]] || [[ $OSDIST == "fedora" ]]; then
+if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "amzn" ]] || [[ $OSDIST == "rhel" ]] || [[ $OSDIST == "fedora" ]]; then
     CMAKE=cmake3
     if [[ ! -x "$(command -v $CMAKE)" ]]; then
         echo "$CMAKE is not installed, please run xrtdeps.sh"

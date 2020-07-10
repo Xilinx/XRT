@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -140,13 +140,6 @@ get_install_root()
 {
   return get_xilinx_opencl();
 }
-
-////////////////////////////////////////////////////////////////
-// Conformance
-////////////////////////////////////////////////////////////////
-std::string
-conformance_get_xclbin(const std::string& hash);
-
 
 } // xocl
 

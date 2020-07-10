@@ -54,9 +54,59 @@ kds_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
 }
 static DEVICE_ATTR_RO(kds_stat);
 
+static ssize_t
+ert_disable_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d\n", XDEV(xdev)->kds.ert_disable);
+}
+
+static ssize_t
+ert_disable_store(struct device *dev, struct device_attribute *da,
+	       const char *buf, size_t count)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	u32 live_clients;
+	u32 disable;
+
+	/* Switch KDS/ERT mode is a fundamental change on the hardware.
+	 * We should only allow it when hardware is good and there is no
+	 * live clients exist.
+	 * Below sanity check is similar to kds_echo, maybe we should have
+	 * an API to check the status of the hardware and client.
+	 *
+	 * Ideally, ICAP should implement the API. Since it knows if bitstream
+	 * is locked. It could know if hardware is in bad state.
+	 * When a client exit, if KDS is in bad state, notice ICAP before
+	 * unlock bitstream.
+	 */
+	if (XDEV(xdev)->kds.bad_state)
+		return -ENODEV;
+
+	mutex_lock(&XDEV(xdev)->kds.lock);
+	if (kds_mode)
+		live_clients = kds_live_clients_nolock(&XDEV(xdev)->kds, NULL);
+	else
+		live_clients = get_live_clients(xdev, NULL);
+
+	if (live_clients > 0)
+		return -EBUSY;
+
+	if (kstrtou32(buf, 10, &disable) == -EINVAL || disable > 1)
+		return -EINVAL;
+
+	XDEV(xdev)->kds.ert_disable = disable;
+	mutex_unlock(&XDEV(xdev)->kds.lock);
+
+	return count;
+}
+static DEVICE_ATTR(ert_disable, 0644, ert_disable_show, ert_disable_store);
+
 static struct attribute *kds_attrs[] = {
 	&dev_attr_kds_echo.attr,
 	&dev_attr_kds_stat.attr,
+	&dev_attr_ert_disable.attr,
 	NULL,
 };
 
@@ -256,6 +306,12 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 		cfg_ecmd2xcmd(to_cfg_pkg(ecmd), xcmd);
 	} else if (ecmd->opcode == ERT_START_CU)
 		start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+
+	if (XDEV(xdev)->kds.ert_disable)
+		xcmd->type = KDS_CU;
+	else
+		xcmd->type = KDS_ERT;
+
 	xcmd->cb.notify_host = notify_execbuf;
 	xcmd->gem_obj = obj;
 

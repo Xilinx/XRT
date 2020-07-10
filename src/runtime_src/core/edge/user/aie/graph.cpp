@@ -54,6 +54,7 @@ graph_type(std::shared_ptr<xrt_core::device> dev, const uuid_t, const std::strin
     // this is not the right place for creating Aie instance. Should
     // we move this to loadXclbin when detect Aie Array?
     auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
+
     aieArray = drv->getAieArray();
     if (!aieArray) {
       aieArray = new Aie(device);
@@ -66,15 +67,19 @@ graph_type(std::shared_ptr<xrt_core::device> dev, const uuid_t, const std::strin
        * Since row 0 is shim row, according to Cardano, row data in
        * xclbin is off-by-one. To talk to AIE driver, we need to add
        * shim row back.
-       */ 
+       */
       tile.row += 1;
       tile.itr_mem_row += 1;
       tiles.emplace_back(std::move(tile));
     }
 
     /* Initialize graph rtp metadata */
-    for (auto &rtp : xrt_core::edge::aie::get_rtp(device.get()))
+    for (auto &rtp : xrt_core::edge::aie::get_rtp(device.get())) {
+      rtp.selector_row += 1;
+      rtp.ping_row += 1;
+      rtp.pong_row += 1;
       rtps.emplace_back(std::move(rtp));
+    }
 
     state = graph_state::stop;
 }
@@ -159,14 +164,16 @@ wait_done(int timeout_ms)
     while (1) {
         uint8_t done;
         for (auto& tile : tiles) {
-            auto pos = aieArray->getTilePos(tile.itr_mem_col, tile.itr_mem_row);
+            auto pos = aieArray->getTilePos(tile.col, tile.row);
             done = XAieTile_CoreReadStatusDone(&(aieArray->tileArray.at(pos)));
             if (!done)
                 break;
         }
 
-        if (done)
+        if (done) {
+          state = graph_state::stop;
           return;
+        }
 
         auto current = std::chrono::high_resolution_clock::now();
         auto dur = current - begin;
@@ -174,8 +181,6 @@ wait_done(int timeout_ms)
         if (timeout_ms >= 0 && timeout_ms < ms)
           throw xrt_core::error(-ETIME, "Wait graph '" + name + "' timeout.");
     }
-
-    state = graph_state::stop;
 }
 
 void
@@ -261,34 +266,37 @@ update_rtp(const char* port, const char* buffer, size_t size)
     auto rtp = std::find_if(rtps.begin(), rtps.end(),
             [port](rtp_type it) { return it.name.compare(port) == 0; });
 
-    if (rtp != rtps.end())
+    if (rtp == rtps.end())
       throw xrt_core::error(-EINVAL, "Can't update graph '" + name + "': RTP port '" + port + "' not found");
 
     if (rtp->is_plrtp)
       throw xrt_core::error(-EINVAL, "Can't update graph '" + name + "': not aie rtp port");
- 
-    /* We only support input RTP */
+
     if (!rtp->is_input)
-      throw xrt_core::error(-EINVAL, "Can't update graph '" + name + "': only input RTP port supported");
- 
-    /*
-     * Only support sync update
-     * TODO support async update
-     */
-    if (rtp->is_async)
-      throw xrt_core::error(-EINVAL, "Can't update graph '" + name + "': only synchronous update supported");
- 
+      throw xrt_core::error(-EINVAL, "Can't update graph '" + name + "': RTP port '" + port + "' is not input");
+
     /* If RTP port is connected, only support async update */
-    if (rtp->is_connected)
-      throw xrt_core::error(-EINVAL, "Can't update graph '" + name + "': connected sync update is not supported");
- 
+    if (rtp->is_connected) {
+        if (rtp->is_async && state == graph_state::running)
+            throw xrt_core::error(-EINVAL, "Can't update graph '" + name + "': connected async update is not supported while graph is running");
+        if (!rtp->is_async)
+            throw xrt_core::error(-EINVAL, "Can't update graph '" + name + "': connected sync update is not supported");
+    }
+
     auto selector_pos = aieArray->getTilePos(rtp->selector_col, rtp->selector_row);
     auto selector_tile = &(aieArray->tileArray.at(selector_pos));
 
-    if (rtp->require_lock)
+    /* Don't acquire selector lock for async RTP while graph is not running */
+    bool need_lock = rtp->require_lock && (
+        rtp->is_async && state == graph_state::running ||
+        !rtp->is_async
+	);
+
+    if (need_lock)
         XAieTile_LockAcquire(selector_tile, rtp->selector_lock_id, 0, 0xFFFFFFFF);
 
     uint32_t selector = XAieTile_DmReadWord(selector_tile, rtp->selector_addr);
+
     selector = 1 - selector;
 
     int update_pos;
@@ -306,20 +314,21 @@ update_rtp(const char* port, const char* buffer, size_t size)
         start_addr = rtp->ping_addr;
     }
 
-   XAieGbl_Tile *update_tile = &(aieArray->tileArray.at(update_pos));
-   if (rtp->require_lock)
+    XAieGbl_Tile *update_tile = &(aieArray->tileArray.at(update_pos));
+    if (need_lock)
         XAieTile_LockAcquire(update_tile, lock_id, 0, 0xFFFFFFFF);
 
     size_t iterations = size / 4;
     size_t remain = size % 4;
     int i;
+
     for (i = 0; i < iterations; ++i) {
-        XAieTile_DmWriteWord(update_tile, start_addr, ((const u32*)buffer)[i]);
+        XAieTile_DmWriteWord(update_tile, start_addr, ((const uint32_t *)buffer)[i]);
         start_addr += 4;
     }
     if (remain) {
         uint32_t rdata = 0;
-        memcpy(&rdata, &((const u32*)buffer)[i], remain);
+        memcpy(&rdata, &((const uint32_t *)buffer)[i], remain);
         XAieTile_DmWriteWord(update_tile, start_addr, rdata);
     }
 
@@ -327,9 +336,85 @@ update_rtp(const char* port, const char* buffer, size_t size)
     XAieTile_DmWriteWord(selector_tile, rtp->selector_addr, selector);
 
     if (rtp->require_lock) {
-        /* release lock */
+        /* release lock, need to release lock even graph is not running */
         XAieTile_LockRelease(selector_tile, rtp->selector_lock_id, 1, 0XFFFFFFFF);
         XAieTile_LockRelease(update_tile, lock_id, 1, 0XFFFFFFFF);
+    }
+}
+
+void
+graph_type::
+read_rtp(const char* port, char* buffer, size_t size)
+{
+    auto rtp = std::find_if(rtps.begin(), rtps.end(),
+            [port](rtp_type it) { return it.name.compare(port) == 0; });
+
+    if (rtp == rtps.end())
+      throw xrt_core::error(-EINVAL, "Can't read graph '" + name + "': RTP port '" + port + "' not found");
+
+    if (rtp->is_plrtp)
+      throw xrt_core::error(-EINVAL, "Can't read graph '" + name + "': not aie rtp port");
+
+    if (rtp->is_input)
+      throw xrt_core::error(-EINVAL, "Can't read graph '" + name + "': RTP port '" + port + "' is input");
+
+    /* If RTP port is connected, only support async update */
+    if (rtp->is_connected)
+      throw xrt_core::error(-EINVAL, "Can't read graph '" + name + "': connected read is not supported");
+
+    auto selector_pos = aieArray->getTilePos(rtp->selector_col, rtp->selector_row);
+    auto selector_tile = &(aieArray->tileArray.at(selector_pos));
+
+    /* Don't acquire selector lock for async RTP while graph is not running */
+    bool need_lock = rtp->require_lock && (
+        rtp->is_async && state == graph_state::running ||
+        !rtp->is_async
+        );
+
+    if (need_lock)
+        XAieTile_LockAcquire(selector_tile, rtp->selector_lock_id, 1, 0xFFFFFFFF);
+
+    uint32_t selector = XAieTile_DmReadWord(selector_tile, rtp->selector_addr);
+
+    int update_pos;
+    uint16_t lock_id;
+    uint64_t start_addr;
+    if (selector == 1) {
+        /* update pong buffer */
+        update_pos = aieArray->getTilePos(rtp->pong_col, rtp->pong_row);
+        lock_id = rtp->pong_lock_id;
+        start_addr = rtp->pong_addr;
+    } else {
+        /* update ping buffer */
+        update_pos = aieArray->getTilePos(rtp->ping_col, rtp->ping_row);
+        lock_id = rtp->ping_lock_id;
+        start_addr = rtp->ping_addr;
+    }
+
+    XAieGbl_Tile *update_tile = &(aieArray->tileArray.at(update_pos));
+    if (need_lock) {
+        XAieTile_LockAcquire(update_tile, lock_id, 1, 0xFFFFFFFF);
+	/* sync RTP release lock for write, async RTP relase lock for read */
+        XAieTile_LockRelease(selector_tile, rtp->selector_lock_id, (rtp->is_async ? 1 : 0), 0XFFFFFFFF);
+    }
+
+    size_t iterations = size / 4;
+    size_t remain = size % 4;
+    int i;
+
+    for (i = 0; i < iterations; ++i) {
+        ((uint32_t *)buffer)[i] = XAieTile_DmReadWord(update_tile, start_addr);
+        start_addr += 4;
+    }
+    if (remain) {
+        uint32_t rdata = 0;
+	rdata = XAieTile_DmReadWord(update_tile, start_addr);
+        memcpy(&((uint32_t *)buffer)[i], &rdata, remain);
+    }
+
+    if (need_lock) {
+        /* release lock */
+        XAieTile_LockRelease(update_tile, lock_id, (rtp->is_async ? 1 : 0), 0XFFFFFFFF);
     }
 }
 
@@ -474,7 +559,7 @@ xrtGraphReset(xrtGraphHandle ghdl)
   auto graph = get_graph(ghdl);
   graph->reset();
 }
-  
+
 uint64_t
 xrtGraphTimeStamp(xrtGraphHandle ghdl)
 {
@@ -532,6 +617,13 @@ xrtGraphUpdateRTP(xrtGraphHandle ghdl, const char* port, const char* buffer, siz
 }
 
 void
+xrtGraphReadRTP(xrtGraphHandle ghdl, const char* port, char* buffer, size_t size)
+{
+  auto graph = get_graph(ghdl);
+  graph->read_rtp(port, buffer, size);
+}
+
+void
 xrtSyncBOAIE(xrtGraphHandle ghdl, unsigned int bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
   auto graph = get_graph(ghdl);
@@ -549,7 +641,7 @@ xrtResetAieArray(xclDeviceHandle handle)
 }
 
 } // api
-  
+
 
 ////////////////////////////////////////////////////////////////
 // xrt_aie API implementations (xrt_aie.h)
@@ -714,6 +806,23 @@ xrtGraphUpdateRTP(xrtGraphHandle ghdl, const char* port, const char* buffer, siz
 {
   try {
     api::xrtGraphUpdateRTP(ghdl, port, buffer, size);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -1;
+  }
+}
+
+int
+xrtGraphReadRTP(xrtGraphHandle ghdl, const char *port, char *buffer, size_t size)
+{
+  try {
+    api::xrtGraphReadRTP(ghdl, port, buffer, size);
     return 0;
   }
   catch (const xrt_core::error& ex) {

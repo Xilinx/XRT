@@ -30,10 +30,16 @@
 
 namespace xdp {
 
+  // Forward declarations
+  class VPDatabase ;
+
   // The Dynamic Database will own all VTFEvents and is responsible
   //  for cleaning up this memory.
   class VPDynamicDatabase
   {
+  private:
+    VPDatabase* db ;
+
   private:
     // For host events, we are guaranteed that all of the timestamps
     //  will come in sequential order.  For this, we can use 
@@ -73,7 +79,7 @@ namespace xdp {
     void addDeviceEvent(uint64_t deviceId, VTFEvent* event) ;
 
   public:
-    XDP_EXPORT VPDynamicDatabase() ;
+    XDP_EXPORT VPDynamicDatabase(VPDatabase* d) ;
     XDP_EXPORT ~VPDynamicDatabase() ;
 
     // Add an event in sorted order in the database

@@ -31,6 +31,9 @@
 
 namespace xdp {
 
+  // Forward declarations
+  class VPDatabase ;
+
   // All of the statistics in this database will be used in 
   //  summary files.  Different plugins might use different
   //  information.  This information accumulates throughout 
@@ -81,6 +84,9 @@ namespace xdp {
   class VPStatisticsDatabase 
   {
   private:
+    VPDatabase* db ;
+
+  private:
     // Statistics on API calls (OpenCL and HAL) have to be thread specific
     std::map<std::pair<std::string, std::thread::id>,
              std::vector<std::pair<double, double>>> callCount ;
@@ -103,7 +109,7 @@ namespace xdp {
     std::mutex dbLock ;
 
   public:
-    XDP_EXPORT VPStatisticsDatabase() ;
+    XDP_EXPORT VPStatisticsDatabase(VPDatabase* d) ;
     XDP_EXPORT ~VPStatisticsDatabase() ;
 
     // Getters and setters

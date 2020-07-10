@@ -26,9 +26,12 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/sysmacros.h>
 #include <netinet/in.h>
 #include <libudev.h>
 #include <boost/algorithm/string.hpp>
+#include "boost/filesystem.hpp"
 
 #include <fstream>
 #include <vector>
@@ -92,7 +95,171 @@ public:
     std::map<std::string, std::thread> threads_handleMsg;
 
 private:
+    void update_profile_subdev_to_container(const std::string &sysfs_name,
+        const std::string &subdev_name,    
+        const std::string &suffix);
+    void update_cgroup_device(const std::string &cgroup_file,
+        const std::string &subdev_name);
+    std::string get_xocl_major_minor(const std::string &sysfs_name);
+    bool device_in_container(const std::string major_minor, std::string &path);
+    bool file_exist(const std::string &name);
+    bool string_in_file(const std::string &name, const std::string &str);
+    void extract_sysfs_name_and_subdev_name(const std::string &devpath,
+        std::string &sysfs_name,
+        std::string &subdev);
 };
+
+/*
+ * get major:minor info of the xocl node from sysfs entry
+ * /sys/bus/pci/devices/dbdf/drm/renderDxxx/dev
+ */
+std::string Mpd::get_xocl_major_minor(const std::string &sysfs_name)
+{
+    std::string sysfs_base = "/sys/bus/pci/devices/";
+    boost::filesystem::directory_iterator dir(sysfs_base + sysfs_name + "/drm"), end;
+    while (dir != end) {
+        std::string fn = dir->path().filename().string();
+        if (fn.find("render") != std::string::npos) {
+            fn = dir->path().string() + "/dev";
+            std::ifstream dev(fn);
+            if (dev.is_open()) {
+                std::string ret;
+                std::getline(dev, ret);
+                dev.close();
+                return ret;
+            }
+        }
+        dir++;
+    }
+    return "";    
+}
+
+bool Mpd::file_exist(const std::string &name)
+{
+    struct stat buf;
+    return (stat(name.c_str(), &buf) == 0);
+}
+
+/*
+ * check whether major:minor info is in the device cgroup file
+ */   
+bool Mpd::string_in_file(const std::string &name, const std::string &str)
+{
+    std::ifstream f(name);
+    if (f.is_open()) {
+        std::string line;
+        while (!f.eof()) {
+            getline(f, line);
+            if (line.find(str) != std::string::npos)
+                return true;
+        }
+        f.close();
+    }
+    return false;
+}
+
+/*
+ * check whether a device is assigned to a container.
+ * lxc containers are under folder 'lxc'
+ * docker containers are under folder 'docker'
+ * kubernetes & openshift OCI compliant containers are under folder 'kubepods'
+ */ 
+bool Mpd::device_in_container(const std::string major_minor, std::string &path)
+{
+    std::string cgroup_base = "/sys/fs/cgroup/devices/";
+    std::vector<std::string> folder = { "lxc", "docker", "kubepods" };
+    std::string target = "devices.list";
+
+    if (major_minor.empty())
+        return false;
+
+    for (auto &t : folder) {
+        if (!file_exist(cgroup_base + t))
+            continue;        
+        boost::filesystem::recursive_directory_iterator dir(cgroup_base + t), end;
+        while (dir != end) {
+            std::string fn = dir->path().filename().string();
+            if (!fn.compare(target)) {
+                if (string_in_file(dir->path().string(), major_minor)) {
+                    path = dir->path().string();
+                    return true;
+                }
+            }
+            dir++;
+        }
+    }
+    return false;
+}
+
+/*
+ * get major:minor info of the subdevice, and add the info to cgroup file
+ * device.[allow|deny]
+ */ 
+void Mpd::update_cgroup_device(const std::string &cgroup_file,
+    const std::string &subdev_name)
+{
+    std::string fn = "/dev/xfpga/" + subdev_name;
+    struct stat buf;
+    if (stat(fn.c_str(), &buf) == 0 &&
+        ((buf.st_mode & S_IFMT) == S_IFCHR)) {
+        std::string str = "c ";
+        str += std::to_string(major(buf.st_rdev));
+        str += ":";
+        str += std::to_string(minor(buf.st_rdev));
+        str += " rwm";
+        std::ofstream f(cgroup_file);
+        if (f.is_open()) {
+            f << str;
+            f.close();
+        }
+        syslog(LOG_INFO, "subdev %s(%s) added to container %s",
+            fn.c_str(), str.c_str(), cgroup_file.c_str());
+    }    
+}
+
+/*
+ * If the FPGA device is assigned to a container, update the ULP subdevice
+ * major:minor info to container cgroup file also
+ */ 
+void Mpd::update_profile_subdev_to_container(const std::string &sysfs_name,
+    const std::string &subdev_name,
+    const std::string &suffix)
+{
+    std::string major_minor = get_xocl_major_minor(sysfs_name);
+    std::string path;
+    if (device_in_container(major_minor, path)) {
+        path.replace(path.rfind(".") + 1, suffix.size(), suffix);
+        update_cgroup_device(path, subdev_name);
+    }
+}
+
+/*
+ * From udev event info, extract the sysfs_name (dbdf) of the xocl node
+ * and subdev name.
+ * udev so far only monitors mailbox and ULP subdevice events
+ */
+void Mpd::extract_sysfs_name_and_subdev_name(const std::string &devpath,
+    std::string &sysfs_name,
+    std::string &subdev)
+{
+    std::vector<std::string> subdevs = {
+        "mailbox.u", "aximm_mon.u", "accel_mon.u",
+        "axistream_mon.u", "trace_fifo_lite.u", "trace_fifo_full.u",
+        "trace_funnel.u", "trace_s2mm.u", "lapc.u", "spc.u"
+    };
+    for (auto &t : subdevs) {
+        size_t pos_s, pos_e = devpath.find(t);
+        if (pos_e != std::string::npos) {
+            pos_s = devpath.substr(0, pos_e - 1).rfind("/"); 
+            sysfs_name = devpath.substr(pos_s + 1, pos_e - pos_s - 2);
+            pos_s = devpath.rfind("!");
+                if (pos_s != std::string::npos) {
+                    subdev = devpath.substr(pos_s + 1);
+            }
+            break;    
+        }
+    }
+}
 
 void Mpd::start()
 {
@@ -181,7 +348,7 @@ void Mpd::run()
             if (!udev_dev)
                 continue;
             const char *subsystem = udev_device_get_subsystem(udev_dev);
-            if (!subsystem || (strcmp(subsystem, "xrt_user"))) {
+            if (!subsystem || strcmp(subsystem, "xrt_user")) {
                 udev_device_unref(udev_dev);
                 continue;
             }
@@ -191,31 +358,40 @@ void Mpd::run()
                 continue;
             }
             std::string pathStr = devpath;
-            size_t pos_e = pathStr.find("mailbox.u");
-            if (pos_e == std::string::npos) {
+            std::string subdev = "";
+            extract_sysfs_name_and_subdev_name(pathStr, sysfs_name, subdev);
+            if (subdev.empty() || sysfs_name.empty()) {
                 udev_device_unref(udev_dev);
                 continue;
             }
-            size_t pos_s = pathStr.substr(0, pos_e - 1).rfind("/"); 
-            sysfs_name = pathStr.substr(pos_s + 1, pos_e - pos_s - 2);
 
             const char *action = udev_device_get_action(udev_dev);
             if (action && strcmp(action, "remove") == 0) {
-                state_machine[sysfs_name] = MAILBOX_REMOVED;
-                threads_handling[sysfs_name] = false;
-                if (threads_getMsg.find(sysfs_name) != threads_getMsg.end()) {
-                    threads_getMsg[sysfs_name].join();
-                    threads_getMsg.erase(sysfs_name);
+                if (subdev.find("mailbox.u") != std::string::npos) {
+                    state_machine[sysfs_name] = MAILBOX_REMOVED;
+                    threads_handling[sysfs_name] = false;
+                    if (threads_getMsg.find(sysfs_name) != threads_getMsg.end()) {
+                        threads_getMsg[sysfs_name].join();
+                        threads_getMsg.erase(sysfs_name);
+                    }
+                    if (threads_handleMsg.find(sysfs_name) != threads_handleMsg.end()) {
+                        threads_handleMsg[sysfs_name].join();
+                        threads_handleMsg.erase(sysfs_name);
+                    }
+                    syslog(LOG_INFO, "udev: %s %s. Close mailbox", action, devpath);
+                } else {
+                    syslog(LOG_INFO, "udev: %s %s of %s", action, subdev.c_str(), devpath);
+                    update_profile_subdev_to_container(sysfs_name, subdev, "deny");
                 }
-                if (threads_handleMsg.find(sysfs_name) != threads_handleMsg.end()) {
-                    threads_handleMsg[sysfs_name].join();
-                    threads_handleMsg.erase(sysfs_name);
+            } else if (action && strcmp(action, "add") == 0 ) {
+                if (subdev.find("mailbox.u") != std::string::npos &&
+                    state_machine[sysfs_name] == MAILBOX_REMOVED) {
+                    state_machine[sysfs_name] = MAILBOX_ADDED;
+                    syslog(LOG_INFO, "udev: %s %s. Open mailbox", action, devpath);
+                } else if (subdev.find("mailbox.u") == std::string::npos) {
+                    syslog(LOG_INFO, "udev: %s %s of %s", action, subdev.c_str(), devpath);
+                    update_profile_subdev_to_container(sysfs_name, subdev, "allow");
                 }
-                syslog(LOG_INFO, "udev: %s %s. Close mailbox", action, devpath);
-            } else if (action && strcmp(action, "add") == 0 &&
-                state_machine[sysfs_name] == MAILBOX_REMOVED) {
-                state_machine[sysfs_name] = MAILBOX_ADDED;
-                syslog(LOG_INFO, "udev: %s %s. Open mailbox", action, devpath);
             }
             udev_device_unref(udev_dev);
         }
