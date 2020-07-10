@@ -59,9 +59,9 @@ public:
     virtual ~AIM()
     {}
 
-    size_t startCounter();
-    size_t stopCounter();
-    size_t readCounter(xclCounterResults& counterResult, uint32_t index);
+    virtual size_t startCounter();
+    virtual size_t stopCounter();
+    virtual size_t readCounter(xclCounterResults& counterResult, uint32_t index);
 
     XDP_EXPORT
     bool isHostMonitor() const ;
@@ -69,7 +69,7 @@ public:
     bool has64bit() const ;
     bool hasTraceID (uint32_t index) const;
 
-    size_t triggerTrace(uint32_t traceOption /*startTrigger*/);
+    virtual size_t triggerTrace(uint32_t traceOption /*startTrigger*/);
 
     virtual void showProperties();
     virtual uint32_t getProperties() { return properties; }

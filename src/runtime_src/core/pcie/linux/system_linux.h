@@ -48,7 +48,7 @@ public:
   monitor_access_type
   get_monitor_access_type() const
   {
-    return monitor_access_type::mmap;
+    return monitor_access_type::ioctl;
   }
 };
 

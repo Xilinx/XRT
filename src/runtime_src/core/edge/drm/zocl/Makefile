@@ -6,9 +6,9 @@ KERNEL_SRC ?= /lib/modules/$(shell uname -r)/build
 ccflags-y := -I$(src)/include -I$(src)/../../include -I$(src)/../../../include -I$(src)/../../../common/drv/include
 
 drv_common-y   := ../../../common/drv/kds_core.o \
-		  ../../../common/drv/kds_cu_ctrl.o \
 		  ../../../common/drv/cu_hls.o \
-		  ../../../common/drv/xrt_cu.o
+		  ../../../common/drv/xrt_cu.o \
+		  ../../../common/drv/xrt_xclbin.o
 
 zocl-y := \
 	$(drv_common-y) \
@@ -26,7 +26,6 @@ zocl-y := \
 	zocl_xclbin.o \
 	zocl_sk.o \
 	zocl_kds.o \
-	zocl_cu_ctrl.o \
 	cu.o \
 	zocl_generic_cu.o
 

@@ -23,6 +23,7 @@
 
 #include <string>
 #include <memory>
+#include <map>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
@@ -38,6 +39,14 @@ namespace XBUtilities {
     MT_TRACE,
     MT_UNKNOWN, 
   } MessageType;
+
+  enum class reset_type {
+    hot,
+    kernel,
+    ert,
+    ecc,
+    soft_kernel
+  };
 
   /**
    * Enables / Disables verbosity
@@ -84,6 +93,27 @@ namespace XBUtilities {
                         bool _inUserDomain,
                         xrt_core::device_collection &_deviceCollection);
   void report_available_devices();
+  
+   /**
+   * get_axlf_section() - Get section from the file passed in
+   *
+   * filename: file containing the axlf section
+   *
+   * Return: pair of section data and size in bytes
+   */
+  std::vector<char>
+  get_axlf_section(const std::string& filename, axlf_section_kind section);
+
+  /**
+   * get_uuids() - Get UUIDs from the axlf section
+   *
+   * dtbuf: axlf section to be parsed
+   *
+   * Return: list of UUIDs
+   */
+  std::vector<std::string> get_uuids(const void *dtbuf);
+
+  reset_type str_to_enum_reset(const std::string& str);
 };
 
 #endif

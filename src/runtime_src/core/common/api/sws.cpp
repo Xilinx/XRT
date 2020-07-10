@@ -452,6 +452,7 @@ public:
 
     // start cu
     ctrlreg |= AP_START;
+    const_cast<uint32_t*>(regmap)[0] = AP_START;
     if (is_emulation())
       xdev->xwrite(addr,regmap,size*4);
     else

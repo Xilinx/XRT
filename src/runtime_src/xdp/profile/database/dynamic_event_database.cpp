@@ -21,8 +21,8 @@
 
 namespace xdp {
   
-  VPDynamicDatabase::VPDynamicDatabase() : 
-    eventId(1), stringId(1)
+  VPDynamicDatabase::VPDynamicDatabase(VPDatabase* d) :
+    db(d), eventId(1), stringId(1)
   {
     // For low overhead profiling, we will reserve space for 
     //  a set number of events.  This won't change HAL or OpenCL 

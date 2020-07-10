@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -38,86 +38,6 @@ value_or_empty(const char* value)
 {
   return value ? value : "";
 }
-
-////////////////////////////////////////////////////////////////
-// Conformance mode testing.
-// Save currently executing contexts (s_active).
-// Save context that want to use a diferent program (s_pending)
-////////////////////////////////////////////////////////////////
-namespace conformance {
-
-// Global conformance mutex to ensure that exactly one thread
-// at a time can do context switching (reconfig).  The recursive
-// mutex allows conformance_done() to lock and still be able to call
-// conformance_execute().  Note that conformance_execute() has two
-// entry points, one from event trigger action and second from
-// conformance::try_pending() which is called from conformance_done().
-static std::recursive_mutex s_mutex;
-
-// Active contexts are those executing using currently loaded program
-static std::vector<xocl::execution_context*> s_active;
-
-// Pending contexts are those waiting to reconfigure the device
-static std::vector<xocl::execution_context*> s_pending;
-
-inline bool
-on()
-{
-  static bool conf = std::getenv("XCL_CONFORMANCE")!=nullptr;
-  return conf;
-}
-
-// Add context to pending list if and only if there are
-// current active contexts.
-// @return true if context is added as pending, false otherwise
-static bool
-pending(xocl::execution_context* ctx)
-{
-  if (s_active.empty())
-    return false;
-
-  s_pending.push_back(ctx);
-  return true;
-}
-
-// Add context to active list of execution contexts
-// @return true
-static bool
-active(xocl::execution_context* ctx)
-{
-  s_active.push_back(ctx);
-  return true;
-}
-
-// Remove context from active list of execution contexts
-// @return true
-static bool
-remove(xocl::execution_context* ctx)
-{
-  auto itr = std::find(s_active.begin(),s_active.end(),ctx);
-  assert(itr!=s_active.end()); // return false;
-  s_active.erase(itr);
-  return true;
-}
-
-// Try execute pending contexts
-// @return false if no pending contexts or there are active ones,
-// true if execution was tried on all pending contexts
-static bool
-try_pending()
-{
-  std::vector<xocl::execution_context*> pending;
-  if (!s_active.empty() || s_pending.empty())
-    return false;
-  pending = s_pending;
-  s_pending.clear();
-  for (auto ctx : pending)
-    ctx->execute();
-  return true;
-}
-
-} // conformance
-
 
 } // namespace
 
@@ -170,18 +90,6 @@ public:
     m_ec->done(this);
   }
   mutable xocl::execution_context* m_ec;
-};
-
-struct execution_context::start_kernel_conformance : start_kernel
-{
-  start_kernel_conformance(xrt::device* xdevice, xocl::execution_context* ec, ert_cmd_opcode opcode)
-    : start_kernel(xdevice,ec,opcode)
-  {}
-  virtual void done() const
-  {
-    run_done_callbacks(this,m_ec);
-    m_ec->conformance_done(this);
-  }
 };
 
 static int
@@ -411,9 +319,7 @@ start()
   // Construct command packet and send to hardware
   auto ctrl = cu_control_type();
   auto opcode = (ctrl == ACCEL_ADAPTER) ? ERT_EXEC_WRITE : ERT_START_KERNEL;
-  auto cmd = conformance::on()
-    ? std::make_shared<start_kernel_conformance>(xdevice,this,opcode)
-    : std::make_shared<start_kernel>(xdevice,this,opcode);
+  auto cmd = std::make_shared<start_kernel>(xdevice,this,opcode);
   ++m_active;
   auto& packet = cmd->get_packet();
 
@@ -573,12 +479,6 @@ execute()
   // Mutual exclusion as multiple start_kernel commands could call execute.
   std::lock_guard<std::mutex> lk(m_mutex);
 
-  // Conformance mode hook
-  if (conformance::on()) {
-    conformance_execute();
-    assert(m_done);
-  }
-
   if (m_done)
     return true;
 
@@ -598,74 +498,6 @@ execute()
   }
 
   return m_done;
-}
-
-////////////////////////////////////////////////////////////////
-// Conformance mode
-////////////////////////////////////////////////////////////////
-bool
-execution_context::
-conformance_done(const xrt::command*)
-{
-  // Global conformance lock
-  std::lock_guard<std::recursive_mutex> lk(conformance::s_mutex);
-
-  // Care must be taken not to mark event complete and later reference
-  // any data members of context which is owned (and deleted) with event
-  bool ctx_done = false;
-  {
-    std::lock_guard<std::mutex> ilk(m_mutex);
-    if (--m_active==0) {
-      assert(m_done);
-      conformance::remove(this);
-      ctx_done = true;
-    }
-  }
-
-  // Only one thread will be able to set local ctx_done to true, so it's
-  // safe to proceed without exclusive lock
-  if (ctx_done) {
-    m_event->set_status(CL_COMPLETE);
-    conformance::try_pending(); // if no active, then try execute all pending
-  }
-
-  return true;
-}
-
-bool
-execution_context::
-conformance_execute()
-{
-  // Global conformance lock
-  std::lock_guard<std::recursive_mutex> lk(conformance::s_mutex);
-
-  bool same = m_kernel->get_program()==m_device->get_program();
-  if (!same && conformance::pending(this))
-    return false;
-
-  // Either same program or no current active running contexts
-
-  // Reeconfigure if different program
-  if (!same) {
-    XOCL_DEBUG(std::cout,"conformance mode reconfiguration for event(",m_event->get_uid(),") ec(",get_uid(),")\n");
-
-    // Remove current CUs if any
-    m_cus.clear();
-
-    // reload new program and add new CUs
-    m_device->load_program(m_kernel->get_program());
-    add_compute_units(m_device);
-  }
-
-  // Run
-  conformance::active(this);
-  // Schedule all workgroups
-  for (size_t i=0; !m_done; ++i) {
-    start();
-    update_work();
-  }
-
-  return true;
 }
 
 } // namespace sws

@@ -585,6 +585,17 @@ int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
   return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -ENODEV;
 }
 
+// Restricted read/write on IP register space
+int xclRegWrite(xclDeviceHandle, uint32_t, uint32_t, uint32_t)
+{
+  return 1;
+}
+
+int xclRegRead(xclDeviceHandle, uint32_t, uint32_t, uint32_t*)
+{
+  return 1;
+}
+
 int xclCreateProfileResults(xclDeviceHandle handle, ProfileResults** results)
 {
   return 0;
@@ -613,5 +624,3 @@ int xclGetSubdevPath(xclDeviceHandle handle,  const char* subdev,
 {
   return 0;
 }
-
-

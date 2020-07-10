@@ -19,6 +19,16 @@
 #include "device_intf.h"
 
 #ifndef _WIN32
+// open+ioctl based Profile IP 
+#include "ioctl_monitors/ioctl_aim.h"
+#include "ioctl_monitors/ioctl_am.h"
+#include "ioctl_monitors/ioctl_asm.h"
+#include "ioctl_monitors/ioctl_traceFifoLite.h"
+#include "ioctl_monitors/ioctl_traceFifoFull.h"
+#include "ioctl_monitors/ioctl_traceFunnel.h"
+#include "ioctl_monitors/ioctl_traceS2MM.h"
+
+// open+mmap based Profile IP 
 #include "mmapped_monitors/mmapped_aim.h"
 #include "mmapped_monitors/mmapped_am.h"
 #include "mmapped_monitors/mmapped_asm.h"
@@ -26,6 +36,7 @@
 #include "mmapped_monitors/mmapped_traceFifoFull.h"
 #include "mmapped_monitors/mmapped_traceFunnel.h"
 #include "mmapped_monitors/mmapped_traceS2MM.h"
+
 #endif
 
 #include "xclperf.h"
@@ -93,7 +104,7 @@ uint64_t GetTS2MMBufSize(bool isAIETrace)
   std::smatch pieces_match;
   
   // Default is 1M
-  uint64_t bytes = 1048576;
+  uint64_t bytes = TS2MM_DEF_BUF_SIZE;
   // Regex can parse values like : "1024M" "1G" "8192k"
   const std::regex size_regex("\\s*([0-9]+)\\s*(K|k|M|m|G|g|)\\s*");
   if (std::regex_match(size_str, pieces_match, size_regex)) {
@@ -547,10 +558,12 @@ DeviceIntf::~DeviceIntf()
 #endif
 
       xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
-      /* Currently, only PCIeLinux Device flow uses open+mmap and hence specialized monitors are instantiated.
+      /* Currently, only PCIeLinux Device flow uses open+ioctl and hence specialized monitors are instantiated.
        * All other flows(including PCIe Windows) use the older mechanism and should use old monitor abstraction.
+       * Also, user space cannot access profiling subdvices while running inside containers, so use xclRead/Write
+       * based flow.
        */
-      if(xrt_core::system::monitor_access_type::bar == accessType) {
+      if(xrt_core::system::monitor_access_type::bar == accessType || true == xrt_core::config::get_container()) {
         for(uint64_t i = 0; i < map->m_count; i++ ) {
           switch(map->m_debug_ip_data[i].m_type) {
             case AXI_MM_MONITOR :        
@@ -670,6 +683,82 @@ DeviceIntf::~DeviceIntf()
               break;
             }
             default : break;
+          }
+        }
+      }
+      else if(xrt_core::system::monitor_access_type::ioctl == accessType) {
+        for(uint64_t i = 0; i < map->m_count; i++ ) {
+          switch(map->m_debug_ip_data[i].m_type) {
+            case AXI_MM_MONITOR :
+            {
+              IOCtlAIM* pMon = new IOCtlAIM(mDevice, i, aimList.size(), &(map->m_debug_ip_data[i]));
+              if(pMon->isOpened()) {
+                aimList.push_back(pMon);
+              } else {
+                delete pMon;
+                pMon = nullptr;
+              }
+              break;
+            }
+            case ACCEL_MONITOR  :
+            {
+              IOCtlAM* pMon = new IOCtlAM(mDevice, i, amList.size(), &(map->m_debug_ip_data[i]));
+              if(pMon->isOpened()) {
+                amList.push_back(pMon);
+              } else {
+                delete pMon;
+                pMon = nullptr;
+              }
+              break;
+            }
+            case AXI_STREAM_MONITOR :
+            {
+              IOCtlASM* pMon = new IOCtlASM(mDevice, i, asmList.size(), &(map->m_debug_ip_data[i]));
+              if(pMon->isOpened()) {
+                asmList.push_back(pMon);
+              } else {
+                delete pMon;
+                pMon = nullptr;
+              }
+              break;
+            }
+            case AXI_MONITOR_FIFO_LITE :
+            {
+              fifoCtrl = new IOCtlTraceFifoLite(mDevice, i, &(map->m_debug_ip_data[i]));
+              if(!fifoCtrl->isOpened()) {
+                delete fifoCtrl;
+                fifoCtrl = nullptr;
+              }
+              break;
+            }
+            case AXI_MONITOR_FIFO_FULL :
+            {
+              fifoRead = new IOCtlTraceFifoFull(mDevice, i, &(map->m_debug_ip_data[i]));
+              if(!fifoRead->isOpened()) {
+                delete fifoRead;
+                fifoRead = nullptr;
+              }
+              break;
+            }
+            case AXI_TRACE_FUNNEL :
+            {
+              traceFunnel = new IOCtlTraceFunnel(mDevice, i, &(map->m_debug_ip_data[i]));
+              if(!traceFunnel->isOpened()) {
+                delete traceFunnel;
+                traceFunnel = nullptr;
+              }
+              break;
+            }
+            case TRACE_S2MM :
+            {
+              traceDMA = new IOCtlTraceS2MM(mDevice, i, 0, &(map->m_debug_ip_data[i]));
+              if(!traceDMA->isOpened()) {
+                delete traceDMA;
+                traceDMA = nullptr;
+              }
+              break;
+            }
+            default : break;
             // case AXI_STREAM_PROTOCOL_CHECKER
           }
         }
@@ -779,16 +868,16 @@ DeviceIntf::~DeviceIntf()
       return;
     }
 
-    for (auto mon : mAieTraceDmaList)
-      mon->reset();
+    for (auto aieTraceDma : mAieTraceDmaList)
+      aieTraceDma->reset();
   }
 
   // Initialize a trace data mover
-  void DeviceIntf::initTS2MM(uint64_t bufSz, uint64_t bufAddr, 
+  void DeviceIntf::initTS2MM(uint64_t bufSz, uint64_t bufAddr, bool circular,
                              bool isAIETrace, uint32_t numTS2MM)
   {
     if (!isAIETrace && mPlTraceDma) {
-      mPlTraceDma->init(bufSz, bufAddr);
+      mPlTraceDma->init(bufSz, bufAddr, circular);
       return;
     }
 
@@ -796,7 +885,7 @@ DeviceIntf::~DeviceIntf()
       return;
 
     auto aieTraceDma = mAieTraceDmaList.at(numTS2MM);
-    aieTraceDma->init(bufSz, bufAddr);
+    aieTraceDma->init(bufSz, bufAddr, circular);
   }
 
   // Get word count written by trace data mover

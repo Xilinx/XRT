@@ -719,6 +719,7 @@ public:
         std::string vendor, device, subsystem, subvendor, xmc_ver, xmc_oem_id,
             ser_num, bmc_ver, idcode, fpga, dna, errmsg, max_power, cpu_affinity;
         int ddr_size = 0, ddr_count = 0, pcie_speed = 0, pcie_width = 0, p2p_enabled = 0;
+        uint64_t host_mem_size = 0, max_host_mem_aperture = 0;
         std::vector<std::string> clock_freqs;
         std::vector<std::string> dma_threads;
         std::vector<std::string> mac_addrs;
@@ -750,6 +751,10 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get( "icap", "idcode",                 errmsg, idcode );
         pcidev::get_dev(m_idx)->sysfs_get( "dna", "dna",                     errmsg, dna );
         pcidev::get_dev(m_idx)->sysfs_get("", "local_cpulist",               errmsg, cpu_affinity);
+        pcidev::get_dev(m_idx)->sysfs_get<uint64_t>("address_translator", "host_mem_size",  
+                                                                             errmsg, host_mem_size, 0);
+        pcidev::get_dev(m_idx)->sysfs_get<uint64_t>("icap", "max_host_mem_aperture",  
+                                                                             errmsg, max_host_mem_aperture, 0);
 
         p2p_enabled = pcidev::check_p2p_config(pcidev::get_dev(m_idx), errmsg);
 
@@ -777,6 +782,8 @@ public:
         sensor_tree::put( "board.info.dna",            dna );
         sensor_tree::put( "board.info.p2p_enabled",    p2p_enabled );
         sensor_tree::put( "board.info.cpu_affinity",   cpu_affinity );
+        sensor_tree::put( "board.info.host_mem_size",   xrt_core::utils::unit_convert(host_mem_size) );
+        sensor_tree::put( "board.info.max_host_mem_aperture",   xrt_core::utils::unit_convert(max_host_mem_aperture) );
 
         for (uint32_t i = 0; i < mac_addrs.size(); ++i) {
             std::string entry_name = "board.info.mac_addr."+std::to_string(i);
@@ -842,13 +849,14 @@ public:
                      m0v85, mgt0v9avcc, m12v_sw, mgtavtt, vccint_vol, vccint_curr, m3v3_pex_curr, m0v85_curr, m3v3_vcc_vol,
                      hbm_1v2_vol, vpp2v5_vol, vccint_bram_vol, m12v_pex_vol, m12v_aux_curr, m12v_pex_curr, m12v_aux_vol,
                      vol_12v_aux1, vol_vcc1v2_i, vol_v12_in_i, vol_v12_in_aux0_i, vol_v12_in_aux1_i, vol_vccaux,
-                     vol_vccaux_pmc, vol_vccram;
+                     vol_vccaux_pmc, vol_vccram, m3v3_aux_cur;
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_pex_vol",    m12v_pex_vol);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_pex_curr",   m12v_pex_curr);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_aux_vol",    m12v_aux_vol);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_aux_curr",   m12v_aux_curr);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_3v3_pex_vol",    m3v3_pex_vol);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_3v3_aux_vol",    m3v3_aux_vol);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_3v3_aux_cur",    m3v3_aux_cur);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_ddr_vpp_btm",    ddr_vpp_btm);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_ddr_vpp_top",    ddr_vpp_top);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_sys_5v5",        sys_5v5);
@@ -881,6 +889,7 @@ public:
         sensor_tree::put( "board.physical.electrical.12v_aux.current",         m12v_aux_curr );
         sensor_tree::put( "board.physical.electrical.3v3_pex.voltage",         m3v3_pex_vol );
         sensor_tree::put( "board.physical.electrical.3v3_aux.voltage",         m3v3_aux_vol );
+        sensor_tree::put( "board.physical.electrical.3v3_aux.current",         m3v3_aux_cur );
         sensor_tree::put( "board.physical.electrical.ddr_vpp_bottom.voltage",  ddr_vpp_btm );
         sensor_tree::put( "board.physical.electrical.ddr_vpp_top.voltage",     ddr_vpp_top );
         sensor_tree::put( "board.physical.electrical.sys_5v5.voltage",         sys_5v5 );
@@ -927,7 +936,7 @@ public:
         // memory
         xclDeviceUsage devstat = { 0 };
         (void) xclGetUsageInfo(m_handle, &devstat);
-        for (unsigned i = 0; i < 2; i++) {
+        for (unsigned i = 0; i < dma_threads.size(); i++) {
             boost::property_tree::ptree pt_dma;
             pt_dma.put( "h2c", xrt_core::utils::unit_convert(devstat.h2c[i]) );
             pt_dma.put( "c2h", xrt_core::utils::unit_convert(devstat.c2h[i]) );
@@ -1095,9 +1104,14 @@ public:
             ostr << std::endl;
         }
         ostr << std::setw(32) << "DNA"
-             << std::setw(16) << "CPU_AFFINITY" << std::endl;
+             << std::setw(16) << "CPU_AFFINITY"
+             << std::setw(16) << "HOST_MEM size"
+             << std::setw(16) << "Max HOST_MEM" << std::endl;
         ostr << std::setw(32) << sensor_tree::get<std::string>( "board.info.dna", "N/A" )
-             << std::setw(16) << sensor_tree::get<std::string>( "board.info.cpu_affinity", "N/A" ) << std::endl;
+             << std::setw(16) << sensor_tree::get<std::string>( "board.info.cpu_affinity", "N/A" )
+             << std::setw(16) << sensor_tree::get<std::string>( "board.info.host_mem_size", "N/A" )
+             << std::setw(16) << sensor_tree::get<std::string>( "board.info.max_host_mem_aperture", "N/A" )
+             << std::endl;
 
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
@@ -1167,6 +1181,9 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccaux.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccaux_pmc.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccram.voltage"  ) << std::endl;
+        ostr << std::setw(16) << "3V3 AUX CURR" << std::setw(16) << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.3v3_aux.current" )
+             <<  std::endl;
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Card Power(W)\n";
@@ -1732,6 +1749,7 @@ private:
     int verifyKernelTest(void);
     int bandwidthKernelTest(void);
     int kernelVersionTest(void);
+    int hostMemBandwidthKernelTest(void);
     // testFunc must return 0 for success, 1 for warning, and < 0 for error
     int runOneTest(std::string testName, std::function<int(void)> testFunc);
 
@@ -1745,6 +1763,7 @@ int xclValidate(int argc, char *argv[]);
 std::unique_ptr<xcldev::device> xclGetDevice(unsigned index);
 int xclP2p(int argc, char *argv[]);
 int xclCma(int argc, char *argv[]);
+int xclScheduler(int argc, char *argv[]);
 } // end namespace xcldev
 
 #endif /* XBUTIL_H */

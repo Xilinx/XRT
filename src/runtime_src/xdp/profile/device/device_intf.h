@@ -141,8 +141,9 @@ class DeviceIntf {
 
     XDP_EXPORT
     void resetTS2MM(bool isAIETrace=false);
+    TraceS2MM* getTs2mm() {return mPlTraceDma;};
     XDP_EXPORT
-    void initTS2MM(uint64_t bufferSz, uint64_t bufferAddr, 
+    void initTS2MM(uint64_t bufferSz, uint64_t bufferAddr, bool circular, 
                    bool isAIETrace=false, uint32_t numTS2MM=0);
     XDP_EXPORT
     uint64_t getWordCountTs2mm(bool isAIETrace=false, uint32_t numTS2MM=0);

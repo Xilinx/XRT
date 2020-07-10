@@ -22,6 +22,8 @@
 #include <linux/hashtable.h>
 #endif
 
+
+#define IS_HOST_MEM(m_tag)	(!strncmp(m_tag, "HOST[0]", 7))
 /**
  * struct drm_xocl_exec_metadata - Meta data for exec bo
  *
@@ -59,7 +61,6 @@ struct xocl_drm {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 	DECLARE_HASHTABLE(mm_range, 6);
 #endif
-	struct xocl_cma_bank  *cma_bank;
 };
 
 struct drm_xocl_bo {
@@ -104,8 +105,7 @@ int xocl_init_mem(struct xocl_drm *drm_p);
 int xocl_cleanup_mem(struct xocl_drm *drm_p);
 
 bool is_cma_bank(struct xocl_drm *drm_p, uint32_t memidx);
-int xocl_cma_bank_alloc(struct xocl_drm *drm_p, struct drm_xocl_alloc_cma_info *cma_info);
-void xocl_cma_bank_free(struct xocl_drm *drm_p);
+int xocl_check_topology(struct xocl_drm *drm_p);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
 vm_fault_t xocl_gem_fault(struct vm_fault *vmf);

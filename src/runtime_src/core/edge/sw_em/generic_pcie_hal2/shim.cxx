@@ -19,6 +19,7 @@
  */
 
 #include "shim.h"
+#include "system_swemu.h"
 #include <errno.h>
 #include <unistd.h>
 namespace xclcpuemhal2 {
@@ -400,7 +401,8 @@ namespace xclcpuemhal2 {
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "fpo_v7_0" + ":";
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "dds_v6_0" + ":";
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "opencv"   + ":";
-          sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "lib"   + DS + "csim";
+          sLdLibs += sHlsBinDir + DS + sPlatform + DS + "lib" + DS + "csim" + ":";
+          sLdLibs += sHlsBinDir + DS + "lib" + DS + "lnx64.o" + DS + "Default" + DS;         
           setenv("LD_LIBRARY_PATH",sLdLibs.c_str(),true);
         }
 
@@ -922,6 +924,11 @@ namespace xclcpuemhal2 {
       mLogStream << "FUNCTION, THREAD ID, ARG..."  << std::endl;
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
+
+    // Shim object creation doesn't follow xclOpen/xclClose.
+    // The core device must correspond to open and close, so
+    // create here rather than in constructor
+    mCoreDevice = xrt_core::swemu::get_userpf_device(this, mDeviceIndex);
   }
 
   void CpuemShim::fillDeviceInfo(xclDeviceInfo2* dest, xclDeviceInfo2* src)
@@ -1006,6 +1013,12 @@ namespace xclcpuemhal2 {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
+
+    // Shim object is not deleted as part of closing device.
+    // The core device must correspond to open and close, so
+    // reset here rather than in destructor
+    mCoreDevice.reset();
+    
     if(!sock)
     {
       if( xclemulation::config::getInstance()->isKeepRunDirEnabled() == false)

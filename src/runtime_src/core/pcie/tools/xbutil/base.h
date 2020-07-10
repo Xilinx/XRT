@@ -36,7 +36,7 @@ namespace xcldev {
 
 static std::string getMachineModel()
 {
-#if defined(__aarch64__) || defined(__arm__)
+#if defined(__aarch64__) || defined(__arm__) || defined(__mips__)
     const char node[] = "/proc/device-tree/model";
 #elif defined(__PPC64__)
     const char node[] = "/proc/device-tree/model-name";

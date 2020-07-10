@@ -83,21 +83,30 @@ rh_package_list()
      pkgconfig \
      protobuf-devel \
      protobuf-compiler \
-     redhat-lsb \
      rpm-build \
      strace \
      unzip \
      zlib-static \
      libcurl-devel \
+     python3 \
+     python3-pip \
     )
+
+    if [ $FLAVOR == "amzn" ]; then
+        RH_LIST+=(\
+        system-lsb-core \
+        )
+    else
+        RH_LIST+=(\
+        redhat-lsb \
+        )
+    fi
 
     # Centos8
     if [ $MAJOR == 8 ]; then
 
         RH_LIST+=(\
          systemd-devel \
-         python3 \
-         python3-pip \
         )
 
 	if [ $FLAVOR == "rhel" ]; then
@@ -118,8 +127,6 @@ rh_package_list()
          kernel-headers-$(uname -r) \
          openssl-static \
          protobuf-static \
-         python \
-         python-pip \
         )
 
     fi
@@ -176,16 +183,14 @@ ub_package_list()
      libcurl4-openssl-dev \
      libudev-dev \
      libsystemd-dev \
+     python3 \
+     python3-pip \
+     python3-sphinx \
+     python3-sphinx-rtd-theme \
     )
 
     if [[ $docker == 0 ]]; then
         UB_LIST+=(linux-headers-$(uname -r))
-    fi
-
-    if [[ $VERSION == 20.04 ]]; then
-        UB_LIST+=(python3 python3-pip python3-sphinx python3-sphinx-rtd-theme)
-    else
-        UB_LIST+=(python python-pip python-sphinx python-sphinx-rtd-theme)
     fi
 
     #dmidecode is only applicable for x86_64
@@ -202,12 +207,79 @@ ub_package_list()
 
 }
 
+fd_package_list()
+{
+    FD_LIST=(\
+     boost-devel \
+     boost-filesystem \
+     boost-program-options \
+     boost-static \
+     cmake \
+     cppcheck \
+     curl \
+     dkms \
+     gcc \
+     gcc-c++ \
+     gdb \
+     git \
+     glibc-static \
+     gnuplot \
+     gnutls-devel \
+     gtest-devel \
+     json-glib-devel \
+     libdrm-devel \
+     libjpeg-turbo-devel \
+     libstdc++-static \
+     libtiff-devel \
+     libuuid-devel \
+     libxml2-devel \
+     libyaml-devel \
+     lm_sensors \
+     make \
+     ncurses-devel \
+     ocl-icd \
+     ocl-icd-devel \
+     opencl-headers \
+     opencv \
+     openssl-devel \
+     pciutils \
+     perl \
+     pkgconfig \
+     protobuf-devel \
+     protobuf-compiler \
+     redhat-lsb \
+     rpm-build \
+     strace \
+     unzip \
+     zlib-static \
+     libcurl-devel \
+     openssl-devel \
+     systemd-devel \
+     python3 \
+     python3-pip \
+     systemd-devel \
+     libpng12-devel \
+     libudev-devel \
+     kernel-devel-$(uname -r) \
+     kernel-headers-$(uname -r) \
+     openssl-static \
+     protobuf-static \
+     python \
+     python-pip \
+     #docs need
+     python2-sphinx \
+     dmidecode \
+    )
+}
+
 update_package_list()
 {
     if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
         ub_package_list
-    elif [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ]; then
+    elif [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ] || [ $FLAVOR == "amzn" ]; then
         rh_package_list
+    elif [ $FLAVOR == "fedora" ]; then
+        fd_package_list
     else
         echo "unknown OS flavor $FLAVOR"
         exit 1
@@ -308,6 +380,16 @@ prep_rhel()
     yum install -y cmake3
 }
 
+prep_amzn()
+{
+    echo "Installing amazon EPEL..."
+    amazon-linux-extras install epel
+    echo "Installing cmake3 from EPEL repository..."
+    yum install cmake3
+    echo "Installing opencl header from EPEL repository..."
+    yum install ocl-icd ocl-icd-devel opencl-headers
+}
+
 install()
 {
     if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
@@ -322,6 +404,8 @@ install()
         prep_centos
     elif [ $FLAVOR == "rhel" ]; then
         prep_rhel
+    elif [ $FLAVOR == "amzn" ]; then
+        prep_amzn
     fi
 
     if [ $FLAVOR == "rhel" ] || [ $FLAVOR == "centos" ] || [ $FLAVOR == "amzn" ]; then
@@ -329,9 +413,14 @@ install()
         yum install -y "${RH_LIST[@]}"
 	if [ $ARCH == "ppc64le" ]; then
             yum install -y devtoolset-7
-	elif [ $MAJOR -lt "8" ]; then
+	elif [ $MAJOR -lt "8" ]  && [ $FLAVOR != "amzn" ]; then
             yum install -y devtoolset-6
 	fi
+    fi
+
+    if [ $FLAVOR == "fedora" ]; then
+        echo "Installing Fedora packages..."
+        yum install -y "${FD_LIST[@]}"
     fi
 }
 
