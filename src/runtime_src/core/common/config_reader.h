@@ -148,7 +148,8 @@ get_device_profile()
 inline std::string
 get_data_transfer_trace()
 {
-  static std::string value = (!get_profile()) ? "off" : detail::get_string_value("Debug.data_transfer_trace","off");
+  static std::string value = 
+    detail::get_string_value("Debug.data_transfer_trace","off");
   return value;
 }
 

@@ -83,8 +83,10 @@ namespace xdp {
       //  from the database.
       for (auto o : offloaders)
       {
-	(o.second)->read_trace() ;
-	(o.second)->read_trace_end() ;
+	auto offloader = std::get<0>(o.second) ;
+
+	offloader->read_trace() ;
+	offloader->read_trace_end() ;
       }
 
       for (auto w : writers)
@@ -96,7 +98,13 @@ namespace xdp {
 
     for (auto o : offloaders)
     {
-      delete (o.second) ;
+      auto offloader = std::get<0>(o.second) ;
+      auto logger    = std::get<1>(o.second) ;
+      auto intf      = std::get<2>(o.second) ;
+
+      delete offloader ;
+      delete logger ;
+      delete intf ;
     }
 
     for (auto h : deviceHandles)
@@ -128,7 +136,7 @@ namespace xdp {
 
     if (offloaders.find(deviceId) != offloaders.end())
     {
-      offloaders[deviceId]->read_trace() ;
+      std::get<0>(offloaders[deviceId])->read_trace() ;
     }    
   }
 
@@ -152,20 +160,35 @@ namespace xdp {
     if (offloaders.find(deviceId) != offloaders.end())
     {
       // Clean up the old offloader.  It has already been flushed.
-      delete offloaders[deviceId] ;
+      auto info = offloaders[deviceId] ;
+
+      auto offloader = std::get<0>(info) ;
+      auto logger    = std::get<1>(info) ;
+      auto intf      = std::get<2>(info) ;
+
+      delete offloader ;
+      delete logger ;
+      delete intf ;
     }
     
     // Update the static database with all the information that
     //  will be needed later
     (db->getStaticInfo()).updateDevice(deviceId, userHandle) ;
-    //(db->getStaticInfo()).setDeviceName(deviceId, handle->name()) ;
+    {
+      struct xclDeviceInfo2 info ;
+      if (xclGetDeviceInfo2(userHandle, &info) == 0)
+      {
+	(db->getStaticInfo()).setDeviceName(deviceId, std::string(info.mName));
+      }
+    }
+    //(db->getStaticInfo()).setDeviceName(deviceId, userHandle) ;
 
     // For the HAL level, we must create a device interface using 
     //  the xdp::HalDevice to communicate with the physical device
     DeviceIntf* devInterface = new DeviceIntf() ;
     try {
       devInterface->setDevice(new HalDevice(ownedHandle)) ;
-      devInterface->readDebugIPlayout() ;
+      devInterface->readDebugIPlayout() ;      
     }
     catch(std::exception& e)
     {
@@ -173,6 +196,7 @@ namespace xdp {
       delete devInterface ;
     }
 
+    configureDataflow(deviceId, devInterface) ;
     addOffloader(deviceId, devInterface) ;
     configureTraceIP(devInterface) ;
     devInterface->clockTraining() ;

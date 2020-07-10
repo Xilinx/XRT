@@ -1,4 +1,5 @@
 #include "plugin/xdp/hal_profile.h"
+#include "plugin/xdp/hal_device_offload.h"
 #include "core/common/module_loader.h"
 #include "core/common/utils.h"
 #include "core/common/config_reader.h"
@@ -26,6 +27,10 @@ CallLogger::CallLogger(uint64_t id)
   if (xrt_core::config::get_xrt_profile())
   {
     load_xdp_plugin_library(nullptr) ;
+  }
+  if (xrt_core::config::get_data_transfer_trace() != "off")
+  {
+    xdphaldeviceoffload::load_xdp_hal_device_offload() ;
   }
 }
 

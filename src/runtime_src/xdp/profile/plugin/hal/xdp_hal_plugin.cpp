@@ -354,21 +354,13 @@ namespace xdp {
   }
 
   static void load_xclbin_start(void* payload) {
-    // The xclbin is about to be loaded, so flush any device information
-    //  into the database
     XclbinCBPayload* pLoad = reinterpret_cast<XclbinCBPayload*>(payload) ;
-
-    // Before we load a new xclbin, make sure we read all of the 
-    //  device data into the database.
-    halPluginInstance.readDeviceInfo((pLoad->basePayload).deviceHandle) ;
-    halPluginInstance.flushDeviceInfo((pLoad->basePayload).deviceHandle) ;
+    log_function_start(&(pLoad->basePayload), "xclLoadXclbin") ;
   }
 
   static void load_xclbin_end(void* payload) {
-    // The xclbin has been loaded, so update all the static information
-    //  in our database.
     XclbinCBPayload* pLoad = reinterpret_cast<XclbinCBPayload*>(payload) ;
-    halPluginInstance.updateDevice((pLoad->basePayload).deviceHandle, pLoad->binary);
+    log_function_end(&(pLoad->basePayload), "xclLoadXclbin") ;
   }
 
   static void unknown_cb_type(void* /*payload*/) {

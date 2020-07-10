@@ -29,19 +29,14 @@
 
 namespace xdp {
 
-  DeviceOffloadPlugin::DeviceOffloadPlugin() : XDPPlugin(), trace_buffer_size(0)
+  DeviceOffloadPlugin::DeviceOffloadPlugin() : XDPPlugin()
   {
     active = db->claimDeviceOffloadOwnership() ;
     if (!active) return ; 
 
     db->registerPlugin(this) ;
 
-    // Get the profiling continuous offload options from xrt.ini
-    std::string tb_size = xrt_core::config::get_trace_buffer_size() ;
-    std::stringstream convert ;
-    convert << tb_size ;
-    convert >> trace_buffer_size ;
-    
+    // Get the profiling continuous offload options from xrt.ini    
     continuous_trace = xrt_core::config::get_continuous_trace() ;
     continuous_trace_interval_ms = 
       xrt_core::config::get_continuous_trace_interval_ms() ;
@@ -76,12 +71,37 @@ namespace xdp {
     (db->getStaticInfo()).addOpenedFile(filename.c_str(), "VP_TRACE") ;
   }
 
+  void DeviceOffloadPlugin::configureDataflow(uint64_t deviceId,
+					      DeviceIntf* devInterface)
+  {
+    uint32_t numAM = devInterface->getNumMonitors(XCL_PERF_MON_ACCEL) ;
+    bool* dataflowConfig = new bool[numAM] ;
+    (db->getStaticInfo()).getDataflowConfiguration(deviceId, dataflowConfig, numAM) ;
+    devInterface->configureDataflow(dataflowConfig) ;
+
+    delete [] dataflowConfig ;
+  }
+
   // It is the responsibility of the child class to instantiate the appropriate
   //  device interface based on the level (OpenCL or HAL)
   void DeviceOffloadPlugin::addOffloader(uint64_t deviceId,
 					 DeviceIntf* devInterface)
   {
     if (!active) return ;
+
+    // If offload via memory is requested, make sure the size requested
+    //  fits inside the chosen memory resource.
+    uint64_t trace_buffer_size = GetTS2MMBufSize() ;
+    if (devInterface->hasTs2mm())
+    {
+      uint64_t memorySz = ((db->getStaticInfo()).getMemory(deviceId, devInterface->getTS2MmMemIndex())->size) * 1024 ;
+      if (memorySz > 0 && trace_buffer_size > memorySz)
+      {
+	trace_buffer_size = memorySz ;
+	std::string msg = "Trace buffer size is too big for memory resource.  Using " + std::to_string(memorySz) + " instead." ;
+	xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg) ;
+      }
+    }
 
     TraceLoggerCreatingDeviceEvents* logger = 
       new TraceLoggerCreatingDeviceEvents(deviceId) ;
@@ -93,9 +113,19 @@ namespace xdp {
 			     trace_buffer_size,            // trbuf_size,
 			     continuous_trace) ;           // start_thread
 
-     offloader->read_trace_init() ;
+     bool init_successful = offloader->read_trace_init() ;
+     if (!init_successful)
+     {
+       if (devInterface->hasTs2mm())
+       {
+	 xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", TS2MM_WARN_MSG_ALLOC_FAIL) ;
+       }
+       delete offloader ;
+       delete logger ;
+       return ;
+     }
 
-     offloaders[deviceId] = offloader ;
+     offloaders[deviceId] = std::make_tuple(offloader, logger, devInterface) ;
   }
   
   void DeviceOffloadPlugin::configureTraceIP(DeviceIntf* devInterface)
@@ -136,7 +166,7 @@ namespace xdp {
     //  and write our writers.
     for (auto o : offloaders)
     {
-      (o.second)->read_trace() ;
+      (std::get<0>(o.second))->read_trace() ;
     }    
 
     for (auto w : writers)
