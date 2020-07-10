@@ -691,9 +691,9 @@ DeviceIntf::~DeviceIntf()
           switch(map->m_debug_ip_data[i].m_type) {
             case AXI_MM_MONITOR :
             {
-              IOCtlAIM* pMon = new IOCtlAIM(mDevice, i, aimList.size(), &(map->m_debug_ip_data[i]));
+              IOCtlAIM* pMon = new IOCtlAIM(mDevice, i, mAimList.size(), &(map->m_debug_ip_data[i]));
               if(pMon->isOpened()) {
-                aimList.push_back(pMon);
+                mAimList.push_back(pMon);
               } else {
                 delete pMon;
                 pMon = nullptr;
@@ -702,9 +702,9 @@ DeviceIntf::~DeviceIntf()
             }
             case ACCEL_MONITOR  :
             {
-              IOCtlAM* pMon = new IOCtlAM(mDevice, i, amList.size(), &(map->m_debug_ip_data[i]));
+              IOCtlAM* pMon = new IOCtlAM(mDevice, i, mAmList.size(), &(map->m_debug_ip_data[i]));
               if(pMon->isOpened()) {
-                amList.push_back(pMon);
+                mAmList.push_back(pMon);
               } else {
                 delete pMon;
                 pMon = nullptr;
@@ -713,9 +713,9 @@ DeviceIntf::~DeviceIntf()
             }
             case AXI_STREAM_MONITOR :
             {
-              IOCtlASM* pMon = new IOCtlASM(mDevice, i, asmList.size(), &(map->m_debug_ip_data[i]));
+              IOCtlASM* pMon = new IOCtlASM(mDevice, i, mAsmList.size(), &(map->m_debug_ip_data[i]));
               if(pMon->isOpened()) {
-                asmList.push_back(pMon);
+                mAsmList.push_back(pMon);
               } else {
                 delete pMon;
                 pMon = nullptr;
@@ -724,37 +724,37 @@ DeviceIntf::~DeviceIntf()
             }
             case AXI_MONITOR_FIFO_LITE :
             {
-              fifoCtrl = new IOCtlTraceFifoLite(mDevice, i, &(map->m_debug_ip_data[i]));
-              if(!fifoCtrl->isOpened()) {
-                delete fifoCtrl;
-                fifoCtrl = nullptr;
+              mFifoCtrl = new IOCtlTraceFifoLite(mDevice, i, &(map->m_debug_ip_data[i]));
+              if(!mFifoCtrl->isOpened()) {
+                delete mFifoCtrl;
+                mFifoCtrl = nullptr;
               }
               break;
             }
             case AXI_MONITOR_FIFO_FULL :
             {
-              fifoRead = new IOCtlTraceFifoFull(mDevice, i, &(map->m_debug_ip_data[i]));
-              if(!fifoRead->isOpened()) {
-                delete fifoRead;
-                fifoRead = nullptr;
+              mFifoRead = new IOCtlTraceFifoFull(mDevice, i, &(map->m_debug_ip_data[i]));
+              if(!mFifoRead->isOpened()) {
+                delete mFifoRead;
+                mFifoRead = nullptr;
               }
               break;
             }
             case AXI_TRACE_FUNNEL :
             {
-              traceFunnel = new IOCtlTraceFunnel(mDevice, i, &(map->m_debug_ip_data[i]));
-              if(!traceFunnel->isOpened()) {
-                delete traceFunnel;
-                traceFunnel = nullptr;
+              mTraceFunnel = new IOCtlTraceFunnel(mDevice, i, &(map->m_debug_ip_data[i]));
+              if(!mTraceFunnel->isOpened()) {
+                delete mTraceFunnel;
+                mTraceFunnel = nullptr;
               }
               break;
             }
             case TRACE_S2MM :
             {
-              traceDMA = new IOCtlTraceS2MM(mDevice, i, 0, &(map->m_debug_ip_data[i]));
-              if(!traceDMA->isOpened()) {
-                delete traceDMA;
-                traceDMA = nullptr;
+              mPlTraceDma = new IOCtlTraceS2MM(mDevice, i, 0, &(map->m_debug_ip_data[i]));
+              if(!mPlTraceDma->isOpened()) {
+                delete mPlTraceDma;
+                mPlTraceDma = nullptr;
               }
               break;
             }

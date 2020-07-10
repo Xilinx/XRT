@@ -295,7 +295,7 @@ bool DeviceTraceOffload::init_s2mm(bool circ_buf)
   }
 
   // Check if allocated buffer and sleep interval can keep up with offload
-  if (dev_intf->hasTs2mm()) {
+  if (dev_intf->hasTs2mm(false /*m_aie_trace*/)) {
     auto tdma = dev_intf->getTs2mm();
     if (tdma->supportsCircBuf() && circ_buf) {
       if (sleep_interval_ms != 0) {

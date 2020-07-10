@@ -192,8 +192,8 @@ namespace xdp {
       uint64_t memorySz = (db->getStaticInfo().getMemory(deviceId, devInterface->getTS2MmMemIndex())->size) * 1024;
       if (memorySz > 0 && traceBufSz > memorySz) {
         traceBufSz = memorySz;
-        std::string msg = "PL trace buffer size is too big for memory resources. " 
-                          + "Using " + std::to_string(memorySz) + " bytes instead.";
+        std::string msg = "PL trace buffer size is too big for memory resources. Using " 
+                              + std::to_string(memorySz) + " bytes instead.";
         xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg);
       }
     }
@@ -217,7 +217,7 @@ namespace xdp {
     // AIE Trace 
     // NOTE: this supports multiple data movers
     auto numTS2MM = devInterface->getNumberTS2MM(true);
-    for (int i=0; i < numTS2MM; i++) {
+    for (size_t i=0; i < numTS2MM; i++) {
       // Get Trace Buffer Size in bytes
       // NOTE: For now, every trace buffer is the same fraction 
       //       of the total size.
@@ -226,8 +226,8 @@ namespace xdp {
       uint64_t memorySz = (db->getStaticInfo().getMemory(deviceId, devInterface->getTS2MmMemIndex())->size) * 1024;
       if (memorySz > 0 && traceBufSz > memorySz) {
         traceBufSz = memorySz;
-        std::string msg = "AIE trace buffer size is too big for memory resources. "
-                          + "Using " + std::to_string(memorySz) + " bytes instead.";
+        std::string msg = "AIE trace buffer size is too big for memory resources. Using "
+                              + std::to_string(memorySz) + " bytes instead.";
         xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", msg);
       }
 

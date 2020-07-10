@@ -126,7 +126,7 @@ class DeviceIntf {
 
     /** Trace S2MM Management
      */
-    bool hasTs2mm(bool isAIETrace) {
+    bool hasTs2mm(bool isAIETrace = false) {
       if (isAIETrace)
         return (mAieTraceDmaList.size() > 0);
       else

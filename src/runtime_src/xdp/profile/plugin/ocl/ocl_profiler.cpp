@@ -351,8 +351,9 @@ namespace xdp {
 
       if (dInt) {
         // Do for both PL and AIE trace (if available)
-        for (int i=0; i < 2; i++) { 
-          bool isAIETrace = (i == 1);
+        //for (int i=0; i < 2; i++) { 
+          //bool isAIETrace = (i == 1);	// FOR now
+          bool isAIETrace = false;
 
           // Configure monitor IP and FIFO if present
           dInt->startTrace(traceOption);
@@ -404,8 +405,9 @@ namespace xdp {
           DeviceTraceOffloadList.push_back(std::move(offloader));
         } else {
           delete deviceTraceLogger;
-          if (dInt->hasTs2mm())
+          if (dInt->hasTs2mm()) {
             xrt::message::send(xrt::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_ALLOC_FAIL);
+          }
         }
       } else {
         xdevice->startTrace(XCL_PERF_MON_MEMORY, traceOption);
