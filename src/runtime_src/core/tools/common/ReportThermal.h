@@ -14,15 +14,15 @@
  * under the License.
  */
 
-#ifndef __ReportPhysical_h_
-#define __ReportPhysical_h_
+#ifndef __ReportThermal_h_
+#define __ReportThermal_h_
 
 // Please keep external include file dependencies to a minimum
 #include "Report.h"
 
-class ReportPhysical : public Report {
+class ReportThermal : public Report {
  public:
-  ReportPhysical() : Report("physical", "Electrical thermal and power sensors present on the device", true /*deviceRequired*/) { /*empty*/ };
+  ReportThermal() : Report("thermal", "Thermal sensors present on the device", true /*deviceRequired*/) { /*empty*/ };
 
  // Child methods that need to be implemented
  public:
