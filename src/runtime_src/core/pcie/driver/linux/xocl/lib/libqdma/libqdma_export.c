@@ -288,7 +288,7 @@ static ssize_t qdma_request_submit_st_c2h(struct xlnx_dma_dev *xdev,
 		return -EINVAL;
 	}
 
-	if (!work_pending(&descq->req_work))
+	if (!work_pending((&(descq->req_work))))
 		schedule_work(&descq->req_work);
 
 	/** if there is a completion thread associated,

@@ -594,6 +594,8 @@ xclExecBuf(unsigned int cmdBO)
   drm_zocl_execbuf exec = {0, cmdBO};
   int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_EXECBUF, &exec);
   xclLog(XRT_DEBUG, "XRT", "%s: cmdBO handle %d, ioctl return %d", __func__, cmdBO, result);
+  if (result == -EDEADLK)
+      xclLog(XRT_ERROR, "XRT", "CU might hang, please reset device");
   return result;
 }
 

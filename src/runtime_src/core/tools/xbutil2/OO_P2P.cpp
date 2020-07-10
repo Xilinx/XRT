@@ -44,9 +44,8 @@ OO_P2P::OO_P2P( const std::string &_longName, bool _isHidden )
 }
 
 void
-OO_P2P::execute(const SubCmdOptions& _options) const
+OO_P2P::execute(const SubCmdOptions& /*_options*/) const
 {
-  _options.size();
   printHelp();
 }
 

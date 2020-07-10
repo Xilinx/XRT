@@ -28,7 +28,6 @@
 #include "../lib/libqdma/libqdma_export.h"
 #include "qdma_ioctl.h"
 
-#define XOCL_FILE_PAGE_OFFSET   0x100000
 #ifndef VM_RESERVED
 #define VM_RESERVED (VM_DONTEXPAND | VM_DONTDUMP)
 #endif

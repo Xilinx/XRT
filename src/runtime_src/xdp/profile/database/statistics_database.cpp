@@ -23,8 +23,8 @@
 
 namespace xdp {
 
-  VPStatisticsDatabase::VPStatisticsDatabase() : 
-    firstKernelStartTime(0.0)
+  VPStatisticsDatabase::VPStatisticsDatabase(VPDatabase* d) :
+    db(d), firstKernelStartTime(0.0)
   {
   }
 

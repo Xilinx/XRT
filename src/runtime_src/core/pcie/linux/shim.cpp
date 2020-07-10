@@ -1323,11 +1323,18 @@ int shim::xclLoadXclBin(const xclBin *buffer)
       else if (ret == -EKEYREJECTED) {
         xrt_logmsg(XRT_ERROR, "Xclbin isn't signed properly");
       }
+      else if (ret == -E2BIG) {
+        xrt_logmsg(XRT_ERROR, "Not enough host_mem for xclbin");
+      }
       else if (ret == -ETIMEDOUT) {
         xrt_logmsg(XRT_ERROR,
                    "Can't reach out to mgmt for xclbin downloading");
         xrt_logmsg(XRT_ERROR,
                    "Is xclmgmt driver loaded? Or is MSD/MPD running?");
+      }
+      else if (ret == -EDEADLK) {
+        xrt_logmsg(XRT_ERROR, "CU was deadlocked? Hardware is not stable");
+        xrt_logmsg(XRT_ERROR, "Please reset device with 'xbutil reset'");
       }
       xrt_logmsg(XRT_ERROR, "See dmesg log for details. err=%d", ret);
     }
@@ -2220,23 +2227,16 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
 #endif
 
-#ifdef ENABLE_HAL_PROFILING
-    if (ret != 0) return ret ;
-    LOAD_XCLBIN_CB ;
-#endif
     if (!ret) {
       auto core_device = xrt_core::get_userpf_device(drv);
       core_device->register_axlf(buffer);
+#ifdef ENABLE_HAL_PROFILING
+    LOAD_XCLBIN_CB ;
+#endif
 #ifndef DISABLE_DOWNLOAD_XCLBIN
       ret = xrt_core::scheduler::init(handle, buffer);
       START_DEVICE_PROFILING_CB(handle);
 #endif
-    }
-    if (!ret && xrt_core::config::get_ert() &&
-        (xclbin::get_axlf_section(buffer, PDI) ||
-         xclbin::get_axlf_section(buffer, BITSTREAM_PARTIAL_PDI))) {
-      ret = xrt_core::scheduler::
-        loadXclbinToPS(handle, buffer,xrt_core::config::get_pdi_load());
     }
     return ret;
   }

@@ -38,7 +38,11 @@ int main( int argc, char** argv )
 {
   // force linking with libxrt_core
   // find a way in CMake to specify -undef <symbol>
-  xclProbe();
+  try{
+    xclProbe();
+  } catch (...) {
+    xrt_core::send_exception_message("xclProbe failed");
+  }
 
   // -- Build the supported subcommands
   SubCmdsCollection subCommands;

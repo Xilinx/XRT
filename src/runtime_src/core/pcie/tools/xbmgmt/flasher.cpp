@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018-2019 Xilinx, Inc
+ * Copyright (C) 2018-2020 Xilinx, Inc
  * Author: Ryan Radjabi
  *
  * This is a wrapper class that does the prep work required to program a flash
@@ -179,7 +179,7 @@ std::string charVec2String(std::vector<char>& v)
 
 std::string int2PowerString(unsigned lvl)
 {
-    std::vector<std::string> powers{ "75W", "150W", "225W" };
+    std::vector<std::string> powers{ "75W", "150W", "225W", "300W" };
 
     if (lvl < powers.size())
         return powers[lvl];

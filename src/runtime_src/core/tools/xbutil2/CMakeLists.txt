@@ -21,6 +21,7 @@ file(GLOB XBUTIL_V2_BASE_FILES
   "../common/OptionOptions.cpp"
   "../common/XBHelpMenus.cpp"
   "../common/Report*.cpp"
+  "../common/ProgressBar.cpp"
 )
 
 # Collect local directory files
@@ -92,7 +93,10 @@ else()
 endif()
 
 # Install our built executable
-install (TARGETS ${XBUTIL2_NAME} RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
-install (PROGRAMS ${XRT_LOADER_SCRIPTS} DESTINATION ${XRT_INSTALL_BIN_DIR})
-
+if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+  install (TARGETS ${XBUTIL2_NAME} RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
+  install (PROGRAMS ${XRT_LOADER_SCRIPTS} DESTINATION ${XRT_INSTALL_BIN_DIR})
+else()
+  install (TARGETS ${XBUTIL2_NAME} RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR})
+endif()
 # -----------------------------------------------------------------------------

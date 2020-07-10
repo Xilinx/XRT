@@ -96,27 +96,6 @@ match_name(struct device *dev, void *data)
 }
 
 /**
- * find_pdev - Find platform device by name
- *
- * @name: device name
- *
- * Returns a platform device. Returns NULL if not found.
- */
-static struct platform_device *find_pdev(char *name)
-{
-	struct device *dev;
-	struct platform_device *pdev;
-
-	dev = bus_find_device(&platform_bus_type, NULL, (void *)name,
-	    match_name);
-	if (!dev)
-		return NULL;
-
-	pdev = container_of(dev, struct platform_device, dev);
-	return pdev;
-}
-
-/**
  * get_reserved_mem_region - Get reserved memory region
  *
  * @dev: device struct
@@ -139,6 +118,27 @@ static int get_reserved_mem_region(struct device *dev, struct resource *res)
 		return -EINVAL;
 
 	return 0;
+}
+
+/**
+ * zocl_find_pdev - Find platform device by name
+ *
+ * @name: device name
+ *
+ * Returns a platform device. Returns NULL if not found.
+ */
+struct platform_device *zocl_find_pdev(char *name)
+{
+	struct device *dev;
+	struct platform_device *pdev;
+
+	dev = bus_find_device(&platform_bus_type, NULL, (void *)name,
+	    match_name);
+	if (!dev)
+		return NULL;
+
+	pdev = container_of(dev, struct platform_device, dev);
+	return pdev;
 }
 
 /**
@@ -328,6 +328,10 @@ void zocl_free_bo(struct drm_gem_object *obj)
 				drm_mm_remove_node(zocl_obj->mm_node);
 				mutex_unlock(&zdev->mm_lock);
 				kfree(zocl_obj->mm_node);
+				if (zocl_obj->vmapping) {
+					memunmap(zocl_obj->vmapping);
+					zocl_obj->vmapping = NULL;
+				}
 				zocl_update_mem_stat(zdev, obj->size, -1,
 				    zocl_obj->bank);
 			}
@@ -837,7 +841,7 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	}
 	mutex_init(&zdev->mm_lock);
 
-	subdev = find_pdev("ert_hw");
+	subdev = zocl_find_pdev("ert_hw");
 	if (subdev) {
 		DRM_INFO("ert_hw found: 0x%llx\n", (uint64_t)(uintptr_t)subdev);
 		/* Trust device tree for now, but a better place should be
@@ -924,9 +928,6 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 
 	/* Now initial kds */
 	if (kds_mode == 1) {
-		ret = cu_ctrl_init(zdev);
-		if (ret)
-			goto err_cu_ctrl;
 		ret = zocl_init_sched(zdev);
 		if (ret)
 			goto err_sched;
@@ -940,8 +941,6 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 
 /* error out in exact reverse order of init */
 err_sched:
-	cu_ctrl_fini(zdev);
-err_cu_ctrl:
 	zocl_fini_sysfs(drm->dev);
 err_sysfs:
 	zocl_xclbin_fini(zdev);
@@ -981,10 +980,8 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 	mutex_destroy(&zdev->zdev_xclbin_lock);
 	zocl_fini_sysfs(drm->dev);
 
-	if (kds_mode == 1) {
+	if (kds_mode == 1)
 		zocl_fini_sched(zdev);
-		cu_ctrl_fini(zdev);
-	}
 
 	kfree(zdev->apertures);
 

@@ -371,25 +371,41 @@ namespace xdp {
           DeviceTraceLogger* deviceTraceLogger = new TraceLoggerUsingProfileMngr(getProfileManager(), device->get_unique_name(), binaryName);
           auto offloader = std::make_unique<DeviceTraceOffload>(dInt, deviceTraceLogger,
                                                          mTraceReadIntMs, traceBufSz, false);
-          bool init_done = offloader->read_trace_init();
-          if (init_done) {
-            offloader->train_clock();
-            /* Trace FIFO is usually very small (8k,16k etc)
-             *  Hence enable Continuous clock training by default
-             *  ONLY for Trace Offload to DDR Memory
-             */
-            if (mTraceThreadEn)
-              offloader->start_offload(OffloadThreadType::TRACE);
-            else if (dInt->hasTs2mm())
-              offloader->start_offload(OffloadThreadType::CLOCK_TRAIN);
+        bool init_done = offloader->read_trace_init(mTraceThreadEn);
+        if (init_done) {
+          offloader->train_clock();
+          /* Trace FIFO is usually very small (8k,16k etc)
+           *  Hence enable Continuous clock training by default
+           *  ONLY for Trace Offload to DDR Memory
+           */
+          if (mTraceThreadEn)
+            offloader->start_offload(OffloadThreadType::TRACE);
+          else if (dInt->hasTs2mm())
+            offloader->start_offload(OffloadThreadType::CLOCK_TRAIN);
 
-            DeviceTraceLoggers.push_back(deviceTraceLogger);
-            DeviceTraceOffloadList.push_back(std::move(offloader));
-          } else {
-            delete deviceTraceLogger;
-            if (dInt->hasTs2mm())
-              xrt::message::send(xrt::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_ALLOC_FAIL);
+          /* If unable to use circular buffer then throw warning
+           */
+          if (dInt->hasTs2mm() && mTraceThreadEn) {
+            auto tdma = dInt->getTs2mm();
+            if (tdma->supportsCircBuf()) {
+              uint64_t min_offload_rate = 0;
+              uint64_t requested_offload_rate = 0;
+              bool using_circ_buf = offloader->using_circular_buffer(min_offload_rate, requested_offload_rate);
+              if (!using_circ_buf) {
+                std::string msg = std::string(TS2MM_WARN_MSG_CIRC_BUF)
+                                + " Minimum required offload rate (bytes per second) : " + std::to_string(min_offload_rate)
+                                + " Requested offload rate : " + std::to_string(requested_offload_rate);
+                xrt::message::send(xrt::message::severity_level::XRT_WARNING, msg);
+              }
+            }
           }
+
+          DeviceTraceLoggers.push_back(deviceTraceLogger);
+          DeviceTraceOffloadList.push_back(std::move(offloader));
+        } else {
+          delete deviceTraceLogger;
+          if (dInt->hasTs2mm())
+            xrt::message::send(xrt::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_ALLOC_FAIL);
         }
       } else {
         xdevice->startTrace(XCL_PERF_MON_MEMORY, traceOption);

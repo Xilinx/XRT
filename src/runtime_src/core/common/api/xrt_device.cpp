@@ -123,6 +123,13 @@ operator xclDeviceHandle() const
   return handle->get_device_handle();
 }
 
+std::pair<const char*, size_t>
+device::
+get_xclbin_section(axlf_section_kind section, const uuid& uuid) const
+{
+  return handle->get_axlf_section_or_error(section, uuid);
+}
+
 } // xrt
 
 ////////////////////////////////////////////////////////////////

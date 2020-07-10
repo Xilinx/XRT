@@ -1,7 +1,14 @@
 XRT ChangeLog
 -------------
 
-2.6.0 (Unreleased)
+2.7.0
+~~~~~
+Added
+.....
+* XRT native APIs for device and buffer objects.
+* C++ APIs for all new native XRT APIs.  
+
+2.6.0 (202010.2.6)
 ~~~~~~~~~~~~~~~~~~
 
 Added

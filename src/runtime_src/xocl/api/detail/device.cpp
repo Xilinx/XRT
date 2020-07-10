@@ -38,7 +38,7 @@ validOrError(const cl_device_type device_type)
     | CL_DEVICE_TYPE_CPU| CL_DEVICE_TYPE_GPU | CL_DEVICE_TYPE_ACCELERATOR
     | CL_DEVICE_TYPE_CUSTOM;
   if (! (device_type & valid) )
-    throw error(CL_INVALID_DEVICE_TYPE);
+    throw error(CL_INVALID_DEVICE_TYPE, "Invalid device type");
 }
 
 void

@@ -90,9 +90,6 @@ XMC_Flasher::XMC_Flasher(std::shared_ptr<pcidev::pci_device> dev)
             std::cout << "Failed to open XMC device on card" << std::endl;
     }
 
-    initCMCStatusMap();
-    initSCStatusMap();
-
 nosup:
     return;
 }
@@ -503,39 +500,6 @@ int XMC_Flasher::writeReg(unsigned RegOffset, unsigned value) {
     return 0;
 }
 
-static std::string getStatus(int status, std::map<int, std::string> &map)
-{
-    auto entry = map.find(status);
-
-    return entry != map.end() ?
-        "0x" + std::to_string(entry->first) + "(" + entry->second + ")":
-	"0x" + std::to_string(entry->first);
-}
-
-/* XMC means CMC */
-void XMC_Flasher::initCMCStatusMap()
-{
-    cmcStatusMap = {
-        {0, "NOT READY"},
-        {1, "READY"},
-        {2, "STOPPED"},
-        {4, "PAUSED"},
-    };
-}
-
-/* BMC means SC */
-void XMC_Flasher::initSCStatusMap()
-{
-    scStatusMap = {
-        {0, "NOT READY"},
-        {1, "READY"},
-        {2, "BSL_UNSYNCED"},
-        {3, "BSL_SYNCED"},
-        {4, "BSL_SYNCED_SC_NOT_UPGRADABLE"},
-        {5, "READY_SC_NOT_UPGRADABLE"},
-    };
-}
-
 bool XMC_Flasher::isXMCReady()
 {
     bool xmcReady = (XMC_MODE() == XMC_READY);
@@ -543,8 +507,8 @@ bool XMC_Flasher::isXMCReady()
     if (!xmcReady) {
         auto format = xrt_core::utils::ios_restore(std::cout);
         if (!mDev->get_sysfs_path("xmc", "").empty()) {
-            std::cout << "ERROR: XMC is not ready: " << std::hex
-                << getStatus(XMC_MODE(), cmcStatusMap) << std::endl;
+            std::cout << "ERROR: XMC is not ready: 0x" << std::hex
+                << XMC_MODE() << std::endl;
         }
     }
     return xmcReady;
@@ -558,7 +522,7 @@ bool XMC_Flasher::isBMCReady()
     if (!bmcReady) {
       auto format = xrt_core::utils::ios_restore(std::cout);
         std::cout << "ERROR: SC is not ready: 0x" << std::hex
-                << getStatus(BMC_MODE(), scStatusMap) << std::endl;
+                << BMC_MODE() << std::endl;
     }
 
     return bmcReady;

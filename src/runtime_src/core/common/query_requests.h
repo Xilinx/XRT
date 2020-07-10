@@ -48,7 +48,9 @@ enum class key_type
   pcie_subsystem_vendor,
   pcie_subsystem_id,
   pcie_link_speed,
+  pcie_link_speed_max,
   pcie_express_lane_width,
+  pcie_express_lane_width_max,
   pcie_bdf,
 
   edge_vendor,
@@ -68,11 +70,13 @@ enum class key_type
   ip_layout_raw,
 
   xmc_version,
+  xmc_board_name,
   xmc_serial_num,
   xmc_max_power,
   xmc_bmc_version,
   xmc_status,
   xmc_reg_base,
+  expected_bmc_version,
 
   dna_serial_num,
   clock_freqs_mhz,
@@ -110,6 +114,7 @@ enum class key_type
 
   v3v3_pex_millivolts,
   v3v3_aux_millivolts,
+  v3v3_aux_milliamps,
 
   ddr_vpp_bottom_millivolts,
   ddr_vpp_top_millivolts,
@@ -281,11 +286,43 @@ struct pcie_link_speed : request
   }
 };
 
+struct pcie_link_speed_max : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::pcie_link_speed_max;
+  static const char* name() { return "link_speed_max"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type val)
+  {
+    return std::to_string(val);
+  }
+};
+
 struct pcie_express_lane_width : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::pcie_express_lane_width;
   static const char* name() { return "width"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type val)
+  {
+    return std::to_string(val);
+  }
+};
+
+struct pcie_express_lane_width_max : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::pcie_express_lane_width_max;
+  static const char* name() { return "width_max"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -530,6 +567,22 @@ struct xmc_version : request
   }
 };
 
+struct xmc_board_name : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::xmc_board_name;
+  static const char* name() { return "xmc_board_name"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static result_type
+  to_string(const result_type& value)
+  {
+    return value;
+  }
+};
+
 struct xmc_serial_num : request
 {
   using result_type = std::string;
@@ -567,6 +620,22 @@ struct xmc_bmc_version : request
   using result_type = std::string;
   static const key_type key = key_type::xmc_bmc_version;
   static const char* name() { return "sc_version"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(const result_type& value)
+  {
+    return value;
+  }
+};
+
+struct expected_bmc_version : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::expected_bmc_version;
+  static const char* name() { return "expected_sc_version"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -983,6 +1052,22 @@ struct v3v3_aux_millivolts : request
   using result_type = uint64_t;
   static const key_type key = key_type::v3v3_aux_millivolts;
   static const char* name() { return "3v3_aux.voltage"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return format::format_base10_shiftdown3(value);
+  }
+};
+
+struct v3v3_aux_milliamps : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::v3v3_aux_milliamps;
+  static const char* name() { return "3v3_aux.current"; }
 
   virtual boost::any
   get(const device*) const = 0;

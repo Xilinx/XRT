@@ -75,10 +75,7 @@ private:
     uint8_t properties;
     uint8_t major_version;
     uint8_t minor_version;
-#if 0
-    uint32_t readTraceForPCIEDevice(xclTraceResultsVector& traceVector, uint32_t nSamples);
-    uint32_t readTraceForEdgeDevice(xclTraceResultsVector& traceVector, uint32_t nSamples);
-#endif
+
     void processTraceData(xclTraceResultsVector& traceVector, uint32_t numSamples, void* data, uint32_t wordsPerSample);
 
     bool mclockTrainingdone = false;

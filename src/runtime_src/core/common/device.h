@@ -182,6 +182,7 @@ public:
   /**
    * get_xclbin_uuid() - Get uuid of currently loaded xclbin
    */
+  XRT_CORE_COMMON_EXPORT
   uuid
   get_xclbin_uuid() const;
 
@@ -211,14 +212,14 @@ public:
   SectionType
   get_axlf_section(axlf_section_kind section, const uuid& xclbin_id = uuid()) const
   {
-    return reinterpret_cast<SectionType>(get_axlf_section(section, xclbin_id));
+    return reinterpret_cast<SectionType>(get_axlf_section(section, xclbin_id).first);
   }
 
   template<typename SectionType>
   SectionType
   get_axlf_section_or_error(axlf_section_kind section, const uuid& xclbin_id = uuid()) const
   {
-    return reinterpret_cast<SectionType>(get_axlf_section_or_error(section, xclbin_id));
+    return reinterpret_cast<SectionType>(get_axlf_section_or_error(section, xclbin_id).first);
   }
 
   /**

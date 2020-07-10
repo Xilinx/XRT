@@ -130,15 +130,68 @@ std::pair<size_t, size_t> xcldev::device::getStreamName (const std::vector<std::
 
 int xcldev::device::readAIMCounters() {
     xclDebugCountersResults debugResults = {0};
+
+    std::vector<uint64_t> baseAddress;
     std::vector<std::string> slotNames;
     std::vector< std::pair<std::string, std::string> > cuNameportNames;
-    unsigned int numSlots = getIPCountAddrNames (AXI_MM_MONITOR, nullptr, &slotNames);
+    uint32_t numSlots = getIPCountAddrNames (AXI_MM_MONITOR, &baseAddress, &slotNames);
+
+    if(-EINVAL == static_cast<int32_t>(numSlots)) {
+      return 0;  // error msg already printed to std::cout
+    }
+
     if (numSlots == 0) {
         std::cout << "ERROR: AXI Interface Monitor IP does not exist on the platform" << std::endl;
         return 0;
     }
     std::pair<size_t, size_t> widths = getCUNamePortName(slotNames, cuNameportNames);
-    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_AIM, &debugResults);
+//    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_AIM, &debugResults);
+
+    for(uint32_t i = 0 ; i < numSlots; i++) {
+      std::string aimName("aximm_mon_");
+      aimName = aimName + std::to_string(baseAddress[i]);
+      std::string namePath = pcidev::get_dev(m_idx)->get_sysfs_path(aimName.c_str(), "name");
+
+      std::size_t pos = namePath.find_last_of('/');
+      std::string path = namePath.substr(0, pos+1);
+      path += "counters";
+
+      std::ifstream ifs(path.c_str());
+      if(!ifs) {
+        continue;
+      }
+
+      const size_t sz = 256;
+      char buffer[sz];
+      std::memset(buffer, 0, sz);
+      ifs.getline(buffer, sz);
+
+      std::vector<uint64_t> valBuf;
+
+      while(!ifs.eof()) {
+        valBuf.push_back(strtoull((const char*)(&buffer), NULL, 10));
+        std::memset(buffer, 0, sz);
+        ifs.getline(buffer, sz);
+      }
+
+      if(valBuf.size() < 13) {
+        std::cout << "ERROR: Incomplete AIM counter data in " << path << std::endl;
+        continue;
+      }
+
+      debugResults.WriteBytes[i]      = valBuf[0];
+      debugResults.WriteTranx[i]      = valBuf[1];
+      debugResults.ReadBytes[i]       = valBuf[4];
+      debugResults.ReadTranx[i]       = valBuf[5];
+      debugResults.OutStandCnts[i]    = valBuf[8];
+      debugResults.LastWriteAddr[i]   = valBuf[9];
+      debugResults.LastWriteData[i]   = valBuf[10];
+      debugResults.LastReadAddr[i]    = valBuf[11];
+      debugResults.LastReadData[i]    = valBuf[12];
+
+      ifs.close();
+    }
+    debugResults.NumSlots = numSlots;
 
     std::cout << "AXI Interface Monitor Counters\n";
     int col1 = std::max(widths.first, strlen("Region or CU")) + 4;
@@ -190,15 +243,68 @@ int xcldev::device::readAIMCounters() {
 
 int xcldev::device::readAMCounters() {
     xclAccelMonitorCounterResults debugResults = {0};
+    std::vector<uint64_t> baseAddress;
     std::vector<std::string> slotNames;
 
-    unsigned int numSlots = getIPCountAddrNames (ACCEL_MONITOR, nullptr, &slotNames);
+    uint32_t numSlots = getIPCountAddrNames (ACCEL_MONITOR, &baseAddress, &slotNames);
+
+    if(-EINVAL == static_cast<int32_t>(numSlots)) {
+      return 0;  // error msg already printed to std::cout
+    }
     if (numSlots == 0) {
         std::cout << "ERROR: Accelerator Monitor IP does not exist on the platform" << std::endl;
         return 0;
     }
+//    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_AM, &debugResults);
 
-    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_AM, &debugResults);
+    for(uint32_t i = 0 ; i < numSlots; i++) {
+      std::string amName("accel_mon_");
+      amName = amName + std::to_string(baseAddress[i]);
+      std::string namePath = pcidev::get_dev(m_idx)->get_sysfs_path(amName.c_str(), "name");
+
+      std::size_t pos = namePath.find_last_of('/');
+      std::string path = namePath.substr(0, pos+1);
+      path += "counters";
+
+      std::ifstream ifs(path.c_str());
+      if(!ifs) {
+        continue;
+      }
+
+      const size_t sz = 256;
+      char buffer[sz];
+      std::memset(buffer, 0, sz);
+      ifs.getline(buffer, sz);
+
+      std::vector<uint64_t> valBuf;
+
+      while(!ifs.eof()) {
+        valBuf.push_back(strtoull((const char*)(&buffer), NULL, 10));
+        std::memset(buffer, 0, sz);
+        ifs.getline(buffer, sz);
+      }
+
+      if(valBuf.size() < 10) {
+        std::cout << "ERROR: Incomplete AM counter data in " << path << std::endl;
+        continue;
+      }
+
+      debugResults.CuExecCount[i]        = valBuf[0];
+      debugResults.CuStartCount[i]       = valBuf[1];
+      debugResults.CuExecCycles[i]       = valBuf[2];
+
+      debugResults.CuStallIntCycles[i]   = valBuf[3];
+      debugResults.CuStallStrCycles[i]   = valBuf[4];
+      debugResults.CuStallExtCycles[i]   = valBuf[5];
+
+      debugResults.CuBusyCycles[i]       = valBuf[6];
+      debugResults.CuMaxParallelIter[i]  = valBuf[7];
+      debugResults.CuMaxExecCycles[i]    = valBuf[8];
+      debugResults.CuMinExecCycles[i]    = valBuf[9];
+
+      ifs.close();
+    }
+    debugResults.NumSlots = numSlots;
 
     std::cout << "Accelerator Monitor Counters (hex values are cycle count)\n";
 
@@ -242,15 +348,65 @@ int xcldev::device::readAMCounters() {
 
 int xcldev::device::readASMCounters() {
     xclStreamingDebugCountersResults debugResults = {0};
+
+    std::vector<uint64_t> baseAddress;
     std::vector<std::string> slotNames;
     std::vector< std::pair<std::string, std::string> > cuNameportNames;
-    unsigned int numSlots = getIPCountAddrNames (AXI_STREAM_MONITOR, nullptr, &slotNames);
+    uint32_t numSlots = getIPCountAddrNames (AXI_STREAM_MONITOR, &baseAddress, &slotNames);
+
+    if(-EINVAL == static_cast<int32_t>(numSlots)) {
+      return 0;  // error msg already printed to std::cout
+    }
     if (numSlots == 0) {
         std::cout << "ERROR: AXI Stream Monitor IP does not exist on the platform" << std::endl;
         return 0;
     }
     std::pair<size_t, size_t> widths = getStreamName(slotNames, cuNameportNames);
-    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_ASM, &debugResults);
+//    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_ASM, &debugResults);
+
+
+    for(uint32_t i = 0 ; i < numSlots; i++) {
+      std::string asmName("axistream_mon_");
+      asmName = asmName + std::to_string(baseAddress[i]);
+      std::string namePath = pcidev::get_dev(m_idx)->get_sysfs_path(asmName.c_str(), "name");
+
+      std::size_t pos = namePath.find_last_of('/');
+      std::string path = namePath.substr(0, pos+1);
+      path += "counters";
+
+      std::ifstream ifs(path.c_str());
+      if(!ifs) {
+        continue;
+      }
+
+      const size_t sz = 256;
+      char buffer[sz];
+      std::memset(buffer, 0, sz);
+      ifs.getline(buffer, sz);
+
+      std::vector<uint64_t> valBuf;
+
+      while(!ifs.eof()) {
+        valBuf.push_back(strtoull((const char*)(&buffer), NULL, 10));
+        std::memset(buffer, 0, sz);
+        ifs.getline(buffer, sz);
+      }
+
+      if(valBuf.size() < 5) {
+        std::cout << "ERROR: Incomplete ASM counter data in " << path << std::endl;
+        continue;
+      }
+
+      debugResults.StrNumTranx[i]     = valBuf[0];
+      debugResults.StrDataBytes[i]    = valBuf[1];
+      debugResults.StrBusyCycles[i]   = valBuf[2];
+      debugResults.StrStallCycles[i]  = valBuf[3];
+      debugResults.StrStarveCycles[i] = valBuf[4];
+
+      ifs.close();
+    }
+    debugResults.NumSlots = numSlots;
+
 
     std::cout << "AXI Stream Monitor Counters\n";
     int col1 = std::max(widths.first, strlen("Stream Master")) + 4;
@@ -292,15 +448,69 @@ int xcldev::device::readLAPCheckers(int aVerbose) {
     //    std::cout << "ERROR: Reading LAPC requires root privileges" << std::endl;
     //    return -EACCES;
     //}
+    std::vector<uint64_t> baseAddress;
     std::vector<std::string> lapcSlotNames;
     std::vector< std::pair<std::string, std::string> > cuNameportNames;
-    unsigned int numSlots = getIPCountAddrNames (LAPC, nullptr, &lapcSlotNames);
+    uint32_t numSlots = getIPCountAddrNames (LAPC, &baseAddress, &lapcSlotNames);
+
+    if(-EINVAL == static_cast<int32_t>(numSlots)) {
+      return 0;  // error msg already printed to std::cout
+    }
     if (numSlots == 0) {
         std::cout << "ERROR: LAPC IP does not exist on the platform" << std::endl;
         return 0;
     }
     std::pair<size_t, size_t> widths = getCUNamePortName(lapcSlotNames, cuNameportNames);
-    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_LAPC, &debugResults);
+//    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_LAPC, &debugResults);
+
+    for(uint32_t i = 0 ; i < numSlots; i++) {
+      std::string lapcName("lapc_");
+      lapcName = lapcName + std::to_string(baseAddress[i]);
+      std::string namePath = pcidev::get_dev(m_idx)->get_sysfs_path(lapcName.c_str(), "name");
+
+      std::size_t pos = namePath.find_last_of('/');
+      std::string path = namePath.substr(0, pos+1);
+      path += "status";
+
+      std::ifstream ifs(path.c_str());
+      if(!ifs) {
+        continue;
+      }
+
+      const size_t sz = 256;
+      char buffer[sz];
+      std::memset(buffer, 0, sz);
+      ifs.getline(buffer, sz);
+
+      std::vector<uint64_t> valBuf;
+
+      while(!ifs.eof()) {
+        valBuf.push_back(strtoull((const char*)(&buffer), NULL, 10));
+        std::memset(buffer, 0, sz);
+        ifs.getline(buffer, sz);
+      }
+
+      if(valBuf.size() < 9) {
+        std::cout << "ERROR: Incomplete LAPC data in " << path << std::endl;
+        continue;
+      }
+
+      debugResults.OverallStatus[i]       = valBuf[0];
+
+      debugResults.CumulativeStatus[i][0] = valBuf[1];
+      debugResults.CumulativeStatus[i][1] = valBuf[2];
+      debugResults.CumulativeStatus[i][2] = valBuf[3];
+      debugResults.CumulativeStatus[i][3] = valBuf[4];
+
+      debugResults.SnapshotStatus[i][0]   = valBuf[5];
+      debugResults.SnapshotStatus[i][1]   = valBuf[6];
+      debugResults.SnapshotStatus[i][2]   = valBuf[7];
+      debugResults.SnapshotStatus[i][3]   = valBuf[8];
+
+      ifs.close();
+    }
+    debugResults.NumSlots = numSlots;
+
     bool violations_found = false;
     bool invalid_codes = false;
     std::cout << "Light Weight AXI Protocol Checkers codes \n";
@@ -377,10 +587,15 @@ int xcldev::device::readLAPCheckers(int aVerbose) {
 
 int xcldev::device::readStreamingCheckers(int aVerbose) {
 
+  std::vector<uint64_t> baseAddress;
   std::vector<std::string> streamingCheckerSlotNames ;
-  unsigned int numCheckers = getIPCountAddrNames(AXI_STREAM_PROTOCOL_CHECKER,
-						 nullptr,
+  uint32_t numCheckers = getIPCountAddrNames(AXI_STREAM_PROTOCOL_CHECKER,
+						 &baseAddress,
 						 &streamingCheckerSlotNames);
+
+  if(-EINVAL == static_cast<int32_t>(numCheckers)) {
+    return 0;  // error msg already printed to std::cout
+  }
   if (numCheckers == 0) {
     std::cout << "ERROR: AXI Streaming Protocol Checkers do not exist on the platform" << std::endl ;
     return 0 ;
@@ -391,7 +606,47 @@ int xcldev::device::readStreamingCheckers(int aVerbose) {
   std::pair<size_t, size_t> widths = getCUNamePortName(streamingCheckerSlotNames, cuNameportNames);
 
   xclDebugStreamingCheckersResults debugResults = {0};
-  xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_SPC, &debugResults);
+//  xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_SPC, &debugResults);
+
+  for(uint32_t i = 0 ; i < numCheckers; i++) {
+    std::string spcName("spc_");
+    spcName = spcName + std::to_string(baseAddress[i]);
+    std::string namePath = pcidev::get_dev(m_idx)->get_sysfs_path(spcName.c_str(), "name");
+
+    std::size_t pos = namePath.find_last_of('/');
+    std::string path = namePath.substr(0, pos+1);
+    path += "status";
+
+    std::ifstream ifs(path.c_str());
+    if(!ifs) {
+      continue;
+    }
+
+    const size_t sz = 256;
+    char buffer[sz];
+    std::memset(buffer, 0, sz);
+    ifs.getline(buffer, sz);
+
+    std::vector<uint64_t> valBuf;
+
+    while(!ifs.eof()) {
+      valBuf.push_back(strtoull((const char*)(&buffer), NULL, 10));
+      std::memset(buffer, 0, sz);
+      ifs.getline(buffer, sz);
+    }
+
+    if(valBuf.size() < 3) {
+      std::cout << "ERROR: Incomplete SPC data in " << path << std::endl;
+      continue;
+    }
+
+    debugResults.PCAsserted[i] = valBuf[0];
+    debugResults.CurrentPC[i]  = valBuf[1];
+    debugResults.SnapshotPC[i] = valBuf[2];
+
+    ifs.close();
+  }
+  debugResults.NumSlots = numCheckers;
 
   // Now print out all of the values (and their interpretations)
 

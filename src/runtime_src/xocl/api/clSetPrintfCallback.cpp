@@ -44,7 +44,7 @@ clSetPrintfCallback(cl_context           context ,
                     void *               user_data )
 {
   validOrError(context,pfn_notify,user_data);
-  throw error(CL_XILINX_UNIMPLEMENTED);
+  throw error(CL_XILINX_UNIMPLEMENTED, "Not implemented");
 }
 
 } // xocl

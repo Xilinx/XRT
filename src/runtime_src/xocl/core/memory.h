@@ -513,7 +513,7 @@ public:
     if (flags & (CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR))
       // allocate sufficiently aligned memory and reassign m_host_ptr
       if (xrt_core::posix_memalign(&m_host_ptr,alignment,sz))
-        throw error(CL_MEM_OBJECT_ALLOCATION_FAILURE);
+        throw error(CL_MEM_OBJECT_ALLOCATION_FAILURE,"Could not allocate host ptr");
     if (flags & CL_MEM_COPY_HOST_PTR && host_ptr)
       std::memcpy(m_host_ptr,host_ptr,sz);
 

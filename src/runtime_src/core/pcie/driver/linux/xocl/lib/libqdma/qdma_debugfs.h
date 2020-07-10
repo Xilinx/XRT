@@ -23,7 +23,7 @@
 #include <linux/pci.h>
 #include <linux/debugfs.h>
 #include <linux/fs.h>
-#include <asm/uaccess.h>
+#include <linux/uaccess.h>
 #include <linux/mutex.h>
 #include <linux/slab.h>
 

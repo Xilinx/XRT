@@ -44,4 +44,5 @@ namespace EscapeCodes {
   static const uint8_t FGC_IN_PROGRESS   = 111;
   static const uint8_t FGC_PASS          = 2;
   static const uint8_t FGC_FAIL          = 1;
+  static const uint8_t FGC_WARN          = 226;
 }
