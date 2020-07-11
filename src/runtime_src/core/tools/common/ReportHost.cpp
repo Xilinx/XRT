@@ -17,6 +17,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "ReportHost.h"
+#include "XBUtilities.h"
 #include "core/common/system.h"
 
 // 3rd Party Library - Include Files
@@ -27,13 +28,13 @@ void
 ReportHost::getPropertyTreeInternal( const xrt_core::device * _pDevice, 
                                      boost::property_tree::ptree &_pt) const
 {
-  // Defer to the 20201 format.  If we ever need to update JSON data, 
+  // Defer to the 20202 format.  If we ever need to update JSON data, 
   // Then update this method to do so.
-  getPropertyTree20201(_pDevice, _pt);
+  getPropertyTree20202(_pDevice, _pt);
 }
 
 void 
-ReportHost::getPropertyTree20201( const xrt_core::device * /*_pDevice*/, 
+ReportHost::getPropertyTree20202( const xrt_core::device * /*_pDevice*/, 
                                   boost::property_tree::ptree &_pt) const
 {
   boost::property_tree::ptree pt;
@@ -45,6 +46,9 @@ ReportHost::getPropertyTree20201( const xrt_core::device * /*_pDevice*/,
 
   xrt_core::get_xrt_info(pt_xrt_info);
   pt.add_child("xrt", pt_xrt_info);
+
+  auto dev_pt = XBUtilities::get_available_devices(true);
+  pt.add_child("devices", dev_pt);
 
   // There can only be 1 root node
   _pt.add_child("host", pt);
@@ -96,6 +100,17 @@ ReportHost::writeReport(const xrt_core::device * _pDevice,
     throw xrt_core::error(boost::str(boost::format("%s. Please contact your Xilinx representative to fix the issue")
          % ex.what()));
   }
+
+  _output << "Devices\n";
+  boost::property_tree::ptree& available_devices = _pt.get_child("host.devices", empty_ptree);
+  for(auto& kd : available_devices) {
+    boost::property_tree::ptree& dev = kd.second;
+    std::string note = dev.get<bool>("is_ready") ? "" : "NOTE: Device not ready for use";
+    _output << boost::format("  [%s] : %s (ID=%s) %s\n") % dev.get<std::string>("bdf") 
+      % dev.get<std::string>("vbnv") % dev.get<std::string>("id") % note;
+  }
+  _output << std::endl;
+  
 
 }
 

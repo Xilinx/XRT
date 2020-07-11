@@ -27,12 +27,9 @@ file(GLOB XBUTIL_V2_BASE_FILES
 # Collect local directory files
 file(GLOB XBUTIL_V2_SUBCMD_FILES
   "XBReport.cpp"
-  "SubCmdDmaTest.cpp"
-  "SubCmdDump.cpp"
   "SubCmdExamine.cpp"
   "SubCmdProgram.cpp"
   "SubCmdReset.cpp"
-  "SubCmdScan.cpp"
   "SubCmdValidate.cpp"
   "SubCmdAdvanced.cpp"
   "OO_Clock.cpp"
