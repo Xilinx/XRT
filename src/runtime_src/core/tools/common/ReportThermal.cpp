@@ -29,7 +29,7 @@ populate_temp(const xrt_core::device * device, const std::string& loc_id, const 
   uint64_t temp;
   try {
     temp = xrt_core::device_query<QueryRequestType>(device);
-  } catch (const std::exception ex){
+  } catch (const std::exception& ex){
     pt.put("error_msg", ex.what());
   }
   

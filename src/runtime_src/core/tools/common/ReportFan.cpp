@@ -31,7 +31,7 @@ populate_fan(const xrt_core::device * device, const std::string& loc_id, const s
     temp = xrt_core::device_query<qr::fan_trigger_critical_temp>(device);
     rpm = xrt_core::device_query<qr::fan_speed_rpm>(device);
     is_present = xrt_core::device_query<qr::fan_fan_presence>(device);
-  } catch (const std::exception ex){
+  } catch (const std::exception& ex){
     pt.put("error_msg", ex.what());
   }
   

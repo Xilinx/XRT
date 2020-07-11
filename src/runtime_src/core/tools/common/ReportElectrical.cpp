@@ -34,7 +34,7 @@ populate_sensor(const xrt_core::device * device, const std::string loc_id, const
   try {
     if (!std::is_same<QRVoltage, qr::noop>::value)
       voltage = xrt_core::device_query<QRVoltage>(device);
-  } catch (const std::exception ex){
+  } catch (const std::exception& ex){
     pt.put("voltage.error_msg", ex.what());
   }
   pt.put("voltage.volts", XBUtilities::format_base10_shiftdown3(voltage));
@@ -43,7 +43,7 @@ populate_sensor(const xrt_core::device * device, const std::string loc_id, const
   try {
     if (!std::is_same<QRCurrent, qr::noop>::value)
       current = xrt_core::device_query<QRCurrent>(device);
-  } catch (const std::exception ex){
+  } catch (const std::exception& ex){
     pt.put("current.error_msg", ex.what());
   }
   pt.put("current.amps", XBUtilities::format_base10_shiftdown3(current));
