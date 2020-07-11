@@ -1258,9 +1258,11 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	/*
 	 * Even if extended probe fails, make sure feature ROM subdev
-	 * is loaded to provide basic info about the board.
+	 * is loaded to provide basic info about the board. Also, need
+	 * FLASH to be able to flash new shell.
 	 */
 	(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FEATURE_ROM);
+	(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FLASH);
 
 	/*
 	 * if can not find BLP metadata, it has to bring up flash and xmc to
