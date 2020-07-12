@@ -65,40 +65,40 @@ device::
 get_section_info(const char *buff, axlf_section_kind kind, 
         const char *&sect_info, size_t *sect_size)
 {
-  struct connectivity       *mem_conn = nullptr;
-  struct mem_topology       *mem_topo = nullptr;
+  struct connectivity       *group_conn = nullptr;
+  struct mem_topology       *group_topo = nullptr;
 
   if (!buff)
     return;
 
-  /* Typically input buff contains information regading mem_topology and 
-   * connectivity with the following order :-
+  /* Typically input buff contains information regading group_topology and 
+   * group_connectivity with the following order :-
    * buff:
-   *   1. mem_topology
-   *   2. connectivity 
+   *   1. group_topology
+   *   2. group_connectivity 
    *
    * Hence, extract information should be in the same order. 
    */
-  mem_topo = (struct mem_topology *)buff;
-  if (!mem_topo)
+  group_topo = (struct mem_topology *)buff;
+  if (!group_topo)
     throw std::runtime_error("failed to get memory topology information");
 
-  auto mem_data_size = mem_topo->m_count * sizeof(typeof(mem_topo->m_mem_data));
-  auto mem_topo_size = offsetof(typeof(*mem_topo), m_mem_data) + mem_data_size; 
-  buff += mem_topo_size; 
-  mem_conn = (struct connectivity *)buff;
-  if (!mem_conn)
+  auto group_topo_size = sizeof(struct mem_topology) + 
+                            ((group_topo->m_count - 1) * sizeof(group_topo->m_mem_data)); 
+  buff += group_topo_size; 
+  group_conn = (struct connectivity *)buff;
+  if (!group_conn)
     throw std::runtime_error("failed to get connectivity information");
 
-  auto conn_data_size = mem_conn->m_count * sizeof(typeof(mem_conn->m_connection));
-  auto mem_conn_size = offsetof(typeof(*mem_conn), m_connection) + conn_data_size; 
-
+  auto mem_conn_size = sizeof(struct connectivity) + 
+                        ((group_conn->m_count - 1) * sizeof(group_conn->m_connection));
+                        
   if (kind == MEM_TOPOLOGY) {
-    sect_info = (const char *)mem_topo;
-    *sect_size = mem_topo_size;
+    sect_info = (const char *)group_topo;
+    *sect_size = group_topo_size;
   }
   else if (kind == CONNECTIVITY) {
-    sect_info = (const char *)mem_conn;
+    sect_info = (const char *)group_conn;
     *sect_size =  mem_conn_size;
   }
 }

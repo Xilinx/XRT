@@ -217,7 +217,7 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 	ddr = xocl_bo_ddr_idx(flags);
 	if (ddr >= ddr_count)
 		return -EINVAL;
-	err = XOCL_GET_MEM_TOPOLOGY(xdev, topo);
+	err = XOCL_GET_GROUP_TOPOLOGY(xdev, topo);
 	if (err)
 		return err;
 
@@ -235,7 +235,7 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 		}
 	}
 done:	
-	XOCL_PUT_MEM_TOPOLOGY(xdev);
+	XOCL_PUT_GROUP_TOPOLOGY(xdev);
 	return err;
 }
 
@@ -450,7 +450,7 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 		 * DRM allocate contiguous pages, shift the vmapping with
 		 * bar address offset
 		 */
-		ret = XOCL_GET_MEM_TOPOLOGY(xdev, topo);
+		ret = XOCL_GET_GROUP_TOPOLOGY(xdev, topo);
 		if (ret)
 			goto out_free;
 
@@ -472,7 +472,7 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 				xobj->p2p_bar_offset = bar_off;
 		}
 
-		XOCL_PUT_MEM_TOPOLOGY(xdev);
+		XOCL_PUT_GROUP_TOPOLOGY(xdev);
 	}
 
 	if (xobj->flags & XOCL_PAGE_ALLOC) {

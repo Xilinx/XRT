@@ -1424,22 +1424,24 @@ int shim::xclGetMemInfo(char **MemInfo)
     std::vector<char> membuf;
     std::vector<char> connbuf;
 
-    /* Get the memory topology Information */
-    mDev->sysfs_get("icap", "mem_topology", errmsg, membuf);
+    /* Get the group topology Information */
+    mDev->sysfs_get("icap", "group_topology", errmsg, membuf);
     if (!errmsg.empty()) {
         xrt_logmsg(XRT_ERROR, "%s: %s", __func__, errmsg);
         return -EINVAL;
     }
 
-    /* Get the memory connectivity Information */
-    mDev->sysfs_get("icap", "connectivity", errmsg, connbuf);
+    /* Get the group connectivity Information */
+    mDev->sysfs_get("icap", "group_connectivity", errmsg, connbuf);
     if (!errmsg.empty()) {
         xrt_logmsg(XRT_ERROR, "%s: %s", __func__, errmsg);
         return -EINVAL;
     }
+
+    if (!membuf.size() || !connbuf.size())
+        return 0;
 
     size = membuf.size() + connbuf.size();
-
     /* Allocate memory for *MemInfo */
     *MemInfo =  (char *)malloc(size);
     if (!*MemInfo)
