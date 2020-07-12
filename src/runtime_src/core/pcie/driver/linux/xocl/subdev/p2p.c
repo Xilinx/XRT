@@ -91,6 +91,7 @@ struct p2p {
 
 	int			p2p_bar_idx;
 	ulong			p2p_bar_len;
+	ulong			p2p_bar_start;
 	u64			p2p_exp_bar_sz;
 
 	ulong			p2p_mem_chunk_num;
@@ -896,12 +897,61 @@ failed:
 	return ret;
 }
 
+static int p2p_remap_resource(struct platform_device *pdev, int bar_idx,
+	struct resource *res)
+{
+	struct p2p *p2p = platform_get_drvdata(pdev);
+	long bar_off;
+	ulong res_len = res->end - res->start + 1;
+
+	if (bar_idx != p2p->p2p_bar_idx)
+		return 0;
+
+	if (!p2p->remapper) {
+		p2p_err(p2p, "remap does not exist");
+		return -EINVAL;
+	}
+
+	p2p_info(p2p, "Remap reserve resource %pR", res);
+	bar_off = p2p_bar_map(p2p, res->start, res_len);
+	if (bar_off < 0) {
+		p2p_err(p2p, "not enough remap space");
+		return -ENOENT;
+	}
+	res->start = bar_off;
+	res->end = bar_off + res_len - 1;
+
+	return 0;
+}
+
+static int p2p_release_resource(struct platform_device *pdev,
+	struct resource *res)
+{
+	struct p2p *p2p = platform_get_drvdata(pdev);
+
+	if (res->start < p2p->p2p_bar_start ||
+	    res->start >= p2p->p2p_bar_start + p2p->p2p_bar_len)
+		return 0;
+
+	if (!p2p->remapper) {
+		p2p_err(p2p, "remap does not exist");
+		return -EINVAL;
+	}
+
+	p2p_info(p2p, "Remap release resource %pR", res);
+	p2p_bar_unmap(p2p, res->start);
+
+	return 0;
+}
+
 struct xocl_p2p_funcs p2p_ops = {
 	.mem_map = p2p_mem_map,
 	.mem_unmap = p2p_mem_unmap,
 	.mem_init = p2p_mem_init_locked,
 	.mem_cleanup = p2p_mem_cleanup_locked,
 	.mem_get_pages = p2p_mem_get_pages,
+	.remap_resource = p2p_remap_resource,
+	.release_resource = p2p_release_resource,
 };
 
 static ssize_t config_store(struct device *dev, struct device_attribute *da,
@@ -1094,6 +1144,8 @@ static int p2p_probe(struct platform_device *pdev)
 		return 0;
 
 	pcidev = XOCL_PL_TO_PCI_DEV(p2p->pdev);
+	p2p->p2p_bar_start = (ulong) pci_resource_start(pcidev,
+			p2p->p2p_bar_idx);
 	p2p->p2p_bar_len = (ulong) pci_resource_len(pcidev, p2p->p2p_bar_idx);
 	if (p2p->p2p_bar_len < XOCL_P2P_CHUNK_SIZE) {
 		xocl_err(&pdev->dev, "p2p bar len is 0");

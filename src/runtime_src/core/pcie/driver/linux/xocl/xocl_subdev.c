@@ -297,6 +297,20 @@ failed:
 	return ret;
 }
 
+static void __xocl_platform_device_unreg(xdev_handle_t xdev_hdl,
+	struct platform_device *pldev)
+{
+	int i = 0;
+	struct resource *res;
+
+	for (res = platform_get_resource(pldev, IORESOURCE_MEM, i); res;
+	    res = platform_get_resource(pldev, IORESOURCE_MEM, i)) {
+		xocl_p2p_release_resource(xdev_hdl, res);
+		i++;
+	}
+	platform_device_unregister(pldev);
+}
+
 static void __xocl_subdev_destroy(xdev_handle_t xdev_hdl,
 		struct xocl_subdev *subdev)
 {
@@ -326,10 +340,10 @@ static void __xocl_subdev_destroy(xdev_handle_t xdev_hdl,
 		case XOCL_SUBDEV_STATE_ACTIVE:
 		case XOCL_SUBDEV_STATE_OFFLINE:
 			device_release_driver(&pldev->dev);
-			__attribute__ ((fallthrough));
+			/* fall through */
 		case XOCL_SUBDEV_STATE_ADDED:
 		default:
-			platform_device_unregister(pldev);
+			__xocl_platform_device_unreg(xdev_hdl, pldev);
 		}
 		xocl_lock_xdev(xdev_hdl);
 		subdev->hold = false;
@@ -472,6 +486,10 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 					retval = -EINVAL;
 					goto error;
 				}
+				/* Check if IP is on P2P bar, the res start will be endpoint
+				 * address
+				 */
+				xocl_p2p_remap_resource(xdev_hdl, bar_idx, &res[i]);
 				iostart = pci_resource_start(core->pdev,
 						bar_idx);
 				res[i].start += iostart;
@@ -845,7 +863,7 @@ static int __xocl_subdev_offline(xdev_handle_t xdev_hdl,
 		xocl_xdev_info(xdev_hdl, "release driver %s",
 				subdev->info.name);
 		device_release_driver(&subdev->pldev->dev);
-		platform_device_unregister(subdev->pldev);
+		__xocl_platform_device_unreg(xdev_hdl, subdev->pldev);
 		subdev->ops = NULL;
 		subdev->pldev = NULL;
 		subdev->state = XOCL_SUBDEV_STATE_INIT;
