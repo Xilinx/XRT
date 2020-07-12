@@ -140,9 +140,11 @@ struct icap {
 	struct clock_freq_topology *xclbin_clock_freq_topology;
 	unsigned long		xclbin_clock_freq_topology_length;
 	struct mem_topology	*mem_topo;
+	struct mem_topology	*group_topo;
 	struct ip_layout	*ip_layout;
 	struct debug_ip_layout	*debug_layout;
 	struct connectivity	*connectivity;
+	struct connectivity	*group_connectivity;
 	uint64_t		max_host_mem_aperture;
 	void			*partition_metadata;
 
@@ -2387,7 +2389,7 @@ static int init_memory_group(struct platform_device *pdev, struct axlf *xclbin)
 		 * topology section for the same.
 		 */
 		topo_target = (void **)&icap->group_topo;
-		err = alloc_and_get_axlf_section(icap, xclbin, MEM_TOPOLOGY,
+		err = xrt_xclbin_get_section(xclbin, MEM_TOPOLOGY,
 						 topo_target,
 						 &section_size);
 		if (err != 0)
@@ -2407,7 +2409,7 @@ static int init_memory_group(struct platform_device *pdev, struct axlf *xclbin)
 		 * connectivity section for the same.
 		 */
 		conn_target = (void **)&icap->group_connectivity;
-		err = alloc_and_get_axlf_section(icap, xclbin, CONNECTIVITY,
+		err = xrt_xclbin_get_section(xclbin, CONNECTIVITY,
 						 conn_target,
 						 &section_size);
 		if (err != 0)
