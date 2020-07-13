@@ -107,16 +107,9 @@ rh_package_list()
 
         RH_LIST+=(\
          systemd-devel \
+         kernel-devel-$(uname -r) \
+         kernel-headers-$(uname -r) \
         )
-
-	if [ $FLAVOR == "rhel" ]; then
-  
-            RH_LIST+=(\
-             kernel-devel-$(uname -r) \
-             kernel-headers-$(uname -r) \
-            )
-  
-        fi
 
     else
 
@@ -313,6 +306,14 @@ prep_ubuntu()
 
 prep_centos7()
 {
+    echo "Enabling EPEL repository..."
+    rpm -q --quiet epel-release
+    if [ $? != 0 ]; then
+    	 yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+	     yum check-update
+    fi
+    echo "Installing cmake3 from EPEL repository..."
+    yum install -y cmake3
     if [ $docker == 0 ]; then 
         echo "Enabling CentOS SCL repository..."
         yum --enablerepo=extras install -y centos-release-scl
@@ -330,7 +331,14 @@ prep_rhel7()
     
     echo "Enabling RHEL SCL repository..."
     yum-config-manager --enable rhel-server-rhscl-7-rpms
-    
+
+    MINOR=`echo ${VERSION} | awk -F. '{print $2}'`
+    if [ "$MINOR" != "" ] && [ $MINOR -gt 6 ]; then
+      echo "Enabling repository 'rhel-7-server-optional-rpms'"
+      subscription-manager repos --enable "rhel-7-server-optional-rpms"
+      echo "Enabling repository 'rhel-7-server-e4s-optional-rpms"
+      subscription-manager repos --enable "rhel-7-server-e4s-optional-rpms"
+    fi
 }
 
 prep_rhel8()
@@ -348,6 +356,14 @@ prep_rhel8()
 
 prep_centos8()
 {
+    echo "Enabling EPEL repository..."
+    rpm -q --quiet epel-release
+    if [ $? != 0 ]; then
+    	 yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+	     yum check-update
+    fi
+    echo "Installing cmake3 from EPEL repository..."
+    yum install -y cmake3
     echo "Enabling PowerTools repo for CentOS8 ..."
     yum install -y dnf-plugins-core
     yum config-manager --set-enabled PowerTools
@@ -356,11 +372,6 @@ prep_centos8()
 
 prep_centos()
 {
-    echo "Enabling EPEL repository..."
-    yum install -y epel-release
-    echo "Installing cmake3 from EPEL repository..."
-    yum install -y cmake3
-
     if [ $MAJOR == 8 ]; then
         prep_centos8
     else
