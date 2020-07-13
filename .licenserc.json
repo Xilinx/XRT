@@ -33,6 +33,6 @@
     ]
   },
   "exclude": {
-    "build/**/*": ["GPL"]
+    "build/*": ["GPL"]
   }
 }
