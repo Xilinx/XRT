@@ -510,3 +510,23 @@ XBUtilities::str_to_enum_reset(const std::string& str)
     return it->second;
   throw xrt_core::error(str + " is invalid. Please specify a valid reset type");
 }
+
+static std::string
+precision(double value, int p)
+{
+  std::stringstream stream;
+  stream << std::fixed << std::setprecision(p) << value;
+  return stream.str();
+}
+
+std::string
+XBUtilities::format_base10_shiftdown3(uint64_t value)
+{
+  return precision(static_cast<double>(value) / 1000.0, 3);
+}
+
+std::string
+XBUtilities::format_base10_shiftdown6(uint64_t value)
+{
+  return precision(static_cast<double>(value) / 1000000.0, 6);
+}

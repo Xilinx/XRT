@@ -250,7 +250,6 @@ get_rom_info(boost::property_tree::ptree& pt) const
   ptree_updater<query::rom_time_since_epoch>::query_and_put(this, pt);
 }
 
-
 void
 device::
 get_xmc_info(boost::property_tree::ptree& pt) const
@@ -272,84 +271,6 @@ get_platform_info(boost::property_tree::ptree& pt) const
   ptree_updater<query::status_p2p_enabled>::query_and_put(this, pt);
   ptree_updater<query::flash_type>::query_and_put(this, pt);
 }
-
-void
-device::
-read_thermal_pcb(boost::property_tree::ptree& pt) const
-{
-  ptree_updater<query::temp_card_top_front>::query_and_put(this, pt);
-  ptree_updater<query::temp_card_top_rear>::query_and_put(this, pt);
-  ptree_updater<query::temp_card_bottom_front>::query_and_put(this, pt);
-}
-
-void
-device::
-read_thermal_fpga(boost::property_tree::ptree& pt) const
-{
-  ptree_updater<query::temp_fpga>::query_and_put(this, pt);
-}
-
-void
-device::
-read_fan_info(boost::property_tree::ptree& pt) const
-{
-  ptree_updater<query::fan_trigger_critical_temp>::query_and_put(this, pt);
-  ptree_updater<query::fan_fan_presence>::query_and_put(this, pt);
-  ptree_updater<query::fan_speed_rpm>::query_and_put(this, pt);
-}
-
-void
-device::
-read_thermal_cage(boost::property_tree::ptree& pt) const
-{
-  ptree_updater<query::cage_temp_0>::query_and_put(this, pt);
-  ptree_updater<query::cage_temp_1>::query_and_put(this, pt);
-  ptree_updater<query::cage_temp_2>::query_and_put(this, pt);
-  ptree_updater<query::cage_temp_3>::query_and_put(this, pt);
-}
-
-void
-device::
-read_electrical(boost::property_tree::ptree& pt) const
-{
-  ptree_updater<query::v12v_pex_millivolts>::query_and_put(this, pt);
-  ptree_updater<query::v12v_pex_milliamps>::query_and_put(this,  pt);
-  ptree_updater<query::v12v_aux_millivolts>::query_and_put(this, pt);
-  ptree_updater<query::v12v_aux_milliamps>::query_and_put(this,  pt);
-
-  ptree_updater<query::v3v3_pex_millivolts>::query_and_put(this, pt);
-  ptree_updater<query::v3v3_aux_millivolts>::query_and_put(this, pt);
-  ptree_updater<query::v3v3_aux_milliamps>::query_and_put(this, pt);
-  ptree_updater<query::ddr_vpp_bottom_millivolts>::query_and_put(this, pt);
-  ptree_updater<query::ddr_vpp_top_millivolts>::query_and_put(this, pt);
-
-
-  ptree_updater<query::v5v5_system_millivolts>::query_and_put(this, pt);
-  ptree_updater<query::v1v2_vcc_top_millivolts>::query_and_put(this, pt);
-  ptree_updater<query::v1v2_vcc_bottom_millivolts>::query_and_put(this, pt);
-  ptree_updater<query::v1v8_millivolts>::query_and_put(this, pt);
-  ptree_updater<query::v0v85_millivolts>::query_and_put(this, pt);
-  ptree_updater<query::v0v9_vcc_millivolts>::query_and_put(this, pt);
-  ptree_updater<query::v12v_sw_millivolts>::query_and_put(this, pt);
-  ptree_updater<query::mgt_vtt_millivolts>::query_and_put(this, pt);
-  ptree_updater<query::int_vcc_millivolts>::query_and_put(this, pt);
-  ptree_updater<query::int_vcc_milliamps>::query_and_put(this, pt);
-
-  ptree_updater<query::v3v3_pex_milliamps>::query_and_put(this, pt);
-  ptree_updater<query::v0v85_milliamps>::query_and_put(this, pt);
-  ptree_updater<query::v3v3_vcc_millivolts>::query_and_put(this, pt);
-  ptree_updater<query::hbm_1v2_millivolts>::query_and_put(this, pt);
-  ptree_updater<query::v2v5_vpp_millivolts>::query_and_put(this, pt);
-  ptree_updater<query::int_bram_vcc_millivolts>::query_and_put(this, pt);
-}
-
-void
-device::
-read_power(boost::property_tree::ptree& pt) const
-{
-  ptree_updater<query::power_microwatts>::query_and_put(this, pt);
-}
-
 
 void
 device::

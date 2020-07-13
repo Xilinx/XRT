@@ -113,6 +113,8 @@ enum class key_type
   v12v_aux_milliamps,
 
   v3v3_pex_millivolts,
+  v3v3_pex_milliamps,
+
   v3v3_aux_millivolts,
   v3v3_aux_milliamps,
 
@@ -128,12 +130,20 @@ enum class key_type
   mgt_vtt_millivolts,
   int_vcc_millivolts,
   int_vcc_milliamps,
-  v3v3_pex_milliamps,
-  v0v85_milliamps,
+  int_vcc_temp,
+  int_vcc_io_milliamps,
   v3v3_vcc_millivolts,
   hbm_1v2_millivolts,
   v2v5_vpp_millivolts,
-  int_bram_vcc_millivolts,
+  v12_aux1_millivolts,
+  vcc1v2_i_milliamps,
+  v12_in_i_milliamps,
+  v12_in_aux0_i_milliamps,
+  v12_in_aux1_i_milliamps,
+  vcc_aux_millivolts,
+  vcc_aux_pmc_millivolts,
+  vcc_ram_millivolts,
+  int_vcc_io_millivolts,
   firewall_detect_level,
   firewall_status,
   firewall_time_sec,
@@ -152,7 +162,8 @@ enum class key_type
   flash_type,
   board_name,
   interface_uuids,
-  logic_uuids
+  logic_uuids,
+  noop
 
 };
 
@@ -182,28 +193,6 @@ public:
   }
 };
 
-struct format
-{
-  static std::string
-  precision(double value, int p)
-  {
-    std::stringstream stream;
-    stream << std::fixed << std::setprecision(p) << value;
-    return stream.str();
-  }
-
-  static std::string
-  format_base10_shiftdown3(uint64_t value)
-  {
-    return precision(static_cast<double>(value) / 1000.0, 3);
-  }
-
-  static std::string
-  format_base10_shiftdown6(uint64_t value)
-  {
-    return precision(static_cast<double>(value) / 1000000.0, 6);
-  }
-};
 
 struct pcie_vendor : request
 {
@@ -750,7 +739,6 @@ struct temp_card_top_front : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::temp_card_top_front;
-  static const char* name() { return "temp_top_front_C"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -766,7 +754,6 @@ struct temp_card_top_rear : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::temp_card_top_rear;
-  static const char* name() { return "temp_top_rear_C"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -782,7 +769,6 @@ struct temp_card_bottom_front : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::temp_card_bottom_front;
-  static const char* name() { return "temp_bottom_front_C"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -798,7 +784,6 @@ struct temp_fpga : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::temp_fpga;
-  static const char* name() { return "temp_C"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -814,7 +799,6 @@ struct fan_trigger_critical_temp : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::fan_trigger_critical_temp;
-  static const char* name() { return "temp_trigger_critical_C"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -828,9 +812,8 @@ struct fan_trigger_critical_temp : request
 
 struct fan_fan_presence : request
 {
-  using result_type = bool;
+  using result_type = std::string;
   static const key_type key = key_type::fan_fan_presence;
-  static const char* name() { return "fan_presence"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -838,7 +821,7 @@ struct fan_fan_presence : request
   static std::string
   to_string(result_type value)
   {
-    return value ? "true" : "false";
+    return value.compare("A") == 0 ? "true" : "false";
   }
 };
 
@@ -846,7 +829,6 @@ struct fan_speed_rpm : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::fan_speed_rpm;
-  static const char* name() { return "fan_speed_rpm"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -901,13 +883,18 @@ struct hbm_temp : request
 
   virtual boost::any
   get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return std::to_string(value);
+  }
 };
 
 struct cage_temp_0 : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::cage_temp_0;
-  static const char* name() { return "temp0_C"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -923,7 +910,6 @@ struct cage_temp_1 : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::cage_temp_1;
-  static const char* name() { return "temp1_C"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -939,7 +925,6 @@ struct cage_temp_2 : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::cage_temp_2;
-  static const char* name() { return "temp2_C"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -955,7 +940,6 @@ struct cage_temp_3 : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::cage_temp_3;
-  static const char* name() { return "temp3_C"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -971,7 +955,6 @@ struct v12v_pex_millivolts : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::v12v_pex_millivolts;
-  static const char* name() { return "12v_pex.voltage"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -979,7 +962,7 @@ struct v12v_pex_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -987,7 +970,6 @@ struct v12v_pex_milliamps : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::v12v_pex_milliamps;
-  static const char* name() { return "12v_pex.current"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -995,7 +977,7 @@ struct v12v_pex_milliamps : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1003,7 +985,6 @@ struct v12v_aux_millivolts : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::v12v_aux_millivolts;
-  static const char* name() { return "12v_aux.voltage"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1011,7 +992,7 @@ struct v12v_aux_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1019,7 +1000,6 @@ struct v12v_aux_milliamps : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::v12v_aux_milliamps;
-  static const char* name() { return "12v_aux.current"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1027,7 +1007,7 @@ struct v12v_aux_milliamps : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1035,7 +1015,6 @@ struct v3v3_pex_millivolts : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::v3v3_pex_millivolts;
-  static const char* name() { return "3v3_pex.voltage"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1043,7 +1022,7 @@ struct v3v3_pex_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1051,7 +1030,6 @@ struct v3v3_aux_millivolts : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::v3v3_aux_millivolts;
-  static const char* name() { return "3v3_aux.voltage"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1059,23 +1037,7 @@ struct v3v3_aux_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
-  }
-};
-
-struct v3v3_aux_milliamps : request
-{
-  using result_type = uint64_t;
-  static const key_type key = key_type::v3v3_aux_milliamps;
-  static const char* name() { return "3v3_aux.current"; }
-
-  virtual boost::any
-  get(const device*) const = 0;
-
-  static std::string
-  to_string(result_type value)
-  {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1083,7 +1045,6 @@ struct ddr_vpp_bottom_millivolts : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::ddr_vpp_bottom_millivolts;
-  static const char* name() { return "ddr_vpp_bottom.voltage"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1091,7 +1052,7 @@ struct ddr_vpp_bottom_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1099,7 +1060,6 @@ struct ddr_vpp_top_millivolts : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::ddr_vpp_top_millivolts;
-  static const char* name() { return "ddr_vpp_top.voltage"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1107,7 +1067,7 @@ struct ddr_vpp_top_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1115,7 +1075,6 @@ struct v5v5_system_millivolts : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::v5v5_system_millivolts;
-  static const char* name() { return "sys_5v5.voltage"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1123,7 +1082,7 @@ struct v5v5_system_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1131,7 +1090,6 @@ struct v1v2_vcc_top_millivolts : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::v1v2_vcc_top_millivolts;
-  static const char* name() { return "1v2_top.voltage"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1139,7 +1097,7 @@ struct v1v2_vcc_top_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1147,7 +1105,6 @@ struct v1v2_vcc_bottom_millivolts : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::v1v2_vcc_bottom_millivolts;
-  static const char* name() { return "1v2_btm.voltage"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1155,7 +1112,7 @@ struct v1v2_vcc_bottom_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1163,7 +1120,6 @@ struct v1v8_millivolts : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::v1v8_millivolts;
-  static const char* name() { return "1v8.voltage"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1171,7 +1127,7 @@ struct v1v8_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1179,7 +1135,6 @@ struct v0v85_millivolts : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::v0v85_millivolts;
-  static const char* name() { return "0v85.voltage"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1187,7 +1142,7 @@ struct v0v85_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1195,7 +1150,6 @@ struct v0v9_vcc_millivolts : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::v0v9_vcc_millivolts;
-  static const char* name() { return "mgt_0v9.voltage"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1203,7 +1157,7 @@ struct v0v9_vcc_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1211,7 +1165,6 @@ struct v12v_sw_millivolts : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::v12v_sw_millivolts;
-  static const char* name() { return "12v_sw.voltage"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1219,7 +1172,7 @@ struct v12v_sw_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1227,7 +1180,6 @@ struct mgt_vtt_millivolts : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::mgt_vtt_millivolts;
-  static const char* name() { return "mgt_vtt.voltage"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1235,7 +1187,7 @@ struct mgt_vtt_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1243,7 +1195,6 @@ struct int_vcc_millivolts : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::int_vcc_millivolts;
-  static const char* name() { return "vccint.voltage"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1251,7 +1202,7 @@ struct int_vcc_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1259,7 +1210,6 @@ struct int_vcc_milliamps : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::int_vcc_milliamps;
-  static const char* name() { return "vccint.current"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1267,7 +1217,22 @@ struct int_vcc_milliamps : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
+  }
+};
+
+struct int_vcc_temp : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::int_vcc_temp;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return std::to_string(value);
   }
 };
 
@@ -1275,7 +1240,6 @@ struct v3v3_pex_milliamps : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::v3v3_pex_milliamps;
-  static const char* name() { return "3v3_pex.current"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1283,15 +1247,14 @@ struct v3v3_pex_milliamps : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
-struct v0v85_milliamps : request
+struct v3v3_aux_milliamps : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::v0v85_milliamps;
-  static const char* name() { return "0v85.current"; }
+  static const key_type key = key_type::v3v3_aux_milliamps;
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1299,7 +1262,22 @@ struct v0v85_milliamps : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
+  }
+};
+
+struct int_vcc_io_milliamps : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::int_vcc_io_milliamps;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return std::to_string(value);
   }
 };
 
@@ -1307,7 +1285,6 @@ struct v3v3_vcc_millivolts : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::v3v3_vcc_millivolts;
-  static const char* name() { return "vcc3v3.voltage"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1315,7 +1292,7 @@ struct v3v3_vcc_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1323,7 +1300,6 @@ struct hbm_1v2_millivolts : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::hbm_1v2_millivolts;
-  static const char* name() { return "hbm_1v2.voltage"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1331,7 +1307,7 @@ struct hbm_1v2_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
@@ -1339,7 +1315,6 @@ struct v2v5_vpp_millivolts : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::v2v5_vpp_millivolts;
-  static const char* name() { return "vpp2v5.voltage"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1347,15 +1322,14 @@ struct v2v5_vpp_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
   }
 };
 
-struct int_bram_vcc_millivolts : request
+struct v12_aux1_millivolts : request
 {
   using result_type = uint64_t;
-  static const key_type key = key_type::int_bram_vcc_millivolts;
-  static const char* name() { return "vccint_bram.voltage"; }
+  static const key_type key = key_type::v12_aux1_millivolts;
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1363,7 +1337,127 @@ struct int_bram_vcc_millivolts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown3(value);
+    return std::to_string(value);
+  }
+};
+
+struct vcc1v2_i_milliamps : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::vcc1v2_i_milliamps;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return std::to_string(value);
+  }
+};
+
+struct v12_in_i_milliamps : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::v12_in_i_milliamps;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return std::to_string(value);
+  }
+};
+
+struct v12_in_aux0_i_milliamps : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::v12_in_aux0_i_milliamps;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return std::to_string(value);
+  }
+};
+
+struct v12_in_aux1_i_milliamps : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::v12_in_aux1_i_milliamps;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return std::to_string(value);
+  }
+};
+
+struct vcc_aux_millivolts : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::vcc_aux_millivolts;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return std::to_string(value);
+  }
+};
+
+struct vcc_aux_pmc_millivolts : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::vcc_aux_pmc_millivolts;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return std::to_string(value);
+  }
+};
+
+struct vcc_ram_millivolts : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::vcc_ram_millivolts;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return std::to_string(value);
+  }
+};
+
+struct int_vcc_io_millivolts : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::int_vcc_io_millivolts;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return std::to_string(value);
   }
 };
 
@@ -1419,7 +1513,6 @@ struct power_microwatts : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::power_microwatts;
-  static const char* name() { return "power_watts"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1427,7 +1520,7 @@ struct power_microwatts : request
   static std::string
   to_string(result_type value)
   {
-    return format::format_base10_shiftdown6(value);
+    return std::to_string(value);
   }
 };
 
@@ -1535,6 +1628,22 @@ struct board_name : request
 
   virtual boost::any
   get(const device*) const = 0;
+};
+
+struct noop : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::noop;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return std::to_string(value);
+  }
+
 };
 
 } // query
