@@ -1285,7 +1285,8 @@ done:
 void xocl_cma_bank_free(struct xocl_dev	*xdev)
 {
 	__xocl_cma_bank_free(xdev);
-	xocl_cleanup_mem(xdev->core.drm);
+	if (xdev->core.drm)
+		xocl_cleanup_mem(xdev->core.drm);
 	xocl_icap_clean_bitstream(xdev);
 }
 
