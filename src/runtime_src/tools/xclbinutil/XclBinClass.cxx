@@ -36,17 +36,6 @@ namespace XUtil = XclBinUtilities;
 static const std::string MIRROR_DATA_START = "XCLBIN_MIRROR_DATA_START";
 static const std::string MIRROR_DATA_END = "XCLBIN_MIRROR_DATA_END";
 
-template <typename T>
-std::vector<T> as_vector(boost::property_tree::ptree const& pt, 
-                         boost::property_tree::ptree::key_type const& key)
-{
-    std::vector<T> r;
-    for (auto& item : pt.get_child(key))
-        r.push_back(item.second);
-    return r;
-}
-
-
 static
 bool getVersionMajorMinorPath(const char * _pVersion, uint8_t & _major, uint8_t & _minor, uint16_t & _patch)
 {
@@ -753,7 +742,7 @@ XclBin::updateHeaderFromSection(Section *_pSection)
     boost::property_tree::ptree ptDsa;
     ptDsa = pt.get_child("build_metadata.dsa");
 
-    std::vector<boost::property_tree::ptree> feature_roms = as_vector<boost::property_tree::ptree>(ptDsa, "feature_roms");
+    std::vector<boost::property_tree::ptree> feature_roms = XUtil::as_vector<boost::property_tree::ptree>(ptDsa, "feature_roms");
 
     boost::property_tree::ptree featureRom;
     if (!feature_roms.empty()) {
@@ -1434,7 +1423,7 @@ XclBin::setKeyValue(const std::string & _keyValue)
 
     XUtil::TRACE_PrintTree("KEYVALUE:", ptKeyValueMetadata);
     boost::property_tree::ptree ptKeyValues = ptKeyValueMetadata.get_child("keyvalue_metadata");
-    std::vector<boost::property_tree::ptree> keyValues = as_vector<boost::property_tree::ptree>(ptKeyValues, "key_values");
+    std::vector<boost::property_tree::ptree> keyValues = XUtil::as_vector<boost::property_tree::ptree>(ptKeyValues, "key_values");
 
     // Update existing key
     bool bKeyFound = false;
@@ -1494,7 +1483,7 @@ XclBin::removeKey(const std::string & _sKey)
 
    XUtil::TRACE_PrintTree("KEYVALUE:", ptKeyValueMetadata);
    boost::property_tree::ptree ptKeyValues = ptKeyValueMetadata.get_child("keyvalue_metadata");
-   std::vector<boost::property_tree::ptree> keyValues = as_vector<boost::property_tree::ptree>(ptKeyValues, "key_values");
+   std::vector<boost::property_tree::ptree> keyValues = XUtil::as_vector<boost::property_tree::ptree>(ptKeyValues, "key_values");
 
    // Update existing key
    bool bKeyFound = false;
