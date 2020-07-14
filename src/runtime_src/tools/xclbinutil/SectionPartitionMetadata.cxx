@@ -52,6 +52,7 @@ const FDTProperty::PropertyNameFormat SectionPartitionMetadata::m_propertyNameFo
   { "firmware_version_major", FDTProperty::DF_u32 },
   { "firmware_version_minor", FDTProperty::DF_u32 },
   { "firmware_version_revision", FDTProperty::DF_u32 },
+  { "interrupt_alias", FDTProperty::DF_asz },
   { "__INFO", FDTProperty::DF_sz }
 };
 
@@ -331,6 +332,10 @@ SchemaTransformToDTC_addressable_endpoint( const std::string _sEndPointName,
 
   // -- Get the 'pcie_base_address_register' if it exists
   SchemaTransform_nameValue("pcie_base_address_register", "pcie_bar_mapping", false  /*required*/, _ptOriginal, _ptTransformed);
+
+  // -- Get the 'interrupt_alias' if it exists
+  if (_ptOriginal.find("interrupt_alias") != _ptOriginal.not_found()) 
+      _ptTransformed.add_child("interrupt_alias", _ptOriginal.get_child("interrupt_alias"));
 }
 
 /**
@@ -480,6 +485,10 @@ SchemaTransformToPM_addressable_endpoint( const std::string _sEndPointName,
 
   // -- Get the 'pcie_base_address_register' if it exists
   SchemaTransform_nameValue("pcie_bar_mapping", "pcie_base_address_register", false  /*required*/, _ptOriginal, _ptTransformed);
+
+  // -- Get the 'interrupt_alias' if it exists
+  if (_ptOriginal.find("interrupt_alias") != _ptOriginal.not_found()) 
+      _ptTransformed.add_child("interrupt_alias", _ptOriginal.get_child("interrupt_alias"));
 }
 
 /**
