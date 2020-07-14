@@ -1591,6 +1591,10 @@ struct xocl_p2p_funcs {
 	int (*mem_get_pages)(struct platform_device *pdev,
 			ulong bar_off, ulong size,
 			struct page **pages, ulong npages);
+	int (*remap_resource)(struct platform_device *pdev, int bar_idx,
+			struct resource *res);
+	int (*release_resource)(struct platform_device *pdev,
+			struct resource *res);
 };
 #define	P2P_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_P2P).pldev
 #define	P2P_OPS(xdev)				\
@@ -1613,6 +1617,12 @@ struct xocl_p2p_funcs {
 	(P2P_CB(xdev) ?							\
 	 P2P_OPS(xdev)->mem_get_pages(P2P_DEV(xdev), bar_off, len,	\
 	 pages, npages) : -ENODEV)
+#define xocl_p2p_remap_resource(xdev, bar, res)				\
+	(P2P_CB(xdev) ?							\
+	 P2P_OPS(xdev)->remap_resource(P2P_DEV(xdev), bar, res) : -ENODEV)
+#define xocl_p2p_release_resource(xdev, res)				\
+	(P2P_CB(xdev) ?							\
+	 P2P_OPS(xdev)->release_resource(P2P_DEV(xdev), res) : -ENODEV)
 
 /* Each P2P chunk we set up must be at least 256MB */
 #define XOCL_P2P_CHUNK_SHIFT		28
