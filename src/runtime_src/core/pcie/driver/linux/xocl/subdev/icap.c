@@ -344,7 +344,7 @@ static void icap_set_data(struct icap *icap, struct xcl_pr_region *hwicap);
 static uint64_t icap_get_data_nolock(struct platform_device *pdev, enum data_kind kind);
 static uint64_t icap_get_data(struct platform_device *pdev, enum data_kind kind);
 static void icap_refresh_addrs(struct platform_device *pdev);
-static inline int icap_calibrate_mig(struct platform_device *pdev);
+static int icap_calib_and_check(struct platform_device *pdev);
 static void icap_probe_urpdev(struct platform_device *pdev, struct axlf *xclbin,
 	int *num_urpdev, struct xocl_subdev **urpdevs);
 
@@ -734,7 +734,7 @@ static int icap_ocl_update_clock_freq_topology(struct platform_device *pdev,
 	if (err)
 		goto done;
 
-	err = icap_calibrate_mig(pdev);
+	err = icap_calib_and_check(pdev);
 done:
 	mutex_unlock(&icap->icap_lock);
 	icap_xclbin_rd_unlock(icap);
@@ -2156,6 +2156,20 @@ static int icap_calibrate_mig(struct platform_device *pdev)
 	return err;
 }
 
+static int icap_calib_and_check(struct platform_device *pdev)
+{
+	struct icap *icap = platform_get_drvdata(pdev);
+
+	BUG_ON(!mutex_is_locked(&icap->icap_lock));
+
+	if (icap->data_retention)
+		ICAP_WARN(icap, "xbutil reclock may not retain data");
+
+	icap_calib(icap, false);
+
+	return icap_calibrate_mig(pdev);
+}
+
 static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin, bool sref)
 {
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
@@ -3211,8 +3225,10 @@ static ssize_t data_retention_show(struct device *dev,
 	u32 val = 0, ack;
 	int err;
 
-	if (!ICAP_PRIVILEGED(icap))
+	if (!ICAP_PRIVILEGED(icap)){
+		val = icap_get_data(to_platform_device(dev), DATA_RETAIN);
 		goto done;
+	}
 
 	err = xocl_iores_read32(xdev, XOCL_SUBDEV_LEVEL_PRP,
 			IORES_DDR4_RESET_GATE, 0, &ack);
