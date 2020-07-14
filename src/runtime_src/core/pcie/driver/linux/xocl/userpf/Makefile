@@ -81,6 +81,7 @@ xocl-y := \
 	../subdev/address_translator.o \
 	../subdev/cu.o \
 	../subdev/p2p.o \
+	../subdev/intc.o \
 	$(xocl_lib-y)	\
 	$(drv_common-y) \
 	xocl_drv.o	\

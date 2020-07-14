@@ -1492,6 +1492,28 @@ struct xocl_cu_funcs {
 #define CU_CB(xdev, idx, cb) \
 	(CU_DEV(xdev, idx) && CU_OPS(xdev, idx) && CU_OPS(xdev, idx)->cb)
 
+/* INTC call back */
+struct xocl_intc_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	int (* request_intr)(struct platform_device *pdev, int intr_id,
+			     irqreturn_t (*handler)(int irq, void *arg),
+			     void *arg);
+	int (* config_intr)(struct platform_device *pdev, int intr_id, bool en);
+};
+#define	INTC_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_INTC).pldev
+#define INTC_OPS(xdev)  \
+	((struct xocl_intc_funcs *)SUBDEV(xdev, XOCL_SUBDEV_INTC).ops)
+#define INTC_CB(xdev, cb) \
+	(INTC_DEV(xdev) && INTC_OPS(xdev) && INTC_OPS(xdev)->cb)
+#define xocl_intc_request(xdev, id, handler, arg) \
+	(INTC_CB(xdev, request_intr) ? \
+	 INTC_OPS(xdev)->request_intr(INTC_DEV(xdev), id, handler, arg) : \
+	 -ENODEV)
+#define xocl_intc_config(xdev, id, en) \
+	(INTC_CB(xdev, config_intr) ? \
+	 INTC_OPS(xdev)->config_intr(INTC_DEV(xdev), id, en) : \
+	 -ENODEV)
+
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
 void xocl_init_dsa_priv(xdev_handle_t xdev_hdl);
@@ -1916,4 +1938,7 @@ void xocl_fini_lapc(void);
 
 int __init xocl_init_pmc(void);
 void xocl_fini_pmc(void);
+
+int __init xocl_init_intc(void);
+void xocl_fini_intc(void);
 #endif
