@@ -92,7 +92,8 @@ namespace XBUtilities {
   void collect_devices( const std::set<std::string>  &_deviceBDFs,
                         bool _inUserDomain,
                         xrt_core::device_collection &_deviceCollection);
-  void report_available_devices();
+  boost::property_tree::ptree
+  get_available_devices(bool inUserDomain);
   std::string format_base10_shiftdown3(uint64_t value);
   std::string format_base10_shiftdown6(uint64_t value);
   

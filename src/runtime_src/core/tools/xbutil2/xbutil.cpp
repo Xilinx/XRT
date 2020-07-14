@@ -16,10 +16,8 @@
 
 // Sub Commands
 #include "SubCmdExamine.h"
-#include "SubCmdDmaTest.h"
 #include "SubCmdProgram.h"
 #include "SubCmdReset.h"
-#include "SubCmdScan.h"
 #include "SubCmdValidate.h"
 #include "SubCmdAdvanced.h"
 
@@ -48,15 +46,6 @@ int main( int argc, char** argv )
     subCommands.emplace_back(std::make_shared< SubCmdAdvanced >(true,  false, true ));
     subCommands.emplace_back(std::make_shared<    SubCmdReset >(true,  false, false));
   }
-
-  // Add depricated commands
-  #ifdef ENABLE_DEPRECATED_2020_1_SUBCMDS
-  {
-    // Syntax: SubCmdClass( IsHidden, IsDepricated, IsPreliminary)
-    subCommands.emplace_back(std::make_shared< SubCmdDmaTest >(true, true, false));
-    subCommands.emplace_back(std::make_shared<    SubCmdScan >(true, true, false));
-  }
-  #endif
 
   const std::string executable = "xbutil";
 

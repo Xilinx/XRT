@@ -234,23 +234,9 @@ public:
   XRT_CORE_COMMON_EXPORT
   std::pair<size_t, size_t>
   get_ert_slots() const;
-
+  
   // Move all these 'pt' functions out the class interface
   virtual void get_info(boost::property_tree::ptree&) const {}
-  virtual void read_dma_stats(boost::property_tree::ptree&) const {}
-
-  XRT_CORE_COMMON_EXPORT
-  void get_rom_info(boost::property_tree::ptree & pt) const;
-
-  XRT_CORE_COMMON_EXPORT
-  void get_xmc_info(boost::property_tree::ptree & pt) const;
-
-  XRT_CORE_COMMON_EXPORT
-  void get_platform_info(boost::property_tree::ptree & pt) const;
-
-  XRT_CORE_COMMON_EXPORT
-  void read_firewall(boost::property_tree::ptree &pt) const;
-
   /**
    * read() - maps pcie bar and copy bytes word (32bit) by word
    * THIS FUNCTION DOES NOT BELONG HERE
@@ -274,14 +260,6 @@ public:
     auto fd = open(subdev, flag);
     return {fd, std::bind(&device::close, this, fd)};
   }
-
-  // Helper methods, move else where
-  typedef std::string (*FORMAT_STRING_PTR)(const boost::any &);
-  static std::string format_primative(const boost::any & _data);
-  static std::string format_hex(const boost::any & _data);
-  static std::string format_hex_base2_shiftup30(const boost::any & _data);
-  static std::string format_base10_shiftdown3(const boost::any &_data);
-  static std::string format_base10_shiftdown6(const boost::any &_data);
 
  private:
   id_type m_device_id;

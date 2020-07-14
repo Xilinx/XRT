@@ -28,13 +28,13 @@ void
 ReportPlatform::getPropertyTreeInternal( const xrt_core::device * _pDevice,
                                          boost::property_tree::ptree &_pt) const
 {
-  // Defer to the 20201 format.  If we ever need to update JSON data, 
+  // Defer to the 20202 format.  If we ever need to update JSON data, 
   // Then update this method to do so.
-  getPropertyTree20201(_pDevice, _pt);
+  getPropertyTree20202(_pDevice, _pt);
 }
 
 /*
- * helper function for getPropertyTree20201()
+ * helper function for getPropertyTree20202()
  */
 static bool 
 same_shell(const std::string& vbnv, const std::string& id, 
@@ -49,7 +49,7 @@ same_shell(const std::string& vbnv, const std::string& id,
 }
 
 /*
- * helper function for getPropertyTree20201()
+ * helper function for getPropertyTree20202()
  */
 static bool 
 same_sc(const std::string& sc, const DSAInfo& installed) 
@@ -58,21 +58,13 @@ same_sc(const std::string& sc, const DSAInfo& installed)
 }
 
 void 
-ReportPlatform::getPropertyTree20201( const xrt_core::device * _pDevice,
+ReportPlatform::getPropertyTree20202( const xrt_core::device * _pDevice,
                                       boost::property_tree::ptree &_pt) const
 {
   boost::property_tree::ptree pt;
 
   // There can only be 1 root node
   _pt.add_child("platform", pt);
-  boost::property_tree::ptree on_board_rom_info;
-  boost::property_tree::ptree on_board_platform_info;
-  boost::property_tree::ptree on_board_xmc_info;
-  boost::property_tree::ptree on_board_dev_info;
-  _pDevice->get_rom_info(on_board_rom_info);
-  _pDevice->get_platform_info(on_board_platform_info);
-  _pDevice->get_xmc_info(on_board_xmc_info);
-  _pDevice->get_info(on_board_dev_info);
 
   Flasher f(_pDevice->get_device_id());
   std::vector<DSAInfo> availableDSAs = f.getInstalledDSA();
@@ -80,8 +72,8 @@ ReportPlatform::getPropertyTree20201( const xrt_core::device * _pDevice,
   BoardInfo info;
   f.getBoardInfo(info);
   //create information tree for a device
-  _pt.put("platform.bdf", on_board_dev_info.get<std::string>("bdf"));
-  _pt.put("platform.flash_type", on_board_platform_info.get<std::string>("flash_type", "N/A"));
+  _pt.put("platform.bdf", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_pDevice)));
+  _pt.put("platform.flash_type", xrt_core::device_query<xrt_core::query::flash_type>(_pDevice));
   _pt.put("platform.hardware.serial_num", info.mSerialNum);
   //Flashable partition running on FPGA
   std::vector<std::string> logic_uuids, interface_uuids;
@@ -102,11 +94,11 @@ ReportPlatform::getPropertyTree20201( const xrt_core::device * _pDevice,
       _pt.put("platform.current_shell.id", (boost::format("0x%x") % part.timestamp));
     }
   } else { //1RP
-    _pt.put("platform.current_shell.vbnv", on_board_rom_info.get<std::string>("vbnv", "N/A"));
-    _pt.put("platform.current_shell.id", on_board_rom_info.get<std::string>("id", "N/A"));
+    _pt.put("platform.current_shell.vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(_pDevice));
+    _pt.put("platform.current_shell.id", xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(_pDevice));
   }
 
-  std::string _scVer = on_board_xmc_info.get<std::string>("sc_version");
+  std::string _scVer = xrt_core::device_query<xrt_core::query::xmc_bmc_version>(_pDevice);
   if(_scVer.empty())
     _scVer = info.mBMCVer;
   _pt.put("platform.current_shell.sc_version", _scVer);
