@@ -303,6 +303,9 @@ static void __xocl_platform_device_unreg(xdev_handle_t xdev_hdl,
 	int i = 0;
 	struct resource *res;
 
+	if (!pldev)
+		return;
+
 	for (res = platform_get_resource(pldev, IORESOURCE_MEM, i); res;
 	    res = platform_get_resource(pldev, IORESOURCE_MEM, i)) {
 		xocl_p2p_release_resource(xdev_hdl, res);
@@ -827,6 +830,7 @@ static int __xocl_subdev_offline(xdev_handle_t xdev_hdl,
 		struct xocl_subdev *subdev)
 {
 	struct xocl_subdev_funcs *subdev_funcs;
+	struct platform_device *pldev;
 	int ret = 0;
 
 	if (subdev->state < XOCL_SUBDEV_STATE_ACTIVE) {
@@ -862,10 +866,11 @@ static int __xocl_subdev_offline(xdev_handle_t xdev_hdl,
 	} else {
 		xocl_xdev_info(xdev_hdl, "release driver %s",
 				subdev->info.name);
+		pldev = subdev->pldev;
 		device_release_driver(&subdev->pldev->dev);
-		__xocl_platform_device_unreg(xdev_hdl, subdev->pldev);
 		subdev->ops = NULL;
 		subdev->pldev = NULL;
+		__xocl_platform_device_unreg(xdev_hdl, pldev);
 		subdev->state = XOCL_SUBDEV_STATE_INIT;
 	}
 	xocl_lock_xdev(xdev_hdl);
