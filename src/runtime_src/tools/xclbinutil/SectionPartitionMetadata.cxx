@@ -53,6 +53,7 @@ const FDTProperty::PropertyNameFormat SectionPartitionMetadata::m_propertyNameFo
   { "firmware_version_minor", FDTProperty::DF_u32 },
   { "firmware_version_revision", FDTProperty::DF_u32 },
   { "interrupt_alias", FDTProperty::DF_asz },
+  { "alias_name", FDTProperty::DF_sz },
   { "__INFO", FDTProperty::DF_sz }
 };
 
@@ -207,6 +208,7 @@ SchemaTransformToDTC_interrupt_endpoint( const std::string _sEndPointName,
   }
 
   // -- Move the array down to an interrupt araay
+  _ptTransformed.put("alias_name", _sEndPointName.c_str());
   _ptTransformed.add_child("interrupts", _ptOriginal);
 }
 
@@ -215,11 +217,14 @@ SchemaTransformToDTC_interrupt_mapping( const boost::property_tree::ptree& _ptOr
                                         boost::property_tree::ptree & _ptTransformed)
 { 
   // Look at each entry
+  unsigned int indexCount = 0;
   for (auto endpoint : _ptOriginal) {
     boost::property_tree::ptree ptEndpoint;
 
     SchemaTransformToDTC_interrupt_endpoint(endpoint.first, endpoint.second, ptEndpoint);
-    _ptTransformed.add_child(endpoint.first, ptEndpoint);
+    std::string entry = std::string("@") + std::to_string(indexCount++);
+      _ptTransformed.add_child(entry.c_str(), ptEndpoint);
+//    _ptTransformed.push_back(std::make_pair("", ptEndpoint));
   }
 }
 
@@ -438,10 +443,14 @@ SchemaTransformToDTC_root( const boost::property_tree::ptree & _ptOriginal,
 // -- Transform to partition metadata schema functions -----------------------
 
 void 
-SchemaTransformToPM_interrupt_endpoint( const std::string _sEndPointName,
-                                        const boost::property_tree::ptree& _ptOriginal,
+SchemaTransformToPM_interrupt_endpoint( const boost::property_tree::ptree& _ptOriginal,
+                                        std::string & _sEndPointName,
                                         boost::property_tree::ptree & _ptTransformed)
 {
+  _sEndPointName = _ptOriginal.get<std::string>("alias_name", "");
+  if (_sEndPointName.empty()) 
+    throw std::runtime_error("Error: interrupt addressable_endpoints property 'alias_name' is either not defined or empty.");
+
   // -- Transform 'interrupts" to the addressable_endpont array format
   if (_ptOriginal.find("interrupts") != _ptOriginal.not_found()) {
     std::vector<std::string> interruptVector = as_vector<std::string>(_ptOriginal, "interrupts");
@@ -466,9 +475,10 @@ SchemaTransformToPM_interrupt_mapping( const boost::property_tree::ptree& _ptOri
   // Look at each entry
   for (auto endpoint : _ptOriginal) {
     boost::property_tree::ptree ptEndpoint;
+    std::string endpointName;
 
-    SchemaTransformToPM_interrupt_endpoint(endpoint.first, endpoint.second, ptEndpoint);
-    _ptTransformed.add_child(endpoint.first, ptEndpoint);
+    SchemaTransformToPM_interrupt_endpoint(endpoint.second, endpointName, ptEndpoint);
+    _ptTransformed.add_child(endpointName, ptEndpoint);
   }
 }
 
