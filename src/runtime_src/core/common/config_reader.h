@@ -156,7 +156,7 @@ get_data_transfer_trace()
 inline bool
 get_power_profile()
 {
-  static bool value = get_profile() && detail::get_bool_value("Debug.power_profile",false);
+  static bool value = detail::get_bool_value("Debug.power_profile",false);
   return value;
 }
 
