@@ -687,7 +687,6 @@ struct flash_address
   static result_type
   user(const xrt_core::device* device, key_type)
   {
-	  //throw std::runtime_error("query request not supported on userpf");
 	  return 0;
   }
 
