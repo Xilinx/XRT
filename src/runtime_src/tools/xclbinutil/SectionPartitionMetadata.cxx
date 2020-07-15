@@ -194,6 +194,34 @@ SchemaTransformUniversal_schema_version( const boost::property_tree::ptree& _ptO
 }
 
 // -- Transform to DTC schema functions ---------------------------------------
+void 
+SchemaTransformToDTC_interrupt_endpoint( const std::string _sEndPointName,
+                                         const boost::property_tree::ptree& _ptOriginal,
+                                         boost::property_tree::ptree & _ptTransformed)
+{
+  // -- Transform array to 'interrupts' array
+  // Validate the the count id correct
+  if (_ptOriginal.size() % 2 != 0) {
+    std::string errMsg =  XUtil::format("Error: The interrupt count (%d) for the interrupt '%s' needs to be a paired (e.g. even) set.", _ptOriginal.size(), _sEndPointName.c_str());
+    throw std::runtime_error(errMsg);
+  }
+
+  // -- Move the array down to an interrupt araay
+  _ptTransformed.add_child("interrupts", _ptOriginal);
+}
+
+void 
+SchemaTransformToDTC_interrupt_mapping( const boost::property_tree::ptree& _ptOriginal,
+                                        boost::property_tree::ptree & _ptTransformed)
+{ 
+  // Look at each entry
+  for (auto endpoint : _ptOriginal) {
+    boost::property_tree::ptree ptEndpoint;
+
+    SchemaTransformToDTC_interrupt_endpoint(endpoint.first, endpoint.second, ptEndpoint);
+    _ptTransformed.add_child(endpoint.first, ptEndpoint);
+  }
+}
 
 /**
  * Helper function to transform the interfaces
@@ -330,12 +358,18 @@ SchemaTransformToDTC_addressable_endpoint( const std::string _sEndPointName,
                            SchemaTransformUniversal_firmware,
                            _ptOriginal, _ptTransformed);
 
-  // -- Get the 'pcie_base_address_register' if it exists
+  // -- Get the 'pcie_base_address_register' (optional)
   SchemaTransform_nameValue("pcie_base_address_register", "pcie_bar_mapping", false  /*required*/, _ptOriginal, _ptTransformed);
 
-  // -- Get the 'interrupt_alias' if it exists
+  // -- Get the 'interrupt_alias' (optional)
   if (_ptOriginal.find("interrupt_alias") != _ptOriginal.not_found()) 
       _ptTransformed.add_child("interrupt_alias", _ptOriginal.get_child("interrupt_alias"));
+
+  // -- Get the "interrupt_mapping" (optional)
+  SchemaTransform_subNode( "interrupt_mapping", false /*required*/, 
+                           SchemaTransformToDTC_interrupt_mapping,
+                           _ptOriginal, _ptTransformed);
+
 }
 
 /**
@@ -402,6 +436,41 @@ SchemaTransformToDTC_root( const boost::property_tree::ptree & _ptOriginal,
 
 
 // -- Transform to partition metadata schema functions -----------------------
+
+void 
+SchemaTransformToPM_interrupt_endpoint( const std::string _sEndPointName,
+                                        const boost::property_tree::ptree& _ptOriginal,
+                                        boost::property_tree::ptree & _ptTransformed)
+{
+  // -- Transform 'interrupts" to the addressable_endpont array format
+  if (_ptOriginal.find("interrupts") != _ptOriginal.not_found()) {
+    std::vector<std::string> interruptVector = as_vector<std::string>(_ptOriginal, "interrupts");
+
+    if ((interruptVector.size() % 2) != 0) 
+      throw std::runtime_error("Error: 'addressable_endpoints." + _sEndPointName + ".interrupts' doesn't have and even set of items.");
+    
+    // -- Push the array back to interrupt key name
+    for (const std::string & interruptValue : interruptVector) {
+      boost::property_tree::ptree ptValue;
+      ptValue.put("", interruptValue.c_str());
+      _ptTransformed.push_back(std::make_pair("", ptValue));
+    }
+  }
+}
+
+
+void 
+SchemaTransformToPM_interrupt_mapping( const boost::property_tree::ptree& _ptOriginal,
+                                       boost::property_tree::ptree & _ptTransformed)
+{ 
+  // Look at each entry
+  for (auto endpoint : _ptOriginal) {
+    boost::property_tree::ptree ptEndpoint;
+
+    SchemaTransformToPM_interrupt_endpoint(endpoint.first, endpoint.second, ptEndpoint);
+    _ptTransformed.add_child(endpoint.first, ptEndpoint);
+  }
+}
 
 /**
  * Helper function to transform the interfaces
@@ -483,12 +552,16 @@ SchemaTransformToPM_addressable_endpoint( const std::string _sEndPointName,
                            SchemaTransformUniversal_firmware,
                            _ptOriginal, _ptTransformed);
 
-  // -- Get the 'pcie_base_address_register' if it exists
+  // -- Get the 'pcie_base_address_register' (optional)
   SchemaTransform_nameValue("pcie_bar_mapping", "pcie_base_address_register", false  /*required*/, _ptOriginal, _ptTransformed);
 
-  // -- Get the 'interrupt_alias' if it exists
+  // -- Get the 'interrupt_alias' (optional)
   if (_ptOriginal.find("interrupt_alias") != _ptOriginal.not_found()) 
       _ptTransformed.add_child("interrupt_alias", _ptOriginal.get_child("interrupt_alias"));
+
+  SchemaTransform_subNode( "interrupt_mapping", false /*required*/, 
+                           SchemaTransformToPM_interrupt_mapping,
+                            _ptOriginal, _ptTransformed);
 }
 
 /**
