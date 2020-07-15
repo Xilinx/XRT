@@ -1414,46 +1414,6 @@ int shim::xclGetBOProperties(unsigned int boHandle, xclBOProperties *properties)
     return result ? -errno : result;
 }
 
-/*
- * xclGetMemInfo()
- */
-int shim::xclGetMemInfo(char **MemInfo)
-{
-    std::string errmsg;
-    size_t size = 0;
-    std::vector<char> membuf;
-    std::vector<char> connbuf;
-
-    /* Get the group topology Information */
-    mDev->sysfs_get("icap", "group_topology", errmsg, membuf);
-    if (!errmsg.empty()) {
-        xrt_logmsg(XRT_ERROR, "%s: %s", __func__, errmsg);
-        return -EINVAL;
-    }
-
-    /* Get the group connectivity Information */
-    mDev->sysfs_get("icap", "group_connectivity", errmsg, connbuf);
-    if (!errmsg.empty()) {
-        xrt_logmsg(XRT_ERROR, "%s: %s", __func__, errmsg);
-        return -EINVAL;
-    }
-
-    if (!membuf.size() || !connbuf.size())
-        return 0;
-
-    size = membuf.size() + connbuf.size();
-    /* Allocate memory for *MemInfo */
-    *MemInfo =  (char *)malloc(size);
-    if (!*MemInfo)
-        return -ENOMEM;
-
-    memset((void *)*MemInfo, 0, size);
-    memcpy((void *)*MemInfo, membuf.data(), membuf.size());
-    memcpy((void *)(*MemInfo + membuf.size()), connbuf.data(), connbuf.size());
-
-    return size;
-}
-
 int shim::xclGetSectionInfo(void* section_info, size_t * section_size,
     enum axlf_section_kind kind, int index)
 {
@@ -2275,18 +2235,8 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 #endif
 
     if (!ret) {
-      char *pMemInfo = NULL;
       auto core_device = xrt_core::get_userpf_device(drv);
-      
-      /* Get memory topology info from driver through sysfs */
-      drv->xclGetMemInfo(&pMemInfo);
-      /* Populate the retrive info into device class */
-      core_device->register_axlf(buffer, pMemInfo);
-
-      /* Free the allocated memory */
-      if (pMemInfo)
-          free(pMemInfo);
-
+      core_device->register_axlf(buffer);
 #ifdef ENABLE_HAL_PROFILING
       xdphal::update_device(handle) ;
 #endif

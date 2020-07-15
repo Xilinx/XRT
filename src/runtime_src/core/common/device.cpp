@@ -62,77 +62,29 @@ get_xclbin_uuid() const
 
 void
 device::
-get_section_info(const char *buff, axlf_section_kind kind, 
-        const char *&sect_info, size_t *sect_size)
-{
-  struct connectivity       *group_conn = nullptr;
-  struct mem_topology       *group_topo = nullptr;
-
-  if (!buff)
-    return;
-
-  /* Typically input buff contains information regading group_topology and 
-   * group_connectivity with the following order :-
-   * buff:
-   *   1. group_topology
-   *   2. group_connectivity 
-   *
-   * Hence, extract information should be in the same order. 
-   */
-  group_topo = (struct mem_topology *)buff;
-  if (!group_topo)
-    throw std::runtime_error("failed to get memory topology information");
-
-  auto group_topo_size = sizeof(struct mem_topology) + 
-                            ((group_topo->m_count - 1) * sizeof(group_topo->m_mem_data)); 
-  buff += group_topo_size; 
-  group_conn = (struct connectivity *)buff;
-  if (!group_conn)
-    throw std::runtime_error("failed to get connectivity information");
-
-  auto mem_conn_size = sizeof(struct connectivity) + 
-                        ((group_conn->m_count - 1) * sizeof(group_conn->m_connection));
-                        
-  if (kind == MEM_TOPOLOGY) {
-    sect_info = (const char *)group_topo;
-    *sect_size = group_topo_size;
-  }
-  else if (kind == CONNECTIVITY) {
-    sect_info = (const char *)group_conn;
-    *sect_size =  mem_conn_size;
-  }
-}
-
-void
-device::
-register_axlf(const axlf* top, const char *info_buff)
+register_axlf(const axlf* top)
 {
   m_axlf_sections.clear();
   m_xclbin_uuid = uuid(top->m_header.uuid);
-  axlf_section_kind kinds[] = {EMBEDDED_METADATA, AIE_METADATA, IP_LAYOUT, CONNECTIVITY, MEM_TOPOLOGY, DEBUG_IP_LAYOUT, SYSTEM_METADATA};
+  axlf_section_kind kinds[] = {EMBEDDED_METADATA, AIE_METADATA, IP_LAYOUT, CONNECTIVITY, 
+			ASK_GROUP_CONNECTIVITY, ASK_GROUP_TOPOLOGY, MEM_TOPOLOGY, DEBUG_IP_LAYOUT, SYSTEM_METADATA};
   for (auto kind : kinds) {
-    if ((kind == MEM_TOPOLOGY) && (info_buff != nullptr)) {
-      const char *mem_topo = nullptr; 
-      size_t sect_size = 0;
-      get_section_info(info_buff, MEM_TOPOLOGY, mem_topo, &sect_size);
-      std::vector<char> data{mem_topo, mem_topo + sect_size};
-      m_axlf_sections.emplace(kind , std::move(data));
-    }
-    else if ((kind == CONNECTIVITY) && (info_buff != nullptr)) {
-      const char *mem_conn = nullptr; 
-      size_t sect_size = 0;
-      get_section_info(info_buff, CONNECTIVITY, mem_conn, &sect_size);
-      std::vector<char> data{mem_conn, mem_conn + sect_size};
-      m_axlf_sections.emplace(kind , std::move(data));
-    }
-    else {
-      auto hdr = ::xclbin::get_axlf_section(top, kind);
+    auto hdr = ::xclbin::get_axlf_section(top, kind);
+    if (!hdr) {
+      /* If group topology or group connectivity doesn't exists then use the
+       * mem topology or connectivity respectively section for the same.
+       */
+      if (kind == ASK_GROUP_TOPOLOGY)
+	hdr = ::xclbin::get_axlf_section(top, MEM_TOPOLOGY);
+      else if (kind == ASK_GROUP_CONNECTIVITY)
+	hdr = ::xclbin::get_axlf_section(top, CONNECTIVITY);
+
       if (!hdr)
         continue;
-      auto section_data = reinterpret_cast<const char*>(top) + hdr->m_sectionOffset;
-      std::vector<char> data{section_data, section_data + hdr->m_sectionSize};
-      m_axlf_sections.emplace(kind , std::move(data));
     }
+    auto section_data = reinterpret_cast<const char*>(top) + hdr->m_sectionOffset;
+    std::vector<char> data{section_data, section_data + hdr->m_sectionSize};
+    m_axlf_sections.emplace(kind , std::move(data));
   }
 
   // Build modified CONNECTIVITY and MEM_TOPOLOGY section based on memory group ids

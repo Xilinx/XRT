@@ -83,7 +83,6 @@ public:
     int xclExportBO(unsigned int boHandle);
     unsigned int xclImportBO(int fd, unsigned flags);
     int xclGetBOProperties(unsigned int boHandle, xclBOProperties *properties);
-    int xclGetMemInfo(char **MemInfo);
 
     // Bitstream/bin download
     int xclLoadXclBin(const xclBin *buffer);

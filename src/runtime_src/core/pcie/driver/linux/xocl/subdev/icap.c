@@ -2375,68 +2375,6 @@ static void icap_get_max_host_mem_aperture(struct icap *icap)
 	return;
 }
 
-static int init_memory_group(struct platform_device *pdev, struct axlf *xclbin)
-{
-	int err = 0;
-	struct icap *icap = platform_get_drvdata(pdev);
-	uint64_t section_size = 0, sect_sz = 0;
-	void **topo_target = NULL, **conn_target = NULL;
-
-	err = icap_parse_bitstream_axlf_section(pdev, xclbin,
-						ASK_GROUP_TOPOLOGY);
-	if (err) {
-		/* If group topology doesn't exists then use the mem
-		 * topology section for the same.
-		 */
-		topo_target = (void **)&icap->group_topo;
-		err = xrt_xclbin_get_section(xclbin, MEM_TOPOLOGY,
-						 topo_target,
-						 &section_size);
-		if (err != 0)
-			goto done;
-
-		sect_sz = icap_get_section_size(icap, ASK_GROUP_TOPOLOGY);
-		if (sect_sz > section_size) {
-			err = -EINVAL;
-			goto done;
-		}
-	}
-
-	err = icap_parse_bitstream_axlf_section(pdev, xclbin,
-						ASK_GROUP_CONNECTIVITY);
-	if (err) {
-		/* If group connectivity doesn't exists then use the
-		 * connectivity section for the same.
-		 */
-		conn_target = (void **)&icap->group_connectivity;
-		err = xrt_xclbin_get_section(xclbin, CONNECTIVITY,
-						 conn_target,
-						 &section_size);
-		if (err != 0)
-			goto done;
-
-		sect_sz = icap_get_section_size(icap, ASK_GROUP_CONNECTIVITY);
-		if (sect_sz > section_size) {
-			err = -EINVAL;
-			goto done;
-		}
-	}
-
-done:
-	if (err) {
-		if (topo_target && *topo_target) {
-			vfree(*topo_target);
-			*topo_target = NULL;
-		}
-		if (conn_target && *conn_target) {
-			vfree(*conn_target);
-			*conn_target = NULL;
-		}
-	}
-
-	return err;
-}
-
 static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 	struct axlf *xclbin)
 {
@@ -2519,7 +2457,8 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 	}
 
 	/* Initialize Group Topology and Group Connectivity */
-	init_memory_group(pdev, xclbin);
+	icap_parse_bitstream_axlf_section(pdev, xclbin, ASK_GROUP_TOPOLOGY);
+	icap_parse_bitstream_axlf_section(pdev, xclbin, ASK_GROUP_CONNECTIVITY);
 
 	/* create the rest of subdevs for both mgmt and user pf */
 	if (num_dev > 0) {
@@ -2816,8 +2755,19 @@ static int icap_parse_bitstream_axlf_section(struct platform_device *pdev,
 
 	err = xrt_xclbin_get_section(xclbin, kind, target, &section_size);
 	if (err != 0) {
-		ICAP_ERR(icap, "get section err: %ld", err);
-		goto done;
+		/* If group topology or group connectivity doesn't exists then use the
+		 * mem topology or connectivity respectively section for the same.
+		 */
+		if (kind == ASK_GROUP_TOPOLOGY)
+			err = xrt_xclbin_get_section(xclbin, MEM_TOPOLOGY,
+							target, &section_size);
+		else if (kind == ASK_GROUP_CONNECTIVITY)
+			err = xrt_xclbin_get_section(xclbin, CONNECTIVITY,
+							target, &section_size);
+		if (err != 0) {
+			ICAP_ERR(icap, "get section err: %ld", err);
+			goto done;
+		}
 	}
 	sect_sz = icap_get_section_size(icap, kind);
 	if (sect_sz > section_size) {

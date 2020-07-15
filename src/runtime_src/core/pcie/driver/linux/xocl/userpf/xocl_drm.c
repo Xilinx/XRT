@@ -526,7 +526,7 @@ int xocl_mm_insert_node_range(struct xocl_drm *drm_p, u32 mem_id,
 	uint64_t start_addr = 0;
 	uint64_t end_addr = 0;
 	struct mem_topology *grp_topology = NULL;
-    int err = 0; 
+	int err = 0;
 	BUG_ON(!mutex_is_locked(&drm_p->mm_lock));
 
 	err = XOCL_GET_GROUP_TOPOLOGY(drm_p->xdev, grp_topology);
@@ -555,7 +555,6 @@ int xocl_mm_insert_node_range(struct xocl_drm *drm_p, u32 mem_id,
 int xocl_mm_insert_node(struct xocl_drm *drm_p, u32 ddr,
 			struct drm_mm_node *node, u64 size)
 {
-    /* SAIF TODO : This function need to dicard */
 	BUG_ON(!mutex_is_locked(&drm_p->mm_lock));
 	if (drm_p->mm == NULL)
 		return -EINVAL;
@@ -738,10 +737,10 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	struct mem_topology *group_topo = NULL;
 	struct mem_data *mem_data;
 	uint32_t shared;
-    struct xocl_mm_wrapper *wrapper = NULL;
-    uint64_t mm_start_addr = 0;
-    uint64_t mm_end_addr = 0;
-    uint64_t reserved1 = 0;
+	struct xocl_mm_wrapper *wrapper = NULL;
+	uint64_t mm_start_addr = 0;
+	uint64_t mm_end_addr = 0;
+	uint64_t reserved1 = 0;
 	uint64_t reserved2 = 0;
 	uint64_t reserved_start;
 	uint64_t reserved_end, host_reserve_size;
