@@ -134,6 +134,10 @@ struct xocl_xmc_privdata {
 	uint16_t		flags;
 };
 
+struct xocl_p2p_privdata {
+	u32			flags;
+};
+
 #ifdef __KERNEL__
 #define XOCL_PCI_DEVID(ven, dev, subsysid, priv)	\
 	 .vendor = ven, .device=dev, .subvendor = PCI_ANY_ID, \
