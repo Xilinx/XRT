@@ -682,9 +682,14 @@ createMemoryBankGroupEntries( std::vector<WorkingConnection> & workingConnection
       ptGroupMemory.put("m_sizeKB", XUtil::format("0x%lx", groupSize / 1024).c_str());
 
     // Add a tag value to indicate that this entry was the result of grouping memories
-    const std::string newTag = ptGroupMemory.get<std::string>("m_tag") + "-G";
-    if (newTag.size() < sizeof(mem_data::m_tag) )
-      ptGroupMemory.put("m_tag", newTag.c_str());
+    std::string newTag = "MBG[";
+    for (unsigned int memIndex = startIndex; memIndex <= endIndex; ++memIndex) {
+      newTag += std::to_string(memIndex);
+      newTag += (memIndex != endIndex) ? "," : "]";
+    }
+
+    // Record the new tag, honoring the size limitation
+    ptGroupMemory.put("m_tag", newTag.substr(0, sizeof(mem_data::m_tag) - 1).c_str());
 
     // Add memory topology entry
     const unsigned int groupMemIndex = (unsigned int) groupTopology.size();
@@ -695,13 +700,61 @@ createMemoryBankGroupEntries( std::vector<WorkingConnection> & workingConnection
   }
 }
 
+static void const 
+validateMemoryBankGroupEntries( const unsigned int startGroupMemIndex,
+                                const std::vector<boost::property_tree::ptree> & groupTopology, 
+                                const std::vector<boost::property_tree::ptree> & groupConnectivity)
+{
+  // Were there any memory groups added
+  if (startGroupMemIndex >= groupTopology.size())
+    return;
+
+  // Validate a 1-to-1 relation between group connectivity to group topology group entry
+  for (unsigned int index = 0; index < groupConnectivity.size(); ++index) {
+    const unsigned int argIndex = groupConnectivity[index].get<unsigned int>("arg_index");
+    const unsigned int ipLayoutIndex = groupConnectivity[index].get<unsigned int>("m_ip_layout_index");
+    const unsigned int memIndex = groupConnectivity[index].get<unsigned int>("mem_data_index");
+
+    // If the memory being examined is a group entry, then validate that there
+    // are no other entries associated with connection
+    if (memIndex >= startGroupMemIndex) {
+      for (unsigned int searchIndex = 0; searchIndex < groupConnectivity.size(); ++searchIndex) {
+        // Don't examine the reference entry
+        if (searchIndex == index)
+          continue;
+
+        // We are looking for common IP and argument indexes 
+        if ((groupConnectivity[searchIndex].get<unsigned int>("arg_index") != argIndex) ||
+            (groupConnectivity[searchIndex].get<unsigned int>("m_ip_layout_index") != ipLayoutIndex))
+          continue;
+
+        // Do we have a duplicate entry
+        const unsigned int searchMemIndex = groupConnectivity[searchIndex].get<unsigned int>("mem_data_index");
+        if (searchMemIndex == memIndex) {
+          std::string errMsg = XUtil::format("ERROR: Connection indexes at %d and %d in the GROUP_CONNECTIVITY section are are duplicates of each other.", index, searchIndex);
+          throw std::runtime_error(errMsg);
+        }
+
+        // Memory connectivity is not continuous (when using grouped memories)
+        std::string errMsg = XUtil::format("ERROR: Invalid memory grouping (not continuous).\n"
+                                           "       Connection:\n"
+                                           "           arg_index       : %d\n"
+                                           "           ip_layout_index : %d\n"
+                                           "           mem_data_index  : %d (group)\n"
+                                           "       is also connected to mem_data_index %d.\n", argIndex, ipLayoutIndex, memIndex, searchMemIndex);
+        throw std::runtime_error(errMsg);
+      }
+    }
+  }
+}
+
 static void
 transformMemoryBankGroupingCollections(const std::vector<boost::property_tree::ptree> & connectivity,
                                        std::vector<boost::property_tree::ptree> & groupTopology, 
                                        std::vector<boost::property_tree::ptree> & groupConnectivity)
 {
   // Memory types that can be grouped
-  static const std::vector<std::string> validGroupTypes = { "MEM_HBM" };
+  static const std::vector<std::string> validGroupTypes = { "MEM_HBM", "MEM_DDR3", "MEM_DDR4" };
 
   std::vector<WorkingConnection> possibleGroupConnections;
 
@@ -737,6 +790,7 @@ transformMemoryBankGroupingCollections(const std::vector<boost::property_tree::p
     possibleGroupConnections.emplace_back( WorkingConnection{argIndex, ipLayoutIndex, memIndex, memType, baseAddress, sizeBytes} );
   }
 
+  // Group the memories
   createMemoryBankGroupEntries(possibleGroupConnections, groupTopology, groupConnectivity);
 }
   
@@ -769,6 +823,8 @@ XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
   std::vector<boost::property_tree::ptree> groupTopology = memTopology;
 
   // -- If there is a connectivity section, then create the memory groupings
+  std::vector<boost::property_tree::ptree> groupConnectivity;
+
   Section *pConnectivity = xclbin.findSection(CONNECTIVITY);
   if (pConnectivity != nullptr) {
     boost::property_tree::ptree ptConnectivity;
@@ -781,13 +837,12 @@ XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
       for (unsigned int index = 0; index < connectivity.size(); ++index) {
         const unsigned int memIndex = connectivity[index].get<unsigned int>("mem_data_index");
         if (memIndex >= groupTopology.size()) {
-          std::string errMsg = XUtil::format("ERROR: Connectivity section 'mem_data_index' (%d) at index %d exceeds the number of 'mem_topology' elements (%d).  This is usually an indication of curruption in the xclbin archive.", memIndex, index, groupTopology.size());
+          std::string errMsg = XUtil::format("ERROR: Connectivity section 'mem_data_index' (%d) at index %d exceeds the number of 'mem_topology' elements (%d).  This is usually an indication of corruption in the xclbin archive.", memIndex, index, groupTopology.size());
           throw std::runtime_error(errMsg);
         }
       }
 
-      // Tranform and group the memories
-      std::vector<boost::property_tree::ptree> groupConnectivity;
+      // Transform and group the memories
       transformMemoryBankGroupingCollections(connectivity, groupTopology, groupConnectivity);
 
       // Re-create the property tree, create and re-populate the Group Connectivity section, and add it.
@@ -802,7 +857,8 @@ XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
     
         boost::property_tree::ptree ptTop;
         ptTop.add_child("group_connectivity", ptGroupConnection);
-    
+        XUtil::TRACE_PrintTree("Group Connectivity", ptTop);
+
         Section* pGroupConnectivitySection = Section::createSectionObjectOfKind(ASK_GROUP_CONNECTIVITY);
         pGroupConnectivitySection->readJSONSectionImage(ptTop);
         xclbin.addSection(pGroupConnectivitySection);
@@ -822,11 +878,15 @@ XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
 
     boost::property_tree::ptree ptTop;
     ptTop.add_child("group_topology", ptGroupTopology);
+    XUtil::TRACE_PrintTree("Group Topology", ptTop);
 
     Section* pGroupTopologySection = Section::createSectionObjectOfKind(ASK_GROUP_TOPOLOGY);
     pGroupTopologySection->readJSONSectionImage(ptTop);
     xclbin.addSection(pGroupTopologySection);
   }
+
+  // Perform some DRC checks on the memory grouping and connectivity produced
+  validateMemoryBankGroupEntries((unsigned int) memTopology.size(), groupTopology, groupConnectivity);
 }
 
 
