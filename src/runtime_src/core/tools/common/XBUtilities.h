@@ -93,6 +93,8 @@ namespace XBUtilities {
                         bool _inUserDomain,
                         xrt_core::device_collection &_deviceCollection);
   void report_available_devices();
+  std::string format_base10_shiftdown3(uint64_t value);
+  std::string format_base10_shiftdown6(uint64_t value);
   
    /**
    * get_axlf_section() - Get section from the file passed in

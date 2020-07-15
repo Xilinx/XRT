@@ -20,15 +20,15 @@
 #include <vector>
 
 #include "xdp/profile/database/database.h"
-#include "xdp/profile/writer/vp_base/vp_writer.h"
-
 #include "xdp/config.h"
 
 namespace xdp {
 
+  // Forward declarations
+  class VPWriter ;
+
   class XDPPlugin
   {
-  private:
   protected:
     // A link to the single instance of the database that all plugins
     //  refer to.
@@ -50,6 +50,11 @@ namespace xdp {
     // When the database gets reset or at the end of execution,
     //  the plugins must make sure all of their writers dump a complete file
     XDP_EXPORT virtual void writeAll(bool openNewFiles = true) ;
+
+    // Messages may be broadcast from the database to all plugins using
+    //  this function
+    XDP_EXPORT void broadcast(VPDatabase::MessageType msg,
+			      void* blob = nullptr) ;
   } ;
 
 }

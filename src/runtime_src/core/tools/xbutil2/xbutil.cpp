@@ -18,7 +18,6 @@
 #include "SubCmdExamine.h"
 #include "SubCmdDmaTest.h"
 #include "SubCmdProgram.h"
-#include "SubCmdQuery.h"
 #include "SubCmdReset.h"
 #include "SubCmdScan.h"
 #include "SubCmdValidate.h"
@@ -55,7 +54,6 @@ int main( int argc, char** argv )
   {
     // Syntax: SubCmdClass( IsHidden, IsDepricated, IsPreliminary)
     subCommands.emplace_back(std::make_shared< SubCmdDmaTest >(true, true, false));
-    subCommands.emplace_back(std::make_shared<   SubCmdQuery >(true, true, false));
     subCommands.emplace_back(std::make_shared<    SubCmdScan >(true, true, false));
   }
   #endif

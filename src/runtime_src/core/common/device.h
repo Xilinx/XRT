@@ -249,24 +249,6 @@ public:
   void get_platform_info(boost::property_tree::ptree & pt) const;
 
   XRT_CORE_COMMON_EXPORT
-  void read_thermal_pcb(boost::property_tree::ptree &pt) const;
-
-  XRT_CORE_COMMON_EXPORT
-  void read_thermal_fpga(boost::property_tree::ptree &pt) const;
-
-  XRT_CORE_COMMON_EXPORT
-  void read_fan_info(boost::property_tree::ptree &pt) const;
-
-  XRT_CORE_COMMON_EXPORT
-  void read_thermal_cage(boost::property_tree::ptree &pt) const;
-
-  XRT_CORE_COMMON_EXPORT
-  void read_electrical(boost::property_tree::ptree &pt) const;
-
-  XRT_CORE_COMMON_EXPORT
-  void read_power(boost::property_tree::ptree &pt) const;
-
-  XRT_CORE_COMMON_EXPORT
   void read_firewall(boost::property_tree::ptree &pt) const;
 
   /**

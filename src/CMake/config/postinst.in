@@ -109,4 +109,8 @@ if [ "$mpd_active" = "active" ]; then
     echo "Starting MPD daemon"
     systemctl start mpd > /dev/null 2>&1
 fi
+
+# xbutil validate depends on numpy
+pip3 install numpy
+
 exit 0

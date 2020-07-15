@@ -32,13 +32,14 @@
 #endif
 #include "qdma_access_common.h"
 
+#define MBOX_INTERRUPT_DISABLE
+
 #ifndef __QDMA_VF__
 static LIST_HEAD(legacy_intr_q_list);
 static spinlock_t legacy_intr_lock;
 static spinlock_t legacy_q_add_lock;
 static unsigned long legacy_intr_flags = IRQF_SHARED;
 #endif
-
 
 #ifndef __QDMA_VF__
 #ifdef DUMP_ON_ERROR_INTERRUPT
@@ -261,9 +262,6 @@ static void data_intr_direct(struct xlnx_dma_dev *xdev, int vidx, int irq,
 			  flags);
 	list_for_each_safe(entry, tmp, descq_list) {
 		descq = container_of(entry, struct qdma_descq, intr_list);
-
-		if (!descq)
-			continue;
 
 		if (descq->conf.ping_pong_en &&
 				descq->conf.q_type == Q_C2H && descq->conf.st)
@@ -503,16 +501,15 @@ static int intr_vector_setup(struct xlnx_dma_dev *xdev, int idx,
 					  irq_bottom, 0,
 				  xdev->dev_intr_info_list[idx].msix_name,
 				  xdev);
-
-	pr_debug("%s requesting IRQ vector #%d: vec %d, type %d, %s.\n",
-			xdev->conf.name, idx, xdev->msix[idx].vector,
-			type, xdev->dev_intr_info_list[idx].msix_name);
-
 	if (rv) {
 		pr_err("%s requesting IRQ vector #%d: vec %d failed %d.\n",
 			xdev->conf.name, idx, xdev->msix[idx].vector, rv);
 		return rv;
 	}
+
+	pr_info("%s IRQ #%d: vec %d, %s.\n",
+		xdev->conf.name, idx, xdev->msix[idx].vector,
+		xdev->dev_intr_info_list[idx].msix_name);
 
 	return 0;
 }

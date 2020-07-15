@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -475,11 +475,6 @@ device(platform* pltf, xrt::device* xdevice)
   : m_uid(uid_count++), m_platform(pltf), m_xdevice(xdevice)
 {
   XOCL_DEBUG(std::cout,"xocl::device::device(",m_uid,")\n");
-
-  // lock/open the device once to ensure that device info data
-  // for this device is cached.  There are device level APIs
-  // that access data from low level device info.
-  (void) lock_guard();
 }
 
 device::
@@ -1087,7 +1082,7 @@ load_program(program* program)
 
   std::lock_guard<std::mutex> lock(m_mutex);
 
-  if (m_active && !std::getenv("XCL_CONFORMANCE"))
+  if (m_active)
     throw xocl::error(CL_OUT_OF_RESOURCES,"program already loaded on device");
 
   auto binary_data = program->get_xclbin_binary(this);
@@ -1141,7 +1136,7 @@ load_program(program* program)
   // Add compute units for each kernel in the program.
   // Note, that conformance mode renames the kernels in the xclbin
   // so iterating kernel names and looking up symbols from kernels
-  // isn't possible, we *must* iterator symbols explicitly
+  // isn't possible, we *must* iterate symbols explicitly
   clear_cus();
   m_cu_memidx = -2;
   auto cu2addr = get_xclbin_cus(this);

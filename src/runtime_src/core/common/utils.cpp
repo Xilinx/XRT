@@ -21,6 +21,8 @@
 #include "device.h"
 #include "query_requests.h"
 #include <string>
+#include <atomic>
+#include <cstdint>
 
 namespace {
 
@@ -203,6 +205,13 @@ bdf2index(const std::string& bdfstr, bool _inUserDomain)
   }
 
   throw std::runtime_error("No user or mgmt PF found for '" + bdfstr + "'");
+}
+
+uint64_t
+issue_id()
+{
+  static std::atomic<uint64_t> id {0} ;
+  return id++;
 }
 
 }} // utils, xrt_core

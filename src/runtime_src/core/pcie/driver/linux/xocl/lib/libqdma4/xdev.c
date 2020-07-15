@@ -729,7 +729,8 @@ int qdma4_device_offline(struct pci_dev *pdev, unsigned long dev_hndl,
 
 	qdma4_device_cleanup(xdev);
 	qdma_device_interrupt_cleanup(xdev);
-	qdma_mbox_stop(xdev);
+	if (xdev->dev_cap.mailbox_en && !xdev->conf.no_mailbox)
+		qdma_mbox_stop(xdev);
 	qdma4_intr_teardown(xdev);
 	xdev->flags &= ~(XDEV_FLAG_IRQ);
 
@@ -739,7 +740,8 @@ int qdma4_device_offline(struct pci_dev *pdev, unsigned long dev_hndl,
 	 * interrupt state of the VF goes bad. That's why switching
 	 * from mbox's interrupt mode to poll mode
 	 */
-	qdma_mbox_poll_start(xdev);
+	if (xdev->dev_cap.mailbox_en && !xdev->conf.no_mailbox)
+		qdma_mbox_poll_start(xdev);
 #ifdef __QDMA_VF__
 	if (reset) {
 		if (xdev->reset_state == RESET_STATE_RECV_PF_RESET_REQ) {
@@ -768,14 +770,16 @@ int qdma4_device_offline(struct pci_dev *pdev, unsigned long dev_hndl,
 			xdev->workq = NULL;
 		}
 	}
-	qdma_mbox_stop(xdev);
+	if (xdev->dev_cap.mailbox_en && !xdev->conf.no_mailbox)
+		qdma_mbox_stop(xdev);
 #elif defined(CONFIG_PCI_IOV)
 	if (!reset) {
 		qdma_pf_trigger_vf_offline((unsigned long)xdev);
 		xdev_sriov_disable(xdev);
 	} else if (xdev->vf_count_online != 0) {
 		qdma_pf_trigger_vf_reset((unsigned long)xdev);
-		qdma_mbox_stop(xdev);
+		if (xdev->dev_cap.mailbox_en && !xdev->conf.no_mailbox)
+			qdma_mbox_stop(xdev);
 	}
 
 #endif

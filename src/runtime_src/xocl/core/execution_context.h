@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -52,7 +52,6 @@ class event;
 class execution_context
 {
   struct start_kernel;
-  struct start_kernel_conformance;
 
 public:
   using command_type = std::shared_ptr<xrt::command>;
@@ -256,15 +255,6 @@ public:
    */
   bool
   execute();
-
-private:
-  // Call back for start_kernel_conformance comands
-  bool
-  conformance_done(const xrt::command* cmd);
-
-  // Execute a context in conformance mode
-  bool
-  conformance_execute();
 };
 
 /**

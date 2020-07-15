@@ -142,14 +142,28 @@ xrtGraphStop(xrtGraphHandle gh, int timeoutMilliSec);
  * @size:            size in bytes of the RTP value.
  *
  * Return:          0 on success, -1 on error.
- *
- * Note: This is for sychcronous RTP only.
  */
 int
 xrtGraphUpdateRTP(xrtGraphHandle gh, const char *hierPathPort, const char *buffer, size_t size);
 
 /**
- * xrtSyncBOAIE() - Update RTP value of port with hierarchical name
+ * xrtGraphUpdateRTP() - Read RTP value of port with hierarchical name
+ *
+ * @gh:              Handle to graph previously opened with xrtGraphOpen.
+ * @hierPathPort:    hierarchial name of RTP port.
+ * @buffer:          pointer to the buffer that RTP value is copied to.
+ * @size:            size in bytes of the RTP value.
+ *
+ * Return:          0 on success, -1 on error.
+ *
+ * Note: Caller is reponsible for allocating enough memory for RTP value
+ *       being copied to.
+ */
+int
+xrtGraphReadRTP(xrtGraphHandle gh, const char *hierPathPort, char *buffer, size_t size);
+
+/**
+ * xrtSyncBOAIE() - Transfer data between DDR and AIE tiles using Shim DMA
  *
  * @gh:              Handle to graph previously opened with xrtGraphOpen.
  * @bo:              BO handle.

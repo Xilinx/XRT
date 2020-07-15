@@ -337,6 +337,18 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		return -EINVAL;
 	}
 
+	if (kds_mode) {
+		if (is_bad_state(&XDEV(xdev)->kds)) {
+			err = -EDEADLK;
+			goto done;
+		}
+	} else {
+		if (list_is_singular(&xdev->ctx_list) && atomic_read(&xdev->outstanding_execs)) {
+			err = -EDEADLK;
+			goto done;
+		}
+	}
+
 	if (xclbin_downloaded(xdev, &bin_obj.m_header.uuid))
 		goto done;
 
@@ -567,7 +579,7 @@ int xocl_alloc_cma_ioctl(struct drm_device *dev, void *data,
 		goto done;
 	}
 
-	err = xocl_cma_bank_alloc(drm_p, cma_info);
+	err = xocl_cma_bank_alloc(xdev, cma_info);
 done:
 	mutex_unlock(&xdev->dev_lock);
 	return err;
@@ -582,11 +594,10 @@ int xocl_free_cma_ioctl(struct drm_device *dev, void *data,
 
 	mutex_lock(&xdev->dev_lock);
 
-
 	if (xocl_xclbin_in_use(xdev) || xocl_check_topology(drm_p))
 		err = -EBUSY;
 	else
-		xocl_cma_bank_free(drm_p);
+		xocl_cma_bank_free(xdev);
 	mutex_unlock(&xdev->dev_lock);
 
 	return err;

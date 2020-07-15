@@ -1756,18 +1756,13 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     //There is no other way to get whether platform uses legacy ERT or not
     std::string vbnv  = mDeviceInfo.mName;
     if(!vbnv.empty() && 
-        (  vbnv.find("u200_xdma-gen3x4_201830_2") != std::string::npos 
-        || vbnv.find("u200_xdma_201830_1")        != std::string::npos 
-        || vbnv.find("u200_xdma_201830_2")        != std::string::npos 
-        || vbnv.find("u250_qep_201910_1")         != std::string::npos
-        || vbnv.find("u250_xdma_201830_1")        != std::string::npos 
-        || vbnv.find("u250_xdma_201830_2")        != std::string::npos
-        || vbnv.find("u280_xdma_201920_1")        != std::string::npos
-        || vbnv.find("u280_xdma_201920_2")        != std::string::npos
-        || vbnv.find("u280_xdma_201920_3")        != std::string::npos
-        || vbnv.find("u50_xdma_201910_1")         != std::string::npos
-        || vbnv.find("u50_xdma_201920_1")         != std::string::npos
-        || vbnv.find("u50_xdma_201920_2")         != std::string::npos))
+        (  vbnv.find("u200_xdma-gen3x4_201830") != std::string::npos
+        || vbnv.find("u200_xdma_201830")        != std::string::npos
+        || vbnv.find("u250_qep_201910")         != std::string::npos
+        || vbnv.find("u250_xdma_201830")        != std::string::npos
+        || vbnv.find("u280_xdma_201920")        != std::string::npos
+        || vbnv.find("u50_xdma_201910")         != std::string::npos
+        || vbnv.find("u50_xdma_201920")         != std::string::npos))
       return true;
 
     return false;

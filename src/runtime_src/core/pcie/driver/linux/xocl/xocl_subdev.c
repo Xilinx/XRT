@@ -303,7 +303,7 @@ static void __xocl_subdev_destroy(xdev_handle_t xdev_hdl,
 	struct platform_device *pldev;
 	int state;
 
-	if (subdev->state == XOCL_SUBDEV_STATE_UNINIT || !subdev->pldev)
+	if (subdev->state == XOCL_SUBDEV_STATE_UNINIT)
 		return;
 
 	pldev = subdev->pldev;
@@ -326,10 +326,10 @@ static void __xocl_subdev_destroy(xdev_handle_t xdev_hdl,
 		case XOCL_SUBDEV_STATE_ACTIVE:
 		case XOCL_SUBDEV_STATE_OFFLINE:
 			device_release_driver(&pldev->dev);
+			__attribute__ ((fallthrough));
 		case XOCL_SUBDEV_STATE_ADDED:
-			platform_device_del(pldev);
 		default:
-			platform_device_put(pldev);
+			platform_device_unregister(pldev);
 		}
 		xocl_lock_xdev(xdev_hdl);
 		subdev->hold = false;
@@ -338,27 +338,92 @@ static void __xocl_subdev_destroy(xdev_handle_t xdev_hdl,
 	subdev->state = XOCL_SUBDEV_STATE_UNINIT;
 }
 
+static int __xocl_subdev_construct(xdev_handle_t xdev_hdl,
+	struct xocl_subdev *subdev)
+{
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
+	void *priv_data = NULL;
+	size_t data_len = 0;
+	char devname[64];
+	int retval = 0;
+
+	if (subdev->info.override_name)
+		snprintf(devname, sizeof(devname) - 1, "%s",
+			subdev->info.override_name);
+	else
+		snprintf(devname, sizeof(devname) - 1, "%s%s",
+			subdev->info.name, SUBDEV_SUFFIX);
+	xocl_xdev_info(xdev_hdl, "creating subdev %s multi %d level %d",
+		devname, subdev->info.multi_inst, subdev->info.level);
+
+	subdev->pldev = platform_device_alloc(devname, subdev->inst);
+	if (!subdev->pldev) {
+		xocl_xdev_err(xdev_hdl, "failed to alloc device %s",
+			devname);
+		retval = -ENOMEM;
+		goto error;
+	}
+
+	if (subdev->info.num_res > 0) {
+		retval = platform_device_add_resources(subdev->pldev,
+			subdev->res, subdev->info.num_res);
+		if (retval) {
+			xocl_xdev_err(xdev_hdl, "failed to add res");
+			goto error;
+		}
+	}
+
+	if (subdev->info.data_len > 0) {
+		priv_data = vzalloc(subdev->info.data_len);
+		if (!priv_data) {
+			retval = -ENOMEM;
+			goto error;
+		}
+		memcpy(priv_data, subdev->info.priv_data,
+				subdev->info.data_len);
+		data_len = subdev->info.data_len;
+	}
+
+	if (subdev->info.dyn_ip > 0) {
+		retval = xocl_fdt_build_priv_data(xdev_hdl, subdev,
+				&priv_data, &data_len);
+		if (retval) {
+			xocl_xdev_err(xdev_hdl, "failed to get priv data");
+			goto error;
+		}
+	}
+
+	if (priv_data) {
+		retval = platform_device_add_data(subdev->pldev, priv_data,
+			data_len);
+		if (retval) {
+			xocl_xdev_err(xdev_hdl, "failed to add data");
+			goto error;
+		}
+	}
+
+	subdev->pldev->dev.parent = &core->pdev->dev;
+
+error:
+	if (priv_data)
+		vfree(priv_data);
+
+	if (retval && subdev->pldev) {
+		platform_device_put(subdev->pldev);
+		subdev->pldev = NULL;
+	}
+	return retval;
+}
+
 static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 	struct xocl_subdev_info *sdev_info)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
 	struct xocl_subdev *subdev;
-	void *priv_data = NULL;
-	size_t data_len = 0;
 	resource_size_t iostart;
 	struct resource *res = NULL;
 	int i, bar_idx, retval;
-	char devname[64];
 	uint32_t dev_idx = 0;
-
-	if (sdev_info->override_name)
-		snprintf(devname, sizeof(devname) - 1, "%s",
-				sdev_info->override_name);
-	else
-		snprintf(devname, sizeof(devname) - 1, "%s%s",
-				sdev_info->name, SUBDEV_SUFFIX);
-	xocl_xdev_info(xdev_hdl, "creating subdev %s multi %d level %d",
-		devname, sdev_info->multi_inst, sdev_info->level);
 
 	retval = xocl_subdev_reserve(xdev_hdl, sdev_info, &subdev);
 	if (retval)
@@ -397,14 +462,6 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 			subdev->info.bar_idx = NULL;
 	}
 
-	subdev->pldev = platform_device_alloc(devname, subdev->inst);
-	if (!subdev->pldev) {
-		xocl_xdev_err(xdev_hdl, "failed to alloc device %s",
-			devname);
-		retval = -ENOMEM;
-		goto error;
-	}
-
 	if (res) {
 		for (i = 0; i < sdev_info->num_res; i++) {
 			if (sdev_info->res[i].flags & IORESOURCE_MEM) {
@@ -433,43 +490,11 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 			}
 			xocl_xdev_info(xdev_hdl, "resource %pR", &res[i]);
 		}
-
-		retval = platform_device_add_resources(subdev->pldev,
-			res, sdev_info->num_res);
-		if (retval) {
-			xocl_xdev_err(xdev_hdl, "failed to add res");
-			goto error;
-		}
-
 	}
 
-	if (sdev_info->data_len > 0) {
-		priv_data = vzalloc(sdev_info->data_len);
-		memcpy(priv_data, sdev_info->priv_data,
-				sdev_info->data_len);
-		data_len = sdev_info->data_len;
-	}
-
-	if (sdev_info->dyn_ip > 0) {
-		retval = xocl_fdt_build_priv_data(xdev_hdl, subdev,
-				&priv_data, &data_len);
-		if (retval) {
-			xocl_xdev_err(xdev_hdl, "failed to get priv data");
-			goto error;
-		}
-	}
-
-	if (priv_data) {
-		retval = platform_device_add_data(subdev->pldev, priv_data,
-			data_len);
-		vfree(priv_data);
-		if (retval) {
-			xocl_xdev_err(xdev_hdl, "failed to add data");
-			goto error;
-		}
-	}
-
-	subdev->pldev->dev.parent = &core->pdev->dev;
+	retval = __xocl_subdev_construct(xdev_hdl, subdev);
+	if (retval)
+		goto error;
 
 	/* lock dev, no offline, no destroy */
 	subdev->hold = true;
@@ -477,6 +502,8 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 
 	retval = platform_device_add(subdev->pldev);
 	if (retval) {
+		platform_device_put(subdev->pldev);
+		subdev->pldev = NULL;
 		xocl_lock_xdev(xdev_hdl);
 		subdev->hold = false;
 		xocl_xdev_err(xdev_hdl, "failed to add device");
@@ -504,7 +531,7 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 		/* return error without release. relies on caller to decide
 		   if this is an error or not */
 		xocl_xdev_info(xdev_hdl, "failed to probe subdev %s, ret %d",
-			devname, retval);
+			dev_name(&subdev->pldev->dev), retval);
 		subdev->ops = NULL;
 		return -EAGAIN;
 	}
@@ -514,12 +541,12 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 	retval = xocl_subdev_cdev_create(subdev->pldev, subdev);
 	if (retval) {
 		xocl_xdev_info(xdev_hdl, "failed to create cdev subdev %s, %d",
-			devname, retval);
+			dev_name(&subdev->pldev->dev), retval);
 		goto error;
 	}
 
 	xocl_xdev_info(xdev_hdl, "subdev %s inst %d is active",
-			devname, subdev->inst);
+			dev_name(&subdev->pldev->dev), subdev->inst);
 
 	return 0;
 
@@ -784,12 +811,11 @@ static int __xocl_subdev_offline(xdev_handle_t xdev_hdl,
 	struct xocl_subdev_funcs *subdev_funcs;
 	int ret = 0;
 
-	if (!subdev->pldev)
-		goto done;
-
 	if (subdev->state < XOCL_SUBDEV_STATE_ACTIVE) {
-		xocl_xdev_info(xdev_hdl, "%s, already offline",
-			subdev->info.name);
+		if (subdev->state != XOCL_SUBDEV_STATE_UNINIT) {
+			xocl_xdev_info(xdev_hdl, "%s, already offline",
+				subdev->info.name);
+		}
 		goto done;
 	}
 
@@ -819,8 +845,9 @@ static int __xocl_subdev_offline(xdev_handle_t xdev_hdl,
 		xocl_xdev_info(xdev_hdl, "release driver %s",
 				subdev->info.name);
 		device_release_driver(&subdev->pldev->dev);
-		platform_device_del(subdev->pldev);
+		platform_device_unregister(subdev->pldev);
 		subdev->ops = NULL;
+		subdev->pldev = NULL;
 		subdev->state = XOCL_SUBDEV_STATE_INIT;
 	}
 	xocl_lock_xdev(xdev_hdl);
@@ -837,8 +864,8 @@ static int __xocl_subdev_online(xdev_handle_t xdev_hdl,
 	struct xocl_subdev_funcs *subdev_funcs;
 	int ret = 0;
 
-	/* pldev is NULL means subdev does not exist. exist without error in this case */
-	if (!subdev->pldev)
+	/* UNINIT state means subdev does not exist. exist without error in this case */
+	if (subdev->state == XOCL_SUBDEV_STATE_UNINIT)
 		return 0;
 
 	if (subdev->state > XOCL_SUBDEV_STATE_OFFLINE) {
@@ -861,8 +888,13 @@ static int __xocl_subdev_online(xdev_handle_t xdev_hdl,
 		subdev->state = XOCL_SUBDEV_STATE_ACTIVE;
 	} else {
 		if (subdev->state < XOCL_SUBDEV_STATE_ADDED) {
+			ret = __xocl_subdev_construct(xdev_hdl, subdev);
+			if (ret)
+				goto failed;
 			ret = platform_device_add(subdev->pldev);
 			if (ret) {
+				platform_device_put(subdev->pldev);
+				subdev->pldev = NULL;
 				xocl_xdev_err(xdev_hdl, "add device failed %d",
 						ret);
 				goto failed;
@@ -937,8 +969,6 @@ int xocl_subdev_online_by_id(xdev_handle_t xdev_hdl, uint32_t subdev_id)
 
 	xocl_lock_xdev(xdev_hdl);
 	for (i = 0; i < XOCL_SUBDEV_MAX_INST; i++) {
-		if (!core->subdevs[subdev_id][i].pldev)
-			continue;
 		ret = __xocl_subdev_online(xdev_hdl,
 				&core->subdevs[subdev_id][i]);
 		if (ret && ret != -EAGAIN)
@@ -961,14 +991,9 @@ int xocl_subdev_online_by_id_and_inst(xdev_handle_t xdev_hdl, uint32_t subdev_id
 
 	xocl_lock_xdev(xdev_hdl);
 
-	if (!core->subdevs[subdev_id][inst_id].pldev)
-		goto done;
 	ret = __xocl_subdev_online(xdev_hdl,
 			&core->subdevs[subdev_id][inst_id]);
-	if (ret && ret != -EAGAIN)
-		goto done;
 
-done:
 	xocl_unlock_xdev(xdev_hdl);
 
 	return (ret && ret != -EAGAIN) ? ret : 0;

@@ -448,9 +448,10 @@ int xcldev::device::readLAPCheckers(int aVerbose) {
     //    std::cout << "ERROR: Reading LAPC requires root privileges" << std::endl;
     //    return -EACCES;
     //}
+    std::vector<uint64_t> baseAddress;
     std::vector<std::string> lapcSlotNames;
     std::vector< std::pair<std::string, std::string> > cuNameportNames;
-    uint32_t numSlots = getIPCountAddrNames (LAPC, nullptr, &lapcSlotNames);
+    uint32_t numSlots = getIPCountAddrNames (LAPC, &baseAddress, &lapcSlotNames);
 
     if(-EINVAL == static_cast<int32_t>(numSlots)) {
       return 0;  // error msg already printed to std::cout
@@ -460,7 +461,56 @@ int xcldev::device::readLAPCheckers(int aVerbose) {
         return 0;
     }
     std::pair<size_t, size_t> widths = getCUNamePortName(lapcSlotNames, cuNameportNames);
-    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_LAPC, &debugResults);
+//    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_LAPC, &debugResults);
+
+    for(uint32_t i = 0 ; i < numSlots; i++) {
+      std::string lapcName("lapc_");
+      lapcName = lapcName + std::to_string(baseAddress[i]);
+      std::string namePath = pcidev::get_dev(m_idx)->get_sysfs_path(lapcName.c_str(), "name");
+
+      std::size_t pos = namePath.find_last_of('/');
+      std::string path = namePath.substr(0, pos+1);
+      path += "status";
+
+      std::ifstream ifs(path.c_str());
+      if(!ifs) {
+        continue;
+      }
+
+      const size_t sz = 256;
+      char buffer[sz];
+      std::memset(buffer, 0, sz);
+      ifs.getline(buffer, sz);
+
+      std::vector<uint64_t> valBuf;
+
+      while(!ifs.eof()) {
+        valBuf.push_back(strtoull((const char*)(&buffer), NULL, 10));
+        std::memset(buffer, 0, sz);
+        ifs.getline(buffer, sz);
+      }
+
+      if(valBuf.size() < 9) {
+        std::cout << "ERROR: Incomplete LAPC data in " << path << std::endl;
+        continue;
+      }
+
+      debugResults.OverallStatus[i]       = valBuf[0];
+
+      debugResults.CumulativeStatus[i][0] = valBuf[1];
+      debugResults.CumulativeStatus[i][1] = valBuf[2];
+      debugResults.CumulativeStatus[i][2] = valBuf[3];
+      debugResults.CumulativeStatus[i][3] = valBuf[4];
+
+      debugResults.SnapshotStatus[i][0]   = valBuf[5];
+      debugResults.SnapshotStatus[i][1]   = valBuf[6];
+      debugResults.SnapshotStatus[i][2]   = valBuf[7];
+      debugResults.SnapshotStatus[i][3]   = valBuf[8];
+
+      ifs.close();
+    }
+    debugResults.NumSlots = numSlots;
+
     bool violations_found = false;
     bool invalid_codes = false;
     std::cout << "Light Weight AXI Protocol Checkers codes \n";
@@ -537,9 +587,10 @@ int xcldev::device::readLAPCheckers(int aVerbose) {
 
 int xcldev::device::readStreamingCheckers(int aVerbose) {
 
+  std::vector<uint64_t> baseAddress;
   std::vector<std::string> streamingCheckerSlotNames ;
   uint32_t numCheckers = getIPCountAddrNames(AXI_STREAM_PROTOCOL_CHECKER,
-						 nullptr,
+						 &baseAddress,
 						 &streamingCheckerSlotNames);
 
   if(-EINVAL == static_cast<int32_t>(numCheckers)) {
@@ -555,7 +606,47 @@ int xcldev::device::readStreamingCheckers(int aVerbose) {
   std::pair<size_t, size_t> widths = getCUNamePortName(streamingCheckerSlotNames, cuNameportNames);
 
   xclDebugStreamingCheckersResults debugResults = {0};
-  xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_SPC, &debugResults);
+//  xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_SPC, &debugResults);
+
+  for(uint32_t i = 0 ; i < numCheckers; i++) {
+    std::string spcName("spc_");
+    spcName = spcName + std::to_string(baseAddress[i]);
+    std::string namePath = pcidev::get_dev(m_idx)->get_sysfs_path(spcName.c_str(), "name");
+
+    std::size_t pos = namePath.find_last_of('/');
+    std::string path = namePath.substr(0, pos+1);
+    path += "status";
+
+    std::ifstream ifs(path.c_str());
+    if(!ifs) {
+      continue;
+    }
+
+    const size_t sz = 256;
+    char buffer[sz];
+    std::memset(buffer, 0, sz);
+    ifs.getline(buffer, sz);
+
+    std::vector<uint64_t> valBuf;
+
+    while(!ifs.eof()) {
+      valBuf.push_back(strtoull((const char*)(&buffer), NULL, 10));
+      std::memset(buffer, 0, sz);
+      ifs.getline(buffer, sz);
+    }
+
+    if(valBuf.size() < 3) {
+      std::cout << "ERROR: Incomplete SPC data in " << path << std::endl;
+      continue;
+    }
+
+    debugResults.PCAsserted[i] = valBuf[0];
+    debugResults.CurrentPC[i]  = valBuf[1];
+    debugResults.SnapshotPC[i] = valBuf[2];
+
+    ifs.close();
+  }
+  debugResults.NumSlots = numCheckers;
 
   // Now print out all of the values (and their interpretations)
 

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,16 +14,22 @@
  * under the License.
  */
 
-#ifndef __XBDatabase_h_
-#define __XBDatabase_h_
+#ifndef HAL_DEVICE_OFFLOAD_DOT_H
+#define HAL_DEVICE_OFFLOAD_DOT_H
 
-// Include files
-// Please keep these to the bare minimum
-#include <boost/property_tree/ptree.hpp>
+namespace xdphaldeviceoffload {
 
-namespace XBDatabase {
-void create_complete_device_tree(boost::property_tree::ptree & _pt);
-};
+  void load_xdp_hal_device_offload() ;
+  void register_hal_device_offload_functions(void* handle) ;
+  void hal_device_offload_warning_function() ;
+
+} // end xdphaldeviceoffload
+
+namespace xdphal {
+
+  void flush_device(void* handle) ;
+  void update_device(void* handle) ;
+
+} // end namespace xdphal
 
 #endif
-

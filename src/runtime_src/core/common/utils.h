@@ -77,6 +77,10 @@ XRT_CORE_COMMON_EXPORT
 uint16_t
 bdf2index(const std::string& bdf, bool _inUserDomain);
 
+XRT_CORE_COMMON_EXPORT
+uint64_t
+issue_id();
+
 }} // utils, xrt_core
 
 #endif

@@ -102,7 +102,8 @@ namespace xdp {
     std::vector<VTFEvent*> APIEvents = 
       (db->getDynamicInfo()).filterEvents( [](VTFEvent* e)
 					   {
-					     return e->isHostEvent();
+					     return e->isOpenCLAPI() ||
+					            e->isLOPHostEvent() ;
 					   }
 					 ) ;
     for (auto e : APIEvents)

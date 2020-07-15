@@ -14,207 +14,12 @@
 #include <linux/fpga/fpga-mgr.h>
 #include "sched_exec.h"
 #include "zocl_xclbin.h"
+#include "xrt_xclbin.h"
 #include "xclbin.h"
-
-/* Used for parsing bitstream header */
-#define XHI_EVEN_MAGIC_BYTE     0x0f
-#define XHI_ODD_MAGIC_BYTE      0xf0
-
-/* Extra mode for IDLE */
-#define XHI_OP_IDLE  -1
-#define XHI_BIT_HEADER_FAILURE -1
-
-/* The imaginary module length register */
-#define XHI_MLR                  15
-
-#define DMA_HWICAP_BITFILE_BUFFER_SIZE 1024
-#define BITFILE_BUFFER_SIZE DMA_HWICAP_BITFILE_BUFFER_SIZE
 
 #define VIRTUAL_CU(id) (id == (u32)-1)
 
 extern int kds_mode;
-/**
- * Bitstream header information.
- */
-struct XHwIcap_Bit_Header {
-	unsigned int HeaderLength;     /* Length of header in 32 bit words */
-	unsigned int BitstreamLength;  /* Length of bitstream to read in bytes*/
-	unsigned char *DesignName;     /* Design name get from bitstream */
-	unsigned char *PartName;       /* Part name read from bitstream */
-	unsigned char *Date;           /* Date read from bitstream header */
-	unsigned char *Time;           /* Bitstream creation time*/
-	unsigned int MagicLength;      /* Length of the magic numbers*/
-};
-
-static char *
-kind_to_string(enum axlf_section_kind kind)
-{
-	switch (kind) {
-	case 0:  return "BITSTREAM";
-	case 1:  return "CLEARING_BITSTREAM";
-	case 2:  return "EMBEDDED_METADATA";
-	case 3:  return "FIRMWARE";
-	case 4:  return "DEBUG_DATA";
-	case 5:  return "SCHED_FIRMWARE";
-	case 6:  return "MEM_TOPOLOGY";
-	case 7:  return "CONNECTIVITY";
-	case 8:  return "IP_LAYOUT";
-	case 9:  return "DEBUG_IP_LAYOUT";
-	case 10: return "DESIGN_CHECK_POINT";
-	case 11: return "CLOCK_FREQ_TOPOLOGY";
-	case 12: return "MCS";
-	case 13: return "BMC";
-	case 14: return "BUILD_METADATA";
-	case 15: return "KEYVALUE_METADATA";
-	case 16: return "USER_METADATA";
-	case 17: return "DNA_CERTIFICATE";
-	case 18: return "PDI";
-	case 19: return "BITSTREAM_PARTIAL_PDI";
-	case 20: return "DTC";
-	case 21: return "EMULATION_DATA";
-	case 22: return "SYSTEM_METADATA";
-	default: return "UNKNOWN";
-	}
-}
-
-static int bitstream_parse_header(const unsigned char *Data, unsigned int Size,
-				  struct XHwIcap_Bit_Header *Header)
-{
-	unsigned int i;
-	unsigned int len;
-	unsigned int tmp;
-	unsigned int idx;
-
-	/* Start Index at start of bitstream */
-	idx = 0;
-
-	/* Initialize HeaderLength.  If header returned early inidicates
-	 * failure.
-	 */
-	Header->HeaderLength = XHI_BIT_HEADER_FAILURE;
-
-	/* Get "Magic" length */
-	Header->MagicLength = Data[idx++];
-	Header->MagicLength = (Header->MagicLength << 8) | Data[idx++];
-
-	/* Read in "magic" */
-	for (i = 0; i < Header->MagicLength - 1; i++) {
-		tmp = Data[idx++];
-		if (i%2 == 0 && tmp != XHI_EVEN_MAGIC_BYTE)
-			return -1;   /* INVALID_FILE_HEADER_ERROR */
-
-		if (i%2 == 1 && tmp != XHI_ODD_MAGIC_BYTE)
-			return -1;   /* INVALID_FILE_HEADER_ERROR */
-
-	}
-
-	/* Read null end of magic data. */
-	tmp = Data[idx++];
-
-	/* Read 0x01 (short) */
-	tmp = Data[idx++];
-	tmp = (tmp << 8) | Data[idx++];
-
-	/* Check the "0x01" half word */
-	if (tmp != 0x01)
-		return -1;	 /* INVALID_FILE_HEADER_ERROR */
-
-	/* Read 'a' */
-	tmp = Data[idx++];
-	if (tmp != 'a')
-		return -1;	  /* INVALID_FILE_HEADER_ERROR	*/
-
-	/* Get Design Name length */
-	len = Data[idx++];
-	len = (len << 8) | Data[idx++];
-
-	/* allocate space for design name and final null character. */
-	Header->DesignName = kmalloc(len, GFP_KERNEL);
-
-	/* Read in Design Name */
-	for (i = 0; i < len; i++)
-		Header->DesignName[i] = Data[idx++];
-
-	if (Header->DesignName[len-1] != '\0')
-		return -1;
-
-	/* Read 'b' */
-	tmp = Data[idx++];
-	if (tmp != 'b')
-		return -1;	/* INVALID_FILE_HEADER_ERROR */
-
-
-	/* Get Part Name length */
-	len = Data[idx++];
-	len = (len << 8) | Data[idx++];
-
-	/* allocate space for part name and final null character. */
-	Header->PartName = kmalloc(len, GFP_KERNEL);
-
-	/* Read in part name */
-	for (i = 0; i < len; i++)
-		Header->PartName[i] = Data[idx++];
-
-	if (Header->PartName[len-1] != '\0')
-		return -1;
-
-	/* Read 'c' */
-	tmp = Data[idx++];
-	if (tmp != 'c')
-		return -1;	/* INVALID_FILE_HEADER_ERROR */
-
-
-	/* Get date length */
-	len = Data[idx++];
-	len = (len << 8) | Data[idx++];
-
-	/* allocate space for date and final null character. */
-	Header->Date = kmalloc(len, GFP_KERNEL);
-
-	/* Read in date name */
-	for (i = 0; i < len; i++)
-		Header->Date[i] = Data[idx++];
-
-	if (Header->Date[len - 1] != '\0')
-		return -1;
-
-	/* Read 'd' */
-	tmp = Data[idx++];
-	if (tmp != 'd')
-		return -1;	/* INVALID_FILE_HEADER_ERROR  */
-
-	/* Get time length */
-	len = Data[idx++];
-	len = (len << 8) | Data[idx++];
-
-	/* allocate space for time and final null character. */
-	Header->Time = kmalloc(len, GFP_KERNEL);
-
-	/* Read in time name */
-	for (i = 0; i < len; i++)
-		Header->Time[i] = Data[idx++];
-
-	if (Header->Time[len - 1] != '\0')
-		return -1;
-
-	/* Read 'e' */
-	tmp = Data[idx++];
-	if (tmp != 'e')
-		return -1;	/* INVALID_FILE_HEADER_ERROR */
-
-	/* Get byte length of bitstream */
-	Header->BitstreamLength = Data[idx++];
-	Header->BitstreamLength = (Header->BitstreamLength << 8) | Data[idx++];
-	Header->BitstreamLength = (Header->BitstreamLength << 8) | Data[idx++];
-	Header->BitstreamLength = (Header->BitstreamLength << 8) | Data[idx++];
-	Header->HeaderLength = idx;
-
-	DRM_INFO("Design %s: Part %s: Timestamp %s %s: Raw data size 0x%x\n",
-			Header->DesignName, Header->PartName, Header->Time,
-			Header->Date, Header->BitstreamLength);
-
-	return 0;
-}
 
 static int
 zocl_fpga_mgr_load(struct drm_zocl_dev *zdev, const char *data, int size)
@@ -289,7 +94,8 @@ zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length)
 	char temp;
 
 	memset(&bit_header, 0, sizeof(bit_header));
-	if (bitstream_parse_header(buffer, BITFILE_BUFFER_SIZE, &bit_header)) {
+	if (xrt_xclbin_parse_header(buffer, DMA_HWICAP_BITFILE_BUFFER_SIZE,
+	    &bit_header)) {
 		DRM_ERROR("bitstream header parse failed");
 		return -EINVAL;
 	}
@@ -316,65 +122,6 @@ zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length)
 	return zocl_load_partial(zdev, data, bit_header.BitstreamLength);
 }
 
-/* should be obsoleted after mailbox implememted */
-static struct axlf_section_header *
-get_axlf_section(struct axlf *top, enum axlf_section_kind kind)
-{
-	int i = 0;
-
-	DRM_INFO("Finding %s section header", kind_to_string(kind));
-	for (i = 0; i < top->m_header.m_numSections; i++) {
-		if (top->m_sections[i].m_sectionKind == kind)
-			return &top->m_sections[i];
-	}
-	DRM_INFO("AXLF section %s header not found", kind_to_string(kind));
-	return NULL;
-}
-
-static int
-zocl_check_section(struct axlf_section_header *header, uint64_t xclbin_len,
-		enum axlf_section_kind kind)
-{
-	uint64_t offset;
-	uint64_t size;
-
-	DRM_INFO("Section %s details:", kind_to_string(kind));
-	DRM_INFO("  offset = 0x%llx", header->m_sectionOffset);
-	DRM_INFO("  size = 0x%llx", header->m_sectionSize);
-
-	offset = header->m_sectionOffset;
-	size = header->m_sectionSize;
-	if (offset + size > xclbin_len) {
-		DRM_ERROR("Section %s extends beyond xclbin boundary 0x%llx\n",
-				kind_to_string(kind), xclbin_len);
-		return -EINVAL;
-	}
-	return 0;
-}
-
-static int
-zocl_section_info(enum axlf_section_kind kind, struct axlf *axlf_full,
-	uint64_t *offset, uint64_t *size)
-{
-	struct axlf_section_header *memHeader = NULL;
-	uint64_t xclbin_len;
-	int err = 0;
-
-	memHeader = get_axlf_section(axlf_full, kind);
-	if (!memHeader)
-		return -ENODEV;
-
-	xclbin_len = axlf_full->m_header.m_length;
-	err = zocl_check_section(memHeader, xclbin_len, kind);
-	if (err)
-		return err;
-
-	*offset = memHeader->m_sectionOffset;
-	*size = memHeader->m_sectionSize;
-
-	return 0;
-}
-
 static int
 zocl_offsetof_sect(enum axlf_section_kind kind, void *sect,
 		struct axlf *axlf_full, char __user *xclbin_ptr)
@@ -384,9 +131,12 @@ zocl_offsetof_sect(enum axlf_section_kind kind, void *sect,
 	void **sect_tmp = (void *)sect;
 	int err = 0;
 
-	err = zocl_section_info(kind, axlf_full, &offset, &size);
-	if (err)
+	err = xrt_xclbin_section_info(axlf_full, kind, &offset, &size);
+	if (err) {
+		DRM_WARN("get section %s err: %d ",
+		    xrt_xclbin_kind_to_string(kind), err);
 		return 0;
+	}
 
 	*sect_tmp = &xclbin_ptr[offset];
 
@@ -403,13 +153,18 @@ zocl_read_sect(enum axlf_section_kind kind, void *sect,
 	void **sect_tmp = (void *)sect;
 	int err = 0;
 
-	err = zocl_section_info(kind, axlf_full, &offset, &size);
-	if (err)
+	err = xrt_xclbin_section_info(axlf_full, kind, &offset, &size);
+	if (err) {
+		DRM_WARN("get section %s err: %d ",
+		    xrt_xclbin_kind_to_string(kind), err);
 		return 0;
+	}
 
 	*sect_tmp = vmalloc(size);
 	err = copy_from_user(*sect_tmp, &xclbin_ptr[offset], size);
 	if (err) {
+		DRM_WARN("copy_from_user for section %s err: %d ",
+		    xrt_xclbin_kind_to_string(kind), err);
 		vfree(*sect_tmp);
 		sect = NULL;
 		return 0;

@@ -49,8 +49,6 @@ namespace xdplop {
   class LOPFunctionCallLogger
   {
   private:
-    static std::atomic<unsigned int> m_funcid_global ;
-
     unsigned int m_funcid ;
     const char* m_name = nullptr ;
     long long int m_address = 0 ;
