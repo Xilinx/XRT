@@ -1631,7 +1631,7 @@ int xcldev::device::reset(xclResetKind kind)
     
 }
 
-static bool canProceed()
+bool canProceed()
 {
     std::string input;
     bool answered = false;

@@ -70,6 +70,8 @@ int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceIn
  * xcldev <cmd> [options]
  */
 
+bool canProceed();
+
 namespace xcldev {
 
 enum command {
@@ -304,7 +306,20 @@ public:
     int reclock2(unsigned regionIndex, const unsigned short *freq) {
         const unsigned short targetFreqMHz[4] = {freq[0], freq[1], freq[2], 0};
         uuid_t uuid;
-        int ret;
+        int ret, data_retention = 0;
+        std::string errmsg;
+        
+        pcidev::get_dev(m_idx)->sysfs_get("icap", "data_retention", errmsg, data_retention, 0);
+        if (!errmsg.empty()) {
+            std::cout << errmsg << std::endl;
+            return -EINVAL;
+        }
+
+        if (data_retention) {
+            std::cout << "Memory data may be lost after xbutil clock" << std::endl;
+            if (!canProceed())
+                 return -ECANCELED;
+        }
 
         ret = getXclbinuuid(uuid);
         if (ret)
