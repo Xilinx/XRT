@@ -75,9 +75,9 @@ register_axlf(const axlf* top)
        * mem topology or connectivity respectively section for the same.
        */
       if (kind == ASK_GROUP_TOPOLOGY)
-	hdr = ::xclbin::get_axlf_section(top, MEM_TOPOLOGY);
+        hdr = ::xclbin::get_axlf_section(top, MEM_TOPOLOGY);
       else if (kind == ASK_GROUP_CONNECTIVITY)
-	hdr = ::xclbin::get_axlf_section(top, CONNECTIVITY);
+        hdr = ::xclbin::get_axlf_section(top, CONNECTIVITY);
 
       if (!hdr)
         continue;
