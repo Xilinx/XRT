@@ -799,7 +799,7 @@ zocl_xclbin_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
       }
 			if (!ret) {
 				DRM_ERROR("can not remove unreserved cu");
-        ret = -EINVAL;
+        			ret = -EINVAL;
 				goto out;
 			}
 		}
