@@ -88,6 +88,7 @@ struct p2p {
 	struct platform_device	*pdev;
 	void		__iomem	*remapper;
 	struct mutex		p2p_lock;
+	struct xocl_p2p_privdata *priv_data;
 
 	int			p2p_bar_idx;
 	ulong			p2p_bar_len;
@@ -530,8 +531,11 @@ static int p2p_mem_init(struct p2p *p2p)
 
 
 	remap_reg_wr(p2p, 0, slot_num);
-	remap_reg_wr(p2p, P2P_ADDR_LO(pa), base_addr_lo);
-	remap_reg_wr(p2p, P2P_ADDR_HI(pa), base_addr_hi);
+	if (p2p->priv_data &&
+	    p2p->priv_data->flags == XOCL_P2P_FLAG_SIBASE_NEEDED) {
+		remap_reg_wr(p2p, P2P_ADDR_LO(pa), base_addr_lo);
+		remap_reg_wr(p2p, P2P_ADDR_HI(pa), base_addr_hi);
+	}
 	remap_reg_wr(p2p, fls64(p2p->remap_range) - 1, log_range);
 
 	p2p_info(p2p, "Init remapper. range %ld, slot size %ld, num %ld",
@@ -1126,6 +1130,7 @@ static int p2p_probe(struct platform_device *pdev)
 	p2p->pdev = pdev;
 	mutex_init(&p2p->p2p_lock);
 
+	p2p->priv_data = XOCL_GET_SUBDEV_PRIV(&pdev->dev);
 	for (res = platform_get_resource(pdev, IORESOURCE_MEM, i); res;
 	    res = platform_get_resource(pdev, IORESOURCE_MEM, ++i)) {
 		if (!strncmp(res->name, NODE_REMAP_P2P,
