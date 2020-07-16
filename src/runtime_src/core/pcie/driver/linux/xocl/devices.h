@@ -134,6 +134,7 @@ struct xocl_xmc_privdata {
 	uint16_t		flags;
 };
 
+#define XOCL_P2P_FLAG_SIBASE_NEEDED	1
 struct xocl_p2p_privdata {
 	u32			flags;
 };

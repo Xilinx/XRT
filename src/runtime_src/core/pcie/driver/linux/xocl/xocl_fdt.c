@@ -197,7 +197,7 @@ static void *p2p_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 	if (!p2p_priv)
 		return NULL;
 
-	p2p_priv->flags = 1;
+	p2p_priv->flags = XOCL_P2P_FLAG_SIBASE_NEEDED;
 	*len = sizeof(*p2p_priv);
 
 	return p2p_priv;

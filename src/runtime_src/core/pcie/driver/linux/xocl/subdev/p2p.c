@@ -531,7 +531,8 @@ static int p2p_mem_init(struct p2p *p2p)
 
 
 	remap_reg_wr(p2p, 0, slot_num);
-	if (p2p->priv_data && p2p->priv_data->flags == 1) {
+	if (p2p->priv_data &&
+	    p2p->priv_data->flags == XOCL_P2P_FLAG_SIBASE_NEEDED) {
 		remap_reg_wr(p2p, P2P_ADDR_LO(pa), base_addr_lo);
 		remap_reg_wr(p2p, P2P_ADDR_HI(pa), base_addr_hi);
 	}
