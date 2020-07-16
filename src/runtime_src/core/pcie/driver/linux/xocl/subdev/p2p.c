@@ -928,18 +928,20 @@ static int p2p_release_resource(struct platform_device *pdev,
 	struct resource *res)
 {
 	struct p2p *p2p = platform_get_drvdata(pdev);
+	ulong bar_off;
 
 	if (res->start < p2p->p2p_bar_start ||
 	    res->start >= p2p->p2p_bar_start + p2p->p2p_bar_len)
 		return 0;
 
+	bar_off = res->start - p2p->p2p_bar_start;
 	if (!p2p->remapper) {
 		p2p_err(p2p, "remap does not exist");
 		return -EINVAL;
 	}
 
-	p2p_info(p2p, "Remap release resource %pR", res);
-	p2p_bar_unmap(p2p, res->start);
+	p2p_info(p2p, "Remap release resource %lx", bar_off);
+	p2p_bar_unmap(p2p, bar_off);
 
 	return 0;
 }
