@@ -22,7 +22,8 @@
 #include "detail/platform.h"
 
 #include "xocl/config.h"
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
+//#include "plugin/xdp/profile.h"
 #include "plugin/xdp/lop.h"
 
 #ifdef _WIN32

@@ -14,6 +14,8 @@
  * under the License.
  */
 
+#if 0
+
 /**
  * This file contains the API for adapting the mixed xcl/xocl
  * data structures to the profiling infrastructure.
@@ -543,3 +545,5 @@ void end_device_profiling()
 }
 
 }}
+
+#endif

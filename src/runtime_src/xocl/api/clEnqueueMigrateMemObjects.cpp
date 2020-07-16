@@ -22,7 +22,8 @@
 #include "detail/event.h"
 #include "detail/memory.h"
 #include "plugin/xdp/appdebug.h"
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
+//#include "plugin/xdp/profile.h"
 #include "plugin/xdp/lop.h"
 #include <CL/opencl.h>
 
@@ -95,8 +96,8 @@ clEnqueueMigrateMemObjects(cl_command_queue        command_queue ,
     (command_queue,CL_COMMAND_MIGRATE_MEM_OBJECTS,num_events_in_wait_list,event_wait_list);
   xocl::enqueue::set_event_action
     (uevent.get(),xocl::enqueue::action_migrate_memobjects,num_mem_objects,mem_objects,flags);
-  xocl::profile::set_event_action
-    (uevent.get(),xocl::profile::action_migrate,num_mem_objects,mem_objects,flags);
+  //xocl::profile::set_event_action
+  //(uevent.get(),xocl::profile::action_migrate,num_mem_objects,mem_objects,flags);
 #ifndef _WIN32
   xocl::lop::set_event_action(uevent.get(), xocl::lop::action_migrate, flags);
 #endif

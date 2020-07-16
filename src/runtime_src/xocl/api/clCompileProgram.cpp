@@ -21,7 +21,8 @@
 #include "detail/program.h"
 #include "detail/device.h"
 #include "api.h"
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
+//#include "plugin/xdp/profile.h"
 #include "plugin/xdp/lop.h"
 #include <CL/cl.h>
 

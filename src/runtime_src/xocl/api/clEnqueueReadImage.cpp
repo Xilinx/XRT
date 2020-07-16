@@ -25,7 +25,8 @@
 
 #include "enqueue.h"
 #include "plugin/xdp/appdebug.h"
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
+//#include "plugin/xdp/profile.h"
 #include "plugin/xdp/lop.h"
 
 #include <CL/opencl.h>
@@ -138,8 +139,8 @@ clEnqueueReadImage(cl_command_queue      command_queue ,
     (command_queue,CL_COMMAND_READ_IMAGE,num_events_in_wait_list,event_wait_list);
   xocl::enqueue::set_event_action
     (uevent.get(),xocl::enqueue::action_read_image,image,origin,region,row_pitch,slice_pitch,ptr);
-  xocl::profile::set_event_action
-    (uevent.get(),xocl::profile::action_read,image,0,0,true);
+  //xocl::profile::set_event_action
+  //  (uevent.get(),xocl::profile::action_read,image,0,0,true);
 #ifndef _WIN32
   xocl::lop::set_event_action(uevent.get(), xocl::lop::action_read);
 #endif

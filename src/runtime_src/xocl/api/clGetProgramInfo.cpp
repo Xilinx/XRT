@@ -23,7 +23,8 @@
 #include "xocl/core/context.h"
 #include "xocl/core/device.h"
 #include "detail/program.h"
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
+//#include "plugin/xdp/profile.h"
 #include "plugin/xdp/lop.h"
 #include <CL/opencl.h>
 

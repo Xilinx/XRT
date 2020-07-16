@@ -33,7 +33,8 @@
 #include <string>
 #include <algorithm>
 
-#include "plugin/xdp/profile.h"
+//#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
 #include "plugin/xdp/lop.h"
 
 #include <CL/opencl.h>
@@ -153,7 +154,7 @@ clCreateProgramWithBinary(cl_context                      context ,
   // Flushing device trace (not done on first call to program with binary)
   static bool once = false;
   if (!once) {
-    xocl::profile::get_device_trace(true);
+    //xocl::profile::get_device_trace(true);
     once = true;
   }
 
@@ -168,7 +169,10 @@ clCreateProgramWithBinary(cl_context                      context ,
   size_t idx = 0;
   for (auto device : xocl::get_range(device_list,device_list+num_devices)) {
     try {
+      if (xocl(device)->is_active())
+	xocl::profile::flush_device(xocl(device)->get_xrt_device()) ;
       loadProgramBinary(program.get(),xocl(device));
+      xocl::profile::update_device(xocl(device)->get_xrt_device()) ;
       if (binary_status)
         xocl::assign(&binary_status[idx++],CL_SUCCESS);
     }
@@ -179,11 +183,11 @@ clCreateProgramWithBinary(cl_context                      context ,
     }
   }
 
-  xocl::profile::start_device_profiling(1);
+  //xocl::profile::start_device_profiling(1);
   // NOTE: We read from the counters to set a baseline for values and
   // inform the reporting this is the first read after a program with
   // binary. Otherwise, the counters will overflow.
-  xocl::profile::get_device_counters(true, true);
+  //xocl::profile::get_device_counters(true, true);
 
   xocl::assign(errcode_ret,CL_SUCCESS);
 

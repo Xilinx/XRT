@@ -18,8 +18,9 @@
 #include "memory.h"
 #include "program.h"
 #include "compute_unit.h"
+#include "kernel.h"
 
-#include "xocl/api/plugin/xdp/profile.h"
+//#include "xocl/api/plugin/xdp/profile.h"
 #include "xocl/api/plugin/xdp/debug.h"
 #include "xocl/xclbin/xclbin.h"
 #include "xrt/scheduler/scheduler.h"
@@ -1105,7 +1106,7 @@ load_program(program* program)
   }
 
   xocl::debug::reset(top);
-  xocl::profile::reset(top);
+  //xocl::profile::reset(top);
 
   // programmming
   if (xrt::config::get_xclbin_programing()) {
@@ -1148,7 +1149,7 @@ load_program(program* program)
   }
 
   m_active = program;
-  profile::add_to_active_devices(get_unique_name());
+  //profile::add_to_active_devices(get_unique_name());
 
   // In order to use virtual CUs (KDMA) we must open a virtual context
   m_xdevice->acquire_cu_context(-1,true);

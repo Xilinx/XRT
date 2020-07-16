@@ -18,7 +18,9 @@
 #include "xocl/config.h"
 #include "xocl/core/stream.h"
 #include "xocl/core/error.h"
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
+//#include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
 #include <CL/opencl.h>
 
 namespace xocl {
@@ -41,6 +43,7 @@ clReleaseStreamBuffer(cl_stream_mem stream_obj) CL_API_SUFFIX__VERSION_1_0
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clReleaseStreamBuffer(stream_obj);
   }
   catch (const xrt::error& ex) {

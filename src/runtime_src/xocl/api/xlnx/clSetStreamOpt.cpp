@@ -18,7 +18,10 @@
 #include "xocl/config.h"
 #include "xocl/core/stream.h"
 #include "xocl/core/error.h"
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
+//#include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
+
 #include "xocl/core/device.h"
 #include <CL/opencl.h>
 
@@ -59,6 +62,7 @@ clSetStreamOpt(cl_stream           stream,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+    LOP_LOG_FUNCTION_CALL;
     return xocl::clSetStreamOpt(stream,type,val,errcode_ret);
   }
   catch (const xrt::error& ex) {

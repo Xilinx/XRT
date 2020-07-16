@@ -19,7 +19,9 @@
 #include "xocl/config.h"
 #include "xocl/core/memory.h"
 #include "detail/memory.h"
-#include "plugin/xdp/profile.h"
+//#include "plugin/xdp/profile.h"
+#include "plugin/xdp/profile_v2.h"
+#include "plugin/xdp/lop.h"
 
 
 namespace xocl {
@@ -134,6 +136,8 @@ clCreateSubBuffer(cl_mem                   parentbuffer,
                   cl_int *                 errcode_ret)
 {
   try {
+    PROFILE_LOG_FUNCTION_CALL ;
+    LOP_LOG_FUNCTION_CALL ;
     return xocl::clCreateSubBuffer
       (parentbuffer,flags,buffer_create_type,buffer_create_info,errcode_ret);
   }
