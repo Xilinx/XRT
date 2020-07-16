@@ -682,6 +682,38 @@ struct info
   }
 };
 
+struct flash_address
+{
+  using result_type = uint64_t;
+
+  static result_type
+  user(const xrt_core::device* device, key_type)
+  {
+	  return 0;
+  }
+
+  static result_type
+  mgmt(const xrt_core::device* device, key_type)
+  {
+    auto init_addr = [](const xrt_core::device* dev) {
+      uint64_t addr;
+      mgmtpf::get_flash_addr(dev->get_mgmt_handle(), addr);
+      return addr;
+    };
+
+    static std::map<const xrt_core::device*, uint64_t> info_map;
+    static std::mutex mutex;
+    std::lock_guard<std::mutex> lk(mutex);
+    auto it = info_map.find(device);
+    if (it == info_map.end()) {
+      auto ret = info_map.emplace(device,init_addr(device));
+      it = ret.first;
+    }
+
+    return (*it).second;
+  }
+};
+
 struct rom
 {
   using result_type = boost::any;
@@ -891,6 +923,7 @@ initialize_query_table()
   emplace_function0_getter<query::flash_type,                flash>();
   emplace_function0_getter<query::is_mfg,                    mfg>();
   emplace_function0_getter<query::board_name,                board_name>();
+  emplace_function0_getter<query::flash_address,             flash_address>();
 }
 
 struct X { X() { initialize_query_table(); }};
