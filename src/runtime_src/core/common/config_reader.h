@@ -170,7 +170,7 @@ get_stall_trace()
 inline bool
 get_timeline_trace()
 {
-  static bool value = get_profile() && detail::get_bool_value("Debug.timeline_trace",false);
+  static bool value = detail::get_bool_value("Debug.timeline_trace",false);
   return value;
 }
 
