@@ -11,14 +11,14 @@
 
 extern int kds_echo;
 
-static int cu_plram_get_credit(void *core)
+static int cu_plram_alloc_credit(void *core)
 {
 	struct xrt_cu_plram *cu_plram = core;
 
 	return (cu_plram->credits) ? cu_plram->credits-- : 0;
 }
 
-static void cu_plram_put_credit(void *core, u32 count)
+static void cu_plram_free_credit(void *core, u32 count)
 {
 	struct xrt_cu_plram *cu_plram = core;
 
@@ -27,11 +27,11 @@ static void cu_plram_put_credit(void *core, u32 count)
 		cu_plram->credits = cu_plram->max_credits;
 }
 
-static int cu_plram_is_zero_credit(void *core)
+static int cu_plram_peek_credit(void *core)
 {
 	struct xrt_cu_plram *cu_plram = core;
 
-	return (cu_plram->credits)? 0 : 1;
+	return cu_plram->credits;
 }
 
 static void cu_plram_configure(void *core, u32 *data, size_t sz, int type)
@@ -81,9 +81,9 @@ out:
 }
 
 static struct xcu_funcs xrt_cu_plram_funcs = {
-	.get_credit	= cu_plram_get_credit,
-	.put_credit	= cu_plram_put_credit,
-	.is_zero_credit = cu_plram_is_zero_credit,
+	.alloc_credit	= cu_plram_alloc_credit,
+	.free_credit	= cu_plram_free_credit,
+	.peek_credit	= cu_plram_peek_credit,
 	.configure	= cu_plram_configure,
 	.start		= cu_plram_start,
 	.check		= cu_plram_check,

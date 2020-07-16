@@ -153,7 +153,6 @@ static int request_intr(struct platform_device *pdev, int intr_id,
 static int config_intr(struct platform_device *pdev, int intr_id, bool en)
 {
 	struct xocl_intc *intc = platform_get_drvdata(pdev);
-	xdev_handle_t xdev = xocl_get_xdev(intc->pdev);
 	struct intr_metadata *data;
 	struct intr_info *info;
 	int data_idx = intr_id / INTR_SRCS;
