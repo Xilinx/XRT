@@ -286,6 +286,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.res_array = (struct xocl_subdev_res[]) {
 			{.res_name = NODE_QDMA4},
 			{.res_name = NODE_STM4},
+			{.res_name = NODE_QDMA4_CSR},
 			{NULL},
 		},
 		.required_ip = 1,

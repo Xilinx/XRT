@@ -1482,6 +1482,12 @@ struct xocl_subdev_map {
 	 		.name = NODE_STM4,		\
 			.flags = IORESOURCE_MEM,	\
 		},					\
+		{					\
+			.start = 0x3000000,		\
+			.end = 0x3008000,		\
+	 		.name = NODE_QDMA4_CSR,		\
+			.flags = IORESOURCE_MEM,	\
+		},					\
 	 })
 
 #define XOCL_RES_QDMA					\
