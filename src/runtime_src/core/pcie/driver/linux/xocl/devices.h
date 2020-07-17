@@ -245,6 +245,7 @@ enum {
 #define	XOCL_CU			"cu"
 #define	XOCL_P2P		"p2p"
 #define	XOCL_PMC		"pmc"
+#define	XOCL_INTC		"intc"
 
 #define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
 
@@ -288,6 +289,7 @@ enum subdev_id {
 	XOCL_SUBDEV_LAPC,
 	XOCL_SUBDEV_SPC,
 	XOCL_SUBDEV_PMC,
+	XOCL_SUBDEV_INTC,
 	XOCL_SUBDEV_NUM
 };
 
@@ -1565,6 +1567,29 @@ struct xocl_subdev_map {
 		ARRAY_SIZE(XOCL_RES_UARTLITE),		\
 	}
 
+#define XOCL_RES_INTC					\
+	((struct resource []) {				\
+		{					\
+		.start  = ERT_CSR_ADDR,			\
+		.end    = ERT_CSR_ADDR + 0xfff,		\
+		.flags  = IORESOURCE_MEM,		\
+		},					\
+		{					\
+		.start  = 0,				\
+		.end    = 3,				\
+		.flags  = IORESOURCE_IRQ,		\
+		}					\
+	})
+
+#define XOCL_DEVINFO_INTC				\
+	{						\
+		XOCL_SUBDEV_INTC,			\
+		XOCL_INTC,				\
+		XOCL_RES_INTC,				\
+		ARRAY_SIZE(XOCL_RES_INTC),		\
+		.override_idx = -1,			\
+	}
+
 #define XOCL_RES_SCHEDULER				\
 		((struct resource []) {			\
 		/*
@@ -1603,6 +1628,29 @@ struct xocl_subdev_map {
 		ARRAY_SIZE(XOCL_RES_SCHEDULER),		\
 		&XOCL_RES_SCHEDULER_PRIV,		\
 		sizeof(struct xocl_ert_sched_privdata),	\
+		.override_idx = -1,			\
+	}
+
+#define XOCL_RES_INTC_QDMA				\
+	((struct resource []) {				\
+		{					\
+		.start  = ERT_CSR_ADDR,			\
+		.end    = ERT_CSR_ADDR + 0xfff,		\
+		.flags  = IORESOURCE_MEM,		\
+		},					\
+		{					\
+		.start  = 2,				\
+		.end    = 5,				\
+		.flags  = IORESOURCE_IRQ,		\
+		}					\
+	})
+
+#define XOCL_DEVINFO_INTC_QDMA				\
+	{						\
+		XOCL_SUBDEV_INTC,			\
+		XOCL_INTC,				\
+		XOCL_RES_INTC_QDMA,			\
+		ARRAY_SIZE(XOCL_RES_INTC_QDMA),		\
 		.override_idx = -1,			\
 	}
 
@@ -1656,6 +1704,30 @@ struct xocl_subdev_map {
 
 #define	ERT_CSR_ADDR_VERSAL		0x6040000
 #define	ERT_CQ_BASE_ADDR_VERSAL		0x4000000
+
+#define XOCL_RES_INTC_VERSAL				\
+	((struct resource []) {				\
+		{					\
+		.start  = ERT_CSR_ADDR_VERSAL,		\
+		.end    = ERT_CSR_ADDR_VERSAL + 0xfff,	\
+		.flags  = IORESOURCE_MEM,		\
+		},					\
+		{					\
+		.start  = 0,				\
+		.end    = 0,				\
+		.flags  = IORESOURCE_IRQ,		\
+		}					\
+	})
+
+#define XOCL_DEVINFO_INTC_VERSAL			\
+	{						\
+		XOCL_SUBDEV_INTC,			\
+		XOCL_INTC,				\
+		XOCL_RES_INTC_VERSAL,			\
+		ARRAY_SIZE(XOCL_RES_INTC_VERSAL),	\
+		.override_idx = -1,			\
+		.bar_idx = (char []){ 2 },		\
+	}
 
 #define XOCL_RES_SCHEDULER_VERSAL				\
 		((struct resource []) {				\
@@ -1750,6 +1822,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_AF_USER,				\
 			XOCL_DEVINFO_CU_CTRL,				\
+			XOCL_DEVINFO_INTC_QDMA,				\
 		})
 
 #define	XOCL_BOARD_USER_QDMA4						\
@@ -1769,6 +1842,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_ICAP_USER,				\
 			XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_AF_USER,				\
+			XOCL_DEVINFO_INTC_QDMA,				\
 		})
 
 #define	XOCL_BOARD_USER_QDMA						\
@@ -1784,6 +1858,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_XDMA,				\
 			XOCL_DEVINFO_SCHEDULER_51,			\
 			XOCL_DEVINFO_ICAP_USER,				\
+			XOCL_DEVINFO_INTC,				\
 		})
 
 #define	USER_RES_XDMA							\
@@ -1795,6 +1870,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_ICAP_USER,				\
 			XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_AF_USER,				\
+			XOCL_DEVINFO_INTC,				\
 		})
 
 #define	USER_RES_XDMA_VERSAL						\
@@ -1806,6 +1882,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_PF_MAILBOX_USER_VERSAL,		\
 			XOCL_DEVINFO_MAILBOX_USER_VERSAL,		\
 		 	XOCL_DEVINFO_ICAP_USER,				\
+			XOCL_DEVINFO_INTC_VERSAL,				\
 		})
 
 #define USER_RES_AWS							\
@@ -1815,6 +1892,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_SCHEDULER_51,			\
 			XOCL_DEVINFO_MAILBOX_USER_SOFTWARE,		\
 			XOCL_DEVINFO_ICAP_USER,				\
+			XOCL_DEVINFO_INTC,				\
 		})
 
 #define	USER_RES_DSA52							\
@@ -1827,6 +1905,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_ICAP_USER,				\
 			XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_AF_USER,				\
+			XOCL_DEVINFO_INTC,				\
 		})
 
 #define	USER_RES_DSA52_U2						\
@@ -1839,6 +1918,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_ICAP_USER,				\
 			XOCL_DEVINFO_XMC_USER_U2,			\
 			XOCL_DEVINFO_AF_USER,				\
+			XOCL_DEVINFO_INTC,				\
 		})
 
 #define USER_RES_SMARTN							\

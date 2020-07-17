@@ -224,6 +224,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/subdev/cu.c
   xocl/subdev/p2p.c
   xocl/subdev/pmc.c
+  xocl/subdev/intc.c
   xocl/Makefile
   )
 

@@ -60,28 +60,28 @@ struct xcu_status {
 
 struct xcu_funcs {
 	/**
-	 * @get_credit:
+	 * @alloc_credit:
 	 *
-	 * Try to get one credit from the CU. A credit is required before
+	 * Try to alloc one credit on the CU. A credit is required before
 	 * submit a task to the CU. Otherwise, it would lead to unknown CU
 	 * behaviour.
 	 * Return: the number of remaining credit.
 	 */
-	int (*get_credit)(void *core);
+	int (*alloc_credit)(void *core);
 
 	/**
-	 * @refund_credit:
+	 * @free_credit:
 	 *
-	 * refund credit to the CU.
+	 * free credits.
 	 */
-	void (*put_credit)(void *core, u32 count);
+	void (*free_credit)(void *core, u32 count);
 
 	/**
-	 * @is_zero_credit:
+	 * @peek_credit:
 	 *
-	 * Check if CU core has zero credit.
+	 * Check how many credits the CU could provide with side effect.
 	 */
-	int (*is_zero_credit)(void *core);
+	int (*peek_credit)(void *core);
 
 	/**
 	 * @configure:
@@ -247,17 +247,17 @@ static inline void xrt_cu_check(struct xrt_cu *xcu)
 
 static inline int xrt_cu_get_credit(struct xrt_cu *xcu)
 {
-	return xcu->funcs->get_credit(xcu->core);
+	return xcu->funcs->alloc_credit(xcu->core);
 }
 
 static inline int is_zero_credit(struct xrt_cu *xcu)
 {
-	return xcu->funcs->is_zero_credit(xcu->core);
+	return (xcu->funcs->peek_credit(xcu->core) == 0);
 }
 
 static inline void xrt_cu_put_credit(struct xrt_cu *xcu, u32 count)
 {
-	xcu->funcs->put_credit(xcu->core, count);
+	xcu->funcs->free_credit(xcu->core, count);
 }
 
 /* 1. Move commands from pending command queue to running queue
