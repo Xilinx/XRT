@@ -24,6 +24,7 @@
 #include "command.h"
 #include "exec.h"
 #include "bo.h"
+#include "enqueue.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
 #include "core/common/xclbin_parser.h"
@@ -259,10 +260,15 @@ public:
     : m_device(dev)
     , m_execbuf(m_device->create_exec_buf<ert_start_kernel_cmd>())
     , m_done(true)
-  {}
+  {
+    static unsigned int count = 0;
+    m_uid = count++;
+    XRT_DEBUGF("kernel_command::kernel_command(%d)\n", m_uid);
+  }
 
   ~kernel_command()
   {
+    XRT_DEBUGF("kernel_command::~kernel_command(%d)\n", m_uid);
     // This is problematic, bo_cache should return managed BOs
     m_device->exec_buffer_cache.release(m_execbuf);
   }
@@ -311,6 +317,27 @@ public:
     // lock must not be helt while calling callback function
     if (complete)
       m_callbacks.get()->back()(state);
+  }
+
+  // set_event() - enqueued notifcation of event
+  //
+  // @event:  Event to notify upon completion of cmd
+  //
+  // Event notification is used when a kernel/run is enqueued in an
+  // event graph.  When cmd completes, the event must be notified.
+  // 
+  // The event (stored in the event graph) participates in lifetime
+  // of the object that holds on to cmd object.
+  void
+  set_event(const std::shared_ptr<xrt::event_impl>& event) const
+  {
+    std::lock_guard<std::mutex> lk(m_mutex);
+    XRT_DEBUGF("kernel_command::set_event() m_uid(%d)\n", m_uid);
+    if (m_done) {
+      xrt_core::enqueue::done(event.get());
+      return;
+    }
+    m_event = event;
   }
 
   /**
@@ -409,17 +436,28 @@ public:
     bool complete = false;
     if (s>=ERT_CMD_STATE_COMPLETED) {
       std::lock_guard<std::mutex> lk(m_mutex);
+      XRT_DEBUGF("kernel_command::notify() m_uid(%d) m_state(%d)\n", m_uid, s);
       complete = m_done = true;
+      if (m_event)
+        xrt_core::enqueue::done(m_event.get());
       m_exec_done.notify_all();  // CAN THIS BE MOVED TO END AFTER CALLBACKS?
     }
 
-    if (complete)
+    if (complete) {
       run_callbacks(s);
+
+      // Clear the event if any.  This must be last since if used, it
+      // holds the lifeline to this command object which could end up
+      // being deleted when the event is cleared.
+      m_event = nullptr;
+    }
   }
 
 private:
   device_type* m_device = nullptr;
+  mutable std::shared_ptr<xrt::event_impl> m_event;
   execbuf_type m_execbuf; // underlying execution buffer
+  unsigned int m_uid = 0;
   bool m_done = false;
 
   mutable std::mutex m_mutex;
@@ -863,6 +901,21 @@ public:
   add_callback(callback_function_type fcn)
   {
     cmd.add_callback(fcn);
+  }
+
+  // set_event() - enqueued notifcation of event
+  //
+  // @event:  Event to notify upon completion of run
+  //
+  // Event notification is used when a kernel/run is enqueued in an
+  // event graph.  When run completes, the event must be notified.
+  // 
+  // The event (stored in the event graph) participates in lifetime
+  // of the run object.
+  void
+  set_event(const std::shared_ptr<event_impl>& event) const
+  {
+    cmd.set_event(event);
   }
 
   // run_type() - constructor
@@ -1334,6 +1387,13 @@ add_callback(ert_cmd_state state,
   handle->add_callback([=](ert_cmd_state state) { fcn(*this, state, data); });
 }
 
+void
+run::
+set_event(const std::shared_ptr<event_impl>& event) const
+{
+  handle->set_event(event);
+}
+  
 kernel::
 kernel(xclDeviceHandle dhdl, const xuid_t xclbin_id, const std::string& name, bool exclusive)
   : handle(std::make_shared<kernel_impl>
