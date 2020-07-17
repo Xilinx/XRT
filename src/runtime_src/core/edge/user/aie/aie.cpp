@@ -55,16 +55,16 @@ Aie::Aie(std::shared_ptr<xrt_core::device> device)
      */
     shim_dma.resize(numCols);
     for (auto& gmio : gmios) {
-        auto dma = shim_dma.at(gmio.shim_col);
+        auto dma = &shim_dma.at(gmio.shim_col);
         auto pos = getTilePos(gmio.shim_col, 0);
-        if (!dma.configured) {
-            XAieDma_ShimSoftInitialize(&(tileArray.at(pos)), &(dma.handle));
-            XAieDma_ShimBdClearAll(&(dma.handle));
-            dma.configured = true;
+        if (!dma->configured) {
+            XAieDma_ShimSoftInitialize(&(tileArray.at(pos)), &(dma->handle));
+            XAieDma_ShimBdClearAll(&(dma->handle));
+            dma->configured = true;
         }
 
         auto chan = gmio.channel_number;
-        XAieDma_ShimChControl((&(dma.handle)), chan, XAIE_DISABLE, XAIE_DISABLE, XAIE_ENABLE);
+        XAieDma_ShimChControl((&(dma->handle)), chan, XAIE_DISABLE, XAIE_DISABLE, XAIE_ENABLE);
         for (int i = 0; i < XAIEGBL_NOC_DMASTA_STARTQ_MAX; ++i) {
             /*
              * 16 BDs are allocated to 4 channels.
@@ -76,9 +76,9 @@ Aie::Aie(std::shared_ptr<xrt_core::device> device)
             int bd_num = chan * XAIEGBL_NOC_DMASTA_STARTQ_MAX + i;
             BD bd;
             bd.bd_num = bd_num;
-            dma.dma_chan[chan].idle_bds.push(bd);
+            dma->dma_chan[chan].idle_bds.push(bd);
 
-            XAieDma_ShimBdSetAxi(&(dma.handle), bd_num, 0, gmio.burst_len, 0, 0, 0);
+            XAieDma_ShimBdSetAxi(&(dma->handle), bd_num, 0, gmio.burst_len, 0, 0, 0);
         }
     }
 
@@ -91,7 +91,7 @@ Aie::Aie(std::shared_ptr<xrt_core::device> device)
 
     /* Register all AIE error events */
     XAieTile_ErrorRegisterNotification(&aieInst, XAIEGBL_MODULE_ALL, XAIETILE_ERROR_ALL, error_cb, NULL);
- 
+
     /* Enable AIE interrupts */
     XAieTile_EventsEnableInterrupt(&aieInst);
 }

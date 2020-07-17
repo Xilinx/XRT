@@ -428,14 +428,28 @@ sync_bo(unsigned bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size
   auto gmio = std::find_if(aieArray->gmios.begin(), aieArray->gmios.end(),
             [dmaID](gmio_type it) { return it.id.compare(dmaID) == 0; });
 
-  if (gmio != aieArray->gmios.end())
-      throw xrt_core::error(-EINVAL, "Can't sync BO: DMA ID not found");
+  if (gmio == aieArray->gmios.end())
+    throw xrt_core::error(-EINVAL, "Can't sync BO: DMA ID not found");
+
+  switch (dir) {
+  case XCL_BO_SYNC_BO_GMIO_TO_AIE:
+    if (gmio->type != 0)
+      throw xrt_core::error(-EINVAL, "Sync BO direction does not match GMIO type");
+    break;
+  case XCL_BO_SYNC_BO_AIE_TO_GMIO:
+    if (gmio->type != 1)
+      throw xrt_core::error(-EINVAL, "Sync BO direction does not match GMIO type");
+    break;
+  default:
+    throw xrt_core::error(-EINVAL, "Can't sync BO: unknown direction.");
+  }
 
   auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
-  ret = drv->getBOInfo(bo, info);
+  info.handle = bo;
+  ret = drv->getBOInfo(info);
   if (ret)
     throw xrt_core::error(ret, "Sync AIE Bo fails: can not get BO info.");
- 
+
   if (size & XAIEDMA_SHIM_TXFER_LEN32_MASK != 0)
     throw xrt_core::error(-EINVAL, "Sync AIE Bo fails: size is not 32 bits aligned.");
 
@@ -656,7 +670,6 @@ xrtGraphOpen(xclDeviceHandle handle, const uuid_t xclbin_uuid, const char* graph
     xrt_core::send_exception_message(ex.what());
     return XRT_NULL_HANDLE;
   }
-    
 }
 
 void
@@ -849,7 +862,7 @@ xrtSyncBOAIE(xrtGraphHandle ghdl, unsigned int bo, const char *dmaID, enum xclBO
   catch (const std::exception& ex) {
     xrt_core::send_exception_message(ex.what());
     return -1;
-  }  
+  }
 }
 
 int
