@@ -71,6 +71,19 @@ void qdma_update_request(void *q_hndl, struct qdma_request *req,
 
 /*****************************************************************************/
 /**
+ * qdma_q_desc_avail_count() - get available number of descriptors for the q
+ *                     specified by @q_hndl
+ *
+ * @q_hndl: handle to the q with which bypass module can request descriptors
+ *
+ * Return: # of available descriptors: success;
+ *         <0: if number of requested descriptors not available
+ *
+ *****************************************************************************/
+unsigned int qdma_q_desc_avail_count(void *q_hndl);
+
+/*****************************************************************************/
+/**
  * qdma_q_desc_get() - request @desc_cnt number of descriptors for the q
  *                     specified by @q_hndl
  *
@@ -94,6 +107,6 @@ int qdma_q_desc_get(void *q_hndl, const unsigned int desc_cnt,
  * Return: 0: success; <0: on failure
  *
  *****************************************************************************/
-int qdma_q_init_pointers(void *q_hndl);
+int qdma_q_init_pointers(unsigned long dev_hndl, unsigned long queue_hndl);
 
 #endif /* QDMA_UL_EXT_H__ */

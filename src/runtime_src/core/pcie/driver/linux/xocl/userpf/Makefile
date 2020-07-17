@@ -55,6 +55,7 @@ xocl-y := \
 	../subdev/xdma.o \
 	../subdev/qdma.o \
 	../subdev/qdma4.o \
+	../subdev/stmc.o \
 	../subdev/feature_rom.o \
 	../subdev/mb_scheduler.o \
 	../subdev/mailbox.o \
