@@ -118,7 +118,7 @@ public:
   void
   sync(xclBOSyncDirection dir, size_t sz, size_t offset)
   {
-    device->sync_bo(handle, dir, sz, offset);
+    device->sync_bo(handle, dir, sz, offset + get_offset());
   }
 
   void
@@ -150,6 +150,7 @@ public:
   virtual size_t get_size()      const { return size;    }
   virtual void*  get_hbuf()      const { return nullptr; }
   virtual bool   is_sub_buffer() const { return false;   }
+  virtual size_t get_offset()    const { return 0;       }
 };
 
 
@@ -237,6 +238,12 @@ public:
   {
     if (size + offset > parent->get_size())
       throw xrt_core::error(-EINVAL, "sub buffer size and offset");
+  }
+
+  virtual size_t
+  get_offset() const
+  {
+    return offset;
   }
 
   virtual void*
