@@ -58,9 +58,9 @@ class event_impl : public std::enable_shared_from_this<event_impl>
 {
   std::mutex m_mutex;
   event_queue::task m_task;
-  event_queue_impl* m_event_queue;
+  event_queue_impl* m_event_queue = nullptr;
   std::vector<event_impl*> m_chain;
-  unsigned int m_wait_count;
+  unsigned int m_wait_count = 0;
   unsigned int m_uid = 0;
   bool m_done = false;
 
