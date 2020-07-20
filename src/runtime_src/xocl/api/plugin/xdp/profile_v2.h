@@ -56,6 +56,12 @@ namespace xocl {
       action_migrate(cl_mem mem0, cl_mem_migration_flags flags) ;
     std::function<void (xocl::event*, cl_int, const std::string&)>
       action_ndrange_migrate(cl_event event, cl_kernel kernel) ;
+    std::function<void (xocl::event*, cl_int, const std::string&)>
+      action_ndrange() ;
+    std::function<void (xocl::event*, cl_int, const std::string&)>
+      action_unmap(cl_mem buffer) ;
+    std::function<void (xocl::event*, cl_int, const std::string&)>
+      action_copy() ;
 
     // Functions used by the device trace plugin
     void flush_device(xrt::device* handle) ;

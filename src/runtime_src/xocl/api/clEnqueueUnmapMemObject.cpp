@@ -91,6 +91,7 @@ clEnqueueUnmapMemObject(cl_command_queue  command_queue,
     (uevent.get(),xocl::enqueue::action_unmap_buffer,memobj,mapped_ptr);
   //xocl::profile::set_event_action
   //  (uevent.get(),xocl::profile::action_unmap,memobj);
+  xocl::profile::set_event_action(uevent.get(), xocl::profile::action_unmap, memobj) ;
   xocl::appdebug::set_event_action
     (uevent.get(),xocl::appdebug::action_unmap,memobj);
 

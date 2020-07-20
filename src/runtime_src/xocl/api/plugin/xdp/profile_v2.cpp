@@ -604,7 +604,77 @@ namespace xocl {
 		 }
 	     } ;
     }
-    
+
+    std::function<void (xocl::event*, cl_int, const std::string&)>
+    action_ndrange()
+    {
+      return [](xocl::event*, cl_int, const std::string&) { } ;
+    }
+
+    std::function<void (xocl::event*, cl_int, const std::string&)>
+    action_unmap(cl_mem buffer)
+    {
+      return [buffer](xocl::event* e, cl_int status, const std::string&)
+	     {
+	       if (!write_cb) return ;
+	       if (status != CL_RUNNING && status != CL_COMPLETE) return ;
+
+	       auto xmem = xocl::xocl(buffer) ;
+
+	       // If P2P buffer, don't mark anything
+	       if (xmem->no_host_memory()) return ;
+
+	       // If buffer is not resident on device, don't mark anything
+	       auto queue = e->get_command_queue() ;
+	       auto device = queue->get_device() ;
+	       if (!(xmem->is_resident(device))) return ;
+
+	       uint64_t* dependencies = nullptr ;
+	       unsigned int numDependencies = 0 ;
+	       if (status == CL_RUNNING)
+	       {
+		 // Get memory bank information
+		 uint64_t address = 0 ;
+		 std::string bank = "Unknown" ;
+		 try { 
+		   xmem->try_get_address_bank(address, bank) ;
+		 }
+		 catch (const xocl::error& /*e*/)
+		 {
+		 }
+
+		 // Get dependency information
+		 get_dependency_information(dependencies, numDependencies, e) ;
+
+		 // Perform the callback
+		 write_cb(e->get_uid(), true,
+			  address,
+			  bank.c_str(),
+			  xmem->get_size(),
+			  false, // isP2P
+			  dependencies,
+			  numDependencies) ;
+		 // Clean up memory
+		 if (dependencies != nullptr) delete [] dependencies ;
+	       }
+	       else if (status == CL_COMPLETE)
+	       {
+		 write_cb(e->get_uid(), false,
+			  0,
+			  nullptr,
+			  0,
+			  false, // isP2P
+			  dependencies,
+			  numDependencies) ;
+	       }
+	     } ;
+    }
+
+    std::function<void (xocl::event*, cl_int, const std::string&)>
+    action_copy()
+    {
+      return [](xocl::event*, cl_int, const std::string&) { } ;
+    }
 
     // ******** OpenCL Device Trace Callbacks *********
     void flush_device(xrt::device* handle)
