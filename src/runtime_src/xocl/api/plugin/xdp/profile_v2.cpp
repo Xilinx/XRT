@@ -514,6 +514,98 @@ namespace xocl {
       }
     }
 
+    std::function<void (xocl::event*, cl_int, const std::string&)>
+    action_ndrange_migrate(cl_event event, cl_kernel kernel)
+    {
+      auto xevent = xocl::xocl(event) ;
+      auto xkernel = xocl::xocl(kernel) ;
+
+      auto queue = xevent->get_command_queue() ;
+      auto device = queue->get_device() ;
+
+      cl_mem mem0 = nullptr ;
+
+      // See how many of the arguments will be migrated and mark them
+      for (auto& arg : xkernel->get_argument_range())
+      {
+	if (auto mem = arg->get_memory_object())
+	{
+	  if (arg->is_progvar() && 
+	      arg->get_address_qualifier() == CL_KERNEL_ARG_ADDRESS_GLOBAL)
+	    continue ;
+	  else if (mem->is_resident(device))
+	    continue ;
+	  else if (!(mem->get_flags() & 
+		     (CL_MEM_WRITE_ONLY|CL_MEM_HOST_NO_ACCESS)))
+	  {
+	    mem0 = mem ;
+	  }
+
+	}
+      }
+      
+      if (mem0 == nullptr)
+      {
+	return [](xocl::event*, cl_int, const std::string&)
+	       {
+	       } ;
+      }
+
+      return [mem0](xocl::event* e, cl_int status, const std::string&)
+	     {
+	       if (write_cb) return ;
+	       if (status != CL_RUNNING && status != CL_COMPLETE) return ;
+
+		 // Before we cross over to XDP, collect all the 
+		 //  information we need from the event
+		 auto xmem = xocl::xocl(mem0) ;
+	       
+		 uint64_t* dependencies = nullptr ;
+		 unsigned int numDependencies = 0 ;
+
+		 // For start events, dig in and find all the information
+		 //  necessary to show the tooltip and send it.
+		 if (status == CL_RUNNING)
+		 {
+		   // Get memory bank information
+		   uint64_t address = 0 ;
+		   std::string bank = "Unknown" ;
+		   try { 
+		     xmem->try_get_address_bank(address, bank) ;
+		   }
+		   catch (const xocl::error& /*e*/)
+		   {
+		   }
+		   
+		   // Get dependency information
+		   get_dependency_information(dependencies, numDependencies, e);
+		   
+		   // Perform the callback
+		   write_cb(e->get_uid(), true,
+			    address,
+			    bank.c_str(),
+			    xmem->get_size(),
+			    false, // isP2P
+			    dependencies,
+			    numDependencies) ;
+		   // Clean up memory
+		   if (dependencies != nullptr) delete [] dependencies ;
+		 }
+		 // For end events, just send the minimal information
+		 else if (status == CL_COMPLETE)
+		 {
+		   write_cb(e->get_uid(), false,
+			    0,
+			    nullptr,
+			    0,
+			    false, // isP2P
+			    dependencies,
+			    numDependencies) ;
+		 }
+	     } ;
+    }
+    
+
     // ******** OpenCL Device Trace Callbacks *********
     void flush_device(xrt::device* handle)
     {
