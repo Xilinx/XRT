@@ -118,6 +118,7 @@ public:
 /** End of the loggers */
 
 void load_xdp_plugin_library(HalPluginConfig* config);
+void load_vart_plugin_library(HalPluginConfig* config);
 
 } //  xdphal
 

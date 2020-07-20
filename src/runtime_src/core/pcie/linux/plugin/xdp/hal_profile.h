@@ -203,6 +203,8 @@ class CloseContextCallLogger : public CallLogger
 /** End of the loggers */
 
 void load_xdp_plugin_library(HalPluginConfig* config);
+void load_vart_plugin_library(HalPluginConfig* config);
+
 void register_hal_callbacks(void* handle) ;
 void warning_hal_callbacks() ; 
 

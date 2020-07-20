@@ -24,13 +24,17 @@ CallLogger::CallLogger(uint64_t id)
   if (hal_plugins_loaded) return ;
   hal_plugins_loaded = true ;
   
-  if (xrt_core::config::get_xrt_profile() || xrt_core::config::get_vitis_ai_trace())
+  if (xrt_core::config::get_xrt_profile())
   {
     load_xdp_plugin_library(nullptr) ;
   }
   if (xrt_core::config::get_data_transfer_trace() != "off")
   {
     xdphaldeviceoffload::load_xdp_hal_device_offload() ;
+  }
+  if (xrt_core::config::get_vitis_ai_trace())
+  {
+    load_vart_plugin_library(nullptr) ;
   }
 }
 
@@ -440,6 +444,11 @@ void load_xdp_plugin_library(HalPluginConfig* )
   static xrt_core::module_loader xdp_hal_loader("xdp_hal_plugin",
 						register_hal_callbacks,
 						warning_hal_callbacks) ;
+}
+
+void load_vart_plugin_library(HalPluginConfig* )
+{
+  static xrt_core::module_loader vart_loader("xdp_vart_plugin", nullptr, nullptr);
 }
 
 }
