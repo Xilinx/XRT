@@ -390,6 +390,130 @@ namespace xocl {
 	     } ;
     }
 
+    std::function<void (xocl::event*, cl_int, const std::string&)>
+    action_migrate(cl_mem mem0, cl_mem_migration_flags flags)
+    {
+      // Don't do anything for this migration
+      if (flags & CL_MIGRATE_MEM_OBJECT_CONTENT_UNDEFINED)
+      {
+	return [](xocl::event*, cl_int, const std::string&) { } ;
+      }
+
+      // Migrate actions could be either a read or a write.
+      if (flags & CL_MIGRATE_MEM_OBJECT_HOST)
+      {
+	// Read
+	return [mem0](xocl::event* e, cl_int status, const std::string&)
+	       {
+		 if (!read_cb) return ;
+		 if (status != CL_RUNNING && status != CL_COMPLETE) return ;
+
+		 // Before we cross over to XDP, collect all the 
+		 //  information we need from the event
+		 auto xmem = xocl::xocl(mem0) ;
+	       
+		 uint64_t* dependencies = nullptr ;
+		 unsigned int numDependencies = 0 ;
+
+		 // For start events, dig in and find all the information
+		 //  necessary to show the tooltip and send it.
+		 if (status == CL_RUNNING)
+		 {
+		   // Get memory bank information
+		   uint64_t address = 0 ;
+		   std::string bank = "Unknown" ;
+		   try { 
+		     xmem->try_get_address_bank(address, bank) ;
+		   }
+		   catch (const xocl::error& /*e*/)
+		   {
+		   }
+
+		   // Get dependency information
+		   get_dependency_information(dependencies, numDependencies, e);
+
+		   // Perform the callback
+		   read_cb(e->get_uid(), true,
+			   address,
+			   bank.c_str(),
+			   xmem->get_size(),
+			   false, // isP2P
+			   dependencies,
+			   numDependencies) ;
+		   // Clean up memory
+		   if (dependencies != nullptr) delete [] dependencies ;
+		 }
+		 // For end events, just send the minimal information
+		 else if (status == CL_COMPLETE)
+		 {
+		   read_cb(e->get_uid(), false,
+			   0,
+			   nullptr,
+			   0,
+			   false, // isP2P
+			   dependencies,
+			   numDependencies) ;
+		 }
+	       } ;
+      }
+      else
+      {
+	// Write
+	return [mem0](xocl::event* e, cl_int status, const std::string&)
+	       {
+		 if (!write_cb) return ;
+		 if (status != CL_RUNNING && status != CL_COMPLETE) return ;
+
+		 // Before we cross over to XDP, collect all the 
+		 //  information we need from the event
+		 auto xmem = xocl::xocl(mem0) ;
+	       
+		 uint64_t* dependencies = nullptr ;
+		 unsigned int numDependencies = 0 ;
+
+		 // For start events, dig in and find all the information
+		 //  necessary to show the tooltip and send it.
+		 if (status == CL_RUNNING)
+		 {
+		   // Get memory bank information
+		   uint64_t address = 0 ;
+		   std::string bank = "Unknown" ;
+		   try { 
+		     xmem->try_get_address_bank(address, bank) ;
+		   }
+		   catch (const xocl::error& /*e*/)
+		   {
+		   }
+		   
+		   // Get dependency information
+		   get_dependency_information(dependencies, numDependencies, e);
+		   
+		   // Perform the callback
+		   write_cb(e->get_uid(), true,
+			    address,
+			    bank.c_str(),
+			    xmem->get_size(),
+			    false, // isP2P
+			    dependencies,
+			    numDependencies) ;
+		   // Clean up memory
+		   if (dependencies != nullptr) delete [] dependencies ;
+		 }
+		 // For end events, just send the minimal information
+		 else if (status == CL_COMPLETE)
+		 {
+		   write_cb(e->get_uid(), false,
+			    0,
+			    nullptr,
+			    0,
+			    false, // isP2P
+			    dependencies,
+			    numDependencies) ;
+		 }
+	       } ;
+      }
+    }
+
     // ******** OpenCL Device Trace Callbacks *********
     void flush_device(xrt::device* handle)
     {
