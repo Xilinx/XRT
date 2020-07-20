@@ -22,7 +22,7 @@ namespace xdphal {
 CallLogger::CallLogger(unsigned id)
            : m_local_idcode(id)
 {
-  if (xrt_core::config::get_xrt_profile())
+  if (xrt_core::config::get_xrt_profile() || xrt_core::config::get_vitis_ai_trace())
   {
     load_xdp_plugin_library(nullptr);
   }

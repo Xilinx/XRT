@@ -24,7 +24,7 @@ CallLogger::CallLogger(uint64_t id)
   if (hal_plugins_loaded) return ;
   hal_plugins_loaded = true ;
   
-  if (xrt_core::config::get_xrt_profile())
+  if (xrt_core::config::get_xrt_profile() || xrt_core::config::get_vitis_ai_trace())
   {
     load_xdp_plugin_library(nullptr) ;
   }
