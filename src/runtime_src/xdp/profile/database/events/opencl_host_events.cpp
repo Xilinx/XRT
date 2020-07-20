@@ -116,6 +116,36 @@ namespace xdp {
     fout << std::endl ;
   }
 
+
+  OpenCLCopyBuffer::OpenCLCopyBuffer(uint64_t s_id, double ts, VTFEventType ty,
+				     uint64_t srcAddress, uint64_t srcResource,
+				     uint64_t dstAddress, uint64_t dstResource,
+				     size_t size)
+    :VTFEvent(s_id, ts, ty), threadId(std::this_thread::get_id()),
+     srcDeviceAddress(srcAddress), srcMemoryResource(srcResource),
+     dstDeviceAddress(dstAddress), dstMemoryResource(dstResource),
+     bufferSize(size)
+  {
+  }
+
+  OpenCLCopyBuffer::~OpenCLCopyBuffer()
+  {
+  }
+
+  void OpenCLCopyBuffer::dump(std::ofstream& fout, uint32_t bucket)
+  {
+    VTFEvent::dump(fout, bucket) ;
+    if (0 == start_id) // Dump the detailed information only for start event
+    {
+      fout << "," << srcDeviceAddress
+	   << "," << srcMemoryResource
+	   << "," << dstDeviceAddress
+	   << "," << dstMemoryResource
+	   << "," << bufferSize ;
+    }
+    fout << std::endl ;
+  }
+
   LOPBufferTransfer::LOPBufferTransfer(uint64_t s_id, double ts, 
 				       VTFEventType ty) :
     VTFEvent(s_id, ts, ty), threadId(std::this_thread::get_id())

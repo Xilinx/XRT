@@ -125,6 +125,30 @@ namespace xdp {
     XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   } ;
 
+  class OpenCLCopyBuffer : public VTFEvent
+  {
+  private:
+    std::thread::id threadId ;
+    uint64_t srcDeviceAddress ;
+    uint64_t srcMemoryResource ; // string
+    uint64_t dstDeviceAddress ;
+    uint64_t dstMemoryResource ; // string
+    size_t bufferSize ;
+
+    OpenCLCopyBuffer() = delete ;
+  public:
+    XDP_EXPORT OpenCLCopyBuffer(uint64_t s_id, double ts, VTFEventType ty,
+				uint64_t srcAddress, uint64_t srcResource,
+				uint64_t dstAddress, uint64_t dstResource,
+				size_t size) ;
+    XDP_EXPORT ~OpenCLCopyBuffer() ;
+
+    virtual bool isHostEvent()       { return true ; }
+    virtual bool isOpenCLHostEvent() { return true ; }
+
+    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
+  } ;
+
   class LOPBufferTransfer : public VTFEvent
   {
   private:

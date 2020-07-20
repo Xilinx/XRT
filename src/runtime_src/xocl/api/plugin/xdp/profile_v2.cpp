@@ -67,6 +67,17 @@ namespace {
 		      bool,
 		      unsigned long int*,
 		      unsigned int)> write_cb ;
+  std::function<void (unsigned int,
+		      bool,
+		      unsigned long long int,
+		      const char*,
+		      unsigned long long int,
+		      const char*,
+		      size_t,
+		      bool,
+		      unsigned long int*,
+		      unsigned int)> copy_cb ;
+  
 
   void register_opencl_trace_functions(void* handle)
   {
@@ -92,7 +103,19 @@ namespace {
     write_cb = (ttype)(xrt_core::dlsym(handle, "action_write")) ;
     if (xrt_core::dlerror() != NULL) write_cb = nullptr ;
 
-    
+    typedef void (*ctype)(unsigned int,
+			  bool,
+			  unsigned long long int,
+			  const char*,
+			  unsigned long long int,
+			  const char*,
+			  size_t,
+			  bool,
+			  unsigned long int*,
+			  unsigned int) ;
+
+    copy_cb = (ctype)(xrt_core::dlsym(handle, "action_copy")) ;
+    if (xrt_core::dlerror() != NULL) copy_cb = nullptr ;
   }
 
   void opencl_trace_warning_function()
@@ -671,9 +694,75 @@ namespace xocl {
     }
 
     std::function<void (xocl::event*, cl_int, const std::string&)>
-    action_copy()
-    {
-      return [](xocl::event*, cl_int, const std::string&) { } ;
+    action_copy(cl_mem src_buffer, cl_mem dst_buffer)
+    {      
+      return [src_buffer, dst_buffer](xocl::event* e, cl_int status, const std::string&) 
+	     { 
+	       if (!copy_cb) return ;
+	       if (status != CL_RUNNING && status != CL_COMPLETE) return ;
+
+	       auto xSrcMem = xocl::xocl(src_buffer) ;
+	       auto xDstMem = xocl::xocl(dst_buffer) ;
+
+	       auto srcFlags = xSrcMem->get_ext_flags() ;
+	       auto dstFlags = xDstMem->get_ext_flags() ;
+
+	       bool isP2P = (srcFlags & XCL_MEM_EXT_P2P_BUFFER) ||
+		 (dstFlags & XCL_MEM_EXT_P2P_BUFFER) ;
+
+	       if (status == CL_RUNNING)
+	       {
+		 // Get memory bank information
+		 uint64_t srcAddress = 0;
+		 uint64_t dstAddress = 0 ;
+		 std::string srcBank = "Unknown" ;
+		 std::string dstBank = "Unknown" ;
+
+		 try {
+		   xSrcMem->try_get_address_bank(srcAddress, srcBank) ;
+		 }
+		 catch (const xocl::error& /*e*/)
+		 {
+		 }
+		 
+		 try {
+		   xDstMem->try_get_address_bank(dstAddress, dstBank) ;
+		 }
+		 catch (const xocl::error& /* e */)
+		 {
+		 }
+
+		 uint64_t* dependencies = nullptr ;
+		 unsigned int numDependencies = 0 ;
+		 // Get dependency information
+		 get_dependency_information(dependencies, numDependencies, e) ;
+
+		 copy_cb(e->get_uid(), true,
+			 srcAddress,
+			 srcBank.c_str(),
+			 dstAddress, 
+			 dstBank.c_str(),
+			 xSrcMem->get_size(),
+			 isP2P,
+			 dependencies,
+			 numDependencies);
+		 // Clean up memory
+		 if (dependencies != nullptr) delete [] dependencies ;
+	       }
+	       else if (status == CL_COMPLETE)
+	       {
+		 copy_cb(e->get_uid(), false,
+			 0,
+			 nullptr,
+			 0,
+			 nullptr,
+			 0,
+			 isP2P,
+			 nullptr, // dependencies
+			 0) ; // numDependencies
+	       }
+	       
+	     } ;
     }
 
     // ******** OpenCL Device Trace Callbacks *********

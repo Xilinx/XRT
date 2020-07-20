@@ -50,17 +50,19 @@ void action_write(unsigned int id,
 		  bool isP2P,
 		  unsigned long int* dependencies,
 		  unsigned int numDependencies) ;
-/*
+
 extern "C"
 void action_copy(unsigned int id,
 		 bool isStart,
-		 unsigned long long int deviceAddress,
-		 const char* memoryResource,
+		 unsigned long long int srcDeviceAddress,
+		 const char* srcMemoryResource,
+		 unsigned long long int dstDeviceAddress,
+		 const char* dstMemoryResource,
 		 size_t bufferSize,
 		 bool isP2P,
 		 unsigned long int* dependencies,
 		 unsigned int numDependencies) ;
-
+/*
 extern "C"
 void action_ndrange(unsigned int id, bool isStart) ;
 */
