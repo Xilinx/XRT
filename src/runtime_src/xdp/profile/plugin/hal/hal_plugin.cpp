@@ -51,7 +51,6 @@ namespace xdp {
 					     xrtVersion,
                          toolVersion)) ;
     (db->getStaticInfo()).addOpenedFile("hal_host_trace.csv", "VP_TRACE");
-
 #ifdef HAL_SUMMARY
     writers.push_back(new HALSummaryWriter("hal_summary.csv"));
 #endif
