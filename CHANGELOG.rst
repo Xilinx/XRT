@@ -1,12 +1,22 @@
 XRT ChangeLog
 -------------
 
-2.7.0
-~~~~~
+2.7.0 (202010.2.7.x)
+~~~~~~~~~~~~~~~~~~~~
+
 Added
 .....
-* XRT native APIs for device and buffer objects.
-* C++ APIs for all new native XRT APIs.  
+
+* Support for CentOS and RHEL 7.7, 7,8, and 8.1.
+* All OS versions now use Python3.
+* Native XRT APIs under $XILINX_XRT/include/experimental are subject to change without warning.
+
+Removed
+.......    
+
+* Removed all references to python2.
+* Removed automatic installation of PyOpenCL.
+
 
 2.6.0 (202010.2.6)
 ~~~~~~~~~~~~~~~~~~
