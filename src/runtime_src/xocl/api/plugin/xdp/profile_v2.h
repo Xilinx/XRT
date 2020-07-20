@@ -45,6 +45,12 @@ namespace xocl {
       ~OpenCLAPILogger() ;
     } ;
 
+    // Functions used by the host trace plugin
+    std::function<void (xocl::event*, cl_int, const std::string&)>
+      action_read(cl_mem buffer) ;
+    std::function<void (xocl::event*, cl_int, const std::string&)>
+      action_write(cl_mem buffer) ;
+
     // Functions used by the device trace plugin
     void flush_device(xrt::device* handle) ;
     void update_device(xrt::device* handle) ;

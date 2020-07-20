@@ -63,6 +63,12 @@ namespace xdp {
     // For device events
     std::map<uint64_t, std::list<VTFEvent*>> deviceEventStartMap;
 
+    // For dependencies in OpenCL, we will have to store a mapping of
+    //  every OpenCL ID to an eventID.  This is a mapping from
+    //  OpenCL event IDs to XDP event IDs.
+    std::map<uint64_t, uint64_t> openclEventMap ;
+    std::map<uint64_t, std::vector<uint64_t>> dependencyMap ;
+
     // In order to reduce memory overhead, instead of each event holding
     //  strings, each event will instead point to a unique
     //  instance of that string
@@ -73,7 +79,7 @@ namespace xdp {
     //  we have to maintain exclusivity
     std::mutex dbLock ;
 
-    std::map<uint64_t, uint64_t> traceIDMap;
+    //std::map<uint64_t, uint64_t> traceIDMap;
 
     void addHostEvent(VTFEvent* event) ;
     void addDeviceEvent(uint64_t deviceId, VTFEvent* event) ;
@@ -105,6 +111,11 @@ namespace xdp {
 
     // Functions that dump large portions of the database
     XDP_EXPORT void dumpStringTable(std::ofstream& fout) ;
+
+    // OpenCL mappings and dependencies
+    XDP_EXPORT void addOpenCLMapping(uint64_t openclID, uint64_t eventID) ;
+    XDP_EXPORT void addDependencies(uint64_t eventID,
+				    const std::vector<uint64_t>& openclIDs) ;
   } ;
   
 }

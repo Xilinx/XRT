@@ -30,7 +30,7 @@ extern "C"
 void function_end(const char* functionName, 
 		  unsigned long long int queueAddress,
 		  unsigned long long int functionID);
-/*
+
 extern "C"
 void action_read(unsigned int id,
 		 bool isStart,
@@ -50,7 +50,7 @@ void action_write(unsigned int id,
 		  bool isP2P,
 		  unsigned long int* dependencies,
 		  unsigned int numDependencies) ;
-
+/*
 extern "C"
 void action_copy(unsigned int id,
 		 bool isStart,

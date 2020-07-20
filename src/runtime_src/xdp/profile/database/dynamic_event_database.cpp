@@ -171,4 +171,18 @@ namespace xdp {
       fout << s.second << "," << s.first.c_str() << std::endl ;
     }
   }
+
+  void VPDynamicDatabase::addOpenCLMapping(uint64_t openclID,
+					   uint64_t eventID)
+  {
+    std::lock_guard<std::mutex> lock(dbLock) ;
+    openclEventMap[openclID] = eventID ;
+  }
+
+  void VPDynamicDatabase::addDependencies(uint64_t eventID,
+					  const std::vector<uint64_t>& openclIDs)
+  {
+    std::lock_guard<std::mutex> lock(dbLock) ;
+    dependencyMap[eventID] = openclIDs ;
+  }
 }

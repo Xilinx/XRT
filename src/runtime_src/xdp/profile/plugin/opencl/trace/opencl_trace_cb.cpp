@@ -63,7 +63,6 @@ namespace xdp {
     (db->getDynamicInfo()).addEvent(event) ;
   }
 
-  /*
   static void action_read(unsigned int id,
 			  bool isStart,
 			  unsigned long long int deviceAddress,
@@ -141,7 +140,7 @@ namespace xdp {
 					     dependentEvents);
     }
   }
-
+  /*
   static void action_copy(unsigned int id,
 			  bool isStart,
 			  unsigned long long int deviceAddress,
@@ -205,7 +204,6 @@ void function_end(const char* functionName,
   xdp::log_function_end(functionName, queueAddress, functionID) ;
 }
 
-/*
 extern "C"
 void action_read(unsigned int id,
 		 bool isStart,
@@ -234,6 +232,7 @@ void action_write(unsigned int id,
 		    isP2P, dependencies, numDependencies) ;
 }
 
+/*
 extern "C"
 void action_copy(unsigned int id,
 		 bool isStart,

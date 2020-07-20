@@ -88,22 +88,10 @@ namespace xdp {
     virtual bool isHostEvent() { return true ; } 
   } ;
 
-  class BufferTransfer : public VTFEvent
+  class BufferTransfer : public VTFEvent // For HAL level
   {
   private:
-    #if 0
-    uint64_t stageString ;
-    uint64_t eventString ;
-    #endif
     size_t size ;
-    #if 0
-    uint64_t srcAddress ;
-    uint64_t srcBank ;
-    uint64_t dstAddress ;
-    uint64_t dstBank ;
-    std::thread::id threadId ;
-    uint64_t bufferId ;
-    #endif
 
     BufferTransfer() = delete ;
   public:
@@ -112,6 +100,27 @@ namespace xdp {
     XDP_EXPORT ~BufferTransfer() ;
 
     virtual bool isHostEvent() { return true ; } 
+
+    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
+  } ;
+
+  class OpenCLBufferTransfer : public VTFEvent
+  {
+  private:
+    std::thread::id threadId ;
+    uint64_t deviceAddress ;
+    uint64_t memoryResource ; // string
+    size_t bufferSize ;
+
+    OpenCLBufferTransfer() = delete ;
+  public:
+    XDP_EXPORT OpenCLBufferTransfer(uint64_t s_id, double ts, VTFEventType ty,
+				    uint64_t address, uint64_t resource,
+				    size_t size) ;
+    XDP_EXPORT ~OpenCLBufferTransfer() ;
+
+    virtual bool isHostEvent()       { return true ; }
+    virtual bool isOpenCLHostEvent() { return true ; }
 
     XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   } ;

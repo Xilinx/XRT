@@ -141,6 +141,7 @@ clEnqueueReadImage(cl_command_queue      command_queue ,
     (uevent.get(),xocl::enqueue::action_read_image,image,origin,region,row_pitch,slice_pitch,ptr);
   //xocl::profile::set_event_action
   //  (uevent.get(),xocl::profile::action_read,image,0,0,true);
+  xocl::profile::set_event_action(uevent.get(), xocl::profile::action_read, image);
 #ifndef _WIN32
   xocl::lop::set_event_action(uevent.get(), xocl::lop::action_read);
 #endif

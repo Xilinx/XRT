@@ -43,12 +43,28 @@ namespace {
 			  opencl_counters_warning_function) ;
   }
 
-  // ******** OpenCL API Trace Plugin *********
+  // ******** OpenCL Host Trace Plugin *********
 
   // All of the function pointers that will be dynamically linked to
   //  callback functions on the XDP plugin side
   std::function<void (const char*, uint64_t, uint64_t)> function_start_cb ;
   std::function<void (const char*, uint64_t, uint64_t)> function_end_cb ;
+  std::function<void (unsigned int, 
+		      bool, 
+		      unsigned long long int, 
+		      const char*, 
+		      size_t, 
+		      bool, 
+		      unsigned long int*, 
+		      unsigned int)> read_cb ;
+  std::function<void (unsigned int,
+		      bool,
+		      unsigned long long int,
+		      const char*,
+		      size_t,
+		      bool,
+		      unsigned long int*,
+		      unsigned int)> write_cb ;
 
   void register_opencl_trace_functions(void* handle)
   {
@@ -58,6 +74,21 @@ namespace {
 
     function_end_cb = (ftype)(xrt_core::dlsym(handle, "function_end")) ;
     if (xrt_core::dlerror() != NULL) function_end_cb = nullptr ;
+
+    typedef void (*ttype)(unsigned int,
+			  bool,
+			  unsigned long long int,
+			  const char*,
+			  size_t,
+			  bool,
+			  unsigned long int*,
+			  unsigned int) ;
+
+    read_cb = (ttype)(xrt_core::dlsym(handle, "action_read")) ;
+    if (xrt_core::dlerror() != NULL) read_cb = nullptr ;
+
+    write_cb = (ttype)(xrt_core::dlsym(handle, "action_write")) ;
+    if (xrt_core::dlerror() != NULL) write_cb = nullptr ;
   }
 
   void opencl_trace_warning_function()
@@ -102,6 +133,38 @@ namespace {
 
 } // end anonymous namespace
 
+// Ths anonymous namespace is for helper functions used in this file
+namespace {
+
+ static void get_dependency_information(uint64_t*& dependencies,
+					 unsigned int& numDependencies,
+					 xocl::event* e)
+  {
+    try {
+      xocl::range_lock<xocl::event::event_iterator_type>&& currRange = 
+	e->try_get_chain() ;
+
+      if (currRange.size() != 0)
+      {
+	numDependencies = currRange.size() ;
+	dependencies = new uint64_t[numDependencies] ;
+
+	int i = 0 ;
+	for (auto it = currRange.begin() ; it != currRange.end() ; ++it)
+	{
+	  dependencies[i] = (*it)->get_uid() ;
+	  ++i ;
+	}
+      }
+    }
+    catch (const xocl::error& /*e*/)
+    {
+      return ;
+    } 
+  }
+
+} // end anonymous namespace
+
 namespace xocl {
   namespace profile {
 
@@ -142,6 +205,126 @@ namespace xocl {
     {
       if (function_end_cb)
 	function_end_cb(m_name, m_address, m_funcid) ;
+    }
+
+    // ******** OpenCL Host Trace Callbacks *********
+    std::function<void (xocl::event*, cl_int, const std::string&)>
+    action_read(cl_mem buffer)
+    {
+      return [buffer](xocl::event* e, cl_int status, const std::string&) 
+             {
+	       if (!read_cb) return ;
+	       if (status != CL_RUNNING && status != CL_COMPLETE) return ;
+	       
+	       // Before we cross over to XDP, collect all the 
+	       //  information we need from the event
+	       auto xmem = xocl::xocl(buffer) ;
+	       auto ext_flags = xmem->get_ext_flags() ;
+	       bool isP2P = ((ext_flags & XCL_MEM_EXT_P2P_BUFFER) != 0) ;
+	       
+	       uint64_t* dependencies = nullptr ;
+	       unsigned int numDependencies = 0 ;
+
+	       // For start events, dig in and find all the information
+	       //  necessary to show the tooltip and send it.
+	       if (status == CL_RUNNING)
+	       {
+		 // Get memory bank information
+		 uint64_t address = 0 ;
+		 std::string bank = "Unknown" ;
+		 try { 
+		   xmem->try_get_address_bank(address, bank) ;
+		 }
+		 catch (const xocl::error& /*e*/)
+		 {
+		 }
+
+		 // Get dependency information
+		 get_dependency_information(dependencies, numDependencies, e) ;
+
+		 // Perform the callback
+		 read_cb(e->get_uid(), true,
+			 address,
+			 bank.c_str(),
+			 xmem->get_size(),
+			 isP2P,
+			 dependencies,
+			 numDependencies) ;
+		 // Clean up memory
+		 if (dependencies != nullptr) delete [] dependencies ;
+	       }
+	       // For end events, just send the minimal information
+	       else if (status == CL_COMPLETE)
+	       {
+		 read_cb(e->get_uid(), false,
+			 0,
+			 nullptr,
+			 0,
+			 isP2P,
+			 dependencies,
+			 numDependencies) ;
+	       }
+             } ; 
+    }
+
+    std::function<void (xocl::event*, cl_int, const std::string&)>
+    action_write(cl_mem buffer)
+    {
+      return [buffer](xocl::event* e, cl_int status, const std::string&)
+	     {
+	       if (!write_cb) return ;
+	       if (status != CL_RUNNING && status != CL_COMPLETE) return ;
+
+	       // Before we cross over to XDP, collect all the 
+	       //  information we need from the event
+	       auto xmem = xocl::xocl(buffer) ;
+	       auto ext_flags = xmem->get_ext_flags() ;
+	       bool isP2P = ((ext_flags & XCL_MEM_EXT_P2P_BUFFER) != 0) ;
+	       
+	       uint64_t* dependencies = nullptr ;
+	       unsigned int numDependencies = 0 ;
+
+	       // For start events, dig in and find all the information
+	       //  necessary to show the tooltip and send it.
+	       if (status == CL_RUNNING)
+	       {
+		 // Get memory bank information
+		 uint64_t address = 0 ;
+		 std::string bank = "Unknown" ;
+		 try { 
+		   xmem->try_get_address_bank(address, bank) ;
+		 }
+		 catch (const xocl::error& /*e*/)
+		 {
+		 }
+
+		 // Get dependency information
+		 get_dependency_information(dependencies, numDependencies, e) ;
+
+		 // Perform the callback
+		 write_cb(e->get_uid(), true,
+			  address,
+			  bank.c_str(),
+			  xmem->get_size(),
+			  isP2P,
+			  dependencies,
+			  numDependencies) ;
+		 // Clean up memory
+		 if (dependencies != nullptr) delete [] dependencies ;
+	       }
+	       // For end events, just send the minimal information
+	       else if (status == CL_COMPLETE)
+	       {
+		 write_cb(e->get_uid(), false,
+			  0,
+			  nullptr,
+			  0,
+			  isP2P,
+			  dependencies,
+			  numDependencies) ;
+	       }
+
+	     } ;
     }
 
     // ******** OpenCL Device Trace Callbacks *********
