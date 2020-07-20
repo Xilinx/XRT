@@ -229,6 +229,7 @@ int qdma4_descq_st_c2h_read(struct qdma_descq *descq, struct qdma_request *req,
 	struct qdma_sgt_req_cb *cb = qdma_req_cb_get(req);
 	struct qdma_flq *flq = (struct qdma_flq *)descq->flq;
 	unsigned int pidx = flq->pidx_pend;
+	unsigned int pidx_stop = pidx;
 	struct qdma_sw_sg *fsg = flq->sdesc + pidx;
 	struct qdma_sw_sg *tsg = req->sgl;
 	unsigned int fsgcnt = ring_idx_delta(descq->pidx, pidx, flq->size);
@@ -256,6 +257,7 @@ int qdma4_descq_st_c2h_read(struct qdma_descq *descq, struct qdma_request *req,
 		unsigned int flen = fsg->len;
 		unsigned char *faddr = page_address(fsg->pg) + fsg->offset;
 
+		pidx_stop = pidx;
 		foff = 0;
 
 		while (flen && tsg) {
@@ -268,6 +270,7 @@ int qdma4_descq_st_c2h_read(struct qdma_descq *descq, struct qdma_request *req,
 			if (!req->no_memcpy)
 				memcpy(page_address(tsg->pg) + toff,
 				       faddr, copy);
+
 			if (descq->conf.ping_pong_en &&
 				*pkt_tx_time == descq->ping_pong_tx_time) {
 				u64 latency;
@@ -329,6 +332,11 @@ int qdma4_descq_st_c2h_read(struct qdma_descq *descq, struct qdma_request *req,
 		}
 	}
 
+	req->eot_rcved = flq->sdesc_info[pidx_stop].f.eot;
+	if (req->eot_rcved)
+		pr_debug("%s, req 0x%p, %u/%u rcv EOT.\n",
+			descq->conf.name, req, cb->offset, req->count);
+
 	qdma4_incr_cmpl_desc_cnt(descq, i);
 
 	if (refill && i)
@@ -387,6 +395,8 @@ static int qdma_c2h_read_packets(struct qdma_descq *descq, bool update_pidx,
 		}
 
 		if (!cb->left)
+			qdma4_sgt_req_done(descq, cb, 0);
+		else if (((struct qdma_request *)cb)->eot_rcved)
 			qdma4_sgt_req_done(descq, cb, 0);
 		else
 			break; /* no more data available */
@@ -506,6 +516,7 @@ static int rcv_pkt(struct qdma_descq *descq, struct qdma_ul_cmpt_info *cmpl,
 
 		flq->sdesc_info[pidx].f.sop = 1;
 		flq->sdesc_info[last].f.eop = 1;
+		flq->sdesc_info[last].f.eot = cmpl->f.eot;
 
 		flq->pkt_dlen += len;
 		if (descq->conf.cmpl_udd_en)
@@ -778,10 +789,10 @@ int qdma4_descq_process_completion_st_c2h(struct qdma_descq *descq, int budget,
 	}
 
 #if 0
-	print_hex_dump(KERN_INFO, "cmpl status: ", DUMP_PREFIX_OFFSET,
+	print_hex_dump(KERN_INFO, "st c2h cmpl status: ", DUMP_PREFIX_OFFSET,
 				16, 1, (void *)cs, sizeof(*cs),
 				false);
-	pr_info("cmpl status: pidx 0x%x, cidx %x, color %d, int_state 0x%x.\n",
+	pr_info("st c2h cmpl status: pidx 0x%x, cidx %x, color %d, int_state 0x%x.\n",
 		cs->pidx, cs->cidx, cs->color_isr_status & 0x1,
 		(cs->color_isr_status >> 1) & 0x3);
 #endif

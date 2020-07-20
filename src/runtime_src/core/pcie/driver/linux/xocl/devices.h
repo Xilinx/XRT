@@ -1470,22 +1470,6 @@ struct xocl_subdev_map {
 		.override_idx = -1,			\
 	}
 
-#define XOCL_RES_QDMA4					\
-	((struct resource []) {				\
-		{					\
-			.start = 0x0,			\
-			.end = 0x0,			\
-	 		.name = NODE_QDMA4,		\
-			.flags = IORESOURCE_MEM,	\
-		},					\
-		{					\
-			.start = 0x2000000,			\
-			.end = 0x2001000,			\
-	 		.name = NODE_STM4,		\
-			.flags = IORESOURCE_MEM,	\
-		},					\
-	 })
-
 #define XOCL_RES_QDMA					\
 	((struct resource []) {				\
 		{					\
@@ -1501,16 +1485,6 @@ struct xocl_subdev_map {
 			.flags = IORESOURCE_MEM,	\
 		},					\
 	 })
-
-#define	XOCL_DEVINFO_QDMA4				\
-	{						\
-		XOCL_SUBDEV_DMA,			\
-		XOCL_QDMA4,				\
-		XOCL_RES_QDMA4,				\
-		ARRAY_SIZE(XOCL_RES_QDMA4),		\
-		.bar_idx = (char []){ 2, 0 },		\
-		.override_idx = -1,			\
-	}
 
 #define	XOCL_DEVINFO_QDMA				\
 	{						\
@@ -1811,27 +1785,6 @@ struct xocl_subdev_map {
 	}
 
 /* user pf defines */
-#define	USER_RES_QDMA4							\
-		((struct xocl_subdev_info []) {				\
-			XOCL_DEVINFO_FEATURE_ROM,			\
-			XOCL_DEVINFO_QDMA4,				\
-			XOCL_DEVINFO_SCHEDULER_QDMA,			\
-			XOCL_DEVINFO_XVC_PUB,				\
-			XOCL_DEVINFO_MAILBOX_USER_QDMA,			\
-			XOCL_DEVINFO_ICAP_USER,				\
-			XOCL_DEVINFO_XMC_USER,				\
-			XOCL_DEVINFO_AF_USER,				\
-			XOCL_DEVINFO_CU_CTRL,				\
-			XOCL_DEVINFO_INTC_QDMA,				\
-		})
-
-#define	XOCL_BOARD_USER_QDMA4						\
-	(struct xocl_board_private){					\
-		.flags		= 0,					\
-		.subdev_info	= USER_RES_QDMA4,			\
-		.subdev_num = ARRAY_SIZE(USER_RES_QDMA),		\
-	}
-
 #define	USER_RES_QDMA							\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
