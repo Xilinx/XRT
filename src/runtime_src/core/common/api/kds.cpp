@@ -19,32 +19,22 @@
 #include "ert.h"
 #include "command.h"
 #include "core/common/device.h"
-#include "core/common/task.h"
 #include "core/common/thread.h"
+#include "core/common/debug.h"
 
 #include <memory>
 #include <cstring>
 #include <cerrno>
 #include <algorithm>
 #include <thread>
+#include <mutex>
+#include <condition_variable>
 #include <list>
 #include <map>
 
 namespace {
 
 using command_queue_type = std::vector<xrt_core::command*>;
-
-////////////////////////////////////////////////////////////////
-// Command notification is threaded through task queue
-// and notifier.  This allows the scheduler to continue
-// while host callback can be processed in the background
-////////////////////////////////////////////////////////////////
-static xrt_core::task::queue notify_queue;
-static std::thread notifier;
-
-// Turn off threaded notification because of overhead
-// Not good for simple notification for XRT native kernel APIs
-static bool threaded_notification = false;
 
 ////////////////////////////////////////////////////////////////
 // Main command monitor interfacing to embedded MB scheduler
@@ -75,23 +65,15 @@ notify_host(xrt_core::command* cmd)
 {
   auto state = get_command_state(cmd);
 
-  XRT_DEBUG(std::cout,"xrt_core::kds::command(",cmd->get_uid(),") [running->done]\n");
-  if (!threaded_notification) {
-    cmd->notify(state);
-    return;
-  }
-
-  auto notify = [state](xrt_core::command* c) {
-    c->notify(state);
-  };
-
-  xrt_core::task::createF(notify_queue,notify,cmd);
+  XRT_DEBUGF("xrt_core::kds::command(%d), [running->done]\n", cmd->get_uid());
+  auto retain = cmd->shared_from_this();
+  cmd->notify(state);
 }
 
 static void
 launch(xrt_core::command* cmd)
 {
-  XRT_DEBUG(std::cout,"xrt_core::kds::command(",cmd->get_uid(),") [new->submitted->running]\n");
+  XRT_DEBUGF("xrt_core::kds::command(%d) [new->submitted->running]\n", cmd->get_uid());
 
   auto device = cmd->get_device();
   auto& submitted_cmds = s_device_cmds[device]; // safe since inserted in init
@@ -210,8 +192,6 @@ start()
     throw std::runtime_error("kds command monitor is already started");
 
   std::lock_guard<std::mutex> lk(s_mutex);
-  if (threaded_notification)
-    notifier = std::move(xrt_core::thread(xrt_core::task::worker,std::ref(notify_queue)));
   s_running = true;
 }
 
@@ -230,10 +210,6 @@ stop()
   for (auto& e : s_device_monitor_threads)
     e.second.join();
 
-  notify_queue.stop();
-  if (threaded_notification)
-    notifier.join();
-
   s_running = false;
 }
 
@@ -245,7 +221,7 @@ init(xrt_core::device* device)
   std::lock_guard<std::mutex> lk(s_mutex);
   auto itr = s_device_monitor_threads.find(device);
   if (itr==s_device_monitor_threads.end()) {
-    XRT_DEBUG(std::cout,"creating monitor thread and queue for device\n");
+    XRT_DEBUGF("creating monitor thread and queue for device\n");
     s_device_cmds.emplace(device,command_queue_type());
     s_device_monitor_threads.emplace(device,xrt_core::thread(::monitor,device));
   }

@@ -879,12 +879,12 @@ class run_impl
   using callback_function_type = std::function<void(ert_cmd_state)>;
   std::shared_ptr<kernel_impl> kernel;    // shared ownership
   xrt_core::device* core_device;          // convenience, in scope of kernel
-  kernel_command cmd;                     // underlying command object
+  std::shared_ptr<kernel_command> cmd;    // underlying command object
 
   void
   encode_compute_units(const std::bitset<128>& cus, size_t num_cumasks)
   {
-    auto ecmd = cmd.get_ert_cmd<ert_packet*>();
+    auto ecmd = cmd->get_ert_cmd<ert_packet*>();
     std::fill(ecmd->data, ecmd->data + num_cumasks, 0);
     
     for (size_t cu_idx = 0; cu_idx < 128; ++cu_idx) {
@@ -900,7 +900,7 @@ public:
   void
   add_callback(callback_function_type fcn)
   {
-    cmd.add_callback(fcn);
+    cmd->add_callback(fcn);
   }
 
   // set_event() - enqueued notifcation of event
@@ -915,7 +915,7 @@ public:
   void
   set_event(const std::shared_ptr<event_impl>& event) const
   {
-    cmd.set_event(event);
+    cmd->set_event(event);
   }
 
   // run_type() - constructor
@@ -924,10 +924,10 @@ public:
   run_impl(std::shared_ptr<kernel_impl> k)
     : kernel(std::move(k))                           // share ownership
     , core_device(kernel->get_core_device()) // cache core device
-    , cmd(kernel->get_device())
+    , cmd(std::make_shared<kernel_command>(kernel->get_device()))
   {
     // TODO: consider if execbuf is cleared on return from cache
-    auto kcmd = cmd.get_ert_cmd<ert_start_kernel_cmd*>();
+    auto kcmd = cmd->get_ert_cmd<ert_start_kernel_cmd*>();
     kcmd->extra_cu_masks = kernel->get_num_cumasks() - 1;
     kcmd->count = kernel->get_num_cumasks() + kernel->get_regmap_size();
     kcmd->opcode = ERT_START_CU;
@@ -945,13 +945,13 @@ public:
   ERT_COMMAND_TYPE
   get_ert_cmd()
   {
-    return cmd.get_ert_cmd<ERT_COMMAND_TYPE>();
+    return cmd->get_ert_cmd<ERT_COMMAND_TYPE>();
   }
 
   void
   set_arg_value(const argument& arg, const std::vector<uint32_t>& value)
   {
-    auto kcmd = cmd.get_ert_cmd<ert_start_kernel_cmd*>();
+    auto kcmd = cmd->get_ert_cmd<ert_start_kernel_cmd*>();
     auto cmdidx = arg.offset() / 4;
     std::copy(value.begin(), value.end(), kcmd->data + cmdidx);
   }
@@ -1007,23 +1007,23 @@ public:
   void
   start()
   {
-    auto pkt = cmd.get_ert_packet();
+    auto pkt = cmd->get_ert_packet();
     pkt->state = ERT_CMD_STATE_NEW;
-    cmd.run();
+    cmd->run();
   }
 
   // wait() - wait for execution to complete
   ert_cmd_state
   wait(unsigned int timeout_ms) const
   {
-    return timeout_ms ? cmd.wait(timeout_ms) : cmd.wait();
+    return timeout_ms ? cmd->wait(timeout_ms) : cmd->wait();
   }
 
   // state() - get current execution state
   ert_cmd_state
   state() const
   {
-    auto pkt = cmd.get_ert_packet();
+    auto pkt = cmd->get_ert_packet();
     return static_cast<ert_cmd_state>(pkt->state);
   }
 };
@@ -1039,9 +1039,9 @@ public:
 // run handle is closed.
 class run_update_type
 {
-  run_impl* run;        // active run object to update
-  kernel_impl* kernel;  // kernel associated with run object
-  kernel_command cmd;   // command to use for updating
+  run_impl* run;                       // active run object to update
+  kernel_impl* kernel;                 // kernel associated with run object
+  std::shared_ptr<kernel_command> cmd; // command to use for updating
 
   // ert_init_kernel_cmd data offset per ert.h
   static constexpr size_t data_offset = 9;
@@ -1049,7 +1049,7 @@ class run_update_type
   void
   reset_cmd()
   {
-    auto kcmd = cmd.get_ert_cmd<ert_init_kernel_cmd*>();
+    auto kcmd = cmd->get_ert_cmd<ert_init_kernel_cmd*>();
     kcmd->count = data_offset + kcmd->extra_cu_masks;  // reset payload size
   }
 
@@ -1057,9 +1057,9 @@ public:
   run_update_type(run_impl* r)
     : run(r)
     , kernel(run->get_kernel())
-    , cmd(kernel->get_device())
+    , cmd(std::make_shared<kernel_command>(kernel->get_device()))
   {
-    auto kcmd = cmd.get_ert_cmd<ert_init_kernel_cmd*>();
+    auto kcmd = cmd->get_ert_cmd<ert_init_kernel_cmd*>();
     auto rcmd = run->get_ert_cmd<ert_start_kernel_cmd*>();
     kcmd->opcode = ERT_INIT_CU;
     kcmd->type = ERT_CU;
@@ -1075,7 +1075,7 @@ public:
   {
     reset_cmd();
 
-    auto kcmd = cmd.get_ert_cmd<ert_init_kernel_cmd*>();
+    auto kcmd = cmd->get_ert_cmd<ert_init_kernel_cmd*>();
     auto idx = kcmd->count - data_offset;
     auto offset = arg.offset();
     for (auto v : value) {
@@ -1088,10 +1088,10 @@ public:
     // make the updated arg sticky in current run
     run->set_arg_value(arg, value);
 
-    auto pkt = cmd.get_ert_packet();
+    auto pkt = cmd->get_ert_packet();
     pkt->state = ERT_CMD_STATE_NEW;
-    cmd.run();
-    cmd.wait();
+    cmd->run();
+    cmd->wait();
   }
 
   void
