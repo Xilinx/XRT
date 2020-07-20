@@ -23,6 +23,8 @@
 #include "core/common/dlfcn.h"
 #include "core/common/config_reader.h"
 
+#include "xocl/core/command_queue.h"
+
 // The anonymous namespace is responsible for loading the XDP plugins
 namespace {
 
@@ -89,6 +91,8 @@ namespace {
 
     write_cb = (ttype)(xrt_core::dlsym(handle, "action_write")) ;
     if (xrt_core::dlerror() != NULL) write_cb = nullptr ;
+
+    
   }
 
   void opencl_trace_warning_function()
@@ -324,6 +328,65 @@ namespace xocl {
 			  numDependencies) ;
 	       }
 
+	     } ;
+    }
+
+    std::function<void (xocl::event*, cl_int, const std::string&)>
+    action_map(cl_mem buffer, cl_map_flags flags)
+    {
+      return [buffer, flags](xocl::event* e, cl_int status, const std::string&)
+	     {
+	       if (!read_cb) return ;
+	       if (status != CL_RUNNING && status != CL_COMPLETE) return ;
+
+	       // Ignore if mapping an invalidated region
+	       if (flags & CL_MAP_WRITE_INVALIDATE_REGION) return ;
+
+	       auto xmem = xocl::xocl(buffer) ;
+	       auto queue = e->get_command_queue() ;
+	       auto device = queue->get_device() ;
+	       
+	       // Ignore if the buffer is *not* resident on the device
+	       if (!(xmem->is_resident(device))) return ;
+
+	       uint64_t* dependencies = nullptr ;
+	       unsigned int numDependencies = 0 ;
+
+	       if (status == CL_RUNNING)
+	       {
+		 uint64_t address = 0 ;
+		 std::string bank = "Unknown" ;
+		 try {
+		   xmem->try_get_address_bank(address, bank) ;
+		 }
+		 catch (const xocl::error& /*e*/)
+		 {
+		 }
+
+		 // Get dependency information
+		 get_dependency_information(dependencies, numDependencies, e) ;
+
+		 // Perform the callback
+		 read_cb(e->get_uid(), true,
+			 address,
+			 bank.c_str(),
+			 xmem->get_size(),
+			 false, // isP2P
+			 dependencies,
+			 numDependencies) ;
+		 // Clean up memory
+		 if (dependencies != nullptr) delete [] dependencies ;
+	       }
+	       else if (status == CL_COMPLETE)
+	       {
+		 read_cb(e->get_uid(), false,
+			 0,
+			 nullptr,
+			 0,
+			 false, // isP2P
+			 dependencies,
+			 numDependencies) ;
+	       }      
 	     } ;
     }
 

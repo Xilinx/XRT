@@ -76,6 +76,7 @@ clEnqueueMapBuffer(cl_command_queue command_queue,
   void* result = nullptr;
   enqueue::set_event_action(uevent.get(),enqueue::action_map_buffer,uevent.get(),buffer,map_flags,offset,size,&result);
   //profile::set_event_action(uevent.get(),profile::action_map,buffer,map_flags);
+  profile::set_event_action(uevent.get(), profile::action_map, buffer, map_flags);
   xocl::appdebug::set_event_action(uevent.get(),xocl::appdebug::action_map,buffer,map_flags);
 
   uevent->queue();
