@@ -708,7 +708,7 @@ static int descq_mm_n_h2c_cmpl_status(struct qdma_descq *descq)
 	cr = (cidx_hw < cidx) ? (descq->conf.rngsz - cidx) + cidx_hw :
 				cidx_hw - cidx;
 
-	pr_info ("%s descq %s, cidx 0x%x -> 0x%x, avail 0x%x + 0x%x.\n",
+	pr_debug("%s descq %s, cidx 0x%x -> 0x%x, avail 0x%x + 0x%x.\n",
 			__func__, descq->conf.name, cidx,
 			cidx_hw, descq->avail, cr);
 
