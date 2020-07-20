@@ -32,6 +32,16 @@ add_custom_command(
  COMMENT "Extracting v2.0 board support packet for ERT scheduler"
 )
 
+add_custom_command(
+ OUTPUT v30/bsp.extracted
+ COMMAND ${CMAKE_COMMAND} -E make_directory v30/bsp
+ COMMAND tar -C v30/bsp -jxf ${CMAKE_CURRENT_SOURCE_DIR}/sched_bsp_v30.tar.bz2
+ COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/lscript_v30.ld v30/lscript.ld
+ COMMAND touch v30/bsp.extracted
+ DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/sched_bsp_v30.tar.bz2
+ COMMENT "Extracting v3.0 board support packet for ERT scheduler"
+)
+
  add_custom_command(
  OUTPUT legacy/sched.bin
  COMMAND ${CMAKE_COMMAND} -E make_directory legacy
@@ -56,8 +66,16 @@ add_custom_command(
  COMMENT "Generating binary for ERT scheduler"
 )
 
+add_custom_command(
+ OUTPUT v30/sched.bin
+ COMMAND ${CMAKE_COMMAND} -E make_directory v30
+ COMMAND $(MAKE) DEFINES="-DERT_BUILD_V30" BLDDIR=${CMAKE_CURRENT_BINARY_DIR}/v30 SRCDIR=${CMAKE_CURRENT_SOURCE_DIR} -f ${CMAKE_CURRENT_SOURCE_DIR}/scheduler.mk ert
+ DEPENDS v30/bsp.extracted ${CMAKE_CURRENT_SOURCE_DIR}/scheduler.cpp
+ COMMENT "Generating binary for ERT scheduler"
+)
+
 add_custom_target(scheduler
- DEPENDS legacy/sched.bin u50/sched.bin v20/sched.bin
+ DEPENDS legacy/sched.bin u50/sched.bin v20/sched.bin v30/sched.bin
 )
 
 install (FILES
@@ -92,6 +110,18 @@ install (FILES
  ${CMAKE_CURRENT_BINARY_DIR}/v20/sched.bin
  DESTINATION ${ERT_INSTALL_FIRMWARE_PREFIX}
  RENAME sched_v20.bin
+ )
+
+install (FILES
+ ${CMAKE_CURRENT_BINARY_DIR}/v30/sched.bin
+ DESTINATION ${ERT_INSTALL_PREFIX}
+ RENAME sched_v30.bin
+ )
+
+install (FILES
+ ${CMAKE_CURRENT_BINARY_DIR}/v30/sched.bin
+ DESTINATION ${ERT_INSTALL_FIRMWARE_PREFIX}
+ RENAME sched_v30.bin
  )
 
 endif(${ERT_BUILD_ALL} STREQUAL "yes")

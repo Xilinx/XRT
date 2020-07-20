@@ -549,6 +549,8 @@ uint32_t ert_base_addr = 0;
 # define ERT_INTC_ADDR                     0x00310000
 #elif defined(ERT_BUILD_V20)
 # define ERT_INTC_ADDR                     0x01F20000
+#elif defined(ERT_BUILD_V30)
+# define ERT_INTC_ADDR                     0x01F20000
 #else
 # define ERT_INTC_ADDR                     0x41200000
 #endif
