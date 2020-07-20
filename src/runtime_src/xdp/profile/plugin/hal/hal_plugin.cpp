@@ -27,7 +27,6 @@
 
 #include "xdp/profile/database/database.h"
 
-#include "core/common/config_reader.h"
 #include "core/common/xrt_profiling.h"
 #include "core/common/message.h"
 
@@ -52,12 +51,6 @@ namespace xdp {
 					     xrtVersion,
                          toolVersion)) ;
     (db->getStaticInfo()).addOpenedFile("hal_host_trace.csv", "VP_TRACE");
-
-    // Catch if Vitis AI trace is turned on
-    // NOTE: The file vart_trace.csv is written by the VART library. Once 
-    // addOpenedFile() is exposed to VART, then they can add this file.
-    if (xrt_core::config::get_vitis_ai_trace())
-      (db->getStaticInfo()).addOpenedFile("vart_trace.csv", "VP_TRACE");
 
 #ifdef HAL_SUMMARY
     writers.push_back(new HALSummaryWriter("hal_summary.csv"));
