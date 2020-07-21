@@ -174,6 +174,20 @@ static int config_intr(struct platform_device *pdev, int intr_id, bool en)
 	return 0;
 }
 
+static int csr_read32(struct platform_device *pdev, u32 off)
+{
+	struct xocl_intc *intc = platform_get_drvdata(pdev);
+
+	return ioread32(intc->csr_base + off - ERT_CSR_ADDR);
+}
+
+static void csr_write32(struct platform_device *pdev, u32 val, u32 off)
+{
+	struct xocl_intc *intc = platform_get_drvdata(pdev);
+
+	iowrite32(val, intc->csr_base + off - ERT_CSR_ADDR);
+}
+
 static int intc_probe(struct platform_device *pdev)
 {
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
@@ -263,6 +277,9 @@ out:
 static struct xocl_intc_funcs intc_ops = {
 	.request_intr = request_intr,
 	.config_intr  = config_intr,
+	/* Below two ops only used in ERT sub-device polling mode(for debug) */
+	.csr_read32     = csr_read32,
+	.csr_write32    = csr_write32,
 	/* TODO: add CU/ERT mode switch op */
 };
 
