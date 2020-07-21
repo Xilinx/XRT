@@ -71,7 +71,7 @@ public:
   add_stage(pipeline::stage&& s)
   {
     m_stages.push_back(std::move(s));
-    return m_stages.back();
+    return m_stages.back(); // bug, cannot return reference (vector resize)
   }
 };
 

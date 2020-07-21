@@ -34,8 +34,8 @@ namespace xrt {
 
 // This is WIP
 
-// - pipeline must be a synchronous task in order for composition to
-//   work
+// - pipeline must be an asynchronous task in order for composition to
+//   work, specialize callable_traits
 // - work out how to parameterize stage function without binding
 //   a stage to specific arguments
 
@@ -79,7 +79,7 @@ class pipeline
       {}
 
       xrt::event
-      enqueue(xrt::event_queue& q,const std::vector<xrt::event>& deps)
+      enqueue(xrt::event_queue& q, const std::vector<xrt::event>& deps)
       {
         return q.enqueue_with_waitlist(m_held, deps);
       }
@@ -100,7 +100,7 @@ class pipeline
     {}
 
     xrt::event
-    enqueue(xrt::event_queue& q,const std::vector<xrt::event>& deps)
+    enqueue(xrt::event_queue& q, const std::vector<xrt::event>& deps)
     {
       return m_content->enqueue(q, deps);
     }
@@ -117,7 +117,7 @@ public:
    * more event handlers that execute the enqueued functions. With the
    * knowledge of the stage functions properties, it is important to
    * ensure that the event queue has sufficient event handlers.  For
-   * example, two syncronous stages can maybe execute concurrently,
+   * example, two synchronous stages might execute concurrently,
    * but only if the event queue has at least two handlers.
    */
   pipeline(const xrt::event_queue& q);
@@ -185,13 +185,13 @@ public:
   }
 
   /**
-   * emplace() - Add callable functios to the pipeline
+   * emplace() - Add callable functions to the pipeline
    */
   template <typename Callable, typename ...Callables>
   auto emplace(Callable&& c, Callables&&... cs)
   {
     // Argument order evaluation is not guaranteed, make sure that
-    // stages are added to the vector in right order
+    // stages are emplaced in the specified order
     auto t = emplace(std::forward<Callable>(c));
     return std::tuple_cat(std::move(t), emplace(std::forward<Callables>(cs)...));
   }
