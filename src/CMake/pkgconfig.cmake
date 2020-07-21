@@ -2,7 +2,7 @@ message("-- Preparing XRT pkg-config")
 
 if (${LINUX_FLAVOR} MATCHES "^(Ubuntu)")
   set(XRT_PKG_CONFIG_DIR "/usr/lib/pkgconfig")
-elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS|Fedora)")
+elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS|Amazon|Fedora)")
   set(XRT_PKG_CONFIG_DIR "/usr/lib64/pkgconfig")
 else ()
   set(XRT_PKG_CONFIG_DIR "/usr/share/pkgconfig")

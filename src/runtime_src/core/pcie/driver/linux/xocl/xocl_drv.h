@@ -40,6 +40,7 @@
 #include <linux/moduleparam.h>
 #include <linux/cdev.h>
 #include "xclbin.h"
+#include "xrt_xclbin.h"
 #include "xrt_mem.h"
 #include "devices.h"
 #include "xocl_ioctl.h"
@@ -270,9 +271,15 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define XOCL_VSEC_PLATFORM_INFO     0x52
 #define XOCL_VSEC_MAILBOX           0x53
 
+#define XOCL_VSEC_FLASH_TYPE_SPI_IP	0x0
+#define XOCL_VSEC_FLASH_TYPE_SPI_REG	0x1
+#define XOCL_VSEC_FLASH_TYPE_QSPI	0x2
+#define XOCL_VSEC_FLASH_TYPE_VERSAL	0x3
+
 #define XOCL_VSEC_PLAT_RECOVERY     0x0
 #define XOCL_VSEC_PLAT_1RP          0x1
 #define XOCL_VSEC_PLAT_2RP          0x2
+
 
 #define XOCL_MAXNAMELEN	64
 
@@ -444,6 +451,8 @@ struct xocl_dev_core {
 	spinlock_t		api_lock;
 	struct completion	api_comp;
 	int			api_call_cnt;
+
+	struct xocl_xclbin 	*xdev_xclbin;
 };
 
 #define XOCL_DRM(xdev_hdl)					\
@@ -909,6 +918,7 @@ enum data_kind {
 	FAN_RPM,
 	VOL_3V3_PEX,
 	VOL_3V3_AUX,
+	CUR_3V3_AUX,
 	VPP_BTM,
 	VPP_TOP,
 	VOL_5V5_SYS,
@@ -922,7 +932,9 @@ enum data_kind {
 	CUR_VCC_INT,
 	IDCODE,
 	IPLAYOUT_AXLF,
+	GROUPTOPO_AXLF,
 	MEMTOPO_AXLF,
+	GROUPCONNECTIVITY_AXLF,
 	CONNECTIVITY_AXLF,
 	DEBUG_IPLAYOUT_AXLF,
 	PEER_CONN,
@@ -1214,7 +1226,8 @@ enum {
 
 #define XOCL_GET_MEM_TOPOLOGY(xdev, mem_topo)						\
 	(xocl_icap_get_xclbin_metadata(xdev, MEMTOPO_AXLF, (void **)&mem_topo))
-
+#define XOCL_GET_GROUP_TOPOLOGY(xdev, group_topo)					\
+	(xocl_icap_get_xclbin_metadata(xdev, GROUPTOPO_AXLF, (void **)&group_topo))
 #define XOCL_GET_IP_LAYOUT(xdev, ip_layout)						\
 	(xocl_icap_get_xclbin_metadata(xdev, IPLAYOUT_AXLF, (void **)&ip_layout))
 #define XOCL_GET_XCLBIN_ID(xdev, xclbin_id)						\
@@ -1222,6 +1235,8 @@ enum {
 
 
 #define XOCL_PUT_MEM_TOPOLOGY(xdev)						\
+	xocl_icap_put_xclbin_metadata(xdev)
+#define XOCL_PUT_GROUP_TOPOLOGY(xdev)						\
 	xocl_icap_put_xclbin_metadata(xdev)
 #define XOCL_PUT_IP_LAYOUT(xdev)						\
 	xocl_icap_put_xclbin_metadata(xdev)
@@ -1482,6 +1497,28 @@ struct xocl_cu_funcs {
 #define CU_CB(xdev, idx, cb) \
 	(CU_DEV(xdev, idx) && CU_OPS(xdev, idx) && CU_OPS(xdev, idx)->cb)
 
+/* INTC call back */
+struct xocl_intc_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	int (* request_intr)(struct platform_device *pdev, int intr_id,
+			     irqreturn_t (*handler)(int irq, void *arg),
+			     void *arg);
+	int (* config_intr)(struct platform_device *pdev, int intr_id, bool en);
+};
+#define	INTC_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_INTC).pldev
+#define INTC_OPS(xdev)  \
+	((struct xocl_intc_funcs *)SUBDEV(xdev, XOCL_SUBDEV_INTC).ops)
+#define INTC_CB(xdev, cb) \
+	(INTC_DEV(xdev) && INTC_OPS(xdev) && INTC_OPS(xdev)->cb)
+#define xocl_intc_request(xdev, id, handler, arg) \
+	(INTC_CB(xdev, request_intr) ? \
+	 INTC_OPS(xdev)->request_intr(INTC_DEV(xdev), id, handler, arg) : \
+	 -ENODEV)
+#define xocl_intc_config(xdev, id, en) \
+	(INTC_CB(xdev, config_intr) ? \
+	 INTC_OPS(xdev)->config_intr(INTC_DEV(xdev), id, en) : \
+	 -ENODEV)
+
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
 void xocl_init_dsa_priv(xdev_handle_t xdev_hdl);
@@ -1539,8 +1576,6 @@ struct xocl_flash_funcs {
 struct xocl_xfer_versal_funcs {
 	int (*download_axlf)(struct platform_device *pdev,
 		const void __user *arg);
-	int (*xclbin_load_axlf)(struct platform_device *pdev,
-		const void __user *arg);
 };
 #define	XFER_VERSAL_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_XFER_VERSAL).pldev
 #define	XFER_VERSAL_OPS(xdev)					\
@@ -1549,10 +1584,6 @@ struct xocl_xfer_versal_funcs {
 #define	xocl_xfer_versal_download_axlf(xdev, xclbin)	\
 	(XFER_VERSAL_CB(xdev) ?					\
 	XFER_VERSAL_OPS(xdev)->download_axlf(XFER_VERSAL_DEV(xdev), xclbin) : -ENODEV)
-/* Note: this API is a workaround, will be relocated into xclbin lib */
-#define	xocl_xclbin_load_axlf(xdev, xclbin)	\
-	(XFER_VERSAL_CB(xdev) ?					\
-	XFER_VERSAL_OPS(xdev)->xclbin_load_axlf(XFER_VERSAL_DEV(xdev), xclbin) : -ENODEV)
 
 struct xocl_pmc_funcs {
 	int (*enable_reset)(struct platform_device *pdev);
@@ -1587,6 +1618,10 @@ struct xocl_p2p_funcs {
 	int (*mem_get_pages)(struct platform_device *pdev,
 			ulong bar_off, ulong size,
 			struct page **pages, ulong npages);
+	int (*remap_resource)(struct platform_device *pdev, int bar_idx,
+			struct resource *res);
+	int (*release_resource)(struct platform_device *pdev,
+			struct resource *res);
 };
 #define	P2P_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_P2P).pldev
 #define	P2P_OPS(xdev)				\
@@ -1609,6 +1644,12 @@ struct xocl_p2p_funcs {
 	(P2P_CB(xdev) ?							\
 	 P2P_OPS(xdev)->mem_get_pages(P2P_DEV(xdev), bar_off, len,	\
 	 pages, npages) : -ENODEV)
+#define xocl_p2p_remap_resource(xdev, bar, res)				\
+	(P2P_CB(xdev) ?							\
+	 P2P_OPS(xdev)->remap_resource(P2P_DEV(xdev), bar, res) : -ENODEV)
+#define xocl_p2p_release_resource(xdev, res)				\
+	(P2P_CB(xdev) ?							\
+	 P2P_OPS(xdev)->release_resource(P2P_DEV(xdev), res) : -ENODEV)
 
 /* Each P2P chunk we set up must be at least 256MB */
 #define XOCL_P2P_CHUNK_SHIFT		28
@@ -1704,6 +1745,16 @@ static inline int xocl_kds_add_cu(xdev_handle_t xdev, struct xrt_cu *xcu)
 static inline int xocl_kds_del_cu(xdev_handle_t xdev, struct xrt_cu *xcu)
 {
 	return kds_del_cu(&XDEV(xdev)->kds, xcu);
+}
+
+static inline int xocl_kds_init_ert(xdev_handle_t xdev, struct kds_ert *ert)
+{
+	return kds_init_ert(&XDEV(xdev)->kds, ert);
+}
+
+static inline int xocl_kds_fini_ert(xdev_handle_t xdev)
+{
+	return kds_fini_ert(&XDEV(xdev)->kds);
 }
 
 /* context helpers */
@@ -1892,4 +1943,7 @@ void xocl_fini_lapc(void);
 
 int __init xocl_init_pmc(void);
 void xocl_fini_pmc(void);
+
+int __init xocl_init_intc(void);
+void xocl_fini_intc(void);
 #endif

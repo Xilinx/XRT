@@ -68,6 +68,9 @@ public:
     update_rtp(const char* path, const char* buffer, size_t size);
 
     void
+    read_rtp(const char* path, char* buffer, size_t size);
+
+    void
     sync_bo(unsigned bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset);
 
     static void

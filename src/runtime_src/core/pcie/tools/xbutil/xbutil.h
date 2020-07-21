@@ -70,6 +70,8 @@ int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceIn
  * xcldev <cmd> [options]
  */
 
+bool canProceed();
+
 namespace xcldev {
 
 enum command {
@@ -304,7 +306,20 @@ public:
     int reclock2(unsigned regionIndex, const unsigned short *freq) {
         const unsigned short targetFreqMHz[4] = {freq[0], freq[1], freq[2], 0};
         uuid_t uuid;
-        int ret;
+        int ret, data_retention = 0;
+        std::string errmsg;
+        
+        pcidev::get_dev(m_idx)->sysfs_get("icap", "data_retention", errmsg, data_retention, 0);
+        if (!errmsg.empty()) {
+            std::cout << errmsg << std::endl;
+            return -EINVAL;
+        }
+
+        if (data_retention) {
+            std::cout << "Memory data may be lost after xbutil clock" << std::endl;
+            if (!canProceed())
+                 return -ECANCELED;
+        }
 
         ret = getXclbinuuid(uuid);
         if (ret)
@@ -418,31 +433,23 @@ public:
         ss << "Device Memory Usage\n";
 
         try {
-          for (auto& v : sensor_tree::get_child("board.memory.mem")) {
+          for (auto& v : sensor_tree::get_child("board.memory.grp")) {
             int index = std::stoi(v.first);
             if( index >= 0 ) {
               uint64_t size = 0, mem_usage = 0;
-              std::string tag, type, temp;
-              bool enabled = false;
+              std::string tag, type;
 
               for (auto& subv : v.second) {
                   if( subv.first == "type" ) {
                       type = subv.second.get_value<std::string>();
                   } else if( subv.first == "tag" ) {
                       tag = subv.second.get_value<std::string>();
-                  } else if( subv.first == "temp" ) {
-                      unsigned int t = subv.second.get_value<unsigned int>();
-                      temp = sensor_tree::pretty<unsigned int>(t == XCL_INVALID_SENSOR_VAL ? XCL_NO_SENSOR_DEV : t, "N/A");
                   } else if( subv.first == "mem_usage_raw" ) {
                       mem_usage = subv.second.get_value<uint64_t>();
                   } else if( subv.first == "size_raw" ) {
                       size = subv.second.get_value<uint64_t>();
-                  } else if( subv.first == "enabled" ) {
-                      enabled = subv.second.get_value<bool>();
                   }
               }
-              if (!enabled || !size)
-                continue;
 
               float percentage = (float)mem_usage * 100 / size;
               int nums_fiftieth = (int)percentage / 2;
@@ -502,13 +509,12 @@ public:
         auto dev = pcidev::get_dev(m_idx);
 
         dev->sysfs_get("icap", "mem_topology", errmsg, buf);
-        dev->sysfs_get("", "memstat_raw", errmsg, mm_buf);
         dev->sysfs_get("xmc", "temp_by_mem_topology", errmsg, temp_buf);
 
         const mem_topology *map = (mem_topology *)buf.data();
         const uint32_t *temp = (uint32_t *)temp_buf.data();
 
-        if(buf.empty() || mm_buf.empty())
+        if(buf.empty() || temp_buf.empty())
             return;
 
         int j = 0; // stream index
@@ -581,8 +587,6 @@ public:
                     ptMem.put("ecc_ue_ffa", ue_ffa);
                 }
             }
-            std::stringstream ss(mm_buf[i]);
-            ss >> memoryUsage >> boCount;
 
             ptMem.put( "type",      str );
             ptMem.put( "temp",      temp_buf.empty() ? XCL_NO_SENSOR_DEV : temp[i]);
@@ -590,11 +594,35 @@ public:
             ptMem.put( "enabled",   map->m_mem_data[i].m_used ? true : false );
             ptMem.put( "size",      xrt_core::utils::unit_convert(map->m_mem_data[i].m_size << 10) );
             ptMem.put( "size_raw",  map->m_mem_data[i].m_size << 10 );
-            ptMem.put( "mem_usage", xrt_core::utils::unit_convert(memoryUsage));
-            ptMem.put( "mem_usage_raw", memoryUsage);
-            ptMem.put( "bo_count",  boCount);
             sensor_tree::add_child( std::string("board.memory.mem." + std::to_string(m)), ptMem );
             m++;
+        }
+
+        dev->sysfs_get("icap", "group_topology", errmsg, buf);
+		dev->sysfs_get("", "memstat_raw", errmsg, mm_buf);
+		if(buf.empty() || mm_buf.empty())
+			return;
+
+        const mem_topology *grp_map = (mem_topology *)buf.data();
+
+        int gid = 0; // group index
+        for(int i = 0; i < grp_map->m_count; i++) {
+            if(grp_map->m_mem_data[i].m_used != 0) {
+                boost::property_tree::ptree ptGrp;
+                auto search = memtype_map.find((MEM_TYPE)grp_map->m_mem_data[i].m_type );
+                std::string str = search->second;
+                std::stringstream ss(mm_buf[i]);
+                ss >> memoryUsage >> boCount;
+
+                ptGrp.put( "type",          str);
+                ptGrp.put( "tag",           grp_map->m_mem_data[i].m_tag);
+                ptGrp.put( "size",          xrt_core::utils::unit_convert(grp_map->m_mem_data[i].m_size << 10) );
+                ptGrp.put( "size_raw",      grp_map->m_mem_data[i].m_size << 10 );
+                ptGrp.put( "mem_usage_raw", memoryUsage);
+                ptGrp.put( "bo_count",      boCount);
+                sensor_tree::add_child(std::string("board.memory.grp." + std::to_string(gid)), ptGrp);
+                gid++;
+            }
         }
     }
 
@@ -602,25 +630,59 @@ public:
     {
         std::stringstream ss;
 
-        ss << std::left << std::setw(48) << "Mem Topology"
-            << std::setw(32) << "Device Memory Usage" << "\n";
         auto dev = pcidev::get_dev(m_idx);
         if(!dev){
             ss << "xocl driver is not loaded, skipped" << std::endl;
             lines.push_back(ss.str());
             return;
         }
+        ss << std::setw(64) << "Device Memory Usage" << "\n";
+        try {
+          ss << std::setw(17) << "Tag"  << std::setw(12) << "Type"
+              << std::setw(10) << "Size";
+          ss << std::setw(16) << "Mem Usage" << std::setw(8) << "BO nums"
+              << "\n";
+          for (auto& v : sensor_tree::get_child("board.memory.grp")) {
+            int index = std::stoi(v.first);
+            if( index >= 0 ) {
+              std::string mem_usage, tag, size, type;
+              unsigned bo_count = 0;
+              for (auto& subv : v.second) {
+                  if( subv.first == "type" ) {
+                      type = subv.second.get_value<std::string>();
+                  } else if( subv.first == "tag" ) {
+                      tag = subv.second.get_value<std::string>();
+                  } else if( subv.first == "bo_count" ) {
+                      bo_count = subv.second.get_value<unsigned>();
+                  } else if( subv.first == "mem_usage" ) {
+                      mem_usage = subv.second.get_value<std::string>();
+                  } else if( subv.first == "size" ) {
+                      size = subv.second.get_value<std::string>();
+                  }
+              }
 
+              ss   << " [" << std::right << index << "] "
+                   << std::setw(17 - (std::to_string(index).length()) - 4)
+                   << std::left << tag
+                   << std::setw(12) << type
+                   << std::setw(10) << size
+                   << std::setw(16) << mem_usage
+                   << std::setw(8) << bo_count << std::endl;
+            }
+          }
+        } catch( std::exception const& e) {
+            ss << "WARNING: Unable to report memory stats. "
+               << "Has the bitstream been loaded? See 'xbutil program'.";
+        }
+ 
+        ss << std::left << std::setw(48) << "Mem Topology" << "\n";
         try {
            ss << std::setw(17) << "Tag"  << std::setw(12) << "Type"
-              << std::setw(9) << "Temp" << std::setw(10) << "Size";
-           ss << std::setw(16) << "Mem Usage" << std::setw(8) << "BO nums"
-              << "\n";
+              << std::setw(9) << "Temp" << std::setw(10) << "Size" << "\n";
           for (auto& v : sensor_tree::get_child("board.memory.mem")) {
             int index = std::stoi(v.first);
             if( index >= 0 ) {
-              std::string mem_usage, tag, size, type, temp;
-              unsigned bo_count = 0;
+              std::string tag, size, type, temp;
               bool enabled = false;
               for (auto& subv : v.second) {
                   if( subv.first == "type" ) {
@@ -630,10 +692,6 @@ public:
                   } else if( subv.first == "temp" ) {
                       unsigned int t = subv.second.get_value<unsigned int>();
                       temp = sensor_tree::pretty<unsigned int>(t == XCL_INVALID_SENSOR_VAL ? XCL_NO_SENSOR_DEV : t, "N/A");
-                  } else if( subv.first == "bo_count" ) {
-                      bo_count = subv.second.get_value<unsigned>();
-                  } else if( subv.first == "mem_usage" ) {
-                      mem_usage = subv.second.get_value<std::string>();
                   } else if( subv.first == "size" ) {
                       size = subv.second.get_value<std::string>();
                   } else if( subv.first == "enabled" ) {
@@ -648,9 +706,7 @@ public:
                    << std::left << tag
                    << std::setw(12) << type
                    << std::setw(9) << temp
-                   << std::setw(10) << size
-                   << std::setw(16) << mem_usage
-                   << std::setw(8) << bo_count << std::endl;
+                   << std::setw(10) << size << std::endl;
             }
           }
         } catch( std::exception const& e) {
@@ -849,13 +905,14 @@ public:
                      m0v85, mgt0v9avcc, m12v_sw, mgtavtt, vccint_vol, vccint_curr, m3v3_pex_curr, m0v85_curr, m3v3_vcc_vol,
                      hbm_1v2_vol, vpp2v5_vol, vccint_bram_vol, m12v_pex_vol, m12v_aux_curr, m12v_pex_curr, m12v_aux_vol,
                      vol_12v_aux1, vol_vcc1v2_i, vol_v12_in_i, vol_v12_in_aux0_i, vol_v12_in_aux1_i, vol_vccaux,
-                     vol_vccaux_pmc, vol_vccram;
+                     vol_vccaux_pmc, vol_vccram, m3v3_aux_cur;
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_pex_vol",    m12v_pex_vol);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_pex_curr",   m12v_pex_curr);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_aux_vol",    m12v_aux_vol);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_aux_curr",   m12v_aux_curr);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_3v3_pex_vol",    m3v3_pex_vol);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_3v3_aux_vol",    m3v3_aux_vol);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_3v3_aux_cur",    m3v3_aux_cur);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_ddr_vpp_btm",    ddr_vpp_btm);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_ddr_vpp_top",    ddr_vpp_top);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_sys_5v5",        sys_5v5);
@@ -888,6 +945,7 @@ public:
         sensor_tree::put( "board.physical.electrical.12v_aux.current",         m12v_aux_curr );
         sensor_tree::put( "board.physical.electrical.3v3_pex.voltage",         m3v3_pex_vol );
         sensor_tree::put( "board.physical.electrical.3v3_aux.voltage",         m3v3_aux_vol );
+        sensor_tree::put( "board.physical.electrical.3v3_aux.current",         m3v3_aux_cur );
         sensor_tree::put( "board.physical.electrical.ddr_vpp_bottom.voltage",  ddr_vpp_btm );
         sensor_tree::put( "board.physical.electrical.ddr_vpp_top.voltage",     ddr_vpp_top );
         sensor_tree::put( "board.physical.electrical.sys_5v5.voltage",         sys_5v5 );
@@ -934,7 +992,7 @@ public:
         // memory
         xclDeviceUsage devstat = { 0 };
         (void) xclGetUsageInfo(m_handle, &devstat);
-        for (unsigned i = 0; i < 2; i++) {
+        for (unsigned i = 0; i < dma_threads.size(); i++) {
             boost::property_tree::ptree pt_dma;
             pt_dma.put( "h2c", xrt_core::utils::unit_convert(devstat.h2c[i]) );
             pt_dma.put( "c2h", xrt_core::utils::unit_convert(devstat.c2h[i]) );
@@ -1179,6 +1237,9 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccaux.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccaux_pmc.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccram.voltage"  ) << std::endl;
+        ostr << std::setw(16) << "3V3 AUX CURR" << std::setw(16) << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.3v3_aux.current" )
+             <<  std::endl;
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Card Power(W)\n";
@@ -1238,13 +1299,48 @@ public:
         }
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-        ostr << std::left << "Memory Status" << std::endl;
+        ostr << std::left << "Memory Topology" << std::endl;
         ostr << std::setw(17) << "     Tag"  << std::setw(12) << "Type"
-             << std::setw(9)  << "Temp(C)"   << std::setw(8)  << "Size";
-        ostr << std::setw(16) << "Mem Usage" << std::setw(8)  << "BO count" << std::endl;
+             << std::setw(9)  << "Temp(C)"   << std::setw(8)  << "Size" << std::endl;
 
         try {
           for (auto& v : sensor_tree::get_child("board.memory.mem")) {
+            int index = std::stoi(v.first);
+            if( index >= 0 ) {
+              std::string tag, size, type, temp;
+              for (auto& subv : v.second) {
+                  if( subv.first == "type" ) {
+                      type = subv.second.get_value<std::string>();
+                  } else if( subv.first == "tag" ) {
+                      tag = subv.second.get_value<std::string>();
+                  } else if( subv.first == "temp" ) {
+                      unsigned int t = subv.second.get_value<unsigned int>();
+                      temp = sensor_tree::pretty<unsigned int>(t == XCL_INVALID_SENSOR_VAL ? XCL_NO_SENSOR_DEV : t, "N/A");
+                  } else if( subv.first == "size" ) {
+                      size = subv.second.get_value<std::string>();
+                  }
+              }
+              ostr << std::left
+                   << "[" << std::right << std::setw(2) << index << "] " << std::left
+                   << std::setw(12) << tag
+                   << std::setw(12) << type
+                   << std::setw(9) << temp
+                   << std::setw(8) << size << std::endl;
+            }
+          }
+        }
+        catch( std::exception const& e) {
+          // eat the exception, probably bad path
+        }
+
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        ostr << std::left << "Memory Status" << std::endl;
+        ostr << std::setw(17) << "     Tag"  << std::setw(12) << "Type"
+             << std::setw(8)  << "Size";
+        ostr << std::setw(16) << "Mem Usage" << std::setw(8)  << "BO count" << std::endl;
+
+        try {
+          for (auto& v : sensor_tree::get_child("board.memory.grp")) {
             int index = std::stoi(v.first);
             if( index >= 0 ) {
               std::string mem_usage, tag, size, type, temp;
@@ -1254,9 +1350,6 @@ public:
                       type = subv.second.get_value<std::string>();
                   } else if( subv.first == "tag" ) {
                       tag = subv.second.get_value<std::string>();
-                  } else if( subv.first == "temp" ) {
-                      unsigned int t = subv.second.get_value<unsigned int>();
-                      temp = sensor_tree::pretty<unsigned int>(t == XCL_INVALID_SENSOR_VAL ? XCL_NO_SENSOR_DEV : t, "N/A");
                   } else if( subv.first == "bo_count" ) {
                       bo_count = subv.second.get_value<unsigned>();
                   } else if( subv.first == "mem_usage" ) {
@@ -1269,7 +1362,6 @@ public:
                    << "[" << std::right << std::setw(2) << index << "] " << std::left
                    << std::setw(12) << tag
                    << std::setw(12) << type
-                   << std::setw(9) << temp
                    << std::setw(8) << size
                    << std::setw(16) << mem_usage
                    << std::setw(8) << bo_count << std::endl;

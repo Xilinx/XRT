@@ -18,12 +18,6 @@
 
 #include <linux/version.h>
 #include <linux/eventfd.h>
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(3,0,0)
-#include <drm/drm_backport.h>
-#endif
-#include <drm/drmP.h>
-#include <drm/drm_gem.h>
-#include <drm/drm_mm.h>
 #include <linux/debugfs.h>
 #include <linux/anon_inodes.h>
 #include <linux/dma-buf.h>
@@ -70,6 +64,11 @@
 unsigned int qdma4_max_channel = 16;
 module_param(qdma4_max_channel, uint, 0644);
 MODULE_PARM_DESC(qdma4_max_channel, "Set number of channels for qdma, default is 16");
+
+static unsigned int qdma4_poll_mode;
+module_param(qdma4_poll_mode, uint, 0644);
+MODULE_PARM_DESC(poll_mode, "Set 1 for hw polling, default is 0 (interrupts)");
+
 
 struct dentry *qdma4_debugfs_root;
 
@@ -505,16 +504,18 @@ static void fill_qdma_request_sgl(struct qdma_request *req, struct sg_table *sgt
 	int i;
 	struct scatterlist *sg;
 	struct qdma_sw_sg *sgl = req->sgl;
+	unsigned int sgcnt = sgt->nents;
 
-	req->sgcnt = sgt->nents;
-	for_each_sg(sgt->sgl, sg, sgt->nents, i) {
+	req->sgcnt = sgcnt;
+	for_each_sg(sgt->sgl, sg, sgcnt, i) {
 		sgl->next = sgl + 1;	
 		sgl->pg = sg_page(sg);
 		sgl->offset = sg->offset;
 		sgl->len = sg_dma_len(sg);
 		sgl->dma_addr = sg_dma_address(sg);
+		sgl++;
 	}
-	sgl->next = NULL;
+	req->sgl[sgcnt - 1].next = NULL;
 }
 
 static ssize_t qdma_migrate_bo(struct platform_device *pdev,
@@ -1873,7 +1874,12 @@ static int qdma4_probe(struct platform_device *pdev)
 	conf->bar_num_config = dma_bar;
 	conf->bar_num_user = -1;
 	conf->bar_num_bypass = -1;
-	conf->qdma_drv_mode = POLL_MODE;
+	conf->no_mailbox = 1;
+	//conf->qdma_drv_mode = POLL_MODE;
+	conf->data_msix_qvec_max = 1;
+	conf->user_msix_qvec_max = 8;
+	conf->msix_qvec_max = 16;
+	conf->qdma_drv_mode = qdma4_poll_mode ? POLL_MODE : AUTO_MODE;
 
 	conf->fp_user_isr_handler = qdma_isr;
 	conf->uld = (unsigned long)qdma;

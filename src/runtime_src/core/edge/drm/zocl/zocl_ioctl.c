@@ -119,11 +119,12 @@ int
 zocl_execbuf_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 {
 	struct drm_zocl_dev *zdev = dev->dev_private;
+	int ret = 0;
 
 	if (kds_mode == 1)
-		zocl_command_ioctl(zdev, data, filp);
+		ret = zocl_command_ioctl(zdev, data, filp);
 	else
-		zocl_execbuf_exec(dev, data, filp);
+		ret = zocl_execbuf_exec(dev, data, filp);
 
-	return 0;
+	return ret;
 }

@@ -132,6 +132,13 @@ get_profile()
 }
 
 inline bool
+get_container()
+{
+  static bool value = detail::get_bool_value("Debug.container",false);
+  return value;
+}
+
+inline bool
 get_device_profile()
 {
   static bool value = get_profile() && detail::get_bool_value("Debug.device_profile",false);
@@ -141,7 +148,8 @@ get_device_profile()
 inline std::string
 get_data_transfer_trace()
 {
-  static std::string value = (!get_profile()) ? "off" : detail::get_string_value("Debug.data_transfer_trace","off");
+  static std::string value = 
+    detail::get_string_value("Debug.data_transfer_trace","off");
   return value;
 }
 

@@ -16,6 +16,11 @@
  */
 
 #include "../xocl_drv.h"
+#include "profile_ioctl.h"
+
+#define XSPC_PC_ASSERTED_OFFSET 0x0
+#define XSPC_CURRENT_PC_OFFSET  0x100
+#define XSPC_SNAPSHOT_PC_OFFSET 0x200
 
 struct xocl_spc {
 	void __iomem		*base;
@@ -24,6 +29,49 @@ struct xocl_spc {
 	uint64_t		range;
 	struct mutex 		lock;
 	struct debug_ip_data	data;
+	struct spc_status	status;
+};
+
+static void update_status(struct xocl_spc *spc)
+{
+	spc->status.pc_asserted = XOCL_READ_REG32(spc->base + XSPC_PC_ASSERTED_OFFSET);
+	spc->status.current_pc = XOCL_READ_REG32(spc->base + XSPC_CURRENT_PC_OFFSET);
+	spc->status.snapshot_pc = XOCL_READ_REG32(spc->base + XSPC_SNAPSHOT_PC_OFFSET);
+}
+
+static ssize_t status_show(struct device *dev,
+			   struct device_attribute *attr, char *buf)
+{
+	struct xocl_spc *spc = platform_get_drvdata(to_platform_device(dev));
+	mutex_lock(&spc->lock);
+	update_status(spc);
+	mutex_unlock(&spc->lock);
+	return sprintf(buf, "%u\n%u\n%u\n",
+		spc->status.pc_asserted,
+		spc->status.current_pc,
+		spc->status.snapshot_pc
+		);
+}
+
+static DEVICE_ATTR_RO(status);
+
+static ssize_t name_show(struct device *dev,
+			   struct device_attribute *attr, char *buf)
+{
+	struct xocl_spc *spc = platform_get_drvdata(to_platform_device(dev));
+	return sprintf(buf, "spc_%llu\n",spc->data.m_base_address);
+}
+
+static DEVICE_ATTR_RO(name);
+
+static struct attribute *spc_attrs[] = {
+			   &dev_attr_status.attr,
+			   &dev_attr_name.attr,
+			   NULL,
+};
+
+static struct attribute_group spc_attr_group = {
+			   .attrs = spc_attrs,
 };
 
 static int spc_remove(struct platform_device *pdev)
@@ -36,6 +84,8 @@ static int spc_remove(struct platform_device *pdev)
 		xocl_err(&pdev->dev, "driver data is NULL");
 		return -EINVAL;
 	}
+
+	sysfs_remove_group(&pdev->dev.kobj, &spc_attr_group);
 
 	xocl_drvinst_release(spc, &hdl);
 
@@ -85,6 +135,11 @@ static int spc_probe(struct platform_device *pdev)
 
 	spc->start_paddr = res->start;
 	spc->range = res->end - res->start + 1;
+
+	err = sysfs_create_group(&pdev->dev.kobj, &spc_attr_group);
+	if (err) {
+		xocl_err(&pdev->dev, "create spc sysfs attrs failed: %d", err);
+	}
 
 done:
 	if (err) {

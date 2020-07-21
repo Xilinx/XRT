@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-2019,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -494,6 +494,18 @@ int xdev_sriov_vf_offline(struct xlnx_dma_dev *xdev, u8 func_id);
 
 /*****************************************************************************/
 /**
+ * xdev_sriov_vf_reset_offline() - API to set the virtual function to
+ *				offline mode in FLR flow initiated by PF
+ *
+ * @param[in]  xdev:	pointer to xdev
+ *
+ * @return	0: success
+ * @return	-1: on failure
+ *****************************************************************************/
+int xdev_sriov_vf_reset_offline(struct xlnx_dma_dev *xdev);
+
+/*****************************************************************************/
+/**
  * xdev_sriov_vf_online() - API to set the virtual function to online mode
  *
  * @param[in]	xdev:		pointer to xdev
@@ -564,6 +576,8 @@ int xdev_sriov_vf_online(struct xlnx_dma_dev *xdev, u8 func_id);
  *****************************************************************************/
 int xdev_sriov_vf_fmap(struct xlnx_dma_dev *xdev, u8 func_id,
 			unsigned short qbase, unsigned short qmax);
+
+#define xdev_sriov_vf_reset_offline(xdev)
 #else
 /** dummy declaration for xdev_sriov_disable()
  *  When virtual function is not enabled
@@ -581,6 +595,7 @@ int xdev_sriov_vf_fmap(struct xlnx_dma_dev *xdev, u8 func_id,
  *  When virtual function is not enabled
  */
 #define xdev_sriov_vf_online(xdev, func_id)
+#define xdev_sriov_vf_reset_offline(xdev)
 
 #endif
 

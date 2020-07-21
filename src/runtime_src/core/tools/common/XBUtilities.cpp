@@ -20,6 +20,7 @@
 #include "core/common/error.h"
 #include "core/common/utils.h"
 #include "core/common/message.h"
+#include "core/common/query_requests.h"
 
 #include "common/system.h"
 
@@ -397,23 +398,24 @@ XBUtilities::can_proceed()
   return proceed;
 }
 
-void 
-XBUtilities::report_available_devices() 
+boost::property_tree::ptree
+XBUtilities::get_available_devices(bool inUserDomain) 
 {
-  std::cout << "\nList of available devices:" <<std::endl;
   xrt_core::device_collection deviceCollection;
-  collect_devices(std::set<std::string> {"all"}, false, deviceCollection);
+  collect_devices(std::set<std::string> {"all"}, inUserDomain, deviceCollection);
+  boost::property_tree::ptree pt;
   for (const auto & device : deviceCollection) {
-    boost::property_tree::ptree on_board_rom_info;
-    boost::property_tree::ptree on_board_dev_info;
-    device->get_rom_info(on_board_rom_info);
-    device->get_info(on_board_dev_info);
-    std::cout << boost::format("[%s] : %s\n") % on_board_dev_info.get<std::string>("bdf", "N/A") % on_board_rom_info.get<std::string>("vbnv", "N/A");
+    boost::property_tree::ptree pt_dev;
+    pt_dev.put("bdf", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device)));
+    pt_dev.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
+    pt_dev.put("id", xrt_core::query::rom_time_since_epoch::to_string(xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
+    pt_dev.put("is_ready", "true"); //to-do: sysfs node but on windows?
+    pt.push_back(std::make_pair("", pt_dev));
   }
-  std::cout << std::endl;
+  return pt;
 }
 
-std::pair<const char*, size_t>
+std::vector<char>
 XBUtilities::get_axlf_section(const std::string& filename, axlf_section_kind kind)
 {
   std::ifstream in(filename);
@@ -445,11 +447,11 @@ XBUtilities::get_axlf_section(const std::string& filename, axlf_section_kind kin
   if (!section)
     throw std::runtime_error("Section not found");
 
-  auto buf = new char[section->m_sectionSize];
+  std::vector<char> buf(section->m_sectionSize);
   in.seekg(section->m_sectionOffset);
-  in.read(buf, section->m_sectionSize);
+  in.read(buf.data(), section->m_sectionSize);
 
-  return std::make_pair(buf, section->m_sectionSize);
+  return buf;
 }
 
 std::vector<std::string>
@@ -492,4 +494,41 @@ XBUtilities::get_uuids(const void *dtbuf)
     p = PALIGN(p + sz, 4);
   }
   return uuids;  
+}
+
+static const std::map<std::string, reset_type> reset_map = {
+    { "hot", reset_type::hot },
+    { "kernel", reset_type::kernel },
+    { "ert", reset_type::ert },
+    { "ecc", reset_type::ecc },
+    { "soft_kernel", reset_type::soft_kernel }
+  };
+
+XBUtilities::reset_type
+XBUtilities::str_to_enum_reset(const std::string& str)
+{
+  auto it = reset_map.find(str);
+  if (it != reset_map.end())
+    return it->second;
+  throw xrt_core::error(str + " is invalid. Please specify a valid reset type");
+}
+
+static std::string
+precision(double value, int p)
+{
+  std::stringstream stream;
+  stream << std::fixed << std::setprecision(p) << value;
+  return stream.str();
+}
+
+std::string
+XBUtilities::format_base10_shiftdown3(uint64_t value)
+{
+  return precision(static_cast<double>(value) / 1000.0, 3);
+}
+
+std::string
+XBUtilities::format_base10_shiftdown6(uint64_t value)
+{
+  return precision(static_cast<double>(value) / 1000000.0, 6);
 }

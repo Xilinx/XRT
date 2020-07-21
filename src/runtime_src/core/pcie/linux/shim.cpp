@@ -31,6 +31,7 @@
 
 #include "plugin/xdp/hal_profile.h"
 #include "plugin/xdp/hal_api_interface.h"
+#include "plugin/xdp/hal_device_offload.h"
 
 
 #include "xclbin.h"
@@ -1332,6 +1333,10 @@ int shim::xclLoadXclBin(const xclBin *buffer)
         xrt_logmsg(XRT_ERROR,
                    "Is xclmgmt driver loaded? Or is MSD/MPD running?");
       }
+      else if (ret == -EDEADLK) {
+        xrt_logmsg(XRT_ERROR, "CU was deadlocked? Hardware is not stable");
+        xrt_logmsg(XRT_ERROR, "Please reset device with 'xbutil reset'");
+      }
       xrt_logmsg(XRT_ERROR, "See dmesg log for details. err=%d", ret);
     }
 
@@ -2214,8 +2219,14 @@ void xclClose(xclDeviceHandle handle)
 
 int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 {
+#ifdef ENABLE_HAL_PROFILING
+  LOAD_XCLBIN_CB ;
+#endif
   try {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
+#ifdef ENABLE_HAL_PROFILING
+    xdphal::flush_device(handle) ;
+#endif  
 
 #ifdef DISABLE_DOWNLOAD_XCLBIN
     int ret = 0;
@@ -2227,8 +2238,9 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
       auto core_device = xrt_core::get_userpf_device(drv);
       core_device->register_axlf(buffer);
 #ifdef ENABLE_HAL_PROFILING
-    LOAD_XCLBIN_CB ;
+      xdphal::update_device(handle) ;
 #endif
+
 #ifndef DISABLE_DOWNLOAD_XCLBIN
       ret = xrt_core::scheduler::init(handle, buffer);
       START_DEVICE_PROFILING_CB(handle);

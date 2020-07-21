@@ -18,6 +18,7 @@
 
 #include "lop.h"
 #include "core/common/module_loader.h"
+#include "core/common/utils.h"
 #include "core/common/dlfcn.h"
 
 namespace xdplop {
@@ -72,8 +73,6 @@ namespace xdplop {
     }
   }
 
-  std::atomic<unsigned int> LOPFunctionCallLogger::m_funcid_global(0) ;
-
   LOPFunctionCallLogger::LOPFunctionCallLogger(const char* function) :
     LOPFunctionCallLogger(function, 0)
   {    
@@ -93,7 +92,7 @@ namespace xdplop {
     }
 
     // Log the stats for this function
-    m_funcid = m_funcid_global++ ;
+    m_funcid = xrt_core::utils::issue_id() ;
     if (function_start_cb)
       function_start_cb(m_name, m_address, m_funcid) ;
   }

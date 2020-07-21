@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-2019,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -916,18 +916,15 @@ int qdma4_descq_alloc_resource(struct qdma_descq *descq)
 
 		flq->desc = (struct qdma_c2h_desc *)descq->desc;
 		flq->size = descq->conf.rngsz;
-		flq->desc_buf_size = get_next_powof2(descq->conf.c2h_bufsz);
-		flq->desc_pg_shift = fls(flq->desc_buf_size) - 1;
+		flq->pg_shift = fls(descq->conf.c2h_bufsz) - 1;
 
-		flq->buf_pg_shift  = fls(descq->conf.c2h_bufsz) - 1;
-		flq->buf_pg_mask = (1 << flq->buf_pg_shift) - 1;
 		/* These code changes are to accomodate buf_sz
 		 *  of less than 4096
 		 */
-		if (flq->desc_pg_shift < PAGE_SHIFT)
-			flq->desc_pg_order = 0;
+		if (flq->pg_shift < PAGE_SHIFT)
+			flq->pg_order = 0;
 		else
-			flq->desc_pg_order = flq->desc_pg_shift - PAGE_SHIFT;
+			flq->pg_order = flq->pg_shift - PAGE_SHIFT;
 
 		/* freelist / rx buffers */
 		rv = qdma4_descq_flq_alloc_resource(descq);
@@ -1018,10 +1015,9 @@ void qdma4_descq_free_resource(struct qdma_descq *descq)
 		pr_debug("%s: desc 0x%p, cmpt 0x%p.\n",
 			descq->conf.name, descq->desc, descq->desc_cmpt);
 
-		if (descq->conf.st && (descq->conf.q_type == Q_C2H)) {
+		if (descq->conf.st && (descq->conf.q_type == Q_C2H))
 			qdma4_descq_flq_free_resource(descq);
-			descq_flq_free_page_resource(descq);
-		} else
+		else
 			kfree(descq->desc_list);
 
 		desc_ring_free(descq->xdev, descq->conf.rngsz, desc_sz, cs_sz,
@@ -1064,7 +1060,6 @@ void qdma4_descq_config(struct qdma_descq *descq, struct qdma_queue_conf *qconf,
 			descq->xdev->conf.bdf, descq->conf.st ? "ST" : "MM",
 			descq->conf.qidx);
 		descq->conf.name[len] = '\0';
-pr_info("set up queue name %s.\n", descq->conf.name);
 
 		descq->conf.st = qconf->st;
 		descq->conf.q_type = qconf->q_type;

@@ -53,15 +53,14 @@ struct xocl_drm {
 	xdev_handle_t		xdev;
 	/* memory management */
 	struct drm_device       *ddev;
-	/* Memory manager array, one per DDR channel, protected by mm_lock */
-	struct drm_mm           **mm;
+	/* Memory manager */
+	struct drm_mm           *mm;
 	struct mutex            mm_lock;
 	struct drm_xocl_mm_stat **mm_usage_stat;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 	DECLARE_HASHTABLE(mm_range, 6);
 #endif
-	struct xocl_cma_bank  *cma_bank;
 };
 
 struct drm_xocl_bo {
@@ -97,8 +96,11 @@ void xocl_mm_get_usage_stat(struct xocl_drm *drm_p, u32 ddr,
 void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u32 ddr,
         u64 size, int count);
 
+int xocl_mm_insert_node_range(struct xocl_drm *drm_p, u32 mem_id,
+                    struct drm_mm_node *node, u64 size);
 int xocl_mm_insert_node(struct xocl_drm *drm_p, u32 ddr,
                 struct drm_mm_node *node, u64 size);
+
 void *xocl_drm_init(xdev_handle_t xdev);
 void xocl_drm_fini(struct xocl_drm *drm_p);
 uint32_t xocl_get_shared_ddr(struct xocl_drm *drm_p, struct mem_data *m_data);
@@ -106,8 +108,6 @@ int xocl_init_mem(struct xocl_drm *drm_p);
 int xocl_cleanup_mem(struct xocl_drm *drm_p);
 
 bool is_cma_bank(struct xocl_drm *drm_p, uint32_t memidx);
-int xocl_cma_bank_alloc(struct xocl_drm *drm_p, struct drm_xocl_alloc_cma_info *cma_info);
-void xocl_cma_bank_free(struct xocl_drm *drm_p);
 int xocl_check_topology(struct xocl_drm *drm_p);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)

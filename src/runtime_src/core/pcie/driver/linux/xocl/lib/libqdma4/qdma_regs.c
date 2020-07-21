@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-2019,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@
 #include "qdma_device.h"
 #include "qdma_descq.h"
 #include "qdma_st_c2h.h"
+#include "qdma_access_common.h"
 #include "qdma_resource_mgmt.h"
 
 int qdma_set_ring_sizes(struct xlnx_dma_dev *xdev, u8 index,

@@ -34,6 +34,31 @@
 # pragma warning( disable : 4244 )
 #endif
 
+////////////////////////////////////////////////////////////////
+// Exposed for Cardano as extensions to xrt_bo.h
+// Revisit post 2020.1
+////////////////////////////////////////////////////////////////
+/**
+ * xrtBOAddress() - Get the address of device side of buffer
+ *
+ * @bo:      Buffer object
+ * Return:   Address of device side buffer
+ */
+XCL_DRIVER_DLLESPEC
+uint64_t
+xrtBOAddress(const xrt::bo& bo);
+
+/**
+ * xrtBOAddress() - Get the address of device side of buffer
+ *
+ * @handle:  Buffer handle
+ * Return:   Address of device side buffer
+ */
+XCL_DRIVER_DLLESPEC
+uint64_t
+xrtBOAddress(xrtBufferHandle bhdl);
+///////////////////////////////////////////////////////////////
+
 namespace {
 
 inline size_t
@@ -93,7 +118,7 @@ public:
   void
   sync(xclBOSyncDirection dir, size_t sz, size_t offset)
   {
-    device->sync_bo(handle, dir, sz, offset);
+    device->sync_bo(handle, dir, sz, offset + get_offset());
   }
 
   void
@@ -125,6 +150,7 @@ public:
   virtual size_t get_size()      const { return size;    }
   virtual void*  get_hbuf()      const { return nullptr; }
   virtual bool   is_sub_buffer() const { return false;   }
+  virtual size_t get_offset()    const { return 0;       }
 };
 
 
@@ -212,6 +238,12 @@ public:
   {
     if (size + offset > parent->get_size())
       throw xrt_core::error(-EINVAL, "sub buffer size and offset");
+  }
+
+  virtual size_t
+  get_offset() const
+  {
+    return offset;
   }
 
   virtual void*
@@ -318,7 +350,9 @@ alloc(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
   auto type = flags & ~XRT_BO_FLAGS_MEMIDX_MASK;
   switch (type) {
   case 0:
+#ifndef XRT_EDGE
     return alloc_hbuf(dhdl, xrt_core::aligned_alloc(get_alignment(), sz), sz, flags, grp);
+#endif
   case XCL_BO_FLAGS_CACHEABLE:
   case XCL_BO_FLAGS_SVM:
   case XCL_BO_FLAGS_DEV_ONLY:
@@ -567,4 +601,26 @@ xrtBORead(xrtBufferHandle bhdl, void* dst, size_t size, size_t skip)
     send_exception_message(ex.what());
     return errno = 0;
   }
+}
+
+uint64_t
+xrtBOAddress(xrtBufferHandle bhdl)
+{
+  try {
+    return xrt_core::bo::address(bhdl);
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return errno = 0;
+  }
+}
+
+uint64_t
+xrtBOAddress(const xrt::bo& bo)
+{
+  return xrt_core::bo::address(bo);
 }

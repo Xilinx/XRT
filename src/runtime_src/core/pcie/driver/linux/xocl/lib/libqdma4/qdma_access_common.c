@@ -1,5 +1,17 @@
 /*
- * Copyright(c) 2019 Xilinx, Inc. All rights reserved.
+ * Copyright(c) 2019-2020 Xilinx, Inc. All rights reserved.
+ *
+ * This source code is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * The full GNU General Public License is included in this distribution in
+ * the file called "COPYING".
  */
 
 #include "qdma_access_common.h"
@@ -10,6 +22,10 @@
 #include "qdma_s80_hard_access.h"
 #include "eqdma_soft_access.h"
 #include "qdma_reg_dump.h"
+
+#ifdef ENABLE_WPP_TRACING
+#include "qdma_access_common.tmh"
+#endif
 
 /* qdma version info */
 #define RTL_BASE_VERSION                        2
@@ -23,84 +39,6 @@ enum qdma_ip {
 	EQDMA_IP
 };
 
-struct qctx_entry sw_ctxt_entries[] = {
-	{"PIDX", 0},
-	{"IRQ Arm", 0},
-	{"Function Id", 0},
-	{"Queue Enable", 0},
-	{"Fetch Credit Enable", 0},
-	{"Write back/Intr Check", 0},
-	{"Write back/Intr Interval", 0},
-	{"Address Translation", 0},
-	{"Fetch Max", 0},
-	{"Ring Size", 0},
-	{"Descriptor Size", 0},
-	{"Bypass Enable", 0},
-	{"MM Channel", 0},
-	{"Writeback Enable", 0},
-	{"Interrupt Enable", 0},
-	{"Port Id", 0},
-	{"Interrupt No Last", 0},
-	{"Error", 0},
-	{"Writeback Error Sent", 0},
-	{"IRQ Request", 0},
-	{"Marker Disable", 0},
-	{"Is Memory Mapped", 0},
-	{"Descriptor Ring Base Addr (Low)", 0},
-	{"Descriptor Ring Base Addr (High)", 0},
-	{"Interrupt Vector/Ring Index", 0},
-	{"Interrupt Aggregation", 0},
-};
-
-struct qctx_entry hw_ctxt_entries[] = {
-	{"CIDX", 0},
-	{"Credits Consumed", 0},
-	{"Descriptors Pending", 0},
-	{"Queue Invalid No Desc Pending", 0},
-	{"Eviction Pending", 0},
-	{"Fetch Pending", 0},
-};
-
-struct qctx_entry credit_ctxt_entries[] = {
-	{"Credit", 0},
-};
-
-struct qctx_entry cmpt_ctxt_entries[] = {
-	{"Enable Status Desc Update", 0},
-	{"Enable Interrupt", 0},
-	{"Trigger Mode", 0},
-	{"Function Id", 0},
-	{"Counter Index", 0},
-	{"Timer Index", 0},
-	{"Interrupt State", 0},
-	{"Color", 0},
-	{"Ring Size", 0},
-	{"Base Address (Low)", 0},
-	{"Base Address (High)", 0},
-	{"Descriptor Size", 0},
-	{"PIDX", 0},
-	{"CIDX", 0},
-	{"Valid", 0},
-	{"Error", 0},
-	{"Trigger Pending", 0},
-	{"Timer Running", 0},
-	{"Full Update", 0},
-	{"Over Flow Check Disable", 0},
-	{"Address Translation", 0},
-	{"Interrupt Vector/Ring Index", 0},
-	{"Interrupt Aggregation", 0},
-};
-
-struct qctx_entry c2h_pftch_ctxt_entries[] = {
-	{"Bypass", 0},
-	{"Buffer Size Index", 0},
-	{"Port Id", 0},
-	{"Error", 0},
-	{"Prefetch Enable", 0},
-	{"In Prefetch", 0},
-	{"Software Credit", 0},
-	{"Valid", 0},
-};
 
 /*
  * qdma4_hw_monitor_reg() - polling a register repeatly until
@@ -108,8 +46,8 @@ struct qctx_entry c2h_pftch_ctxt_entries[] = {
  *
  * return -QDMA_BUSY_IIMEOUT_ERR if register value didn't match, 0 other wise
  */
-int qdma4_hw_monitor_reg(void *dev_hndl, unsigned int reg, uint32_t mask,
-		uint32_t val, unsigned int interval_us, unsigned int timeout_us)
+int qdma4_hw_monitor_reg(void *dev_hndl, uint32_t reg, uint32_t mask,
+		uint32_t val, uint32_t interval_us, uint32_t timeout_us)
 {
 	int count;
 	uint32_t v;
@@ -240,497 +178,6 @@ static const char *qdma_get_vivado_release_id(
 	}
 }
 
-/*
- * qdma_acc_fill_sw_ctxt() - Helper function to fill sw context into structure
- *
- */
-static void qdma_fill_sw_ctxt(struct qdma_descq_sw_ctxt *sw_ctxt)
-{
-	sw_ctxt_entries[0].value = sw_ctxt->pidx;
-	sw_ctxt_entries[1].value = sw_ctxt->irq_arm;
-	sw_ctxt_entries[2].value = sw_ctxt->fnc_id;
-	sw_ctxt_entries[3].value = sw_ctxt->qen;
-	sw_ctxt_entries[4].value = sw_ctxt->frcd_en;
-	sw_ctxt_entries[5].value = sw_ctxt->wbi_chk;
-	sw_ctxt_entries[6].value = sw_ctxt->wbi_intvl_en;
-	sw_ctxt_entries[7].value = sw_ctxt->at;
-	sw_ctxt_entries[8].value = sw_ctxt->fetch_max;
-	sw_ctxt_entries[9].value = sw_ctxt->rngsz_idx;
-	sw_ctxt_entries[10].value = sw_ctxt->desc_sz;
-	sw_ctxt_entries[11].value = sw_ctxt->bypass;
-	sw_ctxt_entries[12].value = sw_ctxt->mm_chn;
-	sw_ctxt_entries[13].value = sw_ctxt->wbk_en;
-	sw_ctxt_entries[14].value = sw_ctxt->irq_en;
-	sw_ctxt_entries[15].value = sw_ctxt->port_id;
-	sw_ctxt_entries[16].value = sw_ctxt->irq_no_last;
-	sw_ctxt_entries[17].value = sw_ctxt->err;
-	sw_ctxt_entries[18].value = sw_ctxt->err_wb_sent;
-	sw_ctxt_entries[19].value = sw_ctxt->irq_req;
-	sw_ctxt_entries[20].value = sw_ctxt->mrkr_dis;
-	sw_ctxt_entries[21].value = sw_ctxt->is_mm;
-	sw_ctxt_entries[22].value = sw_ctxt->ring_bs_addr & 0xFFFFFFFF;
-	sw_ctxt_entries[23].value =
-		(sw_ctxt->ring_bs_addr >> 32) & 0xFFFFFFFF;
-	sw_ctxt_entries[24].value = sw_ctxt->vec;
-	sw_ctxt_entries[25].value = sw_ctxt->intr_aggr;
-}
-
-/*
- * qdma_acc_fill_cmpt_ctxt() - Helper function to fill completion context
- *                         into structure
- *
- */
-static void qdma_fill_cmpt_ctxt(struct qdma_descq_cmpt_ctxt *cmpt_ctxt)
-{
-	cmpt_ctxt_entries[0].value = cmpt_ctxt->en_stat_desc;
-	cmpt_ctxt_entries[1].value = cmpt_ctxt->en_int;
-	cmpt_ctxt_entries[2].value = cmpt_ctxt->trig_mode;
-	cmpt_ctxt_entries[3].value = cmpt_ctxt->fnc_id;
-	cmpt_ctxt_entries[4].value = cmpt_ctxt->counter_idx;
-	cmpt_ctxt_entries[5].value = cmpt_ctxt->timer_idx;
-	cmpt_ctxt_entries[6].value = cmpt_ctxt->in_st;
-	cmpt_ctxt_entries[7].value = cmpt_ctxt->color;
-	cmpt_ctxt_entries[8].value = cmpt_ctxt->ringsz_idx;
-	cmpt_ctxt_entries[9].value = cmpt_ctxt->bs_addr & 0xFFFFFFFF;
-	cmpt_ctxt_entries[10].value =
-		(cmpt_ctxt->bs_addr >> 32) & 0xFFFFFFFF;
-	cmpt_ctxt_entries[11].value = cmpt_ctxt->desc_sz;
-	cmpt_ctxt_entries[12].value = cmpt_ctxt->pidx;
-	cmpt_ctxt_entries[13].value = cmpt_ctxt->cidx;
-	cmpt_ctxt_entries[14].value = cmpt_ctxt->valid;
-	cmpt_ctxt_entries[15].value = cmpt_ctxt->err;
-	cmpt_ctxt_entries[16].value = cmpt_ctxt->user_trig_pend;
-	cmpt_ctxt_entries[17].value = cmpt_ctxt->timer_running;
-	cmpt_ctxt_entries[18].value = cmpt_ctxt->full_upd;
-	cmpt_ctxt_entries[19].value = cmpt_ctxt->ovf_chk_dis;
-	cmpt_ctxt_entries[20].value = cmpt_ctxt->at;
-	cmpt_ctxt_entries[21].value = cmpt_ctxt->vec;
-	cmpt_ctxt_entries[22].value = cmpt_ctxt->int_aggr;
-}
-
-/*
- * qdma_acc_fill_hw_ctxt() - Helper function to fill HW context into structure
- *
- */
-static void qdma_fill_hw_ctxt(struct qdma_descq_hw_ctxt *hw_ctxt)
-{
-	hw_ctxt_entries[0].value = hw_ctxt->cidx;
-	hw_ctxt_entries[1].value = hw_ctxt->crd_use;
-	hw_ctxt_entries[2].value = hw_ctxt->dsc_pend;
-	hw_ctxt_entries[3].value = hw_ctxt->idl_stp_b;
-	hw_ctxt_entries[4].value = hw_ctxt->evt_pnd;
-	hw_ctxt_entries[5].value = hw_ctxt->fetch_pnd;
-}
-
-/*
- * qdma_acc_fill_credit_ctxt() - Helper function to fill Credit context
- *                           into structure
- *
- */
-static void qdma_fill_credit_ctxt(struct qdma_descq_credit_ctxt *cr_ctxt)
-{
-	credit_ctxt_entries[0].value = cr_ctxt->credit;
-}
-
-/*
- * qdma_acc_fill_pfetch_ctxt() - Helper function to fill Prefetch context
- *                           into structure
- *
- */
-static void qdma_fill_pfetch_ctxt(struct qdma_descq_prefetch_ctxt *pfetch_ctxt)
-{
-	c2h_pftch_ctxt_entries[0].value = pfetch_ctxt->bypass;
-	c2h_pftch_ctxt_entries[1].value = pfetch_ctxt->bufsz_idx;
-	c2h_pftch_ctxt_entries[2].value = pfetch_ctxt->port_id;
-	c2h_pftch_ctxt_entries[3].value = pfetch_ctxt->err;
-	c2h_pftch_ctxt_entries[4].value = pfetch_ctxt->pfch_en;
-	c2h_pftch_ctxt_entries[5].value = pfetch_ctxt->pfch;
-	c2h_pftch_ctxt_entries[6].value = pfetch_ctxt->sw_crdt;
-	c2h_pftch_ctxt_entries[7].value = pfetch_ctxt->valid;
-}
-
-/*
- * dump_context() - Helper function to dump queue context into string
- *
- * return len - length of the string copied into buffer
- */
-static int dump_context(struct qdma_descq_context *queue_context,
-		uint8_t st,	enum qdma_dev_q_type q_type,
-		char *buf, int buf_sz)
-{
-	int i = 0;
-	int n;
-	int len = 0;
-	int rv;
-	char banner[DEBGFS_LINE_SZ];
-
-	if (queue_context == NULL) {
-		qdma_log_error("%s: queue_context is NULL, err:%d\n",
-						__func__,
-					   -QDMA_ERR_INV_PARAM);
-		return -QDMA_ERR_INV_PARAM;
-	}
-
-	if (q_type == QDMA_DEV_Q_TYPE_CMPT) {
-		qdma_fill_cmpt_ctxt(&queue_context->cmpt_ctxt);
-	} else if (q_type == QDMA_DEV_Q_TYPE_H2C) {
-		qdma_fill_sw_ctxt(&queue_context->sw_ctxt);
-		qdma_fill_hw_ctxt(&queue_context->hw_ctxt);
-		qdma_fill_credit_ctxt(&queue_context->cr_ctxt);
-	} else if (q_type == QDMA_DEV_Q_TYPE_C2H) {
-		qdma_fill_sw_ctxt(&queue_context->sw_ctxt);
-		qdma_fill_hw_ctxt(&queue_context->hw_ctxt);
-		qdma_fill_credit_ctxt(&queue_context->cr_ctxt);
-		if (st) {
-			qdma_fill_pfetch_ctxt(&queue_context->pfetch_ctxt);
-			qdma_fill_cmpt_ctxt(&queue_context->cmpt_ctxt);
-		}
-	}
-
-	for (i = 0; i < DEBGFS_LINE_SZ - 5; i++) {
-		rv = QDMA_SNPRINTF_S(banner + i,
-			(DEBGFS_LINE_SZ - i),
-			sizeof("-"), "-");
-		if (rv < 0) {
-			qdma_log_error(
-				"%d:%s QDMA_SNPRINTF_S() failed, err:%d\n",
-				__LINE__, __func__,
-				rv);
-			goto INSUF_BUF_EXIT;
-		}
-	}
-
-	if (q_type != QDMA_DEV_Q_TYPE_CMPT) {
-		/* SW context dump */
-		n = sizeof(sw_ctxt_entries) / sizeof((sw_ctxt_entries)[0]);
-		for (i = 0; i < n; i++) {
-			if ((len >= buf_sz) ||
-				((len + DEBGFS_LINE_SZ) >= buf_sz))
-				goto INSUF_BUF_EXIT;
-
-			if (i == 0) {
-				if ((len + (3 * DEBGFS_LINE_SZ)) >= buf_sz)
-					goto INSUF_BUF_EXIT;
-				rv = QDMA_SNPRINTF_S(buf + len, (buf_sz - len),
-					DEBGFS_LINE_SZ, "\n%s", banner);
-				if (rv < 0) {
-					qdma_log_error(
-						"%d:%s QDMA_SNPRINTF_S() failed, err:%d\n",
-						__LINE__, __func__,
-						rv);
-					goto INSUF_BUF_EXIT;
-				}
-				len += rv;
-
-				rv = QDMA_SNPRINTF_S(buf + len, (buf_sz - len),
-					DEBGFS_LINE_SZ, "\n%40s", "SW Context");
-				if (rv < 0) {
-					qdma_log_error(
-						"%d:%s QDMA_SNPRINTF_S() failed, err:%d\n",
-						__LINE__, __func__,
-						rv);
-					goto INSUF_BUF_EXIT;
-				}
-				len += rv;
-
-				rv = QDMA_SNPRINTF_S(buf + len, (buf_sz - len),
-					DEBGFS_LINE_SZ, "\n%s\n", banner);
-				if (rv < 0) {
-					qdma_log_error(
-						"%d:%s QDMA_SNPRINTF_S() failed, err:%d\n",
-						__LINE__, __func__,
-						rv);
-					goto INSUF_BUF_EXIT;
-				}
-				len += rv;
-			}
-
-			rv = QDMA_SNPRINTF_S(buf + len, (buf_sz - len), DEBGFS_LINE_SZ,
-				"%-47s %#-10x %u\n",
-				sw_ctxt_entries[i].name,
-				sw_ctxt_entries[i].value,
-				sw_ctxt_entries[i].value);
-			if (rv < 0) {
-				qdma_log_error(
-					"%d:%s QDMA_SNPRINTF_S() failed, err:%d\n",
-					__LINE__, __func__,
-					rv);
-				goto INSUF_BUF_EXIT;
-			}
-			len += rv;
-		}
-
-		/* HW context dump */
-		n = sizeof(hw_ctxt_entries) / sizeof((hw_ctxt_entries)[0]);
-		for (i = 0; i < n; i++) {
-			if ((len >= buf_sz) ||
-				((len + DEBGFS_LINE_SZ) >= buf_sz))
-				goto INSUF_BUF_EXIT;
-
-			if (i == 0) {
-				if ((len + (3 * DEBGFS_LINE_SZ)) >= buf_sz)
-					goto INSUF_BUF_EXIT;
-
-				rv = QDMA_SNPRINTF_S(buf + len, (buf_sz - len),
-					DEBGFS_LINE_SZ, "\n%s", banner);
-				if (rv < 0) {
-					qdma_log_error(
-						"%d:%s QDMA_SNPRINTF_S() failed, err:%d\n",
-						__LINE__, __func__,
-						rv);
-					goto INSUF_BUF_EXIT;
-				}
-				len += rv;
-
-				rv = QDMA_SNPRINTF_S(buf + len, (buf_sz - len),
-					DEBGFS_LINE_SZ, "\n%40s", "HW Context");
-				if (rv < 0) {
-					qdma_log_error(
-						"%d:%s QDMA_SNPRINTF_S() failed, err:%d\n",
-						__LINE__, __func__,
-						rv);
-					goto INSUF_BUF_EXIT;
-				}
-				len += rv;
-
-				rv = QDMA_SNPRINTF_S(buf + len, (buf_sz - len),
-					DEBGFS_LINE_SZ, "\n%s\n", banner);
-				if (rv < 0) {
-					qdma_log_error(
-						"%d:%s QDMA_SNPRINTF_S() failed, err:%d\n",
-						__LINE__, __func__,
-						rv);
-					goto INSUF_BUF_EXIT;
-				}
-				len += rv;
-			}
-
-			rv = QDMA_SNPRINTF_S(buf + len, (buf_sz - len), DEBGFS_LINE_SZ,
-				"%-47s %#-10x %u\n",
-				hw_ctxt_entries[i].name,
-				hw_ctxt_entries[i].value,
-				hw_ctxt_entries[i].value);
-			if (rv < 0) {
-				qdma_log_error(
-					"%d:%s QDMA_SNPRINTF_S() failed, err:%d\n",
-					__LINE__, __func__,
-					rv);
-				goto INSUF_BUF_EXIT;
-			}
-			len += rv;
-		}
-
-		/* Credit context dump */
-		n = sizeof(credit_ctxt_entries) /
-			sizeof((credit_ctxt_entries)[0]);
-		for (i = 0; i < n; i++) {
-			if ((len >= buf_sz) ||
-				((len + DEBGFS_LINE_SZ) >= buf_sz))
-				goto INSUF_BUF_EXIT;
-
-			if (i == 0) {
-				if ((len + (3 * DEBGFS_LINE_SZ)) >= buf_sz)
-					goto INSUF_BUF_EXIT;
-
-				rv = QDMA_SNPRINTF_S(buf + len, (buf_sz - len),
-					DEBGFS_LINE_SZ, "\n%s", banner);
-				if (rv < 0) {
-					qdma_log_error(
-						"%d:%s QDMA_SNPRINTF_S() failed, err:%d\n",
-						__LINE__, __func__,
-						rv);
-					goto INSUF_BUF_EXIT;
-				}
-				len += rv;
-
-				rv = QDMA_SNPRINTF_S(buf + len, (buf_sz - len),
-					DEBGFS_LINE_SZ, "\n%40s",
-					"Credit Context");
-				if (rv < 0) {
-					qdma_log_error(
-						"%d:%s QDMA_SNPRINTF_S() failed, err:%d\n",
-						__LINE__, __func__,
-						rv);
-					goto INSUF_BUF_EXIT;
-				}
-				len += rv;
-
-				rv = QDMA_SNPRINTF_S(buf + len, (buf_sz - len),
-					DEBGFS_LINE_SZ, "\n%s\n", banner);
-				if (rv < 0) {
-					qdma_log_error(
-						"%d:%s QDMA_SNPRINTF_S() failed, err:%d\n",
-						__LINE__, __func__,
-						rv);
-					goto INSUF_BUF_EXIT;
-				}
-				len += rv;
-			}
-
-			rv = QDMA_SNPRINTF_S(buf + len, (buf_sz - len), DEBGFS_LINE_SZ,
-				"%-47s %#-10x %u\n",
-				credit_ctxt_entries[i].name,
-				credit_ctxt_entries[i].value,
-				credit_ctxt_entries[i].value);
-			if (rv < 0) {
-				qdma_log_error(
-					"%d:%s QDMA_SNPRINTF_S() failed, err:%d\n",
-					__LINE__, __func__,
-					rv);
-				goto INSUF_BUF_EXIT;
-			}
-			len += rv;
-		}
-	}
-
-	if ((q_type == QDMA_DEV_Q_TYPE_CMPT) ||
-			(st && q_type == QDMA_DEV_Q_TYPE_C2H)) {
-		/* Completion context dump */
-		n = sizeof(cmpt_ctxt_entries) / sizeof((cmpt_ctxt_entries)[0]);
-		for (i = 0; i < n; i++) {
-			if ((len >= buf_sz) ||
-				((len + DEBGFS_LINE_SZ) >= buf_sz))
-				goto INSUF_BUF_EXIT;
-
-			if (i == 0) {
-				if ((len + (3 * DEBGFS_LINE_SZ)) >= buf_sz)
-					goto INSUF_BUF_EXIT;
-
-				rv = QDMA_SNPRINTF_S(buf + len, (buf_sz - len),
-					DEBGFS_LINE_SZ, "\n%s", banner);
-				if (rv < 0) {
-					qdma_log_error(
-						"%d:%s QDMA_SNPRINTF_S() failed, err:%d\n",
-						__LINE__, __func__,
-						rv);
-					goto INSUF_BUF_EXIT;
-				}
-				len += rv;
-
-				rv = QDMA_SNPRINTF_S(buf + len, (buf_sz - len),
-					DEBGFS_LINE_SZ, "\n%40s",
-					"Completion Context");
-				if (rv < 0) {
-					qdma_log_error(
-						"%d:%s QDMA_SNPRINTF_S() failed, err:%d\n",
-						__LINE__, __func__,
-						rv);
-					goto INSUF_BUF_EXIT;
-				}
-				len += rv;
-
-				rv = QDMA_SNPRINTF_S(buf + len, (buf_sz - len),
-					DEBGFS_LINE_SZ, "\n%s\n", banner);
-				if (rv < 0) {
-					qdma_log_error(
-						"%d:%s QDMA_SNPRINTF_S() failed, err:%d\n",
-						__LINE__, __func__,
-						rv);
-					goto INSUF_BUF_EXIT;
-				}
-				len += rv;
-			}
-
-			rv = QDMA_SNPRINTF_S(buf + len, (buf_sz - len), DEBGFS_LINE_SZ,
-				"%-47s %#-10x %u\n",
-				cmpt_ctxt_entries[i].name,
-				cmpt_ctxt_entries[i].value,
-				cmpt_ctxt_entries[i].value);
-			if (rv < 0) {
-				qdma_log_error(
-					"%d:%s QDMA_SNPRINTF_S() failed, err:%d\n",
-					__LINE__, __func__,
-					rv);
-				goto INSUF_BUF_EXIT;
-			}
-			len += rv;
-		}
-	}
-
-	if (st && q_type == QDMA_DEV_Q_TYPE_C2H) {
-		/* Prefetch context dump */
-		n = sizeof(c2h_pftch_ctxt_entries) /
-			sizeof(c2h_pftch_ctxt_entries[0]);
-		for (i = 0; i < n; i++) {
-			if ((len >= buf_sz) ||
-				((len + DEBGFS_LINE_SZ) >= buf_sz))
-				goto INSUF_BUF_EXIT;
-
-			if (i == 0) {
-				if ((len + (3 * DEBGFS_LINE_SZ)) >= buf_sz)
-					goto INSUF_BUF_EXIT;
-
-				rv = QDMA_SNPRINTF_S(buf + len, (buf_sz - len),
-					DEBGFS_LINE_SZ, "\n%s", banner);
-				if (rv < 0) {
-					qdma_log_error(
-						"%d:%s QDMA_SNPRINTF_S() failed, err:%d\n",
-						__LINE__, __func__,
-						rv);
-					goto INSUF_BUF_EXIT;
-				}
-				len += rv;
-
-				rv = QDMA_SNPRINTF_S(buf + len, (buf_sz - len),
-					DEBGFS_LINE_SZ, "\n%40s",
-					"Prefetch Context");
-				if (rv < 0) {
-					qdma_log_error(
-						"%d:%s QDMA_SNPRINTF_S() failed, err:%d\n",
-						__LINE__, __func__,
-						rv);
-					goto INSUF_BUF_EXIT;
-				}
-				len += rv;
-
-				rv = QDMA_SNPRINTF_S(buf + len, (buf_sz - len),
-					DEBGFS_LINE_SZ, "\n%s\n", banner);
-				if (rv < 0) {
-					qdma_log_error(
-						"%d:%s QDMA_SNPRINTF_S() failed, err:%d\n",
-						__LINE__, __func__,
-						rv);
-					goto INSUF_BUF_EXIT;
-				}
-				len += rv;
-			}
-
-			rv = QDMA_SNPRINTF_S(buf + len, (buf_sz - len), DEBGFS_LINE_SZ,
-				"%-47s %#-10x %u\n",
-				c2h_pftch_ctxt_entries[i].name,
-				c2h_pftch_ctxt_entries[i].value,
-				c2h_pftch_ctxt_entries[i].value);
-			if (rv < 0) {
-				qdma_log_error(
-					"%d:%s QDMA_SNPRINTF_S() failed, err:%d\n",
-					__LINE__, __func__,
-					rv);
-				goto INSUF_BUF_EXIT;
-			}
-			len += rv;
-		}
-	}
-
-	return len;
-
-INSUF_BUF_EXIT:
-	if (buf_sz > DEBGFS_LINE_SZ) {
-		rv = QDMA_SNPRINTF_S((buf + buf_sz - DEBGFS_LINE_SZ),
-			buf_sz, DEBGFS_LINE_SZ,
-			"\n\nInsufficient buffer size, partial context dump\n");
-		if (rv < 0) {
-			qdma_log_error(
-				"%d:%s QDMA_SNPRINTF_S() failed, err:%d\n",
-				__LINE__, __func__,
-				rv);
-		}
-	}
-
-	qdma_log_error("%s: Insufficient buffer size, err:%d\n",
-		__func__, -QDMA_ERR_NO_MEM);
-
-	return -QDMA_ERR_NO_MEM;
-}
 
 void qdma_write_csr_values(void *dev_hndl, uint32_t reg_offst,
 		uint32_t idx, uint32_t cnt, const uint32_t *values)
@@ -753,17 +200,6 @@ void qdma_read_csr_values(void *dev_hndl, uint32_t reg_offst,
 		values[index] = qdma_reg_read(dev_hndl, reg_addr +
 					      (index * sizeof(uint32_t)));
 	}
-}
-
-
-static int get_version(void *dev_hndl, uint8_t is_vf,
-		struct qdma_hw_version_info *version_info)
-{
-	struct qdma_hw_access *hw = NULL;
-
-	qdma_get_hw_access(dev_hndl, &hw);
-
-	return hw->qdma_get_version(dev_hndl, is_vf, version_info);
 }
 
 void qdma_fetch_version_details(uint8_t is_vf, uint32_t version_reg_val,
@@ -912,8 +348,8 @@ void qdma_fetch_version_details(uint8_t is_vf, uint32_t version_reg_val,
  *
  * return len - length of the string copied into buffer
  */
-int dump_reg(char *buf, int buf_sz, unsigned int raddr,
-		const char *rname, unsigned int rval)
+int dump_reg(char *buf, int buf_sz, uint32_t raddr,
+		const char *rname, uint32_t rval)
 {
 	/* length of the line should be minimum 80 chars.
 	 * If below print pattern is changed, check for
@@ -1664,16 +1100,6 @@ static int qdma_mm_channel_conf(void *dev_hndl, uint8_t channel, uint8_t is_c2h,
 		qdma_reg_write(dev_hndl,
 				reg_addr + (channel * QDMA_MM_CONTROL_STEP),
 				enable);
-
-		/* xocl: enable MM error code */
-		if (is_c2h)
-			qdma_reg_write(dev_hndl,
-					QDMA_OFFSET_C2H_MM_ERR_CODE_EN_MASK,
-					0x70000003);
-		else
-			qdma_reg_write(dev_hndl,
-					QDMA_OFFSET_H2C_MM_ERR_CODE_EN_MASK,
-					0x3041013E);
 	}
 
 	return QDMA_SUCCESS;
@@ -1789,19 +1215,18 @@ static int qdma_is_config_bar(void *dev_hndl, uint8_t is_vf, enum qdma_ip *ip)
 
 	if (FIELD_GET(QDMA_CONFIG_BLOCK_ID_MASK, reg_val)
 			!= QDMA_MAGIC_NUMBER) {
-		qdma_log_error("%s: Invalid config bar, err:%d, %u,0x%x\n",
+		qdma_log_error("%s: Invalid config bar, err:%d\n",
 					__func__,
-					-QDMA_ERR_HWACC_INV_CONFIG_BAR,
-				reg_addr, reg_val);
+					-QDMA_ERR_HWACC_INV_CONFIG_BAR);
 		return -QDMA_ERR_HWACC_INV_CONFIG_BAR;
 	}
 
 	return QDMA_SUCCESS;
 }
 
-int qdma_reg_dump_buf_len(void *dev_hndl, uint8_t is_vf, uint32_t *buflen)
+int qdma_acc_reg_dump_buf_len(void *dev_hndl,
+		enum qdma_ip_type ip_type, int *buflen)
 {
-	struct qdma_hw_version_info version_info;
 	uint32_t len = 0;
 	int rv = 0;
 
@@ -1814,35 +1239,33 @@ int qdma_reg_dump_buf_len(void *dev_hndl, uint8_t is_vf, uint32_t *buflen)
 		return -QDMA_ERR_INV_PARAM;
 	}
 
-	rv = get_version(dev_hndl, is_vf, &version_info);
-	if (rv != QDMA_SUCCESS)
-		return rv;
-
-	if (version_info.ip_type == QDMA_SOFT_IP) {
+	switch (ip_type) {
+	case QDMA_SOFT_IP:
 		len = qdma_soft_reg_dump_buf_len();
-	} else if (version_info.ip_type == QDMA_VERSAL_HARD_IP) {
+		break;
+	case QDMA_VERSAL_HARD_IP:
 		len = qdma_s80_hard_reg_dump_buf_len();
-	} else if (version_info.ip_type == EQDMA_SOFT_IP) {
+		break;
+	case EQDMA_SOFT_IP:
 		len = eqdma_reg_dump_buf_len();
-	} else {
+		break;
+	default:
 		qdma_log_error("%s: Invalid version number, err = %d",
 			__func__, -QDMA_ERR_INV_PARAM);
 		return -QDMA_ERR_INV_PARAM;
 	}
 
-	*buflen = len;
+	*buflen = (int)len;
 	return rv;
 }
 
-int qdma_context_buf_len(void *dev_hndl, uint8_t is_vf,
-	uint8_t st, enum qdma_dev_q_type q_type, uint32_t *buflen)
+int qdma_acc_context_buf_len(void *dev_hndl,
+		enum qdma_ip_type ip_type, uint8_t st,
+		enum qdma_dev_q_type q_type, uint32_t *buflen)
 {
-	struct qdma_hw_version_info version_info;
-	uint32_t len = 0;
 	int rv = 0;
 
 	*buflen = 0;
-
 	if (!dev_hndl) {
 		qdma_log_error("%s: dev_handle is NULL, err:%d\n",
 			__func__, -QDMA_ERR_INV_PARAM);
@@ -1850,128 +1273,104 @@ int qdma_context_buf_len(void *dev_hndl, uint8_t is_vf,
 		return -QDMA_ERR_INV_PARAM;
 	}
 
-	rv = get_version(dev_hndl, is_vf, &version_info);
-	if (rv != QDMA_SUCCESS)
-		return rv;
-
-	if (version_info.ip_type == QDMA_SOFT_IP) {
-		if (q_type == QDMA_DEV_Q_TYPE_CMPT) {
-			len += (((sizeof(cmpt_ctxt_entries) /
-				sizeof(cmpt_ctxt_entries[0])) + 1) *
-				REG_DUMP_SIZE_PER_LINE);
-		} else {
-			len += (((sizeof(sw_ctxt_entries) /
-					sizeof(sw_ctxt_entries[0])) + 1) *
-					REG_DUMP_SIZE_PER_LINE);
-
-			len += (((sizeof(hw_ctxt_entries) /
-				sizeof(hw_ctxt_entries[0])) + 1) *
-				REG_DUMP_SIZE_PER_LINE);
-
-			len += (((sizeof(credit_ctxt_entries) /
-				sizeof(credit_ctxt_entries[0])) + 1) *
-				REG_DUMP_SIZE_PER_LINE);
-
-			if (st && (q_type == QDMA_DEV_Q_TYPE_C2H)) {
-				len += (((sizeof(cmpt_ctxt_entries) /
-					sizeof(cmpt_ctxt_entries[0])) + 1) *
-					REG_DUMP_SIZE_PER_LINE);
-
-				len += (((sizeof(c2h_pftch_ctxt_entries) /
-					sizeof(c2h_pftch_ctxt_entries[0]))
-					+ 1) * REG_DUMP_SIZE_PER_LINE);
-			}
-		}
-	} else if (version_info.ip_type == QDMA_VERSAL_HARD_IP) {
-		len = qdma_s80_hard_context_buf_len(st, q_type);
-	} else if (version_info.ip_type == EQDMA_SOFT_IP) {
-		len = eqdma_context_buf_len(st, q_type);
-	} else {
+	switch (ip_type) {
+	case QDMA_SOFT_IP:
+		rv = qdma_soft_context_buf_len(st, q_type, buflen);
+		break;
+	case QDMA_VERSAL_HARD_IP:
+		rv = qdma_s80_hard_context_buf_len(st, q_type, buflen);
+		break;
+	case EQDMA_SOFT_IP:
+		rv = eqdma_context_buf_len(st, q_type, buflen);
+		break;
+	default:
 		qdma_log_error("%s: Invalid version number, err = %d",
 			__func__, -QDMA_ERR_INV_PARAM);
 		return -QDMA_ERR_INV_PARAM;
 	}
 
-	*buflen = len;
 	return rv;
 }
 
 /*****************************************************************************/
 /**
- * qdma_dump_queue_context() - Function to get qdma queue context dump in a
+ * qdma_acc_dump_config_regs() - Function to get qdma config register dump in a
  * buffer
  *
  * @dev_hndl:   device handle
- * @is_vf:		VF or PF
- * @ctxt_data:  Context Data
- * @st:			Queue Mode (ST or MM)
- * @q_type:		Queue Type
+ * @is_vf:      Whether PF or VF
+ * @ip_type:	QDMA IP Type
  * @buf :       pointer to buffer to be filled
  * @buflen :    Length of the buffer
  *
  * Return:	Length up-till the buffer is filled -success and < 0 - failure
  *****************************************************************************/
-int qdma_dump_queue_context(void *dev_hndl, uint8_t is_vf,
+int qdma_acc_dump_config_regs(void *dev_hndl, uint8_t is_vf,
+		enum qdma_ip_type ip_type,
+		char *buf, uint32_t buflen)
+{
+	int rv = 0;
+
+	switch (ip_type) {
+	case QDMA_SOFT_IP:
+		rv =  qdma_soft_dump_config_regs(dev_hndl, is_vf,
+				buf, buflen);
+		break;
+	case QDMA_VERSAL_HARD_IP:
+		rv = qdma_s80_hard_dump_config_regs(dev_hndl, is_vf,
+				buf, buflen);
+		break;
+	case EQDMA_SOFT_IP:
+		rv = eqdma_dump_config_regs(dev_hndl, is_vf,
+				buf, buflen);
+		break;
+	default:
+		qdma_log_error("%s: Invalid version number, err = %d",
+			__func__, -QDMA_ERR_INV_PARAM);
+		return -QDMA_ERR_INV_PARAM;
+	}
+
+	return rv;
+}
+
+/*****************************************************************************/
+/**
+ * qdma_acc_dump_queue_context() - Function to get qdma queue context dump in a
+ * buffer
+ *
+ * @dev_hndl:   device handle
+ * @ip_type:	QDMA IP Type
+ * @st:		Queue Mode (ST or MM)
+ * @q_type:	Queue Type
+ * @ctxt_data:  Context Data
+ * @buf :       pointer to buffer to be filled
+ * @buflen :    Length of the buffer
+ *
+ * Return:	Length up-till the buffer is filled -success and < 0 - failure
+ *****************************************************************************/
+int qdma_acc_dump_queue_context(void *dev_hndl,
+		enum qdma_ip_type ip_type,
 		uint8_t st,
 		enum qdma_dev_q_type q_type,
 		struct qdma_descq_context *ctxt_data,
 		char *buf, uint32_t buflen)
 {
 	int rv = 0;
-	uint32_t req_buflen = 0;
-	struct qdma_hw_version_info version_info;
 
-	if (!dev_hndl) {
-		qdma_log_error("%s: dev_handle is NULL, err:%d\n",
-			__func__, -QDMA_ERR_INV_PARAM);
-
-		return -QDMA_ERR_INV_PARAM;
-	}
-
-	if (!ctxt_data) {
-		qdma_log_error("%s: ctxt_data is NULL, err:%d\n",
-			__func__, -QDMA_ERR_INV_PARAM);
-
-		return -QDMA_ERR_INV_PARAM;
-	}
-
-	if (!buf) {
-		qdma_log_error("%s: buf is NULL, err:%d\n",
-			__func__, -QDMA_ERR_INV_PARAM);
-
-		return -QDMA_ERR_INV_PARAM;
-	}
-	if (q_type >= QDMA_DEV_Q_TYPE_MAX) {
-		qdma_log_error("%s: invalid q_type, err:%d\n",
-			__func__, -QDMA_ERR_INV_PARAM);
-
-		return -QDMA_ERR_INV_PARAM;
-	}
-
-	rv = get_version(dev_hndl, is_vf, &version_info);
-	if (rv != QDMA_SUCCESS)
-		return rv;
-
-	if (version_info.ip_type == QDMA_SOFT_IP) {
-		rv = qdma_context_buf_len(dev_hndl, is_vf,
-				st, q_type, &req_buflen);
-		if (rv != QDMA_SUCCESS)
-			return rv;
-
-		if (buflen < req_buflen) {
-			qdma_log_error(
-			"%s: Too small buffer(%d), reqd(%d), err:%d\n",
-			__func__, buflen, req_buflen, -QDMA_ERR_NO_MEM);
-			return -QDMA_ERR_NO_MEM;
-		}
-		rv = dump_context(ctxt_data, st, q_type, buf, buflen);
-	} else if (version_info.ip_type == QDMA_VERSAL_HARD_IP) {
+	switch (ip_type) {
+	case QDMA_SOFT_IP:
+		rv = qdma_soft_dump_queue_context(dev_hndl,
+				st, q_type, ctxt_data, buf, buflen);
+		break;
+	case QDMA_VERSAL_HARD_IP:
 		rv = qdma_s80_hard_dump_queue_context(dev_hndl,
 				st, q_type, ctxt_data, buf, buflen);
-	} else if (version_info.ip_type == EQDMA_SOFT_IP) {
+		break;
+	case EQDMA_SOFT_IP:
 		rv = eqdma_dump_queue_context(dev_hndl,
 				st, q_type, ctxt_data, buf, buflen);
-	} else {
+		break;
+	default:
 		qdma_log_error("%s: Invalid version number, err = %d",
 			__func__, -QDMA_ERR_INV_PARAM);
 		return -QDMA_ERR_INV_PARAM;
@@ -1982,135 +1381,44 @@ int qdma_dump_queue_context(void *dev_hndl, uint8_t is_vf,
 
 /*****************************************************************************/
 /**
- * qdma_read_dump_queue_context() - Function to read and dump the queue
+ * qdma_acc_read_dump_queue_context() - Function to read and dump the queue
  * context in the user-provided buffer. This API is valid only for PF and
  * should not be used for VFs. For VF's use qdma_dump_queue_context() API
  * after reading the context through mailbox.
  *
  * @dev_hndl:   device handle
- * @is_vf:		VF or PF
+ * @ip_type:	QDMA IP type
  * @hw_qid:     queue id
- * @st:			Queue Mode(ST or MM)
- * @q_type:		Queue type(H2C/C2H/CMPT)*
+ * @st:		Queue Mode(ST or MM)
+ * @q_type:	Queue type(H2C/C2H/CMPT)*
  * @buf :       pointer to buffer to be filled
  * @buflen :    Length of the buffer
  *
  * Return:	Length up-till the buffer is filled -success and < 0 - failure
  *****************************************************************************/
-int qdma_read_dump_queue_context(void *dev_hndl, uint8_t is_vf,
+int qdma_acc_read_dump_queue_context(void *dev_hndl,
+				enum qdma_ip_type ip_type,
 				uint16_t qid_hw,
 				uint8_t st,
 				enum qdma_dev_q_type q_type,
 				char *buf, uint32_t buflen)
 {
 	int rv = QDMA_SUCCESS;
-	unsigned int req_buflen = 0;
-	struct qdma_descq_context context;
-	struct qdma_hw_version_info version_info;
 
-	if (!dev_hndl) {
-		qdma_log_error("%s: dev_handle is NULL, err:%d\n",
-			__func__, -QDMA_ERR_INV_PARAM);
-
-		return -QDMA_ERR_INV_PARAM;
-	}
-
-	if (is_vf) {
-		qdma_log_error("%s:Not supported for VF, err = %d",
-				__func__, QDMA_ERR_INV_PARAM);
-		return -QDMA_ERR_INV_PARAM;
-	}
-
-	if (!buf) {
-		qdma_log_error("%s: buf is NULL, err:%d\n",
-			__func__, -QDMA_ERR_INV_PARAM);
-
-		return -QDMA_ERR_INV_PARAM;
-	}
-
-	qdma_memset(&context, 0, sizeof(struct qdma_descq_context));
-
-	rv = get_version(dev_hndl, is_vf, &version_info);
-	if (rv != QDMA_SUCCESS)
-		return rv;
-
-	if (version_info.ip_type == QDMA_SOFT_IP) {
-		if (q_type != QDMA_DEV_Q_TYPE_CMPT) {
-			rv = qdma_sw_ctx_conf(dev_hndl, (uint8_t)q_type, qid_hw,
-					&(context.sw_ctxt),
-					QDMA_HW_ACCESS_READ);
-			if (rv < 0) {
-				qdma_log_error("%s:sw ctxt read fail, err = %d",
-						__func__, rv);
-				return rv;
-			}
-
-			rv = qdma_hw_ctx_conf(dev_hndl, (uint8_t)q_type, qid_hw,
-					&(context.hw_ctxt),
-					QDMA_HW_ACCESS_READ);
-			if (rv < 0) {
-				qdma_log_error("%s:hw ctxt read fail, err = %d",
-						__func__, rv);
-				return rv;
-			}
-
-			rv = qdma_credit_ctx_conf(dev_hndl, (uint8_t)q_type,
-					qid_hw,
-					&(context.cr_ctxt),
-					QDMA_HW_ACCESS_READ);
-			if (rv < 0) {
-				qdma_log_error("%s:cr ctxt read fail, err = %d",
-						__func__, rv);
-				return rv;
-			}
-
-			if (st && (q_type == QDMA_DEV_Q_TYPE_C2H)) {
-				rv = qdma_pfetch_ctx_conf(dev_hndl,
-					qid_hw, &(context.pfetch_ctxt),
-					QDMA_HW_ACCESS_READ);
-				if (rv < 0) {
-					qdma_log_error(
-					"%s:pftch ctxt read fail, err = %d",
-							__func__, rv);
-					return rv;
-				}
-			}
-		}
-
-		if ((st && (q_type == QDMA_DEV_Q_TYPE_C2H)) ||
-			(!st && (q_type == QDMA_DEV_Q_TYPE_CMPT))) {
-			rv = qdma_cmpt_ctx_conf(dev_hndl, qid_hw,
-						 &(context.cmpt_ctxt),
-						 QDMA_HW_ACCESS_READ);
-			if (rv < 0) {
-				qdma_log_error(
-				"%s:cmpt ctxt read fail, err = %d",
-						__func__, rv);
-				return rv;
-			}
-		}
-
-		rv = qdma_context_buf_len(dev_hndl, is_vf,
-				st, q_type, &req_buflen);
-		if (rv != QDMA_SUCCESS)
-			return rv;
-
-		if (buflen < req_buflen) {
-			qdma_log_error(
-			"%s: Too small buffer(%d), reqd(%d), err:%d\n",
-			__func__, buflen, req_buflen, -QDMA_ERR_NO_MEM);
-			return -QDMA_ERR_NO_MEM;
-		}
-		rv = dump_context(&context, st, q_type, buf, buflen);
-	} else if (version_info.ip_type == QDMA_VERSAL_HARD_IP) {
+	switch (ip_type) {
+	case QDMA_SOFT_IP:
+		rv = qdma_soft_read_dump_queue_context(dev_hndl,
+				qid_hw, st, q_type, buf, buflen);
+		break;
+	case QDMA_VERSAL_HARD_IP:
 		rv = qdma_s80_hard_read_dump_queue_context(dev_hndl,
-				qid_hw, st, q_type, &context,
-				buf, buflen);
-	} else if (version_info.ip_type == EQDMA_SOFT_IP) {
+				qid_hw, st, q_type, buf, buflen);
+		break;
+	case EQDMA_SOFT_IP:
 		rv = eqdma_read_dump_queue_context(dev_hndl,
-				qid_hw, st, q_type, &context,
-				buf, buflen);
-	} else {
+				qid_hw, st, q_type, buf, buflen);
+		break;
+	default:
 		qdma_log_error("%s: Invalid version number, err = %d",
 			__func__, -QDMA_ERR_INV_PARAM);
 		return -QDMA_ERR_INV_PARAM;
@@ -2118,6 +1426,53 @@ int qdma_read_dump_queue_context(void *dev_hndl, uint8_t is_vf,
 
 	return rv;
 }
+
+/*****************************************************************************/
+/**
+ * qdma_acc_dump_config_reg_list() - Dump the registers
+ *
+ * @dev_hndl:		device handle
+ * @ip_type:		QDMA ip type
+ * @num_regs :		Max registers to read
+ * @reg_list :		array of reg addr and reg values
+ * @buf :		pointer to buffer to be filled
+ * @buflen :		Length of the buffer
+ *
+ * Return: returns the platform specific error code
+ *****************************************************************************/
+int qdma_acc_dump_config_reg_list(void *dev_hndl,
+		enum qdma_ip_type ip_type,
+		uint32_t num_regs,
+		struct qdma_reg_data *reg_list,
+		char *buf, uint32_t buflen)
+{
+	int rv = 0;
+
+	switch (ip_type) {
+	case QDMA_SOFT_IP:
+		rv = qdma_soft_dump_config_reg_list(dev_hndl,
+				num_regs,
+				reg_list, buf, buflen);
+		break;
+	case QDMA_VERSAL_HARD_IP:
+		rv = qdma_s80_hard_dump_config_reg_list(dev_hndl,
+				num_regs,
+				reg_list, buf, buflen);
+		break;
+	case EQDMA_SOFT_IP:
+		rv = eqdma_dump_config_reg_list(dev_hndl,
+				num_regs,
+				reg_list, buf, buflen);
+		break;
+	default:
+		qdma_log_error("%s: Invalid version number, err = %d",
+			__func__, -QDMA_ERR_INV_PARAM);
+		return -QDMA_ERR_INV_PARAM;
+	}
+
+	return rv;
+}
+
 
 /*****************************************************************************/
 /**
@@ -2145,7 +1500,7 @@ static int qdma_get_function_number(void *dev_hndl, uint8_t *func_id)
 
 /*****************************************************************************/
 /**
- * qdma_hw_error_qdma4_intr_setup() - Function to set up the qdma error
+ * qdma_hw_error_intr_setup() - Function to set up the qdma error
  * interrupt
  *
  * @dev_hndl:	device handle
@@ -2155,7 +1510,7 @@ static int qdma_get_function_number(void *dev_hndl, uint8_t *func_id)
  *
  * Return:	0   - success and < 0 - failure
  *****************************************************************************/
-static int qdma_hw_error_qdma4_intr_setup(void *dev_hndl, uint16_t func_id,
+static int qdma_hw_error_intr_setup(void *dev_hndl, uint16_t func_id,
 		uint8_t err_intr_index)
 {
 	uint32_t reg_val = 0;
@@ -2219,7 +1574,7 @@ int qdma_hw_access_init(void *dev_hndl, uint8_t is_vf,
 				struct qdma_hw_access *hw_access)
 {
 	int rv = QDMA_SUCCESS;
-	enum qdma_ip ip;
+	enum qdma_ip ip = EQDMA_IP;
 
 	struct qdma_hw_version_info version_info;
 
@@ -2265,15 +1620,15 @@ int qdma_hw_access_init(void *dev_hndl, uint8_t is_vf,
 	hw_access->qdma_get_user_bar = &qdma_get_user_bar;
 	hw_access->qdma_get_function_number = &qdma_get_function_number;
 	hw_access->qdma_get_device_attributes = &qdma_get_device_attributes;
-	hw_access->qdma_hw_error_qdma4_intr_setup = &qdma_hw_error_qdma4_intr_setup;
+	hw_access->qdma_hw_error_intr_setup = &qdma_hw_error_intr_setup;
 	hw_access->qdma_hw_error_intr_rearm = &qdma_hw_error_intr_rearm;
 	hw_access->qdma_hw_error_enable = &qdma_hw_error_enable;
 	hw_access->qdma_hw_get_error_name = &qdma_hw_get_error_name;
 	hw_access->qdma_hw_error_process = &qdma_hw_error_process;
-	hw_access->qdma_dump_config_regs = &qdma_dump_config_regs;
-	hw_access->qdma_dump_queue_context = &qdma_dump_queue_context;
+	hw_access->qdma_dump_config_regs = &qdma_soft_dump_config_regs;
+	hw_access->qdma_dump_queue_context = &qdma_soft_dump_queue_context;
 	hw_access->qdma_read_dump_queue_context =
-					&qdma_read_dump_queue_context;
+					&qdma_soft_read_dump_queue_context;
 	hw_access->qdma_dump_intr_context = &qdma_dump_intr_context;
 	hw_access->qdma_is_legacy_intr_pend = &qdma_is_legacy_intr_pend;
 	hw_access->qdma_clear_pend_legacy_intr = &qdma_clear_pend_legacy_intr;
@@ -2281,6 +1636,9 @@ int qdma_hw_access_init(void *dev_hndl, uint8_t is_vf,
 	hw_access->qdma_initiate_flr = &qdma_initiate_flr;
 	hw_access->qdma_is_flr_done = &qdma_is_flr_done;
 	hw_access->qdma_get_error_code = &qdma_get_error_code;
+	hw_access->qdma_read_reg_list = &qdma_read_reg_list;
+	hw_access->qdma_dump_config_reg_list =
+			&qdma_soft_dump_config_reg_list;
 	hw_access->mbox_base_pf = QDMA_OFFSET_MBOX_BASE_PF;
 	hw_access->mbox_base_vf = QDMA_OFFSET_MBOX_BASE_VF;
 
@@ -2295,33 +1653,45 @@ int qdma_hw_access_init(void *dev_hndl, uint8_t is_vf,
 			qdma_get_ip_type(version_info.ip_type));
 
 	qdma_log_info("Vivado Release: %s\n",
-			qdma_get_vivado_release_id(version_info.vivado_release));
+		qdma_get_vivado_release_id(version_info.vivado_release));
 
 	if (version_info.ip_type == QDMA_VERSAL_HARD_IP) {
-		hw_access->qdma_init_ctxt_memory = &qdma_s80_hard_init_ctxt_memory;
+		hw_access->qdma_init_ctxt_memory =
+				&qdma_s80_hard_init_ctxt_memory;
 		hw_access->qdma_qid2vec_conf = &qdma_s80_hard_qid2vec_conf;
 		hw_access->qdma_fmap_conf = &qdma_s80_hard_fmap_conf;
 		hw_access->qdma_sw_ctx_conf = &qdma_s80_hard_sw_ctx_conf;
-		hw_access->qdma_pfetch_ctx_conf = &qdma_s80_hard_pfetch_ctx_conf;
+		hw_access->qdma_pfetch_ctx_conf =
+				&qdma_s80_hard_pfetch_ctx_conf;
 		hw_access->qdma_cmpt_ctx_conf = &qdma_s80_hard_cmpt_ctx_conf;
 		hw_access->qdma_hw_ctx_conf = &qdma_s80_hard_hw_ctx_conf;
-		hw_access->qdma_credit_ctx_conf = &qdma_s80_hard_credit_ctx_conf;
+		hw_access->qdma_credit_ctx_conf =
+				&qdma_s80_hard_credit_ctx_conf;
 		hw_access->qdma_indirect_intr_ctx_conf =
 				&qdma_s80_hard_indirect_intr_ctx_conf;
 		hw_access->qdma_set_default_global_csr =
 					&qdma_s80_hard_set_default_global_csr;
-		hw_access->qdma_queue_pidx_update = &qdma_s80_hard_queue_pidx_update;
+		hw_access->qdma_queue_pidx_update =
+				&qdma_s80_hard_queue_pidx_update;
 		hw_access->qdma_queue_cmpt_cidx_update =
-					&qdma_s80_hard_queue_cmpt_cidx_update;
+				&qdma_s80_hard_queue_cmpt_cidx_update;
 		hw_access->qdma_queue_intr_cidx_update =
-					&qdma_s80_hard_queue_intr_cidx_update;
+				&qdma_s80_hard_queue_intr_cidx_update;
 		hw_access->qdma_get_user_bar = &qdma_cmp_get_user_bar;
 		hw_access->qdma_get_device_attributes =
-					&qdma_s80_hard_get_device_attributes;
-		hw_access->qdma_dump_config_regs = &qdma_s80_hard_dump_config_regs;
+				&qdma_s80_hard_get_device_attributes;
+		hw_access->qdma_dump_config_regs =
+				&qdma_s80_hard_dump_config_regs;
 		hw_access->qdma_dump_intr_context =
 				&qdma_s80_hard_dump_intr_context;
 		hw_access->qdma_legacy_intr_conf = NULL;
+		hw_access->qdma_read_reg_list = &qdma_s80_hard_read_reg_list;
+		hw_access->qdma_dump_config_reg_list =
+				&qdma_s80_hard_dump_config_reg_list;
+		hw_access->qdma_dump_queue_context =
+				&qdma_s80_hard_dump_queue_context;
+		hw_access->qdma_read_dump_queue_context =
+				&qdma_s80_hard_read_dump_queue_context;
 	}
 
 	if (version_info.ip_type == EQDMA_SOFT_IP) {
@@ -2329,15 +1699,26 @@ int qdma_hw_access_init(void *dev_hndl, uint8_t is_vf,
 		hw_access->qdma_sw_ctx_conf = &eqdma_sw_ctx_conf;
 		hw_access->qdma_pfetch_ctx_conf = &eqdma_pfetch_ctx_conf;
 		hw_access->qdma_cmpt_ctx_conf = &eqdma_cmpt_ctx_conf;
-		hw_access->qdma_indirect_intr_ctx_conf = &eqdma_indirect_intr_ctx_conf;
+		hw_access->qdma_indirect_intr_ctx_conf =
+				&eqdma_indirect_intr_ctx_conf;
 		hw_access->qdma_dump_config_regs = &eqdma_dump_config_regs;
 		hw_access->qdma_dump_intr_context = &eqdma_dump_intr_context;
 		hw_access->qdma_hw_error_process = &eqdma_hw_error_process;
 		hw_access->qdma_hw_get_error_name = &eqdma_hw_get_error_name;
 		hw_access->qdma_hw_ctx_conf = &eqdma_hw_ctx_conf;
 		hw_access->qdma_credit_ctx_conf = &eqdma_credit_ctx_conf;
-		hw_access->qdma_get_device_attributes = &eqdma_get_device_attributes;
+		hw_access->qdma_set_default_global_csr =
+				&eqdma_set_default_global_csr;
+		hw_access->qdma_get_device_attributes =
+				&eqdma_get_device_attributes;
 		hw_access->qdma_get_user_bar = &eqdma_get_user_bar;
+		hw_access->qdma_read_reg_list = &eqdma_read_reg_list;
+		hw_access->qdma_dump_config_reg_list =
+				&eqdma_dump_config_reg_list;
+		hw_access->qdma_dump_queue_context =
+				&eqdma_dump_queue_context;
+		hw_access->qdma_read_dump_queue_context =
+				&eqdma_read_dump_queue_context;
 
 		/* All CSR and Queue space register belongs to Window 0.
 		 * Mailbox and MSIX register belongs to Window 1

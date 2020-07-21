@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-2019,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -70,28 +70,12 @@ struct qdma_sdesc_info {
  * @brief qdma free list q page allocation book keeping
  */
 struct qdma_flq {
-	/** RO: size of the descriptor */
+	/** RO: size of the decriptor */
 	unsigned int size;
-	/** RO: c2h buffer size */
-	unsigned int desc_buf_size;
-	/** RO: number of pages */
-	unsigned int num_pages;
-	/** RO: Mask for number of pages */
-	unsigned int num_pgs_mask;
-	/** RO: number of buffers per page */
-	unsigned int num_bufs_per_pg;
-	/** RO: number of currently allocated page index */
-	unsigned int alloc_idx;
-	/** RO: number of currently recycled page index */
-	unsigned int recycle_idx;
 	/** RO: page order */
-	unsigned int buf_pg_mask;
-	/** RO: desc page order */
-	unsigned char desc_pg_order;
-	/** RO: desc page shift */
-	unsigned char desc_pg_shift;
+	unsigned char pg_order;
 	/** RO: page shift */
-	unsigned char buf_pg_shift;
+	unsigned char pg_shift;
 	/** RO: pointer to qdma c2h decriptor */
 	struct qdma_c2h_desc *desc;
 
@@ -113,8 +97,6 @@ struct qdma_flq {
 	unsigned int pidx;
 	/** RW: pending pidxes */
 	unsigned int pidx_pend;
-	/** RW: Page list */
-	struct qdma_sw_pg_sg *pg_sdesc;
 	/** RW: sw scatter gather list */
 	struct qdma_sw_sg *sdesc;
 	/** RW: sw descriptor info */
@@ -181,7 +163,7 @@ int qdma4_descq_flq_alloc_resource(struct qdma_descq *descq);
 
 /*****************************************************************************/
 /**
- * qdma4_descq_process_completion_st_c2h() - handler to process the st c2h
+ *qdma4_descq_process_completion_st_c2h() - handler to process the st c2h
  *				completion request
  *
  * @param[in]	descq:		pointer to qdma_descq
@@ -211,4 +193,4 @@ int qdma4_descq_st_c2h_read(struct qdma_descq *descq, struct qdma_request *req,
 
 void qdma4_c2h_req_work(struct work_struct *work);
 
-#endif /* ifndef __QDMA_ST_C2H_H__ */
+#endif /* ifndef __QDMA4_ST_C2H_H__ */

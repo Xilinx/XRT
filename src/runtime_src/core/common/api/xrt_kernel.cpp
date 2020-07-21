@@ -24,6 +24,7 @@
 #include "command.h"
 #include "exec.h"
 #include "bo.h"
+#include "enqueue.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
 #include "core/common/xclbin_parser.h"
@@ -117,20 +118,19 @@ has_reg_read_write()
 }
 
 inline std::vector<uint32_t>
-value_to_uint32_vector(const void* value, size_t size)
+value_to_uint32_vector(const void* value, size_t bytes)
 {
-  size = std::max(size, sizeof(uint32_t));
+  bytes = std::max(bytes, sizeof(uint32_t));
   auto uval = reinterpret_cast<const uint32_t*>(value);
-  return { uval, uval + size / sizeof(uint32_t)};
+  return { uval, uval + bytes / sizeof(uint32_t)};
 }
 
 template <typename ValueType>
 inline std::vector<uint32_t>
 value_to_uint32_vector(ValueType value)
 {
-  return value_to_uint32_vector(static_cast<void*>(&value), sizeof(value));
+  return value_to_uint32_vector(&value, sizeof(value));
 }
-
 
 // struct device_type - Extends xrt_core::device
 //
@@ -260,10 +260,15 @@ public:
     : m_device(dev)
     , m_execbuf(m_device->create_exec_buf<ert_start_kernel_cmd>())
     , m_done(true)
-  {}
+  {
+    static unsigned int count = 0;
+    m_uid = count++;
+    XRT_DEBUGF("kernel_command::kernel_command(%d)\n", m_uid);
+  }
 
   ~kernel_command()
   {
+    XRT_DEBUGF("kernel_command::~kernel_command(%d)\n", m_uid);
     // This is problematic, bo_cache should return managed BOs
     m_device->exec_buffer_cache.release(m_execbuf);
   }
@@ -312,6 +317,27 @@ public:
     // lock must not be helt while calling callback function
     if (complete)
       m_callbacks.get()->back()(state);
+  }
+
+  // set_event() - enqueued notifcation of event
+  //
+  // @event:  Event to notify upon completion of cmd
+  //
+  // Event notification is used when a kernel/run is enqueued in an
+  // event graph.  When cmd completes, the event must be notified.
+  // 
+  // The event (stored in the event graph) participates in lifetime
+  // of the object that holds on to cmd object.
+  void
+  set_event(const std::shared_ptr<xrt::event_impl>& event) const
+  {
+    std::lock_guard<std::mutex> lk(m_mutex);
+    XRT_DEBUGF("kernel_command::set_event() m_uid(%d)\n", m_uid);
+    if (m_done) {
+      xrt_core::enqueue::done(event.get());
+      return;
+    }
+    m_event = event;
   }
 
   /**
@@ -410,17 +436,28 @@ public:
     bool complete = false;
     if (s>=ERT_CMD_STATE_COMPLETED) {
       std::lock_guard<std::mutex> lk(m_mutex);
+      XRT_DEBUGF("kernel_command::notify() m_uid(%d) m_state(%d)\n", m_uid, s);
       complete = m_done = true;
+      if (m_event)
+        xrt_core::enqueue::done(m_event.get());
       m_exec_done.notify_all();  // CAN THIS BE MOVED TO END AFTER CALLBACKS?
     }
 
-    if (complete)
+    if (complete) {
       run_callbacks(s);
+
+      // Clear the event if any.  This must be last since if used, it
+      // holds the lifeline to this command object which could end up
+      // being deleted when the event is cleared.
+      m_event = nullptr;
+    }
   }
 
 private:
   device_type* m_device = nullptr;
+  mutable std::shared_ptr<xrt::event_impl> m_event;
   execbuf_type m_execbuf; // underlying execution buffer
+  unsigned int m_uid = 0;
   bool m_done = false;
 
   mutable std::mutex m_mutex;
@@ -469,6 +506,27 @@ class argument
 
       HostType value = va_arg(*args, VaArgType);
       return value_to_uint32_vector(value);
+    }
+  };
+
+  template <typename HostType, typename VaArgType>
+  struct scalar_type<HostType*, VaArgType*> : iarg
+  {
+    size_t size;  // size in bytes of argument per xclbin
+
+    scalar_type(size_t bytes)
+      : size(bytes)
+    {
+      // assert(bytes <= sizeof(VaArgType)
+    }
+
+    virtual std::vector<uint32_t>
+    get_value(std::va_list* args) const
+    {
+      static_assert(BOOST_BYTE_ORDER==1234,"Big endian detected");
+
+      HostType* value = va_arg(*args, VaArgType*);
+      return value_to_uint32_vector(value, size);
     }
   };
 
@@ -544,6 +602,12 @@ public:
         content = std::make_unique<scalar_type<float,double>>(arg.size);
       else if (arg.hosttype == "double")
         content = std::make_unique<scalar_type<double,double>>(arg.size);
+      else if (arg.hosttype == "int*")
+        content = std::make_unique<scalar_type<int*,int*>>(arg.size);
+      else if (arg.hosttype == "uint*")
+        content = std::make_unique<scalar_type<unsigned int*,unsigned int*>>(arg.size);
+      else if (arg.hosttype == "float*")
+        throw std::runtime_error("float* kernel argument not supported");
       else if (arg.size == 4)
         content = std::make_unique<scalar_type<uint32_t,uint32_t>>(arg.size);
       else if (arg.size == 8)
@@ -634,7 +698,7 @@ class kernel_impl
   int32_t
   get_arg_grpid(const connectivity* cons, int32_t argidx, int32_t ipidx)
   {
-    for (int32_t count=0; count <cons->m_count; ++count) {
+    for (int32_t count=0; cons && count <cons->m_count; ++count) {
       auto& con = cons->m_connection[count];
       if (con.m_ip_layout_index != ipidx)
         continue;
@@ -691,10 +755,8 @@ public:
       throw std::runtime_error("No ip layout available to construct kernel, make sure xclbin is loaded");
     auto ip_layout = reinterpret_cast<const ::ip_layout*>(ip_section.first);
 
-    // connectivity section for CU memory connectivity
+    // connectivity section for CU memory connectivity, permissible for section to not exist
     auto connectivity_section = device->core_device->get_axlf_section(CONNECTIVITY, xclbin_id);
-    if (!connectivity_section.first)
-      throw std::runtime_error("No connectivity available to construct kernel, make sure xclbin is loaded");
     auto connectivity = reinterpret_cast<const ::connectivity*>(connectivity_section.first);
 
     // xml section for kernel arguments
@@ -817,12 +879,12 @@ class run_impl
   using callback_function_type = std::function<void(ert_cmd_state)>;
   std::shared_ptr<kernel_impl> kernel;    // shared ownership
   xrt_core::device* core_device;          // convenience, in scope of kernel
-  kernel_command cmd;                     // underlying command object
+  std::shared_ptr<kernel_command> cmd;    // underlying command object
 
   void
   encode_compute_units(const std::bitset<128>& cus, size_t num_cumasks)
   {
-    auto ecmd = cmd.get_ert_cmd<ert_packet*>();
+    auto ecmd = cmd->get_ert_cmd<ert_packet*>();
     std::fill(ecmd->data, ecmd->data + num_cumasks, 0);
     
     for (size_t cu_idx = 0; cu_idx < 128; ++cu_idx) {
@@ -838,7 +900,22 @@ public:
   void
   add_callback(callback_function_type fcn)
   {
-    cmd.add_callback(fcn);
+    cmd->add_callback(fcn);
+  }
+
+  // set_event() - enqueued notifcation of event
+  //
+  // @event:  Event to notify upon completion of run
+  //
+  // Event notification is used when a kernel/run is enqueued in an
+  // event graph.  When run completes, the event must be notified.
+  // 
+  // The event (stored in the event graph) participates in lifetime
+  // of the run object.
+  void
+  set_event(const std::shared_ptr<event_impl>& event) const
+  {
+    cmd->set_event(event);
   }
 
   // run_type() - constructor
@@ -847,10 +924,10 @@ public:
   run_impl(std::shared_ptr<kernel_impl> k)
     : kernel(std::move(k))                           // share ownership
     , core_device(kernel->get_core_device()) // cache core device
-    , cmd(kernel->get_device())
+    , cmd(std::make_shared<kernel_command>(kernel->get_device()))
   {
     // TODO: consider if execbuf is cleared on return from cache
-    auto kcmd = cmd.get_ert_cmd<ert_start_kernel_cmd*>();
+    auto kcmd = cmd->get_ert_cmd<ert_start_kernel_cmd*>();
     kcmd->extra_cu_masks = kernel->get_num_cumasks() - 1;
     kcmd->count = kernel->get_num_cumasks() + kernel->get_regmap_size();
     kcmd->opcode = ERT_START_CU;
@@ -868,13 +945,13 @@ public:
   ERT_COMMAND_TYPE
   get_ert_cmd()
   {
-    return cmd.get_ert_cmd<ERT_COMMAND_TYPE>();
+    return cmd->get_ert_cmd<ERT_COMMAND_TYPE>();
   }
 
   void
   set_arg_value(const argument& arg, const std::vector<uint32_t>& value)
   {
-    auto kcmd = cmd.get_ert_cmd<ert_start_kernel_cmd*>();
+    auto kcmd = cmd->get_ert_cmd<ert_start_kernel_cmd*>();
     auto cmdidx = arg.offset() / 4;
     std::copy(value.begin(), value.end(), kcmd->data + cmdidx);
   }
@@ -930,23 +1007,23 @@ public:
   void
   start()
   {
-    auto pkt = cmd.get_ert_packet();
+    auto pkt = cmd->get_ert_packet();
     pkt->state = ERT_CMD_STATE_NEW;
-    cmd.run();
+    cmd->run();
   }
 
   // wait() - wait for execution to complete
   ert_cmd_state
   wait(unsigned int timeout_ms) const
   {
-    return timeout_ms ? cmd.wait(timeout_ms) : cmd.wait();
+    return timeout_ms ? cmd->wait(timeout_ms) : cmd->wait();
   }
 
   // state() - get current execution state
   ert_cmd_state
   state() const
   {
-    auto pkt = cmd.get_ert_packet();
+    auto pkt = cmd->get_ert_packet();
     return static_cast<ert_cmd_state>(pkt->state);
   }
 };
@@ -962,9 +1039,9 @@ public:
 // run handle is closed.
 class run_update_type
 {
-  run_impl* run;        // active run object to update
-  kernel_impl* kernel;  // kernel associated with run object
-  kernel_command cmd;   // command to use for updating
+  run_impl* run;                       // active run object to update
+  kernel_impl* kernel;                 // kernel associated with run object
+  std::shared_ptr<kernel_command> cmd; // command to use for updating
 
   // ert_init_kernel_cmd data offset per ert.h
   static constexpr size_t data_offset = 9;
@@ -972,7 +1049,7 @@ class run_update_type
   void
   reset_cmd()
   {
-    auto kcmd = cmd.get_ert_cmd<ert_init_kernel_cmd*>();
+    auto kcmd = cmd->get_ert_cmd<ert_init_kernel_cmd*>();
     kcmd->count = data_offset + kcmd->extra_cu_masks;  // reset payload size
   }
 
@@ -980,9 +1057,9 @@ public:
   run_update_type(run_impl* r)
     : run(r)
     , kernel(run->get_kernel())
-    , cmd(kernel->get_device())
+    , cmd(std::make_shared<kernel_command>(kernel->get_device()))
   {
-    auto kcmd = cmd.get_ert_cmd<ert_init_kernel_cmd*>();
+    auto kcmd = cmd->get_ert_cmd<ert_init_kernel_cmd*>();
     auto rcmd = run->get_ert_cmd<ert_start_kernel_cmd*>();
     kcmd->opcode = ERT_INIT_CU;
     kcmd->type = ERT_CU;
@@ -998,7 +1075,7 @@ public:
   {
     reset_cmd();
 
-    auto kcmd = cmd.get_ert_cmd<ert_init_kernel_cmd*>();
+    auto kcmd = cmd->get_ert_cmd<ert_init_kernel_cmd*>();
     auto idx = kcmd->count - data_offset;
     auto offset = arg.offset();
     for (auto v : value) {
@@ -1011,10 +1088,10 @@ public:
     // make the updated arg sticky in current run
     run->set_arg_value(arg, value);
 
-    auto pkt = cmd.get_ert_packet();
+    auto pkt = cmd->get_ert_packet();
     pkt->state = ERT_CMD_STATE_NEW;
-    cmd.run();
-    cmd.wait();
+    cmd->run();
+    cmd->wait();
   }
 
   void
@@ -1310,6 +1387,13 @@ add_callback(ert_cmd_state state,
   handle->add_callback([=](ert_cmd_state state) { fcn(*this, state, data); });
 }
 
+void
+run::
+set_event(const std::shared_ptr<event_impl>& event) const
+{
+  handle->set_event(event);
+}
+  
 kernel::
 kernel(xclDeviceHandle dhdl, const xuid_t xclbin_id, const std::string& name, bool exclusive)
   : handle(std::make_shared<kernel_impl>

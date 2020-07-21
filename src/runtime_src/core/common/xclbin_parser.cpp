@@ -408,11 +408,8 @@ get_cu_control(const ip_layout* ip_layout, uint64_t cuaddr)
 uint64_t
 get_cu_base_offset(const ip_layout* ip_layout)
 {
-  if (!ip_layout && is_sw_emulation())
-    return 0;
-
   if (!ip_layout)
-    throw std::runtime_error("Missing IP_LAYOUT");
+    return 0;
 
   size_t base = std::numeric_limits<uint32_t>::max();
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
@@ -433,11 +430,8 @@ get_cu_base_offset(const axlf* top)
 bool
 get_cuisr(const ip_layout* ip_layout)
 {
-  if (!ip_layout && is_sw_emulation())
-    return false;
-
   if (!ip_layout)
-    throw std::runtime_error("Missing IP_LAYOUT");
+    return false;
 
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
     const auto& ip_data = ip_layout->m_ip_data[count];
@@ -457,11 +451,8 @@ get_cuisr(const axlf* top)
 bool
 get_dataflow(const ip_layout* ip_layout)
 {
-  if (!ip_layout && is_sw_emulation())
-    return false;
-
   if (!ip_layout)
-    throw std::runtime_error("Missing IP_LAYOUT");
+    return false;
 
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
     const auto& ip_data = ip_layout->m_ip_data[count];

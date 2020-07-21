@@ -30,6 +30,7 @@
 #include "../xocl_drv.h"
 #include "version.h"
 #include "xclbin.h"
+#include "../xocl_xclbin.h"
 
 static const struct pci_device_id pci_ids[] = {
 	XOCL_MGMT_PCI_IDS,
@@ -822,11 +823,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		} else {
 			memcpy(buf, xclbin, xclbin_len);
 
-			/* Note: future xclbin library to load axlf */
-			if (XOCL_DSA_IS_VERSAL(lro))
-				ret = xocl_xclbin_load_axlf(lro, buf);
-			else
-				ret = xocl_icap_download_axlf(lro, buf);
+			ret = xocl_xclbin_download(lro, buf);
 
 			vfree(buf);
 		}
@@ -1261,9 +1258,11 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	/*
 	 * Even if extended probe fails, make sure feature ROM subdev
-	 * is loaded to provide basic info about the board.
+	 * is loaded to provide basic info about the board. Also, need
+	 * FLASH to be able to flash new shell.
 	 */
 	(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FEATURE_ROM);
+	(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FLASH);
 
 	/*
 	 * if can not find BLP metadata, it has to bring up flash and xmc to

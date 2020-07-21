@@ -87,14 +87,7 @@ const value_type AP_IDLE     = 0x4;
 const value_type AP_READY    = 0x8;
 const value_type AP_CONTINUE = 0x10;
 
-////////////////////////////////////////////////////////////////
-// Command notification is threaded through task queue
-// and notifier.  This allows the scheduler to continue
-// while host callback can be processed in the background
-////////////////////////////////////////////////////////////////
-static xrt_core::task::queue notify_queue;
-static std::thread notifier;
-static bool threaded_notification = true;
+// profiling hook
 static bool cu_trace_enabled = false;
 
 ////////////////////////////////////////////////////////////////
@@ -170,21 +163,8 @@ public:
   void
   notify_host() const
   {
-    if (!threaded_notification) {
-      m_cmd->notify(ERT_CMD_STATE_COMPLETED);
-      return;
-    }
-
-    // It is vital that cmd is kept alive through reference counting
-    // by being bound to the notify call back argument. This is
-    // because the scheduler itself will remove the command from its
-    // queue once it is complete and threading doesn't ensure notify
-    // is called first.
-    auto notify = [](cmd_ptr cmd) {
-      cmd->notify(ERT_CMD_STATE_COMPLETED);
-    };
-
-    xrt_core::task::createF(notify_queue,notify,m_cmd);
+    auto retain = m_cmd->shared_from_this();
+    m_cmd->notify(ERT_CMD_STATE_COMPLETED);
   }
 
   // Notify of start of cu with idx
@@ -867,8 +847,6 @@ start()
     throw std::runtime_error("software command scheduler is already started");
 
   s_scheduler_thread = std::move(xrt_core::thread(scheduler_loop));
-  if (threaded_notification)
-    notifier = std::move(xrt_core::thread(xrt_core::task::worker,std::ref(notify_queue)));
   s_running = true;
 }
 
@@ -880,16 +858,6 @@ stop()
 
   s_global_scheduler.stop();
   s_scheduler_thread.join();
-
-  if (threaded_notification) {
-    // wait for notifier to drain
-    while (notify_queue.size()) {
-      XRT_DEBUG(std::cout,"waiting for notifier to drain\n");
-    }
-
-    notify_queue.stop();
-    notifier.join();
-  }
 
   s_running = false;
 }

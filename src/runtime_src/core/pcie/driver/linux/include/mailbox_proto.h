@@ -136,6 +136,7 @@ struct xcl_sensor {
 	uint32_t cur_12v_aux;
 	uint32_t vol_3v3_pex;
 	uint32_t vol_3v3_aux;
+	uint32_t cur_3v3_aux;
 	uint32_t ddr_vpp_btm;
 	uint32_t sys_5v5;
 	uint32_t top_1v2;

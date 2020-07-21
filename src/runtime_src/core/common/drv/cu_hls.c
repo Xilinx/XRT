@@ -11,20 +11,27 @@
 
 extern int kds_echo;
 
-static int cu_hls_get_credit(void *core)
+static int cu_hls_alloc_credit(void *core)
 {
 	struct xrt_cu_hls *cu_hls = core;
 
 	return (cu_hls->credits) ? cu_hls->credits-- : 0;
 }
 
-static void cu_hls_put_credit(void *core, u32 count)
+static void cu_hls_free_credit(void *core, u32 count)
 {
 	struct xrt_cu_hls *cu_hls = core;
 
 	cu_hls->credits += count;
 	if (cu_hls->credits > cu_hls->max_credits)
 		cu_hls->credits = cu_hls->max_credits;
+}
+
+static int cu_hls_peek_credit(void *core)
+{
+	struct xrt_cu_hls *cu_hls = core;
+
+	return cu_hls->credits;
 }
 
 static void cu_hls_configure(void *core, u32 *data, size_t sz, int type)
@@ -105,6 +112,7 @@ static void cu_hls_check(void *core, struct xcu_status *status)
 	 */
 	if (ctrl_reg & CU_AP_DONE) {
 		done_reg = 1;
+		cu_hls->run_cnts--;
 		if (cu_hls->ctrl_chain)
 			iowrite32(CU_AP_CONTINUE, cu_hls->vaddr);
 	}
@@ -115,8 +123,9 @@ out:
 }
 
 static struct xcu_funcs xrt_cu_hls_funcs = {
-	.get_credit	= cu_hls_get_credit,
-	.put_credit	= cu_hls_put_credit,
+	.alloc_credit	= cu_hls_alloc_credit,
+	.free_credit	= cu_hls_free_credit,
+	.peek_credit	= cu_hls_peek_credit,
 	.configure	= cu_hls_configure,
 	.start		= cu_hls_start,
 	.check		= cu_hls_check,
@@ -128,10 +137,6 @@ int xrt_cu_hls_init(struct xrt_cu *xcu)
 	struct resource *res;
 	size_t size;
 	int err = 0;
-
-	err = xrt_cu_init(xcu);
-	if (err)
-		return err;
 
 	core = kzalloc(sizeof(struct xrt_cu_hls), GFP_KERNEL);
 	if (!core) {
@@ -156,6 +161,10 @@ int xrt_cu_hls_init(struct xrt_cu *xcu)
 
 	xcu->core = core;
 	xcu->funcs = &xrt_cu_hls_funcs;
+
+	err = xrt_cu_init(xcu);
+	if (err)
+		return err;
 
 	return 0;
 

@@ -17,7 +17,6 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SubCmdValidate.h"
-#include "SubCmdDmaTest.h"
 #include "tools/common/ReportHost.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/XBHelpMenus.h"
@@ -261,11 +260,11 @@ searchSSV2Xclbin(const std::shared_ptr<xrt_core::device>& _dev, const std::strin
       if (cm.size() > 0) {
 #ifdef __GNUC__
         auto dtbbuf = XBUtilities::get_axlf_section(name, PARTITION_METADATA);
-        if (!dtbbuf.first || !dtbbuf.second) {
+        if (dtbbuf.empty()) {
           ++iter;
           continue;
         }
-        std::vector<std::string> uuids = XBUtilities::get_uuids(dtbbuf.first);
+        std::vector<std::string> uuids = XBUtilities::get_uuids(dtbbuf.data());
         if (!uuids.size()) {
           ++iter;
 		    }
