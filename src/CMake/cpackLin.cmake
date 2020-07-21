@@ -15,11 +15,15 @@ SET(CPACK_ARCHIVE_COMPONENT_INSTALL ON)
 SET(CPACK_DEB_COMPONENT_INSTALL ON)
 SET(CPACK_RPM_COMPONENT_INSTALL ON)
 
-execute_process(
-    COMMAND lsb_release -r -s
-    OUTPUT_VARIABLE CPACK_REL_VER
-    OUTPUT_STRIP_TRAILING_WHITESPACE
+if (DEFINED CROSS_COMPILE)
+  set(CPACK_REL_VER ${LINUX_VERSION})
+else()
+  execute_process(
+      COMMAND lsb_release -r -s
+      OUTPUT_VARIABLE CPACK_REL_VER
+      OUTPUT_STRIP_TRAILING_WHITESPACE
 )
+endif()
 
 include (CMake/glibc.cmake)
 
@@ -49,6 +53,17 @@ if (${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian)")
   SET(CPACK_DEBIAN_PACKAGE_SHLIBDEPS "OFF")
   SET(CPACK_DEBIAN_AWS_PACKAGE_DEPENDS "xrt (>= ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH})")
   SET(CPACK_DEBIAN_XRT_PACKAGE_DEPENDS "ocl-icd-opencl-dev (>= 2.2.0), libboost-dev (>= ${Boost_VER_STR}), libboost-dev (<< ${Boost_VER_STR_ONEGREATER}), libboost-filesystem-dev (>=${Boost_VER_STR}), libboost-filesystem-dev (<<${Boost_VER_STR_ONEGREATER}), libboost-program-options-dev (>=${Boost_VER_STR}), libboost-program-options-dev (<<${Boost_VER_STR_ONEGREATER}), uuid-dev (>= 2.27.1), dkms (>= 2.2.0), libprotoc-dev (>=2.6.1), libssl-dev (>=1.0.2), protobuf-compiler (>=2.6.1), libncurses5-dev (>=6.0), lsb-release, libxml2-dev (>=2.9.1), libyaml-dev (>= 0.1.6), libc6 (>= ${GLIBC_VERSION}), libc6 (<< ${GLIBC_VERSION_ONEGREATER}), libudev-dev, python3, python3-pip")
+  if (DEFINED CROSS_COMPILE)
+    if (${aarch} STREQUAL "aarch64") 
+      SET(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "arm64")
+      SET(CPACK_ARCH "aarch64")
+    else()
+      SET(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "armhf")
+      SET(CPACK_ARCH "aarch32")
+    endif()
+    SET(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/postinst;${CMAKE_CURRENT_BINARY_DIR}/prerm")
+    SET(CPACK_DEBIAN_PACKAGE_DEPENDS ${CPACK_DEBIAN_XRT_PACKAGE_DEPENDS})
+  endif()
 
 elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS|Amazon|Fedora)")
   execute_process(
@@ -79,6 +94,19 @@ elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS|Amazon|Fedora)")
   SET(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION "/usr/local" "/usr/src" "/opt" "/etc/OpenCL" "/etc/OpenCL/vendors" "/usr/lib" "/usr/lib/pkgconfig" "/usr/lib64/pkgconfig" "/lib" "/lib/firmware")
   SET(CPACK_RPM_AWS_PACKAGE_REQUIRES "xrt >= ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH}")
   SET(CPACK_RPM_XRT_PACKAGE_REQUIRES "ocl-icd-devel >= 2.2, boost-devel >= 1.53, boost-filesystem >= 1.53, boost-program-options >= 1.53, libuuid-devel >= 2.23.2, dkms >= 2.5.0, protobuf-devel >= 2.5.0, protobuf-compiler >= 2.5.0, ncurses-devel >= 5.9, redhat-lsb-core, libxml2-devel >= 2.9.1, libyaml-devel >= 0.1.4, openssl-devel >= 1.0.2, libudev-devel, python3 >= 3.6, python3-pip")
+  if (DEFINED CROSS_COMPILE)
+    if (${aarch} STREQUAL "aarch64")
+      SET(CPACK_RPM_PACKAGE_ARCHITECTURE "aarch64")
+      SET(CPACK_ARCH "aarch64")
+    else()
+      SET(CPACK_RPM_PACKAGE_ARCHITECTURE "armv7l")
+      SET(CPACK_ARCH "aarch32")
+    endif()
+    SET(CPACK_RPM_POST_INSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/postinst")
+    SET(CPACK_RPM_PRE_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/prerm")
+    SET(CPACK_RPM_PACKAGE_REQUIRES ${CPACK_RPM_XRT_PACKAGE_REQUIRES})
+  endif()
+
 else ()
   SET (CPACK_GENERATOR "TGZ")
 endif()
