@@ -198,7 +198,7 @@ namespace xclhwemhal2 {
       debugFile = new char[debugFileSize];
       memcpy(debugFile, bitstreambin + sec->m_sectionOffset, debugFileSize);
     }
-    if (auto sec = xclbin::get_axlf_section(top, MEM_TOPOLOGY)) {
+    if (auto sec = xclbin::get_axlf_section(top, ASK_GROUP_TOPOLOGY)) {
       memTopologySize = sec->m_sectionSize;
       memTopology = new char[memTopologySize];
       memcpy(memTopology, bitstreambin + sec->m_sectionOffset, memTopologySize);

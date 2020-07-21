@@ -528,7 +528,7 @@ namespace xclcpuemhal2 {
           sharedlib = xclbininmemory + sec->m_sectionOffset;
           sharedliblength = sec->m_sectionSize;
         }
-        if (auto sec = xclbin::get_axlf_section(top,MEM_TOPOLOGY)) {
+        if (auto sec = xclbin::get_axlf_section(top,ASK_GROUP_TOPOLOGY)) {
           memTopologySize = sec->m_sectionSize;
           memTopology = new char[memTopologySize];
           memcpy(memTopology, xclbininmemory + sec->m_sectionOffset, memTopologySize);

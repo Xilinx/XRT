@@ -689,8 +689,8 @@ class xclbin_data_sections
 
 public:
   xclbin_data_sections(const xrt_core::device* device, const xrt_core::uuid& uuid)
-    : m_con(get_xclbin_section<const ::connectivity*>(device, CONNECTIVITY, uuid))
-    , m_mem(get_xclbin_section<const ::mem_topology*>(device, MEM_TOPOLOGY, uuid))
+    : m_con(get_xclbin_section<const ::connectivity*>(device, ASK_GROUP_CONNECTIVITY, uuid))
+    , m_mem(get_xclbin_section<const ::mem_topology*>(device, ASK_GROUP_TOPOLOGY, uuid))
     , m_ip (get_xclbin_section<const ::ip_layout*>(device, IP_LAYOUT, uuid))
   {
     // populate mem bank
