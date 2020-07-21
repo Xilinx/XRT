@@ -2438,7 +2438,7 @@ static int __icap_download_bitstream_user(struct platform_device *pdev,
 
 	xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 
-	/* TODO: link this comment to specific fuction in xocl_ioctl.c */
+	/* TODO: link this comment to specific function in xocl_ioctl.c */
 	/* has to create mem topology even with failure case
 	 * please refer the comment in xocl_ioctl.c
 	 * without creating mem topo, memory corruption could happen
@@ -2480,7 +2480,7 @@ done:
 	if (err) {
 		uuid_copy(&icap->icap_bitstream_uuid, &uuid_null);
 	} else {
-		/* Remember "this" bitstream, so avoid redownload next time. */
+		/* Remember "this" bitstream, so avoid re-download next time. */
 		uuid_copy(&icap->icap_bitstream_uuid, &xclbin->m_header.uuid);
 	}
 	return err;
@@ -2491,13 +2491,13 @@ done:
  *    1) after xclbin validation, freeze(isolate) xmc;
  *    2) save calib;
  *    3) remove all URP subdevs;
- *    4) save retation flag before caching mem_topology and ip_layout;
+ *    4) save retention flag before caching mem_topology and ip_layout;
  *    5) verify signed signature;
- *    6) reconfig clock;
+ *    6) re-config clock;
  *    7) reset ddr pin for retention only;
  *    8) perform icap download for non-flat design;
  *    9) create SRSR subdev;
- *    10) create CLOCK subdev, reconfig clock;
+ *    10) create CLOCK subdev, re-config clock;
  *    11) perform mig calibration;
  *    12) create subdev ip_layout;
  *    13) create subdev dna;
@@ -2524,7 +2524,7 @@ static int __icap_download_bitstream_mgmt(struct platform_device *pdev,
 	/* remove any URP subdev before downloading xclbin */
 	xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 
-	/* Check the incoming mem topoloy with the current one before overwrite */
+	/* Check the incoming mem topology with the current one before overwrite */
 	sref = check_mem_topo_and_data_retention(icap, xclbin);
 	icap_cache_bitstream_axlf_section(pdev, xclbin, MEM_TOPOLOGY);
 	icap_cache_bitstream_axlf_section(pdev, xclbin, IP_LAYOUT);
@@ -2556,7 +2556,7 @@ done:
 	if (err) {
 		uuid_copy(&icap->icap_bitstream_uuid, &uuid_null);
 	} else {
-		/* Remember "this" bitstream, so avoid redownload next time. */
+		/* Remember "this" bitstream, so avoid re-download next time. */
 		uuid_copy(&icap->icap_bitstream_uuid, &xclbin->m_header.uuid);
 	}
 	return err;
@@ -2884,9 +2884,11 @@ done:
 		}
 		ICAP_INFO(icap, "skip kind %d(%s), return code %ld", kind,
 			xrt_xclbin_kind_to_string(kind), err);
-	} else
+	} else {
 		ICAP_INFO(icap, "found kind %d(%s)", kind,
 			xrt_xclbin_kind_to_string(kind));
+	}
+
 	return err;
 }
 
