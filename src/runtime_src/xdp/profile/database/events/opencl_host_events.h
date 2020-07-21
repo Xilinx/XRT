@@ -32,22 +32,24 @@ namespace xdp {
   class KernelEnqueue : public VTFEvent
   {
   private:
-    uint64_t deviceName ;
-    uint64_t binaryName ;
-    uint64_t kernelName ;
-    uint64_t workgroupConfiguration ;
-    uint64_t workgroupSize ;
-    uint64_t eventString ;
-    uint64_t stageString ;
-    uint64_t objId ;
-    size_t size ;
+    uint64_t deviceName ; // string
+    uint64_t binaryName ; // string
+    uint64_t kernelName ; // string
+    size_t workgroupConfigurationX ;
+    size_t workgroupConfigurationY ;
+    size_t workgroupConfigurationZ ;
+    int workgroupSize ;
 
     KernelEnqueue() = delete ;
   public:
-    XDP_EXPORT KernelEnqueue(uint64_t s_id, double ts);
+    XDP_EXPORT KernelEnqueue(uint64_t s_id, double ts, 
+			     uint64_t dName, uint64_t bName, uint64_t kName,
+			     size_t wgcX, size_t wgcY, size_t wgcZ, int wgs) ;
+
     XDP_EXPORT ~KernelEnqueue() ;
 
     virtual bool isHostEvent() { return true ; }
+    virtual bool isOpenCLHostEvent() { return true ; }
     
     XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   } ;
@@ -66,17 +68,17 @@ namespace xdp {
     XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   } ;
 
+  /*
   class CUEnqueue : public VTFEvent
   {
   private:
+    // These will be used to determine the bucket in the writer
     uint64_t deviceName ;
     uint64_t binaryName ;
     uint64_t kernelName ;
     uint64_t workgroupConfiguration ;
     uint64_t cuName ;
-    uint64_t eventString ;
-    uint64_t stageString ;
-    uint64_t objId ;
+    //uint64_t objId ;
     size_t size ;
     uint64_t cuId ;
 
@@ -87,7 +89,7 @@ namespace xdp {
 
     virtual bool isHostEvent() { return true ; } 
   } ;
-
+  */
   class BufferTransfer : public VTFEvent // For HAL level
   {
   private:

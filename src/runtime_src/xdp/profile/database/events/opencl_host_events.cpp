@@ -23,12 +23,18 @@ namespace xdp {
   // **************************
   // Host event definitions
   // **************************
-  KernelEnqueue::KernelEnqueue(uint64_t s_id, double ts) :
+  KernelEnqueue::KernelEnqueue(uint64_t s_id, double ts, 
+			       uint64_t dName, 
+			       uint64_t bName, 
+			       uint64_t kName,
+			       size_t wgcX, size_t wgcY, size_t wgcZ,
+			       int wgs) :
     VTFEvent(s_id, ts, KERNEL_ENQUEUE),
-    // Until implemented, initialize all members with a default value
-    deviceName(0), binaryName(0), kernelName(0),
-    workgroupConfiguration(0), workgroupSize(0),
-    eventString(0), stageString(0), objId(0), size(0)
+    deviceName(dName), binaryName(bName), kernelName(kName),
+    workgroupConfigurationX(wgcX), 
+    workgroupConfigurationY(wgcY),
+    workgroupConfigurationZ(wgcZ),
+    workgroupSize(wgs)
   {
   }
 
@@ -39,6 +45,11 @@ namespace xdp {
   void KernelEnqueue::dump(std::ofstream& fout, uint32_t bucket)
   {
     VTFEvent::dump(fout, bucket) ;
+    fout << "," 
+	 << workgroupConfigurationX << ":" 
+	 << workgroupConfigurationY << ":" 
+	 << workgroupConfigurationZ ;
+    fout << "," << workgroupSize ;
     fout << std::endl; 
   }
 
@@ -57,6 +68,7 @@ namespace xdp {
     fout << std::endl ;
   }
 
+  /*
   CUEnqueue::CUEnqueue(uint64_t s_id, double ts) :
     VTFEvent(s_id, ts, CU_ENQUEUE),
     // Until implemented, initialize all members with a default value
@@ -69,6 +81,7 @@ namespace xdp {
   CUEnqueue::~CUEnqueue()
   {
   }
+  */
 
   BufferTransfer::BufferTransfer(uint64_t s_id, double ts, VTFEventType ty,
                                  size_t bufSz)

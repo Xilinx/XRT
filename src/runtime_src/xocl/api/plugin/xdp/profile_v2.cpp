@@ -24,6 +24,7 @@
 #include "core/common/config_reader.h"
 
 #include "xocl/core/command_queue.h"
+#include "xocl/core/program.h"
 
 // The anonymous namespace is responsible for loading the XDP plugins
 namespace {
@@ -77,7 +78,17 @@ namespace {
 		      bool,
 		      unsigned long int*,
 		      unsigned int)> copy_cb ;
-  
+  std::function<void (unsigned int,
+		      bool,
+		      const char*,
+		      const char*,
+		      const char*,
+		      size_t,
+		      size_t,
+		      size_t,
+		      int,
+		      unsigned long int*,
+		      unsigned int)> ndrange_cb ;
 
   void register_opencl_trace_functions(void* handle)
   {
@@ -116,6 +127,21 @@ namespace {
 
     copy_cb = (ctype)(xrt_core::dlsym(handle, "action_copy")) ;
     if (xrt_core::dlerror() != NULL) copy_cb = nullptr ;
+
+    typedef void (*ntype)(unsigned int,
+			  bool,
+			  const char*,
+			  const char*,
+			  const char*,
+			  size_t,
+			  size_t,
+			  size_t,
+			  int,
+			  unsigned long int*,
+			  unsigned int) ;
+    
+    ndrange_cb = (ntype)(xrt_core::dlsym(handle, "action_ndrange")) ;
+    if (xrt_core::dlerror() != NULL) ndrange_cb = nullptr ;
   }
 
   void opencl_trace_warning_function()
@@ -629,9 +655,71 @@ namespace xocl {
     }
 
     std::function<void (xocl::event*, cl_int, const std::string&)>
-    action_ndrange()
+    action_ndrange(cl_event event, cl_kernel kernel)
     {
-      return [](xocl::event*, cl_int, const std::string&) { } ;
+      auto xevent  = xocl::xocl(event) ;
+      auto xkernel = xocl::xocl(kernel) ;
+
+      auto xcontext = xevent->get_execution_context() ;
+      auto workGroupSize = xkernel->get_wg_size() ;
+      auto device = xevent->get_command_queue()->get_device() ;
+      auto xclbin = xkernel->get_program()->get_xclbin(device) ;
+      
+      std::string deviceName = device->get_name() ;
+      std::string kernelName = xkernel->get_name() ;
+      std::string binaryName = xclbin.project_name() ;
+
+      size_t localWorkDim[3] = {0, 0, 0} ;
+      range_copy(xkernel->get_compile_wg_size_range(), localWorkDim) ;
+      if (localWorkDim[0] == 0 &&
+	  localWorkDim[1] == 0 &&
+	  localWorkDim[2] == 0)
+      {
+	std::copy(xcontext->get_local_work_size(),
+		  xcontext->get_local_work_size() + 3,
+		  localWorkDim) ;
+      }
+
+      return [workGroupSize, deviceName, kernelName, binaryName, localWorkDim](xocl::event* e, cl_int status, const std::string&) 
+	     {
+	       if (!ndrange_cb) return ;
+	       if (status != CL_RUNNING && status != CL_COMPLETE) return ;
+
+	       if (status == CL_RUNNING)
+	       {
+		 uint64_t* dependencies = nullptr ;
+		 unsigned int numDependencies = 0 ;
+		 get_dependency_information(dependencies, numDependencies, e);
+
+		 ndrange_cb(e->get_uid(),
+			    true,
+			    deviceName.c_str(),
+			    binaryName.c_str(),
+			    kernelName.c_str(),
+			    localWorkDim[0],
+			    localWorkDim[1],
+			    localWorkDim[2],
+			    workGroupSize,
+			    dependencies,
+			    numDependencies) ;
+		 if (dependencies != nullptr) delete [] dependencies ;
+	       }
+	       else if (status == CL_COMPLETE)
+	       {
+		 ndrange_cb(e->get_uid(),
+			    false,
+			    nullptr,
+			    nullptr,
+			    nullptr,
+			    0,
+			    0,
+			    0,
+			    0,
+			    nullptr,
+			    0) ;
+	       }
+		 
+	     } ;
     }
 
     std::function<void (xocl::event*, cl_int, const std::string&)>

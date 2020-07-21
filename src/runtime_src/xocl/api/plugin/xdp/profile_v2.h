@@ -57,7 +57,7 @@ namespace xocl {
     std::function<void (xocl::event*, cl_int, const std::string&)>
       action_ndrange_migrate(cl_event event, cl_kernel kernel) ;
     std::function<void (xocl::event*, cl_int, const std::string&)>
-      action_ndrange() ;
+      action_ndrange(cl_event event, cl_kernel kernel) ;
     std::function<void (xocl::event*, cl_int, const std::string&)>
       action_unmap(cl_mem buffer) ;
     std::function<void (xocl::event*, cl_int, const std::string&)>

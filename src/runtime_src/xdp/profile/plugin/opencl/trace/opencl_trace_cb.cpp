@@ -183,12 +183,50 @@ namespace xdp {
 					     dependentEvents);
     }
   }
-  /*
-  static void action_ndrange(unsigned int id, bool isStart)
+  
+  static void action_ndrange(unsigned int id, bool isStart,
+			     const char* deviceName,
+			     const char* binaryName,
+			     const char* kernelName,
+			     int workgroupConfigurationX,
+			     int workgroupConfigurationY,
+			     int workgroupConfigurationZ,
+			     int workgroupSize,
+			     unsigned long int* dependencies,
+			     unsigned int numDependencies)
   {
+    double timestamp = xrt_core::time_ns() ;
+    VPDatabase* db = openclPluginInstance.getDatabase() ;
+
+    uint64_t start = 0 ;
     
+    if (!isStart) start = (db->getDynamicInfo()).matchingStart(id) ;
+
+    VTFEvent* event = 
+      new KernelEnqueue(start, 
+			timestamp,
+			(db->getDynamicInfo()).addString(deviceName),
+			(db->getDynamicInfo()).addString(binaryName),
+			(db->getDynamicInfo()).addString(kernelName),
+			workgroupConfigurationX,
+			workgroupConfigurationY,
+			workgroupConfigurationZ,
+			workgroupSize) ;
+
+    (db->getDynamicInfo()).addEvent(event) ;
+    (db->getDynamicInfo()).addOpenCLMapping(id, event->getEventId()) ;
+
+    if (dependencies != nullptr && numDependencies > 0)
+    {
+      std::vector<uint64_t> dependentEvents ;
+      for (uint32_t i = 0 ; i < numDependencies ; ++i)
+      {
+	dependentEvents.push_back(dependencies[i]) ;
+      }
+      (db->getDynamicInfo()).addDependencies(event->getEventId(), 
+					     dependentEvents);
+    }
   }
-  */
 
 } // end namespace xdp
 
@@ -253,10 +291,23 @@ void action_copy(unsigned int id,
 		   isP2P, dependencies, numDependencies) ;
 }
 
-/*
 extern "C"
-void action_ndrange(unsigned int id, bool isStart)
+void action_ndrange(unsigned int id, bool isStart,
+		    const char* deviceName,
+		    const char* binaryName,
+		    const char* kernelName,
+		    size_t workgroupConfigurationX,
+		    size_t workgroupConfigurationY,
+		    size_t workgroupConfigurationZ,
+		    int workgroupSize,
+		    unsigned long int* dependencies,
+		    unsigned int numDependencies)
 {
-  xdp::action_ndrange(id, isStart) ;
+  xdp::action_ndrange(id, isStart, deviceName, binaryName, kernelName,
+		      workgroupConfigurationX,
+		      workgroupConfigurationY,
+		      workgroupConfigurationZ,
+		      workgroupSize,
+		      dependencies,
+		      numDependencies) ;
 }
-*/

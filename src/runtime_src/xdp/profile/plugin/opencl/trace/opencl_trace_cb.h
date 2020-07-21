@@ -62,8 +62,17 @@ void action_copy(unsigned int id,
 		 bool isP2P,
 		 unsigned long int* dependencies,
 		 unsigned int numDependencies) ;
-/*
+
 extern "C"
-void action_ndrange(unsigned int id, bool isStart) ;
-*/
+void action_ndrange(unsigned int id, bool isStart,
+		    const char* deviceName,
+		    const char* binaryName,
+		    const char* kernelName,
+		    size_t workgroupConfigurationX,
+		    size_t workgroupConfigurationY,
+		    size_t workgroupConfiguraionZ,
+		    int workgroupSize,
+		    unsigned long int* dependencies,
+		    unsigned int numDependencies) ;
+
 #endif
