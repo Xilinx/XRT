@@ -26,6 +26,14 @@ CallLogger::CallLogger(unsigned id)
   {
     load_xdp_plugin_library(nullptr);
   }
+  if (xrt_core::config::get_aie_profile())
+  {
+    load_aie_plugin_library();
+  }
+  if (xrt_core::config::get_noc_profile()) 
+  {
+    load_noc_plugin_library();
+  }
 }
 
 CallLogger::~CallLogger()
@@ -208,6 +216,18 @@ void load_xdp_plugin_library(HalPluginConfig* )
 						register_hal_callbacks,
 						warning_hal_callbacks) ;
 #endif
+}
+
+void load_aie_plugin_library()
+{
+  static xrt_core::module_loader xdp_aie_loader("xdp_aie_plugin",
+                        nullptr, nullptr);
+}
+
+void load_noc_plugin_library()
+{
+  static xrt_core::module_loader xdp_noc_loader("xdp_noc_plugin",
+                        nullptr, nullptr);
 }
 
 }
