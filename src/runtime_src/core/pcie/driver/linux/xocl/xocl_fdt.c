@@ -335,7 +335,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.id = XOCL_SUBDEV_XVC_PRI,
 		.dev_name = XOCL_XVC_PRI,
 		.res_array = (struct xocl_subdev_res[]) {
-			{.res_name = NODE_XVC_PUB},
+			{.res_name = NODE_XVC_PRI},
 			{NULL},
 		},
 		.required_ip = 1,
@@ -347,7 +347,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.id = XOCL_SUBDEV_SYSMON,
 		.dev_name = XOCL_SYSMON,
 		.res_array = (struct xocl_subdev_res[]) {
-			{.res_name = NODE_XVC_PUB},
+			{.res_name = NODE_SYSMON},
 			{NULL},
 		},
 		.required_ip = 1,
