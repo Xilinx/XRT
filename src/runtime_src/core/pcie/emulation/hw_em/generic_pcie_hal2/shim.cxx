@@ -16,6 +16,7 @@
 
 #include "shim.h"
 #include "system_hwemu.h"
+#include "xclbin.h"
 #include <string.h>
 #include <boost/property_tree/xml_parser.hpp>
 #include <errno.h>
@@ -33,6 +34,14 @@ file_exists(const std::string& fnm)
   return stat(fnm.c_str(), &statBuf) == 0;
 }
   
+static auto
+get_mem_topology(const axlf* top)
+{
+  if (auto sec = xclbin::get_axlf_section(top, ASK_GROUP_TOPOLOGY))
+    return sec;
+  return xclbin::get_axlf_section(top, MEM_TOPOLOGY);
+}
+
 }
 
 namespace xclhwemhal2 {
@@ -198,7 +207,7 @@ namespace xclhwemhal2 {
       debugFile = new char[debugFileSize];
       memcpy(debugFile, bitstreambin + sec->m_sectionOffset, debugFileSize);
     }
-    if (auto sec = xclbin::get_axlf_section(top, MEM_TOPOLOGY)) {
+    if (auto sec = get_mem_topology(top)) {
       memTopologySize = sec->m_sectionSize;
       memTopology = new char[memTopologySize];
       memcpy(memTopology, bitstreambin + sec->m_sectionOffset, memTopologySize);
