@@ -14,8 +14,12 @@
  * under the License.
  */
 
+#define XDP_SOURCE
+
 #include <cstring>
 #include "xdp/profile/plugin/vart/vart_plugin.h"
+
+#define MAX_PATH_SZ 512
 
 namespace xdp {
 
