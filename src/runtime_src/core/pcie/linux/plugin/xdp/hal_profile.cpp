@@ -179,10 +179,11 @@ CopyBOCallLogger::~CopyBOCallLogger() {
 }
 
 ExecBufCallLogger::ExecBufCallLogger(xclDeviceHandle handle)
-    : CallLogger(global_idcode)
+    : CallLogger()
 {
     if (!cb_valid()) return;
-    global_idcode++;    // increment only if valid calllback
+    m_local_idcode = xrt_core::utils::issue_id() ;
+
     CBPayload payload = {m_local_idcode, handle};
     cb(HalCallbackType::EXEC_BUF_START, &payload);
 }
