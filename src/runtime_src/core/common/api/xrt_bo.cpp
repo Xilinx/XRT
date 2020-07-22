@@ -34,6 +34,15 @@
 # pragma warning( disable : 4244 )
 #endif
 
+namespace {
+static bool
+is_nodma()
+{
+  // TODO
+  return false;
+}
+}
+
 ////////////////////////////////////////////////////////////////
 // Exposed for Cardano as extensions to xrt_bo.h
 // Revisit post 2020.1
@@ -100,6 +109,10 @@ protected:
   bool free_bo;            // should dtor free bo
 
 public:
+  explicit bo_impl(size_t sz)
+    : handle(XRT_NULL_BO), size(sz), free_bo(false)
+  {}
+
   bo_impl(xclDeviceHandle dhdl, xclBufferHandle bhdl, size_t sz)
     : device(xrt_core::get_userpf_device(dhdl)), handle(bhdl), size(sz), free_bo(true)
   {}
@@ -115,10 +128,10 @@ public:
       device->free_bo(handle);
   }
 
-  void
-  sync(xclBOSyncDirection dir, size_t sz, size_t offset)
+  xclBufferHandle
+  get_handle() const
   {
-    device->sync_bo(handle, dir, sz, offset + get_offset());
+    return handle;
   }
 
   void
@@ -137,6 +150,12 @@ public:
       throw xrt_core::error(-EINVAL,"attempting to read past buffer size");
     auto hbuf = static_cast<char*>(get_hbuf()) + skip;
     std::memcpy(dst, hbuf, sz);
+  }
+
+  virtual void
+  sync(xclBOSyncDirection dir, size_t sz, size_t offset)
+  {
+    device->sync_bo(handle, dir, sz, offset + get_offset());
   }
 
   virtual uint64_t
@@ -217,6 +236,35 @@ public:
   get_hbuf() const
   {
     return hbuf;
+  }
+};
+
+class buffer_nodma : public bo_impl
+{
+  buffer_kbuf m_host_only;
+  buffer_kbuf m_device_only;
+
+public:
+  buffer_nodma(xclDeviceHandle dhdl, xclBufferHandle hbuf, xclBufferHandle dbuf, size_t sz)
+    : bo_impl(sz), m_host_only(dhdl, hbuf, sz), m_device_only(dhdl, dbuf, sz)
+  {}
+
+  virtual void*
+  get_hbuf() const
+  {
+    return m_host_only.get_hbuf();
+  }
+
+  // sync is M2M copy between host and device bo
+  void
+  sync(xclBOSyncDirection dir, size_t sz, size_t offset)
+  {
+    if (dir == XCL_BO_SYNC_BO_TO_DEVICE)
+      // dst, src, size, dst_offset, src_offset
+      device->copy_bo(m_device_only.get_handle(), m_host_only.get_handle(), sz, offset, offset);
+    else
+      // dst, src, size, dst_offset, src_offset
+      device->copy_bo(m_host_only.get_handle(), m_device_only.get_handle(), sz, offset, offset);
   }
 };
 
@@ -301,7 +349,6 @@ alloc_bo(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags flags, xrtMemoryGroup g
   return device->alloc_bo(sz, flags);
 }
 
-
 static void
 free_bo(xrtBufferHandle bhdl)
 {
@@ -314,6 +361,7 @@ send_exception_message(const char* msg)
 {
   xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR, "XRT", msg);
 }
+
 
 // driver allocates host buffer
 static std::shared_ptr<xrt::bo_impl>
@@ -345,13 +393,25 @@ alloc_hbuf(xclDeviceHandle dhdl, xrt_core::aligned_ptr_type&& hbuf, size_t sz, x
 }
 
 static std::shared_ptr<xrt::bo_impl>
+alloc_nodma(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags, xrtMemoryGroup grp)
+{
+  auto hbuf_handle = alloc_bo(dhdl, sz, XCL_BO_FLAGS_HOST_ONLY, grp);
+  auto dbuf_handle = alloc_bo(dhdl, sz, XCL_BO_FLAGS_DEV_ONLY, grp);
+  auto boh = std::make_shared<xrt::buffer_nodma>(dhdl, hbuf_handle, dbuf_handle, sz);
+  return boh;
+}
+
+static std::shared_ptr<xrt::bo_impl>
 alloc(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
   auto type = flags & ~XRT_BO_FLAGS_MEMIDX_MASK;
   switch (type) {
   case 0:
 #ifndef XRT_EDGE
-    return alloc_hbuf(dhdl, xrt_core::aligned_alloc(get_alignment(), sz), sz, flags, grp);
+    if (is_nodma())
+      return alloc_nodma(dhdl, sz, flags, grp);
+    else
+      return alloc_hbuf(dhdl, xrt_core::aligned_alloc(get_alignment(), sz), sz, flags, grp);
 #endif
   case XCL_BO_FLAGS_CACHEABLE:
   case XCL_BO_FLAGS_SVM:

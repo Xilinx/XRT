@@ -50,6 +50,9 @@ struct ishim
   free_bo(xclBufferHandle boh) = 0;
 
   virtual void
+  copy_bo(xclBufferHandle dst, xclBufferHandle src, size_t size, size_t dst_offset, size_t src_offset) = 0;
+
+  virtual void
   sync_bo(xclBufferHandle bo, xclBOSyncDirection dir, size_t size, size_t offset) = 0;
 
   virtual void*
@@ -131,6 +134,13 @@ struct shim : public DeviceType
   free_bo(xclBufferHandle bo)
   {
     xclFreeBO(DeviceType::get_device_handle(), bo);
+  }
+
+  virtual void
+  copy_bo(xclBufferHandle dst, xclBufferHandle src, size_t size, size_t dst_offset, size_t src_offset)
+  {
+    if (auto err = xclCopyBO(DeviceType::get_device_handle(), dst, src, size, dst_offset, src_offset))
+      throw std::runtime_error("unable to copy BO");
   }
 
   virtual void
