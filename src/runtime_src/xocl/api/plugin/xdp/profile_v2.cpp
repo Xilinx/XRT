@@ -261,6 +261,8 @@ namespace xocl {
     }
 
     // ******** OpenCL Host Trace Callbacks *********
+    static std::map<uint64_t, uint64_t> XRTIdToXDPId ;
+
     std::function<void (xocl::event*, cl_int, const std::string&)>
     action_read(cl_mem buffer)
     {
@@ -282,6 +284,8 @@ namespace xocl {
 	       //  necessary to show the tooltip and send it.
 	       if (status == CL_RUNNING)
 	       {
+		 XRTIdToXDPId[e->get_uid()] = xrt_core::utils::issue_id() ;
+
 		 // Get memory bank information
 		 uint64_t address = 0 ;
 		 std::string bank = "Unknown" ;
@@ -296,7 +300,8 @@ namespace xocl {
 		 get_dependency_information(dependencies, numDependencies, e) ;
 
 		 // Perform the callback
-		 read_cb(e->get_uid(), true,
+		 read_cb(XRTIdToXDPId[e->get_uid()], 
+			 true,
 			 address,
 			 bank.c_str(),
 			 xmem->get_size(),
@@ -309,7 +314,8 @@ namespace xocl {
 	       // For end events, just send the minimal information
 	       else if (status == CL_COMPLETE)
 	       {
-		 read_cb(e->get_uid(), false,
+		 read_cb(XRTIdToXDPId[e->get_uid()],
+			 false,
 			 0,
 			 nullptr,
 			 0,
@@ -341,6 +347,8 @@ namespace xocl {
 	       //  necessary to show the tooltip and send it.
 	       if (status == CL_RUNNING)
 	       {
+		 XRTIdToXDPId[e->get_uid()] = xrt_core::utils::issue_id() ;
+
 		 // Get memory bank information
 		 uint64_t address = 0 ;
 		 std::string bank = "Unknown" ;
@@ -355,7 +363,8 @@ namespace xocl {
 		 get_dependency_information(dependencies, numDependencies, e) ;
 
 		 // Perform the callback
-		 write_cb(e->get_uid(), true,
+		 write_cb(XRTIdToXDPId[e->get_uid()],
+			  true,
 			  address,
 			  bank.c_str(),
 			  xmem->get_size(),
@@ -368,7 +377,8 @@ namespace xocl {
 	       // For end events, just send the minimal information
 	       else if (status == CL_COMPLETE)
 	       {
-		 write_cb(e->get_uid(), false,
+		 write_cb(XRTIdToXDPId[e->get_uid()],
+			  false,
 			  0,
 			  nullptr,
 			  0,
@@ -403,6 +413,8 @@ namespace xocl {
 
 	       if (status == CL_RUNNING)
 	       {
+		 XRTIdToXDPId[e->get_uid()] = xrt_core::utils::issue_id() ;
+
 		 uint64_t address = 0 ;
 		 std::string bank = "Unknown" ;
 		 try {
@@ -416,7 +428,8 @@ namespace xocl {
 		 get_dependency_information(dependencies, numDependencies, e) ;
 
 		 // Perform the callback
-		 read_cb(e->get_uid(), true,
+		 read_cb(XRTIdToXDPId[e->get_uid()],
+			 true,
 			 address,
 			 bank.c_str(),
 			 xmem->get_size(),
@@ -428,14 +441,15 @@ namespace xocl {
 	       }
 	       else if (status == CL_COMPLETE)
 	       {
-		 read_cb(e->get_uid(), false,
+		 read_cb(XRTIdToXDPId[e->get_uid()],
+			 false,
 			 0,
 			 nullptr,
 			 0,
 			 false, // isP2P
 			 dependencies,
 			 numDependencies) ;
-	       }      
+	       }
 	     } ;
     }
 
@@ -468,6 +482,7 @@ namespace xocl {
 		 //  necessary to show the tooltip and send it.
 		 if (status == CL_RUNNING)
 		 {
+		   XRTIdToXDPId[e->get_uid()] = xrt_core::utils::issue_id() ;
 		   // Get memory bank information
 		   uint64_t address = 0 ;
 		   std::string bank = "Unknown" ;
@@ -482,7 +497,8 @@ namespace xocl {
 		   get_dependency_information(dependencies, numDependencies, e);
 
 		   // Perform the callback
-		   read_cb(e->get_uid(), true,
+		   read_cb(XRTIdToXDPId[e->get_uid()],
+			   true,
 			   address,
 			   bank.c_str(),
 			   xmem->get_size(),
@@ -495,7 +511,8 @@ namespace xocl {
 		 // For end events, just send the minimal information
 		 else if (status == CL_COMPLETE)
 		 {
-		   read_cb(e->get_uid(), false,
+		   read_cb(XRTIdToXDPId[e->get_uid()],
+			   false,
 			   0,
 			   nullptr,
 			   0,
@@ -524,6 +541,7 @@ namespace xocl {
 		 //  necessary to show the tooltip and send it.
 		 if (status == CL_RUNNING)
 		 {
+		   XRTIdToXDPId[e->get_uid()] = xrt_core::utils::issue_id() ;
 		   // Get memory bank information
 		   uint64_t address = 0 ;
 		   std::string bank = "Unknown" ;
@@ -538,7 +556,8 @@ namespace xocl {
 		   get_dependency_information(dependencies, numDependencies, e);
 		   
 		   // Perform the callback
-		   write_cb(e->get_uid(), true,
+		   write_cb(XRTIdToXDPId[e->get_uid()],
+			    true,
 			    address,
 			    bank.c_str(),
 			    xmem->get_size(),
@@ -551,7 +570,8 @@ namespace xocl {
 		 // For end events, just send the minimal information
 		 else if (status == CL_COMPLETE)
 		 {
-		   write_cb(e->get_uid(), false,
+		   write_cb(XRTIdToXDPId[e->get_uid()],
+			    false,
 			    0,
 			    nullptr,
 			    0,
@@ -616,6 +636,7 @@ namespace xocl {
 		 //  necessary to show the tooltip and send it.
 		 if (status == CL_RUNNING)
 		 {
+		   XRTIdToXDPId[e->get_uid()] = xrt_core::utils::issue_id() ;
 		   // Get memory bank information
 		   uint64_t address = 0 ;
 		   std::string bank = "Unknown" ;
@@ -630,7 +651,8 @@ namespace xocl {
 		   get_dependency_information(dependencies, numDependencies, e);
 		   
 		   // Perform the callback
-		   write_cb(e->get_uid(), true,
+		   write_cb(XRTIdToXDPId[e->get_uid()],
+			    true,
 			    address,
 			    bank.c_str(),
 			    xmem->get_size(),
@@ -643,7 +665,8 @@ namespace xocl {
 		 // For end events, just send the minimal information
 		 else if (status == CL_COMPLETE)
 		 {
-		   write_cb(e->get_uid(), false,
+		   write_cb(XRTIdToXDPId[e->get_uid()],
+			    false,
 			    0,
 			    nullptr,
 			    0,
@@ -687,11 +710,12 @@ namespace xocl {
 
 	       if (status == CL_RUNNING)
 	       {
+		 XRTIdToXDPId[e->get_uid()] = xrt_core::utils::issue_id() ;
 		 uint64_t* dependencies = nullptr ;
 		 unsigned int numDependencies = 0 ;
 		 get_dependency_information(dependencies, numDependencies, e);
 
-		 ndrange_cb(e->get_uid(),
+		 ndrange_cb(XRTIdToXDPId[e->get_uid()],
 			    true,
 			    deviceName.c_str(),
 			    binaryName.c_str(),
@@ -706,7 +730,7 @@ namespace xocl {
 	       }
 	       else if (status == CL_COMPLETE)
 	       {
-		 ndrange_cb(e->get_uid(),
+		 ndrange_cb(XRTIdToXDPId[e->get_uid()],
 			    false,
 			    nullptr,
 			    nullptr,
@@ -718,7 +742,7 @@ namespace xocl {
 			    nullptr,
 			    0) ;
 	       }
-		 
+
 	     } ;
     }
 
@@ -744,6 +768,7 @@ namespace xocl {
 	       unsigned int numDependencies = 0 ;
 	       if (status == CL_RUNNING)
 	       {
+		 XRTIdToXDPId[e->get_uid()] = xrt_core::utils::issue_id() ;
 		 // Get memory bank information
 		 uint64_t address = 0 ;
 		 std::string bank = "Unknown" ;
@@ -758,7 +783,8 @@ namespace xocl {
 		 get_dependency_information(dependencies, numDependencies, e) ;
 
 		 // Perform the callback
-		 write_cb(e->get_uid(), true,
+		 write_cb(XRTIdToXDPId[e->get_uid()],
+			  true,
 			  address,
 			  bank.c_str(),
 			  xmem->get_size(),
@@ -770,7 +796,8 @@ namespace xocl {
 	       }
 	       else if (status == CL_COMPLETE)
 	       {
-		 write_cb(e->get_uid(), false,
+		 write_cb(XRTIdToXDPId[e->get_uid()],
+			  false,
 			  0,
 			  nullptr,
 			  0,
@@ -785,7 +812,7 @@ namespace xocl {
     action_copy(cl_mem src_buffer, cl_mem dst_buffer)
     {      
       return [src_buffer, dst_buffer](xocl::event* e, cl_int status, const std::string&) 
-	     { 
+	     {
 	       if (!copy_cb) return ;
 	       if (status != CL_RUNNING && status != CL_COMPLETE) return ;
 
@@ -800,6 +827,7 @@ namespace xocl {
 
 	       if (status == CL_RUNNING)
 	       {
+		 XRTIdToXDPId[e->get_uid()] = xrt_core::utils::issue_id() ;
 		 // Get memory bank information
 		 uint64_t srcAddress = 0;
 		 uint64_t dstAddress = 0 ;
@@ -825,7 +853,8 @@ namespace xocl {
 		 // Get dependency information
 		 get_dependency_information(dependencies, numDependencies, e) ;
 
-		 copy_cb(e->get_uid(), true,
+		 copy_cb(XRTIdToXDPId[e->get_uid()],
+			 true,
 			 srcAddress,
 			 srcBank.c_str(),
 			 dstAddress, 
@@ -839,7 +868,8 @@ namespace xocl {
 	       }
 	       else if (status == CL_COMPLETE)
 	       {
-		 copy_cb(e->get_uid(), false,
+		 copy_cb(XRTIdToXDPId[e->get_uid()],
+			 false,
 			 0,
 			 nullptr,
 			 0,
@@ -849,7 +879,6 @@ namespace xocl {
 			 nullptr, // dependencies
 			 0) ; // numDependencies
 	       }
-	       
 	     } ;
     }
 

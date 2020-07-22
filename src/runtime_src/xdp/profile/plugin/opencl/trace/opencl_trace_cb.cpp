@@ -91,6 +91,7 @@ namespace xdp {
 
     (db->getDynamicInfo()).addEvent(event) ;
     (db->getDynamicInfo()).addOpenCLMapping(id, event->getEventId()) ;
+    if (isStart) (db->getDynamicInfo()).markStart(id, event->getEventId()) ;
 
     if (dependencies != nullptr && numDependencies > 0)
     {
@@ -130,6 +131,7 @@ namespace xdp {
 
     (db->getDynamicInfo()).addEvent(event) ;
     (db->getDynamicInfo()).addOpenCLMapping(id, event->getEventId()) ;
+    if (isStart) (db->getDynamicInfo()).markStart(id, event->getEventId()) ;
 
     if (dependencies != nullptr && numDependencies > 0)
     {
@@ -173,6 +175,7 @@ namespace xdp {
 
     (db->getDynamicInfo()).addEvent(event) ;
     (db->getDynamicInfo()).addOpenCLMapping(id, event->getEventId()) ;
+    if (isStart) (db->getDynamicInfo()).markStart(id, event->getEventId()) ;
 
     if (dependencies != nullptr && numDependencies > 0)
     {
@@ -217,6 +220,7 @@ namespace xdp {
 
     (db->getDynamicInfo()).addEvent(event) ;
     (db->getDynamicInfo()).addOpenCLMapping(id, event->getEventId()) ;
+    if (isStart) (db->getDynamicInfo()).markStart(id, event->getEventId()) ;
 
     if (dependencies != nullptr && numDependencies > 0)
     {
