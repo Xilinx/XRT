@@ -111,29 +111,28 @@ ReportAie::writeReport( const xrt_core::device * _pDevice,
 
             int count = 0;
             for (auto& rtp_node : pt.get_child("aie_metadata.RTPs")) {
-                _output << boost::format("  RTPs:[%2d]\n") % count;
-                _output << boost::format("    name:%-25s\n") % rtp_node.second.get<std::string>("port_name");
-                _output << boost::format("    selector_row:%-25d\n") % rtp_node.second.get<uint16_t>("selector_row");
+                _output << boost::format("  %-3s:[%2d]\n") % "RTP" % count;
+                _output << boost::format("    %-22s: %s\n") % "name" % rtp_node.second.get<std::string>("port_name");
+                _output << boost::format("    %-22s: %d\n") % "Selector Row" % rtp_node.second.get<uint16_t>("selector_row");
+                _output << boost::format("    %-22s: %d\n") % "Selector Col" % rtp_node.second.get<uint16_t>("selector_column");
+                _output << boost::format("    %-22s: %d\n") % "Selector Lock Id" % rtp_node.second.get<uint16_t>("selector_lock_id");
+                _output << boost::format("    %-22s: %d\n") % "Selector Addr" %  rtp_node.second.get<uint64_t>("selector_address");
 
-                _output << boost::format("    selector_col:%-25d\n") % rtp_node.second.get<uint16_t>("selector_column");
-                _output << boost::format("    selector_lock_id:%-25d\n") % rtp_node.second.get<uint16_t>("selector_lock_id");
-                _output << boost::format("    selector_addr:%-25d\n") %  rtp_node.second.get<uint64_t>("selector_address");
+                _output << boost::format("    %-22s: %d\n") % "Ping Row" % rtp_node.second.get<uint16_t>("ping_buffer_row");
+                _output << boost::format("    %-22s: %d\n") % "Ping Col" % rtp_node.second.get<uint16_t>("ping_buffer_column");
+                _output << boost::format("    %-22s: %d\n") % "Ping Lock Id" % rtp_node.second.get<uint16_t>("ping_buffer_lock_id");
+                _output << boost::format("    %-22s: %d\n") % "Ping Addr" % rtp_node.second.get<uint64_t>("ping_buffer_address");
 
-                _output << boost::format("    ping_row:%-25d\n") % rtp_node.second.get<uint16_t>("ping_buffer_row");
-                _output << boost::format("    ping_col:%-25d\n") % rtp_node.second.get<uint16_t>("ping_buffer_column");
-                _output << boost::format("    ping_lock_id:%-25d\n") % rtp_node.second.get<uint16_t>("ping_buffer_lock_id");
-                _output << boost::format("    ping_addr:%-25d\n") % rtp_node.second.get<uint64_t>("ping_buffer_address");
+                _output << boost::format("    %-22s: %d\n") % "Pong Row" % rtp_node.second.get<uint16_t>("pong_buffer_row");
+                _output << boost::format("    %-22s: %d\n") % "Pong Col" % rtp_node.second.get<uint16_t>("pong_buffer_column");
+                _output << boost::format("    %-22s: %d\n") % "Pong Lock Id" % rtp_node.second.get<uint16_t>("pong_buffer_lock_id");
+                _output << boost::format("    %-22s: %d\n") % "Pong Addr" % rtp_node.second.get<uint64_t>("pong_buffer_address");
 
-                _output << boost::format("    pong_row:%-25d\n") % rtp_node.second.get<uint16_t>("pong_buffer_row");
-                _output << boost::format("    pong_col:%-25d\n") % rtp_node.second.get<uint16_t>("pong_buffer_column");
-                _output << boost::format("    pong_lock_id:%-25d\n") % rtp_node.second.get<uint16_t>("pong_buffer_lock_id");
-                _output << boost::format("    pong_addr:%-25d\n") % rtp_node.second.get<uint64_t>("pong_buffer_address");
-
-                _output << boost::format("    is_plrtp:%-25b\n") % rtp_node.second.get<bool>("is_PL_RTP");
-                _output << boost::format("    is_input:%-25b\n") % rtp_node.second.get<bool>("is_input");
-                _output << boost::format("    is_async:%-25b\n") % rtp_node.second.get<bool>("is_asynchronous");
-                _output << boost::format("    is_connected:%-25b\n") % rtp_node.second.get<bool>("is_connected");
-                _output << boost::format("    require_lock:%-25b\n") % rtp_node.second.get<bool>("requires_lock");
+                _output << boost::format("    %-22s: %b\n") % "Is Plrtp" % rtp_node.second.get<bool>("is_PL_RTP");
+                _output << boost::format("    %-22s: %b\n") % "Is Input" % rtp_node.second.get<bool>("is_input");
+                _output << boost::format("    %-22s: %b\n") % "Is Async" % rtp_node.second.get<bool>("is_asynchronous");
+                _output << boost::format("    %-22s: %b\n") % "Is Connected" % rtp_node.second.get<bool>("is_connected");
+                _output << boost::format("    %-22s: %b\n") % "Require Lock" % rtp_node.second.get<bool>("requires_lock");
                 count++;
                 _output << std::endl;
             }
@@ -141,17 +140,17 @@ ReportAie::writeReport( const xrt_core::device * _pDevice,
 
             count = 0;
             for (auto& gmio_node : pt.get_child("aie_metadata.GMIOs")) {
-                _output << boost::format("  GMIOs:[%2d]\n") % count;
-                _output << boost::format("    id:%-25s\n") % gmio_node.second.get<std::string>("id");
-                _output << boost::format("    name:%-25s\n") % gmio_node.second.get<std::string>("name");
-                _output << boost::format("    logical_name:%-25s\n") % gmio_node.second.get<std::string>("logical_name");
-                _output << boost::format("    type:%-25d\n") % gmio_node.second.get<uint16_t>("type");
-                _output << boost::format("    shim_col:%-25d\n") % gmio_node.second.get<uint16_t>("shim_column");
-                _output << boost::format("    channel_number:%-25d\n") % gmio_node.second.get<uint16_t>("channel_number");
-                _output << boost::format("    stream_id:%-25d\n") % gmio_node.second.get<uint16_t>("stream_id");
-                _output << boost::format("    burst_len:%-25d\n") % gmio_node.second.get<uint16_t>("burst_length_in_16byte");
-                _output << boost::format("    PL_port_name:%-25d\n") % gmio_node.second.get<std::string>("PL_port_name");
-                _output << boost::format("    PL_parameter_name:%-25d\n") % gmio_node.second.get<std::string>("PL_parameter_name");
+                _output << boost::format("  %-4s: [%2d]\n") % "GMIO" % count;
+                _output << boost::format("    %-22s: %s\n") % "Id" % gmio_node.second.get<std::string>("id");
+                _output << boost::format("    %-22s: %s\n") % "Name" %gmio_node.second.get<std::string>("name");
+                _output << boost::format("    %-22s: %s\n") % "Logical Name" % gmio_node.second.get<std::string>("logical_name");
+                _output << boost::format("    %-22s: %d\n") % "Type" % gmio_node.second.get<uint16_t>("type");
+                _output << boost::format("    %-22s: %d\n") % "Shim_col" % gmio_node.second.get<uint16_t>("shim_column");
+                _output << boost::format("    %-22s: %d\n") % "Channel Number" % gmio_node.second.get<uint16_t>("channel_number");
+                _output << boost::format("    %-22s: %d\n") % "Stream Id" % gmio_node.second.get<uint16_t>("stream_id");
+                _output << boost::format("    %-22s: %d\n") % "Burst Len" % gmio_node.second.get<uint16_t>("burst_length_in_16byte");
+                _output << boost::format("    %-22s: %s\n") % "PL Port Name" % gmio_node.second.get<std::string>("PL_port_name");
+                _output << boost::format("    %-22s: %s\n") % "PL Parameter Name" % gmio_node.second.get<std::string>("PL_parameter_name");
                 count++;
                 _output << std::endl;
             }
