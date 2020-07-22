@@ -54,6 +54,7 @@ static u32 eisr[4] = {
 
 struct intr_info {
 	irqreturn_t (*handler)(int irq, void *arg);
+	int   intr_id;
 	void *arg;
 	bool  enabled;
 };
@@ -105,7 +106,7 @@ irqreturn_t intc_csr_isr(int irq, void *arg)
 		 * a bug on hardware or ERT firmware.
 		 */
 		if (info && info->enabled && info->handler)
-			info->handler(index, info->arg);
+			info->handler(info->intr_id, info->arg);
 
 		pending ^= 1 << index;
 	};
@@ -136,6 +137,7 @@ static int request_intr(struct platform_device *pdev, int intr_id,
 	if (handler) {
 		info = vzalloc(sizeof(struct intr_info));
 		info->handler = handler;
+		info->intr_id = intr_id;
 		info->arg = arg;
 		info->enabled = false;
 		data->info[intr_src] = info;
