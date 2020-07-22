@@ -1395,6 +1395,16 @@ xclSyncBO(xclDeviceHandle handle, xclBufferHandle boHandle, xclBOSyncDirection d
   return shim->sync_bo(boHandle, dir, size, offset);
 }
 
+int
+xclCopyBO(xclDeviceHandle handle, xclBufferHandle dstBoHandle,
+          xclBufferHandle srcBoHandle, size_t size, size_t dst_offset,
+          size_t src_offset)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclCopyBO() NOT IMPLEMENTED");
+  return ENOSYS;
+}
+
 // Compute Unit Execution Management APIs
 int
 xclOpenContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int ipIndex, bool shared)

@@ -165,7 +165,7 @@ public:
     device->get_bo_properties(handle, &prop);
     return prop.paddr;
   }
-  
+
   virtual size_t get_size()      const { return size;    }
   virtual void*  get_hbuf()      const { return nullptr; }
   virtual bool   is_sub_buffer() const { return false;   }
@@ -257,14 +257,14 @@ public:
 
   // sync is M2M copy between host and device bo
   void
-  sync(xclBOSyncDirection dir, size_t size, size_t offset)
+  sync(xclBOSyncDirection dir, size_t sz, size_t offset)
   {
     if (dir == XCL_BO_SYNC_BO_TO_DEVICE)
       // dst, src, size, dst_offset, src_offset
-      device->copy_bo(m_device_only.get_handle(), m_host_only.get_handle(), size, offset, offset);
+      device->copy_bo(m_device_only.get_handle(), m_host_only.get_handle(), sz, offset, offset);
     else
       // dst, src, size, dst_offset, src_offset
-      device->copy_bo(m_host_only.get_handle(), m_device_only.get_handle(), size, offset, offset);
+      device->copy_bo(m_host_only.get_handle(), m_device_only.get_handle(), sz, offset, offset);
   }
 };
 
@@ -393,7 +393,7 @@ alloc_hbuf(xclDeviceHandle dhdl, xrt_core::aligned_ptr_type&& hbuf, size_t sz, x
 }
 
 static std::shared_ptr<xrt::bo_impl>
-alloc_nodma(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
+alloc_nodma(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags, xrtMemoryGroup grp)
 {
   auto hbuf_handle = alloc_bo(dhdl, sz, XCL_BO_FLAGS_HOST_ONLY, grp);
   auto dbuf_handle = alloc_bo(dhdl, sz, XCL_BO_FLAGS_DEV_ONLY, grp);
