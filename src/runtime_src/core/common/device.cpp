@@ -66,11 +66,22 @@ register_axlf(const axlf* top)
 {
   m_axlf_sections.clear();
   m_xclbin_uuid = uuid(top->m_header.uuid);
-  axlf_section_kind kinds[] = {EMBEDDED_METADATA, AIE_METADATA, IP_LAYOUT, CONNECTIVITY, MEM_TOPOLOGY, DEBUG_IP_LAYOUT, SYSTEM_METADATA};
+  axlf_section_kind kinds[] = {EMBEDDED_METADATA, AIE_METADATA, IP_LAYOUT, CONNECTIVITY, 
+			ASK_GROUP_CONNECTIVITY, ASK_GROUP_TOPOLOGY, MEM_TOPOLOGY, DEBUG_IP_LAYOUT, SYSTEM_METADATA};
   for (auto kind : kinds) {
     auto hdr = ::xclbin::get_axlf_section(top, kind);
-    if (!hdr)
-      continue;
+    if (!hdr) {
+      /* If group topology or group connectivity doesn't exists then use the
+       * mem topology or connectivity respectively section for the same.
+       */
+      if (kind == ASK_GROUP_TOPOLOGY)
+        hdr = ::xclbin::get_axlf_section(top, MEM_TOPOLOGY);
+      else if (kind == ASK_GROUP_CONNECTIVITY)
+        hdr = ::xclbin::get_axlf_section(top, CONNECTIVITY);
+
+      if (!hdr)
+        continue;
+    }
     auto section_data = reinterpret_cast<const char*>(top) + hdr->m_sectionOffset;
     std::vector<char> data{section_data, section_data + hdr->m_sectionSize};
     m_axlf_sections.emplace(kind , std::move(data));

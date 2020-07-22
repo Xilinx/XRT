@@ -140,9 +140,11 @@ struct icap {
 	struct clock_freq_topology *xclbin_clock_freq_topology;
 	unsigned long		xclbin_clock_freq_topology_length;
 	struct mem_topology	*mem_topo;
+	struct mem_topology	*group_topo;
 	struct ip_layout	*ip_layout;
 	struct debug_ip_layout	*debug_layout;
 	struct connectivity	*connectivity;
+	struct connectivity	*group_connectivity;
 	uint64_t		max_host_mem_aperture;
 	void			*partition_metadata;
 
@@ -915,11 +917,17 @@ static uint64_t icap_get_section_size(struct icap *icap, enum axlf_section_kind 
 	case MEM_TOPOLOGY:
 		size = sizeof_sect(icap->mem_topo, m_mem_data);
 		break;
+	case ASK_GROUP_TOPOLOGY:
+		size = sizeof_sect(icap->group_topo, m_mem_data);
+		break;
 	case DEBUG_IP_LAYOUT:
 		size = sizeof_sect(icap->debug_layout, m_debug_ip_data);
 		break;
 	case CONNECTIVITY:
 		size = sizeof_sect(icap->connectivity, m_connection);
+		break;
+	case ASK_GROUP_CONNECTIVITY:
+		size = sizeof_sect(icap->group_connectivity, m_connection);
 		break;
 	case CLOCK_FREQ_TOPOLOGY:
 		size = sizeof_sect(icap->xclbin_clock_freq_topology, m_clock_freq);
@@ -1398,11 +1406,17 @@ static void icap_clean_axlf_section(struct icap *icap,
 	case MEM_TOPOLOGY:
 		target = (void **)&icap->mem_topo;
 		break;
+	case ASK_GROUP_TOPOLOGY:
+		target = (void **)&icap->group_topo;
+		break;
 	case DEBUG_IP_LAYOUT:
 		target = (void **)&icap->debug_layout;
 		break;
 	case CONNECTIVITY:
 		target = (void **)&icap->connectivity;
+		break;
+	case ASK_GROUP_CONNECTIVITY:
+		target = (void **)&icap->group_connectivity;
 		break;
 	case CLOCK_FREQ_TOPOLOGY:
 		target = (void **)&icap->xclbin_clock_freq_topology;
@@ -1426,8 +1440,10 @@ static void icap_clean_bitstream_axlf(struct platform_device *pdev)
 	uuid_copy(&icap->icap_bitstream_uuid, &uuid_null);
 	icap_clean_axlf_section(icap, IP_LAYOUT);
 	icap_clean_axlf_section(icap, MEM_TOPOLOGY);
+	icap_clean_axlf_section(icap, ASK_GROUP_TOPOLOGY);
 	icap_clean_axlf_section(icap, DEBUG_IP_LAYOUT);
 	icap_clean_axlf_section(icap, CONNECTIVITY);
+	icap_clean_axlf_section(icap, ASK_GROUP_CONNECTIVITY);
 	icap_clean_axlf_section(icap, CLOCK_FREQ_TOPOLOGY);
 	icap_clean_axlf_section(icap, PARTITION_METADATA);
 }
@@ -2453,6 +2469,11 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 		icap_get_max_host_mem_aperture(icap);
 
 	}
+
+	/* Initialize Group Topology and Group Connectivity */
+	icap_parse_bitstream_axlf_section(pdev, xclbin, ASK_GROUP_TOPOLOGY);
+	icap_parse_bitstream_axlf_section(pdev, xclbin, ASK_GROUP_CONNECTIVITY);
+
 	/* create the rest of subdevs for both mgmt and user pf */
 	if (num_dev > 0) {
 		for (i = 0; i < num_dev; i++)
@@ -2532,7 +2553,8 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		err = -EINVAL;
 		goto done;
 	}
-	if (!xocl_verify_timestamp(xdev,
+	
+    if (!xocl_verify_timestamp(xdev,
 		xclbin->m_header.m_featureRomTimeStamp)) {
 		ICAP_ERR(icap, "TimeStamp of ROM did not match Xclbin");
 		err = -EOPNOTSUPP;
@@ -2719,11 +2741,17 @@ static int icap_parse_bitstream_axlf_section(struct platform_device *pdev,
 	case MEM_TOPOLOGY:
 		target = (void **)&icap->mem_topo;
 		break;
+	case ASK_GROUP_TOPOLOGY:
+		target = (void **)&icap->group_topo;
+		break;
 	case DEBUG_IP_LAYOUT:
 		target = (void **)&icap->debug_layout;
 		break;
 	case CONNECTIVITY:
 		target = (void **)&icap->connectivity;
+		break;
+	case ASK_GROUP_CONNECTIVITY:
+		target = (void **)&icap->group_connectivity;
 		break;
 	case CLOCK_FREQ_TOPOLOGY:
 		target = (void **)&icap->xclbin_clock_freq_topology;
@@ -2741,8 +2769,19 @@ static int icap_parse_bitstream_axlf_section(struct platform_device *pdev,
 
 	err = xrt_xclbin_get_section(xclbin, kind, target, &section_size);
 	if (err != 0) {
-		ICAP_ERR(icap, "get section err: %ld", err);
-		goto done;
+		/* If group topology or group connectivity doesn't exists then use the
+		 * mem topology or connectivity respectively section for the same.
+		 */
+		if (kind == ASK_GROUP_TOPOLOGY)
+			err = xrt_xclbin_get_section(xclbin, MEM_TOPOLOGY,
+							target, &section_size);
+		else if (kind == ASK_GROUP_CONNECTIVITY)
+			err = xrt_xclbin_get_section(xclbin, CONNECTIVITY,
+							target, &section_size);
+		if (err != 0) {
+			ICAP_ERR(icap, "get section err: %ld", err);
+			goto done;
+		}
 	}
 	sect_sz = icap_get_section_size(icap, kind);
 	if (sect_sz > section_size) {
@@ -2887,11 +2926,17 @@ static int icap_get_xclbin_metadata(struct platform_device *pdev,
 	case IPLAYOUT_AXLF:
 		*buf = icap->ip_layout;
 		break;
+	case GROUPTOPO_AXLF:
+		*buf = icap->group_topo;
+		break;
 	case MEMTOPO_AXLF:
 		*buf = icap->mem_topo;
 		break;
 	case DEBUG_IPLAYOUT_AXLF:
 		*buf = icap->debug_layout;
+		break;
+	case GROUPCONNECTIVITY_AXLF:
+		*buf = icap->group_connectivity;
 		break;
 	case CONNECTIVITY_AXLF:
 		*buf = icap->connectivity;
@@ -3436,6 +3481,49 @@ static struct bin_attribute connectivity_attr = {
 	.size = 0
 };
 
+/* -Group Connectivity-- */
+static ssize_t icap_read_group_connectivity(struct file *filp, struct kobject *kobj,
+	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
+{
+	struct icap *icap;
+	u32 nread = 0;
+	size_t size = 0;
+	int err = 0;
+
+	icap = (struct icap *)dev_get_drvdata(container_of(kobj, struct device, kobj));
+
+	if (!icap || !icap->group_connectivity)
+		return nread;
+
+	err = icap_xclbin_rd_lock(icap);
+	if (err)
+		return nread;
+
+	size = sizeof_sect(icap->group_connectivity, m_connection);
+	if (offset >= size)
+		goto unlock;
+
+	if (count < size - offset)
+		nread = count;
+	else
+		nread = size - offset;
+
+	memcpy(buffer, ((char *)icap->group_connectivity) + offset, nread);
+
+unlock:
+	icap_xclbin_rd_unlock(icap);
+	return nread;
+}
+
+static struct bin_attribute group_connectivity_attr = {
+	.attr = {
+		.name = "group_connectivity",
+		.mode = 0444
+	},
+	.read = icap_read_group_connectivity,
+	.write = NULL,
+	.size = 0
+};
 
 /* -Mem_topology-- */
 static ssize_t icap_read_mem_topology(struct file *filp, struct kobject *kobj,
@@ -3495,6 +3583,69 @@ static struct bin_attribute mem_topology_attr = {
 		.mode = 0444
 	},
 	.read = icap_read_mem_topology,
+	.write = NULL,
+	.size = 0
+};
+
+/* -Group_topology-- */
+static ssize_t icap_read_group_topology(struct file *filp, struct kobject *kobj,
+	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
+{
+	struct icap *icap = (struct icap *)dev_get_drvdata(container_of(kobj, struct device, kobj));
+	u32 nread = 0;
+	size_t size = 0;
+	uint64_t range = 0;
+	int err = 0, i;
+	struct mem_topology *group_topo = NULL;
+	xdev_handle_t xdev;
+
+	if (!icap || !icap->group_topo)
+		return nread;
+
+	xdev = xocl_get_xdev(icap->icap_pdev);
+
+	err = icap_xclbin_rd_lock(icap);
+	if (err)
+		return nread;
+
+	size = sizeof_sect(icap->group_topo, m_mem_data);
+	if (offset >= size)
+		goto unlock;
+
+	group_topo = vzalloc(size);
+	if (!group_topo)
+		goto unlock;
+
+	memcpy(group_topo, icap->group_topo, size);
+	range = xocl_addr_translator_get_range(xdev);
+	for ( i=0; i< group_topo->m_count; ++i) {
+		if (IS_HOST_MEM(group_topo->m_mem_data[i].m_tag)){
+			/* m_size in KB, convert Byte to KB */
+			group_topo->m_mem_data[i].m_size = (range>>10);
+		} else
+			continue;
+	}
+
+	if (count < size - offset)
+		nread = count;
+	else
+		nread = size - offset;
+
+	memcpy(buffer, ((char *)group_topo) + offset, nread);
+unlock:
+	icap_xclbin_rd_unlock(icap);
+	if (group_topo)
+		vfree(group_topo);
+
+	return nread;
+}
+
+static struct bin_attribute group_topology_attr = {
+	.attr = {
+		.name = "group_topology",
+		.mode = 0444
+	},
+	.read = icap_read_group_topology,
 	.write = NULL,
 	.size = 0
 };
@@ -3581,7 +3732,9 @@ static struct bin_attribute *icap_bin_attrs[] = {
 	&debug_ip_layout_attr,
 	&ip_layout_attr,
 	&connectivity_attr,
+	&group_connectivity_attr,
 	&mem_topology_attr,
+	&group_topology_attr,
 	&rp_bit_attr,
 	&clock_freq_topology_attr,
 	NULL,

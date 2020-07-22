@@ -932,7 +932,9 @@ enum data_kind {
 	CUR_VCC_INT,
 	IDCODE,
 	IPLAYOUT_AXLF,
+	GROUPTOPO_AXLF,
 	MEMTOPO_AXLF,
+	GROUPCONNECTIVITY_AXLF,
 	CONNECTIVITY_AXLF,
 	DEBUG_IPLAYOUT_AXLF,
 	PEER_CONN,
@@ -1224,7 +1226,8 @@ enum {
 
 #define XOCL_GET_MEM_TOPOLOGY(xdev, mem_topo)						\
 	(xocl_icap_get_xclbin_metadata(xdev, MEMTOPO_AXLF, (void **)&mem_topo))
-
+#define XOCL_GET_GROUP_TOPOLOGY(xdev, group_topo)					\
+	(xocl_icap_get_xclbin_metadata(xdev, GROUPTOPO_AXLF, (void **)&group_topo))
 #define XOCL_GET_IP_LAYOUT(xdev, ip_layout)						\
 	(xocl_icap_get_xclbin_metadata(xdev, IPLAYOUT_AXLF, (void **)&ip_layout))
 #define XOCL_GET_XCLBIN_ID(xdev, xclbin_id)						\
@@ -1232,6 +1235,8 @@ enum {
 
 
 #define XOCL_PUT_MEM_TOPOLOGY(xdev)						\
+	xocl_icap_put_xclbin_metadata(xdev)
+#define XOCL_PUT_GROUP_TOPOLOGY(xdev)						\
 	xocl_icap_put_xclbin_metadata(xdev)
 #define XOCL_PUT_IP_LAYOUT(xdev)						\
 	xocl_icap_put_xclbin_metadata(xdev)
