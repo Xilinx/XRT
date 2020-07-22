@@ -82,7 +82,7 @@ ReportAie::writeReport( const xrt_core::device * _pDevice,
             for (auto& gr: pt.get_child("aie_metadata.graphs")) {
                 std::string name,col,row,memcol,memrow,id,memaddr;
                 boost::property_tree::ptree& graph = gr.second;
-                _output << boost::format("  GRAPH[%2d]:%2s\n") % graph.get<std::string>("id") % graph.get<std::string>("name");
+                _output << boost::format("  GRAPH[%2d] Name:%2s\n") % graph.get<std::string>("id") % graph.get<std::string>("name");
                 _output << boost::format("    SNo.  %-20s%-30s%-30s\n") % "Core [C:R]" % "Iteration_Memory [C:R]" % "Iteration_Memory_Addresses";
                 int count = 0;
                 auto row_it = gr.second.get_child("core_rows").begin();
@@ -144,9 +144,14 @@ ReportAie::writeReport( const xrt_core::device * _pDevice,
                 _output << boost::format("  GMIOs:[%2d]\n") % count;
                 _output << boost::format("    id:%-25s\n") % gmio_node.second.get<std::string>("id");
                 _output << boost::format("    name:%-25s\n") % gmio_node.second.get<std::string>("name");
+                _output << boost::format("    logical_name:%-25s\n") % gmio_node.second.get<std::string>("logical_name");
                 _output << boost::format("    type:%-25d\n") % gmio_node.second.get<uint16_t>("type");
                 _output << boost::format("    shim_col:%-25d\n") % gmio_node.second.get<uint16_t>("shim_column");
+                _output << boost::format("    channel_number:%-25d\n") % gmio_node.second.get<uint16_t>("channel_number");
+                _output << boost::format("    stream_id:%-25d\n") % gmio_node.second.get<uint16_t>("stream_id");
                 _output << boost::format("    burst_len:%-25d\n") % gmio_node.second.get<uint16_t>("burst_length_in_16byte");
+                _output << boost::format("    PL_port_name:%-25d\n") % gmio_node.second.get<std::string>("PL_port_name");
+                _output << boost::format("    PL_parameter_name:%-25d\n") % gmio_node.second.get<std::string>("PL_parameter_name");
                 count++;
                 _output << std::endl;
             }
