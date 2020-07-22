@@ -77,7 +77,6 @@ ReportAie::writeReport( const xrt_core::device * _pDevice,
   for(auto& kv : aies) {
     boost::property_tree::ptree& aie_data = kv.second;
     _output << boost::format("  %-10s\n") % aie_data.get<std::string>("description");
-//#ifdef XRT_AIE_BUILD
         boost::property_tree::ptree& pt = aie_data.get_child("data", empty_ptree);
         try {
             for (auto& gr: pt.get_child("aie_metadata.graphs")) {
@@ -155,9 +154,6 @@ ReportAie::writeReport( const xrt_core::device * _pDevice,
         } catch(std::exception const& e) {
             // eat the exception, probably bad path
         }
-//#endif
-
-//-------------------------------------------------------------
   }
   _output << std::endl;
 }
