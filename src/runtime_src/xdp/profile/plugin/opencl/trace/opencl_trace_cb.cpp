@@ -14,6 +14,8 @@
  * under the License.
  */
 
+#include <iostream>
+
 #include "xdp/profile/plugin/opencl/trace/opencl_trace_cb.h"
 #include "xdp/profile/plugin/opencl/trace/opencl_trace_plugin.h"
 
@@ -84,7 +86,7 @@ namespace xdp {
 			       timestamp,
 			       (isP2P ? READ_BUFFER_P2P : READ_BUFFER),
 			       deviceAddress,
-			       (db->getDynamicInfo()).addString(memoryResource),
+			       memoryResource ? (db->getDynamicInfo()).addString(memoryResource) : 0,
 			       bufferSize) ;
 
     (db->getDynamicInfo()).addEvent(event) ;
@@ -123,7 +125,7 @@ namespace xdp {
 			       timestamp,
 			       (isP2P ? WRITE_BUFFER_P2P : WRITE_BUFFER),
 			       deviceAddress,
-			       (db->getDynamicInfo()).addString(memoryResource),
+			       memoryResource ? (db->getDynamicInfo()).addString(memoryResource) : 0,
 			       bufferSize) ;
 
     (db->getDynamicInfo()).addEvent(event) ;
@@ -164,9 +166,9 @@ namespace xdp {
 			   timestamp,
 			   (isP2P ? COPY_BUFFER_P2P : COPY_BUFFER),
 			   srcDeviceAddress,
-			   (db->getDynamicInfo()).addString(srcMemoryResource),
+			   srcMemoryResource ? (db->getDynamicInfo()).addString(srcMemoryResource) : 0,
 			   dstDeviceAddress,
-			   (db->getDynamicInfo()).addString(dstMemoryResource),
+			   dstMemoryResource ? (db->getDynamicInfo()).addString(dstMemoryResource) : 0,
 			   bufferSize) ;
 
     (db->getDynamicInfo()).addEvent(event) ;
@@ -205,9 +207,9 @@ namespace xdp {
     VTFEvent* event = 
       new KernelEnqueue(start, 
 			timestamp,
-			(db->getDynamicInfo()).addString(deviceName),
-			(db->getDynamicInfo()).addString(binaryName),
-			(db->getDynamicInfo()).addString(kernelName),
+			deviceName ? (db->getDynamicInfo()).addString(deviceName) : 0,
+			binaryName ? (db->getDynamicInfo()).addString(binaryName) : 0,
+			kernelName ? (db->getDynamicInfo()).addString(kernelName) : 0,
 			workgroupConfigurationX,
 			workgroupConfigurationY,
 			workgroupConfigurationZ,

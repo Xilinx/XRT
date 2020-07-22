@@ -134,7 +134,7 @@ public:
   /*virtual*/ void
   set_profile_action(event::action_profile_type&& action)
   {
-    if (xrt::config::get_profile())
+    if (xrt::config::get_timeline_trace())
       m_profile_action = std::move(action);
   }
 

@@ -125,6 +125,8 @@ set_status(cl_int s)
   //Make the profile logging calls before notifying the event
   //and before removing it from queue. Otherwise the main could exit
   //deleting datastrucutres while the profile call is ongoing (CR-1003505)
+  trigger_profile_action(m_status, "") ;
+  trigger_lop_action(m_status) ;
   //profile::log(this,m_status);
 
   if (complete) {
@@ -157,6 +159,8 @@ queue(bool blocking_submit)
     if (queued) {
       XOCL_DEBUG(std::cout,"event(",m_uid,") [",to_string(m_status),"->",to_string(CL_QUEUED),"]\n");
       m_status = CL_QUEUED;
+      trigger_profile_action(m_status, "") ;
+      trigger_lop_action(m_status) ;
       //profile::log(this,m_status);
       time_set(CL_QUEUED);
     }
@@ -193,6 +197,8 @@ submit()
 
     XOCL_DEBUG(std::cout,"event(",m_uid,") [",to_string(m_status),"->",to_string(CL_SUBMITTED),"]\n");
     m_status = CL_SUBMITTED;
+    trigger_profile_action(m_status, "") ;
+    trigger_lop_action(m_status) ;
     //profile::log(this,m_status);
     time_set(CL_SUBMITTED);
   }
