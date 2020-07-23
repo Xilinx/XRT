@@ -138,6 +138,7 @@ namespace xdp {
       (db->getDynamicInfo()).getDependencyMap() ;
     for (auto dependency : dependencies)
     {
+      // Dependency is a map from XRT event ID to a vector of XRT event IDs
       for (auto dependent : dependency.second)
       {
 	fout << (db->getDynamicInfo()).lookupOpenCLMapping(dependency.first)

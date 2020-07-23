@@ -100,7 +100,7 @@ namespace xdp {
       {
 	dependentEvents.push_back(dependencies[i]) ;
       }
-      (db->getDynamicInfo()).addDependencies(event->getEventId(), 
+      (db->getDynamicInfo()).addDependencies(id,
 					     dependentEvents);
     }
   }
@@ -140,8 +140,7 @@ namespace xdp {
       {
 	dependentEvents.push_back(dependencies[i]) ;
       }
-      (db->getDynamicInfo()).addDependencies(event->getEventId(), 
-					     dependentEvents);
+      (db->getDynamicInfo()).addDependencies(id, dependentEvents);
     }
   }
 
@@ -184,7 +183,7 @@ namespace xdp {
       {
 	dependentEvents.push_back(dependencies[i]) ;
       }
-      (db->getDynamicInfo()).addDependencies(event->getEventId(), 
+      (db->getDynamicInfo()).addDependencies(id, 
 					     dependentEvents);
     }
   }
@@ -231,7 +230,7 @@ namespace xdp {
       {
 	dependentEvents.push_back(dependencies[i]) ;
       }
-      (db->getDynamicInfo()).addDependencies(event->getEventId(), 
+      (db->getDynamicInfo()).addDependencies(id,
 					     dependentEvents);
     }
   }
