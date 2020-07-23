@@ -206,6 +206,10 @@ namespace xdp {
     uint64_t start = 0 ;
     
     if (!isStart) start = (db->getDynamicInfo()).matchingStart(id) ;
+    std::string workgroupConfiguration = 
+      std::to_string(workgroupConfigurationX) + ":" +
+      std::to_string(workgroupConfigurationY) + ":" +
+      std::to_string(workgroupConfigurationZ) ;
 
     VTFEvent* event = 
       new KernelEnqueue(start, 
@@ -213,9 +217,7 @@ namespace xdp {
 			deviceName ? (db->getDynamicInfo()).addString(deviceName) : 0,
 			binaryName ? (db->getDynamicInfo()).addString(binaryName) : 0,
 			kernelName ? (db->getDynamicInfo()).addString(kernelName) : 0,
-			workgroupConfigurationX,
-			workgroupConfigurationY,
-			workgroupConfigurationZ,
+			(db->getDynamicInfo()).addString(workgroupConfiguration.c_str()),
 			workgroupSize) ;
 
     (db->getDynamicInfo()).addEvent(event) ;

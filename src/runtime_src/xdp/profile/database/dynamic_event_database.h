@@ -114,8 +114,13 @@ namespace xdp {
 
     // OpenCL mappings and dependencies
     XDP_EXPORT void addOpenCLMapping(uint64_t openclID, uint64_t eventID) ;
+    XDP_EXPORT uint64_t lookupOpenCLMapping(uint64_t openclID)
+    {
+      return openclEventMap[openclID] ;
+    }
     XDP_EXPORT void addDependencies(uint64_t eventID,
 				    const std::vector<uint64_t>& openclIDs) ;
+    XDP_EXPORT std::map<uint64_t, std::vector<uint64_t>> getDependencyMap() ;
   } ;
   
 }

@@ -134,7 +134,18 @@ namespace xdp {
   void OpenCLTraceWriter::writeHumanReadableDependencies()
   {
     fout << "DEPENDENCIES" << std::endl ;
-    // No dependencies in low overhead profiling
+    std::map<uint64_t, std::vector<uint64_t>> dependencies = 
+      (db->getDynamicInfo()).getDependencyMap() ;
+    for (auto dependency : dependencies)
+    {
+      for (auto dependent : dependency.second)
+      {
+	fout << (db->getDynamicInfo()).lookupOpenCLMapping(dependency.first)
+	     << ","
+	     << (db->getDynamicInfo()).lookupOpenCLMapping(dependent)
+	     << std::endl ;
+      }
+    }
   }
 
   // ************** Binary output functions ******************

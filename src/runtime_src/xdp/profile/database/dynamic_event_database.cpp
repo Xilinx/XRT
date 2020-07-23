@@ -185,4 +185,11 @@ namespace xdp {
     std::lock_guard<std::mutex> lock(dbLock) ;
     dependencyMap[eventID] = openclIDs ;
   }
+
+  std::map<uint64_t, std::vector<uint64_t>>
+  VPDynamicDatabase::getDependencyMap()
+  {
+    std::lock_guard<std::mutex> lock(dbLock) ;
+    return dependencyMap ;
+  }
 }

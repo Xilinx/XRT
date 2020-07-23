@@ -35,16 +35,18 @@ namespace xdp {
     uint64_t deviceName ; // string
     uint64_t binaryName ; // string
     uint64_t kernelName ; // string
-    size_t workgroupConfigurationX ;
-    size_t workgroupConfigurationY ;
-    size_t workgroupConfigurationZ ;
+    uint64_t workgroupConfiguration ; // string
+    //size_t workgroupConfigurationX ;
+    //size_t workgroupConfigurationY ;
+    //size_t workgroupConfigurationZ ;
     int workgroupSize ;
 
     KernelEnqueue() = delete ;
   public:
     XDP_EXPORT KernelEnqueue(uint64_t s_id, double ts, 
 			     uint64_t dName, uint64_t bName, uint64_t kName,
-			     size_t wgcX, size_t wgcY, size_t wgcZ, int wgs) ;
+			     uint64_t wgc, int wgs) ;
+			     //size_t wgcX, size_t wgcY, size_t wgcZ, int wgs) ;
 
     XDP_EXPORT ~KernelEnqueue() ;
 

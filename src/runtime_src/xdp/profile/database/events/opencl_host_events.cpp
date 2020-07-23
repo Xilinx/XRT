@@ -27,13 +27,15 @@ namespace xdp {
 			       uint64_t dName, 
 			       uint64_t bName, 
 			       uint64_t kName,
-			       size_t wgcX, size_t wgcY, size_t wgcZ,
+			       uint64_t wgc,
+			       //size_t wgcX, size_t wgcY, size_t wgcZ,
 			       int wgs) :
     VTFEvent(s_id, ts, KERNEL_ENQUEUE),
     deviceName(dName), binaryName(bName), kernelName(kName),
-    workgroupConfigurationX(wgcX), 
-    workgroupConfigurationY(wgcY),
-    workgroupConfigurationZ(wgcZ),
+    workgroupConfiguration(wgc),
+    //workgroupConfigurationX(wgcX), 
+    //workgroupConfigurationY(wgcY),
+    //workgroupConfigurationZ(wgcZ),
     workgroupSize(wgs)
   {
   }
@@ -45,11 +47,14 @@ namespace xdp {
   void KernelEnqueue::dump(std::ofstream& fout, uint32_t bucket)
   {
     VTFEvent::dump(fout, bucket) ;
-    fout << "," 
-	 << workgroupConfigurationX << ":" 
-	 << workgroupConfigurationY << ":" 
-	 << workgroupConfigurationZ ;
+    fout << "," << kernelName ;
+    fout << "," << workgroupConfiguration ;
+    //fout << "," 
+    //	 << workgroupConfigurationX << ":" 
+    //	 << workgroupConfigurationY << ":" 
+    //	 << workgroupConfigurationZ ;
     fout << "," << workgroupSize ;
+    fout << "," << 0 ; // This is the "size"
     fout << std::endl; 
   }
 
@@ -122,9 +127,10 @@ namespace xdp {
     VTFEvent::dump(fout, bucket) ;
     if (0 == start_id) // Dump the detailed information only for start event
     {
-      fout << "," << deviceAddress
-	   << "," << memoryResource
-	   << "," << bufferSize ;
+      fout << "," << bufferSize ;
+      fout << ",0x" << std::hex << deviceAddress << std::dec ;
+      fout << "," << memoryResource ;
+      fout << ",0x" << std::hex << threadId << std::dec ;
     }
     fout << std::endl ;
   }
@@ -150,11 +156,13 @@ namespace xdp {
     VTFEvent::dump(fout, bucket) ;
     if (0 == start_id) // Dump the detailed information only for start event
     {
-      fout << "," << srcDeviceAddress
+      fout << "," << 1 ; // Transfer type
+      fout << "," << bufferSize 
+	   << "," << srcDeviceAddress
 	   << "," << srcMemoryResource
 	   << "," << dstDeviceAddress
-	   << "," << dstMemoryResource
-	   << "," << bufferSize ;
+	   << "," << dstMemoryResource 
+	   << ",0x" << std::hex << threadId << std::dec ;
     }
     fout << std::endl ;
   }
