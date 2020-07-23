@@ -28,16 +28,15 @@ namespace xdp {
 			       uint64_t bName, 
 			       uint64_t kName,
 			       uint64_t wgc,
-			       //size_t wgcX, size_t wgcY, size_t wgcZ,
-			       int wgs) :
+			       int wgs,
+			       const char* enqueueId) :
     VTFEvent(s_id, ts, KERNEL_ENQUEUE),
     deviceName(dName), binaryName(bName), kernelName(kName),
     workgroupConfiguration(wgc),
-    //workgroupConfigurationX(wgcX), 
-    //workgroupConfigurationY(wgcY),
-    //workgroupConfigurationZ(wgcZ),
-    workgroupSize(wgs)
+    workgroupSize(wgs),
+    identifier("")
   {
+    if (enqueueId != nullptr) identifier = enqueueId ;
   }
 
   KernelEnqueue::~KernelEnqueue()
@@ -49,10 +48,6 @@ namespace xdp {
     VTFEvent::dump(fout, bucket) ;
     fout << "," << kernelName ;
     fout << "," << workgroupConfiguration ;
-    //fout << "," 
-    //	 << workgroupConfigurationX << ":" 
-    //	 << workgroupConfigurationY << ":" 
-    //	 << workgroupConfigurationZ ;
     fout << "," << workgroupSize ;
     fout << "," << 0 ; // This is the "size"
     fout << std::endl; 

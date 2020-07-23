@@ -336,4 +336,10 @@ namespace xdp {
     runSummary->write(false) ;
   }
 
+  void VPStaticDatabase::addEnqueuedKernel(const std::string& identifier)
+  {
+    std::lock_guard<std::mutex> lock(dbLock) ;
+    enqueuedKernels.emplace(identifier) ;
+  }
+
 }

@@ -732,9 +732,9 @@ namespace xocl {
 	       {
 		 ndrange_cb(e->get_uid(), //XRTIdToXDPId[e->get_uid()],
 			    false,
-			    nullptr,
-			    nullptr,
-			    nullptr,
+			    deviceName.c_str(),
+			    binaryName.c_str(),
+			    kernelName.c_str(),
 			    0,
 			    0,
 			    0,

@@ -153,6 +153,7 @@ namespace xdp {
 
     // ***** OpenCL Information ******
     std::set<uint64_t> commandQueueAddresses ;
+    std::set<std::string> enqueuedKernels ; 
 
     /* Device Specific Information mapped to the Unique Device Id
      * Device Information contains :
@@ -187,6 +188,8 @@ namespace xdp {
       { return openedFiles ; }
     inline std::set<uint64_t>& getCommandQueueAddresses() 
       { return commandQueueAddresses ; }
+    inline std::set<std::string>& getEnqueuedKernels()
+      { return enqueuedKernels ; }
 
     inline DeviceInfo* getDeviceInfo(uint64_t deviceId)
     {
@@ -335,6 +338,7 @@ namespace xdp {
 
     XDP_EXPORT void addOpenedFile(const std::string& name, 
 				  const std::string& type) ;
+    XDP_EXPORT void addEnqueuedKernel(const std::string& identifier) ;
   } ;
 
 }

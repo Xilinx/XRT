@@ -33,7 +33,7 @@ namespace xdp {
     int generalAPIBucket ;
     int readBucket ;
     int writeBucket ;
-    int enqueueBucket ;
+    std::map<std::string, int> enqueueBuckets ;
 
     void setupBuckets() ;
 

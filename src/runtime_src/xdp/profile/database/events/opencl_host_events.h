@@ -36,19 +36,20 @@ namespace xdp {
     uint64_t binaryName ; // string
     uint64_t kernelName ; // string
     uint64_t workgroupConfiguration ; // string
-    //size_t workgroupConfigurationX ;
-    //size_t workgroupConfigurationY ;
-    //size_t workgroupConfigurationZ ;
     int workgroupSize ;
+
+    std::string identifier ;
 
     KernelEnqueue() = delete ;
   public:
     XDP_EXPORT KernelEnqueue(uint64_t s_id, double ts, 
 			     uint64_t dName, uint64_t bName, uint64_t kName,
-			     uint64_t wgc, int wgs) ;
-			     //size_t wgcX, size_t wgcY, size_t wgcZ, int wgs) ;
+			     uint64_t wgc, int wgs,
+			     const char* enqueueId) ;
 
     XDP_EXPORT ~KernelEnqueue() ;
+
+    inline std::string getIdentifier() { return identifier ; }
 
     virtual bool isHostEvent() { return true ; }
     virtual bool isOpenCLHostEvent() { return true ; }

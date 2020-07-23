@@ -19,6 +19,7 @@
 #include "xdp/profile/database/dynamic_event_database.h"
 
 #include "xdp/profile/database/events/opencl_api_calls.h"
+#include "xdp/profile/database/events/opencl_host_events.h"
 
 #include "xdp/profile/plugin/vp_base/utility.h"
 
@@ -29,7 +30,7 @@ namespace xdp {
 		   "1.0", 
 		   getCurrentDateTime(), 
 		   9 /* ns */),
-    generalAPIBucket(-1), readBucket(-1), writeBucket(-1), enqueueBucket(-1)
+    generalAPIBucket(-1), readBucket(-1), writeBucket(-1)
   {
   }
 
@@ -51,7 +52,11 @@ namespace xdp {
     ++rowID ;
     writeBucket = rowID ;
     ++rowID ;
-    enqueueBucket = rowID ;
+    for (auto e : (db->getStaticInfo()).getEnqueuedKernels())
+    {
+      enqueueBuckets[e] = rowID ;
+      ++rowID ;
+    }
   }
 
   // ************** Human Readable output functions ******************
@@ -85,8 +90,15 @@ namespace xdp {
 	 << ",Write,Write data transfer from host to global memory"
 	 << std::endl ;
     fout << "Group_End,Data Transfer" << std::endl ;
-    fout << "Dynamic_Row_Summary," << enqueueBucket 
-	 << ",Kernel Enqueues,Activity in kernel enqueues" << std::endl ;
+    fout << "Group_Start,Kernel Enqueues" << std::endl ;
+    //fout << "Dynamic_Row_Summary," << enqueueSummaryBucket 
+    //	 << ",Kernel Enqueues,Activity in kernel enqueues" << std::endl ;
+    for (auto b : enqueueBuckets)
+    {
+      fout << "Dynamic_Row_Summary," << b.second << "," << b.first 
+	   << ",Kernel Enqueue" << std::endl ;
+    }
+    fout << "Group_End,Kernel Enqueues" << std::endl ;
     fout << "Group_End,Host APIs" << std::endl ;
   }
 
@@ -125,7 +137,9 @@ namespace xdp {
       }
       else if (e->isKernelEnqueue())
       {
-	bucket = enqueueBucket ;
+	// Construct the name
+	KernelEnqueue* ke = dynamic_cast<KernelEnqueue*>(e) ;
+	bucket = enqueueBuckets[ke->getIdentifier()] ;
       }
       e->dump(fout, bucket) ;
     }

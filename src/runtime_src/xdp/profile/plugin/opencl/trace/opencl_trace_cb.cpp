@@ -210,6 +210,16 @@ namespace xdp {
       std::to_string(workgroupConfigurationY) + ":" +
       std::to_string(workgroupConfigurationZ) ;
 
+    std::string enqueueIdentifier = "" ;
+
+    if (deviceName != nullptr && binaryName != nullptr && kernelName != nullptr)
+    {
+      enqueueIdentifier = std::string(deviceName) + ":" +
+	                  std::string(binaryName) + ":" +
+	                  std::string(kernelName) ;
+      (db->getStaticInfo()).addEnqueuedKernel(enqueueIdentifier) ;
+    }
+
     VTFEvent* event = 
       new KernelEnqueue(start, 
 			timestamp,
@@ -217,7 +227,8 @@ namespace xdp {
 			binaryName ? (db->getDynamicInfo()).addString(binaryName) : 0,
 			kernelName ? (db->getDynamicInfo()).addString(kernelName) : 0,
 			(db->getDynamicInfo()).addString(workgroupConfiguration.c_str()),
-			workgroupSize) ;
+			workgroupSize,
+			enqueueIdentifier == "" ? nullptr : enqueueIdentifier.c_str()) ;
 
     (db->getDynamicInfo()).addEvent(event) ;
     (db->getDynamicInfo()).addOpenCLMapping(id, event->getEventId()) ;
