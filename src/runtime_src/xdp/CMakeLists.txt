@@ -26,6 +26,10 @@ set(XRT_XDP_PROFILE_XMA_PLUGIN_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/plug
 set(XRT_XDP_PROFILE_OCL_PLUGIN_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/ocl")
 set(XRT_XDP_PROFILE_HAL_PLUGIN_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/hal")
 set(XRT_XDP_PROFILE_HAL_API_PLUGIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/hal_api_interface")
+set(XRT_XDP_PROFILE_AIE_PLUGIN_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/aie")
+set(XRT_XDP_PROFILE_AIE_WRITER_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer/aie")
+set(XRT_XDP_PROFILE_NOC_PLUGIN_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/noc")
+set(XRT_XDP_PROFILE_NOC_WRITER_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer/noc")
 set(XRT_XDP_PROFILE_COLLECTION_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/collection")
 set(XRT_XDP_PROFILE_WRITER_DIR         "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer")
 set(XRT_XDP_PROFILE_HAL_WRITER_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer/hal")
@@ -141,6 +145,20 @@ file(GLOB XRT_XDP_PROFILE_HAL_INTERFACE_PLUGIN_FILES
   "${XRT_XDP_PROFILE_HAL_API_PLUGIN_DIR}/*.cpp"
   )
 
+file(GLOB XRT_XDP_PROFILE_AIE_PLUGIN_FILES
+  "${XRT_XDP_PROFILE_AIE_PLUGIN_DIR}/*.h"
+  "${XRT_XDP_PROFILE_AIE_PLUGIN_DIR}/*.cpp"
+  "${XRT_XDP_PROFILE_AIE_WRITER_DIR}/*.h"
+  "${XRT_XDP_PROFILE_AIE_WRITER_DIR}/*.cpp"
+  )
+
+file(GLOB XRT_XDP_PROFILE_NOC_PLUGIN_FILES
+  "${XRT_XDP_PROFILE_NOC_PLUGIN_DIR}/*.h"
+  "${XRT_XDP_PROFILE_NOC_PLUGIN_DIR}/*.cpp"
+  "${XRT_XDP_PROFILE_NOC_WRITER_DIR}/*.h"
+  "${XRT_XDP_PROFILE_NOC_WRITER_DIR}/*.cpp"
+  )
+
 file(GLOB XRT_XDP_PROFILE_LOP_PLUGIN_FILES
   "${XRT_XDP_PROFILE_LOP_PLUGIN_DIR}/*.h"
   "${XRT_XDP_PROFILE_LOP_PLUGIN_DIR}/*.cpp"
@@ -192,6 +210,8 @@ add_library(oclxdp SHARED ${XRT_XDP_PROFILE_OCL_PLUGIN_FILES})
 # Plugin modules
 add_library(xdp_hal_plugin MODULE ${XRT_XDP_PROFILE_HAL_PLUGIN_FILES})
 add_library(xdp_hal_api_interface_plugin MODULE ${XRT_XDP_PROFILE_HAL_INTERFACE_PLUGIN_FILES})
+add_library(xdp_aie_plugin MODULE ${XRT_XDP_PROFILE_AIE_PLUGIN_FILES})
+add_library(xdp_noc_plugin MODULE ${XRT_XDP_PROFILE_NOC_PLUGIN_FILES})
 add_library(xdp_debug_plugin MODULE ${XRT_XDP_DEBUG_FILES})
 add_library(xdp_appdebug_plugin MODULE ${XRT_XDP_APPDEBUG_FILES})
 add_library(xdp_lop_plugin MODULE ${XRT_XDP_PROFILE_LOP_PLUGIN_FILES})
@@ -204,6 +224,8 @@ add_dependencies(oclxdp xilinxopencl xdp)
 add_dependencies(xdp_core xrt_coreutil)
 add_dependencies(xdp_hal_plugin xdp_core xdp xrt_core)
 add_dependencies(xdp_hal_api_interface_plugin xdp )
+add_dependencies(xdp_aie_plugin xdp_core xrt_core )
+add_dependencies(xdp_noc_plugin xdp_core xrt_core )
 add_dependencies(xdp_debug_plugin xrt_coreutil xilinxopencl)
 add_dependencies(xdp_appdebug_plugin xrt_coreutil xilinxopencl)
 add_dependencies(xdp_lop_plugin xdp_core)
@@ -216,6 +238,8 @@ target_link_libraries(oclxdp xilinxopencl xdp)
 target_link_libraries(xdp_core xrt_coreutil)
 target_link_libraries(xdp_hal_plugin xdp_core xdp xrt_core)
 target_link_libraries(xdp_hal_api_interface_plugin xdp xrt_core)
+target_link_libraries(xdp_aie_plugin xdp_core xrt_core)
+target_link_libraries(xdp_noc_plugin xdp_core xrt_core)
 target_link_libraries(xdp_debug_plugin xrt_coreutil xilinxopencl)
 target_link_libraries(xdp_appdebug_plugin xrt_coreutil xilinxopencl)
 target_link_libraries(xdp_lop_plugin xdp_core)
@@ -230,6 +254,8 @@ set_target_properties(xdp PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${X
 set_target_properties(oclxdp PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_hal_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_hal_api_interface_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
+set_target_properties(xdp_aie_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
+set_target_properties(xdp_noc_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_debug_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_appdebug_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_lop_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
@@ -239,7 +265,7 @@ set_target_properties(xdp_hal_device_offload_plugin PROPERTIES VERSION ${XRT_VER
 
 install (TARGETS xdp oclxdp xdp_core LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR})
 
-install (TARGETS xdp_hal_plugin xdp_hal_api_interface_plugin xdp_debug_plugin xdp_appdebug_plugin xdp_lop_plugin xdp_user_plugin xdp_device_offload_plugin xdp_hal_device_offload_plugin LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module)
+install (TARGETS xdp_hal_plugin xdp_hal_api_interface_plugin xdp_aie_plugin xdp_noc_plugin xdp_debug_plugin xdp_appdebug_plugin xdp_lop_plugin xdp_user_plugin xdp_device_offload_plugin xdp_hal_device_offload_plugin LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module)
 
 install (FILES "${XRT_XDP_PROFILE_XMA_PLUGIN_DIR}/xma_profile.h" DESTINATION ${XRT_INSTALL_INCLUDE_DIR})
 

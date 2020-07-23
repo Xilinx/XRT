@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,26 +14,34 @@
  * under the License.
  */
 
-#ifndef AIE_PLUGIN_DOT_H
-#define AIE_PLUGIN_DOT_H
+#ifndef XDP_AIE_PLUGIN_DOT_H
+#define XDP_AIE_PLUGIN_DOT_H
+
+#include <vector>
+#include <string>
+#include <thread>
 
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
+#include "xdp/config.h"
 
 namespace xdp {
 
-  class AIEPlugin : public XDPPlugin
+  class AIEProfilingPlugin : public XDPPlugin
   {
   public:
-    XDP_EXPORT
-    AIEPlugin();
+    AIEProfilingPlugin();
+    ~AIEProfilingPlugin();
 
-    XDP_EXPORT
-    ~AIEPlugin();
+  private:
+    void pollAIECounters();
 
-    XDP_EXPORT
-    virtual void writeAll(bool openNewFiles);
+  private:
+    // AIE profiling uses its own thread
+    bool mKeepPolling;
+    std::thread mPollingThread;
+    std::vector<std::string> mDevices;
   };
 
-}
+} // end namespace xdp
 
 #endif

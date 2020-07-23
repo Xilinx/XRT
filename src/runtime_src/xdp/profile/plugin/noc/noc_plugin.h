@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,26 +14,34 @@
  * under the License.
  */
 
-#ifndef NOC_PLUGIN_DOT_H
-#define NOC_PLUGIN_DOT_H
+#ifndef XDP_NOC_PLUGIN_DOT_H
+#define XDP_NOC_PLUGIN_DOT_H
+
+#include <vector>
+#include <string>
+#include <thread>
 
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
+#include "xdp/config.h"
 
 namespace xdp {
 
-  class NOCPlugin : public XDPPlugin
+  class NOCProfilingPlugin : public XDPPlugin
   {
   public:
-    XDP_EXPORT
-    NOCPlugin();
+    NOCProfilingPlugin();
+    ~NOCProfilingPlugin();
 
-    XDP_EXPORT
-    ~NOCPlugin();
+  private:
+    void pollNOCCounters();
 
-    XDP_EXPORT
-    virtual void writeAll(bool openNewFiles);
+  private:
+    // NOC profiling uses its own thread
+    bool mKeepPolling;
+    std::thread mPollingThread;
+    std::vector<std::string> mDevices;
   };
 
-}
+} // end namespace xdp
 
 #endif
