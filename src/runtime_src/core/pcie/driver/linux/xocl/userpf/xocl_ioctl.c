@@ -68,6 +68,15 @@ int xocl_execbuf_ioctl(struct drm_device *dev,
 	return ret;
 }
 
+int xocl_execbuf_callback_ioctl(struct drm_device *dev,
+                       void *data,
+                       struct drm_file *filp)
+{
+	struct xocl_drm *drm_p = dev->dev_private;
+	return xocl_exec_client_ioctl(drm_p->xdev,
+				     DRM_XOCL_EXECBUF_CB, data, filp);
+}
+
 /*
  * Create a context (only shared supported today) on a CU. Take a lock on xclbin if
  * it has not been acquired before. Shared the same lock for all context requests

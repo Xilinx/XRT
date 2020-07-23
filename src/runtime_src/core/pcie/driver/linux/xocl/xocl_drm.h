@@ -22,6 +22,9 @@
 #include <linux/hashtable.h>
 #endif
 
+
+typedef void (*xocl_execbuf_callback)(unsigned long data, int error);
+
 /**
  * struct drm_xocl_exec_metadata - Meta data for exec bo
  *
@@ -29,8 +32,11 @@
  * @active: Reverse mapping to kds command object managed exclusively by kds
  */
 struct drm_xocl_exec_metadata {
-	enum drm_xocl_execbuf_state state;
-	struct xocl_cmd            *active;
+        enum drm_xocl_execbuf_state state;
+        struct xocl_cmd            *active;
+	struct work_struct          compltn_work;
+	xocl_execbuf_callback	    execbuf_cb_fn;
+	void			   *execbuf_cb_data;
 };
 
 struct xocl_cma_memory {

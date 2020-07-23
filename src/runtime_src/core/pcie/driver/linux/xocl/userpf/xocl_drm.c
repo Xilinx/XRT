@@ -356,6 +356,16 @@ static const struct drm_ioctl_desc xocl_ioctls[] = {
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(XOCL_FREE_CMA, xocl_free_cma_ioctl,
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+#define NUM_KERNEL_IOCTLS 4
+	DRM_IOCTL_DEF_DRV(XOCL_KINFO_BO, xocl_kinfo_bo_ioctl,
+			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(XOCL_MAP_KERN_MEM, xocl_map_kern_mem_ioctl,
+			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(XOCL_EXECBUF_CB, xocl_execbuf_callback_ioctl,
+			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(XOCL_SYNC_BO_CB, xocl_sync_bo_callback_ioctl,
+			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+
 };
 
 static long xocl_drm_ioctl(struct file *filp,
@@ -395,7 +405,7 @@ static struct drm_driver mm_drm_driver = {
 	.gem_vm_ops			= &xocl_vm_ops,
 
 	.ioctls				= xocl_ioctls,
-	.num_ioctls			= ARRAY_SIZE(xocl_ioctls),
+	.num_ioctls			= (ARRAY_SIZE(xocl_ioctls)-NUM_KERNEL_IOCTLS),
 	.fops				= &xocl_driver_fops,
 
 	.gem_prime_get_sg_table		= xocl_gem_prime_get_sg_table,

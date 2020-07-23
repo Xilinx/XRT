@@ -941,6 +941,7 @@ static int process_completions(struct xdma_engine *engine,
 
 		if (req->sw_desc_cnt == req->desc_completed) {
 			list_del(&req->entry);
+			spin_unlock(&engine->req_list_lock);
 			if (req->cb && req->cb->io_done) {
 				struct xdma_io_cb *cb = req->cb;
 
@@ -948,6 +949,7 @@ static int process_completions(struct xdma_engine *engine,
 				xdma_request_release(engine->xdev, req);
 			} else
 				wake_up(&req->arbtr_wait);
+			spin_lock(&engine->req_list_lock);
 		}
 		spin_unlock(&engine->req_list_lock);
 	}
