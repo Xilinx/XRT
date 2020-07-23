@@ -507,6 +507,8 @@ struct xocl_rom_funcs {
 		size_t *fw_size);
 	bool (*passthrough_virtualization_on)(struct platform_device *pdev);
 	char *(*get_uuid)(struct platform_device *pdev);
+	bool (*flat_shell_check)(struct platform_device *pdev);
+	bool (*cmc_in_bitfile)(struct platform_device *pdev);
 };
 
 #define ROM_DEV(xdev)	\
@@ -550,6 +552,10 @@ struct xocl_rom_funcs {
 	ROM_OPS(xdev)->passthrough_virtualization_on(ROM_DEV(xdev)) : false)
 #define xocl_rom_get_uuid(xdev)				\
 	(ROM_CB(xdev, get_uuid) ? ROM_OPS(xdev)->get_uuid(ROM_DEV(xdev)) : NULL)
+#define	xocl_flat_shell_check(xdev)		\
+	(ROM_CB(xdev, flat_shell_check) ? ROM_OPS(xdev)->flat_shell_check(ROM_DEV(xdev)) : false)
+#define	xocl_cmc_in_bitfile(xdev)		\
+	(ROM_CB(xdev, cmc_in_bitfile) ? ROM_OPS(xdev)->cmc_in_bitfile(ROM_DEV(xdev)) : false)
 
 /* dma callbacks */
 struct xocl_dma_funcs {
@@ -1962,4 +1968,7 @@ void xocl_fini_pmc(void);
 
 int __init xocl_init_intc(void);
 void xocl_fini_intc(void);
+
+int __init xocl_init_icap_controller(void);
+void xocl_fini_icap_controller(void);
 #endif

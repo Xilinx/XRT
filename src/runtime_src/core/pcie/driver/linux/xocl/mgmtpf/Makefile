@@ -72,6 +72,7 @@ xclmgmt-y := \
 	../subdev/ulite.o \
 	../subdev/calib_storage.o \
 	../subdev/pmc.o \
+	../subdev/icap_cntrl.o \
 	$(drv_common-y) \
 	mgmt-core.o \
 	mgmt-cw.o \
