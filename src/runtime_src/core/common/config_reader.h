@@ -160,6 +160,13 @@ get_power_profile()
   return value;
 }
 
+inline unsigned int
+get_power_profile_interval_ms()
+{
+  static unsigned int value = detail::get_uint_value("Debug.power_profile_interval_ms", 20) ;
+  return value ;
+}
+
 inline std::string
 get_stall_trace()
 {

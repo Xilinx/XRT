@@ -20,6 +20,7 @@
 #include "xdp/profile/writer/power/power_writer.h"
 #include "core/common/system.h"
 #include "core/common/time.h"
+#include "core/common/config_reader.h"
 #include "core/include/experimental/xrt-next.h"
 
 namespace xdp {
@@ -52,9 +53,12 @@ namespace xdp {
       "xmc_fan_rpm"      
     } ;
 
-  PowerProfilingPlugin::PowerProfilingPlugin() : XDPPlugin(), keepPolling(true)
+  PowerProfilingPlugin::PowerProfilingPlugin() :
+    XDPPlugin(), keepPolling(true), pollingInterval(20)
   {
     db->registerPlugin(this) ;
+
+    pollingInterval = xrt_core::config::get_power_profile_interval_ms() ;
    
     // Just like HAL level device profiling, go through the devices 
     //  that exist in order to find all of the sysfs paths
@@ -134,7 +138,7 @@ namespace xdp {
 	++index ;	
       }
 
-      std::this_thread::sleep_for(std::chrono::milliseconds(20)) ;
+      std::this_thread::sleep_for(std::chrono::milliseconds(pollingInterval)) ;
     }
   }
 

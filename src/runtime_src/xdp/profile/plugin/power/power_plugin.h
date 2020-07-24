@@ -38,6 +38,7 @@ namespace xdp {
     // Power profiling requires its own thread
     bool keepPolling ;
     std::thread pollingThread ;
+    unsigned int pollingInterval ;
     void pollPower() ;
   public:
     PowerProfilingPlugin() ;
