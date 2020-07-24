@@ -16,7 +16,6 @@
 
 // Copyright 2018 Xilinx, Inc. All rights reserved.
 
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/memory.h"
 #include "xocl/core/event.h"
@@ -27,17 +26,19 @@
 #include "enqueue.h"
 #include "plugin/xdp/appdebug.h"
 #include "plugin/xdp/profile.h"
+#include "plugin/xdp/lop.h"
+#include <CL/opencl.h>
 
 namespace xocl {
 
 static void
 validOrError(cl_command_queue      command_queue,
              cl_mem                image,
-             cl_bool               blocking_write, 
+             cl_bool               blocking_write,
              const size_t *        origin,
              const size_t *        region,
              size_t                input_row_pitch,
-             size_t                input_slice_pitch, 
+             size_t                input_slice_pitch,
              const void *          ptr,
              cl_uint               num_events_in_wait_list,
              const cl_event *      event_wait_list,
@@ -74,8 +75,8 @@ validOrError(cl_command_queue      command_queue,
     throw error(CL_INVALID_VALUE,"region or originis nullptr");
   if (std::any_of(region,region+3,[](size_t sz){return sz==0;}))
     throw error(CL_INVALID_VALUE,"one ore more region elements are zero");
-  if (   origin[0] + region[0] > xocl::xocl(image)->get_image_width() 
-      || origin[1] + region[1] > xocl::xocl(image)->get_image_height() 
+  if (   origin[0] + region[0] > xocl::xocl(image)->get_image_width()
+      || origin[1] + region[1] > xocl::xocl(image)->get_image_height()
       || origin[2] + region[2] > xocl::xocl(image)->get_image_depth())
     throw xocl::error(CL_INVALID_VALUE,"origin / region out of bounds");
 
@@ -116,11 +117,11 @@ validOrError(cl_command_queue      command_queue,
 static cl_int
 clEnqueueWriteImage(cl_command_queue     command_queue,
                     cl_mem               image,
-                    cl_bool              blocking_write, 
+                    cl_bool              blocking_write,
                     const size_t *       origin,
                     const size_t *       region,
                     size_t               input_row_pitch,
-                    size_t               input_slice_pitch, 
+                    size_t               input_slice_pitch,
                     const void *         ptr,
                     cl_uint              num_events_in_wait_list,
                     const cl_event *     event_wait_list,
@@ -139,7 +140,10 @@ clEnqueueWriteImage(cl_command_queue     command_queue,
   xocl::enqueue::set_event_action
     (uevent.get(),xocl::enqueue::action_write_image,image,origin,region,input_row_pitch,input_slice_pitch,ptr);
   xocl::profile::set_event_action
-    (uevent.get(),xocl::profile::action_write,image);
+    (uevent.get(),xocl::profile::action_write,image,0,0,true);
+#ifndef _WIN32
+  xocl::lop::set_event_action(uevent.get(), xocl::lop::action_write);
+#endif
   xocl::appdebug::set_event_action
     (uevent.get(),xocl::appdebug::action_readwrite_image,image,origin,region,input_row_pitch,input_slice_pitch,ptr);
 
@@ -156,11 +160,11 @@ clEnqueueWriteImage(cl_command_queue     command_queue,
 cl_int
 clEnqueueWriteImage(cl_command_queue     command_queue,
                     cl_mem               image,
-                    cl_bool              blocking_write, 
+                    cl_bool              blocking_write,
                     const size_t *       origin,
                     const size_t *       region,
                     size_t               input_row_pitch,
-                    size_t               input_slice_pitch, 
+                    size_t               input_slice_pitch,
                     const void *         ptr,
                     cl_uint              num_events_in_wait_list,
                     const cl_event *     event_wait_list,
@@ -168,6 +172,7 @@ clEnqueueWriteImage(cl_command_queue     command_queue,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
+    LOP_LOG_FUNCTION_CALL_WITH_QUEUE(command_queue);
     return xocl::clEnqueueWriteImage
       (command_queue,image,blocking_write,origin,region,input_row_pitch,input_slice_pitch,ptr,
        num_events_in_wait_list,event_wait_list,event);
@@ -181,5 +186,3 @@ clEnqueueWriteImage(cl_command_queue     command_queue,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-
