@@ -14,46 +14,21 @@
  * under the License.
  */
 
-#ifndef core_common_util_error_h
-#define core_common_util_error_h
-
-#include <stdexcept>
-#include <string>
+#include "error.h"
+#include "message.h"
 
 namespace xrt_core {
 
-class error : public std::runtime_error
+void
+send_exception_message(const char* msg, const char* tag)
 {
-  int m_code;
-public:
-  error(int ec, const std::string& what = "")
-    : std::runtime_error(what), m_code(ec)
-  {}
-
-  explicit
-  error(const std::string& what)
-    : std::runtime_error(what), m_code(0)
-  {}
-
-  int
-  get() const
-  {
-    return m_code;
-  }
-
-  unsigned int
-  get_code() const
-  {
-    return get();
-  }
-};
+  message::send(message::severity_level::XRT_ERROR, tag, msg);
+}
 
 void
-send_exception_message(const char* msg, const char* tag="XRT");
-
-void
-send_exception_message(const std::string& msg, const char* tag="XRT");
+send_exception_message(const std::string& msg, const char* tag)
+{
+  message::send(message::severity_level::XRT_ERROR, tag, msg);
+}
 
 } // xrt_core
-
-#endif
