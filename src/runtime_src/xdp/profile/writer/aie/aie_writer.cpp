@@ -35,11 +35,15 @@ namespace xdp {
 
   void AIEProfilingWriter::write(bool openNewFile)
   {
+    // TODO: get AIE clock freq from metadata
+    float aieClockFreqMhz = 1000.0;
+
     // Write header
     fout << "Target device: " << mDeviceName << std::endl;
+    fout << "Clock frequency (MHz): " << aieClockFreqMhz << std::endl;
     fout << "timestamp"    << ","
-         << "row"          << ","
-         << "column"       << ",";
+         << "column"       << ","
+         << "row"          << ",";
          
     for (uint32_t c = 0; c < NUM_AIE_COUNTERS; ++c) {
       fout << "start" << c << ","

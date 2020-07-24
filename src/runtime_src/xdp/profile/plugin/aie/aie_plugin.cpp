@@ -84,10 +84,10 @@ namespace xdp {
         // TODO: traverse all tiles used in design
         for (uint32_t tile=0; tile < 2; ++tile) {
           std::vector<uint64_t> values;
-          uint64_t row = tile;
           uint64_t column = 10 * tile;
-          values.push_back(row);
+          uint64_t row = tile;
           values.push_back(column);
+          values.push_back(row);
 
           for (uint32_t c=0; c < NUM_AIE_COUNTERS; ++c) {
             // TODO: for now, just use dummy values
