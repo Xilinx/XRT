@@ -65,6 +65,12 @@ namespace xdp {
     (db->getDynamicInfo()).addEvent(event) ;
   }
 
+  static void add_dependency(unsigned long int id, unsigned long int dependency)
+  {
+    VPDatabase* db = openclPluginInstance.getDatabase() ;
+    (db->getDynamicInfo()).addDependency(id, dependency) ;
+  }
+
   static void action_read(unsigned int id,
 			  bool isStart,
 			  unsigned long long int deviceAddress,
@@ -100,8 +106,7 @@ namespace xdp {
       {
 	dependentEvents.push_back(dependencies[i]) ;
       }
-      (db->getDynamicInfo()).addDependencies(id,
-					     dependentEvents);
+      (db->getDynamicInfo()).addDependencies(id, dependentEvents);
     }
   }
 
@@ -262,6 +267,12 @@ void function_end(const char* functionName,
 		  unsigned long long int functionID)
 {
   xdp::log_function_end(functionName, queueAddress, functionID) ;
+}
+
+extern "C"
+void add_dependency(unsigned long int id, unsigned long int dependency)
+{
+  xdp::add_dependency(id, dependency) ;
 }
 
 extern "C"

@@ -186,6 +186,17 @@ namespace xdp {
     dependencyMap[eventID] = openclIDs ;
   }
 
+  void VPDynamicDatabase::addDependency(uint64_t id, uint64_t dependency)
+  {
+    std::lock_guard<std::mutex> lock(dbLock) ;
+    if (dependencyMap.find(id) == dependencyMap.end())
+    {
+      std::vector<uint64_t> blank ;
+      dependencyMap[id] = blank ;
+    }
+    (dependencyMap[id]).push_back(dependency) ;
+  }
+
   std::map<uint64_t, std::vector<uint64_t>>
   VPDynamicDatabase::getDependencyMap()
   {

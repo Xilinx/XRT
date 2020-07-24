@@ -22,6 +22,7 @@
 #include "xrt/util/task.h"
 
 //#include "xocl/api/plugin/xdp/profile.h"
+#include "xocl/api/plugin/xdp/profile_v2.h"
 
 #include <iostream>
 #include <cassert>
@@ -78,6 +79,7 @@ event(command_queue* cq, context* ctx, cl_command_type cmd, cl_uint num_deps, co
   for (auto dep : get_range(deps,deps+num_deps)) {
     XOCL_DEBUG(std::cout,"event(",m_uid,") depends on event(",xocl(dep)->get_uid(),")\n");
     xocl(dep)->chain(this);
+    profile::log_dependency(get_uid(), xocl(dep)->get_uid()) ;
   }
   debug::add_dependencies(this,num_deps,deps);
   //profile::log_dependencies(this, num_deps, deps);

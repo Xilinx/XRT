@@ -46,6 +46,7 @@ namespace xocl {
     } ;
 
     // Functions used by the host trace plugin
+    void log_dependency(uint64_t id, uint64_t dependency) ;
     std::function<void (xocl::event*, cl_int, const std::string&)>
       action_read(cl_mem buffer) ;
     std::function<void (xocl::event*, cl_int, const std::string&)>

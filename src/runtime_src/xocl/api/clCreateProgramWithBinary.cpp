@@ -152,11 +152,11 @@ clCreateProgramWithBinary(cl_context                      context ,
   }
 
   // Flushing device trace (not done on first call to program with binary)
-  static bool once = false;
-  if (!once) {
+  //static bool once = false;
+  //if (!once) {
     //xocl::profile::get_device_trace(true);
-    once = true;
-  }
+    //once = true;
+  //}
 
   // Initialize binary_status
   if (binary_status)

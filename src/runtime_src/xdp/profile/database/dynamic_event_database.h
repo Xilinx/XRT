@@ -120,6 +120,7 @@ namespace xdp {
     }
     XDP_EXPORT void addDependencies(uint64_t eventID,
 				    const std::vector<uint64_t>& openclIDs) ;
+    XDP_EXPORT void addDependency(uint64_t id, uint64_t dependency) ;
     XDP_EXPORT std::map<uint64_t, std::vector<uint64_t>> getDependencyMap() ;
   } ;
   

@@ -155,10 +155,13 @@ namespace xdp {
       // Dependency is a map from XRT event ID to a vector of XRT event IDs
       for (auto dependent : dependency.second)
       {
-	fout << (db->getDynamicInfo()).lookupOpenCLMapping(dependency.first)
-	     << ","
-	     << (db->getDynamicInfo()).lookupOpenCLMapping(dependent)
-	     << std::endl ;
+	uint64_t firstValue = 
+	  (db->getDynamicInfo()).lookupOpenCLMapping(dependency.first) ;
+	uint64_t secondValue = 
+	  (db->getDynamicInfo()).lookupOpenCLMapping(dependent) ;
+
+	if (firstValue != 0 && secondValue != 0)
+	  fout << firstValue << "," << secondValue << std::endl ;
       }
     }
   }

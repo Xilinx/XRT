@@ -52,6 +52,7 @@ namespace {
   //  callback functions on the XDP plugin side
   std::function<void (const char*, uint64_t, uint64_t)> function_start_cb ;
   std::function<void (const char*, uint64_t, uint64_t)> function_end_cb ;
+  std::function<void (unsigned long int, unsigned long int)> dependency_cb ;
   std::function<void (unsigned int, 
 		      bool, 
 		      unsigned long long int, 
@@ -98,6 +99,10 @@ namespace {
 
     function_end_cb = (ftype)(xrt_core::dlsym(handle, "function_end")) ;
     if (xrt_core::dlerror() != NULL) function_end_cb = nullptr ;
+
+    typedef void (*dtype)(unsigned long int, unsigned long int) ;
+    dependency_cb = (dtype)(xrt_core::dlsym(handle, "add_dependency")) ;
+    if (xrt_core::dlerror() != NULL) dependency_cb = nullptr ;
 
     typedef void (*ttype)(unsigned int,
 			  bool,
@@ -261,6 +266,12 @@ namespace xocl {
     }
 
     // ******** OpenCL Host Trace Callbacks *********
+    void log_dependency(unsigned long int id, unsigned long int dependency)
+    {
+      if (dependency_cb)
+	dependency_cb(id, dependency) ;
+    }
+
     //static std::map<uint64_t, uint64_t> XRTIdToXDPId ;
 
     std::function<void (xocl::event*, cl_int, const std::string&)>

@@ -32,6 +32,9 @@ void function_end(const char* functionName,
 		  unsigned long long int functionID);
 
 extern "C"
+void add_dependency(unsigned long int id, unsigned long int dependency) ;
+
+extern "C"
 void action_read(unsigned int id,
 		 bool isStart,
 		 unsigned long long int deviceAddress,
