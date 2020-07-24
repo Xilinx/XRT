@@ -156,7 +156,7 @@ ReportAie::writeReport( const xrt_core::device * _pDevice,
             }
 
         } catch(std::exception const& e) {
-            // eat the exception, probably bad path
+            _output <<  e.what() << std::endl;
         }
   }
   _output << std::endl;
