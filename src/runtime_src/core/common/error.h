@@ -17,6 +17,7 @@
 #ifndef core_common_util_error_h
 #define core_common_util_error_h
 
+#include "core/common/config.h"
 #include <stdexcept>
 #include <string>
 
@@ -48,9 +49,11 @@ public:
   }
 };
 
+XRT_CORE_COMMON_EXPORT
 void
 send_exception_message(const char* msg, const char* tag="XRT");
 
+XRT_CORE_COMMON_EXPORT
 void
 send_exception_message(const std::string& msg, const char* tag="XRT");
 

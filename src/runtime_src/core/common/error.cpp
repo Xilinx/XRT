@@ -14,6 +14,7 @@
  * under the License.
  */
 
+#define XRT_CORE_COMMON_SOURCE
 #include "error.h"
 #include "message.h"
 
