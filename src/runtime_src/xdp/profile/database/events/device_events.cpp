@@ -26,7 +26,7 @@ namespace xdp {
   // Device event definitions
   // **************************
 
-  VTFDeviceEvent::VTFDeviceEvent(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId)
+  VTFDeviceEvent::VTFDeviceEvent(uint64_t s_id, uint64_t ts, VTFEventType ty, uint64_t devId)
                 : VTFEvent(s_id, ts, ty),
                   deviceId(devId),
                   deviceTimestamp(0)
@@ -53,7 +53,7 @@ namespace xdp {
     fout << std::endl;
   } 
 
-  KernelEvent::KernelEvent(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId, int32_t cuIdx)
+  KernelEvent::KernelEvent(uint64_t s_id, uint64_t ts, VTFEventType ty, uint64_t devId, int32_t cuIdx)
                    : VTFDeviceEvent(s_id, ts, ty, devId),
 					 cuId(cuIdx)
   {
@@ -63,7 +63,7 @@ namespace xdp {
   {
   }
 
-  KernelDeviceEvent::KernelDeviceEvent(uint64_t s_id, double ts, uint64_t devId, int32_t cuIdx)
+  KernelDeviceEvent::KernelDeviceEvent(uint64_t s_id, uint64_t ts, uint64_t devId, int32_t cuIdx)
                    : KernelEvent(s_id, ts, KERNEL, devId, cuIdx)
   {
   }
@@ -72,7 +72,7 @@ namespace xdp {
   {
   }
 
-  KernelStall::KernelStall(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId)
+  KernelStall::KernelStall(uint64_t s_id, uint64_t ts, VTFEventType ty, uint64_t devId)
              : KernelEvent(s_id, ts, ty, devId),
     // Until implemented, provide a default value for all members
     burstLength(0)
@@ -83,7 +83,7 @@ namespace xdp {
   {
   }
 
-  KernelMemoryAccess::KernelMemoryAccess(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId)
+  KernelMemoryAccess::KernelMemoryAccess(uint64_t s_id, uint64_t ts, VTFEventType ty, uint64_t devId)
                     : KernelEvent(s_id, ts, ty, devId),
     // Until implemented, provide a default value for all members
     portName(0), memoryName(0), argumentNames(0), burstLength(0),
@@ -95,7 +95,7 @@ namespace xdp {
   {
   }
 
-  KernelStreamAccess::KernelStreamAccess(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId)
+  KernelStreamAccess::KernelStreamAccess(uint64_t s_id, uint64_t ts, VTFEventType ty, uint64_t devId)
                     : KernelEvent(s_id, ts, ty, devId),
     // Until implemented, provide a default value for all members
     portName(0), streamName(0), burstLength(0)
@@ -106,7 +106,7 @@ namespace xdp {
   {
   }
 
-  HostRead::HostRead(uint64_t s_id, double ts, uint64_t devId)
+  HostRead::HostRead(uint64_t s_id, uint64_t ts, uint64_t devId)
           : VTFDeviceEvent(s_id, ts, HOST_READ, devId)
   {
   }
@@ -115,7 +115,7 @@ namespace xdp {
   {
   }
 
-  HostWrite::HostWrite(uint64_t s_id, double ts, uint64_t devId)
+  HostWrite::HostWrite(uint64_t s_id, uint64_t ts, uint64_t devId)
            : VTFDeviceEvent(s_id, ts, HOST_WRITE, devId)
   {
   }

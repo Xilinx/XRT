@@ -44,7 +44,7 @@ namespace xdp {
 
     KernelEnqueue() = delete ;
   public:
-    XDP_EXPORT KernelEnqueue(uint64_t s_id, double ts);
+    XDP_EXPORT KernelEnqueue(uint64_t s_id, uint64_t ts);
     XDP_EXPORT ~KernelEnqueue() ;
 
     virtual bool isHostEvent() { return true ; }
@@ -57,7 +57,7 @@ namespace xdp {
   private:
     LOPKernelEnqueue() = delete ;
   public:
-    XDP_EXPORT LOPKernelEnqueue(uint64_t s_id, double ts) ;
+    XDP_EXPORT LOPKernelEnqueue(uint64_t s_id, uint64_t ts) ;
     XDP_EXPORT ~LOPKernelEnqueue() ;
 
     virtual bool isHostEvent() { return true ; }
@@ -82,7 +82,7 @@ namespace xdp {
 
     CUEnqueue() = delete ;
   public:
-    XDP_EXPORT CUEnqueue(uint64_t s_id, double ts) ;
+    XDP_EXPORT CUEnqueue(uint64_t s_id, uint64_t ts) ;
     XDP_EXPORT ~CUEnqueue() ;
 
     virtual bool isHostEvent() { return true ; } 
@@ -107,7 +107,7 @@ namespace xdp {
 
     BufferTransfer() = delete ;
   public:
-    XDP_EXPORT BufferTransfer(uint64_t s_id, double ts, VTFEventType ty,
+    XDP_EXPORT BufferTransfer(uint64_t s_id, uint64_t ts, VTFEventType ty,
                               size_t bufSz = 0);
     XDP_EXPORT ~BufferTransfer() ;
 
@@ -121,7 +121,7 @@ namespace xdp {
   private:
     std::thread::id threadId ;
   public:
-    XDP_EXPORT LOPBufferTransfer(uint64_t s_id, double ts, VTFEventType ty) ;
+    XDP_EXPORT LOPBufferTransfer(uint64_t s_id, uint64_t ts, VTFEventType ty) ;
     XDP_EXPORT ~LOPBufferTransfer() ;
 
     virtual bool isHostEvent() { return true ; }
@@ -135,7 +135,7 @@ namespace xdp {
   private:
     StreamRead() = delete ;
   public:
-    XDP_EXPORT StreamRead(uint64_t s_id, double ts) ;
+    XDP_EXPORT StreamRead(uint64_t s_id, uint64_t ts) ;
     XDP_EXPORT ~StreamRead() ;
 
     virtual bool isHostEvent() { return true ; } 
@@ -146,7 +146,7 @@ namespace xdp {
   private:
     StreamWrite() = delete ;
   public:
-    XDP_EXPORT StreamWrite(uint64_t s_id, double ts) ;
+    XDP_EXPORT StreamWrite(uint64_t s_id, uint64_t ts) ;
     XDP_EXPORT ~StreamWrite() ;
 
     virtual bool isHostEvent() { return true ; } 

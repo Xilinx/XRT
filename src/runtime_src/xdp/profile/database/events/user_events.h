@@ -36,7 +36,7 @@ namespace xdp {
 
   public:
     virtual bool isUserEvent() { return true ; } 
-    XDP_EXPORT UserMarker(uint64_t s_id, double ts, uint64_t l = 0) ;
+    XDP_EXPORT UserMarker(uint64_t s_id, uint64_t ts, uint64_t l = 0) ;
     XDP_EXPORT ~UserMarker() ;
 
     XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
@@ -55,7 +55,7 @@ namespace xdp {
   public:
     virtual bool isUserEvent() { return true ; } 
 
-    XDP_EXPORT UserRange(uint64_t s_id, double ts, bool s, 
+    XDP_EXPORT UserRange(uint64_t s_id, uint64_t ts, bool s, 
 			 uint64_t l = 0, uint64_t tt = 0) ;
     XDP_EXPORT ~UserRange() ;
 

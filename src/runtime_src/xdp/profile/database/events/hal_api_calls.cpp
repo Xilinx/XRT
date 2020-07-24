@@ -20,7 +20,7 @@
 
 namespace xdp {
 
-  HALAPICall::HALAPICall(uint64_t s_id, double ts, uint64_t name)
+  HALAPICall::HALAPICall(uint64_t s_id, uint64_t ts, uint64_t name)
             : APICall(s_id, ts, name, HAL_API_CALL)
   {
   }
@@ -35,7 +35,7 @@ namespace xdp {
     fout << "," << functionName << std::endl ;
   }
 
-  AllocBoCall::AllocBoCall(uint64_t s_id, double ts, uint64_t name) 
+  AllocBoCall::AllocBoCall(uint64_t s_id, uint64_t ts, uint64_t name) 
              : HALAPICall(s_id, ts, name)
   {
   }

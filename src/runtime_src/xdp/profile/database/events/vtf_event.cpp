@@ -27,7 +27,7 @@ namespace xdp {
   // Base class definitions
   // **************************
 
-  VTFEvent::VTFEvent(uint64_t s_id, double ts, VTFEventType ty) :
+  VTFEvent::VTFEvent(uint64_t s_id, uint64_t ts, VTFEventType ty) :
     id(0), start_id(s_id), timestamp(ts), type(ty)
   {
   }
@@ -164,7 +164,7 @@ namespace xdp {
   // API Call definitions
   // **************************
 
-  APICall::APICall(uint64_t s_id, double ts, uint64_t name, VTFEventType ty)
+  APICall::APICall(uint64_t s_id, uint64_t ts, uint64_t name, VTFEventType ty)
          : VTFEvent(s_id, ts, ty),
            functionName(name)
   {

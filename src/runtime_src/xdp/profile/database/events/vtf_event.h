@@ -79,18 +79,18 @@ namespace xdp {
     // Every trace event has the following four fields:
     uint64_t id ;       // Assigned by the database when it is entered
     uint64_t start_id ; // 0 if this is a start event,
-    double timestamp ;
+    uint64_t timestamp ;
     VTFEventType type ; // For quick lookup
 
     virtual void dumpTimestamp(std::ofstream& fout) ;
     void dumpType(std::ofstream& fout, bool humanReadable) ;
 
   public:
-    XDP_EXPORT VTFEvent(uint64_t s_id, double ts, VTFEventType ty) ;
+    XDP_EXPORT VTFEvent(uint64_t s_id, uint64_t ts, VTFEventType ty) ;
     XDP_EXPORT virtual ~VTFEvent() ;
 
     // Getters and Setters
-    inline double       getTimestamp()   const { return timestamp ; }
+    inline uint64_t       getTimestamp()   const { return timestamp ; }
     inline uint64_t     getEventId()           { return id ; } 
     inline void         setEventId(uint64_t i) { id = i ; }
     inline VTFEventType getEventType()         { return type; }
@@ -140,7 +140,7 @@ namespace xdp {
 
     APICall() = delete ;
   public:
-    XDP_EXPORT APICall(uint64_t s_id, double ts, uint64_t name, VTFEventType ty);
+    XDP_EXPORT APICall(uint64_t s_id, uint64_t ts, uint64_t name, VTFEventType ty);
     XDP_EXPORT ~APICall() ;
 
     virtual bool isHostEvent() { return true ; } 
