@@ -385,7 +385,7 @@ static struct xocl_subdev_map subdev_map[] = {
 			// 0x53000 runtime clk scaling
 			{NULL},
 		},
-		.required_ip = 3,
+		.required_ip = 2,
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = ert_cb_set_inst,
