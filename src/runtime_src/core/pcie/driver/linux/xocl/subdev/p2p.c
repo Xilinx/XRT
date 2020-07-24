@@ -1051,7 +1051,7 @@ static ssize_t config_show(struct device *dev,
 
 	for (i = 0; i < P2P_BANK_CONF_NUM && p2p->bank_conf[i].size != 0; i++) {
 		char *tag = p2p->bank_conf[i].bank_tag;
-		count += snprintf(buf + count, PAGE_SIZE - count, "%d:%s:%ld", i,
+		count += snprintf(buf + count, PAGE_SIZE - count, "%d:%s:%ld\n", i,
 			tag ? tag : "", p2p->bank_conf[i].size);
 	}
 
@@ -1083,6 +1083,7 @@ static ssize_t p2p_enable_store(struct device *dev, struct device_attribute *da,
 		const char *buf, size_t count)
 {
 	struct p2p *p2p = platform_get_drvdata(to_platform_device(dev));
+	xdev_handle_t xdev = xocl_get_xdev(p2p->pdev);
 	ulong range = 0;
 	u32 val = 0, i;
 
@@ -1105,9 +1106,15 @@ static ssize_t p2p_enable_store(struct device *dev, struct device_attribute *da,
 		range += p2p->user_buf_start + MAX_ULP_IP_SPACE;
 	} else
 		range = P2P_DEFAULT_BAR_SIZE;
+	mutex_unlock(&p2p->p2p_lock);
 
+	xocl_subdev_destroy_by_baridx(xdev, p2p->p2p_bar_idx);
+
+	mutex_lock(&p2p->p2p_lock);
 	p2p_configure(p2p, range);
 	mutex_unlock(&p2p->p2p_lock);
+
+	xocl_subdev_create_by_baridx(xdev, p2p->p2p_bar_idx);
 #if 0
 	if (range == 0 && p2p->p2p_max_bar_sz > 0) {
 		/*  used hardcoded range */

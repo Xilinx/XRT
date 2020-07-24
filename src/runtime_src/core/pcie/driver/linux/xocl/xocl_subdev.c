@@ -877,7 +877,7 @@ void xocl_subdev_destroy_by_baridx(xdev_handle_t xdev_hdl, int bar_idx)
 	xocl_lock_xdev(xdev_hdl);
 
 	for_each_subdev(core, subdev) {
-		for (k = 0; k < subdev->info.num_res; j++) {
+		for (k = 0; k < subdev->info.num_res; k++) {
 			if (subdev->info.bar_idx[k] == bar_idx)
 				break;
 		}
