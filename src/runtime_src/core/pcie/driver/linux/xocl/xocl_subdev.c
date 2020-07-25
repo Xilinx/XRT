@@ -19,6 +19,9 @@
 #include "xocl_drv.h"
 #include "version.h"
 
+/* TODO: remove this with old kds */
+extern int kds_mode;
+
 struct xocl_subdev_array {
 	xdev_handle_t xdev_hdl;
 	int id;
@@ -1469,6 +1472,11 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 	int ret, cap, bar;
 	u64 offset;
 	unsigned err_cap;
+	/* workaround MB_SCHEDULER and INTC resource conflict
+	 * Remove below variables when MB_SCHEDULER is removed
+	 */
+	int i;
+	struct xocl_subdev_info *sdev_info;
 
 	memset(&core->priv, 0, sizeof(core->priv));
 	core->priv.vbnv = in->vbnv;
@@ -1510,6 +1518,20 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 		core->priv.xpr = true;
 
 	core->priv.dsa_ver = pdev->subsystem_device & 0xff;
+
+	/* workaround MB_SCHEDULER and INTC resource conflict
+	 * Remove below loop when MB_SCHEDULER is removed
+	 */
+	for (i = 0; i < in->subdev_num; i++) {
+		sdev_info = &in->subdev_info[i];
+		if (sdev_info->id == XOCL_SUBDEV_MB_SCHEDULER && kds_mode == 1) {
+			sdev_info->res = NULL;
+			sdev_info->num_res = 0;
+		} else if (sdev_info->id == XOCL_SUBDEV_INTC && kds_mode == 0) {
+			sdev_info->res = NULL;
+			sdev_info->num_res = 0;
+		}
+	}
 
 	/* data defined in subdev header */
 	core->priv.subdev_info = in->subdev_info;
