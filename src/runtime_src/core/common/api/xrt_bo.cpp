@@ -26,6 +26,7 @@
 #include "core/common/device.h"
 #include "core/common/memalign.h"
 #include "core/common/unistd.h"
+#include "core/common/message.h"
 
 #include <map>
 #include <set>
