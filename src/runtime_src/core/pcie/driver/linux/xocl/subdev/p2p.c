@@ -86,8 +86,8 @@ struct remapper_regs {
 #define P2P_BANK_CONF_NUM	1024
 #define MAX_BANK_TAG_LEN	64
 
-#define MAX_ULP_IP_SPACE	(256 << 20)
-#define P2P_DEFAULT_BAR_SIZE	(2 << 30)
+#define MAX_ULP_IP_SPACE	(256UL << 20)
+#define P2P_DEFAULT_BAR_SIZE	(2UL << 30)
 
 struct p2p_bank_conf {
 	char bank_tag[MAX_BANK_TAG_LEN];
@@ -569,7 +569,7 @@ static int p2p_configure(struct p2p *p2p, ulong range)
 	struct resource *res = pcidev->resource + p2p->p2p_bar_idx;
 	int pos, ret = 0;
 	u16 cmd;
-	ulong rbar_sz, flags;
+	ulong rbar_sz, flags, bar_len;
 	u32 ctrl;
 
 	p2p_info(p2p, "Configuring p2p, range %ld", range);
@@ -625,6 +625,15 @@ static int p2p_configure(struct p2p *p2p, ulong range)
 	pci_assign_unassigned_bus_resources(pcidev->bus);
 
 	res->flags = flags;
+	bar_len = (ulong) pci_resource_len(pcidev, p2p->p2p_bar_idx);
+	if (!bar_len) {
+		p2p_err(p2p, "Not enough IO space, please warm reboot");
+		res->start = 0;
+		res->end = p2p->p2p_bar_len - 1;
+		pci_assign_unassigned_bus_resources(pcidev->bus);
+		res->flags = flags;
+	}
+
 	p2p->p2p_bar_len = (ulong) pci_resource_len(pcidev, p2p->p2p_bar_idx);
 	pci_write_config_word(pcidev, PCI_COMMAND, cmd | PCI_COMMAND_MEMORY);
 	if (p2p->p2p_bar_len)
@@ -634,9 +643,6 @@ done:
 	if (p2p->p2p_bar_len) {
 		pci_request_selected_regions(pcidev, (1 << p2p->p2p_bar_idx),
 			NODE_P2P);
-	} else {
-		p2p_err(p2p, "Not enough IO space, please warm reboot");
-		ret = -ENXIO;
 	}
 
 	return ret;
