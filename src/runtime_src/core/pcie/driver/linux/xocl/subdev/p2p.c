@@ -70,7 +70,8 @@
 #define P2P_ADDR_LO(addr)		((u32)((addr) & 0xffffffff))
 
 #define P2P_RBAR_TO_BYTES(rbar_sz)	(1UL << ((rbar_sz) + 20))
-#define P2P_BYTES_TO_RBAR(bytes)	(fls64((bytes) + 1) - 21)
+#define P2P_BYTES_TO_RBAR(bytes)	(fls64(bytes) - 20)
+#define P2P_BAR_ROUNDUP(bytes)		(1UL << (fls64(bytes)))
 
 struct remapper_regs {
 	u32	ver;
@@ -86,7 +87,7 @@ struct remapper_regs {
 #define P2P_BANK_CONF_NUM	1024
 #define MAX_BANK_TAG_LEN	64
 
-#define MAX_ULP_IP_SPACE	(256UL << 20)
+#define MAX_ULP_IP_SPACE	(512UL << 20)
 #define P2P_DEFAULT_BAR_SIZE	(2UL << 30)
 
 struct p2p_bank_conf {
@@ -103,7 +104,8 @@ struct p2p {
 	int			p2p_bar_idx;
 	ulong			p2p_bar_len;
 	ulong			p2p_bar_start;
-	u64			p2p_max_bar_sz;
+	u64			p2p_max_mem_sz;
+	ulong			exp_mem_sz;
 
 	ulong			p2p_mem_chunk_num;
 	void			*p2p_mem_chunks;
@@ -157,8 +159,8 @@ struct p2p_mem_chunk {
 		XOCL_WRITE_REG32(P2P_ADDR_HI(epa), SLOT(g, s) + 4);	\
 	} while (0)
 
-#define remap_get_max_slot_sz(p2p)			\
-	(1UL << (remap_reg_rd(p2p, cap) & 0xff))
+#define remap_get_max_slot_logsz(p2p)			\
+	((remap_reg_rd(p2p, cap) & 0xff))
 #define remap_get_max_slot_num(p2p)			\
 	((remap_reg_rd(p2p, cap) >> 16) & 0x1ff)
 
@@ -184,9 +186,10 @@ static int legacy_identify_p2p_bar(struct p2p *p2p)
 static bool p2p_is_enabled(struct p2p *p2p)
 {
 	if (!p2p->p2p_mem_chunks) {
-		p2p_info(p2p, "no mem chunks");
+	    p2p_info(p2p, "no mem chunks");
 		return false;
-	} else if (p2p->p2p_max_bar_sz != 0 && p2p->p2p_max_bar_sz != p2p->p2p_bar_len)
+	} else if (p2p->p2p_max_mem_sz != 0 &&
+	    p2p->p2p_max_mem_sz != p2p->exp_mem_sz)
 		return false;
 
 	return true;
@@ -513,15 +516,14 @@ static int p2p_mem_init(struct p2p *p2p)
 		p2p->remap_range = p2p->p2p_bar_len;
 		p2p->remap_slot_sz = XOCL_P2P_CHUNK_SIZE;
 	} else {
-		p2p->remap_range = remap_get_max_slot_sz(p2p) *
-			remap_get_max_slot_num(p2p);
-		if (!p2p->remap_range) {
-			p2p_err(p2p, "Invalid range max slot size %ld, max slot num %d", remap_get_max_slot_sz(p2p), remap_get_max_slot_num(p2p));
-			return -EINVAL;
-		}
-
-		if (p2p->remap_range > p2p->p2p_bar_len)
+		if (fls64(p2p->p2p_bar_len /
+		    remap_get_max_slot_num(p2p)) <
+		    remap_get_max_slot_logsz(p2p))
 			p2p->remap_range = p2p->p2p_bar_len;
+		else {
+			p2p->remap_range = remap_get_max_slot_num(p2p) <<
+				remap_get_max_slot_logsz(p2p);
+		}
 
 		p2p->remap_slot_sz = p2p->remap_range / remap_get_max_slot_num(p2p);
 		if (p2p->remap_slot_sz < XOCL_P2P_CHUNK_SIZE)
@@ -951,8 +953,10 @@ static int p2p_remap_resource(struct platform_device *pdev, int bar_idx,
 	res->end = bar_off + res_len - 1;
 
 	if (level < XOCL_SUBDEV_LEVEL_URP &&
-	    p2p->user_buf_start < bar_off + bar_off)
-		p2p->user_buf_start = bar_off + bar_off;
+	    p2p->user_buf_start < bar_off + res_len) {
+		p2p->user_buf_start = roundup(bar_off + res_len,
+			p2p->remap_slot_sz);
+	}
 
 failed:
 	mutex_unlock(&p2p->p2p_lock);
@@ -1025,9 +1029,23 @@ static ssize_t config_store(struct device *dev, struct device_attribute *da,
 		return -EINVAL;
 	}
 
+	mutex_lock(&p2p->p2p_lock);
 	strncpy(p2p->bank_conf[idx].bank_tag, p_tag, MAX_BANK_TAG_LEN - 1);
 	p2p->bank_conf[idx].size = sz;
 
+	p2p->exp_mem_sz= 0;
+	for (idx = 0;
+	    idx < P2P_BANK_CONF_NUM && p2p->bank_conf[idx].size != 0;
+	    idx++) {
+		p2p->exp_mem_sz += roundup(p2p->bank_conf[idx].size,
+				p2p->remap_slot_sz);
+	}
+	if (p2p->exp_mem_sz > p2p->p2p_max_mem_sz) {
+		p2p_err(p2p, "invalid range %ld", p2p->exp_mem_sz);
+		mutex_unlock(&p2p->p2p_lock);
+		return -EINVAL;
+	}
+	mutex_unlock(&p2p->p2p_lock);
 	return count;
 }
 
@@ -1044,7 +1062,10 @@ static ssize_t config_show(struct device *dev,
 		count += sprintf(buf, "bar:%ld\n", p2p->p2p_bar_len);
 	}
 
-	count += sprintf(buf + count, "max_bar:%lld\n", p2p->p2p_max_bar_sz);
+	count += sprintf(buf + count, "max_bar:%lld\n", p2p->p2p_max_mem_sz);
+	count += sprintf(buf + count, "exp_bar:%ld\n",
+		P2P_BAR_ROUNDUP(p2p->exp_mem_sz + p2p->user_buf_start +
+		MAX_ULP_IP_SPACE));
 
 	ret = p2p_rbar_len(p2p, &rbar_len);
 	if (!ret)
@@ -1091,27 +1112,24 @@ static ssize_t p2p_enable_store(struct device *dev, struct device_attribute *da,
 	struct p2p *p2p = platform_get_drvdata(to_platform_device(dev));
 	xdev_handle_t xdev = xocl_get_xdev(p2p->pdev);
 	ulong range = 0;
-	u32 val = 0, i;
+	u32 val = 0;
 
 	if (kstrtou32(buf, 10, &val) == -EINVAL)
 		return -EINVAL;
 
 	mutex_lock(&p2p->p2p_lock);
 	if (val > 0) {
-		for (i = 0;
-		    i < P2P_BANK_CONF_NUM && p2p->bank_conf[i].size != 0;
-		    i++) {
-			range += roundup(p2p->bank_conf[i].size,
-				p2p->remap_slot_sz);
-		}
-		if (range > p2p->p2p_max_bar_sz) {
-			p2p_err(p2p, "invalid range %ld", range);
+		if (p2p->exp_mem_sz > p2p->p2p_max_mem_sz) {
+			p2p_err(p2p, "Invalid configure, exp_bar %ld",
+				p2p->exp_mem_sz);
 			mutex_unlock(&p2p->p2p_lock);
 			return -EINVAL;
 		}
-		range += p2p->user_buf_start + MAX_ULP_IP_SPACE;
+		range = p2p->user_buf_start + MAX_ULP_IP_SPACE;
+		range += p2p->exp_mem_sz;
 	} else
 		range = P2P_DEFAULT_BAR_SIZE;
+
 	mutex_unlock(&p2p->p2p_lock);
 
 	xocl_subdev_destroy_by_baridx(xdev, p2p->p2p_bar_idx);
@@ -1121,26 +1139,6 @@ static ssize_t p2p_enable_store(struct device *dev, struct device_attribute *da,
 	mutex_unlock(&p2p->p2p_lock);
 
 	xocl_subdev_create_by_baridx(xdev, p2p->p2p_bar_idx);
-#if 0
-	if (range == 0 && p2p->p2p_max_bar_sz > 0) {
-		/*  used hardcoded range */
-		range = p2p->p2p_max_bar_sz;
-	} else if (range == -1) {
-		/* disable p2p */
-		mutex_lock(&p2p->p2p_lock);
-		if (p2p->p2p_max_bar_sz > XOCL_P2P_CHUNK_SIZE) {
-			ret = p2p_configure(p2p, XOCL_P2P_CHUNK_SIZE);
-		}
-		if (ret)
-			p2p_mem_fini(p2p);
-		mutex_unlock(&p2p->p2p_lock);
-		return count;
-	} 
-
-	mutex_lock(&p2p->p2p_lock);
-	p2p_configure(p2p, range);
-	mutex_unlock(&p2p->p2p_lock);
-#endif
 
 	return count;
 }
@@ -1289,20 +1287,21 @@ static int p2p_probe(struct platform_device *pdev)
 	bar_sz = xocl_fdt_get_p2pbar_len(xdev, XDEV(xdev)->fdt_blob);
 
 	if (XDEV(xdev)->priv.p2p_bar_sz > 0) {
-		p2p->p2p_max_bar_sz = XDEV(xdev)->priv.p2p_bar_sz;
-		p2p->p2p_max_bar_sz <<= 30;
+		p2p->p2p_max_mem_sz = XDEV(xdev)->priv.p2p_bar_sz;
+		p2p->p2p_max_mem_sz <<= 30;
 	} else if (p2p_rbar_len(p2p, NULL))
-		p2p->p2p_max_bar_sz = p2p->p2p_bar_len;
+		p2p->p2p_max_mem_sz = p2p->p2p_bar_len;
 	else if (bar_sz > 0)
-		p2p->p2p_max_bar_sz = bar_sz;
+		p2p->p2p_max_mem_sz = bar_sz;
 	else {
-		p2p->p2p_max_bar_sz = xocl_get_ddr_channel_size(xdev) *
+		p2p->p2p_max_mem_sz = xocl_get_ddr_channel_size(xdev) *
 		       	xocl_get_ddr_channel_count(xdev); /* GB */
-		p2p->p2p_max_bar_sz <<= 30;
+		p2p->p2p_max_mem_sz <<= 30;
 	}
 
 	/* default: set conf to max_bar_sz */
-	p2p->bank_conf[0].size = p2p->p2p_max_bar_sz;
+	p2p->bank_conf[0].size = p2p->p2p_max_mem_sz;
+	p2p->exp_mem_sz = p2p->p2p_max_mem_sz;
 
 	pci_request_selected_regions(pcidev, (1 << p2p->p2p_bar_idx),
 		NODE_P2P);
