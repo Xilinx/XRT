@@ -1488,7 +1488,7 @@ struct calib_storage_funcs {
 /* CU callback */
 struct xocl_cu_funcs {
 	struct xocl_subdev_funcs common_funcs;
-	int (* submit)(struct platform_device *pdev, struct kds_command *xcmd);
+	int (*submit)(struct platform_device *pdev, struct kds_command *xcmd);
 };
 #define CU_DEV(xdev, idx) \
 	SUBDEV_MULTI(xdev, XOCL_SUBDEV_CU, idx).pldev
@@ -1500,10 +1500,12 @@ struct xocl_cu_funcs {
 /* INTC call back */
 struct xocl_intc_funcs {
 	struct xocl_subdev_funcs common_funcs;
-	int (* request_intr)(struct platform_device *pdev, int intr_id,
+	int (*request_intr)(struct platform_device *pdev, int intr_id,
 			     irqreturn_t (*handler)(int irq, void *arg),
 			     void *arg);
-	int (* config_intr)(struct platform_device *pdev, int intr_id, bool en);
+	int (*config_intr)(struct platform_device *pdev, int intr_id, bool en);
+	int (*csr_read32)(struct platform_device *pdev, u32 off);
+	void (*csr_write32)(struct platform_device *pdev, u32 val, u32 off);
 };
 #define	INTC_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_INTC).pldev
 #define INTC_OPS(xdev)  \
@@ -1517,6 +1519,15 @@ struct xocl_intc_funcs {
 #define xocl_intc_config(xdev, id, en) \
 	(INTC_CB(xdev, config_intr) ? \
 	 INTC_OPS(xdev)->config_intr(INTC_DEV(xdev), id, en) : \
+	 -ENODEV)
+/* Only used in ERT sub-device polling mode */
+#define xocl_intc_csr_read32(xdev, off) \
+	(INTC_CB(xdev, csr_read32) ? \
+	 INTC_OPS(xdev)->csr_read32(INTC_DEV(xdev), off) : \
+	 -ENODEV)
+#define xocl_intc_csr_write32(xdev, val, off) \
+	(INTC_CB(xdev, csr_write32) ? \
+	 INTC_OPS(xdev)->csr_write32(INTC_DEV(xdev), val, off) : \
 	 -ENODEV)
 
 /* helper functions */
