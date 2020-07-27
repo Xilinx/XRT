@@ -16,6 +16,11 @@
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
+#define WIN32_LEAN_AND_MEAN
+#ifdef _WIN32
+#pragma warning (disable : 4244)
+#endif
+
 #include "SubCmdValidate.h"
 #include "tools/common/ReportHost.h"
 #include "tools/common/XBUtilities.h"
@@ -34,6 +39,9 @@ namespace XBU = XBUtilities;
 #include <boost/format.hpp>
 #include <boost/any.hpp>
 namespace po = boost::program_options;
+#ifndef BOOST_PRE_1_64
+#include <boost/process.hpp>
+#endif
 
 // System - Include Files
 #include <iostream>
@@ -225,6 +233,74 @@ runShellCmd(const std::string& cmd, boost::property_tree::ptree& _ptTest)
 #endif
 }
 
+static unsigned int
+runPythonScript( const std::string & script, 
+                 const std::vector<std::string> & args,
+                 std::ostringstream & os_stdout,
+                 std::ostringstream & os_stderr)
+{
+#ifndef BOOST_PRE_1_64
+  // Find the python executable
+  boost::filesystem::path pythonAbsPath = boost::process::search_path("py");  
+  if (pythonAbsPath.string().empty()) 
+    pythonAbsPath = boost::process::search_path("python");   
+
+  if (pythonAbsPath.string().empty()) 
+    throw std::runtime_error("Error: Python executable not found in search path.");
+
+  // Make sure the script exists
+  if ( !boost::filesystem::exists( script ) ) {
+    std::string errMsg = (boost::format("Error: Given python script does not exist: '%s'") % script).str();
+    throw std::runtime_error(errMsg);
+  }
+
+  // Build the python arguments
+  std::vector<std::string> cmdArgs;
+  cmdArgs.push_back(script);
+
+  // Add the user arguments
+  cmdArgs.insert(cmdArgs.end(), args.begin(), args.end());
+
+  // Build the environment variables
+  // Copy the existing environment
+  boost::process::environment env = boost::this_process::environment();
+  env.erase("XCL_EMULATION_MODE");
+
+  // Please fix: Should be a busy bar and NOT a progress bar
+  XBU::ProgressBar run_test("Running Test", 60, XBU::is_esc_enabled(), std::cout); 
+
+  // Execute the python script and capture the outputs
+  boost::process::ipstream ip_stdout;
+  boost::process::ipstream ip_stderr;
+  boost::process::child runningProcess( pythonAbsPath, 
+                                        cmdArgs, 
+                                        boost::process::std_out > ip_stdout,
+                                        boost::process::std_err > ip_stderr,
+                                        env);
+
+  // Wait for the process to finish and update the busy bar
+  unsigned int counter = 0;
+  while (runningProcess.running()) {
+    run_test.update(counter++);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+  }
+
+  // Not really needed, but should be added for completeness 
+  runningProcess.wait();
+
+  // Obtain the exit code from the running process
+  int exitCode = runningProcess.exit_code();
+  run_test.finish(exitCode == 0 /*Success or failure*/, "Test duration:");
+
+  // Update the return buffers
+  os_stdout << ip_stdout.rdbuf();
+  os_stderr << ip_stderr.rdbuf();
+
+  return exitCode;
+#endif
+return 0;
+}
+
 /*
  * search for xclbin for an SSV2 platform
  */
@@ -371,7 +447,22 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
     //run testcase in a fork
     std::string cmd = "/usr/bin/python " + xrtTestCasePath + " -k " + xclbinPath + " -d " + 
                         std::to_string(_dev.get()->get_device_id());
+    
+    #ifndef BOOST_PRE_1_64
+    std::vector<std::string> args = { " -k ", xclbinPath, " -d ", std::to_string(_dev.get()->get_device_id()) };
+    std::ostringstream os_stdout;
+    std::ostringstream os_stderr;
+    int exit_code = runPythonScript(xrtTestCasePath, args, os_stdout, os_stderr);
+    if (exit_code != 0) {
+      logger(_ptTest, "Error", os_stdout);
+      _ptTest.put("status", "failed");
+    } 
+    else {
+      _ptTest.put("status", "passed");
+    }
+    #else
     runShellCmd(cmd, _ptTest);
+    #endif
 }
 
 /*
