@@ -110,7 +110,8 @@ if [ "$mpd_active" = "active" ]; then
     systemctl start mpd > /dev/null 2>&1
 fi
 
-# xbutil validate depends on numpy
+# xbutil validate depends on numpy, but to install the correct version of numpy, pip needs to be upgraded
+pip3 install --upgrade pip
 pip3 install numpy
 
 exit 0
