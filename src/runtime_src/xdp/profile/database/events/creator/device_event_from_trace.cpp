@@ -17,6 +17,7 @@
 #define XDP_SOURCE
 
 #include "xdp/profile/database/events/creator/device_event_from_trace.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
 
 namespace xdp {
 
@@ -349,11 +350,11 @@ namespace xdp {
       y2 = static_cast <double> (hostTimestamp);
       x2 = static_cast <double> (deviceTimestamp);
       // slope in ns/cycle
-//      if (isDeviceFlow) {
+      if (xdp::getFlowMode() == HW) {
         clockTrainSlope = 1000.0/traceClockRateMHz;
-//      } else {
-//        clockTrainSlope = (y2 - y1) / (x2 - x1);
-//      }
+      } else {
+        clockTrainSlope = (y2 - y1) / (x2 - x1);
+      }
       clockTrainOffset = y2 - clockTrainSlope * x2;
       // next time update x1, y1
       y1 = 0.0;

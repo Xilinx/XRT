@@ -179,7 +179,8 @@ namespace xdp {
     addOffloader(deviceId, devInterface) ;
 
     configureTraceIP(devInterface) ; 
-    if (getFlowMode() == HW) devInterface->clockTraining() ;
+    if (getFlowMode() == HW || getFlowMode() == HW_EMU)
+      devInterface->clockTraining() ;
   }
   
 } // end namespace xdp
