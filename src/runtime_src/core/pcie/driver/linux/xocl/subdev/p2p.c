@@ -70,8 +70,11 @@
 #define P2P_ADDR_LO(addr)		((u32)((addr) & 0xffffffff))
 
 #define P2P_RBAR_TO_BYTES(rbar_sz)	(1UL << ((rbar_sz) + 20))
-#define P2P_BYTES_TO_RBAR(bytes)	(fls64(bytes) - 20)
-#define P2P_BAR_ROUNDUP(bytes)		(1UL << (fls64(bytes)))
+#define P2P_BYTES_TO_RBAR(bytes)	(fls64((bytes) - 1) - 20)
+#define P2P_BAR_ROUNDUP(bytes)		(1UL << (fls64((bytes) - 1)))
+#define P2P_EXP_BAR_SZ(p2p)		((p2p->user_buf_start > 0) ?	\
+	P2P_BAR_ROUNDUP(p2p->exp_mem_sz + p2p->user_buf_start +		\
+	MAX_ULP_IP_SPACE) : P2P_BAR_ROUNDUP(p2p->exp_mem_sz))
 
 struct remapper_regs {
 	u32	ver;
@@ -1063,9 +1066,7 @@ static ssize_t config_show(struct device *dev,
 	}
 
 	count += sprintf(buf + count, "max_bar:%lld\n", p2p->p2p_max_mem_sz);
-	count += sprintf(buf + count, "exp_bar:%ld\n",
-		P2P_BAR_ROUNDUP(p2p->exp_mem_sz + p2p->user_buf_start +
-		MAX_ULP_IP_SPACE));
+	count += sprintf(buf + count, "exp_bar:%ld\n", P2P_EXP_BAR_SZ(p2p));
 
 	ret = p2p_rbar_len(p2p, &rbar_len);
 	if (!ret)
@@ -1125,8 +1126,7 @@ static ssize_t p2p_enable_store(struct device *dev, struct device_attribute *da,
 			mutex_unlock(&p2p->p2p_lock);
 			return -EINVAL;
 		}
-		range = p2p->user_buf_start + MAX_ULP_IP_SPACE;
-		range += p2p->exp_mem_sz;
+		range = P2P_EXP_BAR_SZ(p2p);
 	} else
 		range = P2P_DEFAULT_BAR_SIZE;
 
