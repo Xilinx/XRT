@@ -179,7 +179,7 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define	ICAP_XCLBIN_V2		"xclbin2"
 #define XOCL_CDEV_DIR		"xfpga"
 
-#define XOCL_MAX_DEVICES	16
+#define XOCL_MAX_DEVICES	24
 #define XOCL_EBUF_LEN           512
 #define xocl_sysfs_error(xdev, fmt, args...)     \
 		snprintf(((struct xocl_dev_core *)xdev)->ebuf, XOCL_EBUF_LEN,	\
