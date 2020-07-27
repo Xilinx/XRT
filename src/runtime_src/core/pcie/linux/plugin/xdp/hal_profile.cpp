@@ -1,5 +1,6 @@
 #include "plugin/xdp/hal_profile.h"
 #include "plugin/xdp/hal_device_offload.h"
+#include "plugin/xdp/vart_profile.h"
 #include "core/common/module_loader.h"
 #include "core/common/utils.h"
 #include "core/common/config_reader.h"
@@ -34,7 +35,7 @@ CallLogger::CallLogger(uint64_t id)
   }
   if (xrt_core::config::get_vitis_ai_trace())
   {
-    load_vart_plugin_library(nullptr) ;
+    xdpvartprofile::load_xdp_vart_plugin() ;
   }
 }
 
@@ -444,11 +445,6 @@ void load_xdp_plugin_library(HalPluginConfig* )
   static xrt_core::module_loader xdp_hal_loader("xdp_hal_plugin",
 						register_hal_callbacks,
 						warning_hal_callbacks) ;
-}
-
-void load_vart_plugin_library(HalPluginConfig* )
-{
-  static xrt_core::module_loader vart_loader("xdp_vart_plugin", nullptr, nullptr);
 }
 
 }
