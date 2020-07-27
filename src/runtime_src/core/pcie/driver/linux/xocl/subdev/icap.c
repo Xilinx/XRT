@@ -1954,6 +1954,7 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin)
 	struct xcl_mailbox_bitstream_kaddr mb_addr = {0};
 	struct mem_topology *mem_topo = icap->mem_topo;
 	int i, mig_count = 0;
+	uint32_t timeout;
 
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
@@ -1999,16 +2000,29 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin)
 		}
 	}
 
-	/* Set timeout to be 1s per 2MB for downloading xclbin.
-	 * plus toggling axigate time 5s
-	 * plus #MIG * 0.5s
-	 * In Azure cloud, there is special requirement for xclbin download
+	if (!XOCL_DSA_IS_VERSAL(xdev)) {
+		/* Set timeout to be 1s per 2MB for downloading xclbin.
+		 * plus toggling axigate time 5s
+		 * plus #MIG * 0.5s
+		 */
+		timeout = xclbin->m_header.m_length / (2048 * 1024) +
+			5 + mig_count / 2;
+	} else {
+		/* Temporarily setting timeout to be 2s per 1MB for downloading
+		 * xclbin. TODO Revisit this value after understanding the
+		 * expected time consumption on Versal.
+		 */
+		timeout = (xclbin->m_header.m_length) / (1024 * 1024) * 2;
+	}
+
+	/* In Azure cloud, there is special requirement for xclbin download
 	 * that the minumum timeout should be 50s.
 	 */
+	timeout = max((size_t)timeout, 50UL);
+
 	(void) xocl_peer_request(xdev, mb_req, data_len,
-		&msgerr, &resplen, NULL, NULL,
-		max(((size_t)xclbin->m_header.m_length) / (2048 * 1024) +
-			5 + mig_count / 2, 50UL));
+		&msgerr, &resplen, NULL, NULL, timeout);
+
 	vfree(mb_req);
 
 	if (msgerr != 0) {
