@@ -492,7 +492,10 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 				/* Check if IP is on P2P bar, the res start will be endpoint
 				 * address
 				 */
-				xocl_p2p_remap_resource(xdev_hdl, bar_idx, &res[i]);
+				retval = xocl_p2p_remap_resource(xdev_hdl, bar_idx, &res[i],
+					subdev->info.level);
+				if (retval && retval != -ENODEV)
+					goto error;
 				iostart = pci_resource_start(core->pdev,
 						bar_idx);
 				res[i].start += iostart;
@@ -676,13 +679,46 @@ int xocl_subdev_create_by_level(xdev_handle_t xdev_hdl, int level)
 
 	xocl_lock_xdev(xdev_hdl);
 	subdev_info = xocl_subdev_get_info(xdev_hdl, &subdev_num);
-	if (!subdev_info)
+	if (!subdev_info) {
+		xocl_unlock_xdev(xdev_hdl);
 		return ret;
+	}
 
 	for (i = 0; i < subdev_num; i++) {
 		if (subdev_info[i].level != level)
 			continue;
 		ret = __xocl_subdev_create(xdev_hdl, &subdev_info[i]);
+		if (ret && ret != -EEXIST && ret != -EAGAIN)
+			break;
+		ret = 0;
+	}
+
+	xocl_unlock_xdev(xdev_hdl);
+	if (subdev_info)
+		vfree(subdev_info);
+	return ret;
+}
+
+int xocl_subdev_create_by_baridx(xdev_handle_t xdev_hdl, int bar_idx)
+{
+	struct xocl_subdev_info *subdev_info = NULL;
+	int i, j, ret = -ENODEV, subdev_num;
+
+	xocl_lock_xdev(xdev_hdl);
+	subdev_info = xocl_subdev_get_info(xdev_hdl, &subdev_num);
+	if (!subdev_info) {
+		xocl_unlock_xdev(xdev_hdl);
+		return ret;
+	}
+
+	for (i = 0; i < subdev_num; i++) {
+		for (j = 0; j < subdev_info[i].num_res; j++) {
+			if (subdev_info[i].bar_idx[j] == bar_idx)
+				break;
+		}
+		if (j == subdev_info[i].num_res)
+			continue;
+		ret = __xocl_subdev_create(xdev_hdl,  &subdev_info[i]);
 		if (ret && ret != -EEXIST && ret != -EAGAIN)
 			break;
 		ret = 0;
@@ -800,6 +836,12 @@ void xocl_subdev_destroy_by_id(xdev_handle_t xdev_hdl, uint32_t subdev_id)
 	xocl_unlock_xdev(xdev_hdl);
 }
 
+#define for_each_subdev(core, subdev)					\
+	for (i = ARRAY_SIZE(core->subdevs) - 1; i >= 0; i--)		\
+		for (j = 0, subdev = &core->subdevs[i][j];		\
+		    j < XOCL_SUBDEV_MAX_INST;				\
+		    j++, subdev = &core->subdevs[i][j])
+
 void xocl_subdev_destroy_all(xdev_handle_t xdev_hdl)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
@@ -823,6 +865,27 @@ void xocl_subdev_destroy_by_level(xdev_handle_t xdev_hdl, int level)
 			if (core->subdevs[i][j].info.level == level)
 				__xocl_subdev_destroy(xdev_hdl,
 					&core->subdevs[i][j]);
+	xocl_unlock_xdev(xdev_hdl);
+}
+
+void xocl_subdev_destroy_by_baridx(xdev_handle_t xdev_hdl, int bar_idx)
+{
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
+	int i, j, k;
+	struct xocl_subdev *subdev;
+
+	xocl_lock_xdev(xdev_hdl);
+
+	for_each_subdev(core, subdev) {
+		for (k = 0; k < subdev->info.num_res; k++) {
+			if (subdev->info.bar_idx[k] == bar_idx)
+				break;
+		}
+		if (k == subdev->info.num_res)
+			continue;
+		__xocl_subdev_destroy(xdev_hdl,  subdev);
+	}
+
 	xocl_unlock_xdev(xdev_hdl);
 }
 

@@ -385,7 +385,7 @@ static struct xocl_subdev_map subdev_map[] = {
 			// 0x53000 runtime clk scaling
 			{NULL},
 		},
-		.required_ip = 3,
+		.required_ip = 2,
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = ert_cb_set_inst,
@@ -1328,6 +1328,32 @@ int xocl_fdt_get_p2pbar(xdev_handle_t xdev_hdl, void *blob)
 		return -EINVAL;
 
 	return ntohl(*p2p_bar);
+}
+
+long xocl_fdt_get_p2pbar_len(xdev_handle_t xdev_hdl, void *blob)
+{
+	int offset;
+	const ulong *p2p_bar_len;
+	const char *ipname;
+
+	if (!blob)
+		return -EINVAL;
+
+	for (offset = fdt_next_node(blob, -1, NULL);
+		offset >= 0;
+		offset = fdt_next_node(blob, offset, NULL)) {
+		ipname = fdt_get_name(blob, offset, NULL);
+		if (ipname && strncmp(ipname, NODE_P2P, strlen(NODE_P2P)) == 0)
+			break;
+	}
+	if (offset < 0)
+		return -ENODEV;
+
+	p2p_bar_len = fdt_getprop(blob, offset, PROP_IO_OFFSET, NULL);
+	if (!p2p_bar_len)
+		return -EINVAL;
+
+	return be64_to_cpu(p2p_bar_len[1]);
 }
 
 int xocl_fdt_path_offset(xdev_handle_t xdev_hdl, void *blob, const char *path)

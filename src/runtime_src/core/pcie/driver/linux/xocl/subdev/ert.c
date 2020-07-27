@@ -77,7 +77,7 @@ static int stop_ert_nolock(struct xocl_ert *ert)
 
 	if (ert->state == MB_UNINITIALIZED)
 		return -ENODEV;
-	if (ert->state  < MB_RUNNING)
+	if (ert->state  < MB_RUNNING || !ert->cq_addr)
 		return 0;
 
 	if (SELF_JUMP(XOCL_READ_REG32(ert->fw_addr))) {
@@ -416,13 +416,11 @@ static int ert_probe(struct platform_device *pdev)
 	ert->fw_ram_len = res->end - res->start + 1;
 
 	res = xocl_get_iores_byname(pdev, RESNAME_ERT_CQ_MGMT);
-	if (!res) {
-		xocl_err(&pdev->dev, "Did not find %s", RESNAME_ERT_CQ_MGMT);
-		err = -EINVAL;
-		goto failed;
+	if (res) {
+		xocl_info(&pdev->dev, "Found mgmtpf CQ %s", RESNAME_ERT_CQ_MGMT);
+		ert->cq_addr = ioremap_nocache(res->start, res->end - res->start + 1);
+		ert->cq_len = (u32)(res->end - res->start + 1);
 	}
-	ert->cq_addr = ioremap_nocache(res->start, res->end - res->start + 1);
-	ert->cq_len = (u32)(res->end - res->start + 1);
 
 	res = xocl_get_iores_byname(pdev, RESNAME_ERT_RESET);
 	if (!res) {

@@ -1630,7 +1630,7 @@ struct xocl_p2p_funcs {
 			ulong bar_off, ulong size,
 			struct page **pages, ulong npages);
 	int (*remap_resource)(struct platform_device *pdev, int bar_idx,
-			struct resource *res);
+			struct resource *res, int level);
 	int (*release_resource)(struct platform_device *pdev,
 			struct resource *res);
 };
@@ -1655,9 +1655,10 @@ struct xocl_p2p_funcs {
 	(P2P_CB(xdev) ?							\
 	 P2P_OPS(xdev)->mem_get_pages(P2P_DEV(xdev), bar_off, len,	\
 	 pages, npages) : -ENODEV)
-#define xocl_p2p_remap_resource(xdev, bar, res)				\
+#define xocl_p2p_remap_resource(xdev, bar, res, level)			\
 	(P2P_CB(xdev) ?							\
-	 P2P_OPS(xdev)->remap_resource(P2P_DEV(xdev), bar, res) : -ENODEV)
+	 P2P_OPS(xdev)->remap_resource(P2P_DEV(xdev), bar, res, level) : \
+	 -ENODEV)
 #define xocl_p2p_release_resource(xdev, res)				\
 	(P2P_CB(xdev) ?							\
 	 P2P_OPS(xdev)->release_resource(P2P_DEV(xdev), res) : -ENODEV)
@@ -1689,6 +1690,9 @@ void xocl_subdev_destroy_by_level(xdev_handle_t xdev_hdl, int level);
 
 int xocl_subdev_create_by_name(xdev_handle_t xdev_hdl, char *name);
 int xocl_subdev_destroy_by_name(xdev_handle_t xdev_hdl, char *name);
+
+int xocl_subdev_create_by_baridx(xdev_handle_t xdev_hdl, int bar_idx);
+void xocl_subdev_destroy_by_baridx(xdev_handle_t xdev_hdl, int bar_idx);
 
 int xocl_subdev_destroy_prp(xdev_handle_t xdev);
 int xocl_subdev_create_prp(xdev_handle_t xdev);
@@ -1801,6 +1805,7 @@ int xocl_fdt_build_priv_data(xdev_handle_t xdev_hdl, struct xocl_subdev *subdev,
 		void **priv_data,  size_t *data_len);
 int xocl_fdt_get_userpf(xdev_handle_t xdev_hdl, void *blob);
 int xocl_fdt_get_p2pbar(xdev_handle_t xdev_hdl, void *blob);
+long xocl_fdt_get_p2pbar_len(xdev_handle_t xdev_hdl, void *blob);
 int xocl_fdt_add_pair(xdev_handle_t xdev_hdl, void *blob, char *name,
 		void *val, int size);
 int xocl_fdt_get_next_prop_by_name(xdev_handle_t xdev_hdl, void *blob,
