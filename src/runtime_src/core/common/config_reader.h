@@ -428,6 +428,18 @@ get_sw_em_driver()
 }
 
 /**
+ * WORKAROUND: KDS would only allow xclRegWrite/xclRegRead access exclusively reserved CU.
+ * This switch can loose the limitation. It means xclRegWrite/xclRegRead can access
+ * shared CU.
+ */
+inline bool
+get_rw_shared()
+{
+  static bool value = detail::get_bool_value("Runtime.rw_shared",false);
+  return value;
+}
+
+/**
  * Indicate whether Block automation based Emulation Models are
  * used. By default, it is turned off.  This is used to turn on
  * xclRead/Write based counter and trace data collection flow in
