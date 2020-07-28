@@ -83,6 +83,7 @@ Aie::Aie(std::shared_ptr<xrt_core::device> device)
         }
     }
 
+#ifndef __AIESIM__
     /* Disable AIE interrupts */
     u32 reg = XAieGbl_NPIRead32(XAIE_NPI_ISR);
     XAieGbl_NPIWrite32(XAIE_NPI_ISR, reg);
@@ -95,6 +96,7 @@ Aie::Aie(std::shared_ptr<xrt_core::device> device)
 
     /* Enable AIE interrupts */
     XAieTile_EventsEnableInterrupt(&aieInst);
+#endif
 }
 
 Aie::~Aie()
@@ -114,6 +116,7 @@ XAieGbl* Aie::getAieInst()
 XAieGbl_ErrorHandleStatus
 Aie::error_cb(struct XAieGbl *aie_inst, XAie_LocType loc, u8 module, u8 error, void *arg)
 {
+#ifndef __AIESIM__
     auto severity = xrt_core::message::severity_level::XRT_INFO;
 
     switch (module) {
@@ -202,6 +205,7 @@ Aie::error_cb(struct XAieGbl *aie_inst, XAie_LocType loc, u8 module, u8 error, v
     }
 
     xrt_core::message::send(severity, "XRT", "AIE ERROR: module %d, error %d", module, error);
+#endif
 
     return XAIETILE_ERROR_HANDLED;
 }

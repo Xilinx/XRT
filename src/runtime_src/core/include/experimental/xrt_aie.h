@@ -68,38 +68,48 @@ uint64_t
 xrtGraphTimeStamp(xrtGraphHandle gh);
 
 /**
- * xrtGraphUpdateIter() - Update graph run iteration.
- *
- * @gh:             Handle to graph previously opened with xrtGraphOpen.
- * @iterations:     The run iteration to update to graph. -1 for infinite.
- * Return:          0 on success, -1 on error
- */
-int
-xrtGraphUpdateIter(xrtGraphHandle gh, int iterations);
-
-/**
  * xrtGraphRun() - Start a graph execution
  *
  * @gh:             Handle to graph previously opened with xrtGraphOpen.
+ * @iterations:     The run iteration to update to graph. 0 for infinite.
  * Return:          0 on success, -1 on error
  *
  * Note: Run by enable tiles and disable tile reset
  */
 int
-xrtGraphRun(xrtGraphHandle gh);
+xrtGraphRun(xrtGraphHandle gh, uint32_t iterations);
 
 /**
- * xrtGraphWaitDone() - Wait for graph to stop.
+ * xrtGraphWaitDone() - Wait for graph to be done. If the graph is not
+ *                      done in a given time, bail out with timeout.
  *
  * @gh:              Handle to graph previously opened with xrtGraphOpen.
  * @timeoutMilliSec: Timeout value to wait for graph done.
  *
- * Return:          0 on success, -1 on timeout.
+ * Return:          0 on success, -ETIME on timeout, -1 on error.
  *
  * Note: Wait for done status of ALL the tiles
  */
 int
 xrtGraphWaitDone(xrtGraphHandle gh, int timeoutMilliSec);
+
+/**
+ * xrtGraphWait() -  Wait a given AIE cycle since the last xrtGraphRun and
+ *                   then stop the graph. If cycle is 0, busy wait until graph
+ *                   is done. If graph already run more than the given
+ *                   cycle, stop the graph immediateley.
+ *
+ * @gh:              Handle to graph previously opened with xrtGraphOpen.
+ * @cycle:           AIE cycle should wait since last xrtGraphRun. 0 for
+ *                   wait until graph is done.
+ *
+ * Return:          0 on success, -1 on error.
+ *
+ * Note: This API with non-zero AIE cycle is for graph that is running
+ * forever or graph that has multi-rate core(s).
+ */
+int
+xrtGraphWait(xrtGraphHandle gh, uint64_t cycle);
 
 /**
  * xrtGraphSuspend() - Suspend a running graph.
@@ -120,18 +130,22 @@ int
 xrtGraphResume(xrtGraphHandle gh);
 
 /**
- * xrtGraphStop() - Stop a running graph if not done within a given time
- *                  interval.
+ * xrtGraphEnd() - Wait a given AIE cycle since the last xrtGraphRun and
+ *                 then end the graph. If cycle is 0, busy wait until graph
+ *                 is done before end the graph. If graph already run more
+ *                 than the given cycle, stop the graph immediately and end it.
  *
  * @gh:              Handle to graph previously opened with xrtGraphOpen.
- * @timeoutMilliSec: Timeout value before force to stop graph.
+ * @cycle:           AIE cycle should wait since last xrtGraphRun. 0 for
+ *                   wait until graph is done.
  *
  * Return:          0 on success, -1 on timeout.
  *
- * Note: Wait for done status of ALL the tiles
+ * Note: This API with non-zero AIE cycle is for graph that is running
+ * forever or graph that has multi-rate core(s).
  */
 int
-xrtGraphStop(xrtGraphHandle gh, int timeoutMilliSec);
+xrtGraphEnd(xrtGraphHandle gh, uint64_t cycle);
 
 /**
  * xrtGraphUpdateRTP() - Update RTP value of port with hierarchical name
