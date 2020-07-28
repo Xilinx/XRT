@@ -1731,7 +1731,6 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     ,mDSAMinorVersion(DSA_MINOR_VERSION)
     ,mDeviceIndex(deviceIndex)
     ,mCuIndx(0)
-    ,sim_xdma_version(1.0)
   {
     simulator_started = false;
     tracecount_calls = 0;
