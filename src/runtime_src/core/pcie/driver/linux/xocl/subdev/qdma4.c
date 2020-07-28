@@ -1,7 +1,7 @@
 /*
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
- * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2020- Xilinx, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@Xilinx.com
  *          Jan Stephan <j.stephan@hzdr.de>
@@ -27,6 +27,8 @@
 #include "../xocl_drv.h"
 #include "../xocl_drm.h"
 #include "../lib/libqdma4/libqdma4_export.h"
+#include "../lib/libqdma4/qdma_ul_ext.h"
+#include "../lib/libqdma4/stmc.h"
 #include "qdma_ioctl.h"
 
 #define XOCL_FILE_PAGE_OFFSET   0x100000
@@ -42,11 +44,6 @@
 
 /* streaming defines */
 #define	MINOR_NAME_MASK		0xffffffff
-
-#define	STREAM_FLOWID_MASK	0xff
-#define	STREAM_SLRID_SHIFT	16
-#define	STREAM_SLRID_MASK	0xff
-#define	STREAM_TDEST_MASK	0xffff
 
 #define	STREAM_DEFAULT_H2C_RINGSZ_IDX		0
 #define	STREAM_DEFAULT_C2H_RINGSZ_IDX		0
@@ -129,17 +126,13 @@ struct qdma_stream_queue {
 	struct xocl_qdma	*qdma;
 	unsigned long		queue;
 	struct qdma_queue_conf  qconf;
+	struct stmc_queue_conf  sqconf;
 	u32			state;
 	spinlock_t		qlock;
 	unsigned long		refcnt;
 	wait_queue_head_t 	wq;
-	int			flowid;
-	int			routeid;
-        u8			cdh_max; /** max 16. CDH length per packet */
-        u8			pipe_gl_max; /** <= 7, max # gather buf. per packet */
-        u8			 pipe_flow_id;	/** pipe flow id */
-        u8			 pipe_slr_id;	/** pipe SLR id */
-        u16			 pipe_tdest;	/** pipe route id */
+	unsigned int		flowid;
+	unsigned int		routeid;
 
 	struct file		*file;
 	int			qfd;
@@ -154,18 +147,10 @@ struct qdma_stream_queue {
 	unsigned int 		req_cancel_cmpl_cnt;
 };
 
-struct stm2_dev {
-	unsigned char		bar_num;
-	unsigned int		reg_base;
-	void __iomem		*stm_regs;
-	unsigned long		dma_hndl;
-};
-
-
 struct xocl_qdma {
 	unsigned long 		dma_hndl;
 	struct qdma_dev_conf	dev_conf;
-	struct stm2_dev		stm_dev;
+	struct stmc_dev		stm_dev;
 
 	struct platform_device	*pdev;
 	/* Number of bidirectional channels */
@@ -879,6 +864,8 @@ static void qdma_isr(unsigned long dma_handle, int irq, unsigned long arg)
 	irq_entry = &qdma->user_msix_table[irq];
 	if (irq_entry->in_use)
 		irq_entry->handler(irq, irq_entry->arg);
+	else
+		xocl_info(&qdma->pdev->dev, "user irq %d not in use", irq);
 }
 
 static struct xocl_dma_funcs qdma_ops = {
@@ -1391,6 +1378,10 @@ static int queue_flush(struct qdma_stream_queue *queue)
 			"Stop queue failed ret = %ld", ret);
 		return ret;
 	}
+
+	if (queue->qconf.st)
+		stmc_queue_context_cleanup(&qdma->stm_dev, &queue->sqconf);
+
 	ret = qdma4_queue_remove(qdma->dma_hndl, queue->queue, NULL, 0);
 	if (ret < 0) {
 		xocl_err(&qdma->pdev->dev,
@@ -1477,7 +1468,7 @@ static struct file_operations queue_fops = {
 };
 
 /* stream device file operations */
-static long qdma_stream_ioctl_create_queue(struct xocl_qdma *qdma,
+static long qdma4_stream_ioctl_create_queue(struct xocl_qdma *qdma,
 			void __user *arg)
 {
 	struct xocl_qdma_ioc_create_queue req;
@@ -1503,43 +1494,41 @@ static long qdma_stream_ioctl_create_queue(struct xocl_qdma *qdma,
 	init_waitqueue_head(&queue->wq);
 
 	qconf = &queue->qconf;
+	qconf->quld = (unsigned long)queue;
 	qconf->st = 1; /* stream queue */
 	qconf->qidx = QDMA_QUEUE_IDX_INVALID; /* request libqdma to alloc */
-	qconf->wb_status_en =1;
-	qconf->cmpl_status_acc_en=1;
-	qconf->cmpl_status_pend_chk=1;
-	qconf->fetch_credit=1;
-	qconf->cmpl_stat_en=1;
-	qconf->cmpl_trig_mode=1;
-	qconf->irq_en = (req.flags & XOCL_QDMA_QUEUE_FLAG_POLLING) ? 0 : 1;
 
 	if (!req.write) {
 		/* C2H */
+		qconf->cmpl_desc_sz = DESC_SZ_8B;
+		qconf->c2h_buf_sz_idx = 0;	/* 4K */
+		qconf->cmpl_trig_mode = TRIG_MODE_ANY;
+		qconf->cmpl_en_intr = (qdma->dev_conf.qdma_drv_mode == POLL_MODE) ?  0 : 1;
+
 		qconf->q_type = Q_C2H;
-		queue->pipe_tdest = req.rid & STREAM_TDEST_MASK;
 		qconf->desc_rng_sz_idx = qdma->c2h_ringsz_idx;
 		qconf->cmpl_rng_sz_idx = qdma->wrb_ringsz_idx;
 
-		queue->pipe_flow_id = req.flowid & STREAM_FLOWID_MASK;
-		queue->pipe_slr_id = (req.rid >> STREAM_SLRID_SHIFT) &
-		STREAM_SLRID_MASK;
+		qconf->init_pidx_dis = 1;
 	} else {
 		/* H2C */
 		qconf->q_type = Q_H2C;
 		qconf->desc_bypass = 1;
 		qconf->desc_rng_sz_idx = qdma->h2c_ringsz_idx;
-
-		queue->pipe_flow_id = req.flowid & STREAM_FLOWID_MASK;
-		queue->pipe_slr_id = (req.rid >> STREAM_SLRID_SHIFT) &
-		STREAM_SLRID_MASK;
-		queue->pipe_tdest = req.rid & STREAM_TDEST_MASK;
-		queue->pipe_gl_max = 1;
+		qconf->fp_bypass_desc_fill = stmc_req_bypass_desc_fill;
 	}
+	qconf->wb_status_en =1;
+	qconf->fetch_credit=1;
+	qconf->cmpl_status_acc_en=1;
+	qconf->cmpl_status_pend_chk=1;
+	qconf->cmpl_stat_en=1;
+	qconf->cmpl_trig_mode=1;
+	qconf->irq_en = (qdma->dev_conf.qdma_drv_mode == POLL_MODE) ?  0 : 1;
+	qconf->init_pidx_dis = 1;
+
+
 	queue->flowid = req.flowid;
 	queue->routeid = req.rid;
-	xocl_info(&qdma->pdev->dev, "Creating %s queue with tdest %d, flow %d, "
-		"slr %d", qconf->q_type == Q_C2H ? "C2H" : "H2C",
-		queue->pipe_tdest, queue->pipe_flow_id, queue->pipe_slr_id);
 
 	ret = qdma4_queue_add(qdma->dma_hndl, qconf, &queue->queue, NULL, 0);
 	if (ret < 0) {
@@ -1554,15 +1543,26 @@ static long qdma_stream_ioctl_create_queue(struct xocl_qdma *qdma,
 			ret);
 		goto failed;
 	}
-#if 0
-//	ret = qdma_queue_prog_stm(qdma->dma_hndl, queue->queue, NULL, 0);
-	ret = stm2_queue_prog(qdma->dma_hndl, queue->queue, NULL, 0);
+
+	ret = stmc_queue_context_setup(&qdma->stm_dev, qconf, &queue->sqconf,
+					req.flowid, req.rid);
 	if (ret < 0) {
-		xocl_err(&qdma->pdev->dev, "STM prog. Queue failed ret = %ld",
-			ret);
+		xocl_err(&qdma->pdev->dev, 
+			"%s STM prog. Queue failed ret = %ld",
+			qconf->name, ret);
 		goto failed;
 	}
-#endif
+
+	/* update pidx/cidx for C2H */
+	if (qconf->q_type == Q_C2H) {
+		ret = qdma_q_init_pointers(qdma->dma_hndl, queue->queue);
+		if (ret < 0) {
+			xocl_err(&qdma->pdev->dev,
+				"%s update pidx/cidx failed = %ld",
+				qconf->name, ret);
+			goto failed;
+		}
+	}
 
 	ret = qdma4_queue_get_config(qdma->dma_hndl, queue->queue, qconf, NULL, 0);
 	if (ret < 0) {
@@ -1632,13 +1632,14 @@ failed:
 	}
 
 	qdma4_queue_stop(qdma->dma_hndl, queue->queue, NULL, 0);
+	stmc_queue_context_cleanup(&qdma->stm_dev, &queue->sqconf);
 	qdma4_queue_remove(qdma->dma_hndl, queue->queue, NULL, 0);
 	queue->queue = 0UL;
 
 	return ret;
 }
 
-static long qdma_stream_ioctl_alloc_buffer(struct xocl_qdma *qdma,
+static long qdma4_stream_ioctl_alloc_buffer(struct xocl_qdma *qdma,
 			void __user *arg)
 {
 	struct xocl_qdma_ioc_alloc_buf req;
@@ -1740,7 +1741,7 @@ failed:
 	return ret;
 }
 
-static long qdma_stream_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+static long qdma4_stream_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct xocl_qdma *qdma;
 	long result = 0;
@@ -1749,10 +1750,10 @@ static long qdma_stream_ioctl(struct file *filp, unsigned int cmd, unsigned long
 
 	switch (cmd) {
 	case XOCL_QDMA_IOC_CREATE_QUEUE:
-		result = qdma_stream_ioctl_create_queue(qdma, (void __user *)arg);
+		result = qdma4_stream_ioctl_create_queue(qdma, (void __user *)arg);
 		break;
 	case XOCL_QDMA_IOC_ALLOC_BUFFER:
-		result = qdma_stream_ioctl_alloc_buffer(qdma, (void __user *)arg);
+		result = qdma4_stream_ioctl_alloc_buffer(qdma, (void __user *)arg);
 		break;
 	default:
 		xocl_err(&qdma->pdev->dev, "Invalid request %u", cmd & 0xff);
@@ -1800,8 +1801,46 @@ static const struct file_operations qdma_stream_fops = {
 	.owner = THIS_MODULE,
 	.open = qdma_stream_open,
 	.release = qdma_stream_close,
-	.unlocked_ioctl = qdma_stream_ioctl,
+	.unlocked_ioctl = qdma4_stream_ioctl,
 };
+
+static int qdma4_csr_prog_ta(struct pci_dev *pdev, int bar,
+				resource_size_t base)
+{
+	resource_size_t bar_start;
+	void __iomem    *regs;
+
+	bar_start = pci_resource_start(pdev, bar);
+        regs = ioremap_nocache(bar_start + base, 0x4000);
+        if (!regs) {
+                pr_warn("%s unable to map csr bar %d, base 0x%lx.\n",
+			dev_name(&pdev->dev), bar, (unsigned long)base);
+                return -EINVAL;
+        }
+
+	/* To enable slave bridge:
+	 * First entry of the BDF table programming.
+	 * Offset	Program Value	Register info
+	 * 0x2420	0x0	Address translation value Low
+	 * 0x2424	0x0	Address translation value High
+	 * 0x2428	0x0	PASID
+	 * 0x242C	0x1	[11:0]: Function Number
+	 * 0x2430	0xC2000000	[31:30] Read/Write Access permission
+	 *				[25:0] Window Size
+	 * 				([25:0]*4K  = actual size of the window)
+	 * 0x2434	0x0	SMID
+	 */
+
+	writel(0, regs + 0x2420);
+	writel(0, regs + 0x2424);
+	writel(0, regs + 0x2428);
+	writel(1, regs + 0x242C);
+	writel(0xC2000000, regs + 0x2430);
+	writel(0, regs + 0x2434);
+
+	iounmap(regs);
+	return 0;
+}
 
 static int qdma4_probe(struct platform_device *pdev)
 {
@@ -1810,7 +1849,9 @@ static int qdma4_probe(struct platform_device *pdev)
 	xdev_handle_t	xdev;
 	struct resource *res = NULL;
 	int	i, ret = 0, dma_bar = -1, stm_bar = -1;
+	int csr_bar = -1;
 	resource_size_t stm_base = -1;
+	resource_size_t csr_base = -1;
 
 	xdev = xocl_get_xdev(pdev);
 
@@ -1833,6 +1874,16 @@ static int qdma4_probe(struct platform_device *pdev)
 				xocl_err(&pdev->dev, "Invalid resource %pR", res);
 				return -EINVAL;
 			}
+		} else if (!strncmp(res->name, NODE_QDMA4_CSR, strlen(NODE_QDMA4_CSR))) {
+			ret = xocl_ioaddr_to_baroff(xdev, res->start, &csr_bar, NULL);
+			if (ret) {
+				xocl_err(&pdev->dev, "QDMA4_CSR: Invalid resource %pR", res);
+				return -EINVAL;
+			}
+
+			csr_base = res->start -
+				pci_resource_start(XDEV(xdev)->pdev, csr_bar);
+
 		} else if (!strncmp(res->name, NODE_STM4, strlen(NODE_STM4))) {
 			ret = xocl_ioaddr_to_baroff(xdev, res->start, &stm_bar, NULL);
 			if (ret) {
@@ -1850,18 +1901,23 @@ static int qdma4_probe(struct platform_device *pdev)
 		}
 	}
 
-	if (dma_bar == -1 || stm_base == -1 || stm_bar == -1) {
+	if (dma_bar == -1) {
 		xocl_err(&pdev->dev,
 			"missing resource, dma_bar %d, stm_bar %d, stm_base 0x%lx.",
 			dma_bar, stm_bar, (unsigned long)stm_base);
-		//return -EINVAL;
+		return -EINVAL;
 	}
 
-	pr_info("%s: dma_bar %d, stm_bar %d, stm_base 0x%lx.\n", __func__, dma_bar, stm_bar, (unsigned long)stm_base);
-
-
-	qdma->stm_dev.bar_num = stm_bar;
-	qdma->stm_dev.reg_base = stm_base;
+	if (csr_bar >= 0) {
+		ret = qdma4_csr_prog_ta(XDEV(xdev)->pdev, csr_bar, csr_base);
+		if (ret < 0)
+			xocl_err(&pdev->dev,
+				"BDF table program failed, slave bridge may NOT work.");
+		else
+			xocl_info(&pdev->dev,
+				"BDF table program set up successful (%d,0x%lx).",
+				csr_bar, (unsigned long)csr_base);
+	}
 
 	conf = &qdma->dev_conf;
 	memset(conf, 0, sizeof(*conf));
@@ -1889,6 +1945,17 @@ static int qdma4_probe(struct platform_device *pdev)
 		xocl_err(&pdev->dev, "QDMA Device Open failed");
 		goto failed;
 	}
+
+	if (stm_bar >= 0) {
+		struct stmc_dev *sdev = &qdma->stm_dev;
+
+		sdev->reg_base = stm_base;
+		sdev->bar_num = stm_bar;
+		ret = stmc_init(sdev, conf);
+		if (ret < 0)
+			xocl_warn(&pdev->dev, "QDMA Device STM-C failed");
+	} else
+		xocl_info(&pdev->dev, "QDMA Device STM-C not present");
 
 	if (!XOCL_DSA_IS_SMARTN(xdev)) {
 		ret = set_max_chan(qdma, qdma4_max_channel);
@@ -1925,6 +1992,8 @@ failed:
 	if (qdma) {
 		free_channels(qdma->pdev);
 
+		stmc_cleanup(&qdma->stm_dev);
+
 		if (qdma->dma_hndl)
 			qdma4_device_close(XDEV(xdev)->pdev, qdma->dma_hndl);
 
@@ -1955,6 +2024,8 @@ static int qdma4_remove(struct platform_device *pdev)
 	xdev = xocl_get_xdev(pdev);
 
 	free_channels(pdev);
+
+	stmc_cleanup(&qdma->stm_dev);
 
 	qdma4_device_close(XDEV(xdev)->pdev, qdma->dma_hndl);
 

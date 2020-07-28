@@ -255,6 +255,8 @@ using addr_type = uint64_t;
       bool device2xrt_wr_trans_cb(unsigned long int addr, void const* data_ptr,unsigned long int size);
       bool device2xrt_irq_trans_cb(uint32_t,unsigned long int);
 
+      std::string getSimulatorType(const std::string& binaryDirectory);
+
     private:
       std::shared_ptr<xrt_core::device> mCoreDevice;
       bool simulator_started;
@@ -355,6 +357,7 @@ using addr_type = uint64_t;
       uint32_t mCuIndx;
       const size_t mCuMapSize = 64 * 1024;
       double sim_xdma_version;
+      std::string simulatorType;
   };
 
   extern std::map<unsigned int, HwEmShim*> devices;

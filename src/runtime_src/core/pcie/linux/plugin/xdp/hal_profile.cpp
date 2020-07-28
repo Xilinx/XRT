@@ -178,6 +178,54 @@ CopyBOCallLogger::~CopyBOCallLogger() {
     cb(HalCallbackType::COPY_BO_END, &payload);
 }
 
+GetBOPropCallLogger::GetBOPropCallLogger(xclDeviceHandle handle)
+    : CallLogger()
+{
+    if (!cb_valid()) return;
+    m_local_idcode = xrt_core::utils::issue_id() ;
+
+    CBPayload payload = {m_local_idcode, handle};
+    cb(HalCallbackType::GET_BO_PROP_START, &payload);
+}
+
+GetBOPropCallLogger::~GetBOPropCallLogger() {
+    if (!cb_valid()) return;
+    CBPayload payload = {m_local_idcode, 0};
+    cb(HalCallbackType::GET_BO_PROP_END, &payload);
+}
+
+ExecBufCallLogger::ExecBufCallLogger(xclDeviceHandle handle)
+    : CallLogger()
+{
+    if (!cb_valid()) return;
+    m_local_idcode = xrt_core::utils::issue_id() ;
+
+    CBPayload payload = {m_local_idcode, handle};
+    cb(HalCallbackType::EXEC_BUF_START, &payload);
+}
+
+ExecBufCallLogger::~ExecBufCallLogger() {
+    if (!cb_valid()) return;
+    CBPayload payload = {m_local_idcode, 0};
+    cb(HalCallbackType::EXEC_BUF_END, &payload);
+}
+
+ExecWaitCallLogger::ExecWaitCallLogger(xclDeviceHandle handle)
+    : CallLogger()
+{
+    if (!cb_valid()) return;
+    m_local_idcode = xrt_core::utils::issue_id() ;
+
+    CBPayload payload = {m_local_idcode, handle};
+    cb(HalCallbackType::EXEC_WAIT_START, &payload);
+}
+
+ExecWaitCallLogger::~ExecWaitCallLogger() {
+    if (!cb_valid()) return;
+    CBPayload payload = {m_local_idcode, 0};
+    cb(HalCallbackType::EXEC_WAIT_END, &payload);
+}
+
 UnmgdPwriteCallLogger::UnmgdPwriteCallLogger(xclDeviceHandle handle, unsigned flags, const void *buf, size_t count, uint64_t offset) 
     : CallLogger()
 {

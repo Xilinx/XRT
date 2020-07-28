@@ -12,12 +12,14 @@ usage()
     echo "[-help]                    List this help"
     echo "[-validate]                Validate that required packages are installed"
     echo "[-docker]                  Indicate that script is run within a docker container, disables select packages"
+    echo "[-sysroot]                 Indicate that script is run to prepare sysroot, disables select packages"
 
     exit 1
 }
 
 validate=0
 docker=0
+sysroot=0
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -30,6 +32,10 @@ while [ $# -gt 0 ]; do
             ;;
         -docker)
             docker=1
+            shift
+            ;;
+        -sysroot)
+            sysroot=1
             shift
             ;;
         *)
@@ -182,7 +188,7 @@ ub_package_list()
      python3-sphinx-rtd-theme \
     )
 
-    if [[ $docker == 0 ]]; then
+    if [ $docker == 0 ] && [ $sysroot == 0 ]; then
         UB_LIST+=(linux-headers-$(uname -r))
     fi
 

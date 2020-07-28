@@ -220,6 +220,30 @@ namespace xdp {
     log_function_end(payload, "CopyBO") ;
   }
 
+  static void get_bo_prop_start(void* payload) {
+    log_function_start(payload, "GetBOProp") ;
+  }
+
+  static void get_bo_prop_end(void* payload) {
+    log_function_end(payload, "GetBOProp") ;
+  }
+
+  static void exec_buf_start(void* payload) {
+    log_function_start(payload, "ExecBuf") ;
+  }
+
+  static void exec_buf_end(void* payload) {
+    log_function_end(payload, "ExecBuf") ;
+  }
+
+  static void exec_wait_start(void* payload) {
+    log_function_start(payload, "ExecWait") ;
+  }
+
+  static void exec_wait_end(void* payload) {
+    log_function_end(payload, "ExecWait") ;
+  }
+
   static void unmgd_read_start(void* payload) {
     UnmgdPreadPwriteCBPayload* pLoad = 
       reinterpret_cast<UnmgdPreadPwriteCBPayload*>(payload);
@@ -423,6 +447,24 @@ void hal_level_xdp_cb_func(HalCallbackType cb_type, void* payload)
       break;
     case HalCallbackType::COPY_BO_END:
       xdp::copy_bo_end(payload);
+      break;
+    case HalCallbackType::GET_BO_PROP_START:
+      xdp::get_bo_prop_start(payload);
+      break;
+    case HalCallbackType::GET_BO_PROP_END:
+      xdp::get_bo_prop_end(payload);
+      break;
+    case HalCallbackType::EXEC_BUF_START:
+      xdp::exec_buf_start(payload);
+      break;
+    case HalCallbackType::EXEC_BUF_END:
+      xdp::exec_buf_end(payload);
+      break;
+    case HalCallbackType::EXEC_WAIT_START:
+      xdp::exec_wait_start(payload);
+      break;
+    case HalCallbackType::EXEC_WAIT_END:
+      xdp::exec_wait_end(payload);
       break;
     case HalCallbackType::UNMGD_READ_START:
       xdp::unmgd_read_start(payload);

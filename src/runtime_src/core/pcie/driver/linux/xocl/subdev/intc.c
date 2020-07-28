@@ -54,6 +54,7 @@ static u32 eisr[4] = {
 
 struct intr_info {
 	irqreturn_t (*handler)(int irq, void *arg);
+	int   intr_id;
 	void *arg;
 	bool  enabled;
 };
@@ -105,7 +106,7 @@ irqreturn_t intc_csr_isr(int irq, void *arg)
 		 * a bug on hardware or ERT firmware.
 		 */
 		if (info && info->enabled && info->handler)
-			info->handler(index, info->arg);
+			info->handler(info->intr_id, info->arg);
 
 		pending ^= 1 << index;
 	};
@@ -136,6 +137,7 @@ static int request_intr(struct platform_device *pdev, int intr_id,
 	if (handler) {
 		info = vzalloc(sizeof(struct intr_info));
 		info->handler = handler;
+		info->intr_id = intr_id;
 		info->arg = arg;
 		info->enabled = false;
 		data->info[intr_src] = info;
@@ -172,6 +174,20 @@ static int config_intr(struct platform_device *pdev, int intr_id, bool en)
 	info->enabled = en;
 
 	return 0;
+}
+
+static int csr_read32(struct platform_device *pdev, u32 off)
+{
+	struct xocl_intc *intc = platform_get_drvdata(pdev);
+
+	return ioread32(intc->csr_base + off - ERT_CSR_ADDR);
+}
+
+static void csr_write32(struct platform_device *pdev, u32 val, u32 off)
+{
+	struct xocl_intc *intc = platform_get_drvdata(pdev);
+
+	iowrite32(val, intc->csr_base + off - ERT_CSR_ADDR);
 }
 
 static int intc_probe(struct platform_device *pdev)
@@ -263,6 +279,9 @@ out:
 static struct xocl_intc_funcs intc_ops = {
 	.request_intr = request_intr,
 	.config_intr  = config_intr,
+	/* Below two ops only used in ERT sub-device polling mode(for debug) */
+	.csr_read32     = csr_read32,
+	.csr_write32    = csr_write32,
 	/* TODO: add CU/ERT mode switch op */
 };
 

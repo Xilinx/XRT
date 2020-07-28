@@ -32,22 +32,6 @@
 #include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
 
-template <typename T>
-std::vector<T> as_vector(boost::property_tree::ptree const& pt, 
-                         boost::property_tree::ptree::key_type const& key)
-{
-    std::vector<T> r;
-
-    boost::property_tree::ptree::const_assoc_iterator it = pt.find(key);
-
-    if( it != pt.not_found()) {
-      for (auto& item : pt.get_child(key)) {
-        r.push_back(item.second);
-      }
-    }
-    return r;
-}
-
 std::string
 FormattedOutput::getTimeStampAsString(const axlf &_xclBinHeader) {
   return XUtil::format("%ld", _xclBinHeader.m_header.m_timeStamp);
@@ -193,13 +177,13 @@ FormattedOutput::getKernelDDRMemory(const std::string _sKernelInstanceName,
   XUtil::TRACE_PrintTree("Top", ptSections);
 
   boost::property_tree::ptree& ptMemTopology = ptSections.get_child("mem_topology");
-  std::vector<boost::property_tree::ptree> memTopology = as_vector<boost::property_tree::ptree>(ptMemTopology, "m_mem_data");
+  std::vector<boost::property_tree::ptree> memTopology = XUtil::as_vector<boost::property_tree::ptree>(ptMemTopology, "m_mem_data");
 
   boost::property_tree::ptree& ptConnectivity = ptSections.get_child("connectivity");
-  std::vector<boost::property_tree::ptree> connectivity = as_vector<boost::property_tree::ptree>(ptConnectivity, "m_connection");
+  std::vector<boost::property_tree::ptree> connectivity = XUtil::as_vector<boost::property_tree::ptree>(ptConnectivity, "m_connection");
 
   boost::property_tree::ptree& ptIPLayout = ptSections.get_child("ip_layout");
-  std::vector<boost::property_tree::ptree> ipLayout = as_vector<boost::property_tree::ptree>(ptIPLayout, "m_ip_data");
+  std::vector<boost::property_tree::ptree> ipLayout = XUtil::as_vector<boost::property_tree::ptree>(ptIPLayout, "m_ip_data");
 
   // 3) Establish the connections
   std::set<int> addedIndex;
@@ -306,9 +290,9 @@ reportXclbinInfo( std::ostream & _ostream,
     std::string sKernels;
     if (!_ptMetaData.empty()) {
       boost::property_tree::ptree &ptXclBin = _ptMetaData.get_child("xclbin");
-      std::vector<boost::property_tree::ptree> userRegions = as_vector<boost::property_tree::ptree>(ptXclBin,"user_regions");
+      std::vector<boost::property_tree::ptree> userRegions = XUtil::as_vector<boost::property_tree::ptree>(ptXclBin,"user_regions");
       for (auto & userRegion : userRegions) {
-        std::vector<boost::property_tree::ptree> kernels = as_vector<boost::property_tree::ptree>(userRegion,"kernels");
+        std::vector<boost::property_tree::ptree> kernels = XUtil::as_vector<boost::property_tree::ptree>(userRegion,"kernels");
         for (auto & kernel : kernels) {
            std::string sKernel = kernel.get<std::string>("name", "");
            if (sKernel.empty()) {
@@ -609,7 +593,7 @@ reportClocks( std::ostream & _ostream,
     return;
   }
 
-  std::vector<boost::property_tree::ptree> clockFreqs = as_vector<boost::property_tree::ptree>(ptClockFreqTopology,"m_clock_freq");
+  std::vector<boost::property_tree::ptree> clockFreqs = XUtil::as_vector<boost::property_tree::ptree>(ptClockFreqTopology,"m_clock_freq");
   for (unsigned int index = 0; index < clockFreqs.size(); ++index) {
     boost::property_tree::ptree &ptClockFreq = clockFreqs[index];
     std::string sName = ptClockFreq.get<std::string>("m_name");
@@ -651,7 +635,7 @@ reportMemoryConfiguration( std::ostream & _ostream,
     return;
   }
 
-  std::vector<boost::property_tree::ptree> memDatas = as_vector<boost::property_tree::ptree>(ptMemTopology,"m_mem_data");
+  std::vector<boost::property_tree::ptree> memDatas = XUtil::as_vector<boost::property_tree::ptree>(ptMemTopology,"m_mem_data");
   for (unsigned int index = 0; index < memDatas.size(); ++index) {
     boost::property_tree::ptree & ptMemData = memDatas[index];
 
@@ -700,20 +684,20 @@ reportKernels( std::ostream & _ostream,
     boost::property_tree::ptree pt;
     if (MEM_TOPOLOGY == pSection->getSectionKind() ) {
       pSection->getPayload(pt);
-      memTopology = as_vector<boost::property_tree::ptree>(pt.get_child("mem_topology"), "m_mem_data");
+      memTopology = XUtil::as_vector<boost::property_tree::ptree>(pt.get_child("mem_topology"), "m_mem_data");
     } else if (CONNECTIVITY == pSection->getSectionKind() ) {
       pSection->getPayload(pt);
-      connectivity = as_vector<boost::property_tree::ptree>(pt.get_child("connectivity"), "m_connection");
+      connectivity = XUtil::as_vector<boost::property_tree::ptree>(pt.get_child("connectivity"), "m_connection");
     } else if (IP_LAYOUT == pSection->getSectionKind() ) {
       pSection->getPayload(pt);
-      ipLayout = as_vector<boost::property_tree::ptree>(pt.get_child("ip_layout"), "m_ip_data");
+      ipLayout = XUtil::as_vector<boost::property_tree::ptree>(pt.get_child("ip_layout"), "m_ip_data");
     }
   }
 
   boost::property_tree::ptree &ptXclBin = _ptMetaData.get_child("xclbin");
-  std::vector<boost::property_tree::ptree> userRegions = as_vector<boost::property_tree::ptree>(ptXclBin,"user_regions");
+  std::vector<boost::property_tree::ptree> userRegions = XUtil::as_vector<boost::property_tree::ptree>(ptXclBin,"user_regions");
   for (auto & userRegion : userRegions) {
-    std::vector<boost::property_tree::ptree> kernels = as_vector<boost::property_tree::ptree>(userRegion,"kernels");
+    std::vector<boost::property_tree::ptree> kernels = XUtil::as_vector<boost::property_tree::ptree>(userRegion,"kernels");
     if (kernels.size() == 0) 
       _ostream << "Kernel(s): <None Found>" << std::endl;
 
@@ -723,9 +707,9 @@ reportKernels( std::ostream & _ostream,
       std::string sKernel = ptKernel.get<std::string>("name");
       _ostream << XUtil::format("%s %s", "Kernel:", sKernel.c_str()).c_str() << std::endl;
 
-      std::vector<boost::property_tree::ptree> ports = as_vector<boost::property_tree::ptree>(ptKernel,"ports");
-      std::vector<boost::property_tree::ptree> arguments = as_vector<boost::property_tree::ptree>(ptKernel,"arguments");
-      std::vector<boost::property_tree::ptree> instances = as_vector<boost::property_tree::ptree>(ptKernel,"instances");
+      std::vector<boost::property_tree::ptree> ports = XUtil::as_vector<boost::property_tree::ptree>(ptKernel,"ports");
+      std::vector<boost::property_tree::ptree> arguments = XUtil::as_vector<boost::property_tree::ptree>(ptKernel,"arguments");
+      std::vector<boost::property_tree::ptree> instances = XUtil::as_vector<boost::property_tree::ptree>(ptKernel,"instances");
 
       _ostream << std::endl;
 
@@ -944,7 +928,7 @@ reportKeyValuePairs( std::ostream & _ostream,
     if (pSection->getSectionKind() == KEYVALUE_METADATA) {
       boost::property_tree::ptree pt;
       pSection->getPayload(pt);
-      keyValues = as_vector<boost::property_tree::ptree>(pt.get_child("keyvalue_metadata"), "key_values");
+      keyValues = XUtil::as_vector<boost::property_tree::ptree>(pt.get_child("keyvalue_metadata"), "key_values");
       break;
     }
   }
