@@ -243,7 +243,9 @@ struct ert_configure_cmd {
   uint32_t cq_int:1;
   uint32_t cdma:1;
   uint32_t dataflow:1;
-  uint32_t unusedf:24;
+  /* WORKAROUND: allow xclRegWrite/xclRegRead access shared CU */
+  uint32_t rw_shared:1;
+  uint32_t unusedf:23;
   uint32_t dsa52:1;
 
   /* cu address map size is num_cus */

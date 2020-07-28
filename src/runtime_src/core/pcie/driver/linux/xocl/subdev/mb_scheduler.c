@@ -1768,6 +1768,8 @@ struct exec_core {
 	bool		           configured;
 	bool		           stopped;
 	bool		           flush;
+	/* WORKAROUND: allow xclRegWrite/xclRegRead access shared CU */
+	bool			   rw_shared;
 
 	struct list_head           pending_cu_queue[MAX_CUS];
 	struct list_head           pending_ctrl_queue;
@@ -2060,6 +2062,9 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	// other processes from submitting configure command on this same
 	// xclbin while ERT asynchronous configure is running.
 	exec->configure_active = true;
+
+	/* WORKAROUND: allow xclRegWrite/xclRegRead access shared CU */
+	exec->rw_shared = cfg->rw_shared;
 
 	userpf_info(xdev, "scheduler config ert(%d), dataflow(%d), slots(%d), cudma(%d), cuisr(%d), cdma(%d), cus(%d)\n"
 		 , ert_poll | ert_full
@@ -4613,7 +4618,8 @@ int cu_map_addr(struct platform_device *pdev, u32 cu_idx, void *drm_filp,
 		mutex_unlock(&xdev->dev_lock);
 		return -EINVAL;
 	}
-	if (ip_excl_holder(exec, cu_idx) == 0) {
+	/* WORKAROUND: If rw_shared is true, allow map shared CU */
+	if (!exec->rw_shared && ip_excl_holder(exec, cu_idx) == 0) {
 		userpf_err(xdev, "cu(%d) isn't exclusively reserved\n", cu_idx);
 		mutex_unlock(&xdev->dev_lock);
 		return -EINVAL;
