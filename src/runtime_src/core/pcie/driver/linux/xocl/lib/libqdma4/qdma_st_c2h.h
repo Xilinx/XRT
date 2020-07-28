@@ -55,8 +55,10 @@ struct qdma_sdesc_info {
 			u8 sop:1;
 			/** end of the packet */
 			u8 eop:1;
+			/** end of the transfer */
+			u8 eot:1;
 			/** filler for 5 bits */
-			u8 filler:5;
+			u8 filler:4;
 		} f;
 	};
 	/** reserved 3 bits */

@@ -109,6 +109,8 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/lib/libqdma/version.h
   xocl/lib/libqdma/xdev.h
   xocl/lib/libqdma/xdev.c
+  xocl/lib/libqdma4/stmc.h
+  xocl/lib/libqdma4/stmc.c
   xocl/lib/libqdma4/libqdma4_export.h
   xocl/lib/libqdma4/libqdma_config.c
   xocl/lib/libqdma4/libqdma_config.h

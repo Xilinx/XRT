@@ -1250,7 +1250,7 @@ static ssize_t queue_write_iter(struct kiocb *kiocb, struct iov_iter *io)
 	qdma = queue->qdma;
 
 	nr = io->nr_segs;
-	if (!iter_is_iovec(io) || nr != 2) {
+	if (!iter_is_iovec(io) || (nr & 0x1)) {
 		xocl_err(&qdma->pdev->dev, "Invalid request nr = %ld", nr);
 		return -EINVAL;
 	}
@@ -1272,7 +1272,7 @@ static ssize_t queue_read_iter(struct kiocb *kiocb, struct iov_iter *io)
 	qdma = queue->qdma;
 
 	nr = io->nr_segs;
-	if (!iter_is_iovec(io) || nr != 2) {
+	if (!iter_is_iovec(io) || (nr & 0x1)) {
 		xocl_err(&qdma->pdev->dev, "Invalid request nr = %ld", nr);
 		return -EINVAL;
 	}
