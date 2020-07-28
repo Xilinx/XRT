@@ -18,6 +18,7 @@
 
 #include "aie.h"
 #include "core/common/error.h"
+#include "core/common/message.h"
 
 #include <iostream>
 #include <cerrno>
