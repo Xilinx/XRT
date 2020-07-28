@@ -34,37 +34,6 @@
         Q2h_sock->sk_write((void*)raw_response_payload.get(),r_len);\
     }
 
-#define PROCESS_PAYLOAD()\
-    if (header->xcl_api() == xclQdma2HostReadMem_n) { \
-    	xclSlaveReadReq_call payload; \
-        xclSlaveReadReq_response response_payload; \
-    	payload.ParseFromArray((void*)raw_payload.get(), r); \
-        auto data = std::make_unique<char[]>(payload.size()); \
-        bool resp = (*m_q2h_slave_rd_transaction)(false, 0,(unsigned long int)payload.addr(),(void* const)data.get(),(unsigned long int)payload.size()); \
-        response_payload.set_valid(resp); \
-        response_payload.set_data((void*)data.get(),payload.size()); \
-        int r_len = response_payload.ByteSize(); \
-        SEND_RESP2QDMA() \
-    } \
-    if (header->xcl_api() == xclQdma2HostWriteMem_n) { \
-    	xclSlaveWriteReq_call payload; \
-        xclSlaveWriteReq_response response_payload; \
-    	payload.ParseFromArray((void*)raw_payload.get(), r); \
-        bool resp = (*m_q2h_slave_wr_transaction)(false, 1,(unsigned long int)payload.addr(),(void const*)payload.data().c_str(),(unsigned long int)payload.size()); \
-        response_payload.set_valid(resp); \
-        int r_len = response_payload.ByteSize(); \
-        SEND_RESP2QDMA() \
-    } \
-    if (header->xcl_api() == xclQdma2HostInterrupt_n) { \
-    	xclInterruptOccured_call payload; \
-        xclInterruptOccured_response response_payload; \
-    	payload.ParseFromArray((void*)raw_payload.get(), r); \
-        uint32_t interrupt_line = payload.interrupt_line(); \
-        bool resp = (*m_q2h_slave_irq_transaction)(true, 1,0,interrupt_line,4); \
-        response_payload.set_valid(resp); \
-        int r_len = response_payload.ByteSize(); \
-        SEND_RESP2QDMA() \
-    }
 
 namespace {
 
@@ -92,17 +61,12 @@ namespace xclhwemhal2 {
 	    size_t  i_len;
 	    size_t  ri_len;
         unix_socket* Q2h_sock;
-        bool (*m_q2h_slave_rd_transaction)(bool intr, int rdwr, unsigned long int, void* const,unsigned long int);
-        bool (*m_q2h_slave_wr_transaction)(bool intr, int rdwr, unsigned long int, void const*,unsigned long int);
-        bool (*m_q2h_slave_irq_transaction)(bool intr, int rdwr, unsigned long int, uint32_t,unsigned long int);
+        xclhwemhal2::HwEmShim* inst;
 
         public:
-        Q2H_helper();
+        Q2H_helper(xclhwemhal2::HwEmShim* _inst);
         ~Q2H_helper(); 
         int  poolingon_Qdma(); 
-        void register_q2h_slave_rd_transaction(bool (*q2h_slave_rd_transaction)(bool intr, int rdwr, unsigned long int, void* const,unsigned long int));
-        void register_q2h_slave_wr_transaction(bool (*q2h_slave_wr_transaction)(bool intr, int rdwr, unsigned long int, void const*,unsigned long int));
-        void register_q2h_slave_irq_transaction(bool (*q2h_slave_irq_transaction)(bool intr, int rdwr, unsigned long int, uint32_t,unsigned long int));
         bool connect_sock();
     };
 
@@ -1316,9 +1280,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     {
       xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer,finalValidAddress,origSize,noHostMemory);
 
-      PRINTENDFUNC;
-      if(!ack)
-        return 0;
+        PRINTENDFUNC;
+        if (!ack)
+          return 0;
     }
     return finalValidAddress;
   }
@@ -3091,26 +3055,63 @@ volatile void HwEmShim::set_mHostMemAccessThreadStarted(bool val) { mHostMemAcce
 /********************************************** QDMA APIs IMPLEMENTATION END**********************************************/
 /**********************************************HAL2 API's END HERE **********************************************/
 /********************************************** Q2H_helper class implementation starts **********************************************/
-bool device2xrt_rd_trans_cb(bool, int, unsigned long int addr, void* const data_ptr,unsigned long int size) {
-    uint32_t d = 0xf;
-    char* const data = (char* const)data_ptr;
-    for(unsigned long int i=0;i<size; i++) {
-       data[i] = i+d;
-    }
-     
+/**
+ * Function: device2xrt_rd_trans_cb
+ * Description : Its a Read request from Device to HOST Buffer Call back function which gets read Address,
+ *               size and Data pointer to be filled.
+ * Arguments:
+ *   1. addr: Read request addr
+ *   2. data_ptr: container of read data which gets filled by Host. size of this container
+ *                is = size rgument of this function
+ *   3. size: size of read request
+ * Return Value: This funtion returns boolean value. Incase of successful read from Host
+ *                  it will return true or else false.
+ *     
+ **/
+bool HwEmShim::device2xrt_rd_trans_cb(unsigned long int addr, void* const data_ptr,unsigned long int size) {
+    //This addr can be any address, may not be only the base address.
+    // So we should identify to which address it falls into and get that membuf 
+    // and seek to that address offset and get the data of the size requested
+    // and copy into the data_ptr provided by the device call
+
+  // Enable this code base once we have access to this shim layer member variable
+  //void* hostMemBuf = mHostOnlyMemMap[addr];
+  //std::memcpy(hostMemBuf, (void*)data_ptr, size);
+
     return true;
 }
-bool device2xrt_wr_trans_cb(bool intr, int rd_wr, unsigned long int addr, void const* data_ptr,unsigned long int size) {
-    //const char *data = (const char*)data_ptr;
+
+/**
+ * Function: device2xrt_wr_trans_cb
+ * Description : Its a Write request from Device to HOST Buffer Call back function which gets Write address,
+ *               size and Data pointer of written data.
+ * Arguments:
+ *   1. addr: Read request addr
+ *   2. data_ptr: container which holds write data which is already filled by deivce. size of this container
+ *                is = size rgument of this function
+ *   3. size: size of Write request
+ * Return Value: This funtion returns boolean value. Incase of successful write to Host Buffer
+ *                  it will return true or else false.
+ *     
+ **/
+bool HwEmShim::device2xrt_wr_trans_cb(unsigned long int addr, void const* data_ptr,unsigned long int size) {
+    //This addr can be any address, may not be only the base address.
+    // So we should identify to which address it falls into and get that membuf 
+    // and seek to that address offset and get the data of the size requested
+    // from the data_ptr provided by the device call and copy into the offset address
+
+  // Enable this code base once we have access to this shim layer member variable
+  //void* hostMemBuf = mHostOnlyMemMap[addr];
+  //std::memcpy((void*)data_ptr, hostMemBuf, size);
+  return true;
+}
+bool HwEmShim::device2xrt_irq_trans_cb(uint32_t,unsigned long int) {
     return true;
 }
-bool device2xrt_irq_trans_cb(bool, int, unsigned long int, uint32_t,unsigned long int) {
-    return true;
-}
-Q2H_helper :: Q2H_helper() {
+Q2H_helper :: Q2H_helper(xclhwemhal2::HwEmShim* _inst) {
     header          = std::make_unique<call_packet_info>();
     response_header = std::make_unique<response_packet_info>();
-    //Q2h_sock        = std::make_unique<unix_socket>("xcl_sock_K2H",5,false);
+    inst = _inst;
     Q2h_sock        = NULL;
     header->set_size(0);
     header->set_xcl_api(0);
@@ -3146,21 +3147,42 @@ int Q2H_helper::poolingon_Qdma() {
     r = Q2h_sock->sk_read((void*)raw_payload.get(), header->size());
     assert((uint32_t)r == header->size());
     //processing payload and sending the response message back to sim_qdma
-    PROCESS_PAYLOAD()
+    if (header->xcl_api() == xclQdma2HostReadMem_n) { 
+    	xclSlaveReadReq_call payload; 
+        xclSlaveReadReq_response response_payload; 
+    	payload.ParseFromArray((void*)raw_payload.get(), r); 
+        auto data = std::make_unique<char[]>(payload.size()); 
+        bool resp = inst->device2xrt_rd_trans_cb((unsigned long int)payload.addr(),(void* const)data.get(),(unsigned long int)payload.size());
+        response_payload.set_valid(resp); 
+        response_payload.set_data((void*)data.get(),payload.size()); 
+        int r_len = response_payload.ByteSize(); 
+        SEND_RESP2QDMA() 
+    } 
+    if (header->xcl_api() == xclQdma2HostWriteMem_n) { 
+    	xclSlaveWriteReq_call payload; 
+        xclSlaveWriteReq_response response_payload; 
+    	payload.ParseFromArray((void*)raw_payload.get(), r); 
+        bool resp = inst->device2xrt_wr_trans_cb((unsigned long int)payload.addr(),(void const*)payload.data().c_str(),(unsigned long int)payload.size());
+        response_payload.set_valid(resp); 
+        int r_len = response_payload.ByteSize(); 
+        SEND_RESP2QDMA() 
+    } 
+    if (header->xcl_api() == xclQdma2HostInterrupt_n) { 
+    	xclInterruptOccured_call payload; 
+        xclInterruptOccured_response response_payload; 
+    	payload.ParseFromArray((void*)raw_payload.get(), r); 
+        uint32_t interrupt_line = payload.interrupt_line(); 
+        bool resp = inst->device2xrt_irq_trans_cb(interrupt_line,4);
+        response_payload.set_valid(resp);
+        int r_len = response_payload.ByteSize();
+        SEND_RESP2QDMA() 
+    }
+
     return 1;
-}
-void Q2H_helper::register_q2h_slave_rd_transaction(bool (*q2h_slave_rd_transaction)(bool, int, unsigned long int, void* const,unsigned long int)) {
-    m_q2h_slave_rd_transaction = q2h_slave_rd_transaction;
-}
-void Q2H_helper::register_q2h_slave_wr_transaction(bool (*q2h_slave_wr_transaction)(bool, int, unsigned long int, void const *,unsigned long int)) {
-    m_q2h_slave_wr_transaction = q2h_slave_wr_transaction;
-}
-void Q2H_helper::register_q2h_slave_irq_transaction(bool (*q2h_slave_irq_transaction)(bool, int, unsigned long int, uint32_t,unsigned long int)) {
-    m_q2h_slave_irq_transaction = q2h_slave_irq_transaction;
 }
 bool Q2H_helper::connect_sock() {
     if(Q2h_sock == NULL) {
-        Q2h_sock = new unix_socket("xcl_sock_K2H",60,false);
+        Q2h_sock = new unix_socket("xcl_sock_K2H",5,false);
     }
     else if (!Q2h_sock->server_started) {
         Q2h_sock->start_server("xcl_sock_K2H",5,false);
@@ -3170,13 +3192,12 @@ bool Q2H_helper::connect_sock() {
 
 void hostMemAccessThread(xclhwemhal2::HwEmShim* inst) {
 	inst->set_mHostMemAccessThreadStarted(true);
-    auto mq2h_helper_ptr = std::make_unique<Q2H_helper>();
-    mq2h_helper_ptr->register_q2h_slave_rd_transaction(device2xrt_rd_trans_cb);
-    mq2h_helper_ptr->register_q2h_slave_wr_transaction(device2xrt_wr_trans_cb);
-    mq2h_helper_ptr->register_q2h_slave_irq_transaction(device2xrt_irq_trans_cb);
+    auto mq2h_helper_ptr = std::make_unique<Q2H_helper>(inst);
     bool sock_ret = false;
-    while(inst->get_mHostMemAccessThreadStarted() && !sock_ret){
+    int count = 0;
+    while(inst->get_mHostMemAccessThreadStarted() && !sock_ret && count < 30){
         sock_ret = mq2h_helper_ptr->connect_sock();
+        count++;
     }
     int r =0;
     while(inst->get_mHostMemAccessThreadStarted() && r >= 0){
@@ -3187,8 +3208,6 @@ void hostMemAccessThread(xclhwemhal2::HwEmShim* inst) {
         } catch(int e) {
             std::cout << " Exception during socket communitication between SIM_QDMA ---> HE_EMU driver.." << std::endl;
         }
-        //if(r < 0)
-            //return;
     }
 }
 /********************************************** Q2H_helper class implementation Ends **********************************************/

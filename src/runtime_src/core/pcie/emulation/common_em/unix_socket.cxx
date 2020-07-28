@@ -82,6 +82,7 @@ void unix_socket::start_server(const std::string& sk_desc,double timeout_insec,b
     exit(1);
   }
   if(r <=0 && !fatal_error) {
+      close(sock);
       return;
   }
 

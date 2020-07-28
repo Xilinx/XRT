@@ -420,10 +420,3 @@ message xclInterruptOccured_call {
 message xclInterruptOccured_response {
      required bool valid = 1;
 }
-message xclDmaVersion_call {
-     required bool valid = 1;
-}
-message xclDmaVersion_response {
-     required uint32 Major = 1;
-     required uint32 Minor = 2;
-}

@@ -251,6 +251,9 @@ using addr_type = uint64_t;
       int xclRegRead(uint32_t cu_index, uint32_t offset, uint32_t *datap);
       volatile bool get_mHostMemAccessThreadStarted();
       volatile void set_mHostMemAccessThreadStarted(bool val);
+      bool device2xrt_rd_trans_cb(unsigned long int addr, void* const data_ptr,unsigned long int size);
+      bool device2xrt_wr_trans_cb(unsigned long int addr, void const* data_ptr,unsigned long int size);
+      bool device2xrt_irq_trans_cb(uint32_t,unsigned long int);
 
     private:
       std::shared_ptr<xrt_core::device> mCoreDevice;
@@ -344,7 +347,7 @@ using addr_type = uint64_t;
       std::thread mMessengerThread;
       std::thread mHostMemAccessThread;
       bool mMessengerThreadStarted;
-      volatile bool mHostMemAccessThreadStarted;
+      bool mHostMemAccessThreadStarted;
       void closemMessengerThread();
       bool mIsTraceHubAvailable;
       //CU register space for xclRegRead/Write()
