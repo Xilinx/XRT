@@ -1908,17 +1908,6 @@ static int qdma4_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	if (csr_bar >= 0) {
-		ret = qdma4_csr_prog_ta(XDEV(xdev)->pdev, csr_bar, csr_base);
-		if (ret < 0)
-			xocl_err(&pdev->dev,
-				"BDF table program failed, slave bridge may NOT work.");
-		else
-			xocl_info(&pdev->dev,
-				"BDF table program set up successful (%d,0x%lx).",
-				csr_bar, (unsigned long)csr_base);
-	}
-
 	conf = &qdma->dev_conf;
 	memset(conf, 0, sizeof(*conf));
 	conf->pdev = XDEV(xdev)->pdev;
@@ -1946,8 +1935,27 @@ static int qdma4_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
+	if (csr_bar >= 0) {
+		xocl_info(&pdev->dev, "csr bar %d, base 0x%lx.",
+			 csr_bar, (unsigned long)csr_base);
+
+#if 0
+		ret = qdma4_csr_prog_ta(XDEV(xdev)->pdev, csr_bar, csr_base);
+		if (ret < 0)
+			xocl_err(&pdev->dev,
+				"BDF table program failed, slave bridge may NOT work.");
+		else
+			xocl_info(&pdev->dev,
+				"BDF table program set up successful (%d,0x%lx).",
+				csr_bar, (unsigned long)csr_base);
+#endif
+	}
+
 	if (stm_bar >= 0) {
 		struct stmc_dev *sdev = &qdma->stm_dev;
+
+		xocl_info(&pdev->dev, "stm bar %d, base 0x%lx.",
+			 stm_bar, (unsigned long)stm_base);
 
 		sdev->reg_base = stm_base;
 		sdev->bar_num = stm_bar;
