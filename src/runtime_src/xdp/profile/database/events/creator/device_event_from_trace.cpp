@@ -351,12 +351,11 @@ namespace xdp {
       x2 = static_cast <double> (deviceTimestamp);
       // slope in ns/cycle
 //      if (isDeviceFlow) {
-//        clockTrainSlope = 1000.0/traceClockRateMHz;
+        clockTrainSlope = 1000.0/traceClockRateMHz;
 //      } else {
-        clockTrainSlope = (y2 - y1) / (x2 - x1);
+//        clockTrainSlope = (y2 - y1) / (x2 - x1);
 //      }
       clockTrainOffset = y2 - clockTrainSlope * x2;
-std::cout << " traceClockRateMHz " << traceClockRateMHz << " clockTrainSlope " << clockTrainSlope << " clockTrainOffset " << clockTrainOffset << std::endl;
       // next time update x1, y1
       y1 = 0.0;
       x1 = 0.0;

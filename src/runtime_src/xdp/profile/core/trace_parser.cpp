@@ -621,7 +621,6 @@ namespace xdp {
         mTrainSlope[type] = (y2 - y1) / (x2 - x1);
       }
       mTrainOffset[type] = y2 - mTrainSlope[type] * x2;
-std::cout << " mTraceClockRateMHz " << mTraceClockRateMHz << " mTrainSlope[type] " << mTrainSlope[type] << " mTrainOffset[type] " << mTrainOffset[type] << std::endl;
       // next time update x1, y1
       y1 = 0.0;
       x1 = 0.0;
