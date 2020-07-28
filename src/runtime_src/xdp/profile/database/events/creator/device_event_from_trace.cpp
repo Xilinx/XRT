@@ -17,7 +17,6 @@
 #define XDP_SOURCE
 
 #include "xdp/profile/database/events/creator/device_event_from_trace.h"
-#include <iostream>
 
 namespace xdp {
 
