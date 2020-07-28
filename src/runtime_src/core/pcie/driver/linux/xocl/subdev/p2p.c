@@ -729,10 +729,13 @@ static long p2p_bar_map(struct p2p *p2p, ulong bank_addr, ulong bank_size)
 		return -ENOENT;
 
 	for (i = 0; i <= p2p->p2p_mem_chunk_num - num; i++) {
-		if (chunk[i].ep_addr != ~0UL && chunk[i].ep_addr != ep_addr)
+		if (chunk[i].remap_ref && (chunk[i].ep_addr != ep_addr ||
+		    bank_addr == ~0UL))
 			continue;
 
 		for (j = i; j < i + num; j++) {
+			if (bank_addr == ~0UL && !chunk[i].remap_ref)
+				continue;
 			addr = ep_addr + (j - i) * XOCL_P2P_CHUNK_SIZE;
 			if (chunk[j].ep_addr != ~0UL && chunk[j].ep_addr != addr)
 				break;
@@ -743,6 +746,18 @@ static long p2p_bar_map(struct p2p *p2p, ulong bank_addr, ulong bank_size)
 
 	if (i > p2p->p2p_mem_chunk_num - num)
 		return -ENOENT;
+
+	if (bank_addr == ~0UL) {
+		for (j = i; j < i + num; j++) {
+			chunk[j].remap_ref = 1;
+			chunk[j].map_head_chunk = i;
+			chunk[j].map_chunk_num = num;
+		}
+		bar_off = i * XOCL_P2P_CHUNK_SIZE;
+
+		p2p_info(p2p, "mark %ld - %ld chunks", i, i +  num - 1);
+		return bar_off;
+	}
 
 	/* mark all slots */
 	bar_off = i * XOCL_P2P_CHUNK_SIZE + ep_addr % XOCL_P2P_CHUNK_SIZE;
