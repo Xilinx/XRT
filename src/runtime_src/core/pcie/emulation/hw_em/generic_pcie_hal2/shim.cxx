@@ -556,13 +556,7 @@ namespace xclhwemhal2 {
         systemUtil::makeSystemCall(_sFilePath, systemUtil::systemOperation::UNZIP, binaryDirectory, boost::lexical_cast<std::string>(__LINE__));
         systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777", boost::lexical_cast<std::string>(__LINE__));
 
-        std::string sim_path1 = binaryDirectory + "/behav_waveform/xsim";
-        std::string sim_path2 = binaryDirectory + "/behav_gdb/xsim";
-
-        if (!boost::filesystem::exists(sim_path1) && !boost::filesystem::exists(sim_path2)) {
-          std::string dMsg = "ERROR: [HW-EMU 11] UNZIP operation failed. Not to able to get the required simulation binaries from xclbin";
-          logMessage(dMsg, 0);
-        }
+        simulatorType = getSimulatorType(binaryDirectory);
       }
 
       if (lWaveform == xclemulation::DEBUG_MODE::GUI)
@@ -571,7 +565,7 @@ namespace xclhwemhal2 {
         std::string protoFileName = "./" + bdName + "_behav.protoinst";
         std::stringstream cmdLineOption;
         std::string waveformDebugfilePath = "";
-        sim_path = binaryDirectory + "/behav_waveform/xsim";
+        sim_path = binaryDirectory + "/behav_waveform/" + simulatorType;
 
         if (boost::filesystem::exists(sim_path) != false) {
           waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
@@ -603,7 +597,7 @@ namespace xclhwemhal2 {
           << " --protoinst " << protoFileName;
 
         launcherArgs = launcherArgs + cmdLineOption.str();
-        sim_path = binaryDirectory + "/behav_waveform/xsim";
+        sim_path = binaryDirectory + "/behav_waveform/" + simulatorType;
         std::string waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
         
         std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
@@ -628,7 +622,7 @@ namespace xclhwemhal2 {
           << " --protoinst " << protoFileName;
 
         launcherArgs = launcherArgs + cmdLineOption.str();
-        sim_path = binaryDirectory + "/behav_waveform/xsim";
+        sim_path = binaryDirectory + "/behav_waveform/" + simulatorType;
         std::string waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
         
         std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
@@ -643,7 +637,7 @@ namespace xclhwemhal2 {
       }
       
       if (lWaveform == xclemulation::DEBUG_MODE::GDB) 
-        sim_path = binaryDirectory + "/behav_gdb/xsim";
+        sim_path = binaryDirectory + "/behav_gdb/" + simulatorType;
 
       if (userSpecifiedSimPath.empty() == false)
       {
@@ -653,13 +647,13 @@ namespace xclhwemhal2 {
       {
         if (sim_path.empty())
         {
-          sim_path = binaryDirectory + "/behav_gdb/xsim";
+          sim_path = binaryDirectory + "/behav_gdb/" + simulatorType;
         }
         
         if (boost::filesystem::exists(sim_path) == false)
         {
           if (lWaveform == xclemulation::DEBUG_MODE::GDB) {
-            sim_path = binaryDirectory + "/behav_waveform/xsim";
+            sim_path = binaryDirectory + "/behav_waveform/" + simulatorType;
             std::string waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
             
             std::string dMsg = "WARNING: [HW-EMU 07] debug_mode is set to 'gdb' in INI file and none of kernels compiled in GDB mode. Running simulation using waveform mode. Do run v++ link with -g and --xp param:hw_emu.debugMode=gdb options to launch simulation in 'gdb' mode";
@@ -683,7 +677,7 @@ namespace xclhwemhal2 {
           }
           else {
             std::string dMsg;
-            sim_path = binaryDirectory + "/behav_gdb/xsim";
+            sim_path = binaryDirectory + "/behav_gdb/" + simulatorType;
             if (lWaveform == xclemulation::DEBUG_MODE::GUI) 
               dMsg = "WARNING: [HW-EM 07] debug_mode is set to 'gui' in ini file. Cannot enable simulator gui in this mode. Using " + sim_path + " as simulation directory.";
             else if (lWaveform == xclemulation::DEBUG_MODE::BATCH) 
@@ -1630,6 +1624,40 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     }
   }
 
+  std::string HwEmShim::getSimulatorType(const std::string& binaryDirectory) {
+
+    std::string simulator;
+    std::string sim_path1 = binaryDirectory + "/behav_waveform/xsim";
+    std::string sim_path2 = binaryDirectory + "/behav_gdb/xsim";
+
+    std::string sim_path3 = binaryDirectory + "/behav_waveform/questa";
+    std::string sim_path4 = binaryDirectory + "/behav_waveform/xcelium";
+    std::string sim_path5 = binaryDirectory + "/behav_waveform/vcs";
+
+    if (boost::filesystem::exists(sim_path1) || boost::filesystem::exists(sim_path2)) {
+      simulator = "xsim";
+    }
+    else if (boost::filesystem::exists(sim_path3)) {
+      simulator = "questa";
+    }
+    else if (boost::filesystem::exists(sim_path4)) {
+      simulator = "xcelium";
+    }
+    else if (boost::filesystem::exists(sim_path5)) {
+      simulator = "vcs";
+    }
+
+    if (!boost::filesystem::exists(sim_path1) && !boost::filesystem::exists(sim_path2)
+      && !boost::filesystem::exists(sim_path3) && !boost::filesystem::exists(sim_path4) 
+      && !boost::filesystem::exists(sim_path5)) {
+
+      std::string dMsg = "ERROR: [HW-EMU 11] UNZIP operation failed. Not to able to get the required simulation binaries from xclbin";
+      logMessage(dMsg, 0);
+    }
+
+    return simulator;
+  }
+
   void HwEmShim::fillDeviceInfo(xclDeviceInfo2* dest, xclDeviceInfo2* src)
   {
     std::strcpy(dest->mName, src->mName);
@@ -1671,6 +1699,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     simulator_started = false;
     tracecount_calls = 0;
     mReqCounter = 0;
+    simulatorType = "xsim";
 
     ci_msg.set_size(0);
     ci_msg.set_xcl_api(0);
