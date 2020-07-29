@@ -238,10 +238,18 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || defined(RHEL_RELEASE_VERSION)
 		pfn_t pfn;
 		pfn = phys_to_pfn_t(page_to_phys(xobj->pages[page_offset]), PFN_MAP);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0) || RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8, 2)
+#if defined(RHEL_RELEASE_VERSION)
+#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8, 2)
 		ret = vmf_insert_mixed(vma, vmf_address, pfn);
 #else
 		ret = vm_insert_mixed(vma, vmf_address, pfn);
+#endif
+#else
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0)
+                ret = vmf_insert_mixed(vma, vmf_address, pfn);
+#else
+                ret = vm_insert_mixed(vma, vmf_address, pfn);
+#endif
 #endif
 #else
 		ret = vm_insert_mixed(vma, vmf_address, page_to_pfn(xobj->pages[page_offset]));
