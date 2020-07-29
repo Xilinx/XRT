@@ -274,7 +274,8 @@ enum xclPerfMonType {
 	XCL_PERF_MON_STALL  = 4,
 	XCL_PERF_MON_STR    = 5,
 	XCL_PERF_MON_FIFO   = 6,
-	XCL_PERF_MON_TOTAL_PROFILE = 7
+  XCL_PERF_MON_NOC    = 7,
+	XCL_PERF_MON_TOTAL_PROFILE = 8
 };
 
 /* Performance monitor start event */

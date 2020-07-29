@@ -133,6 +133,7 @@ namespace xdp {
     std::vector<Monitor*> aimList;
     std::vector<Monitor*> amList;
     std::vector<Monitor*> asmList;
+    std::vector<Monitor*> nocList;
   };
 
   class VPStaticDatabase
@@ -290,6 +291,13 @@ namespace xdp {
       return deviceInfo[deviceId]->asmList.size();
     }
 
+    inline uint64_t getNumNOC(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return 0;
+      return deviceInfo[deviceId]->nocList.size();
+    }
+
     inline Monitor* getAIMonitor(uint64_t deviceId, uint64_t idx)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
@@ -309,6 +317,13 @@ namespace xdp {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       return deviceInfo[deviceId]->asmList[idx];
+    }
+
+    inline Monitor* getNOC(uint64_t deviceId, uint64_t idx)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return nullptr;
+      return deviceInfo[deviceId]->nocList[idx];
     }
 
     inline void getDataflowConfiguration(uint64_t deviceId, bool* config, size_t size)

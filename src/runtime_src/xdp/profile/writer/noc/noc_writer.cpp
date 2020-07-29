@@ -19,6 +19,8 @@
 #include "xdp/profile/writer/noc/noc_writer.h"
 #include "xdp/profile/database/database.h"
 
+#include <boost/algorithm/string.hpp>
+
 namespace xdp {
 
   NOCProfilingWriter::NOCProfilingWriter(const char* fileName,
@@ -52,10 +54,30 @@ namespace xdp {
          << "write_traffic_class" << ","
          << std::endl;
 
-    // TODO: write QoS and traffic class metadata from debug_ip_layout
-    fout << "noc_nmu512_x0y0,/mm2s/m_axi_gmem,128,0,64,0," << std::endl;
-    fout << "noc_nmu512_x0y1,/s2mm/m_axi_gmem,64,0,64,0," << std::endl;
-    fout << std::endl;
+    auto numNOC = (db->getStaticInfo()).getNumNOC(mDeviceIndex);
+    for (uint64_t n=0; n < numNOC; n++) {
+      auto noc = (db->getStaticInfo()).getNOC(mDeviceIndex, n);
+
+      // TODO: either make these members more generic or add new ones
+      auto readTrafficClass = noc->cuIndex;
+      auto writeTrafficClass = noc->memIndex;
+
+      // Name = <master>-<NMU cell>-<read QoS>-<write QoS>-<NPI freq>-<AIE freq>
+      std::vector<std::string> result; 
+      boost::split(result, noc->name, boost::is_any_of("-"));
+      std::string masterName = (result.size() > 0) ? result[0] : "";
+      std::string cellName   = (result.size() > 1) ? result[1] : "";
+      uint64_t readQos       = (result.size() > 2) ? std::stoull(result[2]) : 0;
+      uint64_t writeQos      = (result.size() > 3) ? std::stoull(result[3]) : 0;
+
+      fout << cellName          << ","
+           << masterName        << ","
+           << readQos           << ","
+           << readTrafficClass  << ","
+           << writeQos          << ","
+           << writeTrafficClass << ","
+           << std::endl;
+    }
 
     // Write header #3
     fout << "timestamp"           << ","
@@ -78,6 +100,10 @@ namespace xdp {
 
     for (auto sample : samples) {
       fout << sample.first << ","; // Timestamp
+      
+      // TODO: Get NMU cell name from sample
+      fout << "dummy" << ","; // cell name
+      
       for (auto value : sample.second) {
         fout << value << ",";
       }
