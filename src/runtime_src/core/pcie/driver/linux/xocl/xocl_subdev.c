@@ -715,6 +715,9 @@ int xocl_subdev_create_by_baridx(xdev_handle_t xdev_hdl, int bar_idx)
 	}
 
 	for (i = 0; i < subdev_num; i++) {
+		if (!subdev_info[i].bar_idx)
+			continue;
+
 		for (j = 0; j < subdev_info[i].num_res; j++) {
 			if (subdev_info[i].bar_idx[j] == bar_idx)
 				break;
@@ -880,6 +883,9 @@ void xocl_subdev_destroy_by_baridx(xdev_handle_t xdev_hdl, int bar_idx)
 	xocl_lock_xdev(xdev_hdl);
 
 	for_each_subdev(core, subdev) {
+		if (!subdev->info.bar_idx)
+			continue;
+
 		for (k = 0; k < subdev->info.num_res; k++) {
 			if (subdev->info.bar_idx[k] == bar_idx)
 				break;
