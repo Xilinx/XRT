@@ -756,7 +756,7 @@ public:
     auto ip_layout = reinterpret_cast<const ::ip_layout*>(ip_section.first);
 
     // connectivity section for CU memory connectivity, permissible for section to not exist
-    auto connectivity_section = device->core_device->get_axlf_section(CONNECTIVITY, xclbin_id);
+    auto connectivity_section = device->core_device->get_axlf_section(ASK_GROUP_CONNECTIVITY, xclbin_id);
     auto connectivity = reinterpret_cast<const ::connectivity*>(connectivity_section.first);
 
     // xml section for kernel arguments
