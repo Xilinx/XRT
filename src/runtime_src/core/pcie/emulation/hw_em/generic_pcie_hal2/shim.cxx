@@ -24,6 +24,17 @@
 #include <boost/lexical_cast.hpp>
 
 #include "xcl_perfmon_parameters.h"
+#define SEND_RESP2QDMA() \
+    { \
+        auto raw_response_header    = std::make_unique<char[]>(ri_len); \
+        auto raw_response_payload   = std::make_unique<char[]>(r_len);\
+        response_header->set_size(r_len);\
+        response_header->SerializeToArray((void*)raw_response_header.get(),ri_len);\
+        response_payload.SerializeToArray((void*)raw_response_payload.get(),r_len);\
+        Q2h_sock->sk_write((void*)raw_response_header.get(),ri_len);\
+        Q2h_sock->sk_write((void*)raw_response_payload.get(),r_len);\
+    }
+
 
 namespace {
 
@@ -45,6 +56,28 @@ get_mem_topology(const axlf* top)
 }
 
 namespace xclhwemhal2 {
+    //Thread for which pooling for transaction from SIM_QDMA
+    void hostMemAccessThread(xclhwemhal2::HwEmShim* inst);
+
+    /**
+      * helper class for transactions from SIM_QDMA to XRT
+      *
+      */
+    class Q2H_helper {
+        private:
+        std::unique_ptr<call_packet_info> header;
+        std::unique_ptr<response_packet_info> response_header;
+	    size_t  i_len;
+	    size_t  ri_len;
+        unix_socket* Q2h_sock;
+        xclhwemhal2::HwEmShim* inst;
+
+        public:
+        Q2H_helper(xclhwemhal2::HwEmShim* _inst);
+        ~Q2H_helper(); 
+        int  poolingon_Qdma(); 
+        bool connect_sock();
+    };
 
   namespace pt = boost::property_tree;
   std::map<unsigned int, HwEmShim*> devices;
@@ -541,6 +574,9 @@ namespace xclhwemhal2 {
       mMessengerThreadStarted = true;
     }
 
+    if(mHostMemAccessThreadStarted == false) {
+	  mHostMemAccessThread = std::thread(xclhwemhal2::hostMemAccessThread,this);
+   }
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
     std::string launcherArgs = xclemulation::config::getInstance()->getLauncherArgs();
     std::string wdbFileName("");
@@ -1247,9 +1283,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     {
       xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer,finalValidAddress,origSize,noHostMemory);
 
-      PRINTENDFUNC;
-      if(!ack)
-        return 0;
+        PRINTENDFUNC;
+        if (!ack)
+          return 0;
     }
     return finalValidAddress;
   }
@@ -1773,6 +1809,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     mMessengerThreadStarted = false;
     mIsTraceHubAvailable = false;
     mVersalPlatform=false;
+    mHostMemAccessThreadStarted = false;
   }
 
   bool HwEmShim::isMBSchedulerEnabled()
@@ -2989,6 +3026,12 @@ int HwEmShim::xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char
 		  mMessengerThread.join();
 		  mMessengerThreadStarted = false;
 	  }
+      if(mHostMemAccessThreadStarted) {
+	      mHostMemAccessThreadStarted = false;
+          if(mHostMemAccessThread.joinable()){
+              mHostMemAccessThread.join();
+          }
+      }
   }
 
 //CU register space for xclRegRead/Write()
@@ -3044,6 +3087,165 @@ int HwEmShim::xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data)
 {
   return xclRegRW(false, cu_index, offset, &data);
 }
+volatile bool HwEmShim::get_mHostMemAccessThreadStarted() { return mHostMemAccessThreadStarted; }
+volatile void HwEmShim::set_mHostMemAccessThreadStarted(bool val) { mHostMemAccessThreadStarted = val; }
 /********************************************** QDMA APIs IMPLEMENTATION END**********************************************/
 /**********************************************HAL2 API's END HERE **********************************************/
+/********************************************** Q2H_helper class implementation starts **********************************************/
+/**
+ * Function: device2xrt_rd_trans_cb
+ * Description : Its a Read request from Device to HOST Buffer Call back function which gets read Address,
+ *               size and Data pointer to be filled.
+ * Arguments:
+ *   1. addr: Read request addr
+ *   2. data_ptr: container of read data which gets filled by Host. size of this container
+ *                is = size rgument of this function
+ *   3. size: size of read request
+ * Return Value: This funtion returns boolean value. Incase of successful read from Host
+ *                  it will return true or else false.
+ *     
+ **/
+bool HwEmShim::device2xrt_rd_trans_cb(unsigned long int addr, void* const data_ptr,unsigned long int size) {
+    //This addr can be any address, may not be only the base address.
+    // So we should identify to which address it falls into and get that membuf 
+    // and seek to that address offset and get the data of the size requested
+    // and copy into the data_ptr provided by the device call
+
+  // Enable this code base once we have access to this shim layer member variable
+  //void* hostMemBuf = mHostOnlyMemMap[addr];
+  //std::memcpy(hostMemBuf, (void*)data_ptr, size);
+
+    return true;
+}
+
+/**
+ * Function: device2xrt_wr_trans_cb
+ * Description : Its a Write request from Device to HOST Buffer Call back function which gets Write address,
+ *               size and Data pointer of written data.
+ * Arguments:
+ *   1. addr: Read request addr
+ *   2. data_ptr: container which holds write data which is already filled by deivce. size of this container
+ *                is = size rgument of this function
+ *   3. size: size of Write request
+ * Return Value: This funtion returns boolean value. Incase of successful write to Host Buffer
+ *                  it will return true or else false.
+ *     
+ **/
+bool HwEmShim::device2xrt_wr_trans_cb(unsigned long int addr, void const* data_ptr,unsigned long int size) {
+    //This addr can be any address, may not be only the base address.
+    // So we should identify to which address it falls into and get that membuf 
+    // and seek to that address offset and get the data of the size requested
+    // from the data_ptr provided by the device call and copy into the offset address
+
+  // Enable this code base once we have access to this shim layer member variable
+  //void* hostMemBuf = mHostOnlyMemMap[addr];
+  //std::memcpy((void*)data_ptr, hostMemBuf, size);
+  return true;
+}
+bool HwEmShim::device2xrt_irq_trans_cb(uint32_t,unsigned long int) {
+    return true;
+}
+Q2H_helper :: Q2H_helper(xclhwemhal2::HwEmShim* _inst) {
+    header          = std::make_unique<call_packet_info>();
+    response_header = std::make_unique<response_packet_info>();
+    inst = _inst;
+    Q2h_sock        = NULL;
+    header->set_size(0);
+    header->set_xcl_api(0);
+    response_header->set_size(0);
+    response_header->set_xcl_api(0);
+    i_len           = header->ByteSize();
+    ri_len          = response_header->ByteSize();
+}
+Q2H_helper::~Q2H_helper() {
+    delete Q2h_sock;
+    Q2h_sock = 0;
+}
+
+/**
+ * Pooling on socket for any memory or interrupt requests from SIM_QDMA
+ *
+ */
+int Q2H_helper::poolingon_Qdma() {
+    //Getting incoming header packet from sim_qdma
+    auto raw_header = std::make_unique<char[]>(i_len);
+    int r = Q2h_sock->sk_read((void*)raw_header.get(), i_len);
+    if (r <= 0) {
+    	return r;
+    }
+    assert(i_len == (uint32_t)r);
+    //deserializing protobuf message
+    header->ParseFromArray((void*)raw_header.get(), i_len);
+    if (header->xcl_api() == xclClose_n) {
+        return -1;
+    }
+    //Getting incoming header packet from sim_qdma
+    auto raw_payload = std::make_unique<char[]>(header->size());
+    r = Q2h_sock->sk_read((void*)raw_payload.get(), header->size());
+    assert((uint32_t)r == header->size());
+    //processing payload and sending the response message back to sim_qdma
+    if (header->xcl_api() == xclQdma2HostReadMem_n) { 
+    	xclSlaveReadReq_call payload; 
+        xclSlaveReadReq_response response_payload; 
+    	payload.ParseFromArray((void*)raw_payload.get(), r); 
+        auto data = std::make_unique<char[]>(payload.size()); 
+        bool resp = inst->device2xrt_rd_trans_cb((unsigned long int)payload.addr(),(void* const)data.get(),(unsigned long int)payload.size());
+        response_payload.set_valid(resp); 
+        response_payload.set_data((void*)data.get(),payload.size()); 
+        int r_len = response_payload.ByteSize(); 
+        SEND_RESP2QDMA() 
+    } 
+    if (header->xcl_api() == xclQdma2HostWriteMem_n) { 
+    	xclSlaveWriteReq_call payload; 
+        xclSlaveWriteReq_response response_payload; 
+    	payload.ParseFromArray((void*)raw_payload.get(), r); 
+        bool resp = inst->device2xrt_wr_trans_cb((unsigned long int)payload.addr(),(void const*)payload.data().c_str(),(unsigned long int)payload.size());
+        response_payload.set_valid(resp); 
+        int r_len = response_payload.ByteSize(); 
+        SEND_RESP2QDMA() 
+    } 
+    if (header->xcl_api() == xclQdma2HostInterrupt_n) { 
+    	xclInterruptOccured_call payload; 
+        xclInterruptOccured_response response_payload; 
+    	payload.ParseFromArray((void*)raw_payload.get(), r); 
+        uint32_t interrupt_line = payload.interrupt_line(); 
+        bool resp = inst->device2xrt_irq_trans_cb(interrupt_line,4);
+        response_payload.set_valid(resp);
+        int r_len = response_payload.ByteSize();
+        SEND_RESP2QDMA() 
+    }
+
+    return 1;
+}
+bool Q2H_helper::connect_sock() {
+    if(Q2h_sock == NULL) {
+        Q2h_sock = new unix_socket("xcl_sock_K2H",5,false);
+    }
+    else if (!Q2h_sock->server_started) {
+        Q2h_sock->start_server("xcl_sock_K2H",5,false);
+    }
+    return Q2h_sock->server_started;
+}
+
+void hostMemAccessThread(xclhwemhal2::HwEmShim* inst) {
+	inst->set_mHostMemAccessThreadStarted(true);
+    auto mq2h_helper_ptr = std::make_unique<Q2H_helper>(inst);
+    bool sock_ret = false;
+    int count = 0;
+    while(inst->get_mHostMemAccessThreadStarted() && !sock_ret && count < 30){
+        sock_ret = mq2h_helper_ptr->connect_sock();
+        count++;
+    }
+    int r =0;
+    while(inst->get_mHostMemAccessThreadStarted() && r >= 0){
+        try {
+            if (!inst->get_simulator_started())
+                return;
+            r = mq2h_helper_ptr->poolingon_Qdma();
+        } catch(int e) {
+            std::cout << " Exception during socket communitication between SIM_QDMA ---> HE_EMU driver.." << std::endl;
+        }
+    }
+}
+/********************************************** Q2H_helper class implementation Ends **********************************************/
 }  // end namespace xclhwemhal2
