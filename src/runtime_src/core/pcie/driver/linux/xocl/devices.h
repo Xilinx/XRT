@@ -247,11 +247,13 @@ enum {
 #define	XOCL_PMC		"pmc"
 #define	XOCL_INTC		"intc"
 #define	XOCL_ICAP_CNTRL		"icap_controller"
+#define	XOCL_VERSION_CTRL	"version_control"
 
 #define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
 
 enum subdev_id {
 	XOCL_SUBDEV_FEATURE_ROM,
+	XOCL_SUBDEV_VERSION_CTRL,
 	XOCL_SUBDEV_AXIGATE,
 	XOCL_SUBDEV_DMA,
 	XOCL_SUBDEV_IORES,
@@ -331,13 +333,8 @@ struct xocl_subdev_map {
 		.override_idx = -1,			\
 	}
 
-#define	XOCL_RES_FEATURE_ROM_U2			\
+#define	XOCL_RES_VERSION_CTRL			\
 		((struct resource []) {			\
-			{				\
-			.start	= 0xB0000,		\
-			.end	= 0xB0FFF,		\
-			.flags	= IORESOURCE_MEM,	\
-			},				\
 			{				\
 			.start	= 0x0330000,		\
 			.end	= 0x0330010,		\
@@ -345,12 +342,12 @@ struct xocl_subdev_map {
 			}				\
 		})
 
-#define	XOCL_DEVINFO_FEATURE_ROM_U2		\
+#define	XOCL_DEVINFO_VERSION_CTRL		\
 	{						\
-		XOCL_SUBDEV_FEATURE_ROM,		\
-		XOCL_FEATURE_ROM,			\
-		XOCL_RES_FEATURE_ROM_U2,		\
-		ARRAY_SIZE(XOCL_RES_FEATURE_ROM_U2),	\
+		XOCL_SUBDEV_VERSION_CTRL,		\
+		XOCL_VERSION_CTRL,			\
+		XOCL_RES_VERSION_CTRL,		\
+		ARRAY_SIZE(XOCL_RES_VERSION_CTRL),	\
 		.override_idx = -1,			\
 	}
 
@@ -1898,7 +1895,8 @@ struct xocl_subdev_map {
 
 #define	USER_RES_DSA52_U2					\
 		((struct xocl_subdev_info []) {				\
-			XOCL_DEVINFO_FEATURE_ROM_U2,			\
+			XOCL_DEVINFO_FEATURE_ROM,			\
+			XOCL_DEVINFO_VERSION_CTRL,			\
 			XOCL_DEVINFO_XDMA,				\
 			XOCL_DEVINFO_SCHEDULER,				\
 			XOCL_DEVINFO_MAILBOX_USER,			\
@@ -2035,7 +2033,8 @@ struct xocl_subdev_map {
 
 #define	MGMT_RES_U2						\
 		((struct xocl_subdev_info []) {				\
-			XOCL_DEVINFO_FEATURE_ROM_U2,			\
+			XOCL_DEVINFO_FEATURE_ROM,			\
+			XOCL_DEVINFO_VERSION_CTRL,			\
 			XOCL_DEVINFO_PRP_IORES_MGMT,			\
 			XOCL_DEVINFO_AXIGATE_ULP,			\
 			XOCL_DEVINFO_CLOCK_LEGACY,			\
@@ -2048,6 +2047,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_FMGR,				\
 			XOCL_DEVINFO_XMC_SCALING_U2,			\
 			XOCL_DEVINFO_FLASH,				\
+			XOCL_DEVINFO_ICAP_CNTRL,			\
 		})
 
 #define	XOCL_BOARD_MGMT_DEFAULT						\

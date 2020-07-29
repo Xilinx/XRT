@@ -204,7 +204,7 @@ static int icap_cntrl_probe(struct platform_device *pdev)
 	icap_cntrl->support_enabled = xocl_flat_shell_check(xdev_hdl);
 
 	if (icap_cntrl->support_enabled)
-		xocl_info(&pdev->dev, "Icap_controller programming is supported");
+		xocl_info(&pdev->dev, "ICAP Controller Programming is Supported");
 
 	platform_set_drvdata(pdev, icap_cntrl);
 	icap_cntrl->pdev = pdev;

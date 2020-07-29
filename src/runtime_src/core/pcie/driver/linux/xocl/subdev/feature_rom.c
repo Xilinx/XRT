@@ -22,22 +22,8 @@
 #include "../xocl_drv.h"
 
 #define	MAGIC_NUM	0x786e6c78
-
-//Version control registers
-#define VERSION_CTRL_REG                       0x0
-#define VERSION_CTRL_REG_FLAT_SHELL_MASK       0x80000000
-
-#define VERSION_CTRL_MISC_REG                  0xC
-#define VERSION_CTRL_MISC_REG_CMC_IN_BITFILE   0x2
-
-enum {
-	IO_REG,
-	IO_VERSION_CTRL,
-	NUM_IOADDR
-};
-
 struct feature_rom {
-	void __iomem		*base[NUM_IOADDR];
+	void __iomem		*base;
 	struct platform_device	*pdev;
 
 	struct FeatureRomHeader	header;
@@ -50,8 +36,6 @@ struct feature_rom {
 	char			uuid[65];
 	u32			uuid_len;
 	bool			passthrough_virt_en;
-	bool			flat_shell;
-	bool			cmc_in_bitfile;
 };
 
 static ssize_t VBNV_show(struct device *dev,
@@ -168,26 +152,6 @@ static struct attribute_group rom_attr_group = {
 	.attrs = rom_attrs,
 	.bin_attrs = rom_bin_attrs,
 };
-
-static bool flat_shell_check(struct platform_device *pdev)
-{
-	struct feature_rom *rom;
-
-	rom = platform_get_drvdata(pdev);
-	BUG_ON(!rom);
-
-	return rom->flat_shell;
-}
-
-static bool cmc_in_bitfile(struct platform_device *pdev)
-{
-	struct feature_rom *rom;
-
-	rom = platform_get_drvdata(pdev);
-	BUG_ON(!rom);
-
-	return rom->cmc_in_bitfile;
-}
 
 static bool is_unified(struct platform_device *pdev)
 {
@@ -587,8 +551,6 @@ static struct xocl_rom_funcs rom_ops = {
 	.load_firmware = load_firmware,
 	.passthrough_virtualization_on = passthrough_virtualization_on,
 	.get_uuid = get_uuid,
-	.flat_shell_check = flat_shell_check,
-	.cmc_in_bitfile = cmc_in_bitfile,
 };
 
 static int get_header_from_peer(struct feature_rom *rom)
@@ -673,7 +635,7 @@ static int get_header_from_dtb(struct feature_rom *rom)
 	for (i = rom->uuid_len / 2 - 4;
 	    i >= 0 && j < rom->uuid_len;
 	    i -= 4, j += 8) {
-		sprintf(&rom->uuid[j], "%08x", ioread32(rom->base[IO_REG] + i));
+		sprintf(&rom->uuid[j], "%08x", ioread32(rom->base + i));
 	}
 	xocl_info(&rom->pdev->dev, "UUID %s", rom->uuid);
 
@@ -695,7 +657,7 @@ static int get_header_from_vsec(struct feature_rom *rom)
 
 	offset += pci_resource_start(XDEV(xdev)->pdev, bar);
 	xocl_xdev_info(xdev, "Mapping uuid at offset 0x%llx", offset);
-	rom->base[IO_REG] = ioremap_nocache(offset, PAGE_SIZE);
+	rom->base = ioremap_nocache(offset, PAGE_SIZE);
 	rom->uuid_len = 32;
 
 	return get_header_from_dtb(rom);
@@ -708,7 +670,7 @@ static int get_header_from_iomem(struct feature_rom *rom)
 	u16	vendor, did;
 	int	ret = 0;
 
-	val = ioread32(rom->base[IO_REG]);
+	val = ioread32(rom->base);
 	if (val != MAGIC_NUM) {
 		vendor = XOCL_PL_TO_PCI_DEV(pdev)->vendor;
 		did = XOCL_PL_TO_PCI_DEV(pdev)->device;
@@ -749,7 +711,7 @@ static int get_header_from_iomem(struct feature_rom *rom)
 			goto failed;
 		}
 	} else
-		xocl_memcpy_fromio(&rom->header, rom->base[IO_REG],
+		xocl_memcpy_fromio(&rom->header, rom->base,
 				sizeof(rom->header));
 
 failed:
@@ -777,9 +739,8 @@ static int feature_rom_probe(struct platform_device *pdev)
 		if (ret)
 			(void)get_header_from_peer(rom);
 	} else {
-		rom->base[IO_REG] = ioremap_nocache(res->start,
-                                            res->end - res->start + 1);
-		if (!rom->base[IO_REG]) {
+		rom->base = ioremap_nocache(res->start, res->end - res->start + 1);
+		if (!rom->base) {
 			ret = -EIO;
 			xocl_err(&pdev->dev, "Map iomem failed");
 			goto failed;
@@ -790,25 +751,6 @@ static int feature_rom_probe(struct platform_device *pdev)
 			(void)get_header_from_dtb(rom);
 		} else
 			(void)get_header_from_iomem(rom);
-	}
-
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	if (res != NULL) {
-		rom->base[IO_VERSION_CTRL] = ioremap_nocache(res->start,
-                                                     res->end - res->start + 1);
-		if (!rom->base[IO_VERSION_CTRL]) {
-			ret = -EIO;
-			xocl_err(&pdev->dev, "Map iomem failed for version ctrl reg");
-			goto failed;
-		}
-
-		u32 reg = ioread32(rom->base[IO_VERSION_CTRL] + VERSION_CTRL_REG);
-		if (reg & VERSION_CTRL_REG_FLAT_SHELL_MASK)
-			rom->flat_shell = true;
-
-		reg = ioread32(rom->base[IO_VERSION_CTRL] + VERSION_CTRL_MISC_REG);
-		if (reg & VERSION_CTRL_MISC_REG_CMC_IN_BITFILE)
-			rom->cmc_in_bitfile = true;
 	}
 
 	if (strstr(rom->header.VBNVName, "-xare")) {
@@ -859,10 +801,8 @@ static int feature_rom_probe(struct platform_device *pdev)
 	return 0;
 
 failed:
-	if (rom->base[IO_REG])
-		iounmap(rom->base[IO_REG]);
-	if (rom->base[IO_VERSION_CTRL])
-		iounmap(rom->base[IO_VERSION_CTRL]);
+	if (rom->base)
+		iounmap(rom->base);
 	platform_set_drvdata(pdev, NULL);
 	devm_kfree(&pdev->dev, rom);
 	return ret;
@@ -878,11 +818,8 @@ static int feature_rom_remove(struct platform_device *pdev)
 		xocl_err(&pdev->dev, "driver data is NULL");
 		return -EINVAL;
 	}
-
-	if (rom->base[IO_REG])
-		iounmap(rom->base[IO_REG]);
-	if (rom->base[IO_VERSION_CTRL])
-		iounmap(rom->base[IO_VERSION_CTRL]);
+	if (rom->base)
+		iounmap(rom->base);
 
 	sysfs_remove_group(&pdev->dev.kobj, &rom_attr_group);
 

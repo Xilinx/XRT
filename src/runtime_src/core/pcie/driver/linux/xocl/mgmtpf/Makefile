@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
 #
 # Authors:
 #
@@ -73,6 +73,7 @@ xclmgmt-y := \
 	../subdev/calib_storage.o \
 	../subdev/pmc.o \
 	../subdev/icap_cntrl.o \
+	../subdev/version_ctrl.o \
 	$(drv_common-y) \
 	mgmt-core.o \
 	mgmt-cw.o \
