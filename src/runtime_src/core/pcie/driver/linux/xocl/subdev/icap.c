@@ -2131,6 +2131,12 @@ static void icap_calib(struct icap *icap, bool retain)
 		if (!mem_topo->m_mem_data[i].m_used)
 			continue;
 
+		if (ddr_idx >= XOCL_SUBDEV_MAX_INST) {
+			ICAP_ERR(icap, "DDR index %d out of range %d-%d",
+			    ddr_idx, 0, XOCL_SUBDEV_MAX_INST - 1);
+			break;
+		}
+
 		err = xocl_srsr_calib(xdev, ddr_idx, retain);
 		if (err)
 			ICAP_DBG(icap, "Not able to calibrate mem %d.", i);
