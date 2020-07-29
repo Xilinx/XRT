@@ -23,7 +23,7 @@ namespace xdp {
   // **************************
   // Host event definitions
   // **************************
-  KernelEnqueue::KernelEnqueue(uint64_t s_id, uint64_t ts) :
+  KernelEnqueue::KernelEnqueue(uint64_t s_id, double ts) :
     VTFEvent(s_id, ts, KERNEL_ENQUEUE),
     // Until implemented, initialize all members with a default value
     deviceName(0), binaryName(0), kernelName(0),
@@ -42,7 +42,7 @@ namespace xdp {
     fout << std::endl; 
   }
 
-  LOPKernelEnqueue::LOPKernelEnqueue(uint64_t s_id, uint64_t ts) :
+  LOPKernelEnqueue::LOPKernelEnqueue(uint64_t s_id, double ts) :
     VTFEvent(s_id, ts, LOP_KERNEL_ENQUEUE)
   {
   }
@@ -57,7 +57,7 @@ namespace xdp {
     fout << std::endl ;
   }
 
-  CUEnqueue::CUEnqueue(uint64_t s_id, uint64_t ts) :
+  CUEnqueue::CUEnqueue(uint64_t s_id, double ts) :
     VTFEvent(s_id, ts, CU_ENQUEUE),
     // Until implemented, initialize all members with a default value
     deviceName(0), binaryName(0), kernelName(0),
@@ -70,7 +70,7 @@ namespace xdp {
   {
   }
 
-  BufferTransfer::BufferTransfer(uint64_t s_id, uint64_t ts, VTFEventType ty,
+  BufferTransfer::BufferTransfer(uint64_t s_id, double ts, VTFEventType ty,
                                  size_t bufSz)
                 : VTFEvent(s_id, ts, ty),
                   size(bufSz)
@@ -93,7 +93,7 @@ namespace xdp {
     fout << std::endl;
   }
 
-  LOPBufferTransfer::LOPBufferTransfer(uint64_t s_id, uint64_t ts, 
+  LOPBufferTransfer::LOPBufferTransfer(uint64_t s_id, double ts, 
 				       VTFEventType ty) :
     VTFEvent(s_id, ts, ty), threadId(std::this_thread::get_id())
   {
@@ -110,7 +110,7 @@ namespace xdp {
     fout << "," << std::hex << "0x" << threadId << std::dec << std::endl ;
   }
 
-  StreamRead::StreamRead(uint64_t s_id, uint64_t ts) :
+  StreamRead::StreamRead(uint64_t s_id, double ts) :
     VTFEvent(s_id, ts, STREAM_READ)
   {
   }
@@ -119,7 +119,7 @@ namespace xdp {
   {
   }
 
-  StreamWrite::StreamWrite(uint64_t s_id, uint64_t ts) :
+  StreamWrite::StreamWrite(uint64_t s_id, double ts) :
     VTFEvent(s_id, ts, STREAM_WRITE)
   {
   }
