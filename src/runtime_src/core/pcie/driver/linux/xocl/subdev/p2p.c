@@ -344,7 +344,8 @@ static int p2p_mem_chunk_reserve(struct p2p *p2p, struct p2p_mem_chunk *chk)
 	} else {
 		chk->xpmc_pgmap.res = res;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 3, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 3, 0) && \
+	RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(8, 2)
 		chk->xpmc_pgmap.ref = pref;
 		chk->xpmc_pgmap.altmap_valid = false;
 #else
