@@ -29,6 +29,9 @@
 #define PROP_PARTITION_INFO_PLP "plp_info"
 #define PROP_PARTITION_LEVEL "partition_level"
 #define PROP_VERSION_MAJOR "firmware_version_major"
+#define PROP_INTR_ALIAS "interrupt_alias"
+#define PROP_INTR_MAP "interrupt_mapping"
+#define PROP_ALIAS_NAME "alias_name"
 
 #define NODE_ENDPOINTS "addressable_endpoints"
 #define INTERFACES_PATH "/interfaces"
@@ -70,6 +73,7 @@
 #define NODE_ERT_SCHED "ep_ert_sched_00"
 #define NODE_XDMA "ep_xdma_00"
 #define NODE_MSIX "ep_msix_00"
+#define NODE_MSIX_MGMT "ep_msix_mgmt_00"
 #define NODE_QDMA "ep_qdma_00"
 #define NODE_QDMA4 "ep_qdma4_00"
 #define NODE_QDMA4_CSR "ep_qdma4_csr_00"

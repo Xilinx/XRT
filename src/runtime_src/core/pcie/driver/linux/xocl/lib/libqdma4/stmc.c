@@ -23,6 +23,10 @@
 #include "stmc.h"
 #include "qdma_ul_ext.h"
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+#define ioremap_nocache         ioremap
+#endif
+
 #define	STM_MAX_SUPPORTED_QID		64
 
 #define STREAM_FLOWID_MASK		0xFF

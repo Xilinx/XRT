@@ -34,32 +34,34 @@ struct ip_node {
 
 static void *msix_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 {
-        struct xocl_dev_core *core = XDEV(xdev_hdl);
-        void *blob;
-        int node;
-        struct xocl_msix_privdata *msix_priv;
+	struct xocl_dev_core *core = XDEV(xdev_hdl);
+	void *blob;
+	int node;
+	struct xocl_msix_privdata *msix_priv;
 
-        blob = core->fdt_blob;
-        if (!blob)
-                return NULL;
+	blob = core->fdt_blob;
+	if (!blob)
+		return NULL;
 
-        node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_MSIX);
-        if (node < 0) {
-                xocl_xdev_err(xdev_hdl, "did not find msix node in %s", NODE_ENDPOINTS);
-                return NULL;
-        }
+	node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_MSIX);
+	if (node < 0)
+		node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_MSIX_MGMT);
+	if (node < 0) {
+		xocl_xdev_err(xdev_hdl, "did not find msix node in %s", NODE_ENDPOINTS);
+		return NULL;
+	}
 
-        if (fdt_node_check_compatible(blob, node, "qdma_msix"))
-                return NULL;
+	if (fdt_node_check_compatible(blob, node, "qdma_msix"))
+		return NULL;
 
-        msix_priv = vzalloc(sizeof(*msix_priv));
-        if (!msix_priv)
-                return NULL;
-        msix_priv->start = 0;
-        msix_priv->total = 8;
+	msix_priv = vzalloc(sizeof(*msix_priv));
+	if (!msix_priv)
+		return NULL;
+	msix_priv->start = 0;
+	msix_priv->total = 8;
 
-        *len = sizeof(*msix_priv);
-        return msix_priv;
+	*len = sizeof(*msix_priv);
+	return msix_priv;
 }
 
 static void *ert_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
@@ -275,6 +277,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.dev_name = XOCL_DMA_MSIX,
 		.res_array = (struct xocl_subdev_res[]) {
 			{.res_name = NODE_MSIX},
+			{.res_name = NODE_MSIX_MGMT},
 			{NULL},
 		},
 		.required_ip = 1,
@@ -654,12 +657,11 @@ static bool get_userpf_info(void *fdt, int node, u32 pf)
 	int depth = 1;
 	int offset;
 
-	for (offset = node; offset >= 0;
-		offset = fdt_parent_offset(fdt, offset)) {
-		val = fdt_get_name(fdt, offset, NULL);
-		if (!strncmp(val, NODE_PROPERTIES, strlen(NODE_PROPERTIES)))
-			return true;
-	}
+	offset = fdt_parent_offset(fdt, node);
+	val = fdt_get_name(fdt, offset, NULL);
+
+	if (!val || strncmp(val, NODE_ENDPOINTS, strlen(NODE_PROPERTIES)))
+		return true;
 
 	do {
 		if (fdt_getprop(fdt, node, PROP_INTERFACE_UUID, NULL))
@@ -757,14 +759,58 @@ int xocl_fdt_overlay(void *fdt, int target,
 	return 0;
 }
 
+static int xocl_fdt_parse_intr_alias(xdev_handle_t xdev_hdl, char *blob,
+		const char *alias, struct resource *res)
+{
+	int ep_nodes, node;
+
+	ep_nodes = fdt_path_offset(blob, "/" NODE_ENDPOINTS);
+	if (ep_nodes < 0)
+		return -EINVAL;
+
+	fdt_for_each_subnode(node, blob, ep_nodes) {
+		const int intr_map = fdt_subnode_offset(blob, node,
+			PROP_INTR_MAP);
+		int intr_node;
+
+		if (intr_map < 0)
+			continue;
+
+		fdt_for_each_subnode(intr_node, blob, intr_map) {
+			int str_idx;
+			const u32 *intr;
+
+			str_idx = fdt_stringlist_search(blob, intr_node,
+				PROP_ALIAS_NAME, alias);
+			if (str_idx < 0)
+				continue;
+
+			intr = fdt_getprop(blob, intr_node, PROP_INTERRUPTS,
+					NULL);
+			if (!intr) {
+				xocl_xdev_err(xdev_hdl,
+				    "intrrupts not found, %s", alias);
+				return -EINVAL;
+			}
+			res->start = be32_to_cpu(intr[0]);
+			res->end = be32_to_cpu(intr[1]);
+			res->flags = IORESOURCE_IRQ;
+			return 0;
+		}
+	}
+
+	return -ENOENT;
+}
+
 static int xocl_fdt_parse_ip(xdev_handle_t xdev_hdl, char *blob,
 		struct ip_node *ip, struct xocl_subdev *subdev)
 {
-	int idx, sz, num_res;
+	int idx, sz, num_res, i, ret;
 	const u32 *bar_idx, *pfnum;
 	const u64 *io_off;
 	const u32 *irq_off; 
 	int off = ip->off;
+	const char *intr_alias;
 
 	num_res = subdev->info.num_res;
 
@@ -828,6 +874,29 @@ static int xocl_fdt_parse_ip(xdev_handle_t xdev_hdl, char *blob,
 		sz -= sizeof(*irq_off) * 2;
 		irq_off += 2;
 	}
+
+	for(i = 0,
+	    intr_alias = fdt_stringlist_get(blob, off, PROP_INTR_ALIAS,
+	    i, NULL);
+	    intr_alias;
+	    i++,
+	    intr_alias = fdt_stringlist_get(blob, off, PROP_INTR_ALIAS,
+	    i, NULL)) {
+		idx = subdev->info.num_res;
+		ret = xocl_fdt_parse_intr_alias(xdev_hdl, blob, intr_alias,
+			&subdev->res[idx]);
+		if (!ret) {
+			snprintf(subdev->res_name[idx],
+				XOCL_SUBDEV_RES_NAME_LEN,
+				"%s %d %d %d %s",
+				ip->name, ip->major, ip->minor,
+				ip->level,
+				ip->regmap_name ? ip->regmap_name : "");
+			subdev->res[idx].name = subdev->res_name[idx];
+			subdev->info.num_res++;
+		}
+	}
+
 
 	if (subdev->info.num_res > num_res)
 		subdev->info.dyn_ip++;
