@@ -754,7 +754,7 @@ transformMemoryBankGroupingCollections(const std::vector<boost::property_tree::p
                                        std::vector<boost::property_tree::ptree> & groupConnectivity)
 {
   // Memory types that can be grouped
-  static const std::vector<std::string> validGroupTypes = { "MEM_HBM", "MEM_DDR3", "MEM_DDR4" };
+  static const std::vector<std::string> validGroupTypes = { "MEM_HBM", "MEM_DDR3", "MEM_DDR4", "MEM_DRAM" };
 
   std::vector<WorkingConnection> possibleGroupConnections;
 
