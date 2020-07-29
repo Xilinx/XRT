@@ -20,8 +20,22 @@
 
 #include "shim.h"
 #include "system_swemu.h"
+#include "xclbin.h"
 #include <errno.h>
 #include <unistd.h>
+
+namespace {
+
+static auto
+get_mem_topology(const axlf* top)
+{
+  if (auto sec = xclbin::get_axlf_section(top, ASK_GROUP_TOPOLOGY))
+    return sec;
+  return xclbin::get_axlf_section(top, MEM_TOPOLOGY);
+}
+  
+}
+
 namespace xclcpuemhal2 {
 
   std::map<unsigned int, CpuemShim*> devices;
@@ -528,7 +542,7 @@ namespace xclcpuemhal2 {
           sharedlib = xclbininmemory + sec->m_sectionOffset;
           sharedliblength = sec->m_sectionSize;
         }
-        if (auto sec = xclbin::get_axlf_section(top,MEM_TOPOLOGY)) {
+        if (auto sec = get_mem_topology(top)) {
           memTopologySize = sec->m_sectionSize;
           memTopology = new char[memTopologySize];
           memcpy(memTopology, xclbininmemory + sec->m_sectionOffset, memTopologySize);

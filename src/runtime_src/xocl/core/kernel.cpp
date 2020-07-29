@@ -401,7 +401,7 @@ validate_cus(const device* device, unsigned long argidx, int memidx) const
     auto cu = (*itr);
     auto cuconn = cu->get_memidx(argidx);
     if ((cuconn & connections).none()) {
-      auto mem = device->get_axlf_section<const mem_topology*>(MEM_TOPOLOGY);
+      auto mem = device->get_axlf_section<const mem_topology*>(ASK_GROUP_TOPOLOGY);
       xrt::message::send
         (xrt::message::severity_level::XRT_WARNING
          , "Argument '" + std::to_string(argidx)

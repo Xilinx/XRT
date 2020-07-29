@@ -439,6 +439,9 @@ install()
         echo "Installing Fedora packages..."
         yum install -y "${FD_LIST[@]}"
     fi
+
+    # Install pybind11 for building the XRT python bindings
+    pip3 install pybind11
 }
 
 update_package_list
