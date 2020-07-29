@@ -34,34 +34,34 @@ struct ip_node {
 
 static void *msix_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 {
-        struct xocl_dev_core *core = XDEV(xdev_hdl);
-        void *blob;
-        int node;
-        struct xocl_msix_privdata *msix_priv;
+	struct xocl_dev_core *core = XDEV(xdev_hdl);
+	void *blob;
+	int node;
+	struct xocl_msix_privdata *msix_priv;
 
-        blob = core->fdt_blob;
-        if (!blob)
-                return NULL;
+	blob = core->fdt_blob;
+	if (!blob)
+		return NULL;
 
-        node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_MSIX);
+	node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_MSIX);
 	if (node < 0)
 		node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_MSIX_MGMT);
-        if (node < 0) {
-                xocl_xdev_err(xdev_hdl, "did not find msix node in %s", NODE_ENDPOINTS);
-                return NULL;
-        }
+	if (node < 0) {
+		xocl_xdev_err(xdev_hdl, "did not find msix node in %s", NODE_ENDPOINTS);
+		return NULL;
+	}
 
-        if (fdt_node_check_compatible(blob, node, "qdma_msix"))
-                return NULL;
+	if (fdt_node_check_compatible(blob, node, "qdma_msix"))
+		return NULL;
 
-        msix_priv = vzalloc(sizeof(*msix_priv));
-        if (!msix_priv)
-                return NULL;
-        msix_priv->start = 0;
-        msix_priv->total = 8;
+	msix_priv = vzalloc(sizeof(*msix_priv));
+	if (!msix_priv)
+		return NULL;
+	msix_priv->start = 0;
+	msix_priv->total = 8;
 
-        *len = sizeof(*msix_priv);
-        return msix_priv;
+	*len = sizeof(*msix_priv);
+	return msix_priv;
 }
 
 static void *ert_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
