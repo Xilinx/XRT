@@ -566,7 +566,6 @@ int stmc_req_bypass_desc_fill(void *qhndl, enum qdma_q_mode q_mode,
 	unsigned int data_cnt = 0;
 	unsigned int desc_used = 0;
 	unsigned int desc_avail;
-	bool sop;
 	int i, rv;
 
 	if ((q_mode != QDMA_Q_MODE_ST) || (q_dir != QDMA_Q_DIR_H2C)) {
@@ -581,11 +580,11 @@ int stmc_req_bypass_desc_fill(void *qhndl, enum qdma_q_mode q_mode,
 	if (i < 0) 
 		return -EINVAL;
 
-	sop = (i == 0 && sg_offset == 0);
 
 	desc_avail = qdma_q_desc_avail_count(qhndl);
 
 	for (; i < sg_max; i++, sg++) {
+		bool sop = (i == 0 && sg_offset == 0);
 		struct qdma_q_desc_list *qdesc_head = NULL;
 		struct qdma_q_desc_list *qdesc = NULL;
 		struct stmc_h2c_desc *desc;
@@ -609,6 +608,7 @@ int stmc_req_bypass_desc_fill(void *qhndl, enum qdma_q_mode q_mode,
                                 return 0;
                 }
 
+		desc = qdesc_head->desc;
                 for (j = 0, qdesc = qdesc_head; j < desc_cnt; j++,
 			qdesc = qdesc->next) {
 			unsigned int len = min_t(unsigned int, tlen,
@@ -617,7 +617,7 @@ int stmc_req_bypass_desc_fill(void *qhndl, enum qdma_q_mode q_mode,
                         desc = qdesc->desc;
                         desc->flags = 0;
 
-			if (!desc_cnt && sop)
+			if (sop && j == 0)
 				desc->flags |= S_H2C_DESC_F_SOP;
 
 			desc->src_addr = addr;
