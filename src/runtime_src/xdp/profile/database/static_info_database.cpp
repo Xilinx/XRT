@@ -106,12 +106,27 @@ namespace xdp {
     resetDeviceInfo(deviceId);
 
     DeviceInfo *devInfo = new DeviceInfo();
-    devInfo->clockRateMHz = 300;
     devInfo->platformInfo.kdmaCount = 0;
 
     deviceInfo[deviceId] = devInfo;
 
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(devHandle);
+
+    if(nullptr == device) return;
+
+    const clock_freq_topology* clockSection = device->get_axlf_section<const clock_freq_topology*>(CLOCK_FREQ_TOPOLOGY);
+
+    if(clockSection) {
+      for(int32_t i = 0; i < clockSection->m_count; i++) {
+        const struct clock_freq* clk = &(clockSection->m_clock_freq[i]);
+        if(clk->m_type != CT_DATA) {
+          continue;
+        }
+        devInfo->clockRateMHz = clk->m_freq_Mhz;
+      }
+    } else {
+      devInfo->clockRateMHz = 300;
+    }
 
 //    if (!setXclbinUUID(devInfo, device)) return;
     if (!setXclbinName(devInfo, device)) return;
