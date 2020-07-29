@@ -788,6 +788,18 @@ namespace xclhwemhal2 {
           mLogStream << __func__ << " xocc command line: " << launcherArgs << std::endl;
 
         const char* simMode = NULL;
+
+        std::string userSpecifiedPreSimScript = xclemulation::config::getInstance()->getUserPreSimScript();
+        std::string userSpecifiedPostSimScript = xclemulation::config::getInstance()->getUserPostSimScript();
+        std::string wcfgFilePath = xclemulation::config::getInstance()->getWcfgFilePath();
+
+        if (userSpecifiedPreSimScript != "" && wcfgFilePath != "") {
+          std::cout << "WARNING: [HW-EMU] Both user_pre_sim_script and wcfg_file_path are provided. Either one of the option is accepted. Giving predence for wcfg_file_path." << std::endl;
+        }
+
+        std::string pre_sim_script;
+        createPreSimScript(wcfgFilePath, pre_sim_script);
+
         if (args.m_emuData) {
           //Assuming that we will have only one AIE Kernel, need to 
           //update this logic when we have suport for multiple AIE Kernels
@@ -817,16 +829,23 @@ namespace xclhwemhal2 {
           if (aie_sim_options != "") {
             launcherArgs += " -aie-sim-options " + aie_sim_options;
           }
-          
-          std::string userSpecifiedPreSimScript = xclemulation::config::getInstance()->getUserPreSimScript();
-          std::string userSpecifiedPostSimScript = xclemulation::config::getInstance()->getUserPostSimScript();
 
-          if (userSpecifiedPreSimScript != "") {
-            launcherArgs += " -user-pre-sim-script " + userSpecifiedPreSimScript;
+          if (wcfgFilePath != "") {
+            launcherArgs += " -user-pre-sim-script " + pre_sim_script;
+          }
+          else {
+            if (userSpecifiedPreSimScript != "") {
+              launcherArgs += " -user-pre-sim-script " + userSpecifiedPreSimScript;
+            }
           }
 
           if (userSpecifiedPostSimScript != "") {
             launcherArgs += " -user-post-sim-script " + userSpecifiedPostSimScript;
+          }
+        }
+        else {
+          if (pre_sim_script != "") {
+            setenv("USER_PRE_SIM_SCRIPT", pre_sim_script.c_str(), true);
           }
         }
 
@@ -861,6 +880,19 @@ namespace xclhwemhal2 {
     }
 
     return 0;
+  }
+
+  void HwEmShim::createPreSimScript(const std::string& wcfgFilePath, std::string& preSimScriptPath) {
+    char path[FILENAME_MAX];
+    size_t size = MAXPATHLEN;
+    char* pPath = GetCurrentDir(path, size);
+
+    preSimScriptPath = std::string(pPath) + "/pre_sim_script.tcl";
+    std::ofstream pssStrem;
+    pssStrem.open(preSimScriptPath);
+
+    pssStrem << "open_wave_config " << wcfgFilePath << std::endl;
+    pssStrem.close();
   }
   
   void HwEmShim::extractEmuData(const std::string& simPath, int binaryCounter, bitStreamArg args) {
@@ -1283,9 +1315,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     {
       xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer,finalValidAddress,origSize,noHostMemory);
 
-        PRINTENDFUNC;
-        if (!ack)
-          return 0;
+      PRINTENDFUNC;
+      if(!ack)
+        return 0;
     }
     return finalValidAddress;
   }
@@ -1404,6 +1436,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     }
     mBinaryDirectories.clear();
     PRINTENDFUNC;
+    mLogStream.close();
   }
 
   void HwEmShim::xclClose()
@@ -2064,9 +2097,12 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       std::string sdxTraceKernelFile = std::string(path) + "/timeline_kernels.csv";
       systemUtil::makeSystemCall(sdxTraceKernelFile, systemUtil::systemOperation::REMOVE, "", boost::lexical_cast<std::string>(__LINE__));
     }
-    if ( logfileName && (logfileName[0] != '\0'))
+
+    std::string lf = std::string(pPath) + "/hal_log.txt";
+    //if ( logfileName && (logfileName[0] != '\0'))
+    if (!lf.empty())
     {
-      mLogStream.open(logfileName);
+      mLogStream.open(lf);
       mLogStream << "FUNCTION, THREAD ID, ARG..."  << std::endl;
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
