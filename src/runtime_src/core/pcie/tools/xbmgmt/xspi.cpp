@@ -2125,6 +2125,7 @@ static int programXSpiDrv(std::FILE *mFlashDev, std::istream& mcsStream,
     unsigned int curAddr = UINT_MAX;
     unsigned int nextAddr = 0;
     unsigned int storeAddr = 0;
+    bool store = true;
     int ret;
 
     while (nextAddr != UINT_MAX) {
@@ -2133,8 +2134,10 @@ static int programXSpiDrv(std::FILE *mFlashDev, std::istream& mcsStream,
         if (ret)
             return ret;
         assert(nextAddr == UINT_MAX || pageOffset(nextAddr) == 0);
-        if (!storeAddr)
+        if (store) {
             storeAddr = curAddr;
+            store = false;
+        }
         std::cout << "Extracted " << buf.size() << " bytes from bitstream @0x"
             << std::hex << curAddr << std::dec << std::endl;
 
