@@ -936,13 +936,13 @@ namespace xclcpuemhal2 {
   void CpuemShim::xclOpen(const char* logfileName)
   {
     xclemulation::config::getInstance()->populateEnvironmentSetup(mEnvironmentNameValueMap);
-    if( logfileName && (logfileName[0] != '\0')) 
-    {
-      mLogStream.open(logfileName);
-      mLogStream << "FUNCTION, THREAD ID, ARG..."  << std::endl;
+
+    std::string logFilePath = (logfileName && (logfileName[0] != '\0')) ? logfileName : xrt_core::config::get_hal_logging();
+    if (!logFilePath.empty()) {
+      mLogStream.open(logFilePath);
+      mLogStream << "FUNCTION, THREAD ID, ARG..." << std::endl;
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
-
     // Shim object creation doesn't follow xclOpen/xclClose.
     // The core device must correspond to open and close, so
     // create here rather than in constructor
