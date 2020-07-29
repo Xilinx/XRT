@@ -1188,7 +1188,7 @@ uint64_t CpuemShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   auto xobj = std::make_unique<xclemulation::drm_xocl_bo>();
   xobj->flags=info->flags;
   /* check whether buffer is p2p or not*/
-  bool noHostMemory = xclemulation::no_host_memory(xobj.get());
+  bool noHostMemory = xclemulation::no_host_memory(xobj.get()) || xclemulation::xocl_bo_host_only(xobj.get()); 
   std::string sFileName("");
   xobj->base = xclAllocDeviceBuffer2(size,XCL_MEM_DEVICE_RAM,ddr,noHostMemory,sFileName);
   xobj->filename = sFileName;
