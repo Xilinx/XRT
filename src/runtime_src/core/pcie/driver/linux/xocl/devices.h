@@ -2556,6 +2556,25 @@ struct xocl_subdev_map {
 		.board_name = "u25"                                     \
 	}
 
+#define XOCL_BOARD_U30_USER_RAPTOR2                                     \
+        (struct xocl_board_private){                                    \
+                .flags = XOCL_DSAFLAG_DYNAMIC_IP |                      \
+		        XOCL_DSAFLAG_MB_SCHE_OFF,          		\
+                .board_name = "u30",                                    \
+                .subdev_info    = RES_USER_VSEC,                        \
+                .subdev_num = ARRAY_SIZE(RES_USER_VSEC),                \
+        }
+
+#define XOCL_BOARD_U30_MGMT_RAPTOR2                                     \
+        (struct xocl_board_private){                                    \
+                .flags = XOCL_DSAFLAG_DYNAMIC_IP,                       \
+                .subdev_info    = RES_MGMT_VSEC,                        \
+                .subdev_num = ARRAY_SIZE(RES_MGMT_VSEC),                \
+                .flash_type = FLASH_TYPE_QSPIPS_X2_SINGLE,              \
+                .board_name = "u30"                                     \
+        }
+
+
 #define	XOCL_BOARD_U50_USER_RAPTOR2					\
 	(struct xocl_board_private){					\
 		.flags = XOCL_DSAFLAG_DYNAMIC_IP,			\
@@ -3110,6 +3129,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0xA883, 0x1351, MGMT_MPSOC) },		\
 	{ XOCL_PCI_DEVID(0x10EE, 0xA983, 0x1351, MGMT_MPSOC) },		\
 	{ XOCL_PCI_DEVID(0x10EE, 0x503C, PCI_ANY_ID, MGMT_U30) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x513C, PCI_ANY_ID, U30_MGMT_RAPTOR2) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0x688F, PCI_ANY_ID, MGMT_DEFAULT) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x694F, PCI_ANY_ID, MGMT_DEFAULT) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6987, PCI_ANY_ID, MGMT_U2) },	\
@@ -3195,6 +3215,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0x500D, PCI_ANY_ID, USER_DSA52_U280) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5021, PCI_ANY_ID, USER_U50) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5051, PCI_ANY_ID, USER_U25) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x513D, PCI_ANY_ID, U30_USER_RAPTOR2) },       \
 	{ XOCL_PCI_DEVID(0x10EE, 0x5059, PCI_ANY_ID, U55N_USER_RAPTOR2) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0x505D, PCI_ANY_ID, U55C_USER_RAPTOR2) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5061, PCI_ANY_ID, U50LV_USER_RAPTOR2) },\
