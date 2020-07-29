@@ -159,6 +159,8 @@ static void *flash_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 		flash_type = FLASH_TYPE_SPI;
 	else if (!fdt_node_check_compatible(blob, node, "qspi_ps_x4_single"))
 		flash_type = FLASH_TYPE_QSPIPS_X4_SINGLE;
+	else if (!fdt_node_check_compatible(blob, node, "qspi_ps_x2_single"))
+		flash_type = FLASH_TYPE_QSPIPS_X2_SINGLE;
 	else {
 		xocl_xdev_err(xdev_hdl, "UNKNOWN flash type");
 		return NULL;
