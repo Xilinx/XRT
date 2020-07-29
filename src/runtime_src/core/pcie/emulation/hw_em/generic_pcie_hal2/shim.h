@@ -255,6 +255,7 @@ using addr_type = uint64_t;
       bool device2xrt_irq_trans_cb(uint32_t,unsigned long int);
 
       std::string getSimulatorType(const std::string& binaryDirectory);
+      void createPreSimScript(const std::string& wcfgFilePath, std::string& preSimScriptPath);
 
     private:
       std::shared_ptr<xrt_core::device> mCoreDevice;

@@ -182,6 +182,9 @@ namespace xclemulation{
           setenv("HW_EM_DISABLE_LATENCY", "true", true);
         }
       }
+      else if (name == "wcfg_file_path") {
+        setWcfgFilePath(value);
+      }
       else if(name == "enable_shared_memory")
       {
         mIsSharedFmodel=getBoolValue(value,true);
