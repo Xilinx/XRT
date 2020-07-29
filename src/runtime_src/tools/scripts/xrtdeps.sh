@@ -83,7 +83,6 @@ rh_package_list()
      pkgconfig \
      protobuf-devel \
      protobuf-compiler \
-     redhat-lsb \
      rpm-build \
      strace \
      unzip \
@@ -92,6 +91,16 @@ rh_package_list()
      python3 \
      python3-pip \
     )
+
+    if [ $FLAVOR == "amzn" ]; then
+        RH_LIST+=(\
+        system-lsb-core \
+        )
+    else
+        RH_LIST+=(\
+        redhat-lsb \
+        )
+    fi
 
     # Centos8
     if [ $MAJOR == 8 ]; then
@@ -198,7 +207,7 @@ update_package_list()
 {
     if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
         ub_package_list
-    elif [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ]; then
+    elif [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ] || [ $FLAVOR == "amzn" ]; then
         rh_package_list
     else
         echo "unknown OS flavor $FLAVOR"
@@ -318,6 +327,16 @@ prep_rhel()
     yum install -y cmake3
 }
 
+prep_amzn()
+{
+    echo "Installing amazon EPEL..."
+    amazon-linux-extras install epel
+    echo "Installing cmake3 from EPEL repository..."
+    yum install cmake3
+    echo "Installing opencl header from EPEL repository..."
+    yum install ocl-icd ocl-icd-devel opencl-headers
+}
+
 install()
 {
     if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
@@ -332,6 +351,8 @@ install()
         prep_centos
     elif [ $FLAVOR == "rhel" ]; then
         prep_rhel
+    elif [ $FLAVOR == "amzn" ]; then
+        prep_amzn
     fi
 
     if [ $FLAVOR == "rhel" ] || [ $FLAVOR == "centos" ] || [ $FLAVOR == "amzn" ]; then
@@ -339,7 +360,7 @@ install()
         yum install -y "${RH_LIST[@]}"
 	if [ $ARCH == "ppc64le" ]; then
             yum install -y devtoolset-7
-	elif [ $MAJOR -lt "8" ]; then
+	elif [ $MAJOR -lt "8" ]  && [ $FLAVOR != "amzn" ]; then
             yum install -y devtoolset-6
 	fi
     fi
