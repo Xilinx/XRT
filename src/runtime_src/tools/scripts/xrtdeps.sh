@@ -74,7 +74,6 @@ rh_package_list()
      libstdc++-static \
      libtiff-devel \
      libuuid-devel \
-     libxml2-devel \
      libyaml-devel \
      lm_sensors \
      make \
@@ -161,7 +160,6 @@ ub_package_list()
      libprotoc-dev \
      libssl-dev \
      libtiff5-dev \
-     libxml2-dev \
      libyaml-dev \
      linux-libc-dev \
      lm-sensors \
@@ -231,7 +229,6 @@ fd_package_list()
      libstdc++-static \
      libtiff-devel \
      libuuid-devel \
-     libxml2-devel \
      libyaml-devel \
      lm_sensors \
      make \
