@@ -97,13 +97,18 @@ namespace xdp {
     // Write all data elements
     std::vector<VPDynamicDatabase::CounterSample> samples = 
       (db->getDynamicInfo()).getNOCSamples(mDeviceIndex);
+    VPDynamicDatabase::CounterNames names = 
+      (db->getDynamicInfo()).getNOCNames(mDeviceIndex);
 
     for (auto sample : samples) {
       fout << sample.first << ","; // Timestamp
       
-      // TODO: Get NMU cell name from sample
-      fout << "dummy" << ","; // cell name
+      // Report NMU cell name for this sample
+      auto iter = names.find(sample.first);
+      std::string cellName = (iter == names.end()) ? "N/A" : iter->second;
+      fout << cellName << ",";
       
+      // Report all samples at this timestamp for this NMU cell
       for (auto value : sample.second) {
         fout << value << ",";
       }

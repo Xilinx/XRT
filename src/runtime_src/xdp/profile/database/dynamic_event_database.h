@@ -44,6 +44,7 @@ namespace xdp {
     // Define a public typedef for all plugins that get information
     //  from counters
     typedef std::pair<double, std::vector<uint64_t>> CounterSample ;
+    typedef std::map<double, std::string> CounterNames ;
 
   private:
     // For host events, we are guaranteed that all of the timestamps
@@ -62,6 +63,7 @@ namespace xdp {
     std::map<uint64_t, std::vector<CounterSample>> powerSamples ;
     std::map<uint64_t, std::vector<CounterSample>> aieSamples ;
     std::map<uint64_t, std::vector<CounterSample>> nocSamples ;
+    std::map<uint64_t, CounterNames> nocNames ;
 
     // A unique event id for every event added to the database.
     //  It starts with 1 so we can use 0 as an indicator of NULL
@@ -126,9 +128,10 @@ namespace xdp {
 				   const std::vector<uint64_t>& values) ;
     XDP_EXPORT std::vector<CounterSample> getAIESamples(uint64_t deviceId) ;
 
-    XDP_EXPORT void addNOCSample(uint64_t deviceId, double timestamp,
+    XDP_EXPORT void addNOCSample(uint64_t deviceId, double timestamp, std::string name,
 				   const std::vector<uint64_t>& values) ;
     XDP_EXPORT std::vector<CounterSample> getNOCSamples(uint64_t deviceId) ;
+    XDP_EXPORT CounterNames getNOCNames(uint64_t deviceId) ;
   } ;
   
 }

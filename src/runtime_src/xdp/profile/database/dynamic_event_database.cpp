@@ -217,10 +217,20 @@ namespace xdp {
   }
 
   void VPDynamicDatabase::addNOCSample(uint64_t deviceId, double timestamp,
-					 const std::vector<uint64_t>& values)
+					 std::string name, const std::vector<uint64_t>& values)
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
 
+    // Store name
+    if (nocNames.find(deviceId) == nocNames.end())
+    {
+      CounterNames blank ;
+      nocNames[deviceId] = blank ;
+    }
+
+    nocNames[deviceId][timestamp] = name ;
+
+    // Store vector of values
     if (nocSamples.find(deviceId) == nocSamples.end())
     {
       std::vector<CounterSample> blank ;
@@ -236,5 +246,13 @@ namespace xdp {
     std::lock_guard<std::mutex> lock(dbLock) ;
 
     return nocSamples[deviceId] ;
+  }
+
+  VPDynamicDatabase::CounterNames
+  VPDynamicDatabase::getNOCNames(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(dbLock) ;
+
+    return nocNames[deviceId] ;
   }
 }

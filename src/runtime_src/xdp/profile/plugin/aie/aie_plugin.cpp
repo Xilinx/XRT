@@ -51,6 +51,9 @@ namespace xdp {
       handle = xclOpen(index, "/dev/null", XCL_INFO);
     }
 
+    // Get polling interval (in msec)
+    mPollingInterval = xrt_core::config::get_aie_profile_interval_ms();
+
     // Start the AIE profiling thread
     mPollingThread = std::thread(&AIEProfilingPlugin::pollAIECounters, this);
   }
@@ -106,7 +109,7 @@ namespace xdp {
         }
       }
 
-      std::this_thread::sleep_for(std::chrono::milliseconds(20));
+      std::this_thread::sleep_for(std::chrono::milliseconds(mPollingInterval));
       ++pollnum;      
     }
   }

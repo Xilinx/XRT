@@ -22,6 +22,8 @@
 #include "core/common/time.h"
 #include "core/include/experimental/xrt-next.h"
 
+#include <boost/algorithm/string.hpp>
+
 namespace xdp {
 
   NOCProfilingPlugin::NOCProfilingPlugin() 
@@ -51,6 +53,9 @@ namespace xdp {
       handle = xclOpen(index, "/dev/null", XCL_INFO);
     }
 
+    // Get polling interval (in msec)
+    mPollingInterval = xrt_core::config::get_noc_profile_interval_ms();
+
     // Start the NOC profiling thread
     mPollingThread = std::thread(&NOCProfilingPlugin::pollNOCCounters, this);
   }
@@ -79,13 +84,20 @@ namespace xdp {
       double timestamp = xrt_core::time_ns() / 1.0e6;
       uint64_t index = 0;
 
-      // TODO: not sure what we need from device; for now, just use name
+      // Iterate over all devices
       for (auto device : mDevices) {
-        // TODO: traverse all NMUs used in design
-        for (uint32_t nmu=0; nmu < 2; ++nmu) {
-          std::vector<uint64_t> values;
+        // Iterate over all NOC NMUs
+        auto numNOC = (db->getStaticInfo()).getNumNOC(index);
+        for (uint64_t n=0; n < numNOC; n++) {
+          auto noc = (db->getStaticInfo()).getNOC(index, n);
+
+          // Name = <master>-<NMU cell>-<read QoS>-<write QoS>-<NPI freq>-<AIE freq>
+          std::vector<std::string> result; 
+          boost::split(result, noc->name, boost::is_any_of("-"));
+          std::string cellName = (result.size() > 1) ? result[1] : "N/A";
 
           // TODO: replace dummy data with counter values
+          std::vector<uint64_t> values;
 
           // Read
           uint64_t readByteCount    = pollnum * 128;
@@ -100,24 +112,24 @@ namespace xdp {
           values.push_back(readMaxLatency);
 
           // Write
-          uint64_t writeByteCount    = pollnum * 128;
-          uint64_t writeBurstCount   = pollnum * 10;
-          uint64_t writeTotalLatency = pollnum * 1000;
-          uint64_t writeMinLatency   = 42;
-          uint64_t writeMaxLatency   = 100;
+          uint64_t writeByteCount    = pollnum * 234;
+          uint64_t writeBurstCount   = pollnum * 21;
+          uint64_t writeTotalLatency = pollnum * 1234;
+          uint64_t writeMinLatency   = 24;
+          uint64_t writeMaxLatency   = 123;
           values.push_back(writeByteCount);
           values.push_back(writeBurstCount);
           values.push_back(writeTotalLatency);
           values.push_back(writeMinLatency);
           values.push_back(writeMaxLatency);
 
-          // TODO: add NMU name to call and database (second column in file)
-	        (db->getDynamicInfo()).addNOCSample(index, timestamp, values);
+          // Add sample to dynamic database
+	        (db->getDynamicInfo()).addNOCSample(index, timestamp, cellName, values);
 	        ++index;
         }
       }
 
-      std::this_thread::sleep_for(std::chrono::milliseconds(20));
+      std::this_thread::sleep_for(std::chrono::milliseconds(mPollingInterval));
       ++pollnum;      
     }
   }

@@ -38,6 +38,7 @@ namespace xdp {
   private:
     // AIE profiling uses its own thread
     bool mKeepPolling;
+    unsigned int mPollingInterval;
     std::thread mPollingThread;
     std::vector<std::string> mDevices;
   };
