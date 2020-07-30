@@ -251,7 +251,7 @@ static int resetShell(unsigned index, bool force)
 }
 
 /*
- * bmcVer (shown as [SC=version]) can be 3 status:
+ * bmcVer (shown as [SC=version]) can be the following status:
  *   1) regular SC version;
  *        example: [SC=4.1.7]
  *   2) INACTIVE;
@@ -271,6 +271,7 @@ static void isSameShellOrSC(DSAInfo& candidate, DSAInfo& current,
         *same_dsa = ((candidate.name == current.name) &&
             candidate.matchId(current));
         *same_bmc = (current.bmcVerIsFixed() ||
+            candidate.bmcVer.empty() ||
             (current.bmcVer.compare(DSAInfo::INACTIVE) == 0) ||
             (candidate.bmcVer == current.bmcVer));
     }
