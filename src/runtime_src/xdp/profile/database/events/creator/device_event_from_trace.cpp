@@ -75,7 +75,7 @@ namespace xdp {
         uint32_t stallExtEvent = trace.TraceID & XAM_TRACE_STALL_EXT_MASK;
 
         Monitor* mon  = db->getStaticInfo().getAMonitor(deviceId, s);   
-	int32_t  cuId = mon->cuIndex;
+        int32_t  cuId = mon->cuIndex;
         
         if(cuEvent) {
           KernelDeviceEvent* event = nullptr;
