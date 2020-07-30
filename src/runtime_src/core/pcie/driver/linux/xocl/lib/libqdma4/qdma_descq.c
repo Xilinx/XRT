@@ -399,6 +399,7 @@ static ssize_t descq_proc_st_h2c_request(struct qdma_descq *descq)
 
 	pidx = descq->pidx;
 	desc = (struct qdma_h2c_desc *)descq->desc + pidx;
+
 	while (!list_empty(&descq->work_list)) {
 		struct qdma_sgt_req_cb *cb = list_first_entry(&descq->work_list,
 						struct qdma_sgt_req_cb, list);
@@ -527,11 +528,12 @@ static ssize_t descq_proc_st_h2c_request(struct qdma_descq *descq)
 update_pidx:
 		if (!desc_cnt)
 			break;
+
 		desc_written += desc_cnt;
 
-		pr_debug("descq %s, +%u,%u, avail %u, 0x%x(%u), cb off %u.\n",
-			descq->conf.name, desc_cnt, pidx, descq->avail,
-			data_cnt, data_cnt, cb->offset);
+		pr_debug("descq %s, +%u/%u, pidx %u, avail %u, 0x%x(%u), cb off %u.\n",
+			descq->conf.name, desc_cnt, desc_written, descq->pidx,
+			descq->avail, data_cnt, data_cnt, cb->offset);
 
 		descq->pend_req_desc -= desc_cnt;
 	}
@@ -550,7 +552,6 @@ update_pidx:
 			} else
 				pr_err("Err: Tx Time Offset is NULL\n");
 		}
-
 
 		ret = queue_pidx_update(descq->xdev, descq->conf.qidx,
 				descq->conf.q_type, &descq->pidx_info);
@@ -789,6 +790,13 @@ void qdma4_descq_init(struct qdma_descq *descq, struct xlnx_dma_dev *xdev,
 	descq->conf.qidx = idx_sw;
 }
 
+unsigned int qdma_q_desc_avail_count(void *q_hndl)
+{
+	struct qdma_descq *descq = (struct qdma_descq *)q_hndl;
+
+	return descq->avail;
+}
+
 int qdma_q_desc_get(void *q_hndl, const unsigned int desc_cnt,
 		    struct qdma_q_desc_list **desc_list)
 {
@@ -811,13 +819,31 @@ int qdma_q_desc_get(void *q_hndl, const unsigned int desc_cnt,
 	return 0;
 }
 
-int qdma_q_init_pointers(void *q_hndl)
+int qdma_q_init_pointers(unsigned long dev_hndl, unsigned long id)
 {
-	struct qdma_descq *descq = (struct qdma_descq *)q_hndl;
+	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
+	struct qdma_descq *descq;
 	int rv;
 
+	/** make sure that the dev_hndl passed is Valid */
+	if (!xdev) {
+		pr_err("dev_hndl is NULL");
+		return -EINVAL;
+	}
+
+	if (qdma4_xdev_check_hndl(__func__, xdev->conf.pdev, dev_hndl) < 0) {
+		pr_err("Invalid dev_hndl passed");
+		return -EINVAL;
+	}
+
+	descq = qdma4_device_get_descq_by_id(xdev, id, NULL, 0, 1);
+	if (!descq) {
+		pr_err("%s, Invalid qid(%lu)", xdev->conf.name, id);
+		return -EINVAL;
+	}
+
 	if ((descq->conf.st && (descq->conf.q_type == Q_C2H)) ||
-			(!descq->conf.st && (descq->conf.q_type == Q_CMPT))) {
+	    (!descq->conf.st && (descq->conf.q_type == Q_CMPT))) {
 		if (descq->conf.init_pidx_dis) {
 			/* use qdma_q_init_pointers
 			 *for updating the pidx and cidx later

@@ -72,6 +72,7 @@
 #define NODE_MSIX "ep_msix_00"
 #define NODE_QDMA "ep_qdma_00"
 #define NODE_QDMA4 "ep_qdma4_00"
+#define NODE_QDMA4_CSR "ep_qdma4_csr_00"
 #define NODE_STM "ep_stream_traffic_manager_00"
 #define NODE_STM4 "ep_stream_traffic_manager4_00"
 #define NODE_CLK_SHUTDOWN "ep_aclk_shutdown_00"
