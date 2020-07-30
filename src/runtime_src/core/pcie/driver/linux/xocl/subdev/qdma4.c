@@ -1869,15 +1869,20 @@ static int qdma4_probe(struct platform_device *pdev)
 		res;	
 		res = platform_get_resource(pdev, IORESOURCE_MEM, ++i)) {
 		if (!strncmp(res->name, NODE_QDMA4, strlen(NODE_QDMA4))) {
-			ret = xocl_ioaddr_to_baroff(xdev, res->start, &dma_bar, NULL);
+			ret = xocl_ioaddr_to_baroff(xdev, res->start, &dma_bar,
+							NULL);
 			if (ret) {
-				xocl_err(&pdev->dev, "Invalid resource %pR", res);
+				xocl_err(&pdev->dev,
+					"Invalid resource %pR", res);
 				return -EINVAL;
 			}
-		} else if (!strncmp(res->name, NODE_QDMA4_CSR, strlen(NODE_QDMA4_CSR))) {
-			ret = xocl_ioaddr_to_baroff(xdev, res->start, &csr_bar, NULL);
+		} else if (!strncmp(res->name, NODE_QDMA4_CSR,
+					strlen(NODE_QDMA4_CSR))) {
+			ret = xocl_ioaddr_to_baroff(xdev, res->start, &csr_bar,
+							NULL);
 			if (ret) {
-				xocl_err(&pdev->dev, "QDMA4_CSR: Invalid resource %pR", res);
+				xocl_err(&pdev->dev,
+					 "CSR: Invalid resource %pR", res);
 				return -EINVAL;
 			}
 
@@ -1885,9 +1890,11 @@ static int qdma4_probe(struct platform_device *pdev)
 				pci_resource_start(XDEV(xdev)->pdev, csr_bar);
 
 		} else if (!strncmp(res->name, NODE_STM4, strlen(NODE_STM4))) {
-			ret = xocl_ioaddr_to_baroff(xdev, res->start, &stm_bar, NULL);
+			ret = xocl_ioaddr_to_baroff(xdev, res->start, &stm_bar,
+							NULL);
 			if (ret) {
-				xocl_err(&pdev->dev, "Invalid resource %pR", res);
+				xocl_err(&pdev->dev,
+					"STM Invalid resource %pR", res);
 				return -EINVAL;
 			}
 			if (stm_bar == -1)
@@ -1929,6 +1936,8 @@ static int qdma4_probe(struct platform_device *pdev)
 	conf->fp_user_isr_handler = qdma_isr;
 	conf->uld = (unsigned long)qdma;
 
+	xocl_info(&pdev->dev, "dma %d, mode 0x%x.\n",
+		dma_bar, conf->qdma_drv_mode);
 	ret = qdma4_device_open(XOCL_MODULE_NAME, conf, &qdma->dma_hndl);
 	if (ret < 0) {
 		xocl_err(&pdev->dev, "QDMA Device Open failed");
@@ -1937,25 +1946,24 @@ static int qdma4_probe(struct platform_device *pdev)
 
 	if (csr_bar >= 0) {
 		xocl_info(&pdev->dev, "csr bar %d, base 0x%lx.",
-			 csr_bar, (unsigned long)csr_base);
+			csr_bar, (unsigned long)csr_base);
 
-#if 0
 		ret = qdma4_csr_prog_ta(XDEV(xdev)->pdev, csr_bar, csr_base);
 		if (ret < 0)
 			xocl_err(&pdev->dev,
-				"BDF table program failed, slave bridge may NOT work.");
+				"Slave bridge BDF program failed (%d,0x%lx).",
+				csr_bar, (unsigned long)csr_base);
 		else
 			xocl_info(&pdev->dev,
-				"BDF table program set up successful (%d,0x%lx).",
+				"Slave bridge BDF programmed (%d,0x%lx).",
 				csr_bar, (unsigned long)csr_base);
-#endif
 	}
 
 	if (stm_bar >= 0) {
 		struct stmc_dev *sdev = &qdma->stm_dev;
 
 		xocl_info(&pdev->dev, "stm bar %d, base 0x%lx.",
-			 stm_bar, (unsigned long)stm_base);
+			stm_bar, (unsigned long)stm_base);
 
 		sdev->reg_base = stm_base;
 		sdev->bar_num = stm_bar;
