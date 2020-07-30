@@ -21,6 +21,15 @@
 #include "xrt.h"
 
 #ifdef __cplusplus
+# include <memory>
+#endif
+
+/**
+ * typedef xrtXclbinHandle - opaque xclbin handle
+ */
+typedef void* xrtXclbinHandle;
+
+#ifdef __cplusplus
 namespace xrt {
 
 class xclbin_impl;
@@ -101,6 +110,19 @@ public:
    */
   int
   getDataSize();
+
+public:
+  std::shared_ptr<xclbin_impl>
+  get_handle() const
+  {
+    return handle;
+  }
+
+private:
+  std::shared_ptr<xclbin_impl> handle;
+};
+
+} // namespace xrt
 
 extern "C" {
 #endif
