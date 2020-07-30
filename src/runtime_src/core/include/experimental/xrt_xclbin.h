@@ -21,8 +21,139 @@
 #include "xrt.h"
 
 #ifdef __cplusplus
+namespace xrt {
+
+class xclbin_impl;
+class xclbin
+{
+public:
+  
+  /**
+   * xclbin() - Constructor for empty xclbin
+   */
+  xclbin()
+  {}
+
+  /**
+   * xclbin() - Copy ctor
+   */
+  
+  /**
+   * xclbin() - Move ctor
+   */
+  
+  /**
+   * operator= () - Move assignment
+   */
+  
+  // Thoughts on possible constructors
+  xclbin(char *);
+  xclbin (std:vector<char>);
+  xclbin(device);
+  xclbin(string& path);
+
+  /**
+   * getDataSize() - Get the size of the xclbin file in memory
+   *
+   * Return: Size of the xclbin file in bytes
+   *
+   * Get the size (in bytes) of the xclbin file in memory
+   */
+  std::vector<std::string>
+  getCUNames(); // Returned in Soren's sorted order
+
+  /**
+   * getDataSize() - Get the size of the xclbin file in memory
+   *
+   * Return: Size of the xclbin file in bytes
+   *
+   * Get the size (in bytes) of the xclbin file in memory
+   */
+  std::string
+  getDSAName();
+
+  /**
+   * getDataSize() - Get the size of the xclbin file in memory
+   *
+   * Return: Size of the xclbin file in bytes
+   *
+   * Get the size (in bytes) of the xclbin file in memory
+   */
+  xuid_t
+  getUUID();
+
+  /**
+   * getDataSize() - Get the size of the xclbin file in memory
+   *
+   * Return: Size of the xclbin file in bytes
+   *
+   * Get the size (in bytes) of the xclbin file in memory
+   */
+  std::vector<char>
+  getData();
+
+  /**
+   * getDataSize() - Get the size of the xclbin file in memory
+   *
+   * Return: Size of the xclbin file in bytes
+   *
+   * Get the size (in bytes) of the xclbin file in memory
+   */
+  int
+  getDataSize();
+
 extern "C" {
 #endif
+
+/**
+ * xrtXclbinGetUUID() - Get UUID of xclbin image running on device
+ *
+ * @handle: Xclbin handle
+ * @out:    Return xclbin id in this uuid_t struct
+ * Return:  0 on success or appropriate error number
+ */
+int
+xrtXclbinGetCUNames(xrtXclbinHandle handle, char*** names, int* numNames);
+
+/**
+ * xrtXclbinGetUUID() - Get UUID of xclbin image running on device
+ *
+ * @handle: Xclbin handle
+ * @out:    Return xclbin id in this uuid_t struct
+ * Return:  0 on success or appropriate error number
+ */
+int
+xrtXclbinGetDSAName(xrtXclbinHandle handle, char** name);
+
+/**
+ * xrtXclbinGetUUID() - Get UUID of xclbin image running on device
+ *
+ * @handle: Xclbin handle
+ * @out:    Return xclbin id in this uuid_t struct
+ * Return:  0 on success or appropriate error number
+ */
+int
+xrtXclbinGetUUID(xclDeviceHandle handle, xuid_t out);
+
+/**
+ * xrtXclbinGetUUID() - Get UUID of xclbin image running on device
+ *
+ * @handle: Xclbin handle
+ * @out:    Return xclbin id in this uuid_t struct
+ * Return:  0 on success or appropriate error number
+ */
+int
+xrtXclbinGetData(xrtXclbinHandle handle, char** data);
+
+/**
+ * xrtXclbinGetUUID() - Get UUID of xclbin image running on device
+ *
+ * @handle: Xclbin handle
+ * @out:    Return xclbin id in this uuid_t struct
+ * Return:  0 on success or appropriate error number
+ */
+int
+xrtXclbinGetDataSize(xrtXclbinHandle handle);
 
 /**
  * xrtGetXclbinUUID() - Get UUID of xclbin image running on device
