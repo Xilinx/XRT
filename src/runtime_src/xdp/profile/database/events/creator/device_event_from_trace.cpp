@@ -17,7 +17,7 @@
 #define XDP_SOURCE
 
 #include "xdp/profile/database/events/creator/device_event_from_trace.h"
-#include<iostream>
+
 namespace xdp {
 
   DeviceEventCreatorFromTrace::DeviceEventCreatorFromTrace(uint64_t devId)
@@ -356,7 +356,6 @@ namespace xdp {
 //      }
       clockTrainOffset = y2 - clockTrainSlope * x2;
       // next time update x1, y1
-std::cout << " traceClockRateMHz " << traceClockRateMHz << std::endl;
       y1 = 0.0;
       x1 = 0.0;
     }
@@ -365,7 +364,7 @@ std::cout << " traceClockRateMHz " << traceClockRateMHz << std::endl;
   // Convert device timestamp to host time domain (in msec)
   double DeviceEventCreatorFromTrace::convertDeviceToHostTimestamp(uint64_t deviceTimestamp)
   {
-    return (clockTrainSlope * (double)deviceTimestamp + clockTrainOffset)/1e6;
+    return ((clockTrainSlope * (double)deviceTimestamp) + clockTrainOffset)/1e6;
   }
 
 
