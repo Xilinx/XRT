@@ -43,7 +43,7 @@ namespace xdp {
   public:
     // Define a public typedef for all plugins that get information
     //  from counters
-    typedef std::pair<double, std::vector<int>> CounterSample ;
+    typedef std::pair<double, std::vector<uint64_t>> CounterSample ;
 
   private:
     // For host events, we are guaranteed that all of the timestamps
@@ -117,7 +117,7 @@ namespace xdp {
 
     // Functions that are used by counter-based plugins
     XDP_EXPORT void addPowerSample(uint64_t deviceId, double timestamp,
-				   const std::vector<int>& values) ;
+				   const std::vector<uint64_t>& values) ;
     XDP_EXPORT std::vector<CounterSample> getPowerSamples(uint64_t deviceId) ;
   } ;
   

@@ -124,13 +124,22 @@ namespace xdp {
       uint64_t index = 0 ;
       for (auto device : filePaths)
       {
-	std::vector<int> values ;
+	std::vector<uint64_t> values ;
 	for (auto file : device)
 	{
 	  std::ifstream fs(file) ;
+	  if (!fs)
+	  {
+	    // When we tried to get the path to this file, we got a bad
+	    //  result (like empty string).  So all devices are aligned and
+	    //  have the same amount of information we'll just record this
+	    //  data element as 0.
+	    values.push_back(0) ;
+	    continue ;
+	  }
 	  std::string data ;
 	  std::getline(fs, data) ;
-	  int dp = data.empty() ? 0 : std::stoi(data) ;
+	  uint64_t dp = data.empty() ? 0 : std::stoul(data) ;
 	  values.push_back(dp) ;
 	  fs.close() ;
 	}

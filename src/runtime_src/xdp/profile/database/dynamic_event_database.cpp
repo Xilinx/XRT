@@ -173,7 +173,7 @@ namespace xdp {
   }
 
   void VPDynamicDatabase::addPowerSample(uint64_t deviceId, double timestamp,
-					 const std::vector<int>& values)
+					 const std::vector<uint64_t>& values)
   {
     std::lock_guard<std::mutex> lock(dbLock) ;
 
