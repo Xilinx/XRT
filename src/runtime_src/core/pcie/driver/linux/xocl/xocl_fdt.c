@@ -178,6 +178,31 @@ static void *flash_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 	return flash_priv;
 }
 
+static void *p2p_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
+{
+	struct xocl_dev_core *core = XDEV(xdev_hdl);
+	void *blob;
+	struct xocl_p2p_privdata *p2p_priv;
+	int node;
+
+	blob = core->fdt_blob;
+	if (!blob)
+		return NULL;
+
+	node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_XDMA);
+	if (node < 0)
+		return NULL;
+
+	p2p_priv = vzalloc(sizeof(*p2p_priv));
+	if (!p2p_priv)
+		return NULL;
+
+	p2p_priv->flags = XOCL_P2P_FLAG_SIBASE_NEEDED;
+	*len = sizeof(*p2p_priv);
+
+	return p2p_priv;
+}
+
 static void devinfo_cb_setlevel(void *dev_hdl, void *subdevs, int num)
 {
 	struct xocl_subdev *subdev = subdevs;
@@ -261,6 +286,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.res_array = (struct xocl_subdev_res[]) {
 			{.res_name = NODE_QDMA4},
 			{.res_name = NODE_STM4},
+			{.res_name = NODE_QDMA4_CSR},
 			{NULL},
 		},
 		.required_ip = 1,
@@ -578,7 +604,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		},
 		.required_ip = 1,
 		.flags = 0,
-		.build_priv_data = NULL,
+		.build_priv_data = p2p_build_priv,
 		.devinfo_cb = NULL,
 	},
 };

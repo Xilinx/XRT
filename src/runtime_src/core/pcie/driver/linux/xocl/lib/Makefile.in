@@ -34,6 +34,7 @@ xocl_lib-y	+=  \
 		../lib/libqdma/xdev.o
 
 xocl_lib-y	+=  \
+		../lib/libqdma4/stmc.o	\
 		../lib/libqdma4/libqdma_config.o	\
 		../lib/libqdma4/libqdma_export.o	\
 		../lib/libqdma4/qdma_context.o	\
