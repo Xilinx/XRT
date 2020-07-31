@@ -27,7 +27,7 @@
 
 #include <map>
 #include <vector>
-#include <fstream>
+#include "core/include/experimental/xclbin_util.h"
 
 #ifdef _WIN32
 # pragma warning( disable : 4244 )
@@ -56,23 +56,6 @@ free_device(xrtDeviceHandle dhdl)
 {
   if (device_cache.erase(dhdl) == 0)
     throw xrt_core::error(-EINVAL, "No such device handle");
-}
-
-static std::vector<char>
-read_xclbin(const std::string& fnm)
-{
-  if (fnm.empty())
-    throw std::runtime_error("No xclbin speified");
-
-  // load the file
-  std::ifstream stream(fnm);
-  stream.seekg(0,stream.end);
-  size_t size = stream.tellg();
-  stream.seekg(0,stream.beg);
-
-  std::vector<char> header(size);
-  stream.read(header.data(),size);
-  return header;
 }
 
 inline void

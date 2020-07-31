@@ -26,6 +26,8 @@
 #include "core/common/message.h"
 #include "core/common/query_requests.h"
 #include "core/include/xclbin.h"
+#include "core/include/experimental/xclbin_util.h"
+#include "core/common/xclbin_parser.h"
 
 #ifdef _WIN32
 # include "windows/uuid.h"
@@ -88,14 +90,21 @@ class xclbin_impl
 {
 protected:
   std::vector<char> data;
+  const axlf* top;
 
 public:
   explicit xclbin_impl(const std::vector<char>& data)
-  {}
+  {
+      this->data = data;
+      top = xclbin_axlf_handle(reinterpret_cast<void*>(this->data.data()));
+  }
 
   xclbin_impl(const std::string& filename)
-  {}
+  {
+      xclbin_impl(read_xclbin(filename));
+  }
 
+  // TODO - Get raw data from device, call first constructor
   xclbin_impl(const device& device)
   {}
 
@@ -107,29 +116,31 @@ public:
   void
   check_empty() const
   {
-    if (this->data.size() == 0)
+    if (this->data.size() == 0 || this->top == nullptr)
       throw xrt_core::error(-EINVAL,"Invalid XCLBIN data");
   }
 
   const std::vector<std::string>
   getCUNames() const{
 	  check_empty();
-	  std::vector<std::string> rtn;
-	  return rtn;
+      std::vector<std::string> names;
+	  std::vector<uint64_t> cus = xrt_core::xclbin::get_cus(top,false); // Why would I ever need them encoded
+	  for (auto cu : cus)
+	      names.push_back(xrt_core::xclbin::get_ip_name(top,cu));
+
+	  return names;
   }
 
   const std::string
   getDSAName() const{
 	  check_empty();
-	  std::string rtn;
-	  return rtn;
+	  return reinterpret_cast<const char*>(top->m_header.m_platformVBNV);
   }
 
   uuid
   getUUID() const{
 	  check_empty();
-	  uuid rtn;
-	  return rtn;
+      return uuid(top->m_header.uuid);
   }
 
   const std::vector<char>
