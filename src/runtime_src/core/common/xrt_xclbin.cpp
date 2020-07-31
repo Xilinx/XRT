@@ -153,12 +153,35 @@ public:
 ////////////////////////////////////////////////////////////////
 namespace xrt {
 
-    /*
-    xclbin::
-    xclbin(xclDeviceHandle dhdl, void* userptr, size_t sz, buffer_flags flags, memory_group grp)
-            : handle(alloc(dhdl, userptr, sz, flags, grp))
-    {}
-     */
-
     xclbin::xclbin(const std::string& filename) : handle(std::make_shared<xclbin_impl>(filename)) {}
+
+    xclbin::xclbin(const std::vector<char>& data) : handle(std::make_shared<xclbin_impl>(data)) {}
+
+    xclbin::xclbin(const device& device) : handle(std::make_shared<xclbin_impl>(device)) {}
+
+    const std::vector<std::string>
+    xclbin::getCUNames() const{
+    	return this->get_handle()->getCUNames();
+    }
+
+    const std::string
+    xclbin::getDSAName() const{
+    	return this->get_handle()->getDSAName();
+    }
+
+    uuid
+    xclbin::getUUID() const{
+    	return this->get_handle()->getUUID();
+    }
+
+    const std::vector<char>
+    xclbin::getData() const{
+    	return this->get_handle()->getData();
+    }
+
+    int
+    xclbin::getDataSize() const{
+    	return this->get_handle()->getDataSize();
+    }
+
 }
