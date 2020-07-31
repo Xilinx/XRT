@@ -30,8 +30,22 @@
 namespace {
 
   // ******** OpenCL Counters/Guidance Plugin *********
+
+  // All of the function pointers that will be dynamically linked to
+  //  callback functions on the XDP plugin side
+  std::function<void (const char*)> counter_function_start_cb ;
+  std::function<void (const char*)> counter_function_end_cb ;
+
   void register_opencl_counters_functions(void* handle)
   {
+    typedef void (*ctype)(const char*) ;
+    counter_function_start_cb = 
+      (ctype)(xrt_core::dlsym(handle, "log_function_call_start")) ;
+    if (xrt_core::dlerror() != NULL) counter_function_start_cb = nullptr ;
+
+    counter_function_end_cb = 
+      (ctype)(xrt_core::dlsym(handle, "log_function_call_end")) ;
+    if (xrt_core::dlerror() != NULL) counter_function_start_cb = nullptr ;
   }
 
   void opencl_counters_warning_function()
@@ -253,16 +267,23 @@ namespace xocl {
 	  load_xdp_device_offload() ;
       }
 
-      // Log the stats for this function
+      // Log the trace for this function
       m_funcid = xrt_core::utils::issue_id() ;
       if (function_start_cb)
 	function_start_cb(m_name, m_address, m_funcid) ;
+
+      // Log the stats for this function
+      if (counter_function_start_cb)
+	counter_function_start_cb(m_name) ;
     }
 
     OpenCLAPILogger::~OpenCLAPILogger()
     {
       if (function_end_cb)
 	function_end_cb(m_name, m_address, m_funcid) ;
+
+      if (counter_function_end_cb)
+	counter_function_end_cb(m_name) ;
     }
 
     // ******** OpenCL Host Trace Callbacks *********
