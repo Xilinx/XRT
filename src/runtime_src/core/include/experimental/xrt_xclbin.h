@@ -19,9 +19,12 @@
 #define _XRT_XCLBIN_H_
 
 #include "xrt.h"
+#include "experimental/xrt_uuid.h"
 
 #ifdef __cplusplus
 # include <memory>
+# include <vector>
+# include <string>
 #endif
 
 /**
@@ -56,10 +59,12 @@ public:
    */
   
   // Thoughts on possible constructors
+  /*
   xclbin(char *);
-  xclbin (std:vector<char>);
+  xclbin (std::vector<char>);
   xclbin(device);
   xclbin(string& path);
+  */
 
   /**
    * getDataSize() - Get the size of the xclbin file in memory
@@ -88,7 +93,7 @@ public:
    *
    * Get the size (in bytes) of the xclbin file in memory
    */
-  xuid_t
+  uuid
   getUUID();
 
   /**
