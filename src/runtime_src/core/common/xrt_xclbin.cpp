@@ -19,6 +19,7 @@
 // core/include/experimental/xrt_xclbin.h
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_xclbin.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
+
 #include "core/include/experimental/xrt_xclbin.h"
 
 #include "core/common/system.h"
@@ -32,7 +33,9 @@
 #ifdef _WIN32
 # include "windows/uuid.h"
 #else
+
 # include <linux/uuid.h>
+
 #endif
 
 namespace {
@@ -50,7 +53,7 @@ xrtXclbinUUID(xclDeviceHandle dhdl, xuid_t out)
 } // api
 
 inline void
-send_exception_message(const char* msg)
+send_exception_message(const char *msg)
 {
   xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR, "XRT", msg);
 }
@@ -64,14 +67,14 @@ int
 xrtXclbinUUID(xclDeviceHandle dhdl, xuid_t out)
 {
   try {
-   api::xrtXclbinUUID(dhdl, out);
-   return 0;
+    api::xrtXclbinUUID(dhdl, out);
+    return 0;
   }
-  catch (const xrt_core::error& ex) {
+  catch (const xrt_core::error &ex) {
     xrt_core::send_exception_message(ex.what());
     return ex.get();
   }
-  catch (const std::exception& ex) {
+  catch (const std::exception &ex) {
     xrt_core::send_exception_message(ex.what());
     return -1;
   }
@@ -87,22 +90,27 @@ class xclbin_impl
 {
 protected:
   std::vector<char> data;
-  const axlf* top;
-
-public:
-  explicit xclbin_impl(const std::vector<char>& data)
+  const axlf *top;
+  void initialize(const std::vector<char>& rawData)
   {
-      this->data = data;
-      top = xclbin_axlf_handle(reinterpret_cast<void*>(this->data.data()));
+    this->data = rawData;
+    this->top = xclbin_axlf_handle(reinterpret_cast<void *>(this->data.data()));
   }
 
-  xclbin_impl(const std::string& filename)
+public:
+  explicit xclbin_impl(const std::vector<char> &data)
   {
-      xclbin_impl(read_xclbin(filename));
+    initialize(data);
+  }
+
+  xclbin_impl(const std::string &filename)
+  {
+    std::vector<char> rawData = read_xclbin(filename);
+    initialize(rawData);
   }
 
   // TODO - Get raw data from device, call first constructor
-  xclbin_impl(const device& device)
+  xclbin_impl(const device &device)
   {}
 
   virtual
@@ -114,42 +122,47 @@ public:
   check_empty() const
   {
     if (this->data.size() == 0 || this->top == nullptr)
-      throw xrt_core::error(-EINVAL,"Invalid XCLBIN data");
+      throw xrt_core::error(-EINVAL, "Invalid XCLBIN data");
   }
 
   const std::vector<std::string>
-  getCUNames() const{
-	  check_empty();
-      std::vector<std::string> names;
-	  std::vector<uint64_t> cus = xrt_core::xclbin::get_cus(top,false); // Why would I ever need them encoded
-	  for (auto cu : cus)
-	      names.push_back(xrt_core::xclbin::get_ip_name(top,cu));
+  getCUNames() const
+  {
+    check_empty();
+    std::vector<std::string> names;
+    std::vector<uint64_t> cus = xrt_core::xclbin::get_cus(top, false); // Why would I ever need them encoded
+    for (auto cu : cus)
+      names.push_back(xrt_core::xclbin::get_ip_name(top, cu));
 
-	  return names;
+    return names;
   }
 
   const std::string
-  getDSAName() const{
-	  check_empty();
-	  return reinterpret_cast<const char*>(top->m_header.m_platformVBNV);
+  getDSAName() const
+  {
+    check_empty();
+    return reinterpret_cast<const char *>(top->m_header.m_platformVBNV);
   }
 
   uuid
-  getUUID() const{
-	  check_empty();
-      return uuid(top->m_header.uuid);
+  getUUID() const
+  {
+    check_empty();
+    return uuid(top->m_header.uuid);
   }
 
   const std::vector<char>
-  getData() const{
-	  check_empty();
-	  return data;
+  getData() const
+  {
+    check_empty();
+    return data;
   }
 
   int
-  getDataSize() const{
-	  check_empty();
-	  return data.size();
+  getDataSize() const
+  {
+    check_empty();
+    return data.size();
   }
 
 };
@@ -161,36 +174,44 @@ public:
 ////////////////////////////////////////////////////////////////
 namespace xrt {
 
-    xclbin::xclbin(const std::string& filename) : handle(std::make_shared<xclbin_impl>(filename)) {}
+xclbin::xclbin(const std::string &filename) : handle(std::make_shared<xclbin_impl>(filename))
+{}
 
-    xclbin::xclbin(const std::vector<char>& data) : handle(std::make_shared<xclbin_impl>(data)) {}
+xclbin::xclbin(const std::vector<char> &data) : handle(std::make_shared<xclbin_impl>(data))
+{}
 
-    xclbin::xclbin(const device& device) : handle(std::make_shared<xclbin_impl>(device)) {}
+xclbin::xclbin(const device &device) : handle(std::make_shared<xclbin_impl>(device))
+{}
 
-    const std::vector<std::string>
-    xclbin::getCUNames() const{
-    	return this->get_handle()->getCUNames();
-    }
+const std::vector<std::string>
+xclbin::getCUNames() const
+{
+  return this->get_handle()->getCUNames();
+}
 
-    const std::string
-    xclbin::getDSAName() const{
-    	return this->get_handle()->getDSAName();
-    }
+const std::string
+xclbin::getDSAName() const
+{
+  return this->get_handle()->getDSAName();
+}
 
-    uuid
-    xclbin::getUUID() const{
-    	return this->get_handle()->getUUID();
-    }
+uuid
+xclbin::getUUID() const
+{
+  return this->get_handle()->getUUID();
+}
 
-    const std::vector<char>
-    xclbin::getData() const{
-    	return this->get_handle()->getData();
-    }
+const std::vector<char>
+xclbin::getData() const
+{
+  return this->get_handle()->getData();
+}
 
-    int
-    xclbin::getDataSize() const{
-    	return this->get_handle()->getDataSize();
-    }
+int
+xclbin::getDataSize() const
+{
+  return this->get_handle()->getDataSize();
+}
 
 }
 
@@ -221,41 +242,43 @@ free_xclbin(xrtXclbinHandle handle)
 }
 
 xrtXclbinHandle
-xrtXclbinAllocFilename(const char* filename){
+xrtXclbinAllocFilename(const char *filename)
+{
   try {
-	auto xclbin = std::make_shared<xrt::xclbin_impl>(filename);
-	auto handle = xclbin.get();
-	xclbins.emplace(std::make_pair(handle,std::move(xclbin)));
-	return handle;
+    auto xclbin = std::make_shared<xrt::xclbin_impl>(filename);
+    auto handle = xclbin.get();
+    xclbins.emplace(std::make_pair(handle, std::move(xclbin)));
+    return handle;
   }
-  catch (const xrt_core::error& ex) {
-	xrt_core::send_exception_message(ex.what());
-	errno = ex.get();
+  catch (const xrt_core::error &ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get();
   }
-  catch (const std::exception& ex) {
-	send_exception_message(ex.what());
-	errno = 0;
+  catch (const std::exception &ex) {
+    send_exception_message(ex.what());
+    errno = 0;
   }
   return nullptr;
 }
 
 xrtXclbinHandle
-xrtXclbinAllocRawData(const void* data, const int size){
+xrtXclbinAllocRawData(const void *data, const int size)
+{
   try {
-    char* data_c = (char *) data;
-	std::vector<char> raw_data(data_c, data_c+size);
-	auto xclbin = std::make_shared<xrt::xclbin_impl>(raw_data);
-	auto handle = xclbin.get();
-	xclbins.emplace(std::make_pair(handle,std::move(xclbin)));
-	return handle;
+    char *data_c = (char *) data;
+    std::vector<char> raw_data(data_c, data_c + size);
+    auto xclbin = std::make_shared<xrt::xclbin_impl>(raw_data);
+    auto handle = xclbin.get();
+    xclbins.emplace(std::make_pair(handle, std::move(xclbin)));
+    return handle;
   }
-  catch (const xrt_core::error& ex) {
-	xrt_core::send_exception_message(ex.what());
-	errno = ex.get();
+  catch (const xrt_core::error &ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get();
   }
-  catch (const std::exception& ex) {
-	send_exception_message(ex.what());
-	errno = 0;
+  catch (const std::exception &ex) {
+    send_exception_message(ex.what());
+    errno = 0;
   }
   return nullptr;
 }
@@ -264,129 +287,135 @@ xrtXclbinAllocRawData(const void* data, const int size){
 xrtXclbinHandle
 xrtXclbinAllocDevice(const xrtDeviceHandle* device){
   try {
-	std::vector<char> raw_data(data, data+size);
-	auto xclbin = std::make_shared<xrt::xclbin_impl>(raw_data);
-	auto handle = xclbin.get();
-	xclbins.emplace(std::make_pair(handle,std::move(xclbin)));
-	return handle;
+  std::vector<char> raw_data(data, data+size);
+  auto xclbin = std::make_shared<xrt::xclbin_impl>(raw_data);
+  auto handle = xclbin.get();
+  xclbins.emplace(std::make_pair(handle,std::move(xclbin)));
+  return handle;
   }
   catch (const xrt_core::error& ex) {
-	xrt_core::send_exception_message(ex.what());
-	errno = ex.get();
+  xrt_core::send_exception_message(ex.what());
+  errno = ex.get();
   }
   catch (const std::exception& ex) {
-	send_exception_message(ex.what());
-	errno = 0;
+  send_exception_message(ex.what());
+  errno = 0;
   }
   return nullptr;
 }
 #endif
 
 int
-xrtXclbinFreeHandle(xrtXclbinHandle handle){
+xrtXclbinFreeHandle(xrtXclbinHandle handle)
+{
   try {
-	free_xclbin(handle);
-	return 0;
+    free_xclbin(handle);
+    return 0;
   }
-  catch (const xrt_core::error& ex) {
-	xrt_core::send_exception_message(ex.what());
-	return ex.get();
+  catch (const xrt_core::error &ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
   }
-  catch (const std::exception& ex) {
-	send_exception_message(ex.what());
-	return -1;
+  catch (const std::exception &ex) {
+    send_exception_message(ex.what());
+    return -1;
   }
 }
 
 int
-xrtXclbinGetCUNames(xrtXclbinHandle handle, char** names, int* numNames){
+xrtXclbinGetCUNames(xrtXclbinHandle handle, char **names, int *numNames)
+{
   try {
-	auto xclbin = get_xclbin(handle);
-	const std::vector<std::string> cuNames = xclbin->getCUNames();
-	*numNames = cuNames.size();
-	auto index = 0;
-	for (auto&& name: cuNames){
-		std::strcpy(names[index++], name.c_str());
-	}
-	return 0;
+    auto xclbin = get_xclbin(handle);
+    const std::vector<std::string> cuNames = xclbin->getCUNames();
+    *numNames = cuNames.size();
+    auto index = 0;
+    for (auto &&name: cuNames) {
+      std::strcpy(names[index++], name.c_str());
+    }
+    return 0;
   }
-  catch (const xrt_core::error& ex) {
-	xrt_core::send_exception_message(ex.what());
-	return (errno = ex.get());
+  catch (const xrt_core::error &ex) {
+    xrt_core::send_exception_message(ex.what());
+    return (errno = ex.get());
   }
-  catch (const std::exception& ex) {
-	send_exception_message(ex.what());
-	return (errno = 0);
+  catch (const std::exception &ex) {
+    send_exception_message(ex.what());
+    return (errno = 0);
   }
 }
 
 int
-xrtXclbinGetDSAName(xrtXclbinHandle handle, char* name){
+xrtXclbinGetDSAName(xrtXclbinHandle handle, char *name)
+{
   try {
-	auto xclbin = get_xclbin(handle);
-	const std::string dsaName = xclbin->getDSAName();
-	std::strcpy(name, dsaName.c_str());
-	return 0;
+    auto xclbin = get_xclbin(handle);
+    const std::string dsaName = xclbin->getDSAName();
+    std::strcpy(name, dsaName.c_str());
+    return 0;
   }
-  catch (const xrt_core::error& ex) {
-	xrt_core::send_exception_message(ex.what());
-	return (errno = ex.get());
+  catch (const xrt_core::error &ex) {
+    xrt_core::send_exception_message(ex.what());
+    return (errno = ex.get());
   }
-  catch (const std::exception& ex) {
-	send_exception_message(ex.what());
-	return (errno = 0);
+  catch (const std::exception &ex) {
+    send_exception_message(ex.what());
+    return (errno = 0);
   }
 }
 
 int
-xrtXclbinGetUUID(xclDeviceHandle handle, xuid_t uuid){
+xrtXclbinGetUUID(xclDeviceHandle handle, xuid_t uuid)
+{
   try {
-	auto xclbin = get_xclbin(handle);
-	auto result = xclbin->getUUID();
+    auto xclbin = get_xclbin(handle);
+    auto result = xclbin->getUUID();
     uuid_copy(uuid, result.get());
-	return 0;
+    return 0;
   }
-  catch (const xrt_core::error& ex) {
-	xrt_core::send_exception_message(ex.what());
-	return (errno = ex.get());
+  catch (const xrt_core::error &ex) {
+    xrt_core::send_exception_message(ex.what());
+    return (errno = ex.get());
   }
-  catch (const std::exception& ex) {
-	send_exception_message(ex.what());
-	return (errno = 0);
-  }
-}
-
-int
-xrtXclbinGetData(xrtXclbinHandle handle, char* data){
-  try {
-	auto xclbin = get_xclbin(handle);
-	auto result = xclbin->getData();
-	std::strcpy(data, result.data());
-	return 0;
-  }
-  catch (const xrt_core::error& ex) {
-	xrt_core::send_exception_message(ex.what());
-	return (errno = ex.get());
-  }
-  catch (const std::exception& ex) {
-	send_exception_message(ex.what());
-	return (errno = 0);
+  catch (const std::exception &ex) {
+    send_exception_message(ex.what());
+    return (errno = 0);
   }
 }
 
 int
-xrtXclbinGetDataSize(xrtXclbinHandle handle){
+xrtXclbinGetData(xrtXclbinHandle handle, char *data)
+{
   try {
-	auto xclbin = get_xclbin(handle);
-	auto result = xclbin->getDataSize();
-	return result;
+    auto xclbin = get_xclbin(handle);
+    auto result = xclbin->getData();
+    std::strcpy(data, result.data());
+    return 0;
   }
-  catch (const xrt_core::error& ex) {
-	xrt_core::send_exception_message(ex.what());
-	return (errno = ex.get());
+  catch (const xrt_core::error &ex) {
+    xrt_core::send_exception_message(ex.what());
+    return (errno = ex.get());
   }
-  catch (const std::exception& ex) {
-	send_exception_message(ex.what());
-	return (errno = 0);
+  catch (const std::exception &ex) {
+    send_exception_message(ex.what());
+    return (errno = 0);
+  }
+}
+
+int
+xrtXclbinGetDataSize(xrtXclbinHandle handle)
+{
+  try {
+    auto xclbin = get_xclbin(handle);
+    auto result = xclbin->getDataSize();
+    return result;
+  }
+  catch (const xrt_core::error &ex) {
+    xrt_core::send_exception_message(ex.what());
+    return (errno = ex.get());
+  }
+  catch (const std::exception &ex) {
+    send_exception_message(ex.what());
+    return (errno = 0);
   }
 }

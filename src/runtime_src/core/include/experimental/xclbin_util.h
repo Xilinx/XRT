@@ -15,7 +15,7 @@
  */
 
 /**
- * This file contains publically exported xclbin utilities.
+ * This file contains publicly exported xclbin utilities.
  */
 
 #ifndef xclbin_util_h_
@@ -30,7 +30,7 @@ static inline std::vector<char>
 read_xclbin(const std::string& fnm)
 {
     if (fnm.empty())
-        throw std::runtime_error("No xclbin speified");
+        throw std::runtime_error("No xclbin specified");
 
     // load the file
     std::ifstream stream(fnm);
