@@ -30,7 +30,7 @@ namespace xdp {
   {
   private:
     uint64_t deviceId ; // Either a device handle or an xrt::device
-    double   deviceTimestamp;
+    uint64_t deviceTimestamp;	// actual device timestamp from HW
 
     VTFDeviceEvent() = delete ;
 
@@ -46,8 +46,8 @@ namespace xdp {
     virtual bool isDeviceEvent() { return true ; }
     virtual uint64_t getDevice() { return deviceId ; }
 
-    virtual void   setDeviceTimestamp(double deviceTime) { deviceTimestamp = deviceTime; }
-    virtual double getDeviceTimestamp() { return deviceTimestamp; }
+    virtual void   setDeviceTimestamp(uint64_t deviceTime) { deviceTimestamp = deviceTime; }
+    virtual uint64_t getDeviceTimestamp() { return deviceTimestamp; }
   } ;
 
   class KernelEvent : public VTFDeviceEvent
