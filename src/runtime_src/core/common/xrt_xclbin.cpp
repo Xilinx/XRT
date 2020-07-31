@@ -21,8 +21,9 @@
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 
 #include "core/include/experimental/xrt_xclbin.h"
-#include "core/common/device.h"
+
 #include "core/common/system.h"
+#include "core/common/device.h"
 #include "core/common/message.h"
 #include "core/common/query_requests.h"
 #include "core/include/xclbin.h"
@@ -84,14 +85,12 @@ namespace xrt {
 // class xclbin_impl - class for xclbin objects
 //
 // Life time of xclbin are managed through shared pointers.
-// XCLBIN buffer is freed when last references is released.
+// A buffer is freed when last references is released.
 class xclbin_impl
 {
 protected:
   std::vector<char> data;
   const axlf *top;
-  const device* dhdl;
-
   void initialize(const std::vector<char>& rawData)
   {
     this->data = rawData;
@@ -112,9 +111,7 @@ public:
 
   // TODO - Get raw data from device, call first constructor
   xclbin_impl(const device &device)
-  {
-    dhdl = &device;
-  }
+  {}
 
   virtual
   ~xclbin_impl()
@@ -129,7 +126,7 @@ public:
   }
 
   const std::vector<std::string>
-  get_cu_names() const
+  getCUNames() const
   {
     check_empty();
     std::vector<std::string> names;
@@ -141,28 +138,28 @@ public:
   }
 
   const std::string
-  get_dsa_name() const
+  getDSAName() const
   {
     check_empty();
     return reinterpret_cast<const char *>(top->m_header.m_platformVBNV);
   }
 
   uuid
-  get_uuid() const
+  getUUID() const
   {
     check_empty();
     return uuid(top->m_header.uuid);
   }
 
   const std::vector<char>
-  get_data() const
+  getData() const
   {
     check_empty();
     return data;
   }
 
   int
-  get_data_size() const
+  getDataSize() const
   {
     check_empty();
     return data.size();
@@ -187,33 +184,33 @@ xclbin::xclbin(const device &device) : handle(std::make_shared<xclbin_impl>(devi
 {}
 
 const std::vector<std::string>
-xclbin::get_cu_names() const
+xclbin::getCUNames() const
 {
-  return this->get_handle()->get_cu_names();
+  return this->get_handle()->getCUNames();
 }
 
 const std::string
-xclbin::get_dsa_name() const
+xclbin::getDSAName() const
 {
-  return this->get_handle()->get_dsa_name();
+  return this->get_handle()->getDSAName();
 }
 
 uuid
-xclbin::get_uuid() const
+xclbin::getUUID() const
 {
-  return this->get_handle()->get_uuid();
+  return this->get_handle()->getUUID();
 }
 
 const std::vector<char>
-xclbin::get_data() const
+xclbin::getData() const
 {
-  return this->get_handle()->get_data();
+  return this->get_handle()->getData();
 }
 
 int
-xclbin::get_data_size() const
+xclbin::getDataSize() const
 {
-  return this->get_handle()->get_data_size();
+  return this->get_handle()->getDataSize();
 }
 
 }
@@ -330,7 +327,7 @@ xrtXclbinGetCUNames(xrtXclbinHandle handle, char **names, int *numNames)
 {
   try {
     auto xclbin = get_xclbin(handle);
-    const std::vector<std::string> cuNames = xclbin->get_cu_names();
+    const std::vector<std::string> cuNames = xclbin->getCUNames();
     *numNames = cuNames.size();
     auto index = 0;
     for (auto &&name: cuNames) {
@@ -353,7 +350,7 @@ xrtXclbinGetDSAName(xrtXclbinHandle handle, char *name)
 {
   try {
     auto xclbin = get_xclbin(handle);
-    const std::string dsaName = xclbin->get_dsa_name();
+    const std::string dsaName = xclbin->getDSAName();
     std::strcpy(name, dsaName.c_str());
     return 0;
   }
@@ -372,7 +369,7 @@ xrtXclbinGetUUID(xclDeviceHandle handle, xuid_t uuid)
 {
   try {
     auto xclbin = get_xclbin(handle);
-    auto result = xclbin->get_uuid();
+    auto result = xclbin->getUUID();
     uuid_copy(uuid, result.get());
     return 0;
   }
@@ -391,8 +388,9 @@ xrtXclbinGetData(xrtXclbinHandle handle, char *data)
 {
   try {
     auto xclbin = get_xclbin(handle);
-    auto result = xclbin->get_data();
-    std::strcpy(data, result.data());
+    auto result = xclbin->getData();
+    auto size = xclbin->getDataSize();
+    std::memcpy(data, result.data(), size);
     return 0;
   }
   catch (const xrt_core::error &ex) {
@@ -410,7 +408,7 @@ xrtXclbinGetDataSize(xrtXclbinHandle handle)
 {
   try {
     auto xclbin = get_xclbin(handle);
-    auto result = xclbin->get_data_size();
+    auto result = xclbin->getDataSize();
     return result;
   }
   catch (const xrt_core::error &ex) {
