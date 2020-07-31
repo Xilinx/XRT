@@ -147,3 +147,18 @@ public:
 };
 
 } //namespace
+
+////////////////////////////////////////////////////////////////
+// xrt_xclbin C++ API implementations (xrt_xclbin.h)
+////////////////////////////////////////////////////////////////
+namespace xrt {
+
+    /*
+    xclbin::
+    xclbin(xclDeviceHandle dhdl, void* userptr, size_t sz, buffer_flags flags, memory_group grp)
+            : handle(alloc(dhdl, userptr, sz, flags, grp))
+    {}
+     */
+
+    xclbin::xclbin(const std::string& filename) : handle(std::make_shared<xclbin_impl>(filename)) {}
+}
