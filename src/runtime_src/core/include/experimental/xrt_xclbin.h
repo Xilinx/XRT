@@ -97,6 +97,7 @@ public:
    *
    * Return: A list of CU Names in order of increasing base address.
    *
+   * The function throws if the xclbin is empty.
    */
   const std::vector<std::string>
   getCUNames() const;
@@ -106,6 +107,7 @@ public:
    *
    * Return: Name of DSA
    *
+   * The function throws if the xclbin is empty.
    */
   const std::string
   getDSAName() const;
@@ -115,6 +117,7 @@ public:
    *
    * Return: UUID of xclbin
    *
+   * The function throws if the xclbin is empty.
    */
   uuid
   getUUID() const;
@@ -124,6 +127,7 @@ public:
    *
    * Return: The raw data of the xclbin
    *
+   * The function throws if the xclbin is empty.
    */
   const std::vector<char>
   getData() const;
@@ -133,7 +137,7 @@ public:
    *
    * Return: Size of the xclbin file in bytes
    *
-   * Get the size (in bytes) of the xclbin file in memory
+   * Get the size (in bytes) of the xclbin file in memory. The function throws if the xclbin is empty.
    */
   int
   getDataSize() const;

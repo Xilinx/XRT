@@ -104,31 +104,43 @@ public:
   {
   }
 
+  void
+  check_empty() const
+  {
+    if (this->data.size() == 0)
+      throw xrt_core::error(-EINVAL,"Invalid XCLBIN data");
+  }
+
   const std::vector<std::string>
   getCUNames() const{
+	  check_empty();
 	  std::vector<std::string> rtn;
 	  return rtn;
   }
 
   const std::string
   getDSAName() const{
+	  check_empty();
 	  std::string rtn;
 	  return rtn;
   }
 
   uuid
   getUUID() const{
+	  check_empty();
 	  uuid rtn;
 	  return rtn;
   }
 
   const std::vector<char>
   getData() const{
+	  check_empty();
 	  return data;
   }
 
   int
   getDataSize() const{
+	  check_empty();
 	  return data.size();
   }
 
