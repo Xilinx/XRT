@@ -798,7 +798,9 @@ namespace xclhwemhal2 {
         }
 
         std::string pre_sim_script;
-        createPreSimScript(wcfgFilePath, pre_sim_script);
+        if (wcfgFilePath != "") {
+          createPreSimScript(wcfgFilePath, pre_sim_script);
+        }
 
         if (args.m_emuData) {
           //Assuming that we will have only one AIE Kernel, need to 
@@ -844,7 +846,7 @@ namespace xclhwemhal2 {
           }
         }
         else {
-          if (pre_sim_script != "") {
+          if (pre_sim_script != "" && wcfgFilePath != "") {
             setenv("USER_PRE_SIM_SCRIPT", pre_sim_script.c_str(), true);
           }
         }
@@ -1283,7 +1285,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     return finalValidAddress;
   }
 
-  uint64_t HwEmShim::xclAllocDeviceBuffer2(size_t& size, xclMemoryDomains domain, unsigned flags, bool noHostMemory, std::string &sFileName)
+  uint64_t HwEmShim::xclAllocDeviceBuffer2(size_t& size, xclMemoryDomains domain, unsigned flags, bool noHostMemory, unsigned boFlags, std::string &sFileName)
   {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << size <<", "<<domain<<", "<< flags <<std::endl;
@@ -1302,6 +1304,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       PRINTENDFUNC;
       return xclemulation::MemoryManager::mNull;
     }
+
     uint64_t origSize = size;
     unsigned int paddingFactor = xclemulation::config::getInstance()->getPaddingFactor();
     uint64_t result = mDDRMemoryManager[flags]->alloc(size,paddingFactor);
@@ -1313,15 +1316,26 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     bool ack = false;
     if(sock)
     {
-      xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer,finalValidAddress,origSize,noHostMemory);
+      if (boFlags & XCL_BO_FLAGS_HOST_ONLY) {
+        void *hostMemBuf = nullptr;
+        if (posix_memalign(&hostMemBuf, getpagesize(), size))
+        {
+          if (mLogStream.is_open()) mLogStream << "posix_memalign failed" << std::endl;
+          hostMemBuf = nullptr;
+          return 0;
+        }
+        mHostOnlyMemMap[finalValidAddress] = std::make_pair(hostMemBuf, size);
+      } else {
+        xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer, finalValidAddress, origSize, noHostMemory);
 
-      PRINTENDFUNC;
-      if(!ack)
-        return 0;
+        PRINTENDFUNC;
+        if (!ack)
+          return 0;
+      }
     }
+
     return finalValidAddress;
   }
-
 
   void HwEmShim::xclFreeDeviceBuffer(uint64_t offset, bool sendtoxsim)
   {
@@ -1436,7 +1450,10 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     }
     mBinaryDirectories.clear();
     PRINTENDFUNC;
-    mLogStream.close();
+
+    if (mLogStream.is_open()) {
+      mLogStream.close();
+    }
   }
 
   void HwEmShim::xclClose()
@@ -2214,7 +2231,7 @@ uint64_t HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   }
   else
   {
-    xobj->base = xclAllocDeviceBuffer2(size,XCL_MEM_DEVICE_RAM,ddr,noHostMemory,sFileName);
+    xobj->base = xclAllocDeviceBuffer2(size, XCL_MEM_DEVICE_RAM, ddr, noHostMemory, info->flags, sFileName);
   }
   xobj->filename = sFileName;
   xobj->size = size;
@@ -2473,20 +2490,39 @@ int HwEmShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t si
   }
 
   int returnVal = 0;
+  void* buffer = bo->userptr ? bo->userptr : bo->buf;
   if(dir == XCL_BO_SYNC_BO_TO_DEVICE)
   {
-    void* buffer =  bo->userptr ? bo->userptr : bo->buf;
-    if (xclCopyBufferHost2Device(bo->base, buffer, size, offset, bo->topology) != size)
-    {
-      returnVal = EIO;
+    if (bo->flags & XCL_BO_FLAGS_HOST_ONLY) {
+      auto hostAddrIter = mHostOnlyMemMap.find(bo->base);
+      if (hostAddrIter != mHostOnlyMemMap.end()) {
+        std::pair<void*, uint64_t> hostMemAddressSizePair = (*hostAddrIter).second;
+        void* hostMemBuf = hostMemAddressSizePair.first;
+        std::memcpy(hostMemBuf, buffer, size);
+      }      
+    }
+    else {
+      if (xclCopyBufferHost2Device(bo->base, buffer, size, offset, bo->topology) != size)
+      {
+        returnVal = EIO;
+      }
     }
   }
   else
   {
-    void* buffer =  bo->userptr ? bo->userptr : bo->buf;
-    if (xclCopyBufferDevice2Host(buffer, bo->base, size,offset, bo->topology) != size)
-    {
-      returnVal = EIO;
+    if (bo->flags & XCL_BO_FLAGS_HOST_ONLY) {
+      auto hostAddrIter = mHostOnlyMemMap.find(bo->base);
+      if (hostAddrIter != mHostOnlyMemMap.end()) {
+        std::pair<void*, uint64_t> hostMemAddressSizePair = (*hostAddrIter).second;
+        void* hostMemBuf = hostMemAddressSizePair.first;
+        std::memcpy(buffer, hostMemBuf, size);
+      }      
+    }
+    else {
+      if (xclCopyBufferDevice2Host(buffer, bo->base, size, offset, bo->topology) != size)
+      {
+        returnVal = EIO;
+      }
     }
   }
   PRINTENDFUNC;
@@ -3127,6 +3163,7 @@ volatile bool HwEmShim::get_mHostMemAccessThreadStarted() { return mHostMemAcces
 volatile void HwEmShim::set_mHostMemAccessThreadStarted(bool val) { mHostMemAccessThreadStarted = val; }
 /********************************************** QDMA APIs IMPLEMENTATION END**********************************************/
 /**********************************************HAL2 API's END HERE **********************************************/
+
 /********************************************** Q2H_helper class implementation starts **********************************************/
 /**
  * Function: device2xrt_rd_trans_cb
@@ -3142,16 +3179,29 @@ volatile void HwEmShim::set_mHostMemAccessThreadStarted(bool val) { mHostMemAcce
  *     
  **/
 bool HwEmShim::device2xrt_rd_trans_cb(unsigned long int addr, void* const data_ptr,unsigned long int size) {
-    //This addr can be any address, may not be only the base address.
-    // So we should identify to which address it falls into and get that membuf 
-    // and seek to that address offset and get the data of the size requested
-    // and copy into the data_ptr provided by the device call
+  //This addr can be any address, may not be only the base address.
+  // So we should identify to which address it falls into and get that membuf 
+  // and seek to that address offset and get the data of the size requested
+  // and copy into the data_ptr provided by the device call
 
-  // Enable this code base once we have access to this shim layer member variable
-  //void* hostMemBuf = mHostOnlyMemMap[addr];
-  //std::memcpy(hostMemBuf, (void*)data_ptr, size);
+  auto itStart = mHostOnlyMemMap.begin();
+  auto itEnd = mHostOnlyMemMap.end();
+  while (itStart != itEnd)
+  {
+    uint64_t baseAddress = (*itStart).first;
+    std::pair<void*, uint64_t> osAddressSizePair = (*itStart).second;
+    void* startOSAddress = osAddressSizePair.first;
+    uint64_t buf_size = osAddressSizePair.second;
 
-    return true;
+    if (addr >= baseAddress && addr < baseAddress + buf_size)
+    {
+      unsigned char* finalOsAddress = (unsigned char*)startOSAddress + (addr - baseAddress);
+      std::memcpy(finalOsAddress, (unsigned char*)data_ptr, size);
+      break;
+    }
+  }
+
+  return true;
 }
 
 /**
@@ -3168,17 +3218,32 @@ bool HwEmShim::device2xrt_rd_trans_cb(unsigned long int addr, void* const data_p
  *     
  **/
 bool HwEmShim::device2xrt_wr_trans_cb(unsigned long int addr, void const* data_ptr,unsigned long int size) {
-    //This addr can be any address, may not be only the base address.
-    // So we should identify to which address it falls into and get that membuf 
-    // and seek to that address offset and get the data of the size requested
-    // from the data_ptr provided by the device call and copy into the offset address
+  //This addr can be any address, may not be only the base address.
+  // So we should identify to which address it falls into and get that membuf 
+  // and seek to that address offset and get the data of the size requested
+  // from the data_ptr provided by the device call and copy into the offset address
 
-  // Enable this code base once we have access to this shim layer member variable
-  //void* hostMemBuf = mHostOnlyMemMap[addr];
-  //std::memcpy((void*)data_ptr, hostMemBuf, size);
+  auto itStart = mHostOnlyMemMap.begin();
+  auto itEnd = mHostOnlyMemMap.end();
+  while (itStart != itEnd)
+  {
+    uint64_t baseAddress = (*itStart).first;
+    std::pair<void*, uint64_t> osAddressSizePair = (*itStart).second;
+    void* startOSAddress = osAddressSizePair.first;
+    uint64_t buf_size = osAddressSizePair.second;
+
+    if (addr >= baseAddress && addr < baseAddress + buf_size)
+    {
+      unsigned char* finalOsAddress = (unsigned char*)startOSAddress + (addr - baseAddress);
+      std::memcpy((unsigned char*)data_ptr, finalOsAddress, size);
+      break;
+    }
+  }
+
   return true;
 }
 bool HwEmShim::device2xrt_irq_trans_cb(uint32_t,unsigned long int) {
+    // TODO: We need to return a ERROR here as we are not supporting this. Its helps users to get notified
     return true;
 }
 Q2H_helper :: Q2H_helper(xclhwemhal2::HwEmShim* _inst) {
