@@ -70,7 +70,7 @@ public:
    *
    * @filename:  path to the xclbin file
    *
-   * The xclbin file must be accessible by the application. // exception if file not found
+   * The xclbin file must be accessible by the application. An exception is thrown file not found
    */
   xclbin(const std::string& filename);
   
@@ -79,7 +79,7 @@ public:
    *
    * @data: raw data of xclbin
    *
-   * The raw data of the xclbin can be deleted after calling the constructor. // exception if data size is 0
+   * The raw data of the xclbin can be deleted after calling the constructor.
    *
    */
   xclbin(const std::vector<char>& data);
@@ -93,55 +93,55 @@ public:
   xclbin(const device& device); // xrt core apis to get xclbin raw data from device
 
   /**
-   * getCUNames() - Get CU names of xclbin
+   * get_cu_names() - Get CU names of xclbin
    *
    * Return: A list of CU Names in order of increasing base address.
    *
-   * The function throws if the data is missing.
+   * An exception is thrown if the data is missing.
    */
   const std::vector<std::string>
-  getCUNames() const;
+  get_cu_names() const;
 
   /**
-   * getDSAName() - Get Device Support Archive (DSA) Name of xclbin
+   * get_dsa_name() - Get Device Support Archive (DSA) Name of xclbin
    *
    * Return: Name of DSA
    *
-   * The function throws if the data is missing.
+   * An exception is thrown if the data is missing.
    */
   const std::string
-  getDSAName() const;
+  get_dsa_name() const;
 
   /**
-   * getUUID() - Get the uuid of the xclbin
+   * get_uuid() - Get the uuid of the xclbin
    *
    * Return: UUID of xclbin
    *
-   * The function throws if the data is missing.
+   * An exception is thrown if the data is missing.
    */
   uuid
-  getUUID() const;
+  get_uuid() const;
 
   /**
-   * getData() - Get the raw data of the xclbin
+   * get_data() - Get the raw data of the xclbin
    *
    * Return: The raw data of the xclbin
    *
-   * The function throws if the data is missing.
+   * An exception is thrown if the data is missing.
    */
   const std::vector<char>
-  getData() const;
+  get_data() const;
 
   /**
-   * getDataSize() - Get the size of the xclbin file
+   * get_data_size() - Get the size of the xclbin file
    *
    * Return: Size of the xclbin file in bytes
    *
    * Get the size (in bytes) of the xclbin file in memory.
-   * The function throws if the data is missing.
+   * An exception is thrown if the data is missing.
    */
   int
-  getDataSize() const;
+  get_data_size() const;
 
 public:
   xclbin() = delete;
