@@ -53,7 +53,7 @@ namespace xdp {
     void update(double executionTime)
     {
       totalTime += executionTime ;
-      averageTime = ((averageTime * numExecutions) + executionTime)/numExecutions ;
+      averageTime = ((averageTime * numExecutions) + executionTime)/(numExecutions + 1) ;
       ++numExecutions ;
       if (maxTime < executionTime) maxTime = executionTime ;
       if (minTime > executionTime) minTime = executionTime ;

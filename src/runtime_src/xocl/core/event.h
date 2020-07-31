@@ -139,6 +139,13 @@ public:
   }
 
   void
+  set_profile_counter_action(event::action_profile_type&& action)
+  {
+    if (xrt::config::get_profile())
+      m_profile_counter_action = std::move(action) ;
+  }
+
+  void
   set_lop_action(event::action_lop_type&& action)
   {
     if (xrt::config::get_lop_trace())
@@ -158,6 +165,13 @@ public:
   {
     if (m_profile_action)
       m_profile_action(this,status,cuname);
+  }
+
+  void
+  trigger_profile_counter_action(cl_int status, const std::string& cuname = "")
+  {
+    if (m_profile_counter_action)
+      m_profile_counter_action(this, status, cuname) ;
   }
 
   void
@@ -522,6 +536,7 @@ private:
   // move to event_with_profiling when logging of
   // profile data is controlled by command queue
   action_profile_type m_profile_action;
+  action_profile_type m_profile_counter_action;
   action_lop_type m_lop_action;
 
   // execution context, probably should create some derived class

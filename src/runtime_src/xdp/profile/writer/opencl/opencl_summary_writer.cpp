@@ -6,14 +6,21 @@
 #include <map>
 #include <tuple>
 
-#include "xdp/profile/writer/opencl/opencl_summary_writer.h"
 #include "xdp/profile/database/database.h"
+#include "xdp/profile/database/statistics_database.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
+#include "xdp/profile/writer/opencl/opencl_summary_writer.h"
 
 namespace xdp {
 
   OpenCLSummaryWriter::OpenCLSummaryWriter(const char* filename)
     : VPSummaryWriter(filename)
   {
+    // The OpenCL Summary Writer will be responsible for
+    //  summarizing information from host code API calls as well
+    //  as any information on any devices that have been monitored
+    //  by other plugins.  This will not instantiate any devices that don't
+    //  already exist.
   }
 
   OpenCLSummaryWriter::~OpenCLSummaryWriter()
@@ -95,58 +102,225 @@ namespace xdp {
 
   void OpenCLSummaryWriter::writeKernelExecutionSummary()
   {
-    
+    // Caption
+    fout << "Kernel Execution" ;
+    if (getFlowMode() == HW_EMU)
+    {
+      fout << " (includes estimated device time)" ;
+    }
+    fout << std::endl ;
+
+    // Column headers
+    fout << "Kernel"             << ","
+	 << "Number Of Enqueues" << ","
+	 << "Total Time (ms)"    << ","
+	 << "Minimum Time (ms)"  << ","
+	 << "Average Time (ms)"  << ","
+	 << "Maximum Time (ms)"  << std::endl ;
+
+    // We can get kernel executions from purely host information
+    std::map<std::string, TimeStatistics> kernelExecutions = 
+      (db->getStats()).getKernelExecutionStats() ;
+
+    for (auto execution : kernelExecutions)
+    {
+      fout << execution.first                         << ","
+	   << (execution.second).numExecutions        << ","
+	   << ((execution.second).totalTime / 1e06)   << ","
+	   << ((execution.second).minTime / 1e06)     << ","
+	   << ((execution.second).averageTime / 1e06) << ","
+	   << ((execution.second).maxTime / 1e06)     << std::endl ;
+    }
   }
 
   void OpenCLSummaryWriter::writeComputeUnitUtilization()
   {
+    // Caption
+    fout << "Compute Unit Utilization" ;
+    if (getFlowMode() == HW_EMU)
+    {
+      fout << " (includes estimated device times)" ;
+    }
+    fout << std::endl ;
+
+    // Column headers
+    fout << "Device"                     << ","
+	 << "Compute Unit"               << ","
+	 << "Kernel"                     << ","
+	 << "Global Work Size"           << ","
+	 << "Local Work Size"            << ","
+	 << "Number Of Calls"            << ","
+	 << "Dataflow Execution"         << ","
+	 << "Max Overlapping Executions" << ","
+	 << "Dataflow Acceleration"      << ","
+	 << "Total Time (ms)"            << ","
+	 << "Minimum Time (ms)"          << ","
+	 << "Average Time (ms)"          << ","
+	 << "Maximum Time (ms)"          << ","
+	 << "Clock Frequency (MHz)"      << std::endl ;
+
+    // For compute unit utilization, we have to get information from
+    //  all devices.
   }
 
   void OpenCLSummaryWriter::writeComputeUnitStallInformation()
   {
+    // Caption
+    fout << "Compute Units: Stall Information" << std::endl ;
+
+    // Column headers
+    fout << "Compute Unit"                      << ","
+	 << "Execution Count"                   << ","
+	 << "Running Time (ms)"                 << ","
+	 << "Intra-Kernel Dataflow Stalls (ms)" << ","
+	 << "External Memory Stalls (ms)"       << ","
+	 << "Inter-Kernel Pipe Stalls (ms)"     << std::endl ;
+
+    // For stall information, we need to get information from all devices
   }
 
   void OpenCLSummaryWriter::writeDataTransferHostToGlobalMemory()
   {
+    // Caption
+    fout << "Data Transfer: Host to Global Memory" << std::endl ;
+
+    // Column headers
+    fout << "Context: Number of Devices"        << ","
+	 << "Transfer Type"                     << ","
+	 << "Number Of Buffer Transfers"        << ","
+	 << "Transfer Rate (MB/s)"              << ","
+	 << "Average Bandwidth Utilization (%)" << ","
+	 << "Average Buffer Size (KB)"          << ","
+	 << "Total Time (ms)"                   << ","
+	 << "Average Time (ms)"                 << std::endl ;
   }
 
   void OpenCLSummaryWriter::writeDataTransferKernelsToGlobalMemory()
   {
+    // Caption
+    fout << "Data Transfer: Kernels to Global Memory" << std::endl ;
+
+    // Column headers
+    fout << "Device"                            << ","
+	 << "Compute Unit/Port Name"            << ","
+	 << "Kernel Arguments"                  << ","
+	 << "Memory Resources"                  << ","
+	 << "Transfer Type"                     << ","
+	 << "Number Of Transfers"               << ","
+	 << "Transfer Rate (MB)"                << ","
+	 << "Average Bandwidth Utilization (%)" << ","
+	 << "Average Size (KB)"                 << ","
+	 << "Average Latency (ns)"              << std::endl ;
+
+    // For data transfers, we have to check all devices
   }
 
   void OpenCLSummaryWriter::writeStreamDataTransfers()
   {
+    // Caption
+    fout << "Data Transfer: Streams" << std::endl ;
+
+    // Column headers
+    fout << "Device"                  << ","
+	 << "Master Port"             << ","
+	 << "Master Kernel Arguments" << ","
+	 << "Slave Port"              << ","
+	 << "Slave Kernel Arguments"  << ","
+	 << "Number Of Transfers"     << ","
+	 << "Transfer Rate (MB/s)"    << ","
+	 << "Average Size (KB)"       << ","
+	 << "Link Utilization (%)"    << ","
+	 << "Link Starve (%)"         << ","
+	 << "Link Stall (%)"          << std::endl ;
   }
 
   void OpenCLSummaryWriter::writeDataTransferDMA()
   {
+    // For all devices, if (deviceIntf->getNumMonitors(XCL_PERF_MON_SHELL) ==0)
+    //  return
+
+    // Caption
+    fout << "Data Transfer: DMA" << std::endl ;
+
+    // Columns
+    fout << "Device"                   << ","
+	 << "Transfer Type"            << ","
+	 << "Number Of Transfers"      << ","
+	 << "Transfer Rate (MB/s)"     << ","
+	 << "Total Data Transfer (MB)" << ","
+	 << "Total Time (ms)"          << ","
+	 << "Average Size (KB)"        << ","
+	 << "Average Latency (ns)"     << std::endl ;
   }
 
   void OpenCLSummaryWriter::writeDataTransferDMABypass()
   {
+    // For all devices, if (deviceIntf->getNumMonitors(XCL_PERF_MON_SHELL) ==0)
+    //  return
+
+    // Caption
+    fout << "Data Transfer: DMA Bypass" << std::endl ;
+
+    // Columns
+    fout << "Device"                   << ","
+	 << "Transfer Type"            << ","
+	 << "Number Of Transfers"      << ","
+	 << "Transfer Rate (MB/s)"     << ","
+	 << "Total Data Transfer (MB)" << ","
+	 << "Total Time (ms)"          << ","
+	 << "Average Size (KB)"        << ","
+	 << "Average Latency (ns)"     << std::endl ;
   }
 
   void OpenCLSummaryWriter::writeDataTransferGlobalMemoryToGlobalMemory()
   {
+    // For all devices, if (deviceIntf->getNumMonitors(XCL_PERF_MON_SHELL) ==0)
+    //  return
+
+    // Caption
+    fout << "Data Transfer: Global Memory to Global Memory" << std::endl ;
+
+    // Columns
+    fout << "Device"                   << ","
+	 << "Transfer Type"            << ","
+	 << "Number Of Transfers"      << ","
+	 << "Transfer Rate (MB/s)"     << ","
+	 << "Total Data Transfer (MB)" << ","
+	 << "Total Time (ms)"          << ","
+	 << "Average Size (KB)"        << ","
+	 << "Average Latency (ns)"     << std::endl ;
   }
 
   void OpenCLSummaryWriter::writeTopDataTransferKernelAndGlobal()
   {
+    // Caption
+    fout << "Top Data Transfer: Kernels to Global Memory" << std::endl ;
+
+    // Columns
+    fout << "Device"                     << ","
+	 << "Compute Unit"               << ","
+	 << "Number of Transfers"        << ","
+	 << "Average Bytes per Transfer" << ","
+	 << "Transfer Efficiency (%)"    << ","
+	 << "Total Data Transfer (MB)"   << ","
+	 << "Total Write (MB)"           << ","
+	 << "Total Read (MB)"            << ","
+	 << "Total Transfer Rate (MB/s)" << std::endl ;
   }
 
   void OpenCLSummaryWriter::write(bool openNewFile)
   {
-    writeHeader() ;
-    writeAPICallSummary() ;
-    writeKernelExecutionSummary() ;
-    writeComputeUnitUtilization() ;
-    writeComputeUnitStallInformation() ;
-    writeDataTransferHostToGlobalMemory() ;
-    writeDataTransferKernelsToGlobalMemory() ;
-    writeStreamDataTransfers() ;
-    writeDataTransferDMA() ;
-    writeDataTransferDMABypass() ;
-    writeDataTransferGlobalMemoryToGlobalMemory() ;
+    writeHeader() ;                                 fout << std::endl ;
+    writeAPICallSummary() ;                         fout << std::endl ;
+    writeKernelExecutionSummary() ;                 fout << std::endl ;
+    writeComputeUnitUtilization() ;                 fout << std::endl ;
+    writeComputeUnitStallInformation() ;            fout << std::endl ;
+    writeDataTransferHostToGlobalMemory() ;         fout << std::endl ;
+    writeDataTransferKernelsToGlobalMemory() ;      fout << std::endl ;
+    writeStreamDataTransfers() ;                    fout << std::endl ;
+    writeDataTransferDMA() ;                        fout << std::endl ;
+    writeDataTransferDMABypass() ;                  fout << std::endl ;
+    writeDataTransferGlobalMemoryToGlobalMemory() ; fout << std::endl ;
     writeTopDataTransferKernelAndGlobal() ;
 
     if (openNewFile)

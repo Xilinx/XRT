@@ -35,6 +35,7 @@ namespace {
   //  callback functions on the XDP plugin side
   std::function<void (const char*)> counter_function_start_cb ;
   std::function<void (const char*)> counter_function_end_cb ;
+  std::function<void (const char*, bool)> counter_action_ndrange_cb ;
 
   void register_opencl_counters_functions(void* handle)
   {
@@ -46,6 +47,11 @@ namespace {
     counter_function_end_cb = 
       (ctype)(xrt_core::dlsym(handle, "log_function_call_end")) ;
     if (xrt_core::dlerror() != NULL) counter_function_start_cb = nullptr ;
+
+    typedef void (*atype)(const char*, bool) ;
+    counter_action_ndrange_cb =
+      (atype)(xrt_core::dlsym(handle, "counter_action_ndrange")) ;
+    if (xrt_core::dlerror() != NULL) counter_action_ndrange_cb = nullptr ;
   }
 
   void opencl_counters_warning_function()
@@ -241,6 +247,28 @@ namespace xocl {
   namespace profile {
 
     // ******** OpenCL Counter/Guidance Callbacks *********
+
+    std::function<void (xocl::event*, cl_int, const std::string&)>
+    counter_action_ndrange(cl_kernel kernel)
+    {
+      return [kernel](xocl::event* e, cl_int status, const std::string&)
+	     {
+	       if (!counter_action_ndrange_cb) return ;
+	       if (status != CL_RUNNING && status != CL_COMPLETE) return ;
+
+	       auto xkernel = xocl::xocl(kernel) ;
+	       std::string kernelName = xkernel->get_name() ;
+
+	       if (status == CL_RUNNING)
+	       {
+		 counter_action_ndrange_cb(kernelName.c_str(), true) ;
+	       }
+	       else if (status == CL_COMPLETE)
+	       {
+		 counter_action_ndrange_cb(kernelName.c_str(), false) ;
+	       }
+	     } ;
+    }
 
     // ******** OpenCL API Trace Callbacks *********
     OpenCLAPILogger::OpenCLAPILogger(const char* function) :

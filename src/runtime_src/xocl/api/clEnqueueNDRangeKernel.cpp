@@ -422,6 +422,7 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
   xocl::enqueue::set_event_action(umEvent.get(),xocl::enqueue::action_ndrange_migrate,mEvent,kernel);
   //xocl::profile::set_event_action(umEvent.get(),xocl::profile::action_ndrange_migrate,mEvent,kernel);
   xocl::profile::set_event_action(umEvent.get(), xocl::profile::action_ndrange_migrate, mEvent, kernel) ;
+  xocl::profile::counters::set_event_action(umEvent.get(), xocl::profile::counter_action_ndrange, kernel) ;
   xocl::appdebug::set_event_action(umEvent.get(),xocl::appdebug::action_ndrange_migrate,mEvent,kernel);
 
 #ifndef _WIN32

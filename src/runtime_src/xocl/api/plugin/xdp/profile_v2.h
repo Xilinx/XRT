@@ -32,6 +32,16 @@ namespace xocl {
 	e->set_profile_action(f(std::forward<Args>(args)...)) ;
     }
 
+    namespace counters {
+      template<typename F, typename ...Args>
+      inline void
+      set_event_action(xocl::event* e, F&& f, Args&&... args)
+      {
+	if (xrt_core::config::get_profile())
+	  e->set_profile_counter_action(f(std::forward<Args>(args)...)) ;
+      }
+    }
+
     // Class for logging all OpenCL APIs
     class OpenCLAPILogger 
     {
@@ -44,6 +54,10 @@ namespace xocl {
       OpenCLAPILogger(const char* function, uint64_t address) ;
       ~OpenCLAPILogger() ;
     } ;
+
+    // Functions used by the host counters plugin
+    std::function<void (xocl::event*, cl_int, const std::string&)>
+      counter_action_ndrange(cl_kernel kernel) ;
 
     // Functions used by the host trace plugin
     void log_dependency(uint64_t id, uint64_t dependency) ;
