@@ -174,7 +174,7 @@ xrtXclbinAllocFilename(const char* filename);
  * xrtXclbinAllocRawData() - Allocate a xclbin using raw data
  *
  * @data:          raw data buffer of xclbin
- * @size:          size of raw data buffer of xclbin
+ * @size:          size (in bytes) of raw data buffer of xclbin
  * Return:         xrtXclbinHandle on success or NULL with errno set
  */
 xrtXclbinHandle
@@ -188,6 +188,15 @@ xrtXclbinAllocRawData(const void* data, const int size);
  */
 xrtXclbinHandle
 xrtXclbinAllocDevice(const xrtDeviceHandle* device);
+
+/**
+ * xrtXclbinFreeHandle() - Deallocate the xclbin handle
+ *
+ * @handle:        xclbin handle
+ * Return:         0 on success, -1 on error
+ */
+int
+xrtXclbinFreeHandle(xrtXclbinHandle handle);
 
 /**
  * xrtXclbinGetCUNames() - Get CU names of xclbin
