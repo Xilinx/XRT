@@ -20,6 +20,9 @@
 #include "version.h"
 #include "xocl_fdt.h"
 
+/* TODO: remove this with old kds */
+extern int kds_mode;
+
 struct ip_node {
 	const char *name;
 	const char *regmap_name;
@@ -312,6 +315,18 @@ static struct xocl_subdev_map subdev_map[] = {
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
        	},
+	{
+		.id = XOCL_SUBDEV_INTC,
+		.dev_name = XOCL_INTC,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_ERT_SCHED},
+			{NULL},
+		},
+		.required_ip = 1,
+		.flags = XOCL_SUBDEV_MAP_USERPF_ONLY,
+		.build_priv_data = NULL,
+		.devinfo_cb = NULL,
+	},
 	{
 		.id = XOCL_SUBDEV_MB_SCHEDULER,
 		.dev_name = XOCL_MB_SCHEDULER,
@@ -1108,6 +1123,15 @@ static int xocl_fdt_parse_subdevs(xdev_handle_t xdev_hdl, char *blob,
 		j++;
 
 	for (id = 0; id < XOCL_SUBDEV_NUM; id++) { 
+		/* workaround MB_SCHEDULER and INTC resource conflict
+		 * Remove below if expression when MB_SCHEDULER is removed
+		 *
+		 * Skip MB_SCHEDULER if kds_mode is 1. So that INTC subdev could
+		 * get resources.
+		 */
+		if (id == XOCL_SUBDEV_MB_SCHEDULER && kds_mode)
+			continue;
+
 		for (j = 0; j < ARRAY_SIZE(subdev_map); j++) {
 			map_p = &subdev_map[j];
 			if (map_p->id != id)
