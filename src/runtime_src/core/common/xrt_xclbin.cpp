@@ -74,3 +74,64 @@ xrtXclbinUUID(xclDeviceHandle dhdl, xuid_t out)
     return -1;
   }
 }
+
+
+
+
+namespace xrt {
+
+// class xclbin_impl - class for xclbin objects
+//
+// Life time of xclbin are managed through shared pointers.
+// A buffer is freed when last references is released.
+class xclbin_impl
+{
+protected:
+  std::vector<char> data;
+
+public:
+  explicit xclbin_impl(const std::vector<char>& data)
+  {}
+
+  xclbin_impl(const std::string& filename)
+  {}
+
+  xclbin_impl(const device& device)
+  {}
+
+  virtual
+  ~xclbin_impl()
+  {
+  }
+
+  const std::vector<std::string>
+  getCUNames() const{
+	  std::vector<std::string> rtn;
+	  return rtn;
+  }
+
+  const std::string
+  getDSAName() const{
+	  std::string rtn;
+	  return rtn;
+  }
+
+  uuid
+  getUUID() const{
+	  uuid rtn;
+	  return rtn;
+  }
+
+  const std::vector<char>
+  getData() const{
+	  return data;
+  }
+
+  int
+  getDataSize() const{
+	  return data.size();
+  }
+
+};
+
+} //namespace

@@ -20,6 +20,7 @@
 
 #include "xrt.h"
 #include "experimental/xrt_uuid.h"
+#include "experimental/xrt_device.h"
 
 #ifdef __cplusplus
 # include <memory>
@@ -41,80 +42,101 @@ class xclbin
 public:
   
   /**
-   * xclbin() - Constructor for empty xclbin
-   */
-  xclbin()
-  {}
-
-  /**
    * xclbin() - Copy ctor
    */
+  xclbin(const xclbin& rhs)
+    : handle(rhs.handle)
+  {}
   
   /**
    * xclbin() - Move ctor
    */
+  xclbin(xclbin&& rhs)
+    : handle(std::move(rhs.handle))
+  {}
   
   /**
    * operator= () - Move assignment
    */
+  xclbin&
+  operator=(xclbin&& rhs)
+  {
+    handle = std::move(rhs.handle);
+    return *this;
+  }
+
+  /**
+   * xclbin() - Constructor from an xclbin filename
+   *
+   * @filename:  path to the xclbin file
+   *
+   * The xclbin file must be accessible by the application.
+   */
+  xclbin(const std::string& filename);
   
-  // Thoughts on possible constructors
-  /*
-  xclbin(char *);
-  xclbin (std::vector<char>);
-  xclbin(device);
-  xclbin(string& path);
-  */
-
   /**
-   * getDataSize() - Get the size of the xclbin file in memory
+   * xclbin() - Constructor from raw data
    *
-   * Return: Size of the xclbin file in bytes
+   * @data: raw data of xclbin
    *
-   * Get the size (in bytes) of the xclbin file in memory
+   * The raw data of the xclbin can be deleted after calling the constructor.
+   *
    */
-  std::vector<std::string>
-  getCUNames(); // Returned in Soren's sorted order
+  xclbin(const std::vector<char>& data);
 
   /**
-   * getDataSize() - Get the size of the xclbin file in memory
+   * xclbin() - Constructor from a device
    *
-   * Return: Size of the xclbin file in bytes
+   * @device: device
    *
-   * Get the size (in bytes) of the xclbin file in memory
    */
-  std::string
-  getDSAName();
+  xclbin(const device& device);
 
   /**
-   * getDataSize() - Get the size of the xclbin file in memory
+   * getCUNames() - Get CU names of xclbin
    *
-   * Return: Size of the xclbin file in bytes
+   * Return: A list of CU Names in order of increasing base address.
    *
-   * Get the size (in bytes) of the xclbin file in memory
+   */
+  const std::vector<std::string>
+  getCUNames() const;
+
+  /**
+   * getDSAName() - Get Device Support Archive (DSA) Name of xclbin
+   *
+   * Return: Name of DSA
+   *
+   */
+  const std::string
+  getDSAName() const;
+
+  /**
+   * getUUID() - Get the uuid of the xclbin
+   *
+   * Return: UUID of xclbin
+   *
    */
   uuid
-  getUUID();
+  getUUID() const;
 
   /**
-   * getDataSize() - Get the size of the xclbin file in memory
+   * getData() - Get the raw data of the xclbin
    *
-   * Return: Size of the xclbin file in bytes
+   * Return: The raw data of the xclbin
    *
-   * Get the size (in bytes) of the xclbin file in memory
    */
-  std::vector<char>
-  getData();
+  const std::vector<char>
+  getData() const;
 
   /**
-   * getDataSize() - Get the size of the xclbin file in memory
+   * getDataSize() - Get the size of the xclbin file
    *
    * Return: Size of the xclbin file in bytes
    *
    * Get the size (in bytes) of the xclbin file in memory
    */
   int
-  getDataSize();
+  getDataSize() const;
 
 public:
   std::shared_ptr<xclbin_impl>
@@ -131,7 +153,7 @@ private:
 
 extern "C" {
 #endif
-
+#if 0
 /**
  * xrtXclbinGetUUID() - Get UUID of xclbin image running on device
  *
@@ -181,6 +203,7 @@ xrtXclbinGetData(xrtXclbinHandle handle, char** data);
  */
 int
 xrtXclbinGetDataSize(xrtXclbinHandle handle);
+#endif
 
 /**
  * xrtGetXclbinUUID() - Get UUID of xclbin image running on device
@@ -192,7 +215,6 @@ xrtXclbinGetDataSize(xrtXclbinHandle handle);
 XCL_DRIVER_DLLESPEC
 int
 xrtXclbinUUID(xclDeviceHandle handle, xuid_t out);
-
 #ifdef __cplusplus
 }
 #endif
