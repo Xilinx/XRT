@@ -157,57 +157,94 @@ private:
 
 extern "C" {
 #endif
-#if 0
+
 /**
- * xrtXclbinGetUUID() - Get UUID of xclbin image running on device
+ * xrtXclbinAllocFilename() - Allocate a xclbin using xclbin filename
  *
- * @handle: Xclbin handle
- * @out:    Return xclbin id in this uuid_t struct
+ * @filename:      path to the xclbin file
+ * Return:         xrtXclbinHandle on success or NULL with errno set
+ */
+xrtXclbinHandle
+xrtXclbinAllocFilename(const char* filename);
+
+
+/**
+ * xclbin() - Constructor from raw data
+ *
+ * @data: raw data of xclbin
+ *
+ * The raw data of the xclbin can be deleted after calling the constructor.
+ *
+ */
+
+/**
+ * xrtXclbinAllocRawData() - Allocate a xclbin using raw data
+ *
+ * @data:          raw data buffer of xclbin
+ * @size:          size of raw data buffer of xclbin
+ * Return:         xrtXclbinHandle on success or NULL with errno set
+ */
+xrtXclbinHandle
+xrtXclbinAllocRawData(const void* data, const int size);
+
+/**
+ * xrtXclbinAllocDevice() - Allocate a xclbin using a device handle
+ *
+ * @device:        device handle
+ * Return:         xrtXclbinHandle on success or NULL with errno set
+ */
+xrtXclbinHandle
+xrtXclbinAllocDevice(const xrtDeviceHandle* device);
+
+/**
+ * xrtXclbinGetCUNames() - Get CU names of xclbin
+ *
+ * @handle:      Xclbin handle
+ * @names:       Return pointer to a list of CU names
+ * @numNames:    Return pointer to the number of CU names
  * Return:  0 on success or appropriate error number
  */
 int
-xrtXclbinGetCUNames(xrtXclbinHandle handle, char*** names, int* numNames);
+xrtXclbinGetCUNames(xrtXclbinHandle handle, char** names, int* numNames);
 
 /**
- * xrtXclbinGetUUID() - Get UUID of xclbin image running on device
+ * xrtXclbinGetDSAName() - Get Device Support Archive (DSA) Name of xclbin handle
  *
  * @handle: Xclbin handle
- * @out:    Return xclbin id in this uuid_t struct
+ * @name:    Return name of DSA
  * Return:  0 on success or appropriate error number
  */
 int
-xrtXclbinGetDSAName(xrtXclbinHandle handle, char** name);
+xrtXclbinGetDSAName(xrtXclbinHandle handle, char* name);
 
 /**
- * xrtXclbinGetUUID() - Get UUID of xclbin image running on device
+ * xrtXclbinGetUUID() - Get UUID of xclbin handle
  *
  * @handle: Xclbin handle
- * @out:    Return xclbin id in this uuid_t struct
+ * @uuid:   Return xclbin id in this uuid_t struct
  * Return:  0 on success or appropriate error number
  */
 int
-xrtXclbinGetUUID(xclDeviceHandle handle, xuid_t out);
+xrtXclbinGetUUID(xclDeviceHandle handle, xuid_t uuid);
 
 /**
- * xrtXclbinGetUUID() - Get UUID of xclbin image running on device
+ * xrtXclbinGetData() - Get the raw data of the xclbin handle
  *
  * @handle: Xclbin handle
- * @out:    Return xclbin id in this uuid_t struct
+ * @data:   Return raw data
  * Return:  0 on success or appropriate error number
  */
 int
-xrtXclbinGetData(xrtXclbinHandle handle, char** data);
+xrtXclbinGetData(xrtXclbinHandle handle, char* data);
 
 /**
- * xrtXclbinGetUUID() - Get UUID of xclbin image running on device
+ * xrtXclbinGetDataSize() - Get the size of the xclbin handle
  *
  * @handle: Xclbin handle
- * @out:    Return xclbin id in this uuid_t struct
- * Return:  0 on success or appropriate error number
+ * Return:  Size (in bytes) of xclbin handle on success or appropriate error number
  */
 int
 xrtXclbinGetDataSize(xrtXclbinHandle handle);
-#endif
 
 /**
  * xrtGetXclbinUUID() - Get UUID of xclbin image running on device
