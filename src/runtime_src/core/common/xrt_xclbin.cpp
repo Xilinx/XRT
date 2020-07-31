@@ -389,7 +389,8 @@ xrtXclbinGetData(xrtXclbinHandle handle, char *data)
   try {
     auto xclbin = get_xclbin(handle);
     auto result = xclbin->getData();
-    std::strcpy(data, result.data());
+    auto size = xclbin->getDataSize();
+    std::memcpy(data, result.data(), size);
     return 0;
   }
   catch (const xrt_core::error &ex) {
