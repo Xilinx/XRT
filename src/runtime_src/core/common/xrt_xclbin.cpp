@@ -98,7 +98,7 @@ protected:
   }
 
 public:
-  explicit xclbin_impl(const std::vector<char> &data)
+  xclbin_impl(const std::vector<char> &data)
   {
     initialize(data);
   }

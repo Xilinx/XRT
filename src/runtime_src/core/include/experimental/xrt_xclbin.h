@@ -72,7 +72,7 @@ public:
    *
    * The xclbin file must be accessible by the application. An exception is thrown file not found
    */
-  xclbin(const std::string& filename);
+  explicit xclbin(const std::string& filename);
   
   /**
    * xclbin() - Constructor from raw data
@@ -90,7 +90,7 @@ public:
    * @device: device
    *
    */
-  xclbin(const device& device); // xrt core apis to get xclbin raw data from device
+  explicit xclbin(const device& device); // xrt core apis to get xclbin raw data from device
 
   /**
    * get_cu_names() - Get CU names of xclbin
