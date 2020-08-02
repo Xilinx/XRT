@@ -1454,7 +1454,7 @@ xclExportBO(xclDeviceHandle handle, xclBufferHandle boHandle)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclExportBO() NOT IMPLEMENTED");
-  return -ENOSYS;
+  return INVALID_HANDLE_VALUE;
 }
 
 xclBufferHandle

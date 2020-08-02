@@ -33,7 +33,7 @@ struct ishim
 {
   virtual void
   close_device() = 0;
-  
+
   virtual void
   open_context(xuid_t xclbin_uuid, unsigned int ip_index, bool shared) = 0;
 
@@ -146,7 +146,7 @@ struct shim : public DeviceType
   export_bo(xclBufferHandle bo)
   {
     auto ehdl = xclExportBO(DeviceType::get_device_handle(), bo);
-    if (ehdl < 0)
+    if (ehdl == XRT_NULL_BO_EXPORT)
       throw std::runtime_error("Unable to export BO");
     return ehdl;
   }
