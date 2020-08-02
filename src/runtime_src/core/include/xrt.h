@@ -98,7 +98,7 @@ typedef void* xclBufferExportHandle;  // TBD
 #define NULLBOEXPORT INVALID_HANDLE_VALUE
 #else
 typedef int32_t xclBufferExportHandle;
-#define NULLBOEXPORT -1;
+#define NULLBOEXPORT -1
 #endif
 #define XRT_NULL_BO_EXPORT NULLBOEXPORT
 
