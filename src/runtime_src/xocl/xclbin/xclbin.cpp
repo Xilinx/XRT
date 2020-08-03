@@ -706,7 +706,7 @@ public:
           (membank{mdata.m_base_address,tag,mdata.m_size*1024,i,i,used});
       }
       // sort on addr decreasing order
-      std::sort(m_membanks.begin(),m_membanks.end(),
+      std::stable_sort(m_membanks.begin(),m_membanks.end(),
                 [](const membank& b1, const membank& b2) {
                   return b1.base_addr > b2.base_addr;
                 });
@@ -726,8 +726,8 @@ public:
         // first element not part of the sorted (decreasing) range
         auto upper = std::find_if(itr, m_membanks.end(), [addr] (auto& mb) { return mb.base_addr < addr; });
 
-        // find first used memidx if any, default to first memidx in range if unused
-        auto used = std::find_if(itr, upper, [](auto& mb) { return mb.used; });
+        // find last used memidx if any, default to first memidx in range if unused
+		auto used = std::find_end(itr, upper, itr, itr+1, [](auto& mb, auto& mb2) { return mb.used;});
         auto memidx = (used != upper) ? (*used).memidx : (*itr).memidx;
 
         // process the range

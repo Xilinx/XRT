@@ -822,7 +822,6 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	}
 
 	for (i = 0; i < group_topo->m_count; i++) {
-		mem_data = &group_topo->m_mem_data[i];
 		if (!group_topo->m_mem_data[i].m_used)
 			continue;
 
