@@ -243,9 +243,34 @@ namespace xdp {
 	 << "Maximum Time (ms)"          << ","
 	 << "Clock Frequency (MHz)"      << std::endl ;
 
-    // For compute unit utilization, we have to get information from
-    //  all devices.
+    // The static portion of this output has to come from the
+    //  static database.  The counter portion has to come from the
+    //  dynamic database
 
+    std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
+
+    for (auto device : infos)
+    {
+      for (auto cu : (device->cus))
+      {
+	fout << (device->platformInfo.deviceName) << "," 
+	     << (cu.second)->getName() << "," 
+	     << (cu.second)->getKernelName() << ","
+	     << (cu.second)->getDim() << ","
+	     << (cu.second)->getDim() << ","
+	  /*
+	     << numberOfCalls
+	     << dataflowExecution
+	     << maxOverlappingExecutions
+	     << dataflowAcceleration
+	     << TotalTime
+	     << MinimumTime 
+	     << AverageTime
+	     << MaximiumTime
+	  */
+	     << (device->clockRateMHz) << std::endl ;
+      }
+    }
   }
 
   void OpenCLSummaryWriter::writeComputeUnitStallInformation()
@@ -261,7 +286,23 @@ namespace xdp {
 	 << "External Memory Stalls (ms)"       << ","
 	 << "Inter-Kernel Pipe Stalls (ms)"     << std::endl ;
 
-    // For stall information, we need to get information from all devices
+    std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
+
+    for (auto device : infos)
+    {
+      for (auto cu : (device->cus))
+      {
+	fout << (cu.second)->getName() << "," 
+	  /*
+	    << Execution Count
+	    << Running Time
+	    << IntraKernelDataflowStalls
+	    << External Memory Stalls
+	    << Inter-KernelPipeStalls
+	  */
+	     << std::endl ;
+      }
+    }
   }
 
   void OpenCLSummaryWriter::writeDataTransferHostToGlobalMemory()
@@ -297,7 +338,27 @@ namespace xdp {
 	 << "Average Size (KB)"                 << ","
 	 << "Average Latency (ns)"              << std::endl ;
 
-    // For data transfers, we have to check all devices
+    std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
+
+    for (auto device : infos)
+    {
+      for (auto cu : (device->cus))
+      {
+	fout << (device->platformInfo.deviceName) << "," 
+	     << (cu.second)->getName() /* << PortName */ << "," 
+	  /*
+	     << Kernel Arguments
+	     << Memory Resources
+	     << Transfer Type
+	     << Number of Transfers
+	     << Transfer Rate
+	     << AverageBandwidthUtilization
+	     << AverageSize
+	     << AverageLatency
+	  */
+	     << std::endl ;
+      }
+    }
   }
 
   void OpenCLSummaryWriter::writeStreamDataTransfers()

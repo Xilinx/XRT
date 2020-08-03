@@ -109,6 +109,16 @@ namespace xdp {
     return deviceNames ;
   }
 
+  std::vector<DeviceInfo*> VPStaticDatabase::getDeviceInfos()
+  {
+    std::vector<DeviceInfo*> infos ;
+    for (auto device : deviceInfo)
+    {
+      infos.push_back(device.second) ;
+    }
+    return infos ;
+  }
+
   // This function is called whenever a device is loaded with an 
   //  xclbin.  It has to clear out any previous device information and
   //  reload our information.
