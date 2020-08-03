@@ -217,7 +217,7 @@ namespace xdp {
         return std::string(""); 
       return deviceInfo[deviceId]->platformInfo.deviceName; 
     }
-
+    
     void setKDMACount(uint64_t deviceId, uint64_t num)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
@@ -328,6 +328,11 @@ namespace xdp {
         ++count;
       }
     }
+
+    // For profile summary information, we have to aggregate information
+    //  from all devices.
+    inline uint64_t getNumDevices() { return deviceInfo.size() ; }
+    XDP_EXPORT std::string getDeviceNames() ;
 
     // Reseting device information whenever a new xclbin is added
     XDP_EXPORT void updateDevice(uint64_t deviceId, void* devHandle) ;

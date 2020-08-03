@@ -98,6 +98,19 @@ namespace xdp {
     }
   }
 
+  std::string VPStaticDatabase::getDeviceNames()
+  {
+    std::string names = "" ;
+    for (std::map<uint64_t, DeviceInfo*>::iterator device = deviceInfo.begin();
+	 device != deviceInfo.end() ;
+	 ++device)
+    {
+      if (device != deviceInfo.begin()) names += ", " ;
+      names += ((*device).second)->platformInfo.deviceName ;
+    }
+    return names ;
+  }
+
   // This function is called whenever a device is loaded with an 
   //  xclbin.  It has to clear out any previous device information and
   //  reload our information.

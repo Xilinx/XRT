@@ -93,7 +93,9 @@ namespace xdp {
 	 << std::endl ;
 
     // Need to iterate over target devices in the static info database
-    fout << "Target devices: " << std::endl ;
+    fout << "Target devices: " 
+	 << (db->getStaticInfo()).getDeviceNames() 
+	 << std::endl ;
 
     fout << "Flow mode: " ;
     switch(getFlowMode())
