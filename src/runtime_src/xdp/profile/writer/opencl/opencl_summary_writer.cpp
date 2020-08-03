@@ -391,15 +391,18 @@ namespace xdp {
     writeHeader() ;                                 fout << std::endl ;
     writeAPICallSummary() ;                         fout << std::endl ;
     writeKernelExecutionSummary() ;                 fout << std::endl ;
-    writeComputeUnitUtilization() ;                 fout << std::endl ;
-    writeComputeUnitStallInformation() ;            fout << std::endl ;
-    writeDataTransferHostToGlobalMemory() ;         fout << std::endl ;
-    writeDataTransferKernelsToGlobalMemory() ;      fout << std::endl ;
-    writeStreamDataTransfers() ;                    fout << std::endl ;
-    writeDataTransferDMA() ;                        fout << std::endl ;
-    writeDataTransferDMABypass() ;                  fout << std::endl ;
-    writeDataTransferGlobalMemoryToGlobalMemory() ; fout << std::endl ;
-    writeTopDataTransferKernelAndGlobal() ;
+    if ((db->getStaticInfo()).getNumDevices() > 0)
+    {
+      writeComputeUnitUtilization() ;                 fout << std::endl ;
+      writeComputeUnitStallInformation() ;            fout << std::endl ;
+      writeDataTransferHostToGlobalMemory() ;         fout << std::endl ;
+      writeDataTransferKernelsToGlobalMemory() ;      fout << std::endl ;
+      writeStreamDataTransfers() ;                    fout << std::endl ;
+      writeDataTransferDMA() ;                        fout << std::endl ;
+      writeDataTransferDMABypass() ;                  fout << std::endl ;
+      writeDataTransferGlobalMemoryToGlobalMemory() ; fout << std::endl ;
+      writeTopDataTransferKernelAndGlobal() ;         fout << std::endl ;
+    }
 
     if (openNewFile)
     {
