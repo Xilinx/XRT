@@ -203,15 +203,24 @@ xrtDeviceLoadXclbinFile(xrtDeviceHandle dhdl, const char* fnm)
 int
 xrtDeviceLoadXclbinHandle(xrtDeviceHandle dhdl, xrtXclbinHandle xhdl)
 {
+  char* data = nullptr;
   try {
-	  // Not impletmented
-	  return -1;
+	int data_size = 0;
+	xrtXclbinGetData(xhdl,data,&data_size);
+	data = (char*) malloc(data_size);
+	xrtXclbinGetData(xhdl,data,&data_size);
+	auto top = reinterpret_cast<const axlf*>(data);
+	xrtDeviceLoadXclbin(dhdl, top);
+	if (data != nullptr) free(data);
+	return 0;
   }
   catch (const xrt_core::error& ex) {
+	if (data != nullptr) free(data);
     xrt_core::send_exception_message(ex.what());
     return (errno = ex.get());
   }
   catch (const std::exception& ex) {
+	if (data != nullptr) free(data);
     send_exception_message(ex.what());
     return (errno = 0);
   }
