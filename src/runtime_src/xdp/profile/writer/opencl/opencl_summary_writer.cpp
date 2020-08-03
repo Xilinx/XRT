@@ -1,6 +1,8 @@
 
 #define XDP_SOURCE
 
+#include <chrono>
+#include <ctime>
 #include <vector>
 #include <thread>
 #include <map>
@@ -11,6 +13,8 @@
 #include "xdp/profile/database/statistics_database.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/writer/opencl/opencl_summary_writer.h"
+
+#include "core/common/system.h"
 
 namespace xdp {
 
@@ -30,6 +34,77 @@ namespace xdp {
 
   void OpenCLSummaryWriter::writeHeader()
   {
+    fout << "Profile Summary" << std::endl ;
+
+    std::string currentTime = "0000-00-00 0000" ;
+
+    auto time = 
+      std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) ;
+    struct tm* p_tstruct = std::localtime(&time) ;
+    if (p_tstruct)
+    {
+      char buf[80] = {0} ;
+      strftime(buf, sizeof(buf), "%Y-%m-%d %X", p_tstruct) ;
+      currentTime = std::string(buf) ;
+    }
+
+    fout << "Generated on: " << currentTime << std::endl ;
+
+    std::string msecSinceEpoch = "" ;
+    auto timeSinceEpoch = (std::chrono::system_clock::now()).time_since_epoch();
+    auto value =
+      std::chrono::duration_cast<std::chrono::milliseconds>(timeSinceEpoch) ;
+    msecSinceEpoch = std::to_string(value.count()) ;
+
+    fout << "Msec since Epoch: " << msecSinceEpoch << std::endl ;
+
+    std::string execName = "" ;
+#if defined(__linux__) && defined (__x86_64__)
+    const int maxLength = 1024 ;
+    char buf[maxLength] ;
+    ssize_t len ;
+    if ((len=readlink("/proc/self/exe", buf, maxLength-1)) != -1)
+    {
+      buf[len] = '\0' ;
+      execName = buf ;
+    }
+#endif
+
+    fout << "Profiled application: " << execName << std::endl ;
+
+
+    fout << "Target platform: " << "Xilinx" << std::endl ;
+    fout << "Tool version: " << getToolVersion() << std::endl ;
+
+    boost::property_tree::ptree xrtInfo ;
+    xrt_core::get_xrt_build_info(xrtInfo) ;
+
+    fout << "XRT build version: " 
+	 << (xrtInfo.get<std::string>("version", "N/A"))
+	 << std::endl ;
+    fout << "Build version branch: " 
+	 << (xrtInfo.get<std::string>("branch", "N/A"))
+	 << std::endl ;
+    fout << "Build version hash: "
+	 << (xrtInfo.get<std::string>("hash", "N/A"))
+	 << std::endl ;
+    fout << "Build version date: "
+	 << (xrtInfo.get<std::string>("date", "N/A"))
+	 << std::endl ;
+
+    // Need to iterate over target devices in the static info database
+    fout << "Target devices: " << std::endl ;
+
+    fout << "Flow mode: " ;
+    switch(getFlowMode())
+    {
+    case SW_EMU:  fout << "Software Emulation" ; break ;
+    case HW_EMU:  fout << "Hardware Emulation" ; break ;
+    case HW:      fout << "System Run" ;         break ;
+    case UNKNOWN: fout << "Unknown" ;            break ;
+    default:      fout << "Unknown" ;            break ;
+    }
+    fout << std::endl ;
   }
 
   // *** Functions for printing out specific tables ***
