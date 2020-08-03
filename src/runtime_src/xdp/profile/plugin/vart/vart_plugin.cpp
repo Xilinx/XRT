@@ -36,6 +36,7 @@ namespace xdp {
     //writers.push_back(new VARTTraceWriter("vart_trace.csv",
     //                  version, creationTime, xrtVersion, toolVersion));
     
+    (db->getStaticInfo()).addOpenedFile("profile_summary.csv", "PROFILE");
     (db->getStaticInfo()).addOpenedFile("vart_trace.csv", "VP_TRACE");
   }
 
