@@ -293,10 +293,14 @@ xrtXclbinGetCUNames(xrtXclbinHandle handle, char **names, int *numNames)
   try {
     auto xclbin = get_xclbin(handle);
     const std::vector<std::string> cuNames = xclbin->get_cu_names();
-    *numNames = cuNames.size();
-    auto index = 0;
-    for (auto &&name: cuNames) {
-      std::strcpy(names[index++], name.c_str());
+    // populate numNames if memory is allocated
+    if (numNames != nullptr) *numNames = cuNames.size();
+    // populate names if memory is allocated
+    if (names != nullptr){
+		auto index = 0;
+		for (auto &&name: cuNames) {
+		  std::strcpy(names[index++], name.c_str());
+		}
     }
     return 0;
   }
@@ -316,7 +320,9 @@ xrtXclbinGetXSAName(xrtXclbinHandle handle, char *name)
   try {
     auto xclbin = get_xclbin(handle);
     const std::string xsaName = xclbin->get_xsa_name();
-    std::strcpy(name, xsaName.c_str());
+    // populate name if memory is allocated
+    if (name != nullptr)
+    	std::strcpy(name, xsaName.c_str());
     return 0;
   }
   catch (const xrt_core::error &ex) {
@@ -349,13 +355,20 @@ xrtXclbinGetUUID(xrtXclbinHandle handle, xuid_t uuid)
 }
 
 int
-xrtXclbinGetData(xrtXclbinHandle handle, char *data)
+xrtXclbinGetData(xrtXclbinHandle handle, char *data, int *size)
 {
   try {
     auto xclbin = get_xclbin(handle);
     auto result = xclbin->get_data();
-    auto size = xclbin->get_data_size();
-    std::memcpy(data, result.data(), size);
+	auto result_size = xclbin->get_data_size();
+    // populate size if memory is allocated
+    if (size != nullptr){
+    	*size = result_size;
+    }
+    // populate data if memory is allocated
+    if (data != nullptr){
+		std::memcpy(data, result.data(), result_size);
+    }
     return 0;
   }
   catch (const xrt_core::error &ex) {
@@ -368,20 +381,3 @@ xrtXclbinGetData(xrtXclbinHandle handle, char *data)
   }
 }
 
-int
-xrtXclbinGetDataSize(xrtXclbinHandle handle)
-{
-  try {
-    auto xclbin = get_xclbin(handle);
-    auto result = xclbin->get_data_size();
-    return result;
-  }
-  catch (const xrt_core::error &ex) {
-    xrt_core::send_exception_message(ex.what());
-    return (errno = ex.get());
-  }
-  catch (const std::exception &ex) {
-    send_exception_message(ex.what());
-    return (errno = 0);
-  }
-}

@@ -174,9 +174,9 @@ xrtXclbinFreeHandle(xrtXclbinHandle handle);
  * xrtXclbinGetCUNames() - Get CU names of xclbin
  *
  * @handle:      Xclbin handle
- * @names:       Return pointer to a list of CU names
- * @numNames:    Return pointer to the number of CU names
- * Return:  0 on success or appropriate error number
+ * @names:       Return pointer to a list of CU names. If the value is nullptr, the content of this value will not be populated. Otherwise, the the content of this value will be populated.
+ * @numNames:    Return pointer to the number of CU names. If the value is nullptr, the content of this value will not be populated. Otherwise, the the content of this value will be populated.
+ * Return:  0 on success or appropriate error number.
  */
 int
 xrtXclbinGetCUNames(xrtXclbinHandle handle, char** names, int* numNames);
@@ -185,7 +185,7 @@ xrtXclbinGetCUNames(xrtXclbinHandle handle, char** names, int* numNames);
  * xrtXclbinGetXSAName() - Get Xilinx Support Archive (XSA) Name of xclbin handle
  *
  * @handle: Xclbin handle
- * @name:    Return name of XSA
+ * @name:   Return name of XSA. If the value is nullptr, the content of this value will not be populated. Otherwise, the the content of this value will be populated.
  * Return:  0 on success or appropriate error number
  */
 int
@@ -205,20 +205,12 @@ xrtXclbinGetUUID(xclDeviceHandle handle, xuid_t uuid);
  * xrtXclbinGetData() - Get the raw data of the xclbin handle
  *
  * @handle: Xclbin handle
- * @data:   Return raw data
+ * @data:   Return raw data. If the value is nullptr, the content of this value will not be populated. Otherwise, the the content of this value will be populated.
+ * @size:   Size (in bytes) of xclbin handle on success or appropriate error number. If the value is nullptr, the content of this value will not be populated. Otherwise, the the content of this value will be populated.
  * Return:  0 on success or appropriate error number
  */
 int
-xrtXclbinGetData(xrtXclbinHandle handle, char* data);
-
-/**
- * xrtXclbinGetDataSize() - Get the size of the xclbin handle
- *
- * @handle: Xclbin handle
- * Return:  Size (in bytes) of xclbin handle on success or appropriate error number
- */
-int
-xrtXclbinGetDataSize(xrtXclbinHandle handle);
+xrtXclbinGetData(xrtXclbinHandle handle, char* data, int* size);
 
 /**
  * xrtGetXclbinUUID() - Get UUID of xclbin image running on device
