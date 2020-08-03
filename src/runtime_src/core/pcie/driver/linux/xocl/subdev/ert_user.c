@@ -382,7 +382,7 @@ static inline void process_ert_sq(struct xocl_ert_user *ert_user)
 			if (!mask)
 				break;
 			if (mask & 0x1) {
-				spin_lock_irqsave(&ert_user->pq_lock, flags);
+				spin_lock_irqsave(&ert_user->sq_lock, flags);
 				if (ert_user->submit_queue[cmd_idx]) {
 					ecmd = ert_user->submit_queue[cmd_idx];
 
@@ -394,7 +394,7 @@ static inline void process_ert_sq(struct xocl_ert_user *ert_user)
 				} else
 					ERTUSER_DBG(ert_user, "ERR: submit queue slot is empty\n");
 
-				spin_unlock_irqrestore(&ert_user->pq_lock, flags);
+				spin_unlock_irqrestore(&ert_user->sq_lock, flags);
 			}
 		}
 	}
