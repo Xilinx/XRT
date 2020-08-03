@@ -85,14 +85,6 @@ public:
   xclbin(const std::vector<char>& data);
 
   /**
-   * xclbin() - Constructor from a device
-   *
-   * @device: device
-   *
-   */
-  explicit xclbin(const device& device); // xrt core apis to get xclbin raw data from device
-
-  /**
    * get_cu_names() - Get CU names of xclbin
    *
    * Return: A list of CU Names in order of increasing base address.
@@ -103,14 +95,14 @@ public:
   get_cu_names() const;
 
   /**
-   * get_dsa_name() - Get Device Support Archive (DSA) Name of xclbin
+   * get_xsa_name() - Get Xilinx Support Archive (XSA) Name of xclbin
    *
-   * Return: Name of DSA
+   * Return: Name of XSA
    *
    * An exception is thrown if the data is missing.
    */
   const std::string
-  get_dsa_name() const;
+  get_xsa_name() const;
 
   /**
    * get_uuid() - Get the uuid of the xclbin
@@ -129,19 +121,8 @@ public:
    *
    * An exception is thrown if the data is missing.
    */
-  const std::vector<char>
+  const std::vector<char>&
   get_data() const;
-
-  /**
-   * get_data_size() - Get the size of the xclbin file
-   *
-   * Return: Size of the xclbin file in bytes
-   *
-   * Get the size (in bytes) of the xclbin file in memory.
-   * An exception is thrown if the data is missing.
-   */
-  int
-  get_data_size() const;
 
 public:
   xclbin() = delete;
@@ -181,15 +162,6 @@ xrtXclbinHandle
 xrtXclbinAllocRawData(const void* data, const int size);
 
 /**
- * xrtXclbinAllocDevice() - Allocate a xclbin using a device handle
- *
- * @device:        device handle
- * Return:         xrtXclbinHandle on success or NULL with errno set
- */
-xrtXclbinHandle
-xrtXclbinAllocDevice(const xrtDeviceHandle* device);
-
-/**
  * xrtXclbinFreeHandle() - Deallocate the xclbin handle
  *
  * @handle:        xclbin handle
@@ -210,14 +182,14 @@ int
 xrtXclbinGetCUNames(xrtXclbinHandle handle, char** names, int* numNames);
 
 /**
- * xrtXclbinGetDSAName() - Get Device Support Archive (DSA) Name of xclbin handle
+ * xrtXclbinGetXSAName() - Get Xilinx Support Archive (XSA) Name of xclbin handle
  *
  * @handle: Xclbin handle
- * @name:    Return name of DSA
+ * @name:    Return name of XSA
  * Return:  0 on success or appropriate error number
  */
 int
-xrtXclbinGetDSAName(xrtXclbinHandle handle, char* name);
+xrtXclbinGetXSAName(xrtXclbinHandle handle, char* name);
 
 /**
  * xrtXclbinGetUUID() - Get UUID of xclbin handle

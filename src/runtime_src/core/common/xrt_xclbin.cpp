@@ -109,10 +109,6 @@ public:
     initialize(rawData);
   }
 
-  // TODO - Get raw data from device, call first constructor
-  xclbin_impl(const device &device)
-  {}
-
   virtual
   ~xclbin_impl()
   {
@@ -138,7 +134,7 @@ public:
   }
 
   const std::string
-  get_dsa_name() const
+  get_xsa_name() const
   {
     check_empty();
     return reinterpret_cast<const char *>(top->m_header.m_platformVBNV);
@@ -151,7 +147,7 @@ public:
     return uuid(top->m_header.uuid);
   }
 
-  const std::vector<char>
+  const std::vector<char>&
   get_data() const
   {
     check_empty();
@@ -180,9 +176,6 @@ xclbin::xclbin(const std::string &filename) : handle(std::make_shared<xclbin_imp
 xclbin::xclbin(const std::vector<char> &data) : handle(std::make_shared<xclbin_impl>(data))
 {}
 
-xclbin::xclbin(const device &device) : handle(std::make_shared<xclbin_impl>(device))
-{}
-
 const std::vector<std::string>
 xclbin::get_cu_names() const
 {
@@ -190,9 +183,9 @@ xclbin::get_cu_names() const
 }
 
 const std::string
-xclbin::get_dsa_name() const
+xclbin::get_xsa_name() const
 {
-  return this->get_handle()->get_dsa_name();
+  return this->get_handle()->get_xsa_name();
 }
 
 uuid
@@ -201,16 +194,10 @@ xclbin::get_uuid() const
   return this->get_handle()->get_uuid();
 }
 
-const std::vector<char>
+const std::vector<char>&
 xclbin::get_data() const
 {
   return this->get_handle()->get_data();
-}
-
-int
-xclbin::get_data_size() const
-{
-  return this->get_handle()->get_data_size();
 }
 
 }
@@ -238,7 +225,7 @@ static void
 free_xclbin(xrtXclbinHandle handle)
 {
   if (xclbins.erase(handle) == 0)
-    throw xrt_core::error(-EINVAL, "No such device handle");
+    throw xrt_core::error(-EINVAL, "No such xclbin handle");
 }
 
 xrtXclbinHandle
@@ -283,28 +270,6 @@ xrtXclbinAllocRawData(const void *data, const int size)
   return nullptr;
 }
 
-#if 0
-xrtXclbinHandle
-xrtXclbinAllocDevice(const xrtDeviceHandle* device){
-  try {
-  std::vector<char> raw_data(data, data+size);
-  auto xclbin = std::make_shared<xrt::xclbin_impl>(raw_data);
-  auto handle = xclbin.get();
-  xclbins.emplace(std::make_pair(handle,std::move(xclbin)));
-  return handle;
-  }
-  catch (const xrt_core::error& ex) {
-  xrt_core::send_exception_message(ex.what());
-  errno = ex.get();
-  }
-  catch (const std::exception& ex) {
-  send_exception_message(ex.what());
-  errno = 0;
-  }
-  return nullptr;
-}
-#endif
-
 int
 xrtXclbinFreeHandle(xrtXclbinHandle handle)
 {
@@ -346,12 +311,12 @@ xrtXclbinGetCUNames(xrtXclbinHandle handle, char **names, int *numNames)
 }
 
 int
-xrtXclbinGetDSAName(xrtXclbinHandle handle, char *name)
+xrtXclbinGetXSAName(xrtXclbinHandle handle, char *name)
 {
   try {
     auto xclbin = get_xclbin(handle);
-    const std::string dsaName = xclbin->get_dsa_name();
-    std::strcpy(name, dsaName.c_str());
+    const std::string xsaName = xclbin->get_xsa_name();
+    std::strcpy(name, xsaName.c_str());
     return 0;
   }
   catch (const xrt_core::error &ex) {
@@ -365,7 +330,7 @@ xrtXclbinGetDSAName(xrtXclbinHandle handle, char *name)
 }
 
 int
-xrtXclbinGetUUID(xclDeviceHandle handle, xuid_t uuid)
+xrtXclbinGetUUID(xrtXclbinHandle handle, xuid_t uuid)
 {
   try {
     auto xclbin = get_xclbin(handle);
