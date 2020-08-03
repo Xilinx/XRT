@@ -181,6 +181,7 @@ namespace xdp {
     configureTraceIP(devInterface) ; 
     if (getFlowMode() == HW || getFlowMode() == HW_EMU)
       devInterface->clockTraining() ;
+    devInterface->startCounters() ;
   }
   
 } // end namespace xdp

@@ -75,6 +75,8 @@ namespace xdp {
 
     virtual void flushDevice(void* device) = 0 ;
     virtual void updateDevice(void* device) = 0 ;
+
+    virtual void broadcast(VPDatabase::MessageType msg, void* blob) ;
   } ;
 
 } // end namespace xdp

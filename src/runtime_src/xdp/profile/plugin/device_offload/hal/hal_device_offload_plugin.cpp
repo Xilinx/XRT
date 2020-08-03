@@ -200,6 +200,7 @@ namespace xdp {
     addOffloader(deviceId, devInterface) ;
     configureTraceIP(devInterface) ;
     devInterface->clockTraining() ;
+    devInterface->startCounters() ;
   }
   
 } // end namespace xdp

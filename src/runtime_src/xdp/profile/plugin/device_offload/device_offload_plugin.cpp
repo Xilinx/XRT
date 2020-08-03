@@ -174,5 +174,30 @@ namespace xdp {
       w->write(openNewFiles) ;
     }
   }
-  
+
+  void DeviceOffloadPlugin::broadcast(VPDatabase::MessageType msg, void* blob)
+  {
+    if (!active) return ;
+
+    switch(msg)
+    {
+    case VPDatabase::READ_COUNTERS:
+      {
+	uint64_t i = 0 ;
+	for (auto o : offloaders)
+	{
+	  xclCounterResults results ;
+	  std::get<2>(o.second)->readCounters(results) ;
+	  
+	  // Store this away in the dynamic database based on the device index
+	  (db->getDynamicInfo()).setCounterResults(i, results) ;
+	  ++i ;
+	}
+      }
+      break ;
+    default:
+      break ;
+    }
+  }
+
 } // end namespace xdp

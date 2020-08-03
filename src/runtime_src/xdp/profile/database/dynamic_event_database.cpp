@@ -172,6 +172,21 @@ namespace xdp {
     }
   }
 
+  void VPDynamicDatabase::setCounterResults(uint64_t deviceId, 
+					    xclCounterResults& values)
+  {
+    std::lock_guard<std::mutex> lock(dbLock) ;
+
+    deviceCounters[deviceId] = values ;
+  }
+
+  xclCounterResults VPDynamicDatabase::getCounterResults(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(dbLock) ;
+
+    return deviceCounters[deviceId] ;
+  }
+
   void VPDynamicDatabase::addOpenCLMapping(uint64_t openclID,
 					   uint64_t eventID)
   {

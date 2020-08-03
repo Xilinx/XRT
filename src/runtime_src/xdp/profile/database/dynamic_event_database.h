@@ -28,6 +28,8 @@
 
 #include "xdp/config.h"
 
+#include "core/include/xclperf.h"
+
 namespace xdp {
 
   // Forward declarations
@@ -62,6 +64,9 @@ namespace xdp {
 
     // For device events
     std::map<uint64_t, std::list<VTFEvent*>> deviceEventStartMap;
+
+    // Each device will have dynamically updated counter values
+    std::map<uint64_t, xclCounterResults> deviceCounters ;
 
     // For dependencies in OpenCL, we will have to store a mapping of
     //  every OpenCL ID to an eventID.  This is a mapping from
@@ -108,6 +113,10 @@ namespace xdp {
 
     XDP_EXPORT std::vector<VTFEvent*> getHostEvents();
     XDP_EXPORT std::vector<VTFEvent*> getDeviceEvents(uint64_t deviceId);
+
+    XDP_EXPORT void setCounterResults(uint64_t deviceId, 
+				      xclCounterResults& values) ;
+    XDP_EXPORT xclCounterResults getCounterResults(uint64_t deviceId) ;
 
     // Functions that dump large portions of the database
     XDP_EXPORT void dumpStringTable(std::ofstream& fout) ;

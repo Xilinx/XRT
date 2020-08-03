@@ -53,8 +53,8 @@ namespace xdp {
 
     // Messages may be broadcast from the database to all plugins using
     //  this function
-    XDP_EXPORT void broadcast(VPDatabase::MessageType msg,
-			      void* blob = nullptr) ;
+    XDP_EXPORT virtual void broadcast(VPDatabase::MessageType msg,
+				      void* blob = nullptr) ;
   } ;
 
 }
