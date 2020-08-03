@@ -5,6 +5,7 @@
 #include <thread>
 #include <map>
 #include <tuple>
+#include <limits>
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/statistics_database.h"
@@ -67,7 +68,7 @@ namespace xdp {
       if (rows.find(APIName) == rows.end())
       {
 	std::tuple<uint64_t, double, double, double> blank = 
-	  std::make_tuple<uint64_t, double, double, double>(0,0,0,0) ;
+	  std::make_tuple<uint64_t, double, double, double>(0,0,std::numeric_limits<double>::max(),0) ;
 
 	rows[APIName] = blank ;
       }
