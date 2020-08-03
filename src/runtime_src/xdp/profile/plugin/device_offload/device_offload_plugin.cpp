@@ -164,10 +164,18 @@ namespace xdp {
     //  the plugin object.  At this time, the information in the database
     //  still exists and is viable, so we should flush our devices
     //  and write our writers.
+    uint64_t i = 0 ;
     for (auto o : offloaders)
     {
       (std::get<0>(o.second))->read_trace() ;
-    }    
+
+      // Also, store away the counter results
+      xclCounterResults results ;
+      std::get<2>(o.second)->readCounters(results) ;
+      (db->getDynamicInfo()).setCounterResults(i, results) ;
+
+      ++i ;
+    }
 
     for (auto w : writers)
     {

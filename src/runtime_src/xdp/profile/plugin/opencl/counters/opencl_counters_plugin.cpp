@@ -20,6 +20,8 @@ namespace xdp {
   {
     if (VPDatabase::alive())
     {
+      // Before writing, make sure that counters are read.
+      db->broadcast(VPDatabase::READ_COUNTERS, nullptr) ;
       for (auto w : writers)
       {
 	w->write(false) ;
