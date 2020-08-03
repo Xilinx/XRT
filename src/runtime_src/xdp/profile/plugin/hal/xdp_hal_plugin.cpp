@@ -35,7 +35,7 @@ namespace xdp {
 
   static void log_function_start(void* payload, const char* functionName)
   {
-    double timestamp = xrt_core::time_ns() ;
+    auto timestamp = xrt_core::time_ns() ;
 
     CBPayload* decoded = reinterpret_cast<CBPayload*>(payload) ;
     VPDatabase* db = halPluginInstance.getDatabase() ;
@@ -54,7 +54,7 @@ namespace xdp {
 
   static void log_function_end(void* payload, const char* functionName)
   {
-    double timestamp = xrt_core::time_ns() ;
+    auto timestamp = xrt_core::time_ns() ;
 
     CBPayload* decoded = reinterpret_cast<CBPayload*>(payload) ;
     VPDatabase* db = halPluginInstance.getDatabase() ;
@@ -110,7 +110,7 @@ namespace xdp {
 #endif
 
     // Add trace event for start of Buffer Transfer
-    double timestamp = xrt_core::time_ns();
+    auto timestamp = xrt_core::time_ns();
     VTFEvent* event = new BufferTransfer(0, timestamp, WRITE_BUFFER, pLoad->size);
     (db->getDynamicInfo()).addEvent(event);
     (db->getDynamicInfo()).markStart(pLoad->bufferTransferId, event->getEventId());
@@ -122,7 +122,7 @@ namespace xdp {
     BOTransferCBPayload* pLoad = reinterpret_cast<BOTransferCBPayload*>(payload);
 
     // Add trace event for end of Buffer Transfer
-    double timestamp = xrt_core::time_ns();
+    auto timestamp = xrt_core::time_ns();
     VPDatabase* db = halPluginInstance.getDatabase();
     VTFEvent* event = new BufferTransfer(
                           (db->getDynamicInfo()).matchingStart(pLoad->bufferTransferId),
@@ -146,7 +146,7 @@ namespace xdp {
 #endif
 
     // Add trace event for start of Buffer Transfer
-    double timestamp = xrt_core::time_ns();
+    auto timestamp = xrt_core::time_ns();
     VTFEvent* event = new BufferTransfer(0, timestamp, READ_BUFFER, pLoad->size);
     (db->getDynamicInfo()).addEvent(event);
     (db->getDynamicInfo()).markStart(pLoad->bufferTransferId, event->getEventId());
@@ -158,7 +158,7 @@ namespace xdp {
     BOTransferCBPayload* pLoad = reinterpret_cast<BOTransferCBPayload*>(payload);
 
     // Add trace event for end of Buffer Transfer
-    double timestamp = xrt_core::time_ns();
+    auto timestamp = xrt_core::time_ns();
     VPDatabase* db = halPluginInstance.getDatabase();
     VTFEvent* event = new BufferTransfer(
                           (db->getDynamicInfo()).matchingStart(pLoad->bufferTransferId),
@@ -190,7 +190,7 @@ namespace xdp {
 #endif
 
     // Add trace event for start of Buffer Transfer
-    double timestamp = xrt_core::time_ns();
+    auto timestamp = xrt_core::time_ns();
     VTFEvent* event = new BufferTransfer(0, timestamp,
                             ((pLoad->isWriteToDevice) ? WRITE_BUFFER : READ_BUFFER), pLoad->size);
     (db->getDynamicInfo()).addEvent(event);
@@ -203,7 +203,7 @@ namespace xdp {
     SyncBOCBPayload* pLoad = reinterpret_cast<SyncBOCBPayload*>(payload);
 
     // Add trace event for end of Buffer Transfer
-    double timestamp = xrt_core::time_ns();
+    auto timestamp = xrt_core::time_ns();
     VPDatabase* db = halPluginInstance.getDatabase();
     VTFEvent* event = new BufferTransfer(
                           (db->getDynamicInfo()).matchingStart(pLoad->bufferTransferId),

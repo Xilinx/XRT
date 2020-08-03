@@ -29,10 +29,11 @@ namespace fa {
     } status_t;
 
     typedef struct {
-        uint64_t     argOffset;   // offset within the acc aperture
-        uint64_t     argSize;     // size of argument in bytes
+        uint32_t     argOffset;   // offset within the acc aperture
+        uint32_t     argSize;     // size of argument in bytes
         //void        *argValue;    // value of argument
-        uint32_t     argValue[];
+        //uint32_t     argValue[];
+        uint8_t      argValue[];   // Note: not necessary to be 32 bits align in the current hw implementation.
     } descEntry_t;
 
     typedef struct {
@@ -235,11 +236,14 @@ inline void drop_uncompleted_task(xclDeviceHandle handle, task_info &cmd) {
 
 inline void start_fa_kernel(xclDeviceHandle handle, int cu_idx, uint64_t desc_addr)
 {
+        /* 0x00 nextDescriptorAddr_MSW register
+         * This register doesn't need to change in each kick off
+         */
+        xclRegWrite(handle, cu_idx, 0x00, desc_addr);
+
+        /* **  Write to the LSW register will trigger the exectuion ** */
         /* 0x04 nextDescriptorAddr_LSW register */
         xclRegWrite(handle, cu_idx, 0x04, desc_addr >> 32);
-        /* TODO: Confirm that if write 0x00 would trigger CU to start? */
-        /* 0x00 nextDescriptorAddr_MSW register */
-        xclRegWrite(handle, cu_idx, 0x00, desc_addr);
 }
 
 double runTest(xclDeviceHandle handle, std::vector<std::shared_ptr<task_info>>& cmds,
@@ -319,6 +323,7 @@ int run_test(xclDeviceHandle handle, xuid_t uuid, int bank)
         xclBOProperties prop;
         fa::descEntry_t *entry;
         uint64_t boh_addr;
+        uint32_t len;
         int off;
 
         cmd.in_data_boh = xclAllocBO(handle, 4096, 0, bank);
@@ -367,16 +372,17 @@ int run_test(xclDeviceHandle handle, xuid_t uuid, int bank)
         boh_addr = prop.paddr;
         entry = reinterpret_cast<fa::descEntry_t *>(cmd.desc->data + off);
         entry->argOffset = 0x10;
-        entry->argSize = 8;
-        entry->argValue[0] = boh_addr;
-        entry->argValue[1] = boh_addr >> 32;
+        entry->argSize = sizeof(boh_addr);
+        /* arrValue[] is aligned by bytes, use memcpy() */
+        memcpy(entry->argValue, &boh_addr, entry->argSize);
         off += (sizeof(fa::descEntry_t) + entry->argSize)/4;
 
         /* Entry for DATA_IN_BYTES */
         entry = reinterpret_cast<fa::descEntry_t *>(cmd.desc->data + off);
         entry->argOffset = 0x18;
-        entry->argSize = 4;
-        entry->argValue[0] = 4096;
+        entry->argSize = sizeof(len);
+        len = 4096;
+        memcpy(entry->argValue, &len, entry->argSize);
         off += (sizeof(fa::descEntry_t) + entry->argSize)/4;
 
         /* Entry for DATA_OUT_OFFSET */
@@ -384,16 +390,16 @@ int run_test(xclDeviceHandle handle, xuid_t uuid, int bank)
         boh_addr = prop.paddr;
         entry = reinterpret_cast<fa::descEntry_t *>(cmd.desc->data + off);
         entry->argOffset = 0x1C;
-        entry->argSize = 8;
-        entry->argValue[0] = boh_addr;
-        entry->argValue[1] = boh_addr >> 32;
+        entry->argSize = sizeof(boh_addr);
+        memcpy(entry->argValue, &boh_addr, entry->argSize);
         off += (sizeof(fa::descEntry_t) + entry->argSize)/4;
 
         /* Entry for DATA_OUT_LEN_AVAIL */
         entry = reinterpret_cast<fa::descEntry_t *>(cmd.desc->data + off);
         entry->argOffset = 0x24;
-        entry->argSize = 4;
-        entry->argValue[0] = 4096;
+        entry->argSize = sizeof(len);
+        len = 4096;
+        memcpy(entry->argValue, &len, entry->argSize);
         off += (sizeof(fa::descEntry_t) + entry->argSize)/4;
 
         /* Entry for DATA_OUT_STATUS_OFFSET */
@@ -401,9 +407,8 @@ int run_test(xclDeviceHandle handle, xuid_t uuid, int bank)
         boh_addr = prop.paddr;
         entry = reinterpret_cast<fa::descEntry_t *>(cmd.desc->data + off);
         entry->argOffset = 0x28;
-        entry->argSize = 8;
-        entry->argValue[0] = boh_addr;
-        entry->argValue[1] = boh_addr >> 32;
+        entry->argSize = sizeof(boh_addr);
+        memcpy(entry->argValue, &boh_addr, entry->argSize);
         off += (sizeof(fa::descEntry_t) + entry->argSize)/4;
 
         /* Entry for KEY1 */

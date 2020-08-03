@@ -1449,14 +1449,16 @@ xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
   return shim->exec_wait(timeoutMilliSec);
 }
 
-int xclExportBO(xclDeviceHandle handle, xclBufferHandle boHandle)
+xclBufferExportHandle
+xclExportBO(xclDeviceHandle handle, xclBufferHandle boHandle)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclExportBO() NOT IMPLEMENTED");
-  return ENOSYS;
+  return INVALID_HANDLE_VALUE;
 }
 
-xclBufferHandle xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
+xclBufferHandle
+xclImportBO(xclDeviceHandle handle, xclBufferExportHandle fd, unsigned flags)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclImportBO() NOT IMPLEMENTED");

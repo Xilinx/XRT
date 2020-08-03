@@ -151,7 +151,7 @@ using addr_type = uint64_t;
 
       // Buffer management
       uint64_t xclAllocDeviceBuffer(size_t size);
-      uint64_t xclAllocDeviceBuffer2(size_t& size, xclMemoryDomains domain, unsigned flags,bool p2pBuffer, std::string &sFileName);
+      uint64_t xclAllocDeviceBuffer2(size_t& size, xclMemoryDomains domain, unsigned flags, bool p2pBuffer, unsigned boFlags, std::string &sFileName);
 
       void xclOpen(const char* logfileName);
       void xclFreeDeviceBuffer(uint64_t buf,bool sendtosim);
@@ -357,6 +357,8 @@ using addr_type = uint64_t;
       uint32_t mCuIndx;
       const size_t mCuMapSize = 64 * 1024;
       std::string simulatorType;
+      std::map<uint64_t, std::pair<void*, uint64_t> > mHostOnlyMemMap;
+      //std::map<uint32_t, void*> mHostOnlyMemMap;
   };
 
   extern std::map<unsigned int, HwEmShim*> devices;

@@ -1632,6 +1632,8 @@ public:
         for(int32_t i = 0; i < map->m_count; i++) {
             if(map->m_mem_data[i].m_type == MEM_STREAMING)
                 continue;
+            if(!strncmp((const char*)map->m_mem_data[i].m_tag, "HOST", 4))
+                continue;
 
             if(map->m_mem_data[i].m_used) {
                 if (verbose) {
