@@ -264,7 +264,6 @@ fd_package_list()
      openssl-static \
      protobuf-static \
      python \
-     python-pip \
      #docs need
      python2-sphinx \
      dmidecode \

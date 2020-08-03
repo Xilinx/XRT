@@ -17,7 +17,6 @@
  under the License.
 """
 
-import numpy as np
 import sys
 import time
 import math
@@ -61,8 +60,8 @@ def getInputOutputBuffer(devhdl, krnlhdl, argno, isInput):
         lst = [i%256 for i in range(globalbuffersize)]
     else:
         lst = [0 for i in range(globalbuffersize)]
-    hostbuf = np.array(lst).astype(np.uint8)
-    assert hostbuf.size == globalbuffersize
+    hostbuf = (ctypes.c_int * len(lst))(*lst)
+    assert len(hostbuf) == globalbuffersize
 
     grpid = xrtKernelArgGroupId(krnlhdl, argno)
     if grpid < 0:
@@ -74,7 +73,7 @@ def getInputOutputBuffer(devhdl, krnlhdl, argno, isInput):
     bobuf = xrtBOMap(bo)
     if bobuf == 0:
         raise RuntimeError("failed to map buffer")
-    libc.memcpy(bobuf, hostbuf.ctypes.data, globalbuffersize)
+    libc.memcpy(bobuf, ctypes.byref(hostbuf), globalbuffersize)
     xrtBOSync(bo, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, globalbuffersize, 0)
     return bo, bobuf
 
