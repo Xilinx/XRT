@@ -727,7 +727,7 @@ public:
         auto upper = std::find_if(itr, m_membanks.end(), [addr] (auto& mb) { return mb.base_addr < addr; });
 
         // find last used memidx if any, default to first memidx in range if unused
-		auto used = std::find_end(itr, upper, itr, itr+1, [](auto& mb, auto& mb2) { return mb.used;});
+	auto used = std::find_end(itr, upper, itr, itr+1, [](auto& mb, auto& mb2) { return mb.used;});
         auto memidx = (used != upper) ? (*used).memidx : (*itr).memidx;
 
         // process the range
