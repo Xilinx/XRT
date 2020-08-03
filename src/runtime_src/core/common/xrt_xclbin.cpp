@@ -228,6 +228,13 @@ free_xclbin(xrtXclbinHandle handle)
     throw xrt_core::error(-EINVAL, "No such xclbin handle");
 }
 
+bool
+is_valid(xrtXclbinHandle handle)
+{
+  bool rtn = (xclbins.find(handle) != xclbins.end());
+  return rtn;
+}
+
 xrtXclbinHandle
 xrtXclbinAllocFilename(const char *filename)
 {
