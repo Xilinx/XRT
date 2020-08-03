@@ -41,7 +41,7 @@ get_bd_low_addr(uint64_t addr)
   return (addr & low_mask);
 }
 
-Aie::Aie(std::shared_ptr<xrt_core::device> device)
+Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
 {
     /* TODO where are these number from */
     numRows = 8;
@@ -258,7 +258,7 @@ sync_bo_nb(uint64_t paddr, const char *gmioName, enum xclBOSyncDirection dir, si
 
 void
 Aie::
-wait_gmio(const char *gmioName)
+wait_gmio(const std::string& gmioName)
 {
   auto gmio = std::find_if(gmios.begin(), gmios.end(),
             [gmioName](gmio_type it) { return it.name.compare(gmioName) == 0; });
@@ -273,7 +273,7 @@ wait_gmio(const char *gmioName)
 
 void
 Aie::
-submit_sync_bo(uint64_t paddr, std::vector<gmio_type>::iterator gmio, enum xclBOSyncDirection dir, size_t size)
+submit_sync_bo(uint64_t paddr, std::vector<gmio_type>::iterator& gmio, enum xclBOSyncDirection dir, size_t size)
 {
   switch (dir) {
   case XCL_BO_SYNC_BO_GMIO_TO_AIE:
@@ -330,7 +330,7 @@ submit_sync_bo(uint64_t paddr, std::vector<gmio_type>::iterator gmio, enum xclBO
 
 void
 Aie::
-wait_sync_bo(ShimDMA *dmap, uint32_t chan, uint32_t timeout)
+wait_sync_bo(ShimDMA* const dmap, uint32_t chan, uint32_t timeout)
 {
   while ((XAieDma_ShimWaitDone(&(dmap->handle), chan, timeout) != XAIEGBL_NOC_DMASTA_STA_IDLE));
 

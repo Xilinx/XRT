@@ -16,9 +16,7 @@
 
 #include "aie_parser.h"
 #include "core/common/device.h"
-#ifndef __AIESIM__
 #include "core/include/xclbin.h"
-#endif
 
 #include <sstream>
 #include <string>

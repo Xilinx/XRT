@@ -36,11 +36,10 @@ extern "C"
 }
 
 #ifdef __AIESIM__
-static zynqaie::Aie* sp_aie = nullptr;
-zynqaie::Aie* getAieArray() {
-  if (sp_aie == nullptr)
-    sp_aie = new zynqaie::Aie(xrt_core::get_userpf_device(0));
-  return sp_aie;
+zynqaie::Aie* getAieArray()
+{
+  static zynqaie::Aie s_aie(xrt_core::get_userpf_device(0));
+  return &s_aie;
 }
 #endif
 
@@ -372,7 +371,7 @@ end(uint64_t cycle)
 
 void
 graph_type::
-update_rtp(const char* port, const char* buffer, size_t size)
+update_rtp(const std::string& port, const char* buffer, size_t size)
 {
     auto rtp = std::find_if(rtps.begin(), rtps.end(),
             [port](rtp_type it) { return it.name.compare(port) == 0; });
@@ -466,7 +465,7 @@ update_rtp(const char* port, const char* buffer, size_t size)
 
 void
 graph_type::
-read_rtp(const char* port, char* buffer, size_t size)
+read_rtp(const std::string& port, char* buffer, size_t size)
 {
     auto rtp = std::find_if(rtps.begin(), rtps.end(),
             [port](rtp_type it) { return it.name.compare(port) == 0; });

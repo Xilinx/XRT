@@ -55,7 +55,7 @@ public:
     using gmio_type = xrt_core::edge::aie::gmio_type;
 
     ~Aie();
-    Aie(std::shared_ptr<xrt_core::device> device);
+    Aie(const std::shared_ptr<xrt_core::device>& device);
 
     std::vector<XAieGbl_Tile> tileArray;  // Tile Array
     std::vector<ShimDMA> shim_dma;   // shim DMA
@@ -74,7 +74,7 @@ public:
     sync_bo_nb(uint64_t paddr, const char *gmioName, enum xclBOSyncDirection dir, size_t size);
 
     void
-    wait_gmio(const char *gmioName);
+    wait_gmio(const std::string& gmioName);
 
     static XAieGbl_ErrorHandleStatus
     error_cb(struct XAieGbl *aie_inst, XAie_LocType loc, u8 module, u8 error, void *arg);
@@ -89,11 +89,11 @@ private:
     XAieGbl_HwCfg aieConfig;      // AIE configuration pointer
 
     void
-    submit_sync_bo(uint64_t paddr, std::vector<gmio_type>::iterator gmio, enum xclBOSyncDirection dir, size_t size);
+    submit_sync_bo(uint64_t paddr, std::vector<gmio_type>::iterator& gmio, enum xclBOSyncDirection dir, size_t size);
 
     /* Wait for all the BD trasters for a given channel */
     void
-    wait_sync_bo(ShimDMA *dmap, uint32_t chan, uint32_t timeout);
+    wait_sync_bo(ShimDMA* const dmap, uint32_t chan, uint32_t timeout);
 };
 
 }

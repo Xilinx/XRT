@@ -73,10 +73,10 @@ public:
     end(uint64_t cycle);
 
     void
-    update_rtp(const char* path, const char* buffer, size_t size);
+    update_rtp(const std::string& path, const char* buffer, size_t size);
 
     void
-    read_rtp(const char* path, char* buffer, size_t size);
+    read_rtp(const std::string& path, char* buffer, size_t size);
 
     static void
     event_cb(struct XAieGbl *aie_inst, XAie_LocType loc, u8 module, u8 event, void *arg);
