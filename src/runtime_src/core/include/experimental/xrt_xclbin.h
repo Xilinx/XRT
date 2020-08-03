@@ -20,7 +20,6 @@
 
 #include "xrt.h"
 #include "experimental/xrt_uuid.h"
-#include "experimental/xrt_device.h"
 
 #ifdef __cplusplus
 # include <memory>
