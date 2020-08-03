@@ -97,6 +97,13 @@ load_xclbin(const std::string& fnm)
 
 uuid
 device::
+load_xclbin(const xclbin& xclbin){
+	auto top = reinterpret_cast<const axlf*>(xclbin.get_data().data());
+	return load_xclbin(top);
+}
+
+uuid
+device::
 get_xclbin_uuid() const
 {
   return handle->get_xclbin_uuid();
@@ -182,6 +189,23 @@ xrtDeviceLoadXclbinFile(xrtDeviceHandle dhdl, const char* fnm)
     auto xclbin = read_xclbin(fnm);
     device->load_xclbin(reinterpret_cast<const axlf*>(xclbin.data()));
     return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return (errno = ex.get());
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return (errno = 0);
+  }
+}
+
+int
+xrtDeviceLoadXclbinHandle(xrtDeviceHandle dhdl, xrtXclbinHandle xhdl)
+{
+  try {
+	  // Not impletmented
+	  return -1;
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
