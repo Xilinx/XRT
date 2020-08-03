@@ -27,8 +27,8 @@
 #include "core/common/message.h"
 #include "core/common/query_requests.h"
 #include "core/include/xclbin.h"
-#include "core/include/experimental/xclbin_util.h"
 #include "core/common/xclbin_parser.h"
+#include <fstream>
 
 #ifdef _WIN32
 # include "windows/uuid.h"
@@ -91,22 +91,35 @@ class xclbin_impl
 protected:
   std::vector<char> data;
   const axlf *top;
-  void initialize(const std::vector<char>& rawData)
+  void set_axlf_handle()
   {
-    this->data = rawData;
-    this->top = xclbin_axlf_handle(reinterpret_cast<void *>(this->data.data()));
+    const axlf* tmp = (const axlf*) this->data.data();
+    this->top = strncmp(tmp->m_magic, "xclbin2", 7) ? nullptr : tmp; // Future: Do not hardcode "xclbin2"
   }
 
 public:
   xclbin_impl(const std::vector<char> &data)
   {
-    initialize(data);
+    this->data = data;
+    // Set pointer of type axlf*, and check magic string
+    set_axlf_handle();
   }
 
   xclbin_impl(const std::string &filename)
   {
-    std::vector<char> rawData = read_xclbin(filename);
-    initialize(rawData);
+    if (filename.empty())
+      throw std::runtime_error("No XCLBIN specified");
+
+    // Load the file into this->data
+    std::ifstream stream(filename);
+    stream.seekg(0,stream.end);
+    size_t size = stream.tellg();
+    stream.seekg(0,stream.beg);
+    this->data.resize(size);
+    stream.read(this->data.data(),size);
+
+    // Set pointer of type axlf*, and check magic string
+    set_axlf_handle();
   }
 
   virtual
