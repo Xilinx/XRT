@@ -66,10 +66,6 @@ struct xocl_ert_user {
 	struct platform_device  *pdev;
 	void __iomem		*cq_base;
 	uint64_t		cq_range;
-	void __iomem		*csr_base;
-	uint64_t		csr_range;
-	u32			intr_base;
-	u32			intr_num;
 	bool			polling_mode;
 	struct mutex 		lock;
 	struct kds_ert		ert;
@@ -84,7 +80,7 @@ struct xocl_ert_user {
 	DECLARE_BITMAP(slot_status, ERT_MAX_SLOTS);
 	struct xocl_ert_sched_privdata ert_cfg_priv;
 
-	struct ert_user_command 	  *submit_queue[ERT_MAX_SLOTS];
+	struct ert_user_command	  *submit_queue[ERT_MAX_SLOTS];
 	spinlock_t		  sq_lock;
 	u32			  num_sq;
 
@@ -264,7 +260,6 @@ static inline void process_ert_cq(struct xocl_ert_user *ert_user)
 	ERTUSER_DBG(ert_user, "%s -> ecmd->slot_idx %d xcmd%p\n", __func__, ecmd->slot_idx, xcmd);
 	ert_release_slot(ert_user, ecmd);
 	list_del(&ecmd->list);
-	xcmd = ecmd->xcmd;
 	xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
 	xcmd->cb.free(xcmd);
 	ert_user_free_cmd(ecmd);
@@ -328,7 +323,7 @@ ert_user_isr(int irq, void *arg)
 
 	if (ert_user && !ert_user->polling_mode) {
 
-		spin_lock(&ert_user->pq_lock);
+		spin_lock(&ert_user->sq_lock);
 		ecmd = ert_user->submit_queue[irq];
 		if (ecmd) {
 			ert_user->submit_queue[irq] = NULL;
@@ -338,8 +333,9 @@ ert_user_isr(int irq, void *arg)
 			++ert_user->num_cq;			
 		}
 
-		spin_unlock(&ert_user->pq_lock);
+		spin_unlock(&ert_user->sq_lock);
 
+		up(&ert_user->sem);
 		/* wake up all scheduler ... currently one only */
 #if 0
 		if (xs->stop)
@@ -863,8 +859,6 @@ static int ert_user_remove(struct platform_device *pdev)
 
 	if (ert_user->cq_base)
 		iounmap(ert_user->cq_base);
-	if (ert_user->csr_base)
-		iounmap(ert_user->csr_base);
 
 	for (i = 0; i < ert_user->num_slots; i++) {
 		xocl_intc_config(xdev, i, false);
