@@ -332,7 +332,7 @@ namespace xdp {
     // For profile summary information, we have to aggregate information
     //  from all devices.
     inline uint64_t getNumDevices() { return deviceInfo.size() ; }
-    XDP_EXPORT std::string getDeviceNames() ;
+    XDP_EXPORT std::vector<std::string> getDeviceNames() ;
 
     // Reseting device information whenever a new xclbin is added
     XDP_EXPORT void updateDevice(uint64_t deviceId, void* devHandle) ;

@@ -98,17 +98,15 @@ namespace xdp {
     }
   }
 
-  std::string VPStaticDatabase::getDeviceNames()
+  std::vector<std::string> VPStaticDatabase::getDeviceNames()
   {
-    std::string names = "" ;
-    for (std::map<uint64_t, DeviceInfo*>::iterator device = deviceInfo.begin();
-	 device != deviceInfo.end() ;
-	 ++device)
+    std::vector<std::string> deviceNames ;
+    for (auto device : deviceInfo)
     {
-      if (device != deviceInfo.begin()) names += ", " ;
-      names += ((*device).second)->platformInfo.deviceName ;
+      deviceNames.push_back((device.second)->platformInfo.deviceName) ;
     }
-    return names ;
+
+    return deviceNames ;
   }
 
   // This function is called whenever a device is loaded with an 

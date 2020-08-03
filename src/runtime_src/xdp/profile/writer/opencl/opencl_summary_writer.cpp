@@ -92,10 +92,16 @@ namespace xdp {
 	 << (xrtInfo.get<std::string>("date", "N/A"))
 	 << std::endl ;
 
-    // Need to iterate over target devices in the static info database
-    fout << "Target devices: " 
-	 << (db->getStaticInfo()).getDeviceNames() 
-	 << std::endl ;
+    std::vector<std::string> deviceNames = 
+      (db->getStaticInfo()).getDeviceNames() ;
+    
+    fout << "Target devices: " ;
+    for (unsigned int i = 0 ; i < deviceNames.size() ; ++i)
+    {
+      if (i != 0) fout << ", " ;
+      fout << deviceNames[i] ;
+    }
+    fout << std::endl ;
 
     fout << "Flow mode: " ;
     switch(getFlowMode())
@@ -239,6 +245,7 @@ namespace xdp {
 
     // For compute unit utilization, we have to get information from
     //  all devices.
+
   }
 
   void OpenCLSummaryWriter::writeComputeUnitStallInformation()
