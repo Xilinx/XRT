@@ -722,13 +722,13 @@ public:
       auto itr = m_membanks.begin();
       while (itr != m_membanks.end()) {
         auto addr = (*itr).base_addr;
-	    auto size = (*itr).size;
+        auto size = (*itr).size;
 
         // first element not part of the sorted (decreasing) range
         auto upper = std::find_if(itr, m_membanks.end(), [addr, size] (auto& mb) { return ((mb.base_addr < addr) && (mb.size != size)); });
 
         // find first used memidx if any, default to first memidx in range if unused
-	    auto used = std::find_if(itr, upper, [](auto& mb) { return mb.used; });
+        auto used = std::find_if(itr, upper, [](auto& mb) { return mb.used; });
         auto memidx = (used != upper) ? (*used).memidx : (*itr).memidx;
 
         // process the range
