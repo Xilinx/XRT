@@ -675,6 +675,18 @@ static struct xocl_subdev_map subdev_map[] = {
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
 	},
+	{
+		.id = XOCL_SUBDEV_M2M,
+		.dev_name = XOCL_M2M,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_KDMA_CTRL, .regmap_name = PROP_SHELL_KDMA},
+			{NULL},
+		},
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = NULL,
+		.devinfo_cb = NULL,
+	},
 };
 
 /*
