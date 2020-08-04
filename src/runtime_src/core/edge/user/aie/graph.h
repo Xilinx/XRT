@@ -47,13 +47,19 @@ public:
     get_timestamp();
 
     void
-    update_iter(int iterations);
-
-    void
     run();
 
     void
+    run(uint32_t iterations);
+
+    void
     wait_done(int timeout_ms);
+
+    void
+    wait();
+
+    void
+    wait(uint64_t cycle);
 
     void
     suspend();
@@ -62,7 +68,10 @@ public:
     resume();
 
     void
-    stop(int timeout_ms);
+    end();
+
+    void
+    end(uint64_t cycle);
 
     void
     update_rtp(const char* path, const char* buffer, size_t size);
@@ -88,10 +97,12 @@ private:
       reset = 1,
       running = 2,
       suspend = 3,
+      end = 4,
     };
 
     graph_state state;
     std::string name;
+    uint64_t startTime;
 
     /**
      * This is the pointer to the AIE array where the AIE part of

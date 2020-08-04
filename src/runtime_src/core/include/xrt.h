@@ -87,6 +87,21 @@ typedef unsigned int xclBufferHandle;
 #endif
 #define XRT_NULL_BO NULLBO
 
+/*
+ * typedef xclBufferExportHandle
+ *
+ * Implementation specific type representing an exported buffer handle
+ * that can be passed between processes.
+ */
+#ifdef _WIN32
+typedef void* xclBufferExportHandle;  // TBD
+#define NULLBOEXPORT INVALID_HANDLE_VALUE
+#else
+typedef int32_t xclBufferExportHandle;
+#define NULLBOEXPORT -1
+#endif
+#define XRT_NULL_BO_EXPORT NULLBOEXPORT
+
 struct axlf;
 
 /**
@@ -585,7 +600,7 @@ xclCopyBO(xclDeviceHandle handle, xclBufferHandle dstBoHandle,
  * framework
  */
 XCL_DRIVER_DLLESPEC
-int
+xclBufferExportHandle
 xclExportBO(xclDeviceHandle handle, xclBufferHandle boHandle);
 
 /**
@@ -601,7 +616,7 @@ xclExportBO(xclDeviceHandle handle, xclBufferHandle boHandle);
  */
 XCL_DRIVER_DLLESPEC
 xclBufferHandle
-xclImportBO(xclDeviceHandle handle, int fd, unsigned int flags);
+xclImportBO(xclDeviceHandle handle, xclBufferExportHandle fd, unsigned int flags);
 
 /**
  * xclGetBOProperties() - Obtain xclBOProperties struct for a BO

@@ -16,10 +16,13 @@
 
 #include "aie_parser.h"
 #include "core/common/device.h"
+#ifndef __AIESIM__
 #include "core/include/xclbin.h"
+#endif
 
 #include <sstream>
 #include <string>
+#include <iostream>
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -72,7 +75,7 @@ get_tiles(const pt::ptree& aie_meta, const std::string& graph_name)
     for (auto& node : graph.second.get_child("iteration_memory_columns"))
       tiles.at(count++).itr_mem_col = std::stoul(node.second.data());
     throw_if_error(count < num_tiles,"iteration_memory_columns < num_tiles");
-    
+
     count = 0;
     for (auto& node : graph.second.get_child("iteration_memory_rows"))
       tiles.at(count++).itr_mem_row = std::stoul(node.second.data());
@@ -82,6 +85,12 @@ get_tiles(const pt::ptree& aie_meta, const std::string& graph_name)
     for (auto& node : graph.second.get_child("iteration_memory_addresses"))
       tiles.at(count++).itr_mem_addr = std::stoul(node.second.data());
     throw_if_error(count < num_tiles,"iteration_memory_addresses < num_tiles");
+
+    count = 0;
+    for (auto& node : graph.second.get_child("multirate_triggers"))
+      tiles.at(count++).is_trigger = (node.second.data() == "true");
+    throw_if_error(count < num_tiles,"multirate_triggers < num_tiles");
+
   }
 
   return tiles;

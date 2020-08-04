@@ -76,6 +76,7 @@ SET (XRT_DKMS_CORE_INCLUDES
   include/xclerr.h
   include/xrt_mem.h
   include/xclhal2_mem.h
+  include/xrt_error_code.h
   )
 
 SET (XRT_DKMS_COMMON_XRT_DRV

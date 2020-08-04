@@ -20,6 +20,7 @@
 #include "utils.h"
 #include "debug.h"
 #include "query_requests.h"
+#include "config_reader.h"
 #include "xclbin_parser.h"
 #include "core/include/xrt.h"
 #include "core/include/xclbin.h"

@@ -733,6 +733,8 @@ struct qdma_queue_conf {
 			struct qdma_ul_cmpt_info *cmpt_info);
 
 	/** @note Following fileds are filled by libqdma */
+	/**  hw qid */
+	unsigned int qidx_hw;
 	/**  name of the qdma device */
 	char name[QDMA_QUEUE_NAME_MAXLEN];
 	/**  ring size of the queue */

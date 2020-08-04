@@ -14,7 +14,7 @@ usage()
     echo "  options:"
     echo "          -help                           Print this usage"
     echo "          -aarch                          Architecture <aarch32/aarch64>"
-    echo "          -sysroot                        Absolute path to sysroot of target architecture"
+    echo "          -sysroot                        Path to sysroot of target architecture"
     echo "          -compiler                       [optional] Path to 'gcc' cross compiler"
     echo "                                          If not specified default paths in host will be searched"
     echo "          -clean, clean                   Remove build directories"
@@ -30,7 +30,7 @@ usage_and_exit()
 SAVED_OPTIONS=$(set +o)
 # Don't print all commands
 set +x
-# Get real script by read symbol link
+# Get the canonical file name of the current script
 THIS_SCRIPT=`readlink -f ${BASH_SOURCE[0]}`
  
 PROGRAM=`basename $0`
@@ -38,7 +38,8 @@ PROGRAM=`basename $0`
 BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 CORE=`grep -c ^processor /proc/cpuinfo`
 CMAKE=cmake
-OS_HOST=`grep '^ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
+source /etc/os-release
+OS_HOST=$ID
 
 if [[ $OS_HOST == "centos" ]] || [[ $OS_HOST == "rhel" ]]; then
     CMAKE=cmake3
@@ -67,10 +68,10 @@ while [ $# -gt 0 ]; do
                 -clean | clean )
                         clean=1
                         ;;
-		-compiler )
-			shift
-			COMPILER=$1
-			;;
+                -compiler )
+                        shift
+                        COMPILER=$1
+                        ;;
                  --* | -* )
                         error "Unregognized option: $1"
                         ;;
@@ -100,6 +101,7 @@ if [ -z $AARCH ] || [ -z $SYSROOT ] ; then
     error "Please provide the required options 'aarch', 'sysroot'"
 fi
 
+SYSROOT=`readlink -f $SYSROOT`
 if [ ! -d $SYSROOT ]; then
     error "SYSROOT is not accessible"
 fi
@@ -142,10 +144,11 @@ if [ ! -f ${SYSROOT}/etc/os-release ]; then
     OS_TARGET="CentOS"
     echo "INFO: Cross Compiling XRT for $AARCH" 
 else
-    OS_TARGET=`grep '^ID=' ${SYSROOT}/etc/os-release | awk -F= '{print $2}' | tr -d '"'`
-    if [ $OS_TARGET == "ubuntu" ]; then
-        OS_TARGET="Ubuntu"
-        VERSION=`grep '^VERSION_ID=' ${SYSROOT}/etc/os-release | awk -F= '{print $2}' | tr -d '"'`
+    source ${SYSROOT}/etc/os-release
+    OS_TARGET=$ID
+    if [ $OS_TARGET == "ubuntu" ] || [ $OS_TARGET == "debian" ]; then
+        OS_TARGET=${OS_TARGET^}
+        VERSION=$VERSION_ID
     else
         OS_TARGET=`cat ${SYSROOT}/etc/redhat-release | awk '{print $1}' | tr -d '"'`
         VERSION=`cat ${SYSROOT}/etc/redhat-release | awk '{print $4}' | tr -d '"'`

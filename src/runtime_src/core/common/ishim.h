@@ -33,7 +33,7 @@ struct ishim
 {
   virtual void
   close_device() = 0;
-  
+
   virtual void
   open_context(xuid_t xclbin_uuid, unsigned int ip_index, bool shared) = 0;
 
@@ -48,6 +48,12 @@ struct ishim
 
   virtual void
   free_bo(xclBufferHandle boh) = 0;
+
+  virtual xclBufferExportHandle
+  export_bo(xclBufferHandle boh) = 0;
+
+  virtual xclBufferHandle
+  import_bo(xclBufferExportHandle ehdl) = 0;
 
   virtual void
   copy_bo(xclBufferHandle dst, xclBufferHandle src, size_t size, size_t dst_offset, size_t src_offset) = 0;
@@ -134,6 +140,23 @@ struct shim : public DeviceType
   free_bo(xclBufferHandle bo)
   {
     xclFreeBO(DeviceType::get_device_handle(), bo);
+  }
+
+  virtual xclBufferExportHandle
+  export_bo(xclBufferHandle bo)
+  {
+    auto ehdl = xclExportBO(DeviceType::get_device_handle(), bo);
+    if (ehdl == XRT_NULL_BO_EXPORT)
+      throw std::runtime_error("Unable to export BO");
+    return ehdl;
+  }
+
+  virtual xclBufferHandle
+  import_bo(xclBufferExportHandle ehdl)
+  {
+    if (auto bo = xclImportBO(DeviceType::get_device_handle(), ehdl, 0))
+      return bo;
+    throw std::runtime_error("unable to import BO");
   }
 
   virtual void

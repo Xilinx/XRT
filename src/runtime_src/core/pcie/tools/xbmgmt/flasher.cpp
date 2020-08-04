@@ -96,6 +96,14 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
         {
             retVal = xspi.xclUpgradeFirmware2(*primary, *secondary, stripped);
         }
+
+        auto dev = mDev.get();
+        std::string errmsg;
+        std::string lvl = std::to_string(1);
+        dev->sysfs_put("icap_controller", "enable", errmsg, lvl);
+        if (errmsg.empty())
+            std::cout << "Successfully enabled icap_controller" << std::endl;
+
         break;
     }
     case BPI:
