@@ -401,7 +401,7 @@ int XQSPIPS_Flasher::revertToMFG(void)
 
     // Sectoer size is defined by SECTOR_SIZE
     std::cout << "Factory resetting " << std::flush;
-    eraseSector(0, GOLDEN_BASE - 3 * SECTOR_SIZE);
+    eraseSector(0, GOLDEN_BASE);
     std::cout << std::endl;
     
     return 0;
@@ -423,7 +423,7 @@ int XQSPIPS_Flasher::xclUpgradeFirmware(std::istream& binStream)
 
     std::cout << "INFO: ***BOOT.BIN has " << total_size << " bytes" << std::endl;
     if (total_size >= GOLDEN_BASE) {
-        std::cout << "[ERROR]: BOOT.BIN is too large. Flashing will overwrite golden." << std::endl;
+        std::cout << "[ERROR]: BOOT.BIN can't go beyond 96MB!" << std::endl;
         exit(-EINVAL);
     }
     /* Test only */
@@ -1069,7 +1069,9 @@ bool XQSPIPS_Flasher::eraseSector(unsigned addr, uint32_t byteCount, uint8_t era
         eraseCmd = SEC_4B_ERASE_CMD;
 
     int beatCount = 0;
-    for (Sector = 0; Sector < ((byteCount / SECTOR_SIZE) + 2); Sector++) {
+    //roundup byteCount to next SECTOR boundary
+    byteCount = (byteCount + SECTOR_SIZE - 1) & (~SECTOR_SIZE);
+    for (Sector = 0; Sector < (byteCount / SECTOR_SIZE); Sector++) {
 
         if(!isFlashReady())
             return false;
