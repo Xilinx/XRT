@@ -295,6 +295,7 @@ xrtXclbinFreeHandle(xrtXclbinHandle handle)
 {
   try {
     free_xclbin(handle);
+    handle = nullptr;
     return 0;
   }
   catch (const xrt_core::error &ex) {
@@ -339,7 +340,7 @@ xrtXclbinGetXSAName(xrtXclbinHandle handle, char *name)
 {
   try {
     auto xclbin = get_xclbin(handle);
-    const std::string xsaName = xclbin->get_xsa_name();
+    const std::string& xsaName = xclbin->get_xsa_name();
     // populate name if memory is allocated
     if (name != nullptr)
     	std::strcpy(name, xsaName.c_str());
