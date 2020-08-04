@@ -91,9 +91,10 @@ class xclbin_impl
 protected:
   std::vector<char> data;
   const axlf *top;
-  void set_axlf_handle()
+
+  void init_axlf_handle()
   {
-    const axlf* tmp = (const axlf*) this->data.data();
+    const axlf *tmp = (const axlf *) this->data.data();
     this->top = strncmp(tmp->m_magic, "xclbin2", 7) ? nullptr : tmp; // Future: Do not hardcode "xclbin2"
   }
 
@@ -102,7 +103,7 @@ public:
   {
     this->data = data;
     // Set pointer of type axlf*, and check magic string
-    set_axlf_handle();
+    init_axlf_handle();
   }
 
   xclbin_impl(const std::string &filename)
@@ -112,14 +113,14 @@ public:
 
     // Load the file into this->data
     std::ifstream stream(filename);
-    stream.seekg(0,stream.end);
+    stream.seekg(0, stream.end);
     size_t size = stream.tellg();
-    stream.seekg(0,stream.beg);
+    stream.seekg(0, stream.beg);
     this->data.resize(size);
-    stream.read(this->data.data(),size);
+    stream.read(this->data.data(), size);
 
     // Set pointer of type axlf*, and check magic string
-    set_axlf_handle();
+    init_axlf_handle();
   }
 
   virtual
@@ -160,18 +161,11 @@ public:
     return uuid(top->m_header.uuid);
   }
 
-  const std::vector<char>&
+  const std::vector<char> &
   get_data() const
   {
     check_empty();
     return data;
-  }
-
-  int
-  get_data_size() const
-  {
-    check_empty();
-    return data.size();
   }
 
 };
@@ -207,7 +201,7 @@ xclbin::get_uuid() const
   return this->get_handle()->get_uuid();
 }
 
-const std::vector<char>&
+const std::vector<char> &
 xclbin::get_data() const
 {
   return this->get_handle()->get_data();
@@ -243,14 +237,16 @@ free_xclbin(xrtXclbinHandle handle)
 
 // Utility function for device class to verify that the C xclbin handle is valid
 // Needed when the C API for device tries to load an xclbin using C pointer to xclbin
-namespace xrt { namespace Xclbin {
+namespace xrt {
+namespace Xclbin {
 bool
 is_valid(xrtXclbinHandle handle)
 {
   bool rtn = (xclbins.find(handle) != xclbins.end());
   return rtn;
 }
-}};
+}
+};
 
 xrtXclbinHandle
 xrtXclbinAllocFilename(const char *filename)
@@ -321,11 +317,11 @@ xrtXclbinGetCUNames(xrtXclbinHandle handle, char **names, int *numNames)
     // populate numNames if memory is allocated
     if (numNames != nullptr) *numNames = cuNames.size();
     // populate names if memory is allocated
-    if (names != nullptr){
-		auto index = 0;
-		for (auto &&name: cuNames) {
-		  std::strcpy(names[index++], name.c_str());
-		}
+    if (names != nullptr) {
+      auto index = 0;
+      for (auto &&name: cuNames) {
+        std::strcpy(names[index++], name.c_str());
+      }
     }
     return 0;
   }
@@ -344,13 +340,13 @@ xrtXclbinGetXSAName(xrtXclbinHandle handle, char *name, int *size)
 {
   try {
     auto xclbin = get_xclbin(handle);
-    const std::string& xsaName = xclbin->get_xsa_name();
+    const std::string &xsaName = xclbin->get_xsa_name();
     // populate size if memory is allocated
     if (size != nullptr)
-    	*size = xsaName.size();
+      *size = xsaName.size();
     // populate name if memory is allocated
     if (name != nullptr)
-    	std::strcpy(name, xsaName.c_str());
+      std::strcpy(name, xsaName.c_str());
     return 0;
   }
   catch (const xrt_core::error &ex) {
@@ -387,15 +383,15 @@ xrtXclbinGetData(xrtXclbinHandle handle, char *data, int *size)
 {
   try {
     auto xclbin = get_xclbin(handle);
-    auto result = xclbin->get_data();
-	auto result_size = xclbin->get_data_size();
+    auto& result = xclbin->get_data();
+    auto result_size = result.size();
     // populate size if memory is allocated
-    if (size != nullptr){
-    	*size = result_size;
+    if (size != nullptr) {
+      *size = result_size;
     }
     // populate data if memory is allocated
-    if (data != nullptr){
-		std::memcpy(data, result.data(), result_size);
+    if (data != nullptr) {
+      std::memcpy(data, result.data(), result_size);
     }
     return 0;
   }

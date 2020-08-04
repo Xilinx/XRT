@@ -28,6 +28,8 @@
 // This value is shared with worgroup size in kernel.cl
 static const int COUNT = 1024;
 
+static const int C_SUCCESS = 0;
+
 static void usage()
 {
     std::cout << "usage: %s [options] -k <bitstream>\n\n";
@@ -142,29 +144,35 @@ run(int argc, char** argv)
 
   auto xclbinHandle = xrtXclbinAllocFilename(xclbin_fnm.data()); // C API, construct xclbin object from filename
 
+  if (xclbinHandle == nullptr)
+    throw std::runtime_error("FAILED_TEST\nxrtXclbinAllocFilename returned nullptr.");
+
   int xsaSz;
-  xrtXclbinGetXSAName(xclbinHandle,NULL,&xsaSz);
+  if (xrtXclbinGetXSAName(xclbinHandle,NULL,&xsaSz) != C_SUCCESS)
+    throw std::runtime_error("FAILED_TEST\nxrtXclbinGetXSAName returned non-zero error code.");
+  
   char* xsaName = (char*) malloc(xsaSz*sizeof(char));
-  xrtXclbinGetXSAName(xclbinHandle,xsaName,&xsaSz);
+  if (xrtXclbinGetXSAName(xclbinHandle,xsaName,&xsaSz) != C_SUCCESS)
+    throw std::runtime_error("FAILED_TEST\nxrtXclbinGetXSAName returned non-zero error code.");
   std::cout << "Targeting xsa platform: " << xsaName << std::endl;
   free(xsaName);
 
   xuid_t c_uuid;
-  xrtXclbinGetUUID(xclbinHandle,c_uuid);
-
-  // std::cout << c_uuid << std::endl; this is a struct, that doesn't really
-  // print well
+  if (xrtXclbinGetUUID(xclbinHandle,c_uuid) != C_SUCCESS)
+    throw std::runtime_error("FAILED_TEST\nxrtXclbinGetUUID returned non-zero error code.");
 
   char** c_cuNames;
   int numNames;
-  xrtXclbinGetCUNames(xclbinHandle,NULL,&numNames);
+  if (xrtXclbinGetCUNames(xclbinHandle,NULL,&numNames) != C_SUCCESS)
+    throw std::runtime_error("FAILED_TEST\nxrtXclbinGetCUNames returned non-zero error code.");
 
   c_cuNames = (char**) malloc(numNames*sizeof(char*));
 
   for (int i=0;i<numNames;++i)
     c_cuNames[i] = (char*) malloc(64*sizeof(char)); // 64 is max size of this field
  
-  xrtXclbinGetCUNames(xclbinHandle,c_cuNames,&numNames);
+  if (xrtXclbinGetCUNames(xclbinHandle,c_cuNames,&numNames) != C_SUCCESS) 
+    throw std::runtime_error("FAILED_TEST\nxrtXclbinGetCUNames returned non-zero error code.");
 
   for (int i=0;i<numNames;++i)
     std::cout << c_cuNames[i] << " ";
@@ -176,21 +184,36 @@ run(int argc, char** argv)
 
   char* c_data;
   int dataSz;
-  xrtXclbinGetData(xclbinHandle,NULL,&dataSz);
+  if (xrtXclbinGetData(xclbinHandle,NULL,&dataSz) != C_SUCCESS)
+    throw std::runtime_error("FAILED_TEST\nxrtXclbinGetData returned non-zero error code.");
 
   c_data = (char*) malloc(dataSz*sizeof(char));
-  xrtXclbinGetData(xclbinHandle,c_data,&dataSz);
+  if (xrtXclbinGetData(xclbinHandle,c_data,&dataSz) != C_SUCCESS)
+    throw std::runtime_error("FAILED_TEST\nxrtXclbinGetData returned non-zero error code.");
 
   for(int i=0;i<7;++i)
     std::cout << c_data[i] << " ";
   std::cout << std::endl;
 
   free(c_data);
+  
+  auto deviceHandle = xrtDeviceOpen(device_index);
+  if (deviceHandle == nullptr)
+    throw std::runtime_error("FAILED_TEST\nxrtDeviceOpen returned nullptr.");
 
-  xrtXclbinFreeHandle(xclbinHandle);
- 
+  if (xrtDeviceLoadXclbinHandle(deviceHandle,xclbinHandle) != C_SUCCESS)
+    throw std::runtime_error("FAILED_TEST\nxrtDeviceLoadXclbinHandle returned non-zero error code.");
+
+  if (xrtDeviceClose(deviceHandle) != C_SUCCESS)
+    throw std::runtime_error("FAILED_TEST\nxrtDeviceClose returned non-zero error code.");
+
+  if (xrtXclbinFreeHandle(xclbinHandle) != C_SUCCESS)
+    throw std::runtime_error("FAILED_TEST\nxrtXclbinFreeHandle returned non-zero error code.");
+
   auto device = xrt::device(device_index);
   auto uuid = device.load_xclbin(xclbin);
+
+
   run(device, uuid, verbose, cuNames[0]);
   return 0;
 }

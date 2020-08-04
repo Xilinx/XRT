@@ -1,4 +1,4 @@
-set(TESTNAME "56_simple")
+set(TESTNAME "56_xclbin")
 
 add_executable(56_xclbin main.cpp)
 target_link_libraries(56_xclbin PRIVATE ${xrt_core_LIBRARY} ${xrt_coreutil_LIBRARY})
