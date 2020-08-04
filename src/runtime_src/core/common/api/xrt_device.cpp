@@ -222,6 +222,8 @@ xrtDeviceLoadXclbinHandle(xrtDeviceHandle dhdl, xrtXclbinHandle xhdl)
   char* data = nullptr;
   try {
 	int data_size = 0;
+	if (!is_valid(xhdl))
+		throw xrt_core::error(-EINVAL, "Invalid xclbin handle");
 	xrtXclbinGetData(xhdl,data,&data_size);
 	data = (char*) malloc(data_size);
 	xrtXclbinGetData(xhdl,data,&data_size);
