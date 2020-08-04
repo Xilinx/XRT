@@ -18,11 +18,7 @@
 #define AIE_WRITER_DOT_H
 
 #include <string>
-
 #include "xdp/profile/writer/vp_base/vp_writer.h"
-
-// Number of AIE counters per tile (4 in core module, 2 in memory module)
-#define NUM_AIE_COUNTERS 6
 
 namespace xdp {
 

@@ -787,7 +787,7 @@ DeviceIntf::~DeviceIntf()
     std::sort(amList.begin(), amList.end(), sorter);
     std::sort(asmList.begin(), asmList.end(), sorter);
     std::sort(nocList.begin(), nocList.end(), sorter);
-
+    
 #if 0
     for(auto mon : aimList) {
         mon->showProperties();

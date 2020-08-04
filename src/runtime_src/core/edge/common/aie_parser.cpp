@@ -144,6 +144,39 @@ get_gmio(const pt::ptree& aie_meta)
   return gmios;
 }
 
+std::vector<counter_type>
+get_counters(const pt::ptree& aie_meta)
+{
+  // First grab clock frequency
+  double clockFreqMhz;
+  for (auto& clock_node : aie_meta.get_child("aie_metadata.performance.clock")) {
+    clockFreqMhz = clock_node.second.get<double>("frequency_mhz");
+  }
+
+  // Now parse all counters
+  std::vector<counter_type> counters;
+
+  for (auto& counter_node : aie_meta.get_child("aie_metadata.performance.counters")) {
+    counter_type counter;
+
+    counter.id = counter_node.second.get<uint32_t>("id");
+    counter.column = counter_node.second.get<uint16_t>("column");
+    counter.row = counter_node.second.get<uint16_t>("row");
+    counter.counterNumber = counter_node.second.get<uint8_t>("counter");
+    counter.startEvent = counter_node.second.get<uint8_t>("start");
+    counter.endEvent = counter_node.second.get<uint8_t>("end");
+    counter.resetEvent = counter_node.second.get<uint8_t>("reset");
+    // Assume common clock frequency for all AIE tiles
+    counter.clockFreqMhz = clockFreqMhz;
+    counter.module = counter_node.second.get<std::string>("module");
+    counter.name = counter_node.second.get<std::string>("name");
+
+    counters.emplace_back(std::move(counter));
+  }
+
+  return counters;
+}
+
 } // namespace
 
 namespace xrt_core { namespace edge { namespace aie {
@@ -184,6 +217,17 @@ get_gmios(const xrt_core::device* device)
   return ::get_gmio(aie_meta);
 }
 
+std::vector<counter_type>
+get_counters(const xrt_core::device* device)
+{
+  auto data = device->get_axlf_section(AIE_METADATA);
+  if (!data.first || !data.second)
+    return std::vector<counter_type>();
+
+  pt::ptree aie_meta;
+  read_aie_metadata(data.first, data.second, aie_meta);
+  return ::get_counters(aie_meta);
+}
 
 }}} // aie, edge, xrt_core
 

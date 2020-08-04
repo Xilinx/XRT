@@ -221,7 +221,7 @@ add_library(xdp_hal_device_offload_plugin MODULE ${XRT_XDP_HAL_PROFILE_DEVICE_OF
 
 add_dependencies(xdp xrt_coreutil)
 add_dependencies(oclxdp xilinxopencl xdp)
-add_dependencies(xdp_core xrt_coreutil)
+add_dependencies(xdp_core xrt_coreutil xrt_core)
 add_dependencies(xdp_hal_plugin xdp_core xdp xrt_core)
 add_dependencies(xdp_hal_api_interface_plugin xdp )
 add_dependencies(xdp_aie_plugin xdp_core xrt_core )

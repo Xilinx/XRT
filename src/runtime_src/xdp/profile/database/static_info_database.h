@@ -50,6 +50,34 @@ namespace xdp {
     {}
   };
 
+  struct AIECounter {
+    uint32_t id;
+    uint16_t column;
+    uint16_t row;
+    uint8_t counterNumber;
+    uint8_t startEvent;
+    uint8_t endEvent;
+    uint8_t resetEvent;
+    double clockFreqMhz;
+    std::string module;
+    std::string name;
+
+    AIECounter(uint32_t i, uint32_t col, uint32_t r, uint8_t num, 
+               uint8_t start, uint8_t end, uint8_t reset,
+               double freq, std::string mod, std::string aieName)
+      : id(i),
+        column(col),
+        row(r),
+        counterNumber(num),
+        startEvent(start),
+        endEvent(end),
+        resetEvent(reset),
+        clockFreqMhz(freq),
+        module(mod),
+        name(aieName)
+    {}
+  };
+
   class ComputeUnitInstance
   {
   private:
@@ -134,6 +162,7 @@ namespace xdp {
     std::vector<Monitor*> amList;
     std::vector<Monitor*> asmList;
     std::vector<Monitor*> nocList;
+    std::vector<AIECounter*> aieList;
   };
 
   class VPStaticDatabase
@@ -177,6 +206,7 @@ namespace xdp {
     bool setXclbinName(DeviceInfo*, const std::shared_ptr<xrt_core::device>& device);
     bool initializeComputeUnits(DeviceInfo*, const std::shared_ptr<xrt_core::device>&);
     bool initializeProfileMonitors(DeviceInfo*, const std::shared_ptr<xrt_core::device>&);
+    bool initializeAIECounters(DeviceInfo*, const std::shared_ptr<xrt_core::device>&);
 
   public:
     VPStaticDatabase(VPDatabase* d) ;
@@ -298,6 +328,13 @@ namespace xdp {
       return deviceInfo[deviceId]->nocList.size();
     }
 
+    inline uint64_t getNumAIECounter(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return 0;
+      return deviceInfo[deviceId]->aieList.size();
+    }
+
     inline Monitor* getAIMonitor(uint64_t deviceId, uint64_t idx)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
@@ -324,6 +361,13 @@ namespace xdp {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       return deviceInfo[deviceId]->nocList[idx];
+    }
+
+    inline AIECounter* getAIECounter(uint64_t deviceId, uint64_t idx)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return nullptr;
+      return deviceInfo[deviceId]->aieList[idx];
     }
 
     inline void getDataflowConfiguration(uint64_t deviceId, bool* config, size_t size)

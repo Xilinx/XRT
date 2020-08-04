@@ -18,9 +18,13 @@
 
 #include "xdp/profile/plugin/aie/aie_plugin.h"
 #include "xdp/profile/writer/aie/aie_writer.h"
+
 #include "core/common/system.h"
 #include "core/common/time.h"
 #include "core/include/experimental/xrt-next.h"
+
+#include "core/edge/common/aie_parser.h"
+//#include "core/edge/user/aie/aie.h"
 
 namespace xdp {
 
@@ -84,25 +88,34 @@ namespace xdp {
 
       // TODO: not sure what we need from device; for now, just use name
       for (auto device : mDevices) {
-        // TODO: traverse all tiles used in design
-        for (uint32_t tile=0; tile < 2; ++tile) {
-          std::vector<uint64_t> values;
-          uint64_t column = 10 * tile;
-          uint64_t row = tile;
-          values.push_back(column);
-          values.push_back(row);
+        //auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
+        //aieArray = drv->getAieArray();
+        //if (aieArray == nullptr)
+        //  continue;
 
-          for (uint32_t c=0; c < NUM_AIE_COUNTERS; ++c) {
-            // TODO: for now, just use dummy values
-            uint64_t startEvent = (c==0) ? 28 : ((c== 1) ? 22 : 0);
-            uint64_t endEvent   = (c==0) ? 29 : ((c== 1) ? 22 : 0);
-            uint64_t resetEvent = 0;
-            uint64_t value      = (c+1) * pollnum * 100;
-            values.push_back(startEvent);
-            values.push_back(endEvent);
-            values.push_back(resetEvent);
-            values.push_back(value);
-          }
+        // Iterate over all AIE Counters
+        auto numCounters = (db->getStaticInfo()).getNumAIECounter(index);
+        for (uint64_t c=0; c < numCounters; c++) {
+          auto aie = (db->getStaticInfo()).getAIECounter(index, c);
+
+          std::vector<uint64_t> values;
+          values.push_back(aie->column);
+          values.push_back(aie->row);
+          values.push_back(aie->startEvent);
+          values.push_back(aie->endEvent);
+          values.push_back(aie->resetEvent);
+
+          uint32_t counterValue = 0;
+
+          
+
+          // Use one of these APIs to read the counter value from the device
+          // v1
+          //u32 XAieTileCore_PerfCounterGet(XAieGbl_Tile*TileInstPtr, u8 Counter);
+          // v2
+          //XAie_PerfCounterGet(XAie_DevInst *DevInst, XAie_LocType Loc, 
+          //    XAie_ModuleType Module, u8 Counter, u32 *CounterVal);
+          values.push_back(counterValue);
 
 	        (db->getDynamicInfo()).addAIESample(index, timestamp, values);
 	        ++index;

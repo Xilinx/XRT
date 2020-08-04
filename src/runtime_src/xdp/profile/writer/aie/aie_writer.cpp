@@ -35,24 +35,22 @@ namespace xdp {
 
   void AIEProfilingWriter::write(bool openNewFile)
   {
-    // TODO: get AIE clock freq from metadata
-    float aieClockFreqMhz = 1000.0;
+    // Grab AIE clock freq from first counter in metadata
+    // NOTE: Assumed the same for all tiles
+    auto aie = (db->getStaticInfo()).getAIECounter(mDeviceIndex, 0);
+    double aieClockFreqMhz = aie->clockFreqMhz;
 
     // Write header
     fout << "Target device: " << mDeviceName << std::endl;
     fout << "Clock frequency (MHz): " << aieClockFreqMhz << std::endl;
     fout << "timestamp"    << ","
          << "column"       << ","
-         << "row"          << ",";
-         
-    for (uint32_t c = 0; c < NUM_AIE_COUNTERS; ++c) {
-      fout << "start" << c << ","
-           << "end"   << c << ","
-           << "reset" << c << ","
-           << "value" << c << ",";
-    }
-    
-	  fout << std::endl;
+         << "row"          << ","
+         << "start"        << ","
+         << "end"          << ","
+         << "reset"        << ","
+         << "value"        << ","
+         << std::endl;
 
     // Write all data elements
     std::vector<VPDynamicDatabase::CounterSample> samples = 

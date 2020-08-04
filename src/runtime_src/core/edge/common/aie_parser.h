@@ -97,6 +97,28 @@ struct gmio_type
 std::vector<gmio_type>
 get_gmios(const xrt_core::device* device);
 
+struct counter_type
+{
+  uint32_t id;
+  uint16_t column;
+  uint16_t row;
+  uint8_t counterNumber;
+  uint8_t startEvent;
+  uint8_t endEvent;
+  uint8_t resetEvent;
+  double clockFreqMhz;
+  std::string module;
+  std::string name;
+};
+
+/**
+ * get_counters() - get counter data from xclbin AIE metadata
+ *
+ * @device: device with loaded meta data
+ */
+std::vector<counter_type>
+get_counters(const xrt_core::device* device);
+
 }}} // aie, edge, xrt_core
 
 #endif

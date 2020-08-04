@@ -32,11 +32,12 @@
 #include "xdp/profile/database/static_info_database.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
-#include "core/include/xclbin.h"
 #include "xdp/profile/writer/vp_base/vp_run_summary.h"
 
-#define XAM_STALL_PROPERTY_MASK        0x4
+#include "core/include/xclbin.h"
+#include "core/edge/common/aie_parser.h"
 
+#define XAM_STALL_PROPERTY_MASK        0x4
 
 
 namespace xdp {
@@ -117,6 +118,7 @@ namespace xdp {
     if (!setXclbinName(devInfo, device)) return;
     if (!initializeComputeUnits(devInfo, device)) return ;
     if (!initializeProfileMonitors(devInfo, device)) return ;
+    if (!initializeAIECounters(devInfo, device)) return ;
   }
 
   void VPStaticDatabase::resetDeviceInfo(uint64_t deviceId)
@@ -320,6 +322,18 @@ namespace xdp {
       }
     }
     return true; 
+  }
+
+  bool VPStaticDatabase::initializeAIECounters(DeviceInfo* devInfo, const std::shared_ptr<xrt_core::device>& device)
+  {
+    // Record all counters listed in AIE metadata (if available)
+    for (auto& counter : xrt_core::edge::aie::get_counters(device.get())) {
+      AIECounter* aie = new AIECounter(counter.id, counter.column, counter.row, 
+          counter.counterNumber, counter.startEvent, counter.endEvent, 
+          counter.resetEvent, counter.clockFreqMhz, counter.module, counter.name);
+      devInfo->aieList.push_back(aie);
+    }
+    return true;
   }
 
   void VPStaticDatabase::addCommandQueueAddress(uint64_t a)
