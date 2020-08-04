@@ -336,11 +336,14 @@ xrtXclbinGetCUNames(xrtXclbinHandle handle, char **names, int *numNames)
 }
 
 int
-xrtXclbinGetXSAName(xrtXclbinHandle handle, char *name)
+xrtXclbinGetXSAName(xrtXclbinHandle handle, char *name, int *size)
 {
   try {
     auto xclbin = get_xclbin(handle);
     const std::string& xsaName = xclbin->get_xsa_name();
+    // populate size if memory is allocated
+    if (size != nullptr)
+    	*size = xsaName.size();
     // populate name if memory is allocated
     if (name != nullptr)
     	std::strcpy(name, xsaName.c_str());

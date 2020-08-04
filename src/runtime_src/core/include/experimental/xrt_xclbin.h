@@ -185,6 +185,7 @@ xrtXclbinGetCUNames(xrtXclbinHandle handle, char** names, int* numNames);
  *
  * @handle: Xclbin handle
  * @name:   Return name of XSA. If the value is nullptr, the content of this value will not be populated. Otherwise, the the content of this value will be populated.
+ * @size:   Return size (in bytes) of XSA name. If the value is nullptr, the content of this value will not be populated. Otherwise, the the content of this value will be populated.
  * Return:  0 on success or appropriate error number
  */
 int
