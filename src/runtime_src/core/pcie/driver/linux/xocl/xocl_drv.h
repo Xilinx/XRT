@@ -1547,6 +1547,18 @@ struct xocl_intc_funcs {
 	 INTC_OPS(xdev)->csr_write32(INTC_DEV(xdev), val, off) : \
 	 -ENODEV)
 
+struct xocl_ert_user_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	int (* configured)(struct platform_device *pdev);
+};
+#define	ERT_USER_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ERT_USER).pldev
+#define ERT_USER_OPS(xdev)  \
+	((struct xocl_ert_user_funcs *)SUBDEV(xdev, XOCL_SUBDEV_ERT_USER).ops)
+
+#define xocl_ert_user_configured(xdev) \
+	( ERT_USER_OPS(xdev)->configured(ERT_USER_DEV(xdev)) : \
+	 -ENODEV)
+
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
 void xocl_init_dsa_priv(xdev_handle_t xdev_hdl);
@@ -1985,4 +1997,8 @@ void xocl_fini_icap_controller(void);
 
 int __init xocl_init_version_control(void);
 void xocl_fini_version_control(void);
+
+int __init xocl_init_ert_user(void);
+void xocl_fini_ert_user(void);
+
 #endif
