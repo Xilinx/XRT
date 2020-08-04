@@ -24,7 +24,7 @@
 #include "core/common/system.h"
 #include "core/common/device.h"
 #include "core/common/message.h"
-#include "xrt_xclbin.h"
+#include "xrt_xclbin.h" // Non public xclbin APIs
 
 #include <map>
 #include <vector>
@@ -222,7 +222,7 @@ xrtDeviceLoadXclbinHandle(xrtDeviceHandle dhdl, xrtXclbinHandle xhdl)
   char* data = nullptr;
   try {
 	int data_size = 0;
-	if (!is_valid(xhdl))
+	if (!::xrt::Xclbin::is_valid(xhdl))
 		throw xrt_core::error(-EINVAL, "Invalid xclbin handle");
 	xrtXclbinGetData(xhdl,data,&data_size);
 	data = (char*) malloc(data_size);

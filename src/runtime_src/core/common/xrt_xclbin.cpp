@@ -241,12 +241,16 @@ free_xclbin(xrtXclbinHandle handle)
     throw xrt_core::error(-EINVAL, "No such xclbin handle");
 }
 
+// Utility function for device class to verify that the C xclbin handle is valid
+// Needed when the C API for device tries to load an xclbin using C pointer to xclbin
+namespace xrt { namespace Xclbin {
 bool
 is_valid(xrtXclbinHandle handle)
 {
   bool rtn = (xclbins.find(handle) != xclbins.end());
   return rtn;
 }
+}};
 
 xrtXclbinHandle
 xrtXclbinAllocFilename(const char *filename)

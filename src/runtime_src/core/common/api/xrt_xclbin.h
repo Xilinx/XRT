@@ -27,8 +27,9 @@
  * @handle:        Xclbin handle
  * Return:         True if xrtXclbinHandle handle is valid. Otherwise, false.
  */
+namespace xrt { namespace Xclbin {
 bool
 is_valid(xrtXclbinHandle handle);
-
+}};
 
 #endif
