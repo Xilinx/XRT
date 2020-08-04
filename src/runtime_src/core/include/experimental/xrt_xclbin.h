@@ -189,7 +189,7 @@ xrtXclbinGetCUNames(xrtXclbinHandle handle, char** names, int* numNames);
  * Return:  0 on success or appropriate error number
  */
 int
-xrtXclbinGetXSAName(xrtXclbinHandle handle, char* name);
+xrtXclbinGetXSAName(xrtXclbinHandle handle, char* name, int* size);
 
 /**
  * xrtXclbinGetUUID() - Get UUID of xclbin handle
