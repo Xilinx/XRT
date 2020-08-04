@@ -156,8 +156,15 @@ get_data_transfer_trace()
 inline bool
 get_power_profile()
 {
-  static bool value = get_profile() && detail::get_bool_value("Debug.power_profile",false);
+  static bool value = detail::get_bool_value("Debug.power_profile",false);
   return value;
+}
+
+inline unsigned int
+get_power_profile_interval_ms()
+{
+  static unsigned int value = detail::get_uint_value("Debug.power_profile_interval_ms", 20) ;
+  return value ;
 }
 
 inline std::string
