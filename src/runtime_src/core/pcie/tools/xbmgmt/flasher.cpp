@@ -128,7 +128,7 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
         XQSPIPS_Flasher xqspi_ps(mDev);
         if (primary == nullptr)
         {
-            std::cout << "ERROR: QSPIPS mode does not support reverting to MFG." << std::endl;
+            retVal = xqspi_ps.revertToMFG();
         }
         else
         {
