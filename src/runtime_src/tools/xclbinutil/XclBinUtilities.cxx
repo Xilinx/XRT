@@ -754,7 +754,7 @@ transformMemoryBankGroupingCollections(const std::vector<boost::property_tree::p
                                        std::vector<boost::property_tree::ptree> & groupConnectivity)
 {
   // Memory types that can be grouped
-  static const std::vector<std::string> validGroupTypes = { "MEM_HBM", "MEM_DDR3", "MEM_DDR4", "MEM_DRAM" };
+  static const std::vector<std::string> validGroupTypes = { "MEM_HBM", "MEM_DDR3", "MEM_DDR4" };
 
   std::vector<WorkingConnection> possibleGroupConnections;
 
@@ -768,6 +768,9 @@ transformMemoryBankGroupingCollections(const std::vector<boost::property_tree::p
     // Determine if the connection is a valid grouping connection
     // Algorithm: Look at the memory type and if the memory is used
     std::string memType = groupTopology[memIndex].get<std::string>("m_type");
+    if (memType.compare("MEM_DRAM") == 0)
+        memType = "MEM_HBM";
+
     if ((std::find( validGroupTypes.begin(), validGroupTypes.end(), memType) == validGroupTypes.end()) ||
         (groupTopology[memIndex].get<uint8_t>("m_used") == 0)) {
       addConnection(groupConnectivity, argIndex, ipLayoutIndex, memIndex);
@@ -786,9 +789,6 @@ transformMemoryBankGroupingCollections(const std::vector<boost::property_tree::p
       if (sSizeKBytes.is_initialized()) 
         sizeBytes = XUtil::stringToUInt64(static_cast<std::string>(sSizeKBytes.get())) * 1024;
     }
-
-    if (memType.compare("MEM_DRAM") == 0)
-        memType = "MEM_HBM";
 
     possibleGroupConnections.emplace_back( WorkingConnection{argIndex, ipLayoutIndex, memIndex, memType, baseAddress, sizeBytes} );
   }
