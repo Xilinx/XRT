@@ -91,7 +91,7 @@ private:
     void
     submit_sync_bo(uint64_t paddr, std::vector<gmio_type>::iterator& gmio, enum xclBOSyncDirection dir, size_t size);
 
-    /* Wait for all the BD trasters for a given channel */
+    /* Wait for all the BD transfers for a given channel */
     void
     wait_sync_bo(ShimDMA* const dmap, uint32_t chan, uint32_t timeout);
 };
