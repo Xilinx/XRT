@@ -15,7 +15,7 @@
  */
 
 /**
- * This file contains publicly exported xclbin utilities.
+ * This file contains publically exported xclbin utilities.
  */
 
 #ifndef xclbin_util_h_
@@ -23,25 +23,6 @@
 
 #include "xclbin.h"
 
-#include <vector>
-#include <fstream>
-
-static inline std::vector<char>
-read_xclbin(const std::string& fnm)
-{
-    if (fnm.empty())
-        throw std::runtime_error("No xclbin specified");
-
-    // load the file
-    std::ifstream stream(fnm);
-    stream.seekg(0,stream.end);
-    size_t size = stream.tellg();
-    stream.seekg(0,stream.beg);
-
-    std::vector<char> header(size);
-    stream.read(header.data(),size);
-    return header;
-}
 static inline const axlf*
 xclbin_axlf_handle(const void *xclbin)
 {
@@ -52,7 +33,7 @@ xclbin_axlf_handle(const void *xclbin)
 /**
  * xclbin_uuid() - Get the uuid of an xclbin
  *
- * @xclbin:  Raw pointer the entire xclbin file content
+ * @xclbin:  Raw pointer the enture xclbin file content
  * @out:     A uuid to populate with the xclbin uuid
  * Return:   0 on success, errcode otherwise
  */
