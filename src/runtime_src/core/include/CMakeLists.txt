@@ -15,12 +15,7 @@ set(XRT_HEADER_SRC
   xclhal2_mem.h
   xrt_mem.h)
 
-install (FILES ${XRT_HEADER_SRC} DESTINATION ${XRT_INSTALL_INCLUDE_DIR})
-
-message("-- XRT header files")
-foreach (header ${XRT_HEADER_SRC})
-  message("-- ${header}")
-endforeach()
+install (FILES ${XRT_HEADER_SRC} DESTINATION ${XRT_INSTALL_INCLUDE_DIR} COMPONENT ${XRT_DEV_COMPONENT})
 
 add_subdirectory(experimental)
 add_subdirectory(deprecated)

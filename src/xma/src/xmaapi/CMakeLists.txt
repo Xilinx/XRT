@@ -15,7 +15,6 @@ target_include_directories(xma2api PRIVATE
 set_target_properties(xma2api PROPERTIES VERSION ${XMA_VERSION_STRING}
   SOVERSION ${XMA_SOVERSION})
 
-#removed xrt_core lib as name is different for aws and xbb
 target_link_libraries(xma2api
   m
   dl
@@ -25,4 +24,12 @@ target_link_libraries(xma2api
   ${Boost_SYSTEM_LIBRARY}
   )
 
-install(TARGETS xma2api LIBRARY DESTINATION ${XMA_INSTALL_DIR}/lib)
+install(TARGETS xma2api
+  LIBRARY DESTINATION ${XMA_INSTALL_DIR}/lib NAMELINK_SKIP
+  RUNTIME DESTINATION ${XMA_INSTALL_DIR}/bin
+)
+
+install(TARGETS xma2api
+  ARCHIVE DESTINATION ${XMA_INSTALL_DIR}/lib COMPONENT ${XRT_DEV_COMPONENT}
+  LIBRARY DESTINATION ${XMA_INSTALL_DIR}/lib COMPONENT ${XRT_DEV_COMPONENT} NAMELINK_ONLY
+)

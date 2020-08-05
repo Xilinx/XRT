@@ -63,7 +63,7 @@ dllExt()
 #ifdef _WIN32
   static boost::filesystem::path sDllExt(".dll");
 #else
-  static boost::filesystem::path sDllExt(".so");
+  static boost::filesystem::path sDllExt(".so.2");
 #endif
   return sDllExt;
 }
@@ -80,9 +80,9 @@ boost::filesystem::path
 dllpath(const boost::filesystem::path& root, const std::string& libnm)
 {
 #ifdef _WIN32
-  return root / "bin" / (libnm + ".dll");
+  return root / "bin" / (libnm + dllExt().string());
 #else
-  return root / "lib" / ("lib" + libnm + ".so");
+  return root / "lib" / ("lib" + libnm + dllExt().string());
 #endif
 }
 
@@ -167,12 +167,6 @@ loadDevices()
   if (!xrt.empty() && !is_emulation()) {
     directoryOrError(xrt);
     auto p = dllpath(xrt,"xrt_core");
-    if (isDLL(p))
-      createHalDevices(devices,p.string());
-  }
-
-  if (devices.empty() && !is_emulation()) { // if failed libxrt_core load, try libxrt_aws
-    auto p = dllpath(xrt,"xrt_aws");
     if (isDLL(p))
       createHalDevices(devices,p.string());
   }

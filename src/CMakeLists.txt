@@ -40,7 +40,16 @@ if (${XRT_NATIVE_BUILD} STREQUAL "no")
 endif()
 
 # Default component name for any install() command without the COMPONENT argument
+# The default component is the xrt run-time component, if XRT_DEV_COMPONENT is
+# set to something different then a development component will be created with
+# link libraries and header which are then excluded from runtime component
 set (CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "xrt")
+
+# Enable development package by specifying development component name
+# If XRT_DEV_COMPONENT is same DEFAULT_COMPONENT then only that package
+# is created with both development and run-time content.
+#set (XRT_DEV_COMPONENT "xrt-dev")
+set (XRT_DEV_COMPONENT "xrt")
 
 set (XRT_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 
