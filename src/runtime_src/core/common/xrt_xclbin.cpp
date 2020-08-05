@@ -101,6 +101,8 @@ protected:
   }
 
 public:
+  xclbin_impl() : m_top(nullptr) {}
+
   xclbin_impl(const std::vector<char>& data)
   {
     this->m_axlf = data;
@@ -168,7 +170,6 @@ public:
     check_empty();
     return m_axlf;
   }
-
 };
 
 } //namespace
@@ -177,6 +178,10 @@ public:
 // xrt_xclbin C++ API implementations (xrt_xclbin.h)
 ////////////////////////////////////////////////////////////////
 namespace xrt {
+
+xclbin::
+xclbin() : handle(std::make_shared<xclbin_impl>())
+{}
 
 xclbin::
 xclbin(const std::string& filename) : handle(std::make_shared<xclbin_impl>(filename))
@@ -194,26 +199,30 @@ get_cu_names() const
 }
 
 std::string
-xclbin::get_xsa_name() const
+xclbin::
+get_xsa_name() const
 {
   return this->get_handle()->get_xsa_name();
 }
 
 uuid
-xclbin::get_uuid() const
+xclbin::
+get_uuid() const
 {
   return this->get_handle()->get_uuid();
 }
 
 const std::vector<char>&
-xclbin::get_data() const
+xclbin::
+get_data() const
 {
   return this->get_handle()->get_data();
 }
 
-xclbin::operator bool() const
+xclbin::
+operator bool() const
 {
-  return this->get_handle()->empty();
+  return !this->get_handle()->empty();
 }
 
 } // namespace xrt

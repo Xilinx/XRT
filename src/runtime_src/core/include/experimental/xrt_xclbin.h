@@ -45,8 +45,7 @@ public:
   /**
    * xclbin() - Constructor for empty xclbin
    */
-  xclbin()
-  {}
+  xclbin();
 
   /**
    * xclbin() - Copy ctor
