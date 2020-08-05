@@ -725,7 +725,7 @@ public:
         auto size = (*itr).size;
 
         // first element not part of the sorted (decreasing) range
-        auto upper = std::find_if(itr, m_membanks.end(), [addr, size] (auto& mb) { return ((mb.base_addr < addr) && (mb.size != size)); });
+        auto upper = std::find_if(itr, m_membanks.end(), [addr, size] (auto& mb) { return ((mb.base_addr < addr) || (mb.size != size)); });
 
         // find first used memidx if any, default to first memidx in range if unused
         auto used = std::find_if(itr, upper, [](auto& mb) { return mb.used; });
