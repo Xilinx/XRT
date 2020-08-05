@@ -30,6 +30,16 @@ namespace bfs = boost::filesystem;
 
 namespace {
 
+inline bool
+ends_with(const std::string& str, const std::string& sub)
+{
+  auto p = str.rfind(sub);
+
+  return (p==std::string::npos)
+    ? false
+    : (str.size() - p) == sub.size();
+}
+
 static const char*
 emptyOrValue(const char* cstr)
 {
@@ -73,7 +83,7 @@ isDLL(const bfs::path& path)
 {
   return (bfs::exists(path)
           && bfs::is_regular_file(path)
-          && path.extension()==dllExt());
+          && ends_with(path.string(), dllExt().string()));
 }
 
 boost::filesystem::path
