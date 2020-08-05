@@ -118,8 +118,6 @@ public:
 /** End of the loggers */
 
 void load_xdp_plugin_library(HalPluginConfig* config);
-void load_aie_plugin_library();
-void load_noc_plugin_library();
 
 } //  xdphal
 

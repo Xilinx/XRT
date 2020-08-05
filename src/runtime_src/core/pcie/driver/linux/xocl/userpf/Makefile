@@ -82,6 +82,8 @@ xocl-y := \
 	../subdev/cu.o \
 	../subdev/p2p.o \
 	../subdev/intc.o \
+	../subdev/version_ctrl.o \
+	../subdev/ert_user.o \
 	$(xocl_lib-y)	\
 	$(drv_common-y) \
 	xocl_drv.o	\

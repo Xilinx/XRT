@@ -21,6 +21,7 @@
 
 #include <vector>
 #include <queue>
+#include <memory>
 
 #include "core/common/device.h"
 #include "core/edge/common/aie_parser.h"

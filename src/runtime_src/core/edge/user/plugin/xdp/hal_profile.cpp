@@ -28,11 +28,11 @@ CallLogger::CallLogger(unsigned id)
   }
   if (xrt_core::config::get_aie_profile())
   {
-    load_aie_plugin_library();
+    xdpaieprofile::load_xdp_aie_plugin();
   }
   if (xrt_core::config::get_noc_profile()) 
   {
-    load_noc_plugin_library();
+    xdpnocprofile::load_xdp_noc_plugin();
   }
 }
 
@@ -216,18 +216,6 @@ void load_xdp_plugin_library(HalPluginConfig* )
 						register_hal_callbacks,
 						warning_hal_callbacks) ;
 #endif
-}
-
-void load_aie_plugin_library()
-{
-  static xrt_core::module_loader xdp_aie_loader("xdp_aie_plugin",
-                        nullptr, nullptr);
-}
-
-void load_noc_plugin_library()
-{
-  static xrt_core::module_loader xdp_noc_loader("xdp_noc_plugin",
-                        nullptr, nullptr);
 }
 
 }

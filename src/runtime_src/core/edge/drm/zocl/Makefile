@@ -25,9 +25,9 @@ endif
 ccflags-y := -I$(src)/include -I$(src)/../../include -I$(src)/../../../include -I$(src)/../../../common/drv/include
 
 drv_common-y   := $(common_dir)/kds_core.o \
-		  $(common_dir)/cu_hls.o \
-		  $(common_dir)/xrt_cu.o \
-		  $(common_dir)/xrt_xclbin.o
+                  $(common_dir)/cu_hls.o \
+                  $(common_dir)/xrt_cu.o \
+                  $(common_dir)/xrt_xclbin.o
 
 zocl-y := \
 	$(drv_common-y) \

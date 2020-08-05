@@ -1267,7 +1267,7 @@ static int is_usable_queue(struct xlnx_dma_dev *xdev, int qidx,
 	}
 	return 0;
 q_reject:
-	pr_err("Q addition feasibility check failed");
+	pr_debug("Q addition feasibility check failed");
 	return -1;
 }
 
@@ -1441,7 +1441,7 @@ int qdma4_queue_add(unsigned long dev_hndl, struct qdma_queue_conf *qconf,
 		int i;
 
 		/** loop through the qlist till qmax and find an empty descq*/
-		for (i = 0; i < qdev->qmax; i++, descq++) {
+		for (i = 0; i < qdev->qmax; i++) {
 			if (is_usable_queue(xdev, i, qconf->q_type,
 					qconf->st) < 0)
 				continue;
@@ -1571,7 +1571,15 @@ int qdma4_queue_add(unsigned long dev_hndl, struct qdma_queue_conf *qconf,
 #endif
 
 	/** copy back the name in config*/
-	memcpy(qconf->name, descq->conf.name, QDMA_QUEUE_NAME_MAXLEN);
+	//memcpy(qconf->name, descq->conf.name, QDMA_QUEUE_NAME_MAXLEN);
+
+	/* xocl: update the queue name to include h2c/c2h */
+	rv = sprintf(qconf->name, "qdma%05x-%s-%s-%u",
+		descq->xdev->conf.bdf, descq->conf.st ? "ST" : "MM",
+		q_type_list[descq->conf.q_type].name, descq->conf.qidx);
+	qconf->name[rv] = '\0';
+	qconf->qidx_hw = descq->qidx_hw;
+
 	*qhndl = (unsigned long)descq->conf.qidx;
 	if (qconf->q_type == Q_C2H)
 		*qhndl += qdev->qmax;

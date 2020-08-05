@@ -107,7 +107,7 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 
 	mutex_lock(&xdev->dev_lock);
 
-	err = XOCL_GET_MEM_TOPOLOGY(xdev, topo);
+	err = XOCL_GET_GROUP_TOPOLOGY(xdev, topo);
 	if (err) {
 		mutex_unlock(&xdev->dev_lock);
 		return err;
@@ -145,7 +145,7 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	}
 
 done:
-	XOCL_PUT_MEM_TOPOLOGY(xdev);
+	XOCL_PUT_GROUP_TOPOLOGY(xdev);
 	mutex_unlock(&xdev->dev_lock);
 	return size;
 }

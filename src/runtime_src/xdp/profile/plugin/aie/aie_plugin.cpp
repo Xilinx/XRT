@@ -21,6 +21,7 @@
 
 #include "core/common/system.h"
 #include "core/common/time.h"
+#include "core/common/config_reader.h"
 #include "core/include/experimental/xrt-next.h"
 
 #include "core/edge/common/aie_parser.h"

@@ -19,30 +19,28 @@
 
 #include "unix_socket.h"
 
-unix_socket::unix_socket()
+unix_socket::unix_socket(const std::string& sock_id,double timeout_insec,bool fatal_error)
 {
+  std::string socket = sock_id;
   server_started = false;
   fd = -1;
-  std::string sock_id = "";
   char* cUser = getenv("USER");
-  if(cUser) {
+  if(cUser && !sock_id.compare("xcl_sock")) {
     std::string user = cUser;
     char* c_sock_id = getenv("EMULATION_SOCKETID"); 
-    if(c_sock_id) {
-      sock_id = c_sock_id;
-    } else {
-      sock_id = "xcl_sock";
+    if(c_sock_id ) {
+      socket = c_sock_id;
     }
-    std::string pathname =  "/tmp/" + user;
-    name = pathname + "/" + sock_id;
+    std::string pathname = "/tmp/" + std::string(cUser);
+    name = pathname + "/" + socket;
     systemUtil::makeSystemCall(pathname, systemUtil::systemOperation::CREATE);
   } else {
-    name = "/tmp/xcl_socket";
+    name = "/tmp/" + socket;
   }
-  start_server(name);
+  start_server(name,timeout_insec,fatal_error);
 }
 
-void unix_socket::start_server(const std::string sk_desc)
+void unix_socket::start_server(const std::string& sk_desc,double timeout_insec,bool fatal_error)
 {
   int sock= -1;
   struct sockaddr_un server;
@@ -75,13 +73,17 @@ void unix_socket::start_server(const std::string sk_desc)
   FD_ZERO(&rfds);
   FD_SET(sock,&rfds);
   struct timeval tv;
-  tv.tv_sec = 300;
+  tv.tv_sec = timeout_insec;
   tv.tv_usec = 0;
   int r = select(sock+1,&rfds, NULL, NULL, &tv);
-  if(r <= 0)
+  if(r <= 0 && fatal_error)
   {
     std::cout<<"ERROR: [SDx-EM 08-0] Failed to connect to device process"<<std::endl;
     exit(1);
+  }
+  if(r <=0 && !fatal_error) {
+      close(sock);
+      return;
   }
 
   fd = accept(sock, 0, 0);

@@ -40,7 +40,7 @@ namespace xdp {
   void VTFDeviceEvent::dumpTimestamp(std::ofstream& fout)
   {
     // Device events are accurate up to nanoseconds.
-    //  Timestamps are in milliseconds, so we should print up to 
+    // Timestamps are in milliseconds, so we should print up to 
     //  6 past the decimal point
     std::ios_base::fmtflags flags = fout.flags() ;
     fout << std::fixed << std::setprecision(6) << timestamp ;

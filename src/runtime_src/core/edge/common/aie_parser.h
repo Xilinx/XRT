@@ -33,6 +33,8 @@ struct tile_type
   uint16_t itr_mem_row;
   uint16_t itr_mem_col;
   uint64_t itr_mem_addr;
+
+  bool     is_trigger;
 };
 
 /**

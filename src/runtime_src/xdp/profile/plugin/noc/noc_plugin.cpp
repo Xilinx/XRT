@@ -18,8 +18,10 @@
 
 #include "xdp/profile/plugin/noc/noc_plugin.h"
 #include "xdp/profile/writer/noc/noc_writer.h"
+
 #include "core/common/system.h"
 #include "core/common/time.h"
+#include "core/common/config_reader.h"
 #include "core/include/experimental/xrt-next.h"
 
 #include <boost/algorithm/string.hpp>
