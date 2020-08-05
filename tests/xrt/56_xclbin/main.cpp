@@ -121,10 +121,12 @@ run(int argc, char** argv)
 
 
   auto xclbin = xrt::xclbin(xclbin_fnm); // C++ API, construct xclbin object from filename
-  
-  std::cout << "Targeting xsa platform: " << xclbin.get_xsa_name() << std::endl;
-
-  std::cout << "Xclbin has uuid: " << xclbin.get_uuid() << std::endl;
+ 
+  if (xclbin) // Test bool operator
+  {
+    std::cout << "Targeting xsa platform: " << xclbin.get_xsa_name() << std::endl;
+    std::cout << "Xclbin has uuid: " << xclbin.get_uuid() << std::endl;
+  }
 
   std::vector<std::string> cuNames = xclbin.get_cu_names();
  
