@@ -249,27 +249,42 @@ namespace xdp {
 
     std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
 
+    uint64_t i = 0 ;
     for (auto device : infos)
     {
+      xclCounterResults values = (db->getDynamicInfo()).getCounterResults(i) ;
+      std::map<std::string, TimeStatistics> kernelStats = 
+	(db->getStats()).getKernelExecutionStats() ;
+
+      unsigned int j = 0 ;
       for (auto cu : (device->cus))
       {
+	double averageTime = 
+	  kernelStats[(cu.second)->getKernelName()].averageTime / 1e06 ;
+	double totalTime = 
+	  kernelStats[(cu.second)->getKernelName()].totalTime / 1e06 ;
+	double minTime = 
+	  kernelStats[(cu.second)->getKernelName()].minTime / 1e06 ;
+	double maxTime = 
+	  kernelStats[(cu.second)->getKernelName()].maxTime / 1e06 ;
+
 	fout << (device->platformInfo.deviceName) << "," 
 	     << (cu.second)->getName() << "," 
 	     << (cu.second)->getKernelName() << ","
 	     << (cu.second)->getDim() << ","
 	     << (cu.second)->getDim() << ","
-	  /*
-	     << numberOfCalls
-	     << dataflowExecution
-	     << maxOverlappingExecutions
-	     << dataflowAcceleration
-	     << TotalTime
-	     << MinimumTime 
-	     << AverageTime
-	     << MaximiumTime
-	  */
+	     << values.CuExecCount[j] << ","
+	     << ((cu.second)->dataflowEnabled() ? "Yes" : "No") << ","
+	     << values.CuMaxParallelIter[j] << "," 
+	     << ((averageTime * (values.CuExecCount[j])) / totalTime) << ","
+	     << totalTime << ","
+	     << minTime << ","
+	     << averageTime << ","
+	     << maxTime << ","
 	     << (device->clockRateMHz) << std::endl ;
+	++j ;
       }
+      ++i ;
     }
   }
 
@@ -288,20 +303,23 @@ namespace xdp {
 
     std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
 
+    uint64_t i = 0 ;
     for (auto device : infos)
     {
+      xclCounterResults values = (db->getDynamicInfo()).getCounterResults(i) ;
+
+      uint64_t j = 0 ;
       for (auto cu : (device->cus))
       {
-	fout << (cu.second)->getName() << "," 
-	  /*
-	    << Execution Count
-	    << Running Time
-	    << IntraKernelDataflowStalls
-	    << External Memory Stalls
-	    << Inter-KernelPipeStalls
-	  */
-	     << std::endl ;
+	fout << (cu.second)->getName()     << "," 
+	     << values.CuExecCount[j]      << ","
+	     << values.CuExecCycles[j]     << ","
+	     << values.CuStallIntCycles[j] << ","
+	     << values.CuStallExtCycles[j] << ","
+	     << values.CuStallStrCycles[j] << std::endl ;
+	++j ;
       }
+      ++i ;
     }
   }
 
@@ -454,6 +472,64 @@ namespace xdp {
 	 << "Total Transfer Rate (MB/s)" << std::endl ;
   }
 
+  void OpenCLSummaryWriter::writeTopKernelExecution()
+  {
+    // Caption
+    fout << "Top Kernel Execution" << std::endl ;
+
+    // Columns
+    fout << "Kernel Instance Address" << ","
+	 << "Kernel"                  << ","
+	 << "Context ID"              << ","
+	 << "Command Queue ID"        << ","
+	 << "Device"                  << ","
+	 << "Start Time (ms)"         << ","
+	 << "Duration (ms)"           << ","
+	 << "Global Work Size"        << ","
+	 << "Local Work Size"         << std::endl ;
+  }
+
+  void OpenCLSummaryWriter::writeTopMemoryWrites()
+  {
+    // Caption
+    fout << "Top Memory Writes: Host to Global Memory" << std::endl ;
+
+    // Columns
+    fout << "Buffer Address"     << ","
+	 << "Context ID"         << ","
+	 << "Command Queue ID"   << ","
+	 << "Start Time (ms)"    << ","
+	 << "Duration (ms)"      << ","
+	 << "Buffer Size (KB)"   << ","
+	 << "Writing Rate(MB/s)" << std::endl ;
+  }
+
+  void OpenCLSummaryWriter::writeTopMemoryReads()
+  {
+    // Caption
+    fout << "Top Memory Reads: Host to Global Memory" << std::endl ;
+
+    // Columns
+    fout << "Buffer Address"     << ","
+	 << "Context ID"         << "," 
+	 << "Command Queue ID"   << ","
+	 << "Start Time (ms)"    << ","
+	 << "Duration (ms)"      << ","
+	 << "Buffer Size (KB)"   << ","
+	 << "Reading Rate(MB/s)" << std::endl ;
+  }
+
+  void OpenCLSummaryWriter::writeGuidance()
+  {
+    // Caption
+    fout << "Guidance Parameters" << std::endl ;
+    
+    // Columns
+    fout << "Parameter" << ","
+	 << "Element"   << ","
+	 << "Value"     << std::endl ;
+  }
+
   void OpenCLSummaryWriter::write(bool openNewFile)
   {
     writeHeader() ;                                 fout << std::endl ;
@@ -471,6 +547,10 @@ namespace xdp {
       writeDataTransferGlobalMemoryToGlobalMemory() ; fout << std::endl ;
       writeTopDataTransferKernelAndGlobal() ;         fout << std::endl ;
     }
+    writeTopKernelExecution() ;                       fout << std::endl ;
+    writeTopMemoryWrites() ;                          fout << std::endl ;
+    writeTopMemoryReads() ;                           fout << std::endl ;
+    writeGuidance() ;
 
     if (openNewFile)
     {

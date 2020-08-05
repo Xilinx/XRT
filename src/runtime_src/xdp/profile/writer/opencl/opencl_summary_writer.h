@@ -28,6 +28,10 @@ namespace xdp {
     void writeDataTransferDMABypass() ;
     void writeDataTransferGlobalMemoryToGlobalMemory() ;
     void writeTopDataTransferKernelAndGlobal() ;
+    void writeTopKernelExecution() ;
+    void writeTopMemoryWrites() ;
+    void writeTopMemoryReads() ;
+    void writeGuidance() ;
 
   public:
     XDP_EXPORT OpenCLSummaryWriter(const char* filename) ;

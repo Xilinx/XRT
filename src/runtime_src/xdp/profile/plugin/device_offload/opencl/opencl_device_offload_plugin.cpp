@@ -63,12 +63,20 @@ namespace xdp {
       //  do a final flush of our devices, then write
       //  all of our writers, then finally unregister ourselves
       //  from the database.
+      uint64_t i = 0 ;
       for (auto o : offloaders)
       {
 	auto offloader = std::get<0>(o.second) ;
 
 	offloader->read_trace() ;
 	offloader->read_trace_end() ;
+
+	// Also, store away the counter results
+	xclCounterResults results ;
+	std::get<2>(o.second)->readCounters(results) ;
+	(db->getDynamicInfo()).setCounterResults(i, results) ;
+
+	++i ;
       }
 
       for (auto w : writers)
