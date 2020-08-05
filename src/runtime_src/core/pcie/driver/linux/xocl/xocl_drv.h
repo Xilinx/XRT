@@ -553,6 +553,7 @@ struct xocl_rom_funcs {
 
 /* version_ctrl callbacks */
 struct xocl_version_ctrl_funcs {
+	struct xocl_subdev_funcs common_funcs;
 	bool (*flat_shell_check)(struct platform_device *pdev);
 	bool (*cmc_in_bitfile)(struct platform_device *pdev);
 };
