@@ -262,7 +262,7 @@ set_target_properties(xdp_power_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} 
 
 install (TARGETS xdp oclxdp xdp_core LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR})
 
-install (TARGETS xdp_hal_plugin xdp_hal_api_interface_plugin xdp_debug_plugin xdp_appdebug_plugin xdp_lop_plugin xdp_user_plugin xdp_device_offload_plugin xdp_hal_device_offload_plugin xdp_power_plugin LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module)
+install (TARGETS xdp_hal_plugin xdp_hal_api_interface_plugin xdp_debug_plugin xdp_appdebug_plugin xdp_lop_plugin xdp_user_plugin xdp_device_offload_plugin xdp_hal_device_offload_plugin xdp_power_plugin xdp_vart_plugin LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module)
 
 install (FILES "${XRT_XDP_PROFILE_XMA_PLUGIN_DIR}/xma_profile.h" DESTINATION ${XRT_INSTALL_INCLUDE_DIR})
 
