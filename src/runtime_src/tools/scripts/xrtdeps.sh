@@ -112,11 +112,14 @@ rh_package_list()
     # Centos8
     if [ $MAJOR == 8 ]; then
 
-        RH_LIST+=(\
-         systemd-devel \
-         kernel-devel-$(uname -r) \
-         kernel-headers-$(uname -r) \
-        )
+        RH_LIST+=(systemd-devel)
+
+        if [ $docker == 0 ]; then
+            RH_LIST+=(\
+             kernel-devel-$(uname -r) \
+             kernel-headers-$(uname -r) \
+            )
+        fi
 
     else
 
