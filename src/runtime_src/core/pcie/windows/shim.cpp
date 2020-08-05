@@ -1395,6 +1395,16 @@ xclSyncBO(xclDeviceHandle handle, xclBufferHandle boHandle, xclBOSyncDirection d
   return shim->sync_bo(boHandle, dir, size, offset);
 }
 
+int
+xclCopyBO(xclDeviceHandle handle, xclBufferHandle dstBoHandle,
+          xclBufferHandle srcBoHandle, size_t size, size_t dst_offset,
+          size_t src_offset)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclCopyBO() NOT IMPLEMENTED");
+  return ENOSYS;
+}
+
 // Compute Unit Execution Management APIs
 int
 xclOpenContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int ipIndex, bool shared)
@@ -1439,14 +1449,16 @@ xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
   return shim->exec_wait(timeoutMilliSec);
 }
 
-int xclExportBO(xclDeviceHandle handle, xclBufferHandle boHandle)
+xclBufferExportHandle
+xclExportBO(xclDeviceHandle handle, xclBufferHandle boHandle)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclExportBO() NOT IMPLEMENTED");
-  return ENOSYS;
+  return INVALID_HANDLE_VALUE;
 }
 
-xclBufferHandle xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
+xclBufferHandle
+xclImportBO(xclDeviceHandle handle, xclBufferExportHandle fd, unsigned flags)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclImportBO() NOT IMPLEMENTED");

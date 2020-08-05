@@ -156,8 +156,15 @@ get_data_transfer_trace()
 inline bool
 get_power_profile()
 {
-  static bool value = get_profile() && detail::get_bool_value("Debug.power_profile",false);
+  static bool value = detail::get_bool_value("Debug.power_profile",false);
   return value;
+}
+
+inline unsigned int
+get_power_profile_interval_ms()
+{
+  static unsigned int value = detail::get_uint_value("Debug.power_profile_interval_ms", 20) ;
+  return value ;
 }
 
 inline std::string
@@ -217,9 +224,9 @@ get_lop_trace()
 }
 
 inline bool
-get_vitis_ai_trace()
+get_vitis_ai_profile()
 {
-  static bool value = detail::get_bool_value("Debug.vitis_ai_trace", false);
+  static bool value = detail::get_bool_value("Debug.vitis_ai_profile", false);
   return value;
 }
 
@@ -435,6 +442,18 @@ get_sw_em_driver()
 }
 
 /**
+ * WORKAROUND: KDS would only allow xclRegWrite/xclRegRead access exclusively reserved CU.
+ * This switch can loose the limitation. It means xclRegWrite/xclRegRead can access
+ * shared CU.
+ */
+inline bool
+get_rw_shared()
+{
+  static bool value = detail::get_bool_value("Runtime.rw_shared",false);
+  return value;
+}
+
+/**
  * Indicate whether Block automation based Emulation Models are
  * used. By default, it is turned off.  This is used to turn on
  * xclRead/Write based counter and trace data collection flow in
@@ -475,7 +494,7 @@ get_exclusive_cu_context()
 inline bool
 get_flag_kds_sw_emu()
 {
-  static bool value = detail::get_bool_value("Runtime.kds_sw_emu", false);
+  static bool value = detail::get_bool_value("Runtime.kds_sw_emu", true);
   return value;
 }
 

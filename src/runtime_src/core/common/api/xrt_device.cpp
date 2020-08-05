@@ -23,6 +23,7 @@
 
 #include "core/common/system.h"
 #include "core/common/device.h"
+#include "core/common/message.h"
 
 #include <map>
 #include <vector>

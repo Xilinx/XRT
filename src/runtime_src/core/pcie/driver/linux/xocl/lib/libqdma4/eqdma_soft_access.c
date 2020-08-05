@@ -4452,6 +4452,9 @@ int eqdma_hw_error_process(void *dev_hndl)
 					err_stat);
 		else
 			continue;
+		pr_info("%s: err_stat 0x%x = 0x%x.\n", __func__,
+			eqdma_err_info[bit].stat_reg_addr, err_stat);
+
 		for (idx = bit; idx < all_eqdma_hw_errs[i]; idx++) {
 			/* call the platform specific handler */
 			if (err_stat & eqdma_err_info[idx].leaf_err_mask)

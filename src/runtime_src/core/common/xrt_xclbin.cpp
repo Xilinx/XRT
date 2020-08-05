@@ -23,6 +23,7 @@
 
 #include "core/common/system.h"
 #include "core/common/device.h"
+#include "core/common/message.h"
 #include "core/common/query_requests.h"
 #include "core/include/xclbin.h"
 

@@ -136,10 +136,6 @@
 #define	XMC_CLOCK_SCALING_POWER_THRESHOLD_POS	8
 #define	XMC_CLOCK_SCALING_POWER_THRESHOLD_MASK	0xFF
 
-//Version control registers
-#define VERSION_CTRL_MISC_REG                  0xC
-#define VERSION_CTRL_MISC_REG_XMC_IN_BITFILE   0x2
-
 enum ctl_mask {
 	CTL_MASK_CLEAR_POW		= 0x1,
 	CTL_MASK_CLEAR_ERR		= 0x2,
@@ -172,7 +168,6 @@ enum {
 	IO_IMAGE_SCHED,
 	IO_CQ,
 	IO_CLK_SCALING,
-	IO_VERSION_CTRL,
 	IO_XMC_GPIO,
 	IO_MUTEX,
 	NUM_IOADDR
@@ -259,10 +254,6 @@ enum sc_mode {
 
 #define	READ_SENSOR(xmc, off, valp, val_kind)	\
 	safe_read32(xmc, off + sizeof(u32) * val_kind, valp);
-
-#define	READ_VERSION_CTRL_REG32(xmc, off)			\
-	(xmc->base_addrs[IO_VERSION_CTRL] ?		\
-	XOCL_READ_REG32(xmc->base_addrs[IO_VERSION_CTRL] + off) : 0)
 
 #define	READ_XMC_GPIO(xmc, off)		\
 	(xmc->base_addrs[IO_XMC_GPIO] ?		\
@@ -993,13 +984,12 @@ static bool nosc_xmc(struct platform_device *pdev)
 static bool xmc_in_bitfile(struct platform_device *pdev)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
+	void *xdev_hdl = xocl_get_xdev(pdev);
 
 	if (xmc->priv_data && (xmc->priv_data->flags & XOCL_XMC_IN_BITFILE)) {
 		/* xmc in bitfile is supported only on SmartSSD U.2 */
-		if (!xmc->sc_presence) {
-			u32 misc = READ_VERSION_CTRL_REG32(xmc, VERSION_CTRL_MISC_REG);
-			return (misc & VERSION_CTRL_MISC_REG_XMC_IN_BITFILE);
-		}
+		if (!xmc->sc_presence)
+			return xocl_cmc_in_bitfile(xdev_hdl);
 	}
 
 	return false;

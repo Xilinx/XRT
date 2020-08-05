@@ -187,7 +187,7 @@ void RunSummary::writeContent()
     }
 
     // If VART profiling is turned on, then add the generated file
-    if (xrt_core::config::get_vitis_ai_trace()) {
+    if (xrt_core::config::get_vitis_ai_profile()) {
       boost::property_tree::ptree ptFile;
       ptFile.put("name", "vart_trace.csv");
       ptFile.put("type", getFileTypeAsStr(FT_VP_TRACE).c_str());

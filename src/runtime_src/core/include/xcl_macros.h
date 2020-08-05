@@ -61,4 +61,9 @@
 #define xclPerfMonReadCounters_Streaming_n 32
 #define xclPerfMonReadTrace_Streaming_n 33
 
+#define xclQdma2HostReadMem_n 34
+#define xclQdma2HostWriteMem_n 35
+#define xclQdma2HostInterrupt_n 36
+#define xclDmaVersion_n 37
+
 #endif
