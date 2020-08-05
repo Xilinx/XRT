@@ -216,9 +216,4 @@ void load_xdp_plugin_library(HalPluginConfig* )
 #endif
 }
 
-void load_vart_plugin_library(HalPluginConfig* )
-{
-  static xrt_core::module_loader vart_loader("xdp_vart_plugin", nullptr, nullptr);
-}
-
 }
