@@ -4,6 +4,8 @@
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/plugin/opencl/counters/opencl_counters_cb.h"
 #include "xdp/profile/plugin/opencl/counters/opencl_counters_plugin.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
+
 #include "core/common/time.h"
 
 namespace xdp {
@@ -15,6 +17,12 @@ namespace xdp {
     VPDatabase* db = openclCountersPluginInstance.getDatabase() ;
     auto timestamp = xrt_core::time_ns() ;
 
+    if (getFlowMode() == SW_EMU || getFlowMode() == HW_EMU)
+    {
+      timestamp = 
+	openclCountersPluginInstance.convertToEstimatedTimestamp(timestamp) ;
+    }
+
     (db->getStats()).logFunctionCallStart(functionName, timestamp) ;
   }
 
@@ -22,6 +30,12 @@ namespace xdp {
   {
     VPDatabase* db = openclCountersPluginInstance.getDatabase() ;
     auto timestamp = xrt_core::time_ns() ;
+
+    if (getFlowMode() == SW_EMU || getFlowMode() == HW_EMU)
+    {
+      timestamp = 
+	openclCountersPluginInstance.convertToEstimatedTimestamp(timestamp) ;
+    }
 
     (db->getStats()).logFunctionCallEnd(functionName, timestamp) ;
   }
@@ -31,7 +45,13 @@ namespace xdp {
     static std::map<std::string, uint64_t> storedTimestamps ;
 
     VPDatabase* db = openclCountersPluginInstance.getDatabase() ;
-    auto timestamp = xrt_core::time_ns() ;
+    uint64_t timestamp = xrt_core::time_ns() ;
+
+    if (getFlowMode() == SW_EMU || getFlowMode() == HW_EMU)
+    {
+      timestamp = 
+	openclCountersPluginInstance.convertToEstimatedTimestamp(timestamp) ;
+    }
 
     if (isStart)
     {

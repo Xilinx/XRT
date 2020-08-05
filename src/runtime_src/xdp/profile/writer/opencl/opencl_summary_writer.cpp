@@ -158,7 +158,7 @@ namespace xdp {
 
       for (auto executionTime : timesOfCalls)
       {
-	auto timeTaken = executionTime.second = executionTime.first ;
+	auto timeTaken = executionTime.second - executionTime.first ;
 
 	++(std::get<0>(rows[APIName])) ;
 	std::get<1>(rows[APIName]) += timeTaken ;
