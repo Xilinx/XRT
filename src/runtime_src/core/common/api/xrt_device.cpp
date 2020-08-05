@@ -93,7 +93,7 @@ namespace xrt {
 
 device::
 device(unsigned int index)
-    : handle(xrt_core::get_userpf_device(index))
+  : handle(xrt_core::get_userpf_device(index))
 {}
 
 uuid
