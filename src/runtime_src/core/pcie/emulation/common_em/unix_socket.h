@@ -42,7 +42,7 @@ public:
        server_started = false;
        close(fd);
     }
-    void start_server(const std::string& sk_desc,double timeout_insec,bool fatal_error);
+    void start_server(double timeout_insec,bool fatal_error);
     ssize_t sk_write(const void *wbuf, size_t count);
     ssize_t sk_read(void *rbuf, size_t count);
 };
