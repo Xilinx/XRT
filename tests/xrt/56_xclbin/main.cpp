@@ -28,8 +28,6 @@
 // This value is shared with worgroup size in kernel.cl
 constexpr auto COUNT = 1024;
 
-static const int C_SUCCESS = 0;
-
 static void usage()
 {
     std::cout << "usage: %s [options] -k <bitstream>\n\n";
