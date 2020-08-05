@@ -17,12 +17,6 @@ namespace xdp {
     VPDatabase* db = openclCountersPluginInstance.getDatabase() ;
     auto timestamp = xrt_core::time_ns() ;
 
-    if (getFlowMode() == SW_EMU || getFlowMode() == HW_EMU)
-    {
-      timestamp = 
-	openclCountersPluginInstance.convertToEstimatedTimestamp(timestamp) ;
-    }
-
     (db->getStats()).logFunctionCallStart(functionName, timestamp) ;
   }
 
@@ -30,12 +24,6 @@ namespace xdp {
   {
     VPDatabase* db = openclCountersPluginInstance.getDatabase() ;
     auto timestamp = xrt_core::time_ns() ;
-
-    if (getFlowMode() == SW_EMU || getFlowMode() == HW_EMU)
-    {
-      timestamp = 
-	openclCountersPluginInstance.convertToEstimatedTimestamp(timestamp) ;
-    }
 
     (db->getStats()).logFunctionCallEnd(functionName, timestamp) ;
   }
@@ -46,12 +34,6 @@ namespace xdp {
 
     VPDatabase* db = openclCountersPluginInstance.getDatabase() ;
     uint64_t timestamp = xrt_core::time_ns() ;
-
-    if (getFlowMode() == SW_EMU || getFlowMode() == HW_EMU)
-    {
-      timestamp = 
-	openclCountersPluginInstance.convertToEstimatedTimestamp(timestamp) ;
-    }
 
     if (isStart)
     {

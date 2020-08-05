@@ -30,9 +30,11 @@ namespace xdp {
     }
   }
 
+  /*
   uint64_t OpenCLCountersProfilingPlugin::convertToEstimatedTimestamp(uint64_t realTimeStamp)
   {
     return realTimeStamp ;
   }
+  */
 
 } // end namespace xdp

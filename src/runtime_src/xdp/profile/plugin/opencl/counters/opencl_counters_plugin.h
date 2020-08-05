@@ -15,7 +15,7 @@ namespace xdp {
 
     // For emulation based flows we need to convert real time into
     //  estimated device time to match what we reported previously
-    uint64_t convertToEstimatedTimestamp(uint64_t realTimeStamp) ;
+    //uint64_t convertToEstimatedTimestamp(uint64_t realTimeStamp) ;
   } ;
 
 } // end namespace xdp
