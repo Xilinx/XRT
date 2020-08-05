@@ -90,7 +90,7 @@ public:
    *
    * An exception is thrown if the data is missing.
    */
-  const std::vector<std::string>
+  std::vector<std::string>
   get_cu_names() const;
 
   /**
@@ -100,7 +100,7 @@ public:
    *
    * An exception is thrown if the data is missing.
    */
-  const std::string
+  std::string
   get_xsa_name() const;
 
   /**
@@ -158,7 +158,7 @@ xrtXclbinAllocFilename(const char* filename);
  * Return:         xrtXclbinHandle on success or NULL with errno set
  */
 xrtXclbinHandle
-xrtXclbinAllocRawData(const void* data, const int size);
+xrtXclbinAllocRawData(const char* data, const int size);
 
 /**
  * xrtXclbinFreeHandle() - Deallocate the xclbin handle
@@ -183,13 +183,14 @@ xrtXclbinGetCUNames(xrtXclbinHandle handle, char** names, int* numNames);
 /**
  * xrtXclbinGetXSAName() - Get Xilinx Support Archive (XSA) Name of xclbin handle
  *
- * @handle: Xclbin handle
- * @name:   Return name of XSA. If the value is nullptr, the content of this value will not be populated. Otherwise, the the content of this value will be populated.
- * @size:   Return size (in bytes) of XSA name. If the value is nullptr, the content of this value will not be populated. Otherwise, the the content of this value will be populated.
+ * @handle:     Xclbin handle
+ * @name:       Return name of XSA. If the value is nullptr, the content of this value will not be populated. Otherwise, the the content of this value will be populated.
+ * @size:       size (in bytes) of @name.
+ * @ret_size:   Return size (in bytes) of XSA name. If the value is nullptr, the content of this value will not be populated. Otherwise, the the content of this value will be populated.
  * Return:  0 on success or appropriate error number
  */
 int
-xrtXclbinGetXSAName(xrtXclbinHandle handle, char* name, int* size);
+xrtXclbinGetXSAName(xrtXclbinHandle handle, char* name, int size, int *ret_size);
 
 /**
  * xrtXclbinGetUUID() - Get UUID of xclbin handle
@@ -204,13 +205,15 @@ xrtXclbinGetUUID(xclDeviceHandle handle, xuid_t uuid);
 /**
  * xrtXclbinGetData() - Get the raw data of the xclbin handle
  *
- * @handle: Xclbin handle
- * @data:   Return raw data. If the value is nullptr, the content of this value will not be populated. Otherwise, the the content of this value will be populated.
- * @size:   Size (in bytes) of xclbin handle on success or appropriate error number. If the value is nullptr, the content of this value will not be populated. Otherwise, the the content of this value will be populated.
+ * @handle:     Xclbin handle
+ * @data:       Return raw data. If the value is nullptr, the content of this value will not be populated. Otherwise, the the content of this value will be populated.
+ * @size:       Size (in bytes) of @data
+ * @ret_size:   Return size (in bytes) of XSA name. If the value is nullptr, the content of this value will not be populated. Otherwise, the the content of this value will be populated.
+ *
  * Return:  0 on success or appropriate error number
  */
 int
-xrtXclbinGetData(xrtXclbinHandle handle, char* data, int* size);
+xrtXclbinGetData(xrtXclbinHandle handle, char* data, int size, int *ret_size);
 
 /**
  * xrtGetXclbinUUID() - Get UUID of xclbin image running on device

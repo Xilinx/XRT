@@ -25,7 +25,7 @@
 #include "core/common/system.h"
 #include "core/common/device.h"
 #include "core/common/message.h"
-#include "xrt_xclbin.h" // Non public xclbin APIs
+#include "xclbin_int.h" // Non public xclbin APIs
 
 #include <map>
 #include <vector>
@@ -222,26 +222,22 @@ xrtDeviceLoadXclbinFile(xrtDeviceHandle dhdl, const char *fnm)
 int
 xrtDeviceLoadXclbinHandle(xrtDeviceHandle dhdl, xrtXclbinHandle xhdl)
 {
-  char *data = nullptr;
   try {
     int data_size = 0;
-    if (!::xrt::Xclbin::is_valid(xhdl))
+    if (!::xrt::xclbin_int::is_valid(xhdl))
       throw xrt_core::error(-EINVAL, "Invalid xclbin handle");
-    xrtXclbinGetData(xhdl, data, &data_size);
-    data = (char *) malloc(data_size);
-    xrtXclbinGetData(xhdl, data, &data_size);
-    auto top = reinterpret_cast<const axlf *>(data);
+    xrtXclbinGetData(xhdl, nullptr, 0, &data_size);
+    std::vector<char> data(data_size);
+    xrtXclbinGetData(xhdl, data.data(), data_size, nullptr);
+    auto top = reinterpret_cast<const axlf *>(data.data());
     xrtDeviceLoadXclbin(dhdl, top);
-    if (data != nullptr) free(data);
     return 0;
   }
   catch (const xrt_core::error &ex) {
-    if (data != nullptr) free(data);
     xrt_core::send_exception_message(ex.what());
     return (errno = ex.get());
   }
   catch (const std::exception &ex) {
-    if (data != nullptr) free(data);
     send_exception_message(ex.what());
     return (errno = 0);
   }

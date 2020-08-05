@@ -148,14 +148,14 @@ run(int argc, char** argv)
     throw std::runtime_error("FAILED_TEST\nxrtXclbinAllocFilename returned nullptr.");
 
   int xsaSz;
-  if (xrtXclbinGetXSAName(xclbinHandle,NULL,&xsaSz) != C_SUCCESS)
+  if (xrtXclbinGetXSAName(xclbinHandle,NULL,0,&xsaSz) != C_SUCCESS)
     throw std::runtime_error("FAILED_TEST\nxrtXclbinGetXSAName returned non-zero error code.");
   
-  char* xsaName = (char*) malloc(xsaSz*sizeof(char));
-  if (xrtXclbinGetXSAName(xclbinHandle,xsaName,&xsaSz) != C_SUCCESS)
+  std::vector<char> xsaName_v(xsaSz);
+  if (xrtXclbinGetXSAName(xclbinHandle,xsaName_v.data(),xsaSz,nullptr) != C_SUCCESS)
     throw std::runtime_error("FAILED_TEST\nxrtXclbinGetXSAName returned non-zero error code.");
+  std::string xsaName(xsaName_v.begin(), xsaName_v.end());
   std::cout << "Targeting xsa platform: " << xsaName << std::endl;
-  free(xsaName);
 
   xuid_t c_uuid;
   if (xrtXclbinGetUUID(xclbinHandle,c_uuid) != C_SUCCESS)
@@ -182,20 +182,17 @@ run(int argc, char** argv)
     free(c_cuNames[i]); 
   free(c_cuNames);
 
-  char* c_data;
   int dataSz;
-  if (xrtXclbinGetData(xclbinHandle,NULL,&dataSz) != C_SUCCESS)
+  if (xrtXclbinGetData(xclbinHandle,NULL,0,&dataSz) != C_SUCCESS)
     throw std::runtime_error("FAILED_TEST\nxrtXclbinGetData returned non-zero error code.");
 
-  c_data = (char*) malloc(dataSz*sizeof(char));
-  if (xrtXclbinGetData(xclbinHandle,c_data,&dataSz) != C_SUCCESS)
+  std::vector<char> c_data(dataSz);
+  if (xrtXclbinGetData(xclbinHandle,c_data.data(),dataSz,nullptr) != C_SUCCESS)
     throw std::runtime_error("FAILED_TEST\nxrtXclbinGetData returned non-zero error code.");
 
   for(int i=0;i<7;++i)
     std::cout << c_data[i] << " ";
   std::cout << std::endl;
-
-  free(c_data);
   
   auto deviceHandle = xrtDeviceOpen(device_index);
   if (deviceHandle == nullptr)
