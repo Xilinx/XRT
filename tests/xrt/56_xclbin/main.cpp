@@ -142,74 +142,8 @@ run(int argc, char** argv)
     std::cout << data[i] << " ";
   std::cout << std::endl;
 
-  auto xclbinHandle = xrtXclbinAllocFilename(xclbin_fnm.data()); // C API, construct xclbin object from filename
-
-  if (xclbinHandle == nullptr)
-    throw std::runtime_error("FAILED_TEST\nxrtXclbinAllocFilename returned nullptr.");
-
-  int xsaSz;
-  if (xrtXclbinGetXSAName(xclbinHandle,NULL,0,&xsaSz) != C_SUCCESS)
-    throw std::runtime_error("FAILED_TEST\nxrtXclbinGetXSAName returned non-zero error code.");
-  
-  std::vector<char> xsaName_v(xsaSz);
-  if (xrtXclbinGetXSAName(xclbinHandle,xsaName_v.data(),xsaSz,nullptr) != C_SUCCESS)
-    throw std::runtime_error("FAILED_TEST\nxrtXclbinGetXSAName returned non-zero error code.");
-  std::string xsaName(xsaName_v.begin(), xsaName_v.end());
-  std::cout << "Targeting xsa platform: " << xsaName << std::endl;
-
-  xuid_t c_uuid;
-  if (xrtXclbinGetUUID(xclbinHandle,c_uuid) != C_SUCCESS)
-    throw std::runtime_error("FAILED_TEST\nxrtXclbinGetUUID returned non-zero error code.");
-
-  char** c_cuNames;
-  int numNames;
-  if (xrtXclbinGetCUNames(xclbinHandle,NULL,&numNames) != C_SUCCESS)
-    throw std::runtime_error("FAILED_TEST\nxrtXclbinGetCUNames returned non-zero error code.");
-
-  c_cuNames = (char**) malloc(numNames*sizeof(char*));
-
-  for (int i=0;i<numNames;++i)
-    c_cuNames[i] = (char*) malloc(64*sizeof(char)); // 64 is max size of this field
- 
-  if (xrtXclbinGetCUNames(xclbinHandle,c_cuNames,&numNames) != C_SUCCESS) 
-    throw std::runtime_error("FAILED_TEST\nxrtXclbinGetCUNames returned non-zero error code.");
-
-  for (int i=0;i<numNames;++i)
-    std::cout << c_cuNames[i] << " ";
-  std::cout << std::endl;
-
-  for (int i=0;i<numNames;++i)
-    free(c_cuNames[i]); 
-  free(c_cuNames);
-
-  int dataSz;
-  if (xrtXclbinGetData(xclbinHandle,NULL,0,&dataSz) != C_SUCCESS)
-    throw std::runtime_error("FAILED_TEST\nxrtXclbinGetData returned non-zero error code.");
-
-  std::vector<char> c_data(dataSz);
-  if (xrtXclbinGetData(xclbinHandle,c_data.data(),dataSz,nullptr) != C_SUCCESS)
-    throw std::runtime_error("FAILED_TEST\nxrtXclbinGetData returned non-zero error code.");
-
-  for(int i=0;i<7;++i)
-    std::cout << c_data[i] << " ";
-  std::cout << std::endl;
-  
-  auto deviceHandle = xrtDeviceOpen(device_index);
-  if (deviceHandle == nullptr)
-    throw std::runtime_error("FAILED_TEST\nxrtDeviceOpen returned nullptr.");
-
-  if (xrtDeviceLoadXclbinHandle(deviceHandle,xclbinHandle) != C_SUCCESS)
-    throw std::runtime_error("FAILED_TEST\nxrtDeviceLoadXclbinHandle returned non-zero error code.");
-
-  if (xrtDeviceClose(deviceHandle) != C_SUCCESS)
-    throw std::runtime_error("FAILED_TEST\nxrtDeviceClose returned non-zero error code.");
-
-  if (xrtXclbinFreeHandle(xclbinHandle) != C_SUCCESS)
-    throw std::runtime_error("FAILED_TEST\nxrtXclbinFreeHandle returned non-zero error code.");
-
   auto device = xrt::device(device_index);
   auto uuid = device.load_xclbin(xclbin);
-
 
   run(device, uuid, verbose, cuNames[0]);
   return 0;
