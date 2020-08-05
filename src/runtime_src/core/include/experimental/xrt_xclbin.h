@@ -22,9 +22,11 @@
 #include "experimental/xrt_uuid.h"
 
 #ifdef __cplusplus
+
 # include <memory>
 # include <vector>
 # include <string>
+
 #endif
 
 /**
@@ -36,24 +38,30 @@ typedef void* xrtXclbinHandle;
 namespace xrt {
 
 class xclbin_impl;
+
 class xclbin
 {
 public:
-  
+  /**
+   * xclbin() - Constructor for empty xclbin
+   */
+  xclbin()
+  {}
+
   /**
    * xclbin() - Copy ctor
    */
   xclbin(const xclbin& rhs)
-    : handle(rhs.handle)
+      : handle(rhs.handle)
   {}
-  
+
   /**
    * xclbin() - Move ctor
    */
   xclbin(xclbin&& rhs)
-    : handle(std::move(rhs.handle))
+      : handle(std::move(rhs.handle))
   {}
-  
+
   /**
    * operator= () - Move assignment
    */
@@ -65,6 +73,14 @@ public:
   }
 
   /**
+  * operator bool() - Check if xclbin object contains data
+  *
+  * Return: true if xclbin is not empty
+  */
+  explicit
+  operator bool() const;
+
+  /**
    * xclbin() - Constructor from an xclbin filename
    *
    * @filename:  path to the xclbin file
@@ -72,7 +88,7 @@ public:
    * The xclbin file must be accessible by the application. An exception is thrown file not found
    */
   explicit xclbin(const std::string& filename);
-  
+
   /**
    * xclbin() - Constructor from raw data
    *
@@ -124,7 +140,6 @@ public:
   get_data() const;
 
 public:
-  xclbin() = delete;
   std::shared_ptr<xclbin_impl>
   get_handle() const
   {
@@ -132,7 +147,7 @@ public:
   }
 
 private:
-    std::shared_ptr<xclbin_impl> handle;
+  std::shared_ptr<xclbin_impl> handle;
 };
 
 } // namespace xrt
@@ -190,7 +205,7 @@ xrtXclbinGetCUNames(xrtXclbinHandle handle, char** names, int* numNames);
  * Return:  0 on success or appropriate error number
  */
 int
-xrtXclbinGetXSAName(xrtXclbinHandle handle, char* name, int size, int *ret_size);
+xrtXclbinGetXSAName(xrtXclbinHandle handle, char* name, int size, int* ret_size);
 
 /**
  * xrtXclbinGetUUID() - Get UUID of xclbin handle
@@ -213,7 +228,7 @@ xrtXclbinGetUUID(xclDeviceHandle handle, xuid_t uuid);
  * Return:  0 on success or appropriate error number
  */
 int
-xrtXclbinGetData(xrtXclbinHandle handle, char* data, int size, int *ret_size);
+xrtXclbinGetData(xrtXclbinHandle handle, char* data, int size, int* ret_size);
 
 /**
  * xrtGetXclbinUUID() - Get UUID of xclbin image running on device
