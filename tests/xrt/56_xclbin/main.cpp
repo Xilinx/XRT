@@ -136,7 +136,7 @@ run(int argc, char** argv)
     throw std::runtime_error("FAILED_TEST\nCould not read correct kernel name, expected: simple:simple_1");
 
   std::vector<char> data = xclbin.get_data();
-  for(int i=0;i<7;++i)
+  for(int i = 0; i < 7; ++i)
     std::cout << data[i] << " ";
   std::cout << std::endl;
 
