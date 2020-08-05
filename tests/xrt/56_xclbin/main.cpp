@@ -26,7 +26,7 @@
 #include "experimental/xrt_bo.h"
 
 // This value is shared with worgroup size in kernel.cl
-static const int COUNT = 1024;
+constexpr auto COUNT = 1024;
 
 static const int C_SUCCESS = 0;
 
