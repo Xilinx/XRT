@@ -35,10 +35,7 @@ unix_socket::unix_socket(const std::string& sock_id,double timeout_insec,bool fa
     name = pathname + "/" + socket;
     systemUtil::makeSystemCall(pathname, systemUtil::systemOperation::CREATE);
   } else {
-    //name = "/tmp/" + socket;
-    name = "/tmp/" + std::string(cUser) + "/" + socket;
-    std::string pathname = "/tmp/" + std::string(cUser);
-    systemUtil::makeSystemCall(pathname, systemUtil::systemOperation::CREATE);
+    name = "/tmp/" + socket;
   }
   start_server(name,timeout_insec,fatal_error);
 }
