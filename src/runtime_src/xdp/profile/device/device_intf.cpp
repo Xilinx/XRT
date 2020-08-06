@@ -417,15 +417,18 @@ DeviceIntf::~DeviceIntf()
   // Start trace performance monitoring
   size_t DeviceIntf::startTrace(uint32_t startTrigger)
   {
+    startTrigger = 30;
+//
     // StartTrigger Bits:
     // Bit 0: Trace Coarse/Fine     Bit 1: Transfer Trace Ctrl
     // Bit 2: CU Trace Ctrl         Bit 3: INT Trace Ctrl
     // Bit 4: Str Trace Ctrl        Bit 5: Ext Trace Ctrl
-    if (mVerbose) {
+
+//    if (mVerbose) {
       std::cout << __func__ << ", " << std::this_thread::get_id()
                 << ", " << startTrigger
                 << ", Start device tracing..." << std::endl;
-    }
+//    }
     size_t size = 0;
 
     // These should be reset before anything

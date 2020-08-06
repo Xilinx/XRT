@@ -129,9 +129,22 @@ namespace xdp {
           fout << "Group_End,Stream Write" << std::endl;
         }
         fout << "Group_End," << cuName << std::endl ;
-		rowCount += (KERNEL_STREAM_WRITE_STARVE - KERNEL);
+	rowCount += (KERNEL_STREAM_WRITE_STARVE - KERNEL);
 // HOST READ?WRITE
       }
+    }
+
+    std::vector<Monitor*> *openMonitors = (db->getStaticInfo()).getOpenMonitors(deviceId);
+    if(openMonitors && !openMonitors->empty()) {
+
+      openMonitorStartingRow = rowCount + 1;
+
+      // Wave Group for CU
+      fout << "Group_Start,AXI Monitors,Read/Write data transfers over AXI Memory Mapped or AXI Stream " << std::endl ;
+      for(uint32_t i = 0; i < openMonitors->size(); i++) {
+        fout << "Static_Row," << ++rowCount << ",Open Monitor transaction " << std::endl;
+      }
+      fout << "Group_End,AXI Monitors" << std::endl ;
     }
 
     fout << "Group_End," << xclbinName << std::endl ;
@@ -155,11 +168,17 @@ namespace xdp {
 */
     for(auto e : DeviceEvents) {
 
-// ORRECT THIS
       KernelEvent* ke = dynamic_cast<KernelEvent*>(e);
       if(!ke)
         continue;
-      ke->dump(fout, cuBucketIdMap[ke->getCUId()] + ke->getEventType() - KERNEL);
+      if(ke->getCUId() >= 0) {
+        ke->dump(fout, cuBucketIdMap[ke->getCUId()] + ke->getEventType() - KERNEL);
+      } else {
+	/* Device Events which may not be directly associated with a Kernel using available metadata.
+         * For example, AXI monitors for System Compiler, Slave Bridge designs.
+         */
+        ke->dump(fout, openMonitorStartingRow + ke->getOpenMonitorIndex());
+      }
     }
   }
 

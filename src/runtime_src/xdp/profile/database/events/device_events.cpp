@@ -29,7 +29,8 @@ namespace xdp {
   VTFDeviceEvent::VTFDeviceEvent(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId)
                 : VTFEvent(s_id, ts, ty),
                   deviceId(devId),
-                  deviceTimestamp(0)
+                  deviceTimestamp(0),
+                  openMonitorIndex(-1)
   {
   }
 
@@ -72,8 +73,8 @@ namespace xdp {
   {
   }
 
-  KernelStall::KernelStall(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId)
-             : KernelEvent(s_id, ts, ty, devId),
+  KernelStall::KernelStall(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId, int32_t cuIdx)
+             : KernelEvent(s_id, ts, ty, devId, cuIdx),
     // Until implemented, provide a default value for all members
     burstLength(0)
   {
@@ -83,8 +84,8 @@ namespace xdp {
   {
   }
 
-  KernelMemoryAccess::KernelMemoryAccess(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId)
-                    : KernelEvent(s_id, ts, ty, devId),
+  KernelMemoryAccess::KernelMemoryAccess(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId, int32_t cuIdx)
+                    : KernelEvent(s_id, ts, ty, devId, cuIdx),
     // Until implemented, provide a default value for all members
     portName(0), memoryName(0), argumentNames(0), burstLength(0),
     numBytes(0)
@@ -95,8 +96,8 @@ namespace xdp {
   {
   }
 
-  KernelStreamAccess::KernelStreamAccess(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId)
-                    : KernelEvent(s_id, ts, ty, devId),
+  KernelStreamAccess::KernelStreamAccess(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId, int32_t cuIdx)
+                    : KernelEvent(s_id, ts, ty, devId, cuIdx),
     // Until implemented, provide a default value for all members
     portName(0), streamName(0), burstLength(0)
   {

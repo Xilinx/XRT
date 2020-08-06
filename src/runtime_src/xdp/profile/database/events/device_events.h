@@ -32,6 +32,8 @@ namespace xdp {
     uint64_t deviceId ; // Either a device handle or an xrt::device
     uint64_t deviceTimestamp;	// actual device timestamp from HW
 
+    int32_t  openMonitorIndex;
+
     VTFDeviceEvent() = delete ;
 
   protected:
@@ -48,6 +50,9 @@ namespace xdp {
 
     virtual void   setDeviceTimestamp(uint64_t deviceTime) { deviceTimestamp = deviceTime; }
     virtual uint64_t getDeviceTimestamp() { return deviceTimestamp; }
+
+    virtual void    setOpenMonitorIndex(int32_t idx) { openMonitorIndex = idx; }
+    virtual int32_t getOpenMonitorIndex() { return openMonitorIndex; }
   } ;
 
   class KernelEvent : public VTFDeviceEvent
@@ -58,7 +63,7 @@ namespace xdp {
     KernelEvent() = delete ;
   public:
     XDP_EXPORT KernelEvent(uint64_t s_id, double ts, VTFEventType ty, 
-                   uint64_t devId, int32_t cuIdx = 0);
+                   uint64_t devId, int32_t cuIdx = -1);
     XDP_EXPORT ~KernelEvent() ;
     virtual int32_t getCUId() { return cuId;} 
   };
@@ -79,7 +84,7 @@ namespace xdp {
 
     KernelStall() = delete ;
   public:
-    XDP_EXPORT KernelStall(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId) ;
+    XDP_EXPORT KernelStall(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId, int32_t cuIdx) ;
     XDP_EXPORT ~KernelStall() ;
   } ;
 
@@ -94,7 +99,7 @@ namespace xdp {
 
     KernelMemoryAccess() = delete ;
   public:
-    XDP_EXPORT KernelMemoryAccess(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId);
+    XDP_EXPORT KernelMemoryAccess(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId, int32_t cuIdx);
     XDP_EXPORT ~KernelMemoryAccess() ;
 
     void setBurstLength(uint16_t length) { burstLength = length; }
@@ -109,7 +114,7 @@ namespace xdp {
 
     KernelStreamAccess() = delete ;
   public:
-    XDP_EXPORT KernelStreamAccess(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId);
+    XDP_EXPORT KernelStreamAccess(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId, int32_t cuIdx);
     XDP_EXPORT ~KernelStreamAccess() ;
   } ;
 

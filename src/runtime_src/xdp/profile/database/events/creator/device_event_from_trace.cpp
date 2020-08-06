@@ -99,6 +99,9 @@ namespace xdp {
             db->getDynamicInfo().addEvent(event);
             db->getDynamicInfo().markDeviceEventStart(trace.TraceID, event);
             cuStarts[s].push_back(event);
+            if(1 == cuStarts[s].size()) {
+              traceIDs[s] = 0;	// When current CU starts, reset stall status
+            }
           }
         }
  
@@ -107,12 +110,12 @@ namespace xdp {
           if(traceIDs[s] & XAM_TRACE_STALL_INT_MASK) {
             // end event
             event = new KernelStall(db->getDynamicInfo().matchingDeviceEventStart(trace.TraceID)->getEventId(),
-                             hostTimestamp, KERNEL_STALL_DATAFLOW, deviceId);
+                             hostTimestamp, KERNEL_STALL_DATAFLOW, deviceId, cuId);
             event->setDeviceTimestamp(timestamp);
             db->getDynamicInfo().addEvent(event);
           } else {
             // start event
-            event = new KernelStall(0, hostTimestamp, KERNEL_STALL_DATAFLOW, deviceId);
+            event = new KernelStall(0, hostTimestamp, KERNEL_STALL_DATAFLOW, deviceId, cuId);
             event->setDeviceTimestamp(timestamp);
             db->getDynamicInfo().addEvent(event);
             db->getDynamicInfo().markDeviceEventStart(trace.TraceID, event);
@@ -124,12 +127,12 @@ namespace xdp {
           if(traceIDs[s] & XAM_TRACE_STALL_STR_MASK) {
             // end event
             event = new KernelStall(db->getDynamicInfo().matchingDeviceEventStart(trace.TraceID)->getEventId(),
-                             hostTimestamp, KERNEL_STALL_PIPE, deviceId);
+                             hostTimestamp, KERNEL_STALL_PIPE, deviceId, cuId);
             event->setDeviceTimestamp(timestamp);
             db->getDynamicInfo().addEvent(event);
           } else {
             // start event
-            event = new KernelStall(0, hostTimestamp, KERNEL_STALL_PIPE, deviceId);
+            event = new KernelStall(0, hostTimestamp, KERNEL_STALL_PIPE, deviceId, cuId);
             event->setDeviceTimestamp(timestamp);
             db->getDynamicInfo().addEvent(event);
             db->getDynamicInfo().markDeviceEventStart(trace.TraceID, event);
@@ -140,12 +143,12 @@ namespace xdp {
           if(traceIDs[s] & XAM_TRACE_STALL_EXT_MASK) {
             // end event
             event = new KernelStall(db->getDynamicInfo().matchingDeviceEventStart(trace.TraceID)->getEventId(),
-                             hostTimestamp, KERNEL_STALL_EXT_MEM, deviceId);
+                             hostTimestamp, KERNEL_STALL_EXT_MEM, deviceId, cuId);
             event->setDeviceTimestamp(timestamp);
             db->getDynamicInfo().addEvent(event);
           } else {
             // start event
-            event = new KernelStall(0, hostTimestamp, KERNEL_STALL_EXT_MEM, deviceId);
+            event = new KernelStall(0, hostTimestamp, KERNEL_STALL_EXT_MEM, deviceId, cuId);
             event->setDeviceTimestamp(timestamp);
             db->getDynamicInfo().addEvent(event);
             db->getDynamicInfo().markDeviceEventStart(trace.TraceID, event);
@@ -158,12 +161,15 @@ namespace xdp {
         KernelMemoryAccess* memEvent = nullptr;
         if((!trace.TraceID) & 1) { // read packet
           s = trace.TraceID/2;
-        Monitor* mon = db->getStaticInfo().getAIMonitor(deviceId, s);  
-(void)mon; 
+
+          Monitor* mon  = db->getStaticInfo().getAIMonitor(deviceId, s);  
+          int32_t  cuId = mon->cuIndex;
+
           // KERNEL_READ
           if(trace.EventType == XCL_PERF_MON_START_EVENT) {
-            memEvent = new KernelMemoryAccess(0, hostTimestamp, KERNEL_READ, deviceId);
+            memEvent = new KernelMemoryAccess(0, hostTimestamp, KERNEL_READ, deviceId, cuId);
             memEvent->setDeviceTimestamp(timestamp); 
+            memEvent->setOpenMonitorIndex(mon->openMonListIndex); 
             db->getDynamicInfo().addEvent(memEvent);
             db->getDynamicInfo().markDeviceEventStart(trace.TraceID, memEvent);
           } else if(trace.EventType == XCL_PERF_MON_END_EVENT) {
@@ -172,15 +178,17 @@ namespace xdp {
             VTFEvent* matchingStart = db->getDynamicInfo().matchingDeviceEventStart(trace.TraceID);
             if(nullptr == matchingStart || trace.Reserved == 1) {
               // add dummy start event
-              memEvent = new KernelMemoryAccess(0, hostTimestamp, KERNEL_READ, deviceId);
+              memEvent = new KernelMemoryAccess(0, hostTimestamp, KERNEL_READ, deviceId, cuId);
               memEvent->setDeviceTimestamp(timestamp); 
+              memEvent->setOpenMonitorIndex(mon->openMonListIndex); 
               db->getDynamicInfo().addEvent(memEvent);
               db->getDynamicInfo().markDeviceEventStart(trace.TraceID, memEvent);
               matchingStart = memEvent;
             }
             // add end event
-            memEvent = new KernelMemoryAccess(matchingStart->getEventId(), hostTimestamp, KERNEL_READ, deviceId);
+            memEvent = new KernelMemoryAccess(matchingStart->getEventId(), hostTimestamp, KERNEL_READ, deviceId, cuId);
             memEvent->setDeviceTimestamp(timestamp); 
+            memEvent->setOpenMonitorIndex(mon->openMonListIndex); 
             db->getDynamicInfo().addEvent(memEvent);
             aimLastTrans[s] = timestamp;
 //            memEvent->setBurstLength(timestamp - ((KernelMemoryAccess*)matchingStart)->getDeviceTimestamp() + 1);
@@ -188,11 +196,14 @@ namespace xdp {
         } else if(trace.TraceID & 1) {
           // KERNEL_WRITE
           s = trace.TraceID/2;
-        Monitor* mon = db->getStaticInfo().getAIMonitor(deviceId, s);   
-(void)mon; 
+
+          Monitor* mon  = db->getStaticInfo().getAIMonitor(deviceId, s);   
+          int32_t  cuId = mon->cuIndex;
+
           if(trace.EventType == XCL_PERF_MON_START_EVENT) {
-            memEvent = new KernelMemoryAccess(0, hostTimestamp, KERNEL_WRITE, deviceId);
+            memEvent = new KernelMemoryAccess(0, hostTimestamp, KERNEL_WRITE, deviceId, cuId);
             memEvent->setDeviceTimestamp(timestamp); 
+            memEvent->setOpenMonitorIndex(mon->openMonListIndex); 
             db->getDynamicInfo().addEvent(memEvent);
             db->getDynamicInfo().markDeviceEventStart(trace.TraceID, memEvent);
           } else if(trace.EventType == XCL_PERF_MON_END_EVENT) {
@@ -200,15 +211,17 @@ namespace xdp {
             VTFEvent* matchingStart = db->getDynamicInfo().matchingDeviceEventStart(trace.TraceID);
             if(nullptr == matchingStart || trace.Reserved == 1) {
               // add dummy start event
-              memEvent = new KernelMemoryAccess(0, hostTimestamp, KERNEL_WRITE, deviceId);
+              memEvent = new KernelMemoryAccess(0, hostTimestamp, KERNEL_WRITE, deviceId, cuId);
+              memEvent->setOpenMonitorIndex(mon->openMonListIndex); 
               memEvent->setDeviceTimestamp(timestamp); 
               db->getDynamicInfo().addEvent(memEvent);
               db->getDynamicInfo().markDeviceEventStart(trace.TraceID, memEvent);
               matchingStart = memEvent;
             }
             // add end event
-            memEvent = new KernelMemoryAccess(matchingStart->getEventId(), hostTimestamp, KERNEL_WRITE, deviceId);
+            memEvent = new KernelMemoryAccess(matchingStart->getEventId(), hostTimestamp, KERNEL_WRITE, deviceId, cuId);
             memEvent->setDeviceTimestamp(timestamp); 
+            memEvent->setOpenMonitorIndex(mon->openMonListIndex); 
             db->getDynamicInfo().addEvent(memEvent);
             aimLastTrans[s] = timestamp;
 //            memEvent->setBurstLength(timestamp - ((KernelMemoryAccess*)matchingStart)->getDeviceTimestamp() + 1);
@@ -218,13 +231,14 @@ namespace xdp {
       else if(ASMPacket) {
         s = trace.TraceID - MIN_TRACE_ID_ASM;
 
-        Monitor* mon = db->getStaticInfo().getASMonitor(deviceId, s);
+        Monitor* mon  = db->getStaticInfo().getASMonitor(deviceId, s);
+        int32_t  cuId = mon->cuIndex;
 
-        bool isSingle =    trace.EventFlags & 0x10;
-        bool txEvent =     trace.EventFlags & 0x8;
-        bool stallEvent =  trace.EventFlags & 0x4;
+        bool isSingle    = trace.EventFlags & 0x10;
+        bool txEvent     = trace.EventFlags & 0x8;
+        bool stallEvent  = trace.EventFlags & 0x4;
         bool starveEvent = trace.EventFlags & 0x2;
-        bool isStart =     trace.EventFlags & 0x1;
+        bool isStart     = trace.EventFlags & 0x1;
 
         VTFEventType streamEventType = KERNEL_STREAM_WRITE;
         if(txEvent) {
@@ -238,23 +252,26 @@ namespace xdp {
         KernelStreamAccess* strmEvent = nullptr;
         if(isStart) {
           // start event
-          strmEvent = new KernelStreamAccess(0, hostTimestamp, streamEventType, deviceId);
+          strmEvent = new KernelStreamAccess(0, hostTimestamp, streamEventType, deviceId, cuId);
           strmEvent->setDeviceTimestamp(timestamp);
+          strmEvent->setOpenMonitorIndex(mon->openMonListIndex); 
           db->getDynamicInfo().addEvent(strmEvent);
           db->getDynamicInfo().markDeviceEventStart(trace.TraceID, strmEvent);
         } else {
           VTFEvent* matchingStart = db->getDynamicInfo().matchingDeviceEventStart(trace.TraceID);
           if(isSingle || nullptr == matchingStart) {
             // add dummy start event
-            strmEvent = new KernelStreamAccess(0, hostTimestamp, streamEventType, deviceId);
+            strmEvent = new KernelStreamAccess(0, hostTimestamp, streamEventType, deviceId, cuId);
             strmEvent->setDeviceTimestamp(timestamp); 
+            strmEvent->setOpenMonitorIndex(mon->openMonListIndex); 
             db->getDynamicInfo().addEvent(strmEvent);
             db->getDynamicInfo().markDeviceEventStart(trace.TraceID, strmEvent);
             matchingStart = strmEvent;
           }
           // add end event
-          strmEvent = new KernelStreamAccess(matchingStart->getEventId(), hostTimestamp, streamEventType, deviceId);
+          strmEvent = new KernelStreamAccess(matchingStart->getEventId(), hostTimestamp, streamEventType, deviceId, cuId);
           strmEvent->setDeviceTimestamp(timestamp); 
+          strmEvent->setOpenMonitorIndex(mon->openMonListIndex); 
           db->getDynamicInfo().addEvent(strmEvent);
           asmLastTrans[s] = timestamp;
         }

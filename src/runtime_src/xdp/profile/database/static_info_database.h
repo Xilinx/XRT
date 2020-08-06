@@ -37,6 +37,7 @@ namespace xdp {
     uint64_t    index;
     int32_t     cuIndex;
     int32_t     memIndex;
+    int32_t     openMonListIndex;
     std::string name;
     bool        isRead;
 
@@ -45,6 +46,7 @@ namespace xdp {
         index(idx),
         cuIndex(cuId),
         memIndex(memId),
+        openMonListIndex(-1),
         name(n),
         isRead(false)
     {}
@@ -133,6 +135,25 @@ namespace xdp {
     std::vector<Monitor*> aimList;
     std::vector<Monitor*> amList;
     std::vector<Monitor*> asmList;
+    std::vector<Monitor*> openMonList;
+
+    ~DeviceInfo()
+    {
+      for(auto i : aimList) {
+        delete i;
+      }
+      aimList.clear();
+      for(auto i : amList) {
+        delete i;
+      }
+      amList.clear();
+      for(auto i : asmList) {
+        delete i;
+      }
+      asmList.clear();
+      // no need to delete items in openMonList, as those items are present in individual monitor lists too
+      openMonList.clear();
+    }
   };
 
   class VPStaticDatabase
@@ -324,6 +345,13 @@ namespace xdp {
         config[count] = cu->dataflowEnabled();
         ++count;
       }
+    }
+
+    inline std::vector<Monitor*>* getOpenMonitors(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return nullptr;
+      return &(deviceInfo[deviceId]->openMonList);
     }
 
     // Reseting device information whenever a new xclbin is added
