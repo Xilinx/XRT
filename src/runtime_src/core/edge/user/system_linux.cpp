@@ -76,6 +76,14 @@ get_xrt_info(boost::property_tree::ptree &pt)
   pt.put("build.zocl", driver_version("zocl"));
 }
 
+static boost::property_tree::ptree
+glibc_info()
+{
+  boost::property_tree::ptree _pt;
+  _pt.put("name", "glibc");
+  _pt.put("version", gnu_get_libc_version());
+  return _pt;
+}
 
 void 
 system_linux::
@@ -89,7 +97,9 @@ get_os_info(boost::property_tree::ptree &pt)
     pt.put("machine",   sysinfo.machine);
   }
 
-  pt.put("glibc", gnu_get_libc_version());
+  boost::property_tree::ptree _ptLibInfo;
+  _ptLibInfo.push_back( std::make_pair("", glibc_info() ));
+  pt.put_child("libraries", _ptLibInfo);
 
   // The file is a requirement as per latest Linux standards
   // https://www.freedesktop.org/software/systemd/man/os-release.html
@@ -97,13 +107,14 @@ get_os_info(boost::property_tree::ptree &pt)
   if (ifs.good()) {
     boost::property_tree::ptree opt;
     boost::property_tree::ini_parser::read_ini(ifs, opt);
-    std::string val = opt.get<std::string>("PRETTY_NAME", "");
-    if (val.length()) {
+    auto val = opt.get<std::string>("PRETTY_NAME", "");
+    if (!val.empty()) {
+      // Remove extra '"' from both end of string 
       if ((val.front() == '"') && (val.back() == '"')) {
         val.erase(0, 1);
         val.erase(val.size()-1);
       }
-      pt.put("linux", val);
+      pt.put("distribution", val);
     }
     ifs.close();
   }

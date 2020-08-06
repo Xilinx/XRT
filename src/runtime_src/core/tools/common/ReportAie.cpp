@@ -136,27 +136,30 @@ populate_aie(const xrt_core::device * device, const std::string& desc)
       boost::property_tree::ptree& ograph = gr.second;
       boost::property_tree::ptree igraph;
       boost::property_tree::ptree tile_array;
-      igraph.put("id",ograph.get<std::string>("id"));
-      igraph.put("name",ograph.get<std::string>("name"));
+      igraph.put("id", ograph.get<std::string>("id"));
+      igraph.put("name", ograph.get<std::string>("name"));
       auto row_it = gr.second.get_child("core_rows").begin();
       auto memcol_it = gr.second.get_child("iteration_memory_columns").begin();
       auto memrow_it = gr.second.get_child("iteration_memory_rows").begin();
       auto memaddr_it = gr.second.get_child("iteration_memory_addresses").begin();
       for (auto& node : gr.second.get_child("core_columns")) {
         boost::property_tree::ptree tile;
-        tile.put("column",node.second.data());
-        tile.put("row",row_it->second.data());
-        tile.put("memory_column",memcol_it->second.data());
-        tile.put("memory_row",memrow_it->second.data());
-        tile.put("memory_address",memaddr_it->second.data());
-        row_it++;memcol_it++;memrow_it++;memaddr_it++;
+        tile.put("column", node.second.data());
+        tile.put("row", row_it->second.data());
+        tile.put("memory_column", memcol_it->second.data());
+        tile.put("memory_row", memrow_it->second.data());
+        tile.put("memory_address", memaddr_it->second.data());
+        row_it++;
+        memcol_it++;
+        memrow_it++;
+        memaddr_it++;
         tile_array.push_back(std::make_pair("", tile));
       }
 
       boost::property_tree::ptree plkernel_array;
       for (auto& node : gr.second.get_child("pl_kernel_instance_names")) {
         boost::property_tree::ptree plkernel;
-        plkernel.put("",node.second.data());
+        plkernel.put("", node.second.data());
         plkernel_array.push_back(std::make_pair("", plkernel));
       }
 
@@ -164,52 +167,52 @@ populate_aie(const xrt_core::device * device, const std::string& desc)
       igraph.add_child("pl_kernel", plkernel_array);
       graph_array.push_back(std::make_pair("", igraph));
     }
-    pt.add_child("graphs",graph_array);
+    pt.add_child("graphs", graph_array);
 
 
     boost::property_tree::ptree rtp_array;
     for (auto& rtp_node : _pt.get_child("aie_metadata.RTPs")) {
       boost::property_tree::ptree rtp;
 
-      rtp.put("port_name",rtp_node.second.get<std::string>("port_name"));
-      rtp.put("selector_row",rtp_node.second.get<uint16_t>("selector_row"));
-      rtp.put("selector_column",rtp_node.second.get<uint16_t>("selector_column"));
-      rtp.put("selector_lock_id",rtp_node.second.get<uint16_t>("selector_lock_id"));
-      rtp.put("selector_address",rtp_node.second.get<uint64_t>("selector_address"));
+      rtp.put("port_name", rtp_node.second.get<std::string>("port_name"));
+      rtp.put("selector_row", rtp_node.second.get<uint16_t>("selector_row"));
+      rtp.put("selector_column", rtp_node.second.get<uint16_t>("selector_column"));
+      rtp.put("selector_lock_id", rtp_node.second.get<uint16_t>("selector_lock_id"));
+      rtp.put("selector_address", rtp_node.second.get<uint64_t>("selector_address"));
 
-      rtp.put("ping_buffer_row",rtp_node.second.get<uint16_t>("ping_buffer_row"));
-      rtp.put("ping_buffer_column",rtp_node.second.get<uint16_t>("ping_buffer_column"));
-      rtp.put("ping_buffer_lock_id",rtp_node.second.get<uint16_t>("ping_buffer_lock_id"));
-      rtp.put("ping_buffer_address",rtp_node.second.get<uint64_t>("ping_buffer_address"));
+      rtp.put("ping_buffer_row", rtp_node.second.get<uint16_t>("ping_buffer_row"));
+      rtp.put("ping_buffer_column", rtp_node.second.get<uint16_t>("ping_buffer_column"));
+      rtp.put("ping_buffer_lock_id", rtp_node.second.get<uint16_t>("ping_buffer_lock_id"));
+      rtp.put("ping_buffer_address", rtp_node.second.get<uint64_t>("ping_buffer_address"));
 
-      rtp.put("pong_buffer_row",rtp_node.second.get<uint16_t>("pong_buffer_row"));
-      rtp.put("pong_buffer_column",rtp_node.second.get<uint16_t>("pong_buffer_column"));
-      rtp.put("pong_buffer_lock_id",rtp_node.second.get<uint16_t>("pong_buffer_lock_id"));
-      rtp.put("pong_buffer_address",rtp_node.second.get<uint64_t>("pong_buffer_address"));
+      rtp.put("pong_buffer_row", rtp_node.second.get<uint16_t>("pong_buffer_row"));
+      rtp.put("pong_buffer_column", rtp_node.second.get<uint16_t>("pong_buffer_column"));
+      rtp.put("pong_buffer_lock_id", rtp_node.second.get<uint16_t>("pong_buffer_lock_id"));
+      rtp.put("pong_buffer_address", rtp_node.second.get<uint64_t>("pong_buffer_address"));
 
-      rtp.put("is_pl_rtp",rtp_node.second.get<bool>("is_PL_RTP"));
-      rtp.put("is_input",rtp_node.second.get<bool>("is_input"));
-      rtp.put("is_asynchronous",rtp_node.second.get<bool>("is_asynchronous"));
-      rtp.put("is_connected",rtp_node.second.get<bool>("is_connected"));
-      rtp.put("requires_lock",rtp_node.second.get<bool>("requires_lock"));
+      rtp.put("is_pl_rtp", rtp_node.second.get<bool>("is_PL_RTP"));
+      rtp.put("is_input", rtp_node.second.get<bool>("is_input"));
+      rtp.put("is_asynchronous", rtp_node.second.get<bool>("is_asynchronous"));
+      rtp.put("is_connected", rtp_node.second.get<bool>("is_connected"));
+      rtp.put("requires_lock", rtp_node.second.get<bool>("requires_lock"));
       rtp_array.push_back(std::make_pair(rtp_node.first, rtp));
     }
-    pt.add_child("rtps",rtp_array);
+    pt.add_child("rtps", rtp_array);
 
 
     boost::property_tree::ptree gmio_array;
     for (auto& gmio_node : _pt.get_child("aie_metadata.GMIOs")) {
       boost::property_tree::ptree gmio;
-      gmio.put("id",gmio_node.second.get<std::string>("id"));
-      gmio.put("name",gmio_node.second.get<std::string>("name"));
-      gmio.put("logical_name",gmio_node.second.get<std::string>("logical_name"));
-      gmio.put("type",gmio_node.second.get<uint16_t>("type"));
-      gmio.put("shim_column",gmio_node.second.get<uint16_t>("shim_column"));
-      gmio.put("channel_number",gmio_node.second.get<uint16_t>("channel_number"));
-      gmio.put("stream_id",gmio_node.second.get<uint16_t>("stream_id"));
-      gmio.put("burst_length_in_16byte",gmio_node.second.get<uint16_t>("burst_length_in_16byte"));
-      gmio.put("pl_port_name",gmio_node.second.get<std::string>("PL_port_name","N/A"));
-      gmio.put("pl_parameter_name",gmio_node.second.get<std::string>("PL_parameter_name","N/A"));
+      gmio.put("id", gmio_node.second.get<std::string>("id"));
+      gmio.put("name", gmio_node.second.get<std::string>("name"));
+      gmio.put("logical_name", gmio_node.second.get<std::string>("logical_name"));
+      gmio.put("type", gmio_node.second.get<uint16_t>("type"));
+      gmio.put("shim_column", gmio_node.second.get<uint16_t>("shim_column"));
+      gmio.put("channel_number", gmio_node.second.get<uint16_t>("channel_number"));
+      gmio.put("stream_id", gmio_node.second.get<uint16_t>("stream_id"));
+      gmio.put("burst_length_in_16byte", gmio_node.second.get<uint16_t>("burst_length_in_16byte"));
+      gmio.put("pl_port_name", gmio_node.second.get<std::string>("PL_port_name","N/A"));
+      gmio.put("pl_parameter_name", gmio_node.second.get<std::string>("PL_parameter_name","N/A"));
       gmio_array.push_back(std::make_pair(gmio_node.first, gmio));
     }
     pt.add_child("gmios",gmio_array);
@@ -260,8 +263,8 @@ ReportAie::writeReport( const xrt_core::device * _pDevice,
       for (auto& node : graph.get_child("tile")) {
         boost::property_tree::ptree& tile = node.second;
         _output << boost::format("    [%2d]   %-20s%-30s%-30d\n") % count
-            % (tile.get<std::string>("column")+":"+tile.get<std::string>("row"))
-            % (tile.get<std::string>("memory_column")+":"+tile.get<std::string>("memory_row"))
+            % (tile.get<std::string>("column") + ":" + tile.get<std::string>("row"))
+            % (tile.get<std::string>("memory_column") + ":" + tile.get<std::string>("memory_row"))
             % node.second.get<uint16_t>("memory_address");
         count++;
       }
