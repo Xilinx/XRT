@@ -179,12 +179,12 @@ public:
   enum class access_mode : bool { exclusive = false, shared = true };
 
   static std::shared_ptr<ip_context>
-  open(xrt_core::device* device, const xuid_t xclbin_id, const ip_data* ip, unsigned int ipidx, access_mode am)
+  open(xrt_core::device* device, const xrt::uuid& xclbin_id, const ip_data* ip, unsigned int ipidx, access_mode am)
   {
     static std::vector<std::weak_ptr<ip_context>> ips(128);
     auto ipctx = ips[ipidx].lock();
     if (!ipctx) {
-      ipctx = std::shared_ptr<ip_context>(new ip_context(device, xclbin_id, ip, ipidx, am));
+      ipctx = std::shared_ptr<ip_context>(new ip_context(device, xclbin_id.get(), ip, ipidx, am));
       ips[ipidx] = ipctx;
     }
 
@@ -225,20 +225,19 @@ public:
 
   ~ip_context()
   {
-    device->close_context(xid, idx);
+    device->close_context(xid.get(), idx);
   }
 
 private:
-  ip_context(xrt_core::device* dev, const xuid_t xclbin_id, const ip_data* ip,
+  ip_context(xrt_core::device* dev, const xrt::uuid& xclbin_id, const ip_data* ip,
              unsigned int ipidx, access_mode am)
-    : device(dev), idx(ipidx), address(ip->m_base_address), size(64_kb), access(am)
+    : device(dev), xid(xclbin_id), idx(ipidx), address(ip->m_base_address), size(64_kb), access(am)
   {
-    uuid_copy(xid, xclbin_id);
-    device->open_context(xid, idx, std::underlying_type<access_mode>::type(am));
+    device->open_context(xid.get(), idx, std::underlying_type<access_mode>::type(am));
   }
 
   xrt_core::device* device;
-  xuid_t xid;
+  xrt::uuid xid;
   unsigned int idx;
   uint64_t address;
   size_t size;
@@ -745,7 +744,7 @@ public:
   // @uuid:    uuid of xclbin to mine for kernel meta data
   // @nm:      name identifying kernel and/or kernel and instances
   // @am:      access mode for underlying compute units
-  kernel_impl(std::shared_ptr<device_type> dev, const xuid_t xclbin_id, const std::string& nm, ip_context::access_mode am)
+  kernel_impl(std::shared_ptr<device_type> dev, const xrt::uuid& xclbin_id, const std::string& nm, ip_context::access_mode am)
     : device(std::move(dev))                                   // share ownership
     , name(nm.substr(0,nm.find(":")))                          // filter instance names
   {
@@ -1395,7 +1394,7 @@ set_event(const std::shared_ptr<event_impl>& event) const
 }
   
 kernel::
-kernel(xclDeviceHandle dhdl, const xuid_t xclbin_id, const std::string& name, bool exclusive)
+kernel(xclDeviceHandle dhdl, const xrt::uuid& xclbin_id, const std::string& name, bool exclusive)
   : handle(std::make_shared<kernel_impl>
      (get_device(dhdl), xclbin_id, name,
       exclusive ? ip_context::access_mode::exclusive : ip_context::access_mode::shared))

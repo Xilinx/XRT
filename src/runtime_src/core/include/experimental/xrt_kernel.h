@@ -20,6 +20,7 @@
 
 #include "xrt.h"
 #include "ert.h"
+#include "experimental/xrt_uuid.h"
 #include "experimental/xrt_bo.h"
 #include "experimental/xrt_enqueue.h"
 
@@ -316,7 +317,7 @@ public:
    * argument to true.
    */
   XCL_DRIVER_DLLESPEC
-  kernel(xclDeviceHandle dhdl, const xuid_t xclbin_id, const std::string& name, bool exclusive=false);
+  kernel(xclDeviceHandle dhdl, const xrt::uuid& xclbin_id, const std::string& name, bool exclusive=false);
 
   /**
    * operator() - Invoke the kernel function

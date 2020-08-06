@@ -147,13 +147,13 @@ int xclExecBuf(xclDeviceHandle handle, unsigned int cmdBO)
 
 
 //defining following two functions as they gets called in scheduler init call
-int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bool shared)
+int xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipIndex, bool shared)
 
 {
   return 0;
 }
 
-int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
+int xclCloseContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned ipIndex)
 {
   return 0;
 }
