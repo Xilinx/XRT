@@ -94,10 +94,10 @@ protected:
 
   void init_axlf_handle()
   {
-    const axlf* tmp = reinterpret_cast<const axlf*>(this->m_axlf.data());
+    const axlf* tmp = reinterpret_cast<const axlf*>(m_axlf.data());
     if (strncmp(tmp->m_magic, "xclbin2", 7)) // Future: Do not hardcode "xclbin2"
       throw std::runtime_error("Invalid xclbin");
-    this->m_top = tmp;
+    m_top = tmp;
   }
 
 public:
@@ -105,7 +105,7 @@ public:
 
   xclbin_impl(const std::vector<char>& data)
   {
-    this->m_axlf = data;
+    m_axlf = data;
     // Set pointer of type axlf*, and check magic string
     init_axlf_handle();
   }
@@ -115,13 +115,13 @@ public:
     if (filename.empty())
       throw std::runtime_error("No XCLBIN specified");
 
-    // Load the file into this->data
+    // Load the file into data
     std::ifstream stream(filename);
     stream.seekg(0, stream.end);
     size_t size = stream.tellg();
     stream.seekg(0, stream.beg);
-    this->m_axlf.resize(size);
-    stream.read(this->m_axlf.data(), size);
+    m_axlf.resize(size);
+    stream.read(m_axlf.data(), size);
 
     // Set pointer of type axlf*, and check magic string
     init_axlf_handle();
@@ -130,13 +130,13 @@ public:
   bool
   empty() const
   {
-    return this->m_axlf.size() == 0 || this->m_top == nullptr;
+    return m_axlf.size() == 0 || m_top == nullptr;
   }
 
   void
   check_empty() const
   {
-    if (this->empty())
+    if (empty())
       throw xrt_core::error(-EINVAL, "Invalid XCLBIN data");
   }
 
@@ -198,34 +198,34 @@ std::vector<std::string>
 xclbin::
 get_cu_names() const
 {
-  return this->get_handle()->get_cu_names();
+  return get_handle()->get_cu_names();
 }
 
 std::string
 xclbin::
 get_xsa_name() const
 {
-  return this->get_handle()->get_xsa_name();
+  return get_handle()->get_xsa_name();
 }
 
 uuid
 xclbin::
 get_uuid() const
 {
-  return this->get_handle()->get_uuid();
+  return get_handle()->get_uuid();
 }
 
 const std::vector<char>&
 xclbin::
 get_data() const
 {
-  return this->get_handle()->get_data();
+  return get_handle()->get_data();
 }
 
 xclbin::
 operator bool() const
 {
-  return !this->get_handle()->empty();
+  return !get_handle()->empty();
 }
 
 } // namespace xrt
