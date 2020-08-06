@@ -119,6 +119,18 @@ namespace xdp {
     return infos ;
   }
 
+  bool VPStaticDatabase::hasStallInfo()
+  {
+    for (auto device : deviceInfo)
+    {
+      for (auto cu : (device.second)->cus)
+      {
+	if ((cu.second)->stallEnabled()) return true ;
+      }
+    }
+    return false ;
+  }
+
   // This function is called whenever a device is loaded with an 
   //  xclbin.  It has to clear out any previous device information and
   //  reload our information.

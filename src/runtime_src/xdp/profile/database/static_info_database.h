@@ -335,6 +335,7 @@ namespace xdp {
     inline uint64_t getNumDevices() { return deviceInfo.size() ; }
     XDP_EXPORT std::vector<std::string> getDeviceNames() ;
     XDP_EXPORT std::vector<DeviceInfo*> getDeviceInfos() ;
+    XDP_EXPORT bool hasStallInfo() ;
 
     // Reseting device information whenever a new xclbin is added
     XDP_EXPORT void updateDevice(uint64_t deviceId, void* devHandle) ;

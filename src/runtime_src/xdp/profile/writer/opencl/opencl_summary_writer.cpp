@@ -326,6 +326,8 @@ namespace xdp {
 
   void OpenCLSummaryWriter::writeComputeUnitStallInformation()
   {
+    if (!(db->getStaticInfo().hasStallInfo())) return ;
+
     // Caption
     fout << "Compute Units: Stall Information" << std::endl ;
 
