@@ -35,12 +35,18 @@ unix_socket::unix_socket(const std::string& sock_id,double timeout_insec,bool fa
     name = pathname + "/" + socket;
     systemUtil::makeSystemCall(pathname, systemUtil::systemOperation::CREATE);
   } else {
-    name = "/tmp/" + socket;
+      if(cUser) {
+        std::string pathname = "/tmp/"+ std::string(cUser);
+        name = pathname + "/" + socket;
+        systemUtil::makeSystemCall(pathname, systemUtil::systemOperation::CREATE);
+      } else {
+        name = "/tmp/" + socket;
+      }
   }
-  start_server(name,timeout_insec,fatal_error);
+  start_server(timeout_insec,fatal_error);
 }
 
-void unix_socket::start_server(const std::string& sk_desc,double timeout_insec,bool fatal_error)
+void unix_socket::start_server(double timeout_insec,bool fatal_error)
 {
   int sock= -1;
   struct sockaddr_un server;
@@ -53,7 +59,7 @@ void unix_socket::start_server(const std::string& sk_desc,double timeout_insec,b
   }
   server.sun_family = AF_UNIX;
   //Coverity
-  strncpy(server.sun_path, sk_desc.c_str(),STR_MAX_LEN);
+  strncpy(server.sun_path, name.c_str(),STR_MAX_LEN);
   if (connect(sock, (struct sockaddr*)&server, sizeof(server)) >= 0){
     fd = sock;
     server_started = true;
@@ -83,6 +89,7 @@ void unix_socket::start_server(const std::string& sk_desc,double timeout_insec,b
   }
   if(r <=0 && !fatal_error) {
       close(sock);
+      unlink(name.c_str());
       return;
   }
 
