@@ -1368,16 +1368,6 @@ setAieArray(zynqaie::Aie *aie)
   aieArray = aie;
 }
 
-int
-shim::getBOInfo(drm_zocl_info_bo &info)
-{
-  int ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_INFO_BO, &info);
-  if (ret)
-    return -errno;
-
-  return 0;
-}
-
 #endif
 
 } // end namespace ZYNQ

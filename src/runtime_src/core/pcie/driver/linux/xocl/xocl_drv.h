@@ -553,6 +553,7 @@ struct xocl_rom_funcs {
 
 /* version_ctrl callbacks */
 struct xocl_version_ctrl_funcs {
+	struct xocl_subdev_funcs common_funcs;
 	bool (*flat_shell_check)(struct platform_device *pdev);
 	bool (*cmc_in_bitfile)(struct platform_device *pdev);
 };
@@ -1267,12 +1268,12 @@ static inline u32 xocl_ddr_count_unified(xdev_handle_t xdev_hdl)
 {
 	struct mem_topology *topo = NULL;
 	uint32_t ret = 0;
-	int err = XOCL_GET_MEM_TOPOLOGY(xdev_hdl, topo);
+	int err = XOCL_GET_GROUP_TOPOLOGY(xdev_hdl, topo);
 
 	if (err)
 		return 0;
 	ret = topo ? topo->m_count : 0;
-	XOCL_PUT_MEM_TOPOLOGY(xdev_hdl);
+	XOCL_PUT_GROUP_TOPOLOGY(xdev_hdl);
 
 	return ret;
 }

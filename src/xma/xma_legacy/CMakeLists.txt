@@ -20,4 +20,7 @@ set (CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic")
 
 #Install all header files with directory structure
 #Don't remove trailing/ in include/
-install(DIRECTORY include/ DESTINATION ${XMA_INSTALL_DIR}/include)
+install(DIRECTORY include/
+  DESTINATION ${XMA_INSTALL_DIR}/include
+  COMPONENT ${XRT_DEV_COMPONENT}
+)

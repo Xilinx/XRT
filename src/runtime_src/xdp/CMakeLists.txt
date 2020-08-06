@@ -250,11 +250,24 @@ set_target_properties(xdp_device_offload_plugin PROPERTIES VERSION ${XRT_VERSION
 set_target_properties(xdp_hal_device_offload_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_power_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
-install (TARGETS xdp oclxdp xdp_core LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR})
+install (TARGETS xdp oclxdp xdp_core
+  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} NAMELINK_SKIP
+  RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR}
+)
 
-install (TARGETS xdp_hal_plugin xdp_hal_api_interface_plugin xdp_debug_plugin xdp_appdebug_plugin xdp_lop_plugin xdp_user_plugin xdp_device_offload_plugin xdp_hal_device_offload_plugin xdp_power_plugin LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module)
+install (TARGETS xdp oclxdp xdp_core
+  ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT}
+  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} NAMELINK_ONLY
+)
 
-install (FILES "${XRT_XDP_PROFILE_XMA_PLUGIN_DIR}/xma_profile.h" DESTINATION ${XRT_INSTALL_INCLUDE_DIR})
+install (TARGETS xdp_hal_plugin xdp_hal_api_interface_plugin xdp_debug_plugin xdp_appdebug_plugin xdp_lop_plugin xdp_user_plugin xdp_device_offload_plugin xdp_hal_device_offload_plugin xdp_power_plugin
+  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module
+)
+
+install (FILES "${XRT_XDP_PROFILE_XMA_PLUGIN_DIR}/xma_profile.h"
+  DESTINATION ${XRT_INSTALL_INCLUDE_DIR}
+  COMPONENT ${XRT_DEV_COMPONENT}
+)
 
 # Only install these files for PCIe device for now, which is .
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
@@ -321,10 +334,15 @@ target_link_libraries(oclxdp xdp xilinxopencl)
 target_link_libraries(xdp_hal_plugin xdp xrt_core)
 target_link_libraries(xdp_hal_api_interface_plugin xdp)
 
-install(TARGETS xdp oclxdp xdp_hal_plugin xdp_hal_api_interface_plugin
-  ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR}
-  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}
-  RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
+install(TARGETS oclxdp xdp xdp_hal_plugin xdp_hal_api_interface_plugin
+  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} NAMELINK_SKIP
+  RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR}
+)
+
+install(TARGETS oclxdp xdp xdp_hal_plugin xdp_hal_api_interface_plugin
+  ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT}
+  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} NAMELINK_ONLY
+)
 
 # Only install these files for PCIe device for now, which is .
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
