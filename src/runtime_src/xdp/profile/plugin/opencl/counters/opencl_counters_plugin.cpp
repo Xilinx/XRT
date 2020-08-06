@@ -45,7 +45,7 @@ namespace xdp {
     uint64_t deviceTimestamp = device->get_xrt_device()->getDeviceTime().get() ;
 
     if (deviceTimestamp != 0)
-      convertedTimestamp = deviceTimestamp / 10000 ;
+      convertedTimestamp = deviceTimestamp ;
 
     return convertedTimestamp ;
   }
