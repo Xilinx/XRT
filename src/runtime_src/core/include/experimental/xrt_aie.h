@@ -20,6 +20,7 @@
 #define _XRT_AIE_H_
 
 #include "xrt.h"
+#include "experimental/xrt_bo.h"
 
 typedef void *xrtGraphHandle;
 
@@ -71,13 +72,15 @@ xrtGraphTimeStamp(xrtGraphHandle gh);
  * xrtGraphRun() - Start a graph execution
  *
  * @gh:             Handle to graph previously opened with xrtGraphOpen.
- * @iterations:     The run iteration to update to graph. 0 for infinite.
+ * @iterations:     The run iteration to update to graph.
+ *                  0 for default or previous set iterations
+ *                  -1 for run forever
  * Return:          0 on success, -1 on error
  *
  * Note: Run by enable tiles and disable tile reset
  */
 int
-xrtGraphRun(xrtGraphHandle gh, uint32_t iterations);
+xrtGraphRun(xrtGraphHandle gh, int iterations);
 
 /**
  * xrtGraphWaitDone() - Wait for graph to be done. If the graph is not
@@ -177,12 +180,12 @@ int
 xrtGraphReadRTP(xrtGraphHandle gh, const char *hierPathPort, char *buffer, size_t size);
 
 /**
- * xrtSyncBOAIE() - Transfer data between DDR and AIE tiles using Shim DMA
+ * xrtSyncBOAIE() - Transfer data between DDR and Shim DMA channel
  *
- * @gh:              Handle to graph previously opened with xrtGraphOpen.
- * @bo:              BO handle.
- * @dmaID:           GMIO DMA ID
- * @dir:             GMIO to AIE or AIE to GMIO
+ * @handle:          Handle to the device
+ * @bohdl:           BO handle.
+ * @gmioName:        GMIO name
+ * @dir:             GM to AIE or AIE to GM
  * @size:            Size of data to synchronize
  * @offset:          Offset within the BO
  *
@@ -192,7 +195,7 @@ xrtGraphReadRTP(xrtGraphHandle gh, const char *hierPathPort, char *buffer, size_
  * Note: Upon return, the synchronization is done or error out
  */
 int
-xrtSyncBOAIE(xrtGraphHandle gh, unsigned int bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset);
+xrtSyncBOAIE(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset);
 
 /**
  * xrtResetAIEArray() - Reset the AIE array

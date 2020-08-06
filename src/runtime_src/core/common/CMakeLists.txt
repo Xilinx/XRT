@@ -47,16 +47,18 @@ target_link_libraries(xrt_coreutil
   )
 
 if (NOT WIN32)
-target_link_libraries(xrt_coreutil uuid pthread dl)
+  target_link_libraries(xrt_coreutil uuid pthread dl)
+endif()
+
 install(TARGETS xrt_coreutil
-  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR})
-else()
-# No external linking with coreutil so release only runtime
+  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} NAMELINK_SKIP
+  RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR}
+)
+
 install(TARGETS xrt_coreutil
-  ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR}
-  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}
-  RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
-endif (NOT WIN32)
+  ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT}
+  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} NAMELINK_ONLY
+)
 
 # The scheduler object files are for auto config of scheduler. These
 # files reference xrt_core symbols, hence are excluded from

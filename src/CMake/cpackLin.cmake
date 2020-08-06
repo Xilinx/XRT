@@ -4,6 +4,7 @@
 # XRT_VERSION_PATCH
 # LINUX_FLAVOR
 
+
 SET(CPACK_SET_DESTDIR ON)
 SET(CPACK_PACKAGE_VERSION_RELEASE "${XRT_VERSION_RELEASE}")
 SET(CPACK_PACKAGE_VERSION_MAJOR "${XRT_VERSION_MAJOR}")
@@ -32,6 +33,9 @@ SET(Boost_MINOR_VERSION_ONEGREATER "${Boost_MINOR_VERSION}")
 MATH(EXPR Boost_MINOR_VERSION_ONEGREATER "1 + ${Boost_MINOR_VERSION}")
 SET(Boost_VER_STR "${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}")
 SET(Boost_VER_STR_ONEGREATER "${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION_ONEGREATER}")
+SET(XRT_BOOST_VER_STR "${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}.${Boost_SUBMINOR_VERSION}")
+
+message("cpackLin XRT_BOOST_VER_STR=${XRT_BOOST_VER_STR}")
 
 SET(PACKAGE_KIND "TGZ")
 if (${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian)")
@@ -40,9 +44,10 @@ if (${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian)")
     OUTPUT_VARIABLE CPACK_ARCH
     OUTPUT_STRIP_TRAILING_WHITESPACE
   )
+
   SET(CPACK_GENERATOR "DEB;TGZ")
   SET(PACKAGE_KIND "DEB")
-  # Modify the package name for the xrt component
+  # Modify the package name for the xrt runtime and development component
   # Syntax is set(CPACK_<GENERATOR>_<COMPONENT>_PACKAGE_NAME "<name">)
   SET(CPACK_DEBIAN_XRT_PACKAGE_NAME "xrt")
 
@@ -50,9 +55,32 @@ if (${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian)")
   SET(CPACK_DEBIAN_AWS_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/aws/postinst;${CMAKE_CURRENT_BINARY_DIR}/aws/prerm")
   SET(CPACK_DEBIAN_AZURE_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/azure/postinst;${CMAKE_CURRENT_BINARY_DIR}/azure/prerm")
   SET(CPACK_DEBIAN_CONTAINER_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/container/postinst;${CMAKE_CURRENT_BINARY_DIR}/container/prerm")
-  SET(CPACK_DEBIAN_PACKAGE_SHLIBDEPS "OFF")
+
+  SET(CPACK_DEBIAN_PACKAGE_SHLIBDEPS "yes")
+
+  if( (${CMAKE_VERSION} VERSION_LESS "3.6.0") AND (${CPACK_DEBIAN_PACKAGE_SHLIBDEPS} STREQUAL "yes") )
+    # Fix bug in CPackDeb.cmake in use of dpkg-shlibdeps
+    SET(CMAKE_MODULE_PATH ${XRT_SRC_DIR}/CMake/patch ${CMAKE_MODULE_PATH})
+  endif()
+
   SET(CPACK_DEBIAN_AWS_PACKAGE_DEPENDS "xrt (>= ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH})")
-  SET(CPACK_DEBIAN_XRT_PACKAGE_DEPENDS "ocl-icd-opencl-dev (>= 2.2.0), libboost-dev (>= ${Boost_VER_STR}), libboost-dev (<< ${Boost_VER_STR_ONEGREATER}), libboost-filesystem-dev (>=${Boost_VER_STR}), libboost-filesystem-dev (<<${Boost_VER_STR_ONEGREATER}), libboost-program-options-dev (>=${Boost_VER_STR}), libboost-program-options-dev (<<${Boost_VER_STR_ONEGREATER}), uuid-dev (>= 2.27.1), dkms (>= 2.2.0), libprotoc-dev (>=2.6.1), libssl-dev (>=1.0.2), protobuf-compiler (>=2.6.1), libncurses5-dev (>=6.0), lsb-release, libyaml-dev (>= 0.1.6), libc6 (>= ${GLIBC_VERSION}), libc6 (<< ${GLIBC_VERSION_ONEGREATER}), libudev-dev, python3")
+  SET(CPACK_DEBIAN_XRT_PACKAGE_DEPENDS "ocl-icd-libopencl1 (>= 2.2.0), lsb-release, dkms (>= 2.2.0), udev, python3")
+
+  if (${XRT_DEV_COMPONENT} STREQUAL "xrt")
+    # applications link with -luuid
+    SET(CPACK_DEBIAN_XRT_PACKAGE_DEPENDS
+      "${CPACK_DEBIAN_XRT_PACKAGE_DEPENDS},  \
+      ocl-icd-opencl-dev (>= 2.2.0), \
+      uuid-dev (>= 2.27.1)")
+  else()
+    # xrt development package
+    SET(CPACK_DEBIAN_XRT-DEV_PACKAGE_NAME ${XRT_DEV_COMPONENT})
+    SET(CPACK_DEBIAN_XRT-DEV_PACKAGE_DEPENDS 
+      "xrt (>= ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH}), \
+      ocl-icd-opencl-dev (>= 2.2.0), \
+      uuid-dev (>= 2.27.1)")
+  endif()
+
   if (DEFINED CROSS_COMPILE)
     if (${aarch} STREQUAL "aarch64")
       SET(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "arm64")
@@ -79,7 +107,7 @@ elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS|Amazon|Fedora)")
 
   SET(CPACK_GENERATOR "RPM;TGZ")
   SET(PACKAGE_KIND "RPM")
-  # Modify the package name for the xrt component
+  # Modify the package name for the xrt runtime and development component
   # Syntax is set(CPACK_<GENERATOR>_<COMPONENT>_PACKAGE_NAME "<name">)
   set(CPACK_RPM_XRT_PACKAGE_NAME "xrt")
 
@@ -93,7 +121,17 @@ elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS|Amazon|Fedora)")
   SET(CPACK_RPM_CONTAINER_PRE_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/container/prerm")
   SET(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION "/usr/local" "/usr/src" "/opt" "/etc/OpenCL" "/etc/OpenCL/vendors" "/usr/lib" "/usr/lib/pkgconfig" "/usr/lib64/pkgconfig" "/lib" "/lib/firmware")
   SET(CPACK_RPM_AWS_PACKAGE_REQUIRES "xrt >= ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH}")
-  SET(CPACK_RPM_XRT_PACKAGE_REQUIRES "ocl-icd-devel >= 2.2, boost-devel >= 1.53, boost-filesystem >= 1.53, boost-program-options >= 1.53, libuuid-devel >= 2.23.2, dkms >= 2.5.0, protobuf-devel >= 2.5.0, protobuf-compiler >= 2.5.0, ncurses-devel >= 5.9, redhat-lsb-core, libyaml-devel >= 0.1.4, openssl-devel >= 1.0.2, libudev-devel, python3 >= 3.6")
+  SET(CPACK_RPM_XRT_PACKAGE_REQUIRES "ocl-icd >= 2.2, redhat-lsb-core, dkms >= 2.5.0, python3 >= 3.6")
+
+  if (${XRT_DEV_COMPONENT} STREQUAL "xrt")
+    # xrt is also development package
+    SET(CPACK_RPM_XRT_PACKAGE_REQUIRES "${CPACK_RPM_XRT_PACKAGE_REQUIRES}, ocl-icd-devel >= 2.2, libuuid-devel >= 2.23.2")
+  else()
+    # xrt development package
+    SET(CPACK_RPM_XRT-DEV_PACKAGE_NAME ${XRT_DEV_COMPONENT})
+    SET(CPACK_RPM_XRT-DEV_PACKAGE_REQUIRES "xrt >= ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH}, ocl-icd-devel >= 2.2, libuuid-devel >= 2.23.2")
+  endif()
+
   if (DEFINED CROSS_COMPILE)
     if (${aarch} STREQUAL "aarch64")
       SET(CPACK_RPM_PACKAGE_ARCHITECTURE "aarch64")
@@ -130,3 +168,4 @@ add_custom_target(xrtpkg
 )
 
 INCLUDE(CPack)
+

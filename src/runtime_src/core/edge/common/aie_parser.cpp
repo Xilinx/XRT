@@ -16,9 +16,7 @@
 
 #include "aie_parser.h"
 #include "core/common/device.h"
-#ifndef __AIESIM__
 #include "core/include/xclbin.h"
-#endif
 
 #include <sstream>
 #include <string>
@@ -140,7 +138,7 @@ get_gmio(const pt::ptree& aie_meta)
   for (auto& gmio_node : aie_meta.get_child("aie_metadata.GMIOs")) {
     gmio_type gmio;
 
-    gmio.id = gmio_node.second.get<std::string>("id");
+    gmio.id = gmio_node.second.get<uint32_t>("id");
     gmio.name = gmio_node.second.get<std::string>("name");
     gmio.type = gmio_node.second.get<uint16_t>("type");
     gmio.shim_col = gmio_node.second.get<uint16_t>("shim_column");

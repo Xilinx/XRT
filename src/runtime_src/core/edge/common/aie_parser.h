@@ -82,9 +82,9 @@ get_rtp(const xrt_core::device* device);
 
 struct gmio_type
 {
-  std::string     id;
   std::string     name;
 
+  uint32_t        id;
   uint16_t        type;
   uint16_t        shim_col;
   uint16_t        channel_number;

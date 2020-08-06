@@ -18,6 +18,7 @@
  under the License.
 """
 
+import os
 import sys
 
 # Following found in PYTHONPATH setup by XRT
@@ -100,4 +101,5 @@ def main(args):
         xclClose(opt.handle)
 
 if __name__ == "__main__":
+    os.environ["Runtime.xrt_bo"] = "false"
     main(sys.argv)

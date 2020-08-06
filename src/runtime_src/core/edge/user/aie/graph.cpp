@@ -19,10 +19,10 @@
 #include "graph.h"
 #ifndef __AIESIM__
 #include "core/edge/user/shim.h"
+#include "core/common/message.h"
 #endif
 #include "core/include/experimental/xrt_aie.h"
 #include "core/common/error.h"
-#include "core/common/message.h"
 
 #include <cstring>
 #include <map>
@@ -36,24 +36,14 @@ extern "C"
 }
 
 #ifdef __AIESIM__
-static zynqaie::Aie s_aie(xrt_core::get_userpf_device(0));
+zynqaie::Aie* getAieArray()
+{
+  static zynqaie::Aie s_aie(xrt_core::get_userpf_device(0));
+  return &s_aie;
+}
 #endif
 
 namespace zynqaie {
-
-static inline uint64_t
-get_bd_high_addr(uint64_t addr)
-{
-  constexpr uint64_t hi_mask = 0xFFFF00000000L;
-  return ((addr & hi_mask) >> 32);
-}
-
-static inline uint64_t
-get_bd_low_addr(uint64_t addr)
-{
-  constexpr uint32_t low_mask = 0xFFFFFFFFL;
-  return (addr & low_mask);
-}
 
 graph_type::
 graph_type(std::shared_ptr<xrt_core::device> dev, const uuid_t, const std::string& graph_name)
@@ -71,7 +61,7 @@ graph_type(std::shared_ptr<xrt_core::device> dev, const uuid_t, const std::strin
       drv->setAieArray(aieArray);
     }
 #else
-    aieArray = &s_aie;
+    aieArray = getAieArray();
 #endif
 
     /* Initialize graph tile metadata */
@@ -156,7 +146,7 @@ run()
 
 void
 graph_type::
-run(uint32_t iterations)
+run(int iterations)
 {
     if (state != graph_state::stop && state != graph_state::reset)
       throw xrt_core::error(-EINVAL, "Graph '" + name + "' is already running or has ended");
@@ -165,7 +155,6 @@ run(uint32_t iterations)
         auto pos = aieArray->getTilePos(tile.itr_mem_col, tile.itr_mem_row);
         XAieTile_DmWriteWord(&(aieArray->tileArray.at(pos)), tile.itr_mem_addr, iterations);
     }
-
 
     /* Record a snapshot of graph start time */
     if (!tiles.empty()) {
@@ -382,7 +371,7 @@ end(uint64_t cycle)
 
 void
 graph_type::
-update_rtp(const char* port, const char* buffer, size_t size)
+update_rtp(const std::string& port, const char* buffer, size_t size)
 {
     auto rtp = std::find_if(rtps.begin(), rtps.end(),
             [port](rtp_type it) { return it.name.compare(port) == 0; });
@@ -476,7 +465,7 @@ update_rtp(const char* port, const char* buffer, size_t size)
 
 void
 graph_type::
-read_rtp(const char* port, char* buffer, size_t size)
+read_rtp(const std::string& port, char* buffer, size_t size)
 {
     auto rtp = std::find_if(rtps.begin(), rtps.end(),
             [port](rtp_type it) { return it.name.compare(port) == 0; });
@@ -561,101 +550,6 @@ read_rtp(const char* port, char* buffer, size_t size)
 
 void
 graph_type::
-sync_bo(unsigned bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset)
-{
-  int ret;
-  drm_zocl_info_bo info;
-
-  auto gmio = std::find_if(aieArray->gmios.begin(), aieArray->gmios.end(),
-            [dmaID](gmio_type it) { return it.id.compare(dmaID) == 0; });
-
-  if (gmio == aieArray->gmios.end())
-    throw xrt_core::error(-EINVAL, "Can't sync BO: DMA ID not found");
-
-  switch (dir) {
-  case XCL_BO_SYNC_BO_GMIO_TO_AIE:
-    if (gmio->type != 0)
-      throw xrt_core::error(-EINVAL, "Sync BO direction does not match GMIO type");
-    break;
-  case XCL_BO_SYNC_BO_AIE_TO_GMIO:
-    if (gmio->type != 1)
-      throw xrt_core::error(-EINVAL, "Sync BO direction does not match GMIO type");
-    break;
-  default:
-    throw xrt_core::error(-EINVAL, "Can't sync BO: unknown direction.");
-  }
-
-  auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
-  info.handle = bo;
-  ret = drv->getBOInfo(info);
-  if (ret)
-    throw xrt_core::error(ret, "Sync AIE Bo fails: can not get BO info.");
-
-  if (size & XAIEDMA_SHIM_TXFER_LEN32_MASK != 0)
-    throw xrt_core::error(-EINVAL, "Sync AIE Bo fails: size is not 32 bits aligned.");
-
-  if (offset + size > info.size)
-    throw xrt_core::error(-EINVAL, "Sync AIE Bo fails: exceed BO boundary.");
-
-  uint64_t paddr = info.paddr + offset;
-  if (paddr & XAIEDMA_SHIM_ADDRLOW_ALIGN_MASK != 0)
-    throw xrt_core::error(-EINVAL, "Sync AIE Bo fails: address is not 128 bits aligned.");
-
-  ShimDMA *dmap = &aieArray->shim_dma.at(gmio->shim_col);
-  auto chan = gmio->channel_number;
-
-  /* Find a free BD. Busy wait until we get one. */
-  while (dmap->dma_chan[chan].idle_bds.empty()) {
-    uint8_t npend = XAieDma_ShimPendingBdCount(&(dmap->handle), chan);
-    int num_comp = XAIEGBL_NOC_DMASTA_STARTQ_MAX - npend;
-
-    /* Pending BD is completed by order per Shim DMA spec. */
-    for (int i = 0; i < num_comp; ++i) {
-      BD bd = dmap->dma_chan[chan].pend_bds.front();
-      dmap->dma_chan[chan].pend_bds.pop();
-      dmap->dma_chan[chan].idle_bds.push(bd);
-    }
-  }
-
-  BD bd = dmap->dma_chan[chan].idle_bds.front();
-  dmap->dma_chan[chan].idle_bds.pop();
-  bd.addr_high = get_bd_high_addr(paddr);
-  bd.addr_low = get_bd_low_addr(paddr);
-
-  XAieDma_ShimBdSetAddr(&(dmap->handle), bd.bd_num, bd.addr_high, bd.addr_low, size);
-
-  /* Set BD lock */
-  XAieDma_ShimBdSetLock(&(dmap->handle), bd.bd_num, bd.bd_num, 1, XAIEDMA_SHIM_LKACQRELVAL_INVALID, 1, XAIEDMA_SHIM_LKACQRELVAL_INVALID);
-
-  /* Write BD */
-  XAieDma_ShimBdWrite(&(dmap->handle), bd.bd_num);
-
-  /* Enqueue BD */
-  XAieDma_ShimSetStartBd((&(dmap->handle)), chan, bd.bd_num);
-  dmap->dma_chan[chan].pend_bds.push(bd);
-
-  /*
-   * Wait for transfer to be completed
-   * TODO Set a timeout value when we have error handling/reset
-   */
-  wait_sync_bo(dmap, chan, 0);
-}
-
-void
-graph_type::
-wait_sync_bo(ShimDMA *dmap, uint32_t chan, uint32_t timeout)
-{
-  while ((XAieDma_ShimWaitDone(&(dmap->handle), chan, timeout) != XAIEGBL_NOC_DMASTA_STA_IDLE));
-
-  while (!dmap->dma_chan[chan].pend_bds.empty()) {
-    BD bd = dmap->dma_chan[chan].pend_bds.front();
-    dmap->dma_chan[chan].pend_bds.pop();
-    dmap->dma_chan[chan].idle_bds.push(bd);
-  }
-}
-
-void
-graph_type::
 event_cb(struct XAieGbl *aie_inst, XAie_LocType Loc, u8 module, u8 event, void *arg)
 {
 #ifndef __AIESIM__
@@ -725,7 +619,7 @@ xrtGraphTimeStamp(xrtGraphHandle ghdl)
 }
 
 void
-xrtGraphRun(xrtGraphHandle ghdl, uint32_t iterations)
+xrtGraphRun(xrtGraphHandle ghdl, int iterations)
 {
   auto graph = get_graph(ghdl);
   if (iterations == 0)
@@ -790,10 +684,66 @@ xrtGraphReadRTP(xrtGraphHandle ghdl, const char* port, char* buffer, size_t size
 }
 
 void
-xrtSyncBOAIE(xrtGraphHandle ghdl, unsigned int bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset)
+xrtSyncBOAIE(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
-  auto graph = get_graph(ghdl);
-  graph->sync_bo(bo, dmaID, dir, size, offset);
+  zynqaie::Aie *aieArray = nullptr;
+
+#ifndef __AIESIM__
+  auto device = xrt_core::get_userpf_device(handle);
+  auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
+
+  aieArray = drv->getAieArray();
+#else
+  aieArray = getAieArray();
+#endif
+
+  auto paddr = xrtBOAddress(bohdl);
+  auto bosize = xrtBOSize(bohdl);
+
+  if (offset + size > bosize)
+    throw xrt_core::error(-EINVAL, "Sync AIE Bo fails: exceed BO boundary.");
+
+  aieArray->sync_bo(paddr + offset, gmioName, dir, size);
+}
+
+void
+xrtSyncBOAIENB(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
+{
+  zynqaie::Aie *aieArray = nullptr;
+
+#ifndef __AIESIM__
+  auto device = xrt_core::get_userpf_device(handle);
+  auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
+
+  aieArray = drv->getAieArray();
+#else
+  aieArray = getAieArray();
+#endif
+
+  auto paddr = xrtBOAddress(bohdl);
+  auto bosize = xrtBOSize(bohdl);
+
+  if (offset + size > bosize)
+    throw xrt_core::error(-EINVAL, "Sync AIE Bo fails: exceed BO boundary.");
+
+  aieArray->sync_bo_nb(paddr + offset, gmioName, dir, size);
+}
+
+void
+xrtGMIOWait(xclDeviceHandle handle, const char *gmioName)
+{
+  zynqaie::Aie *aieArray = nullptr;
+
+#ifndef __AIESIM__
+  auto device = xrt_core::get_userpf_device(handle);
+  auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
+
+  aieArray = drv->getAieArray();
+#else
+  aieArray = getAieArray();
+#endif
+
+  aieArray->wait_gmio(gmioName);
 }
 
 void
@@ -865,7 +815,7 @@ xrtGraphTimeStamp(xrtGraphHandle ghdl)
 }
 
 int
-xrtGraphRun(xrtGraphHandle ghdl, uint32_t iterations)
+xrtGraphRun(xrtGraphHandle ghdl, int iterations)
 {
   try {
     api::xrtGraphRun(ghdl, iterations);
@@ -1001,10 +951,10 @@ xrtGraphReadRTP(xrtGraphHandle ghdl, const char *port, char *buffer, size_t size
 }
 
 int
-xrtSyncBOAIE(xrtGraphHandle ghdl, unsigned int bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset)
+xrtSyncBOAIE(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
   try {
-    api::xrtSyncBOAIE(ghdl, bo, dmaID, dir, size, offset);
+    api::xrtSyncBOAIE(handle, bohdl, gmioName, dir, size, offset);
     return 0;
   }
   catch (const xrt_core::error& ex) {
@@ -1023,6 +973,66 @@ xrtResetAIEArray(xclDeviceHandle handle)
   try {
     api::xrtResetAieArray(handle);
     return 0;
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -1;
+  }
+}
+
+////////////////////////////////////////////////////////////////
+// Exposed for Cardano as extensions to xrt_aie.h
+////////////////////////////////////////////////////////////////
+/**
+ * xrtSyncBOAIENB() - Transfer data between DDR and Shim DMA channel
+ *
+ * @handle:          Handle to the device
+ * @bohdl:           BO handle.
+ * @gmioName:        GMIO port name
+ * @dir:             GM to AIE or AIE to GM
+ * @size:            Size of data to synchronize
+ * @offset:          Offset within the BO
+ *
+ * Return:          0 on success, -1 on error.
+ *
+ * Synchronize the buffer contents between GMIO and AIE.
+ * Note: Upon return, the synchronization is submitted or error out
+ */
+int
+xrtSyncBOAIENB(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
+{
+  try {
+    api::xrtSyncBOAIENB(handle, bohdl, gmioName, dir, size, offset);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -1;
+  }
+}
+
+/**
+ * xrtGMIOWait() - Wait a shim DMA channel to be idle for a given GMIO port
+ *
+ * @handle:          Handle to the device
+ * @gmioName:        GMIO port name
+ *
+ * Return:          0 on success, -1 on error.
+ */
+int
+xrtGMIOWait(xclDeviceHandle handle, const char *gmioName)
+{
+  try {
+    api::xrtGMIOWait(handle, gmioName);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
   }
   catch (const std::exception& ex) {
     xrt_core::send_exception_message(ex.what());

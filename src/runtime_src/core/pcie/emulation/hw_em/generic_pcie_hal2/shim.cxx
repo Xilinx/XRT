@@ -574,9 +574,6 @@ namespace xclhwemhal2 {
       mMessengerThreadStarted = true;
     }
 
-    if(mHostMemAccessThreadStarted == false) {
-	  mHostMemAccessThread = std::thread(xclhwemhal2::hostMemAccessThread,this);
-   }
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
     std::string launcherArgs = xclemulation::config::getInstance()->getLauncherArgs();
     std::string wdbFileName("");
@@ -746,6 +743,9 @@ namespace xclhwemhal2 {
 #endif
       binaryCounter++;
     }
+    if(mHostMemAccessThreadStarted == false) {
+	  mHostMemAccessThread = std::thread(xclhwemhal2::hostMemAccessThread,this);
+   }
     if (deviceDirectory.empty() == false)
       setenv("EMULATION_RUN_DIR", deviceDirectory.c_str(), true);
 
@@ -3296,16 +3296,19 @@ int Q2H_helper::poolingon_Qdma() {
 }
 
 bool Q2H_helper::connect_sock() {
-  if (Q2h_sock == NULL) {
-    Q2h_sock = new unix_socket("xcl_sock_K2H", 5, false);
-  }
-  else if (!Q2h_sock->server_started) {
-    delete Q2h_sock;
-    Q2h_sock = NULL;
-    Q2h_sock = new unix_socket("xcl_sock_K2H", 5, false);
-    //Q2h_sock->start_server("xcl_sock_K2H",5,false);
-  }
-  return Q2h_sock->server_started;
+    std::string sock_name;
+    if(getenv("EMULATION_SOCKETID")) {
+        sock_name = "D2X_unix_sock_" + std::string(getenv("EMULATION_SOCKETID"));
+    } else {
+        sock_name = "D2X_unix_sock";
+    }
+    if(Q2h_sock == NULL) {
+        Q2h_sock = new unix_socket(sock_name,5,false);
+    }
+    else if (!Q2h_sock->server_started) {
+        Q2h_sock->start_server(5,false);
+    }
+    return Q2h_sock->server_started;
 }
 
 void hostMemAccessThread(xclhwemhal2::HwEmShim* inst) {
@@ -3313,7 +3316,7 @@ void hostMemAccessThread(xclhwemhal2::HwEmShim* inst) {
     auto mq2h_helper_ptr = std::make_unique<Q2H_helper>(inst);
     bool sock_ret = false;
     int count = 0;
-    while(inst->get_mHostMemAccessThreadStarted() && !sock_ret && count < 30){
+    while(inst->get_mHostMemAccessThreadStarted() && !sock_ret && count < 71){
         sock_ret = mq2h_helper_ptr->connect_sock();
         count++;
     }
