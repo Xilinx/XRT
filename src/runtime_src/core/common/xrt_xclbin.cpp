@@ -245,7 +245,7 @@ get_xclbin(xrtXclbinHandle handle)
   auto itr = xclbins.find(handle);
   if (itr == xclbins.end())
     throw xrt_core::error(-EINVAL, "No such xclbin handle");
-  return (*itr).second;
+  return itr->second;
 }
 
 static void
