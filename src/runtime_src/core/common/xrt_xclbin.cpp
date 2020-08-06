@@ -355,11 +355,15 @@ xrtXclbinGetCUNames(xrtXclbinHandle handle, char** names, int* numNames)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return (errno = ex.get());
+    // Set errno globally
+    errno = ex.get();
+    return ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return (errno = 0);
+    // Set errno globally
+    errno = 0;
+    return 0;
   }
 }
 */
@@ -380,11 +384,15 @@ xrtXclbinGetXSAName(xrtXclbinHandle handle, char* name, int size, int* ret_size)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return (errno = ex.get());
+    // Set errno globally
+    errno = ex.get();
+    return ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return (errno = 0);
+    // Set errno globally
+    errno = 0;
+    return 0;
   }
 }
 
@@ -399,11 +407,15 @@ xrtXclbinGetUUID(xrtXclbinHandle handle, xuid_t uuid)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return (errno = ex.get());
+    // Set errno globally
+    errno = ex.get();
+    return ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return (errno = 0);
+    // Set errno globally
+    errno = 0;
+    return 0;
   }
 }
 
@@ -426,11 +438,15 @@ xrtXclbinGetData(xrtXclbinHandle handle, char* data, int size, int* ret_size)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return (errno = ex.get());
+    // Set errno globally
+    errno = ex.get();
+    return ex.get();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return (errno = 0);
+    // Set errno globally
+    errno = 0;
+    return 0;
   }
 }
 
