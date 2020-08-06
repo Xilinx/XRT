@@ -333,8 +333,9 @@ xrtXclbinFreeHandle(xrtXclbinHandle handle)
   }
 }
 
+#if 0
 // TODO
-/* Need a new interface for the C API
+// Need a new interface for the C API
 int
 xrtXclbinGetCUNames(xrtXclbinHandle handle, char** names, int* numNames)
 {
@@ -366,7 +367,7 @@ xrtXclbinGetCUNames(xrtXclbinHandle handle, char** names, int* numNames)
     return 0;
   }
 }
-*/
+#endif
 
 int
 xrtXclbinGetXSAName(xrtXclbinHandle handle, char* name, int size, int* ret_size)

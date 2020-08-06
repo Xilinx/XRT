@@ -183,6 +183,7 @@ xrtXclbinAllocRawData(const char* data, const int size);
 int
 xrtXclbinFreeHandle(xrtXclbinHandle handle);
 
+#if 0
 /**
  * xrtXclbinGetCUNames() - Get CU names of xclbin
  *
@@ -197,6 +198,7 @@ xrtXclbinFreeHandle(xrtXclbinHandle handle);
  */
 int
 xrtXclbinGetCUNames(xrtXclbinHandle handle, char** names, int* numNames);
+#endif
 
 /**
  * xrtXclbinGetXSAName() - Get Xilinx Support Archive (XSA) Name of xclbin handle
