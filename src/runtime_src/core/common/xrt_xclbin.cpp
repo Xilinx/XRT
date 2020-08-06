@@ -257,7 +257,7 @@ free_xclbin(xrtXclbinHandle handle)
 
 // Utility function for device class to verify that the C xclbin handle is valid
 // Needed when the C API for device tries to load an xclbin using C pointer to xclbin
-namespace xrt {
+namespace xrt_core {
 namespace xclbin_int {
 void
 is_valid_or_error(xrtXclbinHandle handle)

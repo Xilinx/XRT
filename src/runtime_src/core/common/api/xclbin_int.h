@@ -45,10 +45,6 @@ is_valid_or_error(xrtXclbinHandle handle);
 const std::vector<char>&
 get_xclbin_data(xrtXclbinHandle handle);
 
-
-bool
-is_valid(xrtXclbinHandle handle) {return true;}
-
 } //xclbin_int
 }; // xrt_core
 

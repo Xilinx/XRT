@@ -224,20 +224,8 @@ xrtDeviceLoadXclbinHandle(xrtDeviceHandle dhdl, xrtXclbinHandle xhdl)
 {
   try {
     auto device = get_device(dhdl);
-	//xrt_core::xclbin_int::is_valid_or_error(xhdl);
-    //auto xclbin = xrt_core::xclbin_int::get_xclbin_data(xhdl);
-    //device->load_xclbin(reinterpret_cast<const axlf*>(xclbin.data()));
-
-        int data_size = 0;
-        if (!::xrt_core::xclbin_int::is_valid(xhdl))
-          throw xrt_core::error(-EINVAL, "Invalid xclbin handle");
-        xrtXclbinGetData(xhdl, nullptr, 0, &data_size);
-        std::vector<char> data(data_size);
-        xrtXclbinGetData(xhdl, data.data(), data_size, nullptr);
-        auto top = reinterpret_cast<const axlf*>(data.data());
-        xrtDeviceLoadXclbin(dhdl, top);
-
-
+    auto xclbin = xrt_core::xclbin_int::get_xclbin_data(xhdl);
+    device->load_xclbin(reinterpret_cast<const axlf*>(xclbin.data()));
     return 0;
   }
   catch (const xrt_core::error& ex) {
