@@ -15,21 +15,41 @@
  * under the License.
  */
 
-#ifndef _XRT_COMMON_XCLBIN_H_
-#define _XRT_COMMON_XCLBIN_H_
+#ifndef _XRT_COMMON_XCLBIN_INT_H_
+#define _XRT_COMMON_XCLBIN_INT_H_
 
 // This file defines implementation extensions to the XRT XCLBIN APIs.
 #include "core/include/experimental/xrt_xclbin.h"
 
+namespace xrt_core {
+namespace xclbin_int {
+
 /**
- * is_valid() - Returns the validity of the xrtXclbinHandle handle.
+ * is_valid_or_error() - Returns the validity of the xrtXclbinHandle handle.
  *
  * @handle:        Xclbin handle
- * Return:         True if xrtXclbinHandle handle is valid. Otherwise, false.
+ *
+ * Throws if @handle is invalid
  */
-namespace xrt { namespace xclbin_int {
+void
+is_valid_or_error(xrtXclbinHandle handle);
+
+/**
+ * get_xclbin_data() - Returns the data of the xrtXclbinHandle handle.
+ *
+ * @handle:        Xclbin handle
+ * Return:         Data of the @handle
+ *
+ * Throws if @handle is invalid.
+ */
+const std::vector<char>&
+get_xclbin_data(xrtXclbinHandle handle);
+
+
 bool
-is_valid(xrtXclbinHandle handle);
-}};
+is_valid(xrtXclbinHandle handle) {return true;}
+
+} //xclbin_int
+}; // xrt_core
 
 #endif

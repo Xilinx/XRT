@@ -180,15 +180,18 @@ public:
 namespace xrt {
 
 xclbin::
-xclbin() : handle(std::make_shared<xclbin_impl>())
+xclbin()
+  : handle(std::make_shared<xclbin_impl>())
 {}
 
 xclbin::
-xclbin(const std::string& filename) : handle(std::make_shared<xclbin_impl>(filename))
+xclbin(const std::string& filename)
+  : handle(std::make_shared<xclbin_impl>(filename))
 {}
 
 xclbin::
-xclbin(const std::vector<char>& data) : handle(std::make_shared<xclbin_impl>(data))
+xclbin(const std::vector<char>& data)
+  : handle(std::make_shared<xclbin_impl>(data))
 {}
 
 std::vector<std::string>
@@ -256,12 +259,19 @@ free_xclbin(xrtXclbinHandle handle)
 // Needed when the C API for device tries to load an xclbin using C pointer to xclbin
 namespace xrt {
 namespace xclbin_int {
-bool
-is_valid(xrtXclbinHandle handle)
+void
+is_valid_or_error(xrtXclbinHandle handle)
 {
-  bool rtn = (xclbins.find(handle) != xclbins.end());
-  return rtn;
+  if ((xclbins.find(handle) == xclbins.end()))
+    throw xrt_core::error(-EINVAL, "Invalid xclbin handle");
 }
+
+const std::vector<char>&
+get_xclbin_data(xrtXclbinHandle handle)
+{
+  return get_xclbin(handle)->get_data();
+}
+
 }
 };
 
@@ -289,8 +299,7 @@ xrtXclbinHandle
 xrtXclbinAllocRawData(const char* data, const int size)
 {
   try {
-    char* data_c = const_cast<char*>(data);
-    std::vector<char> raw_data(data_c, data_c + size);
+    std::vector<char> raw_data(data, data + size);
     auto xclbin = std::make_shared<xrt::xclbin_impl>(raw_data);
     auto handle = xclbin.get();
     xclbins.emplace(std::make_pair(handle, std::move(xclbin)));
@@ -410,7 +419,7 @@ xrtXclbinGetData(xrtXclbinHandle handle, char* data, int size, int* ret_size)
       *ret_size = result_size;
     // populate data if memory is allocated
     if (data != nullptr) {
-      auto size_tmp = (size < result_size) ? size : result_size;
+      auto size_tmp = std::min(size,result_size);
       std::memcpy(data, result.data(), size_tmp);
     }
     return 0;
