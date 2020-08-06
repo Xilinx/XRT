@@ -219,12 +219,12 @@ xrtXclbinGetXSAName(xrtXclbinHandle handle, char* name, int size, int* ret_size)
 /**
  * xrtXclbinGetUUID() - Get UUID of xclbin handle
  *
- * @handle: Xclbin handle
- * @uuid:   Return xclbin id in this uuid_t struct
- * Return:  0 on success or appropriate error number
+ * @handle:   Xclbin handle
+ * @ret_uuid: Return xclbin id in this uuid_t struct
+ * Return:    0 on success or appropriate error number
  */
 int
-xrtXclbinGetUUID(xclDeviceHandle handle, xuid_t uuid);
+xrtXclbinGetUUID(xclDeviceHandle handle, xuid_t ret_uuid);
 
 /**
  * xrtXclbinGetData() - Get the raw data of the xclbin handle

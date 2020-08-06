@@ -281,7 +281,7 @@ xrtXclbinAllocFilename(const char* filename)
   try {
     auto xclbin = std::make_shared<xrt::xclbin_impl>(filename);
     auto handle = xclbin.get();
-    xclbins.emplace(std::make_pair(handle, std::move(xclbin)));
+    xclbins.emplace(handle, std::move(xclbin));
     return handle;
   }
   catch (const xrt_core::error& ex) {
@@ -302,7 +302,7 @@ xrtXclbinAllocRawData(const char* data, const int size)
     std::vector<char> raw_data(data, data + size);
     auto xclbin = std::make_shared<xrt::xclbin_impl>(raw_data);
     auto handle = xclbin.get();
-    xclbins.emplace(std::make_pair(handle, std::move(xclbin)));
+    xclbins.emplace(handle, std::move(xclbin));
     return handle;
   }
   catch (const xrt_core::error& ex) {
@@ -343,10 +343,10 @@ xrtXclbinGetCUNames(xrtXclbinHandle handle, char** names, int* numNames)
     auto xclbin = get_xclbin(handle);
     const std::vector<std::string> cuNames = xclbin->get_cu_names();
     // populate numNames if memory is allocated
-    if (numNames != nullptr)
+    if (numNames)
       *numNames = cuNames.size();
     // populate names if memory is allocated
-    if (names != nullptr) {
+    if (names) {
       auto index = 0;
       for (auto&& name: cuNames) {
         std::strcpy(names[index++], name.c_str());
@@ -376,10 +376,10 @@ xrtXclbinGetXSAName(xrtXclbinHandle handle, char* name, int size, int* ret_size)
     auto xclbin = get_xclbin(handle);
     const std::string& xsaName = xclbin->get_xsa_name();
     // populate ret_size if memory is allocated
-    if (ret_size != nullptr)
+    if (ret_size)
       *ret_size = xsaName.size();
     // populate name if memory is allocated
-    if (name != nullptr)
+    if (name)
       std::strncpy(name, xsaName.c_str(), size);
     return 0;
   }
@@ -398,12 +398,12 @@ xrtXclbinGetXSAName(xrtXclbinHandle handle, char* name, int size, int* ret_size)
 }
 
 int
-xrtXclbinGetUUID(xrtXclbinHandle handle, xuid_t uuid)
+xrtXclbinGetUUID(xrtXclbinHandle handle, xuid_t ret_uuid)
 {
   try {
     auto xclbin = get_xclbin(handle);
     auto result = xclbin->get_uuid();
-    uuid_copy(uuid, result.get());
+    uuid_copy(ret_uuid, result.get());
     return 0;
   }
   catch (const xrt_core::error& ex) {
@@ -428,10 +428,10 @@ xrtXclbinGetData(xrtXclbinHandle handle, char* data, int size, int* ret_size)
     auto& result = xclbin->get_data();
     int result_size = result.size();
     // populate ret_size if memory is allocated
-    if (ret_size != nullptr)
+    if (ret_size)
       *ret_size = result_size;
     // populate data if memory is allocated
-    if (data != nullptr) {
+    if (data) {
       auto size_tmp = std::min(size,result_size);
       std::memcpy(data, result.data(), size_tmp);
     }
