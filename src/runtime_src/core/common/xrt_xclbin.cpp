@@ -134,7 +134,7 @@ public:
   }
 
   void
-  check_empty() const
+  not_empty_or_error() const
   {
     if (empty())
       throw xrt_core::error(-EINVAL, "Invalid XCLBIN data");
@@ -153,21 +153,21 @@ public:
   std::string
   get_xsa_name() const
   {
-    check_empty();
+    not_empty_or_error();
     return reinterpret_cast<const char*>(m_top->m_header.m_platformVBNV);
   }
 
   uuid
   get_uuid() const
   {
-    check_empty();
+    not_empty_or_error();
     return {m_top->m_header.uuid};
   }
 
   const std::vector<char>&
   get_data() const
   {
-    check_empty();
+    not_empty_or_error();
     return m_axlf;
   }
 };
