@@ -148,11 +148,13 @@ static ssize_t read_aie_metadata(struct file *filp, struct kobject *kobj,
 
 	size = zdev->aie_data.size;
 
+	/* Read offset should be lesser then total size of metadata */
 	if (off >= size) {
 		read_unlock(&zdev->attr_rwlock);
 		return 0;
 	}
 
+	/* Buffer size should be greater than the size of metadata to be read */
 	if (count < size - off)
 		nread = count;
 	else
