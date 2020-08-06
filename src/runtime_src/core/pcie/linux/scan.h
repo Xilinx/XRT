@@ -27,6 +27,12 @@
 #include <fcntl.h>
 #include <mutex>
 
+// Supported vendors
+#define XILINX_ID    0x10ee
+#define ADVANTECH_ID 0x13fe
+#define AWS_ID       0x1d0f
+#define ARISTA_ID    0x3475
+
 #define INVALID_ID      0xffff
 #define MFG_REV_OFFSET  0x131008 // For obtaining Golden image version number
 
