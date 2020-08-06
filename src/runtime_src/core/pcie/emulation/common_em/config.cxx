@@ -293,7 +293,7 @@ namespace xclemulation{
       }
       else if(name.find("Debug.") == std::string::npos)
       {
-        std::cout<<"WARNING: [HW-EM 08] Invalid option '"<<name<<"` specified in xrt.ini"<<std::endl;
+        std::cout<<"WARNING: [HW-EMU 08] Invalid option '"<<name<<"` specified in xrt.ini/sdaccel.ini"<<std::endl;
       }
     }
     //this code has to be removed once gui generates ini file by adding launch_waveform property
