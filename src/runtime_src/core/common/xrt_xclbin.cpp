@@ -32,10 +32,9 @@
 
 #ifdef _WIN32
 # include "windows/uuid.h"
+# pragma warning( disable : 4244 4267 4996)
 #else
-
 # include <linux/uuid.h>
-
 #endif
 
 namespace {
@@ -101,8 +100,6 @@ protected:
   }
 
 public:
-  xclbin_impl() : m_top(nullptr) {}
-
   xclbin_impl(const std::vector<char>& data)
   {
     m_axlf = data;
@@ -127,19 +124,6 @@ public:
     init_axlf_handle();
   }
 
-  bool
-  empty() const
-  {
-    return m_axlf.size() == 0 || m_top == nullptr;
-  }
-
-  void
-  not_empty_or_error() const
-  {
-    if (empty())
-      throw xrt_core::error(-EINVAL, "Invalid XCLBIN data");
-  }
-
   std::vector<std::string>
   get_cu_names() const
   {
@@ -150,24 +134,23 @@ public:
     return names;
   }
 
+  // TODO - Check that m_header is present in data buffer
   std::string
   get_xsa_name() const
   {
-    not_empty_or_error();
     return reinterpret_cast<const char*>(m_top->m_header.m_platformVBNV);
   }
 
+  // TODO - Check that m_header is present in data buffer
   uuid
   get_uuid() const
   {
-    not_empty_or_error();
     return {m_top->m_header.uuid};
   }
 
   const std::vector<char>&
   get_data() const
   {
-    not_empty_or_error();
     return m_axlf;
   }
 };
@@ -178,11 +161,6 @@ public:
 // xrt_xclbin C++ API implementations (xrt_xclbin.h)
 ////////////////////////////////////////////////////////////////
 namespace xrt {
-
-xclbin::
-xclbin()
-  : handle(std::make_shared<xclbin_impl>())
-{}
 
 xclbin::
 xclbin(const std::string& filename)
@@ -220,12 +198,6 @@ xclbin::
 get_data() const
 {
   return get_handle()->get_data();
-}
-
-xclbin::
-operator bool() const
-{
-  return !get_handle()->empty();
 }
 
 } // namespace xrt

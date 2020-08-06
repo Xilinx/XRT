@@ -44,8 +44,11 @@ class xclbin
 public:
   /**
    * xclbin() - Constructor for empty xclbin
+   *
+   * Can be used as lvalue in assignment.
    */
-  xclbin();
+  xclbin()
+  {}
 
   /**
    * xclbin() - Copy ctor
@@ -72,12 +75,15 @@ public:
   }
 
   /**
-  * operator bool() - Check if xclbin object contains data
-  *
-  * Return: true if xclbin is not empty
-  */
+   * operator bool() - Check if xclbin handle is valid
+   *
+   * Return: true if xclbin object has an implementation, false otherwise
+   */
   explicit
-  operator bool() const;
+  operator bool() const
+  {
+    return handle != nullptr;
+  }
 
   /**
    * xclbin() - Constructor from an xclbin filename
