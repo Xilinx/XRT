@@ -72,7 +72,6 @@ namespace xdp {
 
     fout << "Profiled application: " << execName << std::endl ;
 
-
     fout << "Target platform: " << "Xilinx" << std::endl ;
     fout << "Tool version: " << getToolVersion() << std::endl ;
 

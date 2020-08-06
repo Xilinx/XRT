@@ -19,6 +19,7 @@
 
 #include "xocl/core/device.h"
 #include "xocl/core/event.h"
+#include "xocl/core/execution_context.h"
 
 namespace xocl {
   namespace profile {
@@ -58,6 +59,8 @@ namespace xocl {
     // Functions used by the host counters plugin
     std::function<void (xocl::event*, cl_int, const std::string&)>
       counter_action_ndrange(cl_kernel kernel) ;
+    void log_kernel_start(const xrt::command* cmd, const xocl::execution_context* ctx) ;
+    void log_kernel_end(const xrt::command* cmd, const xocl::execution_context* ctx) ;
 
     // Functions used by the host trace plugin
     void log_dependency(uint64_t id, uint64_t dependency) ;

@@ -35,6 +35,7 @@ namespace {
   //  callback functions on the XDP plugin side
   std::function<void (const char*)> counter_function_start_cb ;
   std::function<void (const char*)> counter_function_end_cb ;
+  // This is the function on the XDP side that logs kernel executions
   std::function<void (const char*, bool)> counter_action_ndrange_cb ;
 
   void register_opencl_counters_functions(void* handle)
@@ -52,6 +53,10 @@ namespace {
     counter_action_ndrange_cb =
       (atype)(xrt_core::dlsym(handle, "counter_action_ndrange")) ;
     if (xrt_core::dlerror() != NULL) counter_action_ndrange_cb = nullptr ;
+
+    // For logging counter information for kernel executions
+    xocl::add_command_start_callback(xocl::profile::log_kernel_start) ;
+    xocl::add_command_done_callback(xocl::profile::log_kernel_end) ;
   }
 
   void opencl_counters_warning_function()
@@ -248,9 +253,36 @@ namespace xocl {
 
     // ******** OpenCL Counter/Guidance Callbacks *********
 
+  // These are the functions on the XOCL side that gets called when
+  //  execution contexts start and stop
+  void log_kernel_start(const xrt::command* cmd, 
+			const xocl::execution_context* ctx)
+  {
+    if (!counter_action_ndrange_cb) return ;
+    
+    auto kernel = ctx->get_kernel() ;
+    std::string kernelName = kernel->get_name() ;
+
+    counter_action_ndrange_cb(kernelName.c_str(), true) ;
+  }
+
+  void log_kernel_end(const xrt::command* cmd,
+		      const xocl::execution_context* ctx)
+  {
+    if (!counter_action_ndrange_cb) return ;
+
+    auto kernel = ctx->get_kernel() ;
+    std::string kernelName = kernel->get_name() ;
+
+    counter_action_ndrange_cb(kernelName.c_str(), false) ;
+  }
+
+
     std::function<void (xocl::event*, cl_int, const std::string&)>
     counter_action_ndrange(cl_kernel kernel)
     {
+      return [](xocl::event*, cl_int, const std::string&) { } ;
+      /*
       return [kernel](xocl::event* e, cl_int status, const std::string&)
 	     {
 	       if (!counter_action_ndrange_cb) return ;
@@ -268,6 +300,7 @@ namespace xocl {
 		 counter_action_ndrange_cb(kernelName.c_str(), false) ;
 	       }
 	     } ;
+      */
     }
 
     // ******** OpenCL API Trace Callbacks *********
