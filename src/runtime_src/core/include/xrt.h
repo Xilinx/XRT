@@ -395,7 +395,7 @@ xclReClock2(xclDeviceHandle handle, unsigned short region,
  */
 XCL_DRIVER_DLLESPEC
 int
-xclOpenContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int ipIndex,
+xclOpenContext(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex,
                bool shared);
 
 /**
@@ -410,7 +410,7 @@ xclOpenContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int ipIndex,
  */
 XCL_DRIVER_DLLESPEC
 int
-xclCloseContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int ipIndex);
+xclCloseContext(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex);
 
 /*
  * Get the version number. 1 => Hal1 ; 2 => Hal2
