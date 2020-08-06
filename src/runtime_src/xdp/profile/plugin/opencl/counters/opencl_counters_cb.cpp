@@ -1,6 +1,6 @@
 
 #include <map>
-#include <iostream>
+//#include <iostream>
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/plugin/opencl/counters/opencl_counters_cb.h"
@@ -45,20 +45,11 @@ namespace xdp {
     if (isStart)
     {
       storedTimestamps[kernelName] = timestamp ;
-      std::cout << "Logging start of " << kernelName << " at time " 
-		<< timestamp
-		<< std::endl ;
     }
     else
     {
       auto executionTime = timestamp - storedTimestamps[kernelName] ;
       storedTimestamps.erase(kernelName) ;
-
-      std::cout << "Logging end of " << kernelName << " at time " 
-		<< timestamp
-		<< std::endl ;
-
-      std::cout << "Execution time is " << executionTime << std::endl ;
 
       (db->getStats()).logKernelExecution(kernelName, executionTime) ;
     }
