@@ -18,14 +18,30 @@
 
 #include "aie.h"
 #include "core/common/error.h"
+#ifndef __AIESIM__
 #include "core/common/message.h"
+#endif
 
 #include <iostream>
 #include <cerrno>
 
 namespace zynqaie {
 
-Aie::Aie(std::shared_ptr<xrt_core::device> device)
+static inline uint64_t
+get_bd_high_addr(uint64_t addr)
+{
+  constexpr uint64_t hi_mask = 0xFFFF00000000L;
+  return ((addr & hi_mask) >> 32);
+}
+
+static inline uint64_t
+get_bd_low_addr(uint64_t addr)
+{
+  constexpr uint32_t low_mask = 0xFFFFFFFFL;
+  return (addr & low_mask);
+}
+
+Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
 {
     /* TODO where are these number from */
     numRows = 8;
@@ -208,6 +224,121 @@ Aie::error_cb(struct XAieGbl *aie_inst, XAie_LocType loc, u8 module, u8 error, v
 #endif
 
     return XAIETILE_ERROR_HANDLED;
+}
+
+void
+Aie::
+sync_bo(uint64_t paddr, const char *gmioName, enum xclBOSyncDirection dir, size_t size)
+{
+  auto gmio = std::find_if(gmios.begin(), gmios.end(),
+            [gmioName](gmio_type it) { return it.name.compare(gmioName) == 0; });
+
+  if (gmio == gmios.end())
+    throw xrt_core::error(-EINVAL, "Can't sync BO: GMIO name not found");
+
+  submit_sync_bo(paddr, gmio, dir, size);
+
+  ShimDMA *dmap = &shim_dma.at(gmio->shim_col);
+  auto chan = gmio->channel_number;
+  wait_sync_bo(dmap, chan, 0);
+}
+
+void
+Aie::
+sync_bo_nb(uint64_t paddr, const char *gmioName, enum xclBOSyncDirection dir, size_t size)
+{
+  auto gmio = std::find_if(gmios.begin(), gmios.end(),
+            [gmioName](gmio_type it) { return it.name.compare(gmioName) == 0; });
+
+  if (gmio == gmios.end())
+    throw xrt_core::error(-EINVAL, "Can't sync BO: GMIO name not found");
+
+  submit_sync_bo(paddr, gmio, dir, size);
+}
+
+void
+Aie::
+wait_gmio(const std::string& gmioName)
+{
+  auto gmio = std::find_if(gmios.begin(), gmios.end(),
+            [gmioName](gmio_type it) { return it.name.compare(gmioName) == 0; });
+
+  if (gmio == gmios.end())
+    throw xrt_core::error(-EINVAL, "Can't wait GMIO: GMIO name not found");
+
+  ShimDMA *dmap = &shim_dma.at(gmio->shim_col);
+  auto chan = gmio->channel_number;
+  wait_sync_bo(dmap, chan, 0);
+}
+
+void
+Aie::
+submit_sync_bo(uint64_t paddr, std::vector<gmio_type>::iterator& gmio, enum xclBOSyncDirection dir, size_t size)
+{
+  switch (dir) {
+  case XCL_BO_SYNC_BO_GMIO_TO_AIE:
+    if (gmio->type != 0)
+      throw xrt_core::error(-EINVAL, "Sync BO direction does not match GMIO type");
+    break;
+  case XCL_BO_SYNC_BO_AIE_TO_GMIO:
+    if (gmio->type != 1)
+      throw xrt_core::error(-EINVAL, "Sync BO direction does not match GMIO type");
+    break;
+  default:
+    throw xrt_core::error(-EINVAL, "Can't sync BO: unknown direction.");
+  }
+
+  if (size & XAIEDMA_SHIM_TXFER_LEN32_MASK != 0)
+    throw xrt_core::error(-EINVAL, "Sync AIE Bo fails: size is not 32 bits aligned.");
+
+  if (paddr & XAIEDMA_SHIM_ADDRLOW_ALIGN_MASK != 0)
+    throw xrt_core::error(-EINVAL, "Sync AIE Bo fails: address is not 128 bits aligned.");
+
+  ShimDMA *dmap = &shim_dma.at(gmio->shim_col);
+  auto chan = gmio->channel_number;
+
+  /* Find a free BD. Busy wait until we get one. */
+  while (dmap->dma_chan[chan].idle_bds.empty()) {
+    uint8_t npend = XAieDma_ShimPendingBdCount(&(dmap->handle), chan);
+    int num_comp = XAIEGBL_NOC_DMASTA_STARTQ_MAX - npend;
+
+    /* Pending BD is completed by order per Shim DMA spec. */
+    for (int i = 0; i < num_comp; ++i) {
+      BD bd = dmap->dma_chan[chan].pend_bds.front();
+      dmap->dma_chan[chan].pend_bds.pop();
+      dmap->dma_chan[chan].idle_bds.push(bd);
+    }
+  }
+
+  BD bd = dmap->dma_chan[chan].idle_bds.front();
+  dmap->dma_chan[chan].idle_bds.pop();
+  bd.addr_high = get_bd_high_addr(paddr);
+  bd.addr_low = get_bd_low_addr(paddr);
+
+  XAieDma_ShimBdSetAddr(&(dmap->handle), bd.bd_num, bd.addr_high, bd.addr_low, size);
+
+  /* Set BD lock */
+  XAieDma_ShimBdSetLock(&(dmap->handle), bd.bd_num, bd.bd_num, 1, XAIEDMA_SHIM_LKACQRELVAL_INVALID, 1, XAIEDMA_SHIM_LKACQRELVAL_INVALID);
+
+  /* Write BD */
+  XAieDma_ShimBdWrite(&(dmap->handle), bd.bd_num);
+
+  /* Enqueue BD */
+  XAieDma_ShimSetStartBd((&(dmap->handle)), chan, bd.bd_num);
+  dmap->dma_chan[chan].pend_bds.push(bd);
+}
+
+void
+Aie::
+wait_sync_bo(ShimDMA* const dmap, uint32_t chan, uint32_t timeout)
+{
+  while ((XAieDma_ShimWaitDone(&(dmap->handle), chan, timeout) != XAIEGBL_NOC_DMASTA_STA_IDLE));
+
+  while (!dmap->dma_chan[chan].pend_bds.empty()) {
+    BD bd = dmap->dma_chan[chan].pend_bds.front();
+    dmap->dma_chan[chan].pend_bds.pop();
+    dmap->dma_chan[chan].idle_bds.push(bd);
+  }
 }
 
 

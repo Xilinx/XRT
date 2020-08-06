@@ -11,7 +11,7 @@ set(XRT_EXPERIMENTAL_HEADER_SRC
   xclbin_util.h
   xclbin-util.h)
 
-install (FILES ${XRT_EXPERIMENTAL_HEADER_SRC} DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/experimental)
+install (FILES ${XRT_EXPERIMENTAL_HEADER_SRC} DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/experimental COMPONENT ${XRT_DEV_COMPONENT})
 
 message("-- XRT experimental header files")
 foreach (header ${XRT_EXPERIMENTAL_HEADER_SRC})

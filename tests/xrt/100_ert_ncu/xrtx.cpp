@@ -26,6 +26,7 @@
 #include <atomic>
 #include <iostream>
 #include <vector>
+#include <cstdlib>
 
 #ifdef _WIN32
 # pragma warning ( disable : 4267 )
@@ -320,6 +321,12 @@ int
 main(int argc, char* argv[])
 {
   try {
+    // This test uses old style xclBufferHandles with new Kernel APIs
+#ifdef __GNUC__
+    setenv("Runtime.xrt_bo", "false", 1);
+#else
+# warning "Make sure Runtime.xrt_bo=false"
+#endif
     run(argc,argv);
     return 0;
   }

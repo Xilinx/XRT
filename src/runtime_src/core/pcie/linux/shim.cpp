@@ -2553,7 +2553,7 @@ int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
   return drv ? drv->xclExecWait(timeoutMilliSec) : -ENODEV;
 }
 
-int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bool shared)
+int xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
 #ifdef DISABLE_DOWNLOAD_XCLBIN
   return 0;
@@ -2566,7 +2566,7 @@ int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex
   return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
 }
 
-int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
+int xclCloseContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned ipIndex)
 {
 #ifdef DISABLE_DOWNLOAD_XCLBIN
   return 0;

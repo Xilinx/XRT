@@ -1,6 +1,15 @@
 XRT ChangeLog
 -------------
 
+2.8.0
+~~~~~
+
+Removed
+.......
+
+* xbsak, please use xbutil
+
+
 2.7.0 (202010.2.7.x)
 ~~~~~~~~~~~~~~~~~~~~
 

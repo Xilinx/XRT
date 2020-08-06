@@ -16,6 +16,7 @@
  under the License.
 """
 
+import os
 import sys
 import uuid
 import re
@@ -103,4 +104,5 @@ def main(args):
         xclClose(opt.handle)
 
 if __name__ == "__main__":
+    os.environ["Runtime.xrt_bo"] = "false"
     main(sys.argv)

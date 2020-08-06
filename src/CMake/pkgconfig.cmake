@@ -14,22 +14,9 @@ configure_file (
   @ONLY
   )
 install (
-  FILES
-  ${CMAKE_CURRENT_BINARY_DIR}/xrt.pc
-  DESTINATION
-  ${XRT_PKG_CONFIG_DIR}
-  )
-
-configure_file (
-  ${CMAKE_SOURCE_DIR}/CMake/config/xrt-aws.pc.in
-  xrt-aws.pc
-  @ONLY
-  )
-install (
-  FILES
-  ${CMAKE_CURRENT_BINARY_DIR}/xrt-aws.pc
-  DESTINATION
-  ${XRT_PKG_CONFIG_DIR}
+  FILES ${CMAKE_CURRENT_BINARY_DIR}/xrt.pc
+  DESTINATION ${XRT_PKG_CONFIG_DIR}
+  COMPONENT ${XRT_DEV_COMPONENT}
   )
 
 configure_file (
@@ -38,10 +25,9 @@ configure_file (
   @ONLY
   )
 install (
-  FILES
-  ${CMAKE_CURRENT_BINARY_DIR}/libxmaapi.pc
-  DESTINATION
-  ${XRT_PKG_CONFIG_DIR}
+  FILES ${CMAKE_CURRENT_BINARY_DIR}/libxmaapi.pc
+  DESTINATION ${XRT_PKG_CONFIG_DIR}
+  COMPONENT ${XRT_DEV_COMPONENT}
   )
 
 configure_file (
@@ -50,10 +36,9 @@ configure_file (
   @ONLY
   )
 install (
-  FILES
-  ${CMAKE_CURRENT_BINARY_DIR}/libxmaplugin.pc
-  DESTINATION
-  ${XRT_PKG_CONFIG_DIR}
+  FILES ${CMAKE_CURRENT_BINARY_DIR}/libxmaplugin.pc
+  DESTINATION ${XRT_PKG_CONFIG_DIR}
+  COMPONENT ${XRT_DEV_COMPONENT}
   )
 
 configure_file (
@@ -62,10 +47,9 @@ configure_file (
   @ONLY
   )
 install (
-  FILES
-  ${CMAKE_CURRENT_BINARY_DIR}/libxma2api.pc
-  DESTINATION
-  ${XRT_PKG_CONFIG_DIR}
+  FILES ${CMAKE_CURRENT_BINARY_DIR}/libxma2api.pc
+  DESTINATION ${XRT_PKG_CONFIG_DIR}
+  COMPONENT ${XRT_DEV_COMPONENT}
   )
 
 configure_file (
@@ -74,10 +58,9 @@ configure_file (
   @ONLY
   )
 install (
-  FILES
-  ${CMAKE_CURRENT_BINARY_DIR}/libxma2plugin.pc
-  DESTINATION
-  ${XRT_PKG_CONFIG_DIR}
+  FILES ${CMAKE_CURRENT_BINARY_DIR}/libxma2plugin.pc
+  DESTINATION ${XRT_PKG_CONFIG_DIR}
+  COMPONENT ${XRT_DEV_COMPONENT}
   )
 
 
