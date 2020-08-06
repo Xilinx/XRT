@@ -29,12 +29,18 @@ namespace xdp {
     (db->getStats()).logFunctionCallEnd(functionName, timestamp) ;
   }
 
-  static void counter_action_ndrange(const char* kernelName, bool isStart)
+  static void log_kernel_execution(const char* kernelName, bool isStart)
   {
     static std::map<std::string, uint64_t> storedTimestamps ;
 
     VPDatabase* db = openclCountersPluginInstance.getDatabase() ;
     uint64_t timestamp = xrt_core::time_ns() ;
+
+    if (getFlowMode() == HW_EMU)
+    {
+      timestamp =
+	openclCountersPluginInstance.convertToEstimatedTimestamp(timestamp) ;
+    }
 
     if (isStart)
     {
@@ -74,7 +80,7 @@ void log_function_call_end(const char* functionName)
 }
 
 extern "C"
-void counter_action_ndrange(const char* kernelName, bool isStart)
+void log_kernel_execution(const char* kernelName, bool isStart)
 {
-  xdp::counter_action_ndrange(kernelName, isStart) ;
+  xdp::log_kernel_execution(kernelName, isStart) ;
 }

@@ -12,6 +12,6 @@ extern "C"
 void log_function_call_end(const char* functionName) ;
 
 extern "C"
-void counter_action_ndrange(const char* kernelName, bool isStart) ;
+void log_kernel_execution(const char* kernelName, bool isStart) ;
 
 #endif

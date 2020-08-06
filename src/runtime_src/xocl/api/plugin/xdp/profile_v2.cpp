@@ -36,7 +36,7 @@ namespace {
   std::function<void (const char*)> counter_function_start_cb ;
   std::function<void (const char*)> counter_function_end_cb ;
   // This is the function on the XDP side that logs kernel executions
-  std::function<void (const char*, bool)> counter_action_ndrange_cb ;
+  std::function<void (const char*, bool)> counter_kernel_execution_cb ;
 
   void register_opencl_counters_functions(void* handle)
   {
@@ -50,9 +50,9 @@ namespace {
     if (xrt_core::dlerror() != NULL) counter_function_start_cb = nullptr ;
 
     typedef void (*atype)(const char*, bool) ;
-    counter_action_ndrange_cb =
-      (atype)(xrt_core::dlsym(handle, "counter_action_ndrange")) ;
-    if (xrt_core::dlerror() != NULL) counter_action_ndrange_cb = nullptr ;
+    counter_kernel_execution_cb =
+      (atype)(xrt_core::dlsym(handle, "log_kernel_execution")) ;
+    if (xrt_core::dlerror() != NULL) counter_kernel_execution_cb = nullptr ;
 
     // For logging counter information for kernel executions
     xocl::add_command_start_callback(xocl::profile::log_kernel_start) ;
@@ -253,30 +253,29 @@ namespace xocl {
 
     // ******** OpenCL Counter/Guidance Callbacks *********
 
-  // These are the functions on the XOCL side that gets called when
-  //  execution contexts start and stop
-  void log_kernel_start(const xrt::command* cmd, 
-			const xocl::execution_context* ctx)
-  {
-    if (!counter_action_ndrange_cb) return ;
+    // These are the functions on the XOCL side that gets called when
+    //  execution contexts start and stop
+    void log_kernel_start(const xrt::command* cmd, 
+			  const xocl::execution_context* ctx)
+    {
+      if (!counter_kernel_execution_cb) return ;
+
+      auto kernel = ctx->get_kernel() ;
+      std::string kernelName = kernel->get_name() ;
+
+      counter_kernel_execution_cb(kernelName.c_str(), true) ;
+    }
     
-    auto kernel = ctx->get_kernel() ;
-    std::string kernelName = kernel->get_name() ;
+    void log_kernel_end(const xrt::command* cmd,
+			const xocl::execution_context* ctx)
+    {
+      if (!counter_kernel_execution_cb) return ;
 
-    counter_action_ndrange_cb(kernelName.c_str(), true) ;
-  }
+      auto kernel = ctx->get_kernel() ;
+      std::string kernelName = kernel->get_name() ;
 
-  void log_kernel_end(const xrt::command* cmd,
-		      const xocl::execution_context* ctx)
-  {
-    if (!counter_action_ndrange_cb) return ;
-
-    auto kernel = ctx->get_kernel() ;
-    std::string kernelName = kernel->get_name() ;
-
-    counter_action_ndrange_cb(kernelName.c_str(), false) ;
-  }
-
+      counter_kernel_execution_cb(kernelName.c_str(), false) ;
+    }
 
     std::function<void (xocl::event*, cl_int, const std::string&)>
     counter_action_ndrange(cl_kernel kernel)
