@@ -124,6 +124,7 @@ namespace xdp {
   };
 
   struct DeviceInfo {
+    uint64_t deviceId ;
     double clockRateMHz;
     struct PlatformInfo platformInfo;
     std::string loadedXclbin;

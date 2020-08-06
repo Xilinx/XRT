@@ -127,6 +127,7 @@ namespace xdp {
     resetDeviceInfo(deviceId);
 
     DeviceInfo *devInfo = new DeviceInfo();
+    devInfo->deviceId = deviceId ;
     devInfo->clockRateMHz = 300;
     devInfo->platformInfo.kdmaCount = 0;
 

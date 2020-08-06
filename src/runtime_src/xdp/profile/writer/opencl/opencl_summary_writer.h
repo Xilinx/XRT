@@ -19,6 +19,7 @@ namespace xdp {
     //  Each function here covers the generation of a single table.
     void writeAPICallSummary() ;
     void writeKernelExecutionSummary() ;
+    void writeSoftwareEmulationComputeUnitUtilization() ;
     void writeComputeUnitUtilization() ;
     void writeComputeUnitStallInformation() ;
     void writeDataTransferHostToGlobalMemory() ;

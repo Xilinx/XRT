@@ -216,6 +216,28 @@ namespace xdp {
     }
   }
 
+  void OpenCLSummaryWriter::writeSoftwareEmulationComputeUnitUtilization()
+  {
+    // Caption
+    fout << "Compute Unit Utilization" << std::endl ;
+
+    // Column headers
+    fout << "Device"                     << ","
+	 << "Compute Unit"               << ","
+	 << "Kernel"                     << ","
+	 << "Global Work Size"           << ","
+	 << "Local Work Size"            << ","
+	 << "Number Of Calls"            << ","
+	 << "Dataflow Execution"         << ","
+	 << "Max Overlapping Executions" << ","
+	 << "Dataflow Acceleration"      << ","
+	 << "Total Time (ms)"            << ","
+	 << "Minimum Time (ms)"          << ","
+	 << "Average Time (ms)"          << ","
+	 << "Maximum Time (ms)"          << ","
+	 << "Clock Frequency (MHz)"      << std::endl ;
+  }
+
   void OpenCLSummaryWriter::writeComputeUnitUtilization()
   {
     // Caption
@@ -244,47 +266,62 @@ namespace xdp {
 
     // The static portion of this output has to come from the
     //  static database.  The counter portion has to come from the
-    //  dynamic database
-
+    //  dynamic database.  Right now, the compute units are not
+    //  aligned between the two.  We have to make sure this information
+    //  is accessible.
+    
     std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
 
-    uint64_t i = 0 ;
+    // For every device that is connected...
     for (auto device : infos)
     {
-      xclCounterResults values = (db->getDynamicInfo()).getCounterResults(i) ;
-      std::map<std::string, TimeStatistics> kernelStats = 
-	(db->getStats()).getKernelExecutionStats() ;
+      uint64_t deviceId = device->deviceId ;
+      xclCounterResults values =
+	(db->getDynamicInfo()).getCounterResults(deviceId) ;
 
-      unsigned int j = 0 ;
-      for (auto cu : (device->cus))
+      // For every compute unit in the device
+      for (auto cuInfo : device->cus)
       {
-	double averageTime = 
-	  kernelStats[(cu.second)->getKernelName()].averageTime / 1e06 ;
-	double totalTime = 
-	  kernelStats[(cu.second)->getKernelName()].totalTime / 1e06 ;
-	double minTime = 
-	  kernelStats[(cu.second)->getKernelName()].minTime / 1e06 ;
-	double maxTime = 
-	  kernelStats[(cu.second)->getKernelName()].maxTime / 1e06 ;
+	// This info is the same for every execution call
+	std::string cuName = (cuInfo.second)->getName() ;
+	std::string kernelName = (cuInfo.second)->getKernelName() ;
+	std::string cuLocalDimensions = (cuInfo.second)->getDim() ;
+	std::string dataflowEnabled = 
+	  (cuInfo.second)->dataflowEnabled() ? "Yes" : "No" ;
 
-	fout << (device->platformInfo.deviceName) << "," 
-	     << (cu.second)->getName() << "," 
-	     << (cu.second)->getKernelName() << ","
-	     << (cu.second)->getDim() << ","
-	     << (cu.second)->getDim() << ","
-	     << values.CuExecCount[j] << ","
-	     << ((cu.second)->dataflowEnabled() ? "Yes" : "No") << ","
-	     << values.CuMaxParallelIter[j] << "," 
-	     << ((averageTime * (values.CuExecCount[j])) / totalTime) << ","
-	     << totalTime << ","
-	     << minTime << ","
-	     << averageTime << ","
-	     << maxTime << ","
-	     << (device->clockRateMHz) << std::endl ;
-	++j ;
+	// For each compute unit, we can have executions from the host
+	//  with different global work sizes.  Determine the number of 
+	//  execution types here
+	std::vector<std::pair<std::string, TimeStatistics>> cuCalls = 
+	  (db->getStats()).getComputeUnitExecutionStats(cuName) ;
+
+	uint64_t cuIndex = 0 ; // TODO: Determine the mapping of compute unit
+
+	for (auto cuCall : cuCalls)
+	{
+	  std::string globalWorkDimensions = cuCall.first ;
+	  double averageTime = (cuCall.second).averageTime ;
+	  double totalTime = (cuCall.second).totalTime ;
+	  double minTime = (cuCall.second).minTime ;
+	  double maxTime = (cuCall.second).maxTime ;
+
+	  fout << (device->platformInfo.deviceName) << "," 
+	       << cuName << ","
+	       << kernelName << ","
+	       << globalWorkDimensions << ","
+	       << cuLocalDimensions << ","
+	       << values.CuExecCount[cuIndex] << ","
+	       << dataflowEnabled << ","
+	       << values.CuMaxParallelIter[cuIndex] << ","
+	       << ((averageTime*(values.CuExecCount[cuIndex]))/totalTime) << ","
+	       << (totalTime / 1e06) << ","
+	       << (minTime / 1e06) << ","
+	       << (averageTime /1e06) << ","
+	       << (maxTime / 1e06) << "," 
+	       << (device->clockRateMHz) << std::endl ; 
+	}
       }
-      ++i ;
-    }
+    }    
   }
 
   void OpenCLSummaryWriter::writeComputeUnitStallInformation()
@@ -534,6 +571,10 @@ namespace xdp {
     writeHeader() ;                                 fout << std::endl ;
     writeAPICallSummary() ;                         fout << std::endl ;
     writeKernelExecutionSummary() ;                 fout << std::endl ;
+    if (getFlowMode() == SW_EMU)
+    {
+      writeSoftwareEmulationComputeUnitUtilization() ; fout << std::endl ;
+    }
     if ((db->getStaticInfo()).getNumDevices() > 0)
     {
       writeComputeUnitUtilization() ;                 fout << std::endl ;

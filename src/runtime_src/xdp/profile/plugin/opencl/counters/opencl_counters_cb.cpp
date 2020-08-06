@@ -53,7 +53,42 @@ namespace xdp {
 
       (db->getStats()).logKernelExecution(kernelName, executionTime) ;
     }
-    
+  }
+
+  static void log_compute_unit_execution(const char* cuName,
+					 const char* localWorkGroup,
+					 const char* globalWorkGroup,
+					 bool isStart)
+  {
+    static std::map<std::tuple<std::string, std::string, std::string>, 
+		    uint64_t> storedTimestamps ;
+
+    VPDatabase* db = openclCountersPluginInstance.getDatabase() ;
+    uint64_t timestamp = xrt_core::time_ns() ;
+
+    if (getFlowMode() == HW_EMU)
+    {
+      timestamp =
+	openclCountersPluginInstance.convertToEstimatedTimestamp(timestamp) ;
+    }
+
+    std::tuple<std::string, std::string, std::string> combinedName =
+      std::make_tuple(cuName, localWorkGroup, globalWorkGroup) ;
+
+    if (isStart)
+    {
+      storedTimestamps[combinedName] = timestamp ;
+    }
+    else
+    {
+      auto executionTime = timestamp - storedTimestamps[combinedName] ;
+      storedTimestamps.erase(combinedName) ;
+
+      (db->getStats()).logComputeUnitExecution(cuName,
+					       localWorkGroup,
+					       globalWorkGroup,
+					       executionTime) ;
+    }
   }
 
 } // end namespace xdp
@@ -74,4 +109,16 @@ extern "C"
 void log_kernel_execution(const char* kernelName, bool isStart)
 {
   xdp::log_kernel_execution(kernelName, isStart) ;
+}
+
+extern "C"
+void log_compute_unit_execution(const char* cuName,
+				const char* localWorkGroupConfiguration,
+				const char* globalWorkGroupConfiguration,
+				bool isStart)
+{
+  xdp::log_compute_unit_execution(cuName,
+				  localWorkGroupConfiguration,
+				  globalWorkGroupConfiguration,
+				  isStart) ;
 }

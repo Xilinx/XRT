@@ -37,6 +37,7 @@ namespace {
   std::function<void (const char*)> counter_function_end_cb ;
   // This is the function on the XDP side that logs kernel executions
   std::function<void (const char*, bool)> counter_kernel_execution_cb ;
+  std::function<void (const char*, const char*, const char*, bool)> counter_cu_execution_cb ;
 
   void register_opencl_counters_functions(void* handle)
   {
@@ -53,6 +54,11 @@ namespace {
     counter_kernel_execution_cb =
       (atype)(xrt_core::dlsym(handle, "log_kernel_execution")) ;
     if (xrt_core::dlerror() != NULL) counter_kernel_execution_cb = nullptr ;
+
+    typedef void (*cuetype)(const char*, const char*, const char*, bool) ;
+    counter_cu_execution_cb =
+      (cuetype)(xrt_core::dlsym(handle, "log_compute_unit_execution")) ;
+    if (xrt_core::dlerror() != NULL) counter_cu_execution_cb = nullptr ;
 
     // For logging counter information for kernel executions
     xocl::add_command_start_callback(xocl::profile::log_kernel_start) ;
@@ -219,7 +225,32 @@ namespace {
 // Ths anonymous namespace is for helper functions used in this file
 namespace {
 
- static void get_dependency_information(uint64_t*& dependencies,
+  static uint32_t get_num_cu_masks(uint32_t header)
+  {
+    return ((1 + (header >> 10)) & 0x3) ;
+  }
+
+  static uint32_t get_cu_index_mask(uint32_t cumask)
+  {
+    uint32_t cu_idx = 0 ;
+    for (; (cumask & 0x1) == 0 ; ++cu_idx, cumask >>= 1) ;
+    return cu_idx ;
+  }
+
+  static unsigned int get_cu_index(const xrt::command* cmd)
+  {
+    auto& packet = cmd->get_packet() ;
+    auto masks = get_num_cu_masks(packet[0]) ;
+
+    for (unsigned int i = 0 ; i < masks ; ++i)
+    {
+      if (auto cumask = packet[i+1])
+	return get_cu_index_mask(cumask) + 32 * i ;
+    }
+    return 0 ;
+  }
+
+  static void get_dependency_information(uint64_t*& dependencies,
 					 unsigned int& numDependencies,
 					 xocl::event* e)
   {
@@ -264,6 +295,30 @@ namespace xocl {
       std::string kernelName = kernel->get_name() ;
 
       counter_kernel_execution_cb(kernelName.c_str(), true) ;
+
+      // Check for software emulation logging of compute unit starts as well
+      unsigned int cuIndex = get_cu_index(cmd) ;
+      auto cu = ctx->get_compute_unit(cuIndex) ;
+      if (cu)
+      {
+	auto localDim = ctx->get_local_work_size() ;
+	auto globalDim = ctx->get_global_work_size() ;
+	
+	std::string localWorkgroupSize = 
+	  std::to_string(localDim[0]) + ":" +
+	  std::to_string(localDim[1]) + ":" +
+	  std::to_string(localDim[2]) ;
+
+	std::string globalWorkgroupSize = 
+	  std::to_string(globalDim[0]) + ":" +
+	  std::to_string(globalDim[1]) + ":" +
+	  std::to_string(globalDim[2]) ;
+
+	counter_cu_execution_cb(cu->get_name().c_str(),
+				localWorkgroupSize.c_str(),
+				globalWorkgroupSize.c_str(),
+				true) ;
+      }
     }
     
     void log_kernel_end(const xrt::command* cmd,
@@ -275,6 +330,31 @@ namespace xocl {
       std::string kernelName = kernel->get_name() ;
 
       counter_kernel_execution_cb(kernelName.c_str(), false) ;
+
+      // Check for software emulation logging of compute unit ends as well
+      // Check for software emulation logging of compute unit starts as well
+      unsigned int cuIndex = get_cu_index(cmd) ;
+      auto cu = ctx->get_compute_unit(cuIndex) ;
+      if (cu)
+      {
+	auto localDim = ctx->get_local_work_size() ;
+	auto globalDim = ctx->get_global_work_size() ;
+	
+	std::string localWorkgroupSize = 
+	  std::to_string(localDim[0]) + ":" +
+	  std::to_string(localDim[1]) + ":" +
+	  std::to_string(localDim[2]) ;
+
+	std::string globalWorkgroupSize = 
+	  std::to_string(globalDim[0]) + ":" +
+	  std::to_string(globalDim[1]) + ":" +
+	  std::to_string(globalDim[2]) ;
+
+	counter_cu_execution_cb(cu->get_name().c_str(),
+				localWorkgroupSize.c_str(),
+				globalWorkgroupSize.c_str(),
+				false) ;
+      }
     }
 
     std::function<void (xocl::event*, cl_int, const std::string&)>

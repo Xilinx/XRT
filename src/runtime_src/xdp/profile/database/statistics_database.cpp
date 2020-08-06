@@ -32,6 +32,21 @@ namespace xdp {
   {
   }
 
+  std::vector<std::pair<std::string, TimeStatistics>>
+  VPStatisticsDatabase::getComputeUnitExecutionStats(const std::string& cuName)
+  {
+    std::vector<std::pair<std::string, TimeStatistics>> calls ;
+    for (auto element : computeUnitExecutionStats)
+    {
+      if (cuName == std::get<0>(element.first))
+      {
+	calls.push_back(std::make_pair(std::get<2>(element.first),
+				       element.second)) ;
+      }
+    }
+    return calls ;
+  }
+
   void VPStatisticsDatabase::logFunctionCallStart(const std::string& name,
 						   double timestamp)
   {
@@ -91,9 +106,20 @@ namespace xdp {
     (kernelExecutionStats[kernelName]).update(executionTime) ;
   }
 
-  void VPStatisticsDatabase::logComputeUnitExecution(const std::string& /*computeUnitName*/, 
-						      double /*executionTime*/)
+  void VPStatisticsDatabase::logComputeUnitExecution(const std::string& computeUnitName,
+						     const std::string& localWorkGroup,
+						     const std::string& globalWorkGroup,
+						     uint64_t executionTime)
   {
+    std::tuple<std::string, std::string, std::string> combinedName =
+      std::make_tuple(computeUnitName, localWorkGroup, globalWorkGroup) ;
+
+    if (computeUnitExecutionStats.find(combinedName) == computeUnitExecutionStats.end())
+    {
+      TimeStatistics blank ;
+      computeUnitExecutionStats[combinedName] = blank ;
+    }
+    (computeUnitExecutionStats[combinedName]).update(executionTime) ;
   }
 
   void VPStatisticsDatabase::updateCounters(uint64_t /*deviceId*/,

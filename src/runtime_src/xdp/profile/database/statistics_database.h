@@ -23,6 +23,7 @@
 #include <map>
 #include <vector>
 #include <fstream>
+#include <tuple>
 
 // For the device results structures
 #include "xclperf.h"
@@ -99,7 +100,8 @@ namespace xdp {
     std::map<std::string, TimeStatistics> kernelExecutionStats ;
     
     // Statistics on compute unit enqueues and executions
-    std::map<std::string, TimeStatistics> computeUnitExecutionStats ;
+    std::map<std::tuple<std::string, std::string, std::string>, 
+             TimeStatistics> computeUnitExecutionStats ;
 
     // Information used by trace parser
     double firstKernelStartTime ;
@@ -120,8 +122,13 @@ namespace xdp {
       { return memoryStats ; }
     inline const std::map<std::string, TimeStatistics>& getKernelExecutionStats() 
       { return kernelExecutionStats ; }
-    inline const std::map<std::string, TimeStatistics>& getComputeUnitExecutionStats() 
+    inline const std::map<std::tuple<std::string, std::string, std::string>, 
+                          TimeStatistics>& getComputeUnitExecutionStats() 
       { return computeUnitExecutionStats ; }
+
+    // Functions specific to compute unit executions
+    std::vector<std::pair<std::string, TimeStatistics>> 
+    getComputeUnitExecutionStats(const std::string& cuName) ;
 
     // Logging Functions
     XDP_EXPORT void logFunctionCallStart(const std::string& name, 
@@ -136,7 +143,9 @@ namespace xdp {
     XDP_EXPORT void logKernelExecution(const std::string& kernelName, 
 				       double executionTime) ;
     XDP_EXPORT void logComputeUnitExecution(const std::string& computeUnitName,
-					    double executionTime) ;
+					    const std::string& localWorkGroup,
+					    const std::string& globalWorkGroup,
+					    uint64_t executionTime) ;
 
     XDP_EXPORT void updateCounters(uint64_t deviceId, 
 				   xclCounterResults& counters) ;

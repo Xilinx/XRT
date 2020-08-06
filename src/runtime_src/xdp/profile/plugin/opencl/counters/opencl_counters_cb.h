@@ -14,4 +14,10 @@ void log_function_call_end(const char* functionName) ;
 extern "C"
 void log_kernel_execution(const char* kernelName, bool isStart) ;
 
+extern "C"
+void log_compute_unit_execution(const char* cuName,
+				const char* localWorkGroupConfiguration,
+				const char* globalWorkGroupConfiguration,
+				bool isStart) ;
+
 #endif
