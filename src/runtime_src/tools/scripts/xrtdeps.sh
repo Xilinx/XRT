@@ -20,6 +20,7 @@ usage()
 validate=0
 docker=0
 sysroot=0
+ds9=0
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -38,15 +39,16 @@ while [ $# -gt 0 ]; do
             sysroot=1
             shift
             ;;
+        -ds9)
+            ds9=1
+            shift
+            ;;
         *)
             echo "unknown option"
             usage
             ;;
     esac
 done
-
-#UB_LIST=()
-#RH_LIST=()
 
 rh_package_list()
 {
@@ -110,11 +112,14 @@ rh_package_list()
     # Centos8
     if [ $MAJOR == 8 ]; then
 
-        RH_LIST+=(\
-         systemd-devel \
-         kernel-devel-$(uname -r) \
-         kernel-headers-$(uname -r) \
-        )
+        RH_LIST+=(systemd-devel)
+
+        if [ $docker == 0 ]; then
+            RH_LIST+=(\
+             kernel-devel-$(uname -r) \
+             kernel-headers-$(uname -r) \
+            )
+        fi
 
     else
 
@@ -425,7 +430,9 @@ install()
     if [ $FLAVOR == "rhel" ] || [ $FLAVOR == "centos" ] || [ $FLAVOR == "amzn" ]; then
         echo "Installing RHEL/CentOS packages..."
         yum install -y "${RH_LIST[@]}"
-	if [ $ARCH == "ppc64le" ]; then
+        if [ $ds9 == 1 ]; then
+            yum install -y devtoolset-9
+	elif [ $ARCH == "ppc64le" ]; then
             yum install -y devtoolset-7
 	elif [ $MAJOR -lt "8" ]  && [ $FLAVOR != "amzn" ]; then
             yum install -y devtoolset-6

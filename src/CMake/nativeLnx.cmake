@@ -69,9 +69,9 @@ else()
   # On older systems libboost_system.a is not compiled with -fPIC which leads to
   # link errors when XRT shared objects try to link with it.
   # Static linking with Boost is enabled on Ubuntu 18.04 but not 20.04
-  if ((${LINUX_FLAVOR} STREQUAL Ubuntu) AND (${LINUX_VERSION} STREQUAL 18.04))
-    set(Boost_USE_STATIC_LIBS  ON)
-  endif()
+#  if ((${LINUX_FLAVOR} STREQUAL Ubuntu) AND (${LINUX_VERSION} STREQUAL 18.04))
+#    set(Boost_USE_STATIC_LIBS  ON)
+#  endif()
   find_package(Boost 
     REQUIRED COMPONENTS system filesystem)
 endif()
@@ -91,15 +91,20 @@ set (XRT_INSTALL_UNWRAPPED_DIR "${XRT_INSTALL_BIN_DIR}/unwrapped")
 set (XRT_INSTALL_INCLUDE_DIR   "${XRT_INSTALL_DIR}/include")
 set (XRT_INSTALL_LIB_DIR       "${XRT_INSTALL_DIR}/lib${LIB_SUFFIX}")
 
+# Define RPATH for embedding in libraries and executables.  This allows
+# package creation to automatically determine dependencies.
+# RPATH relative to location of binary:
+#  bin/../lib, lib/xrt/module/../.., bin/unwrapped/../../lib
+SET(CMAKE_INSTALL_RPATH "$ORIGIN/../lib${LIB_SUFFFIX}:$ORIGIN/../..:$ORIGIN/../../lib${LIB_SUFFIX}")
+
 # --- Release: OpenCL extension headers ---
 set(XRT_CL_EXT_SRC
   include/1_2/CL/cl_ext_xilinx.h
   include/1_2/CL/cl_ext.h)
-install (FILES ${XRT_CL_EXT_SRC} DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/CL)
-message("-- XRT CL extension header files")
-foreach (header ${XRT_CL_EXT_SRC})
-  message("-- ${header}")
-endforeach()
+install (FILES ${XRT_CL_EXT_SRC}
+  DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/CL
+  COMPONENT ${XRT_DEV_COMPONENT}
+)
 
 # --- Release: eula ---
 file(GLOB XRT_EULA

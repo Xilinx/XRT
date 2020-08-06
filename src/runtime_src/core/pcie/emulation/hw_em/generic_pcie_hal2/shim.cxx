@@ -574,9 +574,6 @@ namespace xclhwemhal2 {
       mMessengerThreadStarted = true;
     }
 
-    if(mHostMemAccessThreadStarted == false) {
-	  mHostMemAccessThread = std::thread(xclhwemhal2::hostMemAccessThread,this);
-   }
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
     std::string launcherArgs = xclemulation::config::getInstance()->getLauncherArgs();
     std::string wdbFileName("");
@@ -746,6 +743,9 @@ namespace xclhwemhal2 {
 #endif
       binaryCounter++;
     }
+    if(mHostMemAccessThreadStarted == false) {
+	  mHostMemAccessThread = std::thread(xclhwemhal2::hostMemAccessThread,this);
+   }
     if (deviceDirectory.empty() == false)
       setenv("EMULATION_RUN_DIR", deviceDirectory.c_str(), true);
 
@@ -1316,15 +1316,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     bool ack = false;
     if(sock)
     {
-      if (boFlags & XCL_BO_FLAGS_HOST_ONLY) {
-        void *hostMemBuf = nullptr;
-        if (posix_memalign(&hostMemBuf, getpagesize(), size))
-        {
-          if (mLogStream.is_open()) mLogStream << "posix_memalign failed" << std::endl;
-          hostMemBuf = nullptr;
-          return 0;
-        }
-        mHostOnlyMemMap[finalValidAddress] = std::make_pair(hostMemBuf, size);
+      if (boFlags & XCL_BO_FLAGS_HOST_ONLY) { // bypassed the xclAllocDeviceBuffer RPC call for host only buffer
       } else {
         xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer, finalValidAddress, origSize, noHostMemory);
 
@@ -2461,6 +2453,11 @@ void *HwEmShim::xclMapBO(unsigned int boHandle, bool write)
   }
   memset(pBuf, 0, bo->size);
   bo->buf = pBuf;
+
+  if (xclemulation::xocl_bo_host_only(bo)) { 
+    mHostOnlyMemMap[bo->base] = std::make_pair(pBuf, bo->size);
+  }
+
   PRINTENDFUNC;
   return pBuf;
 }
@@ -2490,35 +2487,17 @@ int HwEmShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t si
   }
 
   int returnVal = 0;
-  void* buffer = bo->userptr ? bo->userptr : bo->buf;
-  if(dir == XCL_BO_SYNC_BO_TO_DEVICE)
-  {
-    if (bo->flags & XCL_BO_FLAGS_HOST_ONLY) {
-      auto hostAddrIter = mHostOnlyMemMap.find(bo->base);
-      if (hostAddrIter != mHostOnlyMemMap.end()) {
-        std::pair<void*, uint64_t> hostMemAddressSizePair = (*hostAddrIter).second;
-        void* hostMemBuf = hostMemAddressSizePair.first;
-        std::memcpy(hostMemBuf, buffer, size);
-      }      
-    }
-    else {
+  if (!xclemulation::xocl_bo_host_only(bo)) { // bypassed the xclCopyBufferDevice2Host/Host2Device RPC calls for host only buffer scenario
+    void* buffer = bo->userptr ? bo->userptr : bo->buf;
+    if (dir == XCL_BO_SYNC_BO_TO_DEVICE)
+    {
       if (xclCopyBufferHost2Device(bo->base, buffer, size, offset, bo->topology) != size)
       {
         returnVal = EIO;
       }
     }
-  }
-  else
-  {
-    if (bo->flags & XCL_BO_FLAGS_HOST_ONLY) {
-      auto hostAddrIter = mHostOnlyMemMap.find(bo->base);
-      if (hostAddrIter != mHostOnlyMemMap.end()) {
-        std::pair<void*, uint64_t> hostMemAddressSizePair = (*hostAddrIter).second;
-        void* hostMemBuf = hostMemAddressSizePair.first;
-        std::memcpy(buffer, hostMemBuf, size);
-      }      
-    }
-    else {
+    else
+    {
       if (xclCopyBufferDevice2Host(buffer, bo->base, size, offset, bo->topology) != size)
       {
         returnVal = EIO;
@@ -3179,11 +3158,7 @@ volatile void HwEmShim::set_mHostMemAccessThreadStarted(bool val) { mHostMemAcce
  *     
  **/
 bool HwEmShim::device2xrt_rd_trans_cb(unsigned long int addr, void* const data_ptr,unsigned long int size) {
-  //This addr can be any address, may not be only the base address.
-  // So we should identify to which address it falls into and get that membuf 
-  // and seek to that address offset and get the data of the size requested
-  // and copy into the data_ptr provided by the device call
-
+  
   auto itStart = mHostOnlyMemMap.begin();
   auto itEnd = mHostOnlyMemMap.end();
   while (itStart != itEnd)
@@ -3196,9 +3171,11 @@ bool HwEmShim::device2xrt_rd_trans_cb(unsigned long int addr, void* const data_p
     if (addr >= baseAddress && addr < baseAddress + buf_size)
     {
       unsigned char* finalOsAddress = (unsigned char*)startOSAddress + (addr - baseAddress);
-      std::memcpy(finalOsAddress, (unsigned char*)data_ptr, size);
+      std::memcpy((unsigned char*)data_ptr, finalOsAddress, size);
       break;
     }
+
+    itStart++;
   }
 
   return true;
@@ -3218,10 +3195,6 @@ bool HwEmShim::device2xrt_rd_trans_cb(unsigned long int addr, void* const data_p
  *     
  **/
 bool HwEmShim::device2xrt_wr_trans_cb(unsigned long int addr, void const* data_ptr,unsigned long int size) {
-  //This addr can be any address, may not be only the base address.
-  // So we should identify to which address it falls into and get that membuf 
-  // and seek to that address offset and get the data of the size requested
-  // from the data_ptr provided by the device call and copy into the offset address
 
   auto itStart = mHostOnlyMemMap.begin();
   auto itEnd = mHostOnlyMemMap.end();
@@ -3235,9 +3208,11 @@ bool HwEmShim::device2xrt_wr_trans_cb(unsigned long int addr, void const* data_p
     if (addr >= baseAddress && addr < baseAddress + buf_size)
     {
       unsigned char* finalOsAddress = (unsigned char*)startOSAddress + (addr - baseAddress);
-      std::memcpy((unsigned char*)data_ptr, finalOsAddress, size);
+      std::memcpy(finalOsAddress, (unsigned char*)data_ptr, size);
       break;
     }
+
+    itStart++;
   }
 
   return true;
@@ -3274,6 +3249,7 @@ int Q2H_helper::poolingon_Qdma() {
     if (r <= 0) {
     	return r;
     }
+
     assert(i_len == (uint32_t)r);
     //deserializing protobuf message
     header->ParseFromArray((void*)raw_header.get(), i_len);
@@ -3318,12 +3294,19 @@ int Q2H_helper::poolingon_Qdma() {
 
     return 1;
 }
+
 bool Q2H_helper::connect_sock() {
+    std::string sock_name;
+    if(getenv("EMULATION_SOCKETID")) {
+        sock_name = "D2X_unix_sock_" + std::string(getenv("EMULATION_SOCKETID"));
+    } else {
+        sock_name = "D2X_unix_sock";
+    }
     if(Q2h_sock == NULL) {
-        Q2h_sock = new unix_socket("xcl_sock_K2H",5,false);
+        Q2h_sock = new unix_socket(sock_name,5,false);
     }
     else if (!Q2h_sock->server_started) {
-        Q2h_sock->start_server("xcl_sock_K2H",5,false);
+        Q2h_sock->start_server(5,false);
     }
     return Q2h_sock->server_started;
 }
@@ -3333,7 +3316,7 @@ void hostMemAccessThread(xclhwemhal2::HwEmShim* inst) {
     auto mq2h_helper_ptr = std::make_unique<Q2H_helper>(inst);
     bool sock_ret = false;
     int count = 0;
-    while(inst->get_mHostMemAccessThreadStarted() && !sock_ret && count < 30){
+    while(inst->get_mHostMemAccessThreadStarted() && !sock_ret && count < 71){
         sock_ret = mq2h_helper_ptr->connect_sock();
         count++;
     }

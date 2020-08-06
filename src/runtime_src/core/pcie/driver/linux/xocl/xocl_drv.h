@@ -553,6 +553,7 @@ struct xocl_rom_funcs {
 
 /* version_ctrl callbacks */
 struct xocl_version_ctrl_funcs {
+	struct xocl_subdev_funcs common_funcs;
 	bool (*flat_shell_check)(struct platform_device *pdev);
 	bool (*cmc_in_bitfile)(struct platform_device *pdev);
 };
@@ -1267,12 +1268,12 @@ static inline u32 xocl_ddr_count_unified(xdev_handle_t xdev_hdl)
 {
 	struct mem_topology *topo = NULL;
 	uint32_t ret = 0;
-	int err = XOCL_GET_MEM_TOPOLOGY(xdev_hdl, topo);
+	int err = XOCL_GET_GROUP_TOPOLOGY(xdev_hdl, topo);
 
 	if (err)
 		return 0;
 	ret = topo ? topo->m_count : 0;
-	XOCL_PUT_MEM_TOPOLOGY(xdev_hdl);
+	XOCL_PUT_GROUP_TOPOLOGY(xdev_hdl);
 
 	return ret;
 }
@@ -1545,6 +1546,18 @@ struct xocl_intc_funcs {
 #define xocl_intc_csr_write32(xdev, val, off) \
 	(INTC_CB(xdev, csr_write32) ? \
 	 INTC_OPS(xdev)->csr_write32(INTC_DEV(xdev), val, off) : \
+	 -ENODEV)
+
+struct xocl_ert_user_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	int (* configured)(struct platform_device *pdev);
+};
+#define	ERT_USER_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ERT_USER).pldev
+#define ERT_USER_OPS(xdev)  \
+	((struct xocl_ert_user_funcs *)SUBDEV(xdev, XOCL_SUBDEV_ERT_USER).ops)
+
+#define xocl_ert_user_configured(xdev) \
+	( ERT_USER_OPS(xdev)->configured(ERT_USER_DEV(xdev)) : \
 	 -ENODEV)
 
 /* helper functions */
@@ -1985,4 +1998,8 @@ void xocl_fini_icap_controller(void);
 
 int __init xocl_init_version_control(void);
 void xocl_fini_version_control(void);
+
+int __init xocl_init_ert_user(void);
+void xocl_fini_ert_user(void);
+
 #endif
