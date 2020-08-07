@@ -527,6 +527,69 @@ namespace xocl {
       */
     }
 
+    std::function<void (xocl::event*, cl_int, const std::string&)>
+    counter_action_ndrange_migrate(cl_event event, cl_kernel kernel)
+    {
+      auto xevent = xocl::xocl(event) ;
+      auto xkernel = xocl::xocl(kernel) ;
+
+      auto queue = xevent->get_command_queue() ;
+      auto device = queue->get_device() ;
+
+      cl_mem mem0 = nullptr ;
+
+      // See how many of the arguments will be migrated and mark them
+      for (auto& arg : xkernel->get_argument_range())
+      {
+	if (auto mem = arg->get_memory_object())
+	{
+	  if (arg->is_progvar() && 
+	      arg->get_address_qualifier() == CL_KERNEL_ARG_ADDRESS_GLOBAL)
+	    continue ;
+	  else if (mem->is_resident(device))
+	    continue ;
+	  else if (!(mem->get_flags() & 
+		     (CL_MEM_WRITE_ONLY|CL_MEM_HOST_NO_ACCESS)))
+	  {
+	    mem0 = mem ;
+	  }
+
+	}
+      }
+      
+      if (mem0 == nullptr)
+      {
+	return [](xocl::event*, cl_int, const std::string&)
+	       {
+	       } ;
+      }
+
+      return [mem0](xocl::event* e, cl_int status, const std::string&) 
+	     {
+	       if (!counters_action_write_cb) return ;
+	       if (status != CL_RUNNING && status != CL_COMPLETE) return ;
+
+	       auto queue = e->get_command_queue() ;
+	       uint64_t contextId = e->get_context()->get_uid() ;
+	       std::string deviceName = queue->get_device()->get_name() ;
+
+	       if (status == CL_RUNNING)
+	       {
+		 counters_action_write_cb(contextId,
+					  deviceName.c_str(),
+					  0,
+					  true);
+	       }
+	       else if (status == CL_COMPLETE)
+	       {
+		 counters_action_write_cb(contextId,
+					  deviceName.c_str(),
+					  xocl::xocl(mem0)->get_size(),
+					  false) ;
+	       }
+	     } ;
+    }
+
     // ******** OpenCL API Trace Callbacks *********
     OpenCLAPILogger::OpenCLAPILogger(const char* function) :
       OpenCLAPILogger(function, 0)

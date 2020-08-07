@@ -125,6 +125,28 @@ namespace xdp {
 				   uint64_t size,
 				   bool isStart)
   {
+    static std::map<std::pair<uint64_t, std::string>, uint64_t> 
+      storedTimestamps ;
+
+    VPDatabase* db = openclCountersPluginInstance.getDatabase() ;
+    uint64_t timestamp = xrt_core::time_ns() ;
+
+    std::pair<uint64_t, std::string> identifier =
+      std::make_pair(contextId, std::string(deviceName)) ;
+
+    if (isStart)
+    {
+      storedTimestamps[identifier] = timestamp ;
+    }
+    else
+    {
+      uint64_t transferTime = timestamp - storedTimestamps[identifier] ;
+      storedTimestamps.erase(identifier) ;
+
+      uint64_t deviceId = 0 ; // TODO - lookup the device ID from device name
+
+      (db->getStats()).logHostWrite(contextId, deviceId, size, transferTime) ;
+    }
   }
 
 } // end namespace xdp

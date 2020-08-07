@@ -181,6 +181,8 @@ namespace xdp {
     inline const std::map<std::tuple<std::string, std::string, std::string>, 
                           TimeStatistics>& getComputeUnitExecutionStats() 
       { return computeUnitExecutionStats ; }
+    inline std::map<std::pair<uint64_t, uint64_t>, BufferStatistics>& getHostReads() { return hostReads ; }
+    inline std::map<std::pair<uint64_t, uint64_t>, BufferStatistics>& getHostWrites() { return hostWrites ; }
 
     // Functions specific to compute unit executions
     std::vector<std::pair<std::string, TimeStatistics>> 

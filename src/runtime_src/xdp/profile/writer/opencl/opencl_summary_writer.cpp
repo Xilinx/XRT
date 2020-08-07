@@ -409,7 +409,40 @@ namespace xdp {
 	 << "Total Time (ms)"                   << ","
 	 << "Average Time (ms)"                 << std::endl ;
 
-    
+    std::map<std::pair<uint64_t, uint64_t>, BufferStatistics> hostReads =
+      (db->getStats()).getHostReads() ;
+    std::map<std::pair<uint64_t, uint64_t>, BufferStatistics> hostWrites =
+      (db->getStats()).getHostWrites() ;
+
+    for (auto read : hostReads)
+    {
+      double transferRate = 
+	(double)((read.second).totalSize) / (double)((read.second).totalTime) ;
+
+      fout << (read.first.first) << ":" << (read.first.second) << ","
+	   << "READ" << ","
+	   << (read.second).count << ","
+	   << transferRate << ","
+	   << 0 << "," // TODO
+	   << (read.second).averageSize << ","
+	   << (read.second).totalTime << ","
+	   << (read.second).averageTime << std::endl ;	
+    }
+
+    for (auto write : hostWrites)
+    {
+      double transferRate = 
+	(double)((write.second).totalSize) / (double)((write.second).totalTime);
+
+      fout << (write.first.first) << ":" << (write.first.second) << ","
+	   << "WRITE" << ","
+	   << (write.second).count << ","
+	   << transferRate << ","
+	   << 0 << "," // TODO
+	   << (write.second).averageSize << ","
+	   << (write.second).totalTime << ","
+	   << (write.second).averageTime << std::endl ;
+    }
   }
 
   void OpenCLSummaryWriter::writeDataTransferKernelsToGlobalMemory()
