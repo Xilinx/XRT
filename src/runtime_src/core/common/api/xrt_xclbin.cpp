@@ -19,7 +19,6 @@
 // core/include/experimental/xrt_xclbin.h
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_xclbin.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
-
 #include "core/include/experimental/xrt_xclbin.h"
 
 #include "core/common/system.h"
@@ -36,48 +35,6 @@
 #else
 # include <linux/uuid.h>
 #endif
-
-namespace {
-
-namespace api {
-
-void
-xrtXclbinUUID(xclDeviceHandle dhdl, xuid_t out)
-{
-  auto device = xrt_core::get_userpf_device(dhdl);
-  auto uuid = device->get_xclbin_uuid();
-  uuid_copy(out, uuid.get());
-}
-
-} // api
-
-inline void
-send_exception_message(const char* msg)
-{
-  xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR, "XRT", msg);
-}
-
-} // namespace
-
-////////////////////////////////////////////////////////////////
-// xrt_xclbin API implmentations (xrt_xclbin.h)
-////////////////////////////////////////////////////////////////
-int
-xrtXclbinUUID(xclDeviceHandle dhdl, xuid_t out)
-{
-  try {
-    api::xrtXclbinUUID(dhdl, out);
-    return 0;
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return ex.get();
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return -1;
-  }
-}
 
 namespace xrt {
 
@@ -128,7 +85,7 @@ public:
   get_cu_names() const
   {
     std::vector<std::string> names;
-    for (auto cu : xrt_core::xclbin::get_cus(m_top, false)) // Why would I ever need them encoded
+    for (auto cu : xrt_core::xclbin::get_cus(m_top))
       names.push_back(xrt_core::xclbin::get_ip_name(m_top, cu));
 
     return names;
@@ -202,9 +159,8 @@ get_data() const
 }
 
 } // namespace xrt
-////////////////////////////////////////////////////////////////
-// xrt_xclbin API implementations (xrt_xclbin.h)
-////////////////////////////////////////////////////////////////
+
+namespace {
 
 // C-API handles that must be explicitly freed. Corresponding managed
 // handles are inserted in this map.  When the unmanaged handle is
@@ -228,10 +184,23 @@ free_xclbin(xrtXclbinHandle handle)
     throw xrt_core::error(-EINVAL, "No such xclbin handle");
 }
 
-// Utility function for device class to verify that the C xclbin handle is valid
-// Needed when the C API for device tries to load an xclbin using C pointer to xclbin
-namespace xrt_core {
-namespace xclbin_int {
+inline void
+send_exception_message(const char* msg)
+{
+  xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR, "XRT", msg);
+}
+
+} // namespace
+
+////////////////////////////////////////////////////////////////
+// xrt_xclbin implementation of extension APIs not exposed to end-user
+// 
+// Utility function for device class to verify that the C xclbin
+// handle is valid Needed when the C API for device tries to load an
+// xclbin using C pointer to xclbin
+////////////////////////////////////////////////////////////////
+namespace xrt_core { namespace xclbin_int {
+
 void
 is_valid_or_error(xrtXclbinHandle handle)
 {
@@ -245,9 +214,11 @@ get_xclbin_data(xrtXclbinHandle handle)
   return get_xclbin(handle)->get_data();
 }
 
-}
-};
+}} // namespace xclbin_int, core_core
 
+////////////////////////////////////////////////////////////////
+// xrt_xclbin C API implmentations (xrt_xclbin.h)
+////////////////////////////////////////////////////////////////
 xrtXclbinHandle
 xrtXclbinAllocFilename(const char* filename)
 {
@@ -421,6 +392,28 @@ xrtXclbinGetData(xrtXclbinHandle handle, char* data, int size, int* ret_size)
     // Set errno globally
     errno = 0;
     return 0;
+  }
+}
+
+////////////////////////////////////////////////////////////////
+// Legacy to be removed xrt_xclbin API implmentations (xrt_xclbin.h)
+////////////////////////////////////////////////////////////////
+int
+xrtXclbinUUID(xclDeviceHandle dhdl, xuid_t out)
+{
+  try {
+    auto device = xrt_core::get_userpf_device(dhdl);
+    auto uuid = device->get_xclbin_uuid();
+    uuid_copy(out, uuid.get());
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -1;
   }
 }
 
