@@ -305,7 +305,7 @@ XSPI_Flasher::XSPI_Flasher(std::shared_ptr<pcidev::pci_device> dev)
 static bool isDualQSPI(pcidev::pci_device *dev) {
     std::string err;
     uint16_t deviceID;
-    dev->sysfs_get<uint16_t>("", "device", err, deviceID, 0xffff); 
+    dev->sysfs_get<uint16_t>("", "device", err, deviceID, 0xffff);
 
     if (!err.empty()) {
         std::cout << "Exiting now, as could not find device ID" << std::endl;
@@ -528,8 +528,8 @@ int XSPI_Flasher::xclUpgradeFirmware1(std::istream& mcsStream1,
 
     if (mFlashDev)
         return upgradeFirmware1Drv(mcsStream1, stripped);
-    
-    //Parse MCS file for first flash device 
+
+    //Parse MCS file for first flash device
     status = parseMCS(mcsStream1);
     if(status)
         return status;
@@ -588,7 +588,7 @@ int XSPI_Flasher::xclUpgradeFirmware2(std::istream& mcsStream1,
     if (mFlashDev)
         return upgradeFirmware2Drv(mcsStream1, mcsStream2, stripped);
 
-    //Parse MCS file for first flash device 
+    //Parse MCS file for first flash device
     status = parseMCS(mcsStream1);
     if(status)
         return status;
@@ -617,7 +617,7 @@ int XSPI_Flasher::xclUpgradeFirmware2(std::istream& mcsStream1,
     if(status)
         return status;
 
-    //Parse MCS file for second flash device 
+    //Parse MCS file for second flash device
     status = parseMCS(mcsStream2);
     if(status)
         return status;
@@ -877,6 +877,36 @@ bool XSPI_Flasher::bulkErase()
         return false;
 
     return waitTxEmpty();
+}
+
+// Erases the entire flash
+bool XSPI_Flasher::fullErase() {
+    const uint8_t numFlash = isDualQSPI(mDev.get()) ? 2 : 1;
+
+    for (uint8_t i = 0; i < numFlash; ++i) {
+        if (!prepareXSpi(i))
+            return false;
+
+        // Go through and erase every sector. Alternatively use bulk or die
+        // erase depending on whether the device is monolithic or stacked.
+        uint32_t beatCount = 0;
+        std::cout << "Erasing flash " << i << std::endl;
+        for (uint32_t j = 0; j < MAX_NUM_SECTORS << 24; j += 1 << 15) {
+            // Beat every 4MB
+            if (++beatCount % (1 << 7) == 0) {
+                std::cout << "." << std::flush;
+            }
+
+            if (!sectorErase(j, COMMAND_32KB_SUBSECTOR_ERASE)) {
+                std::cout << "\nERROR: Failed to erase subsector!" << std::endl;
+                return false;
+            }
+        }
+
+        std::cout << std::endl;
+    }
+
+    return true;
 }
 
 //Bitstream guard protects from partially programmed bitstreams
@@ -1932,6 +1962,24 @@ static int bitstreamGuardAddress(pcidev::pci_device *dev, uint32_t& addr)
 
 int XSPI_Flasher::revertToMFG(void)
 {
+    std::string errmsg;
+    uint16_t vendor;
+
+    // Vendor-dependent behaviour
+    mDev->sysfs_get<uint16_t>("", "vendor", errmsg, vendor, -1);
+    if (!errmsg.empty()) {
+        std::cout << errmsg << std::endl;
+        return -EINVAL;
+    }
+
+    switch (vendor) {
+        case ARISTA_ID:
+            return fullErase() ? 0 : -EINVAL;
+        default:
+        case XILINX_ID:
+            break;
+    }
+
     uint32_t bitstream_start_loc;
 
     int ret = bitstreamGuardAddress(mDev.get(), bitstream_start_loc);
