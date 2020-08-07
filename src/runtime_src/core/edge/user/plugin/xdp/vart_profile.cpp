@@ -14,7 +14,7 @@
  * under the License.
  */
 
-#include "plugin/xdp/vart_profile.h"
+#include "vart_profile.h"
 #include "core/common/module_loader.h"
 
 namespace xdpvartprofile {
