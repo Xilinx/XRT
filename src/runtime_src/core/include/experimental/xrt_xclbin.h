@@ -43,56 +43,16 @@ class xclbin
 {
 public:
   /**
-   * xclbin() - Constructor for empty xclbin
-   *
-   * Can be used as lvalue in assignment.
-   */
-  xclbin()
-  {}
-
-  /**
-   * xclbin() - Copy ctor
-   */
-  xclbin(const xclbin& rhs)
-      : handle(rhs.handle)
-  {}
-
-  /**
-   * xclbin() - Move ctor
-   */
-  xclbin(xclbin&& rhs)
-      : handle(std::move(rhs.handle))
-  {}
-
-  /**
-   * operator= () - Move assignment
-   */
-  xclbin&
-  operator=(xclbin&& rhs)
-  {
-    handle = std::move(rhs.handle);
-    return *this;
-  }
-
-  /**
-   * operator bool() - Check if xclbin handle is valid
-   *
-   * Return: true if xclbin object has an implementation, false otherwise
-   */
-  explicit
-  operator bool() const
-  {
-    return handle != nullptr;
-  }
-
-  /**
    * xclbin() - Constructor from an xclbin filename
    *
    * @filename:  path to the xclbin file
    *
-   * The xclbin file must be accessible by the application. An exception is thrown file not found
+   * The xclbin file must be accessible by the application. An
+   * exception is thrown file not found
    */
-  explicit xclbin(const std::string& filename);
+  XCL_DRIVER_DLLESPEC
+  explicit
+  xclbin(const std::string& filename);
 
   /**
    * xclbin() - Constructor from raw data
@@ -100,9 +60,26 @@ public:
    * @data: raw data of xclbin
    *
    * The raw data of the xclbin can be deleted after calling the constructor.
-   *
    */
+  XCL_DRIVER_DLLESPEC
+  explicit
   xclbin(const std::vector<char>& data);
+
+  /**
+   * xclbin() - Copy ctor
+   */
+  xclbin(const xclbin& rhs) = default;
+
+  /**
+   * xclbin() - Move ctor
+   */
+  xclbin(xclbin&& rhs) = default;
+
+  /**
+   * operator= () - Move assignment
+   */
+  xclbin&
+  operator=(xclbin&& rhs) = default;
 
   /**
    * get_cu_names() - Get CU names of xclbin
@@ -111,6 +88,7 @@ public:
    *
    * An exception is thrown if the data is missing.
    */
+  XCL_DRIVER_DLLESPEC
   std::vector<std::string>
   get_cu_names() const;
 
@@ -121,6 +99,7 @@ public:
    *
    * An exception is thrown if the data is missing.
    */
+  XCL_DRIVER_DLLESPEC
   std::string
   get_xsa_name() const;
 
@@ -131,6 +110,7 @@ public:
    *
    * An exception is thrown if the data is missing.
    */
+  XCL_DRIVER_DLLESPEC
   uuid
   get_uuid() const;
 
@@ -141,15 +121,9 @@ public:
    *
    * An exception is thrown if the data is missing.
    */
+  XCL_DRIVER_DLLESPEC
   const std::vector<char>&
   get_data() const;
-
-public:
-  std::shared_ptr<xclbin_impl>
-  get_handle() const
-  {
-    return handle;
-  }
 
 private:
   std::shared_ptr<xclbin_impl> handle;
@@ -166,6 +140,7 @@ extern "C" {
  * @filename:      path to the xclbin file
  * Return:         xrtXclbinHandle on success or NULL with errno set
  */
+XCL_DRIVER_DLLESPEC
 xrtXclbinHandle
 xrtXclbinAllocFilename(const char* filename);
 
@@ -177,6 +152,7 @@ xrtXclbinAllocFilename(const char* filename);
  * @size:          size (in bytes) of raw data buffer of xclbin
  * Return:         xrtXclbinHandle on success or NULL with errno set
  */
+XCL_DRIVER_DLLESPEC
 xrtXclbinHandle
 xrtXclbinAllocRawData(const char* data, const int size);
 
@@ -186,6 +162,7 @@ xrtXclbinAllocRawData(const char* data, const int size);
  * @handle:        xclbin handle
  * Return:         0 on success, -1 on error
  */
+XCL_DRIVER_DLLESPEC
 int
 xrtXclbinFreeHandle(xrtXclbinHandle handle);
 
@@ -202,6 +179,7 @@ xrtXclbinFreeHandle(xrtXclbinHandle handle);
  *               Otherwise, the the content of this value will be populated.
  * Return:  0 on success or appropriate error number.
  */
+XCL_DRIVER_DLLESPEC
 int
 xrtXclbinGetCUNames(xrtXclbinHandle handle, char** names, int* numNames);
 #endif
@@ -219,6 +197,7 @@ xrtXclbinGetCUNames(xrtXclbinHandle handle, char** names, int* numNames);
  *              Otherwise, the the content of this value will be populated.
  * Return:  0 on success or appropriate error number
  */
+XCL_DRIVER_DLLESPEC
 int
 xrtXclbinGetXSAName(xrtXclbinHandle handle, char* name, int size, int* ret_size);
 
@@ -229,6 +208,7 @@ xrtXclbinGetXSAName(xrtXclbinHandle handle, char* name, int size, int* ret_size)
  * @ret_uuid: Return xclbin id in this uuid_t struct
  * Return:    0 on success or appropriate error number
  */
+XCL_DRIVER_DLLESPEC
 int
 xrtXclbinGetUUID(xclDeviceHandle handle, xuid_t ret_uuid);
 
@@ -245,6 +225,7 @@ xrtXclbinGetUUID(xclDeviceHandle handle, xuid_t ret_uuid);
  *              Otherwise, the the content of this value will be populated.
  * Return:  0 on success or appropriate error number
  */
+XCL_DRIVER_DLLESPEC
 int
 xrtXclbinGetData(xrtXclbinHandle handle, char* data, int size, int* ret_size);
 

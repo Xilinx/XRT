@@ -23,7 +23,6 @@ file(GLOB XRT_CORE_COMMON_LIB_FILES
   "system.cpp"
   "utils.cpp"
   "thread.cpp"
-  "xrt_xclbin.cpp"
   "module_loader.cpp"
   "api/*.cpp"
   )
