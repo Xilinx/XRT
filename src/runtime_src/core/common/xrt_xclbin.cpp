@@ -138,14 +138,15 @@ public:
   std::string
   get_xsa_name() const
   {
-    return reinterpret_cast<const char*>(m_top->m_header.m_platformVBNV);
+    auto vbnv = reinterpret_cast<const char*>(m_top->m_header.m_platformVBNV);
+    return {vbnv, strnlen(vbnv, 64)};
   }
 
   // TODO - Check that m_header is present in data buffer
   uuid
   get_uuid() const
   {
-    return {m_top->m_header.uuid};
+    return m_top->m_header.uuid;
   }
 
   const std::vector<char>&
@@ -176,28 +177,28 @@ std::vector<std::string>
 xclbin::
 get_cu_names() const
 {
-  return get_handle()->get_cu_names();
+  return handle->get_cu_names();
 }
 
 std::string
 xclbin::
 get_xsa_name() const
 {
-  return get_handle()->get_xsa_name();
+  return handle->get_xsa_name();
 }
 
 uuid
 xclbin::
 get_uuid() const
 {
-  return get_handle()->get_uuid();
+  return handle->get_uuid();
 }
 
 const std::vector<char>&
 xclbin::
 get_data() const
 {
-  return get_handle()->get_data();
+  return handle->get_data();
 }
 
 } // namespace xrt
@@ -346,13 +347,13 @@ xrtXclbinGetXSAName(xrtXclbinHandle handle, char* name, int size, int* ret_size)
 {
   try {
     auto xclbin = get_xclbin(handle);
-    const std::string& xsaName = xclbin->get_xsa_name();
+    const std::string& xsaname = xclbin->get_xsa_name();
     // populate ret_size if memory is allocated
     if (ret_size)
-      *ret_size = xsaName.size();
+      *ret_size = xsaname.size();
     // populate name if memory is allocated
     if (name)
-      std::strncpy(name, xsaName.c_str(), size);
+      std::strncpy(name, xsaname.c_str(), size);
     return 0;
   }
   catch (const xrt_core::error& ex) {

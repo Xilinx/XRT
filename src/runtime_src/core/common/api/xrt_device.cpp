@@ -224,7 +224,7 @@ xrtDeviceLoadXclbinHandle(xrtDeviceHandle dhdl, xrtXclbinHandle xhdl)
 {
   try {
     auto device = get_device(dhdl);
-    auto xclbin = xrt_core::xclbin_int::get_xclbin_data(xhdl);
+    auto& xclbin = xrt_core::xclbin_int::get_xclbin_data(xhdl);
     device->load_xclbin(reinterpret_cast<const axlf*>(xclbin.data()));
     return 0;
   }
