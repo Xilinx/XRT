@@ -14,7 +14,7 @@
  * under the License.
  */
 
-#include "plugin/xdp/noc_profile.h"
+#include "noc_profile.h"
 #include "core/common/module_loader.h"
 
 namespace xdpnocprofile {

@@ -14,7 +14,7 @@
  * under the License.
  */
 
-#include "plugin/xdp/aie_profile.h"
+#include "aie_profile.h"
 #include "core/common/module_loader.h"
 
 namespace xdpaieprofile {
