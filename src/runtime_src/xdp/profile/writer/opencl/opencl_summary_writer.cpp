@@ -408,6 +408,8 @@ namespace xdp {
 	 << "Average Buffer Size (KB)"          << ","
 	 << "Total Time (ms)"                   << ","
 	 << "Average Time (ms)"                 << std::endl ;
+
+    
   }
 
   void OpenCLSummaryWriter::writeDataTransferKernelsToGlobalMemory()

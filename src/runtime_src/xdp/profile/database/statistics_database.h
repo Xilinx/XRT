@@ -41,6 +41,55 @@ namespace xdp {
   //  host code execution and should not be reset when
   //  information is dumped in continuous offload.
 
+  struct BufferStatistics
+  {
+    uint64_t count ; // Number of buffer transfers
+    uint64_t minSize ; // Minimum number of bytes transferred at once
+    uint64_t maxSize ; // Maximum number of bytes transferred at once
+    //uint64_t contextId ;
+    //std::string deviceName
+    //uint64_t numDevices ;
+    //uint64_t bitWidth ;
+    uint64_t totalSize ; // Total number of bytes transferred
+    double averageSize ; // Average number of bytes per transfer
+    double totalTime ;
+    double averageTime ;
+    double maxTime ;
+    double minTime ;
+    //double averageTransferRate ;
+    //double clockFreqMhz ;
+
+    BufferStatistics() : 
+      count(0),
+      minSize((std::numeric_limits<uint64_t>::max)()),
+      maxSize(0),
+      totalSize(0),
+      averageSize(0),
+      totalTime(0),
+      averageTime(0),
+      maxTime(0),
+      minTime((std::numeric_limits<double>::max)())
+    { }
+
+    void update(uint64_t size, double executionTime)
+    {
+      // Update size stats
+      totalSize += size ;
+      averageSize = ((averageSize * count) + size) / (count + 1) ;
+      if (minSize > size) minSize = size ;
+      if (maxSize < size) maxSize = size ;
+
+      // Update time stats
+      totalTime += executionTime ;
+      averageTime = ((averageTime * count) + executionTime)/(count + 1) ;
+      if (minTime > executionTime) minTime = executionTime ;
+      if (maxTime < executionTime) maxTime = executionTime ;
+
+      ++count ;
+    }
+
+  } ;
+
   struct TimeStatistics
   {
     double totalTime ;
@@ -92,16 +141,23 @@ namespace xdp {
     std::map<std::pair<std::string, std::thread::id>,
              std::vector<std::pair<double, double>>> callCount ;
 
+    // **** HAL Statistics ****
     // For HAL, each device will have four different read/write
     //  channels that need to be kept track of.
     std::map<uint64_t, DeviceMemoryStatistics> memoryStats ;
 
+    // **** OpenCL Statistics ****
     // Statistics on kernel enqueues and executions
     std::map<std::string, TimeStatistics> kernelExecutionStats ;
     
     // Statistics on compute unit enqueues and executions
     std::map<std::tuple<std::string, std::string, std::string>, 
              TimeStatistics> computeUnitExecutionStats ;
+
+    // Statistics on buffer transfers
+    //  Keep track of reads and writes for every context+device pair
+    std::map<std::pair<uint64_t, uint64_t>, BufferStatistics> hostReads ;
+    std::map<std::pair<uint64_t, uint64_t>, BufferStatistics> hostWrites ;
 
     // Information used by trace parser
     double firstKernelStartTime ;
@@ -140,12 +196,17 @@ namespace xdp {
 				      DeviceMemoryStatistics::ChannelType channelType,
 				      size_t byteCount) ;
 
+    // OpenCL level statistic logging
     XDP_EXPORT void logKernelExecution(const std::string& kernelName, 
 				       double executionTime) ;
     XDP_EXPORT void logComputeUnitExecution(const std::string& computeUnitName,
 					    const std::string& localWorkGroup,
 					    const std::string& globalWorkGroup,
 					    uint64_t executionTime) ;
+    XDP_EXPORT void logHostRead(uint64_t contextId, uint64_t deviceId,
+				uint64_t size, uint64_t transferTime) ;
+    XDP_EXPORT void logHostWrite(uint64_t contextId, uint64_t deviceId,
+				 uint64_t size, uint64_t transferTime) ;
 
     XDP_EXPORT void updateCounters(uint64_t deviceId, 
 				   xclCounterResults& counters) ;

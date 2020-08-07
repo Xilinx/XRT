@@ -122,6 +122,36 @@ namespace xdp {
     (computeUnitExecutionStats[combinedName]).update(executionTime) ;
   }
 
+  void VPStatisticsDatabase::logHostRead(uint64_t contextId, uint64_t deviceId,
+					 uint64_t size, uint64_t transferTime)
+  {
+    std::pair<uint64_t, uint64_t> identifier = 
+      std::make_pair(contextId, deviceId) ;
+    
+    if (hostReads.find(identifier) == hostReads.end())
+    {
+      BufferStatistics blank ;
+      hostReads[identifier] = blank ;
+    }
+
+    hostReads[identifier].update(size, transferTime) ;
+  }
+
+  void VPStatisticsDatabase::logHostWrite(uint64_t contextId, uint64_t deviceId,
+					  uint64_t size, uint64_t transferTime)
+  {
+    std::pair<uint64_t, uint64_t> identifier = 
+      std::make_pair(contextId, deviceId) ;
+    
+    if (hostWrites.find(identifier) == hostWrites.end())
+    {
+      BufferStatistics blank ;
+      hostWrites[identifier] = blank ;
+    }
+
+    hostWrites[identifier].update(size, transferTime) ;
+  }
+
   void VPStatisticsDatabase::updateCounters(uint64_t /*deviceId*/,
 					     xclCounterResults& /*counters*/)
   {
