@@ -224,6 +224,13 @@ get_lop_trace()
 }
 
 inline bool
+get_vitis_ai_profile()
+{
+  static bool value = detail::get_bool_value("Debug.vitis_ai_profile", false);
+  return value;
+}
+
+inline bool
 get_api_checks()
 {
   static bool value = detail::get_bool_value("Runtime.api_checks",true);

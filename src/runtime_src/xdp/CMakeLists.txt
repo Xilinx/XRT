@@ -26,6 +26,7 @@ set(XRT_XDP_PROFILE_XMA_PLUGIN_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/plug
 set(XRT_XDP_PROFILE_OCL_PLUGIN_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/ocl")
 set(XRT_XDP_PROFILE_HAL_PLUGIN_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/hal")
 set(XRT_XDP_PROFILE_HAL_API_PLUGIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/hal_api_interface")
+set(XRT_XDP_PROFILE_VART_PLUGIN_DIR    "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/vart")
 set(XRT_XDP_PROFILE_COLLECTION_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/collection")
 set(XRT_XDP_PROFILE_WRITER_DIR         "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer")
 set(XRT_XDP_PROFILE_HAL_WRITER_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer/hal")
@@ -186,6 +187,11 @@ file(GLOB XRT_XDP_POWER_PROFILE_PLUGIN_FILES
   "${XRT_XDP_POWER_PROFILE_WRITER_DIR}/*.cpp"
   )
 
+file(GLOB XRT_XDP_PROFILE_VART_PLUGIN_FILES
+  "${XRT_XDP_PROFILE_VART_PLUGIN_DIR}/*.h"
+  "${XRT_XDP_PROFILE_VART_PLUGIN_DIR}/*.cpp"
+  )
+  
 set(XRT_XDP_ALL_SRC
   ${XRT_XDP_PROFILE_FILES}
   ${XRT_XDP_FILES}
@@ -201,6 +207,7 @@ add_library(oclxdp SHARED ${XRT_XDP_PROFILE_OCL_PLUGIN_FILES})
 # Plugin modules
 add_library(xdp_hal_plugin MODULE ${XRT_XDP_PROFILE_HAL_PLUGIN_FILES})
 add_library(xdp_hal_api_interface_plugin MODULE ${XRT_XDP_PROFILE_HAL_INTERFACE_PLUGIN_FILES})
+add_library(xdp_vart_plugin MODULE ${XRT_XDP_PROFILE_VART_PLUGIN_FILES})
 add_library(xdp_debug_plugin MODULE ${XRT_XDP_DEBUG_FILES})
 add_library(xdp_appdebug_plugin MODULE ${XRT_XDP_APPDEBUG_FILES})
 add_library(xdp_lop_plugin MODULE ${XRT_XDP_PROFILE_LOP_PLUGIN_FILES})
@@ -214,6 +221,7 @@ add_dependencies(oclxdp xilinxopencl xdp)
 add_dependencies(xdp_core xrt_coreutil)
 add_dependencies(xdp_hal_plugin xdp_core xdp xrt_core)
 add_dependencies(xdp_hal_api_interface_plugin xdp )
+add_dependencies(xdp_vart_plugin xdp xrt_core)
 add_dependencies(xdp_debug_plugin xrt_coreutil xilinxopencl)
 add_dependencies(xdp_appdebug_plugin xrt_coreutil xilinxopencl)
 add_dependencies(xdp_lop_plugin xdp_core)
@@ -227,6 +235,7 @@ target_link_libraries(oclxdp xilinxopencl xdp)
 target_link_libraries(xdp_core xrt_coreutil)
 target_link_libraries(xdp_hal_plugin xdp_core xdp xrt_core)
 target_link_libraries(xdp_hal_api_interface_plugin xdp xrt_core)
+target_link_libraries(xdp_vart_plugin xdp xrt_core)
 target_link_libraries(xdp_debug_plugin xrt_coreutil xilinxopencl)
 target_link_libraries(xdp_appdebug_plugin xrt_coreutil xilinxopencl)
 target_link_libraries(xdp_lop_plugin xdp_core)
@@ -242,6 +251,7 @@ set_target_properties(xdp PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${X
 set_target_properties(oclxdp PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_hal_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_hal_api_interface_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
+set_target_properties(xdp_vart_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_debug_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_appdebug_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_lop_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
@@ -260,7 +270,7 @@ install (TARGETS xdp oclxdp xdp_core
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} NAMELINK_ONLY
 )
 
-install (TARGETS xdp_hal_plugin xdp_hal_api_interface_plugin xdp_debug_plugin xdp_appdebug_plugin xdp_lop_plugin xdp_user_plugin xdp_device_offload_plugin xdp_hal_device_offload_plugin xdp_power_plugin
+install (TARGETS xdp_hal_plugin xdp_hal_api_interface_plugin xdp_debug_plugin xdp_appdebug_plugin xdp_lop_plugin xdp_user_plugin xdp_device_offload_plugin xdp_hal_device_offload_plugin xdp_power_plugin xdp_vart_plugin
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module
 )
 
@@ -323,23 +333,26 @@ add_library(oclxdp SHARED ${XRT_XDP_PROFILE_OCL_PLUGIN_FILES})
 # Plugin modules
 add_library(xdp_hal_plugin MODULE ${XRT_XDP_PROFILE_HAL_PLUGIN_FILES})
 add_library(xdp_hal_api_interface_plugin MODULE ${XRT_XDP_PROFILE_HAL_INTERFACE_PLUGIN_FILES})
+add_library(xdp_vart_plugin MODULE ${XRT_XDP_PROFILE_VART_PLUGIN_FILES})
 
 add_dependencies(xdp xrt_core xilinxopencl)
 add_dependencies(oclxdp xdp xilinxopencl)
 add_dependencies(xdp_hal_plugin xdp xrt_core)
 add_dependencies(xdp_hal_api_interface_plugin xdp)
+add_dependencies(xdp_vart_plugin xdp xrt_core)
 
 target_link_libraries(xdp xrt_core xilinxopencl)
 target_link_libraries(oclxdp xdp xilinxopencl)
 target_link_libraries(xdp_hal_plugin xdp xrt_core)
 target_link_libraries(xdp_hal_api_interface_plugin xdp)
+target_link_libraries(xdp_vart_plugin xdp xrt_core)
 
-install(TARGETS oclxdp xdp xdp_hal_plugin xdp_hal_api_interface_plugin
+install(TARGETS oclxdp xdp xdp_hal_plugin xdp_hal_api_interface_plugin xdp_vart_plugin
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} NAMELINK_SKIP
   RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR}
 )
 
-install(TARGETS oclxdp xdp xdp_hal_plugin xdp_hal_api_interface_plugin
+install(TARGETS oclxdp xdp xdp_hal_plugin xdp_hal_api_interface_plugin xdp_vart_plugin
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT}
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} NAMELINK_ONLY
 )
