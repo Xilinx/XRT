@@ -257,7 +257,9 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 
 #define XOCL_ARE_HOP 0x400000000ull
 
-#define	XOCL_XILINX_VEN		0x10EE
+#define XOCL_XILINX_VEN 0x10EE
+#define XOCL_ARISTA_VEN 0x3475
+
 #define	XOCL_CHARDEV_REG_COUNT	16
 
 #define INVALID_SUBDEVICE ~0U
