@@ -25,6 +25,7 @@
 
 #include "xocl/core/command_queue.h"
 #include "xocl/core/program.h"
+#include "xocl/core/context.h"
 
 // The anonymous namespace is responsible for loading the XDP plugins
 namespace {
@@ -376,15 +377,61 @@ namespace xocl {
     }
 
     std::function<void (xocl::event*, cl_int, const std::string&)>
-    counter_action_read()
+    counter_action_read(cl_mem buffer)
     {
-      return [](xocl::event*, cl_int, const std::string&) {} ;
+      return [buffer](xocl::event* e, cl_int status, const std::string&) 
+	     {
+	       if (!counters_action_read_cb) return ;
+	       if (status != CL_RUNNING && status != CL_COMPLETE) return ;
+
+	       auto queue = e->get_command_queue() ;
+	       uint64_t contextId = e->get_context()->get_uid() ;
+	       std::string deviceName = queue->get_device()->get_name() ;
+
+	       if (status == CL_RUNNING)
+	       {
+		 counters_action_read_cb(contextId,
+					 deviceName.c_str(),
+					 0,
+					 true);
+	       }
+	       else if (status == CL_COMPLETE)
+	       {
+		 counters_action_read_cb(contextId,
+					 deviceName.c_str(),
+					 xocl::xocl(buffer)->get_size(),
+					 false) ;
+	       }
+	     } ;
     }
 
     std::function<void (xocl::event*, cl_int, const std::string&)>
-    counter_action_write()
+    counter_action_write(cl_mem buffer)
     {
-      return [](xocl::event*, cl_int, const std::string&) {} ;
+      return [buffer](xocl::event* e, cl_int status, const std::string&) 
+	     {
+	       if (!counters_action_write_cb) return ;
+	       if (status != CL_RUNNING && status != CL_COMPLETE) return ;
+
+	       auto queue = e->get_command_queue() ;
+	       uint64_t contextId = e->get_context()->get_uid() ;
+	       std::string deviceName = queue->get_device()->get_name() ;
+
+	       if (status == CL_RUNNING)
+	       {
+		 counters_action_write_cb(contextId,
+					  deviceName.c_str(),
+					  0,
+					  true);
+	       }
+	       else if (status == CL_COMPLETE)
+	       {
+		 counters_action_write_cb(contextId,
+					  deviceName.c_str(),
+					  xocl::xocl(buffer)->get_size(),
+					  false) ;
+	       }
+	     } ;
     }
 
     std::function<void (xocl::event*, cl_int, const std::string&)>

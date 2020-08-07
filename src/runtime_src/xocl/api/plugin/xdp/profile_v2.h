@@ -59,8 +59,14 @@ namespace xocl {
     // Functions used by the host counters plugin
     std::function<void (xocl::event*, cl_int, const std::string&)>
       counter_action_ndrange(cl_kernel kernel) ;
-    void log_kernel_start(const xrt::command* cmd, const xocl::execution_context* ctx) ;
-    void log_kernel_end(const xrt::command* cmd, const xocl::execution_context* ctx) ;
+    std::function<void (xocl::event*, cl_int, const std::string&)>
+      counter_action_read(cl_mem buffer) ;
+    std::function<void (xocl::event*, cl_int, const std::string&)>
+      counter_action_write(cl_mem buffer) ;
+    void log_kernel_start(const xrt::command* cmd, 
+			  const xocl::execution_context* ctx) ;
+    void log_kernel_end(const xrt::command* cmd, 
+			const xocl::execution_context* ctx) ;
 
     // Functions used by the host trace plugin
     void log_dependency(uint64_t id, uint64_t dependency) ;
