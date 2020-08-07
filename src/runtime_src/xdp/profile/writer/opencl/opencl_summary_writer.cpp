@@ -236,6 +236,39 @@ namespace xdp {
 	 << "Average Time (ms)"          << ","
 	 << "Maximum Time (ms)"          << ","
 	 << "Clock Frequency (MHz)"      << std::endl ;
+
+    std::map<std::tuple<std::string, std::string, std::string>,
+	     TimeStatistics> cuStats = 
+      (db->getStats()).getComputeUnitExecutionStats() ;
+
+    for (auto stat : cuStats)
+    {
+      std::string cuName          = (std::get<0>(stat.first)) ;
+      std::string localWorkGroup  = (std::get<1>(stat.first)) ;
+      std::string globalWorkGroup = (std::get<2>(stat.first)) ;
+
+      double averageTime = (stat.second).averageTime ;
+      double totalTime   = (stat.second).totalTime ;
+      double minTime     = (stat.second).minTime ;
+      double maxTime     = (stat.second).maxTime ;
+      uint64_t execCount = (stat.second).numExecutions ;
+
+      fout << "deviceName"                        << "," // TODO
+	   << cuName                              << ","
+	   << "kernelName"                        << "," // TODO
+	   << globalWorkGroup                     << "," 
+	   << localWorkGroup                      << ","
+	   << execCount                           << ","
+	   << "No"                                << ","
+	   << 1                                   << "," // TODO?
+	   << ((averageTime*execCount)/totalTime) << ","
+	   << (totalTime / 1e06)                  << ","
+	   << (minTime / 1e06)                    << ","
+	   << (averageTime / 1e06)                << ","
+	   << (maxTime / 1e06)                    << ","
+	   << 300                                 << std::endl ; // TODO?
+    }
+
   }
 
   void OpenCLSummaryWriter::writeComputeUnitUtilization()
@@ -318,7 +351,7 @@ namespace xdp {
 	       << (minTime / 1e06) << ","
 	       << (averageTime /1e06) << ","
 	       << (maxTime / 1e06) << "," 
-	       << (device->clockRateMHz) << std::endl ; 
+	       << (device->clockRateMHz) << std::endl ;
 	}
       }
     }    

@@ -295,6 +295,8 @@ namespace xocl {
       std::string kernelName = kernel->get_name() ;
 
       counter_kernel_execution_cb(kernelName.c_str(), true) ;
+      
+      if (!counter_cu_execution_cb) return ;
 
       // Check for software emulation logging of compute unit starts as well
       unsigned int cuIndex = get_cu_index(cmd) ;
@@ -326,35 +328,37 @@ namespace xocl {
     {
       if (!counter_kernel_execution_cb) return ;
 
-      auto kernel = ctx->get_kernel() ;
-      std::string kernelName = kernel->get_name() ;
-
-      counter_kernel_execution_cb(kernelName.c_str(), false) ;
-
       // Check for software emulation logging of compute unit ends as well
-      // Check for software emulation logging of compute unit starts as well
-      unsigned int cuIndex = get_cu_index(cmd) ;
-      auto cu = ctx->get_compute_unit(cuIndex) ;
-      if (cu)
+      if (counter_cu_execution_cb)
       {
-	auto localDim = ctx->get_local_work_size() ;
-	auto globalDim = ctx->get_global_work_size() ;
-	
-	std::string localWorkgroupSize = 
+	unsigned int cuIndex = get_cu_index(cmd) ;
+	auto cu = ctx->get_compute_unit(cuIndex) ;
+	if (cu)
+	{
+	  auto localDim = ctx->get_local_work_size() ;
+	  auto globalDim = ctx->get_global_work_size() ;
+
+	  std::string localWorkgroupSize = 
 	  std::to_string(localDim[0]) + ":" +
 	  std::to_string(localDim[1]) + ":" +
 	  std::to_string(localDim[2]) ;
 
-	std::string globalWorkgroupSize = 
-	  std::to_string(globalDim[0]) + ":" +
-	  std::to_string(globalDim[1]) + ":" +
-	  std::to_string(globalDim[2]) ;
+	  std::string globalWorkgroupSize = 
+	    std::to_string(globalDim[0]) + ":" +
+	    std::to_string(globalDim[1]) + ":" +
+	    std::to_string(globalDim[2]) ;
 
-	counter_cu_execution_cb(cu->get_name().c_str(),
-				localWorkgroupSize.c_str(),
-				globalWorkgroupSize.c_str(),
-				false) ;
+	  counter_cu_execution_cb(cu->get_name().c_str(),
+				  localWorkgroupSize.c_str(),
+				  globalWorkgroupSize.c_str(),
+				  false) ;
+	}
       }
+
+      auto kernel = ctx->get_kernel() ;
+      std::string kernelName = kernel->get_name() ;
+
+      counter_kernel_execution_cb(kernelName.c_str(), false) ;
     }
 
     std::function<void (xocl::event*, cl_int, const std::string&)>
