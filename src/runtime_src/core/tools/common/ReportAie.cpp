@@ -225,8 +225,8 @@ populate_aie(const xrt_core::device * device, const std::string& desc)
 }
 
 void
-ReportAie::getPropertyTreeInternal( const xrt_core::device * _pDevice, 
-                                              boost::property_tree::ptree &_pt) const
+ReportAie::getPropertyTreeInternal(const xrt_core::device * _pDevice, 
+                                   boost::property_tree::ptree &_pt) const
 {
   // Defer to the 20202 format.  If we ever need to update JSON data, 
   // Then update this method to do so.
@@ -234,16 +234,16 @@ ReportAie::getPropertyTreeInternal( const xrt_core::device * _pDevice,
 }
 
 void 
-ReportAie::getPropertyTree20202( const xrt_core::device * _pDevice, 
-                                           boost::property_tree::ptree &_pt) const
+ReportAie::getPropertyTree20202(const xrt_core::device * _pDevice, 
+                                boost::property_tree::ptree &_pt) const
 {
   _pt.add_child("aie_metadata", populate_aie(_pDevice, "Aie_Metadata"));
 }
 
 void 
-ReportAie::writeReport( const xrt_core::device * _pDevice,
-                                  const std::vector<std::string> & /*_elementsFilter*/, 
-                                  std::iostream & _output) const
+ReportAie::writeReport(const xrt_core::device * _pDevice,
+                       const std::vector<std::string> & /*_elementsFilter*/, 
+                       std::iostream & _output) const
 {
   boost::property_tree::ptree _pt;
   boost::property_tree::ptree empty_ptree;
@@ -310,7 +310,7 @@ ReportAie::writeReport( const xrt_core::device * _pDevice,
       _output << fmtCommon("%s") % "Name" %gmio_node.second.get<std::string>("name");
       _output << fmtCommon("%s") % "Logical Name" % gmio_node.second.get<std::string>("logical_name");
       _output << fmtCommon("%d") % "Type" % gmio_node.second.get<uint16_t>("type");
-      _output << fmtCommon("%d") % "Shim_column" % gmio_node.second.get<uint16_t>("shim_column");
+      _output << fmtCommon("%d") % "Shim column" % gmio_node.second.get<uint16_t>("shim_column");
       _output << fmtCommon("%d") % "Channel Number" % gmio_node.second.get<uint16_t>("channel_number");
       _output << fmtCommon("%d") % "Stream Id" % gmio_node.second.get<uint16_t>("stream_id");
       _output << fmtCommon("%d") % "Burst Length in 16byte" % gmio_node.second.get<uint16_t>("burst_length_in_16byte");

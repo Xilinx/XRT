@@ -160,7 +160,7 @@ static ssize_t read_aie_metadata(struct file *filp, struct kobject *kobj,
 	else
 		nread = size - off;
 
-	memcpy(buf, ((char *)zdev->aie_data.data + off), nread);
+	memcpy(buf, (char *)zdev->aie_data.data + off, nread);
 
 	read_unlock(&zdev->attr_rwlock);
 

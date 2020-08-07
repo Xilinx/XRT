@@ -98,7 +98,7 @@ get_os_info(boost::property_tree::ptree &pt)
   }
 
   boost::property_tree::ptree _ptLibInfo;
-  _ptLibInfo.push_back( std::make_pair("", glibc_info() ));
+  _ptLibInfo.push_back(std::make_pair("", glibc_info()));
   pt.put_child("libraries", _ptLibInfo);
 
   // The file is a requirement as per latest Linux standards
