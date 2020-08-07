@@ -3,6 +3,8 @@
  */
 
 #include "hal_profile.h"
+#include "plugin/xdp/vart_profile.h"
+
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
 #include "core/common/dlfcn.h"
@@ -24,15 +26,19 @@ CallLogger::CallLogger(unsigned id)
 {
   if (xrt_core::config::get_xrt_profile())
   {
-    load_xdp_plugin_library(nullptr);
+    load_xdp_plugin_library(nullptr) ;
   }
   if (xrt_core::config::get_aie_profile())
   {
-    xdpaieprofile::load_xdp_aie_plugin();
+    xdpaieprofile::load_xdp_aie_plugin() ;
   }
   if (xrt_core::config::get_noc_profile()) 
   {
-    xdpnocprofile::load_xdp_noc_plugin();
+    xdpnocprofile::load_xdp_noc_plugin() ;
+  }
+  if (xrt_core::config::get_vitis_ai_profile())
+  {
+    xdpvartprofile::load_xdp_vart_plugin() ;
   }
 }
 

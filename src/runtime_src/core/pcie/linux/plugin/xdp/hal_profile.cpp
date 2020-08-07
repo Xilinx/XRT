@@ -3,6 +3,7 @@
 #include "plugin/xdp/power_profile.h"
 #include "plugin/xdp/aie_profile.h"
 #include "plugin/xdp/noc_profile.h"
+#include "plugin/xdp/vart_profile.h"
 #include "core/common/module_loader.h"
 #include "core/common/utils.h"
 #include "core/common/config_reader.h"
@@ -42,11 +43,15 @@ CallLogger::CallLogger(uint64_t id)
   }
   if (xrt_core::config::get_aie_profile())
   {
-    xdpaieprofile::load_xdp_aie_plugin();
+    xdpaieprofile::load_xdp_aie_plugin() ;
   }
   if (xrt_core::config::get_noc_profile()) 
   {
-    xdpnocprofile::load_xdp_noc_plugin();
+    xdpnocprofile::load_xdp_noc_plugin() ;
+  }
+  if (xrt_core::config::get_vitis_ai_profile())
+  {
+    xdpvartprofile::load_xdp_vart_plugin() ;
   }
 }
 
