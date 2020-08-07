@@ -145,8 +145,9 @@ int xcldev::device::readAIMCounters() {
         return 0;
     }
     std::pair<size_t, size_t> widths = getCUNamePortName(slotNames, cuNameportNames);
-//    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_AIM, &debugResults);
+    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_AIM, &debugResults);
 
+#if 0
     for(uint32_t i = 0 ; i < numSlots; i++) {
       std::string aimName("aximm_mon_");
       aimName = aimName + std::to_string(baseAddress[i]);
@@ -192,6 +193,7 @@ int xcldev::device::readAIMCounters() {
       ifs.close();
     }
     debugResults.NumSlots = numSlots;
+#endif
 
     std::cout << "AXI Interface Monitor Counters\n";
     int col1 = std::max(widths.first, strlen("Region or CU")) + 4;
@@ -255,8 +257,9 @@ int xcldev::device::readAMCounters() {
         std::cout << "ERROR: Accelerator Monitor IP does not exist on the platform" << std::endl;
         return 0;
     }
-//    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_AM, &debugResults);
+    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_AM, &debugResults);
 
+#if 0
     for(uint32_t i = 0 ; i < numSlots; i++) {
       std::string amName("accel_mon_");
       amName = amName + std::to_string(baseAddress[i]);
@@ -305,6 +308,7 @@ int xcldev::device::readAMCounters() {
       ifs.close();
     }
     debugResults.NumSlots = numSlots;
+#endif
 
     std::cout << "Accelerator Monitor Counters (hex values are cycle count)\n";
 
@@ -362,9 +366,10 @@ int xcldev::device::readASMCounters() {
         return 0;
     }
     std::pair<size_t, size_t> widths = getStreamName(slotNames, cuNameportNames);
-//    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_ASM, &debugResults);
+    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_ASM, &debugResults);
 
 
+#if 0
     for(uint32_t i = 0 ; i < numSlots; i++) {
       std::string asmName("axistream_mon_");
       asmName = asmName + std::to_string(baseAddress[i]);
@@ -406,7 +411,7 @@ int xcldev::device::readASMCounters() {
       ifs.close();
     }
     debugResults.NumSlots = numSlots;
-
+#endif
 
     std::cout << "AXI Stream Monitor Counters\n";
     int col1 = std::max(widths.first, strlen("Stream Master")) + 4;
@@ -461,8 +466,9 @@ int xcldev::device::readLAPCheckers(int aVerbose) {
         return 0;
     }
     std::pair<size_t, size_t> widths = getCUNamePortName(lapcSlotNames, cuNameportNames);
-//    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_LAPC, &debugResults);
+    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_LAPC, &debugResults);
 
+#if 0
     for(uint32_t i = 0 ; i < numSlots; i++) {
       std::string lapcName("lapc_");
       lapcName = lapcName + std::to_string(baseAddress[i]);
@@ -510,6 +516,7 @@ int xcldev::device::readLAPCheckers(int aVerbose) {
       ifs.close();
     }
     debugResults.NumSlots = numSlots;
+#endif
 
     bool violations_found = false;
     bool invalid_codes = false;
@@ -606,8 +613,9 @@ int xcldev::device::readStreamingCheckers(int aVerbose) {
   std::pair<size_t, size_t> widths = getCUNamePortName(streamingCheckerSlotNames, cuNameportNames);
 
   xclDebugStreamingCheckersResults debugResults = {0};
-//  xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_SPC, &debugResults);
+  xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_SPC, &debugResults);
 
+#if 0
   for(uint32_t i = 0 ; i < numCheckers; i++) {
     std::string spcName("spc_");
     spcName = spcName + std::to_string(baseAddress[i]);
@@ -647,6 +655,7 @@ int xcldev::device::readStreamingCheckers(int aVerbose) {
     ifs.close();
   }
   debugResults.NumSlots = numCheckers;
+#endif
 
   // Now print out all of the values (and their interpretations)
 
