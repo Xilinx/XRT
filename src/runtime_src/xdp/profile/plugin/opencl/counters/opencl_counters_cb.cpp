@@ -91,6 +91,42 @@ namespace xdp {
     }
   }
 
+  static void counter_action_read(uint64_t contextId,
+				  const char* deviceName,
+				  uint64_t size,
+				  bool isStart)
+  {
+    static std::map<std::pair<uint64_t, std::string>, uint64_t> 
+      storedTimestamps ;
+
+    VPDatabase* db = openclCountersPluginInstance.getDatabase() ;
+    uint64_t timestamp = xrt_core::time_ns() ;
+
+    std::pair<uint64_t, std::string> identifier =
+      std::make_pair(contextId, std::string(deviceName)) ;
+
+    if (isStart)
+    {
+      storedTimestamps[identifier] = timestamp ;
+    }
+    else
+    {
+      uint64_t transferTime = timestamp - storedTimestamps[identifier] ;
+      storedTimestamps.erase(identifier) ;
+
+      uint64_t deviceId = 0 ; // TODO - lookup the device ID from device name
+
+      (db->getStats()).logHostRead(contextId, deviceId, size, transferTime) ;
+    }
+  }
+
+  static void counter_action_write(uint64_t contextId,
+				   const char* deviceName,
+				   uint64_t size,
+				   bool isStart)
+  {
+  }
+
 } // end namespace xdp
 
 extern "C"
@@ -121,4 +157,22 @@ void log_compute_unit_execution(const char* cuName,
 				  localWorkGroupConfiguration,
 				  globalWorkGroupConfiguration,
 				  isStart) ;
+}
+
+extern "C"
+void counter_action_read(unsigned long int contextId,
+			 const char* deviceName,
+			 unsigned long int size,
+			 bool isStart)
+{
+  xdp::counter_action_read(contextId, deviceName, size, isStart);
+}
+
+extern "C"
+void counter_action_write(unsigned long int contextId,
+			  const char* deviceName,
+			  unsigned long int size,
+			  bool isStart)
+{
+  xdp::counter_action_write(contextId, deviceName, size, isStart);
 }

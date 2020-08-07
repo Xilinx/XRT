@@ -37,7 +37,12 @@ namespace {
   std::function<void (const char*)> counter_function_end_cb ;
   // This is the function on the XDP side that logs kernel executions
   std::function<void (const char*, bool)> counter_kernel_execution_cb ;
-  std::function<void (const char*, const char*, const char*, bool)> counter_cu_execution_cb ;
+  std::function<void (const char*, const char*, const char*, bool)> 
+    counter_cu_execution_cb ;
+  std::function<void (unsigned long int, const char*, unsigned long int, bool)>
+    counters_action_read_cb ;
+  std::function<void (unsigned long int, const char*, unsigned long int, bool)>
+    counters_action_write_cb ;
 
   void register_opencl_counters_functions(void* handle)
   {
@@ -50,15 +55,24 @@ namespace {
       (ctype)(xrt_core::dlsym(handle, "log_function_call_end")) ;
     if (xrt_core::dlerror() != NULL) counter_function_start_cb = nullptr ;
 
-    typedef void (*atype)(const char*, bool) ;
+    typedef void (*ktype)(const char*, bool) ;
     counter_kernel_execution_cb =
-      (atype)(xrt_core::dlsym(handle, "log_kernel_execution")) ;
+      (ktype)(xrt_core::dlsym(handle, "log_kernel_execution")) ;
     if (xrt_core::dlerror() != NULL) counter_kernel_execution_cb = nullptr ;
 
     typedef void (*cuetype)(const char*, const char*, const char*, bool) ;
     counter_cu_execution_cb =
       (cuetype)(xrt_core::dlsym(handle, "log_compute_unit_execution")) ;
     if (xrt_core::dlerror() != NULL) counter_cu_execution_cb = nullptr ;
+
+    typedef void (*atype)(unsigned long int, const char*, unsigned long int, bool) ;
+    counters_action_read_cb =
+      (atype)(xrt_core::dlsym(handle, "counter_action_read")) ;
+    if (xrt_core::dlerror() != NULL) counters_action_read_cb = nullptr ;
+
+    counters_action_write_cb =
+      (atype)(xrt_core::dlsym(handle, "counter_action_write")) ;
+    if (xrt_core::dlerror() != NULL) counters_action_write_cb = nullptr ;
 
     // For logging counter information for kernel executions
     xocl::add_command_start_callback(xocl::profile::log_kernel_start) ;
@@ -359,6 +373,18 @@ namespace xocl {
       std::string kernelName = kernel->get_name() ;
 
       counter_kernel_execution_cb(kernelName.c_str(), false) ;
+    }
+
+    std::function<void (xocl::event*, cl_int, const std::string&)>
+    counter_action_read()
+    {
+      return [](xocl::event*, cl_int, const std::string&) {} ;
+    }
+
+    std::function<void (xocl::event*, cl_int, const std::string&)>
+    counter_action_write()
+    {
+      return [](xocl::event*, cl_int, const std::string&) {} ;
     }
 
     std::function<void (xocl::event*, cl_int, const std::string&)>
