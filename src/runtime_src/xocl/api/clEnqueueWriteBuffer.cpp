@@ -101,6 +101,7 @@ clEnqueueWriteBuffer(cl_command_queue   command_queue,
   xocl::enqueue::set_event_action(uevent.get(),xocl::enqueue::action_write_buffer,buffer,offset,size,ptr);
   //xocl::profile::set_event_action(uevent.get(),xocl::profile::action_write,buffer,offset,size,false);
   xocl::profile::set_event_action(uevent.get(), xocl::profile::action_write, buffer);
+  xocl::profile::counters::set_event_action(uevent.get(), xocl::profile::counter_action_write, buffer) ;
 #ifndef _WIN32
   xocl::lop::set_event_action(uevent.get(), xocl::lop::action_write);
 #endif

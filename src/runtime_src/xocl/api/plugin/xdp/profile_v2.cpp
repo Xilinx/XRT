@@ -435,6 +435,74 @@ namespace xocl {
     }
 
     std::function<void (xocl::event*, cl_int, const std::string&)>
+    counter_action_migrate(cl_mem buffer, cl_mem_migration_flags flags)
+    {
+      // Don't do anything for this migration
+      if (flags & CL_MIGRATE_MEM_OBJECT_CONTENT_UNDEFINED)
+      {
+	return [](xocl::event*, cl_int, const std::string&) { } ;
+      }
+
+      // Migrate actions could be either a read or a write.
+      if (flags & CL_MIGRATE_MEM_OBJECT_HOST)
+      {
+	// Read
+	return [buffer](xocl::event* e, cl_int status, const std::string&)
+	       {
+		 if (!counters_action_read_cb) return ;
+		 if (status != CL_RUNNING && status != CL_COMPLETE) return ;
+
+		 auto queue = e->get_command_queue() ;
+		 uint64_t contextId = e->get_context()->get_uid() ;
+		 std::string deviceName = queue->get_device()->get_name() ;
+
+		 if (status == CL_RUNNING)
+		 {
+		   counters_action_read_cb(contextId,
+					   deviceName.c_str(),
+					   0,
+					   true);
+		 }
+		 else if (status == CL_COMPLETE)
+		 {
+		   counters_action_read_cb(contextId,
+					   deviceName.c_str(),
+					   xocl::xocl(buffer)->get_size(),
+					   false) ;
+		 }
+	       } ;
+      }
+      else
+      {
+	// Write
+	return [buffer](xocl::event* e, cl_int status, const std::string&)
+	       {
+		 if (!counters_action_write_cb) return ;
+		 if (status != CL_RUNNING && status != CL_COMPLETE) return ;
+
+		 auto queue = e->get_command_queue() ;
+		 uint64_t contextId = e->get_context()->get_uid() ;
+		 std::string deviceName = queue->get_device()->get_name() ;
+
+		 if (status == CL_RUNNING)
+		 {
+		   counters_action_write_cb(contextId,
+					    deviceName.c_str(),
+					    0,
+					    true);
+		 }
+		 else if (status == CL_COMPLETE)
+		 {
+		   counters_action_write_cb(contextId,
+					    deviceName.c_str(),
+					    xocl::xocl(buffer)->get_size(),
+					    false) ;
+		 }
+	       } ;
+      }
+    }
+
+    std::function<void (xocl::event*, cl_int, const std::string&)>
     counter_action_ndrange(cl_kernel kernel)
     {
       return [](xocl::event*, cl_int, const std::string&) { } ;

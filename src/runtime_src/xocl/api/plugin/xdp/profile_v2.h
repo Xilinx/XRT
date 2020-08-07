@@ -63,6 +63,8 @@ namespace xocl {
       counter_action_read(cl_mem buffer) ;
     std::function<void (xocl::event*, cl_int, const std::string&)>
       counter_action_write(cl_mem buffer) ;
+    std::function<void (xocl::event*, cl_int, const std::string&)>
+      counter_action_migrate(cl_mem buffer, cl_mem_migration_flags flags) ;
     void log_kernel_start(const xrt::command* cmd, 
 			  const xocl::execution_context* ctx) ;
     void log_kernel_end(const xrt::command* cmd, 
