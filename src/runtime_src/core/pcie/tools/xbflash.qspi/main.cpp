@@ -93,8 +93,7 @@ static bool canProceed()
     while (!answered) {
         std::cout << "Are you sure you wish to proceed? [y/n]: ";
         std::cin >> input;
-        if(input.compare("y") == 0 || input.compare("n") == 0)
-            answered = true;
+        answered = (input.compare("y") == 0 || input.compare("n") == 0);
     }
 
     proceed = (input.compare("y") == 0);
@@ -244,11 +243,11 @@ int flash(int argc, char *argv[])
     XSPI_Flasher xspi(&dev, !secondary_file.empty());
 
     if (secondary_file.empty()) {
-	    firmwareImage pri(primary_file.c_str());
+        firmwareImage pri(primary_file.c_str());
         ret = xspi.xclUpgradeFirmware1(pri);
     } else {
-	    firmwareImage pri(primary_file.c_str());
-	    firmwareImage sec(secondary_file.c_str());
+        firmwareImage pri(primary_file.c_str());
+        firmwareImage sec(secondary_file.c_str());
         ret = xspi.xclUpgradeFirmware2(pri, sec);
     }
 

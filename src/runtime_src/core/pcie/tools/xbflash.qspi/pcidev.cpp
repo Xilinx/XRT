@@ -72,10 +72,8 @@ pci_device(const std::string& sysfs, int ubar, size_t flash_off)
 {
   uint16_t dom = 0, b, d, f;
   if((sscanf(sysfs.c_str(), "%hx:%hx:%hx.%hx", &dom, &b, &d, &f) < 4) &&
-    (sscanf(sysfs.c_str(), "%hx:%hx.%hx", &b, &d, &f) < 3)) {
-    std::cout << "Couldn't parse entry name " << sysfs << std::endl;
-    return;
-  }
+    (sscanf(sysfs.c_str(), "%hx:%hx.%hx", &b, &d, &f) < 3))
+    throw std::runtime_error("Couldn't parse entry name " + sysfs);
 
   domain = dom;
   bus = b;
