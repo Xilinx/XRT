@@ -43,30 +43,6 @@ class xclbin
 {
 public:
   /**
-   * xclbin() - Copy ctor
-   */
-  xclbin(const xclbin& rhs)
-      : handle(rhs.handle)
-  {}
-
-  /**
-   * xclbin() - Move ctor
-   */
-  xclbin(xclbin&& rhs)
-      : handle(std::move(rhs.handle))
-  {}
-
-  /**
-   * operator= () - Move assignment
-   */
-  xclbin&
-  operator=(xclbin&& rhs)
-  {
-    handle = std::move(rhs.handle);
-    return *this;
-  }
-
-  /**
    * xclbin() - Constructor from an xclbin filename
    *
    * @filename:  path to the xclbin file
@@ -75,7 +51,8 @@ public:
    * exception is thrown file not found
    */
   XCL_DRIVER_DLLESPEC
-  explicit xclbin(const std::string& filename);
+  explicit
+  xclbin(const std::string& filename);
 
   /**
    * xclbin() - Constructor from raw data
@@ -83,10 +60,26 @@ public:
    * @data: raw data of xclbin
    *
    * The raw data of the xclbin can be deleted after calling the constructor.
-   *
    */
   XCL_DRIVER_DLLESPEC
+  explicit
   xclbin(const std::vector<char>& data);
+
+  /**
+   * xclbin() - Copy ctor
+   */
+  xclbin(const xclbin& rhs) = default;
+
+  /**
+   * xclbin() - Move ctor
+   */
+  xclbin(xclbin&& rhs) = default;
+
+  /**
+   * operator= () - Move assignment
+   */
+  xclbin&
+  operator=(xclbin&& rhs) = default;
 
   /**
    * get_cu_names() - Get CU names of xclbin
