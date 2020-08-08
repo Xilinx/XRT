@@ -3,7 +3,7 @@
  */
 
 #include "hal_profile.h"
-#include "plugin/xdp/vart_profile.h"
+#include "vart_profile.h"
 
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
