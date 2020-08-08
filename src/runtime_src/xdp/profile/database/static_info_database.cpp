@@ -261,8 +261,8 @@ namespace xdp {
       std::string kernelName;
       for(auto kernelItem : kernel.second.get_child("")) {
         std::string kernelItemName = kernelItem.first;
-        if(kernelName.empty() && kernelItemName.compare("<xmlattr>")) {
-          kernelName = kernelItem.second.get<std::string>("<xmlattr>.name", "");
+        if(0 == kernelItemName.compare("<xmlattr>")) {
+          kernelName = kernelItem.second.get<std::string>("name", "");
           std::cout << " KERNEL NAME " << kernelName << std::endl;
           continue;
         }
