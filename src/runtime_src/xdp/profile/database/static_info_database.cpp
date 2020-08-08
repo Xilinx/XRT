@@ -258,31 +258,22 @@ namespace xdp {
         continue;
       }
       auto kernel = coreItem;
-      std::string kernelName;
-      for(auto kernelItem : kernel.second.get_child("")) {
-        std::string kernelItemName = kernelItem.first;
-        if(0 == kernelItemName.compare("<xmlattr>")) {
-          kernelName = kernelItem.second.get<std::string>("name", "");
-          continue;
-        }
-        if(kernelItemName.compare("compileWorkGroupSize")) {
-          continue;
-        }
-        std::string x = kernelItem.second.get<std::string>("<xmlattr>.x", "");
-        std::string y = kernelItem.second.get<std::string>("<xmlattr>.y", "");
-        std::string z = kernelItem.second.get<std::string>("<xmlattr>.z", "");
+      auto kernelNameItem    = kernel.second.get_child("<xmlattr>");
+      std::string kernelName = kernelNameItem.get<std::string>("name", "");
 
-        // Find the CU
-        for(auto cuItr : devInfo->cus) {
-          if(0 != cuItr.second->getKernelName().compare(kernelName)) {
-            continue;
-          }
-          cuItr.second->setDim(std::stoi(x), std::stoi(y), std::stoi(z));
+      auto workGroupSz = kernel.second.get_child("compileWorkGroupSize");
+      std::string x = workGroupSz.get<std::string>("<xmlattr>.x", "");
+      std::string y = workGroupSz.get<std::string>("<xmlattr>.y", "");
+      std::string z = workGroupSz.get<std::string>("<xmlattr>.z", "");
+
+      // Find the ComputeUnitInstance
+      for(auto cuItr : devInfo->cus) {
+        if(0 != cuItr.second->getKernelName().compare(kernelName)) {
+          continue;
         }
-        break;
+        cuItr.second->setDim(std::stoi(x), std::stoi(y), std::stoi(z));
       }
     }
-
 
     return true;
   }
