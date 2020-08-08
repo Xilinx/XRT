@@ -263,7 +263,6 @@ namespace xdp {
         std::string kernelItemName = kernelItem.first;
         if(0 == kernelItemName.compare("<xmlattr>")) {
           kernelName = kernelItem.second.get<std::string>("name", "");
-          std::cout << " KERNEL NAME " << kernelName << std::endl;
           continue;
         }
         if(kernelItemName.compare("compileWorkGroupSize")) {
@@ -272,18 +271,15 @@ namespace xdp {
         std::string x = kernelItem.second.get<std::string>("<xmlattr>.x", "");
         std::string y = kernelItem.second.get<std::string>("<xmlattr>.y", "");
         std::string z = kernelItem.second.get<std::string>("<xmlattr>.z", "");
-        std::cout << " workGrp val for KERNEL " << kernelName << " : x " << x << " : y : " << y << " : z : " << z << std::endl;
 
         // Find the CU
         for(auto cuItr : devInfo->cus) {
-          std::cout << "\t\t CU kernel name : " << cuItr.second->getKernelName() << std::endl;
           if(0 != cuItr.second->getKernelName().compare(kernelName)) {
             continue;
           }
-          std::cout << " BEFORE set dim on CU kernel name " << kernelName << " : " << cuItr.second->getDim() << std::endl;
           cuItr.second->setDim(std::stoi(x), std::stoi(y), std::stoi(z));
-          std::cout << " AFTER set dim on CU kernel name " << kernelName << " : " << cuItr.second->getDim() << std::endl;
         }
+        break;
       }
     }
 
