@@ -26,6 +26,7 @@
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/xml_parser.hpp>
 
 #define XDP_SOURCE
 
@@ -240,6 +241,53 @@ namespace xdp {
       }
       cu->addConnection(connctn->arg_index, connctn->mem_data_index);
     }
+
+    // Set Static WorkGroup Size of CUs using the EMBEDDED_METADATA section
+    std::pair<const char*, size_t> embeddedMetadata = device->get_axlf_section(EMBEDDED_METADATA);
+    const char* embeddedMetadataSection = embeddedMetadata.first;
+    size_t      embeddedMetadataSz      = embeddedMetadata.second;
+
+    boost::property_tree::ptree xmlProject;
+    std::stringstream xmlStream;
+    xmlStream.write(embeddedMetadataSection, embeddedMetadataSz);
+    boost::property_tree::read_xml(xmlStream,xmlProject);
+
+    for(auto coreItem : xmlProject.get_child("project.platform.device.core")) {
+      std::string coreItemName = coreItem.first;
+      if(coreItemName.compare("kernel")) {  // skip items other than "kernel"
+        continue;
+      }
+      auto kernel = coreItem;
+      std::string kernelName;
+      for(auto kernelItem : kernel.second.get_child("")) {
+        std::string kernelItemName = kernelItem.first;
+        if(kernelName.empty() && kernelItemName.compare("<xmlattr>")) {
+          kernelName = kernelItem.second.get<std::string>("<xmlattr>.name", "");
+          std::cout << " KERNEL NAME " << kernelName << std::endl;
+          continue;
+        }
+        if(kernelItemName.compare("compileWorkGroupSize")) {
+          continue;
+        }
+        std::string x = kernelItem.second.get<std::string>("<xmlattr>.x", "");
+        std::string y = kernelItem.second.get<std::string>("<xmlattr>.y", "");
+        std::string z = kernelItem.second.get<std::string>("<xmlattr>.z", "");
+        std::cout << " workGrp val for KERNEL " << kernelName << " : x " << x << " : y : " << y << " : z : " << z << std::endl;
+
+        // Find the CU
+        for(auto cuItr : devInfo->cus) {
+          std::cout << "\t\t CU kernel name : " << cuItr.second->getKernelName() << std::endl;
+          if(0 != cuItr.second->getKernelName().compare(kernelName)) {
+            continue;
+          }
+          std::cout << " BEFORE set dim on CU kernel name " << kernelName << " : " << cuItr.second->getDim() << std::endl;
+          cuItr.second->setDim(std::stoi(x), std::stoi(y), std::stoi(z));
+          std::cout << " AFTER set dim on CU kernel name " << kernelName << " : " << cuItr.second->getDim() << std::endl;
+        }
+      }
+    }
+
+
     return true;
   }
 

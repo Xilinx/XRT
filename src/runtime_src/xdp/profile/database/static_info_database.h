@@ -60,7 +60,7 @@ namespace xdp {
     std::string kernelName ;
 
     // In OpenCL, each compute unit is set up with a static workgroup size
-    int dim[3] ;
+    int32_t dim[3] ;
 
     // A mapping of arguments to memory resources
     std::map<int32_t, std::vector<int32_t>> connections ;
@@ -78,8 +78,12 @@ namespace xdp {
     // Getters and setters
     inline const std::string& getName() { return name ; }
     inline const std::string& getKernelName() { return kernelName ; }
+
     inline int32_t getIndex() { return index ; }
+
+    inline void setDim(int32_t x, int32_t y, int32_t z) { dim[0] = x; dim[1] = y; dim[2] = z; }
     XDP_EXPORT std::string getDim() ;
+
     XDP_EXPORT void addConnection(int32_t, int32_t);
     std::map<int32_t, std::vector<int32_t>>* getConnections()
     {  return &connections; }
