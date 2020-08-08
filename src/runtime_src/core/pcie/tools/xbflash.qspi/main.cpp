@@ -14,6 +14,14 @@
  * under the License.
  */
 
+//
+// This utility is implemented by porting flash code from xbmgmt. Since that
+// it's used only by non-XRT users, we do not expect to maintain and enhance
+// this code a lot in the future. Hence, no cleanup effort is ever attempted
+// while porting the code from xbmgmt at this point.
+// If it works, don't change it.
+//
+
 #include <iostream>
 #include <unistd.h>
 #include <sys/types.h>

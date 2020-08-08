@@ -154,8 +154,11 @@ pcieBarRead(uint64_t offset, void* buf, uint64_t len)
 {
   if (user_bar_map == MAP_FAILED) {
     int ret = map_usr_bar();
-    if (ret)
+    if (ret) {
+      std::cout << "Failed to map in PCIE BAR."
+                << " Secure boot may have been enabled on this system and can't be supported by this utiltity." << std::endl;
       return ret;
+    }
   }
   (void) wordcopy(buf, user_bar_map + offset, len);
   return 0;
