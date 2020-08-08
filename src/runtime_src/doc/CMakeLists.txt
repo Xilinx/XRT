@@ -3,25 +3,29 @@ set(XRT_DOC_TOC_DIR        "${CMAKE_CURRENT_SOURCE_DIR}/toc")
 set(DOC_CORE_DIR           "${CMAKE_CURRENT_BINARY_DIR}/core")
 set(DOC_TOC_DIR            "${CMAKE_CURRENT_BINARY_DIR}/toc")
 
-file(GLOB XRT_MGMT_IOCTL_H ${XRT_RUNTIME_SRC_DIR}/driver/xclng/include/mgmt-ioctl.h)
-file(GLOB XRT_XOCL_IOCTL_H ${XRT_RUNTIME_SRC_DIR}/driver/xclng/include/xocl_ioctl.h)
-file(GLOB XRT_XCLHAL2_H    ${XRT_RUNTIME_SRC_DIR}/driver/include/xclhal2.h)
-file(GLOB XRT_ERT_H        ${XRT_RUNTIME_SRC_DIR}/driver/include/ert.h)
+file(GLOB XRT_MGMT_IOCTL_H ${XRT_RUNTIME_SRC_DIR}/core/pcie/driver/linux/include/mgmt-ioctl.h)
+file(GLOB XRT_XOCL_IOCTL_H ${XRT_RUNTIME_SRC_DIR}/core/pcie/driver/linux/include/xocl_ioctl.h)
+file(GLOB XRT_ZOCL_IOCTL_H ${XRT_RUNTIME_SRC_DIR}/core/edge/include/zynq_ioctl.h)
+file(GLOB XRT_XRT_H        ${XRT_RUNTIME_SRC_DIR}/core/include/xrt.h)
+file(GLOB XRT_ERT_H        ${XRT_RUNTIME_SRC_DIR}/core/include/ert.h)
+file(GLOB XRT_XMA_H        ${XRT_RUNTIME_SRC_DIR}/../xma/include/xma.h)
+file(GLOB XRT_XMA_PLUGIN_H ${XRT_RUNTIME_SRC_DIR}/../xma/include/xmaplugin.h)
+file(GLOB XRT_MAILBOX_PROTO_H ${XRT_RUNTIME_SRC_DIR}/core/pcie/driver/linux/include/mailbox_proto.h)
+file(GLOB XRT_MAILBOX_C    ${XRT_RUNTIME_SRC_DIR}/core/pcie/driver/linux/xocl/subdev/mailbox.c)
 
-execute_process(COMMAND mkdir -p ${DOC_CORE_DIR})
-execute_process(COMMAND /bin/cp -rf ${XRT_DOC_TOC_DIR} ${CMAKE_CURRENT_BINARY_DIR})
+file(MAKE_DIRECTORY ${DOC_CORE_DIR})
+file(COPY ${XRT_DOC_TOC_DIR} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
-file(GLOB XRT_DOC_SRC
-  ${DOC_TOC_DIR}/*.rst
-  )
-
-set(KERNELDOC "./kernel-doc")
+set(KERNELDOC "kernel-doc")
 set(KERNELDOC_URL "https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git/plain/scripts/kernel-doc?h=v4.14.52")
-MESSAGE(STATUS "${KERNELDOC} downloading")
-file(DOWNLOAD ${KERNELDOC_URL} ${KERNELDOC})
-execute_process(COMMAND chmod +x ${KERNELDOC})
-find_program(KERNELDOC_EXECUTABLE ${KERNELDOC} PATHS "./")
 
+if (NOT EXISTS ${CMAKE_BINARY_DIR}/${KERNELDOC})
+  MESSAGE(STATUS "${KERNELDOC} downloading")
+  file(DOWNLOAD ${KERNELDOC_URL} "./${KERNELDOC}")
+  execute_process(COMMAND chmod +x ${KERNELDOC})
+endif ()
+
+find_program(KERNELDOC_EXECUTABLE ${KERNELDOC} PATHS ${CMAKE_BINARY_DIR})
 find_program(SPHINX_EXECUTABLE sphinx-build)
 
 if (NOT KERNELDOC_EXECUTABLE OR NOT SPHINX_EXECUTABLE)
@@ -38,10 +42,16 @@ else ()
     DEPENDS ${XRT_XOCL_IOCTL_H}
     VERBATIM
     )
+  
+  add_custom_command(OUTPUT core/zocl_ioctl.rst
+    COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_ZOCL_IOCTL_H} > core/zocl_ioctl.rst
+    DEPENDS ${XRT_ZOCL_IOCTL_H}
+    VERBATIM
+    )
 
-  add_custom_command(OUTPUT core/xclhal2.rst
-    COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_XCLHAL2_H} > core/xclhal2.rst
-    DEPENDS ${XRT_XCLHAL2_H}
+  add_custom_command(OUTPUT core/xrt.rst
+    COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_XRT_H} > core/xrt.rst
+    DEPENDS ${XRT_XRT_H}
     VERBATIM
     )
 
@@ -51,15 +61,39 @@ else ()
     VERBATIM
     )
 
-  add_custom_target(
-    xrt_doc
-    DEPENDS ${XRT_DOC_SRC} core/mgmt-ioctl.rst core/xocl_ioctl.rst core/xclhal2.rst core/ert.rst
-    COMMENT "Generating documentation with Sphinx"
-    COMMAND mkdir -p html
-    COMMAND ${SPHINX_EXECUTABLE} ${DOC_TOC_DIR} html
-    COMMAND rm -rf ${XRT_RUNTIME_SRC_DIR}/../../docs/
-    COMMAND /bin/cp -rf html/ ${XRT_RUNTIME_SRC_DIR}/../../docs/
-    COMMAND touch ${XRT_RUNTIME_SRC_DIR}/../../docs/.nojekyll
+  add_custom_command(OUTPUT core/xma.rst
+    COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_XMA_H} > core/xma.rst
+    DEPENDS ${XRT_XMA_H}
     VERBATIM
     )
+
+  add_custom_command(OUTPUT core/xmaplugin.rst
+    COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_XMA_PLUGIN_H} > core/xmaplugin.rst
+    DEPENDS ${XRT_XMA_PLUGIN_H}
+    VERBATIM
+    )
+
+  add_custom_command(OUTPUT core/mailbox_proto.rst
+    COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_MAILBOX_PROTO_H} > core/mailbox_proto.rst
+    DEPENDS ${XRT_MAILBOX_PROTO_H}
+    VERBATIM
+    )
+
+  add_custom_command(OUTPUT core/mailbox.rst
+    COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_MAILBOX_C} > core/mailbox.rst
+    DEPENDS ${XRT_MAILBOX_C}
+    VERBATIM
+    )
+
+  add_custom_target(
+    xrt_docs ALL
+    DEPENDS core/mgmt-ioctl.rst core/xocl_ioctl.rst core/zocl_ioctl.rst core/xrt.rst core/ert.rst core/xma.rst core/xmaplugin.rst core/mailbox_proto.rst core/mailbox.rst
+    COMMENT "Generating documentation with Sphinx"
+    COMMAND ${CMAKE_COMMAND} -E make_directory  html
+    COMMAND rm -rf ${DOC_TOC_DIR}/*
+    COMMAND cp -rf ${XRT_DOC_TOC_DIR}/* ${DOC_TOC_DIR}
+    COMMAND ${SPHINX_EXECUTABLE} -a ${DOC_TOC_DIR} html
+    )
 endif ()
+
+# Don't forget to add a rst file under toc/ for html generation
