@@ -133,7 +133,7 @@ namespace xdp {
 // HOST READ?WRITE
       }
     }
-
+#if 0
     std::vector<Monitor*> *openMonitors = (db->getStaticInfo()).getOpenMonitors(deviceId);
     if(openMonitors && !openMonitors->empty()) {
 
@@ -146,7 +146,7 @@ namespace xdp {
       }
       fout << "Group_End,AXI Monitors" << std::endl ;
     }
-
+#endif
     fout << "Group_End," << xclbinName << std::endl ;
     fout << "Group_End," << deviceName << std::endl ;
   }
@@ -177,7 +177,7 @@ namespace xdp {
 	/* Device Events which may not be directly associated with a Kernel using available metadata.
          * For example, AXI monitors for System Compiler, Slave Bridge designs.
          */
-        ke->dump(fout, openMonitorStartingRow + ke->getOpenMonitorIndex());
+//        ke->dump(fout, openMonitorStartingRow + ke->getOpenMonitorIndex());
       }
     }
   }

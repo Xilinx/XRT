@@ -306,6 +306,7 @@ namespace xdp {
           cuObj->addMonitor(mon);
           cuObj->setDataTransferEnabled(true);
         } else {
+          devInfo->hasFloatingAIM = true;
           mon->openMonListIndex = devInfo->openMonList.size();
           devInfo->openMonList.push_back(mon);
         }
@@ -324,11 +325,12 @@ namespace xdp {
         mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId);
         if(debugIpData->m_properties & 0x2) {
           mon->isRead = true;
-     	  }
+        }
         if(cuObj) {
           cuObj->addMonitor(mon);
           cuObj->setDataTransferEnabled(true);
         } else {
+          devInfo->hasFloatingASM = true;
           mon->openMonListIndex = devInfo->openMonList.size();
           devInfo->openMonList.push_back(mon);
         }

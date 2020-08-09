@@ -137,6 +137,9 @@ namespace xdp {
     std::vector<Monitor*> asmList;
     std::vector<Monitor*> openMonList;
 
+    bool hasFloatingAIM = false;
+    bool hasFloatingASM = false;
+
     ~DeviceInfo()
     {
       for(auto i : aimList) {
@@ -318,6 +321,13 @@ namespace xdp {
       return deviceInfo[deviceId]->aimList[idx];
     }
 
+    inline std::vector<Monitor*>* getAIMonitors(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return nullptr;
+      return &(deviceInfo[deviceId]->aimList);
+    }
+
     inline Monitor* getAMonitor(uint64_t deviceId, uint64_t idx)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
@@ -330,6 +340,13 @@ namespace xdp {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       return deviceInfo[deviceId]->asmList[idx];
+    }
+
+    inline std::vector<Monitor*>* getASMonitors(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return nullptr;
+      return &(deviceInfo[deviceId]->asmList);
     }
 
     inline void getDataflowConfiguration(uint64_t deviceId, bool* config, size_t size)
@@ -352,6 +369,20 @@ namespace xdp {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       return &(deviceInfo[deviceId]->openMonList);
+    }
+
+    inline bool hasFloatingAIM(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return false;
+      return deviceInfo[deviceId]->hasFloatingAIM;
+    }
+
+    inline bool hasFloatingASM(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return false;
+      return deviceInfo[deviceId]->hasFloatingASM;
     }
 
     // Reseting device information whenever a new xclbin is added

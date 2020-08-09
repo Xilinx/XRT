@@ -19,6 +19,7 @@
 #define XDP_SOURCE
 
 #include "xdp/profile/database/events/device_events.h"
+#include "xdp/profile/database/static_info_database.h"
 
 namespace xdp {
   
@@ -26,11 +27,11 @@ namespace xdp {
   // Device event definitions
   // **************************
 
-  VTFDeviceEvent::VTFDeviceEvent(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId)
+  VTFDeviceEvent::VTFDeviceEvent(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId, uint32_t monId)
                 : VTFEvent(s_id, ts, ty),
                   deviceId(devId),
                   deviceTimestamp(0),
-                  openMonitorIndex(-1)
+                  monitorId(monId)
   {
   }
 
@@ -54,9 +55,9 @@ namespace xdp {
     fout << std::endl;
   } 
 
-  KernelEvent::KernelEvent(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId, int32_t cuIdx)
-                   : VTFDeviceEvent(s_id, ts, ty, devId),
-					 cuId(cuIdx)
+  KernelEvent::KernelEvent(uint64_t s_id, double ts, VTFEventType ty,
+                           uint64_t devId, uint32_t monId, int32_t cuIdx)
+             : VTFDeviceEvent(s_id, ts, ty, devId, monId)
   {
   }
 
@@ -64,17 +65,9 @@ namespace xdp {
   {
   }
 
-  KernelDeviceEvent::KernelDeviceEvent(uint64_t s_id, double ts, uint64_t devId, int32_t cuIdx)
-                   : KernelEvent(s_id, ts, KERNEL, devId, cuIdx)
-  {
-  }
-
-  KernelDeviceEvent::~KernelDeviceEvent()
-  {
-  }
-
-  KernelStall::KernelStall(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId, int32_t cuIdx)
-             : KernelEvent(s_id, ts, ty, devId, cuIdx),
+  KernelStall::KernelStall(uint64_t s_id, double ts, VTFEventType ty,
+                           uint64_t devId, uint32_t monId, int32_t cuIdx)
+             : KernelEvent(s_id, ts, ty, devId, monId, cuIdx),
     // Until implemented, provide a default value for all members
     burstLength(0)
   {
@@ -84,31 +77,33 @@ namespace xdp {
   {
   }
 
-  KernelMemoryAccess::KernelMemoryAccess(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId, int32_t cuIdx)
-                    : KernelEvent(s_id, ts, ty, devId, cuIdx),
+  DeviceMemoryAccess::DeviceMemoryAccess(uint64_t s_id, double ts, VTFEventType ty,
+                                         uint64_t devId, uint32_t monId, int32_t cuIdx)
+                    : VTFDeviceEvent(s_id, ts, ty, devId, monId),
     // Until implemented, provide a default value for all members
     portName(0), memoryName(0), argumentNames(0), burstLength(0),
     numBytes(0)
   {
   }
 
-  KernelMemoryAccess::~KernelMemoryAccess()
+  DeviceMemoryAccess::~DeviceMemoryAccess()
   {
   }
 
-  KernelStreamAccess::KernelStreamAccess(uint64_t s_id, double ts, VTFEventType ty, uint64_t devId, int32_t cuIdx)
-                    : KernelEvent(s_id, ts, ty, devId, cuIdx),
+  DeviceStreamAccess::DeviceStreamAccess(uint64_t s_id, double ts, VTFEventType ty,
+                                         uint64_t devId, uint32_t monId, int32_t cuIdx)
+                    : VTFDeviceEvent(s_id, ts, ty, devId, monId),
     // Until implemented, provide a default value for all members
     portName(0), streamName(0), burstLength(0)
   {
   }
 
-  KernelStreamAccess::~KernelStreamAccess()
+  DeviceStreamAccess::~DeviceStreamAccess()
   {
   }
 
-  HostRead::HostRead(uint64_t s_id, double ts, uint64_t devId)
-          : VTFDeviceEvent(s_id, ts, HOST_READ, devId)
+  HostRead::HostRead(uint64_t s_id, double ts, uint64_t devId, uint32_t monId)
+          : VTFDeviceEvent(s_id, ts, HOST_READ, devId, monId)
   {
   }
 
@@ -116,8 +111,8 @@ namespace xdp {
   {
   }
 
-  HostWrite::HostWrite(uint64_t s_id, double ts, uint64_t devId)
-           : VTFDeviceEvent(s_id, ts, HOST_WRITE, devId)
+  HostWrite::HostWrite(uint64_t s_id, double ts, uint64_t devId, uint32_t monId)
+           : VTFDeviceEvent(s_id, ts, HOST_WRITE, devId, monId)
   {
   }
 

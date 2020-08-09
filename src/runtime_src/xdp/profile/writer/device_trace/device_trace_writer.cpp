@@ -120,6 +120,7 @@ namespace xdp {
           fout << "Group_End,Row Read" << std::endl;
           fout << "Group_End,Stream Read" << std::endl;
           // KERNEL_STREAM_WRITE
+// check the id
           fout << "Group_Start,Stream Write,Write AXI Stream transaction between " << cuName << " and Global Memory" << std::endl;
           fout << "Group_Row_Start," << (rowCount + KERNEL_STREAM_WRITE_STALL - KERNEL) << ",stream port, ,Write AXI Stream transaction between port and memory" << std::endl;
           fout << "Static_Row," << (rowCount + KERNEL_STREAM_WRITE_STALL - KERNEL) << ",Link Stall" << std::endl;
@@ -128,22 +129,41 @@ namespace xdp {
           fout << "Group_End,Stream Write" << std::endl;
         }
         fout << "Group_End," << cuName << std::endl ;
-		rowCount += (KERNEL_STREAM_WRITE_STARVE - KERNEL);
+	rowCount += (KERNEL_STREAM_WRITE_STARVE - KERNEL);
 // HOST READ?WRITE
       }
     }
 
-    std::vector<Monitor*> *openMonitors = (db->getStaticInfo()).getOpenMonitors(deviceId);
-    if(openMonitors && !openMonitors->empty()) {
-
-      openMonitorStartingRow = rowCount + 1;
-
-      // Wave Group for CU
-      fout << "Group_Start,AXI Monitors,Read/Write data transfers over AXI Memory Mapped or AXI Stream " << std::endl ;
-      for(uint32_t i = 0; i < openMonitors->size(); i++) {
-        fout << "Static_Row," << ++rowCount << ",Open Monitor transaction " << std::endl;
+    if((db->getStaticInfo()).hasFloatingAIM(deviceId)) {
+      fout << "Group_Start,AXI Memory Monitors,Read/Write data transfers over AXI Memory Mapped connection " << std::endl;
+      floatingAIMStartingRow = ++rowCount;
+      std::vector<Monitor*> *aimList = (db->getStaticInfo()).getAIMonitors(deviceId);
+      for(size_t i = 0; i < aimList->size() ; i++) {
+        if(-1 != aimList->at(i)->cuIndex) {
+          // not a floating AIM, must have been covered in CU section
+          continue;
+        }
+        // add stall , starve
+        fout << "Static_Row," << (rowCount + i) << "," << aimList->at(i)->name << std::endl;
       }
-      fout << "Group_End,AXI Monitors" << std::endl ;
+      fout << "Group_End,AXI Memory Monitors" << std::endl ;
+      rowCount = floatingAIMStartingRow + aimList->size();
+    }
+
+    if((db->getStaticInfo()).hasFloatingASM(deviceId)) {
+      fout << "Group_Start,AXI Stream Monitors,Data transfers over AXI Stream connection " << std::endl;
+      floatingASMStartingRow = ++rowCount;
+      std::vector<Monitor*> *asmList = (db->getStaticInfo()).getASMonitors(deviceId);
+      for(size_t i = 0; i < asmList->size() ; i++) {
+        if(-1 != asmList->at(i)->cuIndex) {
+          // not a floating ASM, must have been covered in CU section
+          continue;
+        }
+        // add stall , starve
+        fout << "Static_Row," << (rowCount + i) << "," << asmList->at(i)->name << std::endl;
+      }
+      fout << "Group_End,AXI Stream Monitors" << std::endl ;
+      rowCount = floatingASMStartingRow + asmList->size();
     }
 
     fout << "Group_End," << xclbinName << std::endl ;
@@ -159,20 +179,30 @@ namespace xdp {
   void DeviceTraceWriter::writeTraceEvents()
   {
     fout << "EVENTS" << std::endl;
-    std::vector<VTFEvent*> DeviceEvents = 
-      (db->getDynamicInfo()).getDeviceEvents(deviceId);
-    for(auto e : DeviceEvents) {
+    std::vector<VTFEvent*> DeviceEvents = (db->getDynamicInfo()).getDeviceEvents(deviceId);
 
-      KernelEvent* ke = dynamic_cast<KernelEvent*>(e);
-      if(!ke)
+    for(auto e : DeviceEvents) {
+      VTFDeviceEvent* deviceEvent = dynamic_cast<VTFDeviceEvent*>(e);
+      if(!deviceEvent)
         continue;
-      if(ke->getCUId() >= 0) {
-        ke->dump(fout, cuBucketIdMap[ke->getCUId()] + ke->getEventType() - KERNEL);
+      if(deviceEvent->getCUId() >= 0) {
+        deviceEvent->dump(fout, cuBucketIdMap[deviceEvent->getCUId()] + deviceEvent->getEventType() - KERNEL);
       } else {
-    /* Device Events which may not be directly associated with a Kernel using available metadata.
+        /* Device Events which may not be directly associated with a Kernel using available metadata.
          * For example, AXI monitors for System Compiler, Slave Bridge designs.
          */
-        ke->dump(fout, openMonitorStartingRow + ke->getOpenMonitorIndex());
+        uint32_t monId = deviceEvent->getMonitorId();
+	DeviceMemoryAccess* memoryEvent = dynamic_cast<DeviceMemoryAccess*>(e);
+        if(memoryEvent) {
+          deviceEvent->dump(fout, floatingAIMStartingRow + monId);
+          continue;
+        }
+	DeviceStreamAccess* streamEvent = dynamic_cast<DeviceStreamAccess*>(e);
+        if(streamEvent) {
+          deviceEvent->dump(fout, floatingASMStartingRow + monId);
+          continue;
+        }
+        // host read/write ??
       }
     }
 

@@ -34,8 +34,12 @@ namespace xdp {
     std::string xrtVersion;
     std::string toolVersion;
 
-    std::map<int32_t, uint32_t> cuBucketIdMap;
-	int32_t openMonitorStartingRow = 0;
+    std::map<int32_t,  uint32_t>  cuBucketIdMap;
+    std::map<uint32_t, uint32_t> aimBucketIdMap;
+    std::map<uint32_t, uint32_t> asmBucketIdMap;
+
+    uint32_t floatingAIMStartingRow = 0;
+    uint32_t floatingASMStartingRow = 0;
 
     uint64_t deviceId;
 
