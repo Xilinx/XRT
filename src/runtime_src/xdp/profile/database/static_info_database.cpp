@@ -250,11 +250,11 @@ namespace xdp {
     boost::property_tree::ptree xmlProject;
     std::stringstream xmlStream;
     xmlStream.write(embeddedMetadataSection, embeddedMetadataSz);
-    boost::property_tree::read_xml(xmlStream,xmlProject);
+    boost::property_tree::read_xml(xmlStream, xmlProject);
 
     for(auto coreItem : xmlProject.get_child("project.platform.device.core")) {
       std::string coreItemName = coreItem.first;
-      if(coreItemName.compare("kernel")) {  // skip items other than "kernel"
+      if(0 != coreItemName.compare("kernel")) {  // skip items other than "kernel"
         continue;
       }
       auto kernel = coreItem;
