@@ -63,7 +63,7 @@ struct ert_user_command {
 
 struct xocl_ert_user {
 	struct device		*dev;
-	struct platform_device  *pdev;
+	struct platform_device	*pdev;
 	void __iomem		*cq_base;
 	uint64_t		cq_range;
 	bool			polling_mode;
@@ -80,13 +80,9 @@ struct xocl_ert_user {
 	DECLARE_BITMAP(slot_status, ERT_MAX_SLOTS);
 	struct xocl_ert_sched_privdata ert_cfg_priv;
 
-	struct ert_user_command	  *submit_queue[ERT_MAX_SLOTS];
-	spinlock_t		  sq_lock;
-	u32			  num_sq;
-
-	struct list_head	  pq;
-	spinlock_t		  pq_lock;
-	u32			  num_pq;
+	struct list_head	pq;
+	spinlock_t		pq_lock;
+	u32			num_pq;
 	/*
 	 * Pending Q is used in thread that is submitting CU cmds.
 	 * Other Qs are used in thread that is completing them.
@@ -94,21 +90,26 @@ struct xocl_ert_user {
 	 * cache lines. Hence we add a "padding" in between (assuming 128-byte
 	 * is big enough for most CPU architectures).
 	 */
-	u64			  padding[16];
+	u64			padding[16];
 	/* run queue */
-	struct list_head	  rq;
-	u32			  num_rq;
+	struct list_head	rq;
+	u32			num_rq;
 	/* completed queue */
-	struct list_head	  cq;
-	u32			  num_cq;
-	struct semaphore	  sem;
+	struct list_head	cq;
+	u32			num_cq;
+	struct semaphore	sem;
+	/* submitted queue */
+	struct ert_user_command	*submit_queue[ERT_MAX_SLOTS];
+	spinlock_t		sq_lock;
+	u32			num_sq;
 
-	u32			  stop;
-	bool			  bad_state;
 
-	struct ert_user_event	  ev;
+	u32			stop;
+	bool			bad_state;
 
-	struct task_struct	  *thread;
+	struct ert_user_event	ev;
+
+	struct task_struct	*thread;
 };
 
 static const unsigned int no_index = -1;
@@ -249,21 +250,24 @@ static inline void process_ert_cq(struct xocl_ert_user *ert_user)
 {
 	struct kds_command *xcmd;
 	struct ert_user_command *ecmd;
+	unsigned long flags = 0;
 
 	if (!ert_user->num_cq)
 		return;
 
 	ERTUSER_DBG(ert_user, "-> %s\n", __func__);
+	spin_lock_irqsave(&ert_user->sq_lock, flags);
 	/* Notify host and free command */
 	ecmd = list_first_entry(&ert_user->cq, struct ert_user_command, list);
 	xcmd = ecmd->xcmd;
-	ERTUSER_DBG(ert_user, "%s -> ecmd->slot_idx %d xcmd%p\n", __func__, ecmd->slot_idx, xcmd);
+	ERTUSER_DBG(ert_user, "%s -> ecmd %llx xcmd%p\n", __func__, (u64)ecmd, xcmd);
 	ert_release_slot(ert_user, ecmd);
 	list_del(&ecmd->list);
 	xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
 	xcmd->cb.free(xcmd);
 	ert_user_free_cmd(ecmd);
 	--ert_user->num_cq;
+	spin_unlock_irqrestore(&ert_user->sq_lock, flags);
 	ERTUSER_DBG(ert_user, "<- %s\n", __func__);
 }
 
@@ -280,28 +284,6 @@ mask_idx32(unsigned int idx)
 }
 
 static irqreturn_t
-ert_user_versal_isr(int irq, void *arg)
-{
-	struct xocl_ert_user *ert_user = (struct xocl_ert_user *)arg;
-	xdev_handle_t xdev = xocl_get_xdev(ert_user->pdev);
-
-	ERTUSER_DBG(ert_user, "-> %s %d\n", __func__, irq);
-
-	if (ert_user) {
-		xocl_mailbox_versal_handle_intr(xdev);
-#if 0
-		if (!ert_user->polling_mode)
-			scheduler_intr(exec->scheduler);
-		else
-			ERTUSER_ERR(ert_user, "unhandled isr irq %d", irq);
-#endif
-	}
-
-	ERTUSER_DBG(ert_user, "<- %s\n", __func__);
-	return IRQ_HANDLED;
-}
-
-static irqreturn_t
 ert_user_isr(int irq, void *arg)
 {
 	struct xocl_ert_user *ert_user = (struct xocl_ert_user *)arg;
@@ -309,14 +291,6 @@ ert_user_isr(int irq, void *arg)
 	struct ert_user_command *ecmd;
 
 	ERTUSER_DBG(ert_user, "-> xocl_user_event %d\n", irq);
-	/*
-	 * versal_isr is registered here,
-	 * but versal interrupt is enabled by mailbox_versal subdev.
-	 * Note: should be separated from ert_user_isr in new scheduler.
-	 */
-
-	if (ert_user && XOCL_DSA_IS_VERSAL(xdev))
-		return ert_user_versal_isr(irq, arg);
 
 	if (irq>=ERT_MAX_SLOTS)
 		return IRQ_HANDLED;
@@ -491,7 +465,7 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct ert_user_command *
 	//cfg->type = ERT_CTRL;
 
 	ERTUSER_DBG(ert_user, "configuring scheduler cq_size(%lld)\n", ert_user->cq_range);
-	if (ert_user && (ert_user->cq_range == 0 || cfg->slot_size == 0)) {
+	if (ert_user->cq_range == 0 || cfg->slot_size == 0) {
 		ERTUSER_ERR(ert_user, "should not have zeroed value of cq_size=%lld, slot_size=%d",
 		    ert_user->cq_range, cfg->slot_size);
 		return -EINVAL;
@@ -572,11 +546,16 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user)
 
 		if (cmd_opcode(ecmd) == OP_CONFIG) {
 			if (ert_cfg_cmd(ert_user, ecmd)) {
+				struct kds_command *xcmd;
+
 				ERTUSER_ERR(ert_user, "%s config cmd error\n", __func__);
 				list_del(&ecmd->list);
+				xcmd = ecmd->xcmd;
+				xcmd->cb.notify_host(xcmd, KDS_ABORT);
+				xcmd->cb.free(xcmd);
 				ert_user_free_cmd(ecmd);
 				--ert_user->num_rq;
-				++ert_user->num_sq;
+				continue;
 			}
 		}
 
@@ -707,7 +686,7 @@ static void ert_user_submit(struct kds_ert *ert, struct kds_command *xcmd)
 	if (!ecmd)
 		return;
 
-	ERTUSER_DBG(ert_user, "->%s\n", __func__);
+	ERTUSER_DBG(ert_user, "->%s ecmd %llx\n", __func__, (u64)ecmd);
 	spin_lock_irqsave(&ert_user->pq_lock, flags);
 	list_add_tail(&ecmd->list, &ert_user->pq);
 	++ert_user->num_pq;

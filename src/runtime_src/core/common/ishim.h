@@ -35,10 +35,10 @@ struct ishim
   close_device() = 0;
 
   virtual void
-  open_context(xuid_t xclbin_uuid, unsigned int ip_index, bool shared) = 0;
+  open_context(const xuid_t xclbin_uuid, unsigned int ip_index, bool shared) = 0;
 
   virtual void
-  close_context(xuid_t xclbin_uuid, unsigned int ip_index) = 0;
+  close_context(const xuid_t xclbin_uuid, unsigned int ip_index) = 0;
 
   virtual xclBufferHandle
   alloc_bo(size_t size, unsigned int flags) = 0;
@@ -107,14 +107,14 @@ struct shim : public DeviceType
   }
 
   virtual void
-  open_context(xuid_t xclbin_uuid , unsigned int ip_index, bool shared)
+  open_context(const xuid_t xclbin_uuid , unsigned int ip_index, bool shared)
   {
     if (auto ret = xclOpenContext(DeviceType::get_device_handle(), xclbin_uuid, ip_index, shared))
       throw error(ret, "failed to open ip context");
   }
 
   virtual void
-  close_context(xuid_t xclbin_uuid, unsigned int ip_index)
+  close_context(const xuid_t xclbin_uuid, unsigned int ip_index)
   {
     if (auto ret = xclCloseContext(DeviceType::get_device_handle(), xclbin_uuid, ip_index))
       throw error(ret, "failed to close ip context");

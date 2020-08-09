@@ -375,7 +375,7 @@ done:
 
 
   int
-  open_context(xuid_t xclbin_id, unsigned int ip_idx, bool shared)
+  open_context(const xuid_t xclbin_id, unsigned int ip_idx, bool shared)
   {
     HANDLE deviceHandle = m_dev;
     XOCL_CTX_ARGS ctxArgs = { 0 };
@@ -410,7 +410,7 @@ done:
   }
 
   int
-  close_context(xuid_t xclbin_id, unsigned int ip_idx)
+  close_context(const xuid_t xclbin_id, unsigned int ip_idx)
   {
     HANDLE deviceHandle = m_dev;
     XOCL_CTX_ARGS ctxArgs = { 0 };
@@ -1407,7 +1407,7 @@ xclCopyBO(xclDeviceHandle handle, xclBufferHandle dstBoHandle,
 
 // Compute Unit Execution Management APIs
 int
-xclOpenContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int ipIndex, bool shared)
+xclOpenContext(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclOpenContext()");
@@ -1419,7 +1419,7 @@ xclOpenContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int ipIndex, bo
 	  : shim->open_context(xclbinId, ipIndex, shared);
 }
 
-int xclCloseContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int ipIndex)
+int xclCloseContext(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclCloseContext()");
