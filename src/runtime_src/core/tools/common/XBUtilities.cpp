@@ -28,16 +28,19 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/tokenizer.hpp>
 #include <boost/format.hpp>
+#include <boost/algorithm/string/split.hpp>
 
 // System - Include Files
 #include <iostream>
 #include <map>
 
 #ifdef _WIN32
-#pragma warning( disable : 4189 )
-#pragma comment(lib, "Ws2_32.lib")
+# pragma warning( disable : 4189 )
+# pragma comment(lib, "Ws2_32.lib")
 /* need to link the lib for the following to work */
-#define be32toh ntohl
+# define be32toh ntohl
+#else
+# include <unistd.h> // SUDO check
 #endif
 
 #define ALIGN(x, a)     (((x) + ((a) - 1)) & ~((a) - 1))
@@ -381,6 +384,17 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
   }
 }
 
+xrt_core::device_collection
+XBUtilities::collect_devices( const std::string& _devices, // comma separated no space
+                              bool _inUserDomain )
+{
+  std::set<std::string> deviceSet;
+  boost::split(deviceSet, _devices, boost::is_any_of(","));
+  xrt_core::device_collection core_devices;
+  collect_devices(deviceSet, _inUserDomain, core_devices);
+  return core_devices;
+}
+
 bool 
 XBUtilities::can_proceed()
 {
@@ -401,6 +415,24 @@ XBUtilities::can_proceed()
   if (!proceed)
     std::cout << "Action canceled." << std::endl;
   return proceed;
+}
+
+void
+XBUtilities::can_proceed_or_throw(const std::string& info, const std::string& error)
+{
+  std::cout << info << "\n";
+  if (!can_proceed())
+    throw xrt_core::system_error(ECANCELED, error);
+}
+
+void
+XBUtilities::sudo_or_throw(const std::string& msg)
+{
+#ifndef _WIN32
+  if ((getuid() == 0) || (geteuid() == 0))
+    return;
+  throw xrt_core::system_error(EPERM, msg);
+#endif
 }
 
 boost::property_tree::ptree
