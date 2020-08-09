@@ -57,7 +57,8 @@ namespace xdp {
 
   KernelEvent::KernelEvent(uint64_t s_id, double ts, VTFEventType ty,
                            uint64_t devId, uint32_t monId, int32_t cuIdx)
-             : VTFDeviceEvent(s_id, ts, ty, devId, monId)
+             : VTFDeviceEvent(s_id, ts, ty, devId, monId),
+               cuId(cuIdx)
   {
   }
 
@@ -68,8 +69,8 @@ namespace xdp {
   KernelStall::KernelStall(uint64_t s_id, double ts, VTFEventType ty,
                            uint64_t devId, uint32_t monId, int32_t cuIdx)
              : KernelEvent(s_id, ts, ty, devId, monId, cuIdx),
-    // Until implemented, provide a default value for all members
-    burstLength(0)
+               // Until implemented, provide a default value for all members
+               burstLength(0)
   {
   }
 
@@ -80,9 +81,10 @@ namespace xdp {
   DeviceMemoryAccess::DeviceMemoryAccess(uint64_t s_id, double ts, VTFEventType ty,
                                          uint64_t devId, uint32_t monId, int32_t cuIdx)
                     : VTFDeviceEvent(s_id, ts, ty, devId, monId),
-    // Until implemented, provide a default value for all members
-    portName(0), memoryName(0), argumentNames(0), burstLength(0),
-    numBytes(0)
+                      cuId(cuIdx),
+                      // Until implemented, provide a default value for all members
+                      portName(0), memoryName(0), argumentNames(0), burstLength(0),
+                      numBytes(0)
   {
   }
 
@@ -93,8 +95,9 @@ namespace xdp {
   DeviceStreamAccess::DeviceStreamAccess(uint64_t s_id, double ts, VTFEventType ty,
                                          uint64_t devId, uint32_t monId, int32_t cuIdx)
                     : VTFDeviceEvent(s_id, ts, ty, devId, monId),
-    // Until implemented, provide a default value for all members
-    portName(0), streamName(0), burstLength(0)
+                      cuId(cuIdx),
+                      // Until implemented, provide a default value for all members
+                      portName(0), streamName(0), burstLength(0)
   {
   }
 
