@@ -53,15 +53,32 @@ int
 pci_device::
 open(const std::string& subdev, int flag)
 {
-  // Open subdevice node
+  int fd = -1;
+
+  // Open legacy subdevice node
   std::string file("/dev/xfpga/");
   file += subdev;
   file += ".m";
   file += std::to_string((uint32_t)(domain<<16) + (bus<<8) + (dev<<3) + func);
   file += "." + std::to_string(0);
-  int fd = ::open(file.c_str(), flag);
-  if (fd >= 0)
+  fd = ::open(file.c_str(), flag);
+  if (fd >= 0) {
     std::cout << "Successfully opened " << file << std::endl;
+    return fd;
+  }
+
+  // Open xoclv2 subdevice node
+  char bdf[20];
+  std::snprintf(bdf, sizeof(bdf), "%04x:%02x:%02x.%x", domain, bus, dev, func);
+  file = "/dev/xfpga/";
+  file += subdev;
+  file += ".";
+  file += bdf;
+  fd = ::open(file.c_str(), flag);
+  if (fd >= 0) {
+    std::cout << "Successfully opened " << file << std::endl;
+    return fd;
+  }
 
   return fd;
 }
