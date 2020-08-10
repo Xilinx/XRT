@@ -11,6 +11,7 @@
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/statistics_database.h"
+#include "xdp/profile/database/static_info_database.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/writer/opencl/opencl_summary_writer.h"
 
@@ -464,24 +465,56 @@ namespace xdp {
 
     std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
 
+    uint64_t i = 0 ;
     for (auto device : infos)
     {
+      xclCounterResults values = (db->getDynamicInfo()).getCounterResults(i) ;
+
       for (auto cu : (device->cus))
       {
-	fout << (device->platformInfo.deviceName) << "," 
-	     << (cu.second)->getName() /* << PortName */ << "," 
-	  /*
-	     << Kernel Arguments
-	     << Memory Resources
-	     << Transfer Type
-	     << Number of Transfers
-	     << Transfer Rate
-	     << AverageBandwidthUtilization
-	     << AverageSize
-	     << AverageLatency
-	  */
-	     << std::endl ;
+	std::vector<Monitor*> monitors = (cu.second)->getMonitors() ;
+
+	uint64_t AIMIndex = 0 ;
+	for (auto monitor : monitors)
+	{
+	  if (monitor->type != AXI_MM_MONITOR) continue ;
+
+	  auto writeTranx = values.WriteTranx[AIMIndex] ;
+	  auto readTranx = values.ReadTranx[AIMIndex] ;
+
+	  if (writeTranx > 0)
+	  {
+	    fout << (device->platformInfo.deviceName) << ","
+		 << (cu.second)->getName() << ":" /* TODO: PortName */ << ","
+		 << "" << "," // TODO: Kernel arguments
+		 << "" << "," // TODO: Memory resource
+		 << "WRITE" << ","
+		 << writeTranx << ","
+		 << "" << "," // TODO: Transfer Rate
+		 << "" << "," // TODO: Average Bandwidth Utilization
+		 << (values.WriteBytes[AIMIndex] / writeTranx) << ","
+		 << (values.WriteLatency[AIMIndex] / writeTranx) << "," 
+		 << std::endl ;
+	  }
+	  if (readTranx > 0)
+	  {
+	    fout << (device->platformInfo.deviceName) << ","
+		 << (cu.second)->getName() << ":" /* TODO: PortName */ << ","
+		 << "" << "," // TODO: Kernel arguments
+		 << "" << "," // TODO: Memory resource
+		 << "READ" << ","
+		 << readTranx << ","
+		 << "" << "," // TODO: Transfer Rate
+		 << "" << "," // TODO: Average Bandwidth Utilization
+		 << (values.ReadBytes[AIMIndex] / readTranx) << ","
+		 << (values.ReadLatency[AIMIndex] / readTranx) << "," 
+		 << std::endl ;
+	  }
+
+	  ++AIMIndex ;
+	}
       }
+      ++i ;
     }
   }
 

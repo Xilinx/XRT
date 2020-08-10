@@ -67,6 +67,8 @@ namespace xdp {
     XDP_EXPORT void addOffloader(uint64_t deviceId, DeviceIntf* devInterface) ;
     XDP_EXPORT void configureTraceIP(DeviceIntf* devInterface) ;
 
+    XDP_EXPORT void readCounters() ;
+
   public:
     XDP_EXPORT DeviceOffloadPlugin() ;
     XDP_EXPORT ~DeviceOffloadPlugin() ;

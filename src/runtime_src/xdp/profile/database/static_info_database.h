@@ -79,6 +79,7 @@ namespace xdp {
     inline const std::string& getName() { return name ; }
     inline const std::string& getKernelName() { return kernelName ; }
     inline int32_t getIndex() { return index ; }
+    inline std::vector<Monitor*>& getMonitors() { return monitors ; }
     XDP_EXPORT std::string getDim() ;
     XDP_EXPORT void addConnection(int32_t, int32_t);
     std::map<int32_t, std::vector<int32_t>>* getConnections()

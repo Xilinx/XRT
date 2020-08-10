@@ -18,6 +18,7 @@
 
 #include <string>
 #include <sstream>
+#include <cstring>
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/plugin/device_offload/device_offload_plugin.h"
@@ -26,6 +27,56 @@
 #include "xdp/profile/database/events/creator/device_event_trace_logger.h"
 
 #include "core/common/config_reader.h"
+
+// Anonymous namespace for helper functions
+namespace {
+
+  static bool nonZero(xclCounterResults& values)
+  {
+    // Check AIM stats
+    for (uint64_t i = 0 ; i < XAIM_MAX_NUMBER_SLOTS ; ++i)
+    {
+      if (values.WriteBytes[i]      != 0) return true ;
+      if (values.WriteTranx[i]      != 0) return true ;
+      if (values.WriteLatency[i]    != 0) return true ;
+      if (values.WriteMinLatency[i] != 0) return true ;
+      if (values.WriteMaxLatency[i] != 0) return true ;
+      if (values.ReadBytes[i]       != 0) return true ;
+      if (values.ReadTranx[i]       != 0) return true ;
+      if (values.ReadLatency[i]     != 0) return true ;
+      if (values.ReadMinLatency[i]  != 0) return true ;
+      if (values.ReadMaxLatency[i]  != 0) return true ;
+      if (values.ReadBusyCycles[i]  != 0) return true ;
+      if (values.WriteBusyCycles[i] != 0) return true ;
+    }
+
+    // Check AM stats
+    for (uint64_t i = 0 ; i < XAM_MAX_NUMBER_SLOTS ; ++i)
+    {
+      if (values.CuExecCount[i]       != 0) return true ;
+      if (values.CuExecCycles[i]      != 0) return true ;
+      if (values.CuBusyCycles[i]      != 0) return true ;
+      if (values.CuMaxParallelIter[i] != 0) return true ;
+      if (values.CuStallExtCycles[i]  != 0) return true ;
+      if (values.CuStallStrCycles[i]  != 0) return true ;
+      if (values.CuMinExecCycles[i]   != 0) return true ;
+      if (values.CuMaxExecCycles[i]   != 0) return true ;
+    }
+
+    // Check ASM stats
+    for (uint64_t i = 0 ; i < XASM_MAX_NUMBER_SLOTS ; ++i)
+    {
+      if (values.StrNumTranx[i]     != 0) return true ;
+      if (values.StrDataBytes[i]    != 0) return true ;
+      if (values.StrBusyCycles[i]   != 0) return true ;
+      if (values.StrStallCycles[i]  != 0) return true ;
+      if (values.StrStarveCycles[i] != 0) return true ;
+    }
+
+    return false ;
+  }
+
+} // end anonymous namespace
 
 namespace xdp {
 
@@ -156,6 +207,25 @@ namespace xdp {
     devInterface->startTrace(traceOption) ;
   }
 
+  void DeviceOffloadPlugin::readCounters()
+  {
+    uint64_t i = 0 ;
+    for (auto o : offloaders)
+    {
+      xclCounterResults results ;
+      std::get<2>(o.second)->readCounters(results) ;
+
+      // Only store this in the dynamic database if there is valid data.
+      //  In the case of hardware emulation the simulation could have exited
+      //  and we are reading nothing but 0's
+      if (nonZero(results))
+      {
+	(db->getDynamicInfo()).setCounterResults(i, results) ;
+      }
+      ++i ;
+    }
+  }
+
   void DeviceOffloadPlugin::writeAll(bool openNewFiles)
   {
     if (!active) return ;
@@ -164,18 +234,13 @@ namespace xdp {
     //  the plugin object.  At this time, the information in the database
     //  still exists and is viable, so we should flush our devices
     //  and write our writers.
-    uint64_t i = 0 ;
     for (auto o : offloaders)
     {
       (std::get<0>(o.second))->read_trace() ;
-
-      // Also, store away the counter results
-      xclCounterResults results ;
-      std::get<2>(o.second)->readCounters(results) ;
-      (db->getDynamicInfo()).setCounterResults(i, results) ;
-
-      ++i ;
     }
+
+    // Also, store away the counter results
+    readCounters() ;
 
     for (auto w : writers)
     {
@@ -191,16 +256,7 @@ namespace xdp {
     {
     case VPDatabase::READ_COUNTERS:
       {
-	uint64_t i = 0 ;
-	for (auto o : offloaders)
-	{
-	  xclCounterResults results ;
-	  std::get<2>(o.second)->readCounters(results) ;
-	  
-	  // Store this away in the dynamic database based on the device index
-	  (db->getDynamicInfo()).setCounterResults(i, results) ;
-	  ++i ;
-	}
+	readCounters() ;
       }
       break ;
     default:
