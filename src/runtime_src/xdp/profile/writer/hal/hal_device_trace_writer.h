@@ -35,7 +35,6 @@ namespace xdp {
     std::string toolVersion;
 
     std::map<int32_t, uint32_t> cuBucketIdMap;
-    int32_t openMonitorStartingRow = 0;
 
     uint64_t deviceId;
 

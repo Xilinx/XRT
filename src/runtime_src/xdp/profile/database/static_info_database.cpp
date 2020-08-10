@@ -307,8 +307,6 @@ namespace xdp {
           cuObj->setDataTransferEnabled(true);
         } else {
           devInfo->hasFloatingAIM = true;
-          mon->openMonListIndex = devInfo->openMonList.size();
-          devInfo->openMonList.push_back(mon);
         }
         devInfo->aimList.push_back(mon);
       } else if(debugIpData->m_type == AXI_STREAM_MONITOR) {
@@ -331,8 +329,6 @@ namespace xdp {
           cuObj->setDataTransferEnabled(true);
         } else {
           devInfo->hasFloatingASM = true;
-          mon->openMonListIndex = devInfo->openMonList.size();
-          devInfo->openMonList.push_back(mon);
         }
         devInfo->asmList.push_back(mon);
       } else {
