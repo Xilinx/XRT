@@ -1,17 +1,17 @@
-/**
- * Copyright (C) 2020 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
+/*
+  Copyright (C) 2020 Xilinx, Inc
+ 
+  Licensed under the Apache License, Version 2.0 (the "License"). You may
+  not use this file except in compliance with the License. A copy of the
+  License is located at
+ 
+      http://www.apache.org/licenses/LICENSE-2.0
+ 
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+  License for the specific language governing permissions and limitations
+  under the License.
  */
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
@@ -63,74 +63,74 @@ populate_aie(const xrt_core::device * device, const std::string& desc)
   pt.put("schema_version.patch", patch);
 
  /*
- * sample AIE json which can be parsed
- * {
- *  "schema_version":{
- *                    "major":"1",
- *                    "minor":"0",
- *                    "patch":"0"
- *                    },
- *  "aie_metadata":{
- *                  "graphs":{
- *                            "graph0":{
- *                                      "id":"",
- *                                      "name":"",
- *                                      "core_columns":[""],
- *                                      "core_rows":[""],
- *                                      "iteration_memory_columns":[""],
- *                                      "iteration_memory_rows":[""],
- *                                      "iteration_memory_addresses":[""],
- *                                      "multirate_triggers":[""],
- *                                      "pl_kernel_instance_names":[""],
- *                                      "pl_axi_lite_modes":[""]
- *                                      }
- *                            },
- *                  "RTPs":{
- *                          "rtp0":{
- *                                  "port_id":"",
- *                                  "alias_id":"",
- *                                  "port_name":"",
- *                                  "alias_name":"",
- *                                  "graph_id":"",
- *                                  "is_input":"",
- *                                  "is_asynchronous":"",
- *                                  "is_connected":"",
- *                                  "element_type":"",
- *                                  "number_of_bytes":"",
- *                                  "is_PL_RTP":"",
- *                                  "requires_lock":"",
- *                                  "selector_column":"",
- *                                  "selector_row":"",
- *                                  "selector_address":"",
- *                                  "selector_lock_id":"",
- *                                  "ping_buffer_column":"",
- *                                  "ping_buffer_row":"",
- *                                  "ping_buffer_address":"",
- *                                  "ping_buffer_lock_id":"",
- *                                  "pong_buffer_column":"",
- *                                  "pong_buffer_row":"",
- *                                  "pong_buffer_address":"",
- *                                  "pong_buffer_lock_id":"",
- *                                  "pl_kernel_instance_name":"",
- *                                  "pl_parameter_index":""
- *                                  }, 
- *                         },
- *                  "GMIOs":{
- *                           "gmio0":{
- *                                     "id":"",
- *                                     "name":"",
- *                                     "logical_name":"",
- *                                     "type":"",
- *                                     "shim_column":"",
- *                                     "channel_number":"",
- *                                     "stream_id":"",
- *                                     "burst_length_in_16byte":"",
- *                                     "PL_port_name":"",
- *                                     "PL_parameter_name":""
- *                                     }
- *                          }
- *                  }
- * }
+  sample AIE json which can be parsed
+  {
+   "schema_version":{
+                     "major":"1",
+                     "minor":"0",
+                     "patch":"0"
+                     },
+   "aie_metadata":{
+                   "graphs":{
+                             "graph0":{
+                                       "id":"",
+                                       "name":"",
+                                       "core_columns":[""],
+                                       "core_rows":[""],
+                                       "iteration_memory_columns":[""],
+                                       "iteration_memory_rows":[""],
+                                       "iteration_memory_addresses":[""],
+                                       "multirate_triggers":[""],
+                                       "pl_kernel_instance_names":[""],
+                                       "pl_axi_lite_modes":[""]
+                                       }
+                             },
+                   "RTPs":{
+                           "rtp0":{
+                                   "port_id":"",
+                                   "alias_id":"",
+                                   "port_name":"",
+                                   "alias_name":"",
+                                   "graph_id":"",
+                                   "is_input":"",
+                                   "is_asynchronous":"",
+                                   "is_connected":"",
+                                   "element_type":"",
+                                   "number_of_bytes":"",
+                                   "is_PL_RTP":"",
+                                   "requires_lock":"",
+                                   "selector_column":"",
+                                   "selector_row":"",
+                                   "selector_address":"",
+                                   "selector_lock_id":"",
+                                   "ping_buffer_column":"",
+                                   "ping_buffer_row":"",
+                                   "ping_buffer_address":"",
+                                   "ping_buffer_lock_id":"",
+                                   "pong_buffer_column":"",
+                                   "pong_buffer_row":"",
+                                   "pong_buffer_address":"",
+                                   "pong_buffer_lock_id":"",
+                                   "pl_kernel_instance_name":"",
+                                   "pl_parameter_index":""
+                                   }, 
+                          },
+                   "GMIOs":{
+                            "gmio0":{
+                                      "id":"",
+                                      "name":"",
+                                      "logical_name":"",
+                                      "type":"",
+                                      "shim_column":"",
+                                      "channel_number":"",
+                                      "stream_id":"",
+                                      "burst_length_in_16byte":"",
+                                      "PL_port_name":"",
+                                      "PL_parameter_name":""
+                                      }
+                           }
+                   }
+  }
  */
     for (auto& gr: _pt.get_child("aie_metadata.graphs")) {
       boost::property_tree::ptree& ograph = gr.second;
