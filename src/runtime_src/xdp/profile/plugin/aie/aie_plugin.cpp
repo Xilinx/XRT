@@ -25,7 +25,10 @@
 #include "core/include/experimental/xrt-next.h"
 
 #include "core/edge/common/aie_parser.h"
-//#include "core/edge/user/aie/aie.h"
+#include "core/edge/user/aie/aie.h"
+extern "C" {
+#include <xaiengine.h>
+}
 
 namespace xdp {
 
@@ -39,16 +42,20 @@ namespace xdp {
     uint64_t index = 0;
     void* handle = xclOpen(index, "/dev/null", XCL_INFO);
     while (handle != nullptr) {
+      // Keep device locally
+      auto device = get_userpf_device(handle);
+      mDevices.push_back(device);
+
       // Determine the name of the device
       struct xclDeviceInfo2 info;
       xclGetDeviceInfo2(handle, &info);
       std::string deviceName = std::string(info.mName);
-      mDevices.push_back(deviceName);
 
+      // Create and register writer and file
       std::string outputFile = "aie_profile_" + deviceName + ".csv"; 
       writers.push_back(new AIEProfilingWriter(outputFile.c_str(),
 			    deviceName.c_str(), index));
-      (db->getStaticInfo()).addOpenedFile(outputFile.c_str(), "AIE_PROFILE") ;
+      (db->getStaticInfo()).addOpenedFile(outputFile.c_str(), "AIE_PROFILE");
 
       // Move on to next device
       xclClose(handle);
@@ -89,10 +96,10 @@ namespace xdp {
 
       // TODO: not sure what we need from device; for now, just use name
       for (auto device : mDevices) {
-        //auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
-        //aieArray = drv->getAieArray();
-        //if (aieArray == nullptr)
-        //  continue;
+        auto drv = device->get_device_handle();
+        auto aieArray = (drv) ? drv->getAieArray() : nullptr;
+        if (aieArray == nullptr)
+          continue;
 
         // Iterate over all AIE Counters
         auto numCounters = (db->getStaticInfo()).getNumAIECounter(index);
@@ -106,16 +113,13 @@ namespace xdp {
           values.push_back(aie->endEvent);
           values.push_back(aie->resetEvent);
 
-          uint32_t counterValue = 0;
-
-          
-
-          // Use one of these APIs to read the counter value from the device
-          // v1
-          //u32 XAieTileCore_PerfCounterGet(XAieGbl_Tile*TileInstPtr, u8 Counter);
-          // v2
-          //XAie_PerfCounterGet(XAie_DevInst *DevInst, XAie_LocType Loc, 
-          //    XAie_ModuleType Module, u8 Counter, u32 *CounterVal);
+          // Get tile instance from AIE array
+          auto pos = aieArray->getTilePos(aie->column, aie->row);
+          auto tileInst = aieArray->tileArray.at(pos);
+      
+          // Read counter value from device
+          // TODO: Below uses v1 of the AIE driver; eventually switch to v2
+          auto counterValue = XAieTileCore_PerfCounterGet(tileInst, aie->counterNumber);
           values.push_back(counterValue);
 
 	        (db->getDynamicInfo()).addAIESample(index, timestamp, values);

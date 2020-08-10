@@ -232,7 +232,6 @@ add_library(xdp_user_plugin MODULE ${XRT_XDP_PROFILE_USER_PLUGIN_FILES})
 add_library(xdp_device_offload_plugin MODULE ${XRT_XDP_OPENCL_PROFILE_DEVICE_OFFLOAD_PLUGIN_FILES})
 add_library(xdp_hal_device_offload_plugin MODULE ${XRT_XDP_HAL_PROFILE_DEVICE_OFFLOAD_PLUGIN_FILES})
 add_library(xdp_power_plugin MODULE ${XRT_XDP_POWER_PROFILE_PLUGIN_FILES})
-add_library(xdp_aie_plugin MODULE ${XRT_XDP_PROFILE_AIE_PLUGIN_FILES})
 add_library(xdp_noc_plugin MODULE ${XRT_XDP_PROFILE_NOC_PLUGIN_FILES})
 add_library(xdp_vart_plugin MODULE ${XRT_XDP_PROFILE_VART_PLUGIN_FILES})
 
@@ -248,8 +247,7 @@ add_dependencies(xdp_user_plugin xdp_core)
 add_dependencies(xdp_device_offload_plugin xdp_core xilinxopencl)
 add_dependencies(xdp_hal_device_offload_plugin xdp_core xrt_core)
 add_dependencies(xdp_power_plugin xdp_core xrt_core)
-add_dependencies(xdp_aie_plugin xdp_core xrt_core )
-add_dependencies(xdp_noc_plugin xdp_core xrt_core )
+add_dependencies(xdp_noc_plugin xdp_core xrt_core)
 add_dependencies(xdp_vart_plugin xdp xrt_core)
 
 target_link_libraries(xdp xrt_coreutil)
@@ -264,9 +262,20 @@ target_link_libraries(xdp_user_plugin xdp_core)
 target_link_libraries(xdp_device_offload_plugin xdp_core xilinxopencl)
 target_link_libraries(xdp_hal_device_offload_plugin xdp_core xrt_core)
 target_link_libraries(xdp_power_plugin xdp_core xrt_core)
-target_link_libraries(xdp_aie_plugin xdp_core xrt_core)
 target_link_libraries(xdp_noc_plugin xdp_core xrt_core)
 target_link_libraries(xdp_vart_plugin xdp xrt_core)
+
+# AI Engine plugin is Edge only
+if (DEFINED XRT_AIE_BUILD)
+  add_library(xdp_aie_plugin MODULE ${XRT_XDP_PROFILE_AIE_PLUGIN_FILES})
+  add_dependencies(xdp_aie_plugin xdp_core xrt_core metal xaiengine)
+  target_link_libraries(xdp_aie_plugin xdp_core xrt_core metal xaiengine)
+  set_target_properties(xdp_aie_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
+
+  install (TARGETS xdp_aie_plugin
+    LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module
+  )
+endif()
 
 # ====== Linux Specifics =======
 
@@ -275,7 +284,6 @@ set_target_properties(xdp PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${X
 set_target_properties(oclxdp PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_hal_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_hal_api_interface_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
-set_target_properties(xdp_aie_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_noc_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_vart_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_debug_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
@@ -296,7 +304,7 @@ install (TARGETS xdp oclxdp xdp_core
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} NAMELINK_ONLY
 )
 
-install (TARGETS xdp_hal_plugin xdp_hal_api_interface_plugin xdp_debug_plugin xdp_appdebug_plugin xdp_lop_plugin xdp_user_plugin xdp_device_offload_plugin xdp_hal_device_offload_plugin xdp_power_plugin xdp_aie_plugin xdp_noc_plugin xdp_vart_plugin
+install (TARGETS xdp_hal_plugin xdp_hal_api_interface_plugin xdp_debug_plugin xdp_appdebug_plugin xdp_lop_plugin xdp_user_plugin xdp_device_offload_plugin xdp_hal_device_offload_plugin xdp_power_plugin xdp_noc_plugin xdp_vart_plugin
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module
 )
 

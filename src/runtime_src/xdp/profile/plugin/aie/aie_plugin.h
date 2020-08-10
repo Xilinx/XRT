@@ -24,6 +24,8 @@
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 #include "xdp/config.h"
 
+#include "core/common/device.h"
+
 namespace xdp {
 
   class AIEProfilingPlugin : public XDPPlugin
@@ -40,7 +42,7 @@ namespace xdp {
     bool mKeepPolling;
     unsigned int mPollingInterval;
     std::thread mPollingThread;
-    std::vector<std::string> mDevices;
+     xrt_core::device_collection mDevices;
   };
 
 } // end namespace xdp

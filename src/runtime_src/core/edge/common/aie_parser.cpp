@@ -31,6 +31,7 @@ namespace pt = boost::property_tree;
 using tile_type = xrt_core::edge::aie::tile_type;
 using rtp_type = xrt_core::edge::aie::rtp_type;
 using gmio_type = xrt_core::edge::aie::gmio_type;
+using counter_type = xrt_core::edge::aie::counter_type;
 
 inline void
 throw_if_error(bool err, const char* msg)
@@ -152,7 +153,7 @@ get_gmio(const pt::ptree& aie_meta)
 }
 
 std::vector<counter_type>
-get_counters(const pt::ptree& aie_meta)
+get_counter(const pt::ptree& aie_meta)
 {
   // First grab clock frequency
   double clockFreqMhz;
@@ -233,7 +234,7 @@ get_counters(const xrt_core::device* device)
 
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
-  return ::get_counters(aie_meta);
+  return ::get_counter(aie_meta);
 }
 
 }}} // aie, edge, xrt_core

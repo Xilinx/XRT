@@ -101,16 +101,16 @@ get_gmios(const xrt_core::device* device);
 
 struct counter_type
 {
-  uint32_t id;
-  uint16_t column;
-  uint16_t row;
-  uint8_t counterNumber;
-  uint8_t startEvent;
-  uint8_t endEvent;
-  uint8_t resetEvent;
-  double clockFreqMhz;
-  std::string module;
-  std::string name;
+  uint32_t        id;
+  uint16_t        column;
+  uint16_t        row;
+  uint8_t         counterNumber;
+  uint8_t         startEvent;
+  uint8_t         endEvent;
+  uint8_t         resetEvent;
+  double          clockFreqMhz;
+  std::string     module;
+  std::string     name;
 };
 
 /**
