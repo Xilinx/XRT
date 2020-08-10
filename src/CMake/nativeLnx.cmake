@@ -90,6 +90,9 @@ set (XRT_INSTALL_BIN_DIR       "${XRT_INSTALL_DIR}/bin")
 set (XRT_INSTALL_UNWRAPPED_DIR "${XRT_INSTALL_BIN_DIR}/unwrapped")
 set (XRT_INSTALL_INCLUDE_DIR   "${XRT_INSTALL_DIR}/include")
 set (XRT_INSTALL_LIB_DIR       "${XRT_INSTALL_DIR}/lib${LIB_SUFFIX}")
+set (XRT_NAMELINK_ONLY NAMELINK_ONLY)
+set (XRT_NAMELINK_SKIP NAMELINK_SKIP)
+
 
 # Define RPATH for embedding in libraries and executables.  This allows
 # package creation to automatically determine dependencies.

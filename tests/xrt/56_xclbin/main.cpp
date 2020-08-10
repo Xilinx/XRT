@@ -38,7 +38,7 @@ static void usage()
     std::cout << "* Bitstream is required\n";
 }
 
-static int run(const xrt::device& device, const xrt::uuid& uuid, bool verbose, std::string cuName)
+static int run(const xrt::device& device, const xrt::uuid& uuid, const std::string& cuName)
 {
   const size_t DATA_SIZE = COUNT * sizeof(int);
 
@@ -85,7 +85,6 @@ run(int argc, char** argv)
   }
 
   std::string xclbin_fnm;
-  bool verbose = false;
   unsigned int device_index = 0;
 
   std::vector<std::string> args(argv+1,argv+argc);
@@ -94,10 +93,6 @@ run(int argc, char** argv)
     if (arg == "-h") {
       usage();
       return 1;
-    }
-    else if (arg == "-v") {
-      verbose = true;
-      continue;
     }
 
     if (arg[0] == '-') {
@@ -121,20 +116,14 @@ run(int argc, char** argv)
 
 
   auto xclbin = xrt::xclbin(xclbin_fnm); // C++ API, construct xclbin object from filename
- 
-  if (xclbin) // Test bool operator
-  {
-    std::cout << "Targeting xsa platform: " << xclbin.get_xsa_name() << std::endl;
-    std::cout << "Xclbin has uuid: " << xclbin.get_uuid() << std::endl;
-  }
 
-  std::vector<std::string> cuNames = xclbin.get_cu_names();
+  std::vector<std::string> cu_names = xclbin.get_cu_names();
  
-  for (auto& cuName : cuNames)
-    std::cout << cuName << " ";
+  for (auto& cu : cu_names)
+    std::cout << cu << " ";
   std::cout << std::endl;
 
-  if (cuNames[0] != "simple:simple_1")
+  if (cu_names[0] != "simple:simple_1")
     throw std::runtime_error("FAILED_TEST\nCould not read correct kernel name, expected: simple:simple_1");
 
   std::vector<char> data = xclbin.get_data();
@@ -145,7 +134,7 @@ run(int argc, char** argv)
   auto device = xrt::device(device_index);
   auto uuid = device.load_xclbin(xclbin);
 
-  run(device, uuid, verbose, cuNames[0]);
+  run(device, uuid, cu_names[0]);
   return 0;
 }
 
