@@ -37,6 +37,7 @@ namespace xdp {
     //                  version, creationTime, xrtVersion, toolVersion));
     
     (db->getStaticInfo()).addOpenedFile("profile_summary.csv", "PROFILE");
+    (db->getStaticInfo()).addOpenedFile("vitis_ai_profile.csv", "VITIS_AI_PROFILE");
     (db->getStaticInfo()).addOpenedFile("vart_trace.csv", "VP_TRACE");
   }
 
