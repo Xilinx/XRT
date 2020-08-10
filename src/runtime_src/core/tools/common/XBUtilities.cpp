@@ -540,7 +540,9 @@ XBUtilities::string_to_UUID(std::string str)
   assert(str.length() == 32);
   std::string uuid = "";
   //positions to insert hyphens
+  //before: 00000000000000000000000000000000
   std::vector<int> pos = {8, 4, 4, 4};
+  //before: 00000000-0000-0000-0000-000000000000
 
   for(auto const p : pos) {
     std::string token = str.substr(0, p);

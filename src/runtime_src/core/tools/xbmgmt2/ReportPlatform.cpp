@@ -181,7 +181,7 @@ ReportPlatform::writeReport( const xrt_core::device * _pDevice,
     boost::property_tree::ptree& available_shell = kv.second;
     _output << boost::format("  %-20s : %s\n") % "Platform" % available_shell.get<std::string>("vbnv", "N/A");
     _output << boost::format("  %-20s : %s\n") % "SC Version" % available_shell.get<std::string>("sc_version", "N/A");
-    _output << boost::format("  %-20s : %x\n") % "Platform ID" % available_shell.get<std::string>("id", "N/A") << "\n";
+    _output << boost::format("  %-20s : %s\n") % "Platform ID" % available_shell.get<std::string>("id", "N/A") << "\n";
   }
 
 
