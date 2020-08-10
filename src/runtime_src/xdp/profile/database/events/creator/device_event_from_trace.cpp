@@ -273,7 +273,7 @@ namespace xdp {
 
   void DeviceEventCreatorFromTrace::end()
   {
-    for(uint64_t amIndex = 0; amIndex < cuStarts.size(); ++amIndex) {
+    for(uint32_t amIndex = 0; amIndex < cuStarts.size(); ++amIndex) {
       if(cuStarts[amIndex].empty()) {
         continue;
       }
