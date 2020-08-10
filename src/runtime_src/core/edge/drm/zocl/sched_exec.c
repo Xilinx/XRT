@@ -2930,6 +2930,7 @@ get_packet_size(struct ert_packet *packet)
 		break;
 
 	case ERT_START_CU:
+	case ERT_EXEC_WRITE:
 		SCHED_DEBUG("start CU/Kernel cmd");
 		payload = packet->count;
 		break;
