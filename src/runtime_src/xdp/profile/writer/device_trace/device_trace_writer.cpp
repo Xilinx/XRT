@@ -192,12 +192,12 @@ namespace xdp {
          * For example, AXI monitors for System Compiler, Slave Bridge designs.
          */
         uint32_t monId = deviceEvent->getMonitorId();
-	DeviceMemoryAccess* memoryEvent = dynamic_cast<DeviceMemoryAccess*>(e);
+        DeviceMemoryAccess* memoryEvent = dynamic_cast<DeviceMemoryAccess*>(e);
         if(memoryEvent) {
           deviceEvent->dump(fout, floatingAIMStartingRow + monId);
           continue;
         }
-	DeviceStreamAccess* streamEvent = dynamic_cast<DeviceStreamAccess*>(e);
+        DeviceStreamAccess* streamEvent = dynamic_cast<DeviceStreamAccess*>(e);
         if(streamEvent) {
           deviceEvent->dump(fout, floatingASMStartingRow + monId);
           continue;

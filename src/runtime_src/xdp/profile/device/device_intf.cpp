@@ -417,7 +417,6 @@ DeviceIntf::~DeviceIntf()
   // Start trace performance monitoring
   size_t DeviceIntf::startTrace(uint32_t startTrigger)
   {
-    startTrigger = 30;
 //
     // StartTrigger Bits:
     // Bit 0: Trace Coarse/Fine     Bit 1: Transfer Trace Ctrl
