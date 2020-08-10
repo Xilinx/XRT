@@ -535,6 +535,42 @@ namespace xdp {
 	 << "Link Utilization (%)"    << ","
 	 << "Link Starve (%)"         << ","
 	 << "Link Stall (%)"          << std::endl ;
+
+    std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
+
+    uint64_t i = 0 ;
+    for (auto device : infos)
+    {
+      xclCounterResults values = (db->getDynamicInfo()).getCounterResults(i) ;
+
+      for (auto cu : (device->cus))
+      {
+	std::vector<Monitor*> monitors = (cu.second)->getMonitors() ;
+
+	uint64_t ASMIndex = 0 ;
+	for (auto monitor : monitors)
+	{
+	  if (monitor->type != AXI_STREAM_MONITOR) continue ;
+
+	  uint64_t numTranx = values.StrNumTranx[ASMIndex] ;
+
+	  fout << (device->platformInfo.deviceName) << ","
+	       << "" << "," // TODO: Master Port
+	       << "" << "," // TODO: Master kernel arguments
+	       << "" << "," // TODO: Slave port
+	       << "" << "," // TODO: Slave kernel arguments
+	       << numTranx << ","
+	       << "" << "," // TODO: Transfer Rate
+	       << (values.StrDataBytes[ASMIndex] / numTranx) << ","
+	       << "" << "," // TODO: Link utilization
+	       << (values.StrStarveCycles[ASMIndex]) << ","
+	       << (values.StrStallCycles[ASMIndex])
+	       << std::endl ;
+
+	  ++ASMIndex ;
+	}
+      }
+    }
   }
 
   void OpenCLSummaryWriter::writeDataTransferDMA()
