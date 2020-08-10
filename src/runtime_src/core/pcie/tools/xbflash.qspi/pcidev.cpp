@@ -117,7 +117,7 @@ map_usr_bar()
 
   char sysfsname[20];
   std::snprintf(sysfsname, sizeof(sysfsname), "%04x:%02x:%02x.%x",
-	  domain, bus, dev, func);
+    domain, bus, dev, func);
   std::string resfile("/sys/bus/pci/devices/");
   resfile += sysfsname;
   resfile += "/resource";

@@ -276,6 +276,7 @@ int main(int argc, char *argv[])
             return flash(argc, argv);
     } catch (const std::exception& ex) {
         std::cout << "Failed to flash: " << ex.what() << std::endl;
+        return -EINVAL;
     }
 
     printHelp(argv[0]);
