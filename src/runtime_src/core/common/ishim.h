@@ -20,7 +20,7 @@
 #include "xrt.h"
 #include "experimental/xrt-next.h"
 #include "experimental/xrt_bo.h"
-#include "../common/xrt_graph.h"
+#include "xrt_graph.h"
 #include "error.h"
 #include <stdexcept>
 

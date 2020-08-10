@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (C) 2020, Xilinx Inc - All rights reserved
  * Xilinx Runtime (XRT) Experimental APIs
@@ -21,7 +22,7 @@
 #include "core/include/experimental/xrt_aie.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
-#include "core/common/xrt_graph.h"
+#include "xrt_graph.h"
 #include "core/common/message.h"
 
 namespace xrt {

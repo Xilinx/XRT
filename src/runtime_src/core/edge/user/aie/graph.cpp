@@ -21,7 +21,6 @@
 #include "core/edge/user/shim.h"
 #include "core/common/message.h"
 #endif
-//#include "core/include/experimental/xrt_aie.h"
 #include "core/common/error.h"
 
 #include <cstring>

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (C) 2020, Xilinx Inc - All rights reserved
  * Xilinx Runtime (XRT) Experimental APIs
@@ -23,7 +24,7 @@
 typedef void * xclGraphHandle;
 
 xclGraphHandle
-xclGraphOpen(xclDeviceHandle handle, const uuid_t xclbinUUID, const char *graphName);
+xclGraphOpen(xclDeviceHandle handle, const xuid_t xclbinUUID, const char *graphName);
 
 void
 xclGraphClose(xclGraphHandle gh);
