@@ -340,13 +340,11 @@ prep_rhel7()
     echo "Enabling RHEL SCL repository..."
     yum-config-manager --enable rhel-server-rhscl-7-rpms
 
-    MINOR=`echo ${VERSION} | awk -F. '{print $2}'`
-    if [ "$MINOR" != "" ] && [ $MINOR -gt 6 ]; then
-      echo "Enabling repository 'rhel-7-server-optional-rpms'"
-      subscription-manager repos --enable "rhel-7-server-optional-rpms"
-      echo "Enabling repository 'rhel-7-server-e4s-optional-rpms"
-      subscription-manager repos --enable "rhel-7-server-e4s-optional-rpms"
-    fi
+    echo "Enabling repository 'rhel-7-server-e4s-optional-rpms"
+    subscription-manager repos --enable "rhel-7-server-e4s-optional-rpms"
+
+    echo "Enabling repository 'rhel-7-server-optional-rpms'"
+    subscription-manager repos --enable "rhel-7-server-optional-rpms"
 }
 
 prep_rhel8()
@@ -435,7 +433,11 @@ install()
 	elif [ $ARCH == "ppc64le" ]; then
             yum install -y devtoolset-7
 	elif [ $MAJOR -lt "8" ]  && [ $FLAVOR != "amzn" ]; then
-            yum install -y devtoolset-6
+            if [ $FLAVOR == "centos" ]; then
+                yum --enablerepo=base install -y devtoolset-9
+            else
+                yum install -y devtoolset-9
+            fi
 	fi
     fi
 

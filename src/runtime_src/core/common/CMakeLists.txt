@@ -23,7 +23,6 @@ file(GLOB XRT_CORE_COMMON_LIB_FILES
   "system.cpp"
   "utils.cpp"
   "thread.cpp"
-  "xrt_xclbin.cpp"
   "module_loader.cpp"
   "api/*.cpp"
   )
@@ -51,13 +50,13 @@ if (NOT WIN32)
 endif()
 
 install(TARGETS xrt_coreutil
-  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} NAMELINK_SKIP
+  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} ${XRT_NAMELINK_SKIP}
   RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR}
 )
 
 install(TARGETS xrt_coreutil
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT}
-  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} NAMELINK_ONLY
+  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} ${XRT_NAMELINK_ONLY}
 )
 
 # The scheduler object files are for auto config of scheduler. These
