@@ -308,7 +308,7 @@ public:
         uuid_t uuid;
         int ret, data_retention = 0;
         std::string errmsg;
-        
+
         pcidev::get_dev(m_idx)->sysfs_get("icap", "data_retention", errmsg, data_retention, 0);
         if (!errmsg.empty()) {
             std::cout << errmsg << std::endl;
@@ -519,7 +519,7 @@ public:
         dev->sysfs_get("icap", "group_topology", errmsg, buf);
         dev->sysfs_get("", "memstat_raw", errmsg, mm_buf);
         dev->sysfs_get("xmc", "temp_by_mem_topology", errmsg, temp_buf);
- 
+
         const mem_topology *map = (mem_topology *)buf.data();
         const uint32_t *temp = (uint32_t *)temp_buf.data();
         const int temp_size = (uint32_t)temp_buf.size()/sizeof(uint32_t);
@@ -767,9 +767,9 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get( "icap", "idcode",                 errmsg, idcode );
         pcidev::get_dev(m_idx)->sysfs_get( "dna", "dna",                     errmsg, dna );
         pcidev::get_dev(m_idx)->sysfs_get("", "local_cpulist",               errmsg, cpu_affinity);
-        pcidev::get_dev(m_idx)->sysfs_get<uint64_t>("address_translator", "host_mem_size",  
+        pcidev::get_dev(m_idx)->sysfs_get<uint64_t>("address_translator", "host_mem_size",
                                                                              errmsg, host_mem_size, 0);
-        pcidev::get_dev(m_idx)->sysfs_get<uint64_t>("icap", "max_host_mem_aperture",  
+        pcidev::get_dev(m_idx)->sysfs_get<uint64_t>("icap", "max_host_mem_aperture",
                                                                              errmsg, max_host_mem_aperture, 0);
 
         p2p_enabled = pcidev::check_p2p_config(pcidev::get_dev(m_idx), errmsg);
@@ -1558,10 +1558,27 @@ public:
         if (verbose)
             std::cout << "Reporting from mem_topology:" << std::endl;
 
+        uint16_t vendor;
+        dev->sysfs_get<uint16_t>("", "vendor", errmsg, vendor, -1);
+        if (!errmsg.empty()) {
+            std::cout << errmsg << std::endl;
+            return -EINVAL;
+        }
+
+        size_t totalSize = 0;
+        switch (vendor) {
+            case ARISTA_ID:
+                totalSize = 0x20000000;
+                break;
+            default:
+            case XILINX_ID:
+                break;
+        }
+
         for(int32_t i = 0; i < map->m_count; i++) {
             if(map->m_mem_data[i].m_type == MEM_STREAMING)
                 continue;
-            
+
             if(!strncmp((const char*)map->m_mem_data[i].m_tag, "HOST", 4))
                 continue;
 
@@ -1571,7 +1588,7 @@ public:
                 if(map->m_mem_data[i].m_size < (blockSize/1024)) {
                     if (verbose)
                         std::cout << "WARNING: unable to perform DMA Test on " << map->m_mem_data[i].m_tag
-                            << ". Cannot allocate " << blockSize << " on " << map->m_mem_data[i].m_size 
+                            << ". Cannot allocate " << blockSize << " on " << map->m_mem_data[i].m_size
                             << " sized bank." << std::endl;
                     result = -EOPNOTSUPP;
                     continue;
@@ -1592,7 +1609,7 @@ public:
                         return result;
                 }
                 try {
-                    DMARunner runner( m_handle, blockSize, i);
+                    DMARunner runner(m_handle, blockSize, i, totalSize);
                     result = runner.run();
                 } catch (const xrt_core::error &ex) {
                     std::cout << "ERROR: " << ex.what() << std::endl;
