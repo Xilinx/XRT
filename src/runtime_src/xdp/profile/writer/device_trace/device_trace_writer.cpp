@@ -139,12 +139,18 @@ namespace xdp {
       floatingAIMStartingRow = ++rowCount;
       std::vector<Monitor*> *aimList = (db->getStaticInfo()).getAIMonitors(deviceId);
       for(size_t i = 0; i < aimList->size() ; i++) {
-        if(-1 != aimList->at(i)->cuIndex) {
+        Monitor* aim = aimList->at(i);
+        if(-1 != aim->cuIndex) {
           // not a floating AIM, must have been covered in CU section
           continue;
         }
+        // If monitor name starts with "shell", then it is a shell monitor and trace is not available. So, skip it.
+        size_t pos = aim->name.find('/');
+        if(0 == aim->name.substr(0, pos).compare("shell")) {
+          continue;
+        }
         // add stall , starve
-        fout << "Static_Row," << (rowCount + i) << "," << aimList->at(i)->name << std::endl;
+        fout << "Static_Row," << (rowCount + i) << "," << aim->name << std::endl;
       }
       fout << "Group_End,AXI Memory Monitors" << std::endl ;
       rowCount = floatingAIMStartingRow + aimList->size();
@@ -155,12 +161,18 @@ namespace xdp {
       floatingASMStartingRow = ++rowCount;
       std::vector<Monitor*> *asmList = (db->getStaticInfo()).getASMonitors(deviceId);
       for(size_t i = 0; i < asmList->size() ; i++) {
-        if(-1 != asmList->at(i)->cuIndex) {
+        Monitor* asm = asmList->at(i);
+        if(-1 != asm->cuIndex) {
           // not a floating ASM, must have been covered in CU section
           continue;
         }
+        // If monitor name starts with "shell", then it is a shell monitor and trace is not available. So, skip it.
+        size_t pos = asm->name.find('/');
+        if(0 == asm->name.substr(0, pos).compare("shell")) {
+          continue;
+        }
         // add stall , starve
-        fout << "Static_Row," << (rowCount + i) << "," << asmList->at(i)->name << std::endl;
+        fout << "Static_Row," << (rowCount + i) << "," << asm->name << std::endl;
       }
       fout << "Group_End,AXI Stream Monitors" << std::endl ;
       rowCount = floatingASMStartingRow + asmList->size();

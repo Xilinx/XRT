@@ -128,7 +128,6 @@ namespace xdp {
     struct PlatformInfo platformInfo;
     std::string loadedXclbin;
     std::map<int32_t, ComputeUnitInstance*> cus;
-    //uuid        loadedXclbinUUID;
     std::map<int32_t, Memory*>   memoryInfo;
     std::vector<Monitor*> aimList;
     std::vector<Monitor*> amList;
@@ -139,6 +138,14 @@ namespace xdp {
 
     ~DeviceInfo()
     {
+      for(auto i : cus) {
+        delete i.second;
+      }
+      cus.clear();
+      for(auto i : memoryInfo) {
+        delete i.second;
+      }
+      memoryInfo.clear();
       for(auto i : aimList) {
         delete i;
       }

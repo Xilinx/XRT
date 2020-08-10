@@ -280,7 +280,7 @@ namespace xdp {
         }
         if(mon) { devInfo->amList.push_back(mon); }
       } else if(debugIpData->m_type == AXI_MM_MONITOR) {
-	      // parse name to find CU Name and Memory
+        // parse name to find CU Name and Memory
         size_t pos = name.find('/');
         std::string monCuName = name.substr(0, pos);
 
@@ -305,7 +305,8 @@ namespace xdp {
         if(cuObj) {
           cuObj->addMonitor(mon);
           cuObj->setDataTransferEnabled(true);
-        } else {
+        } else if(0 != monCuName.compare("shell")) {
+          // If not connected to CU and not a shell monitor, then a floating monitor
           devInfo->hasFloatingAIM = true;
         }
         devInfo->aimList.push_back(mon);
@@ -327,7 +328,8 @@ namespace xdp {
         if(cuObj) {
           cuObj->addMonitor(mon);
           cuObj->setDataTransferEnabled(true);
-        } else {
+        } else if(0 != monCuName.compare("shell")) {
+          // If not connected to CU and not a shell monitor, then a floating monitor
           devInfo->hasFloatingASM = true;
         }
         devInfo->asmList.push_back(mon);
