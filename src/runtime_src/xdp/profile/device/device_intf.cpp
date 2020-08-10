@@ -17,6 +17,7 @@
 #define XDP_SOURCE
 
 #include "device_intf.h"
+#include "aieTraceS2MM.h"
 
 #ifndef _WIN32
 // open+ioctl based Profile IP 
@@ -27,6 +28,7 @@
 #include "ioctl_monitors/ioctl_traceFifoFull.h"
 #include "ioctl_monitors/ioctl_traceFunnel.h"
 #include "ioctl_monitors/ioctl_traceS2MM.h"
+#include "ioctl_monitors/ioctl_aieTraceS2MM.h"
 
 // open+mmap based Profile IP 
 #include "mmapped_monitors/mmapped_aim.h"
@@ -36,6 +38,7 @@
 #include "mmapped_monitors/mmapped_traceFifoFull.h"
 #include "mmapped_monitors/mmapped_traceFunnel.h"
 #include "mmapped_monitors/mmapped_traceS2MM.h"
+#include "mmapped_monitors/mmapped_aieTraceS2MM.h"
 
 #endif
 
@@ -587,7 +590,7 @@ DeviceIntf::~DeviceIntf()
             case TRACE_S2MM :
               // AIE trace potentially uses multiple data movers (based on BW requirements)
               if (map->m_debug_ip_data[i].m_properties & TS2MM_AIE_TRACE_MASK)
-                mAieTraceDmaList.push_back(new TraceS2MM(mDevice, i, &(map->m_debug_ip_data[i])));
+                mAieTraceDmaList.push_back(new AIETraceS2MM(mDevice, i, &(map->m_debug_ip_data[i])));
               else
                 mPlTraceDma = new TraceS2MM(mDevice, i, &(map->m_debug_ip_data[i]));
               break;
@@ -664,7 +667,7 @@ DeviceIntf::~DeviceIntf()
             {
               // AIE trace potentially uses multiple data movers (based on BW requirements)
               if (map->m_debug_ip_data[i].m_properties & TS2MM_AIE_TRACE_MASK) {
-                TraceS2MM* aieTraceDma = new MMappedTraceS2MM(mDevice, i, 0, &(map->m_debug_ip_data[i]));
+                TraceS2MM* aieTraceDma = new MMappedAIETraceS2MM(mDevice, i, mAieTraceDmaList.size(), &(map->m_debug_ip_data[i]));
 
                 if (aieTraceDma->isMMapped()) {
                   mAieTraceDmaList.push_back(aieTraceDma);
@@ -751,10 +754,22 @@ DeviceIntf::~DeviceIntf()
             }
             case TRACE_S2MM :
             {
-              mPlTraceDma = new IOCtlTraceS2MM(mDevice, i, 0, &(map->m_debug_ip_data[i]));
-              if(!mPlTraceDma->isOpened()) {
-                delete mPlTraceDma;
-                mPlTraceDma = nullptr;
+              // AIE trace potentially uses multiple data movers (based on BW requirements)
+              if (map->m_debug_ip_data[i].m_properties & TS2MM_AIE_TRACE_MASK) {
+                TraceS2MM* aieTraceDma = new IOCtlAIETraceS2MM(mDevice, i, mAieTraceDmaList.size(), &(map->m_debug_ip_data[i]));
+                if (aieTraceDma->isOpened()) {
+                  mAieTraceDmaList.push_back(aieTraceDma);
+                } else {
+                  delete aieTraceDma;
+                }
+              } 
+              else {
+                mPlTraceDma = new IOCtlTraceS2MM(mDevice, i, 0, &(map->m_debug_ip_data[i]));
+              
+                if (!mPlTraceDma->isOpened()) {
+                  delete mPlTraceDma;
+                  mPlTraceDma = nullptr;
+                }
               }
               break;
             }
