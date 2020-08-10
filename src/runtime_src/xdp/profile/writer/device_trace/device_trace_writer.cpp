@@ -161,18 +161,18 @@ namespace xdp {
       floatingASMStartingRow = ++rowCount;
       std::vector<Monitor*> *asmList = (db->getStaticInfo()).getASMonitors(deviceId);
       for(size_t i = 0; i < asmList->size() ; i++) {
-        Monitor* asm = asmList->at(i);
-        if(-1 != asm->cuIndex) {
+        Monitor* asM = asmList->at(i);
+        if(-1 != asM->cuIndex) {
           // not a floating ASM, must have been covered in CU section
           continue;
         }
         // If monitor name starts with "shell", then it is a shell monitor and trace is not available. So, skip it.
-        size_t pos = asm->name.find('/');
-        if(0 == asm->name.substr(0, pos).compare("shell")) {
+        size_t pos = asM->name.find('/');
+        if(0 == asM->name.substr(0, pos).compare("shell")) {
           continue;
         }
         // add stall , starve
-        fout << "Static_Row," << (rowCount + i) << "," << asm->name << std::endl;
+        fout << "Static_Row," << (rowCount + i) << "," << asM->name << std::endl;
       }
       fout << "Group_End,AXI Stream Monitors" << std::endl ;
       rowCount = floatingASMStartingRow + asmList->size();
