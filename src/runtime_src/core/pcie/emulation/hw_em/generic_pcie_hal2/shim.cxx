@@ -1469,6 +1469,10 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     // reset here rather than in destructor
     mCoreDevice.reset();
 
+    if (getenv("ENABLE_HAL_HW_EMU_DEBUG")) {
+      resetProgram(false);
+    }
+
     if (!sock) 
     {
       if (xclemulation::config::getInstance()->isKeepRunDirEnabled() == false) {
@@ -1484,11 +1488,17 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
         mMBSch = NULL;
       }
       PRINTENDFUNC;
-      mLogStream.close();
+      if (mLogStream.is_open()) {
+        mLogStream.close();
+      }
       return;
     }
 
-    resetProgram(false);
+    if (getenv("ENABLE_HAL_HW_EMU_DEBUG")) {
+    }
+    else {
+      resetProgram(false);
+    }
 
     int status = 0;
     xclemulation::DEBUG_MODE lWaveform = xclemulation::config::getInstance()->getLaunchWaveform();
@@ -1515,7 +1525,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::REMOVE, "", boost::lexical_cast<std::string>(__LINE__));
     google::protobuf::ShutdownProtobufLibrary();
     PRINTENDFUNC;
-    mLogStream.close();
+    if (mLogStream.is_open()) {
+      mLogStream.close();
+    }
   }
 
   int HwEmShim::resetProgram(bool saveWdb)
@@ -2107,7 +2119,14 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       systemUtil::makeSystemCall(sdxTraceKernelFile, systemUtil::systemOperation::REMOVE, "", boost::lexical_cast<std::string>(__LINE__));
     }
 
-    std::string lf = std::string(pPath) + "/hal_log.txt";
+    std::string lf = "";
+    if (getenv("ENABLE_HAL_HW_EMU_DEBUG")) {
+      lf = std::string(pPath) + "/hal_log.txt";
+    }
+    else {
+      lf = "";
+    }
+
     //if ( logfileName && (logfileName[0] != '\0'))
     if (!lf.empty())
     {
