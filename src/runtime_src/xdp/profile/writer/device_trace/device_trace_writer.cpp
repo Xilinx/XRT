@@ -97,21 +97,18 @@ namespace xdp {
 
         // Wave Group for Read and Write, if Data transfer monitoring is enabled in CU
         if(cu->dataTransferEnabled()) {
-          // Read
-          // KERNEL_READ
+          // Read : KERNEL_READ
           fout << "Group_Start,Read,Read data transfers between " << cuName << " and Global Memory" << std::endl;
           fout << "Static_Row," << (rowCount + KERNEL_READ - KERNEL) << ",M_AXI_GMEM-MEMORY (port_names)," << "Read Data Transfers " << std::endl;
           fout << "Group_End,Read" << std::endl;
 
-          // Write
-          // KERNEL_WRITE
+          // Write : KERNEL_WRITE
           fout << "Group_Start,Write,Write data transfers between " << cuName << " and Global Memory" << std::endl;
           fout << "Static_Row," << (rowCount + KERNEL_WRITE - KERNEL) << ",M_AXI_GMEM-MEMORY (port_names)," << "Write Data Transfers " << std::endl;
           fout << "Group_End,Write" << std::endl;
         }
 
         if(cu->streamEnabled()) {
-          // Read
           // KERNEL_STREAM_READ
           fout << "Group_Start,Stream Read,Read AXI Stream transaction between " << cuName << " and Global Memory" << std::endl;
           fout << "Group_Row_Start," << (rowCount + KERNEL_STREAM_READ - KERNEL) << ",stream port, ,Read AXI Stream transaction between port and memory" << std::endl;
@@ -119,17 +116,17 @@ namespace xdp {
           fout << "Static_Row," << (rowCount + KERNEL_STREAM_READ_STARVE - KERNEL) << ",Link Starve" << std::endl;
           fout << "Group_End,Row Read" << std::endl;
           fout << "Group_End,Stream Read" << std::endl;
+
           // KERNEL_STREAM_WRITE
-// check the id
           fout << "Group_Start,Stream Write,Write AXI Stream transaction between " << cuName << " and Global Memory" << std::endl;
-          fout << "Group_Row_Start," << (rowCount + KERNEL_STREAM_WRITE_STALL - KERNEL) << ",stream port, ,Write AXI Stream transaction between port and memory" << std::endl;
+          fout << "Group_Row_Start," << (rowCount + KERNEL_STREAM_WRITE - KERNEL) << ",stream port, ,Write AXI Stream transaction between port and memory" << std::endl;
           fout << "Static_Row," << (rowCount + KERNEL_STREAM_WRITE_STALL - KERNEL) << ",Link Stall" << std::endl;
           fout << "Static_Row," << (rowCount + KERNEL_STREAM_WRITE_STARVE - KERNEL) << ",Link Starve" << std::endl;
           fout << "Group_End,Row Write" << std::endl;
           fout << "Group_End,Stream Write" << std::endl;
         }
         fout << "Group_End," << cuName << std::endl ;
-	rowCount += (KERNEL_STREAM_WRITE_STARVE - KERNEL);
+        rowCount += (KERNEL_STREAM_WRITE_STARVE - KERNEL);
 // HOST READ?WRITE
       }
     }
