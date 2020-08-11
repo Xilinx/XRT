@@ -74,12 +74,11 @@ set(XRT_HEADER_SRC
   mpd_plugin.h                                                              
   msd_plugin.h)                                                              
                                                                                 
-install (FILES ${XRT_HEADER_SRC} DESTINATION ${XRT_INSTALL_INCLUDE_DIR})        
+install (FILES ${XRT_HEADER_SRC}
+  DESTINATION ${XRT_INSTALL_INCLUDE_DIR}
+  COMPONENT ${XRT_DEV_COMPONENT}
+)        
                                                                                 
-message("-- XRT header files")                                                  
-foreach (header ${XRT_HEADER_SRC})                                              
-  message("-- ${header}")                                                       
-endforeach() 
 add_subdirectory(aws)
 add_subdirectory(azure)
 add_subdirectory(container)

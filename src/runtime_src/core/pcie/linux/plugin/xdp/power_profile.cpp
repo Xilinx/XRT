@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2020 Xilinx, Inc
+ * Copyright (C) 2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,18 +14,26 @@
  * under the License.
  */
 
-#ifndef __SubCmdScan_h_
-#define __SubCmdScan_h_
+#include "plugin/xdp/power_profile.h"
+#include "core/common/module_loader.h"
 
-#include "tools/common/SubCmd.h"
+namespace xdppowerprofile {
 
-class SubCmdScan : public SubCmd {
- public:
-  virtual void execute(const SubCmdOptions &_options) const;
+  void load_xdp_power_plugin()
+  {
+    static xrt_core::module_loader xdp_power_loader("xdp_power_plugin",
+						    register_power_callbacks,
+						    warning_power_callbacks) ;
+  }
 
- public:
-  SubCmdScan(bool _isHidden, bool _isDepricated, bool _isPreliminary);
-};
+  void register_power_callbacks(void* /*handle*/)
+  {
+    // No callbacks in power profiling.  The plugin is always active
+  }
 
-#endif
+  void warning_power_callbacks()
+  {
+    // No warnings for power profiling
+  }
 
+} // end namespace xdppowerprofile

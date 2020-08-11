@@ -20,6 +20,7 @@
 #include "core/common/error.h"
 #include "core/common/utils.h"
 #include "core/common/message.h"
+#include "core/common/query_requests.h"
 
 #include "common/system.h"
 
@@ -397,20 +398,21 @@ XBUtilities::can_proceed()
   return proceed;
 }
 
-void 
-XBUtilities::report_available_devices() 
+boost::property_tree::ptree
+XBUtilities::get_available_devices(bool inUserDomain) 
 {
-  std::cout << "\nList of available devices:" <<std::endl;
   xrt_core::device_collection deviceCollection;
-  collect_devices(std::set<std::string> {"all"}, false, deviceCollection);
+  collect_devices(std::set<std::string> {"all"}, inUserDomain, deviceCollection);
+  boost::property_tree::ptree pt;
   for (const auto & device : deviceCollection) {
-    boost::property_tree::ptree on_board_rom_info;
-    boost::property_tree::ptree on_board_dev_info;
-    device->get_rom_info(on_board_rom_info);
-    device->get_info(on_board_dev_info);
-    std::cout << boost::format("[%s] : %s\n") % on_board_dev_info.get<std::string>("bdf", "N/A") % on_board_rom_info.get<std::string>("vbnv", "N/A");
+    boost::property_tree::ptree pt_dev;
+    pt_dev.put("bdf", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device)));
+    pt_dev.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
+    pt_dev.put("id", xrt_core::query::rom_time_since_epoch::to_string(xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
+    pt_dev.put("is_ready", "true"); //to-do: sysfs node but on windows?
+    pt.push_back(std::make_pair("", pt_dev));
   }
-  std::cout << std::endl;
+  return pt;
 }
 
 std::vector<char>
@@ -509,4 +511,47 @@ XBUtilities::str_to_enum_reset(const std::string& str)
   if (it != reset_map.end())
     return it->second;
   throw xrt_core::error(str + " is invalid. Please specify a valid reset type");
+}
+
+static std::string
+precision(double value, int p)
+{
+  std::stringstream stream;
+  stream << std::fixed << std::setprecision(p) << value;
+  return stream.str();
+}
+
+std::string
+XBUtilities::format_base10_shiftdown3(uint64_t value)
+{
+  return precision(static_cast<double>(value) / 1000.0, 3);
+}
+
+std::string
+XBUtilities::format_base10_shiftdown6(uint64_t value)
+{
+  return precision(static_cast<double>(value) / 1000000.0, 6);
+}
+
+std::string
+XBUtilities::string_to_UUID(std::string str)
+{
+  //make sure that a UUID is passed in
+  assert(str.length() == 32);
+  std::string uuid = "";
+  //positions to insert hyphens
+  //before: 00000000000000000000000000000000
+  std::vector<int> pos = {8, 4, 4, 4};
+  //before: 00000000-0000-0000-0000-000000000000
+
+  for(auto const p : pos) {
+    std::string token = str.substr(0, p);
+    boost::to_upper(token);
+    uuid.append(token + "-");
+    str.erase(0, p);
+  }
+  boost::to_upper(str);
+  uuid.append(str);
+  
+  return uuid;
 }

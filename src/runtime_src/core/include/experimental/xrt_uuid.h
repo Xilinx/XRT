@@ -17,14 +17,15 @@
 #ifndef xrt_uuid_h_
 #define xrt_uuid_h_
 
-#include <string>
-
 #ifdef _WIN32
 # include "windows/uuid.h"
 #else
 # include <uuid/uuid.h>
-using xuid_t = uuid_t;
+typedef uuid_t xuid_t;
 #endif
+
+#ifdef __cplusplus
+#include <string>
 
 namespace xrt {
 
@@ -116,5 +117,5 @@ public:
 };
 
 } // xrt
-
+#endif
 #endif

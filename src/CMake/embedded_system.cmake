@@ -8,13 +8,15 @@
 INCLUDE (FindPkgConfig)
 
 # DRM
-pkg_check_modules(DRM REQUIRED libdrm)
-IF(DRM_FOUND)
-  MESSAGE(STATUS "Looking for DRM - found at ${DRM_PREFIX} ${DRM_VERSION}")
-  INCLUDE_DIRECTORIES(${DRM_INCLUDEDIR})
-ELSE(DRM_FOUND)
-  MESSAGE(FATAL_ERROR "Looking for DRM - not found")
-ENDIF(DRM_FOUND)
+if (NOT DEFINED CROSS_COMPILE)
+  pkg_check_modules(DRM REQUIRED libdrm)
+  IF(DRM_FOUND)
+    MESSAGE(STATUS "Looking for DRM - found at ${DRM_PREFIX} ${DRM_VERSION}")
+    INCLUDE_DIRECTORIES(${DRM_INCLUDEDIR})
+  ELSE(DRM_FOUND)
+    MESSAGE(FATAL_ERROR "Looking for DRM - not found")
+  ENDIF(DRM_FOUND)
+endif()
 
 # OpenCL header files
 find_package(OpenCL)
@@ -72,3 +74,10 @@ add_subdirectory(runtime_src)
 
 message("-- XRT version: ${XRT_VERSION_STRING}")
 
+if (DEFINED CROSS_COMPILE)
+  set (LINUX_FLAVOR ${flavor})
+  set (LINUX_VERSION ${version})
+  include (CMake/cpackLin.cmake)
+  set (XRT_DKMS_DRIVER_SRC_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/runtime_src/core")
+  include (CMake/dkms-edge.cmake)
+endif()

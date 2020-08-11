@@ -20,6 +20,7 @@
 
 #include <sstream>
 #include <string>
+#include <iostream>
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -72,7 +73,7 @@ get_tiles(const pt::ptree& aie_meta, const std::string& graph_name)
     for (auto& node : graph.second.get_child("iteration_memory_columns"))
       tiles.at(count++).itr_mem_col = std::stoul(node.second.data());
     throw_if_error(count < num_tiles,"iteration_memory_columns < num_tiles");
-    
+
     count = 0;
     for (auto& node : graph.second.get_child("iteration_memory_rows"))
       tiles.at(count++).itr_mem_row = std::stoul(node.second.data());
@@ -82,6 +83,12 @@ get_tiles(const pt::ptree& aie_meta, const std::string& graph_name)
     for (auto& node : graph.second.get_child("iteration_memory_addresses"))
       tiles.at(count++).itr_mem_addr = std::stoul(node.second.data());
     throw_if_error(count < num_tiles,"iteration_memory_addresses < num_tiles");
+
+    count = 0;
+    for (auto& node : graph.second.get_child("multirate_triggers"))
+      tiles.at(count++).is_trigger = (node.second.data() == "true");
+    throw_if_error(count < num_tiles,"multirate_triggers < num_tiles");
+
   }
 
   return tiles;
@@ -131,10 +138,16 @@ get_gmio(const pt::ptree& aie_meta)
   for (auto& gmio_node : aie_meta.get_child("aie_metadata.GMIOs")) {
     gmio_type gmio;
 
-    gmio.id = gmio_node.second.get<std::string>("id");
+    // Only get AIE GMIO type, 0: GM->AIE; 1: AIE->GM
+    auto type = gmio_node.second.get<uint16_t>("type");
+    if (type != 0 && type != 1)
+      continue;
+
+    gmio.id = gmio_node.second.get<uint32_t>("id");
     gmio.name = gmio_node.second.get<std::string>("name");
-    gmio.type = gmio_node.second.get<uint16_t>("type");
+    gmio.type = type;
     gmio.shim_col = gmio_node.second.get<uint16_t>("shim_column");
+    gmio.channel_number = gmio_node.second.get<uint16_t>("channel_number");
     gmio.burst_len = gmio_node.second.get<uint16_t>("burst_length_in_16byte");
 
     gmios.emplace_back(std::move(gmio));

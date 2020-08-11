@@ -22,13 +22,13 @@ void
 ReportFirewall::getPropertyTreeInternal( const xrt_core::device * _pDevice,
                                          boost::property_tree::ptree &_pt) const
 {
-  // Defer to the 20201 format.  If we ever need to update JSON data, 
+  // Defer to the 20202 format.  If we ever need to update JSON data, 
   // Then update this method to do so.
-  getPropertyTree20201(_pDevice, _pt);
+  getPropertyTree20202(_pDevice, _pt);
 }
 
 void 
-ReportFirewall::getPropertyTree20201( const xrt_core::device * /*_pDevice*/,
+ReportFirewall::getPropertyTree20202( const xrt_core::device * /*_pDevice*/,
                                        boost::property_tree::ptree &_pt) const
 {
   boost::property_tree::ptree pt;

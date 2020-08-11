@@ -4,6 +4,12 @@ execute_process(
     COMMAND ${CMAKE_C_COMPILER} -print-file-name=libc.so.6
     OUTPUT_VARIABLE GLIBC
     OUTPUT_STRIP_TRAILING_WHITESPACE)
+if (DEFINED CROSS_COMPILE)
+    execute_process(
+	COMMAND find ${sysroot} -iname libc.so.6
+	OUTPUT_VARIABLE GLIBC
+	OUTPUT_STRIP_TRAILING_WHITESPACE)
+endif()
 get_filename_component(GLIBC ${GLIBC} REALPATH)
 get_filename_component(GLIBC_VERSION ${GLIBC} NAME)
 string(REPLACE "libc-" "" GLIBC_VERSION ${GLIBC_VERSION})

@@ -61,6 +61,7 @@ namespace xdp {
     XDP_EXPORT ~LOPKernelEnqueue() ;
 
     virtual bool isHostEvent() { return true ; }
+    virtual bool isLOPHostEvent() { return true ; }
 
     XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   } ;
@@ -124,6 +125,7 @@ namespace xdp {
     XDP_EXPORT ~LOPBufferTransfer() ;
 
     virtual bool isHostEvent() { return true ; }
+    virtual bool isLOPHostEvent() { return true ; }
 
     XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   } ;

@@ -19,6 +19,9 @@
 #include "xocl_drv.h"
 #include "version.h"
 
+/* TODO: remove this with old kds */
+extern int kds_mode;
+
 struct xocl_subdev_array {
 	xdev_handle_t xdev_hdl;
 	int id;
@@ -297,6 +300,23 @@ failed:
 	return ret;
 }
 
+static void __xocl_platform_device_unreg(xdev_handle_t xdev_hdl,
+	struct platform_device *pldev)
+{
+	int i = 0;
+	struct resource *res;
+
+	if (!pldev)
+		return;
+
+	for (res = platform_get_resource(pldev, IORESOURCE_MEM, i); res;
+	    res = platform_get_resource(pldev, IORESOURCE_MEM, i)) {
+		xocl_p2p_release_resource(xdev_hdl, res);
+		i++;
+	}
+	platform_device_unregister(pldev);
+}
+
 static void __xocl_subdev_destroy(xdev_handle_t xdev_hdl,
 		struct xocl_subdev *subdev)
 {
@@ -326,10 +346,10 @@ static void __xocl_subdev_destroy(xdev_handle_t xdev_hdl,
 		case XOCL_SUBDEV_STATE_ACTIVE:
 		case XOCL_SUBDEV_STATE_OFFLINE:
 			device_release_driver(&pldev->dev);
-			__attribute__ ((fallthrough));
+			/* fall through */
 		case XOCL_SUBDEV_STATE_ADDED:
 		default:
-			platform_device_unregister(pldev);
+			__xocl_platform_device_unreg(xdev_hdl, pldev);
 		}
 		xocl_lock_xdev(xdev_hdl);
 		subdev->hold = false;
@@ -472,6 +492,13 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 					retval = -EINVAL;
 					goto error;
 				}
+				/* Check if IP is on P2P bar, the res start will be endpoint
+				 * address
+				 */
+				retval = xocl_p2p_remap_resource(xdev_hdl, bar_idx, &res[i],
+					subdev->info.level);
+				if (retval && retval != -ENODEV)
+					goto error;
 				iostart = pci_resource_start(core->pdev,
 						bar_idx);
 				res[i].start += iostart;
@@ -655,13 +682,49 @@ int xocl_subdev_create_by_level(xdev_handle_t xdev_hdl, int level)
 
 	xocl_lock_xdev(xdev_hdl);
 	subdev_info = xocl_subdev_get_info(xdev_hdl, &subdev_num);
-	if (!subdev_info)
+	if (!subdev_info) {
+		xocl_unlock_xdev(xdev_hdl);
 		return ret;
+	}
 
 	for (i = 0; i < subdev_num; i++) {
 		if (subdev_info[i].level != level)
 			continue;
 		ret = __xocl_subdev_create(xdev_hdl, &subdev_info[i]);
+		if (ret && ret != -EEXIST && ret != -EAGAIN)
+			break;
+		ret = 0;
+	}
+
+	xocl_unlock_xdev(xdev_hdl);
+	if (subdev_info)
+		vfree(subdev_info);
+	return ret;
+}
+
+int xocl_subdev_create_by_baridx(xdev_handle_t xdev_hdl, int bar_idx)
+{
+	struct xocl_subdev_info *subdev_info = NULL;
+	int i, j, ret = -ENODEV, subdev_num;
+
+	xocl_lock_xdev(xdev_hdl);
+	subdev_info = xocl_subdev_get_info(xdev_hdl, &subdev_num);
+	if (!subdev_info) {
+		xocl_unlock_xdev(xdev_hdl);
+		return ret;
+	}
+
+	for (i = 0; i < subdev_num; i++) {
+		if (!subdev_info[i].bar_idx)
+			continue;
+
+		for (j = 0; j < subdev_info[i].num_res; j++) {
+			if (subdev_info[i].bar_idx[j] == bar_idx)
+				break;
+		}
+		if (j == subdev_info[i].num_res)
+			continue;
+		ret = __xocl_subdev_create(xdev_hdl,  &subdev_info[i]);
 		if (ret && ret != -EEXIST && ret != -EAGAIN)
 			break;
 		ret = 0;
@@ -779,6 +842,12 @@ void xocl_subdev_destroy_by_id(xdev_handle_t xdev_hdl, uint32_t subdev_id)
 	xocl_unlock_xdev(xdev_hdl);
 }
 
+#define for_each_subdev(core, subdev)					\
+	for (i = ARRAY_SIZE(core->subdevs) - 1; i >= 0; i--)		\
+		for (j = 0, subdev = &core->subdevs[i][j];		\
+		    j < XOCL_SUBDEV_MAX_INST;				\
+		    j++, subdev = &core->subdevs[i][j])
+
 void xocl_subdev_destroy_all(xdev_handle_t xdev_hdl)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
@@ -805,10 +874,35 @@ void xocl_subdev_destroy_by_level(xdev_handle_t xdev_hdl, int level)
 	xocl_unlock_xdev(xdev_hdl);
 }
 
+void xocl_subdev_destroy_by_baridx(xdev_handle_t xdev_hdl, int bar_idx)
+{
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
+	int i, j, k;
+	struct xocl_subdev *subdev;
+
+	xocl_lock_xdev(xdev_hdl);
+
+	for_each_subdev(core, subdev) {
+		if (!subdev->info.bar_idx)
+			continue;
+
+		for (k = 0; k < subdev->info.num_res; k++) {
+			if (subdev->info.bar_idx[k] == bar_idx)
+				break;
+		}
+		if (k == subdev->info.num_res)
+			continue;
+		__xocl_subdev_destroy(xdev_hdl,  subdev);
+	}
+
+	xocl_unlock_xdev(xdev_hdl);
+}
+
 static int __xocl_subdev_offline(xdev_handle_t xdev_hdl,
 		struct xocl_subdev *subdev)
 {
 	struct xocl_subdev_funcs *subdev_funcs;
+	struct platform_device *pldev;
 	int ret = 0;
 
 	if (subdev->state < XOCL_SUBDEV_STATE_ACTIVE) {
@@ -844,10 +938,11 @@ static int __xocl_subdev_offline(xdev_handle_t xdev_hdl,
 	} else {
 		xocl_xdev_info(xdev_hdl, "release driver %s",
 				subdev->info.name);
+		pldev = subdev->pldev;
 		device_release_driver(&subdev->pldev->dev);
-		platform_device_unregister(subdev->pldev);
 		subdev->ops = NULL;
 		subdev->pldev = NULL;
+		__xocl_platform_device_unreg(xdev_hdl, pldev);
 		subdev->state = XOCL_SUBDEV_STATE_INIT;
 	}
 	xocl_lock_xdev(xdev_hdl);
@@ -1292,6 +1387,16 @@ bool xocl_subdev_is_vsec(xdev_handle_t xdev)
 	return pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_VNDR) != 0;
 }
 
+static inline int xocl_subdev_create_vsec_impl(xdev_handle_t xdev,
+	struct xocl_subdev_info *info, u64 offset, int bar)
+{
+	info->res[0].start = offset;
+	info->res[0].end = offset + 0xfff;
+	info->bar_idx[0] = bar;
+
+	return xocl_subdev_create(xdev, info);
+}
+
 int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 {
 	u64 offset;
@@ -1301,22 +1406,51 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 	ret = xocl_subdev_vsec(xdev, XOCL_VSEC_FLASH_CONTROLER, &bar, &offset,
 		&vtype);
 	if (!ret) {
-		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_FLASH_VSEC;
+		struct xocl_subdev_info subdev_info =
+		    XOCL_DEVINFO_FLASH_VSEC;
 
-		xocl_xdev_info(xdev,
-			"Vendor Specific FLASH RES Start 0x%llx, bar %d",
-			 offset, bar);
-		subdev_info.res[0].start = offset;
-		subdev_info.res[0].end = offset + 0xfff;
-		subdev_info.bar_idx[0] = bar;
-		if (vtype == 0x2)
-                        memcpy(((struct xocl_flash_privdata *)
-				(subdev_info.priv_data))->flash_type,
-				FLASH_TYPE_QSPIPS, strlen(FLASH_TYPE_QSPIPS));
+		switch (vtype) {
+		case XOCL_VSEC_FLASH_TYPE_QSPI:
+			memcpy(((struct xocl_flash_privdata *)
+			    (subdev_info.priv_data))->flash_type,
+			    FLASH_TYPE_QSPIPS, strlen(FLASH_TYPE_QSPIPS));
+			/* default is FLASH_TYPE_SPI, thus pass through. */
+			/* fall through */
+		case XOCL_VSEC_FLASH_TYPE_SPI_IP:
+		case XOCL_VSEC_FLASH_TYPE_SPI_REG:
+			xocl_xdev_info(xdev,
+			    "VSEC FLASH RES Start 0x%llx, bar %d, type 0x%x",
+			    offset, bar, vtype);
 
-		ret = xocl_subdev_create(xdev, &subdev_info);
-		if (ret)
-			return ret;
+			ret = xocl_subdev_create_vsec_impl(xdev, &subdev_info,
+			    offset, bar);
+
+			if (ret)
+				return ret;
+			break;
+		case XOCL_VSEC_FLASH_TYPE_VERSAL:
+			xocl_xdev_info(xdev,
+			    "VSEC VERSAL FLASH RES Start 0x%llx, bar %d",
+			    offset, bar);
+
+			/* set devinfo to xfer versal */
+			subdev_info.id = XOCL_SUBDEV_XFER_VERSAL;
+			subdev_info.name = XOCL_XFER_VERSAL;
+			subdev_info.res[0].name = XOCL_XFER_VERSAL;
+			memcpy(((struct xocl_flash_privdata *)
+			    (subdev_info.priv_data))->flash_type,
+			    FLASH_TYPE_OSPI_VERSAL, strlen(FLASH_TYPE_OSPI_VERSAL));
+
+			ret = xocl_subdev_create_vsec_impl(xdev, &subdev_info,
+				offset, bar);
+
+			if (ret)
+				return ret;
+			break;
+		default:
+			xocl_xdev_info(xdev, "Unsupport flash type 0x%x", vtype);
+			break;
+		}
 	}
 
 	ret = xocl_subdev_vsec(xdev, XOCL_VSEC_MAILBOX, &bar, &offset, NULL);
@@ -1324,13 +1458,11 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_MAILBOX_VSEC;
 
 		xocl_xdev_info(xdev,
-			"Vendor Specific MAILBOX RES Start 0x%llx, bar %d",
+			"VSEC MAILBOX RES Start 0x%llx, bar %d",
 			 offset, bar);
-		subdev_info.res[0].start = offset;
-		subdev_info.res[0].end = offset + 0xfff;
-		subdev_info.bar_idx[0] = bar;
 
-		ret = xocl_subdev_create(xdev, &subdev_info);
+		ret = xocl_subdev_create_vsec_impl(xdev, &subdev_info,
+			offset, bar);
 		if (ret)
 			return ret;
 	}
@@ -1346,6 +1478,11 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 	int ret, cap, bar;
 	u64 offset;
 	unsigned err_cap;
+	/* workaround MB_SCHEDULER and INTC resource conflict
+	 * Remove below variables when MB_SCHEDULER is removed
+	 */
+	int i;
+	struct xocl_subdev_info *sdev_info;
 
 	memset(&core->priv, 0, sizeof(core->priv));
 	core->priv.vbnv = in->vbnv;
@@ -1387,6 +1524,23 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 		core->priv.xpr = true;
 
 	core->priv.dsa_ver = pdev->subsystem_device & 0xff;
+
+	/* workaround MB_SCHEDULER and INTC resource conflict
+	 * Remove below loop when MB_SCHEDULER is removed
+	 */
+	for (i = 0; i < in->subdev_num; i++) {
+		sdev_info = &in->subdev_info[i];
+		if (sdev_info->id == XOCL_SUBDEV_MB_SCHEDULER && kds_mode == 1) {
+			sdev_info->res = NULL;
+			sdev_info->num_res = 0;
+		} else if (sdev_info->id == XOCL_SUBDEV_INTC && kds_mode == 0) {
+			sdev_info->res = NULL;
+			sdev_info->num_res = 0;
+		} else if (sdev_info->id == XOCL_SUBDEV_ERT_USER && kds_mode == 0) {
+			sdev_info->res = NULL;
+			sdev_info->num_res = 0;
+		}
+	}
 
 	/* data defined in subdev header */
 	core->priv.subdev_info = in->subdev_info;

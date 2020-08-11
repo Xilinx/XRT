@@ -47,8 +47,8 @@ namespace xdp {
   void VTFEvent::dumpTimestamp(std::ofstream& fout)
   {
     // Host events are accurate up to microseconds.
-    //  Timestamps are in milliseconds, so the precision should be 3 past
-    //  the decimal point
+    // Timestamps are in milliseconds, so the precision should be 3 past
+    // the decimal point
     std::ios_base::fmtflags flags = fout.flags() ;
     fout << std::fixed << std::setprecision(6) << (timestamp/1.0e6) ;
     fout.flags(flags) ;
