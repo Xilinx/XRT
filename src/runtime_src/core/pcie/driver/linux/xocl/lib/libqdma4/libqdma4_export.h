@@ -1566,8 +1566,10 @@ int qdma4_queue_packet_write(unsigned long dev_hndl, unsigned long qhndl,
  * @param budget	ST C2H only, max number of completions to be processed.
  * @param c2h_upd_cmpl	flag to update the completion
  *
+ * Return:		0 for success or <0 for error
+ *
  *****************************************************************************/
-void qdma4_queue_service(unsigned long dev_hndl, unsigned long qhndl,
+int qdma4_queue_service(unsigned long dev_hndl, unsigned long qhndl,
 			int budget, bool c2h_upd_cmpl);
 
 /*****************************************************************************/
@@ -1577,8 +1579,10 @@ void qdma4_queue_service(unsigned long dev_hndl, unsigned long qhndl,
  * @param dev_hndl	dev_hndl returned from qdma_device_open()
  * @param qhndl		hndl returned from qdma_queue_add()
  *
+ * Return:		0 for success or <0 for error
+ *
  *****************************************************************************/
-void qdma4_queue_update_pointers(unsigned long dev_hndl, unsigned long qhndl);
+int qdma4_queue_update_pointers(unsigned long dev_hndl, unsigned long qhndl);
 
 /*****************************************************************************/
 /**
