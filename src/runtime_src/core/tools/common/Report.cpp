@@ -27,7 +27,7 @@ const Report::SchemaDescriptionVector Report::m_schemaVersionVector = {
   { SchemaVersion::unknown,       false, "",              "Unknown entry"},
   { SchemaVersion::text,          true,  "text",          "Human readable report"},
   { SchemaVersion::json_internal, false, "JSON-internal", "Internal JSON property tree"},
-  { SchemaVersion::json_20201,    true,  "JSON-2020.1",   "JSON 2020.1 schema"}
+  { SchemaVersion::json_20202,    true,  "JSON-2020.2",   "JSON 2020.2 schema"}
 };
 
 
@@ -90,8 +90,8 @@ Report::getFormattedReport(const xrt_core::device *_pDevice,
       returnValue = _pt;
       return returnValue;
 
-    case SchemaVersion::json_20201:
-      getPropertyTree20201(_pDevice, _pt);
+    case SchemaVersion::json_20202:
+      getPropertyTree20202(_pDevice, _pt);
       returnValue = _pt;
       return returnValue;
 

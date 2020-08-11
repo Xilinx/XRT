@@ -26,6 +26,7 @@
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/xml_parser.hpp>
 
 #define XDP_SOURCE
 
@@ -106,12 +107,27 @@ namespace xdp {
     resetDeviceInfo(deviceId);
 
     DeviceInfo *devInfo = new DeviceInfo();
-    devInfo->clockRateMHz = 300;
     devInfo->platformInfo.kdmaCount = 0;
 
     deviceInfo[deviceId] = devInfo;
 
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(devHandle);
+
+    if(nullptr == device) return;
+
+    const clock_freq_topology* clockSection = device->get_axlf_section<const clock_freq_topology*>(CLOCK_FREQ_TOPOLOGY);
+
+    if(clockSection) {
+      for(int32_t i = 0; i < clockSection->m_count; i++) {
+        const struct clock_freq* clk = &(clockSection->m_clock_freq[i]);
+        if(clk->m_type != CT_DATA) {
+          continue;
+        }
+        devInfo->clockRateMHz = clk->m_freq_Mhz;
+      }
+    } else {
+      devInfo->clockRateMHz = 300;
+    }
 
 //    if (!setXclbinUUID(devInfo, device)) return;
     if (!setXclbinName(devInfo, device)) return;
@@ -225,6 +241,40 @@ namespace xdp {
       }
       cu->addConnection(connctn->arg_index, connctn->mem_data_index);
     }
+
+    // Set Static WorkGroup Size of CUs using the EMBEDDED_METADATA section
+    std::pair<const char*, size_t> embeddedMetadata = device->get_axlf_section(EMBEDDED_METADATA);
+    const char* embeddedMetadataSection = embeddedMetadata.first;
+    size_t      embeddedMetadataSz      = embeddedMetadata.second;
+
+    boost::property_tree::ptree xmlProject;
+    std::stringstream xmlStream;
+    xmlStream.write(embeddedMetadataSection, embeddedMetadataSz);
+    boost::property_tree::read_xml(xmlStream, xmlProject);
+
+    for(auto coreItem : xmlProject.get_child("project.platform.device.core")) {
+      std::string coreItemName = coreItem.first;
+      if(0 != coreItemName.compare("kernel")) {  // skip items other than "kernel"
+        continue;
+      }
+      auto kernel = coreItem;
+      auto kernelNameItem    = kernel.second.get_child("<xmlattr>");
+      std::string kernelName = kernelNameItem.get<std::string>("name", "");
+
+      auto workGroupSz = kernel.second.get_child("compileWorkGroupSize");
+      std::string x = workGroupSz.get<std::string>("<xmlattr>.x", "");
+      std::string y = workGroupSz.get<std::string>("<xmlattr>.y", "");
+      std::string z = workGroupSz.get<std::string>("<xmlattr>.z", "");
+
+      // Find the ComputeUnitInstance
+      for(auto cuItr : devInfo->cus) {
+        if(0 != cuItr.second->getKernelName().compare(kernelName)) {
+          continue;
+        }
+        cuItr.second->setDim(std::stoi(x), std::stoi(y), std::stoi(z));
+      }
+    }
+
     return true;
   }
 

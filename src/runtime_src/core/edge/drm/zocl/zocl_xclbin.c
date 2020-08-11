@@ -612,6 +612,13 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 			goto out0;
 	}
 
+	/* Populating AIE_METADATA sections */
+	size = zocl_read_sect(AIE_METADATA, &zdev->aie_data.data, axlf, xclbin);
+	if (size < 0) {
+		goto out0;
+	}
+	zdev->aie_data.size = size;
+
 	/* Populating CONNECTIVITY sections */
 	size = zocl_read_sect(CONNECTIVITY, &zdev->connectivity, axlf, xclbin);
 	if (size <= 0) {
@@ -793,12 +800,13 @@ zocl_xclbin_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
 		if (cu_idx != ZOCL_CTX_VIRT_CU_INDEX) {
 			/* Try clear exclusive CU */
 			ret = test_and_clear_bit(cu_idx, client->excus);
-			if (!ret)
+			if (!ret) {
 				/* Maybe it is shared CU */
-				ret = test_and_clear_bit(cu_idx, client->shcus) ?
-                                  0 : -EINVAL;
-			if (ret) {
+				ret = test_and_clear_bit(cu_idx, client->shcus);
+      }
+			if (!ret) {
 				DRM_ERROR("can not remove unreserved cu");
+        			ret = -EINVAL;
 				goto out;
 			}
 		}

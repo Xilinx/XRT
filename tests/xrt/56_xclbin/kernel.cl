@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2020, Xilinx Inc - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,16 +14,11 @@
  * under the License.
  */
 
-#ifndef __XBDatabase_h_
-#define __XBDatabase_h_
-
-// Include files
-// Please keep these to the bare minimum
-#include <boost/property_tree/ptree.hpp>
-
-namespace XBDatabase {
-void create_complete_device_tree(boost::property_tree::ptree & _pt);
-};
-
-#endif
-
+__attribute__ ((reqd_work_group_size(1024, 1, 1)))
+kernel void simple(global int *restrict s1,
+                   global const int *s2,
+                   int foo)
+{
+    const int id = get_local_id(0);
+    s1[id] = s2[id] + id * foo;
+}

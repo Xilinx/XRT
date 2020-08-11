@@ -33,7 +33,8 @@ namespace xdp {
     XDP_EXPORT HALAPICall(uint64_t s_id, double ts, uint64_t name) ;
     XDP_EXPORT ~HALAPICall() ;
 
-    virtual bool isHALAPI() { return true ; }
+    virtual bool isHALAPI()       { return true ; }
+    virtual bool isHALHostEvent() { return true ; }
 
     XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket) ;
   } ;

@@ -251,6 +251,7 @@ DebugIpStatusCollector::printOverview(std::ostream& _output)
       case AXI_MONITOR_FIFO_LITE:
       case AXI_DMA:
       case TRACE_S2MM_FULL:
+      case AXI_NOC:
         // No need to show these Debug IP types
         continue;
       default:
@@ -1339,6 +1340,7 @@ DebugIpStatusCollector::populateOverview(boost::property_tree::ptree &_pt)
       case AXI_MONITOR_FIFO_LITE:
       case AXI_DMA:
       case TRACE_S2MM_FULL:
+      case AXI_NOC:
         // No need to show these Debug IP types
         continue;
       default:
@@ -1567,13 +1569,13 @@ void
 ReportDebugIpStatus::getPropertyTreeInternal( const xrt_core::device * _pDevice,
                                          boost::property_tree::ptree &_pt) const
 {
-  // Defer to the 20201 format.  If we ever need to update JSON data, 
+  // Defer to the 20202 format.  If we ever need to update JSON data, 
   // Then update this method to do so.
-  getPropertyTree20201(_pDevice, _pt);
+  getPropertyTree20202(_pDevice, _pt);
 }
 
 void 
-ReportDebugIpStatus::getPropertyTree20201( const xrt_core::device * _pDevice,
+ReportDebugIpStatus::getPropertyTree20202( const xrt_core::device * _pDevice,
                                       boost::property_tree::ptree &_pt) const
 {
   boost::property_tree::ptree pt;

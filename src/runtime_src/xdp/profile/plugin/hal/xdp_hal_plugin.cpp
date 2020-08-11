@@ -35,7 +35,7 @@ namespace xdp {
 
   static void log_function_start(void* payload, const char* functionName)
   {
-    double timestamp = xrt_core::time_ns() ;
+    auto timestamp = xrt_core::time_ns() ;
 
     CBPayload* decoded = reinterpret_cast<CBPayload*>(payload) ;
     VPDatabase* db = halPluginInstance.getDatabase() ;
@@ -54,7 +54,7 @@ namespace xdp {
 
   static void log_function_end(void* payload, const char* functionName)
   {
-    double timestamp = xrt_core::time_ns() ;
+    auto timestamp = xrt_core::time_ns() ;
 
     CBPayload* decoded = reinterpret_cast<CBPayload*>(payload) ;
     VPDatabase* db = halPluginInstance.getDatabase() ;
@@ -110,7 +110,7 @@ namespace xdp {
 #endif
 
     // Add trace event for start of Buffer Transfer
-    double timestamp = xrt_core::time_ns();
+    auto timestamp = xrt_core::time_ns();
     VTFEvent* event = new BufferTransfer(0, timestamp, WRITE_BUFFER, pLoad->size);
     (db->getDynamicInfo()).addEvent(event);
     (db->getDynamicInfo()).markStart(pLoad->bufferTransferId, event->getEventId());
@@ -122,7 +122,7 @@ namespace xdp {
     BOTransferCBPayload* pLoad = reinterpret_cast<BOTransferCBPayload*>(payload);
 
     // Add trace event for end of Buffer Transfer
-    double timestamp = xrt_core::time_ns();
+    auto timestamp = xrt_core::time_ns();
     VPDatabase* db = halPluginInstance.getDatabase();
     VTFEvent* event = new BufferTransfer(
                           (db->getDynamicInfo()).matchingStart(pLoad->bufferTransferId),
@@ -146,7 +146,7 @@ namespace xdp {
 #endif
 
     // Add trace event for start of Buffer Transfer
-    double timestamp = xrt_core::time_ns();
+    auto timestamp = xrt_core::time_ns();
     VTFEvent* event = new BufferTransfer(0, timestamp, READ_BUFFER, pLoad->size);
     (db->getDynamicInfo()).addEvent(event);
     (db->getDynamicInfo()).markStart(pLoad->bufferTransferId, event->getEventId());
@@ -158,7 +158,7 @@ namespace xdp {
     BOTransferCBPayload* pLoad = reinterpret_cast<BOTransferCBPayload*>(payload);
 
     // Add trace event for end of Buffer Transfer
-    double timestamp = xrt_core::time_ns();
+    auto timestamp = xrt_core::time_ns();
     VPDatabase* db = halPluginInstance.getDatabase();
     VTFEvent* event = new BufferTransfer(
                           (db->getDynamicInfo()).matchingStart(pLoad->bufferTransferId),
@@ -190,7 +190,7 @@ namespace xdp {
 #endif
 
     // Add trace event for start of Buffer Transfer
-    double timestamp = xrt_core::time_ns();
+    auto timestamp = xrt_core::time_ns();
     VTFEvent* event = new BufferTransfer(0, timestamp,
                             ((pLoad->isWriteToDevice) ? WRITE_BUFFER : READ_BUFFER), pLoad->size);
     (db->getDynamicInfo()).addEvent(event);
@@ -203,7 +203,7 @@ namespace xdp {
     SyncBOCBPayload* pLoad = reinterpret_cast<SyncBOCBPayload*>(payload);
 
     // Add trace event for end of Buffer Transfer
-    double timestamp = xrt_core::time_ns();
+    auto timestamp = xrt_core::time_ns();
     VPDatabase* db = halPluginInstance.getDatabase();
     VTFEvent* event = new BufferTransfer(
                           (db->getDynamicInfo()).matchingStart(pLoad->bufferTransferId),
@@ -218,6 +218,30 @@ namespace xdp {
 
   static void copy_bo_end(void* payload) {
     log_function_end(payload, "CopyBO") ;
+  }
+
+  static void get_bo_prop_start(void* payload) {
+    log_function_start(payload, "GetBOProp") ;
+  }
+
+  static void get_bo_prop_end(void* payload) {
+    log_function_end(payload, "GetBOProp") ;
+  }
+
+  static void exec_buf_start(void* payload) {
+    log_function_start(payload, "ExecBuf") ;
+  }
+
+  static void exec_buf_end(void* payload) {
+    log_function_end(payload, "ExecBuf") ;
+  }
+
+  static void exec_wait_start(void* payload) {
+    log_function_start(payload, "ExecWait") ;
+  }
+
+  static void exec_wait_end(void* payload) {
+    log_function_end(payload, "ExecWait") ;
   }
 
   static void unmgd_read_start(void* payload) {
@@ -354,21 +378,13 @@ namespace xdp {
   }
 
   static void load_xclbin_start(void* payload) {
-    // The xclbin is about to be loaded, so flush any device information
-    //  into the database
     XclbinCBPayload* pLoad = reinterpret_cast<XclbinCBPayload*>(payload) ;
-
-    // Before we load a new xclbin, make sure we read all of the 
-    //  device data into the database.
-    halPluginInstance.readDeviceInfo((pLoad->basePayload).deviceHandle) ;
-    halPluginInstance.flushDeviceInfo((pLoad->basePayload).deviceHandle) ;
+    log_function_start(&(pLoad->basePayload), "xclLoadXclbin") ;
   }
 
   static void load_xclbin_end(void* payload) {
-    // The xclbin has been loaded, so update all the static information
-    //  in our database.
     XclbinCBPayload* pLoad = reinterpret_cast<XclbinCBPayload*>(payload) ;
-    halPluginInstance.updateDevice((pLoad->basePayload).deviceHandle, pLoad->binary);
+    log_function_end(&(pLoad->basePayload), "xclLoadXclbin") ;
   }
 
   static void unknown_cb_type(void* /*payload*/) {
@@ -431,6 +447,24 @@ void hal_level_xdp_cb_func(HalCallbackType cb_type, void* payload)
       break;
     case HalCallbackType::COPY_BO_END:
       xdp::copy_bo_end(payload);
+      break;
+    case HalCallbackType::GET_BO_PROP_START:
+      xdp::get_bo_prop_start(payload);
+      break;
+    case HalCallbackType::GET_BO_PROP_END:
+      xdp::get_bo_prop_end(payload);
+      break;
+    case HalCallbackType::EXEC_BUF_START:
+      xdp::exec_buf_start(payload);
+      break;
+    case HalCallbackType::EXEC_BUF_END:
+      xdp::exec_buf_end(payload);
+      break;
+    case HalCallbackType::EXEC_WAIT_START:
+      xdp::exec_wait_start(payload);
+      break;
+    case HalCallbackType::EXEC_WAIT_END:
+      xdp::exec_wait_end(payload);
       break;
     case HalCallbackType::UNMGD_READ_START:
       xdp::unmgd_read_start(payload);

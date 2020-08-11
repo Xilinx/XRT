@@ -217,8 +217,7 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 	ddr = xocl_bo_ddr_idx(flags);
 	if (ddr >= ddr_count)
 		return -EINVAL;
-
-	err = XOCL_GET_MEM_TOPOLOGY(xdev, topo);
+	err = XOCL_GET_GROUP_TOPOLOGY(xdev, topo);
 	if (err)
 		return err;
 
@@ -236,7 +235,7 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 		}
 	}
 done:	
-	XOCL_PUT_MEM_TOPOLOGY(xdev);
+	XOCL_PUT_GROUP_TOPOLOGY(xdev);
 	return err;
 }
 
@@ -343,14 +342,13 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 		goto failed;
 	}
 
-	err = xocl_mm_insert_node(drm_p, memidx, xobj->mm_node,
+	err = xocl_mm_insert_node_range(drm_p, memidx, xobj->mm_node,
 		xobj->base.size);
+	if (err)
+		goto failed;
 	BO_DEBUG("insert mm_node:%p, start:%llx size: %llx",
 		xobj->mm_node, xobj->mm_node->start,
 		xobj->mm_node->size);
-	if (err)
-		goto failed;
-
 	xocl_mm_update_usage_stat(drm_p, memidx, xobj->base.size, 1);
 	mutex_unlock(&drm_p->mm_lock);
 	/* Record the DDR we allocated the buffer on */
@@ -441,18 +439,18 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 
 	xobj = xocl_create_bo(dev, args->size, args->flags, bo_type);
 
-	BO_ENTER("xobj %p, mm_node %p", xobj, xobj->mm_node);
 	if (IS_ERR(xobj)) {
 		DRM_ERROR("object creation failed idx %d, size 0x%llx\n", ddr, args->size);
 		return PTR_ERR(xobj);
 	}
+	BO_ENTER("xobj %p, mm_node %p", xobj, xobj->mm_node);
 
 	if (xobj->flags == XOCL_BO_P2P) {
 		/*
 		 * DRM allocate contiguous pages, shift the vmapping with
 		 * bar address offset
 		 */
-		ret = XOCL_GET_MEM_TOPOLOGY(xdev, topo);
+		ret = XOCL_GET_GROUP_TOPOLOGY(xdev, topo);
 		if (ret)
 			goto out_free;
 
@@ -474,7 +472,7 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 				xobj->p2p_bar_offset = bar_off;
 		}
 
-		XOCL_PUT_MEM_TOPOLOGY(xdev);
+		XOCL_PUT_GROUP_TOPOLOGY(xdev);
 	}
 
 	if (xobj->flags & XOCL_PAGE_ALLOC) {
@@ -484,8 +482,7 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 		else if (xobj->flags & XOCL_DRM_SHMEM)
 			xobj->pages = drm_gem_get_pages(&xobj->base);
 		else if (xobj->flags & XOCL_CMA_MEM){
-			uint64_t start_addr = drm_p->mm[ddr]->head_node.start + drm_p->mm[ddr]->head_node.size;
-
+			uint64_t start_addr = drm_p->mm->head_node.start + drm_p->mm->head_node.size;
 			xobj->pages = xocl_cma_collect_pages(drm_p, start_addr, xobj->mm_node->start, xobj->base.size);
 		}
 

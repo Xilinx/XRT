@@ -133,6 +133,40 @@ static ssize_t zocl_get_memstat(struct device *dev, char *buf, bool raw)
 	return size;
 }
 
+static ssize_t read_aie_metadata(struct file *filp, struct kobject *kobj,
+		struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+{
+	struct drm_zocl_dev *zdev;
+	size_t size;
+	u32 nread = 0;
+
+	zdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
+	if (!zdev)
+		return 0;
+
+	read_lock(&zdev->attr_rwlock);
+
+	size = zdev->aie_data.size;
+
+	/* Read offset should be lesser then total size of metadata */
+	if (off >= size) {
+		read_unlock(&zdev->attr_rwlock);
+		return 0;
+	}
+
+	/* Buffer size should be greater than the size of metadata to be read */
+	if (count < size - off)
+		nread = count;
+	else
+		nread = size - off;
+
+	memcpy(buf, (char *)zdev->aie_data.data + off, nread);
+
+	read_unlock(&zdev->attr_rwlock);
+
+	return nread;
+}
+
 static ssize_t memstat_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -304,6 +338,16 @@ static ssize_t read_mem_topology(struct file *filp, struct kobject *kobj,
 	return nread;
 }
 
+static struct bin_attribute aie_metadata_attr = {
+	.attr = {
+		.name = "aie_metadata",
+		.mode = 0444
+	},
+	.read = read_aie_metadata,
+	.write = NULL,
+	.size = 0
+};
+
 static struct bin_attribute debug_ip_layout_attr = {
 	.attr = {
 		.name = "debug_ip_layout",
@@ -350,6 +394,7 @@ static struct bin_attribute *zocl_bin_attrs[] = {
 	&ip_layout_attr,
 	&connectivity_attr,
 	&mem_topology_attr,
+	&aie_metadata_attr,
 	NULL,
 };
 

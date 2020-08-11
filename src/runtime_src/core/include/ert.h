@@ -243,7 +243,9 @@ struct ert_configure_cmd {
   uint32_t cq_int:1;
   uint32_t cdma:1;
   uint32_t dataflow:1;
-  uint32_t unusedf:24;
+  /* WORKAROUND: allow xclRegWrite/xclRegRead access shared CU */
+  uint32_t rw_shared:1;
+  uint32_t unusedf:23;
   uint32_t dsa52:1;
 
   /* cu address map size is num_cus */
@@ -548,6 +550,8 @@ uint32_t ert_base_addr = 0;
 #if defined(ERT_BUILD_U50)
 # define ERT_INTC_ADDR                     0x00310000
 #elif defined(ERT_BUILD_V20)
+# define ERT_INTC_ADDR                     0x01F20000
+#elif defined(ERT_BUILD_V30)
 # define ERT_INTC_ADDR                     0x01F20000
 #else
 # define ERT_INTC_ADDR                     0x41200000

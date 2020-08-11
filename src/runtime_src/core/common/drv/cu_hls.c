@@ -11,14 +11,14 @@
 
 extern int kds_echo;
 
-static int cu_hls_get_credit(void *core)
+static int cu_hls_alloc_credit(void *core)
 {
 	struct xrt_cu_hls *cu_hls = core;
 
 	return (cu_hls->credits) ? cu_hls->credits-- : 0;
 }
 
-static void cu_hls_put_credit(void *core, u32 count)
+static void cu_hls_free_credit(void *core, u32 count)
 {
 	struct xrt_cu_hls *cu_hls = core;
 
@@ -27,11 +27,11 @@ static void cu_hls_put_credit(void *core, u32 count)
 		cu_hls->credits = cu_hls->max_credits;
 }
 
-static int cu_hls_is_zero_credit(void *core)
+static int cu_hls_peek_credit(void *core)
 {
 	struct xrt_cu_hls *cu_hls = core;
 
-	return (cu_hls->credits)? 0 : 1;
+	return cu_hls->credits;
 }
 
 static void cu_hls_configure(void *core, u32 *data, size_t sz, int type)
@@ -123,9 +123,9 @@ out:
 }
 
 static struct xcu_funcs xrt_cu_hls_funcs = {
-	.get_credit	= cu_hls_get_credit,
-	.put_credit	= cu_hls_put_credit,
-	.is_zero_credit	= cu_hls_is_zero_credit,
+	.alloc_credit	= cu_hls_alloc_credit,
+	.free_credit	= cu_hls_free_credit,
+	.peek_credit	= cu_hls_peek_credit,
 	.configure	= cu_hls_configure,
 	.start		= cu_hls_start,
 	.check		= cu_hls_check,

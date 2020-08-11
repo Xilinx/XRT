@@ -314,8 +314,11 @@ XSPI_Flasher::XSPI_Flasher(std::shared_ptr<xrt_core::device> dev)
     mDev = dev;
 
     std::string err;
-    //TODO: Replace with updated call
-    // flash_base = xrt_core::query_device<uint64_t>(mDev, xrt_core::device::QR_FLASH_BAR_OFFSET);
+    try {
+        flash_base = xrt_core::device_query<xrt_core::query::flash_address>(mDev.get());
+    }
+    catch (...) {}
+    if (flash_base == 0)
         flash_base = FLASH_BASE;
 
     mFlashDev = nullptr;

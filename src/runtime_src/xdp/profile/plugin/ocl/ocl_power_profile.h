@@ -57,6 +57,7 @@ private:
     PowerProfileStatus status;
     std::thread polling_thread;
     bool power_profile_en;
+    unsigned int power_profile_interval_ms ;
     xrt::device* target_device;
     std::shared_ptr<XoclPlugin> target_xocl_plugin;
     std::vector<PowerStat> power_trace;

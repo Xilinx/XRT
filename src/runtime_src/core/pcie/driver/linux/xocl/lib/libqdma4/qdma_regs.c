@@ -235,54 +235,60 @@ int qdma4_csr_read(struct xlnx_dma_dev *xdev, struct global_csr_conf *csr)
 		return xdev->hw.qdma_get_error_code(rv);
 	}
 
-	rv = xdev->hw.qdma_global_writeback_interval_conf(xdev,
-						&csr->wb_intvl,
-						QDMA_HW_ACCESS_READ);
-	if (unlikely(rv < 0)) {
-		if (rv != -QDMA_ERR_HWACC_FEATURE_NOT_SUPPORTED) {
-			pr_err("Failed to read write back interval, err = %d",
-					rv);
-			return xdev->hw.qdma_get_error_code(rv);
-		}
-		pr_warn("Hardware Feature not supported");
-	}
-
-	rv = xdev->hw.qdma_global_csr_conf(xdev, 0,
+	    //(xdev->dev_cap.mm_en && xdev->dev_cap.mm_cmpt_en))
+	if (xdev->dev_cap.st_en) {
+		rv = xdev->hw.qdma_global_csr_conf(xdev, 0,
 				QDMA_GLOBAL_CSR_ARRAY_SZ, csr->c2h_buf_sz,
 				QDMA_CSR_BUF_SZ, QDMA_HW_ACCESS_READ);
-	if (unlikely(rv < 0)) {
-		if (rv != -QDMA_ERR_HWACC_FEATURE_NOT_SUPPORTED) {
-			pr_err("Failed to read global buffer sizes, err = %d",
-						rv);
-			return xdev->hw.qdma_get_error_code(rv);
+		if (unlikely(rv < 0)) {
+			if (rv != -QDMA_ERR_HWACC_FEATURE_NOT_SUPPORTED) {
+				pr_err("Failed to read global buffer sizes, %d",
+					rv);
+				return xdev->hw.qdma_get_error_code(rv);
+			}
+			pr_warn("Hardware Feature not supported");
 		}
-		pr_warn("Hardware Feature not supported");
 	}
 
-	rv = xdev->hw.qdma_global_csr_conf(xdev, 0,
+	if (xdev->dev_cap.st_en ||
+	    (xdev->dev_cap.mm_en && xdev->dev_cap.mm_cmpt_en)) {
+		rv = xdev->hw.qdma_global_writeback_interval_conf(xdev,
+						&csr->wb_intvl,
+						QDMA_HW_ACCESS_READ);
+		if (unlikely(rv < 0)) {
+			if (rv != -QDMA_ERR_HWACC_FEATURE_NOT_SUPPORTED) {
+				pr_err("Failed to read write back interval, %d",
+					rv);
+				return xdev->hw.qdma_get_error_code(rv);
+			}
+			pr_warn("Hardware Feature not supported");
+		}
+
+		rv = xdev->hw.qdma_global_csr_conf(xdev, 0,
 				QDMA_GLOBAL_CSR_ARRAY_SZ, csr->c2h_timer_cnt,
 				QDMA_CSR_TIMER_CNT, QDMA_HW_ACCESS_READ);
-	if (unlikely(rv < 0)) {
-		if (rv != -QDMA_ERR_HWACC_FEATURE_NOT_SUPPORTED) {
-			pr_err("Failed to read global timer count, err = %d",
+		if (unlikely(rv < 0)) {
+			if (rv != -QDMA_ERR_HWACC_FEATURE_NOT_SUPPORTED) {
+				pr_err("Failed to read global timer count, %d",
 						rv);
-			return xdev->hw.qdma_get_error_code(rv);
+				return xdev->hw.qdma_get_error_code(rv);
+			}
+			pr_warn("Hardware Feature not supported");
 		}
-		pr_warn("Hardware Feature not supported");
-	}
 
-	rv = xdev->hw.qdma_global_csr_conf(xdev, 0,
+		rv = xdev->hw.qdma_global_csr_conf(xdev, 0,
 				QDMA_GLOBAL_CSR_ARRAY_SZ, csr->c2h_cnt_th,
 				QDMA_CSR_CNT_TH, QDMA_HW_ACCESS_READ);
-	if (unlikely(rv < 0)) {
-		if (rv != -QDMA_ERR_HWACC_FEATURE_NOT_SUPPORTED) {
-			pr_err("Failed to read global counter threshold, err = %d",
+		if (unlikely(rv < 0)) {
+			if (rv != -QDMA_ERR_HWACC_FEATURE_NOT_SUPPORTED) {
+				pr_err("Failed to read global counter threshold, %d",
 					rv);
-			return xdev->hw.qdma_get_error_code(rv);
+				return xdev->hw.qdma_get_error_code(rv);
+			}
+			pr_warn("Hardware Feature not supported");
 		}
-		pr_warn("Hardware Feature not supported");
+		qdma_sort_c2h_cntr_th_values(xdev);
 	}
-	qdma_sort_c2h_cntr_th_values(xdev);
 	return 0;
 }
 

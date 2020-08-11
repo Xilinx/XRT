@@ -1285,7 +1285,8 @@ done:
 void xocl_cma_bank_free(struct xocl_dev	*xdev)
 {
 	__xocl_cma_bank_free(xdev);
-	xocl_cleanup_mem(xdev->core.drm);
+	if (xdev->core.drm)
+		xocl_cleanup_mem(xdev->core.drm);
 	xocl_icap_clean_bitstream(xdev);
 }
 
@@ -1508,6 +1509,7 @@ static struct pci_driver userpf_driver = {
 /* INIT */
 static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_feature_rom,
+	xocl_init_version_control,
 	xocl_init_iores,
 	xocl_init_xdma,
 	xocl_init_qdma,
@@ -1530,15 +1532,19 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_trace_funnel,
 	xocl_init_trace_s2mm,
 	xocl_init_mem_hbm,
+	/* Initial intc sub-device before CU/ERT sub-devices */
+	xocl_init_intc,
 	xocl_init_cu,
 	xocl_init_addr_translator,
 	xocl_init_p2p,
 	xocl_init_spc,
 	xocl_init_lapc,
+	xocl_init_ert_user,
 };
 
 static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_feature_rom,
+	xocl_fini_version_control,
 	xocl_fini_iores,
 	xocl_fini_xdma,
 	xocl_fini_qdma,
@@ -1562,10 +1568,13 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_trace_s2mm,
 	xocl_fini_mem_hbm,
 	xocl_fini_cu,
+	/* Remove intc sub-device after CU/ERT sub-devices */
+	xocl_fini_intc,
 	xocl_fini_addr_translator,
 	xocl_fini_p2p,
 	xocl_fini_spc,
 	xocl_fini_lapc,
+	xocl_fini_ert_user,
 };
 
 static int __init xocl_init(void)

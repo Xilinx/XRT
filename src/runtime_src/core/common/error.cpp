@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2020 Xilinx, Inc
+ * Copyright (C) 2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,18 +14,22 @@
  * under the License.
  */
 
-#ifndef __SubCmdQuery_h_
-#define __SubCmdQuery_h_
+#define XRT_CORE_COMMON_SOURCE
+#include "error.h"
+#include "message.h"
 
-#include "tools/common/SubCmd.h"
+namespace xrt_core {
 
-class SubCmdQuery : public SubCmd {
- public:
-  virtual void execute(const SubCmdOptions &_options) const;
+void
+send_exception_message(const char* msg, const char* tag)
+{
+  message::send(message::severity_level::XRT_ERROR, tag, msg);
+}
 
- public:
-  SubCmdQuery(bool _isHidden, bool _isDepricated, bool _isPreliminary);
-};
+void
+send_exception_message(const std::string& msg, const char* tag)
+{
+  message::send(message::severity_level::XRT_ERROR, tag, msg);
+}
 
-#endif
-
+} // xrt_core

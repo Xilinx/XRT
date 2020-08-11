@@ -1258,9 +1258,11 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	/*
 	 * Even if extended probe fails, make sure feature ROM subdev
-	 * is loaded to provide basic info about the board.
+	 * is loaded to provide basic info about the board. Also, need
+	 * FLASH to be able to flash new shell.
 	 */
 	(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FEATURE_ROM);
+	(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FLASH);
 
 	/*
 	 * if can not find BLP metadata, it has to bring up flash and xmc to
@@ -1268,16 +1270,6 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	 */
 	(void) xocl_subdev_create_by_level(lro, XOCL_SUBDEV_LEVEL_BLD);
 	(void) xocl_subdev_create_vsec_devs(lro);
-
-	if (XOCL_DSA_IS_VERSAL(lro)) {
-		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_XFER_MGMT_VERSAL;
-		xocl_info(&pdev->dev,
-			"probe xfer_versal Start 0x%llx",
-			subdev_info.res[0].start);
-		rc = xocl_subdev_create(lro, &subdev_info);
-		if (rc)
-			goto err_init_sysfs;
-	}
 
 	xocl_pmc_enable_reset(lro);
 
@@ -1393,6 +1385,7 @@ static struct pci_driver xclmgmt_driver = {
 
 static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_feature_rom,
+	xocl_init_version_control,
 	xocl_init_iores,
 	xocl_init_flash,
 	xocl_init_mgmt_msix,
@@ -1418,10 +1411,12 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_ulite,
 	xocl_init_calib_storage,
 	xocl_init_pmc,
+	xocl_init_icap_controller,
 };
 
 static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_feature_rom,
+	xocl_fini_version_control,
 	xocl_fini_iores,
 	xocl_fini_flash,
 	xocl_fini_mgmt_msix,
@@ -1447,6 +1442,7 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_ulite,
 	xocl_fini_calib_storage,
 	xocl_fini_pmc,
+	xocl_fini_icap_controller,
 };
 
 static int __init xclmgmt_init(void)

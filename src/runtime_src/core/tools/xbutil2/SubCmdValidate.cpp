@@ -17,7 +17,6 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SubCmdValidate.h"
-#include "SubCmdDmaTest.h"
 #include "tools/common/ReportHost.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/XBHelpMenus.h"

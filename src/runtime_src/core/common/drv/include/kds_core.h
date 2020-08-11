@@ -105,7 +105,7 @@ struct kds_cu_mgmt {
 
 /* ERT core */
 struct kds_ert {
-	int (* submit)(struct kds_command *xcmd);
+	void (* submit)(struct kds_ert *ert, struct kds_command *xcmd);
 };
 
 /**
