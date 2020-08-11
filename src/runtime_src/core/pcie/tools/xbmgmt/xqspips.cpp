@@ -35,6 +35,7 @@
 
 #define SAVE_FILE                   0
 #define FLASH_BASE                  0x040000
+#define GOLDEN_BASE                 0x06000000
 
 /*
  * The following constants define the commands which may be sent to the Flash device.
@@ -375,6 +376,37 @@ bool XQSPIPS_Flasher::waitTxEmpty()
     return false;
 }
 
+int XQSPIPS_Flasher::revertToMFG(void)
+{
+    initQSpiPS();
+
+    uint32_t StatusReg = XQSpiPS_GetStatusReg();
+
+    if (StatusReg == 0xFFFFFFFF) {
+        std::cout << "[ERROR]: Read PCIe device return -1. Cannot get QSPI status." << std::endl;
+        exit(-EOPNOTSUPP);
+    }
+
+    /* Make sure it is ready to receive commands. */
+    resetQSpiPS();
+    XQSpiPS_Enable_GQSPI();
+
+    if (!getFlashID()) {
+        std::cout << "[ERROR]: Could not get Flash ID" << std::endl;
+        exit(-EOPNOTSUPP);
+    }
+
+    /* Use 4 bytes address mode */
+    enterOrExitFourBytesMode(ENTER_4B);
+
+    // Sectoer size is defined by SECTOR_SIZE
+    std::cout << "Factory resetting " << std::flush;
+    eraseSector(0, GOLDEN_BASE);
+    std::cout << std::endl;
+    
+    return 0;
+}
+
 int XQSPIPS_Flasher::xclUpgradeFirmware(std::istream& binStream)
 {
     int total_size = 0;
@@ -390,6 +422,10 @@ int XQSPIPS_Flasher::xclUpgradeFirmware(std::istream& binStream)
     binStream.seekg(0, binStream.beg);
 
     std::cout << "INFO: ***BOOT.BIN has " << total_size << " bytes" << std::endl;
+    if (total_size >= GOLDEN_BASE) {
+        std::cout << "[ERROR]: BOOT.BIN can't go beyond 96MB!" << std::endl;
+        exit(-EINVAL);
+    }
     /* Test only */
     //if (xclTestXQSpiPS(0))
     //    return -1;
@@ -1033,7 +1069,9 @@ bool XQSPIPS_Flasher::eraseSector(unsigned addr, uint32_t byteCount, uint8_t era
         eraseCmd = SEC_4B_ERASE_CMD;
 
     int beatCount = 0;
-    for (Sector = 0; Sector < ((byteCount / SECTOR_SIZE) + 2); Sector++) {
+    //roundup byteCount to next SECTOR boundary
+    byteCount = (byteCount + SECTOR_SIZE - 1) & (~SECTOR_SIZE);
+    for (Sector = 0; Sector < (byteCount / SECTOR_SIZE); Sector++) {
 
         if(!isFlashReady())
             return false;

@@ -42,7 +42,6 @@ static ssize_t debug_store(struct device *dev,
 	struct xocl_cu *cu = platform_get_drvdata(pdev);
 	struct xrt_cu *xcu = &cu->base;
 #endif
-
 	/* Place holder for now. */
 	return count;
 }

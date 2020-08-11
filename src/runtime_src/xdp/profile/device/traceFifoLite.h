@@ -61,8 +61,7 @@ public:
     {}
 
     virtual uint32_t getNumTraceSamples(/* need type ?*/);
-    uint32_t getMaxNumTraceSamples(/* need type ?*/);
-    size_t reset();
+    virtual size_t reset();
 
     virtual void showProperties();
     virtual uint32_t getProperties() { return properties; }

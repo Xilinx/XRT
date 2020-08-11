@@ -246,7 +246,7 @@ report_status(xrt_core::device_collection& deviceCollection, boost::property_tre
   for (const auto & device : deviceCollection) {
     boost::property_tree::ptree _ptDevice;
     auto _rep = std::make_unique<ReportPlatform>();
-    _rep->getPropertyTree20201(device.get(), _ptDevice);
+    _rep->getPropertyTreeInternal(device.get(), _ptDevice);
     _pt.push_back(std::make_pair(std::to_string(device->get_device_id()), _ptDevice));
     pretty_print_platform_info(_ptDevice);
     std::cout << "----------------------------------------------------\n";
@@ -487,7 +487,13 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   //enforce device specification
   if(device.empty()) {
     std::cout << "\nERROR: Device not specified.\n";
-    XBU::report_available_devices();
+    std::cout << "\nList of available devices:" << std::endl;
+    boost::property_tree::ptree available_devices = XBU::get_available_devices(false);
+    for(auto& kd : available_devices) {
+      boost::property_tree::ptree& dev = kd.second;
+      std::cout << boost::format("  [%s] : %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv");
+    }
+    std::cout << std::endl;
     return;
   }
 

@@ -150,6 +150,11 @@ namespace xclemulation {
     return (bo->flags & XCL_BO_FLAGS_DEV_ONLY);
   }
 
+  static inline bool xocl_bo_host_only(const struct drm_xocl_bo *bo)
+  {
+    return (bo->flags & XCL_BO_FLAGS_HOST_ONLY);
+  }  
+
   static inline bool no_host_memory(const struct drm_xocl_bo *bo)
   {
     return xocl_bo_dev_only(bo) || xocl_bo_p2p(bo) ;

@@ -26,7 +26,7 @@
  */
 namespace xrt_core {
 
-class command
+class command : public std::enable_shared_from_this<command>
 {
 public:
   /**

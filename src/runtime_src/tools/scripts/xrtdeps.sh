@@ -12,12 +12,15 @@ usage()
     echo "[-help]                    List this help"
     echo "[-validate]                Validate that required packages are installed"
     echo "[-docker]                  Indicate that script is run within a docker container, disables select packages"
+    echo "[-sysroot]                 Indicate that script is run to prepare sysroot, disables select packages"
 
     exit 1
 }
 
 validate=0
 docker=0
+sysroot=0
+ds9=0
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -32,15 +35,20 @@ while [ $# -gt 0 ]; do
             docker=1
             shift
             ;;
+        -sysroot)
+            sysroot=1
+            shift
+            ;;
+        -ds9)
+            ds9=1
+            shift
+            ;;
         *)
             echo "unknown option"
             usage
             ;;
     esac
 done
-
-#UB_LIST=()
-#RH_LIST=()
 
 rh_package_list()
 {
@@ -68,7 +76,6 @@ rh_package_list()
      libstdc++-static \
      libtiff-devel \
      libuuid-devel \
-     libxml2-devel \
      libyaml-devel \
      lm_sensors \
      make \
@@ -83,7 +90,6 @@ rh_package_list()
      pkgconfig \
      protobuf-devel \
      protobuf-compiler \
-     redhat-lsb \
      rpm-build \
      strace \
      unzip \
@@ -93,20 +99,26 @@ rh_package_list()
      python3-pip \
     )
 
+    if [ $FLAVOR == "amzn" ]; then
+        RH_LIST+=(\
+        system-lsb-core \
+        )
+    else
+        RH_LIST+=(\
+        redhat-lsb \
+        )
+    fi
+
     # Centos8
     if [ $MAJOR == 8 ]; then
 
-        RH_LIST+=(\
-         systemd-devel \
-        )
+        RH_LIST+=(systemd-devel)
 
-	if [ $FLAVOR == "rhel" ]; then
-  
+        if [ $docker == 0 ]; then
             RH_LIST+=(\
              kernel-devel-$(uname -r) \
              kernel-headers-$(uname -r) \
             )
-  
         fi
 
     else
@@ -153,7 +165,6 @@ ub_package_list()
      libprotoc-dev \
      libssl-dev \
      libtiff5-dev \
-     libxml2-dev \
      libyaml-dev \
      linux-libc-dev \
      lm-sensors \
@@ -180,7 +191,7 @@ ub_package_list()
      python3-sphinx-rtd-theme \
     )
 
-    if [[ $docker == 0 ]]; then
+    if [ $docker == 0 ] && [ $sysroot == 0 ]; then
         UB_LIST+=(linux-headers-$(uname -r))
     fi
 
@@ -223,7 +234,6 @@ fd_package_list()
      libstdc++-static \
      libtiff-devel \
      libuuid-devel \
-     libxml2-devel \
      libyaml-devel \
      lm_sensors \
      make \
@@ -267,7 +277,7 @@ update_package_list()
 {
     if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
         ub_package_list
-    elif [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ]; then
+    elif [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ] || [ $FLAVOR == "amzn" ]; then
         rh_package_list
     elif [ $FLAVOR == "fedora" ]; then
         fd_package_list
@@ -304,6 +314,14 @@ prep_ubuntu()
 
 prep_centos7()
 {
+    echo "Enabling EPEL repository..."
+    rpm -q --quiet epel-release
+    if [ $? != 0 ]; then
+    	 yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+	     yum check-update
+    fi
+    echo "Installing cmake3 from EPEL repository..."
+    yum install -y cmake3
     if [ $docker == 0 ]; then 
         echo "Enabling CentOS SCL repository..."
         yum --enablerepo=extras install -y centos-release-scl
@@ -321,7 +339,12 @@ prep_rhel7()
     
     echo "Enabling RHEL SCL repository..."
     yum-config-manager --enable rhel-server-rhscl-7-rpms
-    
+
+    echo "Enabling repository 'rhel-7-server-e4s-optional-rpms"
+    subscription-manager repos --enable "rhel-7-server-e4s-optional-rpms"
+
+    echo "Enabling repository 'rhel-7-server-optional-rpms'"
+    subscription-manager repos --enable "rhel-7-server-optional-rpms"
 }
 
 prep_rhel8()
@@ -339,6 +362,14 @@ prep_rhel8()
 
 prep_centos8()
 {
+    echo "Enabling EPEL repository..."
+    rpm -q --quiet epel-release
+    if [ $? != 0 ]; then
+    	 yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+	     yum check-update
+    fi
+    echo "Installing cmake3 from EPEL repository..."
+    yum install -y cmake3
     echo "Enabling PowerTools repo for CentOS8 ..."
     yum install -y dnf-plugins-core
     yum config-manager --set-enabled PowerTools
@@ -347,11 +378,6 @@ prep_centos8()
 
 prep_centos()
 {
-    echo "Enabling EPEL repository..."
-    yum install -y epel-release
-    echo "Installing cmake3 from EPEL repository..."
-    yum install -y cmake3
-
     if [ $MAJOR == 8 ]; then
         prep_centos8
     else
@@ -371,6 +397,16 @@ prep_rhel()
     yum install -y cmake3
 }
 
+prep_amzn()
+{
+    echo "Installing amazon EPEL..."
+    amazon-linux-extras install epel
+    echo "Installing cmake3 from EPEL repository..."
+    yum install cmake3
+    echo "Installing opencl header from EPEL repository..."
+    yum install ocl-icd ocl-icd-devel opencl-headers
+}
+
 install()
 {
     if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
@@ -385,15 +421,23 @@ install()
         prep_centos
     elif [ $FLAVOR == "rhel" ]; then
         prep_rhel
+    elif [ $FLAVOR == "amzn" ]; then
+        prep_amzn
     fi
 
     if [ $FLAVOR == "rhel" ] || [ $FLAVOR == "centos" ] || [ $FLAVOR == "amzn" ]; then
         echo "Installing RHEL/CentOS packages..."
         yum install -y "${RH_LIST[@]}"
-	if [ $ARCH == "ppc64le" ]; then
+        if [ $ds9 == 1 ]; then
+            yum install -y devtoolset-9
+	elif [ $ARCH == "ppc64le" ]; then
             yum install -y devtoolset-7
-	elif [ $MAJOR -lt "8" ]; then
-            yum install -y devtoolset-6
+	elif [ $MAJOR -lt "8" ]  && [ $FLAVOR != "amzn" ]; then
+            if [ $FLAVOR == "centos" ]; then
+                yum --enablerepo=base install -y devtoolset-9
+            else
+                yum install -y devtoolset-9
+            fi
 	fi
     fi
 
@@ -401,6 +445,9 @@ install()
         echo "Installing Fedora packages..."
         yum install -y "${FD_LIST[@]}"
     fi
+
+    # Install pybind11 for building the XRT python bindings
+    pip3 install pybind11
 }
 
 update_package_list

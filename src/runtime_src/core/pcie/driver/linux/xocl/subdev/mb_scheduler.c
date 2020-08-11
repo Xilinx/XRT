@@ -73,6 +73,7 @@
  * It is by default disabled.
  */
 extern int kds_echo;
+extern int kds_mode;
 
 #if defined(__GNUC__)
 #define SCHED_UNUSED __attribute__((unused))
@@ -1767,6 +1768,8 @@ struct exec_core {
 	bool		           configured;
 	bool		           stopped;
 	bool		           flush;
+	/* WORKAROUND: allow xclRegWrite/xclRegRead access shared CU */
+	bool			   rw_shared;
 
 	struct list_head           pending_cu_queue[MAX_CUS];
 	struct list_head           pending_ctrl_queue;
@@ -2060,6 +2063,9 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	// xclbin while ERT asynchronous configure is running.
 	exec->configure_active = true;
 
+	/* WORKAROUND: allow xclRegWrite/xclRegRead access shared CU */
+	exec->rw_shared = cfg->rw_shared;
+
 	userpf_info(xdev, "scheduler config ert(%d), dataflow(%d), slots(%d), cudma(%d), cuisr(%d), cdma(%d), cus(%d)\n"
 		 , ert_poll | ert_full
 		 , cfg->dataflow
@@ -2312,9 +2318,11 @@ exec_create(struct platform_device *pdev, struct xocl_scheduler *xs)
 	exec->scheduler = xs;
 	exec->uid = count++;
 
-	for (i = 0; i < exec->intr_num; i++) {
-		xocl_user_interrupt_reg(xdev, i+exec->intr_base, exec_isr, exec);
-		xocl_user_interrupt_config(xdev, i + exec->intr_base, true);
+	if (!kds_mode) {
+		for (i = 0; i < exec->intr_num; i++) {
+			xocl_user_interrupt_reg(xdev, i+exec->intr_base, exec_isr, exec);
+			xocl_user_interrupt_config(xdev, i + exec->intr_base, true);
+		}
 	}
 
 	exec_reset(exec, &uuid_null);
@@ -4610,7 +4618,8 @@ int cu_map_addr(struct platform_device *pdev, u32 cu_idx, void *drm_filp,
 		mutex_unlock(&xdev->dev_lock);
 		return -EINVAL;
 	}
-	if (ip_excl_holder(exec, cu_idx) == 0) {
+	/* WORKAROUND: If rw_shared is true, allow map shared CU */
+	if (!exec->rw_shared && ip_excl_holder(exec, cu_idx) == 0) {
 		userpf_err(xdev, "cu(%d) isn't exclusively reserved\n", cu_idx);
 		mutex_unlock(&xdev->dev_lock);
 		return -EINVAL;
@@ -4809,10 +4818,11 @@ static int mb_scheduler_remove(struct platform_device *pdev)
 	exec_reset_cmds(exec);
 	fini_scheduler_thread(exec_scheduler(exec));
 
-	for (i = 0; i < exec->intr_num; i++) {
-		xocl_user_interrupt_config(xdev, i + exec->intr_base, false);
-		xocl_user_interrupt_reg(xdev, i + exec->intr_base,
-			NULL, NULL);
+	if (!kds_mode) {
+		for (i = 0; i < exec->intr_num; i++) {
+			xocl_user_interrupt_config(xdev, i + exec->intr_base, false);
+			xocl_user_interrupt_reg(xdev, i + exec->intr_base, NULL, NULL);
+		}
 	}
 	mutex_destroy(&exec->exec_lock);
 

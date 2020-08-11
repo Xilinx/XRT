@@ -106,6 +106,7 @@ struct xocl_dev	{
 	ktime_t			mig_cache_expires;
 
 	u32			flags;
+	struct xocl_cma_bank  *cma_bank;
 };
 
 /**
@@ -195,6 +196,9 @@ int xocl_reclock(struct xocl_dev *xdev, void *data);
 void xocl_update_mig_cache(struct xocl_dev *xdev);
 
 int xocl_config_pci(struct xocl_dev *xdev);
+
+int xocl_cma_bank_alloc(struct xocl_dev *xdev, struct drm_xocl_alloc_cma_info *cma_info);
+void xocl_cma_bank_free(struct xocl_dev *xdev);
 
 static inline u64 xocl_pci_rebar_size_to_bytes(int size)
 {

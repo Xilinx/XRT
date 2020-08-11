@@ -32,7 +32,7 @@
 #define TS2MM_WRITE_OFFSET_HIGH 0x30
 #define TS2MM_WRITTEN_LOW       0x38
 #define TS2MM_WRITTEN_HIGH      0x3c
-#define TS2MM_CIRCULAR_BUF      0x44
+#define TS2MM_CIRCULAR_BUF      0x50
 #define TS2MM_AP_CTRL           0x0
 
 // Commands

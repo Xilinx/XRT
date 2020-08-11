@@ -70,6 +70,8 @@ int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceIn
  * xcldev <cmd> [options]
  */
 
+bool canProceed();
+
 namespace xcldev {
 
 enum command {
@@ -304,7 +306,20 @@ public:
     int reclock2(unsigned regionIndex, const unsigned short *freq) {
         const unsigned short targetFreqMHz[4] = {freq[0], freq[1], freq[2], 0};
         uuid_t uuid;
-        int ret;
+        int ret, data_retention = 0;
+        std::string errmsg;
+        
+        pcidev::get_dev(m_idx)->sysfs_get("icap", "data_retention", errmsg, data_retention, 0);
+        if (!errmsg.empty()) {
+            std::cout << errmsg << std::endl;
+            return -EINVAL;
+        }
+
+        if (data_retention) {
+            std::cout << "Memory data may be lost after xbutil clock" << std::endl;
+            if (!canProceed())
+                 return -ECANCELED;
+        }
 
         ret = getXclbinuuid(uuid);
         if (ret)
@@ -449,7 +464,7 @@ public:
               std::string str = std::to_string(percentage).substr(0, 4) + "%";
 
               ss << " [" << index << "] "
-                 << std::setw(16 - (std::to_string(index).length()) - 4)
+                 << std::setw(24 - (std::to_string(index).length()) - 4)
                  << std::left << tag
                  << "[ " << std::right << std::setw(nums_fiftieth)
                  << std::setfill('|') << (nums_fiftieth ? " ":"")
@@ -501,12 +516,14 @@ public:
         uint64_t memoryUsage, boCount;
         auto dev = pcidev::get_dev(m_idx);
 
-        dev->sysfs_get("icap", "mem_topology", errmsg, buf);
+        dev->sysfs_get("icap", "group_topology", errmsg, buf);
         dev->sysfs_get("", "memstat_raw", errmsg, mm_buf);
         dev->sysfs_get("xmc", "temp_by_mem_topology", errmsg, temp_buf);
-
+ 
+	std::cout << "Total number id temp : " << temp_buf.size() << std::endl;
         const mem_topology *map = (mem_topology *)buf.data();
         const uint32_t *temp = (uint32_t *)temp_buf.data();
+	const int temp_size = (uint32_t)temp_buf.size()/sizeof(uint32_t);
 
         if(buf.empty() || mm_buf.empty())
             return;
@@ -585,7 +602,7 @@ public:
             ss >> memoryUsage >> boCount;
 
             ptMem.put( "type",      str );
-            ptMem.put( "temp",      temp_buf.empty() ? XCL_NO_SENSOR_DEV : temp[i]);
+            ptMem.put( "temp",      (i >= temp_size) ? XCL_NO_SENSOR_DEV : temp[i]);
             ptMem.put( "tag",       map->m_mem_data[i].m_tag );
             ptMem.put( "enabled",   map->m_mem_data[i].m_used ? true : false );
             ptMem.put( "size",      xrt_core::utils::unit_convert(map->m_mem_data[i].m_size << 10) );
@@ -602,7 +619,7 @@ public:
     {
         std::stringstream ss;
 
-        ss << std::left << std::setw(48) << "Mem Topology"
+        ss << std::left << std::setw(54) << "Mem Topology"
             << std::setw(32) << "Device Memory Usage" << "\n";
         auto dev = pcidev::get_dev(m_idx);
         if(!dev){
@@ -612,7 +629,7 @@ public:
         }
 
         try {
-           ss << std::setw(17) << "Tag"  << std::setw(12) << "Type"
+           ss << std::setw(23) << "Tag"  << std::setw(12) << "Type"
               << std::setw(9) << "Temp" << std::setw(10) << "Size";
            ss << std::setw(16) << "Mem Usage" << std::setw(8) << "BO nums"
               << "\n";
@@ -644,7 +661,7 @@ public:
                 continue;
 
               ss   << " [" << std::right << index << "] "
-                   << std::setw(17 - (std::to_string(index).length()) - 4)
+                   << std::setw(23 - (std::to_string(index).length()) - 4)
                    << std::left << tag
                    << std::setw(12) << type
                    << std::setw(9) << temp
@@ -849,13 +866,14 @@ public:
                      m0v85, mgt0v9avcc, m12v_sw, mgtavtt, vccint_vol, vccint_curr, m3v3_pex_curr, m0v85_curr, m3v3_vcc_vol,
                      hbm_1v2_vol, vpp2v5_vol, vccint_bram_vol, m12v_pex_vol, m12v_aux_curr, m12v_pex_curr, m12v_aux_vol,
                      vol_12v_aux1, vol_vcc1v2_i, vol_v12_in_i, vol_v12_in_aux0_i, vol_v12_in_aux1_i, vol_vccaux,
-                     vol_vccaux_pmc, vol_vccram;
+                     vol_vccaux_pmc, vol_vccram, m3v3_aux_cur;
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_pex_vol",    m12v_pex_vol);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_pex_curr",   m12v_pex_curr);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_aux_vol",    m12v_aux_vol);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_aux_curr",   m12v_aux_curr);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_3v3_pex_vol",    m3v3_pex_vol);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_3v3_aux_vol",    m3v3_aux_vol);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_3v3_aux_cur",    m3v3_aux_cur);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_ddr_vpp_btm",    ddr_vpp_btm);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_ddr_vpp_top",    ddr_vpp_top);
         pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_sys_5v5",        sys_5v5);
@@ -888,6 +906,7 @@ public:
         sensor_tree::put( "board.physical.electrical.12v_aux.current",         m12v_aux_curr );
         sensor_tree::put( "board.physical.electrical.3v3_pex.voltage",         m3v3_pex_vol );
         sensor_tree::put( "board.physical.electrical.3v3_aux.voltage",         m3v3_aux_vol );
+        sensor_tree::put( "board.physical.electrical.3v3_aux.current",         m3v3_aux_cur );
         sensor_tree::put( "board.physical.electrical.ddr_vpp_bottom.voltage",  ddr_vpp_btm );
         sensor_tree::put( "board.physical.electrical.ddr_vpp_top.voltage",     ddr_vpp_top );
         sensor_tree::put( "board.physical.electrical.sys_5v5.voltage",         sys_5v5 );
@@ -934,7 +953,7 @@ public:
         // memory
         xclDeviceUsage devstat = { 0 };
         (void) xclGetUsageInfo(m_handle, &devstat);
-        for (unsigned i = 0; i < 2; i++) {
+        for (unsigned i = 0; i < dma_threads.size(); i++) {
             boost::property_tree::ptree pt_dma;
             pt_dma.put( "h2c", xrt_core::utils::unit_convert(devstat.h2c[i]) );
             pt_dma.put( "c2h", xrt_core::utils::unit_convert(devstat.c2h[i]) );
@@ -1179,6 +1198,9 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccaux.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccaux_pmc.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccram.voltage"  ) << std::endl;
+        ostr << std::setw(16) << "3V3 AUX CURR" << std::setw(16) << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.3v3_aux.current" )
+             <<  std::endl;
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Card Power(W)\n";
@@ -1239,7 +1261,7 @@ public:
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << std::left << "Memory Status" << std::endl;
-        ostr << std::setw(17) << "     Tag"  << std::setw(12) << "Type"
+        ostr << std::setw(25) << "     Tag"  << std::setw(12) << "Type"
              << std::setw(9)  << "Temp(C)"   << std::setw(8)  << "Size";
         ostr << std::setw(16) << "Mem Usage" << std::setw(8)  << "BO count" << std::endl;
 
@@ -1267,7 +1289,7 @@ public:
               }
               ostr << std::left
                    << "[" << std::right << std::setw(2) << index << "] " << std::left
-                   << std::setw(12) << tag
+                   << std::setw(20) << tag
                    << std::setw(12) << type
                    << std::setw(9) << temp
                    << std::setw(8) << size
@@ -1539,6 +1561,9 @@ public:
 
         for(int32_t i = 0; i < map->m_count; i++) {
             if(map->m_mem_data[i].m_type == MEM_STREAMING)
+                continue;
+
+            if(!strncmp((const char*)map->m_mem_data[i].m_tag, "HOST", 4))
                 continue;
 
             if(map->m_mem_data[i].m_used) {

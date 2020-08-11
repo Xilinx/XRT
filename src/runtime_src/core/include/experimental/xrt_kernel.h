@@ -20,7 +20,9 @@
 
 #include "xrt.h"
 #include "ert.h"
+#include "experimental/xrt_uuid.h"
 #include "experimental/xrt_bo.h"
+#include "experimental/xrt_enqueue.h"
 
 #ifdef __cplusplus
 # include <memory>
@@ -51,6 +53,7 @@ typedef void * xrtRunHandle;
 namespace xrt {
 
 class kernel;
+class event_impl;
 
 /**
  * class run - xrt::run represents one execution of a kernel
@@ -132,6 +135,19 @@ class run
   add_callback(ert_cmd_state state,
                std::function<void(const run&, ert_cmd_state, void*)>,
                void* data);
+
+
+  /**
+   * set_event() - Add event for enqueued operations
+   *
+   * @event:      Opaque implementation object
+   *
+   * This function is used when a run object is enqueued in an event
+   * graph.  The event must be notified upon completion of the run.
+   */
+  XCL_DRIVER_DLLESPEC
+  void
+  set_event(const std::shared_ptr<event_impl>& event) const;
 
   /**
    * operator bool() - Check if run handle is valid
@@ -301,7 +317,7 @@ public:
    * argument to true.
    */
   XCL_DRIVER_DLLESPEC
-  kernel(xclDeviceHandle dhdl, const xuid_t xclbin_id, const std::string& name, bool exclusive=false);
+  kernel(xclDeviceHandle dhdl, const xrt::uuid& xclbin_id, const std::string& name, bool exclusive=false);
 
   /**
    * operator() - Invoke the kernel function
@@ -373,6 +389,13 @@ private:
   std::shared_ptr<kernel_impl> handle;
 };
 
+// Specialization from xrt_enqueue.h for run objects, which
+// are asynchronous waitable objects.
+template <>
+struct callable_traits<run>
+{
+  enum { is_async = true };
+};
 
 } // namespace xrt
 

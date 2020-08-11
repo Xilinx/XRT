@@ -53,6 +53,8 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/xocl_thread.c
   xocl/xocl_fdt.c
   xocl/xocl_fdt.h
+  xocl/xocl_xclbin.c
+  xocl/xocl_xclbin.h
   xocl/xocl_test.c
   xocl/userpf/common.h
   xocl/userpf/xocl_bo.c
@@ -107,6 +109,8 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/lib/libqdma/version.h
   xocl/lib/libqdma/xdev.h
   xocl/lib/libqdma/xdev.c
+  xocl/lib/libqdma4/stmc.h
+  xocl/lib/libqdma4/stmc.c
   xocl/lib/libqdma4/libqdma4_export.h
   xocl/lib/libqdma4/libqdma_config.c
   xocl/lib/libqdma4/libqdma_config.h
@@ -222,6 +226,10 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/subdev/cu.c
   xocl/subdev/p2p.c
   xocl/subdev/pmc.c
+  xocl/subdev/intc.c
+  xocl/subdev/icap_cntrl.c
+  xocl/subdev/version_ctrl.c
+  xocl/subdev/ert_user.c
   xocl/Makefile
   )
 
@@ -250,6 +258,7 @@ SET (XRT_DKMS_COMMON_XRT_DRV
   common/drv/xrt_cu.c
   common/drv/cu_hls.c
   common/drv/cu_plram.c
+  common/drv/xrt_xclbin.c
   )
 
 SET (XRT_DKMS_COMMON_XRT_DRV_INCLUDES
@@ -257,6 +266,7 @@ SET (XRT_DKMS_COMMON_XRT_DRV_INCLUDES
   common/drv/include/kds_core.h
   common/drv/include/kds_command.h
   common/drv/include/xrt_cu.h
+  common/drv/include/xrt_xclbin.h
   )
 
 SET (XRT_DKMS_ABS_SRCS)

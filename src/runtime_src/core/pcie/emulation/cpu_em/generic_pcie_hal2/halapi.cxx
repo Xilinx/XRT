@@ -561,7 +561,7 @@ int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, con
 }
 
 //Added below calls as a fix for CR-1034151
-int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bool shared)
+int xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
@@ -579,7 +579,7 @@ int xclExecBuf(xclDeviceHandle handle, unsigned int cmdBO)
   return drv ? drv->xclExecBuf(cmdBO) : -ENODEV;
 }
 
-int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
+int xclCloseContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned ipIndex)
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -ENODEV;

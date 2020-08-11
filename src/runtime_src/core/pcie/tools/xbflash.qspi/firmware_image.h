@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2020 Xilinx, Inc
+ * Copyright (C) 2018 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,18 +14,24 @@
  * under the License.
  */
 
-#ifndef __SubCmdDmaTest_h_
-#define __SubCmdDmaTest_h_
+/*
+ * Contains definitions for all firmware (DSA/BMC) related classes
+ */
 
-#include "tools/common/SubCmd.h"
+#ifndef _FIRMWARE_IMAGE_H_
+#define _FIRMWARE_IMAGE_H_
 
-class SubCmdDmaTest : public SubCmd {
- public:
-  virtual void execute(const SubCmdOptions &_options) const;
+#include <iostream>
+#include <sstream>
 
- public:
-  SubCmdDmaTest(bool _isHidden, bool _isDepricated, bool _isPreliminary);
+class firmwareImage : public std::istringstream
+{
+public:
+    firmwareImage(const char *file);
+    ~firmwareImage();
+
+private:
+    char *mBuf;
 };
 
 #endif
-

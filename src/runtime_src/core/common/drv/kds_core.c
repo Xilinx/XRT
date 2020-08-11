@@ -11,6 +11,7 @@
 #include <linux/sched.h>
 #include <linux/vmalloc.h>
 #include <linux/device.h>
+#include <linux/delay.h>
 #include "kds_core.h"
 
 /* for sysfs */
@@ -90,7 +91,7 @@ get_cu_by_addr(struct kds_cu_mgmt *cu_mgmt, u32 addr)
 	return i;
 }
 
-static void
+static int
 kds_cu_config(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 {
 	struct kds_client *client = xcmd->client;
@@ -98,11 +99,14 @@ kds_cu_config(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 	size_t num_cus = xcmd->isize / sizeof(u32);
 	struct xrt_cu *tmp;
 	int i, j;
+	int ret = 0;
 
 	mutex_lock(&cu_mgmt->lock);
 	/* I don't care if the configure command claim less number of cus */
-	if (unlikely(num_cus > cu_mgmt->num_cus))
-		goto error;
+	if (unlikely(num_cus > cu_mgmt->num_cus)) {
+		ret = -EINVAL;
+		goto out;
+	}
 
 	/* If the configure command is sent by xclLoadXclbin(), the command
 	 * content should be the same and it is okay to let it go through.
@@ -117,14 +121,16 @@ kds_cu_config(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 	 */
 	if (cu_mgmt->configured) {
 		kds_info(client, "CU already configured in KDS\n");
-		goto done;
+		goto out;
 	}
 
 	/* Now we need to make CU index right */
 	for (i = 0; i < num_cus; i++) {
 		j = get_cu_by_addr(cu_mgmt, cus_addr[i]);
-		if (j == cu_mgmt->num_cus)
-			goto error;
+		if (j == cu_mgmt->num_cus) {
+			ret = -EINVAL;
+			goto out;
+		}
 
 		/* Ordering CU index */
 		if (j != i) {
@@ -136,16 +142,9 @@ kds_cu_config(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 	}
 	cu_mgmt->configured = 1;
 
-done:
+out:
 	mutex_unlock(&cu_mgmt->lock);
-	xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
-	xcmd->cb.free(xcmd);
-	return;
-
-error:
-	mutex_unlock(&cu_mgmt->lock);
-	xcmd->cb.notify_host(xcmd, KDS_ERROR);
-	xcmd->cb.free(xcmd);
+	return ret;
 }
 
 /**
@@ -204,7 +203,7 @@ acquire_cu_idx(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 out:
 	++cu_mgmt->cu_usage[index];
 	mutex_unlock(&cu_mgmt->lock);
-	return cu_mgmt->xcus[index]->info.inst_idx;
+	return index;
 }
 
 static void
@@ -225,12 +224,57 @@ kds_cu_dispatch(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 static int
 kds_submit_cu(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 {
+	int ret = 0;
+	u32 status = KDS_COMPLETED;
+
 	if (xcmd->opcode != OP_CONFIG)
 		kds_cu_dispatch(cu_mgmt, xcmd);
-	else
-		kds_cu_config(cu_mgmt, xcmd);
+	else {
+		ret = kds_cu_config(cu_mgmt, xcmd);
+		if (ret)
+			status = KDS_ERROR;
 
+		xcmd->cb.notify_host(xcmd, status);
+		xcmd->cb.free(xcmd);
+	}
+
+	return ret;
+}
+
+static int
+kds_submit_ert(struct kds_sched *kds, struct kds_command *xcmd)
+{
+	struct kds_ert *ert = kds->ert;
+	int ret = 0;
+	int cu_idx;
+
+	/* BUG_ON(!ert || !ert->submit); */
+
+	if (xcmd->opcode == OP_START) {
+		/* KDS should select a CU and set it in cu_mask */
+		cu_idx = acquire_cu_idx(&kds->cu_mgmt, xcmd);
+		if (cu_idx < 0)
+			goto err;
+		/* write kds selected cu index in the first cumask
+		 * (first word after header of execbuf)
+		 * TODO: I dislike modify the content of the execbuf
+		 * in this place. Let's refine this later.
+		 */
+		xcmd->execbuf[1] = cu_idx;
+	} else {
+		/* Configure command define CU index */
+		ret = kds_cu_config(&kds->cu_mgmt, xcmd);
+		if (ret)
+			goto err;
+	}
+
+	ert->submit(ert, xcmd);
 	return 0;
+
+err:
+	xcmd->cb.notify_host(xcmd, KDS_ERROR);
+	xcmd->cb.free(xcmd);
+	return ret;
 }
 
 static int
@@ -292,6 +336,7 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 {
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
 	int cu_idx = info->cu_idx;
+	int state;
 
 	if (cu_idx >= cu_mgmt->num_cus) {
 		kds_err(client, "CU(%d) not found", cu_idx);
@@ -303,6 +348,32 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 		return -EINVAL;
 	}
 
+	/* TODO: finish ERT abort process later */
+	if (!kds->ert_disable)
+		goto skip;
+
+	/* Before close, make sure no remain commands in CU's queue.
+	 * There is no reason to sleep 500ms :)
+	 */
+	while (xrt_cu_abort(cu_mgmt->xcus[cu_idx], client) == -EAGAIN)
+		msleep(500);
+
+	do {
+		msleep(100);
+		state = xrt_cu_abort_done(cu_mgmt->xcus[cu_idx]);
+	} while (!state);
+
+	if (state == CU_STATE_BAD) {
+		kds_info(client, "CU(%d) hangs, please reset device", cu_idx);
+		/* No lock to protect bad_state.
+		 * If a new client doesn't get the updated status and send commands,
+		 * those commands would failed with TIMEOUT state.
+		 */
+		kds->bad_state = 1;
+		xrt_cu_set_bad_state(cu_mgmt->xcus[cu_idx]);
+	}
+
+skip:
 	/* cu_mgmt->cu_refs is the critical section of multiple clients */
 	mutex_lock(&cu_mgmt->lock);
 	if (cu_mgmt->cu_refs[cu_idx] & CU_EXCLU_MASK)
@@ -320,6 +391,8 @@ int kds_init_sched(struct kds_sched *kds)
 	mutex_init(&kds->lock);
 	mutex_init(&kds->cu_mgmt.lock);
 	kds->num_client = 0;
+	kds->bad_state = 0;
+	kds->ert_disable = 1;
 
 	return 0;
 }
@@ -375,6 +448,7 @@ void kds_free_command(struct kds_command *xcmd)
 	if (xcmd) {
 		kfree(xcmd->info);
 		kfree(xcmd);
+		xcmd = NULL;
 	}
 #endif
 }
@@ -395,6 +469,9 @@ int kds_add_command(struct kds_sched *kds, struct kds_command *xcmd)
 	switch (xcmd->type) {
 	case KDS_CU:
 		err = kds_submit_cu(&kds->cu_mgmt, xcmd);
+		break;
+	case KDS_ERT:
+		err = kds_submit_ert(kds, xcmd);
 		break;
 	default:
 		kds_err(client, "Unknown type");
@@ -437,12 +514,43 @@ int kds_init_client(struct kds_sched *kds, struct kds_client *client)
 	return 0;
 }
 
+static inline void
+_kds_fini_client(struct kds_sched *kds, struct kds_client *client)
+{
+	struct kds_ctx_info info;
+	u32 bit;
+
+	kds_info(client, "Client pid(%d) has %d opening context",
+		 pid_nr(client->pid), client->num_ctx);
+
+	mutex_lock(&client->lock);
+	while (client->virt_cu_ref) {
+		info.cu_idx = CU_CTX_VIRT_CU;
+		kds_del_context(kds, client, &info);
+	}
+
+	bit = find_first_bit(client->cu_bitmap, MAX_CUS);
+	while (bit < MAX_CUS) {
+		info.cu_idx = bit;
+		kds_del_context(kds, client, &info);
+		bit = find_next_bit(client->cu_bitmap, MAX_CUS, bit + 1);
+	};
+	bitmap_zero(client->cu_bitmap, MAX_CUS);
+	mutex_unlock(&client->lock);
+
+	WARN_ON(client->num_ctx);
+}
+
 void kds_fini_client(struct kds_sched *kds, struct kds_client *client)
 {
 #if PRE_ALLOC
 	vfree(client->xcmds);
 	vfree(client->infos);
 #endif
+
+	/* Release client's resources */
+	if (client->num_ctx)
+		_kds_fini_client(kds, client);
 
 	put_pid(client->pid);
 	mutex_destroy(&client->lock);
@@ -551,13 +659,47 @@ int kds_del_cu(struct kds_sched *kds, struct xrt_cu *xcu)
 	return -ENODEV;
 }
 
+int kds_init_ert(struct kds_sched *kds, struct kds_ert *ert)
+{
+	kds->ert = ert;
+	/* Do anything necessary */
+	return 0;
+}
+
+int kds_fini_ert(struct kds_sched *kds)
+{
+	/* TODO: implement this */
+	return 0;
+}
+
+void kds_reset(struct kds_sched *kds)
+{
+	kds->bad_state = 0;
+}
+
+int is_bad_state(struct kds_sched *kds)
+{
+	return kds->bad_state;
+}
+
+u32 kds_live_clients(struct kds_sched *kds, pid_t **plist)
+{
+	u32 count = 0;
+
+	mutex_lock(&kds->lock);
+	count = kds_live_clients_nolock(kds, plist);
+	mutex_unlock(&kds->lock);
+
+	return count;
+}
+
 /*
  * Return number of client with open ("live") contexts on CUs.
  * If this number > 0, xclbin is locked down.
  * If plist is non-NULL, the list of PIDs of live clients will also be returned.
  * Note that plist should be freed by caller.
  */
-u32 kds_live_clients(struct kds_sched *kds, pid_t **plist)
+u32 kds_live_clients_nolock(struct kds_sched *kds, pid_t **plist)
 {
 	const struct list_head *ptr;
 	struct kds_client *client;
@@ -565,7 +707,6 @@ u32 kds_live_clients(struct kds_sched *kds, pid_t **plist)
 	u32 count = 0;
 	u32 i = 0;
 
-	mutex_lock(&kds->lock);
 	/* Find out number of active client */
 	list_for_each(ptr, &kds->clients) {
 		client = list_entry(ptr, struct kds_client, link);
@@ -590,23 +731,7 @@ u32 kds_live_clients(struct kds_sched *kds, pid_t **plist)
 
 	*plist = pl;
 out:
-	mutex_unlock(&kds->lock);
 	return count;
-}
-
-/* General notify client function */
-void notify_execbuf(struct kds_command *xcmd, int status)
-{
-	struct kds_client *client = xcmd->client;
-	struct ert_packet *ecmd = (struct ert_packet *)xcmd->execbuf;
-
-	if (status == KDS_COMPLETED)
-		ecmd->state = ERT_CMD_STATE_COMPLETED;
-	else if (status == KDS_ERROR)
-		ecmd->state = ERT_CMD_STATE_ERROR;
-
-	atomic_inc(&client->event);
-	wake_up_interruptible(&client->waitq);
 }
 
 /* User space execbuf command related functions below */
@@ -615,10 +740,8 @@ void cfg_ecmd2xcmd(struct ert_configure_cmd *ecmd,
 {
 	int i;
 
-	xcmd->type = KDS_CU;
 	xcmd->opcode = OP_CONFIG;
 
-	xcmd->cb.notify_host = notify_execbuf;
 	xcmd->execbuf = (u32 *)ecmd;
 
 	xcmd->isize = ecmd->num_cus * sizeof(u32);
@@ -635,10 +758,8 @@ void cfg_ecmd2xcmd(struct ert_configure_cmd *ecmd,
 void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 			  struct kds_command *xcmd)
 {
-	xcmd->type = KDS_CU;
 	xcmd->opcode = OP_START;
 
-	xcmd->cb.notify_host = notify_execbuf;
 	xcmd->execbuf = (u32 *)ecmd;
 
 	xcmd->cu_mask[0] = ecmd->cu_mask;

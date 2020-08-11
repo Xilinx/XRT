@@ -92,7 +92,10 @@ namespace XBUtilities {
   void collect_devices( const std::set<std::string>  &_deviceBDFs,
                         bool _inUserDomain,
                         xrt_core::device_collection &_deviceCollection);
-  void report_available_devices();
+  boost::property_tree::ptree
+  get_available_devices(bool inUserDomain);
+  std::string format_base10_shiftdown3(uint64_t value);
+  std::string format_base10_shiftdown6(uint64_t value);
   
    /**
    * get_axlf_section() - Get section from the file passed in
@@ -116,6 +119,13 @@ namespace XBUtilities {
   int check_p2p_config(const std::shared_ptr<xrt_core::device>& _dev, std::string &err);
 
   reset_type str_to_enum_reset(const std::string& str);
+
+  /**
+   * string_to_UUID(): convert a string to hyphen formatted UUID
+   * 
+   * Returns: 00000000-0000-0000-0000-000000000000 formatted uuid
+   */
+  std::string string_to_UUID(std::string str);
 };
 
 #endif
