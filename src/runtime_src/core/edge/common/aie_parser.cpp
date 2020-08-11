@@ -153,7 +153,7 @@ get_gmio(const pt::ptree& aie_meta)
 }
 
 std::vector<counter_type>
-get_counter(const pt::ptree& aie_meta)
+get_profile_counter(const pt::ptree& aie_meta)
 {
   // First grab clock frequency
   double clockFreqMhz;
@@ -183,6 +183,28 @@ get_counter(const pt::ptree& aie_meta)
   }
 
   return counters;
+}
+
+std::vector<gmio_type>
+get_trace_gmio(const pt::ptree& aie_meta)
+{
+  std::vector<gmio_type> gmios;
+
+  for (auto& gmio_node : aie_meta.get_child("aie_metadata.performance.GMIOs")) {
+    gmio_type gmio;
+
+    gmio.id = gmio_node.second.get<uint32_t>("id");
+    //gmio.name = gmio_node.second.get<std::string>("name");
+    //gmio.type = gmio_node.second.get<uint16_t>("type");
+    gmio.shim_col = gmio_node.second.get<uint16_t>("shim_column");
+    gmio.channel_number = gmio_node.second.get<uint16_t>("channel_number");
+    gmio.stream_id = gmio_node.second.get<uint16_t>("stream_id");
+    gmio.burst_len = gmio_node.second.get<uint16_t>("burst_length_in_16byte");
+
+    gmios.emplace_back(std::move(gmio));
+  }
+
+  return gmios;
 }
 
 } // namespace
@@ -226,15 +248,29 @@ get_gmios(const xrt_core::device* device)
 }
 
 std::vector<counter_type>
-get_counters(const xrt_core::device* device)
+get_profile_counters(const xrt_core::device* device)
 {
+  //auto data = device->get_axlf_section(AIE_TRACE_PROFILE_METADATA);
   auto data = device->get_axlf_section(AIE_METADATA);
   if (!data.first || !data.second)
     return std::vector<counter_type>();
 
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
-  return ::get_counter(aie_meta);
+  return ::get_profile_counter(aie_meta);
+}
+
+std::vector<gmio_type>
+get_trace_gmios(const xrt_core::device* device)
+{
+  //auto data = device->get_axlf_section(AIE_TRACE_PROFILE_METADATA);
+  auto data = device->get_axlf_section(AIE_METADATA);
+  if (!data.first || !data.second)
+    return std::vector<gmio_type>();
+
+  pt::ptree aie_meta;
+  read_aie_metadata(data.first, data.second, aie_meta);
+  return ::get_trace_gmio(aie_meta);
 }
 
 }}} // aie, edge, xrt_core

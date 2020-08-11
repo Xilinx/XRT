@@ -78,6 +78,23 @@ namespace xdp {
     {}
   };
 
+  struct TraceGMIO {
+    uint32_t id;
+    uint16_t shimColumn;
+    uint16_t channelNumber;
+    uint16_t streamId;
+    uint16_t burstLength;
+
+    TraceGMIO(uint32_t i, uint16_t col, uint16_t num, 
+              uint16_t stream, uint16_t len)
+      : id(i),
+        shimColumn(col),
+        channelNumber(num),
+        streamId(stream),
+        burstLength(len)
+    {}
+  };
+
   class ComputeUnitInstance
   {
   private:
@@ -161,12 +178,13 @@ namespace xdp {
     std::string loadedXclbin;
     std::map<int32_t, ComputeUnitInstance*> cus;
     //uuid        loadedXclbinUUID;
-    std::map<int32_t, Memory*>   memoryInfo;
-    std::vector<Monitor*> aimList;
-    std::vector<Monitor*> amList;
-    std::vector<Monitor*> asmList;
-    std::vector<Monitor*> nocList;
-    std::vector<AIECounter*> aieList;
+    std::map<int32_t, Memory*> memoryInfo;
+    std::vector<Monitor*>      aimList;
+    std::vector<Monitor*>      amList;
+    std::vector<Monitor*>      asmList;
+    std::vector<Monitor*>      nocList;
+    std::vector<AIECounter*>   aieList;
+    std::vector<TraceGMIO*>    gmioList;
   };
 
   class VPStaticDatabase
@@ -339,6 +357,13 @@ namespace xdp {
       return deviceInfo[deviceId]->aieList.size();
     }
 
+    inline uint64_t getNumTraceGMIO(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return 0;
+      return deviceInfo[deviceId]->gmioList.size();
+    }
+
     inline Monitor* getAIMonitor(uint64_t deviceId, uint64_t idx)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
@@ -372,6 +397,13 @@ namespace xdp {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       return deviceInfo[deviceId]->aieList[idx];
+    }
+
+    inline TraceGMIO* getTraceGMIO(uint64_t deviceId, uint64_t idx)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return nullptr;
+      return deviceInfo[deviceId]->gmioList[idx];
     }
 
     inline void getDataflowConfiguration(uint64_t deviceId, bool* config, size_t size)

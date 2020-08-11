@@ -377,11 +377,18 @@ namespace xdp {
   bool VPStaticDatabase::initializeAIECounters(DeviceInfo* devInfo, const std::shared_ptr<xrt_core::device>& device)
   {
     // Record all counters listed in AIE metadata (if available)
-    for (auto& counter : xrt_core::edge::aie::get_counters(device.get())) {
+    for (auto& counter : xrt_core::edge::aie::get_profile_counters(device.get())) {
       AIECounter* aie = new AIECounter(counter.id, counter.column, counter.row, 
           counter.counterNumber, counter.startEvent, counter.endEvent, 
           counter.resetEvent, counter.clockFreqMhz, counter.module, counter.name);
       devInfo->aieList.push_back(aie);
+    }
+
+    // Record all trace GMIOs listed in AIE metadata (if available)
+    for (auto& gmio : xrt_core::edge::aie::get_trace_gmios(device.get())) {
+      TraceGMIO* traceGmio = new TraceGMIO(gmio.id, gmio.shim_col, gmio.channel_number, 
+          gmio.stream_id, gmio.burst_len);
+      devInfo->gmioList.push_back(traceGmio);
     }
     return true;
   }

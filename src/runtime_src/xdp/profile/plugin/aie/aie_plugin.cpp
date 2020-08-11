@@ -96,7 +96,7 @@ namespace xdp {
 
       // TODO: not sure what we need from device; for now, just use name
       for (auto device : mDevices) {
-        auto drv = device->get_device_handle();
+        auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
         auto aieArray = (drv) ? drv->getAieArray() : nullptr;
         if (aieArray == nullptr)
           continue;
