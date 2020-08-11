@@ -18,6 +18,11 @@
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/events/device_events.h"
 
+#ifdef _WIN32
+#pragma warning (disable : 4267)
+/* 4267 : Disable warning for conversion of size_t to int32_t */
+#endif
+
 namespace xdp {
 
 
