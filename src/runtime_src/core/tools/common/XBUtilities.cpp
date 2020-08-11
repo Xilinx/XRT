@@ -532,3 +532,26 @@ XBUtilities::format_base10_shiftdown6(uint64_t value)
 {
   return precision(static_cast<double>(value) / 1000000.0, 6);
 }
+
+std::string
+XBUtilities::string_to_UUID(std::string str)
+{
+  //make sure that a UUID is passed in
+  assert(str.length() == 32);
+  std::string uuid = "";
+  //positions to insert hyphens
+  //before: 00000000000000000000000000000000
+  std::vector<int> pos = {8, 4, 4, 4};
+  //before: 00000000-0000-0000-0000-000000000000
+
+  for(auto const p : pos) {
+    std::string token = str.substr(0, p);
+    boost::to_upper(token);
+    uuid.append(token + "-");
+    str.erase(0, p);
+  }
+  boost::to_upper(str);
+  uuid.append(str);
+  
+  return uuid;
+}

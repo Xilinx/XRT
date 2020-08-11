@@ -117,6 +117,13 @@ namespace XBUtilities {
   std::vector<std::string> get_uuids(const void *dtbuf);
 
   reset_type str_to_enum_reset(const std::string& str);
+
+  /**
+   * string_to_UUID(): convert a string to hyphen formatted UUID
+   * 
+   * Returns: 00000000-0000-0000-0000-000000000000 formatted uuid
+   */
+  std::string string_to_UUID(std::string str);
 };
 
 #endif

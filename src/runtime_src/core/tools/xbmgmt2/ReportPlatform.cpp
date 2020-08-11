@@ -20,9 +20,12 @@
 #include "flash/flasher.h"
 #include "core/common/query_requests.h"
 
+// Utilities
+#include "tools/common/XBUtilities.h"
+namespace XBU = XBUtilities;
+
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
-
 
 void 
 ReportPlatform::getPropertyTreeInternal( const xrt_core::device * _pDevice,
@@ -77,11 +80,18 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * _pDevice,
   _pt.put("platform.hardware.serial_num", info.mSerialNum);
   //Flashable partition running on FPGA
   std::vector<std::string> logic_uuids, interface_uuids;
+  // the vectors are being populated by empty strings when uuids are not available on windows
+  // this needs to be fixed when the concept of multiple uuids comes into play
+  // Workaround: if the uuid is empty, remove clear the vector
   try {
     logic_uuids = xrt_core::device_query<xrt_core::query::logic_uuids>(_pDevice);
+    if (logic_uuids.front().empty())
+      logic_uuids.clear();
     } catch (...) {}
   try {
     interface_uuids = xrt_core::device_query<xrt_core::query::interface_uuids>(_pDevice);
+    if (interface_uuids.front().empty())
+      interface_uuids.clear();
     } catch (...) {}
   
   //check if 2RP
@@ -89,16 +99,19 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * _pDevice,
     for(unsigned int i = 0; i < logic_uuids.size(); i++) {
       DSAInfo part("", NULL_TIMESTAMP, logic_uuids[i], ""); 
       _pt.put("platform.current_shell.vbnv", part.name);
-      _pt.put("platform.current_shell.logic-uuid", logic_uuids[i]);
-      _pt.put("platform.current_shell.interface-uuid", interface_uuids[i]);
+      _pt.put("platform.current_shell.logic-uuid", XBU::string_to_UUID(logic_uuids[i]));
+      _pt.put("platform.current_shell.interface-uuid", XBU::string_to_UUID(interface_uuids[i]));
       _pt.put("platform.current_shell.id", (boost::format("0x%x") % part.timestamp));
     }
   } else { //1RP
     _pt.put("platform.current_shell.vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(_pDevice));
-    _pt.put("platform.current_shell.id", xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(_pDevice));
+    _pt.put("platform.current_shell.id", (boost::format("0x%x") % xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(_pDevice)));
   }
 
-  std::string _scVer = xrt_core::device_query<xrt_core::query::xmc_bmc_version>(_pDevice);
+  std::string _scVer;
+  try {
+    _scVer = xrt_core::device_query<xrt_core::query::xmc_bmc_version>(_pDevice);
+  } catch (...) {}
   if(_scVer.empty())
     _scVer = info.mBMCVer;
   _pt.put("platform.current_shell.sc_version", _scVer);
@@ -150,7 +163,15 @@ ReportPlatform::writeReport( const xrt_core::device * _pDevice,
   _output << "Flashable partition running on FPGA\n";
   _output << boost::format("  %-20s : %s\n") % "Platform" % _pt.get<std::string>("platform.current_shell.vbnv", "N/A");
   _output << boost::format("  %-20s : %s\n") % "SC Version" % _pt.get<std::string>("platform.current_shell.sc_version", "N/A");
-  _output << boost::format("  %-20s : %x\n") % "Platform ID" % _pt.get<std::string>("platform.current_shell.id", "N/A");
+  
+  auto logic_uuid = _pt.get<std::string>("platform.current_shell.logic-uuid", "");
+  auto interface_uuid = _pt.get<std::string>("platform.current_shell.interface-uuid", "");
+  if (!logic_uuid.empty() && !interface_uuid.empty()) {
+    _output << boost::format("  %-20s : %s\n") % "Platform ID" % logic_uuid;
+    _output << boost::format("  %-20s : %s\n") % "Interface UUID" % interface_uuid;
+  } else {
+    _output << boost::format("  %-20s : %x\n") % "Platform ID" % _pt.get<std::string>("platform.current_shell.id", "N/A");
+  }
   
   _output << std::endl;
   _output << "Flashable partitions installed in system\n"; 
@@ -160,7 +181,7 @@ ReportPlatform::writeReport( const xrt_core::device * _pDevice,
     boost::property_tree::ptree& available_shell = kv.second;
     _output << boost::format("  %-20s : %s\n") % "Platform" % available_shell.get<std::string>("vbnv", "N/A");
     _output << boost::format("  %-20s : %s\n") % "SC Version" % available_shell.get<std::string>("sc_version", "N/A");
-    _output << boost::format("  %-20s : %x\n") % "Platform ID" % available_shell.get<std::string>("id", "N/A") << "\n";
+    _output << boost::format("  %-20s : %s\n") % "Platform ID" % available_shell.get<std::string>("id", "N/A") << "\n";
   }
 
 
