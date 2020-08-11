@@ -327,7 +327,7 @@ namespace xdp {
         }
         if(cuObj) {
           cuObj->addMonitor(mon);
-          cuObj->setDataTransferEnabled(true);
+          cuObj->setStreamEnabled(true);
         } else if(0 != monCuName.compare("shell")) {
           // If not connected to CU and not a shell monitor, then a floating monitor
           devInfo->hasFloatingASM = true;
