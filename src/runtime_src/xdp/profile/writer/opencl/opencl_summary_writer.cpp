@@ -344,7 +344,7 @@ namespace xdp {
 	std::vector<std::pair<std::string, TimeStatistics>> cuCalls = 
 	  (db->getStats()).getComputeUnitExecutionStats(cuName) ;
 
-	uint64_t cuIndex = 0 ; // TODO: Determine the mapping of compute unit
+	uint64_t cuIndex = 0 ;
 
 	for (auto cuCall : cuCalls)
 	{
@@ -432,39 +432,66 @@ namespace xdp {
 
     for (auto read : hostReads)
     {
-      double transferRate = 
-	(double)((read.second).totalSize) / (double)((read.second).totalTime) ;
+      if (getFlowMode() == HW_EMU)
+      {
+	fout << "" << ":" << "" << "," // TODO
+	     << "READ" << ","
+	     << (read.second).count << ","
+	     << "N/A" << ","
+	     << "N/A" << ","
+	     << ((double)((read.second).averageSize) / 1000.0) << ","
+	     << "N/A" << ","
+	     << "N/A" << std::endl ;
+      }
+      else
+      {
+	double transferRate = 
+	  (double)((read.second).totalSize)/(double)((read.second).totalTime) ;
+	double maxReadBW =
+	  (db->getStaticInfo()).getMaxReadBW(read.first.second) ;
+	double aveBWUtil = (100.0 * transferRate) / maxReadBW ;
 
-      double maxReadBW = (db->getStaticInfo()).getMaxReadBW(read.first.second);
-      double aveBWUtil = (100.0 * transferRate) / maxReadBW ;
-
-      fout << (read.first.first) << ":" << (read.first.second) << "," // TODO
-	   << "READ" << ","
-	   << (read.second).count << ","
-	   << transferRate << ","
-	   << aveBWUtil << ","
-	   << (read.second).averageSize << ","
-	   << (read.second).totalTime << ","
-	   << (read.second).averageTime << std::endl ;	
+	fout << (read.first.first) << ":" << (read.first.second) << "," // TODO
+	     << "READ" << ","
+	     << (read.second).count << ","
+	     << transferRate << ","
+	     << aveBWUtil << ","
+	     << ((double)((read.second).averageSize) / 1000.0) << ","
+	     << (read.second).totalTime << ","
+	     << (read.second).averageTime << std::endl ;
+      }
     }
 
     for (auto write : hostWrites)
     {
-      double transferRate = 
-	(double)((write.second).totalSize) / (double)((write.second).totalTime);
+      if (getFlowMode() == HW_EMU)
+      {
+	fout << "" << ":" << "" << "," // TODO
+	     << "WRITE" << ","
+	     << (write.second).count << ","
+	     << "N/A" << ","
+	     << "N/A" << ","
+	     << ((double)((write.second).averageSize) / 1000.0) << ","
+	     << "N/A" << ","
+	     << "N/A" << std::endl ;
+      }
+      else
+      {
+	double transferRate = 
+	  (double)((write.second).totalSize)/(double)((write.second).totalTime);
+	double maxWriteBW =
+	  (db->getStaticInfo()).getMaxWriteBW(write.first.second);
+	double aveBWUtil = (100.0 * transferRate) / maxWriteBW ;
 
-      double maxWriteBW =
-	(db->getStaticInfo()).getMaxWriteBW(write.first.second);
-      double aveBWUtil = (100.0 * transferRate) / maxWriteBW ;
-
-      fout << (write.first.first) << ":" << (write.first.second) << "," // TODO
-	   << "WRITE" << ","
-	   << (write.second).count << ","
-	   << transferRate << ","
-	   << aveBWUtil << ","
-	   << (write.second).averageSize << ","
-	   << (write.second).totalTime << ","
-	   << (write.second).averageTime << std::endl ;
+	fout << (write.first.first) << ":" << (write.first.second) << "," // TODO
+	     << "WRITE" << ","
+	     << (write.second).count << ","
+	     << transferRate << ","
+	     << aveBWUtil << ","
+	     << ((double)((write.second).averageSize) / 1000.0) << ","
+	     << (write.second).totalTime << ","
+	     << (write.second).averageTime << std::endl ;
+      }
     }
   }
 
