@@ -49,7 +49,7 @@ XDP_EXPORT
 uint32_t GetDeviceTraceBufferSize(uint32_t property);
 
 XDP_EXPORT
-uint64_t GetTS2MMBufSize(bool isAIETrace);
+uint64_t GetTS2MMBufSize(bool isAIETrace = false);
 
 
 class DeviceIntf {
