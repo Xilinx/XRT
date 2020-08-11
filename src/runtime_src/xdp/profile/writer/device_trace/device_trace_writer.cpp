@@ -159,7 +159,6 @@ namespace xdp {
 
     if((db->getStaticInfo()).hasFloatingASM(deviceId)) {
       fout << "Group_Start,AXI Stream Monitors,Data transfers over AXI Stream connection " << std::endl;
-//      floatingASMStartingRow = ++rowCount;
       std::vector<Monitor*> *asmList = (db->getStaticInfo()).getASMonitors(deviceId);
       for(size_t i = 0; i < asmList->size() ; i++) {
         Monitor* asM = asmList->at(i);
@@ -173,35 +172,13 @@ namespace xdp {
           continue;
         }
         asmBucketIdMap[i] = ++rowCount;
-        fout << "Group_Start," << asM->name << " AXI Stream Monitor,Read/Write data transfers over AXI Stream " << asM->name << std::endl;
-        fout << "Static_Row,"  << (rowCount + KERNEL_STREAM_READ - KERNEL_STREAM_READ) << ",Stream Read,AXI Stream Read transaction over " << asM->name << std::endl;
-        fout << "Static_Row,"  << (rowCount + KERNEL_STREAM_READ_STALL - KERNEL_STREAM_READ) << ",Read Stall,Stall during read over " << asM->name << std::endl;
-        fout << "Static_Row,"  << (rowCount + KERNEL_STREAM_READ_STARVE - KERNEL_STREAM_READ) << ",Read Starve,Starve during write over " << asM->name << std::endl;
-        fout << "Static_Row,"  << (rowCount + KERNEL_STREAM_WRITE - KERNEL_STREAM_READ) << ",Stream Write,AXI Stream Write transaction over "  << asM->name << std::endl;
-        fout << "Static_Row,"  << (rowCount + KERNEL_STREAM_WRITE_STALL - KERNEL_STREAM_READ) << ",Write Stall,Stall during write over " << asM->name << std::endl;
-        fout << "Static_Row,"  << (rowCount + KERNEL_STREAM_WRITE_STARVE - KERNEL_STREAM_READ) << ",Write Starve,Starve during write over " << asM->name << std::endl;
-        fout << "Group_End,"   << asM->name << " AXI Stream Monitor" << std::endl;
-        rowCount += (KERNEL_STREAM_WRITE_STARVE - KERNEL_STREAM_READ);
-#if 0
-        fout << "Group_Start,Stream Read,Read AXI Stream transaction on " << asM->name << std::endl;
-        fout << "Group_Row_Start," << (rowCount + KERNEL_STREAM_READ - KERNEL_STREAM_READ) << ",stream port, ,Read AXI Stream transaction for " << asM->name << std::endl;
-        fout << "Static_Row," << (rowCount + KERNEL_STREAM_READ_STALL - KERNEL_STREAM_READ) << ",Link Stall" << std::endl;
-        fout << "Static_Row," << (rowCount + KERNEL_STREAM_READ_STARVE - KERNEL_STREAM_READ) << ",Link Starve" << std::endl;
-        fout << "Group_End,Row Read" << std::endl;
-        fout << "Group_End,Stream Read" << std::endl;
-        fout << "Group_Start,Stream Write,Write AXI Stream transaction on " << asM->name << std::endl;
-        fout << "Group_Row_Start," << (rowCount + KERNEL_STREAM_WRITE - KERNEL_STREAM_READ) << ",stream port, ,Write AXI Stream transaction for "  << asM->name << std::endl;
-        fout << "Static_Row," << (rowCount + KERNEL_STREAM_WRITE_STALL - KERNEL_STREAM_READ) << ",Link Stall" << std::endl;
-        fout << "Static_Row," << (rowCount + KERNEL_STREAM_WRITE_STARVE - KERNEL_STREAM_READ) << ",Link Starve" << std::endl;
-        fout << "Group_End,Row Write" << std::endl;
-        fout << "Group_End,Stream Write" << std::endl;
-	rowCount += (KERNEL_STREAM_WRITE_STARVE - KERNEL_STREAM_READ);
-#endif
-        // add stall , starve
-//        fout << "Static_Row," << (rowCount + i) << "," << asM->name << std::endl;
+        fout << "Group_Start," << asM->name  << " AXI Stream Monitor,Read/Write data transfers over AXI Stream " << asM->name << std::endl;
+        fout << "Static_Row,"  << rowCount   << ",Stream Port,AXI Stream Read/Write transaction over " << asM->name << std::endl;
+        fout << "Static_Row,"  << ++rowCount << ",Link Stall,Stall during transaction over " << asM->name << std::endl;
+        fout << "Static_Row,"  << ++rowCount << ",Link Starve,Starve during transaction over " << asM->name << std::endl;
+        fout << "Group_End,"   << asM->name  << " AXI Stream Monitor" << std::endl;
       }
       fout << "Group_End,AXI Stream Monitors" << std::endl ;
-//      rowCount = floatingASMStartingRow + asmList->size();
     }
 
     fout << "Group_End," << xclbinName << std::endl ;
@@ -237,7 +214,13 @@ namespace xdp {
         }
         DeviceStreamAccess* streamEvent = dynamic_cast<DeviceStreamAccess*>(e);
         if(streamEvent) {
-          deviceEvent->dump(fout, asmBucketIdMap[monId] + deviceEvent->getEventType() - KERNEL_STREAM_READ);
+          VTFEventType eventType = deviceEvent->getEventType();
+          if(KERNEL_STREAM_READ == eventType || KERNEL_STREAM_READ_STALL == eventType
+                                             || KERNEL_STREAM_READ_STARVE == eventType) {
+            deviceEvent->dump(fout, asmBucketIdMap[monId] + eventType - KERNEL_STREAM_READ);
+          } else {
+            deviceEvent->dump(fout, asmBucketIdMap[monId] + eventType - KERNEL_STREAM_WRITE);
+          }
           continue;
         }
         // host read/write ??
