@@ -38,7 +38,7 @@ namespace po = boost::program_options;
 #include <iostream>
 #include <thread>
 #include <regex>
-#ifdef _GNUC_
+#ifdef __GNUC__
 #include <sys/mman.h> //munmap
 #endif
 #ifdef _WIN32
