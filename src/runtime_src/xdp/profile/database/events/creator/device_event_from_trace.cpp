@@ -31,7 +31,7 @@ namespace xdp {
     clockTrainSlope = 1000.0/traceClockRateMHz;
 
     traceIDs.resize(db->getStaticInfo().getNumAM(deviceId));
-    cuStarts.resize(db->getStaticInfo().getNumAM(deviceId));	// check if alwys equal to s
+    cuStarts.resize(db->getStaticInfo().getNumAM(deviceId));
     amLastTrans.resize(db->getStaticInfo().getNumAM(deviceId));
 
     aimLastTrans.resize(db->getStaticInfo().getNumAIM(deviceId));

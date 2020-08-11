@@ -421,7 +421,6 @@ DeviceIntf::~DeviceIntf()
     // Bit 0: Trace Coarse/Fine     Bit 1: Transfer Trace Ctrl
     // Bit 2: CU Trace Ctrl         Bit 3: INT Trace Ctrl
     // Bit 4: Str Trace Ctrl        Bit 5: Ext Trace Ctrl
-
     if (mVerbose) {
       std::cout << __func__ << ", " << std::this_thread::get_id()
                 << ", " << startTrigger
