@@ -522,7 +522,7 @@ public:
  
         const mem_topology *map = (mem_topology *)buf.data();
         const uint32_t *temp = (uint32_t *)temp_buf.data();
-	    const int temp_size = (uint32_t)temp_buf.size()/sizeof(uint32_t);
+        const int temp_size = (uint32_t)temp_buf.size()/sizeof(uint32_t);
 
         if(buf.empty() || mm_buf.empty())
             return;
