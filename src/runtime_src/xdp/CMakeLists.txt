@@ -268,7 +268,7 @@ target_link_libraries(xdp_vart_plugin xdp xrt_core)
 # AI Engine plugin is Edge only
 if (DEFINED XRT_AIE_BUILD)
   add_library(xdp_aie_plugin MODULE ${XRT_XDP_PROFILE_AIE_PLUGIN_FILES})
-  add_dependencies(xdp_aie_plugin xdp_core xrt_core metal xaiengine)
+  add_dependencies(xdp_aie_plugin xdp_core xrt_core)
   target_link_libraries(xdp_aie_plugin xdp_core xrt_core metal xaiengine)
   set_target_properties(xdp_aie_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
