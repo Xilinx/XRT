@@ -138,9 +138,14 @@ get_gmio(const pt::ptree& aie_meta)
   for (auto& gmio_node : aie_meta.get_child("aie_metadata.GMIOs")) {
     gmio_type gmio;
 
+    // Only get AIE GMIO type, 0: GM->AIE; 1: AIE->GM
+    auto type = gmio_node.second.get<uint16_t>("type");
+    if (type != 0 && type != 1)
+      continue;
+
     gmio.id = gmio_node.second.get<uint32_t>("id");
     gmio.name = gmio_node.second.get<std::string>("name");
-    gmio.type = gmio_node.second.get<uint16_t>("type");
+    gmio.type = type;
     gmio.shim_col = gmio_node.second.get<uint16_t>("shim_column");
     gmio.channel_number = gmio_node.second.get<uint16_t>("channel_number");
     gmio.burst_len = gmio_node.second.get<uint16_t>("burst_length_in_16byte");
