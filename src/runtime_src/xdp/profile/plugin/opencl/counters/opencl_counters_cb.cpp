@@ -92,6 +92,7 @@ namespace xdp {
   }
 
   static void counter_action_read(uint64_t contextId,
+				  uint64_t numDevices,
 				  const char* deviceName,
 				  uint64_t size,
 				  bool isStart)
@@ -118,6 +119,7 @@ namespace xdp {
 
       (db->getStats()).logHostRead(contextId, deviceId, size, transferTime) ;
     }
+    (db->getStaticInfo()).setNumDevices(contextId, numDevices) ;
   }
 
   static void counter_action_write(uint64_t contextId,
@@ -183,11 +185,12 @@ void log_compute_unit_execution(const char* cuName,
 
 extern "C"
 void counter_action_read(unsigned long int contextId,
+			 unsigned long int numDevices,
 			 const char* deviceName,
 			 unsigned long int size,
 			 bool isStart)
 {
-  xdp::counter_action_read(contextId, deviceName, size, isStart);
+  xdp::counter_action_read(contextId, numDevices, deviceName, size, isStart);
 }
 
 extern "C"

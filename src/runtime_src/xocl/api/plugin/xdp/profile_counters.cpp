@@ -38,7 +38,7 @@ namespace xocl {
     std::function<void (const char*, bool)> counter_kernel_execution_cb ;
     std::function<void (const char*, const char*, const char*, bool)> 
       counter_cu_execution_cb ;
-    std::function<void (unsigned long int, const char*, unsigned long int, bool)>
+    std::function<void (unsigned long int, unsigned long int, const char*, unsigned long int, bool)>
       counters_action_read_cb ;
     std::function<void (unsigned long int, const char*, unsigned long int, bool)>
       counters_action_write_cb ;
@@ -64,13 +64,14 @@ namespace xocl {
 	(cuetype)(xrt_core::dlsym(handle, "log_compute_unit_execution")) ;
       if (xrt_core::dlerror() != NULL) counter_cu_execution_cb = nullptr ;
       
-      typedef void (*atype)(unsigned long int, const char*, unsigned long int, bool) ;
+      typedef void (*atype)(unsigned long int, unsigned long int, const char*, unsigned long int, bool) ;
       counters_action_read_cb =
 	(atype)(xrt_core::dlsym(handle, "counter_action_read")) ;
       if (xrt_core::dlerror() != NULL) counters_action_read_cb = nullptr ;
       
+      typedef void (*wtype)(unsigned long int, const char*, unsigned long int, bool) ;
       counters_action_write_cb =
-	(atype)(xrt_core::dlsym(handle, "counter_action_write")) ;
+	(wtype)(xrt_core::dlsym(handle, "counter_action_write")) ;
       if (xrt_core::dlerror() != NULL) counters_action_write_cb = nullptr ;
       
       // For logging counter information for kernel executions
@@ -216,11 +217,16 @@ namespace xocl {
 
 	       auto queue = e->get_command_queue() ;
 	       uint64_t contextId = e->get_context()->get_uid() ;
+	       uint64_t numDevices = e->get_context()->num_devices() ;
 	       std::string deviceName = queue->get_device()->get_name() ;
+
+	       // I'm logging numDevices here because it has to be logged
+	       //  somewhere, although it really doesn't make much sense here
 
 	       if (status == CL_RUNNING)
 	       {
 		 counters_action_read_cb(contextId,
+					 numDevices,
 					 deviceName.c_str(),
 					 0,
 					 true);
@@ -228,6 +234,7 @@ namespace xocl {
 	       else if (status == CL_COMPLETE)
 	       {
 		 counters_action_read_cb(contextId,
+					 numDevices,
 					 deviceName.c_str(),
 					 xocl::xocl(buffer)->get_size(),
 					 false) ;
@@ -284,11 +291,13 @@ namespace xocl {
 
 		 auto queue = e->get_command_queue() ;
 		 uint64_t contextId = e->get_context()->get_uid() ;
+		 uint64_t numDevices = e->get_context()->num_devices() ;
 		 std::string deviceName = queue->get_device()->get_name() ;
 
 		 if (status == CL_RUNNING)
 		 {
 		   counters_action_read_cb(contextId,
+					   numDevices,
 					   deviceName.c_str(),
 					   0,
 					   true);
@@ -296,6 +305,7 @@ namespace xocl {
 		 else if (status == CL_COMPLETE)
 		 {
 		   counters_action_read_cb(contextId,
+					   numDevices,
 					   deviceName.c_str(),
 					   xocl::xocl(buffer)->get_size(),
 					   false) ;
@@ -335,7 +345,18 @@ namespace xocl {
     std::function<void (xocl::event*, cl_int, const std::string&)>
     counter_action_ndrange(cl_kernel kernel)
     {
-      return [](xocl::event*, cl_int, const std::string&) { } ;
+      return [](xocl::event* e, cl_int status, const std::string&) {} ;
+      /*
+	     { 
+	       if (!counter_action_ndrange_cb) return ;
+	       if (status != CL_RUNNING && status != CL_COMPLETE) return ;
+
+	       uint64_t contextId = e->get_context()->get_uid() ;
+	       std::string contextName = e->get_context()->get_name() ;
+	       uint64_t numDevices = e->get_context()->num_devices() ;
+	       
+	     } ;
+      */
       /*
       return [kernel](xocl::event* e, cl_int status, const std::string&)
 	     {

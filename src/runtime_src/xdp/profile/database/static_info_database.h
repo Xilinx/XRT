@@ -158,6 +158,7 @@ namespace xdp {
     // ***** OpenCL Information ******
     std::set<uint64_t> commandQueueAddresses ;
     std::set<std::string> enqueuedKernels ; 
+    std::map<uint64_t, uint64_t> contextIdToNumDevices ;
 
     /* Device Specific Information mapped to the Unique Device Id
      * Device Information contains :
@@ -194,6 +195,16 @@ namespace xdp {
       { return commandQueueAddresses ; }
     inline std::set<std::string>& getEnqueuedKernels()
       { return enqueuedKernels ; }
+    inline void setNumDevices(uint64_t contextId, uint64_t numDevices)
+    {
+      contextIdToNumDevices[contextId] = numDevices ;
+    }
+    inline uint64_t getNumDevices(uint64_t contextId)
+    {
+      if (contextIdToNumDevices.find(contextId) == contextIdToNumDevices.end())
+	return 0 ;
+      return contextIdToNumDevices[contextId] ;
+    }
 
     inline DeviceInfo* getDeviceInfo(uint64_t deviceId)
     {

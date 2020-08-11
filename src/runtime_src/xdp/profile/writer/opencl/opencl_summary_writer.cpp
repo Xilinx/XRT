@@ -432,9 +432,12 @@ namespace xdp {
 
     for (auto read : hostReads)
     {
+      std::string contextName = "context" + std::to_string(read.first.first) ;
+      uint64_t numDevices =
+	(db->getStaticInfo()).getNumDevices(read.first.first) ;
       if (getFlowMode() == HW_EMU)
       {
-	fout << "" << ":" << "" << "," // TODO
+	fout << contextName << ":" << numDevices << ","
 	     << "READ" << ","
 	     << (read.second).count << ","
 	     << "N/A" << ","
@@ -451,7 +454,7 @@ namespace xdp {
 	  (db->getStaticInfo()).getMaxReadBW(read.first.second) ;
 	double aveBWUtil = (100.0 * transferRate) / maxReadBW ;
 
-	fout << (read.first.first) << ":" << (read.first.second) << "," // TODO
+	fout << contextName << ":" << numDevices << ","
 	     << "READ" << ","
 	     << (read.second).count << ","
 	     << transferRate << ","
@@ -464,9 +467,13 @@ namespace xdp {
 
     for (auto write : hostWrites)
     {
+      std::string contextName = "context" + std::to_string(write.first.first) ;
+      uint64_t numDevices =
+	(db->getStaticInfo()).getNumDevices(write.first.first) ;
+
       if (getFlowMode() == HW_EMU)
       {
-	fout << "" << ":" << "" << "," // TODO
+	fout << contextName << ":" << numDevices << ","
 	     << "WRITE" << ","
 	     << (write.second).count << ","
 	     << "N/A" << ","
@@ -483,7 +490,7 @@ namespace xdp {
 	  (db->getStaticInfo()).getMaxWriteBW(write.first.second);
 	double aveBWUtil = (100.0 * transferRate) / maxWriteBW ;
 
-	fout << (write.first.first) << ":" << (write.first.second) << "," // TODO
+	fout << contextName << ":" << numDevices << "," 
 	     << "WRITE" << ","
 	     << (write.second).count << ","
 	     << transferRate << ","

@@ -22,6 +22,7 @@ void log_compute_unit_execution(const char* cuName,
 
 extern "C"
 void counter_action_read(unsigned long int contextId,
+			 unsigned long int numDevices,
 			 const char* deviceName,
 			 unsigned long int size,
 			 bool isStart) ;
