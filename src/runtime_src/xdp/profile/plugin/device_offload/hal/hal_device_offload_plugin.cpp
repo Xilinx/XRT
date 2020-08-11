@@ -186,7 +186,6 @@ namespace xdp {
 	(db->getStaticInfo()).setDeviceName(deviceId, std::string(info.mName));
       }
     }
-    //(db->getStaticInfo()).setDeviceName(deviceId, userHandle) ;
 
     // For the HAL level, we must create a device interface using 
     //  the xdp::HalDevice to communicate with the physical device
@@ -206,6 +205,11 @@ namespace xdp {
     configureTraceIP(devInterface) ;
     devInterface->clockTraining() ;
     devInterface->startCounters() ;
+
+    // Once the device has been set up, add additional information to 
+    //  the static database
+    (db->getStaticInfo()).setMaxReadBW(deviceId, devInterface->getMaxBwRead()) ;
+    (db->getStaticInfo()).setMaxWriteBW(deviceId, devInterface->getMaxBwWrite());
   }
   
 } // end namespace xdp

@@ -140,6 +140,8 @@ namespace xdp {
 
     DeviceInfo *devInfo = new DeviceInfo();
     devInfo->deviceId = deviceId ;
+    devInfo->maxReadBW = 0 ;
+    devInfo->maxWriteBW = 0 ;
     devInfo->clockRateMHz = 300;
     devInfo->platformInfo.kdmaCount = 0;
 

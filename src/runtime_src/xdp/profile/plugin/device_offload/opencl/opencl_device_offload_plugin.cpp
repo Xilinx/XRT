@@ -184,6 +184,11 @@ namespace xdp {
     if (getFlowMode() == HW || getFlowMode() == HW_EMU)
       devInterface->clockTraining() ;
     devInterface->startCounters() ;
+
+    // Once the device has been set up, add additional information to 
+    //  the static database
+    (db->getStaticInfo()).setMaxReadBW(deviceId, devInterface->getMaxBwRead()) ;
+    (db->getStaticInfo()).setMaxWriteBW(deviceId, devInterface->getMaxBwWrite());
   }
   
 } // end namespace xdp

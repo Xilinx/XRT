@@ -126,6 +126,8 @@ namespace xdp {
 
   struct DeviceInfo {
     uint64_t deviceId ;
+    double maxReadBW ;
+    double maxWriteBW ;
     double clockRateMHz;
     struct PlatformInfo platformInfo;
     std::string loadedXclbin;
@@ -232,6 +234,31 @@ namespace xdp {
         return 0;
       return deviceInfo[deviceId]->platformInfo.kdmaCount; 
     }
+
+    void setMaxReadBW(uint64_t deviceId, double bw)
+    {
+      if (deviceInfo.find(deviceId) == deviceInfo.end()) return ;
+      deviceInfo[deviceId]->maxReadBW = bw ;
+    }
+
+    double getMaxReadBW(uint64_t deviceId)
+    {
+      if (deviceInfo.find(deviceId) == deviceInfo.end()) return 0 ;
+      return deviceInfo[deviceId]->maxReadBW ;
+    }
+
+    void setMaxWriteBW(uint64_t deviceId, double bw)
+    {
+      if (deviceInfo.find(deviceId) == deviceInfo.end()) return ;
+      deviceInfo[deviceId]->maxWriteBW = bw ;
+    }
+
+    double getMaxWriteBW(uint64_t deviceId)
+    {
+      if (deviceInfo.find(deviceId) == deviceInfo.end()) return 0 ;
+      return deviceInfo[deviceId]->maxWriteBW ;
+    }
+
 #if 0
     uuid getXclbinUUID(uint64_t deviceId) { 
       if(deviceInfo.find(deviceId) == deviceInfo.end())

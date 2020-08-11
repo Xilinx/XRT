@@ -1,3 +1,18 @@
+/**
+ * Copyright (C) 2016-2020 Xilinx, Inc
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may
+ * not use this file except in compliance with the License. A copy of the
+ * License is located at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ */
 
 #define XDP_SOURCE
 
@@ -420,11 +435,14 @@ namespace xdp {
       double transferRate = 
 	(double)((read.second).totalSize) / (double)((read.second).totalTime) ;
 
-      fout << (read.first.first) << ":" << (read.first.second) << ","
+      double maxReadBW = (db->getStaticInfo()).getMaxReadBW(read.first.second);
+      double aveBWUtil = (100.0 * transferRate) / maxReadBW ;
+
+      fout << (read.first.first) << ":" << (read.first.second) << "," // TODO
 	   << "READ" << ","
 	   << (read.second).count << ","
 	   << transferRate << ","
-	   << 0 << "," // TODO
+	   << aveBWUtil << ","
 	   << (read.second).averageSize << ","
 	   << (read.second).totalTime << ","
 	   << (read.second).averageTime << std::endl ;	
@@ -435,11 +453,15 @@ namespace xdp {
       double transferRate = 
 	(double)((write.second).totalSize) / (double)((write.second).totalTime);
 
-      fout << (write.first.first) << ":" << (write.first.second) << ","
+      double maxWriteBW =
+	(db->getStaticInfo()).getMaxWriteBW(write.first.second);
+      double aveBWUtil = (100.0 * transferRate) / maxWriteBW ;
+
+      fout << (write.first.first) << ":" << (write.first.second) << "," // TODO
 	   << "WRITE" << ","
 	   << (write.second).count << ","
 	   << transferRate << ","
-	   << 0 << "," // TODO
+	   << aveBWUtil << ","
 	   << (write.second).averageSize << ","
 	   << (write.second).totalTime << ","
 	   << (write.second).averageTime << std::endl ;
