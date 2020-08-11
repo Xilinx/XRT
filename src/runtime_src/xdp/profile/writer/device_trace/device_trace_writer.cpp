@@ -107,7 +107,7 @@ namespace xdp {
           // KERNEL_WRITE
           fout << "Group_Start,Write,Write data transfers between " << cuName << " and Global Memory" << std::endl;
           fout << "Static_Row," << (rowCount + KERNEL_WRITE - KERNEL) << ",M_AXI_GMEM-MEMORY (port_names)," << "Write Data Transfers " << std::endl;
-          fout << "Group_End,Read" << std::endl;
+          fout << "Group_End,Write" << std::endl;
         }
 
         if(cu->streamEnabled()) {
@@ -136,7 +136,6 @@ namespace xdp {
 
     if((db->getStaticInfo()).hasFloatingAIM(deviceId)) {
       fout << "Group_Start,AXI Memory Monitors,Read/Write data transfers over AXI Memory Mapped connection " << std::endl;
-      floatingAIMStartingRow = ++rowCount;
       std::vector<Monitor*> *aimList = (db->getStaticInfo()).getAIMonitors(deviceId);
       for(size_t i = 0; i < aimList->size() ; i++) {
         Monitor* aim = aimList->at(i);
@@ -149,16 +148,18 @@ namespace xdp {
         if(0 == aim->name.substr(0, pos).compare("shell")) {
           continue;
         }
-        // add stall , starve
-        fout << "Static_Row," << (rowCount + i) << "," << aim->name << std::endl;
+        aimBucketIdMap[i] = ++rowCount;
+        fout << "Group_Start," << aim->name  << " AXI Memory Monitor,Read/Write data transfers over AXI Memory Mapped " << aim->name << std::endl;
+        fout << "Static_Row,"  << rowCount   << ",Read transfers,Read transfers for "  << aim->name << std::endl;
+        fout << "Static_Row,"  << ++rowCount << ",Write transfers,Write transfers for " << aim->name << std::endl;
+        fout << "Group_End,"   << aim->name  << " AXI Memory Monitor" << std::endl ;
       }
       fout << "Group_End,AXI Memory Monitors" << std::endl ;
-      rowCount = floatingAIMStartingRow + aimList->size();
     }
 
     if((db->getStaticInfo()).hasFloatingASM(deviceId)) {
       fout << "Group_Start,AXI Stream Monitors,Data transfers over AXI Stream connection " << std::endl;
-      floatingASMStartingRow = ++rowCount;
+//      floatingASMStartingRow = ++rowCount;
       std::vector<Monitor*> *asmList = (db->getStaticInfo()).getASMonitors(deviceId);
       for(size_t i = 0; i < asmList->size() ; i++) {
         Monitor* asM = asmList->at(i);
@@ -171,11 +172,36 @@ namespace xdp {
         if(0 == asM->name.substr(0, pos).compare("shell")) {
           continue;
         }
+        asmBucketIdMap[i] = ++rowCount;
+        fout << "Group_Start," << asM->name << " AXI Stream Monitor,Read/Write data transfers over AXI Stream " << asM->name << std::endl;
+        fout << "Static_Row,"  << (rowCount + KERNEL_STREAM_READ - KERNEL_STREAM_READ) << ",Stream Read,AXI Stream Read transaction over " << asM->name << std::endl;
+        fout << "Static_Row,"  << (rowCount + KERNEL_STREAM_READ_STALL - KERNEL_STREAM_READ) << ",Read Stall,Stall during read over " << asM->name << std::endl;
+        fout << "Static_Row,"  << (rowCount + KERNEL_STREAM_READ_STARVE - KERNEL_STREAM_READ) << ",Read Starve,Starve during write over " << asM->name << std::endl;
+        fout << "Static_Row,"  << (rowCount + KERNEL_STREAM_WRITE - KERNEL_STREAM_READ) << ",Stream Write,AXI Stream Write transaction over "  << asM->name << std::endl;
+        fout << "Static_Row,"  << (rowCount + KERNEL_STREAM_WRITE_STALL - KERNEL_STREAM_READ) << ",Write Stall,Stall during write over " << asM->name << std::endl;
+        fout << "Static_Row,"  << (rowCount + KERNEL_STREAM_WRITE_STARVE - KERNEL_STREAM_READ) << ",Write Starve,Starve during write over " << asM->name << std::endl;
+        fout << "Group_End,"   << asM->name << " AXI Stream Monitor" << std::endl;
+        rowCount += (KERNEL_STREAM_WRITE_STARVE - KERNEL_STREAM_READ);
+#if 0
+        fout << "Group_Start,Stream Read,Read AXI Stream transaction on " << asM->name << std::endl;
+        fout << "Group_Row_Start," << (rowCount + KERNEL_STREAM_READ - KERNEL_STREAM_READ) << ",stream port, ,Read AXI Stream transaction for " << asM->name << std::endl;
+        fout << "Static_Row," << (rowCount + KERNEL_STREAM_READ_STALL - KERNEL_STREAM_READ) << ",Link Stall" << std::endl;
+        fout << "Static_Row," << (rowCount + KERNEL_STREAM_READ_STARVE - KERNEL_STREAM_READ) << ",Link Starve" << std::endl;
+        fout << "Group_End,Row Read" << std::endl;
+        fout << "Group_End,Stream Read" << std::endl;
+        fout << "Group_Start,Stream Write,Write AXI Stream transaction on " << asM->name << std::endl;
+        fout << "Group_Row_Start," << (rowCount + KERNEL_STREAM_WRITE - KERNEL_STREAM_READ) << ",stream port, ,Write AXI Stream transaction for "  << asM->name << std::endl;
+        fout << "Static_Row," << (rowCount + KERNEL_STREAM_WRITE_STALL - KERNEL_STREAM_READ) << ",Link Stall" << std::endl;
+        fout << "Static_Row," << (rowCount + KERNEL_STREAM_WRITE_STARVE - KERNEL_STREAM_READ) << ",Link Starve" << std::endl;
+        fout << "Group_End,Row Write" << std::endl;
+        fout << "Group_End,Stream Write" << std::endl;
+	rowCount += (KERNEL_STREAM_WRITE_STARVE - KERNEL_STREAM_READ);
+#endif
         // add stall , starve
-        fout << "Static_Row," << (rowCount + i) << "," << asM->name << std::endl;
+//        fout << "Static_Row," << (rowCount + i) << "," << asM->name << std::endl;
       }
       fout << "Group_End,AXI Stream Monitors" << std::endl ;
-      rowCount = floatingASMStartingRow + asmList->size();
+//      rowCount = floatingASMStartingRow + asmList->size();
     }
 
     fout << "Group_End," << xclbinName << std::endl ;
@@ -206,12 +232,12 @@ namespace xdp {
         uint32_t monId = deviceEvent->getMonitorId();
         DeviceMemoryAccess* memoryEvent = dynamic_cast<DeviceMemoryAccess*>(e);
         if(memoryEvent) {
-          deviceEvent->dump(fout, floatingAIMStartingRow + monId);
+          deviceEvent->dump(fout, aimBucketIdMap[monId] + deviceEvent->getEventType() - KERNEL_READ);
           continue;
         }
         DeviceStreamAccess* streamEvent = dynamic_cast<DeviceStreamAccess*>(e);
         if(streamEvent) {
-          deviceEvent->dump(fout, floatingASMStartingRow + monId);
+          deviceEvent->dump(fout, asmBucketIdMap[monId] + deviceEvent->getEventType() - KERNEL_STREAM_READ);
           continue;
         }
         // host read/write ??
