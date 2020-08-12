@@ -639,6 +639,18 @@ static struct xocl_subdev_map subdev_map[] = {
 		.build_priv_data = p2p_build_priv,
 		.devinfo_cb = NULL,
 	},
+	{
+		.id = XOCL_SUBDEV_UARTLITE,
+		.dev_name = XOCL_UARTLITE,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_ERT_UARTLITE},
+			{NULL},
+		},
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = NULL,
+		.devinfo_cb = NULL,
+	},
 };
 
 /*

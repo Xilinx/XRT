@@ -24,6 +24,11 @@
 #include <unistd.h>
 #endif
 
+#ifdef _WIN32
+#pragma warning (disable : 4996 4267)
+/* 4267 : Disable warning for conversion of size_t to int32_t */
+#endif
+
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/xml_parser.hpp>
@@ -296,7 +301,7 @@ namespace xdp {
       ComputeUnitInstance* cuObj = nullptr;
       // find CU
       if(debugIpData->m_type == ACCEL_MONITOR) {
-		for(auto cu : devInfo->cus) {
+        for(auto cu : devInfo->cus) {
           if(0 == name.compare(cu.second->getName())) {
             cuObj = cu.second;
             cuId = cu.second->getIndex();
@@ -310,7 +315,7 @@ namespace xdp {
         }
         if(mon) { devInfo->amList.push_back(mon); }
       } else if(debugIpData->m_type == AXI_MM_MONITOR) {
-		// parse name to find CU Name and Memory
+        // parse name to find CU Name and Memory
         size_t pos = name.find('/');
         std::string monCuName = name.substr(0, pos);
 
@@ -318,14 +323,14 @@ namespace xdp {
         std::string memName = name.substr(pos+1);
 
         int32_t memId = -1;
-		for(auto cu : devInfo->cus) {
+        for(auto cu : devInfo->cus) {
           if(0 == monCuName.compare(cu.second->getName())) {
             cuId = cu.second->getIndex();
             cuObj = cu.second;
             break;
           }
         }
-		for(auto mem : devInfo->memoryInfo) {
+        for(auto mem : devInfo->memoryInfo) {
           if(0 == memName.compare(mem.second->name)) {
             memId = mem.second->index;
             break;
@@ -335,14 +340,16 @@ namespace xdp {
         if(cuObj) {
           cuObj->addMonitor(mon);
           cuObj->setDataTransferEnabled(true);
+        } else if(0 != monCuName.compare("shell")) {
+          // If not connected to CU and not a shell monitor, then a floating monitor
+          devInfo->hasFloatingAIM = true;
         }
         devInfo->aimList.push_back(mon);
       } else if(debugIpData->m_type == AXI_STREAM_MONITOR) {
         // associate with the first CU
         size_t pos = name.find('/');
         std::string monCuName = name.substr(0, pos);
-
-		for(auto cu : devInfo->cus) {
+        for(auto cu : devInfo->cus) {
           if(0 == monCuName.compare(cu.second->getName())) {
             cuId = cu.second->getIndex();
             cuObj = cu.second;
@@ -352,10 +359,13 @@ namespace xdp {
         mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId);
         if(debugIpData->m_properties & 0x2) {
           mon->isRead = true;
-     	}
+        }
         if(cuObj) {
           cuObj->addMonitor(mon);
-          cuObj->setDataTransferEnabled(true);
+          cuObj->setStreamEnabled(true);
+        } else if(0 != monCuName.compare("shell")) {
+          // If not connected to CU and not a shell monitor, then a floating monitor
+          devInfo->hasFloatingASM = true;
         }
         devInfo->asmList.push_back(mon);
       } else {

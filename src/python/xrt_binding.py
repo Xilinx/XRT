@@ -28,6 +28,7 @@ libcore = ctypes.CDLL(os.environ['XILINX_XRT'] + "/lib/libxrt_core.so", mode=cty
 libcoreutil = ctypes.CDLL(os.environ['XILINX_XRT'] + "/lib/libxrt_coreutil.so", mode=ctypes.RTLD_GLOBAL)
 
 xclDeviceHandle = ctypes.c_void_p
+xrtDeviceHandle = ctypes.c_void_p
 xrtKernelHandle = ctypes.c_void_p
 xrtRunHandle = ctypes.c_void_p
 xrtKernelRunHandle = ctypes.c_void_p
@@ -942,6 +943,38 @@ def xclDebugReadIPStatus(handle, type, debugResults):
     libcore.xclDebugReadIPStatus.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_void_p]
     return libcore.xclDebugReadIPStatus(handle, type, debugResults)
 
+def xrtDeviceOpen(deviceIndex):
+    """
+    xrtDeviceOpen(): Open a device and obtain its xrt device handle
+
+    :param deviceIndex: (unsigned int) Slot number of device 0 for first device, 1 for the second device...
+    """
+    libcoreutil.xrtDeviceOpen.restype = ctypes.POINTER(xrtDeviceHandle)
+    libcoreutil.xrtDeviceOpen.argTypes = [ctypes.c_uint]
+    return _valueOrError(libcoreutil.xrtDeviceOpen(deviceIndex))
+
+def xrtDeviceClose(handle):
+    """
+    xrtDeviceClose(): Close an device handle opened with xrtDeviceOpen()
+
+    :param handle: XRT device handle
+    :return: 0 on success or appropriate error number
+    """
+    libcoreutil.xrtDeviceClose.restype = ctypes.c_int
+    libcoreutil.xrtDeviceClose.argTypes = [xrtDeviceHandle]
+    return _valueOrError(libcoreutil.xrtDeviceClose(handle))
+
+def xrtDeviceToXclDevice(handle):
+    """
+    Convert xrt device handle to xcl device handle for shim level APIs
+
+    :param handle: XRT device handle
+    :return: XCL device handle
+    """
+    libcoreutil.xrtDeviceToXclDevice.restype = ctypes.POINTER(xclDeviceHandle)
+    libcoreutil.xrtDeviceToXclDevice.argtypes = [xrtDeviceHandle]
+    return _valueOrError(libcoreutil.xrtDeviceToXclDevice(handle))
+    
 def xrtPLKernelOpen(handle, xclbinId, name):
     """
     Open a PL kernel and obtain its handle
