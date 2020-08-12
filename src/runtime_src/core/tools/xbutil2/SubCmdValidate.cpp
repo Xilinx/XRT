@@ -27,6 +27,7 @@
 #include "tools/common/XBHelpMenus.h"
 #include "core/tools/common/ProgressBar.h"
 #include "core/tools/common/EscapeCodes.h"
+#include "core/tools/common/Process.h"
 #include "core/common/query_requests.h"
 #include "core/pcie/common/dmatest.h"
 namespace XBU = XBUtilities;
@@ -39,21 +40,17 @@ namespace XBU = XBUtilities;
 #include <boost/format.hpp>
 #include <boost/any.hpp>
 namespace po = boost::program_options;
-#ifndef BOOST_PRE_1_64
-#include <boost/process.hpp>
-#endif
+// #ifndef BOOST_PRE_1_64
+// #include <boost/process.hpp>
+// #endif
 
 // System - Include Files
 #include <iostream>
+#include <sstream>
 #include <thread>
 #include <regex>
 
-#ifdef _WIN32
-#pragma warning (disable : 4996)
-/* Disable warning for use of getenv */
-#pragma warning (disable : 4996 4100 4505)
-/* disable unrefenced params and local functions - Remove these warnings asap*/
-#endif
+
 
 // =============================================================================
 
@@ -118,188 +115,15 @@ programXclbin(const std::shared_ptr<xrt_core::device>& _dev, const std::string& 
   }
 }
 
-inline const char* 
-getenv_or_empty(const char* path)
-{
-  return getenv(path) ? getenv(path) : "";
-}
 
-static void 
-setShellPathEnv(const std::string& var_name, const std::string& trailing_path)
-{
-  std::string xrt_path(getenv_or_empty("XILINX_XRT"));
-  std::string new_path(getenv_or_empty(var_name.c_str()));
-  xrt_path += trailing_path + ":";
-  new_path = xrt_path + new_path;
-#ifdef __GNUC__
-  setenv(var_name.c_str(), new_path.c_str(), 1);
-#endif
-}
 
-static void 
-testCaseProgressReporter(std::shared_ptr<XBU::ProgressBar> run_test, bool& is_done)
-{
-  int counter = 0;
-  while(counter < 60 && !is_done) {
-    run_test.get()->update(counter);
-    counter++;
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-  }
-}
+
+
 
 /*
  * run standalone testcases in a fork
  */
-void
-runShellCmd(const std::string& cmd, boost::property_tree::ptree& _ptTest)
-{
-#ifdef __GNUC__
-  // Fix environment variables before running test case
-  setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
-  setShellPathEnv("PYTHONPATH", "/python");
-  setShellPathEnv("LD_LIBRARY_PATH", "/lib");
-  setShellPathEnv("PATH", "/bin");
-  unsetenv("XCL_EMULATION_MODE");
 
-  int stderr_fds[2];
-  if (pipe(stderr_fds)== -1) {
-    logger(_ptTest, "Error", "Unable to create pipe");
-    _ptTest.put("status", "failed");
-    return;
-  }
-
-  // Save stderr
-  int stderr_save = dup(STDERR_FILENO);
-  if (stderr_save == -1) {
-    logger(_ptTest, "Error", "Unable to duplicate stderr");
-    _ptTest.put("status", "failed");
-    return;
-  }
-
-  // Kick off progress reporter
-  bool is_done = false;
-  //bandwidth testcase takes up-to a min to run
-  auto run_test = std::make_shared<XBU::ProgressBar>("Running Test", 60, XBU::is_esc_enabled(), std::cout); 
-  std::thread t(testCaseProgressReporter, run_test, std::ref(is_done));
-
-  // Close existing stderr and set it to be the write end of the pipe.
-  // After fork below, our child process's stderr will point to the same fd.
-  dup2(stderr_fds[1], STDERR_FILENO);
-  close(stderr_fds[1]);
-  std::shared_ptr<FILE> stderr_child(fdopen(stderr_fds[0], "r"), fclose);
-  std::shared_ptr<FILE> stdout_child(popen(cmd.c_str(), "r"), pclose);
-  // Restore our normal stderr
-  dup2(stderr_save, STDERR_FILENO);
-  close(stderr_save);
-
-  if (stdout_child == nullptr) {
-    logger(_ptTest, "Error", boost::str(boost::format("Failed to run %s") % cmd));
-    _ptTest.put("status", "failed");
-    return;
-  }
-
-  std::string output = "\n\n";
-  // Read child's stdout and stderr without parsing the content
-  char buf[1024];
-  while (!feof(stdout_child.get())) {
-    if (fgets(buf, sizeof (buf), stdout_child.get()) != nullptr) {
-      output += buf;
-    }
-  }
-  while (stderr_child && !feof(stderr_child.get())) {
-    if (fgets(buf, sizeof (buf), stderr_child.get()) != nullptr) {
-      output += buf;
-    }
-  }
-  is_done = true;
-  if (output.find("PASS") == std::string::npos) {
-    run_test.get()->finish(false, "");
-    logger(_ptTest, "Error", output);
-    _ptTest.put("status", "failed");
-  } 
-  else {
-    run_test.get()->finish(true, "");
-    _ptTest.put("status", "passed");
-  }
-  std::cout << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().clear_line();
-  t.join();
-
-  // Get out max thruput for bandwidth testcase
-  size_t st = output.find("Maximum");
-  if (st != std::string::npos) {
-    size_t end = output.find("\n", st);
-    logger(_ptTest, "Details", output.substr(st, end - st));
-  }
-#endif
-}
-
-static unsigned int
-runPythonScript( const std::string & script, 
-                 const std::vector<std::string> & args,
-                 std::ostringstream & os_stdout,
-                 std::ostringstream & os_stderr)
-{
-#ifndef BOOST_PRE_1_64
-  // Find the python executable
-  boost::filesystem::path pythonAbsPath = boost::process::search_path("py");  
-  if (pythonAbsPath.string().empty()) 
-    pythonAbsPath = boost::process::search_path("python");   
-
-  if (pythonAbsPath.string().empty()) 
-    throw std::runtime_error("Error: Python executable not found in search path.");
-
-  // Make sure the script exists
-  if ( !boost::filesystem::exists( script ) ) {
-    std::string errMsg = (boost::format("Error: Given python script does not exist: '%s'") % script).str();
-    throw std::runtime_error(errMsg);
-  }
-
-  // Build the python arguments
-  std::vector<std::string> cmdArgs;
-  cmdArgs.push_back(script);
-
-  // Add the user arguments
-  cmdArgs.insert(cmdArgs.end(), args.begin(), args.end());
-
-  // Build the environment variables
-  // Copy the existing environment
-  boost::process::environment env = boost::this_process::environment();
-  env.erase("XCL_EMULATION_MODE");
-
-  // Please fix: Should be a busy bar and NOT a progress bar
-  XBU::ProgressBar run_test("Running Test", 60, XBU::is_esc_enabled(), std::cout); 
-
-  // Execute the python script and capture the outputs
-  boost::process::ipstream ip_stdout;
-  boost::process::ipstream ip_stderr;
-  boost::process::child runningProcess( pythonAbsPath, 
-                                        cmdArgs, 
-                                        boost::process::std_out > ip_stdout,
-                                        boost::process::std_err > ip_stderr,
-                                        env);
-
-  // Wait for the process to finish and update the busy bar
-  unsigned int counter = 0;
-  while (runningProcess.running()) {
-    run_test.update(counter++);
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-  }
-
-  // Not really needed, but should be added for completeness 
-  runningProcess.wait();
-
-  // Obtain the exit code from the running process
-  int exitCode = runningProcess.exit_code();
-  run_test.finish(exitCode == 0 /*Success or failure*/, "Test duration:");
-
-  // Update the return buffers
-  os_stdout << ip_stdout.rdbuf();
-  os_stderr << ip_stderr.rdbuf();
-
-  return exitCode;
-#endif
-return 0;
-}
 
 /*
  * search for xclbin for an SSV2 platform
@@ -445,24 +269,24 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
       return;
     
     //run testcase in a fork
-    std::string cmd = "/usr/bin/python " + xrtTestCasePath + " -k " + xclbinPath + " -d " + 
-                        std::to_string(_dev.get()->get_device_id());
+    // std::string cmd = "/usr/bin/python " + xrtTestCasePath + " -k " + xclbinPath + " -d " + 
+    //                     std::to_string(_dev.get()->get_device_id());
     
-    #ifndef BOOST_PRE_1_64
+    // #ifndef BOOST_PRE_1_64
     std::vector<std::string> args = { " -k ", xclbinPath, " -d ", std::to_string(_dev.get()->get_device_id()) };
     std::ostringstream os_stdout;
     std::ostringstream os_stderr;
-    int exit_code = runPythonScript(xrtTestCasePath, args, os_stdout, os_stderr);
+    int exit_code = XBU::runPythonScript(xrtTestCasePath, args, os_stdout, os_stderr);
     if (exit_code != 0) {
-      logger(_ptTest, "Error", os_stdout);
+      logger(_ptTest, "Error", os_stdout.str());
       _ptTest.put("status", "failed");
     } 
     else {
       _ptTest.put("status", "passed");
     }
-    #else
-    runShellCmd(cmd, _ptTest);
-    #endif
+    // #else
+    // runShellCmd(cmd, _ptTest);
+    // #endif
 }
 
 /*
