@@ -98,7 +98,7 @@ namespace xdp {
 
         // TEMPORARY: Larry is making AIE array available when xclbin gets loaded  
         if (!aieArray) {
-          aieArray = new Aie(device);
+          aieArray = new zynqaie::Aie(device);
           drv->setAieArray(aieArray);
         }
 
