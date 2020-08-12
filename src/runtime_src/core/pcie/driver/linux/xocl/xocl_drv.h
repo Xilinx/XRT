@@ -1072,15 +1072,17 @@ struct xocl_mailbox_funcs {
 
 struct xocl_clock_funcs {
 	struct xocl_subdev_funcs common_funcs;
-	int (*freq_scaling)(struct platform_device *pdev, bool force);
 	int (*get_freq)(struct platform_device *pdev, unsigned int region,
 		unsigned short *freqs, int num_freqs);
 	int (*get_freq_by_id)(struct platform_device *pdev, unsigned int region,
 		unsigned short *freq, int id);
 	int (*get_freq_counter_khz)(struct platform_device *pdev,
 		unsigned int *value, int id);
-	int (*update_freq)(struct platform_device *pdev,
+	int (*freq_rescaling)(struct platform_device *pdev, bool force);
+	int (*freq_scaling_by_request)(struct platform_device *pdev,
 		unsigned short *freqs, int num_freqs, int verify);
+	int (*freq_scaling_by_topo)(struct platform_device *pdev,
+		struct clock_freq_topology *topo, int verify);
 	int (*clock_status)(struct platform_device *pdev, bool *latched);
 	uint64_t (*get_data)(struct platform_device *pdev, enum data_kind kind);
 };
@@ -1110,11 +1112,11 @@ static inline int xocl_clock_ops_level(xdev_handle_t xdev)
 	(__idx >= 0 ? (CLOCK_DEV_INFO(xdev, __idx).level) : -ENODEV); 	\
 })
 
-#define	xocl_clock_freqscaling(xdev, force)					\
+#define	xocl_clock_freq_rescaling(xdev, force)					\
 ({ \
 	int __idx = xocl_clock_ops_level(xdev);					\
-	(CLOCK_CB(xdev, __idx, freq_scaling) ?					\
-	CLOCK_OPS(xdev, __idx)->freq_scaling(CLOCK_DEV(xdev, __idx), force) :	\
+	(CLOCK_CB(xdev, __idx, freq_rescaling) ?				\
+	CLOCK_OPS(xdev, __idx)->freq_rescaling(CLOCK_DEV(xdev, __idx), force) :	\
 	-ENODEV); \
 })
 #define	xocl_clock_get_freq(xdev, region, freqs, num_freqs)		\
@@ -1138,12 +1140,19 @@ static inline int xocl_clock_ops_level(xdev_handle_t xdev)
 	CLOCK_OPS(xdev, __idx)->get_freq_counter_khz(CLOCK_DEV(xdev, __idx), value, id) : \
 	-ENODEV); \
 })
-#define	xocl_clock_update_freq(xdev, freqs, num_freqs, verify) \
+#define	xocl_clock_freq_scaling_by_request(xdev, freqs, num_freqs, verify) \
 ({ \
 	int __idx = xocl_clock_ops_level(xdev);				\
-	(CLOCK_CB(xdev, __idx, update_freq) ?				\
-	CLOCK_OPS(xdev, __idx)->update_freq(CLOCK_DEV(xdev, __idx), freqs, num_freqs, verify) : \
-	-ENODEV); \
+	(CLOCK_CB(xdev, __idx, freq_scaling_by_request) ?		\
+	CLOCK_OPS(xdev, __idx)->freq_scaling_by_request(		\
+	    CLOCK_DEV(xdev, __idx), freqs, num_freqs, verify) : -ENODEV); \
+})
+#define	xocl_clock_freq_scaling_by_topo(xdev, topo, verify) \
+({ \
+	int __idx = xocl_clock_ops_level(xdev);				\
+	(CLOCK_CB(xdev, __idx, freq_scaling_by_topo) ?		\
+	CLOCK_OPS(xdev, __idx)->freq_scaling_by_topo(		\
+	    CLOCK_DEV(xdev, __idx), topo, verify) : -ENODEV); \
 })
 #define	xocl_clock_status(xdev, latched)				\
 ({ \
