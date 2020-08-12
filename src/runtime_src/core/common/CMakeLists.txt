@@ -27,6 +27,13 @@ file(GLOB XRT_CORE_COMMON_LIB_FILES
   "api/*.cpp"
   )
 
+if (DEFINED XRT_AIE_BUILD)
+  file(GLOB XRT_CORE_COMMON_AIE_LIB_FILES
+    "api/aie/*.cpp"
+    )
+  list(APPEND XRT_CORE_COMMON_LIB_FILES ${XRT_CORE_COMMON_AIE_LIB_FILES})
+endif()
+
 # Files to include in object list
 file(GLOB XRT_CORE_COMMON_OBJ_FILES
   "scheduler.*"

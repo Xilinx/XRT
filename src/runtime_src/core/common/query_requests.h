@@ -84,6 +84,7 @@ enum class key_type
 
   status_mig_calibrated,
   status_p2p_enabled,
+  p2p_config,
 
   temp_card_top_front,
   temp_card_top_rear,
@@ -148,6 +149,8 @@ enum class key_type
   firewall_status,
   firewall_time_sec,
   power_microwatts,
+  host_mem_size, 
+  kds_numcdmas,
 
   mig_ecc_enabled,
   mig_ecc_status,
@@ -744,6 +747,23 @@ struct status_p2p_enabled : request
   to_string(result_type value)
   {
     return value ? "true" : "false";
+  }
+};
+
+struct p2p_config : request
+{
+  using result_type = std::vector<std::string>;
+  static const key_type key = key_type::p2p_config;
+  static const char* name() { return "p2p_config"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  // formatting of individual items for the vector
+  static std::string
+  to_string(const std::string& value)
+  {
+    return value;
   }
 };
 
@@ -1533,6 +1553,38 @@ struct power_microwatts : request
   to_string(result_type value)
   {
     return std::to_string(value);
+  }
+};
+
+struct host_mem_size : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::host_mem_size;
+  static const char* name() { return "host_mem_size"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type val)
+  {
+    return std::to_string(val);
+  }
+};
+
+struct kds_numcdmas : request
+{
+  using result_type = uint32_t;
+  static const key_type key = key_type::kds_numcdmas;
+  static const char* name() { return "kds_numcdmas"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type val)
+  {
+    return std::to_string(val);
   }
 };
 

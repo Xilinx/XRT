@@ -520,10 +520,9 @@ public:
         dev->sysfs_get("", "memstat_raw", errmsg, mm_buf);
         dev->sysfs_get("xmc", "temp_by_mem_topology", errmsg, temp_buf);
  
-	std::cout << "Total number id temp : " << temp_buf.size() << std::endl;
         const mem_topology *map = (mem_topology *)buf.data();
         const uint32_t *temp = (uint32_t *)temp_buf.data();
-	const int temp_size = (uint32_t)temp_buf.size()/sizeof(uint32_t);
+        const int temp_size = (uint32_t)temp_buf.size()/sizeof(uint32_t);
 
         if(buf.empty() || mm_buf.empty())
             return;

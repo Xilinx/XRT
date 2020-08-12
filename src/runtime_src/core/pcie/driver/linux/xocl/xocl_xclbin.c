@@ -27,7 +27,7 @@ static int versal_xclbin_pre_download(xdev_handle_t xdev, void *args)
 {
 	struct xclbin_arg *arg = (struct xclbin_arg *)args;
 	struct axlf *xclbin = arg->xclbin;
-	void *metadata = NULL;	
+	void *metadata = NULL;
 	uint64_t size;
 	int ret = 0;
 
@@ -48,9 +48,16 @@ static int versal_xclbin_pre_download(xdev_handle_t xdev, void *args)
 static int versal_xclbin_download(xdev_handle_t xdev, void *args)
 {
 	struct xclbin_arg *arg = (struct xclbin_arg *)args;
+	struct axlf *xclbin = arg->xclbin;
 	int ret = 0;
 
 	BUG_ON(!arg->xclbin);
+
+	if (xclbin->m_header.m_mode == XCLBIN_FLAT) {
+		xocl_info(&XDEV(xdev)->pdev->dev,
+		    "xclbin is generated for flat shell, dont need to load PDI");
+		return ret;
+	}
 
 	xocl_axigate_freeze(xdev, XOCL_SUBDEV_LEVEL_PRP);
 
