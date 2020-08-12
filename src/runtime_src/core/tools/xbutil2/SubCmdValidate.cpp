@@ -16,11 +16,6 @@
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
-#define WIN32_LEAN_AND_MEAN
-#ifdef _WIN32
-#pragma warning (disable : 4244)
-#endif
-
 #include "SubCmdValidate.h"
 #include "tools/common/ReportHost.h"
 #include "tools/common/XBUtilities.h"
@@ -40,9 +35,6 @@ namespace XBU = XBUtilities;
 #include <boost/format.hpp>
 #include <boost/any.hpp>
 namespace po = boost::program_options;
-// #ifndef BOOST_PRE_1_64
-// #include <boost/process.hpp>
-// #endif
 
 // System - Include Files
 #include <iostream>
@@ -50,6 +42,10 @@ namespace po = boost::program_options;
 #include <thread>
 #include <regex>
 
+#ifdef _WIN32
+#pragma warning (disable : 4996 4100 4505)
+/* disable unrefenced params and local functions - Remove these warnings asap*/
+#endif
 
 
 // =============================================================================

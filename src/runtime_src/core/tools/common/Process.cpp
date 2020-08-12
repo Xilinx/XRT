@@ -15,6 +15,11 @@
  */
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
+#define WIN32_LEAN_AND_MEAN
+#ifdef _WIN32
+#pragma warning (disable : 4244)
+#endif
+
 // Local - Include Files
 #include "ProgressBar.h"
 #include "EscapeCodes.h"
@@ -109,7 +114,7 @@ runPythonScript( const std::string & script,
   env.erase("XCL_EMULATION_MODE");
 
   // Please fix: Should be a busy bar and NOT a progress bar
-  ProgressBar::ProgressBar run_test("Running Test", 60, XBUtilities::is_esc_enabled(), std::cout); 
+  ProgressBar run_test("Running Test", 60, XBUtilities::is_esc_enabled(), std::cout); 
 
   // Execute the python script and capture the outputs
   boost::process::ipstream ip_stdout;
