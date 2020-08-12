@@ -42,12 +42,14 @@
 static inline void flq_free_one(struct qdma_sw_sg *sdesc,
 					struct qdma_c2h_desc *desc)
 {
+	if (!sdesc)
+		return;
 	if (sdesc->dma_addr) {
 		desc->dst_addr = 0UL;
 		sdesc->dma_addr = 0UL;
 	}
 
-	if (sdesc && sdesc->pg) {
+	if (sdesc->pg) {
 		sdesc->pg = NULL;
 		sdesc->offset = 0;
 	}
@@ -60,13 +62,14 @@ static inline int flq_fill_one(struct qdma_descq *descq,
 	struct qdma_flq *flq = (struct qdma_flq *)descq->flq;
 	struct qdma_sw_pg_sg *pg_sdesc;
 	unsigned int pg_idx = 0;
-	unsigned int buf_sz = flq->desc_buf_size;
+	unsigned int buf_sz;
 
 	if (!flq || flq->num_pages == 0) {
 		pr_err("%s: flq is NULL", __func__);
 		return -EINVAL;
 	}
 
+	buf_sz = flq->desc_buf_size;
 	pg_idx = (flq->alloc_idx & flq->num_pgs_mask);
 
 	if (pg_idx >= flq->num_pages) {
