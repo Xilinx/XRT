@@ -210,7 +210,7 @@ xrtXclbinGetXSAName(xrtXclbinHandle handle, char* name, int size, int* ret_size)
  */
 XCL_DRIVER_DLLESPEC
 int
-xrtXclbinGetUUID(xclDeviceHandle handle, xuid_t ret_uuid);
+xrtXclbinGetUUID(xrtXclbinHandle handle, xuid_t ret_uuid);
 
 /**
  * xrtXclbinGetData() - Get the raw data of the xclbin handle
@@ -239,6 +239,7 @@ xrtXclbinGetData(xrtXclbinHandle handle, char* data, int size, int* ret_size);
 XCL_DRIVER_DLLESPEC
 int
 xrtXclbinUUID(xclDeviceHandle handle, xuid_t out);
+
 #ifdef __cplusplus
 }
 #endif

@@ -17,12 +17,13 @@
  */
 
 // This file implements XRT APIs as declared in
-// core/include/experimental/xrt_aie.h
-
+// core/include/experimental/xrt_aie.h -- end user APIs
+// core/include/xrt_graph.h -- shim level APIs
 #include "core/include/experimental/xrt_aie.h"
-#include "core/common/system.h"
-#include "core/common/device.h"
-#include "xrt_graph.h"
+#include "core/include/xrt_graph.h" 
+
+#include "core/include/experimental/xrt_device.h"
+#include "core/common/api/device_int.h"
 #include "core/common/message.h"
 
 namespace xrt {
@@ -33,8 +34,9 @@ private:
   xclGraphHandle handle;
 
 public:
-  graph_impl(xclDeviceHandle dhdl, xclGraphHandle ghdl)
-    : device(xrt_core::get_userpf_device(dhdl)), handle(ghdl)
+  graph_impl(const xrt_core::device& dev, xclGraphHandle ghdl)
+    : device(dev)
+    , handle(ghdl)
   {}
 
   ~graph_impl()
@@ -118,11 +120,11 @@ namespace {
 static std::map<xrtGraphHandle, std::shared_ptr<xrt::graph_impl>> graph_cache;
 
 static std::shared_ptr<xrt::graph_impl>
-open_graph(xclDeviceHandle dhdl, const uuid_t xclbin_uuid, const char* graph_name)
+open_graph(xrtDeviceHandle dhdl, const uuid_t xclbin_uuid, const char* graph_name)
 {
-  auto device = xrt_core::get_userpf_device(dhdl);
+  auto device = xrt_core::device_int::get_core_device(dhdl);
   auto handle = device->open_graph(xclbin_uuid, graph_name);
-  auto ghdl = std::make_shared<xrt::graph_impl>(dhdl, handle);
+  auto ghdl = std::make_shared<xrt::graph_impl>(device, handle);
   return ghdl;
 }
 
@@ -143,30 +145,30 @@ close_graph(xrtGraphHandle hdl)
 }
 
 static void
-sync_aie_bo(xclDeviceHandle dhdl, xrtBufferHandle bohdl, const char *gmio_name, xclBOSyncDirection dir, size_t size, size_t offset)
+sync_aie_bo(xrtDeviceHandle dhdl, xrtBufferHandle bohdl, const char *gmio_name, xclBOSyncDirection dir, size_t size, size_t offset)
 {
-  auto device = xrt_core::get_userpf_device(dhdl);
+  auto device = xrt_core::device_int::get_core_device(dhdl);
   device->sync_aie_bo(bohdl, gmio_name, dir, size, offset);
 }
 
 static void
-reset_aie(xclDeviceHandle dhdl)
+reset_aie(xrtDeviceHandle dhdl)
 {
-  auto device = xrt_core::get_userpf_device(dhdl);
+  auto device = xrt_core::device_int::get_core_device(dhdl);
   device->reset_aie();
 }
 
 static void
-sync_aie_bo_nb(xclDeviceHandle dhdl, xrtBufferHandle bohdl, const char *gmio_name, xclBOSyncDirection dir, size_t size, size_t offset)
+sync_aie_bo_nb(xrtDeviceHandle dhdl, xrtBufferHandle bohdl, const char *gmio_name, xclBOSyncDirection dir, size_t size, size_t offset)
 {
-  auto device = xrt_core::get_userpf_device(dhdl);
+  auto device = xrt_core::device_int::get_core_device(dhdl);
   device->sync_aie_bo_nb(bohdl, gmio_name, dir, size, offset);
 }
 
 static void
-wait_gmio(xclDeviceHandle dhdl, const char *gmio_name)
+wait_gmio(xrtDeviceHandle dhdl, const char *gmio_name)
 {
-  auto device = xrt_core::get_userpf_device(dhdl);
+  auto device = xrt_core::device_int::get_core_device(dhdl);
   device->wait_gmio(gmio_name);
 }
 
@@ -183,7 +185,7 @@ send_exception_message(const char* msg)
 ////////////////////////////////////////////////////////////////
 
 xrtGraphHandle
-xrtGraphOpen(xclDeviceHandle dev_handle, const uuid_t xclbin_uuid, const char* graph_name)
+xrtGraphOpen(xrtDeviceHandle dev_handle, const uuid_t xclbin_uuid, const char* graph_name)
 {
   try {
     auto hdl = open_graph(dev_handle, xclbin_uuid, graph_name);
@@ -389,7 +391,7 @@ xrtGraphReadRTP(xrtGraphHandle graph_hdl, const char* port, char* buffer, size_t
 }
 
 int
-xrtSyncBOAIE(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
+xrtSyncBOAIE(xrtDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
   try {
     sync_aie_bo(handle, bohdl, gmioName, dir, size, offset);
@@ -406,7 +408,7 @@ xrtSyncBOAIE(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName
 }
 
 int
-xrtResetAIEArray(xclDeviceHandle handle)
+xrtResetAIEArray(xrtDeviceHandle handle)
 {
   try {
     reset_aie(handle);
@@ -441,7 +443,7 @@ xrtResetAIEArray(xclDeviceHandle handle)
  * Note: Upon return, the synchronization is submitted or error out
  */
 int
-xrtSyncBOAIENB(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
+xrtSyncBOAIENB(xrtDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
   try {
     sync_aie_bo_nb(handle, bohdl, gmioName, dir, size, offset);
@@ -466,7 +468,7 @@ xrtSyncBOAIENB(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioNa
  * Return:          0 on success, -1 on error.
  */
 int
-xrtGMIOWait(xclDeviceHandle handle, const char *gmioName)
+xrtGMIOWait(xrtDeviceHandle handle, const char *gmioName)
 {
   try {
     wait_gmio(handle, gmioName);
