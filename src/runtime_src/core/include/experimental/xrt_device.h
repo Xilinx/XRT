@@ -158,6 +158,12 @@ public:
   XCL_DRIVER_DLLESPEC
   operator xclDeviceHandle () const;
 
+  std::shared_ptr<xrt_core::device>
+  get_handle() const
+  {
+    return handle;
+  }
+
 private:
   XCL_DRIVER_DLLESPEC
   std::pair<const char*, size_t>
@@ -245,6 +251,13 @@ xrtDeviceLoadXclbinHandle(xrtDeviceHandle dhdl, xrtXclbinHandle xhdl);
 XCL_DRIVER_DLLESPEC
 void
 xrtDeviceGetXclbinUUID(xrtDeviceHandle dhld, xuid_t out);
+
+/**
+ * xrtDeviceToXclDevice() - Undocumented access to shim handle
+ */
+XCL_DRIVER_DLLESPEC
+xclDeviceHandle
+xrtDeviceToXclDevice(xrtDeviceHandle dhdl);
 
 #ifdef __cplusplus
 }
