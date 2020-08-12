@@ -538,16 +538,38 @@ namespace xdp {
 	  auto writeTranx = values.WriteTranx[AIMIndex] ;
 	  auto readTranx = values.ReadTranx[AIMIndex] ;
 
-	  auto position = (monitor->name).find("/") + 1;
-	  auto length = (monitor->name).size() - position ;
-	  std::string portName = (monitor->name).substr(position, length);
+	  // Use the name of the monitor to determine the port and memory
+	  std::string portName = "" ;
+	  std::string memoryName = "" ;
+
+	  size_t slashPosition = (monitor->name).find("/") ;
+	  if (slashPosition != std::string::npos)
+	  {
+	    auto position = slashPosition + 1 ;
+	    auto length = (monitor->name).size() - position ;
+
+	    // Split the monitor name into port and memory position
+	    std::string lastHalf = (monitor->name).substr(position, length) ;
+
+	    size_t dashPosition = lastHalf.find("-") ;
+	    if (dashPosition != std::string::npos)
+	    {
+	      auto remainingLength = lastHalf.size() - dashPosition - 1 ;
+	      portName = lastHalf.substr(0, dashPosition) ;
+	      memoryName = lastHalf.substr(dashPosition + 1, remainingLength);
+	    }
+	    else
+	    {
+	      portName = lastHalf ;
+	    }
+	  }
 
 	  if (writeTranx > 0)
 	  {
 	    fout << (device->platformInfo.deviceName) << ","
 		 << (cu.second)->getName() << ":" << portName << ","
 		 << "" << "," // TODO: Kernel arguments
-		 << "" << "," // TODO: Memory resource
+		 << memoryName << ","
 		 << "WRITE" << ","
 		 << writeTranx << ","
 		 << "" << "," // TODO: Transfer Rate
@@ -561,7 +583,7 @@ namespace xdp {
 	    fout << (device->platformInfo.deviceName) << ","
 		 << (cu.second)->getName() << ":" << portName << ","
 		 << "" << "," // TODO: Kernel arguments
-		 << "" << "," // TODO: Memory resource
+		 << memoryName << ","
 		 << "READ" << ","
 		 << readTranx << ","
 		 << "" << "," // TODO: Transfer Rate
