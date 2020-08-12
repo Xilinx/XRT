@@ -20,10 +20,11 @@
 
 #include "xrt.h"
 #include "ert.h"
+#include "experimental/xrt_uuid.h"
 #include "experimental/xrt_bo.h"
-#include "experimental/xrt_enqueue.h"
 
 #ifdef __cplusplus
+# include "experimental/xrt_enqueue.h"
 # include <memory>
 # include <vector>
 # include <functional>
@@ -316,7 +317,7 @@ public:
    * argument to true.
    */
   XCL_DRIVER_DLLESPEC
-  kernel(xclDeviceHandle dhdl, const xuid_t xclbin_id, const std::string& name, bool exclusive=false);
+  kernel(xclDeviceHandle dhdl, const xrt::uuid& xclbin_id, const std::string& name, bool exclusive=false);
 
   /**
    * operator() - Invoke the kernel function
@@ -580,7 +581,7 @@ xrtRunStart(xrtRunHandle runHandle);
  * Blocks current thread until job has completed
  */
 XCL_DRIVER_DLLESPEC
-ert_cmd_state
+enum ert_cmd_state
 xrtRunWait(xrtRunHandle runHandle);
 
 /**
@@ -594,7 +595,7 @@ xrtRunWait(xrtRunHandle runHandle);
  * Blocks current thread until job has completed
  */
 XCL_DRIVER_DLLESPEC
-ert_cmd_state
+enum ert_cmd_state
 xrtRunWaitFor(xrtRunHandle runHandle, unsigned int timeout_ms);
 
 /**
@@ -604,7 +605,7 @@ xrtRunWaitFor(xrtRunHandle runHandle, unsigned int timeout_ms);
  * Return:      The underlying command execution state per ert.h
  */
 XCL_DRIVER_DLLESPEC
-ert_cmd_state
+enum ert_cmd_state
 xrtRunState(xrtRunHandle runHandle);
 
 /**
@@ -621,8 +622,8 @@ xrtRunState(xrtRunHandle runHandle);
  */
 XCL_DRIVER_DLLESPEC
 int
-xrtRunSetCallback(xrtRunHandle runHandle, ert_cmd_state state,
-                  void (* pfn_state_notify)(xrtRunHandle, ert_cmd_state, void*),
+xrtRunSetCallback(xrtRunHandle runHandle, enum ert_cmd_state state,
+                  void (* pfn_state_notify)(xrtRunHandle, enum ert_cmd_state, void*),
                   void* data);
 
 /**

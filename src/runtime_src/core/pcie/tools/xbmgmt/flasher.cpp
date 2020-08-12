@@ -96,6 +96,14 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
         {
             retVal = xspi.xclUpgradeFirmware2(*primary, *secondary, stripped);
         }
+
+        auto dev = mDev.get();
+        std::string errmsg;
+        std::string lvl = std::to_string(1);
+        dev->sysfs_put("icap_controller", "enable", errmsg, lvl);
+        if (errmsg.empty())
+            std::cout << "Successfully enabled icap_controller" << std::endl;
+
         break;
     }
     case BPI:
@@ -120,7 +128,7 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
         XQSPIPS_Flasher xqspi_ps(mDev);
         if (primary == nullptr)
         {
-            std::cout << "ERROR: QSPIPS mode does not support reverting to MFG." << std::endl;
+            retVal = xqspi_ps.revertToMFG();
         }
         else
         {

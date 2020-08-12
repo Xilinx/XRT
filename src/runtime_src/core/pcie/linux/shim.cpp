@@ -575,6 +575,8 @@ int shim::dev_init()
     mCmdBOCache = std::make_unique<xrt_core::bo_cache>(this, xrt_core::config::get_cmdbo_cache());
 
     mStreamHandle = mDev->open("dma.qdma", O_RDWR | O_SYNC);
+    if (mStreamHandle <= 0)
+       mStreamHandle = mDev->open("dma.qdma4", O_RDWR | O_SYNC);
     memset(&mAioContext, 0, sizeof(mAioContext));
     mAioEnabled = (io_setup(SHIM_QDMA_AIO_EVT_MAX, &mAioContext) == 0);
 
@@ -1137,17 +1139,13 @@ int shim::p2pEnable(bool enable, bool force)
 
     /* write 0 to config for default bar size */
     if (enable) {
-        mDev->sysfs_put("p2p", "config", err, "0");
-        if (!err.empty()) { 
-            throw std::runtime_error("P2P is not supported");
-        }
-     } else {
-        mDev->sysfs_put("p2p", "config", err, "-1");
-        if (!err.empty()) { 
-            throw std::runtime_error("P2P is not supported");
-        }
-     }
-
+        mDev->sysfs_put("p2p", "p2p_enable", err, "1");
+    } else {
+        mDev->sysfs_put("p2p", "p2p_enable", err, "0");
+    }
+    if (!err.empty()) {
+        throw std::runtime_error("P2P is not supported");
+    }
 
     if (force) {
         dev_fini();
@@ -2555,7 +2553,7 @@ int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
   return drv ? drv->xclExecWait(timeoutMilliSec) : -ENODEV;
 }
 
-int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bool shared)
+int xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
 #ifdef DISABLE_DOWNLOAD_XCLBIN
   return 0;
@@ -2568,7 +2566,7 @@ int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex
   return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
 }
 
-int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
+int xclCloseContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned ipIndex)
 {
 #ifdef DISABLE_DOWNLOAD_XCLBIN
   return 0;

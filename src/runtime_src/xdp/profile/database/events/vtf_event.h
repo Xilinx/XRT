@@ -79,7 +79,7 @@ namespace xdp {
     // Every trace event has the following four fields:
     uint64_t id ;       // Assigned by the database when it is entered
     uint64_t start_id ; // 0 if this is a start event,
-    double timestamp ;
+    double   timestamp ; // aligned timestamp
     VTFEventType type ; // For quick lookup
 
     virtual void dumpTimestamp(std::ofstream& fout) ;

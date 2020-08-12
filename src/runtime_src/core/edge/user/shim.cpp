@@ -1368,16 +1368,6 @@ setAieArray(zynqaie::Aie *aie)
   aieArray = aie;
 }
 
-int
-shim::getBOInfo(drm_zocl_info_bo &info)
-{
-  int ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_INFO_BO, &info);
-  if (ret)
-    return -errno;
-
-  return 0;
-}
-
 #endif
 
 } // end namespace ZYNQ
@@ -1766,7 +1756,7 @@ xclSKReport(xclDeviceHandle handle, uint32_t cu_idx, xrt_scu_state state)
  * Context switch phase 1: support xclbin swap, no cu and shared checking
  */
 int
-xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bool shared)
+xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
 
@@ -1774,7 +1764,7 @@ xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bo
 }
 
 int
-xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
+xclCloseContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned ipIndex)
 {
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
   return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -EINVAL;

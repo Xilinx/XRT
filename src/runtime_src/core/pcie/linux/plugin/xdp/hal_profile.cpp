@@ -1,5 +1,7 @@
 #include "plugin/xdp/hal_profile.h"
 #include "plugin/xdp/hal_device_offload.h"
+#include "plugin/xdp/power_profile.h"
+#include "plugin/xdp/vart_profile.h"
 #include "core/common/module_loader.h"
 #include "core/common/utils.h"
 #include "core/common/config_reader.h"
@@ -23,7 +25,8 @@ CallLogger::CallLogger(uint64_t id)
 {
   if (hal_plugins_loaded) return ;
   hal_plugins_loaded = true ;
-  
+
+  // This hook is responsible for loading all of the HAL level plugins
   if (xrt_core::config::get_xrt_profile())
   {
     load_xdp_plugin_library(nullptr) ;
@@ -31,6 +34,14 @@ CallLogger::CallLogger(uint64_t id)
   if (xrt_core::config::get_data_transfer_trace() != "off")
   {
     xdphaldeviceoffload::load_xdp_hal_device_offload() ;
+  }
+  if (xrt_core::config::get_power_profile())
+  {
+    xdppowerprofile::load_xdp_power_plugin() ;
+  }
+  if (xrt_core::config::get_vitis_ai_profile())
+  {
+    xdpvartprofile::load_xdp_vart_plugin() ;
   }
 }
 

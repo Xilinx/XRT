@@ -164,6 +164,8 @@ enum class key_type
   board_name,
   interface_uuids,
   logic_uuids,
+
+  aie_metadata,
   noop
 
 };
@@ -527,6 +529,15 @@ struct mem_topology_raw : request
 {
   using result_type = std::vector<char>;
   static const key_type key = key_type::mem_topology_raw;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct aie_metadata : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::aie_metadata;
 
   virtual boost::any
   get(const device*) const = 0;

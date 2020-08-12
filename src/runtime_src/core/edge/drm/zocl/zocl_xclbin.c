@@ -612,6 +612,13 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 			goto out0;
 	}
 
+	/* Populating AIE_METADATA sections */
+	size = zocl_read_sect(AIE_METADATA, &zdev->aie_data.data, axlf, xclbin);
+	if (size < 0) {
+		goto out0;
+	}
+	zdev->aie_data.size = size;
+
 	/* Populating CONNECTIVITY sections */
 	size = zocl_read_sect(CONNECTIVITY, &zdev->connectivity, axlf, xclbin);
 	if (size <= 0) {

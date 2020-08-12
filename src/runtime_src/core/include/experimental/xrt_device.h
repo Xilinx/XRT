@@ -20,6 +20,7 @@
 
 #include "xrt.h"
 #include "experimental/xrt_uuid.h"
+#include "experimental/xrt_xclbin.h"
 
 #ifdef __cplusplus
 # include <memory>
@@ -106,6 +107,19 @@ public:
   XCL_DRIVER_DLLESPEC
   uuid
   load_xclbin(const std::string& xclbin_filename);
+
+  /**
+   * load_xclbin() - load an xclin from an xclbin object
+   *
+   * @xclbin:      xclbin object
+   * Return:       UUID of argument xclbin
+   *
+   * This function read the xclbin contents from
+   * the xclbin object.
+   */
+  XCL_DRIVER_DLLESPEC
+  uuid
+  load_xclbin(const xclbin& xclbin);
 
   /**
    * get_xclbin_uuid() - Get UUID of xclbin image loaded on device
@@ -204,6 +218,19 @@ xrtDeviceLoadXclbin(xrtDeviceHandle dhdl, const struct axlf* xclbin);
 XCL_DRIVER_DLLESPEC
 int
 xrtDeviceLoadXclbinFile(xrtDeviceHandle dhdl, const char* xclbin_filename);
+
+/**
+ * xrtDeviceLoadXclbinHandle() - load an xclbin from an xclbin handle
+ *
+ * @xhdl:       xclbin handle
+ * Return:      0 on success, error otherwise
+ *
+ * This function read the xclbin contents from
+ * the xclbin object.
+ */
+XCL_DRIVER_DLLESPEC
+int
+xrtDeviceLoadXclbinHandle(xrtDeviceHandle dhdl, xrtXclbinHandle xhdl);
 
 /**
  * xrtDeviceGetXclbinUUID() - Get UUID of xclbin image loaded on device

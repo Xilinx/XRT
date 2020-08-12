@@ -30,6 +30,16 @@ namespace bfs = boost::filesystem;
 
 namespace {
 
+inline bool
+ends_with(const std::string& str, const std::string& sub)
+{
+  auto p = str.rfind(sub);
+
+  return (p==std::string::npos)
+    ? false
+    : (str.size() - p) == sub.size();
+}
+
 static const char*
 emptyOrValue(const char* cstr)
 {
@@ -63,7 +73,7 @@ dllExt()
 #ifdef _WIN32
   static boost::filesystem::path sDllExt(".dll");
 #else
-  static boost::filesystem::path sDllExt(".so");
+  static boost::filesystem::path sDllExt(".so.2");
 #endif
   return sDllExt;
 }
@@ -73,16 +83,16 @@ isDLL(const bfs::path& path)
 {
   return (bfs::exists(path)
           && bfs::is_regular_file(path)
-          && path.extension()==dllExt());
+          && ends_with(path.string(), dllExt().string()));
 }
 
 boost::filesystem::path
 dllpath(const boost::filesystem::path& root, const std::string& libnm)
 {
 #ifdef _WIN32
-  return root / "bin" / (libnm + ".dll");
+  return root / "bin" / (libnm + dllExt().string());
 #else
-  return root / "lib" / ("lib" + libnm + ".so");
+  return root / "lib" / ("lib" + libnm + dllExt().string());
 #endif
 }
 
@@ -167,12 +177,6 @@ loadDevices()
   if (!xrt.empty() && !is_emulation()) {
     directoryOrError(xrt);
     auto p = dllpath(xrt,"xrt_core");
-    if (isDLL(p))
-      createHalDevices(devices,p.string());
-  }
-
-  if (devices.empty() && !is_emulation()) { // if failed libxrt_core load, try libxrt_aws
-    auto p = dllpath(xrt,"xrt_aws");
     if (isDLL(p))
       createHalDevices(devices,p.string());
   }

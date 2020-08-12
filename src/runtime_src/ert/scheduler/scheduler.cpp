@@ -117,10 +117,15 @@ static const u32 AP_CONTINUE = 0x10;
 ////////////////////////////////////////////////////////////////
 // HLS AXI protocol (from xclbin.h)
 ////////////////////////////////////////////////////////////////
+#define	CU_ADDR_HANDSHAKE_MASK	(0xff)
+#define	CU_HANDSHAKE(addr) ((addr) & CU_ADDR_HANDSHAKE_MASK)
+#define	CU_ADDR(addr) ((addr) & ~CU_ADDR_HANDSHAKE_MASK)
 static const u32 AP_CTRL_HS    = 0;
 static const u32 AP_CTRL_CHAIN = 1;
 static const u32 AP_CTRL_NONE  = 2;
 static const u32 AP_CTRL_ME    = 3;
+static const u32 ACCEL_ADATER  = 4;
+static const u32 FAST_ADATER   = 5;
 
 ////////////////////////////////////////////////////////////////
 // Extensions to core/include/ert.h
@@ -254,6 +259,7 @@ read_reg(addr_type addr)
 inline void
 write_reg(addr_type addr, value_type val)
 {
+  ERT_DEBUGF("write_reg addr(0x%x) val(0x%x)\n", addr, val);
   volatile auto ptr = reinterpret_cast<addr_type*>(addr);
   *ptr = val;
 }
@@ -325,10 +331,15 @@ regmap_size(value_type header_value)
 inline addr_type
 cu_idx_to_addr(size_type cu_idx)
 {
-  //  return (cu_idx << cu_offset) + cu_base_address;
-  return cu_addr_map[cu_idx];
+  return CU_ADDR(cu_addr_map[cu_idx]);
 }
 
+inline value_type
+cu_idx_to_ctrl(size_type cu_idx)
+{
+  return CU_HANDSHAKE(cu_addr_map[cu_idx]);
+}
+  
 /**
  * idx_in_mask() - Check if idx in in specified 32 bit mask
  *
@@ -376,12 +387,14 @@ struct disable_interrupt_guard
 inline static void
 setup_ert_base_addr()
 {
-  /* In Subsytem 2.0, ERT MB now has to go around to access 3 peripherals
-   * internal to ERT Subsystem i.e CQRAM Controller, Embedded scheduler HW
-   * and KDMA. ERT MB needs to read the value in ERT_BASE_ADDR, add that
-   * value to ERT Subsystem Base Address and Peripheral Address, new value
-   * would be used by the ERT MB to access CQ and CSR.
-   */
+  // Prevent setup() from writing to unitialized bogus addresses
+  std::fill(cu_addr_map, cu_addr_map + max_cus, AP_CTRL_NONE);
+  
+  // In Subsytem 2.0, ERT MB now has to go around to access 3 peripherals
+  // internal to ERT Subsystem i.e CQRAM Controller, Embedded scheduler HW
+  // and KDMA. ERT MB needs to read the value in ERT_BASE_ADDR, add that
+  // value to ERT Subsystem Base Address and Peripheral Address, new value
+  // would be used by the ERT MB to access CQ and CSR.
   #if defined(ERT_BUILD_V20)
   ert_base_addr = read_reg(ERT_BASE_ADDR);
   #endif
@@ -496,7 +509,7 @@ setup()
   // Fill CU base addresses for cuisr
   if(cu_dma_52) {
     for (size_type i=0; i<num_cus; ++i) {
-      write_reg(ERT_CUISR_LUT_ADDR+i*4,cu_addr_map[i]/4);
+      write_reg(ERT_CUISR_LUT_ADDR+i*4, cu_idx_to_addr(i)/4);
     }
   }
 
@@ -507,8 +520,10 @@ setup()
   bitmask_type intc_ier_mask = 0;
   if (cu_interrupt_enabled) {
     for (size_type cu=0; cu<num_cus; ++cu) {
-      write_reg(cu_idx_to_addr(cu) + 0x04,1);
-      write_reg(cu_idx_to_addr(cu) + 0x08,1);
+      if (cu_idx_to_ctrl(cu) == AP_CTRL_NONE)
+        continue;
+      write_reg(cu_idx_to_addr(cu) + 0x4, 1);
+      write_reg(cu_idx_to_addr(cu) + 0x8, 1);
       cu_interrupt_mask[cu] = 1;
     }
     write_reg(ERT_CU_ISR_HANDLER_ENABLE_ADDR,1); // enable CU ISR handler
@@ -520,8 +535,10 @@ setup()
   }
   else {
     for (size_type cu=0; cu<num_cus; ++cu) {
-      write_reg(cu_idx_to_addr(cu) + 0x04,0);
-      write_reg(cu_idx_to_addr(cu) + 0x08,0);
+      if (cu_idx_to_ctrl(cu) == AP_CTRL_NONE)
+        continue;
+      write_reg(cu_idx_to_addr(cu) + 0x4, 0);
+      write_reg(cu_idx_to_addr(cu) + 0x8, 0);
     }
     write_reg(ERT_INTC_IER_ADDR,read_reg(ERT_INTC_IER_ADDR) & ~0x6);  // disable interrupts on bit 1 & 2 (0x2|0x4)
     write_reg(ERT_CU_ISR_HANDLER_ENABLE_ADDR,0); // disable CU ISR handler
@@ -815,8 +832,8 @@ configure_mb(size_type slot_idx)
   // CU base address
   for (size_type i=0; i<num_cus; ++i) {
     u32 addr = read_reg(slot.slot_addr + 0x18 + (i<<2));
-    cu_addr_map[i] = addr & ~(0xFF); // clear encoded handshake
-    CTRL_DEBUGF("cu(%d) @0x%x (0x%x)\n",i,cu_addr_map[i],addr);
+    cu_addr_map[i] = addr;  // encoded with handshake
+    CTRL_DEBUGF("cu(%d) addr(0x%x) handshake(0x%x) encodedaddr(0x%x)\n", i, CU_ADDR(addr), CU_HANDSHAKE(addr), addr);
   }
 
   // (Re)initilize MB

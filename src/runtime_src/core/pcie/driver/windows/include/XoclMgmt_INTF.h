@@ -142,5 +142,8 @@ typedef struct xclmgmt_ioc_device_info {
     UINT32           ocl_frequency[XCLMGMT_NUM_SUPPORTED_CLOCKS];
     bool             mig_calibration[4];
     USHORT           num_clocks;
+    CHAR             logic_uuid[64];
+    CHAR             interface_uuid[64];
+    UINT64           xmc_offset;
 	struct FeatureRomHeader rom_hdr;
 }XCLMGMT_IOC_DEVICE_INFO, *PXCLMGMT_IOC_DEVICE_INFO;

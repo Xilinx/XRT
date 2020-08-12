@@ -255,7 +255,6 @@ kds_submit_ert(struct kds_sched *kds, struct kds_command *xcmd)
 		cu_idx = acquire_cu_idx(&kds->cu_mgmt, xcmd);
 		if (cu_idx < 0)
 			goto err;
-
 		/* write kds selected cu index in the first cumask
 		 * (first word after header of execbuf)
 		 * TODO: I dislike modify the content of the execbuf
@@ -269,12 +268,7 @@ kds_submit_ert(struct kds_sched *kds, struct kds_command *xcmd)
 			goto err;
 	}
 
-	/* TODO: remove */
-	xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
-	xcmd->cb.free(xcmd);
-	return 0;
-
-	ert->submit(xcmd);
+	ert->submit(ert, xcmd);
 	return 0;
 
 err:
@@ -454,6 +448,7 @@ void kds_free_command(struct kds_command *xcmd)
 	if (xcmd) {
 		kfree(xcmd->info);
 		kfree(xcmd);
+		xcmd = NULL;
 	}
 #endif
 }
