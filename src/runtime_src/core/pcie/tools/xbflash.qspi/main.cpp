@@ -252,10 +252,14 @@ int flash(int argc, char *argv[])
 
     if (secondary_file.empty()) {
         firmwareImage pri(primary_file.c_str());
+        if (pri.fail())
+            return -EINVAL;
         ret = xspi.xclUpgradeFirmware1(pri);
     } else {
         firmwareImage pri(primary_file.c_str());
         firmwareImage sec(secondary_file.c_str());
+        if (pri.fail() || sec.fail())
+            return -EINVAL;
         ret = xspi.xclUpgradeFirmware2(pri, sec);
     }
 
@@ -264,11 +268,16 @@ int flash(int argc, char *argv[])
 
 int main(int argc, char *argv[])
 {
-    if (is_op(reset_opts, argc, argv))
-        return reset(argc, argv);
+    try {
+        if (is_op(reset_opts, argc, argv))
+            return reset(argc, argv);
 
-    if (is_op(flash_opts, argc, argv))
-        return flash(argc, argv);
+        if (is_op(flash_opts, argc, argv))
+            return flash(argc, argv);
+    } catch (const std::exception& ex) {
+        std::cout << "Failed to flash: " << ex.what() << std::endl;
+        return -EINVAL;
+    }
 
     printHelp(argv[0]);
     return -EINVAL;

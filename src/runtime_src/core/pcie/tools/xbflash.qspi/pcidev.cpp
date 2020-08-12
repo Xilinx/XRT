@@ -96,6 +96,7 @@ pci_device(const std::string& sysfs, int ubar, size_t flash_off)
   bus = b;
   dev = d;
   func = f;
+  user_bar_size = 0;
 }
 
 pci_device::
@@ -116,7 +117,7 @@ map_usr_bar()
 
   char sysfsname[20];
   std::snprintf(sysfsname, sizeof(sysfsname), "%04x:%02x:%02x.%x",
-	  domain, bus, dev, func);
+    domain, bus, dev, func);
   std::string resfile("/sys/bus/pci/devices/");
   resfile += sysfsname;
   resfile += "/resource";
@@ -173,7 +174,9 @@ pcieBarRead(uint64_t offset, void* buf, uint64_t len)
     int ret = map_usr_bar();
     if (ret) {
       std::cout << "Failed to map in PCIE BAR."
-                << " Secure boot may have been enabled on this system and can't be supported by this utiltity." << std::endl;
+                << " Either the card specified does not exist,"
+                << " or secure boot may have been enabled on this system and"
+                << " can't be supported by this utiltity." << std::endl;
       return ret;
     }
   }

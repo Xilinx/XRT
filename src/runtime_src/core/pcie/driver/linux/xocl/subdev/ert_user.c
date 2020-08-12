@@ -287,15 +287,19 @@ static irqreturn_t
 ert_user_isr(int irq, void *arg)
 {
 	struct xocl_ert_user *ert_user = (struct xocl_ert_user *)arg;
-	xdev_handle_t xdev = xocl_get_xdev(ert_user->pdev);
+	xdev_handle_t xdev;
 	struct ert_user_command *ecmd;
 
+	if (!ert_user)
+		return IRQ_HANDLED;
+
 	ERTUSER_DBG(ert_user, "-> xocl_user_event %d\n", irq);
+	xdev = xocl_get_xdev(ert_user->pdev);
 
 	if (irq>=ERT_MAX_SLOTS)
 		return IRQ_HANDLED;
 
-	if (ert_user && !ert_user->polling_mode) {
+	if (!ert_user->polling_mode) {
 
 		spin_lock(&ert_user->sq_lock);
 		ecmd = ert_user->submit_queue[irq];

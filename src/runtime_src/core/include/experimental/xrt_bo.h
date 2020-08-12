@@ -336,7 +336,7 @@ xrtBOSize(xrtBufferHandle handle);
  */
 XCL_DRIVER_DLLESPEC
 int
-xrtBOSync(xrtBufferHandle handle, xclBOSyncDirection dir, size_t size, size_t offset);
+xrtBOSync(xrtBufferHandle handle, enum xclBOSyncDirection dir, size_t size, size_t offset);
 
 /**
  * xrtBOMap() - Memory map BO into user's address space

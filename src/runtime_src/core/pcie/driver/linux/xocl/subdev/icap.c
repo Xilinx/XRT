@@ -2320,8 +2320,11 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin, bool s
 	 */
 	/* If xclbin has clock metadata, refresh all clock freq */
 	err = icap_probe_urpdev_by_id(icap->icap_pdev, xclbin, XOCL_SUBDEV_CLOCK);
-	if (!err)
+	if (!err) {
 		err = icap_refresh_clock_freq(icap, xclbin);
+		if (err)
+			ICAP_ERR(icap, "not able to refresh clock freq");
+	}
 
 	icap_calib(icap, retention);
 

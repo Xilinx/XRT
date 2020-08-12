@@ -57,7 +57,7 @@ struct qdma_sdesc_info {
 			u8 eop:1;
 			/** end of the transfer */
 			u8 eot:1;
-			/** filler for 5 bits */
+			/** filler for the remaining bits */
 			u8 filler:4;
 		} f;
 	};
@@ -68,16 +68,47 @@ struct qdma_sdesc_info {
 };
 
 /**
+ * struct qdma_sw_pg_sg - qdma page scatter gather request
+ *
+ */
+struct qdma_sw_pg_sg {
+	/** @pg_base: pointer to current page */
+	struct page *pg_base;
+	/** @pg_dma_base_addr: dma address of the allocated page */
+	dma_addr_t pg_dma_base_addr;
+	/** @pg_offset: page offset for all pages */
+	unsigned int pg_offset;
+};
+
+/**
  * @struct - qdma_flq
  * @brief qdma free list q page allocation book keeping
  */
 struct qdma_flq {
 	/** RO: size of the decriptor */
 	unsigned int size;
+	/** RO: c2h buffer size */
+	unsigned int desc_buf_size;
+	/** RO: number of pages */
+	unsigned int num_pages;
+	/** RO: Mask for number of pages */
+	unsigned int num_pgs_mask;
+	/** RO: number of buffers per page */
+	unsigned int num_bufs_per_pg;
+	/** RO: number of currently allocated page index */
+	unsigned int alloc_idx;
+	/** RO: number of currently recycled page index */
+	unsigned int recycle_idx;
+	/** RO: max page offset */
+	unsigned int max_pg_offset;
 	/** RO: page order */
-	unsigned char pg_order;
+	unsigned int buf_pg_mask;
+	/** RO: desc page order */
+	unsigned char desc_pg_order;
+	/** RO: desc page shift */
+	unsigned char desc_pg_shift;
 	/** RO: page shift */
-	unsigned char pg_shift;
+	unsigned char buf_pg_shift;
 	/** RO: pointer to qdma c2h decriptor */
 	struct qdma_c2h_desc *desc;
 
@@ -99,6 +130,8 @@ struct qdma_flq {
 	unsigned int pidx;
 	/** RW: pending pidxes */
 	unsigned int pidx_pend;
+	/** RW: Page list */
+	struct qdma_sw_pg_sg *pg_sdesc;
 	/** RW: sw scatter gather list */
 	struct qdma_sw_sg *sdesc;
 	/** RW: sw descriptor info */
@@ -154,7 +187,8 @@ void qdma4_descq_flq_free_resource(struct qdma_descq *descq);
 
 /*****************************************************************************/
 /**
- * qdma4_descq_flq_alloc_resource() - handler to allocate the pages for the request
+ * qdma4_descq_flq_alloc_resource() - handler to allocate the pages for the
+ * 					request
  *
  * @param[in]	descq:		pointer to qdma_descq
  *
@@ -165,7 +199,7 @@ int qdma4_descq_flq_alloc_resource(struct qdma_descq *descq);
 
 /*****************************************************************************/
 /**
- *qdma4_descq_process_completion_st_c2h() - handler to process the st c2h
+ * descq_process_completion_st_c2h() - handler to process the st c2h
  *				completion request
  *
  * @param[in]	descq:		pointer to qdma_descq
@@ -194,5 +228,4 @@ int qdma4_descq_st_c2h_read(struct qdma_descq *descq, struct qdma_request *req,
 			bool update, bool refill);
 
 void qdma4_c2h_req_work(struct work_struct *work);
-
 #endif /* ifndef __QDMA4_ST_C2H_H__ */

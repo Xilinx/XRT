@@ -21,7 +21,6 @@
 #include "core/edge/user/shim.h"
 #include "core/common/message.h"
 #endif
-#include "core/include/experimental/xrt_aie.h"
 #include "core/common/error.h"
 
 #include <cstring>
@@ -564,16 +563,16 @@ namespace {
 using graph_type = zynqaie::graph_type;
 
 // Active graphs per xrtGraphOpen/Close.  This is a mapping from
-// xrtGraphHandle to the corresponding graph object. xrtGraphHandles
+// xclGraphHandle to the corresponding graph object. xclGraphHandles
 // is the address of the graph object.  This is shared ownership, as
 // internals can use the graph object while applicaiton has closed the
 // correspoding handle. The map content is deleted when user closes
 // the handle, but underlying graph object may remain alive per
 // reference count.
-static std::map<xrtGraphHandle, std::shared_ptr<graph_type>> graphs;
+static std::map<xclGraphHandle, std::shared_ptr<graph_type>> graphs;
 
 static std::shared_ptr<graph_type>
-get_graph(xrtGraphHandle ghdl)
+get_graph(xclGraphHandle ghdl)
 {
   auto itr = graphs.find(ghdl);
   if (itr == graphs.end())
@@ -587,8 +586,8 @@ namespace api {
 
 using graph_type = zynqaie::graph_type;
 
-xrtGraphHandle
-xrtGraphOpen(xclDeviceHandle dhdl, const uuid_t xclbin_uuid, const char* name)
+xclGraphHandle
+xclGraphOpen(xclDeviceHandle dhdl, const uuid_t xclbin_uuid, const char* name)
 {
   auto device = xrt_core::get_userpf_device(dhdl);
   auto graph = std::make_shared<graph_type>(device, xclbin_uuid, name);
@@ -598,28 +597,28 @@ xrtGraphOpen(xclDeviceHandle dhdl, const uuid_t xclbin_uuid, const char* name)
 }
 
 void
-xrtGraphClose(xrtGraphHandle ghdl)
+xclGraphClose(xclGraphHandle ghdl)
 {
   auto graph = get_graph(ghdl);
   graphs.erase(graph.get());
 }
 
 void
-xrtGraphReset(xrtGraphHandle ghdl)
+xclGraphReset(xclGraphHandle ghdl)
 {
   auto graph = get_graph(ghdl);
   graph->reset();
 }
 
 uint64_t
-xrtGraphTimeStamp(xrtGraphHandle ghdl)
+xclGraphTimeStamp(xclGraphHandle ghdl)
 {
   auto graph = get_graph(ghdl);
   return graph->get_timestamp();
 }
 
 void
-xrtGraphRun(xrtGraphHandle ghdl, int iterations)
+xclGraphRun(xclGraphHandle ghdl, int iterations)
 {
   auto graph = get_graph(ghdl);
   if (iterations == 0)
@@ -629,14 +628,14 @@ xrtGraphRun(xrtGraphHandle ghdl, int iterations)
 }
 
 void
-xrtGraphWaitDone(xrtGraphHandle ghdl, int timeout_ms)
+xclGraphWaitDone(xclGraphHandle ghdl, int timeout_ms)
 {
   auto graph = get_graph(ghdl);
   graph->wait_done(timeout_ms);
 }
 
 void
-xrtGraphWait(xrtGraphHandle ghdl, uint64_t cycle)
+xclGraphWait(xclGraphHandle ghdl, uint64_t cycle)
 {
   auto graph = get_graph(ghdl);
   if (cycle == 0)
@@ -646,21 +645,21 @@ xrtGraphWait(xrtGraphHandle ghdl, uint64_t cycle)
 }
 
 void
-xrtGraphSuspend(xrtGraphHandle ghdl)
+xclGraphSuspend(xclGraphHandle ghdl)
 {
   auto graph = get_graph(ghdl);
   graph->suspend();
 }
 
 void
-xrtGraphResume(xrtGraphHandle ghdl)
+xclGraphResume(xclGraphHandle ghdl)
 {
   auto graph = get_graph(ghdl);
   graph->resume();
 }
 
 void
-xrtGraphEnd(xrtGraphHandle ghdl, uint64_t cycle)
+xclGraphEnd(xclGraphHandle ghdl, uint64_t cycle)
 {
   auto graph = get_graph(ghdl);
   if (cycle == 0)
@@ -670,21 +669,21 @@ xrtGraphEnd(xrtGraphHandle ghdl, uint64_t cycle)
 }
 
 void
-xrtGraphUpdateRTP(xrtGraphHandle ghdl, const char* port, const char* buffer, size_t size)
+xclGraphUpdateRTP(xclGraphHandle ghdl, const char* port, const char* buffer, size_t size)
 {
   auto graph = get_graph(ghdl);
   graph->update_rtp(port, buffer, size);
 }
 
 void
-xrtGraphReadRTP(xrtGraphHandle ghdl, const char* port, char* buffer, size_t size)
+xclGraphReadRTP(xclGraphHandle ghdl, const char* port, char* buffer, size_t size)
 {
   auto graph = get_graph(ghdl);
   graph->read_rtp(port, buffer, size);
 }
 
 void
-xrtSyncBOAIE(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
+xclSyncBOAIE(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
   zynqaie::Aie *aieArray = nullptr;
 
@@ -707,7 +706,7 @@ xrtSyncBOAIE(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName
 }
 
 void
-xrtSyncBOAIENB(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
+xclSyncBOAIENB(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
   zynqaie::Aie *aieArray = nullptr;
 
@@ -730,7 +729,7 @@ xrtSyncBOAIENB(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioNa
 }
 
 void
-xrtGMIOWait(xclDeviceHandle handle, const char *gmioName)
+xclGMIOWait(xclDeviceHandle handle, const char *gmioName)
 {
   zynqaie::Aie *aieArray = nullptr;
 
@@ -747,7 +746,7 @@ xrtGMIOWait(xclDeviceHandle handle, const char *gmioName)
 }
 
 void
-xrtResetAieArray(xclDeviceHandle handle)
+xclResetAieArray(xclDeviceHandle handle)
 {
   /* Do a handle check */
   xrt_core::get_userpf_device(handle);
@@ -760,13 +759,13 @@ xrtResetAieArray(xclDeviceHandle handle)
 
 
 ////////////////////////////////////////////////////////////////
-// xrt_aie API implementations (xrt_aie.h)
+// Shim level Graph API implementations (xrt_graph.h)
 ////////////////////////////////////////////////////////////////
-xrtGraphHandle
-xrtGraphOpen(xclDeviceHandle handle, const uuid_t xclbin_uuid, const char* graph)
+xclGraphHandle
+xclGraphOpen(xclDeviceHandle handle, const uuid_t xclbin_uuid, const char* graph)
 {
   try {
-    return api::xrtGraphOpen(handle, xclbin_uuid, graph);
+    return api::xclGraphOpen(handle, xclbin_uuid, graph);
   }
   catch (const std::exception& ex) {
     xrt_core::send_exception_message(ex.what());
@@ -775,10 +774,10 @@ xrtGraphOpen(xclDeviceHandle handle, const uuid_t xclbin_uuid, const char* graph
 }
 
 void
-xrtGraphClose(xrtGraphHandle ghdl)
+xclGraphClose(xclGraphHandle ghdl)
 {
   try {
-    api::xrtGraphClose(ghdl);
+    api::xclGraphClose(ghdl);
   }
   catch (const std::exception& ex) {
     xrt_core::send_exception_message(ex.what());
@@ -786,10 +785,10 @@ xrtGraphClose(xrtGraphHandle ghdl)
 }
 
 int
-xrtGraphReset(xrtGraphHandle ghdl)
+xclGraphReset(xclGraphHandle ghdl)
 {
   try {
-    api::xrtGraphReset(ghdl);
+    api::xclGraphReset(ghdl);
     return 0;
   }
   catch (const xrt_core::error& ex) {
@@ -803,10 +802,10 @@ xrtGraphReset(xrtGraphHandle ghdl)
 }
 
 uint64_t
-xrtGraphTimeStamp(xrtGraphHandle ghdl)
+xclGraphTimeStamp(xclGraphHandle ghdl)
 {
   try {
-    return api::xrtGraphTimeStamp(ghdl);
+    return api::xclGraphTimeStamp(ghdl);
   }
   catch (const std::exception& ex) {
     xrt_core::send_exception_message(ex.what());
@@ -815,10 +814,10 @@ xrtGraphTimeStamp(xrtGraphHandle ghdl)
 }
 
 int
-xrtGraphRun(xrtGraphHandle ghdl, int iterations)
+xclGraphRun(xclGraphHandle ghdl, int iterations)
 {
   try {
-    api::xrtGraphRun(ghdl, iterations);
+    api::xclGraphRun(ghdl, iterations);
     return 0;
   }
   catch (const xrt_core::error& ex) {
@@ -832,10 +831,10 @@ xrtGraphRun(xrtGraphHandle ghdl, int iterations)
 }
 
 int
-xrtGraphWaitDone(xrtGraphHandle ghdl, int timeout_ms)
+xclGraphWaitDone(xclGraphHandle ghdl, int timeout_ms)
 {
   try {
-    api::xrtGraphWaitDone(ghdl, timeout_ms);
+    api::xclGraphWaitDone(ghdl, timeout_ms);
     return 0;
   }
   catch (const xrt_core::error& ex) {
@@ -849,10 +848,10 @@ xrtGraphWaitDone(xrtGraphHandle ghdl, int timeout_ms)
 }
 
 int
-xrtGraphWait(xrtGraphHandle ghdl, uint64_t cycle)
+xclGraphWait(xclGraphHandle ghdl, uint64_t cycle)
 {
   try {
-    api::xrtGraphWait(ghdl, cycle);
+    api::xclGraphWait(ghdl, cycle);
     return 0;
   }
   catch (const xrt_core::error& ex) {
@@ -866,10 +865,10 @@ xrtGraphWait(xrtGraphHandle ghdl, uint64_t cycle)
 }
 
 int
-xrtGraphSuspend(xrtGraphHandle ghdl)
+xclGraphSuspend(xclGraphHandle ghdl)
 {
   try {
-    api::xrtGraphSuspend(ghdl);
+    api::xclGraphSuspend(ghdl);
     return 0;
   }
   catch (const xrt_core::error& ex) {
@@ -883,10 +882,10 @@ xrtGraphSuspend(xrtGraphHandle ghdl)
 }
 
 int
-xrtGraphResume(xrtGraphHandle ghdl)
+xclGraphResume(xclGraphHandle ghdl)
 {
   try {
-    api::xrtGraphResume(ghdl);
+    api::xclGraphResume(ghdl);
     return 0;
   }
   catch (const xrt_core::error& ex) {
@@ -900,10 +899,10 @@ xrtGraphResume(xrtGraphHandle ghdl)
 }
 
 int
-xrtGraphEnd(xrtGraphHandle ghdl, uint64_t cycle)
+xclGraphEnd(xclGraphHandle ghdl, uint64_t cycle)
 {
   try {
-    api::xrtGraphEnd(ghdl, cycle);
+    api::xclGraphEnd(ghdl, cycle);
     return 0;
   }
   catch (const xrt_core::error& ex) {
@@ -917,10 +916,10 @@ xrtGraphEnd(xrtGraphHandle ghdl, uint64_t cycle)
 }
 
 int
-xrtGraphUpdateRTP(xrtGraphHandle ghdl, const char* port, const char* buffer, size_t size)
+xclGraphUpdateRTP(xclGraphHandle ghdl, const char* port, const char* buffer, size_t size)
 {
   try {
-    api::xrtGraphUpdateRTP(ghdl, port, buffer, size);
+    api::xclGraphUpdateRTP(ghdl, port, buffer, size);
     return 0;
   }
   catch (const xrt_core::error& ex) {
@@ -934,10 +933,10 @@ xrtGraphUpdateRTP(xrtGraphHandle ghdl, const char* port, const char* buffer, siz
 }
 
 int
-xrtGraphReadRTP(xrtGraphHandle ghdl, const char *port, char *buffer, size_t size)
+xclGraphReadRTP(xclGraphHandle ghdl, const char *port, char *buffer, size_t size)
 {
   try {
-    api::xrtGraphReadRTP(ghdl, port, buffer, size);
+    api::xclGraphReadRTP(ghdl, port, buffer, size);
     return 0;
   }
   catch (const xrt_core::error& ex) {
@@ -951,10 +950,10 @@ xrtGraphReadRTP(xrtGraphHandle ghdl, const char *port, char *buffer, size_t size
 }
 
 int
-xrtSyncBOAIE(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
+xclSyncBOAIE(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
   try {
-    api::xrtSyncBOAIE(handle, bohdl, gmioName, dir, size, offset);
+    api::xclSyncBOAIE(handle, bohdl, gmioName, dir, size, offset);
     return 0;
   }
   catch (const xrt_core::error& ex) {
@@ -968,10 +967,10 @@ xrtSyncBOAIE(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName
 }
 
 int
-xrtResetAIEArray(xclDeviceHandle handle)
+xclResetAIEArray(xclDeviceHandle handle)
 {
   try {
-    api::xrtResetAieArray(handle);
+    api::xclResetAieArray(handle);
     return 0;
   }
   catch (const std::exception& ex) {
@@ -999,10 +998,10 @@ xrtResetAIEArray(xclDeviceHandle handle)
  * Note: Upon return, the synchronization is submitted or error out
  */
 int
-xrtSyncBOAIENB(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
+xclSyncBOAIENB(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
   try {
-    api::xrtSyncBOAIENB(handle, bohdl, gmioName, dir, size, offset);
+    api::xclSyncBOAIENB(handle, bohdl, gmioName, dir, size, offset);
     return 0;
   }
   catch (const xrt_core::error& ex) {
@@ -1024,10 +1023,10 @@ xrtSyncBOAIENB(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioNa
  * Return:          0 on success, -1 on error.
  */
 int
-xrtGMIOWait(xclDeviceHandle handle, const char *gmioName)
+xclGMIOWait(xclDeviceHandle handle, const char *gmioName)
 {
   try {
-    api::xrtGMIOWait(handle, gmioName);
+    api::xclGMIOWait(handle, gmioName);
     return 0;
   }
   catch (const xrt_core::error& ex) {
