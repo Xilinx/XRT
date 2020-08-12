@@ -34,6 +34,40 @@
 #include "xdp/profile/database/events/creator/device_event_trace_logger.h"
 #include "xdp/profile/writer/vp_base/vp_writer.h"
 
+// Anonymous namespace for helper functions used only in this file
+namespace {
+  static std::string 
+  getMemoryNameFromID(const std::shared_ptr<xocl::compute_unit> cu,
+		      const std::string& arg_id)
+  {
+    std::string memoryName = "" ;
+    try {
+      uint64_t index = (uint64_t)(std::stoi(arg_id)) ;
+      auto memidx_mask = cu->get_memidx(index) ;
+      for (unsigned int memidx = 0 ; memidx < memidx_mask.size() ; ++memidx)
+      {
+        if (memidx_mask.test(memidx)) {
+          // Get bank tag string from index
+          memoryName = "DDR";
+	  auto device_id = cu->get_device() ;
+          if (device_id->is_active())
+            memoryName = device_id->get_xclbin().memidx_to_banktag(memidx);
+          break;
+        }
+      }
+    } catch (const std::runtime_error&)
+    {
+      memoryName = "DDR" ;
+    }
+
+    // Catch old bank format and report as DDR
+    if (memoryName.find("bank") != std::string::npos)
+      memoryName = "DDR";
+
+    return memoryName.substr(0, memoryName.find_last_of("[")) ;
+  }
+} // end anonymous namespace
+
 namespace xdp {
 
   OpenCLDeviceOffloadPlugin::OpenCLDeviceOffloadPlugin() : DeviceOffloadPlugin()
@@ -186,9 +220,62 @@ namespace xdp {
     devInterface->startCounters() ;
 
     // Once the device has been set up, add additional information to 
-    //  the static database
+    //  the static database specific to OpenCL runs
     (db->getStaticInfo()).setMaxReadBW(deviceId, devInterface->getMaxBwRead()) ;
     (db->getStaticInfo()).setMaxWriteBW(deviceId, devInterface->getMaxBwWrite());
+    updateOpenCLInfo(deviceId) ;
   }
-  
+
+  void OpenCLDeviceOffloadPlugin::updateOpenCLInfo(uint64_t deviceId)
+  {
+    // *******************************************************
+    // OpenCL specific info 1: Argument lists for each monitor
+    // *******************************************************
+    DeviceInfo* storedDevice = (db->getStaticInfo()).getDeviceInfo(deviceId) ;
+    for (auto iter : storedDevice->cus)
+    {
+      ComputeUnitInstance* cu = iter.second ;
+
+      // Find the Compute unit on the XOCL side that matches this compute unit
+      std::shared_ptr<xocl::compute_unit> matchingCU ;
+      for (auto xoclDeviceId : platform->get_device_range())
+      {
+	for (auto& xoclCU : xocl::xocl(xoclDeviceId)->get_cus())
+	{
+	  if (xoclCU->get_name() == cu->getName())
+	  {
+	    matchingCU = xoclCU ;
+	    break ;
+	  }
+	}
+      }
+
+      for (Monitor* monitor : cu->getMonitors())
+      {
+	// Construct the argument list of each port
+	std::string arguments = "" ;
+	for (auto arg : matchingCU->get_symbol()->arguments)
+	{
+	  if ((arg.address_qualifier != 1 && arg.address_qualifier != 4) ||
+	      arg.atype != xocl::xclbin::symbol::arg::argtype::indexed)
+	    continue ;
+	  // Is this particular argument attached to the right port?
+	  std::string lowerPort = arg.port ;
+	  std::transform(lowerPort.begin(), lowerPort.end(), lowerPort.begin(),
+			 [](char c) { return (char)(std::tolower(c)); }) ;
+	  if ((monitor->name).find(lowerPort) == std::string::npos)
+	    continue ;
+
+	  // Is this particular argument heading to the right memory?
+	  std::string memoryName = getMemoryNameFromID(matchingCU, arg.id) ;
+	  if ((monitor->name).find(memoryName) == std::string::npos)
+	    continue ;
+	  
+	  if (arguments != "") arguments += "|" ;
+	  arguments += arg.name ;
+	}
+	monitor->args = arguments ;
+      }
+    }
+  }
 } // end namespace xdp

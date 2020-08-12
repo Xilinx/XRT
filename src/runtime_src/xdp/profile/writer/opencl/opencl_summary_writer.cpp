@@ -568,7 +568,7 @@ namespace xdp {
 	  {
 	    fout << (device->platformInfo.deviceName) << ","
 		 << (cu.second)->getName() << ":" << portName << ","
-		 << "" << "," // TODO: Kernel arguments
+		 << (monitor->args) << ","
 		 << memoryName << ","
 		 << "WRITE" << ","
 		 << writeTranx << ","
@@ -582,7 +582,7 @@ namespace xdp {
 	  {
 	    fout << (device->platformInfo.deviceName) << ","
 		 << (cu.second)->getName() << ":" << portName << ","
-		 << "" << "," // TODO: Kernel arguments
+		 << (monitor->args) << ","
 		 << memoryName << ","
 		 << "READ" << ","
 		 << readTranx << ","

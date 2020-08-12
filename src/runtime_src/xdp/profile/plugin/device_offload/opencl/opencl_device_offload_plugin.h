@@ -34,7 +34,9 @@ namespace xdp {
     // I have to keep a shared pointer to the platform to make sure
     //  no xrt::device objects are deleted before we read them at 
     //  the end of execution.
-    std::shared_ptr<xocl::platform> platform ; 
+    std::shared_ptr<xocl::platform> platform ;
+
+    void updateOpenCLInfo(uint64_t deviceId) ;
 
   public:
     XDP_EXPORT OpenCLDeviceOffloadPlugin() ;
