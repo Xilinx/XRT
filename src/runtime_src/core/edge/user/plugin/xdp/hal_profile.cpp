@@ -30,10 +30,12 @@ CallLogger::CallLogger(unsigned id)
   {
     load_xdp_plugin_library(nullptr) ;
   }
+  #ifdef XRT_ENABLE_AIE
   if (xrt_core::config::get_aie_profile())
   {
     xdpaieprofile::load_xdp_aie_plugin() ;
   }
+  #endif
   if (xrt_core::config::get_noc_profile()) 
   {
     xdpnocprofile::load_xdp_noc_plugin() ;
