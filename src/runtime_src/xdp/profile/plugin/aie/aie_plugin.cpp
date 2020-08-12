@@ -23,7 +23,7 @@
 #include "core/common/time.h"
 #include "core/common/config_reader.h"
 #include "core/include/experimental/xrt-next.h"
-
+#include "core/edge/user/shim.h"
 #include "core/edge/common/aie_parser.h"
 #include "core/edge/user/aie/aie.h"
 extern "C" {
@@ -43,7 +43,7 @@ namespace xdp {
     void* handle = xclOpen(index, "/dev/null", XCL_INFO);
     while (handle != nullptr) {
       // Keep device locally
-      auto device = get_userpf_device(handle);
+      auto device = xrt_core::get_userpf_device(handle);
       mDevices.push_back(device);
 
       // Determine the name of the device
