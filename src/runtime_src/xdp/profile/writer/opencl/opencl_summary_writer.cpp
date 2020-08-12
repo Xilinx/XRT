@@ -538,6 +538,14 @@ namespace xdp {
 	  auto writeTranx = values.WriteTranx[AIMIndex] ;
 	  auto readTranx = values.ReadTranx[AIMIndex] ;
 
+	  uint64_t totalReadBusyCycles = values.ReadBusyCycles[AIMIndex] ;
+	  uint64_t totalWriteBusyCycles = values.WriteBusyCycles[AIMIndex] ;
+
+	  double totalReadTime = 
+	    (double)(totalReadBusyCycles) / (1000.0 * device->clockRateMHz) ;
+	  double totalWriteTime =
+	    (double)(totalWriteBusyCycles) / (1000.0 * device->clockRateMHz) ;
+
 	  // Use the name of the monitor to determine the port and memory
 	  std::string portName = "" ;
 	  std::string memoryName = "" ;
@@ -566,13 +574,16 @@ namespace xdp {
 
 	  if (writeTranx > 0)
 	  {
+	    double transferRate = (totalWriteTime == 0.0) ? 0 :
+	      (double)(values.WriteBytes[AIMIndex]) / (1000.0 * totalWriteTime);
+
 	    fout << (device->platformInfo.deviceName) << ","
 		 << (cu.second)->getName() << ":" << portName << ","
 		 << (monitor->args) << ","
 		 << memoryName << ","
 		 << "WRITE" << ","
 		 << writeTranx << ","
-		 << "" << "," // TODO: Transfer Rate
+		 << transferRate << ","
 		 << "" << "," // TODO: Average Bandwidth Utilization
 		 << (values.WriteBytes[AIMIndex] / writeTranx) << ","
 		 << (values.WriteLatency[AIMIndex] / writeTranx) << "," 
@@ -580,13 +591,15 @@ namespace xdp {
 	  }
 	  if (readTranx > 0)
 	  {
+	    double transferRate = (totalReadTime == 0.0) ? 0 :
+	      (double)(values.ReadBytes[AIMIndex]) / (1000.0 * totalReadTime);
 	    fout << (device->platformInfo.deviceName) << ","
 		 << (cu.second)->getName() << ":" << portName << ","
 		 << (monitor->args) << ","
 		 << memoryName << ","
 		 << "READ" << ","
 		 << readTranx << ","
-		 << "" << "," // TODO: Transfer Rate
+		 << transferRate << ","
 		 << "" << "," // TODO: Average Bandwidth Utilization
 		 << (values.ReadBytes[AIMIndex] / readTranx) << ","
 		 << (values.ReadLatency[AIMIndex] / readTranx) << "," 
