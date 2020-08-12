@@ -87,19 +87,20 @@ namespace xdp {
 
   void AIEProfilingPlugin::pollAIECounters()
   {
-    uint32_t pollnum = 0;
-
     while (mKeepPolling) {
-      // Get timestamp in milliseconds
-      double timestamp = xrt_core::time_ns() / 1.0e6;
+      // Iterate over all devices
       uint64_t index = 0;
-
-      // TODO: not sure what we need from device; for now, just use name
       for (auto device : mDevices) {
         auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
-        auto aieArray = (drv) ? drv->getAieArray() : nullptr;
-        if (aieArray == nullptr)
+        if (!drv)
           continue;
+        auto aieArray = drv->getAieArray();
+
+        // TEMPORARY: Larry is making AIE array available when xclbin gets loaded  
+        if (!aieArray) {
+          aieArray = new Aie(device);
+          drv->setAieArray(aieArray);
+        }
 
         // Iterate over all AIE Counters
         auto numCounters = (db->getStaticInfo()).getNumAIECounter(index);
@@ -119,16 +120,18 @@ namespace xdp {
       
           // Read counter value from device
           // TODO: Below uses v1 of the AIE driver; eventually switch to v2
-          auto counterValue = XAieTileCore_PerfCounterGet(tileInst, aie->counterNumber);
+          auto counterValue = XAieTileCore_PerfCounterGet(&tileInst, aie->counterNumber);
           values.push_back(counterValue);
 
+          // Get timestamp in milliseconds
+          double timestamp = xrt_core::time_ns() / 1.0e6;
+
 	        (db->getDynamicInfo()).addAIESample(index, timestamp, values);
-	        ++index;
         }
+        ++index;
       }
 
-      std::this_thread::sleep_for(std::chrono::milliseconds(mPollingInterval));
-      ++pollnum;      
+      std::this_thread::sleep_for(std::chrono::milliseconds(mPollingInterval));     
     }
   }
 
