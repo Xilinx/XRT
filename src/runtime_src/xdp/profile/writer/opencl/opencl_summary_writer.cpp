@@ -538,10 +538,14 @@ namespace xdp {
 	  auto writeTranx = values.WriteTranx[AIMIndex] ;
 	  auto readTranx = values.ReadTranx[AIMIndex] ;
 
+	  auto position = (monitor->name).find("/") + 1;
+	  auto length = (monitor->name).size() - position ;
+	  std::string portName = (monitor->name).substr(position, length);
+
 	  if (writeTranx > 0)
 	  {
 	    fout << (device->platformInfo.deviceName) << ","
-		 << (cu.second)->getName() << ":" /* TODO: PortName */ << ","
+		 << (cu.second)->getName() << ":" << portName << ","
 		 << "" << "," // TODO: Kernel arguments
 		 << "" << "," // TODO: Memory resource
 		 << "WRITE" << ","
@@ -555,7 +559,7 @@ namespace xdp {
 	  if (readTranx > 0)
 	  {
 	    fout << (device->platformInfo.deviceName) << ","
-		 << (cu.second)->getName() << ":" /* TODO: PortName */ << ","
+		 << (cu.second)->getName() << ":" << portName << ","
 		 << "" << "," // TODO: Kernel arguments
 		 << "" << "," // TODO: Memory resource
 		 << "READ" << ","
