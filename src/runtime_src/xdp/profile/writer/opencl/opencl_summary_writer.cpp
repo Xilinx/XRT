@@ -576,6 +576,9 @@ namespace xdp {
 	  {
 	    double transferRate = (totalWriteTime == 0.0) ? 0 :
 	      (double)(values.WriteBytes[AIMIndex]) / (1000.0 * totalWriteTime);
+	    double aveBW =
+	      (100.0 * transferRate) / device->maxWriteBW ;
+	    if (aveBW > 100.0) aveBW = 100.0 ;
 
 	    fout << (device->platformInfo.deviceName) << ","
 		 << (cu.second)->getName() << ":" << portName << ","
@@ -584,7 +587,7 @@ namespace xdp {
 		 << "WRITE" << ","
 		 << writeTranx << ","
 		 << transferRate << ","
-		 << "" << "," // TODO: Average Bandwidth Utilization
+		 << aveBW << ","
 		 << (values.WriteBytes[AIMIndex] / writeTranx) << ","
 		 << (values.WriteLatency[AIMIndex] / writeTranx) << "," 
 		 << std::endl ;
@@ -593,6 +596,10 @@ namespace xdp {
 	  {
 	    double transferRate = (totalReadTime == 0.0) ? 0 :
 	      (double)(values.ReadBytes[AIMIndex]) / (1000.0 * totalReadTime);
+	    double aveBW =
+	      (100.0 * transferRate) / device->maxReadBW ;
+	    if (aveBW > 100.0) aveBW = 100.0 ;
+
 	    fout << (device->platformInfo.deviceName) << ","
 		 << (cu.second)->getName() << ":" << portName << ","
 		 << (monitor->args) << ","
@@ -600,7 +607,7 @@ namespace xdp {
 		 << "READ" << ","
 		 << readTranx << ","
 		 << transferRate << ","
-		 << "" << "," // TODO: Average Bandwidth Utilization
+		 << aveBW << ","
 		 << (values.ReadBytes[AIMIndex] / readTranx) << ","
 		 << (values.ReadLatency[AIMIndex] / readTranx) << "," 
 		 << std::endl ;
