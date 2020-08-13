@@ -42,7 +42,7 @@ clock_freqs(const xrt_core::device* device)
 
   auto freqs_str = xrt_core::device_query<xrt_core::query::clock_freqs_mhz>(device);
   std::transform(freqs_str.begin(), freqs_str.end(), std::back_inserter(freqs_mhz),
-                 [](auto& freq_str_mhz) { return std::stoul(freq_str_mhz); });
+                 [](auto& freq_str_mhz) { return static_cast<uint16_t>(std::stoul(freq_str_mhz)); });
   return freqs_mhz;
 }
 
@@ -65,7 +65,7 @@ clock_index_or_throw(const clock_freq_topology* cft, const std::string& clock)
           return strncmp(clock.c_str(), cf.m_name, clock.size()) == 0;
        });
 
-  if (itr != end) 
+  if (itr != end)
     return std::distance(cft->m_clock_freq, itr);
 
   // Throw message with available clocks
@@ -93,9 +93,9 @@ reclock(xrt_core::device* device, const std::string& clock, uint16_t freq)
   auto cft = reinterpret_cast<const clock_freq_topology*>(raw.data());
   if (!cft)
     throw std::runtime_error("No clocks to change, make sure xclbin is loaded");
-  
+
   auto idx = clock_index_or_throw(cft, clock);
-  
+
   auto freqs = clock_freqs(device);
   if (freqs.size() <= idx)
     throw std::runtime_error("Unexpected error: xclbin clock mismatch");
@@ -153,13 +153,12 @@ OO_Clock::execute(const SubCmdOptions& _options) const
   }
 
   //exit if neither daemon or device is specified
-  if(m_help || (m_device.empty() && m_device.empty())) { 
+  if(m_help || (m_device.empty() && m_device.empty())) {
     printHelp();
     return;
   }
 
   // Change frequency for specified clock
   for (auto& device : XBU::collect_devices(m_device, true))
-    reclock(device.get(), m_clockName, stoul(m_clockFreq));
+    reclock(device.get(), m_clockName, static_cast<uint16_t>(stoul(m_clockFreq)));
 }
-

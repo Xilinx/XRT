@@ -35,7 +35,8 @@
 #include <map>
 
 #ifdef _WIN32
-# pragma warning( disable : 4189 )
+
+# pragma warning( disable : 4189 4100 )
 # pragma comment(lib, "Ws2_32.lib")
 /* need to link the lib for the following to work */
 # define be32toh ntohl
@@ -86,38 +87,38 @@ static bool m_bShowHidden = false;
 
 
 // ------ F U N C T I O N S ---------------------------------------------------
-void 
+void
 XBUtilities::setVerbose(bool _bVerbose)
 {
   bool prevVerbose = m_bVerbose;
 
-  if ((prevVerbose == true) && (_bVerbose == false)) 
+  if ((prevVerbose == true) && (_bVerbose == false))
     verbose("Disabling Verbosity");
 
   m_bVerbose = _bVerbose;
 
-  if ((prevVerbose == false) && (_bVerbose == true)) 
+  if ((prevVerbose == false) && (_bVerbose == true))
     verbose("Enabling Verbosity");
 }
 
-void 
+void
 XBUtilities::setTrace(bool _bTrace)
 {
-  if (_bTrace) 
+  if (_bTrace)
     trace("Enabling Tracing");
-  else 
+  else
     trace("Disabling Tracing");
 
   m_bTrace = _bTrace;
 }
 
 
-void 
+void
 XBUtilities::setShowHidden(bool _bShowHidden)
 {
-  if (_bShowHidden) 
+  if (_bShowHidden)
     trace("Hidden commands and options will be shown.");
-  else 
+  else
     trace("Hidden commands and options will be hidden");
 
   m_bShowHidden = _bShowHidden;
@@ -129,19 +130,19 @@ XBUtilities::getShowHidden()
   return m_bShowHidden;
 }
 
-void 
-XBUtilities::disable_escape_codes(bool _disable) 
+void
+XBUtilities::disable_escape_codes(bool _disable)
 {
   m_disableEscapeCodes = _disable;
 }
 
-bool 
+bool
 XBUtilities::is_esc_enabled() {
   return m_disableEscapeCodes;
 }
 
 
-void 
+void
 XBUtilities::message_(MessageType _eMT, const std::string& _msg, bool _endl)
 {
   static std::map<MessageType, std::string> msgPrefix = {
@@ -177,52 +178,52 @@ XBUtilities::message_(MessageType _eMT, const std::string& _msg, bool _endl)
   }
 }
 
-void 
-XBUtilities::message(const std::string& _msg, bool _endl) 
-{ 
-  message_(MT_MESSAGE, _msg, _endl); 
+void
+XBUtilities::message(const std::string& _msg, bool _endl)
+{
+  message_(MT_MESSAGE, _msg, _endl);
 }
 
-void 
-XBUtilities::info(const std::string& _msg, bool _endl)    
-{ 
-  message_(MT_INFO, _msg, _endl); 
+void
+XBUtilities::info(const std::string& _msg, bool _endl)
+{
+  message_(MT_INFO, _msg, _endl);
 }
 
-void 
-XBUtilities::warning(const std::string& _msg, bool _endl) 
-{ 
-  message_(MT_WARNING, _msg, _endl); 
+void
+XBUtilities::warning(const std::string& _msg, bool _endl)
+{
+  message_(MT_WARNING, _msg, _endl);
 }
 
-void 
+void
 XBUtilities::error(const std::string& _msg, bool _endl)
-{ 
-  message_(MT_ERROR, _msg, _endl); 
+{
+  message_(MT_ERROR, _msg, _endl);
 }
 
-void 
-XBUtilities::verbose(const std::string& _msg, bool _endl) 
-{ 
-  message_(MT_VERBOSE, _msg, _endl); 
+void
+XBUtilities::verbose(const std::string& _msg, bool _endl)
+{
+  message_(MT_VERBOSE, _msg, _endl);
 }
 
-void 
-XBUtilities::fatal(const std::string& _msg, bool _endl)   
-{ 
-  message_(MT_FATAL, _msg, _endl); 
+void
+XBUtilities::fatal(const std::string& _msg, bool _endl)
+{
+  message_(MT_FATAL, _msg, _endl);
 }
 
-void 
-XBUtilities::trace(const std::string& _msg, bool _endl)   
-{ 
-  message_(MT_TRACE, _msg, _endl); 
+void
+XBUtilities::trace(const std::string& _msg, bool _endl)
+{
+  message_(MT_TRACE, _msg, _endl);
 }
 
 
 
-void 
-XBUtilities::trace_print_tree(const std::string & _name, 
+void
+XBUtilities::trace_print_tree(const std::string & _name,
                               const boost::property_tree::ptree & _pt)
 {
   if (m_bTrace == false) {
@@ -236,10 +237,10 @@ XBUtilities::trace_print_tree(const std::string & _name,
   XBUtilities::message(buf.str());
 }
 
-void 
-XBUtilities::wrap_paragraph( const std::string & _unformattedString, 
-                             unsigned int _indentWidth, 
-                             unsigned int _columnWidth, 
+void
+XBUtilities::wrap_paragraph( const std::string & _unformattedString,
+                             unsigned int _indentWidth,
+                             unsigned int _columnWidth,
                              bool _indentFirstLine,
                              std::string &_formattedString)
 {
@@ -258,10 +259,10 @@ XBUtilities::wrap_paragraph( const std::string & _unformattedString,
 
   unsigned int linesProcessed = 0;
 
-  while (lineBeginIter != paragraphEndIter)  
+  while (lineBeginIter != paragraphEndIter)
   {
     // Remove leading spaces
-    if ((linesProcessed > 0) && 
+    if ((linesProcessed > 0) &&
         (*lineBeginIter == ' ')) {
       lineBeginIter++;
       continue;
@@ -286,13 +287,13 @@ XBUtilities::wrap_paragraph( const std::string & _unformattedString,
         lineEndIter = lastSpaceIter;
       }
     }
-    
+
     // Add new line
     if (linesProcessed > 0)
       _formattedString += "\n";
 
     // Indent the line
-    if ((linesProcessed > 0) || 
+    if ((linesProcessed > 0) ||
         (_indentFirstLine == true)) {
       for (size_t index = _indentWidth; index > 0; index--)
       _formattedString += " ";
@@ -301,17 +302,17 @@ XBUtilities::wrap_paragraph( const std::string & _unformattedString,
     // Write out the line
     _formattedString.append(lineBeginIter, lineEndIter);
 
-    lineBeginIter = lineEndIter;              
+    lineBeginIter = lineEndIter;
     linesProcessed++;
   }
-}   
+}
 
-void 
-XBUtilities::wrap_paragraphs( const std::string & _unformattedString, 
-                              unsigned int _indentWidth, 
-                              unsigned int _columnWidth, 
+void
+XBUtilities::wrap_paragraphs( const std::string & _unformattedString,
+                              unsigned int _indentWidth,
+                              unsigned int _columnWidth,
                               bool _indentFirstLine,
-                              std::string &_formattedString) 
+                              std::string &_formattedString)
 {
   // Set return variables to a now state
   _formattedString.clear();
@@ -335,7 +336,7 @@ XBUtilities::wrap_paragraphs( const std::string & _unformattedString,
     ++iter;
 
     // Determine if a '\n' should be added
-    if (iter != paragraphs.end()) 
+    if (iter != paragraphs.end())
       _formattedString += "\n";
   }
 }
@@ -355,8 +356,8 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
     try {
       // If there are no devices in the server a runtime exception is thrown in  mgmt.cpp probe()
       total = (xrt_core::device::id_type) xrt_core::get_total_devices(_inUserDomain /*isUser*/).first;
-    } catch (...) { 
-      /* Do nothing */ 
+    } catch (...) {
+      /* Do nothing */
     }
 
     // No devices found
@@ -367,7 +368,7 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
     for(xrt_core::device::id_type index = 0; index < total; ++index) {
       if(_inUserDomain)
         _deviceCollection.push_back( xrt_core::get_userpf_device(index) );
-      else 
+      else
         _deviceCollection.push_back( xrt_core::get_mgmtpf_device(index) );
     }
 
@@ -376,11 +377,11 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
 
   // -- Collect the devices by name
   for (const auto & deviceBDF : _deviceBDFs) {
-  	auto index = xrt_core::utils::bdf2index(deviceBDF, _inUserDomain);         // Can throw
+    auto index = xrt_core::utils::bdf2index(deviceBDF, _inUserDomain);         // Can throw
     if(_inUserDomain)
-        _deviceCollection.push_back( xrt_core::get_userpf_device(index) );
-      else 
-        _deviceCollection.push_back( xrt_core::get_mgmtpf_device(index) );
+      _deviceCollection.push_back( xrt_core::get_userpf_device(index) );
+    else
+      _deviceCollection.push_back( xrt_core::get_mgmtpf_device(index) );
   }
 }
 
@@ -395,7 +396,7 @@ XBUtilities::collect_devices( const std::string& _devices, // comma separated no
   return core_devices;
 }
 
-bool 
+bool
 XBUtilities::can_proceed()
 {
   bool proceed = false;
@@ -404,7 +405,7 @@ XBUtilities::can_proceed()
   std::cout << "Are you sure you wish to proceed? [Y/n]: ";
   std::getline( std::cin, input );
 
-  // Ugh, the std::transform() produces windows compiler warnings due to 
+  // Ugh, the std::transform() produces windows compiler warnings due to
   // conversions from 'int' to 'char' in the algorithm header file
   boost::algorithm::to_lower(input);
   //std::transform( input.begin(), input.end(), input.begin(), [](unsigned char c){ return std::tolower(c); });
@@ -436,7 +437,7 @@ XBUtilities::sudo_or_throw(const std::string& msg)
 }
 
 boost::property_tree::ptree
-XBUtilities::get_available_devices(bool inUserDomain) 
+XBUtilities::get_available_devices(bool inUserDomain)
 {
   xrt_core::device_collection deviceCollection;
   collect_devices(std::set<std::string> {"all"}, inUserDomain, deviceCollection);
@@ -527,10 +528,10 @@ XBUtilities::get_uuids(const void *dtbuf)
     else if (!strcmp(s, "interface_uuid")) {
       uuids.push_back(std::string(p));
     }
-    
+
     p = PALIGN(p + sz, 4);
   }
-  return uuids;  
+  return uuids;
 }
 
 int
@@ -631,6 +632,6 @@ XBUtilities::string_to_UUID(std::string str)
   }
   boost::to_upper(str);
   uuid.append(str);
-  
+
   return uuid;
 }
