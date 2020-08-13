@@ -1,5 +1,19 @@
 #!/bin/bash
 
+################################################################
+# Use this script to build XRT low level tests using CMake
+# The script can be used on both Linux and Windows WSL in bash
+#
+# Make sure to set XILINX_XRT prior to running the script
+#
+# % <path-to-this-directory>/build.sh -help
+#
+# The test executables are installed under
+# build/{Linux,Windows}/Debug/{hw,hw_emu,sw_emu}/<testname>/
+################################################################
+
+
+
 OSDIST=`lsb_release -i |awk -F: '{print tolower($2)}' | tr -d ' \t'`
 SRCDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 BUILDDIR=$SRCDIR/build
@@ -38,12 +52,17 @@ usage()
     echo
     echo "[-help]                    List this help"
     echo "[-nocmake]                 Skip CMake call"
+    echo "[-em <hw_emu | sw_emu>]    Link for emulation mode"
     echo "[clean|-clean]             Remove build directories"
+    echo ""
+    echo "The test executables are installed under"
+    echo "build/{Linux,Windows}/Debug/{hw,hw_emu,sw_emu}/<testname>/"
     exit 1
 }
 
 clean=0
 nocmake=0
+em=""
 while [ $# -gt 0 ]; do
     case "$1" in
         -help)
@@ -51,6 +70,12 @@ while [ $# -gt 0 ]; do
             ;;
         -nocmake)
             nocmake=1
+            shift
+            ;;
+        -em)
+            shift
+            echo "x=$1"
+            em=$1
             shift
             ;;
         clean|-clean)
@@ -69,6 +94,14 @@ if [[ $clean == 1 ]]; then
     echo "/bin/rm -rf $BUILDDIR"
     /bin/rm -rf $BUILDDIR
     exit 0
+fi
+
+if [[ "X$em" != "X" ]]; then
+    echo "Building for $em emulation mode"
+    export XCL_EMULATION_MODE=$em
+    CMAKEDIR+="/$em"
+else
+    CMAKEDIR+="/hw"
 fi
 
 here=$PWD

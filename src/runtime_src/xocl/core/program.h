@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -94,6 +94,13 @@ public:
     return range<device_const_iterator_type>(m_devices.begin(),m_devices.end());
   }
 
+  device*
+  get_first_device() const
+  {
+    auto itr = range_find(m_devices,[](auto& d) { return d.get() != nullptr; });
+    return (itr != m_devices.end()) ? (*itr).get() : nullptr;
+  }
+
   context*
   get_context() const
   {
@@ -106,9 +113,6 @@ public:
     return m_source;
   }
 
-  /**
-   * For conformance flow only
-   */
   size_t
   num_devices() const
   {
@@ -294,21 +298,6 @@ public:
       return CL_BUILD_NONE;
   }
 
-  ////////////////////////////////////////////////////////////////
-  // Conformance helpers
-  ////////////////////////////////////////////////////////////////
-  unsigned int
-  conformance_rename_kernel(const std::string&)
-  {
-    throw std::runtime_error("XCL_CONFORMANCE no longer supported");
-  }
-
-  void
-  set_source(const std::string&)
-  {
-    throw std::runtime_error("XCL_CONFORMANCE no longer supported");
-  }
-
   void
   build(const std::vector<device*>& devices,const std::string& options);
 
@@ -323,24 +312,7 @@ private:
   std::map<const device*,std::string> m_logs;    // build *error* logs
 
   std::string m_source;
-public:
-  // conformance
-  std::string conformance_binaryfilename;
-  std::string conformance_binaryhash;
 };
-
-/**
- * Get a locked range of current program objects.
- *
- * Do not attempt to create program objects while holding on to the
- * returned range, a deadlock would follow.
- *
- * This function is used in conformance mode.  May disappear if better
- * alternative is found.
- */
-using program_iterator_type = std::vector<program*>::iterator;
-range_lock<program_iterator_type>
-get_global_programs();
 
 } // xocl
 

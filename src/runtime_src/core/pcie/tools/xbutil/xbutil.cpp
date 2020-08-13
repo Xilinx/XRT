@@ -34,6 +34,8 @@
 #define hex_digit "[0-9a-fA-F]+"
 
 const size_t m2mBoSize = 256L * 1024 * 1024;
+const size_t hostMemSize = 256L * 1024 * 1024;
+
 
 static int bdf2index(std::string& bdfStr, unsigned& index)
 {
@@ -106,9 +108,9 @@ static bool
 is_supported_kernel_version(std::ostream &ostr)
 {
     std::vector<std::string> ubuntu_kernel_versions =
-        { "4.4.0", "4.13.0", "4.15.0", "4.18.0", "5.0.0", "5.3.0" };
+        { "4.4.0", "4.13.0", "4.15.0", "4.18.0", "5.0.0", "5.3.0", "5.4.0" };
     std::vector<std::string> centos_rh_kernel_versions =
-        { "3.10.0-693", "3.10.0-862", "3.10.0-957", "3.10.0-1062" };
+        { "3.10.0-693", "3.10.0-862", "3.10.0-957", "3.10.0-1062", "3.10.0-1127", "4.18.0-147", "4.18.0-193" };
     const std::string os = sensor_tree::get<std::string>("system.linux", "N/A");
 
     if(os.find("Ubuntu") != std::string::npos)
@@ -246,6 +248,8 @@ int main(int argc, char *argv[])
         return xcldev::xclP2p(argc, argv);
     } else if( std::strcmp( argv[1], "host_mem" ) == 0 ) {
         return xcldev::xclCma(argc, argv);
+    } else if( std::strcmp( argv[1], "scheduler" ) == 0 ) {
+        return xcldev::xclScheduler(argc, argv);
     }
     optind--;
 
@@ -1188,7 +1192,7 @@ int xcldev::device::runTestCase(const std::string& py,
         return -EINVAL;
     }
 
-    std::string cmd = "/usr/bin/python " + xrtTestCasePath + " -k " + xclbinPath + " -d " + std::to_string(m_idx);
+    std::string cmd = "/usr/bin/python3 " + xrtTestCasePath + " -k " + xclbinPath + " -d " + std::to_string(m_idx);
     return runShellCmd(cmd, output);
 }
 
@@ -1214,19 +1218,50 @@ int xcldev::device::bandwidthKernelTest(void)
 {
     std::string output;
 
-    if ((sensor_tree::get<std::string>("system.linux", "N/A").find("Red Hat") != std::string::npos)
-            && (sensor_tree::get<std::string>("system.machine", "N/A").find("ppc64le") != std::string::npos)) {
-        std::cout << "Testcase not supported on Red Hat and PowerPC. Skipping validation"
-                  << std::endl;
-        return -EOPNOTSUPP;
-    }
-
     //versal bandwidth kernel is different, hence it needs to run a custom testcase
     std::string errmsg, vbnv;
     pcidev::get_dev(m_idx)->sysfs_get("rom", "VBNV", errmsg, vbnv);
 
-    std::string testcase = (vbnv.find("vck5000") != std::string::npos) 
+    std::string testcase = (vbnv.find("vck5000") != std::string::npos)
         ? "versal_23_bandwidth.py" : "23_bandwidth.py";
+    
+    int ret = runTestCase(testcase, std::string("bandwidth.xclbin"), output);
+
+    if (ret != 0) {
+        std::cout << output << std::endl;
+        return ret;
+    }
+
+    if (output.find("PASS") == std::string::npos) {
+        std::cout << output << std::endl;
+        return -EINVAL;
+    }
+
+    // Print out max thruput
+    size_t st = output.find("Maximum");
+    if (st != std::string::npos) {
+        size_t end = output.find("\n", st);
+        std::cout << std::endl << output.substr(st, end - st) << std::endl;
+    }
+
+    return 0;
+}
+
+int xcldev::device::hostMemBandwidthKernelTest(void)
+{
+    std::string output;
+
+    //Kick start hostMemBandwidthKernelTest only if enabled
+    std::string errmsg;
+    uint64_t host_mem_size = 0;
+    pcidev::get_dev(m_idx)->sysfs_get<uint64_t>("address_translator", "host_mem_size",  errmsg, host_mem_size, 0);
+
+    if (!host_mem_size) {
+        std::cout << "Host_mem is not available. Skipping validation" << std::endl;
+        return -EOPNOTSUPP;        
+    }
+
+    std::string testcase = "host_mem_23_bandwidth.py";
     
     int ret = runTestCase(testcase, std::string("bandwidth.xclbin"), output);
 
@@ -1255,19 +1290,28 @@ int xcldev::device::scVersionTest(void)
     std::string sc_ver, exp_sc_ver;
     std::string errmsg;
 
+    pcidev::get_dev(m_idx)->sysfs_get("xmc", "bmc_ver", errmsg, sc_ver);
     if (!errmsg.empty()) {
         std::cout << errmsg << std::endl;
         return -EINVAL;
     }
 
-    pcidev::get_dev(m_idx)->sysfs_get("xmc", "bmc_ver", errmsg, sc_ver);
     pcidev::get_dev(m_idx)->sysfs_get("xmc", "exp_bmc_ver", errmsg, exp_sc_ver);
-    if (!exp_sc_ver.empty() && (sc_ver.compare(exp_sc_ver) != 0 || sc_ver.empty()))
-    {
+    if (!errmsg.empty()) {
+        std::cout << errmsg << std::endl;
+        return -EINVAL;
+    }
+
+    if (!exp_sc_ver.empty() && (sc_ver.compare(exp_sc_ver) != 0 || sc_ver.empty())) {
         std::cout << "SC FIRMWARE MISMATCH, ATTENTION" << std::endl;
-        std::cout << "SC firmware running on board: " << sc_ver << ". Expected SC firmware from installed Shell: " << exp_sc_ver << std::endl;
-	std::cout << "Please use \"xbmgmt flash --scan\" to check installed Shell." << std::endl;
-	return 1;
+        if (sc_ver.empty())
+            std::cout << "Can't determine SC firmware running on board.";
+        else if (sc_ver.compare(exp_sc_ver) != 0)
+            std::cout << "SC firmware running on board: " << sc_ver; 
+        std::cout << ". Expected SC firmware from installed Shell: " << exp_sc_ver << std::endl;
+
+        std::cout << "Please use \"xbmgmt flash --scan\" to check installed Shell." << std::endl;
+        return 1;
     }
 
     return 0;
@@ -1474,6 +1518,12 @@ int xcldev::device::validate(bool quick, bool hidden)
     if (retVal < 0)
         return retVal;
 
+    retVal = runOneTest("host memory bandwidth test",
+            std::bind(&xcldev::device::hostMemBandwidthKernelTest, this));
+    withWarning = withWarning || (retVal == 1);
+    if (retVal < 0)
+        return retVal;
+
     return withWarning ? 1 : 0;
 }
 
@@ -1581,7 +1631,7 @@ int xcldev::device::reset(xclResetKind kind)
     
 }
 
-static bool canProceed()
+bool canProceed()
 {
     std::string input;
     bool answered = false;
@@ -1902,7 +1952,7 @@ int xcldev::xclCma(int argc, char *argv[])
     int long_index, ret;
     const char* short_options = "d:"; //don't add numbers
     const char* exe = argv[ 0 ];
-    std::string optarg_s;
+    std::string optarg_s, unit_str;
     const char *unit = NULL;
     size_t end = 0;
 
@@ -1929,7 +1979,9 @@ int xcldev::xclCma(int argc, char *argv[])
                 std::cout << "ERROR: Value supplied to --size option is invalid\n";
                 return -1;
             }
-            unit = optarg_s.substr(end).c_str();
+            unit_str = optarg_s.substr(end);
+            unit = unit_str.c_str();
+
             if (std::tolower(unit[0]) == 'm')
                 unit_sz = 1024*1024;
             else if (std::tolower(unit[0]) == 'g')
@@ -2099,7 +2151,7 @@ int xcldev::device::testM2m()
     }
 
     dev->sysfs_get("icap", "mem_topology", errmsg, buf);
-    const mem_topology *map = (mem_topology *)buf.data();
+    mem_topology *map = (mem_topology *)buf.data();
 
     if(buf.empty() || map->m_count == 0) {
         std::cout << "WARNING: 'mem_topology' invalid, "
@@ -2110,8 +2162,11 @@ int xcldev::device::testM2m()
 
     for(int32_t i = 0; i < map->m_count; i++) {
         if(map->m_mem_data[i].m_used &&
-            map->m_mem_data[i].m_size * 1024 >= m2mBoSize)
+            map->m_mem_data[i].m_size * 1024 >= m2mBoSize) {
+            /* use u8 m_type field to as bank index */
+            map->m_mem_data[i].m_type = i;
             usedBanks.insert(usedBanks.end(), map->m_mem_data[i]);
+        }
     }
 
     if (usedBanks.size() <= 1) {
@@ -2123,7 +2178,10 @@ int xcldev::device::testM2m()
         for(uint j = i+1; j < usedBanks.size(); j++) {
             std::cout << usedBanks[i].m_tag << " -> "
                 << usedBanks[j].m_tag << " M2M bandwidth: ";
-            ret = m2mtest_bank(m_handle, i, j);
+            if (!usedBanks[i].m_size || !usedBanks[j].m_size)
+                continue;
+
+            ret = m2mtest_bank(m_handle, usedBanks[i].m_type, usedBanks[j].m_type);
             if(ret != 0)
                 return ret;
         }
@@ -2310,5 +2368,76 @@ xcldev::device::iopsTest()
     }
 
     xclCloseContext(m_handle, xclbin_lock.m_uuid, 0);
+    return 0;
+}
+
+int xcldev::xclScheduler(int argc, char *argv[])
+{
+    bool root = ((getuid() == 0) || (geteuid() == 0));
+    static struct option long_opts[] = {
+        {"echo", required_argument, 0, 0},
+        {0, 0, 0, 0}
+    };
+    const char* short_opts = "d:e:k:";
+    int c, opt_idx;
+    std::string errmsg;
+    unsigned index = 0;
+    int kds_echo = -1;
+    int ert_disable = -1;
+
+    if (!root) {
+        std::cout << "ERROR: root privileges required." << std::endl;
+        return -EPERM;
+    }
+
+    while ((c = getopt_long(argc, argv, short_opts, long_opts, &opt_idx)) != -1) {
+        switch (c) {
+        case 'd': {
+            int ret = str2index(optarg, index);
+            if (ret != 0)
+                return ret;
+            if (index >= pcidev::get_dev_total()) {
+                std::cout << "ERROR: index " << index << " out of range"
+                    << std::endl;
+                return -EINVAL;
+            }
+            break;
+        }
+        case 'e':
+            kds_echo = std::atoi(optarg);
+            break;
+        case 'k':
+            ert_disable = std::atoi(optarg);
+            break;
+        default:
+            /* This is hidden command, silently exit */
+            return -EINVAL;
+        }
+    }
+
+    if (kds_echo != -1) {
+        std::string val = (kds_echo == 0)? "0" : "1";
+        pcidev::get_dev(index)->sysfs_put( "", "kds_echo", errmsg, val);
+        if (!errmsg.empty()) {
+            std::cout << errmsg << std::endl;
+            return -EINVAL;
+        }
+        std::string kds_echo;
+        pcidev::get_dev(index)->sysfs_get( "", "kds_echo", errmsg, kds_echo);
+        std::cout << "Device[" << index << "] kds_echo: " << kds_echo << std::endl;
+    }
+
+    if (ert_disable != -1) {
+        std::string val = (ert_disable == 0)? "0" : "1";
+        pcidev::get_dev(index)->sysfs_put( "", "ert_disable", errmsg, val);
+        if (!errmsg.empty()) {
+            std::cout << errmsg << std::endl;
+            return -EINVAL;
+        }
+        std::string ert_disable;
+        pcidev::get_dev(index)->sysfs_get( "", "ert_disable", errmsg, ert_disable);
+        std::cout << "Device[" << index << "] ert_disable: " << ert_disable << std::endl;
+    }
+
     return 0;
 }

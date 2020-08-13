@@ -20,21 +20,24 @@
 #include "flash/flasher.h"
 #include "core/common/query_requests.h"
 
+// Utilities
+#include "tools/common/XBUtilities.h"
+namespace XBU = XBUtilities;
+
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
-
 
 void 
 ReportPlatform::getPropertyTreeInternal( const xrt_core::device * _pDevice,
                                          boost::property_tree::ptree &_pt) const
 {
-  // Defer to the 20201 format.  If we ever need to update JSON data, 
+  // Defer to the 20202 format.  If we ever need to update JSON data, 
   // Then update this method to do so.
-  getPropertyTree20201(_pDevice, _pt);
+  getPropertyTree20202(_pDevice, _pt);
 }
 
 /*
- * helper function for getPropertyTree20201()
+ * helper function for getPropertyTree20202()
  */
 static bool 
 same_shell(const std::string& vbnv, const std::string& id, 
@@ -49,7 +52,7 @@ same_shell(const std::string& vbnv, const std::string& id,
 }
 
 /*
- * helper function for getPropertyTree20201()
+ * helper function for getPropertyTree20202()
  */
 static bool 
 same_sc(const std::string& sc, const DSAInfo& installed) 
@@ -58,21 +61,13 @@ same_sc(const std::string& sc, const DSAInfo& installed)
 }
 
 void 
-ReportPlatform::getPropertyTree20201( const xrt_core::device * _pDevice,
+ReportPlatform::getPropertyTree20202( const xrt_core::device * _pDevice,
                                       boost::property_tree::ptree &_pt) const
 {
   boost::property_tree::ptree pt;
 
   // There can only be 1 root node
   _pt.add_child("platform", pt);
-  boost::property_tree::ptree on_board_rom_info;
-  boost::property_tree::ptree on_board_platform_info;
-  boost::property_tree::ptree on_board_xmc_info;
-  boost::property_tree::ptree on_board_dev_info;
-  _pDevice->get_rom_info(on_board_rom_info);
-  _pDevice->get_platform_info(on_board_platform_info);
-  _pDevice->get_xmc_info(on_board_xmc_info);
-  _pDevice->get_info(on_board_dev_info);
 
   Flasher f(_pDevice->get_device_id());
   std::vector<DSAInfo> availableDSAs = f.getInstalledDSA();
@@ -80,16 +75,23 @@ ReportPlatform::getPropertyTree20201( const xrt_core::device * _pDevice,
   BoardInfo info;
   f.getBoardInfo(info);
   //create information tree for a device
-  _pt.put("platform.bdf", on_board_dev_info.get<std::string>("bdf"));
-  _pt.put("platform.flash_type", on_board_platform_info.get<std::string>("flash_type", "N/A"));
+  _pt.put("platform.bdf", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_pDevice)));
+  _pt.put("platform.flash_type", xrt_core::device_query<xrt_core::query::flash_type>(_pDevice));
   _pt.put("platform.hardware.serial_num", info.mSerialNum);
   //Flashable partition running on FPGA
   std::vector<std::string> logic_uuids, interface_uuids;
+  // the vectors are being populated by empty strings when uuids are not available on windows
+  // this needs to be fixed when the concept of multiple uuids comes into play
+  // Workaround: if the uuid is empty, remove clear the vector
   try {
     logic_uuids = xrt_core::device_query<xrt_core::query::logic_uuids>(_pDevice);
+    if (logic_uuids.front().empty())
+      logic_uuids.clear();
     } catch (...) {}
   try {
     interface_uuids = xrt_core::device_query<xrt_core::query::interface_uuids>(_pDevice);
+    if (interface_uuids.front().empty())
+      interface_uuids.clear();
     } catch (...) {}
   
   //check if 2RP
@@ -97,16 +99,19 @@ ReportPlatform::getPropertyTree20201( const xrt_core::device * _pDevice,
     for(unsigned int i = 0; i < logic_uuids.size(); i++) {
       DSAInfo part("", NULL_TIMESTAMP, logic_uuids[i], ""); 
       _pt.put("platform.current_shell.vbnv", part.name);
-      _pt.put("platform.current_shell.logic-uuid", logic_uuids[i]);
-      _pt.put("platform.current_shell.interface-uuid", interface_uuids[i]);
+      _pt.put("platform.current_shell.logic-uuid", XBU::string_to_UUID(logic_uuids[i]));
+      _pt.put("platform.current_shell.interface-uuid", XBU::string_to_UUID(interface_uuids[i]));
       _pt.put("platform.current_shell.id", (boost::format("0x%x") % part.timestamp));
     }
   } else { //1RP
-    _pt.put("platform.current_shell.vbnv", on_board_rom_info.get<std::string>("vbnv", "N/A"));
-    _pt.put("platform.current_shell.id", on_board_rom_info.get<std::string>("id", "N/A"));
+    _pt.put("platform.current_shell.vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(_pDevice));
+    _pt.put("platform.current_shell.id", (boost::format("0x%x") % xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(_pDevice)));
   }
 
-  std::string _scVer = on_board_xmc_info.get<std::string>("sc_version");
+  std::string _scVer;
+  try {
+    _scVer = xrt_core::device_query<xrt_core::query::xmc_bmc_version>(_pDevice);
+  } catch (...) {}
   if(_scVer.empty())
     _scVer = info.mBMCVer;
   _pt.put("platform.current_shell.sc_version", _scVer);
@@ -158,7 +163,15 @@ ReportPlatform::writeReport( const xrt_core::device * _pDevice,
   _output << "Flashable partition running on FPGA\n";
   _output << boost::format("  %-20s : %s\n") % "Platform" % _pt.get<std::string>("platform.current_shell.vbnv", "N/A");
   _output << boost::format("  %-20s : %s\n") % "SC Version" % _pt.get<std::string>("platform.current_shell.sc_version", "N/A");
-  _output << boost::format("  %-20s : %x\n") % "Platform ID" % _pt.get<std::string>("platform.current_shell.id", "N/A");
+  
+  auto logic_uuid = _pt.get<std::string>("platform.current_shell.logic-uuid", "");
+  auto interface_uuid = _pt.get<std::string>("platform.current_shell.interface-uuid", "");
+  if (!logic_uuid.empty() && !interface_uuid.empty()) {
+    _output << boost::format("  %-20s : %s\n") % "Platform ID" % logic_uuid;
+    _output << boost::format("  %-20s : %s\n") % "Interface UUID" % interface_uuid;
+  } else {
+    _output << boost::format("  %-20s : %x\n") % "Platform ID" % _pt.get<std::string>("platform.current_shell.id", "N/A");
+  }
   
   _output << std::endl;
   _output << "Flashable partitions installed in system\n"; 
@@ -168,11 +181,11 @@ ReportPlatform::writeReport( const xrt_core::device * _pDevice,
     boost::property_tree::ptree& available_shell = kv.second;
     _output << boost::format("  %-20s : %s\n") % "Platform" % available_shell.get<std::string>("vbnv", "N/A");
     _output << boost::format("  %-20s : %s\n") % "SC Version" % available_shell.get<std::string>("sc_version", "N/A");
-    _output << boost::format("  %-20s : %x\n") % "Platform ID" % available_shell.get<std::string>("id", "N/A") << "\n";
+    _output << boost::format("  %-20s : %s\n") % "Platform ID" % available_shell.get<std::string>("id", "N/A") << "\n";
   }
 
 
   _output << "----------------------------------------------------\n"
-          << shell_status(_pt.get<bool>("platform.status.shell", ""), 
-                          _pt.get<bool>("platform.status.sc", ""),  static_cast<int>(available_shells.size()));
+          << shell_status(_pt.get<bool>("platform.status.shell"), 
+                          _pt.get<bool>("platform.status.sc"),  static_cast<int>(available_shells.size()));
 }

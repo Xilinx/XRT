@@ -55,9 +55,9 @@ namespace xdp {
     KERNEL_READ           = 35,
     KERNEL_WRITE          = 36,
     KERNEL_STREAM_READ    = 37,
-    KERNEL_STREAM_WRITE   = 38,
-    KERNEL_STREAM_READ_STALL   = 39,
-    KERNEL_STREAM_READ_STARVE  = 40,
+    KERNEL_STREAM_READ_STALL   = 38,
+    KERNEL_STREAM_READ_STARVE  = 39,
+    KERNEL_STREAM_WRITE   = 40,
     KERNEL_STREAM_WRITE_STALL  = 41,
     KERNEL_STREAM_WRITE_STARVE = 42,
     HOST_READ             = 43,
@@ -79,7 +79,7 @@ namespace xdp {
     // Every trace event has the following four fields:
     uint64_t id ;       // Assigned by the database when it is entered
     uint64_t start_id ; // 0 if this is a start event,
-    double timestamp ;
+    double   timestamp ; // aligned timestamp
     VTFEventType type ; // For quick lookup
 
     virtual void dumpTimestamp(std::ofstream& fout) ;
@@ -100,6 +100,15 @@ namespace xdp {
     virtual bool isOpenCLAPI()   { return false ; } 
     virtual bool isHALAPI()      { return false ; }
     virtual bool isHostEvent()   { return false ; }
+    virtual bool isOpenCLHostEvent()
+      { return type == READ_BUFFER  || type == READ_BUFFER_P2P  ||
+               type == WRITE_BUFFER || type == WRITE_BUFFER_P2P ||
+	       type == KERNEL_ENQUEUE ; }
+    virtual bool isLOPHostEvent() { return false ; }
+    virtual bool isHALHostEvent()
+      { return type == READ_BUFFER  ||
+               type == WRITE_BUFFER ||
+	       type == KERNEL_ENQUEUE ; }
     virtual bool isDeviceEvent() { return false ; }
     virtual bool isReadBuffer()  { return type == READ_BUFFER || 
 	                                  type == READ_BUFFER_P2P ||

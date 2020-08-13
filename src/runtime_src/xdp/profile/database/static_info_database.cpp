@@ -24,11 +24,22 @@
 #include <unistd.h>
 #endif
 
+#ifdef _WIN32
+#pragma warning (disable : 4996 4267)
+/* 4267 : Disable warning for conversion of size_t to int32_t */
+#endif
+
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/xml_parser.hpp>
+
 #define XDP_SOURCE
 
 #include "xdp/profile/database/static_info_database.h"
+#include "xdp/profile/database/database.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #include "core/include/xclbin.h"
+#include "xdp/profile/writer/vp_base/vp_run_summary.h"
 
 #define XAM_STALL_PROPERTY_MASK        0x4
 
@@ -75,7 +86,7 @@ namespace xdp {
     connections[argIdx].push_back(memIdx);
   }
 
-  VPStaticDatabase::VPStaticDatabase()
+  VPStaticDatabase::VPStaticDatabase(VPDatabase* d) : db(d), runSummary(nullptr)
   {
 #ifdef _WIN32
     pid = _getpid() ;
@@ -86,29 +97,47 @@ namespace xdp {
 
   VPStaticDatabase::~VPStaticDatabase()
   {
+    if (runSummary != nullptr)
+    {
+      runSummary->write(false) ;
+      delete runSummary ;
+    }
   }
 
   // This function is called whenever a device is loaded with an 
   //  xclbin.  It has to clear out any previous device information and
   //  reload our information.
-  void VPStaticDatabase::updateDevice(uint64_t deviceId, const void* binary)
+  void VPStaticDatabase::updateDevice(uint64_t deviceId, void* devHandle)
   {  
     resetDeviceInfo(deviceId);
 
-    if (binary == nullptr) return ;
-
     DeviceInfo *devInfo = new DeviceInfo();
-    devInfo->clockRateMHz = 300;
     devInfo->platformInfo.kdmaCount = 0;
 
     deviceInfo[deviceId] = devInfo;
 
-    // Currently, we are going through the xclbin using the low level
-    //  AXLF structure.  Would sysfs be a better solution?  Does
-    //  that work with emulation?
-    if (!setXclbinUUID(devInfo, binary)) return;
-    if (!initializeComputeUnits(devInfo, binary)) return ;
-    if (!initializeProfileMonitors(devInfo, binary)) return ;
+    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(devHandle);
+
+    if(nullptr == device) return;
+
+    const clock_freq_topology* clockSection = device->get_axlf_section<const clock_freq_topology*>(CLOCK_FREQ_TOPOLOGY);
+
+    if(clockSection) {
+      for(int32_t i = 0; i < clockSection->m_count; i++) {
+        const struct clock_freq* clk = &(clockSection->m_clock_freq[i]);
+        if(clk->m_type != CT_DATA) {
+          continue;
+        }
+        devInfo->clockRateMHz = clk->m_freq_Mhz;
+      }
+    } else {
+      devInfo->clockRateMHz = 300;
+    }
+
+//    if (!setXclbinUUID(devInfo, device)) return;
+    if (!setXclbinName(devInfo, device)) return;
+    if (!initializeComputeUnits(devInfo, device)) return ;
+    if (!initializeProfileMonitors(devInfo, device)) return ;
   }
 
   void VPStaticDatabase::resetDeviceInfo(uint64_t deviceId)
@@ -122,35 +151,46 @@ namespace xdp {
     }
   }
 
-  bool VPStaticDatabase::setXclbinUUID(DeviceInfo* devInfo, const void* binary)
+#if 0
+  bool VPStaticDatabase::setXclbinUUID(DeviceInfo* devInfo, const std::shared_ptr<xrt_core::device>& device)
   {
-    const axlf* xbin = static_cast<const struct axlf*>(binary) ;
-    (void)xbin;
-    (void)devInfo;
-    #if 0
-    long double id = *((long double*)xbin->m_header.uuid);
-    std::cout << " the uid " << id << std::endl;
-    devInfo->loadedXclbin = std::to_string(*(long double*)(xbin->m_header.uuid));
-    
-    std::stringstream ss;
-    ss << xbin->m_header.uuid;
-    devInfo->loadedXclbin = ss.str();
-    std::cout << "sizeof xuid_t " << sizeof(xuid_t) << std::endl;
-    std::cout << "sizeof unsigned long long " << sizeof(unsigned long long) << std::endl;
-    std::cout << "sizeof long double " << sizeof(long double) << std::endl;
-    #endif
+    devInfo->loadedXclbinUUID = device->get_xclbin_uuid();
+    return true;
+  }
+#endif
+
+  bool VPStaticDatabase::setXclbinName(DeviceInfo* devInfo, const std::shared_ptr<xrt_core::device>& device)
+  {
+    // Get SYSTEM_METADATA section
+    std::pair<const char*, size_t> systemMetadata = device->get_axlf_section(SYSTEM_METADATA);
+    const char* systemMetadataSection = systemMetadata.first;
+    size_t      systemMetadataSz      = systemMetadata.second;
+    if(systemMetadataSection == nullptr) return false;
+
+    try {
+      std::stringstream ss;
+      ss.write(systemMetadataSection, systemMetadataSz);
+
+      // Create a property tree and determine if the variables are all default values
+      boost::property_tree::ptree pt;
+      boost::property_tree::read_json(ss, pt);
+
+      devInfo->loadedXclbin = pt.get<std::string>("system_diagram_metadata.xclbin.generated_by.xclbin_name", "");
+      if(!devInfo->loadedXclbin.empty()) {
+        devInfo->loadedXclbin += ".xclbin";
+      }
+    } catch(...) {
+      // keep default value in "devInfo->loadedXclbin" i.e. empty string
+    }
     return true;
   }
 
-  bool VPStaticDatabase::initializeComputeUnits(DeviceInfo* devInfo, const void* binary)
+  bool VPStaticDatabase::initializeComputeUnits(DeviceInfo* devInfo, const std::shared_ptr<xrt_core::device>& device)
   {
-    const axlf* xbin     = static_cast<const struct axlf*>(binary);
-    const char* chBinary = static_cast<const char*>(binary);
-
     // Get IP_LAYOUT section 
-    const axlf_section_header* ipLayoutHeader = xclbin::get_axlf_section(xbin, IP_LAYOUT);
-    if(ipLayoutHeader == nullptr) return false;
-    const ip_layout* ipLayoutSection = reinterpret_cast<const ip_layout*>(chBinary + ipLayoutHeader->m_sectionOffset) ;
+    const ip_layout* ipLayoutSection = device->get_axlf_section<const ip_layout*>(IP_LAYOUT);
+    if(ipLayoutSection == nullptr) return false;
+
     ComputeUnitInstance* cu = nullptr;
     for(int32_t i = 0; i < ipLayoutSection->m_count; i++) {
       const struct ip_data* ipData = &(ipLayoutSection->m_ip_data[i]);
@@ -165,9 +205,9 @@ namespace xdp {
     }
 
     // Get MEM_TOPOLOGY section 
-    const axlf_section_header* memTopologyHeader = xclbin::get_axlf_section(xbin, MEM_TOPOLOGY);
-    if(memTopologyHeader == nullptr) return false;
-    const mem_topology* memTopologySection = reinterpret_cast<const mem_topology*>(chBinary + memTopologyHeader->m_sectionOffset);
+    const mem_topology* memTopologySection = device->get_axlf_section<const mem_topology*>(MEM_TOPOLOGY);
+    if(memTopologySection == nullptr) return false;
+
     for(int32_t i = 0; i < memTopologySection->m_count; i++) {
       const struct mem_data* memData = &(memTopologySection->m_mem_data[i]);
       devInfo->memoryInfo[i] = new Memory(memData->m_type, i, memData->m_base_address, memData->m_size,
@@ -176,9 +216,9 @@ namespace xdp {
 
     // Look into the connectivity section and load information about Compute Units and their Memory connections
     // Get CONNECTIVITY section
-    const axlf_section_header* connectivityHeader = xclbin::get_axlf_section(xbin, CONNECTIVITY);
-    if(connectivityHeader == nullptr) return true;
-    const connectivity* connectivitySection = reinterpret_cast<const connectivity*>(chBinary + connectivityHeader->m_sectionOffset) ;
+    const connectivity* connectivitySection = device->get_axlf_section<const connectivity*>(CONNECTIVITY);    
+    if(connectivitySection == nullptr) return true;
+
     // Now make the connections
     cu = nullptr;
     for(int32_t i = 0; i < connectivitySection->m_count; i++) {
@@ -206,19 +246,49 @@ namespace xdp {
       }
       cu->addConnection(connctn->arg_index, connctn->mem_data_index);
     }
+
+    // Set Static WorkGroup Size of CUs using the EMBEDDED_METADATA section
+    std::pair<const char*, size_t> embeddedMetadata = device->get_axlf_section(EMBEDDED_METADATA);
+    const char* embeddedMetadataSection = embeddedMetadata.first;
+    size_t      embeddedMetadataSz      = embeddedMetadata.second;
+
+    boost::property_tree::ptree xmlProject;
+    std::stringstream xmlStream;
+    xmlStream.write(embeddedMetadataSection, embeddedMetadataSz);
+    boost::property_tree::read_xml(xmlStream, xmlProject);
+
+    for(auto coreItem : xmlProject.get_child("project.platform.device.core")) {
+      std::string coreItemName = coreItem.first;
+      if(0 != coreItemName.compare("kernel")) {  // skip items other than "kernel"
+        continue;
+      }
+      auto kernel = coreItem;
+      auto kernelNameItem    = kernel.second.get_child("<xmlattr>");
+      std::string kernelName = kernelNameItem.get<std::string>("name", "");
+
+      auto workGroupSz = kernel.second.get_child("compileWorkGroupSize");
+      std::string x = workGroupSz.get<std::string>("<xmlattr>.x", "");
+      std::string y = workGroupSz.get<std::string>("<xmlattr>.y", "");
+      std::string z = workGroupSz.get<std::string>("<xmlattr>.z", "");
+
+      // Find the ComputeUnitInstance
+      for(auto cuItr : devInfo->cus) {
+        if(0 != cuItr.second->getKernelName().compare(kernelName)) {
+          continue;
+        }
+        cuItr.second->setDim(std::stoi(x), std::stoi(y), std::stoi(z));
+      }
+    }
+
     return true;
   }
 
-  bool VPStaticDatabase::initializeProfileMonitors(DeviceInfo* devInfo, const void* binary)
+  bool VPStaticDatabase::initializeProfileMonitors(DeviceInfo* devInfo, const std::shared_ptr<xrt_core::device>& device)
   {
     // Look into the debug_ip_layout section and load information about Profile Monitors
-    const axlf* xbin     = static_cast<const struct axlf*>(binary);
-    const char* chBinary = static_cast<const char*>(binary);
-
-    // Get CONNECTIVITY section
-    const axlf_section_header* debugIpLayoutHeader = xclbin::get_axlf_section(xbin, DEBUG_IP_LAYOUT);
-    if(debugIpLayoutHeader == nullptr) return false;
-    const debug_ip_layout* debugIpLayoutSection = reinterpret_cast<const debug_ip_layout*>(chBinary + debugIpLayoutHeader->m_sectionOffset) ;
+    // Get DEBUG_IP_LAYOUT section 
+    const debug_ip_layout* debugIpLayoutSection = device->get_axlf_section<const debug_ip_layout*>(DEBUG_IP_LAYOUT);
+    if(debugIpLayoutSection == nullptr) return false;
 
     for(uint16_t i = 0; i < debugIpLayoutSection->m_count; i++) {
       const struct debug_ip_data* debugIpData = &(debugIpLayoutSection->m_debug_ip_data[i]);
@@ -231,7 +301,7 @@ namespace xdp {
       ComputeUnitInstance* cuObj = nullptr;
       // find CU
       if(debugIpData->m_type == ACCEL_MONITOR) {
-		for(auto cu : devInfo->cus) {
+        for(auto cu : devInfo->cus) {
           if(0 == name.compare(cu.second->getName())) {
             cuObj = cu.second;
             cuId = cu.second->getIndex();
@@ -245,7 +315,7 @@ namespace xdp {
         }
         if(mon) { devInfo->amList.push_back(mon); }
       } else if(debugIpData->m_type == AXI_MM_MONITOR) {
-		// parse name to find CU Name and Memory
+        // parse name to find CU Name and Memory
         size_t pos = name.find('/');
         std::string monCuName = name.substr(0, pos);
 
@@ -253,14 +323,14 @@ namespace xdp {
         std::string memName = name.substr(pos+1);
 
         int32_t memId = -1;
-		for(auto cu : devInfo->cus) {
+        for(auto cu : devInfo->cus) {
           if(0 == monCuName.compare(cu.second->getName())) {
             cuId = cu.second->getIndex();
             cuObj = cu.second;
             break;
           }
         }
-		for(auto mem : devInfo->memoryInfo) {
+        for(auto mem : devInfo->memoryInfo) {
           if(0 == memName.compare(mem.second->name)) {
             memId = mem.second->index;
             break;
@@ -270,14 +340,16 @@ namespace xdp {
         if(cuObj) {
           cuObj->addMonitor(mon);
           cuObj->setDataTransferEnabled(true);
+        } else if(0 != monCuName.compare("shell")) {
+          // If not connected to CU and not a shell monitor, then a floating monitor
+          devInfo->hasFloatingAIM = true;
         }
         devInfo->aimList.push_back(mon);
       } else if(debugIpData->m_type == AXI_STREAM_MONITOR) {
         // associate with the first CU
         size_t pos = name.find('/');
         std::string monCuName = name.substr(0, pos);
-
-		for(auto cu : devInfo->cus) {
+        for(auto cu : devInfo->cus) {
           if(0 == monCuName.compare(cu.second->getName())) {
             cuId = cu.second->getIndex();
             cuObj = cu.second;
@@ -287,10 +359,13 @@ namespace xdp {
         mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId);
         if(debugIpData->m_properties & 0x2) {
           mon->isRead = true;
-     	}
+        }
         if(cuObj) {
           cuObj->addMonitor(mon);
-          cuObj->setDataTransferEnabled(true);
+          cuObj->setStreamEnabled(true);
+        } else if(0 != monCuName.compare("shell")) {
+          // If not connected to CU and not a shell monitor, then a floating monitor
+          devInfo->hasFloatingASM = true;
         }
         devInfo->asmList.push_back(mon);
       } else {
@@ -313,6 +388,12 @@ namespace xdp {
     std::lock_guard<std::mutex> lock(dbLock) ;
 
     openedFiles.push_back(std::make_pair(name, type)) ;
+
+    if (runSummary == nullptr)
+    {
+      runSummary = new VPRunSummaryWriter("xclbin.run_summary") ;
+    }
+    runSummary->write(false) ;
   }
 
 }

@@ -32,6 +32,7 @@
 #include <setupapi.h>
 #include <strsafe.h>
 
+
 // To be simplified
 #include "core/pcie/driver/windows/include/XoclUser_INTF.h"
 
@@ -374,7 +375,7 @@ done:
 
 
   int
-  open_context(xuid_t xclbin_id, unsigned int ip_idx, bool shared)
+  open_context(const xuid_t xclbin_id, unsigned int ip_idx, bool shared)
   {
     HANDLE deviceHandle = m_dev;
     XOCL_CTX_ARGS ctxArgs = { 0 };
@@ -409,7 +410,7 @@ done:
   }
 
   int
-  close_context(xuid_t xclbin_id, unsigned int ip_idx)
+  close_context(const xuid_t xclbin_id, unsigned int ip_idx)
   {
     HANDLE deviceHandle = m_dev;
     XOCL_CTX_ARGS ctxArgs = { 0 };
@@ -547,15 +548,17 @@ done:
   bool SendIoctlReadAxlf(PUCHAR ImageBuffer, DWORD BuffSize)
   {
     HANDLE deviceHandle = m_dev;
-    DWORD error;
+    DWORD error = 0;
     DWORD bytesWritten;
+    ULONG return_status = 0;
+
 
     if (!DeviceIoControl(deviceHandle,
                          IOCTL_XOCL_READ_AXLF,
                          ImageBuffer,
                          BuffSize,
-                         0,
-                         0,
+                         &return_status,
+                         sizeof(ULONG),
                          &bytesWritten,
                          nullptr)) {
 
@@ -565,9 +568,28 @@ done:
         send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl failed with error %d", error);
 
       goto out;
+
+    }
+    if (return_status != NTSTATUS_STATUS_SUCCESS)
+    {
+
+        error = return_status;
+
+        if (return_status == NTSTATUS_REVISION_MISMATCH)
+        {
+            xrt_core::message::
+                send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "Xclbin does not match Shell on card. Use 'xbmgmt flash' to update Shell.");
+
+        }
+        else {
+
+            xrt_core::message::
+                send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl failed with NTSTATUS %x", return_status);
+
+        }
+
     }
 
-    error = 0;
 
   out:
 
@@ -1373,9 +1395,19 @@ xclSyncBO(xclDeviceHandle handle, xclBufferHandle boHandle, xclBOSyncDirection d
   return shim->sync_bo(boHandle, dir, size, offset);
 }
 
+int
+xclCopyBO(xclDeviceHandle handle, xclBufferHandle dstBoHandle,
+          xclBufferHandle srcBoHandle, size_t size, size_t dst_offset,
+          size_t src_offset)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclCopyBO() NOT IMPLEMENTED");
+  return ENOSYS;
+}
+
 // Compute Unit Execution Management APIs
 int
-xclOpenContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int ipIndex, bool shared)
+xclOpenContext(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclOpenContext()");
@@ -1387,7 +1419,7 @@ xclOpenContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int ipIndex, bo
 	  : shim->open_context(xclbinId, ipIndex, shared);
 }
 
-int xclCloseContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int ipIndex)
+int xclCloseContext(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclCloseContext()");
@@ -1417,14 +1449,16 @@ xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
   return shim->exec_wait(timeoutMilliSec);
 }
 
-int xclExportBO(xclDeviceHandle handle, xclBufferHandle boHandle)
+xclBufferExportHandle
+xclExportBO(xclDeviceHandle handle, xclBufferHandle boHandle)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclExportBO() NOT IMPLEMENTED");
-  return ENOSYS;
+  return INVALID_HANDLE_VALUE;
 }
 
-xclBufferHandle xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
+xclBufferHandle
+xclImportBO(xclDeviceHandle handle, xclBufferExportHandle fd, unsigned flags)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclImportBO() NOT IMPLEMENTED");
@@ -1567,6 +1601,19 @@ xclRead(xclDeviceHandle handle, enum xclAddressSpace space,
   return shim->read(space,offset,hostbuf,size) ? 0 : size;
 }
 
+// Restricted read/write on IP register space
+int
+xclRegWrite(xclDeviceHandle handle, uint32_t ipidx, uint32_t offset, uint32_t data)
+{
+  return 1;
+}
+
+int
+xclRegRead(xclDeviceHandle handle, uint32_t ipidx, uint32_t offset, uint32_t* datap)
+{
+  return 1;
+}
+
 int
 xclGetTraceBufferInfo(xclDeviceHandle handle, uint32_t nSamples,
                       uint32_t& traceSamples, uint32_t& traceBufSz)
@@ -1646,5 +1693,3 @@ int xclGetSubdevPath(xclDeviceHandle handle,  const char* subdev,
 {
   return 0;
 }
-
-

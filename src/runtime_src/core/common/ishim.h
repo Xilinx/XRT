@@ -19,6 +19,8 @@
 
 #include "xrt.h"
 #include "experimental/xrt-next.h"
+#include "experimental/xrt_bo.h"
+#include "xrt_graph.h"
 #include "error.h"
 #include <stdexcept>
 
@@ -33,12 +35,12 @@ struct ishim
 {
   virtual void
   close_device() = 0;
-  
-  virtual void
-  open_context(xuid_t xclbin_uuid, unsigned int ip_index, bool shared) = 0;
 
   virtual void
-  close_context(xuid_t xclbin_uuid, unsigned int ip_index) = 0;
+  open_context(const xuid_t xclbin_uuid, unsigned int ip_index, bool shared) = 0;
+
+  virtual void
+  close_context(const xuid_t xclbin_uuid, unsigned int ip_index) = 0;
 
   virtual xclBufferHandle
   alloc_bo(size_t size, unsigned int flags) = 0;
@@ -48,6 +50,15 @@ struct ishim
 
   virtual void
   free_bo(xclBufferHandle boh) = 0;
+
+  virtual xclBufferExportHandle
+  export_bo(xclBufferHandle boh) = 0;
+
+  virtual xclBufferHandle
+  import_bo(xclBufferExportHandle ehdl) = 0;
+
+  virtual void
+  copy_bo(xclBufferHandle dst, xclBufferHandle src, size_t size, size_t dst_offset, size_t src_offset) = 0;
 
   virtual void
   sync_bo(xclBufferHandle bo, xclBOSyncDirection dir, size_t size, size_t offset) = 0;
@@ -61,13 +72,11 @@ struct ishim
   virtual void
   get_bo_properties(xclBufferHandle boh, struct xclBOProperties *properties) const = 0;
 
-#if 0
   virtual void
   reg_read(uint32_t ipidx, uint32_t offset, uint32_t* data) const = 0;
 
   virtual void
   reg_write(uint32_t ipidx, uint32_t offset, uint32_t data) = 0;
-#endif
 
   virtual void
   xread(uint64_t offset, void* buffer, size_t size) const = 0;
@@ -83,6 +92,56 @@ struct ishim
 
   virtual void
   load_xclbin(const struct axlf*) = 0;
+
+#ifdef XRT_ENABLE_AIE
+  virtual xclGraphHandle
+  open_graph(const xuid_t, const char*) = 0;
+
+  virtual void
+  close_graph(xclGraphHandle handle) = 0;
+
+  virtual void
+  reset_graph(xclGraphHandle handle) = 0;
+
+  virtual uint64_t
+  get_timestamp(xclGraphHandle handle) = 0;
+
+  virtual void
+  run_graph(xclGraphHandle handle, int iterations) = 0;
+
+  virtual int
+  wait_graph_done(xclGraphHandle handle, int timeout) = 0;
+
+  virtual void
+  wait_graph(xclGraphHandle handle, uint64_t cycle) = 0;
+
+  virtual void
+  suspend_graph(xclGraphHandle handle) = 0;
+
+  virtual void
+  resume_graph(xclGraphHandle handle) = 0;
+
+  virtual void
+  end_graph(xclGraphHandle handle, uint64_t cycle) = 0;
+
+  virtual void
+  update_graph_rtp(xclGraphHandle handle, const char* port, const char* buffer, size_t size) = 0;
+
+  virtual void
+  read_graph_rtp(xclGraphHandle handle, const char* port, char* buffer, size_t size) = 0;
+
+  virtual void
+  sync_aie_bo(xrtBufferHandle bohdl, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset) = 0;
+
+  virtual void
+  reset_aie() = 0;
+
+  virtual void
+  sync_aie_bo_nb(xrtBufferHandle bohdl, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset) = 0;
+
+  virtual void
+  wait_gmio(const char *gmioName) = 0;
+#endif
 };
 
 template <typename DeviceType>
@@ -100,14 +159,14 @@ struct shim : public DeviceType
   }
 
   virtual void
-  open_context(xuid_t xclbin_uuid , unsigned int ip_index, bool shared)
+  open_context(const xuid_t xclbin_uuid , unsigned int ip_index, bool shared)
   {
     if (auto ret = xclOpenContext(DeviceType::get_device_handle(), xclbin_uuid, ip_index, shared))
       throw error(ret, "failed to open ip context");
   }
 
   virtual void
-  close_context(xuid_t xclbin_uuid, unsigned int ip_index)
+  close_context(const xuid_t xclbin_uuid, unsigned int ip_index)
   {
     if (auto ret = xclCloseContext(DeviceType::get_device_handle(), xclbin_uuid, ip_index))
       throw error(ret, "failed to close ip context");
@@ -135,10 +194,35 @@ struct shim : public DeviceType
     xclFreeBO(DeviceType::get_device_handle(), bo);
   }
 
+  virtual xclBufferExportHandle
+  export_bo(xclBufferHandle bo)
+  {
+    auto ehdl = xclExportBO(DeviceType::get_device_handle(), bo);
+    if (ehdl == XRT_NULL_BO_EXPORT)
+      throw std::runtime_error("Unable to export BO");
+    return ehdl;
+  }
+
+  virtual xclBufferHandle
+  import_bo(xclBufferExportHandle ehdl)
+  {
+    if (auto bo = xclImportBO(DeviceType::get_device_handle(), ehdl, 0))
+      return bo;
+    throw std::runtime_error("unable to import BO");
+  }
+
+  virtual void
+  copy_bo(xclBufferHandle dst, xclBufferHandle src, size_t size, size_t dst_offset, size_t src_offset)
+  {
+    if (auto err = xclCopyBO(DeviceType::get_device_handle(), dst, src, size, dst_offset, src_offset))
+      throw std::runtime_error("unable to copy BO");
+  }
+
   virtual void
   sync_bo(xclBufferHandle bo, xclBOSyncDirection dir, size_t size, size_t offset)
   {
-    xclSyncBO(DeviceType::get_device_handle(), bo, dir, size, offset);
+    if (auto err = xclSyncBO(DeviceType::get_device_handle(), bo, dir, size, offset))
+      throw std::runtime_error("unable to sync BO");
   }
 
   virtual void*
@@ -163,7 +247,6 @@ struct shim : public DeviceType
       throw error(ret, "failed to get BO properties");
   }
 
-#if 0
   virtual void
   reg_read(uint32_t ipidx, uint32_t offset, uint32_t* data) const
   {
@@ -177,7 +260,6 @@ struct shim : public DeviceType
     if (auto ret = xclRegWrite(DeviceType::get_device_handle(), ipidx, offset, data))
       throw error(ret, "failed to write ip(" + std::to_string(ipidx) + ")");
   }
-#endif
 
 #ifdef __GNUC__
 # pragma GCC diagnostic push
@@ -220,6 +302,119 @@ struct shim : public DeviceType
     if (auto ret = xclLoadXclBin(DeviceType::get_device_handle(), buffer))
       throw error(ret, "failed to load xclbin");
   }
+
+#ifdef XRT_ENABLE_AIE
+  virtual xclGraphHandle
+  open_graph(const xuid_t uuid, const char *gname)
+  {
+    if (auto ghdl = xclGraphOpen(DeviceType::get_device_handle(), uuid, gname))
+      return ghdl;
+
+    throw std::runtime_error("failed to open graph");
+  }
+
+  virtual void
+  close_graph(xclGraphHandle handle)
+  {
+    return xclGraphClose(handle);
+  }
+
+  virtual void
+  reset_graph(xclGraphHandle handle)
+  {
+    if (auto ret = xclGraphReset(handle))
+      throw error(ret, "fail to reset graph");
+  }
+
+  virtual uint64_t
+  get_timestamp(xclGraphHandle handle)
+  {
+    return xclGraphTimeStamp(handle);
+  }
+
+  virtual void
+  run_graph(xclGraphHandle handle, int iterations)
+  {
+    if (auto ret = xclGraphRun(handle, iterations))
+      throw error(ret, "fail to run graph");
+  }
+
+  virtual int
+  wait_graph_done(xclGraphHandle handle, int timeout)
+  {
+    return xclGraphWaitDone(handle, timeout);
+  }
+
+  virtual void
+  wait_graph(xclGraphHandle handle, uint64_t cycle)
+  {
+    if (auto ret = xclGraphWait(handle, cycle))
+      throw error(ret, "fail to wait graph");
+  }
+
+  virtual void
+  suspend_graph(xclGraphHandle handle)
+  {
+    if (auto ret = xclGraphSuspend(handle))
+      throw error(ret, "fail to suspend graph");
+  }
+
+  virtual void
+  resume_graph(xclGraphHandle handle)
+  {
+    if (auto ret = xclGraphResume(handle))
+      throw error(ret, "fail to resume graph");
+  }
+
+  virtual void
+  end_graph(xclGraphHandle handle, uint64_t cycle)
+  {
+    if (auto ret = xclGraphEnd(handle, cycle))
+      throw error(ret, "fail to end graph");
+  }
+
+  virtual void
+  update_graph_rtp(xclGraphHandle handle, const char* port, const char* buffer, size_t size)
+  {
+    if (auto ret = xclGraphUpdateRTP(handle, port, buffer, size))
+      throw error(ret, "fail to update graph rtp");
+  }
+
+  virtual void
+  read_graph_rtp(xclGraphHandle handle, const char* port, char* buffer, size_t size)
+  {
+    if (auto ret = xclGraphReadRTP(handle, port, buffer, size))
+      throw error(ret, "fail to read graph rtp");
+  }
+
+  virtual void
+  sync_aie_bo(xrtBufferHandle bohdl, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset)
+  {
+    if (auto ret = xclSyncBOAIE(DeviceType::get_device_handle(), bohdl, gmioName, dir, size, offset))
+      throw error(ret, "fail to sync aie bo");
+  }
+
+  virtual void
+  reset_aie()
+  {
+    if (auto ret = xclResetAIEArray(DeviceType::get_device_handle()))
+      throw error(ret, "fail to reset aie");
+  }
+
+  virtual void
+  sync_aie_bo_nb(xrtBufferHandle bohdl, const char *gmioName, xclBOSyncDirection dir, size_t size, size_t offset)
+  {
+    if (auto ret = xclSyncBOAIENB(DeviceType::get_device_handle(), bohdl, gmioName, dir, size, offset))
+      throw error(ret, "fail to sync aie non-blocking bo");
+  }
+
+  virtual void
+  wait_gmio(const char *gmioName)
+  {
+    if (auto ret = xclGMIOWait(DeviceType::get_device_handle(), gmioName))
+      throw error(ret, "fail to wait gmio");
+  }
+#endif
 };
 
 } // xrt_core

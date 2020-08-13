@@ -28,7 +28,6 @@
 #include "../lib/libqdma/libqdma_export.h"
 #include "qdma_ioctl.h"
 
-#define XOCL_FILE_PAGE_OFFSET   0x100000
 #ifndef VM_RESERVED
 #define VM_RESERVED (VM_DONTEXPAND | VM_DONTDUMP)
 #endif
@@ -1251,7 +1250,7 @@ static ssize_t queue_write_iter(struct kiocb *kiocb, struct iov_iter *io)
 	qdma = queue->qdma;
 
 	nr = io->nr_segs;
-	if (!iter_is_iovec(io) || nr != 2) {
+	if (!iter_is_iovec(io) || (nr & 0x1)) {
 		xocl_err(&qdma->pdev->dev, "Invalid request nr = %ld", nr);
 		return -EINVAL;
 	}
@@ -1273,7 +1272,7 @@ static ssize_t queue_read_iter(struct kiocb *kiocb, struct iov_iter *io)
 	qdma = queue->qdma;
 
 	nr = io->nr_segs;
-	if (!iter_is_iovec(io) || nr != 2) {
+	if (!iter_is_iovec(io) || (nr & 0x1)) {
 		xocl_err(&qdma->pdev->dev, "Invalid request nr = %ld", nr);
 		return -EINVAL;
 	}

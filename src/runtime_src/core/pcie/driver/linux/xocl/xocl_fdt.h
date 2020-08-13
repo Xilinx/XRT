@@ -29,6 +29,9 @@
 #define PROP_PARTITION_INFO_PLP "plp_info"
 #define PROP_PARTITION_LEVEL "partition_level"
 #define PROP_VERSION_MAJOR "firmware_version_major"
+#define PROP_INTR_ALIAS "interrupt_alias"
+#define PROP_INTR_MAP "interrupt_mapping"
+#define PROP_ALIAS_NAME "alias_name"
 
 #define NODE_ENDPOINTS "addressable_endpoints"
 #define INTERFACES_PATH "/interfaces"
@@ -66,12 +69,16 @@
 #define NODE_CLK_KERNEL2 "ep_aclk_kernel_01"
 #define NODE_CLK_KERNEL3 "ep_aclk_hbm_00"
 #define NODE_KDMA_CTRL "ep_kdma_ctrl_00"
-#define NODE_ICAP "ep_fpga_configuration_00"
+#define NODE_FPGA_CONFIG "ep_fpga_configuration_00"
 #define NODE_ERT_SCHED "ep_ert_sched_00"
 #define NODE_XDMA "ep_xdma_00"
 #define NODE_MSIX "ep_msix_00"
+#define NODE_MSIX_MGMT "ep_msix_mgmt_00"
 #define NODE_QDMA "ep_qdma_00"
+#define NODE_QDMA4 "ep_qdma4_00"
+#define NODE_QDMA4_CSR "ep_qdma4_csr_00"
 #define NODE_STM "ep_stream_traffic_manager_00"
+#define NODE_STM4 "ep_stream_traffic_manager4_00"
 #define NODE_CLK_SHUTDOWN "ep_aclk_shutdown_00"
 #define NODE_ERT_BASE "ep_ert_base_address_00"
 #define NODE_ERT_RESET "ep_ert_reset_00"
@@ -84,30 +91,38 @@
 #define NODE_REMAP_P2P "ep_remap_p2p_00"
 #define NODE_DDR4_RESET_GATE "ep_ddr_mem_srsr_gate_00"
 #define NODE_ADDR_TRANSLATOR "ep_remap_data_c2h_00"
-#define NODE_MAILBOX_XRT "ep_mailbox_xrt_00"
-#define NODE_XFER_CACHE "ep_xfer_cache_00"
+#define NODE_MAILBOX_XRT "ep_mailbox_user_to_ert_00"
+#define NODE_PMC_INTR	"ep_pmc_intr_00"
+#define NODE_PMC_MUX	"ep_pmc_mux_00"
+#define NODE_ERT_UARTLITE "ep_ert_debug_uart_00"
 
-#define RESNAME_GATEPLP       NODE_GATE_PLP
-#define RESNAME_PCIEMON       NODE_PCIE_MON
-#define RESNAME_MEMCALIB        NODE_DDR_CALIB
-#define RESNAME_GATEULP       NODE_GATE_ULP
-#define RESNAME_CLKWIZKERNEL1   NODE_CLK_KERNEL1
-#define RESNAME_CLKWIZKERNEL2   NODE_CLK_KERNEL2
-#define RESNAME_CLKWIZKERNEL3   NODE_CLK_KERNEL3
+#define PROP_HWICAP "axi_hwicap"
+#define PROP_PDI_CONFIG "pdi_config_mem"
+
+#define RESNAME_GATEPLP		NODE_GATE_PLP
+#define RESNAME_PCIEMON		NODE_PCIE_MON
+#define RESNAME_MEMCALIB	NODE_DDR_CALIB
+#define RESNAME_GATEULP		NODE_GATE_ULP
+#define RESNAME_CLKWIZKERNEL1	NODE_CLK_KERNEL1
+#define RESNAME_CLKWIZKERNEL2	NODE_CLK_KERNEL2
+#define RESNAME_CLKWIZKERNEL3	NODE_CLK_KERNEL3
 #define RESNAME_CLKFREQ_K1_K2	"clkfreq_kernel1_kernel2"
 #define RESNAME_CLKFREQ_HBM	NODE_CLKFREQ_HBM
 #define RESNAME_CLKFREQ_K1	NODE_CLKFREQ_K1
 #define RESNAME_CLKFREQ_K2	NODE_CLKFREQ_K2
-#define RESNAME_KDMA            NODE_KDMA_CTRL
+#define RESNAME_KDMA		NODE_KDMA_CTRL
 #define RESNAME_CLKSHUTDOWN	NODE_CLK_SHUTDOWN
-#define RESNAME_CMC_MUTEX       NODE_CMC_MUTEX
-#define RESNAME_GAPPING         NODE_GAPPING
-#define RESNAME_UCS_CONTROL_STATUS     NODE_UCS_CONTROL_STATUS
+#define RESNAME_CMC_MUTEX	NODE_CMC_MUTEX
+#define RESNAME_GAPPING		NODE_GAPPING
 #define RESNAME_ERT_FW_MEM	NODE_ERT_FW_MEM
 #define RESNAME_ERT_CQ_MGMT	NODE_ERT_CQ_MGMT
 #define RESNAME_ERT_RESET	NODE_ERT_RESET
 #define RESNAME_DDR4_RESET_GATE	NODE_DDR4_RESET_GATE
-#define RESNAME_ADDR_TRANSLATOR NODE_ADDR_TRANSLATOR
+#define RESNAME_ADDR_TRANSLATOR	NODE_ADDR_TRANSLATOR
+#define RESNAME_PMC_INTR	NODE_PMC_INTR
+#define RESNAME_PMC_MUX		NODE_PMC_MUX
+#define RESNAME_UCS_CONTROL_STATUS	NODE_UCS_CONTROL_STATUS
+
 /*
  * The iores subdev maintains global resources which can be shared to any
  * subdev. We keep a minimized scope of this shared public interface.
@@ -123,19 +138,6 @@ enum {
 	IORES_DDR4_RESET_GATE,
 	IORES_PCIE_MON,
 	IORES_MAX,
-};
-
-enum {
-	CLOCK_IORES_CLKWIZKERNEL1 = 0,
-	CLOCK_IORES_CLKWIZKERNEL2,
-	CLOCK_IORES_CLKWIZKERNEL3,
-	CLOCK_IORES_CLKFREQ_K1_K2,
-	CLOCK_IORES_CLKFREQ_HBM,
-	CLOCK_IORES_CLKFREQ_K1,
-	CLOCK_IORES_CLKFREQ_K2,
-	CLOCK_IORES_CLKSHUTDOWN,
-	CLOCK_IORES_UCS_CONTROL_STATUS,
-	CLOCK_IORES_MAX,
 };
 
 struct xocl_iores_map {

@@ -26,10 +26,8 @@
 
 /**
  * typedef xrtDeviceHandle - opaque device handle
- *
- * Typedef alias from xrt.h
  */
-typedef xclDeviceHandle xrtDeviceHandle;
+typedef void* xrtDeviceHandle;
 
 /**
  * typedef xrtBufferHandle - opaque buffer handle
@@ -90,6 +88,18 @@ public:
   bo(xclDeviceHandle dhdl, size_t size, buffer_flags flags, memory_group grp);
 
   /**
+   * bo() - Constructor to import an exported buffer
+   *
+   * @dhdl:     Device that imports the exported buffer
+   * @ehdl:     Exported buffer handle, implementation specific type
+   * 
+   * The exported buffer handle is acquired by using the export() method
+   * and can be passed to another process.  
+   */
+  XCL_DRIVER_DLLESPEC
+  bo(xclDeviceHandle dhdl, xclBufferExportHandle ehdl);
+
+  /**
    * bo() - Constructor for sub-buffer
    *
    * @parent:   Parent buffer
@@ -122,6 +132,27 @@ public:
     handle = std::move(rhs.handle);
     return *this;
   }
+
+  /**
+   * size() - Get the size of this buffer
+   *
+   * Return: size of buffer in bytes
+   */
+  XCL_DRIVER_DLLESPEC
+  size_t
+  size() const;
+
+  /**
+   * buffer_export() - Export this buffer
+   *
+   * Return:  exported buffer handle
+   *
+   * An exported buffer can be imported on another device by this
+   * process or another process.
+   */
+  XCL_DRIVER_DLLESPEC
+  xclBufferExportHandle
+  export_buffer();
 
   /**
    * sync() - Synchronize buffer content with device side 
@@ -216,10 +247,10 @@ extern "C" {
  */
 XCL_DRIVER_DLLESPEC
 xrtBufferHandle
-xrtBOAllocUserPtr(xclDeviceHandle dhdl, void* userptr, size_t size, xrtBufferFlags flags, xrtMemoryGroup grp);
+xrtBOAllocUserPtr(xrtDeviceHandle dhdl, void* userptr, size_t size, xrtBufferFlags flags, xrtMemoryGroup grp);
 
 /**
- * xclBOAlloc() - Allocate a BO of requested size with appropriate flags
+ * xrtBOAlloc() - Allocate a BO of requested size with appropriate flags
  *
  * @handle:        Device handle
  * @size:          Size of buffer
@@ -229,10 +260,35 @@ xrtBOAllocUserPtr(xclDeviceHandle dhdl, void* userptr, size_t size, xrtBufferFla
  */
 XCL_DRIVER_DLLESPEC
 xrtBufferHandle
-xrtBOAlloc(xclDeviceHandle dhdl, size_t size, xrtBufferFlags flags, xrtMemoryGroup grp);
+xrtBOAlloc(xrtDeviceHandle dhdl, size_t size, xrtBufferFlags flags, xrtMemoryGroup grp);
 
 /**
- * xclBOSubAlloc() - Allocate a sub buffer from a parent buffer
+ * xrtBOImport() - Allocate a BO imported from another device
+ *
+ * @dhdl:     Device that imports the exported buffer
+ * @ehdl:     Exported buffer handle, implementation specific type
+ * 
+ * The exported buffer handle is acquired by using the export() method
+ * and can be passed to another process.  
+ */  
+XCL_DRIVER_DLLESPEC
+xrtBufferHandle
+xrtBOImport(xrtDeviceHandle dhdl, xclBufferExportHandle ehdl);
+
+/**
+ * xrtBOExport() - Export this buffer
+ *
+ * Return:  exported buffer handle
+ *
+ * An exported buffer can be imported on another device by this
+ * process or another process.
+ */
+XCL_DRIVER_DLLESPEC
+xclBufferExportHandle
+xrtBOExport(xrtBufferHandle bhdl);
+
+/**
+ * xrtBOSubAlloc() - Allocate a sub buffer from a parent buffer
  *
  * @parent:        Parent buffer handle
  * @size:          Size of sub buffer 
@@ -254,6 +310,16 @@ int
 xrtBOFree(xrtBufferHandle handle);
 
 /**
+ * xrtBOSize() - Get the size of this buffer
+ *
+ * @handle:       Buffer handle
+ * Return:        Size of buffer in bytes
+ */
+XCL_DRIVER_DLLESPEC
+size_t
+xrtBOSize(xrtBufferHandle handle);
+
+/**
  * xrtBOSync() - Synchronize buffer contents in requested direction
  *
  * @handle:        Bufferhandle
@@ -268,7 +334,7 @@ xrtBOFree(xrtBufferHandle handle);
  */
 XCL_DRIVER_DLLESPEC
 int
-xrtBOSync(xrtBufferHandle handle, xclBOSyncDirection dir, size_t size, size_t offset);
+xrtBOSync(xrtBufferHandle handle, enum xclBOSyncDirection dir, size_t size, size_t offset);
 
 /**
  * xrtBOMap() - Memory map BO into user's address space
@@ -276,8 +342,8 @@ xrtBOSync(xrtBufferHandle handle, xclBOSyncDirection dir, size_t size, size_t of
  * @handle:     Buffer handle
  * Return:      Memory mapped buffer, or NULL on error with errno set
  *
- * Map the contents of the buffer object into host memory
- * To unmap the buffer call xclUnmapBO().
+ * Map the contents of the buffer object into host memory.  The buffer
+ * object is unmapped when freed.
  */
 XCL_DRIVER_DLLESPEC
 void*

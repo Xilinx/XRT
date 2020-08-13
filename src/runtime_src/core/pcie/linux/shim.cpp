@@ -31,6 +31,7 @@
 
 #include "plugin/xdp/hal_profile.h"
 #include "plugin/xdp/hal_api_interface.h"
+#include "plugin/xdp/hal_device_offload.h"
 
 
 #include "xclbin.h"
@@ -574,6 +575,8 @@ int shim::dev_init()
     mCmdBOCache = std::make_unique<xrt_core::bo_cache>(this, xrt_core::config::get_cmdbo_cache());
 
     mStreamHandle = mDev->open("dma.qdma", O_RDWR | O_SYNC);
+    if (mStreamHandle <= 0)
+       mStreamHandle = mDev->open("dma.qdma4", O_RDWR | O_SYNC);
     memset(&mAioContext, 0, sizeof(mAioContext));
     mAioEnabled = (io_setup(SHIM_QDMA_AIO_EVT_MAX, &mAioContext) == 0);
 
@@ -1136,17 +1139,13 @@ int shim::p2pEnable(bool enable, bool force)
 
     /* write 0 to config for default bar size */
     if (enable) {
-        mDev->sysfs_put("p2p", "config", err, "0");
-        if (!err.empty()) { 
-            throw std::runtime_error("P2P is not supported");
-        }
-     } else {
-        mDev->sysfs_put("p2p", "config", err, "-1");
-        if (!err.empty()) { 
-            throw std::runtime_error("P2P is not supported");
-        }
-     }
-
+        mDev->sysfs_put("p2p", "p2p_enable", err, "1");
+    } else {
+        mDev->sysfs_put("p2p", "p2p_enable", err, "0");
+    }
+    if (!err.empty()) {
+        throw std::runtime_error("P2P is not supported");
+    }
 
     if (force) {
         dev_fini();
@@ -1323,11 +1322,18 @@ int shim::xclLoadXclBin(const xclBin *buffer)
       else if (ret == -EKEYREJECTED) {
         xrt_logmsg(XRT_ERROR, "Xclbin isn't signed properly");
       }
+      else if (ret == -E2BIG) {
+        xrt_logmsg(XRT_ERROR, "Not enough host_mem for xclbin");
+      }
       else if (ret == -ETIMEDOUT) {
         xrt_logmsg(XRT_ERROR,
                    "Can't reach out to mgmt for xclbin downloading");
         xrt_logmsg(XRT_ERROR,
                    "Is xclmgmt driver loaded? Or is MSD/MPD running?");
+      }
+      else if (ret == -EDEADLK) {
+        xrt_logmsg(XRT_ERROR, "CU was deadlocked? Hardware is not stable");
+        xrt_logmsg(XRT_ERROR, "Please reset device with 'xbutil reset'");
       }
       xrt_logmsg(XRT_ERROR, "See dmesg log for details. err=%d", ret);
     }
@@ -2211,8 +2217,14 @@ void xclClose(xclDeviceHandle handle)
 
 int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 {
+#ifdef ENABLE_HAL_PROFILING
+  LOAD_XCLBIN_CB ;
+#endif
   try {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
+#ifdef ENABLE_HAL_PROFILING
+    xdphal::flush_device(handle) ;
+#endif  
 
 #ifdef DISABLE_DOWNLOAD_XCLBIN
     int ret = 0;
@@ -2220,13 +2232,13 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
 #endif
 
-#ifdef ENABLE_HAL_PROFILING
-    if (ret != 0) return ret ;
-    LOAD_XCLBIN_CB ;
-#endif
     if (!ret) {
       auto core_device = xrt_core::get_userpf_device(drv);
       core_device->register_axlf(buffer);
+#ifdef ENABLE_HAL_PROFILING
+      xdphal::update_device(handle) ;
+#endif
+
 #ifndef DISABLE_DOWNLOAD_XCLBIN
       ret = xrt_core::scheduler::init(handle, buffer);
       START_DEVICE_PROFILING_CB(handle);
@@ -2491,6 +2503,9 @@ ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf, size_t 
 
 int xclGetBOProperties(xclDeviceHandle handle, unsigned int boHandle, xclBOProperties *properties)
 {
+#ifdef ENABLE_HAL_PROFILING
+  GET_BO_PROP_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclGetBOProperties(boHandle, properties) : -ENODEV;
 }
@@ -2510,6 +2525,9 @@ int xclGetSectionInfo(xclDeviceHandle handle, void* section_info, size_t * secti
 
 int xclExecBuf(xclDeviceHandle handle, unsigned int cmdBO)
 {
+#ifdef ENABLE_HAL_PROFILING
+  EXEC_BUF_CB;
+#endif
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclExecBuf(cmdBO) : -ENODEV;
 }
@@ -2528,11 +2546,14 @@ int xclRegisterEventNotify(xclDeviceHandle handle, unsigned int userInterrupt, i
 
 int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
 {
+#ifdef ENABLE_HAL_PROFILING
+  EXEC_WAIT_CB;
+#endif
   xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclExecWait(timeoutMilliSec) : -ENODEV;
 }
 
-int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bool shared)
+int xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
 #ifdef DISABLE_DOWNLOAD_XCLBIN
   return 0;
@@ -2545,10 +2566,14 @@ int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex
   return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
 }
 
-int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
+int xclCloseContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned ipIndex)
 {
 #ifdef DISABLE_DOWNLOAD_XCLBIN
   return 0;
+#endif
+
+#ifdef ENABLE_HAL_PROFILING
+  CLOSE_CONTEXT_CB;
 #endif
 
   xocl::shim *drv = xocl::shim::handleCheck(handle);

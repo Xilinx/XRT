@@ -35,7 +35,6 @@ class graph_type
 public:
     using tile_type = xrt_core::edge::aie::tile_type;
     using rtp_type = xrt_core::edge::aie::rtp_type;
-    using gmio_type = xrt_core::edge::aie::gmio_type;
 
     graph_type(std::shared_ptr<xrt_core::device> device, const uuid_t xclbin_uuid, const std::string& name);
     ~graph_type();
@@ -47,13 +46,19 @@ public:
     get_timestamp();
 
     void
-    update_iter(int iterations);
-
-    void
     run();
 
     void
+    run(int iterations);
+
+    void
     wait_done(int timeout_ms);
+
+    void
+    wait();
+
+    void
+    wait(uint64_t cycle);
 
     void
     suspend();
@@ -62,13 +67,16 @@ public:
     resume();
 
     void
-    stop(int timeout_ms);
+    end();
 
     void
-    update_rtp(const char* path, const char* buffer, size_t size);
+    end(uint64_t cycle);
 
     void
-    sync_bo(unsigned bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset);
+    update_rtp(const std::string& path, const char* buffer, size_t size);
+
+    void
+    read_rtp(const std::string& path, char* buffer, size_t size);
 
     static void
     event_cb(struct XAieGbl *aie_inst, XAie_LocType loc, u8 module, u8 event, void *arg);
@@ -85,10 +93,12 @@ private:
       reset = 1,
       running = 2,
       suspend = 3,
+      end = 4,
     };
 
     graph_state state;
     std::string name;
+    uint64_t startTime;
 
     /**
      * This is the pointer to the AIE array where the AIE part of
@@ -107,9 +117,6 @@ private:
 
     /* This is the collections of rtps that are used. */
     std::vector<rtp_type> rtps;
-
-    /* Wait for all the BD trasters for a given channel */
-    void wait_sync_bo(ShimDMA *dmap, uint32_t chan, uint32_t timeout);
 };
 
 }

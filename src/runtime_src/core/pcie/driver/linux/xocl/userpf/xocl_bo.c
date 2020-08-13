@@ -226,8 +226,7 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 	ddr = xocl_bo_ddr_idx(flags);
 	if (ddr >= ddr_count)
 		return -EINVAL;
-
-	err = XOCL_GET_MEM_TOPOLOGY(xdev, topo);
+	err = XOCL_GET_GROUP_TOPOLOGY(xdev, topo);
 	if (err)
 		return err;
 
@@ -245,13 +244,14 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 		}
 	}
 done:	
-	XOCL_PUT_MEM_TOPOLOGY(xdev);
+	XOCL_PUT_GROUP_TOPOLOGY(xdev);
 	return err;
 }
 
 static struct page **xocl_cma_collect_pages(struct xocl_drm *drm_p, uint64_t base_addr, uint64_t start, uint64_t size)
 {
-	uint64_t entry_sz = drm_p->cma_bank->entry_sz;
+	struct xocl_dev *xdev = drm_p->xdev;
+	uint64_t entry_sz = xdev->cma_bank->entry_sz;
 	uint64_t chunk_offset, page_copied = 0, page_offset_start, page_offset_end;
 	int64_t addr_offset = 0;
 	struct page **pages = NULL;
@@ -277,7 +277,7 @@ static struct page **xocl_cma_collect_pages(struct xocl_drm *drm_p, uint64_t bas
 		chunk_offset = page_offset_start / pages_per_chunk;
 		DRM_DEBUG("chunk_offset %lld start 0x%llx, end 0x%llx\n", chunk_offset, page_offset_start, page_offset_end);
 
-		memcpy(pages+page_copied, drm_p->cma_bank->cma_mem[chunk_offset].pages+(page_offset_start%pages_per_chunk), nr*sizeof(struct page*));
+		memcpy(pages+page_copied, xdev->cma_bank->cma_mem[chunk_offset].pages+(page_offset_start%pages_per_chunk), nr*sizeof(struct page*));
 		page_offset_start += nr;
 		page_copied += nr;
 	}
@@ -351,14 +351,13 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 		goto failed;
 	}
 
-	err = xocl_mm_insert_node(drm_p, memidx, xobj->mm_node,
+	err = xocl_mm_insert_node_range(drm_p, memidx, xobj->mm_node,
 		xobj->base.size);
+	if (err)
+		goto failed;
 	BO_DEBUG("insert mm_node:%p, start:%llx size: %llx",
 		xobj->mm_node, xobj->mm_node->start,
 		xobj->mm_node->size);
-	if (err)
-		goto failed;
-
 	xocl_mm_update_usage_stat(drm_p, memidx, xobj->base.size, 1);
 	mutex_unlock(&drm_p->mm_lock);
 	/* Record the DDR we allocated the buffer on */
@@ -449,18 +448,18 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 
 	xobj = xocl_create_bo(dev, args->size, args->flags, bo_type);
 
-	BO_ENTER("xobj %p, mm_node %p", xobj, xobj->mm_node);
 	if (IS_ERR(xobj)) {
-		DRM_ERROR("object creation failed\n");
+		DRM_ERROR("object creation failed idx %d, size 0x%llx\n", ddr, args->size);
 		return PTR_ERR(xobj);
 	}
+	BO_ENTER("xobj %p, mm_node %p", xobj, xobj->mm_node);
 
 	if (xobj->flags == XOCL_BO_P2P) {
 		/*
 		 * DRM allocate contiguous pages, shift the vmapping with
 		 * bar address offset
 		 */
-		ret = XOCL_GET_MEM_TOPOLOGY(xdev, topo);
+		ret = XOCL_GET_GROUP_TOPOLOGY(xdev, topo);
 		if (ret)
 			goto out_free;
 
@@ -482,9 +481,7 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 				xobj->p2p_bar_offset = bar_off;
 		}
 
-		XOCL_PUT_MEM_TOPOLOGY(xdev);
-		if (ret)
-			goto out_free;
+		XOCL_PUT_GROUP_TOPOLOGY(xdev);
 	}
 
 	if (xobj->flags & XOCL_PAGE_ALLOC) {
@@ -494,8 +491,7 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 		else if (xobj->flags & XOCL_DRM_SHMEM)
 			xobj->pages = drm_gem_get_pages(&xobj->base);
 		else if (xobj->flags & XOCL_CMA_MEM){
-			uint64_t start_addr = drm_p->mm[ddr]->head_node.start + drm_p->mm[ddr]->head_node.size;
-
+			uint64_t start_addr = drm_p->mm->head_node.start + drm_p->mm->head_node.size;
 			xobj->pages = xocl_cma_collect_pages(drm_p, start_addr, xobj->mm_node->start, xobj->base.size);
 		}
 
@@ -565,7 +561,7 @@ int xocl_userptr_bo_ioctl(
 	BO_ENTER("xobj %p", xobj);
 
 	if (IS_ERR(xobj)) {
-		DRM_ERROR("object creation failed\n");
+		DRM_ERROR("object creation failed user_flags %d, size 0x%llx\n", user_flags, args->size);
 		return PTR_ERR(xobj);
 	}
 

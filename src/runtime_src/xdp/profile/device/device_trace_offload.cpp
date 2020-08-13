@@ -17,8 +17,6 @@
 #define XDP_SOURCE
 
 #include "xdp/profile/device/device_trace_offload.h"
-
-#include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/device/device_trace_logger.h"
 
 namespace xdp {
@@ -40,6 +38,8 @@ DeviceTraceOffload::DeviceTraceOffload(DeviceIntf* dInt,
     m_read_trace = std::bind(&DeviceTraceOffload::read_trace_s2mm, this);
   }
 
+  m_prev_clk_train_time = std::chrono::system_clock::now();
+
   if (start_thread) {
     start_offload(OffloadThreadType::TRACE);
   }
@@ -55,7 +55,7 @@ DeviceTraceOffload::~DeviceTraceOffload()
 
 void DeviceTraceOffload::offload_device_continuous()
 {
-  if (!m_initialized && !read_trace_init())
+  if (!m_initialized && !read_trace_init(true))
     return;
 
   while (should_continue()) {
@@ -87,8 +87,10 @@ void DeviceTraceOffload::start_offload(OffloadThreadType type)
 {
   if (status == OffloadThreadStatus::RUNNING)
     return;
+
   std::lock_guard<std::mutex> lock(status_lock);
   status = OffloadThreadStatus::RUNNING;
+
   if (type == OffloadThreadType::TRACE)
     offload_thread = std::thread(&DeviceTraceOffload::offload_device_continuous, this);
   else if (type == OffloadThreadType::CLOCK_TRAIN)
@@ -103,10 +105,23 @@ void DeviceTraceOffload::stop_offload()
 
 void DeviceTraceOffload::train_clock()
 {
-  static bool force = true;
-  dev_intf->clockTraining(force);
+  auto now = std::chrono::system_clock::now();
+  auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(now - m_prev_clk_train_time).count();
+
+  // Clock training data is accurate upto 3 seconds
+  // 500 ms is a reasonable time
+  // No need of making it user configurable
+  bool enough_time_passed = milliseconds >= 500 ? true: false;
+
+  if (enough_time_passed || m_force_clk_train) {
+    dev_intf->clockTraining(m_force_clk_train);
+    m_prev_clk_train_time = now;
+    debug_stream
+      << "INFO Enough Time Passed.. Call Clock Training" << std::endl;
+  }
+
   // Don't force continuous training for old IP
-  force = false;
+  m_force_clk_train = false;
 }
 
 void DeviceTraceOffload::read_trace_fifo()
@@ -138,13 +153,13 @@ void DeviceTraceOffload::read_trace_fifo()
   }
 }
 
-bool DeviceTraceOffload::read_trace_init()
+bool DeviceTraceOffload::read_trace_init(bool circ_buf)
 {
   // reset flags
   m_trbuf_full = false;
 
   if (has_ts2mm()) {
-    m_initialized = init_s2mm();
+    m_initialized = init_s2mm(circ_buf);
   } else if (has_fifo()) {
     m_initialized = true;
   } else {
@@ -170,17 +185,13 @@ void DeviceTraceOffload::read_trace_s2mm()
   debug_stream
     << "DeviceTraceOffload::read_trace_s2mm " << std::endl;
 
-  // No circular buffer support for now
-  if (m_trbuf_full)
-    return;
-
   config_s2mm_reader(dev_intf->getWordCountTs2mm());
   while (1) {
     auto bytes = read_trace_s2mm_partial();
     deviceTraceLogger->processTraceData(m_trace_vector);
     m_trace_vector = {};
 
-    if (m_trbuf_sz == m_trbuf_alloc_sz)
+    if (m_trbuf_sz == m_trbuf_alloc_sz && m_use_circ_buf == false)
       m_trbuf_full = true;
 
     if (bytes != m_trbuf_chunk_sz)
@@ -220,20 +231,48 @@ uint64_t DeviceTraceOffload::read_trace_s2mm_partial()
 
 void DeviceTraceOffload::config_s2mm_reader(uint64_t wordCount)
 {
-  // Start from previous offset
+  auto bytes_written = wordCount * TRACE_PACKET_SIZE;
+  auto bytes_read = m_rollover_count*m_trbuf_alloc_sz + m_trbuf_sz;
+
+  // Offload cannot keep up with the DMA
+  if (bytes_written > bytes_read + m_trbuf_alloc_sz) {
+    // Don't read any data
+    m_trbuf_offset = m_trbuf_sz;
+    debug_stream
+      << "ERROR: Circular buffer overwrite detected "
+      << " bytes written : " << bytes_written << " bytes_read : " << bytes_read
+      << std::endl;
+    stop_offload();
+    return;
+  }
+
+  // Start Offload from previous offset
   m_trbuf_offset = m_trbuf_sz;
-  m_trbuf_sz = wordCount * TRACE_PACKET_SIZE;
-  m_trbuf_sz = (m_trbuf_sz > TS2MM_MAX_BUF_SIZE) ? TS2MM_MAX_BUF_SIZE : m_trbuf_sz;
-  m_trbuf_chunk_sz = MAX_TRACE_NUMBER_SAMPLES * TRACE_PACKET_SIZE;
+  if (m_trbuf_offset == m_trbuf_alloc_sz) {
+    if (!m_use_circ_buf) {
+      stop_offload();
+      return;
+    }
+    m_rollover_count++;
+    m_trbuf_offset = 0;
+  }
+
+  // End Offload at this offset
+  m_trbuf_sz = bytes_written - m_rollover_count*m_trbuf_alloc_sz;
+  if (m_trbuf_sz > m_trbuf_alloc_sz) {
+    m_trbuf_sz = m_trbuf_alloc_sz;
+  }
 
   debug_stream
     << "DeviceTraceOffload::config_s2mm_reader "
     << "Reading from 0x"
-    << std::hex << m_trbuf_offset << " to 0x" << m_trbuf_sz
-    << std::dec << std::endl;
+    << std::hex << m_trbuf_offset << " to 0x" << m_trbuf_sz << std::dec
+    << " Written : " << wordCount * 8
+    << " rollover count : " << m_rollover_count
+    << std::endl;
 }
 
-bool DeviceTraceOffload::init_s2mm()
+bool DeviceTraceOffload::init_s2mm(bool circ_buf)
 {
   debug_stream
     << "DeviceTraceOffload::init_s2mm with size : " << m_trbuf_alloc_sz
@@ -253,9 +292,23 @@ bool DeviceTraceOffload::init_s2mm()
     return false;
   }
 
+  // Check if allocated buffer and sleep interval can keep up with offload
+  if (dev_intf->hasTs2mm()) {
+    auto tdma = dev_intf->getTs2mm();
+    if (tdma->supportsCircBuf() && circ_buf) {
+      if (sleep_interval_ms != 0) {
+        m_circ_buf_cur_rate = m_trbuf_alloc_sz * (1000 / sleep_interval_ms);
+        if (m_circ_buf_cur_rate >= m_circ_buf_min_rate)
+          m_use_circ_buf = true;
+      } else {
+        m_use_circ_buf = true;
+      }
+    }
+  }
+
   // Data Mover will write input stream to this address
   uint64_t bufAddr = dev_intf->getDeviceAddr(m_trbuf);
-  dev_intf->initTS2MM(m_trbuf_alloc_sz, bufAddr);
+  dev_intf->initTS2MM(m_trbuf_alloc_sz, bufAddr, m_use_circ_buf);
   return true;
 }
 

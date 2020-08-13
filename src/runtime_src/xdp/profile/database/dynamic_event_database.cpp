@@ -21,8 +21,8 @@
 
 namespace xdp {
   
-  VPDynamicDatabase::VPDynamicDatabase() : 
-    eventId(1), stringId(1)
+  VPDynamicDatabase::VPDynamicDatabase(VPDatabase* d) :
+    db(d), eventId(1), stringId(1)
   {
     // For low overhead profiling, we will reserve space for 
     //  a set number of events.  This won't change HAL or OpenCL 
@@ -170,5 +170,27 @@ namespace xdp {
     {
       fout << s.second << "," << s.first.c_str() << std::endl ;
     }
+  }
+
+  void VPDynamicDatabase::addPowerSample(uint64_t deviceId, double timestamp,
+					 const std::vector<uint64_t>& values)
+  {
+    std::lock_guard<std::mutex> lock(dbLock) ;
+
+    if (powerSamples.find(deviceId) == powerSamples.end())
+    {
+      std::vector<CounterSample> blank ;
+      powerSamples[deviceId] = blank ;
+    }
+
+    powerSamples[deviceId].push_back(std::make_pair(timestamp, values)) ;
+  }
+
+  std::vector<VPDynamicDatabase::CounterSample>
+  VPDynamicDatabase::getPowerSamples(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(dbLock) ;
+
+    return powerSamples[deviceId] ;
   }
 }

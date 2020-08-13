@@ -123,6 +123,19 @@ struct acap_clkfbout_fract {
 	u32 reserved		:21;
 };
 
+enum {
+	CLOCK_IORES_CLKWIZKERNEL1 = 0,
+	CLOCK_IORES_CLKWIZKERNEL2,
+	CLOCK_IORES_CLKWIZKERNEL3,
+	CLOCK_IORES_CLKFREQ_K1_K2,
+	CLOCK_IORES_CLKFREQ_HBM,
+	CLOCK_IORES_CLKFREQ_K1,
+	CLOCK_IORES_CLKFREQ_K2,
+	CLOCK_IORES_CLKSHUTDOWN,
+	CLOCK_IORES_UCS_CONTROL_STATUS,
+	CLOCK_IORES_MAX,
+};
+
 struct xocl_iores_map clock_res_map[] = {
 	{ RESNAME_CLKWIZKERNEL1, CLOCK_IORES_CLKWIZKERNEL1 },
 	{ RESNAME_CLKWIZKERNEL2, CLOCK_IORES_CLKWIZKERNEL2 },
@@ -355,13 +368,16 @@ static unsigned int clock_get_freq_counter_khz_impl(struct clock *clock, int idx
 {
 	u32 freq = 0, status;
 	int times = 10;
+	xdev_handle_t xdev = xocl_get_xdev(clock->clock_pdev);
 
 	BUG_ON(idx > CLOCK_MAX_NUM_CLOCKS);
 	BUG_ON(!mutex_is_locked(&clock->clock_lock));
 
 	if (clock->clock_freq_counter && idx < 2) {
-		reg_wr(clock->clock_freq_counter,
-			OCL_CLKWIZ_STATUS_MEASURE_START);
+		/* Versal ACAP doesn't support write */
+		if (!XOCL_DSA_IS_VERSAL(xdev))
+			reg_wr(clock->clock_freq_counter, OCL_CLKWIZ_STATUS_MEASURE_START);
+
 		while (times != 0) {
 			status = reg_rd(clock->clock_freq_counter);
 			if ((status & OCL_CLKWIZ_STATUS_MASK) ==
@@ -377,8 +393,10 @@ static unsigned int clock_get_freq_counter_khz_impl(struct clock *clock, int idx
 	}
 
 	if (clock->clock_freq_counters[idx]) {
-		reg_wr(clock->clock_freq_counters[idx],
-			OCL_CLKWIZ_STATUS_MEASURE_START);
+		/* Versal ACAP doesn't support write */
+		if (!XOCL_DSA_IS_VERSAL(xdev))
+			reg_wr(clock->clock_freq_counters[idx], OCL_CLKWIZ_STATUS_MEASURE_START);
+
 		while (times != 0) {
 			status =
 			    reg_rd(clock->clock_freq_counters[idx]);
@@ -398,13 +416,13 @@ static unsigned int clock_get_freq_counter_khz_impl(struct clock *clock, int idx
 	return freq;
 }
 
-/* For ACAP Versal, we read from freq counter directly */
+/* For ACAP Versal, we read from freq counter directly in KHZ */
 static unsigned short clock_get_freq_acap(struct clock *clock, int idx)
 {
 	u32 freq_counter = 0;
 	if (clock->clock_freq_counters[idx]) {
 		freq_counter = clock_get_freq_counter_khz_impl(clock, idx);
-		freq_counter /= 1000; /* KHZ */
+		freq_counter = DIV_ROUND_CLOSEST(freq_counter, 1000);
 	}
 
 	return freq_counter;
@@ -476,6 +494,8 @@ static unsigned short clock_get_freq_ultrascale(struct clock *clock, int idx)
 static unsigned short clock_get_freq_impl(struct clock *clock, int idx)
 {
 	xdev_handle_t xdev = xocl_get_xdev(clock->clock_pdev);
+
+	BUG_ON(!mutex_is_locked(&clock->clock_lock));
 
 	return XOCL_DSA_IS_VERSAL(xdev) ?
 	    clock_get_freq_acap(clock, idx) :
@@ -800,8 +820,8 @@ static int clock_freeze_axi_gate(struct clock *clock, int level)
 
 	BUG_ON(!mutex_is_locked(&clock->clock_lock));
 
-	if (level <= XOCL_SUBDEV_LEVEL_PRP)
-		err = xocl_axigate_freeze(xdev, level);
+	if (level <= XOCL_SUBDEV_LEVEL_PRP || XOCL_DSA_IS_VERSAL(xdev))
+		err = xocl_axigate_freeze(xdev, XOCL_SUBDEV_LEVEL_PRP);
 	else
 		err = xocl_axigate_reset(xdev, XOCL_SUBDEV_LEVEL_PRP);
 
@@ -816,8 +836,8 @@ static int clock_free_axi_gate(struct clock *clock, int level)
 
 	BUG_ON(!mutex_is_locked(&clock->clock_lock));
 
-	if (level <= XOCL_SUBDEV_LEVEL_PRP) {
-		xocl_axigate_free(xdev, level);
+	if (level <= XOCL_SUBDEV_LEVEL_PRP || XOCL_DSA_IS_VERSAL(xdev)) {
+		xocl_axigate_free(xdev, XOCL_SUBDEV_LEVEL_PRP);
 	} else {
 		if (!clock->clock_ucs_control_status) {
 			CLOCK_ERR(clock, "URP clock has no %s\n",
@@ -889,6 +909,7 @@ static int set_freqs(struct clock *clock, unsigned short *freqs, int num_freqs)
 static int set_and_verify_freqs(struct clock *clock, unsigned short *freqs,
 	int num_freqs)
 {
+	xdev_handle_t xdev = xocl_get_xdev(clock->clock_pdev);
 	int i;
 	int err;
 	u32 clock_freq_counter, request_in_khz, tolerance, lookup_freq;
@@ -903,8 +924,13 @@ static int set_and_verify_freqs(struct clock *clock, unsigned short *freqs,
 		if (!freqs[i])
 			continue;
 
-		lookup_freq = find_matching_freq(freqs[i], frequency_table,
-		    ARRAY_SIZE(frequency_table));
+		if (XOCL_DSA_IS_VERSAL(xdev)) {
+			lookup_freq = freqs[i];
+		} else {
+			lookup_freq = find_matching_freq(freqs[i],
+			    frequency_table, ARRAY_SIZE(frequency_table));
+		}
+
 		clock_freq_counter = clock_get_freq_counter_khz_impl(clock, i);
 		request_in_khz = lookup_freq*1000;
 		tolerance = lookup_freq*50;
@@ -1338,7 +1364,7 @@ struct platform_device_id clock_id_table[] = {
 	{ },
 };
 
-static struct platform_driver	clock_driver = {
+static struct platform_driver clock_driver = {
 	.probe		= clock_probe,
 	.remove		= clock_remove,
 	.driver		= {

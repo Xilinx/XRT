@@ -18,6 +18,7 @@
 #include "xrt.h"
 #include "experimental/xrt_kernel.h"
 #include "experimental/xrt_xclbin.h"
+#include "experimental/xrt_device.h"
 #include "xclbin.h"
 
 #include <fstream>
@@ -26,9 +27,14 @@
 #include <atomic>
 #include <iostream>
 #include <vector>
+#include <cstdlib>
+
+#ifdef _WIN32
+# pragma warning ( disable : 4267 )
+#endif
 
 static std::vector<char>
-load_xclbin(xclDeviceHandle device, const std::string& fnm)
+load_xclbin(xrtDeviceHandle device, const std::string& fnm)
 {
   if (fnm.empty())
     throw std::runtime_error("No xclbin speified");
@@ -43,7 +49,7 @@ load_xclbin(xclDeviceHandle device, const std::string& fnm)
   stream.read(header.data(),size);
 
   auto top = reinterpret_cast<const axlf*>(header.data());
-  if (xclLoadXclBin(device, top))
+  if (xrtDeviceLoadXclbin(device, top))
     throw std::runtime_error("Bitstream download failed");
 
   return header;
@@ -72,7 +78,7 @@ static void usage()
 }
 
 static std::string
-get_kernel_name(int cus)
+get_kernel_name(size_t cus)
 {
   std::string k("addone:{");
   for (int i=1; i<cus; ++i)
@@ -98,33 +104,33 @@ struct job_type
   bool running = false;
 
   // Device and kernel are not managed by this job
-  xclDeviceHandle d      = XRT_NULL_HANDLE;
+  xrtDeviceHandle d      = XRT_NULL_HANDLE;
   xrtKernelHandle k      = XRT_NULL_HANDLE;
 
   // Kernel arguments and run handle are managed by this job
-  xclBufferHandle a      = XRT_NULL_BO;
+  xrtBufferHandle a      = XRT_NULL_HANDLE;
   void* am               = nullptr;
-  xclBufferHandle b      = XRT_NULL_BO;
+  xrtBufferHandle b      = XRT_NULL_HANDLE;
   void* bm               = nullptr;
   xrtRunHandle r         = XRT_NULL_HANDLE;
 
-  job_type(xrtDeviceHandle device, xrtKernelHandle kernel, unsigned int first_used_mem)
+  job_type(xrtDeviceHandle device, xrtKernelHandle kernel, unsigned int)
     : d(device), k(kernel)
   {
     static size_t count=0;
     id = count++;
 
     const size_t data_size = ELEMENTS * ARRAY_SIZE;
-    a = xclAllocBO(d, data_size*sizeof(unsigned long), 0, first_used_mem);
-    am = xclMapBO(d, a, true);
+    a = xrtBOAlloc(d, data_size*sizeof(unsigned long), 0, xrtKernelArgGroupId(kernel, 0));
+    am = xrtBOMap(a);
     auto adata = reinterpret_cast<unsigned long*>(am);
-    for (size_t i=0;i<data_size;++i)
+    for (unsigned int i=0;i<data_size;++i)
       adata[i] = i;
 
-    b = xclAllocBO(d, data_size*sizeof(unsigned long), 0, first_used_mem);
-    bm = xclMapBO(d, b, true);
+    b = xrtBOAlloc(d, data_size*sizeof(unsigned long), 0, xrtKernelArgGroupId(kernel, 0));
+    bm = xrtBOMap(b);
     auto bdata = reinterpret_cast<unsigned long*>(bm);
-     for (size_t j=0;j<data_size;++j)
+     for (unsigned int j=0;j<data_size;++j)
        bdata[j] = id;
   }
 
@@ -140,7 +146,7 @@ struct job_type
     , bm(rhs.bm)
     , r(rhs.r)
   {
-    a=b=XRT_NULL_BO;
+    a=b=XRT_NULL_HANDLE;
     am=bm=nullptr;
     d=k=r=XRT_NULL_HANDLE;
   }
@@ -148,13 +154,11 @@ struct job_type
   ~job_type()
   {
     if (am) {
-      xclUnmapBO(d, a, am);
-      xclFreeBO(d,a);
+      xrtBOFree(a);
     }
 
     if (bm) {
-      xclUnmapBO(d, b, bm);
-      xclFreeBO(d,b);
+      xrtBOFree(b);
     }
 
     if (r != XRT_NULL_HANDLE)
@@ -239,11 +243,11 @@ int run(int argc, char** argv)
   std::vector<std::string> args(argv+1,argv+argc);
 
   std::string xclbin_fnm;
-  size_t device_index = 0;
+  unsigned int device_index = 0;
   size_t secs = 0;
   size_t jobs = 1;
   size_t cus  = 1;
-  
+
   std::string cur;
   for (auto& arg : args) {
     if (arg == "-h") {
@@ -274,7 +278,7 @@ int run(int argc, char** argv)
   if (probe < device_index)
     throw std::runtime_error("Bad device index '" + std::to_string(device_index) + "'");
 
-  auto device = xclOpen(device_index, nullptr, XCL_QUIET);
+  auto device = xrtDeviceOpen(device_index);
 
   auto header = load_xclbin(device, xclbin_fnm);
   auto top = reinterpret_cast<const axlf*>(header.data());
@@ -283,11 +287,11 @@ int run(int argc, char** argv)
 
   {
     // Demo xrt_xclbin API retrieving uuid from kernel if applicable
-    uuid_t xclbin_id;
+    xuid_t xclbin_id;
     uuid_copy(xclbin_id, top->m_header.uuid);
 
-    uuid_t xid;
-    xrtXclbinUUID(device, xid);
+    xuid_t xid;
+    xrtDeviceGetXclbinUUID(device, xid);
     if (uuid_compare(xclbin_id, xid) != 0)
       throw std::runtime_error("xid mismatch");
   }
@@ -300,14 +304,14 @@ int run(int argc, char** argv)
     }
   }
 
-  compute_units = cus = std::min(cus, compute_units);
+  compute_units = cus = std::min<size_t>(cus, compute_units);
   std::string kname = get_kernel_name(cus);
   auto kernel = xrtPLKernelOpen(device, top->m_header.uuid, kname.c_str());
 
   run(device,kernel,jobs,secs,first_used_mem);
 
   xrtKernelClose(kernel);
-  xclClose(device);
+  xrtDeviceClose(device);
 
   return 0;
 }

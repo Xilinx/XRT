@@ -20,9 +20,12 @@
 
 #include "xrt.h"
 #include "ert.h"
+#include "experimental/xrt_uuid.h"
 #include "experimental/xrt_bo.h"
+#include "experimental/xrt_device.h"
 
 #ifdef __cplusplus
+# include "experimental/xrt_enqueue.h"
 # include <memory>
 # include <vector>
 # include <functional>
@@ -51,6 +54,7 @@ typedef void * xrtRunHandle;
 namespace xrt {
 
 class kernel;
+class event_impl;
 
 /**
  * class run - xrt::run represents one execution of a kernel
@@ -94,13 +98,16 @@ class run
   /**
    * wait() - Wait for a run to complete execution
    *
-   * The current thread will block until the run completes
-   * execution. Completion does not guarantee success, the run status
+   * @timeout_ms:  Timeout for wait.
+   * Return:       Command state upon return of wait
+   *
+   * The current thread will block until the run completes or timeout
+   * expires. Completion does not guarantee success, the run status
    * should be checked by using @state.
    */
   XCL_DRIVER_DLLESPEC
-  void
-  wait() const;
+  ert_cmd_state
+  wait(unsigned int timeout_ms=0) const;
 
   /**
    * state() - Check the current state of a run object
@@ -129,6 +136,19 @@ class run
   add_callback(ert_cmd_state state,
                std::function<void(const run&, ert_cmd_state, void*)>,
                void* data);
+
+
+  /**
+   * set_event() - Add event for enqueued operations
+   *
+   * @event:      Opaque implementation object
+   *
+   * This function is used when a run object is enqueued in an event
+   * graph.  The event must be notified upon completion of the run.
+   */
+  XCL_DRIVER_DLLESPEC
+  void
+  set_event(const std::shared_ptr<event_impl>& event) const;
 
   /**
    * operator bool() - Check if run handle is valid
@@ -283,7 +303,7 @@ public:
   /**
    * kernel() - Constructor from a device and xclbin
    *
-   * @dhdl:  Device handle on which the kernel should execute
+   * @device: Device on which the kernel should execute
    * @xclbin_id: UUID of the xclbin with the kernel
    * @name:  Name of kernel to construct
    * @exclusive: Open the kernel instances with exclusive access (default shared)
@@ -298,7 +318,13 @@ public:
    * argument to true.
    */
   XCL_DRIVER_DLLESPEC
-  kernel(xclDeviceHandle dhdl, const xuid_t xclbin_id, const std::string& name, bool exclusive=false);
+  kernel(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name, bool exclusive=false);
+
+  /**
+   * Obsoleted construction from xclDeviceHandle
+   */
+  XCL_DRIVER_DLLESPEC
+  kernel(xclDeviceHandle dhdl, const xrt::uuid& xclbin_id, const std::string& name, bool exclusive=false);
 
   /**
    * operator() - Invoke the kernel function
@@ -327,6 +353,38 @@ public:
   int
   group_id(int argno) const;
 
+  /**
+   * write() - Write to the address range of a kernel
+   *
+   * @offset:   Offset in register space to write to
+   * @data:     Data to write
+   *
+   * Throws std::out_or_range if offset is outside the
+   * kernel address space
+   *
+   * The kernel must be associated with exactly one kernel instance 
+   * (compute unit), which must be opened for exclusive access.
+   */
+  XCL_DRIVER_DLLESPEC
+  void
+  write_register(uint32_t offset, uint32_t data);
+
+  /**
+   * read() - Read data from kernel address range
+   *
+   * @offset:  Offset in register space to read from
+   * Return:   Value read from offset
+   *
+   * Throws std::out_or_range if offset is outside the
+   * kernel address space
+   *
+   * The kernel must be associated with exactly one kernel instance 
+   * (compute unit), which must be opened for exclusive access.
+   */
+  XCL_DRIVER_DLLESPEC
+  uint32_t
+  read_register(uint32_t offset) const;
+
 public:
   std::shared_ptr<kernel_impl>
   get_handle() const
@@ -338,6 +396,13 @@ private:
   std::shared_ptr<kernel_impl> handle;
 };
 
+// Specialization from xrt_enqueue.h for run objects, which
+// are asynchronous waitable objects.
+template <>
+struct callable_traits<run>
+{
+  enum { is_async = true };
+};
 
 } // namespace xrt
 
@@ -368,7 +433,7 @@ extern "C" {
  */
 XCL_DRIVER_DLLESPEC
 xrtKernelHandle
-xrtPLKernelOpen(xclDeviceHandle deviceHandle, const xuid_t xclbinId, const char *name);
+xrtPLKernelOpen(xrtDeviceHandle deviceHandle, const xuid_t xclbinId, const char *name);
 
 /**
  * xrtPLKernelOpenExclusive() - Open a PL kernel and obtain its handle.
@@ -379,7 +444,7 @@ xrtPLKernelOpen(xclDeviceHandle deviceHandle, const xuid_t xclbinId, const char 
  */
 XCL_DRIVER_DLLESPEC
 xrtKernelHandle
-xrtPLKernelOpenExclusive(xclDeviceHandle deviceHandle, const xuid_t xclbinId, const char *name);
+xrtPLKernelOpenExclusive(xrtDeviceHandle deviceHandle, const xuid_t xclbinId, const char *name);
 
 /**
  * xrtKernelClose() - Close an opened kernel
@@ -408,6 +473,34 @@ xrtKernelClose(xrtKernelHandle kernelHandle);
 XCL_DRIVER_DLLESPEC
 int
 xrtKernelArgGroupId(xrtKernelHandle kernelHandle, int argno);
+
+/**
+ * xrtKernelReadRegister() - Read data from kernel address range
+ *
+ * @offset:  Offset in register space to read from
+ * @datap:   Pointer to location where to write data
+ * Return:   0 on success, errcode otherwise
+ *
+ * The kernel must be associated with exactly one kernel instance 
+ * (compute unit), which must be opened for exclusive access.
+ */
+XCL_DRIVER_DLLESPEC
+int
+xrtKernelReadRegister(xrtKernelHandle, uint32_t offset, uint32_t* datap);
+
+/**
+ * xrtKernelWriteRegister() - Write to the address range of a kernel
+ *
+ * @offset:   Offset in register space to write to
+ * @data:     Data to write
+ * Return:    0 on success, errcode otherwise
+ *
+ * The kernel must be associated with exactly one kernel instance 
+ * (compute unit), which must be opened for exclusive access.
+ */
+XCL_DRIVER_DLLESPEC
+int
+xrtKernelWriteRegister(xrtKernelHandle, uint32_t offset, uint32_t data);
 
 /**
  * xrtKernelRun() - Start a kernel execution
@@ -495,8 +588,22 @@ xrtRunStart(xrtRunHandle runHandle);
  * Blocks current thread until job has completed
  */
 XCL_DRIVER_DLLESPEC
-ert_cmd_state
+enum ert_cmd_state
 xrtRunWait(xrtRunHandle runHandle);
+
+/**
+ * xrtRunWait() - Wait for a run to complete
+ *
+ * @runHandle:  Handle to the run object to start
+ * timeout_ms:  Timeout in millisecond
+ * Return:      Run command state for completed run, or
+ *              current status if timeout.
+ *
+ * Blocks current thread until job has completed
+ */
+XCL_DRIVER_DLLESPEC
+enum ert_cmd_state
+xrtRunWaitFor(xrtRunHandle runHandle, unsigned int timeout_ms);
 
 /**
  * xrtRunState() - Check the current state of a run
@@ -505,7 +612,7 @@ xrtRunWait(xrtRunHandle runHandle);
  * Return:      The underlying command execution state per ert.h
  */
 XCL_DRIVER_DLLESPEC
-ert_cmd_state
+enum ert_cmd_state
 xrtRunState(xrtRunHandle runHandle);
 
 /**
@@ -522,8 +629,8 @@ xrtRunState(xrtRunHandle runHandle);
  */
 XCL_DRIVER_DLLESPEC
 int
-xrtRunSetCallback(xrtRunHandle runHandle, ert_cmd_state state,
-                  void (* pfn_state_notify)(xrtRunHandle, ert_cmd_state, void*),
+xrtRunSetCallback(xrtRunHandle runHandle, enum ert_cmd_state state,
+                  void (* pfn_state_notify)(xrtRunHandle, enum ert_cmd_state, void*),
                   void* data);
 
 /**

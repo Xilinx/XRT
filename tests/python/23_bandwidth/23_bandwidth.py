@@ -17,7 +17,6 @@
  under the License.
 """
 
-import numpy as np
 import sys
 import time
 import math
@@ -57,13 +56,6 @@ def getThreshold(devHandle):
     return threshold
 
 def getInputOutputBuffer(devhdl, krnlhdl, argno, isInput):
-    if isInput:
-        lst = [i%256 for i in range(globalbuffersize)]
-    else:
-        lst = [0 for i in range(globalbuffersize)]
-    hostbuf = np.array(lst).astype(np.uint8)
-    assert hostbuf.size == globalbuffersize
-
     grpid = xrtKernelArgGroupId(krnlhdl, argno)
     if grpid < 0:
         raise RuntimeError("failed to find BO group ID: %d" % grpid)
@@ -74,7 +66,11 @@ def getInputOutputBuffer(devhdl, krnlhdl, argno, isInput):
     bobuf = xrtBOMap(bo)
     if bobuf == 0:
         raise RuntimeError("failed to map buffer")
-    libc.memcpy(bobuf, hostbuf.ctypes.data, globalbuffersize)
+    lst = ctypes.cast(bobuf, ctypes.POINTER(ctypes.c_char))
+
+    for i in range(globalbuffersize):
+        lst[i] = i%256 if isInput else 0
+
     xrtBOSync(bo, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, globalbuffersize, 0)
     return bo, bobuf
 
@@ -89,7 +85,7 @@ def runKernel(opt):
     input_bo2, input_buf2 = getInputOutputBuffer(opt.handle, khandle2, 1, True)
 
     typesize = 512
-    threshold = getThreshold(opt.handle)
+    threshold = getThreshold(opt.xcl_handle)
     globalbuffersizeinbeats = globalbuffersize/(typesize>>3)
     tests= int(math.log(globalbuffersizeinbeats, 2.0))+1
     beats = 16
@@ -159,14 +155,13 @@ def runKernel(opt):
 
     if failed:
         raise RuntimeError("ERROR: Failed to copy entries")
-    
+
     print("TTTT: %d" %throughput[0])
     print("Maximum throughput: %d MB/s" %max(throughput))
     if max(throughput) < threshold:
         raise RuntimeError("ERROR: Throughput is less than expected value of %d GB/sec" %(threshold/1000))
 
 def main(args):
-    os.environ["Runtime.xrt_bo"] = "true"
     opt = Options()
     Options.getOptions(opt, args)
 
@@ -190,7 +185,7 @@ def main(args):
         print("FAILED TEST")
         sys.exit(1)
     finally:
-        xclClose(opt.handle)
+        xrtDeviceClose(opt.handle)
 
 if __name__ == "__main__":
     main(sys.argv)

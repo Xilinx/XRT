@@ -109,4 +109,5 @@ if [ "$mpd_active" = "active" ]; then
     echo "Starting MPD daemon"
     systemctl start mpd > /dev/null 2>&1
 fi
+
 exit 0

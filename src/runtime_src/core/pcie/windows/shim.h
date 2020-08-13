@@ -24,6 +24,8 @@
 
 struct FeatureRomHeader;
 
+
+
 namespace userpf {
 
 XRT_CORE_PCIE_WINDOWS_EXPORT

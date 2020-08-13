@@ -45,7 +45,8 @@ class RunSummary {
       FT_WDB_CONFIG,
       FT_POWER_PROFILE,
       FT_KERNEL_PROFILE,
-      FT_KERNEL_TRACE
+      FT_KERNEL_TRACE,
+      FT_VP_TRACE
     };
 
   public:

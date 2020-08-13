@@ -26,31 +26,91 @@
 #define	FAULT_STATUS				0x0
 #define	SOFT_CTRL				0x4
 #define	UNBLOCK_CTRL				0x8
+#define IP_VERSION				0x10
 #define MAX_CONTINUOUS_RTRANSFERS_WAITS 	0x30
 #define MAX_WRITE_TO_BVALID_WAITS		0x34
 #define MAX_ARREADY_WAITS 			0x38
 #define MAX_AWREADY_WAITS 			0x3C
 #define MAX_WREADY_WAITS 			0x40
+
+/* version 1.1 only registers */
+#define SI_FAULT_STATUS				0x100
+#define SI_SOFT_CTRL				0x104
+#define SI_UNBLOCK_CTRL				0x108
+#define MAX_CONTINUOUS_WTRANSFERS_WAITS		0x130
+#define MAX_WVALID_TO_AWVALID_WAITS		0x134
+#define MAX_RREADY_WAITS			0x138
+#define MAX_BREADY_WAITS			0x13c
+#define GLOBAL_INTR_ENABLE			0x200
+#define MI_INTR_ENABLE				0x204
+#define SI_INTR_ENABLE				0x208
+#define ARADDR_LO				0x210
+#define ARADDR_HI				0x214
+#define AWADDR_LO				0x218
+#define AWADDR_HI				0x21c
+#define ARUSER					0x220
+#define AWUSER					0x224
+#define TIMEOUT_PRESCALER			0x230
+#define TIMEOUT_INITIAL_DELAY			0x234
+
 // Firewall error bits
 #define READ_RESPONSE_BUSY                        BIT(0)
-#define RECS_ARREADY_MAX_WAIT                     BIT(1)
-#define RECS_CONTINUOUS_RTRANSFERS_MAX_WAIT       BIT(2)
-#define ERRS_RDATA_NUM                            BIT(3)
-#define ERRS_RID                                  BIT(4)
 #define WRITE_RESPONSE_BUSY                       BIT(16)
-#define RECS_AWREADY_MAX_WAIT                     BIT(17)
-#define RECS_WREADY_MAX_WAIT                      BIT(18)
-#define RECS_WRITE_TO_BVALID_MAX_WAIT             BIT(19)
-#define ERRS_BRESP                                BIT(20)
+
+static char *af_mi_status[32] = {
+	"READ_RESPONSE_BUSY",
+	"RECS_ARREADY_MAX_WAIT",
+	"RECS_CONTINUOUS_RTRANSFERS_MAX_WAIT",
+	"ERRS_RDATA_NUM",
+	"ERRS_RID",
+	"ERR_RVALID_STABLE",
+	"XILINX_RD_SLVERR",
+	"XILINX_RD_DECERR",
+	NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+	"WRITE_RESPONSE_BUSY",
+	"RECS_AWREADY_MAX_WAIT",
+	"RECS_WREADY_MAX_WAIT",
+	"RECS_WRITE_TO_BVALID_MAX_WAIT",
+	"ERRS_BRESP",
+	"ERRS_BVALID_STABLE",
+	"XILINX_WR_SLVERR",
+	"XILINX_WR_DECERR",
+};
+
+static char *af_si_status[32] = {
+	"READ_RESPONSE_BUSY",
+	"RECM_RREADY_MAX_WAIT",
+	"ERRM_ARSIZE",
+	"ERRM_ARADDR_BOUNDARY",
+	"ERRM_ARVALID_STABLE",
+	"XILINX_RD_SLVERR",
+	"XILINX_RD_DECERR",
+	NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+	"WRITE_RESPONSE_BUSY",
+	"RECM_BREADY_MAX_WAIT",
+	"RECM_CONTINUOUS_WTRANSFERS_MAX_WAIT",
+	"RECM_WVALID_TO_AWVALID_MAX_WAIT",
+	"ERRM_AWSIZE",
+	"ERRM_WDATA_NUM",
+	"ERRM_AWADDR_BOUNDARY",
+	"ERRM_AWVALID_STABLE",
+	"ERRM_WVALID_STABLE",
+	"XILINX_WR_SLVERR",
+	"XILINX_WR_DECERR",
+};
 
 #define	FIREWALL_STATUS_BUSY	(READ_RESPONSE_BUSY | WRITE_RESPONSE_BUSY)
 #define	CLEAR_RESET_GPIO		0
 
-#define	FW_PRIVILEGED(fw)		((fw)->base_addrs[0] != NULL)
-#define	READ_STATUS(fw, id)			\
-	XOCL_READ_REG32(fw->base_addrs[id] + FAULT_STATUS)
-#define	WRITE_UNBLOCK_CTRL(fw, id, val)			\
-	XOCL_WRITE_REG32(val, fw->base_addrs[id] + UNBLOCK_CTRL)
+#define	FW_PRIVILEGED(fw)		((fw)->af[0].base_addr != NULL)
+#define	READ_STATUS(fw, id)							\
+	((fw->af[id].mode == SI_MODE) ?						\
+	XOCL_READ_REG32(fw->af[id].base_addr + SI_FAULT_STATUS) :		\
+	XOCL_READ_REG32(fw->af[id].base_addr + FAULT_STATUS))
+#define	WRITE_UNBLOCK_CTRL(fw, id, val)						\
+	((fw->af[id].mode == SI_MODE) ?						\
+	XOCL_WRITE_REG32(val, fw->af[id].base_addr + SI_UNBLOCK_CTRL) :		\
+	XOCL_WRITE_REG32(val, fw->af[id].base_addr + UNBLOCK_CTRL))
 
 #define	IS_FIRED(fw, id) (READ_STATUS(fw, id) & ~FIREWALL_STATUS_BUSY)
 
@@ -64,9 +124,33 @@
 #define	FW_MAX_WAIT_DEFAULT 		0xffff
 #define FW_MAX_WAIT_FIC			0x2000
 
+#define MI_MODE				0
+#define SI_MODE				1
+
+#define IP_VER_10			0
+#define IP_VER_11			1
+
+#define AF_READ32(fw, id, reg)					\
+	XOCL_READ_REG32(fw->af[id].base_addr + reg)
+#define AF_WRITE32(fw, id, reg, val)				\
+	XOCL_WRITE_REG32(val, fw->af[id].base_addr + reg)
+
+#define READ_ARADDR(fw, id) (((ulong)(AF_READ32(fw, id, ARADDR_HI))) << 32 |	\
+		(AF_READ32(fw, id, ARADDR_LO)))
+#define READ_AWADDR(fw, id) (((ulong)(AF_READ32(fw, id, AWADDR_HI))) << 32 |	\
+		(AF_READ32(fw, id, AWADDR_LO)))
+#define READ_ARUSER(fw, id) (AF_READ32(fw, id, ARUSER))
+#define READ_AWUSER(fw, id) (AF_READ32(fw, id, AWUSER))
+
+struct firewall_ip {
+	void __iomem		*base_addr;
+	u32			base_max_wait;
+	u32			mode;
+	u32			version;
+};
+
 struct firewall {
-	void __iomem		*base_addrs[MAX_LEVEL];
-	u32			base_max_wait[MAX_LEVEL];
+	struct firewall_ip	af[MAX_LEVEL];
 	u32			max_level;
 
 	u32			curr_status;
@@ -75,6 +159,10 @@ struct firewall {
 	u32			err_detected_status;
 	u32			err_detected_level;
 	u64			err_detected_time;
+	u64			err_detected_araddr;
+	u64			err_detected_awaddr;
+	u32			err_detected_aruser;
+	u32			err_detected_awuser;
 
 	bool			inject_firewall;
 	u64			cache_expire_secs;
@@ -259,6 +347,32 @@ static ssize_t inject_store(struct device *dev, struct device_attribute *da,
 }
 static DEVICE_ATTR_WO(inject);
 
+static ssize_t detected_trip_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct firewall *fw = platform_get_drvdata(to_platform_device(dev));
+	int i;
+	char **status;
+	ssize_t count = 0;
+
+	status = (fw->af[fw->err_detected_level].mode == SI_MODE) ?
+		af_si_status: af_mi_status;
+	for (i = 0; i < 32; i++) {
+		if (fw->err_detected_status & BIT(i)) {
+			count += sprintf(buf + count, "status_bit%d:%s\n",
+				i, status[i]);
+		}
+	}
+
+	count += sprintf(buf + count, "araddr:0x%llx\n", fw->err_detected_araddr);
+	count += sprintf(buf + count, "awaddr:0x%llx\n", fw->err_detected_awaddr);
+	count += sprintf(buf + count, "aruser:0x%x\n", fw->err_detected_aruser);
+	count += sprintf(buf + count, "awuser:0x%x\n", fw->err_detected_awuser);
+
+	return count;
+}
+static DEVICE_ATTR_RO(detected_trip);
+
 static struct attribute *firewall_attributes[] = {
 	&sensor_dev_attr_status.dev_attr.attr,
 	&sensor_dev_attr_level.dev_attr.attr,
@@ -267,6 +381,7 @@ static struct attribute *firewall_attributes[] = {
 	&sensor_dev_attr_detected_time.dev_attr.attr,
 	&dev_attr_clear.attr,
 	&dev_attr_inject.attr,
+	&dev_attr_detected_trip.attr,
 	NULL
 };
 
@@ -301,11 +416,20 @@ static u32 check_firewall(struct platform_device *pdev, int *level)
 			xocl_info(&pdev->dev,
 				"AXI Firewall %d tripped, status: 0x%x, bar offset 0x%llx, resource %s",
 				i, val, bar_off, (res && res->name) ? res->name : "N/A");
+			if (fw->af[i].version == IP_VER_11) {
+				xocl_info(&pdev->dev, "ARADDR 0x%lx, AWADDR 0x%lx, ARUSER 0x%x, AWUSER 0x%x",
+				    READ_ARADDR(fw, i), READ_AWADDR(fw, i),
+				    READ_ARUSER(fw, i), READ_AWUSER(fw, i));
+			}
 			if (!fw->curr_status) {
 				fw->err_detected_status = val;
 				fw->err_detected_level = i;
 				XOCL_GETTIME(&time);
 				fw->err_detected_time = (u64)time.tv_sec;
+				fw->err_detected_araddr = READ_ARADDR(fw, i);
+				fw->err_detected_awaddr = READ_AWADDR(fw, i);
+				fw->err_detected_aruser = READ_ARUSER(fw, i);
+				fw->err_detected_awuser = READ_AWUSER(fw, i);
 			}
 			fw->curr_level = i;
 
@@ -329,6 +453,11 @@ static u32 check_firewall(struct platform_device *pdev, int *level)
 				"Firewall %d, ep %s, status: 0x%x, bar offset 0x%llx",
 				i, (res && res->name) ? res->name : "N/A",
 				READ_STATUS(fw, i), bar_off);
+			if (fw->af[i].version == IP_VER_11) {
+				xocl_info(&pdev->dev, "ARADDR 0x%lx, AWADDR 0x%lx, ARUSER 0x%x, AWUSER 0x%x",
+				    READ_ARADDR(fw, i), READ_AWADDR(fw, i),
+				    READ_ARUSER(fw, i), READ_AWUSER(fw, i));
+			}
 		}
 	}
 
@@ -415,8 +544,8 @@ static void af_get_data(struct platform_device *pdev, void *buf)
 
 static void inline reset_max_wait(struct firewall *fw, int idx)
 {
-	u32 value = fw->base_max_wait[idx];
-	void __iomem *addr = fw->base_addrs[idx];
+	u32 value = fw->af[idx].base_max_wait;
+	void __iomem *addr = fw->af[idx].base_addr;
 
 	if (value == 0 || addr == NULL)
 		return;
@@ -430,7 +559,7 @@ static void inline reset_max_wait(struct firewall *fw, int idx)
 
 static void inline update_max_wait(struct firewall *fw, int idx, u32 value)
 {
-	fw->base_max_wait[idx] = value;
+	fw->af[idx].base_max_wait = value;
 }
 
 static void
@@ -496,8 +625,8 @@ static int firewall_remove(struct platform_device *pdev)
 	sysfs_remove_group(&pdev->dev.kobj, &firewall_attrgroup);
 
 	for (i = 0; i <= fw->max_level; i++) {
-		if (fw->base_addrs[i])
-			iounmap(fw->base_addrs[i]);
+		if (fw->af[i].base_addr)
+			iounmap(fw->af[i].base_addr);
 	}
 	platform_set_drvdata(pdev, NULL);
 	devm_kfree(&pdev->dev, fw);
@@ -524,13 +653,19 @@ static int firewall_probe(struct platform_device *pdev)
 			fw->max_level = i;
 			break;
 		}
-		fw->base_addrs[i] =
+		fw->af[i].base_addr =
 			ioremap_nocache(res->start, res->end - res->start + 1);
-		if (!fw->base_addrs[i]) {
+		if (!fw->af[i].base_addr) {
 			ret = -EIO;
 			xocl_err(&pdev->dev, "Map iomem failed");
 			goto failed;
 		}
+
+		fw->af[i].version = AF_READ32(fw, i, IP_VERSION);
+		if (fw->af[i].version == IP_VER_11 &&
+		    AF_READ32(fw, i, MAX_CONTINUOUS_WTRANSFERS_WAITS) != 0)
+			fw->af[i].mode = SI_MODE;
+
 		/* additional check after res mapped */
 		resource_max_wait_set(res, fw, i);
 	}

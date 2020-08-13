@@ -25,11 +25,10 @@
 #ifndef __EM_DEFINES_H__
 #define __EM_DEFINES_H__
 
-#include "xrt_mem.h"
 #include <cstdlib>
 #include <cstdint>
 #include <iostream>
-
+#include "xrt_mem.h"
 #define GCC_VERSION (__GNUC__ * 10000 \
                      + __GNUC_MINOR__ * 100 \
                      + __GNUC_PATCHLEVEL__)
@@ -150,6 +149,11 @@ namespace xclemulation {
   {
     return (bo->flags & XCL_BO_FLAGS_DEV_ONLY);
   }
+
+  static inline bool xocl_bo_host_only(const struct drm_xocl_bo *bo)
+  {
+    return (bo->flags & XCL_BO_FLAGS_HOST_ONLY);
+  }  
 
   static inline bool no_host_memory(const struct drm_xocl_bo *bo)
   {

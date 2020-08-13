@@ -89,6 +89,11 @@ struct zdev_data {
 	char fpga_driver_name[64];
 };
 
+struct aie_metadata {
+	size_t size;
+	void *data;
+};
+
 struct drm_zocl_dev {
 	struct drm_device       *ddev;
 	struct fpga_manager     *fpga_mgr;
@@ -112,6 +117,7 @@ struct drm_zocl_dev {
 	struct debug_ip_layout	*debug_ip;
 	struct connectivity	*connectivity;
 	struct addr_aperture	*apertures;
+	struct aie_metadata	 aie_data;
 	unsigned int		 num_apts;
 
 	struct kds_sched	 kds;

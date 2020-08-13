@@ -19,10 +19,13 @@
 // core/include/experimental/xrt_device.h
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_bo.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
+
 #include "core/include/experimental/xrt_device.h"
 
 #include "core/common/system.h"
 #include "core/common/device.h"
+#include "core/common/message.h"
+#include "xclbin_int.h" // Non public xclbin APIs
 
 #include <map>
 #include <vector>
@@ -61,16 +64,16 @@ static std::vector<char>
 read_xclbin(const std::string& fnm)
 {
   if (fnm.empty())
-    throw std::runtime_error("No xclbin speified");
+    throw std::runtime_error("No xclbin specified");
 
   // load the file
   std::ifstream stream(fnm);
-  stream.seekg(0,stream.end);
+  stream.seekg(0, stream.end);
   size_t size = stream.tellg();
-  stream.seekg(0,stream.beg);
+  stream.seekg(0, stream.beg);
 
   std::vector<char> header(size);
-  stream.read(header.data(),size);
+  stream.read(header.data(), size);
   return header;
 }
 
@@ -81,6 +84,24 @@ send_exception_message(const char* msg)
 }
 
 } // unnamed namespace
+
+namespace xrt_core { namespace device_int {
+
+std::shared_ptr<xrt_core::device>
+get_core_device(xrtDeviceHandle dhdl)
+{
+  return get_device(dhdl); // handle check
+}
+
+xclDeviceHandle
+get_xcl_device_handle(xrtDeviceHandle dhdl)
+{
+  auto device = get_device(dhdl); // handle check
+  return device->get_device_handle();  // shim handle
+}
+
+}} // device_int, xrt_core
+
 
 namespace xrt {
 
@@ -112,15 +133,30 @@ load_xclbin(const std::string& fnm)
 
 uuid
 device::
+load_xclbin(const xclbin& xclbin)
+{
+  auto top = reinterpret_cast<const axlf*>(xclbin.get_data().data());
+  return load_xclbin(top);
+}
+
+uuid
+device::
 get_xclbin_uuid() const
 {
   return handle->get_xclbin_uuid();
 }
-  
+
 device::
 operator xclDeviceHandle() const
 {
   return handle->get_device_handle();
+}
+
+std::pair<const char*, size_t>
+device::
+get_xclbin_section(axlf_section_kind section, const uuid& uuid) const
+{
+  return handle->get_axlf_section_or_error(section, uuid);
 }
 
 } // xrt
@@ -201,6 +237,25 @@ xrtDeviceLoadXclbinFile(xrtDeviceHandle dhdl, const char* fnm)
   }
 }
 
+int
+xrtDeviceLoadXclbinHandle(xrtDeviceHandle dhdl, xrtXclbinHandle xhdl)
+{
+  try {
+    auto device = get_device(dhdl);
+    auto& xclbin = xrt_core::xclbin_int::get_xclbin_data(xhdl);
+    device->load_xclbin(reinterpret_cast<const axlf*>(xclbin.data()));
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return (errno = ex.get());
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return (errno = 0);
+  }
+}
+
 void
 xrtDeviceGetXclbinUUID(xrtDeviceHandle dhdl, xuid_t out)
 {
@@ -217,5 +272,23 @@ xrtDeviceGetXclbinUUID(xrtDeviceHandle dhdl, xuid_t out)
     send_exception_message(ex.what());
     errno = 0;
   }
-  
 }
+
+xclDeviceHandle
+xrtDeviceToXclDevice(xrtDeviceHandle dhdl)
+{
+  try {
+    auto device = get_device(dhdl);
+    return device->get_device_handle();
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    errno = 0;
+  }
+  return nullptr;
+}
+

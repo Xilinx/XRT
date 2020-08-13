@@ -1244,6 +1244,7 @@ static int xdma_request_desc_init(struct xdma_engine *engine,
 		if (req == NULL) {
 			if (desc_set_offset || req_submit) {
 				dbg_tfr("going to submit for pidx = %d", pidx);
+				spin_lock(&engine->desc_lock);
 				goto submit_req;
 			}
 			return 0;
@@ -1252,18 +1253,18 @@ static int xdma_request_desc_init(struct xdma_engine *engine,
 		if (!desc_set_offset) {
 			pidx = xdma_get_desc_set(engine);
 			if (pidx == -EBUSY) {
-				spin_unlock(&engine->desc_lock);
 				if (req_submit)
 					goto submit_req;
+				spin_unlock(&engine->desc_lock);
 				return 0;
 			}
 			s = &engine->sets[pidx];
 			if (s->desc_set_offset) {
 				 /* someone already using this desc set,
 				  * dont jump the gun, go and wait */
-				spin_unlock(&engine->desc_lock);
 				if (req_submit)
 					goto submit_req;
+				spin_unlock(&engine->desc_lock);
 				return 0;
 			}
 			 /* if repeatedly same pidx, not going anywhere,
@@ -1275,7 +1276,6 @@ static int xdma_request_desc_init(struct xdma_engine *engine,
 		}
 		if (req->sw_desc_cnt == req->sw_desc_idx) {
 			/* req already setup, do no redo */
-			spin_unlock(&engine->desc_lock);
 			desc_setup_yield = 1;
 			goto submit_req;
 		}
@@ -1304,7 +1304,6 @@ static int xdma_request_desc_init(struct xdma_engine *engine,
 			desc_virt[desc_set_offset - 1].control |=
 					cpu_to_le32(XDMA_DESC_EOP);
 
-		spin_unlock(&engine->desc_lock);
 		if (eop) {
 			dbg_tfr("EOP desc control = %x", 
 				desc_virt[s->desc_set_offset - 1].control);
@@ -1318,11 +1317,11 @@ static int xdma_request_desc_init(struct xdma_engine *engine,
 			goto submit_req;
 		}
 		if (desc_set_offset < desc_set_depth) {
+			spin_unlock(&engine->desc_lock);
 			schedule(); /* time for other threads to do something */
 			continue; /* get new request to fill desc set */
 		}
 submit_req:
-		spin_lock(&engine->desc_lock);
 		dbg_tfr("pidx = %u, cidx = %u %u - %u", pidx,
 			engine->cidx, desc_set_offset, engine->avail_sets);
 		if ((pidx >= 0) && desc_set_offset) { /* something new is setup */

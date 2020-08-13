@@ -22,7 +22,6 @@
 #include "OO_MemWrite.h"
 #include "OO_P2P.h"
 #include "XBReport.h"
-#include "XBDatabase.h"
 
 #include "common/system.h"
 #include "common/device.h"

@@ -167,7 +167,9 @@ extern "C" {
         SYSTEM_METADATA       = 22,
         SOFT_KERNEL           = 23,
         ASK_FLASH             = 24,
-        AIE_METADATA          = 25
+        AIE_METADATA          = 25,
+        ASK_GROUP_TOPOLOGY    = 26,
+        ASK_GROUP_CONNECTIVITY = 27
     };
 
     enum MEM_TYPE {
@@ -312,7 +314,8 @@ extern "C" {
         AP_CTRL_CHAIN = 1,
         AP_CTRL_NONE = 2,
         AP_CTRL_ME = 3,
-        ACCEL_ADAPTER = 4
+        ACCEL_ADAPTER = 4,
+        FAST_ADAPTER = 5
     };
 
     #define IP_CONTROL_MASK  0xFF00
@@ -358,7 +361,8 @@ extern "C" {
         AXI_STREAM_PROTOCOL_CHECKER,
         TRACE_S2MM,
         AXI_DMA,
-        TRACE_S2MM_FULL
+        TRACE_S2MM_FULL,
+        AXI_NOC
     };
 
     struct debug_ip_data {
