@@ -154,6 +154,9 @@ namespace xdp {
     std::map<std::tuple<std::string, std::string, std::string>, 
              TimeStatistics> computeUnitExecutionStats ;
 
+    // Statistics on specific OpenCL function calls
+    uint64_t numMigrateMemCalls ;
+
     // Statistics on buffer transfers
     //  Keep track of reads and writes for every context+device pair
     std::map<std::pair<uint64_t, uint64_t>, BufferStatistics> hostReads ;
@@ -183,6 +186,9 @@ namespace xdp {
       { return computeUnitExecutionStats ; }
     inline std::map<std::pair<uint64_t, uint64_t>, BufferStatistics>& getHostReads() { return hostReads ; }
     inline std::map<std::pair<uint64_t, uint64_t>, BufferStatistics>& getHostWrites() { return hostWrites ; }
+
+    inline uint64_t getNumMigrateMemCalls() { return numMigrateMemCalls ; } 
+    inline void addMigrateMemCall() { ++numMigrateMemCalls ; }
 
     // Functions specific to compute unit executions
     std::vector<std::pair<std::string, TimeStatistics>> 

@@ -42,6 +42,66 @@ namespace xdp {
     //  as any information on any devices that have been monitored
     //  by other plugins.  This will not instantiate any devices that don't
     //  already exist.
+
+    guidanceRules.push_back(guidanceDeviceExecTime) ;
+    guidanceRules.push_back(guidanceCUCalls) ;
+    guidanceRules.push_back(guidanceNumMonitors) ;
+    guidanceRules.push_back(guidanceMigrateMem) ;
+    guidanceRules.push_back(guidanceMemoryUsage) ;
+    guidanceRules.push_back(guidancePLRAMDevice) ;
+    guidanceRules.push_back(guidanceHBMDevice) ;
+    guidanceRules.push_back(guidanceKDMADevice) ;
+    guidanceRules.push_back(guidanceP2PDevice) ;
+    guidanceRules.push_back(guidanceP2PHostTransfers) ;
+    guidanceRules.push_back(guidancePortBitWidth) ;
+    guidanceRules.push_back(guidanceKernelCount) ;
+    guidanceRules.push_back(guidanceObjectsReleased) ;
+    guidanceRules.push_back(guidanceCUContextEn) ;
+    guidanceRules.push_back(guidanceTraceMemory) ;
+    guidanceRules.push_back(guidanceMaxParallelKernelEnqueues) ;
+    guidanceRules.push_back(guidanceCommandQueueOOO) ;
+    guidanceRules.push_back(guidancePLRAMSizeBytes) ;
+    guidanceRules.push_back(guidanceKernelBufferInfo) ;
+    guidanceRules.push_back(guidanceTraceBufferFull) ;
+    guidanceRules.push_back(guidanceMemoryTypeBitWidth) ;
+    guidanceRules.push_back(guidanceXrtIniSetting) ;
+    guidanceRules.push_back(guidanceBufferRdActiveTimeMs) ;
+    guidanceRules.push_back(guidanceBufferWrActiveTimeMs) ;
+    guidanceRules.push_back(guidanceBufferTxActiveTimeMs) ;
+    guidanceRules.push_back(guidanceApplicationRunTimeMs) ;
+    guidanceRules.push_back(guidanceTotalKernelRunTimeMs) ;
+
+    /*
+    guidanceRules = {
+      "DEVICE_EXEC_TIME",
+      "CU_CALLS",
+      "MIGRATE_MEM",
+      "MEMORY_USAGE",
+      "PLRAM_DEVICE",
+      "HBM_DEVICE",
+      "KDMA_DEVICE",
+      "P2P_DEVICE",
+      "P2P_HOST_TRANSFERS",
+      "PORT_BIT_WIDTH",
+      "KERNEL_COUNT",
+      "OBJECTS_RELEASED",
+      "CU_CONTEXT_EN",
+      "TRACE_MEMORY",
+      "MAX_PARALLEL_KERNEL_ENQUEUES",
+      "COMMAND_QUEUE_OOO",
+      "PLRAM_SIZE_BYTES",
+      "KERNEL_BUFFER_INFO",
+      "TRACE_BUFFER_FULL",
+      "MEMORY_TYPE_BIT_WIDTH",
+      "XRT_INI_SETTING",
+      "BUFFER_RD_ACTIVE_TIME_MS",
+      "BUFFER_WR_ACTIVE_TIME_MS",
+      "BUFFER_TX_ACTIVE_TIME_MS",
+      "APPLICATION_RUN_TIME_MS",
+      "TOTAL_KERNEL_RUN_TIME_MS",
+      "NUM_MONITORS" 
+    } ;
+    */
   }
 
   OpenCLSummaryWriter::~OpenCLSummaryWriter()
@@ -839,6 +899,11 @@ namespace xdp {
     fout << "Parameter" << ","
 	 << "Element"   << ","
 	 << "Value"     << std::endl ;
+
+    for (auto rule : guidanceRules)
+    {
+      rule(this) ;
+    } 
   }
 
   void OpenCLSummaryWriter::write(bool openNewFile)
@@ -873,4 +938,159 @@ namespace xdp {
     }
   }
 
+  void OpenCLSummaryWriter::guidanceDeviceExecTime(OpenCLSummaryWriter* t)
+  {
+    auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
+
+    for (auto device : deviceInfos)
+    {
+      (t->fout) << "DEVICE_EXEC_TIME" << "," 
+		<< (device->platformInfo).deviceName << ","
+		<< 0 << std::endl ; // TODO - Total device execution time
+    }
+  }
+
+  void OpenCLSummaryWriter::guidanceCUCalls(OpenCLSummaryWriter* t)
+  {
+    auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
+    
+    for (auto device : deviceInfos)
+    {
+      for (auto cu : device->cus)
+      {
+	(t->fout) << "CU_CALLS" << ","
+		  << ((cu.second)->getName()) << ","
+		  << 0 // TODO: Execution count
+		  << std::endl ;
+      }
+    }
+  }
+
+  void OpenCLSummaryWriter::guidanceNumMonitors(OpenCLSummaryWriter* t)
+  {
+    auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
+    std::map<uint8_t, uint64_t> accelCounter ;
+
+    for (auto device : deviceInfos)
+    {
+      // Collect the number of the different types of monitors
+      for (auto cu : device->cus)
+      {
+	for (auto monitor : (cu.second)->getMonitors())
+	{
+	  accelCounter[monitor->type] += 1 ;
+	}
+      }
+
+      for (auto numCounters : accelCounter)
+      {
+	(t->fout) << "NUM_MONITORS" << ","
+		  << device->platformInfo.deviceName 
+		  << "|"
+		  << (uint64_t)(numCounters.first) << "," // TODO: Type
+		  << (numCounters.second) << std::endl ;
+      }
+    }
+  }
+
+  void OpenCLSummaryWriter::guidanceMigrateMem(OpenCLSummaryWriter* t)
+  {
+    uint64_t numCalls = (t->db->getStats()).getNumMigrateMemCalls();
+
+    (t->fout) << "MIGRATE_MEM" << ","
+	      << "host" << ","
+	      << numCalls << std::endl ; // TODO: Make the connection
+  }
+
+  void OpenCLSummaryWriter::guidanceMemoryUsage(OpenCLSummaryWriter* t)
+  {
+  }
+
+  void OpenCLSummaryWriter::guidancePLRAMDevice(OpenCLSummaryWriter* t)
+  {
+  }
+
+  void OpenCLSummaryWriter::guidanceHBMDevice(OpenCLSummaryWriter* t)
+  {
+  }
+
+  void OpenCLSummaryWriter::guidanceKDMADevice(OpenCLSummaryWriter* t)
+  {
+  }
+
+  void OpenCLSummaryWriter::guidanceP2PDevice(OpenCLSummaryWriter* t)
+  {
+  }
+
+  void OpenCLSummaryWriter::guidanceP2PHostTransfers(OpenCLSummaryWriter* t)
+  {
+  }
+
+  void OpenCLSummaryWriter::guidancePortBitWidth(OpenCLSummaryWriter* t)
+  {
+  }
+
+  void OpenCLSummaryWriter::guidanceKernelCount(OpenCLSummaryWriter* t)
+  {
+  }
+
+  void OpenCLSummaryWriter::guidanceObjectsReleased(OpenCLSummaryWriter* t)
+  {
+  }
+
+  void OpenCLSummaryWriter::guidanceCUContextEn(OpenCLSummaryWriter* t)
+  {
+  }
+
+  void OpenCLSummaryWriter::guidanceTraceMemory(OpenCLSummaryWriter* t)
+  {
+  }
+
+  void OpenCLSummaryWriter::guidanceMaxParallelKernelEnqueues(OpenCLSummaryWriter* t)
+  {
+  }
+
+  void OpenCLSummaryWriter::guidanceCommandQueueOOO(OpenCLSummaryWriter* t)
+  {
+  }
+
+  void OpenCLSummaryWriter::guidancePLRAMSizeBytes(OpenCLSummaryWriter* t)
+  {
+  }
+
+  void OpenCLSummaryWriter::guidanceKernelBufferInfo(OpenCLSummaryWriter* t)
+  {
+  }
+
+  void OpenCLSummaryWriter::guidanceTraceBufferFull(OpenCLSummaryWriter* t)
+  {
+  }
+
+  void OpenCLSummaryWriter::guidanceMemoryTypeBitWidth(OpenCLSummaryWriter* t)
+  {
+  }
+
+  void OpenCLSummaryWriter::guidanceXrtIniSetting(OpenCLSummaryWriter* t)
+  {
+  }
+
+  void OpenCLSummaryWriter::guidanceBufferRdActiveTimeMs(OpenCLSummaryWriter* t)
+  {
+  }
+
+  void OpenCLSummaryWriter::guidanceBufferWrActiveTimeMs(OpenCLSummaryWriter* t)
+  {
+  }
+
+  void OpenCLSummaryWriter::guidanceBufferTxActiveTimeMs(OpenCLSummaryWriter* t)
+  {
+  }
+
+  void OpenCLSummaryWriter::guidanceApplicationRunTimeMs(OpenCLSummaryWriter* t)
+  {
+  }
+
+  void OpenCLSummaryWriter::guidanceTotalKernelRunTimeMs(OpenCLSummaryWriter* t)
+  {
+  }
 } // end namespace xdp

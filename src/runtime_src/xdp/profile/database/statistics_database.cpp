@@ -24,7 +24,7 @@
 namespace xdp {
 
   VPStatisticsDatabase::VPStatisticsDatabase(VPDatabase* d) :
-    db(d), firstKernelStartTime(0.0)
+    db(d), numMigrateMemCalls(0), firstKernelStartTime(0.0)
   {
   }
 
