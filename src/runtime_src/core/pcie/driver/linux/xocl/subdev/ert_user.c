@@ -17,13 +17,35 @@
 
 #include "../xocl_drv.h"
 
-#define	ERT_MAX_SLOTS 	128
+#define	ERT_MAX_SLOTS		128
 
-#define	ERT_STATE_GOOD	0x1
-#define	ERT_STATE_BAD	0x2
+#define	ERT_STATE_GOOD		0x1
+#define	ERT_STATE_BAD		0x2
 
 
-//#define	SCHED_VERBOSE	1
+//#define	SCHED_VERBOSE		1
+
+
+
+/* ERT gpio config has two channels 
+ * CHANNEL 0 is control channel :
+ * BIT 0: 0x0 Selects interrupts from embedded scheduler HW block
+ * 	  0x1 Selects interrupts from the CU INTCs
+ * BIT 2-1: TBD
+ *
+ * CHANNEL 1 is status channel :
+ * BIT 0: check microblazer status
+ */
+
+#define GPIO_CFG_CHANNEL_0	0x0
+#define GPIO_CFG_CHANNEL_1	0x8
+
+#define SWITCH_TO_CU_INTR	0x1
+#define SWITCH_TO_ERT_INTR	~SWITCH_TO_CU_INTR
+
+#define FORCE_MB_SLEEP		0x2
+#define WAKE_MB_UP		~FORCE_MB_SLEEP
+
 
 #ifdef SCHED_VERBOSE
 #define	ERTUSER_ERR(ert_user, fmt, arg...)	\
@@ -65,6 +87,7 @@ struct xocl_ert_user {
 	struct device		*dev;
 	struct platform_device	*pdev;
 	void __iomem		*cq_base;
+	void __iomem		*cfg_gpio;
 	uint64_t		cq_range;
 	bool			polling_mode;
 	struct mutex 		lock;
@@ -446,7 +469,7 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct ert_user_command *
 	if (cmd_opcode(ecmd) != OP_CONFIG)
 		return -EINVAL;
 
-	if (major > 2) {
+	if (major > 3) {
 		DRM_INFO("Unknown ERT major version, fallback to KDS mode\n");
 		ert_full = 0;
 		ert_poll = 0;
@@ -569,6 +592,8 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user)
 		}
 		epkt = (struct ert_packet *)ecmd->xcmd->execbuf;
 		ERTUSER_DBG(ert_user, "%s op_code %d ecmd->slot_idx %d\n", __func__, cmd_opcode(ecmd), ecmd->slot_idx);
+
+		sched_debug_packet(epkt, epkt->count+sizeof(epkt->header)/sizeof(u32));
 
 		if (cmd_opcode(ecmd) == OP_CONFIG && !ert_user->polling_mode) {
 			for (i = 0; i < ert_user->num_slots; i++) {
@@ -819,8 +844,44 @@ static int ert_user_configured(struct platform_device *pdev)
 
 	return ert_user->config;
 }
+
+static uint32_t ert_user_gpio_cfg(struct platform_device *pdev, enum ert_gpio_cfg type)
+{
+	struct xocl_ert_user *ert_user = platform_get_drvdata(pdev);
+	uint32_t ret = 0, val = 0;
+
+	val = ioread32(ert_user->cfg_gpio);
+
+	switch (type) {
+	case INTR_TO_ERT:
+		val &= SWITCH_TO_ERT_INTR;
+		iowrite32(val, ert_user->cfg_gpio+GPIO_CFG_CHANNEL_0);
+		break;
+	case INTR_TO_CU:
+		val |= SWITCH_TO_CU_INTR;
+		iowrite32(val, ert_user->cfg_gpio+GPIO_CFG_CHANNEL_0);
+		break;
+	case MB_WAKEUP:
+		val &= WAKE_MB_UP;
+		iowrite32(val, ert_user->cfg_gpio+GPIO_CFG_CHANNEL_0);
+		break;
+	case MB_SLEEP:
+		val |= FORCE_MB_SLEEP;
+		iowrite32(val, ert_user->cfg_gpio+GPIO_CFG_CHANNEL_0);
+		break;
+	case MB_STATUS:
+		ret = ioread32(ert_user->cfg_gpio+GPIO_CFG_CHANNEL_1);
+		break;
+	default:
+		break;
+	}
+
+	return ret;
+}
+
 static struct xocl_ert_user_funcs ert_user_ops = {
 	.configured = ert_user_configured,
+	.gpio_cfg = ert_user_gpio_cfg,
 };
 
 static int ert_user_remove(struct platform_device *pdev)
@@ -842,6 +903,9 @@ static int ert_user_remove(struct platform_device *pdev)
 
 	if (ert_user->cq_base)
 		iounmap(ert_user->cq_base);
+
+	if (ert_user->cfg_gpio)
+		iounmap(ert_user->cfg_gpio);
 
 	for (i = 0; i < ert_user->num_slots; i++) {
 		xocl_intc_config(xdev, i, false);
@@ -913,6 +977,22 @@ static int ert_user_probe(struct platform_device *pdev)
 	ert_user->cq_range = res->end - res->start + 1;
 	ert_user->cq_base = ioremap_nocache(res->start, ert_user->cq_range);
 	if (!ert_user->cq_base) {
+		err = -EIO;
+		xocl_err(&pdev->dev, "Map iomem failed");
+		goto done;
+	}
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	if (!res) {
+		err = -ENOMEM;
+		goto done;
+	}
+
+	xocl_info(&pdev->dev, "CFG GPIO start: 0x%llx, end: 0x%llx",
+		res->start, res->end);
+
+	ert_user->cfg_gpio = ioremap_nocache(res->start, res->end - res->start + 1);
+	if (!ert_user->cfg_gpio) {
 		err = -EIO;
 		xocl_err(&pdev->dev, "Map iomem failed");
 		goto done;
