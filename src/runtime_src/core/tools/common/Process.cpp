@@ -35,13 +35,6 @@
 #include <iostream>
 #include <thread>
 
-#ifdef _WIN32
-#pragma warning (disable : 4996)
-/* Disable warning for use of getenv */
-#pragma warning (disable : 4996 4100 4505)
-/* disable unrefenced params and local functions - Remove these warnings asap*/
-#endif
-
 // ------ N A M E S P A C E ---------------------------------------------------
 using namespace XBUtilities;
 
@@ -49,6 +42,14 @@ using namespace XBUtilities;
 
 
 // ------ F U N C T I O N S ---------------------------------------------------
+static bool 
+test_passed(std::string output)
+{
+  return (output.find("PASS") != std::string::npos) ? true : false;
+}
+
+#ifdef BOOST_PRE_1_64
+
 inline const char* 
 getenv_or_empty(const char* path)
 {
@@ -62,9 +63,7 @@ setShellPathEnv(const std::string& var_name, const std::string& trailing_path)
   std::string new_path(getenv_or_empty(var_name.c_str()));
   xrt_path += trailing_path + ":";
   new_path = xrt_path + new_path;
-#ifdef __GNUC__
   setenv(var_name.c_str(), new_path.c_str(), 1);
-#endif
 }
 
 static void 
@@ -77,10 +76,86 @@ testCaseProgressReporter(std::shared_ptr<ProgressBar> run_test, bool& is_done)
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 }
-
+#endif
 
 namespace XBUtilities {
-#ifndef BOOST_PRE_1_64
+
+#ifdef BOOST_PRE_1_64
+unsigned int
+runPythonScript( const std::string & script, 
+                 const std::vector<std::string> & args,
+                 std::ostringstream & os_stdout,
+                 std::ostringstream & os_stderr)
+{
+  // Fix environment variables before running test case
+  setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
+  setShellPathEnv("PYTHONPATH", "/python");
+  setShellPathEnv("LD_LIBRARY_PATH", "/lib");
+  setShellPathEnv("PATH", "/bin");
+  unsetenv("XCL_EMULATION_MODE");
+
+  std::ostringstream args_str;
+  std::copy(args.begin(), args.end(), std::ostream_iterator<std::string>(args_str, ""));
+  std::string cmd = "/usr/bin/python3 " + script + args_str.str();
+
+  int stderr_fds[2];
+  if (pipe(stderr_fds)== -1) {
+    os_stderr << "Unable to create pipe";
+    return errno;
+  }
+
+  // Save stderr
+  int stderr_save = dup(STDERR_FILENO);
+  if (stderr_save == -1) {
+    os_stderr << "Unable to duplicate stderr";
+    return errno;
+  }
+
+  // Kick off progress reporter
+  bool is_done = false;
+  //bandwidth testcase takes up-to a min to run
+  auto run_test = std::make_shared<ProgressBar>("Running Test", 60, XBUtilities::is_esc_enabled(), std::cout); 
+  std::thread t(testCaseProgressReporter, run_test, std::ref(is_done));
+
+  // Close existing stderr and set it to be the write end of the pipe.
+  // After fork below, our child process's stderr will point to the same fd.
+  dup2(stderr_fds[1], STDERR_FILENO);
+  close(stderr_fds[1]);
+  std::shared_ptr<FILE> stderr_child(fdopen(stderr_fds[0], "r"), fclose);
+  std::shared_ptr<FILE> stdout_child(popen(cmd.c_str(), "r"), pclose);
+  // Restore our normal stderr
+  dup2(stderr_save, STDERR_FILENO);
+  close(stderr_save);
+
+  if (stdout_child == nullptr) {
+    os_stderr << boost::str(boost::format("Failed to run %s") % cmd);
+    return errno;
+  }
+
+  // Read child's stdout and stderr without parsing the content
+  char buf[1024];
+  while (!feof(stdout_child.get())) {
+    if (fgets(buf, sizeof (buf), stdout_child.get()) != nullptr) {
+      os_stdout << buf;
+    }
+  }
+  while (stderr_child && !feof(stderr_child.get())) {
+    if (fgets(buf, sizeof (buf), stderr_child.get()) != nullptr) {
+      os_stderr << buf;
+    }
+  }
+
+  is_done = true;
+  bool passed = test_passed(os_stdout.str());
+  run_test.get()->finish(passed, "");
+  // Workaround: Clear the default progress bar output so as to print the Error: before printing [FAILED]
+  // Remove this once busybar is implemented
+  std::cout << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().clear_line();
+  t.join();
+
+  return passed ? 0 : 1;
+}
+#else
 unsigned int
 runPythonScript( const std::string & script, 
                  const std::vector<std::string> & args,
@@ -135,107 +210,19 @@ runPythonScript( const std::string & script,
   // Not really needed, but should be added for completeness 
   runningProcess.wait();
 
-  // Obtain the exit code from the running process
-  int exitCode = runningProcess.exit_code();
-  run_test.finish(exitCode == 0 /*Success or failure*/, "Test duration:");
-
   // Update the return buffers
   os_stdout << ip_stdout.rdbuf();
   os_stderr << ip_stderr.rdbuf();
 
-  return exitCode;
-}
-#else
-unsigned int
-runPythonScript( const std::string & script, 
-                 const std::vector<std::string> & args,
-                 std::ostringstream & os_stdout,
-                 std::ostringstream & os_stderr)
-{
-#ifdef __GNUC__ //do we need this???
-  // Fix environment variables before running test case
-  setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
-  setShellPathEnv("PYTHONPATH", "/python");
-  setShellPathEnv("LD_LIBRARY_PATH", "/lib");
-  setShellPathEnv("PATH", "/bin");
-  unsetenv("XCL_EMULATION_MODE");
+  // Obtain the exit code from the running process
+  int exitCode = runningProcess.exit_code();
+  // Check the output for keywords
+  bool passed = test_passed(os_stdout.str());
+  // Check the combination of the above 2 values
+  bool test_result = exitCode == 0  && passed
+  run_test.finish(test_result/*Success or failure*/, "Test duration:");
 
-  std::string cmd = "/usr/bin/python " + script + " -k " + args[0] + " -d " + args[1];
-
-  int stderr_fds[2];
-  if (pipe(stderr_fds)== -1) {
-    // logger(_ptTest, "Error", "Unable to create pipe");
-    // _ptTest.put("status", "failed");
-    return 1;
-  }
-
-  // Save stderr
-  int stderr_save = dup(STDERR_FILENO);
-  if (stderr_save == -1) {
-    // logger(_ptTest, "Error", "Unable to duplicate stderr");
-    // _ptTest.put("status", "failed");
-    return 1;
-  }
-
-  // Kick off progress reporter
-  bool is_done = false;
-  //bandwidth testcase takes up-to a min to run
-  auto run_test = std::make_shared<ProgressBar>("Running Test", 60, XBUtilities::is_esc_enabled(), std::cout); 
-  std::thread t(testCaseProgressReporter, run_test, std::ref(is_done));
-
-  // Close existing stderr and set it to be the write end of the pipe.
-  // After fork below, our child process's stderr will point to the same fd.
-  dup2(stderr_fds[1], STDERR_FILENO);
-  close(stderr_fds[1]);
-  std::shared_ptr<FILE> stderr_child(fdopen(stderr_fds[0], "r"), fclose);
-  std::shared_ptr<FILE> stdout_child(popen(cmd.c_str(), "r"), pclose);
-  // Restore our normal stderr
-  dup2(stderr_save, STDERR_FILENO);
-  close(stderr_save);
-
-  if (stdout_child == nullptr) {
-    // logger(_ptTest, "Error", boost::str(boost::format("Failed to run %s") % cmd));
-    // _ptTest.put("status", "failed");
-    return 1;
-  }
-
-//   std::string output = "\n\n";
-  std::string output, outerr;
-  // Read child's stdout and stderr without parsing the content
-  char buf[1024];
-  while (!feof(stdout_child.get())) {
-    if (fgets(buf, sizeof (buf), stdout_child.get()) != nullptr) {
-      output += buf;
-    }
-  }
-//   stdout << output;
-  while (stderr_child && !feof(stderr_child.get())) {
-    if (fgets(buf, sizeof (buf), stderr_child.get()) != nullptr) {
-      outerr += buf;
-    }
-  }
-//   stderr <<outerr;
-  is_done = true;
-  if (os_stdout.str().find("PASS") == std::string::npos) {
-    run_test.get()->finish(false, "");
-    // logger(_ptTest, "Error", output);
-    // _ptTest.put("status", "failed");
-  } 
-  else {
-    run_test.get()->finish(true, "");
-    // _ptTest.put("status", "passed");
-  }
-  std::cout << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().clear_line();
-  t.join();
-
-  // Get out max thruput for bandwidth testcase
-//   size_t st = output.find("Maximum");
-//   if (st != std::string::npos) {
-//     size_t end = output.find("\n", st);
-    // logger(_ptTest, "Details", output.substr(st, end - st));
-//   }
-return 0; //FIX
-#endif
+  return test_result ? 0 : 1;
 }
 #endif
 }

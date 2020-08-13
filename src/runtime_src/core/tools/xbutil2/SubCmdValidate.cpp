@@ -248,6 +248,8 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
       }
       return;
     }
+    // log xclbin path for debugging purposes
+    logger(_ptTest, "Xclbin", xclbinPath);
 
     //check if testcase is present
     std::string xrtTestCasePath = "/opt/xilinx/xrt/test/" + py;
@@ -258,17 +260,14 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
       _ptTest.put("status", "failed");
       return;
     }
+    // log testcase path for debugging purposes
+    logger(_ptTest, "Testcase", xrtTestCasePath);
 
     // Program xclbin first.
     programXclbin(_dev, xclbinPath, _ptTest);
     if (_ptTest.get<std::string>("status", "N/A").compare("failed") == 0) 
       return;
     
-    //run testcase in a fork
-    // std::string cmd = "/usr/bin/python " + xrtTestCasePath + " -k " + xclbinPath + " -d " + 
-    //                     std::to_string(_dev.get()->get_device_id());
-    
-    // #ifndef BOOST_PRE_1_64
     std::vector<std::string> args = { " -k ", xclbinPath, " -d ", std::to_string(_dev.get()->get_device_id()) };
     std::ostringstream os_stdout;
     std::ostringstream os_stderr;
@@ -280,9 +279,6 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
     else {
       _ptTest.put("status", "passed");
     }
-    // #else
-    // runShellCmd(cmd, _ptTest);
-    // #endif
 }
 
 /*
@@ -461,6 +457,13 @@ bandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::proper
   }
   std::string testcase = (name.find("vck5000") != std::string::npos) ? "versal_23_bandwidth.py" : "23_bandwidth.py";
   runTestCase(_dev, testcase, std::string("bandwidth.xclbin"), _ptTest);
+
+    // Get out max thruput for bandwidth testcase
+//   size_t st = output.find("Maximum");
+//   if (st != std::string::npos) {
+//     size_t end = output.find("\n", st);
+    // logger(_ptTest, "Details", output.substr(st, end - st));
+//   }
 }
 
 /*
