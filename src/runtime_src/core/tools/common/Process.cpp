@@ -219,7 +219,7 @@ runPythonScript( const std::string & script,
   // Check the output for keywords
   bool passed = test_passed(os_stdout.str());
   // Check the combination of the above 2 values
-  bool test_result = exitCode == 0  && passed
+  bool test_result = exitCode == 0  && passed;
   run_test.finish(test_result/*Success or failure*/, "Test duration:");
 
   return test_result ? 0 : 1;
