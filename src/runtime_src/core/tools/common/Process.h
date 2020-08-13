@@ -17,6 +17,8 @@
 #ifndef __Process_h_
 #define __Process_h_
 
+#include <vector>
+
 namespace XBUtilities {
   unsigned int
     runPythonScript( const std::string & script, 

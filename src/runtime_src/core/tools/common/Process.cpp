@@ -35,6 +35,7 @@
 
 // Local - Include Files
 #include "ProgressBar.h"
+#include "Process.h"
 #include "EscapeCodes.h"
 #include "XBUtilities.h"
 
@@ -47,9 +48,9 @@
 // System - Include Files
 #include <iostream>
 #include <thread>
-
-using namespace XBUtilities;
-
+// ------ S T A T I C   V A R I A B L E S -------------------------------------
+// bandwidth testcase takes up-to a min to run
+static const int max_test_duration = 60;
 
 // ------ F U N C T I O N S ---------------------------------------------------
 #ifdef BOOST_PRE_1_64
@@ -74,22 +75,18 @@ setShellPathEnv(const std::string& var_name, const std::string& trailing_path)
 }
 
 static void 
-testCaseProgressReporter(std::shared_ptr<ProgressBar> run_test, bool& is_done)
+testCaseProgressReporter(std::shared_ptr<XBUtilities::ProgressBar> run_test, bool& is_done)
 {
   int counter = 0;
-  while(counter < 60 && !is_done) {
+  while(counter < max_test_duration && !is_done) {
     run_test.get()->update(counter);
     counter++;
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 }
-#endif
 
-namespace XBUtilities {
-
-#ifdef BOOST_PRE_1_64
 unsigned int
-runPythonScript( const std::string & script, 
+XBUtilities::runPythonScript( const std::string & script, 
                  const std::vector<std::string> & args,
                  std::ostringstream & os_stdout,
                  std::ostringstream & os_stderr)
@@ -120,9 +117,8 @@ runPythonScript( const std::string & script,
 
   // Kick off progress reporter
   bool is_done = false;
-  //bandwidth testcase takes up-to a min to run
   // Fix: create busy bar
-  auto run_test = std::make_shared<ProgressBar>("Running Test", 60, XBUtilities::is_esc_enabled(), std::cout); 
+  auto run_test = std::make_shared<XBUtilities::ProgressBar>("Running Test", max_test_duration, XBUtilities::is_esc_enabled(), std::cout); 
   std::thread t(testCaseProgressReporter, run_test, std::ref(is_done));
 
   // Close existing stderr and set it to be the write end of the pipe.
@@ -166,7 +162,7 @@ runPythonScript( const std::string & script,
 #else
 
 unsigned int
-runPythonScript( const std::string & script, 
+XBUtilities::runPythonScript( const std::string & script, 
                  const std::vector<std::string> & args,
                  std::ostringstream & os_stdout,
                  std::ostringstream & os_stderr)
@@ -198,7 +194,7 @@ runPythonScript( const std::string & script,
   env.erase("XCL_EMULATION_MODE");
 
   // Please fix: Should be a busy bar and NOT a progress bar
-  ProgressBar run_test("Running Test", 60, XBUtilities::is_esc_enabled(), std::cout); 
+  ProgressBar run_test("Running Test", max_test_duration, XBUtilities::is_esc_enabled(), std::cout); 
 
   // Execute the python script and capture the outputs
   boost::process::ipstream ip_stdout;
@@ -230,4 +226,3 @@ runPythonScript( const std::string & script,
   return exitCode;
 }
 #endif
-}
