@@ -43,10 +43,6 @@ namespace po = boost::program_options;
 #ifdef __GNUC__
 #include <sys/mman.h> //munmap
 #endif
-#ifdef _WIN32
-#pragma warning (disable : 4996 4100 4505)
-/* disable unrefenced params and local functions - Remove these warnings asap*/
-#endif
 
 
 // =============================================================================
@@ -109,7 +105,7 @@ void logger(boost::property_tree::ptree& _ptTest, const std::string& tag, const 
  * search for xclbin for an SSV2 platform
  */
 std::string
-searchSSV2Xclbin(const std::shared_ptr<xrt_core::device>& _dev, const std::string& logic_uuid, 
+searchSSV2Xclbin(const std::string& logic_uuid, 
                   const std::string& xclbin, boost::property_tree::ptree& _ptTest)
 {
   std::string formatted_fw_path("/opt/xilinx/firmware/");
@@ -138,7 +134,6 @@ searchSSV2Xclbin(const std::shared_ptr<xrt_core::device>& _dev, const std::strin
 
       std::regex_match(name, cm, e);
       if (cm.size() > 0) {
-#ifdef __GNUC__
         auto dtbbuf = XBUtilities::get_axlf_section(name, PARTITION_METADATA);
         if (dtbbuf.empty()) {
           ++iter;
@@ -151,7 +146,6 @@ searchSSV2Xclbin(const std::shared_ptr<xrt_core::device>& _dev, const std::strin
         else if (uuids[0].compare(logic_uuid) == 0) {
           return cm.str(1) + "test/" + xclbin;
         }
-#endif
       }
       else if (iter.level() > 4) {
         iter.pop();
@@ -223,7 +217,7 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py
 
   std::string xclbinPath;
   if(!logic_uuid.empty()) {
-    xclbinPath = searchSSV2Xclbin(_dev, logic_uuid.front(), xclbin, _ptTest);
+    xclbinPath = searchSSV2Xclbin(logic_uuid.front(), xclbin, _ptTest);
   } else {
     xclbinPath = searchLegacyXclbin(name, xclbin, _ptTest);
     }
