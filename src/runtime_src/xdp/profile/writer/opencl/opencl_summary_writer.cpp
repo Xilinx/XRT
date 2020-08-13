@@ -658,19 +658,32 @@ namespace xdp {
 
 	  std::string masterPort = "" ;
 	  std::string slavePort = "" ;
+	  std::string masterArgs = "" ;
+	  std::string slaveArgs = "" ;
+
 	  size_t dashPosition = (monitor->name).find("-") ;
 	  if (dashPosition != std::string::npos)
 	  {
-	    masterPort = (monitor->name).substr(0, dashPosition) ;
-	    slavePort = (monitor->name).substr(dashPosition + 1,
-					       (monitor->name).size() - dashPosition - 1) ;
+	    std::string firstHalf = (monitor->name).substr(0, dashPosition);
+	    std::string secondHalf =
+	      (monitor->name).substr(dashPosition + 1,
+				     (monitor->name).size()-dashPosition-1) ;
+	    size_t slashPosition = firstHalf.find("/") ;
+	    masterPort = firstHalf.substr(0, slashPosition) ;
+	    masterArgs = firstHalf.substr(slashPosition + 1,
+					  firstHalf.size()-slashPosition-1) ;
+
+	    slashPosition = secondHalf.find("/") ;
+	    slavePort = secondHalf.substr(0, slashPosition) ;
+	    slaveArgs = secondHalf.substr(slashPosition + 1,
+					  secondHalf.size()-slashPosition-1) ;
 	  }
 	  
 	  fout << (device->platformInfo.deviceName) << ","
 	       << masterPort << ","
-	       << "" << "," // TODO: Master kernel arguments
+	       << masterArgs << ","
 	       << slavePort << ","
-	       << "" << "," // TODO: Slave kernel arguments
+	       << slaveArgs << ","
 	       << numTranx << ","
 	       << "" << "," // TODO: Transfer Rate
 	       << (values.StrDataBytes[ASMIndex] / numTranx) << ","
