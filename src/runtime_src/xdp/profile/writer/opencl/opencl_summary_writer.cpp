@@ -1152,14 +1152,28 @@ namespace xdp {
 
   void OpenCLSummaryWriter::guidanceObjectsReleased(OpenCLSummaryWriter* t)
   {
+    uint64_t numReleased = (t->db->getStats()).getNumOpenCLObjectsReleased() ;
+
+    (t->fout) << "OBJECTS_RELEASED" << ","
+	      << "all" << ","
+	      << numReleased // TODO: Make the connection
+	      << std::endl ;
   }
 
   void OpenCLSummaryWriter::guidanceCUContextEn(OpenCLSummaryWriter* t)
   {
+    bool isContextEnabled = (t->db->getStats()).getContextEnabled() ;
+
+    (t->fout) << "CU_CONTEXT_EN" << ","
+	      << "all" << ","
+	      << (uint64_t)(isContextEnabled)
+	      << std::endl ;
   }
 
   void OpenCLSummaryWriter::guidanceTraceMemory(OpenCLSummaryWriter* t)
   {
+    (t->fout) << "TRACE_MEMORY" << ","
+	      << std::endl ;
   }
 
   void OpenCLSummaryWriter::guidanceMaxParallelKernelEnqueues(OpenCLSummaryWriter* t)

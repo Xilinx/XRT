@@ -158,6 +158,8 @@ namespace xdp {
     // Statistics on specific OpenCL function calls
     uint64_t numMigrateMemCalls ;
     uint64_t numHostP2PTransfers ;
+    uint64_t numObjectsReleased ;
+    bool contextEnabled ;
 
     // Statistics on buffer transfers
     //  Keep track of reads and writes for every context+device pair
@@ -194,6 +196,10 @@ namespace xdp {
     inline void addMigrateMemCall()          { ++numMigrateMemCalls ; }
     inline uint64_t getNumHostP2PTransfers() { return numHostP2PTransfers ; }
     inline void addHostP2PTransfer()         { ++numHostP2PTransfers ; }
+    inline uint64_t getNumOpenCLObjectsReleased() { return numObjectsReleased ;}
+    inline void addOpenCLObjectReleased()    { ++numObjectsReleased ; }
+    inline bool getContextEnabled()          { return contextEnabled ; }
+    inline void setContextEnabled()          { contextEnabled = true ; }
 
     // Functions specific to compute unit executions
     std::vector<std::pair<std::string, TimeStatistics>> 

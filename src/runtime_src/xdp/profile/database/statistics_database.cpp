@@ -25,7 +25,7 @@ namespace xdp {
 
   VPStatisticsDatabase::VPStatisticsDatabase(VPDatabase* d) :
     db(d), numMigrateMemCalls(0), numHostP2PTransfers(0),
-    firstKernelStartTime(0.0)
+    numObjectsReleased(0), contextEnabled(false), firstKernelStartTime(0.0)
   {
   }
 
