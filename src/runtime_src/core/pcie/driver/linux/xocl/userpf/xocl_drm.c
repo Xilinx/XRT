@@ -805,12 +805,17 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 
 	/* Initialize memory stats based on Group topology */
 	err = XOCL_GET_GROUP_TOPOLOGY(drm_p->xdev, group_topo);
-	if (err)
+	if (err) {
+		XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
+		mutex_unlock(&drm_p->mm_lock);
 		return err;
+	}
 
 	if (group_topo == NULL) {
 		err = -ENODEV;
+		XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
 		XOCL_PUT_GROUP_TOPOLOGY(drm_p->xdev);
+		mutex_unlock(&drm_p->mm_lock);
 		return err;
 	}
 
@@ -818,6 +823,7 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	drm_p->mm_usage_stat = vzalloc(size);
 	if (!drm_p->mm_usage_stat) {
 		err = -ENOMEM;
+		XOCL_PUT_GROUP_TOPOLOGY(drm_p->xdev);
 		goto done;
 	}
 
@@ -831,6 +837,7 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 		drm_p->mm_usage_stat[i] = vzalloc(mm_stat_size);
 		if (!drm_p->mm_usage_stat[i]) {
 			err = -ENOMEM;
+			XOCL_PUT_GROUP_TOPOLOGY(drm_p->xdev);
 			goto done;
 		}
 	}

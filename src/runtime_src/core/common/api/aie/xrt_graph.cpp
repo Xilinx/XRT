@@ -24,6 +24,8 @@
 
 #include "core/include/experimental/xrt_device.h"
 #include "core/common/api/device_int.h"
+#include "core/common/system.h"
+#include "core/common/device.h"
 #include "core/common/message.h"
 
 namespace xrt {
@@ -34,7 +36,7 @@ private:
   xclGraphHandle handle;
 
 public:
-  graph_impl(const xrt_core::device& dev, xclGraphHandle ghdl)
+  graph_impl(const std::shared_ptr<xrt_core::device>& dev, xclGraphHandle ghdl)
     : device(dev)
     , handle(ghdl)
   {}
