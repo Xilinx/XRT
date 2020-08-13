@@ -807,6 +807,7 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	err = XOCL_GET_GROUP_TOPOLOGY(drm_p->xdev, group_topo);
 	if (err) {
 		XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
+		mutex_unlock(&drm_p->mm_lock);
 		return err;
 	}
 
@@ -814,6 +815,7 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 		err = -ENODEV;
 		XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
 		XOCL_PUT_GROUP_TOPOLOGY(drm_p->xdev);
+		mutex_unlock(&drm_p->mm_lock);
 		return err;
 	}
 
