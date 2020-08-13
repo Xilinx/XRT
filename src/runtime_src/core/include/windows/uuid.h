@@ -19,12 +19,15 @@
 
 #pragma warning( push )
 #pragma warning ( disable : 4100 4996 4244 )
+
+typedef unsigned char xuid_t[16];
+
+#ifdef __cplusplus
 #include <string>
 #include <cstring>
 #include <cstdio>
 #include <cctype>
 #include <stdexcept>
-typedef unsigned char xuid_t[16];
 
 inline void
 uuid_copy(xuid_t dst, const xuid_t src)
@@ -97,6 +100,7 @@ uuid_parse(const char* str, xuid_t uuid)
 #endif
 }
 
-#pragma warning ( pop )
+#endif 
 
+#pragma warning ( pop )
 #endif

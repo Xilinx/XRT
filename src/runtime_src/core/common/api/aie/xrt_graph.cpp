@@ -1,0 +1,483 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (C) 2020, Xilinx Inc - All rights reserved
+ * Xilinx Runtime (XRT) Experimental APIs
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may
+ * not use this file except in compliance with the License. A copy of the
+ * License is located at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ */
+
+// This file implements XRT APIs as declared in
+// core/include/experimental/xrt_aie.h
+
+#include "core/include/experimental/xrt_aie.h"
+#include "core/common/system.h"
+#include "core/common/device.h"
+#include "xrt_graph.h"
+#include "core/common/message.h"
+
+namespace xrt {
+
+class graph_impl {
+private:
+  std::shared_ptr<xrt_core::device> device;
+  xclGraphHandle handle;
+
+public:
+  graph_impl(xclDeviceHandle dhdl, xclGraphHandle ghdl)
+    : device(xrt_core::get_userpf_device(dhdl)), handle(ghdl)
+  {}
+
+  ~graph_impl()
+  {
+    device->close_graph(handle);
+  }
+
+  xclGraphHandle
+  get_handle() const
+  {
+    return handle;
+  }
+
+  void
+  reset()
+  {
+    device->reset_graph(handle);
+  }
+
+  uint64_t
+  get_timestamp()
+  {
+    return (device->get_timestamp(handle));
+  }
+
+  void
+  run(int iterations)
+  {
+    device->run_graph(handle, iterations);
+  }
+
+  int
+  wait(int timeout)
+  {
+    return (device->wait_graph_done(handle, timeout));
+  }
+
+  void
+  wait(uint64_t cycle)
+  {
+    device->wait_graph(handle, cycle);
+  }
+
+  void
+  suspend()
+  {
+    device->suspend_graph(handle);
+  }
+
+  void
+  resume()
+  {
+    device->resume_graph(handle);
+  }
+
+  void
+  end(uint64_t cycle)
+  {
+    device->end_graph(handle, cycle);
+  }
+
+  void
+  update_rtp(const char* port, const char* buffer, size_t size)
+  {
+    device->update_graph_rtp(handle, port, buffer, size);
+  }
+
+  void
+  read_rtp(const char* port, char* buffer, size_t size)
+  {
+    device->read_graph_rtp(handle, port, buffer, size);
+  }
+};
+
+}
+
+namespace {
+
+// C-API Graph handles are inserted to this map.
+// Note: xrtGraphClose must be explicitly called before xclClose.
+static std::map<xrtGraphHandle, std::shared_ptr<xrt::graph_impl>> graph_cache;
+
+static std::shared_ptr<xrt::graph_impl>
+open_graph(xclDeviceHandle dhdl, const uuid_t xclbin_uuid, const char* graph_name)
+{
+  auto device = xrt_core::get_userpf_device(dhdl);
+  auto handle = device->open_graph(xclbin_uuid, graph_name);
+  auto ghdl = std::make_shared<xrt::graph_impl>(dhdl, handle);
+  return ghdl;
+}
+
+static std::shared_ptr<xrt::graph_impl>
+get_graph_hdl(xrtGraphHandle graph_handle)
+{
+  auto itr = graph_cache.find(graph_handle);
+  if (itr == graph_cache.end())
+    throw xrt_core::error(-EINVAL, "No such graph handle");
+  return (*itr).second;
+}
+
+static void
+close_graph(xrtGraphHandle hdl)
+{
+  if (graph_cache.erase(hdl) == 0)
+    throw std::runtime_error("Unexpected internal error");
+}
+
+static void
+sync_aie_bo(xclDeviceHandle dhdl, xrtBufferHandle bohdl, const char *gmio_name, xclBOSyncDirection dir, size_t size, size_t offset)
+{
+  auto device = xrt_core::get_userpf_device(dhdl);
+  device->sync_aie_bo(bohdl, gmio_name, dir, size, offset);
+}
+
+static void
+reset_aie(xclDeviceHandle dhdl)
+{
+  auto device = xrt_core::get_userpf_device(dhdl);
+  device->reset_aie();
+}
+
+static void
+sync_aie_bo_nb(xclDeviceHandle dhdl, xrtBufferHandle bohdl, const char *gmio_name, xclBOSyncDirection dir, size_t size, size_t offset)
+{
+  auto device = xrt_core::get_userpf_device(dhdl);
+  device->sync_aie_bo_nb(bohdl, gmio_name, dir, size, offset);
+}
+
+static void
+wait_gmio(xclDeviceHandle dhdl, const char *gmio_name)
+{
+  auto device = xrt_core::get_userpf_device(dhdl);
+  device->wait_gmio(gmio_name);
+}
+
+inline void
+send_exception_message(const char* msg)
+{
+  xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR, "XRT", msg);
+}
+
+}
+
+////////////////////////////////////////////////////////////////
+// xrt_aie API implementations (xrt_aie.h)
+////////////////////////////////////////////////////////////////
+
+xrtGraphHandle
+xrtGraphOpen(xclDeviceHandle dev_handle, const uuid_t xclbin_uuid, const char* graph_name)
+{
+  try {
+    auto hdl = open_graph(dev_handle, xclbin_uuid, graph_name);
+    graph_cache[hdl.get()] = hdl;
+    return hdl.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return XRT_NULL_HANDLE;
+  }
+}
+
+void
+xrtGraphClose(xrtGraphHandle graph_hdl)
+{
+  try {
+    close_graph(graph_hdl);
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+  }
+}
+
+int
+xrtGraphReset(xrtGraphHandle graph_hdl)
+{
+  try {
+    auto hdl = get_graph_hdl(graph_hdl);
+    hdl->reset();
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return errno = 0;
+  }
+}
+
+uint64_t
+xrtGraphTimeStamp(xrtGraphHandle graph_hdl)
+{
+  try {
+    auto hdl = get_graph_hdl(graph_hdl);
+    return hdl->get_timestamp();
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return errno = 0;
+  }
+}
+
+int
+xrtGraphRun(xrtGraphHandle graph_hdl, int iterations)
+{
+  try {
+    auto hdl = get_graph_hdl(graph_hdl);
+    hdl->run(iterations);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return errno = 0;
+  }
+}
+
+int
+xrtGraphWaitDone(xrtGraphHandle graph_hdl, int timeoutMilliSec)
+{
+  try {
+    auto hdl = get_graph_hdl(graph_hdl);
+    return hdl->wait(timeoutMilliSec);
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return errno = 0;
+  }
+}
+
+int
+xrtGraphWait(xrtGraphHandle graph_hdl, uint64_t cycle)
+{
+  try {
+    auto hdl = get_graph_hdl(graph_hdl);
+    hdl->wait(cycle);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return errno = 0;
+  }
+}
+
+int
+xrtGraphSuspend(xrtGraphHandle graph_hdl)
+{
+  try {
+    auto hdl = get_graph_hdl(graph_hdl);
+    hdl->suspend();
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return errno = 0;
+  }
+}
+
+int
+xrtGraphResuem(xrtGraphHandle graph_hdl)
+{
+  try {
+    auto hdl = get_graph_hdl(graph_hdl);
+    hdl->resume();
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return errno = 0;
+  }
+}
+
+int
+xrtGraphEnd(xrtGraphHandle graph_hdl, uint64_t cycle)
+{
+  try {
+    auto hdl = get_graph_hdl(graph_hdl);
+    hdl->end(cycle);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return errno = 0;
+  }
+}
+
+int
+xrtGraphUpdateRTP(xrtGraphHandle graph_hdl, const char* port, const char* buffer, size_t size)
+{
+  try {
+    auto hdl = get_graph_hdl(graph_hdl);
+    hdl->update_rtp(port, buffer, size);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return errno = 0;
+  }
+}
+
+int
+xrtGraphReadRTP(xrtGraphHandle graph_hdl, const char* port, char* buffer, size_t size)
+{
+  try {
+    auto hdl = get_graph_hdl(graph_hdl);
+    hdl->read_rtp(port, buffer, size);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return errno = 0;
+  }
+}
+
+int
+xrtSyncBOAIE(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
+{
+  try {
+    sync_aie_bo(handle, bohdl, gmioName, dir, size, offset);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return errno = 0;
+  }
+}
+
+int
+xrtResetAIEArray(xclDeviceHandle handle)
+{
+  try {
+    reset_aie(handle);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return errno = 0;
+  }
+}
+
+////////////////////////////////////////////////////////////////
+// Exposed for Cardano as extensions to xrt_aie.h
+////////////////////////////////////////////////////////////////
+/**
+ * xrtSyncBOAIENB() - Transfer data between DDR and Shim DMA channel
+ *
+ * @handle:          Handle to the device
+ * @bohdl:           BO handle.
+ * @gmioName:        GMIO port name
+ * @dir:             GM to AIE or AIE to GM
+ * @size:            Size of data to synchronize
+ * @offset:          Offset within the BO
+ *
+ * Return:          0 on success, -1 on error.
+ *
+ * Synchronize the buffer contents between GMIO and AIE.
+ * Note: Upon return, the synchronization is submitted or error out
+ */
+int
+xrtSyncBOAIENB(xclDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
+{
+  try {
+    sync_aie_bo_nb(handle, bohdl, gmioName, dir, size, offset);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return errno = 0;
+  }
+}
+
+/**
+ * xrtGMIOWait() - Wait a shim DMA channel to be idle for a given GMIO port
+ *
+ * @handle:          Handle to the device
+ * @gmioName:        GMIO port name
+ *
+ * Return:          0 on success, -1 on error.
+ */
+int
+xrtGMIOWait(xclDeviceHandle handle, const char *gmioName)
+{
+  try {
+    wait_gmio(handle, gmioName);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return errno = 0;
+  }
+}

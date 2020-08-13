@@ -72,6 +72,9 @@ Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
      */
     shim_dma.resize(numCols);
     for (auto& gmio : gmios) {
+        if (gmio.shim_col > numCols)
+            throw xrt_core::error(-EINVAL, "GMIO " + gmio.name + " shim column " + std::to_string(gmio.shim_col) + " does not exist");
+
         auto dma = &shim_dma.at(gmio.shim_col);
         auto pos = getTilePos(gmio.shim_col, 0);
         if (!dma->configured) {
