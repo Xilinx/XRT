@@ -151,7 +151,7 @@ using addr_type = uint64_t;
 
       // Buffer management
       uint64_t xclAllocDeviceBuffer(size_t size);
-      uint64_t xclAllocDeviceBuffer2(size_t& size, xclMemoryDomains domain, unsigned flags,bool p2pBuffer, std::string &sFileName);
+      uint64_t xclAllocDeviceBuffer2(size_t& size, xclMemoryDomains domain, unsigned flags, bool p2pBuffer, unsigned boFlags, std::string &sFileName);
 
       void xclOpen(const char* logfileName);
       void xclFreeDeviceBuffer(uint64_t buf,bool sendtosim);
@@ -248,6 +248,14 @@ using addr_type = uint64_t;
       // Restricted read/write on IP register space
       int xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data);
       int xclRegRead(uint32_t cu_index, uint32_t offset, uint32_t *datap);
+      volatile bool get_mHostMemAccessThreadStarted();
+      volatile void set_mHostMemAccessThreadStarted(bool val);
+      bool device2xrt_rd_trans_cb(unsigned long int addr, void* const data_ptr,unsigned long int size);
+      bool device2xrt_wr_trans_cb(unsigned long int addr, void const* data_ptr,unsigned long int size);
+      bool device2xrt_irq_trans_cb(uint32_t,unsigned long int);
+
+      std::string getSimulatorType(const std::string& binaryDirectory);
+      void createPreSimScript(const std::string& wcfgFilePath, std::string& preSimScriptPath);
 
     private:
       std::shared_ptr<xrt_core::device> mCoreDevice;
@@ -339,13 +347,17 @@ using addr_type = uint64_t;
       bool     mVersalPlatform;
       //For Emulation specific messages on host from Device
       std::thread mMessengerThread;
+      std::thread mHostMemAccessThread;
       bool mMessengerThreadStarted;
+      bool mHostMemAccessThreadStarted;
       void closemMessengerThread();
       bool mIsTraceHubAvailable;
       //CU register space for xclRegRead/Write()
       std::map<uint32_t, uint64_t> mCuIndxVsBaseAddrMap;
       uint32_t mCuIndx;
       const size_t mCuMapSize = 64 * 1024;
+      std::string simulatorType;
+      std::map<uint64_t, std::pair<void*, uint64_t> > mHostOnlyMemMap;
   };
 
   extern std::map<unsigned int, HwEmShim*> devices;

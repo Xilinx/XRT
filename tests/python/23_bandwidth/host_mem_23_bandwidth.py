@@ -154,7 +154,6 @@ def runKernel(opt):
 
 
 def main(args):
-    os.environ["Runtime.xrt_bo"] = "true"
     opt = Options()
     Options.getOptions(opt, args)
 

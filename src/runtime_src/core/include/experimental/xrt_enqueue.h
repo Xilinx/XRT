@@ -154,7 +154,26 @@ public:
   class event
   {
   public:
+    event()
+    {}
+
     event(task&& t, const std::vector<event>& deps);
+
+    explicit
+    operator bool() const
+    {
+      return m_impl != nullptr;
+    }
+
+    /**
+     * wait() - Wait for event to complete
+     *
+     * This function is deliberately not virtual to derived's
+     * std::future. Base class may be sliced off from derived and
+     * manages completion in implementation.
+     */
+    void
+    wait() const;
 
     static void
     notify(event_impl*);
@@ -203,17 +222,6 @@ private:
     {
       return m_future.get();
     }
-
-    /**
-     * wait() - Wait for the enqueued synchronous operation to complete
-     *
-     * Return:  The return value after successful event / task execution
-     */
-    void
-    wait() const
-    {
-      m_future.wait();
-    }
   }; // class event_queue::event_type
 
 
@@ -237,21 +245,6 @@ private:
       : event(task(std::move(t), f), deps)
       , m_future(f) 
     {}
-    
-    /**
-     * wait() - Wait for the async operation to complete
-     *
-     * Waiting on an async event is waiting on the waitable object
-     * returned after launching the async operation. The return 
-     * value of an asynchronous operation is not available and nothing
-     * is returned to host application
-     */
-    void
-    wait() const
-    {
-      auto& waitable = m_future.get();
-      waitable.wait();
-    }
   };
 
 private:

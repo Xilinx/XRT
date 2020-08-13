@@ -49,7 +49,7 @@ struct q_state_name {
 
 extern struct q_state_name q_state_list[];
 
-#define QDMA_FLQ_SIZE 80
+#define QDMA_FLQ_SIZE 124
 
 /**
  * @struct - qdma_descq
@@ -315,9 +315,9 @@ int qdma_descq_context_cleanup(struct qdma_descq *descq);
  * @param[in]	budget:		number of descriptors to process
  * @param[in]	c2h_upd_cmpl:	C2H only: if update completion needed
  *
- * @return	none
+ * @return	0 - sucess, < 0 for failure
  *****************************************************************************/
-void qdma4_descq_service_cmpl_update(struct qdma_descq *descq, int budget,
+int qdma4_descq_service_cmpl_update(struct qdma_descq *descq, int budget,
 			bool c2h_upd_cmpl);
 
 /*****************************************************************************/
@@ -483,6 +483,16 @@ void sgl_unmap(struct pci_dev *pdev, struct qdma_sw_sg *sg, unsigned int sgcnt,
  *****************************************************************************/
 void qdma4_descq_flq_free_resource(struct qdma_descq *descq);
 
+/*****************************************************************************/
+/**
+ * descq_flq_free_page_resource() - handler to free the pages for the request
+ *
+ * @param[in]  descq:		pointer to qdma_descq
+ *
+ * @return	none
+ *****************************************************************************/
+void descq_flq_free_page_resource(struct qdma_descq *descq);
+
 int rcv_udd_only(struct qdma_descq *descq, struct qdma_ul_cmpt_info *cmpl);
 int parse_cmpl_entry(struct qdma_descq *descq, struct qdma_ul_cmpt_info *cmpl);
 void cmpt_next(struct qdma_descq *descq);
@@ -529,5 +539,16 @@ void cmpt_next(struct qdma_descq *descq);
 #endif
 
 u64 rdtsc_gettime(void);
+static inline unsigned int get_next_powof2(unsigned int value)
+{
+	unsigned int num_bits, mask, f_value;
+
+	num_bits = fls(value) - 1;
+	mask = (1 << num_bits) - 1;
+	f_value = ((value + mask) >> num_bits) << num_bits;
+
+	return f_value;
+}
+
 
 #endif /* ifndef __QDMA_DESCQ_H__ */

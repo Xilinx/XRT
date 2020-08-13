@@ -22,6 +22,7 @@
 #include "ParameterSectionData.h"
 #include "FormattedOutput.h"
 #include "XclBinSignature.h"
+#include "xclbin.h"
 
 // 3rd Party Library - Include Files
 #include <boost/program_options.hpp>
@@ -142,6 +143,7 @@ int main_(int argc, const char** argv) {
   bool bListSections = false;
   std::string sInfoFile;
   bool bSkipUUIDInsertion = false;
+  bool bSkipBankGrouping = false;
   bool bVersion = false;
   bool bForce = false;
 
@@ -219,6 +221,7 @@ int main_(int argc, const char** argv) {
     ("append-section", boost::program_options::value<std::vector<std::string> >(&sectionsToAppend)->multitoken(), "Section to append to.")
     ("signature-debug", boost::program_options::bool_switch(&bSignatureDebug), "Dump section debug data.")
     ("dump-signature", boost::program_options::value<std::string>(&sSignatureOutputFile), "Dumps a sign xclbin image's signature.")
+    ("skip-bank-grouping", boost::program_options::bool_switch(&bSkipBankGrouping), "Disables creating the memory bank grouping section(s).")
     ("BAD-DATA", boost::program_options::value<std::vector<std::string> >(&badOptions)->multitoken(), "Dummy Data." )
   ;
 
@@ -499,6 +502,16 @@ int main_(int argc, const char** argv) {
       throw std::runtime_error(errMsg);
     }
   }
+
+  // -------------------------------------------------------------------------
+  // Auto add GROUP_TOPOLOGY and/or GROUP_CONNECTIVITY
+  if ((bSkipBankGrouping == false) &&
+      (xclBin.findSection(ASK_GROUP_TOPOLOGY) == nullptr) &&
+      (xclBin.findSection(ASK_GROUP_CONNECTIVITY) == nullptr) &&
+      (xclBin.findSection(MEM_TOPOLOGY) != nullptr))
+  {
+    XUtil::createMemoryBankGrouping(xclBin);
+  } 
 
   for (auto key : keysToRemove) {
     xclBin.removeKey(key);

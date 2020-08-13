@@ -20,6 +20,9 @@
 #include "version.h"
 #include "xocl_fdt.h"
 
+/* TODO: remove this with old kds */
+extern int kds_mode;
+
 struct ip_node {
 	const char *name;
 	const char *regmap_name;
@@ -34,32 +37,34 @@ struct ip_node {
 
 static void *msix_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 {
-        struct xocl_dev_core *core = XDEV(xdev_hdl);
-        void *blob;
-        int node;
-        struct xocl_msix_privdata *msix_priv;
+	struct xocl_dev_core *core = XDEV(xdev_hdl);
+	void *blob;
+	int node;
+	struct xocl_msix_privdata *msix_priv;
 
-        blob = core->fdt_blob;
-        if (!blob)
-                return NULL;
+	blob = core->fdt_blob;
+	if (!blob)
+		return NULL;
 
-        node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_MSIX);
-        if (node < 0) {
-                xocl_xdev_err(xdev_hdl, "did not find msix node in %s", NODE_ENDPOINTS);
-                return NULL;
-        }
+	node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_MSIX);
+	if (node < 0)
+		node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_MSIX_MGMT);
+	if (node < 0) {
+		xocl_xdev_err(xdev_hdl, "did not find msix node in %s", NODE_ENDPOINTS);
+		return NULL;
+	}
 
-        if (fdt_node_check_compatible(blob, node, "qdma_msix"))
-                return NULL;
+	if (fdt_node_check_compatible(blob, node, "qdma_msix"))
+		return NULL;
 
-        msix_priv = vzalloc(sizeof(*msix_priv));
-        if (!msix_priv)
-                return NULL;
-        msix_priv->start = 0;
-        msix_priv->total = 8;
+	msix_priv = vzalloc(sizeof(*msix_priv));
+	if (!msix_priv)
+		return NULL;
+	msix_priv->start = 0;
+	msix_priv->total = 8;
 
-        *len = sizeof(*msix_priv);
-        return msix_priv;
+	*len = sizeof(*msix_priv);
+	return msix_priv;
 }
 
 static void *ert_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
@@ -159,6 +164,8 @@ static void *flash_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 		flash_type = FLASH_TYPE_SPI;
 	else if (!fdt_node_check_compatible(blob, node, "qspi_ps_x4_single"))
 		flash_type = FLASH_TYPE_QSPIPS_X4_SINGLE;
+	else if (!fdt_node_check_compatible(blob, node, "qspi_ps_x2_single"))
+		flash_type = FLASH_TYPE_QSPIPS_X2_SINGLE;
 	else {
 		xocl_xdev_err(xdev_hdl, "UNKNOWN flash type");
 		return NULL;
@@ -273,6 +280,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.dev_name = XOCL_DMA_MSIX,
 		.res_array = (struct xocl_subdev_res[]) {
 			{.res_name = NODE_MSIX},
+			{.res_name = NODE_MSIX_MGMT},
 			{NULL},
 		},
 		.required_ip = 1,
@@ -286,6 +294,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.res_array = (struct xocl_subdev_res[]) {
 			{.res_name = NODE_QDMA4},
 			{.res_name = NODE_STM4},
+			{.res_name = NODE_QDMA4_CSR},
 			{NULL},
 		},
 		.required_ip = 1,
@@ -307,6 +316,30 @@ static struct xocl_subdev_map subdev_map[] = {
 		.devinfo_cb = NULL,
        	},
 	{
+		.id = XOCL_SUBDEV_INTC,
+		.dev_name = XOCL_INTC,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_ERT_SCHED},
+			{NULL},
+		},
+		.required_ip = 1,
+		.flags = XOCL_SUBDEV_MAP_USERPF_ONLY,
+		.build_priv_data = NULL,
+		.devinfo_cb = NULL,
+	},
+	{
+		.id = XOCL_SUBDEV_ERT_USER,
+		.dev_name = XOCL_ERT_USER,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_ERT_CQ_USER},
+			{NULL},
+		},
+		.required_ip = 1,
+		.flags = XOCL_SUBDEV_MAP_USERPF_ONLY,
+		.build_priv_data = ert_build_priv,
+		.devinfo_cb = NULL,
+ 	},
+ 	{
 		.id = XOCL_SUBDEV_MB_SCHEDULER,
 		.dev_name = XOCL_MB_SCHEDULER,
 		.res_array = (struct xocl_subdev_res[]) {
@@ -318,7 +351,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = XOCL_SUBDEV_MAP_USERPF_ONLY,
 		.build_priv_data = ert_build_priv,
 		.devinfo_cb = NULL,
-       	},
+ 	},
 	{
 		.id = XOCL_SUBDEV_XVC_PUB,
 		.dev_name = XOCL_XVC_PUB,
@@ -335,7 +368,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.id = XOCL_SUBDEV_XVC_PRI,
 		.dev_name = XOCL_XVC_PRI,
 		.res_array = (struct xocl_subdev_res[]) {
-			{.res_name = NODE_XVC_PUB},
+			{.res_name = NODE_XVC_PRI},
 			{NULL},
 		},
 		.required_ip = 1,
@@ -347,7 +380,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.id = XOCL_SUBDEV_SYSMON,
 		.dev_name = XOCL_SYSMON,
 		.res_array = (struct xocl_subdev_res[]) {
-			{.res_name = NODE_XVC_PUB},
+			{.res_name = NODE_SYSMON},
 			{NULL},
 		},
 		.required_ip = 1,
@@ -385,7 +418,7 @@ static struct xocl_subdev_map subdev_map[] = {
 			// 0x53000 runtime clk scaling
 			{NULL},
 		},
-		.required_ip = 3,
+		.required_ip = 2,
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = ert_cb_set_inst,
@@ -606,6 +639,18 @@ static struct xocl_subdev_map subdev_map[] = {
 		.build_priv_data = p2p_build_priv,
 		.devinfo_cb = NULL,
 	},
+	{
+		.id = XOCL_SUBDEV_UARTLITE,
+		.dev_name = XOCL_UARTLITE,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_ERT_UARTLITE},
+			{NULL},
+		},
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = NULL,
+		.devinfo_cb = NULL,
+	},
 };
 
 /*
@@ -651,12 +696,11 @@ static bool get_userpf_info(void *fdt, int node, u32 pf)
 	int depth = 1;
 	int offset;
 
-	for (offset = node; offset >= 0;
-		offset = fdt_parent_offset(fdt, offset)) {
-		val = fdt_get_name(fdt, offset, NULL);
-		if (!strncmp(val, NODE_PROPERTIES, strlen(NODE_PROPERTIES)))
-			return true;
-	}
+	offset = fdt_parent_offset(fdt, node);
+	val = fdt_get_name(fdt, offset, NULL);
+
+	if (!val || strncmp(val, NODE_ENDPOINTS, strlen(NODE_PROPERTIES)))
+		return true;
 
 	do {
 		if (fdt_getprop(fdt, node, PROP_INTERFACE_UUID, NULL))
@@ -754,14 +798,58 @@ int xocl_fdt_overlay(void *fdt, int target,
 	return 0;
 }
 
+static int xocl_fdt_parse_intr_alias(xdev_handle_t xdev_hdl, char *blob,
+		const char *alias, struct resource *res)
+{
+	int ep_nodes, node;
+
+	ep_nodes = fdt_path_offset(blob, "/" NODE_ENDPOINTS);
+	if (ep_nodes < 0)
+		return -EINVAL;
+
+	fdt_for_each_subnode(node, blob, ep_nodes) {
+		const int intr_map = fdt_subnode_offset(blob, node,
+			PROP_INTR_MAP);
+		int intr_node;
+
+		if (intr_map < 0)
+			continue;
+
+		fdt_for_each_subnode(intr_node, blob, intr_map) {
+			int str_idx;
+			const u32 *intr;
+
+			str_idx = fdt_stringlist_search(blob, intr_node,
+				PROP_ALIAS_NAME, alias);
+			if (str_idx < 0)
+				continue;
+
+			intr = fdt_getprop(blob, intr_node, PROP_INTERRUPTS,
+					NULL);
+			if (!intr) {
+				xocl_xdev_err(xdev_hdl,
+				    "intrrupts not found, %s", alias);
+				return -EINVAL;
+			}
+			res->start = be32_to_cpu(intr[0]);
+			res->end = be32_to_cpu(intr[1]);
+			res->flags = IORESOURCE_IRQ;
+			return 0;
+		}
+	}
+
+	return -ENOENT;
+}
+
 static int xocl_fdt_parse_ip(xdev_handle_t xdev_hdl, char *blob,
 		struct ip_node *ip, struct xocl_subdev *subdev)
 {
-	int idx, sz, num_res;
+	int idx, sz, num_res, i, ret;
 	const u32 *bar_idx, *pfnum;
 	const u64 *io_off;
 	const u32 *irq_off; 
 	int off = ip->off;
+	const char *intr_alias;
 
 	num_res = subdev->info.num_res;
 
@@ -825,6 +913,29 @@ static int xocl_fdt_parse_ip(xdev_handle_t xdev_hdl, char *blob,
 		sz -= sizeof(*irq_off) * 2;
 		irq_off += 2;
 	}
+
+	for(i = 0,
+	    intr_alias = fdt_stringlist_get(blob, off, PROP_INTR_ALIAS,
+	    i, NULL);
+	    intr_alias;
+	    i++,
+	    intr_alias = fdt_stringlist_get(blob, off, PROP_INTR_ALIAS,
+	    i, NULL)) {
+		idx = subdev->info.num_res;
+		ret = xocl_fdt_parse_intr_alias(xdev_hdl, blob, intr_alias,
+			&subdev->res[idx]);
+		if (!ret) {
+			snprintf(subdev->res_name[idx],
+				XOCL_SUBDEV_RES_NAME_LEN,
+				"%s %d %d %d %s",
+				ip->name, ip->major, ip->minor,
+				ip->level,
+				ip->regmap_name ? ip->regmap_name : "");
+			subdev->res[idx].name = subdev->res_name[idx];
+			subdev->info.num_res++;
+		}
+	}
+
 
 	if (subdev->info.num_res > num_res)
 		subdev->info.dyn_ip++;
@@ -1036,6 +1147,15 @@ static int xocl_fdt_parse_subdevs(xdev_handle_t xdev_hdl, char *blob,
 		j++;
 
 	for (id = 0; id < XOCL_SUBDEV_NUM; id++) { 
+		/* workaround MB_SCHEDULER and INTC resource conflict
+		 * Remove below if expression when MB_SCHEDULER is removed
+		 *
+		 * Skip MB_SCHEDULER if kds_mode is 1. So that INTC subdev could
+		 * get resources.
+		 */
+		if (id == XOCL_SUBDEV_MB_SCHEDULER && kds_mode)
+			continue;
+
 		for (j = 0; j < ARRAY_SIZE(subdev_map); j++) {
 			map_p = &subdev_map[j];
 			if (map_p->id != id)
@@ -1328,6 +1448,32 @@ int xocl_fdt_get_p2pbar(xdev_handle_t xdev_hdl, void *blob)
 		return -EINVAL;
 
 	return ntohl(*p2p_bar);
+}
+
+long xocl_fdt_get_p2pbar_len(xdev_handle_t xdev_hdl, void *blob)
+{
+	int offset;
+	const ulong *p2p_bar_len;
+	const char *ipname;
+
+	if (!blob)
+		return -EINVAL;
+
+	for (offset = fdt_next_node(blob, -1, NULL);
+		offset >= 0;
+		offset = fdt_next_node(blob, offset, NULL)) {
+		ipname = fdt_get_name(blob, offset, NULL);
+		if (ipname && strncmp(ipname, NODE_P2P, strlen(NODE_P2P)) == 0)
+			break;
+	}
+	if (offset < 0)
+		return -ENODEV;
+
+	p2p_bar_len = fdt_getprop(blob, offset, PROP_IO_OFFSET, NULL);
+	if (!p2p_bar_len)
+		return -EINVAL;
+
+	return be64_to_cpu(p2p_bar_len[1]);
 }
 
 int xocl_fdt_path_offset(xdev_handle_t xdev_hdl, void *blob, const char *path)

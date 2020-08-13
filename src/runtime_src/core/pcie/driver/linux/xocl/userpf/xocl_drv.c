@@ -1509,6 +1509,7 @@ static struct pci_driver userpf_driver = {
 /* INIT */
 static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_feature_rom,
+	xocl_init_version_control,
 	xocl_init_iores,
 	xocl_init_xdma,
 	xocl_init_qdma,
@@ -1538,10 +1539,12 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_p2p,
 	xocl_init_spc,
 	xocl_init_lapc,
+	xocl_init_ert_user,
 };
 
 static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_feature_rom,
+	xocl_fini_version_control,
 	xocl_fini_iores,
 	xocl_fini_xdma,
 	xocl_fini_qdma,
@@ -1571,6 +1574,7 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_p2p,
 	xocl_fini_spc,
 	xocl_fini_lapc,
+	xocl_fini_ert_user,
 };
 
 static int __init xocl_init(void)

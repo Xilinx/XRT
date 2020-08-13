@@ -24,8 +24,14 @@
 #include <unistd.h>
 #endif
 
+#ifdef _WIN32
+#pragma warning (disable : 4996 4267)
+/* 4267 : Disable warning for conversion of size_t to int32_t */
+#endif
+
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/xml_parser.hpp>
 
 #define XDP_SOURCE
 
@@ -106,12 +112,27 @@ namespace xdp {
     resetDeviceInfo(deviceId);
 
     DeviceInfo *devInfo = new DeviceInfo();
-    devInfo->clockRateMHz = 300;
     devInfo->platformInfo.kdmaCount = 0;
 
     deviceInfo[deviceId] = devInfo;
 
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(devHandle);
+
+    if(nullptr == device) return;
+
+    const clock_freq_topology* clockSection = device->get_axlf_section<const clock_freq_topology*>(CLOCK_FREQ_TOPOLOGY);
+
+    if(clockSection) {
+      for(int32_t i = 0; i < clockSection->m_count; i++) {
+        const struct clock_freq* clk = &(clockSection->m_clock_freq[i]);
+        if(clk->m_type != CT_DATA) {
+          continue;
+        }
+        devInfo->clockRateMHz = clk->m_freq_Mhz;
+      }
+    } else {
+      devInfo->clockRateMHz = 300;
+    }
 
 //    if (!setXclbinUUID(devInfo, device)) return;
     if (!setXclbinName(devInfo, device)) return;
@@ -225,6 +246,40 @@ namespace xdp {
       }
       cu->addConnection(connctn->arg_index, connctn->mem_data_index);
     }
+
+    // Set Static WorkGroup Size of CUs using the EMBEDDED_METADATA section
+    std::pair<const char*, size_t> embeddedMetadata = device->get_axlf_section(EMBEDDED_METADATA);
+    const char* embeddedMetadataSection = embeddedMetadata.first;
+    size_t      embeddedMetadataSz      = embeddedMetadata.second;
+
+    boost::property_tree::ptree xmlProject;
+    std::stringstream xmlStream;
+    xmlStream.write(embeddedMetadataSection, embeddedMetadataSz);
+    boost::property_tree::read_xml(xmlStream, xmlProject);
+
+    for(auto coreItem : xmlProject.get_child("project.platform.device.core")) {
+      std::string coreItemName = coreItem.first;
+      if(0 != coreItemName.compare("kernel")) {  // skip items other than "kernel"
+        continue;
+      }
+      auto kernel = coreItem;
+      auto kernelNameItem    = kernel.second.get_child("<xmlattr>");
+      std::string kernelName = kernelNameItem.get<std::string>("name", "");
+
+      auto workGroupSz = kernel.second.get_child("compileWorkGroupSize");
+      std::string x = workGroupSz.get<std::string>("<xmlattr>.x", "");
+      std::string y = workGroupSz.get<std::string>("<xmlattr>.y", "");
+      std::string z = workGroupSz.get<std::string>("<xmlattr>.z", "");
+
+      // Find the ComputeUnitInstance
+      for(auto cuItr : devInfo->cus) {
+        if(0 != cuItr.second->getKernelName().compare(kernelName)) {
+          continue;
+        }
+        cuItr.second->setDim(std::stoi(x), std::stoi(y), std::stoi(z));
+      }
+    }
+
     return true;
   }
 
@@ -246,7 +301,7 @@ namespace xdp {
       ComputeUnitInstance* cuObj = nullptr;
       // find CU
       if(debugIpData->m_type == ACCEL_MONITOR) {
-		for(auto cu : devInfo->cus) {
+        for(auto cu : devInfo->cus) {
           if(0 == name.compare(cu.second->getName())) {
             cuObj = cu.second;
             cuId = cu.second->getIndex();
@@ -260,7 +315,7 @@ namespace xdp {
         }
         if(mon) { devInfo->amList.push_back(mon); }
       } else if(debugIpData->m_type == AXI_MM_MONITOR) {
-		// parse name to find CU Name and Memory
+        // parse name to find CU Name and Memory
         size_t pos = name.find('/');
         std::string monCuName = name.substr(0, pos);
 
@@ -268,14 +323,14 @@ namespace xdp {
         std::string memName = name.substr(pos+1);
 
         int32_t memId = -1;
-		for(auto cu : devInfo->cus) {
+        for(auto cu : devInfo->cus) {
           if(0 == monCuName.compare(cu.second->getName())) {
             cuId = cu.second->getIndex();
             cuObj = cu.second;
             break;
           }
         }
-		for(auto mem : devInfo->memoryInfo) {
+        for(auto mem : devInfo->memoryInfo) {
           if(0 == memName.compare(mem.second->name)) {
             memId = mem.second->index;
             break;
@@ -285,14 +340,16 @@ namespace xdp {
         if(cuObj) {
           cuObj->addMonitor(mon);
           cuObj->setDataTransferEnabled(true);
+        } else if(0 != monCuName.compare("shell")) {
+          // If not connected to CU and not a shell monitor, then a floating monitor
+          devInfo->hasFloatingAIM = true;
         }
         devInfo->aimList.push_back(mon);
       } else if(debugIpData->m_type == AXI_STREAM_MONITOR) {
         // associate with the first CU
         size_t pos = name.find('/');
         std::string monCuName = name.substr(0, pos);
-
-		for(auto cu : devInfo->cus) {
+        for(auto cu : devInfo->cus) {
           if(0 == monCuName.compare(cu.second->getName())) {
             cuId = cu.second->getIndex();
             cuObj = cu.second;
@@ -302,10 +359,13 @@ namespace xdp {
         mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId);
         if(debugIpData->m_properties & 0x2) {
           mon->isRead = true;
-     	}
+        }
         if(cuObj) {
           cuObj->addMonitor(mon);
-          cuObj->setDataTransferEnabled(true);
+          cuObj->setStreamEnabled(true);
+        } else if(0 != monCuName.compare("shell")) {
+          // If not connected to CU and not a shell monitor, then a floating monitor
+          devInfo->hasFloatingASM = true;
         }
         devInfo->asmList.push_back(mon);
       } else {

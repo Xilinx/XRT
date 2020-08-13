@@ -56,7 +56,8 @@ namespace xrt {
 // goes away once the run object is deleted.
 class event_impl : public std::enable_shared_from_this<event_impl>
 {
-  std::mutex m_mutex;
+  mutable std::mutex m_mutex;
+  mutable std::condition_variable m_wait_done;
   event_queue::task m_task;
   event_queue_impl* m_event_queue = nullptr;
   std::vector<event_impl*> m_chain;
@@ -125,6 +126,15 @@ public:
   // function (done()) is called when the run object completes.
   void
   done();
+
+  // Wait for the completion of this event
+  void
+  wait()
+  {
+    std::unique_lock<std::mutex> lk(m_mutex);
+    while (!m_done)
+      m_wait_done.wait(lk);
+  }
 
   // Allow clients of event_impl* to retrieve the associated
   // shared_ptr that was created when the event_impl object was
@@ -280,14 +290,21 @@ submit()
   m_event_queue->submit(this);
   return true;
 }
+  
 // See comment block in event::impl::done() declaration.
 void
 event_impl::
 done()
 {
-  // assert(m_mutex is locked)
   XRT_DEBUGF("event_impl::done(%d)\n", m_uid);
-  m_done = true;
+
+  // Must only change done in critical section
+  {
+    std::lock_guard<std::mutex> lk(m_mutex);
+    m_done = true;
+    m_wait_done.notify_all();
+  }
+
   for (auto& ev : m_chain)
     ev->submit();
 
@@ -393,6 +410,15 @@ event::
 notify(event_impl* impl)
 {
   impl->done();
+}
+
+void
+event_queue::
+event::
+wait() const
+{
+  if (m_impl)
+    m_impl->wait();
 }
 
 event_handler::

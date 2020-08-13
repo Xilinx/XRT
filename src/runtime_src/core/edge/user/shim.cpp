@@ -45,7 +45,9 @@
 #include <sys/mman.h>
 
 #ifndef __HWEM__
+#include "plugin/xdp/hal_profile.h"
 #include "plugin/xdp/hal_api_interface.h"
+#include "plugin/xdp/hal_device_offload.h"
 #endif
 
 namespace {
@@ -1368,16 +1370,6 @@ setAieArray(zynqaie::Aie *aie)
   aieArray = aie;
 }
 
-int
-shim::getBOInfo(drm_zocl_info_bo &info)
-{
-  int ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_INFO_BO, &info);
-  if (ret)
-    return -errno;
-
-  return 0;
-}
-
 #endif
 
 } // end namespace ZYNQ
@@ -1572,8 +1564,21 @@ xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
 int
 xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 {
+#ifndef __HWEM__
+#ifdef ENABLE_HAL_PROFILING
+  LOAD_XCLBIN_CB ;
+#endif
+#endif
+
   try {
     ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+
+#ifndef __HWEM__
+#ifdef ENABLE_HAL_PROFILING
+  xdphal::flush_device(handle) ;
+#endif
+#endif
+
     auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
     if (ret) {
       printf("Load Xclbin Failed\n");
@@ -1587,6 +1592,13 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
         return 0;
 
     core_device->register_axlf(buffer);
+
+#ifndef __HWEM__
+#ifdef ENABLE_HAL_PROFILING
+  xdphal::update_device(handle) ;
+#endif
+#endif
+
     ret = xrt_core::scheduler::init(handle, buffer);
     if (ret) {
       printf("Scheduler init failed\n");
@@ -1766,7 +1778,7 @@ xclSKReport(xclDeviceHandle handle, uint32_t cu_idx, xrt_scu_state state)
  * Context switch phase 1: support xclbin swap, no cu and shared checking
  */
 int
-xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bool shared)
+xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
 
@@ -1774,7 +1786,7 @@ xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bo
 }
 
 int
-xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
+xclCloseContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned ipIndex)
 {
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
   return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -EINVAL;
