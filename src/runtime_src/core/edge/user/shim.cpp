@@ -45,7 +45,9 @@
 #include <sys/mman.h>
 
 #ifndef __HWEM__
+#include "plugin/xdp/hal_profile.h"
 #include "plugin/xdp/hal_api_interface.h"
+#include "plugin/xdp/hal_device_offload.h"
 #endif
 
 namespace {
@@ -1562,8 +1564,21 @@ xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
 int
 xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 {
+#ifndef __HWEM__
+#ifdef ENABLE_HAL_PROFILING
+  LOAD_XCLBIN_CB ;
+#endif
+#endif
+
   try {
     ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+
+#ifndef __HWEM__
+#ifdef ENABLE_HAL_PROFILING
+  xdphal::flush_device(handle) ;
+#endif
+#endif
+
     auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
     if (ret) {
       printf("Load Xclbin Failed\n");
@@ -1577,6 +1592,13 @@ xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
         return 0;
 
     core_device->register_axlf(buffer);
+
+#ifndef __HWEM__
+#ifdef ENABLE_HAL_PROFILING
+  xdphal::update_device(handle) ;
+#endif
+#endif
+
     ret = xrt_core::scheduler::init(handle, buffer);
     if (ret) {
       printf("Scheduler init failed\n");
