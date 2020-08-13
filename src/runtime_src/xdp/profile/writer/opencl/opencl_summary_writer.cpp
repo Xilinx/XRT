@@ -678,16 +678,27 @@ namespace xdp {
 	    slaveArgs = secondHalf.substr(slashPosition + 1,
 					  secondHalf.size()-slashPosition-1) ;
 	  }
-	  
+
+	  double transferTime =
+	    values.StrBusyCycles[ASMIndex] / device->clockRateMHz ;
+	  double transferRate = (transferTime == 0.0) ? 0 :
+	    values.StrDataBytes[ASMIndex] / transferTime ;
+
+	  double linkStarve =
+	    (double)(values.StrStarveCycles[ASMIndex]) / (double)(values.StrBusyCycles[ASMIndex]) * 100.0 ;
+	  double linkStall =
+	    (double)(values.StrStallCycles[ASMIndex]) / (double)(values.StrBusyCycles[ASMIndex]) * 100.0 ;
+	  double linkUtil = 100.0 - linkStarve - linkStall ;
+
 	  fout << (device->platformInfo.deviceName) << ","
 	       << masterPort << ","
 	       << masterArgs << ","
 	       << slavePort << ","
 	       << slaveArgs << ","
 	       << numTranx << ","
-	       << "" << "," // TODO: Transfer Rate
+	       << transferRate << ","
 	       << (values.StrDataBytes[ASMIndex] / numTranx) << ","
-	       << "" << "," // TODO: Link utilization
+	       << linkUtil << "," 
 	       << (values.StrStarveCycles[ASMIndex]) << ","
 	       << (values.StrStallCycles[ASMIndex])
 	       << std::endl ;
