@@ -14,6 +14,19 @@
  * under the License.
  */
 
+
+/**
+ * Boost processes were released with Boost 1.64. If the OS doesn't support 
+ * that version of boost, then we default to linux pipes
+ * 
+ *           Support map
+ *   Ubuntu 16.04 | Linux pipes
+ *   Ubuntu 18.04 | boost::process
+ *      Windows   | boost::process
+ * 
+ * This file hides the implementation of process running from SubCmdValidate
+ */
+
 // ------ I N C L U D E   F I L E S -------------------------------------------
 #define WIN32_LEAN_AND_MEAN
 #ifdef _WIN32
@@ -35,21 +48,15 @@
 #include <iostream>
 #include <thread>
 
-// ------ N A M E S P A C E ---------------------------------------------------
 using namespace XBUtilities;
-
-// ------ S T A T I C   V A R I A B L E S -------------------------------------
 
 
 // ------ F U N C T I O N S ---------------------------------------------------
-static bool 
-test_passed(std::string output)
-{
-  return (output.find("PASS") != std::string::npos) ? true : false;
-}
-
 #ifdef BOOST_PRE_1_64
 
+/**
+ * helper functions for running testcase in linux pipe
+ */
 inline const char* 
 getenv_or_empty(const char* path)
 {
@@ -114,6 +121,7 @@ runPythonScript( const std::string & script,
   // Kick off progress reporter
   bool is_done = false;
   //bandwidth testcase takes up-to a min to run
+  // Fix: create busy bar
   auto run_test = std::make_shared<ProgressBar>("Running Test", 60, XBUtilities::is_esc_enabled(), std::cout); 
   std::thread t(testCaseProgressReporter, run_test, std::ref(is_done));
 
@@ -146,16 +154,17 @@ runPythonScript( const std::string & script,
   }
 
   is_done = true;
-  bool passed = test_passed(os_stdout.str());
-  run_test.get()->finish(passed, "");
+  bool exitCode = (os_stdout.str().find("PASS") != std::string::npos) ? true : false;
+  run_test.get()->finish(exitCode, "");
   // Workaround: Clear the default progress bar output so as to print the Error: before printing [FAILED]
   // Remove this once busybar is implemented
   std::cout << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().clear_line();
   t.join();
 
-  return passed ? 0 : 1;
+  return exitCode ? 0 : 1;
 }
 #else
+
 unsigned int
 runPythonScript( const std::string & script, 
                  const std::vector<std::string> & args,
@@ -216,13 +225,9 @@ runPythonScript( const std::string & script,
 
   // Obtain the exit code from the running process
   int exitCode = runningProcess.exit_code();
-  // Check the output for keywords
-  bool passed = test_passed(os_stdout.str());
-  // Check the combination of the above 2 values
-  bool test_result = exitCode == 0  && passed;
-  run_test.finish(test_result/*Success or failure*/, "Test duration:");
+  run_test.finish(exitCode == 0 /*Success or failure*/, "Test duration:");
 
-  return test_result ? 0 : 1;
+  return exitCode;
 }
 #endif
 }

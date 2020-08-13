@@ -106,50 +106,6 @@ void logger(boost::property_tree::ptree& _ptTest, const std::string& tag, const 
 }
 
 /*
- * progarm an xclbin
- */
-void
-programXclbin(const std::shared_ptr<xrt_core::device>& _dev, const std::string& xclbin, boost::property_tree::ptree& _ptTest)
-{
-  std::ifstream stream(xclbin, std::ios::binary);
-  if (!stream) {
-    logger(_ptTest, "Error", boost::str(boost::format("Could not open %s for reading") % xclbin));
-    _ptTest.put("status", "failed");
-    return;
-  }
-
-  stream.seekg(0,stream.end);
-  size_t size = stream.tellg();
-  stream.seekg(0,stream.beg);
-  std::vector<char> raw(size);
-  stream.read(raw.data(),size);
-
-  std::string ver(raw.data(),raw.data()+7);
-  if (ver != "xclbin2") {
-    logger(_ptTest, "Error", boost::str(boost::format("Bad binary version '%s' for xclbin") % ver));
-    _ptTest.put("status", "failed");
-    return;
-  }
-
-  auto hdl = _dev->get_device_handle();
-  if (xclLoadXclBin(hdl,reinterpret_cast<const axlf*>(raw.data()))) {
-    logger(_ptTest, "Error", "Could not load xclbin");
-    _ptTest.put("status", "failed");
-    return;
-  }
-}
-
-
-
-
-
-
-/*
- * run standalone testcases in a fork
- */
-
-
-/*
  * search for xclbin for an SSV2 platform
  */
 std::string
@@ -239,74 +195,84 @@ searchLegacyXclbin(const std::string& dev_name, const std::string& xclbin, boost
 
 /* 
  * helper funtion for kernel and bandwidth test cases
+ * Steps:
+ * 1. Find xclbin after determining if the shell is 1RP or 2RP
+ * 2. Find testcase
+ * 3. Spawn a testcase process
+ * 4. Check results
  */
 void 
 runTestCase(const std::shared_ptr<xrt_core::device>& _dev, const std::string& py, const std::string& xclbin, 
             boost::property_tree::ptree& _ptTest)
 {
-    std::string name;
-    try{
-      name = xrt_core::device_query<xrt_core::query::rom_vbnv>(_dev);
-    } catch(...) {
-      logger(_ptTest, "Error", "Unable to find device VBNV");
+  std::string name;
+  try {
+    name = xrt_core::device_query<xrt_core::query::rom_vbnv>(_dev);
+  } catch(...) {
+    logger(_ptTest, "Error", "Unable to find device VBNV");
 
-      _ptTest.put("status", "failed");
-      return;
+    _ptTest.put("status", "failed");
+    return;
+  }
+
+  //check if a 2RP platform
+  std::vector<std::string> logic_uuid;
+  try{
+    logic_uuid = xrt_core::device_query<xrt_core::query::logic_uuids>(_dev);
+  } catch(...) { }
+
+  std::string xclbinPath;
+  if(!logic_uuid.empty()) {
+    xclbinPath = searchSSV2Xclbin(_dev, logic_uuid.front(), xclbin, _ptTest);
+  } else {
+    xclbinPath = searchLegacyXclbin(name, xclbin, _ptTest);
     }
 
-    //check if a 2RP platform
-    std::vector<std::string> logic_uuid;
-    try{
-      logic_uuid = xrt_core::device_query<xrt_core::query::logic_uuids>(_dev);
-    } catch(...) { }
-
-    std::string xclbinPath;
-    if(!logic_uuid.empty()) {
-      xclbinPath = searchSSV2Xclbin(_dev, logic_uuid.front(), xclbin, _ptTest);
-    } else {
-      xclbinPath = searchLegacyXclbin(name, xclbin, _ptTest);
+  //check if xclbin is present
+  if(xclbinPath.empty()) {
+    if(xclbin.compare("bandwidth.xclbin") == 0) {
+      //if bandwidth xclbin isn't present, skip the test
+      logger(_ptTest, "Details", "Bandwidth xclbin not available. Skipping validation.");
+      _ptTest.put("status", "skipped");
     }
+    return;
+  }
+  // log xclbin path for debugging purposes
+  logger(_ptTest, "Xclbin", xclbinPath);
 
-    //check if xclbin is present
-    if(xclbinPath.empty()) {
-      if(xclbin.compare("bandwidth.xclbin") == 0) {
-        //if bandwidth xclbin isn't present, skip the test
-        logger(_ptTest, "Details", "Bandwidth xclbin not available. Skipping validation.");
-        _ptTest.put("status", "skipped");
-      }
-      return;
-    }
-    // log xclbin path for debugging purposes
-    logger(_ptTest, "Xclbin", xclbinPath);
-
-    //check if testcase is present
-    std::string xrtTestCasePath = "/opt/xilinx/xrt/test/" + py;
-    boost::filesystem::path xrt_path(xrtTestCasePath);
-    if (!boost::filesystem::exists(xrt_path)) {
-      logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
-      logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
-      _ptTest.put("status", "failed");
-      return;
-    }
-    // log testcase path for debugging purposes
-    logger(_ptTest, "Testcase", xrtTestCasePath);
-
-    // Program xclbin first.
-    programXclbin(_dev, xclbinPath, _ptTest);
-    if (_ptTest.get<std::string>("status", "N/A").compare("failed") == 0) 
-      return;
+  //check if testcase is present
+  std::string xrtTestCasePath = "/opt/xilinx/xrt/test/" + py;
+  boost::filesystem::path xrt_path(xrtTestCasePath);
+  if (!boost::filesystem::exists(xrt_path)) {
+    logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
+    logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
+    _ptTest.put("status", "failed");
+    return;
+  }
+  // log testcase path for debugging purposes
+  logger(_ptTest, "Testcase", xrtTestCasePath);
     
-    std::vector<std::string> args = { " -k ", xclbinPath, " -d ", std::to_string(_dev.get()->get_device_id()) };
-    std::ostringstream os_stdout;
-    std::ostringstream os_stderr;
-    int exit_code = XBU::runPythonScript(xrtTestCasePath, args, os_stdout, os_stderr);
-    if (exit_code != 0) {
-      logger(_ptTest, "Error", os_stdout.str());
-      _ptTest.put("status", "failed");
-    } 
-    else {
-      _ptTest.put("status", "passed");
+  std::vector<std::string> args = { " -k ", xclbinPath, " -d ", std::to_string(_dev.get()->get_device_id()) };
+  std::ostringstream os_stdout;
+  std::ostringstream os_stderr;
+  int exit_code = XBU::runPythonScript(xrtTestCasePath, args, os_stdout, os_stderr);
+  if (exit_code != 0) {
+    logger(_ptTest, "Error", os_stdout.str());
+    logger(_ptTest, "Error", os_stderr.str());
+    _ptTest.put("status", "failed");
+  } 
+  else {
+    _ptTest.put("status", "passed");
+  }
+
+  // Get out max thruput for bandwidth testcase
+  if(xclbin.compare("bandwidth.xclbin") == 0) {
+    size_t st = os_stdout.str().find("Maximum");
+    if (st != std::string::npos) {
+      size_t end = os_stdout.str().find("\n", st);
+      logger(_ptTest, "Details", os_stdout.str().substr(st, end - st));
     }
+  }
 }
 
 /*
@@ -680,13 +646,6 @@ bandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::proper
   }
   std::string testcase = (name.find("vck5000") != std::string::npos) ? "versal_23_bandwidth.py" : "23_bandwidth.py";
   runTestCase(_dev, testcase, std::string("bandwidth.xclbin"), _ptTest);
-
-    // Get out max thruput for bandwidth testcase
-//   size_t st = output.find("Maximum");
-//   if (st != std::string::npos) {
-//     size_t end = output.find("\n", st);
-    // logger(_ptTest, "Details", output.substr(st, end - st));
-//   }
 }
 
 /*
