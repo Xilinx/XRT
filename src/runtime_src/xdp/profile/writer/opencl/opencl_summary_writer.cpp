@@ -70,38 +70,6 @@ namespace xdp {
     guidanceRules.push_back(guidanceBufferTxActiveTimeMs) ;
     guidanceRules.push_back(guidanceApplicationRunTimeMs) ;
     guidanceRules.push_back(guidanceTotalKernelRunTimeMs) ;
-
-    /*
-    guidanceRules = {
-      "DEVICE_EXEC_TIME",
-      "CU_CALLS",
-      "MIGRATE_MEM",
-      "MEMORY_USAGE",
-      "PLRAM_DEVICE",
-      "HBM_DEVICE",
-      "KDMA_DEVICE",
-      "P2P_DEVICE",
-      "P2P_HOST_TRANSFERS",
-      "PORT_BIT_WIDTH",
-      "KERNEL_COUNT",
-      "OBJECTS_RELEASED",
-      "CU_CONTEXT_EN",
-      "TRACE_MEMORY",
-      "MAX_PARALLEL_KERNEL_ENQUEUES",
-      "COMMAND_QUEUE_OOO",
-      "PLRAM_SIZE_BYTES",
-      "KERNEL_BUFFER_INFO",
-      "TRACE_BUFFER_FULL",
-      "MEMORY_TYPE_BIT_WIDTH",
-      "XRT_INI_SETTING",
-      "BUFFER_RD_ACTIVE_TIME_MS",
-      "BUFFER_WR_ACTIVE_TIME_MS",
-      "BUFFER_TX_ACTIVE_TIME_MS",
-      "APPLICATION_RUN_TIME_MS",
-      "TOTAL_KERNEL_RUN_TIME_MS",
-      "NUM_MONITORS" 
-    } ;
-    */
   }
 
   OpenCLSummaryWriter::~OpenCLSummaryWriter()
@@ -1004,34 +972,182 @@ namespace xdp {
 
   void OpenCLSummaryWriter::guidanceMemoryUsage(OpenCLSummaryWriter* t)
   {
+    auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
+
+    for (auto device : deviceInfos)
+    {
+      (t->fout) << "MEMORY_USAGE" << ","
+		<< (device->platformInfo.deviceName) << ","
+		<< 0 // TODO: Fill in memory usage
+		<< std::endl ;
+    }
   }
 
   void OpenCLSummaryWriter::guidancePLRAMDevice(OpenCLSummaryWriter* t)
   {
+    bool hasPLRAM = false ;
+    
+    auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
+
+    for (auto device : deviceInfos)
+    {
+      for (auto memory : device->memoryInfo)
+      {
+	if ((memory.second)->type == MEM_BRAM || 
+	    (memory.second)->type == MEM_URAM)
+	{
+	  hasPLRAM = true ;
+	  break ;
+	}
+      }
+      if (hasPLRAM) break ;
+    }
+
+    (t->fout) << "PLRAM_DEVICE" << ","
+	      << "all" << ","
+	      << (uint64_t)(hasPLRAM) << std::endl ;
   }
 
   void OpenCLSummaryWriter::guidanceHBMDevice(OpenCLSummaryWriter* t)
   {
+    bool hasHBM = false ;
+    
+    auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
+
+    for (auto device : deviceInfos)
+    {
+      for (auto memory : device->memoryInfo)
+      {
+	if ((memory.second)->type == MEM_HBM)
+	{
+	  hasHBM = true ;
+	  break ;
+	}
+      }
+      if (hasHBM) break ;
+    }
+
+    (t->fout) << "HBM_DEVICE" << ","
+	      << "all" << ","
+	      << (uint64_t)(hasHBM) << std::endl ;
   }
 
   void OpenCLSummaryWriter::guidanceKDMADevice(OpenCLSummaryWriter* t)
   {
+    bool hasKDMA = false ;
+    
+    auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
+
+    for (auto device : deviceInfos)
+    {
+      if (device->platformInfo.kdmaCount > 0)
+      {
+	hasKDMA = true ;
+	break ;
+      }
+      // We previously had a few hard-coded KDMA platform checks.  If
+      //  necessary we can do the same here.
+      /*
+      std::string deviceName = (device->platformInfo).deviceName ;
+      if (deviceName.find("xilinx_u200_xdma_201830_2") != std::string::npos ||
+	  deviceName.find("xilinx_vcu1525_xdma_201830_2") != std::string::npos)
+      {
+	hasKDMA = true ;
+	break ;
+      }
+      */
+    }
+
+    (t->fout) << "KDMA_DEVICE" << ","
+	      << "all" << ","
+	      << (uint64_t)(hasKDMA) << std::endl ;
   }
 
   void OpenCLSummaryWriter::guidanceP2PDevice(OpenCLSummaryWriter* t)
   {
+    // Currently, we have a hard-coded list of platforms that we know
+    //  have the P2P functionality.  This will have to be improved
+    //  and stored as a property in the static info database
+    bool hasP2P = false ;
+
+    auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
+
+    for (auto device : deviceInfos)
+    {
+      std::string deviceName = device->platformInfo.deviceName ;
+      if (deviceName.find("xilinx_u200_xdma_201830_2") != std::string::npos ||
+	  deviceName.find("xilinx_u250_xdma_201830_2") != std::string::npos ||
+	  deviceName.find("samsung")                   != std::string::npos ||
+	  deviceName.find("xilinx_vcu1525_xdma_201830_2") != std::string::npos)
+      {
+	hasP2P = true ;
+	break ;
+      }
+    }
+
+    (t->fout) << "P2P_DEVICE" << ","
+	      << "all" << ","
+	      << (uint64_t)(hasP2P) ;
   }
 
   void OpenCLSummaryWriter::guidanceP2PHostTransfers(OpenCLSummaryWriter* t)
   {
+    uint64_t hostP2PTransfers = (t->db->getStats()).getNumHostP2PTransfers() ;
+
+    (t->fout) << "P2P_HOST_TRANSFERS" << ","
+	      << "host" << ","
+	      << hostP2PTransfers << std::endl ; // TODO: Make the connection
   }
 
   void OpenCLSummaryWriter::guidancePortBitWidth(OpenCLSummaryWriter* t)
   {
+    auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
+    
+    for (auto device : deviceInfos)
+    {
+      for (auto cu : device->cus)
+      {
+	for (auto monitor : (cu.second)->getMonitors())
+	{
+	  if (monitor->type == ACCEL_MONITOR) continue ;
+
+	  (t->fout) << "PORT_BIT_WIDTH" << ","
+		    << (cu.second)->getName() << "/" << monitor->args << ","
+		    << monitor->portWidth << std::endl ;
+	}
+      }
+    }
   }
 
   void OpenCLSummaryWriter::guidanceKernelCount(OpenCLSummaryWriter* t)
   {
+    auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
+    std::map<std::string, uint64_t> kernelCounts ;
+    
+    for (auto device : deviceInfos)
+    {
+      for (auto cu : device->cus)
+      {
+	uint64_t totalExecutions = 0 ;
+	std::vector<std::pair<std::string, TimeStatistics>> cuCalls = 
+	  (t->db->getStats()).getComputeUnitExecutionStats((cu.second)->getName());
+	for (auto cuCall : cuCalls)
+	{
+	  totalExecutions += (cuCall.second).numExecutions ;
+	}
+
+	// TODO: Set up the compute unit executions
+	kernelCounts[(cu.second)->getName()] += totalExecutions ; 
+      }
+    }
+
+    for (auto kernel : kernelCounts)
+    {
+      (t->fout) << "KERNEL_COUNT" << ","
+		<< (kernel.first) << "," // Name
+		<< (kernel.second) << "," // Count
+		<< std::endl ;
+    }
   }
 
   void OpenCLSummaryWriter::guidanceObjectsReleased(OpenCLSummaryWriter* t)

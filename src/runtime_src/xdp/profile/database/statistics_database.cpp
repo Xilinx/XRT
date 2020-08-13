@@ -24,7 +24,8 @@
 namespace xdp {
 
   VPStatisticsDatabase::VPStatisticsDatabase(VPDatabase* d) :
-    db(d), numMigrateMemCalls(0), firstKernelStartTime(0.0)
+    db(d), numMigrateMemCalls(0), numHostP2PTransfers(0),
+    firstKernelStartTime(0.0)
   {
   }
 
@@ -32,6 +33,8 @@ namespace xdp {
   {
   }
 
+  // For a given CU identified by name, collect all the global work group
+  //  configurations + statistics
   std::vector<std::pair<std::string, TimeStatistics>>
   VPStatisticsDatabase::getComputeUnitExecutionStats(const std::string& cuName)
   {

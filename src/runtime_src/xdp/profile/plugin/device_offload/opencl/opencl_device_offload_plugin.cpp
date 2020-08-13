@@ -273,6 +273,9 @@ namespace xdp {
 	  
 	  if (arguments != "") arguments += "|" ;
 	  arguments += arg.name ;
+
+	  // Also, set the port width for this monitor explicitly
+	  monitor->portWidth = arg.port_width ;
 	}
 	monitor->args = arguments ;
       }
