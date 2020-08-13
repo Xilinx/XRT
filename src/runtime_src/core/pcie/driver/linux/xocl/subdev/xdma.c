@@ -96,13 +96,21 @@ struct xdma_async_context {
 	void (*callback_fn)(unsigned long data, int err);
 	unsigned long callback_data;
 	struct xdma_io_cb *iocb;
+	struct xocl_xdma *xdma;
+	u32 dir;
+	u32 channel;
 };
 
-static void xdma_async_migrate_done(unsigned long data, int err)
+static void xdma_async_migrate_done(unsigned long data, int ret)
 {
 	struct xdma_async_context *async_ctx = (struct xdma_async_context *)data;
 	//pr_info("%s: async_ctx %llx, ", __func__, (u64)async_ctx);
-	async_ctx->callback_fn(async_ctx->callback_data, err);
+
+	if (ret > 0)
+		async_ctx->xdma->channel_usage
+			[async_ctx->dir][async_ctx->channel] += ret;
+	
+	async_ctx->callback_fn(async_ctx->callback_data, ret);
 	kfree(async_ctx->iocb);
 	kfree(async_ctx);
 }
@@ -131,7 +139,8 @@ static ssize_t xdma_async_migrate_bo(struct platform_device *pdev,
 
 
 	if (tx_ctx) {
-		channel = (atomic_add_return(1, &async_dma_count)/MAX_REQS_ON_CHANNEL) % xdma->channel; 
+		//channel = (atomic_add_return(1, &async_dma_count)/MAX_REQS_ON_CHANNEL) % xdma->channel; 
+		channel = atomic_add_return(1, &async_dma_count) % xdma->channel; 
 		io_cb = kzalloc(sizeof(struct xdma_io_cb), GFP_KERNEL);
 		if (!io_cb) {
 			xocl_err(&pdev->dev, "alloc xdma dev failed");
@@ -146,6 +155,9 @@ static ssize_t xdma_async_migrate_bo(struct platform_device *pdev,
 			goto failed;
 		}
 
+		async_ctx->dir = dir;
+		async_ctx->xdma = xdma;
+		async_ctx->channel = channel;
 		async_ctx->iocb = io_cb;
 		async_ctx->callback_fn = callback_fn;
 		async_ctx->callback_data = (unsigned long)tx_ctx;

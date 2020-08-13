@@ -945,7 +945,7 @@ static int process_completions(struct xdma_engine *engine,
 			if (req->cb && req->cb->io_done) {
 				struct xdma_io_cb *cb = req->cb;
 
-				cb->io_done((unsigned long)cb->private, 0);
+				cb->io_done((unsigned long)cb->private, req->done);
 				xdma_request_release(engine->xdev, req);
 			} else
 				wake_up(&req->arbtr_wait);
