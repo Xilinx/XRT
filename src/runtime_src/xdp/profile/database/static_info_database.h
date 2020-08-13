@@ -173,6 +173,7 @@ namespace xdp {
   };
 
   struct DeviceInfo {
+    bool isReady;
     double clockRateMHz;
     struct PlatformInfo platformInfo;
     std::string loadedXclbin;
@@ -246,6 +247,13 @@ namespace xdp {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       return deviceInfo[deviceId];
+    }
+
+    bool isDeviceReady(uint64_t deviceId)
+    {
+      if(deviceInfo.find(deviceId) == deviceInfo.end())
+        return false; 
+      return deviceInfo[deviceId]->isReady;
     }
 
     double getClockRateMHz(uint64_t deviceId)

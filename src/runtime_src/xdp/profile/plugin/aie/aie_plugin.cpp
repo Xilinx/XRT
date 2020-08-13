@@ -25,7 +25,7 @@
 #include "core/include/experimental/xrt-next.h"
 #include "core/edge/user/shim.h"
 #include "core/edge/common/aie_parser.h"
-#include "core/edge/user/aie/aie.h"
+//#include "core/edge/user/aie/aie.h"
 extern "C" {
 #include <xaiengine.h>
 }
@@ -88,9 +88,16 @@ namespace xdp {
   void AIEProfilingPlugin::pollAIECounters()
   {
     while (mKeepPolling) {
-      // Iterate over all devices
       uint64_t index = 0;
+
+      // Iterate over all devices
       for (auto device : mDevices) {
+        // Wait until xclbin has been loaded and device has been updated in database
+        if (!db->getStaticInfo()).isDeviceReady(index)) {
+          ++index;
+          continue;
+        }
+
         auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
         if (!drv)
           continue;

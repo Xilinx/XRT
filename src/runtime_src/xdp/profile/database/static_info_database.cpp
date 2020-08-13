@@ -135,6 +135,7 @@ namespace xdp {
     if (!initializeComputeUnits(devInfo, device)) return ;
     if (!initializeProfileMonitors(devInfo, device)) return ;
     if (!initializeAIECounters(devInfo, device)) return ;
+    devInfo->isReady = true;
   }
 
   void VPStaticDatabase::resetDeviceInfo(uint64_t deviceId)
