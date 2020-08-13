@@ -93,7 +93,7 @@ namespace xdp {
       // Iterate over all devices
       for (auto device : mDevices) {
         // Wait until xclbin has been loaded and device has been updated in database
-        if (!db->getStaticInfo()).isDeviceReady(index)) {
+        if (!(db->getStaticInfo().isDeviceReady(index))) {
           ++index;
           continue;
         }
