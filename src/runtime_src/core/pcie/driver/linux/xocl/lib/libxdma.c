@@ -3530,6 +3530,9 @@ static void remove_engines(struct xdma_dev *xdev)
 
 	BUG_ON(!xdev);
 
+	if (xdev->no_dma)
+		return;
+
 	/* iterate over channels */
 	for (i = 0; i < xdev->h2c_channel_max; i++) {
 		engine = &xdev->engine_h2c[i];
@@ -3609,8 +3612,11 @@ static int probe_engines(struct xdma_dev *xdev)
 
 	BUG_ON(!xdev);
 
-	if (xdev->no_dma)
+	if (xdev->no_dma) {
+		xdev->h2c_channel_max = 2;
+		xdev->c2h_channel_max = 2;
 		return 0;
+	}
 
 	/* iterate over channels */
 	for (i = 0; i < xdev->h2c_channel_max; i++) {
