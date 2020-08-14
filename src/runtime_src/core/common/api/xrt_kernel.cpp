@@ -78,6 +78,29 @@ int
 xrtRunSetArgV(xrtRunHandle runHandle, int index, const void* value, size_t bytes);
 
 /**
+ * xrtRunGetArgV() - Asynchronous get a specific kernel argument for this run
+ *
+ * @runHandle:  Handle to the run object to modify
+ * @index:      Index of kernel argument to read
+ * @value:      Destination data pointer where argument value is written
+ * @size:       The size of value in bytes.
+ * Return:      0 on success, -1 on error
+ *
+ * Use this API to asynchronously access a specific kernel argument while
+ * kernel is running.  This function reads the register map for the compute
+ * unit associated with this run.  It is an error to read from a run object
+ * associated with multiple compute units.
+ */
+XCL_DRIVER_DLLESPEC
+int
+xrtRunGetArgV(xrtRunHandle runHandle, int index, void* value, size_t bytes);
+
+// C++ run object variant
+XCL_DRIVER_DLLESPEC
+void
+xrtRunGetArgVPP(xrt::run run, int index, void* value, size_t bytes);
+
+/**
  * xrtRunUpdateArgV() - Asynchronous update of kernel argument
  *
  * @runHandle:  Handle to the run object to modify
@@ -728,13 +751,13 @@ class kernel_impl
   }
 
   unsigned int
-  get_ipidx_or_error(size_t offset) const
+  get_ipidx_or_error(size_t offset, bool force=false) const
   {
     if (ipctxs.size() != 1)
       throw std::runtime_error("Cannot read or write kernel with multiple compute units");
     auto& ipctx = ipctxs.back();
     auto mode = ipctx->get_access_mode();
-    if (mode != ip_context::access_mode::exclusive)
+    if (!force && mode != ip_context::access_mode::exclusive)
       throw std::runtime_error("Cannot read or write kernel with shared access");
 
     if ((offset + sizeof(uint32_t)) > ipctx->get_size())
@@ -808,9 +831,9 @@ public:
   }
 
   uint32_t
-  read_register(uint32_t offset) const
+  read_register(uint32_t offset, bool force=false) const
   {
-    auto idx = get_ipidx_or_error(offset);
+    auto idx = get_ipidx_or_error(offset, force);
     uint32_t value = 0;
     if (has_reg_read_write())
       device->core_device->reg_read(idx, offset, &value);
@@ -827,6 +850,15 @@ public:
       device->core_device->reg_write(idx, offset, data);
     else
       device->core_device->xwrite(ipctxs.back()->get_address() + offset, &data, 4);
+  }
+
+  // Read 'count' 4 byte registers starting at offset
+  // This API is internal and allows reading from shared IPs
+  void
+  read_register_n(uint32_t offset, size_t count, uint32_t* out)
+  {
+    for (size_t n = 0; n < count; ++n)
+      out[n] = read_register(offset + n * 4, true);
   }
 
   device_type*
@@ -995,6 +1027,14 @@ public:
     auto& arg = kernel->get_arg(index);
     arg.valid_or_error(bytes);
     set_arg_value(arg, value_to_uint32_vector(value, bytes));
+  }
+
+  void
+  get_arg_at_index(size_t index, uint32_t* out, size_t bytes)
+  {
+    auto& arg = kernel->get_arg(index);
+    arg.valid_or_error(bytes);
+    kernel->read_register_n(arg.offset(), bytes / sizeof(uint32_t), out);
   }
 
   void
@@ -1768,4 +1808,30 @@ xrtRunSetArgV(xrtRunHandle rhdl, int index, const void* value, size_t bytes)
     send_exception_message(ex.what());
     return -1;
   }
+}
+
+int
+xrtRunGetArgV(xrtRunHandle rhdl, int index, void* value, size_t bytes)
+{
+  try {
+    auto run = get_run(rhdl);
+    run->get_arg_at_index(index, static_cast<uint32_t*>(value), bytes);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+    return -1;
+  }
+  
+}
+  
+void
+xrtRunGetArgVPP(xrt::run run, int index, void* value, size_t bytes)
+{
+  auto rimpl = run.get_handle();
+  rimpl->get_arg_at_index(index, static_cast<uint32_t*>(value), bytes);
 }
