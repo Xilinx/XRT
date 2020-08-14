@@ -4,7 +4,7 @@ include_directories(
 
 add_subdirectory(include)
  if (${XRT_NATIVE_BUILD} STREQUAL "yes")
-   add_compile_options("-DXRT_LOAD_XDP_HAL_PLUGIN")
+   add_compile_options("-DXRT_CORE_BUILD_WITH_DL")
    add_subdirectory(common)
    add_subdirectory(pcie)
    add_subdirectory(tools)

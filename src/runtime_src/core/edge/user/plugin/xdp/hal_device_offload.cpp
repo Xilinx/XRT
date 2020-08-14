@@ -20,7 +20,7 @@ namespace xdphaldeviceoffload {
  
   void register_hal_device_offload_functions(void* handle) 
   {
-#ifdef XRT_LOAD_XDP_HAL_PLUGIN
+#ifdef XRT_CORE_BUILD_WITH_DL
     typedef void (*ftype)(void*) ;
     update_device_cb = (ftype)(xrt_core::dlsym(handle, "updateDeviceHAL")) ;
     if (xrt_core::dlerror() != NULL) update_device_cb = nullptr ;

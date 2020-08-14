@@ -79,7 +79,7 @@ namespace xrt_core {
 			       std::function<void ()> warningFunction,
 			       std::function<int ()> errorFunction)
   {
-#ifdef XRT_LOAD_XDP_HAL_PLUGIN
+#ifdef XRT_CORE_BUILD_WITH_DL
     if (errorFunction) 
     {
       // Check prerequirements for this particular plugin.  If they are not
