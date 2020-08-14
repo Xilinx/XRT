@@ -44,12 +44,12 @@ static const std::map<MEM_TYPE, std::string> memtype_map = {
 template <typename T>
 inline std::string pretty( const T &val, const std::string &default_val = "N/A", bool isHex = false )
 {   
-    if( typeid(val).name() != typeid(std::string).name() ) {
-        if( val >= std::numeric_limits<T>::max() || val == 0) {
+    if (typeid(val).name() != typeid(std::string).name()) {
+        if (val >= std::numeric_limits<T>::max() || val == 0) {
             return default_val;
         }
 
-        if( isHex ) {
+        if (isHex) {
             std::stringstream ss;
             ss << "0x" << std::hex << val;
             return ss.str();
@@ -88,7 +88,7 @@ static int eccStatus2Str(unsigned int status, std::string& str)
 void getChannelinfo(const xrt_core::device * device, boost::property_tree::ptree& pt) {
   std::vector<std::string> dma_threads;
   boost::property_tree::ptree pt_dma_array;
-  pt.put( "board.pcie_dma.transfer_metrics.chan_is_present", "false" );
+  pt.put("board.pcie_dma.transfer_metrics.chan_is_present", "false");
   try {
     dma_threads = xrt_core::device_query<qr::dma_threads_raw>(device);
   } catch (const std::exception& ex){
@@ -100,13 +100,12 @@ void getChannelinfo(const xrt_core::device * device, boost::property_tree::ptree
     boost::property_tree::ptree pt_dma;
     std::stringstream ss(dma_threads[i]);
     ss >> c2h[i] >> h2c[i];
-    pt_dma.put( "h2c", xrt_core::utils::unit_convert(h2c[i]));
-    pt_dma.put( "c2h", xrt_core::utils::unit_convert(c2h[i]));
-    //pt.add_child( std::string("board.pcie_dma.transfer_metrics.chan." + std::to_string(i)), pt_dma );
+    pt_dma.put("h2c", xrt_core::utils::unit_convert(h2c[i]));
+    pt_dma.put("c2h", xrt_core::utils::unit_convert(c2h[i]));
     pt_dma_array.push_back(std::make_pair("",pt_dma));
-    pt.put( "board.pcie_dma.transfer_metrics.chan_is_present", "true" );
+    pt.put("board.pcie_dma.transfer_metrics.chan_is_present", "true");
   }
-  pt.add_child( std::string("board.pcie_dma.transfer_metrics.chan"), pt_dma_array );
+  pt.add_child(std::string("board.pcie_dma.transfer_metrics.chan"), pt_dma_array);
 }
 
 boost::property_tree::ptree
@@ -116,10 +115,10 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
   std::vector<std::string> mm_buf, stream_stat;
   std::vector<char> buf, temp_buf, gbuf;
   uint64_t memoryUsage, boCount;
-  pt.put( "board.memory.mem_is_present", "false" );
-  pt.put( "board.memory.stream_is_present", "false" );
-  pt.put( "board.memory.grp_is_present", "false" );
-  pt.put( "board.memory.ecc_is_present", "false" );
+  pt.put("board.memory.mem_is_present", "false");
+  pt.put("board.memory.stream_is_present", "false");
+  pt.put("board.memory.grp_is_present", "false");
+  pt.put("board.memory.ecc_is_present", "false");
   pt.put("description", desc);
   getChannelinfo(device, pt);
   try {
@@ -135,9 +134,6 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
 
   const mem_topology *map = (mem_topology *)buf.data();
   const uint32_t *temp = (uint32_t *)temp_buf.data();
-
-  //int j = 0; // stream index
-  //int m = 0; // mem index
 
   try {
     boost::any a = std::string("1");
@@ -174,21 +170,18 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
 
         total = stat_map[std::string("complete_bytes")] + "/" + stat_map[std::string("complete_requests")];
         pending = stat_map[std::string("pending_bytes")] + "/" + stat_map[std::string("pending_requests")];
-      //} catch (const std::exception& ex){
       } catch (const std::exception& ){
         // eat the exception, probably bad path
       }
   
-      ptStream.put( "tag", map->m_mem_data[i].m_tag );
-      ptStream.put( "flow_id", map->m_mem_data[i].flow_id );
-      ptStream.put( "route_id", map->m_mem_data[i].route_id );
-      ptStream.put( "status", status );
-      ptStream.put( "total", total );
-      ptStream.put( "pending", pending );
+      ptStream.put("tag", map->m_mem_data[i].m_tag);
+      ptStream.put("flow_id", map->m_mem_data[i].flow_id);
+      ptStream.put("route_id", map->m_mem_data[i].route_id);
+      ptStream.put("status", status);
+      ptStream.put("total", total);
+      ptStream.put("pending", pending);
       ptStream_array.push_back(std::make_pair("",ptStream));
-      //pt.add_child( std::string("board.memory.stream." + std::to_string(j)), ptStream);
-      pt.put( "board.memory.stream_is_present", "true" );
-      //j++;
+      pt.put("board.memory.stream_is_present", "true");
       continue;
     }
 
@@ -222,28 +215,24 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
         ptMem.put("ecc_ue_count", ue_cnt);
         ptMem.put("ecc_ce_ffa", ce_ffa);
         ptMem.put("ecc_ue_ffa", ue_ffa);
-        pt.put( "board.memory.ecc_is_present", "true" );
+        pt.put("board.memory.ecc_is_present", "true");
       }
     }
     std::stringstream ss(mm_buf[i]);
     ss >> memoryUsage >> boCount;
 
-    ptMem.put("type", str );
-    ptMem.put("temp_in_C",      temp_buf.empty() ? XCL_NO_SENSOR_DEV : temp[i]);
-    ptMem.put("tag",       map->m_mem_data[i].m_tag);
-    ptMem.put("enabled",   map->m_mem_data[i].m_used ? true : false);
+    ptMem.put("type", str);
+    ptMem.put("temp_in_C", temp_buf.empty() ? XCL_NO_SENSOR_DEV : temp[i]);
+    ptMem.put("tag", map->m_mem_data[i].m_tag);
+    ptMem.put("enabled", map->m_mem_data[i].m_used ? true : false);
     ptMem.put("size_in_bytes", map->m_mem_data[i].m_size << 10);
-    //ptMem.put("size_raw", map->m_mem_data[i].m_size << 10 );
     ptMem.put("mem_usage_in_bytes", memoryUsage);
-    //ptMem.put("mem_usage_raw", memoryUsage);
     ptMem.put("bo_count", boCount);
-    //pt.add_child( std::string("board.memory.mem." + std::to_string(m)), ptMem );
     ptMem_array.push_back(std::make_pair("",ptMem));
-    pt.put( "board.memory.mem_is_present", "true" );
-    //m++;
+    pt.put("board.memory.mem_is_present", "true");
   }
-  pt.add_child( std::string("board.memory.stream"), ptStream_array);
-  pt.add_child( std::string("board.memory.mem"), ptMem_array );
+  pt.add_child(std::string("board.memory.stream"), ptStream_array);
+  pt.add_child(std::string("board.memory.mem"), ptMem_array );
 
   try {
     mm_buf = xrt_core::device_query<qr::memstat_raw>(device);
@@ -257,7 +246,6 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
 
   const mem_topology *grp_map = (mem_topology *)gbuf.data();
 
-  //int gid = 0; // group index
   for (int i = 0; i < grp_map->m_count; i++) {
     if (grp_map->m_mem_data[i].m_used != 0) {
       boost::property_tree::ptree ptGrp;
@@ -267,14 +255,11 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
       ss >> memoryUsage >> boCount;
       ptGrp.put("type", str);
       ptGrp.put("tag", grp_map->m_mem_data[i].m_tag);
-      //ptGrp.put("size", xrt_core::utils::unit_convert(grp_map->m_mem_data[i].m_size << 10) );
       ptGrp.put("size_in_bytes", grp_map->m_mem_data[i].m_size << 10);
       ptGrp.put("mem_usage_in_bytes", memoryUsage);
       ptGrp.put("bo_count", boCount);
       ptGrp_array.push_back(std::make_pair("",ptGrp));
-      //pt.add_child(std::string("board.memory.grp." + std::to_string(gid)), ptGrp);
-      pt.put( "board.memory.grp_is_present", "true" );
-      //gid++;
+      pt.put("board.memory.grp_is_present", "true");
     }
   }
   pt.add_child(std::string("board.memory.grp"), ptGrp_array);
@@ -295,11 +280,6 @@ ReportMemory::getPropertyTree20202( const xrt_core::device * _pDevice,
                                            boost::property_tree::ptree &_pt) const
 {
   _pt.add_child("mem_topology", populate_memtopology(_pDevice, "Memory Information"));
-//  boost::property_tree::ptree fan_array;
-//  fan_array.push_back(std::make_pair("", populate_memtopology(_pDevice, "Memory Information")));
-
-  // There can only be 1 root node
-//  _pt.add_child("mem_topology", fan_array);
 }
 
 void 
