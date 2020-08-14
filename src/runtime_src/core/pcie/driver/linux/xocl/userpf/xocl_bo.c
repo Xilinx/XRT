@@ -1507,7 +1507,7 @@ int xocl_kinfo_bo_ioctl(struct drm_device *dev,
 	args->paddr = xocl_bo_physical_addr(xobj);
 
         if (xobj->flags & XOCL_P2P_MEM)
-		args->vaddr = (u64)page_to_virt(xobj->pages[0]);
+		args->vaddr = (u64)page_address(xobj->pages[0]);
         else
 		args->vaddr = (u64)xobj->vmapping;
 
