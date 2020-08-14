@@ -121,7 +121,7 @@ SubCmdAdvanced::execute(const SubCmdOptions& _options) const
 
   // Find the subOption;
   std::shared_ptr<OptionOptions> optionOption;
-  for (auto subOO : subOptionOptions) {
+  for (auto& subOO : subOptionOptions) {
     if (vm.count(subOO->longName().c_str()) != 0) {
       optionOption = subOO;
       break;

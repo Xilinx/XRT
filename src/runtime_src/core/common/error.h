@@ -20,6 +20,7 @@
 #include "core/common/config.h"
 #include <stdexcept>
 #include <string>
+#include <system_error>
 
 namespace xrt_core {
 
@@ -47,6 +48,14 @@ public:
   {
     return get();
   }
+};
+
+class system_error : public std::system_error
+{
+public:
+  system_error(int ec, const std::string& what = "")
+    : std::system_error(ec, std::system_category(), what)
+  {}
 };
 
 XRT_CORE_COMMON_EXPORT

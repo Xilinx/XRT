@@ -93,6 +93,9 @@ struct ishim
   virtual void
   load_xclbin(const struct axlf*) = 0;
 
+  virtual void
+  reclock(const uint16_t* target_freq_mhz) = 0;
+
 #ifdef XRT_ENABLE_AIE
   virtual xclGraphHandle
   open_graph(const xuid_t, const char*) = 0;
@@ -301,6 +304,13 @@ struct shim : public DeviceType
   {
     if (auto ret = xclLoadXclBin(DeviceType::get_device_handle(), buffer))
       throw error(ret, "failed to load xclbin");
+  }
+
+  virtual void
+  reclock(const uint16_t* target_freq_mhz)
+  {
+    if (auto ret = xclReClock2(DeviceType::get_device_handle(), 0, target_freq_mhz))
+      throw error(ret, "failed to reclock specified clock");
   }
 
 #ifdef XRT_ENABLE_AIE

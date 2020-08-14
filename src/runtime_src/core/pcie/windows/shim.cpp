@@ -1405,6 +1405,15 @@ xclCopyBO(xclDeviceHandle handle, xclBufferHandle dstBoHandle,
   return ENOSYS;
 }
 
+int
+xclReClock2(xclDeviceHandle handle, unsigned short region,
+            const uint16_t* targetFreqMHz)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclReClock2() NOT IMPLEMENTED");
+  return ENOSYS;
+}
+
 // Compute Unit Execution Management APIs
 int
 xclOpenContext(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex, bool shared)

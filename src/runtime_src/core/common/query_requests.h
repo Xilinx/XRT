@@ -68,6 +68,7 @@ enum class key_type
   xclbin_uuid,
   mem_topology_raw,
   ip_layout_raw,
+  clock_freq_topology_raw,
 
   xmc_version,
   xmc_board_name,
@@ -81,6 +82,7 @@ enum class key_type
   dna_serial_num,
   clock_freqs_mhz,
   idcode,
+  data_retention,
 
   status_mig_calibrated,
   status_p2p_enabled,
@@ -555,6 +557,15 @@ struct ip_layout_raw : request
   get(const device*) const = 0;
 };
 
+struct clock_freq_topology_raw : request
+{
+  using result_type = std::vector<char>;
+  static const key_type key = key_type::clock_freq_topology_raw;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
 struct xmc_version : request
 {
   using result_type = std::string;
@@ -716,6 +727,15 @@ struct idcode : request
   {
     return boost::str(boost::format("0x%x") % value);
   }
+};
+
+struct data_retention : request
+{
+  using result_type = bool;
+  static const key_type key = key_type::data_retention;
+
+  virtual boost::any
+  get(const device*) const = 0;
 };
 
 struct status_mig_calibrated : request
