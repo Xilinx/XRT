@@ -199,7 +199,7 @@ static struct xocl_msix_funcs msix_xdma_ops = {
 static int msix_xdma_probe(struct platform_device *pdev)
 {
 	struct xocl_msix_xdma *msix_xdma= NULL;
-	int	ret = 0, ch;
+	int	ret = 0;
 	xdev_handle_t		xdev;
 
 	xdev = xocl_get_xdev(pdev);
@@ -214,7 +214,7 @@ static int msix_xdma_probe(struct platform_device *pdev)
 	msix_xdma->pdev = pdev;
 
 	msix_xdma->dev_handle = xdma_device_open(XOCL_MSIX_XDMA,
-		XDEV(xdev)->pdev, &msix_xdma->max_user_intr, &ch, &ch);
+		XDEV(xdev)->pdev, &msix_xdma->max_user_intr, NULL, NULL, true);
 	if (!msix_xdma->dev_handle) {
 		xocl_err(&pdev->dev, "failed open xdma device");
 		ret = -EIO;
