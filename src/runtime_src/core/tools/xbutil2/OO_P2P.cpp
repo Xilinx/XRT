@@ -31,6 +31,7 @@ namespace XBU = XBUtilities;
 // 3rd Party Library - Include Files
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string/join.hpp>
+#include <boost/format.hpp>
 namespace po = boost::program_options;
 
 // System - Include Files
@@ -84,6 +85,7 @@ p2p_enabled_or_error(xrt_core::device* device)
   long long exp_bar = -1;
 
   for (auto& str : cfg) {
+    // str is in key:value format obtained from p2p_config query
     auto pos = str.find(":");
     auto key = str.substr(0, pos);
     ++pos; // past ":"
@@ -112,27 +114,25 @@ p2p_enabled_or_error(xrt_core::device* device)
 namespace p2ptest {
 
 static void
-fill_with_stride(char* begin, const char* end, char pattern)
+fill_with_stride(char* begin, const char* end, char fill_byte)
 {
   auto stride = xrt_core::getpagesize();
   if (std::distance(static_cast<const char*>(begin), end) % stride)
     throw xrt_core::system_error(EINVAL, "Range not an increment of stride: " + std::to_string(stride));
   for (auto itr = begin; itr != end; itr += stride)
-    (*itr) = pattern;
+    (*itr) = fill_byte;
 }
 
 static void
-cmp_with_stride(const char* begin, const char* end, char pattern)
+cmp_with_stride(const char* begin, const char* end, char fill_byte)
 {
   auto stride = xrt_core::getpagesize();
   if (std::distance(begin, end) % stride)
     throw xrt_core::system_error(EINVAL, "Range not an increment of stride: " + std::to_string(stride));
   for (auto itr = begin; itr != end; itr += stride) {
-    if ((*itr) != pattern) {
-      std::ostringstream ostr;
-      ostr << "Error in p2p comparison, expected '"
-           << pattern << "' got '" << (*itr) << "'";
-      throw xrt_core::system_error(EIO, ostr.str());
+    if ((*itr) != fill_byte) {
+      auto fmt = boost::format("Error in p2p comparison, expected '0x%x' got '0x%x'") % fill_byte % (*itr);
+      throw xrt_core::system_error(EIO, fmt.str());
     }
   }
 }
@@ -140,41 +140,38 @@ cmp_with_stride(const char* begin, const char* end, char pattern)
 static void
 chunk(xrt_core::device* device, char* boptr, uint64_t dev_addr, uint64_t size)
 {
-  char patternA = 'A';
-  char patternB = 'B';
+  char byteA = 'A';
+  char byteB = 'B';
 
   auto mem = xrt_core::aligned_alloc(xrt_core::getpagesize(), size);
   auto buf = static_cast<char*>(mem.get());
 
-  fill_with_stride(buf, buf+size, patternA);
+  fill_with_stride(buf, buf+size, byteA);
   try {
     device->unmgd_pwrite(buf, size, dev_addr);
   }
   catch (const std::exception&) {
-    std::ostringstream ostr;
-    ostr << "Error writing 0x" << std::hex << size
-         << " bytes to 0x" << dev_addr << std::dec;
-    throw xrt_core::system_error(EIO, ostr.str());
+    auto fmt = boost::format("Error writing 0x%x bytes to 0x%x") % size % dev_addr;
+    throw xrt_core::system_error(EIO, fmt.str());
   }
-  cmp_with_stride(boptr, boptr+size, patternA);
+  cmp_with_stride(boptr, boptr+size, byteA);
 
-  fill_with_stride(boptr, boptr+size, patternB);
+  fill_with_stride(boptr, boptr+size, byteB);
   try {
     device->unmgd_pread(buf, size, dev_addr);
   }
   catch (const std::exception&) {
-    std::ostringstream ostr;
-    ostr << "Error reading 0x" << std::hex << size
-         << " bytes from 0x" << dev_addr << std::dec;
-    throw xrt_core::system_error(EIO, ostr.str());
+    auto fmt = boost::format("Error reading 0x%x bytes from 0x%x") % size % dev_addr;
+    throw xrt_core::system_error(EIO, fmt.str());
   }
-  cmp_with_stride(buf, buf+size, patternB);
+  cmp_with_stride(buf, buf+size, byteB);
 }
 
 static void
 bank(xrt_core::device* device, int memidx, uint64_t addr, uint64_t size)
 {
-  const size_t chunk_size = 16 * 1024 * 1024;
+  // Process the P2P buffer in 16 MB increments
+  constexpr size_t chunk_size = 16 * 1024 * 1024;
 
   auto bo = xrt::bo(device->get_device_handle(), size, XCL_BO_FLAGS_P2P, memidx);
   auto boptr = bo.map<char*>();
@@ -184,11 +181,9 @@ bank(xrt_core::device* device, int memidx, uint64_t addr, uint64_t size)
       chunk(device, boptr + c, addr + c, chunk_size);
     }
     catch (const std::exception& ex) {
-      std::ostringstream ostr;
-      ostr << ex.what() << "\n"
-           << "Error p2p testing at offset 0x" << std::hex << c
-           << " on memory index " << std::dec << memidx;
-      throw xrt_core::system_error(EINVAL, ostr.str());
+      auto fmt = boost::format("%s\nError p2p testing at offset 0x%x on memory index %d")
+                               % ex.what() % c % memidx;
+      throw xrt_core::system_error(EINVAL, fmt.str());
     }
 
     if (ci % (size / chunk_size / 16) == 0)
