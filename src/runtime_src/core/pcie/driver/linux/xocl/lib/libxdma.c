@@ -2559,8 +2559,6 @@ static int irq_msix_user_setup(struct xdma_dev *xdev)
 	struct interrupt_regs *reg = (struct interrupt_regs *)
 		(xdev->bar[xdev->config_bar_idx] + XDMA_OFS_INT_CTRL);
 
-
-
 	if (xdev->no_dma)
 		j = read_register(&reg->user_msi_vector) & 0xf;
 

@@ -248,7 +248,7 @@ enum {
 #define	XOCL_INTC		"intc"
 #define	XOCL_ICAP_CNTRL		"icap_controller"
 #define	XOCL_VERSION_CTRL	"version_control"
-#define XOCL_MSIX_XDMA		"msix_xdma"
+#define	XOCL_MSIX_XDMA		"msix_xdma"
 #define	XOCL_ERT_USER		"ert_user"
 
 #define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
