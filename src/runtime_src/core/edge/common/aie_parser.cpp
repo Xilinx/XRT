@@ -162,23 +162,23 @@ get_profile_counter(const pt::ptree& aie_meta)
 {
   // First grab clock frequency
   double clockFreqMhz;
-  for (auto& clock_node : aie_meta.get_child("aie_metadata.performance.clock")) {
-    clockFreqMhz = clock_node.second.get<double>("frequency_mhz");
+  for (auto& clock_node : aie_meta.get_child("aie_trace_profile_metadata.PerformanceCounter.DeviceData")) {
+    clockFreqMhz = clock_node.second.get<double>("AIEFrequency");
   }
 
   // Now parse all counters
   std::vector<counter_type> counters;
 
-  for (auto& counter_node : aie_meta.get_child("aie_metadata.performance.counters")) {
+  for (auto& counter_node : aie_meta.get_child("aie_trace_profile_metadata.PerformanceCounter")) {
     counter_type counter;
 
     counter.id = counter_node.second.get<uint32_t>("id");
     counter.column = counter_node.second.get<uint16_t>("column");
     counter.row = counter_node.second.get<uint16_t>("row");
-    counter.counterNumber = counter_node.second.get<uint8_t>("counter");
+    counter.counterNumber = counter_node.second.get<uint8_t>("counterId");
     counter.startEvent = counter_node.second.get<uint8_t>("start");
-    counter.endEvent = counter_node.second.get<uint8_t>("end");
-    counter.resetEvent = counter_node.second.get<uint8_t>("reset");
+    counter.endEvent = counter_node.second.get<uint8_t>("stop");
+    //counter.resetEvent = counter_node.second.get<uint8_t>("reset");
     // Assume common clock frequency for all AIE tiles
     counter.clockFreqMhz = clockFreqMhz;
     counter.module = counter_node.second.get<std::string>("module");
@@ -195,7 +195,7 @@ get_trace_gmio(const pt::ptree& aie_meta)
 {
   std::vector<gmio_type> gmios;
 
-  for (auto& gmio_node : aie_meta.get_child("aie_metadata.performance.GMIOs")) {
+  for (auto& gmio_node : aie_meta.get_child("aie_trace_profile_metadata.TraceGMIOs")) {
     gmio_type gmio;
 
     gmio.id = gmio_node.second.get<uint32_t>("id");
