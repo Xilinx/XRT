@@ -476,9 +476,7 @@ m2mtest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, int b
   }
 
   //bandwidth
-  size_t total = bo_size;
-  total *= 1000000; // convert us to s
-  total /= (1024 * 1024); //convert to MB
+  size_t total = bo_size / (1024 * 1024); //convert to MB
   return static_cast<int>(total / timer_stop);
 }
 
@@ -721,12 +719,11 @@ m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
 
   for(unsigned int i = 0; i < used_banks.size()-1; i++) {
     for(unsigned int j = i+1; j < used_banks.size(); j++) {
-      std::cout << used_banks[i].m_tag << " -> " << used_banks[j].m_tag << " M2M bandwidth: ";
       if(!used_banks[i].m_size || !used_banks[j].m_size)
         continue;
       
       double m2m_bandwidth = m2mtest_bank(_dev->get_device_handle(), _ptTest, i, j, bo_size);
-      logger(_ptTest, "Details", boost::str(boost::format("%s -> %s M2M bandwidth: %f MB/s") % used_banks[i].m_tag 
+      logger(_ptTest, "Details", boost::str(boost::format("%s -> %s M2M bandwidth: %.2f MB/s") % used_banks[i].m_tag
                   %used_banks[j].m_tag % m2m_bandwidth));
       
       if(m2m_bandwidth == 0) //test failed, exit
