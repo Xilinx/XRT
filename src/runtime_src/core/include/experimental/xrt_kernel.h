@@ -250,6 +250,13 @@ class run
     start();
   }
 
+public:
+  std::shared_ptr<run_impl>
+  get_handle() const
+  {
+    return handle;
+  }
+
 private:
   std::shared_ptr<run_impl> handle;
 
