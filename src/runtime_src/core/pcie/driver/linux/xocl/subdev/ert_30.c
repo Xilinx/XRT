@@ -27,8 +27,8 @@
  * BIT 0: check microblazer status
  */
 
-#define GPIO_CFG_CHANNEL_0	0x0
-#define GPIO_CFG_CHANNEL_1	0x8
+#define GPIO_CFG_CTRL_CHANNEL	0x0
+#define GPIO_CFG_STA_CHANNEL	0x8
 
 #define SWITCH_TO_CU_INTR	0x1
 #define SWITCH_TO_ERT_INTR	~SWITCH_TO_CU_INTR
@@ -97,22 +97,22 @@ static uint32_t ert_30_gpio_cfg(struct platform_device *pdev, enum ert_gpio_cfg 
 	switch (type) {
 	case INTR_TO_ERT:
 		val &= SWITCH_TO_ERT_INTR;
-		iowrite32(val, ert_30->cfg_gpio+GPIO_CFG_CHANNEL_0);
+		iowrite32(val, ert_30->cfg_gpio+GPIO_CFG_CTRL_CHANNEL);
 		break;
 	case INTR_TO_CU:
 		val |= SWITCH_TO_CU_INTR;
-		iowrite32(val, ert_30->cfg_gpio+GPIO_CFG_CHANNEL_0);
+		iowrite32(val, ert_30->cfg_gpio+GPIO_CFG_CTRL_CHANNEL);
 		break;
 	case MB_WAKEUP:
 		val &= WAKE_MB_UP;
-		iowrite32(val, ert_30->cfg_gpio+GPIO_CFG_CHANNEL_0);
+		iowrite32(val, ert_30->cfg_gpio+GPIO_CFG_CTRL_CHANNEL);
 		break;
 	case MB_SLEEP:
 		val |= FORCE_MB_SLEEP;
-		iowrite32(val, ert_30->cfg_gpio+GPIO_CFG_CHANNEL_0);
+		iowrite32(val, ert_30->cfg_gpio+GPIO_CFG_CTRL_CHANNEL);
 		break;
 	case MB_STATUS:
-		ret = ioread32(ert_30->cfg_gpio+GPIO_CFG_CHANNEL_1);
+		ret = ioread32(ert_30->cfg_gpio+GPIO_CFG_STA_CHANNEL);
 		break;
 	default:
 		break;
