@@ -23,6 +23,7 @@ OclPowerProfile::OclPowerProfile(xrt::device* xrt_device,
                                 std::string unique_name) 
                                 : status(PowerProfileStatus::IDLE) {
     power_profile_en = xrt::config::get_power_profile();
+    power_profile_interval_ms = xrt::config::get_power_profile_interval_ms();
     target_device = xrt_device;
     target_xocl_plugin = xocl_plugin;
     target_unique_name = unique_name;
@@ -109,7 +110,7 @@ void OclPowerProfile::poll_power() {
         }
 
         // TODO: step 3 pause the thread for certain time
-        std::this_thread::sleep_for (std::chrono::milliseconds(20));
+        std::this_thread::sleep_for (std::chrono::milliseconds(power_profile_interval_ms));
     }
 }
 

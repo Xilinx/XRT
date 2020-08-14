@@ -1557,6 +1557,7 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_spc,
 	xocl_init_lapc,
 	xocl_init_msix_xdma,
+	xocl_init_ert_user,
 };
 
 static void (*xocl_drv_unreg_funcs[])(void) = {
@@ -1592,6 +1593,7 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_spc,
 	xocl_fini_lapc,
 	xocl_fini_msix_xdma,
+	xocl_fini_ert_user,
 };
 
 static int __init xocl_init(void)

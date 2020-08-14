@@ -317,7 +317,7 @@ namespace xclhwemhal2 {
       HwEmShim::mDebugLogStream.open(xclemulation::getEmDebugLogFile(),std::ofstream::out);
       if(xclemulation::config::getInstance()->isInfoSuppressed() == false)
       {
-        std::string initMsg ="INFO: [HW-EM 01] Hardware emulation runs simulation underneath. Using a large data set will result in long simulation times. It is recommended that a small dataset is used for faster execution. The flow uses approximate models for DDR memory and interconnect and hence the performance data generated is approximate.";
+        std::string initMsg ="INFO: [HW-EMU 01] Hardware emulation runs simulation underneath. Using a large data set will result in long simulation times. It is recommended that a small dataset is used for faster execution. The flow uses approximate models for DDR memory and interconnect and hence the performance data generated is approximate.";
         logMessage(initMsg);
       }
       mFirstBinary = false;
@@ -574,9 +574,6 @@ namespace xclhwemhal2 {
       mMessengerThreadStarted = true;
     }
 
-    if(mHostMemAccessThreadStarted == false) {
-	  mHostMemAccessThread = std::thread(xclhwemhal2::hostMemAccessThread,this);
-   }
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
     std::string launcherArgs = xclemulation::config::getInstance()->getLauncherArgs();
     std::string wdbFileName("");
@@ -724,11 +721,11 @@ namespace xclhwemhal2 {
             std::string dMsg;
             sim_path = binaryDirectory + "/behav_gdb/" + simulatorType;
             if (lWaveform == xclemulation::DEBUG_MODE::GUI) 
-              dMsg = "WARNING: [HW-EM 07] debug_mode is set to 'gui' in ini file. Cannot enable simulator gui in this mode. Using " + sim_path + " as simulation directory.";
+              dMsg = "WARNING: [HW-EMU 07] debug_mode is set to 'gui' in ini file. Cannot enable simulator gui in this mode. Using " + sim_path + " as simulation directory.";
             else if (lWaveform == xclemulation::DEBUG_MODE::BATCH) 
-              dMsg = "WARNING: [HW-EM 07] debug_mode is set to 'batch' in ini file. Using " + sim_path + " as simulation directory.";
+              dMsg = "WARNING: [HW-EMU 07] debug_mode is set to 'batch' in ini file. Using " + sim_path + " as simulation directory.";
             else 
-              dMsg = "WARNING: [HW-EM 07] debug_mode is set to 'off' in ini file (or) considered by default. Using " + sim_path + " as simulation directory.";
+              dMsg = "WARNING: [HW-EMU 07] debug_mode is set to 'off' in ini file (or) considered by default. Using " + sim_path + " as simulation directory.";
             
             logMessage(dMsg, 0);
           }
@@ -746,6 +743,9 @@ namespace xclhwemhal2 {
 #endif
       binaryCounter++;
     }
+    if(mHostMemAccessThreadStarted == false) {
+	  mHostMemAccessThread = std::thread(xclhwemhal2::hostMemAccessThread,this);
+   }
     if (deviceDirectory.empty() == false)
       setenv("EMULATION_RUN_DIR", deviceDirectory.c_str(), true);
 
@@ -1028,23 +1028,23 @@ namespace xclhwemhal2 {
 
            if(hostBuf32[0] & CONTROL_AP_START)
            {
-             std::string dMsg ="INFO: [HW-EM 04-0] Sending start signal to the kernel " + kernelName;
+             std::string dMsg ="INFO: [HW-EMU 04-0] Sending start signal to the kernel " + kernelName;
              logMessage(dMsg,1);
            }
            else
            {
-             std::string dMsg ="INFO: [HW-EM 03-0] Configuring registers for the kernel " + kernelName +" Started";
+             std::string dMsg ="INFO: [HW-EMU 03-0] Configuring registers for the kernel " + kernelName +" Started";
              logMessage(dMsg,1);
            }
            xclWriteAddrKernelCtrl_RPC_CALL(xclWriteAddrKernelCtrl,space,offset,hostBuf,size,offsetArgInfo);
            if(hostBuf32[0] & CONTROL_AP_START)
            {
-             std::string dMsg ="INFO: [HW-EM 04-1] Kernel " + kernelName +" is Started";
+             std::string dMsg ="INFO: [HW-EMU 04-1] Kernel " + kernelName +" is Started";
              logMessage(dMsg,1);
            }
            else
            {
-             std::string dMsg ="INFO: [HW-EM 03-1] Configuring registers for the kernel " + kernelName +" Ended";
+             std::string dMsg ="INFO: [HW-EMU 03-1] Configuring registers for the kernel " + kernelName +" Ended";
              logMessage(dMsg,1);
            }
            PRINTENDFUNC;
@@ -1170,7 +1170,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << dest << ", "
         << src << ", " << size << ", " << seek << std::endl;
     }
-    std::string dMsg ="INFO: [HW-EM 02-0] Copying buffer from host to device started : size = " + std::to_string(size);
+    std::string dMsg ="INFO: [HW-EMU 02-0] Copying buffer from host to device started : size = " + std::to_string(size);
     logMessage(dMsg,1);
     void *handle = this;
 
@@ -1194,7 +1194,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 #endif
       processed_bytes += c_size;
     }
-    dMsg ="INFO: [HW-EM 02-1] Copying buffer from host to device ended";
+    dMsg ="INFO: [HW-EMU 02-1] Copying buffer from host to device ended";
     logMessage(dMsg,1);
 
     PRINTENDFUNC;
@@ -1218,7 +1218,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
         << src << ", " << size << ", " << skip << std::endl;
     }
 
-    std::string dMsg ="INFO: [HW-EM 05-0] Copying buffer from device to host started. size := " + std::to_string(size);
+    std::string dMsg ="INFO: [HW-EMU 05-0] Copying buffer from device to host started. size := " + std::to_string(size);
     logMessage(dMsg,1);
     void *handle = this;
 
@@ -1242,7 +1242,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
       processed_bytes += c_size;
     }
-    dMsg ="INFO: [HW-EM 05-1] Copying buffer from device to host ended";
+    dMsg ="INFO: [HW-EMU 05-1] Copying buffer from device to host ended";
     logMessage(dMsg,1);
     PRINTENDFUNC;
     printMem(mGlobalOutMemStream, 16 , src , dest , size );
@@ -1316,15 +1316,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     bool ack = false;
     if(sock)
     {
-      if (boFlags & XCL_BO_FLAGS_HOST_ONLY) {
-        void *hostMemBuf = nullptr;
-        if (posix_memalign(&hostMemBuf, getpagesize(), size))
-        {
-          if (mLogStream.is_open()) mLogStream << "posix_memalign failed" << std::endl;
-          hostMemBuf = nullptr;
-          return 0;
-        }
-        mHostOnlyMemMap[finalValidAddress] = std::make_pair(hostMemBuf, size);
+      if (boFlags & XCL_BO_FLAGS_HOST_ONLY) { // bypassed the xclAllocDeviceBuffer RPC call for Slave Bridge (host only buffer)
       } else {
         xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer, finalValidAddress, origSize, noHostMemory);
 
@@ -1477,6 +1469,10 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     // reset here rather than in destructor
     mCoreDevice.reset();
 
+    if (getenv("ENABLE_HAL_HW_EMU_DEBUG")) {
+      resetProgram(false);
+    }
+
     if (!sock) 
     {
       if (xclemulation::config::getInstance()->isKeepRunDirEnabled() == false) {
@@ -1492,18 +1488,24 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
         mMBSch = NULL;
       }
       PRINTENDFUNC;
-      mLogStream.close();
+      if (mLogStream.is_open()) {
+        mLogStream.close();
+      }
       return;
     }
 
-    resetProgram(false);
+    if (getenv("ENABLE_HAL_HW_EMU_DEBUG")) {
+    }
+    else {
+      resetProgram(false);
+    }
 
     int status = 0;
     xclemulation::DEBUG_MODE lWaveform = xclemulation::config::getInstance()->getLaunchWaveform();
     if(( lWaveform == xclemulation::DEBUG_MODE::GUI || lWaveform == xclemulation::DEBUG_MODE::BATCH || lWaveform == xclemulation::DEBUG_MODE::OFF)
       && xclemulation::config::getInstance()->isInfoSuppressed() == false)
     {
-      std::string waitingMsg ="INFO: [HW-EM 06-0] Waiting for the simulator process to exit";
+      std::string waitingMsg ="INFO: [HW-EMU 06-0] Waiting for the simulator process to exit";
       logMessage(waitingMsg);
     }
 
@@ -1514,7 +1516,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     if(( lWaveform == xclemulation::DEBUG_MODE::GUI || lWaveform == xclemulation::DEBUG_MODE::BATCH || lWaveform == xclemulation::DEBUG_MODE::OFF)
       && xclemulation::config::getInstance()->isInfoSuppressed() == false)
     {
-      std::string waitingMsg ="INFO: [HW-EM 06-1] All the simulator processes exited successfully";
+      std::string waitingMsg ="INFO: [HW-EMU 06-1] All the simulator processes exited successfully";
       logMessage(waitingMsg);
     }
 
@@ -1523,7 +1525,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::REMOVE, "", boost::lexical_cast<std::string>(__LINE__));
     google::protobuf::ShutdownProtobufLibrary();
     PRINTENDFUNC;
-    mLogStream.close();
+    if (mLogStream.is_open()) {
+      mLogStream.close();
+    }
   }
 
   int HwEmShim::resetProgram(bool saveWdb)
@@ -1625,7 +1629,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       if(( lWaveform == xclemulation::DEBUG_MODE::GUI || lWaveform == xclemulation::DEBUG_MODE::BATCH || lWaveform == xclemulation::DEBUG_MODE::OFF ) 
         && xclemulation::config::getInstance()->isInfoSuppressed() == false)
       {
-        std::string waitingMsg ="INFO: [HW-EM 06-0] Waiting for the simulator process to exit";
+        std::string waitingMsg ="INFO: [HW-EMU 06-0] Waiting for the simulator process to exit";
         logMessage(waitingMsg);
       }
 
@@ -1636,7 +1640,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       if(( lWaveform == xclemulation::DEBUG_MODE::GUI || lWaveform == xclemulation::DEBUG_MODE::BATCH || lWaveform == xclemulation::DEBUG_MODE::OFF )
         && xclemulation::config::getInstance()->isInfoSuppressed() == false)
       {
-        std::string waitingMsg ="INFO: [HW-EM 06-1] All the simulator processes exited successfully";
+        std::string waitingMsg ="INFO: [HW-EMU 06-1] All the simulator processes exited successfully";
         logMessage(waitingMsg);
       }
 
@@ -2115,7 +2119,14 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       systemUtil::makeSystemCall(sdxTraceKernelFile, systemUtil::systemOperation::REMOVE, "", boost::lexical_cast<std::string>(__LINE__));
     }
 
-    std::string lf = std::string(pPath) + "/hal_log.txt";
+    std::string lf = "";
+    if (getenv("ENABLE_HAL_HW_EMU_DEBUG")) {
+      lf = std::string(pPath) + "/hal_log.txt";
+    }
+    else {
+      lf = "";
+    }
+
     //if ( logfileName && (logfileName[0] != '\0'))
     if (!lf.empty())
     {
@@ -2426,7 +2437,7 @@ void *HwEmShim::xclMapBO(unsigned int boHandle, bool write)
   }
 
   std::string sFileName = bo->filename;
-  if(!sFileName.empty() )
+  if(!sFileName.empty() ) // In case of peer-to-peer
   {
     int fd = open(sFileName.c_str(), (O_CREAT | O_RDWR), 0666);
     if (fd == -1) 
@@ -2461,6 +2472,12 @@ void *HwEmShim::xclMapBO(unsigned int boHandle, bool write)
   }
   memset(pBuf, 0, bo->size);
   bo->buf = pBuf;
+
+  //For Slave Bridge scenario, maintaining the map for base vs pBuf pointer
+  if (xclemulation::xocl_bo_host_only(bo)) { 
+    mHostOnlyMemMap[bo->base] = std::make_pair(pBuf, bo->size);
+  }
+
   PRINTENDFUNC;
   return pBuf;
 }
@@ -2490,35 +2507,17 @@ int HwEmShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t si
   }
 
   int returnVal = 0;
-  void* buffer = bo->userptr ? bo->userptr : bo->buf;
-  if(dir == XCL_BO_SYNC_BO_TO_DEVICE)
-  {
-    if (bo->flags & XCL_BO_FLAGS_HOST_ONLY) {
-      auto hostAddrIter = mHostOnlyMemMap.find(bo->base);
-      if (hostAddrIter != mHostOnlyMemMap.end()) {
-        std::pair<void*, uint64_t> hostMemAddressSizePair = (*hostAddrIter).second;
-        void* hostMemBuf = hostMemAddressSizePair.first;
-        std::memcpy(hostMemBuf, buffer, size);
-      }      
-    }
-    else {
+  if (!xclemulation::xocl_bo_host_only(bo)) { // bypassed the xclCopyBufferDevice2Host/Host2Device RPC calls for Slave Bridge (host only buffer scenario)
+    void* buffer = bo->userptr ? bo->userptr : bo->buf;
+    if (dir == XCL_BO_SYNC_BO_TO_DEVICE)
+    {
       if (xclCopyBufferHost2Device(bo->base, buffer, size, offset, bo->topology) != size)
       {
         returnVal = EIO;
       }
     }
-  }
-  else
-  {
-    if (bo->flags & XCL_BO_FLAGS_HOST_ONLY) {
-      auto hostAddrIter = mHostOnlyMemMap.find(bo->base);
-      if (hostAddrIter != mHostOnlyMemMap.end()) {
-        std::pair<void*, uint64_t> hostMemAddressSizePair = (*hostAddrIter).second;
-        void* hostMemBuf = hostMemAddressSizePair.first;
-        std::memcpy(buffer, hostMemBuf, size);
-      }      
-    }
-    else {
+    else
+    {
       if (xclCopyBufferDevice2Host(buffer, bo->base, size, offset, bo->topology) != size)
       {
         returnVal = EIO;
@@ -3115,13 +3114,13 @@ int HwEmShim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *da
 
   std::string strCuidx = boost::lexical_cast<std::string>(cu_index);
   if (cu_index >= mCuIndxVsBaseAddrMap.size()) {
-    std::string strMsg = "ERROR: [HW-EM 20] xclRegRW - invalid CU index: " + strCuidx;
+    std::string strMsg = "ERROR: [HW-EMU 20] xclRegRW - invalid CU index: " + strCuidx;
     logMessage(strMsg);
     return -EINVAL;
   }
   if (offset >= mCuMapSize || (offset & (sizeof(uint32_t) - 1)) != 0) {
     std::string strOffset = boost::lexical_cast<std::string>(offset);
-    std::string strMsg = "ERROR: [HW-EM 21] xclRegRW - invalid CU offset: " + strOffset;
+    std::string strMsg = "ERROR: [HW-EMU 21] xclRegRW - invalid CU offset: " + strOffset;
     logMessage(strMsg);   
     return -EINVAL;
   }
@@ -3131,7 +3130,7 @@ int HwEmShim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *da
   uint64_t baseAddr = mCuIndxVsBaseAddrMap[cu_index] + offset;
     if (rd) {
       if (xclRead(XCL_ADDR_KERNEL_CTRL, baseAddr, buff, REG_BUFF_SIZE) != REG_BUFF_SIZE) {
-        std::string strMsg = "ERROR: [HW-EM 22] xclRegRW - xclRead failed for CU: " + strCuidx;
+        std::string strMsg = "ERROR: [HW-EMU 22] xclRegRW - xclRead failed for CU: " + strCuidx;
         logMessage(strMsg);
         return -EINVAL;
       }  
@@ -3142,7 +3141,7 @@ int HwEmShim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *da
       uint32_t * tmp_buff = (uint32_t *)buff;
       tmp_buff[0] = *datap;
       if (xclWrite(XCL_ADDR_KERNEL_CTRL, baseAddr, tmp_buff, REG_BUFF_SIZE) != REG_BUFF_SIZE) {
-        std::string strMsg = "ERROR: [HW-EM 23] xclRegRW - xclWrite failed for CU: " + strCuidx;
+        std::string strMsg = "ERROR: [HW-EMU 23] xclRegRW - xclWrite failed for CU: " + strCuidx;
         logMessage(strMsg);
         return -EINVAL;
       }
@@ -3179,11 +3178,7 @@ volatile void HwEmShim::set_mHostMemAccessThreadStarted(bool val) { mHostMemAcce
  *     
  **/
 bool HwEmShim::device2xrt_rd_trans_cb(unsigned long int addr, void* const data_ptr,unsigned long int size) {
-  //This addr can be any address, may not be only the base address.
-  // So we should identify to which address it falls into and get that membuf 
-  // and seek to that address offset and get the data of the size requested
-  // and copy into the data_ptr provided by the device call
-
+  
   auto itStart = mHostOnlyMemMap.begin();
   auto itEnd = mHostOnlyMemMap.end();
   while (itStart != itEnd)
@@ -3196,9 +3191,20 @@ bool HwEmShim::device2xrt_rd_trans_cb(unsigned long int addr, void* const data_p
     if (addr >= baseAddress && addr < baseAddress + buf_size)
     {
       unsigned char* finalOsAddress = (unsigned char*)startOSAddress + (addr - baseAddress);
-      std::memcpy(finalOsAddress, (unsigned char*)data_ptr, size);
+      
+      if ((addr + size) > (baseAddress + buf_size)) {
+        std::string dMsg = "ERROR: [HW-EMU 24] Slave Bridge - Accessing the invalid address range which is not within the boundary. Valid address range is " 
+          + std::to_string(baseAddress) + " - " + std::to_string(baseAddress + buf_size) + ". Whereas requested address range is " + std::to_string(addr) + " - " + std::to_string(addr+size);
+        logMessage(dMsg, 0);
+
+        return false;
+      }
+
+      std::memcpy((unsigned char*)data_ptr, finalOsAddress, size);
       break;
     }
+
+    itStart++;
   }
 
   return true;
@@ -3218,10 +3224,6 @@ bool HwEmShim::device2xrt_rd_trans_cb(unsigned long int addr, void* const data_p
  *     
  **/
 bool HwEmShim::device2xrt_wr_trans_cb(unsigned long int addr, void const* data_ptr,unsigned long int size) {
-  //This addr can be any address, may not be only the base address.
-  // So we should identify to which address it falls into and get that membuf 
-  // and seek to that address offset and get the data of the size requested
-  // from the data_ptr provided by the device call and copy into the offset address
 
   auto itStart = mHostOnlyMemMap.begin();
   auto itEnd = mHostOnlyMemMap.end();
@@ -3235,9 +3237,20 @@ bool HwEmShim::device2xrt_wr_trans_cb(unsigned long int addr, void const* data_p
     if (addr >= baseAddress && addr < baseAddress + buf_size)
     {
       unsigned char* finalOsAddress = (unsigned char*)startOSAddress + (addr - baseAddress);
-      std::memcpy((unsigned char*)data_ptr, finalOsAddress, size);
+
+      if ((addr + size) > (baseAddress + buf_size)) {
+        std::string dMsg = "ERROR: [HW-EMU 25] Slave Bridge - Accessing the invalid address range which is not within the boundary. Valid address range is "
+          + std::to_string(baseAddress) + " - " + std::to_string(baseAddress + buf_size) + ". Whereas requested address range is " + std::to_string(addr) + " - " + std::to_string(addr + size);
+        logMessage(dMsg, 0);
+
+        return false;
+      }
+
+      std::memcpy(finalOsAddress, (unsigned char*)data_ptr, size);
       break;
     }
+
+    itStart++;
   }
 
   return true;
@@ -3274,6 +3287,7 @@ int Q2H_helper::poolingon_Qdma() {
     if (r <= 0) {
     	return r;
     }
+
     assert(i_len == (uint32_t)r);
     //deserializing protobuf message
     header->ParseFromArray((void*)raw_header.get(), i_len);
@@ -3318,12 +3332,19 @@ int Q2H_helper::poolingon_Qdma() {
 
     return 1;
 }
+
 bool Q2H_helper::connect_sock() {
+    std::string sock_name;
+    if(getenv("EMULATION_SOCKETID")) {
+        sock_name = "D2X_unix_sock_" + std::string(getenv("EMULATION_SOCKETID"));
+    } else {
+        sock_name = "D2X_unix_sock";
+    }
     if(Q2h_sock == NULL) {
-        Q2h_sock = new unix_socket("xcl_sock_K2H",5,false);
+        Q2h_sock = new unix_socket(sock_name,5,false);
     }
     else if (!Q2h_sock->server_started) {
-        Q2h_sock->start_server("xcl_sock_K2H",5,false);
+        Q2h_sock->start_server(5,false);
     }
     return Q2h_sock->server_started;
 }
@@ -3333,7 +3354,7 @@ void hostMemAccessThread(xclhwemhal2::HwEmShim* inst) {
     auto mq2h_helper_ptr = std::make_unique<Q2H_helper>(inst);
     bool sock_ret = false;
     int count = 0;
-    while(inst->get_mHostMemAccessThreadStarted() && !sock_ret && count < 30){
+    while(inst->get_mHostMemAccessThreadStarted() && !sock_ret && count < 71){
         sock_ret = mq2h_helper_ptr->connect_sock();
         count++;
     }

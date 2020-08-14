@@ -170,7 +170,6 @@ def runKernel(opt):
         raise RuntimeError("ERROR: Throughput is less than expected value of %d GB/sec" %(threshold/1000))
 
 def main(args):
-    os.environ["Runtime.xrt_bo"] = "true"
     opt = Options()
     Options.getOptions(opt, args)
 

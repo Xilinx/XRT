@@ -97,40 +97,83 @@ namespace xdp {
 
         // Wave Group for Read and Write, if Data transfer monitoring is enabled in CU
         if(cu->dataTransferEnabled()) {
-          // Read
-          // KERNEL_READ
+          // Read : KERNEL_READ
           fout << "Group_Start,Read,Read data transfers between " << cuName << " and Global Memory" << std::endl;
           fout << "Static_Row," << (rowCount + KERNEL_READ - KERNEL) << ",M_AXI_GMEM-MEMORY (port_names)," << "Read Data Transfers " << std::endl;
           fout << "Group_End,Read" << std::endl;
 
-          // Write
-          // KERNEL_WRITE
+          // Write : KERNEL_WRITE
           fout << "Group_Start,Write,Write data transfers between " << cuName << " and Global Memory" << std::endl;
           fout << "Static_Row," << (rowCount + KERNEL_WRITE - KERNEL) << ",M_AXI_GMEM-MEMORY (port_names)," << "Write Data Transfers " << std::endl;
-          fout << "Group_End,Read" << std::endl;
+          fout << "Group_End,Write" << std::endl;
         }
 
         if(cu->streamEnabled()) {
-          // Read
           // KERNEL_STREAM_READ
           fout << "Group_Start,Stream Read,Read AXI Stream transaction between " << cuName << " and Global Memory" << std::endl;
-          fout << "Group_Row_Start," << (rowCount + KERNEL_STREAM_READ - KERNEL) << ",stream port, ,Read AXI Stream transaction between port and memory" << std::endl;
+          fout << "Static_Row," << (rowCount + KERNEL_STREAM_READ - KERNEL) << ",Stream Port,Read AXI Stream transaction between port and memory" << std::endl;
           fout << "Static_Row," << (rowCount + KERNEL_STREAM_READ_STALL - KERNEL) << ",Link Stall" << std::endl;
           fout << "Static_Row," << (rowCount + KERNEL_STREAM_READ_STARVE - KERNEL) << ",Link Starve" << std::endl;
-          fout << "Group_End,Row Read" << std::endl;
           fout << "Group_End,Stream Read" << std::endl;
+
           // KERNEL_STREAM_WRITE
           fout << "Group_Start,Stream Write,Write AXI Stream transaction between " << cuName << " and Global Memory" << std::endl;
-          fout << "Group_Row_Start," << (rowCount + KERNEL_STREAM_WRITE_STALL - KERNEL) << ",stream port, ,Write AXI Stream transaction between port and memory" << std::endl;
+          fout << "Static_Row," << (rowCount + KERNEL_STREAM_WRITE - KERNEL) << ",Stream Port,Write AXI Stream transaction between port and memory" << std::endl;
           fout << "Static_Row," << (rowCount + KERNEL_STREAM_WRITE_STALL - KERNEL) << ",Link Stall" << std::endl;
           fout << "Static_Row," << (rowCount + KERNEL_STREAM_WRITE_STARVE - KERNEL) << ",Link Starve" << std::endl;
-          fout << "Group_End,Row Write" << std::endl;
           fout << "Group_End,Stream Write" << std::endl;
         }
+        rowCount += (KERNEL_STREAM_WRITE_STARVE - KERNEL);
         fout << "Group_End," << cuName << std::endl ;
-		rowCount += (KERNEL_STREAM_WRITE_STARVE - KERNEL);
 // HOST READ?WRITE
       }
+    }
+
+    if((db->getStaticInfo()).hasFloatingAIM(deviceId)) {
+      fout << "Group_Start,AXI Memory Monitors,Read/Write data transfers over AXI Memory Mapped connection " << std::endl;
+      std::vector<Monitor*> *aimList = (db->getStaticInfo()).getAIMonitors(deviceId);
+      for(size_t i = 0; i < aimList->size() ; i++) {
+        Monitor* aim = aimList->at(i);
+        if(-1 != aim->cuIndex) {
+          // not a floating AIM, must have been covered in CU section
+          continue;
+        }
+        // If monitor name starts with "shell", then it is a shell monitor and trace is not available. So, skip it.
+        size_t pos = aim->name.find('/');
+        if(0 == aim->name.substr(0, pos).compare("shell")) {
+          continue;
+        }
+        aimBucketIdMap[i] = ++rowCount;
+        fout << "Group_Start," << aim->name  << " AXI Memory Monitor,Read/Write data transfers over AXI Memory Mapped " << aim->name << std::endl;
+        fout << "Static_Row,"  << rowCount   << ",Read transfers,Read transfers for "  << aim->name << std::endl;
+        fout << "Static_Row,"  << ++rowCount << ",Write transfers,Write transfers for " << aim->name << std::endl;
+        fout << "Group_End,"   << aim->name  << " AXI Memory Monitor" << std::endl ;
+      }
+      fout << "Group_End,AXI Memory Monitors" << std::endl ;
+    }
+
+    if((db->getStaticInfo()).hasFloatingASM(deviceId)) {
+      fout << "Group_Start,AXI Stream Monitors,Data transfers over AXI Stream connection " << std::endl;
+      std::vector<Monitor*> *asmList = (db->getStaticInfo()).getASMonitors(deviceId);
+      for(size_t i = 0; i < asmList->size() ; i++) {
+        Monitor* asM = asmList->at(i);
+        if(-1 != asM->cuIndex) {
+          // not a floating ASM, must have been covered in CU section
+          continue;
+        }
+        // If monitor name starts with "shell", then it is a shell monitor and trace is not available. So, skip it.
+        size_t pos = asM->name.find('/');
+        if(0 == asM->name.substr(0, pos).compare("shell")) {
+          continue;
+        }
+        asmBucketIdMap[i] = ++rowCount;
+        fout << "Group_Start," << asM->name  << " AXI Stream Monitor,Read/Write data transfers over AXI Stream " << asM->name << std::endl;
+        fout << "Static_Row,"  << rowCount   << ",Stream Port,AXI Stream Read/Write transaction over " << asM->name << std::endl;
+        fout << "Static_Row,"  << ++rowCount << ",Link Stall,Stall during transaction over " << asM->name << std::endl;
+        fout << "Static_Row,"  << ++rowCount << ",Link Starve,Starve during transaction over " << asM->name << std::endl;
+        fout << "Group_End,"   << asM->name  << " AXI Stream Monitor" << std::endl;
+      }
+      fout << "Group_End,AXI Stream Monitors" << std::endl ;
     }
 
     fout << "Group_End," << xclbinName << std::endl ;
@@ -146,16 +189,39 @@ namespace xdp {
   void DeviceTraceWriter::writeTraceEvents()
   {
     fout << "EVENTS" << std::endl;
-    std::vector<VTFEvent*> DeviceEvents = 
-      (db->getDynamicInfo()).getDeviceEvents(deviceId);
-    for(auto e : DeviceEvents) {
+    std::vector<VTFEvent*> DeviceEvents = (db->getDynamicInfo()).getDeviceEvents(deviceId);
 
-// ORRECT THIS
-      KernelEvent* ke = dynamic_cast<KernelEvent*>(e);
-      if(!ke)
+    for(auto e : DeviceEvents) {
+      VTFDeviceEvent* deviceEvent = dynamic_cast<VTFDeviceEvent*>(e);
+      if(!deviceEvent)
         continue;
-      ke->dump(fout, cuBucketIdMap[ke->getCUId()] + ke->getEventType() - KERNEL);
+      if(deviceEvent->getCUId() >= 0) {
+        deviceEvent->dump(fout, cuBucketIdMap[deviceEvent->getCUId()] + deviceEvent->getEventType() - KERNEL);
+      } else {
+        /* Device Events which may not be directly associated with a Kernel using available metadata.
+         * For example, AXI monitors for System Compiler, Slave Bridge designs.
+         */
+        uint32_t monId = deviceEvent->getMonitorId();
+        DeviceMemoryAccess* memoryEvent = dynamic_cast<DeviceMemoryAccess*>(e);
+        if(memoryEvent) {
+          deviceEvent->dump(fout, aimBucketIdMap[monId] + deviceEvent->getEventType() - KERNEL_READ);
+          continue;
+        }
+        DeviceStreamAccess* streamEvent = dynamic_cast<DeviceStreamAccess*>(e);
+        if(streamEvent) {
+          VTFEventType eventType = deviceEvent->getEventType();
+          if(KERNEL_STREAM_READ == eventType || KERNEL_STREAM_READ_STALL == eventType
+                                             || KERNEL_STREAM_READ_STARVE == eventType) {
+            deviceEvent->dump(fout, asmBucketIdMap[monId] + eventType - KERNEL_STREAM_READ);
+          } else {
+            deviceEvent->dump(fout, asmBucketIdMap[monId] + eventType - KERNEL_STREAM_WRITE);
+          }
+          continue;
+        }
+        // host read/write ??
+      }
     }
+
   }
 
   void DeviceTraceWriter::writeDependencies()

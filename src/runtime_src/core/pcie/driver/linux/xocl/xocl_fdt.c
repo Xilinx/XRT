@@ -340,6 +340,18 @@ static struct xocl_subdev_map subdev_map[] = {
 		.devinfo_cb = NULL,
 	},
 	{
+		.id = XOCL_SUBDEV_ERT_USER,
+		.dev_name = XOCL_ERT_USER,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_ERT_CQ_USER},
+			{NULL},
+		},
+		.required_ip = 1,
+		.flags = XOCL_SUBDEV_MAP_USERPF_ONLY,
+		.build_priv_data = ert_build_priv,
+		.devinfo_cb = NULL,
+ 	},
+ 	{
 		.id = XOCL_SUBDEV_MB_SCHEDULER,
 		.dev_name = XOCL_MB_SCHEDULER,
 		.res_array = (struct xocl_subdev_res[]) {
@@ -351,7 +363,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = XOCL_SUBDEV_MAP_USERPF_ONLY,
 		.build_priv_data = ert_build_priv,
 		.devinfo_cb = NULL,
-       	},
+ 	},
 	{
 		.id = XOCL_SUBDEV_XVC_PUB,
 		.dev_name = XOCL_XVC_PUB,
@@ -637,6 +649,18 @@ static struct xocl_subdev_map subdev_map[] = {
 		.required_ip = 1,
 		.flags = 0,
 		.build_priv_data = p2p_build_priv,
+		.devinfo_cb = NULL,
+	},
+	{
+		.id = XOCL_SUBDEV_UARTLITE,
+		.dev_name = XOCL_UARTLITE,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_ERT_UARTLITE},
+			{NULL},
+		},
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
 	},
 };
